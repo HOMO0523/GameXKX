@@ -244,6 +244,11 @@
           <p>通过 UE MCP 项目脚本创建 <code>/Game/GameXXK</code> 下的 UI、Maps、Characters、Data、Sprites 目录，生成 <code>L_Main</code> 与 <code>L_QingshanInn</code> 两张基础地图，并将默认启动地图指向 <code>L_Main</code>。</p>
         </article>
         <article class="entry">
+          <time>2026-07-02</time>
+          <h3>角色源 Sprite Sheet 入库</h3>
+          <p>将已选的深蓝高马尾主角、蓝衣随从和青绿商人 8 方向行走 sheet 复制到 <code>Content/GameXXK/Sprites/Generated</code>，并通过 UE MCP 导入为 <code>Texture2D</code> 资产，避免运行时依赖聊天软件缓存路径。</p>
+        </article>
+        <article class="entry">
           <time>2026-07-01</time>
           <h3>补齐 Play 模式原生可试玩入口</h3>
           <p>新增 MVP GameMode、PlayerController 与可点击 HUD，把主菜单、大地图选城镇、城镇任务/交易/补给、小地图节点、战斗胜负和 Boss 解锁串成编辑器 Play 模式可操作闭环；试玩脚本新增 PlayableShell 自动化覆盖。</p>
@@ -352,6 +357,7 @@
       <ul>
         <li><code>python scripts/gamexxk_mvp_playtest.py</code>：编译并运行 <code>GameXXK.MVP</code> 自动化试玩流程。</li>
         <li><code>python scripts/gamexxk_content_assembly_check.py</code>：通过 UE MCP 验证 <code>/Game/GameXXK</code> 内容目录、基础地图和默认地图配置。</li>
+        <li><code>python scripts/gamexxk_sprite_source_check.py</code>：通过 UE MCP 验证角色源 sheet PNG 和导入的 <code>Texture2D</code> 资产。</li>
         <li><code>python scripts/ue_tdd_pipeline.py --pie-duration 5</code>：启动编辑器、等待 UE MCP、运行 PIE 并收集 <code>[TDD]</code> 日志。</li>
         <li><code>python scripts/ue_mcp_smoke.py</code>：连接正在运行的 UE MCP server，验证 meta tools、Toolsets、项目 <code>GameXXKTDDToolset</code> 和 GameFeatureData 配置。</li>
         <li><code>git diff --check</code>：提交前检查空白和补丁格式。</li>
