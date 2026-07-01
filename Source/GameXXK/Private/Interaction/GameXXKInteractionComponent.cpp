@@ -2,6 +2,7 @@
 
 #include "Interaction/GameXXKInteractable.h"
 #include "GameFramework/Pawn.h"
+#include "Town/GameXXKTownExitActor.h"
 #include "Town/GameXXKTownNpcActor.h"
 
 UGameXXKInteractionComponent::UGameXXKInteractionComponent()
@@ -36,6 +37,11 @@ void UGameXXKInteractionComponent::Interact()
 			CastChecked<AGameXXKTownNpcActor>(Actor)->Interact_Implementation(OwnerPawn);
 			return;
 		}
+		if (Actor->GetClass() == AGameXXKTownExitActor::StaticClass())
+		{
+			CastChecked<AGameXXKTownExitActor>(Actor)->Interact_Implementation(OwnerPawn);
+			return;
+		}
 		IGameXXKInteractable::Execute_Interact(Actor, OwnerPawn);
 		return;
 	}
@@ -43,6 +49,10 @@ void UGameXXKInteractionComponent::Interact()
 	if (AGameXXKTownNpcActor* TownNpc = Cast<AGameXXKTownNpcActor>(Actor))
 	{
 		TownNpc->Interact_Implementation(OwnerPawn);
+	}
+	else if (AGameXXKTownExitActor* TownExit = Cast<AGameXXKTownExitActor>(Actor))
+	{
+		TownExit->Interact_Implementation(OwnerPawn);
 	}
 }
 

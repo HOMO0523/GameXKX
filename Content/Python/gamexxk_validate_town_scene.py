@@ -26,9 +26,14 @@ LIGHT_LABELS = {
     "QingshanInn_MorningFog": "ExponentialHeightFog",
 }
 
+INTERACTION_LABELS = {
+    "QingshanInn_TownExit": "GameXXKTownExitActor",
+}
+
 REQUIRED_LABELS = [
     *STATIC_MESH_LABELS.keys(),
     *LIGHT_LABELS.keys(),
+    *INTERACTION_LABELS.keys(),
     "PlayerStart_QingshanInn",
 ]
 
@@ -152,6 +157,11 @@ def main() -> None:
                 })
 
         for label, expected_class in LIGHT_LABELS.items():
+            actor = _find_actor_by_label(label)
+            if actor is not None and not _class_chain_contains(actor, expected_class):
+                invalid_actors.append({"label": label, "reason": "wrong_class", "expected": expected_class})
+
+        for label, expected_class in INTERACTION_LABELS.items():
             actor = _find_actor_by_label(label)
             if actor is not None and not _class_chain_contains(actor, expected_class):
                 invalid_actors.append({"label": label, "reason": "wrong_class", "expected": expected_class})

@@ -254,6 +254,11 @@
           <p>参考 Ocean 项目的场景自动化方式，但不引入 Water 或地图生成；通过 UE MCP 脚本在 <code>L_QingshanInn</code> 中放置静态地形、道路、边界、地牢入口标记、<code>PlayerStart</code>、Directional Light、SkyLight、SkyAtmosphere 和雾效，并写入地图 GameMode override。</p>
         </article>
         <article class="entry">
+          <time>2026-07-02</time>
+          <h3>城镇出口 F 交互</h3>
+          <p>新增 <code>AGameXXKTownExitActor</code>，放入青山驿站地牢门位置；玩家走近后按 <code>F</code>，未接任务时保持城镇状态并提示先接任务，接任务后进入固定小地图流程。</p>
+        </article>
+        <article class="entry">
           <time>2026-07-01</time>
           <h3>补齐 Play 模式原生可试玩入口</h3>
           <p>新增 MVP GameMode、PlayerController 与可点击 HUD，把主菜单、大地图选城镇、城镇任务/交易/补给、小地图节点、战斗胜负和 Boss 解锁串成编辑器 Play 模式可操作闭环；试玩脚本新增 PlayableShell 自动化覆盖。</p>
@@ -362,7 +367,7 @@
       <ul>
         <li><code>python scripts/gamexxk_mvp_playtest.py</code>：编译并运行 <code>GameXXK.MVP</code> 自动化试玩流程。</li>
         <li><code>python scripts/gamexxk_content_assembly_check.py</code>：通过 UE MCP 验证 <code>/Game/GameXXK</code> 内容目录、基础地图和默认地图配置。</li>
-        <li><code>python scripts/gamexxk_town_scene_check.py</code>：通过 UE MCP 验证青山驿站地形、边界、入口、<code>PlayerStart</code>、基础光照和地图 GameMode。</li>
+        <li><code>python scripts/gamexxk_town_scene_check.py</code>：通过 UE MCP 验证青山驿站地形、边界、入口交互 Actor、<code>PlayerStart</code>、基础光照和地图 GameMode。</li>
         <li><code>python scripts/gamexxk_sprite_source_check.py</code>：通过 UE MCP 验证角色源 sheet PNG 和导入的 <code>Texture2D</code> 资产。</li>
         <li><code>python scripts/ue_tdd_pipeline.py --pie-duration 5</code>：启动编辑器、等待 UE MCP、运行 PIE 并收集 <code>[TDD]</code> 日志。</li>
         <li><code>python scripts/ue_mcp_smoke.py</code>：连接正在运行的 UE MCP server，验证 meta tools、Toolsets、项目 <code>GameXXKTDDToolset</code> 和 GameFeatureData 配置。</li>

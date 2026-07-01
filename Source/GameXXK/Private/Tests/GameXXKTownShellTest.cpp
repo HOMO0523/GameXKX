@@ -1,9 +1,12 @@
 #include "Interaction/GameXXKInteractionComponent.h"
+#include "Components/BoxComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/TextRenderComponent.h"
 #include "GameXXKMVPRules.h"
 #include "Kismet/GameplayStatics.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "Town/GameXXKTownExitActor.h"
 #include "Misc/AutomationTest.h"
 #include "Town/GameXXKTownNpcActor.h"
 #include "Town/GameXXKTownPlayerPawn.h"
@@ -69,6 +72,23 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	Subsystem->OpenWorldMap();
 	Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan());
 
+	AGameXXKTownExitActor* TownExit = NewObject<AGameXXKTownExitActor>();
+	TownExit->SetMVPSubsystemForTest(Subsystem);
+	TestNotNull(TEXT("town exit has interaction area"), TownExit->GetInteractionArea());
+	TestNotNull(TEXT("town exit has visible feedback text"), TownExit->GetFeedbackTextComponent());
+	TestEqual(TEXT("town exit area is query-only overlap"), TownExit->GetInteractionArea()->GetCollisionEnabled(), ECollisionEnabled::QueryOnly);
+	TestEqual(TEXT("town exit area overlaps Pawn channel"), TownExit->GetInteractionArea()->GetCollisionResponseToChannel(ECC_Pawn), ECollisionResponse::ECR_Overlap);
+	TestTrue(TEXT("town exit area generates overlap events"), TownExit->GetInteractionArea()->GetGenerateOverlapEvents());
+	TownExit->NotifyActorBeginOverlap(Player);
+	TestTrue(TEXT("town exit overlap focuses player interaction"), Player->GetInteractionComponent()->GetFocusedActor() == TownExit);
+	Player->Interact();
+	TestEqual(TEXT("exit before quest keeps player in town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestFalse(TEXT("exit before quest records failed interaction"), TownExit->WasLastInteractionSuccessful());
+	TestFalse(TEXT("exit before quest does not start dungeon"), Subsystem->GetRuntimeState().bDungeonActive);
+	TestEqual(TEXT("exit before quest displays quest requirement"), TownExit->GetFeedbackTextComponent()->Text.ToString(), FString(TEXT("请先接任务")));
+	TownExit->NotifyActorEndOverlap(Player);
+	TestNull(TEXT("town exit end overlap clears focus"), Player->GetInteractionComponent()->GetFocusedActor());
+
 	QuestNpc->SetMVPSubsystemForTest(Subsystem);
 	QuestNpc->NotifyActorBeginOverlap(Player);
 	TestTrue(TEXT("quest NPC overlap focuses player interaction"), Player->GetInteractionComponent()->GetFocusedActor() == QuestNpc);
@@ -87,6 +107,17 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("F quest autosave restores follower join state"), ReloadedAfterQuestF->GetRuntimeState().bFollowerJoined);
 	QuestNpc->NotifyActorEndOverlap(Player);
 	TestNull(TEXT("quest NPC end overlap clears focus"), Player->GetInteractionComponent()->GetFocusedActor());
+
+	TownExit->NotifyActorBeginOverlap(Player);
+	TestTrue(TEXT("accepted quest exit overlap focuses player interaction"), Player->GetInteractionComponent()->GetFocusedActor() == TownExit);
+	Player->Interact();
+	TestTrue(TEXT("accepted quest exit records successful interaction"), TownExit->WasLastInteractionSuccessful());
+	TestEqual(TEXT("accepted quest exit opens dungeon map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestTrue(TEXT("accepted quest exit starts dungeon"), Subsystem->GetRuntimeState().bDungeonActive);
+	TestEqual(TEXT("accepted quest exit clears failure feedback"), TownExit->GetFeedbackTextComponent()->Text.ToString(), FString());
+	Subsystem->FailDungeonToTown();
+	TownExit->NotifyActorEndOverlap(Player);
+	TestNull(TEXT("accepted quest exit end overlap clears focus"), Player->GetInteractionComponent()->GetFocusedActor());
 
 	MerchantNpc->SetMVPSubsystemForTest(Subsystem);
 	MerchantNpc->NotifyActorBeginOverlap(Player);

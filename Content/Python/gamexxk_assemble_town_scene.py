@@ -94,6 +94,12 @@ SCENE_ACTORS = [
         "component_props": {"fog_density": 0.015, "fog_height_falloff": 0.2},
     },
     {
+        "label": "QingshanInn_TownExit",
+        "class_path": "/Script/GameXXK.GameXXKTownExitActor",
+        "location": [0.0, 1380.0, 120.0],
+        "rotation": [0.0, 0.0, 0.0],
+    },
+    {
         "label": "PlayerStart_QingshanInn",
         "class_path": "/Script/Engine.PlayerStart",
         "location": [-1250.0, -900.0, 120.0],
