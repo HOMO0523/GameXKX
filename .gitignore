@@ -6,6 +6,8 @@ Saved/
 .vs/
 
 # User/editor local files
+.worktrees/
+worktrees/
 *.opensdf
 *.sdf
 *.suo
