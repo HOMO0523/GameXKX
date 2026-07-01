@@ -6,6 +6,8 @@
 #include "GameXXKTownNpcActor.generated.h"
 
 class UPaperFlipbookComponent;
+class USphereComponent;
+class UGameXXKMVPSubsystem;
 
 UENUM(BlueprintType)
 enum class EGameXXKTownNpcRole : uint8
@@ -25,6 +27,8 @@ public:
 	AGameXXKTownNpcActor();
 
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
+	virtual void NotifyActorEndOverlap(AActor* OtherActor) override;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town")
 	void SetNpcRole(EGameXXKTownNpcRole NewRole);
@@ -53,6 +57,17 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	float GetFollowDistance() const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
+	USphereComponent* GetInteractionArea() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
+	bool WasLastInteractionSuccessful() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town")
+	bool ApplyDefaultInteraction(APawn* InstigatorPawn);
+
+	void SetMVPSubsystemForTest(UGameXXKMVPSubsystem* InSubsystem);
+
 	virtual FText GetInteractionPrompt_Implementation() const override;
 	virtual void Interact_Implementation(APawn* InstigatorPawn) override;
 
@@ -62,12 +77,18 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameXXK|Town")
 	void OnMerchantInteract(APawn* InstigatorPawn);
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "GameXXK|Town")
+	void OnDefaultInteractionResolved(APawn* InstigatorPawn, bool bSucceeded);
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|Town")
 	TObjectPtr<USceneComponent> SceneRoot;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|Town")
 	TObjectPtr<UPaperFlipbookComponent> Visual;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|Town")
+	TObjectPtr<USphereComponent> InteractionArea;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameXXK|Town")
 	EGameXXKTownNpcRole NpcRole = EGameXXKTownNpcRole::Generic;
@@ -83,4 +104,13 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameXXK|Town")
 	float FollowSpeed = 240.0f;
+
+private:
+	UGameXXKMVPSubsystem* ResolveMVPSubsystem(APawn* InstigatorPawn) const;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKMVPSubsystem> OverrideSubsystem;
+
+	UPROPERTY(Transient)
+	bool bLastInteractionSuccessful = false;
 };

@@ -1,7 +1,8 @@
 #include "Town/GameXXKTownPlayerPawn.h"
 
-#include "GameFramework/FloatingPawnMovement.h"
 #include "Components/InputComponent.h"
+#include "Components/SphereComponent.h"
+#include "GameFramework/FloatingPawnMovement.h"
 #include "Interaction/GameXXKInteractionComponent.h"
 #include "PaperFlipbookComponent.h"
 
@@ -9,7 +10,14 @@ AGameXXKTownPlayerPawn::AGameXXKTownPlayerPawn()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	USphereComponent* CollisionRoot = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionRoot"));
+	CollisionRoot->SetSphereRadius(36.0f);
+	CollisionRoot->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	CollisionRoot->SetCollisionObjectType(ECC_Pawn);
+	CollisionRoot->SetCollisionResponseToAllChannels(ECR_Ignore);
+	CollisionRoot->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+	CollisionRoot->SetGenerateOverlapEvents(true);
+	SceneRoot = CollisionRoot;
 	SetRootComponent(SceneRoot);
 
 	Visual = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("Visual"));
@@ -64,6 +72,11 @@ void AGameXXKTownPlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerIn
 UGameXXKInteractionComponent* AGameXXKTownPlayerPawn::GetInteractionComponent() const
 {
 	return Interaction;
+}
+
+UPrimitiveComponent* AGameXXKTownPlayerPawn::GetTownCollisionComponent() const
+{
+	return Cast<UPrimitiveComponent>(SceneRoot);
 }
 
 bool AGameXXKTownPlayerPawn::IsSupportedMovementKey(FKey Key) const

@@ -42,6 +42,7 @@ CHECKLIST = [
     "SaveGame load-or-create opens world map and missing slots create new state",
     "inventory and equipment details are intentionally not persisted",
     "town player shell binds WASD, arrow keys, and F interaction",
+    "town NPC overlap focuses F interaction for quest acceptance, follower activation, and merchant buying",
     "town quest, merchant, and follower NPC roles are test-covered",
     "UMG widget bases drive main menu, world map, quest, trade, inventory, dungeon, and battle rule APIs",
     "playable HUD commands drive start, region clicks, town actions, dungeon nodes, battle, Boss clear, and Tanjiang unlock",

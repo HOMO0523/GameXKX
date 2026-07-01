@@ -9,6 +9,7 @@ class UGameXXKInteractionComponent;
 class UFloatingPawnMovement;
 class UInputComponent;
 class UPaperFlipbookComponent;
+class UPrimitiveComponent;
 
 UCLASS(Blueprintable)
 class GAMEXXK_API AGameXXKTownPlayerPawn : public APawn
@@ -24,6 +25,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	UGameXXKInteractionComponent* GetInteractionComponent() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
+	UPrimitiveComponent* GetTownCollisionComponent() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	bool IsSupportedMovementKey(FKey Key) const;

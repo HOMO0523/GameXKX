@@ -25,11 +25,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Interaction")
 	void SetFocusedActor(AActor* Actor);
 
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Interaction")
+	void AddFocusedActor(AActor* Actor);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Interaction")
+	void RemoveFocusedActor(AActor* Actor);
+
 	void SetFocusedActorForTest(AActor* Actor);
 
 private:
+	void RefreshFocusedActorFromStack();
+
 	UPROPERTY()
 	TObjectPtr<AActor> FocusedActor;
+
+	UPROPERTY()
+	TArray<TWeakObjectPtr<AActor>> FocusStack;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|Interaction")
 	FKey InteractionKey;
