@@ -99,6 +99,17 @@ void AGameXXKMVPHUD::SetStartGameSlotForTest(const FString& SlotName, int32 User
 	StartGameUserIndexOverride = UserIndex;
 }
 
+bool AGameXXKMVPHUD::SavePlayableSlot(UGameXXKMVPSubsystem* Subsystem) const
+{
+	if (!Subsystem)
+	{
+		return false;
+	}
+	return StartGameSlotNameOverride.IsEmpty()
+		? Subsystem->SaveCurrentGame(TEXT(""), 0)
+		: Subsystem->SaveCurrentGame(StartGameSlotNameOverride, StartGameUserIndexOverride);
+}
+
 TArray<FGameXXKMVPCommandDescriptor> AGameXXKMVPHUD::BuildVisibleCommands() const
 {
 	TArray<FGameXXKMVPCommandDescriptor> Commands;
@@ -181,72 +192,81 @@ bool AGameXXKMVPHUD::HandleDemoCommand(FName CommandName)
 
 	using namespace GameXXKMVPHUDCommands;
 
+	auto FinishCommand = [this, Subsystem](bool bCommandSucceeded)
+	{
+		if (!bCommandSucceeded)
+		{
+			return false;
+		}
+		return SavePlayableSlot(Subsystem);
+	};
+
 	if (CommandName == StartGame)
 	{
-		return StartGameSlotNameOverride.IsEmpty()
+		return FinishCommand(StartGameSlotNameOverride.IsEmpty()
 			? Subsystem->StartGame()
-			: Subsystem->StartGameFromSlot(StartGameSlotNameOverride, StartGameUserIndexOverride);
+			: Subsystem->StartGameFromSlot(StartGameSlotNameOverride, StartGameUserIndexOverride));
 	}
 	if (CommandName == SelectQingshan)
 	{
-		return Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan());
+		return FinishCommand(Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan()));
 	}
 	if (CommandName == SelectTanjiang)
 	{
-		return Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionTanjiang());
+		return FinishCommand(Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionTanjiang()));
 	}
 	if (CommandName == OpenWorldMap)
 	{
-		return Subsystem->OpenWorldMap();
+		return FinishCommand(Subsystem->OpenWorldMap());
 	}
 	if (CommandName == AcceptQuest)
 	{
-		return Subsystem->AcceptQuest();
+		return FinishCommand(Subsystem->AcceptQuest());
 	}
 	if (CommandName == BuyHealingPowder)
 	{
-		return Subsystem->BuyItem(UGameXXKMVPRules::ItemHealingPowder(), 1);
+		return FinishCommand(Subsystem->BuyItem(UGameXXKMVPRules::ItemHealingPowder(), 1));
 	}
 	if (CommandName == SellHealingPowder)
 	{
-		return Subsystem->SellItem(UGameXXKMVPRules::ItemHealingPowder(), 1);
+		return FinishCommand(Subsystem->SellItem(UGameXXKMVPRules::ItemHealingPowder(), 1));
 	}
 	if (CommandName == UseHealingPowder)
 	{
-		return Subsystem->UseHealingItem();
+		return FinishCommand(Subsystem->UseHealingItem());
 	}
 	if (CommandName == EnterDungeon)
 	{
-		return Subsystem->OpenDungeonFromTownExit();
+		return FinishCommand(Subsystem->OpenDungeonFromTownExit());
 	}
 	if (CommandName == SelectStart)
 	{
-		return Subsystem->SelectDungeonNode(EGameXXKNodeKind::Start);
+		return FinishCommand(Subsystem->SelectDungeonNode(EGameXXKNodeKind::Start));
 	}
 	if (CommandName == SelectBattle)
 	{
-		return Subsystem->SelectDungeonNode(EGameXXKNodeKind::Battle);
+		return FinishCommand(Subsystem->SelectDungeonNode(EGameXXKNodeKind::Battle));
 	}
 	if (CommandName == ResolveEventGold)
 	{
-		return Subsystem->ResolveEventReward(true);
+		return FinishCommand(Subsystem->ResolveEventReward(true));
 	}
 	if (CommandName == ResolveCampHeal)
 	{
-		return Subsystem->ResolveCampReward(true);
+		return FinishCommand(Subsystem->ResolveCampReward(true));
 	}
 	if (CommandName == SelectBoss)
 	{
-		return Subsystem->SelectDungeonNode(EGameXXKNodeKind::Boss);
+		return FinishCommand(Subsystem->SelectDungeonNode(EGameXXKNodeKind::Boss));
 	}
 	if (CommandName == ResolveBattleVictory)
 	{
 		const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
-		return Subsystem->ResolveBattleVictory(State.bDungeonActive && GetCurrentNode(State) == EGameXXKNodeKind::Boss);
+		return FinishCommand(Subsystem->ResolveBattleVictory(State.bDungeonActive && GetCurrentNode(State) == EGameXXKNodeKind::Boss));
 	}
 	if (CommandName == FailBattle)
 	{
-		return Subsystem->FailDungeonToTown();
+		return FinishCommand(Subsystem->FailDungeonToTown());
 	}
 
 	return false;

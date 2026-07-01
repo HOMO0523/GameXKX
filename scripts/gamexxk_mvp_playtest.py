@@ -46,6 +46,7 @@ CHECKLIST = [
     "town quest, merchant, and follower NPC roles are test-covered",
     "UMG widget bases drive main menu, world map, quest, trade, inventory, dungeon, and battle rule APIs",
     "playable HUD commands drive start, region clicks, town actions, dungeon nodes, battle, Boss clear, and Tanjiang unlock",
+    "playable HUD autosaves route progress so Start and Continue can restore cleared unlocks",
     "default GameMode wires MVP PlayerController, clickable HUD, and Paper2D town pawn for Play mode",
 ]
 

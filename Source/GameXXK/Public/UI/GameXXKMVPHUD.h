@@ -49,6 +49,8 @@ protected:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
 
 private:
+	bool SavePlayableSlot(UGameXXKMVPSubsystem* Subsystem) const;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMVPSubsystem> OverrideSubsystem;
 

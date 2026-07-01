@@ -97,6 +97,15 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("battle HUD resolves boss victory"), HUD->HandleDemoCommand(FName(TEXT("ResolveBattleVictory"))));
 	TestEqual(TEXT("boss returns to world map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 
+	const FGameXXKRuntimeState CompletedRouteState = Subsystem->GetRuntimeState();
+	UGameXXKMVPSubsystem* ReloadedSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestTrue(TEXT("HUD route clear autosaves playable slot"), ReloadedSubsystem->LoadGameFromSlot(TestSlotName, 0));
+	TestEqual(TEXT("autosave persists completed quest"), ReloadedSubsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Completed);
+	TestTrue(TEXT("autosave persists Tanjiang unlock"), ReloadedSubsystem->GetRuntimeState().UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));
+	TestEqual(TEXT("autosave persists route level"), ReloadedSubsystem->GetRuntimeState().PlayerLevel, CompletedRouteState.PlayerLevel);
+	TestEqual(TEXT("autosave persists route XP"), ReloadedSubsystem->GetRuntimeState().PlayerXP, CompletedRouteState.PlayerXP);
+	TestEqual(TEXT("autosave persists route gold"), ReloadedSubsystem->GetRuntimeState().PlayerGold, CompletedRouteState.PlayerGold);
+
 	bTanjiangEnabled = false;
 	TestTrue(TEXT("world map still shows Tanjiang button"), HasCommand(HUD->BuildVisibleCommands(), FName(TEXT("SelectTanjiang")), &bTanjiangEnabled));
 	TestTrue(TEXT("Tanjiang enabled after Boss"), bTanjiangEnabled);
