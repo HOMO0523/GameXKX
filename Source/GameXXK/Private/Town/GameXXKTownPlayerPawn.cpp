@@ -4,7 +4,13 @@
 #include "Components/SphereComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "Interaction/GameXXKInteractionComponent.h"
+#include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
+
+namespace
+{
+	const TCHAR* HeroSouthWalkFlipbookPath = TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South");
+}
 
 AGameXXKTownPlayerPawn::AGameXXKTownPlayerPawn()
 {
@@ -27,6 +33,15 @@ AGameXXKTownPlayerPawn::AGameXXKTownPlayerPawn()
 	Interaction = CreateDefaultSubobject<UGameXXKInteractionComponent>(TEXT("Interaction"));
 
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
+
+	DefaultTownFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroSouthWalkFlipbookPath));
+	ApplyDefaultTownFlipbook();
+}
+
+void AGameXXKTownPlayerPawn::BeginPlay()
+{
+	Super::BeginPlay();
+	ApplyDefaultTownFlipbook();
 }
 
 void AGameXXKTownPlayerPawn::Tick(float DeltaSeconds)
@@ -101,11 +116,51 @@ bool AGameXXKTownPlayerPawn::HasTownVisual() const
 	return Visual != nullptr;
 }
 
+bool AGameXXKTownPlayerPawn::HasAssignedTownFlipbook() const
+{
+	return GetCurrentTownFlipbook() != nullptr;
+}
+
+UPaperFlipbook* AGameXXKTownPlayerPawn::GetDefaultTownFlipbook() const
+{
+	return DefaultTownFlipbookOverride ? DefaultTownFlipbookOverride.Get() : DefaultTownFlipbookAsset.LoadSynchronous();
+}
+
+FSoftObjectPath AGameXXKTownPlayerPawn::GetDefaultTownFlipbookPath() const
+{
+	return DefaultTownFlipbookAsset.ToSoftObjectPath();
+}
+
+FString AGameXXKTownPlayerPawn::GetDefaultTownFlipbookPathString() const
+{
+	return GetDefaultTownFlipbookPath().ToString();
+}
+
+UPaperFlipbook* AGameXXKTownPlayerPawn::GetCurrentTownFlipbook() const
+{
+	return Visual ? Visual->GetFlipbook() : nullptr;
+}
+
 int32 AGameXXKTownPlayerPawn::CountTownInputBindingsForTest() const
 {
 	UInputComponent* TestInput = NewObject<UInputComponent>(const_cast<AGameXXKTownPlayerPawn*>(this));
 	const_cast<AGameXXKTownPlayerPawn*>(this)->SetupPlayerInputComponent(TestInput);
 	return TestInput->AxisKeyBindings.Num() + TestInput->KeyBindings.Num();
+}
+
+void AGameXXKTownPlayerPawn::SetDefaultTownFlipbookForTest(UPaperFlipbook* InFlipbook)
+{
+	DefaultTownFlipbookOverride = InFlipbook;
+	ApplyDefaultTownFlipbook();
+}
+
+void AGameXXKTownPlayerPawn::ApplyDefaultTownFlipbook()
+{
+	UPaperFlipbook* FlipbookToApply = GetDefaultTownFlipbook();
+	if (Visual && FlipbookToApply)
+	{
+		Visual->SetFlipbook(FlipbookToApply);
+	}
 }
 
 void AGameXXKTownPlayerPawn::MoveHorizontal(float Value)

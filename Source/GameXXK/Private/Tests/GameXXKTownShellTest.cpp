@@ -6,6 +6,7 @@
 #include "GameXXKMVPRules.h"
 #include "Kismet/GameplayStatics.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "PaperFlipbook.h"
 #include "Town/GameXXKTownExitActor.h"
 #include "Misc/AutomationTest.h"
 #include "Town/GameXXKTownNpcActor.h"
@@ -48,6 +49,14 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("E key is not town interaction"), Player->IsInteractionKey(EKeys::E));
 	TestTrue(TEXT("F key is town interaction"), Player->IsInteractionKey(EKeys::F));
 	TestTrue(TEXT("player has Paper2D visual shell"), Player->HasTownVisual());
+	TestEqual(TEXT("player default town flipbook path points at hero South walk"), Player->GetDefaultTownFlipbookPath().ToString(), FString(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South")));
+	TestEqual(TEXT("player exposes default town flipbook path as string for automation"), Player->GetDefaultTownFlipbookPathString(), FString(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South")));
+	TestTrue(TEXT("player loads project hero South walk flipbook by default"), Player->HasAssignedTownFlipbook());
+	UPaperFlipbook* TestFlipbook = NewObject<UPaperFlipbook>(Player);
+	Player->SetDefaultTownFlipbookForTest(TestFlipbook);
+	TestEqual(TEXT("player stores default town flipbook"), Player->GetDefaultTownFlipbook(), TestFlipbook);
+	TestEqual(TEXT("player applies default town flipbook to visual component"), Player->GetCurrentTownFlipbook(), TestFlipbook);
+	TestTrue(TEXT("player reports assigned town flipbook"), Player->HasAssignedTownFlipbook());
 	TestEqual(TEXT("town input binds movement press/release keys plus F"), Player->CountTownInputBindingsForTest(), 17);
 
 	AGameXXKTownNpcActor* QuestNpc = NewObject<AGameXXKTownNpcActor>();

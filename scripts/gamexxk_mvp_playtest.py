@@ -52,6 +52,7 @@ CHECKLIST = [
     "default GameMode wires MVP PlayerController, clickable HUD, and Paper2D town pawn for Play mode",
     "Qingshan town map has fixed Landscape terrain, boundaries, PlayerStart, lighting, no Water actors, and MVP GameMode override",
     "selected hero, follower, and merchant walk sprite sheets are stored in project content and imported as Texture2D assets",
+    "hero deep-blue high-ponytail sheet expands into 8-direction Paper2D walk flipbooks and the town pawn loads South walk by default",
 ]
 
 
