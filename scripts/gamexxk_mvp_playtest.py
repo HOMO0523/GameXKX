@@ -40,6 +40,7 @@ CHECKLIST = [
     "save restore persists unlocks, quest, level, XP, and gold",
     "town player shell binds WASD, arrow keys, and F interaction",
     "town quest, merchant, and follower NPC roles are test-covered",
+    "UMG widget bases drive main menu, world map, quest, trade, inventory, dungeon, and battle rule APIs",
 ]
 
 

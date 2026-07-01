@@ -263,6 +263,11 @@
           <h3>城镇交互 Shell</h3>
           <p>新增 <code>AGameXXKTownPlayerPawn</code>、<code>UGameXXKInteractionComponent</code>、<code>AGameXXKTownNpcActor</code>，验证 WASD/方向键自由移动、<code>F</code> 交互、任务 NPC、商人 NPC 和跟随 NPC 的 C++ 行为边界。</p>
         </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>UMG 连接层</h3>
+          <p>新增 <code>UGameXXKMVPSubsystem</code> 与主菜单、大地图、任务弹窗、背包、交易、角色面板、小地图、战斗等 C++ Widget Base，验证 UI 按钮可驱动现有 MVP 规则 API。</p>
+        </article>
       </div>
     </section>
 
@@ -280,7 +285,7 @@
           <tr>
             <td>大地图</td>
             <td>3 个区域，未解锁区域置暗，通关后新区变亮。</td>
-            <td><span class="tag blue">逻辑已测，UI 待装配</span></td>
+            <td><span class="tag blue">Widget Base 已测，蓝图待装配</span></td>
           </tr>
           <tr>
             <td>城镇</td>
@@ -290,12 +295,12 @@
           <tr>
             <td>小地图</td>
             <td>固定 seed 节点图，包含普通战斗、营地、事件、Boss。</td>
-            <td><span class="tag blue">节点规则已测，UI 待装配</span></td>
+            <td><span class="tag blue">Widget Base 已测，蓝图待装配</span></td>
           </tr>
           <tr>
             <td>战斗</td>
             <td>速度排序、普攻、技能、防御、道具、胜败结算。</td>
-            <td><span class="tag blue">速度/胜败/奖励已测，战斗 UI 待装配</span></td>
+            <td><span class="tag blue">Widget Base 已测，战斗蓝图待装配</span></td>
           </tr>
           <tr>
             <td>插件环境</td>
@@ -310,7 +315,7 @@
       <h2>验证记录</h2>
       <p>每次提交前补充最新验证命令和结果。当前建议验证入口：</p>
       <ul>
-        <li><code>python scripts/gamexxk_mvp_playtest.py</code>：编译并运行 <code>GameXXK.MVP.FullFlow</code> 自动化试玩流程。</li>
+        <li><code>python scripts/gamexxk_mvp_playtest.py</code>：编译并运行 <code>GameXXK.MVP</code> 自动化试玩流程。</li>
         <li><code>python scripts/ue_tdd_pipeline.py --pie-duration 5</code>：启动编辑器、等待 UE MCP、运行 PIE 并收集 <code>[TDD]</code> 日志。</li>
         <li><code>python scripts/ue_mcp_smoke.py</code>：连接正在运行的 UE MCP server，验证 meta tools、Toolsets、项目 <code>GameXXKTDDToolset</code> 和 GameFeatureData 配置。</li>
         <li><code>git diff --check</code>：提交前检查空白和补丁格式。</li>
