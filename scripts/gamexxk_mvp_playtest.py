@@ -53,6 +53,7 @@ CHECKLIST = [
     "Qingshan town map has fixed Landscape terrain, boundaries, PlayerStart, lighting, no Water actors, and MVP GameMode override",
     "selected hero, follower, and merchant walk sprite sheets are stored in project content and imported as Texture2D assets",
     "hero deep-blue high-ponytail sheet expands into 8-direction Paper2D walk flipbooks and the town pawn loads South walk by default",
+    "town pawn switches hero Paper2D walk flipbooks across 8 directions from WASD, arrow-key, and axis movement intent",
     "hero PaperZD flipbook animation source, AnimBP, and 8-direction directional walk sequence reference the Paper2D flipbooks",
 ]
 

@@ -4,6 +4,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "GameXXKMVPRules.h"
+#include "GameFramework/InputSettings.h"
 #include "Kismet/GameplayStatics.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "PaperFlipbook.h"
@@ -13,6 +14,55 @@
 #include "Town/GameXXKTownPlayerPawn.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+namespace
+{
+	struct FTownDirectionSpec
+	{
+		EGameXXKTownFacingDirection Direction;
+		const TCHAR* Name;
+		const TCHAR* Path;
+	};
+
+	constexpr EGameXXKTownFacingDirection TownFacingSouth = EGameXXKTownFacingDirection::South;
+	constexpr EGameXXKTownFacingDirection TownFacingSouthWest = EGameXXKTownFacingDirection::SouthWest;
+	constexpr EGameXXKTownFacingDirection TownFacingWest = EGameXXKTownFacingDirection::West;
+	constexpr EGameXXKTownFacingDirection TownFacingNorthWest = EGameXXKTownFacingDirection::NorthWest;
+	constexpr EGameXXKTownFacingDirection TownFacingNorth = EGameXXKTownFacingDirection::North;
+	constexpr EGameXXKTownFacingDirection TownFacingNorthEast = EGameXXKTownFacingDirection::NorthEast;
+	constexpr EGameXXKTownFacingDirection TownFacingEast = EGameXXKTownFacingDirection::East;
+	constexpr EGameXXKTownFacingDirection TownFacingSouthEast = EGameXXKTownFacingDirection::SouthEast;
+
+	const FTownDirectionSpec TownDirectionSpecs[] = {
+		{ TownFacingSouth, TEXT("South"), TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South") },
+		{ TownFacingSouthWest, TEXT("SouthWest"), TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_SouthWest.FB_Hero_Walk_SouthWest") },
+		{ TownFacingWest, TEXT("West"), TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_West.FB_Hero_Walk_West") },
+		{ TownFacingNorthWest, TEXT("NorthWest"), TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_NorthWest.FB_Hero_Walk_NorthWest") },
+		{ TownFacingNorth, TEXT("North"), TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_North.FB_Hero_Walk_North") },
+		{ TownFacingNorthEast, TEXT("NorthEast"), TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_NorthEast.FB_Hero_Walk_NorthEast") },
+		{ TownFacingEast, TEXT("East"), TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_East.FB_Hero_Walk_East") },
+		{ TownFacingSouthEast, TEXT("SouthEast"), TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_SouthEast.FB_Hero_Walk_SouthEast") },
+	};
+
+	int32 TownDirectionIndex(EGameXXKTownFacingDirection Direction)
+	{
+		return static_cast<int32>(Direction);
+	}
+
+	bool ExpectTownFacing(FAutomationTestBase& Test, AGameXXKTownPlayerPawn* Player, EGameXXKTownFacingDirection ExpectedDirection, const TCHAR* Context)
+	{
+		const int64 ActualDirection = Player ? static_cast<int64>(Player->GetTownFacingDirection()) : INDEX_NONE;
+		return Test.TestEqual(FString::Printf(TEXT("%s facing direction"), Context), ActualDirection, static_cast<int64>(ExpectedDirection));
+	}
+
+	bool HasAxisMapping(const TArray<FInputAxisKeyMapping>& Mappings, FKey Key, float Scale)
+	{
+		return Mappings.ContainsByPredicate([Key, Scale](const FInputAxisKeyMapping& Mapping)
+		{
+			return Mapping.Key == Key && FMath::IsNearlyEqual(Mapping.Scale, Scale);
+		});
+	}
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTownShellTest,
@@ -48,6 +98,20 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Right arrow is accepted movement input"), Player->IsSupportedMovementKey(EKeys::Right));
 	TestFalse(TEXT("E key is not town interaction"), Player->IsInteractionKey(EKeys::E));
 	TestTrue(TEXT("F key is town interaction"), Player->IsInteractionKey(EKeys::F));
+	TArray<FInputAxisKeyMapping> HorizontalAxisMappings;
+	TArray<FInputAxisKeyMapping> VerticalAxisMappings;
+	UInputSettings::GetInputSettings()->GetAxisMappingByName(TEXT("TownMoveHorizontal"), HorizontalAxisMappings);
+	UInputSettings::GetInputSettings()->GetAxisMappingByName(TEXT("TownMoveVertical"), VerticalAxisMappings);
+	TestTrue(TEXT("TownMoveHorizontal axis maps A left"), HasAxisMapping(HorizontalAxisMappings, EKeys::A, -1.0f));
+	TestTrue(TEXT("TownMoveHorizontal axis maps D right"), HasAxisMapping(HorizontalAxisMappings, EKeys::D, 1.0f));
+	TestTrue(TEXT("TownMoveHorizontal axis maps Left arrow"), HasAxisMapping(HorizontalAxisMappings, EKeys::Left, -1.0f));
+	TestTrue(TEXT("TownMoveHorizontal axis maps Right arrow"), HasAxisMapping(HorizontalAxisMappings, EKeys::Right, 1.0f));
+	TestTrue(TEXT("TownMoveHorizontal axis maps gamepad left stick X"), HasAxisMapping(HorizontalAxisMappings, EKeys::Gamepad_LeftX, 1.0f));
+	TestTrue(TEXT("TownMoveVertical axis maps S backward"), HasAxisMapping(VerticalAxisMappings, EKeys::S, -1.0f));
+	TestTrue(TEXT("TownMoveVertical axis maps W forward"), HasAxisMapping(VerticalAxisMappings, EKeys::W, 1.0f));
+	TestTrue(TEXT("TownMoveVertical axis maps Down arrow"), HasAxisMapping(VerticalAxisMappings, EKeys::Down, -1.0f));
+	TestTrue(TEXT("TownMoveVertical axis maps Up arrow"), HasAxisMapping(VerticalAxisMappings, EKeys::Up, 1.0f));
+	TestTrue(TEXT("TownMoveVertical axis maps gamepad left stick Y"), HasAxisMapping(VerticalAxisMappings, EKeys::Gamepad_LeftY, 1.0f));
 	TestTrue(TEXT("player has Paper2D visual shell"), Player->HasTownVisual());
 	TestEqual(TEXT("player default town flipbook path points at hero South walk"), Player->GetDefaultTownFlipbookPath().ToString(), FString(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South")));
 	TestEqual(TEXT("player exposes default town flipbook path as string for automation"), Player->GetDefaultTownFlipbookPathString(), FString(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South")));
@@ -57,7 +121,104 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("player stores default town flipbook"), Player->GetDefaultTownFlipbook(), TestFlipbook);
 	TestEqual(TEXT("player applies default town flipbook to visual component"), Player->GetCurrentTownFlipbook(), TestFlipbook);
 	TestTrue(TEXT("player reports assigned town flipbook"), Player->HasAssignedTownFlipbook());
-	TestEqual(TEXT("town input binds movement press/release keys plus F"), Player->CountTownInputBindingsForTest(), 17);
+	TestEqual(TEXT("town input binds movement press/release keys, movement axes, plus F"), Player->CountTownInputBindingsForTest(), 19);
+
+	AGameXXKTownPlayerPawn* FacingPlayer = NewObject<AGameXXKTownPlayerPawn>();
+	UPaperFlipbook* DirectionFlipbooks[UE_ARRAY_COUNT(TownDirectionSpecs)] = {};
+	for (const FTownDirectionSpec& Spec : TownDirectionSpecs)
+	{
+		const FSoftObjectPath DirectionPath = FacingPlayer->GetTownFlipbookPathForDirection(Spec.Direction);
+		TestEqual(FString::Printf(TEXT("player %s walk flipbook path"), Spec.Name), DirectionPath.ToString(), FString(Spec.Path));
+
+		DirectionFlipbooks[TownDirectionIndex(Spec.Direction)] = NewObject<UPaperFlipbook>(FacingPlayer);
+		FacingPlayer->SetTownDirectionFlipbookForTest(Spec.Direction, DirectionFlipbooks[TownDirectionIndex(Spec.Direction)]);
+	}
+
+	ExpectTownFacing(*this, FacingPlayer, TownFacingSouth, TEXT("initial player"));
+	TestEqual(TEXT("initial player uses South direction flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingSouth)]);
+	FacingPlayer->MoveForwardPressed();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingNorth, TEXT("W pressed"));
+	TestEqual(TEXT("W pressed applies North flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingNorth)]);
+	FacingPlayer->MoveRightPressed();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingNorthEast, TEXT("W+D pressed"));
+	TestEqual(TEXT("W+D pressed applies NorthEast flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingNorthEast)]);
+	FacingPlayer->MoveForwardReleased();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingEast, TEXT("D remains pressed"));
+	TestEqual(TEXT("D remains pressed applies East flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingEast)]);
+	FacingPlayer->MoveRightReleased();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingEast, TEXT("all movement released after East"));
+	TestEqual(TEXT("all movement released preserves East flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingEast)]);
+	FacingPlayer->MoveBackwardPressed();
+	FacingPlayer->MoveLeftPressed();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingSouthWest, TEXT("S+A pressed"));
+	TestEqual(TEXT("S+A pressed applies SouthWest flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingSouthWest)]);
+	FacingPlayer->MoveBackwardReleased();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingWest, TEXT("A remains pressed"));
+	TestEqual(TEXT("A remains pressed applies West flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingWest)]);
+	FacingPlayer->MoveForwardPressed();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingNorthWest, TEXT("W+A pressed"));
+	TestEqual(TEXT("W+A pressed applies NorthWest flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingNorthWest)]);
+	FacingPlayer->MoveLeftReleased();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingNorth, TEXT("W remains pressed"));
+	TestEqual(TEXT("W remains pressed applies North flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingNorth)]);
+	FacingPlayer->MoveForwardReleased();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingNorth, TEXT("all movement released after North"));
+	TestEqual(TEXT("all movement released preserves North flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingNorth)]);
+	FacingPlayer->MoveRightPressed();
+	FacingPlayer->MoveRightPressed();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingEast, TEXT("D+Right pressed together"));
+	FacingPlayer->MoveRightReleased();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingEast, TEXT("Right remains after D released"));
+	TestEqual(TEXT("Right remains after D released preserves East flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingEast)]);
+	FacingPlayer->MoveRightReleased();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingEast, TEXT("D+Right both released"));
+	FacingPlayer->MoveRightPressed();
+	FacingPlayer->MoveRightPressed();
+	FacingPlayer->ResetTownMovementInput();
+	FacingPlayer->MoveForwardPressed();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingNorth, TEXT("reset clears stale horizontal key state"));
+	TestEqual(TEXT("reset clears stale horizontal key state flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingNorth)]);
+	FacingPlayer->MoveForwardReleased();
+	FacingPlayer->MoveRightPressed();
+	FacingPlayer->MoveBackwardPressed();
+	ExpectTownFacing(*this, FacingPlayer, TownFacingSouthEast, TEXT("S+D pressed"));
+	TestEqual(TEXT("S+D pressed applies SouthEast flipbook"), FacingPlayer->GetCurrentTownFlipbook(), DirectionFlipbooks[TownDirectionIndex(TownFacingSouthEast)]);
+
+	AGameXXKTownPlayerPawn* AxisPlayer = NewObject<AGameXXKTownPlayerPawn>();
+	UPaperFlipbook* AxisFlipbooks[UE_ARRAY_COUNT(TownDirectionSpecs)] = {};
+	for (const FTownDirectionSpec& Spec : TownDirectionSpecs)
+	{
+		AxisFlipbooks[TownDirectionIndex(Spec.Direction)] = NewObject<UPaperFlipbook>(AxisPlayer);
+		AxisPlayer->SetTownDirectionFlipbookForTest(Spec.Direction, AxisFlipbooks[TownDirectionIndex(Spec.Direction)]);
+	}
+
+	AxisPlayer->MoveHorizontal(1.0f);
+	ExpectTownFacing(*this, AxisPlayer, TownFacingEast, TEXT("horizontal movement input"));
+	TestEqual(TEXT("horizontal movement input applies East flipbook"), AxisPlayer->GetCurrentTownFlipbook(), AxisFlipbooks[TownDirectionIndex(TownFacingEast)]);
+	AxisPlayer->MoveHorizontal(0.05f);
+	ExpectTownFacing(*this, AxisPlayer, TownFacingEast, TEXT("small horizontal axis drift preserves facing"));
+	TestEqual(TEXT("small horizontal axis drift preserves East flipbook"), AxisPlayer->GetCurrentTownFlipbook(), AxisFlipbooks[TownDirectionIndex(TownFacingEast)]);
+	AxisPlayer->MoveVertical(1.0f);
+	ExpectTownFacing(*this, AxisPlayer, TownFacingNorth, TEXT("vertical movement input after deadzone horizontal drift"));
+	TestEqual(TEXT("vertical movement input after deadzone horizontal drift applies North flipbook"), AxisPlayer->GetCurrentTownFlipbook(), AxisFlipbooks[TownDirectionIndex(TownFacingNorth)]);
+	AxisPlayer->MoveHorizontal(1.0f);
+	ExpectTownFacing(*this, AxisPlayer, TownFacingNorthEast, TEXT("horizontal plus vertical movement input"));
+	TestEqual(TEXT("horizontal plus vertical movement input applies NorthEast flipbook"), AxisPlayer->GetCurrentTownFlipbook(), AxisFlipbooks[TownDirectionIndex(TownFacingNorthEast)]);
+	AxisPlayer->MoveHorizontal(0.0f);
+	ExpectTownFacing(*this, AxisPlayer, TownFacingNorth, TEXT("vertical movement input remains"));
+	TestEqual(TEXT("vertical movement input applies North flipbook"), AxisPlayer->GetCurrentTownFlipbook(), AxisFlipbooks[TownDirectionIndex(TownFacingNorth)]);
+	AxisPlayer->MoveVertical(0.0f);
+	ExpectTownFacing(*this, AxisPlayer, TownFacingNorth, TEXT("zero movement input"));
+	TestEqual(TEXT("zero movement input preserves North flipbook"), AxisPlayer->GetCurrentTownFlipbook(), AxisFlipbooks[TownDirectionIndex(TownFacingNorth)]);
+	AxisPlayer->MoveHorizontal(-1.0f);
+	ExpectTownFacing(*this, AxisPlayer, TownFacingWest, TEXT("negative horizontal movement input"));
+	TestEqual(TEXT("negative horizontal movement input applies West flipbook"), AxisPlayer->GetCurrentTownFlipbook(), AxisFlipbooks[TownDirectionIndex(TownFacingWest)]);
+	AxisPlayer->MoveVertical(-1.0f);
+	ExpectTownFacing(*this, AxisPlayer, TownFacingSouthWest, TEXT("negative horizontal plus negative vertical movement input"));
+	TestEqual(TEXT("negative horizontal plus negative vertical movement input applies SouthWest flipbook"), AxisPlayer->GetCurrentTownFlipbook(), AxisFlipbooks[TownDirectionIndex(TownFacingSouthWest)]);
+	AxisPlayer->MoveHorizontal(1.0f);
+	ExpectTownFacing(*this, AxisPlayer, TownFacingSouthEast, TEXT("positive horizontal plus negative vertical movement input"));
+	TestEqual(TEXT("positive horizontal plus negative vertical movement input applies SouthEast flipbook"), AxisPlayer->GetCurrentTownFlipbook(), AxisFlipbooks[TownDirectionIndex(TownFacingSouthEast)]);
 
 	AGameXXKTownNpcActor* QuestNpc = NewObject<AGameXXKTownNpcActor>();
 	QuestNpc->SetNpcRole(EGameXXKTownNpcRole::Quest);

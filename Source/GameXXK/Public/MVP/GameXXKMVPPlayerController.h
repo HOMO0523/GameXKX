@@ -11,4 +11,5 @@ class GAMEXXK_API AGameXXKMVPPlayerController : public APlayerController
 
 public:
 	virtual void BeginPlay() override;
+	virtual void FlushPressedKeys() override;
 };

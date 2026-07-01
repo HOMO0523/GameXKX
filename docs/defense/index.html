@@ -255,6 +255,11 @@
         </article>
         <article class="entry">
           <time>2026-07-02</time>
+          <h3>城镇主角 8 向行走表现切换</h3>
+          <p>为 <code>AGameXXKTownPlayerPawn</code> 增加 8 向朝向状态和方向 Flipbook 表，WASD/方向键/轴输入按下、组合与释放时会切换到对应 <code>FB_Hero_Walk_North</code>、<code>East</code>、<code>SouthWest</code> 等资源；停止移动后保留最后朝向，混用 WASD 与方向键时单个按键释放不会丢失仍按住的方向，自动化覆盖按键组合、轴输入和资源路径。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-02</time>
           <h3>青山驿站基础地形与光照</h3>
           <p>参考 Ocean 项目的场景自动化方式，但不引入 Water 或地图生成；新增 <code>GameXXKEditor</code> 固定 Landscape 自动化，在 <code>L_QingshanInn</code> 中生成 16 组件基础地形，并放置道路、边界、地牢入口标记、<code>PlayerStart</code>、Directional Light、SkyLight、SkyAtmosphere 和雾效，写入地图 GameMode override。</p>
         </article>
@@ -345,7 +350,7 @@
           <tr>
             <td>城镇</td>
             <td>青山驿站可走动，NPC 可对话，商人可交易。</td>
-            <td><span class="tag blue">基础地形已装配，C++ Shell 已测</span></td>
+            <td><span class="tag blue">基础地形已装配，8 向角色 Shell 已测</span></td>
           </tr>
           <tr>
             <td>小地图</td>

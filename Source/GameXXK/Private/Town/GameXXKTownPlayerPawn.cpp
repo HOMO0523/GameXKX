@@ -9,7 +9,59 @@
 
 namespace
 {
-	const TCHAR* HeroSouthWalkFlipbookPath = TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South");
+	constexpr float TownMovementAxisDeadZone = 0.20f;
+
+	FSoftObjectPath MakeHeroWalkFlipbookPath(const TCHAR* DirectionName)
+	{
+		return FSoftObjectPath(FString::Printf(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_%s.FB_Hero_Walk_%s"), DirectionName, DirectionName));
+	}
+
+	float NormalizeTownMovementAxis(float Value)
+	{
+		return FMath::Abs(Value) < TownMovementAxisDeadZone ? 0.0f : FMath::Clamp(Value, -1.0f, 1.0f);
+	}
+
+	EGameXXKTownFacingDirection ResolveTownFacingDirection(float Horizontal, float Vertical, EGameXXKTownFacingDirection Fallback)
+	{
+		const int32 HorizontalSign = FMath::IsNearlyZero(Horizontal) ? 0 : (Horizontal > 0.0f ? 1 : -1);
+		const int32 VerticalSign = FMath::IsNearlyZero(Vertical) ? 0 : (Vertical > 0.0f ? 1 : -1);
+
+		if (HorizontalSign == 0 && VerticalSign == 0)
+		{
+			return Fallback;
+		}
+
+		if (HorizontalSign < 0 && VerticalSign < 0)
+		{
+			return EGameXXKTownFacingDirection::SouthWest;
+		}
+		if (HorizontalSign > 0 && VerticalSign < 0)
+		{
+			return EGameXXKTownFacingDirection::SouthEast;
+		}
+		if (HorizontalSign < 0 && VerticalSign > 0)
+		{
+			return EGameXXKTownFacingDirection::NorthWest;
+		}
+		if (HorizontalSign > 0 && VerticalSign > 0)
+		{
+			return EGameXXKTownFacingDirection::NorthEast;
+		}
+		if (HorizontalSign < 0)
+		{
+			return EGameXXKTownFacingDirection::West;
+		}
+		if (HorizontalSign > 0)
+		{
+			return EGameXXKTownFacingDirection::East;
+		}
+		if (VerticalSign > 0)
+		{
+			return EGameXXKTownFacingDirection::North;
+		}
+
+		return EGameXXKTownFacingDirection::South;
+	}
 }
 
 AGameXXKTownPlayerPawn::AGameXXKTownPlayerPawn()
@@ -34,22 +86,35 @@ AGameXXKTownPlayerPawn::AGameXXKTownPlayerPawn()
 
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
-	DefaultTownFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroSouthWalkFlipbookPath));
-	ApplyDefaultTownFlipbook();
+	InitializeTownDirectionFlipbooks();
+	DefaultTownFlipbookAsset = TownDirectionFlipbookAssets.FindRef(EGameXXKTownFacingDirection::South);
+	ApplyTownFacingFlipbook();
 }
 
 void AGameXXKTownPlayerPawn::BeginPlay()
 {
 	Super::BeginPlay();
-	ApplyDefaultTownFlipbook();
+	ApplyTownFacingFlipbook();
+}
+
+void AGameXXKTownPlayerPawn::UnPossessed()
+{
+	ResetTownMovementInput();
+	Super::UnPossessed();
 }
 
 void AGameXXKTownPlayerPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	MoveHorizontal(HorizontalIntent);
-	MoveVertical(VerticalIntent);
+	if (!FMath::IsNearlyZero(HorizontalIntent))
+	{
+		AddMovementInput(FVector::RightVector, HorizontalIntent);
+	}
+	if (!FMath::IsNearlyZero(VerticalIntent))
+	{
+		AddMovementInput(FVector::ForwardVector, VerticalIntent);
+	}
 }
 
 UPawnMovementComponent* AGameXXKTownPlayerPawn::GetMovementComponent() const
@@ -82,6 +147,8 @@ void AGameXXKTownPlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	PlayerInputComponent->BindKey(EKeys::Down, IE_Pressed, this, &AGameXXKTownPlayerPawn::MoveBackwardPressed);
 	PlayerInputComponent->BindKey(EKeys::Down, IE_Released, this, &AGameXXKTownPlayerPawn::MoveBackwardReleased);
 	PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &AGameXXKTownPlayerPawn::Interact);
+	PlayerInputComponent->BindAxis(TEXT("TownMoveHorizontal"), this, &AGameXXKTownPlayerPawn::MoveHorizontal);
+	PlayerInputComponent->BindAxis(TEXT("TownMoveVertical"), this, &AGameXXKTownPlayerPawn::MoveVertical);
 }
 
 UGameXXKInteractionComponent* AGameXXKTownPlayerPawn::GetInteractionComponent() const
@@ -141,11 +208,48 @@ UPaperFlipbook* AGameXXKTownPlayerPawn::GetCurrentTownFlipbook() const
 	return Visual ? Visual->GetFlipbook() : nullptr;
 }
 
+EGameXXKTownFacingDirection AGameXXKTownPlayerPawn::GetTownFacingDirection() const
+{
+	return CurrentTownFacingDirection;
+}
+
+FSoftObjectPath AGameXXKTownPlayerPawn::GetTownFlipbookPathForDirection(EGameXXKTownFacingDirection Direction) const
+{
+	if (Direction == EGameXXKTownFacingDirection::South)
+	{
+		return GetDefaultTownFlipbookPath();
+	}
+
+	if (const TSoftObjectPtr<UPaperFlipbook>* DirectionAsset = TownDirectionFlipbookAssets.Find(Direction))
+	{
+		return DirectionAsset->ToSoftObjectPath();
+	}
+
+	return FSoftObjectPath();
+}
+
 int32 AGameXXKTownPlayerPawn::CountTownInputBindingsForTest() const
 {
 	UInputComponent* TestInput = NewObject<UInputComponent>(const_cast<AGameXXKTownPlayerPawn*>(this));
 	const_cast<AGameXXKTownPlayerPawn*>(this)->SetupPlayerInputComponent(TestInput);
-	return TestInput->AxisKeyBindings.Num() + TestInput->KeyBindings.Num();
+	return TestInput->AxisBindings.Num() + TestInput->AxisKeyBindings.Num() + TestInput->KeyBindings.Num();
+}
+
+void AGameXXKTownPlayerPawn::SetTownDirectionFlipbookForTest(EGameXXKTownFacingDirection Direction, UPaperFlipbook* InFlipbook)
+{
+	if (InFlipbook)
+	{
+		TownDirectionFlipbookOverrides.Add(Direction, InFlipbook);
+	}
+	else
+	{
+		TownDirectionFlipbookOverrides.Remove(Direction);
+	}
+
+	if (Direction == CurrentTownFacingDirection)
+	{
+		ApplyTownFacingFlipbook();
+	}
 }
 
 void AGameXXKTownPlayerPawn::SetDefaultTownFlipbookForTest(UPaperFlipbook* InFlipbook)
@@ -156,6 +260,7 @@ void AGameXXKTownPlayerPawn::SetDefaultTownFlipbookForTest(UPaperFlipbook* InFli
 
 void AGameXXKTownPlayerPawn::ApplyDefaultTownFlipbook()
 {
+	CurrentTownFacingDirection = EGameXXKTownFacingDirection::South;
 	UPaperFlipbook* FlipbookToApply = GetDefaultTownFlipbook();
 	if (Visual && FlipbookToApply)
 	{
@@ -163,72 +268,150 @@ void AGameXXKTownPlayerPawn::ApplyDefaultTownFlipbook()
 	}
 }
 
+void AGameXXKTownPlayerPawn::ApplyTownFacingFlipbook()
+{
+	UPaperFlipbook* FlipbookToApply = GetTownFlipbookForDirection(CurrentTownFacingDirection);
+	if (Visual && FlipbookToApply)
+	{
+		Visual->SetFlipbook(FlipbookToApply);
+	}
+}
+
+UPaperFlipbook* AGameXXKTownPlayerPawn::GetTownFlipbookForDirection(EGameXXKTownFacingDirection Direction) const
+{
+	if (const TObjectPtr<UPaperFlipbook>* Override = TownDirectionFlipbookOverrides.Find(Direction))
+	{
+		return Override->Get();
+	}
+
+	if (Direction == EGameXXKTownFacingDirection::South)
+	{
+		return DefaultTownFlipbookOverride ? DefaultTownFlipbookOverride.Get() : DefaultTownFlipbookAsset.LoadSynchronous();
+	}
+
+	if (const TSoftObjectPtr<UPaperFlipbook>* DirectionAsset = TownDirectionFlipbookAssets.Find(Direction))
+	{
+		return DirectionAsset->LoadSynchronous();
+	}
+
+	return nullptr;
+}
+
+void AGameXXKTownPlayerPawn::InitializeTownDirectionFlipbooks()
+{
+	TownDirectionFlipbookAssets.Reset();
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::South, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("South"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::SouthWest, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("SouthWest"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::West, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("West"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::NorthWest, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("NorthWest"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::North, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("North"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::NorthEast, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("NorthEast"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::East, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("East"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::SouthEast, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("SouthEast"))));
+}
+
+void AGameXXKTownPlayerPawn::UpdateTownFacingFromIntent(float Horizontal, float Vertical)
+{
+	const EGameXXKTownFacingDirection NewDirection = ResolveTownFacingDirection(Horizontal, Vertical, CurrentTownFacingDirection);
+	if (NewDirection != CurrentTownFacingDirection)
+	{
+		CurrentTownFacingDirection = NewDirection;
+		ApplyTownFacingFlipbook();
+		return;
+	}
+
+	if (!GetCurrentTownFlipbook())
+	{
+		ApplyTownFacingFlipbook();
+	}
+}
+
+void AGameXXKTownPlayerPawn::RefreshTownMovementIntent()
+{
+	HorizontalIntent = FMath::Clamp(GetKeyboardHorizontalIntent() + AxisHorizontalIntent, -1.0f, 1.0f);
+	VerticalIntent = FMath::Clamp(GetKeyboardVerticalIntent() + AxisVerticalIntent, -1.0f, 1.0f);
+	UpdateTownFacingFromIntent(HorizontalIntent, VerticalIntent);
+}
+
+void AGameXXKTownPlayerPawn::ResetTownMovementInput()
+{
+	RightInputPressCount = 0;
+	LeftInputPressCount = 0;
+	ForwardInputPressCount = 0;
+	BackwardInputPressCount = 0;
+	AxisHorizontalIntent = 0.0f;
+	AxisVerticalIntent = 0.0f;
+	RefreshTownMovementIntent();
+}
+
+float AGameXXKTownPlayerPawn::GetKeyboardHorizontalIntent() const
+{
+	return (RightInputPressCount > 0 ? 1.0f : 0.0f) - (LeftInputPressCount > 0 ? 1.0f : 0.0f);
+}
+
+float AGameXXKTownPlayerPawn::GetKeyboardVerticalIntent() const
+{
+	return (ForwardInputPressCount > 0 ? 1.0f : 0.0f) - (BackwardInputPressCount > 0 ? 1.0f : 0.0f);
+}
+
 void AGameXXKTownPlayerPawn::MoveHorizontal(float Value)
 {
-	if (!FMath::IsNearlyZero(Value))
-	{
-		AddMovementInput(FVector::RightVector, Value);
-	}
+	AxisHorizontalIntent = NormalizeTownMovementAxis(Value);
+	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::MoveVertical(float Value)
 {
-	if (!FMath::IsNearlyZero(Value))
-	{
-		AddMovementInput(FVector::ForwardVector, Value);
-	}
+	AxisVerticalIntent = NormalizeTownMovementAxis(Value);
+	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::MoveRightPressed()
 {
-	HorizontalIntent = 1.0f;
+	++RightInputPressCount;
+	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::MoveRightReleased()
 {
-	if (HorizontalIntent > 0.0f)
-	{
-		HorizontalIntent = 0.0f;
-	}
+	RightInputPressCount = FMath::Max(0, RightInputPressCount - 1);
+	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::MoveLeftPressed()
 {
-	HorizontalIntent = -1.0f;
+	++LeftInputPressCount;
+	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::MoveLeftReleased()
 {
-	if (HorizontalIntent < 0.0f)
-	{
-		HorizontalIntent = 0.0f;
-	}
+	LeftInputPressCount = FMath::Max(0, LeftInputPressCount - 1);
+	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::MoveForwardPressed()
 {
-	VerticalIntent = 1.0f;
+	++ForwardInputPressCount;
+	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::MoveForwardReleased()
 {
-	if (VerticalIntent > 0.0f)
-	{
-		VerticalIntent = 0.0f;
-	}
+	ForwardInputPressCount = FMath::Max(0, ForwardInputPressCount - 1);
+	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::MoveBackwardPressed()
 {
-	VerticalIntent = -1.0f;
+	++BackwardInputPressCount;
+	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::MoveBackwardReleased()
 {
-	if (VerticalIntent < 0.0f)
-	{
-		VerticalIntent = 0.0f;
-	}
+	BackwardInputPressCount = FMath::Max(0, BackwardInputPressCount - 1);
+	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::Interact()

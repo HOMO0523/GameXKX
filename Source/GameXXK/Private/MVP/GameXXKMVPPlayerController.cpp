@@ -1,5 +1,7 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 
+#include "Town/GameXXKTownPlayerPawn.h"
+
 void AGameXXKMVPPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -8,4 +10,14 @@ void AGameXXKMVPPlayerController::BeginPlay()
 	FInputModeGameAndUI InputMode;
 	InputMode.SetHideCursorDuringCapture(false);
 	SetInputMode(InputMode);
+}
+
+void AGameXXKMVPPlayerController::FlushPressedKeys()
+{
+	Super::FlushPressedKeys();
+
+	if (AGameXXKTownPlayerPawn* TownPawn = Cast<AGameXXKTownPlayerPawn>(GetPawn()))
+	{
+		TownPawn->ResetTownMovementInput();
+	}
 }
