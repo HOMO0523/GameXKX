@@ -49,6 +49,7 @@ CHECKLIST = [
     "playable HUD commands drive start, region clicks, town actions, dungeon nodes, battle, Boss clear, and Tanjiang unlock",
     "playable HUD autosaves route progress so Start and Continue can restore cleared unlocks",
     "default GameMode wires MVP PlayerController, clickable HUD, and Paper2D town pawn for Play mode",
+    "Qingshan town map has terrain blockout, boundaries, PlayerStart, lighting, and MVP GameMode override",
     "selected hero, follower, and merchant walk sprite sheets are stored in project content and imported as Texture2D assets",
 ]
 
