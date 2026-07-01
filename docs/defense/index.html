@@ -213,7 +213,7 @@
         </div>
         <div class="tile">
           <strong>技术路线</strong>
-          <p>UE 5.8、Paper2D/PaperZD 角色表现、UnrealBridge 自动化、C++/UMG 优先。</p>
+          <p>UE 5.8、Paper2D/PaperZD 角色表现、UE MCP 自动化、C++/UMG 优先。</p>
         </div>
       </div>
       <p>
@@ -236,12 +236,12 @@
         <article class="entry">
           <time>2026-07-01</time>
           <h3>接入插件底座</h3>
-          <p>启用 Paper2D、PaperZD、UnrealBridge、EditorScriptingUtilities。UnrealBridge 已作为项目插件放入 <code>Plugins/</code>；PaperZD 使用 UE 5.8 已安装的 Marketplace 插件，避免项目内同名插件冲突。</p>
+          <p>启用 Paper2D、PaperZD、ModelContextProtocol、MCPClientToolset、AllToolsets、EditorScriptingUtilities。PaperZD 使用 UE 5.8 已安装的 Marketplace 插件；编辑器自动化改走 UE 5.8 内置 MCP，不再使用 UnrealBridge。</p>
         </article>
         <article class="entry">
           <time>2026-07-01</time>
           <h3>建立自动化与答辩记录</h3>
-          <p>加入 GameXXK 专用 <code>scripts/ue_tdd_pipeline.py</code> 和 <code>scripts/ue_tdd_bridge.py</code>，本页作为后续答辩记录主页。</p>
+          <p>加入 GameXXK 专用 <code>scripts/ue_mcp_client.py</code>、<code>scripts/ue_mcp_smoke.py</code>、<code>scripts/ue_tdd_pipeline.py</code> 和项目 MCP Toolset，本页作为后续答辩记录主页。</p>
         </article>
         <article class="entry">
           <time>2026-07-01</time>
@@ -284,7 +284,7 @@
           </tr>
           <tr>
             <td>插件环境</td>
-            <td>项目可加载 PaperZD 和 UnrealBridge，编辑器可由脚本连接。</td>
+            <td>项目可加载 PaperZD 和 UE MCP 三件套，编辑器可由 MCP 脚本连接。</td>
             <td><span class="tag blue">静态通过，完整编译待关编辑器</span></td>
           </tr>
         </tbody>
@@ -296,7 +296,8 @@
       <p>每次提交前补充最新验证命令和结果。当前建议验证入口：</p>
       <ul>
         <li><code>python scripts/ue_tdd_pipeline.py --no-launch</code>：冷编译 GameXXKEditor。</li>
-        <li><code>python scripts/ue_tdd_pipeline.py --pie-duration 5</code>：启动编辑器、等待 UnrealBridge、运行 PIE 并收集 <code>[TDD]</code> 日志。</li>
+        <li><code>python scripts/ue_mcp_smoke.py</code>：连接正在运行的 UE MCP server，验证 meta tools、Toolsets 和 GameFeatureData 配置。</li>
+        <li><code>python scripts/ue_tdd_pipeline.py --pie-duration 5</code>：启动编辑器、等待 UE MCP、运行 PIE 并收集 <code>[TDD]</code> 日志。</li>
         <li><code>git diff --check</code>：提交前检查空白和补丁格式。</li>
       </ul>
     </section>

@@ -6,7 +6,7 @@
 
 **Architecture:** C++ owns deterministic gameplay rules and SaveGame state. UMG, Blueprint, Paper2D, and PaperZD own presentation, level assembly, animation assignment, and UI layout. TestMap UE 5.4 content is migrated into a prototype folder and used as visual/UI reference, while GameXXK runtime state remains owned by new GameXXK systems.
 
-**Tech Stack:** UE 5.8, C++ runtime module, Unreal Automation Tests, UMG, Paper2D, PaperZD, UnrealBridge automation, GPT image generation for missing sprites.
+**Tech Stack:** UE 5.8, C++ runtime module, Unreal Automation Tests, UMG, Paper2D, PaperZD, UE MCP automation, GPT image generation for missing sprites.
 
 ---
 
@@ -1612,7 +1612,7 @@ git add Source\GameXXK\Public\UI Source\GameXXK\Private\UI
 git commit -m "feat: add MVP UI widget bases"
 ```
 
-## Task 9: Blueprint And Asset Assembly Via UnrealBridge
+## Task 9: Blueprint And Asset Assembly Via UE MCP
 
 **Files:**
 - Create under `D:/UE5 demo/GameXXK/Content/GameXXK/UI/`
@@ -1621,7 +1621,7 @@ git commit -m "feat: add MVP UI widget bases"
 - Create under `D:/UE5 demo/GameXXK/Content/GameXXK/Data/`
 - Modify: `D:/UE5 demo/GameXXK/Config/DefaultEngine.ini`
 
-- [ ] **Step 1: Open or launch UE 5.8 editor with UnrealBridge**
+- [ ] **Step 1: Open or launch UE 5.8 editor with UE MCP**
 
 Run:
 
@@ -1629,11 +1629,11 @@ Run:
 python scripts\ue_tdd_pipeline.py --pie-duration 1
 ```
 
-Expected: editor launches or bridge reports readiness. If Live Coding blocks build, close the editor and rerun build first.
+Expected: editor launches or UE MCP reports readiness. If Live Coding blocks build, close the editor and rerun build first.
 
 - [ ] **Step 2: Create GameXXK content folders**
 
-Use UnrealBridge or editor content browser to create:
+Use UE MCP or editor content browser to create:
 
 ```text
 /Game/GameXXK/UI
@@ -1882,7 +1882,7 @@ Run:
 
 ```powershell
 git diff --check
-python -m py_compile scripts\ue_tdd_bridge.py scripts\ue_tdd_pipeline.py
+python -m py_compile scripts\ue_mcp_client.py scripts\ue_mcp_smoke.py scripts\ue_tdd_pipeline.py
 & 'D:\UE_5.8\Engine\Build\BatchFiles\Build.bat' GameXXKEditor Win64 Development -Project='D:\UE5 demo\GameXXK\GameXXK.uproject' -NoHotReload
 & 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -ExecCmds='Automation RunTests GameXXK.MVP;Quit' -TestExit='Automation Test Queue Empty' -unattended -nop4 -nosplash -log
 python scripts\ue_tdd_pipeline.py --pie-duration 5
