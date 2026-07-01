@@ -373,7 +373,7 @@ bool UGameXXKMVPRules::EquipItem(FGameXXKRuntimeState& State, FName ItemId)
 bool UGameXXKMVPRules::UseHealingItem(FGameXXKRuntimeState& State)
 {
 	FGameXXKItemDef Def;
-	if (!GameXXKMVP::GetItemDef(ItemHealingPowder(), Def) || !RemoveItem(State, ItemHealingPowder(), 1))
+	if (State.PlayerHP >= State.PlayerMaxHP || !GameXXKMVP::GetItemDef(ItemHealingPowder(), Def) || !RemoveItem(State, ItemHealingPowder(), 1))
 	{
 		return false;
 	}
