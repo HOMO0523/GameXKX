@@ -14,7 +14,7 @@ The MVP favors a complete, inspectable gameplay loop over final art polish. Core
 
 - Project: `D:\UE5 demo\GameXXK`
 - Engine: UE 5.8
-- Enabled plugins: Paper2D, PaperZD, UnrealBridge, EditorScriptingUtilities
+- Enabled plugins: Paper2D, PaperZD, ModelContextProtocol, MCPClientToolset, AllToolsets, EditorScriptingUtilities
 - Reference project: `D:\UE5 demo\TestMap`
 - TestMap engine: UE 5.4
 - TestMap use: migrate as prototype/reference content, not as runtime authority
