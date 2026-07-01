@@ -107,6 +107,7 @@ protected:
 
 private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem(APawn* InstigatorPawn) const;
+	bool SaveInteractionProgress(UGameXXKMVPSubsystem* Subsystem) const;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMVPSubsystem> OverrideSubsystem;

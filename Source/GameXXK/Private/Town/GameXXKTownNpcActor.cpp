@@ -178,16 +178,18 @@ bool AGameXXKTownNpcActor::ApplyDefaultInteraction(APawn* InstigatorPawn)
 	if (CanOfferQuest())
 	{
 		const bool bAccepted = Subsystem->AcceptQuest();
+		const bool bSaved = bAccepted && SaveInteractionProgress(Subsystem);
 		if (bAccepted && InstigatorPawn)
 		{
 			ActivateFollower(InstigatorPawn, FollowDistance);
 		}
-		bLastInteractionSuccessful = bAccepted;
-		return bAccepted;
+		bLastInteractionSuccessful = bSaved;
+		return bSaved;
 	}
 	if (CanTrade())
 	{
-		bLastInteractionSuccessful = Subsystem->BuyItem(UGameXXKMVPRules::ItemHealingPowder(), 1);
+		bLastInteractionSuccessful = Subsystem->BuyItem(UGameXXKMVPRules::ItemHealingPowder(), 1)
+			&& SaveInteractionProgress(Subsystem);
 		return bLastInteractionSuccessful;
 	}
 	bLastInteractionSuccessful = false;
@@ -212,4 +214,9 @@ UGameXXKMVPSubsystem* AGameXXKTownNpcActor::ResolveMVPSubsystem(APawn* Instigato
 	}
 
 	return GameInstance ? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr;
+}
+
+bool AGameXXKTownNpcActor::SaveInteractionProgress(UGameXXKMVPSubsystem* Subsystem) const
+{
+	return Subsystem ? Subsystem->SaveCurrentGame(TEXT(""), 0) : false;
 }

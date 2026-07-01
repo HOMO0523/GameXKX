@@ -2,6 +2,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/SphereComponent.h"
 #include "GameXXKMVPRules.h"
+#include "Kismet/GameplayStatics.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Misc/AutomationTest.h"
 #include "Town/GameXXKTownNpcActor.h"
@@ -63,6 +64,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	const FString NpcAutosaveSlot = UGameXXKMVPSubsystem::GetDefaultSaveSlotName();
+	UGameplayStatics::DeleteGameInSlot(NpcAutosaveSlot, 0);
 	Subsystem->OpenWorldMap();
 	Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan());
 
@@ -78,6 +81,10 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("F on quest NPC starts follower"), QuestNpc->IsFollowerActive());
 	TestTrue(TEXT("quest follower targets player"), QuestNpc->GetFollowTarget() == Player);
 	TestTrue(TEXT("quest NPC records successful interaction"), QuestNpc->WasLastInteractionSuccessful());
+	UGameXXKMVPSubsystem* ReloadedAfterQuestF = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestTrue(TEXT("F quest interaction autosaves default slot"), ReloadedAfterQuestF->LoadGameFromSlot(NpcAutosaveSlot, 0));
+	TestEqual(TEXT("F quest autosave persists accepted quest"), ReloadedAfterQuestF->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
+	TestTrue(TEXT("F quest autosave restores follower join state"), ReloadedAfterQuestF->GetRuntimeState().bFollowerJoined);
 	QuestNpc->NotifyActorEndOverlap(Player);
 	TestNull(TEXT("quest NPC end overlap clears focus"), Player->GetInteractionComponent()->GetFocusedActor());
 
@@ -89,6 +96,10 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("F on merchant spends one powder price"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeMerchantF - 10);
 	TestEqual(TEXT("F on merchant adds healing powder"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeMerchantF + 1);
 	TestTrue(TEXT("merchant NPC records successful buy"), MerchantNpc->WasLastInteractionSuccessful());
+	UGameXXKMVPSubsystem* ReloadedAfterMerchantF = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestTrue(TEXT("F merchant interaction autosaves default slot"), ReloadedAfterMerchantF->LoadGameFromSlot(NpcAutosaveSlot, 0));
+	TestEqual(TEXT("F merchant autosave persists spent gold"), ReloadedAfterMerchantF->GetRuntimeState().PlayerGold, GoldBeforeMerchantF - 10);
+	TestEqual(TEXT("F merchant autosave keeps inventory out of save scope"), UGameXXKMVPRules::GetItemCount(ReloadedAfterMerchantF->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), 0);
 	Subsystem->GetMutableRuntimeState().PlayerGold = 0;
 	const int32 PowderBeforeFailedMerchantF = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
 	Player->Interact();
@@ -107,6 +118,7 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	FollowerNpc->DismissFollower();
 	TestFalse(TEXT("follower dismisses after route clear"), FollowerNpc->IsFollowerActive());
 
+	UGameplayStatics::DeleteGameInSlot(NpcAutosaveSlot, 0);
 	return true;
 }
 
