@@ -3,7 +3,9 @@ UE TDD No-LiveCoding Pipeline through UE 5.8 built-in MCP.
 
 Usage:
     python scripts/ue_tdd_pipeline.py                    # Full cycle
-    python scripts/ue_tdd_pipeline.py --no-build          # Skip build (editor already running; not compile proof)
+    python scripts/ue_tdd_pipeline.py --no-build          # Skip build, launch a fresh editor
+    python scripts/ue_tdd_pipeline.py --no-build --no-launch
+                                                          # Use an already running MCP editor
     python scripts/ue_tdd_pipeline.py --pie-duration 10   # Run PIE for 10 seconds
     python scripts/ue_tdd_pipeline.py --check-only        # Only capture/analyze logs (no build/launch)
 """
@@ -208,6 +210,10 @@ def run_tdd_cycle(
     """
     result = {"success": False, "tdd_lines": [], "all_lines": [], "pie_started": False}
 
+    if build and not launch:
+        result["error"] = "--no-launch cannot be combined with a build; use --no-build --no-launch for an existing MCP editor"
+        return result
+
     # Phase 4.1: Save and close editor before cold compile/launch
     if build or launch:
         if not save_running_editor_before_close(host=mcp_host, port=mcp_port, path=mcp_path):
@@ -226,9 +232,7 @@ def run_tdd_cycle(
     if launch:
         launch_editor(mcp_port=mcp_port)
     else:
-        result["success"] = True
-        result["pie_started"] = False
-        return result
+        print("[LAUNCH] --no-launch set; connecting to an already running UE MCP editor")
 
     # Phase 4.4: Wait for UE MCP
     client = wait_for_mcp(host=mcp_host, port=mcp_port, path=mcp_path)

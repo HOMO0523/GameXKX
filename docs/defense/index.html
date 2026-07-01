@@ -236,7 +236,7 @@
         <article class="entry">
           <time>2026-07-01</time>
           <h3>接入插件底座</h3>
-          <p>启用 Paper2D、PaperZD、ModelContextProtocol、MCPClientToolset、AllToolsets、EditorScriptingUtilities。PaperZD 使用 UE 5.8 已安装的 Marketplace 插件；编辑器自动化改走 UE 5.8 内置 MCP，不再使用 UnrealBridge。</p>
+          <p>启用 Paper2D、PaperZD、ModelContextProtocol、MCPClientToolset、AllToolsets、EditorScriptingUtilities。PaperZD 使用 UE 5.8 已安装的 Marketplace 插件；编辑器自动化统一改走 UE 5.8 内置 MCP。</p>
         </article>
         <article class="entry">
           <time>2026-07-01</time>
@@ -246,7 +246,17 @@
         <article class="entry">
           <time>2026-07-01</time>
           <h3>首次插件编译验证</h3>
-          <p><code>GameXXKEditor</code> 冷编译已进入 UHT 阶段，证明插件配置可被 UBT 读取；当前被正在运行的 UE Live Coding 阻止，需要关闭编辑器后重新运行完整编译。</p>
+          <p><code>GameXXKEditor</code> 冷编译通过，Paper2D、PaperZD 和 UE MCP 插件可由 UBT/UHT 正常加载。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>MVP 逻辑闭环与试玩脚本</h3>
+          <p>新增 <code>UGameXXKMVPRules</code> 和 <code>GameXXK.MVP.FullFlow</code> 自动化测试，覆盖主菜单、大地图、城镇任务、跟随、交易、小地图节点、速度排序战斗、失败回城、补给重试、Boss 解锁和存档恢复；<code>scripts/gamexxk_mvp_playtest.py</code> 可一键运行该流程。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>UE MCP 自动化护栏收紧</h3>
+          <p><code>ue_mcp_smoke.py</code> 将项目自定义 <code>GameXXKTDDToolset</code> 纳入必检；<code>ue_tdd_pipeline.py --no-launch</code> 改为连接已运行的 MCP 编辑器，避免空跑误判。</p>
         </article>
       </div>
     </section>
@@ -265,27 +275,27 @@
           <tr>
             <td>大地图</td>
             <td>3 个区域，未解锁区域置暗，通关后新区变亮。</td>
-            <td><span class="tag red">待实现</span></td>
+            <td><span class="tag blue">逻辑已测，UI 待装配</span></td>
           </tr>
           <tr>
             <td>城镇</td>
             <td>青山驿站可走动，NPC 可对话，商人可交易。</td>
-            <td><span class="tag red">待实现</span></td>
+            <td><span class="tag blue">任务/交易规则已测，走动表现待装配</span></td>
           </tr>
           <tr>
             <td>小地图</td>
             <td>固定 seed 节点图，包含普通战斗、营地、事件、Boss。</td>
-            <td><span class="tag red">待实现</span></td>
+            <td><span class="tag blue">节点规则已测，UI 待装配</span></td>
           </tr>
           <tr>
             <td>战斗</td>
             <td>速度排序、普攻、技能、防御、道具、胜败结算。</td>
-            <td><span class="tag red">待实现</span></td>
+            <td><span class="tag blue">速度/胜败/奖励已测，战斗 UI 待装配</span></td>
           </tr>
           <tr>
             <td>插件环境</td>
             <td>项目可加载 PaperZD 和 UE MCP 三件套，编辑器可由 MCP 脚本连接。</td>
-            <td><span class="tag blue">静态通过，完整编译待关编辑器</span></td>
+            <td><span class="tag green">已编译并通过 MCP smoke</span></td>
           </tr>
         </tbody>
       </table>
@@ -295,9 +305,9 @@
       <h2>验证记录</h2>
       <p>每次提交前补充最新验证命令和结果。当前建议验证入口：</p>
       <ul>
-        <li><code>python scripts/ue_tdd_pipeline.py --no-launch</code>：冷编译 GameXXKEditor。</li>
-        <li><code>python scripts/ue_mcp_smoke.py</code>：连接正在运行的 UE MCP server，验证 meta tools、Toolsets 和 GameFeatureData 配置。</li>
+        <li><code>python scripts/gamexxk_mvp_playtest.py</code>：编译并运行 <code>GameXXK.MVP.FullFlow</code> 自动化试玩流程。</li>
         <li><code>python scripts/ue_tdd_pipeline.py --pie-duration 5</code>：启动编辑器、等待 UE MCP、运行 PIE 并收集 <code>[TDD]</code> 日志。</li>
+        <li><code>python scripts/ue_mcp_smoke.py</code>：连接正在运行的 UE MCP server，验证 meta tools、Toolsets、项目 <code>GameXXKTDDToolset</code> 和 GameFeatureData 配置。</li>
         <li><code>git diff --check</code>：提交前检查空白和补丁格式。</li>
       </ul>
     </section>

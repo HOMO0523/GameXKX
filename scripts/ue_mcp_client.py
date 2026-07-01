@@ -36,31 +36,63 @@ def read_sse_event(response: http.client.HTTPResponse, max_wait: float = 30.0) -
     deadline = time.monotonic() + max_wait
     while time.monotonic() < deadline:
         try:
-            chunk = response.read(1)
+            chunk = response.read1(65536)
         except socket.timeout:
             break
         if not chunk:
             break
         chunks.append(chunk)
         raw = b"".join(chunks)
-        if b"\r\n\r\n" in raw or b"\n\n" in raw:
+        if try_extract_sse_json(raw) is not None:
             break
         if len(raw) > 4_000_000:
             raise RuntimeError("SSE response exceeded 4MB")
     return b"".join(chunks)
 
 
-def extract_sse_json(body: bytes) -> dict[str, Any] | None:
+def iter_sse_payloads(body: bytes) -> list[str]:
     if not body.startswith(b"event:") and b"\ndata:" not in body and b"\r\ndata:" not in body:
-        return None
+        return []
     text = body.decode("utf-8", "ignore")
-    data_lines: list[str] = []
-    for line in text.splitlines():
-        if line.startswith("data:"):
-            data_lines.append(line[len("data:") :].strip())
-    if not data_lines:
+    events = text.replace("\r\n", "\n").split("\n\n")
+    payloads: list[str] = []
+    for event in events:
+        data_lines: list[str] = []
+        for line in event.splitlines():
+            if line.startswith("data:"):
+                data_lines.append(line[len("data:") :].strip())
+        if data_lines:
+            payloads.append("\n".join(data_lines))
+    return payloads
+
+
+def try_extract_sse_json(body: bytes) -> dict[str, Any] | None:
+    for payload in iter_sse_payloads(body):
+        try:
+            parsed = json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    return None
+
+
+def extract_sse_json(body: bytes) -> dict[str, Any] | None:
+    payloads = iter_sse_payloads(body)
+    if not payloads:
         return None
-    return json.loads("\n".join(data_lines))
+    last_error: json.JSONDecodeError | None = None
+    for payload in payloads:
+        try:
+            parsed = json.loads(payload)
+        except json.JSONDecodeError as exc:
+            last_error = exc
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    if last_error:
+        raise last_error
+    return None
 
 
 def parse_json_response(method: str, status: int, body: bytes) -> dict[str, Any]:
