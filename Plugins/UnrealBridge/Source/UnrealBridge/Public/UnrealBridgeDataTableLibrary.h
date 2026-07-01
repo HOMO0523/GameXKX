@@ -1,0 +1,390 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
+#include "UnrealBridgeDataTableLibrary.generated.h"
+
+/** A single row in a DataTable. */
+USTRUCT(BlueprintType)
+struct FBridgeDataTableRow
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	FString RowName;
+
+	/** Key-value pairs: "PropertyName = Value" */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	TArray<FString> Fields;
+};
+
+/** Name + type of one column on a DataTable row struct. */
+USTRUCT(BlueprintType)
+struct FBridgeDataTableColumn
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	FString Name;
+
+	/** Property type name (e.g. "FloatProperty", "StructProperty", "NameProperty"). */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	FString TypeName;
+
+	/** For struct/object/enum properties: inner type name. Empty otherwise. */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	FString InnerTypeName;
+};
+
+/** Result of a CSV/JSON import (text or file). */
+USTRUCT(BlueprintType)
+struct FBridgeDataTableImportResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	bool bSuccess = false;
+
+	/** Asset path of the affected DataTable (filled for Create variants;
+	 *  echoes the input path for Import variants). */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	FString AssetPath;
+
+	/** Number of rows present in the table after the import. */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	int32 RowsImported = 0;
+
+	/** Errors / warnings reported by the importer (one entry per offending row). */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	TArray<FString> Errors;
+};
+
+/** Overview of a DataTable. */
+USTRUCT(BlueprintType)
+struct FBridgeDataTableInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	FString Name;
+
+	/** Row struct type name */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	FString RowStructName;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	int32 NumRows = 0;
+
+	/** Column names (property names of the row struct) */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	TArray<FString> ColumnNames;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|DataTable")
+	TArray<FBridgeDataTableRow> Rows;
+};
+
+/**
+ * DataTable introspection and editing via UnrealBridge.
+ */
+UCLASS()
+class UNREALBRIDGE_API UUnrealBridgeDataTableLibrary : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+
+public:
+
+	// ─── Read ─────────────────────────────────────────────
+
+	/**
+	 * Get all rows from a DataTable as structured text.
+	 * Returns row struct info, column names, and all rows with field values.
+	 *
+	 * ⚠️ HIGH TOKEN COST — dumps the entire table including all nested struct text.
+	 * Avoid unless absolutely necessary. Prefer the cheaper alternatives first:
+	 *   • GetDataTableSummary       — schema only (no row data)
+	 *   • GetDataTableRowNames      — just the row keys
+	 *   • GetDataTableRow           — a single row
+	 *   • GetDataTableRowField      — a single field
+	 *   • GetDataTableColumn        — one column across all rows
+	 *   • GetDataTableRowsFiltered  — precise row/column slicing
+	 *   • SearchDataTableRows       — locate rows by keyword first
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FBridgeDataTableInfo GetDataTableRows(const FString& DataTablePath);
+
+	/**
+	 * Get just the DataTable summary: name, row struct, num rows, column names.
+	 * Does NOT include row data — use this when you only need schema info.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FBridgeDataTableInfo GetDataTableSummary(const FString& DataTablePath);
+
+	/** Return only row names (keys) of a DataTable. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static TArray<FString> GetDataTableRowNames(const FString& DataTablePath);
+
+	/** Return a single row by name (empty Fields if not found). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FBridgeDataTableRow GetDataTableRow(const FString& DataTablePath, const FString& RowName);
+
+	/** Return a single field value from a row (empty string if not found). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FString GetDataTableRowField(const FString& DataTablePath, const FString& RowName, const FString& FieldName);
+
+	/**
+	 * Return values of a single column across all rows as "RowName = Value" entries.
+	 * (Parallel arrays would require USTRUCT; using a flat list keeps it simple.)
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static TArray<FString> GetDataTableColumn(const FString& DataTablePath, const FString& FieldName);
+
+	/**
+	 * Filtered view of a DataTable.
+	 * @param RowFilter       If non-empty, only include rows whose name is in this list.
+	 * @param ColumnFilter    If non-empty, only include these columns per row.
+	 *
+	 * ⚠️ With BOTH filters empty this is equivalent to GetDataTableRows and has
+	 * the same HIGH TOKEN COST. Always pass at least one filter. If you only need
+	 * a single row/field/column, prefer GetDataTableRow / GetDataTableRowField /
+	 * GetDataTableColumn instead.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FBridgeDataTableInfo GetDataTableRowsFiltered(
+		const FString& DataTablePath,
+		const TArray<FString>& RowFilter,
+		const TArray<FString>& ColumnFilter);
+
+	/**
+	 * Search for rows whose values contain the keyword (case-insensitive substring).
+	 * @param ColumnFilter    If non-empty, only search in these columns.
+	 * Returns matching row names.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static TArray<FString> SearchDataTableRows(
+		const FString& DataTablePath,
+		const FString& Keyword,
+		const TArray<FString>& ColumnFilter);
+
+	/** Find all DataTable asset paths that use the given row struct (by struct name). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static TArray<FString> GetDataTablesUsingStruct(const FString& RowStructName);
+
+	// ─── Write ────────────────────────────────────────────
+
+	/** Set a single field on a row by exported-text value. Returns true on success. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool SetDataTableRowField(
+		const FString& DataTablePath,
+		const FString& RowName,
+		const FString& FieldName,
+		const FString& ExportedValue);
+
+	/**
+	 * Add a new row to the DataTable.
+	 * @param FieldValues  Map of FieldName -> exported-text value.
+	 *                     Unspecified fields keep struct defaults.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool AddDataTableRow(
+		const FString& DataTablePath,
+		const FString& RowName,
+		const TMap<FString, FString>& FieldValues);
+
+	/** Remove a row from the DataTable. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool RemoveDataTableRow(const FString& DataTablePath, const FString& RowName);
+
+	/** Duplicate an existing row under a new name. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool DuplicateDataTableRow(
+		const FString& DataTablePath,
+		const FString& SourceRowName,
+		const FString& NewRowName);
+
+	/** Rename a row key. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool RenameDataTableRow(
+		const FString& DataTablePath,
+		const FString& OldRowName,
+		const FString& NewRowName);
+
+	/** Reorder the DataTable rows to match OrderedNames (missing names left in current order at end). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool ReorderDataTableRows(
+		const FString& DataTablePath,
+		const TArray<FString>& OrderedNames);
+
+	/** Export the DataTable to a CSV file (absolute path). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool ExportDataTableToCSV(const FString& DataTablePath, const FString& OutCsvFilePath);
+
+	/** Import rows from a CSV file (absolute path). Replaces existing rows. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool ImportDataTableFromCSV(const FString& DataTablePath, const FString& CsvFilePath);
+
+	// ─── Extra reads / bulk write / JSON IO ───────────────────
+
+	/** Cheap row-exists check (no field data returned). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool DoesDataTableRowExist(const FString& DataTablePath, const FString& RowName);
+
+	/**
+	 * Atomically set multiple fields on a single row from an exported-text map.
+	 * Unknown fields are ignored; the row must already exist. One scoped transaction
+	 * covers the whole change.
+	 * @return true if the row existed and at least one field was updated
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool SetDataTableRowFields(
+		const FString& DataTablePath,
+		const FString& RowName,
+		const TMap<FString, FString>& FieldValues);
+
+	/** Return the full DataTable as a pretty-printed JSON string. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FString GetDataTableAsJSONString(const FString& DataTablePath);
+
+	/** Export the DataTable to a pretty-printed JSON file (absolute path). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool ExportDataTableToJSON(const FString& DataTablePath, const FString& OutJsonFilePath);
+
+	/**
+	 * Import rows from a JSON file (absolute path). Replaces existing rows.
+	 * Returns false if the file is unreadable or the importer reports errors.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static bool ImportDataTableFromJSON(const FString& DataTablePath, const FString& JsonFilePath);
+
+	/**
+	 * Import rows into an existing DataTable from a CSV string in memory.
+	 * Replaces all existing rows. Avoids the temp-file detour when the CSV
+	 * is generated programmatically (e.g. by an LLM).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FBridgeDataTableImportResult ImportDataTableFromCSVText(
+		const FString& DataTablePath, const FString& CsvContent);
+
+	/**
+	 * Import rows into an existing DataTable from a JSON string in memory.
+	 * Replaces all existing rows.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FBridgeDataTableImportResult ImportDataTableFromJSONText(
+		const FString& DataTablePath, const FString& JsonContent);
+
+	/**
+	 * Create a new DataTable asset at AssetPath using RowStructPath as the row
+	 * struct, populated from CSV content. Fails if AssetPath already exists or
+	 * RowStructPath cannot be resolved to a UScriptStruct.
+	 *
+	 * @param AssetPath        Content path for the new asset, e.g. "/Game/Data/DT_Items".
+	 * @param RowStructPath    Path or short name of the row struct (e.g. "/Game/Data/F_Item" or just "F_Item").
+	 * @param CsvContent       CSV body. First column = row name; subsequent columns = struct fields.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FBridgeDataTableImportResult CreateDataTableFromCSV(
+		const FString& AssetPath,
+		const FString& RowStructPath,
+		const FString& CsvContent);
+
+	/**
+	 * Create a new DataTable asset at AssetPath, populated from JSON content.
+	 * Fails if AssetPath already exists or RowStructPath cannot be resolved.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FBridgeDataTableImportResult CreateDataTableFromJSON(
+		const FString& AssetPath,
+		const FString& RowStructPath,
+		const FString& JsonContent);
+
+	// ─── Schema introspection / bulk ops ──────────────────────
+
+	/**
+	 * Return column names + property type names for the row struct. Cheap — no row data.
+	 * Useful to know how to format exported-text values for writes.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static TArray<FBridgeDataTableColumn> GetDataTableColumnTypes(const FString& DataTablePath);
+
+	/**
+	 * Return a single row as a FieldName -> exported-text map.
+	 * More convenient for programmatic use than FBridgeDataTableRow's flat "name = value" list.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static TMap<FString, FString> GetDataTableRowAsMap(const FString& DataTablePath, const FString& RowName);
+
+	/** Return a single row as a compact JSON object string. Empty string if not found. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FString GetDataTableRowAsJSONString(const FString& DataTablePath, const FString& RowName);
+
+	/** Remove every row from the DataTable (undoable). Returns number of rows removed. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static int32 ClearDataTable(const FString& DataTablePath);
+
+	/**
+	 * Copy rows from SourceTable into DestTable. Both tables must share the same row struct.
+	 * @param RowNames   If non-empty, only copy these rows; otherwise copy all rows from source.
+	 * @param bOverwrite If true, overwrite rows that already exist on the destination.
+	 * @return Number of rows successfully added/overwritten on the destination.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static int32 CopyDataTableRows(
+		const FString& SourceDataTablePath,
+		const FString& DestDataTablePath,
+		const TArray<FString>& RowNames,
+		bool bOverwrite);
+
+	// ─── Extras (struct metadata / batch / diff / defaults) ──
+
+	/**
+	 * Return the content path of the row struct asset (e.g. `/Game/Data/F_WeaponStats`).
+	 * Empty string for built-in/native structs or on failure.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FString GetDataTableRowStructPath(const FString& DataTablePath);
+
+	/**
+	 * Find rows whose `FieldName` column equals `Value` (exact match on exported text).
+	 * @param bCaseSensitive  Case-sensitive compare if true; defaults to false.
+	 * Cheaper and more precise than SearchDataTableRows for exact lookups.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static TArray<FString> FindDataTableRowsByFieldValue(
+		const FString& DataTablePath,
+		const FString& FieldName,
+		const FString& Value,
+		bool bCaseSensitive);
+
+	/**
+	 * Return a compact JSON array string of row objects for the filtered view.
+	 * Each object: `{"Name": <row>, <field>: <exported_text>, ...}`.
+	 * @param RowFilter     If non-empty, only include these rows.
+	 * @param ColumnFilter  If non-empty, only include these columns per row.
+	 * Returned text is exported-text per field (string-escaped). Empty `[]` on failure.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static FString GetDataTableRowsAsJSONArray(
+		const FString& DataTablePath,
+		const TArray<FString>& RowFilter,
+		const TArray<FString>& ColumnFilter);
+
+	/**
+	 * Compare two rows field-by-field using exported text.
+	 * Both tables must share the same row struct.
+	 * @return Field names whose values differ. Empty if identical or inputs invalid.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static TArray<FString> DiffDataTableRows(
+		const FString& DataTablePathA,
+		const FString& RowNameA,
+		const FString& DataTablePathB,
+		const FString& RowNameB);
+
+	/**
+	 * Default values for the row struct as a `FieldName -> exported_text` map.
+	 * Uses a freshly-initialized instance of the row struct (honors struct `InitializeStruct` defaults).
+	 * Useful to know what `AddDataTableRow` will fill for unspecified fields.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|DataTable")
+	static TMap<FString, FString> GetDataTableRowDefaults(const FString& DataTablePath);
+};

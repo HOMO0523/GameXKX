@@ -1,0 +1,310 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
+#include "UnrealBridgeChooserLibrary.generated.h"
+
+USTRUCT(BlueprintType)
+struct FBridgeCHTColumn
+{
+	GENERATED_BODY()
+
+	/** Column struct short name, e.g. "FloatRangeColumn", "EnumColumn". */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	FString Kind;
+
+	/** Property binding chain joined by "." — empty when bound to root or unbound. */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	FString BindingPath;
+
+	/** Editor display name from the binding (often friendlier than BindingPath). */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	FString DisplayName;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	bool bDisabled = false;
+
+	/** True when the column produces outputs into the eval context (Output* family). */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	bool bIsOutput = false;
+};
+
+USTRUCT(BlueprintType)
+struct FBridgeCHTRowResult
+{
+	GENERATED_BODY()
+
+	/** "Asset" / "Class" / "NestedChooser" / "EvaluateChooser" / "None" / "<Other>". */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	FString Kind;
+
+	/** Asset / class / sub-chooser path, "" when none/unsupported. */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	FString ResultPath;
+};
+
+USTRUCT(BlueprintType)
+struct FBridgeCHTRow
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	bool bDisabled = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	FBridgeCHTRowResult Result;
+};
+
+USTRUCT(BlueprintType)
+struct FBridgeCHTInfo
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	int32 RowCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	int32 ColumnCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	int32 NestedChooserCount = 0;
+
+	/** Full path of the OutputObjectType class (UClass*). */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	FString OutputClassPath;
+
+	/** "ObjectResult" / "ClassResult". */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	FString ResultType;
+
+	/** True when FallbackResult is set (used when no row passes filters). */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	bool bHasFallback = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	FBridgeCHTRowResult Fallback;
+};
+
+USTRUCT(BlueprintType)
+struct FBridgeCHTEvaluation
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	bool bSucceeded = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	FString ResultPath;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	FString ResultKind;
+
+	/** -1 if nothing matched (fallback was used or null returned). */
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	int32 MatchedRow = -1;
+
+	UPROPERTY(BlueprintReadOnly, Category = "UnrealBridge|Chooser")
+	bool bUsedFallback = false;
+};
+
+UCLASS()
+class UNREALBRIDGE_API UUnrealBridgeChooserLibrary : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+
+public:
+	// ── Read ──
+
+	/** High-level summary of a ChooserTable: row/column counts, output type, fallback. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static FBridgeCHTInfo GetChooserInfo(const FString& ChooserTablePath);
+
+	/** List columns (kind, binding, disabled flag) — top-to-bottom in editor order. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static TArray<FBridgeCHTColumn> ListChooserColumns(const FString& ChooserTablePath);
+
+	/** List rows including disabled flag and resolved result info. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static TArray<FBridgeCHTRow> ListChooserRows(const FString& ChooserTablePath);
+
+	/** Fetch a single row's result (asset / class / nested chooser path). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static FBridgeCHTRowResult GetChooserRowResult(const FString& ChooserTablePath, int32 RowIndex);
+
+	/** Read raw T3D for a single cell (column.RowValues[row]). Empty on failure. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static FString GetChooserCellRaw(const FString& ChooserTablePath, int32 ColumnIndex, int32 RowIndex);
+
+	// ── Row writes ──
+
+	/** Append a new row at the end with default cell values + None result. Returns new row index, -1 on failure. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static int32 AddChooserRow(const FString& ChooserTablePath);
+
+	/** Insert a row before BeforeRow (== row count to append). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static int32 InsertChooserRow(const FString& ChooserTablePath, int32 BeforeRow);
+
+	/** Remove a row (and its parallel result + disabled flag). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool RemoveChooserRow(const FString& ChooserTablePath, int32 RowIndex);
+
+	/** Toggle a row's disabled flag. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool SetChooserRowDisabled(const FString& ChooserTablePath, int32 RowIndex, bool bDisabled);
+
+	/** Set a row's result to an asset (FAssetChooser). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool SetChooserRowResultAsset(const FString& ChooserTablePath, int32 RowIndex, const FString& AssetPath);
+
+	/** Set a row's result to a class (FClassChooser-equivalent). Empty class path clears it. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool SetChooserRowResultClass(const FString& ChooserTablePath, int32 RowIndex, const FString& ClassPath);
+
+	/** Set a row's result to delegate to another ChooserTable asset (FEvaluateChooser). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool SetChooserRowResultEvaluateChooser(const FString& ChooserTablePath, int32 RowIndex, const FString& SubChooserPath);
+
+	/** Clear a row's result (returns null at runtime; falls back to FallbackResult if set). */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool ClearChooserRowResult(const FString& ChooserTablePath, int32 RowIndex);
+
+	// ── Fallback ──
+
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool SetChooserFallbackAsset(const FString& ChooserTablePath, const FString& AssetPath);
+
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool ClearChooserFallback(const FString& ChooserTablePath);
+
+	// ── Context schema ──
+
+	/**
+	 * Set the chooser's `ContextData` to a single FContextObjectTypeClass binding.
+	 * Without this, the editor's column-binding widget shows "NoPropertyBound" because
+	 * it has no schema to resolve the binding chain (e.g. "Speed2D") against, even
+	 * though runtime evaluation works fine when a matching object is passed in.
+	 *
+	 * @param ContextClassPath  Full class path, e.g. "/Game/Blueprints/SandboxCharacter_CMC_ABP.SandboxCharacter_CMC_ABP_C".
+	 * @param Direction         "Read" / "Write" / "ReadWrite" (case-insensitive). ReadWrite is the typical default.
+	 *
+	 * Replaces any existing ContextData. Multi-context choosers (where ContextData has
+	 * multiple entries for different parameter slots) need a richer setter — for those,
+	 * read+modify ContextData via raw set_editor_property until a future bridge call
+	 * lands.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool SetChooserContextObjectClass(const FString& ChooserTablePath, const FString& ContextClassPath, const FString& Direction);
+
+	/**
+	 * Force-recompile the chooser: walks every column + result, resolves binding
+	 * chains against the current ContextData, refreshes editor binding widgets.
+	 * `set_chooser_context_object_class` does this automatically; call this
+	 * manually after a batch of column/row edits if the editor's binding display
+	 * shows 'NoPropertyBound' even though the data is correct.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool CompileChooser(const FString& ChooserTablePath);
+
+	/**
+	 * Returns the human-readable error from the most recent failed chooser write.
+	 * Empty string when the last write succeeded.
+	 *
+	 * Many chooser write UFUNCTIONs return `bool` or `int32` and signal failure
+	 * with `false` / `-1` — but the *reason* (bad path, bad cell format, missing
+	 * context class, etc.) only goes to UE_LOG, which the bridge doesn't capture.
+	 * Call this after a failure return to surface the reason in your script.
+	 *
+	 * Example:
+	 *   if not Chooser.set_chooser_cell_raw(...).success:
+	 *       print(Chooser.get_last_chooser_error())
+	 *       # → "set_chooser_cell_raw col=0 row=2: Bool cells use bare
+	 *       #    'MatchTrue'/'MatchFalse'/'MatchAny', NOT '(Value=True)' …"
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static FString GetLastChooserError();
+
+	// ── Column writes (typed) ──
+
+	/**
+	 * Add a column of the given UScriptStruct type by full path
+	 * (e.g. "/Script/Chooser.FloatRangeColumn" or "/Script/Chooser.EnumColumn").
+	 * The column's RowValues array is resized to match existing row count.
+	 * Returns the new column index, -1 on failure.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static int32 AddChooserColumnByStructPath(const FString& ChooserTablePath, const FString& ColumnStructPath,
+		const FString& BindingPropertyChain, int32 ContextIndex);
+
+	/** Convenience: AddColumn for FFloatRangeColumn. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static int32 AddChooserColumnFloatRange(const FString& ChooserTablePath, const FString& BindingPropertyChain, int32 ContextIndex);
+
+	/**
+	 * Convenience: AddColumn for FEnumColumn. Pass enum_path like "/Game/Blueprints/Data/E_Stance.E_Stance"
+	 * (UserDefinedEnum) or "/Script/Engine.EMyEnum" (native UEnum).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static int32 AddChooserColumnEnum(const FString& ChooserTablePath, const FString& BindingPropertyChain, const FString& EnumPath, int32 ContextIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static int32 AddChooserColumnBool(const FString& ChooserTablePath, const FString& BindingPropertyChain, int32 ContextIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static int32 AddChooserColumnObject(const FString& ChooserTablePath, const FString& BindingPropertyChain, int32 ContextIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static int32 AddChooserColumnGameplayTag(const FString& ChooserTablePath, const FString& BindingPropertyChain, int32 ContextIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static int32 AddChooserColumnRandomize(const FString& ChooserTablePath, const FString& BindingPropertyChain, int32 ContextIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static int32 AddChooserColumnOutputFloat(const FString& ChooserTablePath, const FString& BindingPropertyChain, int32 ContextIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static int32 AddChooserColumnOutputObject(const FString& ChooserTablePath, const FString& BindingPropertyChain, int32 ContextIndex);
+
+	/** Remove a column. Cell data on every row for this column is dropped. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool RemoveChooserColumn(const FString& ChooserTablePath, int32 ColumnIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool SetChooserColumnDisabled(const FString& ChooserTablePath, int32 ColumnIndex, bool bDisabled);
+
+	/**
+	 * Set a single cell (column.RowValues[row]) by importing T3D text — same format as `unreal.StructName` export.
+	 * Example for FloatRange: "(Min=0.0,Max=10.0,bNoMin=False,bNoMax=False)".
+	 * Example for Enum:       "(ValueName=\"E_Gait::NewEnumerator2\",Value=2,Comparison=MatchEqual)".
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static bool SetChooserCellRaw(const FString& ChooserTablePath, int32 ColumnIndex, int32 RowIndex, const FString& T3DValue);
+
+	// ── Evaluation ──
+
+	/**
+	 * Run the chooser and return the picked result. ContextObjectPath is loaded and added as the single
+	 * context UObject — works for choosers that bind via "/Script/Engine.AnimInstance" or similar property bag.
+	 * For deeper testing pass a small context UObject instance whose properties match the column bindings.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static FBridgeCHTEvaluation EvaluateChooserWithContextObject(const FString& ChooserTablePath, const FString& ContextObjectPath);
+
+	/**
+	 * Multi-result variant. Many AnimBP-driven choosers (e.g. GASP's
+	 * `CHT_PoseSearchDatabases`) feed their full output array to a downstream
+	 * node — `MotionMatchingAnimNodeLibrary::SetDatabasesToSearch` takes
+	 * `Array<PoseSearchDatabase>`, not a single one. The single-result
+	 * `EvaluateChooserWithContextObject` only returns the first hit; this
+	 * variant collects every row whose filters pass.
+	 *
+	 * Same context-object semantics: pass an empty path to fire the chooser
+	 * with no context (default-only filtering).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static TArray<FBridgeCHTRowResult> EvaluateChooserMultiWithContextObject(const FString& ChooserTablePath, const FString& ContextObjectPath);
+
+	/** List every potential row result + fallback as paths — useful for "what could this CHT possibly return?" without filter inputs. */
+	UFUNCTION(BlueprintCallable, Category = "UnrealBridge|Chooser")
+	static TArray<FBridgeCHTRowResult> ListPossibleResults(const FString& ChooserTablePath);
+};

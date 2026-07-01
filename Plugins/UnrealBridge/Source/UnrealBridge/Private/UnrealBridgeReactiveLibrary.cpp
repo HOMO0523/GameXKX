@@ -1,0 +1,1005 @@
+#include "UnrealBridgeReactiveLibrary.h"
+#include "UnrealBridgeReactiveSubsystem.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
+#include "Animation/AnimInstance.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Editor.h"
+#include "EnhancedInputComponent.h"
+#include "Engine/Blueprint.h"
+#include "Engine/World.h"
+#include "EngineUtils.h"
+#include "GameFramework/Actor.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/Controller.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
+#include "GameplayTagContainer.h"
+#include "InputAction.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogUnrealBridgeReactiveLib, Log, All);
+
+namespace BridgeReactiveLibImpl
+{
+	/**
+	 * Resolve a UAbilitySystemComponent from an actor across the common GAS
+	 * placement patterns: directly on the actor (single-player), on its
+	 * PlayerState (multiplayer-friendly, this project's pattern), or on its
+	 * Controller. Walks via IAbilitySystemInterface first, falls back to
+	 * component lookup at each level.
+	 */
+	UAbilitySystemComponent* ResolveActorASC(AActor* Actor)
+	{
+		if (!Actor)
+		{
+			return nullptr;
+		}
+
+		auto FromObject = [](UObject* Obj) -> UAbilitySystemComponent*
+		{
+			if (!Obj) return nullptr;
+			if (IAbilitySystemInterface* I = Cast<IAbilitySystemInterface>(Obj))
+			{
+				if (UAbilitySystemComponent* ASC = I->GetAbilitySystemComponent())
+				{
+					return ASC;
+				}
+			}
+			if (AActor* A = Cast<AActor>(Obj))
+			{
+				return A->FindComponentByClass<UAbilitySystemComponent>();
+			}
+			return nullptr;
+		};
+
+		if (UAbilitySystemComponent* ASC = FromObject(Actor)) return ASC;
+
+		if (APawn* Pawn = Cast<APawn>(Actor))
+		{
+			if (APlayerState* PS = Pawn->GetPlayerState())
+			{
+				if (UAbilitySystemComponent* ASC = FromObject(PS)) return ASC;
+			}
+			if (AController* Ctrl = Pawn->GetController())
+			{
+				if (UAbilitySystemComponent* ASC = FromObject(Ctrl)) return ASC;
+				if (APlayerController* PC = Cast<APlayerController>(Ctrl))
+				{
+					if (UAbilitySystemComponent* ASC = FromObject(PC->PlayerState)) return ASC;
+				}
+			}
+		}
+		return nullptr;
+	}
+
+	/** Find an actor by FName or label across all editor world contexts (PIE first). */
+	AActor* FindActorByName(const FString& NameOrLabel)
+	{
+		if (!GEditor)
+		{
+			return nullptr;
+		}
+
+		auto SearchWorld = [&NameOrLabel](UWorld* World) -> AActor*
+		{
+			if (!World) return nullptr;
+			for (TActorIterator<AActor> It(World); It; ++It)
+			{
+				AActor* A = *It;
+				if (!A) continue;
+				if (A->GetName() == NameOrLabel || A->GetActorNameOrLabel() == NameOrLabel)
+				{
+					return A;
+				}
+			}
+			return nullptr;
+		};
+
+		// PIE worlds first — agent-owned actors with ASCs typically live there.
+		for (const FWorldContext& Ctx : GEditor->GetWorldContexts())
+		{
+			if (Ctx.WorldType == EWorldType::PIE)
+			{
+				if (AActor* A = SearchWorld(Ctx.World())) return A;
+			}
+		}
+		// Fall back to the editor world.
+		return SearchWorld(GEditor->GetEditorWorldContext().World());
+	}
+
+	/** "Permanent" | "Once" | "Count:N" | "WhilePIE" | "WhileSubjectAlive". */
+	bool ParseLifetime(const FString& In, EBridgeHandlerLifetime& OutLifetime, int32& OutCount)
+	{
+		OutCount = -1;
+		const FString S = In.IsEmpty() ? TEXT("Permanent") : In;
+		if (S.Equals(TEXT("Permanent"), ESearchCase::IgnoreCase))
+		{
+			OutLifetime = EBridgeHandlerLifetime::Permanent; return true;
+		}
+		if (S.Equals(TEXT("Once"), ESearchCase::IgnoreCase))
+		{
+			OutLifetime = EBridgeHandlerLifetime::Once; return true;
+		}
+		if (S.Equals(TEXT("WhilePIE"), ESearchCase::IgnoreCase))
+		{
+			OutLifetime = EBridgeHandlerLifetime::WhilePIE; return true;
+		}
+		if (S.Equals(TEXT("WhileSubjectAlive"), ESearchCase::IgnoreCase))
+		{
+			OutLifetime = EBridgeHandlerLifetime::WhileSubjectAlive; return true;
+		}
+		if (S.StartsWith(TEXT("Count:"), ESearchCase::IgnoreCase))
+		{
+			const FString NStr = S.Mid(6);
+			const int32 N = FCString::Atoi(*NStr);
+			if (N <= 0)
+			{
+				return false;
+			}
+			OutLifetime = EBridgeHandlerLifetime::Count;
+			OutCount = N;
+			return true;
+		}
+		return false;
+	}
+
+	bool ParseErrorPolicy(const FString& In, EBridgeErrorPolicy& Out)
+	{
+		const FString S = In.IsEmpty() ? TEXT("LogContinue") : In;
+		if (S.Equals(TEXT("LogContinue"), ESearchCase::IgnoreCase))   { Out = EBridgeErrorPolicy::LogContinue;   return true; }
+		if (S.Equals(TEXT("LogUnregister"), ESearchCase::IgnoreCase)) { Out = EBridgeErrorPolicy::LogUnregister; return true; }
+		if (S.Equals(TEXT("Throw"), ESearchCase::IgnoreCase))         { Out = EBridgeErrorPolicy::Throw;         return true; }
+		return false;
+	}
+}
+
+FString UUnrealBridgeReactiveLibrary::RegisterRuntimeGameplayEvent(
+	const FString& TaskName,
+	const FString& Description,
+	const FString& TargetActorName,
+	const FString& EventTag,
+	const FString& Script,
+	const FString& ScriptPath,
+	const TArray<FString>& Tags,
+	const FString& Lifetime,
+	const FString& ErrorPolicy,
+	int32 ThrottleMs)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	if (!Sub)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning, TEXT("RegisterRuntimeGameplayEvent: subsystem unavailable"));
+		return FString();
+	}
+
+	// Empty TargetActorName => global handler: fires whenever ANY live ASC
+	// receives EventTag. The adapter walks current PIE-world ASCs at register
+	// time and watches OnActorSpawned for late arrivals.
+	const bool bGlobal = TargetActorName.IsEmpty();
+	UAbilitySystemComponent* ASC = nullptr;
+	if (!bGlobal)
+	{
+		AActor* TargetActor = BridgeReactiveLibImpl::FindActorByName(TargetActorName);
+		if (!TargetActor)
+		{
+			UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+				TEXT("RegisterRuntimeGameplayEvent: actor '%s' not found in PIE or editor world"),
+				*TargetActorName);
+			return FString();
+		}
+		ASC = BridgeReactiveLibImpl::ResolveActorASC(TargetActor);
+		if (!ASC)
+		{
+			UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+				TEXT("RegisterRuntimeGameplayEvent: no ASC on actor '%s'"), *TargetActor->GetPathName());
+			return FString();
+		}
+	}
+
+	if (EventTag.IsEmpty())
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning, TEXT("RegisterRuntimeGameplayEvent: EventTag is empty"));
+		return FString();
+	}
+	const FGameplayTag Tag = FGameplayTag::RequestGameplayTag(FName(*EventTag), /*bErrorIfNotFound=*/false);
+	if (!Tag.IsValid())
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeGameplayEvent: tag '%s' is not registered"), *EventTag);
+		return FString();
+	}
+
+	EBridgeHandlerLifetime ParsedLifetime = EBridgeHandlerLifetime::Permanent;
+	int32 ParsedCount = -1;
+	if (!BridgeReactiveLibImpl::ParseLifetime(Lifetime, ParsedLifetime, ParsedCount))
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeGameplayEvent: bad Lifetime '%s'"), *Lifetime);
+		return FString();
+	}
+
+	EBridgeErrorPolicy ParsedPolicy = EBridgeErrorPolicy::LogContinue;
+	if (!BridgeReactiveLibImpl::ParseErrorPolicy(ErrorPolicy, ParsedPolicy))
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeGameplayEvent: bad ErrorPolicy '%s'"), *ErrorPolicy);
+		return FString();
+	}
+
+	FBridgeHandlerRecord Record;
+	Record.Scope = TEXT("runtime");
+	Record.TaskName = TaskName;
+	Record.Description = Description;
+	Record.Tags = Tags;
+	Record.ScriptPath = ScriptPath;
+	Record.Script = Script;
+	Record.TriggerType = EBridgeTrigger::GameplayEvent;
+	Record.Subject = bGlobal ? TWeakObjectPtr<UObject>() : TWeakObjectPtr<UObject>(ASC);
+	Record.Selector = Tag.GetTagName();
+	Record.AdapterPayload = bGlobal ? TEXT("global") : FString();
+	Record.Lifetime = ParsedLifetime;
+	Record.RemainingCalls = ParsedCount;
+	Record.ErrorPolicy = ParsedPolicy;
+	Record.ThrottleMs = FMath::Max(0, ThrottleMs);
+
+	Record.RegistrationContext.Add(TEXT("target_actor_name"), TargetActorName);
+	Record.RegistrationContext.Add(TEXT("event_tag"),         EventTag);
+
+	return Sub->RegisterHandler(MoveTemp(Record));
+}
+
+// ─── Helpers shared across runtime register_* entry points ──────
+
+namespace BridgeReactiveLibImpl
+{
+	/** Populate common fields on the record. Returns false if parse failed. */
+	bool FillCommonRecordFields(
+		FBridgeHandlerRecord& Record,
+		const FString& TaskName,
+		const FString& Description,
+		const FString& Script,
+		const FString& ScriptPath,
+		const TArray<FString>& Tags,
+		const FString& Lifetime,
+		const FString& ErrorPolicy,
+		int32 ThrottleMs,
+		const TCHAR* CallerTag)
+	{
+		Record.Scope = TEXT("runtime");
+		Record.TaskName = TaskName;
+		Record.Description = Description;
+		Record.Tags = Tags;
+		Record.ScriptPath = ScriptPath;
+		Record.Script = Script;
+		Record.ThrottleMs = FMath::Max(0, ThrottleMs);
+
+		int32 ParsedCount = -1;
+		if (!ParseLifetime(Lifetime, Record.Lifetime, ParsedCount))
+		{
+			UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+				TEXT("%s: bad Lifetime '%s'"), CallerTag, *Lifetime);
+			return false;
+		}
+		Record.RemainingCalls = ParsedCount;
+
+		if (!ParseErrorPolicy(ErrorPolicy, Record.ErrorPolicy))
+		{
+			UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+				TEXT("%s: bad ErrorPolicy '%s'"), CallerTag, *ErrorPolicy);
+			return false;
+		}
+		return true;
+	}
+
+	/** Find a UEnhancedInputComponent on the actor or its (player) controller. */
+	UEnhancedInputComponent* ResolveInputComponent(AActor* Actor)
+	{
+		if (!Actor) return nullptr;
+		if (UEnhancedInputComponent* C = Cast<UEnhancedInputComponent>(Actor->InputComponent))
+		{
+			return C;
+		}
+		if (APawn* Pawn = Cast<APawn>(Actor))
+		{
+			if (AController* Ctrl = Pawn->GetController())
+			{
+				if (UEnhancedInputComponent* C = Cast<UEnhancedInputComponent>(Ctrl->InputComponent))
+				{
+					return C;
+				}
+			}
+		}
+		return nullptr;
+	}
+}
+
+// ─── AttributeChanged ───────────────────────────────────────────
+
+FString UUnrealBridgeReactiveLibrary::RegisterRuntimeAttributeChanged(
+	const FString& TaskName, const FString& Description,
+	const FString& TargetActorName, const FString& AttributeName,
+	const FString& Script, const FString& ScriptPath,
+	const TArray<FString>& Tags, const FString& Lifetime,
+	const FString& ErrorPolicy, int32 ThrottleMs)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	if (!Sub) return FString();
+
+	AActor* Actor = BridgeReactiveLibImpl::FindActorByName(TargetActorName);
+	if (!Actor)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeAttributeChanged: actor '%s' not found"), *TargetActorName);
+		return FString();
+	}
+	UAbilitySystemComponent* ASC = BridgeReactiveLibImpl::ResolveActorASC(Actor);
+	if (!ASC)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeAttributeChanged: no ASC on actor '%s'"), *Actor->GetPathName());
+		return FString();
+	}
+	if (AttributeName.IsEmpty())
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeAttributeChanged: AttributeName is empty"));
+		return FString();
+	}
+
+	FBridgeHandlerRecord Record;
+	if (!BridgeReactiveLibImpl::FillCommonRecordFields(Record, TaskName, Description,
+		Script, ScriptPath, Tags, Lifetime, ErrorPolicy, ThrottleMs,
+		TEXT("RegisterRuntimeAttributeChanged")))
+	{
+		return FString();
+	}
+	Record.TriggerType = EBridgeTrigger::AttributeChanged;
+	Record.Subject = TWeakObjectPtr<UObject>(ASC);
+	Record.Selector = FName(*AttributeName);
+	Record.RegistrationContext.Add(TEXT("target_actor_name"), TargetActorName);
+	Record.RegistrationContext.Add(TEXT("attribute_name"),    AttributeName);
+	return Sub->RegisterHandler(MoveTemp(Record));
+}
+
+// ─── ActorLifecycle ─────────────────────────────────────────────
+
+FString UUnrealBridgeReactiveLibrary::RegisterRuntimeActorLifecycle(
+	const FString& TaskName, const FString& Description,
+	const FString& TargetActorName, const FString& EventType,
+	const FString& Script, const FString& ScriptPath,
+	const TArray<FString>& Tags, const FString& Lifetime,
+	const FString& ErrorPolicy, int32 ThrottleMs)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	if (!Sub) return FString();
+
+	AActor* Actor = BridgeReactiveLibImpl::FindActorByName(TargetActorName);
+	if (!Actor)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeActorLifecycle: actor '%s' not found"), *TargetActorName);
+		return FString();
+	}
+	if (!EventType.Equals(TEXT("Destroyed"), ESearchCase::IgnoreCase) &&
+		!EventType.Equals(TEXT("EndPlay"), ESearchCase::IgnoreCase))
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeActorLifecycle: EventType must be 'Destroyed' or 'EndPlay'"));
+		return FString();
+	}
+
+	FBridgeHandlerRecord Record;
+	if (!BridgeReactiveLibImpl::FillCommonRecordFields(Record, TaskName, Description,
+		Script, ScriptPath, Tags, Lifetime, ErrorPolicy, ThrottleMs,
+		TEXT("RegisterRuntimeActorLifecycle")))
+	{
+		return FString();
+	}
+	Record.TriggerType = EBridgeTrigger::ActorLifecycle;
+	Record.Subject = TWeakObjectPtr<UObject>(Actor);
+	Record.Selector = FName(EventType.Equals(TEXT("Destroyed"), ESearchCase::IgnoreCase)
+		? TEXT("Destroyed") : TEXT("EndPlay"));
+	Record.RegistrationContext.Add(TEXT("target_actor_name"), TargetActorName);
+	Record.RegistrationContext.Add(TEXT("event_type"),        EventType);
+	return Sub->RegisterHandler(MoveTemp(Record));
+}
+
+// ─── MovementModeChanged ────────────────────────────────────────
+
+FString UUnrealBridgeReactiveLibrary::RegisterRuntimeMovementModeChanged(
+	const FString& TaskName, const FString& Description,
+	const FString& TargetActorName, const FString& Script,
+	const FString& ScriptPath, const TArray<FString>& Tags,
+	const FString& Lifetime, const FString& ErrorPolicy, int32 ThrottleMs)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	if (!Sub) return FString();
+
+	AActor* Actor = BridgeReactiveLibImpl::FindActorByName(TargetActorName);
+	if (!Actor)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeMovementModeChanged: actor '%s' not found"), *TargetActorName);
+		return FString();
+	}
+	ACharacter* Char = Cast<ACharacter>(Actor);
+	if (!Char)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeMovementModeChanged: '%s' is not an ACharacter"), *Actor->GetPathName());
+		return FString();
+	}
+
+	FBridgeHandlerRecord Record;
+	if (!BridgeReactiveLibImpl::FillCommonRecordFields(Record, TaskName, Description,
+		Script, ScriptPath, Tags, Lifetime, ErrorPolicy, ThrottleMs,
+		TEXT("RegisterRuntimeMovementModeChanged")))
+	{
+		return FString();
+	}
+	Record.TriggerType = EBridgeTrigger::MovementModeChanged;
+	Record.Subject = TWeakObjectPtr<UObject>(Char);
+	Record.Selector = NAME_None;
+	Record.RegistrationContext.Add(TEXT("target_actor_name"), TargetActorName);
+	return Sub->RegisterHandler(MoveTemp(Record));
+}
+
+// ─── AnimNotify ─────────────────────────────────────────────────
+
+FString UUnrealBridgeReactiveLibrary::RegisterRuntimeAnimNotify(
+	const FString& TaskName, const FString& Description,
+	const FString& TargetActorName, const FString& NotifyName,
+	const FString& Script, const FString& ScriptPath,
+	const TArray<FString>& Tags, const FString& Lifetime,
+	const FString& ErrorPolicy, int32 ThrottleMs)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	if (!Sub) return FString();
+
+	AActor* Actor = BridgeReactiveLibImpl::FindActorByName(TargetActorName);
+	if (!Actor)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeAnimNotify: actor '%s' not found"), *TargetActorName);
+		return FString();
+	}
+	USkeletalMeshComponent* Mesh = Actor->FindComponentByClass<USkeletalMeshComponent>();
+	if (!Mesh)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeAnimNotify: actor '%s' has no USkeletalMeshComponent"),
+			*Actor->GetPathName());
+		return FString();
+	}
+	UAnimInstance* AI = Mesh->GetAnimInstance();
+	if (!AI)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeAnimNotify: skeletal mesh on '%s' has no AnimInstance (AnimBP not set?)"),
+			*Actor->GetPathName());
+		return FString();
+	}
+	if (NotifyName.IsEmpty())
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeAnimNotify: NotifyName is empty"));
+		return FString();
+	}
+
+	FBridgeHandlerRecord Record;
+	if (!BridgeReactiveLibImpl::FillCommonRecordFields(Record, TaskName, Description,
+		Script, ScriptPath, Tags, Lifetime, ErrorPolicy, ThrottleMs,
+		TEXT("RegisterRuntimeAnimNotify")))
+	{
+		return FString();
+	}
+	Record.TriggerType = EBridgeTrigger::AnimNotify;
+	Record.Subject = TWeakObjectPtr<UObject>(AI);
+	Record.Selector = FName(*NotifyName);
+	Record.RegistrationContext.Add(TEXT("target_actor_name"), TargetActorName);
+	Record.RegistrationContext.Add(TEXT("notify_name"),       NotifyName);
+	return Sub->RegisterHandler(MoveTemp(Record));
+}
+
+// ─── InputAction ────────────────────────────────────────────────
+
+FString UUnrealBridgeReactiveLibrary::RegisterRuntimeInputAction(
+	const FString& TaskName, const FString& Description,
+	const FString& TargetActorName, const FString& InputActionPath,
+	const FString& TriggerEvent, const FString& Script,
+	const FString& ScriptPath, const TArray<FString>& Tags,
+	const FString& Lifetime, const FString& ErrorPolicy, int32 ThrottleMs)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	if (!Sub) return FString();
+
+	AActor* Actor = BridgeReactiveLibImpl::FindActorByName(TargetActorName);
+	if (!Actor)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeInputAction: actor '%s' not found"), *TargetActorName);
+		return FString();
+	}
+	UEnhancedInputComponent* Comp = BridgeReactiveLibImpl::ResolveInputComponent(Actor);
+	if (!Comp)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeInputAction: no UEnhancedInputComponent on actor or its controller (not yet possessed?)"));
+		return FString();
+	}
+	UInputAction* IA = Cast<UInputAction>(StaticLoadObject(
+		UInputAction::StaticClass(), nullptr, *InputActionPath));
+	if (!IA)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeInputAction: UInputAction '%s' failed to load"), *InputActionPath);
+		return FString();
+	}
+
+	// Validate TriggerEvent early.
+	static const TCHAR* Known[] = { TEXT("Triggered"), TEXT("Started"), TEXT("Ongoing"),
+		TEXT("Canceled"), TEXT("Completed") };
+	bool bOk = false;
+	for (const TCHAR* K : Known) { if (TriggerEvent.Equals(K, ESearchCase::IgnoreCase)) { bOk = true; break; } }
+	if (!bOk)
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeInputAction: bad TriggerEvent '%s'"), *TriggerEvent);
+		return FString();
+	}
+
+	FBridgeHandlerRecord Record;
+	if (!BridgeReactiveLibImpl::FillCommonRecordFields(Record, TaskName, Description,
+		Script, ScriptPath, Tags, Lifetime, ErrorPolicy, ThrottleMs,
+		TEXT("RegisterRuntimeInputAction")))
+	{
+		return FString();
+	}
+	Record.TriggerType = EBridgeTrigger::InputAction;
+	Record.Subject = TWeakObjectPtr<UObject>(Comp);
+	Record.Selector = FName(*FString::Printf(TEXT("%s:%s"), *IA->GetName(), *TriggerEvent));
+	Record.AdapterPayload = InputActionPath;
+	Record.RegistrationContext.Add(TEXT("target_actor_name"),  TargetActorName);
+	Record.RegistrationContext.Add(TEXT("input_action_path"),  InputActionPath);
+	Record.RegistrationContext.Add(TEXT("trigger_event"),      TriggerEvent);
+	return Sub->RegisterHandler(MoveTemp(Record));
+}
+
+// ─── Timer ──────────────────────────────────────────────────────
+
+FString UUnrealBridgeReactiveLibrary::RegisterRuntimeTimer(
+	const FString& TaskName, const FString& Description,
+	float IntervalSeconds, const FString& Script,
+	const FString& ScriptPath, const TArray<FString>& Tags,
+	const FString& Lifetime, const FString& ErrorPolicy, int32 ThrottleMs)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	if (!Sub) return FString();
+
+	if (!(IntervalSeconds > 0.0f))
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterRuntimeTimer: IntervalSeconds must be > 0 (got %f)"), IntervalSeconds);
+		return FString();
+	}
+
+	FBridgeHandlerRecord Record;
+	if (!BridgeReactiveLibImpl::FillCommonRecordFields(Record, TaskName, Description,
+		Script, ScriptPath, Tags, Lifetime, ErrorPolicy, ThrottleMs,
+		TEXT("RegisterRuntimeTimer")))
+	{
+		return FString();
+	}
+	Record.TriggerType = EBridgeTrigger::Timer;
+	Record.Subject = TWeakObjectPtr<UObject>();   // global — no subject
+	Record.Selector = NAME_None;
+	Record.AdapterPayload = FString::SanitizeFloat(IntervalSeconds);
+	Record.RegistrationContext.Add(TEXT("interval_seconds"),
+		FString::SanitizeFloat(IntervalSeconds));
+	return Sub->RegisterHandler(MoveTemp(Record));
+}
+
+// ─── Editor-domain registration (P5) ─────────────────────────────
+
+namespace BridgeReactiveLibImpl
+{
+	bool ValidateAssetEventFilter(const FString& EventFilter, FName& OutSelector)
+	{
+		if (EventFilter.IsEmpty())
+		{
+			OutSelector = NAME_None;
+			return true;
+		}
+		static const TCHAR* kEvents[] = {
+			TEXT("Added"), TEXT("Removed"), TEXT("Renamed"), TEXT("Updated") };
+		for (const TCHAR* E : kEvents)
+		{
+			if (EventFilter.Equals(E, ESearchCase::IgnoreCase))
+			{
+				OutSelector = FName(E);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool ValidatePieEventFilter(const FString& PhaseFilter, FName& OutSelector)
+	{
+		if (PhaseFilter.IsEmpty())
+		{
+			OutSelector = NAME_None;
+			return true;
+		}
+		static const TCHAR* kPhases[] = {
+			TEXT("PreBeginPIE"), TEXT("BeginPIE"), TEXT("PostPIEStarted"),
+			TEXT("PrePIEEnded"), TEXT("EndPIE"),
+			TEXT("PausePIE"), TEXT("ResumePIE"), TEXT("SingleStepPIE") };
+		for (const TCHAR* P : kPhases)
+		{
+			if (PhaseFilter.Equals(P, ESearchCase::IgnoreCase))
+			{
+				OutSelector = FName(P);
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+FString UUnrealBridgeReactiveLibrary::RegisterEditorAssetEvent(
+	const FString& TaskName, const FString& Description,
+	const FString& EventFilter, const FString& Script,
+	const FString& ScriptPath, const TArray<FString>& Tags,
+	const FString& Lifetime, const FString& ErrorPolicy, int32 ThrottleMs)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	if (!Sub) return FString();
+
+	FName Selector;
+	if (!BridgeReactiveLibImpl::ValidateAssetEventFilter(EventFilter, Selector))
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterEditorAssetEvent: unknown EventFilter '%s' (expected '', 'Added', 'Removed', 'Renamed', or 'Updated')"),
+			*EventFilter);
+		return FString();
+	}
+
+	FBridgeHandlerRecord Record;
+	if (!BridgeReactiveLibImpl::FillCommonRecordFields(Record, TaskName, Description,
+		Script, ScriptPath, Tags, Lifetime, ErrorPolicy, ThrottleMs,
+		TEXT("RegisterEditorAssetEvent")))
+	{
+		return FString();
+	}
+	Record.Scope = TEXT("editor");
+	Record.TriggerType = EBridgeTrigger::AssetEvent;
+	Record.Subject = TWeakObjectPtr<UObject>();   // global
+	Record.Selector = Selector;
+	Record.RegistrationContext.Add(TEXT("event_filter"), EventFilter);
+	return Sub->RegisterHandler(MoveTemp(Record));
+}
+
+FString UUnrealBridgeReactiveLibrary::RegisterEditorPieEvent(
+	const FString& TaskName, const FString& Description,
+	const FString& PhaseFilter, const FString& Script,
+	const FString& ScriptPath, const TArray<FString>& Tags,
+	const FString& Lifetime, const FString& ErrorPolicy, int32 ThrottleMs)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	if (!Sub) return FString();
+
+	FName Selector;
+	if (!BridgeReactiveLibImpl::ValidatePieEventFilter(PhaseFilter, Selector))
+	{
+		UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+			TEXT("RegisterEditorPieEvent: unknown PhaseFilter '%s' (expected '', or one of PreBeginPIE/BeginPIE/PostPIEStarted/PrePIEEnded/EndPIE/PausePIE/ResumePIE/SingleStepPIE)"),
+			*PhaseFilter);
+		return FString();
+	}
+
+	FBridgeHandlerRecord Record;
+	if (!BridgeReactiveLibImpl::FillCommonRecordFields(Record, TaskName, Description,
+		Script, ScriptPath, Tags, Lifetime, ErrorPolicy, ThrottleMs,
+		TEXT("RegisterEditorPieEvent")))
+	{
+		return FString();
+	}
+	Record.Scope = TEXT("editor");
+	Record.TriggerType = EBridgeTrigger::PieEvent;
+	Record.Subject = TWeakObjectPtr<UObject>();
+	Record.Selector = Selector;
+	Record.RegistrationContext.Add(TEXT("phase_filter"), PhaseFilter);
+	return Sub->RegisterHandler(MoveTemp(Record));
+}
+
+FString UUnrealBridgeReactiveLibrary::RegisterEditorBpCompiled(
+	const FString& TaskName, const FString& Description,
+	const FString& BlueprintPathFilter, const FString& Script,
+	const FString& ScriptPath, const TArray<FString>& Tags,
+	const FString& Lifetime, const FString& ErrorPolicy, int32 ThrottleMs)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	if (!Sub) return FString();
+
+	TWeakObjectPtr<UObject> Subject;   // default: explicit null → global mode
+	if (!BlueprintPathFilter.IsEmpty())
+	{
+		UBlueprint* BP = LoadObject<UBlueprint>(nullptr, *BlueprintPathFilter);
+		if (!BP)
+		{
+			UE_LOG(LogUnrealBridgeReactiveLib, Warning,
+				TEXT("RegisterEditorBpCompiled: blueprint '%s' did not load"),
+				*BlueprintPathFilter);
+			return FString();
+		}
+		Subject = BP;
+	}
+
+	FBridgeHandlerRecord Record;
+	if (!BridgeReactiveLibImpl::FillCommonRecordFields(Record, TaskName, Description,
+		Script, ScriptPath, Tags, Lifetime, ErrorPolicy, ThrottleMs,
+		TEXT("RegisterEditorBpCompiled")))
+	{
+		return FString();
+	}
+	Record.Scope = TEXT("editor");
+	Record.TriggerType = EBridgeTrigger::BpCompiled;
+	Record.Subject = Subject;
+	Record.Selector = NAME_None;
+	Record.RegistrationContext.Add(TEXT("blueprint_path_filter"), BlueprintPathFilter);
+	return Sub->RegisterHandler(MoveTemp(Record));
+}
+
+// ────────────────────────────────────────────────────────────────
+
+bool UUnrealBridgeReactiveLibrary::Unregister(const FString& HandlerId)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	return Sub ? Sub->UnregisterHandler(HandlerId) : false;
+}
+
+TArray<FBridgeHandlerSummary> UUnrealBridgeReactiveLibrary::ListAllHandlers(
+	const FString& FilterScope,
+	const FString& FilterTriggerType,
+	const FString& FilterTag)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	return Sub ? Sub->ListAllHandlers(FilterScope, FilterTriggerType, FilterTag)
+	           : TArray<FBridgeHandlerSummary>();
+}
+
+FBridgeHandlerDetail UUnrealBridgeReactiveLibrary::GetHandler(const FString& HandlerId)
+{
+	FBridgeHandlerDetail Detail;
+	if (UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get())
+	{
+		Sub->GetHandler(HandlerId, Detail);
+	}
+	return Detail;
+}
+
+FBridgeHandlerStats UUnrealBridgeReactiveLibrary::GetHandlerStats(const FString& HandlerId)
+{
+	FBridgeHandlerStats Stats;
+	if (UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get())
+	{
+		Sub->GetStats(HandlerId, Stats);
+	}
+	return Stats;
+}
+
+bool UUnrealBridgeReactiveLibrary::Pause(const FString& HandlerId)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	return Sub ? Sub->PauseHandler(HandlerId) : false;
+}
+
+bool UUnrealBridgeReactiveLibrary::Resume(const FString& HandlerId)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	return Sub ? Sub->ResumeHandler(HandlerId) : false;
+}
+
+int32 UUnrealBridgeReactiveLibrary::ClearAll(const FString& Scope)
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	return Sub ? Sub->ClearHandlers(Scope) : 0;
+}
+
+void UUnrealBridgeReactiveLibrary::DeferToNextTick(const FString& Script)
+{
+	if (UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get())
+	{
+		Sub->DeferToNextTick(Script);
+	}
+}
+
+TMap<FString, FString> UUnrealBridgeReactiveLibrary::DescribeTriggerContext(const FString& TriggerType)
+{
+	if (UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get())
+	{
+		return Sub->DescribeTriggerContext(TriggerType);
+	}
+	return TMap<FString, FString>();
+}
+
+// ─── Persistence (P6.B3) ─────────────────────────────────────────
+
+bool UUnrealBridgeReactiveLibrary::SaveAllHandlers()
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	return Sub ? Sub->SaveAllHandlers() : false;
+}
+
+int32 UUnrealBridgeReactiveLibrary::LoadAllHandlers()
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	return Sub ? Sub->LoadAllHandlers() : 0;
+}
+
+FString UUnrealBridgeReactiveLibrary::GetPersistencePath()
+{
+	return UBridgeReactiveSubsystem::GetPersistencePath();
+}
+
+int32 UUnrealBridgeReactiveLibrary::GetDeferredHandlerCount()
+{
+	UBridgeReactiveSubsystem* Sub = UBridgeReactiveSubsystem::Get();
+	return Sub ? Sub->GetDeferredHandlerCount() : 0;
+}
+
+bool UUnrealBridgeReactiveLibrary::ResolveForRestore(FBridgeHandlerRecord& Record)
+{
+	// Returns false when subject resolution fails in a way the caller should
+	// defer (e.g. PIE-tied actor not yet spawned). Returns false permanently
+	// for bad data (missing required params) — caller treats that same as a
+	// deferred resolution attempt; a subsequent save will prune it.
+
+	using namespace BridgeReactiveLibImpl;
+	const TMap<FString, FString>& Ctx = Record.RegistrationContext;
+
+	auto GetOrEmpty = [&Ctx](const TCHAR* Key) -> FString
+	{
+		if (const FString* V = Ctx.Find(Key)) return *V;
+		return FString();
+	};
+
+	switch (Record.TriggerType)
+	{
+	case EBridgeTrigger::GameplayEvent:
+	{
+		const FString Target = GetOrEmpty(TEXT("target_actor_name"));
+		const FString Tag    = GetOrEmpty(TEXT("event_tag"));
+		if (Tag.IsEmpty()) return false;
+		Record.Selector = FName(*Tag);
+		if (Target.IsEmpty())
+		{
+			// Global — no subject needed.
+			Record.Subject = TWeakObjectPtr<UObject>();
+			Record.AdapterPayload = TEXT("global");
+			return true;
+		}
+		AActor* Actor = FindActorByName(Target);
+		if (!Actor) return false;
+		UAbilitySystemComponent* ASC = ResolveActorASC(Actor);
+		if (!ASC) return false;
+		Record.Subject = TWeakObjectPtr<UObject>(ASC);
+		Record.AdapterPayload = FString();
+		return true;
+	}
+	case EBridgeTrigger::AttributeChanged:
+	{
+		const FString Target = GetOrEmpty(TEXT("target_actor_name"));
+		const FString Attr   = GetOrEmpty(TEXT("attribute_name"));
+		if (Target.IsEmpty() || Attr.IsEmpty()) return false;
+		AActor* Actor = FindActorByName(Target);
+		if (!Actor) return false;
+		UAbilitySystemComponent* ASC = ResolveActorASC(Actor);
+		if (!ASC) return false;
+		Record.Subject = TWeakObjectPtr<UObject>(ASC);
+		Record.Selector = FName(*Attr);
+		return true;
+	}
+	case EBridgeTrigger::ActorLifecycle:
+	{
+		const FString Target = GetOrEmpty(TEXT("target_actor_name"));
+		const FString Event  = GetOrEmpty(TEXT("event_type"));
+		if (Target.IsEmpty() || Event.IsEmpty()) return false;
+		AActor* Actor = FindActorByName(Target);
+		if (!Actor) return false;
+		Record.Subject = TWeakObjectPtr<UObject>(Actor);
+		Record.Selector = FName(Event.Equals(TEXT("Destroyed"), ESearchCase::IgnoreCase)
+			? TEXT("Destroyed") : TEXT("EndPlay"));
+		return true;
+	}
+	case EBridgeTrigger::MovementModeChanged:
+	{
+		const FString Target = GetOrEmpty(TEXT("target_actor_name"));
+		if (Target.IsEmpty()) return false;
+		AActor* Actor = FindActorByName(Target);
+		if (!Actor) return false;
+		ACharacter* Char = Cast<ACharacter>(Actor);
+		if (!Char) return false;
+		Record.Subject = TWeakObjectPtr<UObject>(Char);
+		Record.Selector = NAME_None;
+		return true;
+	}
+	case EBridgeTrigger::AnimNotify:
+	{
+		const FString Target = GetOrEmpty(TEXT("target_actor_name"));
+		const FString Notify = GetOrEmpty(TEXT("notify_name"));
+		if (Target.IsEmpty() || Notify.IsEmpty()) return false;
+		AActor* Actor = FindActorByName(Target);
+		if (!Actor) return false;
+		USkeletalMeshComponent* Mesh = Actor->FindComponentByClass<USkeletalMeshComponent>();
+		if (!Mesh) return false;
+		UAnimInstance* AI = Mesh->GetAnimInstance();
+		if (!AI) return false;
+		Record.Subject = TWeakObjectPtr<UObject>(AI);
+		Record.Selector = FName(*Notify);
+		return true;
+	}
+	case EBridgeTrigger::InputAction:
+	{
+		const FString Target   = GetOrEmpty(TEXT("target_actor_name"));
+		const FString IAPath   = GetOrEmpty(TEXT("input_action_path"));
+		const FString Trigger  = GetOrEmpty(TEXT("trigger_event"));
+		if (Target.IsEmpty() || IAPath.IsEmpty() || Trigger.IsEmpty()) return false;
+		AActor* Actor = FindActorByName(Target);
+		if (!Actor) return false;
+		UEnhancedInputComponent* Comp = ResolveInputComponent(Actor);
+		if (!Comp) return false;
+		UInputAction* IA = Cast<UInputAction>(StaticLoadObject(
+			UInputAction::StaticClass(), nullptr, *IAPath));
+		if (!IA) return false;
+		Record.Subject = TWeakObjectPtr<UObject>(Comp);
+		Record.Selector = FName(*FString::Printf(TEXT("%s:%s"), *IA->GetName(), *Trigger));
+		Record.AdapterPayload = IAPath;
+		return true;
+	}
+	case EBridgeTrigger::Timer:
+	{
+		const FString Interval = GetOrEmpty(TEXT("interval_seconds"));
+		if (Interval.IsEmpty()) return false;
+		const double Secs = FCString::Atod(*Interval);
+		if (!(Secs > 0.0)) return false;
+		Record.Subject = TWeakObjectPtr<UObject>();
+		Record.Selector = NAME_None;
+		Record.AdapterPayload = Interval;
+		return true;
+	}
+	case EBridgeTrigger::AssetEvent:
+	{
+		const FString Filter = GetOrEmpty(TEXT("event_filter"));
+		Record.Subject = TWeakObjectPtr<UObject>();
+		Record.Selector = Filter.IsEmpty() ? NAME_None : FName(*Filter);
+		return true;
+	}
+	case EBridgeTrigger::PieEvent:
+	{
+		const FString Filter = GetOrEmpty(TEXT("phase_filter"));
+		Record.Subject = TWeakObjectPtr<UObject>();
+		Record.Selector = Filter.IsEmpty() ? NAME_None : FName(*Filter);
+		return true;
+	}
+	case EBridgeTrigger::BpCompiled:
+	{
+		const FString Path = GetOrEmpty(TEXT("blueprint_path_filter"));
+		if (Path.IsEmpty())
+		{
+			// Global mode — leave Subject explicit-null.
+			Record.Subject = TWeakObjectPtr<UObject>();
+			Record.Selector = NAME_None;
+			return true;
+		}
+		UBlueprint* BP = LoadObject<UBlueprint>(nullptr, *Path);
+		if (!BP) return false;
+		Record.Subject = TWeakObjectPtr<UObject>(BP);
+		Record.Selector = NAME_None;
+		return true;
+	}
+	default:
+		return false;
+	}
+}

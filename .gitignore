@@ -1,0 +1,31 @@
+# Unreal generated state
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+
+# User/editor local files
+*.opensdf
+*.sdf
+*.suo
+*.user
+*.VC.db
+*.VC.opendb
+
+# Runtime/build artifacts inside plugins
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+Plugins/**/Saved/
+Plugins/**/__pycache__/
+*.pyc
+
+# Visual Studio generated solutions can be regenerated from the uproject
+*.sln
+*.slnx
+
+# Keep source assets and project configuration tracked
+!Content/**/*.uasset
+!Content/**/*.umap
+!Plugins/**/Content/**
+!Plugins/**/Source/**
