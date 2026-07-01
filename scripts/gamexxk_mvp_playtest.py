@@ -38,6 +38,8 @@ CHECKLIST = [
     "retry reaches event, camp, and Boss nodes",
     "Boss victory completes quest and unlocks Tanjiang",
     "save restore persists unlocks, quest, level, XP, and gold",
+    "town player shell binds WASD, arrow keys, and F interaction",
+    "town quest, merchant, and follower NPC roles are test-covered",
 ]
 
 

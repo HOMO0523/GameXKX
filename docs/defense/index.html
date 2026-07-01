@@ -258,6 +258,11 @@
           <h3>UE MCP 自动化护栏收紧</h3>
           <p><code>ue_mcp_smoke.py</code> 将项目自定义 <code>GameXXKTDDToolset</code> 纳入必检；<code>ue_tdd_pipeline.py --no-launch</code> 改为连接已运行的 MCP 编辑器，避免空跑误判。</p>
         </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>城镇交互 Shell</h3>
+          <p>新增 <code>AGameXXKTownPlayerPawn</code>、<code>UGameXXKInteractionComponent</code>、<code>AGameXXKTownNpcActor</code>，验证 WASD/方向键自由移动、<code>F</code> 交互、任务 NPC、商人 NPC 和跟随 NPC 的 C++ 行为边界。</p>
+        </article>
       </div>
     </section>
 
@@ -280,7 +285,7 @@
           <tr>
             <td>城镇</td>
             <td>青山驿站可走动，NPC 可对话，商人可交易。</td>
-            <td><span class="tag blue">任务/交易规则已测，走动表现待装配</span></td>
+            <td><span class="tag blue">C++ Shell 已测，地图/蓝图待装配</span></td>
           </tr>
           <tr>
             <td>小地图</td>
