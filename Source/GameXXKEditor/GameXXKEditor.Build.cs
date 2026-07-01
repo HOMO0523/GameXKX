@@ -11,11 +11,15 @@ public class GameXXKEditor : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
-			"Landscape"
+			"Landscape",
+			"Paper2D",
+			"PaperZD"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			"AssetRegistry",
+			"KismetCompiler",
 			"UnrealEd",
 			"Landscape"
 		});

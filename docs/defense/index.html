@@ -250,8 +250,8 @@
         </article>
         <article class="entry">
           <time>2026-07-02</time>
-          <h3>主角 8 向 Paper2D 行走资产</h3>
-          <p>分析深蓝高马尾 1024 行走图后，按 6 列 5 行切分，并用确定性水平镜像展开为 8 向 sheet；通过 UE MCP 创建 48 个 <code>PaperSprite</code> 和 8 个 <code>PaperFlipbook</code>，城镇 <code>AGameXXKTownPlayerPawn</code> 默认加载 <code>FB_Hero_Walk_South</code>，确保 Play 模式进入城镇时主角有可见 Paper2D 表现。</p>
+          <h3>主角 8 向 Paper2D/PaperZD 行走资产</h3>
+          <p>分析深蓝高马尾 1024 行走图后，按 6 列 5 行切分，并用确定性水平镜像展开为 8 向 sheet；通过 UE MCP 创建 48 个 <code>PaperSprite</code>、8 个 <code>PaperFlipbook</code>、<code>AS_Hero_Flipbook</code>、<code>ABP_Hero_PaperZD</code> 和 <code>PZD_Hero_Walk_8Dir</code> directional 序列，城镇 <code>AGameXXKTownPlayerPawn</code> 默认加载 <code>FB_Hero_Walk_South</code>，确保 Play 模式进入城镇时主角有可见 Paper2D 表现，并给后续 PaperZD 方向动画接入留下资产链路。</p>
         </article>
         <article class="entry">
           <time>2026-07-02</time>
@@ -375,6 +375,7 @@
         <li><code>python scripts/gamexxk_town_scene_check.py</code>：通过 UE MCP 验证青山驿站固定 Landscape 地形、边界、入口交互 Actor、<code>PlayerStart</code>、基础光照、无 Water Actor 和地图 GameMode。</li>
         <li><code>python scripts/gamexxk_sprite_source_check.py</code>：通过 UE MCP 验证角色源 sheet PNG 和导入的 <code>Texture2D</code> 资产。</li>
         <li><code>python scripts/gamexxk_character_visual_check.py</code>：通过 UE MCP 验证主角 8 向 walk <code>PaperSprite</code>、<code>PaperFlipbook</code>、source UV、帧顺序和默认城镇 flipbook。</li>
+        <li><code>python scripts/gamexxk_paperzd_character_check.py</code>：通过 UE MCP 验证主角 PaperZD <code>AnimationSource_Flipbook</code>、<code>AnimBP</code> 和 8 向 directional walk sequence。</li>
         <li><code>python scripts/ue_tdd_pipeline.py --pie-duration 5</code>：启动编辑器、等待 UE MCP、运行 PIE 并收集 <code>[TDD]</code> 日志。</li>
         <li><code>python scripts/ue_mcp_smoke.py</code>：连接正在运行的 UE MCP server，验证 meta tools、Toolsets、项目 <code>GameXXKTDDToolset</code> 和 GameFeatureData 配置。</li>
         <li><code>git diff --check</code>：提交前检查空白和补丁格式。</li>
