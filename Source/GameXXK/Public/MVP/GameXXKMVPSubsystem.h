@@ -23,6 +23,21 @@ public:
 	bool StartGame();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool StartGameFromSlot(FString SlotName, int32 UserIndex = 0);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool SaveCurrentGame(FString SlotName = TEXT(""), int32 UserIndex = 0);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool LoadGameFromSlot(FString SlotName = TEXT(""), int32 UserIndex = 0);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool LoadOrCreateGame(FString SlotName = TEXT(""), int32 UserIndex = 0);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FString GetDefaultSaveSlotName();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool OpenWorldMap();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")

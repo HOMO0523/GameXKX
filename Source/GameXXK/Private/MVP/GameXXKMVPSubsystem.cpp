@@ -1,5 +1,18 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 
+#include "MVP/GameXXKSaveGame.h"
+#include "Kismet/GameplayStatics.h"
+
+namespace
+{
+	static const FString DefaultSaveSlotName(TEXT("GameXXK_MVP_Autosave"));
+
+	static FString ResolveSaveSlotName(const FString& SlotName)
+	{
+		return SlotName.IsEmpty() ? UGameXXKMVPSubsystem::GetDefaultSaveSlotName() : SlotName;
+	}
+}
+
 UGameXXKMVPSubsystem::UGameXXKMVPSubsystem()
 {
 	RuntimeState = UGameXXKMVPRules::CreateNewGame();
@@ -22,8 +35,63 @@ FGameXXKRuntimeState UGameXXKMVPSubsystem::GetRuntimeStateCopy() const
 
 bool UGameXXKMVPSubsystem::StartGame()
 {
+	return StartGameFromSlot(TEXT(""), 0);
+}
+
+bool UGameXXKMVPSubsystem::StartGameFromSlot(FString SlotName, int32 UserIndex)
+{
+	return LoadOrCreateGame(SlotName, UserIndex);
+}
+
+bool UGameXXKMVPSubsystem::SaveCurrentGame(FString SlotName, int32 UserIndex)
+{
+	UGameXXKSaveGame* SaveGame = Cast<UGameXXKSaveGame>(UGameplayStatics::CreateSaveGameObject(UGameXXKSaveGame::StaticClass()));
+	if (!SaveGame)
+	{
+		return false;
+	}
+
+	SaveGame->SaveState = UGameXXKMVPRules::MakeSaveState(RuntimeState);
+	return UGameplayStatics::SaveGameToSlot(SaveGame, ResolveSaveSlotName(SlotName), UserIndex);
+}
+
+bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
+{
+	const FString ResolvedSlotName = ResolveSaveSlotName(SlotName);
+	if (!UGameplayStatics::DoesSaveGameExist(ResolvedSlotName, UserIndex))
+	{
+		return false;
+	}
+
+	UGameXXKSaveGame* SaveGame = Cast<UGameXXKSaveGame>(UGameplayStatics::LoadGameFromSlot(ResolvedSlotName, UserIndex));
+	if (!SaveGame)
+	{
+		return false;
+	}
+
+	RuntimeState = UGameXXKMVPRules::RestoreFromSaveState(SaveGame->SaveState);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::LoadOrCreateGame(FString SlotName, int32 UserIndex)
+{
+	const FString ResolvedSlotName = ResolveSaveSlotName(SlotName);
+	if (UGameplayStatics::DoesSaveGameExist(ResolvedSlotName, UserIndex))
+	{
+		if (!LoadGameFromSlot(ResolvedSlotName, UserIndex))
+		{
+			return false;
+		}
+		return UGameXXKMVPRules::OpenWorldMap(RuntimeState);
+	}
+
 	RuntimeState = UGameXXKMVPRules::CreateNewGame();
 	return UGameXXKMVPRules::OpenWorldMap(RuntimeState);
+}
+
+FString UGameXXKMVPSubsystem::GetDefaultSaveSlotName()
+{
+	return DefaultSaveSlotName;
 }
 
 bool UGameXXKMVPSubsystem::OpenWorldMap()

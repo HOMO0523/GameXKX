@@ -13,6 +13,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MainMenu")
 	bool StartGame();
 
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MainMenu")
+	bool StartGameFromSlot(FString SlotName, int32 UserIndex = 0);
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameXXK|MainMenu")
 	void OnStartGameSucceeded();
 };

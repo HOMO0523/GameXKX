@@ -268,6 +268,11 @@
           <h3>UMG 连接层</h3>
           <p>新增 <code>UGameXXKMVPSubsystem</code> 与主菜单、大地图、任务弹窗、背包、交易、角色面板、小地图、战斗等 C++ Widget Base，验证 UI 按钮可驱动现有 MVP 规则 API。</p>
         </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>MVP SaveGame 持久化</h3>
+          <p>新增 <code>UGameXXKSaveGame</code> 与 Subsystem 存读接口，使用真实 SaveGame slot 持久化解锁区域、任务状态、等级、当前 XP 和金币；<code>GameXXK.MVP.SaveGame.SlotRoundTrip</code> 覆盖写入、读取、load-or-create 和背包/装备不持久化边界。</p>
+        </article>
       </div>
     </section>
 

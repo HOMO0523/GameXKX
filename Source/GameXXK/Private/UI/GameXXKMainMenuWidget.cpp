@@ -12,3 +12,14 @@ bool UGameXXKMainMenuWidget::StartGame()
 	}
 	return bStarted;
 }
+
+bool UGameXXKMainMenuWidget::StartGameFromSlot(FString SlotName, int32 UserIndex)
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const bool bStarted = Subsystem && Subsystem->StartGameFromSlot(SlotName, UserIndex);
+	if (bStarted)
+	{
+		OnStartGameSucceeded();
+	}
+	return bStarted;
+}

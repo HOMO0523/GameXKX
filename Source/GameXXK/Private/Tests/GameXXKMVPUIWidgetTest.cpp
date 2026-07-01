@@ -9,6 +9,7 @@
 #include "UI/GameXXKTradeWidget.h"
 #include "UI/GameXXKWorldMapWidget.h"
 #include "Engine/GameInstance.h"
+#include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -20,6 +21,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 {
+	const FString UiTestSlot = TEXT("GameXXK_MVP_Automation_UIWidget_Start");
+	const int32 UserIndex = 0;
+	UGameplayStatics::DeleteGameInSlot(UiTestSlot, UserIndex);
+
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	UGameXXKMainMenuWidget* MainMenu = NewObject<UGameXXKMainMenuWidget>();
@@ -40,7 +45,7 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	Battle->SetMVPSubsystem(Subsystem);
 	CharacterPanel->SetMVPSubsystem(Subsystem);
 
-	TestTrue(TEXT("main menu start creates game and opens world map"), MainMenu->StartGame());
+	TestTrue(TEXT("main menu start creates game and opens world map"), MainMenu->StartGameFromSlot(UiTestSlot, UserIndex));
 	TestEqual(TEXT("world map screen after start"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 	TestFalse(TEXT("locked Tanjiang click is rejected"), WorldMap->TrySelectRegion(UGameXXKMVPRules::RegionTanjiang()));
 	TestFalse(TEXT("last selection records locked state"), WorldMap->WasLastSelectionUnlocked());
@@ -88,6 +93,7 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("inventory widget uses healing item"), Inventory->UseHealingItem());
 	TestTrue(TEXT("healing item raises HP"), Subsystem->GetRuntimeState().PlayerHP > 1);
 
+	UGameplayStatics::DeleteGameInSlot(UiTestSlot, UserIndex);
 	return true;
 }
 
