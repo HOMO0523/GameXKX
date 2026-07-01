@@ -164,6 +164,9 @@ def _set_prop(obj, prop_names, value) -> bool:
     for prop_name in prop_names:
         try:
             current = obj.get_editor_property(prop_name)
+            if isinstance(current, (int, float)) and isinstance(value, (int, float)):
+                if abs(float(current) - float(value)) <= 0.0001:
+                    return False
             if current == value:
                 return False
             obj.set_editor_property(prop_name, value)
@@ -266,21 +269,35 @@ def _configure_world_settings() -> bool:
     return changed
 
 
+def _ensure_landscape_foundation() -> str:
+    library = getattr(unreal, "GameXXKLandscapeAutomationLibrary", None)
+    if library is None:
+        raise RuntimeError("GameXXKLandscapeAutomationLibrary is unavailable; build/load the GameXXKEditor module")
+
+    report = library.ensure_qingshan_town_landscape()
+    report_text = str(report).strip()
+    if "result=FAIL" in report_text:
+        raise RuntimeError(f"Qingshan landscape automation failed:\n{report_text}")
+    return report_text
+
+
 def main() -> None:
     _load_map()
     cube_mesh = unreal.load_object(None, CUBE_MESH_PATH)
     if cube_mesh is None:
         raise RuntimeError(f"Could not load mesh: {CUBE_MESH_PATH}")
 
+    landscape_report = _ensure_landscape_foundation()
     static_results = [_ensure_static_mesh_actor(spec, cube_mesh) for spec in STATIC_MESH_ACTORS]
     scene_results = [_ensure_scene_actor(spec) for spec in SCENE_ACTORS]
     game_mode_changed = _configure_world_settings()
 
-    unreal.EditorAssetLibrary.save_asset(MAP_PATH, only_if_is_dirty=False)
+    unreal.EditorAssetLibrary.save_asset(MAP_PATH, only_if_is_dirty=True)
     unreal.EditorLoadingAndSavingUtils.save_dirty_packages(True, True)
 
     report = {
         "map": MAP_PATH,
+        "landscape": landscape_report,
         "static_mesh_actors": static_results,
         "scene_actors": scene_results,
         "game_mode_changed": game_mode_changed,

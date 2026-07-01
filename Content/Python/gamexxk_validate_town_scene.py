@@ -19,6 +19,18 @@ STATIC_MESH_LABELS = {
     "QingshanInn_DungeonGate": {"min_scale": [0.8, 3.0, 1.2]},
 }
 
+LANDSCAPE_LABELS = {
+    "QingshanInn_Landscape_Ground": {
+        "component_count": 16,
+        "component_size_quads": 63,
+        "num_subsections": 1,
+        "subsection_size_quads": 63,
+        "location": [-2520.0, -2520.0, -4.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [20.0, 20.0, 40.0],
+    },
+}
+
 LIGHT_LABELS = {
     "QingshanInn_KeySun": "DirectionalLight",
     "QingshanInn_SkyLight": "SkyLight",
@@ -31,10 +43,17 @@ INTERACTION_LABELS = {
 }
 
 REQUIRED_LABELS = [
+    *LANDSCAPE_LABELS.keys(),
     *STATIC_MESH_LABELS.keys(),
     *LIGHT_LABELS.keys(),
     *INTERACTION_LABELS.keys(),
     "PlayerStart_QingshanInn",
+]
+
+FORBIDDEN_ACTOR_CLASS_PARTS = [
+    "WaterBody",
+    "WaterZone",
+    "WaterBrushManager",
 ]
 
 
@@ -66,6 +85,19 @@ def _class_chain_contains(actor, expected_class_name: str) -> bool:
         actor_class = actor.get_class()
         while actor_class is not None:
             if actor_class.get_name() == expected_class_name:
+                return True
+            actor_class = actor_class.get_super_class()
+    except Exception:
+        return False
+    return False
+
+
+def _class_chain_contains_any(actor, expected_class_parts: list[str]) -> bool:
+    try:
+        actor_class = actor.get_class()
+        while actor_class is not None:
+            class_name = actor_class.get_name()
+            if any(part in class_name for part in expected_class_parts):
                 return True
             actor_class = actor_class.get_super_class()
     except Exception:
@@ -113,6 +145,42 @@ def _scale_meets_minimum(actor, minimum: list[float]) -> bool:
     return scale.x >= minimum[0] and scale.y >= minimum[1] and scale.z >= minimum[2]
 
 
+def _vector_matches(actual, expected: list[float], tolerance: float = 0.1) -> bool:
+    return (
+        abs(float(actual.x) - expected[0]) <= tolerance
+        and abs(float(actual.y) - expected[1]) <= tolerance
+        and abs(float(actual.z) - expected[2]) <= tolerance
+    )
+
+
+def _rotator_matches(actual, expected: list[float], tolerance: float = 0.1) -> bool:
+    return (
+        abs(float(actual.pitch) - expected[0]) <= tolerance
+        and abs(float(actual.yaw) - expected[1]) <= tolerance
+        and abs(float(actual.roll) - expected[2]) <= tolerance
+    )
+
+
+def _component_count(actor, class_path: str) -> int:
+    component_class = unreal.load_class(None, class_path)
+    if component_class is None:
+        return 0
+    try:
+        return len(actor.get_components_by_class(component_class))
+    except Exception:
+        return 0
+
+
+def _get_landscape_audit() -> dict[str, object]:
+    library = getattr(unreal, "GameXXKLandscapeAutomationLibrary", None)
+    if library is None:
+        return {"ok": False, "error": "GameXXKLandscapeAutomationLibrary is unavailable"}
+    try:
+        return dict(json.loads(str(library.audit_qingshan_town_landscape())))
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 def _world_game_mode_matches() -> dict[str, str | bool]:
     game_mode_class = unreal.load_class(None, EXPECTED_GAME_MODE)
     world = unreal.EditorLevelLibrary.get_editor_world()
@@ -131,9 +199,75 @@ def main() -> None:
     invalid_actors: list[dict[str, object]] = []
 
     if map_loaded:
+        all_actors = list(unreal.EditorLevelLibrary.get_all_level_actors())
         for label in REQUIRED_LABELS:
             if _find_actor_by_label(label) is None:
                 missing_labels.append(label)
+
+        for actor in all_actors:
+            if _class_chain_contains_any(actor, FORBIDDEN_ACTOR_CLASS_PARTS):
+                invalid_actors.append({
+                    "label": actor.get_actor_label(),
+                    "reason": "forbidden_water_actor",
+                    "expected": "no Water actors in GameXXK MVP town",
+                })
+
+        for label, expectations in LANDSCAPE_LABELS.items():
+            actor = _find_actor_by_label(label)
+            if actor is None:
+                continue
+            if not _class_chain_contains(actor, "Landscape"):
+                invalid_actors.append({"label": label, "reason": "wrong_class", "expected": "Landscape"})
+                continue
+            component_count = _component_count(actor, "/Script/Landscape.LandscapeComponent")
+            expected_component_count = int(expectations["component_count"])
+            if component_count != expected_component_count:
+                invalid_actors.append({
+                    "label": label,
+                    "reason": "wrong_landscape_component_count",
+                    "expected": expected_component_count,
+                    "actual": component_count,
+                })
+            if not _vector_matches(actor.get_actor_location(), expectations["location"]):
+                location = actor.get_actor_location()
+                invalid_actors.append({
+                    "label": label,
+                    "reason": "wrong_landscape_location",
+                    "expected": expectations["location"],
+                    "actual": [location.x, location.y, location.z],
+                })
+            if not _rotator_matches(actor.get_actor_rotation(), expectations["rotation"]):
+                rotation = actor.get_actor_rotation()
+                invalid_actors.append({
+                    "label": label,
+                    "reason": "wrong_landscape_rotation",
+                    "expected": expectations["rotation"],
+                    "actual": [rotation.pitch, rotation.yaw, rotation.roll],
+                })
+            if not _vector_matches(actor.get_actor_scale3d(), expectations["scale"]):
+                scale = actor.get_actor_scale3d()
+                invalid_actors.append({
+                    "label": label,
+                    "reason": "wrong_landscape_scale",
+                    "expected": expectations["scale"],
+                    "actual": [scale.x, scale.y, scale.z],
+                })
+            audit = _get_landscape_audit()
+            if not audit.get("ok"):
+                invalid_actors.append({
+                    "label": label,
+                    "reason": "landscape_audit_failed",
+                    "expected": {
+                        "component_count": expectations["component_count"],
+                        "component_size_quads": expectations["component_size_quads"],
+                        "num_subsections": expectations["num_subsections"],
+                        "subsection_size_quads": expectations["subsection_size_quads"],
+                        "location": expectations["location"],
+                        "rotation": expectations["rotation"],
+                        "scale": expectations["scale"],
+                    },
+                    "actual": audit,
+                })
 
         cube_mesh = unreal.load_object(None, "/Engine/BasicShapes/Cube.Cube")
         for label, expectations in STATIC_MESH_LABELS.items():
