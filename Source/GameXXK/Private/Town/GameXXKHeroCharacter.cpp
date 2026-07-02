@@ -117,13 +117,11 @@ void AGameXXKHeroCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	if (!FMath::IsNearlyZero(HorizontalIntent))
+	const FVector MoveDirection = (FVector::RightVector * HorizontalIntent) + (FVector::ForwardVector * VerticalIntent);
+	if (!MoveDirection.IsNearlyZero())
 	{
-		AddMovementInput(FVector::RightVector, HorizontalIntent);
-	}
-	if (!FMath::IsNearlyZero(VerticalIntent))
-	{
-		AddMovementInput(FVector::ForwardVector, VerticalIntent);
+		const float MoveSpeed = GetCharacterMovement() ? GetCharacterMovement()->MaxFlySpeed : 260.0f;
+		AddActorWorldOffset(MoveDirection.GetClampedToMaxSize(1.0f) * MoveSpeed * DeltaSeconds, false);
 	}
 }
 

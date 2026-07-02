@@ -57,6 +57,7 @@ CHECKLIST = [
     "selected hero, follower, and merchant walk sprite sheets are stored in project content and imported as Texture2D assets",
     "hero deep-blue high-ponytail sheet expands into 8-direction Paper2D walk flipbooks and BP_HeroCharacter loads South walk by default",
     "BP_HeroCharacter switches hero Paper2D walk flipbooks across 8 directions from WASD, arrow-key, and axis movement intent",
+    "UE MCP real play flow clicks Start and Qingshan, opens L_QingshanInn, moves BP_HeroCharacter with WASD, and accepts the quest with F",
     "hero PaperZD flipbook animation source, AnimBP, and 8-direction directional walk sequence reference the Paper2D flipbooks",
 ]
 

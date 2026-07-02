@@ -1,6 +1,8 @@
 #include "UI/GameXXKMVPCommandRouter.h"
 
 #include "GameXXKMVPRules.h"
+#include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
 namespace
@@ -21,6 +23,7 @@ namespace
 	static const FName SelectBoss(TEXT("SelectBoss"));
 	static const FName ResolveBattleVictory(TEXT("ResolveBattleVictory"));
 	static const FName FailBattle(TEXT("FailBattle"));
+	static const FName QingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 
 	static void AddCommand(TArray<FGameXXKMVPCommandDescriptor>& Commands, FName Name, const TCHAR* Label, bool bEnabled)
 	{
@@ -76,6 +79,17 @@ namespace
 		return SlotName.IsEmpty()
 			? Subsystem->SaveCurrentGame(TEXT(""), 0)
 			: Subsystem->SaveCurrentGame(SlotName, UserIndex);
+	}
+
+	static void OpenPlayableTownMap(UGameXXKMVPSubsystem* Subsystem, FName MapName)
+	{
+		UWorld* World = Subsystem ? Subsystem->GetWorld() : nullptr;
+		if (!World || !World->IsGameWorld())
+		{
+			return;
+		}
+
+		UGameplayStatics::OpenLevel(World, MapName);
 	}
 }
 
@@ -172,7 +186,12 @@ bool GameXXKMVPCommandRouter::ExecuteVisibleCommand(UGameXXKMVPSubsystem* Subsys
 	}
 	if (CommandName == SelectQingshan)
 	{
-		return FinishCommand(Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan()));
+		const bool bSucceeded = FinishCommand(Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan()));
+		if (bSucceeded)
+		{
+			OpenPlayableTownMap(Subsystem, QingshanTownMap);
+		}
+		return bSucceeded;
 	}
 	if (CommandName == SelectTanjiang)
 	{
