@@ -1,5 +1,6 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 
+#include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKTownPlayerPawn.h"
 
 void AGameXXKMVPPlayerController::BeginPlay()
@@ -19,5 +20,9 @@ void AGameXXKMVPPlayerController::FlushPressedKeys()
 	if (AGameXXKTownPlayerPawn* TownPawn = Cast<AGameXXKTownPlayerPawn>(GetPawn()))
 	{
 		TownPawn->ResetTownMovementInput();
+	}
+	else if (AGameXXKHeroCharacter* HeroCharacter = Cast<AGameXXKHeroCharacter>(GetPawn()))
+	{
+		HeroCharacter->ResetTownMovementInput();
 	}
 }

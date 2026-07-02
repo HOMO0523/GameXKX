@@ -35,7 +35,8 @@ HERO_WALK_TEXTURE_WIDTH = int(HERO_WALK_CELL_WIDTH * HERO_WALK_FRAME_COUNT)
 HERO_WALK_TEXTURE_HEIGHT = int(HERO_WALK_CELL_HEIGHT * len(HERO_WALK_DIRECTIONS))
 HERO_WALK_SOUTH_FLIPBOOK = f"{HERO_FLIPBOOK_DIR}/{HERO_WALK_FLIPBOOK_PREFIX}_South"
 HERO_WALK_SOUTH_OBJECT_PATH = f"{HERO_WALK_SOUTH_FLIPBOOK}.FB_Hero_Walk_South"
-TOWN_PLAYER_CLASS = "/Script/GameXXK.GameXXKTownPlayerPawn"
+HERO_CHARACTER_CLASS = "/Game/GameXXK/Characters/Hero/BP_HeroCharacter.BP_HeroCharacter_C"
+HERO_NATIVE_CLASS = "/Script/GameXXK.GameXXKHeroCharacter"
 EXPECTED_COOK_DIRECTORIES = [
     "/Game/GameXXK/Characters",
     "/Game/GameXXK/Sprites/Generated",
@@ -335,29 +336,40 @@ def main() -> None:
                     "actual": actual_keyframe_sprites,
                 })
 
-    player_class = unreal.load_class(None, TOWN_PLAYER_CLASS)
-    if player_class is None:
-        missing_assets.append(TOWN_PLAYER_CLASS)
+    hero_class = unreal.load_class(None, HERO_CHARACTER_CLASS)
+    hero_native_class = unreal.load_class(None, HERO_NATIVE_CLASS)
+    if hero_class is None:
+        missing_assets.append(HERO_CHARACTER_CLASS)
     else:
-        player_cdo = unreal.get_default_object(player_class)
-        default_path = _call_noarg(player_cdo, ["get_default_town_flipbook_path_string"], None)
+        if hero_native_class is None:
+            missing_assets.append(HERO_NATIVE_CLASS)
+        elif not unreal.MathLibrary.class_is_child_of(hero_class, hero_native_class):
+            invalid_assets.append({
+                "path": HERO_CHARACTER_CLASS,
+                "reason": "wrong_parent_class",
+                "expected": HERO_NATIVE_CLASS,
+                "actual": _object_identity(_call_noarg(hero_class, ["get_super_struct"], None)),
+            })
+
+        hero_cdo = unreal.get_default_object(hero_class)
+        default_path = _call_noarg(hero_cdo, ["get_default_town_flipbook_path_string"], None)
         default_path_text = str(default_path)
         if default_path_text != HERO_WALK_SOUTH_OBJECT_PATH:
             invalid_assets.append({
-                "path": TOWN_PLAYER_CLASS,
+                "path": HERO_CHARACTER_CLASS,
                 "reason": "wrong_default_town_flipbook_path",
                 "expected": HERO_WALK_SOUTH_OBJECT_PATH,
                 "actual": default_path_text,
             })
         cdo_flipbook = _call_noarg(
-            player_cdo,
+            hero_cdo,
             ["get_current_town_flipbook", "get_default_town_flipbook"],
-            _get_prop(player_cdo, "default_town_flipbook"),
+            _get_prop(hero_cdo, "default_town_flipbook"),
         )
         south_flipbook = _load(HERO_WALK_SOUTH_FLIPBOOK)
         if _object_identity(cdo_flipbook) != _object_identity(south_flipbook):
             invalid_assets.append({
-                "path": TOWN_PLAYER_CLASS,
+                "path": HERO_CHARACTER_CLASS,
                 "reason": "wrong_default_town_flipbook",
                 "expected": _object_identity(south_flipbook),
                 "actual": _object_identity(cdo_flipbook),
@@ -378,7 +390,8 @@ def main() -> None:
         "hero_source_texture": HERO_SOURCE_TEXTURE,
         "hero_walk_texture": HERO_WALK_TEXTURE,
         "hero_walk_south_flipbook": HERO_WALK_SOUTH_FLIPBOOK,
-        "town_player_class": TOWN_PLAYER_CLASS,
+        "hero_character_class": HERO_CHARACTER_CLASS,
+        "hero_native_class": HERO_NATIVE_CLASS,
         "expected_direction_count": len(HERO_WALK_DIRECTIONS),
         "expected_sprite_count": len(HERO_WALK_DIRECTIONS) * HERO_WALK_FRAME_COUNT,
         "expected_flipbook_count": len(HERO_WALK_DIRECTIONS),

@@ -8,6 +8,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "PaperFlipbook.h"
+#include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKTownExitActor.h"
 #include "Misc/AutomationTest.h"
 #include "Town/GameXXKTownNpcActor.h"
@@ -112,6 +113,25 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("TownMoveVertical axis maps Down arrow"), HasAxisMapping(VerticalAxisMappings, EKeys::Down, -1.0f));
 	TestTrue(TEXT("TownMoveVertical axis maps Up arrow"), HasAxisMapping(VerticalAxisMappings, EKeys::Up, 1.0f));
 	TestTrue(TEXT("TownMoveVertical axis maps gamepad left stick Y"), HasAxisMapping(VerticalAxisMappings, EKeys::Gamepad_LeftY, 1.0f));
+
+	AGameXXKHeroCharacter* HeroCharacter = NewObject<AGameXXKHeroCharacter>();
+	TestNotNull(TEXT("hero character owns interaction component"), HeroCharacter->GetInteractionComponent());
+	TestNotNull(TEXT("hero character owns Character movement component"), HeroCharacter->GetMovementComponent());
+	TestNotNull(TEXT("hero character has explicit Pawn overlap collision"), HeroCharacter->GetTownCollisionComponent());
+	TestTrue(TEXT("hero W key is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::W));
+	TestTrue(TEXT("hero A key is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::A));
+	TestTrue(TEXT("hero S key is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::S));
+	TestTrue(TEXT("hero D key is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::D));
+	TestTrue(TEXT("hero Up arrow is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::Up));
+	TestTrue(TEXT("hero Left arrow is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::Left));
+	TestTrue(TEXT("hero Down arrow is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::Down));
+	TestTrue(TEXT("hero Right arrow is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::Right));
+	TestFalse(TEXT("hero E key is not town interaction"), HeroCharacter->IsInteractionKey(EKeys::E));
+	TestTrue(TEXT("hero F key is town interaction"), HeroCharacter->IsInteractionKey(EKeys::F));
+	TestTrue(TEXT("hero has Paper2D visual shell"), HeroCharacter->HasTownVisual());
+	TestEqual(TEXT("hero default town flipbook path points at hero South walk"), HeroCharacter->GetDefaultTownFlipbookPath().ToString(), FString(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South")));
+	TestEqual(TEXT("hero input binds movement press/release keys, movement axes, plus F"), HeroCharacter->CountTownInputBindingsForTest(), 19);
+
 	TestTrue(TEXT("player has Paper2D visual shell"), Player->HasTownVisual());
 	TestEqual(TEXT("player default town flipbook path points at hero South walk"), Player->GetDefaultTownFlipbookPath().ToString(), FString(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South")));
 	TestEqual(TEXT("player exposes default town flipbook path as string for automation"), Player->GetDefaultTownFlipbookPathString(), FString(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South")));

@@ -2,6 +2,7 @@
 #include "MVP/GameXXKMVPGameMode.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "GameFramework/Character.h"
 #include "GameMapsSettings.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
@@ -127,7 +128,11 @@ bool FGameXXKMVPPlayableGameModeTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("default player controller is MVP controller"), GameMode->PlayerControllerClass.Get() == AGameXXKMVPPlayerController::StaticClass());
 	TestTrue(TEXT("default HUD is MVP HUD"), GameMode->HUDClass.Get() == AGameXXKMVPHUD::StaticClass());
-	TestTrue(TEXT("default pawn is Paper2D town pawn"), GameMode->DefaultPawnClass.Get() == AGameXXKTownPlayerPawn::StaticClass());
+	const FString HeroCharacterGeneratedClassPath = TEXT("/Game/GameXXK/Characters/Hero/BP_HeroCharacter.BP_HeroCharacter_C");
+	TestNotNull(TEXT("default pawn class is configured"), GameMode->DefaultPawnClass.Get());
+	TestEqual(TEXT("default pawn uses editable BP_HeroCharacter"), GameMode->DefaultPawnClass ? GameMode->DefaultPawnClass->GetPathName() : FString(), HeroCharacterGeneratedClassPath);
+	TestTrue(TEXT("default pawn is a Character blueprint class"), GameMode->DefaultPawnClass && GameMode->DefaultPawnClass->IsChildOf(ACharacter::StaticClass()));
+	TestFalse(TEXT("default pawn is not the pure C++ town pawn"), GameMode->DefaultPawnClass.Get() == AGameXXKTownPlayerPawn::StaticClass());
 	TestEqual(TEXT("project global default GameMode resolves MVP class"), UGameMapsSettings::GetGlobalDefaultGameMode(), FString(TEXT("/Script/GameXXK.GameXXKMVPGameMode")));
 	TestEqual(TEXT("playable shell defines town NPC spawn roles"), GameMode->GetConfiguredTownNpcCount(), 3);
 

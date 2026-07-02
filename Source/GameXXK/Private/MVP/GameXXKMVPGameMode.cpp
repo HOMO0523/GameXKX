@@ -1,14 +1,22 @@
 #include "MVP/GameXXKMVPGameMode.h"
 
 #include "MVP/GameXXKMVPPlayerController.h"
-#include "Town/GameXXKTownPlayerPawn.h"
+#include "Town/GameXXKHeroCharacter.h"
 #include "UI/GameXXKMVPHUD.h"
 
 AGameXXKMVPGameMode::AGameXXKMVPGameMode()
 {
 	PlayerControllerClass = AGameXXKMVPPlayerController::StaticClass();
 	HUDClass = AGameXXKMVPHUD::StaticClass();
-	DefaultPawnClass = AGameXXKTownPlayerPawn::StaticClass();
+	UClass* HeroCharacterBlueprintClass = LoadClass<AGameXXKHeroCharacter>(nullptr, TEXT("/Game/GameXXK/Characters/Hero/BP_HeroCharacter.BP_HeroCharacter_C"), nullptr, LOAD_NoWarn);
+	if (HeroCharacterBlueprintClass)
+	{
+		DefaultPawnClass = HeroCharacterBlueprintClass;
+	}
+	else
+	{
+		DefaultPawnClass = AGameXXKHeroCharacter::StaticClass();
+	}
 	TownNpcClass = AGameXXKTownNpcActor::StaticClass();
 }
 
