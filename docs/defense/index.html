@@ -269,6 +269,11 @@
           <p>新增 <code>AGameXXKTownExitActor</code>，放入青山驿站地牢门位置；玩家走近后按 <code>F</code>，未接任务时保持城镇状态并提示先接任务，接任务后进入固定小地图流程。</p>
         </article>
         <article class="entry">
+          <time>2026-07-02</time>
+          <h3>真实 UMG 主菜单与大地图入口</h3>
+          <p>新增 <code>UGameXXKPlayableRootWidget</code>，由 <code>AGameXXKMVPHUD</code> 在 Play 模式创建并加入视口；根控件提供 Start/Continue、青山驿站和潭江渡口按钮，直接调用 MVP Subsystem 而不是 Canvas HUD 命令。自动化 <code>GameXXK.MVP.PIE.MainMenuContinueWorldMap</code> 覆盖真实 UMG 入口、未解锁区域禁用、Start 进入大地图和点击青山进入城镇。</p>
+        </article>
+        <article class="entry">
           <time>2026-07-01</time>
           <h3>补齐 Play 模式原生可试玩入口</h3>
           <p>新增 MVP GameMode、PlayerController 与可点击 HUD，把主菜单、大地图选城镇、城镇任务/交易/补给、小地图节点、战斗胜负和 Boss 解锁串成编辑器 Play 模式可操作闭环；试玩脚本新增 PlayableShell 自动化覆盖。</p>
@@ -345,7 +350,7 @@
           <tr>
             <td>大地图</td>
             <td>3 个区域，未解锁区域置暗，通关后新区变亮。</td>
-            <td><span class="tag blue">Widget Base 已测，蓝图待装配</span></td>
+            <td><span class="tag blue">真实 UMG 入口已测，后续补美术布局</span></td>
           </tr>
           <tr>
             <td>城镇</td>

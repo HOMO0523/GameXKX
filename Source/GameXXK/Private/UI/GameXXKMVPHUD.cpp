@@ -4,6 +4,7 @@
 #include "Engine/GameInstance.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "UI/GameXXKPlayableRootWidget.h"
 
 namespace GameXXKMVPHUDCommands
 {
@@ -70,11 +71,22 @@ namespace GameXXKMVPHUDCommands
 	}
 }
 
-FGameXXKMVPCommandDescriptor::FGameXXKMVPCommandDescriptor(FName InCommandName, const FText& InLabel, bool bInEnabled)
-	: CommandName(InCommandName)
-	, Label(InLabel)
-	, bEnabled(bInEnabled)
+AGameXXKMVPHUD::AGameXXKMVPHUD()
 {
+	PlayableRootWidgetClass = UGameXXKPlayableRootWidget::StaticClass();
+}
+
+void AGameXXKMVPHUD::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (UGameXXKPlayableRootWidget* RootWidget = CreatePlayableRootWidget())
+	{
+		if (!RootWidget->IsInViewport())
+		{
+			RootWidget->AddToViewport();
+		}
+	}
 }
 
 UGameXXKMVPSubsystem* AGameXXKMVPHUD::ResolveMVPSubsystem() const
@@ -99,6 +111,21 @@ void AGameXXKMVPHUD::SetStartGameSlotForTest(const FString& SlotName, int32 User
 	StartGameUserIndexOverride = UserIndex;
 }
 
+UGameXXKPlayableRootWidget* AGameXXKMVPHUD::CreatePlayableRootWidgetForTest()
+{
+	return CreatePlayableRootWidget();
+}
+
+bool AGameXXKMVPHUD::HasPlayableRootWidget() const
+{
+	return PlayableRootWidget != nullptr;
+}
+
+UGameXXKPlayableRootWidget* AGameXXKMVPHUD::GetPlayableRootWidget() const
+{
+	return PlayableRootWidget;
+}
+
 bool AGameXXKMVPHUD::SavePlayableSlot(UGameXXKMVPSubsystem* Subsystem) const
 {
 	if (!Subsystem)
@@ -108,6 +135,34 @@ bool AGameXXKMVPHUD::SavePlayableSlot(UGameXXKMVPSubsystem* Subsystem) const
 	return StartGameSlotNameOverride.IsEmpty()
 		? Subsystem->SaveCurrentGame(TEXT(""), 0)
 		: Subsystem->SaveCurrentGame(StartGameSlotNameOverride, StartGameUserIndexOverride);
+}
+
+UGameXXKPlayableRootWidget* AGameXXKMVPHUD::CreatePlayableRootWidget()
+{
+	if (PlayableRootWidget)
+	{
+		return PlayableRootWidget;
+	}
+
+	TSubclassOf<UGameXXKPlayableRootWidget> WidgetClass = PlayableRootWidgetClass;
+	if (!WidgetClass)
+	{
+		WidgetClass = UGameXXKPlayableRootWidget::StaticClass();
+	}
+	if (APlayerController* PlayerController = GetOwningPlayerController())
+	{
+		PlayableRootWidget = CreateWidget<UGameXXKPlayableRootWidget>(PlayerController, WidgetClass);
+	}
+	if (!PlayableRootWidget)
+	{
+		PlayableRootWidget = NewObject<UGameXXKPlayableRootWidget>(this, WidgetClass);
+	}
+	if (PlayableRootWidget)
+	{
+		PlayableRootWidget->SetMVPSubsystem(ResolveMVPSubsystem());
+		PlayableRootWidget->RefreshFromState();
+	}
+	return PlayableRootWidget;
 }
 
 TArray<FGameXXKMVPCommandDescriptor> AGameXXKMVPHUD::BuildVisibleCommands() const
