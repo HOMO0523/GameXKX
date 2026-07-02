@@ -37,16 +37,33 @@ public:
 
 private:
 	UFUNCTION()
-	void HandleStartClicked();
+	void HandleCommandButton0Clicked();
 
 	UFUNCTION()
-	void HandleQingshanClicked();
+	void HandleCommandButton1Clicked();
 
 	UFUNCTION()
-	void HandleTanjiangClicked();
+	void HandleCommandButton2Clicked();
+
+	UFUNCTION()
+	void HandleCommandButton3Clicked();
+
+	UFUNCTION()
+	void HandleCommandButton4Clicked();
+
+	UFUNCTION()
+	void HandleCommandButton5Clicked();
+
+	UFUNCTION()
+	void HandleCommandButton6Clicked();
+
+	UFUNCTION()
+	void HandleCommandButton7Clicked();
 
 	void BuildProgrammaticLayout();
-	void ConfigureCommandButton(UButton* Button, UTextBlock* Label, FName CommandName, const FText& CommandLabel);
+	void ConfigureCommandButton(int32 ButtonIndex, const FGameXXKMVPCommandDescriptor* Command);
+	void ExecuteCommandButtonAtIndex(int32 ButtonIndex);
+	void BindCommandButton(UButton* Button, int32 ButtonIndex);
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> RootBox;
@@ -55,22 +72,13 @@ private:
 	TObjectPtr<UTextBlock> StatusText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UButton> StartButton;
+	TArray<TObjectPtr<UButton>> CommandButtons;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> StartButtonLabel;
+	TArray<TObjectPtr<UTextBlock>> CommandButtonLabels;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UButton> QingshanButton;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> QingshanButtonLabel;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UButton> TanjiangButton;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> TanjiangButtonLabel;
+	TArray<FName> CommandButtonNames;
 
 	UPROPERTY(Transient)
 	FString StartGameSlotNameOverride;

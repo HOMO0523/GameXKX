@@ -44,7 +44,6 @@ protected:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
 
 private:
-	bool SavePlayableSlot(UGameXXKMVPSubsystem* Subsystem) const;
 	UGameXXKPlayableRootWidget* CreatePlayableRootWidget();
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|Playable")

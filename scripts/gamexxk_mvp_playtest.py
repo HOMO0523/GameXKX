@@ -47,7 +47,7 @@ CHECKLIST = [
     "town exit F interaction blocks before quest and opens the dungeon after quest acceptance",
     "town F interactions autosave quest acceptance and merchant gold changes to the default slot",
     "UMG widget bases drive main menu, world map, quest, trade, inventory, dungeon, and battle rule APIs",
-    "real UMG playable root widget drives Start/Continue, world map buttons, locked-region gating, and Qingshan town entry",
+    "real UMG playable root widget drives Start/Continue, world map, town quest/trade, dungeon nodes, battle failure/retry, Boss clear, Tanjiang unlock, and autosave restore",
     "playable HUD commands drive start, region clicks, town actions, dungeon nodes, battle, Boss clear, and Tanjiang unlock",
     "playable HUD autosaves route progress so Start and Continue can restore cleared unlocks",
     "default GameMode wires MVP PlayerController, clickable HUD, and Paper2D town pawn for Play mode",

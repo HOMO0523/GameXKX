@@ -4,19 +4,12 @@
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
-#include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "UI/GameXXKMVPCommandRouter.h"
 
 namespace GameXXKPlayableRootCommands
 {
-	static const FName StartGame(TEXT("StartGame"));
-	static const FName SelectQingshan(TEXT("SelectQingshan"));
-	static const FName SelectTanjiang(TEXT("SelectTanjiang"));
-
-	static void AddCommand(TArray<FGameXXKMVPCommandDescriptor>& Commands, FName Name, const TCHAR* Label, bool bEnabled)
-	{
-		Commands.Emplace(Name, FText::FromString(Label), bEnabled);
-	}
+	static constexpr int32 MaxCommandButtonCount = 8;
 }
 
 void UGameXXKPlayableRootWidget::NativeConstruct()
@@ -34,29 +27,7 @@ EGameXXKScreen UGameXXKPlayableRootWidget::GetCurrentScreen() const
 
 TArray<FGameXXKMVPCommandDescriptor> UGameXXKPlayableRootWidget::BuildVisibleCommands() const
 {
-	TArray<FGameXXKMVPCommandDescriptor> Commands;
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem)
-	{
-		return Commands;
-	}
-
-	using namespace GameXXKPlayableRootCommands;
-	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
-	switch (State.Screen)
-	{
-	case EGameXXKScreen::MainMenu:
-		AddCommand(Commands, StartGame, TEXT("Start / Continue"), true);
-		break;
-	case EGameXXKScreen::WorldMap:
-		AddCommand(Commands, SelectQingshan, TEXT("Qingshan Town"), State.UnlockedRegions.Contains(UGameXXKMVPRules::RegionQingshan()));
-		AddCommand(Commands, SelectTanjiang, TEXT("Tanjiang Town"), State.UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));
-		break;
-	default:
-		break;
-	}
-
-	return Commands;
+	return GameXXKMVPCommandRouter::BuildVisibleCommands(ResolveMVPSubsystem());
 }
 
 bool UGameXXKPlayableRootWidget::HasVisibleCommand(FName CommandName, bool bExpectedEnabled) const
@@ -87,22 +58,7 @@ bool UGameXXKPlayableRootWidget::ExecuteVisibleCommand(FName CommandName)
 		return false;
 	}
 
-	using namespace GameXXKPlayableRootCommands;
-	bool bSucceeded = false;
-	if (CommandName == StartGame)
-	{
-		bSucceeded = StartGameSlotNameOverride.IsEmpty()
-			? Subsystem->StartGame()
-			: Subsystem->StartGameFromSlot(StartGameSlotNameOverride, StartGameUserIndexOverride);
-	}
-	else if (CommandName == SelectQingshan)
-	{
-		bSucceeded = Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan());
-	}
-	else if (CommandName == SelectTanjiang)
-	{
-		bSucceeded = Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionTanjiang());
-	}
+	const bool bSucceeded = GameXXKMVPCommandRouter::ExecuteVisibleCommand(Subsystem, CommandName, StartGameSlotNameOverride, StartGameUserIndexOverride, true);
 
 	RefreshFromState();
 	return bSucceeded;
@@ -119,33 +75,55 @@ void UGameXXKPlayableRootWidget::RefreshFromState()
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (StatusText)
 	{
-		const EGameXXKScreen Screen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
-		const FString ScreenLabel = Screen == EGameXXKScreen::MainMenu ? TEXT("Main Menu")
-			: Screen == EGameXXKScreen::WorldMap ? TEXT("World Map")
-			: Screen == EGameXXKScreen::Town ? TEXT("Town")
-			: TEXT("GameXXK MVP");
-		StatusText->SetText(FText::FromString(ScreenLabel));
+		StatusText->SetText(GameXXKMVPCommandRouter::BuildStatusText(Subsystem));
 	}
 
-	using namespace GameXXKPlayableRootCommands;
-	ConfigureCommandButton(StartButton, StartButtonLabel, StartGame, FText::FromString(TEXT("Start / Continue")));
-	ConfigureCommandButton(QingshanButton, QingshanButtonLabel, SelectQingshan, FText::FromString(TEXT("Qingshan Town")));
-	ConfigureCommandButton(TanjiangButton, TanjiangButtonLabel, SelectTanjiang, FText::FromString(TEXT("Tanjiang Town")));
+	const TArray<FGameXXKMVPCommandDescriptor> Commands = BuildVisibleCommands();
+	for (int32 ButtonIndex = 0; ButtonIndex < CommandButtons.Num(); ++ButtonIndex)
+	{
+		const FGameXXKMVPCommandDescriptor* Command = Commands.IsValidIndex(ButtonIndex) ? &Commands[ButtonIndex] : nullptr;
+		ConfigureCommandButton(ButtonIndex, Command);
+	}
 }
 
-void UGameXXKPlayableRootWidget::HandleStartClicked()
+void UGameXXKPlayableRootWidget::HandleCommandButton0Clicked()
 {
-	ExecuteVisibleCommand(GameXXKPlayableRootCommands::StartGame);
+	ExecuteCommandButtonAtIndex(0);
 }
 
-void UGameXXKPlayableRootWidget::HandleQingshanClicked()
+void UGameXXKPlayableRootWidget::HandleCommandButton1Clicked()
 {
-	ExecuteVisibleCommand(GameXXKPlayableRootCommands::SelectQingshan);
+	ExecuteCommandButtonAtIndex(1);
 }
 
-void UGameXXKPlayableRootWidget::HandleTanjiangClicked()
+void UGameXXKPlayableRootWidget::HandleCommandButton2Clicked()
 {
-	ExecuteVisibleCommand(GameXXKPlayableRootCommands::SelectTanjiang);
+	ExecuteCommandButtonAtIndex(2);
+}
+
+void UGameXXKPlayableRootWidget::HandleCommandButton3Clicked()
+{
+	ExecuteCommandButtonAtIndex(3);
+}
+
+void UGameXXKPlayableRootWidget::HandleCommandButton4Clicked()
+{
+	ExecuteCommandButtonAtIndex(4);
+}
+
+void UGameXXKPlayableRootWidget::HandleCommandButton5Clicked()
+{
+	ExecuteCommandButtonAtIndex(5);
+}
+
+void UGameXXKPlayableRootWidget::HandleCommandButton6Clicked()
+{
+	ExecuteCommandButtonAtIndex(6);
+}
+
+void UGameXXKPlayableRootWidget::HandleCommandButton7Clicked()
+{
+	ExecuteCommandButtonAtIndex(7);
 }
 
 void UGameXXKPlayableRootWidget::BuildProgrammaticLayout()
@@ -161,42 +139,92 @@ void UGameXXKPlayableRootWidget::BuildProgrammaticLayout()
 	StatusText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("StatusText"));
 	RootBox->AddChildToVerticalBox(StatusText);
 
-	StartButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("StartButton"));
-	StartButtonLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("StartButtonLabel"));
-	StartButton->AddChild(StartButtonLabel);
-	StartButton->OnClicked.AddDynamic(this, &UGameXXKPlayableRootWidget::HandleStartClicked);
-	RootBox->AddChildToVerticalBox(StartButton);
+	CommandButtons.Reset();
+	CommandButtonLabels.Reset();
+	CommandButtonNames.Reset();
+	for (int32 ButtonIndex = 0; ButtonIndex < GameXXKPlayableRootCommands::MaxCommandButtonCount; ++ButtonIndex)
+	{
+		UButton* CommandButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), *FString::Printf(TEXT("CommandButton%d"), ButtonIndex));
+		UTextBlock* CommandButtonLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("CommandButtonLabel%d"), ButtonIndex));
+		CommandButton->AddChild(CommandButtonLabel);
+		BindCommandButton(CommandButton, ButtonIndex);
+		RootBox->AddChildToVerticalBox(CommandButton);
 
-	QingshanButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("QingshanButton"));
-	QingshanButtonLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("QingshanButtonLabel"));
-	QingshanButton->AddChild(QingshanButtonLabel);
-	QingshanButton->OnClicked.AddDynamic(this, &UGameXXKPlayableRootWidget::HandleQingshanClicked);
-	RootBox->AddChildToVerticalBox(QingshanButton);
-
-	TanjiangButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("TanjiangButton"));
-	TanjiangButtonLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("TanjiangButtonLabel"));
-	TanjiangButton->AddChild(TanjiangButtonLabel);
-	TanjiangButton->OnClicked.AddDynamic(this, &UGameXXKPlayableRootWidget::HandleTanjiangClicked);
-	RootBox->AddChildToVerticalBox(TanjiangButton);
+		CommandButtons.Add(CommandButton);
+		CommandButtonLabels.Add(CommandButtonLabel);
+		CommandButtonNames.Add(NAME_None);
+	}
 }
 
-void UGameXXKPlayableRootWidget::ConfigureCommandButton(UButton* Button, UTextBlock* Label, FName CommandName, const FText& CommandLabel)
+void UGameXXKPlayableRootWidget::ConfigureCommandButton(int32 ButtonIndex, const FGameXXKMVPCommandDescriptor* Command)
+{
+	if (!CommandButtons.IsValidIndex(ButtonIndex))
+	{
+		return;
+	}
+
+	UButton* Button = CommandButtons[ButtonIndex];
+	UTextBlock* Label = CommandButtonLabels.IsValidIndex(ButtonIndex) ? CommandButtonLabels[ButtonIndex].Get() : nullptr;
+	if (!Button)
+	{
+		return;
+	}
+
+	Button->SetVisibility(Command ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	Button->SetIsEnabled(Command && Command->bEnabled);
+	if (CommandButtonNames.IsValidIndex(ButtonIndex))
+	{
+		CommandButtonNames[ButtonIndex] = Command ? Command->CommandName : NAME_None;
+	}
+	if (Label)
+	{
+		Label->SetText(Command ? Command->Label : FText::GetEmpty());
+	}
+}
+
+void UGameXXKPlayableRootWidget::ExecuteCommandButtonAtIndex(int32 ButtonIndex)
+{
+	if (!CommandButtonNames.IsValidIndex(ButtonIndex) || CommandButtonNames[ButtonIndex].IsNone())
+	{
+		return;
+	}
+	ExecuteVisibleCommand(CommandButtonNames[ButtonIndex]);
+}
+
+void UGameXXKPlayableRootWidget::BindCommandButton(UButton* Button, int32 ButtonIndex)
 {
 	if (!Button)
 	{
 		return;
 	}
 
-	const TArray<FGameXXKMVPCommandDescriptor> Commands = BuildVisibleCommands();
-	const FGameXXKMVPCommandDescriptor* MatchingCommand = Commands.FindByPredicate([CommandName](const FGameXXKMVPCommandDescriptor& Command)
+	switch (ButtonIndex)
 	{
-		return Command.CommandName == CommandName;
-	});
-
-	Button->SetVisibility(MatchingCommand ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	Button->SetIsEnabled(MatchingCommand && MatchingCommand->bEnabled);
-	if (Label)
-	{
-		Label->SetText(MatchingCommand ? MatchingCommand->Label : CommandLabel);
+	case 0:
+		Button->OnClicked.AddDynamic(this, &UGameXXKPlayableRootWidget::HandleCommandButton0Clicked);
+		break;
+	case 1:
+		Button->OnClicked.AddDynamic(this, &UGameXXKPlayableRootWidget::HandleCommandButton1Clicked);
+		break;
+	case 2:
+		Button->OnClicked.AddDynamic(this, &UGameXXKPlayableRootWidget::HandleCommandButton2Clicked);
+		break;
+	case 3:
+		Button->OnClicked.AddDynamic(this, &UGameXXKPlayableRootWidget::HandleCommandButton3Clicked);
+		break;
+	case 4:
+		Button->OnClicked.AddDynamic(this, &UGameXXKPlayableRootWidget::HandleCommandButton4Clicked);
+		break;
+	case 5:
+		Button->OnClicked.AddDynamic(this, &UGameXXKPlayableRootWidget::HandleCommandButton5Clicked);
+		break;
+	case 6:
+		Button->OnClicked.AddDynamic(this, &UGameXXKPlayableRootWidget::HandleCommandButton6Clicked);
+		break;
+	case 7:
+		Button->OnClicked.AddDynamic(this, &UGameXXKPlayableRootWidget::HandleCommandButton7Clicked);
+		break;
+	default:
+		break;
 	}
 }

@@ -274,6 +274,11 @@
           <p>新增 <code>UGameXXKPlayableRootWidget</code>，由 <code>AGameXXKMVPHUD</code> 在 Play 模式创建并加入视口；根控件提供 Start/Continue、青山驿站和潭江渡口按钮，直接调用 MVP Subsystem 而不是 Canvas HUD 命令。自动化 <code>GameXXK.MVP.PIE.MainMenuContinueWorldMap</code> 覆盖真实 UMG 入口、未解锁区域禁用、Start 进入大地图和点击青山进入城镇。</p>
         </article>
         <article class="entry">
+          <time>2026-07-02</time>
+          <h3>UMG 根控件跑完整 MVP 循环</h3>
+          <p>新增 <code>GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop</code>，把真实 UMG 根控件从主菜单/大地图扩展到城镇接任务、补给交易、小地图节点、战斗失败回城、补给重试、事件、营地、Boss 通关、潭江解锁和存档恢复；同时抽出 <code>GameXXKMVPCommandRouter</code>，让 Canvas HUD 与 UMG 共享同一套可见命令和执行逻辑，减少演示入口分叉。</p>
+        </article>
+        <article class="entry">
           <time>2026-07-01</time>
           <h3>补齐 Play 模式原生可试玩入口</h3>
           <p>新增 MVP GameMode、PlayerController 与可点击 HUD，把主菜单、大地图选城镇、城镇任务/交易/补给、小地图节点、战斗胜负和 Boss 解锁串成编辑器 Play 模式可操作闭环；试玩脚本新增 PlayableShell 自动化覆盖。</p>
@@ -355,17 +360,17 @@
           <tr>
             <td>城镇</td>
             <td>青山驿站可走动，NPC 可对话，商人可交易。</td>
-            <td><span class="tag blue">基础地形已装配，8 向角色 Shell 已测</span></td>
+            <td><span class="tag blue">地形与角色已装配，真实 UMG 命令链已测</span></td>
           </tr>
           <tr>
             <td>小地图</td>
             <td>固定 seed 节点图，包含普通战斗、营地、事件、Boss。</td>
-            <td><span class="tag blue">Widget Base 已测，蓝图待装配</span></td>
+            <td><span class="tag blue">真实 UMG 命令链已测，表现布局待美化</span></td>
           </tr>
           <tr>
             <td>战斗</td>
             <td>速度排序、普攻、技能、防御、道具、胜败结算。</td>
-            <td><span class="tag blue">Widget Base 已测，战斗蓝图待装配</span></td>
+            <td><span class="tag blue">真实 UMG 命令链已测，战斗表现待美化</span></td>
           </tr>
           <tr>
             <td>插件环境</td>
