@@ -125,8 +125,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKMVPPlayableGameModeTest::RunTest(const FString& Parameters)
 {
 	AGameXXKMVPGameMode* GameMode = NewObject<AGameXXKMVPGameMode>();
+	AGameXXKMVPPlayerController* PlayerController = NewObject<AGameXXKMVPPlayerController>();
 
 	TestTrue(TEXT("default player controller is MVP controller"), GameMode->PlayerControllerClass.Get() == AGameXXKMVPPlayerController::StaticClass());
+	TestTrue(TEXT("MVP controller shows mouse cursor for clickable Start"), PlayerController->bShowMouseCursor);
+	TestTrue(TEXT("MVP controller enables HUD hitbox click events for Start"), PlayerController->bEnableClickEvents);
+	TestTrue(TEXT("MVP controller enables hover hit testing for visible commands"), PlayerController->bEnableMouseOverEvents);
 	TestTrue(TEXT("default HUD is MVP HUD"), GameMode->HUDClass.Get() == AGameXXKMVPHUD::StaticClass());
 	const FString HeroCharacterGeneratedClassPath = TEXT("/Game/GameXXK/Characters/Hero/BP_HeroCharacter.BP_HeroCharacter_C");
 	TestNotNull(TEXT("default pawn class is configured"), GameMode->DefaultPawnClass.Get());

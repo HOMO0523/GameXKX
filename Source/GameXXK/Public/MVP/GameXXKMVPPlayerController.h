@@ -10,6 +10,8 @@ class GAMEXXK_API AGameXXKMVPPlayerController : public APlayerController
 	GENERATED_BODY()
 
 public:
+	AGameXXKMVPPlayerController();
+
 	virtual void BeginPlay() override;
 	virtual void FlushPressedKeys() override;
 };

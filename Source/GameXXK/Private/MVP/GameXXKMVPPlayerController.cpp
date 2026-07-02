@@ -3,11 +3,20 @@
 #include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKTownPlayerPawn.h"
 
+AGameXXKMVPPlayerController::AGameXXKMVPPlayerController()
+{
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
+}
+
 void AGameXXKMVPPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
 	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
 	FInputModeGameAndUI InputMode;
 	InputMode.SetHideCursorDuringCapture(false);
 	SetInputMode(InputMode);
