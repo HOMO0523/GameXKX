@@ -43,7 +43,7 @@ CHECKLIST = [
     "StartGame and load-or-create APIs load saved slots and open world map",
     "SaveGame load-or-create opens world map and missing slots create new state",
     "inventory and equipment details are intentionally not persisted",
-    "town player shell binds WASD, arrow keys, and F interaction",
+    "editable BP_HeroCharacter shell binds WASD, arrow keys, and F interaction",
     "town NPC overlap focuses F interaction for quest acceptance, follower activation, and merchant buying",
     "town quest, merchant, and follower NPC roles are test-covered",
     "town exit F interaction blocks before quest and opens the dungeon after quest acceptance",
@@ -52,11 +52,11 @@ CHECKLIST = [
     "real UMG playable root widget drives Start/Continue, world map, town quest/trade, dungeon nodes, battle failure/retry, Boss clear, Tanjiang unlock, and autosave restore",
     "playable HUD commands drive start, region clicks, town actions, dungeon nodes, battle, Boss clear, and Tanjiang unlock",
     "playable HUD autosaves route progress so Start and Continue can restore cleared unlocks",
-    "default GameMode wires MVP PlayerController, clickable HUD, and Paper2D town pawn for Play mode",
+    "default GameMode wires MVP PlayerController, clickable HUD, and editable BP_HeroCharacter for Play mode",
     "Qingshan town map has fixed Landscape terrain, boundaries, PlayerStart, lighting, no Water actors, and MVP GameMode override",
     "selected hero, follower, and merchant walk sprite sheets are stored in project content and imported as Texture2D assets",
-    "hero deep-blue high-ponytail sheet expands into 8-direction Paper2D walk flipbooks and the town pawn loads South walk by default",
-    "town pawn switches hero Paper2D walk flipbooks across 8 directions from WASD, arrow-key, and axis movement intent",
+    "hero deep-blue high-ponytail sheet expands into 8-direction Paper2D walk flipbooks and BP_HeroCharacter loads South walk by default",
+    "BP_HeroCharacter switches hero Paper2D walk flipbooks across 8 directions from WASD, arrow-key, and axis movement intent",
     "hero PaperZD flipbook animation source, AnimBP, and 8-direction directional walk sequence reference the Paper2D flipbooks",
 ]
 

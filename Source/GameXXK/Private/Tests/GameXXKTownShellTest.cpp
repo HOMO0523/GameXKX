@@ -50,7 +50,8 @@ namespace
 		return static_cast<int32>(Direction);
 	}
 
-	bool ExpectTownFacing(FAutomationTestBase& Test, AGameXXKTownPlayerPawn* Player, EGameXXKTownFacingDirection ExpectedDirection, const TCHAR* Context)
+	template <typename TTownPlayer>
+	bool ExpectTownFacing(FAutomationTestBase& Test, TTownPlayer* Player, EGameXXKTownFacingDirection ExpectedDirection, const TCHAR* Context)
 	{
 		const int64 ActualDirection = Player ? static_cast<int64>(Player->GetTownFacingDirection()) : INDEX_NONE;
 		return Test.TestEqual(FString::Printf(TEXT("%s facing direction"), Context), ActualDirection, static_cast<int64>(ExpectedDirection));
@@ -131,6 +132,43 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("hero has Paper2D visual shell"), HeroCharacter->HasTownVisual());
 	TestEqual(TEXT("hero default town flipbook path points at hero South walk"), HeroCharacter->GetDefaultTownFlipbookPath().ToString(), FString(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South")));
 	TestEqual(TEXT("hero input binds movement press/release keys, movement axes, plus F"), HeroCharacter->CountTownInputBindingsForTest(), 19);
+
+	UPaperFlipbook* HeroEastFlipbook = NewObject<UPaperFlipbook>(HeroCharacter);
+	UPaperFlipbook* HeroNorthFlipbook = NewObject<UPaperFlipbook>(HeroCharacter);
+	HeroCharacter->SetTownDirectionFlipbookForTest(TownFacingEast, HeroEastFlipbook);
+	HeroCharacter->SetTownDirectionFlipbookForTest(TownFacingNorth, HeroNorthFlipbook);
+	HeroCharacter->MoveRightPressed();
+	ExpectTownFacing(*this, HeroCharacter, TownFacingEast, TEXT("hero D pressed"));
+	TestEqual(TEXT("hero D pressed applies East flipbook"), HeroCharacter->GetCurrentTownFlipbook(), HeroEastFlipbook);
+	HeroCharacter->MoveRightReleased();
+	HeroCharacter->MoveVertical(1.0f);
+	ExpectTownFacing(*this, HeroCharacter, TownFacingNorth, TEXT("hero positive vertical axis"));
+	TestEqual(TEXT("hero positive vertical axis applies North flipbook"), HeroCharacter->GetCurrentTownFlipbook(), HeroNorthFlipbook);
+	HeroCharacter->ResetTownMovementInput();
+
+	const FString HeroInteractionAutosaveSlot = UGameXXKMVPSubsystem::GetDefaultSaveSlotName();
+	UGameplayStatics::DeleteGameInSlot(HeroInteractionAutosaveSlot, 0);
+	UGameInstance* HeroInteractionGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* HeroInteractionSubsystem = NewObject<UGameXXKMVPSubsystem>(HeroInteractionGameInstance);
+	HeroInteractionSubsystem->OpenWorldMap();
+	HeroInteractionSubsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan());
+	AGameXXKTownNpcActor* HeroQuestNpc = NewObject<AGameXXKTownNpcActor>();
+	HeroQuestNpc->SetNpcRole(EGameXXKTownNpcRole::Quest);
+	HeroQuestNpc->SetMVPSubsystemForTest(HeroInteractionSubsystem);
+	HeroCharacter->GetInteractionComponent()->SetFocusedActorForTest(HeroQuestNpc);
+	HeroCharacter->Interact();
+	TestEqual(TEXT("hero F on quest NPC accepts quest"), HeroInteractionSubsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
+	TestTrue(TEXT("hero F on quest NPC starts follower"), HeroQuestNpc->IsFollowerActive());
+	TestTrue(TEXT("hero F quest follower targets hero character"), HeroQuestNpc->GetFollowTarget() == HeroCharacter);
+	TestTrue(TEXT("hero F quest NPC records successful interaction"), HeroQuestNpc->WasLastInteractionSuccessful());
+	AGameXXKTownExitActor* HeroTownExit = NewObject<AGameXXKTownExitActor>();
+	HeroTownExit->SetMVPSubsystemForTest(HeroInteractionSubsystem);
+	HeroCharacter->GetInteractionComponent()->SetFocusedActorForTest(HeroTownExit);
+	HeroCharacter->Interact();
+	TestEqual(TEXT("hero F accepted quest exit opens dungeon map"), HeroInteractionSubsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestTrue(TEXT("hero F accepted quest exit starts dungeon"), HeroInteractionSubsystem->GetRuntimeState().bDungeonActive);
+	TestTrue(TEXT("hero F town exit records successful interaction"), HeroTownExit->WasLastInteractionSuccessful());
+	UGameplayStatics::DeleteGameInSlot(HeroInteractionAutosaveSlot, 0);
 
 	TestTrue(TEXT("player has Paper2D visual shell"), Player->HasTownVisual());
 	TestEqual(TEXT("player default town flipbook path points at hero South walk"), Player->GetDefaultTownFlipbookPath().ToString(), FString(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South")));

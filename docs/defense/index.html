@@ -251,12 +251,12 @@
         <article class="entry">
           <time>2026-07-02</time>
           <h3>主角 8 向 Paper2D/PaperZD 行走资产</h3>
-          <p>分析深蓝高马尾 1024 行走图后，按 6 列 5 行切分，并用确定性水平镜像展开为 8 向 sheet；通过 UE MCP 创建 48 个 <code>PaperSprite</code>、8 个 <code>PaperFlipbook</code>、<code>AS_Hero_Flipbook</code>、<code>ABP_Hero_PaperZD</code> 和 <code>PZD_Hero_Walk_8Dir</code> directional 序列，城镇 <code>AGameXXKTownPlayerPawn</code> 默认加载 <code>FB_Hero_Walk_South</code>，确保 Play 模式进入城镇时主角有可见 Paper2D 表现，并给后续 PaperZD 方向动画接入留下资产链路。</p>
+          <p>分析深蓝高马尾 1024 行走图后，按 6 列 5 行切分，并用确定性水平镜像展开为 8 向 sheet；通过 UE MCP 创建 48 个 <code>PaperSprite</code>、8 个 <code>PaperFlipbook</code>、<code>AS_Hero_Flipbook</code>、<code>ABP_Hero_PaperZD</code> 和 <code>PZD_Hero_Walk_8Dir</code> directional 序列，城镇可编辑 <code>BP_HeroCharacter</code> 默认加载 <code>FB_Hero_Walk_South</code>，确保 Play 模式进入城镇时主角有可见 Paper2D 表现，并给后续 PaperZD 方向动画接入留下资产链路。</p>
         </article>
         <article class="entry">
           <time>2026-07-02</time>
           <h3>城镇主角 8 向行走表现切换</h3>
-          <p>为 <code>AGameXXKTownPlayerPawn</code> 增加 8 向朝向状态和方向 Flipbook 表，WASD/方向键/轴输入按下、组合与释放时会切换到对应 <code>FB_Hero_Walk_North</code>、<code>East</code>、<code>SouthWest</code> 等资源；停止移动后保留最后朝向，混用 WASD 与方向键时单个按键释放不会丢失仍按住的方向，自动化覆盖按键组合、轴输入和资源路径。</p>
+          <p>为可编辑 <code>BP_HeroCharacter</code> 保留 8 向朝向状态和方向 Flipbook 表，WASD/方向键/轴输入按下、组合与释放时会切换到对应 <code>FB_Hero_Walk_North</code>、<code>East</code>、<code>SouthWest</code> 等资源；停止移动后保留最后朝向，混用 WASD 与方向键时单个按键释放不会丢失仍按住的方向，自动化覆盖按键组合、轴输入和资源路径。</p>
         </article>
         <article class="entry">
           <time>2026-07-02</time>
@@ -331,7 +331,7 @@
         <article class="entry">
           <time>2026-07-01</time>
           <h3>城镇交互 Shell</h3>
-          <p>新增 <code>AGameXXKTownPlayerPawn</code>、<code>UGameXXKInteractionComponent</code>、<code>AGameXXKTownNpcActor</code>，验证 WASD/方向键自由移动、<code>F</code> 交互、任务 NPC、商人 NPC 和跟随 NPC 的 C++ 行为边界。</p>
+          <p>新增并验证可编辑 <code>BP_HeroCharacter</code>、<code>UGameXXKInteractionComponent</code>、<code>AGameXXKTownNpcActor</code>，覆盖 WASD/方向键自由移动、<code>F</code> 交互、任务 NPC、商人 NPC 和跟随 NPC 的 C++ 行为边界。</p>
         </article>
         <article class="entry">
           <time>2026-07-01</time>

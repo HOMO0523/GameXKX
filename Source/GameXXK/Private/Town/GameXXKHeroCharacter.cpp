@@ -9,19 +9,19 @@
 
 namespace
 {
-	constexpr float TownMovementAxisDeadZone = 0.20f;
+	constexpr float HeroTownMovementAxisDeadZone = 0.20f;
 
-	FSoftObjectPath MakeHeroWalkFlipbookPath(const TCHAR* DirectionName)
+	FSoftObjectPath MakeHeroCharacterWalkFlipbookPath(const TCHAR* DirectionName)
 	{
 		return FSoftObjectPath(FString::Printf(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_%s.FB_Hero_Walk_%s"), DirectionName, DirectionName));
 	}
 
-	float NormalizeTownMovementAxis(float Value)
+	float NormalizeHeroTownMovementAxis(float Value)
 	{
-		return FMath::Abs(Value) < TownMovementAxisDeadZone ? 0.0f : FMath::Clamp(Value, -1.0f, 1.0f);
+		return FMath::Abs(Value) < HeroTownMovementAxisDeadZone ? 0.0f : FMath::Clamp(Value, -1.0f, 1.0f);
 	}
 
-	EGameXXKTownFacingDirection ResolveTownFacingDirection(float Horizontal, float Vertical, EGameXXKTownFacingDirection Fallback)
+	EGameXXKTownFacingDirection ResolveHeroTownFacingDirection(float Horizontal, float Vertical, EGameXXKTownFacingDirection Fallback)
 	{
 		const int32 HorizontalSign = FMath::IsNearlyZero(Horizontal) ? 0 : (Horizontal > 0.0f ? 1 : -1);
 		const int32 VerticalSign = FMath::IsNearlyZero(Vertical) ? 0 : (Vertical > 0.0f ? 1 : -1);
@@ -311,19 +311,19 @@ UPaperFlipbook* AGameXXKHeroCharacter::GetTownFlipbookForDirection(EGameXXKTownF
 void AGameXXKHeroCharacter::InitializeTownDirectionFlipbooks()
 {
 	TownDirectionFlipbookAssets.Reset();
-	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::South, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("South"))));
-	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::SouthWest, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("SouthWest"))));
-	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::West, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("West"))));
-	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::NorthWest, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("NorthWest"))));
-	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::North, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("North"))));
-	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::NorthEast, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("NorthEast"))));
-	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::East, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("East"))));
-	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::SouthEast, TSoftObjectPtr<UPaperFlipbook>(MakeHeroWalkFlipbookPath(TEXT("SouthEast"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::South, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("South"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::SouthWest, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("SouthWest"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::West, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("West"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::NorthWest, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("NorthWest"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::North, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("North"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::NorthEast, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("NorthEast"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::East, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("East"))));
+	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::SouthEast, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("SouthEast"))));
 }
 
 void AGameXXKHeroCharacter::UpdateTownFacingFromIntent(float Horizontal, float Vertical)
 {
-	const EGameXXKTownFacingDirection NewDirection = ResolveTownFacingDirection(Horizontal, Vertical, CurrentTownFacingDirection);
+	const EGameXXKTownFacingDirection NewDirection = ResolveHeroTownFacingDirection(Horizontal, Vertical, CurrentTownFacingDirection);
 	if (NewDirection != CurrentTownFacingDirection)
 	{
 		CurrentTownFacingDirection = NewDirection;
@@ -367,13 +367,13 @@ float AGameXXKHeroCharacter::GetKeyboardVerticalIntent() const
 
 void AGameXXKHeroCharacter::MoveHorizontal(float Value)
 {
-	AxisHorizontalIntent = NormalizeTownMovementAxis(Value);
+	AxisHorizontalIntent = NormalizeHeroTownMovementAxis(Value);
 	RefreshTownMovementIntent();
 }
 
 void AGameXXKHeroCharacter::MoveVertical(float Value)
 {
-	AxisVerticalIntent = NormalizeTownMovementAxis(Value);
+	AxisVerticalIntent = NormalizeHeroTownMovementAxis(Value);
 	RefreshTownMovementIntent();
 }
 

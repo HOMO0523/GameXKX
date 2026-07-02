@@ -78,7 +78,7 @@ Result: `ok: true`; required toolsets were present, including `gamexxk_mcp_tdd_t
 python scripts\gamexxk_character_visual_check.py --port 18765 --report Saved\HarnessReports\playable-root-widget-character-visual-check.json
 ```
 
-Result: `ok: true`; validated the 8-direction expanded hero walk sheet, 48 sprites, 8 flipbooks, and town pawn visual configuration.
+Result: `ok: true`; validated the 8-direction expanded hero walk sheet, 48 sprites, 8 flipbooks, and editable `BP_HeroCharacter` visual configuration.
 
 ```powershell
 python scripts\gamexxk_paperzd_character_check.py --port 18765 --report Saved\HarnessReports\playable-root-widget-paperzd-character-check.json
