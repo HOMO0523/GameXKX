@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -35,6 +36,7 @@ CHECKLIST = [
     "normal battle grants XP/gold/items",
     "dungeon failure returns to town and keeps earned XP/gold",
     "used consumables stay deducted after failure",
+    "post-failure resupply buys and uses healing powder before retry",
     "retry reaches event, camp, and Boss nodes",
     "Boss victory completes quest and unlocks Tanjiang",
     "true SaveGame slot roundtrip persists unlocks, quest, level, XP, and gold",
@@ -57,6 +59,90 @@ CHECKLIST = [
     "town pawn switches hero Paper2D walk flipbooks across 8 directions from WASD, arrow-key, and axis movement intent",
     "hero PaperZD flipbook animation source, AnimBP, and 8-direction directional walk sequence reference the Paper2D flipbooks",
 ]
+
+FLOW_EVIDENCE = [
+    {
+        "requirement": "main menu opens world map",
+        "required_successful_tests": [
+            "GameXXK.MVP.FullFlow",
+            "GameXXK.MVP.PIE.MainMenuContinueWorldMap",
+            "GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop",
+        ],
+    },
+    {
+        "requirement": "world map enters unlocked town and blocks locked region",
+        "required_successful_tests": [
+            "GameXXK.MVP.FullFlow",
+            "GameXXK.MVP.PIE.MainMenuContinueWorldMap",
+            "GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop",
+        ],
+    },
+    {
+        "requirement": "quest acceptance joins follower and unlocks dungeon gate",
+        "required_successful_tests": [
+            "GameXXK.MVP.FullFlow",
+            "GameXXK.MVP.Town.ShellInputInteractionFollower",
+            "GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop",
+        ],
+    },
+    {
+        "requirement": "trading changes gold and supplies",
+        "required_successful_tests": [
+            "GameXXK.MVP.FullFlow",
+            "GameXXK.MVP.PlayableShell.HUDCommandsDriveFullLoop",
+            "GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop",
+        ],
+    },
+    {
+        "requirement": "accepted quest enters dungeon/small map and battle",
+        "required_successful_tests": [
+            "GameXXK.MVP.FullFlow",
+            "GameXXK.MVP.PlayableShell.HUDCommandsDriveFullLoop",
+            "GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop",
+        ],
+    },
+    {
+        "requirement": "battle failure returns to town and preserves progress",
+        "required_successful_tests": [
+            "GameXXK.MVP.FullFlow",
+            "GameXXK.MVP.PlayableShell.HUDCommandsDriveFullLoop",
+            "GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop",
+        ],
+    },
+    {
+        "requirement": "post-failure resupply and retry",
+        "required_successful_tests": [
+            "GameXXK.MVP.PIE.PlayableRootPostFailureResupplyRetry",
+        ],
+    },
+    {
+        "requirement": "retry clears event, camp, and Boss",
+        "required_successful_tests": [
+            "GameXXK.MVP.FullFlow",
+            "GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop",
+        ],
+    },
+    {
+        "requirement": "Boss clear unlocks Tanjiang",
+        "required_successful_tests": [
+            "GameXXK.MVP.FullFlow",
+            "GameXXK.MVP.PlayableShell.HUDCommandsDriveFullLoop",
+            "GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop",
+        ],
+    },
+    {
+        "requirement": "save restore keeps completed route unlocks",
+        "required_successful_tests": [
+            "GameXXK.MVP.SaveGame.SlotRoundTrip",
+            "GameXXK.MVP.PlayableShell.HUDCommandsDriveFullLoop",
+            "GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop",
+        ],
+    },
+]
+
+TEST_RESULT_RE = re.compile(
+    r"Test Completed\. Result=\{(?P<result>[^}]+)\} Name=\{(?P<name>[^}]+)\} Path=\{(?P<path>[^}]+)\}"
+)
 
 
 def find_ue_root() -> Path:
@@ -124,6 +210,29 @@ def run_automation(ue_root: Path, timeout: int) -> tuple[int, str]:
     )
 
 
+def parse_automation_results(output: str) -> list[dict[str, str]]:
+    return [match.groupdict() for match in TEST_RESULT_RE.finditer(output)]
+
+
+def evaluate_flow_coverage(test_results: list[dict[str, str]]) -> dict[str, object]:
+    successful_paths = {result["path"] for result in test_results if result["result"] == "Success"}
+    missing = []
+    for item in FLOW_EVIDENCE:
+        missing_tests = [test for test in item["required_successful_tests"] if test not in successful_paths]
+        if missing_tests:
+            missing.append(
+                {
+                    "requirement": item["requirement"],
+                    "missing_successful_tests": missing_tests,
+                }
+            )
+    return {
+        "ok": not missing,
+        "evidence_count": len(FLOW_EVIDENCE),
+        "missing": missing,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-build", action="store_true", help="Run automation without compiling first.")
@@ -137,6 +246,7 @@ def main() -> int:
         "project": str(UPROJECT),
         "test_filter": TEST_FILTER,
         "checklist": CHECKLIST,
+        "flow_evidence": FLOW_EVIDENCE,
         "steps": [],
     }
 
@@ -152,9 +262,13 @@ def main() -> int:
                 return 1
 
         code, output = run_automation(ue_root, args.test_timeout)
+        automation_results = parse_automation_results(output)
+        flow_coverage = evaluate_flow_coverage(automation_results)
+        report["automation_tests"] = automation_results
+        report["flow_coverage"] = flow_coverage
         report["steps"].append({"name": "automation", "exit_code": code, "tail": output[-8000:]})
         failed_markers = ["Automation Test Failed", "Error:", "No automation tests matched"]
-        report["ok"] = code == 0 and not any(marker in output for marker in failed_markers)
+        report["ok"] = code == 0 and not any(marker in output for marker in failed_markers) and flow_coverage["ok"]
         if not report["ok"]:
             report["error"] = "automation playtest failed"
             return 1
@@ -165,7 +279,7 @@ def main() -> int:
     finally:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-        print(json.dumps(report, indent=2, ensure_ascii=False))
+        print(json.dumps(report, indent=2, ensure_ascii=True))
 
 
 if __name__ == "__main__":

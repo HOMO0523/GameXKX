@@ -279,6 +279,11 @@
           <p>新增 <code>GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop</code>，把真实 UMG 根控件从主菜单/大地图扩展到城镇接任务、补给交易、小地图节点、战斗失败回城、补给重试、事件、营地、Boss 通关、潭江解锁和存档恢复；同时抽出 <code>GameXXKMVPCommandRouter</code>，让 Canvas HUD 与 UMG 共享同一套可见命令和执行逻辑，减少演示入口分叉。</p>
         </article>
         <article class="entry">
+          <time>2026-07-02</time>
+          <h3>试玩脚本补齐失败后补给证据</h3>
+          <p>新增 <code>GameXXK.MVP.PIE.PlayableRootPostFailureResupplyRetry</code>，专门验证失败回城后真实执行买药、受伤用药、检查金币/库存/HP，再重试小地图并通关 Boss；<code>scripts/gamexxk_mvp_playtest.py</code> 新增 <code>flow_evidence</code> 和 <code>flow_coverage</code>，会解析 Unreal Automation 成功测试并在报告中标明每个关键流程由哪些自动化用例证明。</p>
+        </article>
+        <article class="entry">
           <time>2026-07-01</time>
           <h3>补齐 Play 模式原生可试玩入口</h3>
           <p>新增 MVP GameMode、PlayerController 与可点击 HUD，把主菜单、大地图选城镇、城镇任务/交易/补给、小地图节点、战斗胜负和 Boss 解锁串成编辑器 Play 模式可操作闭环；试玩脚本新增 PlayableShell 自动化覆盖。</p>

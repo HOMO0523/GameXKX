@@ -191,6 +191,17 @@ bool FGameXXKPlayableRootFullLoopTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("UMG root fails battle back to town"), RootWidget->ExecuteVisibleCommand(FName(TEXT("FailBattle"))));
 	TestEqual(TEXT("UMG root failure returns to town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 
+	const int32 GoldAfterFailure = Subsystem->GetRuntimeState().PlayerGold;
+	const int32 HealingPowderAfterFailure = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
+	TestTrue(TEXT("UMG root resupplies after failure"), RootWidget->ExecuteVisibleCommand(FName(TEXT("BuyHealingPowder"))));
+	TestEqual(TEXT("post-failure resupply spends gold"), Subsystem->GetRuntimeState().PlayerGold, GoldAfterFailure - 10);
+	TestEqual(TEXT("post-failure resupply adds healing powder"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), HealingPowderAfterFailure + 1);
+	Subsystem->GetMutableRuntimeState().PlayerHP = 40;
+	TestTrue(TEXT("UMG root exposes post-failure healing item"), RootWidget->HasVisibleCommand(FName(TEXT("UseHealingPowder")), true));
+	TestTrue(TEXT("UMG root uses post-failure resupply before retry"), RootWidget->ExecuteVisibleCommand(FName(TEXT("UseHealingPowder"))));
+	TestTrue(TEXT("post-failure healing restores HP before retry"), Subsystem->GetRuntimeState().PlayerHP > 40);
+	TestEqual(TEXT("post-failure healing consumes one powder"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), HealingPowderAfterFailure);
+
 	TestTrue(TEXT("UMG root retries dungeon"), RootWidget->ExecuteVisibleCommand(FName(TEXT("EnterDungeon"))));
 	TestTrue(TEXT("UMG root retries start node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectStart"))));
 	TestTrue(TEXT("UMG root retries battle node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectBattle"))));
@@ -220,6 +231,62 @@ bool FGameXXKPlayableRootFullLoopTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("reloaded UMG root enters restored Tanjiang town"), ReloadedRootWidget->ExecuteVisibleCommand(FName(TEXT("SelectTanjiang"))));
 	TestEqual(TEXT("reloaded UMG root opens restored next town"), ReloadedSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("reloaded UMG root selects restored Tanjiang region"), ReloadedSubsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionTanjiang());
+
+	UGameplayStatics::DeleteGameInSlot(PlayableRootTestSlot, PlayableRootUserIndex);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKPlayableRootPostFailureResupplyRetryTest,
+	"GameXXK.MVP.PIE.PlayableRootPostFailureResupplyRetry",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKPlayableRootPostFailureResupplyRetryTest::RunTest(const FString& Parameters)
+{
+	UGameplayStatics::DeleteGameInSlot(PlayableRootTestSlot, PlayableRootUserIndex);
+
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	UGameXXKPlayableRootWidget* RootWidget = NewObject<UGameXXKPlayableRootWidget>();
+	RootWidget->SetMVPSubsystem(Subsystem);
+	RootWidget->SetStartGameSlotForTest(PlayableRootTestSlot, PlayableRootUserIndex);
+
+	TestTrue(TEXT("post-failure test starts into world map"), RootWidget->ExecuteVisibleCommand(FName(TEXT("StartGame"))));
+	TestTrue(TEXT("post-failure test enters Qingshan town"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectQingshan"))));
+	TestTrue(TEXT("post-failure test accepts route quest"), RootWidget->ExecuteVisibleCommand(FName(TEXT("AcceptQuest"))));
+	TestTrue(TEXT("post-failure test follower joins before challenge"), Subsystem->GetRuntimeState().bFollowerJoined);
+	TestTrue(TEXT("post-failure test enters dungeon"), RootWidget->ExecuteVisibleCommand(FName(TEXT("EnterDungeon"))));
+	TestTrue(TEXT("post-failure test selects start node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectStart"))));
+	TestTrue(TEXT("post-failure test selects battle node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectBattle"))));
+	TestEqual(TEXT("post-failure test reaches battle"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
+	TestTrue(TEXT("post-failure test fails battle"), RootWidget->ExecuteVisibleCommand(FName(TEXT("FailBattle"))));
+	TestEqual(TEXT("post-failure test returns to town after failure"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestTrue(TEXT("post-failure test keeps follower after failure"), Subsystem->GetRuntimeState().bFollowerJoined);
+
+	const int32 GoldAfterFailure = Subsystem->GetRuntimeState().PlayerGold;
+	const int32 PowderAfterFailure = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
+	TestTrue(TEXT("post-failure test buys healing powder after return"), RootWidget->ExecuteVisibleCommand(FName(TEXT("BuyHealingPowder"))));
+	TestEqual(TEXT("post-failure test buy spends town gold"), Subsystem->GetRuntimeState().PlayerGold, GoldAfterFailure - 10);
+	TestEqual(TEXT("post-failure test buy adds one powder"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderAfterFailure + 1);
+
+	Subsystem->GetMutableRuntimeState().PlayerHP = 40;
+	TestTrue(TEXT("post-failure test exposes resupplied healing command"), RootWidget->HasVisibleCommand(FName(TEXT("UseHealingPowder")), true));
+	TestTrue(TEXT("post-failure test uses resupplied healing before retry"), RootWidget->ExecuteVisibleCommand(FName(TEXT("UseHealingPowder"))));
+	TestTrue(TEXT("post-failure test restores HP before retry"), Subsystem->GetRuntimeState().PlayerHP > 40);
+	TestEqual(TEXT("post-failure test consumes resupplied powder"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderAfterFailure);
+
+	TestTrue(TEXT("post-failure test retries dungeon"), RootWidget->ExecuteVisibleCommand(FName(TEXT("EnterDungeon"))));
+	TestTrue(TEXT("post-failure test retries start node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectStart"))));
+	TestTrue(TEXT("post-failure test retries battle node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectBattle"))));
+	TestEqual(TEXT("post-failure test reaches retry battle"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
+	TestTrue(TEXT("post-failure test wins retry battle"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveBattleVictory"))));
+	TestTrue(TEXT("post-failure test resolves retry event"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveEventGold"))));
+	TestTrue(TEXT("post-failure test resolves retry camp"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveCampHeal"))));
+	TestTrue(TEXT("post-failure test selects retry boss"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectBoss"))));
+	TestTrue(TEXT("post-failure test clears retry boss"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveBattleVictory"))));
+	TestEqual(TEXT("post-failure test boss clear returns to world map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestEqual(TEXT("post-failure test completes quest after retry"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Completed);
+	TestTrue(TEXT("post-failure test unlocks Tanjiang after retry"), Subsystem->GetRuntimeState().UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));
 
 	UGameplayStatics::DeleteGameInSlot(PlayableRootTestSlot, PlayableRootUserIndex);
 	return true;
