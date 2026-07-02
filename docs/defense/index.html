@@ -235,6 +235,76 @@
         </article>
         <article class="entry">
           <time>2026-07-01</time>
+          <h3>迁移 TestMap 小地图原型参考资源</h3>
+          <p>将 TestMap UE 5.4 的 <code>Content/1Game</code> 原型内容保留原包路径迁入本项目，作为杀戮尖塔式小地图 UI 与图标参考；项目默认地图、GameMode 与 MVP 规则仍由新写系统负责，不把该原型蓝图作为运行时权威数据来源。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>装配 GameXXK 内容目录和基础地图</h3>
+          <p>通过 UE MCP 项目脚本创建 <code>/Game/GameXXK</code> 下的 UI、Maps、Characters、Data、Sprites 目录，生成 <code>L_Main</code> 与 <code>L_QingshanInn</code> 两张基础地图，并将默认启动地图指向 <code>L_Main</code>。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-02</time>
+          <h3>角色源 Sprite Sheet 入库</h3>
+          <p>将已选的深蓝高马尾主角、蓝衣随从和青绿商人 8 方向行走 sheet 复制到 <code>Content/GameXXK/Sprites/Generated</code>，并通过 UE MCP 导入为 <code>Texture2D</code> 资产，避免运行时依赖聊天软件缓存路径。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-02</time>
+          <h3>主角 8 向 Paper2D/PaperZD 行走资产</h3>
+          <p>分析深蓝高马尾 1024 行走图后，按 6 列 5 行切分，并用确定性水平镜像展开为 8 向 sheet；通过 UE MCP 创建 48 个 <code>PaperSprite</code>、8 个 <code>PaperFlipbook</code>、<code>AS_Hero_Flipbook</code>、<code>ABP_Hero_PaperZD</code> 和 <code>PZD_Hero_Walk_8Dir</code> directional 序列，城镇 <code>AGameXXKTownPlayerPawn</code> 默认加载 <code>FB_Hero_Walk_South</code>，确保 Play 模式进入城镇时主角有可见 Paper2D 表现，并给后续 PaperZD 方向动画接入留下资产链路。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-02</time>
+          <h3>城镇主角 8 向行走表现切换</h3>
+          <p>为 <code>AGameXXKTownPlayerPawn</code> 增加 8 向朝向状态和方向 Flipbook 表，WASD/方向键/轴输入按下、组合与释放时会切换到对应 <code>FB_Hero_Walk_North</code>、<code>East</code>、<code>SouthWest</code> 等资源；停止移动后保留最后朝向，混用 WASD 与方向键时单个按键释放不会丢失仍按住的方向，自动化覆盖按键组合、轴输入和资源路径。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-02</time>
+          <h3>青山驿站基础地形与光照</h3>
+          <p>参考 Ocean 项目的场景自动化方式，但不引入 Water 或地图生成；新增 <code>GameXXKEditor</code> 固定 Landscape 自动化，在 <code>L_QingshanInn</code> 中生成 16 组件基础地形，并放置道路、边界、地牢入口标记、<code>PlayerStart</code>、Directional Light、SkyLight、SkyAtmosphere 和雾效，写入地图 GameMode override。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-02</time>
+          <h3>城镇出口 F 交互</h3>
+          <p>新增 <code>AGameXXKTownExitActor</code>，放入青山驿站地牢门位置；玩家走近后按 <code>F</code>，未接任务时保持城镇状态并提示先接任务，接任务后进入固定小地图流程。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-02</time>
+          <h3>真实 UMG 主菜单与大地图入口</h3>
+          <p>新增 <code>UGameXXKPlayableRootWidget</code>，由 <code>AGameXXKMVPHUD</code> 在 Play 模式创建并加入视口；根控件提供 Start/Continue、青山驿站和潭江渡口按钮，直接调用 MVP Subsystem 而不是 Canvas HUD 命令。自动化 <code>GameXXK.MVP.PIE.MainMenuContinueWorldMap</code> 覆盖真实 UMG 入口、未解锁区域禁用、Start 进入大地图和点击青山进入城镇。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-02</time>
+          <h3>UMG 根控件跑完整 MVP 循环</h3>
+          <p>新增 <code>GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop</code>，把真实 UMG 根控件从主菜单/大地图扩展到城镇接任务、补给交易、小地图节点、战斗失败回城、补给重试、事件、营地、Boss 通关、潭江解锁和存档恢复；同时抽出 <code>GameXXKMVPCommandRouter</code>，让 Canvas HUD 与 UMG 共享同一套可见命令和执行逻辑，减少演示入口分叉。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-02</time>
+          <h3>试玩脚本补齐失败后补给证据</h3>
+          <p>新增 <code>GameXXK.MVP.PIE.PlayableRootPostFailureResupplyRetry</code>，专门验证失败回城后真实执行买药、受伤用药、检查金币/库存/HP，再重试小地图并通关 Boss；<code>scripts/gamexxk_mvp_playtest.py</code> 新增 <code>flow_evidence</code> 和 <code>flow_coverage</code>，会解析 Unreal Automation 成功测试并在报告中标明每个关键流程由哪些自动化用例证明。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>补齐 Play 模式原生可试玩入口</h3>
+          <p>新增 MVP GameMode、PlayerController 与可点击 HUD，把主菜单、大地图选城镇、城镇任务/交易/补给、小地图节点、战斗胜负和 Boss 解锁串成编辑器 Play 模式可操作闭环；试玩脚本新增 PlayableShell 自动化覆盖。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>Playable HUD 自动存档</h3>
+          <p>将 Play 模式 HUD 的 Start、选城镇、接任务、交易、小地图节点、战斗胜负等可演示命令接入 SaveGame 写入；Boss 通关后重新读取同一 slot 可恢复任务完成状态和潭江区域解锁。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>打通城镇 NPC 的 F 键交互</h3>
+          <p>为城镇 NPC 增加交互范围：玩家进入范围后自动聚焦，按 F 可接任务并激活跟随，商人 NPC 可执行 MVP 一键购买补给；对应自动化覆盖 overlap 聚焦、离开清焦点和规则状态变化。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>城镇 F 交互自动存档</h3>
+          <p>任务 NPC 和商人 NPC 的真实 F 交互成功后写入默认 SaveGame slot；自动化验证接任务后可重载出 Accepted 状态与跟随状态，买药后可重载出已扣除金币。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
           <h3>接入插件底座</h3>
           <p>启用 Paper2D、PaperZD、ModelContextProtocol、MCPClientToolset、AllToolsets、EditorScriptingUtilities。PaperZD 使用 UE 5.8 已安装的 Marketplace 插件；编辑器自动化统一改走 UE 5.8 内置 MCP。</p>
         </article>
@@ -246,7 +316,32 @@
         <article class="entry">
           <time>2026-07-01</time>
           <h3>首次插件编译验证</h3>
-          <p><code>GameXXKEditor</code> 冷编译已进入 UHT 阶段，证明插件配置可被 UBT 读取；当前被正在运行的 UE Live Coding 阻止，需要关闭编辑器后重新运行完整编译。</p>
+          <p><code>GameXXKEditor</code> 冷编译通过，Paper2D、PaperZD 和 UE MCP 插件可由 UBT/UHT 正常加载。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>MVP 逻辑闭环与试玩脚本</h3>
+          <p>新增 <code>UGameXXKMVPRules</code> 和 <code>GameXXK.MVP.FullFlow</code> 自动化测试，覆盖主菜单、大地图、城镇任务、跟随、交易、小地图节点、速度排序战斗、失败回城、补给重试、Boss 解锁和存档恢复；<code>scripts/gamexxk_mvp_playtest.py</code> 可一键运行该流程。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>UE MCP 自动化护栏收紧</h3>
+          <p><code>ue_mcp_smoke.py</code> 将项目自定义 <code>GameXXKTDDToolset</code> 纳入必检；<code>ue_tdd_pipeline.py --no-launch</code> 改为连接已运行的 MCP 编辑器，避免空跑误判。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>城镇交互 Shell</h3>
+          <p>新增 <code>AGameXXKTownPlayerPawn</code>、<code>UGameXXKInteractionComponent</code>、<code>AGameXXKTownNpcActor</code>，验证 WASD/方向键自由移动、<code>F</code> 交互、任务 NPC、商人 NPC 和跟随 NPC 的 C++ 行为边界。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>UMG 连接层</h3>
+          <p>新增 <code>UGameXXKMVPSubsystem</code> 与主菜单、大地图、任务弹窗、背包、交易、角色面板、小地图、战斗等 C++ Widget Base，验证 UI 按钮可驱动现有 MVP 规则 API。</p>
+        </article>
+        <article class="entry">
+          <time>2026-07-01</time>
+          <h3>MVP SaveGame 持久化</h3>
+          <p>新增 <code>UGameXXKSaveGame</code> 与 Subsystem 存读接口，使用真实 SaveGame slot 持久化解锁区域、任务状态、等级、当前 XP 和金币；<code>GameXXK.MVP.SaveGame.SlotRoundTrip</code> 覆盖写入、读取、load-or-create 和背包/装备不持久化边界。</p>
         </article>
       </div>
     </section>
@@ -265,27 +360,27 @@
           <tr>
             <td>大地图</td>
             <td>3 个区域，未解锁区域置暗，通关后新区变亮。</td>
-            <td><span class="tag red">待实现</span></td>
+            <td><span class="tag blue">真实 UMG 入口已测，后续补美术布局</span></td>
           </tr>
           <tr>
             <td>城镇</td>
             <td>青山驿站可走动，NPC 可对话，商人可交易。</td>
-            <td><span class="tag red">待实现</span></td>
+            <td><span class="tag blue">地形与角色已装配，真实 UMG 命令链已测</span></td>
           </tr>
           <tr>
             <td>小地图</td>
             <td>固定 seed 节点图，包含普通战斗、营地、事件、Boss。</td>
-            <td><span class="tag red">待实现</span></td>
+            <td><span class="tag blue">真实 UMG 命令链已测，表现布局待美化</span></td>
           </tr>
           <tr>
             <td>战斗</td>
             <td>速度排序、普攻、技能、防御、道具、胜败结算。</td>
-            <td><span class="tag red">待实现</span></td>
+            <td><span class="tag blue">真实 UMG 命令链已测，战斗表现待美化</span></td>
           </tr>
           <tr>
             <td>插件环境</td>
             <td>项目可加载 PaperZD 和 UE MCP 三件套，编辑器可由 MCP 脚本连接。</td>
-            <td><span class="tag blue">静态通过，完整编译待关编辑器</span></td>
+            <td><span class="tag green">已编译并通过 MCP smoke</span></td>
           </tr>
         </tbody>
       </table>
@@ -295,8 +390,14 @@
       <h2>验证记录</h2>
       <p>每次提交前补充最新验证命令和结果。当前建议验证入口：</p>
       <ul>
-        <li><code>python scripts/ue_tdd_pipeline.py --no-launch</code>：冷编译 GameXXKEditor。</li>
+        <li><code>python scripts/gamexxk_mvp_playtest.py</code>：编译并运行 <code>GameXXK.MVP</code> 自动化试玩流程。</li>
+        <li><code>python scripts/gamexxk_content_assembly_check.py</code>：通过 UE MCP 验证 <code>/Game/GameXXK</code> 内容目录、基础地图和默认地图配置。</li>
+        <li><code>python scripts/gamexxk_town_scene_check.py</code>：通过 UE MCP 验证青山驿站固定 Landscape 地形、边界、入口交互 Actor、<code>PlayerStart</code>、基础光照、无 Water Actor 和地图 GameMode。</li>
+        <li><code>python scripts/gamexxk_sprite_source_check.py</code>：通过 UE MCP 验证角色源 sheet PNG 和导入的 <code>Texture2D</code> 资产。</li>
+        <li><code>python scripts/gamexxk_character_visual_check.py</code>：通过 UE MCP 验证主角 8 向 walk <code>PaperSprite</code>、<code>PaperFlipbook</code>、source UV、帧顺序和默认城镇 flipbook。</li>
+        <li><code>python scripts/gamexxk_paperzd_character_check.py</code>：通过 UE MCP 验证主角 PaperZD <code>AnimationSource_Flipbook</code>、<code>AnimBP</code> 和 8 向 directional walk sequence。</li>
         <li><code>python scripts/ue_tdd_pipeline.py --pie-duration 5</code>：启动编辑器、等待 UE MCP、运行 PIE 并收集 <code>[TDD]</code> 日志。</li>
+        <li><code>python scripts/ue_mcp_smoke.py</code>：连接正在运行的 UE MCP server，验证 meta tools、Toolsets、项目 <code>GameXXKTDDToolset</code> 和 GameFeatureData 配置。</li>
         <li><code>git diff --check</code>：提交前检查空白和补丁格式。</li>
       </ul>
     </section>
