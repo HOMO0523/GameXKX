@@ -23,10 +23,22 @@ public:
 	bool StartGame();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool StartNewGame();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool StartGameFromSlot(FString SlotName, int32 UserIndex = 0);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool ContinueGameFromSlot(FString SlotName, int32 UserIndex = 0);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool SaveCurrentGame(FString SlotName = TEXT(""), int32 UserIndex = 0);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	bool DoesSaveGameExist(FString SlotName = TEXT(""), int32 UserIndex = 0) const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool DeleteSaveGame(FString SlotName = TEXT(""), int32 UserIndex = 0);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool LoadGameFromSlot(FString SlotName = TEXT(""), int32 UserIndex = 0);
@@ -36,6 +48,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FString GetDefaultSaveSlotName();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static int32 GetManualSaveSlotCount();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FString GetManualSaveSlotName(int32 SlotIndex);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool OpenWorldMap();
@@ -49,6 +67,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool AcceptQuest();
 
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	void RecordQuestNpcLocation(FVector Location);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	void RecordPlayerLocation(FVector Location);
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	bool CanEnterDungeon() const;
 
@@ -57,6 +81,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool SelectDungeonNode(EGameXXKNodeKind ExpectedNode);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool SelectRouteNodeById(int32 NodeId);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool ResolveBattleVictory(bool bBossBattle);

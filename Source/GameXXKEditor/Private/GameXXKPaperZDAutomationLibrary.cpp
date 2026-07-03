@@ -22,9 +22,11 @@ constexpr TCHAR PaperZDDir[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD");
 constexpr TCHAR SourcePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/AS_Hero_Flipbook");
 constexpr TCHAR AnimBPPackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/ABP_Hero_PaperZD");
 constexpr TCHAR WalkSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Walk_8Dir");
+constexpr TCHAR IdleSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Idle_8Dir");
 constexpr TCHAR SourceAssetName[] = TEXT("AS_Hero_Flipbook");
 constexpr TCHAR AnimBPAssetName[] = TEXT("ABP_Hero_PaperZD");
 constexpr TCHAR WalkSequenceAssetName[] = TEXT("PZD_Hero_Walk_8Dir");
+constexpr TCHAR IdleSequenceAssetName[] = TEXT("PZD_Hero_Idle_8Dir");
 
 const TCHAR* DirectionNames[] = {
 	TEXT("South"),
@@ -131,10 +133,10 @@ UPaperZDAnimBP* EnsureAnimBP(UPaperZDAnimationSource_Flipbook* Source, bool& bCr
 	return AnimBP;
 }
 
-UPaperZDAnimSequence_Flipbook* EnsureWalkSequence(UPaperZDAnimationSource_Flipbook* Source, bool& bCreated)
+UPaperZDAnimSequence_Flipbook* EnsureSequence(UPaperZDAnimationSource_Flipbook* Source, const TCHAR* SequencePackagePath, const TCHAR* SequenceAssetName, bool& bCreated)
 {
 	bCreated = false;
-	if (UPaperZDAnimSequence_Flipbook* Existing = LoadAssetByPackagePath<UPaperZDAnimSequence_Flipbook>(WalkSequencePackagePath))
+	if (UPaperZDAnimSequence_Flipbook* Existing = LoadAssetByPackagePath<UPaperZDAnimSequence_Flipbook>(SequencePackagePath))
 	{
 		Existing->Modify();
 		Existing->SetAnimSource(Source);
@@ -144,8 +146,8 @@ UPaperZDAnimSequence_Flipbook* EnsureWalkSequence(UPaperZDAnimationSource_Flipbo
 
 	bCreated = true;
 	UPaperZDAnimSequence_Flipbook* Sequence = CreateAsset<UPaperZDAnimSequence_Flipbook>(
-		WalkSequencePackagePath,
-		WalkSequenceAssetName);
+		SequencePackagePath,
+		SequenceAssetName);
 	if (Sequence)
 	{
 		Sequence->SetAnimSource(Source);
@@ -153,14 +155,26 @@ UPaperZDAnimSequence_Flipbook* EnsureWalkSequence(UPaperZDAnimationSource_Flipbo
 	return Sequence;
 }
 
-bool LoadWalkFlipbooks(TArray<UPaperFlipbook*>& OutFlipbooks, FString& OutError)
+UPaperZDAnimSequence_Flipbook* EnsureWalkSequence(UPaperZDAnimationSource_Flipbook* Source, bool& bCreated)
+{
+	return EnsureSequence(Source, WalkSequencePackagePath, WalkSequenceAssetName, bCreated);
+}
+
+UPaperZDAnimSequence_Flipbook* EnsureIdleSequence(UPaperZDAnimationSource_Flipbook* Source, bool& bCreated)
+{
+	return EnsureSequence(Source, IdleSequencePackagePath, IdleSequenceAssetName, bCreated);
+}
+
+bool LoadHeroFlipbooks(const TCHAR* StateName, TArray<UPaperFlipbook*>& OutFlipbooks, FString& OutError)
 {
 	OutFlipbooks.Reset();
 	for (const TCHAR* DirectionName : DirectionNames)
 	{
 		const FString ObjectPath = FString::Printf(
-			TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_%s.FB_Hero_Walk_%s"),
+			TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_%s_%s.FB_Hero_%s_%s"),
+			StateName,
 			DirectionName,
+			StateName,
 			DirectionName);
 		UPaperFlipbook* Flipbook = LoadObject<UPaperFlipbook>(nullptr, *ObjectPath);
 		if (!Flipbook)
@@ -171,6 +185,16 @@ bool LoadWalkFlipbooks(TArray<UPaperFlipbook*>& OutFlipbooks, FString& OutError)
 		OutFlipbooks.Add(Flipbook);
 	}
 	return true;
+}
+
+bool LoadWalkFlipbooks(TArray<UPaperFlipbook*>& OutFlipbooks, FString& OutError)
+{
+	return LoadHeroFlipbooks(TEXT("Walk"), OutFlipbooks, OutError);
+}
+
+bool LoadIdleFlipbooks(TArray<UPaperFlipbook*>& OutFlipbooks, FString& OutError)
+{
+	return LoadHeroFlipbooks(TEXT("Idle"), OutFlipbooks, OutError);
 }
 
 bool ConfigureWalkAnimData(UPaperZDAnimSequence_Flipbook* Sequence, const TArray<UPaperFlipbook*>& Flipbooks, FString& OutError)
@@ -216,24 +240,36 @@ bool ConfigureWalkAnimData(UPaperZDAnimSequence_Flipbook* Sequence, const TArray
 
 FString UGameXXKPaperZDAutomationLibrary::EnsureHeroPaperZDAssets()
 {
-	TArray<UPaperFlipbook*> Flipbooks;
+	TArray<UPaperFlipbook*> WalkFlipbooks;
+	TArray<UPaperFlipbook*> IdleFlipbooks;
 	FString Error;
-	if (!LoadWalkFlipbooks(Flipbooks, Error))
+	if (!LoadWalkFlipbooks(WalkFlipbooks, Error))
+	{
+		return FString::Printf(TEXT("{\"ok\":false,\"error\":\"%s\"}"), *Error.ReplaceCharWithEscapedChar());
+	}
+	if (!LoadIdleFlipbooks(IdleFlipbooks, Error))
 	{
 		return FString::Printf(TEXT("{\"ok\":false,\"error\":\"%s\"}"), *Error.ReplaceCharWithEscapedChar());
 	}
 
 	bool bCreatedSource = false;
 	bool bCreatedAnimBP = false;
-	bool bCreatedSequence = false;
+	bool bCreatedWalkSequence = false;
+	bool bCreatedIdleSequence = false;
 	UPaperZDAnimationSource_Flipbook* Source = EnsureSource(bCreatedSource);
 	UPaperZDAnimBP* AnimBP = Source ? EnsureAnimBP(Source, bCreatedAnimBP) : nullptr;
-	UPaperZDAnimSequence_Flipbook* Sequence = Source ? EnsureWalkSequence(Source, bCreatedSequence) : nullptr;
+	UPaperZDAnimSequence_Flipbook* WalkSequence = Source ? EnsureWalkSequence(Source, bCreatedWalkSequence) : nullptr;
+	UPaperZDAnimSequence_Flipbook* IdleSequence = Source ? EnsureIdleSequence(Source, bCreatedIdleSequence) : nullptr;
 
-	bool bConfigured = false;
-	if (Source && AnimBP && Sequence)
+	bool bConfiguredWalk = false;
+	bool bConfiguredIdle = false;
+	if (Source && AnimBP && WalkSequence && IdleSequence)
 	{
-		bConfigured = ConfigureWalkAnimData(Sequence, Flipbooks, Error);
+		bConfiguredWalk = ConfigureWalkAnimData(WalkSequence, WalkFlipbooks, Error);
+		if (bConfiguredWalk)
+		{
+			bConfiguredIdle = ConfigureWalkAnimData(IdleSequence, IdleFlipbooks, Error);
+		}
 	}
 	else if (!Source)
 	{
@@ -243,22 +279,27 @@ FString UGameXXKPaperZDAutomationLibrary::EnsureHeroPaperZDAssets()
 	{
 		Error = TEXT("Could not create or load PaperZD AnimBP");
 	}
-	else
+	else if (!WalkSequence)
 	{
 		Error = TEXT("Could not create or load PaperZD walk sequence");
 	}
+	else
+	{
+		Error = TEXT("Could not create or load PaperZD idle sequence");
+	}
 
-	const bool bOk = Source && AnimBP && Sequence && bConfigured;
+	const bool bOk = Source && AnimBP && WalkSequence && IdleSequence && bConfiguredWalk && bConfiguredIdle;
 	if (bOk)
 	{
 		UEditorLoadingAndSavingUtils::SaveDirtyPackages(true, true);
 	}
 
-	UE_LOG(LogGameXXKPaperZDAutomation, Log, TEXT("EnsureHeroPaperZDAssets ok=%s source=%s animBP=%s sequence=%s"),
+	UE_LOG(LogGameXXKPaperZDAutomation, Log, TEXT("EnsureHeroPaperZDAssets ok=%s source=%s animBP=%s walk=%s idle=%s"),
 		bOk ? TEXT("true") : TEXT("false"),
 		Source ? *Source->GetPathName() : TEXT(""),
 		AnimBP ? *AnimBP->GetPathName() : TEXT(""),
-		Sequence ? *Sequence->GetPathName() : TEXT(""));
+		WalkSequence ? *WalkSequence->GetPathName() : TEXT(""),
+		IdleSequence ? *IdleSequence->GetPathName() : TEXT(""));
 
 	return FString::Printf(
 		TEXT("{")
@@ -266,21 +307,27 @@ FString UGameXXKPaperZDAutomationLibrary::EnsureHeroPaperZDAssets()
 		TEXT("\"paperzd_dir\":\"%s\",")
 		TEXT("\"created_source\":%s,")
 		TEXT("\"created_anim_bp\":%s,")
-		TEXT("\"created_sequence\":%s,")
+		TEXT("\"created_walk_sequence\":%s,")
+		TEXT("\"created_idle_sequence\":%s,")
 		TEXT("\"source\":\"%s\",")
 		TEXT("\"anim_bp\":\"%s\",")
 		TEXT("\"walk_sequence\":\"%s\",")
-		TEXT("\"flipbook_count\":%d,")
+		TEXT("\"idle_sequence\":\"%s\",")
+		TEXT("\"walk_flipbook_count\":%d,")
+		TEXT("\"idle_flipbook_count\":%d,")
 		TEXT("\"error\":\"%s\"")
 		TEXT("}"),
 		*JsonBool(bOk),
 		PaperZDDir,
 		*JsonBool(bCreatedSource),
 		*JsonBool(bCreatedAnimBP),
-		*JsonBool(bCreatedSequence),
+		*JsonBool(bCreatedWalkSequence),
+		*JsonBool(bCreatedIdleSequence),
 		Source ? *Source->GetPathName() : TEXT(""),
 		AnimBP ? *AnimBP->GetPathName() : TEXT(""),
-		Sequence ? *Sequence->GetPathName() : TEXT(""),
-		Flipbooks.Num(),
+		WalkSequence ? *WalkSequence->GetPathName() : TEXT(""),
+		IdleSequence ? *IdleSequence->GetPathName() : TEXT(""),
+		WalkFlipbooks.Num(),
+		IdleFlipbooks.Num(),
 		*Error.ReplaceCharWithEscapedChar());
 }

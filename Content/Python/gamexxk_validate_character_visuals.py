@@ -3,20 +3,27 @@ from __future__ import annotations
 import hashlib
 import json
 import struct
+import zlib
 from pathlib import Path
+from statistics import median
 
 import unreal
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 HERO_WALK_FILE = PROJECT_ROOT / "Content" / "GameXXK" / "Sprites" / "Generated" / "hero_deepblue_high_ponytail_walk_8dir_expanded.png"
+HERO_IDLE_FILE = PROJECT_ROOT / "Content" / "GameXXK" / "Sprites" / "Generated" / "hero_deepblue_high_ponytail_idle_8dir.png"
 HERO_WALK_UASSET_FILE = PROJECT_ROOT / "Content" / "GameXXK" / "Sprites" / "Generated" / "hero_deepblue_high_ponytail_walk_8dir_expanded.uasset"
+HERO_IDLE_UASSET_FILE = PROJECT_ROOT / "Content" / "GameXXK" / "Sprites" / "Generated" / "hero_deepblue_high_ponytail_idle_8dir.uasset"
 HERO_SOURCE_TEXTURE = "/Game/GameXXK/Sprites/Generated/hero_deepblue_high_ponytail_walk_8dir"
 HERO_WALK_TEXTURE = "/Game/GameXXK/Sprites/Generated/hero_deepblue_high_ponytail_walk_8dir_expanded"
+HERO_IDLE_TEXTURE = "/Game/GameXXK/Sprites/Generated/hero_deepblue_high_ponytail_idle_8dir"
 HERO_SPRITE_DIR = "/Game/GameXXK/Characters/Hero/Sprites"
 HERO_FLIPBOOK_DIR = "/Game/GameXXK/Characters/Hero/Flipbooks"
 HERO_WALK_FLIPBOOK_PREFIX = "FB_Hero_Walk"
+HERO_IDLE_FLIPBOOK_PREFIX = "FB_Hero_Idle"
 HERO_WALK_SPRITE_PREFIX = "SPR_Hero_Walk"
+HERO_IDLE_SPRITE_PREFIX = "SPR_Hero_Idle"
 HERO_WALK_DIRECTIONS = [
     {"name": "South", "row": 0, "source_row": 5, "mirrored": False},
     {"name": "SouthWest", "row": 1, "source_row": 1, "mirrored": False},
@@ -29,12 +36,19 @@ HERO_WALK_DIRECTIONS = [
 ]
 HERO_WALK_FRAME_COUNT = 6
 HERO_WALK_FPS = 8.0
+HERO_IDLE_FPS = 1.0
 HERO_WALK_CELL_WIDTH = 171.0
 HERO_WALK_CELL_HEIGHT = 205.0
 HERO_WALK_TEXTURE_WIDTH = int(HERO_WALK_CELL_WIDTH * HERO_WALK_FRAME_COUNT)
 HERO_WALK_TEXTURE_HEIGHT = int(HERO_WALK_CELL_HEIGHT * len(HERO_WALK_DIRECTIONS))
+HERO_IDLE_TEXTURE_WIDTH = int(HERO_WALK_CELL_WIDTH)
+HERO_IDLE_TEXTURE_HEIGHT = int(HERO_WALK_CELL_HEIGHT * len(HERO_WALK_DIRECTIONS))
+HERO_IDLE_ALIGNMENT_BOTTOM_TOLERANCE = 2.0
+HERO_IDLE_ALIGNMENT_CENTER_TOLERANCE = 3.0
 HERO_WALK_SOUTH_FLIPBOOK = f"{HERO_FLIPBOOK_DIR}/{HERO_WALK_FLIPBOOK_PREFIX}_South"
 HERO_WALK_SOUTH_OBJECT_PATH = f"{HERO_WALK_SOUTH_FLIPBOOK}.FB_Hero_Walk_South"
+HERO_IDLE_SOUTH_FLIPBOOK = f"{HERO_FLIPBOOK_DIR}/{HERO_IDLE_FLIPBOOK_PREFIX}_South"
+HERO_IDLE_SOUTH_OBJECT_PATH = f"{HERO_IDLE_SOUTH_FLIPBOOK}.FB_Hero_Idle_South"
 HERO_CHARACTER_CLASS = "/Game/GameXXK/Characters/Hero/BP_HeroCharacter.BP_HeroCharacter_C"
 HERO_NATIVE_CLASS = "/Script/GameXXK.GameXXKHeroCharacter"
 EXPECTED_COOK_DIRECTORIES = [
@@ -93,6 +107,149 @@ def _read_png_dimensions(file_path: Path) -> tuple[int, int]:
     if len(header) < 24 or header[:8] != b"\x89PNG\r\n\x1a\n":
         raise ValueError("not a PNG file")
     return struct.unpack(">II", header[16:24])
+
+
+def _paeth(a: int, b: int, c: int) -> int:
+    p = a + b - c
+    pa = abs(p - a)
+    pb = abs(p - b)
+    pc = abs(p - c)
+    if pa <= pb and pa <= pc:
+        return a
+    if pb <= pc:
+        return b
+    return c
+
+
+def _read_png_rgba_alpha_rows(file_path: Path) -> tuple[int, int, list[bytearray]] | None:
+    data = file_path.read_bytes()
+    if len(data) < 33 or data[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+
+    offset = 8
+    width = 0
+    height = 0
+    bit_depth = 0
+    color_type = 0
+    compressed = bytearray()
+    while offset + 8 <= len(data):
+        length = struct.unpack(">I", data[offset : offset + 4])[0]
+        chunk_type = data[offset + 4 : offset + 8]
+        payload = data[offset + 8 : offset + 8 + length]
+        offset += 12 + length
+        if chunk_type == b"IHDR":
+            width, height, bit_depth, color_type = struct.unpack(">IIBB", payload[:10])
+        elif chunk_type == b"IDAT":
+            compressed.extend(payload)
+        elif chunk_type == b"IEND":
+            break
+
+    if width <= 0 or height <= 0 or bit_depth != 8 or color_type != 6:
+        return None
+
+    raw = zlib.decompress(bytes(compressed))
+    bytes_per_pixel = 4
+    stride = width * bytes_per_pixel
+    previous = bytearray(stride)
+    rows: list[bytearray] = []
+    raw_offset = 0
+    for _row in range(height):
+        filter_type = raw[raw_offset]
+        raw_offset += 1
+        current = bytearray(raw[raw_offset : raw_offset + stride])
+        raw_offset += stride
+        for index in range(stride):
+            left = current[index - bytes_per_pixel] if index >= bytes_per_pixel else 0
+            up = previous[index]
+            upper_left = previous[index - bytes_per_pixel] if index >= bytes_per_pixel else 0
+            if filter_type == 1:
+                current[index] = (current[index] + left) & 0xFF
+            elif filter_type == 2:
+                current[index] = (current[index] + up) & 0xFF
+            elif filter_type == 3:
+                current[index] = (current[index] + ((left + up) // 2)) & 0xFF
+            elif filter_type == 4:
+                current[index] = (current[index] + _paeth(left, up, upper_left)) & 0xFF
+        rows.append(bytearray(current[3:stride:bytes_per_pixel]))
+        previous = current
+
+    return width, height, rows
+
+
+def _read_png_rgba_alpha_stats(file_path: Path) -> dict[str, int | bool]:
+    image = _read_png_rgba_alpha_rows(file_path)
+    if image is None:
+        return {"supports_alpha": False, "transparent_pixels": 0, "translucent_pixels": 0}
+
+    _width, _height, alpha_rows = image
+    transparent = 0
+    translucent = 0
+    for row in alpha_rows:
+        for alpha in row:
+            if alpha == 0:
+                transparent += 1
+            elif alpha < 255:
+                translucent += 1
+
+    return {
+        "supports_alpha": True,
+        "transparent_pixels": transparent,
+        "translucent_pixels": translucent,
+    }
+
+
+def _read_png_alpha_cell_metrics(
+    file_path: Path,
+    cell_width: int,
+    cell_height: int,
+    columns: int,
+    rows: int,
+) -> list[list[dict[str, float | int | bool]]]:
+    image = _read_png_rgba_alpha_rows(file_path)
+    if image is None:
+        raise ValueError("not an 8-bit RGBA PNG")
+
+    width, height, alpha_rows = image
+    expected_size = (cell_width * columns, cell_height * rows)
+    if (width, height) != expected_size:
+        raise ValueError(f"unexpected alpha grid size {(width, height)}; expected {expected_size}")
+
+    cell_center_x = (cell_width - 1) / 2.0
+    metrics: list[list[dict[str, float | int | bool]]] = []
+    for row_index in range(rows):
+        row_metrics: list[dict[str, float | int | bool]] = []
+        for column_index in range(columns):
+            min_x = cell_width
+            min_y = cell_height
+            max_x = -1
+            max_y = -1
+            base_x = column_index * cell_width
+            base_y = row_index * cell_height
+            for y in range(cell_height):
+                alpha_row = alpha_rows[base_y + y]
+                for x in range(cell_width):
+                    if alpha_row[base_x + x] <= 0:
+                        continue
+                    min_x = min(min_x, x)
+                    min_y = min(min_y, y)
+                    max_x = max(max_x, x)
+                    max_y = max(max_y, y)
+            if max_x < 0 or max_y < 0:
+                row_metrics.append({"has_alpha": False})
+                continue
+            row_metrics.append({
+                "has_alpha": True,
+                "left": min_x,
+                "top": min_y,
+                "right": max_x + 1,
+                "bottom": max_y + 1,
+                "width": max_x - min_x + 1,
+                "height": max_y - min_y + 1,
+                "bottom_gap": cell_height - (max_y + 1),
+                "center_offset": ((min_x + max_x) / 2.0) - cell_center_x,
+            })
+        metrics.append(row_metrics)
+    return metrics
 
 
 def _sha256(file_path: Path) -> str:
@@ -170,8 +327,10 @@ def main() -> None:
     missing_assets: list[str] = []
     invalid_assets: list[dict[str, object]] = []
     config_errors: list[dict[str, object]] = []
+    idle_alignment_metrics: dict[str, dict[str, float | int]] = {}
 
     expected_walk_hash = ""
+    expected_idle_hash = ""
     if not HERO_WALK_FILE.exists():
         missing_files.append(str(HERO_WALK_FILE))
     else:
@@ -188,6 +347,14 @@ def main() -> None:
                     "expected": [HERO_WALK_TEXTURE_WIDTH, HERO_WALK_TEXTURE_HEIGHT],
                     "actual": [width, height],
                 })
+            alpha_stats = _read_png_rgba_alpha_stats(HERO_WALK_FILE)
+            if not alpha_stats["supports_alpha"] or alpha_stats["transparent_pixels"] <= 0:
+                invalid_files.append({
+                    "file": str(HERO_WALK_FILE),
+                    "reason": "missing_transparent_background",
+                    "expected": "RGBA PNG with transparent background pixels",
+                    "actual": alpha_stats,
+                })
         if not HERO_WALK_UASSET_FILE.exists():
             missing_files.append(str(HERO_WALK_UASSET_FILE))
         else:
@@ -200,6 +367,118 @@ def main() -> None:
                     "expected": f"mtime >= {png_mtime}",
                     "actual": uasset_mtime,
                 })
+
+    if not HERO_IDLE_FILE.exists():
+        missing_files.append(str(HERO_IDLE_FILE))
+    else:
+        expected_idle_hash = _sha256(HERO_IDLE_FILE)
+        try:
+            width, height = _read_png_dimensions(HERO_IDLE_FILE)
+        except ValueError as exc:
+            invalid_files.append({"file": str(HERO_IDLE_FILE), "reason": str(exc)})
+        else:
+            if width != HERO_IDLE_TEXTURE_WIDTH or height != HERO_IDLE_TEXTURE_HEIGHT:
+                invalid_files.append({
+                    "file": str(HERO_IDLE_FILE),
+                    "reason": "idle_dimension_mismatch",
+                    "expected": [HERO_IDLE_TEXTURE_WIDTH, HERO_IDLE_TEXTURE_HEIGHT],
+                    "actual": [width, height],
+                })
+            alpha_stats = _read_png_rgba_alpha_stats(HERO_IDLE_FILE)
+            if not alpha_stats["supports_alpha"] or alpha_stats["transparent_pixels"] <= 0:
+                invalid_files.append({
+                    "file": str(HERO_IDLE_FILE),
+                    "reason": "idle_missing_transparent_background",
+                    "expected": "RGBA PNG with transparent background pixels",
+                    "actual": alpha_stats,
+                })
+        if not HERO_IDLE_UASSET_FILE.exists():
+            missing_files.append(str(HERO_IDLE_UASSET_FILE))
+        else:
+            png_mtime = HERO_IDLE_FILE.stat().st_mtime
+            uasset_mtime = HERO_IDLE_UASSET_FILE.stat().st_mtime
+            if uasset_mtime + 1.0 < png_mtime:
+                invalid_files.append({
+                    "file": str(HERO_IDLE_UASSET_FILE),
+                    "reason": "idle_texture_asset_older_than_png",
+                    "expected": f"mtime >= {png_mtime}",
+                    "actual": uasset_mtime,
+                })
+
+    if HERO_WALK_FILE.exists() and HERO_IDLE_FILE.exists():
+        try:
+            walk_alpha_cells = _read_png_alpha_cell_metrics(
+                HERO_WALK_FILE,
+                int(HERO_WALK_CELL_WIDTH),
+                int(HERO_WALK_CELL_HEIGHT),
+                HERO_WALK_FRAME_COUNT,
+                len(HERO_WALK_DIRECTIONS),
+            )
+            idle_alpha_cells = _read_png_alpha_cell_metrics(
+                HERO_IDLE_FILE,
+                int(HERO_WALK_CELL_WIDTH),
+                int(HERO_WALK_CELL_HEIGHT),
+                1,
+                len(HERO_WALK_DIRECTIONS),
+            )
+        except ValueError as exc:
+            invalid_files.append({
+                "file": f"{HERO_WALK_FILE};{HERO_IDLE_FILE}",
+                "reason": "idle_walk_alpha_metric_error",
+                "actual": str(exc),
+            })
+        else:
+            for direction_index, direction_entry in enumerate(HERO_WALK_DIRECTIONS):
+                direction_name = str(direction_entry["name"])
+                walk_cells = walk_alpha_cells[direction_index]
+                idle_cell = idle_alpha_cells[direction_index][0]
+                if not idle_cell.get("has_alpha"):
+                    invalid_files.append({
+                        "file": str(HERO_IDLE_FILE),
+                        "reason": "idle_cell_empty",
+                        "direction": direction_name,
+                    })
+                    continue
+                walk_bottom_gaps = [float(cell["bottom_gap"]) for cell in walk_cells if cell.get("has_alpha")]
+                walk_center_offsets = [float(cell["center_offset"]) for cell in walk_cells if cell.get("has_alpha")]
+                if len(walk_bottom_gaps) != HERO_WALK_FRAME_COUNT or len(walk_center_offsets) != HERO_WALK_FRAME_COUNT:
+                    invalid_files.append({
+                        "file": str(HERO_WALK_FILE),
+                        "reason": "walk_cell_empty",
+                        "direction": direction_name,
+                    })
+                    continue
+
+                target_bottom_gap = float(median(walk_bottom_gaps))
+                target_center_offset = float(median(walk_center_offsets))
+                idle_bottom_gap = float(idle_cell["bottom_gap"])
+                idle_center_offset = float(idle_cell["center_offset"])
+                idle_alignment_metrics[direction_name] = {
+                    "target_bottom_gap": target_bottom_gap,
+                    "actual_bottom_gap": idle_bottom_gap,
+                    "target_center_offset": target_center_offset,
+                    "actual_center_offset": idle_center_offset,
+                    "bottom_delta": idle_bottom_gap - target_bottom_gap,
+                    "center_delta": idle_center_offset - target_center_offset,
+                }
+                if abs(idle_bottom_gap - target_bottom_gap) > HERO_IDLE_ALIGNMENT_BOTTOM_TOLERANCE:
+                    invalid_files.append({
+                        "file": str(HERO_IDLE_FILE),
+                        "reason": "idle_walk_baseline_mismatch",
+                        "direction": direction_name,
+                        "expected": target_bottom_gap,
+                        "actual": idle_bottom_gap,
+                        "tolerance": HERO_IDLE_ALIGNMENT_BOTTOM_TOLERANCE,
+                    })
+                if abs(idle_center_offset - target_center_offset) > HERO_IDLE_ALIGNMENT_CENTER_TOLERANCE:
+                    invalid_files.append({
+                        "file": str(HERO_IDLE_FILE),
+                        "reason": "idle_walk_center_mismatch",
+                        "direction": direction_name,
+                        "expected": target_center_offset,
+                        "actual": idle_center_offset,
+                        "tolerance": HERO_IDLE_ALIGNMENT_CENTER_TOLERANCE,
+                    })
 
     source_texture = _load(HERO_SOURCE_TEXTURE)
     if source_texture is None:
@@ -234,6 +513,37 @@ def main() -> None:
             invalid_assets.append({
                 "path": HERO_WALK_TEXTURE,
                 "reason": "wrong_texture_filter",
+                "expected": "TF_NEAREST",
+                "actual": filter_text,
+            })
+
+    idle_texture = _load(HERO_IDLE_TEXTURE)
+    if idle_texture is None:
+        missing_assets.append(HERO_IDLE_TEXTURE)
+    elif _class_name(idle_texture) != "Texture2D":
+        invalid_assets.append({"path": HERO_IDLE_TEXTURE, "reason": "wrong_class", "expected": "Texture2D", "actual": _class_name(idle_texture)})
+    else:
+        texture_size = _texture_size(idle_texture)
+        if texture_size != [HERO_IDLE_TEXTURE_WIDTH, HERO_IDLE_TEXTURE_HEIGHT]:
+            invalid_assets.append({
+                "path": HERO_IDLE_TEXTURE,
+                "reason": "wrong_idle_texture_size",
+                "expected": [HERO_IDLE_TEXTURE_WIDTH, HERO_IDLE_TEXTURE_HEIGHT],
+                "actual": texture_size,
+            })
+        mip_text = _enum_text(_get_prop(idle_texture, "mip_gen_settings"))
+        if "NO_MIPMAPS" not in mip_text.upper():
+            invalid_assets.append({
+                "path": HERO_IDLE_TEXTURE,
+                "reason": "wrong_idle_mip_gen_settings",
+                "expected": "TMGS_NO_MIPMAPS",
+                "actual": mip_text,
+            })
+        filter_text = _enum_text(_get_prop(idle_texture, "filter"))
+        if "NEAREST" not in filter_text.upper():
+            invalid_assets.append({
+                "path": HERO_IDLE_TEXTURE,
+                "reason": "wrong_idle_texture_filter",
                 "expected": "TF_NEAREST",
                 "actual": filter_text,
             })
@@ -336,6 +646,85 @@ def main() -> None:
                     "actual": actual_keyframe_sprites,
                 })
 
+        idle_sprite_path = f"{HERO_SPRITE_DIR}/{HERO_IDLE_SPRITE_PREFIX}_{direction}_00"
+        idle_sprite = _load(idle_sprite_path)
+        if idle_sprite is None:
+            missing_assets.append(idle_sprite_path)
+        elif _class_name(idle_sprite) != "PaperSprite":
+            invalid_assets.append({"path": idle_sprite_path, "reason": "wrong_class", "expected": "PaperSprite", "actual": _class_name(idle_sprite)})
+        else:
+            idle_source_texture = _get_prop(idle_sprite, "source_texture")
+            if _object_identity(idle_source_texture) != _object_identity(idle_texture):
+                invalid_assets.append({
+                    "path": idle_sprite_path,
+                    "reason": "wrong_idle_source_texture",
+                    "expected": HERO_IDLE_TEXTURE,
+                    "actual": _object_identity(idle_source_texture),
+                })
+            expected_idle_uv_y = HERO_WALK_CELL_HEIGHT * row_index
+            if not _vector2d_matches(_get_prop(idle_sprite, "source_uv"), 0.0, expected_idle_uv_y):
+                actual = _get_prop(idle_sprite, "source_uv")
+                invalid_assets.append({
+                    "path": idle_sprite_path,
+                    "reason": "wrong_idle_source_uv",
+                    "expected": [0.0, expected_idle_uv_y],
+                    "actual": [float(actual.x), float(actual.y)] if actual else None,
+                })
+            if not _vector2d_matches(_get_prop(idle_sprite, "source_dimension"), HERO_WALK_CELL_WIDTH, HERO_WALK_CELL_HEIGHT):
+                actual = _get_prop(idle_sprite, "source_dimension")
+                invalid_assets.append({
+                    "path": idle_sprite_path,
+                    "reason": "wrong_idle_source_dimension",
+                    "expected": [HERO_WALK_CELL_WIDTH, HERO_WALK_CELL_HEIGHT],
+                    "actual": [float(actual.x), float(actual.y)] if actual else None,
+                })
+            if not _vector2d_matches(_get_prop(idle_sprite, "source_texture_dimension"), HERO_IDLE_TEXTURE_WIDTH, HERO_IDLE_TEXTURE_HEIGHT):
+                actual = _get_prop(idle_sprite, "source_texture_dimension")
+                invalid_assets.append({
+                    "path": idle_sprite_path,
+                    "reason": "wrong_idle_source_texture_dimension",
+                    "expected": [HERO_IDLE_TEXTURE_WIDTH, HERO_IDLE_TEXTURE_HEIGHT],
+                    "actual": [float(actual.x), float(actual.y)] if actual else None,
+                })
+
+        idle_flipbook_path = f"{HERO_FLIPBOOK_DIR}/{HERO_IDLE_FLIPBOOK_PREFIX}_{direction}"
+        idle_flipbook = _load(idle_flipbook_path)
+        if idle_flipbook is None:
+            missing_assets.append(idle_flipbook_path)
+            continue
+        if _class_name(idle_flipbook) != "PaperFlipbook":
+            invalid_assets.append({"path": idle_flipbook_path, "reason": "wrong_class", "expected": "PaperFlipbook", "actual": _class_name(idle_flipbook)})
+            continue
+        idle_keyframe_count = _flipbook_keyframe_count(idle_flipbook)
+        if idle_keyframe_count != 1:
+            invalid_assets.append({
+                "path": idle_flipbook_path,
+                "reason": "wrong_idle_keyframe_count",
+                "expected": 1,
+                "actual": idle_keyframe_count,
+            })
+        idle_fps = _get_prop(idle_flipbook, "frames_per_second", 0.0)
+        if abs(float(idle_fps) - HERO_IDLE_FPS) > 0.01:
+            invalid_assets.append({
+                "path": idle_flipbook_path,
+                "reason": "wrong_idle_fps",
+                "expected": HERO_IDLE_FPS,
+                "actual": idle_fps,
+            })
+        if idle_sprite:
+            idle_keyframe_sprites = [
+                _object_identity(_get_prop(keyframe, "sprite"))
+                for keyframe in _flipbook_keyframes(idle_flipbook)
+            ]
+            expected_idle_sprites = [_object_identity(idle_sprite)]
+            if idle_keyframe_sprites != expected_idle_sprites:
+                invalid_assets.append({
+                    "path": idle_flipbook_path,
+                    "reason": "wrong_idle_keyframe_sprite",
+                    "expected": expected_idle_sprites,
+                    "actual": idle_keyframe_sprites,
+                })
+
     hero_class = unreal.load_class(None, HERO_CHARACTER_CLASS)
     hero_native_class = unreal.load_class(None, HERO_NATIVE_CLASS)
     if hero_class is None:
@@ -354,19 +743,19 @@ def main() -> None:
         hero_cdo = unreal.get_default_object(hero_class)
         default_path = _call_noarg(hero_cdo, ["get_default_town_flipbook_path_string"], None)
         default_path_text = str(default_path)
-        if default_path_text != HERO_WALK_SOUTH_OBJECT_PATH:
+        if default_path_text != HERO_IDLE_SOUTH_OBJECT_PATH:
             invalid_assets.append({
                 "path": HERO_CHARACTER_CLASS,
                 "reason": "wrong_default_town_flipbook_path",
-                "expected": HERO_WALK_SOUTH_OBJECT_PATH,
+                "expected": HERO_IDLE_SOUTH_OBJECT_PATH,
                 "actual": default_path_text,
             })
         cdo_flipbook = _call_noarg(
             hero_cdo,
-            ["get_current_town_flipbook", "get_default_town_flipbook"],
+            ["get_default_town_flipbook"],
             _get_prop(hero_cdo, "default_town_flipbook"),
         )
-        south_flipbook = _load(HERO_WALK_SOUTH_FLIPBOOK)
+        south_flipbook = _load(HERO_IDLE_SOUTH_FLIPBOOK)
         if _object_identity(cdo_flipbook) != _object_identity(south_flipbook):
             invalid_assets.append({
                 "path": HERO_CHARACTER_CLASS,
@@ -386,16 +775,22 @@ def main() -> None:
     report = {
         "ok": not missing_files and not invalid_files and not missing_assets and not invalid_assets and not config_errors,
         "hero_walk_file": str(HERO_WALK_FILE),
+        "hero_idle_file": str(HERO_IDLE_FILE),
         "hero_walk_file_sha256": expected_walk_hash,
+        "hero_idle_file_sha256": expected_idle_hash,
         "hero_source_texture": HERO_SOURCE_TEXTURE,
         "hero_walk_texture": HERO_WALK_TEXTURE,
+        "hero_idle_texture": HERO_IDLE_TEXTURE,
         "hero_walk_south_flipbook": HERO_WALK_SOUTH_FLIPBOOK,
+        "hero_idle_south_flipbook": HERO_IDLE_SOUTH_FLIPBOOK,
         "hero_character_class": HERO_CHARACTER_CLASS,
         "hero_native_class": HERO_NATIVE_CLASS,
         "expected_direction_count": len(HERO_WALK_DIRECTIONS),
         "expected_sprite_count": len(HERO_WALK_DIRECTIONS) * HERO_WALK_FRAME_COUNT,
-        "expected_flipbook_count": len(HERO_WALK_DIRECTIONS),
+        "expected_walk_flipbook_count": len(HERO_WALK_DIRECTIONS),
+        "expected_idle_flipbook_count": len(HERO_WALK_DIRECTIONS),
         "mirror_strategy": "deterministic_expanded_sheet",
+        "idle_alignment_metrics": idle_alignment_metrics,
         "walk_grid": {
             "columns": HERO_WALK_FRAME_COUNT,
             "rows": len(HERO_WALK_DIRECTIONS),

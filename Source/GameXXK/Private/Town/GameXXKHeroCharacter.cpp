@@ -1,8 +1,11 @@
 #include "Town/GameXXKHeroCharacter.h"
 
+#include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "HAL/PlatformTime.h"
 #include "Interaction/GameXXKInteractionComponent.h"
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
@@ -10,10 +13,16 @@
 namespace
 {
 	constexpr float HeroTownMovementAxisDeadZone = 0.20f;
+	constexpr double HeroTownDiagonalReleaseGraceSeconds = 0.04;
 
 	FSoftObjectPath MakeHeroCharacterWalkFlipbookPath(const TCHAR* DirectionName)
 	{
 		return FSoftObjectPath(FString::Printf(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_%s.FB_Hero_Walk_%s"), DirectionName, DirectionName));
+	}
+
+	FSoftObjectPath MakeHeroCharacterIdleFlipbookPath(const TCHAR* DirectionName)
+	{
+		return FSoftObjectPath(FString::Printf(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Idle_%s.FB_Hero_Idle_%s"), DirectionName, DirectionName));
 	}
 
 	float NormalizeHeroTownMovementAxis(float Value)
@@ -62,6 +71,23 @@ namespace
 
 		return EGameXXKTownFacingDirection::South;
 	}
+
+	bool IsHeroTownDiagonalDirection(EGameXXKTownFacingDirection Direction)
+	{
+		return Direction == EGameXXKTownFacingDirection::SouthWest
+			|| Direction == EGameXXKTownFacingDirection::NorthWest
+			|| Direction == EGameXXKTownFacingDirection::NorthEast
+			|| Direction == EGameXXKTownFacingDirection::SouthEast;
+	}
+
+	double GetHeroTownInputTimeSeconds(const AActor* Actor)
+	{
+		if (const UWorld* World = Actor ? Actor->GetWorld() : nullptr)
+		{
+			return static_cast<double>(World->GetTimeSeconds());
+		}
+		return FPlatformTime::Seconds();
+	}
 }
 
 AGameXXKHeroCharacter::AGameXXKHeroCharacter()
@@ -89,16 +115,32 @@ AGameXXKHeroCharacter::AGameXXKHeroCharacter()
 	Movement->SetPlaneConstraintNormal(FVector::UpVector);
 	Movement->bSnapToPlaneAtStart = true;
 
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	CameraBoom->SetupAttachment(RootComponent);
+	CameraBoom->SetUsingAbsoluteRotation(true);
+	CameraBoom->TargetArmLength = 800.0f;
+	CameraBoom->SetRelativeRotation(FRotator(-60.0f, 0.0f, 0.0f));
+	CameraBoom->bDoCollisionTest = false;
+
+	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
+	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	TopDownCameraComponent->bUsePawnControlRotation = false;
+
 	Visual = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("Visual"));
 	Visual->SetupAttachment(Capsule);
+	Visual->SetRelativeLocation(FVector(0.0f, 0.0f, -80.0f));
+	Visual->SetRelativeRotation(FRotator(0.0f, 90.0f, -30.0f));
+	Visual->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 	Visual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Visual->SetCastShadow(false);
+	Visual->SetTranslucentSortPriority(10);
 
 	Interaction = CreateDefaultSubobject<UGameXXKInteractionComponent>(TEXT("Interaction"));
 
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
 	InitializeTownDirectionFlipbooks();
-	DefaultTownFlipbookAsset = TownDirectionFlipbookAssets.FindRef(EGameXXKTownFacingDirection::South);
+	DefaultTownFlipbookAsset = TownIdleDirectionFlipbookAssets.FindRef(EGameXXKTownFacingDirection::South);
 	ApplyTownFacingFlipbook();
 }
 
@@ -122,6 +164,12 @@ void AGameXXKHeroCharacter::Tick(float DeltaSeconds)
 	{
 		const float MoveSpeed = GetCharacterMovement() ? GetCharacterMovement()->MaxFlySpeed : 260.0f;
 		AddActorWorldOffset(MoveDirection.GetClampedToMaxSize(1.0f) * MoveSpeed * DeltaSeconds, false);
+		if (bHasPendingStopDiagonalFacingDirection
+			&& !IsHeroTownDiagonalDirection(CurrentTownFacingDirection)
+			&& GetHeroTownInputTimeSeconds(this) - PendingStopDiagonalReleaseTimeSeconds > HeroTownDiagonalReleaseGraceSeconds)
+		{
+			bHasPendingStopDiagonalFacingDirection = false;
+		}
 	}
 }
 
@@ -222,13 +270,33 @@ EGameXXKTownFacingDirection AGameXXKHeroCharacter::GetTownFacingDirection() cons
 	return CurrentTownFacingDirection;
 }
 
+FVector AGameXXKHeroCharacter::GetTownMovementIntentVector() const
+{
+	return ((FVector::RightVector * HorizontalIntent) + (FVector::ForwardVector * VerticalIntent)).GetClampedToMaxSize(1.0f);
+}
+
 FSoftObjectPath AGameXXKHeroCharacter::GetTownFlipbookPathForDirection(EGameXXKTownFacingDirection Direction) const
+{
+	return GetTownWalkFlipbookPathForDirection(Direction);
+}
+
+FSoftObjectPath AGameXXKHeroCharacter::GetTownIdleFlipbookPathForDirection(EGameXXKTownFacingDirection Direction) const
 {
 	if (Direction == EGameXXKTownFacingDirection::South)
 	{
 		return GetDefaultTownFlipbookPath();
 	}
 
+	if (const TSoftObjectPtr<UPaperFlipbook>* DirectionAsset = TownIdleDirectionFlipbookAssets.Find(Direction))
+	{
+		return DirectionAsset->ToSoftObjectPath();
+	}
+
+	return FSoftObjectPath();
+}
+
+FSoftObjectPath AGameXXKHeroCharacter::GetTownWalkFlipbookPathForDirection(EGameXXKTownFacingDirection Direction) const
+{
 	if (const TSoftObjectPtr<UPaperFlipbook>* DirectionAsset = TownDirectionFlipbookAssets.Find(Direction))
 	{
 		return DirectionAsset->ToSoftObjectPath();
@@ -246,6 +314,11 @@ int32 AGameXXKHeroCharacter::CountTownInputBindingsForTest() const
 
 void AGameXXKHeroCharacter::SetTownDirectionFlipbookForTest(EGameXXKTownFacingDirection Direction, UPaperFlipbook* InFlipbook)
 {
+	SetTownWalkDirectionFlipbookForTest(Direction, InFlipbook);
+}
+
+void AGameXXKHeroCharacter::SetTownWalkDirectionFlipbookForTest(EGameXXKTownFacingDirection Direction, UPaperFlipbook* InFlipbook)
+{
 	if (InFlipbook)
 	{
 		TownDirectionFlipbookOverrides.Add(Direction, InFlipbook);
@@ -255,7 +328,24 @@ void AGameXXKHeroCharacter::SetTownDirectionFlipbookForTest(EGameXXKTownFacingDi
 		TownDirectionFlipbookOverrides.Remove(Direction);
 	}
 
-	if (Direction == CurrentTownFacingDirection)
+	if (bTownMoving && Direction == CurrentTownFacingDirection)
+	{
+		ApplyTownFacingFlipbook();
+	}
+}
+
+void AGameXXKHeroCharacter::SetTownIdleDirectionFlipbookForTest(EGameXXKTownFacingDirection Direction, UPaperFlipbook* InFlipbook)
+{
+	if (InFlipbook)
+	{
+		TownIdleDirectionFlipbookOverrides.Add(Direction, InFlipbook);
+	}
+	else
+	{
+		TownIdleDirectionFlipbookOverrides.Remove(Direction);
+	}
+
+	if (!bTownMoving && Direction == CurrentTownFacingDirection)
 	{
 		ApplyTownFacingFlipbook();
 	}
@@ -270,6 +360,7 @@ void AGameXXKHeroCharacter::SetDefaultTownFlipbookForTest(UPaperFlipbook* InFlip
 void AGameXXKHeroCharacter::ApplyDefaultTownFlipbook()
 {
 	CurrentTownFacingDirection = EGameXXKTownFacingDirection::South;
+	bTownMoving = false;
 	UPaperFlipbook* FlipbookToApply = GetDefaultTownFlipbook();
 	if (Visual && FlipbookToApply)
 	{
@@ -279,7 +370,9 @@ void AGameXXKHeroCharacter::ApplyDefaultTownFlipbook()
 
 void AGameXXKHeroCharacter::ApplyTownFacingFlipbook()
 {
-	UPaperFlipbook* FlipbookToApply = GetTownFlipbookForDirection(CurrentTownFacingDirection);
+	UPaperFlipbook* FlipbookToApply = bTownMoving
+		? GetTownWalkFlipbookForDirection(CurrentTownFacingDirection)
+		: GetTownIdleFlipbookForDirection(CurrentTownFacingDirection);
 	if (Visual && FlipbookToApply)
 	{
 		Visual->SetFlipbook(FlipbookToApply);
@@ -288,7 +381,12 @@ void AGameXXKHeroCharacter::ApplyTownFacingFlipbook()
 
 UPaperFlipbook* AGameXXKHeroCharacter::GetTownFlipbookForDirection(EGameXXKTownFacingDirection Direction) const
 {
-	if (const TObjectPtr<UPaperFlipbook>* Override = TownDirectionFlipbookOverrides.Find(Direction))
+	return GetTownWalkFlipbookForDirection(Direction);
+}
+
+UPaperFlipbook* AGameXXKHeroCharacter::GetTownIdleFlipbookForDirection(EGameXXKTownFacingDirection Direction) const
+{
+	if (const TObjectPtr<UPaperFlipbook>* Override = TownIdleDirectionFlipbookOverrides.Find(Direction))
 	{
 		return Override->Get();
 	}
@@ -296,6 +394,21 @@ UPaperFlipbook* AGameXXKHeroCharacter::GetTownFlipbookForDirection(EGameXXKTownF
 	if (Direction == EGameXXKTownFacingDirection::South)
 	{
 		return DefaultTownFlipbookOverride ? DefaultTownFlipbookOverride.Get() : DefaultTownFlipbookAsset.LoadSynchronous();
+	}
+
+	if (const TSoftObjectPtr<UPaperFlipbook>* DirectionAsset = TownIdleDirectionFlipbookAssets.Find(Direction))
+	{
+		return DirectionAsset->LoadSynchronous();
+	}
+
+	return nullptr;
+}
+
+UPaperFlipbook* AGameXXKHeroCharacter::GetTownWalkFlipbookForDirection(EGameXXKTownFacingDirection Direction) const
+{
+	if (const TObjectPtr<UPaperFlipbook>* Override = TownDirectionFlipbookOverrides.Find(Direction))
+	{
+		return Override->Get();
 	}
 
 	if (const TSoftObjectPtr<UPaperFlipbook>* DirectionAsset = TownDirectionFlipbookAssets.Find(Direction))
@@ -309,6 +422,7 @@ UPaperFlipbook* AGameXXKHeroCharacter::GetTownFlipbookForDirection(EGameXXKTownF
 void AGameXXKHeroCharacter::InitializeTownDirectionFlipbooks()
 {
 	TownDirectionFlipbookAssets.Reset();
+	TownIdleDirectionFlipbookAssets.Reset();
 	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::South, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("South"))));
 	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::SouthWest, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("SouthWest"))));
 	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::West, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("West"))));
@@ -317,14 +431,53 @@ void AGameXXKHeroCharacter::InitializeTownDirectionFlipbooks()
 	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::NorthEast, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("NorthEast"))));
 	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::East, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("East"))));
 	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::SouthEast, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("SouthEast"))));
+	TownIdleDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::South, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterIdleFlipbookPath(TEXT("South"))));
+	TownIdleDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::SouthWest, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterIdleFlipbookPath(TEXT("SouthWest"))));
+	TownIdleDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::West, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterIdleFlipbookPath(TEXT("West"))));
+	TownIdleDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::NorthWest, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterIdleFlipbookPath(TEXT("NorthWest"))));
+	TownIdleDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::North, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterIdleFlipbookPath(TEXT("North"))));
+	TownIdleDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::NorthEast, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterIdleFlipbookPath(TEXT("NorthEast"))));
+	TownIdleDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::East, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterIdleFlipbookPath(TEXT("East"))));
+	TownIdleDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::SouthEast, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterIdleFlipbookPath(TEXT("SouthEast"))));
 }
 
 void AGameXXKHeroCharacter::UpdateTownFacingFromIntent(float Horizontal, float Vertical)
 {
-	const EGameXXKTownFacingDirection NewDirection = ResolveHeroTownFacingDirection(Horizontal, Vertical, CurrentTownFacingDirection);
-	if (NewDirection != CurrentTownFacingDirection)
+	const bool bNewTownMoving = !FMath::IsNearlyZero(Horizontal) || !FMath::IsNearlyZero(Vertical);
+	const double InputTimeSeconds = GetHeroTownInputTimeSeconds(this);
+	EGameXXKTownFacingDirection NewDirection = bNewTownMoving
+		? ResolveHeroTownFacingDirection(Horizontal, Vertical, CurrentTownFacingDirection)
+		: CurrentTownFacingDirection;
+	if (bTownMoving && bNewTownMoving)
 	{
-		CurrentTownFacingDirection = NewDirection;
+		if (IsHeroTownDiagonalDirection(NewDirection))
+		{
+			bHasPendingStopDiagonalFacingDirection = false;
+		}
+		else if (IsHeroTownDiagonalDirection(CurrentTownFacingDirection))
+		{
+			PendingStopDiagonalFacingDirection = CurrentTownFacingDirection;
+			PendingStopDiagonalReleaseTimeSeconds = InputTimeSeconds;
+			bHasPendingStopDiagonalFacingDirection = true;
+		}
+	}
+	else if (!bNewTownMoving)
+	{
+		if (bHasPendingStopDiagonalFacingDirection
+			&& InputTimeSeconds - PendingStopDiagonalReleaseTimeSeconds <= HeroTownDiagonalReleaseGraceSeconds)
+		{
+			NewDirection = PendingStopDiagonalFacingDirection;
+		}
+		bHasPendingStopDiagonalFacingDirection = false;
+	}
+	const bool bDirectionChanged = NewDirection != CurrentTownFacingDirection;
+	const bool bMovementStateChanged = bTownMoving != bNewTownMoving;
+
+	CurrentTownFacingDirection = NewDirection;
+	bTownMoving = bNewTownMoving;
+
+	if (bDirectionChanged || bMovementStateChanged)
+	{
 		ApplyTownFacingFlipbook();
 		return;
 	}
@@ -340,6 +493,11 @@ void AGameXXKHeroCharacter::RefreshTownMovementIntent()
 	HorizontalIntent = FMath::Clamp(GetKeyboardHorizontalIntent() + AxisHorizontalIntent, -1.0f, 1.0f);
 	VerticalIntent = FMath::Clamp(GetKeyboardVerticalIntent() + AxisVerticalIntent, -1.0f, 1.0f);
 	UpdateTownFacingFromIntent(HorizontalIntent, VerticalIntent);
+}
+
+void AGameXXKHeroCharacter::UpdateTownVisualFromMovementIntent(float Horizontal, float Vertical)
+{
+	UpdateTownFacingFromIntent(NormalizeHeroTownMovementAxis(Horizontal), NormalizeHeroTownMovementAxis(Vertical));
 }
 
 void AGameXXKHeroCharacter::ResetTownMovementInput()

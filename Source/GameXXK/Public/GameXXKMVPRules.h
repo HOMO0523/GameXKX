@@ -27,8 +27,11 @@ enum class EGameXXKNodeKind : uint8
 {
 	Start,
 	Battle,
+	Elite,
 	Event,
 	Camp,
+	Chest,
+	Merchant,
 	Boss
 };
 
@@ -98,6 +101,62 @@ struct FGameXXKBattleUnit
 };
 
 USTRUCT(BlueprintType)
+struct FGameXXKRouteMapEdge
+{
+	GENERATED_BODY()
+
+	FGameXXKRouteMapEdge() = default;
+
+	FGameXXKRouteMapEdge(int32 InFromNodeId, int32 InToNodeId)
+		: FromNodeId(InFromNodeId)
+		, ToNodeId(InToNodeId)
+	{
+	}
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 FromNodeId = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 ToNodeId = INDEX_NONE;
+};
+
+USTRUCT(BlueprintType)
+struct FGameXXKRouteMapNode
+{
+	GENERATED_BODY()
+
+	FGameXXKRouteMapNode() = default;
+
+	FGameXXKRouteMapNode(int32 InNodeId, int32 InLayerIndex, int32 InColumnIndex, EGameXXKNodeKind InNodeKind, FVector2D InNormalizedPosition, const TArray<int32>& InOutgoingNodeIds)
+		: NodeId(InNodeId)
+		, LayerIndex(InLayerIndex)
+		, ColumnIndex(InColumnIndex)
+		, NodeKind(InNodeKind)
+		, NormalizedPosition(InNormalizedPosition)
+		, OutgoingNodeIds(InOutgoingNodeIds)
+	{
+	}
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 NodeId = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 LayerIndex = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 ColumnIndex = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKNodeKind NodeKind = EGameXXKNodeKind::Start;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector2D NormalizedPosition = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<int32> OutgoingNodeIds;
+};
+
+USTRUCT(BlueprintType)
 struct FGameXXKRuntimeState
 {
 	GENERATED_BODY()
@@ -110,6 +169,15 @@ struct FGameXXKRuntimeState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName CurrentRegion;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName CurrentMapId;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bHasPlayerLocation = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector PlayerLocation = FVector::ZeroVector;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 PlayerLevel = 1;
@@ -139,10 +207,40 @@ struct FGameXXKRuntimeState
 	bool bFollowerJoined = false;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bHasQuestNpcLocation = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector QuestNpcLocation = FVector::ZeroVector;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bDungeonActive = false;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 DungeonNodeIndex = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bHasGeneratedRouteMap = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 RouteSeed = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 CurrentRouteNodeId = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 PendingRouteNodeId = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FGameXXKRouteMapNode> RouteMapNodes;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FGameXXKRouteMapEdge> RouteMapEdges;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<int32> VisitedRouteNodeIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<int32> ReachableRouteNodeIds;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName EquippedWeapon;
@@ -163,7 +261,28 @@ struct FGameXXKSaveState
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 SaveVersion = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FGameXXKRuntimeState RuntimeState;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bHasPlayerLocation = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector PlayerLocation = FVector::ZeroVector;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKQuestState QuestState = EGameXXKQuestState::NotAccepted;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bFollowerJoined = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bHasQuestNpcLocation = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector QuestNpcLocation = FVector::ZeroVector;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 PlayerLevel = 1;
@@ -222,6 +341,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool AdvanceDungeonNode(UPARAM(ref) FGameXXKRuntimeState& State, EGameXXKNodeKind ExpectedNode);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool SelectRouteNodeById(UPARAM(ref) FGameXXKRuntimeState& State, int32 NodeId);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveBattleVictory(UPARAM(ref) FGameXXKRuntimeState& State, bool bBossBattle);

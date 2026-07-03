@@ -58,8 +58,110 @@ namespace GameXXKMVP
 		}
 	}
 
+	static const FGameXXKRouteMapNode* FindRouteNode(const FGameXXKRuntimeState& State, int32 NodeId)
+	{
+		return State.RouteMapNodes.FindByPredicate([NodeId](const FGameXXKRouteMapNode& Node)
+		{
+			return Node.NodeId == NodeId;
+		});
+	}
+
+	static void AddUniqueInt(TArray<int32>& Values, int32 Value)
+	{
+		if (!Values.Contains(Value))
+		{
+			Values.Add(Value);
+		}
+	}
+
+	static void RemoveInt(TArray<int32>& Values, int32 Value)
+	{
+		Values.Remove(Value);
+	}
+
+	static void AddRouteNode(FGameXXKRuntimeState& State, int32 NodeId, int32 LayerIndex, int32 ColumnIndex, EGameXXKNodeKind NodeKind, float X, float Y, TArray<int32> OutgoingNodeIds)
+	{
+		State.RouteMapNodes.Emplace(NodeId, LayerIndex, ColumnIndex, NodeKind, FVector2D(X, Y), OutgoingNodeIds);
+		for (int32 ToNodeId : OutgoingNodeIds)
+		{
+			State.RouteMapEdges.Emplace(NodeId, ToNodeId);
+		}
+	}
+
+	static void GenerateRouteMap(FGameXXKRuntimeState& State)
+	{
+		State.bHasGeneratedRouteMap = true;
+		State.RouteSeed = 0;
+		State.CurrentRouteNodeId = 0;
+		State.PendingRouteNodeId = INDEX_NONE;
+		State.RouteMapNodes.Reset();
+		State.RouteMapEdges.Reset();
+		State.VisitedRouteNodeIds.Reset();
+		State.ReachableRouteNodeIds.Reset();
+		State.ReachableRouteNodeIds.Add(0);
+
+		AddRouteNode(State, 0, 0, 0, EGameXXKNodeKind::Start, 0.50f, 0.00f, {1, 2});
+		AddRouteNode(State, 1, 1, 0, EGameXXKNodeKind::Battle, 0.34f, 0.18f, {3, 4});
+		AddRouteNode(State, 2, 1, 1, EGameXXKNodeKind::Merchant, 0.66f, 0.18f, {4, 5});
+		AddRouteNode(State, 3, 2, 0, EGameXXKNodeKind::Event, 0.25f, 0.36f, {6});
+		AddRouteNode(State, 4, 2, 1, EGameXXKNodeKind::Elite, 0.50f, 0.36f, {7, 8});
+		AddRouteNode(State, 5, 2, 2, EGameXXKNodeKind::Camp, 0.75f, 0.36f, {8});
+		AddRouteNode(State, 6, 3, 0, EGameXXKNodeKind::Camp, 0.30f, 0.56f, {11});
+		AddRouteNode(State, 7, 3, 1, EGameXXKNodeKind::Merchant, 0.52f, 0.56f, {9});
+		AddRouteNode(State, 8, 3, 2, EGameXXKNodeKind::Chest, 0.74f, 0.56f, {10});
+		AddRouteNode(State, 9, 4, 0, EGameXXKNodeKind::Battle, 0.42f, 0.76f, {11});
+		AddRouteNode(State, 10, 4, 1, EGameXXKNodeKind::Camp, 0.62f, 0.76f, {11});
+		AddRouteNode(State, 11, 5, 0, EGameXXKNodeKind::Boss, 0.50f, 1.00f, {});
+	}
+
+	static bool CompleteRouteNode(FGameXXKRuntimeState& State, const FGameXXKRouteMapNode& Node)
+	{
+		RemoveInt(State.ReachableRouteNodeIds, Node.NodeId);
+		AddUniqueInt(State.VisitedRouteNodeIds, Node.NodeId);
+		for (int32 OutgoingNodeId : Node.OutgoingNodeIds)
+		{
+			if (!State.VisitedRouteNodeIds.Contains(OutgoingNodeId))
+			{
+				AddUniqueInt(State.ReachableRouteNodeIds, OutgoingNodeId);
+			}
+		}
+		State.PendingRouteNodeId = INDEX_NONE;
+		State.CurrentRouteNodeId = State.ReachableRouteNodeIds.IsEmpty() ? INDEX_NONE : State.ReachableRouteNodeIds[0];
+		State.DungeonNodeIndex = State.VisitedRouteNodeIds.Num();
+		State.Screen = EGameXXKScreen::DungeonMap;
+		State.CurrentMapId = TEXT("HuangshanRoute");
+		return true;
+	}
+
+	static const FGameXXKRouteMapNode* FindFirstReachableRouteNodeOfKind(const FGameXXKRuntimeState& State, EGameXXKNodeKind NodeKind)
+	{
+		for (int32 NodeId : State.ReachableRouteNodeIds)
+		{
+			const FGameXXKRouteMapNode* Node = FindRouteNode(State, NodeId);
+			if (Node && Node->NodeKind == NodeKind)
+			{
+				return Node;
+			}
+		}
+		return nullptr;
+	}
+
+	static const FGameXXKRouteMapNode* FindPendingRouteNode(const FGameXXKRuntimeState& State)
+	{
+		return FindRouteNode(State, State.PendingRouteNodeId);
+	}
+
 	static bool IsDungeonNode(const FGameXXKRuntimeState& State, EGameXXKNodeKind ExpectedNode)
 	{
+		if (State.bHasGeneratedRouteMap)
+		{
+			const FGameXXKRouteMapNode* PendingNode = FindPendingRouteNode(State);
+			if (PendingNode)
+			{
+				return State.bDungeonActive && PendingNode->NodeKind == ExpectedNode;
+			}
+			return State.bDungeonActive && FindFirstReachableRouteNodeOfKind(State, ExpectedNode) != nullptr;
+		}
 		const TArray<EGameXXKNodeKind> Nodes = UGameXXKMVPRules::GetFixedDungeonNodes(0);
 		return State.bDungeonActive && Nodes.IsValidIndex(State.DungeonNodeIndex) && Nodes[State.DungeonNodeIndex] == ExpectedNode;
 	}
@@ -113,6 +215,7 @@ FGameXXKRuntimeState UGameXXKMVPRules::CreateNewGame()
 	FGameXXKRuntimeState State;
 	State.Screen = EGameXXKScreen::MainMenu;
 	State.CurrentRegion = NAME_None;
+	State.CurrentMapId = TEXT("MainMenu");
 	State.UnlockedRegions.Add(RegionQingshan());
 	AddItem(State, ItemHealingPowder(), 1);
 	return State;
@@ -122,6 +225,7 @@ bool UGameXXKMVPRules::OpenWorldMap(FGameXXKRuntimeState& State)
 {
 	State.Screen = EGameXXKScreen::WorldMap;
 	State.CurrentRegion = NAME_None;
+	State.CurrentMapId = TEXT("WorldMap");
 	return true;
 }
 
@@ -132,6 +236,7 @@ bool UGameXXKMVPRules::EnterWorldRegion(FGameXXKRuntimeState& State, FName Regio
 		return false;
 	}
 	State.CurrentRegion = RegionId;
+	State.CurrentMapId = RegionId;
 	State.Screen = EGameXXKScreen::Town;
 	return true;
 }
@@ -160,13 +265,20 @@ bool UGameXXKMVPRules::EnterDungeon(FGameXXKRuntimeState& State)
 	}
 	State.Screen = EGameXXKScreen::DungeonMap;
 	State.CurrentRegion = RegionHuangshan();
+	State.CurrentMapId = TEXT("HuangshanRoute");
 	State.bDungeonActive = true;
 	State.DungeonNodeIndex = 0;
+	GameXXKMVP::GenerateRouteMap(State);
 	return true;
 }
 
 bool UGameXXKMVPRules::AdvanceDungeonNode(FGameXXKRuntimeState& State, EGameXXKNodeKind ExpectedNode)
 {
+	if (State.bHasGeneratedRouteMap)
+	{
+		const FGameXXKRouteMapNode* Node = GameXXKMVP::FindFirstReachableRouteNodeOfKind(State, ExpectedNode);
+		return Node ? SelectRouteNodeById(State, Node->NodeId) : false;
+	}
 	if (!GameXXKMVP::IsDungeonNode(State, ExpectedNode))
 	{
 		return false;
@@ -174,11 +286,55 @@ bool UGameXXKMVPRules::AdvanceDungeonNode(FGameXXKRuntimeState& State, EGameXXKN
 	if (ExpectedNode == EGameXXKNodeKind::Battle || ExpectedNode == EGameXXKNodeKind::Boss)
 	{
 		State.Screen = EGameXXKScreen::Battle;
+		State.CurrentMapId = TEXT("Battle");
 		return true;
 	}
 	State.DungeonNodeIndex += 1;
 	State.Screen = EGameXXKScreen::DungeonMap;
+	State.CurrentMapId = TEXT("HuangshanRoute");
 	return true;
+}
+
+bool UGameXXKMVPRules::SelectRouteNodeById(FGameXXKRuntimeState& State, int32 NodeId)
+{
+	if (!State.bDungeonActive || !State.bHasGeneratedRouteMap || State.Screen != EGameXXKScreen::DungeonMap || !State.ReachableRouteNodeIds.Contains(NodeId))
+	{
+		return false;
+	}
+
+	const FGameXXKRouteMapNode* Node = GameXXKMVP::FindRouteNode(State, NodeId);
+	if (!Node)
+	{
+		return false;
+	}
+
+	State.CurrentRouteNodeId = NodeId;
+	if (Node->NodeKind == EGameXXKNodeKind::Battle || Node->NodeKind == EGameXXKNodeKind::Elite || Node->NodeKind == EGameXXKNodeKind::Boss)
+	{
+		State.PendingRouteNodeId = NodeId;
+		State.Screen = EGameXXKScreen::Battle;
+		State.CurrentMapId = TEXT("Battle");
+		return true;
+	}
+
+	if (Node->NodeKind == EGameXXKNodeKind::Event)
+	{
+		State.PlayerGold += 12;
+	}
+	else if (Node->NodeKind == EGameXXKNodeKind::Camp)
+	{
+		State.PlayerHP = State.PlayerMaxHP;
+	}
+	else if (Node->NodeKind == EGameXXKNodeKind::Chest)
+	{
+		AddItem(State, ItemHealingPowder(), 1);
+	}
+	else if (Node->NodeKind == EGameXXKNodeKind::Merchant)
+	{
+		State.PlayerGold = FMath::Max(0, State.PlayerGold);
+	}
+
+	return GameXXKMVP::CompleteRouteNode(State, *Node);
 }
 
 bool UGameXXKMVPRules::ResolveBattleVictory(FGameXXKRuntimeState& State, bool bBossBattle)
@@ -186,6 +342,25 @@ bool UGameXXKMVPRules::ResolveBattleVictory(FGameXXKRuntimeState& State, bool bB
 	if (State.Screen != EGameXXKScreen::Battle)
 	{
 		return false;
+	}
+	if (State.bHasGeneratedRouteMap)
+	{
+		const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(State);
+		if (!PendingNode || (PendingNode->NodeKind != EGameXXKNodeKind::Battle && PendingNode->NodeKind != EGameXXKNodeKind::Elite && PendingNode->NodeKind != EGameXXKNodeKind::Boss))
+		{
+			return false;
+		}
+		if (PendingNode->NodeKind == EGameXXKNodeKind::Boss)
+		{
+			GameXXKMVP::ApplyXP(State, 150);
+			State.PlayerGold += 35;
+			AddItem(State, ItemClothArmor(), 1);
+			return ResolveBossClear(State);
+		}
+		GameXXKMVP::ApplyXP(State, PendingNode->NodeKind == EGameXXKNodeKind::Elite ? 110 : 80);
+		State.PlayerGold += PendingNode->NodeKind == EGameXXKNodeKind::Elite ? 24 : 18;
+		AddItem(State, ItemHealingPowder(), 1);
+		return GameXXKMVP::CompleteRouteNode(State, *PendingNode);
 	}
 	if (bBossBattle)
 	{
@@ -207,11 +382,29 @@ bool UGameXXKMVPRules::ResolveBattleVictory(FGameXXKRuntimeState& State, bool bB
 	AddItem(State, ItemHealingPowder(), 1);
 	State.DungeonNodeIndex += 1;
 	State.Screen = EGameXXKScreen::DungeonMap;
+	State.CurrentMapId = TEXT("HuangshanRoute");
 	return true;
 }
 
 bool UGameXXKMVPRules::ResolveEventReward(FGameXXKRuntimeState& State, bool bTakeGold)
 {
+	if (State.bHasGeneratedRouteMap && State.Screen == EGameXXKScreen::DungeonMap)
+	{
+		const FGameXXKRouteMapNode* Node = GameXXKMVP::FindFirstReachableRouteNodeOfKind(State, EGameXXKNodeKind::Event);
+		if (!Node)
+		{
+			return false;
+		}
+		if (bTakeGold)
+		{
+			State.PlayerGold += 12;
+		}
+		else
+		{
+			AddItem(State, ItemHealingPowder(), 1);
+		}
+		return GameXXKMVP::CompleteRouteNode(State, *Node);
+	}
 	if (!GameXXKMVP::IsDungeonNode(State, EGameXXKNodeKind::Event))
 	{
 		return false;
@@ -225,11 +418,30 @@ bool UGameXXKMVPRules::ResolveEventReward(FGameXXKRuntimeState& State, bool bTak
 		AddItem(State, ItemHealingPowder(), 1);
 	}
 	State.DungeonNodeIndex += 1;
+	State.Screen = EGameXXKScreen::DungeonMap;
+	State.CurrentMapId = TEXT("HuangshanRoute");
 	return true;
 }
 
 bool UGameXXKMVPRules::ResolveCampReward(FGameXXKRuntimeState& State, bool bHealNow)
 {
+	if (State.bHasGeneratedRouteMap && State.Screen == EGameXXKScreen::DungeonMap)
+	{
+		const FGameXXKRouteMapNode* Node = GameXXKMVP::FindFirstReachableRouteNodeOfKind(State, EGameXXKNodeKind::Camp);
+		if (!Node)
+		{
+			return false;
+		}
+		if (bHealNow)
+		{
+			State.PlayerHP = State.PlayerMaxHP;
+		}
+		else
+		{
+			AddItem(State, ItemHealingPowder(), 1);
+		}
+		return GameXXKMVP::CompleteRouteNode(State, *Node);
+	}
 	if (!GameXXKMVP::IsDungeonNode(State, EGameXXKNodeKind::Camp))
 	{
 		return false;
@@ -243,6 +455,8 @@ bool UGameXXKMVPRules::ResolveCampReward(FGameXXKRuntimeState& State, bool bHeal
 		AddItem(State, ItemHealingPowder(), 1);
 	}
 	State.DungeonNodeIndex += 1;
+	State.Screen = EGameXXKScreen::DungeonMap;
+	State.CurrentMapId = TEXT("HuangshanRoute");
 	return true;
 }
 
@@ -254,6 +468,7 @@ bool UGameXXKMVPRules::FailDungeonToTown(FGameXXKRuntimeState& State)
 	}
 	State.Screen = EGameXXKScreen::Town;
 	State.CurrentRegion = RegionQingshan();
+	State.CurrentMapId = RegionQingshan();
 	State.bDungeonActive = false;
 	State.DungeonNodeIndex = 0;
 	State.bFollowerJoined = State.QuestState == EGameXXKQuestState::Accepted;
@@ -272,6 +487,7 @@ bool UGameXXKMVPRules::ResolveBossClear(FGameXXKRuntimeState& State)
 	State.DungeonNodeIndex = 0;
 	State.Screen = EGameXXKScreen::WorldMap;
 	State.CurrentRegion = NAME_None;
+	State.CurrentMapId = TEXT("WorldMap");
 	State.UnlockedRegions.Add(RegionTanjiang());
 	return true;
 }
@@ -419,7 +635,14 @@ TArray<FName> UGameXXKMVPRules::BuildTurnOrder(const FGameXXKRuntimeState& State
 FGameXXKSaveState UGameXXKMVPRules::MakeSaveState(const FGameXXKRuntimeState& State)
 {
 	FGameXXKSaveState SaveState;
+	SaveState.SaveVersion = 2;
+	SaveState.RuntimeState = State;
+	SaveState.bHasPlayerLocation = State.bHasPlayerLocation;
+	SaveState.PlayerLocation = State.PlayerLocation;
 	SaveState.QuestState = State.QuestState;
+	SaveState.bFollowerJoined = State.bFollowerJoined;
+	SaveState.bHasQuestNpcLocation = State.bHasQuestNpcLocation;
+	SaveState.QuestNpcLocation = State.QuestNpcLocation;
 	SaveState.PlayerLevel = State.PlayerLevel;
 	SaveState.PlayerXP = State.PlayerXP;
 	SaveState.PlayerGold = State.PlayerGold;
@@ -429,6 +652,17 @@ FGameXXKSaveState UGameXXKMVPRules::MakeSaveState(const FGameXXKRuntimeState& St
 
 FGameXXKRuntimeState UGameXXKMVPRules::RestoreFromSaveState(const FGameXXKSaveState& SaveState)
 {
+	if (SaveState.SaveVersion >= 2)
+	{
+		FGameXXKRuntimeState State = SaveState.RuntimeState;
+		if (SaveState.bHasPlayerLocation)
+		{
+			State.bHasPlayerLocation = true;
+			State.PlayerLocation = SaveState.PlayerLocation;
+		}
+		return State;
+	}
+
 	FGameXXKRuntimeState State = CreateNewGame();
 	State.Screen = EGameXXKScreen::MainMenu;
 	State.QuestState = SaveState.QuestState;
@@ -439,6 +673,10 @@ FGameXXKRuntimeState UGameXXKMVPRules::RestoreFromSaveState(const FGameXXKSaveSt
 	State.Inventory.Reset();
 	State.EquippedWeapon = NAME_None;
 	State.EquippedArmor = NAME_None;
-	State.bFollowerJoined = SaveState.QuestState == EGameXXKQuestState::Accepted;
+	State.bHasPlayerLocation = SaveState.bHasPlayerLocation;
+	State.PlayerLocation = SaveState.PlayerLocation;
+	State.bFollowerJoined = SaveState.bFollowerJoined;
+	State.bHasQuestNpcLocation = SaveState.bHasQuestNpcLocation;
+	State.QuestNpcLocation = SaveState.QuestNpcLocation;
 	return State;
 }

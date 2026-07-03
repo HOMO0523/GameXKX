@@ -10,9 +10,11 @@
 
 class UGameXXKInteractionComponent;
 class UInputComponent;
+class UCameraComponent;
 class UPaperFlipbook;
 class UPaperFlipbookComponent;
 class UPrimitiveComponent;
+class USpringArmComponent;
 
 UCLASS(Blueprintable)
 class GAMEXXK_API AGameXXKHeroCharacter : public ACharacter
@@ -32,6 +34,15 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	UPrimitiveComponent* GetTownCollisionComponent() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Camera")
+	UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent.Get(); }
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Camera")
+	USpringArmComponent* GetCameraBoom() const { return CameraBoom.Get(); }
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
+	UPaperFlipbookComponent* GetTownVisualComponent() const { return Visual.Get(); }
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	bool IsSupportedMovementKey(FKey Key) const;
@@ -61,7 +72,19 @@ public:
 	EGameXXKTownFacingDirection GetTownFacingDirection() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
+	bool IsTownMoving() const { return bTownMoving; }
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
+	FVector GetTownMovementIntentVector() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
 	FSoftObjectPath GetTownFlipbookPathForDirection(EGameXXKTownFacingDirection Direction) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
+	FSoftObjectPath GetTownIdleFlipbookPathForDirection(EGameXXKTownFacingDirection Direction) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
+	FSoftObjectPath GetTownWalkFlipbookPathForDirection(EGameXXKTownFacingDirection Direction) const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	int32 CountTownInputBindingsForTest() const;
@@ -80,6 +103,8 @@ public:
 
 	void SetDefaultTownFlipbookForTest(UPaperFlipbook* InFlipbook);
 	void SetTownDirectionFlipbookForTest(EGameXXKTownFacingDirection Direction, UPaperFlipbook* InFlipbook);
+	void SetTownIdleDirectionFlipbookForTest(EGameXXKTownFacingDirection Direction, UPaperFlipbook* InFlipbook);
+	void SetTownWalkDirectionFlipbookForTest(EGameXXKTownFacingDirection Direction, UPaperFlipbook* InFlipbook);
 
 	void MoveRightPressed();
 	void MoveRightReleased();
@@ -91,6 +116,14 @@ public:
 	void MoveBackwardReleased();
 
 protected:
+	void UpdateTownVisualFromMovementIntent(float Horizontal, float Vertical);
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|Town|Camera")
+	TObjectPtr<UCameraComponent> TopDownCameraComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|Town|Camera")
+	TObjectPtr<USpringArmComponent> CameraBoom;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|Town")
 	TObjectPtr<UPaperFlipbookComponent> Visual;
 
@@ -103,6 +136,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
 	TMap<EGameXXKTownFacingDirection, TSoftObjectPtr<UPaperFlipbook>> TownDirectionFlipbookAssets;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TMap<EGameXXKTownFacingDirection, TSoftObjectPtr<UPaperFlipbook>> TownIdleDirectionFlipbookAssets;
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
 	EGameXXKTownFacingDirection CurrentTownFacingDirection = EGameXXKTownFacingDirection::South;
 
@@ -113,9 +149,14 @@ private:
 	UPROPERTY(Transient)
 	TMap<EGameXXKTownFacingDirection, TObjectPtr<UPaperFlipbook>> TownDirectionFlipbookOverrides;
 
+	UPROPERTY(Transient)
+	TMap<EGameXXKTownFacingDirection, TObjectPtr<UPaperFlipbook>> TownIdleDirectionFlipbookOverrides;
+
 	void ApplyDefaultTownFlipbook();
 	void ApplyTownFacingFlipbook();
 	UPaperFlipbook* GetTownFlipbookForDirection(EGameXXKTownFacingDirection Direction) const;
+	UPaperFlipbook* GetTownIdleFlipbookForDirection(EGameXXKTownFacingDirection Direction) const;
+	UPaperFlipbook* GetTownWalkFlipbookForDirection(EGameXXKTownFacingDirection Direction) const;
 	void InitializeTownDirectionFlipbooks();
 	void RefreshTownMovementIntent();
 	void UpdateTownFacingFromIntent(float Horizontal, float Vertical);
@@ -130,4 +171,8 @@ private:
 	float AxisVerticalIntent = 0.0f;
 	float HorizontalIntent = 0.0f;
 	float VerticalIntent = 0.0f;
+	bool bTownMoving = false;
+	EGameXXKTownFacingDirection PendingStopDiagonalFacingDirection = EGameXXKTownFacingDirection::South;
+	double PendingStopDiagonalReleaseTimeSeconds = -1.0;
+	bool bHasPendingStopDiagonalFacingDirection = false;
 };

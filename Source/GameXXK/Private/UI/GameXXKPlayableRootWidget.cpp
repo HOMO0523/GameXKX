@@ -9,7 +9,7 @@
 
 namespace GameXXKPlayableRootCommands
 {
-	static constexpr int32 MaxCommandButtonCount = 8;
+	static constexpr int32 MaxCommandButtonCount = 12;
 }
 
 void UGameXXKPlayableRootWidget::NativeConstruct()
@@ -27,7 +27,7 @@ EGameXXKScreen UGameXXKPlayableRootWidget::GetCurrentScreen() const
 
 TArray<FGameXXKMVPCommandDescriptor> UGameXXKPlayableRootWidget::BuildVisibleCommands() const
 {
-	return GameXXKMVPCommandRouter::BuildVisibleCommands(ResolveMVPSubsystem());
+	return GameXXKMVPCommandRouter::BuildVisibleCommands(ResolveMVPSubsystem(), StartGameSlotNameOverride, StartGameUserIndexOverride);
 }
 
 bool UGameXXKPlayableRootWidget::HasVisibleCommand(FName CommandName, bool bExpectedEnabled) const
@@ -58,7 +58,7 @@ bool UGameXXKPlayableRootWidget::ExecuteVisibleCommand(FName CommandName)
 		return false;
 	}
 
-	const bool bSucceeded = GameXXKMVPCommandRouter::ExecuteVisibleCommand(Subsystem, CommandName, StartGameSlotNameOverride, StartGameUserIndexOverride, true);
+	const bool bSucceeded = GameXXKMVPCommandRouter::ExecuteVisibleCommand(Subsystem, CommandName, StartGameSlotNameOverride, StartGameUserIndexOverride);
 
 	RefreshFromState();
 	return bSucceeded;

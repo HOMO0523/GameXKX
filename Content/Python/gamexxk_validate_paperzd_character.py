@@ -9,6 +9,7 @@ PAPERZD_DIR = "/Game/GameXXK/Characters/Hero/PaperZD"
 PAPERZD_SOURCE = f"{PAPERZD_DIR}/AS_Hero_Flipbook"
 PAPERZD_ANIM_BP = f"{PAPERZD_DIR}/ABP_Hero_PaperZD"
 PAPERZD_WALK_SEQUENCE = f"{PAPERZD_DIR}/PZD_Hero_Walk_8Dir"
+PAPERZD_IDLE_SEQUENCE = f"{PAPERZD_DIR}/PZD_Hero_Idle_8Dir"
 
 DIRECTIONS = [
     "South",
@@ -23,6 +24,10 @@ DIRECTIONS = [
 
 EXPECTED_FLIPBOOKS = [
     f"/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_{direction}.FB_Hero_Walk_{direction}"
+    for direction in DIRECTIONS
+]
+EXPECTED_IDLE_FLIPBOOKS = [
+    f"/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Idle_{direction}.FB_Hero_Idle_{direction}"
     for direction in DIRECTIONS
 ]
 
@@ -72,6 +77,62 @@ def _result(ok: bool, name: str, **extra) -> dict:
     return entry
 
 
+def _validate_sequence(sequence_path: str, expected_flipbooks: list[str], label: str) -> list[dict]:
+    checks = []
+    sequence = _load_asset(sequence_path)
+    checks.append(_result(
+        sequence is not None and _class_name(sequence) == "PaperZDAnimSequence_Flipbook",
+        f"paperzd {label} sequence exists",
+        path=sequence_path,
+        actual_class=_class_name(sequence),
+        expected_class="PaperZDAnimSequence_Flipbook",
+    ))
+
+    if sequence is not None:
+        anim_source = _get_prop(sequence, "anim_source")
+        anim_data = _get_prop(sequence, "anim_data")
+        directional = _get_first_prop(sequence, ["directional_sequence", "bDirectionalSequence", "b_directional_sequence"])
+        category = _get_prop(sequence, "category")
+    else:
+        anim_source = None
+        anim_data = []
+        directional = None
+        category = None
+
+    checks.append(_result(
+        _object_path(anim_source) == f"{PAPERZD_SOURCE}.AS_Hero_Flipbook",
+        f"paperzd {label} sequence is bound to hero source",
+        actual=_object_path(anim_source),
+        expected=f"{PAPERZD_SOURCE}.AS_Hero_Flipbook",
+    ))
+    checks.append(_result(
+        directional is True,
+        f"paperzd {label} sequence is directional",
+        actual=directional,
+        expected=True,
+    ))
+    checks.append(_result(
+        str(category) == "Locomotion",
+        f"paperzd {label} sequence category is locomotion",
+        actual=str(category),
+        expected="Locomotion",
+    ))
+
+    actual_flipbooks = []
+    if not (isinstance(anim_data, dict) and "__error__" in anim_data):
+        for entry in anim_data:
+            animation = _get_prop(entry, "animation")
+            actual_flipbooks.append(_object_path(animation))
+
+    checks.append(_result(
+        actual_flipbooks == expected_flipbooks,
+        f"paperzd {label} sequence references all 8 Paper2D flipbooks in direction order",
+        actual=actual_flipbooks,
+        expected=expected_flipbooks,
+    ))
+    return checks
+
+
 def validate() -> dict:
     checks = []
 
@@ -100,57 +161,8 @@ def validate() -> dict:
         expected=f"{PAPERZD_SOURCE}.AS_Hero_Flipbook",
     ))
 
-    sequence = _load_asset(PAPERZD_WALK_SEQUENCE)
-    checks.append(_result(
-        sequence is not None and _class_name(sequence) == "PaperZDAnimSequence_Flipbook",
-        "paperzd 8-direction walk sequence exists",
-        path=PAPERZD_WALK_SEQUENCE,
-        actual_class=_class_name(sequence),
-        expected_class="PaperZDAnimSequence_Flipbook",
-    ))
-
-    if sequence is not None:
-        anim_source = _get_prop(sequence, "anim_source")
-        anim_data = _get_prop(sequence, "anim_data")
-        directional = _get_first_prop(sequence, ["directional_sequence", "bDirectionalSequence", "b_directional_sequence"])
-        category = _get_prop(sequence, "category")
-    else:
-        anim_source = None
-        anim_data = []
-        directional = None
-        category = None
-
-    checks.append(_result(
-        _object_path(anim_source) == f"{PAPERZD_SOURCE}.AS_Hero_Flipbook",
-        "paperzd walk sequence is bound to hero source",
-        actual=_object_path(anim_source),
-        expected=f"{PAPERZD_SOURCE}.AS_Hero_Flipbook",
-    ))
-    checks.append(_result(
-        directional is True,
-        "paperzd walk sequence is directional",
-        actual=directional,
-        expected=True,
-    ))
-    checks.append(_result(
-        str(category) == "Locomotion",
-        "paperzd walk sequence category is locomotion",
-        actual=str(category),
-        expected="Locomotion",
-    ))
-
-    actual_flipbooks = []
-    if not (isinstance(anim_data, dict) and "__error__" in anim_data):
-        for entry in anim_data:
-            animation = _get_prop(entry, "animation")
-            actual_flipbooks.append(_object_path(animation))
-
-    checks.append(_result(
-        actual_flipbooks == EXPECTED_FLIPBOOKS,
-        "paperzd walk sequence references all 8 Paper2D flipbooks in direction order",
-        actual=actual_flipbooks,
-        expected=EXPECTED_FLIPBOOKS,
-    ))
+    checks.extend(_validate_sequence(PAPERZD_WALK_SEQUENCE, EXPECTED_FLIPBOOKS, "walk"))
+    checks.extend(_validate_sequence(PAPERZD_IDLE_SEQUENCE, EXPECTED_IDLE_FLIPBOOKS, "idle"))
 
     return {
         "ok": all(check["ok"] for check in checks),

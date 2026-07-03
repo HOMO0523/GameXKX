@@ -11,6 +11,7 @@ public class GameXXKEditorTarget : TargetRules
 		DefaultBuildSettings = BuildSettingsVersion.V7;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_8;
 		ExtraModuleNames.Add("GameXXK");
+		ExtraModuleNames.Add("TestMap");
 		ExtraModuleNames.Add("GameXXKEditor");
 	}
 }

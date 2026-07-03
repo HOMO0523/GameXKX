@@ -19,7 +19,10 @@ public class GameXXKEditor : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"AssetRegistry",
+			"BlueprintGraph",
+			"Json",
 			"KismetCompiler",
+			"UMG",
 			"UnrealEd",
 			"Landscape"
 		});

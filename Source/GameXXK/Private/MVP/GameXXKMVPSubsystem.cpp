@@ -1,15 +1,25 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 
 #include "MVP/GameXXKSaveGame.h"
+#include "Engine/World.h"
+#include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
 
 namespace
 {
-	static const FString DefaultSaveSlotName(TEXT("GameXXK_MVP_Autosave"));
+	static constexpr int32 ManualSaveSlotCount = 5;
+	static const FString ManualSaveSlotPrefix(TEXT("GameXXK_MVP_SaveSlot_"));
+	static const FString DefaultSaveSlotName(TEXT("GameXXK_MVP_SaveSlot_1"));
 
 	static FString ResolveSaveSlotName(const FString& SlotName)
 	{
 		return SlotName.IsEmpty() ? UGameXXKMVPSubsystem::GetDefaultSaveSlotName() : SlotName;
+	}
+
+	static APawn* GetLivePlayerPawnForSave(const UGameXXKMVPSubsystem* Subsystem)
+	{
+		UWorld* World = Subsystem ? Subsystem->GetWorld() : nullptr;
+		return World && World->IsGameWorld() ? UGameplayStatics::GetPlayerPawn(World, 0) : nullptr;
 	}
 }
 
@@ -35,16 +45,32 @@ FGameXXKRuntimeState UGameXXKMVPSubsystem::GetRuntimeStateCopy() const
 
 bool UGameXXKMVPSubsystem::StartGame()
 {
-	return StartGameFromSlot(TEXT(""), 0);
+	return StartNewGame();
+}
+
+bool UGameXXKMVPSubsystem::StartNewGame()
+{
+	RuntimeState = UGameXXKMVPRules::CreateNewGame();
+	return UGameXXKMVPRules::OpenWorldMap(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::StartGameFromSlot(FString SlotName, int32 UserIndex)
 {
-	return LoadOrCreateGame(SlotName, UserIndex);
+	return ContinueGameFromSlot(SlotName, UserIndex);
+}
+
+bool UGameXXKMVPSubsystem::ContinueGameFromSlot(FString SlotName, int32 UserIndex)
+{
+	return LoadGameFromSlot(SlotName, UserIndex);
 }
 
 bool UGameXXKMVPSubsystem::SaveCurrentGame(FString SlotName, int32 UserIndex)
 {
+	if (APawn* PlayerPawn = GetLivePlayerPawnForSave(this))
+	{
+		RecordPlayerLocation(PlayerPawn->GetActorLocation());
+	}
+
 	UGameXXKSaveGame* SaveGame = Cast<UGameXXKSaveGame>(UGameplayStatics::CreateSaveGameObject(UGameXXKSaveGame::StaticClass()));
 	if (!SaveGame)
 	{
@@ -53,6 +79,18 @@ bool UGameXXKMVPSubsystem::SaveCurrentGame(FString SlotName, int32 UserIndex)
 
 	SaveGame->SaveState = UGameXXKMVPRules::MakeSaveState(RuntimeState);
 	return UGameplayStatics::SaveGameToSlot(SaveGame, ResolveSaveSlotName(SlotName), UserIndex);
+}
+
+bool UGameXXKMVPSubsystem::DoesSaveGameExist(FString SlotName, int32 UserIndex) const
+{
+	return UGameplayStatics::DoesSaveGameExist(ResolveSaveSlotName(SlotName), UserIndex);
+}
+
+bool UGameXXKMVPSubsystem::DeleteSaveGame(FString SlotName, int32 UserIndex)
+{
+	const FString ResolvedSlotName = ResolveSaveSlotName(SlotName);
+	return UGameplayStatics::DoesSaveGameExist(ResolvedSlotName, UserIndex)
+		&& UGameplayStatics::DeleteGameInSlot(ResolvedSlotName, UserIndex);
 }
 
 bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
@@ -78,20 +116,26 @@ bool UGameXXKMVPSubsystem::LoadOrCreateGame(FString SlotName, int32 UserIndex)
 	const FString ResolvedSlotName = ResolveSaveSlotName(SlotName);
 	if (UGameplayStatics::DoesSaveGameExist(ResolvedSlotName, UserIndex))
 	{
-		if (!LoadGameFromSlot(ResolvedSlotName, UserIndex))
-		{
-			return false;
-		}
-		return UGameXXKMVPRules::OpenWorldMap(RuntimeState);
+		return ContinueGameFromSlot(ResolvedSlotName, UserIndex);
 	}
 
-	RuntimeState = UGameXXKMVPRules::CreateNewGame();
-	return UGameXXKMVPRules::OpenWorldMap(RuntimeState);
+	return StartNewGame();
 }
 
 FString UGameXXKMVPSubsystem::GetDefaultSaveSlotName()
 {
 	return DefaultSaveSlotName;
+}
+
+int32 UGameXXKMVPSubsystem::GetManualSaveSlotCount()
+{
+	return ManualSaveSlotCount;
+}
+
+FString UGameXXKMVPSubsystem::GetManualSaveSlotName(int32 SlotIndex)
+{
+	const int32 ClampedSlotIndex = FMath::Clamp(SlotIndex, 0, ManualSaveSlotCount - 1);
+	return FString::Printf(TEXT("%s%d"), *ManualSaveSlotPrefix, ClampedSlotIndex + 1);
 }
 
 bool UGameXXKMVPSubsystem::OpenWorldMap()
@@ -114,6 +158,18 @@ bool UGameXXKMVPSubsystem::AcceptQuest()
 	return UGameXXKMVPRules::AcceptTownQuest(RuntimeState);
 }
 
+void UGameXXKMVPSubsystem::RecordQuestNpcLocation(FVector Location)
+{
+	RuntimeState.bHasQuestNpcLocation = true;
+	RuntimeState.QuestNpcLocation = Location;
+}
+
+void UGameXXKMVPSubsystem::RecordPlayerLocation(FVector Location)
+{
+	RuntimeState.bHasPlayerLocation = true;
+	RuntimeState.PlayerLocation = Location;
+}
+
 bool UGameXXKMVPSubsystem::CanEnterDungeon() const
 {
 	return UGameXXKMVPRules::CanEnterDungeon(RuntimeState);
@@ -127,6 +183,11 @@ bool UGameXXKMVPSubsystem::OpenDungeonFromTownExit()
 bool UGameXXKMVPSubsystem::SelectDungeonNode(EGameXXKNodeKind ExpectedNode)
 {
 	return UGameXXKMVPRules::AdvanceDungeonNode(RuntimeState, ExpectedNode);
+}
+
+bool UGameXXKMVPSubsystem::SelectRouteNodeById(int32 NodeId)
+{
+	return UGameXXKMVPRules::SelectRouteNodeById(RuntimeState, NodeId);
 }
 
 bool UGameXXKMVPSubsystem::ResolveBattleVictory(bool bBossBattle)

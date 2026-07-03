@@ -9,6 +9,9 @@ BLUEPRINT_PACKAGE_PATH = "/Game/GameXXK/Characters/Hero"
 BLUEPRINT_NAME = "BP_HeroCharacter"
 BLUEPRINT_ASSET_PATH = f"{BLUEPRINT_PACKAGE_PATH}/{BLUEPRINT_NAME}"
 HERO_NATIVE_CLASS_PATH = "/Script/GameXXK.GameXXKHeroCharacter"
+CAMERA_BOOM_NAME = "CameraBoom"
+CAMERA_NAME = "TopDownCamera"
+LEGACY_CAMERA_BOOM_NAME = "TopDownCameraBoom"
 
 
 def _load_generated_class(path: str):
@@ -81,6 +84,101 @@ def _reparent_blueprint(asset, parent_class) -> None:
     unreal.BlueprintEditorLibrary.reparent_blueprint(asset, parent_class)
 
 
+def _get_subobject(asset, component_name: str = "", component_class=None):
+    subsystem = unreal.get_engine_subsystem(unreal.SubobjectDataSubsystem)
+    library = unreal.SubobjectDataBlueprintFunctionLibrary
+    for handle in subsystem.k2_gather_subobject_data_for_blueprint(asset):
+        data = subsystem.k2_find_subobject_data_from_handle(handle)
+        obj = None
+        try:
+            obj = library.get_object_for_blueprint(data, asset)
+        except Exception:
+            try:
+                obj = library.get_object(data)
+            except Exception:
+                obj = None
+        if obj is None:
+            continue
+
+        variable_name = ""
+        try:
+            value = library.get_variable_name(data)
+            variable_name = "" if value is None else str(value)
+        except Exception:
+            pass
+
+        matches_name = not component_name or variable_name == component_name or obj.get_name() == component_name
+        matches_class = component_class is None or isinstance(obj, component_class)
+        if matches_name and matches_class:
+            return handle, obj
+    return None, None
+
+
+def _required_subobject_api() -> None:
+    if not hasattr(unreal, "SubobjectDataSubsystem") or not hasattr(unreal, "SubobjectDataBlueprintFunctionLibrary"):
+        raise RuntimeError("SubobjectDataSubsystem is required to clean old BP_HeroCharacter camera components")
+
+
+def _remove_legacy_blueprint_camera_components(asset) -> dict:
+    _required_subobject_api()
+    subsystem = unreal.get_engine_subsystem(unreal.SubobjectDataSubsystem)
+    library = unreal.SubobjectDataBlueprintFunctionLibrary
+
+    legacy = []
+    seen = set()
+    for handle in subsystem.k2_gather_subobject_data_for_blueprint(asset):
+        data = subsystem.k2_find_subobject_data_from_handle(handle)
+        try:
+            obj = library.get_object_for_blueprint(data, asset) or library.get_object(data)
+        except Exception:
+            obj = None
+        if obj is None:
+            continue
+        try:
+            variable_name = str(library.get_variable_name(data))
+        except Exception:
+            variable_name = ""
+        object_name = obj.get_name()
+        object_path = obj.get_path_name()
+        if variable_name in (LEGACY_CAMERA_BOOM_NAME, CAMERA_NAME) and object_name.endswith("_GEN_VARIABLE"):
+            if object_path in seen:
+                continue
+            seen.add(object_path)
+            try:
+                parent_handle = library.get_parent_handle(data)
+            except Exception:
+                parent_handle = None
+            legacy.append({
+                "handle": handle,
+                "parent_handle": parent_handle,
+                "variable_name": variable_name,
+                "object_name": object_name,
+            })
+
+    removed = []
+    failed = []
+    legacy.sort(key=lambda item: 0 if item["variable_name"] == CAMERA_NAME else 1)
+    for item in legacy:
+        try:
+            ok = bool(item["parent_handle"] and subsystem.delete_subobject(item["parent_handle"], item["handle"], asset) > 0)
+        except Exception as exc:
+            ok = False
+            item["error"] = str(exc)
+        if ok:
+            removed.append({key: item[key] for key in ("variable_name", "object_name")})
+        else:
+            failed.append({key: item.get(key, "") for key in ("variable_name", "object_name", "error")})
+
+    if failed:
+        raise RuntimeError(f"Failed to remove legacy BP_HeroCharacter camera components: {failed}")
+
+    return {
+        "removed_legacy_components": removed,
+        "native_camera_boom_name": CAMERA_BOOM_NAME,
+        "native_camera_name": CAMERA_NAME,
+    }
+
+
 def _repair_existing_asset(asset, parent_class) -> bool:
     if not isinstance(asset, unreal.Blueprint):
         return False
@@ -136,6 +234,7 @@ def main() -> None:
             f"generated={generated_class.get_path_name()} super={super_path} expected_parent={parent_path}"
         )
 
+    camera_report = _remove_legacy_blueprint_camera_components(asset)
     _compile_blueprint(asset)
     saved = unreal.EditorAssetLibrary.save_loaded_asset(asset)
 
@@ -143,6 +242,7 @@ def main() -> None:
         "ok": bool(saved),
         "created": created,
         "repaired": repaired,
+        "ocean_style_camera": camera_report,
         "asset_path": BLUEPRINT_ASSET_PATH,
         "generated_class": generated_class.get_path_name(),
         "parent_class": parent_class.get_path_name(),

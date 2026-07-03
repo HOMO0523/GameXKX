@@ -8,6 +8,7 @@
 class UPaperFlipbookComponent;
 class USphereComponent;
 class UGameXXKMVPSubsystem;
+class AGameXXKHeroCharacter;
 
 UENUM(BlueprintType)
 enum class EGameXXKTownNpcRole : uint8
@@ -26,6 +27,8 @@ class GAMEXXK_API AGameXXKTownNpcActor : public AActor, public IGameXXKInteracta
 public:
 	AGameXXKTownNpcActor();
 
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
 	virtual void NotifyActorEndOverlap(AActor* OtherActor) override;
@@ -62,6 +65,15 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	bool WasLastInteractionSuccessful() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town|Visual")
+	void SetVisualCharacterClass(TSubclassOf<AGameXXKHeroCharacter> NewVisualCharacterClass);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
+	TSubclassOf<AGameXXKHeroCharacter> GetVisualCharacterClass() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
+	AGameXXKHeroCharacter* GetVisualCharacter() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town")
 	bool ApplyDefaultInteraction(APawn* InstigatorPawn);
@@ -105,9 +117,17 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameXXK|Town")
 	float FollowSpeed = 240.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameXXK|Town|Visual")
+	TSubclassOf<AGameXXKHeroCharacter> VisualCharacterClass;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TObjectPtr<AGameXXKHeroCharacter> VisualCharacter;
+
 private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem(APawn* InstigatorPawn) const;
-	bool SaveInteractionProgress(UGameXXKMVPSubsystem* Subsystem) const;
+	void SpawnOrRefreshVisualCharacter();
+	void DestroyVisualCharacter();
+	static void ConfigureVisualCharacter(AGameXXKHeroCharacter* Character);
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMVPSubsystem> OverrideSubsystem;

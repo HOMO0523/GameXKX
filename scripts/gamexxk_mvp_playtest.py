@@ -47,11 +47,11 @@ CHECKLIST = [
     "town NPC overlap focuses F interaction for quest acceptance, follower activation, and merchant buying",
     "town quest, merchant, and follower NPC roles are test-covered",
     "town exit F interaction blocks before quest and opens the dungeon after quest acceptance",
-    "town F interactions autosave quest acceptance and merchant gold changes to the default slot",
+    "town F interactions update runtime state and wait for the manual SaveGame command",
     "UMG widget bases drive main menu, world map, quest, trade, inventory, dungeon, and battle rule APIs",
-    "real UMG playable root widget drives Start/Continue, world map, town quest/trade, dungeon nodes, battle failure/retry, Boss clear, Tanjiang unlock, and autosave restore",
+    "real UMG playable root widget drives Start/Continue, world map, town quest/trade, dungeon nodes, battle failure/retry, Boss clear, Tanjiang unlock, and manual save restore",
     "playable HUD commands drive start, region clicks, town actions, dungeon nodes, battle, Boss clear, and Tanjiang unlock",
-    "playable HUD autosaves route progress so Start and Continue can restore cleared unlocks",
+    "playable HUD exposes SaveGame so Start and Continue restore only manually saved route progress",
     "default GameMode wires MVP PlayerController, clickable HUD, and editable BP_HeroCharacter for Play mode",
     "Qingshan town map has fixed Landscape terrain, boundaries, PlayerStart, lighting, no Water actors, and MVP GameMode override",
     "selected hero, follower, and merchant walk sprite sheets are stored in project content and imported as Texture2D assets",
@@ -132,7 +132,7 @@ FLOW_EVIDENCE = [
         ],
     },
     {
-        "requirement": "save restore keeps completed route unlocks",
+        "requirement": "manual save restore keeps completed route unlocks",
         "required_successful_tests": [
             "GameXXK.MVP.SaveGame.SlotRoundTrip",
             "GameXXK.MVP.PlayableShell.HUDCommandsDriveFullLoop",

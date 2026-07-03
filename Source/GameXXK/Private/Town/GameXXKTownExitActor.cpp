@@ -5,6 +5,9 @@
 #include "Engine/GameInstance.h"
 #include "GameFramework/Pawn.h"
 #include "Interaction/GameXXKInteractionComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "MVP/GameXXKLevelFlow.h"
+#include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
 AGameXXKTownExitActor::AGameXXKTownExitActor()
@@ -16,7 +19,8 @@ AGameXXKTownExitActor::AGameXXKTownExitActor()
 
 	InteractionArea = CreateDefaultSubobject<UBoxComponent>(TEXT("InteractionArea"));
 	InteractionArea->SetupAttachment(SceneRoot);
-	InteractionArea->SetBoxExtent(FVector(160.0f, 96.0f, 128.0f));
+	InteractionArea->SetRelativeLocation(FVector(0.0f, -260.0f, 0.0f));
+	InteractionArea->SetBoxExtent(FVector(180.0f, 180.0f, 128.0f));
 	InteractionArea->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	InteractionArea->SetCollisionObjectType(ECC_WorldDynamic);
 	InteractionArea->SetCollisionResponseToAllChannels(ECR_Ignore);
@@ -99,6 +103,20 @@ bool AGameXXKTownExitActor::ApplyDefaultInteraction(APawn* InstigatorPawn)
 	if (FeedbackText)
 	{
 		FeedbackText->SetText(LastFailureReason);
+	}
+	if (bLastInteractionSuccessful)
+	{
+		GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
+
+		AGameXXKMVPPlayerController* PlayerController = InstigatorPawn ? Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()) : nullptr;
+		if (!PlayerController && GetWorld())
+		{
+			PlayerController = Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+		}
+		if (PlayerController)
+		{
+			PlayerController->RefreshPlayerFlowWidgetsFromState();
+		}
 	}
 	return bLastInteractionSuccessful;
 }

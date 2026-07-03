@@ -1,15 +1,25 @@
 #include "Interaction/GameXXKInteractionComponent.h"
 #include "Components/BoxComponent.h"
+#include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "GameXXKMVPRules.h"
 #include "GameFramework/InputSettings.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "MVP/GameXXKMVPGameMode.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "PaperFlipbook.h"
+#include "PaperFlipbookComponent.h"
 #include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKTownExitActor.h"
+#include "Town/GameXXKTownNpcCharacter.h"
+#include "HAL/PlatformProcess.h"
 #include "Misc/AutomationTest.h"
 #include "Town/GameXXKTownNpcActor.h"
 #include "Town/GameXXKTownPlayerPawn.h"
@@ -45,6 +55,16 @@ namespace
 		{ TownFacingSouthEast, TEXT("SouthEast"), TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_SouthEast.FB_Hero_Walk_SouthEast") },
 	};
 
+	FString HeroIdleFlipbookPath(const TCHAR* DirectionName)
+	{
+		return FString::Printf(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Idle_%s.FB_Hero_Idle_%s"), DirectionName, DirectionName);
+	}
+
+	FString HeroWalkFlipbookPath(const TCHAR* DirectionName)
+	{
+		return FString::Printf(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_%s.FB_Hero_Walk_%s"), DirectionName, DirectionName);
+	}
+
 	int32 TownDirectionIndex(EGameXXKTownFacingDirection Direction)
 	{
 		return static_cast<int32>(Direction);
@@ -64,6 +84,7 @@ namespace
 			return Mapping.Key == Key && FMath::IsNearlyEqual(Mapping.Scale, Scale);
 		});
 	}
+
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -130,20 +151,103 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("hero E key is not town interaction"), HeroCharacter->IsInteractionKey(EKeys::E));
 	TestTrue(TEXT("hero F key is town interaction"), HeroCharacter->IsInteractionKey(EKeys::F));
 	TestTrue(TEXT("hero has Paper2D visual shell"), HeroCharacter->HasTownVisual());
-	TestEqual(TEXT("hero default town flipbook path points at hero South walk"), HeroCharacter->GetDefaultTownFlipbookPath().ToString(), FString(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_South.FB_Hero_Walk_South")));
+	const UPaperFlipbookComponent* HeroVisual = HeroCharacter->GetTownVisualComponent();
+	TestNotNull(TEXT("hero exposes Paper2D visual component"), HeroVisual);
+	if (HeroVisual)
+	{
+		TestEqual(TEXT("hero Paper2D visual uses tuned HD2D land offset"), static_cast<float>(HeroVisual->GetRelativeLocation().Z), -80.0f);
+		TestEqual(TEXT("hero Paper2D visual faces Ocean-style top-down camera"), static_cast<float>(HeroVisual->GetRelativeRotation().Yaw), 90.0f);
+		TestEqual(TEXT("hero Paper2D visual uses tuned HD2D roll"), static_cast<float>(HeroVisual->GetRelativeRotation().Roll), -30.0f);
+		TestEqual(TEXT("hero Paper2D visual uses tuned HD2D scale"), HeroVisual->GetRelativeScale3D(), FVector(1.0f, 1.0f, 1.0f));
+	}
+	TestEqual(TEXT("hero default town flipbook path points at hero South idle"), HeroCharacter->GetDefaultTownFlipbookPath().ToString(), HeroIdleFlipbookPath(TEXT("South")));
+	TestEqual(TEXT("hero South idle path is explicit"), HeroCharacter->GetTownIdleFlipbookPathForDirection(TownFacingSouth).ToString(), HeroIdleFlipbookPath(TEXT("South")));
+	TestEqual(TEXT("hero South walk path is explicit"), HeroCharacter->GetTownWalkFlipbookPathForDirection(TownFacingSouth).ToString(), HeroWalkFlipbookPath(TEXT("South")));
+	TestFalse(TEXT("hero starts in idle visual state"), HeroCharacter->IsTownMoving());
 	TestEqual(TEXT("hero input binds movement press/release keys, movement axes, plus F"), HeroCharacter->CountTownInputBindingsForTest(), 19);
+	const USpringArmComponent* HeroCameraBoom = HeroCharacter->GetCameraBoom();
+	const UCameraComponent* HeroCamera = HeroCharacter->GetTopDownCameraComponent();
+	TestNotNull(TEXT("hero owns Ocean-style camera boom"), HeroCameraBoom);
+	TestNotNull(TEXT("hero owns Ocean-style top-down camera"), HeroCamera);
+	if (HeroCameraBoom)
+	{
+		TestTrue(TEXT("hero camera boom uses absolute rotation like Ocean"), HeroCameraBoom->IsUsingAbsoluteRotation());
+		TestEqual(TEXT("hero camera boom has Ocean-style arm length"), HeroCameraBoom->TargetArmLength, 800.0f);
+		TestEqual(TEXT("hero camera boom has Ocean-style pitch"), static_cast<float>(HeroCameraBoom->GetRelativeRotation().Pitch), -60.0f);
+		TestFalse(TEXT("hero camera boom ignores collision like Ocean"), HeroCameraBoom->bDoCollisionTest);
+	}
+	if (HeroCamera)
+	{
+		TestEqual(TEXT("hero camera remains perspective like Ocean"), HeroCamera->ProjectionMode, ECameraProjectionMode::Perspective);
+		TestFalse(TEXT("hero top-down camera ignores pawn control rotation"), HeroCamera->bUsePawnControlRotation);
+	}
+
+	UClass* HeroBlueprintClass = LoadClass<AGameXXKHeroCharacter>(nullptr, TEXT("/Game/GameXXK/Characters/Hero/BP_HeroCharacter.BP_HeroCharacter_C"), nullptr, LOAD_NoWarn);
+	TestNotNull(TEXT("editable BP_HeroCharacter class loads for camera verification"), HeroBlueprintClass);
+	if (HeroBlueprintClass)
+	{
+		AGameXXKHeroCharacter* HeroBlueprintDefault = Cast<AGameXXKHeroCharacter>(HeroBlueprintClass->GetDefaultObject());
+		TestNotNull(TEXT("editable BP_HeroCharacter has a hero CDO"), HeroBlueprintDefault);
+		if (HeroBlueprintDefault)
+		{
+			const USpringArmComponent* HeroBlueprintCameraBoom = HeroBlueprintDefault->GetCameraBoom();
+			const UCameraComponent* HeroBlueprintCamera = HeroBlueprintDefault->GetTopDownCameraComponent();
+			TestNotNull(TEXT("BP_HeroCharacter inherits editable Ocean-style camera boom"), HeroBlueprintCameraBoom);
+			TestNotNull(TEXT("BP_HeroCharacter inherits editable Ocean-style top-down camera"), HeroBlueprintCamera);
+			if (HeroBlueprintCameraBoom)
+			{
+				TestTrue(TEXT("BP_HeroCharacter camera boom keeps Ocean-style absolute rotation"), HeroBlueprintCameraBoom->IsUsingAbsoluteRotation());
+				TestEqual(TEXT("BP_HeroCharacter camera boom keeps Ocean-style arm length"), HeroBlueprintCameraBoom->TargetArmLength, 800.0f);
+				TestEqual(TEXT("BP_HeroCharacter camera boom keeps Ocean-style pitch"), static_cast<float>(HeroBlueprintCameraBoom->GetRelativeRotation().Pitch), -60.0f);
+			}
+			if (HeroBlueprintCamera)
+			{
+				TestEqual(TEXT("BP_HeroCharacter camera remains perspective like Ocean"), HeroBlueprintCamera->ProjectionMode, ECameraProjectionMode::Perspective);
+			}
+		}
+	}
 
 	UPaperFlipbook* HeroEastFlipbook = NewObject<UPaperFlipbook>(HeroCharacter);
 	UPaperFlipbook* HeroNorthFlipbook = NewObject<UPaperFlipbook>(HeroCharacter);
-	HeroCharacter->SetTownDirectionFlipbookForTest(TownFacingEast, HeroEastFlipbook);
-	HeroCharacter->SetTownDirectionFlipbookForTest(TownFacingNorth, HeroNorthFlipbook);
+	UPaperFlipbook* HeroEastIdleFlipbook = NewObject<UPaperFlipbook>(HeroCharacter);
+	UPaperFlipbook* HeroNorthEastFlipbook = NewObject<UPaperFlipbook>(HeroCharacter);
+	UPaperFlipbook* HeroNorthEastIdleFlipbook = NewObject<UPaperFlipbook>(HeroCharacter);
+	HeroCharacter->SetTownWalkDirectionFlipbookForTest(TownFacingEast, HeroEastFlipbook);
+	HeroCharacter->SetTownWalkDirectionFlipbookForTest(TownFacingNorth, HeroNorthFlipbook);
+	HeroCharacter->SetTownIdleDirectionFlipbookForTest(TownFacingEast, HeroEastIdleFlipbook);
+	HeroCharacter->SetTownWalkDirectionFlipbookForTest(TownFacingNorthEast, HeroNorthEastFlipbook);
+	HeroCharacter->SetTownIdleDirectionFlipbookForTest(TownFacingNorthEast, HeroNorthEastIdleFlipbook);
 	HeroCharacter->MoveRightPressed();
 	ExpectTownFacing(*this, HeroCharacter, TownFacingEast, TEXT("hero D pressed"));
+	TestTrue(TEXT("hero D pressed enters walk visual state"), HeroCharacter->IsTownMoving());
 	TestEqual(TEXT("hero D pressed applies East flipbook"), HeroCharacter->GetCurrentTownFlipbook(), HeroEastFlipbook);
 	HeroCharacter->MoveRightReleased();
+	TestFalse(TEXT("hero D released returns to idle visual state"), HeroCharacter->IsTownMoving());
+	TestEqual(TEXT("hero D released preserves facing but applies East idle flipbook"), HeroCharacter->GetCurrentTownFlipbook(), HeroEastIdleFlipbook);
 	HeroCharacter->MoveVertical(1.0f);
 	ExpectTownFacing(*this, HeroCharacter, TownFacingNorth, TEXT("hero positive vertical axis"));
+	TestTrue(TEXT("hero positive vertical axis enters walk visual state"), HeroCharacter->IsTownMoving());
 	TestEqual(TEXT("hero positive vertical axis applies North flipbook"), HeroCharacter->GetCurrentTownFlipbook(), HeroNorthFlipbook);
+	HeroCharacter->ResetTownMovementInput();
+	HeroCharacter->MoveForwardPressed();
+	HeroCharacter->MoveRightPressed();
+	ExpectTownFacing(*this, HeroCharacter, TownFacingNorthEast, TEXT("hero W+D pressed"));
+	TestEqual(TEXT("hero W+D pressed applies NorthEast walk flipbook"), HeroCharacter->GetCurrentTownFlipbook(), HeroNorthEastFlipbook);
+	HeroCharacter->MoveForwardReleased();
+	HeroCharacter->MoveRightReleased();
+	TestFalse(TEXT("hero W+D released together returns to idle visual state"), HeroCharacter->IsTownMoving());
+	ExpectTownFacing(*this, HeroCharacter, TownFacingNorthEast, TEXT("hero W+D released together preserves diagonal facing"));
+	TestEqual(TEXT("hero W+D released together applies NorthEast idle flipbook"), HeroCharacter->GetCurrentTownFlipbook(), HeroNorthEastIdleFlipbook);
+	HeroCharacter->ResetTownMovementInput();
+	HeroCharacter->MoveForwardPressed();
+	HeroCharacter->MoveRightPressed();
+	ExpectTownFacing(*this, HeroCharacter, TownFacingNorthEast, TEXT("hero W+D pressed before staggered release"));
+	HeroCharacter->MoveForwardReleased();
+	FPlatformProcess::Sleep(0.08f);
+	HeroCharacter->MoveRightReleased();
+	TestFalse(TEXT("hero W then delayed D release returns to idle visual state"), HeroCharacter->IsTownMoving());
+	ExpectTownFacing(*this, HeroCharacter, TownFacingEast, TEXT("hero W then delayed D release uses last cardinal facing"));
+	TestEqual(TEXT("hero W then delayed D release applies East idle flipbook"), HeroCharacter->GetCurrentTownFlipbook(), HeroEastIdleFlipbook);
 	HeroCharacter->ResetTownMovementInput();
 
 	const FString HeroInteractionAutosaveSlot = UGameXXKMVPSubsystem::GetDefaultSaveSlotName();
@@ -161,6 +265,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("hero F on quest NPC starts follower"), HeroQuestNpc->IsFollowerActive());
 	TestTrue(TEXT("hero F quest follower targets hero character"), HeroQuestNpc->GetFollowTarget() == HeroCharacter);
 	TestTrue(TEXT("hero F quest NPC records successful interaction"), HeroQuestNpc->WasLastInteractionSuccessful());
+	UGameXXKMVPSubsystem* ReloadedHeroQuestF = NewObject<UGameXXKMVPSubsystem>(HeroInteractionGameInstance);
+	TestFalse(TEXT("hero F quest interaction does not autosave default slot"), ReloadedHeroQuestF->LoadGameFromSlot(HeroInteractionAutosaveSlot, 0));
 	AGameXXKTownExitActor* HeroTownExit = NewObject<AGameXXKTownExitActor>();
 	HeroTownExit->SetMVPSubsystemForTest(HeroInteractionSubsystem);
 	HeroCharacter->GetInteractionComponent()->SetFocusedActorForTest(HeroTownExit);
@@ -292,6 +398,17 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	MerchantNpc->SetNpcRole(EGameXXKTownNpcRole::Merchant);
 	TestTrue(TEXT("merchant NPC can trade"), MerchantNpc->CanTrade());
 	TestFalse(TEXT("merchant NPC does not offer quest"), MerchantNpc->CanOfferQuest());
+	UClass* MerchantVisualClass = LoadClass<AGameXXKHeroCharacter>(nullptr, TEXT("/Game/GameXXK/Characters/Merchant/BP_MerchantCharacter.BP_MerchantCharacter_C"), nullptr, LOAD_NoWarn);
+	UClass* PersonVisualClass = LoadClass<AGameXXKHeroCharacter>(nullptr, TEXT("/Game/GameXXK/Characters/Follower/BP_NpcCharacter.BP_NpcCharacter_C"), nullptr, LOAD_NoWarn);
+	TestNotNull(TEXT("merchant NPC visual uses copied hero blueprint"), MerchantVisualClass);
+	TestNotNull(TEXT("person NPC visual uses copied hero blueprint"), PersonVisualClass);
+	MerchantNpc->SetVisualCharacterClass(MerchantVisualClass);
+	TestEqual(TEXT("merchant NPC stores merchant visual class"), MerchantNpc->GetVisualCharacterClass().Get(), MerchantVisualClass);
+	QuestNpc->SetVisualCharacterClass(PersonVisualClass);
+	TestEqual(TEXT("quest NPC stores person visual class"), QuestNpc->GetVisualCharacterClass().Get(), PersonVisualClass);
+	AGameXXKMVPGameMode* MVPGameMode = NewObject<AGameXXKMVPGameMode>();
+	TestEqual(TEXT("MVP GameMode configures merchant visual class"), MVPGameMode->GetMerchantTownNpcVisualClass().Get(), MerchantVisualClass);
+	TestEqual(TEXT("MVP GameMode configures person visual class"), MVPGameMode->GetPersonTownNpcVisualClass().Get(), PersonVisualClass);
 
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
@@ -307,6 +424,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("town exit area is query-only overlap"), TownExit->GetInteractionArea()->GetCollisionEnabled(), ECollisionEnabled::QueryOnly);
 	TestEqual(TEXT("town exit area overlaps Pawn channel"), TownExit->GetInteractionArea()->GetCollisionResponseToChannel(ECC_Pawn), ECollisionResponse::ECR_Overlap);
 	TestTrue(TEXT("town exit area generates overlap events"), TownExit->GetInteractionArea()->GetGenerateOverlapEvents());
+	TestTrue(TEXT("town exit interaction area is on the player-facing side of the north gate"), TownExit->GetInteractionArea()->GetRelativeLocation().Y < -1.0f);
+	TestTrue(TEXT("town exit interaction area is wide enough to trigger before the gate mesh"), TownExit->GetInteractionArea()->GetUnscaledBoxExtent().Y >= 160.0f);
 	TownExit->NotifyActorBeginOverlap(Player);
 	TestTrue(TEXT("town exit overlap focuses player interaction"), Player->GetInteractionComponent()->GetFocusedActor() == TownExit);
 	Player->Interact();
@@ -330,9 +449,12 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("quest follower targets player"), QuestNpc->GetFollowTarget() == Player);
 	TestTrue(TEXT("quest NPC records successful interaction"), QuestNpc->WasLastInteractionSuccessful());
 	UGameXXKMVPSubsystem* ReloadedAfterQuestF = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-	TestTrue(TEXT("F quest interaction autosaves default slot"), ReloadedAfterQuestF->LoadGameFromSlot(NpcAutosaveSlot, 0));
-	TestEqual(TEXT("F quest autosave persists accepted quest"), ReloadedAfterQuestF->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
-	TestTrue(TEXT("F quest autosave restores follower join state"), ReloadedAfterQuestF->GetRuntimeState().bFollowerJoined);
+	TestFalse(TEXT("F quest interaction waits for manual save"), ReloadedAfterQuestF->LoadGameFromSlot(NpcAutosaveSlot, 0));
+	TestTrue(TEXT("manual save after F quest writes default slot"), Subsystem->SaveCurrentGame(TEXT(""), 0));
+	UGameXXKMVPSubsystem* ReloadedAfterQuestManualSave = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestTrue(TEXT("manual quest save loads default slot"), ReloadedAfterQuestManualSave->LoadGameFromSlot(NpcAutosaveSlot, 0));
+	TestEqual(TEXT("manual quest save persists accepted quest"), ReloadedAfterQuestManualSave->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
+	TestTrue(TEXT("manual quest save restores follower join state"), ReloadedAfterQuestManualSave->GetRuntimeState().bFollowerJoined);
 	QuestNpc->NotifyActorEndOverlap(Player);
 	TestNull(TEXT("quest NPC end overlap clears focus"), Player->GetInteractionComponent()->GetFocusedActor());
 
@@ -346,6 +468,7 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	Subsystem->FailDungeonToTown();
 	TownExit->NotifyActorEndOverlap(Player);
 	TestNull(TEXT("accepted quest exit end overlap clears focus"), Player->GetInteractionComponent()->GetFocusedActor());
+	UGameplayStatics::DeleteGameInSlot(NpcAutosaveSlot, 0);
 
 	MerchantNpc->SetMVPSubsystemForTest(Subsystem);
 	MerchantNpc->NotifyActorBeginOverlap(Player);
@@ -356,9 +479,12 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("F on merchant adds healing powder"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeMerchantF + 1);
 	TestTrue(TEXT("merchant NPC records successful buy"), MerchantNpc->WasLastInteractionSuccessful());
 	UGameXXKMVPSubsystem* ReloadedAfterMerchantF = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-	TestTrue(TEXT("F merchant interaction autosaves default slot"), ReloadedAfterMerchantF->LoadGameFromSlot(NpcAutosaveSlot, 0));
-	TestEqual(TEXT("F merchant autosave persists spent gold"), ReloadedAfterMerchantF->GetRuntimeState().PlayerGold, GoldBeforeMerchantF - 10);
-	TestEqual(TEXT("F merchant autosave keeps inventory out of save scope"), UGameXXKMVPRules::GetItemCount(ReloadedAfterMerchantF->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), 0);
+	TestFalse(TEXT("F merchant interaction waits for manual save"), ReloadedAfterMerchantF->LoadGameFromSlot(NpcAutosaveSlot, 0));
+	TestTrue(TEXT("manual save after merchant writes default slot"), Subsystem->SaveCurrentGame(TEXT(""), 0));
+	UGameXXKMVPSubsystem* ReloadedAfterMerchantManualSave = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestTrue(TEXT("manual merchant save loads default slot"), ReloadedAfterMerchantManualSave->LoadGameFromSlot(NpcAutosaveSlot, 0));
+	TestEqual(TEXT("manual merchant save persists spent gold"), ReloadedAfterMerchantManualSave->GetRuntimeState().PlayerGold, GoldBeforeMerchantF - 10);
+	TestEqual(TEXT("manual merchant save persists bought healing powder"), UGameXXKMVPRules::GetItemCount(ReloadedAfterMerchantManualSave->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeMerchantF + 1);
 	Subsystem->GetMutableRuntimeState().PlayerGold = 0;
 	const int32 PowderBeforeFailedMerchantF = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
 	Player->Interact();
@@ -376,6 +502,149 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("follower distance stored"), FollowerNpc->GetFollowDistance(), 96.0f);
 	FollowerNpc->DismissFollower();
 	TestFalse(TEXT("follower dismisses after route clear"), FollowerNpc->IsFollowerActive());
+
+	UWorld* TestWorld = GWorld;
+	TestNotNull(TEXT("automation world exists for follower movement input test"), TestWorld);
+	if (TestWorld)
+	{
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.ObjectFlags |= RF_Transient;
+		SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		AGameXXKHeroCharacter* MovingHero = TestWorld->SpawnActor<AGameXXKHeroCharacter>(AGameXXKHeroCharacter::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, SpawnParameters);
+		AGameXXKTownNpcActor* InputFollowerNpc = TestWorld->SpawnActor<AGameXXKTownNpcActor>(AGameXXKTownNpcActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, SpawnParameters);
+		TestNotNull(TEXT("spawned moving hero for follower movement input test"), MovingHero);
+		TestNotNull(TEXT("spawned quest follower for movement input test"), InputFollowerNpc);
+		if (MovingHero && InputFollowerNpc)
+		{
+			MovingHero->SetActorLocation(FVector::ZeroVector);
+			InputFollowerNpc->SetActorLocation(FVector::ZeroVector);
+			MovingHero->MoveHorizontal(1.0f);
+			InputFollowerNpc->ActivateFollower(MovingHero, 96.0f);
+			TestEqual(TEXT("hero exposes right movement intent for quest follower"), MovingHero->GetTownMovementIntentVector(), FVector::RightVector);
+			TestTrue(TEXT("moving hero exposes positive town movement speed"), MovingHero->GetCharacterMovement() && MovingHero->GetCharacterMovement()->MaxFlySpeed > 1.0f);
+			TestTrue(TEXT("input follower is active before movement input tick"), InputFollowerNpc->IsFollowerActive());
+			TestTrue(TEXT("input follower targets moving hero before movement input tick"), InputFollowerNpc->GetFollowTarget() == MovingHero);
+			const FVector FollowerBeforeInputMove = InputFollowerNpc->GetActorLocation();
+			InputFollowerNpc->Tick(0.25f);
+			TestTrue(TEXT("quest follower stays idle while hero remains inside follow distance"), InputFollowerNpc->GetActorLocation().Equals(FollowerBeforeInputMove, 1.0f));
+			InputFollowerNpc->SetActorLocation(FVector::ZeroVector);
+			MovingHero->SetActorLocation(FVector(0.0f, 240.0f, 0.0f));
+			const FVector FollowerBeforeRangeChase = InputFollowerNpc->GetActorLocation();
+			InputFollowerNpc->Tick(0.25f);
+			TestTrue(TEXT("quest follower starts chasing only after hero leaves follow distance"), InputFollowerNpc->GetActorLocation().Y > FollowerBeforeRangeChase.Y + 1.0f);
+		}
+		AGameXXKMVPGameMode* DirectNpcGameMode = NewObject<AGameXXKMVPGameMode>();
+		UClass* DirectNpcClass = DirectNpcGameMode ? DirectNpcGameMode->GetPersonTownNpcCharacterClass().Get() : nullptr;
+		TestNotNull(TEXT("direct follower NPC blueprint class is configured"), DirectNpcClass);
+		TestTrue(TEXT("direct follower NPC blueprint is a hero-style Character class"),
+			DirectNpcClass && DirectNpcClass->IsChildOf(AGameXXKHeroCharacter::StaticClass()));
+		TestTrue(TEXT("direct follower NPC blueprint uses the NPC Character runtime class"),
+			DirectNpcClass && DirectNpcClass->IsChildOf(AGameXXKTownNpcCharacter::StaticClass()));
+		AGameXXKTownNpcCharacter* DirectFollowerNpc = DirectNpcClass
+			? TestWorld->SpawnActor<AGameXXKTownNpcCharacter>(DirectNpcClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParameters)
+			: nullptr;
+		TestNotNull(TEXT("direct follower NPC blueprint spawns as a Character body"), DirectFollowerNpc);
+		if (MovingHero && DirectFollowerNpc)
+		{
+			UPaperFlipbook* NpcEastWalkFlipbook = NewObject<UPaperFlipbook>(DirectFollowerNpc);
+			UPaperFlipbook* NpcEastIdleFlipbook = NewObject<UPaperFlipbook>(DirectFollowerNpc);
+			DirectFollowerNpc->SetTownWalkDirectionFlipbookForTest(TownFacingEast, NpcEastWalkFlipbook);
+			DirectFollowerNpc->SetTownIdleDirectionFlipbookForTest(TownFacingEast, NpcEastIdleFlipbook);
+			const UCapsuleComponent* DirectFollowerCapsule = DirectFollowerNpc->GetCapsuleComponent();
+			const float ExpectedGroundedRootZ = DirectFollowerCapsule ? DirectFollowerCapsule->GetScaledCapsuleHalfHeight() : 0.0f;
+			DirectFollowerNpc->Tick(0.0f);
+			TestTrue(FString::Printf(TEXT("direct follower NPC Character root stays at capsule half-height instead of sinking to ground plane actual=%.2f expected=%.2f"),
+				DirectFollowerNpc->GetActorLocation().Z,
+				ExpectedGroundedRootZ),
+				DirectFollowerNpc->GetActorLocation().Z >= ExpectedGroundedRootZ - 1.0f);
+			const FVector DirectFollowerGroundedStart = DirectFollowerNpc->GetActorLocation();
+			MovingHero->SetActorLocation(DirectFollowerGroundedStart);
+			MovingHero->ResetTownMovementInput();
+			MovingHero->MoveHorizontal(1.0f);
+			const FVector DirectFollowerBeforeInputMove = DirectFollowerNpc->GetActorLocation();
+			DirectFollowerNpc->ActivateFollower(MovingHero, 96.0f);
+			TestTrue(TEXT("direct follower NPC Character activates follower behavior"), DirectFollowerNpc->IsFollowerActive());
+			TestTrue(TEXT("direct follower NPC Character stores the hero follow target"), DirectFollowerNpc->GetFollowTarget() == MovingHero);
+			DirectFollowerNpc->Tick(0.25f);
+			TestTrue(TEXT("direct follower NPC Character stays idle while hero remains inside follow distance"), DirectFollowerNpc->GetActorLocation().Equals(DirectFollowerBeforeInputMove, 1.0f));
+			TestFalse(TEXT("direct follower NPC Character keeps idle visual state while hero remains inside follow distance"), DirectFollowerNpc->IsTownMoving());
+			MovingHero->SetActorLocation(DirectFollowerGroundedStart + FVector(0.0f, 240.0f, 0.0f));
+			const FVector DirectFollowerBeforeRangeChase = DirectFollowerNpc->GetActorLocation();
+			DirectFollowerNpc->Tick(0.25f);
+			TestTrue(TEXT("direct follower NPC Character moves after hero leaves follow distance"), DirectFollowerNpc->GetActorLocation().Y > DirectFollowerBeforeRangeChase.Y + 1.0f);
+			TestTrue(TEXT("direct follower NPC Character enters walk visual state while chasing"), DirectFollowerNpc->IsTownMoving());
+			TestEqual(TEXT("direct follower NPC Character uses East walk flipbook while chasing"), DirectFollowerNpc->GetCurrentTownFlipbook(), NpcEastWalkFlipbook);
+			MovingHero->ResetTownMovementInput();
+			MovingHero->SetActorLocation(DirectFollowerNpc->GetActorLocation() + FVector(0.0f, 48.0f, 0.0f));
+			DirectFollowerNpc->Tick(0.25f);
+			TestFalse(TEXT("direct follower NPC Character returns to idle visual state when back inside follow distance"), DirectFollowerNpc->IsTownMoving());
+			TestEqual(TEXT("direct follower NPC Character preserves East facing idle after follow input stops"), DirectFollowerNpc->GetCurrentTownFlipbook(), NpcEastIdleFlipbook);
+		}
+		AGameXXKTownNpcCharacter* RecordingQuestNpc = TestWorld->SpawnActor<AGameXXKTownNpcCharacter>(
+			AGameXXKTownNpcCharacter::StaticClass(),
+			FVector(30.0f, -80.0f, 72.0f),
+			FRotator::ZeroRotator,
+			SpawnParameters);
+		TestNotNull(TEXT("spawned direct quest NPC for save-state recording"), RecordingQuestNpc);
+		if (MovingHero && RecordingQuestNpc)
+		{
+			UGameplayStatics::DeleteGameInSlot(NpcAutosaveSlot, 0);
+			UGameXXKMVPSubsystem* RecordingSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+			RecordingSubsystem->OpenWorldMap();
+			RecordingSubsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan());
+			RecordingQuestNpc->SetNpcRole(EGameXXKTownNpcRole::Quest);
+			RecordingQuestNpc->SetMVPSubsystemForTest(RecordingSubsystem);
+			MovingHero->SetActorLocation(RecordingQuestNpc->GetActorLocation());
+			TestTrue(TEXT("direct quest NPC accepts quest for save-state recording"), RecordingQuestNpc->ApplyDefaultInteraction(MovingHero));
+			const FVector RecordedQuestNpcAcceptLocation = RecordingQuestNpc->GetActorLocation();
+			TestTrue(TEXT("quest NPC accept records a task NPC location flag"), RecordingSubsystem->GetRuntimeState().bHasQuestNpcLocation);
+			TestTrue(TEXT("quest NPC accept records the task NPC location"),
+				RecordingSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
+			UGameXXKMVPSubsystem* ReloadedRecordingSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+			TestFalse(TEXT("quest NPC accept waits for manual save"), ReloadedRecordingSubsystem->LoadGameFromSlot(NpcAutosaveSlot, 0));
+			TestTrue(TEXT("manual save after quest NPC accept writes task NPC state"), RecordingSubsystem->SaveCurrentGame(TEXT(""), 0));
+			UGameXXKMVPSubsystem* ReloadedRecordingManualSaveSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+			TestTrue(TEXT("quest NPC manual save can be loaded for task NPC state"), ReloadedRecordingManualSaveSubsystem->LoadGameFromSlot(NpcAutosaveSlot, 0));
+			TestTrue(TEXT("quest NPC manual save persists task NPC location flag"), ReloadedRecordingManualSaveSubsystem->GetRuntimeState().bHasQuestNpcLocation);
+			TestTrue(TEXT("quest NPC manual save persists task NPC location"),
+				ReloadedRecordingManualSaveSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
+			ReloadedRecordingSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+			TestTrue(TEXT("quest NPC saved location still loads before follower moves"), ReloadedRecordingSubsystem->LoadGameFromSlot(NpcAutosaveSlot, 0));
+			TestTrue(TEXT("quest NPC saved location matches accept location before follower moves"),
+				ReloadedRecordingSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
+			MovingHero->SetActorLocation(RecordedQuestNpcAcceptLocation + FVector(0.0f, 260.0f, 0.0f));
+			RecordingQuestNpc->Tick(0.25f);
+			TestTrue(TEXT("quest NPC follower movement updates runtime task NPC location"),
+				RecordingSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordingQuestNpc->GetActorLocation(), 0.1f));
+			TestFalse(TEXT("quest NPC follower movement records a changed task NPC location"),
+				RecordingSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
+			UGameXXKMVPSubsystem* ReloadedAfterMoveSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+			TestTrue(TEXT("quest NPC follower movement keeps prior manual save loadable"), ReloadedAfterMoveSubsystem->LoadGameFromSlot(NpcAutosaveSlot, 0));
+			TestTrue(TEXT("quest NPC follower movement does not overwrite saved accept location before manual save"),
+				ReloadedAfterMoveSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
+			TestTrue(TEXT("manual save after quest NPC movement writes moved task NPC state"), RecordingSubsystem->SaveCurrentGame(TEXT(""), 0));
+			UGameXXKMVPSubsystem* ReloadedAfterMoveManualSaveSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+			TestTrue(TEXT("quest NPC movement manual save loads task NPC state"), ReloadedAfterMoveManualSaveSubsystem->LoadGameFromSlot(NpcAutosaveSlot, 0));
+			TestTrue(TEXT("quest NPC movement manual save persists the moved task NPC location"),
+				ReloadedAfterMoveManualSaveSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordingQuestNpc->GetActorLocation(), 0.1f));
+		}
+		if (RecordingQuestNpc)
+		{
+			RecordingQuestNpc->Destroy();
+		}
+		if (DirectFollowerNpc)
+		{
+			DirectFollowerNpc->Destroy();
+		}
+		if (InputFollowerNpc)
+		{
+			InputFollowerNpc->Destroy();
+		}
+		if (MovingHero)
+		{
+			MovingHero->Destroy();
+		}
+	}
 
 	UGameplayStatics::DeleteGameInSlot(NpcAutosaveSlot, 0);
 	return true;

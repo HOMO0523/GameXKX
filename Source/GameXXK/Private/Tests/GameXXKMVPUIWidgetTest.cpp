@@ -45,8 +45,11 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	Battle->SetMVPSubsystem(Subsystem);
 	CharacterPanel->SetMVPSubsystem(Subsystem);
 
-	TestTrue(TEXT("main menu start creates game and opens world map"), MainMenu->StartGameFromSlot(UiTestSlot, UserIndex));
-	TestEqual(TEXT("world map screen after start"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestFalse(TEXT("main menu continue rejects missing slot"), MainMenu->ContinueGameFromSlot(UiTestSlot, UserIndex));
+	TestTrue(TEXT("main menu start creates new game and opens Qingshan town"), MainMenu->StartGame());
+	TestEqual(TEXT("town screen after player-facing main menu start"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("Qingshan selected after player-facing main menu start"), Subsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionQingshan());
+	TestFalse(TEXT("main menu start does not autosave"), MainMenu->DoesSaveGameExist(UiTestSlot, UserIndex));
 	TestFalse(TEXT("locked Tanjiang click is rejected"), WorldMap->TrySelectRegion(UGameXXKMVPRules::RegionTanjiang()));
 	TestFalse(TEXT("last selection records locked state"), WorldMap->WasLastSelectionUnlocked());
 	TestEqual(TEXT("locked selection is remembered"), WorldMap->GetLastSelectedRegion(), UGameXXKMVPRules::RegionTanjiang());

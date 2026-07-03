@@ -5,6 +5,7 @@
 #include "GameXXKMVPWidgetBase.generated.h"
 
 class UGameXXKMVPSubsystem;
+class AGameXXKMVPPlayerController;
 
 UCLASS(Blueprintable)
 class GAMEXXK_API UGameXXKMVPWidgetBase : public UUserWidget
@@ -20,6 +21,8 @@ public:
 
 protected:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
+	AGameXXKMVPPlayerController* ResolveMVPPlayerController() const;
+	bool NotifyPlayerFlowStateChanged();
 
 private:
 	UPROPERTY(Transient)
