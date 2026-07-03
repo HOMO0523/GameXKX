@@ -2,7 +2,7 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-04T03:22:00+08:00
+updated_at: 2026-07-04T04:07:00+08:00
 source_commit: working-tree
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
@@ -69,3 +69,13 @@ Real-flow evidence: Start opens `L_QingshanInn`; `F` accepts quest; manual save 
 - `python scripts\gamexxk_real_play_flow_mcp.py` passed with `ok: true`; report: `Saved\HarnessReports\gamexxk-real-play-flow-20260704-032047.json`.
 
 Visual evidence: `Saved\Codex\real_flow_after_battle.png` shows the copied 1Game scroll-map UI after the battle route node loads `L_Battle_1Game`; the active PIE player controller is `BP_1GameBattlePlayerController_C`.
+
+## 2026-07-04 Route Node Click Adapter
+
+- RED verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 40` failed compilation after adding the sparse route-node-id test because `UGameXXKOneGameRouteMapWidget` did not yet expose `GetRouteNodeVisualStatesForTest` or `ExecuteRouteNodeById`.
+- `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 60` passed after adding real-node-id execution and route-node visual-state diagnostics.
+- MCP automation passed `GameXXK.MVP.RouteMap.OneGameAdapter`: 1 passed / 0 failed.
+- `python -m py_compile Content\Python\gamexxk_probe_real_play_flow.py scripts\gamexxk_real_play_flow_mcp.py` passed.
+- `python scripts\gamexxk_real_play_flow_mcp.py` passed with `ok: true`; report: `Saved\HarnessReports\gamexxk-real-play-flow-20260704-040650.json`.
+
+Real-flow evidence: route-map probe exposes `route_node_visual_states`; visible Start node has `node_id=0`, `command_name=RouteNode0`, and a Slate hit center. The harness clicked Start at absolute screen `(925, 470)`, advancing `dungeon_node_index` to `1`; it then clicked Battle node `1` at `(887, 432)`, opening `L_Battle_1Game` with runtime screen `BATTLE`.

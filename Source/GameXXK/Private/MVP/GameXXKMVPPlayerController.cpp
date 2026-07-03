@@ -265,6 +265,7 @@ void AGameXXKMVPPlayerController::ConfigureRouteMapWidgetViewport(UGameXXKOneGam
 	RouteWidget->SetAlignmentInViewport(FVector2D::ZeroVector);
 	RouteWidget->SetPositionInViewport(RouteMapViewportPosition, false);
 	RouteWidget->SetDesiredSizeInViewport(RouteMapViewportSize);
+	RouteWidget->SetRouteMapViewportGeometry(RouteMapViewportPosition, RouteMapViewportSize);
 }
 
 bool AGameXXKMVPPlayerController::CanAddPlayerWidgetsToViewport() const

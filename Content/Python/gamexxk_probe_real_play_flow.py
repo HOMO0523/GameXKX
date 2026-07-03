@@ -21,6 +21,15 @@ def _vector_to_dict(value):
     }
 
 
+def _vector2d_to_dict(value):
+    if value is None:
+        return None
+    return {
+        "x": float(getattr(value, "x", 0.0)),
+        "y": float(getattr(value, "y", 0.0)),
+    }
+
+
 def _rotator_to_dict(value):
     if value is None:
         return None
@@ -341,7 +350,40 @@ def _widget_summary(widget):
             result[method_name] = bool(getattr(widget, method_name)())
         except Exception:
             pass
+    if hasattr(widget, "get_route_node_visual_states_for_test"):
+        try:
+            result["route_node_visual_states"] = [
+                _route_node_visual_state_summary(state)
+                for state in widget.get_route_node_visual_states_for_test()
+            ]
+        except Exception as exc:
+            result["route_node_visual_states_error"] = str(exc)
     return result
+
+
+def _route_node_visual_state_summary(state):
+    label = _struct_get(state, "label", "Label")
+    node_kind = _struct_get(state, "node_kind", "NodeKind")
+    room_type = _struct_get(state, "room_type", "RoomType")
+    node_id = _struct_get(state, "node_id", "NodeId")
+    visual_index = _struct_get(state, "visual_index", "VisualIndex")
+    return {
+        "node_id": int(node_id) if node_id is not None else -1,
+        "visual_index": int(visual_index) if visual_index is not None else -1,
+        "command_name": str(_struct_get(state, "command_name", "CommandName") or ""),
+        "label": _text_to_string(label),
+        "node_kind": _enum_name(node_kind),
+        "room_type": _enum_name(room_type),
+        "b_enabled": bool(_struct_get(state, "b_enabled", "bEnabled", "Enabled")),
+        "b_visited": bool(_struct_get(state, "b_visited", "bVisited", "Visited")),
+        "normalized_position": _vector2d_to_dict(_struct_get(state, "normalized_position", "NormalizedPosition")),
+        "canvas_position": _vector2d_to_dict(_struct_get(state, "canvas_position", "CanvasPosition")),
+        "hit_box_position": _vector2d_to_dict(_struct_get(state, "hit_box_position", "HitBoxPosition")),
+        "hit_box_size": _vector2d_to_dict(_struct_get(state, "hit_box_size", "HitBoxSize")),
+        "viewport_hit_box_position": _vector2d_to_dict(_struct_get(state, "viewport_hit_box_position", "ViewportHitBoxPosition")),
+        "viewport_hit_box_center": _vector2d_to_dict(_struct_get(state, "viewport_hit_box_center", "ViewportHitBoxCenter")),
+        "icon_path": str(_struct_get(state, "icon_path", "IconPath") or ""),
+    }
 
 
 def _player_controller_summary(player_controller):

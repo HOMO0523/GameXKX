@@ -306,6 +306,7 @@ void AGameXXKMVPHUD::ConfigureRouteMapWidgetViewport(UGameXXKOneGameRouteMapWidg
 	RouteWidget->SetAlignmentInViewport(FVector2D::ZeroVector);
 	RouteWidget->SetPositionInViewport(RouteMapViewportPosition, false);
 	RouteWidget->SetDesiredSizeInViewport(RouteMapViewportSize);
+	RouteWidget->SetRouteMapViewportGeometry(RouteMapViewportPosition, RouteMapViewportSize);
 }
 
 void AGameXXKMVPHUD::RefreshBattleBoardWidget()

@@ -57,6 +57,57 @@ struct GAMEXXK_API FGameXXKOneGameRouteNode
 	FVector2D NormalizedPosition = FVector2D::ZeroVector;
 };
 
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKOneGameRouteNodeVisualState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 NodeId = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 VisualIndex = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FName CommandName;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FText Label;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	EGameXXKNodeKind NodeKind = EGameXXKNodeKind::Start;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	EGameXXKOneGameRouteRoomType RoomType = EGameXXKOneGameRouteRoomType::Start;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	bool bEnabled = false;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	bool bVisited = false;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FVector2D NormalizedPosition = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FVector2D CanvasPosition = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FVector2D HitBoxPosition = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FVector2D HitBoxSize = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FVector2D ViewportHitBoxPosition = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FVector2D ViewportHitBoxCenter = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FString IconPath;
+};
+
 UCLASS(Blueprintable)
 class GAMEXXK_API UGameXXKOneGameRouteMapWidget : public UGameXXKMVPWidgetBase
 {
@@ -76,6 +127,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMap")
 	bool ExecuteRouteNode(int32 NodeIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMap")
+	bool ExecuteRouteNodeById(int32 NodeId);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
+	TArray<FGameXXKOneGameRouteNodeVisualState> GetRouteNodeVisualStatesForTest() const;
+
+	void SetRouteMapViewportGeometry(FVector2D InViewportPosition, FVector2D InViewportSize);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
 	bool IsOneGameRouteWidgetClassConfigured() const;
@@ -259,4 +318,10 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<int32> NodeButtonIndices;
+
+	UPROPERTY(Transient)
+	FVector2D RouteMapViewportPosition = FVector2D::ZeroVector;
+
+	UPROPERTY(Transient)
+	FVector2D RouteMapViewportSize = FVector2D::ZeroVector;
 };

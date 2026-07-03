@@ -96,6 +96,21 @@ def _flow_widgets(probe: dict[str, Any]) -> dict[str, Any]:
     return widgets if isinstance(widgets, dict) else {}
 
 
+def _route_node_visual_states(probe: dict[str, Any]) -> list[dict[str, Any]]:
+    route_widget = _flow_widgets(probe).get("route_map", {})
+    if not isinstance(route_widget, dict):
+        return []
+    states = route_widget.get("route_node_visual_states", [])
+    return states if isinstance(states, list) else []
+
+
+def _route_node_visual_state(probe: dict[str, Any], node_id: int) -> dict[str, Any]:
+    for state in _route_node_visual_states(probe):
+        if int(state.get("node_id", -1)) == int(node_id):
+            return state
+    return {}
+
+
 def _widget_visible(probe: dict[str, Any], name: str) -> bool:
     widget = _flow_widgets(probe).get(name, {})
     if not isinstance(widget, dict):
@@ -450,6 +465,15 @@ class PreviewInput:
         self.user32.mouse_event(0x0004, 0, 0, 0, 0)
         return {"x": x, "y": y}
 
+    def click_screen_point(self, window: dict[str, Any], screen_x: int, screen_y: int) -> dict[str, int]:
+        self.focus(window)
+        self.user32.SetCursorPos(int(screen_x), int(screen_y))
+        time.sleep(0.1)
+        self.user32.mouse_event(0x0002, 0, 0, 0, 0)
+        time.sleep(0.05)
+        self.user32.mouse_event(0x0004, 0, 0, 0, 0)
+        return {"x": int(screen_x), "y": int(screen_y)}
+
     def press_key(self, window: dict[str, Any], virtual_key: int, hold_seconds: float = 0.0) -> None:
         self.focus(window)
         self.user32.keybd_event(virtual_key, 0, 0, 0)
@@ -530,6 +554,21 @@ class RealFlowHarness:
         if not command_result.get("ok"):
             raise RuntimeError(f"Route widget node {node_index} failed: {command_result}")
         return parsed
+
+    def click_route_node(self, probe: dict[str, Any], node_id: int) -> dict[str, Any]:
+        node_state = _route_node_visual_state(probe, node_id)
+        if not node_state:
+            raise RuntimeError(f"Route node {node_id} visual state was not found: {_route_node_visual_states(probe)}")
+        if not bool(node_state.get("b_enabled")):
+            raise RuntimeError(f"Route node {node_id} is not enabled for screen click: {node_state}")
+        center = node_state.get("viewport_hit_box_center", {})
+        if not isinstance(center, dict) or "x" not in center or "y" not in center:
+            raise RuntimeError(f"Route node {node_id} missing viewport hit center: {node_state}")
+        window = self.input.find_preview_window()
+        click = self.input.click_screen_point(window, int(center["x"]), int(center["y"]))
+        self.event("route_node_screen_click", node_id=node_id, click=click, node_state=node_state)
+        time.sleep(0.45)
+        return self.probe()
 
     def screenshot(self, name: str) -> tuple[Path, tuple[int, int]]:
         window = self.input.find_preview_window()
@@ -840,12 +879,17 @@ class RealFlowHarness:
         if not after_route_map:
             raise RuntimeError(f"Timed out waiting for F to enter the Slay-the-Spire route map through QingshanInn_TownExit; last probe={json.dumps(town_exit_interact_probe, ensure_ascii=False)}")
         route_runtime = _runtime_state(after_route_map)
+        route_node_states = _route_node_visual_states(after_route_map)
+        route_start_state = _route_node_visual_state(after_route_map, 0)
         route_map_probe = {
             "ok": (
                 _screen_contains(after_route_map, "DungeonMap")
                 and ROUTE_MAP_TOKEN in _map_name(after_route_map)
                 and bool(route_runtime.get("b_dungeon_active"))
                 and _widget_visible(after_route_map, "route_map")
+                and bool(route_node_states)
+                and bool(route_start_state.get("b_enabled"))
+                and isinstance(route_start_state.get("viewport_hit_box_center"), dict)
             ),
             "map": _map_name(after_route_map),
             "screen": route_runtime.get("screen"),
@@ -853,6 +897,7 @@ class RealFlowHarness:
             "dungeon_node_index": route_runtime.get("dungeon_node_index"),
             "visible_commands": _visible_commands(after_route_map),
             "widgets": _flow_widgets(after_route_map),
+            "route_node_visual_states": route_node_states,
             "town_exit": town_exit,
             "town_exit_approach_location": town_exit_approach_location,
             "town_exit_approach_distance": _distance(_pawn_location(near_town_exit), town_exit_approach_location),
@@ -862,7 +907,7 @@ class RealFlowHarness:
             raise RuntimeError(f"Town exit F interaction did not open the Slay-the-Spire route map screen: {route_map_probe}")
         after_route_map_path, _ = self.screenshot("real_flow_after_route_map.png")
 
-        after_start_node = self.route_node(0)
+        after_start_node = self.click_route_node(after_route_map, 0)
         start_node_runtime = _runtime_state(after_start_node)
         start_node_probe = {
             "ok": _screen_contains(after_start_node, "DungeonMap") and int(start_node_runtime.get("dungeon_node_index") or 0) >= 1,
@@ -873,7 +918,7 @@ class RealFlowHarness:
         if not start_node_probe["ok"]:
             raise RuntimeError(f"Route start node did not advance route map: {start_node_probe}")
 
-        battle_click_probe = self.route_node(1)
+        battle_click_probe = self.click_route_node(after_start_node, 1)
         after_battle: dict[str, Any] = battle_click_probe
         for attempt in range(8):
             if _screen_contains(after_battle, "Battle") and BATTLE_MAP_TOKEN in _map_name(after_battle):

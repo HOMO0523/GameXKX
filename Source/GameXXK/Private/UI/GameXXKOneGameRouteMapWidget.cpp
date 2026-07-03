@@ -170,6 +170,17 @@ TArray<FGameXXKOneGameRouteNode> UGameXXKOneGameRouteMapWidget::BuildAdapterNode
 
 bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNode(int32 NodeIndex)
 {
+	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
+	if (!Nodes.IsValidIndex(NodeIndex))
+	{
+		return false;
+	}
+
+	return ExecuteRouteNodeById(Nodes[NodeIndex].NodeIndex);
+}
+
+bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNodeById(int32 NodeId)
+{
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem)
 	{
@@ -177,12 +188,16 @@ bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNode(int32 NodeIndex)
 	}
 
 	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
-	if (!Nodes.IsValidIndex(NodeIndex) || !Nodes[NodeIndex].bEnabled || Nodes[NodeIndex].CommandName.IsNone())
+	const FGameXXKOneGameRouteNode* NodeById = Nodes.FindByPredicate([NodeId](const FGameXXKOneGameRouteNode& Node)
+	{
+		return Node.NodeIndex == NodeId;
+	});
+	if (!NodeById || !NodeById->bEnabled || NodeById->CommandName.IsNone())
 	{
 		return false;
 	}
 
-	const FGameXXKOneGameRouteNode Node = Nodes[NodeIndex];
+	const FGameXXKOneGameRouteNode Node = *NodeById;
 	const bool bExecuted = GameXXKMVPCommandRouter::ExecuteVisibleCommand(Subsystem, Node.CommandName);
 	if (bExecuted)
 	{
@@ -193,6 +208,52 @@ bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNode(int32 NodeIndex)
 		}
 	}
 	return bExecuted;
+}
+
+TArray<FGameXXKOneGameRouteNodeVisualState> UGameXXKOneGameRouteMapWidget::GetRouteNodeVisualStatesForTest() const
+{
+	TArray<FGameXXKOneGameRouteNodeVisualState> VisualStates;
+	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
+	VisualStates.Reserve(Nodes.Num());
+	for (int32 VisualIndex = 0; VisualIndex < Nodes.Num(); ++VisualIndex)
+	{
+		const FGameXXKOneGameRouteNode& Node = Nodes[VisualIndex];
+		FGameXXKOneGameRouteNodeVisualState VisualState;
+		VisualState.NodeId = Node.NodeIndex;
+		VisualState.VisualIndex = VisualIndex;
+		VisualState.CommandName = Node.CommandName;
+		VisualState.Label = Node.Label;
+		VisualState.NodeKind = Node.NodeKind;
+		VisualState.RoomType = Node.RoomType;
+		VisualState.bEnabled = Node.bEnabled;
+		VisualState.bVisited = Node.bVisited;
+		VisualState.NormalizedPosition = Node.NormalizedPosition;
+		VisualState.CanvasPosition = GetNodeCanvasPosition(Node);
+		VisualState.HitBoxPosition = VisualState.CanvasPosition + FVector2D(-55.0f, -36.0f);
+		VisualState.HitBoxSize = FVector2D(110.0f, 72.0f);
+		VisualState.ViewportHitBoxPosition = RouteMapViewportPosition + VisualState.HitBoxPosition;
+		VisualState.ViewportHitBoxCenter = VisualState.ViewportHitBoxPosition + VisualState.HitBoxSize * 0.5f;
+		if (NodeButtons.IsValidIndex(VisualIndex) && NodeButtons[VisualIndex])
+		{
+			const FGeometry ButtonGeometry = NodeButtons[VisualIndex]->GetCachedGeometry();
+			const FVector2D GeometrySize = ButtonGeometry.GetLocalSize();
+			if (GeometrySize.X > 0.0f && GeometrySize.Y > 0.0f)
+			{
+				VisualState.HitBoxSize = GeometrySize;
+				VisualState.ViewportHitBoxPosition = ButtonGeometry.LocalToAbsolute(FVector2D::ZeroVector);
+				VisualState.ViewportHitBoxCenter = ButtonGeometry.LocalToAbsolute(GeometrySize * 0.5f);
+			}
+		}
+		VisualState.IconPath = GetTextureForNode(Node).ToSoftObjectPath().ToString();
+		VisualStates.Add(VisualState);
+	}
+	return VisualStates;
+}
+
+void UGameXXKOneGameRouteMapWidget::SetRouteMapViewportGeometry(FVector2D InViewportPosition, FVector2D InViewportSize)
+{
+	RouteMapViewportPosition = InViewportPosition;
+	RouteMapViewportSize = InViewportSize;
 }
 
 bool UGameXXKOneGameRouteMapWidget::IsOneGameRouteWidgetClassConfigured() const
@@ -576,7 +637,7 @@ void UGameXXKOneGameRouteMapWidget::ExecuteNodeButtonAtIndex(int32 ButtonIndex)
 	{
 		return;
 	}
-	ExecuteRouteNode(NodeButtonIndices[ButtonIndex]);
+	ExecuteRouteNodeById(NodeButtonIndices[ButtonIndex]);
 }
 
 void UGameXXKOneGameRouteMapWidget::BindNodeButton(UButton* Button, int32 ButtonIndex)

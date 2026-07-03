@@ -2,7 +2,7 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-04T03:22:00+08:00
+updated_at: 2026-07-04T04:07:00+08:00
 source_commit: working-tree
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
@@ -35,3 +35,11 @@ parallel_lock: GameXXK.PlayableEntryFlow
 - Added a small `TestMap` compatibility runtime module that restores `/Script/TestMap.MyBlueprintFunctionLibrary::FunCL_GetRandomArrayToIndex`, matching the UE 5.4 reference project dependency required by `/Game/1Game/UI/UI_地图选择`.
 - Re-enabled the copied 1Game battle UI bridge after the missing dependency was restored: `/Game/GameXXK/Battle/BP_1GameBattleGameMode` now points to `/Game/GameXXK/Battle/BP_1GameBattlePlayerController`, and `L_Battle_1Game` uses that copied GameMode.
 - Kept a `configure-battle-flow` asset-script phase as a rollback path to restore `L_Battle_1Game` to `GameXXKFlowMapGameMode` if the direct 1Game bridge needs to be disabled again.
+
+## 2026-07-04 Route Node Click Adapter
+
+- Adapted `UGameXXKOneGameRouteMapWidget` so route-node clicks execute by real GameXXK node id through `ExecuteRouteNodeById`, while the old `ExecuteRouteNode(index)` API remains as an index-based compatibility wrapper.
+- Added `FGameXXKOneGameRouteNodeVisualState` diagnostics for route node id, concrete `RouteNode<ID>` command, room type, enabled/visited state, icon path, and hit-box geometry.
+- Changed route-node button callbacks to use stored node ids instead of assuming node ids and array indices always match.
+- Updated `Content/Python/gamexxk_probe_real_play_flow.py` to expose route node visual states to MCP probes.
+- Updated `scripts/gamexxk_real_play_flow_mcp.py` so the acceptance harness now clicks the actual visible Start/Battle route-node buttons using Slate absolute hit geometry, instead of calling `execute_route_node` directly.

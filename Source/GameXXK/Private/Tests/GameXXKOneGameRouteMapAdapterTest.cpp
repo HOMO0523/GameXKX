@@ -113,6 +113,47 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 		GameXXKLevelFlow::MapForRuntimeState(Subsystem->GetRuntimeState()),
 		FName(TEXT("/Game/GameXXK/Maps/L_Battle_1Game")));
 
+	UGameInstance* SparseGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* SparseSubsystem = NewObject<UGameXXKMVPSubsystem>(SparseGameInstance);
+	FGameXXKRuntimeState& SparseState = SparseSubsystem->GetMutableRuntimeState();
+	SparseState = UGameXXKMVPRules::CreateNewGame();
+	SparseState.Screen = EGameXXKScreen::DungeonMap;
+	SparseState.CurrentMapId = TEXT("HuangshanRoute");
+	SparseState.bDungeonActive = true;
+	SparseState.bHasGeneratedRouteMap = true;
+	SparseState.CurrentRouteNodeId = 10;
+	SparseState.PendingRouteNodeId = INDEX_NONE;
+	SparseState.RouteMapNodes.Reset();
+	SparseState.RouteMapEdges.Reset();
+	SparseState.VisitedRouteNodeIds.Reset();
+	SparseState.ReachableRouteNodeIds.Reset();
+	SparseState.RouteMapNodes.Emplace(10, 0, 0, EGameXXKNodeKind::Start, FVector2D(0.50f, 0.00f), TArray<int32>{20});
+	SparseState.RouteMapNodes.Emplace(20, 1, 0, EGameXXKNodeKind::Battle, FVector2D(0.50f, 1.00f), TArray<int32>{});
+	SparseState.RouteMapEdges.Emplace(10, 20);
+	SparseState.ReachableRouteNodeIds.Add(10);
+
+	UGameXXKOneGameRouteMapWidget* SparseRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
+	SparseRouteWidget->SetMVPSubsystem(SparseSubsystem);
+	TestTrue(TEXT("sparse route widget initializes"), SparseRouteWidget->Initialize());
+	SparseRouteWidget->NativeConstruct();
+	SparseRouteWidget->RefreshFromState();
+
+	const auto SparseVisualStates = SparseRouteWidget->GetRouteNodeVisualStatesForTest();
+	TestEqual(TEXT("sparse adapter exposes one visual state per route node"), SparseVisualStates.Num(), 2);
+	TestEqual(TEXT("sparse first visual keeps real node id"), SparseVisualStates[0].NodeId, 10);
+	TestEqual(TEXT("sparse first visual exposes concrete route command"), SparseVisualStates[0].CommandName, FName(TEXT("RouteNode10")));
+	TestTrue(TEXT("sparse first visual exposes enabled hit area"), SparseVisualStates[0].bEnabled && SparseVisualStates[0].HitBoxSize.X > 0.0f && SparseVisualStates[0].HitBoxSize.Y > 0.0f);
+	TestEqual(TEXT("sparse second visual keeps real node id"), SparseVisualStates[1].NodeId, 20);
+	TestEqual(TEXT("sparse second visual exposes concrete route command"), SparseVisualStates[1].CommandName, FName(TEXT("RouteNode20")));
+	TestFalse(TEXT("sparse future node starts disabled"), SparseVisualStates[1].bEnabled);
+	TestFalse(TEXT("sparse node id is not accidentally treated as array index"), SparseRouteWidget->ExecuteRouteNode(10));
+	TestTrue(TEXT("sparse adapter executes by real node id"), SparseRouteWidget->ExecuteRouteNodeById(10));
+	TestTrue(TEXT("sparse start node is visited by id"), SparseSubsystem->GetRuntimeState().VisitedRouteNodeIds.Contains(10));
+	TestTrue(TEXT("sparse battle node unlocks by id"), SparseSubsystem->GetRuntimeState().ReachableRouteNodeIds.Contains(20));
+	SparseRouteWidget->RefreshFromState();
+	TestTrue(TEXT("sparse adapter executes unlocked battle by real node id"), SparseRouteWidget->ExecuteRouteNodeById(20));
+	TestEqual(TEXT("sparse battle node opens battle screen"), SparseSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
+
 	return true;
 }
 
