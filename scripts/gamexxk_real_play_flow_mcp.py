@@ -450,6 +450,16 @@ class PreviewInput:
         self.user32.SetForegroundWindow(hwnd)
         time.sleep(0.2)
 
+    def focus_keyboard_input(self, window: dict[str, Any]) -> None:
+        left, top, right, bottom = [int(v) for v in window["rect"]]
+        self.focus(window)
+        self.user32.SetCursorPos((left + right) // 2, (top + bottom) // 2)
+        time.sleep(0.05)
+        self.user32.mouse_event(0x0002, 0, 0, 0, 0)
+        time.sleep(0.03)
+        self.user32.mouse_event(0x0004, 0, 0, 0, 0)
+        time.sleep(0.1)
+
     def click_image_point(self, window: dict[str, Any], image_size: tuple[int, int], image_x: int, image_y: int) -> dict[str, int]:
         left, top, right, bottom = [int(v) for v in window["rect"]]
         width = max(1, right - left)
@@ -475,13 +485,13 @@ class PreviewInput:
         return {"x": int(screen_x), "y": int(screen_y)}
 
     def press_key(self, window: dict[str, Any], virtual_key: int, hold_seconds: float = 0.0) -> None:
-        self.focus(window)
+        self.focus_keyboard_input(window)
         self.user32.keybd_event(virtual_key, 0, 0, 0)
         time.sleep(max(0.0, hold_seconds))
         self.user32.keybd_event(virtual_key, 0, 0x0002, 0)
 
     def key_down(self, window: dict[str, Any], virtual_key: int) -> None:
-        self.focus(window)
+        self.focus_keyboard_input(window)
         self.user32.keybd_event(virtual_key, 0, 0, 0)
 
     def key_up(self, virtual_key: int) -> None:

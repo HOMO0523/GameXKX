@@ -11,8 +11,8 @@
 
 namespace
 {
-	const FVector2D RouteMapViewportPosition(420.0f, 124.0f);
-	const FVector2D RouteMapViewportSize(560.0f, 520.0f);
+	const FVector2D HUDRouteMapViewportPosition(420.0f, 124.0f);
+	const FVector2D HUDRouteMapViewportSize(560.0f, 520.0f);
 }
 
 AGameXXKMVPHUD::AGameXXKMVPHUD()
@@ -304,9 +304,9 @@ void AGameXXKMVPHUD::ConfigureRouteMapWidgetViewport(UGameXXKOneGameRouteMapWidg
 	}
 
 	RouteWidget->SetAlignmentInViewport(FVector2D::ZeroVector);
-	RouteWidget->SetPositionInViewport(RouteMapViewportPosition, false);
-	RouteWidget->SetDesiredSizeInViewport(RouteMapViewportSize);
-	RouteWidget->SetRouteMapViewportGeometry(RouteMapViewportPosition, RouteMapViewportSize);
+	RouteWidget->SetPositionInViewport(HUDRouteMapViewportPosition, false);
+	RouteWidget->SetDesiredSizeInViewport(HUDRouteMapViewportSize);
+	RouteWidget->SetRouteMapViewportGeometry(HUDRouteMapViewportPosition, HUDRouteMapViewportSize);
 }
 
 void AGameXXKMVPHUD::RefreshBattleBoardWidget()

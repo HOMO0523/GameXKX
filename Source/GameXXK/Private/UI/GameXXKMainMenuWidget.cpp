@@ -14,7 +14,7 @@
 
 namespace
 {
-	static const FName QingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
+	static const FName MainMenuQingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 
 	static FText BuildSlotLabel(int32 SlotIndex, const FText& ScreenLabel, int32 PlayerLevel)
 	{
@@ -328,7 +328,7 @@ void UGameXXKMainMenuWidget::RequestPlayableMapForRuntimeState()
 	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
 	if (State.Screen == EGameXXKScreen::Town && State.CurrentRegion == UGameXXKMVPRules::RegionQingshan())
 	{
-		RequestOpenTownMap(QingshanTownMap);
+		RequestOpenTownMap(MainMenuQingshanTownMap);
 	}
 }
 

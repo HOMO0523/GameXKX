@@ -13,8 +13,8 @@
 
 namespace
 {
-	const FVector2D RouteMapViewportPosition(420.0f, 124.0f);
-	const FVector2D RouteMapViewportSize(560.0f, 520.0f);
+	const FVector2D PlayerControllerRouteMapViewportPosition(420.0f, 124.0f);
+	const FVector2D PlayerControllerRouteMapViewportSize(560.0f, 520.0f);
 }
 
 AGameXXKMVPPlayerController::AGameXXKMVPPlayerController()
@@ -263,9 +263,9 @@ void AGameXXKMVPPlayerController::ConfigureRouteMapWidgetViewport(UGameXXKOneGam
 	}
 
 	RouteWidget->SetAlignmentInViewport(FVector2D::ZeroVector);
-	RouteWidget->SetPositionInViewport(RouteMapViewportPosition, false);
-	RouteWidget->SetDesiredSizeInViewport(RouteMapViewportSize);
-	RouteWidget->SetRouteMapViewportGeometry(RouteMapViewportPosition, RouteMapViewportSize);
+	RouteWidget->SetPositionInViewport(PlayerControllerRouteMapViewportPosition, false);
+	RouteWidget->SetDesiredSizeInViewport(PlayerControllerRouteMapViewportSize);
+	RouteWidget->SetRouteMapViewportGeometry(PlayerControllerRouteMapViewportPosition, PlayerControllerRouteMapViewportSize);
 }
 
 bool AGameXXKMVPPlayerController::CanAddPlayerWidgetsToViewport() const
