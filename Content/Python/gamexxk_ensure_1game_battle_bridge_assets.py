@@ -270,6 +270,8 @@ def main() -> None:
             _configure_map(report, ROUTE_MAP, unreal.GameXXKFlowMapGameMode.static_class())
         elif phase == "configure-battle":
             _configure_map(report, BATTLE_MAP, _load_blueprint_class(GAMEXXK_BATTLE_GAME_MODE))
+        elif phase == "configure-battle-island":
+            _configure_map(report, BATTLE_MAP, _load_blueprint_class(ONEGAME_GAME_MODE))
         elif phase == "configure-battle-flow":
             _configure_map(report, BATTLE_MAP, unreal.GameXXKFlowMapGameMode.static_class())
         else:

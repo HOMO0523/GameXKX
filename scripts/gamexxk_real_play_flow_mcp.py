@@ -30,7 +30,7 @@ MAIN_MAP = "/Game/GameXXK/Maps/L_Main"
 QINGSHAN_MAP_TOKEN = "L_QingshanInn"
 ROUTE_MAP_TOKEN = "L_RouteMap"
 BATTLE_MAP_TOKEN = "L_Battle_1Game"
-ONEGAME_BATTLE_PC_TOKEN = "BP_1GameBattlePlayerController_C"
+ONEGAME_BATTLE_PC_TOKEN = "BP_PlayerController_C"
 
 
 def _png_size(data: bytes) -> tuple[int, int]:
@@ -921,8 +921,8 @@ class RealFlowHarness:
         battle_click_probe = self.click_route_node(after_start_node, 1)
         after_battle: dict[str, Any] = battle_click_probe
         for attempt in range(8):
-            if _screen_contains(after_battle, "Battle") and BATTLE_MAP_TOKEN in _map_name(after_battle):
-                self.event("wait_ok", label="Battle route node opens copied 1Game battle map", attempt=attempt + 1)
+            if BATTLE_MAP_TOKEN in _map_name(after_battle):
+                self.event("wait_ok", label="Battle route node opens original 1Game island", attempt=attempt + 1)
                 break
             time.sleep(0.35)
             after_battle = self.probe()
@@ -933,8 +933,7 @@ class RealFlowHarness:
             active_player_controller = {}
         battle_probe = {
             "ok": (
-                _screen_contains(after_battle, "Battle")
-                and BATTLE_MAP_TOKEN in _map_name(after_battle)
+                BATTLE_MAP_TOKEN in _map_name(after_battle)
                 and ONEGAME_BATTLE_PC_TOKEN in str(active_player_controller.get("class_name", ""))
             ),
             "map": _map_name(after_battle),
@@ -944,9 +943,9 @@ class RealFlowHarness:
             "onegame_route_widgets": active_widgets_probe.get("onegame_route_widgets", []),
             "click_probe_map": _map_name(battle_click_probe),
         }
-        self.event("battle_1game_ui_bridge_probe", **battle_probe)
+        self.event("battle_1game_island_probe", **battle_probe)
         if not battle_probe["ok"]:
-            raise RuntimeError(f"Route battle node did not open the copied 1Game battle UI bridge: {battle_probe}")
+            raise RuntimeError(f"Route battle node did not open the original 1Game island: {battle_probe}")
         after_battle_path, _ = self.screenshot("real_flow_after_battle.png")
 
         result = {

@@ -10,8 +10,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 REPORT_PATH = PROJECT_ROOT / "Saved" / "HarnessReports" / "gamexxk-1game-battle-ui-bridge-validation.json"
 
 BATTLE_MAP = "/Game/GameXXK/Maps/L_Battle_1Game"
-COPIED_GAME_MODE_CLASS = "/Game/GameXXK/Battle/BP_1GameBattleGameMode.BP_1GameBattleGameMode_C"
-COPIED_PLAYER_CONTROLLER_CLASS = "/Game/GameXXK/Battle/BP_1GameBattlePlayerController.BP_1GameBattlePlayerController_C"
+EXPECTED_GAME_MODE_CLASS = "/Game/1Game/Control/BP_Gamemode.BP_Gamemode_C"
+EXPECTED_PLAYER_CONTROLLER_CLASS = "/Game/1Game/Control/BP_PlayerController.BP_PlayerController_C"
 
 
 def _class_path(value) -> str:
@@ -73,18 +73,18 @@ def main() -> None:
     actual_player_controller = _class_path(player_controller)
 
     result = {
-        "ok": actual_game_mode == COPIED_GAME_MODE_CLASS and actual_player_controller == COPIED_PLAYER_CONTROLLER_CLASS,
+        "ok": actual_game_mode == EXPECTED_GAME_MODE_CLASS and actual_player_controller == EXPECTED_PLAYER_CONTROLLER_CLASS,
         "map": BATTLE_MAP,
         "game_mode": actual_game_mode,
-        "expected_game_mode": COPIED_GAME_MODE_CLASS,
+        "expected_game_mode": EXPECTED_GAME_MODE_CLASS,
         "player_controller": actual_player_controller,
-        "expected_player_controller": COPIED_PLAYER_CONTROLLER_CLASS,
+        "expected_player_controller": EXPECTED_PLAYER_CONTROLLER_CLASS,
     }
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False))
     if not result["ok"]:
-        raise RuntimeError("L_Battle_1Game is not using the copied 1Game battle UI bridge")
+        raise RuntimeError("L_Battle_1Game is not configured as an isolated original 1Game island")
 
 
 if __name__ == "__main__":
