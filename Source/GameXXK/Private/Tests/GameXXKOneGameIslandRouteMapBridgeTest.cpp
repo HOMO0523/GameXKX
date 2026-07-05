@@ -1,5 +1,8 @@
 #include "MVP/GameXXKOneGameIslandRouteMapBridge.h"
 
+#include "GameXXKMVPRules.h"
+#include "MVP/GameXXKMVPSubsystem.h"
+#include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -19,6 +22,24 @@ bool FGameXXKOneGameIslandRouteMapBridgeTest::RunTest(const FString& Parameters)
 		TEXT("target offset clamps before the top of the scroll content"),
 		AGameXXKOneGameIslandRouteMapBridge::CalculateTargetScrollOffset(180.0f, 280.0f),
 		0.0f);
+
+	TestFalse(
+		TEXT("original 1Game route does not open battle layout before any click"),
+		AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForOriginalLevelAdvance(INDEX_NONE, 0, 1));
+	TestTrue(
+		TEXT("original 1Game route battle click opens battle layout"),
+		AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForOriginalLevelAdvance(0, 1, 1));
+	TestFalse(
+		TEXT("already-open battle layout does not reopen on later level changes"),
+		AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForOriginalLevelAdvance(1, 2, 1));
+
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestTrue(
+		TEXT("bridge can prime a real battle state for the 1Game route map"),
+		AGameXXKOneGameIslandRouteMapBridge::PrimeBattleSubsystemForIslandRoute(*Subsystem));
+	TestEqual(TEXT("bridge battle state is the real battle screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
+	TestTrue(TEXT("bridge battle state includes the quest follower"), Subsystem->GetRuntimeState().bFollowerJoined);
 
 	return true;
 }

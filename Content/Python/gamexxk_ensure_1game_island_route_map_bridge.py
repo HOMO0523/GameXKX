@@ -92,6 +92,8 @@ def main() -> None:
     changed |= _set_property(actor, ["scroll_top_padding", "ScrollTopPadding"], 280.0)
     changed |= _set_property(actor, ["sync_interval_seconds", "SyncIntervalSeconds"], 0.25)
     changed |= _set_property(actor, ["max_sync_attempts", "MaxSyncAttempts"], 240)
+    changed |= _set_property(actor, ["original_battle_start_level", "OriginalBattleStartLevel"], 1)
+    changed |= _set_property(actor, ["original_current_level_int_property_index", "OriginalCurrentLevelIntPropertyIndex"], 1)
 
     save_current_level = bool(unreal.EditorLoadingAndSavingUtils.save_current_level())
     save_dirty_packages = unreal.EditorLoadingAndSavingUtils.save_dirty_packages(True, True)
@@ -104,6 +106,8 @@ def main() -> None:
         "changed": changed,
         "route_map_widget_class": _property_string(actor, ["route_map_widget_class", "RouteMapWidgetClass"]),
         "route_node_widget_class": _property_string(actor, ["route_node_widget_class", "RouteNodeWidgetClass"]),
+        "original_battle_start_level": _property_string(actor, ["original_battle_start_level", "OriginalBattleStartLevel"]),
+        "original_current_level_int_property_index": _property_string(actor, ["original_current_level_int_property_index", "OriginalCurrentLevelIntPropertyIndex"]),
         "save_current_level": save_current_level,
         "save_dirty_packages": save_dirty_packages,
     }

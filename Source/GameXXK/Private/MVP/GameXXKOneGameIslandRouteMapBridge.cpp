@@ -5,8 +5,13 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/PanelWidget.h"
 #include "Components/ScrollBox.h"
+#include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
+#include "GameXXKMVPRules.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 #include "TimerManager.h"
+#include "UI/GameXXKBattleBoardWidget.h"
 #include "UObject/UnrealType.h"
 
 AGameXXKOneGameIslandRouteMapBridge::AGameXXKOneGameIslandRouteMapBridge()
@@ -17,6 +22,29 @@ AGameXXKOneGameIslandRouteMapBridge::AGameXXKOneGameIslandRouteMapBridge()
 float AGameXXKOneGameIslandRouteMapBridge::CalculateTargetScrollOffset(float NodeCanvasY, float TopPadding)
 {
 	return FMath::Max(0.0f, NodeCanvasY - FMath::Max(0.0f, TopPadding));
+}
+
+bool AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForOriginalLevelAdvance(
+	int32 PreviousLevel,
+	int32 CurrentLevel,
+	int32 BattleStartLevel)
+{
+	return BattleStartLevel > 0
+		&& PreviousLevel != INDEX_NONE
+		&& CurrentLevel > PreviousLevel
+		&& PreviousLevel < BattleStartLevel
+		&& CurrentLevel >= BattleStartLevel;
+}
+
+bool AGameXXKOneGameIslandRouteMapBridge::PrimeBattleSubsystemForIslandRoute(UGameXXKMVPSubsystem& Subsystem)
+{
+	return Subsystem.StartGame()
+		&& Subsystem.SelectWorldRegion(UGameXXKMVPRules::RegionQingshan())
+		&& Subsystem.AcceptQuest()
+		&& Subsystem.OpenDungeonFromTownExit()
+		&& Subsystem.SelectDungeonNode(EGameXXKNodeKind::Start)
+		&& Subsystem.SelectDungeonNode(EGameXXKNodeKind::Battle)
+		&& Subsystem.GetRuntimeState().Screen == EGameXXKScreen::Battle;
 }
 
 void AGameXXKOneGameIslandRouteMapBridge::BeginPlay()
@@ -69,6 +97,8 @@ void AGameXXKOneGameIslandRouteMapBridge::SynchronizeRouteMapScroll()
 	{
 		return;
 	}
+
+	SynchronizeOriginalBattleLayout(RouteMapWidget);
 
 	FBoolProperty* ClickableProperty = FindRouteNodeClickableProperty(RouteNodeClass);
 	if (!ClickableProperty)
@@ -188,4 +218,162 @@ UScrollBox* AGameXXKOneGameIslandRouteMapBridge::FindParentScrollBox(UUserWidget
 UCanvasPanelSlot* AGameXXKOneGameIslandRouteMapBridge::FindCanvasSlot(UUserWidget* RouteNodeWidget) const
 {
 	return RouteNodeWidget ? Cast<UCanvasPanelSlot>(RouteNodeWidget->Slot) : nullptr;
+}
+
+void AGameXXKOneGameIslandRouteMapBridge::SynchronizeOriginalBattleLayout(UUserWidget* RouteMapWidget)
+{
+	if (bBattleLayoutOpen)
+	{
+		const UGameXXKMVPSubsystem* Subsystem = BattleSubsystem.Get();
+		if (Subsystem && Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
+		{
+			if (BattleBoardWidget)
+			{
+				BattleBoardWidget->RemoveFromParent();
+				BattleBoardWidget = nullptr;
+			}
+			if (RouteMapWidget)
+			{
+				RouteMapWidget->SetVisibility(ESlateVisibility::Visible);
+			}
+			bBattleLayoutOpen = false;
+		}
+		return;
+	}
+
+	int32 CurrentLevel = INDEX_NONE;
+	if (!TryReadOriginalCurrentLevel(CurrentLevel))
+	{
+		return;
+	}
+
+	if (LastObservedOriginalLevel == INDEX_NONE)
+	{
+		LastObservedOriginalLevel = CurrentLevel;
+		return;
+	}
+
+	if (ShouldOpenBattleLayoutForOriginalLevelAdvance(LastObservedOriginalLevel, CurrentLevel, OriginalBattleStartLevel))
+	{
+		if (OpenBattleLayoutFromOriginalRoute(RouteMapWidget))
+		{
+			LastObservedOriginalLevel = CurrentLevel;
+		}
+		return;
+	}
+
+	LastObservedOriginalLevel = CurrentLevel;
+}
+
+bool AGameXXKOneGameIslandRouteMapBridge::TryReadOriginalCurrentLevel(int32& OutCurrentLevel) const
+{
+	const UWorld* World = GetWorld();
+	const APlayerController* PlayerController = World ? World->GetFirstPlayerController() : nullptr;
+	if (!PlayerController)
+	{
+		return false;
+	}
+
+	FIntProperty* CurrentLevelProperty = FindOriginalCurrentLevelProperty(PlayerController->GetClass());
+	if (!CurrentLevelProperty)
+	{
+		return false;
+	}
+
+	OutCurrentLevel = CurrentLevelProperty->GetPropertyValue_InContainer(PlayerController);
+	return true;
+}
+
+FIntProperty* AGameXXKOneGameIslandRouteMapBridge::FindOriginalCurrentLevelProperty(UClass* PlayerControllerClass) const
+{
+	if (!PlayerControllerClass || OriginalCurrentLevelIntPropertyIndex < 0)
+	{
+		return nullptr;
+	}
+
+	int32 DirectIntPropertyIndex = 0;
+	for (TFieldIterator<FIntProperty> PropertyIt(PlayerControllerClass, EFieldIteratorFlags::IncludeSuper); PropertyIt; ++PropertyIt)
+	{
+		FIntProperty* IntProperty = *PropertyIt;
+		if (!IntProperty || IntProperty->GetOwnerClass() != PlayerControllerClass)
+		{
+			continue;
+		}
+
+		if (DirectIntPropertyIndex == OriginalCurrentLevelIntPropertyIndex)
+		{
+			return IntProperty;
+		}
+		++DirectIntPropertyIndex;
+	}
+	return nullptr;
+}
+
+bool AGameXXKOneGameIslandRouteMapBridge::OpenBattleLayoutFromOriginalRoute(UUserWidget* RouteMapWidget)
+{
+	UWorld* World = GetWorld();
+	APlayerController* PlayerController = World ? World->GetFirstPlayerController() : nullptr;
+	if (!PlayerController)
+	{
+		return false;
+	}
+
+	UGameXXKMVPSubsystem* Subsystem = ResolveBattleSubsystem();
+	if (!Subsystem)
+	{
+		return false;
+	}
+
+	TSubclassOf<UGameXXKBattleBoardWidget> WidgetClass = BattleBoardWidgetClass;
+	if (!WidgetClass)
+	{
+		WidgetClass = UGameXXKBattleBoardWidget::StaticClass();
+	}
+	if (!BattleBoardWidget)
+	{
+		BattleBoardWidget = CreateWidget<UGameXXKBattleBoardWidget>(PlayerController, WidgetClass);
+	}
+	if (!BattleBoardWidget)
+	{
+		return false;
+	}
+
+	if (RouteMapWidget)
+	{
+		RouteMapWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	BattleBoardWidget->SetMVPSubsystem(Subsystem);
+	if (!BattleBoardWidget->IsInViewport())
+	{
+		BattleBoardWidget->AddToViewport(250);
+	}
+	BattleBoardWidget->RefreshFromState();
+
+	FInputModeGameAndUI InputMode;
+	InputMode.SetWidgetToFocus(BattleBoardWidget->TakeWidget());
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	PlayerController->SetInputMode(InputMode);
+	PlayerController->bShowMouseCursor = true;
+
+	bBattleLayoutOpen = true;
+	return true;
+}
+
+UGameXXKMVPSubsystem* AGameXXKOneGameIslandRouteMapBridge::ResolveBattleSubsystem()
+{
+	if (BattleSubsystem)
+	{
+		return BattleSubsystem;
+	}
+
+	UWorld* World = GetWorld();
+	UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
+	UObject* SubsystemOuter = GameInstance ? static_cast<UObject*>(GameInstance) : static_cast<UObject*>(this);
+	BattleSubsystem = NewObject<UGameXXKMVPSubsystem>(SubsystemOuter);
+	if (!BattleSubsystem || !PrimeBattleSubsystemForIslandRoute(*BattleSubsystem))
+	{
+		BattleSubsystem = nullptr;
+	}
+	return BattleSubsystem;
 }
