@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GameXXKMVPRules.h"
 #include "GameXXKOneGameIslandRouteMapBridge.generated.h"
 
 class FBoolProperty;
@@ -22,6 +23,7 @@ public:
 
 	static float CalculateTargetScrollOffset(float NodeCanvasY, float TopPadding);
 	static bool ShouldOpenBattleLayoutForOriginalLevelAdvance(int32 PreviousLevel, int32 CurrentLevel, int32 BattleStartLevel);
+	static bool ShouldOpenBattleLayoutForGameXXKRuntimeScreen(EGameXXKScreen Screen);
 	static bool PrimeBattleSubsystemForIslandRoute(UGameXXKMVPSubsystem& Subsystem);
 
 protected:

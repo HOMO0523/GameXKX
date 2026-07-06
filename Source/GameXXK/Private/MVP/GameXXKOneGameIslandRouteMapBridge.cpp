@@ -36,6 +36,11 @@ bool AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForOriginalLevel
 		&& CurrentLevel >= BattleStartLevel;
 }
 
+bool AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForGameXXKRuntimeScreen(EGameXXKScreen Screen)
+{
+	return Screen == EGameXXKScreen::Battle;
+}
+
 bool AGameXXKOneGameIslandRouteMapBridge::PrimeBattleSubsystemForIslandRoute(UGameXXKMVPSubsystem& Subsystem)
 {
 	return Subsystem.StartGame()
@@ -241,6 +246,16 @@ void AGameXXKOneGameIslandRouteMapBridge::SynchronizeOriginalBattleLayout(UUserW
 		return;
 	}
 
+	UWorld* World = GetWorld();
+	UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
+	UGameXXKMVPSubsystem* ExistingSubsystem = GameInstance ? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr;
+	if (ExistingSubsystem && ShouldOpenBattleLayoutForGameXXKRuntimeScreen(ExistingSubsystem->GetRuntimeState().Screen))
+	{
+		BattleSubsystem = ExistingSubsystem;
+		OpenBattleLayoutFromOriginalRoute(RouteMapWidget);
+		return;
+	}
+
 	int32 CurrentLevel = INDEX_NONE;
 	if (!TryReadOriginalCurrentLevel(CurrentLevel))
 	{
@@ -369,6 +384,12 @@ UGameXXKMVPSubsystem* AGameXXKOneGameIslandRouteMapBridge::ResolveBattleSubsyste
 
 	UWorld* World = GetWorld();
 	UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
+	if (UGameXXKMVPSubsystem* ExistingSubsystem = GameInstance ? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr)
+	{
+		BattleSubsystem = ExistingSubsystem;
+		return BattleSubsystem;
+	}
+
 	UObject* SubsystemOuter = GameInstance ? static_cast<UObject*>(GameInstance) : static_cast<UObject*>(this);
 	BattleSubsystem = NewObject<UGameXXKMVPSubsystem>(SubsystemOuter);
 	if (!BattleSubsystem || !PrimeBattleSubsystemForIslandRoute(*BattleSubsystem))

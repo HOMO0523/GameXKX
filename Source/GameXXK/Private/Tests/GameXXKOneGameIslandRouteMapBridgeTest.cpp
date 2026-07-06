@@ -32,6 +32,15 @@ bool FGameXXKOneGameIslandRouteMapBridgeTest::RunTest(const FString& Parameters)
 	TestFalse(
 		TEXT("already-open battle layout does not reopen on later level changes"),
 		AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForOriginalLevelAdvance(1, 2, 1));
+	TestTrue(
+		TEXT("GameXXK battle runtime opens battle layout directly"),
+		AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForGameXXKRuntimeScreen(EGameXXKScreen::Battle));
+	TestFalse(
+		TEXT("GameXXK route-map runtime does not open battle layout directly"),
+		AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForGameXXKRuntimeScreen(EGameXXKScreen::DungeonMap));
+	TestFalse(
+		TEXT("GameXXK town runtime does not open battle layout directly"),
+		AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForGameXXKRuntimeScreen(EGameXXKScreen::Town));
 
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
