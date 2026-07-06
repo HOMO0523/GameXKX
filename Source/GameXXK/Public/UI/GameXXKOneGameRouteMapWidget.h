@@ -9,6 +9,9 @@ class UButton;
 class UBorder;
 class UCanvasPanel;
 class UImage;
+class UOverlay;
+class UScrollBox;
+class USizeBox;
 class UTexture2D;
 class UTextBlock;
 class UUserWidget;
@@ -178,6 +181,18 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
 	FString GetCreatedNodeVisualIconPath(int32 WidgetIndex) const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
+	bool HasRouteBackgroundVisualForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
+	FString GetRouteBackgroundTexturePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
+	FVector2D GetRouteContentSizeForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
+	float GetLastAppliedScrollOffsetForTest() const;
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameXXK|RouteMap")
 	void OnRouteNodeExecuted(const FGameXXKOneGameRouteNode& Node);
 
@@ -230,6 +245,8 @@ private:
 	UWidget* ConstructFallbackLineVisualWidget(int32 LineIndex);
 	TSoftObjectPtr<UTexture2D> GetTextureForNode(const FGameXXKOneGameRouteNode& Node) const;
 	FVector2D GetNodeCanvasPosition(const FGameXXKOneGameRouteNode& Node) const;
+	FVector2D CalculateRouteContentSize(const TArray<FGameXXKOneGameRouteNode>& Nodes) const;
+	void ApplyInitialScrollOffset(const TArray<FGameXXKOneGameRouteNode>& Nodes);
 	static EGameXXKOneGameRouteRoomType MapRoomType(EGameXXKNodeKind NodeKind);
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|RouteMap")
@@ -286,6 +303,21 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|RouteMap|Texture")
 	TSoftObjectPtr<UTexture2D> OneGameEventDisabledTexture;
 
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|RouteMap|Texture")
+	TSoftObjectPtr<UTexture2D> OneGameRouteBackgroundTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UOverlay> RootOverlay;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> RouteBackgroundImage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UScrollBox> RouteScrollBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> RouteContentSizeBox;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
 
@@ -324,4 +356,10 @@ private:
 
 	UPROPERTY(Transient)
 	FVector2D RouteMapViewportSize = FVector2D::ZeroVector;
+
+	UPROPERTY(Transient)
+	FVector2D RouteContentSize = FVector2D(640.0f, 1040.0f);
+
+	UPROPERTY(Transient)
+	float LastAppliedScrollOffset = 0.0f;
 };
