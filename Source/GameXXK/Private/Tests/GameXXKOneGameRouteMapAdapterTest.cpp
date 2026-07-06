@@ -77,6 +77,12 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("adapter initializes widget tree"), RouteWidget->Initialize());
 	RouteWidget->NativeConstruct();
 	RouteWidget->RefreshFromState();
+	TestTrue(TEXT("adapter creates a route background visual"), RouteWidget->HasRouteBackgroundVisualForTest());
+	TestTrue(TEXT("adapter uses the 1Game map background texture"), RouteWidget->GetRouteBackgroundTexturePathForTest().Contains(TEXT("图层_1")));
+	const FVector2D RouteContentSize = RouteWidget->GetRouteContentSizeForTest();
+	TestTrue(TEXT("route content is wider than the old compressed canvas"), RouteContentSize.X >= 560.0f);
+	TestTrue(TEXT("route content height supports vertical scrolling"), RouteContentSize.Y >= 900.0f);
+	TestTrue(TEXT("route map applies an initial scroll offset toward the first reachable node"), RouteWidget->GetLastAppliedScrollOffsetForTest() > 0.0f);
 	TestEqual(TEXT("adapter creates one visual per generated route node"), RouteWidget->GetCreatedNodeVisualWidgetCount(), Subsystem->GetRuntimeState().RouteMapNodes.Num());
 	TestEqual(TEXT("adapter creates one visual per generated route edge"), RouteWidget->GetCreatedLineVisualWidgetCount(), Subsystem->GetRuntimeState().RouteMapEdges.Num());
 	TestEqual(TEXT("fallback route node visual uses a border shell"), RouteWidget->GetCreatedNodeVisualWidgetClassName(0), FString(TEXT("Border")));
@@ -112,6 +118,12 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 		TEXT("battle node targets GameXXK-owned 1Game battle map"),
 		GameXXKLevelFlow::MapForRuntimeState(Subsystem->GetRuntimeState()),
 		FName(TEXT("/Game/GameXXK/Maps/L_Battle_1Game")));
+	TestTrue(TEXT("battle victory resolves through GameXXK rules"), Subsystem->ResolveBattleVictory(false));
+	TestEqual(TEXT("battle victory returns to route-map screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestEqual(
+		TEXT("battle victory targets GameXXK-owned route map"),
+		GameXXKLevelFlow::MapForRuntimeState(Subsystem->GetRuntimeState()),
+		FName(TEXT("/Game/GameXXK/Maps/L_RouteMap")));
 
 	UGameInstance* SparseGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* SparseSubsystem = NewObject<UGameXXKMVPSubsystem>(SparseGameInstance);
@@ -139,6 +151,11 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	SparseRouteWidget->RefreshFromState();
 
 	const auto SparseVisualStates = SparseRouteWidget->GetRouteNodeVisualStatesForTest();
+	TestTrue(TEXT("sparse route content still has scrollable height"), SparseRouteWidget->GetRouteContentSizeForTest().Y >= 520.0f);
+	if (SparseVisualStates.Num() > 0)
+	{
+		TestTrue(TEXT("enabled sparse node has viewport-adjusted hit position"), SparseVisualStates[0].ViewportHitBoxPosition.Y <= SparseVisualStates[0].HitBoxPosition.Y + 0.1f);
+	}
 	TestEqual(TEXT("sparse adapter exposes one visual state per route node"), SparseVisualStates.Num(), 2);
 	TestEqual(TEXT("sparse first visual keeps real node id"), SparseVisualStates[0].NodeId, 10);
 	TestEqual(TEXT("sparse first visual exposes concrete route command"), SparseVisualStates[0].CommandName, FName(TEXT("RouteNode10")));
