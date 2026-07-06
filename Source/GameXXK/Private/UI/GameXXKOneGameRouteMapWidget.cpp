@@ -44,6 +44,7 @@ namespace
 	const float RouteBottomPadding = 128.0f;
 	const float RouteLayerGap = 180.0f;
 	const float RouteInitialScrollTopPadding = 120.0f;
+	const float DefaultRouteViewportHeight = 520.0f;
 
 	FText RoomTypeLabel(EGameXXKOneGameRouteRoomType RoomType)
 	{
@@ -96,6 +97,21 @@ namespace
 		return bRouteLineIsOpen
 			? FLinearColor(0.36f, 0.68f, 0.67f, 0.96f)
 			: FLinearColor(0.17f, 0.21f, 0.24f, 0.68f);
+	}
+
+	const FGameXXKOneGameRouteNode* FindRenderedRouteNodeById(
+		const TArray<FGameXXKOneGameRouteNode>& Nodes,
+		int32 RenderedNodeCount,
+		int32 NodeId)
+	{
+		for (int32 NodeIndex = 0; NodeIndex < RenderedNodeCount && Nodes.IsValidIndex(NodeIndex); ++NodeIndex)
+		{
+			if (Nodes[NodeIndex].NodeIndex == NodeId)
+			{
+				return &Nodes[NodeIndex];
+			}
+		}
+		return nullptr;
 	}
 }
 
@@ -225,8 +241,9 @@ TArray<FGameXXKOneGameRouteNodeVisualState> UGameXXKOneGameRouteMapWidget::GetRo
 {
 	TArray<FGameXXKOneGameRouteNodeVisualState> VisualStates;
 	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
-	VisualStates.Reserve(Nodes.Num());
-	for (int32 VisualIndex = 0; VisualIndex < Nodes.Num(); ++VisualIndex)
+	const int32 RenderedNodeCount = GetRenderedRouteNodeCount(Nodes);
+	VisualStates.Reserve(RenderedNodeCount);
+	for (int32 VisualIndex = 0; VisualIndex < RenderedNodeCount; ++VisualIndex)
 	{
 		const FGameXXKOneGameRouteNode& Node = Nodes[VisualIndex];
 		FGameXXKOneGameRouteNodeVisualState VisualState;
@@ -449,18 +466,17 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		return;
 	}
 
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const TArray<FGameXXKOneGameRouteNode> AdapterNodes = BuildAdapterNodes();
 	RouteContentSize = CalculateRouteContentSize(AdapterNodes);
-	const int32 RouteNodeCount = FMath::Clamp(AdapterNodes.Num(), 0, MaxRouteNodeButtons);
-	const int32 RouteLineCount = Subsystem && Subsystem->GetRuntimeState().bHasGeneratedRouteMap
-		? Subsystem->GetRuntimeState().RouteMapEdges.Num()
-		: FMath::Max(0, RouteNodeCount - 1);
+	const int32 RouteNodeCount = GetRenderedRouteNodeCount(AdapterNodes);
+	const int32 RouteLineCount = GetRenderedRouteLineCount(AdapterNodes);
+	bool bRouteLayoutWasCreated = false;
 
 	if (!RootOverlay || WidgetTree->RootWidget != RootOverlay)
 	{
 		RootOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("GameXXKOneGameRouteMapRoot"));
 		WidgetTree->RootWidget = RootOverlay;
+		bRouteLayoutWasCreated = true;
 
 		RouteBackgroundImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("GameXXKOneGameRouteMapBackground"));
 		if (UTexture2D* BackgroundTexture = OneGameRouteBackgroundTexture.LoadSynchronous())
@@ -486,10 +502,6 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		RouteContentSizeBox->AddChild(RootCanvas);
 		RouteScrollBox->AddChild(RouteContentSizeBox);
 	}
-	else if (RootCanvas)
-	{
-		RootCanvas->ClearChildren();
-	}
 
 	if (!RootCanvas || !RouteContentSizeBox)
 	{
@@ -498,6 +510,17 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 
 	RouteContentSizeBox->SetWidthOverride(RouteContentSize.X);
 	RouteContentSizeBox->SetHeightOverride(RouteContentSize.Y);
+
+	const bool bNeedsRebuildRouteChildren = bRouteLayoutWasCreated
+		|| LastBuiltRouteNodeCount != RouteNodeCount
+		|| LastBuiltRouteLineCount != RouteLineCount
+		|| bLastBuiltUseOneGameBlueprintVisualWidgets != bUseOneGameBlueprintVisualWidgets;
+	if (!bNeedsRebuildRouteChildren)
+	{
+		return;
+	}
+
+	RootCanvas->ClearChildren();
 
 	LineVisualWidgets.Reset();
 	LineVisualBorders.Reset();
@@ -548,6 +571,10 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		NodeButtonLabels.Add(NodeLabel);
 		NodeButtonIndices.Add(INDEX_NONE);
 	}
+
+	LastBuiltRouteNodeCount = RouteNodeCount;
+	LastBuiltRouteLineCount = RouteLineCount;
+	bLastBuiltUseOneGameBlueprintVisualWidgets = bUseOneGameBlueprintVisualWidgets;
 }
 
 void UGameXXKOneGameRouteMapWidget::ConfigureNodeButton(int32 ButtonIndex, const FGameXXKOneGameRouteNode* Node)
@@ -648,19 +675,17 @@ void UGameXXKOneGameRouteMapWidget::ConfigureLineVisual(int32 LineIndex, const T
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	const FGameXXKOneGameRouteNode* StartNode = nullptr;
 	const FGameXXKOneGameRouteNode* EndNode = nullptr;
-	if (State && State->bHasGeneratedRouteMap && State->RouteMapEdges.IsValidIndex(LineIndex))
+	const int32 RenderedNodeCount = GetRenderedRouteNodeCount(Nodes);
+	if (State && State->bHasGeneratedRouteMap)
 	{
-		const FGameXXKRouteMapEdge& Edge = State->RouteMapEdges[LineIndex];
-		StartNode = Nodes.FindByPredicate([&Edge](const FGameXXKOneGameRouteNode& Node)
+		FGameXXKRouteMapEdge Edge;
+		if (TryGetRenderedRouteEdge(LineIndex, Nodes, Edge))
 		{
-			return Node.NodeIndex == Edge.FromNodeId;
-		});
-		EndNode = Nodes.FindByPredicate([&Edge](const FGameXXKOneGameRouteNode& Node)
-		{
-			return Node.NodeIndex == Edge.ToNodeId;
-		});
+			StartNode = FindRenderedRouteNodeById(Nodes, RenderedNodeCount, Edge.FromNodeId);
+			EndNode = FindRenderedRouteNodeById(Nodes, RenderedNodeCount, Edge.ToNodeId);
+		}
 	}
-	else if (Nodes.IsValidIndex(LineIndex) && Nodes.IsValidIndex(LineIndex + 1))
+	else if (LineIndex >= 0 && LineIndex + 1 < RenderedNodeCount)
 	{
 		StartNode = &Nodes[LineIndex];
 		EndNode = &Nodes[LineIndex + 1];
@@ -944,20 +969,94 @@ FVector2D UGameXXKOneGameRouteMapWidget::CalculateRouteContentSize(const TArray<
 		FMath::Max(MinimumRouteContentSize.Y, DynamicHeight));
 }
 
+int32 UGameXXKOneGameRouteMapWidget::GetRenderedRouteNodeCount(const TArray<FGameXXKOneGameRouteNode>& Nodes) const
+{
+	return FMath::Clamp(Nodes.Num(), 0, MaxRouteNodeButtons);
+}
+
+int32 UGameXXKOneGameRouteMapWidget::GetRenderedRouteLineCount(const TArray<FGameXXKOneGameRouteNode>& Nodes) const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if (!State || !State->bHasGeneratedRouteMap)
+	{
+		return FMath::Max(0, GetRenderedRouteNodeCount(Nodes) - 1);
+	}
+
+	int32 RenderedLineCount = 0;
+	const int32 RenderedNodeCount = GetRenderedRouteNodeCount(Nodes);
+	for (const FGameXXKRouteMapEdge& Edge : State->RouteMapEdges)
+	{
+		if (FindRenderedRouteNodeById(Nodes, RenderedNodeCount, Edge.FromNodeId)
+			&& FindRenderedRouteNodeById(Nodes, RenderedNodeCount, Edge.ToNodeId))
+		{
+			++RenderedLineCount;
+		}
+	}
+	return RenderedLineCount;
+}
+
+bool UGameXXKOneGameRouteMapWidget::TryGetRenderedRouteEdge(
+	int32 LineIndex,
+	const TArray<FGameXXKOneGameRouteNode>& Nodes,
+	FGameXXKRouteMapEdge& OutEdge) const
+{
+	if (LineIndex < 0)
+	{
+		return false;
+	}
+
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if (!State || !State->bHasGeneratedRouteMap)
+	{
+		return false;
+	}
+
+	int32 RenderedLineIndex = 0;
+	const int32 RenderedNodeCount = GetRenderedRouteNodeCount(Nodes);
+	for (const FGameXXKRouteMapEdge& Edge : State->RouteMapEdges)
+	{
+		if (!FindRenderedRouteNodeById(Nodes, RenderedNodeCount, Edge.FromNodeId)
+			|| !FindRenderedRouteNodeById(Nodes, RenderedNodeCount, Edge.ToNodeId))
+		{
+			continue;
+		}
+
+		if (RenderedLineIndex == LineIndex)
+		{
+			OutEdge = Edge;
+			return true;
+		}
+		++RenderedLineIndex;
+	}
+	return false;
+}
+
 void UGameXXKOneGameRouteMapWidget::ApplyInitialScrollOffset(const TArray<FGameXXKOneGameRouteNode>& Nodes)
 {
-	const FGameXXKOneGameRouteNode* TargetNode = Nodes.FindByPredicate([](const FGameXXKOneGameRouteNode& Node)
+	const int32 RenderedNodeCount = GetRenderedRouteNodeCount(Nodes);
+	const FGameXXKOneGameRouteNode* TargetNode = nullptr;
+	for (int32 NodeIndex = 0; NodeIndex < RenderedNodeCount; ++NodeIndex)
 	{
-		return Node.bEnabled;
-	});
+		if (Nodes[NodeIndex].bEnabled)
+		{
+			TargetNode = &Nodes[NodeIndex];
+			break;
+		}
+	}
 	if (!TargetNode)
 	{
-		TargetNode = Nodes.FindByPredicate([](const FGameXXKOneGameRouteNode& Node)
+		for (int32 NodeIndex = 0; NodeIndex < RenderedNodeCount; ++NodeIndex)
 		{
-			return Node.bVisited;
-		});
+			if (Nodes[NodeIndex].bVisited)
+			{
+				TargetNode = &Nodes[NodeIndex];
+				break;
+			}
+		}
 	}
-	if (!TargetNode && !Nodes.IsEmpty())
+	if (!TargetNode && RenderedNodeCount > 0)
 	{
 		TargetNode = &Nodes[0];
 	}
@@ -965,11 +1064,18 @@ void UGameXXKOneGameRouteMapWidget::ApplyInitialScrollOffset(const TArray<FGameX
 	if (!TargetNode)
 	{
 		LastAppliedScrollOffset = 0.0f;
+		if (RouteScrollBox)
+		{
+			RouteScrollBox->SetScrollOffset(LastAppliedScrollOffset);
+		}
 		return;
 	}
 
 	const FVector2D NodePosition = GetNodeCanvasPosition(*TargetNode);
-	LastAppliedScrollOffset = FMath::Max(0.0f, NodePosition.Y - RouteInitialScrollTopPadding);
+	const float EffectiveViewportHeight = RouteMapViewportSize.Y > 0.0f ? RouteMapViewportSize.Y : DefaultRouteViewportHeight;
+	const float MaxScrollOffset = FMath::Max(0.0f, RouteContentSize.Y - EffectiveViewportHeight);
+	const float DesiredScrollOffset = FMath::Max(0.0f, NodePosition.Y - RouteInitialScrollTopPadding);
+	LastAppliedScrollOffset = FMath::Clamp(DesiredScrollOffset, 0.0f, MaxScrollOffset);
 	if (RouteScrollBox)
 	{
 		RouteScrollBox->SetScrollOffset(LastAppliedScrollOffset);

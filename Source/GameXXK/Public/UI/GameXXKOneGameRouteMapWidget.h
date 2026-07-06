@@ -246,6 +246,9 @@ private:
 	TSoftObjectPtr<UTexture2D> GetTextureForNode(const FGameXXKOneGameRouteNode& Node) const;
 	FVector2D GetNodeCanvasPosition(const FGameXXKOneGameRouteNode& Node) const;
 	FVector2D CalculateRouteContentSize(const TArray<FGameXXKOneGameRouteNode>& Nodes) const;
+	int32 GetRenderedRouteNodeCount(const TArray<FGameXXKOneGameRouteNode>& Nodes) const;
+	int32 GetRenderedRouteLineCount(const TArray<FGameXXKOneGameRouteNode>& Nodes) const;
+	bool TryGetRenderedRouteEdge(int32 LineIndex, const TArray<FGameXXKOneGameRouteNode>& Nodes, FGameXXKRouteMapEdge& OutEdge) const;
 	void ApplyInitialScrollOffset(const TArray<FGameXXKOneGameRouteNode>& Nodes);
 	static EGameXXKOneGameRouteRoomType MapRoomType(EGameXXKNodeKind NodeKind);
 
@@ -362,4 +365,13 @@ private:
 
 	UPROPERTY(Transient)
 	float LastAppliedScrollOffset = 0.0f;
+
+	UPROPERTY(Transient)
+	int32 LastBuiltRouteNodeCount = INDEX_NONE;
+
+	UPROPERTY(Transient)
+	int32 LastBuiltRouteLineCount = INDEX_NONE;
+
+	UPROPERTY(Transient)
+	bool bLastBuiltUseOneGameBlueprintVisualWidgets = false;
 };
