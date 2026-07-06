@@ -337,6 +337,9 @@ public:
 	static bool CanEnterDungeon(const FGameXXKRuntimeState& State);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static void GenerateRouteMapForSeed(UPARAM(ref) FGameXXKRuntimeState& State, int32 Seed);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool EnterDungeon(UPARAM(ref) FGameXXKRuntimeState& State);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")

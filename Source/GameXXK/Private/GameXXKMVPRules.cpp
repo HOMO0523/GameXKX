@@ -79,6 +79,21 @@ namespace GameXXKMVP
 		Values.Remove(Value);
 	}
 
+	static int32 NormalizeRouteSeed(int32 Seed)
+	{
+		if (Seed == 0)
+		{
+			return 1;
+		}
+		return FMath::Abs(Seed);
+	}
+
+	static int32 MakeNewRouteSeed()
+	{
+		const int32 Seed = FMath::Rand();
+		return NormalizeRouteSeed(Seed);
+	}
+
 	static void AddRouteNode(FGameXXKRuntimeState& State, int32 NodeId, int32 LayerIndex, int32 ColumnIndex, EGameXXKNodeKind NodeKind, float X, float Y, TArray<int32> OutgoingNodeIds)
 	{
 		State.RouteMapNodes.Emplace(NodeId, LayerIndex, ColumnIndex, NodeKind, FVector2D(X, Y), OutgoingNodeIds);
@@ -90,28 +105,8 @@ namespace GameXXKMVP
 
 	static void GenerateRouteMap(FGameXXKRuntimeState& State)
 	{
-		State.bHasGeneratedRouteMap = true;
-		State.RouteSeed = 0;
-		State.CurrentRouteNodeId = 0;
-		State.PendingRouteNodeId = INDEX_NONE;
-		State.RouteMapNodes.Reset();
-		State.RouteMapEdges.Reset();
-		State.VisitedRouteNodeIds.Reset();
-		State.ReachableRouteNodeIds.Reset();
-		State.ReachableRouteNodeIds.Add(0);
-
-		AddRouteNode(State, 0, 0, 0, EGameXXKNodeKind::Start, 0.50f, 0.00f, {1, 2});
-		AddRouteNode(State, 1, 1, 0, EGameXXKNodeKind::Battle, 0.34f, 0.18f, {3, 4});
-		AddRouteNode(State, 2, 1, 1, EGameXXKNodeKind::Merchant, 0.66f, 0.18f, {4, 5});
-		AddRouteNode(State, 3, 2, 0, EGameXXKNodeKind::Event, 0.25f, 0.36f, {6});
-		AddRouteNode(State, 4, 2, 1, EGameXXKNodeKind::Elite, 0.50f, 0.36f, {7, 8});
-		AddRouteNode(State, 5, 2, 2, EGameXXKNodeKind::Camp, 0.75f, 0.36f, {8});
-		AddRouteNode(State, 6, 3, 0, EGameXXKNodeKind::Camp, 0.30f, 0.56f, {11});
-		AddRouteNode(State, 7, 3, 1, EGameXXKNodeKind::Merchant, 0.52f, 0.56f, {9});
-		AddRouteNode(State, 8, 3, 2, EGameXXKNodeKind::Chest, 0.74f, 0.56f, {10});
-		AddRouteNode(State, 9, 4, 0, EGameXXKNodeKind::Battle, 0.42f, 0.76f, {11});
-		AddRouteNode(State, 10, 4, 1, EGameXXKNodeKind::Camp, 0.62f, 0.76f, {11});
-		AddRouteNode(State, 11, 5, 0, EGameXXKNodeKind::Boss, 0.50f, 1.00f, {});
+		const int32 Seed = State.RouteSeed != 0 ? State.RouteSeed : MakeNewRouteSeed();
+		UGameXXKMVPRules::GenerateRouteMapForSeed(State, Seed);
 	}
 
 	static bool CompleteRouteNode(FGameXXKRuntimeState& State, const FGameXXKRouteMapNode& Node)
@@ -255,6 +250,39 @@ bool UGameXXKMVPRules::AcceptTownQuest(FGameXXKRuntimeState& State)
 bool UGameXXKMVPRules::CanEnterDungeon(const FGameXXKRuntimeState& State)
 {
 	return State.QuestState == EGameXXKQuestState::Accepted;
+}
+
+void UGameXXKMVPRules::GenerateRouteMapForSeed(FGameXXKRuntimeState& State, int32 Seed)
+{
+	const int32 NormalizedSeed = GameXXKMVP::NormalizeRouteSeed(Seed);
+	State.bHasGeneratedRouteMap = true;
+	State.RouteSeed = NormalizedSeed;
+	State.CurrentRouteNodeId = 0;
+	State.PendingRouteNodeId = INDEX_NONE;
+	State.RouteMapNodes.Reset();
+	State.RouteMapEdges.Reset();
+	State.VisitedRouteNodeIds.Reset();
+	State.ReachableRouteNodeIds.Reset();
+	State.ReachableRouteNodeIds.Add(0);
+
+	const bool bOddSeed = (NormalizedSeed % 2) != 0;
+	const bool bThirdSeed = (NormalizedSeed % 3) == 0;
+	const EGameXXKNodeKind MiddleLeftKind = bOddSeed ? EGameXXKNodeKind::Chest : EGameXXKNodeKind::Event;
+	const EGameXXKNodeKind MiddleRightKind = bThirdSeed ? EGameXXKNodeKind::Merchant : EGameXXKNodeKind::Camp;
+	const EGameXXKNodeKind LateRightKind = bOddSeed ? EGameXXKNodeKind::Event : EGameXXKNodeKind::Chest;
+
+	GameXXKMVP::AddRouteNode(State, 0, 0, 0, EGameXXKNodeKind::Start, 0.50f, 0.00f, {1, 2});
+	GameXXKMVP::AddRouteNode(State, 1, 1, 0, EGameXXKNodeKind::Battle, 0.34f, 0.18f, {3, 4});
+	GameXXKMVP::AddRouteNode(State, 2, 1, 1, EGameXXKNodeKind::Merchant, 0.66f, 0.18f, {4, 5});
+	GameXXKMVP::AddRouteNode(State, 3, 2, 0, MiddleLeftKind, 0.25f, 0.36f, {6});
+	GameXXKMVP::AddRouteNode(State, 4, 2, 1, EGameXXKNodeKind::Elite, 0.50f, 0.36f, {7, 8});
+	GameXXKMVP::AddRouteNode(State, 5, 2, 2, MiddleRightKind, 0.75f, 0.36f, {8});
+	GameXXKMVP::AddRouteNode(State, 6, 3, 0, EGameXXKNodeKind::Camp, 0.30f, 0.56f, {11});
+	GameXXKMVP::AddRouteNode(State, 7, 3, 1, EGameXXKNodeKind::Merchant, 0.52f, 0.56f, {9});
+	GameXXKMVP::AddRouteNode(State, 8, 3, 2, LateRightKind, 0.74f, 0.56f, {10});
+	GameXXKMVP::AddRouteNode(State, 9, 4, 0, EGameXXKNodeKind::Battle, 0.42f, 0.76f, {11});
+	GameXXKMVP::AddRouteNode(State, 10, 4, 1, EGameXXKNodeKind::Camp, 0.62f, 0.76f, {11});
+	GameXXKMVP::AddRouteNode(State, 11, 5, 0, EGameXXKNodeKind::Boss, 0.50f, 1.00f, {});
 }
 
 bool UGameXXKMVPRules::EnterDungeon(FGameXXKRuntimeState& State)
