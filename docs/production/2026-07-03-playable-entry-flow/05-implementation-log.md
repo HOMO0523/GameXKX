@@ -43,3 +43,14 @@ parallel_lock: GameXXK.PlayableEntryFlow
 - Changed route-node button callbacks to use stored node ids instead of assuming node ids and array indices always match.
 - Updated `Content/Python/gamexxk_probe_real_play_flow.py` to expose route node visual states to MCP probes.
 - Updated `scripts/gamexxk_real_play_flow_mcp.py` so the acceptance harness now clicks the actual visible Start/Battle route-node buttons using Slate absolute hit geometry, instead of calling `execute_route_node` directly.
+
+## 2026-07-06 GameXXK-Owned Route Map
+
+- Stopped treating the original 1Game route PlayerController as gameplay authority for this slice. `UGameXXKMVPRules` now generates deterministic, seed-backed route graphs owned by GameXXK runtime state.
+- Added `GameXXK.MVP.RouteMap.SeedRules` to cover deterministic seed signatures, nonzero stored seeds, branching, reachable/visited/pending node state, and combat victory resolution.
+- Hardened seed normalization for `0`, ordinary negative seeds, and `MIN_int32`.
+- Reworked `UGameXXKOneGameRouteMapWidget` into a GameXXK-owned route map that uses 1Game visual assets for the background, icons, and lines while keeping node state and clicks in `GameXXKMVPCommandRouter`.
+- Added scrollable route content sizing, initial scroll-to-reachable-node behavior, background texture diagnostics, and rendered-node hit-box diagnostics.
+- Stabilized route widget refresh so repeated state updates reuse existing route children unless rendered node count, rendered line count, or visual mode changes.
+- Updated the 1Game battle bridge so `L_Battle_1Game` can open the battle board directly from a live GameXXK `Battle` runtime state, while preserving the old isolated/manual 1Game fallback when the live subsystem is not in Battle.
+- Added UE MCP ownership validation for `L_RouteMap`: `scripts/gamexxk_validate_owned_route_map_mcp.py` runs `Content/Python/gamexxk_validate_owned_route_map.py` and verifies the map GameMode is GameXXK-owned.

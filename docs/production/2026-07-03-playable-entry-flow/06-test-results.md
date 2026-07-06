@@ -79,3 +79,16 @@ Visual evidence: `Saved\Codex\real_flow_after_battle.png` shows the copied 1Game
 - `python scripts\gamexxk_real_play_flow_mcp.py` passed with `ok: true`; report: `Saved\HarnessReports\gamexxk-real-play-flow-20260704-040650.json`.
 
 Real-flow evidence: route-map probe exposes `route_node_visual_states`; visible Start node has `node_id=0`, `command_name=RouteNode0`, and a Slate hit center. The harness clicked Start at absolute screen `(925, 470)`, advancing `dungeon_node_index` to `1`; it then clicked Battle node `1` at `(887, 432)`, opening `L_Battle_1Game` with runtime screen `BATTLE`.
+
+## 2026-07-06 GameXXK-Owned Route Map
+
+- RED verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 40` failed after adding `GameXXK.MVP.RouteMap.SeedRules` because `UGameXXKMVPRules::GenerateRouteMapForSeed` did not exist.
+- RED verified: route widget visual tests failed compilation before `HasRouteBackgroundVisualForTest`, `GetRouteBackgroundTexturePathForTest`, `GetRouteContentSizeForTest`, and `GetLastAppliedScrollOffsetForTest` existed.
+- `python scripts\ue_tdd_pipeline.py --pie-duration 0.1 --log-lines 80` passed: UBT up to date, editor launched, MCP became ready, PIE started and stopped.
+- `python scripts\gamexxk_validate_owned_route_map_mcp.py` passed with `ok: true`; `L_RouteMap` GameMode is `/Script/GameXXK.GameXXKFlowMapGameMode`.
+- `python scripts\harness_state_validator.py` passed with `OK`.
+- `python scripts\gamexxk_mvp_playtest.py --test-timeout 600` succeeded at build after closing the editor through UE MCP (`save_dirty_packages` returned `dirty_before=[]`, `dirty_after=[]`). Report: `Saved\HarnessReports\gamexxk-mvp-playtest-20260706-180305.json`.
+- Target automation passed: `GameXXK.MVP.RouteMap.SeedRules`, `GameXXK.MVP.RouteMap.OneGameAdapter`, `GameXXK.MVP.OneGameIslandRouteMapBridge`, `GameXXK.MVP.Battle.BoardWidget`, and `GameXXK.MVP.SaveGame.SlotRoundTrip`.
+- Broad `GameXXK.MVP` still exits nonzero because old all-flow tests assume a fixed linear route sequence and legacy save expectations: failing tests are `GameXXK.MVP.FullFlow`, `GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop`, and `GameXXK.MVP.PlayableShell.HUDCommandsDriveFullLoop`.
+
+Acceptance evidence: GameXXK now owns route seed/state/clicks; the route widget renders 1Game-inspired background/icons/lines through GameXXK UMG; battle-map entry can use a live GameXXK `Battle` runtime state; and `L_RouteMap` is verified by UE MCP as GameXXK GameMode-owned.
