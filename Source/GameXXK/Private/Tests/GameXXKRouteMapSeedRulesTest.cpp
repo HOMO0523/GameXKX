@@ -63,6 +63,18 @@ bool FGameXXKRouteMapSeedRulesTest::RunTest(const FString& Parameters)
 	UGameXXKMVPRules::GenerateRouteMapForSeed(Seed102, 102);
 	TestNotEqual(TEXT("different seed changes visible route signature"), BuildRouteSignature(Seed102), BuildRouteSignature(Seed101A));
 
+	FGameXXKRuntimeState SeedZero = UGameXXKMVPRules::CreateNewGame();
+	UGameXXKMVPRules::GenerateRouteMapForSeed(SeedZero, 0);
+	TestEqual(TEXT("zero seed normalizes to one"), SeedZero.RouteSeed, 1);
+
+	FGameXXKRuntimeState SeedNegative = UGameXXKMVPRules::CreateNewGame();
+	UGameXXKMVPRules::GenerateRouteMapForSeed(SeedNegative, -42);
+	TestEqual(TEXT("negative seed stores positive magnitude"), SeedNegative.RouteSeed, 42);
+
+	FGameXXKRuntimeState SeedMinInt = UGameXXKMVPRules::CreateNewGame();
+	UGameXXKMVPRules::GenerateRouteMapForSeed(SeedMinInt, MIN_int32);
+	TestTrue(TEXT("minimum int seed stores positive nonzero"), SeedMinInt.RouteSeed > 0);
+
 	UGameInstance* EntryGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* EntrySubsystem = NewObject<UGameXXKMVPSubsystem>(EntryGameInstance);
 	TestTrue(TEXT("entry starts game"), EntrySubsystem->StartGame());

@@ -81,7 +81,7 @@ namespace GameXXKMVP
 
 	static int32 NormalizeRouteSeed(int32 Seed)
 	{
-		if (Seed == 0)
+		if (Seed == 0 || Seed == MIN_int32)
 		{
 			return 1;
 		}
