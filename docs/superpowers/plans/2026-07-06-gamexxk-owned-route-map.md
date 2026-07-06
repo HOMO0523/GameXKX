@@ -143,10 +143,10 @@ bool FGameXXKRouteMapSeedRulesTest::RunTest(const FString& Parameters)
 Run:
 
 ```powershell
-python scripts\ue_tdd_pipeline.py --skip-ubt --automation "GameXXK.MVP.RouteMap.SeedRules"
+python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 40
 ```
 
-Expected: compile or Automation setup fails because `UGameXXKMVPRules::GenerateRouteMapForSeed` is not defined.
+Expected: UBT compile fails because `UGameXXKMVPRules::GenerateRouteMapForSeed` is not defined.
 
 - [ ] **Step 3: Commit the RED test**
 
@@ -245,20 +245,21 @@ void UGameXXKMVPRules::GenerateRouteMapForSeed(FGameXXKRuntimeState& State, int3
 Run:
 
 ```powershell
-python scripts\ue_tdd_pipeline.py --skip-ubt --automation "GameXXK.MVP.RouteMap.SeedRules"
+python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 40
+python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600
 ```
 
-Expected: `GameXXK.MVP.RouteMap.SeedRules` passes.
+Expected: UBT compile succeeds, and Automation output includes `GameXXK.MVP.RouteMap.SeedRules` as a successful test.
 
 - [ ] **Step 5: Run adjacent route/save tests**
 
 Run:
 
 ```powershell
-python scripts\ue_tdd_pipeline.py --skip-ubt --automation "GameXXK.MVP.RouteMap.OneGameAdapter;GameXXK.MVP.SaveGame.SlotRoundTrip;GameXXK.MVP.Battle.BoardWidget"
+python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600
 ```
 
-Expected: all listed tests pass. If `GameXXK.MVP.RouteMap.OneGameAdapter` fails because an old assertion assumes a now-seeded node kind that is no longer stable, update that assertion in this task to check reachability or room type behavior instead of a hard-coded generated node kind, then rerun until this command passes.
+Expected: Automation output includes successful `GameXXK.MVP.RouteMap.OneGameAdapter`, `GameXXK.MVP.SaveGame.SlotRoundTrip`, and `GameXXK.MVP.Battle.BoardWidget` tests. If `GameXXK.MVP.RouteMap.OneGameAdapter` fails because an old assertion assumes a now-seeded node kind that is no longer stable, update that assertion in this task to check reachability or room type behavior instead of a hard-coded generated node kind, then rerun until this command passes.
 
 - [ ] **Step 6: Commit seed generation**
 
@@ -310,10 +311,10 @@ After the existing assertion that a battle node targets `/Game/GameXXK/Maps/L_Ba
 Run:
 
 ```powershell
-python scripts\ue_tdd_pipeline.py --skip-ubt --automation "GameXXK.MVP.RouteMap.OneGameAdapter"
+python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 40
 ```
 
-Expected: compile fails because the new widget diagnostic methods do not exist.
+Expected: UBT compile fails because the new widget diagnostic methods do not exist.
 
 - [ ] **Step 4: Commit the RED widget test**
 
@@ -659,10 +660,11 @@ In `GetRouteNodeVisualStatesForTest()`, replace the viewport position assignment
 Run:
 
 ```powershell
-python scripts\ue_tdd_pipeline.py --skip-ubt --automation "GameXXK.MVP.RouteMap.OneGameAdapter"
+python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 40
+python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600
 ```
 
-Expected: `GameXXK.MVP.RouteMap.OneGameAdapter` passes.
+Expected: UBT compile succeeds, and Automation output includes `GameXXK.MVP.RouteMap.OneGameAdapter` as a successful test.
 
 - [ ] **Step 9: Commit route widget ownership visuals**
 
@@ -699,10 +701,10 @@ In `GameXXKOneGameIslandRouteMapBridgeTest.cpp`, after the existing `ShouldOpenB
 Run:
 
 ```powershell
-python scripts\ue_tdd_pipeline.py --skip-ubt --automation "GameXXK.MVP.OneGameIslandRouteMapBridge"
+python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 40
 ```
 
-Expected: compile fails because `ShouldOpenBattleLayoutForGameXXKRuntimeScreen` does not exist.
+Expected: UBT compile fails because `ShouldOpenBattleLayoutForGameXXKRuntimeScreen` does not exist.
 
 - [ ] **Step 3: Add the bridge predicate**
 
@@ -762,10 +764,11 @@ Keep the existing `PrimeBattleSubsystemForIslandRoute` fallback for isolated tes
 Run:
 
 ```powershell
-python scripts\ue_tdd_pipeline.py --skip-ubt --automation "GameXXK.MVP.OneGameIslandRouteMapBridge"
+python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 40
+python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600
 ```
 
-Expected: bridge tests pass.
+Expected: UBT compile succeeds, and Automation output includes `GameXXK.MVP.OneGameIslandRouteMapBridge` as a successful test.
 
 - [ ] **Step 6: Commit direct battle entry**
 
@@ -882,10 +885,10 @@ git commit -m "test: validate owned route map level"
 Run:
 
 ```powershell
-python scripts\ue_tdd_pipeline.py --automation "GameXXK.MVP.RouteMap.SeedRules;GameXXK.MVP.RouteMap.OneGameAdapter;GameXXK.MVP.OneGameIslandRouteMapBridge;GameXXK.MVP.Battle.BoardWidget;GameXXK.MVP.SaveGame.SlotRoundTrip"
+python scripts\gamexxk_mvp_playtest.py --test-timeout 600
 ```
 
-Expected: all listed tests pass.
+Expected: build succeeds and Automation output includes successful `GameXXK.MVP.RouteMap.SeedRules`, `GameXXK.MVP.RouteMap.OneGameAdapter`, `GameXXK.MVP.OneGameIslandRouteMapBridge`, `GameXXK.MVP.Battle.BoardWidget`, and `GameXXK.MVP.SaveGame.SlotRoundTrip` tests.
 
 - [ ] **Step 2: Run short PIE smoke**
 
