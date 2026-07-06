@@ -41,6 +41,11 @@ bool AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForGameXXKRuntim
 	return Screen == EGameXXKScreen::Battle;
 }
 
+bool AGameXXKOneGameIslandRouteMapBridge::ShouldUseLiveGameXXKBattleSubsystem(EGameXXKScreen Screen)
+{
+	return ShouldOpenBattleLayoutForGameXXKRuntimeScreen(Screen);
+}
+
 bool AGameXXKOneGameIslandRouteMapBridge::PrimeBattleSubsystemForIslandRoute(UGameXXKMVPSubsystem& Subsystem)
 {
 	return Subsystem.StartGame()
@@ -249,7 +254,7 @@ void AGameXXKOneGameIslandRouteMapBridge::SynchronizeOriginalBattleLayout(UUserW
 	UWorld* World = GetWorld();
 	UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
 	UGameXXKMVPSubsystem* ExistingSubsystem = GameInstance ? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr;
-	if (ExistingSubsystem && ShouldOpenBattleLayoutForGameXXKRuntimeScreen(ExistingSubsystem->GetRuntimeState().Screen))
+	if (ExistingSubsystem && ShouldUseLiveGameXXKBattleSubsystem(ExistingSubsystem->GetRuntimeState().Screen))
 	{
 		BattleSubsystem = ExistingSubsystem;
 		OpenBattleLayoutFromOriginalRoute(RouteMapWidget);
@@ -379,15 +384,22 @@ UGameXXKMVPSubsystem* AGameXXKOneGameIslandRouteMapBridge::ResolveBattleSubsyste
 {
 	if (BattleSubsystem)
 	{
-		return BattleSubsystem;
+		if (ShouldUseLiveGameXXKBattleSubsystem(BattleSubsystem->GetRuntimeState().Screen))
+		{
+			return BattleSubsystem;
+		}
+		BattleSubsystem = nullptr;
 	}
 
 	UWorld* World = GetWorld();
 	UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
 	if (UGameXXKMVPSubsystem* ExistingSubsystem = GameInstance ? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr)
 	{
-		BattleSubsystem = ExistingSubsystem;
-		return BattleSubsystem;
+		if (ShouldUseLiveGameXXKBattleSubsystem(ExistingSubsystem->GetRuntimeState().Screen))
+		{
+			BattleSubsystem = ExistingSubsystem;
+			return BattleSubsystem;
+		}
 	}
 
 	UObject* SubsystemOuter = GameInstance ? static_cast<UObject*>(GameInstance) : static_cast<UObject*>(this);

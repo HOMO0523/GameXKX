@@ -41,6 +41,15 @@ bool FGameXXKOneGameIslandRouteMapBridgeTest::RunTest(const FString& Parameters)
 	TestFalse(
 		TEXT("GameXXK town runtime does not open battle layout directly"),
 		AGameXXKOneGameIslandRouteMapBridge::ShouldOpenBattleLayoutForGameXXKRuntimeScreen(EGameXXKScreen::Town));
+	TestTrue(
+		TEXT("live GameXXK battle subsystem can replace 1Game fallback"),
+		AGameXXKOneGameIslandRouteMapBridge::ShouldUseLiveGameXXKBattleSubsystem(EGameXXKScreen::Battle));
+	TestFalse(
+		TEXT("live GameXXK route-map subsystem does not replace 1Game fallback"),
+		AGameXXKOneGameIslandRouteMapBridge::ShouldUseLiveGameXXKBattleSubsystem(EGameXXKScreen::DungeonMap));
+	TestFalse(
+		TEXT("live GameXXK town subsystem does not replace 1Game fallback"),
+		AGameXXKOneGameIslandRouteMapBridge::ShouldUseLiveGameXXKBattleSubsystem(EGameXXKScreen::Town));
 
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);

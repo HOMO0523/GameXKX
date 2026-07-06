@@ -24,6 +24,7 @@ public:
 	static float CalculateTargetScrollOffset(float NodeCanvasY, float TopPadding);
 	static bool ShouldOpenBattleLayoutForOriginalLevelAdvance(int32 PreviousLevel, int32 CurrentLevel, int32 BattleStartLevel);
 	static bool ShouldOpenBattleLayoutForGameXXKRuntimeScreen(EGameXXKScreen Screen);
+	static bool ShouldUseLiveGameXXKBattleSubsystem(EGameXXKScreen Screen);
 	static bool PrimeBattleSubsystemForIslandRoute(UGameXXKMVPSubsystem& Subsystem);
 
 protected:
