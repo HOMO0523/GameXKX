@@ -1,6 +1,8 @@
 #include "GameXXKMVPRules.h"
+#include "Blueprint/GameViewportSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
+#include "MVP/GameXXKBattleSceneUnitActor.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
@@ -65,6 +67,16 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestNotNull(TEXT("player controller owns town overlay widget"), PlayerController->GetTownOverlayWidgetForTest());
 	TestNotNull(TEXT("player controller owns route map widget"), PlayerController->GetRouteMapWidgetForTest());
 	TestNotNull(TEXT("player controller owns battle board widget"), PlayerController->GetBattleBoardWidgetForTest());
+	TestTrue(TEXT("player controller route map escapes the old fixed small viewport"), PlayerController->GetRouteMapWidgetForTest()->GetRouteContentSizeForTest().X >= 1000.0f);
+	const FGameViewportWidgetSlot RouteViewportSlot = UGameViewportSubsystem::Get()->GetWidgetSlot(PlayerController->GetRouteMapWidgetForTest());
+	TestEqual(TEXT("route map viewport slot anchors left edge"), RouteViewportSlot.Anchors.Minimum.X, 0.0);
+	TestEqual(TEXT("route map viewport slot anchors top edge"), RouteViewportSlot.Anchors.Minimum.Y, 0.0);
+	TestEqual(TEXT("route map viewport slot anchors right edge"), RouteViewportSlot.Anchors.Maximum.X, 1.0);
+	TestEqual(TEXT("route map viewport slot anchors bottom edge"), RouteViewportSlot.Anchors.Maximum.Y, 1.0);
+	TestEqual(TEXT("route map viewport slot has no left offset"), RouteViewportSlot.Offsets.Left, 0.0f);
+	TestEqual(TEXT("route map viewport slot has no top offset"), RouteViewportSlot.Offsets.Top, 0.0f);
+	TestEqual(TEXT("route map viewport slot has no right size override"), RouteViewportSlot.Offsets.Right, 0.0f);
+	TestEqual(TEXT("route map viewport slot has no bottom size override"), RouteViewportSlot.Offsets.Bottom, 0.0f);
 
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestEqual(TEXT("main menu visible on initial main menu state"), PlayerController->GetMainMenuWidgetForTest()->GetVisibility(), ESlateVisibility::Visible);
@@ -91,6 +103,44 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestEqual(TEXT("battle screen after route node button"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
 	TestTrue(TEXT("battle board visible after route node button"), PlayerController->GetBattleBoardWidgetForTest()->IsBattleBoardVisible());
+
+	AGameXXKBattleSceneUnitActor* PartyActor = NewObject<AGameXXKBattleSceneUnitActor>();
+	PartyActor->SetMVPSubsystemForTest(Subsystem);
+	PartyActor->ConfigureFromRuntimeUnit(false, 0, Subsystem->GetRuntimeState().ActiveBattleParty[0]);
+	AGameXXKBattleSceneUnitActor* EnemyActor = NewObject<AGameXXKBattleSceneUnitActor>();
+	EnemyActor->SetMVPSubsystemForTest(Subsystem);
+	EnemyActor->ConfigureFromRuntimeUnit(true, 0, Subsystem->GetRuntimeState().ActiveBattleEnemies[0]);
+	const int32 EnemyHPBeforeControllerInput = Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP;
+	TestTrue(TEXT("controller opens command menu for party actor"), PlayerController->OpenBattleCommandMenuForUnitForTest(PartyActor, FVector2D(900.0f, 520.0f), FVector2D(830.0f, 420.0f)));
+	TestTrue(TEXT("battle board menu is visible after controller opens it"), PlayerController->GetBattleBoardWidgetForTest()->IsCommandMenuVisibleForTest());
+	TestFalse(TEXT("controller refuses enemy actor as command source"), PlayerController->OpenBattleCommandMenuForUnitForTest(EnemyActor, FVector2D(300.0f, 320.0f), FVector2D(300.0f, 320.0f)));
+	TestEqual(TEXT("right-click enemy path no longer damages enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP, EnemyHPBeforeControllerInput);
+	TestTrue(TEXT("attack command enters targeting through battle board"), PlayerController->GetBattleBoardWidgetForTest()->ExecuteBasicAttackAction());
+	TestTrue(TEXT("controller confirms enemy target"), PlayerController->ConfirmBattleTargetForUnitForTest(EnemyActor));
+	TestTrue(TEXT("confirmed target takes damage"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP < EnemyHPBeforeControllerInput);
+	TestTrue(TEXT("controller opens command menu again for cancel flow"), PlayerController->OpenBattleCommandMenuForUnitForTest(PartyActor, FVector2D(900.0f, 520.0f), FVector2D(830.0f, 420.0f)));
+	TestTrue(TEXT("second attack command enters targeting"), PlayerController->GetBattleBoardWidgetForTest()->ExecuteBasicAttackAction());
+	TestTrue(TEXT("controller cancels battle targeting"), PlayerController->CancelBattleTargetingForTest());
+	TestFalse(TEXT("controller cancel exits targeting"), PlayerController->GetBattleBoardWidgetForTest()->IsTargetingBattleActionForTest());
+
+	FGameXXKRuntimeState& EncounterState = Subsystem->GetMutableRuntimeState();
+	EncounterState = UGameXXKMVPRules::CreateNewGame();
+	EncounterState.Screen = EGameXXKScreen::DungeonMap;
+	EncounterState.CurrentMapId = TEXT("HuangshanRoute");
+	EncounterState.QuestState = EGameXXKQuestState::Accepted;
+	EncounterState.bDungeonActive = true;
+	EncounterState.bHasGeneratedRouteMap = true;
+	EncounterState.RouteMapNodes.Add(FGameXXKRouteMapNode{0, 0, 0, EGameXXKNodeKind::Start, FVector2D(0.5f, 0.0f), TArray<int32>{1}});
+	EncounterState.RouteMapNodes.Add(FGameXXKRouteMapNode{1, 1, 0, EGameXXKNodeKind::Event, FVector2D(0.5f, 0.5f), TArray<int32>{2}});
+	EncounterState.RouteMapNodes.Add(FGameXXKRouteMapNode{2, 2, 0, EGameXXKNodeKind::Boss, FVector2D(0.5f, 1.0f), TArray<int32>{}});
+	EncounterState.RouteMapEdges.Add(FGameXXKRouteMapEdge{0, 1});
+	EncounterState.RouteMapEdges.Add(FGameXXKRouteMapEdge{1, 2});
+	EncounterState.VisitedRouteNodeIds.Add(0);
+	EncounterState.ReachableRouteNodeIds.Add(1);
+	TestTrue(TEXT("test event route node enters route event screen"), UGameXXKMVPRules::SelectRouteNodeById(EncounterState, 1));
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestEqual(TEXT("route event screen active"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::RouteEvent);
+	TestEqual(TEXT("route event scene hides the old player-facing encounter overlay"), PlayerController->GetMainMenuWidgetForTest()->GetVisibility(), ESlateVisibility::Collapsed);
 
 	return true;
 }

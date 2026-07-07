@@ -1,8 +1,17 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 
+#include "Blueprint/GameViewportSubsystem.h"
 #include "Blueprint/UserWidget.h"
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
+#include "Components/InputComponent.h"
 #include "Engine/GameInstance.h"
 #include "Framework/Application/SlateApplication.h"
+#include "EngineUtils.h"
+#include "InputKeyEventArgs.h"
+#include "MVP/GameXXKBattleScenePresenter.h"
+#include "MVP/GameXXKBattleSceneUnitActor.h"
+#include "MVP/GameXXKRouteEncounterSceneActor.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKTownPlayerPawn.h"
@@ -13,8 +22,61 @@
 
 namespace
 {
-	const FVector2D PlayerControllerRouteMapViewportPosition(420.0f, 124.0f);
-	const FVector2D PlayerControllerRouteMapViewportSize(560.0f, 520.0f);
+	const FVector2D DefaultRouteMapViewportSize(1280.0f, 720.0f);
+	const FName BattleSceneCameraTag(TEXT("GameXXK_BattleScene_Camera"));
+	const FVector BattleSceneCameraFallbackLocation(-420.0f, 0.0f, 720.0f);
+	const FRotator BattleSceneCameraFallbackRotation(-60.0f, 0.0f, 0.0f);
+	constexpr float BattleSceneCameraFallbackFOV = 55.0f;
+
+	FVector2D ResolveRouteMapViewportSize(const APlayerController* PlayerController)
+	{
+		int32 ViewportWidth = 0;
+		int32 ViewportHeight = 0;
+		if (PlayerController)
+		{
+			PlayerController->GetViewportSize(ViewportWidth, ViewportHeight);
+		}
+
+		if (ViewportWidth > 0 && ViewportHeight > 0)
+		{
+			return FVector2D(static_cast<float>(ViewportWidth), static_cast<float>(ViewportHeight));
+		}
+		return DefaultRouteMapViewportSize;
+	}
+
+	void ConfigureFullscreenRouteMapSlot(UWidget* RouteWidget)
+	{
+		UGameViewportSubsystem* ViewportSubsystem = UGameViewportSubsystem::Get();
+		if (!ViewportSubsystem || !RouteWidget)
+		{
+			return;
+		}
+
+		FGameViewportWidgetSlot RouteSlot = ViewportSubsystem->GetWidgetSlot(RouteWidget);
+		RouteSlot.Anchors = FAnchors(0.0f, 0.0f, 1.0f, 1.0f);
+		RouteSlot.Offsets = FMargin(0.0f);
+		RouteSlot.Alignment = FVector2D::ZeroVector;
+		ViewportSubsystem->SetWidgetSlot(RouteWidget, RouteSlot);
+	}
+
+	void ConfigureBattleSceneCameraActor(ACameraActor* CameraActor)
+	{
+		if (!CameraActor)
+		{
+			return;
+		}
+
+		const FRotator CurrentRotation = CameraActor->GetActorRotation();
+		if (CurrentRotation.Pitch < -65.0f || CurrentRotation.Pitch > -55.0f)
+		{
+			CameraActor->SetActorRotation(BattleSceneCameraFallbackRotation);
+		}
+		if (UCameraComponent* CameraComponent = CameraActor->GetCameraComponent())
+		{
+			CameraComponent->ProjectionMode = ECameraProjectionMode::Perspective;
+			CameraComponent->FieldOfView = BattleSceneCameraFallbackFOV;
+		}
+	}
 }
 
 AGameXXKMVPPlayerController::AGameXXKMVPPlayerController()
@@ -41,6 +103,44 @@ void AGameXXKMVPPlayerController::BeginPlay()
 
 	EnsurePlayerFlowWidgets();
 	RefreshPlayerFlowWidgets();
+}
+
+void AGameXXKMVPPlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+	if (InputComponent)
+	{
+		InputComponent->BindKey(EKeys::LeftMouseButton, IE_Released, this, &AGameXXKMVPPlayerController::HandleRouteMapPrimaryClick);
+	}
+}
+
+bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
+{
+	if (Params.Key == EKeys::Escape && Params.Event == IE_Pressed)
+	{
+		EnsurePlayerFlowWidgets();
+		if (BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting())
+		{
+			return true;
+		}
+	}
+	if (Params.Key == EKeys::LeftMouseButton && Params.Event == IE_Released)
+	{
+		if (TryHandleBattleSceneLeftClick())
+		{
+			return true;
+		}
+		HandleRouteMapPrimaryClick();
+	}
+	if (Params.Key == EKeys::F && Params.Event == IE_Pressed && TryHandleRouteEncounterInteract())
+	{
+		return true;
+	}
+	if (Params.Key == EKeys::RightMouseButton && Params.Event == IE_Released && TryHandleBattleSceneRightClick())
+	{
+		return true;
+	}
+	return Super::InputKey(Params);
 }
 
 void AGameXXKMVPPlayerController::FlushPressedKeys()
@@ -116,6 +216,32 @@ bool AGameXXKMVPPlayerController::HasRouteMapWidgetInViewportForTest() const
 bool AGameXXKMVPPlayerController::HasBattleBoardWidgetInViewportForTest() const
 {
 	return BattleBoardWidget && BattleBoardWidget->IsInViewport();
+}
+
+bool AGameXXKMVPPlayerController::OpenBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
+{
+	if (!UnitActor || !UnitActor->CanOpenPartyCommandMenu())
+	{
+		return false;
+	}
+	EnsurePlayerFlowWidgets();
+	return BattleBoardWidget && BattleBoardWidget->OpenCommandMenuForPartyUnit(UnitActor->GetUnitIndex(), MenuScreenPosition, UnitScreenPosition);
+}
+
+bool AGameXXKMVPPlayerController::ConfirmBattleTargetForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor)
+{
+	if (!UnitActor || !UnitActor->CanReceiveTargetedBattleAction())
+	{
+		return false;
+	}
+	EnsurePlayerFlowWidgets();
+	return BattleBoardWidget && BattleBoardWidget->ConfirmTargetingEnemy(UnitActor->GetUnitIndex());
+}
+
+bool AGameXXKMVPPlayerController::CancelBattleTargetingForTest()
+{
+	EnsurePlayerFlowWidgets();
+	return BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting();
 }
 
 UGameXXKMVPSubsystem* AGameXXKMVPPlayerController::ResolveMVPSubsystem() const
@@ -251,6 +377,7 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 		BattleBoardWidget->SetMVPSubsystem(Subsystem);
 		BattleBoardWidget->RefreshFromState();
 	}
+	EnsureBattleScenePresenter();
 
 	ApplyPlayerFlowInputMode();
 }
@@ -262,10 +389,9 @@ void AGameXXKMVPPlayerController::ConfigureRouteMapWidgetViewport(UGameXXKOneGam
 		return;
 	}
 
-	RouteWidget->SetAlignmentInViewport(FVector2D::ZeroVector);
-	RouteWidget->SetPositionInViewport(PlayerControllerRouteMapViewportPosition, false);
-	RouteWidget->SetDesiredSizeInViewport(PlayerControllerRouteMapViewportSize);
-	RouteWidget->SetRouteMapViewportGeometry(PlayerControllerRouteMapViewportPosition, PlayerControllerRouteMapViewportSize);
+	const FVector2D RouteMapViewportSize = ResolveRouteMapViewportSize(this);
+	ConfigureFullscreenRouteMapSlot(RouteWidget);
+	RouteWidget->SetRouteMapViewportGeometry(FVector2D::ZeroVector, RouteMapViewportSize);
 }
 
 bool AGameXXKMVPPlayerController::CanAddPlayerWidgetsToViewport() const
@@ -286,18 +412,326 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	bEnableMouseOverEvents = true;
 
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const bool bMainMenuActive = Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::MainMenu;
+	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
 
 	FInputModeGameAndUI InputMode;
 	InputMode.SetHideCursorDuringCapture(false);
-	if (bMainMenuActive && MainMenuWidget)
+	if (ActiveScreen == EGameXXKScreen::MainMenu && MainMenuWidget)
 	{
 		InputMode.SetWidgetToFocus(MainMenuWidget->TakeWidget());
 	}
+	else if (ActiveScreen == EGameXXKScreen::DungeonMap && RouteMapWidget)
+	{
+		InputMode.SetWidgetToFocus(RouteMapWidget->TakeWidget());
+	}
+	else if (ActiveScreen == EGameXXKScreen::Battle && BattleBoardWidget)
+	{
+		InputMode.SetWidgetToFocus(BattleBoardWidget->TakeWidget());
+	}
 	SetInputMode(InputMode);
 
-	if (!bMainMenuActive && FSlateApplication::IsInitialized())
+	if (ActiveScreen == EGameXXKScreen::Town && FSlateApplication::IsInitialized())
 	{
 		FSlateApplication::Get().SetAllUserFocusToGameViewport(EFocusCause::SetDirectly);
 	}
+	else if ((ActiveScreen == EGameXXKScreen::RouteEvent
+		|| ActiveScreen == EGameXXKScreen::RouteCamp
+		|| ActiveScreen == EGameXXKScreen::RouteMerchant)
+		&& FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetAllUserFocusToGameViewport(EFocusCause::SetDirectly);
+	}
+}
+
+void AGameXXKMVPPlayerController::HandleRouteMapPrimaryClick()
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem
+		|| Subsystem->GetRuntimeState().Screen != EGameXXKScreen::DungeonMap
+		|| !RouteMapWidget
+		|| RouteMapWidget->GetVisibility() != ESlateVisibility::Visible)
+	{
+		return;
+	}
+
+	float MouseX = 0.0f;
+	float MouseY = 0.0f;
+	if (!GetMousePosition(MouseX, MouseY))
+	{
+		return;
+	}
+
+	const FVector2D MousePosition(MouseX, MouseY);
+	FVector2D SlateCursorPosition = MousePosition;
+	const bool bHasSlateCursorPosition = FSlateApplication::IsInitialized();
+	if (bHasSlateCursorPosition)
+	{
+		SlateCursorPosition = FSlateApplication::Get().GetCursorPos();
+	}
+
+	const TArray<FGameXXKOneGameRouteNodeVisualState> VisualStates = RouteMapWidget->GetRouteNodeVisualStatesForTest();
+	for (int32 VisualIndex = VisualStates.Num() - 1; VisualIndex >= 0; --VisualIndex)
+	{
+		const FGameXXKOneGameRouteNodeVisualState& VisualState = VisualStates[VisualIndex];
+		if (!VisualState.bEnabled || VisualState.NodeId == INDEX_NONE)
+		{
+			continue;
+		}
+
+		const FVector2D Min = VisualState.ViewportHitBoxPosition;
+		const FVector2D Max = Min + VisualState.HitBoxSize;
+		const bool bViewportHit = MousePosition.X >= Min.X
+			&& MousePosition.Y >= Min.Y
+			&& MousePosition.X <= Max.X
+			&& MousePosition.Y <= Max.Y;
+
+		const FVector2D ScreenMin = VisualState.ScreenHitBoxPosition;
+		const FVector2D ScreenMax = ScreenMin + VisualState.HitBoxSize;
+		const bool bScreenHit = bHasSlateCursorPosition
+			&& SlateCursorPosition.X >= ScreenMin.X
+			&& SlateCursorPosition.Y >= ScreenMin.Y
+			&& SlateCursorPosition.X <= ScreenMax.X
+			&& SlateCursorPosition.Y <= ScreenMax.Y;
+
+		if (bViewportHit || bScreenHit)
+		{
+			RouteMapWidget->ExecuteRouteNodeById(VisualState.NodeId);
+			return;
+		}
+	}
+}
+
+bool AGameXXKMVPPlayerController::TryHandleRouteEncounterInteract()
+{
+	AGameXXKRouteEncounterSceneActor* EncounterActor = FindRouteEncounterActorForActiveScreen();
+	if (!EncounterActor)
+	{
+		return false;
+	}
+
+	return EncounterActor->ApplyDefaultInteraction(GetPawn());
+}
+
+AGameXXKRouteEncounterSceneActor* AGameXXKMVPPlayerController::FindRouteEncounterActorForActiveScreen() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
+	if (ActiveScreen != EGameXXKScreen::RouteEvent
+		&& ActiveScreen != EGameXXKScreen::RouteCamp
+		&& ActiveScreen != EGameXXKScreen::RouteMerchant)
+	{
+		return nullptr;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	for (TActorIterator<AGameXXKRouteEncounterSceneActor> It(World); It; ++It)
+	{
+		AGameXXKRouteEncounterSceneActor* Candidate = *It;
+		if (Candidate && Candidate->MatchesRuntimeScreen(ActiveScreen))
+		{
+			return Candidate;
+		}
+	}
+	return nullptr;
+}
+
+void AGameXXKMVPPlayerController::EnsureBattleScenePresenter()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const bool bNeedsBattleScene = Subsystem
+		&& Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle
+		&& Subsystem->GetRuntimeState().bHasActiveBattle;
+	UWorld* World = GetWorld();
+	if (!bNeedsBattleScene || !World || !World->IsGameWorld())
+	{
+		BattleScenePresenter = nullptr;
+		return;
+	}
+
+	if (!IsValid(BattleScenePresenter) || BattleScenePresenter->GetWorld() != World)
+	{
+		BattleScenePresenter = nullptr;
+		for (TActorIterator<AGameXXKBattleScenePresenter> It(World); It; ++It)
+		{
+			BattleScenePresenter = *It;
+			break;
+		}
+	}
+
+	if (!BattleScenePresenter)
+	{
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.Owner = this;
+		BattleScenePresenter = World->SpawnActor<AGameXXKBattleScenePresenter>(
+			AGameXXKBattleScenePresenter::StaticClass(),
+			FVector::ZeroVector,
+			FRotator::ZeroRotator,
+			SpawnParameters);
+	}
+
+	if (BattleScenePresenter)
+	{
+		BattleScenePresenter->SetMVPSubsystemForTest(Subsystem);
+		BattleScenePresenter->EnsureBattleScene();
+	}
+	ApplyBattleSceneCamera();
+}
+
+void AGameXXKMVPPlayerController::ApplyBattleSceneCamera()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World || !World->IsGameWorld())
+	{
+		return;
+	}
+
+	AActor* CameraActor = FindBattleSceneCameraActor();
+	if (!CameraActor)
+	{
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.Owner = this;
+		ACameraActor* SpawnedCamera = World->SpawnActor<ACameraActor>(
+			ACameraActor::StaticClass(),
+			BattleSceneCameraFallbackLocation,
+			BattleSceneCameraFallbackRotation,
+			SpawnParameters);
+		if (SpawnedCamera)
+		{
+			SpawnedCamera->Tags.AddUnique(BattleSceneCameraTag);
+			if (UCameraComponent* CameraComponent = SpawnedCamera->GetCameraComponent())
+			{
+				CameraComponent->ProjectionMode = ECameraProjectionMode::Perspective;
+				CameraComponent->FieldOfView = BattleSceneCameraFallbackFOV;
+			}
+			CameraActor = SpawnedCamera;
+		}
+	}
+
+	if (ACameraActor* BattleCameraActor = Cast<ACameraActor>(CameraActor))
+	{
+		ConfigureBattleSceneCameraActor(BattleCameraActor);
+	}
+
+	if (CameraActor && GetViewTarget() != CameraActor)
+	{
+		SetViewTarget(CameraActor);
+	}
+}
+
+bool AGameXXKMVPPlayerController::TryHandleBattleSceneRightClick()
+{
+	EnsurePlayerFlowWidgets();
+	if (BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting())
+	{
+		return true;
+	}
+
+	AGameXXKBattleSceneUnitActor* UnitActor = FindBattleSceneUnitUnderCursor(false);
+	if (!UnitActor || !UnitActor->CanOpenPartyCommandMenu())
+	{
+		return false;
+	}
+
+	float CursorX = 0.0f;
+	float CursorY = 0.0f;
+	if (!GetMousePosition(CursorX, CursorY))
+	{
+		return false;
+	}
+	FVector2D UnitScreenPosition(CursorX, CursorY);
+	ProjectWorldLocationToScreen(UnitActor->GetActorLocation(), UnitScreenPosition, true);
+	return BattleBoardWidget && BattleBoardWidget->OpenCommandMenuForPartyUnit(
+		UnitActor->GetUnitIndex(),
+		FVector2D(CursorX, CursorY),
+		UnitScreenPosition);
+}
+
+bool AGameXXKMVPPlayerController::TryHandleBattleSceneLeftClick()
+{
+	EnsurePlayerFlowWidgets();
+	if (!BattleBoardWidget || !BattleBoardWidget->IsTargetingBattleActionForTest())
+	{
+		return false;
+	}
+
+	float CursorX = 0.0f;
+	float CursorY = 0.0f;
+	if (GetMousePosition(CursorX, CursorY))
+	{
+		BattleBoardWidget->UpdateTargetingPointer(FVector2D(CursorX, CursorY));
+	}
+
+	AGameXXKBattleSceneUnitActor* UnitActor = FindBattleSceneUnitUnderCursor(true);
+	if (UnitActor && UnitActor->CanReceiveTargetedBattleAction())
+	{
+		return BattleBoardWidget->ConfirmTargetingEnemy(UnitActor->GetUnitIndex());
+	}
+	return BattleBoardWidget->KeepTargetingAfterEmptyClickForTest();
+}
+
+AGameXXKBattleSceneUnitActor* AGameXXKMVPPlayerController::FindBattleSceneUnitUnderCursor(bool bRequireEnemyTarget) const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
+	{
+		return nullptr;
+	}
+
+	FHitResult HitResult;
+	if (GetHitResultUnderCursor(ECC_Visibility, true, HitResult))
+	{
+		if (AGameXXKBattleSceneUnitActor* UnitActor = Cast<AGameXXKBattleSceneUnitActor>(HitResult.GetActor()))
+		{
+			if (bRequireEnemyTarget ? UnitActor->CanReceiveTargetedBattleAction() : UnitActor->CanOpenPartyCommandMenu())
+			{
+				return UnitActor;
+			}
+		}
+	}
+	return nullptr;
+}
+
+AActor* AGameXXKMVPPlayerController::FindBattleSceneCameraActor() const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	ACameraActor* FirstCamera = nullptr;
+	for (TActorIterator<ACameraActor> It(World); It; ++It)
+	{
+		ACameraActor* Candidate = *It;
+		if (!Candidate)
+		{
+			continue;
+		}
+		if (!FirstCamera)
+		{
+			FirstCamera = Candidate;
+		}
+		if (Candidate->ActorHasTag(BattleSceneCameraTag))
+		{
+			return Candidate;
+		}
+#if WITH_EDITOR
+		if (Candidate->GetActorLabel() == BattleSceneCameraTag.ToString())
+		{
+			return Candidate;
+		}
+#endif
+	}
+	return FirstCamera;
 }

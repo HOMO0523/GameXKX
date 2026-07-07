@@ -9,6 +9,9 @@ class UGameXXKMainMenuWidget;
 class UGameXXKMVPSubsystem;
 class UGameXXKOneGameRouteMapWidget;
 class UGameXXKTownOverlayWidget;
+class AGameXXKBattleScenePresenter;
+class AGameXXKBattleSceneUnitActor;
+class AGameXXKRouteEncounterSceneActor;
 
 UCLASS(Blueprintable)
 class GAMEXXK_API AGameXXKMVPPlayerController : public APlayerController
@@ -19,6 +22,8 @@ public:
 	AGameXXKMVPPlayerController();
 
 	virtual void BeginPlay() override;
+	virtual void SetupInputComponent() override;
+	virtual bool InputKey(const FInputKeyEventArgs& Params) override;
 	virtual void FlushPressedKeys() override;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
@@ -57,12 +62,30 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
 	bool HasBattleBoardWidgetInViewportForTest() const;
 
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
+	bool OpenBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
+	bool ConfirmBattleTargetForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
+	bool CancelBattleTargetingForTest();
+
 private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
 	bool EnsurePlayerFlowWidgets();
 	void RefreshPlayerFlowWidgets();
 	void ConfigureRouteMapWidgetViewport(UGameXXKOneGameRouteMapWidget* RouteWidget) const;
 	void ApplyPlayerFlowInputMode();
+	void HandleRouteMapPrimaryClick();
+	bool TryHandleRouteEncounterInteract();
+	AGameXXKRouteEncounterSceneActor* FindRouteEncounterActorForActiveScreen() const;
+	void EnsureBattleScenePresenter();
+	void ApplyBattleSceneCamera();
+	bool TryHandleBattleSceneRightClick();
+	bool TryHandleBattleSceneLeftClick();
+	AGameXXKBattleSceneUnitActor* FindBattleSceneUnitUnderCursor(bool bRequireEnemyTarget) const;
+	AActor* FindBattleSceneCameraActor() const;
 	bool CanAddPlayerWidgetsToViewport() const;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
@@ -88,6 +111,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKBattleBoardWidget> BattleBoardWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<AGameXXKBattleScenePresenter> BattleScenePresenter;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMVPSubsystem> OverrideSubsystem;
