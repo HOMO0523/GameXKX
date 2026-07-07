@@ -117,7 +117,7 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestTrue(TEXT("controller toggles command menu for party actor"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, FVector2D(260.0f, 640.0f), FVector2D(830.0f, 420.0f)));
 	TestTrue(TEXT("battle board menu is visible after controller opens it"), PlayerController->GetBattleBoardWidgetForTest()->IsCommandMenuVisibleForTest());
 	TestEqual(TEXT("controller selects first party actor for commands"), PlayerController->GetBattleBoardWidgetForTest()->GetSelectedPartyIndexForTest(), 0);
-	TestTrue(TEXT("controller command menu is anchored to the right of the selected actor"), PlayerController->GetBattleBoardWidgetForTest()->GetCommandMenuAnchorForTest().X > 830.0f);
+	TestTrue(TEXT("controller command menu is anchored to the left of the selected actor"), PlayerController->GetBattleBoardWidgetForTest()->GetCommandMenuAnchorForTest().X + 360.0f < 830.0f);
 	TestTrue(TEXT("controller toggles the same party command menu closed"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, FVector2D(260.0f, 640.0f), FVector2D(830.0f, 420.0f)));
 	TestFalse(TEXT("same party toggle hides command menu"), PlayerController->GetBattleBoardWidgetForTest()->IsCommandMenuVisibleForTest());
 	TestTrue(TEXT("controller reopens command menu for party actor"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, FVector2D(260.0f, 640.0f), FVector2D(830.0f, 420.0f)));

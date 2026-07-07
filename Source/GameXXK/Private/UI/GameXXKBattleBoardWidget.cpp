@@ -742,12 +742,15 @@ FLinearColor UGameXXKBattleBoardWidget::ResolveBattleActionButtonTint(FName Acti
 
 FVector2D UGameXXKBattleBoardWidget::ResolveCommandMenuAnchor(FVector2D UnitScreenPosition) const
 {
-	FVector2D Anchor = UnitScreenPosition + FVector2D(72.0f, -120.0f);
+	constexpr float CommandMenuWidth = 360.0f;
+	constexpr float CommandMenuHeight = 300.0f;
+	constexpr float CommandMenuGap = 72.0f;
+	FVector2D Anchor = UnitScreenPosition + FVector2D(-(CommandMenuWidth + CommandMenuGap), -120.0f);
 	const FVector2D LocalSize = GetCachedGeometry().GetLocalSize();
 	if (LocalSize.X > 1.0f && LocalSize.Y > 1.0f)
 	{
-		Anchor.X = FMath::Clamp(Anchor.X, 12.0f, FMath::Max(12.0f, LocalSize.X - 372.0f));
-		Anchor.Y = FMath::Clamp(Anchor.Y, 12.0f, FMath::Max(12.0f, LocalSize.Y - 312.0f));
+		Anchor.X = FMath::Clamp(Anchor.X, 12.0f, FMath::Max(12.0f, UnitScreenPosition.X - (CommandMenuWidth + 12.0f)));
+		Anchor.Y = FMath::Clamp(Anchor.Y, 12.0f, FMath::Max(12.0f, LocalSize.Y - (CommandMenuHeight + 12.0f)));
 	}
 	return Anchor;
 }
