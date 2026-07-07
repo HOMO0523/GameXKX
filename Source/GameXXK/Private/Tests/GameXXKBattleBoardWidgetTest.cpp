@@ -34,19 +34,67 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("battle board initializes widget tree"), BattleWidget->Initialize());
 	BattleWidget->NativeConstruct();
 	BattleWidget->RefreshFromState();
-	TestTrue(TEXT("battle board visible on battle screen"), BattleWidget->IsBattleBoardVisible());
-	TestEqual(TEXT("battle board creates one enemy slot"), BattleWidget->GetEnemySlotCount(), 1);
-	TestEqual(TEXT("battle board creates hero and follower slots"), BattleWidget->GetPartySlotCount(), 2);
-	TestEqual(TEXT("first enemy appears on the left side"), BattleWidget->GetEnemySlotSide(), FString(TEXT("Left")));
-	TestEqual(TEXT("party appears on the right side"), BattleWidget->GetPartySlotSide(), FString(TEXT("Right")));
-	const FVector2D EnemySlotPosition = BattleWidget->GetEnemySlotPositionForTest(0);
-	const FVector2D HeroSlotPosition = BattleWidget->GetPartySlotPositionForTest(0);
-	const FVector2D FollowerSlotPosition = BattleWidget->GetPartySlotPositionForTest(1);
-	TestTrue(TEXT("enemy battle slot stays clear of left HUD command panel"), EnemySlotPosition.X >= 540.0f);
-	TestTrue(TEXT("hero battle slot stays to the right of the enemy lane"), HeroSlotPosition.X >= EnemySlotPosition.X + 640.0f);
-	TestEqual(TEXT("follower battle slot aligns under hero lane"), FollowerSlotPosition.X, HeroSlotPosition.X);
+	TestTrue(TEXT("battle board remains active as a battle input/status layer"), BattleWidget->IsBattleBoardVisible());
+	TestEqual(TEXT("battle board leaves enemies to scene actors instead of UMG cards"), BattleWidget->GetEnemySlotCount(), 0);
+	TestEqual(TEXT("battle board leaves party members to scene actors instead of UMG cards"), BattleWidget->GetPartySlotCount(), 0);
+	TestTrue(TEXT("battle board status exposes HP"), BattleWidget->GetBattleStatusTextForTest().Contains(TEXT("HP")));
+	TestTrue(TEXT("battle board status exposes MP"), BattleWidget->GetBattleStatusTextForTest().Contains(TEXT("MP")));
+	TestFalse(TEXT("battle board command menu starts hidden"), BattleWidget->IsCommandMenuVisibleForTest());
+	TestFalse(TEXT("battle board starts outside targeting mode"), BattleWidget->IsTargetingBattleActionForTest());
+	TestTrue(TEXT("battle board opens command menu for living party unit"), BattleWidget->OpenCommandMenuForPartyUnit(0, FVector2D(900.0f, 520.0f), FVector2D(830.0f, 420.0f)));
+	TestTrue(TEXT("battle board command menu becomes visible"), BattleWidget->IsCommandMenuVisibleForTest());
+	TestEqual(TEXT("battle board records selected party index"), BattleWidget->GetSelectedPartyIndexForTest(), 0);
+	TestTrue(TEXT("battle board exposes basic attack action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleBasicAttack")), true));
+	TestTrue(TEXT("battle board exposes Crane Wing Slash action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleCraneWingSlash")), true));
+	TestTrue(TEXT("battle board exposes defend action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleDefend")), true));
 
-	TestTrue(TEXT("right-click enemy resolves battle victory"), BattleWidget->ExecutePrimaryEnemyAction());
+	const int32 SkillEnemyHPBefore = Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP;
+	const int32 SkillMPBefore = Subsystem->GetRuntimeState().PlayerMP;
+	TestTrue(TEXT("battle board Crane Wing Slash enters targeting"), BattleWidget->ExecuteCraneWingSlashAction());
+	TestTrue(TEXT("battle board is targeting after attack skill click"), BattleWidget->IsTargetingBattleActionForTest());
+	TestEqual(TEXT("battle board records targeting action"), BattleWidget->GetTargetingActionNameForTest(), FName(TEXT("BattleCraneWingSlash")));
+	TestEqual(TEXT("Crane Wing Slash does not damage before target confirmation"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP, SkillEnemyHPBefore);
+	TestEqual(TEXT("Crane Wing Slash does not spend MP before target confirmation"), Subsystem->GetRuntimeState().PlayerMP, SkillMPBefore);
+	BattleWidget->UpdateTargetingPointer(FVector2D(520.0f, 360.0f));
+	TestEqual(TEXT("battle board tracks targeting pointer"), BattleWidget->GetTargetingPointerPositionForTest(), FVector2D(520.0f, 360.0f));
+	TestTrue(TEXT("empty click keeps targeting mode alive"), BattleWidget->KeepTargetingAfterEmptyClickForTest());
+	TestTrue(TEXT("battle board still targets after empty click"), BattleWidget->IsTargetingBattleActionForTest());
+	TestTrue(TEXT("battle board confirms targeted enemy"), BattleWidget->ConfirmTargetingEnemy(0));
+	TestTrue(TEXT("battle board Crane Wing Slash damages confirmed enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP < SkillEnemyHPBefore);
+	TestTrue(TEXT("battle board Crane Wing Slash spends MP after confirmation"), Subsystem->GetRuntimeState().PlayerMP < SkillMPBefore);
+	TestFalse(TEXT("battle board exits targeting after confirmed action"), BattleWidget->IsTargetingBattleActionForTest());
+	BattleWidget->RefreshFromState();
+	TestTrue(TEXT("battle board reopens command menu for support action"), BattleWidget->OpenCommandMenuForPartyUnit(0, FVector2D(900.0f, 520.0f), FVector2D(830.0f, 420.0f)));
+	TestTrue(TEXT("battle board exposes Guiyuan after enemy response damages hero"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleGuiyuanArt")), true));
+	for (FGameXXKBattleRuntimeUnit& Enemy : Subsystem->GetMutableRuntimeState().ActiveBattleEnemies)
+	{
+		Enemy.Attack = 0;
+	}
+	const int32 HealHPBefore = Subsystem->GetRuntimeState().PlayerHP;
+	TestTrue(TEXT("battle board Guiyuan executes"), BattleWidget->ExecuteGuiyuanArtAction());
+	TestTrue(TEXT("battle board Guiyuan leaves hero healthier than before cast"), Subsystem->GetRuntimeState().PlayerHP > HealHPBefore);
+
+	const int32 EnemyHPBeforeAttack = Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP;
+	BattleWidget->RefreshFromState();
+	TestTrue(TEXT("battle board opens command menu for cancel flow"), BattleWidget->OpenCommandMenuForPartyUnit(0, FVector2D(900.0f, 520.0f), FVector2D(830.0f, 420.0f)));
+	TestTrue(TEXT("battle board basic attack enters targeting"), BattleWidget->ExecuteBasicAttackAction());
+	TestTrue(TEXT("battle board cancel from targeting returns to command menu"), BattleWidget->CancelBattleTargeting());
+	TestTrue(TEXT("battle board command menu remains visible after targeting cancel"), BattleWidget->IsCommandMenuVisibleForTest());
+	TestFalse(TEXT("battle board no longer targets after cancel"), BattleWidget->IsTargetingBattleActionForTest());
+	TestTrue(TEXT("battle board cancel from command menu hides menu"), BattleWidget->CancelBattleTargeting());
+	TestFalse(TEXT("battle board command menu hides after second cancel"), BattleWidget->IsCommandMenuVisibleForTest());
+	TestEqual(TEXT("cancelled targeting does not damage enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP, EnemyHPBeforeAttack);
+
+	for (int32 EnemyIndex = 1; EnemyIndex < Subsystem->GetMutableRuntimeState().ActiveBattleEnemies.Num(); ++EnemyIndex)
+	{
+		Subsystem->GetMutableRuntimeState().ActiveBattleEnemies[EnemyIndex].HP = 0;
+		Subsystem->GetMutableRuntimeState().ActiveBattleEnemies[EnemyIndex].bDefeated = true;
+	}
+	Subsystem->GetMutableRuntimeState().ActiveBattleEnemies[0].HP = 1;
+	Subsystem->GetMutableRuntimeState().ActiveBattleEnemies[0].bDefeated = false;
+	TestTrue(TEXT("battle board opens command menu for final blow"), BattleWidget->OpenCommandMenuForPartyUnit(0, FVector2D(900.0f, 520.0f), FVector2D(830.0f, 420.0f)));
+	TestTrue(TEXT("battle board final basic attack enters targeting"), BattleWidget->ExecuteBasicAttackAction());
+	TestTrue(TEXT("battle board final confirmed target resolves battle victory"), BattleWidget->ConfirmTargetingEnemy(0));
 	TestEqual(TEXT("battle victory returns to dungeon route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(TEXT("battle victory advances route index"), Subsystem->GetRuntimeState().DungeonNodeIndex, 2);
 

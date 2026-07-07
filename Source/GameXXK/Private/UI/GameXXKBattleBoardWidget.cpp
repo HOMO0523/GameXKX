@@ -1,25 +1,27 @@
 #include "UI/GameXXKBattleBoardWidget.h"
 
 #include "Blueprint/WidgetTree.h"
-#include "Components/Border.h"
+#include "Components/Button.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
-#include "Components/ContentWidget.h"
 #include "Components/TextBlock.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 #include "GameXXKMVPRules.h"
 #include "Input/Events.h"
 #include "InputCoreTypes.h"
+#include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKMVPCommandRouter.h"
 
 namespace
 {
 	static const FName ResolveBattleVictoryCommand(TEXT("ResolveBattleVictory"));
-	const FVector2D EnemyBattleSlotPosition(560.0f, 170.0f);
-	const FVector2D EnemyBattleSlotSize(180.0f, 180.0f);
-	const FVector2D PartyBattleSlotPosition(1240.0f, 118.0f);
-	const FVector2D PartyBattleSlotSize(160.0f, 140.0f);
-	const float PartyBattleSlotVerticalGap = 170.0f;
+	static const FName BasicAttackAction(TEXT("BattleBasicAttack"));
+	static const FName CraneWingSlashAction(TEXT("BattleCraneWingSlash"));
+	static const FName GuiyuanArtAction(TEXT("BattleGuiyuanArt"));
+	static const FName DefendAction(TEXT("BattleDefend"));
+	static const FName HealingPowderAction(TEXT("BattleHealingPowder"));
 }
 
 TSharedRef<SWidget> UGameXXKBattleBoardWidget::RebuildWidget()
@@ -37,7 +39,7 @@ void UGameXXKBattleBoardWidget::NativeConstruct()
 
 FReply UGameXXKBattleBoardWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && ExecutePrimaryEnemyAction())
+	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && CancelBattleTargeting())
 	{
 		return FReply::Handled();
 	}
@@ -46,26 +48,211 @@ FReply UGameXXKBattleBoardWidget::NativeOnMouseButtonDown(const FGeometry& InGeo
 
 void UGameXXKBattleBoardWidget::RefreshFromState()
 {
-	BuildProgrammaticLayout();
-	ConfigureSlots();
-
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	SetVisibility(Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle
-		? ESlateVisibility::Visible
-		: ESlateVisibility::Collapsed);
+	const bool bInBattle = Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle;
+	if (!bInBattle)
+	{
+		InteractionMode = EGameXXKBattleInteractionMode::Hidden;
+		SelectedPartyIndex = INDEX_NONE;
+		TargetingActionName = NAME_None;
+	}
+	else if (InteractionMode == EGameXXKBattleInteractionMode::Hidden)
+	{
+		InteractionMode = EGameXXKBattleInteractionMode::Idle;
+	}
+
+	BuildProgrammaticLayout();
+	RefreshProgrammaticLayout();
+
+	SetVisibility(bInBattle ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 }
 
 bool UGameXXKBattleBoardWidget::ExecutePrimaryEnemyAction()
+{
+	return false;
+}
+
+bool UGameXXKBattleBoardWidget::ExecuteBasicAttackAction()
+{
+	return BeginTargetingBattleAction(BasicAttackAction);
+}
+
+bool UGameXXKBattleBoardWidget::ExecuteCraneWingSlashAction()
+{
+	return BeginTargetingBattleAction(CraneWingSlashAction);
+}
+
+bool UGameXXKBattleBoardWidget::ExecuteGuiyuanArtAction()
+{
+	return ExecuteBattleAction(GuiyuanArtAction);
+}
+
+bool UGameXXKBattleBoardWidget::ExecuteDefendAction()
+{
+	return ExecuteBattleAction(DefendAction);
+}
+
+bool UGameXXKBattleBoardWidget::ExecuteHealingPowderAction()
+{
+	return ExecuteBattleAction(HealingPowderAction);
+}
+
+bool UGameXXKBattleBoardWidget::OpenCommandMenuForPartyUnit(int32 PartyIndex, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if (!State || State->Screen != EGameXXKScreen::Battle || !State->ActiveBattleParty.IsValidIndex(PartyIndex))
+	{
+		return false;
+	}
+
+	const FGameXXKBattleRuntimeUnit& Unit = State->ActiveBattleParty[PartyIndex];
+	if (Unit.bEnemy || Unit.bDefeated || Unit.HP <= 0)
+	{
+		return false;
+	}
+
+	SelectedPartyIndex = PartyIndex;
+	CommandMenuAnchor = MenuScreenPosition;
+	SelectedPartyScreenPosition = UnitScreenPosition;
+	TargetingPointerPosition = UnitScreenPosition;
+	TargetingActionName = NAME_None;
+	InteractionMode = EGameXXKBattleInteractionMode::CommandMenuOpen;
+	RefreshProgrammaticLayout();
+	return true;
+}
+
+void UGameXXKBattleBoardWidget::UpdateTargetingPointer(FVector2D ScreenPosition)
+{
+	if (IsTargetingBattleActionForTest())
+	{
+		TargetingPointerPosition = ScreenPosition;
+		InvalidateLayoutAndVolatility();
+	}
+}
+
+bool UGameXXKBattleBoardWidget::ConfirmTargetingEnemy(int32 EnemyIndex)
+{
+	if (!IsTargetingBattleActionForTest() || SelectedPartyIndex == INDEX_NONE)
+	{
+		return false;
+	}
+
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
+	{
+		return false;
+	}
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	if (!State.ActiveBattleEnemies.IsValidIndex(EnemyIndex))
+	{
+		return false;
+	}
+	const FGameXXKBattleRuntimeUnit& Enemy = State.ActiveBattleEnemies[EnemyIndex];
+	if (!Enemy.bEnemy || Enemy.bDefeated || Enemy.HP <= 0)
+	{
+		return false;
+	}
+
+	const FName ActionToExecute = TargetingActionName;
+	const int32 PartyIndex = SelectedPartyIndex;
+	bool bExecuted = false;
+	if (ActionToExecute == BasicAttackAction)
+	{
+		bExecuted = Subsystem->ExecuteBattleBasicAttack(PartyIndex, EnemyIndex);
+	}
+	else if (ActionToExecute == CraneWingSlashAction)
+	{
+		bExecuted = Subsystem->ExecuteBattleCraneWingSlash(PartyIndex, EnemyIndex);
+	}
+
+	if (bExecuted)
+	{
+		InteractionMode = EGameXXKBattleInteractionMode::Idle;
+		TargetingActionName = NAME_None;
+		SelectedPartyIndex = INDEX_NONE;
+		if (Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
+		{
+			GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
+		}
+		if (!NotifyPlayerFlowStateChanged())
+		{
+			RefreshFromState();
+		}
+	}
+	return bExecuted;
+}
+
+bool UGameXXKBattleBoardWidget::CancelBattleTargeting()
+{
+	if (IsTargetingBattleActionForTest())
+	{
+		InteractionMode = EGameXXKBattleInteractionMode::CommandMenuOpen;
+		TargetingActionName = NAME_None;
+		RefreshProgrammaticLayout();
+		return true;
+	}
+	if (InteractionMode == EGameXXKBattleInteractionMode::CommandMenuOpen)
+	{
+		InteractionMode = EGameXXKBattleInteractionMode::Idle;
+		SelectedPartyIndex = INDEX_NONE;
+		TargetingActionName = NAME_None;
+		RefreshProgrammaticLayout();
+		return true;
+	}
+	return false;
+}
+
+bool UGameXXKBattleBoardWidget::ExecuteBattleAction(FName ActionName)
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
 	{
 		return false;
 	}
+	if (InteractionMode != EGameXXKBattleInteractionMode::CommandMenuOpen || SelectedPartyIndex == INDEX_NONE)
+	{
+		return false;
+	}
 
-	const bool bExecuted = GameXXKMVPCommandRouter::ExecuteVisibleCommand(Subsystem, ResolveBattleVictoryCommand);
+	const int32 PartyIndex = SelectedPartyIndex;
+	bool bExecuted = false;
+	if (ActionName == BasicAttackAction)
+	{
+		bExecuted = BeginTargetingBattleAction(BasicAttackAction);
+	}
+	else if (ActionName == CraneWingSlashAction)
+	{
+		bExecuted = BeginTargetingBattleAction(CraneWingSlashAction);
+	}
+	else if (ActionName == GuiyuanArtAction)
+	{
+		bExecuted = Subsystem->ExecuteBattleGuiyuanArt(PartyIndex);
+	}
+	else if (ActionName == DefendAction)
+	{
+		bExecuted = Subsystem->ExecuteBattleDefend(PartyIndex);
+	}
+	else if (ActionName == HealingPowderAction)
+	{
+		bExecuted = Subsystem->ExecuteBattleHealingPowder(PartyIndex);
+	}
+	if (!bExecuted && !Subsystem->GetRuntimeState().bHasActiveBattle)
+	{
+		bExecuted = GameXXKMVPCommandRouter::ExecuteVisibleCommand(Subsystem, ResolveBattleVictoryCommand);
+	}
 	if (bExecuted)
 	{
+		if (ActionName != BasicAttackAction && ActionName != CraneWingSlashAction)
+		{
+			InteractionMode = EGameXXKBattleInteractionMode::Idle;
+			SelectedPartyIndex = INDEX_NONE;
+			TargetingActionName = NAME_None;
+		}
+		if (Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
+		{
+			GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
+		}
 		if (!NotifyPlayerFlowStateChanged())
 		{
 			RefreshFromState();
@@ -81,12 +268,12 @@ bool UGameXXKBattleBoardWidget::IsBattleBoardVisible() const
 
 int32 UGameXXKBattleBoardWidget::GetEnemySlotCount() const
 {
-	return EnemySlots.Num();
+	return 0;
 }
 
 int32 UGameXXKBattleBoardWidget::GetPartySlotCount() const
 {
-	return PartySlots.Num();
+	return 0;
 }
 
 FString UGameXXKBattleBoardWidget::GetEnemySlotSide() const
@@ -101,24 +288,76 @@ FString UGameXXKBattleBoardWidget::GetPartySlotSide() const
 
 FVector2D UGameXXKBattleBoardWidget::GetEnemySlotPositionForTest(int32 SlotIndex) const
 {
-	if (!EnemySlots.IsValidIndex(SlotIndex) || !EnemySlots[SlotIndex])
-	{
-		return FVector2D::ZeroVector;
-	}
-
-	const UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(EnemySlots[SlotIndex]->Slot);
-	return CanvasSlot ? CanvasSlot->GetPosition() : FVector2D::ZeroVector;
+	return FVector2D::ZeroVector;
 }
 
 FVector2D UGameXXKBattleBoardWidget::GetPartySlotPositionForTest(int32 SlotIndex) const
 {
-	if (!PartySlots.IsValidIndex(SlotIndex) || !PartySlots[SlotIndex])
-	{
-		return FVector2D::ZeroVector;
-	}
+	return FVector2D::ZeroVector;
+}
 
-	const UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(PartySlots[SlotIndex]->Slot);
-	return CanvasSlot ? CanvasSlot->GetPosition() : FVector2D::ZeroVector;
+FString UGameXXKBattleBoardWidget::GetBattleStatusTextForTest() const
+{
+	return BuildBattleStatusText();
+}
+
+bool UGameXXKBattleBoardWidget::HasBattleActionForTest(FName ActionName, bool bRequireEnabled) const
+{
+	const UButton* Button = nullptr;
+	if (ActionName == BasicAttackAction)
+	{
+		Button = BasicAttackButton;
+	}
+	else if (ActionName == CraneWingSlashAction)
+	{
+		Button = CraneWingSlashButton;
+	}
+	else if (ActionName == GuiyuanArtAction)
+	{
+		Button = GuiyuanArtButton;
+	}
+	else if (ActionName == DefendAction)
+	{
+		Button = DefendButton;
+	}
+	else if (ActionName == HealingPowderAction)
+	{
+		Button = HealingPowderButton;
+	}
+	return Button && (!bRequireEnabled || (IsCommandMenuVisibleForTest() && Button->GetIsEnabled()));
+}
+
+bool UGameXXKBattleBoardWidget::IsCommandMenuVisibleForTest() const
+{
+	return InteractionMode == EGameXXKBattleInteractionMode::CommandMenuOpen
+		|| InteractionMode == EGameXXKBattleInteractionMode::TargetingBasicAttack
+		|| InteractionMode == EGameXXKBattleInteractionMode::TargetingCraneWingSlash;
+}
+
+bool UGameXXKBattleBoardWidget::IsTargetingBattleActionForTest() const
+{
+	return InteractionMode == EGameXXKBattleInteractionMode::TargetingBasicAttack
+		|| InteractionMode == EGameXXKBattleInteractionMode::TargetingCraneWingSlash;
+}
+
+bool UGameXXKBattleBoardWidget::KeepTargetingAfterEmptyClickForTest() const
+{
+	return IsTargetingBattleActionForTest();
+}
+
+int32 UGameXXKBattleBoardWidget::GetSelectedPartyIndexForTest() const
+{
+	return SelectedPartyIndex;
+}
+
+FName UGameXXKBattleBoardWidget::GetTargetingActionNameForTest() const
+{
+	return TargetingActionName;
+}
+
+FVector2D UGameXXKBattleBoardWidget::GetTargetingPointerPositionForTest() const
+{
+	return TargetingPointerPosition;
 }
 
 void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
@@ -135,99 +374,238 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("GameXXKBattleBoardRoot"));
 	WidgetTree->RootWidget = RootCanvas;
 
-	if (UBorder* EnemySlot = CreateSlotBorder(TEXT("BattleEnemySlot0"), FLinearColor(0.36f, 0.11f, 0.10f, 0.92f), FText::FromString(TEXT("Monster"))))
+	StatusText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleStatusText"));
+	StatusText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	StatusText->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.85f));
+	StatusText->SetShadowOffset(FVector2D(1.0f, 1.0f));
+	FSlateFontInfo StatusFont = StatusText->GetFont();
+	StatusFont.Size = 20;
+	StatusText->SetFont(StatusFont);
+	if (UCanvasPanelSlot* StatusSlot = RootCanvas->AddChildToCanvas(StatusText))
 	{
-		if (UCanvasPanelSlot* EnemyCanvasSlot = RootCanvas->AddChildToCanvas(EnemySlot))
-		{
-			EnemyCanvasSlot->SetPosition(EnemyBattleSlotPosition);
-			EnemyCanvasSlot->SetSize(EnemyBattleSlotSize);
-		}
-		EnemySlots.Add(EnemySlot);
+		StatusSlot->SetAnchors(FAnchors(0.02f, 0.04f, 0.46f, 0.04f));
+		StatusSlot->SetOffsets(FMargin(0.0f, 0.0f, 0.0f, 180.0f));
+		StatusSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
 
-	for (int32 SlotIndex = 0; SlotIndex < 2; ++SlotIndex)
+	ActionBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("BattleActionBox"));
+	if (UCanvasPanelSlot* ActionSlot = RootCanvas->AddChildToCanvas(ActionBox))
 	{
-		const FText Label = SlotIndex == 0 ? FText::FromString(TEXT("Hero")) : FText::FromString(TEXT("Follower"));
-		if (UBorder* PartySlot = CreateSlotBorder(
-			FString::Printf(TEXT("BattlePartySlot%d"), SlotIndex),
-			SlotIndex == 0 ? FLinearColor(0.12f, 0.31f, 0.44f, 0.92f) : FLinearColor(0.12f, 0.38f, 0.28f, 0.92f),
-			Label))
-		{
-			if (UCanvasPanelSlot* PartyCanvasSlot = RootCanvas->AddChildToCanvas(PartySlot))
-			{
-				PartyCanvasSlot->SetPosition(PartyBattleSlotPosition + FVector2D(0.0f, SlotIndex * PartyBattleSlotVerticalGap));
-				PartyCanvasSlot->SetSize(PartyBattleSlotSize);
-			}
-			PartySlots.Add(PartySlot);
-		}
-	}
-}
-
-void UGameXXKBattleBoardWidget::ConfigureSlots()
-{
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
-	const bool bBattleVisible = State && State->Screen == EGameXXKScreen::Battle;
-	const bool bFollowerVisible = bBattleVisible && State->bFollowerJoined;
-
-	if (EnemyLabel)
-	{
-		EnemyLabel->SetText(FText::FromString(State && State->DungeonNodeIndex >= 4 ? TEXT("Boss") : TEXT("Monster")));
+		ActionSlot->SetAnchors(FAnchors(0.68f, 0.52f, 0.98f, 0.96f));
+		ActionSlot->SetOffsets(FMargin(0.0f, 0.0f, 0.0f, 0.0f));
+		ActionSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
 
-	for (int32 SlotIndex = 0; SlotIndex < EnemySlots.Num(); ++SlotIndex)
-	{
-		if (EnemySlots[SlotIndex])
-		{
-			EnemySlots[SlotIndex]->SetVisibility(bBattleVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-		}
-	}
+	BasicAttackButton = AddBattleActionButton(NSLOCTEXT("GameXXKBattle", "BasicAttack", "普攻"), FName(TEXT("BattleBasicAttackButton")));
+	CraneWingSlashButton = AddBattleActionButton(NSLOCTEXT("GameXXKBattle", "CraneWingSlash", "鹤羽斩"), FName(TEXT("BattleCraneWingSlashButton")));
+	GuiyuanArtButton = AddBattleActionButton(NSLOCTEXT("GameXXKBattle", "GuiyuanArt", "归元术"), FName(TEXT("BattleGuiyuanArtButton")));
+	DefendButton = AddBattleActionButton(NSLOCTEXT("GameXXKBattle", "Defend", "防御"), FName(TEXT("BattleDefendButton")));
+	HealingPowderButton = AddBattleActionButton(NSLOCTEXT("GameXXKBattle", "HealingPowder", "金疮药"), FName(TEXT("BattleHealingPowderButton")));
 
-	for (int32 SlotIndex = 0; SlotIndex < PartySlots.Num(); ++SlotIndex)
+	if (BasicAttackButton)
 	{
-		const bool bShowSlot = bBattleVisible && (SlotIndex == 0 || bFollowerVisible);
-		if (PartySlots[SlotIndex])
-		{
-			PartySlots[SlotIndex]->SetVisibility(bShowSlot ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-		}
-		if (PartyLabels.IsValidIndex(SlotIndex) && PartyLabels[SlotIndex])
-		{
-			PartyLabels[SlotIndex]->SetText(SlotIndex == 0
-				? FText::FromString(TEXT("Hero"))
-				: FText::FromString(TEXT("Follower")));
-		}
+		BasicAttackButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleBasicAttackClicked);
+	}
+	if (CraneWingSlashButton)
+	{
+		CraneWingSlashButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleCraneWingSlashClicked);
+	}
+	if (GuiyuanArtButton)
+	{
+		GuiyuanArtButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleGuiyuanArtClicked);
+	}
+	if (DefendButton)
+	{
+		DefendButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleDefendClicked);
+	}
+	if (HealingPowderButton)
+	{
+		HealingPowderButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHealingPowderClicked);
 	}
 }
 
-UBorder* UGameXXKBattleBoardWidget::CreateSlotBorder(const FString& Name, const FLinearColor& Color, const FText& Label)
+UButton* UGameXXKBattleBoardWidget::AddBattleActionButton(const FText& Label, FName ButtonName)
 {
-	if (!WidgetTree)
+	if (!ActionBox || !WidgetTree)
 	{
 		return nullptr;
 	}
 
-	UBorder* Border = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), FName(*Name));
-	UTextBlock* LabelWidget = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName(*(Name + TEXT("Label"))));
-	if (!Border || !LabelWidget)
+	UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), ButtonName);
+	Button->SetBackgroundColor(FLinearColor(0.06f, 0.16f, 0.13f, 0.92f));
+	UTextBlock* LabelText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+	LabelText->SetText(Label);
+	LabelText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	LabelText->SetJustification(ETextJustify::Center);
+	FSlateFontInfo LabelFont = LabelText->GetFont();
+	LabelFont.Size = 22;
+	LabelText->SetFont(LabelFont);
+	Button->AddChild(LabelText);
+	if (UVerticalBoxSlot* ButtonSlot = ActionBox->AddChildToVerticalBox(Button))
 	{
-		return Border;
+		ButtonSlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 6.0f));
+	}
+	return Button;
+}
+
+void UGameXXKBattleBoardWidget::RefreshProgrammaticLayout()
+{
+	if (StatusText)
+	{
+		StatusText->SetText(FText::FromString(BuildBattleStatusText()));
+	}
+	if (ActionBox)
+	{
+		if (UCanvasPanelSlot* ActionSlot = Cast<UCanvasPanelSlot>(ActionBox->Slot))
+		{
+			ActionSlot->SetAnchors(FAnchors(0.0f, 0.0f, 0.0f, 0.0f));
+			ActionSlot->SetOffsets(FMargin(CommandMenuAnchor.X, CommandMenuAnchor.Y, 360.0f, 300.0f));
+			ActionSlot->SetAlignment(FVector2D(0.0f, 0.0f));
+		}
+	}
+	RefreshActionButtons();
+}
+
+void UGameXXKBattleBoardWidget::RefreshActionButtons()
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	const bool bShowMenu = IsCommandMenuVisibleForTest();
+	const bool bCanUseMenu = InteractionMode == EGameXXKBattleInteractionMode::CommandMenuOpen;
+	if (ActionBox)
+	{
+		ActionBox->SetVisibility(bShowMenu ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		ActionBox->SetIsEnabled(bCanUseMenu);
+		ActionBox->SetRenderOpacity(IsTargetingBattleActionForTest() ? 0.55f : 1.0f);
 	}
 
-	Border->SetPadding(FMargin(12.0f));
-	Border->SetBrushColor(Color);
-	LabelWidget->SetJustification(ETextJustify::Center);
-	LabelWidget->SetColorAndOpacity(FSlateColor(FLinearColor::White));
-	LabelWidget->SetFontSize(18);
-	LabelWidget->SetText(Label);
-	Border->SetContent(LabelWidget);
+	const bool bInBattle = State && State->Screen == EGameXXKScreen::Battle && State->bHasActiveBattle && State->ActiveBattleParty.IsValidIndex(SelectedPartyIndex);
+	const bool bHeroReady = bInBattle && !State->ActiveBattleParty[SelectedPartyIndex].bDefeated && State->ActiveBattleParty[SelectedPartyIndex].HP > 0;
+	const bool bHasTarget = bInBattle && FindFirstLivingEnemyIndex() != INDEX_NONE;
+	const bool bCanHealHero = bHeroReady && State->ActiveBattleParty[SelectedPartyIndex].HP < State->ActiveBattleParty[SelectedPartyIndex].MaxHP;
 
-	if (Name.Contains(TEXT("Enemy")))
+	if (BasicAttackButton)
 	{
-		EnemyLabel = LabelWidget;
+		BasicAttackButton->SetIsEnabled(bCanUseMenu && bHeroReady && bHasTarget);
+	}
+	if (CraneWingSlashButton)
+	{
+		CraneWingSlashButton->SetIsEnabled(bCanUseMenu && bHeroReady && bHasTarget && State->ActiveBattleParty[SelectedPartyIndex].MP >= 8);
+	}
+	if (GuiyuanArtButton)
+	{
+		GuiyuanArtButton->SetIsEnabled(bCanUseMenu && bCanHealHero && State->ActiveBattleParty[SelectedPartyIndex].MP >= 10);
+	}
+	if (DefendButton)
+	{
+		DefendButton->SetIsEnabled(bCanUseMenu && bHeroReady);
+	}
+	if (HealingPowderButton)
+	{
+		HealingPowderButton->SetIsEnabled(bCanUseMenu && bCanHealHero && UGameXXKMVPRules::GetItemCount(*State, UGameXXKMVPRules::ItemHealingPowder()) > 0);
+	}
+}
+
+bool UGameXXKBattleBoardWidget::BeginTargetingBattleAction(FName ActionName)
+{
+	if (InteractionMode != EGameXXKBattleInteractionMode::CommandMenuOpen || SelectedPartyIndex == INDEX_NONE)
+	{
+		return false;
+	}
+
+	if (ActionName == BasicAttackAction)
+	{
+		InteractionMode = EGameXXKBattleInteractionMode::TargetingBasicAttack;
+	}
+	else if (ActionName == CraneWingSlashAction)
+	{
+		InteractionMode = EGameXXKBattleInteractionMode::TargetingCraneWingSlash;
 	}
 	else
 	{
-		PartyLabels.Add(LabelWidget);
+		return false;
 	}
-	return Border;
+
+	TargetingActionName = ActionName;
+	TargetingPointerPosition = SelectedPartyScreenPosition;
+	RefreshProgrammaticLayout();
+	return true;
+}
+
+int32 UGameXXKBattleBoardWidget::FindFirstLivingEnemyIndex() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return INDEX_NONE;
+	}
+
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	for (int32 EnemyIndex = 0; EnemyIndex < State.ActiveBattleEnemies.Num(); ++EnemyIndex)
+	{
+		const FGameXXKBattleRuntimeUnit& Enemy = State.ActiveBattleEnemies[EnemyIndex];
+		if (Enemy.bEnemy && !Enemy.bDefeated && Enemy.HP > 0)
+		{
+			return EnemyIndex;
+		}
+	}
+	return INDEX_NONE;
+}
+
+FString UGameXXKBattleBoardWidget::BuildBattleStatusText() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
+	{
+		return TEXT("");
+	}
+
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	TArray<FString> Lines;
+	if (State.ActiveBattleParty.IsValidIndex(0))
+	{
+		const FGameXXKBattleRuntimeUnit& Hero = State.ActiveBattleParty[0];
+		Lines.Add(FString::Printf(TEXT("主角 HP %d/%d   MP %d/%d"), Hero.HP, Hero.MaxHP, Hero.MP, Hero.MaxMP));
+	}
+	if (State.ActiveBattleParty.IsValidIndex(1))
+	{
+		const FGameXXKBattleRuntimeUnit& Follower = State.ActiveBattleParty[1];
+		Lines.Add(FString::Printf(TEXT("队友 HP %d/%d"), Follower.HP, Follower.MaxHP));
+	}
+	Lines.Add(FString::Printf(TEXT("金疮药 x%d"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder())));
+	for (const FGameXXKBattleRuntimeUnit& Enemy : State.ActiveBattleEnemies)
+	{
+		Lines.Add(FString::Printf(
+			TEXT("%s HP %d/%d%s"),
+			*Enemy.DisplayName.ToString(),
+			Enemy.HP,
+			Enemy.MaxHP,
+			Enemy.bDefeated ? TEXT(" 已倒下") : TEXT("")));
+	}
+	return FString::Join(Lines, TEXT("\n"));
+}
+
+void UGameXXKBattleBoardWidget::HandleBasicAttackClicked()
+{
+	ExecuteBasicAttackAction();
+}
+
+void UGameXXKBattleBoardWidget::HandleCraneWingSlashClicked()
+{
+	ExecuteCraneWingSlashAction();
+}
+
+void UGameXXKBattleBoardWidget::HandleGuiyuanArtClicked()
+{
+	ExecuteGuiyuanArtAction();
+}
+
+void UGameXXKBattleBoardWidget::HandleDefendClicked()
+{
+	ExecuteDefendAction();
+}
+
+void UGameXXKBattleBoardWidget::HandleHealingPowderClicked()
+{
+	ExecuteHealingPowderAction();
 }

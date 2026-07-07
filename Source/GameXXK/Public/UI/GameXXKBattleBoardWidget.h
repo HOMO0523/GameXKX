@@ -5,9 +5,20 @@
 #include "Input/Reply.h"
 #include "GameXXKBattleBoardWidget.generated.h"
 
-class UBorder;
 class UCanvasPanel;
+class UButton;
 class UTextBlock;
+class UVerticalBox;
+
+UENUM(BlueprintType)
+enum class EGameXXKBattleInteractionMode : uint8
+{
+	Hidden,
+	Idle,
+	CommandMenuOpen,
+	TargetingBasicAttack,
+	TargetingCraneWingSlash
+};
 
 UCLASS(Blueprintable)
 class GAMEXXK_API UGameXXKBattleBoardWidget : public UGameXXKMVPWidgetBase
@@ -24,6 +35,33 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
 	bool ExecutePrimaryEnemyAction();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
+	bool ExecuteBasicAttackAction();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
+	bool ExecuteCraneWingSlashAction();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
+	bool ExecuteGuiyuanArtAction();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
+	bool ExecuteDefendAction();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
+	bool ExecuteHealingPowderAction();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
+	bool OpenCommandMenuForPartyUnit(int32 PartyIndex, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
+	void UpdateTargetingPointer(FVector2D ScreenPosition);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
+	bool ConfirmTargetingEnemy(int32 EnemyIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
+	bool CancelBattleTargeting();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle")
 	bool IsBattleBoardVisible() const;
@@ -42,24 +80,79 @@ public:
 
 	FVector2D GetEnemySlotPositionForTest(int32 SlotIndex) const;
 	FVector2D GetPartySlotPositionForTest(int32 SlotIndex) const;
+	FString GetBattleStatusTextForTest() const;
+	bool HasBattleActionForTest(FName ActionName, bool bRequireEnabled) const;
+	bool IsCommandMenuVisibleForTest() const;
+	bool IsTargetingBattleActionForTest() const;
+	bool KeepTargetingAfterEmptyClickForTest() const;
+	int32 GetSelectedPartyIndexForTest() const;
+	FName GetTargetingActionNameForTest() const;
+	FVector2D GetTargetingPointerPositionForTest() const;
 
 private:
 	void BuildProgrammaticLayout();
-	void ConfigureSlots();
-	UBorder* CreateSlotBorder(const FString& Name, const FLinearColor& Color, const FText& Label);
+	UButton* AddBattleActionButton(const FText& Label, FName ButtonName);
+	void RefreshProgrammaticLayout();
+	void RefreshActionButtons();
+	bool BeginTargetingBattleAction(FName ActionName);
+	bool ExecuteBattleAction(FName ActionName);
+	int32 FindFirstLivingEnemyIndex() const;
+	FString BuildBattleStatusText() const;
+
+	UFUNCTION()
+	void HandleBasicAttackClicked();
+
+	UFUNCTION()
+	void HandleCraneWingSlashClicked();
+
+	UFUNCTION()
+	void HandleGuiyuanArtClicked();
+
+	UFUNCTION()
+	void HandleDefendClicked();
+
+	UFUNCTION()
+	void HandleHealingPowderClicked();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
 
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<UBorder>> EnemySlots;
+	TObjectPtr<UTextBlock> StatusText;
 
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<UBorder>> PartySlots;
+	TObjectPtr<UVerticalBox> ActionBox;
 
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<UTextBlock>> PartyLabels;
+	TObjectPtr<UButton> BasicAttackButton;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> EnemyLabel;
+	TObjectPtr<UButton> CraneWingSlashButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> GuiyuanArtButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> DefendButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> HealingPowderButton;
+
+	UPROPERTY(Transient)
+	EGameXXKBattleInteractionMode InteractionMode = EGameXXKBattleInteractionMode::Hidden;
+
+	UPROPERTY(Transient)
+	int32 SelectedPartyIndex = INDEX_NONE;
+
+	UPROPERTY(Transient)
+	FName TargetingActionName;
+
+	UPROPERTY(Transient)
+	FVector2D CommandMenuAnchor = FVector2D::ZeroVector;
+
+	UPROPERTY(Transient)
+	FVector2D SelectedPartyScreenPosition = FVector2D::ZeroVector;
+
+	UPROPERTY(Transient)
+	FVector2D TargetingPointerPosition = FVector2D::ZeroVector;
 };
