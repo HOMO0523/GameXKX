@@ -3,6 +3,106 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+namespace
+{
+	static const FGameXXKRouteMapNode* FindRouteNodeById(const FGameXXKRuntimeState& State, int32 NodeId)
+	{
+		return State.RouteMapNodes.FindByPredicate([NodeId](const FGameXXKRouteMapNode& Node)
+		{
+			return Node.NodeId == NodeId;
+		});
+	}
+
+	static bool RouteNodeCanReachKind(const FGameXXKRuntimeState& State, int32 StartNodeId, EGameXXKNodeKind TargetKind)
+	{
+		TSet<int32> Visited;
+		TArray<int32> Stack;
+		Stack.Add(StartNodeId);
+		while (!Stack.IsEmpty())
+		{
+			const int32 NodeId = Stack.Pop(EAllowShrinking::No);
+			if (Visited.Contains(NodeId))
+			{
+				continue;
+			}
+			Visited.Add(NodeId);
+			const FGameXXKRouteMapNode* Node = FindRouteNodeById(State, NodeId);
+			if (!Node)
+			{
+				continue;
+			}
+			if (Node->NodeKind == TargetKind)
+			{
+				return true;
+			}
+			for (int32 OutgoingNodeId : Node->OutgoingNodeIds)
+			{
+				Stack.Add(OutgoingNodeId);
+			}
+		}
+		return false;
+	}
+
+	static const FGameXXKRouteMapNode* FindReachableRouteStepTowardKind(const FGameXXKRuntimeState& State, EGameXXKNodeKind TargetKind)
+	{
+		for (int32 NodeId : State.ReachableRouteNodeIds)
+		{
+			const FGameXXKRouteMapNode* Node = FindRouteNodeById(State, NodeId);
+			if (Node && Node->NodeKind == TargetKind)
+			{
+				return Node;
+			}
+		}
+		for (int32 NodeId : State.ReachableRouteNodeIds)
+		{
+			if (RouteNodeCanReachKind(State, NodeId, TargetKind))
+			{
+				return FindRouteNodeById(State, NodeId);
+			}
+		}
+		return nullptr;
+	}
+
+	static bool AdvanceGeneratedRouteTowardKind(FGameXXKRuntimeState& State, EGameXXKNodeKind TargetKind)
+	{
+		for (int32 StepGuard = 0; StepGuard < 32 && State.Screen == EGameXXKScreen::DungeonMap; ++StepGuard)
+		{
+			const FGameXXKRouteMapNode* Node = FindReachableRouteStepTowardKind(State, TargetKind);
+			if (!Node)
+			{
+				return false;
+			}
+			const int32 NodeId = Node->NodeId;
+			const EGameXXKNodeKind NodeKind = Node->NodeKind;
+			if (!UGameXXKMVPRules::SelectRouteNodeById(State, NodeId))
+			{
+				return false;
+			}
+			if (State.Screen == EGameXXKScreen::Battle && !UGameXXKMVPRules::ResolveBattleVictory(State, NodeKind == EGameXXKNodeKind::Boss))
+			{
+				return false;
+			}
+			if (State.Screen == EGameXXKScreen::RouteEvent && !UGameXXKMVPRules::ResolveEventReward(State, true))
+			{
+				return false;
+			}
+			if (State.Screen == EGameXXKScreen::RouteCamp && !UGameXXKMVPRules::ResolveCampReward(State, true))
+			{
+				return false;
+			}
+			if (State.Screen == EGameXXKScreen::RouteMerchant && !UGameXXKMVPRules::ResolveMerchantRouteNode(State))
+			{
+				return false;
+			}
+			if (NodeKind == TargetKind)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKMVPFullFlowTest,
 	"GameXXK.MVP.FullFlow",
@@ -28,6 +128,7 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("follower joins after quest"), State.bFollowerJoined);
 	TestTrue(TEXT("accepted quest opens dungeon"), UGameXXKMVPRules::CanEnterDungeon(State));
 
+	State.PlayerGold = 500;
 	const int32 GoldBeforeTrade = State.PlayerGold;
 	TestTrue(TEXT("merchant buy healing item"), UGameXXKMVPRules::BuyItem(State, UGameXXKMVPRules::ItemHealingPowder(), 1));
 	TestEqual(TEXT("buy spends gold"), State.PlayerGold, GoldBeforeTrade - 10);
@@ -36,17 +137,39 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("merchant buy weapon"), UGameXXKMVPRules::BuyItem(State, UGameXXKMVPRules::ItemIronSword(), 1));
 	const int32 AttackBeforeEquip = State.PlayerAttack;
 	TestTrue(TEXT("town can equip weapon"), UGameXXKMVPRules::EquipItem(State, UGameXXKMVPRules::ItemIronSword()));
-	TestEqual(TEXT("weapon attack applies"), State.PlayerAttack, AttackBeforeEquip + 6);
+	TestEqual(TEXT("PPT Qingfeng sword attack bonus applies"), State.PlayerAttack, AttackBeforeEquip + 8);
+	TestTrue(TEXT("equipping the same weapon again is idempotent"), UGameXXKMVPRules::EquipItem(State, UGameXXKMVPRules::ItemIronSword()));
+	TestEqual(TEXT("repeated equipment does not stack attack"), State.PlayerAttack, AttackBeforeEquip + 8);
+	TestTrue(TEXT("merchant buys PPT bamboo light armor"), UGameXXKMVPRules::BuyItem(State, UGameXXKMVPRules::ItemClothArmor(), 1));
+	const int32 DefenseBeforeArmor = State.PlayerDefense;
+	const int32 MaxHPBeforeArmor = State.PlayerMaxHP;
+	TestTrue(TEXT("town can equip armor"), UGameXXKMVPRules::EquipItem(State, UGameXXKMVPRules::ItemClothArmor()));
+	TestEqual(TEXT("PPT bamboo light armor defense bonus applies"), State.PlayerDefense, DefenseBeforeArmor + 6);
+	TestEqual(TEXT("PPT bamboo light armor does not add HP"), State.PlayerMaxHP, MaxHPBeforeArmor);
+	const FName CraneTalisman(TEXT("Item.CranePatternTalisman"));
+	TestTrue(TEXT("merchant buys PPT HP accessory"), UGameXXKMVPRules::BuyItem(State, CraneTalisman, 1));
+	const int32 MaxHPBeforeAccessory = State.PlayerMaxHP;
+	TestTrue(TEXT("town can equip HP accessory"), UGameXXKMVPRules::EquipItem(State, CraneTalisman));
+	TestEqual(TEXT("PPT crane talisman HP bonus applies"), State.PlayerMaxHP, MaxHPBeforeAccessory + 30);
+	const FName InkstonePendant(TEXT("Item.InkstonePendant"));
+	TestTrue(TEXT("merchant buys PPT MP accessory"), UGameXXKMVPRules::BuyItem(State, InkstonePendant, 1));
+	const int32 MaxMPBeforePendant = State.PlayerMaxMP;
+	TestTrue(TEXT("town can switch accessory to MP pendant"), UGameXXKMVPRules::EquipItem(State, InkstonePendant));
+	TestEqual(TEXT("switching accessory removes previous HP bonus"), State.PlayerMaxHP, MaxHPBeforeAccessory);
+	TestEqual(TEXT("PPT inkstone pendant MP bonus applies"), State.PlayerMaxMP, MaxMPBeforePendant + 20);
+	const FName QingxinTea(TEXT("Item.QingxinTea"));
+	TestTrue(TEXT("merchant buys PPT MP consumable"), UGameXXKMVPRules::BuyItem(State, QingxinTea, 1));
+	State.PlayerMP = 0;
+	TestTrue(TEXT("PPT Qingxin tea can be used from inventory"), UGameXXKMVPRules::UseItem(State, QingxinTea));
+	TestEqual(TEXT("Qingxin tea restores 20 MP"), State.PlayerMP, 20);
 
 	TestTrue(TEXT("return to world map before selecting next destination"), UGameXXKMVPRules::OpenWorldMap(State));
 	TestFalse(TEXT("world map does not open small-map route directly"), UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionHuangshan()));
 	TestTrue(TEXT("world map can re-enter current town"), UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan()));
 	TestTrue(TEXT("enter Huangshan dungeon from town quest gate"), UGameXXKMVPRules::EnterDungeon(State));
 	TestEqual(TEXT("dungeon map visible"), State.Screen, EGameXXKScreen::DungeonMap);
-	const TArray<EGameXXKNodeKind> Nodes = UGameXXKMVPRules::GetFixedDungeonNodes(0);
-	TestEqual(TEXT("fixed node count"), Nodes.Num(), 5);
-	TestEqual(TEXT("fixed node start"), Nodes[0], EGameXXKNodeKind::Start);
-	TestEqual(TEXT("fixed node boss"), Nodes.Last(), EGameXXKNodeKind::Boss);
+	TestTrue(TEXT("generated route map has full node set"), State.RouteMapNodes.Num() >= 15);
+	TestTrue(TEXT("generated route map starts with one clickable node"), State.ReachableRouteNodeIds.Num() == 1 && State.ReachableRouteNodeIds.Contains(0));
 
 	TestTrue(TEXT("start node advances"), UGameXXKMVPRules::AdvanceDungeonNode(State, EGameXXKNodeKind::Start));
 	TestTrue(TEXT("battle node opens battle"), UGameXXKMVPRules::AdvanceDungeonNode(State, EGameXXKNodeKind::Battle));
@@ -80,14 +203,10 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("retry enters dungeon"), UGameXXKMVPRules::EnterDungeon(State));
 	TestTrue(TEXT("retry start node"), UGameXXKMVPRules::AdvanceDungeonNode(State, EGameXXKNodeKind::Start));
-	TestTrue(TEXT("retry battle node"), UGameXXKMVPRules::AdvanceDungeonNode(State, EGameXXKNodeKind::Battle));
-	TestTrue(TEXT("retry normal battle victory"), UGameXXKMVPRules::ResolveBattleVictory(State, false));
-	TestTrue(TEXT("event reward works"), UGameXXKMVPRules::ResolveEventReward(State, true));
 	State.PlayerHP = 1;
-	TestTrue(TEXT("camp heal works"), UGameXXKMVPRules::ResolveCampReward(State, true));
+	TestTrue(TEXT("generated route reaches a camp node"), AdvanceGeneratedRouteTowardKind(State, EGameXXKNodeKind::Camp));
 	TestEqual(TEXT("camp restored full HP"), State.PlayerHP, State.PlayerMaxHP);
-	TestTrue(TEXT("boss node opens battle"), UGameXXKMVPRules::AdvanceDungeonNode(State, EGameXXKNodeKind::Boss));
-	TestTrue(TEXT("boss victory completes route"), UGameXXKMVPRules::ResolveBattleVictory(State, true));
+	TestTrue(TEXT("generated route reaches and clears boss"), AdvanceGeneratedRouteTowardKind(State, EGameXXKNodeKind::Boss));
 
 	TestEqual(TEXT("Boss completes quest"), State.QuestState, EGameXXKQuestState::Completed);
 	TestFalse(TEXT("follower leaves after clear"), State.bFollowerJoined);
@@ -102,8 +221,9 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("save restore persists XP"), Restored.PlayerXP, State.PlayerXP);
 	TestEqual(TEXT("save restore persists gold"), Restored.PlayerGold, State.PlayerGold);
 	TestTrue(TEXT("save restore persists unlock"), Restored.UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));
-	TestEqual(TEXT("save restore does not persist inventory details"), Restored.Inventory.Num(), 0);
-	TestEqual(TEXT("save restore starts from main menu"), Restored.Screen, EGameXXKScreen::MainMenu);
+	TestEqual(TEXT("save restore persists inventory details"), Restored.Inventory.Num(), State.Inventory.Num());
+	TestEqual(TEXT("save restore keeps current screen"), Restored.Screen, State.Screen);
+	TestEqual(TEXT("save restore keeps current region"), Restored.CurrentRegion, State.CurrentRegion);
 
 	return true;
 }

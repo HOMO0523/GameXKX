@@ -10,6 +10,9 @@ class GAMEXXK_API UGameXXKTradeWidget : public UGameXXKMVPWidgetBase
 	GENERATED_BODY()
 
 public:
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Trade")
+	TArray<FName> GetShopItemIds() const;
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Trade")
 	bool BuyItemById(FName ItemId, int32 Quantity);
 

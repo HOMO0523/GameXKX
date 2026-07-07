@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameXXKMVPRules.h"
 #include "UI/GameXXKMVPCommandDescriptor.h"
 #include "UI/GameXXKMVPWidgetBase.h"
 #include "GameXXKTownOverlayWidget.generated.h"
@@ -8,6 +9,7 @@
 class UButton;
 class UCanvasPanel;
 class UTextBlock;
+class UUniformGridPanel;
 class UVerticalBox;
 
 UCLASS(Blueprintable)
@@ -43,6 +45,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
 	FText GetStatusTextForTest() const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
+	EGameXXKTownPanelMode GetActiveTownPanelForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
+	int32 GetInventorySlotCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
+	FString GetInventorySlotResourcePathForTest() const;
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameXXK|Town")
 	void OnRouteMapEntered();
 
@@ -59,6 +70,18 @@ private:
 	UFUNCTION()
 	void HandleEnterRouteClicked();
 
+	UFUNCTION()
+	void HandleInventoryClicked();
+
+	UFUNCTION()
+	void HandleCharacterClicked();
+
+	UFUNCTION()
+	void HandleTradeClicked();
+
+	UFUNCTION()
+	void HandleClosePanelClicked();
+
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
 
@@ -69,7 +92,31 @@ private:
 	TObjectPtr<UTextBlock> StatusTextBlock;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> ActivePanelBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ActivePanelTitleBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ActivePanelBodyBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUniformGridPanel> InventoryGrid;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UButton> SaveButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> InventoryButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> CharacterButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> TradeButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ClosePanelButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> EnterRouteButton;

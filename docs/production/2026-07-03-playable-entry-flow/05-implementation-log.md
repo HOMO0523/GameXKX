@@ -2,7 +2,7 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-04T04:07:00+08:00
+updated_at: 2026-07-08T02:00:00+08:00
 source_commit: working-tree
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
@@ -54,3 +54,14 @@ parallel_lock: GameXXK.PlayableEntryFlow
 - Stabilized route widget refresh so repeated state updates reuse existing route children unless rendered node count, rendered line count, or visual mode changes.
 - Updated the 1Game battle bridge so `L_Battle_1Game` can open the battle board directly from a live GameXXK `Battle` runtime state, while preserving the old isolated/manual 1Game fallback when the live subsystem is not in Battle.
 - Added UE MCP ownership validation for `L_RouteMap`: `scripts/gamexxk_validate_owned_route_map_mcp.py` runs `Content/Python/gamexxk_validate_owned_route_map.py` and verifies the map GameMode is GameXXK-owned.
+
+## 2026-07-08 Battle Targeting And Town Inventory
+
+- Fixed battle command menu anchoring so right-clicking a party actor uses the actual cursor/click screen coordinate instead of the actor-origin projection.
+- Added PPT-backed item definitions for `金疮药`, `灵芝散`, `清心茶`, `鹤羽香囊`, `青锋短剑`, `竹编轻甲`, `鹤纹护符`, and `墨砚坠饰`.
+- Changed equipment application to use explicit weapon/armor/accessory slots plus stat recalculation from level base stats, preventing repeated equip calls from stacking bonuses.
+- Added arbitrary consumable use, MP restore, accessory equipment, and failure-return full HP/MP restore in `UGameXXKMVPRules`.
+- Changed merchant `F` interaction to open the town shop panel instead of auto-buying a healing item; explicit buy/sell remains routed through the shop/trade APIs.
+- Added Town Overlay panel states for backpack, character, shop, and close. The backpack panel exposes 20 slots and uses the imported ink backpack slot texture.
+- Generated water-ink inventory/equipment source art and imported nine Texture2D assets under `/Game/GameXXK/UI/Inventory/Textures`.
+- Updated `scripts/gamexxk_mvp_playtest.py` so MCP port-binding log noise from a concurrently running editor no longer causes a false automation failure when all automation tests pass.

@@ -2,7 +2,7 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-04T04:07:00+08:00
+updated_at: 2026-07-08T02:00:00+08:00
 source_commit: working-tree
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
@@ -92,3 +92,11 @@ Real-flow evidence: route-map probe exposes `route_node_visual_states`; visible 
 - Broad `GameXXK.MVP` still exits nonzero because old all-flow tests assume a fixed linear route sequence and legacy save expectations: failing tests are `GameXXK.MVP.FullFlow`, `GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop`, and `GameXXK.MVP.PlayableShell.HUDCommandsDriveFullLoop`.
 
 Acceptance evidence: GameXXK now owns route seed/state/clicks; the route widget renders 1Game-inspired background/icons/lines through GameXXK UMG; battle-map entry can use a live GameXXK `Battle` runtime state; and `L_RouteMap` is verified by UE MCP as GameXXK GameMode-owned.
+
+## 2026-07-08 Inventory/Equipment/Shop
+
+- RED verified: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\battle-command-click-anchor-red.json` failed the battle command anchor expectations before the click-position fix.
+- GREEN verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 80` passed after the battle command anchor, inventory/equipment, shop-panel, and asset-hook changes.
+- UE MCP import passed: `Content/Python/gamexxk_import_inventory_ui_assets.py` imported nine Texture2D assets into `/Game/GameXXK/UI/Inventory/Textures`.
+- `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\inventory-equipment-shop-green-v2.json` passed with `ok: true`, 22/22 `GameXXK.MVP` automation tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
+- Current automation validates: contextual battle command menu click anchoring, PPT item definitions, equipment stat recalculation, accessory swapping, MP consumable use, 20-slot backpack panel path, merchant `F` opening the shop instead of auto-buying, explicit trade APIs, and failure-return full HP/MP.

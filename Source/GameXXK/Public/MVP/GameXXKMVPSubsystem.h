@@ -89,10 +89,28 @@ public:
 	bool ResolveBattleVictory(bool bBossBattle);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool ExecuteBattleBasicAttack(int32 PartyIndex, int32 EnemyIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool ExecuteBattleCraneWingSlash(int32 PartyIndex, int32 EnemyIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool ExecuteBattleGuiyuanArt(int32 PartyIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool ExecuteBattleDefend(int32 PartyIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool ExecuteBattleHealingPowder(int32 PartyIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool ResolveEventReward(bool bTakeGold);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool ResolveCampReward(bool bHealNow);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool ResolveMerchantRouteNode();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool FailDungeonToTown();
@@ -107,7 +125,16 @@ public:
 	bool UseHealingItem();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool UseItem(FName ItemId);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool EquipItem(FName ItemId);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool OpenTownPanel(EGameXXKTownPanelMode PanelMode);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool CloseTownPanel();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	int32 GetItemCount(FName ItemId) const;

@@ -1,6 +1,12 @@
 #include "UI/GameXXKTradeWidget.h"
 
+#include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+
+TArray<FName> UGameXXKTradeWidget::GetShopItemIds() const
+{
+	return UGameXXKMVPRules::GetShopItemIds();
+}
 
 bool UGameXXKTradeWidget::BuyItemById(FName ItemId, int32 Quantity)
 {

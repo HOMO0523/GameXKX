@@ -1,7 +1,15 @@
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Border.h"
+#include "Components/Button.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/Image.h"
+#include "Components/ScrollBoxSlot.h"
+#include "Components/Widget.h"
 #include "Engine/GameInstance.h"
+#include "Engine/Texture2D.h"
 #include "Misc/AutomationTest.h"
 #include "UI/GameXXKMVPHUD.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
@@ -76,20 +84,211 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("adapter initializes widget tree"), RouteWidget->Initialize());
 	RouteWidget->NativeConstruct();
+	RouteWidget->SetRouteMapViewportGeometry(FVector2D::ZeroVector, FVector2D(1280.0f, 720.0f));
 	RouteWidget->RefreshFromState();
 	TestTrue(TEXT("adapter creates a route background visual"), RouteWidget->HasRouteBackgroundVisualForTest());
 	TestTrue(TEXT("adapter uses the 1Game map background texture"), RouteWidget->GetRouteBackgroundTexturePathForTest().Contains(TEXT("图层_1")));
 	const FVector2D RouteContentSize = RouteWidget->GetRouteContentSizeForTest();
-	TestTrue(TEXT("route content is wider than the old compressed canvas"), RouteContentSize.X >= 560.0f);
-	TestTrue(TEXT("route content height supports vertical scrolling"), RouteContentSize.Y >= 900.0f);
-	TestTrue(TEXT("route map applies an initial scroll offset toward the first reachable node"), RouteWidget->GetLastAppliedScrollOffsetForTest() > 0.0f);
+	UWidget* RouteContentSizeWidget = nullptr;
+	UWidget* RouteBackgroundWidget = nullptr;
+	if (RouteWidget->WidgetTree)
+	{
+		RouteWidget->WidgetTree->ForEachWidget([&RouteContentSizeWidget, &RouteBackgroundWidget](UWidget* Widget)
+		{
+			if (!Widget)
+			{
+				return;
+			}
+			if (Widget->GetFName() == TEXT("GameXXKOneGameRouteMapContentSize"))
+			{
+				RouteContentSizeWidget = Widget;
+			}
+			else if (Widget->GetFName() == TEXT("GameXXKOneGameRouteMapBackground"))
+			{
+				RouteBackgroundWidget = Widget;
+			}
+		});
+	}
+	TestNotNull(TEXT("route content size widget is present in the UMG tree"), RouteContentSizeWidget);
+	const UScrollBoxSlot* RouteContentScrollSlot = RouteContentSizeWidget ? Cast<UScrollBoxSlot>(RouteContentSizeWidget->Slot) : nullptr;
+	TestNotNull(TEXT("route content size widget is owned by the route scroll box"), RouteContentScrollSlot);
+	if (RouteContentScrollSlot)
+	{
+		TestEqual(TEXT("route content scroll slot is centered horizontally in the canvas viewport"), RouteContentScrollSlot->GetHorizontalAlignment(), HAlign_Center);
+	}
+	TestNotNull(TEXT("route background widget is present in the UMG tree"), RouteBackgroundWidget);
+	const UCanvasPanelSlot* RouteBackgroundCanvasSlot = RouteBackgroundWidget ? Cast<UCanvasPanelSlot>(RouteBackgroundWidget->Slot) : nullptr;
+	TestNotNull(TEXT("route background shares the scroll canvas with route nodes"), RouteBackgroundCanvasSlot);
+	if (RouteBackgroundCanvasSlot)
+	{
+		TestEqual(TEXT("route background canvas width matches route content width"), RouteBackgroundCanvasSlot->GetSize().X, RouteContentSize.X);
+		TestEqual(TEXT("route background canvas height matches route content height"), RouteBackgroundCanvasSlot->GetSize().Y, RouteContentSize.Y);
+	}
+	TestTrue(TEXT("route content fills the full route viewport width"), RouteContentSize.X >= 1280.0f);
+	TestTrue(TEXT("route content keeps a tall scrollable route above the screen"), RouteContentSize.Y > 720.0f);
+	TestTrue(TEXT("route map hides its scroll bar for the player-facing view"), RouteWidget->IsRouteScrollBarHiddenForTest());
+	TestTrue(TEXT("route map provides a blank-canvas drag surface"), RouteWidget->HasRouteDragSurfaceForTest());
+	TestEqual(TEXT("route map initially scrolls to the bottom of the route"), RouteWidget->GetLastAppliedScrollOffsetForTest(), RouteWidget->GetMaxScrollOffsetForTest());
+	const float BottomScrollOffset = RouteWidget->GetLastAppliedScrollOffsetForTest();
+	TestTrue(TEXT("route map drag can move upward from the bottom"), RouteWidget->ApplyRouteMapDragDeltaForTest(160.0f));
+	TestTrue(TEXT("route map drag decreases the scroll offset when content is dragged downward"), RouteWidget->GetLastAppliedScrollOffsetForTest() < BottomScrollOffset);
+	TestTrue(TEXT("route map drag clamps at the bottom"), RouteWidget->ApplyRouteMapDragDeltaForTest(-100000.0f));
+	TestEqual(TEXT("route map drag bottom clamp matches max scroll"), RouteWidget->GetLastAppliedScrollOffsetForTest(), RouteWidget->GetMaxScrollOffsetForTest());
 	TestEqual(TEXT("adapter creates one visual per generated route node"), RouteWidget->GetCreatedNodeVisualWidgetCount(), Subsystem->GetRuntimeState().RouteMapNodes.Num());
 	TestEqual(TEXT("adapter creates one visual per generated route edge"), RouteWidget->GetCreatedLineVisualWidgetCount(), Subsystem->GetRuntimeState().RouteMapEdges.Num());
+	for (int32 ButtonIndex = 0; ButtonIndex < Subsystem->GetRuntimeState().RouteMapNodes.Num(); ++ButtonIndex)
+	{
+		TestTrue(
+			FString::Printf(TEXT("generated route node button %d is bound for real UMG clicks"), ButtonIndex),
+			RouteWidget->IsRouteNodeButtonBoundForTest(ButtonIndex));
+	}
 	TestEqual(TEXT("fallback route node visual uses a border shell"), RouteWidget->GetCreatedNodeVisualWidgetClassName(0), FString(TEXT("Border")));
-	TestEqual(TEXT("fallback route line visual uses a border shell"), RouteWidget->GetCreatedLineVisualWidgetClassName(0), FString(TEXT("Border")));
+	UWidget* FirstRouteNodeWidget = nullptr;
+	UWidget* FirstRouteNodeButtonWidget = nullptr;
+	UWidget* RouteDragSurfaceWidget = nullptr;
+	if (RouteWidget->WidgetTree)
+	{
+		RouteWidget->WidgetTree->ForEachWidget([&FirstRouteNodeWidget, &FirstRouteNodeButtonWidget, &RouteDragSurfaceWidget](UWidget* Widget)
+		{
+			if (!Widget)
+			{
+				return;
+			}
+			if (Widget->GetFName() == TEXT("RouteNodeFallbackVisual0"))
+			{
+				FirstRouteNodeWidget = Widget;
+			}
+			else if (Widget->GetFName() == TEXT("RouteNodeButton0"))
+			{
+				FirstRouteNodeButtonWidget = Widget;
+			}
+			else if (Widget->GetFName() == TEXT("GameXXKOneGameRouteMapDragSurface"))
+			{
+				RouteDragSurfaceWidget = Widget;
+			}
+		});
+	}
+	const UCanvasPanelSlot* RouteDragSurfaceSlot = RouteDragSurfaceWidget ? Cast<UCanvasPanelSlot>(RouteDragSurfaceWidget->Slot) : nullptr;
+	const UBorder* FirstRouteNodeBorder = Cast<UBorder>(FirstRouteNodeWidget);
+	TestNotNull(TEXT("fallback route node shell is a border widget"), FirstRouteNodeBorder);
+	if (FirstRouteNodeBorder)
+	{
+		TestEqual(TEXT("fallback route node border does not draw a square backing"), FirstRouteNodeBorder->GetBrushColor().A, 0.0f);
+	}
+	const UButton* FirstRouteNodeButton = Cast<UButton>(FirstRouteNodeButtonWidget);
+	TestNotNull(TEXT("route node hit button exists"), FirstRouteNodeButton);
+	if (FirstRouteNodeButton)
+	{
+		TestEqual(TEXT("route node hit button remains hit-testable"), FirstRouteNodeButton->GetRenderOpacity(), 1.0f);
+	}
+	const UCanvasPanelSlot* FirstRouteNodeButtonSlot = FirstRouteNodeButtonWidget ? Cast<UCanvasPanelSlot>(FirstRouteNodeButtonWidget->Slot) : nullptr;
+	TestNotNull(TEXT("route drag surface has a canvas slot"), RouteDragSurfaceSlot);
+	TestNotNull(TEXT("route node button has a canvas slot"), FirstRouteNodeButtonSlot);
+	if (RouteDragSurfaceSlot && FirstRouteNodeButtonSlot)
+	{
+		TestTrue(TEXT("route node hit button is layered above the drag surface"), FirstRouteNodeButtonSlot->GetZOrder() > RouteDragSurfaceSlot->GetZOrder());
+	}
+	TestEqual(TEXT("fallback route line visual uses a footprint image"), RouteWidget->GetCreatedLineVisualWidgetClassName(0), FString(TEXT("Image")));
+	UWidget* FirstRouteLineWidget = nullptr;
+	if (RouteWidget->WidgetTree)
+	{
+		RouteWidget->WidgetTree->ForEachWidget([&FirstRouteLineWidget](UWidget* Widget)
+		{
+			if (Widget && Widget->GetFName() == TEXT("RouteLineFallbackVisual0"))
+			{
+				FirstRouteLineWidget = Widget;
+			}
+		});
+	}
+	const UImage* FirstRouteLineImage = Cast<UImage>(FirstRouteLineWidget);
+	TestNotNull(TEXT("fallback route line visual is an image widget"), FirstRouteLineImage);
+	const UObject* FirstRouteLineBrushResource = FirstRouteLineImage ? FirstRouteLineImage->GetBrush().GetResourceObject() : nullptr;
+	TestNotNull(TEXT("fallback route line image has a brush resource"), FirstRouteLineBrushResource);
+	if (FirstRouteLineBrushResource)
+	{
+		TestTrue(TEXT("fallback route line uses the 1Game footprint texture"), FirstRouteLineBrushResource->GetPathName().Contains(TEXT("脚印")));
+	}
+	const UCanvasPanelSlot* FirstRouteLineCanvasSlot = FirstRouteLineWidget ? Cast<UCanvasPanelSlot>(FirstRouteLineWidget->Slot) : nullptr;
+	TestNotNull(TEXT("fallback route line has a canvas slot"), FirstRouteLineCanvasSlot);
+	if (FirstRouteLineCanvasSlot)
+	{
+		TestTrue(TEXT("fallback footprint route line is thick enough to read"), FirstRouteLineCanvasSlot->GetSize().Y >= 24.0f);
+	}
+	const UTexture2D* FirstRouteLineTexture = Cast<UTexture2D>(FirstRouteLineBrushResource);
+	TestNotNull(TEXT("fallback route line brush resource is a texture"), FirstRouteLineTexture);
+	if (FirstRouteLineImage && FirstRouteLineCanvasSlot && FirstRouteLineTexture)
+	{
+		const FBox2f RouteLineUVRegion = FirstRouteLineImage->GetBrush().GetUVRegion();
+		const int32 FirstRouteLineTextureWidth = FirstRouteLineTexture->GetSizeX() > 0
+			? FirstRouteLineTexture->GetSizeX()
+			: FirstRouteLineTexture->GetImportedSize().X;
+		const float ExpectedUVMaxX = FMath::Clamp(
+			FirstRouteLineCanvasSlot->GetSize().X / static_cast<float>(FirstRouteLineTextureWidth),
+			0.0f,
+			1.0f);
+		TestTrue(TEXT("fallback footprint route line UV width follows displayed line length"), FMath::IsNearlyEqual(RouteLineUVRegion.Max.X, ExpectedUVMaxX, 0.01f));
+		TestEqual(TEXT("fallback footprint route line uses the full source height"), RouteLineUVRegion.Max.Y, 1.0f);
+	}
+	UGameInstance* ShortLineGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* ShortLineSubsystem = NewObject<UGameXXKMVPSubsystem>(ShortLineGameInstance);
+	FGameXXKRuntimeState& ShortLineState = ShortLineSubsystem->GetMutableRuntimeState();
+	ShortLineState = UGameXXKMVPRules::CreateNewGame();
+	ShortLineState.Screen = EGameXXKScreen::DungeonMap;
+	ShortLineState.CurrentMapId = TEXT("HuangshanRoute");
+	ShortLineState.bDungeonActive = true;
+	ShortLineState.bHasGeneratedRouteMap = true;
+	ShortLineState.CurrentRouteNodeId = 100;
+	ShortLineState.RouteMapNodes.Reset();
+	ShortLineState.RouteMapEdges.Reset();
+	ShortLineState.VisitedRouteNodeIds.Reset();
+	ShortLineState.ReachableRouteNodeIds.Reset();
+	ShortLineState.RouteMapNodes.Emplace(100, 0, 0, EGameXXKNodeKind::Start, FVector2D(0.50f, 0.00f), TArray<int32>{101});
+	ShortLineState.RouteMapNodes.Emplace(101, 1, 0, EGameXXKNodeKind::Battle, FVector2D(0.50f, 0.10f), TArray<int32>{});
+	ShortLineState.RouteMapEdges.Emplace(100, 101);
+	ShortLineState.ReachableRouteNodeIds.Add(100);
+
+	UGameXXKOneGameRouteMapWidget* ShortLineRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
+	ShortLineRouteWidget->SetMVPSubsystem(ShortLineSubsystem);
+	TestTrue(TEXT("short-line route widget initializes"), ShortLineRouteWidget->Initialize());
+	ShortLineRouteWidget->NativeConstruct();
+	ShortLineRouteWidget->SetRouteMapViewportGeometry(FVector2D::ZeroVector, FVector2D(1280.0f, 720.0f));
+	ShortLineRouteWidget->RefreshFromState();
+
+	UWidget* ShortRouteLineWidget = nullptr;
+	if (ShortLineRouteWidget->WidgetTree)
+	{
+		ShortLineRouteWidget->WidgetTree->ForEachWidget([&ShortRouteLineWidget](UWidget* Widget)
+		{
+			if (Widget && Widget->GetFName() == TEXT("RouteLineFallbackVisual0"))
+			{
+				ShortRouteLineWidget = Widget;
+			}
+		});
+	}
+	const UImage* ShortRouteLineImage = Cast<UImage>(ShortRouteLineWidget);
+	const UCanvasPanelSlot* ShortRouteLineCanvasSlot = ShortRouteLineWidget ? Cast<UCanvasPanelSlot>(ShortRouteLineWidget->Slot) : nullptr;
+	const UTexture2D* ShortRouteLineTexture = ShortRouteLineImage
+		? Cast<UTexture2D>(ShortRouteLineImage->GetBrush().GetResourceObject())
+		: nullptr;
+	TestNotNull(TEXT("short route line visual is an image widget"), ShortRouteLineImage);
+	TestNotNull(TEXT("short route line has a canvas slot"), ShortRouteLineCanvasSlot);
+	TestNotNull(TEXT("short route line uses a texture brush"), ShortRouteLineTexture);
+	if (ShortRouteLineImage && ShortRouteLineCanvasSlot && ShortRouteLineTexture)
+	{
+		const int32 ShortRouteLineTextureWidth = ShortRouteLineTexture->GetSizeX() > 0
+			? ShortRouteLineTexture->GetSizeX()
+			: ShortRouteLineTexture->GetImportedSize().X;
+		const float TextureWidth = static_cast<float>(ShortRouteLineTextureWidth);
+		const FBox2f ShortRouteLineUVRegion = ShortRouteLineImage->GetBrush().GetUVRegion();
+		const float ExpectedUVMaxX = FMath::Clamp(ShortRouteLineCanvasSlot->GetSize().X / TextureWidth, 0.0f, 1.0f);
+		TestTrue(TEXT("short route line is shorter than the footprint source texture"), ShortRouteLineCanvasSlot->GetSize().X < TextureWidth);
+		TestTrue(TEXT("fallback short footprint route line crops the source texture instead of compressing all 1500px"), ShortRouteLineUVRegion.Max.X < 1.0f);
+		TestTrue(TEXT("fallback short footprint route line UV width follows displayed line length"), FMath::IsNearlyEqual(ShortRouteLineUVRegion.Max.X, ExpectedUVMaxX, 0.01f));
+		TestEqual(TEXT("fallback short footprint route line uses the full source height"), ShortRouteLineUVRegion.Max.Y, 1.0f);
+	}
 	TestFalse(TEXT("fallback current node label is bound"), RouteWidget->GetCreatedNodeVisualLabel(0).IsEmpty());
 	TestFalse(TEXT("fallback next node label is bound"), RouteWidget->GetCreatedNodeVisualLabel(1).IsEmpty());
-	TestTrue(TEXT("fallback start node uses 1Game footprint texture"), RouteWidget->GetCreatedNodeVisualIconPath(0).Contains(TEXT("脚印")));
+	TestTrue(TEXT("fallback start node uses 1Game camp texture"), RouteWidget->GetCreatedNodeVisualIconPath(0).Contains(TEXT("篝火")));
 	TestTrue(TEXT("fallback future battle node uses 1Game disabled monster texture"), RouteWidget->GetCreatedNodeVisualIconPath(1).Contains(TEXT("小怪灰色")));
 
 	const TArray<FGameXXKOneGameRouteNode> InitialNodes = RouteWidget->BuildAdapterNodes();
@@ -115,9 +314,9 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("adapter executes battle node"), RouteWidget->ExecuteRouteNode(1));
 	TestEqual(TEXT("battle node opens battle screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
 	TestEqual(
-		TEXT("battle node targets GameXXK-owned 1Game battle map"),
+		TEXT("battle node targets GameXXK-owned battle scene map"),
 		GameXXKLevelFlow::MapForRuntimeState(Subsystem->GetRuntimeState()),
-		FName(TEXT("/Game/GameXXK/Maps/L_Battle_1Game")));
+		FName(TEXT("/Game/GameXXK/Maps/L_BattleScene")));
 	TestTrue(TEXT("battle victory resolves through GameXXK rules"), Subsystem->ResolveBattleVictory(false));
 	TestEqual(TEXT("battle victory returns to route-map screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(
@@ -139,8 +338,8 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	SparseState.RouteMapEdges.Reset();
 	SparseState.VisitedRouteNodeIds.Reset();
 	SparseState.ReachableRouteNodeIds.Reset();
-	SparseState.RouteMapNodes.Emplace(10, 0, 0, EGameXXKNodeKind::Start, FVector2D(0.50f, 0.00f), TArray<int32>{20});
-	SparseState.RouteMapNodes.Emplace(20, 1, 0, EGameXXKNodeKind::Battle, FVector2D(0.50f, 1.00f), TArray<int32>{});
+	SparseState.RouteMapNodes.Emplace(10, 0, 0, EGameXXKNodeKind::Start, FVector2D(0.00f, 0.00f), TArray<int32>{20});
+	SparseState.RouteMapNodes.Emplace(20, 1, 0, EGameXXKNodeKind::Battle, FVector2D(1.00f, 1.00f), TArray<int32>{});
 	SparseState.RouteMapEdges.Emplace(10, 20);
 	SparseState.ReachableRouteNodeIds.Add(10);
 
@@ -148,13 +347,23 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	SparseRouteWidget->SetMVPSubsystem(SparseSubsystem);
 	TestTrue(TEXT("sparse route widget initializes"), SparseRouteWidget->Initialize());
 	SparseRouteWidget->NativeConstruct();
+	SparseRouteWidget->SetRouteMapViewportGeometry(FVector2D::ZeroVector, FVector2D(1280.0f, 720.0f));
 	SparseRouteWidget->RefreshFromState();
 
 	const auto SparseVisualStates = SparseRouteWidget->GetRouteNodeVisualStatesForTest();
-	TestTrue(TEXT("sparse route content still has scrollable height"), SparseRouteWidget->GetRouteContentSizeForTest().Y >= 520.0f);
+	const FVector2D SparseRouteContentSize = SparseRouteWidget->GetRouteContentSizeForTest();
+	TestTrue(TEXT("sparse route content still has scrollable height"), SparseRouteContentSize.Y >= 520.0f);
 	if (SparseVisualStates.Num() > 0)
 	{
 		TestTrue(TEXT("enabled sparse node has viewport-adjusted hit position"), SparseVisualStates[0].ViewportHitBoxPosition.Y <= SparseVisualStates[0].HitBoxPosition.Y + 0.1f);
+	}
+	if (SparseVisualStates.Num() >= 2)
+	{
+		const float MinRouteCenterX = FMath::Min(SparseVisualStates[0].CanvasPosition.X, SparseVisualStates[1].CanvasPosition.X);
+		const float MaxRouteCenterX = FMath::Max(SparseVisualStates[0].CanvasPosition.X, SparseVisualStates[1].CanvasPosition.X);
+		const float RouteCenterX = (MinRouteCenterX + MaxRouteCenterX) * 0.5f;
+		TestTrue(TEXT("extreme route nodes stay inside the centered parchment lane"), MinRouteCenterX >= SparseRouteContentSize.X * 0.20f && MaxRouteCenterX <= SparseRouteContentSize.X * 0.80f);
+		TestTrue(TEXT("centered parchment lane stays centered in the route canvas"), FMath::IsNearlyEqual(RouteCenterX, SparseRouteContentSize.X * 0.5f, 1.0f));
 	}
 	TestEqual(TEXT("sparse adapter exposes one visual state per route node"), SparseVisualStates.Num(), 2);
 	TestEqual(TEXT("sparse first visual keeps real node id"), SparseVisualStates[0].NodeId, 10);

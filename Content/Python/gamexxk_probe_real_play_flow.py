@@ -382,6 +382,8 @@ def _route_node_visual_state_summary(state):
         "hit_box_size": _vector2d_to_dict(_struct_get(state, "hit_box_size", "HitBoxSize")),
         "viewport_hit_box_position": _vector2d_to_dict(_struct_get(state, "viewport_hit_box_position", "ViewportHitBoxPosition")),
         "viewport_hit_box_center": _vector2d_to_dict(_struct_get(state, "viewport_hit_box_center", "ViewportHitBoxCenter")),
+        "screen_hit_box_position": _vector2d_to_dict(_struct_get(state, "screen_hit_box_position", "ScreenHitBoxPosition")),
+        "screen_hit_box_center": _vector2d_to_dict(_struct_get(state, "screen_hit_box_center", "ScreenHitBoxCenter")),
         "icon_path": str(_struct_get(state, "icon_path", "IconPath") or ""),
     }
 
@@ -407,6 +409,47 @@ def _player_controller_summary(player_controller):
         except Exception as exc:
             flow_widgets[key] = {"error": str(exc)}
     result["flow_widgets"] = flow_widgets
+    try:
+        view_target = player_controller.get_view_target()
+        view_rotation = view_target.get_actor_rotation() if view_target else None
+        view_location = view_target.get_actor_location() if view_target else None
+        result["view_target"] = {
+            "name": view_target.get_name() if view_target else "",
+            "label": view_target.get_actor_label() if view_target and hasattr(view_target, "get_actor_label") else "",
+            "path": _object_path(view_target),
+            "class": _class_path(view_target),
+            "class_chain": _class_chain(view_target),
+            "tags": [str(tag) for tag in list(view_target.get_editor_property("tags"))] if view_target else [],
+            "location": _vector_to_dict(view_location),
+            "rotation": _rotator_to_dict(view_rotation),
+        }
+        try:
+            camera_component = view_target.get_camera_component()
+        except Exception:
+            camera_component = None
+        if not camera_component and view_target:
+            try:
+                camera_component = view_target.get_editor_property("camera_component")
+            except Exception:
+                camera_component = None
+        if camera_component:
+            result["view_target"]["camera"] = {
+                "projection_mode": _enum_name(camera_component.get_editor_property("projection_mode")),
+                "field_of_view": float(camera_component.get_editor_property("field_of_view")),
+            }
+    except Exception as exc:
+        result["view_target"] = {"error": str(exc)}
+    try:
+        camera_manager = player_controller.player_camera_manager
+        result["player_camera"] = {
+            "path": _object_path(camera_manager),
+            "class": _class_path(camera_manager),
+            "location": _vector_to_dict(camera_manager.get_camera_location()),
+            "rotation": _rotator_to_dict(camera_manager.get_camera_rotation()),
+            "field_of_view": float(camera_manager.get_fov_angle()),
+        }
+    except Exception as exc:
+        result["player_camera"] = {"error": str(exc)}
     return result
 
 
@@ -533,6 +576,36 @@ def _actors_summary(world):
                     pass
                 try:
                     summary["visual_character"] = _npc_visual_character_summary(actor.get_visual_character())
+                except Exception:
+                    pass
+            if hasattr(actor, "is_enemy_unit"):
+                try:
+                    summary["is_enemy_unit"] = bool(actor.is_enemy_unit())
+                except Exception:
+                    pass
+                try:
+                    summary["can_receive_primary_party_attack"] = bool(actor.can_receive_primary_party_attack())
+                except Exception:
+                    pass
+                try:
+                    summary["unit_index"] = int(actor.get_unit_index())
+                except Exception:
+                    pass
+                try:
+                    summary["unit_id"] = str(actor.get_unit_id())
+                except Exception:
+                    pass
+                try:
+                    summary["battle_visual"] = _visual_summary(actor)
+                except Exception:
+                    pass
+                try:
+                    summary["current_battle_flipbook"] = _object_path(actor.get_current_battle_flipbook())
+                except Exception:
+                    pass
+            if hasattr(actor, "get_spawned_units_for_test"):
+                try:
+                    summary["spawned_unit_count"] = len(actor.get_spawned_units_for_test())
                 except Exception:
                     pass
             result.append(summary)

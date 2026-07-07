@@ -29,6 +29,111 @@ namespace
 		CommandButton->OnClicked.Broadcast();
 		return true;
 	}
+
+	static FName MakeRouteNodeCommandName(int32 NodeId)
+	{
+		return FName(*FString::Printf(TEXT("RouteNode%d"), NodeId));
+	}
+
+	static const FGameXXKRouteMapNode* FindRouteNodeById(const FGameXXKRuntimeState& State, int32 NodeId)
+	{
+		return State.RouteMapNodes.FindByPredicate([NodeId](const FGameXXKRouteMapNode& Node)
+		{
+			return Node.NodeId == NodeId;
+		});
+	}
+
+	static bool RouteNodeCanReachKind(const FGameXXKRuntimeState& State, int32 StartNodeId, EGameXXKNodeKind TargetKind)
+	{
+		TSet<int32> Visited;
+		TArray<int32> Stack;
+		Stack.Add(StartNodeId);
+		while (!Stack.IsEmpty())
+		{
+			const int32 NodeId = Stack.Pop(EAllowShrinking::No);
+			if (Visited.Contains(NodeId))
+			{
+				continue;
+			}
+			Visited.Add(NodeId);
+			const FGameXXKRouteMapNode* Node = FindRouteNodeById(State, NodeId);
+			if (!Node)
+			{
+				continue;
+			}
+			if (Node->NodeKind == TargetKind)
+			{
+				return true;
+			}
+			for (int32 OutgoingNodeId : Node->OutgoingNodeIds)
+			{
+				Stack.Add(OutgoingNodeId);
+			}
+		}
+		return false;
+	}
+
+	static const FGameXXKRouteMapNode* FindReachableRouteStepTowardKind(const FGameXXKRuntimeState& State, EGameXXKNodeKind TargetKind)
+	{
+		for (int32 NodeId : State.ReachableRouteNodeIds)
+		{
+			const FGameXXKRouteMapNode* Node = FindRouteNodeById(State, NodeId);
+			if (Node && Node->NodeKind == TargetKind)
+			{
+				return Node;
+			}
+		}
+		for (int32 NodeId : State.ReachableRouteNodeIds)
+		{
+			if (RouteNodeCanReachKind(State, NodeId, TargetKind))
+			{
+				return FindRouteNodeById(State, NodeId);
+			}
+		}
+		return nullptr;
+	}
+
+	static bool ExecuteRootRouteTowardKind(UGameXXKPlayableRootWidget* RootWidget, const UGameXXKMVPSubsystem* Subsystem, EGameXXKNodeKind TargetKind)
+	{
+		if (!RootWidget || !Subsystem)
+		{
+			return false;
+		}
+		for (int32 StepGuard = 0; StepGuard < 32 && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::DungeonMap; ++StepGuard)
+		{
+			const FGameXXKRouteMapNode* Node = FindReachableRouteStepTowardKind(Subsystem->GetRuntimeState(), TargetKind);
+			if (!Node)
+			{
+				return false;
+			}
+			const EGameXXKNodeKind NodeKind = Node->NodeKind;
+			if (!RootWidget->ExecuteVisibleCommand(MakeRouteNodeCommandName(Node->NodeId)))
+			{
+				return false;
+			}
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle && !RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveBattleVictory"))))
+			{
+				return false;
+			}
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteEvent && !RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveEventGold"))))
+			{
+				return false;
+			}
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteCamp && !RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveCampHeal"))))
+			{
+				return false;
+			}
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteMerchant && !RootWidget->ExecuteVisibleCommand(FName(TEXT("CompleteMerchantNode"))))
+			{
+				return false;
+			}
+			if (NodeKind == TargetKind)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -217,15 +322,10 @@ bool FGameXXKPlayableRootFullLoopTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("UMG root retries dungeon"), RootWidget->ExecuteVisibleCommand(FName(TEXT("EnterDungeon"))));
 	TestTrue(TEXT("UMG root retries start node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectStart"))));
-	TestTrue(TEXT("UMG root retries battle node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectBattle"))));
-	TestTrue(TEXT("UMG root wins normal battle"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveBattleVictory"))));
-	TestTrue(TEXT("UMG root resolves event reward"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveEventGold"))));
 	Subsystem->GetMutableRuntimeState().PlayerHP = 1;
-	TestTrue(TEXT("UMG root resolves camp heal"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveCampHeal"))));
+	TestTrue(TEXT("UMG root follows generated route to camp"), ExecuteRootRouteTowardKind(RootWidget, Subsystem, EGameXXKNodeKind::Camp));
 	TestEqual(TEXT("UMG root camp restores HP"), Subsystem->GetRuntimeState().PlayerHP, Subsystem->GetRuntimeState().PlayerMaxHP);
-	TestTrue(TEXT("UMG root opens boss node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectBoss"))));
-	TestEqual(TEXT("UMG root reaches boss battle"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
-	TestTrue(TEXT("UMG root resolves boss victory"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveBattleVictory"))));
+	TestTrue(TEXT("UMG root follows generated route to boss and clears it"), ExecuteRootRouteTowardKind(RootWidget, Subsystem, EGameXXKNodeKind::Boss));
 	TestEqual(TEXT("UMG root returns to world map after boss"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 	TestTrue(TEXT("UMG root enables Tanjiang after boss"), RootWidget->HasVisibleCommand(FName(TEXT("SelectTanjiang")), true));
 	TestFalse(TEXT("UMG root route clear waits for manual save"), UGameplayStatics::DoesSaveGameExist(PlayableRootTestSlot, PlayableRootUserIndex));
@@ -307,13 +407,10 @@ bool FGameXXKPlayableRootPostFailureResupplyRetryTest::RunTest(const FString& Pa
 
 	TestTrue(TEXT("post-failure test retries dungeon"), RootWidget->ExecuteVisibleCommand(FName(TEXT("EnterDungeon"))));
 	TestTrue(TEXT("post-failure test retries start node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectStart"))));
-	TestTrue(TEXT("post-failure test retries battle node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectBattle"))));
-	TestEqual(TEXT("post-failure test reaches retry battle"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
-	TestTrue(TEXT("post-failure test wins retry battle"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveBattleVictory"))));
-	TestTrue(TEXT("post-failure test resolves retry event"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveEventGold"))));
-	TestTrue(TEXT("post-failure test resolves retry camp"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveCampHeal"))));
-	TestTrue(TEXT("post-failure test selects retry boss"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectBoss"))));
-	TestTrue(TEXT("post-failure test clears retry boss"), RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveBattleVictory"))));
+	Subsystem->GetMutableRuntimeState().PlayerHP = 1;
+	TestTrue(TEXT("post-failure test follows generated route to camp"), ExecuteRootRouteTowardKind(RootWidget, Subsystem, EGameXXKNodeKind::Camp));
+	TestEqual(TEXT("post-failure test camp restores HP"), Subsystem->GetRuntimeState().PlayerHP, Subsystem->GetRuntimeState().PlayerMaxHP);
+	TestTrue(TEXT("post-failure test follows generated route to boss and clears it"), ExecuteRootRouteTowardKind(RootWidget, Subsystem, EGameXXKNodeKind::Boss));
 	TestEqual(TEXT("post-failure test boss clear returns to world map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 	TestEqual(TEXT("post-failure test completes quest after retry"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Completed);
 	TestTrue(TEXT("post-failure test unlocks Tanjiang after retry"), Subsystem->GetRuntimeState().UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));

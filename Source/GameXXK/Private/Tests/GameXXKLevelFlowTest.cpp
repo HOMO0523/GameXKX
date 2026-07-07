@@ -21,25 +21,37 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::DungeonMap),
 		FName(TEXT("/Game/GameXXK/Maps/L_RouteMap")));
 	TestEqual(
-		TEXT("1Game battle copy map"),
+		TEXT("route event map"),
+		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::RouteEvent),
+		FName(TEXT("/Game/GameXXK/Maps/L_RouteEvent")));
+	TestEqual(
+		TEXT("route camp map"),
+		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::RouteCamp),
+		FName(TEXT("/Game/GameXXK/Maps/L_RouteCamp")));
+	TestEqual(
+		TEXT("route merchant map"),
+		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::RouteMerchant),
+		FName(TEXT("/Game/GameXXK/Maps/L_RouteMerchant")));
+	TestEqual(
+		TEXT("GameXXK battle scene map"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::Battle),
-		FName(TEXT("/Game/GameXXK/Maps/L_Battle_1Game")));
+		FName(TEXT("/Game/GameXXK/Maps/L_BattleScene")));
 
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
 	State.Screen = EGameXXKScreen::Battle;
 	TestEqual(
-		TEXT("runtime battle state maps to 1Game battle copy"),
+		TEXT("runtime battle state maps to GameXXK battle scene"),
 		GameXXKLevelFlow::MapForRuntimeState(State),
-		FName(TEXT("/Game/GameXXK/Maps/L_Battle_1Game")));
+		FName(TEXT("/Game/GameXXK/Maps/L_BattleScene")));
 	TestTrue(
 		TEXT("PIE route map package matches route target"),
 		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap"), FName(TEXT("/Game/GameXXK/Maps/L_RouteMap"))));
 	TestTrue(
 		TEXT("PIE battle map package matches battle target"),
-		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_Battle_1Game"), FName(TEXT("/Game/GameXXK/Maps/L_Battle_1Game"))));
+		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_BattleScene"), FName(TEXT("/Game/GameXXK/Maps/L_BattleScene"))));
 	TestFalse(
 		TEXT("route map package does not match battle target"),
-		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap"), FName(TEXT("/Game/GameXXK/Maps/L_Battle_1Game"))));
+		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap"), FName(TEXT("/Game/GameXXK/Maps/L_BattleScene"))));
 
 	return true;
 }

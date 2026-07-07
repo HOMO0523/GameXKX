@@ -13,8 +13,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Inventory")
 	int32 GetItemCount(FName ItemId) const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Inventory")
+	TArray<FName> GetInventoryItemIds() const;
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Inventory")
 	bool UseHealingItem();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Inventory")
+	bool UseItemById(FName ItemId);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Inventory")
 	bool EquipItemById(FName ItemId);

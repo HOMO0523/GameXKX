@@ -199,7 +199,7 @@ bool UGameXXKBattleBoardWidget::ExecuteHealingPowderAction()
 
 bool UGameXXKBattleBoardWidget::OpenCommandMenuForPartyUnit(int32 PartyIndex, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
 {
-	(void)MenuScreenPosition;
+	(void)UnitScreenPosition;
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	if (!State || State->Screen != EGameXXKScreen::Battle || !State->ActiveBattleParty.IsValidIndex(PartyIndex))
@@ -214,9 +214,9 @@ bool UGameXXKBattleBoardWidget::OpenCommandMenuForPartyUnit(int32 PartyIndex, FV
 	}
 
 	SelectedPartyIndex = PartyIndex;
-	CommandMenuAnchor = ResolveCommandMenuAnchor(UnitScreenPosition);
-	SelectedPartyScreenPosition = UnitScreenPosition;
-	TargetingPointerPosition = UnitScreenPosition;
+	CommandMenuAnchor = ResolveCommandMenuAnchor(MenuScreenPosition);
+	SelectedPartyScreenPosition = MenuScreenPosition;
+	TargetingPointerPosition = MenuScreenPosition;
 	TargetingActionName = NAME_None;
 	InteractionMode = EGameXXKBattleInteractionMode::CommandMenuOpen;
 	RefreshProgrammaticLayout();
@@ -740,16 +740,16 @@ FLinearColor UGameXXKBattleBoardWidget::ResolveBattleActionButtonTint(FName Acti
 	return FLinearColor(0.70f, 0.78f, 0.74f, 0.88f);
 }
 
-FVector2D UGameXXKBattleBoardWidget::ResolveCommandMenuAnchor(FVector2D UnitScreenPosition) const
+FVector2D UGameXXKBattleBoardWidget::ResolveCommandMenuAnchor(FVector2D MenuScreenPosition) const
 {
 	constexpr float CommandMenuWidth = 360.0f;
 	constexpr float CommandMenuHeight = 300.0f;
-	constexpr float CommandMenuGap = 72.0f;
-	FVector2D Anchor = UnitScreenPosition + FVector2D(-(CommandMenuWidth + CommandMenuGap), -120.0f);
+	constexpr float CommandMenuGap = 24.0f;
+	FVector2D Anchor = MenuScreenPosition + FVector2D(-(CommandMenuWidth + CommandMenuGap), -120.0f);
 	const FVector2D LocalSize = GetCachedGeometry().GetLocalSize();
 	if (LocalSize.X > 1.0f && LocalSize.Y > 1.0f)
 	{
-		Anchor.X = FMath::Clamp(Anchor.X, 12.0f, FMath::Max(12.0f, UnitScreenPosition.X - (CommandMenuWidth + 12.0f)));
+		Anchor.X = FMath::Clamp(Anchor.X, 12.0f, FMath::Max(12.0f, MenuScreenPosition.X - (CommandMenuWidth + 12.0f)));
 		Anchor.Y = FMath::Clamp(Anchor.Y, 12.0f, FMath::Max(12.0f, LocalSize.Y - (CommandMenuHeight + 12.0f)));
 	}
 	return Anchor;

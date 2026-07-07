@@ -10,6 +10,7 @@ import struct
 import zlib
 import json
 import math
+import re
 import struct
 import sys
 import time
@@ -29,8 +30,12 @@ ACTIVE_WIDGETS_PROBE_SCRIPT = "Content/Python/gamexxk_probe_active_widgets.py"
 MAIN_MAP = "/Game/GameXXK/Maps/L_Main"
 QINGSHAN_MAP_TOKEN = "L_QingshanInn"
 ROUTE_MAP_TOKEN = "L_RouteMap"
-BATTLE_MAP_TOKEN = "L_Battle_1Game"
-ONEGAME_BATTLE_PC_TOKEN = "BP_PlayerController_C"
+BATTLE_MAP_TOKEN = "L_BattleScene"
+BATTLE_PC_TOKEN = "GameXXKMVPPlayerController"
+SLATE_WINDOW_PATTERN = re.compile(r'window "([^"]*GameXXK Preview[^"]*)" .* \[ref=([^\]]+)\]')
+SLATE_BUTTON_PATTERN = re.compile(
+    r'button(?P<disabled> \[disabled\])? \[pos=(?P<x>-?\d+),(?P<y>-?\d+) size=(?P<w>\d+),(?P<h>\d+)\] \[ref=(?P<ref>[^\]]+)\]'
+)
 
 
 def _png_size(data: bytes) -> tuple[int, int]:
@@ -180,6 +185,25 @@ def _npc_by_role(probe: dict[str, Any], role: str) -> dict[str, Any]:
     return {}
 
 
+def _battle_scene_counts(probe: dict[str, Any]) -> dict[str, int]:
+    counts = {"presenters": 0, "units": 0, "enemies": 0, "party": 0, "visual_units": 0}
+    for actor in _actors(probe):
+        class_name = str(actor.get("class", ""))
+        if "BattleScenePresenter" in class_name:
+            counts["presenters"] += 1
+        if "BattleSceneUnitActor" not in class_name:
+            continue
+        counts["units"] += 1
+        visual = actor.get("battle_visual", {})
+        if isinstance(visual, dict) and str(visual.get("flipbook", "")):
+            counts["visual_units"] += 1
+        if bool(actor.get("is_enemy_unit")):
+            counts["enemies"] += 1
+        else:
+            counts["party"] += 1
+    return counts
+
+
 def _expect_npc_visual(actor: dict[str, Any], class_token: str, flipbook_token: str) -> dict[str, Any]:
     body = actor.get("body_character", {})
     if not isinstance(body, dict):
@@ -323,6 +347,56 @@ def _topdown_camera_state(probe: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _battle_camera_state(probe: dict[str, Any]) -> dict[str, Any]:
+    player_controller = probe.get("probe", {}).get("player_controller", {})
+    if not isinstance(player_controller, dict):
+        return {"ok": False, "reason": "player_controller_missing"}
+    view_target = player_controller.get("view_target", {})
+    if not isinstance(view_target, dict):
+        return {"ok": False, "reason": "view_target_missing"}
+    player_camera = player_controller.get("player_camera", {})
+    if not isinstance(player_camera, dict):
+        player_camera = {}
+    rotation = view_target.get("rotation", {})
+    if not isinstance(rotation, dict):
+        rotation = {}
+    player_camera_rotation = player_camera.get("rotation", {})
+    if not isinstance(player_camera_rotation, dict):
+        player_camera_rotation = {}
+    camera = view_target.get("camera", {})
+    if not isinstance(camera, dict):
+        camera = {}
+    tags = " ".join(str(tag) for tag in view_target.get("tags", []))
+    identity = " ".join(
+        str(value)
+        for value in (
+            view_target.get("name", ""),
+            view_target.get("label", ""),
+            view_target.get("class", ""),
+            tags,
+        )
+    )
+    projection = str(camera.get("projection_mode", "")).upper()
+    view_target_pitch = float(rotation.get("pitch") or rotation.get("roll") or 0.0)
+    actual_pitch = float(player_camera_rotation.get("pitch") or view_target_pitch)
+    ok = bool(
+        "GameXXK_BattleScene_Camera" in identity
+        and "CameraActor" in str(view_target.get("class", ""))
+        and "PERSPECTIVE" in projection
+        and -65.0 <= actual_pitch <= -55.0
+    )
+    return {
+        "ok": ok,
+        "identity": identity,
+        "projection": projection,
+        "pitch": actual_pitch,
+        "view_target_pitch": view_target_pitch,
+        "location": view_target.get("location", {}),
+        "player_camera": player_camera,
+        "field_of_view": camera.get("field_of_view"),
+    }
+
+
 def _distance(a: dict[str, float], b: dict[str, float]) -> float:
     return math.sqrt(sum((float(a.get(axis, 0.0)) - float(b.get(axis, 0.0))) ** 2 for axis in ("x", "y", "z")))
 
@@ -331,6 +405,7 @@ class PreviewInput:
     def __init__(self) -> None:
         self.user32 = ctypes.windll.user32
         self.gdi32 = ctypes.windll.gdi32
+        self.user32.WindowFromPoint.restype = ctypes.c_void_p
         try:
             self.user32.SetProcessDPIAware()
         except Exception:
@@ -476,13 +551,101 @@ class PreviewInput:
         return {"x": x, "y": y}
 
     def click_screen_point(self, window: dict[str, Any], screen_x: int, screen_y: int) -> dict[str, int]:
+        class Rect(ctypes.Structure):
+            _fields_ = [
+                ("left", ctypes.c_long),
+                ("top", ctypes.c_long),
+                ("right", ctypes.c_long),
+                ("bottom", ctypes.c_long),
+            ]
+
+        class Point(ctypes.Structure):
+            _fields_ = [
+                ("x", ctypes.c_long),
+                ("y", ctypes.c_long),
+            ]
+
+        hwnd = ctypes.c_void_p(int(window["hwnd"]))
+        client_rect = Rect()
+        if not self.user32.GetClientRect(hwnd, ctypes.byref(client_rect)):
+            raise RuntimeError("GetClientRect failed for GameXXK Preview")
+        width = max(1, int(client_rect.right - client_rect.left))
+        height = max(1, int(client_rect.bottom - client_rect.top))
+        local_x = max(0, min(width - 1, int(screen_x)))
+        local_y = max(0, min(height - 1, int(screen_y)))
+        point = Point(local_x, local_y)
+        if not self.user32.ClientToScreen(hwnd, ctypes.byref(point)):
+            raise RuntimeError("ClientToScreen failed for GameXXK Preview")
+        x = int(point.x)
+        y = int(point.y)
+        self.click_window_message(window, x, y)
+        return {"x": x, "y": y, "local_x": local_x, "local_y": local_y}
+
+    def click_absolute_point(self, window: dict[str, Any], screen_x: int, screen_y: int) -> dict[str, int]:
+        class Point(ctypes.Structure):
+            _fields_ = [
+                ("x", ctypes.c_long),
+                ("y", ctypes.c_long),
+            ]
+
+        x = int(screen_x)
+        y = int(screen_y)
         self.focus(window)
-        self.user32.SetCursorPos(int(screen_x), int(screen_y))
+        self.user32.SetCursorPos(x, y)
         time.sleep(0.1)
         self.user32.mouse_event(0x0002, 0, 0, 0, 0)
         time.sleep(0.05)
         self.user32.mouse_event(0x0004, 0, 0, 0, 0)
-        return {"x": int(screen_x), "y": int(screen_y)}
+        time.sleep(0.1)
+
+        screen_point = Point(x, y)
+        target_hwnd_value = self.user32.WindowFromPoint(screen_point)
+        target_hwnd = ctypes.c_void_p(int(target_hwnd_value) if target_hwnd_value else int(window["hwnd"]))
+        local_point = Point(x, y)
+        local_x = 0
+        local_y = 0
+        if self.user32.ScreenToClient(target_hwnd, ctypes.byref(local_point)):
+            local_x = int(local_point.x)
+            local_y = int(local_point.y)
+        return {
+            "x": x,
+            "y": y,
+            "local_x": local_x,
+            "local_y": local_y,
+            "desktop_click": True,
+            "target_hwnd": int(target_hwnd.value or 0),
+            "root_hwnd": int(window["hwnd"]),
+        }
+
+    def click_window_message(self, window: dict[str, Any], screen_x: int, screen_y: int) -> dict[str, int]:
+        class Point(ctypes.Structure):
+            _fields_ = [
+                ("x", ctypes.c_long),
+                ("y", ctypes.c_long),
+            ]
+
+        root_hwnd = ctypes.c_void_p(int(window["hwnd"]))
+        screen_point = Point(int(screen_x), int(screen_y))
+
+        self.focus(window)
+        self.user32.SetCursorPos(int(screen_x), int(screen_y))
+        target_hwnd_value = self.user32.WindowFromPoint(screen_point)
+        target_hwnd = ctypes.c_void_p(int(target_hwnd_value) if target_hwnd_value else int(window["hwnd"]))
+
+        point = Point(int(screen_x), int(screen_y))
+        if not self.user32.ScreenToClient(target_hwnd, ctypes.byref(point)):
+            raise RuntimeError("ScreenToClient failed for GameXXK Preview")
+        local_x = int(point.x)
+        local_y = int(point.y)
+        lparam = (local_y << 16) | (local_x & 0xFFFF)
+
+        time.sleep(0.08)
+        self.user32.SendMessageW(target_hwnd, 0x0200, 0, lparam)
+        time.sleep(0.03)
+        self.user32.SendMessageW(target_hwnd, 0x0201, 0x0001, lparam)
+        time.sleep(0.05)
+        self.user32.SendMessageW(target_hwnd, 0x0202, 0, lparam)
+        return {"local_x": local_x, "local_y": local_y, "target_hwnd": int(target_hwnd.value or 0), "root_hwnd": int(root_hwnd.value or 0)}
 
     def press_key(self, window: dict[str, Any], virtual_key: int, hold_seconds: float = 0.0) -> None:
         self.focus_keyboard_input(window)
@@ -490,8 +653,9 @@ class PreviewInput:
         time.sleep(max(0.0, hold_seconds))
         self.user32.keybd_event(virtual_key, 0, 0x0002, 0)
 
-    def key_down(self, window: dict[str, Any], virtual_key: int) -> None:
-        self.focus_keyboard_input(window)
+    def key_down(self, window: dict[str, Any], virtual_key: int, *, refocus: bool = True) -> None:
+        if refocus:
+            self.focus_keyboard_input(window)
         self.user32.keybd_event(virtual_key, 0, 0, 0)
 
     def key_up(self, virtual_key: int) -> None:
@@ -565,18 +729,91 @@ class RealFlowHarness:
             raise RuntimeError(f"Route widget node {node_index} failed: {command_result}")
         return parsed
 
+    def slate_preview_snapshot(self) -> str:
+        root_snapshot = str(self.client.call_tool(
+            "Snapshot",
+            {"ref": "", "maxDepth": 3, "bIncludeSourceLocations": False},
+            toolset_name=SLATE_TOOLSET,
+            timeout=self.client.timeout,
+        ))
+        preview_ref = ""
+        for match in SLATE_WINDOW_PATTERN.finditer(root_snapshot):
+            preview_ref = match.group(2)
+        if not preview_ref:
+            raise RuntimeError(f"GameXXK Preview Slate window was not found in snapshot: {root_snapshot[:1000]}")
+
+        self.client.call_tool(
+            "Observe",
+            {"ref": preview_ref, "maxDepth": 80},
+            toolset_name=SLATE_TOOLSET,
+            timeout=self.client.timeout,
+        )
+        time.sleep(0.15)
+        return str(self.client.call_tool(
+            "Snapshot",
+            {"ref": preview_ref, "maxDepth": 80, "bIncludeSourceLocations": False},
+            toolset_name=SLATE_TOOLSET,
+            timeout=self.client.timeout,
+        ))
+
+    def slate_button_for_route_node(self, node_state: dict[str, Any]) -> dict[str, Any]:
+        target_position = node_state.get("screen_hit_box_position", {})
+        target_size = node_state.get("hit_box_size", {})
+        if not isinstance(target_position, dict) or not isinstance(target_size, dict):
+            raise RuntimeError(f"Route node visual state does not expose Slate hit box data: {node_state}")
+
+        target_x = float(target_position.get("x", 0.0))
+        target_y = float(target_position.get("y", 0.0))
+        target_w = float(target_size.get("x", 0.0))
+        target_h = float(target_size.get("y", 0.0))
+        snapshot = self.slate_preview_snapshot()
+        candidates: list[dict[str, Any]] = []
+        for match in SLATE_BUTTON_PATTERN.finditer(snapshot):
+            candidate = {
+                "ref": match.group("ref"),
+                "disabled": bool(match.group("disabled")),
+                "x": int(match.group("x")),
+                "y": int(match.group("y")),
+                "w": int(match.group("w")),
+                "h": int(match.group("h")),
+            }
+            if candidate["disabled"]:
+                continue
+            candidate["distance"] = (
+                abs(candidate["x"] - target_x)
+                + abs(candidate["y"] - target_y)
+                + abs(candidate["w"] - target_w)
+                + abs(candidate["h"] - target_h)
+            )
+            candidates.append(candidate)
+
+        if not candidates:
+            raise RuntimeError(f"No enabled Slate buttons were found in the route map snapshot: {snapshot[:1200]}")
+
+        best = min(candidates, key=lambda item: float(item["distance"]))
+        if float(best["distance"]) > 8.0:
+            raise RuntimeError(
+                f"No Slate button matched route node {node_state.get('node_id')} "
+                f"target=({target_x},{target_y},{target_w},{target_h}); best={best}; snapshot={snapshot[:1200]}"
+            )
+        return best
+
     def click_route_node(self, probe: dict[str, Any], node_id: int) -> dict[str, Any]:
         node_state = _route_node_visual_state(probe, node_id)
         if not node_state:
             raise RuntimeError(f"Route node {node_id} visual state was not found: {_route_node_visual_states(probe)}")
         if not bool(node_state.get("b_enabled")):
             raise RuntimeError(f"Route node {node_id} is not enabled for screen click: {node_state}")
-        center = node_state.get("viewport_hit_box_center", {})
-        if not isinstance(center, dict) or "x" not in center or "y" not in center:
-            raise RuntimeError(f"Route node {node_id} missing viewport hit center: {node_state}")
-        window = self.input.find_preview_window()
-        click = self.input.click_screen_point(window, int(center["x"]), int(center["y"]))
-        self.event("route_node_screen_click", node_id=node_id, click=click, node_state=node_state)
+        button = self.slate_button_for_route_node(node_state)
+        click_ok = bool(self.client.call_tool(
+            "Click",
+            {"ref": button["ref"], "button": "left", "doubleClick": False},
+            toolset_name=SLATE_TOOLSET,
+            timeout=self.client.timeout,
+        ))
+        self.event("route_node_slate_click", node_id=node_id, click_ok=click_ok, button=button, node_state=node_state)
+        if not click_ok:
+            raise RuntimeError(f"Slate click failed for route node {node_id}: button={button}")
         time.sleep(0.45)
         return self.probe()
 
@@ -712,7 +949,7 @@ class RealFlowHarness:
             raise RuntimeError(f"D key release did not switch hero back to Idle_East: {released_idle_state}")
         window = self.input.find_preview_window()
         self.input.key_down(window, ord("W"))
-        self.input.key_down(window, ord("D"))
+        self.input.key_down(window, ord("D"), refocus=False)
         time.sleep(0.25)
         while_diagonal_down = self.probe()
         diagonal_walk_state = _expect_visual_state(while_diagonal_down, "Walk", "NorthEast")
@@ -732,7 +969,7 @@ class RealFlowHarness:
             raise RuntimeError(f"W+D release did not switch hero back to Idle_NorthEast: {diagonal_released_idle_state}")
         window = self.input.find_preview_window()
         self.input.key_down(window, ord("W"))
-        self.input.key_down(window, ord("D"))
+        self.input.key_down(window, ord("D"), refocus=False)
         time.sleep(0.25)
         delayed_diagonal_down = self.probe()
         delayed_diagonal_walk_state = _expect_visual_state(delayed_diagonal_down, "Walk", "NorthEast")
@@ -932,7 +1169,7 @@ class RealFlowHarness:
         after_battle: dict[str, Any] = battle_click_probe
         for attempt in range(8):
             if BATTLE_MAP_TOKEN in _map_name(after_battle):
-                self.event("wait_ok", label="Battle route node opens original 1Game island", attempt=attempt + 1)
+                self.event("wait_ok", label="Battle route node opens GameXXK battle scene", attempt=attempt + 1)
                 break
             time.sleep(0.35)
             after_battle = self.probe()
@@ -941,21 +1178,29 @@ class RealFlowHarness:
         active_player_controller = active_widgets_probe.get("player_controller", {})
         if not isinstance(active_player_controller, dict):
             active_player_controller = {}
+        battle_scene_counts = _battle_scene_counts(after_battle)
+        battle_camera = _battle_camera_state(after_battle)
         battle_probe = {
             "ok": (
                 BATTLE_MAP_TOKEN in _map_name(after_battle)
-                and ONEGAME_BATTLE_PC_TOKEN in str(active_player_controller.get("class_name", ""))
+                and BATTLE_PC_TOKEN in str(active_player_controller.get("class_name", ""))
+                and battle_scene_counts["enemies"] >= 1
+                and battle_scene_counts["party"] >= 1
+                and battle_scene_counts["visual_units"] == battle_scene_counts["units"]
+                and bool(battle_camera.get("ok"))
             ),
             "map": _map_name(after_battle),
             "screen": battle_runtime.get("screen"),
+            "battle_scene_counts": battle_scene_counts,
+            "battle_camera": battle_camera,
             "widgets": _flow_widgets(after_battle),
             "active_player_controller": active_player_controller,
             "onegame_route_widgets": active_widgets_probe.get("onegame_route_widgets", []),
             "click_probe_map": _map_name(battle_click_probe),
         }
-        self.event("battle_1game_island_probe", **battle_probe)
+        self.event("battle_scene_probe", **battle_probe)
         if not battle_probe["ok"]:
-            raise RuntimeError(f"Route battle node did not open the original 1Game island: {battle_probe}")
+            raise RuntimeError(f"Route battle node did not open the GameXXK battle scene: {battle_probe}")
         after_battle_path, _ = self.screenshot("real_flow_after_battle.png")
 
         result = {

@@ -1,5 +1,6 @@
 #include "UI/GameXXKMVPHUD.h"
 
+#include "Blueprint/GameViewportSubsystem.h"
 #include "Engine/Canvas.h"
 #include "Engine/GameInstance.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -11,8 +12,41 @@
 
 namespace
 {
-	const FVector2D HUDRouteMapViewportPosition(420.0f, 124.0f);
-	const FVector2D HUDRouteMapViewportSize(560.0f, 520.0f);
+	const FVector2D DefaultHUDRouteMapViewportSize(1280.0f, 720.0f);
+
+	FVector2D ResolveHUDRouteMapViewportSize(const AGameXXKMVPHUD* HUD)
+	{
+		if (HUD)
+		{
+			if (const APlayerController* PlayerController = HUD->GetOwningPlayerController())
+			{
+				int32 ViewportWidth = 0;
+				int32 ViewportHeight = 0;
+				PlayerController->GetViewportSize(ViewportWidth, ViewportHeight);
+				if (ViewportWidth > 0 && ViewportHeight > 0)
+				{
+					return FVector2D(static_cast<float>(ViewportWidth), static_cast<float>(ViewportHeight));
+				}
+			}
+		}
+
+		return DefaultHUDRouteMapViewportSize;
+	}
+
+	void ConfigureFullscreenRouteMapSlot(UWidget* RouteWidget)
+	{
+		UGameViewportSubsystem* ViewportSubsystem = UGameViewportSubsystem::Get();
+		if (!ViewportSubsystem || !RouteWidget)
+		{
+			return;
+		}
+
+		FGameViewportWidgetSlot RouteSlot = ViewportSubsystem->GetWidgetSlot(RouteWidget);
+		RouteSlot.Anchors = FAnchors(0.0f, 0.0f, 1.0f, 1.0f);
+		RouteSlot.Offsets = FMargin(0.0f);
+		RouteSlot.Alignment = FVector2D::ZeroVector;
+		ViewportSubsystem->SetWidgetSlot(RouteWidget, RouteSlot);
+	}
 }
 
 AGameXXKMVPHUD::AGameXXKMVPHUD()
@@ -303,10 +337,9 @@ void AGameXXKMVPHUD::ConfigureRouteMapWidgetViewport(UGameXXKOneGameRouteMapWidg
 		return;
 	}
 
-	RouteWidget->SetAlignmentInViewport(FVector2D::ZeroVector);
-	RouteWidget->SetPositionInViewport(HUDRouteMapViewportPosition, false);
-	RouteWidget->SetDesiredSizeInViewport(HUDRouteMapViewportSize);
-	RouteWidget->SetRouteMapViewportGeometry(HUDRouteMapViewportPosition, HUDRouteMapViewportSize);
+	const FVector2D RouteMapViewportSize = ResolveHUDRouteMapViewportSize(this);
+	ConfigureFullscreenRouteMapSlot(RouteWidget);
+	RouteWidget->SetRouteMapViewportGeometry(FVector2D::ZeroVector, RouteMapViewportSize);
 }
 
 void AGameXXKMVPHUD::RefreshBattleBoardWidget()

@@ -195,6 +195,31 @@ bool UGameXXKMVPSubsystem::ResolveBattleVictory(bool bBossBattle)
 	return UGameXXKMVPRules::ResolveBattleVictory(RuntimeState, bBossBattle);
 }
 
+bool UGameXXKMVPSubsystem::ExecuteBattleBasicAttack(int32 PartyIndex, int32 EnemyIndex)
+{
+	return UGameXXKMVPRules::ExecuteBattleBasicAttack(RuntimeState, PartyIndex, EnemyIndex);
+}
+
+bool UGameXXKMVPSubsystem::ExecuteBattleCraneWingSlash(int32 PartyIndex, int32 EnemyIndex)
+{
+	return UGameXXKMVPRules::ExecuteBattleCraneWingSlash(RuntimeState, PartyIndex, EnemyIndex);
+}
+
+bool UGameXXKMVPSubsystem::ExecuteBattleGuiyuanArt(int32 PartyIndex)
+{
+	return UGameXXKMVPRules::ExecuteBattleGuiyuanArt(RuntimeState, PartyIndex);
+}
+
+bool UGameXXKMVPSubsystem::ExecuteBattleDefend(int32 PartyIndex)
+{
+	return UGameXXKMVPRules::ExecuteBattleDefend(RuntimeState, PartyIndex);
+}
+
+bool UGameXXKMVPSubsystem::ExecuteBattleHealingPowder(int32 PartyIndex)
+{
+	return UGameXXKMVPRules::ExecuteBattleHealingPowder(RuntimeState, PartyIndex);
+}
+
 bool UGameXXKMVPSubsystem::ResolveEventReward(bool bTakeGold)
 {
 	return UGameXXKMVPRules::ResolveEventReward(RuntimeState, bTakeGold);
@@ -203,6 +228,11 @@ bool UGameXXKMVPSubsystem::ResolveEventReward(bool bTakeGold)
 bool UGameXXKMVPSubsystem::ResolveCampReward(bool bHealNow)
 {
 	return UGameXXKMVPRules::ResolveCampReward(RuntimeState, bHealNow);
+}
+
+bool UGameXXKMVPSubsystem::ResolveMerchantRouteNode()
+{
+	return UGameXXKMVPRules::ResolveMerchantRouteNode(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::FailDungeonToTown()
@@ -225,9 +255,24 @@ bool UGameXXKMVPSubsystem::UseHealingItem()
 	return UGameXXKMVPRules::UseHealingItem(RuntimeState);
 }
 
+bool UGameXXKMVPSubsystem::UseItem(FName ItemId)
+{
+	return UGameXXKMVPRules::UseItem(RuntimeState, ItemId);
+}
+
 bool UGameXXKMVPSubsystem::EquipItem(FName ItemId)
 {
 	return UGameXXKMVPRules::EquipItem(RuntimeState, ItemId);
+}
+
+bool UGameXXKMVPSubsystem::OpenTownPanel(EGameXXKTownPanelMode PanelMode)
+{
+	return UGameXXKMVPRules::OpenTownPanel(RuntimeState, PanelMode);
+}
+
+bool UGameXXKMVPSubsystem::CloseTownPanel()
+{
+	return UGameXXKMVPRules::CloseTownPanel(RuntimeState);
 }
 
 int32 UGameXXKMVPSubsystem::GetItemCount(FName ItemId) const

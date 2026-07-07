@@ -1,4 +1,10 @@
 #include "GameXXKMVPRules.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Button.h"
+#include "Components/Image.h"
+#include "Components/OverlaySlot.h"
+#include "Components/TextBlock.h"
+#include "Components/VerticalBox.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/SaveGame.h"
 #include "Kismet/GameplayStatics.h"
@@ -77,6 +83,11 @@ namespace
 	{
 		return Row.Label.ToString().Contains(ExpectedText);
 	}
+
+	static FString GetResourceObjectPath(const UObject* ResourceObject)
+	{
+		return ResourceObject ? ResourceObject->GetPathName() : FString();
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -99,19 +110,75 @@ bool FGameXXKMainMenuPlayerFlowTest::RunTest(const FString& Parameters)
 	UGameXXKMainMenuWidget* MainMenu = NewObject<UGameXXKMainMenuWidget>();
 	MainMenu->SetMVPSubsystem(Subsystem);
 	MainMenu->SetSaveSlotUserIndexForTest(UserIndex);
+	MainMenu->NativeConstruct();
 
 	TestEqual(TEXT("main menu starts on landing layer"), MainMenu->GetMenuLayerForTest(), EGameXXKMainMenuLayer::Landing);
 	TestEqual(TEXT("main menu is visible on main menu screen"), MainMenu->GetVisibility(), ESlateVisibility::Visible);
 	TestTrue(TEXT("main menu is enabled on main menu screen"), MainMenu->GetIsEnabled());
 
-	TestEqual(TEXT("landing exposes exactly four player actions"), MainMenu->BuildLandingActionsForTest().Num(), 4);
+	const TArray<FGameXXKMVPCommandDescriptor> LandingActions = MainMenu->BuildLandingActionsForTest();
+	TestEqual(TEXT("landing exposes exactly four player actions"), LandingActions.Num(), 4);
 	TestTrue(TEXT("landing exposes New Game"), MainMenu->HasLandingActionForTest(FName(TEXT("NewGame")), true));
 	TestTrue(TEXT("landing exposes Continue"), MainMenu->HasLandingActionForTest(FName(TEXT("OpenContinue")), true));
 	TestTrue(TEXT("landing exposes Options"), MainMenu->HasLandingActionForTest(FName(TEXT("OpenOptions")), true));
 	TestTrue(TEXT("landing exposes Quit"), MainMenu->HasLandingActionForTest(FName(TEXT("OpenQuit")), true));
+	if (LandingActions.Num() == 4)
+	{
+		TestEqual(TEXT("landing action 1 is localized start"), LandingActions[0].Label.ToString(), FString(TEXT("开始游戏")));
+		TestEqual(TEXT("landing action 2 is localized continue"), LandingActions[1].Label.ToString(), FString(TEXT("加载存档")));
+		TestEqual(TEXT("landing action 3 is localized options"), LandingActions[2].Label.ToString(), FString(TEXT("设置游戏")));
+		TestEqual(TEXT("landing action 4 is localized quit"), LandingActions[3].Label.ToString(), FString(TEXT("退出")));
+	}
 	TestFalse(TEXT("landing does not expose slot continue"), MainMenu->HasLandingActionForTest(FName(TEXT("ContinueSlot1")), true));
 	TestFalse(TEXT("landing does not expose slot delete"), MainMenu->HasLandingActionForTest(FName(TEXT("DeleteSlot1")), true));
 	TestFalse(TEXT("landing does not expose battle selection"), MainMenu->HasLandingActionForTest(FName(TEXT("SelectBattle")), true));
+
+	UImage* CoverImage = Cast<UImage>(MainMenu->GetWidgetFromName(TEXT("GameXXKMainMenuCover")));
+	TestNotNull(TEXT("main menu owns a full-screen cover image"), CoverImage);
+	if (CoverImage)
+	{
+		TestTrue(
+			TEXT("cover image uses the GameXXK tiger duel cover texture"),
+			GetResourceObjectPath(CoverImage->GetBrush().GetResourceObject()).Contains(TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_MainMenuCover")));
+	}
+
+	UVerticalBox* LandingBox = Cast<UVerticalBox>(MainMenu->GetWidgetFromName(TEXT("LandingBox")));
+	TestNotNull(TEXT("landing button stack exists"), LandingBox);
+	if (LandingBox)
+	{
+		const UOverlaySlot* LandingSlot = Cast<UOverlaySlot>(LandingBox->Slot);
+		TestNotNull(TEXT("landing button stack is placed by root overlay"), LandingSlot);
+		if (LandingSlot)
+		{
+			TestEqual(TEXT("landing button stack is left aligned"), LandingSlot->GetHorizontalAlignment(), HAlign_Left);
+			TestEqual(TEXT("landing button stack is vertically centered"), LandingSlot->GetVerticalAlignment(), VAlign_Center);
+			TestTrue(TEXT("landing button stack sits in from the left edge"), LandingSlot->GetPadding().Left >= 96.0f);
+		}
+	}
+
+	UButton* StartButton = Cast<UButton>(MainMenu->GetWidgetFromName(TEXT("MainMenuStartButton")));
+	UTextBlock* StartLabel = Cast<UTextBlock>(MainMenu->GetWidgetFromName(TEXT("MainMenuStartButtonLabel")));
+	UTextBlock* ContinueLabel = Cast<UTextBlock>(MainMenu->GetWidgetFromName(TEXT("MainMenuContinueButtonLabel")));
+	UTextBlock* OptionsLabel = Cast<UTextBlock>(MainMenu->GetWidgetFromName(TEXT("MainMenuOptionsButtonLabel")));
+	UTextBlock* QuitLabel = Cast<UTextBlock>(MainMenu->GetWidgetFromName(TEXT("MainMenuQuitButtonLabel")));
+	TestNotNull(TEXT("start button is named for automation"), StartButton);
+	TestNotNull(TEXT("start label is named for automation"), StartLabel);
+	TestNotNull(TEXT("continue label is named for automation"), ContinueLabel);
+	TestNotNull(TEXT("options label is named for automation"), OptionsLabel);
+	TestNotNull(TEXT("quit label is named for automation"), QuitLabel);
+	if (StartLabel && ContinueLabel && OptionsLabel && QuitLabel)
+	{
+		TestEqual(TEXT("visible start button label is Chinese"), StartLabel->GetText().ToString(), FString(TEXT("开始游戏")));
+		TestEqual(TEXT("visible continue button label is Chinese"), ContinueLabel->GetText().ToString(), FString(TEXT("加载存档")));
+		TestEqual(TEXT("visible options button label is Chinese"), OptionsLabel->GetText().ToString(), FString(TEXT("设置游戏")));
+		TestEqual(TEXT("visible quit button label is Chinese"), QuitLabel->GetText().ToString(), FString(TEXT("退出")));
+	}
+	if (StartButton)
+	{
+		TestTrue(
+			TEXT("main menu buttons use the generated ink button texture"),
+			GetResourceObjectPath(StartButton->GetStyle().Normal.GetResourceObject()).Contains(TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_InkButtonBase")));
+	}
 
 	TestTrue(TEXT("continue action opens continue modal"), MainMenu->OpenContinueModal());
 	TestEqual(TEXT("continue modal is active"), MainMenu->GetMenuLayerForTest(), EGameXXKMainMenuLayer::ContinueModal);

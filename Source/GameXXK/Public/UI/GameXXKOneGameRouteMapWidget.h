@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/SlateWrapperTypes.h"
 #include "GameXXKMVPRules.h"
 #include "UI/GameXXKMVPWidgetBase.h"
 #include "GameXXKOneGameRouteMapWidget.generated.h"
@@ -108,6 +109,12 @@ struct GAMEXXK_API FGameXXKOneGameRouteNodeVisualState
 	FVector2D ViewportHitBoxCenter = FVector2D::ZeroVector;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FVector2D ScreenHitBoxPosition = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FVector2D ScreenHitBoxCenter = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	FString IconPath;
 };
 
@@ -193,6 +200,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
 	float GetLastAppliedScrollOffsetForTest() const;
 
+	bool IsRouteScrollBarHiddenForTest() const;
+	float GetMaxScrollOffsetForTest() const;
+	bool HasRouteDragSurfaceForTest() const;
+	bool ApplyRouteMapDragDeltaForTest(float PointerDeltaY);
+	bool IsRouteNodeButtonBoundForTest(int32 ButtonIndex) const;
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameXXK|RouteMap")
 	void OnRouteNodeExecuted(const FGameXXKOneGameRouteNode& Node);
 
@@ -233,10 +246,56 @@ private:
 	UFUNCTION()
 	void HandleNodeButton11Clicked();
 
+	UFUNCTION()
+	void HandleNodeButton12Clicked();
+
+	UFUNCTION()
+	void HandleNodeButton13Clicked();
+
+	UFUNCTION()
+	void HandleNodeButton14Clicked();
+
+	UFUNCTION()
+	void HandleNodeButton15Clicked();
+
+	UFUNCTION()
+	void HandleNodeButton16Clicked();
+
+	UFUNCTION()
+	void HandleNodeButton17Clicked();
+
+	UFUNCTION()
+	void HandleNodeButton18Clicked();
+
+	UFUNCTION()
+	void HandleNodeButton19Clicked();
+
+	UFUNCTION()
+	void HandleNodeButton20Clicked();
+
+	UFUNCTION()
+	void HandleNodeButton21Clicked();
+
+	UFUNCTION()
+	void HandleNodeButton22Clicked();
+
+	UFUNCTION()
+	void HandleNodeButton23Clicked();
+
+	UFUNCTION()
+	FEventReply HandleRouteDragSurfaceMouseButtonDown(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+
+	UFUNCTION()
+	FEventReply HandleRouteDragSurfaceMouseButtonUp(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+
+	UFUNCTION()
+	FEventReply HandleRouteDragSurfaceMouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+
 	void BuildProgrammaticLayout();
 	void ConfigureNodeButton(int32 ButtonIndex, const FGameXXKOneGameRouteNode* Node);
 	void ConfigureLineVisual(int32 LineIndex, const TArray<FGameXXKOneGameRouteNode>& Nodes);
 	void ExecuteNodeButtonAtIndex(int32 ButtonIndex);
+	bool TryExecuteRouteNodeAtScreenPosition(const FVector2D& ScreenPosition);
 	void BindNodeButton(UButton* Button, int32 ButtonIndex);
 	UWidget* ConstructNodeVisualWidget(int32 NodeIndex);
 	UWidget* ConstructLineVisualWidget(int32 LineIndex);
@@ -250,6 +309,8 @@ private:
 	int32 GetRenderedRouteLineCount(const TArray<FGameXXKOneGameRouteNode>& Nodes) const;
 	bool TryGetRenderedRouteEdge(int32 LineIndex, const TArray<FGameXXKOneGameRouteNode>& Nodes, FGameXXKRouteMapEdge& OutEdge) const;
 	void ApplyInitialScrollOffset(const TArray<FGameXXKOneGameRouteNode>& Nodes);
+	float CalculateMaxScrollOffset() const;
+	void SetRouteScrollOffset(float NewScrollOffset);
 	static EGameXXKOneGameRouteRoomType MapRoomType(EGameXXKNodeKind NodeKind);
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|RouteMap")
@@ -268,7 +329,7 @@ private:
 	bool bUseOneGameBlueprintVisualWidgets = false;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|RouteMap|Texture")
-	TSoftObjectPtr<UTexture2D> OneGameStartTexture;
+	TSoftObjectPtr<UTexture2D> OneGameRouteLineTexture;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|RouteMap|Texture")
 	TSoftObjectPtr<UTexture2D> OneGameBattleTexture;
@@ -325,6 +386,9 @@ private:
 	TObjectPtr<UCanvasPanel> RootCanvas;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> RouteDragSurface;
+
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UWidget>> NodeVisualWidgets;
 
 	UPROPERTY(Transient)
@@ -364,7 +428,22 @@ private:
 	FVector2D RouteContentSize = FVector2D(640.0f, 1040.0f);
 
 	UPROPERTY(Transient)
+	FVector2D LastBuiltRouteContentSize = FVector2D::ZeroVector;
+
+	UPROPERTY(Transient)
 	float LastAppliedScrollOffset = 0.0f;
+
+	UPROPERTY(Transient)
+	bool bRouteMapDragActive = false;
+
+	UPROPERTY(Transient)
+	bool bRouteMapDragMoved = false;
+
+	UPROPERTY(Transient)
+	FVector2D RouteMapDragStartScreenPosition = FVector2D::ZeroVector;
+
+	UPROPERTY(Transient)
+	FVector2D LastRouteMapDragScreenPosition = FVector2D::ZeroVector;
 
 	UPROPERTY(Transient)
 	int32 LastBuiltRouteNodeCount = INDEX_NONE;

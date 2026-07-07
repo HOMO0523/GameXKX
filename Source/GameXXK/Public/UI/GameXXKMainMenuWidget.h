@@ -7,8 +7,10 @@
 
 class UBorder;
 class UButton;
+class UImage;
 class UOverlay;
 class UTextBlock;
+class UTexture2D;
 class UVerticalBox;
 
 UENUM(BlueprintType)
@@ -103,6 +105,15 @@ public:
 	bool HasLandingActionForTest(FName CommandName, bool bRequireEnabled) const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MainMenu|Test")
+	TArray<FGameXXKMVPCommandDescriptor> BuildEncounterActionsForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MainMenu|Test")
+	bool HasEncounterActionForTest(FName CommandName, bool bRequireEnabled) const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MainMenu|Test")
+	bool ExecuteEncounterActionForTest(FName CommandName);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MainMenu|Test")
 	TArray<FGameXXKMainMenuSaveSlotRow> BuildSaveSlotRowsForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MainMenu|Test")
@@ -130,8 +141,10 @@ private:
 	FString GetManualSlotNameChecked(int32 SlotIndex) const;
 	void BuildProgrammaticLayout();
 	void RefreshProgrammaticLayout();
+	bool IsEncounterScreen() const;
+	bool ExecuteEncounterCommand(FName CommandName);
 	UTextBlock* AddTextBlock(UVerticalBox* Parent, const FText& Text) const;
-	UButton* AddMenuButton(UVerticalBox* Parent, const FText& Label) const;
+	UButton* AddMenuButton(UVerticalBox* Parent, const FText& Label, FName ButtonName = NAME_None, FName LabelName = NAME_None) const;
 	void AddSaveSlotRow(UVerticalBox* Parent, const FGameXXKMainMenuSaveSlotRow& Row);
 	void AddCloseButton(UVerticalBox* Parent);
 	void HandleSaveSlotClicked(int32 SlotIndex);
@@ -188,6 +201,24 @@ private:
 	UFUNCTION()
 	void HandleDeleteSlot4Clicked();
 
+	UFUNCTION()
+	void HandleResolveEventGoldClicked();
+
+	UFUNCTION()
+	void HandleResolveCampHealClicked();
+
+	UFUNCTION()
+	void HandleBuyHealingPowderClicked();
+
+	UFUNCTION()
+	void HandleSellHealingPowderClicked();
+
+	UFUNCTION()
+	void HandleUseHealingPowderClicked();
+
+	UFUNCTION()
+	void HandleCompleteMerchantNodeClicked();
+
 	UPROPERTY(Transient)
 	EGameXXKMainMenuLayer MenuLayer = EGameXXKMainMenuLayer::Landing;
 
@@ -204,11 +235,23 @@ private:
 	TObjectPtr<UOverlay> RootOverlay;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UImage> CoverImage;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> LandingBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> EncounterBox;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> ModalBackdrop;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> ModalBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> LoadedMainMenuCoverTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> LoadedInkButtonTexture;
 };

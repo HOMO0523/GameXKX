@@ -32,6 +32,111 @@ namespace
 		}
 		return false;
 	}
+
+	static FName MakeRouteNodeCommandName(int32 NodeId)
+	{
+		return FName(*FString::Printf(TEXT("RouteNode%d"), NodeId));
+	}
+
+	static const FGameXXKRouteMapNode* FindRouteNodeById(const FGameXXKRuntimeState& State, int32 NodeId)
+	{
+		return State.RouteMapNodes.FindByPredicate([NodeId](const FGameXXKRouteMapNode& Node)
+		{
+			return Node.NodeId == NodeId;
+		});
+	}
+
+	static bool RouteNodeCanReachKind(const FGameXXKRuntimeState& State, int32 StartNodeId, EGameXXKNodeKind TargetKind)
+	{
+		TSet<int32> Visited;
+		TArray<int32> Stack;
+		Stack.Add(StartNodeId);
+		while (!Stack.IsEmpty())
+		{
+			const int32 NodeId = Stack.Pop(EAllowShrinking::No);
+			if (Visited.Contains(NodeId))
+			{
+				continue;
+			}
+			Visited.Add(NodeId);
+			const FGameXXKRouteMapNode* Node = FindRouteNodeById(State, NodeId);
+			if (!Node)
+			{
+				continue;
+			}
+			if (Node->NodeKind == TargetKind)
+			{
+				return true;
+			}
+			for (int32 OutgoingNodeId : Node->OutgoingNodeIds)
+			{
+				Stack.Add(OutgoingNodeId);
+			}
+		}
+		return false;
+	}
+
+	static const FGameXXKRouteMapNode* FindReachableRouteStepTowardKind(const FGameXXKRuntimeState& State, EGameXXKNodeKind TargetKind)
+	{
+		for (int32 NodeId : State.ReachableRouteNodeIds)
+		{
+			const FGameXXKRouteMapNode* Node = FindRouteNodeById(State, NodeId);
+			if (Node && Node->NodeKind == TargetKind)
+			{
+				return Node;
+			}
+		}
+		for (int32 NodeId : State.ReachableRouteNodeIds)
+		{
+			if (RouteNodeCanReachKind(State, NodeId, TargetKind))
+			{
+				return FindRouteNodeById(State, NodeId);
+			}
+		}
+		return nullptr;
+	}
+
+	static bool HandleRouteTowardKind(AGameXXKMVPHUD* HUD, const UGameXXKMVPSubsystem* Subsystem, EGameXXKNodeKind TargetKind)
+	{
+		if (!HUD || !Subsystem)
+		{
+			return false;
+		}
+		for (int32 StepGuard = 0; StepGuard < 32 && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::DungeonMap; ++StepGuard)
+		{
+			const FGameXXKRouteMapNode* Node = FindReachableRouteStepTowardKind(Subsystem->GetRuntimeState(), TargetKind);
+			if (!Node)
+			{
+				return false;
+			}
+			const EGameXXKNodeKind NodeKind = Node->NodeKind;
+			if (!HUD->HandleDemoCommand(MakeRouteNodeCommandName(Node->NodeId)))
+			{
+				return false;
+			}
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle && !HUD->HandleDemoCommand(FName(TEXT("ResolveBattleVictory"))))
+			{
+				return false;
+			}
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteEvent && !HUD->HandleDemoCommand(FName(TEXT("ResolveEventGold"))))
+			{
+				return false;
+			}
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteCamp && !HUD->HandleDemoCommand(FName(TEXT("ResolveCampHeal"))))
+			{
+				return false;
+			}
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteMerchant && !HUD->HandleDemoCommand(FName(TEXT("CompleteMerchantNode"))))
+			{
+				return false;
+			}
+			if (NodeKind == TargetKind)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -89,15 +194,15 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("accepted quest enters dungeon map"), HUD->HandleDemoCommand(FName(TEXT("EnterDungeon"))));
 	TestEqual(TEXT("screen after dungeon gate"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	const TArray<FGameXXKMVPRouteNodeDescriptor> RouteNodes = GameXXKMVPCommandRouter::BuildRouteMapNodes(Subsystem);
-	TestEqual(TEXT("dungeon route map shows five Slay-the-Spire nodes"), RouteNodes.Num(), 5);
-	if (RouteNodes.Num() == 5)
+	TestTrue(TEXT("dungeon route map shows generated Slay-the-Spire nodes"), RouteNodes.Num() >= 15);
+	if (RouteNodes.Num() >= 3)
 	{
-		TestEqual(TEXT("route start node command"), RouteNodes[0].CommandName, FName(TEXT("SelectStart")));
+		TestEqual(TEXT("route start node command"), RouteNodes[0].CommandName, FName(TEXT("RouteNode0")));
 		TestTrue(TEXT("route start node is clickable"), RouteNodes[0].bEnabled);
-		TestEqual(TEXT("route battle node command"), RouteNodes[1].CommandName, FName(TEXT("SelectBattle")));
+		TestEqual(TEXT("route battle node command"), RouteNodes[1].CommandName, FName(TEXT("RouteNode1")));
 		TestFalse(TEXT("route battle node waits for start node"), RouteNodes[1].bEnabled);
-		TestEqual(TEXT("route boss node command"), RouteNodes[4].CommandName, FName(TEXT("SelectBoss")));
-		TestFalse(TEXT("route boss node waits for earlier nodes"), RouteNodes[4].bEnabled);
+		TestEqual(TEXT("route boss node kind"), RouteNodes.Last().NodeKind, EGameXXKNodeKind::Boss);
+		TestFalse(TEXT("route boss node waits for earlier nodes"), RouteNodes.Last().bEnabled);
 	}
 	TestTrue(TEXT("dungeon HUD advances start node"), HUD->HandleDemoCommand(FName(TEXT("SelectStart"))));
 	TestTrue(TEXT("dungeon HUD opens battle node"), HUD->HandleDemoCommand(FName(TEXT("SelectBattle"))));
@@ -107,17 +212,10 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("follower remains after HUD failure"), Subsystem->GetRuntimeState().bFollowerJoined);
 	TestTrue(TEXT("retry enters dungeon after HUD failure"), HUD->HandleDemoCommand(FName(TEXT("EnterDungeon"))));
 	TestTrue(TEXT("retry advances start node"), HUD->HandleDemoCommand(FName(TEXT("SelectStart"))));
-	TestTrue(TEXT("retry opens battle node"), HUD->HandleDemoCommand(FName(TEXT("SelectBattle"))));
-	TestTrue(TEXT("battle HUD resolves normal victory"), HUD->HandleDemoCommand(FName(TEXT("ResolveBattleVictory"))));
-	TestEqual(TEXT("returns to dungeon after battle"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
-
-	TestTrue(TEXT("event HUD grants gold"), HUD->HandleDemoCommand(FName(TEXT("ResolveEventGold"))));
 	Subsystem->GetMutableRuntimeState().PlayerHP = 1;
-	TestTrue(TEXT("camp HUD heals"), HUD->HandleDemoCommand(FName(TEXT("ResolveCampHeal"))));
+	TestTrue(TEXT("HUD follows generated route to a camp"), HandleRouteTowardKind(HUD, Subsystem, EGameXXKNodeKind::Camp));
 	TestEqual(TEXT("camp restored HP"), Subsystem->GetRuntimeState().PlayerHP, Subsystem->GetRuntimeState().PlayerMaxHP);
-	TestTrue(TEXT("dungeon HUD opens boss node"), HUD->HandleDemoCommand(FName(TEXT("SelectBoss"))));
-	TestEqual(TEXT("boss battle visible"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
-	TestTrue(TEXT("battle HUD resolves boss victory"), HUD->HandleDemoCommand(FName(TEXT("ResolveBattleVictory"))));
+	TestTrue(TEXT("HUD follows generated route to boss and clears it"), HandleRouteTowardKind(HUD, Subsystem, EGameXXKNodeKind::Boss));
 	TestEqual(TEXT("boss returns to world map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 
 	const FGameXXKRuntimeState CompletedRouteState = Subsystem->GetRuntimeState();

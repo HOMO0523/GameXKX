@@ -10,21 +10,23 @@
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/ScrollBox.h"
+#include "Components/ScrollBoxSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
 #include "Engine/Texture2D.h"
+#include "Input/Reply.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKMVPCommandRouter.h"
 
 namespace
 {
-	static constexpr int32 MaxRouteNodeButtons = 12;
+	static constexpr int32 MaxRouteNodeButtons = 24;
 	static const TCHAR* OneGameRouteWidgetClassPath = TEXT("/Game/1Game/UI/UI_地图选择.UI_地图选择_C");
 	static const TCHAR* OneGameNodeWidgetClassPath = TEXT("/Game/1Game/UI/UI_地图选择-关卡.UI_地图选择-关卡_C");
 	static const TCHAR* OneGameLineWidgetClassPath = TEXT("/Game/1Game/UI/UI_地图选择-关卡-线.UI_地图选择-关卡-线_C");
 	static const TCHAR* OneGameBossWidgetClassPath = TEXT("/Game/1Game/UI/UI_地图选择-Boss.UI_地图选择-Boss_C");
-	static const TCHAR* OneGameStartTexturePath = TEXT("/Game/1Game/Texture/脚印.脚印");
+	static const TCHAR* OneGameRouteLineTexturePath = TEXT("/Game/1Game/Texture/脚印.脚印");
 	static const TCHAR* OneGameBattleTexturePath = TEXT("/Game/1Game/Texture/小怪.小怪");
 	static const TCHAR* OneGameBattleDisabledTexturePath = TEXT("/Game/1Game/Texture/小怪灰色.小怪灰色");
 	static const TCHAR* OneGameEliteTexturePath = TEXT("/Game/1Game/Texture/精英怪.精英怪");
@@ -43,8 +45,13 @@ namespace
 	const float RouteTopPadding = 96.0f;
 	const float RouteBottomPadding = 128.0f;
 	const float RouteLayerGap = 180.0f;
-	const float RouteInitialScrollTopPadding = 120.0f;
 	const float DefaultRouteViewportHeight = 520.0f;
+	const float RouteViewportHeightContentMultiplier = 1.8f;
+	const float RouteCenteredLaneWidthFraction = 0.70f;
+	const float RouteCenteredLaneMinWidth = 480.0f;
+	const float RouteCenteredLaneMaxWidth = 960.0f;
+	const float RouteLineThickness = 24.0f;
+	const float RouteClickDragThresholdSq = 64.0f;
 
 	FText RoomTypeLabel(EGameXXKOneGameRouteRoomType RoomType)
 	{
@@ -121,7 +128,7 @@ UGameXXKOneGameRouteMapWidget::UGameXXKOneGameRouteMapWidget()
 	OneGameNodeWidgetClass = TSoftClassPtr<UUserWidget>(FSoftObjectPath(OneGameNodeWidgetClassPath));
 	OneGameLineWidgetClass = TSoftClassPtr<UUserWidget>(FSoftObjectPath(OneGameLineWidgetClassPath));
 	OneGameBossWidgetClass = TSoftClassPtr<UUserWidget>(FSoftObjectPath(OneGameBossWidgetClassPath));
-	OneGameStartTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameStartTexturePath));
+	OneGameRouteLineTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameRouteLineTexturePath));
 	OneGameBattleTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameBattleTexturePath));
 	OneGameBattleDisabledTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameBattleDisabledTexturePath));
 	OneGameEliteTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameEliteTexturePath));
@@ -148,6 +155,77 @@ void UGameXXKOneGameRouteMapWidget::NativeConstruct()
 	Super::NativeConstruct();
 	BuildProgrammaticLayout();
 	RefreshFromState();
+}
+
+FEventReply UGameXXKOneGameRouteMapWidget::HandleRouteDragSurfaceMouseButtonDown(
+	FGeometry MyGeometry,
+	const FPointerEvent& MouseEvent)
+{
+	if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton || !RouteDragSurface)
+	{
+		return FEventReply(false);
+	}
+
+	bRouteMapDragActive = true;
+	bRouteMapDragMoved = false;
+	RouteMapDragStartScreenPosition = MouseEvent.GetScreenSpacePosition();
+	LastRouteMapDragScreenPosition = RouteMapDragStartScreenPosition;
+	FEventReply Reply(true);
+	Reply.NativeReply = FReply::Handled().CaptureMouse(RouteDragSurface->TakeWidget());
+	return Reply;
+}
+
+FEventReply UGameXXKOneGameRouteMapWidget::HandleRouteDragSurfaceMouseButtonUp(
+	FGeometry MyGeometry,
+	const FPointerEvent& MouseEvent)
+{
+	if (!bRouteMapDragActive || MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+	{
+		return FEventReply(false);
+	}
+
+	const FVector2D ReleasePosition = MouseEvent.GetScreenSpacePosition();
+	const bool bWasClick = !bRouteMapDragMoved
+		&& (ReleasePosition - RouteMapDragStartScreenPosition).SizeSquared() <= RouteClickDragThresholdSq;
+
+	bRouteMapDragActive = false;
+	bRouteMapDragMoved = false;
+	FEventReply Reply(true);
+	Reply.NativeReply = FReply::Handled().ReleaseMouseCapture();
+	if (bWasClick)
+	{
+		TryExecuteRouteNodeAtScreenPosition(ReleasePosition);
+	}
+	return Reply;
+}
+
+FEventReply UGameXXKOneGameRouteMapWidget::HandleRouteDragSurfaceMouseMove(
+	FGeometry MyGeometry,
+	const FPointerEvent& MouseEvent)
+{
+	if (!bRouteMapDragActive)
+	{
+		return FEventReply(false);
+	}
+
+	if (!MouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton))
+	{
+		bRouteMapDragActive = false;
+		FEventReply Reply(true);
+		Reply.NativeReply = FReply::Handled().ReleaseMouseCapture();
+		return Reply;
+	}
+
+	const FVector2D CurrentPosition = MouseEvent.GetScreenSpacePosition();
+	const FVector2D PointerDelta = CurrentPosition - LastRouteMapDragScreenPosition;
+	LastRouteMapDragScreenPosition = CurrentPosition;
+	if ((CurrentPosition - RouteMapDragStartScreenPosition).SizeSquared() > RouteClickDragThresholdSq)
+	{
+		bRouteMapDragMoved = true;
+	}
+	ApplyRouteMapDragDeltaForTest(PointerDelta.Y);
+
+	return FEventReply(true);
 }
 
 void UGameXXKOneGameRouteMapWidget::RefreshFromState()
@@ -261,15 +339,15 @@ TArray<FGameXXKOneGameRouteNodeVisualState> UGameXXKOneGameRouteMapWidget::GetRo
 		VisualState.HitBoxSize = FVector2D(110.0f, 72.0f);
 		VisualState.ViewportHitBoxPosition = RouteMapViewportPosition + VisualState.HitBoxPosition - FVector2D(0.0f, LastAppliedScrollOffset);
 		VisualState.ViewportHitBoxCenter = VisualState.ViewportHitBoxPosition + VisualState.HitBoxSize * 0.5f;
-		if (NodeButtons.IsValidIndex(VisualIndex) && NodeButtons[VisualIndex])
+		VisualState.ScreenHitBoxPosition = VisualState.ViewportHitBoxPosition;
+		VisualState.ScreenHitBoxCenter = VisualState.ViewportHitBoxCenter;
+		if (const UButton* Button = NodeButtons.IsValidIndex(VisualIndex) ? NodeButtons[VisualIndex].Get() : nullptr)
 		{
-			const FGeometry ButtonGeometry = NodeButtons[VisualIndex]->GetCachedGeometry();
-			const FVector2D GeometrySize = ButtonGeometry.GetLocalSize();
-			if (GeometrySize.X > 0.0f && GeometrySize.Y > 0.0f)
+			const FGeometry& ButtonGeometry = Button->GetCachedGeometry();
+			if (ButtonGeometry.GetLocalSize().X > 0.0f && ButtonGeometry.GetLocalSize().Y > 0.0f)
 			{
-				VisualState.HitBoxSize = GeometrySize;
-				VisualState.ViewportHitBoxPosition = ButtonGeometry.LocalToAbsolute(FVector2D::ZeroVector);
-				VisualState.ViewportHitBoxCenter = ButtonGeometry.LocalToAbsolute(GeometrySize * 0.5f);
+				VisualState.ScreenHitBoxPosition = ButtonGeometry.LocalToAbsolute(FVector2D::ZeroVector);
+				VisualState.ScreenHitBoxCenter = ButtonGeometry.LocalToAbsolute(ButtonGeometry.GetLocalSize() * 0.5f);
 			}
 		}
 		VisualState.IconPath = GetTextureForNode(Node).ToSoftObjectPath().ToString();
@@ -301,7 +379,7 @@ bool UGameXXKOneGameRouteMapWidget::AreOneGameVisualClassesConfigured() const
 
 bool UGameXXKOneGameRouteMapWidget::AreOneGameTextureVisualsConfigured() const
 {
-	return !OneGameStartTexture.IsNull()
+	return !OneGameRouteLineTexture.IsNull()
 		&& !OneGameBattleTexture.IsNull()
 		&& !OneGameBattleDisabledTexture.IsNull()
 		&& !OneGameEliteTexture.IsNull()
@@ -395,6 +473,12 @@ float UGameXXKOneGameRouteMapWidget::GetLastAppliedScrollOffsetForTest() const
 	return LastAppliedScrollOffset;
 }
 
+bool UGameXXKOneGameRouteMapWidget::IsRouteNodeButtonBoundForTest(int32 ButtonIndex) const
+{
+	const UButton* Button = NodeButtons.IsValidIndex(ButtonIndex) ? NodeButtons[ButtonIndex].Get() : nullptr;
+	return Button && Button->OnClicked.IsBound();
+}
+
 void UGameXXKOneGameRouteMapWidget::HandleNodeButton0Clicked()
 {
 	ExecuteNodeButtonAtIndex(0);
@@ -455,6 +539,66 @@ void UGameXXKOneGameRouteMapWidget::HandleNodeButton11Clicked()
 	ExecuteNodeButtonAtIndex(11);
 }
 
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton12Clicked()
+{
+	ExecuteNodeButtonAtIndex(12);
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton13Clicked()
+{
+	ExecuteNodeButtonAtIndex(13);
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton14Clicked()
+{
+	ExecuteNodeButtonAtIndex(14);
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton15Clicked()
+{
+	ExecuteNodeButtonAtIndex(15);
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton16Clicked()
+{
+	ExecuteNodeButtonAtIndex(16);
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton17Clicked()
+{
+	ExecuteNodeButtonAtIndex(17);
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton18Clicked()
+{
+	ExecuteNodeButtonAtIndex(18);
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton19Clicked()
+{
+	ExecuteNodeButtonAtIndex(19);
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton20Clicked()
+{
+	ExecuteNodeButtonAtIndex(20);
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton21Clicked()
+{
+	ExecuteNodeButtonAtIndex(21);
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton22Clicked()
+{
+	ExecuteNodeButtonAtIndex(22);
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleNodeButton23Clicked()
+{
+	ExecuteNodeButtonAtIndex(23);
+}
+
 void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 {
 	if (!WidgetTree)
@@ -478,19 +622,8 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		WidgetTree->RootWidget = RootOverlay;
 		bRouteLayoutWasCreated = true;
 
-		RouteBackgroundImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("GameXXKOneGameRouteMapBackground"));
-		if (UTexture2D* BackgroundTexture = OneGameRouteBackgroundTexture.LoadSynchronous())
-		{
-			RouteBackgroundImage->SetBrushFromTexture(BackgroundTexture, true);
-		}
-		RouteBackgroundImage->SetColorAndOpacity(FLinearColor::White);
-		if (UOverlaySlot* BackgroundSlot = RootOverlay->AddChildToOverlay(RouteBackgroundImage))
-		{
-			BackgroundSlot->SetHorizontalAlignment(HAlign_Fill);
-			BackgroundSlot->SetVerticalAlignment(VAlign_Fill);
-		}
-
 		RouteScrollBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("GameXXKOneGameRouteMapScroll"));
+		RouteScrollBox->SetScrollBarVisibility(ESlateVisibility::Collapsed);
 		if (UOverlaySlot* ScrollSlot = RootOverlay->AddChildToOverlay(RouteScrollBox))
 		{
 			ScrollSlot->SetHorizontalAlignment(HAlign_Fill);
@@ -508,12 +641,20 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		return;
 	}
 
+	if (UScrollBoxSlot* ContentScrollSlot = Cast<UScrollBoxSlot>(RouteContentSizeBox->Slot))
+	{
+		ContentScrollSlot->SetHorizontalAlignment(HAlign_Center);
+		ContentScrollSlot->SetVerticalAlignment(VAlign_Top);
+	}
+
 	RouteContentSizeBox->SetWidthOverride(RouteContentSize.X);
 	RouteContentSizeBox->SetHeightOverride(RouteContentSize.Y);
 
 	const bool bNeedsRebuildRouteChildren = bRouteLayoutWasCreated
+		|| !RouteDragSurface
 		|| LastBuiltRouteNodeCount != RouteNodeCount
 		|| LastBuiltRouteLineCount != RouteLineCount
+		|| !LastBuiltRouteContentSize.Equals(RouteContentSize, 0.1f)
 		|| bLastBuiltUseOneGameBlueprintVisualWidgets != bUseOneGameBlueprintVisualWidgets;
 	if (!bNeedsRebuildRouteChildren)
 	{
@@ -521,6 +662,44 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 	}
 
 	RootCanvas->ClearChildren();
+	RouteBackgroundImage = nullptr;
+	RouteDragSurface = nullptr;
+
+	RouteBackgroundImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("GameXXKOneGameRouteMapBackground"));
+	if (RouteBackgroundImage)
+	{
+		if (UTexture2D* BackgroundTexture = OneGameRouteBackgroundTexture.LoadSynchronous())
+		{
+			RouteBackgroundImage->SetBrushFromTexture(BackgroundTexture, true);
+		}
+		RouteBackgroundImage->SetColorAndOpacity(FLinearColor::White);
+		RouteBackgroundImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+		if (UCanvasPanelSlot* BackgroundSlot = RootCanvas->AddChildToCanvas(RouteBackgroundImage))
+		{
+			BackgroundSlot->SetPosition(FVector2D::ZeroVector);
+			BackgroundSlot->SetSize(RouteContentSize);
+			BackgroundSlot->SetZOrder(0);
+		}
+	}
+
+	RouteDragSurface = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(),
+		TEXT("GameXXKOneGameRouteMapDragSurface"));
+	if (RouteDragSurface)
+	{
+		RouteDragSurface->SetPadding(FMargin(0.0f));
+		RouteDragSurface->SetBrushColor(FLinearColor(1.0f, 1.0f, 1.0f, 0.01f));
+		RouteDragSurface->SetVisibility(ESlateVisibility::Visible);
+		RouteDragSurface->OnMouseButtonDownEvent.BindDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleRouteDragSurfaceMouseButtonDown);
+		RouteDragSurface->OnMouseButtonUpEvent.BindDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleRouteDragSurfaceMouseButtonUp);
+		RouteDragSurface->OnMouseMoveEvent.BindDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleRouteDragSurfaceMouseMove);
+		if (UCanvasPanelSlot* DragSlot = RootCanvas->AddChildToCanvas(RouteDragSurface))
+		{
+			DragSlot->SetPosition(FVector2D::ZeroVector);
+			DragSlot->SetSize(RouteContentSize);
+			DragSlot->SetZOrder(1);
+		}
+	}
 
 	LineVisualWidgets.Reset();
 	LineVisualBorders.Reset();
@@ -528,9 +707,11 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 	{
 		if (UWidget* LineVisual = ConstructLineVisualWidget(LineIndex))
 		{
+			LineVisual->SetVisibility(ESlateVisibility::HitTestInvisible);
 			if (UCanvasPanelSlot* LineSlot = RootCanvas->AddChildToCanvas(LineVisual))
 			{
-				LineSlot->SetSize(FVector2D(128.0f, 18.0f));
+				LineSlot->SetSize(FVector2D(128.0f, RouteLineThickness));
+				LineSlot->SetZOrder(2);
 			}
 			LineVisualWidgets.Add(LineVisual);
 		}
@@ -545,9 +726,11 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 	{
 		if (UWidget* NodeVisual = ConstructNodeVisualWidget(NodeIndex))
 		{
+			NodeVisual->SetVisibility(ESlateVisibility::HitTestInvisible);
 			if (UCanvasPanelSlot* NodeSlot = RootCanvas->AddChildToCanvas(NodeVisual))
 			{
 				NodeSlot->SetSize(FVector2D(96.0f, 96.0f));
+				NodeSlot->SetZOrder(3);
 			}
 			NodeVisualWidgets.Add(NodeVisual);
 		}
@@ -560,11 +743,22 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 	{
 		UButton* NodeButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), *FString::Printf(TEXT("RouteNodeButton%d"), ButtonIndex));
 		UTextBlock* NodeLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("RouteNodeLabel%d"), ButtonIndex));
+		const FSlateColorBrush TransparentNodeBrush(FLinearColor(1.0f, 1.0f, 1.0f, 0.01f));
+		FButtonStyle TransparentButtonStyle;
+		TransparentButtonStyle.SetNormal(TransparentNodeBrush);
+		TransparentButtonStyle.SetHovered(TransparentNodeBrush);
+		TransparentButtonStyle.SetPressed(TransparentNodeBrush);
+		TransparentButtonStyle.SetDisabled(TransparentNodeBrush);
+		NodeButton->SetStyle(TransparentButtonStyle);
+		NodeButton->SetBackgroundColor(FLinearColor::Transparent);
+		NodeButton->SetClickMethod(EButtonClickMethod::PreciseClick);
+		NodeButton->SetTouchMethod(EButtonTouchMethod::PreciseTap);
 		NodeButton->AddChild(NodeLabel);
 		BindNodeButton(NodeButton, ButtonIndex);
 		if (UCanvasPanelSlot* CanvasSlot = RootCanvas->AddChildToCanvas(NodeButton))
 		{
 			CanvasSlot->SetSize(FVector2D(110.0f, 72.0f));
+			CanvasSlot->SetZOrder(4);
 		}
 
 		NodeButtons.Add(NodeButton);
@@ -574,6 +768,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 
 	LastBuiltRouteNodeCount = RouteNodeCount;
 	LastBuiltRouteLineCount = RouteLineCount;
+	LastBuiltRouteContentSize = RouteContentSize;
 	bLastBuiltUseOneGameBlueprintVisualWidgets = bUseOneGameBlueprintVisualWidgets;
 }
 
@@ -593,7 +788,7 @@ void UGameXXKOneGameRouteMapWidget::ConfigureNodeButton(int32 ButtonIndex, const
 
 	Button->SetVisibility(Node ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	Button->SetIsEnabled(Node && Node->bEnabled);
-	Button->SetRenderOpacity(Node && Node->bEnabled ? 0.08f : 0.0f);
+	Button->SetRenderOpacity(1.0f);
 	if (NodeButtonIndices.IsValidIndex(ButtonIndex))
 	{
 		NodeButtonIndices[ButtonIndex] = Node ? Node->NodeIndex : INDEX_NONE;
@@ -614,11 +809,11 @@ void UGameXXKOneGameRouteMapWidget::ConfigureNodeButton(int32 ButtonIndex, const
 		UWidget* NodeVisual = NodeVisualWidgets[ButtonIndex];
 		if (NodeVisual)
 		{
-			NodeVisual->SetVisibility(Node ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			NodeVisual->SetVisibility(Node ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 			NodeVisual->SetRenderOpacity(Node && Node->bVisited ? 0.52f : 1.0f);
 			if (UBorder* NodeBorder = NodeVisualBorders.IsValidIndex(ButtonIndex) ? NodeVisualBorders[ButtonIndex].Get() : nullptr)
 			{
-				NodeBorder->SetBrushColor(RouteNodeColor(Node));
+				NodeBorder->SetBrushColor(FLinearColor::Transparent);
 			}
 			if (UTextBlock* NodeLabel = NodeVisualLabels.IsValidIndex(ButtonIndex) ? NodeVisualLabels[ButtonIndex].Get() : nullptr)
 			{
@@ -692,7 +887,7 @@ void UGameXXKOneGameRouteMapWidget::ConfigureLineVisual(int32 LineIndex, const T
 	}
 
 	const bool bHasLine = StartNode && EndNode;
-	LineVisual->SetVisibility(bHasLine ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	LineVisual->SetVisibility(bHasLine ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	if (!bHasLine)
 	{
 		return;
@@ -705,11 +900,29 @@ void UGameXXKOneGameRouteMapWidget::ConfigureLineVisual(int32 LineIndex, const T
 	const float Angle = FMath::RadiansToDegrees(FMath::Atan2(Delta.Y, Delta.X));
 	if (UCanvasPanelSlot* LineSlot = Cast<UCanvasPanelSlot>(LineVisual->Slot))
 	{
-		LineSlot->SetPosition(Start + Delta * 0.5f + FVector2D(-Length * 0.5f, -9.0f));
-		LineSlot->SetSize(FVector2D(FMath::Max(24.0f, Length), 10.0f));
+		LineSlot->SetPosition(Start + Delta * 0.5f + FVector2D(-Length * 0.5f, -RouteLineThickness * 0.5f));
+		LineSlot->SetSize(FVector2D(FMath::Max(24.0f, Length), RouteLineThickness));
 	}
 	LineVisual->SetRenderTransformAngle(Angle);
 	const bool bRouteLineIsOpen = StartNode->bVisited || StartNode->bEnabled;
+	if (UImage* LineImage = Cast<UImage>(LineVisual))
+	{
+		FSlateBrush LineBrush = LineImage->GetBrush();
+		if (const UTexture2D* RouteLineTexture = Cast<UTexture2D>(LineBrush.GetResourceObject()))
+		{
+			const int32 RouteLineTextureWidth = RouteLineTexture->GetSizeX() > 0
+				? RouteLineTexture->GetSizeX()
+				: RouteLineTexture->GetImportedSize().X;
+			const float TextureWidth = static_cast<float>(RouteLineTextureWidth);
+			const float VisibleSourceWidth = TextureWidth > 0.0f
+				? FMath::Clamp(Length / TextureWidth, 0.0f, 1.0f)
+				: 1.0f;
+			LineBrush.SetImageSize(FVector2f(FMath::Max(24.0f, Length), RouteLineThickness));
+			LineBrush.SetUVRegion(FBox2f(FVector2f(0.0f, 0.0f), FVector2f(VisibleSourceWidth, 1.0f)));
+			LineImage->SetBrush(LineBrush);
+		}
+		LineImage->SetColorAndOpacity(RouteLineColor(bRouteLineIsOpen));
+	}
 	if (UBorder* LineBorder = LineVisualBorders.IsValidIndex(LineIndex) ? LineVisualBorders[LineIndex].Get() : nullptr)
 	{
 		LineBorder->SetBrushColor(RouteLineColor(bRouteLineIsOpen));
@@ -724,6 +937,43 @@ void UGameXXKOneGameRouteMapWidget::ExecuteNodeButtonAtIndex(int32 ButtonIndex)
 		return;
 	}
 	ExecuteRouteNodeById(NodeButtonIndices[ButtonIndex]);
+}
+
+bool UGameXXKOneGameRouteMapWidget::TryExecuteRouteNodeAtScreenPosition(const FVector2D& ScreenPosition)
+{
+	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
+	const int32 RenderedNodeCount = GetRenderedRouteNodeCount(Nodes);
+	for (int32 NodeIndex = RenderedNodeCount - 1; NodeIndex >= 0; --NodeIndex)
+	{
+		if (!Nodes.IsValidIndex(NodeIndex) || !Nodes[NodeIndex].bEnabled)
+		{
+			continue;
+		}
+
+		const UButton* Button = NodeButtons.IsValidIndex(NodeIndex) ? NodeButtons[NodeIndex].Get() : nullptr;
+		if (!Button || Button->GetVisibility() == ESlateVisibility::Collapsed)
+		{
+			continue;
+		}
+
+		const FGeometry& ButtonGeometry = Button->GetCachedGeometry();
+		const FVector2D ButtonSize = ButtonGeometry.GetLocalSize();
+		if (ButtonSize.X <= 0.0f || ButtonSize.Y <= 0.0f)
+		{
+			continue;
+		}
+
+		const FVector2D LocalPosition = ButtonGeometry.AbsoluteToLocal(ScreenPosition);
+		if (LocalPosition.X >= 0.0f
+			&& LocalPosition.Y >= 0.0f
+			&& LocalPosition.X <= ButtonSize.X
+			&& LocalPosition.Y <= ButtonSize.Y)
+		{
+			return ExecuteRouteNodeById(Nodes[NodeIndex].NodeIndex);
+		}
+	}
+
+	return false;
 }
 
 void UGameXXKOneGameRouteMapWidget::BindNodeButton(UButton* Button, int32 ButtonIndex)
@@ -770,6 +1020,42 @@ void UGameXXKOneGameRouteMapWidget::BindNodeButton(UButton* Button, int32 Button
 		break;
 	case 11:
 		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton11Clicked);
+		break;
+	case 12:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton12Clicked);
+		break;
+	case 13:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton13Clicked);
+		break;
+	case 14:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton14Clicked);
+		break;
+	case 15:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton15Clicked);
+		break;
+	case 16:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton16Clicked);
+		break;
+	case 17:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton17Clicked);
+		break;
+	case 18:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton18Clicked);
+		break;
+	case 19:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton19Clicked);
+		break;
+	case 20:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton20Clicked);
+		break;
+	case 21:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton21Clicked);
+		break;
+	case 22:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton22Clicked);
+		break;
+	case 23:
+		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton23Clicked);
 		break;
 	default:
 		break;
@@ -897,19 +1183,25 @@ UWidget* UGameXXKOneGameRouteMapWidget::ConstructFallbackLineVisualWidget(int32 
 		return nullptr;
 	}
 
-	UBorder* LineBorder = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(),
+	UImage* LineImage = WidgetTree->ConstructWidget<UImage>(
+		UImage::StaticClass(),
 		*FString::Printf(TEXT("RouteLineFallbackVisual%d"), LineIndex));
-	if (LineBorder)
+	if (LineImage)
 	{
-		LineBorder->SetBrushColor(RouteLineColor(false));
-		LineBorder->SetPadding(FMargin(0.0f));
+		if (UTexture2D* RouteLineTexture = OneGameRouteLineTexture.LoadSynchronous())
+		{
+			LineImage->SetBrushFromTexture(RouteLineTexture, true);
+			FSlateBrush LineBrush = LineImage->GetBrush();
+			const FIntPoint ImportedSize = RouteLineTexture->GetImportedSize();
+			LineBrush.SetImageSize(FVector2f(
+				static_cast<float>(RouteLineTexture->GetSizeX() > 0 ? RouteLineTexture->GetSizeX() : ImportedSize.X),
+				static_cast<float>(RouteLineTexture->GetSizeY() > 0 ? RouteLineTexture->GetSizeY() : ImportedSize.Y)));
+			LineImage->SetBrush(LineBrush);
+		}
+		LineImage->SetColorAndOpacity(RouteLineColor(false));
+		LineImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
-	if (LineVisualBorders.IsValidIndex(LineIndex))
-	{
-		LineVisualBorders[LineIndex] = LineBorder;
-	}
-	return LineBorder;
+	return LineImage;
 }
 
 TSoftObjectPtr<UTexture2D> UGameXXKOneGameRouteMapWidget::GetTextureForNode(const FGameXXKOneGameRouteNode& Node) const
@@ -918,7 +1210,7 @@ TSoftObjectPtr<UTexture2D> UGameXXKOneGameRouteMapWidget::GetTextureForNode(cons
 	switch (Node.RoomType)
 	{
 	case EGameXXKOneGameRouteRoomType::Start:
-		return OneGameStartTexture;
+		return OneGameCampTexture;
 	case EGameXXKOneGameRouteRoomType::SmallEnemy:
 		return bDisabled ? OneGameBattleDisabledTexture : OneGameBattleTexture;
 	case EGameXXKOneGameRouteRoomType::EliteEnemy:
@@ -939,10 +1231,18 @@ TSoftObjectPtr<UTexture2D> UGameXXKOneGameRouteMapWidget::GetTextureForNode(cons
 
 FVector2D UGameXXKOneGameRouteMapWidget::GetNodeCanvasPosition(const FGameXXKOneGameRouteNode& Node) const
 {
-	const float UsableWidth = FMath::Max(1.0f, RouteContentSize.X - RouteHorizontalPadding * 2.0f);
+	const float CenteredLaneWidth = FMath::Min(
+		RouteContentSize.X,
+		FMath::Clamp(
+			RouteContentSize.X * RouteCenteredLaneWidthFraction,
+			RouteCenteredLaneMinWidth,
+			RouteCenteredLaneMaxWidth));
+	const float CenteredLaneLeft = (RouteContentSize.X - CenteredLaneWidth) * 0.5f;
+	const float LanePadding = FMath::Min(RouteHorizontalPadding, CenteredLaneWidth * 0.2f);
+	const float UsableWidth = FMath::Max(1.0f, CenteredLaneWidth - LanePadding * 2.0f);
 	const float UsableHeight = FMath::Max(1.0f, RouteContentSize.Y - RouteTopPadding - RouteBottomPadding);
 	return FVector2D(
-		RouteHorizontalPadding + Node.NormalizedPosition.X * UsableWidth,
+		CenteredLaneLeft + LanePadding + Node.NormalizedPosition.X * UsableWidth,
 		RouteTopPadding + (1.0f - Node.NormalizedPosition.Y) * UsableHeight);
 }
 
@@ -963,10 +1263,11 @@ FVector2D UGameXXKOneGameRouteMapWidget::CalculateRouteContentSize(const TArray<
 		MaxLayerIndex = FMath::Max(0, Nodes.Num() - 1);
 	}
 
-	const float DynamicHeight = RouteTopPadding + RouteBottomPadding + static_cast<float>(MaxLayerIndex + 1) * RouteLayerGap;
+	const double DynamicHeight = RouteTopPadding + RouteBottomPadding + static_cast<double>(MaxLayerIndex + 1) * RouteLayerGap;
+	const double ViewportDrivenHeight = RouteMapViewportSize.Y * RouteViewportHeightContentMultiplier;
 	return FVector2D(
 		FMath::Max(MinimumRouteContentSize.X, RouteMapViewportSize.X),
-		FMath::Max(MinimumRouteContentSize.Y, DynamicHeight));
+		FMath::Max3(MinimumRouteContentSize.Y, DynamicHeight, ViewportDrivenHeight));
 }
 
 int32 UGameXXKOneGameRouteMapWidget::GetRenderedRouteNodeCount(const TArray<FGameXXKOneGameRouteNode>& Nodes) const
@@ -1035,51 +1336,50 @@ bool UGameXXKOneGameRouteMapWidget::TryGetRenderedRouteEdge(
 
 void UGameXXKOneGameRouteMapWidget::ApplyInitialScrollOffset(const TArray<FGameXXKOneGameRouteNode>& Nodes)
 {
-	const int32 RenderedNodeCount = GetRenderedRouteNodeCount(Nodes);
-	const FGameXXKOneGameRouteNode* TargetNode = nullptr;
-	for (int32 NodeIndex = 0; NodeIndex < RenderedNodeCount; ++NodeIndex)
+	if (GetRenderedRouteNodeCount(Nodes) <= 0)
 	{
-		if (Nodes[NodeIndex].bEnabled)
-		{
-			TargetNode = &Nodes[NodeIndex];
-			break;
-		}
-	}
-	if (!TargetNode)
-	{
-		for (int32 NodeIndex = 0; NodeIndex < RenderedNodeCount; ++NodeIndex)
-		{
-			if (Nodes[NodeIndex].bVisited)
-			{
-				TargetNode = &Nodes[NodeIndex];
-				break;
-			}
-		}
-	}
-	if (!TargetNode && RenderedNodeCount > 0)
-	{
-		TargetNode = &Nodes[0];
-	}
-
-	if (!TargetNode)
-	{
-		LastAppliedScrollOffset = 0.0f;
-		if (RouteScrollBox)
-		{
-			RouteScrollBox->SetScrollOffset(LastAppliedScrollOffset);
-		}
+		SetRouteScrollOffset(0.0f);
 		return;
 	}
 
-	const FVector2D NodePosition = GetNodeCanvasPosition(*TargetNode);
+	SetRouteScrollOffset(CalculateMaxScrollOffset());
+}
+
+float UGameXXKOneGameRouteMapWidget::CalculateMaxScrollOffset() const
+{
 	const float EffectiveViewportHeight = RouteMapViewportSize.Y > 0.0f ? RouteMapViewportSize.Y : DefaultRouteViewportHeight;
-	const float MaxScrollOffset = FMath::Max(0.0f, RouteContentSize.Y - EffectiveViewportHeight);
-	const float DesiredScrollOffset = FMath::Max(0.0f, NodePosition.Y - RouteInitialScrollTopPadding);
-	LastAppliedScrollOffset = FMath::Clamp(DesiredScrollOffset, 0.0f, MaxScrollOffset);
+	return FMath::Max(0.0f, RouteContentSize.Y - EffectiveViewportHeight);
+}
+
+void UGameXXKOneGameRouteMapWidget::SetRouteScrollOffset(float NewScrollOffset)
+{
+	LastAppliedScrollOffset = FMath::Clamp(NewScrollOffset, 0.0f, CalculateMaxScrollOffset());
 	if (RouteScrollBox)
 	{
 		RouteScrollBox->SetScrollOffset(LastAppliedScrollOffset);
 	}
+}
+
+bool UGameXXKOneGameRouteMapWidget::IsRouteScrollBarHiddenForTest() const
+{
+	return RouteScrollBox && RouteScrollBox->GetScrollBarVisibility() == ESlateVisibility::Collapsed;
+}
+
+float UGameXXKOneGameRouteMapWidget::GetMaxScrollOffsetForTest() const
+{
+	return CalculateMaxScrollOffset();
+}
+
+bool UGameXXKOneGameRouteMapWidget::HasRouteDragSurfaceForTest() const
+{
+	return RouteDragSurface && RouteDragSurface->GetVisibility() == ESlateVisibility::Visible;
+}
+
+bool UGameXXKOneGameRouteMapWidget::ApplyRouteMapDragDeltaForTest(float PointerDeltaY)
+{
+	const float PreviousScrollOffset = LastAppliedScrollOffset;
+	SetRouteScrollOffset(LastAppliedScrollOffset - PointerDeltaY);
+	return !FMath::IsNearlyEqual(PreviousScrollOffset, LastAppliedScrollOffset);
 }
 
 EGameXXKOneGameRouteRoomType UGameXXKOneGameRouteMapWidget::MapRoomType(EGameXXKNodeKind NodeKind)

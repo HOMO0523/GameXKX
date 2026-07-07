@@ -20,9 +20,15 @@ bool UGameXXKCharacterPanelWidget::RefreshPlayerSummary()
 	Summary.DisplayName = TEXT("Player");
 	Summary.Level = State.PlayerLevel;
 	Summary.HP = State.PlayerHP;
+	Summary.MaxHP = State.PlayerMaxHP;
+	Summary.MP = State.PlayerMP;
+	Summary.MaxMP = State.PlayerMaxMP;
 	Summary.Attack = State.PlayerAttack;
 	Summary.Defense = State.PlayerDefense;
 	Summary.Speed = State.PlayerSpeed;
+	Summary.EquippedWeapon = State.EquippedWeapon;
+	Summary.EquippedArmor = State.EquippedArmor;
+	Summary.EquippedAccessory = State.EquippedAccessory;
 	OnCharacterSummaryChanged();
 	return true;
 }

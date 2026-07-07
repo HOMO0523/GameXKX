@@ -19,6 +19,15 @@ struct FGameXXKCharacterSummary
 	int32 HP = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GameXXK|Character")
+	int32 MaxHP = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GameXXK|Character")
+	int32 MP = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GameXXK|Character")
+	int32 MaxMP = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GameXXK|Character")
 	int32 Attack = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GameXXK|Character")
@@ -26,6 +35,15 @@ struct FGameXXKCharacterSummary
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GameXXK|Character")
 	int32 Speed = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GameXXK|Character")
+	FName EquippedWeapon;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GameXXK|Character")
+	FName EquippedArmor;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GameXXK|Character")
+	FName EquippedAccessory;
 };
 
 UCLASS(Blueprintable)

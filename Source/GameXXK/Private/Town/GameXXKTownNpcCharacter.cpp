@@ -7,6 +7,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
 #include "Interaction/GameXXKInteractionComponent.h"
+#include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
 AGameXXKTownNpcCharacter::AGameXXKTownNpcCharacter()
@@ -201,6 +202,13 @@ void AGameXXKTownNpcCharacter::Interact_Implementation(APawn* InstigatorPawn)
 		OnMerchantInteract(InstigatorPawn);
 	}
 	OnDefaultInteractionResolved(InstigatorPawn, bLastInteractionSuccessful);
+	if (bLastInteractionSuccessful && InstigatorPawn)
+	{
+		if (AGameXXKMVPPlayerController* PlayerController = Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()))
+		{
+			PlayerController->RefreshPlayerFlowWidgetsFromState();
+		}
+	}
 }
 
 bool AGameXXKTownNpcCharacter::ApplyDefaultInteraction(APawn* InstigatorPawn)
@@ -228,7 +236,7 @@ bool AGameXXKTownNpcCharacter::ApplyDefaultInteraction(APawn* InstigatorPawn)
 	}
 	if (CanTrade())
 	{
-		bLastInteractionSuccessful = Subsystem->BuyItem(UGameXXKMVPRules::ItemHealingPowder(), 1);
+		bLastInteractionSuccessful = Subsystem->OpenTownPanel(EGameXXKTownPanelMode::Trade);
 		return bLastInteractionSuccessful;
 	}
 	bLastInteractionSuccessful = false;

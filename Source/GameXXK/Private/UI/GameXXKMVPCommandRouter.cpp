@@ -16,14 +16,24 @@ namespace
 	static const FName BuyHealingPowder(TEXT("BuyHealingPowder"));
 	static const FName SellHealingPowder(TEXT("SellHealingPowder"));
 	static const FName UseHealingPowder(TEXT("UseHealingPowder"));
+	static const FName OpenInventory(TEXT("OpenInventory"));
+	static const FName OpenCharacterPanel(TEXT("OpenCharacterPanel"));
+	static const FName OpenTrade(TEXT("OpenTrade"));
+	static const FName CloseTownPanel(TEXT("CloseTownPanel"));
 	static const FName EnterDungeon(TEXT("EnterDungeon"));
 	static const FName SelectStart(TEXT("SelectStart"));
 	static const FName SelectBattle(TEXT("SelectBattle"));
 	static const FName ResolveEventGold(TEXT("ResolveEventGold"));
 	static const FName ResolveCampHeal(TEXT("ResolveCampHeal"));
+	static const FName CompleteMerchantNode(TEXT("CompleteMerchantNode"));
 	static const FName SelectBoss(TEXT("SelectBoss"));
 	static const FName ResolveBattleVictory(TEXT("ResolveBattleVictory"));
 	static const FName FailBattle(TEXT("FailBattle"));
+	static const FName BattleBasicAttack(TEXT("BattleBasicAttack"));
+	static const FName BattleCraneWingSlash(TEXT("BattleCraneWingSlash"));
+	static const FName BattleGuiyuanArt(TEXT("BattleGuiyuanArt"));
+	static const FName BattleDefend(TEXT("BattleDefend"));
+	static const FName BattleHealingPowder(TEXT("BattleHealingPowder"));
 
 	static FName MakeRouteNodeCommandName(int32 NodeId)
 	{
@@ -200,6 +210,19 @@ namespace
 		return false;
 	}
 
+	static int32 FindFirstLivingEnemyIndex(const FGameXXKRuntimeState& State)
+	{
+		for (int32 EnemyIndex = 0; EnemyIndex < State.ActiveBattleEnemies.Num(); ++EnemyIndex)
+		{
+			const FGameXXKBattleRuntimeUnit& Enemy = State.ActiveBattleEnemies[EnemyIndex];
+			if (Enemy.bEnemy && !Enemy.bDefeated && Enemy.HP > 0)
+			{
+				return EnemyIndex;
+			}
+		}
+		return INDEX_NONE;
+	}
+
 	static FString ScreenToString(EGameXXKScreen Screen)
 	{
 		switch (Screen)
@@ -212,6 +235,12 @@ namespace
 			return TEXT("Town");
 		case EGameXXKScreen::DungeonMap:
 			return TEXT("Dungeon Map");
+		case EGameXXKScreen::RouteEvent:
+			return TEXT("Route Event");
+		case EGameXXKScreen::RouteCamp:
+			return TEXT("Route Camp");
+		case EGameXXKScreen::RouteMerchant:
+			return TEXT("Route Merchant");
 		case EGameXXKScreen::Battle:
 			return TEXT("Battle");
 		default:
@@ -280,6 +309,13 @@ TArray<FGameXXKMVPCommandDescriptor> GameXXKMVPCommandRouter::BuildVisibleComman
 		break;
 	case EGameXXKScreen::Town:
 		AddCommand(Commands, OpenWorldMap, TEXT("World Map"), true);
+		AddCommand(Commands, OpenInventory, TEXT("背包"), true);
+		AddCommand(Commands, OpenCharacterPanel, TEXT("角色"), true);
+		AddCommand(Commands, OpenTrade, TEXT("商店"), true);
+		if (State.TownPanelMode != EGameXXKTownPanelMode::None)
+		{
+			AddCommand(Commands, CloseTownPanel, TEXT("关闭"), true);
+		}
 		AddCommand(Commands, BuyHealingPowder, TEXT("Buy Healing Powder"), State.PlayerGold >= 10);
 		AddCommand(Commands, SellHealingPowder, TEXT("Sell Healing Powder"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0);
 		AddCommand(Commands, UseHealingPowder, TEXT("Use Healing Powder"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0 && State.PlayerHP < State.PlayerMaxHP);
@@ -352,10 +388,27 @@ TArray<FGameXXKMVPCommandDescriptor> GameXXKMVPCommandRouter::BuildVisibleComman
 		AddSaveSlotCommands(Commands);
 		break;
 	case EGameXXKScreen::Battle:
+		AddCommand(Commands, BattleBasicAttack, TEXT("普攻"), State.bHasActiveBattle && FindFirstLivingEnemyIndex(State) != INDEX_NONE);
+		AddCommand(Commands, BattleCraneWingSlash, TEXT("鹤羽斩"), State.bHasActiveBattle && FindFirstLivingEnemyIndex(State) != INDEX_NONE && State.ActiveBattleParty.IsValidIndex(0) && State.ActiveBattleParty[0].MP >= 8);
+		AddCommand(Commands, BattleGuiyuanArt, TEXT("归元术"), State.bHasActiveBattle && State.ActiveBattleParty.IsValidIndex(0) && State.ActiveBattleParty[0].MP >= 10 && State.ActiveBattleParty[0].HP < State.ActiveBattleParty[0].MaxHP);
+		AddCommand(Commands, BattleDefend, TEXT("防御"), State.bHasActiveBattle && State.ActiveBattleParty.IsValidIndex(0));
+		AddCommand(Commands, BattleHealingPowder, TEXT("金疮药"), State.bHasActiveBattle && State.ActiveBattleParty.IsValidIndex(0) && State.ActiveBattleParty[0].HP < State.ActiveBattleParty[0].MaxHP && UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0);
 		AddCommand(Commands, ResolveBattleVictory, TEXT("Win Battle"), true);
 		AddCommand(Commands, FailBattle, TEXT("Fail / Return Town"), State.bDungeonActive);
 		AddCommand(Commands, SaveGame, TEXT("Save Game"), true);
 		AddSaveSlotCommands(Commands);
+		break;
+	case EGameXXKScreen::RouteEvent:
+		AddCommand(Commands, ResolveEventGold, TEXT("Event: Take Gold"), true);
+		break;
+	case EGameXXKScreen::RouteCamp:
+		AddCommand(Commands, ResolveCampHeal, TEXT("Camp: Heal"), true);
+		break;
+	case EGameXXKScreen::RouteMerchant:
+		AddCommand(Commands, BuyHealingPowder, TEXT("Buy Healing Powder"), State.PlayerGold >= 10);
+		AddCommand(Commands, SellHealingPowder, TEXT("Sell Healing Powder"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0);
+		AddCommand(Commands, UseHealingPowder, TEXT("Use Healing Powder"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0 && State.PlayerHP < State.PlayerMaxHP);
+		AddCommand(Commands, CompleteMerchantNode, TEXT("Leave Merchant"), true);
 		break;
 	default:
 		break;
@@ -493,6 +546,22 @@ bool GameXXKMVPCommandRouter::ExecuteVisibleCommand(UGameXXKMVPSubsystem* Subsys
 	{
 		return FinishCommand(Subsystem->UseHealingItem());
 	}
+	if (CommandName == OpenInventory)
+	{
+		return FinishCommand(Subsystem->OpenTownPanel(EGameXXKTownPanelMode::Inventory));
+	}
+	if (CommandName == OpenCharacterPanel)
+	{
+		return FinishCommand(Subsystem->OpenTownPanel(EGameXXKTownPanelMode::Character));
+	}
+	if (CommandName == OpenTrade)
+	{
+		return FinishCommand(Subsystem->OpenTownPanel(EGameXXKTownPanelMode::Trade));
+	}
+	if (CommandName == CloseTownPanel)
+	{
+		return FinishCommand(Subsystem->CloseTownPanel());
+	}
 	if (CommandName == EnterDungeon)
 	{
 		return FinishCommandAndTravel(Subsystem, Subsystem->OpenDungeonFromTownExit());
@@ -507,11 +576,15 @@ bool GameXXKMVPCommandRouter::ExecuteVisibleCommand(UGameXXKMVPSubsystem* Subsys
 	}
 	if (CommandName == ResolveEventGold)
 	{
-		return FinishCommand(Subsystem->ResolveEventReward(true));
+		return FinishCommandAndTravel(Subsystem, Subsystem->ResolveEventReward(true));
 	}
 	if (CommandName == ResolveCampHeal)
 	{
-		return FinishCommand(Subsystem->ResolveCampReward(true));
+		return FinishCommandAndTravel(Subsystem, Subsystem->ResolveCampReward(true));
+	}
+	if (CommandName == CompleteMerchantNode)
+	{
+		return FinishCommandAndTravel(Subsystem, Subsystem->ResolveMerchantRouteNode());
 	}
 	if (CommandName == SelectBoss)
 	{
@@ -521,6 +594,26 @@ bool GameXXKMVPCommandRouter::ExecuteVisibleCommand(UGameXXKMVPSubsystem* Subsys
 	{
 		const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
 		return FinishCommandAndTravel(Subsystem, Subsystem->ResolveBattleVictory(State.bDungeonActive && GetCurrentNode(State) == EGameXXKNodeKind::Boss));
+	}
+	if (CommandName == BattleBasicAttack)
+	{
+		return FinishCommandAndTravel(Subsystem, Subsystem->ExecuteBattleBasicAttack(0, FindFirstLivingEnemyIndex(Subsystem->GetRuntimeState())));
+	}
+	if (CommandName == BattleCraneWingSlash)
+	{
+		return FinishCommandAndTravel(Subsystem, Subsystem->ExecuteBattleCraneWingSlash(0, FindFirstLivingEnemyIndex(Subsystem->GetRuntimeState())));
+	}
+	if (CommandName == BattleGuiyuanArt)
+	{
+		return FinishCommandAndTravel(Subsystem, Subsystem->ExecuteBattleGuiyuanArt(0));
+	}
+	if (CommandName == BattleDefend)
+	{
+		return FinishCommandAndTravel(Subsystem, Subsystem->ExecuteBattleDefend(0));
+	}
+	if (CommandName == BattleHealingPowder)
+	{
+		return FinishCommandAndTravel(Subsystem, Subsystem->ExecuteBattleHealingPowder(0));
 	}
 	if (CommandName == FailBattle)
 	{

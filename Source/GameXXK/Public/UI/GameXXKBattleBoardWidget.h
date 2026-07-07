@@ -114,7 +114,7 @@ private:
 	void EnsureBattleVisualResourcesLoaded();
 	void StyleBattleActionButton(UButton* Button, FName ActionName);
 	FLinearColor ResolveBattleActionButtonTint(FName ActionName) const;
-	FVector2D ResolveCommandMenuAnchor(FVector2D UnitScreenPosition) const;
+	FVector2D ResolveCommandMenuAnchor(FVector2D MenuScreenPosition) const;
 	bool BeginTargetingBattleAction(FName ActionName);
 	bool ExecuteBattleAction(FName ActionName);
 	int32 FindFirstLivingEnemyIndex() const;

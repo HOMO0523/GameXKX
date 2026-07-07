@@ -7,6 +7,7 @@
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKQuestDialogWidget.h"
 #include "UI/GameXXKTradeWidget.h"
+#include "UI/GameXXKTownOverlayWidget.h"
 #include "UI/GameXXKWorldMapWidget.h"
 #include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
@@ -32,6 +33,7 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	UGameXXKQuestDialogWidget* QuestDialog = NewObject<UGameXXKQuestDialogWidget>();
 	UGameXXKTradeWidget* Trade = NewObject<UGameXXKTradeWidget>();
 	UGameXXKInventoryWidget* Inventory = NewObject<UGameXXKInventoryWidget>();
+	UGameXXKTownOverlayWidget* TownOverlay = NewObject<UGameXXKTownOverlayWidget>();
 	UGameXXKDungeonMapWidget* DungeonMap = NewObject<UGameXXKDungeonMapWidget>();
 	UGameXXKBattleWidget* Battle = NewObject<UGameXXKBattleWidget>();
 	UGameXXKCharacterPanelWidget* CharacterPanel = NewObject<UGameXXKCharacterPanelWidget>();
@@ -41,6 +43,7 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	QuestDialog->SetMVPSubsystem(Subsystem);
 	Trade->SetMVPSubsystem(Subsystem);
 	Inventory->SetMVPSubsystem(Subsystem);
+	TownOverlay->SetMVPSubsystem(Subsystem);
 	DungeonMap->SetMVPSubsystem(Subsystem);
 	Battle->SetMVPSubsystem(Subsystem);
 	CharacterPanel->SetMVPSubsystem(Subsystem);
@@ -56,6 +59,14 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Qingshan click enters town"), WorldMap->TrySelectRegion(UGameXXKMVPRules::RegionQingshan()));
 	TestTrue(TEXT("last selection records unlocked state"), WorldMap->WasLastSelectionUnlocked());
 	TestEqual(TEXT("town screen after selecting Qingshan"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	Subsystem->GetMutableRuntimeState().PlayerGold = 500;
+	TownOverlay->RefreshFromState();
+	TestTrue(TEXT("town overlay exposes inventory panel command"), TownOverlay->HasTownActionForTest(FName(TEXT("OpenInventory")), true));
+	TestTrue(TEXT("town overlay exposes character equipment panel command"), TownOverlay->HasTownActionForTest(FName(TEXT("OpenCharacterPanel")), true));
+	TestTrue(TEXT("town overlay opens inventory panel"), TownOverlay->ExecuteTownCommandForTest(FName(TEXT("OpenInventory"))));
+	TestEqual(TEXT("town overlay records inventory panel"), TownOverlay->GetActiveTownPanelForTest(), EGameXXKTownPanelMode::Inventory);
+	TestEqual(TEXT("inventory panel exposes 20 backpack slots"), TownOverlay->GetInventorySlotCountForTest(), 20);
+	TestTrue(TEXT("inventory slots use generated ink slot texture"), TownOverlay->GetInventorySlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Inventory/Textures/T_InkBackpackSlot")));
 
 	TestTrue(TEXT("quest dialog accepts quest"), QuestDialog->AcceptQuest());
 	TestEqual(TEXT("quest accepted in subsystem state"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
@@ -65,15 +76,28 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("trade widget buys healing powder"), Trade->BuyItemById(UGameXXKMVPRules::ItemHealingPowder(), 1));
 	TestEqual(TEXT("buy spends gold through subsystem"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeBuy - 10);
 	TestEqual(TEXT("inventory widget reads bought stack"), Inventory->GetItemCount(UGameXXKMVPRules::ItemHealingPowder()), 2);
+	TestTrue(TEXT("inventory widget lists bought healing powder"), Inventory->GetInventoryItemIds().Contains(UGameXXKMVPRules::ItemHealingPowder()));
 	TestTrue(TEXT("trade widget sells healing powder"), Trade->SellItemById(UGameXXKMVPRules::ItemHealingPowder(), 1));
 	TestEqual(TEXT("sell awards gold through subsystem"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeBuy - 5);
+	TestTrue(TEXT("trade widget exposes PPT shop stock"), Trade->GetShopItemIds().Contains(FName(TEXT("Item.QingxinTea"))));
+	TestTrue(TEXT("trade widget sells PPT Qingfeng sword"), Trade->GetShopItemIds().Contains(UGameXXKMVPRules::ItemIronSword()));
 
 	TestTrue(TEXT("trade widget buys weapon for equipment UI"), Trade->BuyItemById(UGameXXKMVPRules::ItemIronSword(), 1));
 	const int32 AttackBeforeEquip = Subsystem->GetRuntimeState().PlayerAttack;
 	TestTrue(TEXT("inventory widget equips weapon"), Inventory->EquipItemById(UGameXXKMVPRules::ItemIronSword()));
-	TestEqual(TEXT("equipment changes subsystem attack"), Subsystem->GetRuntimeState().PlayerAttack, AttackBeforeEquip + 6);
+	TestEqual(TEXT("equipment changes subsystem attack"), Subsystem->GetRuntimeState().PlayerAttack, AttackBeforeEquip + 8);
+	TestTrue(TEXT("inventory widget buys and equips PPT HP accessory"), Trade->BuyItemById(FName(TEXT("Item.CranePatternTalisman")), 1));
+	const int32 MaxHPBeforeAccessory = Subsystem->GetRuntimeState().PlayerMaxHP;
+	TestTrue(TEXT("inventory widget equips accessory"), Inventory->EquipItemById(FName(TEXT("Item.CranePatternTalisman"))));
+	TestEqual(TEXT("accessory changes subsystem max HP"), Subsystem->GetRuntimeState().PlayerMaxHP, MaxHPBeforeAccessory + 30);
+	TestTrue(TEXT("inventory widget uses arbitrary consumable item"), Trade->BuyItemById(FName(TEXT("Item.QingxinTea")), 1));
+	Subsystem->GetMutableRuntimeState().PlayerMP = 0;
+	TestTrue(TEXT("inventory widget uses Qingxin tea"), Inventory->UseItemById(FName(TEXT("Item.QingxinTea"))));
+	TestEqual(TEXT("Qingxin tea raises MP through inventory widget"), Subsystem->GetRuntimeState().PlayerMP, 20);
 	TestTrue(TEXT("character panel refreshes from subsystem"), CharacterPanel->RefreshPlayerSummary());
 	TestEqual(TEXT("character panel reads equipped attack"), CharacterPanel->GetCharacterSummary().Attack, Subsystem->GetRuntimeState().PlayerAttack);
+	TestEqual(TEXT("character panel reads equipped weapon"), CharacterPanel->GetCharacterSummary().EquippedWeapon, UGameXXKMVPRules::ItemIronSword());
+	TestEqual(TEXT("character panel reads equipped accessory"), CharacterPanel->GetCharacterSummary().EquippedAccessory, FName(TEXT("Item.CranePatternTalisman")));
 
 	TestTrue(TEXT("dungeon map opens from accepted quest"), DungeonMap->OpenFromTownExit());
 	TestEqual(TEXT("dungeon map screen after town exit"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);

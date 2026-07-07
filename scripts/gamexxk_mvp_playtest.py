@@ -42,9 +42,9 @@ CHECKLIST = [
     "true SaveGame slot roundtrip persists unlocks, quest, level, XP, and gold",
     "StartGame and load-or-create APIs load saved slots and open world map",
     "SaveGame load-or-create opens world map and missing slots create new state",
-    "inventory and equipment details are intentionally not persisted",
+    "inventory, equipment, and explicit town shop actions are covered and persist through manual SaveGame",
     "editable BP_HeroCharacter shell binds WASD, arrow keys, and F interaction",
-    "town NPC overlap focuses F interaction for quest acceptance, follower activation, and merchant buying",
+    "town NPC overlap focuses F interaction for quest acceptance, follower activation, and merchant shop opening",
     "town quest, merchant, and follower NPC roles are test-covered",
     "town exit F interaction blocks before quest and opens the dungeon after quest acceptance",
     "town F interactions update runtime state and wait for the manual SaveGame command",
@@ -268,8 +268,10 @@ def main() -> int:
         report["automation_tests"] = automation_results
         report["flow_coverage"] = flow_coverage
         report["steps"].append({"name": "automation", "exit_code": code, "tail": output[-8000:]})
-        failed_markers = ["Automation Test Failed", "Error:", "No automation tests matched"]
-        report["ok"] = code == 0 and not any(marker in output for marker in failed_markers) and flow_coverage["ok"]
+        failed_tests = [result for result in automation_results if result["result"] != "Success"]
+        report["failed_tests"] = failed_tests
+        failed_markers = ["Automation Test Failed", "No automation tests matched", "Fatal error"]
+        report["ok"] = code == 0 and not failed_tests and not any(marker in output for marker in failed_markers) and flow_coverage["ok"]
         if not report["ok"]:
             report["error"] = "automation playtest failed"
             return 1

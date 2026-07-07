@@ -4,17 +4,43 @@
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/HorizontalBox.h"
-#include "Components/TextBlock.h"
+#include "Components/Image.h"
 #include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
+#include "Components/SizeBox.h"
+#include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
+#include "Engine/Texture2D.h"
 #include "GameXXKMVPRules.h"
 #include "Kismet/GameplayStatics.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "Styling/SlateBrush.h"
+#include "Styling/SlateTypes.h"
+#include "UI/GameXXKMVPCommandRouter.h"
 
 namespace
 {
 	static const FName MainMenuQingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
+	static const FName ResolveEventGoldCommand(TEXT("ResolveEventGold"));
+	static const FName ResolveCampHealCommand(TEXT("ResolveCampHeal"));
+	static const FName BuyHealingPowderCommand(TEXT("BuyHealingPowder"));
+	static const FName SellHealingPowderCommand(TEXT("SellHealingPowder"));
+	static const FName UseHealingPowderCommand(TEXT("UseHealingPowder"));
+	static const FName CompleteMerchantNodeCommand(TEXT("CompleteMerchantNode"));
+	static constexpr const TCHAR* MainMenuCoverTexturePath = TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_MainMenuCover.T_MainMenuCover");
+	static constexpr const TCHAR* InkButtonTexturePath = TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_InkButtonBase.T_InkButtonBase");
+
+	static FSlateBrush BuildTextureBrush(UTexture2D* Texture, const FVector2D& ImageSize, const FLinearColor& Tint)
+	{
+		FSlateBrush Brush;
+		Brush.SetResourceObject(Texture);
+		Brush.ImageSize = ImageSize;
+		Brush.DrawAs = Texture ? ESlateBrushDrawType::Image : ESlateBrushDrawType::Box;
+		Brush.TintColor = FSlateColor(Tint);
+		return Brush;
+	}
 
 	static FText BuildSlotLabel(int32 SlotIndex, const FText& ScreenLabel, int32 PlayerLevel)
 	{
@@ -199,10 +225,10 @@ TArray<FGameXXKMVPCommandDescriptor> UGameXXKMainMenuWidget::BuildLandingActions
 {
 	TArray<FGameXXKMVPCommandDescriptor> Actions;
 	Actions.Reserve(4);
-	Actions.Emplace(FName(TEXT("NewGame")), NSLOCTEXT("GameXXKMainMenu", "NewGameAction", "New Game"), true);
-	Actions.Emplace(FName(TEXT("OpenContinue")), NSLOCTEXT("GameXXKMainMenu", "ContinueAction", "Continue"), true);
-	Actions.Emplace(FName(TEXT("OpenOptions")), NSLOCTEXT("GameXXKMainMenu", "OptionsAction", "Options"), true);
-	Actions.Emplace(FName(TEXT("OpenQuit")), NSLOCTEXT("GameXXKMainMenu", "QuitAction", "Quit"), true);
+	Actions.Emplace(FName(TEXT("NewGame")), NSLOCTEXT("GameXXKMainMenu", "NewGameAction", "开始游戏"), true);
+	Actions.Emplace(FName(TEXT("OpenContinue")), NSLOCTEXT("GameXXKMainMenu", "ContinueAction", "加载存档"), true);
+	Actions.Emplace(FName(TEXT("OpenOptions")), NSLOCTEXT("GameXXKMainMenu", "OptionsAction", "设置游戏"), true);
+	Actions.Emplace(FName(TEXT("OpenQuit")), NSLOCTEXT("GameXXKMainMenu", "QuitAction", "退出"), true);
 	return Actions;
 }
 
@@ -218,6 +244,41 @@ bool UGameXXKMainMenuWidget::HasLandingActionForTest(FName CommandName, bool bRe
 	}
 
 	return false;
+}
+
+TArray<FGameXXKMVPCommandDescriptor> UGameXXKMainMenuWidget::BuildEncounterActionsForTest() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return {};
+	}
+
+	const EGameXXKScreen Screen = Subsystem->GetRuntimeState().Screen;
+	if (Screen != EGameXXKScreen::RouteEvent && Screen != EGameXXKScreen::RouteCamp && Screen != EGameXXKScreen::RouteMerchant)
+	{
+		return {};
+	}
+
+	return GameXXKMVPCommandRouter::BuildVisibleCommands(Subsystem);
+}
+
+bool UGameXXKMainMenuWidget::HasEncounterActionForTest(FName CommandName, bool bRequireEnabled) const
+{
+	const TArray<FGameXXKMVPCommandDescriptor> Actions = BuildEncounterActionsForTest();
+	for (const FGameXXKMVPCommandDescriptor& Action : Actions)
+	{
+		if (Action.CommandName == CommandName && (!bRequireEnabled || Action.bEnabled))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UGameXXKMainMenuWidget::ExecuteEncounterActionForTest(FName CommandName)
+{
+	return ExecuteEncounterCommand(CommandName);
 }
 
 TArray<FGameXXKMainMenuSaveSlotRow> UGameXXKMainMenuWidget::BuildSaveSlotRowsForTest() const
@@ -309,6 +370,21 @@ FText UGameXXKMainMenuWidget::BuildScreenLabel(const FGameXXKRuntimeState& State
 		return NSLOCTEXT("GameXXKMainMenu", "BattleScreen", "Battle");
 	}
 
+	if (State.Screen == EGameXXKScreen::RouteEvent)
+	{
+		return NSLOCTEXT("GameXXKMainMenu", "RouteEventScreen", "Event");
+	}
+
+	if (State.Screen == EGameXXKScreen::RouteCamp)
+	{
+		return NSLOCTEXT("GameXXKMainMenu", "RouteCampScreen", "Camp");
+	}
+
+	if (State.Screen == EGameXXKScreen::RouteMerchant)
+	{
+		return NSLOCTEXT("GameXXKMainMenu", "RouteMerchantScreen", "Merchant");
+	}
+
 	if (State.Screen == EGameXXKScreen::Town)
 	{
 		return NSLOCTEXT("GameXXKMainMenu", "TownScreen", "Town");
@@ -365,6 +441,39 @@ FString UGameXXKMainMenuWidget::GetManualSlotNameChecked(int32 SlotIndex) const
 	return UGameXXKMVPSubsystem::GetManualSaveSlotName(SlotIndex);
 }
 
+bool UGameXXKMainMenuWidget::IsEncounterScreen() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return false;
+	}
+
+	const EGameXXKScreen Screen = Subsystem->GetRuntimeState().Screen;
+	return Screen == EGameXXKScreen::RouteEvent
+		|| Screen == EGameXXKScreen::RouteCamp
+		|| Screen == EGameXXKScreen::RouteMerchant;
+}
+
+bool UGameXXKMainMenuWidget::ExecuteEncounterCommand(FName CommandName)
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !IsEncounterScreen())
+	{
+		return false;
+	}
+
+	const bool bExecuted = GameXXKMVPCommandRouter::ExecuteVisibleCommand(Subsystem, CommandName);
+	if (bExecuted)
+	{
+		if (!NotifyPlayerFlowStateChanged())
+		{
+			RefreshFromState();
+		}
+	}
+	return bExecuted;
+}
+
 void UGameXXKMainMenuWidget::BuildProgrammaticLayout()
 {
 	if (!WidgetTree)
@@ -383,21 +492,61 @@ void UGameXXKMainMenuWidget::BuildProgrammaticLayout()
 	RootOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("MainMenuRoot"));
 	WidgetTree->RootWidget = RootOverlay;
 
+	LoadedMainMenuCoverTexture = LoadObject<UTexture2D>(nullptr, MainMenuCoverTexturePath);
+	LoadedInkButtonTexture = LoadObject<UTexture2D>(nullptr, InkButtonTexturePath);
+
+	CoverImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("GameXXKMainMenuCover"));
+	if (CoverImage)
+	{
+		if (LoadedMainMenuCoverTexture)
+		{
+			CoverImage->SetBrushFromTexture(LoadedMainMenuCoverTexture, true);
+		}
+		CoverImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+		if (UOverlaySlot* CoverSlot = RootOverlay->AddChildToOverlay(CoverImage))
+		{
+			CoverSlot->SetHorizontalAlignment(HAlign_Fill);
+			CoverSlot->SetVerticalAlignment(VAlign_Fill);
+		}
+	}
+
 	LandingBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("LandingBox"));
-	RootOverlay->AddChildToOverlay(LandingBox);
+	if (UOverlaySlot* LandingSlot = RootOverlay->AddChildToOverlay(LandingBox))
+	{
+		LandingSlot->SetHorizontalAlignment(HAlign_Left);
+		LandingSlot->SetVerticalAlignment(VAlign_Center);
+		LandingSlot->SetPadding(FMargin(128.0f, 0.0f, 0.0f, 0.0f));
+	}
 
-	AddTextBlock(LandingBox, NSLOCTEXT("GameXXKMainMenu", "Title", "GameXXK"));
+	EncounterBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("EncounterBox"));
+	RootOverlay->AddChildToOverlay(EncounterBox);
 
-	UButton* NewGameButton = AddMenuButton(LandingBox, NSLOCTEXT("GameXXKMainMenu", "NewGameButton", "New Game"));
+	UButton* NewGameButton = AddMenuButton(
+		LandingBox,
+		NSLOCTEXT("GameXXKMainMenu", "NewGameButton", "开始游戏"),
+		FName(TEXT("MainMenuStartButton")),
+		FName(TEXT("MainMenuStartButtonLabel")));
 	NewGameButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleStartGameClicked);
 
-	UButton* ContinueButton = AddMenuButton(LandingBox, NSLOCTEXT("GameXXKMainMenu", "ContinueButton", "Continue"));
+	UButton* ContinueButton = AddMenuButton(
+		LandingBox,
+		NSLOCTEXT("GameXXKMainMenu", "ContinueButton", "加载存档"),
+		FName(TEXT("MainMenuContinueButton")),
+		FName(TEXT("MainMenuContinueButtonLabel")));
 	ContinueButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleOpenContinueClicked);
 
-	UButton* OptionsButton = AddMenuButton(LandingBox, NSLOCTEXT("GameXXKMainMenu", "OptionsButton", "Options"));
+	UButton* OptionsButton = AddMenuButton(
+		LandingBox,
+		NSLOCTEXT("GameXXKMainMenu", "OptionsButton", "设置游戏"),
+		FName(TEXT("MainMenuOptionsButton")),
+		FName(TEXT("MainMenuOptionsButtonLabel")));
 	OptionsButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleOpenOptionsClicked);
 
-	UButton* QuitButton = AddMenuButton(LandingBox, NSLOCTEXT("GameXXKMainMenu", "QuitButton", "Quit"));
+	UButton* QuitButton = AddMenuButton(
+		LandingBox,
+		NSLOCTEXT("GameXXKMainMenu", "QuitButton", "退出"),
+		FName(TEXT("MainMenuQuitButton")),
+		FName(TEXT("MainMenuQuitButtonLabel")));
 	QuitButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleOpenQuitClicked);
 
 	ModalBackdrop = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("ModalBackdrop"));
@@ -410,20 +559,66 @@ void UGameXXKMainMenuWidget::BuildProgrammaticLayout()
 void UGameXXKMainMenuWidget::RefreshProgrammaticLayout()
 {
 	bool bShouldShowMenu = true;
+	bool bShouldShowEncounter = false;
 	if (const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
 	{
-		bShouldShowMenu = Subsystem->GetRuntimeState().Screen == EGameXXKScreen::MainMenu;
+		const EGameXXKScreen Screen = Subsystem->GetRuntimeState().Screen;
+		bShouldShowMenu = Screen == EGameXXKScreen::MainMenu;
 	}
-	SetVisibility(bShouldShowMenu ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	SetIsEnabled(bShouldShowMenu);
+	SetVisibility((bShouldShowMenu || bShouldShowEncounter) ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	SetIsEnabled(bShouldShowMenu || bShouldShowEncounter);
 
-	if (!LandingBox || !ModalBackdrop || !ModalBox)
+	if (!LandingBox || !EncounterBox || !ModalBackdrop || !ModalBox)
 	{
 		return;
 	}
 
+	LandingBox->SetVisibility(bShouldShowMenu ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	EncounterBox->SetVisibility(bShouldShowEncounter ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	EncounterBox->ClearChildren();
+
+	if (bShouldShowEncounter)
+	{
+		const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+		if (Subsystem)
+		{
+			AddTextBlock(EncounterBox, BuildScreenLabel(Subsystem->GetRuntimeState()));
+			for (const FGameXXKMVPCommandDescriptor& Command : BuildEncounterActionsForTest())
+			{
+				UButton* CommandButton = AddMenuButton(EncounterBox, Command.Label);
+				CommandButton->SetIsEnabled(Command.bEnabled);
+				if (Command.CommandName == ResolveEventGoldCommand)
+				{
+					CommandButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleResolveEventGoldClicked);
+				}
+				else if (Command.CommandName == ResolveCampHealCommand)
+				{
+					CommandButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleResolveCampHealClicked);
+				}
+				else if (Command.CommandName == BuyHealingPowderCommand)
+				{
+					CommandButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleBuyHealingPowderClicked);
+				}
+				else if (Command.CommandName == SellHealingPowderCommand)
+				{
+					CommandButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleSellHealingPowderClicked);
+				}
+				else if (Command.CommandName == UseHealingPowderCommand)
+				{
+					CommandButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleUseHealingPowderClicked);
+				}
+				else if (Command.CommandName == CompleteMerchantNodeCommand)
+				{
+					CommandButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleCompleteMerchantNodeClicked);
+				}
+			}
+		}
+		ModalBackdrop->SetVisibility(ESlateVisibility::Collapsed);
+		ModalBox->ClearChildren();
+		return;
+	}
+
 	const bool bShowingModal = MenuLayer != EGameXXKMainMenuLayer::Landing;
-	LandingBox->SetVisibility(ESlateVisibility::Visible);
 	ModalBackdrop->SetVisibility(bShowingModal ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 
 	ModalBox->ClearChildren();
@@ -479,15 +674,49 @@ UTextBlock* UGameXXKMainMenuWidget::AddTextBlock(UVerticalBox* Parent, const FTe
 	return TextBlock;
 }
 
-UButton* UGameXXKMainMenuWidget::AddMenuButton(UVerticalBox* Parent, const FText& Label) const
+UButton* UGameXXKMainMenuWidget::AddMenuButton(UVerticalBox* Parent, const FText& Label, FName ButtonName, FName LabelName) const
 {
-	UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass());
-	Button->SetBackgroundColor(FLinearColor(0.08f, 0.30f, 0.23f, 0.96f));
-	UTextBlock* ButtonLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+	UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), ButtonName);
+	Button->SetBackgroundColor(FLinearColor::White);
+	if (LoadedInkButtonTexture)
+	{
+		const FVector2D ButtonImageSize(320.0f, 86.0f);
+		FButtonStyle ButtonStyle;
+		ButtonStyle.SetNormal(BuildTextureBrush(LoadedInkButtonTexture, ButtonImageSize, FLinearColor(1.0f, 1.0f, 1.0f, 0.92f)));
+		ButtonStyle.SetHovered(BuildTextureBrush(LoadedInkButtonTexture, ButtonImageSize, FLinearColor(1.0f, 1.0f, 1.0f, 1.0f)));
+		ButtonStyle.SetPressed(BuildTextureBrush(LoadedInkButtonTexture, ButtonImageSize, FLinearColor(0.82f, 0.90f, 0.86f, 0.96f)));
+		ButtonStyle.SetDisabled(BuildTextureBrush(LoadedInkButtonTexture, ButtonImageSize, FLinearColor(0.48f, 0.52f, 0.50f, 0.55f)));
+		ButtonStyle.SetNormalPadding(FMargin(48.0f, 14.0f, 48.0f, 14.0f));
+		ButtonStyle.SetPressedPadding(FMargin(48.0f, 16.0f, 48.0f, 12.0f));
+		Button->SetStyle(ButtonStyle);
+	}
+	else
+	{
+		Button->SetBackgroundColor(FLinearColor(0.04f, 0.12f, 0.10f, 0.88f));
+	}
+
+	UTextBlock* ButtonLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), LabelName);
 	ButtonLabel->SetText(Label);
 	ButtonLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	ButtonLabel->SetJustification(ETextJustify::Center);
+	ButtonLabel->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.72f));
+	ButtonLabel->SetShadowOffset(FVector2D(1.0f, 1.0f));
+	FSlateFontInfo LabelFont = ButtonLabel->GetFont();
+	LabelFont.Size = 28;
+	LabelFont.TypefaceFontName = TEXT("Bold");
+	ButtonLabel->SetFont(LabelFont);
 	Button->AddChild(ButtonLabel);
-	Parent->AddChildToVerticalBox(Button);
+
+	USizeBox* ButtonFrame = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+	ButtonFrame->SetWidthOverride(320.0f);
+	ButtonFrame->SetHeightOverride(76.0f);
+	ButtonFrame->AddChild(Button);
+	if (UVerticalBoxSlot* ButtonSlot = Parent->AddChildToVerticalBox(ButtonFrame))
+	{
+		ButtonSlot->SetHorizontalAlignment(HAlign_Left);
+		ButtonSlot->SetVerticalAlignment(VAlign_Center);
+		ButtonSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 8.0f));
+	}
 	return Button;
 }
 
@@ -659,4 +888,34 @@ void UGameXXKMainMenuWidget::HandleDeleteSlot3Clicked()
 void UGameXXKMainMenuWidget::HandleDeleteSlot4Clicked()
 {
 	HandleDeleteSlotClicked(4);
+}
+
+void UGameXXKMainMenuWidget::HandleResolveEventGoldClicked()
+{
+	ExecuteEncounterCommand(ResolveEventGoldCommand);
+}
+
+void UGameXXKMainMenuWidget::HandleResolveCampHealClicked()
+{
+	ExecuteEncounterCommand(ResolveCampHealCommand);
+}
+
+void UGameXXKMainMenuWidget::HandleBuyHealingPowderClicked()
+{
+	ExecuteEncounterCommand(BuyHealingPowderCommand);
+}
+
+void UGameXXKMainMenuWidget::HandleSellHealingPowderClicked()
+{
+	ExecuteEncounterCommand(SellHealingPowderCommand);
+}
+
+void UGameXXKMainMenuWidget::HandleUseHealingPowderClicked()
+{
+	ExecuteEncounterCommand(UseHealingPowderCommand);
+}
+
+void UGameXXKMainMenuWidget::HandleCompleteMerchantNodeClicked()
+{
+	ExecuteEncounterCommand(CompleteMerchantNodeCommand);
 }

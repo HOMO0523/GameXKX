@@ -11,7 +11,10 @@ namespace
 	const FName MainMap(TEXT("/Game/GameXXK/Maps/L_Main"));
 	const FName QingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 	const FName RouteMap(TEXT("/Game/GameXXK/Maps/L_RouteMap"));
-	const FName OneGameBattleMap(TEXT("/Game/GameXXK/Maps/L_Battle_1Game"));
+	const FName RouteEventMap(TEXT("/Game/GameXXK/Maps/L_RouteEvent"));
+	const FName RouteCampMap(TEXT("/Game/GameXXK/Maps/L_RouteCamp"));
+	const FName RouteMerchantMap(TEXT("/Game/GameXXK/Maps/L_RouteMerchant"));
+	const FName BattleSceneMap(TEXT("/Game/GameXXK/Maps/L_BattleScene"));
 
 	FString StripPIEPrefix(FString ShortMapName)
 	{
@@ -54,8 +57,14 @@ FName GameXXKLevelFlow::MapForScreen(EGameXXKScreen Screen)
 		return QingshanTownMap;
 	case EGameXXKScreen::DungeonMap:
 		return RouteMap;
+	case EGameXXKScreen::RouteEvent:
+		return RouteEventMap;
+	case EGameXXKScreen::RouteCamp:
+		return RouteCampMap;
+	case EGameXXKScreen::RouteMerchant:
+		return RouteMerchantMap;
 	case EGameXXKScreen::Battle:
-		return OneGameBattleMap;
+		return BattleSceneMap;
 	case EGameXXKScreen::MainMenu:
 	case EGameXXKScreen::WorldMap:
 	default:

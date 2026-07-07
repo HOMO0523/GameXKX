@@ -11,7 +11,19 @@ enum class EGameXXKScreen : uint8
 	WorldMap,
 	Town,
 	DungeonMap,
+	RouteEvent,
+	RouteCamp,
+	RouteMerchant,
 	Battle
+};
+
+UENUM(BlueprintType)
+enum class EGameXXKTownPanelMode : uint8
+{
+	None,
+	Inventory,
+	Character,
+	Trade
 };
 
 UENUM(BlueprintType)
@@ -40,7 +52,8 @@ enum class EGameXXKItemKind : uint8
 {
 	Consumable,
 	Weapon,
-	Armor
+	Armor,
+	Accessory
 };
 
 USTRUCT(BlueprintType)
@@ -50,6 +63,9 @@ struct FGameXXKItemDef
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName Id;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FText DisplayName;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKItemKind Kind = EGameXXKItemKind::Consumable;
@@ -64,6 +80,9 @@ struct FGameXXKItemDef
 	int32 HealAmount = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MPHealAmount = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 AttackBonus = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -71,6 +90,9 @@ struct FGameXXKItemDef
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MaxHPBonus = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MaxMPBonus = 0;
 };
 
 USTRUCT(BlueprintType)
@@ -98,6 +120,51 @@ struct FGameXXKBattleUnit
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 Shield = 1;
+};
+
+USTRUCT(BlueprintType)
+struct FGameXXKBattleRuntimeUnit
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName Id;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FText DisplayName;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 HP = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MaxHP = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MP = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MaxMP = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 Attack = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 Defense = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 Speed = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 Shield = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bDefending = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bEnemy = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bDefeated = false;
 };
 
 USTRUCT(BlueprintType)
@@ -195,10 +262,16 @@ struct FGameXXKRuntimeState
 	int32 PlayerMaxHP = 100;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	int32 PlayerAttack = 12;
+	int32 PlayerMP = 30;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	int32 PlayerDefense = 5;
+	int32 PlayerMaxMP = 30;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 PlayerAttack = 15;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 PlayerDefense = 8;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 PlayerSpeed = 10;
@@ -243,10 +316,28 @@ struct FGameXXKRuntimeState
 	TArray<int32> ReachableRouteNodeIds;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bHasActiveBattle = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 ActiveBattleNodeId = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FGameXXKBattleRuntimeUnit> ActiveBattleEnemies;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FGameXXKBattleRuntimeUnit> ActiveBattleParty;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName EquippedWeapon;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName EquippedArmor;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName EquippedAccessory;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKTownPanelMode TownPanelMode = EGameXXKTownPanelMode::None;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TSet<FName> UnlockedRegions;
@@ -322,6 +413,15 @@ public:
 	static FName ItemClothArmor();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FGameXXKItemDef GetItemDef(FName ItemId, bool& bFound);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static TArray<FName> GetKnownItemIds();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static TArray<FName> GetShopItemIds();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FGameXXKRuntimeState CreateNewGame();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
@@ -352,10 +452,28 @@ public:
 	static bool ResolveBattleVictory(UPARAM(ref) FGameXXKRuntimeState& State, bool bBossBattle);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool ExecuteBattleBasicAttack(UPARAM(ref) FGameXXKRuntimeState& State, int32 PartyIndex, int32 EnemyIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool ExecuteBattleCraneWingSlash(UPARAM(ref) FGameXXKRuntimeState& State, int32 PartyIndex, int32 EnemyIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool ExecuteBattleGuiyuanArt(UPARAM(ref) FGameXXKRuntimeState& State, int32 PartyIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool ExecuteBattleDefend(UPARAM(ref) FGameXXKRuntimeState& State, int32 PartyIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool ExecuteBattleHealingPowder(UPARAM(ref) FGameXXKRuntimeState& State, int32 PartyIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveEventReward(UPARAM(ref) FGameXXKRuntimeState& State, bool bTakeGold);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveCampReward(UPARAM(ref) FGameXXKRuntimeState& State, bool bHealNow);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool ResolveMerchantRouteNode(UPARAM(ref) FGameXXKRuntimeState& State);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool FailDungeonToTown(UPARAM(ref) FGameXXKRuntimeState& State);
@@ -386,6 +504,18 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool UseHealingItem(UPARAM(ref) FGameXXKRuntimeState& State);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool UseItem(UPARAM(ref) FGameXXKRuntimeState& State, FName ItemId);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool OpenTownPanel(UPARAM(ref) FGameXXKRuntimeState& State, EGameXXKTownPanelMode PanelMode);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool CloseTownPanel(UPARAM(ref) FGameXXKRuntimeState& State);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static void RecalculatePlayerStatsFromEquipment(UPARAM(ref) FGameXXKRuntimeState& State);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static TArray<FName> BuildTurnOrder(const FGameXXKRuntimeState& State, bool bBossBattle);
