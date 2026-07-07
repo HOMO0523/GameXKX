@@ -8,6 +8,7 @@
 class UCanvasPanel;
 class UButton;
 class UTextBlock;
+class UTexture2D;
 class UVerticalBox;
 
 UENUM(BlueprintType)
@@ -29,6 +30,14 @@ public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual int32 NativePaint(
+		const FPaintArgs& Args,
+		const FGeometry& AllottedGeometry,
+		const FSlateRect& MyCullingRect,
+		FSlateWindowElementList& OutDrawElements,
+		int32 LayerId,
+		const FWidgetStyle& InWidgetStyle,
+		bool bParentEnabled) const override;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
 	void RefreshFromState();
@@ -88,12 +97,19 @@ public:
 	int32 GetSelectedPartyIndexForTest() const;
 	FName GetTargetingActionNameForTest() const;
 	FVector2D GetTargetingPointerPositionForTest() const;
+	FString GetBattleActionButtonResourcePathForTest(FName ActionName);
+	FLinearColor GetBattleActionButtonTintForTest(FName ActionName) const;
+	FString GetTargetingArrowHeadResourcePathForTest();
+	int32 GetTargetingInkDabTextureCountForTest();
 
 private:
 	void BuildProgrammaticLayout();
-	UButton* AddBattleActionButton(const FText& Label, FName ButtonName);
+	UButton* AddBattleActionButton(const FText& Label, FName ButtonName, FName ActionName);
 	void RefreshProgrammaticLayout();
 	void RefreshActionButtons();
+	void EnsureBattleVisualResourcesLoaded();
+	void StyleBattleActionButton(UButton* Button, FName ActionName);
+	FLinearColor ResolveBattleActionButtonTint(FName ActionName) const;
 	bool BeginTargetingBattleAction(FName ActionName);
 	bool ExecuteBattleAction(FName ActionName);
 	int32 FindFirstLivingEnemyIndex() const;
@@ -137,6 +153,15 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> HealingPowderButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> BattleActionInkButtonTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> TargetingArrowHeadTexture;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTexture2D>> TargetingInkDabTextures;
 
 	UPROPERTY(Transient)
 	EGameXXKBattleInteractionMode InteractionMode = EGameXXKBattleInteractionMode::Hidden;

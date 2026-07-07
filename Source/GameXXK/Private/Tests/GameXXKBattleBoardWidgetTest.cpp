@@ -47,6 +47,11 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("battle board exposes basic attack action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleBasicAttack")), true));
 	TestTrue(TEXT("battle board exposes Crane Wing Slash action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleCraneWingSlash")), true));
 	TestTrue(TEXT("battle board exposes defend action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleDefend")), true));
+	TestTrue(TEXT("basic attack uses the shared ink button base"), BattleWidget->GetBattleActionButtonResourcePathForTest(FName(TEXT("BattleBasicAttack"))).Contains(TEXT("T_InkButtonBase")));
+	TestTrue(TEXT("basic attack ink button is tinted toward attack red"), BattleWidget->GetBattleActionButtonTintForTest(FName(TEXT("BattleBasicAttack"))).R > BattleWidget->GetBattleActionButtonTintForTest(FName(TEXT("BattleBasicAttack"))).B);
+	TestTrue(TEXT("defend ink button is tinted toward defense blue"), BattleWidget->GetBattleActionButtonTintForTest(FName(TEXT("BattleDefend"))).B > BattleWidget->GetBattleActionButtonTintForTest(FName(TEXT("BattleDefend"))).R);
+	TestTrue(TEXT("battle targeting arrow head asset is loaded"), BattleWidget->GetTargetingArrowHeadResourcePathForTest().Contains(TEXT("T_BattleTargetArrowHead")));
+	TestEqual(TEXT("battle targeting uses all generated ink dab pieces"), BattleWidget->GetTargetingInkDabTextureCountForTest(), 12);
 
 	const int32 SkillEnemyHPBefore = Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP;
 	const int32 SkillMPBefore = Subsystem->GetRuntimeState().PlayerMP;
