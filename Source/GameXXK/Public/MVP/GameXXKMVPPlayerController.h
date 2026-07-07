@@ -22,6 +22,7 @@ public:
 	AGameXXKMVPPlayerController();
 
 	virtual void BeginPlay() override;
+	virtual void PlayerTick(float DeltaTime) override;
 	virtual void SetupInputComponent() override;
 	virtual bool InputKey(const FInputKeyEventArgs& Params) override;
 	virtual void FlushPressedKeys() override;
@@ -66,10 +67,16 @@ public:
 	bool OpenBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
+	bool ToggleBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
 	bool ConfirmBattleTargetForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
 	bool CancelBattleTargetingForTest();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
+	bool UpdateBattleTargetingPointerForTest(FVector2D CursorScreenPosition);
 
 private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
@@ -84,6 +91,9 @@ private:
 	void ApplyBattleSceneCamera();
 	bool TryHandleBattleSceneRightClick();
 	bool TryHandleBattleSceneLeftClick();
+	bool ToggleBattleCommandMenuForUnit(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
+	bool UpdateBattleTargetingPointer(FVector2D CursorScreenPosition);
+	bool UpdateBattleTargetingPointerFromMouse();
 	AGameXXKBattleSceneUnitActor* FindBattleSceneUnitUnderCursor(bool bRequireEnemyTarget) const;
 	AActor* FindBattleSceneCameraActor() const;
 	bool CanAddPlayerWidgetsToViewport() const;

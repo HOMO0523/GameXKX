@@ -105,6 +105,12 @@ void AGameXXKMVPPlayerController::BeginPlay()
 	RefreshPlayerFlowWidgets();
 }
 
+void AGameXXKMVPPlayerController::PlayerTick(float DeltaTime)
+{
+	Super::PlayerTick(DeltaTime);
+	UpdateBattleTargetingPointerFromMouse();
+}
+
 void AGameXXKMVPPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
@@ -228,6 +234,12 @@ bool AGameXXKMVPPlayerController::OpenBattleCommandMenuForUnitForTest(AGameXXKBa
 	return BattleBoardWidget && BattleBoardWidget->OpenCommandMenuForPartyUnit(UnitActor->GetUnitIndex(), MenuScreenPosition, UnitScreenPosition);
 }
 
+bool AGameXXKMVPPlayerController::ToggleBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
+{
+	EnsurePlayerFlowWidgets();
+	return ToggleBattleCommandMenuForUnit(UnitActor, MenuScreenPosition, UnitScreenPosition);
+}
+
 bool AGameXXKMVPPlayerController::ConfirmBattleTargetForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor)
 {
 	if (!UnitActor || !UnitActor->CanReceiveTargetedBattleAction())
@@ -242,6 +254,12 @@ bool AGameXXKMVPPlayerController::CancelBattleTargetingForTest()
 {
 	EnsurePlayerFlowWidgets();
 	return BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting();
+}
+
+bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerForTest(FVector2D CursorScreenPosition)
+{
+	EnsurePlayerFlowWidgets();
+	return UpdateBattleTargetingPointer(CursorScreenPosition);
 }
 
 UGameXXKMVPSubsystem* AGameXXKMVPPlayerController::ResolveMVPSubsystem() const
@@ -632,15 +650,11 @@ void AGameXXKMVPPlayerController::ApplyBattleSceneCamera()
 bool AGameXXKMVPPlayerController::TryHandleBattleSceneRightClick()
 {
 	EnsurePlayerFlowWidgets();
-	if (BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting())
-	{
-		return true;
-	}
 
 	AGameXXKBattleSceneUnitActor* UnitActor = FindBattleSceneUnitUnderCursor(false);
 	if (!UnitActor || !UnitActor->CanOpenPartyCommandMenu())
 	{
-		return false;
+		return BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting();
 	}
 
 	float CursorX = 0.0f;
@@ -651,10 +665,7 @@ bool AGameXXKMVPPlayerController::TryHandleBattleSceneRightClick()
 	}
 	FVector2D UnitScreenPosition(CursorX, CursorY);
 	ProjectWorldLocationToScreen(UnitActor->GetActorLocation(), UnitScreenPosition, true);
-	return BattleBoardWidget && BattleBoardWidget->OpenCommandMenuForPartyUnit(
-		UnitActor->GetUnitIndex(),
-		FVector2D(CursorX, CursorY),
-		UnitScreenPosition);
+	return ToggleBattleCommandMenuForUnit(UnitActor, FVector2D(CursorX, CursorY), UnitScreenPosition);
 }
 
 bool AGameXXKMVPPlayerController::TryHandleBattleSceneLeftClick()
@@ -700,6 +711,42 @@ AGameXXKBattleSceneUnitActor* AGameXXKMVPPlayerController::FindBattleSceneUnitUn
 		}
 	}
 	return nullptr;
+}
+
+bool AGameXXKMVPPlayerController::ToggleBattleCommandMenuForUnit(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
+{
+	if (!UnitActor || !UnitActor->CanOpenPartyCommandMenu())
+	{
+		return false;
+	}
+	EnsurePlayerFlowWidgets();
+	return BattleBoardWidget && BattleBoardWidget->ToggleCommandMenuForPartyUnit(UnitActor->GetUnitIndex(), MenuScreenPosition, UnitScreenPosition);
+}
+
+bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointer(FVector2D CursorScreenPosition)
+{
+	if (!BattleBoardWidget || !BattleBoardWidget->IsTargetingBattleActionForTest())
+	{
+		return false;
+	}
+	BattleBoardWidget->UpdateTargetingPointer(CursorScreenPosition);
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerFromMouse()
+{
+	if (!BattleBoardWidget || !BattleBoardWidget->IsTargetingBattleActionForTest())
+	{
+		return false;
+	}
+
+	float CursorX = 0.0f;
+	float CursorY = 0.0f;
+	if (!GetMousePosition(CursorX, CursorY))
+	{
+		return false;
+	}
+	return UpdateBattleTargetingPointer(FVector2D(CursorX, CursorY));
 }
 
 AActor* AGameXXKMVPPlayerController::FindBattleSceneCameraActor() const

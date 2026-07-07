@@ -41,9 +41,12 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("battle board status exposes MP"), BattleWidget->GetBattleStatusTextForTest().Contains(TEXT("MP")));
 	TestFalse(TEXT("battle board command menu starts hidden"), BattleWidget->IsCommandMenuVisibleForTest());
 	TestFalse(TEXT("battle board starts outside targeting mode"), BattleWidget->IsTargetingBattleActionForTest());
-	TestTrue(TEXT("battle board opens command menu for living party unit"), BattleWidget->OpenCommandMenuForPartyUnit(0, FVector2D(900.0f, 520.0f), FVector2D(830.0f, 420.0f)));
+	const FVector2D PartyUnitScreenPosition(830.0f, 420.0f);
+	TestTrue(TEXT("battle board opens command menu for living party unit"), BattleWidget->OpenCommandMenuForPartyUnit(0, FVector2D(260.0f, 640.0f), PartyUnitScreenPosition));
 	TestTrue(TEXT("battle board command menu becomes visible"), BattleWidget->IsCommandMenuVisibleForTest());
 	TestEqual(TEXT("battle board records selected party index"), BattleWidget->GetSelectedPartyIndexForTest(), 0);
+	TestTrue(TEXT("battle board anchors command menu to the right of the party unit"), BattleWidget->GetCommandMenuAnchorForTest().X > PartyUnitScreenPosition.X);
+	TestTrue(TEXT("battle board keeps command menu vertically near the party unit"), BattleWidget->GetCommandMenuAnchorForTest().Y < PartyUnitScreenPosition.Y);
 	TestTrue(TEXT("battle board exposes basic attack action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleBasicAttack")), true));
 	TestTrue(TEXT("battle board exposes Crane Wing Slash action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleCraneWingSlash")), true));
 	TestTrue(TEXT("battle board exposes defend action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleDefend")), true));

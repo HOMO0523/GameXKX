@@ -92,8 +92,8 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 		return MaxLayerId;
 	}
 
-	const FVector2D Start = AllottedGeometry.AbsoluteToLocal(SelectedPartyScreenPosition);
-	const FVector2D End = AllottedGeometry.AbsoluteToLocal(TargetingPointerPosition);
+	const FVector2D Start = SelectedPartyScreenPosition;
+	const FVector2D End = TargetingPointerPosition;
 	const FVector2D Delta = End - Start;
 	const float Distance = Delta.Size();
 	if (Distance < 8.0f)
@@ -199,6 +199,7 @@ bool UGameXXKBattleBoardWidget::ExecuteHealingPowderAction()
 
 bool UGameXXKBattleBoardWidget::OpenCommandMenuForPartyUnit(int32 PartyIndex, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
 {
+	(void)MenuScreenPosition;
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	if (!State || State->Screen != EGameXXKScreen::Battle || !State->ActiveBattleParty.IsValidIndex(PartyIndex))
@@ -213,7 +214,7 @@ bool UGameXXKBattleBoardWidget::OpenCommandMenuForPartyUnit(int32 PartyIndex, FV
 	}
 
 	SelectedPartyIndex = PartyIndex;
-	CommandMenuAnchor = MenuScreenPosition;
+	CommandMenuAnchor = ResolveCommandMenuAnchor(UnitScreenPosition);
 	SelectedPartyScreenPosition = UnitScreenPosition;
 	TargetingPointerPosition = UnitScreenPosition;
 	TargetingActionName = NAME_None;
@@ -222,9 +223,22 @@ bool UGameXXKBattleBoardWidget::OpenCommandMenuForPartyUnit(int32 PartyIndex, FV
 	return true;
 }
 
+bool UGameXXKBattleBoardWidget::ToggleCommandMenuForPartyUnit(int32 PartyIndex, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
+{
+	if (InteractionMode == EGameXXKBattleInteractionMode::CommandMenuOpen && SelectedPartyIndex == PartyIndex)
+	{
+		InteractionMode = EGameXXKBattleInteractionMode::Idle;
+		SelectedPartyIndex = INDEX_NONE;
+		TargetingActionName = NAME_None;
+		RefreshProgrammaticLayout();
+		return true;
+	}
+	return OpenCommandMenuForPartyUnit(PartyIndex, MenuScreenPosition, UnitScreenPosition);
+}
+
 void UGameXXKBattleBoardWidget::UpdateTargetingPointer(FVector2D ScreenPosition)
 {
-	if (IsTargetingBattleActionForTest())
+	if (IsTargetingBattleActionForTest() && !TargetingPointerPosition.Equals(ScreenPosition, 0.5f))
 	{
 		TargetingPointerPosition = ScreenPosition;
 		InvalidateLayoutAndVolatility();
@@ -458,6 +472,11 @@ FName UGameXXKBattleBoardWidget::GetTargetingActionNameForTest() const
 FVector2D UGameXXKBattleBoardWidget::GetTargetingPointerPositionForTest() const
 {
 	return TargetingPointerPosition;
+}
+
+FVector2D UGameXXKBattleBoardWidget::GetCommandMenuAnchorForTest() const
+{
+	return CommandMenuAnchor;
 }
 
 FString UGameXXKBattleBoardWidget::GetBattleActionButtonResourcePathForTest(FName ActionName)
@@ -719,6 +738,18 @@ FLinearColor UGameXXKBattleBoardWidget::ResolveBattleActionButtonTint(FName Acti
 		return FLinearColor(0.84f, 0.66f, 0.34f, 0.88f);
 	}
 	return FLinearColor(0.70f, 0.78f, 0.74f, 0.88f);
+}
+
+FVector2D UGameXXKBattleBoardWidget::ResolveCommandMenuAnchor(FVector2D UnitScreenPosition) const
+{
+	FVector2D Anchor = UnitScreenPosition + FVector2D(72.0f, -120.0f);
+	const FVector2D LocalSize = GetCachedGeometry().GetLocalSize();
+	if (LocalSize.X > 1.0f && LocalSize.Y > 1.0f)
+	{
+		Anchor.X = FMath::Clamp(Anchor.X, 12.0f, FMath::Max(12.0f, LocalSize.X - 372.0f));
+		Anchor.Y = FMath::Clamp(Anchor.Y, 12.0f, FMath::Max(12.0f, LocalSize.Y - 312.0f));
+	}
+	return Anchor;
 }
 
 bool UGameXXKBattleBoardWidget::BeginTargetingBattleAction(FName ActionName)

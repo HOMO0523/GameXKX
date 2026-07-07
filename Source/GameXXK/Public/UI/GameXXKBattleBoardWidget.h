@@ -64,6 +64,9 @@ public:
 	bool OpenCommandMenuForPartyUnit(int32 PartyIndex, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
+	bool ToggleCommandMenuForPartyUnit(int32 PartyIndex, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
 	void UpdateTargetingPointer(FVector2D ScreenPosition);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
@@ -97,6 +100,7 @@ public:
 	int32 GetSelectedPartyIndexForTest() const;
 	FName GetTargetingActionNameForTest() const;
 	FVector2D GetTargetingPointerPositionForTest() const;
+	FVector2D GetCommandMenuAnchorForTest() const;
 	FString GetBattleActionButtonResourcePathForTest(FName ActionName);
 	FLinearColor GetBattleActionButtonTintForTest(FName ActionName) const;
 	FString GetTargetingArrowHeadResourcePathForTest();
@@ -110,6 +114,7 @@ private:
 	void EnsureBattleVisualResourcesLoaded();
 	void StyleBattleActionButton(UButton* Button, FName ActionName);
 	FLinearColor ResolveBattleActionButtonTint(FName ActionName) const;
+	FVector2D ResolveCommandMenuAnchor(FVector2D UnitScreenPosition) const;
 	bool BeginTargetingBattleAction(FName ActionName);
 	bool ExecuteBattleAction(FName ActionName);
 	int32 FindFirstLivingEnemyIndex() const;
