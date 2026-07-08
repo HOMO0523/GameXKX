@@ -70,6 +70,9 @@ public:
 	void UpdateTargetingPointer(FVector2D ScreenPosition);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
+	void UpdateTargetingPointerFromSlateAbsolutePosition(FVector2D ScreenPosition);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
 	bool ConfirmTargetingEnemy(int32 EnemyIndex);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
@@ -101,6 +104,8 @@ public:
 	FName GetTargetingActionNameForTest() const;
 	FVector2D GetTargetingPointerPositionForTest() const;
 	FVector2D GetCommandMenuAnchorForTest() const;
+	FVector2D ResolveCommandSourcePositionForTest(int32 PartyIndex, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition, FVector2D LocalSize) const;
+	FVector2D ResolveSlateAbsolutePositionToLocalForTest(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D LocalSize) const;
 	FString GetBattleActionButtonResourcePathForTest(FName ActionName);
 	FLinearColor GetBattleActionButtonTintForTest(FName ActionName) const;
 	FString GetTargetingArrowHeadResourcePathForTest();
@@ -114,7 +119,10 @@ private:
 	void EnsureBattleVisualResourcesLoaded();
 	void StyleBattleActionButton(UButton* Button, FName ActionName);
 	FLinearColor ResolveBattleActionButtonTint(FName ActionName) const;
-	FVector2D ResolveCommandMenuAnchor(FVector2D MenuScreenPosition) const;
+	FVector2D ResolveCommandSourcePosition(int32 PartyIndex, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition, FVector2D LocalSize) const;
+	FVector2D ResolveCommandMenuAnchor(FVector2D UnitScreenPosition) const;
+	FVector2D ResolveSlateAbsolutePositionToLocal(FVector2D ScreenPosition) const;
+	FVector2D ResolveSlateAbsolutePositionToLocal(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D LocalSize) const;
 	bool BeginTargetingBattleAction(FName ActionName);
 	bool ExecuteBattleAction(FName ActionName);
 	int32 FindFirstLivingEnemyIndex() const;

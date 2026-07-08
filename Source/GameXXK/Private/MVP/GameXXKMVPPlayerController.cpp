@@ -13,6 +13,7 @@
 #include "MVP/GameXXKBattleSceneUnitActor.h"
 #include "MVP/GameXXKRouteEncounterSceneActor.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "PaperFlipbookComponent.h"
 #include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKTownPlayerPawn.h"
 #include "UI/GameXXKBattleBoardWidget.h"
@@ -128,6 +129,23 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 		if (BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting())
 		{
 			return true;
+		}
+	}
+	if (Params.Key == EKeys::I && Params.Event == IE_Pressed)
+	{
+		EnsurePlayerFlowWidgets();
+		UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+		if (Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
+		{
+			const bool bWasInventoryOpen = Subsystem->GetRuntimeState().TownPanelMode == EGameXXKTownPanelMode::Inventory;
+			const bool bHandled = bWasInventoryOpen
+				? Subsystem->CloseTownPanel()
+				: Subsystem->OpenTownPanel(EGameXXKTownPanelMode::Inventory);
+			if (bHandled)
+			{
+				RefreshPlayerFlowWidgets();
+				return true;
+			}
 		}
 	}
 	if (Params.Key == EKeys::LeftMouseButton && Params.Event == IE_Released)
@@ -664,7 +682,12 @@ bool AGameXXKMVPPlayerController::TryHandleBattleSceneRightClick()
 		return false;
 	}
 	FVector2D UnitScreenPosition(CursorX, CursorY);
-	ProjectWorldLocationToScreen(UnitActor->GetActorLocation(), UnitScreenPosition, true);
+	FVector UnitCommandWorldPosition = UnitActor->GetActorLocation();
+	if (const UPaperFlipbookComponent* BattleVisual = UnitActor->GetBattleVisualComponent())
+	{
+		UnitCommandWorldPosition = BattleVisual->Bounds.Origin;
+	}
+	ProjectWorldLocationToScreen(UnitCommandWorldPosition, UnitScreenPosition, true);
 	return ToggleBattleCommandMenuForUnit(UnitActor, FVector2D(CursorX, CursorY), UnitScreenPosition);
 }
 
@@ -676,12 +699,7 @@ bool AGameXXKMVPPlayerController::TryHandleBattleSceneLeftClick()
 		return false;
 	}
 
-	float CursorX = 0.0f;
-	float CursorY = 0.0f;
-	if (GetMousePosition(CursorX, CursorY))
-	{
-		BattleBoardWidget->UpdateTargetingPointer(FVector2D(CursorX, CursorY));
-	}
+	UpdateBattleTargetingPointerFromMouse();
 
 	AGameXXKBattleSceneUnitActor* UnitActor = FindBattleSceneUnitUnderCursor(true);
 	if (UnitActor && UnitActor->CanReceiveTargetedBattleAction())
@@ -745,6 +763,11 @@ bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerFromMouse()
 	if (!GetMousePosition(CursorX, CursorY))
 	{
 		return false;
+	}
+	if (FSlateApplication::IsInitialized())
+	{
+		BattleBoardWidget->UpdateTargetingPointerFromSlateAbsolutePosition(FSlateApplication::Get().GetCursorPos());
+		return true;
 	}
 	return UpdateBattleTargetingPointer(FVector2D(CursorX, CursorY));
 }

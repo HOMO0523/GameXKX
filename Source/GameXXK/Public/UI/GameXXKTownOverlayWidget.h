@@ -7,7 +7,9 @@
 #include "GameXXKTownOverlayWidget.generated.h"
 
 class UButton;
+class UBorder;
 class UCanvasPanel;
+class UHorizontalBox;
 class UTextBlock;
 class UUniformGridPanel;
 class UVerticalBox;
@@ -95,13 +97,37 @@ private:
 	TObjectPtr<UVerticalBox> ActivePanelBox;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> ActivePanelBackplate;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> ActivePanelColumns;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ActivePanelTitleBlock;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ActivePanelBodyBlock;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> EquipmentPanelBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> WeaponSlotTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ArmorSlotTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> AccessorySlotTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> ShopStockPanel;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UUniformGridPanel> InventoryGrid;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> InventorySlotLabels;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> SaveButton;

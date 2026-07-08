@@ -2,7 +2,7 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-08T02:00:00+08:00
+updated_at: 2026-07-08T10:34:30+08:00
 source_commit: working-tree
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
@@ -100,3 +100,24 @@ Acceptance evidence: GameXXK now owns route seed/state/clicks; the route widget 
 - UE MCP import passed: `Content/Python/gamexxk_import_inventory_ui_assets.py` imported nine Texture2D assets into `/Game/GameXXK/UI/Inventory/Textures`.
 - `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\inventory-equipment-shop-green-v2.json` passed with `ok: true`, 22/22 `GameXXK.MVP` automation tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
 - Current automation validates: contextual battle command menu click anchoring, PPT item definitions, equipment stat recalculation, accessory swapping, MP consumable use, 20-slot backpack panel path, merchant `F` opening the shop instead of auto-buying, explicit trade APIs, and failure-return full HP/MP.
+
+## 2026-07-08 Command Anchor And Unified Backpack UX
+
+- RED verified: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\inventory-equipment-shop-red.json` failed `GameXXK.MVP.Battle.BoardWidget`, `GameXXK.MVP.UI.PlayerControllerOwnsFlowWidgets`, and `GameXXK.MVP.UI.WidgetBasesDriveRules`.
+- RED failures covered the intended regressions: command menu anchored near the mouse/click point instead of selected party unit, `I` key did not open/close inventory, backpack lacked a shared backplate and fixed slot wrappers, equipment slots were absent, and trade mode did not reuse the shared backpack grid.
+- Build prerequisite: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 120` first exposed a unity-build collision from existing anonymous namespace helpers; after setting `bUseUnity = false` for `GameXXK`, cold UBT compile and PIE smoke passed.
+- GREEN verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 120` passed with UBT compile success and PIE start/stop through UE MCP.
+- GREEN verified: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\inventory-equipment-shop-green.json` passed with `ok: true`, all 22 `GameXXK.MVP` automation tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
+- Project-management validation passed: `python scripts\harness_state_validator.py --require-units --json` returned `ok: true`; UE MCP `save_dirty_packages` returned `dirty_before=[]` and `dirty_after=[]`.
+
+## 2026-07-08 Embedded PIE Battle Command Anchor
+
+- RED verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 80` failed after adding the embedded-PIE party-lane regression test because `UGameXXKBattleBoardWidget::ResolveCommandSourcePositionForTest` did not exist yet.
+- GREEN verified: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\battle-command-lane-anchor-green.json` passed with `ok: true` and no failed tests after correcting projected party command sources back into the right-side party lane.
+- Final verification: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 100` passed with UBT success, UE MCP ready, and PIE start/stop; `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\battle-command-lane-anchor-final.json` passed with `ok: true`, 22/22 `GameXXK.MVP` tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
+
+## 2026-07-08 Battle Targeting Pointer Local Coordinates
+
+- RED verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 60` failed after adding the Slate-absolute-to-widget-local cursor regression test because `UpdateTargetingPointerFromSlateAbsolutePosition` and `ResolveSlateAbsolutePositionToLocalForTest` were not implemented yet.
+- GREEN verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 80` passed with UBT success, UE MCP ready, and PIE start/stop after converting live targeting mouse input from Slate absolute coordinates to BattleBoard-local coordinates.
+- Final automation: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\battle-targeting-pointer-local-final.json` passed with `ok: true`, 22/22 `GameXXK.MVP` tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.

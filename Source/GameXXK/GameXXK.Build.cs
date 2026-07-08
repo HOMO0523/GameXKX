@@ -7,6 +7,7 @@ public class GameXXK : ModuleRules
 	public GameXXK(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+		bUseUnity = false;
 	
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "EngineSettings", "InputCore", "EnhancedInput", "UMG", "Slate", "SlateCore", "Paper2D" });
 

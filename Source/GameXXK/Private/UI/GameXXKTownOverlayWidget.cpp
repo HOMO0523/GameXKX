@@ -1,12 +1,18 @@
 #include "UI/GameXXKTownOverlayWidget.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/UniformGridPanel.h"
+#include "Components/UniformGridSlot.h"
 #include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Engine/Texture2D.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -23,9 +29,10 @@ namespace
 	const FVector2D TownPanelPosition(28.0f, 28.0f);
 	const FVector2D TownPanelSize(360.0f, 260.0f);
 	const FVector2D TownDetailPanelPosition(412.0f, 28.0f);
-	const FVector2D TownDetailPanelSize(440.0f, 420.0f);
+	const FVector2D TownDetailPanelSize(760.0f, 540.0f);
 	const FString InventorySlotTexturePath(TEXT("/Game/GameXXK/UI/Inventory/Textures/T_InkBackpackSlot.T_InkBackpackSlot"));
 	constexpr int32 InventorySlotCount = 20;
+	constexpr float BackpackSlotSize = 72.0f;
 
 	static FSlateBrush BuildTextureBrush(UTexture2D* Texture, const FVector2D& ImageSize, const FLinearColor& Tint)
 	{
@@ -202,17 +209,106 @@ void UGameXXKTownOverlayWidget::BuildProgrammaticLayout()
 		ActivePanelSlot->SetSize(TownDetailPanelSize);
 	}
 	ActivePanelTitleBlock = AddTextBlock(ActivePanelBox, FText::GetEmpty());
-	ActivePanelBodyBlock = AddTextBlock(ActivePanelBox, FText::GetEmpty());
-	InventoryGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("TownInventoryGrid"));
-	ActivePanelBox->AddChildToVerticalBox(InventoryGrid);
+
+	ActivePanelBackplate = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("TownInventoryBackplate"));
+	ActivePanelBackplate->SetPadding(FMargin(18.0f, 16.0f));
+	ActivePanelBackplate->SetBrushColor(FLinearColor(0.10f, 0.085f, 0.065f, 0.86f));
+	if (UVerticalBoxSlot* BackplateSlot = ActivePanelBox->AddChildToVerticalBox(ActivePanelBackplate))
+	{
+		BackplateSlot->SetPadding(FMargin(0.0f, 10.0f, 0.0f, 0.0f));
+		BackplateSlot->SetHorizontalAlignment(HAlign_Fill);
+		BackplateSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+
+	ActivePanelColumns = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("TownUnifiedInventoryColumns"));
+	ActivePanelBackplate->AddChild(ActivePanelColumns);
+
+	EquipmentPanelBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("TownEquipmentPanel"));
+	if (UHorizontalBoxSlot* EquipmentColumnSlot = ActivePanelColumns->AddChildToHorizontalBox(EquipmentPanelBox))
+	{
+		EquipmentColumnSlot->SetPadding(FMargin(0.0f, 0.0f, 18.0f, 0.0f));
+		EquipmentColumnSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		EquipmentColumnSlot->SetHorizontalAlignment(HAlign_Fill);
+	}
+
+	UTextBlock* EquipmentHeader = AddTextBlock(EquipmentPanelBox, NSLOCTEXT("GameXXKTownOverlay", "EquipmentHeader", "装备"));
+	if (EquipmentHeader)
+	{
+		FSlateFontInfo EquipmentHeaderFont = EquipmentHeader->GetFont();
+		EquipmentHeaderFont.Size = 18;
+		EquipmentHeaderFont.TypefaceFontName = TEXT("Bold");
+		EquipmentHeader->SetFont(EquipmentHeaderFont);
+	}
+
+	auto AddEquipmentSlot = [this](const FName SlotName, const FText& FallbackText) -> UTextBlock*
+	{
+		USizeBox* SlotSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), SlotName);
+		SlotSizeBox->SetWidthOverride(210.0f);
+		SlotSizeBox->SetHeightOverride(64.0f);
+
+		UBorder* SlotBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
+		SlotBorder->SetPadding(FMargin(10.0f, 8.0f));
+		SlotBorder->SetBrushColor(FLinearColor(0.18f, 0.14f, 0.10f, 0.92f));
+		SlotSizeBox->AddChild(SlotBorder);
+
+		UTextBlock* SlotTextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+		SlotTextBlock->SetText(FallbackText);
+		SlotTextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.94f, 0.88f, 0.74f, 1.0f)));
+		SlotTextBlock->SetAutoWrapText(true);
+		SlotBorder->AddChild(SlotTextBlock);
+
+		if (UVerticalBoxSlot* EquipmentSlot = EquipmentPanelBox->AddChildToVerticalBox(SlotSizeBox))
+		{
+			EquipmentSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
+			EquipmentSlot->SetHorizontalAlignment(HAlign_Fill);
+		}
+		return SlotTextBlock;
+	};
+	WeaponSlotTextBlock = AddEquipmentSlot(TEXT("TownEquipmentSlot_Weapon"), NSLOCTEXT("GameXXKTownOverlay", "WeaponSlotEmpty", "武器\n未装备"));
+	ArmorSlotTextBlock = AddEquipmentSlot(TEXT("TownEquipmentSlot_Armor"), NSLOCTEXT("GameXXKTownOverlay", "ArmorSlotEmpty", "防具\n未装备"));
+	AccessorySlotTextBlock = AddEquipmentSlot(TEXT("TownEquipmentSlot_Accessory"), NSLOCTEXT("GameXXKTownOverlay", "AccessorySlotEmpty", "饰品\n未装备"));
+	ActivePanelBodyBlock = AddTextBlock(EquipmentPanelBox, FText::GetEmpty());
+	if (ActivePanelBodyBlock)
+	{
+		ActivePanelBodyBlock->SetAutoWrapText(true);
+	}
+
+	UVerticalBox* BackpackPanelBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("TownBackpackPanel"));
+	if (UHorizontalBoxSlot* BackpackColumnSlot = ActivePanelColumns->AddChildToHorizontalBox(BackpackPanelBox))
+	{
+		BackpackColumnSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		BackpackColumnSlot->SetHorizontalAlignment(HAlign_Fill);
+	}
+
+	ShopStockPanel = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("TownShopStockPanel"));
+	BackpackPanelBox->AddChildToVerticalBox(ShopStockPanel);
+
+	UTextBlock* BackpackHeader = AddTextBlock(BackpackPanelBox, NSLOCTEXT("GameXXKTownOverlay", "BackpackHeader", "背包"));
+	if (BackpackHeader)
+	{
+		FSlateFontInfo BackpackHeaderFont = BackpackHeader->GetFont();
+		BackpackHeaderFont.Size = 18;
+		BackpackHeaderFont.TypefaceFontName = TEXT("Bold");
+		BackpackHeader->SetFont(BackpackHeaderFont);
+	}
+
+	InventoryGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("TownSharedInventoryGrid"));
+	BackpackPanelBox->AddChildToVerticalBox(InventoryGrid);
 	UTexture2D* InventorySlotTexture = LoadObject<UTexture2D>(nullptr, *InventorySlotTexturePath);
+	InventorySlotLabels.Reset();
 	for (int32 SlotIndex = 0; SlotIndex < InventorySlotCount; ++SlotIndex)
 	{
+		USizeBox* SlotSizeBox = WidgetTree->ConstructWidget<USizeBox>(
+			USizeBox::StaticClass(),
+			FName(*FString::Printf(TEXT("TownInventorySlotSize_%02d"), SlotIndex)));
+		SlotSizeBox->SetWidthOverride(BackpackSlotSize);
+		SlotSizeBox->SetHeightOverride(BackpackSlotSize);
+
 		UButton* SlotButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass());
 		SlotButton->SetBackgroundColor(InventorySlotTexture ? FLinearColor::White : FLinearColor(0.20f, 0.17f, 0.12f, 0.82f));
 		if (InventorySlotTexture)
 		{
-			const FVector2D SlotImageSize(64.0f, 64.0f);
+			const FVector2D SlotImageSize(BackpackSlotSize, BackpackSlotSize);
 			FButtonStyle SlotStyle;
 			SlotStyle.SetNormal(BuildTextureBrush(InventorySlotTexture, SlotImageSize, FLinearColor(1.0f, 1.0f, 1.0f, 0.94f)));
 			SlotStyle.SetHovered(BuildTextureBrush(InventorySlotTexture, SlotImageSize, FLinearColor(1.0f, 0.94f, 0.78f, 1.0f)));
@@ -225,8 +321,19 @@ void UGameXXKTownOverlayWidget::BuildProgrammaticLayout()
 		UTextBlock* SlotLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 		SlotLabel->SetText(FText::AsNumber(SlotIndex + 1));
 		SlotLabel->SetColorAndOpacity(FSlateColor(FLinearColor(0.92f, 0.86f, 0.74f, 0.75f)));
+		SlotLabel->SetJustification(ETextJustify::Center);
+		SlotLabel->SetAutoWrapText(true);
+		FSlateFontInfo SlotFont = SlotLabel->GetFont();
+		SlotFont.Size = 11;
+		SlotLabel->SetFont(SlotFont);
 		SlotButton->AddChild(SlotLabel);
-		InventoryGrid->AddChildToUniformGrid(SlotButton, SlotIndex / 5, SlotIndex % 5);
+		SlotSizeBox->AddChild(SlotButton);
+		if (UUniformGridSlot* GridSlot = InventoryGrid->AddChildToUniformGrid(SlotSizeBox, SlotIndex / 5, SlotIndex % 5))
+		{
+			GridSlot->SetHorizontalAlignment(HAlign_Center);
+			GridSlot->SetVerticalAlignment(VAlign_Center);
+		}
+		InventorySlotLabels.Add(SlotLabel);
 	}
 }
 
@@ -270,13 +377,79 @@ void UGameXXKTownOverlayWidget::ConfigureProgrammaticLayout()
 	{
 		ActivePanelBox->SetVisibility(ActiveMode == EGameXXKTownPanelMode::None ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
 	}
+	if (ActivePanelBackplate)
+	{
+		ActivePanelBackplate->SetVisibility(ActiveMode == EGameXXKTownPanelMode::None ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	}
 	if (InventoryGrid)
 	{
-		InventoryGrid->SetVisibility(ActiveMode == EGameXXKTownPanelMode::Inventory ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		InventoryGrid->SetVisibility(ActiveMode == EGameXXKTownPanelMode::None ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+	}
+	if (ShopStockPanel)
+	{
+		ShopStockPanel->SetVisibility(ActiveMode == EGameXXKTownPanelMode::Trade ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		ShopStockPanel->ClearChildren();
 	}
 	if (!ActivePanelTitleBlock || !ActivePanelBodyBlock || !State)
 	{
 		return;
+	}
+
+	auto ResolveItemDisplayName = [](FName ItemId) -> FString
+	{
+		if (ItemId.IsNone())
+		{
+			return TEXT("未装备");
+		}
+		bool bFound = false;
+		const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(ItemId, bFound);
+		return bFound ? Def.DisplayName.ToString() : ItemId.ToString();
+	};
+
+	if (WeaponSlotTextBlock)
+	{
+		WeaponSlotTextBlock->SetText(FText::FromString(FString::Printf(TEXT("武器\n%s"), *ResolveItemDisplayName(State->EquippedWeapon))));
+	}
+	if (ArmorSlotTextBlock)
+	{
+		ArmorSlotTextBlock->SetText(FText::FromString(FString::Printf(TEXT("防具\n%s"), *ResolveItemDisplayName(State->EquippedArmor))));
+	}
+	if (AccessorySlotTextBlock)
+	{
+		AccessorySlotTextBlock->SetText(FText::FromString(FString::Printf(TEXT("饰品\n%s"), *ResolveItemDisplayName(State->EquippedAccessory))));
+	}
+
+	TArray<TPair<FName, int32>> InventoryEntries;
+	for (const TPair<FName, int32>& Entry : State->Inventory)
+	{
+		if (Entry.Value > 0)
+		{
+			InventoryEntries.Add(Entry);
+		}
+	}
+	InventoryEntries.Sort([](const TPair<FName, int32>& A, const TPair<FName, int32>& B)
+	{
+		return A.Key.ToString() < B.Key.ToString();
+	});
+	for (int32 SlotIndex = 0; SlotIndex < InventorySlotLabels.Num(); ++SlotIndex)
+	{
+		UTextBlock* SlotLabel = InventorySlotLabels[SlotIndex].Get();
+		if (!SlotLabel)
+		{
+			continue;
+		}
+		if (InventoryEntries.IsValidIndex(SlotIndex))
+		{
+			bool bFound = false;
+			const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(InventoryEntries[SlotIndex].Key, bFound);
+			const FString DisplayName = bFound ? Def.DisplayName.ToString() : InventoryEntries[SlotIndex].Key.ToString();
+			SlotLabel->SetText(FText::FromString(FString::Printf(TEXT("%s\nx%d"), *DisplayName, InventoryEntries[SlotIndex].Value)));
+			SlotLabel->SetColorAndOpacity(FSlateColor(FLinearColor(0.98f, 0.91f, 0.76f, 1.0f)));
+		}
+		else
+		{
+			SlotLabel->SetText(FText::FromString(TEXT("")));
+		}
 	}
 
 	if (ActiveMode == EGameXXKTownPanelMode::Inventory)
@@ -315,6 +488,17 @@ void UGameXXKTownOverlayWidget::ConfigureProgrammaticLayout()
 	else if (ActiveMode == EGameXXKTownPanelMode::Trade)
 	{
 		ActivePanelTitleBlock->SetText(NSLOCTEXT("GameXXKTownOverlay", "TradeTitle", "商店"));
+		if (ShopStockPanel)
+		{
+			UTextBlock* ShopHeader = AddTextBlock(ShopStockPanel, NSLOCTEXT("GameXXKTownOverlay", "ShopStockHeader", "商人货架"));
+			if (ShopHeader)
+			{
+				FSlateFontInfo ShopHeaderFont = ShopHeader->GetFont();
+				ShopHeaderFont.Size = 17;
+				ShopHeaderFont.TypefaceFontName = TEXT("Bold");
+				ShopHeader->SetFont(ShopHeaderFont);
+			}
+		}
 		TArray<FString> ShopLines;
 		for (FName ItemId : UGameXXKMVPRules::GetShopItemIds())
 		{
@@ -323,6 +507,10 @@ void UGameXXKTownOverlayWidget::ConfigureProgrammaticLayout()
 			if (bFound)
 			{
 				ShopLines.Add(FString::Printf(TEXT("%s  买%d/卖%d"), *Def.DisplayName.ToString(), Def.BuyPrice, Def.SellPrice));
+				if (ShopStockPanel)
+				{
+					AddTextBlock(ShopStockPanel, FText::FromString(FString::Printf(TEXT("%s  %d金"), *Def.DisplayName.ToString(), Def.BuyPrice)));
+				}
 			}
 		}
 		ActivePanelBodyBlock->SetText(FText::FromString(FString::Join(ShopLines, TEXT("\n"))));

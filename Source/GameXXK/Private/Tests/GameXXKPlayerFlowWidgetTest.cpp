@@ -1,5 +1,6 @@
 #include "GameXXKMVPRules.h"
 #include "Blueprint/GameViewportSubsystem.h"
+#include "InputKeyEventArgs.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKBattleSceneUnitActor.h"
@@ -88,6 +89,10 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("main menu hides after town state"), PlayerController->GetMainMenuWidgetForTest()->GetVisibility(), ESlateVisibility::Collapsed);
 	TestTrue(TEXT("town overlay appears after town state"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
 	TestFalse(TEXT("route map hidden before entering dungeon"), PlayerController->GetRouteMapWidgetForTest()->GetVisibility() == ESlateVisibility::Visible);
+	TestTrue(TEXT("I key opens the unified town inventory panel"), PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::I, IE_Pressed, 1.0f)));
+	TestEqual(TEXT("I key records inventory panel state"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::Inventory);
+	TestTrue(TEXT("I key closes the unified town inventory panel"), PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::I, IE_Pressed, 1.0f)));
+	TestEqual(TEXT("I key clears town panel state"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::None);
 
 	TestTrue(TEXT("quest acceptance enables the in-world town route entrance"), Subsystem->AcceptQuest());
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
@@ -114,15 +119,15 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	EnemyActor->SetMVPSubsystemForTest(Subsystem);
 	EnemyActor->ConfigureFromRuntimeUnit(true, 0, Subsystem->GetRuntimeState().ActiveBattleEnemies[0]);
 	const int32 EnemyHPBeforeControllerInput = Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP;
-	const FVector2D PartyActorClickPosition(830.0f, 420.0f);
-	const FVector2D MisprojectedPartyActorPosition(260.0f, 640.0f);
-	TestTrue(TEXT("controller toggles command menu for party actor"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, PartyActorClickPosition, MisprojectedPartyActorPosition));
+	const FVector2D EnemySideClickPosition(360.0f, 390.0f);
+	const FVector2D PartyActorScreenPosition(940.0f, 420.0f);
+	TestTrue(TEXT("controller toggles command menu for party actor"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, EnemySideClickPosition, PartyActorScreenPosition));
 	TestTrue(TEXT("battle board menu is visible after controller opens it"), PlayerController->GetBattleBoardWidgetForTest()->IsCommandMenuVisibleForTest());
 	TestEqual(TEXT("controller selects first party actor for commands"), PlayerController->GetBattleBoardWidgetForTest()->GetSelectedPartyIndexForTest(), 0);
 	const FVector2D ControllerCommandMenuAnchor = PlayerController->GetBattleBoardWidgetForTest()->GetCommandMenuAnchorForTest();
-	const float ControllerCommandMenuGapFromClick = PartyActorClickPosition.X - (ControllerCommandMenuAnchor.X + 360.0f);
-	TestTrue(TEXT("controller command menu is anchored near the clicked party actor"), ControllerCommandMenuGapFromClick >= 8.0f && ControllerCommandMenuGapFromClick <= 48.0f);
-	TestTrue(TEXT("controller toggles the same party command menu closed"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, PartyActorClickPosition, MisprojectedPartyActorPosition));
+	const float ControllerCommandMenuGapFromUnit = PartyActorScreenPosition.X - (ControllerCommandMenuAnchor.X + 260.0f);
+	TestTrue(TEXT("controller command menu is anchored near the selected party actor"), ControllerCommandMenuGapFromUnit >= 12.0f && ControllerCommandMenuGapFromUnit <= 32.0f);
+	TestTrue(TEXT("controller toggles the same party command menu closed"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, EnemySideClickPosition, PartyActorScreenPosition));
 	TestFalse(TEXT("same party toggle hides command menu"), PlayerController->GetBattleBoardWidgetForTest()->IsCommandMenuVisibleForTest());
 	TestTrue(TEXT("controller reopens command menu for party actor"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, FVector2D(260.0f, 640.0f), FVector2D(830.0f, 420.0f)));
 	TestTrue(TEXT("controller switches command menu to follower actor"), PlayerController->ToggleBattleCommandMenuForUnitForTest(FollowerActor, FVector2D(820.0f, 620.0f), FVector2D(910.0f, 500.0f)));

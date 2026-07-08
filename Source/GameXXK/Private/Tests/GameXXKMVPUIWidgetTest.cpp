@@ -1,4 +1,8 @@
 #include "GameXXKMVPRules.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Border.h"
+#include "Components/SizeBox.h"
+#include "Components/Widget.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleWidget.h"
 #include "UI/GameXXKCharacterPanelWidget.h"
@@ -67,6 +71,27 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("town overlay records inventory panel"), TownOverlay->GetActiveTownPanelForTest(), EGameXXKTownPanelMode::Inventory);
 	TestEqual(TEXT("inventory panel exposes 20 backpack slots"), TownOverlay->GetInventorySlotCountForTest(), 20);
 	TestTrue(TEXT("inventory slots use generated ink slot texture"), TownOverlay->GetInventorySlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Inventory/Textures/T_InkBackpackSlot")));
+	TestNotNull(TEXT("inventory panel has one shared backpack backplate"), TownOverlay->WidgetTree ? Cast<UBorder>(TownOverlay->WidgetTree->FindWidget(TEXT("TownInventoryBackplate"))) : nullptr);
+	USizeBox* FirstInventorySlot = TownOverlay->WidgetTree ? Cast<USizeBox>(TownOverlay->WidgetTree->FindWidget(TEXT("TownInventorySlotSize_00"))) : nullptr;
+	USizeBox* LastInventorySlot = TownOverlay->WidgetTree ? Cast<USizeBox>(TownOverlay->WidgetTree->FindWidget(TEXT("TownInventorySlotSize_19"))) : nullptr;
+	TestNotNull(TEXT("inventory panel wraps the first slot in a fixed size box"), FirstInventorySlot);
+	TestNotNull(TEXT("inventory panel wraps the last slot in a fixed size box"), LastInventorySlot);
+	if (FirstInventorySlot && LastInventorySlot)
+	{
+		TestEqual(TEXT("inventory slots share fixed width"), FirstInventorySlot->GetWidthOverride(), LastInventorySlot->GetWidthOverride());
+		TestEqual(TEXT("inventory slots share fixed height"), FirstInventorySlot->GetHeightOverride(), LastInventorySlot->GetHeightOverride());
+		TestEqual(TEXT("inventory slot width matches MVP layout"), FirstInventorySlot->GetWidthOverride(), 72.0f);
+		TestEqual(TEXT("inventory slot height matches MVP layout"), FirstInventorySlot->GetHeightOverride(), 72.0f);
+	}
+	TestNotNull(TEXT("character equipment panel exposes weapon slot"), TownOverlay->WidgetTree ? Cast<USizeBox>(TownOverlay->WidgetTree->FindWidget(TEXT("TownEquipmentSlot_Weapon"))) : nullptr);
+	TestNotNull(TEXT("character equipment panel exposes armor slot"), TownOverlay->WidgetTree ? Cast<USizeBox>(TownOverlay->WidgetTree->FindWidget(TEXT("TownEquipmentSlot_Armor"))) : nullptr);
+	TestNotNull(TEXT("character equipment panel exposes accessory slot"), TownOverlay->WidgetTree ? Cast<USizeBox>(TownOverlay->WidgetTree->FindWidget(TEXT("TownEquipmentSlot_Accessory"))) : nullptr);
+	TestTrue(TEXT("town overlay opens trade panel"), TownOverlay->ExecuteTownCommandForTest(FName(TEXT("OpenTrade"))));
+	TestEqual(TEXT("town overlay records trade panel"), TownOverlay->GetActiveTownPanelForTest(), EGameXXKTownPanelMode::Trade);
+	UWidget* SharedBackpackGrid = TownOverlay->WidgetTree ? TownOverlay->WidgetTree->FindWidget(TEXT("TownSharedInventoryGrid")) : nullptr;
+	TestNotNull(TEXT("trade panel reuses the shared player backpack grid"), SharedBackpackGrid);
+	TestTrue(TEXT("shared backpack grid stays visible while trading"), SharedBackpackGrid && SharedBackpackGrid->GetVisibility() != ESlateVisibility::Collapsed);
+	TestNotNull(TEXT("trade panel has a shop stock panel beside the same backpack"), TownOverlay->WidgetTree ? TownOverlay->WidgetTree->FindWidget(TEXT("TownShopStockPanel")) : nullptr);
 
 	TestTrue(TEXT("quest dialog accepts quest"), QuestDialog->AcceptQuest());
 	TestEqual(TEXT("quest accepted in subsystem state"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);

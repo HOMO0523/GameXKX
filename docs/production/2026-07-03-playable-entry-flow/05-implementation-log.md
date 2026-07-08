@@ -2,7 +2,7 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-08T02:00:00+08:00
+updated_at: 2026-07-08T10:34:30+08:00
 source_commit: working-tree
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
@@ -57,7 +57,7 @@ parallel_lock: GameXXK.PlayableEntryFlow
 
 ## 2026-07-08 Battle Targeting And Town Inventory
 
-- Fixed battle command menu anchoring so right-clicking a party actor uses the actual cursor/click screen coordinate instead of the actor-origin projection.
+- Added the first battle command-menu anchoring pass; it was later corrected to use selected party-unit screen position rather than cursor/click position.
 - Added PPT-backed item definitions for `金疮药`, `灵芝散`, `清心茶`, `鹤羽香囊`, `青锋短剑`, `竹编轻甲`, `鹤纹护符`, and `墨砚坠饰`.
 - Changed equipment application to use explicit weapon/armor/accessory slots plus stat recalculation from level base stats, preventing repeated equip calls from stacking bonuses.
 - Added arbitrary consumable use, MP restore, accessory equipment, and failure-return full HP/MP restore in `UGameXXKMVPRules`.
@@ -65,3 +65,14 @@ parallel_lock: GameXXK.PlayableEntryFlow
 - Added Town Overlay panel states for backpack, character, shop, and close. The backpack panel exposes 20 slots and uses the imported ink backpack slot texture.
 - Generated water-ink inventory/equipment source art and imported nine Texture2D assets under `/Game/GameXXK/UI/Inventory/Textures`.
 - Updated `scripts/gamexxk_mvp_playtest.py` so MCP port-binding log noise from a concurrently running editor no longer causes a false automation failure when all automation tests pass.
+
+## 2026-07-08 Battle Command Anchor And Unified Inventory UX
+
+- Corrected the previous battle command-menu anchor approach: party commands now anchor from the selected party unit screen position, not the mouse/click point. Real right-click flow projects the party actor PaperFlipbook bounds before opening the menu, so the command menu stays beside the selected hero/follower instead of drifting into the enemy area.
+- Reduced the battle command menu width from `360` to `260` and kept the vertical menu centered on the selected party unit. Targeting arrows now start from the selected unit point rather than the right-click coordinate.
+- Added a second command-anchor guard for embedded PIE: if the projected selected-party position still lands on the enemy/left side of the battle canvas, the battle board corrects the command source back into the right-side party lane before placing the menu and targeting arrow.
+- Fixed battle targeting pointer coordinates for embedded PIE/editor windows: targeting now converts Slate absolute mouse coordinates into BattleBoard-local coordinates before painting the ink-dab Bezier arrow, so the arrow end tracks the visible cursor instead of drawing along the top of the viewport.
+- Added `I` key handling in `AGameXXKMVPPlayerController`: town `I` toggles the unified inventory panel open/closed through the same runtime `TownPanelMode` state used by buttons.
+- Rebuilt `UGameXXKTownOverlayWidget` panel structure around a shared inventory backplate, fixed 72x72 backpack slot wrappers, runtime item labels, and explicit weapon/armor/accessory equipment slots.
+- Changed town shop mode to display merchant stock beside the same shared player backpack grid instead of presenting shop as a separate text-only inventory surface.
+- Disabled unity build for the `GameXXK` module because existing anonymous-namespace helper names collide when multiple `.cpp` files are folded into `Module.GameXXK.cpp`; non-unity builds keep each translation unit isolated and restore cold UBT verification stability.
