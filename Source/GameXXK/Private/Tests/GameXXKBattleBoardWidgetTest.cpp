@@ -57,10 +57,10 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("battle board records selected party index"), BattleWidget->GetSelectedPartyIndexForTest(), 0);
 	const FVector2D CommandMenuAnchor = BattleWidget->GetCommandMenuAnchorForTest();
 	constexpr float CommandMenuWidth = 260.0f;
-	const float CommandMenuGapFromUnit = PartyUnitScreenPosition.X - (CommandMenuAnchor.X + CommandMenuWidth);
-	TestTrue(TEXT("battle board anchors command menu to the left of the selected party unit"), CommandMenuAnchor.X < PartyUnitScreenPosition.X);
-	TestTrue(TEXT("battle board ignores enemy-side click drift and stays close to the selected party unit"), CommandMenuGapFromUnit >= 12.0f && CommandMenuGapFromUnit <= 32.0f);
-	TestTrue(TEXT("battle board keeps command menu vertically centered near the selected party unit"), FMath::Abs((CommandMenuAnchor.Y + 150.0f) - PartyUnitScreenPosition.Y) <= 24.0f);
+	const FVector2D CommandMenuDefaultOffset(-500.0f, 0.0f);
+	TestEqual(TEXT("battle board uses the tuned command-menu X offset"), CommandMenuAnchor.X, PartyUnitScreenPosition.X + CommandMenuDefaultOffset.X);
+	TestEqual(TEXT("battle board uses the tuned command-menu Y offset"), CommandMenuAnchor.Y, PartyUnitScreenPosition.Y + CommandMenuDefaultOffset.Y);
+	TestTrue(TEXT("battle board anchors command menu to the left of the selected party unit"), CommandMenuAnchor.X + CommandMenuWidth < PartyUnitScreenPosition.X);
 	TestTrue(TEXT("battle board exposes basic attack action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleBasicAttack")), true));
 	TestTrue(TEXT("battle board exposes Crane Wing Slash action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleCraneWingSlash")), true));
 	TestTrue(TEXT("battle board exposes defend action after party selection"), BattleWidget->HasBattleActionForTest(FName(TEXT("BattleDefend")), true));

@@ -30,6 +30,7 @@ namespace
 	static constexpr float CommandMenuWidth = 260.0f;
 	static constexpr float CommandMenuHeight = 300.0f;
 	static constexpr float CommandMenuGap = 18.0f;
+	static const FVector2D CommandMenuDefaultOffset(-500.0f, 0.0f);
 	static constexpr float PartyCommandLaneMinXRatio = 0.72f;
 	static constexpr float PartyCommandLanePreferredXRatio = 0.75f;
 	static constexpr const TCHAR* InkButtonTexturePath = TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_InkButtonBase.T_InkButtonBase");
@@ -791,7 +792,7 @@ FVector2D UGameXXKBattleBoardWidget::ResolveCommandSourcePosition(int32 PartyInd
 
 FVector2D UGameXXKBattleBoardWidget::ResolveCommandMenuAnchor(FVector2D UnitScreenPosition) const
 {
-	FVector2D Anchor = UnitScreenPosition + FVector2D(-(CommandMenuWidth + CommandMenuGap), -(CommandMenuHeight * 0.5f));
+	FVector2D Anchor = UnitScreenPosition + CommandMenuDefaultOffset;
 	const FVector2D LocalSize = GetCachedGeometry().GetLocalSize();
 	if (LocalSize.X > 1.0f && LocalSize.Y > 1.0f)
 	{

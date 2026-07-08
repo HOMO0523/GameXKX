@@ -125,8 +125,9 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestTrue(TEXT("battle board menu is visible after controller opens it"), PlayerController->GetBattleBoardWidgetForTest()->IsCommandMenuVisibleForTest());
 	TestEqual(TEXT("controller selects first party actor for commands"), PlayerController->GetBattleBoardWidgetForTest()->GetSelectedPartyIndexForTest(), 0);
 	const FVector2D ControllerCommandMenuAnchor = PlayerController->GetBattleBoardWidgetForTest()->GetCommandMenuAnchorForTest();
-	const float ControllerCommandMenuGapFromUnit = PartyActorScreenPosition.X - (ControllerCommandMenuAnchor.X + 260.0f);
-	TestTrue(TEXT("controller command menu is anchored near the selected party actor"), ControllerCommandMenuGapFromUnit >= 12.0f && ControllerCommandMenuGapFromUnit <= 32.0f);
+	const FVector2D ControllerCommandMenuDefaultOffset(-500.0f, 0.0f);
+	TestEqual(TEXT("controller command menu uses the tuned X offset"), ControllerCommandMenuAnchor.X, PartyActorScreenPosition.X + ControllerCommandMenuDefaultOffset.X);
+	TestEqual(TEXT("controller command menu uses the tuned Y offset"), ControllerCommandMenuAnchor.Y, PartyActorScreenPosition.Y + ControllerCommandMenuDefaultOffset.Y);
 	TestTrue(TEXT("controller toggles the same party command menu closed"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, EnemySideClickPosition, PartyActorScreenPosition));
 	TestFalse(TEXT("same party toggle hides command menu"), PlayerController->GetBattleBoardWidgetForTest()->IsCommandMenuVisibleForTest());
 	TestTrue(TEXT("controller reopens command menu for party actor"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, FVector2D(260.0f, 640.0f), FVector2D(830.0f, 420.0f)));

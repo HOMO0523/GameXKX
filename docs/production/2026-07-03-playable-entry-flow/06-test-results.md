@@ -2,7 +2,7 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-08T10:34:30+08:00
+updated_at: 2026-07-08T10:57:58+08:00
 source_commit: working-tree
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
@@ -121,3 +121,9 @@ Acceptance evidence: GameXXK now owns route seed/state/clicks; the route widget 
 - RED verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 60` failed after adding the Slate-absolute-to-widget-local cursor regression test because `UpdateTargetingPointerFromSlateAbsolutePosition` and `ResolveSlateAbsolutePositionToLocalForTest` were not implemented yet.
 - GREEN verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 80` passed with UBT success, UE MCP ready, and PIE start/stop after converting live targeting mouse input from Slate absolute coordinates to BattleBoard-local coordinates.
 - Final automation: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\battle-targeting-pointer-local-final.json` passed with `ok: true`, 22/22 `GameXXK.MVP` tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
+
+## 2026-07-08 Battle Command Offset Tune
+
+- RED verified: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\command-offset-red.json` failed `GameXXK.MVP.Battle.BoardWidget` after tests were changed to require command-menu offset `(-500, 0)`.
+- GREEN verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 80` passed with UBT success, UE MCP ready, and PIE start/stop after introducing `CommandMenuDefaultOffset(-500, 0)`.
+- Final automation: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\command-offset-green-v2.json` passed with `ok: true`, 22/22 `GameXXK.MVP` tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.

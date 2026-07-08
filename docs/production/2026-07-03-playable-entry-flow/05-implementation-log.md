@@ -2,7 +2,7 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-08T10:34:30+08:00
+updated_at: 2026-07-08T10:57:58+08:00
 source_commit: working-tree
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
@@ -72,6 +72,7 @@ parallel_lock: GameXXK.PlayableEntryFlow
 - Reduced the battle command menu width from `360` to `260` and kept the vertical menu centered on the selected party unit. Targeting arrows now start from the selected unit point rather than the right-click coordinate.
 - Added a second command-anchor guard for embedded PIE: if the projected selected-party position still lands on the enemy/left side of the battle canvas, the battle board corrects the command source back into the right-side party lane before placing the menu and targeting arrow.
 - Fixed battle targeting pointer coordinates for embedded PIE/editor windows: targeting now converts Slate absolute mouse coordinates into BattleBoard-local coordinates before painting the ink-dab Bezier arrow, so the arrow end tracks the visible cursor instead of drawing along the top of the viewport.
+- Tuned the battle command menu default anchor offset to `(-500, 0)` from the selected party unit position, leaving the existing viewport clamp and right-side fallback in place for narrow layouts.
 - Added `I` key handling in `AGameXXKMVPPlayerController`: town `I` toggles the unified inventory panel open/closed through the same runtime `TownPanelMode` state used by buttons.
 - Rebuilt `UGameXXKTownOverlayWidget` panel structure around a shared inventory backplate, fixed 72x72 backpack slot wrappers, runtime item labels, and explicit weapon/armor/accessory equipment slots.
 - Changed town shop mode to display merchant stock beside the same shared player backpack grid instead of presenting shop as a separate text-only inventory surface.
