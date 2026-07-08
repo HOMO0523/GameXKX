@@ -106,6 +106,7 @@ public:
 	FVector2D GetCommandMenuAnchorForTest() const;
 	FVector2D ResolveCommandSourcePositionForTest(int32 PartyIndex, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition, FVector2D LocalSize) const;
 	FVector2D ResolveSlateAbsolutePositionToLocalForTest(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D LocalSize) const;
+	FVector2D ResolveSlateAbsolutePositionToLocalForTest(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D WidgetAbsoluteSize, FVector2D LocalSize) const;
 	FString GetBattleActionButtonResourcePathForTest(FName ActionName);
 	FLinearColor GetBattleActionButtonTintForTest(FName ActionName) const;
 	FString GetTargetingArrowHeadResourcePathForTest();
@@ -123,6 +124,7 @@ private:
 	FVector2D ResolveCommandMenuAnchor(FVector2D UnitScreenPosition) const;
 	FVector2D ResolveSlateAbsolutePositionToLocal(FVector2D ScreenPosition) const;
 	FVector2D ResolveSlateAbsolutePositionToLocal(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D LocalSize) const;
+	FVector2D ResolveSlateAbsolutePositionToLocal(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D WidgetAbsoluteSize, FVector2D LocalSize) const;
 	bool BeginTargetingBattleAction(FName ActionName);
 	bool ExecuteBattleAction(FName ActionName);
 	int32 FindFirstLivingEnemyIndex() const;

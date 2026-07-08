@@ -2,6 +2,7 @@
 
 #include "Blueprint/GameViewportSubsystem.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetLayoutLibrary.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
@@ -681,14 +682,21 @@ bool AGameXXKMVPPlayerController::TryHandleBattleSceneRightClick()
 	{
 		return false;
 	}
-	FVector2D UnitScreenPosition(CursorX, CursorY);
+	FVector2D CursorWidgetPosition(CursorX, CursorY);
+	double ScaledCursorX = 0.0;
+	double ScaledCursorY = 0.0;
+	if (UWidgetLayoutLibrary::GetMousePositionScaledByDPI(this, ScaledCursorX, ScaledCursorY))
+	{
+		CursorWidgetPosition = FVector2D(ScaledCursorX, ScaledCursorY);
+	}
+	FVector2D UnitWidgetPosition = CursorWidgetPosition;
 	FVector UnitCommandWorldPosition = UnitActor->GetActorLocation();
 	if (const UPaperFlipbookComponent* BattleVisual = UnitActor->GetBattleVisualComponent())
 	{
 		UnitCommandWorldPosition = BattleVisual->Bounds.Origin;
 	}
-	ProjectWorldLocationToScreen(UnitCommandWorldPosition, UnitScreenPosition, true);
-	return ToggleBattleCommandMenuForUnit(UnitActor, FVector2D(CursorX, CursorY), UnitScreenPosition);
+	UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(this, UnitCommandWorldPosition, UnitWidgetPosition, true);
+	return ToggleBattleCommandMenuForUnit(UnitActor, CursorWidgetPosition, UnitWidgetPosition);
 }
 
 bool AGameXXKMVPPlayerController::TryHandleBattleSceneLeftClick()
@@ -768,6 +776,12 @@ bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerFromMouse()
 	{
 		BattleBoardWidget->UpdateTargetingPointerFromSlateAbsolutePosition(FSlateApplication::Get().GetCursorPos());
 		return true;
+	}
+	double ScaledCursorX = 0.0;
+	double ScaledCursorY = 0.0;
+	if (UWidgetLayoutLibrary::GetMousePositionScaledByDPI(this, ScaledCursorX, ScaledCursorY))
+	{
+		return UpdateBattleTargetingPointer(FVector2D(ScaledCursorX, ScaledCursorY));
 	}
 	return UpdateBattleTargetingPointer(FVector2D(CursorX, CursorY));
 }

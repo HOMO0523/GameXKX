@@ -77,3 +77,10 @@ parallel_lock: GameXXK.PlayableEntryFlow
 - Rebuilt `UGameXXKTownOverlayWidget` panel structure around a shared inventory backplate, fixed 72x72 backpack slot wrappers, runtime item labels, and explicit weapon/armor/accessory equipment slots.
 - Changed town shop mode to display merchant stock beside the same shared player backpack grid instead of presenting shop as a separate text-only inventory surface.
 - Disabled unity build for the `GameXXK` module because existing anonymous-namespace helper names collide when multiple `.cpp` files are folded into `Module.GameXXK.cpp`; non-unity builds keep each translation unit isolated and restore cold UBT verification stability.
+
+## 2026-07-08 Battle Targeting Coordinate Units
+
+- Unified battle targeting coordinates around BattleBoard widget-local Slate units instead of mixing viewport pixels, Slate absolute cursor coordinates, and UMG local coordinates.
+- Updated live targeting mouse input to convert Slate absolute cursor positions through the BattleBoard cached geometry with `AbsoluteToLocal`, preserving DPI/layout scale and clamping to the local paint area before drawing the ink-dab Bezier arrow.
+- Updated right-click party command opening to use UE's DPI-aware mouse position and `ProjectWorldLocationToWidgetPosition` for the selected party actor visual bounds, so the command menu anchor and targeting arrow start point use the same unit space.
+- Added a scaled Slate-coordinate regression case that maps a 1600x800 absolute widget area into an 800x400 local canvas and verifies the visible center lands at `(400, 200)` rather than being clamped to the edge.

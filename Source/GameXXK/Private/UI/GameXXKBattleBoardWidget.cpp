@@ -33,6 +33,19 @@ namespace
 	static const FVector2D CommandMenuDefaultOffset(-500.0f, 0.0f);
 	static constexpr float PartyCommandLaneMinXRatio = 0.72f;
 	static constexpr float PartyCommandLanePreferredXRatio = 0.75f;
+
+	FVector2D ClampToLocalSize(FVector2D LocalPosition, FVector2D LocalSize)
+	{
+		if (LocalSize.X > 1.0f)
+		{
+			LocalPosition.X = FMath::Clamp(LocalPosition.X, 0.0f, LocalSize.X);
+		}
+		if (LocalSize.Y > 1.0f)
+		{
+			LocalPosition.Y = FMath::Clamp(LocalPosition.Y, 0.0f, LocalSize.Y);
+		}
+		return LocalPosition;
+	}
 	static constexpr const TCHAR* InkButtonTexturePath = TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_InkButtonBase.T_InkButtonBase");
 	static constexpr const TCHAR* TargetingArrowHeadTexturePath = TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleTargetArrowHead.T_BattleTargetArrowHead");
 
@@ -504,6 +517,11 @@ FVector2D UGameXXKBattleBoardWidget::ResolveSlateAbsolutePositionToLocalForTest(
 	return ResolveSlateAbsolutePositionToLocal(ScreenPosition, WidgetAbsolutePosition, LocalSize);
 }
 
+FVector2D UGameXXKBattleBoardWidget::ResolveSlateAbsolutePositionToLocalForTest(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D WidgetAbsoluteSize, FVector2D LocalSize) const
+{
+	return ResolveSlateAbsolutePositionToLocal(ScreenPosition, WidgetAbsolutePosition, WidgetAbsoluteSize, LocalSize);
+}
+
 FString UGameXXKBattleBoardWidget::GetBattleActionButtonResourcePathForTest(FName ActionName)
 {
 	EnsureBattleVisualResourcesLoaded();
@@ -809,23 +827,35 @@ FVector2D UGameXXKBattleBoardWidget::ResolveCommandMenuAnchor(FVector2D UnitScre
 FVector2D UGameXXKBattleBoardWidget::ResolveSlateAbsolutePositionToLocal(FVector2D ScreenPosition) const
 {
 	const FGeometry Geometry = GetCachedGeometry();
-	return ResolveSlateAbsolutePositionToLocal(
-		ScreenPosition,
-		Geometry.LocalToAbsolute(FVector2D::ZeroVector),
-		Geometry.GetLocalSize());
+	const FVector2D LocalSize = Geometry.GetLocalSize();
+	if (LocalSize.X <= 1.0f || LocalSize.Y <= 1.0f)
+	{
+		return ScreenPosition;
+	}
+	return ClampToLocalSize(Geometry.AbsoluteToLocal(ScreenPosition), LocalSize);
 }
 
 FVector2D UGameXXKBattleBoardWidget::ResolveSlateAbsolutePositionToLocal(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D LocalSize) const
+{
+	return ResolveSlateAbsolutePositionToLocal(ScreenPosition, WidgetAbsolutePosition, LocalSize, LocalSize);
+}
+
+FVector2D UGameXXKBattleBoardWidget::ResolveSlateAbsolutePositionToLocal(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D WidgetAbsoluteSize, FVector2D LocalSize) const
 {
 	if (LocalSize.X <= 1.0f || LocalSize.Y <= 1.0f)
 	{
 		return ScreenPosition;
 	}
 
-	FVector2D LocalPosition = ScreenPosition - WidgetAbsolutePosition;
-	LocalPosition.X = FMath::Clamp(LocalPosition.X, 0.0f, LocalSize.X);
-	LocalPosition.Y = FMath::Clamp(LocalPosition.Y, 0.0f, LocalSize.Y);
-	return LocalPosition;
+	if (WidgetAbsoluteSize.X <= 1.0f || WidgetAbsoluteSize.Y <= 1.0f)
+	{
+		return ClampToLocalSize(ScreenPosition - WidgetAbsolutePosition, LocalSize);
+	}
+
+	const FVector2D NormalizedPosition(
+		(ScreenPosition.X - WidgetAbsolutePosition.X) / WidgetAbsoluteSize.X,
+		(ScreenPosition.Y - WidgetAbsolutePosition.Y) / WidgetAbsoluteSize.Y);
+	return ClampToLocalSize(FVector2D(NormalizedPosition.X * LocalSize.X, NormalizedPosition.Y * LocalSize.Y), LocalSize);
 }
 
 bool UGameXXKBattleBoardWidget::BeginTargetingBattleAction(FName ActionName)

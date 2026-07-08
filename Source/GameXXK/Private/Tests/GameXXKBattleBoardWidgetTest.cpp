@@ -50,6 +50,16 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	const FVector2D SlateCursorPosition(602.0f, 236.0f);
 	const FVector2D LocalCursorPosition = BattleWidget->ResolveSlateAbsolutePositionToLocalForTest(SlateCursorPosition, EmbeddedPieWidgetOrigin, EmbeddedPieCanvasSize);
 	TestEqual(TEXT("battle board converts Slate absolute cursor to widget-local targeting coordinates"), LocalCursorPosition, FVector2D(506.0f, 146.0f));
+	const FVector2D ScaledWidgetAbsoluteOrigin(100.0f, 80.0f);
+	const FVector2D ScaledWidgetAbsoluteSize(1600.0f, 800.0f);
+	const FVector2D ScaledWidgetLocalSize(800.0f, 400.0f);
+	const FVector2D ScaledSlateCursorPosition(900.0f, 480.0f);
+	const FVector2D ScaledLocalCursorPosition = BattleWidget->ResolveSlateAbsolutePositionToLocalForTest(
+		ScaledSlateCursorPosition,
+		ScaledWidgetAbsoluteOrigin,
+		ScaledWidgetAbsoluteSize,
+		ScaledWidgetLocalSize);
+	TestEqual(TEXT("battle board converts scaled Slate absolute cursor to widget-local targeting coordinates"), ScaledLocalCursorPosition, FVector2D(400.0f, 200.0f));
 	const FVector2D EnemySideClickPosition(360.0f, 390.0f);
 	const FVector2D PartyUnitScreenPosition(940.0f, 420.0f);
 	TestTrue(TEXT("battle board opens command menu for living party unit"), BattleWidget->OpenCommandMenuForPartyUnit(0, EnemySideClickPosition, PartyUnitScreenPosition));
