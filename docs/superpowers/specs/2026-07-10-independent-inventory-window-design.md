@@ -66,6 +66,81 @@ Requirements:
 
 The old side-panel `关闭面板` button should not be the primary close mechanism for the new inventory window.
 
+## UI Asset Manifest And Generation
+
+New inventory-window visual assets must be driven by layout/interaction JSON manifests before image generation. The goal is to make generated water-ink art repeatable and tied to concrete UI behavior instead of being one-off images.
+
+Create a manifest for each reusable UI visual component before generating or importing art:
+
+- Inventory window frame/backplate.
+- Merchant trade frame variant if it differs from free inventory.
+- Confirmation dialog backplate.
+- Header close `X` button.
+- Confirm button background.
+- Cancel button background.
+- Backpack item slot background.
+- Merchant stock slot background if visually distinct.
+- Equipment slot backgrounds: weapon, armor, accessory.
+- Selected-slot highlight.
+- Disabled/unavailable-slot overlay.
+- Category tab backgrounds.
+
+Suggested manifest location:
+
+- `Content/GameXXK/UI/Inventory/Manifests/`
+
+Suggested manifest format:
+
+```json
+{
+  "id": "inventory_window_frame",
+  "widget": "InventoryWindow",
+  "assetType": "background",
+  "style": "water-ink parchment, hand-brushed edge, GameXXK main-menu compatible",
+  "targetTexture": "/Game/GameXXK/UI/Inventory/Textures/T_InventoryWindowFrame",
+  "canvasSize": [1024, 640],
+  "safePadding": { "left": 42, "top": 42, "right": 42, "bottom": 38 },
+  "nineSlice": { "left": 72, "top": 72, "right": 72, "bottom": 72 },
+  "regions": {
+    "header": { "x": 42, "y": 28, "w": 940, "h": 70 },
+    "leftRail": { "x": 42, "y": 120, "w": 220, "h": 470 },
+    "backpackGrid": { "x": 284, "y": 120, "w": 430, "h": 470 },
+    "detailPanel": { "x": 736, "y": 120, "w": 246, "h": 470 }
+  },
+  "states": ["normal"],
+  "notes": "Single coherent frame behind the whole inventory window; no floating slot groups."
+}
+```
+
+For buttons and slots, each manifest must include interactive states:
+
+```json
+{
+  "id": "inventory_confirm_button",
+  "widget": "InventoryConfirmationDialog",
+  "assetType": "buttonBackground",
+  "targetTexture": "/Game/GameXXK/UI/Inventory/Textures/T_InventoryConfirmButton",
+  "canvasSize": [220, 64],
+  "nineSlice": { "left": 28, "top": 18, "right": 28, "bottom": 18 },
+  "states": ["normal", "hovered", "pressed", "disabled"],
+  "semanticColor": "warm red ink",
+  "textColor": "white",
+  "notes": "Used for purchase/sell confirmations only."
+}
+```
+
+The generation workflow should be:
+
+1. Write or update all relevant JSON manifests.
+2. Generate a unified prompt batch from the manifests so the same visual language is used across frame, slots, buttons, and dialog.
+3. Generate water-ink style bitmap assets.
+4. Slice or export state variants according to each manifest.
+5. Import textures into `/Game/GameXXK/UI/Inventory/Textures`.
+6. Apply the imported textures through code or widget construction.
+7. Validate that generated images match manifest dimensions, state names, and target paths.
+
+The manifest is the source of truth. If the UI layout changes, update the manifest first, regenerate or adapt assets second, then change widget layout.
+
 The window has two modes:
 
 ### Free Inventory Mode
@@ -245,6 +320,8 @@ In scope for the first implementation:
 - Real total window frame/backplate containing all inventory UI.
 - Header `X` close button inside the window.
 - Reusable confirmation dialog widget with confirm/cancel buttons.
+- JSON UI asset manifests for every new generated window/frame/button/slot/dialog asset.
+- Unified water-ink asset generation from those manifests.
 - Free inventory mode opened by `I`.
 - Merchant trade modal opened by merchant `F`.
 - Shared backpack slot component.
@@ -267,12 +344,13 @@ Out of scope for the first implementation:
 - Sorting beyond simple category tabs or fixed ordering.
 - Unequip into backpack unless needed by the equipment implementation.
 - Gamepad navigation.
-- Final art polish beyond using existing ink slot and item icons.
+- Final art polish beyond manifest-driven first-pass water-ink assets.
 
 ## Acceptance
 
 - `L_QingshanInn` PIE can open the free inventory with `I`.
 - Free inventory appears inside one coherent window frame/backplate; slots are not visually floating on the screen.
+- Every newly generated inventory UI background/button/slot/dialog asset has a JSON manifest describing dimensions, states, intended widget usage, and target texture path.
 - Free inventory mode does not block WASD movement.
 - Free inventory has its own top-right `X` close button and can close with `I` or `Esc`.
 - Pressing `F` on the merchant opens merchant trade mode.
@@ -300,6 +378,8 @@ Add tests before implementation:
 
 - Unit/widget test: bought weapon can be selected in the visible inventory window and equipped through the detail action.
 - Unit/widget test: inventory window exposes a top-right close button and coherent frame/backplate.
+- Script/test: each inventory UI manifest validates required fields, target paths, canvas size, and interaction states before image import.
+- Script/test: generated/imported texture assets exist for each manifest target texture.
 - Unit/widget test: buy/sell actions open the reusable confirmation dialog with confirm/cancel controls.
 - Unit/widget test: canceling the confirmation dialog does not change gold, quantity, or equipment.
 - Unit/widget test: equipment slot state reflects equipped weapon, armor, and accessory.
