@@ -6,7 +6,7 @@ from pathlib import Path
 from PIL import Image
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_DIR = PROJECT_ROOT / "Content" / "GameXXK" / "SourceArt" / "UI" / "Battle"
+SOURCE_DIR = PROJECT_ROOT / "docs" / "ui" / "battle" / "source_art"
 GENERATED_DIR = SOURCE_DIR / "Generated"
 ARROW_HEAD = SOURCE_DIR / "battle_target_arrow_head.png"
 INK_ATLAS = SOURCE_DIR / "battle_target_ink_dots_atlas.png"

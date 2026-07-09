@@ -36,6 +36,12 @@ void AGameXXKMVPGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
+	UGameXXKMVPSubsystem* Subsystem = GetGameInstance() ? GetGameInstance()->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr;
+	if (Subsystem)
+	{
+		Subsystem->EnsureQingshanTownRuntimeForDirectMap();
+	}
+
 	AGameXXKTownNpcCharacter* QuestNpc = FindSpawnedTownNpc(EGameXXKTownNpcRole::Quest);
 	if (SpawnedTownNpcs.Num() == 0)
 	{
@@ -46,7 +52,6 @@ void AGameXXKMVPGameMode::BeginPlay()
 
 	EnsureTownExit();
 
-	UGameXXKMVPSubsystem* Subsystem = GetGameInstance() ? GetGameInstance()->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr;
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
 	ApplyPlayerRuntimeState(PlayerPawn, Subsystem);
 	ApplyQuestNpcRuntimeState(QuestNpc, Subsystem, PlayerPawn);

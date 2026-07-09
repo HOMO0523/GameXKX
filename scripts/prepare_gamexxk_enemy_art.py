@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prepare clipboard concept art into GameXXK source PNG sprites.
 
-This keeps the original references under Content/GameXXK/SourceArt and writes
+This keeps the original references under docs/art/source_art and writes
 transparent, cropped battle-ready PNGs under Content/GameXXK/Sprites/Generated.
 """
 
@@ -16,7 +16,7 @@ from PIL import Image
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_ART_DIR = PROJECT_ROOT / "Content" / "GameXXK" / "SourceArt" / "Concepts"
+SOURCE_ART_DIR = PROJECT_ROOT / "docs" / "art" / "source_art" / "concepts"
 GENERATED_DIR = PROJECT_ROOT / "Content" / "GameXXK" / "Sprites" / "Generated"
 
 

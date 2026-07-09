@@ -2,7 +2,7 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-08T10:57:58+08:00
+updated_at: 2026-07-10T03:55:00+08:00
 source_commit: working-tree
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
@@ -164,3 +164,13 @@ Acceptance evidence: GameXXK now owns route seed/state/clicks; the route widget 
 - Compile/smoke verification: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 120` passed with UBT success, UE MCP ready, and PIE start/stop.
 - Full MVP automation: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\inventory-merchant-f-green.json` passed with `ok: true`, 22/22 `GameXXK.MVP` automation tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
 - Project checks: `python scripts\validate_inventory_ui_manifests.py` returned `ok: true` with 6 manifests; `python scripts\harness_state_validator.py --require-units --json` returned `ok: true`; `git diff --check` returned exit code 0.
+
+## 2026-07-10 Direct Town Merchant Visibility Fix
+
+- RED evidence: UE foreground screenshot `Saved\HarnessReports\live-ue-foreground-after-merchant-f.png` showed `L_QingshanInn` PIE covered by the main menu layer and a UE source-import prompt even though MCP reported the merchant inventory widget object existed.
+- RED verified: `python scripts\validate_inventory_ui_manifests.py` failed while source-art PNGs remained under `Content\GameXXK\SourceArt\UI\Inventory`; UBT also failed before `EnsureQingshanTownRuntimeForDirectMap` existed.
+- GREEN compile/smoke: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 160` passed with UBT success/up-to-date, UE MCP ready, and PIE start/stop after the direct-town normalization and viewport-slot fixes.
+- Asset/source-art checks passed: `python scripts\gamexxk_battle_ui_asset_check.py`, `python scripts\validate_inventory_ui_manifests.py`, and `python -m py_compile Content\Python\gamexxk_ensure_main_menu.py Content\Python\gamexxk_import_battle_ui_assets.py Content\Python\gamexxk_import_inventory_ui_assets.py Content\Python\gamexxk_probe_inventory_window.py scripts\gamexxk_battle_ui_asset_check.py scripts\gamexxk_slice_battle_target_atlas.py scripts\prepare_gamexxk_enemy_art.py scripts\slice_inventory_ui_assets.py scripts\validate_inventory_ui_manifests.py` all passed.
+- Visual GREEN evidence: `Saved\HarnessReports\live-ue-town-merchant-window-final-visible.png` shows direct `L_QingshanInn` PIE with no source-import prompt and the independent water-ink merchant/inventory window visibly open after the merchant `F` path.
+- Full MVP automation: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\direct-town-merchant-window-green.json` passed with `ok: true`, 22/22 `GameXXK.MVP` automation tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
+- Project checks: `python scripts\harness_state_validator.py --require-units --json` returned `ok: true`; `git diff --check` returned exit code 0 with line-ending warnings only.

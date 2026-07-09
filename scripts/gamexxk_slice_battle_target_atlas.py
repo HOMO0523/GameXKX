@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_DIR = PROJECT_ROOT / "Content" / "GameXXK" / "SourceArt" / "UI" / "Battle"
+SOURCE_DIR = PROJECT_ROOT / "docs" / "ui" / "battle" / "source_art"
 DEFAULT_ATLAS = SOURCE_DIR / "battle_target_ink_dots_atlas.png"
 DEFAULT_OUT_DIR = SOURCE_DIR / "Generated"
 ROWS = 3

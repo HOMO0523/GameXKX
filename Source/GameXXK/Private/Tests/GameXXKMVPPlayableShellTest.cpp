@@ -148,6 +148,15 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 {
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	UGameXXKMVPSubsystem* DirectTownSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestEqual(TEXT("fresh subsystem starts on main menu before direct town map normalization"), DirectTownSubsystem->GetRuntimeState().Screen, EGameXXKScreen::MainMenu);
+	TestTrue(TEXT("direct Qingshan town PIE normalizes main menu state to town"), DirectTownSubsystem->EnsureQingshanTownRuntimeForDirectMap());
+	TestEqual(TEXT("direct Qingshan town PIE hides main menu state"), DirectTownSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("direct Qingshan town PIE selects Qingshan region"), DirectTownSubsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionQingshan());
+	UGameXXKMVPSubsystem* WorldMapTownSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestTrue(TEXT("test setup opens world map before direct town normalization"), WorldMapTownSubsystem->StartGame());
+	TestTrue(TEXT("direct Qingshan town PIE normalizes world map state to town"), WorldMapTownSubsystem->EnsureQingshanTownRuntimeForDirectMap());
+	TestEqual(TEXT("direct Qingshan town PIE from world map selects town screen"), WorldMapTownSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	AGameXXKMVPHUD* HUD = NewObject<AGameXXKMVPHUD>();
 	HUD->SetMVPSubsystemForTest(Subsystem);
 	const FString TestSlotName = TEXT("GameXXK_MVP_Automation_PlayableHUD");

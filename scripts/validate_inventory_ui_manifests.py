@@ -10,6 +10,8 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_DIR = PROJECT_ROOT / "docs" / "ui" / "inventory" / "manifests"
+SOURCE_ART_DIR = PROJECT_ROOT / "docs" / "ui" / "inventory" / "source_art"
+DISALLOWED_CONTENT_SOURCE_ART_DIR = PROJECT_ROOT / "Content" / "GameXXK" / "SourceArt" / "UI" / "Inventory"
 REQUIRED_FIELDS = {"id", "widget", "assetType", "targetTexture", "canvasSize", "states"}
 TARGET_PREFIX = "/Game/GameXXK/UI/Inventory/Textures/"
 
@@ -49,6 +51,14 @@ def main() -> int:
     errors: list[str] = []
     if not manifest_paths:
         errors.append(f"no manifest json files found under {MANIFEST_DIR}")
+    if not SOURCE_ART_DIR.exists():
+        errors.append(f"inventory source art must live outside UE Content under {SOURCE_ART_DIR}")
+    disallowed_source_art = sorted(DISALLOWED_CONTENT_SOURCE_ART_DIR.glob("*.png"))
+    if disallowed_source_art:
+        errors.append(
+            "inventory source art png files must not live under UE Content because they trigger the editor source import prompt: "
+            + ", ".join(path.name for path in disallowed_source_art)
+        )
 
     for path in manifest_paths:
         errors.extend(validate_manifest(path))
@@ -56,6 +66,7 @@ def main() -> int:
     result = {
         "ok": not errors,
         "manifest_dir": str(MANIFEST_DIR),
+        "source_art_dir": str(SOURCE_ART_DIR),
         "manifest_count": len(manifest_paths),
         "errors": errors,
     }

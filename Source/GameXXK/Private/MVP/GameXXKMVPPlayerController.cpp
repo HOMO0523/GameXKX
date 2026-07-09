@@ -62,6 +62,21 @@ namespace
 		ViewportSubsystem->SetWidgetSlot(RouteWidget, RouteSlot);
 	}
 
+	void ConfigureFullscreenInventoryWindowSlot(UWidget* InventoryWidget)
+	{
+		UGameViewportSubsystem* ViewportSubsystem = UGameViewportSubsystem::Get();
+		if (!ViewportSubsystem || !InventoryWidget)
+		{
+			return;
+		}
+
+		FGameViewportWidgetSlot InventorySlot = ViewportSubsystem->GetWidgetSlot(InventoryWidget);
+		InventorySlot.Anchors = FAnchors(0.0f, 0.0f, 1.0f, 1.0f);
+		InventorySlot.Offsets = FMargin(0.0f);
+		InventorySlot.Alignment = FVector2D::ZeroVector;
+		ViewportSubsystem->SetWidgetSlot(InventoryWidget, InventorySlot);
+	}
+
 	void ConfigureBattleSceneCameraActor(ACameraActor* CameraActor)
 	{
 		if (!CameraActor)
@@ -481,13 +496,15 @@ UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::EnsureInventoryWindo
 	if (InventoryWindowWidget)
 	{
 		InventoryWindowWidget->SetMVPSubsystem(Subsystem);
-		if (bCanAddToViewport && !InventoryWindowWidget->IsInViewport())
-		{
-			InventoryWindowWidget->AddToViewport(85);
-		}
 		if (bCreatedInventoryWindow)
 		{
 			InventoryWindowWidget->CloseInventoryWindow();
+		}
+		ConfigureFullscreenInventoryWindowSlot(InventoryWindowWidget);
+		if (bCanAddToViewport && !InventoryWindowWidget->IsInViewport())
+		{
+			InventoryWindowWidget->AddToViewport(120);
+			ConfigureFullscreenInventoryWindowSlot(InventoryWindowWidget);
 		}
 	}
 	return InventoryWindowWidget;

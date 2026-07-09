@@ -148,6 +148,25 @@ bool UGameXXKMVPSubsystem::SelectWorldRegion(FName RegionId)
 	return UGameXXKMVPRules::EnterWorldRegion(RuntimeState, RegionId);
 }
 
+bool UGameXXKMVPSubsystem::EnsureQingshanTownRuntimeForDirectMap()
+{
+	if (RuntimeState.Screen == EGameXXKScreen::Town && RuntimeState.CurrentRegion == UGameXXKMVPRules::RegionQingshan())
+	{
+		return true;
+	}
+	if (RuntimeState.Screen == EGameXXKScreen::MainMenu)
+	{
+		RuntimeState = UGameXXKMVPRules::CreateNewGame();
+		UGameXXKMVPRules::OpenWorldMap(RuntimeState);
+		return UGameXXKMVPRules::EnterWorldRegion(RuntimeState, UGameXXKMVPRules::RegionQingshan());
+	}
+	if (RuntimeState.Screen == EGameXXKScreen::WorldMap)
+	{
+		return UGameXXKMVPRules::EnterWorldRegion(RuntimeState, UGameXXKMVPRules::RegionQingshan());
+	}
+	return false;
+}
+
 bool UGameXXKMVPSubsystem::IsRegionUnlocked(FName RegionId) const
 {
 	return RuntimeState.UnlockedRegions.Contains(RegionId);

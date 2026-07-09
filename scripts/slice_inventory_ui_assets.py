@@ -12,7 +12,7 @@ from PIL import Image
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_ART_DIR = PROJECT_ROOT / "Content" / "GameXXK" / "SourceArt" / "UI" / "Inventory"
+SOURCE_ART_DIR = PROJECT_ROOT / "docs" / "ui" / "inventory" / "source_art"
 
 
 def crop_resize(sheet: Image.Image, box: tuple[int, int, int, int], size: tuple[int, int]) -> Image.Image:

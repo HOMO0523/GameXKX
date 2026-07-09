@@ -61,6 +61,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool SelectWorldRegion(FName RegionId);
 
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool EnsureQingshanTownRuntimeForDirectMap();
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	bool IsRegionUnlocked(FName RegionId) const;
 

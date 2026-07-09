@@ -80,6 +80,15 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("route map viewport slot has no top offset"), RouteViewportSlot.Offsets.Top, 0.0f);
 	TestEqual(TEXT("route map viewport slot has no right size override"), RouteViewportSlot.Offsets.Right, 0.0f);
 	TestEqual(TEXT("route map viewport slot has no bottom size override"), RouteViewportSlot.Offsets.Bottom, 0.0f);
+	const FGameViewportWidgetSlot InventoryViewportSlot = UGameViewportSubsystem::Get()->GetWidgetSlot(PlayerController->GetInventoryWindowWidgetForTest());
+	TestEqual(TEXT("inventory window viewport slot anchors left edge"), InventoryViewportSlot.Anchors.Minimum.X, 0.0);
+	TestEqual(TEXT("inventory window viewport slot anchors top edge"), InventoryViewportSlot.Anchors.Minimum.Y, 0.0);
+	TestEqual(TEXT("inventory window viewport slot anchors right edge"), InventoryViewportSlot.Anchors.Maximum.X, 1.0);
+	TestEqual(TEXT("inventory window viewport slot anchors bottom edge"), InventoryViewportSlot.Anchors.Maximum.Y, 1.0);
+	TestEqual(TEXT("inventory window viewport slot has no left offset"), InventoryViewportSlot.Offsets.Left, 0.0f);
+	TestEqual(TEXT("inventory window viewport slot has no top offset"), InventoryViewportSlot.Offsets.Top, 0.0f);
+	TestEqual(TEXT("inventory window viewport slot has no right size override"), InventoryViewportSlot.Offsets.Right, 0.0f);
+	TestEqual(TEXT("inventory window viewport slot has no bottom size override"), InventoryViewportSlot.Offsets.Bottom, 0.0f);
 
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestEqual(TEXT("main menu visible on initial main menu state"), PlayerController->GetMainMenuWidgetForTest()->GetVisibility(), ESlateVisibility::Visible);

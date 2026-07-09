@@ -6,7 +6,7 @@ from pathlib import Path
 import unreal
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-SOURCE_DIR = PROJECT_ROOT / "Content" / "GameXXK" / "SourceArt" / "UI" / "Battle"
+SOURCE_DIR = PROJECT_ROOT / "docs" / "ui" / "battle" / "source_art"
 GENERATED_DIR = SOURCE_DIR / "Generated"
 DESTINATION = "/Game/GameXXK/UI/Battle/Textures"
 

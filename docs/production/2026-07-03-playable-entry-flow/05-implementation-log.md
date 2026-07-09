@@ -2,7 +2,7 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-08T10:57:58+08:00
+updated_at: 2026-07-10T03:55:00+08:00
 source_commit: working-tree
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
@@ -119,3 +119,12 @@ parallel_lock: GameXXK.PlayableEntryFlow
 - Fixed repeated merchant `F` behavior so a stale hidden merchant-trade window reopens instead of being treated as a visible window toggle.
 - Added a proximity fallback to `UGameXXKInteractionComponent`: if no focused actor exists, `F` now resolves the nearest `GameXXKInteractable` within 360 units before returning. This covers the visual-close merchant case where the pawn did not enter the overlap focus stack.
 - Added regression coverage for near-merchant F interaction without exact overlap focus, plus MCP probe coverage in `Content/Python/gamexxk_probe_inventory_window.py`.
+
+## 2026-07-10 Direct Town Merchant Visibility Fix
+
+- Corrected a false-positive validation path where MCP reported `UGameXXKInventoryWindowWidget` in `MERCHANT_TRADE` mode, but the player-facing PIE viewport still showed no independent merchant window.
+- Added `UGameXXKMVPSubsystem::EnsureQingshanTownRuntimeForDirectMap` and called it from `AGameXXKMVPGameMode::BeginPlay`, so direct `L_QingshanInn` PIE normalizes fresh `MainMenu`/`WorldMap` runtime state to the Qingshan `Town` screen instead of leaving the main menu layer over the town.
+- Fixed independent inventory window viewport construction order in `AGameXXKMVPPlayerController`: new windows now build their programmatic root before `AddToViewport`, use a fullscreen viewport slot, and mount at z-order `120` above the main menu layer.
+- Moved generated/reference source PNGs out of UE `Content/GameXXK/SourceArt` into `docs/art/source_art`, `docs/ui/main_menu/source_art`, `docs/ui/battle/source_art`, and `docs/ui/inventory/source_art`; runtime imported Texture2D assets remain under `/Game/GameXXK/.../Textures`.
+- Updated source-art scripts and MCP import scripts to read the new `docs` source paths, and set project editor defaults to disable Auto Reimport content-directory monitoring because GameXXK source art import is now script-owned.
+- Kept `Content/Python/gamexxk_probe_inventory_window.py` as the runtime object-state probe while treating foreground screenshots as the player-facing source of truth.

@@ -6,7 +6,7 @@ from pathlib import Path
 import unreal
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-SOURCE_DIR = PROJECT_ROOT / "Content" / "GameXXK" / "SourceArt" / "UI" / "Inventory"
+SOURCE_DIR = PROJECT_ROOT / "docs" / "ui" / "inventory" / "source_art"
 DESTINATION = "/Game/GameXXK/UI/Inventory/Textures"
 
 IMPORTS = [

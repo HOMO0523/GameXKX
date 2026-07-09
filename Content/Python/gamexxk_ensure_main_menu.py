@@ -9,7 +9,7 @@ import unreal
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 REPORT_PATH = PROJECT_ROOT / "Saved" / "HarnessReports" / "gamexxk-main-menu-ensure.json"
 
-SOURCE_DIR = PROJECT_ROOT / "Content" / "GameXXK" / "SourceArt" / "UI" / "MainMenu"
+SOURCE_DIR = PROJECT_ROOT / "docs" / "ui" / "main_menu" / "source_art"
 TEXTURE_DIR = "/Game/GameXXK/UI/MainMenu/Textures"
 MAIN_MAP = "/Game/GameXXK/Maps/L_Main"
 
