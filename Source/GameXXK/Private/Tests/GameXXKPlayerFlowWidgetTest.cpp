@@ -101,6 +101,10 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("merchant path records trade inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::MerchantTrade);
 	TestTrue(TEXT("merchant trade inventory window locks movement input"), PlayerController->IsInventoryWindowModalInputLockedForTest());
 	TestTrue(TEXT("merchant trade inventory window exposes its own close button"), PlayerController->GetInventoryWindowWidgetForTest()->HasCloseButtonForTest());
+	TestTrue(TEXT("repeated merchant interaction closes trade inventory window"), PlayerController->OpenMerchantTradeWindow());
+	TestEqual(TEXT("repeated merchant interaction clears trade inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
+	TestFalse(TEXT("repeated merchant interaction restores movement input"), PlayerController->IsInventoryWindowModalInputLockedForTest());
+	TestTrue(TEXT("merchant path can reopen trade inventory window after toggle close"), PlayerController->OpenMerchantTradeWindow());
 	TestTrue(TEXT("merchant trade inventory window closes independently"), PlayerController->CloseInventoryWindow());
 	TestEqual(TEXT("merchant trade close clears inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
 
