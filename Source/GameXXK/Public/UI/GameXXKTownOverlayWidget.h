@@ -10,8 +10,11 @@ class UButton;
 class UBorder;
 class UCanvasPanel;
 class UHorizontalBox;
+class UImage;
+class UOverlay;
 class USizeBox;
 class UTextBlock;
+class UTexture2D;
 class UUniformGridPanel;
 class UVerticalBox;
 
@@ -84,6 +87,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
 	FName GetPlayerBackpackSlotItemIdForTest(int32 SlotIndex) const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
+	FString GetItemIconResourcePathForTest(FName ItemId) const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town|Test")
+	bool SelectShopStockSlotForTest(int32 SlotIndex);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
+	bool IsPurchaseConfirmationVisibleForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
+	FName GetPendingPurchaseItemIdForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town|Test")
+	bool ConfirmPendingPurchaseForTest();
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameXXK|Town")
 	void OnRouteMapEntered();
 
@@ -93,10 +111,14 @@ private:
 	bool ExecuteTownCommand(FName CommandName);
 	UTextBlock* AddTextBlock(UVerticalBox* Parent, const FText& Text) const;
 	UButton* AddCommandButton(UVerticalBox* Parent, const FText& Label) const;
-	USizeBox* BuildItemSlotWidget(const FName& SlotName, UTextBlock*& OutSlotLabel) const;
-	void ApplyItemSlotLabel(UTextBlock* SlotLabel, const FGameXXKTownItemSlotView& SlotView) const;
+	USizeBox* BuildItemSlotWidget(const FName& SlotName, UTextBlock*& OutSlotLabel, UImage*& OutSlotIcon, UButton*& OutSlotButton) const;
+	void ApplyItemSlotVisual(UTextBlock* SlotLabel, UImage* SlotIcon, const FGameXXKTownItemSlotView& SlotView) const;
+	FString ResolveItemIconTexturePath(FName ItemId) const;
+	UTexture2D* LoadItemIconTexture(FName ItemId) const;
 	TArray<FGameXXKTownItemSlotView> BuildPlayerBackpackSlotViews(const FGameXXKRuntimeState& State) const;
 	TArray<FGameXXKTownItemSlotView> BuildShopStockSlotViews() const;
+	bool SelectShopStockSlot(int32 SlotIndex);
+	bool ConfirmPendingPurchase();
 
 	UFUNCTION()
 	void HandleSaveClicked();
@@ -115,6 +137,36 @@ private:
 
 	UFUNCTION()
 	void HandleClosePanelClicked();
+
+	UFUNCTION()
+	void HandleConfirmPurchaseClicked();
+
+	UFUNCTION()
+	void HandleCancelPurchaseClicked();
+
+	UFUNCTION()
+	void HandleShopStockSlot0Clicked();
+
+	UFUNCTION()
+	void HandleShopStockSlot1Clicked();
+
+	UFUNCTION()
+	void HandleShopStockSlot2Clicked();
+
+	UFUNCTION()
+	void HandleShopStockSlot3Clicked();
+
+	UFUNCTION()
+	void HandleShopStockSlot4Clicked();
+
+	UFUNCTION()
+	void HandleShopStockSlot5Clicked();
+
+	UFUNCTION()
+	void HandleShopStockSlot6Clicked();
+
+	UFUNCTION()
+	void HandleShopStockSlot7Clicked();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
@@ -159,13 +211,34 @@ private:
 	TObjectPtr<UUniformGridPanel> ShopStockGrid;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PurchaseConfirmationPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> PurchaseConfirmationTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ConfirmPurchaseButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> CancelPurchaseButton;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UUniformGridPanel> InventoryGrid;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> InventorySlotLabels;
 
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> InventorySlotIcons;
+
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> ShopStockSlotLabels;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> ShopStockSlotIcons;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UButton>> ShopStockSlotButtons;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> SaveButton;
@@ -190,4 +263,5 @@ private:
 
 	TArray<FName> CurrentPlayerBackpackSlotItemIds;
 	TArray<FName> CurrentShopStockSlotItemIds;
+	FName PendingPurchaseItemId;
 };

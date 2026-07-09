@@ -139,3 +139,10 @@ Acceptance evidence: GameXXK now owns route seed/state/clicks; the route widget 
 - RED verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 60` failed after adding town overlay shared-slot assertions because `GetShopStockSlotCountForTest`, `GetShopStockSlotResourcePathForTest`, `GetShopStockSlotItemIdForTest`, and `GetPlayerBackpackSlotItemIdForTest` were declared but not implemented.
 - GREEN verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 80` passed with UBT success, UE MCP ready, and PIE start/stop after implementing the shared town item-slot model and merchant stock grid.
 - Final automation: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\unified-town-inventory-shop-green.json` passed with `ok: true`, 22/22 `GameXXK.MVP` tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
+
+## 2026-07-09 Town Shop Item Icons And Purchase Confirmation
+
+- RED verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 60` compiled after adding new UI assertions and failed link resolution because `GetItemIconResourcePathForTest`, `SelectShopStockSlotForTest`, `IsPurchaseConfirmationVisibleForTest`, `GetPendingPurchaseItemIdForTest`, and `ConfirmPendingPurchaseForTest` had no implementation yet.
+- GREEN compile/smoke: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 80` passed UBT compile and PIE start/stop after implementing shared slot icons and purchase confirmation.
+- Full MVP automation: `python scripts\gamexxk_mvp_playtest.py --test-timeout 600 --report Saved\HarnessReports\town-shop-icons-click-buy-green.json` passed with `ok: true`, 22/22 `GameXXK.MVP` automation tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
+- MCP safety before closing the editor for rebuild: `save_dirty_packages` returned `dirty_before=[]` and `dirty_after=[]`.

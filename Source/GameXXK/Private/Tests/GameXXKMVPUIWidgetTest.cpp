@@ -103,15 +103,26 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("first shop slot is driven by the shop stock view model"), TownOverlay->GetShopStockSlotItemIdForTest(0), UGameXXKMVPRules::GetShopItemIds()[0]);
 	TestEqual(TEXT("first backpack slot is driven by the player inventory view model"), TownOverlay->GetPlayerBackpackSlotItemIdForTest(0), UGameXXKMVPRules::ItemHealingPowder());
+	TestTrue(TEXT("healing powder has a loaded item icon path"), TownOverlay->GetItemIconResourcePathForTest(UGameXXKMVPRules::ItemHealingPowder()).Contains(TEXT("T_ItemHealingPowder")));
+	TestTrue(TEXT("Qingxin tea has a loaded item icon path"), TownOverlay->GetItemIconResourcePathForTest(FName(TEXT("Item.QingxinTea"))).Contains(TEXT("T_ItemQingxinTea")));
+	const int32 GoldBeforeSlotPurchase = Subsystem->GetRuntimeState().PlayerGold;
+	const int32 PowderBeforeSlotPurchase = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
+	TestTrue(TEXT("clicking shop stock slot selects it for purchase"), TownOverlay->SelectShopStockSlotForTest(0));
+	TestTrue(TEXT("shop slot selection opens purchase confirmation"), TownOverlay->IsPurchaseConfirmationVisibleForTest());
+	TestEqual(TEXT("purchase confirmation records pending shop item"), TownOverlay->GetPendingPurchaseItemIdForTest(), UGameXXKMVPRules::ItemHealingPowder());
+	TestTrue(TEXT("confirming pending shop purchase buys one item"), TownOverlay->ConfirmPendingPurchaseForTest());
+	TestEqual(TEXT("slot purchase spends item buy price"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeSlotPurchase - 10);
+	TestEqual(TEXT("slot purchase refreshes player backpack inventory"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeSlotPurchase + 1);
 
 	TestTrue(TEXT("quest dialog accepts quest"), QuestDialog->AcceptQuest());
 	TestEqual(TEXT("quest accepted in subsystem state"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
 	TestTrue(TEXT("follower joins after quest dialog"), Subsystem->GetRuntimeState().bFollowerJoined);
 
 	const int32 GoldBeforeBuy = Subsystem->GetRuntimeState().PlayerGold;
+	const int32 PowderBeforeTradeWidgetBuy = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
 	TestTrue(TEXT("trade widget buys healing powder"), Trade->BuyItemById(UGameXXKMVPRules::ItemHealingPowder(), 1));
 	TestEqual(TEXT("buy spends gold through subsystem"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeBuy - 10);
-	TestEqual(TEXT("inventory widget reads bought stack"), Inventory->GetItemCount(UGameXXKMVPRules::ItemHealingPowder()), 2);
+	TestEqual(TEXT("inventory widget reads bought stack"), Inventory->GetItemCount(UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeTradeWidgetBuy + 1);
 	TestTrue(TEXT("inventory widget lists bought healing powder"), Inventory->GetInventoryItemIds().Contains(UGameXXKMVPRules::ItemHealingPowder()));
 	TestTrue(TEXT("trade widget sells healing powder"), Trade->SellItemById(UGameXXKMVPRules::ItemHealingPowder(), 1));
 	TestEqual(TEXT("sell awards gold through subsystem"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeBuy - 5);

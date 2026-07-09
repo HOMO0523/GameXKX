@@ -92,3 +92,11 @@ parallel_lock: GameXXK.PlayableEntryFlow
 - Replaced the merchant stock text-only shelf with `TownShopStockGrid`, using fixed 72x72 `TownShopStockSlotSize_##` entries and the same ink backpack slot texture as the player inventory grid.
 - Kept `TownSharedInventoryGrid` visible in trade mode so merchant trade is now a shop-stock grid beside the same player backpack surface, not a separate inventory presentation.
 - Added town overlay test helpers for shop stock slot count, shop stock slot texture, first shop item id, and first player backpack item id.
+
+## 2026-07-09 Town Shop Item Icons And Purchase Confirmation
+
+- Upgraded town backpack and merchant-stock slots from text-only buttons to a shared slot composition: ink slot button base, centered item icon image, and a compact quantity/price label overlay.
+- Mapped the current MVP item ids to imported inventory Texture2D assets under `/Game/GameXXK/UI/Inventory/Textures`, covering healing powder, powders/tea/sachet, sword, armor, talisman, and pendant.
+- Added merchant stock click handling for the current eight shop slots. Clicking a stock slot now records a pending item and opens an in-panel purchase confirmation instead of immediately buying.
+- Confirming the pending purchase calls the existing `UGameXXKMVPSubsystem::BuyItem` path, refreshes the shared backpack grid, and clears the pending purchase state. Cancel/closing panels clears the pending state without changing inventory.
+- Extended `GameXXK.MVP.UI.WidgetBasesDriveRules` to assert icon path mapping, shop-slot selection, visible purchase confirmation, pending item id, gold spend, and backpack stack refresh.

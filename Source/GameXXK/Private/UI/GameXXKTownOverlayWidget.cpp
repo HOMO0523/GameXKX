@@ -7,6 +7,9 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/Image.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/UniformGridPanel.h"
@@ -31,8 +34,10 @@ namespace
 	const FVector2D TownDetailPanelPosition(412.0f, 28.0f);
 	const FVector2D TownDetailPanelSize(760.0f, 540.0f);
 	const FString InventorySlotTexturePath(TEXT("/Game/GameXXK/UI/Inventory/Textures/T_InkBackpackSlot.T_InkBackpackSlot"));
+	const FString ItemIconTextureRoot(TEXT("/Game/GameXXK/UI/Inventory/Textures/"));
 	constexpr int32 InventorySlotCount = 20;
 	constexpr float BackpackSlotSize = 72.0f;
+	constexpr float BackpackIconSize = 46.0f;
 
 	static FSlateBrush BuildTextureBrush(UTexture2D* Texture, const FVector2D& ImageSize, const FLinearColor& Tint)
 	{
@@ -165,6 +170,33 @@ FName UGameXXKTownOverlayWidget::GetShopStockSlotItemIdForTest(int32 SlotIndex) 
 FName UGameXXKTownOverlayWidget::GetPlayerBackpackSlotItemIdForTest(int32 SlotIndex) const
 {
 	return CurrentPlayerBackpackSlotItemIds.IsValidIndex(SlotIndex) ? CurrentPlayerBackpackSlotItemIds[SlotIndex] : NAME_None;
+}
+
+FString UGameXXKTownOverlayWidget::GetItemIconResourcePathForTest(FName ItemId) const
+{
+	return ResolveItemIconTexturePath(ItemId);
+}
+
+bool UGameXXKTownOverlayWidget::SelectShopStockSlotForTest(int32 SlotIndex)
+{
+	return SelectShopStockSlot(SlotIndex);
+}
+
+bool UGameXXKTownOverlayWidget::IsPurchaseConfirmationVisibleForTest() const
+{
+	return !PendingPurchaseItemId.IsNone()
+		&& PurchaseConfirmationPanel
+		&& PurchaseConfirmationPanel->GetVisibility() != ESlateVisibility::Collapsed;
+}
+
+FName UGameXXKTownOverlayWidget::GetPendingPurchaseItemIdForTest() const
+{
+	return PendingPurchaseItemId;
+}
+
+bool UGameXXKTownOverlayWidget::ConfirmPendingPurchaseForTest()
+{
+	return ConfirmPendingPurchase();
 }
 
 void UGameXXKTownOverlayWidget::BuildProgrammaticLayout()
@@ -314,6 +346,29 @@ void UGameXXKTownOverlayWidget::BuildProgrammaticLayout()
 	ShopStockGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("TownShopStockGrid"));
 	ShopStockPanel->AddChildToVerticalBox(ShopStockGrid);
 
+	PurchaseConfirmationPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("TownPurchaseConfirmationPanel"));
+	PurchaseConfirmationPanel->SetPadding(FMargin(10.0f, 8.0f));
+	PurchaseConfirmationPanel->SetBrushColor(FLinearColor(0.16f, 0.12f, 0.08f, 0.92f));
+	PurchaseConfirmationPanel->SetVisibility(ESlateVisibility::Collapsed);
+	UVerticalBox* PurchaseConfirmationBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("TownPurchaseConfirmationBox"));
+	PurchaseConfirmationPanel->AddChild(PurchaseConfirmationBox);
+	PurchaseConfirmationTextBlock = AddTextBlock(PurchaseConfirmationBox, FText::GetEmpty());
+	ConfirmPurchaseButton = AddCommandButton(PurchaseConfirmationBox, NSLOCTEXT("GameXXKTownOverlay", "ConfirmPurchase", "购买"));
+	if (ConfirmPurchaseButton)
+	{
+		ConfirmPurchaseButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleConfirmPurchaseClicked);
+	}
+	CancelPurchaseButton = AddCommandButton(PurchaseConfirmationBox, NSLOCTEXT("GameXXKTownOverlay", "CancelPurchase", "取消"));
+	if (CancelPurchaseButton)
+	{
+		CancelPurchaseButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleCancelPurchaseClicked);
+	}
+	if (UVerticalBoxSlot* PurchaseSlot = ShopStockPanel->AddChildToVerticalBox(PurchaseConfirmationPanel))
+	{
+		PurchaseSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
+		PurchaseSlot->SetHorizontalAlignment(HAlign_Fill);
+	}
+
 	UTextBlock* BackpackHeader = AddTextBlock(BackpackPanelBox, NSLOCTEXT("GameXXKTownOverlay", "BackpackHeader", "背包"));
 	if (BackpackHeader)
 	{
@@ -326,16 +381,20 @@ void UGameXXKTownOverlayWidget::BuildProgrammaticLayout()
 	InventoryGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("TownSharedInventoryGrid"));
 	BackpackPanelBox->AddChildToVerticalBox(InventoryGrid);
 	InventorySlotLabels.Reset();
+	InventorySlotIcons.Reset();
 	for (int32 SlotIndex = 0; SlotIndex < InventorySlotCount; ++SlotIndex)
 	{
 		UTextBlock* SlotLabel = nullptr;
-		USizeBox* SlotSizeBox = BuildItemSlotWidget(FName(*FString::Printf(TEXT("TownInventorySlotSize_%02d"), SlotIndex)), SlotLabel);
+		UImage* SlotIcon = nullptr;
+		UButton* SlotButton = nullptr;
+		USizeBox* SlotSizeBox = BuildItemSlotWidget(FName(*FString::Printf(TEXT("TownInventorySlotSize_%02d"), SlotIndex)), SlotLabel, SlotIcon, SlotButton);
 		if (UUniformGridSlot* GridSlot = InventoryGrid->AddChildToUniformGrid(SlotSizeBox, SlotIndex / 5, SlotIndex % 5))
 		{
 			GridSlot->SetHorizontalAlignment(HAlign_Center);
 			GridSlot->SetVerticalAlignment(VAlign_Center);
 		}
 		InventorySlotLabels.Add(SlotLabel);
+		InventorySlotIcons.Add(SlotIcon);
 	}
 }
 
@@ -391,6 +450,14 @@ void UGameXXKTownOverlayWidget::ConfigureProgrammaticLayout()
 	{
 		ShopStockPanel->SetVisibility(ActiveMode == EGameXXKTownPanelMode::Trade ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	}
+	if (ActiveMode != EGameXXKTownPanelMode::Trade)
+	{
+		PendingPurchaseItemId = NAME_None;
+	}
+	if (PurchaseConfirmationPanel)
+	{
+		PurchaseConfirmationPanel->SetVisibility(!PendingPurchaseItemId.IsNone() && ActiveMode == EGameXXKTownPanelMode::Trade ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
 	if (!ActivePanelTitleBlock || !ActivePanelBodyBlock || !State)
 	{
 		return;
@@ -425,13 +492,10 @@ void UGameXXKTownOverlayWidget::ConfigureProgrammaticLayout()
 	for (int32 SlotIndex = 0; SlotIndex < InventorySlotLabels.Num(); ++SlotIndex)
 	{
 		UTextBlock* SlotLabel = InventorySlotLabels[SlotIndex].Get();
-		if (!SlotLabel)
-		{
-			continue;
-		}
+		UImage* SlotIcon = InventorySlotIcons.IsValidIndex(SlotIndex) ? InventorySlotIcons[SlotIndex].Get() : nullptr;
 		const FGameXXKTownItemSlotView SlotView = PlayerBackpackSlots.IsValidIndex(SlotIndex) ? PlayerBackpackSlots[SlotIndex] : FGameXXKTownItemSlotView{};
 		CurrentPlayerBackpackSlotItemIds.Add(SlotView.ItemId);
-		ApplyItemSlotLabel(SlotLabel, SlotView);
+		ApplyItemSlotVisual(SlotLabel, SlotIcon, SlotView);
 	}
 
 	if (ActiveMode == EGameXXKTownPanelMode::Inventory)
@@ -476,20 +540,55 @@ void UGameXXKTownOverlayWidget::ConfigureProgrammaticLayout()
 		{
 			ShopStockGrid->ClearChildren();
 			ShopStockSlotLabels.Reset();
+			ShopStockSlotIcons.Reset();
+			ShopStockSlotButtons.Reset();
 			for (int32 SlotIndex = 0; SlotIndex < ShopStockSlots.Num(); ++SlotIndex)
 			{
 				UTextBlock* SlotLabel = nullptr;
-				USizeBox* SlotSizeBox = BuildItemSlotWidget(FName(*FString::Printf(TEXT("TownShopStockSlotSize_%02d"), SlotIndex)), SlotLabel);
+				UImage* SlotIcon = nullptr;
+				UButton* SlotButton = nullptr;
+				USizeBox* SlotSizeBox = BuildItemSlotWidget(FName(*FString::Printf(TEXT("TownShopStockSlotSize_%02d"), SlotIndex)), SlotLabel, SlotIcon, SlotButton);
 				if (UUniformGridSlot* GridSlot = SlotSizeBox ? ShopStockGrid->AddChildToUniformGrid(SlotSizeBox, SlotIndex / 4, SlotIndex % 4) : nullptr)
 				{
 					GridSlot->SetHorizontalAlignment(HAlign_Center);
 					GridSlot->SetVerticalAlignment(VAlign_Center);
 				}
-				if (SlotLabel)
+				if (SlotButton)
 				{
-					ApplyItemSlotLabel(SlotLabel, ShopStockSlots[SlotIndex]);
-					ShopStockSlotLabels.Add(SlotLabel);
+					switch (SlotIndex)
+					{
+					case 0:
+						SlotButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleShopStockSlot0Clicked);
+						break;
+					case 1:
+						SlotButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleShopStockSlot1Clicked);
+						break;
+					case 2:
+						SlotButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleShopStockSlot2Clicked);
+						break;
+					case 3:
+						SlotButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleShopStockSlot3Clicked);
+						break;
+					case 4:
+						SlotButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleShopStockSlot4Clicked);
+						break;
+					case 5:
+						SlotButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleShopStockSlot5Clicked);
+						break;
+					case 6:
+						SlotButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleShopStockSlot6Clicked);
+						break;
+					case 7:
+						SlotButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleShopStockSlot7Clicked);
+						break;
+					default:
+						break;
+					}
+					ShopStockSlotButtons.Add(SlotButton);
 				}
+				ApplyItemSlotVisual(SlotLabel, SlotIcon, ShopStockSlots[SlotIndex]);
+				ShopStockSlotLabels.Add(SlotLabel);
+				ShopStockSlotIcons.Add(SlotIcon);
 				CurrentShopStockSlotItemIds.Add(ShopStockSlots[SlotIndex].ItemId);
 			}
 		}
@@ -504,6 +603,14 @@ void UGameXXKTownOverlayWidget::ConfigureProgrammaticLayout()
 			}
 		}
 		ActivePanelBodyBlock->SetText(FText::FromString(FString::Join(ShopLines, TEXT("\n"))));
+		if (!PendingPurchaseItemId.IsNone() && PurchaseConfirmationTextBlock)
+		{
+			bool bFound = false;
+			const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(PendingPurchaseItemId, bFound);
+			PurchaseConfirmationTextBlock->SetText(FText::FromString(bFound
+				? FString::Printf(TEXT("确认购买 %s？价格 %d 金"), *Def.DisplayName.ToString(), Def.BuyPrice)
+				: FString::Printf(TEXT("确认购买 %s？"), *PendingPurchaseItemId.ToString())));
+		}
 	}
 }
 
@@ -558,9 +665,11 @@ UButton* UGameXXKTownOverlayWidget::AddCommandButton(UVerticalBox* Parent, const
 	return Button;
 }
 
-USizeBox* UGameXXKTownOverlayWidget::BuildItemSlotWidget(const FName& SlotName, UTextBlock*& OutSlotLabel) const
+USizeBox* UGameXXKTownOverlayWidget::BuildItemSlotWidget(const FName& SlotName, UTextBlock*& OutSlotLabel, UImage*& OutSlotIcon, UButton*& OutSlotButton) const
 {
 	OutSlotLabel = nullptr;
+	OutSlotIcon = nullptr;
+	OutSlotButton = nullptr;
 	if (!WidgetTree)
 	{
 		return nullptr;
@@ -572,6 +681,7 @@ USizeBox* UGameXXKTownOverlayWidget::BuildItemSlotWidget(const FName& SlotName, 
 
 	UTexture2D* InventorySlotTexture = LoadObject<UTexture2D>(nullptr, *InventorySlotTexturePath);
 	UButton* SlotButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass());
+	OutSlotButton = SlotButton;
 	SlotButton->SetBackgroundColor(InventorySlotTexture ? FLinearColor::White : FLinearColor(0.20f, 0.17f, 0.12f, 0.82f));
 	if (InventorySlotTexture)
 	{
@@ -586,6 +696,18 @@ USizeBox* UGameXXKTownOverlayWidget::BuildItemSlotWidget(const FName& SlotName, 
 		SlotButton->SetStyle(SlotStyle);
 	}
 
+	UOverlay* SlotOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
+	SlotButton->AddChild(SlotOverlay);
+
+	OutSlotIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+	OutSlotIcon->SetVisibility(ESlateVisibility::Collapsed);
+	if (UOverlaySlot* IconOverlaySlot = SlotOverlay->AddChildToOverlay(OutSlotIcon))
+	{
+		IconOverlaySlot->SetHorizontalAlignment(HAlign_Center);
+		IconOverlaySlot->SetVerticalAlignment(VAlign_Center);
+		IconOverlaySlot->SetPadding(FMargin(6.0f, 4.0f, 6.0f, 12.0f));
+	}
+
 	OutSlotLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 	OutSlotLabel->SetColorAndOpacity(FSlateColor(FLinearColor(0.92f, 0.86f, 0.74f, 0.75f)));
 	OutSlotLabel->SetJustification(ETextJustify::Center);
@@ -593,21 +715,87 @@ USizeBox* UGameXXKTownOverlayWidget::BuildItemSlotWidget(const FName& SlotName, 
 	FSlateFontInfo SlotFont = OutSlotLabel->GetFont();
 	SlotFont.Size = 11;
 	OutSlotLabel->SetFont(SlotFont);
-	SlotButton->AddChild(OutSlotLabel);
+	if (UOverlaySlot* LabelOverlaySlot = SlotOverlay->AddChildToOverlay(OutSlotLabel))
+	{
+		LabelOverlaySlot->SetHorizontalAlignment(HAlign_Fill);
+		LabelOverlaySlot->SetVerticalAlignment(VAlign_Bottom);
+		LabelOverlaySlot->SetPadding(FMargin(7.0f, 0.0f, 7.0f, 8.0f));
+	}
 	SlotSizeBox->AddChild(SlotButton);
 	return SlotSizeBox;
 }
 
-void UGameXXKTownOverlayWidget::ApplyItemSlotLabel(UTextBlock* SlotLabel, const FGameXXKTownItemSlotView& SlotView) const
+void UGameXXKTownOverlayWidget::ApplyItemSlotVisual(UTextBlock* SlotLabel, UImage* SlotIcon, const FGameXXKTownItemSlotView& SlotView) const
 {
-	if (!SlotLabel)
+	if (SlotLabel)
+	{
+		SlotLabel->SetText(SlotView.Label);
+		SlotLabel->SetColorAndOpacity(FSlateColor(SlotView.ItemId.IsNone()
+			? FLinearColor(0.92f, 0.86f, 0.74f, 0.35f)
+			: FLinearColor(0.98f, 0.91f, 0.76f, 1.0f)));
+	}
+
+	if (!SlotIcon)
 	{
 		return;
 	}
-	SlotLabel->SetText(SlotView.Label);
-	SlotLabel->SetColorAndOpacity(FSlateColor(SlotView.ItemId.IsNone()
-		? FLinearColor(0.92f, 0.86f, 0.74f, 0.35f)
-		: FLinearColor(0.98f, 0.91f, 0.76f, 1.0f)));
+
+	UTexture2D* IconTexture = LoadItemIconTexture(SlotView.ItemId);
+	if (!IconTexture)
+	{
+		SlotIcon->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+
+	SlotIcon->SetBrushFromTexture(IconTexture, true);
+	FSlateBrush IconBrush = SlotIcon->GetBrush();
+	IconBrush.ImageSize = FVector2D(BackpackIconSize, BackpackIconSize);
+	IconBrush.TintColor = FSlateColor(FLinearColor(1.0f, 1.0f, 1.0f, SlotView.ItemId.IsNone() ? 0.0f : 1.0f));
+	SlotIcon->SetBrush(IconBrush);
+	SlotIcon->SetVisibility(SlotView.ItemId.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+}
+
+FString UGameXXKTownOverlayWidget::ResolveItemIconTexturePath(FName ItemId) const
+{
+	if (ItemId == UGameXXKMVPRules::ItemHealingPowder())
+	{
+		return ItemIconTextureRoot + TEXT("T_ItemHealingPowder.T_ItemHealingPowder");
+	}
+	if (ItemId == FName(TEXT("Item.LingzhiPowder")))
+	{
+		return ItemIconTextureRoot + TEXT("T_ItemLingzhiPowder.T_ItemLingzhiPowder");
+	}
+	if (ItemId == FName(TEXT("Item.QingxinTea")))
+	{
+		return ItemIconTextureRoot + TEXT("T_ItemQingxinTea.T_ItemQingxinTea");
+	}
+	if (ItemId == FName(TEXT("Item.CraneSachet")))
+	{
+		return ItemIconTextureRoot + TEXT("T_ItemCraneSachet.T_ItemCraneSachet");
+	}
+	if (ItemId == UGameXXKMVPRules::ItemIronSword())
+	{
+		return ItemIconTextureRoot + TEXT("T_ItemQingfengShortSword.T_ItemQingfengShortSword");
+	}
+	if (ItemId == UGameXXKMVPRules::ItemClothArmor())
+	{
+		return ItemIconTextureRoot + TEXT("T_ItemBambooLightArmor.T_ItemBambooLightArmor");
+	}
+	if (ItemId == FName(TEXT("Item.CranePatternTalisman")))
+	{
+		return ItemIconTextureRoot + TEXT("T_ItemCranePatternTalisman.T_ItemCranePatternTalisman");
+	}
+	if (ItemId == FName(TEXT("Item.InkstonePendant")))
+	{
+		return ItemIconTextureRoot + TEXT("T_ItemInkstonePendant.T_ItemInkstonePendant");
+	}
+	return FString();
+}
+
+UTexture2D* UGameXXKTownOverlayWidget::LoadItemIconTexture(FName ItemId) const
+{
+	const FString IconTexturePath = ResolveItemIconTexturePath(ItemId);
+	return IconTexturePath.IsEmpty() ? nullptr : LoadObject<UTexture2D>(nullptr, *IconTexturePath);
 }
 
 TArray<FGameXXKTownItemSlotView> UGameXXKTownOverlayWidget::BuildPlayerBackpackSlotViews(const FGameXXKRuntimeState& State) const
@@ -634,8 +822,7 @@ TArray<FGameXXKTownItemSlotView> UGameXXKTownOverlayWidget::BuildPlayerBackpackS
 		SlotView.Source = EGameXXKTownItemSlotSource::PlayerInventory;
 		SlotView.ItemId = Entry.Key;
 		SlotView.Quantity = Entry.Value;
-		const FString DisplayName = bFound ? Def.DisplayName.ToString() : Entry.Key.ToString();
-		SlotView.Label = FText::FromString(FString::Printf(TEXT("%s\nx%d"), *DisplayName, Entry.Value));
+		SlotView.Label = FText::FromString(FString::Printf(TEXT("x%d"), Entry.Value));
 		Slots.Add(SlotView);
 	}
 	return Slots;
@@ -656,10 +843,56 @@ TArray<FGameXXKTownItemSlotView> UGameXXKTownOverlayWidget::BuildShopStockSlotVi
 		SlotView.Source = EGameXXKTownItemSlotSource::ShopStock;
 		SlotView.ItemId = ItemId;
 		SlotView.Quantity = 1;
-		SlotView.Label = FText::FromString(FString::Printf(TEXT("%s\n%d金"), *Def.DisplayName.ToString(), Def.BuyPrice));
+		SlotView.Label = FText::FromString(FString::Printf(TEXT("%d金"), Def.BuyPrice));
 		Slots.Add(SlotView);
 	}
 	return Slots;
+}
+
+bool UGameXXKTownOverlayWidget::SelectShopStockSlot(int32 SlotIndex)
+{
+	if (!CurrentShopStockSlotItemIds.IsValidIndex(SlotIndex))
+	{
+		return false;
+	}
+
+	const FName ItemId = CurrentShopStockSlotItemIds[SlotIndex];
+	if (ItemId.IsNone())
+	{
+		return false;
+	}
+
+	PendingPurchaseItemId = ItemId;
+	ConfigureProgrammaticLayout();
+	return true;
+}
+
+bool UGameXXKTownOverlayWidget::ConfirmPendingPurchase()
+{
+	if (PendingPurchaseItemId.IsNone())
+	{
+		return false;
+	}
+
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return false;
+	}
+
+	const FName ItemId = PendingPurchaseItemId;
+	if (!Subsystem->BuyItem(ItemId, 1))
+	{
+		ConfigureProgrammaticLayout();
+		return false;
+	}
+
+	PendingPurchaseItemId = NAME_None;
+	if (!NotifyPlayerFlowStateChanged())
+	{
+		RefreshFromState();
+	}
+	return true;
 }
 
 void UGameXXKTownOverlayWidget::HandleSaveClicked()
@@ -690,4 +923,55 @@ void UGameXXKTownOverlayWidget::HandleTradeClicked()
 void UGameXXKTownOverlayWidget::HandleClosePanelClicked()
 {
 	ExecuteTownCommand(CloseTownPanelCommand);
+}
+
+void UGameXXKTownOverlayWidget::HandleConfirmPurchaseClicked()
+{
+	ConfirmPendingPurchase();
+}
+
+void UGameXXKTownOverlayWidget::HandleCancelPurchaseClicked()
+{
+	PendingPurchaseItemId = NAME_None;
+	ConfigureProgrammaticLayout();
+}
+
+void UGameXXKTownOverlayWidget::HandleShopStockSlot0Clicked()
+{
+	SelectShopStockSlot(0);
+}
+
+void UGameXXKTownOverlayWidget::HandleShopStockSlot1Clicked()
+{
+	SelectShopStockSlot(1);
+}
+
+void UGameXXKTownOverlayWidget::HandleShopStockSlot2Clicked()
+{
+	SelectShopStockSlot(2);
+}
+
+void UGameXXKTownOverlayWidget::HandleShopStockSlot3Clicked()
+{
+	SelectShopStockSlot(3);
+}
+
+void UGameXXKTownOverlayWidget::HandleShopStockSlot4Clicked()
+{
+	SelectShopStockSlot(4);
+}
+
+void UGameXXKTownOverlayWidget::HandleShopStockSlot5Clicked()
+{
+	SelectShopStockSlot(5);
+}
+
+void UGameXXKTownOverlayWidget::HandleShopStockSlot6Clicked()
+{
+	SelectShopStockSlot(6);
+}
+
+void UGameXXKTownOverlayWidget::HandleShopStockSlot7Clicked()
+{
+	SelectShopStockSlot(7);
 }
