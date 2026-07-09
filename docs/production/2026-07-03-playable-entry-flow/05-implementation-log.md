@@ -84,3 +84,11 @@ parallel_lock: GameXXK.PlayableEntryFlow
 - Updated live targeting mouse input to convert Slate absolute cursor positions through the BattleBoard cached geometry with `AbsoluteToLocal`, preserving DPI/layout scale and clamping to the local paint area before drawing the ink-dab Bezier arrow.
 - Updated right-click party command opening to use UE's DPI-aware mouse position and `ProjectWorldLocationToWidgetPosition` for the selected party actor visual bounds, so the command menu anchor and targeting arrow start point use the same unit space.
 - Added a scaled Slate-coordinate regression case that maps a 1600x800 absolute widget area into an 800x400 local canvas and verifies the visible center lands at `(400, 200)` rather than being clamped to the edge.
+
+## 2026-07-09 Unified Town Inventory And Shop
+
+- Documented the town inventory/shop UX boundary in `docs/superpowers/specs/2026-07-09-unified-town-inventory-shop-design.md` and the implementation steps in `docs/superpowers/plans/2026-07-09-unified-town-inventory-shop.md`.
+- Added `FGameXXKTownItemSlotView` and `EGameXXKTownItemSlotSource` so player backpack slots and merchant stock slots are populated from the same town item-slot model instead of separate ad hoc text paths.
+- Replaced the merchant stock text-only shelf with `TownShopStockGrid`, using fixed 72x72 `TownShopStockSlotSize_##` entries and the same ink backpack slot texture as the player inventory grid.
+- Kept `TownSharedInventoryGrid` visible in trade mode so merchant trade is now a shop-stock grid beside the same player backpack surface, not a separate inventory presentation.
+- Added town overlay test helpers for shop stock slot count, shop stock slot texture, first shop item id, and first player backpack item id.

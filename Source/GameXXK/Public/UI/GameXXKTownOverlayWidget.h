@@ -10,9 +10,25 @@ class UButton;
 class UBorder;
 class UCanvasPanel;
 class UHorizontalBox;
+class USizeBox;
 class UTextBlock;
 class UUniformGridPanel;
 class UVerticalBox;
+
+enum class EGameXXKTownItemSlotSource : uint8
+{
+	PlayerInventory,
+	ShopStock,
+	Equipment
+};
+
+struct FGameXXKTownItemSlotView
+{
+	EGameXXKTownItemSlotSource Source = EGameXXKTownItemSlotSource::PlayerInventory;
+	FName ItemId;
+	int32 Quantity = 0;
+	FText Label;
+};
 
 UCLASS(Blueprintable)
 class GAMEXXK_API UGameXXKTownOverlayWidget : public UGameXXKMVPWidgetBase
@@ -56,6 +72,18 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
 	FString GetInventorySlotResourcePathForTest() const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
+	int32 GetShopStockSlotCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
+	FString GetShopStockSlotResourcePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
+	FName GetShopStockSlotItemIdForTest(int32 SlotIndex) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Test")
+	FName GetPlayerBackpackSlotItemIdForTest(int32 SlotIndex) const;
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameXXK|Town")
 	void OnRouteMapEntered();
 
@@ -65,6 +93,10 @@ private:
 	bool ExecuteTownCommand(FName CommandName);
 	UTextBlock* AddTextBlock(UVerticalBox* Parent, const FText& Text) const;
 	UButton* AddCommandButton(UVerticalBox* Parent, const FText& Label) const;
+	USizeBox* BuildItemSlotWidget(const FName& SlotName, UTextBlock*& OutSlotLabel) const;
+	void ApplyItemSlotLabel(UTextBlock* SlotLabel, const FGameXXKTownItemSlotView& SlotView) const;
+	TArray<FGameXXKTownItemSlotView> BuildPlayerBackpackSlotViews(const FGameXXKRuntimeState& State) const;
+	TArray<FGameXXKTownItemSlotView> BuildShopStockSlotViews() const;
 
 	UFUNCTION()
 	void HandleSaveClicked();
@@ -124,10 +156,16 @@ private:
 	TObjectPtr<UVerticalBox> ShopStockPanel;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UUniformGridPanel> ShopStockGrid;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UUniformGridPanel> InventoryGrid;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> InventorySlotLabels;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> ShopStockSlotLabels;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> SaveButton;
@@ -149,4 +187,7 @@ private:
 
 	UPROPERTY(Transient)
 	FText CachedStatusText;
+
+	TArray<FName> CurrentPlayerBackpackSlotItemIds;
+	TArray<FName> CurrentShopStockSlotItemIds;
 };

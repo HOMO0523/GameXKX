@@ -92,6 +92,17 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("trade panel reuses the shared player backpack grid"), SharedBackpackGrid);
 	TestTrue(TEXT("shared backpack grid stays visible while trading"), SharedBackpackGrid && SharedBackpackGrid->GetVisibility() != ESlateVisibility::Collapsed);
 	TestNotNull(TEXT("trade panel has a shop stock panel beside the same backpack"), TownOverlay->WidgetTree ? TownOverlay->WidgetTree->FindWidget(TEXT("TownShopStockPanel")) : nullptr);
+	TestEqual(TEXT("trade panel renders every merchant stock item as a slot"), TownOverlay->GetShopStockSlotCountForTest(), UGameXXKMVPRules::GetShopItemIds().Num());
+	TestTrue(TEXT("shop stock slots use the shared ink slot texture"), TownOverlay->GetShopStockSlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Inventory/Textures/T_InkBackpackSlot")));
+	USizeBox* FirstShopSlot = TownOverlay->WidgetTree ? Cast<USizeBox>(TownOverlay->WidgetTree->FindWidget(TEXT("TownShopStockSlotSize_00"))) : nullptr;
+	TestNotNull(TEXT("trade panel wraps the first shop stock item in a fixed size slot"), FirstShopSlot);
+	if (FirstShopSlot)
+	{
+		TestEqual(TEXT("shop stock slot width matches backpack slot width"), FirstShopSlot->GetWidthOverride(), 72.0f);
+		TestEqual(TEXT("shop stock slot height matches backpack slot height"), FirstShopSlot->GetHeightOverride(), 72.0f);
+	}
+	TestEqual(TEXT("first shop slot is driven by the shop stock view model"), TownOverlay->GetShopStockSlotItemIdForTest(0), UGameXXKMVPRules::GetShopItemIds()[0]);
+	TestEqual(TEXT("first backpack slot is driven by the player inventory view model"), TownOverlay->GetPlayerBackpackSlotItemIdForTest(0), UGameXXKMVPRules::ItemHealingPowder());
 
 	TestTrue(TEXT("quest dialog accepts quest"), QuestDialog->AcceptQuest());
 	TestEqual(TEXT("quest accepted in subsystem state"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);

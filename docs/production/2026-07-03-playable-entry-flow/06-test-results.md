@@ -133,3 +133,9 @@ Acceptance evidence: GameXXK now owns route seed/state/clicks; the route widget 
 - RED verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 60` failed after adding the scaled Slate-coordinate regression helper call; the new test had no implementation yet, proving the new coverage was active.
 - GREEN verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 80` passed with UBT success, UE MCP ready, and PIE start/stop after BattleBoard and PlayerController were switched to DPI/layout-aware widget-local coordinates.
 - Final automation: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\targeting-coordinate-units-green.json` passed with `ok: true`, 22/22 `GameXXK.MVP` tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
+
+## 2026-07-09 Unified Town Inventory And Shop
+
+- RED verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 60` failed after adding town overlay shared-slot assertions because `GetShopStockSlotCountForTest`, `GetShopStockSlotResourcePathForTest`, `GetShopStockSlotItemIdForTest`, and `GetPlayerBackpackSlotItemIdForTest` were declared but not implemented.
+- GREEN verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 80` passed with UBT success, UE MCP ready, and PIE start/stop after implementing the shared town item-slot model and merchant stock grid.
+- Final automation: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\unified-town-inventory-shop-green.json` passed with `ok: true`, 22/22 `GameXXK.MVP` tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
