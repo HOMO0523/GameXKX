@@ -1,0 +1,11 @@
+{
+  "id": "inventory_action_buttons",
+  "widget": "GameXXKInventoryWindowWidget",
+  "assetType": "buttonBackground",
+  "style": "water-ink brush action button background with dark ink center and parchment edge",
+  "targetTexture": "/Game/GameXXK/UI/Inventory/Textures/T_InventoryActionButtons",
+  "canvasSize": [512, 56],
+  "buttonSize": [512, 56],
+  "states": ["normal", "hovered", "pressed", "disabled"],
+  "notes": "Used by inventory detail actions and confirmation dialog buttons; text is supplied by UMG."
+}

@@ -495,6 +495,32 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	MerchantNpc->NotifyActorEndOverlap(Player);
 	TestNull(TEXT("merchant NPC end overlap clears focus"), Player->GetInteractionComponent()->GetFocusedActor());
 
+	if (UWorld* ProximityWorld = GWorld)
+	{
+		AGameXXKTownPlayerPawn* NearbyPlayer = ProximityWorld->SpawnActor<AGameXXKTownPlayerPawn>(FVector::ZeroVector, FRotator::ZeroRotator);
+		AGameXXKTownNpcActor* NearbyMerchantNpc = ProximityWorld->SpawnActor<AGameXXKTownNpcActor>(FVector(300.0f, 0.0f, 0.0f), FRotator::ZeroRotator);
+		TestNotNull(TEXT("proximity fallback test spawns player"), NearbyPlayer);
+		TestNotNull(TEXT("proximity fallback test spawns merchant"), NearbyMerchantNpc);
+		if (NearbyPlayer && NearbyMerchantNpc)
+		{
+			NearbyMerchantNpc->SetNpcRole(EGameXXKTownNpcRole::Merchant);
+			NearbyMerchantNpc->SetMVPSubsystemForTest(Subsystem);
+			Subsystem->CloseTownPanel();
+			TestNull(TEXT("proximity fallback starts without focused actor"), NearbyPlayer->GetInteractionComponent()->GetFocusedActor());
+			NearbyPlayer->Interact();
+			TestEqual(TEXT("F near merchant opens trade without exact overlap focus"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::Trade);
+			TestTrue(TEXT("nearby merchant records proximity interaction"), NearbyMerchantNpc->WasLastInteractionSuccessful());
+		}
+		if (NearbyMerchantNpc)
+		{
+			NearbyMerchantNpc->Destroy();
+		}
+		if (NearbyPlayer)
+		{
+			NearbyPlayer->Destroy();
+		}
+	}
+
 	AGameXXKTownNpcActor* FollowerNpc = NewObject<AGameXXKTownNpcActor>();
 	FollowerNpc->SetNpcRole(EGameXXKTownNpcRole::Follower);
 	FollowerNpc->ActivateFollower(Player, 96.0f);

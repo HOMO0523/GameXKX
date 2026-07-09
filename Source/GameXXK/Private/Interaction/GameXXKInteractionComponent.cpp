@@ -1,6 +1,7 @@
 #include "Interaction/GameXXKInteractionComponent.h"
 
 #include "Interaction/GameXXKInteractable.h"
+#include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
 #include "Town/GameXXKTownExitActor.h"
 #include "Town/GameXXKTownNpcActor.h"
@@ -26,7 +27,11 @@ void UGameXXKInteractionComponent::Interact()
 	AActor* Actor = FocusedActor.Get();
 	if (!Actor)
 	{
-		return;
+		Actor = FindNearbyInteractableActor();
+		if (!Actor)
+		{
+			return;
+		}
 	}
 
 	APawn* OwnerPawn = Cast<APawn>(GetOwner());
@@ -54,6 +59,41 @@ void UGameXXKInteractionComponent::Interact()
 	{
 		TownExit->Interact_Implementation(OwnerPawn);
 	}
+}
+
+AActor* UGameXXKInteractionComponent::FindNearbyInteractableActor() const
+{
+	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	UWorld* World = OwnerPawn ? OwnerPawn->GetWorld() : GetWorld();
+	if (!OwnerPawn || !World || ProximityInteractionRadius <= 0.0f)
+	{
+		return nullptr;
+	}
+
+	const FVector OwnerLocation = OwnerPawn->GetActorLocation();
+	const float MaxDistanceSquared = FMath::Square(ProximityInteractionRadius);
+	float BestDistanceSquared = MaxDistanceSquared;
+	AActor* BestActor = nullptr;
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		AActor* Candidate = *It;
+		if (!Candidate || Candidate == OwnerPawn || Candidate->IsPendingKillPending())
+		{
+			continue;
+		}
+		if (!Candidate->GetClass()->ImplementsInterface(UGameXXKInteractable::StaticClass()))
+		{
+			continue;
+		}
+
+		const float DistanceSquared = FVector::DistSquared2D(OwnerLocation, Candidate->GetActorLocation());
+		if (DistanceSquared <= BestDistanceSquared)
+		{
+			BestDistanceSquared = DistanceSquared;
+			BestActor = Candidate;
+		}
+	}
+	return BestActor;
 }
 
 void UGameXXKInteractionComponent::SetFocusedActor(AActor* Actor)

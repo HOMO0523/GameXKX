@@ -19,6 +19,12 @@ IMPORTS = [
     (SOURCE_DIR / "item_inkstone_pendant.png", "T_ItemInkstonePendant"),
     (SOURCE_DIR / "item_qingfeng_short_sword.png", "T_ItemQingfengShortSword"),
     (SOURCE_DIR / "item_bamboo_light_armor.png", "T_ItemBambooLightArmor"),
+    (SOURCE_DIR / "inventory_window_frame.png", "T_InventoryWindowFrame"),
+    (SOURCE_DIR / "inventory_confirmation_dialog.png", "T_InventoryConfirmationDialog"),
+    (SOURCE_DIR / "inventory_close_button.png", "T_InventoryCloseButton"),
+    (SOURCE_DIR / "inventory_equipment_slots.png", "T_InventoryEquipmentSlots"),
+    (SOURCE_DIR / "inventory_action_buttons.png", "T_InventoryActionButtons"),
+    (SOURCE_DIR / "inventory_slot_states.png", "T_InventorySlotStates"),
 ]
 
 
@@ -49,6 +55,16 @@ def import_texture(source: Path, asset_name: str) -> str:
     if not source.exists():
         raise RuntimeError(f"missing source image: {source}")
     _ensure_directory(DESTINATION)
+    asset_registry = unreal.AssetRegistryHelpers.get_asset_registry()
+    asset_registry.scan_paths_synchronous([DESTINATION], True)
+    asset_path = f"{DESTINATION}/{asset_name}"
+    asset_object_path = f"{asset_path}.{asset_name}"
+    existing_texture = unreal.EditorAssetLibrary.load_asset(asset_object_path) or unreal.EditorAssetLibrary.load_asset(asset_path)
+    if isinstance(existing_texture, unreal.Texture2D):
+        _configure_texture(existing_texture)
+        unreal.EditorAssetLibrary.save_loaded_asset(existing_texture)
+        return existing_texture.get_path_name()
+
     task = unreal.AssetImportTask()
     task.filename = str(source)
     task.destination_path = DESTINATION
@@ -58,10 +74,11 @@ def import_texture(source: Path, asset_name: str) -> str:
     task.save = False
     unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
-    asset_path = f"{DESTINATION}/{asset_name}"
-    texture = unreal.EditorAssetLibrary.load_asset(asset_path)
+    texture = unreal.EditorAssetLibrary.load_asset(asset_object_path) or unreal.EditorAssetLibrary.load_asset(asset_path)
     if not isinstance(texture, unreal.Texture2D):
-        raise RuntimeError(f"failed to import Texture2D: {asset_path}")
+        texture_class = texture.get_class().get_name() if texture else "None"
+        asset_exists = unreal.EditorAssetLibrary.does_asset_exist(asset_object_path) or unreal.EditorAssetLibrary.does_asset_exist(asset_path)
+        raise RuntimeError(f"failed to import Texture2D: {asset_path}; exists={asset_exists}; loaded_class={texture_class}")
     _configure_texture(texture)
     unreal.EditorAssetLibrary.save_loaded_asset(texture)
     return texture.get_path_name()

@@ -155,3 +155,12 @@ Acceptance evidence: GameXXK now owns route seed/state/clicks; the route widget 
 - Full MVP automation: `python scripts\gamexxk_mvp_playtest.py --test-timeout 600 --report Saved\HarnessReports\independent-inventory-window-green.json` passed with `ok: true`, 22/22 `GameXXK.MVP` automation tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
 - UE MCP real flow: `python scripts\gamexxk_real_play_flow_mcp.py --timeout 180 --report Saved\HarnessReports\independent-inventory-window-real-flow.json` passed with `ok: true`; it covered `L_Main` start, town load, WASD/idle, `F` quest acceptance, manual save, town-exit `F`, route-map node click, and `L_BattleScene` entry.
 - Project-management validation: `python scripts\harness_state_validator.py --require-units --json` returned `ok: true`; `git diff --check` returned exit code 0; UE MCP `save_dirty_packages` returned `dirty_before=[]` and `dirty_after=[]`.
+
+## 2026-07-10 Merchant F Proximity And Window Polish
+
+- RED verified through UE MCP probe: with PIE in `L_QingshanInn`, controller inventory closed, focus cleared, and the hero teleported 300 units from `BP_MerchantCharacter`, `pawn.interact()` left the inventory window at `NONE/COLLAPSED`.
+- GREEN verified through the same UE MCP probe after adding proximity fallback: the same near-merchant `pawn.interact()` opened `UGameXXKInventoryWindowWidget` in `MERCHANT_TRADE` mode with `SELF_HIT_TEST_INVISIBLE` visibility and modal input lock active.
+- Asset import verification: `Content/Python/gamexxk_import_inventory_ui_assets.py` imported or reused 15 inventory Texture2D assets, including all new `T_Inventory*` window resources, and UE MCP `save_dirty_packages` returned `dirty_before=[]`, `dirty_after=[]`.
+- Compile/smoke verification: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 120` passed with UBT success, UE MCP ready, and PIE start/stop.
+- Full MVP automation: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\inventory-merchant-f-green.json` passed with `ok: true`, 22/22 `GameXXK.MVP` automation tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
+- Project checks: `python scripts\validate_inventory_ui_manifests.py` returned `ok: true` with 6 manifests; `python scripts\harness_state_validator.py --require-units --json` returned `ok: true`; `git diff --check` returned exit code 0.

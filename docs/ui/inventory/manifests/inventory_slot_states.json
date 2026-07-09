@@ -1,0 +1,10 @@
+{
+  "id": "inventory_slot_states",
+  "widget": "GameXXKInventoryWindowWidget",
+  "assetType": "slotStateOverlay",
+  "style": "water-ink selected highlight frame",
+  "targetTexture": "/Game/GameXXK/UI/Inventory/Textures/T_InventorySlotStates",
+  "canvasSize": [128, 128],
+  "states": ["selected"],
+  "notes": "Selected overlay is drawn over backpack, stock, and equipment slots; disabled state can be added as a sibling asset later."
+}

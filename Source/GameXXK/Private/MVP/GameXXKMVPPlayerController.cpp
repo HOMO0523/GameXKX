@@ -277,7 +277,9 @@ bool AGameXXKMVPPlayerController::OpenFreeInventoryWindow()
 
 bool AGameXXKMVPPlayerController::OpenMerchantTradeWindow()
 {
-	if (InventoryWindowWidget && InventoryWindowWidget->GetWindowModeForTest() == EGameXXKInventoryWindowMode::MerchantTrade)
+	if (InventoryWindowWidget
+		&& InventoryWindowWidget->GetWindowModeForTest() == EGameXXKInventoryWindowMode::MerchantTrade
+		&& InventoryWindowWidget->IsWindowVisibleForTest())
 	{
 		return CloseInventoryWindow();
 	}

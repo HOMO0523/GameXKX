@@ -1,10 +1,10 @@
 {
   "id": "inventory_equipment_slots",
   "widget": "GameXXKInventoryWindowWidget",
-  "assetType": "slotBackgroundSet",
+  "assetType": "slotBackground",
   "style": "water-ink equipment slots, framed parchment wells with subtle slot-type ink marks",
   "targetTexture": "/Game/GameXXK/UI/Inventory/Textures/T_InventoryEquipmentSlots",
-  "canvasSize": [768, 128],
+  "canvasSize": [220, 86],
   "slotSize": [220, 86],
   "nineSlice": {
     "left": 28,
@@ -12,11 +12,7 @@
     "right": 28,
     "bottom": 22
   },
-  "states": ["empty", "filled", "selected", "disabled"],
-  "slots": [
-    { "id": "weapon", "label": "武器", "x": 0, "y": 0, "w": 220, "h": 86 },
-    { "id": "armor", "label": "防具", "x": 256, "y": 0, "w": 220, "h": 86 },
-    { "id": "accessory", "label": "饰品", "x": 512, "y": 0, "w": 220, "h": 86 }
-  ],
-  "notes": "Equipment slots must be selectable and later drag/drop targets; first pass supports click selection and detail actions."
+  "states": ["normal", "selected", "disabled"],
+  "slots": ["weapon", "armor", "accessory"],
+  "notes": "One reusable equipment slot background used by weapon, armor, and accessory slots. Slot identity text/icon is supplied by UMG."
 }

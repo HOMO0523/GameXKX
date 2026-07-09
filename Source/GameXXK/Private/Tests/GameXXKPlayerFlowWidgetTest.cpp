@@ -101,6 +101,10 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("merchant path records trade inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::MerchantTrade);
 	TestTrue(TEXT("merchant trade inventory window locks movement input"), PlayerController->IsInventoryWindowModalInputLockedForTest());
 	TestTrue(TEXT("merchant trade inventory window exposes its own close button"), PlayerController->GetInventoryWindowWidgetForTest()->HasCloseButtonForTest());
+	PlayerController->GetInventoryWindowWidgetForTest()->SetVisibility(ESlateVisibility::Collapsed);
+	TestTrue(TEXT("merchant F reopens a stale hidden trade window instead of closing it"), PlayerController->OpenMerchantTradeWindow());
+	TestEqual(TEXT("stale hidden merchant reopen keeps trade mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::MerchantTrade);
+	TestNotEqual(TEXT("stale hidden merchant reopen makes the window visible"), PlayerController->GetInventoryWindowWidgetForTest()->GetVisibility(), ESlateVisibility::Collapsed);
 	TestTrue(TEXT("repeated merchant interaction closes trade inventory window"), PlayerController->OpenMerchantTradeWindow());
 	TestEqual(TEXT("repeated merchant interaction clears trade inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
 	TestFalse(TEXT("repeated merchant interaction restores movement input"), PlayerController->IsInventoryWindowModalInputLockedForTest());

@@ -110,3 +110,12 @@ parallel_lock: GameXXK.PlayableEntryFlow
 - Added modal movement blocking for the editable `BP_HeroCharacter` C++ parent and the older town pawn shell: free inventory keeps movement unlocked, merchant-trade mode clears and ignores WASD/arrow/axis movement.
 - Extended player-controller and widget tests to cover independent free inventory, independent merchant window, top-right close button, modal-lock state, confirmation cancel/confirm behavior, and equip-from-window behavior.
 - Moved inventory UI JSON manifests from UE `Content` into `docs/ui/inventory/manifests` after editor logs showed UE treating `.json` files under `Content` as DataTable import sources and opening import UI. The validator now reads the docs path, while generated/imported runtime textures remain under `/Game/GameXXK/UI/Inventory/Textures`.
+
+## 2026-07-10 Merchant F Proximity And Window Polish
+
+- Generated a water-ink inventory/trade UI sheet and sliced it into source art for the independent window frame, confirmation dialog, close button, equipment slot, action button, and selection overlay.
+- Imported the new runtime Texture2D assets under `/Game/GameXXK/UI/Inventory/Textures/T_Inventory*` and made `Content/Python/gamexxk_import_inventory_ui_assets.py` idempotent when assets already exist.
+- Rebuilt the independent inventory/trade widget composition around a single framed window, its own `X`, fixed backpack/merchant/equipment slots, item icons, merchant buy confirmation, sell/equip/use actions, and separate modal confirmation controls.
+- Fixed repeated merchant `F` behavior so a stale hidden merchant-trade window reopens instead of being treated as a visible window toggle.
+- Added a proximity fallback to `UGameXXKInteractionComponent`: if no focused actor exists, `F` now resolves the nearest `GameXXKInteractable` within 360 units before returning. This covers the visual-close merchant case where the pawn did not enter the overlap focus stack.
+- Added regression coverage for near-merchant F interaction without exact overlap focus, plus MCP probe coverage in `Content/Python/gamexxk_probe_inventory_window.py`.

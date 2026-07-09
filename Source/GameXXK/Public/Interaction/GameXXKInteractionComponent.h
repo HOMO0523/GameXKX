@@ -34,6 +34,7 @@ public:
 	void SetFocusedActorForTest(AActor* Actor);
 
 private:
+	AActor* FindNearbyInteractableActor() const;
 	void RefreshFocusedActorFromStack();
 
 	UPROPERTY()
@@ -44,4 +45,7 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|Interaction")
 	FKey InteractionKey;
+
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|Interaction", meta = (ClampMin = "0.0"))
+	float ProximityInteractionRadius = 360.0f;
 };
