@@ -12,10 +12,10 @@
 
 ## File Structure
 
-- Create `Content/GameXXK/UI/Inventory/Manifests/inventory_window_frame.json`: source-of-truth manifest for the inventory window frame/backplate.
-- Create `Content/GameXXK/UI/Inventory/Manifests/inventory_confirmation_dialog.json`: manifest for the reusable confirmation dialog frame/buttons.
-- Create `Content/GameXXK/UI/Inventory/Manifests/inventory_close_button.json`: manifest for the header `X`.
-- Create `Content/GameXXK/UI/Inventory/Manifests/inventory_equipment_slots.json`: manifest for weapon/armor/accessory slot visuals.
+- Create `docs/ui/inventory/manifests/inventory_window_frame.json`: source-of-truth manifest for the inventory window frame/backplate.
+- Create `docs/ui/inventory/manifests/inventory_confirmation_dialog.json`: manifest for the reusable confirmation dialog frame/buttons.
+- Create `docs/ui/inventory/manifests/inventory_close_button.json`: manifest for the header `X`.
+- Create `docs/ui/inventory/manifests/inventory_equipment_slots.json`: manifest for weapon/armor/accessory slot visuals.
 - Create `scripts/validate_inventory_ui_manifests.py`: checks manifest schema and target paths.
 - Create `Source/GameXXK/Public/UI/GameXXKInventoryWindowWidget.h`: independent inventory/trade window public API and test helpers.
 - Create `Source/GameXXK/Private/UI/GameXXKInventoryWindowWidget.cpp`: programmatic UMG layout, selection, close, equip/use/buy/sell, confirmation dialog.
@@ -31,14 +31,14 @@
 ### Task 1: Add Manifest Files And Validator
 
 **Files:**
-- Create: `Content/GameXXK/UI/Inventory/Manifests/inventory_window_frame.json`
-- Create: `Content/GameXXK/UI/Inventory/Manifests/inventory_confirmation_dialog.json`
-- Create: `Content/GameXXK/UI/Inventory/Manifests/inventory_close_button.json`
-- Create: `Content/GameXXK/UI/Inventory/Manifests/inventory_equipment_slots.json`
+- Create: `docs/ui/inventory/manifests/inventory_window_frame.json`
+- Create: `docs/ui/inventory/manifests/inventory_confirmation_dialog.json`
+- Create: `docs/ui/inventory/manifests/inventory_close_button.json`
+- Create: `docs/ui/inventory/manifests/inventory_equipment_slots.json`
 - Create: `scripts/validate_inventory_ui_manifests.py`
 
 - [x] Write manifest JSON files with `id`, `widget`, `assetType`, `targetTexture`, `canvasSize`, `states`, and component-specific layout fields.
-- [x] Write validator that loads every JSON file under `Content/GameXXK/UI/Inventory/Manifests`, verifies required fields, verifies `canvasSize` is two positive integers, verifies `states` is non-empty, and verifies all `targetTexture` values start with `/Game/GameXXK/UI/Inventory/Textures/`.
+- [x] Write validator that loads every JSON file under `docs/ui/inventory/manifests`, verifies required fields, verifies `canvasSize` is two positive integers, verifies `states` is non-empty, and verifies all `targetTexture` values start with `/Game/GameXXK/UI/Inventory/Textures/`.
 - [x] Run `python scripts\validate_inventory_ui_manifests.py`.
 - [x] Expected GREEN: JSON report with `ok: true`.
 

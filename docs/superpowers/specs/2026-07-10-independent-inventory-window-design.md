@@ -87,7 +87,7 @@ Create a manifest for each reusable UI visual component before generating or imp
 
 Suggested manifest location:
 
-- `Content/GameXXK/UI/Inventory/Manifests/`
+- `docs/ui/inventory/manifests/`
 
 Suggested manifest format:
 

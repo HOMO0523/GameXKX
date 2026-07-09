@@ -9,7 +9,7 @@ from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-MANIFEST_DIR = PROJECT_ROOT / "Content" / "GameXXK" / "UI" / "Inventory" / "Manifests"
+MANIFEST_DIR = PROJECT_ROOT / "docs" / "ui" / "inventory" / "manifests"
 REQUIRED_FIELDS = {"id", "widget", "assetType", "targetTexture", "canvasSize", "states"}
 TARGET_PREFIX = "/Game/GameXXK/UI/Inventory/Textures/"
 

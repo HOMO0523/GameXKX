@@ -103,9 +103,10 @@ parallel_lock: GameXXK.PlayableEntryFlow
 
 ## 2026-07-10 Independent Inventory And Merchant Windows
 
-- Added manifest source files under `Content/GameXXK/UI/Inventory/Manifests` for the inventory window frame, confirmation dialog, close button, and equipment-slot visuals, plus `scripts/validate_inventory_ui_manifests.py` to validate required layout/asset fields before image production/import.
+- Added manifest source files under `docs/ui/inventory/manifests` for the inventory window frame, confirmation dialog, close button, and equipment-slot visuals, plus `scripts/validate_inventory_ui_manifests.py` to validate required layout/asset fields before image production/import.
 - Added `UGameXXKInventoryWindowWidget` as a GameXXK-owned independent inventory/trade window with explicit free-inventory and merchant-trade modes, its own coherent frame, top-right `X`, separate confirmation dialog with confirm/cancel buttons, item selection, buy confirmation, consumable use, and equipment-slot actions.
 - Updated `AGameXXKMVPPlayerController` to own the independent window, route town `I` to free inventory without opening the legacy town panel, route merchant `F` to merchant-trade mode for real player-controller interactions, and close the independent window with `Esc`.
 - Kept old `TownPanelMode::Trade` as a no-controller fallback for existing object-level automation, while real PIE player interactions now open the new independent merchant window path.
 - Added modal movement blocking for the editable `BP_HeroCharacter` C++ parent and the older town pawn shell: free inventory keeps movement unlocked, merchant-trade mode clears and ignores WASD/arrow/axis movement.
 - Extended player-controller and widget tests to cover independent free inventory, independent merchant window, top-right close button, modal-lock state, confirmation cancel/confirm behavior, and equip-from-window behavior.
+- Moved inventory UI JSON manifests from UE `Content` into `docs/ui/inventory/manifests` after editor logs showed UE treating `.json` files under `Content` as DataTable import sources and opening import UI. The validator now reads the docs path, while generated/imported runtime textures remain under `/Game/GameXXK/UI/Inventory/Textures`.
