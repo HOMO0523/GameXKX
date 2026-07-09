@@ -243,6 +243,14 @@ bool AGameXXKTownNpcActor::ApplyDefaultInteraction(APawn* InstigatorPawn)
 	}
 	if (CanTrade())
 	{
+		if (InstigatorPawn)
+		{
+			if (AGameXXKMVPPlayerController* PlayerController = Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()))
+			{
+				bLastInteractionSuccessful = PlayerController->OpenMerchantTradeWindow();
+				return bLastInteractionSuccessful;
+			}
+		}
 		bLastInteractionSuccessful = Subsystem->OpenTownPanel(EGameXXKTownPanelMode::Trade);
 		return bLastInteractionSuccessful;
 	}

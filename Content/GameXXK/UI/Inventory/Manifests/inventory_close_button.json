@@ -1,0 +1,19 @@
+{
+  "id": "inventory_close_button",
+  "widget": "GameXXKInventoryWindowWidget",
+  "assetType": "buttonBackground",
+  "style": "small circular black-ink close button with parchment edge and clear X mark",
+  "targetTexture": "/Game/GameXXK/UI/Inventory/Textures/T_InventoryCloseButton",
+  "canvasSize": [64, 64],
+  "hitSize": [44, 44],
+  "nineSlice": {
+    "left": 18,
+    "top": 18,
+    "right": 18,
+    "bottom": 18
+  },
+  "states": ["normal", "hovered", "pressed", "disabled"],
+  "semanticColor": "black ink",
+  "textColor": "white",
+  "notes": "Top-right header close button. X, Esc, and I toggle should all route through the same close method."
+}

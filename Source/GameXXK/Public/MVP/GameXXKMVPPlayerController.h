@@ -5,6 +5,7 @@
 #include "GameXXKMVPPlayerController.generated.h"
 
 class UGameXXKBattleBoardWidget;
+class UGameXXKInventoryWindowWidget;
 class UGameXXKMainMenuWidget;
 class UGameXXKMVPSubsystem;
 class UGameXXKOneGameRouteMapWidget;
@@ -52,6 +53,9 @@ public:
 	UGameXXKBattleBoardWidget* GetBattleBoardWidgetForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	UGameXXKInventoryWindowWidget* GetInventoryWindowWidgetForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
 	bool HasMainMenuWidgetInViewportForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
@@ -62,6 +66,21 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
 	bool HasBattleBoardWidgetInViewportForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	bool IsInventoryWindowModalInputLockedForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow")
+	bool IsInventoryWindowModalInputLocked() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool OpenFreeInventoryWindow();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool OpenMerchantTradeWindow();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool CloseInventoryWindow();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
 	bool OpenBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
@@ -81,6 +100,7 @@ public:
 private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
 	bool EnsurePlayerFlowWidgets();
+	UGameXXKInventoryWindowWidget* EnsureInventoryWindowWidget();
 	void RefreshPlayerFlowWidgets();
 	void ConfigureRouteMapWidgetViewport(UGameXXKOneGameRouteMapWidget* RouteWidget) const;
 	void ApplyPlayerFlowInputMode();
@@ -110,6 +130,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
 	TSubclassOf<UGameXXKBattleBoardWidget> BattleBoardWidgetClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
+	TSubclassOf<UGameXXKInventoryWindowWidget> InventoryWindowWidgetClass;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMainMenuWidget> MainMenuWidget;
 
@@ -121,6 +144,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKBattleBoardWidget> BattleBoardWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKInventoryWindowWidget> InventoryWindowWidget;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AGameXXKBattleScenePresenter> BattleScenePresenter;

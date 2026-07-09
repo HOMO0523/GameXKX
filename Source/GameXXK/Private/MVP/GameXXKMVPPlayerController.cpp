@@ -18,6 +18,7 @@
 #include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKTownPlayerPawn.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
 #include "UI/GameXXKTownOverlayWidget.h"
@@ -90,6 +91,7 @@ AGameXXKMVPPlayerController::AGameXXKMVPPlayerController()
 	TownOverlayWidgetClass = UGameXXKTownOverlayWidget::StaticClass();
 	RouteMapWidgetClass = UGameXXKOneGameRouteMapWidget::StaticClass();
 	BattleBoardWidgetClass = UGameXXKBattleBoardWidget::StaticClass();
+	InventoryWindowWidgetClass = UGameXXKInventoryWindowWidget::StaticClass();
 }
 
 void AGameXXKMVPPlayerController::BeginPlay()
@@ -127,6 +129,11 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 	if (Params.Key == EKeys::Escape && Params.Event == IE_Pressed)
 	{
 		EnsurePlayerFlowWidgets();
+		if (InventoryWindowWidget && InventoryWindowWidget->CloseInventoryWindow())
+		{
+			ApplyPlayerFlowInputMode();
+			return true;
+		}
 		if (BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting())
 		{
 			return true;
@@ -138,10 +145,9 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 		UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 		if (Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
 		{
-			const bool bWasInventoryOpen = Subsystem->GetRuntimeState().TownPanelMode == EGameXXKTownPanelMode::Inventory;
-			const bool bHandled = bWasInventoryOpen
-				? Subsystem->CloseTownPanel()
-				: Subsystem->OpenTownPanel(EGameXXKTownPanelMode::Inventory);
+			const bool bWasInventoryOpen = InventoryWindowWidget
+				&& InventoryWindowWidget->GetWindowModeForTest() == EGameXXKInventoryWindowMode::FreeInventory;
+			const bool bHandled = bWasInventoryOpen ? CloseInventoryWindow() : OpenFreeInventoryWindow();
 			if (bHandled)
 			{
 				RefreshPlayerFlowWidgets();
@@ -223,6 +229,11 @@ UGameXXKBattleBoardWidget* AGameXXKMVPPlayerController::GetBattleBoardWidgetForT
 	return BattleBoardWidget;
 }
 
+UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::GetInventoryWindowWidgetForTest() const
+{
+	return InventoryWindowWidget;
+}
+
 bool AGameXXKMVPPlayerController::HasMainMenuWidgetInViewportForTest() const
 {
 	return MainMenuWidget && MainMenuWidget->IsInViewport();
@@ -241,6 +252,52 @@ bool AGameXXKMVPPlayerController::HasRouteMapWidgetInViewportForTest() const
 bool AGameXXKMVPPlayerController::HasBattleBoardWidgetInViewportForTest() const
 {
 	return BattleBoardWidget && BattleBoardWidget->IsInViewport();
+}
+
+bool AGameXXKMVPPlayerController::IsInventoryWindowModalInputLockedForTest() const
+{
+	return IsInventoryWindowModalInputLocked();
+}
+
+bool AGameXXKMVPPlayerController::IsInventoryWindowModalInputLocked() const
+{
+	return InventoryWindowWidget && InventoryWindowWidget->IsModalInputLockActiveForTest();
+}
+
+bool AGameXXKMVPPlayerController::OpenFreeInventoryWindow()
+{
+	UGameXXKInventoryWindowWidget* InventoryWindow = EnsureInventoryWindowWidget();
+	const bool bOpened = InventoryWindow && InventoryWindow->OpenFreeInventory();
+	if (bOpened)
+	{
+		ApplyPlayerFlowInputMode();
+	}
+	return bOpened;
+}
+
+bool AGameXXKMVPPlayerController::OpenMerchantTradeWindow()
+{
+	UGameXXKInventoryWindowWidget* InventoryWindow = EnsureInventoryWindowWidget();
+	const bool bOpened = InventoryWindow && InventoryWindow->OpenMerchantTrade();
+	if (bOpened)
+	{
+		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
+		{
+			Subsystem->CloseTownPanel();
+		}
+		ApplyPlayerFlowInputMode();
+	}
+	return bOpened;
+}
+
+bool AGameXXKMVPPlayerController::CloseInventoryWindow()
+{
+	const bool bClosed = InventoryWindowWidget && InventoryWindowWidget->CloseInventoryWindow();
+	if (bClosed)
+	{
+		ApplyPlayerFlowInputMode();
+	}
+	return bClosed;
 }
 
 bool AGameXXKMVPPlayerController::OpenBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
@@ -386,8 +443,47 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
 		}
 	}
 
+	if (!InventoryWindowWidget)
+	{
+		EnsureInventoryWindowWidget();
+	}
+
 	RefreshPlayerFlowWidgets();
-	return MainMenuWidget && TownOverlayWidget && RouteMapWidget && BattleBoardWidget;
+	return MainMenuWidget && TownOverlayWidget && RouteMapWidget && BattleBoardWidget && InventoryWindowWidget;
+}
+
+UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::EnsureInventoryWindowWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	bool bCreatedInventoryWindow = false;
+	if (!InventoryWindowWidget)
+	{
+		TSubclassOf<UGameXXKInventoryWindowWidget> WidgetClass = InventoryWindowWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKInventoryWindowWidget::StaticClass();
+		}
+		InventoryWindowWidget = bCanAddToViewport ? CreateWidget<UGameXXKInventoryWindowWidget>(this, WidgetClass) : nullptr;
+		if (!InventoryWindowWidget)
+		{
+			InventoryWindowWidget = NewObject<UGameXXKInventoryWindowWidget>(this, WidgetClass);
+		}
+		bCreatedInventoryWindow = InventoryWindowWidget != nullptr;
+	}
+	if (InventoryWindowWidget)
+	{
+		InventoryWindowWidget->SetMVPSubsystem(Subsystem);
+		if (bCanAddToViewport && !InventoryWindowWidget->IsInViewport())
+		{
+			InventoryWindowWidget->AddToViewport(85);
+		}
+		if (bCreatedInventoryWindow)
+		{
+			InventoryWindowWidget->CloseInventoryWindow();
+		}
+	}
+	return InventoryWindowWidget;
 }
 
 void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
@@ -413,6 +509,10 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	{
 		BattleBoardWidget->SetMVPSubsystem(Subsystem);
 		BattleBoardWidget->RefreshFromState();
+	}
+	if (InventoryWindowWidget)
+	{
+		InventoryWindowWidget->SetMVPSubsystem(Subsystem);
 	}
 	EnsureBattleScenePresenter();
 

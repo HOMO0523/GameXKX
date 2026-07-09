@@ -7,6 +7,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Interaction/GameXXKInteractionComponent.h"
+#include "MVP/GameXXKMVPPlayerController.h"
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
 
@@ -490,9 +491,29 @@ void AGameXXKHeroCharacter::UpdateTownFacingFromIntent(float Horizontal, float V
 
 void AGameXXKHeroCharacter::RefreshTownMovementIntent()
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		RightInputPressCount = 0;
+		LeftInputPressCount = 0;
+		ForwardInputPressCount = 0;
+		BackwardInputPressCount = 0;
+		AxisHorizontalIntent = 0.0f;
+		AxisVerticalIntent = 0.0f;
+		HorizontalIntent = 0.0f;
+		VerticalIntent = 0.0f;
+		UpdateTownFacingFromIntent(0.0f, 0.0f);
+		return;
+	}
+
 	HorizontalIntent = FMath::Clamp(GetKeyboardHorizontalIntent() + AxisHorizontalIntent, -1.0f, 1.0f);
 	VerticalIntent = FMath::Clamp(GetKeyboardVerticalIntent() + AxisVerticalIntent, -1.0f, 1.0f);
 	UpdateTownFacingFromIntent(HorizontalIntent, VerticalIntent);
+}
+
+bool AGameXXKHeroCharacter::IsTownMovementBlockedByModalWindow() const
+{
+	const AGameXXKMVPPlayerController* MVPPlayerController = Cast<AGameXXKMVPPlayerController>(GetController());
+	return MVPPlayerController && MVPPlayerController->IsInventoryWindowModalInputLocked();
 }
 
 void AGameXXKHeroCharacter::UpdateTownVisualFromMovementIntent(float Horizontal, float Vertical)
@@ -523,18 +544,33 @@ float AGameXXKHeroCharacter::GetKeyboardVerticalIntent() const
 
 void AGameXXKHeroCharacter::MoveHorizontal(float Value)
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	AxisHorizontalIntent = NormalizeHeroTownMovementAxis(Value);
 	RefreshTownMovementIntent();
 }
 
 void AGameXXKHeroCharacter::MoveVertical(float Value)
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	AxisVerticalIntent = NormalizeHeroTownMovementAxis(Value);
 	RefreshTownMovementIntent();
 }
 
 void AGameXXKHeroCharacter::MoveRightPressed()
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	++RightInputPressCount;
 	RefreshTownMovementIntent();
 }
@@ -547,6 +583,11 @@ void AGameXXKHeroCharacter::MoveRightReleased()
 
 void AGameXXKHeroCharacter::MoveLeftPressed()
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	++LeftInputPressCount;
 	RefreshTownMovementIntent();
 }
@@ -559,6 +600,11 @@ void AGameXXKHeroCharacter::MoveLeftReleased()
 
 void AGameXXKHeroCharacter::MoveForwardPressed()
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	++ForwardInputPressCount;
 	RefreshTownMovementIntent();
 }
@@ -571,6 +617,11 @@ void AGameXXKHeroCharacter::MoveForwardReleased()
 
 void AGameXXKHeroCharacter::MoveBackwardPressed()
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	++BackwardInputPressCount;
 	RefreshTownMovementIntent();
 }

@@ -146,3 +146,12 @@ Acceptance evidence: GameXXK now owns route seed/state/clicks; the route widget 
 - GREEN compile/smoke: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 80` passed UBT compile and PIE start/stop after implementing shared slot icons and purchase confirmation.
 - Full MVP automation: `python scripts\gamexxk_mvp_playtest.py --test-timeout 600 --report Saved\HarnessReports\town-shop-icons-click-buy-green.json` passed with `ok: true`, 22/22 `GameXXK.MVP` automation tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
 - MCP safety before closing the editor for rebuild: `save_dirty_packages` returned `dirty_before=[]` and `dirty_after=[]`.
+
+## 2026-07-10 Independent Inventory And Merchant Windows
+
+- Manifest validation passed: `python scripts\validate_inventory_ui_manifests.py` returned `ok: true` with 4 inventory UI manifests.
+- RED verified: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 80` failed at link time after adding `UGameXXKInventoryWindowWidget` API/test expectations and before implementation.
+- GREEN compile/smoke: `python scripts\ue_tdd_pipeline.py --pie-duration 0 --log-lines 120` passed UBT compile and PIE start/stop after implementing independent window ownership, merchant `F` routing, and modal movement blocking.
+- Full MVP automation: `python scripts\gamexxk_mvp_playtest.py --test-timeout 600 --report Saved\HarnessReports\independent-inventory-window-green.json` passed with `ok: true`, 22/22 `GameXXK.MVP` automation tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
+- UE MCP real flow: `python scripts\gamexxk_real_play_flow_mcp.py --timeout 180 --report Saved\HarnessReports\independent-inventory-window-real-flow.json` passed with `ok: true`; it covered `L_Main` start, town load, WASD/idle, `F` quest acceptance, manual save, town-exit `F`, route-map node click, and `L_BattleScene` entry.
+- Project-management validation: `python scripts\harness_state_validator.py --require-units --json` returned `ok: true`; `git diff --check` returned exit code 0; UE MCP `save_dirty_packages` returned `dirty_before=[]` and `dirty_after=[]`.

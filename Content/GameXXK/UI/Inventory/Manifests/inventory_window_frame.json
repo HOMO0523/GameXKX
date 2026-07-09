@@ -1,0 +1,28 @@
+{
+  "id": "inventory_window_frame",
+  "widget": "GameXXKInventoryWindowWidget",
+  "assetType": "background",
+  "style": "water-ink parchment, hand-brushed border, consistent with GameXXK main menu",
+  "targetTexture": "/Game/GameXXK/UI/Inventory/Textures/T_InventoryWindowFrame",
+  "canvasSize": [1024, 640],
+  "safePadding": {
+    "left": 42,
+    "top": 42,
+    "right": 42,
+    "bottom": 38
+  },
+  "nineSlice": {
+    "left": 72,
+    "top": 72,
+    "right": 72,
+    "bottom": 72
+  },
+  "regions": {
+    "header": { "x": 42, "y": 28, "w": 940, "h": 70 },
+    "leftRail": { "x": 42, "y": 120, "w": 220, "h": 470 },
+    "backpackGrid": { "x": 284, "y": 120, "w": 430, "h": 470 },
+    "detailPanel": { "x": 736, "y": 120, "w": 246, "h": 470 }
+  },
+  "states": ["normal"],
+  "notes": "Single coherent frame behind the complete inventory/trade window; slots must not float outside this backplate."
+}

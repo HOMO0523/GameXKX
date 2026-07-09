@@ -8,6 +8,7 @@
 #include "UI/GameXXKCharacterPanelWidget.h"
 #include "UI/GameXXKDungeonMapWidget.h"
 #include "UI/GameXXKInventoryWidget.h"
+#include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKQuestDialogWidget.h"
 #include "UI/GameXXKTradeWidget.h"
@@ -37,6 +38,7 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	UGameXXKQuestDialogWidget* QuestDialog = NewObject<UGameXXKQuestDialogWidget>();
 	UGameXXKTradeWidget* Trade = NewObject<UGameXXKTradeWidget>();
 	UGameXXKInventoryWidget* Inventory = NewObject<UGameXXKInventoryWidget>();
+	UGameXXKInventoryWindowWidget* InventoryWindow = NewObject<UGameXXKInventoryWindowWidget>();
 	UGameXXKTownOverlayWidget* TownOverlay = NewObject<UGameXXKTownOverlayWidget>();
 	UGameXXKDungeonMapWidget* DungeonMap = NewObject<UGameXXKDungeonMapWidget>();
 	UGameXXKBattleWidget* Battle = NewObject<UGameXXKBattleWidget>();
@@ -47,6 +49,7 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	QuestDialog->SetMVPSubsystem(Subsystem);
 	Trade->SetMVPSubsystem(Subsystem);
 	Inventory->SetMVPSubsystem(Subsystem);
+	InventoryWindow->SetMVPSubsystem(Subsystem);
 	TownOverlay->SetMVPSubsystem(Subsystem);
 	DungeonMap->SetMVPSubsystem(Subsystem);
 	Battle->SetMVPSubsystem(Subsystem);
@@ -113,6 +116,38 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("confirming pending shop purchase buys one item"), TownOverlay->ConfirmPendingPurchaseForTest());
 	TestEqual(TEXT("slot purchase spends item buy price"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeSlotPurchase - 10);
 	TestEqual(TEXT("slot purchase refreshes player backpack inventory"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeSlotPurchase + 1);
+
+	TestTrue(TEXT("independent free inventory window opens"), InventoryWindow->OpenFreeInventoryForTest());
+	TestEqual(TEXT("free inventory window records free mode"), InventoryWindow->GetWindowModeForTest(), EGameXXKInventoryWindowMode::FreeInventory);
+	TestTrue(TEXT("free inventory window has one coherent frame"), InventoryWindow->HasWindowFrameForTest());
+	TestTrue(TEXT("free inventory window has its own top-right close button"), InventoryWindow->HasCloseButtonForTest());
+	TestFalse(TEXT("free inventory window does not lock movement input"), InventoryWindow->IsModalInputLockActiveForTest());
+	TestTrue(TEXT("independent merchant trade window opens"), InventoryWindow->OpenMerchantTradeForTest());
+	TestEqual(TEXT("merchant inventory window records trade mode"), InventoryWindow->GetWindowModeForTest(), EGameXXKInventoryWindowMode::MerchantTrade);
+	TestTrue(TEXT("merchant trade window has one coherent frame"), InventoryWindow->HasWindowFrameForTest());
+	TestTrue(TEXT("merchant trade window has its own top-right close button"), InventoryWindow->HasCloseButtonForTest());
+	TestTrue(TEXT("merchant trade window locks movement input"), InventoryWindow->IsModalInputLockActiveForTest());
+	TestTrue(TEXT("merchant stock selection picks first shop item"), InventoryWindow->SelectMerchantStockSlotForTest(0));
+	const int32 GoldBeforeDialogCancel = Subsystem->GetRuntimeState().PlayerGold;
+	const int32 PowderBeforeDialogCancel = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
+	TestTrue(TEXT("buy action opens independent confirmation dialog"), InventoryWindow->RequestSelectedBuyForTest());
+	TestTrue(TEXT("confirmation dialog is visible"), InventoryWindow->IsConfirmationDialogVisibleForTest());
+	TestTrue(TEXT("confirmation dialog has confirm button"), InventoryWindow->HasConfirmationConfirmButtonForTest());
+	TestTrue(TEXT("confirmation dialog has cancel button"), InventoryWindow->HasConfirmationCancelButtonForTest());
+	TestTrue(TEXT("canceling confirmation dialog succeeds"), InventoryWindow->CancelDialogForTest());
+	TestEqual(TEXT("canceling buy dialog leaves gold unchanged"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeDialogCancel);
+	TestEqual(TEXT("canceling buy dialog leaves quantity unchanged"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeDialogCancel);
+	TestTrue(TEXT("buy action can reopen independent confirmation dialog"), InventoryWindow->RequestSelectedBuyForTest());
+	TestTrue(TEXT("confirming buy dialog succeeds"), InventoryWindow->ConfirmDialogForTest());
+	TestEqual(TEXT("confirming buy dialog spends gold"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeDialogCancel - 10);
+	TestEqual(TEXT("confirming buy dialog adds backpack item"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeDialogCancel + 1);
+	TestTrue(TEXT("inventory window opens free mode after buying equipment"), InventoryWindow->OpenFreeInventoryForTest());
+	TestTrue(TEXT("trade widget buys armor for independent inventory equipment UI"), Trade->BuyItemById(UGameXXKMVPRules::ItemClothArmor(), 1));
+	const int32 DefenseBeforeIndependentEquip = Subsystem->GetRuntimeState().PlayerDefense;
+	TestTrue(TEXT("independent inventory selects bought armor"), InventoryWindow->SelectPlayerBackpackItemForTest(UGameXXKMVPRules::ItemClothArmor()));
+	TestTrue(TEXT("independent inventory equips selected armor through detail action"), InventoryWindow->ExecuteSelectedPrimaryActionForTest());
+	TestEqual(TEXT("independent inventory places armor in armor slot"), InventoryWindow->GetEquippedItemForSlotForTest(FName(TEXT("Armor"))), UGameXXKMVPRules::ItemClothArmor());
+	TestEqual(TEXT("independent inventory equipment action updates defense"), Subsystem->GetRuntimeState().PlayerDefense, DefenseBeforeIndependentEquip + 6);
 
 	TestTrue(TEXT("quest dialog accepts quest"), QuestDialog->AcceptQuest());
 	TestEqual(TEXT("quest accepted in subsystem state"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);

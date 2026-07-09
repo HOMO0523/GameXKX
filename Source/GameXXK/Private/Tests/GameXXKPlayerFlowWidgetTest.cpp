@@ -7,6 +7,7 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
 #include "UI/GameXXKTownOverlayWidget.h"
@@ -68,6 +69,7 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestNotNull(TEXT("player controller owns town overlay widget"), PlayerController->GetTownOverlayWidgetForTest());
 	TestNotNull(TEXT("player controller owns route map widget"), PlayerController->GetRouteMapWidgetForTest());
 	TestNotNull(TEXT("player controller owns battle board widget"), PlayerController->GetBattleBoardWidgetForTest());
+	TestNotNull(TEXT("player controller owns independent inventory window"), PlayerController->GetInventoryWindowWidgetForTest());
 	TestTrue(TEXT("player controller route map escapes the old fixed small viewport"), PlayerController->GetRouteMapWidgetForTest()->GetRouteContentSizeForTest().X >= 1000.0f);
 	const FGameViewportWidgetSlot RouteViewportSlot = UGameViewportSubsystem::Get()->GetWidgetSlot(PlayerController->GetRouteMapWidgetForTest());
 	TestEqual(TEXT("route map viewport slot anchors left edge"), RouteViewportSlot.Anchors.Minimum.X, 0.0);
@@ -89,10 +91,18 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("main menu hides after town state"), PlayerController->GetMainMenuWidgetForTest()->GetVisibility(), ESlateVisibility::Collapsed);
 	TestTrue(TEXT("town overlay appears after town state"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
 	TestFalse(TEXT("route map hidden before entering dungeon"), PlayerController->GetRouteMapWidgetForTest()->GetVisibility() == ESlateVisibility::Visible);
-	TestTrue(TEXT("I key opens the unified town inventory panel"), PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::I, IE_Pressed, 1.0f)));
-	TestEqual(TEXT("I key records inventory panel state"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::Inventory);
-	TestTrue(TEXT("I key closes the unified town inventory panel"), PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::I, IE_Pressed, 1.0f)));
-	TestEqual(TEXT("I key clears town panel state"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::None);
+	TestTrue(TEXT("I key opens the independent free inventory window"), PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::I, IE_Pressed, 1.0f)));
+	TestEqual(TEXT("I key records free inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::FreeInventory);
+	TestFalse(TEXT("I key free inventory keeps movement input unlocked"), PlayerController->IsInventoryWindowModalInputLockedForTest());
+	TestEqual(TEXT("I key does not open the legacy town inventory panel"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::None);
+	TestTrue(TEXT("I key closes the independent free inventory window"), PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::I, IE_Pressed, 1.0f)));
+	TestEqual(TEXT("I key clears independent inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
+	TestTrue(TEXT("merchant path opens independent trade inventory window"), PlayerController->OpenMerchantTradeWindow());
+	TestEqual(TEXT("merchant path records trade inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::MerchantTrade);
+	TestTrue(TEXT("merchant trade inventory window locks movement input"), PlayerController->IsInventoryWindowModalInputLockedForTest());
+	TestTrue(TEXT("merchant trade inventory window exposes its own close button"), PlayerController->GetInventoryWindowWidgetForTest()->HasCloseButtonForTest());
+	TestTrue(TEXT("merchant trade inventory window closes independently"), PlayerController->CloseInventoryWindow());
+	TestEqual(TEXT("merchant trade close clears inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
 
 	TestTrue(TEXT("quest acceptance enables the in-world town route entrance"), Subsystem->AcceptQuest());
 	PlayerController->RefreshPlayerFlowWidgetsForTest();

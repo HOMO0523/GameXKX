@@ -159,6 +159,7 @@ private:
 	UPaperFlipbook* GetTownWalkFlipbookForDirection(EGameXXKTownFacingDirection Direction) const;
 	void InitializeTownDirectionFlipbooks();
 	void RefreshTownMovementIntent();
+	bool IsTownMovementBlockedByModalWindow() const;
 	void UpdateTownFacingFromIntent(float Horizontal, float Vertical);
 	float GetKeyboardHorizontalIntent() const;
 	float GetKeyboardVerticalIntent() const;

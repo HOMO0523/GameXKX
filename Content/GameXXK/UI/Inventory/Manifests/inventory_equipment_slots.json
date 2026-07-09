@@ -1,0 +1,22 @@
+{
+  "id": "inventory_equipment_slots",
+  "widget": "GameXXKInventoryWindowWidget",
+  "assetType": "slotBackgroundSet",
+  "style": "water-ink equipment slots, framed parchment wells with subtle slot-type ink marks",
+  "targetTexture": "/Game/GameXXK/UI/Inventory/Textures/T_InventoryEquipmentSlots",
+  "canvasSize": [768, 128],
+  "slotSize": [220, 86],
+  "nineSlice": {
+    "left": 28,
+    "top": 22,
+    "right": 28,
+    "bottom": 22
+  },
+  "states": ["empty", "filled", "selected", "disabled"],
+  "slots": [
+    { "id": "weapon", "label": "武器", "x": 0, "y": 0, "w": 220, "h": 86 },
+    { "id": "armor", "label": "防具", "x": 256, "y": 0, "w": 220, "h": 86 },
+    { "id": "accessory", "label": "饰品", "x": 512, "y": 0, "w": 220, "h": 86 }
+  ],
+  "notes": "Equipment slots must be selectable and later drag/drop targets; first pass supports click selection and detail actions."
+}

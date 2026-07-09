@@ -4,6 +4,7 @@
 #include "Components/SphereComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "Interaction/GameXXKInteractionComponent.h"
+#include "MVP/GameXXKMVPPlayerController.h"
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
 
@@ -328,9 +329,29 @@ void AGameXXKTownPlayerPawn::UpdateTownFacingFromIntent(float Horizontal, float 
 
 void AGameXXKTownPlayerPawn::RefreshTownMovementIntent()
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		RightInputPressCount = 0;
+		LeftInputPressCount = 0;
+		ForwardInputPressCount = 0;
+		BackwardInputPressCount = 0;
+		AxisHorizontalIntent = 0.0f;
+		AxisVerticalIntent = 0.0f;
+		HorizontalIntent = 0.0f;
+		VerticalIntent = 0.0f;
+		UpdateTownFacingFromIntent(0.0f, 0.0f);
+		return;
+	}
+
 	HorizontalIntent = FMath::Clamp(GetKeyboardHorizontalIntent() + AxisHorizontalIntent, -1.0f, 1.0f);
 	VerticalIntent = FMath::Clamp(GetKeyboardVerticalIntent() + AxisVerticalIntent, -1.0f, 1.0f);
 	UpdateTownFacingFromIntent(HorizontalIntent, VerticalIntent);
+}
+
+bool AGameXXKTownPlayerPawn::IsTownMovementBlockedByModalWindow() const
+{
+	const AGameXXKMVPPlayerController* MVPPlayerController = Cast<AGameXXKMVPPlayerController>(GetController());
+	return MVPPlayerController && MVPPlayerController->IsInventoryWindowModalInputLocked();
 }
 
 void AGameXXKTownPlayerPawn::ResetTownMovementInput()
@@ -356,18 +377,33 @@ float AGameXXKTownPlayerPawn::GetKeyboardVerticalIntent() const
 
 void AGameXXKTownPlayerPawn::MoveHorizontal(float Value)
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	AxisHorizontalIntent = NormalizeTownMovementAxis(Value);
 	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::MoveVertical(float Value)
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	AxisVerticalIntent = NormalizeTownMovementAxis(Value);
 	RefreshTownMovementIntent();
 }
 
 void AGameXXKTownPlayerPawn::MoveRightPressed()
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	++RightInputPressCount;
 	RefreshTownMovementIntent();
 }
@@ -380,6 +416,11 @@ void AGameXXKTownPlayerPawn::MoveRightReleased()
 
 void AGameXXKTownPlayerPawn::MoveLeftPressed()
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	++LeftInputPressCount;
 	RefreshTownMovementIntent();
 }
@@ -392,6 +433,11 @@ void AGameXXKTownPlayerPawn::MoveLeftReleased()
 
 void AGameXXKTownPlayerPawn::MoveForwardPressed()
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	++ForwardInputPressCount;
 	RefreshTownMovementIntent();
 }
@@ -404,6 +450,11 @@ void AGameXXKTownPlayerPawn::MoveForwardReleased()
 
 void AGameXXKTownPlayerPawn::MoveBackwardPressed()
 {
+	if (IsTownMovementBlockedByModalWindow())
+	{
+		ResetTownMovementInput();
+		return;
+	}
 	++BackwardInputPressCount;
 	RefreshTownMovementIntent();
 }

@@ -1,0 +1,28 @@
+{
+  "id": "inventory_confirmation_dialog",
+  "widget": "GameXXKInventoryConfirmationDialog",
+  "assetType": "dialogBackground",
+  "style": "compact water-ink parchment dialog with darker ink edge",
+  "targetTexture": "/Game/GameXXK/UI/Inventory/Textures/T_InventoryConfirmationDialog",
+  "canvasSize": [520, 260],
+  "safePadding": {
+    "left": 34,
+    "top": 30,
+    "right": 34,
+    "bottom": 30
+  },
+  "nineSlice": {
+    "left": 54,
+    "top": 48,
+    "right": 54,
+    "bottom": 48
+  },
+  "regions": {
+    "prompt": { "x": 34, "y": 34, "w": 452, "h": 92 },
+    "summary": { "x": 72, "y": 124, "w": 376, "h": 48 },
+    "confirmButton": { "x": 86, "y": 186, "w": 150, "h": 48 },
+    "cancelButton": { "x": 284, "y": 186, "w": 150, "h": 48 }
+  },
+  "states": ["normal"],
+  "notes": "Reusable modal confirmation frame for buy, sell, and later discard actions."
+}
