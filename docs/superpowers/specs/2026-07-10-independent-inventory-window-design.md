@@ -26,6 +26,46 @@ The visible town UI does not expose that interaction. `UGameXXKTownOverlayWidget
 
 Create an independent inventory window surface. The town HUD should only open or close it; the window owns its title bar, close button, tabs, selected item state, equipment slots, detail panel, and transaction controls.
 
+This must not be a cluster of floating slot grids. The inventory needs a real window frame that visually and functionally contains all inventory content.
+
+### Window Frame
+
+The inventory window is built around a dedicated frame/backplate widget.
+
+The frame is responsible for:
+
+- Total window bounds and safe padding.
+- Title-bar region.
+- Close button placement.
+- Currency/status area placement.
+- Inner content clipping and spacing.
+- Optional modal dim/backdrop attachment in merchant mode.
+
+The frame should use a water-ink/parchment style consistent with the main menu and item slots. If no final frame art exists, the first implementation can use a generated or programmatic parchment/ink backplate, but it must still be one coherent container behind all slots and panels.
+
+Required frame regions:
+
+- Header: title, gold readout, close `X`.
+- Left content rail: equipment slots in free inventory, merchant stock in trade mode.
+- Center content: backpack grid.
+- Right content: selected item detail and action buttons.
+- Footer or low-priority strip: optional hints/status text. Avoid putting core close/navigation controls here.
+
+### Close Button
+
+The close control is a real button inside the window header, not an external TownOverlay command button.
+
+Requirements:
+
+- Use an `X` icon or clear close glyph.
+- Position at the top-right of the inventory window frame.
+- Hit target should be larger than the visual mark.
+- `X`, `Esc`, and context toggle (`I` for free inventory) all route through the same close method.
+- Closing free inventory only hides the window.
+- Closing merchant trade also clears pending trade confirmation and restores player/world input.
+
+The old side-panel `关闭面板` button should not be the primary close mechanism for the new inventory window.
+
 The window has two modes:
 
 ### Free Inventory Mode
@@ -123,11 +163,43 @@ Merchant mode reuses the same slot and detail system.
 Selecting a merchant stock item shows item details and `购买`.
 Selecting a player backpack item shows item details and `出售`.
 
-Buying and selling should use a lightweight confirmation state in the detail column, not a separate floating panel:
+Buying, selling, and future destructive actions use a dedicated confirmation widget, not ad hoc inline text inside the detail column.
+
+### Confirmation Dialog Widget
+
+Create a separate reusable confirmation dialog widget for transaction and risk actions.
+
+Examples:
 
 - `购买 金疮药 10金？`
 - `卖出 金疮药 5金？`
-- Confirm and cancel buttons live in the detail panel.
+- `丢弃 金疮药 x1？` when discard is later added.
+
+The dialog owns:
+
+- Dialog backplate/frame.
+- Prompt text.
+- Optional item icon and amount/price summary.
+- Confirm button.
+- Cancel button.
+
+The dialog is modal relative to the inventory window:
+
+- While open, clicking other inventory slots does not change selection.
+- Confirm executes the pending action and closes the dialog.
+- Cancel closes the dialog without changing inventory/gold/equipment.
+- `Esc` cancels the dialog first; if no dialog is open, `Esc` closes the window.
+
+In free inventory mode, the confirmation dialog only blocks the inventory window. In merchant trade mode, the whole trade window is already modal to gameplay, and the confirmation dialog is modal within that trade window.
+
+Implementation should model confirmation explicitly:
+
+- `PendingConfirmationAction`: `None`, `Buy`, `Sell`, `Discard`
+- `PendingConfirmationItemId`
+- `PendingConfirmationQuantity`
+- `PendingConfirmationPrice`
+
+The old `PurchaseConfirmationPanel` embedded in `UGameXXKTownOverlayWidget` is a temporary MVP path. The independent inventory window should replace it with the reusable dialog widget.
 
 ## Input Ownership
 
@@ -170,6 +242,9 @@ Runtime save data does not need to store selected UI item or open window mode. I
 In scope for the first implementation:
 
 - Independent inventory window shell.
+- Real total window frame/backplate containing all inventory UI.
+- Header `X` close button inside the window.
+- Reusable confirmation dialog widget with confirm/cancel buttons.
 - Free inventory mode opened by `I`.
 - Merchant trade modal opened by merchant `F`.
 - Shared backpack slot component.
@@ -179,7 +254,7 @@ In scope for the first implementation:
 - Detail panel with valid actions.
 - Equip bought equipment through visible UI.
 - Use consumables through visible UI.
-- Buy and sell through visible UI.
+- Buy and sell through visible UI with the reusable confirmation dialog.
 - Close button inside the window.
 - `I` and `Esc` close behavior.
 - Modal input lock in merchant mode.
@@ -197,20 +272,26 @@ Out of scope for the first implementation:
 ## Acceptance
 
 - `L_QingshanInn` PIE can open the free inventory with `I`.
+- Free inventory appears inside one coherent window frame/backplate; slots are not visually floating on the screen.
 - Free inventory mode does not block WASD movement.
-- Free inventory has its own close button and can close with `I` or `Esc`.
+- Free inventory has its own top-right `X` close button and can close with `I` or `Esc`.
 - Pressing `F` on the merchant opens merchant trade mode.
+- Merchant trade appears inside the same coherent window frame/backplate, with merchant stock and player backpack contained by the window.
 - Merchant trade mode blocks WASD movement and other `F` interactions until closed.
-- Merchant trade mode has its own close button and can close with `Esc`.
+- Merchant trade mode has its own top-right `X` close button and can close with `Esc`.
 - Bought equipment appears in the player backpack grid.
 - Selecting bought equipment shows an `装备` action.
 - Pressing `装备` equips the item into the correct equipment slot.
 - Equipped weapon/armor/accessory slots visually update.
 - Player stats update after equipment changes.
 - Selecting merchant stock shows `购买`.
-- Confirming purchase changes gold and backpack quantity.
+- Pressing `购买` opens the reusable confirmation dialog.
+- Confirming purchase in the dialog changes gold and backpack quantity.
+- Canceling purchase in the dialog leaves gold and backpack quantity unchanged.
 - Selecting a player backpack item in merchant mode shows `出售`.
-- Confirming sale changes gold and backpack quantity.
+- Pressing `出售` opens the reusable confirmation dialog.
+- Confirming sale in the dialog changes gold and backpack quantity.
+- Canceling sale in the dialog leaves gold and backpack quantity unchanged.
 - All actions use the existing `UGameXXKMVPSubsystem` / `UGameXXKMVPRules` inventory authority.
 
 ## Test Strategy
@@ -218,6 +299,9 @@ Out of scope for the first implementation:
 Add tests before implementation:
 
 - Unit/widget test: bought weapon can be selected in the visible inventory window and equipped through the detail action.
+- Unit/widget test: inventory window exposes a top-right close button and coherent frame/backplate.
+- Unit/widget test: buy/sell actions open the reusable confirmation dialog with confirm/cancel controls.
+- Unit/widget test: canceling the confirmation dialog does not change gold, quantity, or equipment.
 - Unit/widget test: equipment slot state reflects equipped weapon, armor, and accessory.
 - Unit/widget test: free inventory mode reports no modal input lock.
 - Unit/widget test: merchant trade mode reports modal input lock.
