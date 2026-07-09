@@ -101,4 +101,4 @@
 - [x] Run `git diff --check`.
 - [x] If the editor is running, save dirty packages through `scripts/ue_mcp_client.py`.
 - [x] Append implementation and test evidence to production docs.
-- [ ] Commit and push.
+- [x] Commit and push.
