@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "source_map": "/Game/GameXXK/Maps/L_QingshanInn",
+  "captured_read_only": true,
+  "notes": "Preservation baseline captured from the clean source map. PlayerStart currently stores pitch 35 and yaw 0; this records existing state and does not claim intended orientation.",
+  "actors": {
+    "QingshanInn_TownExit": {
+      "class_path": "/Script/GameXXK.GameXXKTownExitActor",
+      "location_cm": {"x": 0.0, "y": 1380.0, "z": 120.0},
+      "rotation_degrees": {"roll": 0.0, "pitch": 0.0, "yaw": 0.0},
+      "scale": {"x": 1.0, "y": 1.0, "z": 1.0}
+    },
+    "PlayerStart_QingshanInn": {
+      "class_path": "/Script/Engine.PlayerStart",
+      "location_cm": {"x": -1250.0, "y": -900.0, "z": 120.0},
+      "rotation_degrees": {"roll": 0.0, "pitch": 35.0, "yaw": 0.0},
+      "scale": {"x": 1.0, "y": 1.0, "z": 1.0}
+    }
+  }
+}

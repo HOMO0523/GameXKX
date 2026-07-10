@@ -28,6 +28,47 @@ def _load_module():
 
 
 class QingshanShopImportScriptTests(unittest.TestCase):
+    def test_simple_collision_helper_is_idempotent_and_fail_closed(self):
+        module = _load_module()
+
+        class FakeMesh:
+            def __init__(self):
+                self.modified = 0
+
+            def modify(self):
+                self.modified += 1
+
+        class FakeLibrary:
+            def __init__(self, counts):
+                self.counts = list(counts)
+                self.add_calls = 0
+
+            def get_simple_collision_count(self, mesh):
+                return self.counts.pop(0)
+
+            def add_simple_collisions(self, mesh, shape):
+                self.add_calls += 1
+
+        original_unreal = module.unreal
+        try:
+            for counts, expected_adds in (([0, 1], 1), ([2, 2], 0)):
+                library = FakeLibrary(counts)
+                module.unreal = types.SimpleNamespace(
+                    EditorStaticMeshLibrary=library,
+                    ScriptingCollisionShapeType=types.SimpleNamespace(BOX="BOX"),
+                )
+                self.assertGreaterEqual(module._ensure_simple_collision(FakeMesh()), 1)
+                self.assertEqual(library.add_calls, expected_adds)
+            library = FakeLibrary([0, 0])
+            module.unreal = types.SimpleNamespace(
+                EditorStaticMeshLibrary=library,
+                ScriptingCollisionShapeType=types.SimpleNamespace(BOX="BOX"),
+            )
+            with self.assertRaisesRegex(RuntimeError, "at least one simple collision"):
+                module._ensure_simple_collision(FakeMesh())
+        finally:
+            module.unreal = original_unreal
+
     def test_tracked_source_archive_matches_reproduction_manifest(self):
         self.assertTrue(SOURCE_ARCHIVE.is_file())
         manifest = json.loads(SOURCE_MANIFEST.read_text(encoding="utf-8"))

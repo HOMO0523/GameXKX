@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+from pathlib import Path
 from typing import Any, Iterable
 
 import unreal
@@ -15,6 +16,9 @@ EXPECTED_GRAPH_PATH = "/Game/GameXXK/Environment/TownPCG/VerticalSlice/PCG_Qings
 EXPECTED_BUILDING_MESH = "/Game/GameXXK/Environment/TownPCG/Prototype/QingshanShopA/SM_Qingshan_Shop_A_HQ_Retop50K"
 PCG_ACTOR_LABEL = "QingshanTown_PCG_Buildings"
 PCG_GENERATED_COMPONENT_TAG = "PCG Generated Component"
+CREATE_POINTS_CLASS = "/Script/PCG.PCGCreatePointsSettings"
+STATIC_MESH_SPAWNER_CLASS = "/Script/PCG.PCGStaticMeshSpawnerSettings"
+GRAPH_OUTPUT_CLASS = "/Script/PCG.PCGGraphInputOutputSettings"
 BUILDING_HARD_CAP = 16
 EXPECTED_POINT_COUNT = 12
 EXPECTED_NODE_COUNT = 2
@@ -28,6 +32,7 @@ TREE_MARKER_MESH_CANDIDATES = (
     "/Engine/BasicShapes/Cone.Cone",
 )
 PRESERVED_LABELS = ("QingshanInn_TownExit", "PlayerStart_QingshanInn")
+PRESERVED_SNAPSHOT_PATH = Path(__file__).resolve().parents[2] / "Config" / "GameXXK" / "TownPCG" / "QingshanTownPreservedActors.json"
 REQUIRED_FIXED_LABELS = (
     "QingshanTown_CityScope",
     "QingshanTown_MainRoad",
@@ -74,7 +79,7 @@ def _new_result() -> dict[str, Any]:
 
 
 def _final_json(result: dict[str, Any]) -> str:
-    return json.dumps(result, sort_keys=True, separators=(",", ":"))
+    return json.dumps(result, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
 def _error(result: dict[str, Any], check: str, message: str, **details: Any) -> None:
@@ -120,6 +125,157 @@ def _property(value: Any, name: str, default: Any = None) -> Any:
     return getattr(value, name, default)
 
 
+def _strict_property(value: Any, name: str) -> Any:
+    sentinel = object()
+    observed = _property(value, name, sentinel)
+    if observed is sentinel:
+        raise RuntimeError(f"required reflected property is unavailable: {name}")
+    return observed
+
+
+def _runtime_generation_evidence(component: Any) -> dict[str, Any]:
+    trigger = str(_strict_property(component, "generation_trigger"))
+    generate_on_drop = _strict_property(component, "generate_on_drop_when_trigger_on_demand")
+    regenerate = _strict_property(component, "regenerate_in_editor")
+    if not isinstance(generate_on_drop, bool):
+        raise RuntimeError("generate_on_drop_when_trigger_on_demand must be bool")
+    if not isinstance(regenerate, bool):
+        raise RuntimeError("regenerate_in_editor must be bool")
+    return {
+        "generation_trigger": trigger,
+        "generate_on_drop_when_trigger_on_demand": generate_on_drop,
+        "regenerate_in_editor": regenerate,
+        "observed_runtime_fields": [
+            "generation_trigger",
+            "generate_on_drop_when_trigger_on_demand",
+            "regenerate_in_editor",
+        ],
+        "runtime_generation_disabled": (
+            "GENERATE_ON_DEMAND" in trigger.upper()
+            and not generate_on_drop
+            and not regenerate
+        ),
+    }
+
+
+def _state_delta(before: Iterable[str], after: Iterable[str]) -> dict[str, Any]:
+    before_set = set(before)
+    after_set = set(after)
+    return {
+        "added": sorted(after_set - before_set),
+        "removed": sorted(before_set - after_set),
+        "unchanged": before_set == after_set,
+    }
+
+
+def _record_dirty_transition(
+    result: dict[str, Any], kind: str, before: Iterable[str], after: Iterable[str]
+) -> dict[str, Any]:
+    delta = _state_delta(before, after)
+    if not delta["unchanged"]:
+        _error(
+            result,
+            f"dirty_{kind}_state_changed",
+            f"validation changed the dirty {kind} package set",
+            delta=delta,
+        )
+    return delta
+
+
+def _load_prototype_read_only(
+    current_map: str,
+    dirty_maps: Iterable[str],
+    dirty_content: Iterable[str],
+    load_map,
+    current_map_getter,
+    result: dict[str, Any],
+) -> bool:
+    dirty_maps = sorted(set(dirty_maps))
+    dirty_content = sorted(set(dirty_content))
+    if current_map != PROTOTYPE_MAP and (dirty_maps or dirty_content):
+        _error(
+            result,
+            "dirty_preflight",
+            "cannot switch maps while any map or content package is dirty",
+            current_map=current_map,
+            dirty_maps=dirty_maps,
+            dirty_content=dirty_content,
+        )
+        return False
+    if current_map != PROTOTYPE_MAP and not load_map(PROTOTYPE_MAP):
+        _error(result, "prototype_map", "prototype map could not be loaded", path=PROTOTYPE_MAP)
+        return False
+    observed = current_map_getter()
+    if observed != PROTOTYPE_MAP:
+        _error(result, "current_map", "prototype map is not current after load", current=observed)
+        return False
+    return True
+
+
+def _validate_inventory_records(
+    records: list[dict[str, Any]], current_level: str
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    errors: list[dict[str, Any]] = []
+    global_volumes = [record for record in records if record["pcg_volume"]]
+    global_components = sum(int(record["pcg_components"]) for record in records)
+    global_isms = sum(int(record["generated_isms"]) for record in records)
+    target = [record for record in records if record["label"] == PCG_ACTOR_LABEL and record["level"] == current_level]
+    evidence = {
+        "global_pcg_volume_count": len(global_volumes),
+        "global_pcg_component_count": global_components,
+        "global_generated_ism_count": global_isms,
+        "global_owners": records,
+        "target_current_level_count": len(target),
+    }
+    for field, count in (
+        ("global_pcg_volume_count", len(global_volumes)),
+        ("global_pcg_component_count", global_components),
+        ("global_generated_ism_count", global_isms),
+    ):
+        if count != 1:
+            errors.append({"check": field, "message": f"{field} must be 1", "count": count})
+    if len(target) != 1 or not target[0]["pcg_volume"] or target[0]["pcg_components"] != 1 or target[0]["generated_isms"] != 1:
+        errors.append({"check": "target_pcg_ownership", "message": "expected current-level PCG ownership chain is invalid"})
+    return evidence, errors
+
+
+def _validate_topology_records(
+    nodes: list[dict[str, Any]], edges: list[dict[str, Any]]
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    errors: list[dict[str, Any]] = []
+    by_class = {
+        class_path: [node for node in nodes if node["class"] == class_path]
+        for class_path in (CREATE_POINTS_CLASS, STATIC_MESH_SPAWNER_CLASS, GRAPH_OUTPUT_CLASS)
+    }
+    for class_path, matches in by_class.items():
+        if len(matches) != 1:
+            errors.append({"check": "graph_node_class", "message": f"expected exactly one {class_path}", "count": len(matches)})
+    if len(nodes) != 3:
+        errors.append({"check": "graph_node_count", "message": "expected two authored nodes and one graph output", "count": len(nodes)})
+    if len(by_class[CREATE_POINTS_CLASS]) == 1 and by_class[CREATE_POINTS_CLASS][0].get("point_count") != EXPECTED_POINT_COUNT:
+        errors.append({"check": "graph_point_count", "message": "CreatePoints must own exactly 12 points"})
+    if all(len(by_class[class_path]) == 1 for class_path in by_class):
+        create_id = by_class[CREATE_POINTS_CLASS][0]["id"]
+        spawner_id = by_class[STATIC_MESH_SPAWNER_CLASS][0]["id"]
+        output_id = by_class[GRAPH_OUTPUT_CLASS][0]["id"]
+        expected_edges = {
+            (create_id, "Out", spawner_id, "In"),
+            (spawner_id, "Out", output_id, "Out"),
+        }
+        actual_edges = [
+            (edge["source"], edge["source_pin"], edge["target"], edge["target_pin"])
+            for edge in edges
+        ]
+        if len(actual_edges) != 2 or set(actual_edges) != expected_edges:
+            errors.append({"check": "graph_edges", "message": "graph must be CreatePoints.Out -> Spawner.In -> Output.Out", "edges": actual_edges})
+    evidence = {
+        "node_classes": [node["class"] for node in nodes],
+        "edges": edges,
+        "verified_edge_count": len(edges) if not errors else 0,
+    }
+    return evidence, errors
+
+
 def _actor_label(actor: Any) -> str:
     return str(actor.get_actor_label())
 
@@ -145,6 +301,21 @@ def _dirty_map_package_names() -> list[str]:
     return sorted(_package_path(package) for package in getter())
 
 
+def _dirty_content_package_names() -> list[str]:
+    getter = getattr(unreal.EditorLoadingAndSavingUtils, "get_dirty_content_packages", None)
+    if not callable(getter):
+        raise RuntimeError("UE Python does not expose dirty-content package inspection")
+    return sorted(_package_path(package) for package in getter())
+
+
+def _snapshot_editor_state() -> dict[str, Any]:
+    return {
+        "current_map": _current_map_package(),
+        "dirty_maps": _dirty_map_package_names(),
+        "dirty_content": _dirty_content_package_names(),
+    }
+
+
 def _current_map_package() -> str:
     world = unreal.EditorLevelLibrary.get_editor_world()
     return _package_path(world.get_outermost()) if world is not None else ""
@@ -166,16 +337,50 @@ def _current_level_actor(actor: Any, current_level: Any) -> bool:
 
 
 def _vector(value: Any) -> list[float]:
-    return [float(value.x), float(value.y), float(value.z)]
+    values = [float(value.x), float(value.y), float(value.z)]
+    if not all(math.isfinite(component) for component in values):
+        raise RuntimeError(f"non-finite vector evidence: {values}")
+    return values
 
 
 def _delta(first: Any, second: Any) -> dict[str, Any]:
     values = [float(first.x - second.x), float(first.y - second.y), float(first.z - second.z)]
+    if not all(math.isfinite(component) for component in values):
+        raise RuntimeError(f"non-finite alignment delta: {values}")
     return {
         "xyz_cm": values,
         "xy_distance_cm": math.hypot(values[0], values[1]),
         "distance_cm": math.sqrt(sum(component * component for component in values)),
     }
+
+
+def _load_preserved_snapshot() -> dict[str, Any]:
+    data = json.loads(PRESERVED_SNAPSHOT_PATH.read_text(encoding="utf-8"))
+    if data.get("schema_version") != 1 or data.get("source_map") != SOURCE_MAP:
+        raise RuntimeError("preserved actor sidecar has wrong schema or source map")
+    actors = data.get("actors")
+    if not isinstance(actors, dict) or set(actors) != set(PRESERVED_LABELS):
+        raise RuntimeError("preserved actor sidecar must contain exactly the two preserved labels")
+    return data
+
+
+def _compare_preserved_snapshot(
+    actual: dict[str, Any], expected: dict[str, Any], tolerance: float
+) -> list[dict[str, Any]]:
+    mismatches: list[dict[str, Any]] = []
+    for label in sorted(set(actual) | set(expected)):
+        if label not in actual or label not in expected:
+            mismatches.append({"label": label, "field": "presence"})
+            continue
+        if actual[label].get("class_path") != expected[label].get("class_path"):
+            mismatches.append({"label": label, "field": "class_path", "actual": actual[label].get("class_path"), "expected": expected[label].get("class_path")})
+        for group in ("location_cm", "rotation_degrees", "scale"):
+            for axis in ("x", "y", "z") if group != "rotation_degrees" else ("roll", "pitch", "yaw"):
+                actual_value = float(actual[label][group][axis])
+                expected_value = float(expected[label][group][axis])
+                if not math.isfinite(actual_value) or not math.isfinite(expected_value) or abs(actual_value - expected_value) > tolerance:
+                    mismatches.append({"label": label, "field": f"{group}.{axis}", "actual": actual_value, "expected": expected_value})
+    return mismatches
 
 
 def _component_list(actor: Any, component_class: Any) -> list[Any]:
@@ -195,6 +400,8 @@ def _validate_labels_and_tags(
     )
     counts = {label: len(_exact_label_matches(actors, label)) for label in all_required}
     evidence["required_label_counts"] = counts
+    evidence["required_fixed_labels"] = list(REQUIRED_FIXED_LABELS)
+    evidence["missing_labels"] = sorted(label for label, count in counts.items() if count == 0)
     for label, count in counts.items():
         if count != 1:
             _error(result, "exact_label_unique", f"{label} must occur exactly once", label=label, count=count)
@@ -230,6 +437,31 @@ def _validate_labels_and_tags(
             _error(result, "managed_actor_tags", f"{label} lacks ownership/semantic tags", label=label, missing=missing)
     evidence["managed_actor_ownership"] = ownership
     evidence["preserved_labels"] = {label: counts[label] for label in PRESERVED_LABELS}
+    preserved_actual: dict[str, Any] = {}
+    for label in PRESERVED_LABELS:
+        matches = _exact_label_matches(actors, label)
+        if len(matches) != 1:
+            continue
+        actor = matches[0]
+        location = actor.get_actor_location()
+        rotation = actor.get_actor_rotation()
+        scale = actor.get_actor_scale3d()
+        preserved_actual[label] = {
+            "class_path": _class_path(actor),
+            "location_cm": dict(zip(("x", "y", "z"), _vector(location))),
+            "rotation_degrees": {
+                "roll": float(rotation.roll),
+                "pitch": float(rotation.pitch),
+                "yaw": float(rotation.yaw),
+            },
+            "scale": dict(zip(("x", "y", "z"), _vector(scale))),
+        }
+    expected_preserved = _load_preserved_snapshot()["actors"]
+    mismatches = _compare_preserved_snapshot(preserved_actual, expected_preserved, 0.01)
+    evidence["preserved_actor_snapshot"] = preserved_actual
+    evidence["preserved_actor_mismatches"] = mismatches
+    if mismatches:
+        _error(result, "preserved_actor_snapshot", "prototype preserved actors differ from the clean source baseline", mismatches=mismatches)
     return counts
 
 
@@ -305,31 +537,71 @@ def _reflected_edge_count(nodes: Iterable[Any]) -> int:
     return count
 
 
+def _graph_topology_records(graph: Any, authored_nodes: list[Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    output_node = graph.get_output_node()
+    node_records: list[dict[str, Any]] = []
+    node_objects = list(authored_nodes) + [output_node]
+    for node in authored_nodes:
+        settings = _settings_for_node(node)
+        points = _property(settings, "points_to_create", None)
+        node_records.append({
+            "id": _object_path(node),
+            "class": _class_path(settings or node),
+            "point_count": len(points) if points is not None else None,
+        })
+    output_settings = _settings_for_node(output_node)
+    node_records.append({
+        "id": _object_path(output_node),
+        "class": _class_path(output_settings or output_node),
+        "point_count": None,
+    })
+    pin_owners: dict[str, str] = {}
+    for node in node_objects:
+        for property_name in ("input_pins", "output_pins"):
+            for pin in list(node.get_editor_property(property_name)):
+                pin_owners[_object_path(pin)] = _object_path(node)
+    edge_records: list[dict[str, Any]] = []
+    seen_edges: set[str] = set()
+    for node in authored_nodes:
+        for pin in list(node.get_editor_property("output_pins")):
+            for edge in list(pin.get_editor_property("edges")):
+                edge_id = _object_path(edge)
+                if edge_id in seen_edges:
+                    continue
+                seen_edges.add(edge_id)
+                source_pin = edge.get_editor_property("input_pin")
+                target_pin = edge.get_editor_property("output_pin")
+                edge_records.append({
+                    "source": pin_owners.get(_object_path(source_pin), ""),
+                    "source_pin": str(edge.get_input_pin_label()),
+                    "target": pin_owners.get(_object_path(target_pin), ""),
+                    "target_pin": str(edge.get_output_pin_label()),
+                })
+    return node_records, edge_records
+
+
 def _validate_graph(result: dict[str, Any], pcg_component: Any, status: dict[str, Any]) -> None:
     graph = unreal.load_asset(EXPECTED_GRAPH_PATH)
     graph_path = _package_path(graph)
     nodes = _graph_nodes(graph) if graph is not None else []
-    point_count = -1
-    node_classes: list[str] = []
-    for node in nodes:
-        settings = _settings_for_node(node)
-        node_classes.append(_class_path(settings or node))
-        points = _property(settings, "points_to_create", None) if settings is not None else None
-        if points is not None:
-            point_count = len(points)
+    topology_nodes, topology_edges = _graph_topology_records(graph, nodes) if graph is not None else ([], [])
+    topology_evidence, topology_errors = _validate_topology_records(topology_nodes, topology_edges)
+    create_records = [record for record in topology_nodes if record["class"] == CREATE_POINTS_CLASS]
+    point_count = create_records[0]["point_count"] if len(create_records) == 1 else -1
     component_graph = pcg_component.get_graph() if pcg_component is not None else None
     component_graph_path = _package_path(component_graph)
-    verified_edge_count = _reflected_edge_count(nodes)
+    verified_edge_count = topology_evidence["verified_edge_count"]
     evidence = {
         "path": graph_path,
         "component_graph_path": component_graph_path,
         "point_count": point_count,
         "node_count": len(nodes),
         "verified_edge_count": verified_edge_count,
-        "node_classes": node_classes,
+        **topology_evidence,
         "read_only_status": status,
     }
     result["evidence"]["pcg_graph"] = evidence
+    result["errors"].extend(topology_errors)
     expected = {
         "path": EXPECTED_GRAPH_PATH,
         "component_graph_path": EXPECTED_GRAPH_PATH,
@@ -349,45 +621,40 @@ def _static_mesh(component: Any) -> Any:
 
 def _validate_pcg_actor(result: dict[str, Any], actors: list[Any], current_level: Any) -> None:
     matches = _exact_label_matches(actors, PCG_ACTOR_LABEL)
-    current_level_pcg_volumes = [
-        actor for actor in actors
-        if isinstance(actor, unreal.PCGVolume) and _current_level_actor(actor, current_level)
-    ]
-    current_level_actors = [
-        candidate for candidate in actors if _current_level_actor(candidate, current_level)
-    ]
-    current_level_pcg_components = [
-        component
-        for candidate in current_level_actors
-        for component in _component_list(candidate, unreal.PCGComponent)
-    ]
-    current_level_generated_isms = [
-        component
-        for candidate in current_level_actors
-        for component in _component_list(candidate, unreal.InstancedStaticMeshComponent)
-        if PCG_GENERATED_COMPONENT_TAG in _tags(component)
-    ]
+    current_level_path = _package_path(current_level.get_outermost())
+    inventory_records: list[dict[str, Any]] = []
+    all_pcg_components: list[Any] = []
+    all_generated_isms: list[Any] = []
+    for candidate in actors:
+        pcg_components = _component_list(candidate, unreal.PCGComponent)
+        generated_isms = [
+            component
+            for component in _component_list(candidate, unreal.InstancedStaticMeshComponent)
+            if PCG_GENERATED_COMPONENT_TAG in _tags(component)
+        ]
+        is_volume = isinstance(candidate, unreal.PCGVolume)
+        if is_volume or pcg_components or generated_isms:
+            inventory_records.append({
+                "label": _actor_label(candidate),
+                "level": _package_path(candidate.get_level().get_outermost()),
+                "class": _class_path(candidate),
+                "pcg_volume": is_volume,
+                "pcg_components": len(pcg_components),
+                "generated_isms": len(generated_isms),
+            })
+        all_pcg_components.extend(pcg_components)
+        all_generated_isms.extend(generated_isms)
+    inventory_evidence, inventory_errors = _validate_inventory_records(
+        inventory_records, current_level_path
+    )
     pcg_evidence: dict[str, Any] = {
-        "actor_count": len(current_level_pcg_volumes),
+        "actor_count": inventory_evidence["global_pcg_volume_count"],
         "expected_label_count": len(matches),
         "current_level_count": 0,
-        "current_level_labels": sorted(_actor_label(actor) for actor in current_level_pcg_volumes),
-        "global_pcg_component_count": len(current_level_pcg_components),
-        "global_pcg_component_owners": sorted(
-            _actor_label(component.get_owner()) for component in current_level_pcg_components
-        ),
-        "global_generated_ism_count": len(current_level_generated_isms),
-        "global_generated_ism_owners": sorted(
-            _actor_label(component.get_owner()) for component in current_level_generated_isms
-        ),
+        **inventory_evidence,
     }
     result["evidence"]["pcg_actor"] = pcg_evidence
-    if len(current_level_pcg_volumes) != 1:
-        _error(result, "pcg_volume_count", "exactly one current-level PCGVolume is required", count=len(current_level_pcg_volumes), labels=pcg_evidence["current_level_labels"])
-    if len(current_level_pcg_components) != 1:
-        _error(result, "global_pcg_component_count", "exactly one current-level PCGComponent is required", count=len(current_level_pcg_components), owners=pcg_evidence["global_pcg_component_owners"])
-    if len(current_level_generated_isms) != 1:
-        _error(result, "global_generated_ism_count", "exactly one current-level PCG-generated instanced component is required", count=len(current_level_generated_isms), owners=pcg_evidence["global_generated_ism_owners"])
+    result["errors"].extend(inventory_errors)
     if len(matches) != 1:
         _error(result, "pcg_actor", "expected PCG actor label must occur exactly once", count=len(matches))
         return
@@ -407,21 +674,19 @@ def _validate_pcg_actor(result: dict[str, Any], actors: list[Any], current_level
     else:
         pcg_component = components[0]
     if pcg_component is not None and (
-        len(current_level_pcg_components) != 1
-        or current_level_pcg_components[0] != pcg_component
+        len(all_pcg_components) != 1
+        or all_pcg_components[0] != pcg_component
     ):
-        _error(result, "pcg_component_owner", "the sole current-level PCGComponent must belong to the expected PCGVolume", expected_owner=PCG_ACTOR_LABEL, owners=pcg_evidence["global_pcg_component_owners"])
+        _error(result, "pcg_component_owner", "the sole world PCGComponent must belong to the expected PCGVolume", expected_owner=PCG_ACTOR_LABEL, owners=inventory_records)
 
-    trigger = str(_property(pcg_component, "generation_trigger", "")) if pcg_component is not None else ""
-    generate_on_drop = bool(_property(pcg_component, "generate_on_drop_when_trigger_on_demand", False)) if pcg_component is not None else True
-    regenerate = bool(_property(pcg_component, "regenerate_in_editor", False)) if pcg_component is not None else True
-    runtime_disabled = "ON_DEMAND" in trigger.upper() and not generate_on_drop and not regenerate
-    pcg_evidence["runtime_generation_disabled"] = runtime_disabled
-    pcg_evidence["generation_trigger"] = trigger
-    pcg_evidence["generate_on_drop_when_trigger_on_demand"] = generate_on_drop
-    pcg_evidence["regenerate_in_editor"] = regenerate
-    if not runtime_disabled:
-        _error(result, "runtime_generation", "runtime/editor automatic PCG generation must be disabled", trigger=trigger)
+    try:
+        runtime_evidence = _runtime_generation_evidence(pcg_component)
+        pcg_evidence.update(runtime_evidence)
+        if not runtime_evidence["runtime_generation_disabled"]:
+            _error(result, "runtime_generation", "runtime/editor automatic PCG generation must be disabled", runtime=runtime_evidence)
+    except Exception as error:
+        pcg_evidence["runtime_generation_disabled"] = False
+        _error(result, "runtime_generation_fields", f"required runtime-generation evidence is unavailable: {error}")
 
     status = _load_json_status(result)
     _validate_graph(result, pcg_component, status)
@@ -441,10 +706,10 @@ def _validate_pcg_actor(result: dict[str, Any], actors: list[Any], current_level
         "generated_mesh": mesh_paths,
     })
     if generated_component_count == 1 and (
-        len(current_level_generated_isms) != 1
-        or current_level_generated_isms[0] != target_generated_isms[0]
+        len(all_generated_isms) != 1
+        or all_generated_isms[0] != target_generated_isms[0]
     ):
-        _error(result, "generated_ism_owner", "the sole current-level PCG-generated instanced component must belong to the expected PCG actor", expected_owner=PCG_ACTOR_LABEL, owners=pcg_evidence["global_generated_ism_owners"])
+        _error(result, "generated_ism_owner", "the sole world PCG-generated instanced component must belong to the expected PCG actor", expected_owner=PCG_ACTOR_LABEL, owners=inventory_records)
     if int(status.get("generated_component_count", -1)) != 1 or generated_component_count != 1:
         _error(result, "generated_components", "exactly one generated instanced component is required", reflected=generated_component_count, status=status.get("generated_component_count"))
     if instance_count != EXPECTED_INSTANCE_COUNT:
@@ -575,58 +840,70 @@ def _validate_alignment(result: dict[str, Any], actors: list[Any]) -> None:
 
 def validate_vertical_slice() -> dict[str, Any]:
     result = _new_result()
-    dirty_before: list[str] = []
+    before_state: dict[str, Any] = {"current_map": "", "dirty_maps": [], "dirty_content": []}
     try:
-        dirty_before = _dirty_map_package_names()
-        result["evidence"]["dirty_map_packages_before"] = dirty_before
-        if SOURCE_MAP in dirty_before or PROTOTYPE_MAP in dirty_before:
-            _error(result, "dirty_before", "source and prototype maps must be clean before validation", dirty=dirty_before)
+        before_state = _snapshot_editor_state()
+        result["evidence"]["original_map"] = before_state["current_map"]
+        result["evidence"]["dirty_map_packages_before"] = before_state["dirty_maps"]
+        result["evidence"]["dirty_content_packages_before"] = before_state["dirty_content"]
         if not unreal.EditorAssetLibrary.does_asset_exist(PROTOTYPE_MAP):
             _error(result, "prototype_map", "prototype map does not exist", path=PROTOTYPE_MAP)
-        elif not unreal.EditorLoadingAndSavingUtils.load_map(PROTOTYPE_MAP):
-            _error(result, "prototype_map", "prototype map could not be loaded", path=PROTOTYPE_MAP)
-        if _current_map_package() != PROTOTYPE_MAP:
-            _error(result, "current_map", "validator must inspect only the prototype map", current=_current_map_package())
-
-        source_not_current = _current_map_package() != SOURCE_MAP
-        result["evidence"]["source_map_not_current"] = source_not_current
-        if not source_not_current:
-            _error(result, "source_map", "source map must never be the current validation map")
-
-        current_level = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).get_current_level()
-        actors = _all_actors()
-        _validate_labels_and_tags(result, actors, current_level)
-        _validate_splines(result, actors)
-        _validate_pcg_actor(result, actors, current_level)
-        _validate_mesh(result)
-        _validate_trees(result, actors)
-        _validate_alignment(result, actors)
+            scan_ready = False
+        else:
+            scan_ready = _load_prototype_read_only(
+                before_state["current_map"],
+                before_state["dirty_maps"],
+                before_state["dirty_content"],
+                unreal.EditorLoadingAndSavingUtils.load_map,
+                _current_map_package,
+                result,
+            )
+        if scan_ready:
+            current_map = _current_map_package()
+            result["evidence"]["source_map_not_current"] = current_map != SOURCE_MAP
+            current_level = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).get_current_level()
+            actors = _all_actors()
+            _validate_labels_and_tags(result, actors, current_level)
+            _validate_splines(result, actors)
+            _validate_pcg_actor(result, actors, current_level)
+            _validate_mesh(result)
+            _validate_trees(result, actors)
+            _validate_alignment(result, actors)
     except Exception as error:
         _error(result, "validator_exception", f"unexpected validation exception: {error}", exception_type=type(error).__name__)
     finally:
         try:
-            dirty_after = _dirty_map_package_names()
+            after_state = _snapshot_editor_state()
         except Exception as error:
-            dirty_after = []
+            after_state = {"current_map": "", "dirty_maps": [], "dirty_content": []}
             _error(result, "dirty_after", f"could not snapshot dirty maps after validation: {error}")
-        result["evidence"]["dirty_map_packages_after"] = dirty_after
-        newly_dirty_protected = sorted(
-            path for path in (SOURCE_MAP, PROTOTYPE_MAP)
-            if path in dirty_after and path not in dirty_before
-        )
-        result["evidence"]["newly_dirty_protected_maps"] = newly_dirty_protected
-        if SOURCE_MAP in dirty_after:
+        map_delta = _record_dirty_transition(result, "map", before_state["dirty_maps"], after_state["dirty_maps"])
+        content_delta = _record_dirty_transition(result, "content", before_state["dirty_content"], after_state["dirty_content"])
+        result["evidence"].update({
+            "current_map": after_state["current_map"],
+            "dirty_map_packages_after": after_state["dirty_maps"],
+            "dirty_content_packages_after": after_state["dirty_content"],
+            "dirty_map_delta": map_delta,
+            "dirty_content_delta": content_delta,
+            "newly_dirty_protected_maps": map_delta["added"],
+        })
+        if SOURCE_MAP in after_state["dirty_maps"]:
             _error(result, "source_map_dirty", "source map is dirty after validation")
-        if PROTOTYPE_MAP in dirty_after:
-            _error(result, "prototype_map_dirty", "prototype map is dirty after validation")
-        if newly_dirty_protected:
-            _error(result, "read_only", "validation dirtied a protected map", maps=newly_dirty_protected)
     result["success"] = not result["errors"]
     return result
 
 
 def main() -> None:
-    print(_final_json(validate_vertical_slice()))
+    try:
+        print(_final_json(validate_vertical_slice()))
+    except Exception as error:
+        print(json.dumps({
+            "marker": "GAMEXXK_QINGSHAN_PCG_VALIDATION",
+            "success": False,
+            "errors": [{"check": "serialization", "message": str(error)}],
+            "warnings": [],
+            "evidence": {},
+        }, sort_keys=True, separators=(",", ":"), allow_nan=False))
 
 
 if __name__ == "__main__":

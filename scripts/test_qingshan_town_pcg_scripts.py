@@ -33,6 +33,7 @@ VALIDATOR_SCRIPT = (
     / "Python"
     / "gamexxk_validate_qingshan_town_pcg_vertical_slice.py"
 )
+PRESERVED_SNAPSHOT = PROJECT_ROOT / "Config" / "GameXXK" / "TownPCG" / "QingshanTownPreservedActors.json"
 
 
 def _import_assembly_script_with_unreal_stub():
@@ -86,6 +87,157 @@ def _import_validator_script_with_unreal_stub():
 
 
 class QingshanTownPCGScriptsTests(unittest.TestCase):
+    def test_preserved_actor_sidecar_and_mismatch_behavior(self):
+        module = _import_validator_script_with_unreal_stub()
+        data = json.loads(PRESERVED_SNAPSHOT.read_text(encoding="utf-8"))
+        self.assertEqual(data["source_map"], module.SOURCE_MAP)
+        self.assertTrue(data["captured_read_only"])
+        self.assertEqual(set(data["actors"]), set(module.PRESERVED_LABELS))
+        player = data["actors"]["PlayerStart_QingshanInn"]
+        self.assertEqual(player["rotation_degrees"], {"roll": 0.0, "pitch": 35.0, "yaw": 0.0})
+        self.assertEqual(player["scale"], {"x": 1.0, "y": 1.0, "z": 1.0})
+        actual = json.loads(json.dumps(data["actors"]))
+        self.assertEqual(module._compare_preserved_snapshot(actual, data["actors"], 0.01), [])
+        actual["PlayerStart_QingshanInn"]["rotation_degrees"]["yaw"] = 1.0
+        self.assertTrue(module._compare_preserved_snapshot(actual, data["actors"], 0.01))
+    def test_validator_dirty_preflight_and_transitions_are_behavioral(self):
+        module = _import_validator_script_with_unreal_stub()
+        calls = []
+        result = module._new_result()
+        loaded = module._load_prototype_read_only(
+            "/Game/Other/DirtyMap",
+            {"/Game/Other/DirtyMap"},
+            {"/Game/DirtyAsset"},
+            lambda path: calls.append(path) or True,
+            lambda: module.PROTOTYPE_MAP,
+            result,
+        )
+        self.assertFalse(loaded)
+        self.assertEqual(calls, [])
+        self.assertEqual(result["errors"][0]["check"], "dirty_preflight")
+
+        clean_result = module._new_result()
+        loaded = module._load_prototype_read_only(
+            "/Game/Other/CleanMap", set(), set(),
+            lambda path: calls.append(path) or True,
+            lambda: module.PROTOTYPE_MAP,
+            clean_result,
+        )
+        self.assertTrue(loaded)
+        self.assertEqual(calls, [module.PROTOTYPE_MAP])
+
+        for loader, current_getter, expected_check in (
+            (lambda path: False, lambda: module.PROTOTYPE_MAP, "prototype_map"),
+            (lambda path: True, lambda: "/Game/Unexpected", "current_map"),
+        ):
+            failed_result = module._new_result()
+            self.assertFalse(module._load_prototype_read_only(
+                "/Game/Other/CleanMap", set(), set(), loader, current_getter, failed_result
+            ))
+            self.assertEqual(failed_result["errors"][0]["check"], expected_check)
+
+        removed = module._state_delta({"x"}, set())
+        added = module._state_delta(set(), {"x"})
+        self.assertEqual(removed, {"added": [], "removed": ["x"], "unchanged": False})
+        self.assertEqual(added, {"added": ["x"], "removed": [], "unchanged": False})
+        for before, after in (({"x"}, set()), (set(), {"x"})):
+            transition_result = module._new_result()
+            module._record_dirty_transition(transition_result, "content", before, after)
+            self.assertTrue(transition_result["errors"])
+
+    def test_validator_runtime_properties_fail_closed(self):
+        module = _import_validator_script_with_unreal_stub()
+
+        class FakeComponent:
+            def __init__(self, properties):
+                self.properties = properties
+
+            def get_editor_property(self, name):
+                if name not in self.properties:
+                    raise AttributeError(name)
+                return self.properties[name]
+
+        valid = FakeComponent({
+            "generation_trigger": "GENERATE_ON_DEMAND",
+            "generate_on_drop_when_trigger_on_demand": False,
+            "regenerate_in_editor": False,
+        })
+        self.assertTrue(module._runtime_generation_evidence(valid)["runtime_generation_disabled"])
+        for missing in valid.properties:
+            properties = dict(valid.properties)
+            properties.pop(missing)
+            with self.subTest(missing=missing), self.assertRaisesRegex(RuntimeError, missing):
+                module._runtime_generation_evidence(FakeComponent(properties))
+
+    def test_validator_global_inventory_rejects_cross_level_pcg(self):
+        module = _import_validator_script_with_unreal_stub()
+        records = [
+            {"label": module.PCG_ACTOR_LABEL, "level": "Persistent", "pcg_volume": True, "pcg_components": 1, "generated_isms": 1},
+            {"label": "HiddenSublevelPCG", "level": "Sublevel", "pcg_volume": True, "pcg_components": 1, "generated_isms": 1},
+        ]
+        evidence, errors = module._validate_inventory_records(records, "Persistent")
+        self.assertEqual(evidence["global_pcg_volume_count"], 2)
+        self.assertEqual(evidence["global_pcg_component_count"], 2)
+        self.assertEqual(evidence["global_generated_ism_count"], 2)
+        self.assertTrue(any(error["check"] == "global_pcg_volume_count" for error in errors))
+
+    def test_validator_graph_topology_records_reject_wrong_edges_and_classes(self):
+        module = _import_validator_script_with_unreal_stub()
+
+        class FakeClass:
+            def get_path_name(self):
+                return "/Script/PCG.UnexpectedOutputSettings"
+
+        class FakeSettings:
+            def get_class(self):
+                return FakeClass()
+
+        class FakeOutputNode:
+            def get_path_name(self):
+                return "/Fake/OutputNode"
+
+            def get_settings(self):
+                return FakeSettings()
+
+            def get_editor_property(self, name):
+                return []
+
+        class FakeGraph:
+            def get_output_node(self):
+                return FakeOutputNode()
+
+        observed_nodes, _ = module._graph_topology_records(FakeGraph(), [])
+        self.assertEqual(observed_nodes[0]["class"], "/Script/PCG.UnexpectedOutputSettings")
+
+        nodes = [
+            {"id": "create", "class": module.CREATE_POINTS_CLASS, "point_count": 12},
+            {"id": "spawn", "class": module.STATIC_MESH_SPAWNER_CLASS, "point_count": None},
+            {"id": "output", "class": module.GRAPH_OUTPUT_CLASS, "point_count": None},
+        ]
+        valid_edges = [
+            {"source": "create", "source_pin": "Out", "target": "spawn", "target_pin": "In"},
+            {"source": "spawn", "source_pin": "Out", "target": "output", "target_pin": "Out"},
+        ]
+        evidence, errors = module._validate_topology_records(nodes, valid_edges)
+        self.assertEqual(errors, [])
+        self.assertEqual(evidence["verified_edge_count"], 2)
+        for bad_edges in (
+            [valid_edges[0], {"source": "spawn", "source_pin": "Out", "target": "spawn", "target_pin": "In"}],
+            [{"source": "spawn", "source_pin": "Out", "target": "create", "target_pin": "In"}, valid_edges[1]],
+            [valid_edges[0], valid_edges[0]],
+        ):
+            _, bad_errors = module._validate_topology_records(nodes, bad_edges)
+            self.assertTrue(bad_errors)
+        wrong_nodes = [dict(node) for node in nodes]
+        wrong_nodes[1]["class"] = "/Script/PCG.WrongSettings"
+        _, class_errors = module._validate_topology_records(wrong_nodes, valid_edges)
+        self.assertTrue(class_errors)
+
+    def test_validator_json_rejects_nonfinite_numbers(self):
+        module = _import_validator_script_with_unreal_stub()
+        with self.assertRaises(ValueError):
+            module._final_json({"success": False, "value": float("nan")})
+
     def test_vertical_slice_validator_exposes_stable_host_safe_contract(self):
         self.assertTrue(VALIDATOR_SCRIPT.is_file(), f"missing validator: {VALIDATOR_SCRIPT}")
         module = _import_validator_script_with_unreal_stub()
@@ -153,7 +305,7 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
         for token in forbidden_api_tokens:
             with self.subTest(token=token):
                 self.assertNotIn(token, source.lower())
-        self.assertIn("EditorLoadingAndSavingUtils.load_map(PROTOTYPE_MAP)", source)
+        self.assertIn("_load_prototype_read_only", source)
         self.assertNotIn("load_map(SOURCE_MAP)", source)
         self.assertIn("get_town_pcg_status(PCG_ACTOR_LABEL)", source)
 
@@ -194,10 +346,7 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
         self.assertIn('get_editor_property("edges")', source)
         self.assertIn("tagged_marker_actors", source)
         self.assertIn("unexpected_marker_labels", source)
-        self.assertIn("current_level_pcg_volumes", source)
-        self.assertIn("current_level_pcg_components", source)
         self.assertIn("global_pcg_component_count", source)
-        self.assertIn("current_level_generated_isms", source)
         self.assertIn("global_generated_ism_count", source)
         self.assertIn('PCG_GENERATED_COMPONENT_TAG = "PCG Generated Component"', source)
         self.assertIn("PCG_GENERATED_COMPONENT_TAG in _tags(component)", source)
