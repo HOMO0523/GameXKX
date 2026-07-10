@@ -13,6 +13,22 @@
     "style/references/style_nature_group.jpeg",
     "REF_QS_ENV_STYLE_LOCK"
   ],
+  "detail_budget": {
+    "forbidden_micro_detail": [
+      "individual_roof_tiles",
+      "repeated_window_lattices",
+      "leaf_by_leaf_foliage",
+      "stone_or_pebble_tessellation",
+      "tiny_prop_piles"
+    ],
+    "main_value_bands": 2,
+    "max_primary_masses": 3,
+    "max_secondary_internal_stroke_groups": 5,
+    "object_rule": "every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule",
+    "prompt_instruction": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.",
+    "shadow_accent_bands": 1,
+    "thumbnail_readability_px": 128
+  },
   "display_name": "青山镇资产尺度队列板",
   "forward_axis": "+Y",
   "gameplay_role": "scale_board",
@@ -57,7 +73,7 @@
         "role": "shape_language"
       },
       {
-        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
         "role": "generated_style_lock"
       }
     ],
@@ -65,7 +81,7 @@
       "style/references/style_env_day.jpeg",
       "style/references/style_character_scale.jpeg",
       "style/references/style_nature_group.jpeg",
-      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png"
+      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png"
     ],
     "lighting_mood": "neutral soft daylight for shape comparison",
     "max_generation_calls": 3,
@@ -77,11 +93,12 @@
       "blue_gray",
       "warm_ochre"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: game environment scale-lineup board\nPrimary request: show Qingshan town gameplay assets at one consistent scale for a fixed high three-quarter camera\nInput images: project environment and character images define ink-cartoon style and hero scale; the Qingshan style-lock board defines palette and materials\nScene/backdrop: plain warm rice-paper background with a single horizontal ground baseline, no full scene\nSubject: one small project hero, L/M/S Chinese town-building silhouettes, north gate, nine-meter bridge section, dock section, pine, broadleaf tree, bamboo, shrub and near mountain-foot module, all clearly proportional\nStyle/medium: the exact QS_InkToon_v1 hand-drawn ink-cartoon language\nComposition/framing: wide lineup, every subject fully visible and separated, high three-quarter asset view, no cropping\nLighting/mood: neutral soft daylight for shape comparison\nConstraints: no labels, no numbers, no text, no watermark, no duplicated subjects, no perspective distortion, no modern objects",
+    "prompt": "Use case: stylized-concept\nAsset type: game environment scale-lineup board\nPrimary request: show Qingshan town gameplay assets at one consistent scale for a fixed high three-quarter camera\nInput images: project environment and character images define ink-cartoon style and hero scale; the Qingshan style-lock board defines palette and materials\nScene/backdrop: plain warm rice-paper background with a single horizontal ground baseline, no full scene\nSubject: one small project hero, L/M/S Chinese town-building silhouettes, north gate, nine-meter bridge section, dock section, pine, broadleaf tree, bamboo, shrub and near mountain-foot module, all clearly proportional\nStyle/medium: the exact QS_InkToon_v1 hand-drawn ink-cartoon language\nComposition/framing: wide lineup, every subject fully visible and separated, high three-quarter asset view, no cropping\nLighting/mood: neutral soft daylight for shape comparison\nConstraints: no labels, no numbers, no text, no watermark, no duplicated subjects, no perspective distortion, no modern objects\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.",
     "prompt_sections": {
       "asset_type": "game environment scale-lineup board",
       "composition_framing": "wide lineup, every subject fully visible and separated, high three-quarter asset view, no cropping",
       "constraints": "no labels, no numbers, no text, no watermark, no duplicated subjects, no perspective distortion, no modern objects",
+      "detail_budget": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.",
       "input_images": "project environment and character images define ink-cartoon style and hero scale; the Qingshan style-lock board defines palette and materials",
       "lighting_mood": "neutral soft daylight for shape comparison",
       "primary_request": "show Qingshan town gameplay assets at one consistent scale for a fixed high three-quarter camera",

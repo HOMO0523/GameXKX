@@ -38,6 +38,23 @@ ALLOWED_VERSIONS = ("v001", "v002", "v003")
 # The built-in imagegen runtime accepts at most five images directly per call.
 # Complete reference lineage is recorded separately and is intentionally uncapped.
 MAX_DIRECT_GENERATION_INPUTS = 5
+DETAIL_BUDGET_FORBIDDEN = (
+    "individual_roof_tiles",
+    "repeated_window_lattices",
+    "leaf_by_leaf_foliage",
+    "stone_or_pebble_tessellation",
+    "tiny_prop_piles",
+)
+DETAIL_BUDGET_FIELDS = (
+    "thumbnail_readability_px",
+    "max_primary_masses",
+    "max_secondary_internal_stroke_groups",
+    "main_value_bands",
+    "shadow_accent_bands",
+    "forbidden_micro_detail",
+    "object_rule",
+    "prompt_instruction",
+)
 REQUIRED_FIELDS = (
     "schema_version",
     "asset_id",
@@ -57,6 +74,7 @@ REQUIRED_FIELDS = (
     "material_language",
     "negative_prompt",
     "dependencies",
+    "detail_budget",
     "source_provenance",
     "reference_images",
     "generation",
@@ -390,6 +408,52 @@ def _validate_workflow_gates(gates: dict) -> None:
         raise CatalogError("production gates must remain false during concept production")
 
 
+def _validate_detail_budget(detail_budget: Any) -> dict:
+    budget = _require_mapping(detail_budget, "detail_budget")
+    _missing_fields(budget, DETAIL_BUDGET_FIELDS, "detail_budget")
+    _reject_unknown_fields(budget, DETAIL_BUDGET_FIELDS, "detail_budget")
+    exact_numbers = {
+        "thumbnail_readability_px": 128,
+        "max_primary_masses": 3,
+        "max_secondary_internal_stroke_groups": 5,
+        "main_value_bands": 2,
+        "shadow_accent_bands": 1,
+    }
+    for field, expected in exact_numbers.items():
+        if type(budget[field]) is not int or budget[field] != expected:
+            raise CatalogError(f"detail_budget.{field} must be {expected}")
+    forbidden = _require_string_array(
+        budget["forbidden_micro_detail"],
+        "detail_budget.forbidden_micro_detail",
+    )
+    if tuple(forbidden) != DETAIL_BUDGET_FORBIDDEN:
+        raise CatalogError(
+            "detail_budget.forbidden_micro_detail must match the approved anti-fragmentation list"
+        )
+    object_rule = _require_string(budget["object_rule"], "detail_budget.object_rule")
+    prompt_instruction = _require_string(
+        budget["prompt_instruction"],
+        "detail_budget.prompt_instruction",
+    )
+    required_prompt_fragments = (
+        "128px",
+        "at most 3 primary masses",
+        "5 secondary internal accent strokes or stroke groups",
+        "2 main value bands plus 1 shadow accent",
+        *DETAIL_BUDGET_FORBIDDEN,
+        object_rule,
+    )
+    missing_fragments = [
+        fragment for fragment in required_prompt_fragments if fragment not in prompt_instruction
+    ]
+    if missing_fragments:
+        raise CatalogError(
+            "detail_budget.prompt_instruction omits approved budget fragments: "
+            f"{missing_fragments}"
+        )
+    return budget
+
+
 def _validate_optional_top_level_fields(data: dict) -> None:
     for field in (
         "building",
@@ -507,6 +571,14 @@ def validate_asset(data: dict) -> None:
     expected = EXPECTED_VIEWS[category]
     _validate_generation(generation, expected, category)
     _validate_reference_images(data["reference_images"], expected)
+    detail_budget = _validate_detail_budget(data["detail_budget"])
+    if (
+        "prompt" in generation
+        and category != "registry"
+        and asset_id != "REF_QS_ENV_STYLE_LOCK"
+        and detail_budget["prompt_instruction"] not in generation["prompt"]
+    ):
+        raise CatalogError("generation.prompt must include detail_budget.prompt_instruction")
 
     gates = _require_mapping(data["workflow_gates"], "workflow_gates")
     _validate_workflow_gates(gates)

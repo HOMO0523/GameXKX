@@ -14,6 +14,7 @@ from qingshan_environment_assets import (
     ALLOWED_VERSIONS,
     BATCH_CALL_CAPS,
     BATCH_COUNTS,
+    DETAIL_BUDGET_FORBIDDEN,
     EXPECTED_VIEWS,
     CatalogError,
     derive_manifest_generation,
@@ -93,8 +94,35 @@ COMMON_PALETTE = [
     "warm_ochre",
 ]
 
+DETAIL_OBJECT_RULES = {
+    "building": (
+        "building roof is one bold primary silhouette plus one ridge stroke; "
+        "each wall has at most one door and one simple window shape"
+    ),
+    "landmark": "landmark uses at most three large functional masses and no ornamental gridwork",
+    "bridge": "bridge uses only deck, arch and rail as its three primary masses",
+    "near_mountain": "near mountain uses one outer silhouette and at most two dry-brush accents",
+    "far_mountain": "far mountain uses one outer silhouette and at most two dry-brush accents",
+    "rock_kit": "each rock uses one outer contour plus one shadow band",
+    "paper2d_plant": "plant uses two or three broad crown groups plus one main trunk",
+    "surface": (
+        "surface uses broad flat swatches without cobble tessellation, pebble noise, "
+        "or other micro-texture"
+    ),
+    "linear_kit": "each linear-kit member uses at most three clean connected masses",
+    "prop_kit": "each prop-kit member uses at most three masses and never forms a tiny prop pile",
+    "reference": (
+        "every board sample follows its matching building, bridge, plant, mountain, rock, "
+        "or surface rule"
+    ),
+    "registry": (
+        "existing building remains a record-only source; any future redraw uses one roof mass, "
+        "one ridge stroke, at most one door and one simple window per wall"
+    ),
+}
+
 GENERATED_BOARD_PATHS = {
-    "REF_QS_ENV_STYLE_LOCK": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+    "REF_QS_ENV_STYLE_LOCK": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
     "REF_QS_SCALE_LINEUP": "style/boards/REF_QS_SCALE_LINEUP__board__v001.png",
 }
 
@@ -670,10 +698,38 @@ def _palette(accent: str) -> list[str]:
     return list(dict.fromkeys((*COMMON_PALETTE, accent)))
 
 
+def _detail_object_rule(asset_id: str, category: str) -> str:
+    if asset_id == "LMK_QS_BRIDGE_MAIN":
+        return DETAIL_OBJECT_RULES["bridge"]
+    if asset_id == "REF_QS_SURFACE_PALETTE":
+        return DETAIL_OBJECT_RULES["surface"]
+    return DETAIL_OBJECT_RULES[category]
+
+
+def _detail_budget(asset_id: str, category: str) -> dict[str, Any]:
+    object_rule = _detail_object_rule(asset_id, category)
+    forbidden = list(DETAIL_BUDGET_FORBIDDEN)
+    return {
+        "forbidden_micro_detail": forbidden,
+        "main_value_bands": 2,
+        "max_primary_masses": 3,
+        "max_secondary_internal_stroke_groups": 5,
+        "object_rule": object_rule,
+        "prompt_instruction": (
+            "Every object must read at 128px; use at most 3 primary masses and 5 secondary "
+            "internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow "
+            f"accent; forbid {', '.join(forbidden)}; {object_rule}."
+        ),
+        "shadow_accent_bands": 1,
+        "thumbnail_readability_px": 128,
+    }
+
+
 def _generation(
     asset_id: str,
     spec: AssetSpec,
     stable_references: list[dict[str, str]],
+    detail_budget: dict[str, Any],
 ) -> tuple[dict[str, Any], list[str]]:
     view_contracts = _view_contracts(asset_id, spec)
     selected = _reference_selection(asset_id, stable_references)
@@ -693,6 +749,8 @@ def _generation(
         inputs.append(board)
         input_roles.append({"path": board, "role": role})
     prompt = B0_PROMPTS.get(asset_id, _normal_prompt(spec, view_contracts))
+    if spec.category != "registry" and asset_id != "REF_QS_ENV_STYLE_LOCK":
+        prompt = f"{prompt}\nDetail budget: {detail_budget['prompt_instruction']}"
     sections = _prompt_sections(prompt)
     sections["view_contracts"] = view_contracts
     expected_views = list(EXPECTED_VIEWS[spec.category])
@@ -953,7 +1011,8 @@ def _make_asset(
     references: list[dict[str, str]],
     root: Path,
 ) -> dict[str, Any]:
-    generation, stable_paths = _generation(asset_id, spec, references)
+    detail_budget = _detail_budget(asset_id, spec.category)
+    generation, stable_paths = _generation(asset_id, spec, references, detail_budget)
     dimensions = metrics["bounds_size_m"] if spec.dimensions is None else list(spec.dimensions)
     pcg = _pcg_contract(spec)
     _apply_layout_specifics(asset_id, pcg)
@@ -980,6 +1039,7 @@ def _make_asset(
         "batch": batch,
         "category": spec.category,
         "dependencies": dependencies,
+        "detail_budget": detail_budget,
         "display_name": spec.display_name,
         "forward_axis": "+Y",
         "gameplay_role": spec.role,
@@ -1093,6 +1153,17 @@ def _style_profile(references: list[dict[str, str]]) -> dict[str, Any]:
             "asset_view": "fixed_high_three_quarter",
             "paper2d_view": "front_or_camera_calibrated_no_exaggerated_perspective",
             "player_route_view": "fixed_game_camera",
+        },
+        "detail_budget": {
+            "category_rules": DETAIL_OBJECT_RULES,
+            "core": {
+                "forbidden_micro_detail": list(DETAIL_BUDGET_FORBIDDEN),
+                "main_value_bands": 2,
+                "max_primary_masses": 3,
+                "max_secondary_internal_stroke_groups": 5,
+                "shadow_accent_bands": 1,
+                "thumbnail_readability_px": 128,
+            },
         },
         "model_pipeline": {
             "building_source": "Tripo_high_precision",

@@ -11,6 +11,22 @@
     "REF_QS_ENV_STYLE_LOCK",
     "REF_QS_SCALE_LINEUP"
   ],
+  "detail_budget": {
+    "forbidden_micro_detail": [
+      "individual_roof_tiles",
+      "repeated_window_lattices",
+      "leaf_by_leaf_foliage",
+      "stone_or_pebble_tessellation",
+      "tiny_prop_piles"
+    ],
+    "main_value_bands": 2,
+    "max_primary_masses": 3,
+    "max_secondary_internal_stroke_groups": 5,
+    "object_rule": "each rock uses one outer contour plus one shadow band",
+    "prompt_instruction": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; each rock uses one outer contour plus one shadow band.",
+    "shadow_accent_bands": 1,
+    "thumbnail_readability_px": 128
+  },
   "display_name": "青山镇河岸湿石套件 B",
   "environment": {
     "model_pipeline": "high_precision_source_then_quad_retopology_then_material",
@@ -63,7 +79,7 @@
         "role": "shape_language"
       },
       {
-        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
         "role": "generated_style_lock"
       },
       {
@@ -75,7 +91,7 @@
       "style/references/style_env_day.jpeg",
       "style/references/style_character_scale.jpeg",
       "style/references/style_nature_group.jpeg",
-      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
       "style/boards/REF_QS_SCALE_LINEUP__board__v001.png"
     ],
     "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
@@ -89,11 +105,12 @@
       "warm_ochre",
       "moss_blue_gray"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: Qingshan rock_kit game environment reference\nPrimary request: S/M/L damp river rocks with moss and flattened bases\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: S/M/L damp river rocks with moss and flattened bases; intended gameplay role is wet_rock_kit\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView variant_lineup: Show S, M and L rocks as complete separated model-ready variants; required elements: S_M_L_variants, complete_separated_silhouettes, flat_bases, material_state\nView silhouette_scale: Show black silhouettes, gameplay scale and one asymmetric placement cluster; required elements: black_silhouette, player_and_building_scale, placement_cluster",
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan rock_kit game environment reference\nPrimary request: S/M/L damp river rocks with moss and flattened bases\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: S/M/L damp river rocks with moss and flattened bases; intended gameplay role is wet_rock_kit\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView variant_lineup: Show S, M and L rocks as complete separated model-ready variants; required elements: S_M_L_variants, complete_separated_silhouettes, flat_bases, material_state\nView silhouette_scale: Show black silhouettes, gameplay scale and one asymmetric placement cluster; required elements: black_silhouette, player_and_building_scale, placement_cluster\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; each rock uses one outer contour plus one shadow band.",
     "prompt_sections": {
       "asset_type": "Qingshan rock_kit game environment reference",
       "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
       "constraints": "no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+      "detail_budget": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; each rock uses one outer contour plus one shadow band.",
       "input_images": "project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects",
       "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
       "primary_request": "S/M/L damp river rocks with moss and flattened bases",

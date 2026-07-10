@@ -24,6 +24,22 @@
     "REF_QS_SCALE_LINEUP"
   ],
   "depth_layer": "midground_foliage",
+  "detail_budget": {
+    "forbidden_micro_detail": [
+      "individual_roof_tiles",
+      "repeated_window_lattices",
+      "leaf_by_leaf_foliage",
+      "stone_or_pebble_tessellation",
+      "tiny_prop_piles"
+    ],
+    "main_value_bands": 2,
+    "max_primary_masses": 3,
+    "max_secondary_internal_stroke_groups": 5,
+    "object_rule": "plant uses two or three broad crown groups plus one main trunk",
+    "prompt_instruction": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; plant uses two or three broad crown groups plus one main trunk.",
+    "shadow_accent_bands": 1,
+    "thumbnail_readability_px": 128
+  },
   "display_name": "青山镇野花族 A",
   "facing_mode": "fixed_camera_card",
   "forward_axis": "+Y",
@@ -69,7 +85,7 @@
         "role": "shape_language"
       },
       {
-        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
         "role": "generated_style_lock"
       },
       {
@@ -81,7 +97,7 @@
       "style/references/style_env_day.jpeg",
       "style/references/style_env_night.jpeg",
       "style/references/style_nature_group.jpeg",
-      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
       "style/boards/REF_QS_SCALE_LINEUP__board__v001.png"
     ],
     "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
@@ -94,11 +110,12 @@
       "blue_gray",
       "warm_ochre"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: Qingshan paper2d_plant game environment reference\nPrimary request: Three restrained wildflower clumps; only A receives four wind poses\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Three restrained wildflower clumps; only A receives four wind poses; intended gameplay role is flower\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView neutral_variants: Show the A, B and C plant silhouettes separately before any animation; required elements: separate_A_B_C, stable_root_or_trunk, warm_plain_background\nView silhouette_scale_cluster: Show black silhouettes with the project scale ruler and a 3–5 plant cluster; required elements: black_silhouette, project_character_and_building_scale_ruler, cluster_of_3_to_5\nView wind_poses: Derive the ordered wind poses only from approved neutral variant A; required elements: only_variant_A_animated, B_and_C_static, explicit_frame_sequence, stable_root_or_trunk",
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan paper2d_plant game environment reference\nPrimary request: Three restrained wildflower clumps; only A receives four wind poses\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Three restrained wildflower clumps; only A receives four wind poses; intended gameplay role is flower\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView neutral_variants: Show the A, B and C plant silhouettes separately before any animation; required elements: separate_A_B_C, stable_root_or_trunk, warm_plain_background\nView silhouette_scale_cluster: Show black silhouettes with the project scale ruler and a 3–5 plant cluster; required elements: black_silhouette, project_character_and_building_scale_ruler, cluster_of_3_to_5\nView wind_poses: Derive the ordered wind poses only from approved neutral variant A; required elements: only_variant_A_animated, B_and_C_static, explicit_frame_sequence, stable_root_or_trunk\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; plant uses two or three broad crown groups plus one main trunk.",
     "prompt_sections": {
       "asset_type": "Qingshan paper2d_plant game environment reference",
       "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
       "constraints": "no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+      "detail_budget": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; plant uses two or three broad crown groups plus one main trunk.",
       "input_images": "project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects",
       "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
       "primary_request": "Three restrained wildflower clumps; only A receives four wind poses",

@@ -622,6 +622,19 @@ git add -- SourceAssets/TownPCG/QingshanEnvironment/style/boards/REF_QS_ENV_STYL
 git commit -m "assets: generate qingshan environment style board"
 ```
 
+#### Final v003 style-board decision
+
+User review found v002 still too fragmented for later single-object production. The final
+allowed style-board revision is therefore v003; it must use the reusable `detail_budget`
+contract, emphasize larger masses and more rice-paper space, and becomes the generated
+style-lock input for Tasks 6–8 and every non-B0 concept. v001 and v002 remain preserved as
+revision evidence. v003 exhausts this view's 3/3 budget, and v004 remains forbidden.
+
+The v003 direct tool inputs are exactly v002 plus the character-scale, nature-group,
+warm-creature and mass-creature references. Its complete lineage contains the six stable
+style references plus v001 and v002. The actual trace stores the original Task 5 prompt
+followed by the approved final simplification directive.
+
 ### Task 6: Generate `REF_QS_SCALE_LINEUP`
 
 **Files:**
@@ -643,6 +656,7 @@ Style/medium: the exact QS_InkToon_v1 hand-drawn ink-cartoon language
 Composition/framing: wide lineup, every subject fully visible and separated, high three-quarter asset view, no cropping
 Lighting/mood: neutral soft daylight for shape comparison
 Constraints: no labels, no numbers, no text, no watermark, no duplicated subjects, no perspective distortion, no modern objects
+Detail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.
 ```
 
 - [ ] **Step 2: Copy, register, validate, and commit**
@@ -680,6 +694,7 @@ Style/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon environment concept
 Composition/framing: fixed high three-quarter camera matching the game; four route moments share scale, geography and asset identity; player path remains clear
 Lighting/mood: fresh morning, calm mist, readable gameplay contrast
 Constraints: no text, no UI, no labels, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects
+Detail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.
 ```
 
 - [ ] **Step 2: Copy, register, validate, and commit**
@@ -717,6 +732,7 @@ Style/medium: QS_InkToon_v1 hand-painted environment material concept, large rea
 Composition/framing: wide organized material board with separated but visually connected samples, no perspective-heavy hero object
 Lighting/mood: neutral overcast-soft light for color comparison
 Constraints: no text, no labels, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors, no obvious repeating photo texture
+Detail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture.
 ```
 
 - [ ] **Step 2: Copy, register, validate, and commit**

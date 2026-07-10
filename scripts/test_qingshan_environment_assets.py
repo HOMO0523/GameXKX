@@ -28,6 +28,34 @@ from qingshan_environment_assets import (  # noqa: E402
 )
 
 
+def valid_detail_budget() -> dict:
+    forbidden = [
+        "individual_roof_tiles",
+        "repeated_window_lattices",
+        "leaf_by_leaf_foliage",
+        "stone_or_pebble_tessellation",
+        "tiny_prop_piles",
+    ]
+    object_rule = (
+        "building roof is one primary mass plus one ridge stroke; "
+        "wall has at most one door and one simple window"
+    )
+    return {
+        "forbidden_micro_detail": forbidden,
+        "main_value_bands": 2,
+        "max_primary_masses": 3,
+        "max_secondary_internal_stroke_groups": 5,
+        "object_rule": object_rule,
+        "prompt_instruction": (
+            "Every object must read at 128px; use at most 3 primary masses and 5 secondary "
+            "internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow "
+            f"accent; forbid {', '.join(forbidden)}; {object_rule}."
+        ),
+        "shadow_accent_bands": 1,
+        "thumbnail_readability_px": 128,
+    }
+
+
 def valid_building() -> dict:
     return {
         "schema_version": 1,
@@ -48,6 +76,7 @@ def valid_building() -> dict:
         "material_language": ["ink_toon", "warm_plaster", "dark_timber"],
         "negative_prompt": ["photorealistic", "modern_signage", "mirror_symmetry"],
         "dependencies": ["REF_QS_ENV_STYLE_LOCK", "REF_QS_SCALE_LINEUP"],
+        "detail_budget": valid_detail_budget(),
         "source_provenance": {"source_kind": "project_concept"},
         "reference_images": [
             {
@@ -537,6 +566,27 @@ class SchemaParityValidationTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(CatalogError, "at most 5"):
             validate_asset(data)
+
+    def test_detail_budget_constants_and_fields_are_strict(self):
+        validate_asset(valid_building())
+        mutations = {
+            "thumbnail": ("thumbnail_readability_px", 64),
+            "primary masses": ("max_primary_masses", 4),
+            "secondary strokes": ("max_secondary_internal_stroke_groups", 6),
+            "main values": ("main_value_bands", 3),
+            "shadow values": ("shadow_accent_bands", 2),
+            "forbidden micro detail": (
+                "forbidden_micro_detail",
+                valid_detail_budget()["forbidden_micro_detail"][:-1],
+            ),
+            "prompt omits budget": ("prompt_instruction", "generic simplification"),
+        }
+        for label, (field, invalid) in mutations.items():
+            with self.subTest(label=label):
+                data = valid_building()
+                data["detail_budget"][field] = invalid
+                with self.assertRaisesRegex(CatalogError, "detail_budget"):
+                    validate_asset(data)
 
     def test_schema_object_types_raise_clean_catalog_errors(self):
         cases = {
@@ -1111,6 +1161,36 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
             self.assertEqual(assets["LMK_QS_BRIDGE_MAIN"]["pcg"]["road_provider"], "QuickRoad")
             self.assertEqual(assets["SRF_QS_ROAD_STONE_A"]["pcg"]["road_provider"], "QuickRoad")
 
+    def test_detail_budget_is_reusable_and_injected_into_all_future_generation_prompts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, _builder, _summary, assets = self._build(directory)
+            profile = json.loads(
+                (root / "style" / "QS_InkToon_v1.json").read_text(encoding="utf-8")
+            )
+            core = profile["detail_budget"]["core"]
+            self.assertEqual(core["thumbnail_readability_px"], 128)
+            self.assertEqual(core["max_primary_masses"], 3)
+            self.assertEqual(core["max_secondary_internal_stroke_groups"], 5)
+            self.assertEqual(core["main_value_bands"], 2)
+            self.assertEqual(core["shadow_accent_bands"], 1)
+            self.assertEqual(len(core["forbidden_micro_detail"]), 5)
+
+            final_style_path = "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png"
+            for asset_id, asset in assets.items():
+                budget = asset["detail_budget"]
+                self.assertEqual(budget["thumbnail_readability_px"], 128, asset_id)
+                self.assertEqual(budget["max_primary_masses"], 3, asset_id)
+                self.assertEqual(budget["max_secondary_internal_stroke_groups"], 5, asset_id)
+                self.assertEqual(budget["main_value_bands"], 2, asset_id)
+                self.assertEqual(budget["shadow_accent_bands"], 1, asset_id)
+                if asset["category"] != "registry" and asset_id != "REF_QS_ENV_STYLE_LOCK":
+                    self.assertIn(budget["prompt_instruction"], asset["generation"]["prompt"], asset_id)
+                    self.assertIn(final_style_path, asset["generation"]["input_images"], asset_id)
+
+            surface_budget = assets["SRF_QS_ROAD_STONE_A"]["detail_budget"]
+            self.assertIn("stone_or_pebble_tessellation", surface_budget["forbidden_micro_detail"])
+            self.assertIn("broad flat swatches", surface_budget["object_rule"])
+
     def test_plant_families_have_only_a_animated_and_exact_40_cell_budget(self):
         with tempfile.TemporaryDirectory() as directory:
             _root, _builder, _summary, assets = self._build(directory)
@@ -1184,7 +1264,7 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                     for path in asset["generation"]["input_images"]
                     if (
                         match := re.fullmatch(
-                            r"style/boards/(REF_QS_[A-Z0-9_]+)__board__v001\.png", path
+                            r"style/boards/(REF_QS_[A-Z0-9_]+)__board__v00[1-3]\.png", path
                         )
                     )
                 }
@@ -1959,6 +2039,17 @@ class SchemaContractTests(unittest.TestCase):
         )
         self.assertFalse(schema["properties"]["generation"]["additionalProperties"])
         self.assertFalse(schema["properties"]["workflow_gates"]["additionalProperties"])
+        self.assertIn("detail_budget", schema["required"])
+        detail_budget = schema["properties"]["detail_budget"]
+        self.assertFalse(detail_budget["additionalProperties"])
+        self.assertEqual(detail_budget["properties"]["thumbnail_readability_px"]["const"], 128)
+        self.assertEqual(detail_budget["properties"]["max_primary_masses"]["const"], 3)
+        self.assertEqual(
+            detail_budget["properties"]["max_secondary_internal_stroke_groups"]["const"],
+            5,
+        )
+        self.assertEqual(detail_budget["properties"]["main_value_bands"]["const"], 2)
+        self.assertEqual(detail_budget["properties"]["shadow_accent_bands"]["const"], 1)
         reference_item = schema["properties"]["reference_images"]["items"]
         for field in (
             "generation_input_paths",

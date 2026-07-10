@@ -15,6 +15,22 @@
     "style/references/style_creature_warm.jpeg",
     "style/references/style_creature_mass.jpeg"
   ],
+  "detail_budget": {
+    "forbidden_micro_detail": [
+      "individual_roof_tiles",
+      "repeated_window_lattices",
+      "leaf_by_leaf_foliage",
+      "stone_or_pebble_tessellation",
+      "tiny_prop_piles"
+    ],
+    "main_value_bands": 2,
+    "max_primary_masses": 3,
+    "max_secondary_internal_stroke_groups": 5,
+    "object_rule": "every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule",
+    "prompt_instruction": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.",
+    "shadow_accent_bands": 1,
+    "thumbnail_readability_px": 128
+  },
   "display_name": "青山镇环境风格锁定板",
   "forward_axis": "+Y",
   "gameplay_role": "style_board",
@@ -44,7 +60,7 @@
       "cropped subject",
       "PBR plastic shine"
     ],
-    "generation_calls_used": 2,
+    "generation_calls_used": 3,
     "input_image_roles": [
       {
         "path": "style/references/style_env_day.jpeg",
@@ -169,30 +185,32 @@
       "camera": "fixed_high_three_quarter_or_category_sheet",
       "file_stub": "REF_QS_ENV_STYLE_LOCK__board",
       "generation_input_paths": [
-        "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
-        "style/references/style_env_day.jpeg",
+        "style/boards/REF_QS_ENV_STYLE_LOCK__board__v002.png",
         "style/references/style_character_scale.jpeg",
         "style/references/style_nature_group.jpeg",
-        "style/references/style_creature_warm.jpeg"
+        "style/references/style_creature_warm.jpeg",
+        "style/references/style_creature_mass.jpeg"
       ],
-      "generation_prompt": "Use case: stylized-concept\nAsset type: game environment style-lock board\nPrimary request: define the approved visual language for Qingshan town, a Chinese ink-cartoon town enclosed by layered mountains\nInput images: environment day and night images are atmosphere and brushwork references; character and creature images are proportion, outline, shape-language, and palette references; do not copy their subjects\nScene/backdrop: warm rice-paper board with a compact town vignette, small material swatches, roof-color families, foliage shapes, mountain layers, river and stone-road samples; no written labels\nSubject: warm off-white walls, dark timber, roofs in warm red-brown, ink green, indigo, ochre and teal; jade and blue-green foliage; blue-gray mist mountains; dark teal variable ink outlines\nStyle/medium: hand-drawn Chinese ink cartoon concept art, dry-brush broken edges, simplified chunky silhouettes, two to three value bands, restrained watercolor wash\nComposition/framing: wide coherent style board, central environment vignette with orderly visual samples around it, generous margins\nLighting/mood: calm bright morning with a small cool mist sample, friendly adventure tone\nConstraints: no text, no symbols, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nTargeted v002 revision. Use v001 only for content inventory and broad board layout; redraw every element in the project's original chunky ink-cartoon language. Strong variable thick dark-teal outlines, broken dry-brush strokes, exaggerated asymmetric silhouettes, broad watercolor masses, two-to-three value bands. Reduce the central town to at most 6–8 clearly separated crooked buildings. Remove individual roof-tile grids, repeated window lattices, ornate pagoda realism, tiny market clutter, fine architectural linework and orderly symmetry. Make roofs larger and more playful, trees broader and grouped, mountains simpler and mistier, bridge/river/road shapes readable at thumbnail scale. Preserve roof palette swatches and material samples with generous rice-paper gaps. No text, symbols, logos, watermark, modern objects, photorealism or PBR shine.",
+      "generation_prompt": "Use case: stylized-concept\nAsset type: game environment style-lock board\nPrimary request: define the approved visual language for Qingshan town, a Chinese ink-cartoon town enclosed by layered mountains\nInput images: environment day and night images are atmosphere and brushwork references; character and creature images are proportion, outline, shape-language, and palette references; do not copy their subjects\nScene/backdrop: warm rice-paper board with a compact town vignette, small material swatches, roof-color families, foliage shapes, mountain layers, river and stone-road samples; no written labels\nSubject: warm off-white walls, dark timber, roofs in warm red-brown, ink green, indigo, ochre and teal; jade and blue-green foliage; blue-gray mist mountains; dark teal variable ink outlines\nStyle/medium: hand-drawn Chinese ink cartoon concept art, dry-brush broken edges, simplified chunky silhouettes, two to three value bands, restrained watercolor wash\nComposition/framing: wide coherent style board, central environment vignette with orderly visual samples around it, generous margins\nLighting/mood: calm bright morning with a small cool mist sample, friendly adventure tone\nConstraints: no text, no symbols, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nTargeted final v003 simplification based on user feedback that v002 is still too fragmented. Treat v002 only as a negative density and content-inventory reference; take line weight, shape economy and playful exaggeration from the project character, creature and nature drawings. Rebuild the board with at most four separated crooked buildings and at least forty percent blank rice-paper space. Every object must read at 128px: no more than three primary masses and five internal accent strokes or stroke groups. Each roof is one bold solid silhouette plus one ridge stroke; no tile rows, eave struts or joinery grids. Each wall has at most one door and one simple window shape. Bridge uses only deck, arch and rail masses with no masonry joints. Trees use two or three broad foliage blobs plus trunk, never leaf-by-leaf clusters. Mountains use one silhouette and two dry-brush accents. Rocks use one outer contour and one shadow band. Water and road are broad flat swatches without cobble tessellation or pebble noise. Use very thick uneven dark-teal ink outlines, broken dry-brush edges, two main value bands plus one shadow accent, broad watercolor fills, humorous asymmetry and large clean gaps. Remove stairs, fences, tiny market props, repeated windows, stone joints and ornamental architecture. No text, symbols, logos, watermark, modern objects, photorealism or PBR shine.",
       "generation_reference_lineage": [
         "style/references/style_env_day.jpeg",
         "style/references/style_env_night.jpeg",
         "style/references/style_character_scale.jpeg",
         "style/references/style_nature_group.jpeg",
         "style/references/style_creature_warm.jpeg",
-        "style/references/style_creature_mass.jpeg"
+        "style/references/style_creature_mass.jpeg",
+        "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "style/boards/REF_QS_ENV_STYLE_LOCK__board__v002.png"
       ],
       "kind": "board",
-      "output_path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v002.png",
+      "output_path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
       "required_annotations": [
         "complete_board",
         "consistent_QS_InkToon_v1",
         "no_written_labels"
       ],
-      "sha256": "0f25c0681a421fc2e223cd323d7427b3b64849c4e7deedaaf5d5e073fc9b18e4",
-      "version": "v002"
+      "sha256": "cfb493f94d8a0063846e8a2e5a7bd4cdb1312b37399e5f3d74df353e2fa8458b",
+      "version": "v003"
     }
   ],
   "schema_version": 1,

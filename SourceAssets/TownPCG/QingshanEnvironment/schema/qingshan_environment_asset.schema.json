@@ -24,6 +24,7 @@
     "material_language",
     "negative_prompt",
     "dependencies",
+    "detail_budget",
     "source_provenance",
     "reference_images",
     "generation",
@@ -105,6 +106,52 @@
     },
     "dependencies": {
       "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "detail_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "thumbnail_readability_px",
+        "max_primary_masses",
+        "max_secondary_internal_stroke_groups",
+        "main_value_bands",
+        "shadow_accent_bands",
+        "forbidden_micro_detail",
+        "object_rule",
+        "prompt_instruction"
+      ],
+      "properties": {
+        "thumbnail_readability_px": {
+          "const": 128
+        },
+        "max_primary_masses": {
+          "const": 3
+        },
+        "max_secondary_internal_stroke_groups": {
+          "const": 5
+        },
+        "main_value_bands": {
+          "const": 2
+        },
+        "shadow_accent_bands": {
+          "const": 1
+        },
+        "forbidden_micro_detail": {
+          "const": [
+            "individual_roof_tiles",
+            "repeated_window_lattices",
+            "leaf_by_leaf_foliage",
+            "stone_or_pebble_tessellation",
+            "tiny_prop_piles"
+          ]
+        },
+        "object_rule": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "prompt_instruction": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
     },
     "source_provenance": {
       "type": "object",

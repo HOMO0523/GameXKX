@@ -14,6 +14,22 @@
     "style/references/style_character_scale.jpeg",
     "REF_QS_ENV_STYLE_LOCK"
   ],
+  "detail_budget": {
+    "forbidden_micro_detail": [
+      "individual_roof_tiles",
+      "repeated_window_lattices",
+      "leaf_by_leaf_foliage",
+      "stone_or_pebble_tessellation",
+      "tiny_prop_piles"
+    ],
+    "main_value_bands": 2,
+    "max_primary_masses": 3,
+    "max_secondary_internal_stroke_groups": 5,
+    "object_rule": "every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule",
+    "prompt_instruction": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.",
+    "shadow_accent_bands": 1,
+    "thumbnail_readability_px": 128
+  },
   "display_name": "青山镇玩家镜头路线板",
   "forward_axis": "+Y",
   "gameplay_role": "route_board",
@@ -62,7 +78,7 @@
         "role": "character_scale"
       },
       {
-        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
         "role": "generated_style_lock"
       }
     ],
@@ -71,7 +87,7 @@
       "style/references/style_env_night.jpeg",
       "style/references/layout_dense_foliage.jpg",
       "style/references/style_character_scale.jpeg",
-      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png"
+      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png"
     ],
     "lighting_mood": "fresh morning, calm mist, readable gameplay contrast",
     "max_generation_calls": 3,
@@ -84,11 +100,12 @@
       "warm_ochre",
       "blue_green"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: four-panel game environment camera-route concept board\nPrimary request: show the Qingshan town player route in four consistent fixed-camera views: north gate arrival, market and largest shop, main bridge, south dock\nInput images: project ink illustrations define style; the foliage screenshot defines only dense overlapping canopy rhythm, never its rendering style; the style-lock board defines final palette and materials\nScene/backdrop: one coherent mountain-enclosed Chinese town across four equal visual panels without borders or text\nSubject: north gate remains on screen right; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market, offset bridge, river and left-side dock; one large shop, smaller staggered houses, clustered foliage, near solid mountain feet and pale Paper2D-like far mountain silhouettes\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon environment concept\nComposition/framing: fixed high three-quarter camera matching the game; four route moments share scale, geography and asset identity; player path remains clear\nLighting/mood: fresh morning, calm mist, readable gameplay contrast\nConstraints: no text, no UI, no labels, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects",
+    "prompt": "Use case: stylized-concept\nAsset type: four-panel game environment camera-route concept board\nPrimary request: show the Qingshan town player route in four consistent fixed-camera views: north gate arrival, market and largest shop, main bridge, south dock\nInput images: project ink illustrations define style; the foliage screenshot defines only dense overlapping canopy rhythm, never its rendering style; the style-lock board defines final palette and materials\nScene/backdrop: one coherent mountain-enclosed Chinese town across four equal visual panels without borders or text\nSubject: north gate remains on screen right; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market, offset bridge, river and left-side dock; one large shop, smaller staggered houses, clustered foliage, near solid mountain feet and pale Paper2D-like far mountain silhouettes\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon environment concept\nComposition/framing: fixed high three-quarter camera matching the game; four route moments share scale, geography and asset identity; player path remains clear\nLighting/mood: fresh morning, calm mist, readable gameplay contrast\nConstraints: no text, no UI, no labels, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.",
     "prompt_sections": {
       "asset_type": "four-panel game environment camera-route concept board",
       "composition_framing": "fixed high three-quarter camera matching the game; four route moments share scale, geography and asset identity; player path remains clear",
       "constraints": "no text, no UI, no labels, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects",
+      "detail_budget": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.",
       "input_images": "project ink illustrations define style; the foliage screenshot defines only dense overlapping canopy rhythm, never its rendering style; the style-lock board defines final palette and materials",
       "lighting_mood": "fresh morning, calm mist, readable gameplay contrast",
       "primary_request": "show the Qingshan town player route in four consistent fixed-camera views: north gate arrival, market and largest shop, main bridge, south dock",

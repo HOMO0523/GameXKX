@@ -11,6 +11,22 @@
     "REF_QS_ENV_STYLE_LOCK",
     "REF_QS_SCALE_LINEUP"
   ],
+  "detail_budget": {
+    "forbidden_micro_detail": [
+      "individual_roof_tiles",
+      "repeated_window_lattices",
+      "leaf_by_leaf_foliage",
+      "stone_or_pebble_tessellation",
+      "tiny_prop_piles"
+    ],
+    "main_value_bands": 2,
+    "max_primary_masses": 3,
+    "max_secondary_internal_stroke_groups": 5,
+    "object_rule": "bridge uses only deck, arch and rail as its three primary masses",
+    "prompt_instruction": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; bridge uses only deck, arch and rail as its three primary masses.",
+    "shadow_accent_bands": 1,
+    "thumbnail_readability_px": 128
+  },
   "display_name": "青山镇主桥",
   "forward_axis": "+Y",
   "gameplay_role": "traversal",
@@ -55,7 +71,7 @@
         "role": "shape_language"
       },
       {
-        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
         "role": "generated_style_lock"
       },
       {
@@ -67,7 +83,7 @@
       "style/references/style_env_day.jpeg",
       "style/references/style_character_scale.jpeg",
       "style/references/style_nature_group.jpeg",
-      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
       "style/boards/REF_QS_SCALE_LINEUP__board__v001.png"
     ],
     "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
@@ -81,11 +97,12 @@
       "warm_ochre",
       "dark_timber"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: Qingshan landmark game environment reference\nPrimary request: Nine-metre-wide timber-and-stone main bridge with clear deck\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Nine-metre-wide timber-and-stone main bridge with clear deck; intended gameplay role is traversal\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView route_3q: Show the landmark as a readable traversal moment on the player route; required elements: player_route_primary_view, entry_and_exit, traversal_clearance, fixed_high_three_quarter_camera\nView structure_connection_sheet: Show structure, passage dimensions and all route connection interfaces in one sheet; required elements: front_and_side_structure, top_down_passage_dimensions, connection_interfaces, material_regions, simple_collision_clearance",
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan landmark game environment reference\nPrimary request: Nine-metre-wide timber-and-stone main bridge with clear deck\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Nine-metre-wide timber-and-stone main bridge with clear deck; intended gameplay role is traversal\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView route_3q: Show the landmark as a readable traversal moment on the player route; required elements: player_route_primary_view, entry_and_exit, traversal_clearance, fixed_high_three_quarter_camera\nView structure_connection_sheet: Show structure, passage dimensions and all route connection interfaces in one sheet; required elements: front_and_side_structure, top_down_passage_dimensions, connection_interfaces, material_regions, simple_collision_clearance\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; bridge uses only deck, arch and rail as its three primary masses.",
     "prompt_sections": {
       "asset_type": "Qingshan landmark game environment reference",
       "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
       "constraints": "no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+      "detail_budget": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; bridge uses only deck, arch and rail as its three primary masses.",
       "input_images": "project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects",
       "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
       "primary_request": "Nine-metre-wide timber-and-stone main bridge with clear deck",

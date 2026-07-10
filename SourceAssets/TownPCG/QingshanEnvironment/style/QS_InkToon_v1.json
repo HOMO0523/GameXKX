@@ -4,6 +4,36 @@
     "paper2d_view": "front_or_camera_calibrated_no_exaggerated_perspective",
     "player_route_view": "fixed_game_camera"
   },
+  "detail_budget": {
+    "category_rules": {
+      "bridge": "bridge uses only deck, arch and rail as its three primary masses",
+      "building": "building roof is one bold primary silhouette plus one ridge stroke; each wall has at most one door and one simple window shape",
+      "far_mountain": "far mountain uses one outer silhouette and at most two dry-brush accents",
+      "landmark": "landmark uses at most three large functional masses and no ornamental gridwork",
+      "linear_kit": "each linear-kit member uses at most three clean connected masses",
+      "near_mountain": "near mountain uses one outer silhouette and at most two dry-brush accents",
+      "paper2d_plant": "plant uses two or three broad crown groups plus one main trunk",
+      "prop_kit": "each prop-kit member uses at most three masses and never forms a tiny prop pile",
+      "reference": "every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule",
+      "registry": "existing building remains a record-only source; any future redraw uses one roof mass, one ridge stroke, at most one door and one simple window per wall",
+      "rock_kit": "each rock uses one outer contour plus one shadow band",
+      "surface": "surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture"
+    },
+    "core": {
+      "forbidden_micro_detail": [
+        "individual_roof_tiles",
+        "repeated_window_lattices",
+        "leaf_by_leaf_foliage",
+        "stone_or_pebble_tessellation",
+        "tiny_prop_piles"
+      ],
+      "main_value_bands": 2,
+      "max_primary_masses": 3,
+      "max_secondary_internal_stroke_groups": 5,
+      "shadow_accent_bands": 1,
+      "thumbnail_readability_px": 128
+    }
+  },
   "model_pipeline": {
     "building_quad_face_targets": {
       "BLD_QS_M_A_INN": {

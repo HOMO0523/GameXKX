@@ -11,6 +11,22 @@
     "source_metrics.json",
     "style/references/provenance.json"
   ],
+  "detail_budget": {
+    "forbidden_micro_detail": [
+      "individual_roof_tiles",
+      "repeated_window_lattices",
+      "leaf_by_leaf_foliage",
+      "stone_or_pebble_tessellation",
+      "tiny_prop_piles"
+    ],
+    "main_value_bands": 2,
+    "max_primary_masses": 3,
+    "max_secondary_internal_stroke_groups": 5,
+    "object_rule": "existing building remains a record-only source; any future redraw uses one roof mass, one ridge stroke, at most one door and one simple window per wall",
+    "prompt_instruction": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; existing building remains a record-only source; any future redraw uses one roof mass, one ridge stroke, at most one door and one simple window per wall.",
+    "shadow_accent_bands": 1,
+    "thumbnail_readability_px": 128
+  },
   "display_name": "青山镇最大商铺 L-A（现有登记）",
   "forward_axis": "+Y",
   "gameplay_role": "landmark_shop",

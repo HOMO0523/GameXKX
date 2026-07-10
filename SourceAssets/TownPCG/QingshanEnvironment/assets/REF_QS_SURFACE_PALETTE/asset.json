@@ -13,6 +13,22 @@
     "style/references/style_creature_warm.jpeg",
     "REF_QS_ENV_STYLE_LOCK"
   ],
+  "detail_budget": {
+    "forbidden_micro_detail": [
+      "individual_roof_tiles",
+      "repeated_window_lattices",
+      "leaf_by_leaf_foliage",
+      "stone_or_pebble_tessellation",
+      "tiny_prop_piles"
+    ],
+    "main_value_bands": 2,
+    "max_primary_masses": 3,
+    "max_secondary_internal_stroke_groups": 5,
+    "object_rule": "surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture",
+    "prompt_instruction": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture.",
+    "shadow_accent_bands": 1,
+    "thumbnail_readability_px": 128
+  },
   "display_name": "青山镇地表与水体色板",
   "forward_axis": "+Y",
   "gameplay_role": "surface_board",
@@ -57,7 +73,7 @@
         "role": "warm_palette"
       },
       {
-        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
         "role": "generated_style_lock"
       }
     ],
@@ -65,7 +81,7 @@
       "style/references/style_env_day.jpeg",
       "style/references/style_env_night.jpeg",
       "style/references/style_creature_warm.jpeg",
-      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png"
+      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png"
     ],
     "lighting_mood": "neutral overcast-soft light for color comparison",
     "max_generation_calls": 3,
@@ -78,11 +94,12 @@
       "warm_ochre",
       "earth_ochre"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: game environment surface-palette board\nPrimary request: define the coordinated ground and water surfaces for Qingshan town\nInput images: project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock board defines final palette\nScene/backdrop: warm rice-paper presentation board, no written labels\nSubject: adjacent samples of compact earth, sparse grass ground, worn stone-and-dirt road, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; include two clean transition strips and one small player-camera terrain vignette\nStyle/medium: QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands\nComposition/framing: wide organized material board with separated but visually connected samples, no perspective-heavy hero object\nLighting/mood: neutral overcast-soft light for color comparison\nConstraints: no text, no labels, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors, no obvious repeating photo texture",
+    "prompt": "Use case: stylized-concept\nAsset type: game environment surface-palette board\nPrimary request: define the coordinated ground and water surfaces for Qingshan town\nInput images: project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock board defines final palette\nScene/backdrop: warm rice-paper presentation board, no written labels\nSubject: adjacent samples of compact earth, sparse grass ground, worn stone-and-dirt road, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; include two clean transition strips and one small player-camera terrain vignette\nStyle/medium: QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands\nComposition/framing: wide organized material board with separated but visually connected samples, no perspective-heavy hero object\nLighting/mood: neutral overcast-soft light for color comparison\nConstraints: no text, no labels, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors, no obvious repeating photo texture\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture.",
     "prompt_sections": {
       "asset_type": "game environment surface-palette board",
       "composition_framing": "wide organized material board with separated but visually connected samples, no perspective-heavy hero object",
       "constraints": "no text, no labels, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors, no obvious repeating photo texture",
+      "detail_budget": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture.",
       "input_images": "project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock board defines final palette",
       "lighting_mood": "neutral overcast-soft light for color comparison",
       "primary_request": "define the coordinated ground and water surfaces for Qingshan town",
