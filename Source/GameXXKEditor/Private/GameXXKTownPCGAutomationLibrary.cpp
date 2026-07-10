@@ -35,6 +35,7 @@ namespace GameXXKTownPCGAutomation
 {
 	constexpr TCHAR ManagedGraphRoot[] = TEXT("/Game/GameXXK/Environment/TownPCG/VerticalSlice/");
 	constexpr TCHAR PrototypeMapRoot[] = TEXT("/Game/GameXXK/Maps/Prototype/");
+	const FName PrototypeOnlyTag(TEXT("PrototypeOnly"));
 
 	class FRevertibleEditorTransaction
 	{
@@ -198,7 +199,7 @@ namespace GameXXKTownPCGAutomation
 			});
 	}
 
-	bool ValidatePrototypeMutationContext(UWorld* World, const AActor* ActorToMutate, FString& OutError)
+	bool ValidatePrototypeReadContext(UWorld* World, const AActor* ActorToInspect, FString& OutError)
 	{
 		if (!World)
 		{
@@ -224,6 +225,21 @@ namespace GameXXKTownPCGAutomation
 			OutError = TEXT("current level is not a prototype map level");
 			return false;
 		}
+		if (ActorToInspect && ActorToInspect->GetLevel() != CurrentLevel)
+		{
+			OutError = TEXT("the exact-label actor belongs to a different level");
+			return false;
+		}
+		return true;
+	}
+
+	bool ValidatePrototypeMutationContext(UWorld* World, const AActor* ActorToMutate, FString& OutError)
+	{
+		if (!ValidatePrototypeReadContext(World, ActorToMutate, OutError))
+		{
+			return false;
+		}
+		ULevel* CurrentLevel = World->GetCurrentLevel();
 		if (FLevelUtils::IsLevelLocked(CurrentLevel))
 		{
 			OutError = TEXT("current editor level is locked");
@@ -234,12 +250,26 @@ namespace GameXXKTownPCGAutomation
 			OutError = TEXT("current editor map package is read-only");
 			return false;
 		}
-		if (ActorToMutate && ActorToMutate->GetLevel() != CurrentLevel)
-		{
-			OutError = TEXT("the exact-label PCG volume belongs to a different level");
-			return false;
-		}
 		return true;
+	}
+
+	bool ResolveManagedSplineSemanticTag(const TArray<FName>& Tags, FName& OutTag)
+	{
+		static const TSet<FName> AllowedTags = {
+			FName(TEXT("Quick_Road_CityScope")),
+			FName(TEXT("Quick_Road_MainRoad")),
+			FName(TEXT("Quick_Road_RoadEdge")),
+			FName(TEXT("TownPCG_River")),
+		};
+		for (const FName Tag : Tags)
+		{
+			if (AllowedTags.Contains(Tag))
+			{
+				OutTag = Tag;
+				return true;
+			}
+		}
+		return false;
 	}
 
 	APCGVolume* FindUniquePCGVolume(UWorld* World, const FString& ActorLabel, FString& OutError)
@@ -325,6 +355,14 @@ FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTaggedSpline(
 		UniqueTags.AddUnique(Tag);
 	}
 	UniqueTags.Sort([](const FName A, const FName B) { return A.LexicalLess(B); });
+	FName ManagedSemanticTag;
+	if (!UniqueTags.Contains(PrototypeOnlyTag) || !ResolveManagedSplineSemanticTag(UniqueTags, ManagedSemanticTag))
+	{
+		return ErrorJson(
+			Operation,
+			TEXT("spline tags must include PrototypeOnly and one supported managed semantic tag"),
+			ActorLabel);
+	}
 
 	UWorld* World = GetEditorWorld();
 	if (!ValidatePrototypeMutationContext(World, nullptr, Error))
@@ -351,6 +389,13 @@ FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTaggedSpline(
 		if (SplineActor->GetClass() != AActor::StaticClass())
 		{
 			return ErrorJson(Operation, TEXT("the exact-label actor is not a plain Actor spline owner"), ActorLabel);
+		}
+		if (!SplineActor->Tags.Contains(PrototypeOnlyTag) || !SplineActor->Tags.Contains(ManagedSemanticTag))
+		{
+			return ErrorJson(
+				Operation,
+				TEXT("existing spline actor is not owned by town PCG assembly for the requested semantic tag"),
+				ActorLabel);
 		}
 		TInlineComponentArray<USplineComponent*> SplineComponents;
 		SplineActor->GetComponents(SplineComponents);
@@ -791,7 +836,7 @@ FString UGameXXKTownPCGAutomationLibrary::GetTownPCGStatus(const FString& ActorL
 		return ErrorJson(Operation, Error, ActorLabel);
 	}
 	UWorld* World = GetEditorWorld();
-	if (!ValidatePrototypeMutationContext(World, nullptr, Error))
+	if (!ValidatePrototypeReadContext(World, nullptr, Error))
 	{
 		return ErrorJson(Operation, Error, ActorLabel);
 	}
@@ -800,7 +845,7 @@ FString UGameXXKTownPCGAutomationLibrary::GetTownPCGStatus(const FString& ActorL
 	{
 		return ErrorJson(Operation, Error, ActorLabel);
 	}
-	if (!ValidatePrototypeMutationContext(World, Volume, Error))
+	if (!ValidatePrototypeReadContext(World, Volume, Error))
 	{
 		return ErrorJson(Operation, Error, ActorLabel);
 	}

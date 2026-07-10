@@ -176,6 +176,7 @@ def _create_or_update_anchor_actor(
     extra_tags: Iterable[str] = (),
 ):
     actor = _find_unique_actor_by_label(label, unreal.StaticMeshActor)
+    actor_existed = actor is not None
     world_location = _north_local_to_world(north_transform, local_location)
     if actor is None:
         actor = unreal.EditorLevelLibrary.spawn_actor_from_class(
@@ -184,6 +185,11 @@ def _create_or_update_anchor_actor(
         if actor is None:
             raise RuntimeError(f"failed to spawn StaticMeshActor for {label}")
         actor.set_actor_label(label)
+    _require_actor_in_current_level(actor, label)
+    if actor_existed:
+        _require_existing_actor_tags(
+            actor, label, (_PROTOTYPE_ONLY_TAG, _FIXED_ANCHOR_TAG)
+        )
     actor.set_actor_location(world_location, False, False)
     actor.set_actor_rotation(unreal.Rotator(0.0, 0.0, 0.0), False)
     actor.set_actor_scale3d(unreal.Vector(*[float(value) for value in scale]))
@@ -208,6 +214,15 @@ def _require_actor_in_current_level(actor, label: str) -> None:
     current_level = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).get_current_level()
     if actor.get_level() != current_level:
         raise RuntimeError(f"managed actor {label!r} belongs to a different level")
+
+
+def _require_existing_actor_tags(actor, label: str, required_tags: Iterable[str]) -> None:
+    existing_tags = {str(tag) for tag in actor.get_editor_property("tags")}
+    missing = sorted(set(required_tags) - existing_tags)
+    if missing:
+        raise RuntimeError(
+            f"existing managed actor {label!r} is missing ownership tags {missing}"
+        )
 
 
 def _remove_obsolete_tree_marker_spline() -> bool:
@@ -239,6 +254,7 @@ def _create_or_update_tree_marker_actor(
     mesh,
 ):
     actor = _find_unique_actor_by_label(label, unreal.StaticMeshActor)
+    actor_existed = actor is not None
     world_location = _north_local_to_world(north_transform, local_location)
     if actor is None:
         actor = unreal.EditorLevelLibrary.spawn_actor_from_class(
@@ -250,6 +266,12 @@ def _create_or_update_tree_marker_actor(
             raise RuntimeError(f"failed to spawn tree marker StaticMeshActor {label}")
         actor.set_actor_label(label)
     _require_actor_in_current_level(actor, label)
+    if actor_existed:
+        _require_existing_actor_tags(
+            actor,
+            label,
+            (_PROTOTYPE_ONLY_TAG, "TownPCG_TreeDebug", "TownPCG_TreeMarker"),
+        )
     actor.set_actor_location(world_location, False, False)
     actor.set_actor_rotation(
         unreal.Rotator(pitch=0.0, yaw=float(yaw_degrees), roll=0.0), False

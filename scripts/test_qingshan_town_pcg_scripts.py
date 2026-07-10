@@ -213,6 +213,16 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
         self.assertIn('SetBoolField(TEXT("generated")', implementation)
         self.assertIn('SetNumberField(TEXT("generated_component_count")', implementation)
 
+    def test_read_only_status_does_not_apply_mutator_lock_or_read_only_restrictions(self):
+        implementation = IMPLEMENTATION.read_text(encoding="utf-8")
+        status_start = implementation.index("FString UGameXXKTownPCGAutomationLibrary::GetTownPCGStatus")
+        status_end = implementation.index("FString UGameXXKTownPCGAutomationLibrary::ClearTownPCG", status_start)
+        status_body = implementation[status_start:status_end]
+        self.assertIn("ValidatePrototypeReadContext", implementation)
+        self.assertIn("ValidatePrototypeReadContext(World, nullptr, Error)", status_body)
+        self.assertIn("ValidatePrototypeReadContext(World, Volume, Error)", status_body)
+        self.assertNotIn("ValidatePrototypeMutationContext", status_body)
+
     def test_graph_authoring_rejects_an_existing_object_of_the_wrong_class(self):
         implementation = IMPLEMENTATION.read_text(encoding="utf-8")
         self.assertIn("LoadAssetByPackagePath<UObject>", implementation)
@@ -233,18 +243,18 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
         self.assertIn("FLevelUtils::IsLevelLocked", implementation)
         self.assertIn("IFileManager::Get().IsReadOnly", implementation)
         self.assertIn("CurrentLevel->GetOutermost()->GetName()", implementation)
-        self.assertIn("ActorToMutate->GetLevel() != CurrentLevel", implementation)
+        self.assertIn("ActorToInspect->GetLevel() != CurrentLevel", implementation)
 
     def test_all_actor_mutators_share_the_same_prototype_context_validator(self):
         implementation = IMPLEMENTATION.read_text(encoding="utf-8")
         self.assertIn("ValidatePrototypeMutationContext", implementation)
         self.assertEqual(
             implementation.count("ValidatePrototypeMutationContext(World, nullptr, Error)"),
-            5,
+            4,
         )
         self.assertEqual(
             implementation.count("ValidatePrototypeMutationContext(World, Volume, Error)"),
-            4,
+            3,
         )
         self.assertEqual(
             implementation.count("ValidatePrototypeMutationContext(World, SplineActor, Error)"),
@@ -266,6 +276,18 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
         self.assertIn("SetSplinePoints(WorldPoints, ESplineCoordinateSpace::World, false)", implementation)
         self.assertIn("SetClosedLoop(bClosedLoop, false)", implementation)
         self.assertIn("SetArrayField(TEXT(\"tags\")", implementation)
+        self.assertIn("PrototypeOnlyTag", implementation)
+        self.assertIn("ResolveManagedSplineSemanticTag", implementation)
+        self.assertIn("existing spline actor is not owned by town PCG assembly", implementation)
+
+    def test_existing_python_managed_actors_require_level_and_ownership_before_mutation(self):
+        source = ASSEMBLY_SCRIPT.read_text(encoding="utf-8")
+        self.assertIn("_require_actor_in_current_level(actor, label)", source)
+        self.assertIn("_require_existing_actor_tags", source)
+        self.assertIn("TownPCG_FixedAnchor", source)
+        self.assertIn("TownPCG_TreeDebug", source)
+        self.assertIn("TownPCG_TreeMarker", source)
+        self.assertIn("existing managed actor", source)
 
 
 if __name__ == "__main__":
