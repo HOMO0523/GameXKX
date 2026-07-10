@@ -312,6 +312,14 @@ class SchemaParityValidationTests(unittest.TestCase):
                 with self.assertRaisesRegex(CatalogError, field):
                     validate_asset(data)
 
+    def test_nested_atlas_cell_count_is_a_strict_positive_integer(self):
+        for malformed in ("7", 0, True):
+            with self.subTest(malformed=malformed):
+                data = _asset_for("paper2d_plant", "P2D_QS_BAD_ATLAS", "B1")
+                data["paper2d"] = {"atlas_cell_count": malformed}
+                with self.assertRaisesRegex(CatalogError, "paper2d.atlas_cell_count"):
+                    validate_asset(data)
+
 
 class CatalogValidationTests(unittest.TestCase):
     def test_valid_catalog_returns_summary(self):
@@ -410,6 +418,17 @@ class CatalogValidationTests(unittest.TestCase):
             _write_asset(root, plant)
 
             with self.assertRaisesRegex(CatalogError, "total 40"):
+                validate_catalog(root)
+
+    def test_catalog_reports_malformed_plant_atlas_as_catalog_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = _build_catalog(root)
+            plant = next(item for item in assets if item["category"] == "paper2d_plant")
+            plant["paper2d"]["atlas_cell_count"] = "seven"
+            _write_asset(root, plant)
+
+            with self.assertRaisesRegex(CatalogError, "paper2d.atlas_cell_count"):
                 validate_catalog(root)
 
     def test_catalog_enforces_batch_call_cap(self):
@@ -582,6 +601,23 @@ class OutputRegistrationTests(unittest.TestCase):
             with self.assertRaisesRegex(CatalogError, "not present in manifest"):
                 register_output(root, stale["asset_id"], "hero_3q", "v001", output)
 
+    def test_unrelated_duplicate_manifest_id_blocks_registration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            current = valid_building()
+            duplicated = _asset_for("reference", "REF_QS_DUPLICATED_MEMBER", "B0")
+            _write_asset(root, current)
+            _write_asset(root, duplicated)
+            _write_manifest(
+                root,
+                [current["asset_id"], duplicated["asset_id"], duplicated["asset_id"]],
+            )
+            output = root / "concept.png"
+            output.write_bytes(b"must not register with duplicate manifest membership")
+
+            with self.assertRaisesRegex(CatalogError, "manifest asset_ids must be unique"):
+                register_output(root, current["asset_id"], "hero_3q", "v001", output)
+
     def test_existing_or_older_version_is_not_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
             data = valid_building()
@@ -659,6 +695,33 @@ class BatchReportTests(unittest.TestCase):
             _write_json(mismatched_path, mismatched)
 
             with self.assertRaisesRegex(CatalogError, "asset_id mismatch"):
+                write_batch_report(root, "B0", root / "report.md")
+
+    def test_report_rejects_duplicate_manifest_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = [
+                _asset_for("reference", f"REF_QS_DUP_REPORT_{index}", "B0")
+                for index in range(3)
+            ]
+            _write_manifest(root, [item["asset_id"] for item in assets])
+            for asset in assets:
+                _write_asset(root, asset)
+            for index, asset in enumerate(assets):
+                image_path = root / f"duplicate-report-{index}.png"
+                image_path.write_bytes(f"board {index}".encode("utf-8"))
+                register_output(root, asset["asset_id"], "board", "v001", image_path)
+            _write_manifest(
+                root,
+                [
+                    assets[0]["asset_id"],
+                    assets[1]["asset_id"],
+                    assets[2]["asset_id"],
+                    assets[2]["asset_id"],
+                ],
+            )
+
+            with self.assertRaisesRegex(CatalogError, "manifest asset_ids must be unique"):
                 write_batch_report(root, "B0", root / "report.md")
 
 

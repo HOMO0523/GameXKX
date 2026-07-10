@@ -348,6 +348,10 @@ def _validate_optional_top_level_fields(data: dict) -> None:
     ):
         if field in data:
             _require_mapping(data[field], field)
+    if "paper2d" in data and "atlas_cell_count" in data["paper2d"]:
+        _require_positive_integer(
+            data["paper2d"]["atlas_cell_count"], "paper2d.atlas_cell_count"
+        )
     for field in (
         "size_class",
         "use",
@@ -485,6 +489,10 @@ def _manifest_ids(root: Path) -> list[str]:
     for asset_id in ids:
         if ASSET_ID_PATTERN.fullmatch(asset_id) is None:
             raise CatalogError(f"manifest asset_id violates naming contract: {asset_id!r}")
+    if len(set(ids)) != len(ids):
+        raise CatalogError(
+            "catalog must contain 35 unique asset ids; manifest asset_ids must be unique"
+        )
     return ids
 
 
