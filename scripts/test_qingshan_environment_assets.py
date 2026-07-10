@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import importlib
 import json
 import os
 import re
@@ -156,6 +157,105 @@ def _build_catalog(root: Path) -> list[dict]:
     for asset in assets:
         _write_asset(root, asset)
     return assets
+
+
+EXPECTED_QINGSHAN_CATALOG = {
+    "REGISTRY": ["BLD_QS_L_A_MARKET_SHOP"],
+    "B0": [
+        "REF_QS_ENV_STYLE_LOCK",
+        "REF_QS_SCALE_LINEUP",
+        "REF_QS_CAMERA_ROUTE",
+        "REF_QS_SURFACE_PALETTE",
+    ],
+    "B1": [
+        "BLD_QS_M_A_INN",
+        "BLD_QS_S_A_HOUSE",
+        "LMK_QS_GATE_NORTH",
+        "LMK_QS_BRIDGE_MAIN",
+        "LMK_QS_DOCK_SOUTH",
+        "ENV_QS_MTN_NEAR_A_RIDGE",
+        "P2D_QS_MTN_FAR_A_MIST",
+        "ENV_QS_ROCK_KIT_A_FIELD",
+        "P2D_QS_TREE_PINE_A",
+        "P2D_QS_SHRUB_A",
+        "SRF_QS_GROUND_EARTH_A",
+        "SRF_QS_WATER_RIVER_A",
+    ],
+    "B2": [
+        "BLD_QS_M_B_STREET_SHOP",
+        "BLD_QS_S_B_WORKSHOP",
+        "BLD_QS_S_C_RIVER_HUT",
+        "ENV_QS_MTN_NEAR_B_CLIFF",
+        "P2D_QS_MTN_FAR_B_SILHOUETTE",
+        "ENV_QS_ROCK_KIT_B_RIVERBANK",
+        "P2D_QS_TREE_BROADLEAF_A",
+        "P2D_QS_TREE_BAMBOO_A",
+        "P2D_QS_GRASS_TUFT_A",
+        "P2D_QS_FLOWER_WILD_A",
+        "SRF_QS_GROUND_GRASS_A",
+        "SRF_QS_ROAD_STONE_A",
+        "SRF_QS_RIVERBANK_BLEND_A",
+    ],
+    "B3": [
+        "KIT_QS_FENCE_WOOD_A",
+        "KIT_QS_PATH_STEPPING_STONE_A",
+        "PROP_QS_MARKET_KIT_A",
+        "PROP_QS_DOCK_KIT_A",
+        "PROP_QS_STREET_KIT_A",
+    ],
+}
+
+
+def _load_catalog_builder():
+    try:
+        return importlib.import_module("build_qingshan_environment_catalog")
+    except ModuleNotFoundError as exc:
+        if exc.name == "build_qingshan_environment_catalog":
+            raise AssertionError("deterministic Qingshan catalog builder is missing") from exc
+        raise
+
+
+def _seed_catalog_builder_inputs(root: Path) -> None:
+    for relative in (
+        "source_metrics.json",
+        "style/references/provenance.json",
+    ):
+        source = (
+            PROJECT_ROOT
+            / "SourceAssets"
+            / "TownPCG"
+            / "QingshanEnvironment"
+            / relative
+        )
+        destination = root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(source.read_bytes())
+
+
+def _asset_jsons(root: Path) -> dict[str, dict]:
+    return {
+        path.parent.name: json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted((root / "assets").glob("*/asset.json"))
+    }
+
+
+def _planned_b0_prompt(asset_id: str) -> str:
+    plan_path = (
+        PROJECT_ROOT
+        / "docs"
+        / "superpowers"
+        / "plans"
+        / "2026-07-10-qingshan-environment-concept-batch0.md"
+    )
+    plan = plan_path.read_text(encoding="utf-8")
+    section_start = plan.index(f"### Task {EXPECTED_QINGSHAN_CATALOG['B0'].index(asset_id) + 5}:")
+    next_task = f"### Task {EXPECTED_QINGSHAN_CATALOG['B0'].index(asset_id) + 6}:"
+    section_end = plan.find(next_task, section_start)
+    section = plan[section_start:] if section_end == -1 else plan[section_start:section_end]
+    match = re.search(r"```text\n(.*?)\n```", section, flags=re.DOTALL)
+    if match is None:
+        raise AssertionError(f"Batch 0 prompt missing from implementation plan for {asset_id}")
+    return match.group(1)
 
 
 class AssetValidationTests(unittest.TestCase):
@@ -588,6 +688,267 @@ class CatalogValidationTests(unittest.TestCase):
             self.assertGreater(b1_maximum, BATCH_CALL_CAPS["B1"])
 
             self.assertTrue(validate_catalog(root)["ok"])
+
+
+class DeterministicCatalogBuilderTests(unittest.TestCase):
+    def _build(self, directory: str):
+        root = Path(directory)
+        _seed_catalog_builder_inputs(root)
+        builder = _load_catalog_builder()
+        summary = builder.write_catalog(root)
+        return root, builder, summary, _asset_jsons(root)
+
+    def test_catalog_json_files_are_pinned_to_lf_for_byte_stable_checkouts(self):
+        attributes = (
+            PROJECT_ROOT
+            / "SourceAssets"
+            / "TownPCG"
+            / "QingshanEnvironment"
+            / ".gitattributes"
+        )
+        self.assertTrue(attributes.is_file(), "catalog-local .gitattributes is missing")
+        self.assertEqual(attributes.read_text(encoding="utf-8"), "*.json text eol=lf\n")
+
+    def test_builder_writes_the_exact_ordered_catalog_and_batch_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, _builder, summary, assets = self._build(directory)
+            expected_ids = [
+                asset_id
+                for batch in BATCH_COUNTS
+                for asset_id in EXPECTED_QINGSHAN_CATALOG[batch]
+            ]
+            manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(manifest["catalog"], EXPECTED_QINGSHAN_CATALOG)
+            self.assertEqual(manifest["asset_ids"], expected_ids)
+            self.assertEqual(manifest["batch_call_caps"], BATCH_CALL_CAPS)
+            self.assertEqual(set(assets), set(expected_ids))
+            self.assertEqual(summary, validate_catalog(root))
+            self.assertEqual(
+                summary,
+                {
+                    "ok": True,
+                    "asset_count": 35,
+                    "batch_counts": BATCH_COUNTS,
+                    "plant_cells": 40,
+                },
+            )
+
+            for asset_id, asset in assets.items():
+                expected_views = list(EXPECTED_VIEWS[asset["category"]])
+                self.assertEqual(asset["generation"]["required_view_kinds"], expected_views)
+                self.assertEqual(
+                    [reference["kind"] for reference in asset["reference_images"]],
+                    expected_views,
+                )
+                expected_calls = 0 if asset["category"] == "registry" else len(expected_views) * 3
+                self.assertEqual(asset["generation"]["max_generation_calls"], expected_calls)
+                self.assertEqual(asset["generation"]["generation_calls_used"], 0)
+                for gate in (
+                    "tripo_allowed",
+                    "model_or_sprite_production_allowed",
+                    "ue_import_allowed",
+                ):
+                    self.assertIs(asset["workflow_gates"][gate], False, f"{asset_id}: {gate}")
+
+            for asset_id in EXPECTED_QINGSHAN_CATALOG["B0"]:
+                self.assertIs(assets[asset_id]["workflow_gates"]["batch_unlocked"], True)
+                self.assertIs(
+                    assets[asset_id]["workflow_gates"]["concept_generation_allowed"], True
+                )
+            for batch in ("B1", "B2", "B3"):
+                for asset_id in EXPECTED_QINGSHAN_CATALOG[batch]:
+                    self.assertIs(assets[asset_id]["workflow_gates"]["batch_unlocked"], False)
+                    self.assertIs(
+                        assets[asset_id]["workflow_gates"]["concept_generation_allowed"],
+                        False,
+                    )
+
+    def test_builder_records_exact_b0_prompts_and_stable_reference_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+            stable_prefix = "style/references/"
+
+            for asset_id, asset in assets.items():
+                stable_references = asset["source_provenance"]["stable_reference_images"]
+                self.assertGreater(len(stable_references), 0, asset_id)
+                self.assertTrue(
+                    all(reference.startswith(stable_prefix) for reference in stable_references),
+                    asset_id,
+                )
+                self.assertTrue(
+                    set(stable_references).issubset(asset["generation"]["input_images"]),
+                    asset_id,
+                )
+                self.assertEqual(
+                    len(asset["generation"]["input_images"]),
+                    len(asset["generation"]["input_image_roles"]),
+                )
+
+            for asset_id in EXPECTED_QINGSHAN_CATALOG["B0"]:
+                self.assertEqual(assets[asset_id]["generation"]["prompt"], _planned_b0_prompt(asset_id))
+
+    def test_generated_palettes_do_not_repeat_color_tokens(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+
+            for asset_id, asset in assets.items():
+                self.assertEqual(len(asset["palette"]), len(set(asset["palette"])), asset_id)
+                generation_palette = asset["generation"]["palette"]
+                self.assertEqual(
+                    len(generation_palette), len(set(generation_palette)), asset_id
+                )
+
+    def test_buildings_use_measured_largest_anchor_and_distinct_staggered_families(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, _builder, _summary, assets = self._build(directory)
+            metrics = json.loads((root / "source_metrics.json").read_text(encoding="utf-8"))
+            registry = assets["BLD_QS_L_A_MARKET_SHOP"]
+            expected = {
+                "BLD_QS_M_A_INN": ([4.8, 5.6, 5.2], "asymmetric_xieshan", "warm_red_brown"),
+                "BLD_QS_S_A_HOUSE": ([3.6, 4.2, 3.8], "double_slope", "indigo"),
+                "BLD_QS_M_B_STREET_SHOP": ([4.2, 5, 4.6], "deep_eave_half_storey", "ink_green"),
+                "BLD_QS_S_B_WORKSHOP": ([4, 4.8, 3.6], "hard_gable", "ochre"),
+                "BLD_QS_S_C_RIVER_HUT": ([3.8, 4.5, 3.5], "low_eave", "teal"),
+            }
+
+            self.assertEqual(registry["target_dimensions_m"], metrics["bounds_size_m"])
+            registry_volume = 1
+            for dimension in registry["target_dimensions_m"]:
+                registry_volume *= dimension
+            roof_families = set()
+            roof_colors = set()
+            for asset_id, (dimensions, roof_form, roof_color) in expected.items():
+                asset = assets[asset_id]
+                self.assertEqual(asset["target_dimensions_m"], dimensions)
+                self.assertEqual(asset["roof"]["form"], roof_form)
+                self.assertEqual(asset["roof"]["primary_color"], roof_color)
+                self.assertEqual(asset["retopo_target_quads"], 50000)
+                self.assertEqual(asset["building"]["model_pipeline"]["source"], "Tripo_high_precision")
+                self.assertEqual(asset["building"]["model_pipeline"]["topology"], "quad")
+                self.assertEqual(
+                    asset["building"]["model_pipeline"]["material_stage"],
+                    "after_retopology",
+                )
+                self.assertEqual(asset["pcg"]["placement_pattern"], "staggered_not_row")
+                volume = 1
+                for dimension in dimensions:
+                    volume *= dimension
+                self.assertLess(volume, registry_volume)
+                roof_families.add(roof_form)
+                roof_colors.add(roof_color)
+            self.assertEqual(len(roof_families), 5)
+            self.assertEqual(len(roof_colors), 5)
+
+    def test_style_profile_records_route_terrain_material_and_adjustable_performance_policy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, _builder, _summary, assets = self._build(directory)
+            profile = json.loads(
+                (root / "style" / "QS_InkToon_v1.json").read_text(encoding="utf-8")
+            )
+            layout = profile["town_layout_contract"]
+
+            self.assertEqual(layout["playable_bounds_m"], [160, 100])
+            self.assertEqual(layout["road"]["provider"], "QuickRoad")
+            self.assertEqual(layout["road"]["shape"], "gentle_horizontal_S_right_to_left")
+            self.assertEqual(layout["north_gate"]["screen_side"], "right")
+            self.assertEqual(
+                layout["north_gate"]["player_default_facing_relation"],
+                "not_facing_gate_at_start",
+            )
+            self.assertEqual(layout["bridge"]["crosses"], "river")
+            self.assertEqual(layout["edge_terrain"]["enclosure"], "hybrid_mountain_ring")
+            self.assertEqual(layout["edge_terrain"]["lower_center"], "open_for_gameplay")
+            self.assertEqual(
+                profile["unreal_material_contract"]["bsdf_style"],
+                "UE5.8_Substrate_BSDF_ink_toon",
+            )
+            self.assertEqual(profile["performance_policy"]["mode"], "conservative_initial")
+            self.assertIs(profile["performance_policy"]["adjustable_after_profile"], True)
+            self.assertEqual(assets["LMK_QS_GATE_NORTH"]["pcg"]["screen_anchor"], "right")
+            self.assertEqual(assets["LMK_QS_BRIDGE_MAIN"]["pcg"]["road_provider"], "QuickRoad")
+            self.assertEqual(assets["SRF_QS_ROAD_STONE_A"]["pcg"]["road_provider"], "QuickRoad")
+
+    def test_plant_families_have_only_a_animated_and_exact_40_cell_budget(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+            expected = {
+                "P2D_QS_TREE_PINE_A": (5, 7),
+                "P2D_QS_SHRUB_A": (5, 7),
+                "P2D_QS_TREE_BROADLEAF_A": (5, 7),
+                "P2D_QS_TREE_BAMBOO_A": (5, 7),
+                "P2D_QS_GRASS_TUFT_A": (4, 6),
+                "P2D_QS_FLOWER_WILD_A": (4, 6),
+            }
+            self.assertEqual(
+                sum(assets[asset_id]["paper2d"]["atlas_cell_count"] for asset_id in expected),
+                40,
+            )
+            for asset_id, (frames, cells) in expected.items():
+                asset = assets[asset_id]
+                self.assertEqual(asset["paper2d"]["variants"], ["A", "B", "C"])
+                self.assertEqual(asset["animated_variants"], ["A"])
+                self.assertEqual(asset["wind_frames"], frames)
+                self.assertEqual(asset["atlas_cell_count"], cells)
+                self.assertEqual(asset["paper2d"]["atlas_cell_count"], cells)
+
+    def test_check_mode_detects_drift_without_rewriting(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, builder, _summary, _assets = self._build(directory)
+            drift_path = root / "assets" / "BLD_QS_M_A_INN" / "asset.json"
+            drifted = json.loads(drift_path.read_text(encoding="utf-8"))
+            drifted["display_name"] = "intentional drift"
+            _write_json(drift_path, drifted)
+            before = drift_path.read_bytes()
+
+            with self.assertRaisesRegex(builder.CatalogBuildError, "drift"):
+                builder.check_catalog(root)
+
+            self.assertEqual(drift_path.read_bytes(), before)
+
+    def test_check_mode_preserves_registered_output_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, builder, _summary, _assets = self._build(directory)
+            output = root / "style" / "boards" / "style-board.png"
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_bytes(b"registered Batch 0 board")
+            register_output(root, "REF_QS_ENV_STYLE_LOCK", "board", "v001", output)
+            asset_path = root / "assets" / "REF_QS_ENV_STYLE_LOCK" / "asset.json"
+            before = asset_path.read_bytes()
+
+            try:
+                result = builder.check_catalog(root)
+            except builder.CatalogBuildError as exc:
+                self.fail(f"registered evidence must not be treated as catalog drift: {exc}")
+            self.assertEqual(result, {"ok": True, "unchanged": 37})
+            self.assertEqual(asset_path.read_bytes(), before)
+
+    def test_builder_is_byte_stable_and_checks_all_37_generated_json_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, builder, _summary, _assets = self._build(directory)
+            generated_paths = [root / "manifest.json", root / "style" / "QS_InkToon_v1.json"]
+            generated_paths.extend(sorted((root / "assets").glob("*/asset.json")))
+            before = {path: path.read_bytes() for path in generated_paths}
+
+            self.assertEqual(builder.check_catalog(root), {"ok": True, "unchanged": 37})
+            builder.write_catalog(root)
+
+            self.assertEqual({path: path.read_bytes() for path in generated_paths}, before)
+            for path, payload in before.items():
+                self.assertTrue(payload.endswith(b"\n"), path)
+                parsed = json.loads(payload)
+                self.assertEqual(list(parsed), sorted(parsed), path)
+
+    def test_builder_refuses_missing_source_metrics_or_provenance(self):
+        builder = _load_catalog_builder()
+        for missing in ("source_metrics.json", "style/references/provenance.json"):
+            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                _seed_catalog_builder_inputs(root)
+                (root / missing).unlink()
+
+                with self.assertRaisesRegex(builder.CatalogBuildError, "missing"):
+                    builder.write_catalog(root)
 
 
 class OutputRegistrationTests(unittest.TestCase):

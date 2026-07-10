@@ -1,0 +1,202 @@
+{
+  "acceptance": {
+    "connection_readability": false,
+    "player_camera_readability": false,
+    "silhouette_unique": false
+  },
+  "asset_id": "BLD_QS_L_A_MARKET_SHOP",
+  "batch": "REGISTRY",
+  "category": "registry",
+  "dependencies": [
+    "REF_QS_ENV_STYLE_LOCK",
+    "REF_QS_SCALE_LINEUP"
+  ],
+  "display_name": "青山镇最大商铺 L-A（现有登记）",
+  "forward_axis": "+Y",
+  "gameplay_role": "landmark_shop",
+  "generation": {
+    "asset_type": "Qingshan registry game environment reference",
+    "avoid": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "blocked_after_revisions": 2,
+    "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
+    "constraints": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "generation_calls_used": 0,
+    "input_image_roles": [
+      {
+        "path": "style/references/style_env_day.jpeg",
+        "role": "environment_style"
+      },
+      {
+        "path": "style/references/style_character_scale.jpeg",
+        "role": "character_scale"
+      },
+      {
+        "path": "style/references/style_nature_group.jpeg",
+        "role": "shape_language"
+      }
+    ],
+    "input_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_character_scale.jpeg",
+      "style/references/style_nature_group.jpeg"
+    ],
+    "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
+    "max_generation_calls": 0,
+    "max_versions_per_view": 3,
+    "palette": [
+      "warm_off_white",
+      "dark_teal_ink",
+      "jade_green",
+      "blue_gray",
+      "warm_ochre",
+      "warm_red_brown"
+    ],
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan registry game environment reference\nPrimary request: Register the existing approved largest shop without new generation\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Register the existing approved largest shop without new generation; intended gameplay role is landmark_shop\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+    "prompt_sections": {
+      "asset_type": "Qingshan registry game environment reference",
+      "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
+      "constraints": "no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+      "input_images": "project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects",
+      "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
+      "primary_request": "Register the existing approved largest shop without new generation",
+      "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
+      "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
+      "subject": "Register the existing approved largest shop without new generation; intended gameplay role is landmark_shop",
+      "use_case": "stylized-concept"
+    },
+    "required_view_kinds": [
+      "existing_asset_registry"
+    ],
+    "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
+    "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
+    "subject": "Register the existing approved largest shop without new generation; intended gameplay role is landmark_shop",
+    "use_case": "stylized-concept"
+  },
+  "intended_zone": [
+    "market"
+  ],
+  "material_language": [
+    "QS_InkToon_v1",
+    "two_to_three_value_bands",
+    "dry_brush_edges"
+  ],
+  "negative_prompt": [
+    "photorealistic",
+    "modern object",
+    "readable text",
+    "logo",
+    "watermark",
+    "neon green",
+    "mirror symmetry",
+    "cropped subject",
+    "PBR plastic shine"
+  ],
+  "palette": [
+    "warm_off_white",
+    "dark_teal_ink",
+    "jade_green",
+    "blue_gray",
+    "warm_ochre",
+    "warm_red_brown"
+  ],
+  "pcg": {
+    "allowed_zones": [
+      "market"
+    ],
+    "density_policy": "conservative_initial",
+    "excluded_zones": [
+      "road_clearance",
+      "river_clearance",
+      "interaction_clearance"
+    ],
+    "instance_cap_initial": 6,
+    "performance_adjustment": "profile_then_raise_or_lower",
+    "placement_pattern": "role_driven"
+  },
+  "pivot": "bottom_center",
+  "priority": "P0",
+  "reference_images": [
+    {
+      "approval_state": "existing_asset_registered",
+      "background": "existing_project_asset",
+      "camera": "existing_asset_registry",
+      "file_stub": "BLD_QS_L_A_MARKET_SHOP__existing_asset_registry",
+      "kind": "existing_asset_registry",
+      "required_annotations": [
+        "scale",
+        "orientation",
+        "material_regions"
+      ]
+    }
+  ],
+  "registry": {
+    "asset_path": "/Game/GameXXK/Environment/TownPCG/Prototype/QingshanShopA/SM_Qingshan_Shop_A_HQ_Retop50K",
+    "material_slot_count": 1,
+    "scale_anchor": "largest_approved_town_building",
+    "source_metrics": "source_metrics.json"
+  },
+  "schema_version": 1,
+  "silhouette_keywords": [
+    "largest_shop_anchor",
+    "existing_approved_mass"
+  ],
+  "source_provenance": {
+    "production_intent": "concept_json_before_model_sprite_or_unreal_production",
+    "reference_provenance": "style/references/provenance.json",
+    "source_kind": "existing_project_asset",
+    "source_metrics": "source_metrics.json",
+    "stable_reference_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_character_scale.jpeg",
+      "style/references/style_nature_group.jpeg"
+    ],
+    "style_profile": "QS_InkToon_v1"
+  },
+  "status": "existing_asset_registered",
+  "style_profile": "QS_InkToon_v1",
+  "target_dimensions_m": [
+    5.855967712402344,
+    6.326449279785156,
+    6.081615047068149
+  ],
+  "unreal": {
+    "asset_class": "StaticMesh",
+    "bsdf_style": "UE5.8_Substrate_BSDF_ink_toon",
+    "engine_version": "5.8",
+    "material_pipeline": "retopology_or_sprite_lock_before_material_authoring",
+    "performance_budget": "conservative_initial_adjust_after_profile",
+    "shading_value_bands": 3
+  },
+  "variant_limit": 1,
+  "workflow_gates": {
+    "batch_approval_id": null,
+    "batch_unlocked": false,
+    "concept_generation_allowed": false,
+    "model_or_sprite_production_allowed": false,
+    "previous_batch_approved": false,
+    "reference_approved": true,
+    "style_locked": false,
+    "tripo_allowed": false,
+    "ue_import_allowed": false
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "acceptance": {
+    "connection_readability": false,
+    "player_camera_readability": false,
+    "silhouette_unique": false
+  },
+  "asset_id": "REF_QS_SURFACE_PALETTE",
+  "batch": "B0",
+  "category": "reference",
+  "dependencies": [
+    "style/references/style_env_day.jpeg",
+    "style/references/style_env_night.jpeg",
+    "style/references/style_creature_warm.jpeg"
+  ],
+  "display_name": "青山镇地表与水体色板",
+  "forward_axis": "+Y",
+  "gameplay_role": "surface_board",
+  "generation": {
+    "asset_type": "game environment surface-palette board",
+    "avoid": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "blocked_after_revisions": 2,
+    "composition_framing": "wide organized material board with separated but visually connected samples, no perspective-heavy hero object",
+    "constraints": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "generation_calls_used": 0,
+    "input_image_roles": [
+      {
+        "path": "style/references/style_env_day.jpeg",
+        "role": "environment_style"
+      },
+      {
+        "path": "style/references/style_env_night.jpeg",
+        "role": "environment_atmosphere"
+      },
+      {
+        "path": "style/references/style_creature_warm.jpeg",
+        "role": "warm_palette"
+      },
+      {
+        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "role": "generated_style_lock"
+      }
+    ],
+    "input_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_env_night.jpeg",
+      "style/references/style_creature_warm.jpeg",
+      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png"
+    ],
+    "lighting_mood": "neutral overcast-soft light for color comparison",
+    "max_generation_calls": 3,
+    "max_versions_per_view": 3,
+    "palette": [
+      "warm_off_white",
+      "dark_teal_ink",
+      "jade_green",
+      "blue_gray",
+      "warm_ochre",
+      "earth_ochre"
+    ],
+    "prompt": "Use case: stylized-concept\nAsset type: game environment surface-palette board\nPrimary request: define the coordinated ground and water surfaces for Qingshan town\nInput images: project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock board defines final palette\nScene/backdrop: warm rice-paper presentation board, no written labels\nSubject: adjacent samples of compact earth, sparse grass ground, worn stone-and-dirt road, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; include two clean transition strips and one small player-camera terrain vignette\nStyle/medium: QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands\nComposition/framing: wide organized material board with separated but visually connected samples, no perspective-heavy hero object\nLighting/mood: neutral overcast-soft light for color comparison\nConstraints: no text, no labels, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors, no obvious repeating photo texture",
+    "prompt_sections": {
+      "asset_type": "game environment surface-palette board",
+      "composition_framing": "wide organized material board with separated but visually connected samples, no perspective-heavy hero object",
+      "constraints": "no text, no labels, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors, no obvious repeating photo texture",
+      "input_images": "project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock board defines final palette",
+      "lighting_mood": "neutral overcast-soft light for color comparison",
+      "primary_request": "define the coordinated ground and water surfaces for Qingshan town",
+      "scene_backdrop": "warm rice-paper presentation board, no written labels",
+      "style_medium": "QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands",
+      "subject": "adjacent samples of compact earth, sparse grass ground, worn stone-and-dirt road, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; include two clean transition strips and one small player-camera terrain vignette",
+      "use_case": "stylized-concept"
+    },
+    "required_view_kinds": [
+      "board"
+    ],
+    "scene_backdrop": "warm rice-paper presentation board, no written labels",
+    "style_medium": "QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands",
+    "subject": "adjacent samples of compact earth, sparse grass ground, worn stone-and-dirt road, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; include two clean transition strips and one small player-camera terrain vignette",
+    "use_case": "stylized-concept"
+  },
+  "intended_zone": [
+    "global"
+  ],
+  "material_language": [
+    "QS_InkToon_v1",
+    "two_to_three_value_bands",
+    "dry_brush_edges"
+  ],
+  "negative_prompt": [
+    "photorealistic",
+    "modern object",
+    "readable text",
+    "logo",
+    "watermark",
+    "neon green",
+    "mirror symmetry",
+    "cropped subject",
+    "PBR plastic shine"
+  ],
+  "palette": [
+    "warm_off_white",
+    "dark_teal_ink",
+    "jade_green",
+    "blue_gray",
+    "warm_ochre",
+    "earth_ochre"
+  ],
+  "pcg": {
+    "allowed_zones": [
+      "global"
+    ],
+    "density_policy": "conservative_initial",
+    "excluded_zones": [
+      "road_clearance",
+      "river_clearance",
+      "interaction_clearance"
+    ],
+    "instance_cap_initial": 6,
+    "performance_adjustment": "profile_then_raise_or_lower",
+    "placement_pattern": "role_driven"
+  },
+  "pivot": "bottom_center",
+  "priority": "P0",
+  "reference_images": [
+    {
+      "approval_state": "planned",
+      "background": "warm_rice_paper",
+      "camera": "fixed_high_three_quarter_or_category_sheet",
+      "file_stub": "REF_QS_SURFACE_PALETTE__board",
+      "kind": "board",
+      "required_annotations": [
+        "scale",
+        "orientation",
+        "material_regions"
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "silhouette_keywords": [
+    "surface_transitions",
+    "toon_water",
+    "material_relationship"
+  ],
+  "source_provenance": {
+    "production_intent": "concept_json_before_model_sprite_or_unreal_production",
+    "reference_provenance": "style/references/provenance.json",
+    "source_kind": "project_concept",
+    "stable_reference_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_env_night.jpeg",
+      "style/references/style_creature_warm.jpeg"
+    ],
+    "style_profile": "QS_InkToon_v1"
+  },
+  "status": "concept_planned",
+  "style_profile": "QS_InkToon_v1",
+  "target_dimensions_m": [
+    8,
+    8,
+    1
+  ],
+  "unreal": {
+    "asset_class": "ConceptReference",
+    "bsdf_style": "UE5.8_Substrate_BSDF_ink_toon",
+    "engine_version": "5.8",
+    "material_pipeline": "retopology_or_sprite_lock_before_material_authoring",
+    "performance_budget": "conservative_initial_adjust_after_profile",
+    "shading_value_bands": 3
+  },
+  "variant_limit": 1,
+  "workflow_gates": {
+    "batch_approval_id": null,
+    "batch_unlocked": true,
+    "concept_generation_allowed": true,
+    "model_or_sprite_production_allowed": false,
+    "previous_batch_approved": false,
+    "reference_approved": false,
+    "style_locked": false,
+    "tripo_allowed": false,
+    "ue_import_allowed": false
+  }
+}

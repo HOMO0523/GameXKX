@@ -1,0 +1,217 @@
+{
+  "acceptance": {
+    "connection_readability": false,
+    "player_camera_readability": false,
+    "silhouette_unique": false
+  },
+  "asset_id": "PROP_QS_MARKET_KIT_A",
+  "batch": "B3",
+  "category": "prop_kit",
+  "dependencies": [
+    "REF_QS_ENV_STYLE_LOCK",
+    "REF_QS_SCALE_LINEUP"
+  ],
+  "display_name": "青山镇集市道具套件 A",
+  "forward_axis": "+Y",
+  "gameplay_role": "props",
+  "generation": {
+    "asset_type": "Qingshan prop_kit game environment reference",
+    "avoid": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "blocked_after_revisions": 2,
+    "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
+    "constraints": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "generation_calls_used": 0,
+    "input_image_roles": [
+      {
+        "path": "style/references/style_env_day.jpeg",
+        "role": "environment_style"
+      },
+      {
+        "path": "style/references/style_character_scale.jpeg",
+        "role": "character_scale"
+      },
+      {
+        "path": "style/references/style_nature_group.jpeg",
+        "role": "shape_language"
+      }
+    ],
+    "input_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_character_scale.jpeg",
+      "style/references/style_nature_group.jpeg"
+    ],
+    "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
+    "max_generation_calls": 6,
+    "max_versions_per_view": 3,
+    "palette": [
+      "warm_off_white",
+      "dark_teal_ink",
+      "jade_green",
+      "blue_gray",
+      "warm_ochre"
+    ],
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan prop_kit game environment reference\nPrimary request: Stall frame, sign frame and basket trio\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Stall frame, sign frame and basket trio; intended gameplay role is props\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+    "prompt_sections": {
+      "asset_type": "Qingshan prop_kit game environment reference",
+      "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
+      "constraints": "no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+      "input_images": "project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects",
+      "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
+      "primary_request": "Stall frame, sign frame and basket trio",
+      "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
+      "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
+      "subject": "Stall frame, sign frame and basket trio; intended gameplay role is props",
+      "use_case": "stylized-concept"
+    },
+    "required_view_kinds": [
+      "variant_lineup",
+      "usage_scale_sheet"
+    ],
+    "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
+    "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
+    "subject": "Stall frame, sign frame and basket trio; intended gameplay role is props",
+    "use_case": "stylized-concept"
+  },
+  "intended_zone": [
+    "market"
+  ],
+  "kit": {
+    "production_state": "concept_only_performance_gate_locked",
+    "variants": [
+      "stall_frame",
+      "blank_sign_frame",
+      "basket"
+    ]
+  },
+  "material_language": [
+    "QS_InkToon_v1",
+    "two_to_three_value_bands",
+    "dry_brush_edges"
+  ],
+  "negative_prompt": [
+    "photorealistic",
+    "modern object",
+    "readable text",
+    "logo",
+    "watermark",
+    "neon green",
+    "mirror symmetry",
+    "cropped subject",
+    "PBR plastic shine"
+  ],
+  "palette": [
+    "warm_off_white",
+    "dark_teal_ink",
+    "jade_green",
+    "blue_gray",
+    "warm_ochre"
+  ],
+  "pcg": {
+    "allowed_zones": [
+      "market"
+    ],
+    "density_policy": "conservative_initial",
+    "excluded_zones": [
+      "road_clearance",
+      "river_clearance",
+      "interaction_clearance"
+    ],
+    "instance_cap_initial": 6,
+    "performance_adjustment": "profile_then_raise_or_lower",
+    "placement_pattern": "role_driven"
+  },
+  "pivot": "bottom_center",
+  "priority": "P2",
+  "reference_images": [
+    {
+      "approval_state": "planned",
+      "background": "warm_rice_paper",
+      "camera": "fixed_high_three_quarter_or_category_sheet",
+      "file_stub": "PROP_QS_MARKET_KIT_A__variant_lineup",
+      "kind": "variant_lineup",
+      "required_annotations": [
+        "scale",
+        "orientation",
+        "material_regions"
+      ]
+    },
+    {
+      "approval_state": "planned",
+      "background": "warm_rice_paper",
+      "camera": "fixed_high_three_quarter_or_category_sheet",
+      "file_stub": "PROP_QS_MARKET_KIT_A__usage_scale_sheet",
+      "kind": "usage_scale_sheet",
+      "required_annotations": [
+        "scale",
+        "orientation",
+        "material_regions"
+      ]
+    }
+  ],
+  "retopo_target_quads": 8000,
+  "schema_version": 1,
+  "silhouette_keywords": [
+    "stall_frame",
+    "blank_sign_frame",
+    "basket"
+  ],
+  "simple_collision_required": true,
+  "source_provenance": {
+    "production_intent": "concept_json_before_model_sprite_or_unreal_production",
+    "reference_provenance": "style/references/provenance.json",
+    "source_kind": "project_concept",
+    "stable_reference_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_character_scale.jpeg",
+      "style/references/style_nature_group.jpeg"
+    ],
+    "style_profile": "QS_InkToon_v1"
+  },
+  "status": "concept_planned",
+  "style_profile": "QS_InkToon_v1",
+  "target_dimensions_m": [
+    3,
+    2,
+    2.8
+  ],
+  "unreal": {
+    "asset_class": "StaticMesh",
+    "bsdf_style": "UE5.8_Substrate_BSDF_ink_toon",
+    "engine_version": "5.8",
+    "material_pipeline": "retopology_or_sprite_lock_before_material_authoring",
+    "performance_budget": "conservative_initial_adjust_after_profile",
+    "shading_value_bands": 3
+  },
+  "variant_limit": 3,
+  "workflow_gates": {
+    "batch_approval_id": null,
+    "batch_unlocked": false,
+    "concept_generation_allowed": false,
+    "model_or_sprite_production_allowed": false,
+    "previous_batch_approved": false,
+    "reference_approved": false,
+    "style_locked": false,
+    "tripo_allowed": false,
+    "ue_import_allowed": false
+  }
+}

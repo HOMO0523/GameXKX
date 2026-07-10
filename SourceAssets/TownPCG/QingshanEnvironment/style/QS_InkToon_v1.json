@@ -1,0 +1,136 @@
+{
+  "camera_contract": {
+    "asset_view": "fixed_high_three_quarter",
+    "paper2d_view": "front_or_camera_calibrated_no_exaggerated_perspective",
+    "player_route_view": "fixed_game_camera"
+  },
+  "model_pipeline": {
+    "building_source": "Tripo_high_precision",
+    "building_target_quads": 50000,
+    "material_stage": "after_quad_retopology"
+  },
+  "negative_prompt": [
+    "photorealistic",
+    "modern object",
+    "readable text",
+    "logo",
+    "watermark",
+    "neon green",
+    "mirror symmetry",
+    "cropped subject",
+    "PBR plastic shine"
+  ],
+  "palette": [
+    "warm_off_white",
+    "dark_teal_ink",
+    "jade_green",
+    "blue_gray",
+    "warm_ochre",
+    "warm_red_brown",
+    "ink_green",
+    "indigo",
+    "teal"
+  ],
+  "performance_policy": {
+    "adjustable_after_profile": true,
+    "goal": "preserve_route_readability_and_frame_budget",
+    "mode": "conservative_initial",
+    "plant_atlas_cell_cap": 40,
+    "production_note": "raise_or_lower_instance_caps_and_lods_only_after_measured_profile"
+  },
+  "reference_images": [
+    {
+      "path": "style/references/style_env_day.jpeg",
+      "role": "environment_style",
+      "sha256": "bdc4c4e76938dfc416b37ad5d32c710d56604cf344a1346189b152b245bb15bf"
+    },
+    {
+      "path": "style/references/style_env_night.jpeg",
+      "role": "environment_atmosphere",
+      "sha256": "9947131a990cfcae6def4f82d26bd392b9900b042e40cd0f9b7b5cae05bde57b"
+    },
+    {
+      "path": "style/references/style_character_scale.jpeg",
+      "role": "character_scale",
+      "sha256": "ed509274c438f2d7a81f5ec7cb35e9186dba730f33299f158efdf0b40f5c537d"
+    },
+    {
+      "path": "style/references/style_nature_group.jpeg",
+      "role": "shape_language",
+      "sha256": "c6aa7189710f32c59c4842529a9ff47601698e2666cf5a0683dd1b74a6878b3b"
+    },
+    {
+      "path": "style/references/style_creature_warm.jpeg",
+      "role": "warm_palette",
+      "sha256": "c371fc141a614afc54789c0cb65c1603106ed02c9ff374d5a0c18de3b51ef0d9"
+    },
+    {
+      "path": "style/references/style_creature_mass.jpeg",
+      "role": "mass_and_outline",
+      "sha256": "0b38e1901489220b3d82bb6aff983ec2fbb49bac8a29ca7c0db050ce16df6a7d"
+    },
+    {
+      "path": "style/references/layout_dense_foliage.jpg",
+      "role": "layout_density_only",
+      "sha256": "e29852562f1002ac6f8436cd260bf7fc1f8e3d64f663f9004279a75c8d73ec93"
+    }
+  ],
+  "schema_version": 1,
+  "style_id": "QS_InkToon_v1",
+  "town_layout_contract": {
+    "bridge": {
+      "crosses": "river",
+      "placement": "offset_from_market_axis"
+    },
+    "building_pattern": "one_largest_shop_plus_smaller_staggered_houses",
+    "edge_terrain": {
+      "enclosure": "hybrid_mountain_ring",
+      "far_mountain": "Paper2D_layered_backdrop_upper_left",
+      "lower_center": "open_for_gameplay",
+      "near_mountain": "solid_modules_left_and_corners"
+    },
+    "foliage": {
+      "rendering": "Paper2D",
+      "rhythm": "overlapping_asymmetric_clusters"
+    },
+    "north_gate": {
+      "player_default_facing_relation": "not_facing_gate_at_start",
+      "screen_side": "right",
+      "valley_opening_m": [
+        18,
+        24
+      ]
+    },
+    "playable_bounds_m": [
+      160,
+      100
+    ],
+    "river": {
+      "bridge_clearance": "preserve",
+      "flow": "through_main_bridge"
+    },
+    "road": {
+      "provider": "QuickRoad",
+      "shape": "gentle_horizontal_S_right_to_left",
+      "terrain_policy": "spline_authority_with_local_grade_and_flattening_verified_in_editor"
+    },
+    "route_order": [
+      "north_gate",
+      "market",
+      "main_bridge",
+      "south_dock"
+    ]
+  },
+  "unreal_material_contract": {
+    "bsdf_style": "UE5.8_Substrate_BSDF_ink_toon",
+    "outline": "dark_teal_variable_dry_brush",
+    "shading_value_bands": 3
+  },
+  "visual_language": {
+    "asymmetry": "required",
+    "edge": "variable_ink_with_broken_dry_brush",
+    "forms": "large_readable_silhouettes",
+    "lighting": "two_to_three_value_bands",
+    "wash": "restrained_watercolor"
+  }
+}

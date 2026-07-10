@@ -1,0 +1,216 @@
+{
+  "acceptance": {
+    "connection_readability": false,
+    "player_camera_readability": false,
+    "silhouette_unique": false
+  },
+  "asset_id": "REF_QS_ENV_STYLE_LOCK",
+  "batch": "B0",
+  "category": "reference",
+  "dependencies": [
+    "style/references/style_env_day.jpeg",
+    "style/references/style_env_night.jpeg",
+    "style/references/style_character_scale.jpeg",
+    "style/references/style_nature_group.jpeg",
+    "style/references/style_creature_warm.jpeg",
+    "style/references/style_creature_mass.jpeg"
+  ],
+  "display_name": "青山镇环境风格锁定板",
+  "forward_axis": "+Y",
+  "gameplay_role": "style_board",
+  "generation": {
+    "asset_type": "game environment style-lock board",
+    "avoid": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "blocked_after_revisions": 2,
+    "composition_framing": "wide coherent style board, central environment vignette with orderly visual samples around it, generous margins",
+    "constraints": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "generation_calls_used": 0,
+    "input_image_roles": [
+      {
+        "path": "style/references/style_env_day.jpeg",
+        "role": "environment_style"
+      },
+      {
+        "path": "style/references/style_env_night.jpeg",
+        "role": "environment_atmosphere"
+      },
+      {
+        "path": "style/references/style_character_scale.jpeg",
+        "role": "character_scale"
+      },
+      {
+        "path": "style/references/style_nature_group.jpeg",
+        "role": "shape_language"
+      },
+      {
+        "path": "style/references/style_creature_warm.jpeg",
+        "role": "warm_palette"
+      },
+      {
+        "path": "style/references/style_creature_mass.jpeg",
+        "role": "mass_and_outline"
+      }
+    ],
+    "input_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_env_night.jpeg",
+      "style/references/style_character_scale.jpeg",
+      "style/references/style_nature_group.jpeg",
+      "style/references/style_creature_warm.jpeg",
+      "style/references/style_creature_mass.jpeg"
+    ],
+    "lighting_mood": "calm bright morning with a small cool mist sample, friendly adventure tone",
+    "max_generation_calls": 3,
+    "max_versions_per_view": 3,
+    "palette": [
+      "warm_off_white",
+      "dark_teal_ink",
+      "jade_green",
+      "blue_gray",
+      "warm_ochre"
+    ],
+    "prompt": "Use case: stylized-concept\nAsset type: game environment style-lock board\nPrimary request: define the approved visual language for Qingshan town, a Chinese ink-cartoon town enclosed by layered mountains\nInput images: environment day and night images are atmosphere and brushwork references; character and creature images are proportion, outline, shape-language, and palette references; do not copy their subjects\nScene/backdrop: warm rice-paper board with a compact town vignette, small material swatches, roof-color families, foliage shapes, mountain layers, river and stone-road samples; no written labels\nSubject: warm off-white walls, dark timber, roofs in warm red-brown, ink green, indigo, ochre and teal; jade and blue-green foliage; blue-gray mist mountains; dark teal variable ink outlines\nStyle/medium: hand-drawn Chinese ink cartoon concept art, dry-brush broken edges, simplified chunky silhouettes, two to three value bands, restrained watercolor wash\nComposition/framing: wide coherent style board, central environment vignette with orderly visual samples around it, generous margins\nLighting/mood: calm bright morning with a small cool mist sample, friendly adventure tone\nConstraints: no text, no symbols, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+    "prompt_sections": {
+      "asset_type": "game environment style-lock board",
+      "composition_framing": "wide coherent style board, central environment vignette with orderly visual samples around it, generous margins",
+      "constraints": "no text, no symbols, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+      "input_images": "environment day and night images are atmosphere and brushwork references; character and creature images are proportion, outline, shape-language, and palette references; do not copy their subjects",
+      "lighting_mood": "calm bright morning with a small cool mist sample, friendly adventure tone",
+      "primary_request": "define the approved visual language for Qingshan town, a Chinese ink-cartoon town enclosed by layered mountains",
+      "scene_backdrop": "warm rice-paper board with a compact town vignette, small material swatches, roof-color families, foliage shapes, mountain layers, river and stone-road samples; no written labels",
+      "style_medium": "hand-drawn Chinese ink cartoon concept art, dry-brush broken edges, simplified chunky silhouettes, two to three value bands, restrained watercolor wash",
+      "subject": "warm off-white walls, dark timber, roofs in warm red-brown, ink green, indigo, ochre and teal; jade and blue-green foliage; blue-gray mist mountains; dark teal variable ink outlines",
+      "use_case": "stylized-concept"
+    },
+    "required_view_kinds": [
+      "board"
+    ],
+    "scene_backdrop": "warm rice-paper board with a compact town vignette, small material swatches, roof-color families, foliage shapes, mountain layers, river and stone-road samples; no written labels",
+    "style_medium": "hand-drawn Chinese ink cartoon concept art, dry-brush broken edges, simplified chunky silhouettes, two to three value bands, restrained watercolor wash",
+    "subject": "warm off-white walls, dark timber, roofs in warm red-brown, ink green, indigo, ochre and teal; jade and blue-green foliage; blue-gray mist mountains; dark teal variable ink outlines",
+    "use_case": "stylized-concept"
+  },
+  "intended_zone": [
+    "global"
+  ],
+  "material_language": [
+    "QS_InkToon_v1",
+    "two_to_three_value_bands",
+    "dry_brush_edges"
+  ],
+  "negative_prompt": [
+    "photorealistic",
+    "modern object",
+    "readable text",
+    "logo",
+    "watermark",
+    "neon green",
+    "mirror symmetry",
+    "cropped subject",
+    "PBR plastic shine"
+  ],
+  "palette": [
+    "warm_off_white",
+    "dark_teal_ink",
+    "jade_green",
+    "blue_gray",
+    "warm_ochre"
+  ],
+  "pcg": {
+    "allowed_zones": [
+      "global"
+    ],
+    "density_policy": "conservative_initial",
+    "excluded_zones": [
+      "road_clearance",
+      "river_clearance",
+      "interaction_clearance"
+    ],
+    "instance_cap_initial": 6,
+    "performance_adjustment": "profile_then_raise_or_lower",
+    "placement_pattern": "role_driven"
+  },
+  "pivot": "bottom_center",
+  "priority": "P0",
+  "reference_images": [
+    {
+      "approval_state": "planned",
+      "background": "warm_rice_paper",
+      "camera": "fixed_high_three_quarter_or_category_sheet",
+      "file_stub": "REF_QS_ENV_STYLE_LOCK__board",
+      "kind": "board",
+      "required_annotations": [
+        "scale",
+        "orientation",
+        "material_regions"
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "silhouette_keywords": [
+    "ink_cartoon_town",
+    "layered_mountains",
+    "material_swatches"
+  ],
+  "source_provenance": {
+    "production_intent": "concept_json_before_model_sprite_or_unreal_production",
+    "reference_provenance": "style/references/provenance.json",
+    "source_kind": "project_concept",
+    "stable_reference_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_env_night.jpeg",
+      "style/references/style_character_scale.jpeg",
+      "style/references/style_nature_group.jpeg",
+      "style/references/style_creature_warm.jpeg",
+      "style/references/style_creature_mass.jpeg"
+    ],
+    "style_profile": "QS_InkToon_v1"
+  },
+  "status": "concept_planned",
+  "style_profile": "QS_InkToon_v1",
+  "target_dimensions_m": [
+    160,
+    100,
+    50
+  ],
+  "unreal": {
+    "asset_class": "ConceptReference",
+    "bsdf_style": "UE5.8_Substrate_BSDF_ink_toon",
+    "engine_version": "5.8",
+    "material_pipeline": "retopology_or_sprite_lock_before_material_authoring",
+    "performance_budget": "conservative_initial_adjust_after_profile",
+    "shading_value_bands": 3
+  },
+  "variant_limit": 1,
+  "workflow_gates": {
+    "batch_approval_id": null,
+    "batch_unlocked": true,
+    "concept_generation_allowed": true,
+    "model_or_sprite_production_allowed": false,
+    "previous_batch_approved": false,
+    "reference_approved": false,
+    "style_locked": false,
+    "tripo_allowed": false,
+    "ue_import_allowed": false
+  }
+}

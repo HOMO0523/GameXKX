@@ -1,0 +1,120 @@
+{
+  "asset_ids": [
+    "BLD_QS_L_A_MARKET_SHOP",
+    "REF_QS_ENV_STYLE_LOCK",
+    "REF_QS_SCALE_LINEUP",
+    "REF_QS_CAMERA_ROUTE",
+    "REF_QS_SURFACE_PALETTE",
+    "BLD_QS_M_A_INN",
+    "BLD_QS_S_A_HOUSE",
+    "LMK_QS_GATE_NORTH",
+    "LMK_QS_BRIDGE_MAIN",
+    "LMK_QS_DOCK_SOUTH",
+    "ENV_QS_MTN_NEAR_A_RIDGE",
+    "P2D_QS_MTN_FAR_A_MIST",
+    "ENV_QS_ROCK_KIT_A_FIELD",
+    "P2D_QS_TREE_PINE_A",
+    "P2D_QS_SHRUB_A",
+    "SRF_QS_GROUND_EARTH_A",
+    "SRF_QS_WATER_RIVER_A",
+    "BLD_QS_M_B_STREET_SHOP",
+    "BLD_QS_S_B_WORKSHOP",
+    "BLD_QS_S_C_RIVER_HUT",
+    "ENV_QS_MTN_NEAR_B_CLIFF",
+    "P2D_QS_MTN_FAR_B_SILHOUETTE",
+    "ENV_QS_ROCK_KIT_B_RIVERBANK",
+    "P2D_QS_TREE_BROADLEAF_A",
+    "P2D_QS_TREE_BAMBOO_A",
+    "P2D_QS_GRASS_TUFT_A",
+    "P2D_QS_FLOWER_WILD_A",
+    "SRF_QS_GROUND_GRASS_A",
+    "SRF_QS_ROAD_STONE_A",
+    "SRF_QS_RIVERBANK_BLEND_A",
+    "KIT_QS_FENCE_WOOD_A",
+    "KIT_QS_PATH_STEPPING_STONE_A",
+    "PROP_QS_MARKET_KIT_A",
+    "PROP_QS_DOCK_KIT_A",
+    "PROP_QS_STREET_KIT_A"
+  ],
+  "batch_call_caps": {
+    "B0": 12,
+    "B1": 48,
+    "B2": 52,
+    "B3": 20,
+    "REGISTRY": 0
+  },
+  "batch_counts": {
+    "B0": 4,
+    "B1": 12,
+    "B2": 13,
+    "B3": 5,
+    "REGISTRY": 1
+  },
+  "batch_state": {
+    "B0": "unlocked_pending_generation",
+    "B1": "locked_pending_B0_approval",
+    "B2": "locked_pending_B1_approval",
+    "B3": "locked_pending_B2_approval",
+    "REGISTRY": "existing_asset_registered"
+  },
+  "catalog": {
+    "B0": [
+      "REF_QS_ENV_STYLE_LOCK",
+      "REF_QS_SCALE_LINEUP",
+      "REF_QS_CAMERA_ROUTE",
+      "REF_QS_SURFACE_PALETTE"
+    ],
+    "B1": [
+      "BLD_QS_M_A_INN",
+      "BLD_QS_S_A_HOUSE",
+      "LMK_QS_GATE_NORTH",
+      "LMK_QS_BRIDGE_MAIN",
+      "LMK_QS_DOCK_SOUTH",
+      "ENV_QS_MTN_NEAR_A_RIDGE",
+      "P2D_QS_MTN_FAR_A_MIST",
+      "ENV_QS_ROCK_KIT_A_FIELD",
+      "P2D_QS_TREE_PINE_A",
+      "P2D_QS_SHRUB_A",
+      "SRF_QS_GROUND_EARTH_A",
+      "SRF_QS_WATER_RIVER_A"
+    ],
+    "B2": [
+      "BLD_QS_M_B_STREET_SHOP",
+      "BLD_QS_S_B_WORKSHOP",
+      "BLD_QS_S_C_RIVER_HUT",
+      "ENV_QS_MTN_NEAR_B_CLIFF",
+      "P2D_QS_MTN_FAR_B_SILHOUETTE",
+      "ENV_QS_ROCK_KIT_B_RIVERBANK",
+      "P2D_QS_TREE_BROADLEAF_A",
+      "P2D_QS_TREE_BAMBOO_A",
+      "P2D_QS_GRASS_TUFT_A",
+      "P2D_QS_FLOWER_WILD_A",
+      "SRF_QS_GROUND_GRASS_A",
+      "SRF_QS_ROAD_STONE_A",
+      "SRF_QS_RIVERBANK_BLEND_A"
+    ],
+    "B3": [
+      "KIT_QS_FENCE_WOOD_A",
+      "KIT_QS_PATH_STEPPING_STONE_A",
+      "PROP_QS_MARKET_KIT_A",
+      "PROP_QS_DOCK_KIT_A",
+      "PROP_QS_STREET_KIT_A"
+    ],
+    "REGISTRY": [
+      "BLD_QS_L_A_MARKET_SHOP"
+    ]
+  },
+  "concept_scope": "35_json_records_31_environment_plus_4_reference",
+  "generation_calls_used": {
+    "B0": 0,
+    "B1": 0,
+    "B2": 0,
+    "B3": 0,
+    "REGISTRY": 0
+  },
+  "performance_policy": "conservative_initial_adjust_after_profile",
+  "reference_provenance": "style/references/provenance.json",
+  "schema_version": 1,
+  "source_metrics": "source_metrics.json",
+  "style_profile": "style/QS_InkToon_v1.json"
+}

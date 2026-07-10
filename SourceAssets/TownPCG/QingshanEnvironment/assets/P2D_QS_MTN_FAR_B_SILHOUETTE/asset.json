@@ -1,0 +1,230 @@
+{
+  "acceptance": {
+    "connection_readability": false,
+    "player_camera_readability": false,
+    "silhouette_unique": false
+  },
+  "asset_id": "P2D_QS_MTN_FAR_B_SILHOUETTE",
+  "batch": "B2",
+  "category": "far_mountain",
+  "dependencies": [
+    "REF_QS_ENV_STYLE_LOCK",
+    "REF_QS_SCALE_LINEUP"
+  ],
+  "depth_layer": "far_silhouette",
+  "display_name": "青山镇远山剪影 B",
+  "environment": {
+    "assembly": "layered_far_backdrop",
+    "perimeter_role": "hybrid_mountain_ring"
+  },
+  "facing_mode": "fixed_camera",
+  "forward_axis": "+Y",
+  "gameplay_role": "silhouette",
+  "generation": {
+    "asset_type": "Qingshan far_mountain game environment reference",
+    "avoid": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "blocked_after_revisions": 2,
+    "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
+    "constraints": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "generation_calls_used": 0,
+    "input_image_roles": [
+      {
+        "path": "style/references/style_env_day.jpeg",
+        "role": "environment_style"
+      },
+      {
+        "path": "style/references/style_env_night.jpeg",
+        "role": "environment_atmosphere"
+      },
+      {
+        "path": "style/references/style_nature_group.jpeg",
+        "role": "shape_language"
+      }
+    ],
+    "input_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_env_night.jpeg",
+      "style/references/style_nature_group.jpeg"
+    ],
+    "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
+    "max_generation_calls": 6,
+    "max_versions_per_view": 3,
+    "palette": [
+      "warm_off_white",
+      "dark_teal_ink",
+      "jade_green",
+      "blue_gray",
+      "warm_ochre",
+      "deep_blue_gray"
+    ],
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan far_mountain game environment reference\nPrimary request: Deeper blue-gray far-peak silhouette layer\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Deeper blue-gray far-peak silhouette layer; intended gameplay role is silhouette\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+    "prompt_sections": {
+      "asset_type": "Qingshan far_mountain game environment reference",
+      "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
+      "constraints": "no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+      "input_images": "project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects",
+      "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
+      "primary_request": "Deeper blue-gray far-peak silhouette layer",
+      "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
+      "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
+      "subject": "Deeper blue-gray far-peak silhouette layer; intended gameplay role is silhouette",
+      "use_case": "stylized-concept"
+    },
+    "required_view_kinds": [
+      "silhouette_layers",
+      "player_camera_composite"
+    ],
+    "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
+    "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
+    "subject": "Deeper blue-gray far-peak silhouette layer; intended gameplay role is silhouette",
+    "use_case": "stylized-concept"
+  },
+  "intended_zone": [
+    "far_backdrop"
+  ],
+  "masked_material": true,
+  "material_language": [
+    "QS_InkToon_v1",
+    "two_to_three_value_bands",
+    "dry_brush_edges"
+  ],
+  "negative_prompt": [
+    "photorealistic",
+    "modern object",
+    "readable text",
+    "logo",
+    "watermark",
+    "neon green",
+    "mirror symmetry",
+    "cropped subject",
+    "PBR plastic shine"
+  ],
+  "palette": [
+    "warm_off_white",
+    "dark_teal_ink",
+    "jade_green",
+    "blue_gray",
+    "warm_ochre",
+    "deep_blue_gray"
+  ],
+  "paper2d": {
+    "background": "warm_keyed_production_pending",
+    "depth_role": "silhouette",
+    "variants": [
+      "A",
+      "B"
+    ]
+  },
+  "pcg": {
+    "allowed_zones": [
+      "far_backdrop"
+    ],
+    "density_policy": "conservative_initial",
+    "excluded_zones": [
+      "road_clearance",
+      "river_clearance",
+      "interaction_clearance"
+    ],
+    "instance_cap_initial": 6,
+    "lower_center_policy": "keep_open",
+    "map_edge_role": "hybrid_mountain_ring",
+    "performance_adjustment": "profile_then_raise_or_lower",
+    "placement_pattern": "role_driven"
+  },
+  "pivot": "bottom_center",
+  "priority": "P1",
+  "reference_images": [
+    {
+      "approval_state": "planned",
+      "background": "warm_rice_paper",
+      "camera": "fixed_high_three_quarter_or_category_sheet",
+      "file_stub": "P2D_QS_MTN_FAR_B_SILHOUETTE__silhouette_layers",
+      "kind": "silhouette_layers",
+      "required_annotations": [
+        "scale",
+        "orientation",
+        "material_regions"
+      ]
+    },
+    {
+      "approval_state": "planned",
+      "background": "warm_rice_paper",
+      "camera": "fixed_high_three_quarter_or_category_sheet",
+      "file_stub": "P2D_QS_MTN_FAR_B_SILHOUETTE__player_camera_composite",
+      "kind": "player_camera_composite",
+      "required_annotations": [
+        "scale",
+        "orientation",
+        "material_regions"
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "silhouette_keywords": [
+    "deep_peak_band",
+    "offset_silhouette",
+    "paper2d_depth_two"
+  ],
+  "source_canvas_px": [
+    4096,
+    2048
+  ],
+  "source_provenance": {
+    "production_intent": "concept_json_before_model_sprite_or_unreal_production",
+    "reference_provenance": "style/references/provenance.json",
+    "source_kind": "project_concept",
+    "stable_reference_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_env_night.jpeg",
+      "style/references/style_nature_group.jpeg"
+    ],
+    "style_profile": "QS_InkToon_v1"
+  },
+  "status": "concept_planned",
+  "style_profile": "QS_InkToon_v1",
+  "target_dimensions_m": [
+    120,
+    0.1,
+    60
+  ],
+  "unreal": {
+    "asset_class": "PaperSprite",
+    "bsdf_style": "UE5.8_Substrate_BSDF_ink_toon",
+    "engine_version": "5.8",
+    "material_pipeline": "retopology_or_sprite_lock_before_material_authoring",
+    "performance_budget": "conservative_initial_adjust_after_profile",
+    "shading_value_bands": 3
+  },
+  "variant_limit": 2,
+  "workflow_gates": {
+    "batch_approval_id": null,
+    "batch_unlocked": false,
+    "concept_generation_allowed": false,
+    "model_or_sprite_production_allowed": false,
+    "previous_batch_approved": false,
+    "reference_approved": false,
+    "style_locked": false,
+    "tripo_allowed": false,
+    "ue_import_allowed": false
+  }
+}

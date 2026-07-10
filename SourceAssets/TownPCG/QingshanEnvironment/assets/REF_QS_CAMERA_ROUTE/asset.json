@@ -1,0 +1,209 @@
+{
+  "acceptance": {
+    "connection_readability": false,
+    "player_camera_readability": false,
+    "silhouette_unique": false
+  },
+  "asset_id": "REF_QS_CAMERA_ROUTE",
+  "batch": "B0",
+  "category": "reference",
+  "dependencies": [
+    "style/references/style_env_day.jpeg",
+    "style/references/style_env_night.jpeg",
+    "style/references/layout_dense_foliage.jpg",
+    "style/references/style_character_scale.jpeg"
+  ],
+  "display_name": "青山镇玩家镜头路线板",
+  "forward_axis": "+Y",
+  "gameplay_role": "route_board",
+  "generation": {
+    "asset_type": "four-panel game environment camera-route concept board",
+    "avoid": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "blocked_after_revisions": 2,
+    "composition_framing": "fixed high three-quarter camera matching the game; four route moments share scale, geography and asset identity; player path remains clear",
+    "constraints": [
+      "photorealistic",
+      "modern object",
+      "readable text",
+      "logo",
+      "watermark",
+      "neon green",
+      "mirror symmetry",
+      "cropped subject",
+      "PBR plastic shine"
+    ],
+    "generation_calls_used": 0,
+    "input_image_roles": [
+      {
+        "path": "style/references/style_env_day.jpeg",
+        "role": "environment_style"
+      },
+      {
+        "path": "style/references/style_env_night.jpeg",
+        "role": "environment_atmosphere"
+      },
+      {
+        "path": "style/references/layout_dense_foliage.jpg",
+        "role": "layout_density_only"
+      },
+      {
+        "path": "style/references/style_character_scale.jpeg",
+        "role": "character_scale"
+      },
+      {
+        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "role": "generated_style_lock"
+      }
+    ],
+    "input_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_env_night.jpeg",
+      "style/references/layout_dense_foliage.jpg",
+      "style/references/style_character_scale.jpeg",
+      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png"
+    ],
+    "lighting_mood": "fresh morning, calm mist, readable gameplay contrast",
+    "max_generation_calls": 3,
+    "max_versions_per_view": 3,
+    "palette": [
+      "warm_off_white",
+      "dark_teal_ink",
+      "jade_green",
+      "blue_gray",
+      "warm_ochre",
+      "blue_green"
+    ],
+    "prompt": "Use case: stylized-concept\nAsset type: four-panel game environment camera-route concept board\nPrimary request: show the Qingshan town player route in four consistent fixed-camera views: north gate arrival, market and largest shop, main bridge, south dock\nInput images: project ink illustrations define style; the foliage screenshot defines only dense overlapping canopy rhythm, never its rendering style; the style-lock board defines final palette and materials\nScene/backdrop: one coherent mountain-enclosed Chinese town across four equal visual panels without borders or text\nSubject: north gate remains on screen right; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market, offset bridge, river and left-side dock; one large shop, smaller staggered houses, clustered foliage, near solid mountain feet and pale Paper2D-like far mountain silhouettes\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon environment concept\nComposition/framing: fixed high three-quarter camera matching the game; four route moments share scale, geography and asset identity; player path remains clear\nLighting/mood: fresh morning, calm mist, readable gameplay contrast\nConstraints: no text, no UI, no labels, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects",
+    "prompt_sections": {
+      "asset_type": "four-panel game environment camera-route concept board",
+      "composition_framing": "fixed high three-quarter camera matching the game; four route moments share scale, geography and asset identity; player path remains clear",
+      "constraints": "no text, no UI, no labels, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects",
+      "input_images": "project ink illustrations define style; the foliage screenshot defines only dense overlapping canopy rhythm, never its rendering style; the style-lock board defines final palette and materials",
+      "lighting_mood": "fresh morning, calm mist, readable gameplay contrast",
+      "primary_request": "show the Qingshan town player route in four consistent fixed-camera views: north gate arrival, market and largest shop, main bridge, south dock",
+      "scene_backdrop": "one coherent mountain-enclosed Chinese town across four equal visual panels without borders or text",
+      "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon environment concept",
+      "subject": "north gate remains on screen right; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market, offset bridge, river and left-side dock; one large shop, smaller staggered houses, clustered foliage, near solid mountain feet and pale Paper2D-like far mountain silhouettes",
+      "use_case": "stylized-concept"
+    },
+    "required_view_kinds": [
+      "board"
+    ],
+    "scene_backdrop": "one coherent mountain-enclosed Chinese town across four equal visual panels without borders or text",
+    "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon environment concept",
+    "subject": "north gate remains on screen right; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market, offset bridge, river and left-side dock; one large shop, smaller staggered houses, clustered foliage, near solid mountain feet and pale Paper2D-like far mountain silhouettes",
+    "use_case": "stylized-concept"
+  },
+  "intended_zone": [
+    "global"
+  ],
+  "material_language": [
+    "QS_InkToon_v1",
+    "two_to_three_value_bands",
+    "dry_brush_edges"
+  ],
+  "negative_prompt": [
+    "photorealistic",
+    "modern object",
+    "readable text",
+    "logo",
+    "watermark",
+    "neon green",
+    "mirror symmetry",
+    "cropped subject",
+    "PBR plastic shine"
+  ],
+  "palette": [
+    "warm_off_white",
+    "dark_teal_ink",
+    "jade_green",
+    "blue_gray",
+    "warm_ochre",
+    "blue_green"
+  ],
+  "pcg": {
+    "allowed_zones": [
+      "global"
+    ],
+    "density_policy": "conservative_initial",
+    "excluded_zones": [
+      "road_clearance",
+      "river_clearance",
+      "interaction_clearance"
+    ],
+    "instance_cap_initial": 6,
+    "performance_adjustment": "profile_then_raise_or_lower",
+    "placement_pattern": "role_driven"
+  },
+  "pivot": "bottom_center",
+  "priority": "P0",
+  "reference_images": [
+    {
+      "approval_state": "planned",
+      "background": "warm_rice_paper",
+      "camera": "fixed_high_three_quarter_or_category_sheet",
+      "file_stub": "REF_QS_CAMERA_ROUTE__board",
+      "kind": "board",
+      "required_annotations": [
+        "scale",
+        "orientation",
+        "material_regions"
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "silhouette_keywords": [
+    "right_gate",
+    "gentle_s_route",
+    "asymmetric_clusters"
+  ],
+  "source_provenance": {
+    "production_intent": "concept_json_before_model_sprite_or_unreal_production",
+    "reference_provenance": "style/references/provenance.json",
+    "source_kind": "project_concept",
+    "stable_reference_images": [
+      "style/references/style_env_day.jpeg",
+      "style/references/style_env_night.jpeg",
+      "style/references/layout_dense_foliage.jpg",
+      "style/references/style_character_scale.jpeg"
+    ],
+    "style_profile": "QS_InkToon_v1"
+  },
+  "status": "concept_planned",
+  "style_profile": "QS_InkToon_v1",
+  "target_dimensions_m": [
+    160,
+    100,
+    40
+  ],
+  "unreal": {
+    "asset_class": "ConceptReference",
+    "bsdf_style": "UE5.8_Substrate_BSDF_ink_toon",
+    "engine_version": "5.8",
+    "material_pipeline": "retopology_or_sprite_lock_before_material_authoring",
+    "performance_budget": "conservative_initial_adjust_after_profile",
+    "shading_value_bands": 3
+  },
+  "variant_limit": 1,
+  "workflow_gates": {
+    "batch_approval_id": null,
+    "batch_unlocked": true,
+    "concept_generation_allowed": true,
+    "model_or_sprite_production_allowed": false,
+    "previous_batch_approved": false,
+    "reference_approved": false,
+    "style_locked": false,
+    "tripo_allowed": false,
+    "ue_import_allowed": false
+  }
+}
