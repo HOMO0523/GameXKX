@@ -6,6 +6,7 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+import tempfile
 import unittest
 
 
@@ -38,6 +39,18 @@ class QingshanTownPCGConfigTests(unittest.TestCase):
         expected = PROJECT_ROOT / "Config" / "GameXXK" / "TownPCG" / "QingshanTownVerticalSlice.json"
         self.assertEqual(self.module.CONFIG_PATH, expected)
         self.assertEqual(json.loads(expected.read_text(encoding="utf-8")), self.data)
+
+    def test_module_declares_its_public_api(self):
+        self.assertEqual(
+            self.module.__all__,
+            ("CONFIG_PATH", "load_config", "validate_config"),
+        )
+
+    def test_load_config_accepts_a_custom_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            custom_path = Path(temp_dir) / "town.json"
+            custom_path.write_text(json.dumps(self.data), encoding="utf-8")
+            self.assertEqual(self.module.load_config(custom_path), self.data)
 
     def test_canonical_contract_values(self):
         self.assertEqual(self.data["schema_version"], 1)
@@ -111,16 +124,52 @@ class QingshanTownPCGConfigTests(unittest.TestCase):
         data["building_limit"] = 11
         self.assert_invalid(data, "building_points count exceeds building_hard_cap")
 
-    def test_validate_rejects_missing_or_empty_asset_paths(self):
-        for field in ("building_mesh", "source_map", "prototype_map", "graph_path"):
-            for value in (None, ""):
+    def test_validate_requires_exact_authored_building_count(self):
+        cases = (
+            [],
+            self.data["building_points"][:-1],
+            self.data["building_points"]
+            + [{"location_cm": [900, -11200, 0], "yaw_degrees": 180, "side": "right"}],
+        )
+        for points in cases:
+            with self.subTest(point_count=len(points)):
+                data = copy.deepcopy(self.data)
+                data["building_points"] = copy.deepcopy(points)
+                self.assert_invalid(
+                    data,
+                    "building_points count must equal building_limit",
+                )
+
+    def test_validate_rejects_missing_or_empty_package_paths(self):
+        fields = ("source_map", "prototype_map", "asset_root", "graph_path", "building_mesh")
+        for field in fields:
+            for value in (None, "", "   "):
                 with self.subTest(field=field, value=value):
                     data = copy.deepcopy(self.data)
                     if value is None:
                         del data[field]
                     else:
                         data[field] = value
-                    self.assert_invalid(data, f"{field} must be a non-empty asset path")
+                    self.assert_invalid(data, f"{field} must be a valid Unreal package path")
+
+    def test_validate_rejects_malformed_unreal_package_paths(self):
+        fields = ("source_map", "prototype_map", "asset_root", "graph_path", "building_mesh")
+        for field in fields:
+            for value in ("/Engine/Foo", "/Game/Foo.Bar", "/Game/Foo Bar", " /Game/Foo"):
+                with self.subTest(field=field, value=value):
+                    data = copy.deepcopy(self.data)
+                    data[field] = value
+                    self.assert_invalid(data, f"{field} must be a valid Unreal package path")
+
+    def test_validate_rejects_missing_or_untrimmed_north_gate_label(self):
+        for value in (None, "", "   ", " QingshanInn_TownExit", "QingshanInn_TownExit "):
+            with self.subTest(value=value):
+                data = copy.deepcopy(self.data)
+                if value is None:
+                    del data["north_gate_label"]
+                else:
+                    data["north_gate_label"] = value
+                self.assert_invalid(data, "north_gate_label must be a nonblank trimmed string")
 
     def test_validate_rejects_runtime_generation(self):
         data = copy.deepcopy(self.data)
@@ -152,6 +201,46 @@ class QingshanTownPCGConfigTests(unittest.TestCase):
         data = copy.deepcopy(self.data)
         data["building_points"][0]["yaw_degrees"] = "0"
         self.assert_invalid(data, "yaw_degrees must be a number")
+
+    def test_validate_rejects_non_finite_transform_values(self):
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(field="location_cm", value=value):
+                data = copy.deepcopy(self.data)
+                data["building_points"][0]["location_cm"][0] = value
+                self.assert_invalid(data, "location_cm must contain only finite numbers")
+            with self.subTest(field="yaw_degrees", value=value):
+                data = copy.deepcopy(self.data)
+                data["building_points"][0]["yaw_degrees"] = value
+                self.assert_invalid(data, "yaw_degrees must be finite")
+
+    def test_load_config_rejects_non_standard_json_numeric_constants(self):
+        canonical_text = self.module.CONFIG_PATH.read_text(encoding="utf-8")
+        for constant in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(constant=constant), tempfile.TemporaryDirectory() as temp_dir:
+                custom_path = Path(temp_dir) / "invalid.json"
+                custom_path.write_text(
+                    canonical_text.replace("20260710", constant, 1),
+                    encoding="utf-8",
+                )
+                self.assert_invalid_json_constant(custom_path, constant)
+
+    def assert_invalid_json_constant(self, path, constant):
+        with self.assertRaisesRegex(
+            ValueError,
+            f"non-standard JSON numeric constant {constant} is not allowed",
+        ):
+            self.module.load_config(path)
+
+    def test_validate_rejects_malformed_container_shapes(self):
+        self.assert_invalid([], "config must be an object")
+
+        data = copy.deepcopy(self.data)
+        data["building_points"] = "not-a-list"
+        self.assert_invalid(data, "building_points must be a list")
+
+        data = copy.deepcopy(self.data)
+        data["building_points"][0] = "not-an-object"
+        self.assert_invalid(data, "building_points\\[0\\] must be an object")
 
     def test_validate_rejects_bool_as_numeric_budget(self):
         numeric_fields = (
