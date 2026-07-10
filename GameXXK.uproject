@@ -62,6 +62,21 @@
 			]
 		},
 		{
+			"Name": "Quick_Road",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "PCG",
+			"Enabled": true
+		},
+		{
+			"Name": "ProceduralMeshComponent",
+			"Enabled": true
+		},
+		{
 			"Name": "EditorScriptingUtilities",
 			"Enabled": true,
 			"TargetAllowList": [
