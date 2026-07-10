@@ -1,0 +1,488 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gamexxk.local/schemas/qingshan_environment_asset.schema.json",
+  "title": "GameXXK Qingshan Environment Concept Asset",
+  "description": "Documented contract for concept-only Qingshan environment asset records. The Python validator remains authoritative.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "asset_id",
+    "display_name",
+    "category",
+    "batch",
+    "priority",
+    "status",
+    "style_profile",
+    "intended_zone",
+    "gameplay_role",
+    "target_dimensions_m",
+    "pivot",
+    "forward_axis",
+    "palette",
+    "silhouette_keywords",
+    "material_language",
+    "negative_prompt",
+    "dependencies",
+    "source_provenance",
+    "reference_images",
+    "generation",
+    "unreal",
+    "pcg",
+    "workflow_gates",
+    "acceptance"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "asset_id": {
+      "type": "string",
+      "pattern": "^(REF|BLD|LMK|ENV|P2D|SRF|KIT|PROP)_QS_[A-Z0-9_]+$"
+    },
+    "display_name": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "category": {
+      "enum": [
+        "reference",
+        "registry",
+        "building",
+        "landmark",
+        "near_mountain",
+        "far_mountain",
+        "rock_kit",
+        "paper2d_plant",
+        "surface",
+        "linear_kit",
+        "prop_kit"
+      ]
+    },
+    "batch": {
+      "enum": [
+        "REGISTRY",
+        "B0",
+        "B1",
+        "B2",
+        "B3"
+      ]
+    },
+    "priority": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "status": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "style_profile": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "intended_zone": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "gameplay_role": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "target_dimensions_m": {
+      "$ref": "#/$defs/positiveTriple"
+    },
+    "pivot": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "forward_axis": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "palette": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "silhouette_keywords": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "material_language": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "negative_prompt": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "dependencies": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "source_provenance": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "reference_images": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "approval_state",
+          "file_stub"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "camera": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "background": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "required_annotations": {
+            "$ref": "#/$defs/nonEmptyStringArray"
+          },
+          "approval_state": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "file_stub": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "output_path": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "version": {
+            "enum": [
+              "v001",
+              "v002",
+              "v003"
+            ]
+          },
+          "rejection_reason": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        }
+      }
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "use_case",
+        "asset_type",
+        "required_view_kinds",
+        "max_versions_per_view",
+        "max_generation_calls",
+        "generation_calls_used",
+        "blocked_after_revisions"
+      ],
+      "properties": {
+        "use_case": {
+          "const": "stylized-concept"
+        },
+        "asset_type": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "required_view_kinds": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "max_versions_per_view": {
+          "const": 3
+        },
+        "max_generation_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "generation_calls_used": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocked_after_revisions": {
+          "const": 2
+        },
+        "prompt": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "input_images": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/nonEmptyString"
+              },
+              {
+                "type": "object",
+                "minProperties": 1
+              }
+            ]
+          }
+        },
+        "input_image_roles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "minProperties": 1
+          }
+        },
+        "prompt_sections": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "scene_backdrop": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "subject": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "style_medium": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "composition_framing": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "lighting_mood": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "palette": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "constraints": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "avoid": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        }
+      }
+    },
+    "unreal": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "pcg": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "workflow_gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "style_locked",
+        "reference_approved",
+        "concept_generation_allowed",
+        "batch_unlocked",
+        "previous_batch_approved",
+        "batch_approval_id",
+        "model_or_sprite_production_allowed",
+        "tripo_allowed",
+        "ue_import_allowed"
+      ],
+      "properties": {
+        "style_locked": {
+          "type": "boolean"
+        },
+        "reference_approved": {
+          "type": "boolean"
+        },
+        "concept_generation_allowed": {
+          "type": "boolean"
+        },
+        "batch_unlocked": {
+          "type": "boolean"
+        },
+        "previous_batch_approved": {
+          "type": "boolean"
+        },
+        "batch_approval_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model_or_sprite_production_allowed": {
+          "const": false
+        },
+        "tripo_allowed": {
+          "const": false
+        },
+        "ue_import_allowed": {
+          "const": false
+        }
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "building": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "landmark": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "environment": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "paper2d": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "surface": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "kit": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "registry": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "variant_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "size_class": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "use": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "footprint_m": {
+      "$ref": "#/$defs/positivePair"
+    },
+    "entrance_axis": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "roof": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "eave_height_m": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "door_socket": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "retopo_target_quads": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "texture_resolution": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "simple_collision_required": {
+      "type": "boolean"
+    },
+    "allowed_cluster_roles": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "source_canvas_px": {
+      "$ref": "#/$defs/positivePair"
+    },
+    "sprite_cell_px": {
+      "$ref": "#/$defs/positivePair"
+    },
+    "pixels_per_unreal_unit": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "pivot_mode": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "card_world_size_m": {
+      "$ref": "#/$defs/positivePair"
+    },
+    "facing_mode": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "depth_layer": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "atlas_group": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "wind_frames": {
+      "enum": [
+        4,
+        5
+      ]
+    },
+    "animated_variants": {
+      "const": [
+        "A"
+      ]
+    },
+    "atlas_cell_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "masked_material": {
+      "type": "boolean"
+    },
+    "cluster_size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "spacing_m": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "cull_distance_m": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "collision": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        {
+          "type": "object",
+          "minProperties": 1
+        }
+      ]
+    },
+    "ground_trace_required": {
+      "type": "boolean"
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": ".*\\S.*"
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "positivePair": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      }
+    },
+    "positiveTriple": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      }
+    }
+  }
+}
