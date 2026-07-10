@@ -113,6 +113,7 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
 
 	TestEqual(TEXT("main menu opens first"), State.Screen, EGameXXKScreen::MainMenu);
+	TestEqual(TEXT("new game starts with enough gold to buy starter equipment"), State.PlayerGold, 50);
 	TestTrue(TEXT("Qingshan starts unlocked"), State.UnlockedRegions.Contains(UGameXXKMVPRules::RegionQingshan()));
 	TestFalse(TEXT("Tanjiang starts locked"), State.UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));
 

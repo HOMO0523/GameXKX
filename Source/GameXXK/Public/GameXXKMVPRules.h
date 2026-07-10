@@ -253,7 +253,7 @@ struct FGameXXKRuntimeState
 	int32 PlayerXP = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	int32 PlayerGold = 30;
+	int32 PlayerGold = 50;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 PlayerHP = 100;
