@@ -8,16 +8,21 @@
 #include "Elements/PCGCreatePoints.h"
 #include "Elements/PCGStaticMeshSpawner.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/Level.h"
 #include "EngineUtils.h"
+#include "HAL/FileManager.h"
 #include "HAL/PlatformProcess.h"
 #include "HAL/PlatformTime.h"
 #include "Helpers/PCGHelpers.h"
+#include "LevelUtils.h"
 #include "MeshSelectors/PCGMeshSelectorWeighted.h"
 #include "Misc/PackageName.h"
 #include "PCGComponent.h"
+#include "PCGEdge.h"
 #include "PCGGraph.h"
 #include "PCGNode.h"
 #include "PCGPoint.h"
+#include "PCGPin.h"
 #include "PCGVolume.h"
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
@@ -28,6 +33,10 @@
 
 namespace GameXXKTownPCGAutomation
 {
+	constexpr TCHAR ManagedGraphRoot[] = TEXT("/Game/GameXXK/Environment/TownPCG/VerticalSlice/");
+	constexpr TCHAR PrototypeMapRoot[] = TEXT("/Game/GameXXK/Maps/Prototype/");
+	constexpr double GenerationTimeoutSeconds = 15.0;
+
 	class FRevertibleEditorTransaction
 	{
 	public:
@@ -160,6 +169,36 @@ namespace GameXXKTownPCGAutomation
 		return FMath::IsFinite(Vector.X) && FMath::IsFinite(Vector.Y) && FMath::IsFinite(Vector.Z);
 	}
 
+	bool IsExistingPackageFileReadOnly(const FString& LongPackageName, const FString& Extension)
+	{
+		const FString Filename = FPackageName::LongPackageNameToFilename(LongPackageName, Extension);
+		return IFileManager::Get().FileExists(*Filename) && IFileManager::Get().IsReadOnly(*Filename);
+	}
+
+	bool VerifyDirectedEdge(
+		const UPCGNode* SourceNode,
+		const FName SourcePinLabel,
+		const UPCGNode* DestinationNode,
+		const FName DestinationPinLabel)
+	{
+		if (!SourceNode || !DestinationNode)
+		{
+			return false;
+		}
+		const UPCGPin* SourcePin = SourceNode->GetOutputPin(SourcePinLabel);
+		const UPCGPin* DestinationPin = DestinationNode->GetInputPin(DestinationPinLabel);
+		if (!SourcePin || !DestinationPin)
+		{
+			return false;
+		}
+
+		return SourcePin->Edges.ContainsByPredicate(
+			[SourcePin, DestinationPin](const UPCGEdge* Edge)
+			{
+				return Edge && Edge->IsValid() && Edge->InputPin == SourcePin && Edge->OutputPin == DestinationPin;
+			});
+	}
+
 	APCGVolume* FindUniquePCGVolume(UWorld* World, const FString& ActorLabel, FString& OutError)
 	{
 		const TArray<AActor*> Matches = FindActorsByExactLabel(World, ActorLabel);
@@ -219,6 +258,14 @@ FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTownPCGGraph(
 	if (!FPackageName::IsValidLongPackageName(GraphAssetPath, true))
 	{
 		return ErrorJson(Operation, TEXT("graph must be a valid long package name"), FString(), GraphAssetPath);
+	}
+	if (!GraphAssetPath.StartsWith(ManagedGraphRoot, ESearchCase::CaseSensitive))
+	{
+		return ErrorJson(Operation, TEXT("graph path must be under the managed town PCG VerticalSlice root"), FString(), GraphAssetPath);
+	}
+	if (IsExistingPackageFileReadOnly(GraphAssetPath, FPackageName::GetAssetPackageExtension()))
+	{
+		return ErrorJson(Operation, TEXT("graph package is read-only"), FString(), GraphAssetPath);
 	}
 	if (!FPackageName::IsValidLongPackageName(StaticMeshPath, true))
 	{
@@ -321,8 +368,19 @@ FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTownPCGGraph(
 	WeightedSelector->MeshEntries = {FPCGMeshSelectorWeightedEntry(TSoftObjectPtr<UStaticMesh>(StaticMesh), 1)};
 	SpawnerSettings->bAllowMergeDifferentDataInSameInstancedComponents = true;
 
-	if (!Graph->AddLabeledEdge(CreatePointsNode, PCGPinConstants::DefaultOutputLabel, SpawnerNode, PCGPinConstants::DefaultInputLabel)
-		|| !Graph->AddLabeledEdge(SpawnerNode, PCGPinConstants::DefaultOutputLabel, Graph->GetOutputNode(), PCGPinConstants::DefaultOutputLabel))
+	Graph->AddLabeledEdge(CreatePointsNode, PCGPinConstants::DefaultOutputLabel, SpawnerNode, PCGPinConstants::DefaultInputLabel);
+	Graph->AddLabeledEdge(SpawnerNode, PCGPinConstants::DefaultOutputLabel, Graph->GetOutputNode(), PCGPinConstants::DefaultOutputLabel);
+	const bool bCreateToSpawnerVerified = VerifyDirectedEdge(
+		CreatePointsNode,
+		PCGPinConstants::DefaultOutputLabel,
+		SpawnerNode,
+		PCGPinConstants::DefaultInputLabel);
+	const bool bSpawnerToOutputVerified = VerifyDirectedEdge(
+		SpawnerNode,
+		PCGPinConstants::DefaultOutputLabel,
+		Graph->GetOutputNode(),
+		PCGPinConstants::DefaultOutputLabel);
+	if (!bCreateToSpawnerVerified || !bSpawnerToOutputVerified)
 	{
 		return ErrorJson(Operation, TEXT("could not connect PCG graph nodes"), FString(), GraphAssetPath);
 	}
@@ -349,6 +407,8 @@ FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTownPCGGraph(
 	TSharedRef<FJsonObject> Result = MakeResult(true, Operation);
 	Result->SetStringField(TEXT("graph"), GraphAssetPath);
 	Result->SetNumberField(TEXT("point_count"), BuildingTransforms.Num());
+	Result->SetNumberField(TEXT("node_count"), Graph->GetNodes().Num());
+	Result->SetNumberField(TEXT("verified_edge_count"), 2);
 	Result->SetStringField(TEXT("error"), TEXT(""));
 	return ToJson(Result);
 }
@@ -370,6 +430,10 @@ FString UGameXXKTownPCGAutomationLibrary::AttachTownPCGGraph(
 	{
 		return ErrorJson(Operation, TEXT("graph must be a valid long package name"), ActorLabel, GraphAssetPath);
 	}
+	if (!GraphAssetPath.StartsWith(ManagedGraphRoot, ESearchCase::CaseSensitive))
+	{
+		return ErrorJson(Operation, TEXT("graph path must be under the managed town PCG VerticalSlice root"), ActorLabel, GraphAssetPath);
+	}
 	if (!IsFiniteVector(Center) || !IsFiniteVector(Extent))
 	{
 		return ErrorJson(Operation, TEXT("center and extent must contain only finite values"), ActorLabel, GraphAssetPath);
@@ -379,15 +443,39 @@ FString UGameXXKTownPCGAutomationLibrary::AttachTownPCGGraph(
 		return ErrorJson(Operation, TEXT("extent components must all be positive"), ActorLabel, GraphAssetPath);
 	}
 
-	UPCGGraph* Graph = LoadAssetByPackagePath<UPCGGraph>(GraphAssetPath);
-	if (!Graph)
-	{
-		return ErrorJson(Operation, TEXT("could not load PCG graph"), ActorLabel, GraphAssetPath);
-	}
 	UWorld* World = GetEditorWorld();
 	if (!World)
 	{
 		return ErrorJson(Operation, TEXT("no editor world is available"), ActorLabel, GraphAssetPath);
+	}
+	ULevel* CurrentLevel = World->GetCurrentLevel();
+	if (!CurrentLevel || CurrentLevel->GetWorld() != World)
+	{
+		return ErrorJson(Operation, TEXT("editor world has no valid current level"), ActorLabel, GraphAssetPath);
+	}
+	const FString WorldPackageName = World->GetOutermost()->GetName();
+	const FString CurrentLevelPackageName = CurrentLevel->GetOutermost()->GetName();
+	if (!WorldPackageName.StartsWith(PrototypeMapRoot, ESearchCase::CaseSensitive))
+	{
+		return ErrorJson(Operation, TEXT("AttachTownPCGGraph is restricted to prototype maps"), ActorLabel, GraphAssetPath);
+	}
+	if (!CurrentLevelPackageName.StartsWith(PrototypeMapRoot, ESearchCase::CaseSensitive))
+	{
+		return ErrorJson(Operation, TEXT("current level is not a prototype map level"), ActorLabel, GraphAssetPath);
+	}
+	if (FLevelUtils::IsLevelLocked(CurrentLevel))
+	{
+		return ErrorJson(Operation, TEXT("current editor level is locked"), ActorLabel, GraphAssetPath);
+	}
+	if (IsExistingPackageFileReadOnly(CurrentLevel->GetOutermost()->GetName(), FPackageName::GetMapPackageExtension()))
+	{
+		return ErrorJson(Operation, TEXT("current editor map package is read-only"), ActorLabel, GraphAssetPath);
+	}
+
+	UPCGGraph* Graph = LoadAssetByPackagePath<UPCGGraph>(GraphAssetPath);
+	if (!Graph)
+	{
+		return ErrorJson(Operation, TEXT("could not load PCG graph"), ActorLabel, GraphAssetPath);
 	}
 
 	const TArray<AActor*> Matches = FindActorsByExactLabel(World, ActorLabel);
@@ -403,6 +491,10 @@ FString UGameXXKTownPCGAutomationLibrary::AttachTownPCGGraph(
 		if (!Volume)
 		{
 			return ErrorJson(Operation, TEXT("the exact-label actor is not a PCG volume"), ActorLabel, GraphAssetPath);
+		}
+		if (Volume->GetLevel() != CurrentLevel)
+		{
+			return ErrorJson(Operation, TEXT("the exact-label PCG volume belongs to a different level"), ActorLabel, GraphAssetPath);
 		}
 		if (!Volume->PCGComponent)
 		{
@@ -517,7 +609,7 @@ FString UGameXXKTownPCGAutomationLibrary::GenerateTownPCG(const FString& ActorLa
 		return ErrorJson(Operation, TEXT("PCG generation could not be scheduled"), ActorLabel);
 	}
 
-	const double Deadline = FPlatformTime::Seconds() + 30.0;
+	const double Deadline = FPlatformTime::Seconds() + GenerationTimeoutSeconds;
 	while (!bGenerationCompleted && !bGenerationCancelled && Volume->PCGComponent->IsGenerating() && FPlatformTime::Seconds() < Deadline)
 	{
 		Subsystem->Tick(0.0f);

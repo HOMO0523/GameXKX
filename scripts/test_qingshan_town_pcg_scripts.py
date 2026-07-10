@@ -72,6 +72,22 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
         self.assertIn("FindObject<UObject>", implementation)
         self.assertIn("requested graph object exists but is not a PCG graph", implementation)
 
+    def test_graph_edges_are_verified_without_boolean_testing_add_labeled_edge(self):
+        implementation = IMPLEMENTATION.read_text(encoding="utf-8")
+        self.assertNotRegex(implementation, r"if\s*\(\s*!?\s*Graph->AddLabeledEdge")
+        self.assertIn("VerifyDirectedEdge", implementation)
+        self.assertIn('SetNumberField(TEXT("node_count")', implementation)
+        self.assertIn('SetNumberField(TEXT("verified_edge_count")', implementation)
+
+    def test_mutations_are_restricted_to_managed_graph_and_prototype_map_roots(self):
+        implementation = IMPLEMENTATION.read_text(encoding="utf-8")
+        self.assertIn("/Game/GameXXK/Environment/TownPCG/VerticalSlice/", implementation)
+        self.assertIn("/Game/GameXXK/Maps/Prototype/", implementation)
+        self.assertIn("FLevelUtils::IsLevelLocked", implementation)
+        self.assertIn("IFileManager::Get().IsReadOnly", implementation)
+        self.assertIn("CurrentLevel->GetOutermost()->GetName()", implementation)
+        self.assertIn("Volume->GetLevel() != CurrentLevel", implementation)
+
 
 if __name__ == "__main__":
     unittest.main()
