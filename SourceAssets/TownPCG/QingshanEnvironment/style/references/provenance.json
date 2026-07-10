@@ -1,0 +1,53 @@
+{
+  "references": [
+    {
+      "destination": "style_env_day.jpeg",
+      "source_absolute_path": "C:\\Users\\shxuw\\Documents\\Tencent Files\\978420603\\nt_qq\\nt_data\\Pic\\2026-07\\Ori\\74a507717280d3a9e8f075e8a3d8201b.jpeg",
+      "role": "environment_style",
+      "bytes": 160447,
+      "sha256": "bdc4c4e76938dfc416b37ad5d32c710d56604cf344a1346189b152b245bb15bf"
+    },
+    {
+      "destination": "style_env_night.jpeg",
+      "source_absolute_path": "C:\\Users\\shxuw\\Documents\\Tencent Files\\978420603\\nt_qq\\nt_data\\Pic\\2026-07\\Ori\\6cb6304fa60ec4084affc48be722555e.jpeg",
+      "role": "environment_atmosphere",
+      "bytes": 164803,
+      "sha256": "9947131a990cfcae6def4f82d26bd392b9900b042e40cd0f9b7b5cae05bde57b"
+    },
+    {
+      "destination": "style_character_scale.jpeg",
+      "source_absolute_path": "C:\\Users\\shxuw\\Documents\\Tencent Files\\978420603\\nt_qq\\nt_data\\Pic\\2026-07\\Ori\\b3e9c4c5f18ab38abfa6f49336b623c0.jpeg",
+      "role": "character_scale",
+      "bytes": 24557,
+      "sha256": "ed509274c438f2d7a81f5ec7cb35e9186dba730f33299f158efdf0b40f5c537d"
+    },
+    {
+      "destination": "style_nature_group.jpeg",
+      "source_absolute_path": "C:\\Users\\shxuw\\Documents\\Tencent Files\\978420603\\nt_qq\\nt_data\\Pic\\2026-07\\Ori\\b470ad572a2d2eb3959754c13d6cf0f1.jpeg",
+      "role": "shape_language",
+      "bytes": 48689,
+      "sha256": "c6aa7189710f32c59c4842529a9ff47601698e2666cf5a0683dd1b74a6878b3b"
+    },
+    {
+      "destination": "style_creature_warm.jpeg",
+      "source_absolute_path": "C:\\Users\\shxuw\\Documents\\Tencent Files\\978420603\\nt_qq\\nt_data\\Pic\\2026-07\\Ori\\d848c66bef90df2589b2b81c7575cd22.jpeg",
+      "role": "warm_palette",
+      "bytes": 73115,
+      "sha256": "c371fc141a614afc54789c0cb65c1603106ed02c9ff374d5a0c18de3b51ef0d9"
+    },
+    {
+      "destination": "style_creature_mass.jpeg",
+      "source_absolute_path": "C:\\Users\\shxuw\\Documents\\Tencent Files\\978420603\\nt_qq\\nt_data\\Pic\\2026-07\\Ori\\55bc66504b926d1917317b93c0a42f6b.jpeg",
+      "role": "mass_and_outline",
+      "bytes": 40962,
+      "sha256": "0b38e1901489220b3d82bb6aff983ec2fbb49bac8a29ca7c0db050ce16df6a7d"
+    },
+    {
+      "destination": "layout_dense_foliage.jpg",
+      "source_absolute_path": "C:\\Users\\shxuw\\xwechat_files\\wxid_g90er9r4o8p312_cd3c\\temp\\RWTemp\\2026-07\\93b72d0770041befdeb6f18e6e3229c9\\ed2a4aca8dd0aac3628ef65c3b405348.jpg",
+      "role": "layout_density_only",
+      "bytes": 229157,
+      "sha256": "e29852562f1002ac6f8436cd260bf7fc1f8e3d64f663f9004279a75c8d73ec93"
+    }
+  ]
+}
