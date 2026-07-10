@@ -23,6 +23,12 @@ QUICK_ROAD_TAGS = (
     "Quick_Road_MainRoad",
     "Quick_Road_RoadEdge",
 )
+TREE_MARKER_LABEL_PREFIX = "QingshanTown_TreeMarker_"
+TREE_MARKER_COUNT = 12
+TREE_MARKER_MESH_CANDIDATES = (
+    "/Quick_Road/Mesh/SM_Cone.SM_Cone",
+    "/Engine/BasicShapes/Cone.Cone",
+)
 REQUIRED_MANAGED_LABELS = (
     "QingshanTown_CityScope",
     "QingshanTown_MainRoad",
@@ -32,9 +38,8 @@ REQUIRED_MANAGED_LABELS = (
     "QingshanTown_Bridge",
     "QingshanTown_Market",
     "QingshanTown_SouthWharf",
-    "QingshanTown_TreeMarkers",
     PCG_ACTOR_LABEL,
-)
+) + tuple(f"{TREE_MARKER_LABEL_PREFIX}{index:02d}" for index in range(TREE_MARKER_COUNT))
 
 _TEMPORARY_MESH = "/Engine/BasicShapes/Cube.Cube"
 _PROTOTYPE_ONLY_TAG = "PrototypeOnly"
@@ -189,24 +194,98 @@ def _create_or_update_anchor_actor(
     return actor
 
 
-def _create_or_update_tree_markers(north_transform, instance_limit: int):
-    marker_count = min(max(int(instance_limit), 0), 12)
-    points = (
-        (-10500, -1000, 100), (10500, -1000, 100),
-        (-11200, -4500, 100), (11200, -4500, 100),
-        (-11200, -8500, 100), (11200, -8500, 100),
-        (-10000, -14000, 100), (10000, -14000, 100),
-        (-8000, -11500, 100), (-4000, -12300, 100),
-        (4000, -12300, 100), (8000, -11500, 100),
-    )[:marker_count]
-    actor = _create_or_update_spline_actor(
-        "QingshanTown_TreeMarkers",
-        north_transform,
-        points,
-        (_PROTOTYPE_ONLY_TAG, "TownPCG_TreeDebug", f"TreeMarkerCount_{marker_count}"),
-        closed=False,
+def _load_tree_marker_mesh():
+    for asset_path in TREE_MARKER_MESH_CANDIDATES:
+        mesh = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if mesh is not None:
+            return mesh, asset_path
+    raise RuntimeError(
+        f"could not load a temporary tree marker mesh from {TREE_MARKER_MESH_CANDIDATES}"
     )
-    return actor, marker_count
+
+
+def _require_actor_in_current_level(actor, label: str) -> None:
+    current_level = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).get_current_level()
+    if actor.get_level() != current_level:
+        raise RuntimeError(f"managed actor {label!r} belongs to a different level")
+
+
+def _remove_obsolete_tree_marker_spline() -> bool:
+    obsolete = _find_unique_actor_by_label("QingshanTown_TreeMarkers")
+    if obsolete is None:
+        return False
+    _require_actor_in_current_level(obsolete, "QingshanTown_TreeMarkers")
+    actor_tags = {str(tag) for tag in obsolete.get_editor_property("tags")}
+    spline = obsolete.get_component_by_class(unreal.SplineComponent)
+    if (
+        _actor_class_path(obsolete) != "/Script/Engine.Actor"
+        or spline is None
+        or _PROTOTYPE_ONLY_TAG not in actor_tags
+        or "TownPCG_TreeDebug" not in actor_tags
+    ):
+        raise RuntimeError(
+            "obsolete QingshanTown_TreeMarkers actor does not match the managed prototype spline contract"
+        )
+    if not unreal.EditorLevelLibrary.destroy_actor(obsolete):
+        raise RuntimeError("failed to remove obsolete managed tree-marker spline")
+    return True
+
+
+def _create_or_update_tree_marker_actor(
+    label: str,
+    north_transform,
+    local_location: tuple[float, float, float],
+    yaw_degrees: float,
+    mesh,
+):
+    actor = _find_unique_actor_by_label(label, unreal.StaticMeshActor)
+    world_location = _north_local_to_world(north_transform, local_location)
+    if actor is None:
+        actor = unreal.EditorLevelLibrary.spawn_actor_from_class(
+            unreal.StaticMeshActor,
+            world_location,
+            unreal.Rotator(pitch=0.0, yaw=float(yaw_degrees), roll=0.0),
+        )
+        if actor is None:
+            raise RuntimeError(f"failed to spawn tree marker StaticMeshActor {label}")
+        actor.set_actor_label(label)
+    _require_actor_in_current_level(actor, label)
+    actor.set_actor_location(world_location, False, False)
+    actor.set_actor_rotation(
+        unreal.Rotator(pitch=0.0, yaw=float(yaw_degrees), roll=0.0), False
+    )
+    actor.set_actor_scale3d(unreal.Vector(4.0, 4.0, 8.0))
+    actor.static_mesh_component.set_static_mesh(mesh)
+    tags = (_PROTOTYPE_ONLY_TAG, "TownPCG_TreeDebug", "TownPCG_TreeMarker")
+    _set_tags(actor, tags)
+    _set_tags(actor.static_mesh_component, tags)
+    return actor
+
+
+def _create_or_update_tree_markers(north_transform, instance_limit: int):
+    if int(instance_limit) < TREE_MARKER_COUNT:
+        raise RuntimeError(
+            f"tree_instance_limit {instance_limit} is below required marker count {TREE_MARKER_COUNT}"
+        )
+    _remove_obsolete_tree_marker_spline()
+    mesh, mesh_path = _load_tree_marker_mesh()
+    points = (
+        (-10500, -1000, 200), (10500, -1000, 200),
+        (-11200, -4500, 200), (11200, -4500, 200),
+        (-11200, -8500, 200), (11200, -8500, 200),
+        (-10000, -14000, 200), (10000, -14000, 200),
+        (-8000, -11500, 200), (-4000, -12300, 200),
+        (4000, -12300, 200), (8000, -11500, 200),
+    )
+    actors = []
+    for index, point in enumerate(points):
+        label = f"{TREE_MARKER_LABEL_PREFIX}{index:02d}"
+        actors.append(
+            _create_or_update_tree_marker_actor(
+                label, north_transform, point, index * 30.0, mesh
+            )
+        )
+    return actors, len(actors), mesh_path
 
 
 def _parse_operation_payload(operation: str, payload: str) -> dict[str, Any]:
@@ -325,7 +404,7 @@ def setup_vertical_slice() -> dict[str, Any]:
     _create_or_update_anchor_actor(
         "QingshanTown_SouthWharf", north_transform, (4000, -15000, 100), (30.0, 18.0, 2.0)
     )
-    _, tree_marker_count = _create_or_update_tree_markers(
+    _, tree_marker_count, tree_marker_mesh = _create_or_update_tree_markers(
         north_transform, config["tree_instance_limit"]
     )
 
@@ -398,6 +477,7 @@ def setup_vertical_slice() -> dict[str, Any]:
         "building_point_count": len(building_transforms),
         "generated_component_count": int(generate.get("generated_component_count", 0)),
         "tree_marker_count": tree_marker_count,
+        "tree_marker_mesh": tree_marker_mesh,
         "managed_label_counts": label_counts,
         "preserved_before": preserved_before,
         "preserved_after": preserved_after,

@@ -70,9 +70,13 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
             set(module.QUICK_ROAD_TAGS),
             {"Quick_Road_CityScope", "Quick_Road_MainRoad", "Quick_Road_RoadEdge"},
         )
+        self.assertEqual(module.TREE_MARKER_LABEL_PREFIX, "QingshanTown_TreeMarker_")
+        self.assertEqual(module.TREE_MARKER_COUNT, 12)
         self.assertEqual(
-            set(module.REQUIRED_MANAGED_LABELS),
-            {
+            tuple(module.TREE_MARKER_MESH_CANDIDATES),
+            ("/Quick_Road/Mesh/SM_Cone.SM_Cone", "/Engine/BasicShapes/Cone.Cone"),
+        )
+        expected_managed_labels = {
                 "QingshanTown_CityScope",
                 "QingshanTown_MainRoad",
                 "QingshanTown_RoadEdge_Left",
@@ -81,15 +85,18 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
                 "QingshanTown_Bridge",
                 "QingshanTown_Market",
                 "QingshanTown_SouthWharf",
-                "QingshanTown_TreeMarkers",
                 "QingshanTown_PCG_Buildings",
-            },
+        }
+        expected_managed_labels.update(
+            f"QingshanTown_TreeMarker_{index:02d}" for index in range(12)
         )
+        self.assertEqual(set(module.REQUIRED_MANAGED_LABELS), expected_managed_labels)
         for helper_name in (
             "_find_unique_actor_by_label",
             "_snapshot_preserved_actors",
             "_create_or_update_spline_actor",
             "_create_or_update_anchor_actor",
+            "_create_or_update_tree_marker_actor",
             "_create_or_update_tree_markers",
             "_count_generated_building_instances",
             "setup_vertical_slice",
@@ -100,6 +107,21 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
                 self.assertTrue(callable(getattr(module, helper_name, None)))
         self.assertEqual(module.PHASE_SETUP, "setup")
         self.assertEqual(module.PHASE_FINALIZE, "finalize")
+
+    def test_tree_debug_markers_are_real_idempotent_static_mesh_actors(self):
+        source = ASSEMBLY_SCRIPT.read_text(encoding="utf-8")
+        self.assertIn("unreal.StaticMeshActor", source)
+        self.assertIn('f"{TREE_MARKER_LABEL_PREFIX}{index:02d}"', source)
+        self.assertIn("_find_unique_actor_by_label(label, unreal.StaticMeshActor)", source)
+        self.assertIn("TownPCG_TreeDebug", source)
+        self.assertIn("PrototypeOnly", source)
+        self.assertIn("get_current_level()", source)
+        self.assertIn("destroy_actor(obsolete)", source)
+        self.assertIn("unreal.Vector(4.0, 4.0, 8.0)", source)
+        self.assertNotIn(
+            '"QingshanTown_TreeMarkers",\n        north_transform,\n        points,',
+            source,
+        )
 
     def test_vertical_slice_duplicate_world_is_saved_released_and_unloaded_before_load(self):
         source = ASSEMBLY_SCRIPT.read_text(encoding="utf-8")
