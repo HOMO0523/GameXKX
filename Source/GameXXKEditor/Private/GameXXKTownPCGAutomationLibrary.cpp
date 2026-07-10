@@ -238,7 +238,18 @@ FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTownPCGGraph(
 		return ErrorJson(Operation, FString::Printf(TEXT("could not load static mesh '%s'"), *StaticMeshPath), FString(), GraphAssetPath);
 	}
 
-	UPCGGraph* Graph = LoadAssetByPackagePath<UPCGGraph>(GraphAssetPath);
+	UObject* ExistingGraphObject = LoadAssetByPackagePath<UObject>(GraphAssetPath);
+	if (ExistingGraphObject && !ExistingGraphObject->IsA<UPCGGraph>())
+	{
+		return ErrorJson(
+			Operation,
+			FString::Printf(
+				TEXT("requested graph object exists but is not a PCG graph (class '%s')"),
+				*ExistingGraphObject->GetClass()->GetPathName()),
+			FString(),
+			GraphAssetPath);
+	}
+	UPCGGraph* Graph = Cast<UPCGGraph>(ExistingGraphObject);
 	FRevertibleEditorTransaction Transaction(NSLOCTEXT("GameXXK", "AuthorTownPCGGraph", "Author Town PCG Graph"));
 	if (!Transaction.IsValid())
 	{
@@ -254,7 +265,18 @@ FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTownPCGGraph(
 		}
 		Package->FullyLoad();
 		const FName AssetName(*FPackageName::GetLongPackageAssetName(GraphAssetPath));
-		Graph = FindObject<UPCGGraph>(Package, *AssetName.ToString());
+		UObject* ExistingNamedObject = FindObject<UObject>(Package, *AssetName.ToString());
+		if (ExistingNamedObject && !ExistingNamedObject->IsA<UPCGGraph>())
+		{
+			return ErrorJson(
+				Operation,
+				FString::Printf(
+					TEXT("requested graph object exists but is not a PCG graph (class '%s')"),
+					*ExistingNamedObject->GetClass()->GetPathName()),
+				FString(),
+				GraphAssetPath);
+		}
+		Graph = Cast<UPCGGraph>(ExistingNamedObject);
 		if (!Graph)
 		{
 			Graph = NewObject<UPCGGraph>(Package, AssetName, RF_Public | RF_Standalone | RF_Transactional);

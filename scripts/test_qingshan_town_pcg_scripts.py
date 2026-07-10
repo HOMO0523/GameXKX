@@ -66,6 +66,12 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
         self.assertIn("OnPCGGraphCancelledDelegate", implementation)
         self.assertNotIn("GenerateLocal(true)", implementation)
 
+    def test_graph_authoring_rejects_an_existing_object_of_the_wrong_class(self):
+        implementation = IMPLEMENTATION.read_text(encoding="utf-8")
+        self.assertIn("LoadAssetByPackagePath<UObject>", implementation)
+        self.assertIn("FindObject<UObject>", implementation)
+        self.assertIn("requested graph object exists but is not a PCG graph", implementation)
+
 
 if __name__ == "__main__":
     unittest.main()
