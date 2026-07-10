@@ -176,6 +176,20 @@ def _configure_static_mesh(static_mesh, material):
     static_mesh.modify()
 
 
+def _ensure_simple_collision(static_mesh):
+    existing_count = int(unreal.EditorStaticMeshLibrary.get_simple_collision_count(static_mesh))
+    if existing_count == 0:
+        unreal.EditorStaticMeshLibrary.add_simple_collisions(
+            static_mesh,
+            unreal.ScriptingCollisionShapeType.BOX,
+        )
+        static_mesh.modify()
+    final_count = int(unreal.EditorStaticMeshLibrary.get_simple_collision_count(static_mesh))
+    if final_count < 1:
+        raise RuntimeError("Qingshan shop mesh must have at least one simple collision shape")
+    return final_count
+
+
 def _save_assets(assets):
     for asset in assets:
         asset_path = unreal.EditorAssetLibrary.get_path_name_for_loaded_asset(asset)
@@ -200,6 +214,7 @@ def run(argv=None):
     static_mesh = _import_static_mesh(fbx_file)
     toon_profile, material = _build_toon_material(texture)
     _configure_static_mesh(static_mesh, material)
+    simple_collision_count = _ensure_simple_collision(static_mesh)
     _save_assets((texture, toon_profile, material, static_mesh))
 
     asset_editor = unreal.get_editor_subsystem(unreal.AssetEditorSubsystem)
@@ -217,6 +232,7 @@ def run(argv=None):
         "source_topology": "Quad",
         "source_face_count": 51110,
         "material_slots": len(static_mesh.get_editor_property("static_materials")),
+        "simple_collision_count": simple_collision_count,
         "bounds": _bounds_payload(static_mesh),
     }
     try:

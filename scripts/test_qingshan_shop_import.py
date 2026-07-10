@@ -55,6 +55,16 @@ class QingshanShopImportScriptTests(unittest.TestCase):
         self.assertEqual(module.MATERIAL_NAME, "M_Qingshan_Building_Toon")
         self.assertEqual(module.TOON_PROFILE_NAME, "TP_Qingshan_Building_Toon")
         self.assertEqual(getattr(module, "IMPORT_UNIFORM_SCALE", None), 6.5)
+        self.assertTrue(callable(getattr(module, "_ensure_simple_collision", None)))
+
+        source = SCRIPT_PATH.read_text(encoding="utf-8")
+        self.assertIn("get_simple_collision_count", source)
+        self.assertIn("add_simple_collisions", source)
+        self.assertIn("ScriptingCollisionShapeType.BOX", source)
+        self.assertIn("if existing_count == 0", source)
+        collision_index = source.index("_ensure_simple_collision(static_mesh)")
+        save_index = source.index("_save_assets((texture, toon_profile, material, static_mesh))")
+        self.assertLess(collision_index, save_index)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
