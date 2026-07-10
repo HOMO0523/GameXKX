@@ -13,7 +13,8 @@ public class GameXXKEditor : ModuleRules
 			"Engine",
 			"Landscape",
 			"Paper2D",
-			"PaperZD"
+			"PaperZD",
+			"PCG"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
