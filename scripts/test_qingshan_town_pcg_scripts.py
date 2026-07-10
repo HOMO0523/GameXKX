@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import importlib.util
+import json
 import re
 import sys
 import types
@@ -25,6 +26,12 @@ ASSEMBLY_SCRIPT = (
     / "Content"
     / "Python"
     / "gamexxk_assemble_qingshan_town_pcg_vertical_slice.py"
+)
+VALIDATOR_SCRIPT = (
+    PROJECT_ROOT
+    / "Content"
+    / "Python"
+    / "gamexxk_validate_qingshan_town_pcg_vertical_slice.py"
 )
 
 
@@ -53,7 +60,154 @@ def _import_assembly_script_with_unreal_stub():
             sys.path.remove(content_python)
 
 
+def _import_validator_script_with_unreal_stub():
+    unreal_stub = types.ModuleType("unreal")
+    original_unreal = sys.modules.get("unreal")
+    content_python = str(VALIDATOR_SCRIPT.parent)
+    path_added = content_python not in sys.path
+    if path_added:
+        sys.path.insert(0, content_python)
+    sys.modules["unreal"] = unreal_stub
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "gamexxk_validate_qingshan_town_pcg_vertical_slice_contract",
+            VALIDATOR_SCRIPT,
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    finally:
+        if original_unreal is None:
+            sys.modules.pop("unreal", None)
+        else:
+            sys.modules["unreal"] = original_unreal
+        if path_added:
+            sys.path.remove(content_python)
+
+
 class QingshanTownPCGScriptsTests(unittest.TestCase):
+    def test_vertical_slice_validator_exposes_stable_host_safe_contract(self):
+        self.assertTrue(VALIDATOR_SCRIPT.is_file(), f"missing validator: {VALIDATOR_SCRIPT}")
+        module = _import_validator_script_with_unreal_stub()
+
+        self.assertEqual(module.SOURCE_MAP, "/Game/GameXXK/Maps/L_QingshanInn")
+        self.assertEqual(
+            module.PROTOTYPE_MAP,
+            "/Game/GameXXK/Maps/Prototype/L_QingshanTown_PCG_Prototype",
+        )
+        self.assertEqual(module.PCG_ACTOR_LABEL, "QingshanTown_PCG_Buildings")
+        self.assertEqual(module.BUILDING_HARD_CAP, 16)
+        self.assertEqual(module.EXPECTED_POINT_COUNT, 12)
+        self.assertEqual(module.EXPECTED_NODE_COUNT, 2)
+        self.assertEqual(module.EXPECTED_EDGE_COUNT, 2)
+        self.assertEqual(module.EXPECTED_INSTANCE_COUNT, 12)
+        self.assertEqual(
+            module.EXPECTED_GRAPH_PATH,
+            "/Game/GameXXK/Environment/TownPCG/VerticalSlice/PCG_QingshanTown_VerticalSlice",
+        )
+        self.assertEqual(
+            module.EXPECTED_BUILDING_MESH,
+            "/Game/GameXXK/Environment/TownPCG/Prototype/QingshanShopA/SM_Qingshan_Shop_A_HQ_Retop50K",
+        )
+        self.assertEqual(
+            set(module.REQUIRED_FIXED_LABELS),
+            {
+                "QingshanTown_CityScope",
+                "QingshanTown_MainRoad",
+                "QingshanTown_RoadEdge_Left",
+                "QingshanTown_RoadEdge_Right",
+                "QingshanTown_River",
+                "QingshanTown_Bridge",
+                "QingshanTown_Market",
+                "QingshanTown_SouthWharf",
+            },
+        )
+        self.assertEqual(
+            module.REQUIRED_QUICK_ROAD_TAGS,
+            {
+                "Quick_Road_CityScope": 1,
+                "Quick_Road_MainRoad": 1,
+                "Quick_Road_RoadEdge": 2,
+            },
+        )
+        for helper_name in ("validate_vertical_slice", "_new_result", "_final_json", "main"):
+            with self.subTest(helper_name=helper_name):
+                self.assertTrue(callable(getattr(module, helper_name, None)))
+
+    def test_vertical_slice_validator_source_is_strictly_read_only(self):
+        source = VALIDATOR_SCRIPT.read_text(encoding="utf-8")
+        forbidden_api_tokens = (
+            "save_current_level",
+            "save_loaded_asset",
+            "save_asset",
+            "duplicate_asset",
+            "generate_town_pcg",
+            "clear_town_pcg",
+            "create_or_update_town_pcg_graph",
+            "attach_town_pcg_graph",
+            "create_or_update_tagged_spline",
+            "destroy_actor",
+            "spawn_actor",
+            "set_editor_property",
+        )
+        for token in forbidden_api_tokens:
+            with self.subTest(token=token):
+                self.assertNotIn(token, source.lower())
+        self.assertIn("EditorLoadingAndSavingUtils.load_map(PROTOTYPE_MAP)", source)
+        self.assertNotIn("load_map(SOURCE_MAP)", source)
+        self.assertIn("get_town_pcg_status(PCG_ACTOR_LABEL)", source)
+
+    def test_vertical_slice_validator_contract_covers_structural_evidence(self):
+        source = VALIDATOR_SCRIPT.read_text(encoding="utf-8")
+        required_fields = (
+            "dirty_map_packages_before",
+            "dirty_map_packages_after",
+            "required_label_counts",
+            "quick_road_tag_counts",
+            "spline_evidence",
+            "pcg_graph",
+            "point_count",
+            "node_count",
+            "verified_edge_count",
+            "pcg_actor",
+            "runtime_generation_disabled",
+            "generated_component_count",
+            "building_instance_count",
+            "building_hard_cap",
+            "generated_mesh",
+            "tree_markers",
+            "alignment",
+            "collision",
+            "preserved_labels",
+            "source_map_not_current",
+        )
+        for field in required_fields:
+            with self.subTest(field=field):
+                self.assertIn(field, source)
+        self.assertIn("get_current_level()", source)
+        self.assertIn("get_editor_subsystem(unreal.LevelEditorSubsystem)", source)
+        self.assertIn("get_actor_label()", source)
+        self.assertIn("get_path_name", source)
+        self.assertIn("pcg_component.get_graph()", source)
+        self.assertIn("_package_path(candidate)", source)
+        self.assertIn('get_editor_property("output_pins")', source)
+        self.assertIn('get_editor_property("edges")', source)
+        self.assertIn("tagged_marker_actors", source)
+        self.assertIn("unexpected_marker_labels", source)
+        self.assertIn("current_level_pcg_volumes", source)
+
+    def test_vertical_slice_validator_final_json_helper_is_compact_and_stable(self):
+        module = _import_validator_script_with_unreal_stub()
+        result = module._new_result()
+        self.assertEqual(result["success"], False)
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["warnings"], [])
+        self.assertIsInstance(result["evidence"], dict)
+        encoded = module._final_json(result)
+        self.assertEqual(json.loads(encoded), result)
+        self.assertNotIn("\n", encoded)
+        self.assertIn('"success":false', encoded)
+
     def test_vertical_slice_assembly_exposes_host_safe_idempotent_contract(self):
         self.assertTrue(ASSEMBLY_SCRIPT.is_file(), f"missing assembly script: {ASSEMBLY_SCRIPT}")
         module = _import_assembly_script_with_unreal_stub()
