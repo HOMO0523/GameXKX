@@ -195,6 +195,12 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
         self.assertIn("tagged_marker_actors", source)
         self.assertIn("unexpected_marker_labels", source)
         self.assertIn("current_level_pcg_volumes", source)
+        self.assertIn("current_level_pcg_components", source)
+        self.assertIn("global_pcg_component_count", source)
+        self.assertIn("current_level_generated_isms", source)
+        self.assertIn("global_generated_ism_count", source)
+        self.assertIn('PCG_GENERATED_COMPONENT_TAG = "PCG Generated Component"', source)
+        self.assertIn("PCG_GENERATED_COMPONENT_TAG in _tags(component)", source)
 
     def test_vertical_slice_validator_final_json_helper_is_compact_and_stable(self):
         module = _import_validator_script_with_unreal_stub()

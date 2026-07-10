@@ -14,6 +14,7 @@ PROTOTYPE_MAP = "/Game/GameXXK/Maps/Prototype/L_QingshanTown_PCG_Prototype"
 EXPECTED_GRAPH_PATH = "/Game/GameXXK/Environment/TownPCG/VerticalSlice/PCG_QingshanTown_VerticalSlice"
 EXPECTED_BUILDING_MESH = "/Game/GameXXK/Environment/TownPCG/Prototype/QingshanShopA/SM_Qingshan_Shop_A_HQ_Retop50K"
 PCG_ACTOR_LABEL = "QingshanTown_PCG_Buildings"
+PCG_GENERATED_COMPONENT_TAG = "PCG Generated Component"
 BUILDING_HARD_CAP = 16
 EXPECTED_POINT_COUNT = 12
 EXPECTED_NODE_COUNT = 2
@@ -352,15 +353,41 @@ def _validate_pcg_actor(result: dict[str, Any], actors: list[Any], current_level
         actor for actor in actors
         if isinstance(actor, unreal.PCGVolume) and _current_level_actor(actor, current_level)
     ]
+    current_level_actors = [
+        candidate for candidate in actors if _current_level_actor(candidate, current_level)
+    ]
+    current_level_pcg_components = [
+        component
+        for candidate in current_level_actors
+        for component in _component_list(candidate, unreal.PCGComponent)
+    ]
+    current_level_generated_isms = [
+        component
+        for candidate in current_level_actors
+        for component in _component_list(candidate, unreal.InstancedStaticMeshComponent)
+        if PCG_GENERATED_COMPONENT_TAG in _tags(component)
+    ]
     pcg_evidence: dict[str, Any] = {
         "actor_count": len(current_level_pcg_volumes),
         "expected_label_count": len(matches),
         "current_level_count": 0,
         "current_level_labels": sorted(_actor_label(actor) for actor in current_level_pcg_volumes),
+        "global_pcg_component_count": len(current_level_pcg_components),
+        "global_pcg_component_owners": sorted(
+            _actor_label(component.get_owner()) for component in current_level_pcg_components
+        ),
+        "global_generated_ism_count": len(current_level_generated_isms),
+        "global_generated_ism_owners": sorted(
+            _actor_label(component.get_owner()) for component in current_level_generated_isms
+        ),
     }
     result["evidence"]["pcg_actor"] = pcg_evidence
     if len(current_level_pcg_volumes) != 1:
         _error(result, "pcg_volume_count", "exactly one current-level PCGVolume is required", count=len(current_level_pcg_volumes), labels=pcg_evidence["current_level_labels"])
+    if len(current_level_pcg_components) != 1:
+        _error(result, "global_pcg_component_count", "exactly one current-level PCGComponent is required", count=len(current_level_pcg_components), owners=pcg_evidence["global_pcg_component_owners"])
+    if len(current_level_generated_isms) != 1:
+        _error(result, "global_generated_ism_count", "exactly one current-level PCG-generated instanced component is required", count=len(current_level_generated_isms), owners=pcg_evidence["global_generated_ism_owners"])
     if len(matches) != 1:
         _error(result, "pcg_actor", "expected PCG actor label must occur exactly once", count=len(matches))
         return
@@ -373,11 +400,17 @@ def _validate_pcg_actor(result: dict[str, Any], actors: list[Any], current_level
         _error(result, "pcg_actor_level", "PCG actor is not in the current level")
     components = _component_list(actor, unreal.PCGComponent)
     pcg_evidence["pcg_component_count"] = len(components)
+    pcg_evidence["target_pcg_component_count"] = len(components)
     if len(components) != 1:
         _error(result, "pcg_component", "PCG volume must own exactly one PCG component", count=len(components))
         pcg_component = components[0] if components else None
     else:
         pcg_component = components[0]
+    if pcg_component is not None and (
+        len(current_level_pcg_components) != 1
+        or current_level_pcg_components[0] != pcg_component
+    ):
+        _error(result, "pcg_component_owner", "the sole current-level PCGComponent must belong to the expected PCGVolume", expected_owner=PCG_ACTOR_LABEL, owners=pcg_evidence["global_pcg_component_owners"])
 
     trigger = str(_property(pcg_component, "generation_trigger", "")) if pcg_component is not None else ""
     generate_on_drop = bool(_property(pcg_component, "generate_on_drop_when_trigger_on_demand", False)) if pcg_component is not None else True
@@ -392,16 +425,26 @@ def _validate_pcg_actor(result: dict[str, Any], actors: list[Any], current_level
 
     status = _load_json_status(result)
     _validate_graph(result, pcg_component, status)
-    components = _component_list(actor, unreal.InstancedStaticMeshComponent)
-    generated_component_count = len(components)
-    instance_count = sum(int(component.get_instance_count()) for component in components)
-    mesh_paths = sorted({_package_path(_static_mesh(component)) for component in components})
+    target_generated_isms = [
+        component
+        for component in _component_list(actor, unreal.InstancedStaticMeshComponent)
+        if PCG_GENERATED_COMPONENT_TAG in _tags(component)
+    ]
+    generated_component_count = len(target_generated_isms)
+    instance_count = sum(int(component.get_instance_count()) for component in target_generated_isms)
+    mesh_paths = sorted({_package_path(_static_mesh(component)) for component in target_generated_isms})
     pcg_evidence.update({
         "generated_component_count": generated_component_count,
+        "target_generated_ism_count": generated_component_count,
         "building_instance_count": instance_count,
         "building_hard_cap": BUILDING_HARD_CAP,
         "generated_mesh": mesh_paths,
     })
+    if generated_component_count == 1 and (
+        len(current_level_generated_isms) != 1
+        or current_level_generated_isms[0] != target_generated_isms[0]
+    ):
+        _error(result, "generated_ism_owner", "the sole current-level PCG-generated instanced component must belong to the expected PCG actor", expected_owner=PCG_ACTOR_LABEL, owners=pcg_evidence["global_generated_ism_owners"])
     if int(status.get("generated_component_count", -1)) != 1 or generated_component_count != 1:
         _error(result, "generated_components", "exactly one generated instanced component is required", reflected=generated_component_count, status=status.get("generated_component_count"))
     if instance_count != EXPECTED_INSTANCE_COUNT:
