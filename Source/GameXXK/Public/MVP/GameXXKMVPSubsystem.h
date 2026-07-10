@@ -134,6 +134,9 @@ public:
 	bool EquipItem(FName ItemId);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool UnequipItem(FName ItemId);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool OpenTownPanel(EGameXXKTownPanelMode PanelMode);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")

@@ -13,6 +13,9 @@ namespace GameXXKMVP
 	static const FName ItemClothArmorName(TEXT("Item.ClothArmor"));
 	static const FName ItemCranePatternTalismanName(TEXT("Item.CranePatternTalisman"));
 	static const FName ItemInkstonePendantName(TEXT("Item.InkstonePendant"));
+	static const FName ItemWoodenSwordName(TEXT("Item.WoodenSword"));
+	static const FName ItemStarterClothArmorName(TEXT("Item.StarterClothArmor"));
+	static const FName ItemClothTalismanName(TEXT("Item.ClothTalisman"));
 
 	static FGameXXKItemDef MakeItem(FName Id, const TCHAR* DisplayName, EGameXXKItemKind Kind, int32 Buy, int32 Sell, int32 Heal, int32 MPHeal, int32 Attack, int32 Defense, int32 MaxHP, int32 MaxMP)
 	{
@@ -42,6 +45,9 @@ namespace GameXXKMVP
 			ItemClothArmorName,
 			ItemCranePatternTalismanName,
 			ItemInkstonePendantName,
+			ItemWoodenSwordName,
+			ItemStarterClothArmorName,
+			ItemClothTalismanName,
 		};
 	}
 
@@ -99,6 +105,21 @@ namespace GameXXKMVP
 		if (ItemId == ItemInkstonePendantName)
 		{
 			OutDef = MakeItem(ItemId, TEXT("墨砚坠饰"), EGameXXKItemKind::Accessory, 32, 16, 0, 0, 0, 0, 0, 20);
+			return true;
+		}
+		if (ItemId == ItemWoodenSwordName)
+		{
+			OutDef = MakeItem(ItemId, TEXT("木剑"), EGameXXKItemKind::Weapon, 18, 9, 0, 0, 3, 0, 0, 0);
+			return true;
+		}
+		if (ItemId == ItemStarterClothArmorName)
+		{
+			OutDef = MakeItem(ItemId, TEXT("布甲"), EGameXXKItemKind::Armor, 16, 8, 0, 0, 0, 3, 0, 0);
+			return true;
+		}
+		if (ItemId == ItemClothTalismanName)
+		{
+			OutDef = MakeItem(ItemId, TEXT("布护符"), EGameXXKItemKind::Accessory, 14, 7, 0, 0, 0, 0, 10, 0);
 			return true;
 		}
 		return false;
@@ -816,6 +837,21 @@ FName UGameXXKMVPRules::ItemClothArmor()
 	return GameXXKMVP::ItemClothArmorName;
 }
 
+FName UGameXXKMVPRules::ItemWoodenSword()
+{
+	return GameXXKMVP::ItemWoodenSwordName;
+}
+
+FName UGameXXKMVPRules::ItemStarterClothArmor()
+{
+	return GameXXKMVP::ItemStarterClothArmorName;
+}
+
+FName UGameXXKMVPRules::ItemClothTalisman()
+{
+	return GameXXKMVP::ItemClothTalismanName;
+}
+
 FGameXXKItemDef UGameXXKMVPRules::GetItemDef(FName ItemId, bool& bFound)
 {
 	FGameXXKItemDef Def;
@@ -842,6 +878,9 @@ FGameXXKRuntimeState UGameXXKMVPRules::CreateNewGame()
 	GameXXKMVP::RecalculatePlayerStats(State, false);
 	State.UnlockedRegions.Add(RegionQingshan());
 	AddItem(State, ItemHealingPowder(), 1);
+	AddItem(State, ItemWoodenSword(), 1);
+	AddItem(State, ItemStarterClothArmor(), 1);
+	AddItem(State, ItemClothTalisman(), 1);
 	return State;
 }
 
@@ -1407,6 +1446,36 @@ bool UGameXXKMVPRules::EquipItem(FGameXXKRuntimeState& State, FName ItemId)
 		State.EquippedAccessory = ItemId;
 	}
 	else
+	{
+		return false;
+	}
+	GameXXKMVP::RecalculatePlayerStats(State, true);
+	return true;
+}
+
+bool UGameXXKMVPRules::UnequipItem(FGameXXKRuntimeState& State, FName ItemId)
+{
+	if (ItemId.IsNone())
+	{
+		return false;
+	}
+	bool bChanged = false;
+	if (State.EquippedWeapon == ItemId)
+	{
+		State.EquippedWeapon = NAME_None;
+		bChanged = true;
+	}
+	else if (State.EquippedArmor == ItemId)
+	{
+		State.EquippedArmor = NAME_None;
+		bChanged = true;
+	}
+	else if (State.EquippedAccessory == ItemId)
+	{
+		State.EquippedAccessory = NAME_None;
+		bChanged = true;
+	}
+	if (!bChanged)
 	{
 		return false;
 	}

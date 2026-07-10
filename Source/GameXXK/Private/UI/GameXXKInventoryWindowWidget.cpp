@@ -152,6 +152,18 @@ namespace
 		{
 			return TextureRoot + TEXT("T_ItemInkstonePendant.T_ItemInkstonePendant");
 		}
+		if (ItemId == UGameXXKMVPRules::ItemWoodenSword())
+		{
+			return TextureRoot + TEXT("T_ItemWoodenSword.T_ItemWoodenSword");
+		}
+		if (ItemId == UGameXXKMVPRules::ItemStarterClothArmor())
+		{
+			return TextureRoot + TEXT("T_ItemStarterClothArmor.T_ItemStarterClothArmor");
+		}
+		if (ItemId == UGameXXKMVPRules::ItemClothTalisman())
+		{
+			return TextureRoot + TEXT("T_ItemClothTalisman.T_ItemClothTalisman");
+		}
 		return FString();
 	}
 
@@ -354,7 +366,7 @@ bool UGameXXKInventoryWindowWidget::SelectPlayerBackpackItemForTest(FName ItemId
 
 bool UGameXXKInventoryWindowWidget::ExecuteSelectedPrimaryActionForTest()
 {
-	if (SelectedItemId.IsNone() || SelectedSlotSource != EGameXXKInventorySlotSource::PlayerBackpack)
+	if (SelectedItemId.IsNone())
 	{
 		return false;
 	}
@@ -365,21 +377,27 @@ bool UGameXXKInventoryWindowWidget::ExecuteSelectedPrimaryActionForTest()
 		return false;
 	}
 
-	bool bFound = false;
-	const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(SelectedItemId, bFound);
-	if (!bFound)
-	{
-		return false;
-	}
-
 	bool bExecuted = false;
-	if (Def.Kind == EGameXXKItemKind::Consumable)
+	if (SelectedSlotSource == EGameXXKInventorySlotSource::Equipment)
 	{
-		bExecuted = Subsystem->UseItem(SelectedItemId);
+		bExecuted = Subsystem->UnequipItem(SelectedItemId);
 	}
-	else
+	else if (SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack)
 	{
-		bExecuted = Subsystem->EquipItem(SelectedItemId);
+		bool bFound = false;
+		const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(SelectedItemId, bFound);
+		if (!bFound)
+		{
+			return false;
+		}
+		if (Def.Kind == EGameXXKItemKind::Consumable)
+		{
+			bExecuted = Subsystem->UseItem(SelectedItemId);
+		}
+		else
+		{
+			bExecuted = Subsystem->EquipItem(SelectedItemId);
+		}
 	}
 
 	if (bExecuted)
@@ -797,8 +815,23 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 			}
 		}
 	}
-	InventoryEntries.Sort([](const TPair<FName, int32>& A, const TPair<FName, int32>& B)
+	const TArray<FName> KnownItemIds = UGameXXKMVPRules::GetKnownItemIds();
+	InventoryEntries.Sort([&KnownItemIds](const TPair<FName, int32>& A, const TPair<FName, int32>& B)
 	{
+		const int32 AIndex = KnownItemIds.IndexOfByKey(A.Key);
+		const int32 BIndex = KnownItemIds.IndexOfByKey(B.Key);
+		if (AIndex != INDEX_NONE || BIndex != INDEX_NONE)
+		{
+			if (AIndex == INDEX_NONE)
+			{
+				return false;
+			}
+			if (BIndex == INDEX_NONE)
+			{
+				return true;
+			}
+			return AIndex < BIndex;
+		}
 		return A.Key.ToString() < B.Key.ToString();
 	});
 
@@ -980,6 +1013,10 @@ void UGameXXKInventoryWindowWidget::RefreshDetailPanel()
 	else if (SelectedSlotSource == EGameXXKInventorySlotSource::MerchantStock)
 	{
 		CurrentPrimaryActionText = NSLOCTEXT("GameXXKInventoryWindow", "BuyAction", "购买");
+	}
+	else if (SelectedSlotSource == EGameXXKInventorySlotSource::Equipment)
+	{
+		CurrentPrimaryActionText = NSLOCTEXT("GameXXKInventoryWindow", "UnequipAction", "卸下");
 	}
 
 	if (PrimaryActionButton && PrimaryActionTextBlock)

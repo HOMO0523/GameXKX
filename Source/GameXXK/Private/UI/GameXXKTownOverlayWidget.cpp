@@ -789,6 +789,18 @@ FString UGameXXKTownOverlayWidget::ResolveItemIconTexturePath(FName ItemId) cons
 	{
 		return ItemIconTextureRoot + TEXT("T_ItemInkstonePendant.T_ItemInkstonePendant");
 	}
+	if (ItemId == UGameXXKMVPRules::ItemWoodenSword())
+	{
+		return ItemIconTextureRoot + TEXT("T_ItemWoodenSword.T_ItemWoodenSword");
+	}
+	if (ItemId == UGameXXKMVPRules::ItemStarterClothArmor())
+	{
+		return ItemIconTextureRoot + TEXT("T_ItemStarterClothArmor.T_ItemStarterClothArmor");
+	}
+	if (ItemId == UGameXXKMVPRules::ItemClothTalisman())
+	{
+		return ItemIconTextureRoot + TEXT("T_ItemClothTalisman.T_ItemClothTalisman");
+	}
 	return FString();
 }
 
@@ -808,8 +820,23 @@ TArray<FGameXXKTownItemSlotView> UGameXXKTownOverlayWidget::BuildPlayerBackpackS
 			InventoryEntries.Add(Entry);
 		}
 	}
-	InventoryEntries.Sort([](const TPair<FName, int32>& A, const TPair<FName, int32>& B)
+	const TArray<FName> KnownItemIds = UGameXXKMVPRules::GetKnownItemIds();
+	InventoryEntries.Sort([&KnownItemIds](const TPair<FName, int32>& A, const TPair<FName, int32>& B)
 	{
+		const int32 AIndex = KnownItemIds.IndexOfByKey(A.Key);
+		const int32 BIndex = KnownItemIds.IndexOfByKey(B.Key);
+		if (AIndex != INDEX_NONE || BIndex != INDEX_NONE)
+		{
+			if (AIndex == INDEX_NONE)
+			{
+				return false;
+			}
+			if (BIndex == INDEX_NONE)
+			{
+				return true;
+			}
+			return AIndex < BIndex;
+		}
 		return A.Key.ToString() < B.Key.ToString();
 	});
 

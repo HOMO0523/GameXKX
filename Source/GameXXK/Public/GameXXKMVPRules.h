@@ -413,6 +413,15 @@ public:
 	static FName ItemClothArmor();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FName ItemWoodenSword();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FName ItemStarterClothArmor();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FName ItemClothTalisman();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FGameXXKItemDef GetItemDef(FName ItemId, bool& bFound);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
@@ -501,6 +510,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool EquipItem(UPARAM(ref) FGameXXKRuntimeState& State, FName ItemId);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool UnequipItem(UPARAM(ref) FGameXXKRuntimeState& State, FName ItemId);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool UseHealingItem(UPARAM(ref) FGameXXKRuntimeState& State);

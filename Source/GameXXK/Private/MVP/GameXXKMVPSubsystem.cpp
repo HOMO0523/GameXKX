@@ -284,6 +284,11 @@ bool UGameXXKMVPSubsystem::EquipItem(FName ItemId)
 	return UGameXXKMVPRules::EquipItem(RuntimeState, ItemId);
 }
 
+bool UGameXXKMVPSubsystem::UnequipItem(FName ItemId)
+{
+	return UGameXXKMVPRules::UnequipItem(RuntimeState, ItemId);
+}
+
 bool UGameXXKMVPSubsystem::OpenTownPanel(EGameXXKTownPanelMode PanelMode)
 {
 	return UGameXXKMVPRules::OpenTownPanel(RuntimeState, PanelMode);

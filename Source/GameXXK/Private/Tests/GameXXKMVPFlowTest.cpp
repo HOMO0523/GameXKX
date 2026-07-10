@@ -114,6 +114,12 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 
 	TestEqual(TEXT("main menu opens first"), State.Screen, EGameXXKScreen::MainMenu);
 	TestEqual(TEXT("new game starts with enough gold to buy starter equipment"), State.PlayerGold, 50);
+	const FName WoodenSword = UGameXXKMVPRules::ItemWoodenSword();
+	const FName StarterClothArmor = UGameXXKMVPRules::ItemStarterClothArmor();
+	const FName ClothTalisman = UGameXXKMVPRules::ItemClothTalisman();
+	TestEqual(TEXT("new game starts with a wooden sword for equipment replacement testing"), UGameXXKMVPRules::GetItemCount(State, WoodenSword), 1);
+	TestEqual(TEXT("new game starts with cloth armor for equipment replacement testing"), UGameXXKMVPRules::GetItemCount(State, StarterClothArmor), 1);
+	TestEqual(TEXT("new game starts with a cloth talisman for equipment replacement testing"), UGameXXKMVPRules::GetItemCount(State, ClothTalisman), 1);
 	TestTrue(TEXT("Qingshan starts unlocked"), State.UnlockedRegions.Contains(UGameXXKMVPRules::RegionQingshan()));
 	TestFalse(TEXT("Tanjiang starts locked"), State.UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));
 

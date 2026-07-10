@@ -108,6 +108,7 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("first backpack slot is driven by the player inventory view model"), TownOverlay->GetPlayerBackpackSlotItemIdForTest(0), UGameXXKMVPRules::ItemHealingPowder());
 	TestTrue(TEXT("healing powder has a loaded item icon path"), TownOverlay->GetItemIconResourcePathForTest(UGameXXKMVPRules::ItemHealingPowder()).Contains(TEXT("T_ItemHealingPowder")));
 	TestTrue(TEXT("Qingxin tea has a loaded item icon path"), TownOverlay->GetItemIconResourcePathForTest(FName(TEXT("Item.QingxinTea"))).Contains(TEXT("T_ItemQingxinTea")));
+	TestTrue(TEXT("starter wooden sword has a loaded item icon path"), TownOverlay->GetItemIconResourcePathForTest(UGameXXKMVPRules::ItemWoodenSword()).Contains(TEXT("T_ItemWoodenSword")));
 	const int32 GoldBeforeSlotPurchase = Subsystem->GetRuntimeState().PlayerGold;
 	const int32 PowderBeforeSlotPurchase = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
 	TestTrue(TEXT("clicking shop stock slot selects it for purchase"), TownOverlay->SelectShopStockSlotForTest(0));
@@ -159,6 +160,11 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("independent inventory equips selected armor through detail action"), InventoryWindow->ExecuteSelectedPrimaryActionForTest());
 	TestEqual(TEXT("independent inventory places armor in armor slot"), InventoryWindow->GetEquippedItemForSlotForTest(FName(TEXT("Armor"))), UGameXXKMVPRules::ItemClothArmor());
 	TestEqual(TEXT("independent inventory equipment action updates defense"), Subsystem->GetRuntimeState().PlayerDefense, DefenseBeforeIndependentEquip + 6);
+	InventoryWindow->HandleConfiguredSlotClicked(EGameXXKInventorySlotSource::Equipment, INDEX_NONE, FName(TEXT("Armor")));
+	TestEqual(TEXT("equipped armor slot exposes unequip action"), InventoryWindow->GetSelectedPrimaryActionTextForTest().ToString(), FString(TEXT("卸下")));
+	TestTrue(TEXT("independent inventory unequips selected armor through detail action"), InventoryWindow->ExecuteSelectedPrimaryActionForTest());
+	TestTrue(TEXT("independent inventory clears armor slot after unequip"), InventoryWindow->GetEquippedItemForSlotForTest(FName(TEXT("Armor"))).IsNone());
+	TestEqual(TEXT("unequipping selected armor restores defense"), Subsystem->GetRuntimeState().PlayerDefense, DefenseBeforeIndependentEquip);
 
 	TestTrue(TEXT("quest dialog accepts quest"), QuestDialog->AcceptQuest());
 	TestEqual(TEXT("quest accepted in subsystem state"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
