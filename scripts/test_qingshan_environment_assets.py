@@ -907,6 +907,44 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
             for asset_id in EXPECTED_QINGSHAN_CATALOG["B0"]:
                 self.assertEqual(assets[asset_id]["generation"]["prompt"], _planned_b0_prompt(asset_id))
 
+    def test_camera_route_uses_latest_style_and_scale_boards_without_raw_character_scale(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+            route = assets["REF_QS_CAMERA_ROUTE"]
+
+            expected_inputs = [
+                "style/references/style_env_day.jpeg",
+                "style/references/style_env_night.jpeg",
+                "style/references/layout_dense_foliage.jpg",
+                "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
+                "style/boards/REF_QS_SCALE_LINEUP__board__v003.png",
+            ]
+            self.assertEqual(route["generation"]["input_images"], expected_inputs)
+            self.assertEqual(
+                route["dependencies"],
+                [
+                    *expected_inputs[:3],
+                    "REF_QS_ENV_STYLE_LOCK",
+                    "REF_QS_SCALE_LINEUP",
+                ],
+            )
+            self.assertNotIn(
+                "style/references/style_character_scale.jpeg",
+                route["source_provenance"]["stable_reference_images"],
+            )
+            self.assertEqual(
+                route["generation"]["input_image_roles"][-1],
+                {
+                    "path": "style/boards/REF_QS_SCALE_LINEUP__board__v003.png",
+                    "role": "generated_scale_lineup",
+                },
+            )
+            prompt = route["generation"]["prompt"]
+            self.assertIn("scale-lineup v003 board controls relative hierarchy", prompt)
+            self.assertIn("JSON metre target dimensions remain authoritative", prompt)
+            self.assertIn("player faces along the road, not toward the gate", prompt)
+            self.assertIn("no panel borders", prompt)
+
     def test_generated_palettes_do_not_repeat_color_tokens(self):
         with tempfile.TemporaryDirectory() as directory:
             _root, _builder, _summary, assets = self._build(directory)

@@ -125,6 +125,7 @@ GENERATED_BOARD_PATHS = {
     "REF_QS_ENV_STYLE_LOCK": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
     "REF_QS_SCALE_LINEUP": "style/boards/REF_QS_SCALE_LINEUP__board__v001.png",
 }
+CAMERA_ROUTE_SCALE_BOARD_PATH = "style/boards/REF_QS_SCALE_LINEUP__board__v003.png"
 
 STYLE_REFERENCE_ROLES = {
     "style_env_day.jpeg": "environment_style",
@@ -391,14 +392,15 @@ Lighting/mood: neutral soft daylight for shape comparison
 Constraints: no labels, no numbers, no text, no watermark, no duplicated subjects, no perspective distortion, no modern objects""",
     "REF_QS_CAMERA_ROUTE": """Use case: stylized-concept
 Asset type: four-panel game environment camera-route concept board
-Primary request: show the Qingshan town player route in four consistent fixed-camera views: north gate arrival, market and largest shop, main bridge, south dock
-Input images: project ink illustrations define style; the foliage screenshot defines only dense overlapping canopy rhythm, never its rendering style; the style-lock board defines final palette and materials
+Primary request: show one continuous Qingshan town player route in four consistent fixed high-three-quarter views: north gate arrival, market and largest shop, main bridge, south dock
+Input images: day and night project illustrations define ink-cartoon style and atmosphere; the foliage screenshot defines only dense overlapping edge-canopy rhythm, never its rendering style; the style-lock v003 board defines final palette, materials and icon-level simplification; the scale-lineup v003 board controls relative hierarchy while JSON metre target dimensions remain authoritative
 Scene/backdrop: one coherent mountain-enclosed Chinese town across four equal visual panels without borders or text
-Subject: north gate remains on screen right; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market, offset bridge, river and left-side dock; one large shop, smaller staggered houses, clustered foliage, near solid mountain feet and pale Paper2D-like far mountain silhouettes
+Subject: preserve one continuous mental map: the north gate stays on screen right and the initial player faces along the road, not toward the gate; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market anchored by one largest shop and smaller staggered houses, then an offset main bridge crossing a blue-green river, then the south and left-side dock; cluster trees and plants asymmetrically around scene edges; ring the playable perimeter with near solid mountain feet and pale Paper2D-like far mountain silhouettes while keeping the lower center open
 Style/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon environment concept
-Composition/framing: fixed high three-quarter camera matching the game; four route moments share scale, geography and asset identity; player path remains clear
+Composition/framing: four fixed high-three-quarter views with the same geography, scale and asset identity; view one places the gate on screen right with the player looking along the route; view two shows the asymmetric market and largest-shop anchor; view three shows the offset bridge clearly crossing the river; view four shows the south and left-side dock; road, river and walking path stay unambiguous and dense foliage overlaps only the outer edges
 Lighting/mood: fresh morning, calm mist, readable gameplay contrast
-Constraints: no text, no UI, no labels, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects""",
+Constraints: no text, no UI, no labels, no panel borders, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects
+Simplification: inherit v003 icon-level shape economy; every building, bridge, tree and mountain uses broad readable masses with no bridge masonry joints, roof-tile rows, repeated windows, leaf-by-leaf foliage or surface noise""",
     "REF_QS_SURFACE_PALETTE": """Use case: stylized-concept
 Asset type: game environment surface-palette board
 Primary request: define the coordinated ground and water surfaces for Qingshan town
@@ -484,7 +486,6 @@ def _reference_selection(asset_id: str, references: list[dict[str, str]]) -> lis
             "style_env_day.jpeg",
             "style_env_night.jpeg",
             "layout_dense_foliage.jpg",
-            "style_character_scale.jpeg",
         ]
     elif asset_id == "REF_QS_SURFACE_PALETTE":
         names = ["style_env_day.jpeg", "style_env_night.jpeg", "style_creature_warm.jpeg"]
@@ -736,8 +737,15 @@ def _generation(
     inputs = [item["path"] for item in selected]
     input_roles = [{"path": item["path"], "role": item["role"]} for item in selected]
     generated_inputs: list[tuple[str, str]] = []
-    if asset_id in ("REF_QS_SCALE_LINEUP", "REF_QS_CAMERA_ROUTE", "REF_QS_SURFACE_PALETTE"):
+    if asset_id in ("REF_QS_SCALE_LINEUP", "REF_QS_SURFACE_PALETTE"):
         generated_inputs.append((GENERATED_BOARD_PATHS["REF_QS_ENV_STYLE_LOCK"], "generated_style_lock"))
+    elif asset_id == "REF_QS_CAMERA_ROUTE":
+        generated_inputs.extend(
+            (
+                (GENERATED_BOARD_PATHS["REF_QS_ENV_STYLE_LOCK"], "generated_style_lock"),
+                (CAMERA_ROUTE_SCALE_BOARD_PATH, "generated_scale_lineup"),
+            )
+        )
     elif spec.category not in ("reference", "registry"):
         generated_inputs.extend(
             (
@@ -1020,8 +1028,11 @@ def _make_asset(
     is_registry = batch == "REGISTRY"
     generated_dependencies = [
         dependency_id
-        for dependency_id, board_path in GENERATED_BOARD_PATHS.items()
-        if board_path in generation["input_images"]
+        for dependency_id in GENERATED_BOARD_PATHS
+        if any(
+            board_path.startswith(f"style/boards/{dependency_id}__board__v00")
+            for board_path in generation["input_images"]
+        )
     ]
     if is_registry:
         dependencies = ["source_metrics.json", "style/references/provenance.json"]

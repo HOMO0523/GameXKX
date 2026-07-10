@@ -681,19 +681,20 @@ Expected: calls used 1/3 and `approval_state=generated_pending_review`.
 
 - [ ] **Step 1: Generate the four-route-view board**
 
-Use `style_env_day.jpeg`, `style_env_night.jpeg`, `layout_dense_foliage.jpg` as layout-density-only, `style_character_scale.jpeg`, and the generated style board. Prompt:
+Use `style_env_day.jpeg`, `style_env_night.jpeg`, `layout_dense_foliage.jpg` as layout-density-only, the generated style v003 board, and the generated scale-lineup v003 board. The generated scale board replaces the raw character-scale image for this route board. Prompt:
 
 ```text
 Use case: stylized-concept
 Asset type: four-panel game environment camera-route concept board
-Primary request: show the Qingshan town player route in four consistent fixed-camera views: north gate arrival, market and largest shop, main bridge, south dock
-Input images: project ink illustrations define style; the foliage screenshot defines only dense overlapping canopy rhythm, never its rendering style; the style-lock board defines final palette and materials
+Primary request: show one continuous Qingshan town player route in four consistent fixed high-three-quarter views: north gate arrival, market and largest shop, main bridge, south dock
+Input images: day and night project illustrations define ink-cartoon style and atmosphere; the foliage screenshot defines only dense overlapping edge-canopy rhythm, never its rendering style; the style-lock v003 board defines final palette, materials and icon-level simplification; the scale-lineup v003 board controls relative hierarchy while JSON metre target dimensions remain authoritative
 Scene/backdrop: one coherent mountain-enclosed Chinese town across four equal visual panels without borders or text
-Subject: north gate remains on screen right; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market, offset bridge, river and left-side dock; one large shop, smaller staggered houses, clustered foliage, near solid mountain feet and pale Paper2D-like far mountain silhouettes
+Subject: preserve one continuous mental map: the north gate stays on screen right and the initial player faces along the road, not toward the gate; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market anchored by one largest shop and smaller staggered houses, then an offset main bridge crossing a blue-green river, then the south and left-side dock; cluster trees and plants asymmetrically around scene edges; ring the playable perimeter with near solid mountain feet and pale Paper2D-like far mountain silhouettes while keeping the lower center open
 Style/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon environment concept
-Composition/framing: fixed high three-quarter camera matching the game; four route moments share scale, geography and asset identity; player path remains clear
+Composition/framing: four fixed high-three-quarter views with the same geography, scale and asset identity; view one places the gate on screen right with the player looking along the route; view two shows the asymmetric market and largest-shop anchor; view three shows the offset bridge clearly crossing the river; view four shows the south and left-side dock; road, river and walking path stay unambiguous and dense foliage overlaps only the outer edges
 Lighting/mood: fresh morning, calm mist, readable gameplay contrast
-Constraints: no text, no UI, no labels, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects
+Constraints: no text, no UI, no labels, no panel borders, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects
+Simplification: inherit v003 icon-level shape economy; every building, bridge, tree and mountain uses broad readable masses with no bridge masonry joints, roof-tile rows, repeated windows, leaf-by-leaf foliage or surface noise
 Detail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.
 ```
 
