@@ -602,6 +602,13 @@ python scripts/qingshan_environment_assets.py --root SourceAssets/TownPCG/Qingsh
 python scripts/qingshan_environment_assets.py --root SourceAssets/TownPCG/QingshanEnvironment --check
 ```
 
+For a targeted revision, the same registration command must also record the successful
+generation trace. Repeat `--generation-input-path` once for every image directly supplied
+to imagegen, repeat `--generation-reference-lineage` for the complete stable-reference
+lineage, and pass the full base prompt plus revision directive with `--generation-prompt`.
+All three trace options are supplied together. Planned dependencies are never recorded as
+direct inputs unless they were actually passed to the successful generation call.
+
 Expected: calls used 1/3, `approval_state=generated_pending_review`, stored SHA-256, all production gates false.
 
 - [ ] **Step 3: Commit**

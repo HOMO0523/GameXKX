@@ -44,7 +44,7 @@
       "cropped subject",
       "PBR plastic shine"
     ],
-    "generation_calls_used": 1,
+    "generation_calls_used": 2,
     "input_image_roles": [
       {
         "path": "style/references/style_env_day.jpeg",
@@ -168,15 +168,31 @@
       "background": "warm_rice_paper",
       "camera": "fixed_high_three_quarter_or_category_sheet",
       "file_stub": "REF_QS_ENV_STYLE_LOCK__board",
+      "generation_input_paths": [
+        "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "style/references/style_env_day.jpeg",
+        "style/references/style_character_scale.jpeg",
+        "style/references/style_nature_group.jpeg",
+        "style/references/style_creature_warm.jpeg"
+      ],
+      "generation_prompt": "Use case: stylized-concept\nAsset type: game environment style-lock board\nPrimary request: define the approved visual language for Qingshan town, a Chinese ink-cartoon town enclosed by layered mountains\nInput images: environment day and night images are atmosphere and brushwork references; character and creature images are proportion, outline, shape-language, and palette references; do not copy their subjects\nScene/backdrop: warm rice-paper board with a compact town vignette, small material swatches, roof-color families, foliage shapes, mountain layers, river and stone-road samples; no written labels\nSubject: warm off-white walls, dark timber, roofs in warm red-brown, ink green, indigo, ochre and teal; jade and blue-green foliage; blue-gray mist mountains; dark teal variable ink outlines\nStyle/medium: hand-drawn Chinese ink cartoon concept art, dry-brush broken edges, simplified chunky silhouettes, two to three value bands, restrained watercolor wash\nComposition/framing: wide coherent style board, central environment vignette with orderly visual samples around it, generous margins\nLighting/mood: calm bright morning with a small cool mist sample, friendly adventure tone\nConstraints: no text, no symbols, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nTargeted v002 revision. Use v001 only for content inventory and broad board layout; redraw every element in the project's original chunky ink-cartoon language. Strong variable thick dark-teal outlines, broken dry-brush strokes, exaggerated asymmetric silhouettes, broad watercolor masses, two-to-three value bands. Reduce the central town to at most 6–8 clearly separated crooked buildings. Remove individual roof-tile grids, repeated window lattices, ornate pagoda realism, tiny market clutter, fine architectural linework and orderly symmetry. Make roofs larger and more playful, trees broader and grouped, mountains simpler and mistier, bridge/river/road shapes readable at thumbnail scale. Preserve roof palette swatches and material samples with generous rice-paper gaps. No text, symbols, logos, watermark, modern objects, photorealism or PBR shine.",
+      "generation_reference_lineage": [
+        "style/references/style_env_day.jpeg",
+        "style/references/style_env_night.jpeg",
+        "style/references/style_character_scale.jpeg",
+        "style/references/style_nature_group.jpeg",
+        "style/references/style_creature_warm.jpeg",
+        "style/references/style_creature_mass.jpeg"
+      ],
       "kind": "board",
-      "output_path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+      "output_path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v002.png",
       "required_annotations": [
         "complete_board",
         "consistent_QS_InkToon_v1",
         "no_written_labels"
       ],
-      "sha256": "5bf7ecd04043b028b687ed98892c02df69cec6ab94724383e93840b25d1e8046",
-      "version": "v001"
+      "sha256": "0f25c0681a421fc2e223cd323d7427b3b64849c4e7deedaaf5d5e073fc9b18e4",
+      "version": "v002"
     }
   ],
   "schema_version": 1,

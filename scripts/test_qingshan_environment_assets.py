@@ -477,6 +477,47 @@ class SchemaParityValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(CatalogError, "reference_images.*unknown fields"):
             validate_asset(data)
 
+    def test_generation_trace_metadata_is_complete_canonical_and_unique(self):
+        trace = {
+            "generation_input_paths": [
+                "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+                "style/references/style_env_day.jpeg",
+            ],
+            "generation_reference_lineage": [
+                "style/references/style_env_day.jpeg",
+                "style/references/style_env_night.jpeg",
+            ],
+            "generation_prompt": "Original prompt\nTargeted v002 revision.",
+        }
+        data = valid_building()
+        data["reference_images"][0].update(trace)
+        validate_asset(data)
+
+        malformed = {
+            "partial trace": {key: value for key, value in trace.items() if key != "generation_prompt"},
+            "absolute direct input": {
+                **trace,
+                "generation_input_paths": ["C:/Users/example/reference.png"],
+            },
+            "noncanonical lineage": {
+                **trace,
+                "generation_reference_lineage": ["style/references/../secret.png"],
+            },
+            "duplicate lineage": {
+                **trace,
+                "generation_reference_lineage": [
+                    "style/references/style_env_day.jpeg",
+                    "style/references/style_env_day.jpeg",
+                ],
+            },
+        }
+        for label, metadata in malformed.items():
+            with self.subTest(label=label):
+                candidate = valid_building()
+                candidate["reference_images"][0].update(metadata)
+                with self.assertRaises(CatalogError):
+                    validate_asset(candidate)
+
     def test_schema_object_types_raise_clean_catalog_errors(self):
         cases = {
             "source_provenance": 123,
@@ -1167,7 +1208,25 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
             output = root / "style" / "boards" / "style-board.png"
             output.parent.mkdir(parents=True, exist_ok=True)
             output.write_bytes(b"registered Batch 0 board")
-            register_output(root, "REF_QS_ENV_STYLE_LOCK", "board", "v001", output)
+            inputs = [
+                "style/references/style_env_day.jpeg",
+                "style/references/style_character_scale.jpeg",
+            ]
+            lineage = inputs + ["style/references/style_env_night.jpeg"]
+            for relative_path in lineage:
+                source = root / relative_path
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_bytes(relative_path.encode("utf-8"))
+            register_output(
+                root,
+                "REF_QS_ENV_STYLE_LOCK",
+                "board",
+                "v001",
+                output,
+                generation_input_paths=inputs,
+                generation_reference_lineage=lineage,
+                generation_prompt="Traceable Batch 0 style-board prompt",
+            )
             asset_path = root / "assets" / "REF_QS_ENV_STYLE_LOCK" / "asset.json"
             before = asset_path.read_bytes()
 
@@ -1456,6 +1515,108 @@ class OutputRegistrationTests(unittest.TestCase):
             self.assertTrue(raw.endswith("\n"))
             self.assertEqual(raw, json.dumps(stored, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
+    def test_registration_records_actual_generation_trace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, data = self._root_with_asset(directory)
+            output = root / "concepts" / "inn-v002.png"
+            output.parent.mkdir()
+            output.write_bytes(b"revised concept")
+            input_paths = [
+                "style/boards/prior-v001.png",
+                "style/references/style-env.jpeg",
+            ]
+            lineage = [
+                "style/references/style-env.jpeg",
+                "style/references/style-night.jpeg",
+            ]
+            for relative_path in set(input_paths + lineage):
+                source = root / relative_path
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_bytes(relative_path.encode("utf-8"))
+            prompt = "Original prompt\nTargeted v002 revision."
+
+            result = register_output(
+                root,
+                data["asset_id"],
+                "hero_3q",
+                "v001",
+                output,
+                generation_input_paths=input_paths,
+                generation_reference_lineage=lineage,
+                generation_prompt=prompt,
+            )
+
+            stored = json.loads(
+                (root / "assets" / data["asset_id"] / "asset.json").read_text(encoding="utf-8")
+            )
+            reference = stored["reference_images"][0]
+            self.assertEqual(reference["generation_input_paths"], input_paths)
+            self.assertEqual(reference["generation_reference_lineage"], lineage)
+            self.assertEqual(reference["generation_prompt"], prompt)
+            self.assertEqual(result["generation_input_paths"], input_paths)
+
+    def test_registration_rejects_a_missing_actual_generation_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, data = self._root_with_asset(directory)
+            output = root / "concept.png"
+            output.write_bytes(b"concept")
+
+            with self.assertRaisesRegex(CatalogError, "generation input.*does not exist"):
+                register_output(
+                    root,
+                    data["asset_id"],
+                    "hero_3q",
+                    "v001",
+                    output,
+                    generation_input_paths=["style/references/missing.jpeg"],
+                    generation_reference_lineage=["style/references/missing.jpeg"],
+                    generation_prompt="Traceable prompt",
+                )
+
+    def test_registration_cli_accepts_generation_trace_flags(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, data = self._root_with_asset(directory)
+            output = root / "concept.png"
+            output.write_bytes(b"concept")
+            direct = "style/boards/prior-v001.png"
+            lineage = "style/references/style_env_day.jpeg"
+            for relative_path in (direct, lineage):
+                source = root / relative_path
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_bytes(relative_path.encode("utf-8"))
+            prompt = "Original prompt\nTargeted v002 revision."
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(PROJECT_ROOT / "scripts" / "qingshan_environment_assets.py"),
+                    "--root",
+                    str(root),
+                    "--register-output",
+                    data["asset_id"],
+                    "hero_3q",
+                    "v001",
+                    str(output),
+                    "--generation-input-path",
+                    direct,
+                    "--generation-reference-lineage",
+                    lineage,
+                    "--generation-prompt",
+                    prompt,
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            result = json.loads(completed.stdout)
+            self.assertEqual(result["generation_input_paths"], [direct])
+            stored = json.loads(
+                (root / "assets" / data["asset_id"] / "asset.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(stored["reference_images"][0]["generation_prompt"], prompt)
+
     def test_unrequired_view_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root, data = self._root_with_asset(directory)
@@ -1679,6 +1840,24 @@ class SchemaContractTests(unittest.TestCase):
         )
         self.assertFalse(schema["properties"]["generation"]["additionalProperties"])
         self.assertFalse(schema["properties"]["workflow_gates"]["additionalProperties"])
+        reference_item = schema["properties"]["reference_images"]["items"]
+        for field in (
+            "generation_input_paths",
+            "generation_reference_lineage",
+            "generation_prompt",
+        ):
+            self.assertIn(field, reference_item["properties"])
+            self.assertEqual(
+                sorted(reference_item["dependentRequired"][field]),
+                sorted(
+                    {
+                        "generation_input_paths",
+                        "generation_reference_lineage",
+                        "generation_prompt",
+                    }
+                    - {field}
+                ),
+            )
 
 
 if __name__ == "__main__":

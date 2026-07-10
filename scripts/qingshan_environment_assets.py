@@ -8,7 +8,7 @@ import json
 import os
 import re
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
 
@@ -105,6 +105,9 @@ REFERENCE_IMAGE_FIELDS = REFERENCE_IMAGE_REQUIRED_FIELDS + (
     "sha256",
     "version",
     "rejection_reason",
+    "generation_input_paths",
+    "generation_reference_lineage",
+    "generation_prompt",
 )
 OPTIONAL_TOP_LEVEL_FIELDS = (
     "building",
@@ -223,6 +226,31 @@ def _require_string_array(value: Any, field: str) -> list[str]:
     return value
 
 
+def _require_root_relative_posix_paths(
+    value: Any,
+    field: str,
+    *,
+    max_items: int | None = None,
+) -> list[str]:
+    paths = _require_string_array(value, field)
+    if max_items is not None and len(paths) > max_items:
+        raise CatalogError(f"{field} must contain at most {max_items} paths")
+    if len(paths) != len(set(paths)):
+        raise CatalogError(f"{field} paths must be unique")
+    for index, path in enumerate(paths):
+        label = f"{field}[{index}]"
+        canonical = PurePosixPath(path).as_posix()
+        if (
+            path.startswith("/")
+            or "\\" in path
+            or re.match(r"^[A-Za-z]:", path)
+            or ".." in PurePosixPath(path).parts
+            or canonical != path
+        ):
+            raise CatalogError(f"{label} must be a canonical project-root-relative POSIX path")
+    return paths
+
+
 def _require_numeric_array(value: Any, field: str, length: int) -> list[int | float]:
     if not isinstance(value, list) or len(value) != length:
         raise CatalogError(f"{field} must contain exactly {length} numbers")
@@ -240,6 +268,17 @@ def _validate_reference_images(reference_images: Any, expected: tuple[str, ...])
         label = f"reference_images[{index}]"
         _missing_fields(item, REFERENCE_IMAGE_REQUIRED_FIELDS, label)
         _reject_unknown_fields(item, REFERENCE_IMAGE_FIELDS, label)
+        trace_fields = {
+            "generation_input_paths",
+            "generation_reference_lineage",
+            "generation_prompt",
+        }
+        present_trace_fields = trace_fields.intersection(item)
+        if present_trace_fields and present_trace_fields != trace_fields:
+            raise CatalogError(
+                f"{label} generation trace fields must be provided together: "
+                f"{sorted(trace_fields)}"
+            )
         for field in (
             "kind",
             "camera",
@@ -248,11 +287,22 @@ def _validate_reference_images(reference_images: Any, expected: tuple[str, ...])
             "file_stub",
             "output_path",
             "rejection_reason",
+            "generation_prompt",
         ):
             if field in item:
                 _require_string(item[field], f"{label}.{field}")
         if "required_annotations" in item:
             _require_string_array(item["required_annotations"], f"{label}.required_annotations")
+        if "generation_input_paths" in item:
+            _require_root_relative_posix_paths(
+                item["generation_input_paths"],
+                f"{label}.generation_input_paths",
+                max_items=5,
+            )
+            _require_root_relative_posix_paths(
+                item["generation_reference_lineage"],
+                f"{label}.generation_reference_lineage",
+            )
         if "sha256" in item:
             digest = _require_string(item["sha256"], f"{label}.sha256")
             if re.fullmatch(r"[a-f0-9]{64}", digest) is None:
@@ -591,6 +641,31 @@ def _catalog_output_for_registration(root: Path, file: Path) -> tuple[Path, str]
     return resolved, relative.as_posix()
 
 
+def _resolve_generation_trace_paths(
+    root: Path,
+    paths: Any,
+    label: str,
+    *,
+    max_items: int | None = None,
+) -> list[str]:
+    canonical_paths = _require_root_relative_posix_paths(
+        paths,
+        label,
+        max_items=max_items,
+    )
+    for relative_path in canonical_paths:
+        try:
+            _resolved, stored_path = _catalog_output_for_registration(
+                root,
+                Path(root) / relative_path,
+            )
+        except CatalogError as exc:
+            raise CatalogError(f"{label} path does not exist or is invalid: {relative_path}") from exc
+        if stored_path != relative_path:
+            raise CatalogError(f"{label} path is not canonical: {relative_path}")
+    return canonical_paths
+
+
 def verify_registered_reference(root: Path, reference: dict) -> str | None:
     evidence_keys = ("output_path", "sha256", "version")
     has_evidence = any(key in reference for key in evidence_keys) or str(
@@ -619,6 +694,18 @@ def verify_registered_reference(root: Path, reference: dict) -> str | None:
     digest = hashlib.sha256(resolved.read_bytes()).hexdigest()
     if digest != reference["sha256"]:
         raise CatalogError(f"registered evidence SHA-256 mismatch: {output_path}")
+    if "generation_input_paths" in reference:
+        _resolve_generation_trace_paths(
+            root,
+            reference["generation_input_paths"],
+            "generation input",
+            max_items=5,
+        )
+        _resolve_generation_trace_paths(
+            root,
+            reference["generation_reference_lineage"],
+            "generation reference lineage",
+        )
     return digest
 
 
@@ -773,6 +860,9 @@ def register_output(
     version: str,
     file: Path,
     *,
+    generation_input_paths: list[str] | None = None,
+    generation_reference_lineage: list[str] | None = None,
+    generation_prompt: str | None = None,
     replace_file: Callable[[Path, Path], Any] = os.replace,
 ) -> dict:
     """Register a generated image without permitting overwrite or budget drift."""
@@ -836,6 +926,39 @@ def register_output(
         if field in manifest and manifest[field] != expected:
             raise CatalogError(f"manifest {field} is inconsistent with registered assets")
 
+    trace_values = (
+        generation_input_paths,
+        generation_reference_lineage,
+        generation_prompt,
+    )
+    trace_present = [value is not None for value in trace_values]
+    if any(trace_present) and not all(trace_present):
+        raise CatalogError(
+            "generation_input_paths, generation_reference_lineage, and generation_prompt "
+            "must be provided together"
+        )
+    generation_trace: dict[str, Any] = {}
+    if all(trace_present):
+        canonical_inputs = _resolve_generation_trace_paths(
+            root,
+            generation_input_paths,
+            "generation input",
+            max_items=5,
+        )
+        canonical_lineage = _resolve_generation_trace_paths(
+            root,
+            generation_reference_lineage,
+            "generation reference lineage",
+        )
+        prompt = _require_string(generation_prompt, "generation_prompt")
+        if not prompt.strip():
+            raise CatalogError("generation_prompt must not be empty")
+        generation_trace = {
+            "generation_input_paths": canonical_inputs,
+            "generation_reference_lineage": canonical_lineage,
+            "generation_prompt": prompt,
+        }
+
     digest = hashlib.sha256(resolved_file.read_bytes()).hexdigest()
     reference.update(
         {
@@ -843,6 +966,7 @@ def register_output(
             "sha256": digest,
             "approval_state": "generated_pending_review",
             "version": version,
+            **generation_trace,
         }
     )
     generation["generation_calls_used"] = used + 1
@@ -873,7 +997,7 @@ def register_output(
         replace_file=replace_file,
         verify_after=verify_transaction,
     )
-    return {
+    result = {
         "asset_id": asset_id,
         "view_kind": view_kind,
         "version": version,
@@ -883,6 +1007,8 @@ def register_output(
         "generation_calls_used": generation["generation_calls_used"],
         "max_generation_calls": maximum,
     }
+    result.update(generation_trace)
+    return result
 
 
 def _report_assets(root: Path, batch: str) -> list[dict]:
@@ -960,13 +1086,43 @@ def main() -> int:
         nargs=2,
         metavar=("BATCH", "OUTPUT"),
     )
+    parser.add_argument(
+        "--generation-input-path",
+        action="append",
+        help="Repeat for each project-root-relative image directly supplied to generation.",
+    )
+    parser.add_argument(
+        "--generation-reference-lineage",
+        action="append",
+        help="Repeat for each stable project reference in the generation lineage.",
+    )
+    parser.add_argument(
+        "--generation-prompt",
+        help="The complete prompt used for this generated output, including revision directives.",
+    )
     args = parser.parse_args()
+    trace_args = (
+        args.generation_input_path,
+        args.generation_reference_lineage,
+        args.generation_prompt,
+    )
+    if not args.register_output and any(value is not None for value in trace_args):
+        parser.error("generation trace flags are only valid with --register-output")
     if args.check:
         print(json.dumps(validate_catalog(args.root), ensure_ascii=False, sort_keys=True))
         return 0
     if args.register_output:
         asset_id, view_kind, version, file_name = args.register_output
-        result = register_output(args.root, asset_id, view_kind, version, Path(file_name))
+        result = register_output(
+            args.root,
+            asset_id,
+            view_kind,
+            version,
+            Path(file_name),
+            generation_input_paths=args.generation_input_path,
+            generation_reference_lineage=args.generation_reference_lineage,
+            generation_prompt=args.generation_prompt,
+        )
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         return 0
     batch, output = args.write_batch_report

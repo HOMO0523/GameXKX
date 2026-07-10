@@ -1065,7 +1065,16 @@ def _overlay_registered_output(root: Path, asset: dict[str, Any]) -> None:
         current_reference = by_kind.get(reference["kind"])
         if not isinstance(current_reference, dict):
             continue
-        for key in ("approval_state", "output_path", "sha256", "version", "rejection_reason"):
+        for key in (
+            "approval_state",
+            "output_path",
+            "sha256",
+            "version",
+            "rejection_reason",
+            "generation_input_paths",
+            "generation_reference_lineage",
+            "generation_prompt",
+        ):
             if key in current_reference:
                 reference[key] = current_reference[key]
 

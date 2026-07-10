@@ -156,7 +156,41 @@
           },
           "rejection_reason": {
             "$ref": "#/$defs/nonEmptyString"
+          },
+          "generation_input_paths": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/projectRootRelativePosixPath"
+            }
+          },
+          "generation_reference_lineage": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/projectRootRelativePosixPath"
+            }
+          },
+          "generation_prompt": {
+            "$ref": "#/$defs/nonEmptyString"
           }
+        },
+        "dependentRequired": {
+          "generation_input_paths": [
+            "generation_reference_lineage",
+            "generation_prompt"
+          ],
+          "generation_reference_lineage": [
+            "generation_input_paths",
+            "generation_prompt"
+          ],
+          "generation_prompt": [
+            "generation_input_paths",
+            "generation_reference_lineage"
+          ]
         }
       }
     },
@@ -465,6 +499,11 @@
       "items": {
         "$ref": "#/$defs/nonEmptyString"
       }
+    },
+    "projectRootRelativePosixPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
     },
     "positivePair": {
       "type": "array",
