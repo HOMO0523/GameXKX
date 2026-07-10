@@ -35,6 +35,9 @@ BATCH_CALL_CAPS = {"REGISTRY": 0, "B0": 12, "B1": 48, "B2": 52, "B3": 20}
 
 ASSET_ID_PATTERN = re.compile(r"^(REF|BLD|LMK|ENV|P2D|SRF|KIT|PROP)_QS_[A-Z0-9_]+$")
 ALLOWED_VERSIONS = ("v001", "v002", "v003")
+# The built-in imagegen runtime accepts at most five images directly per call.
+# Complete reference lineage is recorded separately and is intentionally uncapped.
+MAX_DIRECT_GENERATION_INPUTS = 5
 REQUIRED_FIELDS = (
     "schema_version",
     "asset_id",
@@ -297,7 +300,7 @@ def _validate_reference_images(reference_images: Any, expected: tuple[str, ...])
             _require_root_relative_posix_paths(
                 item["generation_input_paths"],
                 f"{label}.generation_input_paths",
-                max_items=5,
+                max_items=MAX_DIRECT_GENERATION_INPUTS,
             )
             _require_root_relative_posix_paths(
                 item["generation_reference_lineage"],
@@ -699,7 +702,7 @@ def verify_registered_reference(root: Path, reference: dict) -> str | None:
             root,
             reference["generation_input_paths"],
             "generation input",
-            max_items=5,
+            max_items=MAX_DIRECT_GENERATION_INPUTS,
         )
         _resolve_generation_trace_paths(
             root,
@@ -937,13 +940,19 @@ def register_output(
             "generation_input_paths, generation_reference_lineage, and generation_prompt "
             "must be provided together"
         )
+    if (previous_version is not None or version != "v001") and not all(trace_present):
+        raise CatalogError(
+            "targeted revision registration requires a fresh generation trace; "
+            "generation_input_paths, generation_reference_lineage, and generation_prompt "
+            "must be provided explicitly"
+        )
     generation_trace: dict[str, Any] = {}
     if all(trace_present):
         canonical_inputs = _resolve_generation_trace_paths(
             root,
             generation_input_paths,
             "generation input",
-            max_items=5,
+            max_items=MAX_DIRECT_GENERATION_INPUTS,
         )
         canonical_lineage = _resolve_generation_trace_paths(
             root,

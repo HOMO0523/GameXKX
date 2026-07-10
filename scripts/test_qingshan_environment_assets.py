@@ -19,6 +19,7 @@ from qingshan_environment_assets import (  # noqa: E402
     BATCH_CALL_CAPS,
     BATCH_COUNTS,
     EXPECTED_VIEWS,
+    MAX_DIRECT_GENERATION_INPUTS,
     CatalogError,
     register_output,
     validate_asset,
@@ -517,6 +518,25 @@ class SchemaParityValidationTests(unittest.TestCase):
                 candidate["reference_images"][0].update(metadata)
                 with self.assertRaises(CatalogError):
                     validate_asset(candidate)
+
+    def test_direct_tool_inputs_are_capped_at_five_but_lineage_can_exceed_five(self):
+        data = valid_building()
+        data["reference_images"][0].update(
+            {
+                "generation_input_paths": [f"style/references/direct-{index}.png" for index in range(5)],
+                "generation_reference_lineage": [
+                    f"style/references/lineage-{index}.png" for index in range(6)
+                ],
+                "generation_prompt": "Five direct tool inputs with six-source lineage",
+            }
+        )
+        validate_asset(data)
+
+        data["reference_images"][0]["generation_input_paths"].append(
+            "style/references/direct-5.png"
+        )
+        with self.assertRaisesRegex(CatalogError, "at most 5"):
+            validate_asset(data)
 
     def test_schema_object_types_raise_clean_catalog_errors(self):
         cases = {
@@ -1237,6 +1257,31 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
             self.assertEqual(result, {"ok": True, "unchanged": 37})
             self.assertEqual(asset_path.read_bytes(), before)
 
+    def test_builder_preserves_trace_only_as_a_complete_versioned_group(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, builder, _summary, assets = self._build(directory)
+            asset_id = "REF_QS_ENV_STYLE_LOCK"
+            asset_path = root / "assets" / asset_id / "asset.json"
+            trace = {
+                "generation_input_paths": ["style/references/style_env_day.jpeg"],
+                "generation_reference_lineage": ["style/references/style_env_day.jpeg"],
+                "generation_prompt": "version-bound prompt",
+            }
+
+            for removed in ("generation_prompt", "version"):
+                current = copy.deepcopy(assets[asset_id])
+                current_reference = current["reference_images"][0]
+                current_reference.update({"version": "v002", **trace})
+                current_reference.pop(removed)
+                _write_json(asset_path, current)
+                rebuilt = copy.deepcopy(assets[asset_id])
+
+                builder._overlay_registered_output(root, rebuilt)
+
+                rebuilt_reference = rebuilt["reference_images"][0]
+                for trace_field in trace:
+                    self.assertNotIn(trace_field, rebuilt_reference, removed)
+
     def test_registering_all_b0_boards_updates_manifest_and_remains_deterministic(self):
         with tempfile.TemporaryDirectory() as directory:
             root, builder, _summary, _assets = self._build(directory)
@@ -1617,6 +1662,80 @@ class OutputRegistrationTests(unittest.TestCase):
             )
             self.assertEqual(stored["reference_images"][0]["generation_prompt"], prompt)
 
+    def test_revision_requires_fresh_trace_and_rejection_is_byte_stable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, data = self._root_with_asset(directory)
+            direct = ["style/references/style-env.jpeg"]
+            lineage = ["style/references/style-env.jpeg"]
+            source = root / direct[0]
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_bytes(b"stable reference")
+            first = root / "concept-v001.png"
+            first.write_bytes(b"first concept")
+            register_output(
+                root,
+                data["asset_id"],
+                "hero_3q",
+                "v001",
+                first,
+                generation_input_paths=direct,
+                generation_reference_lineage=lineage,
+                generation_prompt="v001 generation prompt",
+            )
+            asset_path = root / "assets" / data["asset_id"] / "asset.json"
+            manifest_path = root / "manifest.json"
+            before = {
+                asset_path: asset_path.read_bytes(),
+                manifest_path: manifest_path.read_bytes(),
+            }
+            revision = root / "concept-v002.png"
+            revision.write_bytes(b"second concept")
+
+            with self.assertRaisesRegex(CatalogError, "targeted revision.*fresh generation trace"):
+                register_output(root, data["asset_id"], "hero_3q", "v002", revision)
+
+            self.assertEqual(
+                {path: path.read_bytes() for path in before},
+                before,
+            )
+            result = register_output(
+                root,
+                data["asset_id"],
+                "hero_3q",
+                "v002",
+                revision,
+                generation_input_paths=direct,
+                generation_reference_lineage=lineage,
+                generation_prompt="fresh v002 generation prompt",
+            )
+            stored = json.loads(asset_path.read_text(encoding="utf-8"))
+            self.assertEqual(result["version"], "v002")
+            self.assertEqual(stored["reference_images"][0]["version"], "v002")
+            self.assertEqual(
+                stored["reference_images"][0]["generation_prompt"],
+                "fresh v002 generation prompt",
+            )
+
+    def test_first_registration_above_v001_requires_trace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, data = self._root_with_asset(directory)
+            output = root / "concept-v002.png"
+            output.write_bytes(b"second version without first")
+            asset_path = root / "assets" / data["asset_id"] / "asset.json"
+            manifest_path = root / "manifest.json"
+            before = {
+                asset_path: asset_path.read_bytes(),
+                manifest_path: manifest_path.read_bytes(),
+            }
+
+            with self.assertRaisesRegex(CatalogError, "targeted revision.*fresh generation trace"):
+                register_output(root, data["asset_id"], "hero_3q", "v002", output)
+
+            self.assertEqual(
+                {path: path.read_bytes() for path in before},
+                before,
+            )
+
     def test_unrequired_view_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root, data = self._root_with_asset(directory)
@@ -1858,6 +1977,12 @@ class SchemaContractTests(unittest.TestCase):
                     - {field}
                 ),
             )
+        direct_inputs = reference_item["properties"]["generation_input_paths"]
+        lineage = reference_item["properties"]["generation_reference_lineage"]
+        self.assertEqual(direct_inputs["maxItems"], MAX_DIRECT_GENERATION_INPUTS)
+        self.assertIn("direct tool inputs", direct_inputs["description"])
+        self.assertNotIn("maxItems", lineage)
+        self.assertIn("not limited to five", lineage["description"])
 
 
 if __name__ == "__main__":

@@ -607,7 +607,11 @@ generation trace. Repeat `--generation-input-path` once for every image directly
 to imagegen, repeat `--generation-reference-lineage` for the complete stable-reference
 lineage, and pass the full base prompt plus revision directive with `--generation-prompt`.
 All three trace options are supplied together. Planned dependencies are never recorded as
-direct inputs unless they were actually passed to the successful generation call.
+direct inputs unless they were actually passed to the successful generation call. Every
+successful Batch 0 board registration uses these trace options, including first versions.
+The current built-in imagegen runtime accepts at most five direct tool inputs; the lineage
+is not limited to five and currently covers six stable references. A six-path request that
+the runtime rejects before producing an image is not recorded as a successful generation.
 
 Expected: calls used 1/3, `approval_state=generated_pending_review`, stored SHA-256, all production gates false.
 

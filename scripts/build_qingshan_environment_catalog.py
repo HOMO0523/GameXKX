@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from qingshan_environment_assets import (
+    ALLOWED_VERSIONS,
     BATCH_CALL_CAPS,
     BATCH_COUNTS,
     EXPECTED_VIEWS,
@@ -1071,11 +1072,18 @@ def _overlay_registered_output(root: Path, asset: dict[str, Any]) -> None:
             "sha256",
             "version",
             "rejection_reason",
+        ):
+            if key in current_reference:
+                reference[key] = current_reference[key]
+        trace_fields = (
             "generation_input_paths",
             "generation_reference_lineage",
             "generation_prompt",
+        )
+        if current_reference.get("version") in ALLOWED_VERSIONS and all(
+            key in current_reference for key in trace_fields
         ):
-            if key in current_reference:
+            for key in trace_fields:
                 reference[key] = current_reference[key]
 
 
