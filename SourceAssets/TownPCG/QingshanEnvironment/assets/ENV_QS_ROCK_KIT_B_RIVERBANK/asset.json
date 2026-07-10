@@ -79,7 +79,7 @@
       "warm_ochre",
       "moss_blue_gray"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: Qingshan rock_kit game environment reference\nPrimary request: S/M/L damp river rocks with moss and flattened bases\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: S/M/L damp river rocks with moss and flattened bases; intended gameplay role is wet_rock_kit\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan rock_kit game environment reference\nPrimary request: S/M/L damp river rocks with moss and flattened bases\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: S/M/L damp river rocks with moss and flattened bases; intended gameplay role is wet_rock_kit\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView variant_lineup: Show S, M and L rocks as complete separated model-ready variants; required elements: S_M_L_variants, complete_separated_silhouettes, flat_bases, material_state\nView silhouette_scale: Show black silhouettes, gameplay scale and one asymmetric placement cluster; required elements: black_silhouette, player_and_building_scale, placement_cluster",
     "prompt_sections": {
       "asset_type": "Qingshan rock_kit game environment reference",
       "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
@@ -90,7 +90,28 @@
       "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
       "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
       "subject": "S/M/L damp river rocks with moss and flattened bases; intended gameplay role is wet_rock_kit",
-      "use_case": "stylized-concept"
+      "use_case": "stylized-concept",
+      "view_contracts": {
+        "silhouette_scale": {
+          "instruction": "Show black silhouettes, gameplay scale and one asymmetric placement cluster",
+          "required_elements": [
+            "black_silhouette",
+            "player_and_building_scale",
+            "placement_cluster"
+          ]
+        },
+        "variant_lineup": {
+          "instruction": "Show S, M and L rocks as complete separated model-ready variants",
+          "required_elements": [
+            "S_M_L_variants",
+            "complete_separated_silhouettes",
+            "flat_bases",
+            "material_state"
+          ]
+        }
+      },
+      "view_silhouette_scale": "Show black silhouettes, gameplay scale and one asymmetric placement cluster; required elements: black_silhouette, player_and_building_scale, placement_cluster",
+      "view_variant_lineup": "Show S, M and L rocks as complete separated model-ready variants; required elements: S_M_L_variants, complete_separated_silhouettes, flat_bases, material_state"
     },
     "required_view_kinds": [
       "variant_lineup",
@@ -152,9 +173,10 @@
       "file_stub": "ENV_QS_ROCK_KIT_B_RIVERBANK__variant_lineup",
       "kind": "variant_lineup",
       "required_annotations": [
-        "scale",
-        "orientation",
-        "material_regions"
+        "S_M_L_variants",
+        "complete_separated_silhouettes",
+        "flat_bases",
+        "material_state"
       ]
     },
     {
@@ -164,9 +186,9 @@
       "file_stub": "ENV_QS_ROCK_KIT_B_RIVERBANK__silhouette_scale",
       "kind": "silhouette_scale",
       "required_annotations": [
-        "scale",
-        "orientation",
-        "material_regions"
+        "black_silhouette",
+        "player_and_building_scale",
+        "placement_cluster"
       ]
     }
   ],

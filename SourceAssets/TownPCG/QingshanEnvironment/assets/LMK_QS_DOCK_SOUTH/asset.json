@@ -71,7 +71,7 @@
       "warm_ochre",
       "dark_timber"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: Qingshan landmark game environment reference\nPrimary request: Modular dock platform, posts, steps and railing without boats\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Modular dock platform, posts, steps and railing without boats; intended gameplay role is traversal\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan landmark game environment reference\nPrimary request: Modular dock platform, posts, steps and railing without boats\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Modular dock platform, posts, steps and railing without boats; intended gameplay role is traversal\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView route_3q: Show the landmark as a readable traversal moment on the player route; required elements: player_route_primary_view, entry_and_exit, traversal_clearance, fixed_high_three_quarter_camera\nView structure_connection_sheet: Show structure, passage dimensions and all route connection interfaces in one sheet; required elements: front_and_side_structure, top_down_passage_dimensions, connection_interfaces, material_regions, simple_collision_clearance",
     "prompt_sections": {
       "asset_type": "Qingshan landmark game environment reference",
       "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
@@ -82,7 +82,30 @@
       "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
       "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
       "subject": "Modular dock platform, posts, steps and railing without boats; intended gameplay role is traversal",
-      "use_case": "stylized-concept"
+      "use_case": "stylized-concept",
+      "view_contracts": {
+        "route_3q": {
+          "instruction": "Show the landmark as a readable traversal moment on the player route",
+          "required_elements": [
+            "player_route_primary_view",
+            "entry_and_exit",
+            "traversal_clearance",
+            "fixed_high_three_quarter_camera"
+          ]
+        },
+        "structure_connection_sheet": {
+          "instruction": "Show structure, passage dimensions and all route connection interfaces in one sheet",
+          "required_elements": [
+            "front_and_side_structure",
+            "top_down_passage_dimensions",
+            "connection_interfaces",
+            "material_regions",
+            "simple_collision_clearance"
+          ]
+        }
+      },
+      "view_route_3q": "Show the landmark as a readable traversal moment on the player route; required elements: player_route_primary_view, entry_and_exit, traversal_clearance, fixed_high_three_quarter_camera",
+      "view_structure_connection_sheet": "Show structure, passage dimensions and all route connection interfaces in one sheet; required elements: front_and_side_structure, top_down_passage_dimensions, connection_interfaces, material_regions, simple_collision_clearance"
     },
     "required_view_kinds": [
       "route_3q",
@@ -152,9 +175,10 @@
       "file_stub": "LMK_QS_DOCK_SOUTH__route_3q",
       "kind": "route_3q",
       "required_annotations": [
-        "scale",
-        "orientation",
-        "material_regions"
+        "player_route_primary_view",
+        "entry_and_exit",
+        "traversal_clearance",
+        "fixed_high_three_quarter_camera"
       ]
     },
     {
@@ -164,9 +188,11 @@
       "file_stub": "LMK_QS_DOCK_SOUTH__structure_connection_sheet",
       "kind": "structure_connection_sheet",
       "required_annotations": [
-        "scale",
-        "orientation",
-        "material_regions"
+        "front_and_side_structure",
+        "top_down_passage_dimensions",
+        "connection_interfaces",
+        "material_regions",
+        "simple_collision_clearance"
       ]
     }
   ],

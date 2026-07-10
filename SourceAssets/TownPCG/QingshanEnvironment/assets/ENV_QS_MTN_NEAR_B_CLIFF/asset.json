@@ -75,7 +75,7 @@
       "blue_gray",
       "warm_ochre"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: Qingshan near_mountain game environment reference\nPrimary request: Joinable near-cliff corner pair with broken ink silhouettes\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Joinable near-cliff corner pair with broken ink silhouettes; intended gameplay role is cliff_turn\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan near_mountain game environment reference\nPrimary request: Joinable near-cliff corner pair with broken ink silhouettes\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Joinable near-cliff corner pair with broken ink silhouettes; intended gameplay role is cliff_turn\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView module_lineup: Show the approved joinable near-mountain modules as a separated lineup; required elements: variant_module_lineup, join_interfaces, complete_base, distinct_silhouette\nView assembly_player_scale: Assemble the modules at map edge with player and building scale references; required elements: assembled_edge_example, player_and_building_scale, north_gate_gap_preserved, lower_center_open",
     "prompt_sections": {
       "asset_type": "Qingshan near_mountain game environment reference",
       "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
@@ -86,7 +86,29 @@
       "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
       "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
       "subject": "Joinable near-cliff corner pair with broken ink silhouettes; intended gameplay role is cliff_turn",
-      "use_case": "stylized-concept"
+      "use_case": "stylized-concept",
+      "view_assembly_player_scale": "Assemble the modules at map edge with player and building scale references; required elements: assembled_edge_example, player_and_building_scale, north_gate_gap_preserved, lower_center_open",
+      "view_contracts": {
+        "assembly_player_scale": {
+          "instruction": "Assemble the modules at map edge with player and building scale references",
+          "required_elements": [
+            "assembled_edge_example",
+            "player_and_building_scale",
+            "north_gate_gap_preserved",
+            "lower_center_open"
+          ]
+        },
+        "module_lineup": {
+          "instruction": "Show the approved joinable near-mountain modules as a separated lineup",
+          "required_elements": [
+            "variant_module_lineup",
+            "join_interfaces",
+            "complete_base",
+            "distinct_silhouette"
+          ]
+        }
+      },
+      "view_module_lineup": "Show the approved joinable near-mountain modules as a separated lineup; required elements: variant_module_lineup, join_interfaces, complete_base, distinct_silhouette"
     },
     "required_view_kinds": [
       "module_lineup",
@@ -149,9 +171,10 @@
       "file_stub": "ENV_QS_MTN_NEAR_B_CLIFF__module_lineup",
       "kind": "module_lineup",
       "required_annotations": [
-        "scale",
-        "orientation",
-        "material_regions"
+        "variant_module_lineup",
+        "join_interfaces",
+        "complete_base",
+        "distinct_silhouette"
       ]
     },
     {
@@ -161,9 +184,10 @@
       "file_stub": "ENV_QS_MTN_NEAR_B_CLIFF__assembly_player_scale",
       "kind": "assembly_player_scale",
       "required_annotations": [
-        "scale",
-        "orientation",
-        "material_regions"
+        "assembled_edge_example",
+        "player_and_building_scale",
+        "north_gate_gap_preserved",
+        "lower_center_open"
       ]
     }
   ],

@@ -100,7 +100,17 @@
       "scene_backdrop": "warm rice-paper board with a compact town vignette, small material swatches, roof-color families, foliage shapes, mountain layers, river and stone-road samples; no written labels",
       "style_medium": "hand-drawn Chinese ink cartoon concept art, dry-brush broken edges, simplified chunky silhouettes, two to three value bands, restrained watercolor wash",
       "subject": "warm off-white walls, dark timber, roofs in warm red-brown, ink green, indigo, ochre and teal; jade and blue-green foliage; blue-gray mist mountains; dark teal variable ink outlines",
-      "use_case": "stylized-concept"
+      "use_case": "stylized-concept",
+      "view_contracts": {
+        "board": {
+          "instruction": "Generate the single approved Batch 0 board exactly as specified by the full prompt",
+          "required_elements": [
+            "complete_board",
+            "consistent_QS_InkToon_v1",
+            "no_written_labels"
+          ]
+        }
+      }
     },
     "required_view_kinds": [
       "board"
@@ -160,9 +170,9 @@
       "file_stub": "REF_QS_ENV_STYLE_LOCK__board",
       "kind": "board",
       "required_annotations": [
-        "scale",
-        "orientation",
-        "material_regions"
+        "complete_board",
+        "consistent_QS_InkToon_v1",
+        "no_written_labels"
       ]
     }
   ],

@@ -302,6 +302,14 @@ ROOFS = {
     "BLD_QS_S_C_RIVER_HUT": ("low_eave", "teal", "S", 2.1),
 }
 
+BUILDING_QUAD_BUDGETS = {
+    "BLD_QS_M_A_INN": ([30000, 35000], 35000),
+    "BLD_QS_M_B_STREET_SHOP": ([25000, 30000], 30000),
+    "BLD_QS_S_A_HOUSE": ([15000, 20000], 20000),
+    "BLD_QS_S_B_WORKSHOP": ([12000, 18000], 18000),
+    "BLD_QS_S_C_RIVER_HUT": ([15000, 20000], 20000),
+}
+
 PLANTS = {
     "P2D_QS_TREE_PINE_A": (5, 7, (2048, 2048), (512, 512), 3, 5.5, 9000),
     "P2D_QS_SHRUB_A": (5, 7, (1024, 1024), (256, 256), 5, 1.5, 5000),
@@ -436,8 +444,8 @@ def _reference_selection(asset_id: str, references: list[dict[str, str]]) -> lis
     return [by_name[name] for name in names]
 
 
-def _prompt_sections(prompt: str) -> dict[str, str]:
-    sections: dict[str, str] = {}
+def _prompt_sections(prompt: str) -> dict[str, Any]:
+    sections: dict[str, Any] = {}
     for line in prompt.splitlines():
         key, separator, value = line.partition(": ")
         if separator:
@@ -445,9 +453,8 @@ def _prompt_sections(prompt: str) -> dict[str, str]:
     return sections
 
 
-def _normal_prompt(spec: AssetSpec) -> str:
-    return "\n".join(
-        (
+def _normal_prompt(spec: AssetSpec, view_contracts: dict[str, dict[str, Any]]) -> str:
+    lines = [
             "Use case: stylized-concept",
             f"Asset type: Qingshan {spec.category} game environment reference",
             f"Primary request: {spec.primary_request}",
@@ -458,8 +465,184 @@ def _normal_prompt(spec: AssetSpec) -> str:
             "Composition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
             "Lighting/mood: neutral soft daylight with calm mist-compatible contrast",
             "Constraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+    ]
+    lines.extend(
+        "View {kind}: {instruction}; required elements: {elements}".format(
+            kind=kind,
+            instruction=contract["instruction"],
+            elements=", ".join(contract["required_elements"]),
         )
+        for kind, contract in view_contracts.items()
     )
+    return "\n".join(lines)
+
+
+def _view_contracts(asset_id: str, spec: AssetSpec) -> dict[str, dict[str, Any]]:
+    category = spec.category
+    if category == "reference":
+        return {
+            "board": {
+                "instruction": "Generate the single approved Batch 0 board exactly as specified by the full prompt",
+                "required_elements": ["complete_board", "consistent_QS_InkToon_v1", "no_written_labels"],
+            }
+        }
+    if category == "registry":
+        return {
+            "existing_asset_registry": {
+                "instruction": "Record the existing L-A mesh facts without generating or altering a model",
+                "required_elements": [
+                    "source_mesh_path", "measured_bounds_m", "material_slot_count",
+                    "pivot_and_forward_axis", "scale_lineup_relationship",
+                    "existing_50k_quad_registration",
+                ],
+            }
+        }
+    if category == "building":
+        return {
+            "hero_3q": {
+                "instruction": "Show one complete Tripo-ready building from the fixed high three-quarter camera",
+                "required_elements": [
+                    "complete_uncropped_silhouette", "visible_base", "entrance_direction",
+                    "roof_readability", "fixed_high_three_quarter_camera",
+                    "single_asset_clean_warm_background",
+                ],
+            },
+            "structure_sheet": {
+                "instruction": "Derive one controlled structure sheet from the approved hero view",
+                "required_elements": [
+                    "entrance_front", "side_and_rear", "top_down_footprint",
+                    "player_scale_reference", "material_regions",
+                ],
+            },
+        }
+    if category == "landmark":
+        return {
+            "route_3q": {
+                "instruction": "Show the landmark as a readable traversal moment on the player route",
+                "required_elements": [
+                    "player_route_primary_view", "entry_and_exit", "traversal_clearance",
+                    "fixed_high_three_quarter_camera",
+                ],
+            },
+            "structure_connection_sheet": {
+                "instruction": "Show structure, passage dimensions and all route connection interfaces in one sheet",
+                "required_elements": [
+                    "front_and_side_structure", "top_down_passage_dimensions",
+                    "connection_interfaces", "material_regions", "simple_collision_clearance",
+                ],
+            },
+        }
+    if category == "near_mountain":
+        return {
+            "module_lineup": {
+                "instruction": "Show the approved joinable near-mountain modules as a separated lineup",
+                "required_elements": [
+                    "variant_module_lineup", "join_interfaces", "complete_base", "distinct_silhouette",
+                ],
+            },
+            "assembly_player_scale": {
+                "instruction": "Assemble the modules at map edge with player and building scale references",
+                "required_elements": [
+                    "assembled_edge_example", "player_and_building_scale",
+                    "north_gate_gap_preserved", "lower_center_open",
+                ],
+            },
+        }
+    if category == "far_mountain":
+        return {
+            "silhouette_layers": {
+                "instruction": "Show two joinable Paper2D mountain variants as separated depth silhouettes",
+                "required_elements": [
+                    "two_joinable_variants", "clean_silhouette_band", "separated_depth_layer_shapes",
+                ],
+            },
+            "player_camera_composite": {
+                "instruction": "Composite the far layer behind solid near mountains in the fixed player camera",
+                "required_elements": [
+                    "fixed_player_camera", "near_mountain_relationship",
+                    "north_gate_gap_visible", "depth_layer_readability",
+                ],
+            },
+        }
+    if category == "rock_kit":
+        return {
+            "variant_lineup": {
+                "instruction": "Show S, M and L rocks as complete separated model-ready variants",
+                "required_elements": [
+                    "S_M_L_variants", "complete_separated_silhouettes", "flat_bases", "material_state",
+                ],
+            },
+            "silhouette_scale": {
+                "instruction": "Show black silhouettes, gameplay scale and one asymmetric placement cluster",
+                "required_elements": [
+                    "black_silhouette", "player_and_building_scale", "placement_cluster",
+                ],
+            },
+        }
+    if category == "paper2d_plant":
+        frames = PLANTS[asset_id][0]
+        frame_sequence = (
+            ["neutral", "left_small", "left_large", "right_small", "right_large"]
+            if frames == 5
+            else ["neutral", "left", "right", "slight_return"]
+        )
+        return {
+            "neutral_variants": {
+                "instruction": "Show the A, B and C plant silhouettes separately before any animation",
+                "required_elements": ["separate_A_B_C", "stable_root_or_trunk", "warm_plain_background"],
+            },
+            "silhouette_scale_cluster": {
+                "instruction": "Show black silhouettes with the project scale ruler and a 3–5 plant cluster",
+                "required_elements": [
+                    "black_silhouette", "project_character_and_building_scale_ruler", "cluster_of_3_to_5",
+                ],
+            },
+            "wind_poses": {
+                "instruction": "Derive the ordered wind poses only from approved neutral variant A",
+                "required_elements": [
+                    "only_variant_A_animated", "B_and_C_static", "explicit_frame_sequence",
+                    "stable_root_or_trunk",
+                ],
+                "frame_sequence": frame_sequence,
+            },
+        }
+    if category == "surface":
+        seamless = [
+            "no_perspective_tile_sample", "boundary_transition_strips", "non_repeating_shape_check",
+        ]
+        player_camera = ["sloped_material_example", "fixed_player_camera_samples_5m_10m_20m"]
+        if asset_id == "SRF_QS_WATER_RIVER_A":
+            water = ["flow_direction", "bank_line", "shallow_deep_bands", "foam_layer"]
+            seamless += water
+            player_camera += water
+        return {
+            "seamless_transition_sheet": {
+                "instruction": "Show a no-perspective tiling sample and clean material boundary strips",
+                "required_elements": seamless,
+            },
+            "player_camera_material_sheet": {
+                "instruction": "Show slope behavior and fixed player-camera samples at 5m, 10m and 20m",
+                "required_elements": player_camera,
+            },
+        }
+    if category in ("linear_kit", "prop_kit"):
+        return {
+            "variant_lineup": {
+                "instruction": "Show the three named kit members as complete separated production variants",
+                "required_elements": [
+                    "three_named_variants", "complete_separated_silhouettes", "connection_pivots",
+                ],
+                "named_variants": list(spec.silhouettes),
+            },
+            "usage_scale_sheet": {
+                "instruction": "Show gameplay scale, intended placement examples and clearance at connections",
+                "required_elements": [
+                    "project_character_and_building_scale", "placement_examples", "connection_clearance",
+                ],
+                "intended_zones": list(spec.zones),
+            },
+        }
+    raise CatalogBuildError(f"missing view contracts for category {category}")
 
 
 def _palette(accent: str) -> list[str]:
@@ -471,6 +654,7 @@ def _generation(
     spec: AssetSpec,
     stable_references: list[dict[str, str]],
 ) -> tuple[dict[str, Any], list[str]]:
+    view_contracts = _view_contracts(asset_id, spec)
     selected = _reference_selection(asset_id, stable_references)
     inputs = [item["path"] for item in selected]
     input_roles = [{"path": item["path"], "role": item["role"]} for item in selected]
@@ -478,8 +662,9 @@ def _generation(
         board = "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png"
         inputs.append(board)
         input_roles.append({"path": board, "role": "generated_style_lock"})
-    prompt = B0_PROMPTS.get(asset_id, _normal_prompt(spec))
+    prompt = B0_PROMPTS.get(asset_id, _normal_prompt(spec, view_contracts))
     sections = _prompt_sections(prompt)
+    sections["view_contracts"] = view_contracts
     expected_views = list(EXPECTED_VIEWS[spec.category])
     generation = {
         "asset_type": sections.get("asset_type", f"Qingshan {spec.category} reference"),
@@ -557,20 +742,23 @@ def _category_fields(asset_id: str, spec: AssetSpec, metrics: dict[str, Any]) ->
     if category == "registry":
         fields["registry"] = {
             "asset_path": metrics["asset_path"],
+            "existing_quad_faces_target": 50000,
             "material_slot_count": metrics["material_slot_count"],
             "scale_anchor": "largest_approved_town_building",
             "source_metrics": "source_metrics.json",
         }
     elif category == "building":
         roof_form, roof_color, size_class, eave_height = ROOFS[asset_id]
+        approved_range, target_quad_faces = BUILDING_QUAD_BUDGETS[asset_id]
         fields.update(
             {
                 "allowed_cluster_roles": ["market_edge", "street_offset", "courtyard_offset"],
                 "building": {
                     "model_pipeline": {
+                        "approved_quad_face_range": approved_range,
                         "material_stage": "after_retopology",
                         "source": "Tripo_high_precision",
-                        "target_quads": 50000,
+                        "target_quad_faces": target_quad_faces,
                         "topology": "quad",
                     },
                     "scale_anchor": "BLD_QS_L_A_MARKET_SHOP",
@@ -579,7 +767,7 @@ def _category_fields(asset_id: str, spec: AssetSpec, metrics: dict[str, Any]) ->
                 "eave_height_m": eave_height,
                 "entrance_axis": "+Y",
                 "footprint_m": [spec.dimensions[0], spec.dimensions[1]],
-                "retopo_target_quads": 50000,
+                "retopo_target_quads": target_quad_faces,
                 "roof": {"form": roof_form, "primary_color": roof_color},
                 "simple_collision_required": True,
                 "size_class": size_class,
@@ -755,7 +943,7 @@ def _make_asset(
                 "camera": "existing_asset_registry" if is_registry else "fixed_high_three_quarter_or_category_sheet",
                 "file_stub": f"{asset_id}__{kind}",
                 "kind": kind,
-                "required_annotations": ["scale", "orientation", "material_regions"],
+                "required_annotations": generation["prompt_sections"]["view_contracts"][kind]["required_elements"],
             }
             for kind in EXPECTED_VIEWS[spec.category]
         ],
@@ -836,7 +1024,13 @@ def _style_profile(references: list[dict[str, str]]) -> dict[str, Any]:
         },
         "model_pipeline": {
             "building_source": "Tripo_high_precision",
-            "building_target_quads": 50000,
+            "building_quad_face_targets": {
+                asset_id: {
+                    "approved_range": budget[0],
+                    "target_quad_faces": budget[1],
+                }
+                for asset_id, budget in BUILDING_QUAD_BUDGETS.items()
+            },
             "material_stage": "after_quad_retopology",
         },
         "negative_prompt": COMMON_NEGATIVE,

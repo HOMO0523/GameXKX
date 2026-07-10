@@ -5,8 +5,44 @@
     "player_route_view": "fixed_game_camera"
   },
   "model_pipeline": {
+    "building_quad_face_targets": {
+      "BLD_QS_M_A_INN": {
+        "approved_range": [
+          30000,
+          35000
+        ],
+        "target_quad_faces": 35000
+      },
+      "BLD_QS_M_B_STREET_SHOP": {
+        "approved_range": [
+          25000,
+          30000
+        ],
+        "target_quad_faces": 30000
+      },
+      "BLD_QS_S_A_HOUSE": {
+        "approved_range": [
+          15000,
+          20000
+        ],
+        "target_quad_faces": 20000
+      },
+      "BLD_QS_S_B_WORKSHOP": {
+        "approved_range": [
+          12000,
+          18000
+        ],
+        "target_quad_faces": 18000
+      },
+      "BLD_QS_S_C_RIVER_HUT": {
+        "approved_range": [
+          15000,
+          20000
+        ],
+        "target_quad_faces": 20000
+      }
+    },
     "building_source": "Tripo_high_precision",
-    "building_target_quads": 50000,
     "material_stage": "after_quad_retopology"
   },
   "negative_prompt": [

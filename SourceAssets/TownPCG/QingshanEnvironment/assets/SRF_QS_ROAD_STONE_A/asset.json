@@ -71,7 +71,7 @@
       "warm_ochre",
       "earth_ochre"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: Qingshan surface game environment reference\nPrimary request: Worn stone-and-earth road compatible with QuickRoad geometry\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Worn stone-and-earth road compatible with QuickRoad geometry; intended gameplay role is surface\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan surface game environment reference\nPrimary request: Worn stone-and-earth road compatible with QuickRoad geometry\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Worn stone-and-earth road compatible with QuickRoad geometry; intended gameplay role is surface\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView seamless_transition_sheet: Show a no-perspective tiling sample and clean material boundary strips; required elements: no_perspective_tile_sample, boundary_transition_strips, non_repeating_shape_check\nView player_camera_material_sheet: Show slope behavior and fixed player-camera samples at 5m, 10m and 20m; required elements: sloped_material_example, fixed_player_camera_samples_5m_10m_20m",
     "prompt_sections": {
       "asset_type": "Qingshan surface game environment reference",
       "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
@@ -82,7 +82,26 @@
       "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
       "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
       "subject": "Worn stone-and-earth road compatible with QuickRoad geometry; intended gameplay role is surface",
-      "use_case": "stylized-concept"
+      "use_case": "stylized-concept",
+      "view_contracts": {
+        "player_camera_material_sheet": {
+          "instruction": "Show slope behavior and fixed player-camera samples at 5m, 10m and 20m",
+          "required_elements": [
+            "sloped_material_example",
+            "fixed_player_camera_samples_5m_10m_20m"
+          ]
+        },
+        "seamless_transition_sheet": {
+          "instruction": "Show a no-perspective tiling sample and clean material boundary strips",
+          "required_elements": [
+            "no_perspective_tile_sample",
+            "boundary_transition_strips",
+            "non_repeating_shape_check"
+          ]
+        }
+      },
+      "view_player_camera_material_sheet": "Show slope behavior and fixed player-camera samples at 5m, 10m and 20m; required elements: sloped_material_example, fixed_player_camera_samples_5m_10m_20m",
+      "view_seamless_transition_sheet": "Show a no-perspective tiling sample and clean material boundary strips; required elements: no_perspective_tile_sample, boundary_transition_strips, non_repeating_shape_check"
     },
     "required_view_kinds": [
       "seamless_transition_sheet",
@@ -146,9 +165,9 @@
       "file_stub": "SRF_QS_ROAD_STONE_A__seamless_transition_sheet",
       "kind": "seamless_transition_sheet",
       "required_annotations": [
-        "scale",
-        "orientation",
-        "material_regions"
+        "no_perspective_tile_sample",
+        "boundary_transition_strips",
+        "non_repeating_shape_check"
       ]
     },
     {
@@ -158,9 +177,8 @@
       "file_stub": "SRF_QS_ROAD_STONE_A__player_camera_material_sheet",
       "kind": "player_camera_material_sheet",
       "required_annotations": [
-        "scale",
-        "orientation",
-        "material_regions"
+        "sloped_material_example",
+        "fixed_player_camera_samples_5m_10m_20m"
       ]
     }
   ],

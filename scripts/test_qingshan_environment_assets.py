@@ -805,27 +805,46 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
             metrics = json.loads((root / "source_metrics.json").read_text(encoding="utf-8"))
             registry = assets["BLD_QS_L_A_MARKET_SHOP"]
             expected = {
-                "BLD_QS_M_A_INN": ([4.8, 5.6, 5.2], "asymmetric_xieshan", "warm_red_brown"),
-                "BLD_QS_S_A_HOUSE": ([3.6, 4.2, 3.8], "double_slope", "indigo"),
-                "BLD_QS_M_B_STREET_SHOP": ([4.2, 5, 4.6], "deep_eave_half_storey", "ink_green"),
-                "BLD_QS_S_B_WORKSHOP": ([4, 4.8, 3.6], "hard_gable", "ochre"),
-                "BLD_QS_S_C_RIVER_HUT": ([3.8, 4.5, 3.5], "low_eave", "teal"),
+                "BLD_QS_M_A_INN": (
+                    [4.8, 5.6, 5.2], "asymmetric_xieshan", "warm_red_brown", [30000, 35000], 35000
+                ),
+                "BLD_QS_S_A_HOUSE": (
+                    [3.6, 4.2, 3.8], "double_slope", "indigo", [15000, 20000], 20000
+                ),
+                "BLD_QS_M_B_STREET_SHOP": (
+                    [4.2, 5, 4.6], "deep_eave_half_storey", "ink_green", [25000, 30000], 30000
+                ),
+                "BLD_QS_S_B_WORKSHOP": (
+                    [4, 4.8, 3.6], "hard_gable", "ochre", [12000, 18000], 18000
+                ),
+                "BLD_QS_S_C_RIVER_HUT": (
+                    [3.8, 4.5, 3.5], "low_eave", "teal", [15000, 20000], 20000
+                ),
             }
 
             self.assertEqual(registry["target_dimensions_m"], metrics["bounds_size_m"])
+            self.assertIn("existing_quad_faces_target", registry["registry"])
+            self.assertEqual(registry["registry"]["existing_quad_faces_target"], 50000)
             registry_volume = 1
             for dimension in registry["target_dimensions_m"]:
                 registry_volume *= dimension
             roof_families = set()
             roof_colors = set()
-            for asset_id, (dimensions, roof_form, roof_color) in expected.items():
+            for asset_id, (dimensions, roof_form, roof_color, approved_range, target) in expected.items():
                 asset = assets[asset_id]
                 self.assertEqual(asset["target_dimensions_m"], dimensions)
                 self.assertEqual(asset["roof"]["form"], roof_form)
                 self.assertEqual(asset["roof"]["primary_color"], roof_color)
-                self.assertEqual(asset["retopo_target_quads"], 50000)
+                self.assertEqual(asset["retopo_target_quads"], target)
                 self.assertEqual(asset["building"]["model_pipeline"]["source"], "Tripo_high_precision")
                 self.assertEqual(asset["building"]["model_pipeline"]["topology"], "quad")
+                self.assertEqual(
+                    asset["building"]["model_pipeline"]["approved_quad_face_range"],
+                    approved_range,
+                )
+                self.assertEqual(
+                    asset["building"]["model_pipeline"]["target_quad_faces"], target
+                )
                 self.assertEqual(
                     asset["building"]["model_pipeline"]["material_stage"],
                     "after_retopology",
@@ -839,6 +858,160 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                 roof_colors.add(roof_color)
             self.assertEqual(len(roof_families), 5)
             self.assertEqual(len(roof_colors), 5)
+
+    def test_non_b0_assets_define_category_specific_required_elements_per_view(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+            required = {
+                "registry": {
+                    "existing_asset_registry": {
+                        "source_mesh_path", "measured_bounds_m", "material_slot_count",
+                        "pivot_and_forward_axis", "scale_lineup_relationship",
+                        "existing_50k_quad_registration",
+                    }
+                },
+                "building": {
+                    "hero_3q": {
+                        "complete_uncropped_silhouette", "visible_base", "entrance_direction",
+                        "roof_readability", "fixed_high_three_quarter_camera",
+                        "single_asset_clean_warm_background",
+                    },
+                    "structure_sheet": {
+                        "entrance_front", "side_and_rear", "top_down_footprint",
+                        "player_scale_reference", "material_regions",
+                    },
+                },
+                "landmark": {
+                    "route_3q": {
+                        "player_route_primary_view", "entry_and_exit", "traversal_clearance",
+                        "fixed_high_three_quarter_camera",
+                    },
+                    "structure_connection_sheet": {
+                        "front_and_side_structure", "top_down_passage_dimensions",
+                        "connection_interfaces", "material_regions", "simple_collision_clearance",
+                    },
+                },
+                "near_mountain": {
+                    "module_lineup": {
+                        "variant_module_lineup", "join_interfaces", "complete_base",
+                        "distinct_silhouette",
+                    },
+                    "assembly_player_scale": {
+                        "assembled_edge_example", "player_and_building_scale",
+                        "north_gate_gap_preserved", "lower_center_open",
+                    },
+                },
+                "far_mountain": {
+                    "silhouette_layers": {
+                        "two_joinable_variants", "clean_silhouette_band",
+                        "separated_depth_layer_shapes",
+                    },
+                    "player_camera_composite": {
+                        "fixed_player_camera", "near_mountain_relationship",
+                        "north_gate_gap_visible", "depth_layer_readability",
+                    },
+                },
+                "rock_kit": {
+                    "variant_lineup": {
+                        "S_M_L_variants", "complete_separated_silhouettes", "flat_bases",
+                        "material_state",
+                    },
+                    "silhouette_scale": {
+                        "black_silhouette", "player_and_building_scale", "placement_cluster",
+                    },
+                },
+                "paper2d_plant": {
+                    "neutral_variants": {
+                        "separate_A_B_C", "stable_root_or_trunk", "warm_plain_background",
+                    },
+                    "silhouette_scale_cluster": {
+                        "black_silhouette", "project_character_and_building_scale_ruler",
+                        "cluster_of_3_to_5",
+                    },
+                    "wind_poses": {
+                        "only_variant_A_animated", "B_and_C_static", "explicit_frame_sequence",
+                        "stable_root_or_trunk",
+                    },
+                },
+                "surface": {
+                    "seamless_transition_sheet": {
+                        "no_perspective_tile_sample", "boundary_transition_strips",
+                        "non_repeating_shape_check",
+                    },
+                    "player_camera_material_sheet": {
+                        "sloped_material_example", "fixed_player_camera_samples_5m_10m_20m",
+                    },
+                },
+                "linear_kit": {
+                    "variant_lineup": {
+                        "three_named_variants", "complete_separated_silhouettes",
+                        "connection_pivots",
+                    },
+                    "usage_scale_sheet": {
+                        "project_character_and_building_scale", "placement_examples",
+                        "connection_clearance",
+                    },
+                },
+                "prop_kit": {
+                    "variant_lineup": {
+                        "three_named_variants", "complete_separated_silhouettes",
+                        "connection_pivots",
+                    },
+                    "usage_scale_sheet": {
+                        "project_character_and_building_scale", "placement_examples",
+                        "connection_clearance",
+                    },
+                },
+            }
+
+            for asset_id, asset in assets.items():
+                if asset["batch"] == "B0":
+                    continue
+                self.assertIn("view_contracts", asset["generation"]["prompt_sections"], asset_id)
+                contracts = asset["generation"]["prompt_sections"]["view_contracts"]
+                self.assertEqual(set(contracts), set(EXPECTED_VIEWS[asset["category"]]), asset_id)
+                references = {item["kind"]: item for item in asset["reference_images"]}
+                for view_kind, expected_elements in required[asset["category"]].items():
+                    contract = contracts[view_kind]
+                    self.assertTrue(contract["instruction"].strip(), f"{asset_id}:{view_kind}")
+                    self.assertTrue(
+                        expected_elements.issubset(contract["required_elements"]),
+                        f"{asset_id}:{view_kind}",
+                    )
+                    self.assertEqual(
+                        references[view_kind]["required_annotations"],
+                        contract["required_elements"],
+                    )
+
+    def test_plant_wind_view_records_exact_frame_order_and_surfaces_record_distance_and_water_layers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+            five_frame_order = [
+                "neutral", "left_small", "left_large", "right_small", "right_large"
+            ]
+            four_frame_order = ["neutral", "left", "right", "slight_return"]
+            for asset_id, asset in assets.items():
+                if asset["category"] == "paper2d_plant":
+                    self.assertIn("view_contracts", asset["generation"]["prompt_sections"], asset_id)
+                    wind = asset["generation"]["prompt_sections"]["view_contracts"]["wind_poses"]
+                    expected = five_frame_order if asset["wind_frames"] == 5 else four_frame_order
+                    self.assertEqual(wind["frame_sequence"], expected, asset_id)
+
+            surface_base = {
+                "no_perspective_tile_sample", "boundary_transition_strips",
+                "non_repeating_shape_check",
+            }
+            camera_base = {"sloped_material_example", "fixed_player_camera_samples_5m_10m_20m"}
+            for asset_id, asset in assets.items():
+                if asset["category"] != "surface":
+                    continue
+                views = asset["generation"]["prompt_sections"]["view_contracts"]
+                self.assertTrue(surface_base.issubset(views["seamless_transition_sheet"]["required_elements"]))
+                self.assertTrue(camera_base.issubset(views["player_camera_material_sheet"]["required_elements"]))
+            water_views = assets["SRF_QS_WATER_RIVER_A"]["generation"]["prompt_sections"]["view_contracts"]
+            water_layers = {"flow_direction", "bank_line", "shallow_deep_bands", "foam_layer"}
+            for contract in water_views.values():
+                self.assertTrue(water_layers.issubset(contract["required_elements"]))
 
     def test_style_profile_records_route_terrain_material_and_adjustable_performance_policy(self):
         with tempfile.TemporaryDirectory() as directory:

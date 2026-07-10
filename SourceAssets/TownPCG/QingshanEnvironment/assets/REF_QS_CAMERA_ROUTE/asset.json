@@ -94,7 +94,17 @@
       "scene_backdrop": "one coherent mountain-enclosed Chinese town across four equal visual panels without borders or text",
       "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon environment concept",
       "subject": "north gate remains on screen right; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market, offset bridge, river and left-side dock; one large shop, smaller staggered houses, clustered foliage, near solid mountain feet and pale Paper2D-like far mountain silhouettes",
-      "use_case": "stylized-concept"
+      "use_case": "stylized-concept",
+      "view_contracts": {
+        "board": {
+          "instruction": "Generate the single approved Batch 0 board exactly as specified by the full prompt",
+          "required_elements": [
+            "complete_board",
+            "consistent_QS_InkToon_v1",
+            "no_written_labels"
+          ]
+        }
+      }
     },
     "required_view_kinds": [
       "board"
@@ -155,9 +165,9 @@
       "file_stub": "REF_QS_CAMERA_ROUTE__board",
       "kind": "board",
       "required_annotations": [
-        "scale",
-        "orientation",
-        "material_regions"
+        "complete_board",
+        "consistent_QS_InkToon_v1",
+        "no_written_labels"
       ]
     }
   ],

@@ -71,7 +71,7 @@
       "warm_ochre",
       "warm_red_brown"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: Qingshan registry game environment reference\nPrimary request: Register the existing approved largest shop without new generation\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Register the existing approved largest shop without new generation; intended gameplay role is landmark_shop\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan registry game environment reference\nPrimary request: Register the existing approved largest shop without new generation\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Register the existing approved largest shop without new generation; intended gameplay role is landmark_shop\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView existing_asset_registry: Record the existing L-A mesh facts without generating or altering a model; required elements: source_mesh_path, measured_bounds_m, material_slot_count, pivot_and_forward_axis, scale_lineup_relationship, existing_50k_quad_registration",
     "prompt_sections": {
       "asset_type": "Qingshan registry game environment reference",
       "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
@@ -82,7 +82,21 @@
       "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
       "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
       "subject": "Register the existing approved largest shop without new generation; intended gameplay role is landmark_shop",
-      "use_case": "stylized-concept"
+      "use_case": "stylized-concept",
+      "view_contracts": {
+        "existing_asset_registry": {
+          "instruction": "Record the existing L-A mesh facts without generating or altering a model",
+          "required_elements": [
+            "source_mesh_path",
+            "measured_bounds_m",
+            "material_slot_count",
+            "pivot_and_forward_axis",
+            "scale_lineup_relationship",
+            "existing_50k_quad_registration"
+          ]
+        }
+      },
+      "view_existing_asset_registry": "Record the existing L-A mesh facts without generating or altering a model; required elements: source_mesh_path, measured_bounds_m, material_slot_count, pivot_and_forward_axis, scale_lineup_relationship, existing_50k_quad_registration"
     },
     "required_view_kinds": [
       "existing_asset_registry"
@@ -143,14 +157,18 @@
       "file_stub": "BLD_QS_L_A_MARKET_SHOP__existing_asset_registry",
       "kind": "existing_asset_registry",
       "required_annotations": [
-        "scale",
-        "orientation",
-        "material_regions"
+        "source_mesh_path",
+        "measured_bounds_m",
+        "material_slot_count",
+        "pivot_and_forward_axis",
+        "scale_lineup_relationship",
+        "existing_50k_quad_registration"
       ]
     }
   ],
   "registry": {
     "asset_path": "/Game/GameXXK/Environment/TownPCG/Prototype/QingshanShopA/SM_Qingshan_Shop_A_HQ_Retop50K",
+    "existing_quad_faces_target": 50000,
     "material_slot_count": 1,
     "scale_anchor": "largest_approved_town_building",
     "source_metrics": "source_metrics.json"
