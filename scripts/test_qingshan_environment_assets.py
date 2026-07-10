@@ -3,6 +3,8 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -120,6 +122,16 @@ def _write_asset(root: Path, data: dict) -> Path:
     return path
 
 
+def _write_manifest(root: Path, asset_ids: list[str], batch_call_caps: dict | None = None) -> None:
+    _write_json(
+        root / "manifest.json",
+        {
+            "asset_ids": asset_ids,
+            "batch_call_caps": batch_call_caps or BATCH_CALL_CAPS,
+        },
+    )
+
+
 def _build_catalog(root: Path) -> list[dict]:
     assets: list[dict] = []
     assets.append(_asset_for("registry", "BLD_QS_REGISTRY_SHOP", "REGISTRY"))
@@ -139,7 +151,7 @@ def _build_catalog(root: Path) -> list[dict]:
     for index in range(5):
         assets.append(_asset_for("prop_kit", f"PROP_QS_PROP_B3_{index}", "B3"))
 
-    _write_json(root / "manifest.json", {"asset_ids": [item["asset_id"] for item in assets]})
+    _write_manifest(root, [item["asset_id"] for item in assets])
     for asset in assets:
         _write_asset(root, asset)
     return assets
@@ -218,6 +230,89 @@ class AssetValidationTests(unittest.TestCase):
                     validate_asset(data)
 
 
+class SchemaParityValidationTests(unittest.TestCase):
+    def test_unknown_top_level_property_is_rejected(self):
+        data = valid_building()
+        data["unreviewed_extension"] = "not approved by the schema"
+
+        with self.assertRaisesRegex(CatalogError, "unknown fields"):
+            validate_asset(data)
+
+    def test_unknown_generation_property_is_rejected(self):
+        data = valid_building()
+        data["generation"]["random_seed_pool"] = 99
+
+        with self.assertRaisesRegex(CatalogError, "generation.*unknown fields"):
+            validate_asset(data)
+
+    def test_unknown_workflow_gate_property_is_rejected(self):
+        data = valid_building()
+        data["workflow_gates"]["skip_user_review"] = True
+
+        with self.assertRaisesRegex(CatalogError, "workflow_gates.*unknown fields"):
+            validate_asset(data)
+
+    def test_unknown_reference_image_property_is_rejected(self):
+        data = valid_building()
+        data["reference_images"][0]["manual_hash_override"] = "forbidden"
+
+        with self.assertRaisesRegex(CatalogError, "reference_images.*unknown fields"):
+            validate_asset(data)
+
+    def test_schema_object_types_raise_clean_catalog_errors(self):
+        cases = {
+            "source_provenance": 123,
+            "paper2d": ["not", "an", "object"],
+            "unreal": ["not", "an", "object"],
+            "pcg": "not an object",
+            "acceptance": [True],
+        }
+        for field, malformed in cases.items():
+            with self.subTest(field=field):
+                data = valid_building()
+                data[field] = malformed
+                with self.assertRaisesRegex(CatalogError, field):
+                    validate_asset(data)
+
+    def test_schema_scalar_and_list_types_are_enforced(self):
+        cases = {
+            "display_name": 123,
+            "intended_zone": "town_interior",
+            "target_dimensions_m": "large",
+            "palette": "jade_green",
+        }
+        for field, malformed in cases.items():
+            with self.subTest(field=field):
+                data = valid_building()
+                data[field] = malformed
+                with self.assertRaisesRegex(CatalogError, field):
+                    validate_asset(data)
+
+    def test_generation_constants_are_enforced(self):
+        cases = {
+            "use_case": "photoreal-product-shot",
+            "blocked_after_revisions": 3,
+        }
+        for field, malformed in cases.items():
+            with self.subTest(field=field):
+                data = valid_building()
+                data["generation"][field] = malformed
+                with self.assertRaisesRegex(CatalogError, field):
+                    validate_asset(data)
+
+    def test_workflow_gate_types_are_enforced(self):
+        cases = {
+            "style_locked": "false",
+            "batch_approval_id": 123,
+        }
+        for field, malformed in cases.items():
+            with self.subTest(field=field):
+                data = valid_building()
+                data["workflow_gates"][field] = malformed
+                with self.assertRaisesRegex(CatalogError, field):
+                    validate_asset(data)
+
+
 class CatalogValidationTests(unittest.TestCase):
     def test_valid_catalog_returns_summary(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -248,6 +343,54 @@ class CatalogValidationTests(unittest.TestCase):
             with self.assertRaisesRegex(CatalogError, "35 unique"):
                 validate_catalog(root)
 
+    def test_manifest_traversal_id_is_rejected_before_asset_read(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _build_catalog(root)
+            manifest_path = root / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["asset_ids"][0] = "../../outside"
+            _write_json(manifest_path, manifest)
+            outside = root / "outside" / "asset.json"
+            outside.parent.mkdir()
+            outside.write_text("this is deliberately invalid JSON", encoding="utf-8")
+
+            with self.assertRaisesRegex(CatalogError, "manifest asset_id"):
+                validate_catalog(root)
+
+    def test_asset_symlink_escape_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = _build_catalog(root)
+            escaped = assets[0]
+            asset_dir = root / "assets" / escaped["asset_id"]
+            outside_dir = root / "outside-asset"
+            _write_json(outside_dir / "asset.json", escaped)
+            (asset_dir / "asset.json").unlink()
+            asset_dir.rmdir()
+            try:
+                asset_dir.symlink_to(outside_dir, target_is_directory=True)
+            except OSError as exc:
+                if os.name != "nt":
+                    self.skipTest(f"platform cannot create a test symlink: {exc}")
+                junction = subprocess.run(
+                    ["cmd", "/c", "mklink", "/J", str(asset_dir), str(outside_dir)],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if junction.returncode != 0:
+                    self.skipTest(f"platform cannot create a test junction: {junction.stderr}")
+
+            try:
+                with self.assertRaisesRegex(CatalogError, "escapes assets root"):
+                    validate_catalog(root)
+            finally:
+                if asset_dir.is_symlink():
+                    asset_dir.unlink()
+                elif asset_dir.exists():
+                    os.rmdir(asset_dir)
+
     def test_catalog_enforces_exact_batch_counts(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -273,16 +416,49 @@ class CatalogValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             assets = _build_catalog(root)
-            b0_assets = [item for item in assets if item["batch"] == "B0"]
-            for asset in b0_assets:
-                asset["generation"]["generation_calls_used"] = 3
+            b1_assets = [item for item in assets if item["batch"] == "B1"]
+            calls = [7, 7, 7, 7, 7, 7, 6, 1]
+            for asset, used in zip(b1_assets, calls):
+                asset["generation"]["generation_calls_used"] = used
                 _write_asset(root, asset)
-            b0_assets[0]["generation"]["generation_calls_used"] = 4
-            b0_assets[0]["generation"]["max_generation_calls"] = 4
-            _write_asset(root, b0_assets[0])
 
-            with self.assertRaisesRegex(CatalogError, "B0 call cap"):
+            with self.assertRaisesRegex(CatalogError, "B1 call cap"):
                 validate_catalog(root)
+
+    def test_catalog_rejects_wrong_per_asset_maximum(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = _build_catalog(root)
+            board = next(item for item in assets if item["batch"] == "B0")
+            board["generation"]["max_generation_calls"] = 999
+            _write_asset(root, board)
+
+            with self.assertRaisesRegex(CatalogError, "max_generation_calls"):
+                validate_catalog(root)
+
+    def test_catalog_rejects_manifest_batch_cap_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = _build_catalog(root)
+            drifted = dict(BATCH_CALL_CAPS)
+            drifted["B0"] = 999
+            _write_manifest(root, [item["asset_id"] for item in assets], drifted)
+
+            with self.assertRaisesRegex(CatalogError, "batch_call_caps"):
+                validate_catalog(root)
+
+    def test_theoretical_asset_maxima_may_exceed_batch_cap(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = _build_catalog(root)
+            b1_maximum = sum(
+                item["generation"]["max_generation_calls"]
+                for item in assets
+                if item["batch"] == "B1"
+            )
+            self.assertGreater(b1_maximum, BATCH_CALL_CAPS["B1"])
+
+            self.assertTrue(validate_catalog(root)["ok"])
 
 
 class OutputRegistrationTests(unittest.TestCase):
@@ -290,7 +466,7 @@ class OutputRegistrationTests(unittest.TestCase):
         root = Path(directory)
         data = asset or valid_building()
         _write_asset(root, data)
-        _write_json(root / "manifest.json", {"asset_ids": [data["asset_id"]]})
+        _write_manifest(root, [data["asset_id"]])
         return root, data
 
     def test_v004_is_rejected(self):
@@ -368,12 +544,43 @@ class OutputRegistrationTests(unittest.TestCase):
                 assets.append(other)
             for asset in assets:
                 _write_asset(root, asset)
-            _write_json(root / "manifest.json", {"asset_ids": [item["asset_id"] for item in assets]})
+            _write_manifest(root, [item["asset_id"] for item in assets])
             output = root / "concept.png"
             output.write_bytes(b"concept")
 
             with self.assertRaisesRegex(CatalogError, "B1 generation budget exhausted"):
                 register_output(root, current["asset_id"], "hero_3q", "v001", output)
+
+    def test_stale_assets_outside_manifest_do_not_consume_batch_budget(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            current = valid_building()
+            _write_asset(root, current)
+            _write_manifest(root, [current["asset_id"]])
+            for index in range(8):
+                stale = _asset_for("building", f"BLD_QS_STALE_{index}", "B1")
+                stale["generation"]["generation_calls_used"] = 6
+                _write_asset(root, stale)
+            output = root / "concept.png"
+            output.write_bytes(b"manifest member output")
+
+            result = register_output(root, current["asset_id"], "hero_3q", "v001", output)
+
+            self.assertEqual(result["generation_calls_used"], 1)
+
+    def test_asset_absent_from_manifest_cannot_be_registered(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            stale = valid_building()
+            member = _asset_for("reference", "REF_QS_ONLY_MANIFEST_MEMBER", "B0")
+            _write_asset(root, stale)
+            _write_asset(root, member)
+            _write_manifest(root, [member["asset_id"]])
+            output = root / "concept.png"
+            output.write_bytes(b"stale output")
+
+            with self.assertRaisesRegex(CatalogError, "not present in manifest"):
+                register_output(root, stale["asset_id"], "hero_3q", "v001", output)
 
     def test_existing_or_older_version_is_not_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -403,10 +610,11 @@ class BatchReportTests(unittest.TestCase):
                 _asset_for("reference", f"REF_QS_REPORT_{index}", "B0")
                 for index in range(4)
             ]
-            _write_json(root / "manifest.json", {"asset_ids": [item["asset_id"] for item in assets]})
+            _write_manifest(root, [item["asset_id"] for item in assets])
             expected: dict[str, tuple[str, str]] = {}
-            for index, asset in enumerate(assets):
+            for asset in assets:
                 _write_asset(root, asset)
+            for index, asset in enumerate(assets):
                 image_path = root / "style" / "boards" / f"board-{index}.png"
                 image_path.parent.mkdir(parents=True, exist_ok=True)
                 payload = f"board {index}".encode("utf-8")
@@ -430,6 +638,28 @@ class BatchReportTests(unittest.TestCase):
             self.assertIn("tripo_allowed=false", report)
             self.assertIn("model_or_sprite_production_allowed=false", report)
             self.assertIn("ue_import_allowed=false", report)
+
+    def test_report_rejects_manifest_asset_id_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = [
+                _asset_for("reference", f"REF_QS_MISMATCH_{index}", "B0")
+                for index in range(4)
+            ]
+            _write_manifest(root, [item["asset_id"] for item in assets])
+            for asset in assets:
+                _write_asset(root, asset)
+            for index, asset in enumerate(assets):
+                image_path = root / f"board-{index}.png"
+                image_path.write_bytes(f"board {index}".encode("utf-8"))
+                register_output(root, asset["asset_id"], "board", "v001", image_path)
+            mismatched_path = root / "assets" / assets[0]["asset_id"] / "asset.json"
+            mismatched = json.loads(mismatched_path.read_text(encoding="utf-8"))
+            mismatched["asset_id"] = "REF_QS_DIFFERENT_ID"
+            _write_json(mismatched_path, mismatched)
+
+            with self.assertRaisesRegex(CatalogError, "asset_id mismatch"):
+                write_batch_report(root, "B0", root / "report.md")
 
 
 class SchemaContractTests(unittest.TestCase):

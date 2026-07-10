@@ -69,6 +69,20 @@ GENERATION_FIELDS = (
     "generation_calls_used",
     "blocked_after_revisions",
 )
+GENERATION_OPTIONAL_FIELDS = (
+    "prompt",
+    "input_images",
+    "input_image_roles",
+    "prompt_sections",
+    "scene_backdrop",
+    "subject",
+    "style_medium",
+    "composition_framing",
+    "lighting_mood",
+    "palette",
+    "constraints",
+    "avoid",
+)
 WORKFLOW_GATE_FIELDS = (
     "style_locked",
     "reference_approved",
@@ -80,6 +94,55 @@ WORKFLOW_GATE_FIELDS = (
     "tripo_allowed",
     "ue_import_allowed",
 )
+REFERENCE_IMAGE_REQUIRED_FIELDS = ("kind", "approval_state", "file_stub")
+REFERENCE_IMAGE_FIELDS = REFERENCE_IMAGE_REQUIRED_FIELDS + (
+    "camera",
+    "background",
+    "required_annotations",
+    "output_path",
+    "sha256",
+    "version",
+    "rejection_reason",
+)
+OPTIONAL_TOP_LEVEL_FIELDS = (
+    "building",
+    "landmark",
+    "environment",
+    "paper2d",
+    "surface",
+    "kit",
+    "registry",
+    "variant_limit",
+    "size_class",
+    "use",
+    "footprint_m",
+    "entrance_axis",
+    "roof",
+    "eave_height_m",
+    "door_socket",
+    "retopo_target_quads",
+    "texture_resolution",
+    "simple_collision_required",
+    "allowed_cluster_roles",
+    "source_canvas_px",
+    "sprite_cell_px",
+    "pixels_per_unreal_unit",
+    "pivot_mode",
+    "card_world_size_m",
+    "facing_mode",
+    "depth_layer",
+    "atlas_group",
+    "wind_frames",
+    "animated_variants",
+    "atlas_cell_count",
+    "masked_material",
+    "cluster_size",
+    "spacing_m",
+    "cull_distance_m",
+    "collision",
+    "ground_trace_required",
+)
+ALLOWED_TOP_LEVEL_FIELDS = REQUIRED_FIELDS + OPTIONAL_TOP_LEVEL_FIELDS
 PRODUCTION_GATES = (
     "tripo_allowed",
     "model_or_sprite_production_allowed",
@@ -98,6 +161,13 @@ def _missing_fields(data: dict, fields: tuple[str, ...], prefix: str = "") -> No
     if missing:
         label = f"{prefix} " if prefix else ""
         raise CatalogError(f"missing {label}fields: {missing}")
+
+
+def _reject_unknown_fields(data: dict, fields: tuple[str, ...], label: str) -> None:
+    unknown = sorted((key for key in data if key not in fields), key=str)
+    if unknown:
+        prefix = f"{label} has " if label else ""
+        raise CatalogError(f"{prefix}unknown fields: {unknown}")
 
 
 def _reject_empty(value: Any, path: str) -> None:
@@ -119,56 +189,269 @@ def _require_nonnegative_integer(value: Any, field: str) -> int:
     return value
 
 
-def validate_asset(data: dict) -> None:
-    """Validate one asset record against the authoritative host contract."""
+def _require_positive_integer(value: Any, field: str) -> int:
+    if type(value) is not int or value < 1:
+        raise CatalogError(f"{field} must be a positive integer")
+    return value
 
-    if not isinstance(data, dict):
-        raise CatalogError("asset must be an object")
-    _missing_fields(data, REQUIRED_FIELDS)
-    _reject_empty(data, "asset")
 
-    if data["schema_version"] != 1:
-        raise CatalogError("schema_version must be 1")
-    asset_id = data["asset_id"]
-    if not isinstance(asset_id, str) or ASSET_ID_PATTERN.fullmatch(asset_id) is None:
-        raise CatalogError("asset_id does not match the Qingshan naming contract")
+def _require_string(value: Any, field: str) -> str:
+    if not isinstance(value, str):
+        raise CatalogError(f"{field} must be a string")
+    return value
 
-    category = data["category"]
-    if category not in EXPECTED_VIEWS:
-        raise CatalogError(f"unknown category: {category!r}")
-    batch = data["batch"]
-    if batch not in BATCH_COUNTS:
-        raise CatalogError(f"unknown batch: {batch!r}")
 
-    generation = _require_mapping(data["generation"], "generation")
-    _missing_fields(generation, GENERATION_FIELDS, "generation")
-    expected = EXPECTED_VIEWS[category]
-    actual_views = generation["required_view_kinds"]
-    if not isinstance(actual_views, list) or tuple(actual_views) != expected:
-        raise CatalogError(f"required_view_kinds must be {expected}, got {actual_views!r}")
+def _require_boolean(value: Any, field: str) -> bool:
+    if type(value) is not bool:
+        raise CatalogError(f"{field} must be a boolean")
+    return value
 
-    reference_images = data["reference_images"]
-    if not isinstance(reference_images, list) or not all(isinstance(item, dict) for item in reference_images):
+
+def _require_number(value: Any, field: str, *, positive: bool = False) -> float | int:
+    if type(value) not in (int, float):
+        raise CatalogError(f"{field} must be a number")
+    if positive and value <= 0:
+        raise CatalogError(f"{field} must be greater than zero")
+    return value
+
+
+def _require_string_array(value: Any, field: str) -> list[str]:
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise CatalogError(f"{field} must be a list of strings")
+    return value
+
+
+def _require_numeric_array(value: Any, field: str, length: int) -> list[int | float]:
+    if not isinstance(value, list) or len(value) != length:
+        raise CatalogError(f"{field} must contain exactly {length} numbers")
+    for index, item in enumerate(value):
+        _require_number(item, f"{field}[{index}]", positive=True)
+    return value
+
+
+def _validate_reference_images(reference_images: Any, expected: tuple[str, ...]) -> None:
+    if not isinstance(reference_images, list) or not all(
+        isinstance(item, dict) for item in reference_images
+    ):
         raise CatalogError("reference_images must be a list of objects")
-    reference_kinds = tuple(item.get("kind") for item in reference_images)
+    for index, item in enumerate(reference_images):
+        label = f"reference_images[{index}]"
+        _missing_fields(item, REFERENCE_IMAGE_REQUIRED_FIELDS, label)
+        _reject_unknown_fields(item, REFERENCE_IMAGE_FIELDS, label)
+        for field in (
+            "kind",
+            "camera",
+            "background",
+            "approval_state",
+            "file_stub",
+            "output_path",
+            "rejection_reason",
+        ):
+            if field in item:
+                _require_string(item[field], f"{label}.{field}")
+        if "required_annotations" in item:
+            _require_string_array(item["required_annotations"], f"{label}.required_annotations")
+        if "sha256" in item:
+            digest = _require_string(item["sha256"], f"{label}.sha256")
+            if re.fullmatch(r"[a-f0-9]{64}", digest) is None:
+                raise CatalogError(f"{label}.sha256 must be a lowercase SHA-256 digest")
+        if "version" in item and item["version"] not in ALLOWED_VERSIONS:
+            raise CatalogError(f"{label}.version must be one of {ALLOWED_VERSIONS}")
+    reference_kinds = tuple(item["kind"] for item in reference_images)
     if reference_kinds != expected:
         raise CatalogError(f"reference_images kinds must be {expected}, got {reference_kinds}")
 
-    if generation["max_versions_per_view"] != 3:
+
+def _validate_generation(generation: dict, expected: tuple[str, ...], category: str) -> None:
+    _missing_fields(generation, GENERATION_FIELDS, "generation")
+    _reject_unknown_fields(
+        generation, GENERATION_FIELDS + GENERATION_OPTIONAL_FIELDS, "generation"
+    )
+    if generation["use_case"] != "stylized-concept":
+        raise CatalogError("generation.use_case must be 'stylized-concept'")
+    _require_string(generation["asset_type"], "generation.asset_type")
+    actual_views = _require_string_array(
+        generation["required_view_kinds"], "generation.required_view_kinds"
+    )
+    if tuple(actual_views) != expected:
+        raise CatalogError(f"required_view_kinds must be {expected}, got {actual_views!r}")
+    if type(generation["max_versions_per_view"]) is not int or generation["max_versions_per_view"] != 3:
         raise CatalogError("max_versions_per_view must be 3")
+    if type(generation["blocked_after_revisions"]) is not int or generation["blocked_after_revisions"] != 2:
+        raise CatalogError("generation.blocked_after_revisions must be 2")
+
     maximum_calls = _require_nonnegative_integer(
         generation["max_generation_calls"], "max_generation_calls"
     )
+    expected_maximum_calls = 0 if category == "registry" else len(expected) * 3
+    if maximum_calls != expected_maximum_calls:
+        raise CatalogError(
+            f"max_generation_calls must be {expected_maximum_calls} for {category}, "
+            f"got {maximum_calls}"
+        )
     calls_used = _require_nonnegative_integer(
         generation["generation_calls_used"], "generation_calls_used"
     )
     if calls_used > maximum_calls:
         raise CatalogError("generation call budget exceeded")
 
-    gates = _require_mapping(data["workflow_gates"], "workflow_gates")
+    for field in (
+        "prompt",
+        "scene_backdrop",
+        "subject",
+        "style_medium",
+        "composition_framing",
+        "lighting_mood",
+    ):
+        if field in generation:
+            _require_string(generation[field], f"generation.{field}")
+    for field in ("palette", "constraints", "avoid"):
+        if field in generation:
+            _require_string_array(generation[field], f"generation.{field}")
+    if "input_images" in generation:
+        images = generation["input_images"]
+        if not isinstance(images, list) or not all(
+            isinstance(item, (str, dict)) for item in images
+        ):
+            raise CatalogError("generation.input_images must be a list of strings or objects")
+    if "input_image_roles" in generation:
+        roles = generation["input_image_roles"]
+        if not isinstance(roles, list) or not all(isinstance(item, dict) for item in roles):
+            raise CatalogError("generation.input_image_roles must be a list of objects")
+    if "prompt_sections" in generation:
+        _require_mapping(generation["prompt_sections"], "generation.prompt_sections")
+
+
+def _validate_workflow_gates(gates: dict) -> None:
     _missing_fields(gates, WORKFLOW_GATE_FIELDS, "workflow_gates")
+    _reject_unknown_fields(gates, WORKFLOW_GATE_FIELDS, "workflow_gates")
+    for gate in WORKFLOW_GATE_FIELDS:
+        if gate != "batch_approval_id":
+            _require_boolean(gates[gate], f"workflow_gates.{gate}")
+    approval_id = gates["batch_approval_id"]
+    if approval_id is not None and not isinstance(approval_id, str):
+        raise CatalogError("workflow_gates.batch_approval_id must be a string or null")
     if any(gates[gate] is not False for gate in PRODUCTION_GATES):
         raise CatalogError("production gates must remain false during concept production")
+
+
+def _validate_optional_top_level_fields(data: dict) -> None:
+    for field in (
+        "building",
+        "landmark",
+        "environment",
+        "paper2d",
+        "surface",
+        "kit",
+        "registry",
+        "roof",
+    ):
+        if field in data:
+            _require_mapping(data[field], field)
+    for field in (
+        "size_class",
+        "use",
+        "entrance_axis",
+        "door_socket",
+        "texture_resolution",
+        "pivot_mode",
+        "facing_mode",
+        "depth_layer",
+        "atlas_group",
+    ):
+        if field in data:
+            _require_string(data[field], field)
+    for field in ("allowed_cluster_roles",):
+        if field in data:
+            _require_string_array(data[field], field)
+    for field in ("footprint_m", "source_canvas_px", "sprite_cell_px", "card_world_size_m"):
+        if field in data:
+            _require_numeric_array(data[field], field, 2)
+    for field in (
+        "eave_height_m",
+        "pixels_per_unreal_unit",
+        "spacing_m",
+        "cull_distance_m",
+    ):
+        if field in data:
+            _require_number(data[field], field, positive=True)
+    for field in (
+        "simple_collision_required",
+        "masked_material",
+        "ground_trace_required",
+    ):
+        if field in data:
+            _require_boolean(data[field], field)
+    for field in ("retopo_target_quads", "atlas_cell_count", "cluster_size"):
+        if field in data:
+            _require_positive_integer(data[field], field)
+    if "variant_limit" in data:
+        variant_limit = _require_positive_integer(data["variant_limit"], "variant_limit")
+        if variant_limit > 3:
+            raise CatalogError("variant_limit must be at most 3")
+    if "wind_frames" in data and data["wind_frames"] not in (4, 5):
+        raise CatalogError("wind_frames must be 4 or 5")
+    if "animated_variants" in data and data["animated_variants"] != ["A"]:
+        raise CatalogError("animated_variants must be ['A']")
+    if "collision" in data and not isinstance(data["collision"], (bool, str, dict)):
+        raise CatalogError("collision must be a boolean, string, or object")
+
+
+def validate_asset(data: dict) -> None:
+    """Validate one asset record against the authoritative host contract."""
+
+    if not isinstance(data, dict):
+        raise CatalogError("asset must be an object")
+    _missing_fields(data, REQUIRED_FIELDS)
+    _reject_unknown_fields(data, ALLOWED_TOP_LEVEL_FIELDS, "")
+    _reject_empty(data, "asset")
+
+    if type(data["schema_version"]) is not int or data["schema_version"] != 1:
+        raise CatalogError("schema_version must be 1")
+    asset_id = data["asset_id"]
+    if not isinstance(asset_id, str) or ASSET_ID_PATTERN.fullmatch(asset_id) is None:
+        raise CatalogError("asset_id does not match the Qingshan naming contract")
+
+    for field in (
+        "display_name",
+        "priority",
+        "status",
+        "style_profile",
+        "gameplay_role",
+        "pivot",
+        "forward_axis",
+    ):
+        _require_string(data[field], field)
+    for field in (
+        "intended_zone",
+        "palette",
+        "silhouette_keywords",
+        "material_language",
+        "negative_prompt",
+        "dependencies",
+    ):
+        _require_string_array(data[field], field)
+    _require_numeric_array(data["target_dimensions_m"], "target_dimensions_m", 3)
+    _require_mapping(data["source_provenance"], "source_provenance")
+    _require_mapping(data["unreal"], "unreal")
+    _require_mapping(data["pcg"], "pcg")
+    _require_mapping(data["acceptance"], "acceptance")
+
+    category = data["category"]
+    if not isinstance(category, str) or category not in EXPECTED_VIEWS:
+        raise CatalogError(f"unknown category: {category!r}")
+    batch = data["batch"]
+    if not isinstance(batch, str) or batch not in BATCH_COUNTS:
+        raise CatalogError(f"unknown batch: {batch!r}")
+
+    generation = _require_mapping(data["generation"], "generation")
+    expected = EXPECTED_VIEWS[category]
+    _validate_generation(generation, expected, category)
+    _validate_reference_images(data["reference_images"], expected)
+
+    gates = _require_mapping(data["workflow_gates"], "workflow_gates")
+    _validate_workflow_gates(gates)
+    _validate_optional_top_level_fields(data)
 
 
 def _load_json(path: Path, label: str) -> dict:
@@ -191,33 +474,58 @@ def _write_json(path: Path, data: dict) -> None:
 
 def _manifest_ids(root: Path) -> list[str]:
     manifest = _load_json(root / "manifest.json", "manifest")
+    if manifest.get("batch_call_caps") != BATCH_CALL_CAPS:
+        raise CatalogError(
+            f"manifest batch_call_caps must be {BATCH_CALL_CAPS}, "
+            f"got {manifest.get('batch_call_caps')!r}"
+        )
     ids = manifest.get("asset_ids")
     if not isinstance(ids, list) or not all(isinstance(asset_id, str) for asset_id in ids):
         raise CatalogError("manifest asset_ids must be a list of strings")
+    for asset_id in ids:
+        if ASSET_ID_PATTERN.fullmatch(asset_id) is None:
+            raise CatalogError(f"manifest asset_id violates naming contract: {asset_id!r}")
     return ids
 
 
 def _asset_path(root: Path, asset_id: str) -> Path:
-    return root / "assets" / asset_id / "asset.json"
+    root = root.resolve()
+    assets_root = (root / "assets").resolve()
+    try:
+        assets_root.relative_to(root)
+    except ValueError as exc:
+        raise CatalogError(f"assets root escapes catalog root: {assets_root}") from exc
+    path = (assets_root / asset_id / "asset.json").resolve()
+    try:
+        path.relative_to(assets_root)
+    except ValueError as exc:
+        raise CatalogError(f"asset path escapes assets root: {asset_id!r} -> {path}") from exc
+    return path
+
+
+def _manifest_records(root: Path) -> list[tuple[str, Path, dict]]:
+    records: list[tuple[str, Path, dict]] = []
+    for asset_id in _manifest_ids(root):
+        path = _asset_path(root, asset_id)
+        data = _load_json(path, f"asset {asset_id}")
+        if data.get("asset_id") != asset_id:
+            raise CatalogError(
+                f"asset_id mismatch for {asset_id}: JSON contains {data.get('asset_id')!r}"
+            )
+        validate_asset(data)
+        records.append((asset_id, path, data))
+    return records
 
 
 def validate_catalog(root: Path) -> dict:
     """Validate all 35 catalog records and return a stable summary."""
 
     root = Path(root)
-    ids = _manifest_ids(root)
+    records = _manifest_records(root)
+    ids = [asset_id for asset_id, _path, _data in records]
     if len(ids) != 35 or len(set(ids)) != 35:
         raise CatalogError("catalog must contain 35 unique asset ids")
-
-    assets: list[dict] = []
-    for asset_id in ids:
-        data = _load_json(_asset_path(root, asset_id), f"asset {asset_id}")
-        validate_asset(data)
-        if data["asset_id"] != asset_id:
-            raise CatalogError(
-                f"asset_id mismatch for {asset_id}: JSON contains {data['asset_id']!r}"
-            )
-        assets.append(data)
+    assets = [data for _asset_id, _path, data in records]
 
     counts = {
         batch: sum(item["batch"] == batch for item in assets)
@@ -251,16 +559,6 @@ def validate_catalog(root: Path) -> dict:
     }
 
 
-def _all_asset_records(root: Path) -> list[dict]:
-    records: list[dict] = []
-    assets_root = root / "assets"
-    if not assets_root.exists():
-        return records
-    for path in sorted(assets_root.glob("*/asset.json")):
-        records.append(_load_json(path, "asset"))
-    return records
-
-
 def _stored_output_path(root: Path, file: Path) -> str:
     resolved_file = file.resolve()
     try:
@@ -287,11 +585,13 @@ def register_output(
     if not file.is_file():
         raise CatalogError(f"output file does not exist: {file}")
 
-    path = _asset_path(root, asset_id)
-    data = _load_json(path, f"asset {asset_id}")
-    validate_asset(data)
-    if data["asset_id"] != asset_id:
-        raise CatalogError(f"asset_id mismatch: requested {asset_id}, JSON contains {data['asset_id']}")
+    records = _manifest_records(root)
+    matching_records = [record for record in records if record[0] == asset_id]
+    if not matching_records:
+        raise CatalogError(f"asset {asset_id} is not present in manifest")
+    if len(matching_records) != 1:
+        raise CatalogError(f"asset {asset_id} must occur exactly once in manifest")
+    _manifest_id, path, data = matching_records[0]
 
     required_views = tuple(data["generation"]["required_view_kinds"])
     if view_kind not in required_views:
@@ -308,9 +608,9 @@ def register_output(
 
     batch = data["batch"]
     batch_calls = sum(
-        item.get("generation", {}).get("generation_calls_used", 0)
-        for item in _all_asset_records(root)
-        if item.get("batch") == batch
+        item["generation"]["generation_calls_used"]
+        for _member_id, _member_path, item in records
+        if item["batch"] == batch
     )
     batch_cap = BATCH_CALL_CAPS[batch]
     if batch_calls >= batch_cap:
@@ -353,13 +653,11 @@ def register_output(
 def _report_assets(root: Path, batch: str) -> list[dict]:
     if batch not in BATCH_COUNTS:
         raise CatalogError(f"unknown batch: {batch!r}")
-    ids = _manifest_ids(root)
-    assets: list[dict] = []
-    for asset_id in ids:
-        data = _load_json(_asset_path(root, asset_id), f"asset {asset_id}")
-        if data.get("batch") == batch:
-            validate_asset(data)
-            assets.append(data)
+    assets = [
+        data
+        for _asset_id, _path, data in _manifest_records(root)
+        if data["batch"] == batch
+    ]
     if not assets:
         raise CatalogError(f"no assets found for batch {batch}")
     return assets
