@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "seed": 20260710,
+  "source_map": "/Game/GameXXK/Maps/L_QingshanInn",
+  "prototype_map": "/Game/GameXXK/Maps/Prototype/L_QingshanTown_PCG_Prototype",
+  "asset_root": "/Game/GameXXK/Environment/TownPCG/VerticalSlice",
+  "graph_path": "/Game/GameXXK/Environment/TownPCG/VerticalSlice/PCG_QingshanTown_VerticalSlice",
+  "north_gate_label": "QingshanInn_TownExit",
+  "building_mesh": "/Game/GameXXK/Environment/TownPCG/Prototype/QingshanShopA/SM_Qingshan_Shop_A_HQ_Retop50K",
+  "building_limit": 12,
+  "building_hard_cap": 16,
+  "main_road_width_cm": 800,
+  "river_width_cm": 2000,
+  "bridge_width_cm": 900,
+  "road_setback_cm": 250,
+  "tree_instance_limit": 48,
+  "prop_instance_limit": 24,
+  "runtime_generation": false,
+  "building_points": [
+    {"location_cm": [-900, -1600, 0], "yaw_degrees": 0, "side": "left"},
+    {"location_cm": [-900, -3200, 0], "yaw_degrees": 0, "side": "left"},
+    {"location_cm": [-900, -4800, 0], "yaw_degrees": 0, "side": "left"},
+    {"location_cm": [-900, -6400, 0], "yaw_degrees": 0, "side": "left"},
+    {"location_cm": [-900, -8000, 0], "yaw_degrees": 0, "side": "left"},
+    {"location_cm": [-900, -9600, 0], "yaw_degrees": 0, "side": "left"},
+    {"location_cm": [900, -1600, 0], "yaw_degrees": 180, "side": "right"},
+    {"location_cm": [900, -3200, 0], "yaw_degrees": 180, "side": "right"},
+    {"location_cm": [900, -4800, 0], "yaw_degrees": 180, "side": "right"},
+    {"location_cm": [900, -6400, 0], "yaw_degrees": 180, "side": "right"},
+    {"location_cm": [900, -8000, 0], "yaw_degrees": 180, "side": "right"},
+    {"location_cm": [900, -9600, 0], "yaw_degrees": 180, "side": "right"}
+  ]
+}
