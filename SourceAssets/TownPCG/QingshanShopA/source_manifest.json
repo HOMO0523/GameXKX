@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "source_archive": "SourceAssets/TownPCG/QingshanShopA/SM_Qingshan_Shop_A_HQ_Retop50K_Quad_Textured.zip",
+  "sha256": "d8e7342688affb3f4236aaefd3a97169318ba2f7523747e434944ab9d7c6e216",
+  "external_origin": "C:/Users/shxuw/Downloads/SM_Qingshan_Shop_A_HQ_Retop50K_Quad_Textured.zip",
+  "topology": "Quad",
+  "quad_count": 51110,
+  "import_uniform_scale": 6.5,
+  "texture_count": 1,
+  "texture_resolution": [4096, 4096],
+  "texture_kind": "albedo",
+  "texture_format": "JPEG"
+}
