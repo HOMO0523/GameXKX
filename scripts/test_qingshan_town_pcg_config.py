@@ -47,13 +47,27 @@ class QingshanTownPCGConfigTests(unittest.TestCase):
             self.data["prototype_map"],
             "/Game/GameXXK/Maps/Prototype/L_QingshanTown_PCG_Prototype",
         )
+        self.assertEqual(
+            self.data["asset_root"],
+            "/Game/GameXXK/Environment/TownPCG/VerticalSlice",
+        )
+        self.assertEqual(
+            self.data["graph_path"],
+            "/Game/GameXXK/Environment/TownPCG/VerticalSlice/PCG_QingshanTown_VerticalSlice",
+        )
         self.assertEqual(self.data["north_gate_label"], "QingshanInn_TownExit")
         self.assertEqual(self.data["building_limit"], 12)
-        self.assertLessEqual(self.data["building_limit"], self.data["building_hard_cap"])
+        self.assertEqual(self.data["building_hard_cap"], 16)
         self.assertEqual(
             self.data["building_mesh"],
             "/Game/GameXXK/Environment/TownPCG/Prototype/QingshanShopA/SM_Qingshan_Shop_A_HQ_Retop50K",
         )
+        self.assertEqual(self.data["main_road_width_cm"], 800)
+        self.assertEqual(self.data["river_width_cm"], 2000)
+        self.assertEqual(self.data["bridge_width_cm"], 900)
+        self.assertEqual(self.data["road_setback_cm"], 250)
+        self.assertEqual(self.data["tree_instance_limit"], 48)
+        self.assertEqual(self.data["prop_instance_limit"], 24)
         self.assertFalse(self.data["runtime_generation"])
 
     def test_building_points_are_the_canonical_twelve_offsets(self):
@@ -98,7 +112,7 @@ class QingshanTownPCGConfigTests(unittest.TestCase):
         self.assert_invalid(data, "building_points count exceeds building_hard_cap")
 
     def test_validate_rejects_missing_or_empty_asset_paths(self):
-        for field in ("building_mesh", "source_map", "prototype_map"):
+        for field in ("building_mesh", "source_map", "prototype_map", "graph_path"):
             for value in (None, ""):
                 with self.subTest(field=field, value=value):
                     data = copy.deepcopy(self.data)
@@ -122,7 +136,11 @@ class QingshanTownPCGConfigTests(unittest.TestCase):
                 self.assert_invalid(data, "location_cm must be a three-number vector")
 
     def test_validate_rejects_invalid_side_and_yaw_mismatches(self):
-        cases = (("center", 0, "side must be left or right"), ("left", 180, "left point yaw_degrees must be 0"), ("right", 0, "right point yaw_degrees must be 180"))
+        cases = (
+            ("center", 0, "side must be left or right"),
+            ("left", 180, "left point yaw_degrees must be 0"),
+            ("right", 0, "right point yaw_degrees must be 180"),
+        )
         for side, yaw, message in cases:
             with self.subTest(side=side, yaw=yaw):
                 data = copy.deepcopy(self.data)
@@ -135,12 +153,49 @@ class QingshanTownPCGConfigTests(unittest.TestCase):
         data["building_points"][0]["yaw_degrees"] = "0"
         self.assert_invalid(data, "yaw_degrees must be a number")
 
-    def test_validate_rejects_bool_as_numeric_limit(self):
-        for field in ("building_limit", "building_hard_cap"):
+    def test_validate_rejects_bool_as_numeric_budget(self):
+        numeric_fields = (
+            "seed",
+            "building_limit",
+            "building_hard_cap",
+            "main_road_width_cm",
+            "river_width_cm",
+            "bridge_width_cm",
+            "road_setback_cm",
+            "tree_instance_limit",
+            "prop_instance_limit",
+        )
+        for field in numeric_fields:
             with self.subTest(field=field):
                 data = copy.deepcopy(self.data)
                 data[field] = True
                 self.assert_invalid(data, f"{field} must be an integer, not bool")
+
+    def test_validate_rejects_negative_seed(self):
+        data = copy.deepcopy(self.data)
+        data["seed"] = -1
+        self.assert_invalid(data, "seed must be at least 0")
+
+    def test_validate_rejects_negative_instance_limits(self):
+        for field in ("tree_instance_limit", "prop_instance_limit"):
+            with self.subTest(field=field):
+                data = copy.deepcopy(self.data)
+                data[field] = -1
+                self.assert_invalid(data, f"{field} must be at least 0")
+
+    def test_validate_rejects_non_positive_dimensions(self):
+        dimensions = (
+            "main_road_width_cm",
+            "river_width_cm",
+            "bridge_width_cm",
+            "road_setback_cm",
+        )
+        for field in dimensions:
+            for value in (0, -1):
+                with self.subTest(field=field, value=value):
+                    data = copy.deepcopy(self.data)
+                    data[field] = value
+                    self.assert_invalid(data, f"{field} must be greater than 0")
 
 
 if __name__ == "__main__":

@@ -38,16 +38,37 @@ def validate_config(data: Mapping[str, Any]) -> None:
     if data.get("schema_version") != 1 or isinstance(data.get("schema_version"), bool):
         raise ValueError("schema_version must be 1")
 
-    for field in ("source_map", "prototype_map", "building_mesh"):
+    for field in ("source_map", "prototype_map", "graph_path", "building_mesh"):
         _require_asset_path(data, field)
 
+    seed = _require_integer(data, "seed")
     building_limit = _require_integer(data, "building_limit")
     building_hard_cap = _require_integer(data, "building_hard_cap")
-    for field in ("tree_instance_limit", "prop_instance_limit"):
-        _require_integer(data, field)
+    dimensions = {
+        field: _require_integer(data, field)
+        for field in (
+            "main_road_width_cm",
+            "river_width_cm",
+            "bridge_width_cm",
+            "road_setback_cm",
+        )
+    }
+    instance_limits = {
+        field: _require_integer(data, field)
+        for field in ("tree_instance_limit", "prop_instance_limit")
+    }
+
+    if seed < 0:
+        raise ValueError("seed must be at least 0")
 
     if building_hard_cap < 1 or not 1 <= building_limit <= building_hard_cap:
         raise ValueError("building_limit must be between 1 and building_hard_cap")
+    for field, value in dimensions.items():
+        if value <= 0:
+            raise ValueError(f"{field} must be greater than 0")
+    for field, value in instance_limits.items():
+        if value < 0:
+            raise ValueError(f"{field} must be at least 0")
 
     if data.get("runtime_generation") is not False:
         raise ValueError("runtime_generation must be false")
