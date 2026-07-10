@@ -59,7 +59,7 @@
       "cropped subject",
       "PBR plastic shine"
     ],
-    "generation_calls_used": 1,
+    "generation_calls_used": 2,
     "input_image_roles": [
       {
         "path": "style/references/style_env_day.jpeg",
@@ -183,13 +183,13 @@
       "camera": "fixed_high_three_quarter_or_category_sheet",
       "file_stub": "REF_QS_CAMERA_ROUTE__board",
       "generation_input_paths": [
-        "style/references/style_env_day.jpeg",
-        "style/references/style_env_night.jpeg",
-        "style/references/layout_dense_foliage.jpg",
+        "style/boards/REF_QS_CAMERA_ROUTE__board__v001.png",
         "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
-        "style/boards/REF_QS_SCALE_LINEUP__board__v003.png"
+        "style/boards/REF_QS_SCALE_LINEUP__board__v003.png",
+        "style/references/style_env_day.jpeg",
+        "style/references/layout_dense_foliage.jpg"
       ],
-      "generation_prompt": "Use case: stylized-concept\nAsset type: four-panel game environment camera-route concept board\nPrimary request: show one continuous Qingshan town player route in four consistent fixed high-three-quarter views: north gate arrival, market and largest shop, main bridge, south dock\nInput images: day and night project illustrations define ink-cartoon style and atmosphere; the foliage screenshot defines only dense overlapping edge-canopy rhythm, never its rendering style; the style-lock v003 board defines final palette, materials and icon-level simplification; the scale-lineup v003 board controls relative hierarchy while JSON metre target dimensions remain authoritative\nScene/backdrop: one coherent mountain-enclosed Chinese town across four equal visual panels without borders or text\nSubject: preserve one continuous mental map: the north gate stays on screen right and the initial player faces along the road, not toward the gate; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market anchored by one largest shop and smaller staggered houses, then an offset main bridge crossing a blue-green river, then the south and left-side dock; cluster trees and plants asymmetrically around scene edges; ring the playable perimeter with near solid mountain feet and pale Paper2D-like far mountain silhouettes while keeping the lower center open\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon environment concept\nComposition/framing: four fixed high-three-quarter views with the same geography, scale and asset identity; view one places the gate on screen right with the player looking along the route; view two shows the asymmetric market and largest-shop anchor; view three shows the offset bridge clearly crossing the river; view four shows the south and left-side dock; road, river and walking path stay unambiguous and dense foliage overlaps only the outer edges\nLighting/mood: fresh morning, calm mist, readable gameplay contrast\nConstraints: no text, no UI, no labels, no panel borders, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects\nSimplification: inherit v003 icon-level shape economy; every building, bridge, tree and mountain uses broad readable masses with no bridge masonry joints, roof-tile rows, repeated windows, leaf-by-leaf foliage or surface noise\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.",
+      "generation_prompt": "Use case: stylized-concept\nAsset type: four-panel game environment camera-route concept board\nPrimary request: show one continuous Qingshan town player route in four consistent fixed high-three-quarter views: north gate arrival, market and largest shop, main bridge, south dock\nInput images: day and night project illustrations define ink-cartoon style and atmosphere; the foliage screenshot defines only dense overlapping edge-canopy rhythm, never its rendering style; the style-lock v003 board defines final palette, materials and icon-level simplification; the scale-lineup v003 board controls relative hierarchy while JSON metre target dimensions remain authoritative\nScene/backdrop: one coherent mountain-enclosed Chinese town across four equal visual panels without borders or text\nSubject: preserve one continuous mental map: the north gate stays on screen right and the initial player faces along the road, not toward the gate; a readable horizontal gentle S-shaped road runs right to left through an asymmetric market anchored by one largest shop and smaller staggered houses, then an offset main bridge crossing a blue-green river, then the south and left-side dock; cluster trees and plants asymmetrically around scene edges; ring the playable perimeter with near solid mountain feet and pale Paper2D-like far mountain silhouettes while keeping the lower center open\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon environment concept\nComposition/framing: four fixed high-three-quarter views with the same geography, scale and asset identity; view one places the gate on screen right with the player looking along the route; view two shows the asymmetric market and largest-shop anchor; view three shows the offset bridge clearly crossing the river; view four shows the south and left-side dock; road, river and walking path stay unambiguous and dense foliage overlaps only the outer edges\nLighting/mood: fresh morning, calm mist, readable gameplay contrast\nConstraints: no text, no UI, no labels, no panel borders, no watermark, no straight building rows, no mirror symmetry, no fluorescent foliage, no mountain wall blocking the lower center, no modern objects\nSimplification: inherit v003 icon-level shape economy; every building, bridge, tree and mountain uses broad readable masses with no bridge masonry joints, roof-tile rows, repeated windows, leaf-by-leaf foliage or surface noise\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.\n\nTargeted v002 correction. Preserve the approved palette, fixed high-three-quarter camera and four route stages, but rebuild the board with much stronger icon-level simplification.\n\nRemove every visible white cross, divider and rectangular panel frame; separate the four frameless views only with soft mist and rice-paper negative space. Remove all boats.\n\nView 1: place the north gate at the far screen-right behind the player. Put the player left of the gate, clearly facing left along the gentle S-road, never toward the gate.\nView 2: the road enters from screen right, bends past one unmistakably largest shop and exits left. Keep smaller houses strongly staggered in depth, never in a row.\nView 3: the same road enters from the right and crosses one offset bridge toward the left bank. Keep the bridge broad and simple with no masonry joints or repeated balusters.\nView 4: continue the same river and path to a south-bank dock in the left half of the image. Show only platform, posts, steps and a minimal railing; no boat.\n\nKeep the north gate, largest shop and colored small-house group identical across every view: same silhouette, roof color, scale hierarchy and relative geography. Use one consistent camera yaw and pitch, translated along the route.\n\nReduce every object to at most three primary masses and five internal accent-stroke groups. Buildings use one wall mass, one roof mass and one shadow mass, with at most one door and one window cue. Trees use one trunk and two or three broad canopy lobes. Rock clusters use two or three large silhouettes with no pebbles. Water uses two broad color bands and no more than five long directional strokes per view. Far Paper2D mountains use two pale flat silhouette layers. Keep dense foliage only as a few large asymmetric clusters on the outer edges and preserve the open lower center.\n\nThe largest shop always has an ink-green roof; the small-house group always keeps red, indigo-blue and teal roofs; the north gate always keeps one warm red roof. No borders, boats, masonry seams, pebble noise, leaf-by-leaf foliage or lower-center blockage.",
       "generation_reference_lineage": [
         "style/references/style_env_day.jpeg",
         "style/references/style_env_night.jpeg",
@@ -203,17 +203,18 @@
         "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
         "style/boards/REF_QS_SCALE_LINEUP__board__v001.png",
         "style/boards/REF_QS_SCALE_LINEUP__board__v002.png",
-        "style/boards/REF_QS_SCALE_LINEUP__board__v003.png"
+        "style/boards/REF_QS_SCALE_LINEUP__board__v003.png",
+        "style/boards/REF_QS_CAMERA_ROUTE__board__v001.png"
       ],
       "kind": "board",
-      "output_path": "style/boards/REF_QS_CAMERA_ROUTE__board__v001.png",
+      "output_path": "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png",
       "required_annotations": [
         "complete_board",
         "consistent_QS_InkToon_v1",
         "no_written_labels"
       ],
-      "sha256": "bb9bab2f64b7f63f6aaf3346ad9be961cea9219992409e5f38aad198772b88c5",
-      "version": "v001"
+      "sha256": "ca4fcb99f8fe2aad7bda924f109b08231b93e03796f8065baf2bff529bc18bee",
+      "version": "v002"
     }
   ],
   "schema_version": 1,
