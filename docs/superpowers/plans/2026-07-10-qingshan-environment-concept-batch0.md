@@ -296,13 +296,13 @@ Use this exact source mapping:
 
 | Destination | Source |
 |---|---|
-| `style_env_day.jpeg` | `C:\Users\shxuw\Documents\Tencent Files\978420603\nt_qq\nt_data\Pic\2026-07\Ori\74a507717280d3a9e8f075e8a3d8201b.jpeg` |
-| `style_env_night.jpeg` | `C:\Users\shxuw\Documents\Tencent Files\978420603\nt_qq\nt_data\Pic\2026-07\Ori\6cb6304fa60ec4084affc48be722555e.jpeg` |
-| `style_character_scale.jpeg` | `C:\Users\shxuw\Documents\Tencent Files\978420603\nt_qq\nt_data\Pic\2026-07\Ori\b3e9c4c5f18ab38abfa6f49336b623c0.jpeg` |
-| `style_nature_group.jpeg` | `C:\Users\shxuw\Documents\Tencent Files\978420603\nt_qq\nt_data\Pic\2026-07\Ori\b470ad572a2d2eb3959754c13d6cf0f1.jpeg` |
-| `style_creature_warm.jpeg` | `C:\Users\shxuw\Documents\Tencent Files\978420603\nt_qq\nt_data\Pic\2026-07\Ori\d848c66bef90df2589b2b81c7575cd22.jpeg` |
-| `style_creature_mass.jpeg` | `C:\Users\shxuw\Documents\Tencent Files\978420603\nt_qq\nt_data\Pic\2026-07\Ori\55bc66504b926d1917317b93c0a42f6b.jpeg` |
-| `layout_dense_foliage.jpg` | `C:\Users\shxuw\xwechat_files\wxid_g90er9r4o8p312_cd3c\temp\RWTemp\2026-07\93b72d0770041befdeb6f18e6e3229c9\ed2a4aca8dd0aac3628ef65c3b405348.jpg` |
+| `style_env_day.jpeg` | `<TENCENT_ORIGINALS>/74a507717280d3a9e8f075e8a3d8201b.jpeg` |
+| `style_env_night.jpeg` | `<TENCENT_ORIGINALS>/6cb6304fa60ec4084affc48be722555e.jpeg` |
+| `style_character_scale.jpeg` | `<TENCENT_ORIGINALS>/b3e9c4c5f18ab38abfa6f49336b623c0.jpeg` |
+| `style_nature_group.jpeg` | `<TENCENT_ORIGINALS>/b470ad572a2d2eb3959754c13d6cf0f1.jpeg` |
+| `style_creature_warm.jpeg` | `<TENCENT_ORIGINALS>/d848c66bef90df2589b2b81c7575cd22.jpeg` |
+| `style_creature_mass.jpeg` | `<TENCENT_ORIGINALS>/55bc66504b926d1917317b93c0a42f6b.jpeg` |
+| `layout_dense_foliage.jpg` | `<WECHAT_TEMP>/ed2a4aca8dd0aac3628ef65c3b405348.jpg` |
 
 - [ ] **Step 2: Confirm the test fails because stable copies are absent**
 
@@ -316,7 +316,7 @@ Expected: FAIL with a missing destination file.
 
 - [ ] **Step 3: Copy the binary references without altering them**
 
-Use `Copy-Item -LiteralPath` for the seven source paths above. Do not resize, recompress, color-correct, or rename the source files. Write `provenance.json` with destination name, original absolute path, role, byte count, and the exact SHA-256 above.
+Resolve the seven logical source locators outside tracked files, then use `Copy-Item -LiteralPath` for the resolved local paths. Do not resize, recompress, color-correct, or rename the source files. Write `provenance.json` with destination name, logical source locator, role, byte count, and the exact SHA-256 above; do not persist local user paths or account identifiers.
 
 - [ ] **Step 4: Re-run the focused test and commit**
 

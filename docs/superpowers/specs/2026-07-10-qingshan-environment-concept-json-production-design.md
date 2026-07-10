@@ -99,15 +99,15 @@ P2D_QS_GRASS_TUFT_A__wind_poses__v001.png
 
 以下用户提供文件作为风格参考，不作为编辑目标：
 
-- `74a507717280d3a9e8f075e8a3d8201b.jpeg`：山水场景、角色与生物同框比例。
-- `6cb6304fa60ec4084affc48be722555e.jpeg`：夜色山路、树冠和云雾层次。
-- `b3e9c4c5f18ab38abfa6f49336b623c0.jpeg`：主角比例和简化轮廓。
-- `b470ad572a2d2eb3959754c13d6cf0f1.jpeg`：人物、动物和自然物组合语言。
-- `d848c66bef90df2589b2b81c7575cd22.jpeg`：夸张动物造型、暖色和墨线。
-- `55bc66504b926d1917317b93c0a42f6b.jpeg`：大体块、低细节和深色轮廓。
-- `ed2a4aca8dd0aac3628ef65c3b405348.jpg`：只参考高密度树冠布局，不参考其具体美术风格或色彩。
+- `<TENCENT_ORIGINALS>/74a507717280d3a9e8f075e8a3d8201b.jpeg`：山水场景、角色与生物同框比例。
+- `<TENCENT_ORIGINALS>/6cb6304fa60ec4084affc48be722555e.jpeg`：夜色山路、树冠和云雾层次。
+- `<TENCENT_ORIGINALS>/b3e9c4c5f18ab38abfa6f49336b623c0.jpeg`：主角比例和简化轮廓。
+- `<TENCENT_ORIGINALS>/b470ad572a2d2eb3959754c13d6cf0f1.jpeg`：人物、动物和自然物组合语言。
+- `<TENCENT_ORIGINALS>/d848c66bef90df2589b2b81c7575cd22.jpeg`：夸张动物造型、暖色和墨线。
+- `<TENCENT_ORIGINALS>/55bc66504b926d1917317b93c0a42f6b.jpeg`：大体块、低细节和深色轮廓。
+- `<WECHAT_TEMP>/ed2a4aca8dd0aac3628ef65c3b405348.jpg`：只参考高密度树冠布局，不参考其具体美术风格或色彩。
 
-在正式生成前，将实际使用的稳定参考图复制到 `style/references/`，记录原路径、SHA-256 和用途。任何临时目录中的参考图都不得成为唯一来源。
+在正式生成前，将实际使用的稳定参考图复制到 `style/references/`，记录不含用户信息的逻辑来源定位符、SHA-256 和用途。任何临时目录中的参考图都不得成为唯一来源。
 
 ### 4.2 视觉规则
 
