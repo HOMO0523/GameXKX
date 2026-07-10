@@ -4,15 +4,15 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Builders/CubeBuilder.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/SplineComponent.h"
 #include "Editor.h"
 #include "Elements/PCGCreatePoints.h"
 #include "Elements/PCGStaticMeshSpawner.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/Level.h"
 #include "EngineUtils.h"
+#include "GameFramework/Actor.h"
 #include "HAL/FileManager.h"
-#include "HAL/PlatformProcess.h"
-#include "HAL/PlatformTime.h"
 #include "Helpers/PCGHelpers.h"
 #include "LevelUtils.h"
 #include "MeshSelectors/PCGMeshSelectorWeighted.h"
@@ -35,7 +35,6 @@ namespace GameXXKTownPCGAutomation
 {
 	constexpr TCHAR ManagedGraphRoot[] = TEXT("/Game/GameXXK/Environment/TownPCG/VerticalSlice/");
 	constexpr TCHAR PrototypeMapRoot[] = TEXT("/Game/GameXXK/Maps/Prototype/");
-	constexpr double GenerationTimeoutSeconds = 15.0;
 
 	class FRevertibleEditorTransaction
 	{
@@ -289,6 +288,143 @@ namespace GameXXKTownPCGAutomation
 		}
 		return Count;
 	}
+}
+
+FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTaggedSpline(
+	const FString& ActorLabel,
+	const TArray<FVector>& WorldPoints,
+	const bool bClosedLoop,
+	const TArray<FName>& Tags)
+{
+	using namespace GameXXKTownPCGAutomation;
+	constexpr TCHAR Operation[] = TEXT("CreateOrUpdateTaggedSpline");
+	FString Error;
+	if (!ValidateActorLabel(ActorLabel, Error))
+	{
+		return ErrorJson(Operation, Error, ActorLabel);
+	}
+	if (WorldPoints.Num() < 2)
+	{
+		return ErrorJson(Operation, TEXT("a spline requires at least two world points"), ActorLabel);
+	}
+	for (const FVector& Point : WorldPoints)
+	{
+		if (!IsFiniteVector(Point))
+		{
+			return ErrorJson(Operation, TEXT("spline world points must contain only finite values"), ActorLabel);
+		}
+	}
+
+	TArray<FName> UniqueTags;
+	for (const FName Tag : Tags)
+	{
+		if (Tag.IsNone())
+		{
+			return ErrorJson(Operation, TEXT("spline tags must not contain None"), ActorLabel);
+		}
+		UniqueTags.AddUnique(Tag);
+	}
+	UniqueTags.Sort([](const FName A, const FName B) { return A.LexicalLess(B); });
+
+	UWorld* World = GetEditorWorld();
+	if (!ValidatePrototypeMutationContext(World, nullptr, Error))
+	{
+		return ErrorJson(Operation, Error, ActorLabel);
+	}
+	const TArray<AActor*> Matches = FindActorsByExactLabel(World, ActorLabel);
+	if (Matches.Num() > 1)
+	{
+		return ErrorJson(
+			Operation,
+			FString::Printf(TEXT("%d actors have the exact label; expected at most one"), Matches.Num()),
+			ActorLabel);
+	}
+
+	AActor* SplineActor = Matches.Num() == 1 ? Matches[0] : nullptr;
+	USplineComponent* SplineComponent = nullptr;
+	if (SplineActor)
+	{
+		if (!ValidatePrototypeMutationContext(World, SplineActor, Error))
+		{
+			return ErrorJson(Operation, Error, ActorLabel);
+		}
+		if (SplineActor->GetClass() != AActor::StaticClass())
+		{
+			return ErrorJson(Operation, TEXT("the exact-label actor is not a plain Actor spline owner"), ActorLabel);
+		}
+		TInlineComponentArray<USplineComponent*> SplineComponents;
+		SplineActor->GetComponents(SplineComponents);
+		if (SplineComponents.Num() != 1)
+		{
+			return ErrorJson(
+				Operation,
+				FString::Printf(TEXT("the exact-label actor owns %d spline components; expected exactly one"), SplineComponents.Num()),
+				ActorLabel);
+		}
+		SplineComponent = SplineComponents[0];
+		if (!SplineComponent || SplineComponent->GetOwner() != SplineActor)
+		{
+			return ErrorJson(Operation, TEXT("the spline component is not owned by the exact-label actor"), ActorLabel);
+		}
+	}
+
+	FRevertibleEditorTransaction Transaction(NSLOCTEXT("GameXXK", "CreateOrUpdateTaggedSpline", "Create Or Update Tagged Spline"));
+	if (!Transaction.IsValid())
+	{
+		return ErrorJson(Operation, TEXT("could not start an isolated editor transaction"), ActorLabel);
+	}
+	if (!SplineActor)
+	{
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.ObjectFlags |= RF_Transactional;
+		SpawnParameters.OverrideLevel = World->GetCurrentLevel();
+		SplineActor = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, SpawnParameters);
+		if (!SplineActor)
+		{
+			return ErrorJson(Operation, TEXT("failed to spawn spline owner actor"), ActorLabel);
+		}
+		SplineActor->SetActorLabel(ActorLabel);
+		SplineComponent = NewObject<USplineComponent>(
+			SplineActor,
+			USplineComponent::StaticClass(),
+			TEXT("SplineComponent"),
+			RF_Transactional);
+		if (!SplineComponent)
+		{
+			return ErrorJson(Operation, TEXT("failed to create spline component"), ActorLabel);
+		}
+		SplineComponent->CreationMethod = EComponentCreationMethod::Instance;
+		SplineComponent->SetMobility(EComponentMobility::Static);
+		SplineComponent->SetRelativeTransform(FTransform::Identity);
+		SplineActor->SetRootComponent(SplineComponent);
+		SplineActor->AddInstanceComponent(SplineComponent);
+		SplineComponent->RegisterComponent();
+	}
+
+	SplineActor->Modify();
+	SplineComponent->Modify();
+	SplineActor->SetActorTransform(FTransform::Identity);
+	SplineActor->Tags = UniqueTags;
+	SplineComponent->ComponentTags = UniqueTags;
+	SplineComponent->ClearSplinePoints(false);
+	SplineComponent->SetSplinePoints(WorldPoints, ESplineCoordinateSpace::World, false);
+	SplineComponent->SetClosedLoop(bClosedLoop, false);
+	SplineComponent->UpdateSpline();
+	SplineActor->MarkPackageDirty();
+	Transaction.Commit();
+
+	TArray<TSharedPtr<FJsonValue>> JsonTags;
+	for (const FName Tag : UniqueTags)
+	{
+		JsonTags.Add(MakeShared<FJsonValueString>(Tag.ToString()));
+	}
+	TSharedRef<FJsonObject> Result = MakeResult(true, Operation);
+	Result->SetStringField(TEXT("label"), ActorLabel);
+	Result->SetNumberField(TEXT("point_count"), WorldPoints.Num());
+	Result->SetBoolField(TEXT("closed"), bClosedLoop);
+	Result->SetArrayField(TEXT("tags"), JsonTags);
+	Result->SetStringField(TEXT("error"), TEXT(""));
+	return ToJson(Result);
 }
 
 FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTownPCGGraph(
@@ -599,67 +735,89 @@ FString UGameXXKTownPCGAutomationLibrary::GenerateTownPCG(const FString& ActorLa
 		return ErrorJson(Operation, Error, ActorLabel);
 	}
 
-	UPCGSubsystem* Subsystem = UPCGSubsystem::GetInstance(World);
-	if (!Subsystem)
+	const auto MakeStateResult = [Volume, Operation](const bool bScheduled, const FPCGTaskId TaskId)
 	{
-		return ErrorJson(Operation, TEXT("no PCG subsystem is available"), ActorLabel);
+		const bool bGenerating = Volume->PCGComponent->IsGenerating();
+		const bool bGenerated = Volume->PCGComponent->bGenerated;
+		TSharedRef<FJsonObject> Result = MakeResult(true, Operation);
+		Result->SetStringField(TEXT("actor_label"), Volume->GetActorLabel());
+		Result->SetBoolField(TEXT("scheduled"), bScheduled);
+		Result->SetBoolField(TEXT("generating"), bGenerating);
+		Result->SetBoolField(TEXT("generated"), bGenerated);
+		Result->SetNumberField(TEXT("generated_component_count"), CountGeneratedInstancedComponents(Volume));
+		if (TaskId != InvalidPCGTaskId)
+		{
+			Result->SetNumberField(TEXT("task_id"), static_cast<double>(TaskId));
+		}
+		Result->SetStringField(TEXT("error"), TEXT(""));
+		return ToJson(Result);
+	};
+	if (Volume->PCGComponent->IsGenerating())
+	{
+		return MakeStateResult(true, Volume->PCGComponent->GetGenerationTaskId());
 	}
+	if (Volume->PCGComponent->bGenerated)
+	{
+		return MakeStateResult(false, InvalidPCGTaskId);
+	}
+
 	FRevertibleEditorTransaction Transaction(NSLOCTEXT("GameXXK", "GenerateTownPCG", "Generate Town PCG"));
 	if (!Transaction.IsValid())
 	{
 		return ErrorJson(Operation, TEXT("could not start an isolated editor transaction"), ActorLabel);
 	}
-	bool bGenerationCompleted = false;
-	bool bGenerationCancelled = false;
-	const FDelegateHandle GeneratedHandle = Volume->PCGComponent->OnPCGGraphGeneratedDelegate.AddLambda(
-		[TargetComponent = Volume->PCGComponent, &bGenerationCompleted](UPCGComponent* GeneratedComponent)
-		{
-			bGenerationCompleted = GeneratedComponent == TargetComponent;
-		});
-	const FDelegateHandle CancelledHandle = Volume->PCGComponent->OnPCGGraphCancelledDelegate.AddLambda(
-		[TargetComponent = Volume->PCGComponent, &bGenerationCancelled](UPCGComponent* CancelledComponent)
-		{
-			bGenerationCancelled = CancelledComponent == TargetComponent;
-		});
-	const auto RemoveGenerationDelegates = [&]()
-	{
-		Volume->PCGComponent->OnPCGGraphGeneratedDelegate.Remove(GeneratedHandle);
-		Volume->PCGComponent->OnPCGGraphCancelledDelegate.Remove(CancelledHandle);
-	};
 	Volume->PCGComponent->Modify();
 	const FPCGTaskId TaskId = Volume->PCGComponent->GenerateLocalGetTaskId(true);
 	if (TaskId == InvalidPCGTaskId)
 	{
-		RemoveGenerationDelegates();
+		if (Volume->PCGComponent->bGenerated)
+		{
+			Transaction.Commit();
+			return MakeStateResult(false, InvalidPCGTaskId);
+		}
 		return ErrorJson(Operation, TEXT("PCG generation could not be scheduled"), ActorLabel);
 	}
-
-	const double Deadline = FPlatformTime::Seconds() + GenerationTimeoutSeconds;
-	while (!bGenerationCompleted && !bGenerationCancelled && Volume->PCGComponent->IsGenerating() && FPlatformTime::Seconds() < Deadline)
-	{
-		Subsystem->Tick(0.0f);
-		FPlatformProcess::SleepNoStats(0.001f);
-	}
-	const bool bTimedOut = Volume->PCGComponent->IsGenerating() && !bGenerationCompleted && !bGenerationCancelled;
-	if (bTimedOut)
-	{
-		Volume->PCGComponent->CancelGeneration();
-		RemoveGenerationDelegates();
-		return ErrorJson(Operation, TEXT("PCG generation timed out"), ActorLabel);
-	}
-	RemoveGenerationDelegates();
-	if (!bGenerationCompleted)
-	{
-		return ErrorJson(Operation, TEXT("PCG generation was cancelled or aborted"), ActorLabel);
-	}
 	Transaction.Commit();
+	return MakeStateResult(true, TaskId);
+}
+
+FString UGameXXKTownPCGAutomationLibrary::GetTownPCGStatus(const FString& ActorLabel)
+{
+	using namespace GameXXKTownPCGAutomation;
+	constexpr TCHAR Operation[] = TEXT("GetTownPCGStatus");
+	FString Error;
+	if (!ValidateActorLabel(ActorLabel, Error))
+	{
+		return ErrorJson(Operation, Error, ActorLabel);
+	}
+	UWorld* World = GetEditorWorld();
+	if (!ValidatePrototypeMutationContext(World, nullptr, Error))
+	{
+		return ErrorJson(Operation, Error, ActorLabel);
+	}
+	APCGVolume* Volume = FindUniquePCGVolume(World, ActorLabel, Error);
+	if (!Volume)
+	{
+		return ErrorJson(Operation, Error, ActorLabel);
+	}
+	if (!ValidatePrototypeMutationContext(World, Volume, Error))
+	{
+		return ErrorJson(Operation, Error, ActorLabel);
+	}
+
+	const bool bGenerating = Volume->PCGComponent->IsGenerating();
+	const bool bGenerated = Volume->PCGComponent->bGenerated;
+	const TCHAR* State = bGenerating ? TEXT("generating") : (bGenerated ? TEXT("generated") : TEXT("idle"));
 	TSharedRef<FJsonObject> Result = MakeResult(true, Operation);
 	Result->SetStringField(TEXT("actor_label"), ActorLabel);
-	if (const UPCGGraph* Graph = Volume->PCGComponent->GetGraph())
-	{
-		Result->SetStringField(TEXT("graph"), Graph->GetOutermost()->GetName());
-	}
+	Result->SetStringField(TEXT("state"), State);
+	Result->SetBoolField(TEXT("generating"), bGenerating);
+	Result->SetBoolField(TEXT("generated"), bGenerated);
 	Result->SetNumberField(TEXT("generated_component_count"), CountGeneratedInstancedComponents(Volume));
+	if (bGenerating)
+	{
+		Result->SetNumberField(TEXT("task_id"), static_cast<double>(Volume->PCGComponent->GetGenerationTaskId()));
+	}
 	Result->SetStringField(TEXT("error"), TEXT(""));
 	return ToJson(Result);
 }

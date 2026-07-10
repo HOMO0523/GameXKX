@@ -11,6 +11,13 @@ class GAMEXXKEDITOR_API UGameXXKTownPCGAutomationLibrary : public UBlueprintFunc
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town PCG")
+	static FString CreateOrUpdateTaggedSpline(
+		const FString& ActorLabel,
+		const TArray<FVector>& WorldPoints,
+		bool bClosedLoop,
+		const TArray<FName>& Tags);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town PCG")
 	static FString CreateOrUpdateTownPCGGraph(
 		const FString& GraphAssetPath,
 		const FString& StaticMeshPath,
@@ -25,6 +32,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town PCG")
 	static FString GenerateTownPCG(const FString& ActorLabel);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town PCG")
+	static FString GetTownPCGStatus(const FString& ActorLabel);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town PCG")
 	static FString ClearTownPCG(const FString& ActorLabel);
