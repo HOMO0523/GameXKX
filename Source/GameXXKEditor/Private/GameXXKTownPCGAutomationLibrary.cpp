@@ -199,6 +199,50 @@ namespace GameXXKTownPCGAutomation
 			});
 	}
 
+	bool ValidatePrototypeMutationContext(UWorld* World, const AActor* ActorToMutate, FString& OutError)
+	{
+		if (!World)
+		{
+			OutError = TEXT("no editor world is available");
+			return false;
+		}
+		ULevel* CurrentLevel = World->GetCurrentLevel();
+		if (!CurrentLevel || CurrentLevel->GetWorld() != World)
+		{
+			OutError = TEXT("editor world has no valid current level");
+			return false;
+		}
+
+		const FString WorldPackageName = World->GetOutermost()->GetName();
+		const FString CurrentLevelPackageName = CurrentLevel->GetOutermost()->GetName();
+		if (!WorldPackageName.StartsWith(PrototypeMapRoot, ESearchCase::CaseSensitive))
+		{
+			OutError = TEXT("town PCG actor operations are restricted to prototype maps");
+			return false;
+		}
+		if (!CurrentLevelPackageName.StartsWith(PrototypeMapRoot, ESearchCase::CaseSensitive))
+		{
+			OutError = TEXT("current level is not a prototype map level");
+			return false;
+		}
+		if (FLevelUtils::IsLevelLocked(CurrentLevel))
+		{
+			OutError = TEXT("current editor level is locked");
+			return false;
+		}
+		if (IsExistingPackageFileReadOnly(CurrentLevel->GetOutermost()->GetName(), FPackageName::GetMapPackageExtension()))
+		{
+			OutError = TEXT("current editor map package is read-only");
+			return false;
+		}
+		if (ActorToMutate && ActorToMutate->GetLevel() != CurrentLevel)
+		{
+			OutError = TEXT("the exact-label PCG volume belongs to a different level");
+			return false;
+		}
+		return true;
+	}
+
 	APCGVolume* FindUniquePCGVolume(UWorld* World, const FString& ActorLabel, FString& OutError)
 	{
 		const TArray<AActor*> Matches = FindActorsByExactLabel(World, ActorLabel);
@@ -444,32 +488,9 @@ FString UGameXXKTownPCGAutomationLibrary::AttachTownPCGGraph(
 	}
 
 	UWorld* World = GetEditorWorld();
-	if (!World)
+	if (!ValidatePrototypeMutationContext(World, nullptr, Error))
 	{
-		return ErrorJson(Operation, TEXT("no editor world is available"), ActorLabel, GraphAssetPath);
-	}
-	ULevel* CurrentLevel = World->GetCurrentLevel();
-	if (!CurrentLevel || CurrentLevel->GetWorld() != World)
-	{
-		return ErrorJson(Operation, TEXT("editor world has no valid current level"), ActorLabel, GraphAssetPath);
-	}
-	const FString WorldPackageName = World->GetOutermost()->GetName();
-	const FString CurrentLevelPackageName = CurrentLevel->GetOutermost()->GetName();
-	if (!WorldPackageName.StartsWith(PrototypeMapRoot, ESearchCase::CaseSensitive))
-	{
-		return ErrorJson(Operation, TEXT("AttachTownPCGGraph is restricted to prototype maps"), ActorLabel, GraphAssetPath);
-	}
-	if (!CurrentLevelPackageName.StartsWith(PrototypeMapRoot, ESearchCase::CaseSensitive))
-	{
-		return ErrorJson(Operation, TEXT("current level is not a prototype map level"), ActorLabel, GraphAssetPath);
-	}
-	if (FLevelUtils::IsLevelLocked(CurrentLevel))
-	{
-		return ErrorJson(Operation, TEXT("current editor level is locked"), ActorLabel, GraphAssetPath);
-	}
-	if (IsExistingPackageFileReadOnly(CurrentLevel->GetOutermost()->GetName(), FPackageName::GetMapPackageExtension()))
-	{
-		return ErrorJson(Operation, TEXT("current editor map package is read-only"), ActorLabel, GraphAssetPath);
+		return ErrorJson(Operation, Error, ActorLabel, GraphAssetPath);
 	}
 
 	UPCGGraph* Graph = LoadAssetByPackagePath<UPCGGraph>(GraphAssetPath);
@@ -492,14 +513,14 @@ FString UGameXXKTownPCGAutomationLibrary::AttachTownPCGGraph(
 		{
 			return ErrorJson(Operation, TEXT("the exact-label actor is not a PCG volume"), ActorLabel, GraphAssetPath);
 		}
-		if (Volume->GetLevel() != CurrentLevel)
-		{
-			return ErrorJson(Operation, TEXT("the exact-label PCG volume belongs to a different level"), ActorLabel, GraphAssetPath);
-		}
 		if (!Volume->PCGComponent)
 		{
 			return ErrorJson(Operation, TEXT("PCG volume has no PCG component"), ActorLabel, GraphAssetPath);
 		}
+	}
+	if (Volume && !ValidatePrototypeMutationContext(World, Volume, Error))
+	{
+		return ErrorJson(Operation, Error, ActorLabel, GraphAssetPath);
 	}
 
 	UCubeBuilder* CubeBuilder = NewObject<UCubeBuilder>(GetTransientPackage());
@@ -564,12 +585,16 @@ FString UGameXXKTownPCGAutomationLibrary::GenerateTownPCG(const FString& ActorLa
 		return ErrorJson(Operation, Error, ActorLabel);
 	}
 	UWorld* World = GetEditorWorld();
-	if (!World)
+	if (!ValidatePrototypeMutationContext(World, nullptr, Error))
 	{
-		return ErrorJson(Operation, TEXT("no editor world is available"), ActorLabel);
+		return ErrorJson(Operation, Error, ActorLabel);
 	}
 	APCGVolume* Volume = FindUniquePCGVolume(World, ActorLabel, Error);
 	if (!Volume)
+	{
+		return ErrorJson(Operation, Error, ActorLabel);
+	}
+	if (!ValidatePrototypeMutationContext(World, Volume, Error))
 	{
 		return ErrorJson(Operation, Error, ActorLabel);
 	}
@@ -649,12 +674,16 @@ FString UGameXXKTownPCGAutomationLibrary::ClearTownPCG(const FString& ActorLabel
 		return ErrorJson(Operation, Error, ActorLabel);
 	}
 	UWorld* World = GetEditorWorld();
-	if (!World)
+	if (!ValidatePrototypeMutationContext(World, nullptr, Error))
 	{
-		return ErrorJson(Operation, TEXT("no editor world is available"), ActorLabel);
+		return ErrorJson(Operation, Error, ActorLabel);
 	}
 	APCGVolume* Volume = FindUniquePCGVolume(World, ActorLabel, Error);
 	if (!Volume)
+	{
+		return ErrorJson(Operation, Error, ActorLabel);
+	}
+	if (!ValidatePrototypeMutationContext(World, Volume, Error))
 	{
 		return ErrorJson(Operation, Error, ActorLabel);
 	}

@@ -86,7 +86,19 @@ class QingshanTownPCGScriptsTests(unittest.TestCase):
         self.assertIn("FLevelUtils::IsLevelLocked", implementation)
         self.assertIn("IFileManager::Get().IsReadOnly", implementation)
         self.assertIn("CurrentLevel->GetOutermost()->GetName()", implementation)
-        self.assertIn("Volume->GetLevel() != CurrentLevel", implementation)
+        self.assertIn("ActorToMutate->GetLevel() != CurrentLevel", implementation)
+
+    def test_all_actor_mutators_share_the_same_prototype_context_validator(self):
+        implementation = IMPLEMENTATION.read_text(encoding="utf-8")
+        self.assertIn("ValidatePrototypeMutationContext", implementation)
+        self.assertEqual(
+            implementation.count("ValidatePrototypeMutationContext(World, nullptr, Error)"),
+            3,
+        )
+        self.assertEqual(
+            implementation.count("ValidatePrototypeMutationContext(World, Volume, Error)"),
+            3,
+        )
 
 
 if __name__ == "__main__":
