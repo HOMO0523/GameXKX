@@ -58,7 +58,7 @@
       "cropped subject",
       "PBR plastic shine"
     ],
-    "generation_calls_used": 2,
+    "generation_calls_used": 3,
     "input_image_roles": [
       {
         "path": "style/references/style_env_day.jpeg",
@@ -174,13 +174,13 @@
       "camera": "fixed_high_three_quarter_or_category_sheet",
       "file_stub": "REF_QS_SCALE_LINEUP__board",
       "generation_input_paths": [
-        "style/boards/REF_QS_SCALE_LINEUP__board__v001.png",
+        "style/boards/REF_QS_SCALE_LINEUP__board__v002.png",
         "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
         "style/references/style_character_scale.jpeg",
         "style/references/style_nature_group.jpeg",
         "style/references/style_creature_mass.jpeg"
       ],
-      "generation_prompt": "Use case: stylized-concept\nAsset type: game environment scale-lineup board\nPrimary request: show Qingshan town gameplay assets at one consistent scale for a fixed high three-quarter camera\nInput images: project environment and character images define ink-cartoon style and hero scale; the Qingshan style-lock board defines palette and materials\nScene/backdrop: plain warm rice-paper background with a single horizontal ground baseline, no full scene\nSubject: one small project hero, L/M/S Chinese town-building silhouettes, north gate, nine-meter bridge section, dock section, pine, broadleaf tree, bamboo, shrub and near mountain-foot module, all clearly proportional\nStyle/medium: the exact QS_InkToon_v1 hand-drawn ink-cartoon language\nComposition/framing: wide lineup, every subject fully visible and separated, high three-quarter asset view, no cropping\nLighting/mood: neutral soft daylight for shape comparison\nConstraints: no labels, no numbers, no text, no watermark, no duplicated subjects, no perspective distortion, no modern objects\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.\nTargeted v002 icon-level simplification after review. Treat the v001 lineup only as a subject checklist and negative detail example. Place every required subject in one single left-to-right row on one continuous thin horizontal baseline, with no individual ground islands, no water patches and no cast-shadow blobs. Preserve real relative scale and the fixed high three-quarter camera. Each subject must be a bold isolated icon readable at 128px, with at most three primary color masses and no more than five interior marks total. S/M/L buildings: exactly one solid roof mass, one wall mass and one dark door mark; no roof seams, tiles, eave struts, wall cracks, steps or repeated windows. North gate: only one wall body, one gate void and one roof block; no crenellation segmentation, arch masonry or surface cracks. Bridge: one deck/arch mass, one continuous rail mass and exactly four simple posts; no masonry joints, rocks or water lines. Dock: one deck mass and exactly four posts; no plank seams, rope or water lines. Pine and broadleaf: one trunk and at most three foliage blobs. Bamboo: at most three stems and three leaf-group shapes. Shrub: at most three blobs. Near mountain foot: at most three rock masses and one vegetation band, no small rocks, hatching, cracks or ground dots. Use very thick uneven dark-teal contour, two flat color values plus one shadow accent, large blank gaps. No text, numbers, labels, logos, watermark, modern objects, perspective distortion or cropping.",
+      "generation_prompt": "Use case: stylized-concept\nAsset type: game environment scale-lineup board\nPrimary request: show Qingshan town gameplay assets at one consistent scale for a fixed high three-quarter camera\nInput images: project environment and character images define ink-cartoon style and hero scale; the Qingshan style-lock board defines palette and materials\nScene/backdrop: plain warm rice-paper background with a single horizontal ground baseline, no full scene\nSubject: one small project hero, L/M/S Chinese town-building silhouettes, north gate, nine-meter bridge section, dock section, pine, broadleaf tree, bamboo, shrub and near mountain-foot module, all clearly proportional\nStyle/medium: the exact QS_InkToon_v1 hand-drawn ink-cartoon language\nComposition/framing: wide lineup, every subject fully visible and separated, high three-quarter asset view, no cropping\nLighting/mood: neutral soft daylight for shape comparison\nConstraints: no labels, no numbers, no text, no watermark, no duplicated subjects, no perspective distortion, no modern objects\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; every board sample follows its matching building, bridge, plant, mountain, rock, or surface rule.\nTargeted final v003 scale-correction. The v002 is correctly simple but wrongly equalizes objects as same-size icons. Keep the exact single-row baseline and icon-level simplicity, but restore physically legible relative scale using the tiny project hero as a 1-meter visual unit with no written ruler: render the hero intentionally tiny, approximately 24 pixels tall. Approximate visible heights/lengths relative to the hero: S house 3.8 hero-heights, M house 5, L building 6, north gate 12, bridge deck length 9 and bridge height 5, dock section height 2, pine 7, broadleaf 6, bamboo 6, shrub 1.5, near mountain-foot 18. The near mountain is the tallest item at far right; the gate is about twice the L building; the 9-meter bridge is visibly many hero lengths, never 1.5. Do not normalize objects to equal icon size. Keep one continuous baseline, separated subjects, no ground islands, shadows, water or labels. L building must be only one roof mass and one wall mass with one door mark, no annex roof. Pine exactly one trunk plus at most three stacked foliage blobs. Bamboo exactly three stems and three leaf-group shapes. Near mountain exactly one clean outer silhouette made of at most three rock masses plus one flat vegetation band, with no crack, highlight split, hatching, small stones or texture. Preserve all prior no-seam rules for every subject, very thick ink contour, two flat values plus one shadow accent, no text/numbers/logos/watermark/modern objects/cropping.",
       "generation_reference_lineage": [
         "style/references/style_env_day.jpeg",
         "style/references/style_env_night.jpeg",
@@ -191,17 +191,18 @@
         "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
         "style/boards/REF_QS_ENV_STYLE_LOCK__board__v002.png",
         "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
-        "style/boards/REF_QS_SCALE_LINEUP__board__v001.png"
+        "style/boards/REF_QS_SCALE_LINEUP__board__v001.png",
+        "style/boards/REF_QS_SCALE_LINEUP__board__v002.png"
       ],
       "kind": "board",
-      "output_path": "style/boards/REF_QS_SCALE_LINEUP__board__v002.png",
+      "output_path": "style/boards/REF_QS_SCALE_LINEUP__board__v003.png",
       "required_annotations": [
         "complete_board",
         "consistent_QS_InkToon_v1",
         "no_written_labels"
       ],
-      "sha256": "974cd3c23fb53f7f2a815c99f262c7bff5acba3c67caa6f4f9ca326d1ab9f501",
-      "version": "v002"
+      "sha256": "1a85a0749af9f1f7a692abf586a5fe66edf98fd0ec4e4f6a27d878d3c697d18b",
+      "version": "v003"
     }
   ],
   "schema_version": 1,
