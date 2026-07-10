@@ -8,7 +8,7 @@ Acceptance record commit: the commit containing this file, message `docs: record
 
 ## Outcome and scope
 
-The prototype vertical slice passed its structural validator, deterministic regeneration check, blockout visual review, content budgets, and the existing production-map gameplay regression. Performance was measured on an RTX 4060 Laptop GPU and is evidence only: this machine is not the agreed RTX 2060/RX 6600 target class, and the 60 FPS-capped sample does not establish uncapped or target-hardware performance acceptance.
+The prototype vertical slice passed its structural validator, deterministic regeneration check, technical route-readability review, content budgets, and the existing production-map gameplay regression. Visual/aesthetic acceptance is **not granted**: the paired rows and repeated shop placement are excessively regular and symmetrical. The captures remain evidence of the current blockout only, pending a separate layout-design pass. Performance was measured on an RTX 4060 Laptop GPU and is evidence only: this machine is not the agreed RTX 2060/RX 6600 target class, and the 60 FPS-capped sample does not establish uncapped or target-hardware performance acceptance.
 
 Only `/Game/GameXXK/Maps/Prototype/L_QingshanTown_PCG_Prototype` was cleared/regenerated. `/Game/GameXXK/Maps/L_QingshanInn` was never redirected or saved by the PCG workflow and was clean in both post-flow validators.
 
@@ -53,14 +53,16 @@ The Task 5 read-only validator was run before acceptance work and again after th
 
 ## Visual evidence
 
-UE/MCP placed the level-editor camera with `EditorLevelLibrary.set_level_viewport_camera_info`; Windows Graphics Capture then recorded the visible Unreal window because UE editor-world `HighResShot` acknowledged the command but did not emit a file. Captures are 1536 × 835 and show the editor viewport at playable oblique angles:
+UE/MCP placed the level-editor camera with `EditorLevelLibrary.set_level_viewport_camera_info`; Windows Graphics Capture then recorded the visible Unreal window because UE editor-world `HighResShot` acknowledged the command but did not emit a file. The captured JPEG payloads were decoded and re-encoded as actual PNG files without changing any decoded pixels. All captures have the PNG signature, Pillow format `PNG`, dimensions 1536 × 835, and show the editor viewport at playable oblique angles:
 
-- [North gate](evidence/qingshan-town-pcg/north-gate.png), SHA-256 `db2ff3d0c77142d2e3b111ba28a8abb42ee4e316065375fce665536120b1e02f`.
-- [Market](evidence/qingshan-town-pcg/market.png), SHA-256 `79087cd7ac07b23ba2006bc3d7cca02fd0e499966473072159062a28189bafe5`.
-- [Bridge](evidence/qingshan-town-pcg/bridge.png), SHA-256 `b332572e5f52ec7f9b9218458f7efeaa70dd35db6250413c3870062a0f6323e3`.
-- [South wharf](evidence/qingshan-town-pcg/south-wharf.png), SHA-256 `6da4b74dc8a40017398b602e92f20db69a36728f0153c42e54e8387e289f670d`.
+- [North gate](evidence/qingshan-town-pcg/north-gate.png), SHA-256 `ed82f0e405543a3272464069a2edb3e67562d5fd9f2effb0cf8ceda70d9fa345`.
+- [Market](evidence/qingshan-town-pcg/market.png), SHA-256 `995a73b7059b360f29802cdb02ad7629ea3e74f645294f62286d35dd39352f45`.
+- [Bridge](evidence/qingshan-town-pcg/bridge.png), SHA-256 `776bf7fdb199219fd1d33e7a184ce49b741fc9ee1fee0b75273e6ddbf6e390b0`.
+- [South wharf](evidence/qingshan-town-pcg/south-wharf.png), SHA-256 `6005832b6e7f107fed82a637ab370a6d73204aa63581956a95b2be0858390947`.
 
-Inspection result: north gate → paired shop rows/main road → market → bridge → wharf reads as one route; shop fronts face the road; bridge, road, and river spline guides align; all 12 green cones remain outside the shop corridor at the perimeter/riverbank; no obvious shop/shop, shop/road, shop/bridge, or shop/river overlap; no missing or magenta shop material was visible.
+Technical inspection result: north gate → paired shop rows/main road → market → bridge → wharf reads as one route; shop fronts face the road; bridge, road, and river spline guides align; all 12 green cones remain outside the shop corridor at the perimeter/riverbank; no obvious shop/shop, shop/road, shop/bridge, or shop/river overlap; no missing or magenta shop material was visible.
+
+Aesthetic inspection result: **failed/conditional**. The mirrored two-row composition, uniform setbacks, repeated spacing, and single repeated shop mesh make the town feel overly symmetrical and procedural. These screenshots must not be cited as final aesthetic acceptance. Correcting the layout is explicitly outside this evidence-format follow-up and requires a separate authorized design task.
 
 Known visual limitations are intentional and not production-art approval: all 12 buildings reuse the single Qingshan shop; river/bridge/market/wharf/tree representations are prototype blockouts (river spline guide, gray plates, and green cones), not production water, structures, foliage, or final terrain dressing.
 

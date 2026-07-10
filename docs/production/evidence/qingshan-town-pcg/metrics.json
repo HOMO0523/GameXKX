@@ -73,6 +73,17 @@
     "BugItGo 0 -12500 500 -25 90 0",
     "csvprofile stop"
   ],
+  "visual_evidence": {
+    "format": "PNG",
+    "dimensions": [1536, 835],
+    "decoded_pixels_unchanged_from_capture_payload": true,
+    "sha256": {
+      "north-gate.png": "ed82f0e405543a3272464069a2edb3e67562d5fd9f2effb0cf8ceda70d9fa345",
+      "market.png": "995a73b7059b360f29802cdb02ad7629ea3e74f645294f62286d35dd39352f45",
+      "bridge.png": "776bf7fdb199219fd1d33e7a184ce49b741fc9ee1fee0b75273e6ddbf6e390b0",
+      "south-wharf.png": "6005832b6e7f107fed82a637ab370a6d73204aa63581956a95b2be0858390947"
+    }
+  },
   "caveats": [
     "FrameTime is visibly capped at approximately 60 FPS, so it does not establish uncapped headroom.",
     "GPU memory counters include the editor/PIE process and are not vertical-slice-only allocation figures.",
