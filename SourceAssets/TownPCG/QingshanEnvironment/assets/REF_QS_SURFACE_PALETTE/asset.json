@@ -10,7 +10,8 @@
   "dependencies": [
     "style/references/style_env_day.jpeg",
     "style/references/style_env_night.jpeg",
-    "style/references/style_creature_warm.jpeg"
+    "style/references/style_creature_warm.jpeg",
+    "REF_QS_ENV_STYLE_LOCK"
   ],
   "display_name": "青山镇地表与水体色板",
   "forward_axis": "+Y",

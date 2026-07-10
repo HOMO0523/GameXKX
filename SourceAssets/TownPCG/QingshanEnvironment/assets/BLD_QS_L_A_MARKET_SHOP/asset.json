@@ -8,8 +8,8 @@
   "batch": "REGISTRY",
   "category": "registry",
   "dependencies": [
-    "REF_QS_ENV_STYLE_LOCK",
-    "REF_QS_SCALE_LINEUP"
+    "source_metrics.json",
+    "style/references/provenance.json"
   ],
   "display_name": "青山镇最大商铺 L-A（现有登记）",
   "forward_axis": "+Y",

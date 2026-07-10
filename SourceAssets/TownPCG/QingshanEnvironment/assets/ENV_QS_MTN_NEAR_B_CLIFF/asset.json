@@ -58,12 +58,22 @@
       {
         "path": "style/references/style_nature_group.jpeg",
         "role": "shape_language"
+      },
+      {
+        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "role": "generated_style_lock"
+      },
+      {
+        "path": "style/boards/REF_QS_SCALE_LINEUP__board__v001.png",
+        "role": "generated_scale_lineup"
       }
     ],
     "input_images": [
       "style/references/style_env_day.jpeg",
       "style/references/style_character_scale.jpeg",
-      "style/references/style_nature_group.jpeg"
+      "style/references/style_nature_group.jpeg",
+      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+      "style/boards/REF_QS_SCALE_LINEUP__board__v001.png"
     ],
     "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
     "max_generation_calls": 6,

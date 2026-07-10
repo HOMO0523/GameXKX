@@ -130,6 +130,14 @@ def _write_manifest(root: Path, asset_ids: list[str], batch_call_caps: dict | No
         {
             "asset_ids": asset_ids,
             "batch_call_caps": batch_call_caps or BATCH_CALL_CAPS,
+            "batch_state": {
+                "B0": "unlocked_pending_generation",
+                "B1": "locked_pending_B0_approval",
+                "B2": "locked_pending_B1_approval",
+                "B3": "locked_pending_B2_approval",
+                "REGISTRY": "existing_asset_registered",
+            },
+            "generation_calls_used": {batch: 0 for batch in BATCH_COUNTS},
         },
     )
 
@@ -1065,6 +1073,80 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                 self.assertEqual(asset["atlas_cell_count"], cells)
                 self.assertEqual(asset["paper2d"]["atlas_cell_count"], cells)
 
+    def test_plant_ppu_content_boxes_reconstruct_each_target_world_size(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+            expected = {
+                "P2D_QS_TREE_PINE_A": ("height", [256, 448], 0.64),
+                "P2D_QS_SHRUB_A": ("height", [240, 180], 1.2),
+                "P2D_QS_TREE_BROADLEAF_A": ("height", [360, 432], 0.72),
+                "P2D_QS_TREE_BAMBOO_A": ("height", [288, 432], 0.72),
+                "P2D_QS_GRASS_TUFT_A": ("height", [192, 192], 2.4),
+                "P2D_QS_FLOWER_WILD_A": ("height", [168, 216], 2.4),
+            }
+            for asset_id, (basis, content_box, ppu) in expected.items():
+                asset = assets[asset_id]
+                paper2d = asset["paper2d"]
+                for field in (
+                    "ppu_basis_dimension", "content_box_px", "import_scale_override",
+                    "unreal_units_per_meter", "ppu_definition",
+                ):
+                    self.assertIn(field, paper2d, f"{asset_id}:{field}")
+                self.assertEqual(paper2d["ppu_basis_dimension"], basis, asset_id)
+                self.assertEqual(paper2d["content_box_px"], content_box, asset_id)
+                self.assertEqual(paper2d["import_scale_override"], 1.0, asset_id)
+                self.assertEqual(paper2d["unreal_units_per_meter"], 100, asset_id)
+                self.assertEqual(
+                    paper2d["ppu_definition"], "pixels_per_unreal_unit_centimeter", asset_id
+                )
+                self.assertAlmostEqual(asset["pixels_per_unreal_unit"], ppu, places=8)
+                self.assertTrue(
+                    all(
+                        content <= cell
+                        for content, cell in zip(content_box, asset["sprite_cell_px"])
+                    ),
+                    asset_id,
+                )
+                reconstructed_m = [
+                    pixels / (ppu * 100.0) * paper2d["import_scale_override"]
+                    for pixels in content_box
+                ]
+                for actual, target in zip(reconstructed_m, asset["card_world_size_m"]):
+                    self.assertAlmostEqual(actual, target, places=6, msg=asset_id)
+
+    def test_generated_board_inputs_and_top_level_dependencies_have_the_same_asset_edges(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+            for asset_id, asset in assets.items():
+                generated_inputs = {
+                    match.group(1)
+                    for path in asset["generation"]["input_images"]
+                    if (
+                        match := re.fullmatch(
+                            r"style/boards/(REF_QS_[A-Z0-9_]+)__board__v001\.png", path
+                        )
+                    )
+                }
+                generated_dependencies = {
+                    dependency
+                    for dependency in asset["dependencies"]
+                    if dependency.startswith("REF_QS_")
+                }
+                self.assertEqual(generated_inputs, generated_dependencies, asset_id)
+
+            self.assertEqual(
+                {
+                    dependency
+                    for dependency in assets["BLD_QS_L_A_MARKET_SHOP"]["dependencies"]
+                    if dependency.startswith("REF_QS_")
+                },
+                set(),
+            )
+            for asset_id in (
+                "REF_QS_SCALE_LINEUP", "REF_QS_CAMERA_ROUTE", "REF_QS_SURFACE_PALETTE"
+            ):
+                self.assertIn("REF_QS_ENV_STYLE_LOCK", assets[asset_id]["dependencies"])
+
     def test_check_mode_detects_drift_without_rewriting(self):
         with tempfile.TemporaryDirectory() as directory:
             root, builder, _summary, _assets = self._build(directory)
@@ -1095,6 +1177,205 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                 self.fail(f"registered evidence must not be treated as catalog drift: {exc}")
             self.assertEqual(result, {"ok": True, "unchanged": 37})
             self.assertEqual(asset_path.read_bytes(), before)
+
+    def test_registering_all_b0_boards_updates_manifest_and_remains_deterministic(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, builder, _summary, _assets = self._build(directory)
+            b0_ids = EXPECTED_QINGSHAN_CATALOG["B0"]
+            for index, asset_id in enumerate(b0_ids, start=1):
+                output = root / "style" / "boards" / f"{asset_id}__board__v001.png"
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_bytes(f"project-local board {index}".encode("utf-8"))
+
+                result = register_output(root, asset_id, "board", "v001", output)
+
+                manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+                self.assertEqual(manifest["generation_calls_used"]["B0"], index)
+                expected_state = "generated_pending_review" if index == 4 else "generation_in_progress"
+                self.assertEqual(manifest["batch_state"]["B0"], expected_state)
+                asset = json.loads(
+                    (root / "assets" / asset_id / "asset.json").read_text(encoding="utf-8")
+                )
+                self.assertEqual(asset["generation"]["generation_calls_used"], 1)
+                self.assertEqual(result["generation_calls_used"], 1)
+                self.assertEqual(builder.check_catalog(root), {"ok": True, "unchanged": 37})
+
+            manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["generation_calls_used"]["B0"], 4)
+            self.assertEqual(manifest["batch_call_caps"]["B0"], 12)
+            self.assertEqual(manifest["batch_state"]["B0"], "generated_pending_review")
+
+    def test_register_failure_rolls_back_asset_and_manifest_together(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, _builder, _summary, _assets = self._build(directory)
+            asset_id = "REF_QS_ENV_STYLE_LOCK"
+            output = root / "style" / "boards" / f"{asset_id}__board__v001.png"
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_bytes(b"transaction failure board")
+            asset_path = root / "assets" / asset_id / "asset.json"
+            manifest_path = root / "manifest.json"
+            before = {asset_path: asset_path.read_bytes(), manifest_path: manifest_path.read_bytes()}
+            calls = 0
+
+            def fail_second_replace(source, destination):
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("injected second replace failure")
+                os.replace(source, destination)
+
+            try:
+                register_output(
+                    root, asset_id, "board", "v001", output, replace_file=fail_second_replace
+                )
+            except TypeError as exc:
+                self.fail(f"register_output must expose controlled replace injection: {exc}")
+            except CatalogError as exc:
+                self.assertIn("injected second replace failure", str(exc))
+            else:
+                self.fail("injected registration failure unexpectedly succeeded")
+
+            self.assertEqual({path: path.read_bytes() for path in before}, before)
+            self.assertFalse(list(root.rglob("*.tmp")))
+            self.assertFalse(list(root.rglob("*.bak")))
+
+    def test_register_rejects_external_and_symlink_escape_and_stores_relative_posix_path(self):
+        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as outside_directory:
+            root, _builder, _summary, _assets = self._build(directory)
+            outside = Path(outside_directory)
+            external = outside / "external.png"
+            external.write_bytes(b"external evidence")
+
+            with self.assertRaisesRegex(CatalogError, "inside catalog root"):
+                register_output(root, "REF_QS_ENV_STYLE_LOCK", "board", "v001", external)
+            with self.assertRaisesRegex(CatalogError, "inside catalog root"):
+                register_output(
+                    root,
+                    "REF_QS_ENV_STYLE_LOCK",
+                    "board",
+                    "v001",
+                    root / ".." / Path(outside_directory).name / "external.png",
+                )
+
+            link = root / "style" / "boards"
+            if link.exists():
+                link.rmdir()
+            try:
+                link.symlink_to(outside, target_is_directory=True)
+            except OSError as exc:
+                if os.name != "nt":
+                    self.skipTest(f"platform cannot create a test symlink: {exc}")
+                junction = subprocess.run(
+                    ["cmd", "/c", "mklink", "/J", str(link), str(outside)],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if junction.returncode != 0:
+                    self.skipTest(f"platform cannot create a test junction: {junction.stderr}")
+            try:
+                with self.assertRaisesRegex(CatalogError, "inside catalog root"):
+                    register_output(
+                        root,
+                        "REF_QS_ENV_STYLE_LOCK",
+                        "board",
+                        "v001",
+                        link / "external.png",
+                    )
+            finally:
+                if link.is_symlink():
+                    link.unlink()
+                elif link.exists():
+                    os.rmdir(link)
+
+            valid = root / "style" / "boards" / "valid.png"
+            valid.parent.mkdir(parents=True, exist_ok=True)
+            valid.write_bytes(b"valid project evidence")
+            result = register_output(root, "REF_QS_ENV_STYLE_LOCK", "board", "v001", valid)
+            self.assertEqual(result["output_path"], "style/boards/valid.png")
+            self.assertNotIn("Users", result["output_path"])
+            self.assertNotIn("\\", result["output_path"])
+
+    def test_builder_check_rejects_deleted_or_tampered_registered_evidence(self):
+        for mutation in ("delete", "tamper"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root, builder, _summary, _assets = self._build(directory)
+                output = root / "style" / "boards" / "evidence.png"
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_bytes(b"original evidence")
+                register_output(root, "REF_QS_ENV_STYLE_LOCK", "board", "v001", output)
+                if mutation == "delete":
+                    output.unlink()
+                else:
+                    output.write_bytes(b"tampered evidence")
+
+                with self.assertRaisesRegex(builder.CatalogBuildError, "evidence|SHA|missing"):
+                    builder.check_catalog(root)
+
+    def test_catalog_write_transaction_rolls_back_all_37_files_on_replace_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, builder, _summary, _assets = self._build(directory)
+            paths = [root / "manifest.json", root / "style" / "QS_InkToon_v1.json"]
+            paths.extend(sorted((root / "assets").glob("*/asset.json")))
+            before = {path: path.read_bytes() for path in paths}
+            calls = 0
+
+            def fail_tenth_replace(source, destination):
+                nonlocal calls
+                calls += 1
+                if calls == 10:
+                    raise OSError("injected catalog replace failure")
+                os.replace(source, destination)
+
+            try:
+                builder.write_catalog(root, replace_file=fail_tenth_replace)
+            except TypeError as exc:
+                self.fail(f"write_catalog must expose controlled replace injection: {exc}")
+            except builder.CatalogBuildError as exc:
+                self.assertIn("injected catalog replace failure", str(exc))
+            else:
+                self.fail("injected catalog failure unexpectedly succeeded")
+
+            self.assertEqual({path: path.read_bytes() for path in paths}, before)
+            self.assertFalse(list(root.rglob("*.tmp")))
+            self.assertFalse(list(root.rglob("*.bak")))
+
+    def test_catalog_write_rejects_asset_directory_escape_without_touching_external_file(self):
+        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as outside_directory:
+            root, builder, _summary, _assets = self._build(directory)
+            asset_id = "BLD_QS_M_A_INN"
+            asset_dir = root / "assets" / asset_id
+            asset_path = asset_dir / "asset.json"
+            asset_path.unlink()
+            asset_dir.rmdir()
+            outside = Path(outside_directory)
+            external_asset = outside / "asset.json"
+            sentinel = b"external file must remain unchanged"
+            external_asset.write_bytes(sentinel)
+            try:
+                asset_dir.symlink_to(outside, target_is_directory=True)
+            except OSError as exc:
+                if os.name != "nt":
+                    self.skipTest(f"platform cannot create a test symlink: {exc}")
+                junction = subprocess.run(
+                    ["cmd", "/c", "mklink", "/J", str(asset_dir), str(outside)],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                if junction.returncode != 0:
+                    self.skipTest(f"platform cannot create a test junction: {junction.stderr}")
+            try:
+                with self.assertRaisesRegex(builder.CatalogBuildError, "escapes catalog root"):
+                    builder.write_catalog(root)
+                self.assertEqual(external_asset.read_bytes(), sentinel)
+                self.assertFalse(list(outside.glob("*.tmp")))
+                self.assertFalse(list(outside.glob("*.bak")))
+            finally:
+                if asset_dir.is_symlink():
+                    asset_dir.unlink()
+                elif asset_dir.exists():
+                    os.rmdir(asset_dir)
 
     def test_builder_is_byte_stable_and_checks_all_37_generated_json_files(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1330,7 +1611,8 @@ class BatchReportTests(unittest.TestCase):
             for asset in assets:
                 _write_asset(root, asset)
             for index, asset in enumerate(assets):
-                image_path = root / f"board-{index}.png"
+                image_path = root / "style" / "boards" / f"board-{index}.png"
+                image_path.parent.mkdir(parents=True, exist_ok=True)
                 image_path.write_bytes(f"board {index}".encode("utf-8"))
                 register_output(root, asset["asset_id"], "board", "v001", image_path)
             mismatched_path = root / "assets" / assets[0]["asset_id"] / "asset.json"
@@ -1352,7 +1634,8 @@ class BatchReportTests(unittest.TestCase):
             for asset in assets:
                 _write_asset(root, asset)
             for index, asset in enumerate(assets):
-                image_path = root / f"duplicate-report-{index}.png"
+                image_path = root / "style" / "boards" / f"duplicate-report-{index}.png"
+                image_path.parent.mkdir(parents=True, exist_ok=True)
                 image_path.write_bytes(f"board {index}".encode("utf-8"))
                 register_output(root, asset["asset_id"], "board", "v001", image_path)
             _write_manifest(

@@ -15,8 +15,11 @@ from qingshan_environment_assets import (
     BATCH_COUNTS,
     EXPECTED_VIEWS,
     CatalogError,
+    derive_manifest_generation,
     validate_asset,
     validate_catalog,
+    verify_asset_evidence,
+    write_files_transactionally,
 )
 
 
@@ -88,6 +91,11 @@ COMMON_PALETTE = [
     "blue_gray",
     "warm_ochre",
 ]
+
+GENERATED_BOARD_PATHS = {
+    "REF_QS_ENV_STYLE_LOCK": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+    "REF_QS_SCALE_LINEUP": "style/boards/REF_QS_SCALE_LINEUP__board__v001.png",
+}
 
 STYLE_REFERENCE_ROLES = {
     "style_env_day.jpeg": "environment_style",
@@ -311,12 +319,24 @@ BUILDING_QUAD_BUDGETS = {
 }
 
 PLANTS = {
-    "P2D_QS_TREE_PINE_A": (5, 7, (2048, 2048), (512, 512), 3, 5.5, 9000),
-    "P2D_QS_SHRUB_A": (5, 7, (1024, 1024), (256, 256), 5, 1.5, 5000),
-    "P2D_QS_TREE_BROADLEAF_A": (5, 7, (2048, 2048), (512, 512), 3, 5.0, 9000),
-    "P2D_QS_TREE_BAMBOO_A": (5, 7, (2048, 2048), (512, 512), 4, 3.5, 8000),
-    "P2D_QS_GRASS_TUFT_A": (4, 6, (1024, 1024), (256, 256), 7, 0.65, 3500),
-    "P2D_QS_FLOWER_WILD_A": (4, 6, (1024, 1024), (256, 256), 6, 0.7, 3500),
+    "P2D_QS_TREE_PINE_A": (
+        5, 7, (2048, 2048), (512, 512), (256, 448), 0.64, "height", 3, 5.5, 9000
+    ),
+    "P2D_QS_SHRUB_A": (
+        5, 7, (1024, 1024), (256, 256), (240, 180), 1.2, "height", 5, 1.5, 5000
+    ),
+    "P2D_QS_TREE_BROADLEAF_A": (
+        5, 7, (2048, 2048), (512, 512), (360, 432), 0.72, "height", 3, 5.0, 9000
+    ),
+    "P2D_QS_TREE_BAMBOO_A": (
+        5, 7, (2048, 2048), (512, 512), (288, 432), 0.72, "height", 4, 3.5, 8000
+    ),
+    "P2D_QS_GRASS_TUFT_A": (
+        4, 6, (1024, 1024), (256, 256), (192, 192), 2.4, "height", 7, 0.65, 3500
+    ),
+    "P2D_QS_FLOWER_WILD_A": (
+        4, 6, (1024, 1024), (256, 256), (168, 216), 2.4, "height", 6, 0.7, 3500
+    ),
 }
 
 B0_PROMPTS = {
@@ -658,10 +678,19 @@ def _generation(
     selected = _reference_selection(asset_id, stable_references)
     inputs = [item["path"] for item in selected]
     input_roles = [{"path": item["path"], "role": item["role"]} for item in selected]
+    generated_inputs: list[tuple[str, str]] = []
     if asset_id in ("REF_QS_SCALE_LINEUP", "REF_QS_CAMERA_ROUTE", "REF_QS_SURFACE_PALETTE"):
-        board = "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png"
+        generated_inputs.append((GENERATED_BOARD_PATHS["REF_QS_ENV_STYLE_LOCK"], "generated_style_lock"))
+    elif spec.category not in ("reference", "registry"):
+        generated_inputs.extend(
+            (
+                (GENERATED_BOARD_PATHS["REF_QS_ENV_STYLE_LOCK"], "generated_style_lock"),
+                (GENERATED_BOARD_PATHS["REF_QS_SCALE_LINEUP"], "generated_scale_lineup"),
+            )
+        )
+    for board, role in generated_inputs:
         inputs.append(board)
-        input_roles.append({"path": board, "role": "generated_style_lock"})
+        input_roles.append({"path": board, "role": role})
     prompt = B0_PROMPTS.get(asset_id, _normal_prompt(spec, view_contracts))
     sections = _prompt_sections(prompt)
     sections["view_contracts"] = view_contracts
@@ -820,7 +849,18 @@ def _category_fields(asset_id: str, spec: AssetSpec, metrics: dict[str, Any]) ->
         fields["retopo_target_quads"] = 12000
         fields["simple_collision_required"] = True
     elif category == "paper2d_plant":
-        frames, cells, canvas, cell, cluster, spacing, cull = PLANTS[asset_id]
+        (
+            frames,
+            cells,
+            canvas,
+            cell,
+            content_box,
+            pixels_per_unit,
+            ppu_basis,
+            cluster,
+            spacing,
+            cull,
+        ) = PLANTS[asset_id]
         fields.update(
             {
                 "animated_variants": ["A"],
@@ -838,10 +878,17 @@ def _category_fields(asset_id: str, spec: AssetSpec, metrics: dict[str, Any]) ->
                     "animation_rule": "only_A_animated_B_and_C_static",
                     "atlas_cell_count": cells,
                     "background_policy": "concept_warm_plain_production_magenta_key",
+                    "content_box_px": list(content_box),
+                    "expected_world_size_m": [spec.dimensions[0], spec.dimensions[2]],
+                    "import_scale_override": 1.0,
+                    "ppu_definition": "pixels_per_unreal_unit_centimeter",
+                    "ppu_basis_dimension": ppu_basis,
+                    "unreal_units_per_meter": 100,
                     "variants": ["A", "B", "C"],
+                    "world_size_formula": "content_box_px/(pixels_per_unreal_unit*100)*import_scale_override",
                 },
                 "pivot_mode": "bottom_center_root_locked",
-                "pixels_per_unreal_unit": 2,
+                "pixels_per_unreal_unit": pixels_per_unit,
                 "source_canvas_px": list(canvas),
                 "spacing_m": spacing,
                 "sprite_cell_px": list(cell),
@@ -911,6 +958,17 @@ def _make_asset(
     _apply_layout_specifics(asset_id, pcg)
     is_b0 = batch == "B0"
     is_registry = batch == "REGISTRY"
+    generated_dependencies = [
+        dependency_id
+        for dependency_id, board_path in GENERATED_BOARD_PATHS.items()
+        if board_path in generation["input_images"]
+    ]
+    if is_registry:
+        dependencies = ["source_metrics.json", "style/references/provenance.json"]
+    elif is_b0:
+        dependencies = [*stable_paths, *generated_dependencies]
+    else:
+        dependencies = generated_dependencies
     asset = {
         "acceptance": {
             "connection_readability": False,
@@ -920,11 +978,7 @@ def _make_asset(
         "asset_id": asset_id,
         "batch": batch,
         "category": spec.category,
-        "dependencies": (
-            ["REF_QS_ENV_STYLE_LOCK", "REF_QS_SCALE_LINEUP"]
-            if not is_b0
-            else [f"style/references/{Path(path).name}" for path in stable_paths]
-        ),
+        "dependencies": dependencies,
         "display_name": spec.display_name,
         "forward_axis": "+Y",
         "gameplay_role": spec.role,
@@ -978,6 +1032,7 @@ def _make_asset(
     _overlay_registered_output(root, asset)
     try:
         validate_asset(asset)
+        verify_asset_evidence(root, asset)
     except CatalogError as exc:
         raise CatalogBuildError(f"generated asset {asset_id} is invalid: {exc}") from exc
     return asset
@@ -1104,20 +1159,15 @@ def render_catalog(root: Path) -> dict[Path, bytes]:
                 asset_id, batch, SPECS[asset_id], metrics, references, root
             )
 
+    manifest_generation = derive_manifest_generation(list(assets.values()))
     manifest = {
         "asset_ids": expected_ids,
         "batch_call_caps": BATCH_CALL_CAPS,
         "batch_counts": BATCH_COUNTS,
-        "batch_state": {
-            "B0": "unlocked_pending_generation",
-            "B1": "locked_pending_B0_approval",
-            "B2": "locked_pending_B1_approval",
-            "B3": "locked_pending_B2_approval",
-            "REGISTRY": "existing_asset_registered",
-        },
+        "batch_state": manifest_generation["batch_state"],
         "catalog": CATALOG,
         "concept_scope": "35_json_records_31_environment_plus_4_reference",
-        "generation_calls_used": {batch: 0 for batch in BATCH_COUNTS},
+        "generation_calls_used": manifest_generation["generation_calls_used"],
         "performance_policy": "conservative_initial_adjust_after_profile",
         "reference_provenance": "style/references/provenance.json",
         "schema_version": 1,
@@ -1135,17 +1185,23 @@ def render_catalog(root: Path) -> dict[Path, bytes]:
     return rendered
 
 
-def write_catalog(root: Path) -> dict[str, Any]:
+def write_catalog(root: Path, *, replace_file=None) -> dict[str, Any]:
     root = Path(root)
     rendered = render_catalog(root)
-    for relative, payload in rendered.items():
-        destination = root / relative
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(payload)
     try:
+        transaction_arguments: dict[str, Any] = {
+            "verify_after": lambda: validate_catalog(root),
+        }
+        if replace_file is not None:
+            transaction_arguments["replace_file"] = replace_file
+        write_files_transactionally(
+            root,
+            {root / relative: payload for relative, payload in rendered.items()},
+            **transaction_arguments,
+        )
         return validate_catalog(root)
     except CatalogError as exc:
-        raise CatalogBuildError(f"written catalog failed validation: {exc}") from exc
+        raise CatalogBuildError(f"catalog transaction failed: {exc}") from exc
 
 
 def check_catalog(root: Path) -> dict[str, Any]:

@@ -11,7 +11,8 @@
     "style/references/style_env_day.jpeg",
     "style/references/style_env_night.jpeg",
     "style/references/layout_dense_foliage.jpg",
-    "style/references/style_character_scale.jpeg"
+    "style/references/style_character_scale.jpeg",
+    "REF_QS_ENV_STYLE_LOCK"
   ],
   "display_name": "青山镇玩家镜头路线板",
   "forward_axis": "+Y",

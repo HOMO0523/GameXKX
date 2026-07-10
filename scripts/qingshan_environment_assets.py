@@ -5,9 +5,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
+import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 class CatalogError(ValueError):
@@ -476,6 +478,192 @@ def _write_json(path: Path, data: dict) -> None:
     path.write_text(text, encoding="utf-8", newline="\n")
 
 
+def _json_bytes(data: dict) -> bytes:
+    return (json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def _resolved_catalog_destination(root: Path, destination: Path) -> Path:
+    try:
+        root_resolved = Path(root).resolve(strict=True)
+    except OSError as exc:
+        raise CatalogError(f"catalog root does not exist: {root}") from exc
+    destination = Path(destination)
+    try:
+        resolved = destination.resolve(strict=False)
+        resolved.relative_to(root_resolved)
+    except (OSError, ValueError) as exc:
+        raise CatalogError(f"transaction destination escapes catalog root: {destination}") from exc
+    if resolved.exists() and not resolved.is_file():
+        raise CatalogError(f"transaction destination is not a regular file: {resolved}")
+    return resolved
+
+
+def _stage_bytes(destination: Path, payload: bytes, suffix: str) -> Path:
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=destination.parent,
+        prefix=f".{destination.name}.",
+        suffix=suffix,
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
+    return temporary
+
+
+def write_files_transactionally(
+    root: Path,
+    payloads: dict[Path, bytes],
+    *,
+    replace_file: Callable[[Path, Path], Any] = os.replace,
+    verify_after: Callable[[], Any] | None = None,
+) -> None:
+    """Replace a set of catalog files as one rollback-capable transaction."""
+
+    if not payloads:
+        raise CatalogError("catalog transaction requires at least one file")
+    destinations: dict[Path, bytes] = {}
+    for destination, payload in payloads.items():
+        resolved = _resolved_catalog_destination(Path(root), Path(destination))
+        if resolved in destinations:
+            raise CatalogError(f"duplicate transaction destination: {resolved}")
+        if not isinstance(payload, bytes):
+            raise CatalogError(f"transaction payload must be bytes: {resolved}")
+        destinations[resolved] = payload
+
+    staged: dict[Path, Path] = {}
+    backups: dict[Path, Path] = {}
+    existed = {destination: destination.exists() for destination in destinations}
+    try:
+        for destination in destinations:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+        for destination, payload in destinations.items():
+            staged[destination] = _stage_bytes(destination, payload, ".tmp")
+        for destination in destinations:
+            if existed[destination]:
+                backups[destination] = _stage_bytes(
+                    destination, destination.read_bytes(), ".bak"
+                )
+        for destination in destinations:
+            replace_file(staged[destination], destination)
+        if verify_after is not None:
+            verify_after()
+    except Exception as exc:
+        rollback_errors: list[str] = []
+        for destination in reversed(list(destinations)):
+            backup = backups.get(destination)
+            try:
+                if backup is not None and backup.exists():
+                    os.replace(backup, destination)
+                elif not existed[destination] and destination.exists():
+                    destination.unlink()
+            except OSError as rollback_exc:
+                rollback_errors.append(f"{destination}: {rollback_exc}")
+        for temporary in (*staged.values(), *backups.values()):
+            temporary.unlink(missing_ok=True)
+        detail = f"; rollback errors: {rollback_errors}" if rollback_errors else ""
+        raise CatalogError(f"catalog transaction failed: {exc}{detail}") from exc
+    else:
+        for temporary in (*staged.values(), *backups.values()):
+            temporary.unlink(missing_ok=True)
+
+
+def _catalog_output_for_registration(root: Path, file: Path) -> tuple[Path, str]:
+    root = Path(root)
+    candidate = Path(file)
+    if not candidate.is_absolute() and not candidate.exists():
+        candidate = root / candidate
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError as exc:
+        raise CatalogError(f"output file does not exist: {file}") from exc
+    try:
+        relative = resolved.relative_to(root.resolve(strict=True))
+    except (OSError, ValueError) as exc:
+        raise CatalogError(f"output evidence must stay inside catalog root: {file}") from exc
+    if not resolved.is_file():
+        raise CatalogError(f"output evidence is not a regular file: {file}")
+    return resolved, relative.as_posix()
+
+
+def verify_registered_reference(root: Path, reference: dict) -> str | None:
+    evidence_keys = ("output_path", "sha256", "version")
+    has_evidence = any(key in reference for key in evidence_keys) or str(
+        reference.get("approval_state", "")
+    ).startswith("generated_")
+    if not has_evidence:
+        return None
+    missing = [
+        key
+        for key in ("output_path", "sha256", "approval_state", "version")
+        if key not in reference
+    ]
+    if missing:
+        raise CatalogError(f"registered evidence is incomplete; missing {missing}")
+    output_path = reference["output_path"]
+    if (
+        not isinstance(output_path, str)
+        or Path(output_path).is_absolute()
+        or "\\" in output_path
+        or ".." in Path(output_path).parts
+    ):
+        raise CatalogError("registered evidence path must be root-relative POSIX")
+    resolved, stored_path = _catalog_output_for_registration(Path(root), Path(root) / output_path)
+    if stored_path != output_path:
+        raise CatalogError("registered evidence path is not canonical root-relative POSIX")
+    digest = hashlib.sha256(resolved.read_bytes()).hexdigest()
+    if digest != reference["sha256"]:
+        raise CatalogError(f"registered evidence SHA-256 mismatch: {output_path}")
+    return digest
+
+
+def verify_asset_evidence(root: Path, asset: dict) -> None:
+    for reference in asset["reference_images"]:
+        verify_registered_reference(root, reference)
+
+
+def derive_manifest_generation(assets: list[dict]) -> dict[str, dict[str, Any]]:
+    calls_used = {
+        batch: sum(
+            asset["generation"]["generation_calls_used"]
+            for asset in assets
+            if asset["batch"] == batch
+        )
+        for batch in BATCH_COUNTS
+    }
+    locked_states = {
+        "B1": "locked_pending_B0_approval",
+        "B2": "locked_pending_B1_approval",
+        "B3": "locked_pending_B2_approval",
+    }
+    batch_state: dict[str, str] = {"REGISTRY": "existing_asset_registered"}
+    for batch in ("B0", "B1", "B2", "B3"):
+        members = [asset for asset in assets if asset["batch"] == batch]
+        complete = bool(members) and all(
+            all(
+                reference.get("approval_state") == "generated_pending_review"
+                and reference.get("version") in ALLOWED_VERSIONS
+                and all(key in reference for key in ("output_path", "sha256"))
+                for reference in asset["reference_images"]
+            )
+            for asset in members
+        )
+        if complete:
+            batch_state[batch] = "generated_pending_review"
+        elif calls_used[batch] > 0:
+            batch_state[batch] = "generation_in_progress"
+        elif batch == "B0":
+            batch_state[batch] = "unlocked_pending_generation"
+        else:
+            batch_state[batch] = locked_states[batch]
+    return {"generation_calls_used": calls_used, "batch_state": batch_state}
+
+
 def _manifest_ids(root: Path) -> list[str]:
     manifest = _load_json(root / "manifest.json", "manifest")
     if manifest.get("batch_call_caps") != BATCH_CALL_CAPS:
@@ -534,6 +722,8 @@ def validate_catalog(root: Path) -> dict:
     if len(ids) != 35 or len(set(ids)) != 35:
         raise CatalogError("catalog must contain 35 unique asset ids")
     assets = [data for _asset_id, _path, data in records]
+    for asset in assets:
+        verify_asset_evidence(root, asset)
 
     counts = {
         batch: sum(item["batch"] == batch for item in assets)
@@ -559,6 +749,15 @@ def validate_catalog(root: Path) -> dict:
         if calls_used > cap:
             raise CatalogError(f"{batch} call cap exceeded: {calls_used}/{cap}")
 
+    manifest = _load_json(root / "manifest.json", "manifest")
+    derived_manifest = derive_manifest_generation(assets)
+    for field, expected in derived_manifest.items():
+        if manifest.get(field) != expected:
+            raise CatalogError(
+                f"manifest {field} must match registered asset evidence: "
+                f"expected {expected!r}, got {manifest.get(field)!r}"
+            )
+
     return {
         "ok": True,
         "asset_count": len(assets),
@@ -567,20 +766,14 @@ def validate_catalog(root: Path) -> dict:
     }
 
 
-def _stored_output_path(root: Path, file: Path) -> str:
-    resolved_file = file.resolve()
-    try:
-        return resolved_file.relative_to(root.resolve()).as_posix()
-    except ValueError:
-        return resolved_file.as_posix()
-
-
 def register_output(
     root: Path,
     asset_id: str,
     view_kind: str,
     version: str,
     file: Path,
+    *,
+    replace_file: Callable[[Path, Path], Any] = os.replace,
 ) -> dict:
     """Register a generated image without permitting overwrite or budget drift."""
 
@@ -590,9 +783,6 @@ def register_output(
         raise CatalogError("asset_id does not match the Qingshan naming contract")
     if version not in ALLOWED_VERSIONS:
         raise CatalogError("version must be one of v001, v002, or v003; v004 is forbidden")
-    if not file.is_file():
-        raise CatalogError(f"output file does not exist: {file}")
-
     records = _manifest_records(root)
     matching_records = [record for record in records if record[0] == asset_id]
     if not matching_records:
@@ -600,6 +790,9 @@ def register_output(
     if len(matching_records) != 1:
         raise CatalogError(f"asset {asset_id} must occur exactly once in manifest")
     _manifest_id, path, data = matching_records[0]
+    resolved_file, output_path = _catalog_output_for_registration(root, file)
+    if data["category"] == "reference" and not output_path.startswith("style/boards/"):
+        raise CatalogError("reference board evidence must be stored under style/boards")
 
     required_views = tuple(data["generation"]["required_view_kinds"])
     if view_kind not in required_views:
@@ -634,8 +827,16 @@ def register_output(
                 f"version must be newer than {previous_version}; registered outputs are never overwritten"
             )
 
-    digest = hashlib.sha256(file.read_bytes()).hexdigest()
-    output_path = _stored_output_path(root, file)
+    manifest_path = root / "manifest.json"
+    manifest = _load_json(manifest_path, "manifest")
+    current_derived = derive_manifest_generation(
+        [item for _member_id, _member_path, item in records]
+    )
+    for field, expected in current_derived.items():
+        if field in manifest and manifest[field] != expected:
+            raise CatalogError(f"manifest {field} is inconsistent with registered assets")
+
+    digest = hashlib.sha256(resolved_file.read_bytes()).hexdigest()
     reference.update(
         {
             "output_path": output_path,
@@ -645,7 +846,33 @@ def register_output(
         }
     )
     generation["generation_calls_used"] = used + 1
-    _write_json(path, data)
+    validate_asset(data)
+    verify_asset_evidence(root, data)
+    updated_derived = derive_manifest_generation(
+        [item for _member_id, _member_path, item in records]
+    )
+    manifest.update(updated_derived)
+
+    def verify_transaction() -> None:
+        persisted_records = _manifest_records(root)
+        persisted_assets = [item for _id, _path, item in persisted_records]
+        for persisted in persisted_assets:
+            verify_asset_evidence(root, persisted)
+        persisted_manifest = _load_json(manifest_path, "manifest")
+        persisted_derived = derive_manifest_generation(persisted_assets)
+        for field, expected in persisted_derived.items():
+            if persisted_manifest.get(field) != expected:
+                raise CatalogError(f"manifest {field} did not commit with asset evidence")
+
+    write_files_transactionally(
+        root,
+        {
+            path: _json_bytes(data),
+            manifest_path: _json_bytes(manifest),
+        },
+        replace_file=replace_file,
+        verify_after=verify_transaction,
+    )
     return {
         "asset_id": asset_id,
         "view_kind": view_kind,
@@ -672,17 +899,9 @@ def _report_assets(root: Path, batch: str) -> list[dict]:
 
 
 def _verified_reference_hash(root: Path, reference: dict) -> str:
-    missing = [key for key in ("output_path", "sha256", "approval_state", "version") if key not in reference]
-    if missing:
-        raise CatalogError(f"reference image has not been registered; missing {missing}")
-    output = Path(reference["output_path"])
-    if not output.is_absolute():
-        output = root / output
-    if not output.is_file():
-        raise CatalogError(f"registered output is missing: {output}")
-    digest = hashlib.sha256(output.read_bytes()).hexdigest()
-    if digest != reference["sha256"]:
-        raise CatalogError(f"registered SHA-256 mismatch for {reference['output_path']}")
+    digest = verify_registered_reference(root, reference)
+    if digest is None:
+        raise CatalogError("reference image has not been registered")
     return digest
 
 

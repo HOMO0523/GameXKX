@@ -10,7 +10,8 @@
   "dependencies": [
     "style/references/style_env_day.jpeg",
     "style/references/style_character_scale.jpeg",
-    "style/references/style_nature_group.jpeg"
+    "style/references/style_nature_group.jpeg",
+    "REF_QS_ENV_STYLE_LOCK"
   ],
   "display_name": "青山镇资产尺度队列板",
   "forward_axis": "+Y",

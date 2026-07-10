@@ -67,12 +67,22 @@
       {
         "path": "style/references/style_nature_group.jpeg",
         "role": "shape_language"
+      },
+      {
+        "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "role": "generated_style_lock"
+      },
+      {
+        "path": "style/boards/REF_QS_SCALE_LINEUP__board__v001.png",
+        "role": "generated_scale_lineup"
       }
     ],
     "input_images": [
       "style/references/style_env_day.jpeg",
       "style/references/style_env_night.jpeg",
-      "style/references/style_nature_group.jpeg"
+      "style/references/style_nature_group.jpeg",
+      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+      "style/boards/REF_QS_SCALE_LINEUP__board__v001.png"
     ],
     "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
     "max_generation_calls": 9,
@@ -177,11 +187,24 @@
     "animation_rule": "only_A_animated_B_and_C_static",
     "atlas_cell_count": 7,
     "background_policy": "concept_warm_plain_production_magenta_key",
+    "content_box_px": [
+      360,
+      432
+    ],
+    "expected_world_size_m": [
+      5,
+      6
+    ],
+    "import_scale_override": 1.0,
+    "ppu_basis_dimension": "height",
+    "ppu_definition": "pixels_per_unreal_unit_centimeter",
+    "unreal_units_per_meter": 100,
     "variants": [
       "A",
       "B",
       "C"
-    ]
+    ],
+    "world_size_formula": "content_box_px/(pixels_per_unreal_unit*100)*import_scale_override"
   },
   "pcg": {
     "allowed_zones": [
@@ -202,7 +225,7 @@
   },
   "pivot": "bottom_center",
   "pivot_mode": "bottom_center_root_locked",
-  "pixels_per_unreal_unit": 2,
+  "pixels_per_unreal_unit": 0.72,
   "priority": "P1",
   "reference_images": [
     {
