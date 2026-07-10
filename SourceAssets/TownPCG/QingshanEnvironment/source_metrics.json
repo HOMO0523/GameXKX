@@ -1,0 +1,13 @@
+{
+  "asset_path": "/Game/GameXXK/Environment/TownPCG/Prototype/QingshanShopA/SM_Qingshan_Shop_A_HQ_Retop50K",
+  "bounds_size_m": [
+    5.855967712402344,
+    6.326449279785156,
+    6.081615047068149
+  ],
+  "captured_at": "2026-07-10T14:35:37.919948Z",
+  "editor_endpoint": "http://127.0.0.1:18765/mcp",
+  "material_slot_count": 1,
+  "ok": true,
+  "probe_path": "Content/Python/gamexxk_probe_qingshan_environment_sources.py"
+}
