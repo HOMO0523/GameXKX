@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "seed": 20260710,
+  "representation": "world-space transforms sorted lexicographically; numeric values rounded to 4 decimal places",
+  "absolute_tolerance": 0.0001,
+  "before_sha256": "b6492ad617270749d422fecbcf5ead6d19168ad57fb5cfe52b3bc335207dd7b7",
+  "after_sha256": "b6492ad617270749d422fecbcf5ead6d19168ad57fb5cfe52b3bc335207dd7b7",
+  "exact_at_tolerance": true,
+  "instance_count_before": 12,
+  "instance_count_after": 12,
+  "transforms": [
+    {"location_cm":[-900.0,-8220.0,120.0],"rotation_degrees":[0.0,0.0,0.0],"scale":[1.0,1.0,1.0]},
+    {"location_cm":[-900.0,-6620.0,120.0],"rotation_degrees":[0.0,0.0,0.0],"scale":[1.0,1.0,1.0]},
+    {"location_cm":[-900.0,-5020.0,120.0],"rotation_degrees":[0.0,0.0,0.0],"scale":[1.0,1.0,1.0]},
+    {"location_cm":[-900.0,-3420.0,120.0],"rotation_degrees":[0.0,0.0,0.0],"scale":[1.0,1.0,1.0]},
+    {"location_cm":[-900.0,-1820.0,120.0],"rotation_degrees":[0.0,0.0,0.0],"scale":[1.0,1.0,1.0]},
+    {"location_cm":[-900.0,-220.0,120.0],"rotation_degrees":[0.0,0.0,0.0],"scale":[1.0,1.0,1.0]},
+    {"location_cm":[900.0,-8220.0,120.0],"rotation_degrees":[0.0,180.0,0.0],"scale":[1.0,1.0,1.0]},
+    {"location_cm":[900.0,-6620.0,120.0],"rotation_degrees":[0.0,180.0,0.0],"scale":[1.0,1.0,1.0]},
+    {"location_cm":[900.0,-5020.0,120.0],"rotation_degrees":[0.0,180.0,0.0],"scale":[1.0,1.0,1.0]},
+    {"location_cm":[900.0,-3420.0,120.0],"rotation_degrees":[0.0,180.0,0.0],"scale":[1.0,1.0,1.0]},
+    {"location_cm":[900.0,-1820.0,120.0],"rotation_degrees":[0.0,180.0,0.0],"scale":[1.0,1.0,1.0]},
+    {"location_cm":[900.0,-220.0,120.0],"rotation_degrees":[0.0,180.0,0.0],"scale":[1.0,1.0,1.0]}
+  ]
+}

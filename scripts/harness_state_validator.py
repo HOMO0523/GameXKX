@@ -34,6 +34,8 @@ REQUIRED_METADATA = [
     "parallel_lock",
 ]
 
+NON_UNIT_DIRECTORIES = {"evidence"}
+
 
 def parse_metadata(path: Path) -> dict[str, str]:
     text = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -52,7 +54,11 @@ def parse_metadata(path: Path) -> dict[str, str]:
 
 def validate(root: Path, require_units: bool) -> dict:
     findings: list[dict[str, str]] = []
-    units = [path for path in sorted(root.iterdir()) if path.is_dir()] if root.exists() else []
+    units = [
+        path
+        for path in sorted(root.iterdir())
+        if path.is_dir() and path.name not in NON_UNIT_DIRECTORIES
+    ] if root.exists() else []
     if require_units and not units:
         findings.append({"severity": "error", "path": str(root), "message": "no production units found"})
 

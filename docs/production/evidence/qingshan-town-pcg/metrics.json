@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-07-10T18:36:01+08:00",
+  "commit": "903abaddf30c2151bda45f10186494c2b6d5cc8c",
+  "hardware": {
+    "cpu": "Intel Core i7-14650HX (16 cores, 24 logical processors)",
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "driver": "572.83 (32.0.15.7283)",
+    "ram_bytes": 51263873024,
+    "target_class_match": false,
+    "qualification": "measurement only; not RTX 2060/RX 6600 target-hardware acceptance"
+  },
+  "runtime": {
+    "requested_resolution": "1920x1080 windowed",
+    "observed_rhi": "D3D12 SM6",
+    "profile_duration_seconds": 20,
+    "route_viewpoints": 5,
+    "vsync_or_frame_cap_observed": true
+  },
+  "frame_metrics": {
+    "frame_count": 1209,
+    "average_frame_time_ms": 16.6668,
+    "median_frame_time_ms": 16.6668,
+    "p95_frame_time_ms": 16.6709,
+    "p99_frame_time_ms": 16.7006,
+    "average_fps": 59.9994,
+    "hitch_count_over_50ms": 0
+  },
+  "counter_averages": {
+    "game_thread_ms": 7.6910,
+    "render_thread_ms": 6.9768,
+    "gpu_ms": 5.4464,
+    "rhi_thread_ms": 3.4128,
+    "rhi_draw_calls": 322.8892,
+    "rhi_primitives": 127631.9644,
+    "gpu_local_used_mb": 4782.9106,
+    "gpu_local_budget_mb": 7177.1075,
+    "physical_used_mb": 2399.1504
+  },
+  "counter_maxima": {
+    "game_thread_ms": 13.5181,
+    "render_thread_ms": 10.9735,
+    "gpu_ms": 8.0370,
+    "rhi_thread_ms": 6.0492,
+    "rhi_draw_calls": 356,
+    "rhi_primitives": 363515,
+    "gpu_local_used_mb": 4790.8359
+  },
+  "content_counts": {
+    "building_instances": 12,
+    "tree_markers": 12,
+    "prop_markers": 0,
+    "building_limit": 16,
+    "tree_limit": 48,
+    "prop_limit": 24
+  },
+  "raw_profile": {
+    "path": "Saved/Profiling/CSV/Profile(20260710_183601).csv",
+    "sha256": "2724a9583ce1c7cb21cee03b69e2cbed262f3c04ffe0ea38fd067c148bd6f73e",
+    "committed": false,
+    "parser": "scripts/qingshan_town_acceptance.py: parse_csv_profile; nearest-rank p95/p99 over positive FrameTime samples"
+  },
+  "commands": [
+    "r.SetRes 1920x1080w",
+    "stat unit",
+    "stat gpu",
+    "stat rhi",
+    "csvprofile start",
+    "BugItGo -1250 900 500 -25 -90 0",
+    "BugItGo 0 -3500 500 -25 -90 0",
+    "BugItGo 0 -7200 500 -25 -90 0",
+    "BugItGo 0 -10400 500 -25 -90 0",
+    "BugItGo 0 -12500 500 -25 90 0",
+    "csvprofile stop"
+  ],
+  "caveats": [
+    "FrameTime is visibly capped at approximately 60 FPS, so it does not establish uncapped headroom.",
+    "GPU memory counters include the editor/PIE process and are not vertical-slice-only allocation figures.",
+    "GPUSceneInstanceCount is not used as the PCG building count; the read-only PCG validator supplies the authoritative count of 12."
+  ]
+}
