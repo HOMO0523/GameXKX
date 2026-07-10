@@ -44,7 +44,7 @@
       "cropped subject",
       "PBR plastic shine"
     ],
-    "generation_calls_used": 0,
+    "generation_calls_used": 1,
     "input_image_roles": [
       {
         "path": "style/references/style_env_day.jpeg",
@@ -164,16 +164,19 @@
   "priority": "P0",
   "reference_images": [
     {
-      "approval_state": "planned",
+      "approval_state": "generated_pending_review",
       "background": "warm_rice_paper",
       "camera": "fixed_high_three_quarter_or_category_sheet",
       "file_stub": "REF_QS_ENV_STYLE_LOCK__board",
       "kind": "board",
+      "output_path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
       "required_annotations": [
         "complete_board",
         "consistent_QS_InkToon_v1",
         "no_written_labels"
-      ]
+      ],
+      "sha256": "5bf7ecd04043b028b687ed98892c02df69cec6ab94724383e93840b25d1e8046",
+      "version": "v001"
     }
   ],
   "schema_version": 1,

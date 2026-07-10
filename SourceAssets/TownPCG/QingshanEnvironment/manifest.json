@@ -51,7 +51,7 @@
     "REGISTRY": 1
   },
   "batch_state": {
-    "B0": "unlocked_pending_generation",
+    "B0": "generation_in_progress",
     "B1": "locked_pending_B0_approval",
     "B2": "locked_pending_B1_approval",
     "B3": "locked_pending_B2_approval",
@@ -106,7 +106,7 @@
   },
   "concept_scope": "35_json_records_31_environment_plus_4_reference",
   "generation_calls_used": {
-    "B0": 0,
+    "B0": 1,
     "B1": 0,
     "B2": 0,
     "B3": 0,
