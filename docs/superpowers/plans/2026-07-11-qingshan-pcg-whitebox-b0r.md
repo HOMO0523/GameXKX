@@ -148,10 +148,10 @@ Add exactly 16 `building_plots` with IDs `BLD_L_01`, `BLD_M_01..05`, and `BLD_S_
 
 ```python
 (
-    ("BLD_L_01", "large",  [-12000,-1800,300],  25),
+    ("BLD_L_01", "large",  [-13600,-200,300],  25),
     ("BLD_M_01", "medium", [ -8200,-4700,220], -15),
-    ("BLD_M_02", "medium", [-10000,  800,380],  18),
-    ("BLD_M_03", "medium", [-14800,-1900,360],  42),
+    ("BLD_M_02", "medium", [-10200,600,380],  18),
+    ("BLD_M_03", "medium", [-16000,-700,360],  42),
     ("BLD_M_04", "medium", [-17400,-10800, 20], -28),
     ("BLD_M_05", "medium", [-19200,-4800,180],  12),
     ("BLD_S_01", "small",  [ -5200,-2500,180], -22),
@@ -166,6 +166,8 @@ Add exactly 16 `building_plots` with IDs `BLD_L_01`, `BLD_M_01..05`, and `BLD_S_
     ("BLD_S_10", "small",  [-23800,-5800,100],  39),
 )
 ```
+
+> **B0R live-validation amendment (2026-07-11):** The original centers for `BLD_L_01`, `BLD_M_02`, and `BLD_M_03` overlapped the `Road_Main` road-layout corridor network. The live validator localized the conflicts to `Road_Core_South` for `BLD_L_01` and `BLD_M_03`, and `Road_Core_North` for `BLD_M_02`; its road-clearance gate determined the relocations recorded above. Their size classes, sizes, yaw values, and cluster assignments are unchanged.
 
 Assign sizes in ID order: `BLD_L_01=[1800,1400,1200]`; medium sizes are `[1200,900,800]`, `[1100,850,750]`, `[1400,1000,900]`, `[1000,800,700]`, `[1300,900,850]`; small sizes are `[800,600,500]`, `[700,550,450]`, `[900,700,600]`, `[750,600,500]`, `[850,650,550]`, `[650,550,450]`, `[900,650,550]`, `[750,550,500]`, `[850,700,550]`, `[700,600,480]`. Set `entrance_axis` to `+Y` and use yaw for world-facing direction. Assign cluster IDs `approach` to `S01,S02`; `core` to `L01,M01,M02,S03,S04,S05`; `bridge` to `M03,S06,S07`; and `south` to `M04,M05,S08,S09,S10`. Define foliage exclusion zones as the `NorthGateFAnchor`, `MainBridgeAnchor`, and `SouthDockAnchor` circles, road corridors at half-width plus `250cm`, the river corridor at half-width plus `400cm`, and every building footprint plus `200cm`. `TownCoreAnchor` identifies the intended large-building group and is therefore not a building exclusion zone. The deterministic generator expands `proxy_generation` into exactly 100 foliage transforms and 24 mountain transforms; these generated transforms are evidence, not additional authored config.
 
@@ -505,6 +507,7 @@ git commit -m "test: validate qingshan B0R whitebox"
 - Record: `docs/production/evidence/qingshan-pcg-whitebox-b0r/layout-run-a.json`
 - Record: `docs/production/evidence/qingshan-pcg-whitebox-b0r/layout-run-b.json`
 - Record: `docs/production/evidence/qingshan-pcg-whitebox-b0r/validation.json`
+- Record: `docs/production/evidence/qingshan-pcg-whitebox-b0r/quickroad-probe.json`
 
 - [ ] **Step 1: Confirm UE MCP and QuickRoad status**
 
@@ -515,7 +518,7 @@ python scripts/ue_mcp_smoke.py
 python -m unittest scripts.test_quick_road_install -v
 ```
 
-Expected: MCP smoke reports `ok=true`; QuickRoad installation test passes. Through a read-only UE Python probe, record whether an actual QuickRoad class/asset is used. If only tagged splines are available, record `quickroad_status=proxy_spline` and continue without claiming plugin integration.
+Expected: MCP smoke reports `ok=true`; QuickRoad installation test passes. Through a read-only UE Python probe, record whether an actual QuickRoad class/asset is used in `quickroad-probe.json`. If only tagged splines are available, record `quickroad_status=proxy_spline` and continue without claiming plugin integration.
 
 - [ ] **Step 2: Generate the whitebox**
 
@@ -545,7 +548,7 @@ Expected: both SHA-256 values are identical and all instance counts match exactl
 
 - [ ] **Step 5: Save only B0R assets and commit UE artifacts**
 
-Use MCP `save_dirty_packages()` and require no source-map package in `saved` or `dirty_after`. Stage only the Dev map, B0R PCG assets, and three evidence JSON files; verify `Config/DefaultEditor.ini` is unstaged.
+Use MCP `save_dirty_packages()` and require no source-map package in `saved` or `dirty_after`. Stage only the Dev map, B0R PCG assets, and four evidence JSON files; verify `Config/DefaultEditor.ini` is unstaged.
 
 ```powershell
 git commit -m "feat: build qingshan B0R whitebox map"

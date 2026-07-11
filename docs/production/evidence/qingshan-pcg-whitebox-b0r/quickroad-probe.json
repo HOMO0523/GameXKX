@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "evidence_type": "quickroad_read_only_probe",
+  "probe_timestamp_utc": "2026-07-11T08:37:32+00:00",
+  "quickroad_status": "proxy_spline",
+  "installation_test": {
+    "command": "python -m unittest scripts.test_quick_road_install -v",
+    "passed": true,
+    "tests_run": 1
+  },
+  "plugin_content_root": "/Quick_Road/",
+  "asset_count": 55,
+  "inspected_assets": [
+    {
+      "asset_path": "/Quick_Road/L_QuickRoad",
+      "asset_class": "World"
+    },
+    {
+      "asset_path": "/Quick_Road/PCG_Graph/NewPCGGraph",
+      "asset_class": "PCGGraph"
+    },
+    {
+      "asset_path": "/Quick_Road/PCG_Graph/PCG_CityRoads_Main",
+      "asset_class": "PCGGraph"
+    }
+  ],
+  "integration_observation": {
+    "quickroad_actor_or_path_used": false,
+    "road_backend": "UE spline proxy",
+    "statement": "No QuickRoad actor or QuickRoad content path was used by the B0R whitebox; the road implementation used the UE spline proxy backend."
+  }
+}
