@@ -408,6 +408,8 @@ def _canonicalize(value: Any, decimals: int, field: str, transform_numeric: bool
     if isinstance(value, (int, float)):
         if transform_numeric:
             number = _finite_number(value, field)
+            if ".rotation_degrees[" in field:
+                number = (number + 180.0) % 360.0 - 180.0
             number = round(number, decimals)
             if number == 0:
                 number = 0.0

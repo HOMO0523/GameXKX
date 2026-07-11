@@ -92,6 +92,16 @@ def _actor_class_path(actor) -> str:
     return str(actor_class.get_path_name() if hasattr(actor_class, "get_path_name") else actor_class)
 
 
+def _camera_component(actor):
+    try:
+        return actor.get_camera_component()
+    except Exception:
+        component = actor.get_editor_property("camera_component")
+        if component is None:
+            raise RuntimeError("camera actor has no camera component")
+        return component
+
+
 def _find_unique_actor_by_label(label: str, expected_class=None, required: bool = False):
     matches = [actor for actor in _all_actors() if _actor_label(actor) == label]
     if len(matches) > 1:
@@ -495,7 +505,7 @@ def _create_or_update_camera(label: str, spec, north_transform) -> dict[str, Any
     actor.set_actor_location(location, False, False)
     actor.set_actor_rotation(rotation, False)
     _set_tags(actor, (MANAGED_TAG, "QingshanB0RCamera"))
-    component = actor.get_camera_component()
+    component = _camera_component(actor)
     component.set_editor_property("field_of_view", float(spec["fov_degrees"]))
     return {
         "label": label,

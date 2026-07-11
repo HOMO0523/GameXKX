@@ -132,6 +132,16 @@ def _label(actor) -> str:
     return str(actor.get_actor_label())
 
 
+def _camera_component(actor):
+    try:
+        return actor.get_camera_component()
+    except Exception:
+        component = actor.get_editor_property("camera_component")
+        if component is None:
+            raise RuntimeError("camera actor has no camera component")
+        return component
+
+
 def _actors() -> list:
     return list(unreal.EditorLevelLibrary.get_all_level_actors())
 
@@ -506,7 +516,12 @@ def _runtime_generation_evidence(component) -> dict:
         "generate_on_drop_when_trigger_on_demand": generate_on_drop,
         "regenerate_in_editor": regenerate,
         "runtime_generation_disabled": (
-            normalized_trigger.endswith("GENERATEONDEMAND")
+            (
+                normalized_trigger == "GENERATEONDEMAND"
+                or normalized_trigger.startswith(
+                    "PCGCOMPONENTGENERATIONTRIGGERGENERATEONDEMAND"
+                )
+            )
             and not generate_on_drop
             and not regenerate
         ),
@@ -602,7 +617,7 @@ def _validate_fixed_transforms(result, config, actors, anchor) -> None:
         actor = matches[0]; spec = config["cameras"][camera_id]
         location = _north_local_location(anchor, spec["location_cm"]); target = _north_local_location(anchor, spec["target_cm"])
         expected = {"location_cm": location, "rotation_degrees": _look_at_rotation(location, target), "scale": [1.0, 1.0, 1.0]}
-        fov = float(actor.get_camera_component().get_editor_property("field_of_view"))
+        fov = float(_camera_component(actor).get_editor_property("field_of_view"))
         if not _transform_matches(_actor_transform(actor), expected, 1.0, 0.1, 0.001) or abs(fov - spec["fov_degrees"]) > 0.01:
             _error(result, "camera_transform", "saved camera transform/FOV differs from config", camera_id=camera_id)
         camera_ids.append(camera_id)

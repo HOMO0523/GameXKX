@@ -31,10 +31,10 @@
     {"id": "Terrain_DockLowland", "center_cm": [-21800, -9800, -550], "size_cm": [8500, 4800, 250], "yaw_degrees": -20}
   ],
   "building_plots": [
-    {"id": "BLD_L_01", "size_class": "large", "location_cm": [-12000, -1800, 300], "yaw_degrees": 25, "size_cm": [1800, 1400, 1200], "entrance_axis": "+Y", "cluster_id": "core"},
+    {"id": "BLD_L_01", "size_class": "large", "location_cm": [-13600, -200, 300], "yaw_degrees": 25, "size_cm": [1800, 1400, 1200], "entrance_axis": "+Y", "cluster_id": "core"},
     {"id": "BLD_M_01", "size_class": "medium", "location_cm": [-8200, -4700, 220], "yaw_degrees": -15, "size_cm": [1200, 900, 800], "entrance_axis": "+Y", "cluster_id": "core"},
-    {"id": "BLD_M_02", "size_class": "medium", "location_cm": [-10000, 800, 380], "yaw_degrees": 18, "size_cm": [1100, 850, 750], "entrance_axis": "+Y", "cluster_id": "core"},
-    {"id": "BLD_M_03", "size_class": "medium", "location_cm": [-14800, -1900, 360], "yaw_degrees": 42, "size_cm": [1400, 1000, 900], "entrance_axis": "+Y", "cluster_id": "bridge"},
+    {"id": "BLD_M_02", "size_class": "medium", "location_cm": [-10200, 600, 380], "yaw_degrees": 18, "size_cm": [1100, 850, 750], "entrance_axis": "+Y", "cluster_id": "core"},
+    {"id": "BLD_M_03", "size_class": "medium", "location_cm": [-16000, -700, 360], "yaw_degrees": 42, "size_cm": [1400, 1000, 900], "entrance_axis": "+Y", "cluster_id": "bridge"},
     {"id": "BLD_M_04", "size_class": "medium", "location_cm": [-17400, -10800, 20], "yaw_degrees": -28, "size_cm": [1000, 800, 700], "entrance_axis": "+Y", "cluster_id": "south"},
     {"id": "BLD_M_05", "size_class": "medium", "location_cm": [-19200, -4800, 180], "yaw_degrees": 12, "size_cm": [1300, 900, 850], "entrance_axis": "+Y", "cluster_id": "south"},
     {"id": "BLD_S_01", "size_class": "small", "location_cm": [-5200, -2500, 180], "yaw_degrees": -22, "size_cm": [800, 600, 500], "entrance_axis": "+Y", "cluster_id": "approach"},

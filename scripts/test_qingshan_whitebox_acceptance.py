@@ -339,6 +339,20 @@ class QingshanWhiteboxAcceptanceTests(unittest.TestCase):
         self.assertEqual(result["counts"], {"foliage": 1, "mountains": 0})
         self.assertEqual(result["sha256"], canonical_layout_hash(payload_b, decimals=3)["sha256"])
 
+    def test_hash_normalizes_equivalent_rotation_angles(self):
+        positive = {"foliage": [{
+            "id": "FOLIAGE_001",
+            "location_cm": [1.0, 2.0, 3.0],
+            "rotation_degrees": [0.0, 0.0, 263.57],
+            "scale": [2.0, 2.0, 2.0],
+        }], "mountains": []}
+        negative = copy.deepcopy(positive)
+        negative["foliage"][0]["rotation_degrees"][2] = -96.43
+        self.assertEqual(
+            canonical_layout_hash(positive)["sha256"],
+            canonical_layout_hash(negative)["sha256"],
+        )
+
     def test_hash_rejects_bool_nonfinite_huge_and_malformed_values(self):
         base = {"foliage": [{
             "id": "FOLIAGE_001",

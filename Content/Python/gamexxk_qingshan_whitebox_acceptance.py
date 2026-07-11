@@ -107,6 +107,16 @@ def _label(actor) -> str:
     return str(actor.get_actor_label())
 
 
+def _camera_component(actor):
+    try:
+        return actor.get_camera_component()
+    except Exception:
+        component = actor.get_editor_property("camera_component")
+        if component is None:
+            raise RuntimeError("camera actor has no camera component")
+        return component
+
+
 def _unique_actor(label: str):
     matches = [actor for actor in _actors() if _label(actor) == label]
     if len(matches) != 1:
@@ -161,7 +171,7 @@ def _snapshot() -> dict:
         "cameras": {
             camera_id: {
                 "transform": _transform(_unique_actor(camera_id)),
-                "field_of_view": float(_unique_actor(camera_id).get_camera_component().get_editor_property("field_of_view")),
+                "field_of_view": float(_camera_component(_unique_actor(camera_id)).get_editor_property("field_of_view")),
                 "configured": config["cameras"][camera_id],
             }
             for camera_id in CAMERA_IDS
@@ -220,7 +230,7 @@ def _camera_view(camera_id: str) -> dict:
     location = _vector(actor.get_actor_location())
     rotation = actor.get_actor_rotation()
     rotation_payload = _rotation(rotation)
-    fov = float(actor.get_camera_component().get_editor_property("field_of_view"))
+    fov = float(_camera_component(actor).get_editor_property("field_of_view"))
     spec = config["cameras"][camera_id]
     anchor = _unique_actor(config["coordinate_reference"]["actor_label"])
     expected_location = _north_local_location(anchor, spec["location_cm"])

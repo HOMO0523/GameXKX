@@ -247,6 +247,26 @@ class QingshanWhiteboxAssemblerSourceTests(unittest.TestCase):
         self.assertIn('"QingshanB0RTerrainProxy"', self.source)
         self.assertIn("!= 4", self.source)
 
+    def test_ue58_camera_component_property_fallback_is_used_everywhere(self):
+        for path in (ASSEMBLER, VALIDATOR, ACCEPTANCE):
+            with self.subTest(path=path.name):
+                source = path.read_text(encoding="utf-8")
+                tree = ast.parse(source)
+                functions = {
+                    node.name for node in tree.body if isinstance(node, ast.FunctionDef)
+                }
+                self.assertIn("_camera_component", functions)
+                self.assertIn('get_editor_property("camera_component")', source)
+
+        self.assertIn("component = _camera_component(actor)", self.source)
+        validator_source = VALIDATOR.read_text(encoding="utf-8")
+        acceptance_source = ACCEPTANCE.read_text(encoding="utf-8")
+        self.assertIn("fov = float(_camera_component(actor).get_editor_property", validator_source)
+        self.assertGreaterEqual(
+            acceptance_source.count("_camera_component(_unique_actor(camera_id))"), 1
+        )
+        self.assertIn("fov = float(_camera_component(actor).get_editor_property", acceptance_source)
+
     def test_each_spline_call_supplies_cpp_ownership_and_semantic_tags(self):
         constants = {
             node.targets[0].id: ast.literal_eval(node.value)
@@ -515,6 +535,9 @@ class QingshanWhiteboxTask6SourceTests(unittest.TestCase):
         }
         component = SimpleNamespace(get_editor_property=lambda field: fields[field])
         self.assertTrue(validate_runtime(result, component, "PCG"))
+        self.assertEqual(result["errors"], [])
+        fields["generation_trigger"] = "<PCGComponentGenerationTrigger.GENERATE_ON_DEMAND: 1>"
+        self.assertTrue(validate_runtime(result, component, "PCGEnum"))
         self.assertEqual(result["errors"], [])
         fields["generate_on_drop_when_trigger_on_demand"] = True
         self.assertFalse(validate_runtime(result, component, "PCG"))
