@@ -1,0 +1,114 @@
+{
+  "algorithm": {
+    "noise_octaves": [
+      {
+        "amplitude_cm": 14.0,
+        "wavelength_cm": 12000.0
+      },
+      {
+        "amplitude_cm": 6.0,
+        "wavelength_cm": 6000.0
+      }
+    ],
+    "river_spline_id": "River_Main",
+    "river_trench_depth_cm": 360.0,
+    "river_trench_sigma_cm": 900.0,
+    "seed": 20260711,
+    "terrain_zone_ids": [
+      "Terrain_Base",
+      "Terrain_CorePlateau",
+      "Terrain_SouthSlope",
+      "Terrain_DockLowland"
+    ]
+  },
+  "center_local_cm": [
+    -15500.0,
+    0.0,
+    0.0
+  ],
+  "encoding": {
+    "formula": "raw=clamp(round(32768+elevation_cm*128/scale_z_cm),0,65535)",
+    "scale_z_cm": 100.0,
+    "units_per_cm": 1.28,
+    "value_type": "uint16",
+    "zero_raw": 32768
+  },
+  "landscape_actor_origin_local_cm": [
+    -40700.0,
+    -25200.0,
+    0.0
+  ],
+  "named_samples": {
+    "core": {
+      "decoded_elevation_cm": -153.125,
+      "local_cm": [
+        -12000.0,
+        -1800.0
+      ],
+      "pixel_xy": [
+        287,
+        234
+      ],
+      "raw": 32572
+    },
+    "dock_bank": {
+      "decoded_elevation_cm": -638.28125,
+      "local_cm": [
+        -22800.0,
+        -8300.0
+      ],
+      "pixel_xy": [
+        179,
+        169
+      ],
+      "raw": 31951
+    },
+    "gate": {
+      "decoded_elevation_cm": -496.09375,
+      "local_cm": [
+        0.0,
+        0.0
+      ],
+      "pixel_xy": [
+        407,
+        252
+      ],
+      "raw": 32133
+    },
+    "riverbed": {
+      "decoded_elevation_cm": -912.5,
+      "local_cm": [
+        -22000.0,
+        -9600.0
+      ],
+      "pixel_xy": [
+        187,
+        156
+      ],
+      "raw": 31600
+    },
+    "south": {
+      "decoded_elevation_cm": -348.4375,
+      "local_cm": [
+        -18500.0,
+        -4500.0
+      ],
+      "pixel_xy": [
+        222,
+        207
+      ],
+      "raw": 32322
+    }
+  },
+  "png_sha256": "48cdf68733b3cfa4a1d5814567451318fd3e1399a3dc6b2d71fe7a1650da2f6e",
+  "resolution": [
+    505,
+    505
+  ],
+  "scale_cm": [
+    100.0,
+    100.0,
+    100.0
+  ],
+  "schema_version": 1
+}
