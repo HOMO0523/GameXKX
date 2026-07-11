@@ -231,12 +231,12 @@ namespace GameXXKTownPCGAutomation
 		const FString CurrentLevelPackageName = CurrentLevel->GetOutermost()->GetName();
 		if (!IsManagedPrototypeMapPath(WorldPackageName))
 		{
-			OutError = TEXT("town PCG actor operations are restricted to prototype maps");
+			OutError = TEXT("town PCG actor operations are restricted to managed prototype/Dev maps");
 			return false;
 		}
 		if (!IsManagedPrototypeMapPath(CurrentLevelPackageName))
 		{
-			OutError = TEXT("current level is not a prototype map level");
+			OutError = TEXT("current level is not a managed prototype/Dev map level");
 			return false;
 		}
 		if (ActorToInspect && ActorToInspect->GetLevel() != CurrentLevel)
@@ -500,7 +500,7 @@ FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTownPCGGraph(
 	}
 	if (!IsManagedGraphPath(GraphAssetPath))
 	{
-		return ErrorJson(Operation, TEXT("graph path must be under the managed town PCG VerticalSlice root"), FString(), GraphAssetPath);
+		return ErrorJson(Operation, TEXT("graph path must be under the managed town PCG graph roots"), FString(), GraphAssetPath);
 	}
 	if (IsExistingPackageFileReadOnly(GraphAssetPath, FPackageName::GetAssetPackageExtension()))
 	{
@@ -671,7 +671,7 @@ FString UGameXXKTownPCGAutomationLibrary::AttachTownPCGGraph(
 	}
 	if (!IsManagedGraphPath(GraphAssetPath))
 	{
-		return ErrorJson(Operation, TEXT("graph path must be under the managed town PCG VerticalSlice root"), ActorLabel, GraphAssetPath);
+		return ErrorJson(Operation, TEXT("graph path must be under the managed town PCG graph roots"), ActorLabel, GraphAssetPath);
 	}
 	if (!IsFiniteVector(Center) || !IsFiniteVector(Extent))
 	{
