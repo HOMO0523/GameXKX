@@ -59,7 +59,7 @@
       "cropped subject",
       "PBR plastic shine"
     ],
-    "generation_calls_used": 1,
+    "generation_calls_used": 2,
     "input_image_roles": [
       {
         "path": "style/references/style_env_day.jpeg",
@@ -182,13 +182,13 @@
       "camera": "fixed_high_three_quarter_or_category_sheet",
       "file_stub": "REF_QS_SURFACE_PALETTE__board",
       "generation_input_paths": [
-        "style/references/style_env_day.jpeg",
-        "style/references/style_env_night.jpeg",
-        "style/references/style_creature_warm.jpeg",
+        "style/boards/REF_QS_SURFACE_PALETTE__board__v001.png",
         "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
-        "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png"
+        "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png",
+        "style/references/style_env_day.jpeg",
+        "style/references/style_creature_warm.jpeg"
       ],
-      "generation_prompt": "Use case: stylized-concept\nAsset type: game environment surface-palette board\nPrimary request: define the coordinated ground and water surfaces for Qingshan town\nInput images: project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock v003 board defines final palette and simplification; the route v002 board defines only the current terrain context and transitions; do not copy its small stones or tree-cluster micro-details\nScene/backdrop: warm rice-paper presentation board, no written labels\nSubject: seven large isolated irregular brush swatches for compact earth, sparse grass ground, worn stone-and-dirt QuickRoad surface, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; exactly two clean wide transition strips; one small fixed-camera terrain-only vignette showing the S-road, riverbank and open lower center\nStyle/medium: QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands\nComposition/framing: wide organized material board with separated but visually connected samples, no perspective-heavy hero object\nLighting/mood: neutral overcast-soft light for color comparison\nConstraints: no text, no labels, no icons, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors; road is not cobble and has at most three broad wear patches; water uses two broad color bands and at most three long flow strokes; bank uses broad mud, gravel and moss bands with no pebbles; rocks use at most three silhouettes with one shadow band each; no microtexture, no repeating photo patterns\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture.",
+      "generation_prompt": "Use case: stylized-concept\nAsset type: game environment surface-palette board\nPrimary request: define the coordinated ground and water surfaces for Qingshan town\nInput images: project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock v003 board defines final palette and simplification; the route v002 board defines only the current terrain context and transitions; do not copy its small stones or tree-cluster micro-details\nScene/backdrop: warm rice-paper presentation board, no written labels\nSubject: seven large isolated irregular brush swatches for compact earth, sparse grass ground, worn stone-and-dirt QuickRoad surface, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; exactly two clean wide transition strips; one small fixed-camera terrain-only vignette showing the S-road, riverbank and open lower center\nStyle/medium: QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands\nComposition/framing: wide organized material board with separated but visually connected samples, no perspective-heavy hero object\nLighting/mood: neutral overcast-soft light for color comparison\nConstraints: no text, no labels, no icons, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors; road is not cobble and has at most three broad wear patches; water uses two broad color bands and at most three long flow strokes; bank uses broad mud, gravel and moss bands with no pebbles; rocks use at most three silhouettes with one shadow band each; no microtexture, no repeating photo patterns\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture.\nTargeted v002 material-isolation simplification. Keep the approved palette and the exact inventory of seven samples, two transition strips and one terrain vignette, but treat v001 as a negative example for excessive fragments. Every material sample must be fully isolated from every other sample by clean rice-paper gaps and must contain only its named material. Compact earth: two broad warm-tan value bands plus at most three large worn patches, no grass blades or stones. Sparse grass ground: two broad muted-green bands plus at most three large soft grass shapes, no individual blades, dirt stones or water. QuickRoad road: one warm earth band, one muted gray wear band and at most three large worn patches; zero cobbles, pebbles, paving stones or tessellation. Wet riverbank: exactly three continuous broad bands for dark mud, muted gravel color and moss; the gravel is one flat color band, never individual pebbles. River water: exactly two broad blue-green color bands and at most three long directional flow strokes; no short ripples, foam dots or extra stripes. Mossy field rock: at most three clean rock silhouettes; each rock has one continuous shadow band and one simple moss patch, no facets, cracks or ground scatter. Dry mountain rock: at most three clean silhouettes; each rock has one shadow band only, no facets, cracks, hatching or scattered stones. Make exactly two wide horizontal transition strips; each strip uses only three or four large interlocking color shapes, with no dots, particles, small stones, blades or short strokes. Bottom terrain-only vignette: show only a broad gentle S-road on the left, large grass/earth masses in the center, one clean mud bank and two-band river on the right, plus at most one pale flat far-mountain silhouette layer. No trees, bamboo, shrubs, flowers, buildings, props, docks, bridges, rock piles or foreground rocks. Keep the lower center open. Use two main values plus one shadow accent, dry-brush outer edges only, very large readable shapes at 128px. No text, labels, icons, watermark, PBR spheres, shiny plastic, neon color or repeating photo texture.",
       "generation_reference_lineage": [
         "style/references/style_env_day.jpeg",
         "style/references/style_env_night.jpeg",
@@ -204,17 +204,18 @@
         "style/boards/REF_QS_SCALE_LINEUP__board__v002.png",
         "style/boards/REF_QS_SCALE_LINEUP__board__v003.png",
         "style/boards/REF_QS_CAMERA_ROUTE__board__v001.png",
-        "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png"
+        "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png",
+        "style/boards/REF_QS_SURFACE_PALETTE__board__v001.png"
       ],
       "kind": "board",
-      "output_path": "style/boards/REF_QS_SURFACE_PALETTE__board__v001.png",
+      "output_path": "style/boards/REF_QS_SURFACE_PALETTE__board__v002.png",
       "required_annotations": [
         "complete_board",
         "consistent_QS_InkToon_v1",
         "no_written_labels"
       ],
-      "sha256": "8cbda9d9282b3da457b6062469d1cc3a22caf63ad986558960ae63a5eadf6ba2",
-      "version": "v001"
+      "sha256": "9acebe853a997d53381280f1c87047c4132e8cd73908bd9b28cb196f033d2ae2",
+      "version": "v002"
     }
   ],
   "schema_version": 1,

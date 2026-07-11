@@ -752,6 +752,20 @@ git commit -m "assets: generate qingshan surface palette board"
 
 Expected: calls used 1/3 and `approval_state=generated_pending_review`.
 
+#### Final v002 surface-board decision
+
+Visual review rejected v001 because its material swatches and terrain vignette still used
+too many small stones, grass marks and foreground objects. Preserve v001 as revision
+evidence and use one targeted v002 generation to isolate all seven named material samples,
+reduce both transition strips to large interlocking color masses, and keep the bottom
+terrain vignette free of plants, buildings, props and rock piles. Do not generate v003.
+
+The v002 direct inputs are exactly surface v001, style-lock v003, camera-route v002,
+`style_env_day.jpeg`, and `style_creature_warm.jpeg`. Its complete lineage is the seven
+stable references, style-lock v001-v003, scale-lineup v001-v003, camera-route v001-v002,
+and surface v001. Registration stores the current Task 8 prompt followed by the complete
+targeted v002 material-isolation directive.
+
 
 ### Task 9: Produce the Batch 0 review record and final verification
 
