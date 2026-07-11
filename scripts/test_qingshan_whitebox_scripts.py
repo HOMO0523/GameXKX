@@ -18,11 +18,12 @@ ACCEPTANCE = ROOT / "Content/Python/gamexxk_qingshan_whitebox_acceptance.py"
 EXPECTED_ROOTS = {
     "VerticalSliceGraphRoot": "/Game/GameXXK/Environment/TownPCG/VerticalSlice/",
     "B0RGraphRoot": "/Game/GameXXK/Environment/TownPCG/B0R/",
+    "B1GraphRoot": "/Game/GameXXK/Environment/TownPCG/B1/",
     "PrototypeMapRoot": "/Game/GameXXK/Maps/Prototype/",
     "B0RMapRoot": "/Game/GameXXK/Maps/Dev/",
 }
 EXPECTED_HELPERS = {
-    "IsManagedGraphPath": ("VerticalSliceGraphRoot", "B0RGraphRoot"),
+    "IsManagedGraphPath": ("VerticalSliceGraphRoot", "B0RGraphRoot", "B1GraphRoot"),
     "IsManagedPrototypeMapPath": ("PrototypeMapRoot", "B0RMapRoot"),
 }
 
@@ -37,11 +38,13 @@ def _parse_root_constants(source):
 
 
 def _helper_has_exact_logic(source, helper_name, root_names):
-    first_root, second_root = map(re.escape, root_names)
+    clauses = [
+        rf"Path\.StartsWith\({re.escape(root)}, ESearchCase::CaseSensitive\)"
+        for root in root_names
+    ]
     helper_pattern = re.compile(
         rf"bool {re.escape(helper_name)}\(const FString& Path\)\s*"
-        rf"\{{\s*return Path\.StartsWith\({first_root}, ESearchCase::CaseSensitive\)\s*"
-        rf"\|\| Path\.StartsWith\({second_root}, ESearchCase::CaseSensitive\);\s*\}}"
+        rf"\{{\s*return {'\\s*\\|\\| '.join(clauses)};\s*\}}"
     )
     return helper_pattern.search(source) is not None
 
@@ -58,7 +61,10 @@ def _has_safe_root_contract(source):
 
 def _managed_path_is_accepted(source, helper_name, path):
     constants = _parse_root_constants(source)
-    return any(path.startswith(constants[root_name]) for root_name in EXPECTED_HELPERS[helper_name])
+    return any(
+        constants.get(root_name) is not None and path.startswith(constants[root_name])
+        for root_name in EXPECTED_HELPERS[helper_name]
+    )
 
 
 class QingshanWhiteboxRootSafetyTests(unittest.TestCase):
@@ -71,6 +77,7 @@ class QingshanWhiteboxRootSafetyTests(unittest.TestCase):
         broad_root_mutations = (
             ("VerticalSliceGraphRoot", "/Game/"),
             ("B0RGraphRoot", "/Game/GameXXK/"),
+            ("B1GraphRoot", "/Game/GameXXK/Environment/"),
             ("PrototypeMapRoot", "/Game/GameXXK/Maps/"),
             ("VerticalSliceGraphRoot", "/Game/GameXXK/Environment/TownPCG/"),
         )
@@ -88,6 +95,7 @@ class QingshanWhiteboxRootSafetyTests(unittest.TestCase):
         sibling_paths = (
             ("IsManagedGraphPath", "/Game/GameXXK/Environment/TownPCG/VerticalSliceSibling/Graph"),
             ("IsManagedGraphPath", "/Game/GameXXK/Environment/TownPCG/B0Rogue/Graph"),
+            ("IsManagedGraphPath", "/Game/GameXXK/Environment/TownPCG/B1ogue/Graph"),
             ("IsManagedPrototypeMapPath", "/Game/GameXXK/Maps/PrototypeSibling/Map"),
             ("IsManagedPrototypeMapPath", "/Game/GameXXK/Maps/Developer/Map"),
         )

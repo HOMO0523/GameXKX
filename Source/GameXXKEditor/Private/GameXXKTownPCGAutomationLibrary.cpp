@@ -5,6 +5,7 @@
 #include "Builders/CubeBuilder.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SplineComponent.h"
+#include "Containers/StringConv.h"
 #include "Editor.h"
 #include "Elements/PCGCreatePoints.h"
 #include "Elements/PCGStaticMeshSpawner.h"
@@ -13,9 +14,12 @@
 #include "EngineUtils.h"
 #include "GameFramework/Actor.h"
 #include "HAL/FileManager.h"
+#include "HAL/PlatformMisc.h"
 #include "Helpers/PCGHelpers.h"
 #include "LevelUtils.h"
 #include "MeshSelectors/PCGMeshSelectorWeighted.h"
+#include "Materials/MaterialInterface.h"
+#include "Misc/Crc.h"
 #include "Misc/PackageName.h"
 #include "PCGComponent.h"
 #include "PCGEdge.h"
@@ -35,6 +39,8 @@ namespace GameXXKTownPCGAutomation
 {
 	constexpr TCHAR VerticalSliceGraphRoot[] = TEXT("/Game/GameXXK/Environment/TownPCG/VerticalSlice/");
 	constexpr TCHAR B0RGraphRoot[] = TEXT("/Game/GameXXK/Environment/TownPCG/B0R/");
+	constexpr TCHAR B1GraphRoot[] = TEXT("/Game/GameXXK/Environment/TownPCG/B1/");
+	constexpr TCHAR B1MapPackage[] = TEXT("/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1");
 	constexpr TCHAR PrototypeMapRoot[] = TEXT("/Game/GameXXK/Maps/Prototype/");
 	constexpr TCHAR B0RMapRoot[] = TEXT("/Game/GameXXK/Maps/Dev/");
 	const FName PrototypeOnlyTag(TEXT("PrototypeOnly"));
@@ -42,7 +48,13 @@ namespace GameXXKTownPCGAutomation
 	bool IsManagedGraphPath(const FString& Path)
 	{
 		return Path.StartsWith(VerticalSliceGraphRoot, ESearchCase::CaseSensitive)
-			|| Path.StartsWith(B0RGraphRoot, ESearchCase::CaseSensitive);
+			|| Path.StartsWith(B0RGraphRoot, ESearchCase::CaseSensitive)
+			|| Path.StartsWith(B1GraphRoot, ESearchCase::CaseSensitive);
+	}
+
+	bool IsB1GraphPath(const FString& Path)
+	{
+		return Path.StartsWith(B1GraphRoot, ESearchCase::CaseSensitive);
 	}
 
 	bool IsManagedPrototypeMapPath(const FString& Path)
@@ -267,6 +279,23 @@ namespace GameXXKTownPCGAutomation
 		return true;
 	}
 
+	bool ValidateB1MutationContext(UWorld* World, const AActor* ActorToMutate, FString& OutError)
+	{
+		if (!ValidatePrototypeMutationContext(World, ActorToMutate, OutError))
+		{
+			return false;
+		}
+		if (World->GetOutermost()->GetName() != B1MapPackage
+			|| World->GetCurrentLevel()->GetOutermost()->GetName() != B1MapPackage)
+		{
+			OutError = FString::Printf(
+				TEXT("advanced town PCG mutation requires exact B1 world/current level '%s'"),
+				B1MapPackage);
+			return false;
+		}
+		return true;
+	}
+
 	bool ResolveManagedSplineSemanticTag(const TArray<FName>& Tags, FName& OutTag)
 	{
 		static const TSet<FName> AllowedTags = {
@@ -331,6 +360,72 @@ namespace GameXXKTownPCGAutomation
 			}
 		}
 		return Count;
+	}
+
+	bool IsLowercaseSha256(const FString& Value)
+	{
+		if (Value.Len() != 64)
+		{
+			return false;
+		}
+		for (const TCHAR Character : Value)
+		{
+			if (!((Character >= TEXT('0') && Character <= TEXT('9'))
+				|| (Character >= TEXT('a') && Character <= TEXT('f'))))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	FString CanonicalTransformString(const FTransform& Transform)
+	{
+		FQuat Rotation = Transform.GetRotation().GetNormalized();
+		const bool bNegate = Rotation.W < 0.0
+			|| (FMath::IsNearlyZero(Rotation.W) && Rotation.X < 0.0)
+			|| (FMath::IsNearlyZero(Rotation.W) && FMath::IsNearlyZero(Rotation.X) && Rotation.Y < 0.0)
+			|| (FMath::IsNearlyZero(Rotation.W) && FMath::IsNearlyZero(Rotation.X)
+				&& FMath::IsNearlyZero(Rotation.Y) && Rotation.Z < 0.0);
+		if (bNegate)
+		{
+			Rotation.X = -Rotation.X;
+			Rotation.Y = -Rotation.Y;
+			Rotation.Z = -Rotation.Z;
+			Rotation.W = -Rotation.W;
+		}
+
+		const FVector Location = Transform.GetLocation();
+		const FVector Scale = Transform.GetScale3D();
+		return FString::Printf(
+			TEXT("%lld,%lld,%lld|%lld,%lld,%lld,%lld|%lld,%lld,%lld"),
+			static_cast<long long>(FMath::RoundToInt64(Location.X * 1000.0)),
+			static_cast<long long>(FMath::RoundToInt64(Location.Y * 1000.0)),
+			static_cast<long long>(FMath::RoundToInt64(Location.Z * 1000.0)),
+			static_cast<long long>(FMath::RoundToInt64(Rotation.X * 1000000.0)),
+			static_cast<long long>(FMath::RoundToInt64(Rotation.Y * 1000000.0)),
+			static_cast<long long>(FMath::RoundToInt64(Rotation.Z * 1000000.0)),
+			static_cast<long long>(FMath::RoundToInt64(Rotation.W * 1000000.0)),
+			static_cast<long long>(FMath::RoundToInt64(Scale.X * 1000000.0)),
+			static_cast<long long>(FMath::RoundToInt64(Scale.Y * 1000000.0)),
+			static_cast<long long>(FMath::RoundToInt64(Scale.Z * 1000000.0)));
+	}
+
+	int32 StableTransformHash(const FTransform& Transform)
+	{
+		return static_cast<int32>(FCrc::StrCrc32(*CanonicalTransformString(Transform)) & 0x7fffffffU);
+	}
+
+	FString Sha256ForCanonicalSeedRecords(const TArray<FString>& Records)
+	{
+		const FString Canonical = FString::Join(Records, TEXT("\n"));
+		FTCHARToUTF8 Utf8(*Canonical);
+		FSHA256Signature Signature{};
+		if (!FPlatformMisc::GetSHA256Signature(Utf8.Get(), static_cast<uint32>(Utf8.Length()), Signature))
+		{
+			return FString();
+		}
+		return Signature.ToString().ToLower();
 	}
 }
 
@@ -652,6 +747,269 @@ FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTownPCGGraph(
 	return ToJson(Result);
 }
 
+FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTownPCGGraphAdvanced(
+	const FString& GraphAssetPath,
+	const FString& StaticMeshPath,
+	const TArray<FTransform>& PointTransforms,
+	const int32 BaseSeed,
+	const TArray<FString>& MaterialOverridePaths,
+	const TArray<FString>& ConsumedRoadEdgeActorLabels,
+	const FString& ConsumedRoadEdgeGeometryDigest,
+	const float MinimumRoadClearanceCm)
+{
+	using namespace GameXXKTownPCGAutomation;
+	constexpr TCHAR Operation[] = TEXT("CreateOrUpdateTownPCGGraphAdvanced");
+	if (!FPackageName::IsValidLongPackageName(GraphAssetPath, true) || !IsB1GraphPath(GraphAssetPath))
+	{
+		return ErrorJson(Operation, TEXT("advanced graph path must be under the B1 town PCG graph root"), FString(), GraphAssetPath);
+	}
+	if (IsExistingPackageFileReadOnly(GraphAssetPath, FPackageName::GetAssetPackageExtension()))
+	{
+		return ErrorJson(Operation, TEXT("graph package is read-only"), FString(), GraphAssetPath);
+	}
+	if (!FPackageName::IsValidLongPackageName(StaticMeshPath, true))
+	{
+		return ErrorJson(Operation, TEXT("static mesh must be a valid long package name"), FString(), GraphAssetPath);
+	}
+	if (PointTransforms.Num() == 0)
+	{
+		return ErrorJson(Operation, TEXT("at least one point transform is required"), FString(), GraphAssetPath);
+	}
+	TSet<FString> CanonicalPointTransforms;
+	for (const FTransform& Transform : PointTransforms)
+	{
+		if (Transform.ContainsNaN())
+		{
+			return ErrorJson(Operation, TEXT("point transforms must contain only finite values"), FString(), GraphAssetPath);
+		}
+		const FString Canonical = CanonicalTransformString(Transform);
+		if (CanonicalPointTransforms.Contains(Canonical))
+		{
+			return ErrorJson(Operation, TEXT("duplicate canonical point transform is not allowed"), FString(), GraphAssetPath);
+		}
+		CanonicalPointTransforms.Add(Canonical);
+	}
+	if (!FMath::IsFinite(MinimumRoadClearanceCm) || MinimumRoadClearanceCm < 0.0f)
+	{
+		return ErrorJson(Operation, TEXT("minimum road clearance must be finite and nonnegative"), FString(), GraphAssetPath);
+	}
+	if (!IsLowercaseSha256(ConsumedRoadEdgeGeometryDigest))
+	{
+		return ErrorJson(Operation, TEXT("geometry digest must be 64 lowercase hexadecimal characters"), FString(), GraphAssetPath);
+	}
+
+	TArray<FString> SortedEdgeLabels;
+	for (const FString& Label : ConsumedRoadEdgeActorLabels)
+	{
+		if (Label.IsEmpty() || Label.TrimStartAndEnd() != Label)
+		{
+			return ErrorJson(Operation, TEXT("consumed road edge labels must be nonblank and trimmed"), FString(), GraphAssetPath);
+		}
+		SortedEdgeLabels.AddUnique(Label);
+	}
+	SortedEdgeLabels.Sort();
+	if (SortedEdgeLabels.Num() == 0)
+	{
+		return ErrorJson(Operation, TEXT("at least one consumed road edge label is required"), FString(), GraphAssetPath);
+	}
+
+	UStaticMesh* StaticMesh = LoadAssetByPackagePath<UStaticMesh>(StaticMeshPath);
+	if (!StaticMesh)
+	{
+		return ErrorJson(Operation, FString::Printf(TEXT("could not load static mesh '%s'"), *StaticMeshPath), FString(), GraphAssetPath);
+	}
+	if (MaterialOverridePaths.Num() != StaticMesh->GetStaticMaterials().Num())
+	{
+		return ErrorJson(
+			Operation,
+			FString::Printf(TEXT("material override count %d does not match mesh slot count %d"),
+				MaterialOverridePaths.Num(), StaticMesh->GetStaticMaterials().Num()),
+			FString(), GraphAssetPath);
+	}
+
+	TArray<TSoftObjectPtr<UMaterialInterface>> LoadedMaterialOverrides;
+	LoadedMaterialOverrides.Reserve(MaterialOverridePaths.Num());
+	for (const FString& MaterialPath : MaterialOverridePaths)
+	{
+		if (MaterialPath.IsEmpty())
+		{
+			LoadedMaterialOverrides.Add(TSoftObjectPtr<UMaterialInterface>());
+			continue;
+		}
+		if (!FPackageName::IsValidLongPackageName(MaterialPath, true))
+		{
+			return ErrorJson(Operation, TEXT("material override must be blank or a valid long package name"), FString(), GraphAssetPath);
+		}
+		UMaterialInterface* Material = LoadAssetByPackagePath<UMaterialInterface>(MaterialPath);
+		if (!Material)
+		{
+			return ErrorJson(Operation, FString::Printf(TEXT("could not load material override '%s'"), *MaterialPath), FString(), GraphAssetPath);
+		}
+		LoadedMaterialOverrides.Add(TSoftObjectPtr<UMaterialInterface>(Material));
+	}
+
+	UObject* ExistingGraphObject = LoadAssetByPackagePath<UObject>(GraphAssetPath);
+	if (ExistingGraphObject && !ExistingGraphObject->IsA<UPCGGraph>())
+	{
+		return ErrorJson(Operation, TEXT("requested graph object exists but is not a PCG graph"), FString(), GraphAssetPath);
+	}
+	UPCGGraph* Graph = Cast<UPCGGraph>(ExistingGraphObject);
+	FRevertibleEditorTransaction Transaction(NSLOCTEXT("GameXXK", "AuthorTownPCGGraphAdvanced", "Author Town PCG Graph Advanced"));
+	if (!Transaction.IsValid())
+	{
+		return ErrorJson(Operation, TEXT("could not start an isolated editor transaction"), FString(), GraphAssetPath);
+	}
+	bool bCreated = false;
+	if (!Graph)
+	{
+		UPackage* Package = CreatePackage(*GraphAssetPath);
+		if (!Package)
+		{
+			return ErrorJson(Operation, TEXT("could not create graph package"), FString(), GraphAssetPath);
+		}
+		Package->FullyLoad();
+		const FName AssetName(*FPackageName::GetLongPackageAssetName(GraphAssetPath));
+		UObject* ExistingNamedObject = FindObject<UObject>(Package, *AssetName.ToString());
+		if (ExistingNamedObject && !ExistingNamedObject->IsA<UPCGGraph>())
+		{
+			return ErrorJson(Operation, TEXT("requested graph object exists but is not a PCG graph"), FString(), GraphAssetPath);
+		}
+		Graph = Cast<UPCGGraph>(ExistingNamedObject);
+		if (!Graph)
+		{
+			Graph = NewObject<UPCGGraph>(Package, AssetName, RF_Public | RF_Standalone | RF_Transactional);
+			bCreated = Graph != nullptr;
+		}
+	}
+	if (!Graph)
+	{
+		return ErrorJson(Operation, TEXT("could not create or load graph"), FString(), GraphAssetPath);
+	}
+
+	Graph->Modify();
+	TArray<UPCGNode*> AuthoredNodes = Graph->GetNodes();
+	Graph->RemoveNodes(AuthoredNodes);
+	UPCGCreatePointsSettings* CreatePointsSettings = nullptr;
+	UPCGNode* CreatePointsNode = Graph->AddNodeOfType<UPCGCreatePointsSettings>(CreatePointsSettings);
+	UPCGStaticMeshSpawnerSettings* SpawnerSettings = nullptr;
+	UPCGNode* SpawnerNode = Graph->AddNodeOfType<UPCGStaticMeshSpawnerSettings>(SpawnerSettings);
+	if (!CreatePointsNode || !CreatePointsSettings || !SpawnerNode || !SpawnerSettings)
+	{
+		return ErrorJson(Operation, TEXT("could not create PCG graph nodes"), FString(), GraphAssetPath);
+	}
+
+	struct FStablePointRecord
+	{
+		FString CanonicalTransform;
+		FTransform Transform;
+		int32 Seed = 0;
+	};
+	TArray<FStablePointRecord> PointRecords;
+	PointRecords.Reserve(PointTransforms.Num());
+	for (const FTransform& Transform : PointTransforms)
+	{
+		FStablePointRecord& Record = PointRecords.AddDefaulted_GetRef();
+		Record.CanonicalTransform = CanonicalTransformString(Transform);
+		Record.Transform = Transform;
+		Record.Seed = PCGHelpers::ComputeSeed(BaseSeed, StableTransformHash(Transform));
+	}
+	PointRecords.Sort([](const FStablePointRecord& A, const FStablePointRecord& B)
+	{
+		return A.CanonicalTransform < B.CanonicalTransform;
+	});
+	TArray<FString> CanonicalSeedRecords;
+	CanonicalSeedRecords.Reserve(PointRecords.Num());
+	CreatePointsSettings->Modify();
+	CreatePointsSettings->CoordinateSpace = EPCGCoordinateSpace::World;
+	CreatePointsSettings->bCullPointsOutsideVolume = false;
+	CreatePointsSettings->PointsToCreate.Reset(PointRecords.Num());
+	for (const FStablePointRecord& Record : PointRecords)
+	{
+		CanonicalSeedRecords.Add(Record.CanonicalTransform + TEXT("|") + LexToString(Record.Seed));
+		CreatePointsSettings->PointsToCreate.Emplace(Record.Transform, 1.0f, Record.Seed);
+	}
+	const FString PointSeedDigest = Sha256ForCanonicalSeedRecords(CanonicalSeedRecords);
+	if (!IsLowercaseSha256(PointSeedDigest))
+	{
+		return ErrorJson(Operation, TEXT("could not compute point seed digest"), FString(), GraphAssetPath);
+	}
+
+	SpawnerSettings->Modify();
+	SpawnerSettings->SetMeshSelectorType(UPCGMeshSelectorWeighted::StaticClass());
+	UPCGMeshSelectorWeighted* WeightedSelector = Cast<UPCGMeshSelectorWeighted>(SpawnerSettings->MeshSelectorParameters);
+	if (!WeightedSelector)
+	{
+		return ErrorJson(Operation, TEXT("could not initialize weighted mesh selector"), FString(), GraphAssetPath);
+	}
+	WeightedSelector->Modify();
+	FPCGMeshSelectorWeightedEntry Entry(TSoftObjectPtr<UStaticMesh>(StaticMesh), 1);
+	Entry.Descriptor.OverrideMaterials = LoadedMaterialOverrides;
+	Entry.Descriptor.ComputeHash();
+	WeightedSelector->MeshEntries = {Entry};
+	SpawnerSettings->bAllowMergeDifferentDataInSameInstancedComponents = true;
+
+	Graph->AddLabeledEdge(CreatePointsNode, PCGPinConstants::DefaultOutputLabel, SpawnerNode, PCGPinConstants::DefaultInputLabel);
+	Graph->AddLabeledEdge(SpawnerNode, PCGPinConstants::DefaultOutputLabel, Graph->GetOutputNode(), PCGPinConstants::DefaultOutputLabel);
+	if (!VerifyDirectedEdge(CreatePointsNode, PCGPinConstants::DefaultOutputLabel, SpawnerNode, PCGPinConstants::DefaultInputLabel)
+		|| !VerifyDirectedEdge(SpawnerNode, PCGPinConstants::DefaultOutputLabel, Graph->GetOutputNode(), PCGPinConstants::DefaultOutputLabel))
+	{
+		return ErrorJson(Operation, TEXT("could not connect PCG graph nodes"), FString(), GraphAssetPath);
+	}
+
+	TSharedRef<FJsonObject> Contract = MakeShared<FJsonObject>();
+	Contract->SetNumberField(TEXT("schema_version"), 1);
+	Contract->SetStringField(TEXT("static_mesh_path"), StaticMeshPath);
+	Contract->SetNumberField(TEXT("point_count"), PointRecords.Num());
+	Contract->SetNumberField(TEXT("base_seed"), BaseSeed);
+	Contract->SetStringField(TEXT("point_seed_sha256"), PointSeedDigest);
+	Contract->SetStringField(TEXT("road_edge_geometry_digest"), ConsumedRoadEdgeGeometryDigest);
+	Contract->SetNumberField(TEXT("minimum_road_clearance_cm"), MinimumRoadClearanceCm);
+	TArray<TSharedPtr<FJsonValue>> JsonEdgeLabels;
+	for (const FString& Label : SortedEdgeLabels)
+	{
+		JsonEdgeLabels.Add(MakeShared<FJsonValueString>(Label));
+	}
+	Contract->SetArrayField(TEXT("consumed_road_edge_actor_labels"), JsonEdgeLabels);
+	TArray<TSharedPtr<FJsonValue>> JsonMaterialPaths;
+	for (const FString& Path : MaterialOverridePaths)
+	{
+		JsonMaterialPaths.Add(MakeShared<FJsonValueString>(Path));
+	}
+	Contract->SetArrayField(TEXT("material_override_paths"), JsonMaterialPaths);
+	const FString ContractJson = ToJson(Contract);
+#if WITH_EDITORONLY_DATA
+	Graph->Description = FText::FromString(TEXT("GAMEXXK_TOWN_PCG_CONTRACT:") + ContractJson);
+#endif
+	Graph->MarkPackageDirty();
+	if (bCreated)
+	{
+		FAssetRegistryModule::AssetCreated(Graph);
+	}
+
+	const FString PackageFilename = FPackageName::LongPackageNameToFilename(GraphAssetPath, FPackageName::GetAssetPackageExtension());
+	FSavePackageArgs SaveArgs;
+	SaveArgs.TopLevelFlags = RF_Public | RF_Standalone;
+	SaveArgs.SaveFlags = SAVE_NoError;
+	if (!UPackage::SavePackage(Graph->GetOutermost(), Graph, *PackageFilename, SaveArgs))
+	{
+		if (bCreated)
+		{
+			FAssetRegistryModule::AssetDeleted(Graph);
+		}
+		return ErrorJson(Operation, TEXT("failed to save graph package"), FString(), GraphAssetPath);
+	}
+	Transaction.Commit();
+
+	TSharedRef<FJsonObject> Result = MakeResult(true, Operation);
+	Result->SetStringField(TEXT("graph"), GraphAssetPath);
+	Result->SetNumberField(TEXT("point_count"), PointTransforms.Num());
+	Result->SetNumberField(TEXT("base_seed"), BaseSeed);
+	Result->SetStringField(TEXT("point_seed_sha256"), PointSeedDigest);
+	Result->SetStringField(TEXT("contract"), ContractJson);
+	Result->SetStringField(TEXT("error"), TEXT(""));
+	return ToJson(Result);
+}
+
 FString UGameXXKTownPCGAutomationLibrary::AttachTownPCGGraph(
 	const FString& ActorLabel,
 	const FString& GraphAssetPath,
@@ -770,6 +1128,108 @@ FString UGameXXKTownPCGAutomationLibrary::AttachTownPCGGraph(
 	return ToJson(Result);
 }
 
+FString UGameXXKTownPCGAutomationLibrary::AttachTownPCGGraphAdvanced(
+	const FString& ActorLabel,
+	const FString& GraphAssetPath,
+	const FVector& Center,
+	const FVector& Extent,
+	const int32 ComponentSeed)
+{
+	using namespace GameXXKTownPCGAutomation;
+	constexpr TCHAR Operation[] = TEXT("AttachTownPCGGraphAdvanced");
+	FString Error;
+	if (!ValidateActorLabel(ActorLabel, Error))
+	{
+		return ErrorJson(Operation, Error, ActorLabel, GraphAssetPath);
+	}
+	if (!FPackageName::IsValidLongPackageName(GraphAssetPath, true) || !IsB1GraphPath(GraphAssetPath))
+	{
+		return ErrorJson(Operation, TEXT("advanced graph path must be under the B1 town PCG graph root"), ActorLabel, GraphAssetPath);
+	}
+	if (!IsFiniteVector(Center) || !IsFiniteVector(Extent)
+		|| Extent.X <= 0.0 || Extent.Y <= 0.0 || Extent.Z <= 0.0)
+	{
+		return ErrorJson(Operation, TEXT("center/extent must be finite and extent positive"), ActorLabel, GraphAssetPath);
+	}
+	UWorld* World = GetEditorWorld();
+	if (!ValidateB1MutationContext(World, nullptr, Error))
+	{
+		return ErrorJson(Operation, Error, ActorLabel, GraphAssetPath);
+	}
+	UPCGGraph* Graph = LoadAssetByPackagePath<UPCGGraph>(GraphAssetPath);
+	if (!Graph)
+	{
+		return ErrorJson(Operation, TEXT("could not load PCG graph"), ActorLabel, GraphAssetPath);
+	}
+	const TArray<AActor*> Matches = FindActorsByExactLabel(World, ActorLabel);
+	if (Matches.Num() > 1)
+	{
+		return ErrorJson(Operation, TEXT("multiple actors have the exact PCG volume label"), ActorLabel, GraphAssetPath);
+	}
+	APCGVolume* Volume = Matches.Num() == 1 ? Cast<APCGVolume>(Matches[0]) : nullptr;
+	if (Matches.Num() == 1 && (!Volume || !Volume->PCGComponent))
+	{
+		return ErrorJson(Operation, TEXT("exact-label actor is not a valid PCG volume"), ActorLabel, GraphAssetPath);
+	}
+	if (Volume && !ValidateB1MutationContext(World, Volume, Error))
+	{
+		return ErrorJson(Operation, Error, ActorLabel, GraphAssetPath);
+	}
+
+	UCubeBuilder* CubeBuilder = NewObject<UCubeBuilder>(GetTransientPackage());
+	if (!CubeBuilder)
+	{
+		return ErrorJson(Operation, TEXT("could not create volume brush builder"), ActorLabel, GraphAssetPath);
+	}
+	CubeBuilder->X = Extent.X * 2.0;
+	CubeBuilder->Y = Extent.Y * 2.0;
+	CubeBuilder->Z = Extent.Z * 2.0;
+	CubeBuilder->Hollow = false;
+
+	FRevertibleEditorTransaction Transaction(NSLOCTEXT("GameXXK", "AttachTownPCGGraphAdvanced", "Attach Town PCG Graph Advanced"));
+	if (!Transaction.IsValid())
+	{
+		return ErrorJson(Operation, TEXT("could not start an isolated editor transaction"), ActorLabel, GraphAssetPath);
+	}
+	if (!Volume)
+	{
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.ObjectFlags |= RF_Transactional;
+		SpawnParameters.OverrideLevel = World->GetCurrentLevel();
+		Volume = World->SpawnActor<APCGVolume>(APCGVolume::StaticClass(), FTransform(Center), SpawnParameters);
+		if (!Volume || !Volume->PCGComponent)
+		{
+			return ErrorJson(Operation, TEXT("failed to spawn PCG volume"), ActorLabel, GraphAssetPath);
+		}
+		Volume->SetActorLabel(ActorLabel);
+	}
+	Volume->Modify();
+	Volume->SetActorLocation(Center);
+	Volume->SetActorRotation(FRotator::ZeroRotator);
+	Volume->SetActorScale3D(FVector::OneVector);
+	UActorFactory::CreateBrushForVolumeActor(Volume, CubeBuilder);
+	if (!Volume->GetBrushComponent())
+	{
+		return ErrorJson(Operation, TEXT("failed to create PCG volume brush"), ActorLabel, GraphAssetPath);
+	}
+	Volume->PCGComponent->Modify();
+	Volume->PCGComponent->SetGraph(Graph);
+	Volume->PCGComponent->GenerationTrigger = EPCGComponentGenerationTrigger::GenerateOnDemand;
+	Volume->PCGComponent->bGenerateOnDropWhenTriggerOnDemand = false;
+	Volume->PCGComponent->bRegenerateInEditor = false;
+	Volume->PCGComponent->Seed = ComponentSeed;
+	Volume->MarkPackageDirty();
+	Transaction.Commit();
+
+	TSharedRef<FJsonObject> Result = MakeResult(true, Operation);
+	Result->SetStringField(TEXT("actor_label"), ActorLabel);
+	Result->SetStringField(TEXT("graph"), GraphAssetPath);
+	Result->SetNumberField(TEXT("component_seed"), ComponentSeed);
+	Result->SetNumberField(TEXT("generated_component_count"), CountGeneratedInstancedComponents(Volume));
+	Result->SetStringField(TEXT("error"), TEXT(""));
+	return ToJson(Result);
+}
+
 FString UGameXXKTownPCGAutomationLibrary::GenerateTownPCG(const FString& ActorLabel)
 {
 	using namespace GameXXKTownPCGAutomation;
@@ -873,6 +1333,13 @@ FString UGameXXKTownPCGAutomationLibrary::GetTownPCGStatus(const FString& ActorL
 	Result->SetBoolField(TEXT("generating"), bGenerating);
 	Result->SetBoolField(TEXT("generated"), bGenerated);
 	Result->SetNumberField(TEXT("generated_component_count"), CountGeneratedInstancedComponents(Volume));
+	Result->SetNumberField(TEXT("component_seed"), Volume->PCGComponent->Seed);
+	if (const UPCGGraph* Graph = Volume->PCGComponent->GetGraph())
+	{
+#if WITH_EDITORONLY_DATA
+		Result->SetStringField(TEXT("graph_contract"), Graph->Description.ToString());
+#endif
+	}
 	if (bGenerating)
 	{
 		Result->SetNumberField(TEXT("task_id"), static_cast<double>(Volume->PCGComponent->GetGenerationTaskId()));

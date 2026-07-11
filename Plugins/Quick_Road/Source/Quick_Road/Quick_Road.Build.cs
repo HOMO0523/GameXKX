@@ -55,7 +55,8 @@ public class Quick_Road : ModuleRules
 				"AssetRegistry",
 				"PhysicsCore",
 				"DeveloperSettings",
-				"Projects"
+				"Projects",
+				"Json"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
