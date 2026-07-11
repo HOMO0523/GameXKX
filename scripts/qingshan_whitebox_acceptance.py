@@ -13,6 +13,8 @@ from typing import Any
 
 __all__ = ("canonical_layout_hash", "generate_seeded_proxy_transforms")
 
+# 10,000 km in UE centimeters: generous for this town while keeping geometry math safe.
+MAX_SAFE_COORDINATE_CM = 1_000_000_000.0
 _MAX_FOLIAGE_ATTEMPTS = 20_000
 _MAX_FOLIAGE_COUNT = 20_000
 _MAX_MOUNTAIN_COUNT = 10_000
@@ -32,6 +34,22 @@ def _finite_number(value: Any, field: str) -> float:
     if not finite:
         raise ValueError(f"{field} must be finite")
     return float(value)
+
+
+def _safe_coordinate(value: Any, field: str) -> float:
+    number = _finite_number(value, field)
+    if abs(number) > MAX_SAFE_COORDINATE_CM:
+        raise ValueError(
+            f"{field} exceeds MAX_SAFE_COORDINATE_CM ({MAX_SAFE_COORDINATE_CM:g})"
+        )
+    return number
+
+
+def _safe_extent(value: Any, field: str) -> float:
+    number = _safe_coordinate(value, field)
+    if number < 0:
+        raise ValueError(f"{field} must be nonnegative")
+    return number
 
 
 def _integer(value: Any, field: str, minimum: int = 0) -> int:
@@ -62,6 +80,15 @@ def _vector(value: Any, field: str, length: int) -> tuple[float, ...]:
     return tuple(_finite_number(item, f"{field}[{index}]") for index, item in enumerate(items))
 
 
+def _coordinate_vector(value: Any, field: str, length: int) -> tuple[float, ...]:
+    items = _list(value, field)
+    if len(items) != length:
+        raise ValueError(f"{field} must contain exactly {length} numbers")
+    return tuple(
+        _safe_coordinate(item, f"{field}[{index}]") for index, item in enumerate(items)
+    )
+
+
 def _ordered_range(value: Any, field: str, *, nonnegative: bool = False) -> tuple[float, float]:
     low, high = _vector(value, field, 2)
     threshold = 0.0 if nonnegative else math.nextafter(0.0, math.inf)
@@ -72,7 +99,7 @@ def _ordered_range(value: Any, field: str, *, nonnegative: bool = False) -> tupl
 
 
 def _bounds(value: Any, field: str) -> tuple[float, float, float, float]:
-    x_min, x_max, y_min, y_max = _vector(value, field, 4)
+    x_min, x_max, y_min, y_max = _coordinate_vector(value, field, 4)
     if x_min >= x_max or y_min >= y_max:
         raise ValueError(f"{field} must be [min_x, max_x, min_y, max_y]")
     if not math.isfinite(x_max - x_min) or not math.isfinite(y_max - y_min):
@@ -125,8 +152,8 @@ def _validate_geometry_sources(config: Mapping[str, Any]):
     }
     sources = {kind: {} for kind in raw_sources}
     for stable_id, source in raw_sources["anchor_circle"].items():
-        location = _vector(source.get("location_cm"), f"{stable_id}.location_cm", 3)
-        radius = _finite_number(
+        location = _coordinate_vector(source.get("location_cm"), f"{stable_id}.location_cm", 3)
+        radius = _safe_extent(
             source.get("protected_radius_cm"), f"{stable_id}.protected_radius_cm"
         )
         if radius <= 0:
@@ -136,21 +163,21 @@ def _validate_geometry_sources(config: Mapping[str, Any]):
 
     for kind in ("road_corridor", "river_corridor"):
         for stable_id, source in raw_sources[kind].items():
-            width = _finite_number(source.get("width_cm"), f"{stable_id}.width_cm")
+            width = _safe_extent(source.get("width_cm"), f"{stable_id}.width_cm")
             if width <= 0:
                 raise ValueError(f"{stable_id}.width_cm must be positive")
             raw_points = _list(source.get("points_cm"), f"{stable_id}.points_cm")
             if len(raw_points) < 2:
                 raise ValueError(f"{stable_id}.points_cm must contain at least two points")
             points = tuple(
-                _vector(point, f"{stable_id}.points_cm[{index}]", 3)
+                _coordinate_vector(point, f"{stable_id}.points_cm[{index}]", 3)
                 for index, point in enumerate(raw_points)
             )
             sources[kind][stable_id] = (points, width)
 
     for stable_id, source in raw_sources["building_footprint"].items():
-        location = _vector(source.get("location_cm"), f"{stable_id}.location_cm", 3)
-        size = _vector(source.get("size_cm"), f"{stable_id}.size_cm", 3)
+        location = _coordinate_vector(source.get("location_cm"), f"{stable_id}.location_cm", 3)
+        size = _coordinate_vector(source.get("size_cm"), f"{stable_id}.size_cm", 3)
         if any(component <= 0 for component in size):
             raise ValueError(f"{stable_id}.size_cm must be positive")
         yaw = _finite_number(source.get("yaw_degrees"), f"{stable_id}.yaw_degrees")
@@ -169,18 +196,25 @@ def _compile_exclusions(config: Mapping[str, Any], sources):
         source_id = exclusion.get("source_id")
         if not isinstance(source_id, str) or source_id not in sources[kind]:
             raise ValueError(f"{field}.source_id does not resolve for {kind}")
-        margin = _finite_number(exclusion.get("margin_cm"), f"{field}.margin_cm")
-        if margin < 0:
-            raise ValueError(f"{field}.margin_cm must be nonnegative")
+        margin = _safe_extent(exclusion.get("margin_cm"), f"{field}.margin_cm")
         source = sources[kind][source_id]
 
         if kind == "anchor_circle":
             center, radius = source
+            if radius > MAX_SAFE_COORDINATE_CM - margin:
+                raise ValueError(
+                    f"{field} protected radius plus margin exceeds MAX_SAFE_COORDINATE_CM"
+                )
             compiled.append(lambda point, c=center, r=radius + margin: math.dist(point, c[:2]) <= r)
         elif kind in ("road_corridor", "river_corridor"):
             points, width = source
             segments = tuple(zip(points, points[1:]))
-            radius = width / 2.0 + margin
+            half_width = width / 2.0
+            if half_width > MAX_SAFE_COORDINATE_CM - margin:
+                raise ValueError(
+                    f"{field} corridor half-width plus margin exceeds MAX_SAFE_COORDINATE_CM"
+                )
+            radius = half_width + margin
             compiled.append(
                 lambda point, s=segments, r=radius: min(
                     _distance_to_segment(point, start, end) for start, end in s
@@ -188,6 +222,10 @@ def _compile_exclusions(config: Mapping[str, Any], sources):
             )
         else:
             location, size, yaw = source
+            if any(component / 2.0 > MAX_SAFE_COORDINATE_CM - margin for component in size[:2]):
+                raise ValueError(
+                    f"{field} footprint half-size plus margin exceeds MAX_SAFE_COORDINATE_CM"
+                )
             compiled.append(
                 lambda point, p={"location_cm": location, "size_cm": size, "yaw_degrees": yaw},
                 m=margin, f=source_id: _inside_rotated_footprint(point, p, m, f)
@@ -200,7 +238,7 @@ def _make_transform(stable_id: str, location, rotation, scale) -> dict[str, Any]
         raise ValueError(f"generated transform id {stable_id!r} is not stable")
     return {
         "id": stable_id,
-        "location_cm": list(_vector(location, f"{stable_id}.location_cm", 3)),
+        "location_cm": list(_coordinate_vector(location, f"{stable_id}.location_cm", 3)),
         "rotation_degrees": list(_vector(rotation, f"{stable_id}.rotation_degrees", 3)),
         "scale": list(_vector(scale, f"{stable_id}.scale", 3)),
     }
@@ -239,12 +277,10 @@ def generate_seeded_proxy_transforms(config: Mapping[str, Any]) -> dict[str, lis
     foliage_scale = _ordered_range(
         foliage_config.get("scale_range"), "proxy_generation.foliage.scale_range"
     )
-    foliage_exclusion_margin = _finite_number(
+    foliage_exclusion_margin = _safe_extent(
         foliage_config.get("exclusion_margin_cm"),
         "proxy_generation.foliage.exclusion_margin_cm",
     )
-    if foliage_exclusion_margin < 0:
-        raise ValueError("proxy_generation.foliage.exclusion_margin_cm must be nonnegative")
     mountain_scale_xy = _ordered_range(
         mountain_config.get("scale_xy_range"), "proxy_generation.mountains.scale_xy_range"
     )
@@ -256,6 +292,11 @@ def generate_seeded_proxy_transforms(config: Mapping[str, Any]) -> dict[str, lis
         "proxy_generation.mountains.perimeter_band_cm",
         nonnegative=True,
     )
+    if perimeter[1] > MAX_SAFE_COORDINATE_CM:
+        raise ValueError(
+            "proxy_generation.mountains.perimeter_band_cm exceeds "
+            "MAX_SAFE_COORDINATE_CM"
+        )
     if mountain_count and perimeter[0] <= 0:
         raise ValueError("proxy_generation.mountains inner perimeter must be greater than zero")
     if mountain_count and mountain_count < 16:

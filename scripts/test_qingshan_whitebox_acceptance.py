@@ -22,7 +22,7 @@ CONFIG_MODULE_PATH = (
 )
 
 
-def _load_config():
+def _load_config_module():
     spec = importlib.util.spec_from_file_location(
         "gamexxk_qingshan_whitebox_config_for_acceptance", CONFIG_MODULE_PATH
     )
@@ -30,7 +30,11 @@ def _load_config():
         raise ImportError(f"Unable to load configuration module: {CONFIG_MODULE_PATH}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.load_config()
+    return module
+
+
+def _load_config():
+    return _load_config_module().load_config()
 
 
 def _distance_to_segment(point, start, end):
@@ -223,7 +227,7 @@ class QingshanWhiteboxAcceptanceTests(unittest.TestCase):
             (lambda c: c.update({
                 "playable_bounds_cm": [-1e308, 1e308, -1000, 1000],
                 "world_bounds_cm": [-1e308, 1e308, -2000, 2000],
-            }), "span"),
+            }), "MAX_SAFE_COORDINATE_CM"),
         )
         for mutate, message in mutations:
             with self.subTest(message=message):
@@ -241,6 +245,51 @@ class QingshanWhiteboxAcceptanceTests(unittest.TestCase):
         config["road_splines"][0]["points_cm"][0][0] = float("nan")
         with self.assertRaisesRegex(ValueError, "finite"):
             generate_seeded_proxy_transforms(config)
+
+    def test_generation_rejects_task1_valid_extreme_road_before_geometry_arithmetic(self):
+        config = copy.deepcopy(self.config)
+        config["world_bounds_cm"] = [-5e199, 5e199, -5e199, 5e199]
+        original_points = config["road_splines"][0]["points_cm"]
+        config["road_splines"][0]["points_cm"] = [
+            [-4e199, 0, 0],
+            [4e199, 0, 0],
+            *original_points,
+        ]
+        config_module = _load_config_module()
+        self.assertEqual(config_module.validate_config(copy.deepcopy(config)), config)
+        with self.assertRaisesRegex(ValueError, "MAX_SAFE_COORDINATE_CM"):
+            generate_seeded_proxy_transforms(config)
+
+    def test_generation_rejects_derived_exclusion_extents_beyond_safe_coordinate(self):
+        cases = (
+            (
+                lambda c: (
+                    c["fixed_anchors"][0].__setitem__("protected_radius_cm", 600_000_000),
+                    c["exclusion_zones"][0].__setitem__("margin_cm", 600_000_000),
+                ),
+                "protected radius plus margin",
+            ),
+            (
+                lambda c: (
+                    c["road_splines"][0].__setitem__("width_cm", 1_000_000_000),
+                    c["exclusion_zones"][3].__setitem__("margin_cm", 600_000_000),
+                ),
+                "corridor half-width plus margin",
+            ),
+            (
+                lambda c: (
+                    c["building_plots"][0].__setitem__("size_cm", [1_000_000_000, 100, 100]),
+                    c["exclusion_zones"][7].__setitem__("margin_cm", 600_000_000),
+                ),
+                "footprint half-size plus margin",
+            ),
+        )
+        for mutate, message in cases:
+            with self.subTest(message=message):
+                config = copy.deepcopy(self.config)
+                mutate(config)
+                with self.assertRaisesRegex(ValueError, message):
+                    generate_seeded_proxy_transforms(config)
 
     def test_generation_rejects_counts_over_caps_or_hard_limits(self):
         cases = (
