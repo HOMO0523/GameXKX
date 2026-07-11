@@ -33,9 +33,23 @@
 
 namespace GameXXKTownPCGAutomation
 {
-	constexpr TCHAR ManagedGraphRoot[] = TEXT("/Game/GameXXK/Environment/TownPCG/VerticalSlice/");
+	constexpr TCHAR VerticalSliceGraphRoot[] = TEXT("/Game/GameXXK/Environment/TownPCG/VerticalSlice/");
+	constexpr TCHAR B0RGraphRoot[] = TEXT("/Game/GameXXK/Environment/TownPCG/B0R/");
 	constexpr TCHAR PrototypeMapRoot[] = TEXT("/Game/GameXXK/Maps/Prototype/");
+	constexpr TCHAR B0RMapRoot[] = TEXT("/Game/GameXXK/Maps/Dev/");
 	const FName PrototypeOnlyTag(TEXT("PrototypeOnly"));
+
+	bool IsManagedGraphPath(const FString& Path)
+	{
+		return Path.StartsWith(VerticalSliceGraphRoot, ESearchCase::CaseSensitive)
+			|| Path.StartsWith(B0RGraphRoot, ESearchCase::CaseSensitive);
+	}
+
+	bool IsManagedPrototypeMapPath(const FString& Path)
+	{
+		return Path.StartsWith(PrototypeMapRoot, ESearchCase::CaseSensitive)
+			|| Path.StartsWith(B0RMapRoot, ESearchCase::CaseSensitive);
+	}
 
 	class FRevertibleEditorTransaction
 	{
@@ -215,12 +229,12 @@ namespace GameXXKTownPCGAutomation
 
 		const FString WorldPackageName = World->GetOutermost()->GetName();
 		const FString CurrentLevelPackageName = CurrentLevel->GetOutermost()->GetName();
-		if (!WorldPackageName.StartsWith(PrototypeMapRoot, ESearchCase::CaseSensitive))
+		if (!IsManagedPrototypeMapPath(WorldPackageName))
 		{
 			OutError = TEXT("town PCG actor operations are restricted to prototype maps");
 			return false;
 		}
-		if (!CurrentLevelPackageName.StartsWith(PrototypeMapRoot, ESearchCase::CaseSensitive))
+		if (!IsManagedPrototypeMapPath(CurrentLevelPackageName))
 		{
 			OutError = TEXT("current level is not a prototype map level");
 			return false;
@@ -484,7 +498,7 @@ FString UGameXXKTownPCGAutomationLibrary::CreateOrUpdateTownPCGGraph(
 	{
 		return ErrorJson(Operation, TEXT("graph must be a valid long package name"), FString(), GraphAssetPath);
 	}
-	if (!GraphAssetPath.StartsWith(ManagedGraphRoot, ESearchCase::CaseSensitive))
+	if (!IsManagedGraphPath(GraphAssetPath))
 	{
 		return ErrorJson(Operation, TEXT("graph path must be under the managed town PCG VerticalSlice root"), FString(), GraphAssetPath);
 	}
@@ -655,7 +669,7 @@ FString UGameXXKTownPCGAutomationLibrary::AttachTownPCGGraph(
 	{
 		return ErrorJson(Operation, TEXT("graph must be a valid long package name"), ActorLabel, GraphAssetPath);
 	}
-	if (!GraphAssetPath.StartsWith(ManagedGraphRoot, ESearchCase::CaseSensitive))
+	if (!IsManagedGraphPath(GraphAssetPath))
 	{
 		return ErrorJson(Operation, TEXT("graph path must be under the managed town PCG VerticalSlice root"), ActorLabel, GraphAssetPath);
 	}
