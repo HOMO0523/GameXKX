@@ -208,6 +208,11 @@ class QingshanWhiteboxConfigTests(unittest.TestCase):
                 data["proxy_generation"][category]["count"] = count
                 self.assert_invalid(data, "count must not exceed spawn_caps")
 
+    def test_building_plots_must_not_exceed_spawn_cap(self):
+        data = copy.deepcopy(self.data)
+        data["spawn_caps"]["buildings"] = len(data["building_plots"]) - 1
+        self.assert_invalid(data, "building_plots count must not exceed spawn_caps.buildings")
+
     def test_proxy_ranges_and_margin_are_valid(self):
         mutations = (
             (lambda d: d["proxy_generation"]["foliage"].__setitem__("scale_range", [6.5, 2.5]), "scale_range must be ordered"),

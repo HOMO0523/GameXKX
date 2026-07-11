@@ -208,6 +208,8 @@ def validate_config(data):
     spawn_caps = _require_object(data.get("spawn_caps"), "spawn_caps")
     for field in ("buildings", "foliage", "mountains", "crossings"):
         _require_integer(spawn_caps.get(field), f"spawn_caps.{field}", minimum=0)
+    if len(plots) > spawn_caps["buildings"]:
+        raise ValueError("building_plots count must not exceed spawn_caps.buildings")
 
     proxy = _require_object(data.get("proxy_generation"), "proxy_generation")
     foliage = _require_object(proxy.get("foliage"), "proxy_generation.foliage")
