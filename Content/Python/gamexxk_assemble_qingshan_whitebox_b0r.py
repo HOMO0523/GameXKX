@@ -34,6 +34,12 @@ ROAD_LABELS = {
     "Road_Core_North": "QS_B0R_Road_Core_North",
     "Road_Core_South": "QS_B0R_Road_Core_South",
 }
+ROAD_SEMANTIC_TAGS = {
+    # These are three road centerlines, not left/right road-edge splines.
+    "Road_Main": "Quick_Road_MainRoad",
+    "Road_Core_North": "Quick_Road_MainRoad",
+    "Road_Core_South": "Quick_Road_MainRoad",
+}
 RIVER_LABELS = {"River_Main": "QS_B0R_River_Main"}
 TERRAIN_LABELS = {
     "Terrain_Base": "QS_B0R_Terrain_Base",
@@ -211,6 +217,19 @@ def _require_editor_clean(context: str) -> tuple[list[str], list[str]]:
     return maps, content
 
 
+def _require_finalize_clean() -> tuple[list[str], list[str]]:
+    dirty_maps = _dirty_map_package_names()
+    dirty_content = _dirty_content_package_names()
+    if SOURCE_MAP in dirty_maps:
+        raise RuntimeError(f"source map is dirty before finalize map load: {SOURCE_MAP}")
+    if dirty_maps or dirty_content:
+        raise RuntimeError(
+            "whitebox finalize refuses map/content dirtiness before map load: "
+            f"maps={dirty_maps}, content={dirty_content}"
+        )
+    return dirty_maps, dirty_content
+
+
 def _current_map_package() -> str:
     world = unreal.EditorLevelLibrary.get_editor_world()
     return str(world.get_outermost().get_path_name()).split(".", 1)[0] if world else ""
@@ -319,7 +338,11 @@ def _create_curve_plates(config, north_transform, cube_mesh) -> int:
                 world = _north_local_to_world(north_transform, (point[0], point[1], point[2] - thickness / 2))
                 _create_or_update_managed_mesh_actor(
                     label, cube_mesh, world,
-                    unreal.Rotator(0.0, _north_local_yaw(north_transform, 0.0), 0.0),
+                    unreal.Rotator(
+                        pitch=0.0,
+                        yaw=_north_local_yaw(north_transform, 0.0),
+                        roll=0.0,
+                    ),
                     (spacing / 100.0, float(spline["width_cm"]) / 100.0, thickness / 100.0),
                     (f"QingshanB0R{category}Proxy",),
                 )
@@ -420,7 +443,14 @@ def _require_exact_camera_and_terrain_counts() -> None:
 def _author_graphs(config, north_transform, layout) -> dict[str, Any]:
     buildings = _building_transforms(config, north_transform)
     foliage = [_pcg_transform(north_transform, record) for record in layout["foliage"]]
-    mountains = [_pcg_transform(north_transform, record) for record in layout["mountains"]]
+    mountains = [
+        _pcg_transform(
+            north_transform,
+            record,
+            z_offset=abs(float(record["scale"][2])) * 50.0,
+        )
+        for record in layout["mountains"]
+    ]
     transforms = {"buildings": buildings, "foliage": foliage, "mountains": mountains}
     meshes = {"buildings": CUBE_MESH, "foliage": CONE_MESH, "mountains": CUBE_MESH}
     world = config["world_bounds_cm"]
@@ -474,17 +504,21 @@ def setup_whitebox() -> dict[str, Any]:
         WORLD_BOUNDS_LABEL, north_transform,
         ((bounds[0], bounds[2], 0), (bounds[1], bounds[2], 0),
          (bounds[1], bounds[3], 0), (bounds[0], bounds[3], 0)),
-        ("QingshanB0RWorldBounds",), closed=True,
+        ("PrototypeOnly", "Quick_Road_CityScope"), closed=True,
     )
     for spline in config["road_splines"]:
+        semantic_tag = ROAD_SEMANTIC_TAGS[spline["id"]]
         _create_or_update_managed_spline_actor(
             ROAD_LABELS[spline["id"]], north_transform, spline["points_cm"],
-            ("Quick_Road_LayoutInput", f"SemanticWidthCM_{spline['width_cm']}"),
+            (
+                "PrototypeOnly", semantic_tag, "Quick_Road_LayoutInput",
+                f"SemanticWidthCM_{spline['width_cm']}",
+            ),
         )
     for spline in config["river_splines"]:
         _create_or_update_managed_spline_actor(
             RIVER_LABELS[spline["id"]], north_transform, spline["points_cm"],
-            ("QingshanB0RRiver", f"SemanticWidthCM_{spline['width_cm']}"),
+            ("PrototypeOnly", "TownPCG_River", f"SemanticWidthCM_{spline['width_cm']}"),
         )
 
     anchor_by_id = {item["id"]: item for item in config["fixed_anchors"]}
@@ -570,6 +604,7 @@ def _generated_instance_count(label: str) -> int:
 
 def finalize_whitebox() -> dict[str, Any]:
     config = load_config()
+    _require_finalize_clean()
     _load_whitebox_only()
     preserved_labels = _preserved_actor_labels(config["coordinate_reference"]["actor_label"])
     preserved_before = _snapshot_preserved_actors(preserved_labels)

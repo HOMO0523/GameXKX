@@ -111,6 +111,12 @@ class QingshanWhiteboxAssemblerSourceTests(unittest.TestCase):
         self.source = ASSEMBLER.read_text(encoding="utf-8")
         self.tree = ast.parse(self.source)
 
+    def _function(self, name):
+        return next(
+            node for node in self.tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == name
+        )
+
     def test_stable_map_phase_and_ownership_contract(self):
         required = {
             "SOURCE_MAP": "/Game/GameXXK/Maps/L_QingshanInn",
@@ -206,6 +212,63 @@ class QingshanWhiteboxAssemblerSourceTests(unittest.TestCase):
         self.assertIn('"QingshanB0RCamera"', self.source)
         self.assertIn('"QingshanB0RTerrainProxy"', self.source)
         self.assertIn("!= 4", self.source)
+
+    def test_each_spline_call_supplies_cpp_ownership_and_semantic_tags(self):
+        constants = {
+            node.targets[0].id: ast.literal_eval(node.value)
+            for node in self.tree.body
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "ROAD_SEMANTIC_TAGS"
+        }
+        self.assertEqual(constants.get("ROAD_SEMANTIC_TAGS"), {
+            "Road_Main": "Quick_Road_MainRoad",
+            "Road_Core_North": "Quick_Road_MainRoad",
+            "Road_Core_South": "Quick_Road_MainRoad",
+        })
+        setup = ast.unparse(self._function("setup_whitebox"))
+        self.assertIn("('PrototypeOnly', 'Quick_Road_CityScope')", setup)
+        self.assertIn("semantic_tag = ROAD_SEMANTIC_TAGS[spline['id']]", setup)
+        self.assertIn("'PrototypeOnly', semantic_tag, 'Quick_Road_LayoutInput'", setup)
+        self.assertIn("('PrototypeOnly', 'TownPCG_River'", setup)
+        helper = ast.unparse(self._function("_create_or_update_managed_spline_actor"))
+        self.assertIn("{MANAGED_TAG, *extra_tags}", helper)
+
+    def test_finalize_refuses_dirty_source_map_and_content_before_loading_map(self):
+        finalize = self._function("finalize_whitebox")
+        calls = [
+            node for node in ast.walk(finalize)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        ]
+        preflight = next(node for node in calls if node.func.id == "_require_finalize_clean")
+        load = next(node for node in calls if node.func.id == "_load_whitebox_only")
+        self.assertLess(preflight.lineno, load.lineno)
+        guard = ast.unparse(self._function("_require_finalize_clean"))
+        self.assertIn("SOURCE_MAP in dirty_maps", guard)
+        self.assertIn("_dirty_content_package_names()", guard)
+
+    def test_mountain_cubes_are_raised_by_scaled_half_height(self):
+        author = ast.unparse(self._function("_author_graphs"))
+        self.assertIn(
+            "z_offset=abs(float(record['scale'][2])) * 50.0",
+            author,
+        )
+
+    def test_all_rotators_use_named_pitch_yaw_roll_arguments(self):
+        rotators = [
+            node for node in ast.walk(self.tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "Rotator"
+        ]
+        self.assertTrue(rotators)
+        for call in rotators:
+            with self.subTest(line=call.lineno):
+                self.assertEqual(call.args, [])
+                self.assertEqual({keyword.arg for keyword in call.keywords}, {
+                    "pitch", "yaw", "roll",
+                })
 
 
 if __name__ == "__main__":
