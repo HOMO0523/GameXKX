@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "revision_id": "B0R",
+  "seed": 20260711,
+  "source_map": "/Game/GameXXK/Maps/L_QingshanInn",
+  "whitebox_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R",
+  "asset_root": "/Game/GameXXK/Environment/TownPCG/B0R",
+  "coordinate_reference": {"anchor_id": "NorthGateFAnchor", "actor_label": "QingshanInn_TownExit"},
+  "playable_bounds_cm": [-30000, 0, -12000, 12000],
+  "world_bounds_cm": [-38000, 7000, -19000, 19000],
+  "runtime_generation": false,
+  "spawn_caps": {"buildings": 19, "foliage": 100, "mountains": 30, "crossings": 2},
+  "fixed_anchors": [
+    {"id": "NorthGateFAnchor", "location_cm": [0, 0, 120], "yaw_degrees": 0, "radius_cm": 800},
+    {"id": "TownCoreAnchor", "location_cm": [-12000, -2200, 300], "yaw_degrees": 25, "radius_cm": 1200},
+    {"id": "MainBridgeAnchor", "location_cm": [-15500, -6500, 100], "yaw_degrees": -35, "radius_cm": 1200},
+    {"id": "SouthDockAnchor", "location_cm": [-21500, -10000, -200], "yaw_degrees": -20, "radius_cm": 1000}
+  ],
+  "road_splines": [
+    {"id": "Road_Main", "width_cm": 800, "points_cm": [[0, 0, 120], [-3500, -500, 140], [-7500, -2500, 180], [-11500, -3500, 250], [-15500, -6500, 100], [-20500, -9000, -100]]},
+    {"id": "Road_Core_North", "width_cm": 450, "points_cm": [[-7500, -2500, 180], [-9000, 1200, 250], [-13000, 2600, 400]]},
+    {"id": "Road_Core_South", "width_cm": 400, "points_cm": [[-11500, -3500, 250], [-14500, -1500, 300], [-18500, -3000, 250]]}
+  ],
+  "river_splines": [
+    {"id": "River_Main", "width_cm": 1800, "points_cm": [[-26000, -12000, -250], [-21000, -9000, -200], [-15500, -6500, -150], [-9000, -8000, -100], [-3500, -11000, -100]]}
+  ],
+  "terrain_zones": [
+    {"id": "Terrain_Base", "center_cm": [-15000, 0, -500], "size_cm": [30000, 24000, 400], "yaw_degrees": 0},
+    {"id": "Terrain_CorePlateau", "center_cm": [-12000, -1800, -150], "size_cm": [12500, 8500, 500], "yaw_degrees": 10},
+    {"id": "Terrain_SouthSlope", "center_cm": [-17800, -6800, -350], "size_cm": [10500, 6500, 350], "yaw_degrees": -25},
+    {"id": "Terrain_DockLowland", "center_cm": [-21800, -9800, -550], "size_cm": [8500, 4800, 250], "yaw_degrees": -20}
+  ],
+  "building_plots": [
+    {"id": "BLD_L_01", "size_class": "large", "location_cm": [-12000, -1800, 300], "yaw_degrees": 25, "size_cm": [1800, 1400, 1200], "entrance_axis": "+Y", "cluster_id": "core"},
+    {"id": "BLD_M_01", "size_class": "medium", "location_cm": [-8200, -4700, 220], "yaw_degrees": -15, "size_cm": [1200, 900, 800], "entrance_axis": "+Y", "cluster_id": "core"},
+    {"id": "BLD_M_02", "size_class": "medium", "location_cm": [-10000, 800, 380], "yaw_degrees": 18, "size_cm": [1100, 850, 750], "entrance_axis": "+Y", "cluster_id": "core"},
+    {"id": "BLD_M_03", "size_class": "medium", "location_cm": [-14800, -1900, 360], "yaw_degrees": 42, "size_cm": [1400, 1000, 900], "entrance_axis": "+Y", "cluster_id": "bridge"},
+    {"id": "BLD_M_04", "size_class": "medium", "location_cm": [-17400, -10800, 20], "yaw_degrees": -28, "size_cm": [1000, 800, 700], "entrance_axis": "+Y", "cluster_id": "south"},
+    {"id": "BLD_M_05", "size_class": "medium", "location_cm": [-19200, -4800, 180], "yaw_degrees": 12, "size_cm": [1300, 900, 850], "entrance_axis": "+Y", "cluster_id": "south"},
+    {"id": "BLD_S_01", "size_class": "small", "location_cm": [-5200, -2500, 180], "yaw_degrees": -22, "size_cm": [800, 600, 500], "entrance_axis": "+Y", "cluster_id": "approach"},
+    {"id": "BLD_S_02", "size_class": "small", "location_cm": [-6500, 1700, 300], "yaw_degrees": 31, "size_cm": [700, 550, 450], "entrance_axis": "+Y", "cluster_id": "approach"},
+    {"id": "BLD_S_03", "size_class": "small", "location_cm": [-7200, -6200, 80], "yaw_degrees": 11, "size_cm": [900, 700, 600], "entrance_axis": "+Y", "cluster_id": "core"},
+    {"id": "BLD_S_04", "size_class": "small", "location_cm": [-12200, 3300, 460], "yaw_degrees": -35, "size_cm": [750, 600, 500], "entrance_axis": "+Y", "cluster_id": "core"},
+    {"id": "BLD_S_05", "size_class": "small", "location_cm": [-14700, -3500, 180], "yaw_degrees": 55, "size_cm": [850, 650, 550], "entrance_axis": "+Y", "cluster_id": "core"},
+    {"id": "BLD_S_06", "size_class": "small", "location_cm": [-16200, 900, 420], "yaw_degrees": -12, "size_cm": [650, 550, 450], "entrance_axis": "+Y", "cluster_id": "bridge"},
+    {"id": "BLD_S_07", "size_class": "small", "location_cm": [-18500, -1500, 300], "yaw_degrees": 27, "size_cm": [900, 650, 550], "entrance_axis": "+Y", "cluster_id": "bridge"},
+    {"id": "BLD_S_08", "size_class": "small", "location_cm": [-21400, -5200, -20], "yaw_degrees": -46, "size_cm": [750, 550, 500], "entrance_axis": "+Y", "cluster_id": "south"},
+    {"id": "BLD_S_09", "size_class": "small", "location_cm": [-24800, -7600, -80], "yaw_degrees": 16, "size_cm": [850, 700, 550], "entrance_axis": "+Y", "cluster_id": "south"},
+    {"id": "BLD_S_10", "size_class": "small", "location_cm": [-23800, -5800, 100], "yaw_degrees": 39, "size_cm": [700, 600, 480], "entrance_axis": "+Y", "cluster_id": "south"}
+  ],
+  "proxy_generation": {
+    "foliage": {"count": 100, "scale_range": [2.5, 6.5], "exclusion_margin_cm": 250},
+    "mountains": {"count": 24, "scale_xy": [25, 65], "scale_z": [35, 95], "perimeter_band_cm": [1500, 7000]}
+  },
+  "exclusion_zones": [
+    {"id": "EXC_ANCHOR_NORTH_GATE", "kind": "anchor_circle", "source_id": "NorthGateFAnchor", "margin_cm": 0},
+    {"id": "EXC_ANCHOR_MAIN_BRIDGE", "kind": "anchor_circle", "source_id": "MainBridgeAnchor", "margin_cm": 0},
+    {"id": "EXC_ANCHOR_SOUTH_DOCK", "kind": "anchor_circle", "source_id": "SouthDockAnchor", "margin_cm": 0},
+    {"id": "EXC_ROAD_MAIN", "kind": "spline_corridor", "source_id": "Road_Main", "margin_cm": 250},
+    {"id": "EXC_ROAD_CORE_NORTH", "kind": "spline_corridor", "source_id": "Road_Core_North", "margin_cm": 250},
+    {"id": "EXC_ROAD_CORE_SOUTH", "kind": "spline_corridor", "source_id": "Road_Core_South", "margin_cm": 250},
+    {"id": "EXC_RIVER_MAIN", "kind": "spline_corridor", "source_id": "River_Main", "margin_cm": 400},
+    {"id": "EXC_BLD_L_01", "kind": "building_footprint", "source_id": "BLD_L_01", "margin_cm": 200},
+    {"id": "EXC_BLD_M_01", "kind": "building_footprint", "source_id": "BLD_M_01", "margin_cm": 200},
+    {"id": "EXC_BLD_M_02", "kind": "building_footprint", "source_id": "BLD_M_02", "margin_cm": 200},
+    {"id": "EXC_BLD_M_03", "kind": "building_footprint", "source_id": "BLD_M_03", "margin_cm": 200},
+    {"id": "EXC_BLD_M_04", "kind": "building_footprint", "source_id": "BLD_M_04", "margin_cm": 200},
+    {"id": "EXC_BLD_M_05", "kind": "building_footprint", "source_id": "BLD_M_05", "margin_cm": 200},
+    {"id": "EXC_BLD_S_01", "kind": "building_footprint", "source_id": "BLD_S_01", "margin_cm": 200},
+    {"id": "EXC_BLD_S_02", "kind": "building_footprint", "source_id": "BLD_S_02", "margin_cm": 200},
+    {"id": "EXC_BLD_S_03", "kind": "building_footprint", "source_id": "BLD_S_03", "margin_cm": 200},
+    {"id": "EXC_BLD_S_04", "kind": "building_footprint", "source_id": "BLD_S_04", "margin_cm": 200},
+    {"id": "EXC_BLD_S_05", "kind": "building_footprint", "source_id": "BLD_S_05", "margin_cm": 200},
+    {"id": "EXC_BLD_S_06", "kind": "building_footprint", "source_id": "BLD_S_06", "margin_cm": 200},
+    {"id": "EXC_BLD_S_07", "kind": "building_footprint", "source_id": "BLD_S_07", "margin_cm": 200},
+    {"id": "EXC_BLD_S_08", "kind": "building_footprint", "source_id": "BLD_S_08", "margin_cm": 200},
+    {"id": "EXC_BLD_S_09", "kind": "building_footprint", "source_id": "BLD_S_09", "margin_cm": 200},
+    {"id": "EXC_BLD_S_10", "kind": "building_footprint", "source_id": "BLD_S_10", "margin_cm": 200}
+  ],
+  "cameras": {
+    "CAM_QS_GATE_ARRIVAL": {"location_cm": [-2500, 2500, 3200], "target_cm": [-6500, -1200, 300], "fov_degrees": 50},
+    "CAM_QS_TOWN_CORE": {"location_cm": [-5000, 3500, 4500], "target_cm": [-12500, -3000, 300], "fov_degrees": 50},
+    "CAM_QS_MAIN_BRIDGE": {"location_cm": [-9000, -1000, 4000], "target_cm": [-15500, -6500, 0], "fov_degrees": 48},
+    "CAM_QS_SOUTH_DOCK": {"location_cm": [-15000, -4000, 4200], "target_cm": [-21500, -9500, -200], "fov_degrees": 50}
+  }
+}
