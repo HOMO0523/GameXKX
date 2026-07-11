@@ -887,19 +887,38 @@ def _category_fields(asset_id: str, spec: AssetSpec, metrics: dict[str, Any]) ->
     elif category == "building":
         roof_form, roof_color, size_class, eave_height = ROOFS[asset_id]
         approved_range, target_quad_faces = BUILDING_QUAD_BUDGETS[asset_id]
+        model_source = (
+            "Blender_procedural_golden"
+            if asset_id == "BLD_QS_M_A_INN"
+            else "Blender_modular_derivative"
+        )
+        building = {
+            "model_pipeline": {
+                "approved_quad_face_range": approved_range,
+                "material_stage": "ue_after_gate1_geometry_approval",
+                "source": model_source,
+                "target_quad_faces": target_quad_faces,
+                "topology": "quad_dominant",
+            },
+            "scale_anchor": "BLD_QS_L_A_MARKET_SHOP",
+        }
+        if asset_id == "BLD_QS_M_A_INN":
+            building["golden_contract"] = {
+                "workflow": "golden_sample_gate1",
+                "blender_min_version": [4, 2, 0],
+                "deformation_percent_range": [5, 10],
+                "column_lean_degrees_range": [4, 7],
+                "window_frame_ratio_range": [0.08, 0.12],
+                "max_window_divisions": 3,
+                "max_capital_layers": 2,
+                "ground_contact_plane_z_m": 0.0,
+                "required_render_views": ["hero_3q", "front", "player_camera"],
+                "output_root": "assets/BLD_QS_M_A_INN/source/blender",
+            }
         fields.update(
             {
                 "allowed_cluster_roles": ["market_edge", "street_offset", "courtyard_offset"],
-                "building": {
-                    "model_pipeline": {
-                        "approved_quad_face_range": approved_range,
-                        "material_stage": "after_retopology",
-                        "source": "Tripo_high_precision",
-                        "target_quad_faces": target_quad_faces,
-                        "topology": "quad",
-                    },
-                    "scale_anchor": "BLD_QS_L_A_MARKET_SHOP",
-                },
+                "building": building,
                 "door_socket": "Door_Main",
                 "eave_height_m": eave_height,
                 "entrance_axis": "+Y",
@@ -1220,7 +1239,7 @@ def _style_profile(references: list[dict[str, str]]) -> dict[str, Any]:
             },
         },
         "model_pipeline": {
-            "building_source": "Tripo_high_precision",
+            "building_source": "Blender_procedural_modular",
             "building_quad_face_targets": {
                 asset_id: {
                     "approved_range": budget[0],
@@ -1228,7 +1247,7 @@ def _style_profile(references: list[dict[str, str]]) -> dict[str, Any]:
                 }
                 for asset_id, budget in BUILDING_QUAD_BUDGETS.items()
             },
-            "material_stage": "after_quad_retopology",
+            "material_stage": "ue_after_geometry_gate_approval",
         },
         "negative_prompt": COMMON_NEGATIVE,
         "palette": COMMON_PALETTE + ["warm_red_brown", "ink_green", "indigo", "teal"],

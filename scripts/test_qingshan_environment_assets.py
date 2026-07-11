@@ -1071,8 +1071,15 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                 self.assertEqual(asset["roof"]["form"], roof_form)
                 self.assertEqual(asset["roof"]["primary_color"], roof_color)
                 self.assertEqual(asset["retopo_target_quads"], target)
-                self.assertEqual(asset["building"]["model_pipeline"]["source"], "Tripo_high_precision")
-                self.assertEqual(asset["building"]["model_pipeline"]["topology"], "quad")
+                expected_source = (
+                    "Blender_procedural_golden"
+                    if asset_id == "BLD_QS_M_A_INN"
+                    else "Blender_modular_derivative"
+                )
+                self.assertEqual(asset["building"]["model_pipeline"]["source"], expected_source)
+                self.assertEqual(
+                    asset["building"]["model_pipeline"]["topology"], "quad_dominant"
+                )
                 self.assertEqual(
                     asset["building"]["model_pipeline"]["approved_quad_face_range"],
                     approved_range,
@@ -1082,7 +1089,7 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     asset["building"]["model_pipeline"]["material_stage"],
-                    "after_retopology",
+                    "ue_after_gate1_geometry_approval",
                 )
                 self.assertEqual(asset["pcg"]["placement_pattern"], "staggered_not_row")
                 volume = 1
@@ -1093,6 +1100,27 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                 roof_colors.add(roof_color)
             self.assertEqual(len(roof_families), 5)
             self.assertEqual(len(roof_colors), 5)
+
+    def test_golden_inn_declares_buildable_visual_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+            inn = assets["BLD_QS_M_A_INN"]
+
+            self.assertEqual(
+                inn["building"].get("golden_contract"),
+                {
+                    "workflow": "golden_sample_gate1",
+                    "blender_min_version": [4, 2, 0],
+                    "deformation_percent_range": [5, 10],
+                    "column_lean_degrees_range": [4, 7],
+                    "window_frame_ratio_range": [0.08, 0.12],
+                    "max_window_divisions": 3,
+                    "max_capital_layers": 2,
+                    "ground_contact_plane_z_m": 0.0,
+                    "required_render_views": ["hero_3q", "front", "player_camera"],
+                    "output_root": "assets/BLD_QS_M_A_INN/source/blender",
+                },
+            )
 
     def test_non_b0_assets_define_category_specific_required_elements_per_view(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -72,8 +72,8 @@
         "target_quad_faces": 20000
       }
     },
-    "building_source": "Tripo_high_precision",
-    "material_stage": "after_quad_retopology"
+    "building_source": "Blender_procedural_modular",
+    "material_stage": "ue_after_geometry_gate_approval"
   },
   "negative_prompt": [
     "photorealistic",

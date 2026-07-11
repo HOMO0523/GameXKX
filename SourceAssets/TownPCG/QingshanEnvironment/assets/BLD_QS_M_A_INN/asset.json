@@ -12,15 +12,44 @@
   "asset_id": "BLD_QS_M_A_INN",
   "batch": "B1",
   "building": {
+    "golden_contract": {
+      "blender_min_version": [
+        4,
+        2,
+        0
+      ],
+      "column_lean_degrees_range": [
+        4,
+        7
+      ],
+      "deformation_percent_range": [
+        5,
+        10
+      ],
+      "ground_contact_plane_z_m": 0.0,
+      "max_capital_layers": 2,
+      "max_window_divisions": 3,
+      "output_root": "assets/BLD_QS_M_A_INN/source/blender",
+      "required_render_views": [
+        "hero_3q",
+        "front",
+        "player_camera"
+      ],
+      "window_frame_ratio_range": [
+        0.08,
+        0.12
+      ],
+      "workflow": "golden_sample_gate1"
+    },
     "model_pipeline": {
       "approved_quad_face_range": [
         30000,
         35000
       ],
-      "material_stage": "after_retopology",
-      "source": "Tripo_high_precision",
+      "material_stage": "ue_after_gate1_geometry_approval",
+      "source": "Blender_procedural_golden",
       "target_quad_faces": 35000,
-      "topology": "quad"
+      "topology": "quad_dominant"
     },
     "scale_anchor": "BLD_QS_L_A_MARKET_SHOP"
   },
