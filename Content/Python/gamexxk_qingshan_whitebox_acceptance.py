@@ -18,6 +18,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 from gamexxk_qingshan_whitebox_config import load_config
 from qingshan_whitebox_acceptance import canonical_layout_hash
+from gamexxk_validate_qingshan_whitebox_b0r import _expected_proxy_transforms, _match_observed_transforms
 
 
 WHITEBOX_MAP = "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R"
@@ -128,19 +129,27 @@ def _snapshot() -> dict:
                 "level": _package_path(actor.get_level()),
             }
     instances = {key: _pcg_transforms(label) for key, label in PCG_LABELS.items()}
-    actual_layout = {
-        key: [dict(item, stable_id=f"{key}_{index:03d}") for index, item in enumerate(records)]
-        for key, records in instances.items()
+    anchor = _unique_actor(config["coordinate_reference"]["actor_label"])
+    expected_layout = _expected_proxy_transforms(config, anchor)
+    observed_layout = {
+        key: _match_observed_transforms(instances[key], expected_layout[key], key)
+        for key in PCG_LABELS
     }
+    expected_hash = canonical_layout_hash(expected_layout)["sha256"]
+    observed_hash = canonical_layout_hash(observed_layout)["sha256"]
+    if observed_hash != expected_hash:
+        raise RuntimeError(f"observed layout hash differs from expected: observed={observed_hash}, expected={expected_hash}")
     return {
         "success": True,
         "action": "snapshot",
         "current_map": _current_map(),
         "source_map_clean": SOURCE_MAP not in _dirty_maps(),
         "managed_actors": managed,
-        "pcg_instance_transforms": instances,
+        "pcg_instance_transforms": observed_layout,
         "counts": {key: len(value) for key, value in instances.items()},
-        "layout_sha256": canonical_layout_hash(actual_layout)["sha256"],
+        "layout_sha256": observed_hash,
+        "expected_layout_sha256": expected_hash,
+        "observed_layout_sha256": observed_hash,
         "cameras": {
             camera_id: {
                 "transform": _transform(_unique_actor(camera_id)),
@@ -231,9 +240,29 @@ def _camera_view(camera_id: str) -> dict:
     }
 
 
+def _topdown_location(anchor, bounds) -> list[float]:
+    rotation = anchor.get_actor_rotation()
+    scale = _vector(anchor.get_actor_scale3d())
+    values = [float(rotation.pitch), float(rotation.yaw), float(rotation.roll), *scale, *(float(value) for value in bounds)]
+    if len(bounds) != 4 or not all(math.isfinite(value) for value in values):
+        raise RuntimeError("north anchor and world bounds must be finite")
+    if abs(float(rotation.pitch)) > 0.001 or abs(float(rotation.roll)) > 0.001 or any(abs(value - 1.0) > 0.001 for value in scale):
+        raise RuntimeError("north anchor must be upright with unit scale")
+    origin = _vector(anchor.get_actor_location())
+    local_x = (float(bounds[0]) + float(bounds[1])) / 2.0
+    local_y = (float(bounds[2]) + float(bounds[3])) / 2.0
+    yaw = math.radians(float(rotation.yaw))
+    return [
+        origin[0] + local_x * math.cos(yaw) - local_y * math.sin(yaw),
+        origin[1] + local_x * math.sin(yaw) + local_y * math.cos(yaw),
+        origin[2] + 42000.0,
+    ]
+
+
 def _topdown() -> dict:
-    bounds = load_config()["world_bounds_cm"]
-    center = [(bounds[0] + bounds[1]) / 2.0, (bounds[2] + bounds[3]) / 2.0, 42000.0]
+    config = load_config()
+    anchor = _unique_actor(config["coordinate_reference"]["actor_label"])
+    center = _topdown_location(anchor, config["world_bounds_cm"])
     rotation = unreal.Rotator(pitch=-90.0, yaw=0.0, roll=0.0)
     unreal.EditorLevelLibrary.set_level_viewport_camera_info(
         unreal.Vector(x=center[0], y=center[1], z=center[2]), rotation

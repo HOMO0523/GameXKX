@@ -499,6 +499,124 @@ class QingshanWhiteboxTask6SourceTests(unittest.TestCase):
         move = view_source.index("set_level_viewport_camera_info")
         self.assertLess(verify, move)
 
+    def test_runtime_enabled_flag_is_a_validation_error(self):
+        validate_runtime = self._host_function(
+            self.validator_tree, VALIDATOR, "_validate_runtime_generation",
+            dependencies=("_runtime_disabled",),
+            namespace={"_error": lambda result, check, message, **details: result["errors"].append({"check": check, **details})},
+        )
+        result = {"errors": []}
+        component = SimpleNamespace(get_editor_property=lambda field: field == "generate_on_load")
+        self.assertFalse(validate_runtime(result, component, "PCG"))
+        self.assertEqual(result["errors"][0]["check"], "runtime_generation")
+
+    def test_player_gate_facing_angle_includes_pitch(self):
+        angle = self._host_function(
+            self.validator_tree, VALIDATOR, "_facing_angle_degrees",
+            namespace={"math": math},
+        )
+        self.assertAlmostEqual(angle(SimpleNamespace(pitch=35, yaw=0), SimpleNamespace(pitch=0, yaw=0)), 35.0)
+        self.assertAlmostEqual(angle(SimpleNamespace(pitch=0, yaw=179), SimpleNamespace(pitch=0, yaw=-179)), 2.0)
+
+    def test_preserved_snapshot_is_loaded_and_full_transforms_are_compared(self):
+        self.assertIn("QingshanTownPreservedActors.json", self.validator_source)
+        validate_source = ast.unparse(self._function(self.validator_tree, "_validate_preserved_actors"))
+        self.assertIn("_validate_preserved_transform", validate_source)
+        self.assertIn("preserved_baseline", validate_source)
+        compare = self._host_function(
+            self.validator_tree, VALIDATOR, "_baseline_transform",
+            namespace={"math": math},
+        )
+        record = {
+            "location_cm": {"x": 1, "y": 2, "z": 3},
+            "rotation_degrees": {"roll": 4, "pitch": 5, "yaw": 6},
+            "scale": {"x": 1, "y": 1, "z": 1},
+        }
+        self.assertEqual(compare(record)["rotation_degrees"], [4.0, 5.0, 6.0])
+        with self.assertRaises(ValueError):
+            compare({})
+        validate = self._host_function(
+            self.validator_tree, VALIDATOR, "_validate_preserved_transform",
+            namespace={
+                "_baseline_transform": compare,
+                "_transform_matches": lambda actual, expected, *args: actual == expected,
+                "_error": lambda result, check, message, **details: result["errors"].append(check),
+            },
+        )
+        result = {"errors": []}
+        validate(result, "Actor", {"wrong": True}, record)
+        self.assertEqual(result["errors"], ["protected_actor_transform"])
+
+    def test_observed_transforms_require_unique_stable_id_matching(self):
+        matcher = self._host_function(
+            self.validator_tree, VALIDATOR, "_match_observed_transforms",
+            namespace={"_transform_matches": lambda actual, expected: actual["value"] == expected["value"]},
+        )
+        expected = [{"stable_id": "A", "value": 1}, {"stable_id": "B", "value": 2}]
+        matched = matcher([{"value": 2}, {"value": 1}], expected, "buildings")
+        self.assertEqual([item["stable_id"] for item in matched], ["A", "B"])
+        with self.assertRaisesRegex(RuntimeError, "missing"):
+            matcher([{"value": 1}], expected, "buildings")
+        with self.assertRaisesRegex(RuntimeError, "ambiguous"):
+            matcher([{"value": 1}, {"value": 1}], [{"stable_id": "A", "value": 1}, {"stable_id": "B", "value": 1}], "buildings")
+
+    def test_validator_reports_expected_and_observed_layout_hashes(self):
+        self.assertIn('"expected_layout_sha256"', self.validator_source)
+        self.assertIn('"observed_layout_sha256"', self.validator_source)
+        self.assertIn("_match_observed_transforms", self.acceptance_source)
+        self.assertNotIn('f"{key}_{index:03d}"', self.acceptance_source)
+
+    def test_bridge_alignment_uses_actual_actor_and_closest_spline_locations(self):
+        validate_source = ast.unparse(self._function(self.validator_tree, "_validate_actual_bridge_alignment"))
+        self.assertIn("find_location_closest_to_world_location", validate_source)
+        self.assertIn("get_actor_location", validate_source)
+        self.assertIn("bridge_road_horizontal_distance_cm", validate_source)
+        class Spline:
+            def __init__(self, location): self.location = location
+            def find_location_closest_to_world_location(self, query, coordinate_space): return self.location
+        class Actor:
+            def __init__(self, location=None, component=None): self.location, self.component = location, component
+            def get_actor_location(self): return self.location
+            def get_components_by_class(self, component_class): return [self.component] if self.component else []
+        vector = lambda x, y, z=0: SimpleNamespace(x=x, y=y, z=z)
+        actors = {
+            "QS_B0R_Bridge_Main": Actor(location=vector(0, 0)),
+            "QS_B0R_Road_Main": Actor(component=Spline(vector(50, 0))),
+            "QS_B0R_River_Main": Actor(component=Spline(vector(0, 80))),
+        }
+        validate = self._host_function(
+            self.validator_tree, VALIDATOR, "_validate_actual_bridge_alignment",
+            namespace={
+                "math": math,
+                "ROAD_LABELS": {"Road_Main": "QS_B0R_Road_Main"},
+                "RIVER_LABELS": {"River_Main": "QS_B0R_River_Main"},
+                "unreal": SimpleNamespace(SplineComponent=object, SplineCoordinateSpace=SimpleNamespace(WORLD="world")),
+                "_matches": lambda values, label: [values[label]] if label in values else [],
+                "_vector": lambda value: [value.x, value.y, value.z],
+                "_error": lambda result, check, message, **details: result["errors"].append(check),
+            },
+        )
+        result = {"errors": []}
+        validate(result, actors)
+        self.assertEqual(result["bridge_road_horizontal_distance_cm"], 50.0)
+        self.assertEqual(result["bridge_river_horizontal_distance_cm"], 80.0)
+        self.assertEqual(result["errors"], [])
+
+    def test_topdown_rotates_local_bounds_center_through_nonidentity_anchor(self):
+        location = self._host_function(
+            self.acceptance_tree, ACCEPTANCE, "_topdown_location",
+            namespace={"math": math, "_vector": lambda value: [value.x, value.y, value.z]},
+        )
+        anchor = SimpleNamespace(
+            get_actor_location=lambda: SimpleNamespace(x=100.0, y=200.0, z=300.0),
+            get_actor_rotation=lambda: SimpleNamespace(pitch=0.0, yaw=90.0, roll=0.0),
+            get_actor_scale3d=lambda: SimpleNamespace(x=1.0, y=1.0, z=1.0),
+        )
+        actual = location(anchor, [-10.0, 30.0, -20.0, 20.0])
+        self.assertAlmostEqual(actual[0], 100.0)
+        self.assertAlmostEqual(actual[1], 210.0)
+        self.assertAlmostEqual(actual[2], 42300.0)
+
     def test_duplicate_reference_is_released_and_ue58_unload_outputs_are_checked(self):
         class Duplicate:
             pass

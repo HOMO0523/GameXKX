@@ -13,6 +13,7 @@ import unreal
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
+PRESERVED_SNAPSHOT_PATH = PROJECT_ROOT / "Config/GameXXK/TownPCG/QingshanTownPreservedActors.json"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -74,6 +75,7 @@ def _new_result() -> dict[str, Any]:
         "runtime_generation_disabled": False,
         "camera_count": 0, "camera_ids": [], "terrain_zone_count": 0,
         "player_gate_facing_angle_degrees": None, "layout_sha256": "",
+        "expected_layout_sha256": "", "observed_layout_sha256": "",
         "errors": [], "success": False,
     }
 
@@ -164,6 +166,16 @@ def _angle_delta_degrees(first: float, second: float) -> float:
     return abs((values[0] - values[1] + 180.0) % 360.0 - 180.0)
 
 
+def _facing_angle_degrees(first, second) -> float:
+    def forward(rotator):
+        pitch = math.radians(float(rotator.pitch))
+        yaw = math.radians(float(rotator.yaw))
+        return (math.cos(pitch) * math.cos(yaw), math.cos(pitch) * math.sin(yaw), math.sin(pitch))
+    first_forward, second_forward = forward(first), forward(second)
+    dot = sum(first_forward[index] * second_forward[index] for index in range(3))
+    return math.degrees(math.acos(max(-1.0, min(1.0, dot))))
+
+
 def _transform_matches(actual, expected, location_tolerance=1.0, rotation_tolerance=0.1, scale_tolerance=0.001) -> bool:
     try:
         actual_values = [float(value) for field in ("location_cm", "rotation_degrees", "scale") for value in actual[field]]
@@ -176,6 +188,59 @@ def _transform_matches(actual, expected, location_tolerance=1.0, rotation_tolera
         return location_ok and rotation_ok and scale_ok
     except (KeyError, TypeError, ValueError, OverflowError):
         return False
+
+
+def _baseline_transform(record) -> dict:
+    try:
+        def vector(field):
+            value = record[field]
+            result = [float(value[axis]) for axis in ("x", "y", "z")]
+            if not all(math.isfinite(item) for item in result):
+                raise ValueError(f"{field} contains non-finite values")
+            return result
+        location = vector("location_cm")
+        scale = vector("scale")
+        rotation_raw = record["rotation_degrees"]
+        rotation = [float(rotation_raw[axis]) for axis in ("roll", "pitch", "yaw")]
+        if not all(math.isfinite(item) for item in rotation):
+            raise ValueError("rotation_degrees contains non-finite values")
+        return {"location_cm": location, "rotation_degrees": rotation, "scale": scale}
+    except (KeyError, TypeError, ValueError, OverflowError) as error:
+        raise ValueError(f"malformed preserved actor transform: {error}") from error
+
+
+def _validate_preserved_transform(result, label: str, actual, baseline_record) -> None:
+    expected = _baseline_transform(baseline_record)
+    if not _transform_matches(actual, expected, 0.1, 0.01, 0.0001):
+        _error(result, "protected_actor_transform", "protected actor differs from approved source baseline", label=label, expected=expected, actual=actual)
+
+
+def _validate_preserved_actors(result, actors) -> tuple[Any, Any] | tuple[None, None]:
+    try:
+        baseline = json.loads(PRESERVED_SNAPSHOT_PATH.read_text(encoding="utf-8"))
+        if baseline.get("source_map") != SOURCE_MAP or baseline.get("captured_read_only") is not True:
+            raise ValueError("preserved baseline does not identify the approved clean source map")
+        records = baseline["actors"]
+    except Exception as error:
+        _error(result, "preserved_baseline", f"approved preserved actor baseline is missing or invalid: {error}")
+        return None, None
+    snapshot = {}
+    resolved = []
+    for label in ("QingshanInn_TownExit", "PlayerStart_QingshanInn"):
+        matches = _matches(actors, label)
+        if len(matches) != 1:
+            _error(result, "protected_actor_snapshot", "protected actor must be unique", label=label, count=len(matches))
+            resolved.append(None)
+            continue
+        actual = _actor_transform(matches[0])
+        snapshot[label] = actual
+        try:
+            _validate_preserved_transform(result, label, actual, records[label])
+        except Exception as error:
+            _error(result, "preserved_baseline", f"protected actor baseline is unavailable: {error}", label=label)
+        resolved.append(matches[0])
+    result["protected_actor_snapshot"] = snapshot
+    return tuple(resolved)
 
 
 def _horizontal_distance_to_polyline(point, points) -> float:
@@ -234,6 +299,28 @@ def _expected_proxy_transforms(config, anchor) -> dict[str, list[dict]]:
             })
         result[category] = records
     return result
+
+
+def _match_observed_transforms(observed, expected, category: str) -> list[dict]:
+    if len(observed) < len(expected):
+        raise RuntimeError(f"{category} observed transforms are missing: expected {len(expected)}, got {len(observed)}")
+    if len(observed) > len(expected):
+        raise RuntimeError(f"{category} observed transforms contain extras: expected {len(expected)}, got {len(observed)}")
+    expected_order = {record["stable_id"]: index for index, record in enumerate(expected)}
+    matched = []
+    used = set()
+    for actual in observed:
+        candidates = [record for record in expected if _transform_matches(actual, record)]
+        if len(candidates) != 1:
+            raise RuntimeError(f"{category} stable-id match is ambiguous for observed transform; candidates={[item['stable_id'] for item in candidates]}")
+        stable_id = candidates[0]["stable_id"]
+        if stable_id in used:
+            raise RuntimeError(f"{category} stable-id match is ambiguous: {stable_id} matched more than once")
+        used.add(stable_id)
+        matched.append({**actual, "stable_id": stable_id})
+    if used != set(expected_order):
+        raise RuntimeError(f"{category} stable-id match is missing expected ids: {sorted(set(expected_order) - used)}")
+    return sorted(matched, key=lambda record: expected_order[record["stable_id"]])
 
 
 def _obb_axes(plot):
@@ -308,6 +395,31 @@ def _validate_splines(result, config, actors, anchor) -> None:
     result["road_spline_count"], result["river_spline_count"] = road_count, river_count
 
 
+def _validate_actual_bridge_alignment(result, actors) -> None:
+    bridge_matches = _matches(actors, "QS_B0R_Bridge_Main")
+    road_matches = _matches(actors, ROAD_LABELS["Road_Main"])
+    river_matches = _matches(actors, RIVER_LABELS["River_Main"])
+    if not (len(bridge_matches) == len(road_matches) == len(river_matches) == 1):
+        _error(result, "bridge_alignment", "actual bridge, main-road, and river actors must each be unique")
+        return
+    road_components = road_matches[0].get_components_by_class(unreal.SplineComponent)
+    river_components = river_matches[0].get_components_by_class(unreal.SplineComponent)
+    if len(road_components) != 1 or len(river_components) != 1:
+        _error(result, "bridge_alignment", "actual main-road and river must each own one spline component")
+        return
+    bridge_location = bridge_matches[0].get_actor_location()
+    coordinate_space = unreal.SplineCoordinateSpace.WORLD
+    road_location = road_components[0].find_location_closest_to_world_location(bridge_location, coordinate_space)
+    river_location = river_components[0].find_location_closest_to_world_location(bridge_location, coordinate_space)
+    bridge_xy = _vector(bridge_location)
+    road_xy = _vector(road_location)
+    river_xy = _vector(river_location)
+    result["bridge_road_horizontal_distance_cm"] = math.hypot(bridge_xy[0] - road_xy[0], bridge_xy[1] - road_xy[1])
+    result["bridge_river_horizontal_distance_cm"] = math.hypot(bridge_xy[0] - river_xy[0], bridge_xy[1] - river_xy[1])
+    if result["bridge_road_horizontal_distance_cm"] > 100.0 or result["bridge_river_horizontal_distance_cm"] > 100.0:
+        _error(result, "bridge_alignment", "actual bridge must be within 100cm horizontally of actual road and river splines")
+
+
 def _runtime_disabled(component) -> bool:
     values = []
     for field in ("generate_on_load", "generate_on_drop", "regenerate_in_editor"):
@@ -318,8 +430,16 @@ def _runtime_disabled(component) -> bool:
     return not any(values)
 
 
+def _validate_runtime_generation(result, component, label: str) -> bool:
+    disabled = _runtime_disabled(component)
+    if not disabled:
+        _error(result, "runtime_generation", "runtime/editor automatic generation must be disabled", label=label)
+    return disabled
+
+
 def _validate_pcg(result, config, actors, current_level, anchor) -> None:
     expected = _expected_proxy_transforms(config, anchor)
+    observed_layout = {}
     all_ok = True
     for category, label in PCG_LABELS.items():
         matches = _matches(actors, label)
@@ -335,7 +455,7 @@ def _validate_pcg(result, config, actors, current_level, anchor) -> None:
         graph_path = _package_path(component.get_graph())
         if graph_path != GRAPH_PATHS[category]:
             _error(result, "pcg_graph", "PCG component graph path differs", label=label, actual=graph_path)
-        disabled = _runtime_disabled(component)
+        disabled = _validate_runtime_generation(result, component, label)
         all_ok = all_ok and disabled
         try:
             status = json.loads(unreal.GameXXKTownPCGAutomationLibrary.get_town_pcg_status(label))
@@ -344,14 +464,27 @@ def _validate_pcg(result, config, actors, current_level, anchor) -> None:
         except Exception as error:
             _error(result, "pcg_status", f"could not read PCG status: {error}", label=label)
         actual = []
-        for ism in actor.get_components_by_class(unreal.InstancedStaticMeshComponent):
-            if PCG_GENERATED_COMPONENT_TAG in _tags(ism):
-                actual.extend(_instance_transform(ism.get_instance_transform(index, world_space=True)) for index in range(int(ism.get_instance_count())))
+        generated_components = [
+            ism for ism in actor.get_components_by_class(unreal.InstancedStaticMeshComponent)
+            if PCG_GENERATED_COMPONENT_TAG in _tags(ism)
+        ]
+        if len(generated_components) != 1:
+            _error(result, "generated_ism_ownership", "each managed PCG actor must own exactly one generated ISM component", label=label, count=len(generated_components))
+        for ism in generated_components:
+            actual.extend(_instance_transform(ism.get_instance_transform(index, world_space=True)) for index in range(int(ism.get_instance_count())))
         result[f"{category[:-1] if category.endswith('s') else category}_instance_count"] = len(actual)
         wanted = expected[category]
-        if len(actual) != len(wanted) or any(not _transform_matches(item, wanted[index]) for index, item in enumerate(actual)):
-            _error(result, "pcg_instance_transforms", "generated instance transforms differ from deterministic output", category=category, actual_count=len(actual), expected_count=len(wanted))
+        try:
+            observed_layout[category] = _match_observed_transforms(actual, wanted, category)
+        except RuntimeError as error:
+            _error(result, "pcg_instance_transforms", str(error), category=category, actual_count=len(actual), expected_count=len(wanted))
     result["runtime_generation_disabled"] = all_ok
+    result["expected_layout_sha256"] = canonical_layout_hash(expected)["sha256"]
+    if set(observed_layout) == set(expected):
+        result["observed_layout_sha256"] = canonical_layout_hash(observed_layout)["sha256"]
+        result["layout_sha256"] = result["observed_layout_sha256"]
+        if result["observed_layout_sha256"] != result["expected_layout_sha256"]:
+            _error(result, "layout_sha256", "observed PCG layout hash differs from deterministic expected layout", expected=result["expected_layout_sha256"], observed=result["observed_layout_sha256"])
 
 
 def _validate_fixed_transforms(result, config, actors, anchor) -> None:
@@ -412,26 +545,15 @@ def validate_whitebox() -> dict[str, Any]:
                 _error(result, "managed_ownership", "required managed object must be tag-owned", label=_label(actor))
             if MANAGED_TAG in tags and _package_path(actor.get_level()) != current_level:
                 _error(result, "managed_ownership", "managed object must be in the current level", label=_label(actor))
-        gate_label = config["coordinate_reference"]["actor_label"]
-        gate_matches = _matches(actors, gate_label)
-        player_matches = _matches(actors, "PlayerStart_QingshanInn")
-        if len(gate_matches) != 1 or len(player_matches) != 1:
-            _error(result, "protected_actor_snapshot", "gate and duplicated PlayerStart must each be unique")
+        gate, player = _validate_preserved_actors(result, actors)
+        if gate is None or player is None:
             return result
-        gate, player = gate_matches[0], player_matches[0]
-        result["protected_actor_snapshot"] = {gate_label: _actor_transform(gate), "PlayerStart_QingshanInn": _actor_transform(player)}
-        facing = _angle_delta_degrees(player.get_actor_rotation().yaw, gate.get_actor_rotation().yaw)
+        facing = _facing_angle_degrees(player.get_actor_rotation(), gate.get_actor_rotation())
         result["player_gate_facing_angle_degrees"] = facing
         if facing < 35.0:
             _error(result, "player_gate_facing", "duplicated PlayerStart facing must differ from gate by at least 35 degrees", angle=facing)
         _validate_splines(result, config, actors, gate)
-        bridge = next(item for item in config["fixed_anchors"] if item["id"] == "MainBridgeAnchor")["location_cm"]
-        road = next(item for item in config["road_splines"] if item["id"] == "Road_Main")["points_cm"]
-        river = config["river_splines"][0]["points_cm"]
-        result["bridge_road_horizontal_distance_cm"] = _horizontal_distance_to_polyline(bridge, road)
-        result["bridge_river_horizontal_distance_cm"] = _horizontal_distance_to_polyline(bridge, river)
-        if result["bridge_road_horizontal_distance_cm"] > 100 or result["bridge_river_horizontal_distance_cm"] > 100:
-            _error(result, "bridge_alignment", "bridge must be within 100cm horizontally of road and river")
+        _validate_actual_bridge_alignment(result, actors)
         _validate_geometry(result, config)
         _validate_pcg(result, config, actors, current_level, gate)
         _validate_fixed_transforms(result, config, actors, gate)
@@ -443,7 +565,6 @@ def validate_whitebox() -> dict[str, Any]:
         if result["road_spline_count"] != 3 or result["river_spline_count"] != 1: _error(result, "spline_counts", "requires exactly 3 roads and 1 river")
         if result["camera_count"] != 4 or set(result["camera_ids"]) != set(CAMERA_IDS): _error(result, "camera_count", "requires exact four camera IDs")
         if result["terrain_zone_count"] != 4: _error(result, "terrain_count", "requires exactly four terrain zones")
-        result["layout_sha256"] = canonical_layout_hash(generate_seeded_proxy_transforms(config))["sha256"]
         if SOURCE_MAP in _dirty_maps(): _error(result, "source_map_clean", "source map is dirty")
     except Exception as error:
         _error(result, "exception", str(error), exception_type=type(error).__name__)
