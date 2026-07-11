@@ -217,6 +217,14 @@
       "version": "v002"
     }
   ],
+  "review_notes": {
+    "production_guidance": [
+      "exact roads rivers and terrain follow town_layout_contract"
+    ],
+    "visual_risks": [
+      "shore pebbles tree clumps and light horizontal rows are not PCG density"
+    ]
+  },
   "schema_version": 1,
   "silhouette_keywords": [
     "right_gate",

@@ -907,6 +907,44 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
             for asset_id in EXPECTED_QINGSHAN_CATALOG["B0"]:
                 self.assertEqual(assets[asset_id]["generation"]["prompt"], _planned_b0_prompt(asset_id))
 
+    def test_builder_records_b0_visual_risks_without_unlocking_downstream_batches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+            expected_fragments = {
+                "REF_QS_ENV_STYLE_LOCK": (
+                    "bridge residual stone joints",
+                    "mountain cun and fragmented ground brushwork must not transfer",
+                    "single assets follow detail_budget",
+                ),
+                "REF_QS_SCALE_LINEUP": (
+                    "qualitative hierarchy only",
+                    "pixel scale compressed",
+                    "production dimensions follow target_dimensions_m",
+                    "after B0 approval and before B1 unlock promote downstream scale reference v001 to v003",
+                ),
+                "REF_QS_CAMERA_ROUTE": (
+                    "shore pebbles tree clumps and light horizontal rows are not PCG density",
+                    "exact roads rivers and terrain follow town_layout_contract",
+                ),
+                "REF_QS_SURFACE_PALETTE": (
+                    "five-zone transitions and broad rock color masses are not final tileable textures",
+                    "single assets keep converging and forbid micro texture",
+                ),
+            }
+            for asset_id, fragments in expected_fragments.items():
+                notes = assets[asset_id]["review_notes"]
+                combined = notes["visual_risks"] + notes["production_guidance"]
+                for fragment in fragments:
+                    self.assertIn(fragment, combined)
+
+            for batch in ("B1", "B2", "B3"):
+                for asset_id in EXPECTED_QINGSHAN_CATALOG[batch]:
+                    self.assertIs(assets[asset_id]["workflow_gates"]["batch_unlocked"], False)
+                    self.assertIs(
+                        assets[asset_id]["workflow_gates"]["concept_generation_allowed"],
+                        False,
+                    )
+
     def test_camera_route_uses_latest_style_and_scale_boards_without_raw_character_scale(self):
         with tempfile.TemporaryDirectory() as directory:
             _root, _builder, _summary, assets = self._build(directory)
@@ -2002,7 +2040,21 @@ class OutputRegistrationTests(unittest.TestCase):
 
 
 class BatchReportTests(unittest.TestCase):
-    def test_b0_report_is_derived_from_registered_json(self):
+    def test_review_notes_are_optional_but_strict(self):
+        data = valid_building()
+        data["review_notes"] = {
+            "production_guidance": ["production dimensions follow target_dimensions_m"],
+            "visual_risks": ["qualitative hierarchy only"],
+        }
+
+        validate_asset(data)
+
+        invalid = copy.deepcopy(data)
+        invalid["review_notes"]["report_only_escape_hatch"] = ["forbidden"]
+        with self.assertRaisesRegex(CatalogError, "review_notes.*unknown fields"):
+            validate_asset(invalid)
+
+    def test_b0_report_is_derived_from_current_registered_json_and_preserved_revisions(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             assets = [
@@ -2010,33 +2062,130 @@ class BatchReportTests(unittest.TestCase):
                 for index in range(4)
             ]
             _write_manifest(root, [item["asset_id"] for item in assets])
-            expected: dict[str, tuple[str, str]] = {}
+            expected: dict[str, list[tuple[str, str, str]]] = {}
+            review_notes = [
+                {
+                    "visual_risks": [
+                        "bridge residual stone joints",
+                        "mountain cun and fragmented ground brushwork must not transfer",
+                    ],
+                    "production_guidance": ["single assets follow detail_budget"],
+                },
+                {
+                    "visual_risks": ["qualitative hierarchy only", "pixel scale compressed"],
+                    "production_guidance": [
+                        "production dimensions follow target_dimensions_m",
+                        "after B0 approval and before B1 unlock promote downstream scale reference v001 to v003",
+                    ],
+                },
+                {
+                    "visual_risks": [
+                        "shore pebbles tree clumps and light horizontal rows are not PCG density",
+                    ],
+                    "production_guidance": [
+                        "exact roads rivers and terrain follow town_layout_contract",
+                    ],
+                },
+                {
+                    "visual_risks": [
+                        "five-zone transitions and broad rock color masses are not final tileable textures",
+                    ],
+                    "production_guidance": [
+                        "single assets keep converging and forbid micro texture",
+                    ],
+                },
+            ]
+            for asset, notes in zip(assets, review_notes):
+                asset["review_notes"] = notes
+            surface_rule = (
+                "surface uses broad flat swatches without cobble tessellation, pebble noise, "
+                "or other micro-texture"
+            )
+            previous_rule = assets[3]["detail_budget"]["object_rule"]
+            assets[3]["detail_budget"]["object_rule"] = surface_rule
+            assets[3]["detail_budget"]["prompt_instruction"] = assets[3]["detail_budget"][
+                "prompt_instruction"
+            ].replace(previous_rule, surface_rule)
             for asset in assets:
                 _write_asset(root, asset)
-            for index, asset in enumerate(assets):
-                image_path = root / "style" / "boards" / f"board-{index}.png"
-                image_path.parent.mkdir(parents=True, exist_ok=True)
-                payload = f"board {index}".encode("utf-8")
-                image_path.write_bytes(payload)
-                register_output(root, asset["asset_id"], "board", "v001", image_path)
-                expected[asset["asset_id"]] = (
-                    f"style/boards/board-{index}.png",
-                    hashlib.sha256(payload).hexdigest(),
-                )
+            revision_counts = (3, 3, 2, 2)
+            for index, (asset, revision_count) in enumerate(zip(assets, revision_counts)):
+                expected[asset["asset_id"]] = []
+                for revision in range(1, revision_count + 1):
+                    version = f"v{revision:03d}"
+                    relative_path = (
+                        f"style/boards/{asset['asset_id']}__board__{version}.png"
+                    )
+                    image_path = root / relative_path
+                    image_path.parent.mkdir(parents=True, exist_ok=True)
+                    payload = f"board {index} revision {revision}".encode("utf-8")
+                    image_path.write_bytes(payload)
+                    trace = {}
+                    if revision > 1:
+                        previous_path = expected[asset["asset_id"]][-1][1]
+                        trace = {
+                            "generation_input_paths": [previous_path],
+                            "generation_reference_lineage": [previous_path],
+                            "generation_prompt": f"targeted revision {revision}",
+                        }
+                    register_output(
+                        root,
+                        asset["asset_id"],
+                        "board",
+                        version,
+                        image_path,
+                        **trace,
+                    )
+                    expected[asset["asset_id"]].append(
+                        (version, relative_path, hashlib.sha256(payload).hexdigest())
+                    )
             report_path = root / "batch0.md"
 
             write_batch_report(root, "B0", report_path)
 
             report = report_path.read_text(encoding="utf-8")
-            for asset_id, (output_path, digest) in expected.items():
+            for asset_id, revisions in expected.items():
                 self.assertIn(asset_id, report)
-                self.assertIn(output_path, report)
-                self.assertIn(digest, report)
-            self.assertEqual(report.count("generated_pending_review"), 4)
-            self.assertEqual(report.count("calls used 1/3"), 4)
+                current_version, current_path, current_digest = revisions[-1]
+                self.assertIn(current_version, report)
+                self.assertIn(current_path, report)
+                self.assertIn(current_digest, report)
+                for _version, preserved_path, preserved_digest in revisions[:-1]:
+                    self.assertIn(preserved_path, report)
+                    self.assertIn(preserved_digest, report)
+            self.assertEqual(report.count("| generated_pending_review |"), 4)
+            self.assertEqual(report.count("| REF_QS_REPORT_"), 4)
+            self.assertEqual(report.count("calls used 3/3"), 2)
+            self.assertEqual(report.count("calls used 2/3"), 2)
+            self.assertIn("B0 calls used: **10/12**", report)
+            self.assertIn("B0 state: **generated_pending_review**", report)
+            self.assertIn("B1: `locked_pending_B0_approval`", report)
+            self.assertIn("B2: `locked_pending_B1_approval`", report)
+            self.assertIn("B3: `locked_pending_B2_approval`", report)
+            self.assertIn("style_locked=false", report)
+            self.assertIn("reference_approved=false", report)
             self.assertIn("tripo_allowed=false", report)
             self.assertIn("model_or_sprite_production_allowed=false", report)
             self.assertIn("ue_import_allowed=false", report)
+            self.assertIn("128px", report)
+            self.assertIn("<=3 primary masses", report)
+            self.assertIn("<=5 secondary line groups", report)
+            self.assertIn("2 main values + 1 shadow", report)
+            for forbidden in (
+                "individual roof tiles",
+                "repeated window lattices",
+                "leaf-by-leaf foliage",
+                "stone or pebble tessellation",
+                "tiny prop piles",
+            ):
+                self.assertIn(forbidden, report)
+            for asset in assets:
+                for note in (
+                    asset["review_notes"]["visual_risks"]
+                    + asset["review_notes"]["production_guidance"]
+                ):
+                    self.assertIn(note, report)
+            self.assertNotIn(str(root), report)
 
     def test_report_rejects_manifest_asset_id_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -2129,6 +2278,22 @@ class SchemaContractTests(unittest.TestCase):
         self.assertEqual(detail_budget["properties"]["main_value_bands"]["const"], 2)
         self.assertEqual(detail_budget["properties"]["shadow_accent_bands"]["const"], 1)
         reference_item = schema["properties"]["reference_images"]["items"]
+
+        review_notes = schema["properties"]["review_notes"]
+        self.assertNotIn("review_notes", schema["required"])
+        self.assertFalse(review_notes["additionalProperties"])
+        self.assertEqual(
+            set(review_notes["required"]),
+            {"visual_risks", "production_guidance"},
+        )
+        self.assertEqual(
+            review_notes["properties"]["visual_risks"]["$ref"],
+            "#/$defs/nonEmptyStringArray",
+        )
+        self.assertEqual(
+            review_notes["properties"]["production_guidance"]["$ref"],
+            "#/$defs/nonEmptyStringArray",
+        )
         for field in (
             "generation_input_paths",
             "generation_reference_lineage",

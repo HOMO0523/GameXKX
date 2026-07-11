@@ -153,6 +153,22 @@
         }
       }
     },
+    "review_notes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visual_risks",
+        "production_guidance"
+      ],
+      "properties": {
+        "visual_risks": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        },
+        "production_guidance": {
+          "$ref": "#/$defs/nonEmptyStringArray"
+        }
+      }
+    },
     "source_provenance": {
       "type": "object",
       "minProperties": 1

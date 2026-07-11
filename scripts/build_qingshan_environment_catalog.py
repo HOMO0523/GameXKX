@@ -138,6 +138,39 @@ STYLE_REFERENCE_ROLES = {
     "layout_dense_foliage.jpg": "layout_density_only",
 }
 
+B0_REVIEW_NOTES = {
+    "REF_QS_ENV_STYLE_LOCK": {
+        "visual_risks": [
+            "bridge residual stone joints",
+            "mountain cun and fragmented ground brushwork must not transfer",
+        ],
+        "production_guidance": ["single assets follow detail_budget"],
+    },
+    "REF_QS_SCALE_LINEUP": {
+        "visual_risks": ["qualitative hierarchy only", "pixel scale compressed"],
+        "production_guidance": [
+            "production dimensions follow target_dimensions_m",
+            "after B0 approval and before B1 unlock promote downstream scale reference v001 to v003",
+        ],
+    },
+    "REF_QS_CAMERA_ROUTE": {
+        "visual_risks": [
+            "shore pebbles tree clumps and light horizontal rows are not PCG density",
+        ],
+        "production_guidance": [
+            "exact roads rivers and terrain follow town_layout_contract",
+        ],
+    },
+    "REF_QS_SURFACE_PALETTE": {
+        "visual_risks": [
+            "five-zone transitions and broad rock color masses are not final tileable textures",
+        ],
+        "production_guidance": [
+            "single assets keep converging and forbid micro texture",
+        ],
+    },
+}
+
 
 class CatalogBuildError(RuntimeError):
     """Raised when catalog source facts are missing or generated JSON drifts."""
@@ -1108,6 +1141,8 @@ def _make_asset(
     }
     if is_registry:
         asset["source_provenance"]["source_metrics"] = "source_metrics.json"
+    if is_b0:
+        asset["review_notes"] = B0_REVIEW_NOTES[asset_id]
     asset.update(_category_fields(asset_id, spec, metrics))
     _overlay_registered_output(root, asset)
     try:

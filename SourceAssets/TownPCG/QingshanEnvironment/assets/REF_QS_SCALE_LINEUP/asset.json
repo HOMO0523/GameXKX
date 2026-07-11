@@ -205,6 +205,16 @@
       "version": "v003"
     }
   ],
+  "review_notes": {
+    "production_guidance": [
+      "production dimensions follow target_dimensions_m",
+      "after B0 approval and before B1 unlock promote downstream scale reference v001 to v003"
+    ],
+    "visual_risks": [
+      "qualitative hierarchy only",
+      "pixel scale compressed"
+    ]
+  },
   "schema_version": 1,
   "silhouette_keywords": [
     "consistent_scale",

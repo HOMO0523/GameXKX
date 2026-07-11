@@ -131,6 +131,7 @@ REFERENCE_IMAGE_FIELDS = REFERENCE_IMAGE_REQUIRED_FIELDS + (
     "generation_prompt",
 )
 OPTIONAL_TOP_LEVEL_FIELDS = (
+    "review_notes",
     "building",
     "landmark",
     "environment",
@@ -174,6 +175,7 @@ PRODUCTION_GATES = (
     "model_or_sprite_production_allowed",
     "ue_import_allowed",
 )
+REVIEW_NOTE_FIELDS = ("visual_risks", "production_guidance")
 
 
 def _require_mapping(value: Any, field: str) -> dict:
@@ -455,6 +457,12 @@ def _validate_detail_budget(detail_budget: Any) -> dict:
 
 
 def _validate_optional_top_level_fields(data: dict) -> None:
+    if "review_notes" in data:
+        notes = _require_mapping(data["review_notes"], "review_notes")
+        _missing_fields(notes, REVIEW_NOTE_FIELDS, "review_notes")
+        _reject_unknown_fields(notes, REVIEW_NOTE_FIELDS, "review_notes")
+        for field in REVIEW_NOTE_FIELDS:
+            _require_string_array(notes[field], f"review_notes.{field}")
     for field in (
         "building",
         "landmark",
@@ -1112,28 +1120,128 @@ def _verified_reference_hash(root: Path, reference: dict) -> str:
     return digest
 
 
+def _markdown_catalog_link(relative_path: str) -> str:
+    return (
+        f"[{relative_path}]"
+        f"(../../SourceAssets/TownPCG/QingshanEnvironment/{relative_path})"
+    )
+
+
+def _preserved_revisions(root: Path, reference: dict) -> list[tuple[str, str, str]]:
+    current_version = reference["version"]
+    current_path = PurePosixPath(reference["output_path"])
+    version_marker = f"__{current_version}"
+    stem = current_path.stem
+    if not stem.endswith(version_marker) or not current_path.suffix:
+        raise CatalogError(
+            "registered evidence filename must end with its version before the extension"
+        )
+    revision_stem = stem[: -len(version_marker)]
+    preserved: list[tuple[str, str, str]] = []
+    for version in ALLOWED_VERSIONS:
+        if version == current_version:
+            continue
+        candidate_relative = (
+            current_path.parent / f"{revision_stem}__{version}{current_path.suffix}"
+        )
+        candidate = root / Path(candidate_relative.as_posix())
+        if not candidate.is_file():
+            continue
+        resolved, relative_path = _catalog_output_for_registration(root, candidate)
+        digest = hashlib.sha256(resolved.read_bytes()).hexdigest()
+        preserved.append((version, relative_path, digest))
+    return preserved
+
+
+def _detail_budget_report_line(assets: list[dict]) -> str:
+    budgets = [asset["detail_budget"] for asset in assets]
+    shared_fields = (
+        "thumbnail_readability_px",
+        "max_primary_masses",
+        "max_secondary_internal_stroke_groups",
+        "main_value_bands",
+        "shadow_accent_bands",
+        "forbidden_micro_detail",
+    )
+    shared_contract = {field: budgets[0][field] for field in shared_fields}
+    if any(
+        {field: budget[field] for field in shared_fields} != shared_contract
+        for budget in budgets[1:]
+    ):
+        raise CatalogError("batch report requires a consistent shared detail budget")
+    budget = budgets[0]
+    forbidden_labels = {
+        "individual_roof_tiles": "individual roof tiles",
+        "repeated_window_lattices": "repeated window lattices",
+        "leaf_by_leaf_foliage": "leaf-by-leaf foliage",
+        "stone_or_pebble_tessellation": "stone or pebble tessellation",
+        "tiny_prop_piles": "tiny prop piles",
+    }
+    forbidden = ", ".join(
+        forbidden_labels[item] for item in budget["forbidden_micro_detail"]
+    )
+    return (
+        f"{budget['thumbnail_readability_px']}px; "
+        f"<={budget['max_primary_masses']} primary masses; "
+        f"<={budget['max_secondary_internal_stroke_groups']} secondary line groups; "
+        f"{budget['main_value_bands']} main values + "
+        f"{budget['shadow_accent_bands']} shadow; no {forbidden}."
+    )
+
+
 def write_batch_report(root: Path, batch: str, output: Path) -> None:
     """Write a deterministic Markdown report from registered catalog evidence."""
 
     root = Path(root)
     output = Path(output)
     assets = _report_assets(root, batch)
+    manifest = _load_json(root / "manifest.json", "manifest")
+    derived = derive_manifest_generation(
+        [data for _asset_id, _path, data in _manifest_records(root)]
+    )
+    for field, expected in derived.items():
+        if manifest.get(field) != expected:
+            raise CatalogError(
+                f"manifest {field} must match registered asset evidence: "
+                f"expected {expected!r}, got {manifest.get(field)!r}"
+            )
     rows = []
     for asset in assets:
         generation = asset["generation"]
         gates = asset["workflow_gates"]
-        gate_summary = "; ".join(f"{gate}={str(gates[gate]).lower()}" for gate in PRODUCTION_GATES)
+        gate_summary = "; ".join(
+            f"{gate}={str(gates[gate]).lower()}"
+            for gate in ("style_locked", "reference_approved", *PRODUCTION_GATES)
+        )
         for reference in asset["reference_images"]:
             digest = _verified_reference_hash(root, reference)
+            preserved = _preserved_revisions(root, reference)
+            preserved_summary = "<br>".join(
+                f"{version}: {_markdown_catalog_link(path)} (`{revision_digest}`)"
+                for version, path, revision_digest in preserved
+            ) or "none"
+            notes = asset.get("review_notes", {})
+            note_summary = "<br>".join(
+                [
+                    *(f"Risk: {note}" for note in notes.get("visual_risks", [])),
+                    *(
+                        f"Guidance: {note}"
+                        for note in notes.get("production_guidance", [])
+                    ),
+                ]
+            ) or "none"
             rows.append(
-                "| {asset_id} | {kind} | {path} | `{sha}` | {approval} | calls used {used}/{maximum} | {gates} |".format(
+                "| {asset_id} | {kind} | {version} | {path} | `{sha}` | {approval} | calls used {used}/{maximum} | {preserved} | {notes} | {gates} |".format(
                     asset_id=asset["asset_id"],
                     kind=reference["kind"],
-                    path=reference["output_path"],
+                    version=reference["version"],
+                    path=_markdown_catalog_link(reference["output_path"]),
                     sha=digest,
                     approval=reference["approval_state"],
                     used=generation["generation_calls_used"],
                     maximum=generation["max_generation_calls"],
+                    preserved=preserved_summary,
+                    notes=note_summary,
                     gates=gate_summary,
                 )
             )
@@ -1143,8 +1251,20 @@ def write_batch_report(root: Path, batch: str, output: Path) -> None:
         "",
         "Generated deterministically from registered asset JSON and verified output files.",
         "",
-        "| Asset ID | View | Output path | SHA-256 | Approval state | Generation budget | Production gates |",
-        "|---|---|---|---|---|---|---|",
+        f"- {batch} calls used: **{manifest['generation_calls_used'][batch]}/{BATCH_CALL_CAPS[batch]}**",
+        f"- {batch} state: **{manifest['batch_state'][batch]}**",
+        f"- B1: `{manifest['batch_state']['B1']}`",
+        f"- B2: `{manifest['batch_state']['B2']}`",
+        f"- B3: `{manifest['batch_state']['B3']}`",
+        "",
+        "## Single-asset simplification rule",
+        "",
+        _detail_budget_report_line(assets),
+        "",
+        "## Registered boards",
+        "",
+        "| Asset ID | View | Current version | Current output path | Current SHA-256 | Approval state | Generation budget | Preserved revisions | Review notes | Approval and production gates |",
+        "|---|---|---|---|---|---|---|---|---|---|",
         *rows,
         "",
     ]

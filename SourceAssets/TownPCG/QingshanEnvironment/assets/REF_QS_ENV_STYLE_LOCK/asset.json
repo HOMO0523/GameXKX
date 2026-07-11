@@ -213,6 +213,15 @@
       "version": "v003"
     }
   ],
+  "review_notes": {
+    "production_guidance": [
+      "single assets follow detail_budget"
+    ],
+    "visual_risks": [
+      "bridge residual stone joints",
+      "mountain cun and fragmented ground brushwork must not transfer"
+    ]
+  },
   "schema_version": 1,
   "silhouette_keywords": [
     "ink_cartoon_town",

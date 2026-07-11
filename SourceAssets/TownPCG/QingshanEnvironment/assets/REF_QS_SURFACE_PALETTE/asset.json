@@ -218,6 +218,14 @@
       "version": "v002"
     }
   ],
+  "review_notes": {
+    "production_guidance": [
+      "single assets keep converging and forbid micro texture"
+    ],
+    "visual_risks": [
+      "five-zone transitions and broad rock color masses are not final tileable textures"
+    ]
+  },
   "schema_version": 1,
   "silhouette_keywords": [
     "surface_transitions",
