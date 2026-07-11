@@ -1,0 +1,3340 @@
+{
+  "schema_version": 1,
+  "revision_id": "B1",
+  "seed": 20260711,
+  "coordinate_space": "anchor_local",
+  "coordinate_reference_actor": "QingshanInn_TownExit",
+  "source_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R",
+  "dress_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+  "asset_root": "/Game/GameXXK/Environment/TownPCG/B1",
+  "runtime_generation": false,
+  "expected_base_live_layout_sha256": "15d1b585739a2a180a6022974ec0c365144cbc29511c2426fc0058f1fd43dfbd",
+  "protected_files": {
+    "Content/GameXXK/Maps/L_QingshanInn.umap": "a3639b38623d00e8ad3e5a610a3e1695a47b38c1d1e6fedb8115e1e9fdf5c8a8",
+    "Content/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R.umap": "74292340df0cea97d99e905dd193a921038326bfec2f3ce034a5e9f70bd3f107",
+    "Config/GameXXK/TownPCG/QingshanWhiteboxB0R.json": "3f231876d0083bffe28ee555b60af1a20b0966edbde9dc4bb6f2647e920eadb1"
+  },
+  "landscape": {
+    "label": "QS_B1_Landscape",
+    "resolution": [
+      505,
+      505
+    ],
+    "quads_per_section": 63,
+    "sections_per_component": 2,
+    "component_count": [
+      4,
+      4
+    ],
+    "scale_cm": [
+      100,
+      100,
+      100
+    ],
+    "center_local_cm": [
+      -15500,
+      0,
+      0
+    ],
+    "origin_local_cm": [
+      -40700,
+      -25200,
+      0
+    ],
+    "edit_layer": "QR_B1_Roads",
+    "heightmap_source": "Content/ArtSource/Qingshan/B1/H_QS_B1_Terrain_505.png",
+    "ground_material": "/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Ground",
+    "height_encoding": {
+      "value_type": "uint16",
+      "formula": "uint16=clamp(round(32768+elevation_cm*128/scale_z),0,65535)"
+    }
+  },
+  "quickroad": {
+    "road_material": "/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Road_Earth",
+    "combined_tag_expression": "QS_B1_Main|QS_B1_CoreNorth|QS_B1_CoreSouth",
+    "networks": [
+      {
+        "id": "QRN_B1_MAIN",
+        "tag": "QS_B1_Main",
+        "source_spline_id": "Road_Main",
+        "width_cm": 800
+      },
+      {
+        "id": "QRN_B1_CORE_NORTH",
+        "tag": "QS_B1_CoreNorth",
+        "source_spline_id": "Road_Core_North",
+        "width_cm": 450
+      },
+      {
+        "id": "QRN_B1_CORE_SOUTH",
+        "tag": "QS_B1_CoreSouth",
+        "source_spline_id": "Road_Core_South",
+        "width_cm": 400
+      }
+    ],
+    "ribbon": {
+      "mesh_sample_distance_cm": 300,
+      "width_subdivisions": 3,
+      "curvature_threshold_degrees": 8,
+      "max_curvature_subdivisions": 2
+    },
+    "landscape_influence": {
+      "falloff_cm": 250,
+      "blend": 0.9,
+      "vertical_offset_cm": -5,
+      "smooth_iterations": 4,
+      "smooth_strength": 0.6
+    },
+    "intersection": {
+      "sample_distance_cm": 500,
+      "border_offset_cm": 100,
+      "corner_radius_cm": 50,
+      "branch_width_scale": 1.2
+    },
+    "bake": {
+      "split_length_cm": 5000
+    }
+  },
+  "building_materials": {
+    "shared_slot_materials": {
+      "Wall": "/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Wall_Warm",
+      "Timber": "/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Timber_Dark",
+      "WindowPaper": "/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Window_Paper"
+    },
+    "roof_palette_materials": {
+      "orange": "/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Roof_Orange",
+      "teal": "/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Roof_Teal",
+      "indigo": "/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Roof_Indigo",
+      "ochre": "/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Roof_Ochre"
+    }
+  },
+  "asset_catalog": {
+    "building_meshes": {
+      "gable_shop": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_GableShop",
+      "tall_house": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_TallHouse",
+      "wide_house": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_WideHouse",
+      "courtyard_wing": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_CourtyardWing",
+      "bridge_house": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_BridgeHouse",
+      "dock_shed": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_DockShed"
+    },
+    "prop_meshes": {
+      "sign": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Sign",
+      "lantern": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Lantern",
+      "banner": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Banner",
+      "fence": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Fence",
+      "crate": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Crate",
+      "stall": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Stall",
+      "well": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Well",
+      "cart": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Cart",
+      "rock": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Rock",
+      "dock_post": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_DockPost"
+    },
+    "plant_card_mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_PlantCard",
+    "plant_flipbook": "/Game/GameXXK/Environment/TownPCG/B1/Paper2D/FB_QS_B1_PlantSway",
+    "mountain_mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Mountain"
+  },
+  "collision_policy": {
+    "sign": true,
+    "lantern": false,
+    "banner": false,
+    "fence": true,
+    "crate": true,
+    "stall": true,
+    "well": true,
+    "cart": true,
+    "rock": true,
+    "dock_post": true,
+    "plant_card": false,
+    "mountain": false
+  },
+  "caps": {
+    "buildings": 26,
+    "props": 72,
+    "vegetation": 100,
+    "animated_vegetation": 30,
+    "mountains": 24,
+    "crossings": 2
+  },
+  "base_plot_assignments": [
+    {
+      "id": "BLD_L_01",
+      "archetype_id": "courtyard_wing",
+      "roof_palette": "orange"
+    },
+    {
+      "id": "BLD_M_01",
+      "archetype_id": "gable_shop",
+      "roof_palette": "teal"
+    },
+    {
+      "id": "BLD_M_02",
+      "archetype_id": "tall_house",
+      "roof_palette": "indigo"
+    },
+    {
+      "id": "BLD_M_03",
+      "archetype_id": "bridge_house",
+      "roof_palette": "ochre"
+    },
+    {
+      "id": "BLD_M_04",
+      "archetype_id": "dock_shed",
+      "roof_palette": "teal"
+    },
+    {
+      "id": "BLD_M_05",
+      "archetype_id": "wide_house",
+      "roof_palette": "orange"
+    },
+    {
+      "id": "BLD_S_01",
+      "archetype_id": "gable_shop",
+      "roof_palette": "ochre"
+    },
+    {
+      "id": "BLD_S_02",
+      "archetype_id": "tall_house",
+      "roof_palette": "teal"
+    },
+    {
+      "id": "BLD_S_03",
+      "archetype_id": "wide_house",
+      "roof_palette": "indigo"
+    },
+    {
+      "id": "BLD_S_04",
+      "archetype_id": "courtyard_wing",
+      "roof_palette": "orange"
+    },
+    {
+      "id": "BLD_S_05",
+      "archetype_id": "gable_shop",
+      "roof_palette": "teal"
+    },
+    {
+      "id": "BLD_S_06",
+      "archetype_id": "bridge_house",
+      "roof_palette": "indigo"
+    },
+    {
+      "id": "BLD_S_07",
+      "archetype_id": "tall_house",
+      "roof_palette": "ochre"
+    },
+    {
+      "id": "BLD_S_08",
+      "archetype_id": "dock_shed",
+      "roof_palette": "orange"
+    },
+    {
+      "id": "BLD_S_09",
+      "archetype_id": "wide_house",
+      "roof_palette": "teal"
+    },
+    {
+      "id": "BLD_S_10",
+      "archetype_id": "dock_shed",
+      "roof_palette": "indigo"
+    }
+  ],
+  "additional_building_plots": [
+    {
+      "id": "BLD_S_11",
+      "size_class": "small",
+      "location_cm": [
+        -3300,
+        4200,
+        250
+      ],
+      "yaw_degrees": -18,
+      "size_cm": [
+        750,
+        600,
+        500
+      ],
+      "entrance_axis": "+Y",
+      "cluster_id": "approach",
+      "archetype_id": "gable_shop",
+      "roof_palette": "orange"
+    },
+    {
+      "id": "BLD_S_12",
+      "size_class": "small",
+      "location_cm": [
+        -4800,
+        6500,
+        320
+      ],
+      "yaw_degrees": 24,
+      "size_cm": [
+        800,
+        550,
+        480
+      ],
+      "entrance_axis": "+Y",
+      "cluster_id": "approach",
+      "archetype_id": "tall_house",
+      "roof_palette": "teal"
+    },
+    {
+      "id": "BLD_M_06",
+      "size_class": "medium",
+      "location_cm": [
+        -10000,
+        6000,
+        420
+      ],
+      "yaw_degrees": -32,
+      "size_cm": [
+        1200,
+        900,
+        800
+      ],
+      "entrance_axis": "+Y",
+      "cluster_id": "core",
+      "archetype_id": "wide_house",
+      "roof_palette": "ochre"
+    },
+    {
+      "id": "BLD_S_13",
+      "size_class": "small",
+      "location_cm": [
+        -14500,
+        5700,
+        430
+      ],
+      "yaw_degrees": 41,
+      "size_cm": [
+        850,
+        600,
+        520
+      ],
+      "entrance_axis": "+Y",
+      "cluster_id": "core",
+      "archetype_id": "courtyard_wing",
+      "roof_palette": "indigo"
+    },
+    {
+      "id": "BLD_S_14",
+      "size_class": "small",
+      "location_cm": [
+        -19000,
+        4000,
+        350
+      ],
+      "yaw_degrees": -20,
+      "size_cm": [
+        750,
+        550,
+        480
+      ],
+      "entrance_axis": "+Y",
+      "cluster_id": "bridge",
+      "archetype_id": "bridge_house",
+      "roof_palette": "orange"
+    },
+    {
+      "id": "BLD_S_15",
+      "size_class": "small",
+      "location_cm": [
+        -22500,
+        2300,
+        240
+      ],
+      "yaw_degrees": 33,
+      "size_cm": [
+        900,
+        650,
+        560
+      ],
+      "entrance_axis": "+Y",
+      "cluster_id": "bridge",
+      "archetype_id": "tall_house",
+      "roof_palette": "ochre"
+    },
+    {
+      "id": "BLD_M_07",
+      "size_class": "medium",
+      "location_cm": [
+        -23000,
+        -14500,
+        -150
+      ],
+      "yaw_degrees": -26,
+      "size_cm": [
+        1200,
+        900,
+        760
+      ],
+      "entrance_axis": "+Y",
+      "cluster_id": "south",
+      "archetype_id": "dock_shed",
+      "roof_palette": "teal"
+    },
+    {
+      "id": "BLD_S_16",
+      "size_class": "small",
+      "location_cm": [
+        -27000,
+        -15500,
+        -220
+      ],
+      "yaw_degrees": 17,
+      "size_cm": [
+        800,
+        600,
+        500
+      ],
+      "entrance_axis": "+Y",
+      "cluster_id": "south",
+      "archetype_id": "wide_house",
+      "roof_palette": "indigo"
+    },
+    {
+      "id": "BLD_S_17",
+      "size_class": "small",
+      "location_cm": [
+        -19000,
+        -15500,
+        -180
+      ],
+      "yaw_degrees": -37,
+      "size_cm": [
+        850,
+        650,
+        520
+      ],
+      "entrance_axis": "+Y",
+      "cluster_id": "south",
+      "archetype_id": "gable_shop",
+      "roof_palette": "ochre"
+    },
+    {
+      "id": "BLD_S_18",
+      "size_class": "small",
+      "location_cm": [
+        -30000,
+        -6000,
+        -50
+      ],
+      "yaw_degrees": 29,
+      "size_cm": [
+        750,
+        550,
+        480
+      ],
+      "entrance_axis": "+Y",
+      "cluster_id": "south",
+      "archetype_id": "courtyard_wing",
+      "roof_palette": "teal"
+    }
+  ],
+  "prop_records": [
+    {
+      "id": "PROP_001",
+      "prop_type": "sign",
+      "location_cm": [
+        -6150,
+        2050,
+        250
+      ],
+      "yaw_degrees": -60,
+      "scale": 0.86,
+      "cluster_id": "approach",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_002",
+      "prop_type": "lantern",
+      "location_cm": [
+        -5750,
+        1450,
+        250
+      ],
+      "yaw_degrees": -23,
+      "scale": 0.94,
+      "cluster_id": "approach",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_003",
+      "prop_type": "banner",
+      "location_cm": [
+        -5000,
+        1300,
+        250
+      ],
+      "yaw_degrees": 14,
+      "scale": 1.02,
+      "cluster_id": "approach",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_004",
+      "prop_type": "fence",
+      "location_cm": [
+        -4050,
+        1700,
+        250
+      ],
+      "yaw_degrees": 51,
+      "scale": 1.1,
+      "cluster_id": "approach",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_005",
+      "prop_type": "crate",
+      "location_cm": [
+        -3800,
+        2550,
+        250
+      ],
+      "yaw_degrees": -33,
+      "scale": 1.18,
+      "cluster_id": "approach",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_006",
+      "prop_type": "stall",
+      "location_cm": [
+        -4150,
+        3450,
+        250
+      ],
+      "yaw_degrees": 4,
+      "scale": 0.86,
+      "cluster_id": "approach",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_007",
+      "prop_type": "well",
+      "location_cm": [
+        -5000,
+        3750,
+        250
+      ],
+      "yaw_degrees": 41,
+      "scale": 0.94,
+      "cluster_id": "approach",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_008",
+      "prop_type": "cart",
+      "location_cm": [
+        -5950,
+        3400,
+        250
+      ],
+      "yaw_degrees": -43,
+      "scale": 1.02,
+      "cluster_id": "approach",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_009",
+      "prop_type": "rock",
+      "location_cm": [
+        -6250,
+        2750,
+        250
+      ],
+      "yaw_degrees": -6,
+      "scale": 1.1,
+      "cluster_id": "approach",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_010",
+      "prop_type": "dock_post",
+      "location_cm": [
+        -10150,
+        -1450,
+        300
+      ],
+      "yaw_degrees": 31,
+      "scale": 1.18,
+      "cluster_id": "core_east",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_011",
+      "prop_type": "sign",
+      "location_cm": [
+        -9750,
+        -2050,
+        300
+      ],
+      "yaw_degrees": -53,
+      "scale": 0.86,
+      "cluster_id": "core_east",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_012",
+      "prop_type": "lantern",
+      "location_cm": [
+        -9000,
+        -2200,
+        300
+      ],
+      "yaw_degrees": -16,
+      "scale": 0.94,
+      "cluster_id": "core_east",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_013",
+      "prop_type": "banner",
+      "location_cm": [
+        -8050,
+        -1800,
+        300
+      ],
+      "yaw_degrees": 21,
+      "scale": 1.02,
+      "cluster_id": "core_east",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_014",
+      "prop_type": "fence",
+      "location_cm": [
+        -7800,
+        -950,
+        300
+      ],
+      "yaw_degrees": 58,
+      "scale": 1.1,
+      "cluster_id": "core_east",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_015",
+      "prop_type": "crate",
+      "location_cm": [
+        -8150,
+        -50,
+        300
+      ],
+      "yaw_degrees": -26,
+      "scale": 1.18,
+      "cluster_id": "core_east",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_016",
+      "prop_type": "stall",
+      "location_cm": [
+        -9000,
+        250,
+        300
+      ],
+      "yaw_degrees": 11,
+      "scale": 0.86,
+      "cluster_id": "core_east",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_017",
+      "prop_type": "well",
+      "location_cm": [
+        -9950,
+        -100,
+        300
+      ],
+      "yaw_degrees": 48,
+      "scale": 0.94,
+      "cluster_id": "core_east",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_018",
+      "prop_type": "cart",
+      "location_cm": [
+        -10250,
+        -750,
+        300
+      ],
+      "yaw_degrees": -36,
+      "scale": 1.02,
+      "cluster_id": "core_east",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_019",
+      "prop_type": "rock",
+      "location_cm": [
+        -14750,
+        -650,
+        320
+      ],
+      "yaw_degrees": 1,
+      "scale": 1.1,
+      "cluster_id": "core_landmark",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_020",
+      "prop_type": "dock_post",
+      "location_cm": [
+        -14350,
+        -1250,
+        320
+      ],
+      "yaw_degrees": 38,
+      "scale": 1.18,
+      "cluster_id": "core_landmark",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_021",
+      "prop_type": "sign",
+      "location_cm": [
+        -13600,
+        -1400,
+        320
+      ],
+      "yaw_degrees": -46,
+      "scale": 0.86,
+      "cluster_id": "core_landmark",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_022",
+      "prop_type": "lantern",
+      "location_cm": [
+        -12650,
+        -1000,
+        320
+      ],
+      "yaw_degrees": -9,
+      "scale": 0.94,
+      "cluster_id": "core_landmark",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_023",
+      "prop_type": "banner",
+      "location_cm": [
+        -12400,
+        -150,
+        320
+      ],
+      "yaw_degrees": 28,
+      "scale": 1.02,
+      "cluster_id": "core_landmark",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_024",
+      "prop_type": "fence",
+      "location_cm": [
+        -12750,
+        750,
+        320
+      ],
+      "yaw_degrees": -56,
+      "scale": 1.1,
+      "cluster_id": "core_landmark",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_025",
+      "prop_type": "crate",
+      "location_cm": [
+        -13600,
+        1050,
+        320
+      ],
+      "yaw_degrees": -19,
+      "scale": 1.18,
+      "cluster_id": "core_landmark",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_026",
+      "prop_type": "stall",
+      "location_cm": [
+        -14550,
+        700,
+        320
+      ],
+      "yaw_degrees": 18,
+      "scale": 0.86,
+      "cluster_id": "core_landmark",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_027",
+      "prop_type": "well",
+      "location_cm": [
+        -14850,
+        50,
+        320
+      ],
+      "yaw_degrees": 55,
+      "scale": 0.94,
+      "cluster_id": "core_landmark",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_028",
+      "prop_type": "cart",
+      "location_cm": [
+        -17650,
+        -1950,
+        300
+      ],
+      "yaw_degrees": -29,
+      "scale": 1.02,
+      "cluster_id": "bridge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_029",
+      "prop_type": "rock",
+      "location_cm": [
+        -17250,
+        -2550,
+        300
+      ],
+      "yaw_degrees": 8,
+      "scale": 1.1,
+      "cluster_id": "bridge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_030",
+      "prop_type": "dock_post",
+      "location_cm": [
+        -16500,
+        -2700,
+        300
+      ],
+      "yaw_degrees": 45,
+      "scale": 1.18,
+      "cluster_id": "bridge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_031",
+      "prop_type": "sign",
+      "location_cm": [
+        -15550,
+        -2300,
+        300
+      ],
+      "yaw_degrees": -39,
+      "scale": 0.86,
+      "cluster_id": "bridge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_032",
+      "prop_type": "lantern",
+      "location_cm": [
+        -15300,
+        -1450,
+        300
+      ],
+      "yaw_degrees": -2,
+      "scale": 0.94,
+      "cluster_id": "bridge",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_033",
+      "prop_type": "banner",
+      "location_cm": [
+        -15650,
+        -550,
+        300
+      ],
+      "yaw_degrees": 35,
+      "scale": 1.02,
+      "cluster_id": "bridge",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_034",
+      "prop_type": "fence",
+      "location_cm": [
+        -16500,
+        -250,
+        300
+      ],
+      "yaw_degrees": -49,
+      "scale": 1.1,
+      "cluster_id": "bridge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_035",
+      "prop_type": "crate",
+      "location_cm": [
+        -17450,
+        -600,
+        300
+      ],
+      "yaw_degrees": -12,
+      "scale": 1.18,
+      "cluster_id": "bridge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_036",
+      "prop_type": "stall",
+      "location_cm": [
+        -17750,
+        -1250,
+        300
+      ],
+      "yaw_degrees": 25,
+      "scale": 0.86,
+      "cluster_id": "bridge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_037",
+      "prop_type": "well",
+      "location_cm": [
+        -20150,
+        -6950,
+        120
+      ],
+      "yaw_degrees": -59,
+      "scale": 0.94,
+      "cluster_id": "south",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_038",
+      "prop_type": "cart",
+      "location_cm": [
+        -19750,
+        -7550,
+        120
+      ],
+      "yaw_degrees": -22,
+      "scale": 1.02,
+      "cluster_id": "south",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_039",
+      "prop_type": "rock",
+      "location_cm": [
+        -19000,
+        -7700,
+        120
+      ],
+      "yaw_degrees": 15,
+      "scale": 1.1,
+      "cluster_id": "south",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_040",
+      "prop_type": "dock_post",
+      "location_cm": [
+        -18050,
+        -7300,
+        120
+      ],
+      "yaw_degrees": 52,
+      "scale": 1.18,
+      "cluster_id": "south",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_041",
+      "prop_type": "sign",
+      "location_cm": [
+        -17800,
+        -6450,
+        120
+      ],
+      "yaw_degrees": -32,
+      "scale": 0.86,
+      "cluster_id": "south",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_042",
+      "prop_type": "lantern",
+      "location_cm": [
+        -18150,
+        -5550,
+        120
+      ],
+      "yaw_degrees": 5,
+      "scale": 0.94,
+      "cluster_id": "south",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_043",
+      "prop_type": "banner",
+      "location_cm": [
+        -19000,
+        -5250,
+        120
+      ],
+      "yaw_degrees": 42,
+      "scale": 1.02,
+      "cluster_id": "south",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_044",
+      "prop_type": "fence",
+      "location_cm": [
+        -19950,
+        -5600,
+        120
+      ],
+      "yaw_degrees": -42,
+      "scale": 1.1,
+      "cluster_id": "south",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_045",
+      "prop_type": "crate",
+      "location_cm": [
+        -20250,
+        -6250,
+        120
+      ],
+      "yaw_degrees": -5,
+      "scale": 1.18,
+      "cluster_id": "south",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_046",
+      "prop_type": "stall",
+      "location_cm": [
+        -23150,
+        -11950,
+        -100
+      ],
+      "yaw_degrees": 32,
+      "scale": 0.86,
+      "cluster_id": "dock",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_047",
+      "prop_type": "well",
+      "location_cm": [
+        -22750,
+        -12550,
+        -100
+      ],
+      "yaw_degrees": -52,
+      "scale": 0.94,
+      "cluster_id": "dock",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_048",
+      "prop_type": "cart",
+      "location_cm": [
+        -22000,
+        -12700,
+        -100
+      ],
+      "yaw_degrees": -15,
+      "scale": 1.02,
+      "cluster_id": "dock",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_049",
+      "prop_type": "rock",
+      "location_cm": [
+        -21050,
+        -12300,
+        -100
+      ],
+      "yaw_degrees": 22,
+      "scale": 1.1,
+      "cluster_id": "dock",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_050",
+      "prop_type": "dock_post",
+      "location_cm": [
+        -20800,
+        -11450,
+        -100
+      ],
+      "yaw_degrees": 59,
+      "scale": 1.18,
+      "cluster_id": "dock",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_051",
+      "prop_type": "sign",
+      "location_cm": [
+        -21150,
+        -10550,
+        -100
+      ],
+      "yaw_degrees": -25,
+      "scale": 0.86,
+      "cluster_id": "dock",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_052",
+      "prop_type": "lantern",
+      "location_cm": [
+        -22000,
+        -10250,
+        -100
+      ],
+      "yaw_degrees": 12,
+      "scale": 0.94,
+      "cluster_id": "dock",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_053",
+      "prop_type": "banner",
+      "location_cm": [
+        -22950,
+        -10600,
+        -100
+      ],
+      "yaw_degrees": 49,
+      "scale": 1.02,
+      "cluster_id": "dock",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_054",
+      "prop_type": "fence",
+      "location_cm": [
+        -23250,
+        -11250,
+        -100
+      ],
+      "yaw_degrees": -35,
+      "scale": 1.1,
+      "cluster_id": "dock",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_055",
+      "prop_type": "crate",
+      "location_cm": [
+        -15650,
+        4750,
+        400
+      ],
+      "yaw_degrees": 2,
+      "scale": 1.18,
+      "cluster_id": "north_lane",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_056",
+      "prop_type": "stall",
+      "location_cm": [
+        -15250,
+        4150,
+        400
+      ],
+      "yaw_degrees": 39,
+      "scale": 0.86,
+      "cluster_id": "north_lane",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_057",
+      "prop_type": "well",
+      "location_cm": [
+        -14500,
+        4000,
+        400
+      ],
+      "yaw_degrees": -45,
+      "scale": 0.94,
+      "cluster_id": "north_lane",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_058",
+      "prop_type": "cart",
+      "location_cm": [
+        -13550,
+        4400,
+        400
+      ],
+      "yaw_degrees": -8,
+      "scale": 1.02,
+      "cluster_id": "north_lane",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_059",
+      "prop_type": "rock",
+      "location_cm": [
+        -13300,
+        5250,
+        400
+      ],
+      "yaw_degrees": 29,
+      "scale": 1.1,
+      "cluster_id": "north_lane",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_060",
+      "prop_type": "dock_post",
+      "location_cm": [
+        -13650,
+        6150,
+        400
+      ],
+      "yaw_degrees": -55,
+      "scale": 1.18,
+      "cluster_id": "north_lane",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_061",
+      "prop_type": "sign",
+      "location_cm": [
+        -14500,
+        6450,
+        400
+      ],
+      "yaw_degrees": -18,
+      "scale": 0.86,
+      "cluster_id": "north_lane",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_062",
+      "prop_type": "lantern",
+      "location_cm": [
+        -15450,
+        6100,
+        400
+      ],
+      "yaw_degrees": 19,
+      "scale": 0.94,
+      "cluster_id": "north_lane",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_063",
+      "prop_type": "banner",
+      "location_cm": [
+        -15750,
+        5450,
+        400
+      ],
+      "yaw_degrees": 56,
+      "scale": 1.02,
+      "cluster_id": "north_lane",
+      "collision_enabled": false
+    },
+    {
+      "id": "PROP_064",
+      "prop_type": "fence",
+      "location_cm": [
+        -25650,
+        -14950,
+        -180
+      ],
+      "yaw_degrees": -28,
+      "scale": 1.1,
+      "cluster_id": "south_edge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_065",
+      "prop_type": "crate",
+      "location_cm": [
+        -25250,
+        -15550,
+        -180
+      ],
+      "yaw_degrees": 9,
+      "scale": 1.18,
+      "cluster_id": "south_edge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_066",
+      "prop_type": "stall",
+      "location_cm": [
+        -24500,
+        -15700,
+        -180
+      ],
+      "yaw_degrees": 46,
+      "scale": 0.86,
+      "cluster_id": "south_edge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_067",
+      "prop_type": "well",
+      "location_cm": [
+        -23550,
+        -15300,
+        -180
+      ],
+      "yaw_degrees": -38,
+      "scale": 0.94,
+      "cluster_id": "south_edge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_068",
+      "prop_type": "cart",
+      "location_cm": [
+        -23300,
+        -14450,
+        -180
+      ],
+      "yaw_degrees": -1,
+      "scale": 1.02,
+      "cluster_id": "south_edge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_069",
+      "prop_type": "rock",
+      "location_cm": [
+        -23650,
+        -13550,
+        -180
+      ],
+      "yaw_degrees": 36,
+      "scale": 1.1,
+      "cluster_id": "south_edge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_070",
+      "prop_type": "dock_post",
+      "location_cm": [
+        -24500,
+        -13250,
+        -180
+      ],
+      "yaw_degrees": -48,
+      "scale": 1.18,
+      "cluster_id": "south_edge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_071",
+      "prop_type": "sign",
+      "location_cm": [
+        -25450,
+        -13600,
+        -180
+      ],
+      "yaw_degrees": -11,
+      "scale": 0.86,
+      "cluster_id": "south_edge",
+      "collision_enabled": true
+    },
+    {
+      "id": "PROP_072",
+      "prop_type": "lantern",
+      "location_cm": [
+        -25750,
+        -14250,
+        -180
+      ],
+      "yaw_degrees": 26,
+      "scale": 0.94,
+      "cluster_id": "south_edge",
+      "collision_enabled": false
+    }
+  ],
+  "vegetation_records": [
+    {
+      "id": "VEG_ANIM_001",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -5200,
+        5600,
+        200
+      ],
+      "yaw_degrees": 0,
+      "scale": 1,
+      "start_frame": 0,
+      "cluster_id": "gate_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_002",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -4700,
+        6650,
+        200
+      ],
+      "yaw_degrees": 29,
+      "scale": 1.11,
+      "start_frame": 1,
+      "cluster_id": "gate_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_003",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -4100,
+        7000,
+        200
+      ],
+      "yaw_degrees": 58,
+      "scale": 1.22,
+      "start_frame": 2,
+      "cluster_id": "gate_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_004",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -3350,
+        6700,
+        200
+      ],
+      "yaw_degrees": 87,
+      "scale": 1.33,
+      "start_frame": 3,
+      "cluster_id": "gate_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_005",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -2900,
+        5900,
+        200
+      ],
+      "yaw_degrees": 116,
+      "scale": 1.44,
+      "start_frame": 0,
+      "cluster_id": "gate_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_006",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -3750,
+        5100,
+        200
+      ],
+      "yaw_degrees": 145,
+      "scale": 1,
+      "start_frame": 1,
+      "cluster_id": "gate_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_007",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -12200,
+        6100,
+        350
+      ],
+      "yaw_degrees": 174,
+      "scale": 1.11,
+      "start_frame": 2,
+      "cluster_id": "core_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_008",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -11700,
+        7150,
+        350
+      ],
+      "yaw_degrees": 203,
+      "scale": 1.22,
+      "start_frame": 3,
+      "cluster_id": "core_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_009",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -11100,
+        7500,
+        350
+      ],
+      "yaw_degrees": 232,
+      "scale": 1.33,
+      "start_frame": 0,
+      "cluster_id": "core_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_010",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -10350,
+        7200,
+        350
+      ],
+      "yaw_degrees": 261,
+      "scale": 1.44,
+      "start_frame": 1,
+      "cluster_id": "core_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_011",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -9900,
+        6400,
+        350
+      ],
+      "yaw_degrees": 290,
+      "scale": 1,
+      "start_frame": 2,
+      "cluster_id": "core_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_012",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -10750,
+        5600,
+        350
+      ],
+      "yaw_degrees": 319,
+      "scale": 1.11,
+      "start_frame": 3,
+      "cluster_id": "core_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_013",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -20200,
+        6100,
+        280
+      ],
+      "yaw_degrees": 348,
+      "scale": 1.22,
+      "start_frame": 0,
+      "cluster_id": "bridge_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_014",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -19700,
+        7150,
+        280
+      ],
+      "yaw_degrees": 17,
+      "scale": 1.33,
+      "start_frame": 1,
+      "cluster_id": "bridge_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_015",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -19100,
+        7500,
+        280
+      ],
+      "yaw_degrees": 46,
+      "scale": 1.44,
+      "start_frame": 2,
+      "cluster_id": "bridge_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_016",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -18350,
+        7200,
+        280
+      ],
+      "yaw_degrees": 75,
+      "scale": 1,
+      "start_frame": 3,
+      "cluster_id": "bridge_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_017",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -17900,
+        6400,
+        280
+      ],
+      "yaw_degrees": 104,
+      "scale": 1.11,
+      "start_frame": 0,
+      "cluster_id": "bridge_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_018",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -18750,
+        5600,
+        280
+      ],
+      "yaw_degrees": 133,
+      "scale": 1.22,
+      "start_frame": 1,
+      "cluster_id": "bridge_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_019",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -28200,
+        -15900,
+        -200
+      ],
+      "yaw_degrees": 162,
+      "scale": 1.33,
+      "start_frame": 2,
+      "cluster_id": "south_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_020",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -27700,
+        -14850,
+        -200
+      ],
+      "yaw_degrees": 191,
+      "scale": 1.44,
+      "start_frame": 3,
+      "cluster_id": "south_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_021",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -27100,
+        -14500,
+        -200
+      ],
+      "yaw_degrees": 220,
+      "scale": 1,
+      "start_frame": 0,
+      "cluster_id": "south_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_022",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -26350,
+        -14800,
+        -200
+      ],
+      "yaw_degrees": 249,
+      "scale": 1.11,
+      "start_frame": 1,
+      "cluster_id": "south_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_023",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -25900,
+        -15600,
+        -200
+      ],
+      "yaw_degrees": 278,
+      "scale": 1.22,
+      "start_frame": 2,
+      "cluster_id": "south_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_024",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -26750,
+        -16400,
+        -200
+      ],
+      "yaw_degrees": 307,
+      "scale": 1.33,
+      "start_frame": 3,
+      "cluster_id": "south_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_025",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -19200,
+        -16900,
+        -170
+      ],
+      "yaw_degrees": 336,
+      "scale": 1.44,
+      "start_frame": 0,
+      "cluster_id": "dock_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_026",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -18700,
+        -15850,
+        -170
+      ],
+      "yaw_degrees": 5,
+      "scale": 1,
+      "start_frame": 1,
+      "cluster_id": "dock_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_027",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -18100,
+        -15500,
+        -170
+      ],
+      "yaw_degrees": 34,
+      "scale": 1.11,
+      "start_frame": 2,
+      "cluster_id": "dock_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_028",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -17350,
+        -15800,
+        -170
+      ],
+      "yaw_degrees": 63,
+      "scale": 1.22,
+      "start_frame": 3,
+      "cluster_id": "dock_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_029",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -16900,
+        -16600,
+        -170
+      ],
+      "yaw_degrees": 92,
+      "scale": 1.33,
+      "start_frame": 0,
+      "cluster_id": "dock_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_ANIM_030",
+      "plant_type": "plant_card",
+      "render_mode": "animated_flipbook",
+      "location_cm": [
+        -17750,
+        -17400,
+        -170
+      ],
+      "yaw_degrees": 121,
+      "scale": 1.44,
+      "start_frame": 1,
+      "cluster_id": "dock_grove",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_001",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -33500,
+        11200,
+        -80
+      ],
+      "yaw_degrees": 0,
+      "scale": 1.05,
+      "frame_variant": 0,
+      "cluster_id": "far_northwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_002",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -33000,
+        12300,
+        -80
+      ],
+      "yaw_degrees": 47,
+      "scale": 1.18,
+      "frame_variant": 1,
+      "cluster_id": "far_northwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_003",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -32500,
+        13000,
+        -80
+      ],
+      "yaw_degrees": 94,
+      "scale": 1.31,
+      "frame_variant": 2,
+      "cluster_id": "far_northwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_004",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -32000,
+        10800,
+        -80
+      ],
+      "yaw_degrees": 141,
+      "scale": 1.44,
+      "frame_variant": 3,
+      "cluster_id": "far_northwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_005",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -31600,
+        12200,
+        -80
+      ],
+      "yaw_degrees": 188,
+      "scale": 1.57,
+      "frame_variant": 0,
+      "cluster_id": "far_northwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_006",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -31100,
+        13000,
+        -80
+      ],
+      "yaw_degrees": 235,
+      "scale": 1.7,
+      "frame_variant": 1,
+      "cluster_id": "far_northwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_007",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -30600,
+        11500,
+        -80
+      ],
+      "yaw_degrees": 282,
+      "scale": 1.05,
+      "frame_variant": 2,
+      "cluster_id": "far_northwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_008",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -33200,
+        13300,
+        -80
+      ],
+      "yaw_degrees": 329,
+      "scale": 1.18,
+      "frame_variant": 3,
+      "cluster_id": "far_northwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_009",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -31300,
+        10600,
+        -80
+      ],
+      "yaw_degrees": 16,
+      "scale": 1.31,
+      "frame_variant": 0,
+      "cluster_id": "far_northwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_010",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -30500,
+        13400,
+        -80
+      ],
+      "yaw_degrees": 63,
+      "scale": 1.44,
+      "frame_variant": 1,
+      "cluster_id": "far_northwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_011",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -24500,
+        12700,
+        50
+      ],
+      "yaw_degrees": 110,
+      "scale": 1.57,
+      "frame_variant": 2,
+      "cluster_id": "far_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_012",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -24000,
+        13800,
+        50
+      ],
+      "yaw_degrees": 157,
+      "scale": 1.7,
+      "frame_variant": 3,
+      "cluster_id": "far_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_013",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -23500,
+        14500,
+        50
+      ],
+      "yaw_degrees": 204,
+      "scale": 1.05,
+      "frame_variant": 0,
+      "cluster_id": "far_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_014",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -23000,
+        12300,
+        50
+      ],
+      "yaw_degrees": 251,
+      "scale": 1.18,
+      "frame_variant": 1,
+      "cluster_id": "far_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_015",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -22600,
+        13700,
+        50
+      ],
+      "yaw_degrees": 298,
+      "scale": 1.31,
+      "frame_variant": 2,
+      "cluster_id": "far_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_016",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -22100,
+        14500,
+        50
+      ],
+      "yaw_degrees": 345,
+      "scale": 1.44,
+      "frame_variant": 3,
+      "cluster_id": "far_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_017",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -21600,
+        13000,
+        50
+      ],
+      "yaw_degrees": 32,
+      "scale": 1.57,
+      "frame_variant": 0,
+      "cluster_id": "far_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_018",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -24200,
+        14800,
+        50
+      ],
+      "yaw_degrees": 79,
+      "scale": 1.7,
+      "frame_variant": 1,
+      "cluster_id": "far_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_019",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -22300,
+        12100,
+        50
+      ],
+      "yaw_degrees": 126,
+      "scale": 1.05,
+      "frame_variant": 2,
+      "cluster_id": "far_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_020",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -21500,
+        14900,
+        50
+      ],
+      "yaw_degrees": 173,
+      "scale": 1.18,
+      "frame_variant": 3,
+      "cluster_id": "far_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_021",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -15500,
+        13200,
+        180
+      ],
+      "yaw_degrees": 220,
+      "scale": 1.31,
+      "frame_variant": 0,
+      "cluster_id": "far_core_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_022",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -15000,
+        14300,
+        180
+      ],
+      "yaw_degrees": 267,
+      "scale": 1.44,
+      "frame_variant": 1,
+      "cluster_id": "far_core_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_023",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -14500,
+        15000,
+        180
+      ],
+      "yaw_degrees": 314,
+      "scale": 1.57,
+      "frame_variant": 2,
+      "cluster_id": "far_core_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_024",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -14000,
+        12800,
+        180
+      ],
+      "yaw_degrees": 1,
+      "scale": 1.7,
+      "frame_variant": 3,
+      "cluster_id": "far_core_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_025",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -13600,
+        14200,
+        180
+      ],
+      "yaw_degrees": 48,
+      "scale": 1.05,
+      "frame_variant": 0,
+      "cluster_id": "far_core_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_026",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -13100,
+        15000,
+        180
+      ],
+      "yaw_degrees": 95,
+      "scale": 1.18,
+      "frame_variant": 1,
+      "cluster_id": "far_core_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_027",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -12600,
+        13500,
+        180
+      ],
+      "yaw_degrees": 142,
+      "scale": 1.31,
+      "frame_variant": 2,
+      "cluster_id": "far_core_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_028",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -15200,
+        15300,
+        180
+      ],
+      "yaw_degrees": 189,
+      "scale": 1.44,
+      "frame_variant": 3,
+      "cluster_id": "far_core_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_029",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -13300,
+        12600,
+        180
+      ],
+      "yaw_degrees": 236,
+      "scale": 1.57,
+      "frame_variant": 0,
+      "cluster_id": "far_core_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_030",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -12500,
+        15400,
+        180
+      ],
+      "yaw_degrees": 283,
+      "scale": 1.7,
+      "frame_variant": 1,
+      "cluster_id": "far_core_north",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_031",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -6500,
+        11700,
+        100
+      ],
+      "yaw_degrees": 330,
+      "scale": 1.05,
+      "frame_variant": 2,
+      "cluster_id": "far_northeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_032",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -6000,
+        12800,
+        100
+      ],
+      "yaw_degrees": 17,
+      "scale": 1.18,
+      "frame_variant": 3,
+      "cluster_id": "far_northeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_033",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -5500,
+        13500,
+        100
+      ],
+      "yaw_degrees": 64,
+      "scale": 1.31,
+      "frame_variant": 0,
+      "cluster_id": "far_northeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_034",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -5000,
+        11300,
+        100
+      ],
+      "yaw_degrees": 111,
+      "scale": 1.44,
+      "frame_variant": 1,
+      "cluster_id": "far_northeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_035",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -4600,
+        12700,
+        100
+      ],
+      "yaw_degrees": 158,
+      "scale": 1.57,
+      "frame_variant": 2,
+      "cluster_id": "far_northeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_036",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -4100,
+        13500,
+        100
+      ],
+      "yaw_degrees": 205,
+      "scale": 1.7,
+      "frame_variant": 3,
+      "cluster_id": "far_northeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_037",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -3600,
+        12000,
+        100
+      ],
+      "yaw_degrees": 252,
+      "scale": 1.05,
+      "frame_variant": 0,
+      "cluster_id": "far_northeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_038",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -6200,
+        13800,
+        100
+      ],
+      "yaw_degrees": 299,
+      "scale": 1.18,
+      "frame_variant": 1,
+      "cluster_id": "far_northeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_039",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -4300,
+        11100,
+        100
+      ],
+      "yaw_degrees": 346,
+      "scale": 1.31,
+      "frame_variant": 2,
+      "cluster_id": "far_northeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_040",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -3500,
+        13900,
+        100
+      ],
+      "yaw_degrees": 33,
+      "scale": 1.44,
+      "frame_variant": 3,
+      "cluster_id": "far_northeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_041",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -34500,
+        -15800,
+        -240
+      ],
+      "yaw_degrees": 80,
+      "scale": 1.57,
+      "frame_variant": 0,
+      "cluster_id": "far_southwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_042",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -34000,
+        -14700,
+        -240
+      ],
+      "yaw_degrees": 127,
+      "scale": 1.7,
+      "frame_variant": 1,
+      "cluster_id": "far_southwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_043",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -33500,
+        -14000,
+        -240
+      ],
+      "yaw_degrees": 174,
+      "scale": 1.05,
+      "frame_variant": 2,
+      "cluster_id": "far_southwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_044",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -33000,
+        -16200,
+        -240
+      ],
+      "yaw_degrees": 221,
+      "scale": 1.18,
+      "frame_variant": 3,
+      "cluster_id": "far_southwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_045",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -32600,
+        -14800,
+        -240
+      ],
+      "yaw_degrees": 268,
+      "scale": 1.31,
+      "frame_variant": 0,
+      "cluster_id": "far_southwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_046",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -32100,
+        -14000,
+        -240
+      ],
+      "yaw_degrees": 315,
+      "scale": 1.44,
+      "frame_variant": 1,
+      "cluster_id": "far_southwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_047",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -31600,
+        -15500,
+        -240
+      ],
+      "yaw_degrees": 2,
+      "scale": 1.57,
+      "frame_variant": 2,
+      "cluster_id": "far_southwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_048",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -34200,
+        -13700,
+        -240
+      ],
+      "yaw_degrees": 49,
+      "scale": 1.7,
+      "frame_variant": 3,
+      "cluster_id": "far_southwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_049",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -32300,
+        -16400,
+        -240
+      ],
+      "yaw_degrees": 96,
+      "scale": 1.05,
+      "frame_variant": 0,
+      "cluster_id": "far_southwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_050",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -31500,
+        -13600,
+        -240
+      ],
+      "yaw_degrees": 143,
+      "scale": 1.18,
+      "frame_variant": 1,
+      "cluster_id": "far_southwest",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_051",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -13500,
+        -16300,
+        -160
+      ],
+      "yaw_degrees": 190,
+      "scale": 1.31,
+      "frame_variant": 2,
+      "cluster_id": "far_south",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_052",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -13000,
+        -15200,
+        -160
+      ],
+      "yaw_degrees": 237,
+      "scale": 1.44,
+      "frame_variant": 3,
+      "cluster_id": "far_south",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_053",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -12500,
+        -14500,
+        -160
+      ],
+      "yaw_degrees": 284,
+      "scale": 1.57,
+      "frame_variant": 0,
+      "cluster_id": "far_south",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_054",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -12000,
+        -16700,
+        -160
+      ],
+      "yaw_degrees": 331,
+      "scale": 1.7,
+      "frame_variant": 1,
+      "cluster_id": "far_south",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_055",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -11600,
+        -15300,
+        -160
+      ],
+      "yaw_degrees": 18,
+      "scale": 1.05,
+      "frame_variant": 2,
+      "cluster_id": "far_south",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_056",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -11100,
+        -14500,
+        -160
+      ],
+      "yaw_degrees": 65,
+      "scale": 1.18,
+      "frame_variant": 3,
+      "cluster_id": "far_south",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_057",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -10600,
+        -16000,
+        -160
+      ],
+      "yaw_degrees": 112,
+      "scale": 1.31,
+      "frame_variant": 0,
+      "cluster_id": "far_south",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_058",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -13200,
+        -14200,
+        -160
+      ],
+      "yaw_degrees": 159,
+      "scale": 1.44,
+      "frame_variant": 1,
+      "cluster_id": "far_south",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_059",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -11300,
+        -16900,
+        -160
+      ],
+      "yaw_degrees": 206,
+      "scale": 1.57,
+      "frame_variant": 2,
+      "cluster_id": "far_south",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_060",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -10500,
+        -14100,
+        -160
+      ],
+      "yaw_degrees": 253,
+      "scale": 1.7,
+      "frame_variant": 3,
+      "cluster_id": "far_south",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_061",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -4500,
+        -14800,
+        -120
+      ],
+      "yaw_degrees": 300,
+      "scale": 1.05,
+      "frame_variant": 0,
+      "cluster_id": "far_southeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_062",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -4000,
+        -13700,
+        -120
+      ],
+      "yaw_degrees": 347,
+      "scale": 1.18,
+      "frame_variant": 1,
+      "cluster_id": "far_southeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_063",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -3500,
+        -13000,
+        -120
+      ],
+      "yaw_degrees": 34,
+      "scale": 1.31,
+      "frame_variant": 2,
+      "cluster_id": "far_southeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_064",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -3000,
+        -15200,
+        -120
+      ],
+      "yaw_degrees": 81,
+      "scale": 1.44,
+      "frame_variant": 3,
+      "cluster_id": "far_southeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_065",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -2600,
+        -13800,
+        -120
+      ],
+      "yaw_degrees": 128,
+      "scale": 1.57,
+      "frame_variant": 0,
+      "cluster_id": "far_southeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_066",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -2100,
+        -13000,
+        -120
+      ],
+      "yaw_degrees": 175,
+      "scale": 1.7,
+      "frame_variant": 1,
+      "cluster_id": "far_southeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_067",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -1600,
+        -14500,
+        -120
+      ],
+      "yaw_degrees": 222,
+      "scale": 1.05,
+      "frame_variant": 2,
+      "cluster_id": "far_southeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_068",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -4200,
+        -12700,
+        -120
+      ],
+      "yaw_degrees": 269,
+      "scale": 1.18,
+      "frame_variant": 3,
+      "cluster_id": "far_southeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_069",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -2300,
+        -15400,
+        -120
+      ],
+      "yaw_degrees": 316,
+      "scale": 1.31,
+      "frame_variant": 0,
+      "cluster_id": "far_southeast",
+      "collision_enabled": false
+    },
+    {
+      "id": "VEG_STATIC_070",
+      "plant_type": "plant_card",
+      "render_mode": "static_card",
+      "location_cm": [
+        -1500,
+        -12600,
+        -120
+      ],
+      "yaw_degrees": 3,
+      "scale": 1.44,
+      "frame_variant": 1,
+      "cluster_id": "far_southeast",
+      "collision_enabled": false
+    }
+  ],
+  "mountain_records": [
+    {
+      "id": "MTN_01",
+      "asset_type": "mountain",
+      "location_cm": [
+        6500,
+        0,
+        -520
+      ],
+      "yaw_degrees": 180,
+      "scale": [
+        35,
+        35,
+        45
+      ],
+      "ring_index": 0,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_02",
+      "asset_type": "mountain",
+      "location_cm": [
+        5750,
+        4529,
+        -440
+      ],
+      "yaw_degrees": 195,
+      "scale": [
+        40,
+        40,
+        50
+      ],
+      "ring_index": 1,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_03",
+      "asset_type": "mountain",
+      "location_cm": [
+        3553,
+        8750,
+        -360
+      ],
+      "yaw_degrees": 210,
+      "scale": [
+        45,
+        45,
+        55
+      ],
+      "ring_index": 2,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_04",
+      "asset_type": "mountain",
+      "location_cm": [
+        56,
+        12374,
+        -280
+      ],
+      "yaw_degrees": 225,
+      "scale": [
+        50,
+        50,
+        60
+      ],
+      "ring_index": 3,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_05",
+      "asset_type": "mountain",
+      "location_cm": [
+        -4500,
+        15155,
+        -520
+      ],
+      "yaw_degrees": 240,
+      "scale": [
+        55,
+        55,
+        65
+      ],
+      "ring_index": 4,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_06",
+      "asset_type": "mountain",
+      "location_cm": [
+        -9806,
+        16904,
+        -440
+      ],
+      "yaw_degrees": 255,
+      "scale": [
+        35,
+        35,
+        70
+      ],
+      "ring_index": 5,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_07",
+      "asset_type": "mountain",
+      "location_cm": [
+        -15500,
+        17500,
+        -360
+      ],
+      "yaw_degrees": 270,
+      "scale": [
+        40,
+        40,
+        45
+      ],
+      "ring_index": 6,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_08",
+      "asset_type": "mountain",
+      "location_cm": [
+        -21194,
+        16904,
+        -280
+      ],
+      "yaw_degrees": 285,
+      "scale": [
+        45,
+        45,
+        50
+      ],
+      "ring_index": 7,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_09",
+      "asset_type": "mountain",
+      "location_cm": [
+        -26500,
+        15155,
+        -520
+      ],
+      "yaw_degrees": 300,
+      "scale": [
+        50,
+        50,
+        55
+      ],
+      "ring_index": 8,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_10",
+      "asset_type": "mountain",
+      "location_cm": [
+        -31056,
+        12374,
+        -440
+      ],
+      "yaw_degrees": 315,
+      "scale": [
+        55,
+        55,
+        60
+      ],
+      "ring_index": 9,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_11",
+      "asset_type": "mountain",
+      "location_cm": [
+        -34553,
+        8750,
+        -360
+      ],
+      "yaw_degrees": 330,
+      "scale": [
+        35,
+        35,
+        65
+      ],
+      "ring_index": 10,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_12",
+      "asset_type": "mountain",
+      "location_cm": [
+        -36750,
+        4529,
+        -280
+      ],
+      "yaw_degrees": 345,
+      "scale": [
+        40,
+        40,
+        70
+      ],
+      "ring_index": 11,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_13",
+      "asset_type": "mountain",
+      "location_cm": [
+        -37500,
+        0,
+        -520
+      ],
+      "yaw_degrees": 0,
+      "scale": [
+        45,
+        45,
+        45
+      ],
+      "ring_index": 12,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_14",
+      "asset_type": "mountain",
+      "location_cm": [
+        -36750,
+        -4529,
+        -440
+      ],
+      "yaw_degrees": 15,
+      "scale": [
+        50,
+        50,
+        50
+      ],
+      "ring_index": 13,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_15",
+      "asset_type": "mountain",
+      "location_cm": [
+        -34553,
+        -8750,
+        -360
+      ],
+      "yaw_degrees": 30,
+      "scale": [
+        55,
+        55,
+        55
+      ],
+      "ring_index": 14,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_16",
+      "asset_type": "mountain",
+      "location_cm": [
+        -31056,
+        -12374,
+        -280
+      ],
+      "yaw_degrees": 45,
+      "scale": [
+        35,
+        35,
+        60
+      ],
+      "ring_index": 15,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_17",
+      "asset_type": "mountain",
+      "location_cm": [
+        -26500,
+        -15155,
+        -520
+      ],
+      "yaw_degrees": 60,
+      "scale": [
+        40,
+        40,
+        65
+      ],
+      "ring_index": 16,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_18",
+      "asset_type": "mountain",
+      "location_cm": [
+        -21194,
+        -16904,
+        -440
+      ],
+      "yaw_degrees": 75,
+      "scale": [
+        45,
+        45,
+        70
+      ],
+      "ring_index": 17,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_19",
+      "asset_type": "mountain",
+      "location_cm": [
+        -15500,
+        -17500,
+        -360
+      ],
+      "yaw_degrees": 90,
+      "scale": [
+        50,
+        50,
+        45
+      ],
+      "ring_index": 18,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_20",
+      "asset_type": "mountain",
+      "location_cm": [
+        -9806,
+        -16904,
+        -280
+      ],
+      "yaw_degrees": 105,
+      "scale": [
+        55,
+        55,
+        50
+      ],
+      "ring_index": 19,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_21",
+      "asset_type": "mountain",
+      "location_cm": [
+        -4500,
+        -15155,
+        -520
+      ],
+      "yaw_degrees": 120,
+      "scale": [
+        35,
+        35,
+        55
+      ],
+      "ring_index": 20,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_22",
+      "asset_type": "mountain",
+      "location_cm": [
+        56,
+        -12374,
+        -440
+      ],
+      "yaw_degrees": 135,
+      "scale": [
+        40,
+        40,
+        60
+      ],
+      "ring_index": 21,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_23",
+      "asset_type": "mountain",
+      "location_cm": [
+        3553,
+        -8750,
+        -360
+      ],
+      "yaw_degrees": 150,
+      "scale": [
+        45,
+        45,
+        65
+      ],
+      "ring_index": 22,
+      "collision_enabled": false
+    },
+    {
+      "id": "MTN_24",
+      "asset_type": "mountain",
+      "location_cm": [
+        5750,
+        -4529,
+        -280
+      ],
+      "yaw_degrees": 165,
+      "scale": [
+        50,
+        50,
+        70
+      ],
+      "ring_index": 23,
+      "collision_enabled": false
+    }
+  ],
+  "cameras": [
+    {
+      "id": "CAM_QS_B1_GATE_ARRIVAL",
+      "location_cm": [
+        -2500,
+        2500,
+        3200
+      ],
+      "target_cm": [
+        -6500,
+        -1200,
+        300
+      ],
+      "fov_degrees": 50
+    },
+    {
+      "id": "CAM_QS_B1_TOWN_CORE",
+      "location_cm": [
+        -5000,
+        3500,
+        4500
+      ],
+      "target_cm": [
+        -12500,
+        -3000,
+        300
+      ],
+      "fov_degrees": 50
+    },
+    {
+      "id": "CAM_QS_B1_MAIN_BRIDGE",
+      "location_cm": [
+        -9000,
+        -1000,
+        4000
+      ],
+      "target_cm": [
+        -15500,
+        -6500,
+        0
+      ],
+      "fov_degrees": 48
+    },
+    {
+      "id": "CAM_QS_B1_SOUTH_DOCK",
+      "location_cm": [
+        -15000,
+        -4000,
+        4200
+      ],
+      "target_cm": [
+        -21500,
+        -9500,
+        -200
+      ],
+      "fov_degrees": 50
+    }
+  ]
+}

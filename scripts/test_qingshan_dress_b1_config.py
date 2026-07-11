@@ -1,0 +1,372 @@
+"""Host-side tests for the Qingshan B1 dress overlay contract."""
+
+from __future__ import annotations
+
+from collections import Counter
+import copy
+import hashlib
+import importlib.util
+import json
+import math
+from pathlib import Path
+import tempfile
+import unittest
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+MODULE_PATH = PROJECT_ROOT / "Content" / "Python" / "gamexxk_qingshan_dress_b1_config.py"
+B0R_MODULE_PATH = PROJECT_ROOT / "Content" / "Python" / "gamexxk_qingshan_whitebox_config.py"
+OVERLAY_PATH = PROJECT_ROOT / "Config" / "GameXXK" / "TownPCG" / "QingshanDressB1.json"
+
+PROTECTED_FILES = {
+    "Content/GameXXK/Maps/L_QingshanInn.umap":
+        "a3639b38623d00e8ad3e5a610a3e1695a47b38c1d1e6fedb8115e1e9fdf5c8a8",
+    "Content/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R.umap":
+        "74292340df0cea97d99e905dd193a921038326bfec2f3ce034a5e9f70bd3f107",
+    "Config/GameXXK/TownPCG/QingshanWhiteboxB0R.json":
+        "3f231876d0083bffe28ee555b60af1a20b0966edbde9dc4bb6f2647e920eadb1",
+}
+ARCHETYPES = {
+    "gable_shop", "tall_house", "wide_house",
+    "courtyard_wing", "bridge_house", "dock_shed",
+}
+ROOF_PALETTES = {"orange", "teal", "indigo", "ochre"}
+ADDITIONAL_PLOT_IDS = {
+    "BLD_S_11", "BLD_S_12", "BLD_M_06", "BLD_S_13", "BLD_S_14",
+    "BLD_S_15", "BLD_M_07", "BLD_S_16", "BLD_S_17", "BLD_S_18",
+}
+GEOMETRY_FIELDS = (
+    "id", "size_class", "location_cm", "yaw_degrees",
+    "size_cm", "entrance_axis", "cluster_id",
+)
+
+
+def _load_module(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"unable to import {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+MODULE = _load_module("gamexxk_qingshan_dress_b1_config", MODULE_PATH)
+B0R_MODULE = _load_module("gamexxk_qingshan_whitebox_config_for_b1", B0R_MODULE_PATH)
+
+
+def _point_segment_distance(point, start, end):
+    px, py = point[:2]
+    ax, ay = start[:2]
+    bx, by = end[:2]
+    dx, dy = bx - ax, by - ay
+    length_squared = dx * dx + dy * dy
+    if length_squared == 0:
+        return math.hypot(px - ax, py - ay)
+    t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / length_squared))
+    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+
+def _polyline_distance(point, points):
+    return min(
+        _point_segment_distance(point, start, end)
+        for start, end in zip(points, points[1:])
+    )
+
+
+class QingshanDressB1ConfigTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.base = B0R_MODULE.load_config()
+        cls.data = MODULE.load_config()
+        cls.overlay = json.loads(OVERLAY_PATH.read_text(encoding="utf-8"))
+
+    def assert_invalid(self, data, pattern):
+        with self.assertRaisesRegex(ValueError, pattern):
+            MODULE.validate_config(data, base_config=self.base)
+
+    def test_coordinate_contract_is_anchor_local(self):
+        data = self.data
+        self.assertEqual(data["coordinate_space"], "anchor_local")
+        self.assertEqual(data["coordinate_reference_actor"], "QingshanInn_TownExit")
+        self.assertEqual(data["landscape"]["center_local_cm"], [-15500.0, 0.0, 0.0])
+
+    def test_landscape_origin_and_height_encoding_are_unambiguous(self):
+        landscape = self.data["landscape"]
+        self.assertEqual(landscape["resolution"], [505, 505])
+        self.assertEqual(landscape["scale_cm"], [100.0, 100.0, 100.0])
+        expected_origin = [
+            landscape["center_local_cm"][axis]
+            - ((landscape["resolution"][axis] - 1) * landscape["scale_cm"][axis] / 2.0)
+            for axis in range(2)
+        ] + [landscape["center_local_cm"][2]]
+        self.assertEqual(landscape["origin_local_cm"], expected_origin)
+        self.assertEqual(landscape["origin_local_cm"], [-40700.0, -25200.0, 0.0])
+        self.assertEqual(
+            landscape["height_encoding"],
+            {
+                "value_type": "uint16",
+                "formula": "uint16=clamp(round(32768+elevation_cm*128/scale_z),0,65535)",
+            },
+        )
+
+    def test_protected_files_have_exact_raw_hashes(self):
+        self.assertEqual(self.data["protected_files"], PROTECTED_FILES)
+        observed = MODULE.validate_protected_file_hashes(PROTECTED_FILES, PROJECT_ROOT)
+        self.assertEqual(observed, PROTECTED_FILES)
+
+    def test_protected_file_hash_api_rejects_raw_byte_mismatch(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "protected.bin"
+            target.write_bytes(b"approved bytes")
+            expected = hashlib.sha256(target.read_bytes()).hexdigest()
+            self.assertEqual(
+                MODULE.validate_protected_file_hashes({"protected.bin": expected}, root),
+                {"protected.bin": expected},
+            )
+            target.write_bytes(b"mutated bytes")
+            with self.assertRaisesRegex(ValueError, "raw SHA-256 mismatch"):
+                MODULE.validate_protected_file_hashes({"protected.bin": expected}, root)
+
+    def test_overlay_keeps_b0r_geometry_out_of_style_assignments(self):
+        assignments = self.overlay["base_plot_assignments"]
+        self.assertEqual(len(assignments), 16)
+        self.assertEqual(
+            {tuple(sorted(item)) for item in assignments},
+            {("archetype_id", "id", "roof_palette")},
+        )
+
+    def test_all_b0r_plot_geometry_is_copied_without_change(self):
+        merged_by_id = {item["id"]: item for item in self.data["building_plots"]}
+        for source in self.base["building_plots"]:
+            observed = merged_by_id[source["id"]]
+            self.assertEqual(
+                {field: observed[field] for field in GEOMETRY_FIELDS},
+                {field: source[field] for field in GEOMETRY_FIELDS},
+            )
+
+    def test_building_and_style_counts_are_exact(self):
+        plots = self.data["building_plots"]
+        self.assertEqual(len(plots), 26)
+        self.assertEqual(self.data["base_building_count"], 16)
+        self.assertEqual(self.data["additional_building_count"], 10)
+        self.assertEqual(Counter(p["size_class"] for p in plots), {
+            "large": 1, "medium": 7, "small": 18,
+        })
+        self.assertEqual({p["archetype_id"] for p in plots}, ARCHETYPES)
+        self.assertEqual({p["roof_palette"] for p in plots}, ROOF_PALETTES)
+        self.assertEqual(
+            {p["id"] for p in plots[16:]},
+            ADDITIONAL_PLOT_IDS,
+        )
+
+    def test_building_pcg_groups_include_real_material_variants(self):
+        roof_materials = self.data["building_materials"]["roof_palette_materials"]
+        window_material = self.data["building_materials"]["shared_slot_materials"]["WindowPaper"]
+        self.assertEqual(set(roof_materials), ROOF_PALETTES)
+        self.assertTrue(window_material.endswith("/MI_QS_B1_Window_Paper"))
+        for plot in self.data["building_plots"]:
+            self.assertEqual(
+                plot["pcg_group_key"],
+                f"{plot['archetype_id']}__{plot['roof_palette']}",
+            )
+            self.assertEqual(plot["material_overrides"], {
+                "Roof": roof_materials[plot["roof_palette"]],
+                "WindowPaper": window_material,
+            })
+
+    def test_additional_plots_do_not_overlap_buildings_roads_river_or_anchors(self):
+        plots = self.data["building_plots"]
+        additional = [item for item in plots if item["id"] in ADDITIONAL_PLOT_IDS]
+        roads = {road["id"]: road for road in self.base["road_splines"]}
+        river = self.base["river_splines"][0]
+        for plot in additional:
+            radius = math.hypot(plot["size_cm"][0] / 2.0, plot["size_cm"][1] / 2.0)
+            for other in plots:
+                if other["id"] == plot["id"]:
+                    continue
+                other_radius = math.hypot(other["size_cm"][0] / 2.0, other["size_cm"][1] / 2.0)
+                distance = math.dist(plot["location_cm"][:2], other["location_cm"][:2])
+                self.assertGreater(distance, radius + other_radius + 100.0)
+            for road in roads.values():
+                clearance = radius + road["width_cm"] / 2.0 + 250.0
+                self.assertGreater(
+                    _polyline_distance(plot["location_cm"], road["points_cm"]),
+                    clearance,
+                )
+            self.assertGreater(
+                _polyline_distance(plot["location_cm"], river["points_cm"]),
+                radius + river["width_cm"] / 2.0 + 400.0,
+            )
+            for anchor in self.base["fixed_anchors"]:
+                self.assertGreater(
+                    math.dist(plot["location_cm"][:2], anchor["location_cm"][:2]),
+                    radius + anchor["protected_radius_cm"],
+                )
+
+    def test_quickroad_network_and_material_contract_is_exact(self):
+        quickroad = self.data["quickroad"]
+        self.assertEqual(
+            quickroad["road_material"],
+            "/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Road_Earth",
+        )
+        self.assertEqual(
+            [(n["tag"], n["source_spline_id"], n["width_cm"]) for n in quickroad["networks"]],
+            [
+                ("QS_B1_Main", "Road_Main", 800),
+                ("QS_B1_CoreNorth", "Road_Core_North", 450),
+                ("QS_B1_CoreSouth", "Road_Core_South", 400),
+            ],
+        )
+        self.assertEqual(
+            quickroad["combined_tag_expression"],
+            "QS_B1_Main|QS_B1_CoreNorth|QS_B1_CoreSouth",
+        )
+        self.assertEqual(quickroad["ribbon"], {
+            "mesh_sample_distance_cm": 300,
+            "width_subdivisions": 3,
+            "curvature_threshold_degrees": 8,
+            "max_curvature_subdivisions": 2,
+        })
+        self.assertEqual(quickroad["landscape_influence"], {
+            "falloff_cm": 250,
+            "blend": 0.9,
+            "vertical_offset_cm": -5,
+            "smooth_iterations": 4,
+            "smooth_strength": 0.6,
+        })
+        self.assertEqual(quickroad["intersection"], {
+            "sample_distance_cm": 500,
+            "border_offset_cm": 100,
+            "corner_radius_cm": 50,
+            "branch_width_scale": 1.2,
+        })
+        self.assertEqual(quickroad["bake"], {"split_length_cm": 5000})
+
+    def test_population_caps_and_counts_are_exact(self):
+        self.assertEqual(self.data["caps"], {
+            "buildings": 26, "props": 72, "vegetation": 100,
+            "animated_vegetation": 30, "mountains": 24, "crossings": 2,
+        })
+        self.assertFalse(self.data["runtime_generation"])
+        self.assertEqual(len(self.data["prop_records"]), 72)
+        self.assertEqual(len(self.data["vegetation_records"]), 100)
+        self.assertEqual(len(self.data["mountain_records"]), 24)
+        self.assertEqual(len(self.data["cameras"]), 4)
+
+    def test_collision_policy_is_explicit_and_applied(self):
+        policy = self.data["collision_policy"]
+        for asset_type in ("plant_card", "lantern", "banner", "mountain"):
+            self.assertIs(policy[asset_type], False)
+        for record in self.data["prop_records"]:
+            self.assertIs(record["collision_enabled"], policy[record["prop_type"]])
+        self.assertTrue(all(not item["collision_enabled"] for item in self.data["vegetation_records"]))
+        self.assertTrue(all(not item["collision_enabled"] for item in self.data["mountain_records"]))
+
+    def test_static_vegetation_has_deterministic_frame_variants(self):
+        animated = [v for v in self.data["vegetation_records"] if v["render_mode"] == "animated_flipbook"]
+        static = [v for v in self.data["vegetation_records"] if v["render_mode"] == "static_card"]
+        self.assertEqual(len(animated), 30)
+        self.assertEqual(len(static), 70)
+        self.assertTrue(all("frame_variant" not in item for item in animated))
+        self.assertEqual([item["frame_variant"] for item in static], [index % 4 for index in range(70)])
+        self.assertEqual({item["frame_variant"] for item in static}, {0, 1, 2, 3})
+        self.assertTrue(all(item["collision_enabled"] is False for item in static))
+
+    def test_all_managed_record_ids_are_unique(self):
+        ids = [item["id"] for item in self.data["building_plots"]]
+        ids += [item["id"] for item in self.data["prop_records"]]
+        ids += [item["id"] for item in self.data["vegetation_records"]]
+        ids += [item["id"] for item in self.data["mountain_records"]]
+        ids += [item["id"] for item in self.data["cameras"]]
+        self.assertEqual(len(ids), len(set(ids)))
+
+    def test_contract_hash_is_deterministic_and_not_the_live_layout_hash(self):
+        first = MODULE.contract_sha256(self.data)
+        second = MODULE.contract_sha256(copy.deepcopy(self.data))
+        self.assertEqual(first, second)
+        self.assertRegex(first, r"^[0-9a-f]{64}$")
+        self.assertNotEqual(first, self.data["expected_base_live_layout_sha256"])
+
+        live_only = copy.deepcopy(self.data)
+        live_only["expected_base_live_layout_sha256"] = "f" * 64
+        self.assertEqual(MODULE.contract_sha256(live_only), first)
+
+        contract_change = copy.deepcopy(self.data)
+        contract_change["prop_records"][0]["yaw_degrees"] += 1
+        self.assertNotEqual(MODULE.contract_sha256(contract_change), first)
+
+    def test_rejects_non_finite_values(self):
+        mutations = (
+            lambda d: d["landscape"]["center_local_cm"].__setitem__(0, float("nan")),
+            lambda d: d["quickroad"]["networks"][0].__setitem__("width_cm", float("inf")),
+            lambda d: d["building_plots"][0]["location_cm"].__setitem__(1, float("-inf")),
+            lambda d: d["prop_records"][0].__setitem__("scale", True),
+        )
+        for mutate in mutations:
+            data = copy.deepcopy(self.data)
+            mutate(data)
+            self.assert_invalid(data, "finite|bool")
+
+    def test_rejects_duplicate_ids_unknown_types_and_invalid_styles(self):
+        cases = (
+            (lambda d: d["prop_records"][0].__setitem__("id", d["building_plots"][0]["id"]), "duplicate stable id"),
+            (lambda d: d["prop_records"][0].__setitem__("prop_type", "unknown_prop"), "prop_type is invalid"),
+            (lambda d: d["vegetation_records"][0].__setitem__("render_mode", "billboard_cloud"), "render_mode is invalid"),
+            (lambda d: d["building_plots"][0].__setitem__("archetype_id", "unknown_house"), "archetype_id is invalid"),
+            (lambda d: d["building_plots"][0].__setitem__("roof_palette", "purple"), "roof_palette is invalid"),
+        )
+        for mutate, pattern in cases:
+            data = copy.deepcopy(self.data)
+            mutate(data)
+            self.assert_invalid(data, pattern)
+
+    def test_rejects_invalid_caps_landscape_and_protected_contract(self):
+        cases = (
+            (lambda d: d["caps"].__setitem__("props", 71), "caps must equal"),
+            (lambda d: d["landscape"].__setitem__("resolution", [504, 505]), "resolution"),
+            (lambda d: d["landscape"]["origin_local_cm"].__setitem__(0, -40699), "origin_local_cm"),
+            (lambda d: d["protected_files"].__setitem__(next(iter(PROTECTED_FILES)), "0" * 64), "protected_files must equal"),
+        )
+        for mutate, pattern in cases:
+            data = copy.deepcopy(self.data)
+            mutate(data)
+            self.assert_invalid(data, pattern)
+
+    def test_rejects_b0r_geometry_drift_and_unknown_assignment_ids(self):
+        data = copy.deepcopy(self.data)
+        data["building_plots"][0]["location_cm"][0] += 1
+        self.assert_invalid(data, "B0R geometry")
+
+        overlay = copy.deepcopy(self.overlay)
+        overlay["base_plot_assignments"][0]["id"] = "BLD_UNKNOWN"
+        with self.assertRaisesRegex(ValueError, "base plot assignment IDs"):
+            MODULE.merge_config(overlay, self.base)
+
+    def test_merge_rejects_invalid_raw_roof_palette_as_validation_error(self):
+        overlay = copy.deepcopy(self.overlay)
+        overlay["base_plot_assignments"][0]["roof_palette"] = "purple"
+        with self.assertRaisesRegex(ValueError, "roof_palette is invalid"):
+            MODULE.merge_config(overlay, self.base)
+
+    def test_rejects_nonpositive_landscape_scale_even_with_matching_origin(self):
+        data = copy.deepcopy(self.data)
+        data["landscape"]["scale_cm"][0] = 0.0
+        data["landscape"]["origin_local_cm"][0] = data["landscape"]["center_local_cm"][0]
+        self.assert_invalid(data, "scale_cm must be strictly positive")
+
+    def test_rejects_nonstandard_json_numeric_constants(self):
+        canonical = OVERLAY_PATH.read_text(encoding="utf-8")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "invalid.json"
+            path.write_text(canonical.replace("20260711", "NaN", 1), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "non-standard JSON numeric constant NaN"):
+                MODULE.load_config(
+                    path,
+                    base_config=self.base,
+                    verify_protected_files=False,
+                )
+
+
+if __name__ == "__main__":
+    unittest.main()
