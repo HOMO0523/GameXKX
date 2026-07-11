@@ -25,6 +25,8 @@ SOURCE_MAP = "/Game/GameXXK/Maps/L_QingshanInn"
 WHITEBOX_MAP = "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R"
 MANAGED_TAG = "QingshanB0RManaged"
 PCG_GENERATED_COMPONENT_TAG = "PCG Generated Component"
+HASH_DECIMALS = 3
+ID_ASSOCIATION_TOLERANCE = 0.00049  # Below half the 0.001 canonical hash quantization step.
 CAMERA_IDS = (
     "CAM_QS_GATE_ARRIVAL", "CAM_QS_TOWN_CORE",
     "CAM_QS_MAIN_BRIDGE", "CAM_QS_SOUTH_DOCK",
@@ -76,6 +78,7 @@ def _new_result() -> dict[str, Any]:
         "camera_count": 0, "camera_ids": [], "terrain_zone_count": 0,
         "player_gate_facing_angle_degrees": None, "layout_sha256": "",
         "expected_layout_sha256": "", "observed_layout_sha256": "",
+        "layout_max_deviations": {},
         "errors": [], "success": False,
     }
 
@@ -113,6 +116,8 @@ def _ensure_whitebox_read_only() -> None:
         raise RuntimeError("refusing whitebox map switch while packages are dirty")
     if not unreal.EditorLoadingAndSavingUtils.load_map(WHITEBOX_MAP):
         raise RuntimeError(f"failed to load only {WHITEBOX_MAP}")
+    if _current_map() != WHITEBOX_MAP:
+        raise RuntimeError(f"whitebox load returned without making target the current map: expected {WHITEBOX_MAP}, got {_current_map()}")
 
 
 def _tags(value) -> set[str]:
@@ -166,14 +171,13 @@ def _angle_delta_degrees(first: float, second: float) -> float:
     return abs((values[0] - values[1] + 180.0) % 360.0 - 180.0)
 
 
-def _facing_angle_degrees(first, second) -> float:
-    def forward(rotator):
-        pitch = math.radians(float(rotator.pitch))
-        yaw = math.radians(float(rotator.yaw))
-        return (math.cos(pitch) * math.cos(yaw), math.cos(pitch) * math.sin(yaw), math.sin(pitch))
-    first_forward, second_forward = forward(first), forward(second)
-    dot = sum(first_forward[index] * second_forward[index] for index in range(3))
-    return math.degrees(math.acos(max(-1.0, min(1.0, dot))))
+def _player_gate_facing_angle(player_location, player_yaw: float, gate_location) -> float:
+    dx = float(gate_location[0]) - float(player_location[0])
+    dy = float(gate_location[1]) - float(player_location[1])
+    if not all(math.isfinite(value) for value in (dx, dy, float(player_yaw))) or (dx == 0.0 and dy == 0.0):
+        raise ValueError("player/gate horizontal facing inputs must be finite and noncoincident")
+    target_yaw = math.degrees(math.atan2(dy, dx))
+    return abs((target_yaw - float(player_yaw) + 180.0) % 360.0 - 180.0)
 
 
 def _transform_matches(actual, expected, location_tolerance=1.0, rotation_tolerance=0.1, scale_tolerance=0.001) -> bool:
@@ -215,11 +219,37 @@ def _validate_preserved_transform(result, label: str, actual, baseline_record) -
         _error(result, "protected_actor_transform", "protected actor differs from approved source baseline", label=label, expected=expected, actual=actual)
 
 
+def _validate_baseline_header(baseline) -> dict:
+    if not isinstance(baseline, dict):
+        raise ValueError("preserved baseline must be an object")
+    if baseline.get("schema_version") != 1:
+        raise ValueError("preserved baseline schema_version must be 1")
+    if baseline.get("source_map") != SOURCE_MAP or baseline.get("captured_read_only") is not True:
+        raise ValueError("preserved baseline does not identify the approved clean source map")
+    if not isinstance(baseline.get("actors"), dict):
+        raise ValueError("preserved baseline actors must be an object")
+    return baseline
+
+
+def _object_path(value) -> str:
+    try:
+        return str(value.get_path_name())
+    except Exception:
+        return str(value)
+
+
+def _validate_preserved_actor_class(result, label: str, actor, baseline_record) -> None:
+    expected = baseline_record.get("class_path") if isinstance(baseline_record, dict) else None
+    if not isinstance(expected, str) or not expected:
+        raise ValueError("preserved actor class_path is missing")
+    actual = _object_path(actor.get_class())
+    if actual != expected:
+        _error(result, "protected_actor_class", "protected actor class differs from approved source baseline", label=label, expected=expected, actual=actual)
+
+
 def _validate_preserved_actors(result, actors) -> tuple[Any, Any] | tuple[None, None]:
     try:
-        baseline = json.loads(PRESERVED_SNAPSHOT_PATH.read_text(encoding="utf-8"))
-        if baseline.get("source_map") != SOURCE_MAP or baseline.get("captured_read_only") is not True:
-            raise ValueError("preserved baseline does not identify the approved clean source map")
+        baseline = _validate_baseline_header(json.loads(PRESERVED_SNAPSHOT_PATH.read_text(encoding="utf-8")))
         records = baseline["actors"]
     except Exception as error:
         _error(result, "preserved_baseline", f"approved preserved actor baseline is missing or invalid: {error}")
@@ -235,6 +265,7 @@ def _validate_preserved_actors(result, actors) -> tuple[Any, Any] | tuple[None, 
         actual = _actor_transform(matches[0])
         snapshot[label] = actual
         try:
+            _validate_preserved_actor_class(result, label, matches[0], records[label])
             _validate_preserved_transform(result, label, actual, records[label])
         except Exception as error:
             _error(result, "preserved_baseline", f"protected actor baseline is unavailable: {error}", label=label)
@@ -280,7 +311,7 @@ def _look_at_rotation(location, target) -> list[float]:
 def _expected_proxy_transforms(config, anchor) -> dict[str, list[dict]]:
     layout = generate_seeded_proxy_transforms(config)
     buildings = [{
-        "stable_id": plot["id"],
+        "id": plot["id"],
         "location_cm": _north_local_location(anchor, [plot["location_cm"][0], plot["location_cm"][1], plot["location_cm"][2] + plot["size_cm"][2] / 2.0]),
         "rotation_degrees": [0.0, 0.0, _north_yaw(anchor, plot["yaw_degrees"])],
         "scale": [float(value) / 100.0 for value in plot["size_cm"]],
@@ -293,7 +324,7 @@ def _expected_proxy_transforms(config, anchor) -> dict[str, list[dict]]:
             if category == "mountains":
                 local[2] += abs(float(record["scale"][2])) * 50.0
             records.append({
-                "stable_id": record["stable_id"], "location_cm": _north_local_location(anchor, local),
+                "id": record["id"], "location_cm": _north_local_location(anchor, local),
                 "rotation_degrees": [float(record["rotation_degrees"][0]), float(record["rotation_degrees"][1]), _north_yaw(anchor, record["rotation_degrees"][2])],
                 "scale": [float(value) for value in record["scale"]],
             })
@@ -306,21 +337,55 @@ def _match_observed_transforms(observed, expected, category: str) -> list[dict]:
         raise RuntimeError(f"{category} observed transforms are missing: expected {len(expected)}, got {len(observed)}")
     if len(observed) > len(expected):
         raise RuntimeError(f"{category} observed transforms contain extras: expected {len(expected)}, got {len(observed)}")
-    expected_order = {record["stable_id"]: index for index, record in enumerate(expected)}
+    expected_order = {record["id"]: index for index, record in enumerate(expected)}
     matched = []
     used = set()
     for actual in observed:
-        candidates = [record for record in expected if _transform_matches(actual, record)]
+        candidates = [
+            record for record in expected
+            if _transform_matches(
+                actual, record,
+                ID_ASSOCIATION_TOLERANCE,
+                ID_ASSOCIATION_TOLERANCE,
+                ID_ASSOCIATION_TOLERANCE,
+            )
+        ]
         if len(candidates) != 1:
-            raise RuntimeError(f"{category} stable-id match is ambiguous for observed transform; candidates={[item['stable_id'] for item in candidates]}")
-        stable_id = candidates[0]["stable_id"]
-        if stable_id in used:
-            raise RuntimeError(f"{category} stable-id match is ambiguous: {stable_id} matched more than once")
-        used.add(stable_id)
-        matched.append({**actual, "stable_id": stable_id})
+            raise RuntimeError(f"{category} id match is ambiguous for observed transform; candidates={[item['id'] for item in candidates]}")
+        matched_id = candidates[0]["id"]
+        if matched_id in used:
+            raise RuntimeError(f"{category} id match is ambiguous: {matched_id} matched more than once")
+        used.add(matched_id)
+        matched.append({**actual, "id": matched_id})
     if used != set(expected_order):
-        raise RuntimeError(f"{category} stable-id match is missing expected ids: {sorted(set(expected_order) - used)}")
-    return sorted(matched, key=lambda record: expected_order[record["stable_id"]])
+        raise RuntimeError(f"{category} id match is missing expected ids: {sorted(set(expected_order) - used)}")
+    return sorted(matched, key=lambda record: expected_order[record["id"]])
+
+
+def _layout_max_deviations(observed, expected) -> dict[str, float]:
+    expected_by_id = {record["id"]: record for records in expected.values() for record in records}
+    maxima = {"location_cm": 0.0, "rotation_degrees": 0.0, "scale": 0.0}
+    for records in observed.values():
+        for actual in records:
+            wanted = expected_by_id[actual["id"]]
+            for index in range(3):
+                maxima["location_cm"] = max(maxima["location_cm"], abs(actual["location_cm"][index] - wanted["location_cm"][index]))
+                maxima["rotation_degrees"] = max(maxima["rotation_degrees"], _angle_delta_degrees(actual["rotation_degrees"][index], wanted["rotation_degrees"][index]))
+                maxima["scale"] = max(maxima["scale"], abs(actual["scale"][index] - wanted["scale"][index]))
+    return maxima
+
+
+def _validate_observed_layout(result, observed, expected) -> dict:
+    matched = {category: _match_observed_transforms(observed[category], expected[category], category) for category in expected}
+    expected_hash = canonical_layout_hash(expected, decimals=HASH_DECIMALS)["sha256"]
+    observed_hash = canonical_layout_hash(matched, decimals=HASH_DECIMALS)["sha256"]
+    result["expected_layout_sha256"] = expected_hash
+    result["observed_layout_sha256"] = observed_hash
+    result["layout_sha256"] = observed_hash
+    result["layout_max_deviations"] = _layout_max_deviations(matched, expected)
+    if observed_hash != expected_hash:
+        _error(result, "layout_sha256", "strict canonical observed layout hash differs from deterministic expected layout", expected=expected_hash, observed=observed_hash, decimals=HASH_DECIMALS)
+    return matched
 
 
 def _obb_axes(plot):
@@ -363,7 +428,7 @@ def _validate_geometry(result, config) -> None:
     for record in generate_seeded_proxy_transforms(config)["mountains"]:
         x, y = record["location_cm"][:2]
         if playable[0] <= x <= playable[1] and playable[2] <= y <= playable[3]:
-            _error(result, "mountain_playable_bounds", "mountain lies inside playable bounds", stable_id=record["stable_id"])
+            _error(result, "mountain_playable_bounds", "mountain lies inside playable bounds", id=record["id"])
 
 
 def _spline_points(component) -> list[list[float]]:
@@ -420,20 +485,43 @@ def _validate_actual_bridge_alignment(result, actors) -> None:
         _error(result, "bridge_alignment", "actual bridge must be within 100cm horizontally of actual road and river splines")
 
 
-def _runtime_disabled(component) -> bool:
-    values = []
-    for field in ("generate_on_load", "generate_on_drop", "regenerate_in_editor"):
-        try:
-            values.append(bool(component.get_editor_property(field)))
-        except Exception:
-            return False
-    return not any(values)
+def _strict_property(value, name: str):
+    try:
+        return value.get_editor_property(name)
+    except Exception as error:
+        raise RuntimeError(f"required reflected property is unavailable: {name}") from error
+
+
+def _runtime_generation_evidence(component) -> dict:
+    trigger = str(_strict_property(component, "generation_trigger"))
+    normalized_trigger = "".join(character for character in trigger if character.isalnum()).upper()
+    generate_on_drop = _strict_property(component, "generate_on_drop_when_trigger_on_demand")
+    regenerate = _strict_property(component, "regenerate_in_editor")
+    if not isinstance(generate_on_drop, bool):
+        raise RuntimeError("generate_on_drop_when_trigger_on_demand must be bool")
+    if not isinstance(regenerate, bool):
+        raise RuntimeError("regenerate_in_editor must be bool")
+    return {
+        "generation_trigger": trigger,
+        "generate_on_drop_when_trigger_on_demand": generate_on_drop,
+        "regenerate_in_editor": regenerate,
+        "runtime_generation_disabled": (
+            normalized_trigger.endswith("GENERATEONDEMAND")
+            and not generate_on_drop
+            and not regenerate
+        ),
+    }
 
 
 def _validate_runtime_generation(result, component, label: str) -> bool:
-    disabled = _runtime_disabled(component)
+    try:
+        evidence = _runtime_generation_evidence(component)
+    except Exception as error:
+        _error(result, "runtime_generation_fields", f"required runtime-generation evidence is unavailable: {error}", label=label)
+        return False
+    disabled = evidence["runtime_generation_disabled"]
     if not disabled:
-        _error(result, "runtime_generation", "runtime/editor automatic generation must be disabled", label=label)
+        _error(result, "runtime_generation", "runtime/editor automatic generation must be GenerateOnDemand with drop/regenerate disabled", label=label, runtime=evidence)
     return disabled
 
 
@@ -473,18 +561,14 @@ def _validate_pcg(result, config, actors, current_level, anchor) -> None:
         for ism in generated_components:
             actual.extend(_instance_transform(ism.get_instance_transform(index, world_space=True)) for index in range(int(ism.get_instance_count())))
         result[f"{category[:-1] if category.endswith('s') else category}_instance_count"] = len(actual)
-        wanted = expected[category]
-        try:
-            observed_layout[category] = _match_observed_transforms(actual, wanted, category)
-        except RuntimeError as error:
-            _error(result, "pcg_instance_transforms", str(error), category=category, actual_count=len(actual), expected_count=len(wanted))
+        observed_layout[category] = actual
     result["runtime_generation_disabled"] = all_ok
-    result["expected_layout_sha256"] = canonical_layout_hash(expected)["sha256"]
+    result["expected_layout_sha256"] = canonical_layout_hash(expected, decimals=HASH_DECIMALS)["sha256"]
     if set(observed_layout) == set(expected):
-        result["observed_layout_sha256"] = canonical_layout_hash(observed_layout)["sha256"]
-        result["layout_sha256"] = result["observed_layout_sha256"]
-        if result["observed_layout_sha256"] != result["expected_layout_sha256"]:
-            _error(result, "layout_sha256", "observed PCG layout hash differs from deterministic expected layout", expected=result["expected_layout_sha256"], observed=result["observed_layout_sha256"])
+        try:
+            _validate_observed_layout(result, observed_layout, expected)
+        except RuntimeError as error:
+            _error(result, "pcg_instance_transforms", str(error))
 
 
 def _validate_fixed_transforms(result, config, actors, anchor) -> None:
@@ -548,7 +632,11 @@ def validate_whitebox() -> dict[str, Any]:
         gate, player = _validate_preserved_actors(result, actors)
         if gate is None or player is None:
             return result
-        facing = _facing_angle_degrees(player.get_actor_rotation(), gate.get_actor_rotation())
+        facing = _player_gate_facing_angle(
+            _vector(player.get_actor_location()),
+            float(player.get_actor_rotation().yaw),
+            _vector(gate.get_actor_location()),
+        )
         result["player_gate_facing_angle_degrees"] = facing
         if facing < 35.0:
             _error(result, "player_gate_facing", "duplicated PlayerStart facing must differ from gate by at least 35 degrees", angle=facing)

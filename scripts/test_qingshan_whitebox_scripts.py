@@ -7,6 +7,8 @@ import weakref
 from pathlib import Path
 from types import SimpleNamespace
 
+from scripts.qingshan_whitebox_acceptance import canonical_layout_hash
+
 
 ROOT = Path(__file__).resolve().parents[1]
 IMPLEMENTATION = ROOT / "Source/GameXXKEditor/Private/GameXXKTownPCGAutomationLibrary.cpp"
@@ -502,21 +504,36 @@ class QingshanWhiteboxTask6SourceTests(unittest.TestCase):
     def test_runtime_enabled_flag_is_a_validation_error(self):
         validate_runtime = self._host_function(
             self.validator_tree, VALIDATOR, "_validate_runtime_generation",
-            dependencies=("_runtime_disabled",),
+            dependencies=("_strict_property", "_runtime_generation_evidence"),
             namespace={"_error": lambda result, check, message, **details: result["errors"].append({"check": check, **details})},
         )
         result = {"errors": []}
-        component = SimpleNamespace(get_editor_property=lambda field: field == "generate_on_load")
+        fields = {
+            "generation_trigger": "GenerateOnDemand",
+            "generate_on_drop_when_trigger_on_demand": False,
+            "regenerate_in_editor": False,
+        }
+        component = SimpleNamespace(get_editor_property=lambda field: fields[field])
+        self.assertTrue(validate_runtime(result, component, "PCG"))
+        self.assertEqual(result["errors"], [])
+        fields["generate_on_drop_when_trigger_on_demand"] = True
         self.assertFalse(validate_runtime(result, component, "PCG"))
         self.assertEqual(result["errors"][0]["check"], "runtime_generation")
+        fields.update(generation_trigger="GenerateOnLoad", generate_on_drop_when_trigger_on_demand=False)
+        self.assertFalse(validate_runtime(result, component, "WrongTrigger"))
+        self.assertEqual(result["errors"][-1]["check"], "runtime_generation")
+        missing = SimpleNamespace(get_editor_property=lambda field: (_ for _ in ()).throw(AttributeError(field)))
+        self.assertFalse(validate_runtime(result, missing, "Missing"))
+        self.assertEqual(result["errors"][-1]["check"], "runtime_generation_fields")
 
-    def test_player_gate_facing_angle_includes_pitch(self):
+    def test_player_gate_facing_uses_horizontal_direction_not_pitch_or_gate_rotation(self):
         angle = self._host_function(
-            self.validator_tree, VALIDATOR, "_facing_angle_degrees",
+            self.validator_tree, VALIDATOR, "_player_gate_facing_angle",
             namespace={"math": math},
         )
-        self.assertAlmostEqual(angle(SimpleNamespace(pitch=35, yaw=0), SimpleNamespace(pitch=0, yaw=0)), 35.0)
-        self.assertAlmostEqual(angle(SimpleNamespace(pitch=0, yaw=179), SimpleNamespace(pitch=0, yaw=-179)), 2.0)
+        self.assertAlmostEqual(angle((0, 0, 0), 0, (0, 10, 999)), 90.0)
+        self.assertAlmostEqual(angle((0, 0, 0), 179, (-10, -0.2, -999)), 2.1457628, places=5)
+        self.assertAlmostEqual(angle((0, 0, 0), 0, (10, 0, -999)), 0.0)
 
     def test_preserved_snapshot_is_loaded_and_full_transforms_are_compared(self):
         self.assertIn("QingshanTownPreservedActors.json", self.validator_source)
@@ -546,19 +563,92 @@ class QingshanWhiteboxTask6SourceTests(unittest.TestCase):
         result = {"errors": []}
         validate(result, "Actor", {"wrong": True}, record)
         self.assertEqual(result["errors"], ["protected_actor_transform"])
+        header = self._host_function(
+            self.validator_tree, VALIDATOR, "_validate_baseline_header",
+            namespace={"SOURCE_MAP": "/Game/Source"},
+        )
+        header({"schema_version": 1, "source_map": "/Game/Source", "captured_read_only": True, "actors": {}})
+        with self.assertRaises(ValueError):
+            header({"schema_version": 2, "source_map": "/Game/Source", "captured_read_only": True, "actors": {}})
+        actor_class = self._host_function(
+            self.validator_tree, VALIDATOR, "_validate_preserved_actor_class",
+            namespace={
+                "_object_path": lambda value: value,
+                "_error": lambda result, check, message, **details: result["errors"].append(check),
+            },
+        )
+        result = {"errors": []}
+        actor_class(result, "Actor", SimpleNamespace(get_class=lambda: "/Actual"), {"class_path": "/Expected"})
+        self.assertEqual(result["errors"], ["protected_actor_class"])
 
-    def test_observed_transforms_require_unique_stable_id_matching(self):
+    def test_observed_transforms_require_unique_id_matching(self):
         matcher = self._host_function(
             self.validator_tree, VALIDATOR, "_match_observed_transforms",
-            namespace={"_transform_matches": lambda actual, expected: actual["value"] == expected["value"]},
+            namespace={
+                "_transform_matches": lambda actual, expected, *args: actual["value"] == expected["value"],
+                "ID_ASSOCIATION_TOLERANCE": 0.00049,
+            },
         )
-        expected = [{"stable_id": "A", "value": 1}, {"stable_id": "B", "value": 2}]
+        expected = [{"id": "A", "value": 1}, {"id": "B", "value": 2}]
         matched = matcher([{"value": 2}, {"value": 1}], expected, "buildings")
-        self.assertEqual([item["stable_id"] for item in matched], ["A", "B"])
+        self.assertEqual([item["id"] for item in matched], ["A", "B"])
         with self.assertRaisesRegex(RuntimeError, "missing"):
             matcher([{"value": 1}], expected, "buildings")
         with self.assertRaisesRegex(RuntimeError, "ambiguous"):
-            matcher([{"value": 1}, {"value": 1}], [{"stable_id": "A", "value": 1}, {"stable_id": "B", "value": 1}], "buildings")
+            matcher([{"value": 1}, {"value": 1}], [{"id": "A", "value": 1}, {"id": "B", "value": 1}], "buildings")
+
+    def test_whole_layout_hash_is_strict_after_tolerant_id_association(self):
+        transform_matches = self._host_function(
+            self.validator_tree, VALIDATOR, "_transform_matches",
+            dependencies=("_angle_delta_degrees",), namespace={"math": math},
+        )
+        matcher = self._host_function(
+            self.validator_tree, VALIDATOR, "_match_observed_transforms",
+            namespace={"_transform_matches": transform_matches, "ID_ASSOCIATION_TOLERANCE": 0.00049},
+        )
+        deviations = self._host_function(
+            self.validator_tree, VALIDATOR, "_layout_max_deviations",
+            dependencies=("_angle_delta_degrees",), namespace={"math": math},
+        )
+        validate_hash = self._host_function(
+            self.validator_tree, VALIDATOR, "_validate_observed_layout",
+            namespace={
+                "_match_observed_transforms": matcher,
+                "canonical_layout_hash": canonical_layout_hash,
+                "_error": lambda result, check, message, **details: result["errors"].append(check),
+                "_layout_max_deviations": deviations,
+                "HASH_DECIMALS": 3,
+            },
+        )
+        expected = {"buildings": [{"id": "A", "location_cm": [1.00049, 0, 0], "rotation_degrees": [0, 0, 0], "scale": [1, 1, 1]}]}
+        exact = {"buildings": [{"location_cm": [1.00049, 0, 0], "rotation_degrees": [0, 0, 0], "scale": [1, 1, 1]}]}
+        result = {"errors": []}
+        validate_hash(result, exact, expected)
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(result["observed_layout_sha256"], result["expected_layout_sha256"])
+        noisy = {"buildings": [{"location_cm": [1.00051, 0, 0], "rotation_degrees": [0, 0, 0], "scale": [1, 1, 1]}]}
+        result = {"errors": []}
+        validate_hash(result, noisy, expected)
+        self.assertEqual(result["errors"], ["layout_sha256"])
+
+    def test_map_load_truthiness_requires_actual_whitebox_postcondition(self):
+        for tree, filename, function_name in (
+            (self.validator_tree, VALIDATOR, "_ensure_whitebox_read_only"),
+            (self.acceptance_tree, ACCEPTANCE, "_ensure_whitebox"),
+        ):
+            state = {"current": "/Game/GameXXK/Maps/L_Main"}
+            ensure = self._host_function(
+                tree, filename, function_name,
+                namespace={
+                    "WHITEBOX_MAP": "/Game/Whitebox",
+                    "_current_map": lambda: state["current"],
+                    "_dirty_maps": lambda: [], "_dirty_content": lambda: [],
+                    "unreal": SimpleNamespace(EditorLoadingAndSavingUtils=SimpleNamespace(load_map=lambda path: True)),
+                },
+            )
+            with self.subTest(script=filename.name):
+                with self.assertRaisesRegex(RuntimeError, "current map"):
+                    ensure()
 
     def test_validator_reports_expected_and_observed_layout_hashes(self):
         self.assertIn('"expected_layout_sha256"', self.validator_source)

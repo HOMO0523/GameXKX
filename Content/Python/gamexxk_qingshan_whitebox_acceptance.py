@@ -18,7 +18,12 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 from gamexxk_qingshan_whitebox_config import load_config
 from qingshan_whitebox_acceptance import canonical_layout_hash
-from gamexxk_validate_qingshan_whitebox_b0r import _expected_proxy_transforms, _match_observed_transforms
+from gamexxk_validate_qingshan_whitebox_b0r import (
+    HASH_DECIMALS,
+    _expected_proxy_transforms,
+    _layout_max_deviations,
+    _match_observed_transforms,
+)
 
 
 WHITEBOX_MAP = "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R"
@@ -61,6 +66,8 @@ def _ensure_whitebox() -> None:
         raise RuntimeError("refusing whitebox map switch while packages are dirty")
     if not unreal.EditorLoadingAndSavingUtils.load_map(WHITEBOX_MAP):
         raise RuntimeError(f"could not load only whitebox map {WHITEBOX_MAP}")
+    if _current_map() != WHITEBOX_MAP:
+        raise RuntimeError(f"whitebox load returned without making target the current map: expected {WHITEBOX_MAP}, got {_current_map()}")
 
 
 def _tags(value) -> set[str]:
@@ -135,8 +142,8 @@ def _snapshot() -> dict:
         key: _match_observed_transforms(instances[key], expected_layout[key], key)
         for key in PCG_LABELS
     }
-    expected_hash = canonical_layout_hash(expected_layout)["sha256"]
-    observed_hash = canonical_layout_hash(observed_layout)["sha256"]
+    expected_hash = canonical_layout_hash(expected_layout, decimals=HASH_DECIMALS)["sha256"]
+    observed_hash = canonical_layout_hash(observed_layout, decimals=HASH_DECIMALS)["sha256"]
     if observed_hash != expected_hash:
         raise RuntimeError(f"observed layout hash differs from expected: observed={observed_hash}, expected={expected_hash}")
     return {
@@ -150,6 +157,7 @@ def _snapshot() -> dict:
         "layout_sha256": observed_hash,
         "expected_layout_sha256": expected_hash,
         "observed_layout_sha256": observed_hash,
+        "layout_max_deviations": _layout_max_deviations(observed_layout, expected_layout),
         "cameras": {
             camera_id: {
                 "transform": _transform(_unique_actor(camera_id)),
