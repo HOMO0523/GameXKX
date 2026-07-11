@@ -2150,9 +2150,12 @@ class BatchReportTests(unittest.TestCase):
                 self.assertIn(current_version, report)
                 self.assertIn(current_path, report)
                 self.assertIn(current_digest, report)
-                for _version, preserved_path, preserved_digest in revisions[:-1]:
+                for _version, preserved_path, preserved_digest in revisions[-2:-1]:
                     self.assertIn(preserved_path, report)
                     self.assertIn(preserved_digest, report)
+                for _version, unlineaged_path, unlineaged_digest in revisions[:-2]:
+                    self.assertNotIn(unlineaged_path, report)
+                    self.assertNotIn(unlineaged_digest, report)
             self.assertEqual(report.count("| generated_pending_review |"), 4)
             self.assertEqual(report.count("| REF_QS_REPORT_"), 4)
             self.assertEqual(report.count("calls used 3/3"), 2)
@@ -2186,6 +2189,103 @@ class BatchReportTests(unittest.TestCase):
                 ):
                     self.assertIn(note, report)
             self.assertNotIn(str(root), report)
+
+    def test_report_safely_encodes_dynamic_markdown_cells_and_links(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = [
+                _asset_for("reference", f"REF_QS_SAFE_REPORT_{index}", "B0")
+                for index in range(4)
+            ]
+            assets[0]["review_notes"] = {
+                "visual_risks": [
+                    "unsafe | injected\n| fake | row |\u2028| unicode fake | with `code` and [link](target) and \\ slash",
+                ],
+                "production_guidance": ["keep one safe line"],
+            }
+            _write_manifest(root, [asset["asset_id"] for asset in assets])
+            for asset in assets:
+                _write_asset(root, asset)
+            for index, asset in enumerate(assets):
+                stem = (
+                    f"{asset['asset_id']} board (one)"
+                    if index == 0
+                    else f"{asset['asset_id']}__board"
+                )
+                image_path = root / "style" / "boards" / f"{stem}__v001.png"
+                image_path.parent.mkdir(parents=True, exist_ok=True)
+                image_path.write_bytes(f"safe board {index}".encode("utf-8"))
+                register_output(root, asset["asset_id"], "board", "v001", image_path)
+
+            report_path = root / "report.md"
+            write_batch_report(root, "B0", report_path)
+
+            report = report_path.read_text(encoding="utf-8")
+            table_lines = [line for line in report.splitlines() if line.startswith("|")]
+            self.assertEqual(len(table_lines), 6, report)
+            self.assertNotIn("\n| fake | row |", report)
+            self.assertIn("unsafe &#124; injected<br>&#124; fake &#124; row &#124;", report)
+            self.assertIn("<br>&#124; unicode fake &#124;", report)
+            self.assertIn("&#96;code&#96;", report)
+            self.assertIn("&#91;link&#93;&#40;target&#41;", report)
+            self.assertIn("&#92; slash", report)
+            self.assertIn("board &#40;one&#41;__v001.png]", report)
+            self.assertIn("board%20%28one%29__v001.png)", report)
+
+    def test_preserved_revisions_must_be_older_and_in_current_lineage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = [
+                _asset_for("reference", f"REF_QS_LINEAGE_REPORT_{index}", "B0")
+                for index in range(4)
+            ]
+            _write_manifest(root, [asset["asset_id"] for asset in assets])
+            for asset in assets:
+                _write_asset(root, asset)
+
+            for index, asset in enumerate(assets):
+                v001 = (
+                    root
+                    / "style"
+                    / "boards"
+                    / f"{asset['asset_id']}__board__v001.png"
+                )
+                v001.parent.mkdir(parents=True, exist_ok=True)
+                v001.write_bytes(f"board {index} v001".encode("utf-8"))
+                register_output(root, asset["asset_id"], "board", "v001", v001)
+
+            target = assets[0]
+            stable = root / "style" / "references" / "lineage-safe.png"
+            stable.parent.mkdir(parents=True, exist_ok=True)
+            stable.write_bytes(b"stable lineage input")
+            v002_relative = f"style/boards/{target['asset_id']}__board__v002.png"
+            v002 = root / v002_relative
+            v002.write_bytes(b"board current v002")
+            register_output(
+                root,
+                target["asset_id"],
+                "board",
+                "v002",
+                v002,
+                generation_input_paths=["style/references/lineage-safe.png"],
+                generation_reference_lineage=["style/references/lineage-safe.png"],
+                generation_prompt="targeted revision without old board lineage",
+            )
+            stale_future_relative = (
+                f"style/boards/{target['asset_id']}__board__v003.png"
+            )
+            (root / stale_future_relative).write_bytes(b"stale future output")
+
+            report_path = root / "report.md"
+            write_batch_report(root, "B0", report_path)
+
+            report = report_path.read_text(encoding="utf-8")
+            self.assertIn(v002_relative, report)
+            self.assertNotIn(
+                f"style/boards/{target['asset_id']}__board__v001.png",
+                report,
+            )
+            self.assertNotIn(stale_future_relative, report)
 
     def test_report_rejects_manifest_asset_id_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:

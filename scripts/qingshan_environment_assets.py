@@ -10,6 +10,7 @@ import re
 import tempfile
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable
+from urllib.parse import quote
 
 
 class CatalogError(ValueError):
@@ -1120,15 +1121,61 @@ def _verified_reference_hash(root: Path, reference: dict) -> str:
     return digest
 
 
+def _markdown_inline(value: Any) -> str:
+    """Encode untrusted dynamic content for a single Markdown table/bullet line."""
+
+    text = str(value).replace("\r\n", "\n").replace("\r", "\n")
+    entities = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "|": "&#124;",
+        "\\": "&#92;",
+        "`": "&#96;",
+        "[": "&#91;",
+        "]": "&#93;",
+        "(": "&#40;",
+        ")": "&#41;",
+        "*": "&#42;",
+        "#": "&#35;",
+        "!": "&#33;",
+        "~": "&#126;",
+        "{": "&#123;",
+        "}": "&#125;",
+    }
+    encoded: list[str] = []
+    for character in text:
+        if character in ("\n", "\u0085", "\u2028", "\u2029"):
+            encoded.append("<br>")
+        elif character in entities:
+            encoded.append(entities[character])
+        elif ord(character) < 32 or ord(character) == 127:
+            encoded.append(f"&#{ord(character)};")
+        else:
+            encoded.append(character)
+    return "".join(encoded)
+
+
 def _markdown_catalog_link(relative_path: str) -> str:
-    return (
-        f"[{relative_path}]"
-        f"(../../SourceAssets/TownPCG/QingshanEnvironment/{relative_path})"
+    if any(
+        ord(character) < 32
+        or ord(character) == 127
+        or character in ("\u0085", "\u2028", "\u2029")
+        for character in relative_path
+    ):
+        raise CatalogError("Markdown link path must not contain control characters")
+    label = _markdown_inline(relative_path)
+    target = quote(
+        f"../../SourceAssets/TownPCG/QingshanEnvironment/{relative_path}",
+        safe="/._-",
     )
+    return f"[{label}]({target})"
 
 
 def _preserved_revisions(root: Path, reference: dict) -> list[tuple[str, str, str]]:
     current_version = reference["version"]
+    current_index = ALLOWED_VERSIONS.index(current_version)
+    lineage = set(reference.get("generation_reference_lineage", []))
     current_path = PurePosixPath(reference["output_path"])
     version_marker = f"__{current_version}"
     stem = current_path.stem
@@ -1138,12 +1185,12 @@ def _preserved_revisions(root: Path, reference: dict) -> list[tuple[str, str, st
         )
     revision_stem = stem[: -len(version_marker)]
     preserved: list[tuple[str, str, str]] = []
-    for version in ALLOWED_VERSIONS:
-        if version == current_version:
-            continue
+    for version in ALLOWED_VERSIONS[:current_index]:
         candidate_relative = (
             current_path.parent / f"{revision_stem}__{version}{current_path.suffix}"
         )
+        if candidate_relative.as_posix() not in lineage:
+            continue
         candidate = root / Path(candidate_relative.as_posix())
         if not candidate.is_file():
             continue
@@ -1178,14 +1225,15 @@ def _detail_budget_report_line(assets: list[dict]) -> str:
         "tiny_prop_piles": "tiny prop piles",
     }
     forbidden = ", ".join(
-        forbidden_labels[item] for item in budget["forbidden_micro_detail"]
+        _markdown_inline(forbidden_labels[item])
+        for item in budget["forbidden_micro_detail"]
     )
     return (
-        f"{budget['thumbnail_readability_px']}px; "
-        f"<={budget['max_primary_masses']} primary masses; "
-        f"<={budget['max_secondary_internal_stroke_groups']} secondary line groups; "
-        f"{budget['main_value_bands']} main values + "
-        f"{budget['shadow_accent_bands']} shadow; no {forbidden}."
+        f"{_markdown_inline(budget['thumbnail_readability_px'])}px; "
+        f"<={_markdown_inline(budget['max_primary_masses'])} primary masses; "
+        f"<={_markdown_inline(budget['max_secondary_internal_stroke_groups'])} secondary line groups; "
+        f"{_markdown_inline(budget['main_value_bands'])} main values + "
+        f"{_markdown_inline(budget['shadow_accent_bands'])} shadow; no {forbidden}."
     )
 
 
@@ -1209,37 +1257,40 @@ def write_batch_report(root: Path, batch: str, output: Path) -> None:
     for asset in assets:
         generation = asset["generation"]
         gates = asset["workflow_gates"]
-        gate_summary = "; ".join(
+        gate_summary = _markdown_inline("; ".join(
             f"{gate}={str(gates[gate]).lower()}"
             for gate in ("style_locked", "reference_approved", *PRODUCTION_GATES)
-        )
+        ))
         for reference in asset["reference_images"]:
             digest = _verified_reference_hash(root, reference)
             preserved = _preserved_revisions(root, reference)
             preserved_summary = "<br>".join(
-                f"{version}: {_markdown_catalog_link(path)} (`{revision_digest}`)"
+                f"{_markdown_inline(version)}: {_markdown_catalog_link(path)} (`{_markdown_inline(revision_digest)}`)"
                 for version, path, revision_digest in preserved
             ) or "none"
             notes = asset.get("review_notes", {})
             note_summary = "<br>".join(
                 [
-                    *(f"Risk: {note}" for note in notes.get("visual_risks", [])),
                     *(
-                        f"Guidance: {note}"
+                        f"Risk: {_markdown_inline(note)}"
+                        for note in notes.get("visual_risks", [])
+                    ),
+                    *(
+                        f"Guidance: {_markdown_inline(note)}"
                         for note in notes.get("production_guidance", [])
                     ),
                 ]
             ) or "none"
             rows.append(
                 "| {asset_id} | {kind} | {version} | {path} | `{sha}` | {approval} | calls used {used}/{maximum} | {preserved} | {notes} | {gates} |".format(
-                    asset_id=asset["asset_id"],
-                    kind=reference["kind"],
-                    version=reference["version"],
+                    asset_id=_markdown_inline(asset["asset_id"]),
+                    kind=_markdown_inline(reference["kind"]),
+                    version=_markdown_inline(reference["version"]),
                     path=_markdown_catalog_link(reference["output_path"]),
-                    sha=digest,
-                    approval=reference["approval_state"],
-                    used=generation["generation_calls_used"],
-                    maximum=generation["max_generation_calls"],
+                    sha=_markdown_inline(digest),
+                    approval=_markdown_inline(reference["approval_state"]),
+                    used=_markdown_inline(generation["generation_calls_used"]),
+                    maximum=_markdown_inline(generation["max_generation_calls"]),
                     preserved=preserved_summary,
                     notes=note_summary,
                     gates=gate_summary,
@@ -1247,15 +1298,15 @@ def write_batch_report(root: Path, batch: str, output: Path) -> None:
             )
 
     lines = [
-        f"# Qingshan Environment Concept {batch} Report",
+        f"# Qingshan Environment Concept {_markdown_inline(batch)} Report",
         "",
         "Generated deterministically from registered asset JSON and verified output files.",
         "",
-        f"- {batch} calls used: **{manifest['generation_calls_used'][batch]}/{BATCH_CALL_CAPS[batch]}**",
-        f"- {batch} state: **{manifest['batch_state'][batch]}**",
-        f"- B1: `{manifest['batch_state']['B1']}`",
-        f"- B2: `{manifest['batch_state']['B2']}`",
-        f"- B3: `{manifest['batch_state']['B3']}`",
+        f"- {_markdown_inline(batch)} calls used: **{_markdown_inline(manifest['generation_calls_used'][batch])}/{_markdown_inline(BATCH_CALL_CAPS[batch])}**",
+        f"- {_markdown_inline(batch)} state: **{_markdown_inline(manifest['batch_state'][batch])}**",
+        f"- B1: `{_markdown_inline(manifest['batch_state']['B1'])}`",
+        f"- B2: `{_markdown_inline(manifest['batch_state']['B2'])}`",
+        f"- B3: `{_markdown_inline(manifest['batch_state']['B3'])}`",
         "",
         "## Single-asset simplification rule",
         "",
