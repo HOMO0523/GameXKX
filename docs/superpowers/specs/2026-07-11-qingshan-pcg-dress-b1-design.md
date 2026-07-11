@@ -93,6 +93,7 @@ The deliverable scene uses real UE PCG graphs/components, not Python-spawned cat
 - One large landmark anchors the core. Smaller structures form irregular approach, core, bridge, and south/dock clusters.
 - Windows use chunky dark timber frames with warm ivory/ochre rice-paper infill; black void windows are forbidden.
 - Reusable lanterns, signs, banners, awnings, fences, and similar attachments remain separate Actor assets.
+- Building-mounted signs, lanterns, and banners may occupy only an explicit target building's narrow attachment band and carry `attachment_target_id`; they still may not enter the road or river corridor. All other props, vegetation, and mountains remain outside building oriented footprints. `dock_post` is the only prop category allowed an explicit river-overlap flag.
 
 ## Prop and Vegetation Contract
 
@@ -111,6 +112,8 @@ The deliverable scene uses real UE PCG graphs/components, not Python-spawned cat
 - Broad shapes and controlled asymmetry take priority over small tiled or dotted detail.
 - Daylight base: warm paper windows, warm plaster, dark timber, cool teal/blue shadows, restrained fog.
 - The B1 proxy pass may use reusable stylized proxy actors, but every proxy must read as its intended category; generic cubes/cones alone are not acceptable final B1 evidence.
+- Six source building proxies use a one-metre normalized-bounds contract with bottom-centre pivot and +Y frontage, then scale from plot dimensions. They use exactly `Wall`, `Timber`, `WindowPaper`, and `Roof` slots; warm paper windows and chunky frames reuse the Golden Inn conventions, while roofs use low-segment broad shells rather than tile geometry.
+- Paper2D/card foliage uses a dedicated two-sided masked texture material. A plain vector-colour Toon material is not an acceptable substitute because it cannot preserve the generated alpha or select static-frame UVs.
 
 ## Performance Budget
 
@@ -121,6 +124,7 @@ The deliverable scene uses real UE PCG graphs/components, not Python-spawned cat
 - Landmark/high-detail buildings may use Nanite; small buildings and props require simpler meshes and simple collision.
 - Only near Paper2D vegetation animates. Far cards are static and aggressively culled.
 - Plant cards, lanterns, banners, and mountain backdrops have collision disabled. Collision is enabled only for solid gameplay-relevant building, bridge, cart, stall, well, fence, crate, rock, and dock-post geometry.
+- Signs also have collision disabled so reused storefront attachments cannot block navigation.
 - Evidence records actor/component counts, road triangle/chunk counts, editor memory, and a short PIE smoke result.
 - Evidence also records generated PCG graph paths, seed, point/output counts, road-edge spline count, Actor/Component/Tick counts, Paper2D cull distances, and frame-time/stat sampling.
 

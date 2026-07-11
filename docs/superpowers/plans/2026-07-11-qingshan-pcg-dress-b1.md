@@ -20,6 +20,7 @@
 - `scripts/blender/build_qingshan_b1_proxy_kit.py`: six building meshes plus reusable prop/card/mountain proxy meshes.
 - `scripts/test_qingshan_b1_proxy_kit.py`: Blender source/manifest contract tests.
 - `Content/ArtSource/Qingshan/B1/H_QS_B1_Terrain_505.png`: generated base heightmap.
+- `Content/ArtSource/Qingshan/B1/H_QS_B1_Terrain_505.samples.json`: decoded terrain samples and PNG digest.
 - `Content/ArtSource/Qingshan/B1/T_QS_B1_PlantProxy_4F.png`: four-frame approved-style plant strip.
 - `Plugins/Quick_Road/Source/Quick_Road/Public/Quick_RoadAutomationLibrary.h`: generic QuickRoad callable facade.
 - `Plugins/Quick_Road/Source/Quick_Road/Private/Quick_RoadAutomationLibrary.cpp`: landscape/road/reset/intersection/influence/edge/bake/audit implementation.
@@ -132,7 +133,7 @@ The JSON must contain:
 }
 ```
 
-Add `height_encoding` metadata for the Unreal formula `raw = round(32768 + elevation_cm * 128 / scale_z_cm)`. Add the three network records with unique tags `QS_B1_Main`, `QS_B1_CoreNorth`, and `QS_B1_CoreSouth`; use the combined expression `QS_B1_Main|QS_B1_CoreNorth|QS_B1_CoreSouth`; set `road_material` to `/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Road_Earth`; use road mesh sample 300 cm, width subdivisions 3, curvature `8/2`, influence falloff 250 cm, blend 0.9, vertical offset -5 cm, smooth `4/0.6`, intersection `500/100/50/1.2`, and bake split 5000 cm. Add the exact protected-file hashes from Step 1, all 16 B0R plot assignments, and the ten additional plot records previously approved in the design: `BLD_S_11`, `BLD_S_12`, `BLD_M_06`, `BLD_S_13`, `BLD_S_14`, `BLD_S_15`, `BLD_M_07`, `BLD_S_16`, `BLD_S_17`, and `BLD_S_18`. Give every static vegetation record a seeded `frame_variant` 0-3 and collision false; record explicit collision policy for every prop category.
+Add `height_encoding` metadata for the Unreal formula `raw = round(32768 + elevation_cm * 128 / scale_z_cm)`. Add the three network records with unique tags `QS_B1_Main`, `QS_B1_CoreNorth`, and `QS_B1_CoreSouth`; use the combined expression `QS_B1_Main|QS_B1_CoreNorth|QS_B1_CoreSouth`; set `road_material` to `/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Road_Earth`; use road mesh sample 300 cm, width subdivisions 3, curvature `8/2`, influence falloff 250 cm, blend 0.9, vertical offset -5 cm, smooth `4/0.6`, intersection `500/100/50/1.2`, and bake split 5000 cm. Add the exact protected-file hashes from Step 1, all 16 B0R plot assignments, and the ten additional plot records previously approved in the design: `BLD_S_11`, `BLD_S_12`, `BLD_M_06`, `BLD_S_13`, `BLD_S_14`, `BLD_S_15`, `BLD_M_07`, `BLD_S_16`, `BLD_S_17`, and `BLD_S_18`. Give every static vegetation record a `seed + stable_id` SHA-256-derived `frame_variant` 0-3 and collision false; record explicit collision policy for every prop category. Building-mounted sign/lantern/banner records require an `attachment_target_id`; only dock posts may opt into river overlap. Validate every population record against world/Landscape bounds, rotated building footprints, roads, river, and protected anchors so later PCG exclusion cannot reduce the required counts.
 
 - [ ] **Step 4: Implement host-safe validation and merge**
 
@@ -176,6 +177,7 @@ Expected: all Task 1 tests pass.
 - Create: `scripts/blender/build_qingshan_b1_proxy_kit.py`
 - Create: `scripts/test_qingshan_b1_proxy_kit.py`
 - Create: `Content/ArtSource/Qingshan/B1/H_QS_B1_Terrain_505.png`
+- Create: `Content/ArtSource/Qingshan/B1/H_QS_B1_Terrain_505.samples.json`
 - Create: `Content/ArtSource/Qingshan/B1/T_QS_B1_PlantProxy_4F.png`
 
 - [ ] **Step 1: Write failing heightmap and proxy-kit tests**
@@ -203,6 +205,9 @@ def test_proxy_manifest_contains_real_category_meshes():
     for mesh in manifest["buildings"].values():
         assert mesh["material_slots"] == ["Wall", "Timber", "WindowPaper", "Roof"]
         assert mesh["window_paper_closed"] is True
+        assert mesh["normalized_bounds_m"] == [1.0, 1.0, 1.0]
+        assert mesh["pivot"] == "bottom_center"
+        assert mesh["front_axis"] == "+Y"
 ```
 
 - [ ] **Step 2: Run and verify RED**
@@ -215,15 +220,15 @@ Expected: missing modules/files.
 
 - [ ] **Step 3: Implement deterministic heightmap generation**
 
-Use B0R terrain-zone oriented rectangles as smooth low-frequency targets, blend with smoothstep weights, subtract a Gaussian river trench around the B0R river polyline, and add only two octaves of seeded noise with wavelength at least 6,000 cm and amplitude at most 45 cm. Encode each sample with `raw = clamp(round(32768 + elevation_cm * 128 / scale_z_cm), 0, 65535)`, write a 16-bit PNG, and emit a JSON sample manifest containing both raw and decoded-centimetre gate/core/south/dock/riverbed values. Tests must decode by `elevation_cm = (raw - 32768) * scale_z_cm / 128`, require at most one encoded-step sample error, and prove that the configured centre maps to Landscape actor origin `centerXY - ((resolution - 1) * scaleXY / 2)`. Building plot Z and later UE line traces use the same local coordinate conversion.
+Use B0R terrain-zone oriented rectangles as smooth low-frequency targets, blend with smoothstep weights, subtract a Gaussian river trench around the B0R river polyline, and add only two octaves of seeded noise with wavelength at least 6,000 cm and total amplitude at most 20 cm. Encode each sample with `raw = clamp(round(32768 + elevation_cm * 128 / scale_z_cm), 0, 65535)`, write a 16-bit PNG, and emit `H_QS_B1_Terrain_505.samples.json` containing local/pixel coordinates, raw and decoded-centimetre gate/core/south/dock-bank/riverbed values plus the PNG SHA-256. Choose the dock-bank sample at least 1,400 cm from the river centreline rather than sampling the trench. Tests must decode by `elevation_cm = (raw - 32768) * scale_z_cm / 128`, require at most one encoded-step sample error, and prove that the configured centre maps to Landscape actor origin `centerXY - ((resolution - 1) * scaleXY / 2)`. Building plot Z and later UE line traces use the same local coordinate conversion.
 
 - [ ] **Step 4: Implement the Blender proxy kit**
 
-Generate separate low-poly FBX files under `Saved/Automation/QingshanB1ProxyKit`. Each building is one combined mesh with broad asymmetry, pitched overhanging roof panels, a chunky door, dark timber, and closed paper windows. The six archetypes must differ in story count, width, wing/awning, roof proportion, and silhouette. Generate the twelve named prop/card/mountain meshes from simple closed geometry. Do not generate text or tiny roof tiles. Emit `proxy-kit-manifest.json` with file hashes, bounds, face counts, material slots, and semantic IDs.
+Generate separate low-poly FBX files under `Saved/Automation/QingshanB1ProxyKit`. Reuse the Golden Inn builder's tapered-box, chunky-window, beam, small-bevel, transform-application, and finish-audit helpers or tested equivalents; do not reuse its high-density curved-roof function. Each building is one combined mesh normalized to 1 m x 1 m x 1 m with bottom-centre pivot and +Y frontage, broad 5-10% asymmetry, a 3-5-section overhanging roof shell, one chunky door, dark timber, and closed warm paper windows. The six archetypes must differ in story count, width, wing/awning, roof proportion, and silhouette. Generate the twelve named prop/card/mountain meshes from simple closed geometry with the exact slot table: sign `[Timber,Prop]`, lantern `[Timber,WindowPaper]`, banner `[Timber,Prop]`, fence `[Timber]`, crate `[Timber]`, stall `[Timber,Prop]`, well `[Prop,Timber]`, cart `[Timber]`, rock `[Prop]`, dock_post `[Timber]`, plant_card `[Foliage]`, mountain `[Mountain]`. Do not generate text or tiny roof tiles. Emit `proxy-kit-manifest.json` with current file hashes, stable geometry digests, normalized bounds, vertex/triangle counts, material slots, UV channels, pivot/front-axis, Blender version, and export settings. Cross-run determinism compares geometry digests, not FBX container bytes because FBX timestamps may vary.
 
 - [ ] **Step 5: Generate and inspect the plant strip**
 
-Use the `imagegen` skill with the approved Qingshan references. Generate a transparent 2048 x 512 strip with four equal 512 x 512 cells showing one chunky broad-leaf plant leaning left, neutral-left, neutral-right, and right. Require identical roots/pivots, dark ink contour, muted teal/green fill, no text, no ground, and no disconnected small leaves. Inspect at original resolution and save the accepted strip at the specified source path.
+Use the `imagegen` skill with the approved Qingshan references. Generate the four-state source on a perfectly flat magenta chroma key, remove the key locally, then assemble a transparent 2048 x 512 strip from four equal 512 x 512 cells showing one chunky broad-leaf plant leaning left, neutral-left, neutral-right, and right. Per cell, preserve aspect ratio inside a 360 x 432 content box, align the root pivot to `(256,472)` within 4 px, require the crown centroid to move monotonically, largest alpha component at least 98%, transparent borders, alpha-area variation at most 15%, dark ink contour, muted teal/green fill, no text/ground line/disconnected small leaves. Inspect at original resolution and save the accepted strip at the specified source path.
 
 - [ ] **Step 6: Run real generation, verify, and commit**
 
@@ -232,7 +237,7 @@ python scripts/build_qingshan_b1_heightmap.py
 python -m unittest scripts.test_qingshan_b1_heightmap scripts.test_qingshan_b1_proxy_kit -v
 D:\Blender\blender.exe --background --factory-startup --python scripts/blender/build_qingshan_b1_proxy_kit.py -- --output Saved/Automation/QingshanB1ProxyKit
 python -m unittest scripts.test_qingshan_b1_proxy_kit -v
-git add -- scripts/build_qingshan_b1_heightmap.py scripts/test_qingshan_b1_heightmap.py scripts/blender/build_qingshan_b1_proxy_kit.py scripts/test_qingshan_b1_proxy_kit.py Content/ArtSource/Qingshan/B1/H_QS_B1_Terrain_505.png Content/ArtSource/Qingshan/B1/T_QS_B1_PlantProxy_4F.png
+git add -- scripts/build_qingshan_b1_heightmap.py scripts/test_qingshan_b1_heightmap.py scripts/blender/build_qingshan_b1_proxy_kit.py scripts/test_qingshan_b1_proxy_kit.py Content/ArtSource/Qingshan/B1/H_QS_B1_Terrain_505.png Content/ArtSource/Qingshan/B1/H_QS_B1_Terrain_505.samples.json Content/ArtSource/Qingshan/B1/T_QS_B1_PlantProxy_4F.png
 git commit -m "feat: generate qingshan B1 proxy sources"
 ```
 
@@ -319,7 +324,7 @@ Expected: host tests pass; MCP saves dirty packages before shutdown; UBT exits 0
 
 - [ ] **Step 1: Write failing asset-authoring tests**
 
-Assert the script imports exactly 18 source-manifest FBXs, creates one Toon BSDF master, material instances for wall/timber/paper/four roofs/ground/road/water/four static foliage frames/animated foliage/mountain/props, derives 24 building mesh/material variants for every `(archetype, roof_palette)` pair, assigns `MI_QS_B1_Window_Paper` to every building `WindowPaper` slot, creates four 512 x 512 PaperSprites, and creates a five-FPS flipbook with frame order `[0, 1, 2, 3, 2, 1]`.
+Assert the script imports exactly 18 source-manifest FBXs, verifies imported bounds near 100 cm for every normalized source, creates one opaque Toon BSDF master plus one dedicated two-sided Masked foliage-card master, material instances for wall/timber/paper/four roofs/ground/road/water/four static foliage UV frames/animated foliage/mountain/props, derives 24 building mesh/material variants for every `(archetype, roof_palette)` pair, assigns `MI_QS_B1_Window_Paper` to every building `WindowPaper` slot, creates four 512 x 512 PaperSprites, and creates a five-FPS flipbook with frame order `[0, 1, 2, 3, 2, 1]`.
 
 - [ ] **Step 2: Run and verify RED**
 
@@ -331,7 +336,7 @@ Expected: script missing.
 
 - [ ] **Step 3: Implement idempotent import and materials**
 
-Import all FBXs with `combine_meshes=True`, no imported materials/textures, replacement enabled, and source manifest hash checks. Create `M_QS_B1_Toon` with a `BaseColor` vector parameter plus metallic 0, specular 0.15, roughness 0.85 into `MaterialExpressionSubstrateToonBSDF`. Create named instances including `MI_QS_B1_Ground`, `MI_QS_B1_Road_Earth`, `MI_QS_B1_Window_Paper`, four roof palettes, and four static-frame plant materials. Derive and save 24 building StaticMesh variants from the six source meshes, changing only the `Roof` slot; reject unknown/missing slots. Add simple collision only to solid gameplay-relevant buildings/props. Disable collision on plant cards, lanterns, banners, and mountain backdrops; enable Nanite only when a recorded triangle threshold shows benefit, never merely by category.
+Import all FBXs with `combine_meshes=True`, no imported materials/textures, replacement enabled, and source manifest hash/geometry-digest checks. Require every normalized source bound to be approximately 100 cm and stop on scale drift. Create `M_QS_B1_Toon` with a `BaseColor` vector parameter plus metallic 0, specular 0.15, roughness 0.85 into `MaterialExpressionSubstrateToonBSDF`. Create `M_QS_B1_FoliageCard` as two-sided Masked, with the plant-strip texture feeding BaseColor and Alpha feeding Opacity Mask plus UV scale/offset parameters; derive four static-frame material instances. Create named instances including `MI_QS_B1_Ground`, `MI_QS_B1_Road_Earth`, `MI_QS_B1_Window_Paper`, and four roof palettes. Derive and save 24 building StaticMesh variants from the six source meshes, changing only the `Roof` slot; reject unknown/missing slots. Add simple collision only to solid gameplay-relevant buildings/props. Disable collision on signs, plant cards, lanterns, banners, and mountain backdrops; enable Nanite only when a recorded triangle threshold shows benefit, never merely by category.
 
 - [ ] **Step 4: Implement Paper2D assets**
 
