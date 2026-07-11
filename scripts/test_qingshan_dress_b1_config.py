@@ -31,6 +31,32 @@ ARCHETYPES = {
     "courtyard_wing", "bridge_house", "dock_shed",
 }
 ROOF_PALETTES = {"orange", "teal", "indigo", "ochre"}
+ASSET_ROOT = "/Game/GameXXK/Environment/TownPCG/B1"
+EXPECTED_ASSET_CATALOG = {
+    "building_meshes": {
+        "gable_shop": f"{ASSET_ROOT}/Meshes/SM_QS_B1_GableShop",
+        "tall_house": f"{ASSET_ROOT}/Meshes/SM_QS_B1_TallHouse",
+        "wide_house": f"{ASSET_ROOT}/Meshes/SM_QS_B1_WideHouse",
+        "courtyard_wing": f"{ASSET_ROOT}/Meshes/SM_QS_B1_CourtyardWing",
+        "bridge_house": f"{ASSET_ROOT}/Meshes/SM_QS_B1_BridgeHouse",
+        "dock_shed": f"{ASSET_ROOT}/Meshes/SM_QS_B1_DockShed",
+    },
+    "prop_meshes": {
+        "sign": f"{ASSET_ROOT}/Meshes/SM_QS_B1_Sign",
+        "lantern": f"{ASSET_ROOT}/Meshes/SM_QS_B1_Lantern",
+        "banner": f"{ASSET_ROOT}/Meshes/SM_QS_B1_Banner",
+        "fence": f"{ASSET_ROOT}/Meshes/SM_QS_B1_Fence",
+        "crate": f"{ASSET_ROOT}/Meshes/SM_QS_B1_Crate",
+        "stall": f"{ASSET_ROOT}/Meshes/SM_QS_B1_Stall",
+        "well": f"{ASSET_ROOT}/Meshes/SM_QS_B1_Well",
+        "cart": f"{ASSET_ROOT}/Meshes/SM_QS_B1_Cart",
+        "rock": f"{ASSET_ROOT}/Meshes/SM_QS_B1_Rock",
+        "dock_post": f"{ASSET_ROOT}/Meshes/SM_QS_B1_DockPost",
+    },
+    "plant_card_mesh": f"{ASSET_ROOT}/Meshes/SM_QS_B1_PlantCard",
+    "plant_flipbook": f"{ASSET_ROOT}/Paper2D/FB_QS_B1_Plant_Sway",
+    "mountain_mesh": f"{ASSET_ROOT}/Meshes/SM_QS_B1_Mountain",
+}
 ADDITIONAL_PLOT_IDS = {
     "BLD_S_11", "BLD_S_12", "BLD_M_06", "BLD_S_13", "BLD_S_14",
     "BLD_S_15", "BLD_M_07", "BLD_S_16", "BLD_S_17", "BLD_S_18",
@@ -71,6 +97,11 @@ def _polyline_distance(point, points):
         _point_segment_distance(point, start, end)
         for start, end in zip(points, points[1:])
     )
+
+
+def _stable_frame_variant(seed, stable_id):
+    digest = hashlib.sha256(f"{seed}:{stable_id}".encode("utf-8")).hexdigest()
+    return int(digest[:8], 16) % 4
 
 
 class QingshanDressB1ConfigTests(unittest.TestCase):
@@ -175,6 +206,24 @@ class QingshanDressB1ConfigTests(unittest.TestCase):
                 "WindowPaper": window_material,
             })
 
+    def test_asset_catalog_and_b1_roots_are_exact(self):
+        self.assertEqual(self.data["asset_root"], ASSET_ROOT)
+        self.assertEqual(self.data["asset_catalog"], EXPECTED_ASSET_CATALOG)
+        self.assertEqual(self.data["landscape"]["label"], "QS_B1_Landscape")
+        self.assertEqual(
+            self.data["landscape"]["heightmap_source"],
+            "Content/ArtSource/Qingshan/B1/H_QS_B1_Terrain_505.png",
+        )
+        self.assertEqual(
+            self.data["landscape"]["ground_material"],
+            f"{ASSET_ROOT}/Materials/MI_QS_B1_Ground",
+        )
+        for category in ("building_meshes", "prop_meshes"):
+            for path in self.data["asset_catalog"][category].values():
+                self.assertTrue(path.startswith(f"{ASSET_ROOT}/"))
+        for field in ("plant_card_mesh", "plant_flipbook", "mountain_mesh"):
+            self.assertTrue(self.data["asset_catalog"][field].startswith(f"{ASSET_ROOT}/"))
+
     def test_additional_plots_do_not_overlap_buildings_roads_river_or_anchors(self):
         plots = self.data["building_plots"]
         additional = [item for item in plots if item["id"] in ADDITIONAL_PLOT_IDS]
@@ -256,7 +305,7 @@ class QingshanDressB1ConfigTests(unittest.TestCase):
 
     def test_collision_policy_is_explicit_and_applied(self):
         policy = self.data["collision_policy"]
-        for asset_type in ("plant_card", "lantern", "banner", "mountain"):
+        for asset_type in ("sign", "plant_card", "lantern", "banner", "mountain"):
             self.assertIs(policy[asset_type], False)
         for record in self.data["prop_records"]:
             self.assertIs(record["collision_enabled"], policy[record["prop_type"]])
@@ -269,7 +318,11 @@ class QingshanDressB1ConfigTests(unittest.TestCase):
         self.assertEqual(len(animated), 30)
         self.assertEqual(len(static), 70)
         self.assertTrue(all("frame_variant" not in item for item in animated))
-        self.assertEqual([item["frame_variant"] for item in static], [index % 4 for index in range(70)])
+        expected = [
+            _stable_frame_variant(self.data["seed"], item["id"])
+            for item in static
+        ]
+        self.assertEqual([item["frame_variant"] for item in static], expected)
         self.assertEqual({item["frame_variant"] for item in static}, {0, 1, 2, 3})
         self.assertTrue(all(item["collision_enabled"] is False for item in static))
 
@@ -295,6 +348,26 @@ class QingshanDressB1ConfigTests(unittest.TestCase):
         contract_change = copy.deepcopy(self.data)
         contract_change["prop_records"][0]["yaw_degrees"] += 1
         self.assertNotEqual(MODULE.contract_sha256(contract_change), first)
+
+    def test_contract_hash_covers_all_authoring_asset_inputs(self):
+        baseline = MODULE.contract_sha256(self.data)
+        mutations = (
+            lambda d: d.__setitem__("source_map", "/Game/GameXXK/Maps/Dev/Alternate"),
+            lambda d: d.__setitem__("dress_map", "/Game/GameXXK/Maps/Dev/AlternateB1"),
+            lambda d: d.__setitem__("asset_root", f"{ASSET_ROOT}/Alternate"),
+            lambda d: d["asset_catalog"].__setitem__("mountain_mesh", f"{ASSET_ROOT}/Meshes/Alternate"),
+            lambda d: d["building_materials"]["roof_palette_materials"].__setitem__(
+                "orange", f"{ASSET_ROOT}/Materials/Alternate"
+            ),
+            lambda d: d["collision_policy"].__setitem__("rock", False),
+            lambda d: d["protected_files"].__setitem__(
+                next(iter(d["protected_files"])), "0" * 64
+            ),
+        )
+        for mutate in mutations:
+            data = copy.deepcopy(self.data)
+            mutate(data)
+            self.assertNotEqual(MODULE.contract_sha256(data), baseline)
 
     def test_rejects_non_finite_values(self):
         mutations = (
@@ -332,6 +405,174 @@ class QingshanDressB1ConfigTests(unittest.TestCase):
             data = copy.deepcopy(self.data)
             mutate(data)
             self.assert_invalid(data, pattern)
+
+    def test_rejects_asset_path_escape_and_malformed_material_catalogs(self):
+        mutations = (
+            (lambda d: d.__setitem__("asset_root", f"{ASSET_ROOT}/Wrong"), "asset_root"),
+            (lambda d: d["asset_catalog"]["building_meshes"].__setitem__(
+                "gable_shop", f"{ASSET_ROOT}Evil/Meshes/SM_Escape"
+            ), "inside asset_root"),
+            (lambda d: d["asset_catalog"].__setitem__("prop_meshes", []), "asset_catalog.prop_meshes must be an object"),
+            (lambda d: d["landscape"].__setitem__(
+                "ground_material", "/Game/Elsewhere/MI_Ground"
+            ), "ground_material"),
+            (lambda d: d["landscape"].__setitem__(
+                "heightmap_source", "Content/ArtSource/Qingshan/B1/../Escape.png"
+            ), "heightmap_source"),
+        )
+        for mutate, pattern in mutations:
+            data = copy.deepcopy(self.data)
+            mutate(data)
+            self.assert_invalid(data, pattern)
+
+        overlay = copy.deepcopy(self.overlay)
+        overlay["building_materials"]["roof_palette_materials"] = []
+        with self.assertRaisesRegex(ValueError, "roof_palette_materials must be an object"):
+            MODULE.merge_config(overlay, self.base)
+
+    def test_rejects_malformed_or_invalid_b0r_before_merge(self):
+        malformed = copy.deepcopy(self.base)
+        malformed["building_plots"][0]["size_cm"][0] = 0
+        with self.assertRaisesRegex(ValueError, "size_cm"):
+            MODULE.merge_config(self.overlay, malformed)
+
+        malformed = copy.deepcopy(self.base)
+        del malformed["road_splines"]
+        with self.assertRaisesRegex(ValueError, "road_splines"):
+            MODULE.merge_config(self.overlay, malformed)
+
+    def test_plot_schema_and_positive_scales_are_complete(self):
+        cases = (
+            (lambda d: d["building_plots"][0]["size_cm"].__setitem__(0, 0), "size_cm must be strictly positive"),
+            (lambda d: d["building_plots"][0].__setitem__("entrance_axis", "-Y"), "entrance_axis"),
+            (lambda d: d["building_plots"][0].__setitem__("cluster_id", "unknown"), "cluster_id"),
+            (lambda d: d["mountain_records"][0]["scale"].__setitem__(2, -1), "scale must be strictly positive"),
+            (lambda d: d["vegetation_records"][0].__setitem__("scale", 0), "scale must be positive"),
+        )
+        for mutate, pattern in cases:
+            data = copy.deepcopy(self.data)
+            mutate(data)
+            self.assert_invalid(data, pattern)
+
+    def test_all_spatial_records_and_camera_endpoints_must_stay_in_bounds(self):
+        cases = (
+            (lambda d: d["building_plots"][0]["location_cm"].__setitem__(0, 8000), "outside world/landscape bounds"),
+            (lambda d: d["prop_records"][0]["location_cm"].__setitem__(0, -39000), "outside world/landscape bounds"),
+            (lambda d: d["vegetation_records"][0]["location_cm"].__setitem__(1, 20000), "outside world/landscape bounds"),
+            (lambda d: d["mountain_records"][0]["location_cm"].__setitem__(1, -20000), "outside world/landscape bounds"),
+            (lambda d: d["cameras"][0]["location_cm"].__setitem__(0, 8000), "outside world/landscape bounds"),
+            (lambda d: d["cameras"][0]["target_cm"].__setitem__(1, 20000), "outside world/landscape bounds"),
+        )
+        for mutate, pattern in cases:
+            data = copy.deepcopy(self.data)
+            mutate(data)
+            self.assert_invalid(data, pattern)
+
+    def test_obb_distance_handles_rotation_without_circle_false_positive(self):
+        first = {
+            "location_cm": [0, 0, 0], "size_cm": [1000, 200, 100], "yaw_degrees": 45,
+        }
+        second = {
+            "location_cm": [-636.396103, 636.396103, 0],
+            "size_cm": [1000, 200, 100], "yaw_degrees": 45,
+        }
+        circle_radius = math.hypot(500, 100)
+        self.assertLess(math.dist(first["location_cm"][:2], second["location_cm"][:2]), circle_radius * 2)
+        self.assertAlmostEqual(MODULE.oriented_plot_distance(first, second), 700.0, places=3)
+
+    def test_rejects_building_obb_conflicts_with_infrastructure_and_buildings(self):
+        cases = (
+            ([-3500, -500, 140], "road corridor"),
+            ([-26000, -12000, -250], "river corridor"),
+            ([-15500, -6500, 100], "bridge anchor"),
+            (self.data["building_plots"][0]["location_cm"], "building OBB"),
+        )
+        for location, pattern in cases:
+            data = copy.deepcopy(self.data)
+            target = next(p for p in data["building_plots"] if p["id"] == "BLD_S_11")
+            target["location_cm"] = list(location)
+            self.assert_invalid(data, pattern)
+
+    def test_obb_validation_accepts_separated_boxes_whose_circles_overlap(self):
+        data = copy.deepcopy(self.data)
+        first = next(p for p in data["building_plots"] if p["id"] == "BLD_S_16")
+        second = next(p for p in data["building_plots"] if p["id"] == "BLD_S_17")
+        first["location_cm"], first["yaw_degrees"] = [-35000, 3000, 0], 0
+        second["location_cm"], second["yaw_degrees"] = [-34050, 3000, 0], 0
+        first_radius = math.hypot(first["size_cm"][0] / 2, first["size_cm"][1] / 2)
+        second_radius = math.hypot(second["size_cm"][0] / 2, second["size_cm"][1] / 2)
+        self.assertLess(950, first_radius + second_radius + 100)
+        MODULE.validate_config(data, base_config=self.base)
+
+    def test_rejects_ground_population_conflicts(self):
+        categories = (
+            ("prop_records", lambda items: next(i for i in items if i["prop_type"] == "crate")),
+            ("vegetation_records", lambda items: items[0]),
+            ("mountain_records", lambda items: items[0]),
+        )
+        locations = (
+            ([-3500, -500, 140], "road corridor"),
+            ([-26000, -12000, -250], "river corridor"),
+            ([-15500, -6500, 100], "bridge anchor"),
+            (self.data["building_plots"][0]["location_cm"], "building OBB"),
+        )
+        for field, select in categories:
+            for location, pattern in locations:
+                with self.subTest(field=field, pattern=pattern):
+                    data = copy.deepcopy(self.data)
+                    select(data[field])["location_cm"] = list(location)
+                    self.assert_invalid(data, pattern)
+
+    def test_attachment_props_require_valid_target_and_edge_band(self):
+        attachment_types = {"sign", "lantern", "banner"}
+        building_ids = {plot["id"] for plot in self.data["building_plots"]}
+        attachments = [p for p in self.data["prop_records"] if p["prop_type"] in attachment_types]
+        self.assertTrue(attachments)
+        self.assertTrue(all(p["attachment_target_id"] in building_ids for p in attachments))
+
+        cases = (
+            (lambda p, d: p.pop("attachment_target_id"), "attachment_target_id"),
+            (lambda p, d: p.__setitem__("attachment_target_id", "BLD_UNKNOWN"), "attachment_target_id"),
+            (lambda p, d: p.__setitem__(
+                "location_cm",
+                list(next(b for b in d["building_plots"] if b["id"] == p["attachment_target_id"])["location_cm"]),
+            ), "attachment band"),
+        )
+        for mutate, pattern in cases:
+            data = copy.deepcopy(self.data)
+            prop = next(p for p in data["prop_records"] if p["prop_type"] == "sign")
+            mutate(prop, data)
+            self.assert_invalid(data, pattern)
+
+        data = copy.deepcopy(self.data)
+        prop = next(p for p in data["prop_records"] if p["prop_type"] == "crate")
+        prop["attachment_target_id"] = data["building_plots"][0]["id"]
+        self.assert_invalid(data, "only sign/lantern/banner")
+
+    def test_dock_post_is_the_only_explicit_river_overlap_exception(self):
+        river_point = [-26000, -12000, -250]
+        data = copy.deepcopy(self.data)
+        crate = next(p for p in data["prop_records"] if p["prop_type"] == "crate")
+        crate["allow_river_overlap"] = True
+        self.assert_invalid(data, "only dock_post")
+
+        data = copy.deepcopy(self.data)
+        dock_post = next(p for p in data["prop_records"] if p["prop_type"] == "dock_post")
+        dock_post["location_cm"] = river_point
+        dock_post.pop("allow_river_overlap", None)
+        self.assert_invalid(data, "river corridor")
+
+        data = copy.deepcopy(self.data)
+        dock_post = next(p for p in data["prop_records"] if p["prop_type"] == "dock_post")
+        dock_post["location_cm"] = river_point
+        dock_post["allow_river_overlap"] = True
+        MODULE.validate_config(data, base_config=self.base)
+
+    def test_rejects_tampered_static_frame_variant(self):
+        data = copy.deepcopy(self.data)
+        static = next(v for v in data["vegetation_records"] if v["render_mode"] == "static_card")
+        static["frame_variant"] = (static["frame_variant"] + 1) % 4
+        self.assert_invalid(data, "SHA-256")
 
     def test_rejects_b0r_geometry_drift_and_unknown_assignment_ids(self):
         data = copy.deepcopy(self.data)

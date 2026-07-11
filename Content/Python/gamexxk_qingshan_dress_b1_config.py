@@ -7,7 +7,7 @@ import hashlib
 import importlib.util
 import json
 import math
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 
 
@@ -18,6 +18,7 @@ __all__ = (
     "load_config",
     "load_overlay",
     "merge_config",
+    "oriented_plot_distance",
     "validate_config",
     "validate_protected_file_hashes",
 )
@@ -35,11 +36,14 @@ _ARCHETYPES = {
     "gable_shop", "tall_house", "wide_house",
     "courtyard_wing", "bridge_house", "dock_shed",
 }
+_ASSET_ROOT = "/Game/GameXXK/Environment/TownPCG/B1"
 _ROOF_PALETTES = {"orange", "teal", "indigo", "ochre"}
 _PROP_TYPES = {
     "sign", "lantern", "banner", "fence", "crate",
     "stall", "well", "cart", "rock", "dock_post",
 }
+_ATTACHMENT_PROP_TYPES = {"sign", "lantern", "banner"}
+_PLOT_CLUSTERS = {"approach", "core", "bridge", "south"}
 _ADDITIONAL_PLOT_IDS = {
     "BLD_S_11", "BLD_S_12", "BLD_M_06", "BLD_S_13", "BLD_S_14",
     "BLD_S_15", "BLD_M_07", "BLD_S_16", "BLD_S_17", "BLD_S_18",
@@ -65,7 +69,7 @@ _EXPECTED_PROTECTED_FILES = {
         "3f231876d0083bffe28ee555b60af1a20b0966edbde9dc4bb6f2647e920eadb1",
 }
 _EXPECTED_COLLISION_POLICY = {
-    "sign": True,
+    "sign": False,
     "lantern": False,
     "banner": False,
     "fence": True,
@@ -77,6 +81,31 @@ _EXPECTED_COLLISION_POLICY = {
     "dock_post": True,
     "plant_card": False,
     "mountain": False,
+}
+_EXPECTED_ASSET_CATALOG = {
+    "building_meshes": {
+        "gable_shop": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_GableShop",
+        "tall_house": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_TallHouse",
+        "wide_house": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_WideHouse",
+        "courtyard_wing": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_CourtyardWing",
+        "bridge_house": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_BridgeHouse",
+        "dock_shed": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_DockShed",
+    },
+    "prop_meshes": {
+        "sign": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_Sign",
+        "lantern": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_Lantern",
+        "banner": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_Banner",
+        "fence": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_Fence",
+        "crate": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_Crate",
+        "stall": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_Stall",
+        "well": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_Well",
+        "cart": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_Cart",
+        "rock": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_Rock",
+        "dock_post": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_DockPost",
+    },
+    "plant_card_mesh": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_PlantCard",
+    "plant_flipbook": f"{_ASSET_ROOT}/Paper2D/FB_QS_B1_Plant_Sway",
+    "mountain_mesh": f"{_ASSET_ROOT}/Meshes/SM_QS_B1_Mountain",
 }
 _GEOMETRY_FIELDS = (
     "id", "size_class", "location_cm", "yaw_degrees",
@@ -194,6 +223,170 @@ def _polyline_distance(point, points):
     )
 
 
+def _cross_2d(origin, first, second):
+    return (
+        (first[0] - origin[0]) * (second[1] - origin[1])
+        - (first[1] - origin[1]) * (second[0] - origin[0])
+    )
+
+
+def _point_on_segment(point, start, end, epsilon=1e-7):
+    if abs(_cross_2d(start, end, point)) > epsilon:
+        return False
+    return (
+        min(start[0], end[0]) - epsilon <= point[0] <= max(start[0], end[0]) + epsilon
+        and min(start[1], end[1]) - epsilon <= point[1] <= max(start[1], end[1]) + epsilon
+    )
+
+
+def _segments_intersect(first_start, first_end, second_start, second_end):
+    cross_1 = _cross_2d(first_start, first_end, second_start)
+    cross_2 = _cross_2d(first_start, first_end, second_end)
+    cross_3 = _cross_2d(second_start, second_end, first_start)
+    cross_4 = _cross_2d(second_start, second_end, first_end)
+    epsilon = 1e-7
+    if ((cross_1 > epsilon and cross_2 < -epsilon) or (cross_1 < -epsilon and cross_2 > epsilon)) \
+            and ((cross_3 > epsilon and cross_4 < -epsilon) or (cross_3 < -epsilon and cross_4 > epsilon)):
+        return True
+    return (
+        (abs(cross_1) <= epsilon and _point_on_segment(second_start, first_start, first_end))
+        or (abs(cross_2) <= epsilon and _point_on_segment(second_end, first_start, first_end))
+        or (abs(cross_3) <= epsilon and _point_on_segment(first_start, second_start, second_end))
+        or (abs(cross_4) <= epsilon and _point_on_segment(first_end, second_start, second_end))
+    )
+
+
+def _segment_distance(first_start, first_end, second_start, second_end):
+    if _segments_intersect(first_start, first_end, second_start, second_end):
+        return 0.0
+    return min(
+        _point_segment_distance(first_start, second_start, second_end),
+        _point_segment_distance(first_end, second_start, second_end),
+        _point_segment_distance(second_start, first_start, first_end),
+        _point_segment_distance(second_end, first_start, first_end),
+    )
+
+
+def _point_to_plot_local(point, plot):
+    delta_x = point[0] - plot["location_cm"][0]
+    delta_y = point[1] - plot["location_cm"][1]
+    radians = math.radians(plot["yaw_degrees"])
+    cosine = math.cos(radians)
+    sine = math.sin(radians)
+    return (
+        delta_x * cosine + delta_y * sine,
+        -delta_x * sine + delta_y * cosine,
+    )
+
+
+def _plot_obb_corners(plot):
+    center_x, center_y = plot["location_cm"][:2]
+    half_x = plot["size_cm"][0] / 2.0
+    half_y = plot["size_cm"][1] / 2.0
+    radians = math.radians(plot["yaw_degrees"])
+    cosine = math.cos(radians)
+    sine = math.sin(radians)
+    corners = []
+    for local_x, local_y in (
+            (-half_x, -half_y), (half_x, -half_y),
+            (half_x, half_y), (-half_x, half_y)):
+        corners.append((
+            center_x + local_x * cosine - local_y * sine,
+            center_y + local_x * sine + local_y * cosine,
+        ))
+    return corners
+
+
+def _obb_edges(plot):
+    corners = _plot_obb_corners(plot)
+    return tuple(zip(corners, corners[1:] + corners[:1]))
+
+
+def _point_in_plot_obb(point, plot, epsilon=1e-7):
+    local_x, local_y = _point_to_plot_local(point, plot)
+    return (
+        abs(local_x) <= plot["size_cm"][0] / 2.0 + epsilon
+        and abs(local_y) <= plot["size_cm"][1] / 2.0 + epsilon
+    )
+
+
+def _point_to_plot_distance(point, plot):
+    local_x, local_y = _point_to_plot_local(point, plot)
+    delta_x = max(abs(local_x) - plot["size_cm"][0] / 2.0, 0.0)
+    delta_y = max(abs(local_y) - plot["size_cm"][1] / 2.0, 0.0)
+    return math.hypot(delta_x, delta_y)
+
+
+def oriented_plot_distance(first, second):
+    """Return exact 2D distance between two rotated building footprints."""
+
+    first_corners = _plot_obb_corners(first)
+    second_corners = _plot_obb_corners(second)
+    if any(_point_in_plot_obb(point, second) for point in first_corners) \
+            or any(_point_in_plot_obb(point, first) for point in second_corners):
+        return 0.0
+    return min(
+        _segment_distance(first_start, first_end, second_start, second_end)
+        for first_start, first_end in _obb_edges(first)
+        for second_start, second_end in _obb_edges(second)
+    )
+
+
+def _polyline_to_plot_distance(points, plot):
+    edges = _obb_edges(plot)
+    distance = float("inf")
+    for start, end in zip(points, points[1:]):
+        if _point_in_plot_obb(start, plot) or _point_in_plot_obb(end, plot):
+            return 0.0
+        for edge_start, edge_end in edges:
+            distance = min(distance, _segment_distance(start, end, edge_start, edge_end))
+            if distance == 0.0:
+                return 0.0
+    return distance
+
+
+def _point_in_attachment_band(point, plot, band_cm=150.0):
+    local_x, local_y = _point_to_plot_local(point, plot)
+    absolute_x = abs(local_x)
+    absolute_y = abs(local_y)
+    half_x = plot["size_cm"][0] / 2.0
+    half_y = plot["size_cm"][1] / 2.0
+    if absolute_x > half_x + band_cm or absolute_y > half_y + band_cm:
+        return False
+    if absolute_x <= half_x and absolute_y <= half_y:
+        edge_distance = min(half_x - absolute_x, half_y - absolute_y)
+    else:
+        edge_distance = math.hypot(
+            max(absolute_x - half_x, 0.0),
+            max(absolute_y - half_y, 0.0),
+        )
+    return edge_distance <= band_cm
+
+
+def _landscape_bounds(landscape):
+    origin = landscape["origin_local_cm"]
+    resolution = landscape["resolution"]
+    scale = landscape["scale_cm"]
+    return [
+        origin[0], origin[0] + (resolution[0] - 1) * scale[0],
+        origin[1], origin[1] + (resolution[1] - 1) * scale[1],
+    ]
+
+
+def _point_inside_bounds(point, bounds):
+    return bounds[0] <= point[0] <= bounds[1] and bounds[2] <= point[1] <= bounds[3]
+
+
+def _require_point_in_spatial_bounds(point, world_bounds, landscape_bounds, field):
+    if not _point_inside_bounds(point, world_bounds) or not _point_inside_bounds(point, landscape_bounds):
+        raise ValueError(f"{field} is outside world/landscape bounds")
+
+
+def _stable_frame_variant(seed, stable_id):
+    digest = hashlib.sha256(f"{seed}:{stable_id}".encode("utf-8")).hexdigest()
+    return int(digest[:8], 16) % 4
+
+
 def _load_base_config(project_root=PROJECT_ROOT):
     path = Path(project_root) / "Config" / "GameXXK" / "TownPCG" / "QingshanWhiteboxB0R.json"
     return _B0R_MODULE.load_config(path)
@@ -226,6 +419,11 @@ def merge_config(overlay, base_config):
 
     overlay = copy.deepcopy(_require_object(overlay, "overlay"))
     base_config = copy.deepcopy(_require_object(base_config, "base_config"))
+    try:
+        base_config = _B0R_MODULE.validate_config(base_config)
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"base_config is invalid: {error}") from error
+    building_materials = _validate_material_contract(overlay)
     assignments = _require_list(overlay.get("base_plot_assignments"), "base_plot_assignments")
     additions = _require_list(
         overlay.get("additional_building_plots"),
@@ -244,7 +442,6 @@ def merge_config(overlay, base_config):
     if base_ids.intersection(additional_ids):
         raise ValueError("additional building plot IDs must not collide with B0R IDs")
 
-    building_materials = _require_object(overlay.get("building_materials"), "building_materials")
     plots = []
     for source in base_plots:
         assignment = _require_object(
@@ -297,7 +494,7 @@ def _validate_material_contract(data):
     if set(shared) != {"Wall", "Timber", "WindowPaper"}:
         raise ValueError("building_materials.shared_slot_materials has invalid slots")
     for slot, path in shared.items():
-        _require_package_path(path, f"building_materials.shared_slot_materials.{slot}")
+        _require_asset_under_root(path, f"building_materials.shared_slot_materials.{slot}")
     roof_materials = _require_object(
         materials.get("roof_palette_materials"),
         "building_materials.roof_palette_materials",
@@ -305,29 +502,108 @@ def _validate_material_contract(data):
     if set(roof_materials) != _ROOF_PALETTES:
         raise ValueError("roof_palette_materials must define the four approved palettes")
     for palette, path in roof_materials.items():
-        _require_package_path(path, f"roof_palette_materials.{palette}")
+        _require_asset_under_root(path, f"roof_palette_materials.{palette}")
     return materials
 
 
-def _validate_additional_plot_clearance(plots, base_config):
+def _require_asset_under_root(value, field):
+    path = _require_package_path(value, field)
+    if not path.startswith(f"{_ASSET_ROOT}/"):
+        raise ValueError(f"{field} must be inside asset_root {_ASSET_ROOT}")
+    return path
+
+
+def _validate_asset_catalog(data):
+    catalog = _require_object(data.get("asset_catalog"), "asset_catalog")
+    if set(catalog) != {
+            "building_meshes", "prop_meshes", "plant_card_mesh",
+            "plant_flipbook", "mountain_mesh"}:
+        raise ValueError("asset_catalog has invalid keys")
+    building_meshes = _require_object(
+        catalog.get("building_meshes"),
+        "asset_catalog.building_meshes",
+    )
+    prop_meshes = _require_object(catalog.get("prop_meshes"), "asset_catalog.prop_meshes")
+    if set(building_meshes) != _ARCHETYPES:
+        raise ValueError("asset_catalog.building_meshes must define six archetypes")
+    if set(prop_meshes) != _PROP_TYPES:
+        raise ValueError("asset_catalog.prop_meshes must define ten prop types")
+    for category, values in (
+            ("building_meshes", building_meshes), ("prop_meshes", prop_meshes)):
+        for asset_id, path in values.items():
+            _require_asset_under_root(path, f"asset_catalog.{category}.{asset_id}")
+    for field in ("plant_card_mesh", "plant_flipbook", "mountain_mesh"):
+        _require_asset_under_root(catalog.get(field), f"asset_catalog.{field}")
+    if catalog != _EXPECTED_ASSET_CATALOG:
+        raise ValueError("asset_catalog must equal the approved B1 asset catalog")
+    return catalog
+
+
+def _validate_heightmap_source(value):
+    if not isinstance(value, str) or not value or "\\" in value:
+        raise ValueError("landscape.heightmap_source must be a project-relative POSIX path")
+    path = PurePosixPath(value)
+    if path.is_absolute() or ".." in path.parts or path.as_posix() != value:
+        raise ValueError("landscape.heightmap_source must be a normalized project-relative POSIX path")
+    approved_parent = PurePosixPath("Content/ArtSource/Qingshan/B1")
+    if path.parent != approved_parent or path.suffix.lower() != ".png":
+        raise ValueError("landscape.heightmap_source must stay inside Content/ArtSource/Qingshan/B1")
+    if value != "Content/ArtSource/Qingshan/B1/H_QS_B1_Terrain_505.png":
+        raise ValueError("landscape.heightmap_source must be the approved 505 heightmap")
+    return value
+
+
+def _validate_building_spatial_contract(plots, base_config, world_bounds, landscape_bounds):
     river = base_config["river_splines"][0]
-    for plot in (item for item in plots if item["id"] in _ADDITIONAL_PLOT_IDS):
-        radius = math.hypot(plot["size_cm"][0] / 2.0, plot["size_cm"][1] / 2.0)
-        for other in plots:
-            if other["id"] == plot["id"]:
-                continue
-            other_radius = math.hypot(other["size_cm"][0] / 2.0, other["size_cm"][1] / 2.0)
-            if math.dist(plot["location_cm"][:2], other["location_cm"][:2]) <= radius + other_radius + 100.0:
-                raise ValueError(f"additional building plot {plot['id']} overlaps {other['id']}")
+    bridge = next(anchor for anchor in base_config["fixed_anchors"] if anchor["id"] == "MainBridgeAnchor")
+    for plot in plots:
+        for corner_index, corner in enumerate(_plot_obb_corners(plot)):
+            _require_point_in_spatial_bounds(
+                corner,
+                world_bounds,
+                landscape_bounds,
+                f"building_plots.{plot['id']}.obb_corners[{corner_index}]",
+            )
+        if plot["id"] not in _ADDITIONAL_PLOT_IDS:
+            continue
+        if _point_to_plot_distance(bridge["location_cm"], plot) <= bridge["protected_radius_cm"]:
+            raise ValueError(f"building {plot['id']} overlaps bridge anchor")
         for road in base_config["road_splines"]:
-            clearance = radius + road["width_cm"] / 2.0 + 250.0
-            if _polyline_distance(plot["location_cm"], road["points_cm"]) <= clearance:
-                raise ValueError(f"additional building plot {plot['id']} overlaps road {road['id']}")
-        if _polyline_distance(plot["location_cm"], river["points_cm"]) <= radius + river["width_cm"] / 2.0 + 400.0:
-            raise ValueError(f"additional building plot {plot['id']} overlaps river")
-        for anchor in base_config["fixed_anchors"]:
-            if math.dist(plot["location_cm"][:2], anchor["location_cm"][:2]) <= radius + anchor["protected_radius_cm"]:
-                raise ValueError(f"additional building plot {plot['id']} overlaps anchor {anchor['id']}")
+            clearance = road["width_cm"] / 2.0 + 250.0
+            if _polyline_to_plot_distance(road["points_cm"], plot) <= clearance:
+                raise ValueError(f"building {plot['id']} overlaps road corridor {road['id']}")
+        if _polyline_to_plot_distance(river["points_cm"], plot) <= river["width_cm"] / 2.0 + 400.0:
+            raise ValueError(f"building {plot['id']} overlaps river corridor {river['id']}")
+    for index, first in enumerate(plots):
+        for second in plots[index + 1:]:
+            if oriented_plot_distance(first, second) <= 100.0:
+                raise ValueError(f"building OBB conflict: {first['id']} and {second['id']}")
+
+
+def _validate_ground_point_clearance(
+        point,
+        field,
+        base_config,
+        plots,
+        *,
+        building_margin_cm,
+        allow_river_overlap=False,
+        attachment_target_id=None):
+    bridge = next(anchor for anchor in base_config["fixed_anchors"] if anchor["id"] == "MainBridgeAnchor")
+    if math.dist(point[:2], bridge["location_cm"][:2]) <= bridge["protected_radius_cm"]:
+        raise ValueError(f"{field} overlaps bridge anchor")
+    for road in base_config["road_splines"]:
+        if _polyline_distance(point, road["points_cm"]) <= road["width_cm"] / 2.0 + 250.0:
+            raise ValueError(f"{field} overlaps road corridor {road['id']}")
+    river = base_config["river_splines"][0]
+    if not allow_river_overlap \
+            and _polyline_distance(point, river["points_cm"]) <= river["width_cm"] / 2.0 + 400.0:
+        raise ValueError(f"{field} overlaps river corridor {river['id']}")
+    for plot in plots:
+        if plot["id"] == attachment_target_id:
+            continue
+        if _point_to_plot_distance(point, plot) <= building_margin_cm:
+            raise ValueError(f"{field} overlaps building OBB {plot['id']}")
 
 
 def validate_config(data, *, base_config=None):
@@ -335,6 +611,10 @@ def validate_config(data, *, base_config=None):
 
     data = _require_object(data, "config")
     base_config = copy.deepcopy(base_config) if base_config is not None else _load_base_config()
+    try:
+        base_config = _B0R_MODULE.validate_config(base_config)
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"base_config is invalid: {error}") from error
     if _require_integer(data.get("schema_version"), "schema_version") != 1:
         raise ValueError("schema_version must be 1")
     if data.get("revision_id") != "B1":
@@ -347,6 +627,9 @@ def validate_config(data, *, base_config=None):
         raise ValueError("source_map must be the approved B0R map")
     if data["dress_map"] != "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1":
         raise ValueError("dress_map must be the isolated B1 map")
+    if data["asset_root"] != _ASSET_ROOT:
+        raise ValueError(f"asset_root must be {_ASSET_ROOT}")
+    _validate_asset_catalog(data)
     if data.get("runtime_generation") is not False:
         raise ValueError("runtime_generation must be false")
     if data.get("coordinate_space") != "anchor_local":
@@ -362,6 +645,8 @@ def validate_config(data, *, base_config=None):
         raise ValueError("protected_files must equal the approved raw SHA-256 contract")
 
     landscape = _require_object(data.get("landscape"), "landscape")
+    if landscape.get("label") != "QS_B1_Landscape":
+        raise ValueError("landscape.label must be QS_B1_Landscape")
     resolution = landscape.get("resolution")
     if resolution != [505, 505]:
         raise ValueError("landscape.resolution must be [505, 505]")
@@ -386,15 +671,22 @@ def validate_config(data, *, base_config=None):
         raise ValueError("landscape.origin_local_cm does not match the center/resolution/scale contract")
     if landscape.get("edit_layer") != "QR_B1_Roads":
         raise ValueError("landscape.edit_layer must be QR_B1_Roads")
+    _validate_heightmap_source(landscape.get("heightmap_source"))
+    if _require_asset_under_root(
+            landscape.get("ground_material"),
+            "landscape.ground_material") != f"{_ASSET_ROOT}/Materials/MI_QS_B1_Ground":
+        raise ValueError("landscape.ground_material must use the exact B1 ground material")
     if landscape.get("height_encoding") != {
         "value_type": "uint16",
         "formula": "uint16=clamp(round(32768+elevation_cm*128/scale_z),0,65535)",
     }:
         raise ValueError("landscape.height_encoding is invalid")
+    world_bounds = base_config["world_bounds_cm"]
+    landscape_xy_bounds = _landscape_bounds(landscape)
 
     quickroad = _require_object(data.get("quickroad"), "quickroad")
-    if _require_package_path(quickroad.get("road_material"), "quickroad.road_material") != \
-            "/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Road_Earth":
+    if _require_asset_under_root(quickroad.get("road_material"), "quickroad.road_material") != \
+            f"{_ASSET_ROOT}/Materials/MI_QS_B1_Road_Earth":
         raise ValueError("quickroad.road_material must use the B1 earth road material")
     networks = _require_list(quickroad.get("networks"), "quickroad.networks")
     expected_networks = (
@@ -467,9 +759,21 @@ def validate_config(data, *, base_config=None):
         if size_class not in size_counts:
             raise ValueError(f"building_plots[{index}].size_class is invalid")
         size_counts[size_class] += 1
-        _require_vector(plot.get("location_cm"), f"building_plots[{index}].location_cm")
-        _require_vector(plot.get("size_cm"), f"building_plots[{index}].size_cm")
+        location = _require_vector(plot.get("location_cm"), f"building_plots[{index}].location_cm")
+        _require_point_in_spatial_bounds(
+            location,
+            world_bounds,
+            landscape_xy_bounds,
+            f"building_plots[{index}].location_cm",
+        )
+        size = _require_vector(plot.get("size_cm"), f"building_plots[{index}].size_cm")
+        if any(component <= 0 for component in size):
+            raise ValueError(f"building_plots[{index}].size_cm must be strictly positive")
         _require_number(plot.get("yaw_degrees"), f"building_plots[{index}].yaw_degrees")
+        if plot.get("entrance_axis") != "+Y":
+            raise ValueError(f"building_plots[{index}].entrance_axis must be +Y")
+        if plot.get("cluster_id") not in _PLOT_CLUSTERS:
+            raise ValueError(f"building_plots[{index}].cluster_id is invalid")
         archetype = plot.get("archetype_id")
         palette = plot.get("roof_palette")
         if archetype not in _ARCHETYPES:
@@ -485,17 +789,19 @@ def validate_config(data, *, base_config=None):
             "WindowPaper": materials["shared_slot_materials"]["WindowPaper"],
         }:
             raise ValueError(f"building_plots[{index}].material_overrides is invalid")
-        if plot["id"] in base_by_id:
-            if {field: plot.get(field) for field in _GEOMETRY_FIELDS} != {
-                    field: base_by_id[plot["id"]].get(field) for field in _GEOMETRY_FIELDS}:
-                raise ValueError(f"B0R geometry drift for {plot['id']}")
     if size_counts != {"large": 1, "medium": 7, "small": 18}:
         raise ValueError("building size-class counts must be 1/7/18")
     if observed_archetypes != _ARCHETYPES or observed_palettes != _ROOF_PALETTES:
         raise ValueError("building styles must cover six archetypes and four roof palettes")
     if {plot["id"] for plot in plots if plot["id"] not in base_by_id} != _ADDITIONAL_PLOT_IDS:
         raise ValueError("additional building IDs must match the approved B1 set")
-    _validate_additional_plot_clearance(plots, base_config)
+    _validate_building_spatial_contract(plots, base_config, world_bounds, landscape_xy_bounds)
+    for plot in plots:
+        if plot["id"] in base_by_id and {
+                field: plot.get(field) for field in _GEOMETRY_FIELDS} != {
+                field: base_by_id[plot["id"]].get(field) for field in _GEOMETRY_FIELDS}:
+            raise ValueError(f"B0R geometry drift for {plot['id']}")
+    plot_by_id = {plot["id"]: plot for plot in plots}
 
     if data.get("caps") != _EXPECTED_CAPS:
         raise ValueError("caps must equal the approved conservative B1 caps")
@@ -514,13 +820,44 @@ def validate_config(data, *, base_config=None):
         if prop_type not in _PROP_TYPES:
             raise ValueError(f"prop_records[{index}].prop_type is invalid")
         observed_prop_types.add(prop_type)
-        _require_vector(item.get("location_cm"), f"prop_records[{index}].location_cm")
+        location = _require_vector(item.get("location_cm"), f"prop_records[{index}].location_cm")
+        _require_point_in_spatial_bounds(
+            location,
+            world_bounds,
+            landscape_xy_bounds,
+            f"prop_records[{index}].location_cm",
+        )
         _require_number(item.get("yaw_degrees"), f"prop_records[{index}].yaw_degrees")
         scale_value = _require_number(item.get("scale"), f"prop_records[{index}].scale")
         if scale_value <= 0:
             raise ValueError(f"prop_records[{index}].scale must be positive")
         if item.get("collision_enabled") is not collision_policy[prop_type]:
             raise ValueError(f"prop_records[{index}].collision_enabled violates collision_policy")
+        attachment_target_id = item.get("attachment_target_id")
+        if prop_type in _ATTACHMENT_PROP_TYPES:
+            attachment_target_id = _require_id(
+                attachment_target_id,
+                f"prop_records[{index}].attachment_target_id",
+            )
+            if attachment_target_id not in plot_by_id:
+                raise ValueError(f"prop_records[{index}].attachment_target_id must resolve to a building")
+            if not _point_in_attachment_band(location, plot_by_id[attachment_target_id]):
+                raise ValueError(f"prop_records[{index}] must stay in its target building attachment band")
+        elif "attachment_target_id" in item:
+            raise ValueError("only sign/lantern/banner props may define attachment_target_id")
+        allow_river_overlap = item.get("allow_river_overlap", False)
+        if "allow_river_overlap" in item and (
+                allow_river_overlap is not True or prop_type != "dock_post"):
+            raise ValueError("only dock_post may set allow_river_overlap=true")
+        _validate_ground_point_clearance(
+            location,
+            f"prop_records[{index}]",
+            base_config,
+            plots,
+            building_margin_cm=0.0,
+            allow_river_overlap=allow_river_overlap,
+            attachment_target_id=attachment_target_id if prop_type in _ATTACHMENT_PROP_TYPES else None,
+        )
     if observed_prop_types != _PROP_TYPES:
         raise ValueError("prop_records must cover every approved prop type")
 
@@ -537,12 +874,25 @@ def validate_config(data, *, base_config=None):
         mode = item.get("render_mode")
         if mode not in {"animated_flipbook", "static_card"}:
             raise ValueError(f"vegetation_records[{index}].render_mode is invalid")
-        _require_vector(item.get("location_cm"), f"vegetation_records[{index}].location_cm")
+        location = _require_vector(item.get("location_cm"), f"vegetation_records[{index}].location_cm")
+        _require_point_in_spatial_bounds(
+            location,
+            world_bounds,
+            landscape_xy_bounds,
+            f"vegetation_records[{index}].location_cm",
+        )
         _require_number(item.get("yaw_degrees"), f"vegetation_records[{index}].yaw_degrees")
         if _require_number(item.get("scale"), f"vegetation_records[{index}].scale") <= 0:
             raise ValueError(f"vegetation_records[{index}].scale must be positive")
         if item.get("collision_enabled") is not False:
             raise ValueError(f"vegetation_records[{index}].collision_enabled must be false")
+        _validate_ground_point_clearance(
+            location,
+            f"vegetation_records[{index}]",
+            base_config,
+            plots,
+            building_margin_cm=100.0,
+        )
         (animated if mode == "animated_flipbook" else static).append(item)
     if len(animated) != 30 or len(static) != 70:
         raise ValueError("vegetation records must split into 30 animated and 70 static")
@@ -551,11 +901,13 @@ def validate_config(data, *, base_config=None):
             raise ValueError("animated vegetation must not contain frame_variant")
         if item.get("start_frame") != index % 4:
             raise ValueError("animated vegetation start_frame assignment is not deterministic")
-    for index, item in enumerate(static):
-        if item.get("frame_variant") != index % 4:
-            raise ValueError("static vegetation frame_variant assignment is not deterministic")
+    for item in static:
+        if item.get("frame_variant") != _stable_frame_variant(data["seed"], item["id"]):
+            raise ValueError("static vegetation frame_variant must use seed+stable-id SHA-256 derivation")
         if "start_frame" in item:
             raise ValueError("static vegetation must not contain start_frame")
+    if {item["frame_variant"] for item in static} != {0, 1, 2, 3}:
+        raise ValueError("static vegetation must populate all four frame variants")
 
     mountains = _require_list(data.get("mountain_records"), "mountain_records")
     if len(mountains) != 24:
@@ -565,11 +917,26 @@ def validate_config(data, *, base_config=None):
         register(item.get("id"), f"mountain_records[{index}].id")
         if item.get("asset_type") != "mountain":
             raise ValueError(f"mountain_records[{index}].asset_type is invalid")
-        _require_vector(item.get("location_cm"), f"mountain_records[{index}].location_cm")
+        location = _require_vector(item.get("location_cm"), f"mountain_records[{index}].location_cm")
+        _require_point_in_spatial_bounds(
+            location,
+            world_bounds,
+            landscape_xy_bounds,
+            f"mountain_records[{index}].location_cm",
+        )
         _require_number(item.get("yaw_degrees"), f"mountain_records[{index}].yaw_degrees")
-        _require_vector(item.get("scale"), f"mountain_records[{index}].scale")
+        mountain_scale = _require_vector(item.get("scale"), f"mountain_records[{index}].scale")
+        if any(component <= 0 for component in mountain_scale):
+            raise ValueError(f"mountain_records[{index}].scale must be strictly positive")
         if item.get("collision_enabled") is not False:
             raise ValueError(f"mountain_records[{index}].collision_enabled must be false")
+        _validate_ground_point_clearance(
+            location,
+            f"mountain_records[{index}]",
+            base_config,
+            plots,
+            building_margin_cm=200.0,
+        )
 
     cameras = _require_list(data.get("cameras"), "cameras")
     if len(cameras) != 4 or {item.get("id") for item in cameras if isinstance(item, dict)} != _CAMERA_IDS:
@@ -577,8 +944,20 @@ def validate_config(data, *, base_config=None):
     for index, item in enumerate(cameras):
         item = _require_object(item, f"cameras[{index}]")
         register(item.get("id"), f"cameras[{index}].id")
-        _require_vector(item.get("location_cm"), f"cameras[{index}].location_cm")
-        _require_vector(item.get("target_cm"), f"cameras[{index}].target_cm")
+        camera_location = _require_vector(item.get("location_cm"), f"cameras[{index}].location_cm")
+        camera_target = _require_vector(item.get("target_cm"), f"cameras[{index}].target_cm")
+        _require_point_in_spatial_bounds(
+            camera_location,
+            world_bounds,
+            landscape_xy_bounds,
+            f"cameras[{index}].location_cm",
+        )
+        _require_point_in_spatial_bounds(
+            camera_target,
+            world_bounds,
+            landscape_xy_bounds,
+            f"cameras[{index}].target_cm",
+        )
         fov = _require_number(item.get("fov_degrees"), f"cameras[{index}].fov_degrees")
         if not 35 <= fov <= 65:
             raise ValueError(f"cameras[{index}].fov_degrees must be between 35 and 65")
@@ -617,10 +996,21 @@ def contract_sha256(config):
     """Hash only the B1 authoring contract, never the anchor-dependent B0R live hash."""
 
     payload = {
+        "schema_version": config["schema_version"],
+        "revision_id": config["revision_id"],
         "seed": config["seed"],
         "coordinate_space": config["coordinate_space"],
+        "coordinate_reference_actor": config["coordinate_reference_actor"],
+        "source_map": config["source_map"],
+        "dress_map": config["dress_map"],
+        "asset_root": config["asset_root"],
+        "runtime_generation": config["runtime_generation"],
+        "protected_files": config["protected_files"],
         "landscape": config["landscape"],
         "quickroad": config["quickroad"],
+        "asset_catalog": config["asset_catalog"],
+        "building_materials": config["building_materials"],
+        "collision_policy": config["collision_policy"],
         "building_plots": config["building_plots"],
         "prop_records": config["prop_records"],
         "vegetation_records": config["vegetation_records"],
