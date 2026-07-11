@@ -64,6 +64,8 @@ The deliverable scene uses real UE PCG graphs/components, not Python-spawned cat
 - Centre: derived from B0R world bounds, approximately `(-15500, 0)` cm.
 - Base elevation: broad, low-frequency terrain only. Do not use high-frequency erosion because the approved visual direction rejects fragmented/noisy terrain.
 - Generate a deterministic 16-bit 505 x 505 base heightmap from the four B0R terrain zones, a broad river trench/bank profile, and low-amplitude low-frequency variation. Import it as the base Landscape content before applying the road edit layer.
+- Treat the configured Landscape position as the grid centre, not the Landscape Actor origin. Convert it with `originXY = centerXY - ((resolution - 1) * scaleXY / 2)` after the anchor transform; for the 505 x 505 grid at 100 cm scale this is a 25,200 cm half-extent on each axis.
+- Encode elevation using Unreal's Landscape convention: `uint16 = clamp(round(32768 + elevation_cm * 128 / scale_z_cm), 0, 65535)`. Validation decodes the stored values back to world centimetres before comparing samples.
 - Landscape Edit Layers must be enabled explicitly. QuickRoad does not create or enable them itself.
 - Use a dedicated unlocked `QR_B1_Roads` edit layer and make it active before conform/road-influence operations.
 - Clear the `QR_B1_Roads` height contribution before every infrastructure rebuild, then apply road influence once. Repeated builds must produce the same edit-layer height digest.
@@ -79,6 +81,8 @@ The deliverable scene uses real UE PCG graphs/components, not Python-spawned cat
 - The river remains an independent spline/ribbon and stylized-water material system.
 - After visual acceptance, bake QuickRoad roads into 5,000 cm StaticMesh chunks with simple collision. Disable Nanite on chunks below 50,000 triangles; enable it only on larger chunks, record the decision per chunk, and preserve one fallback LOD for every non-Nanite chunk.
 - Extract QuickRoad road-edge splines after the network is rebuilt. B1 PCG generation records these tagged edges as exclusion inputs and validation proves all generated category points remain outside the required road corridor.
+- Road networks, intersection helpers, and extracted road-edge actors receive a dedicated `QingshanB1QuickRoadOwned` tag. Reset deletes only actors carrying both this ownership tag and an expected QuickRoad category tag, then edge extraction assigns stable B1 labels so a second build cannot accumulate `RoadEdge_NNN` actors.
+- QuickRoad road and intersection meshes use the B1 earth-road material rather than the plugin fallback stone material; validation reads the live component material paths.
 
 ## Building Composition Contract
 
@@ -93,10 +97,11 @@ The deliverable scene uses real UE PCG graphs/components, not Python-spawned cat
 ## Prop and Vegetation Contract
 
 - Repeated props use instancing or shared actor blueprints and shared materials.
-- Buildings, repeated props, far plant cards, and mountains are PCG StaticMeshSpawner outputs, grouped by archetype/mesh so repeated instances use ISM/HISM components.
+- Buildings, repeated props, far plant cards, and mountains are PCG StaticMeshSpawner outputs. QuickRoad infrastructure and stable road-edge splines are generated first; each PCG point set is filtered against the measured road-edge geometry before its graph is authored, and its manifest records the consumed edge labels and digest.
+- Buildings are grouped by `(archetype_id, roof_palette)` and use derived mesh/material variants so the four roof palettes are visible on live spawned components, not merely present in JSON.
 - Prop density is clustered around storefronts, bridge approaches, town-core pauses, and dock work areas; do not scatter uniformly.
 - Paper2D vegetation uses a 4-6 frame ping-pong sway cycle.
-- Near vegetation may animate; mid vegetation uses staggered start frames; far vegetation uses static extracted frames.
+- Near vegetation may animate; mid/far vegetation deterministically uses four static extracted-frame card variants so the population reads as staggered without adding animation ticks.
 - Initial cap remains 100 vegetation instances. Prefer roughly 30 animated near instances and 70 static/staggered mid/far instances.
 - Vegetation, props, and buildings must respect road/river/footprint exclusions.
 
@@ -115,6 +120,7 @@ The deliverable scene uses real UE PCG graphs/components, not Python-spawned cat
 - Use shared Toon BSDF materials and material instances.
 - Landmark/high-detail buildings may use Nanite; small buildings and props require simpler meshes and simple collision.
 - Only near Paper2D vegetation animates. Far cards are static and aggressively culled.
+- Plant cards, lanterns, banners, and mountain backdrops have collision disabled. Collision is enabled only for solid gameplay-relevant building, bridge, cart, stall, well, fence, crate, rock, and dock-post geometry.
 - Evidence records actor/component counts, road triangle/chunk counts, editor memory, and a short PIE smoke result.
 - Evidence also records generated PCG graph paths, seed, point/output counts, road-edge spline count, Actor/Component/Tick counts, Paper2D cull distances, and frame-time/stat sampling.
 
@@ -134,6 +140,8 @@ B1 passes when all of the following are true:
 10. Raw source/B0R hashes match their pre-build baselines after every mutating phase.
 11. Fresh host tests, UBT compile when C++ changes are present, UE MCP validation, saved-package audit, harness validation, existing real-play flow, and PIE smoke all succeed before completion is claimed.
 12. The first B1 delivery stops at a user visual gate after presenting the four camera captures. QuickRoad bake and final production recording begin only after that gate is accepted.
+
+Long-running or asynchronous editor work is coordinated by a host-side runner. Each UE Python call performs one bounded step and returns `pending`, `complete`, or `failed`; the host process polls across MCP calls, controls PIE time, waits for captures, parses the marker JSON, and exits nonzero unless both MCP transport and the inner result report success.
 
 ## Deferred Work
 

@@ -25,6 +25,7 @@
 - `Plugins/Quick_Road/Source/Quick_Road/Private/Quick_RoadAutomationLibrary.cpp`: landscape/road/reset/intersection/influence/edge/bake/audit implementation.
 - `Plugins/Quick_Road/Source/Quick_Road/Quick_Road.Build.cs`: JSON dependency for safe structured results.
 - `Source/GameXXKEditor/Private/GameXXKTownPCGAutomationLibrary.cpp`: add only the exact B1 graph root to the existing allowlist.
+- `Source/GameXXKEditor/Public/GameXXKTownPCGAutomationLibrary.h`: add the explicit seed, road-edge exclusion, and material-override graph-authoring contract without changing existing call semantics.
 - `scripts/test_quickroad_automation_facade.py`: facade and B1 PCG-root safety tests.
 - `Content/Python/gamexxk_author_qingshan_dress_b1_assets.py`: FBX/texture import, Toon material instances, PaperSprites, and flipbook authoring.
 - `scripts/test_qingshan_dress_b1_assets.py`: asset-authoring tests.
@@ -32,6 +33,7 @@
 - `scripts/test_qingshan_dress_b1_scripts.py`: assembler/validator/acceptance source and behavior tests.
 - `Content/Python/gamexxk_validate_qingshan_dress_b1.py`: read-only live validator and scene-manifest capture.
 - `Content/Python/gamexxk_qingshan_dress_b1_acceptance.py`: two-run determinism, captures, stats, PIE, and regression coordinator.
+- `scripts/run_qingshan_dress_b1.py`: host-side MCP state machine for bounded editor steps, asynchronous PCG polling, captures, PIE timing, and strict inner/outer success parsing.
 - `docs/production/qingshan-pcg-dress-b1.md`: post-gate production record.
 - `docs/production/evidence/qingshan-pcg-dress-b1/*`: live JSON and four camera PNGs.
 
@@ -84,6 +86,11 @@ def test_infrastructure_and_caps_are_conservative():
         "animated_vegetation": 30, "mountains": 24, "crossings": 2,
     }
     assert config["runtime_generation"] is False
+    assert config["landscape"]["height_encoding"] == {
+        "zero_raw": 32768, "units_per_cm_at_scale_z_100": 1.28,
+    }
+    assert config["quickroad"]["road_material"].endswith("MI_QS_B1_Road_Earth")
+    assert {v["frame_variant"] for v in config["vegetation_records"] if not v["animated"]} == {0, 1, 2, 3}
     assert len(contract_sha256(config)) == 64
 ```
 
@@ -125,7 +132,7 @@ The JSON must contain:
 }
 ```
 
-Add the three network records with unique tags `QS_B1_Main`, `QS_B1_CoreNorth`, and `QS_B1_CoreSouth`; use the combined expression `QS_B1_Main|QS_B1_CoreNorth|QS_B1_CoreSouth`; use road mesh sample 300 cm, width subdivisions 3, curvature `8/2`, influence falloff 250 cm, blend 0.9, vertical offset -5 cm, smooth `4/0.6`, intersection `500/100/50/1.2`, and bake split 5000 cm. Add the exact protected-file hashes from Step 1, all 16 B0R plot assignments, and the ten additional plot records previously approved in the design: `BLD_S_11`, `BLD_S_12`, `BLD_M_06`, `BLD_S_13`, `BLD_S_14`, `BLD_S_15`, `BLD_M_07`, `BLD_S_16`, `BLD_S_17`, and `BLD_S_18`.
+Add `height_encoding` metadata for the Unreal formula `raw = round(32768 + elevation_cm * 128 / scale_z_cm)`. Add the three network records with unique tags `QS_B1_Main`, `QS_B1_CoreNorth`, and `QS_B1_CoreSouth`; use the combined expression `QS_B1_Main|QS_B1_CoreNorth|QS_B1_CoreSouth`; set `road_material` to `/Game/GameXXK/Environment/TownPCG/B1/Materials/MI_QS_B1_Road_Earth`; use road mesh sample 300 cm, width subdivisions 3, curvature `8/2`, influence falloff 250 cm, blend 0.9, vertical offset -5 cm, smooth `4/0.6`, intersection `500/100/50/1.2`, and bake split 5000 cm. Add the exact protected-file hashes from Step 1, all 16 B0R plot assignments, and the ten additional plot records previously approved in the design: `BLD_S_11`, `BLD_S_12`, `BLD_M_06`, `BLD_S_13`, `BLD_S_14`, `BLD_S_15`, `BLD_M_07`, `BLD_S_16`, `BLD_S_17`, and `BLD_S_18`. Give every static vegetation record a seeded `frame_variant` 0-3 and collision false; record explicit collision policy for every prop category.
 
 - [ ] **Step 4: Implement host-safe validation and merge**
 
@@ -208,7 +215,7 @@ Expected: missing modules/files.
 
 - [ ] **Step 3: Implement deterministic heightmap generation**
 
-Use B0R terrain-zone oriented rectangles as smooth low-frequency targets, blend with smoothstep weights, subtract a Gaussian river trench around the B0R river polyline, and add only two octaves of seeded noise with wavelength at least 6,000 cm and amplitude at most 45 cm. Convert local elevation `[-600, 650]` cm to uint16 around 32768, write a 16-bit PNG, and emit a JSON sample manifest containing gate/core/south/dock/riverbed values. Building plot Z and later UE line traces use the same local coordinate conversion.
+Use B0R terrain-zone oriented rectangles as smooth low-frequency targets, blend with smoothstep weights, subtract a Gaussian river trench around the B0R river polyline, and add only two octaves of seeded noise with wavelength at least 6,000 cm and amplitude at most 45 cm. Encode each sample with `raw = clamp(round(32768 + elevation_cm * 128 / scale_z_cm), 0, 65535)`, write a 16-bit PNG, and emit a JSON sample manifest containing both raw and decoded-centimetre gate/core/south/dock/riverbed values. Tests must decode by `elevation_cm = (raw - 32768) * scale_z_cm / 128`, require at most one encoded-step sample error, and prove that the configured centre maps to Landscape actor origin `centerXY - ((resolution - 1) * scaleXY / 2)`. Building plot Z and later UE line traces use the same local coordinate conversion.
 
 - [ ] **Step 4: Implement the Blender proxy kit**
 
@@ -237,13 +244,14 @@ Expected: host tests pass, Blender exits 0, manifest lists 18 hashed FBX files, 
 - Create: `Plugins/Quick_Road/Source/Quick_Road/Public/Quick_RoadAutomationLibrary.h`
 - Create: `Plugins/Quick_Road/Source/Quick_Road/Private/Quick_RoadAutomationLibrary.cpp`
 - Modify: `Plugins/Quick_Road/Source/Quick_Road/Quick_Road.Build.cs`
+- Modify: `Source/GameXXKEditor/Public/GameXXKTownPCGAutomationLibrary.h`
 - Modify: `Source/GameXXKEditor/Private/GameXXKTownPCGAutomationLibrary.cpp`
 - Modify: `scripts/test_qingshan_whitebox_scripts.py`
 - Create: `scripts/test_quickroad_automation_facade.py`
 
 - [ ] **Step 1: Write failing source-contract tests**
 
-Require exact API names, existing-generator calls, `LandscapeEditLayer.h`, `Json`, B1 graph-root acceptance, and rejection of sibling/broad roots. Require behavior guards for wrong map, locked layer, incompatible landscape, missing material, repeated reset, and exactly three generated width groups.
+Require exact API names, existing-generator calls, `LandscapeEditLayer.h`, `Json`, B1 graph-root acceptance, and rejection of sibling/broad roots. Require behavior guards for wrong map, locked layer, incompatible landscape, missing material, repeated reset, exactly three generated width groups, and two consecutive reset/generate/extract cycles yielding the same stable edge labels/count/digest. Require an explicit PCG base seed, edge-exclusion labels/digest, clearance, and material override contract in the public editor header.
 
 ```python
 REQUIRED_API = {
@@ -264,15 +272,15 @@ Expected: facade missing and B1 graph root rejected.
 
 - [ ] **Step 3: Declare the callable facade**
 
-Use `UQuick_RoadAutomationLibrary : UBlueprintFunctionLibrary`. `EnsureLandscapeInfrastructure` must accept actor label, topology, anchor-transformed world centre/scale, edit-layer name, material object path, and absolute heightmap file path. `RebuildRoadIntersections` must receive both intersection parameters and ribbon parameters (`sample distance`, `width subdivisions`, `curvature threshold`, `max curvature subdivisions`). `ClearAndApplyAllRoadInfluence` must accept the exact Landscape label and clear only the named edit layer height contribution before applying/smoothing once. `ExtractRoadEdges` returns created edge-spline count. `AuditInfrastructure` returns network count, source tag/width records, triangles, intersection patches, edge splines, edit-layer state, and a digest of the active edit-layer height buffer.
+Use `UQuick_RoadAutomationLibrary : UBlueprintFunctionLibrary`. `EnsureLandscapeInfrastructure` must accept actor label, topology, anchor-transformed desired grid centre/scale, edit-layer name, material object path, and absolute heightmap file path. It computes the actor origin from the grid half-extent instead of assigning the desired centre directly. `GenerateRoadNetwork` accepts the B1 road material path and applies it to ribbon and intersection output. `RebuildRoadIntersections` must receive both intersection parameters and ribbon parameters (`sample distance`, `width subdivisions`, `curvature threshold`, `max curvature subdivisions`). `ClearAndApplyAllRoadInfluence` must accept the exact Landscape label and clear only the named edit layer height contribution before applying/smoothing once. `ExtractRoadEdges` returns stable labels/count/digest. `AuditInfrastructure` returns network count, source tag/width/material records, triangles, intersection patches, edge splines, edit-layer state, and a digest of the active edit-layer height buffer.
 
 - [ ] **Step 4: Implement landscape creation and strict rollback**
 
-Before calling `FQuick_RoadLandscapeCreator::TryCreateLandscape`, snapshot all `ALandscape*`. After success require exactly one new actor, otherwise destroy only the newly discovered actors and return failure. Apply requested label/location/rotation/scale/material and call `PostEditChange`. On reuse, require exact topology and correct or safely repair location/rotation/scale/material. Include `LandscapeEditLayer.h`; enable layers, create/find the named layer, reject a locked layer, and set it active. Use UE JSON serializers and add `Json` to `Quick_Road.Build.cs`.
+Before calling `FQuick_RoadLandscapeCreator::TryCreateLandscape`, snapshot all `ALandscape*`. After success require exactly one new actor, otherwise destroy only the newly discovered actors and return failure. Compute `ActorOriginWorld = DesiredGridCenterWorld + RotationScaleTransform.TransformVector([-(ResolutionX-1)/2, -(ResolutionY-1)/2, 0])`, apply requested label/origin/rotation/scale/material, and call `PostEditChange`. On reuse, require exact topology and compare the reconstructed grid centre; correct or safely repair origin/rotation/scale/material. Include `LandscapeEditLayer.h`; enable layers, create/find the named layer, reject a locked layer, and set it active. Use UE JSON serializers and add `Json` to `Quick_Road.Build.cs`.
 
 - [ ] **Step 5: Implement repeatable road operations**
 
-`ResetRoadInfrastructure` removes only actors tagged `Quick_Road_MainRoadNetwork` while the current map is under `/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1`. Generate each road tag with the requested width and ribbon settings. Consolidate the three tags with the same ribbon settings. Before road influence:
+`ResetRoadInfrastructure` operates only while the current map is under `/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1`. It removes only actors carrying `QingshanB1QuickRoadOwned` plus an allowlisted QuickRoad network/edge/intersection category tag. Generate each road tag with the requested width, ribbon settings, and earth-road material; tag networks as owned. Before and after edge extraction snapshot edge actors, assign the newly created set stable B1 labels and the ownership tag, and reject any unowned/duplicate result. Consolidate the three tags with the same ribbon settings. Before road influence:
 
 ```cpp
 Landscape->ClearEditLayer(
@@ -287,14 +295,14 @@ Select the exact Landscape, gather the consolidated network procedural meshes, a
 
 - [ ] **Step 6: Extend only the exact B1 PCG root**
 
-Add `/Game/GameXXK/Environment/TownPCG/B1/` as a third exact managed graph root. Refactor the root safety tests so `VerticalSlice`, `B0R`, and `B1` are accepted while `/Game/GameXXK/Environment/TownPCG/`, sibling prefixes, source maps, and non-Dev maps remain rejected.
+Add `/Game/GameXXK/Environment/TownPCG/B1/` as a third exact managed graph root. Refactor the root safety tests so `VerticalSlice`, `B0R`, and `B1` are accepted while `/Game/GameXXK/Environment/TownPCG/`, sibling prefixes, source maps, and non-Dev maps remain rejected. Extend graph authoring with an explicit base seed, stable derived point seeds, road-edge actor labels plus geometry digest and minimum clearance, and material override paths; set and audit the attached `UPCGComponent` seed. Preserve the existing three-argument call path for current tests/callers.
 
 - [ ] **Step 7: Verify source tests, cold compile, and commit**
 
 ```powershell
 python -m unittest scripts.test_quickroad_automation_facade scripts.test_qingshan_whitebox_scripts -v
 python scripts/ue_tdd_pipeline.py --pie-duration 1
-git add -- Plugins/Quick_Road/Source/Quick_Road/Public/Quick_RoadAutomationLibrary.h Plugins/Quick_Road/Source/Quick_Road/Private/Quick_RoadAutomationLibrary.cpp Plugins/Quick_Road/Source/Quick_Road/Quick_Road.Build.cs Source/GameXXKEditor/Private/GameXXKTownPCGAutomationLibrary.cpp scripts/test_qingshan_whitebox_scripts.py scripts/test_quickroad_automation_facade.py
+git add -- Plugins/Quick_Road/Source/Quick_Road/Public/Quick_RoadAutomationLibrary.h Plugins/Quick_Road/Source/Quick_Road/Private/Quick_RoadAutomationLibrary.cpp Plugins/Quick_Road/Source/Quick_Road/Quick_Road.Build.cs Source/GameXXKEditor/Public/GameXXKTownPCGAutomationLibrary.h Source/GameXXKEditor/Private/GameXXKTownPCGAutomationLibrary.cpp scripts/test_qingshan_whitebox_scripts.py scripts/test_quickroad_automation_facade.py
 git commit -m "feat: automate QuickRoad and B1 PCG roots"
 ```
 
@@ -311,7 +319,7 @@ Expected: host tests pass; MCP saves dirty packages before shutdown; UBT exits 0
 
 - [ ] **Step 1: Write failing asset-authoring tests**
 
-Assert the script imports exactly 18 manifest FBXs, creates one Toon BSDF master, material instances for wall/timber/paper/four roofs/ground/road/water/two foliage/mountain/props, assigns `MI_QS_B1_Window_Paper` to every building `WindowPaper` slot, creates four 512 x 512 PaperSprites, and creates a five-FPS flipbook with frame order `[0, 1, 2, 3, 2, 1]`.
+Assert the script imports exactly 18 source-manifest FBXs, creates one Toon BSDF master, material instances for wall/timber/paper/four roofs/ground/road/water/four static foliage frames/animated foliage/mountain/props, derives 24 building mesh/material variants for every `(archetype, roof_palette)` pair, assigns `MI_QS_B1_Window_Paper` to every building `WindowPaper` slot, creates four 512 x 512 PaperSprites, and creates a five-FPS flipbook with frame order `[0, 1, 2, 3, 2, 1]`.
 
 - [ ] **Step 2: Run and verify RED**
 
@@ -323,7 +331,7 @@ Expected: script missing.
 
 - [ ] **Step 3: Implement idempotent import and materials**
 
-Import all FBXs with `combine_meshes=True`, no imported materials/textures, replacement enabled, and source manifest hash checks. Create `M_QS_B1_Toon` with a `BaseColor` vector parameter plus metallic 0, specular 0.15, roughness 0.85 into `MaterialExpressionSubstrateToonBSDF`. Create named instances including `MI_QS_B1_Ground`, `MI_QS_B1_Road_Earth`, and `MI_QS_B1_Window_Paper`. Assign building slots by imported slot name; reject unknown/missing slots. Add simple box collision to building/prop meshes and enable Nanite only on building proxies and mountain.
+Import all FBXs with `combine_meshes=True`, no imported materials/textures, replacement enabled, and source manifest hash checks. Create `M_QS_B1_Toon` with a `BaseColor` vector parameter plus metallic 0, specular 0.15, roughness 0.85 into `MaterialExpressionSubstrateToonBSDF`. Create named instances including `MI_QS_B1_Ground`, `MI_QS_B1_Road_Earth`, `MI_QS_B1_Window_Paper`, four roof palettes, and four static-frame plant materials. Derive and save 24 building StaticMesh variants from the six source meshes, changing only the `Roof` slot; reject unknown/missing slots. Add simple collision only to solid gameplay-relevant buildings/props. Disable collision on plant cards, lanterns, banners, and mountain backdrops; enable Nanite only when a recorded triangle threshold shows benefit, never merely by category.
 
 - [ ] **Step 4: Implement Paper2D assets**
 
@@ -363,7 +371,7 @@ Expected: assembler missing.
 
 - [ ] **Step 3: Implement safe map lifecycle and coordinate conversion**
 
-Support phases `setup`, `infrastructure`, and `finalize`. Duplicate B0R only when B1 is absent, unload/reload only B1, then remove cloned B0R generated actors only if the current package is B1, the actor has `QingshanB0RManaged`, and its label is in `B0R_CLONE_CLEANUP_LABELS`. On rerun remove only `QingshanB1Managed`. Resolve exactly one `QingshanInn_TownExit` and use one function for every local-to-world conversion:
+Support bounded phases `setup`, `infrastructure`, `finalize_begin`, and `finalize_poll`. Duplicate B0R only when B1 is absent, unload/reload only B1, then remove cloned B0R generated actors only if the current package is B1, the actor has `QingshanB0RManaged`, and its label is in `B0R_CLONE_CLEANUP_LABELS`. On rerun remove only `QingshanB1Managed`; QuickRoad-owned cleanup remains inside the guarded facade. Resolve exactly one `QingshanInn_TownExit` and use one function for every local-to-world conversion:
 
 ```python
 def local_to_world(anchor_transform, local_xyz):
@@ -372,17 +380,17 @@ def local_to_world(anchor_transform, local_xyz):
 
 Hash every protected file before and after each phase and fail on any mismatch.
 
-- [ ] **Step 4: Generate real PCG populations**
+- [ ] **Step 4: Build QuickRoad infrastructure and stable exclusion inputs**
 
-For each of six building archetypes, group its plot transforms, call `CreateOrUpdateTownPCGGraph` with its static mesh, attach a B1 PCG volume, and call `GenerateTownPCG`. Repeat by shared mesh for the 72 prop records, 70 far plant-card records, and 24 mountain records. All graph paths stay under `/Game/GameXXK/Environment/TownPCG/B1/Graphs/`. Poll generation status to completion and record point count plus generated ISM/HISM instance count. Python must not spawn substitute StaticMeshActors for these categories.
+Create the three tagged spline groups from anchor-local B0R records. Split main-road geometry at the bridge protected radius. Reset old owned QuickRoad networks/edges, ensure the 505 Landscape from the generated heightmap using the grid-centre-to-origin formula, generate widths 800/450/400 with the B1 earth-road material, rebuild intersections with full ribbon settings, clear/apply/smooth the named road edit layer once, and extract stable owned road edges. Audit must report all three source tag/width/material records, one consolidated network, nonzero triangles, enabled/unlocked named edit layer, nonzero height digest, stable road-edge labels/digest, and at least one road-edge spline.
 
-- [ ] **Step 5: Create unique semantic actors**
+- [ ] **Step 5: Generate real PCG populations from measured exclusions**
+
+For every `(archetype_id, roof_palette)` building group, filter its point transforms against the live QuickRoad edge splines at the configured clearance, call the extended `CreateOrUpdateTownPCGGraph` with its derived mesh, material override, explicit base seed, consumed edge labels/digest, and filtered transforms, attach a B1 PCG volume, and call `GenerateTownPCG`. Repeat by shared mesh for the 72 prop records, four deterministic static-frame groups across the 70 far plant-card records, and 24 mountain records. All graph paths stay under `/Game/GameXXK/Environment/TownPCG/B1/Graphs/`. `finalize_begin` starts generation and returns immediately; repeated `finalize_poll` calls report `pending`, `complete`, or `failed` without blocking the editor thread, and record point count plus generated ISM/HISM instance count. Python must not spawn substitute StaticMeshActors for these categories.
+
+- [ ] **Step 6: Create unique semantic actors**
 
 Create the bridge assembly with deck/rails/posts/approach stones, the separate teal river ribbon and dock assembly, and the four cameras `CAM_QS_B1_GATE_ARRIVAL`, `CAM_QS_B1_TOWN_CORE`, `CAM_QS_B1_MAIN_BRIDGE`, `CAM_QS_B1_SOUTH_DOCK`. Spawn exactly 30 `PaperFlipbookActor` plants using `FB_QS_B1_Plant_Sway`, deterministic phase offsets, no collision, and finite cull distance. Snap PCG building Z and unique actors to the deterministic height function/landscape trace; require building-bottom error at most 25 cm.
-
-- [ ] **Step 6: Build QuickRoad infrastructure**
-
-Create the three tagged spline groups from anchor-local B0R records. Split main-road geometry at the bridge protected radius. Reset old QuickRoad networks, ensure the 505 Landscape from the generated heightmap, generate widths 800/450/400, rebuild intersections with full ribbon settings, clear/apply/smooth the named road edit layer once, and extract road edges. Audit must report all three source tag/width records, one consolidated network, nonzero triangles, enabled/unlocked named edit layer, nonzero height digest, and at least one road-edge spline.
 
 - [ ] **Step 7: Finalize and save only B1**
 
@@ -393,10 +401,8 @@ Recheck protected hashes, managed label uniqueness, PCG completion/counts, bridg
 ```powershell
 python -m unittest scripts.test_qingshan_dress_b1_scripts -v
 python scripts/ue_mcp_smoke.py
-python -c "import json,sys; sys.path.insert(0,'scripts'); from ue_mcp_client import UnrealMCPClient; c=UnrealMCPClient(timeout=60); assert c.connect(); print(json.dumps(c.run_project_python_file('Content/Python/gamexxk_assemble_qingshan_dress_b1.py',['--phase','setup']),ensure_ascii=False))"
-python -c "import json,sys; sys.path.insert(0,'scripts'); from ue_mcp_client import UnrealMCPClient; c=UnrealMCPClient(timeout=60); assert c.connect(); print(json.dumps(c.run_project_python_file('Content/Python/gamexxk_assemble_qingshan_dress_b1.py',['--phase','infrastructure']),ensure_ascii=False))"
-python -c "import json,sys; sys.path.insert(0,'scripts'); from ue_mcp_client import UnrealMCPClient; c=UnrealMCPClient(timeout=60); assert c.connect(); print(json.dumps(c.run_project_python_file('Content/Python/gamexxk_assemble_qingshan_dress_b1.py',['--phase','finalize']),ensure_ascii=False))"
-git add -- Content/Python/gamexxk_assemble_qingshan_dress_b1.py scripts/test_qingshan_dress_b1_scripts.py Content/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1.umap Content/GameXXK/Environment/TownPCG/B1/Graphs
+python scripts/run_qingshan_dress_b1.py --assemble-once
+git add -- Content/Python/gamexxk_assemble_qingshan_dress_b1.py scripts/run_qingshan_dress_b1.py scripts/test_qingshan_dress_b1_scripts.py Content/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1.umap Content/GameXXK/Environment/TownPCG/B1/Graphs
 git commit -m "feat: assemble enriched qingshan B1 scene"
 ```
 
@@ -409,10 +415,11 @@ Expected: all three phases return `success=true`; only B1 map/root packages are 
 - Create: `Content/Python/gamexxk_qingshan_dress_b1_acceptance.py`
 - Modify: `scripts/test_qingshan_dress_b1_scripts.py`
 - Create: `docs/production/evidence/qingshan-pcg-dress-b1/*`
+- Modify: `scripts/run_qingshan_dress_b1.py`
 
 - [ ] **Step 1: Write failing read-only/manifest/acceptance tests**
 
-Require marker `GAMEXXK_QINGSHAN_B1_VALIDATION`, no save/delete calls in the validator, exact protected hashes, exact camera transforms/FOV, 26 PCG buildings, 6 archetypes, 4 palettes, 72 PCG props, 30 flipbook plus 70 PCG-card plants, 24 PCG mountains, bridge/river separation, three width records, road-edge count, Landscape resolution/layer/sample elevations/building ground error, and a live scene-manifest SHA-256.
+Require marker `GAMEXXK_QINGSHAN_B1_VALIDATION`, no save/delete calls in the validator, exact protected hashes, exact camera transforms/FOV, 26 PCG buildings, 6 archetypes, 4 live roof material palettes, 72 PCG props, 30 flipbook plus four nonempty static-frame groups totalling 70 PCG-card plants, 24 PCG mountains, category collision policy, bridge/river separation, three width/material records, stable road-edge labels/digest, every graph's consumed edge digest, Landscape resolution/layer/sample elevations/building ground error, explicit PCG/component seeds, and a live scene-manifest SHA-256. Require the host runner to reject outer MCP failure, missing marker JSON, inner `success=false`, timeout, and stale capture files with a nonzero exit code.
 
 - [ ] **Step 2: Run and verify RED**
 
@@ -424,17 +431,17 @@ Expected: validator and acceptance scripts missing.
 
 - [ ] **Step 3: Implement read-only live manifest validation**
 
-Build a canonical manifest from live managed actor transforms, PCG graph paths/seed/point counts/generated component and instance counts, QuickRoad source width records/triangles/intersection patches/edge splines, four camera transforms/FOV, bridge/river actors, Paper2D assets/phases/cull distances, Landscape topology/edit-layer state/height digest and sampled elevations, Actor/Component/Tick counts, and protected raw hashes. Serialize sorted compact JSON and hash it. Do not use the contract hash as the live digest.
+Build a canonical manifest from live managed actor transforms, PCG graph paths/base and component seeds/point counts/generated component and instance counts/consumed road-edge labels and digest, actual mesh/material/collision paths, QuickRoad source width/material records/triangles/intersection patches/stable edge labels and digest, four camera transforms/FOV, bridge/river actors, Paper2D assets/phases/cull distances, Landscape topology/reconstructed grid centre/edit-layer state/height digest and decoded sample elevations, Actor/Component/Tick counts, and protected raw hashes. Serialize sorted compact JSON and hash it. Do not use the contract hash as the live digest.
 
 - [ ] **Step 4: Implement two-run acceptance and performance evidence**
 
-Run setup/infrastructure/finalize twice. Validate after each and require identical live scene-manifest hashes. Capture the four named CameraActors at 1920 x 1080. Record editor memory, road triangles, PCG instances, Actor/Component/Tick counts, and five seconds of PIE frame-time/stat evidence. Stop PIE and save evidence JSON/PNGs only under the B1 evidence directory.
+The host runner runs setup/infrastructure/finalize_begin plus bounded finalize_poll calls twice, then invokes the read-only validator and requires identical live scene-manifest hashes. It requests one named CameraActor capture per MCP call at 1920 x 1080, waits for fresh files, starts PIE, samples frame/stat data through separate calls while the editor ticks for five seconds, then stops PIE. Record editor memory, road triangles, PCG instances, Actor/Component/Tick counts, and frame-time/stat evidence only under the B1 evidence directory. Every step parses a unique marker JSON and requires both outer MCP success and inner `success=true`; otherwise the host process exits nonzero.
 
 - [ ] **Step 5: Run full pre-gate verification**
 
 ```powershell
 python -m unittest scripts.test_qingshan_dress_b1_config scripts.test_qingshan_b1_heightmap scripts.test_qingshan_b1_proxy_kit scripts.test_quickroad_automation_facade scripts.test_qingshan_dress_b1_assets scripts.test_qingshan_dress_b1_scripts -v
-python -c "import json,sys; sys.path.insert(0,'scripts'); from ue_mcp_client import UnrealMCPClient; c=UnrealMCPClient(timeout=60); assert c.connect(); print(json.dumps(c.run_project_python_file('Content/Python/gamexxk_qingshan_dress_b1_acceptance.py'),ensure_ascii=False))"
+python scripts/run_qingshan_dress_b1.py --acceptance
 python scripts/harness_state_validator.py
 python scripts/gamexxk_real_play_flow_mcp.py
 git status --short
@@ -445,7 +452,7 @@ Expected: all host tests and live acceptance pass, two manifest hashes match, fo
 - [ ] **Step 6: Commit evidence and stop at the user visual gate**
 
 ```powershell
-git add -- Content/Python/gamexxk_validate_qingshan_dress_b1.py Content/Python/gamexxk_qingshan_dress_b1_acceptance.py scripts/test_qingshan_dress_b1_scripts.py docs/production/evidence/qingshan-pcg-dress-b1
+git add -- Content/Python/gamexxk_validate_qingshan_dress_b1.py Content/Python/gamexxk_qingshan_dress_b1_acceptance.py scripts/run_qingshan_dress_b1.py scripts/test_qingshan_dress_b1_scripts.py docs/production/evidence/qingshan-pcg-dress-b1
 git commit -m "test: verify qingshan B1 review gate"
 ```
 
