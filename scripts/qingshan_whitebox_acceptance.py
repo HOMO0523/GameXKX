@@ -7,14 +7,18 @@ import hashlib
 import json
 import math
 import random
+import re
 from typing import Any
 
 
 __all__ = ("canonical_layout_hash", "generate_seeded_proxy_transforms")
 
 _MAX_FOLIAGE_ATTEMPTS = 20_000
+_MAX_FOLIAGE_COUNT = 20_000
+_MAX_MOUNTAIN_COUNT = 10_000
 _TRANSFORM_FIELDS = ("location_cm", "rotation_degrees", "scale")
 _SIDES = ("NORTH", "EAST", "SOUTH", "WEST")
+_STABLE_ID = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
 def _finite_number(value: Any, field: str) -> float:
@@ -71,6 +75,8 @@ def _bounds(value: Any, field: str) -> tuple[float, float, float, float]:
     x_min, x_max, y_min, y_max = _vector(value, field, 4)
     if x_min >= x_max or y_min >= y_max:
         raise ValueError(f"{field} must be [min_x, max_x, min_y, max_y]")
+    if not math.isfinite(x_max - x_min) or not math.isfinite(y_max - y_min):
+        raise ValueError(f"{field} span must be finite")
     return x_min, x_max, y_min, y_max
 
 
@@ -110,13 +116,49 @@ def _inside_rotated_footprint(
     return abs(local_x) <= size[0] / 2.0 + margin and abs(local_y) <= size[1] / 2.0 + margin
 
 
-def _compile_exclusions(config: Mapping[str, Any]):
-    sources = {
+def _validate_geometry_sources(config: Mapping[str, Any]):
+    raw_sources = {
         "anchor_circle": _source_index(config, "fixed_anchors"),
         "road_corridor": _source_index(config, "road_splines"),
         "river_corridor": _source_index(config, "river_splines"),
         "building_footprint": _source_index(config, "building_plots"),
     }
+    sources = {kind: {} for kind in raw_sources}
+    for stable_id, source in raw_sources["anchor_circle"].items():
+        location = _vector(source.get("location_cm"), f"{stable_id}.location_cm", 3)
+        radius = _finite_number(
+            source.get("protected_radius_cm"), f"{stable_id}.protected_radius_cm"
+        )
+        if radius <= 0:
+            raise ValueError(f"{stable_id}.protected_radius_cm must be positive")
+        _finite_number(source.get("yaw_degrees"), f"{stable_id}.yaw_degrees")
+        sources["anchor_circle"][stable_id] = (location, radius)
+
+    for kind in ("road_corridor", "river_corridor"):
+        for stable_id, source in raw_sources[kind].items():
+            width = _finite_number(source.get("width_cm"), f"{stable_id}.width_cm")
+            if width <= 0:
+                raise ValueError(f"{stable_id}.width_cm must be positive")
+            raw_points = _list(source.get("points_cm"), f"{stable_id}.points_cm")
+            if len(raw_points) < 2:
+                raise ValueError(f"{stable_id}.points_cm must contain at least two points")
+            points = tuple(
+                _vector(point, f"{stable_id}.points_cm[{index}]", 3)
+                for index, point in enumerate(raw_points)
+            )
+            sources[kind][stable_id] = (points, width)
+
+    for stable_id, source in raw_sources["building_footprint"].items():
+        location = _vector(source.get("location_cm"), f"{stable_id}.location_cm", 3)
+        size = _vector(source.get("size_cm"), f"{stable_id}.size_cm", 3)
+        if any(component <= 0 for component in size):
+            raise ValueError(f"{stable_id}.size_cm must be positive")
+        yaw = _finite_number(source.get("yaw_degrees"), f"{stable_id}.yaw_degrees")
+        sources["building_footprint"][stable_id] = (location, size, yaw)
+    return sources
+
+
+def _compile_exclusions(config: Mapping[str, Any], sources):
     compiled = []
     for index, raw in enumerate(_list(config.get("exclusion_zones"), "exclusion_zones")):
         field = f"exclusion_zones[{index}]"
@@ -133,14 +175,10 @@ def _compile_exclusions(config: Mapping[str, Any]):
         source = sources[kind][source_id]
 
         if kind == "anchor_circle":
-            center = _vector(source.get("location_cm"), f"{source_id}.location_cm", 3)
-            radius = _finite_number(source.get("protected_radius_cm"), f"{source_id}.protected_radius_cm")
+            center, radius = source
             compiled.append(lambda point, c=center, r=radius + margin: math.dist(point, c[:2]) <= r)
         elif kind in ("road_corridor", "river_corridor"):
-            width = _finite_number(source.get("width_cm"), f"{source_id}.width_cm")
-            points = _list(source.get("points_cm"), f"{source_id}.points_cm")
-            if len(points) < 2:
-                raise ValueError(f"{source_id}.points_cm must contain at least two points")
+            points, width = source
             segments = tuple(zip(points, points[1:]))
             radius = width / 2.0 + margin
             compiled.append(
@@ -149,18 +187,22 @@ def _compile_exclusions(config: Mapping[str, Any]):
                 ) <= r
             )
         else:
+            location, size, yaw = source
             compiled.append(
-                lambda point, p=source, m=margin, f=source_id: _inside_rotated_footprint(point, p, m, f)
+                lambda point, p={"location_cm": location, "size_cm": size, "yaw_degrees": yaw},
+                m=margin, f=source_id: _inside_rotated_footprint(point, p, m, f)
             )
     return compiled
 
 
 def _make_transform(stable_id: str, location, rotation, scale) -> dict[str, Any]:
+    if not _STABLE_ID.fullmatch(stable_id):
+        raise ValueError(f"generated transform id {stable_id!r} is not stable")
     return {
         "id": stable_id,
-        "location_cm": list(location),
-        "rotation_degrees": list(rotation),
-        "scale": list(scale),
+        "location_cm": list(_vector(location, f"{stable_id}.location_cm", 3)),
+        "rotation_degrees": list(_vector(rotation, f"{stable_id}.rotation_degrees", 3)),
+        "scale": list(_vector(scale, f"{stable_id}.scale", 3)),
     }
 
 
@@ -179,9 +221,30 @@ def generate_seeded_proxy_transforms(config: Mapping[str, Any]) -> dict[str, lis
     mountain_config = _mapping(proxy.get("mountains"), "proxy_generation.mountains")
     foliage_count = _integer(foliage_config.get("count"), "proxy_generation.foliage.count")
     mountain_count = _integer(mountain_config.get("count"), "proxy_generation.mountains.count")
+    if foliage_count > _MAX_FOLIAGE_COUNT:
+        raise ValueError(
+            f"proxy_generation.foliage.count exceeds hard maximum {_MAX_FOLIAGE_COUNT}"
+        )
+    if mountain_count > _MAX_MOUNTAIN_COUNT:
+        raise ValueError(
+            f"proxy_generation.mountains.count exceeds hard maximum {_MAX_MOUNTAIN_COUNT}"
+        )
+    spawn_caps = _mapping(config.get("spawn_caps"), "spawn_caps")
+    foliage_cap = _integer(spawn_caps.get("foliage"), "spawn_caps.foliage")
+    mountain_cap = _integer(spawn_caps.get("mountains"), "spawn_caps.mountains")
+    if foliage_count > foliage_cap:
+        raise ValueError("proxy_generation.foliage.count must not exceed spawn_caps.foliage")
+    if mountain_count > mountain_cap:
+        raise ValueError("proxy_generation.mountains.count must not exceed spawn_caps.mountains")
     foliage_scale = _ordered_range(
         foliage_config.get("scale_range"), "proxy_generation.foliage.scale_range"
     )
+    foliage_exclusion_margin = _finite_number(
+        foliage_config.get("exclusion_margin_cm"),
+        "proxy_generation.foliage.exclusion_margin_cm",
+    )
+    if foliage_exclusion_margin < 0:
+        raise ValueError("proxy_generation.foliage.exclusion_margin_cm must be nonnegative")
     mountain_scale_xy = _ordered_range(
         mountain_config.get("scale_xy_range"), "proxy_generation.mountains.scale_xy_range"
     )
@@ -193,10 +256,13 @@ def generate_seeded_proxy_transforms(config: Mapping[str, Any]) -> dict[str, lis
         "proxy_generation.mountains.perimeter_band_cm",
         nonnegative=True,
     )
+    if mountain_count and perimeter[0] <= 0:
+        raise ValueError("proxy_generation.mountains inner perimeter must be greater than zero")
     if mountain_count and mountain_count < 16:
         raise ValueError("proxy_generation.mountains.count must be at least 16 to cover four sides")
 
-    exclusions = _compile_exclusions(config)
+    sources = _validate_geometry_sources(config)
+    exclusions = _compile_exclusions(config, sources)
     rng = random.Random(seed)
     foliage = []
     attempts = 0
@@ -261,8 +327,13 @@ def generate_seeded_proxy_transforms(config: Mapping[str, Any]) -> dict[str, lis
 
 def _canonicalize(value: Any, decimals: int, field: str, transform_numeric: bool = False):
     if isinstance(value, Mapping):
+        if any(not isinstance(key, str) for key in value):
+            raise ValueError(f"{field} keys must be strings")
         present_transform_fields = [name for name in _TRANSFORM_FIELDS if name in value]
         if present_transform_fields:
+            stable_id = value.get("id")
+            if not isinstance(stable_id, str) or not _STABLE_ID.fullmatch(stable_id):
+                raise ValueError(f"{field}.id must be a nonblank stable string")
             missing = [name for name in _TRANSFORM_FIELDS if name not in value]
             if missing:
                 raise ValueError(f"{field} transform is missing {', '.join(missing)}")
@@ -271,10 +342,10 @@ def _canonicalize(value: Any, decimals: int, field: str, transform_numeric: bool
                 if (isinstance(vector, (str, bytes)) or not isinstance(vector, Sequence)
                         or len(vector) != 3):
                     raise ValueError(f"{field}.{name} must contain exactly 3 numbers")
+                for index, component in enumerate(vector):
+                    _finite_number(component, f"{field}.{name}[{index}]")
         result = {}
         for key in sorted(value):
-            if not isinstance(key, str):
-                raise ValueError(f"{field} keys must be strings")
             item = value[key]
             if key == "id" and (not isinstance(item, str) or not item.strip()):
                 raise ValueError(f"{field}.id must be a nonblank string")
@@ -294,12 +365,15 @@ def _canonicalize(value: Any, decimals: int, field: str, transform_numeric: bool
     if isinstance(value, bool):
         raise ValueError(f"{field} must not contain bool")
     if isinstance(value, (int, float)):
-        number = _finite_number(value, field)
         if transform_numeric:
+            number = _finite_number(value, field)
             number = round(number, decimals)
             if number == 0:
                 number = 0.0
-        return number
+            return number
+        if isinstance(value, int):
+            return value
+        return _finite_number(value, field)
     if value is None or isinstance(value, str):
         return value
     raise ValueError(f"{field} contains unsupported {type(value).__name__}")
@@ -321,7 +395,7 @@ def canonical_layout_hash(payload: Mapping[str, Any], decimals: int = 3) -> dict
     }
     return {
         "decimal_places": decimals,
-        "absolute_tolerance": 10.0 ** -decimals,
+        "quantization_step": 10.0 ** -decimals,
         "counts": counts,
         "canonical_payload": canonical_payload,
         "canonical_json": canonical_json,

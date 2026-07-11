@@ -154,6 +154,7 @@ class QingshanWhiteboxAcceptanceTests(unittest.TestCase):
         px0, px1, py0, py1 = self.config["playable_bounds_cm"]
         wx0, wx1, wy0, wy1 = self.config["world_bounds_cm"]
         sides = {"north": [], "south": [], "east": [], "west": []}
+        inner, outer = self.config["proxy_generation"]["mountains"]["perimeter_band_cm"]
         for record in layout["mountains"]:
             x, y, _ = record["location_cm"]
             self.assertTrue(wx0 <= x <= wx1 and wy0 <= y <= wy1)
@@ -162,8 +163,12 @@ class QingshanWhiteboxAcceptanceTests(unittest.TestCase):
             sides[side].append(record)
             if side in ("north", "south"):
                 self.assertTrue(px0 <= x <= px1)
+                offset = y - py1 if side == "north" else py0 - y
             else:
                 self.assertTrue(py0 <= y <= py1)
+                offset = x - px1 if side == "east" else px0 - x
+            self.assertGreaterEqual(offset, inner)
+            self.assertLessEqual(offset, outer)
         self.assertTrue(all(len(records) >= 4 for records in sides.values()))
         for side, records in sides.items():
             coordinates = [
@@ -206,6 +211,70 @@ class QingshanWhiteboxAcceptanceTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     generate_seeded_proxy_transforms(config)
 
+    def test_generation_eagerly_rejects_invalid_geometry_when_counts_are_zero(self):
+        mutations = (
+            (lambda c: c["fixed_anchors"][1].__setitem__("protected_radius_cm", 0), "protected_radius_cm"),
+            (lambda c: c["road_splines"][0].__setitem__("width_cm", -1), "width_cm"),
+            (lambda c: c["road_splines"][0].__setitem__("points_cm", []), "points_cm"),
+            (lambda c: c["river_splines"][0]["points_cm"][1].__setitem__(0, float("nan")), "finite"),
+            (lambda c: c["building_plots"][0]["size_cm"].__setitem__(0, 0), "size_cm"),
+            (lambda c: c["building_plots"][0].__setitem__("yaw_degrees", float("inf")), "yaw_degrees"),
+            (lambda c: c["proxy_generation"]["foliage"].__setitem__("exclusion_margin_cm", float("nan")), "exclusion_margin_cm"),
+            (lambda c: c.update({
+                "playable_bounds_cm": [-1e308, 1e308, -1000, 1000],
+                "world_bounds_cm": [-1e308, 1e308, -2000, 2000],
+            }), "span"),
+        )
+        for mutate, message in mutations:
+            with self.subTest(message=message):
+                config = copy.deepcopy(self.config)
+                config["proxy_generation"]["foliage"]["count"] = 0
+                config["proxy_generation"]["mountains"]["count"] = 0
+                mutate(config)
+                with self.assertRaisesRegex(ValueError, message):
+                    generate_seeded_proxy_transforms(config)
+
+    def test_generation_validates_later_exclusions_before_predicate_short_circuit(self):
+        config = copy.deepcopy(self.config)
+        config["proxy_generation"]["foliage"]["count"] = 1
+        config["exclusion_zones"][0]["margin_cm"] = 100000
+        config["road_splines"][0]["points_cm"][0][0] = float("nan")
+        with self.assertRaisesRegex(ValueError, "finite"):
+            generate_seeded_proxy_transforms(config)
+
+    def test_generation_rejects_counts_over_caps_or_hard_limits(self):
+        cases = (
+            ("foliage", 101, "spawn_caps.foliage"),
+            ("mountains", 31, "spawn_caps.mountains"),
+            ("foliage", True, "foliage.count"),
+            ("mountains", -1, "mountains.count"),
+            ("foliage", 10**10000, "hard maximum"),
+            ("mountains", 10**10000, "hard maximum"),
+        )
+        for category, count, message in cases:
+            with self.subTest(category=category, huge=count > 1_000_000 if isinstance(count, int) else False):
+                config = copy.deepcopy(self.config)
+                config["proxy_generation"][category]["count"] = count
+                if isinstance(count, int) and not isinstance(count, bool) and count > config["spawn_caps"][category]:
+                    config["spawn_caps"][category] = count
+                if count in (101, 31):
+                    config["spawn_caps"][category] = count - 1
+                with self.assertRaisesRegex(ValueError, message):
+                    generate_seeded_proxy_transforms(config)
+
+    def test_generation_rejects_invalid_spawn_caps_and_zero_inner_perimeter(self):
+        cases = (
+            (lambda c: c["spawn_caps"].__setitem__("foliage", True), "spawn_caps.foliage"),
+            (lambda c: c["spawn_caps"].__setitem__("mountains", -1), "spawn_caps.mountains"),
+            (lambda c: c["proxy_generation"]["mountains"].__setitem__("perimeter_band_cm", [0, 7000]), "inner perimeter"),
+        )
+        for mutate, message in cases:
+            with self.subTest(message=message):
+                config = copy.deepcopy(self.config)
+                mutate(config)
+                with self.assertRaisesRegex(ValueError, message):
+                    generate_seeded_proxy_transforms(config)
+
     def test_hash_rounding_tolerance_and_metadata(self):
         payload_a = {"foliage": [{
             "id": "FOLIAGE_001",
@@ -217,7 +286,7 @@ class QingshanWhiteboxAcceptanceTests(unittest.TestCase):
         payload_b["foliage"][0]["location_cm"][0] = 1.23449
         result = canonical_layout_hash(payload_a, decimals=3)
         self.assertEqual(result["decimal_places"], 3)
-        self.assertEqual(result["absolute_tolerance"], 0.001)
+        self.assertEqual(result["quantization_step"], 0.001)
         self.assertEqual(result["counts"], {"foliage": 1, "mountains": 0})
         self.assertEqual(result["sha256"], canonical_layout_hash(payload_b, decimals=3)["sha256"])
 
@@ -235,6 +304,7 @@ class QingshanWhiteboxAcceptanceTests(unittest.TestCase):
             (lambda p: p["foliage"][0]["scale"].__setitem__(0, 10**10000), "finite"),
             (lambda p: p["foliage"][0].__setitem__("id", ""), "id"),
             (lambda p: p["foliage"][0].__setitem__("scale", [1.0, 2.0]), "scale"),
+            (lambda p: p["foliage"][0]["location_cm"].__setitem__(0, "one"), "number"),
             (lambda p: p["foliage"][0].pop("rotation_degrees"), "missing rotation_degrees"),
         )
         for mutate, message in mutations:
@@ -247,6 +317,37 @@ class QingshanWhiteboxAcceptanceTests(unittest.TestCase):
             with self.subTest(decimals=decimals):
                 with self.assertRaisesRegex(ValueError, "decimals"):
                     canonical_layout_hash(base, decimals=decimals)
+
+    def test_hash_preserves_distinct_integers_above_float_precision(self):
+        first = {"seed": 2**53, "foliage": [], "mountains": []}
+        second = {"seed": 2**53 + 1, "foliage": [], "mountains": []}
+        first_hash = canonical_layout_hash(first)
+        second_hash = canonical_layout_hash(second)
+        self.assertEqual(first_hash["canonical_payload"]["seed"], 2**53)
+        self.assertEqual(second_hash["canonical_payload"]["seed"], 2**53 + 1)
+        self.assertNotEqual(first_hash["sha256"], second_hash["sha256"])
+
+    def test_hash_rejects_partial_or_idless_transform_mappings(self):
+        cases = (
+            ({"location_cm": [1, 2, 3], "rotation_degrees": [0, 0, 0], "scale": [1, 1, 1]}, "id"),
+            ({"id": "", "location_cm": [1, 2, 3], "rotation_degrees": [0, 0, 0], "scale": [1, 1, 1]}, "id"),
+            ({"id": "bad id", "location_cm": [1, 2, 3], "rotation_degrees": [0, 0, 0], "scale": [1, 1, 1]}, "stable"),
+            ({"id": "VALID_1", "location_cm": [1, 2, 3]}, "missing"),
+        )
+        for record, message in cases:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, message):
+                    canonical_layout_hash({"foliage": [record], "mountains": []})
+
+    def test_hash_rejects_non_string_mapping_keys_with_field_context(self):
+        cases = (
+            ({"foliage": [], 1: []}, "payload keys"),
+            ({"metadata": {"okay": 1, 2: 2}, "foliage": [], "mountains": []}, "payload.metadata keys"),
+        )
+        for payload, message in cases:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, message):
+                    canonical_layout_hash(payload)
 
 
 if __name__ == "__main__":
