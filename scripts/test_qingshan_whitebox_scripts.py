@@ -1,7 +1,11 @@
 import re
 import ast
+import json
+import math
 import unittest
+import weakref
 from pathlib import Path
+from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -134,6 +138,15 @@ class QingshanWhiteboxAssemblerSourceTests(unittest.TestCase):
         exec(compile(ast.fix_missing_locations(module), str(ASSEMBLER), "exec"), namespace)
         return namespace["_validate_finalize_dirty_state"]
 
+    def _host_function(self, name, *, dependencies=(), namespace=None):
+        module = ast.Module(
+            body=[*(self._function(item) for item in dependencies), self._function(name)],
+            type_ignores=[],
+        )
+        globals_dict = dict(namespace or {})
+        exec(compile(ast.fix_missing_locations(module), str(ASSEMBLER), "exec"), globals_dict)
+        return globals_dict[name]
+
     def test_stable_map_phase_and_ownership_contract(self):
         required = {
             "SOURCE_MAP": "/Game/GameXXK/Maps/L_QingshanInn",
@@ -211,7 +224,7 @@ class QingshanWhiteboxAssemblerSourceTests(unittest.TestCase):
         self.assertIn('"generated"', self.source)
         self.assertIn('"generating"', self.source)
         self.assertIn('"pending": True', self.source)
-        self.assertIn('allow_nan=False', self.source)
+        self.assertIn('"allow_nan": False', self.source)
 
     def test_graph_paths_are_explicit_stable_literals(self):
         for suffix in ("Buildings", "Foliage", "Mountains"):
@@ -333,6 +346,144 @@ class QingshanWhiteboxAssemblerSourceTests(unittest.TestCase):
                 self.assertEqual({keyword.arg for keyword in call.keywords}, {
                     "pitch", "yaw", "roll",
                 })
+
+    def test_duplicate_reference_is_released_and_ue58_unload_outputs_are_checked(self):
+        class Duplicate:
+            pass
+
+        class FakeAssets:
+            duplicate_ref = None
+
+            @staticmethod
+            def does_asset_exist(path):
+                return path.endswith("L_QingshanInn")
+
+            @classmethod
+            def duplicate_asset(cls, source, destination):
+                duplicate = Duplicate()
+                cls.duplicate_ref = weakref.ref(duplicate)
+                return duplicate
+
+            @staticmethod
+            def save_loaded_asset(asset, only_if_dirty):
+                return True
+
+            @staticmethod
+            def get_package_for_object(asset):
+                return "whitebox-package"
+
+        class FakeSaving:
+            result = (True, "")
+
+            @classmethod
+            def unload_packages(cls, packages):
+                if FakeAssets.duplicate_ref() is not None:
+                    raise AssertionError("duplicate asset reference was retained during unload")
+                return cls.result
+
+        fake_unreal = SimpleNamespace(
+            EditorAssetLibrary=FakeAssets,
+            EditorLoadingAndSavingUtils=FakeSaving,
+            SystemLibrary=SimpleNamespace(collect_garbage=lambda: None),
+        )
+        constants = {
+            "SOURCE_MAP": "/Game/GameXXK/Maps/L_QingshanInn",
+            "WHITEBOX_MAP": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R",
+            "unreal": fake_unreal,
+            "_require_editor_clean": lambda context: ([], []),
+        }
+        ensure = self._host_function("_ensure_whitebox_map", namespace=constants)
+        self.assertTrue(ensure())
+        FakeSaving.result = (False, "still referenced")
+        with self.assertRaisesRegex(RuntimeError, "still referenced"):
+            ensure()
+
+    def test_curve_plate_specs_follow_each_segment_without_terminal_overshoot(self):
+        build = self._host_function("_build_curve_plate_specs", namespace={"math": math})
+        specs = build([(0.0, 0.0, 10.0), (3.0, 4.0, 20.0), (3.0, 8.0, 30.0)], 200.0, 10.0)
+        self.assertEqual(len(specs), 2)
+        self.assertAlmostEqual(specs[0]["length_cm"], 5.0)
+        self.assertAlmostEqual(specs[0]["yaw_degrees"], math.degrees(math.atan2(4.0, 3.0)))
+        self.assertEqual(specs[0]["location_cm"], [1.5, 2.0, 10.0])
+        self.assertAlmostEqual(specs[1]["length_cm"], 4.0)
+        self.assertAlmostEqual(specs[1]["yaw_degrees"], 90.0)
+        last = specs[-1]
+        endpoint_x = last["location_cm"][0] + math.cos(math.radians(last["yaw_degrees"])) * last["length_cm"] / 2
+        endpoint_y = last["location_cm"][1] + math.sin(math.radians(last["yaw_degrees"])) * last["length_cm"] / 2
+        self.assertAlmostEqual(endpoint_x, 3.0)
+        self.assertAlmostEqual(endpoint_y, 8.0)
+        self.assertEqual(last["width_cm"], 200.0)
+        self.assertEqual(last["thickness_cm"], 10.0)
+
+    def test_north_anchor_requires_finite_upright_unit_transform(self):
+        validate = self._host_function("_validate_north_anchor", namespace={"math": math})
+
+        def actor(location=(1.0, 2.0, 3.0), rotation=(0.0, 45.0, 0.0), scale=(1.0, 1.0, 1.0)):
+            transform = SimpleNamespace(
+                translation=SimpleNamespace(x=location[0], y=location[1], z=location[2]),
+                scale3d=SimpleNamespace(x=scale[0], y=scale[1], z=scale[2]),
+            )
+            rotator = SimpleNamespace(pitch=rotation[0], yaw=rotation[1], roll=rotation[2])
+            return SimpleNamespace(
+                get_actor_transform=lambda: transform,
+                get_actor_rotation=lambda: rotator,
+            )
+
+        self.assertIsNotNone(validate(actor()))
+        invalid = (
+            actor(rotation=(0.01, 45.0, 0.0)),
+            actor(rotation=(0.0, float("nan"), 0.0)),
+            actor(scale=(1.0, 1.01, 1.0)),
+            actor(location=(float("inf"), 2.0, 3.0)),
+        )
+        for item in invalid:
+            with self.subTest(actor=item):
+                with self.assertRaises(RuntimeError):
+                    validate(item)
+
+    def test_transform_payload_rejects_nonfinite_location_rotation_and_scale(self):
+        payload = self._host_function(
+            "_transform_payload",
+            dependencies=("_vector_payload",),
+            namespace={
+                "math": math,
+                "Any": object,
+                "_actor_class_path": lambda actor: "FakeActor",
+            },
+        )
+
+        def actor(location=(1.0, 2.0, 3.0), rotation=(0.0, 45.0, 0.0), scale=(1.0, 1.0, 1.0)):
+            transform = SimpleNamespace(
+                translation=SimpleNamespace(x=location[0], y=location[1], z=location[2]),
+                scale3d=SimpleNamespace(x=scale[0], y=scale[1], z=scale[2]),
+            )
+            rotator = SimpleNamespace(roll=rotation[0], pitch=rotation[1], yaw=rotation[2])
+            return SimpleNamespace(
+                get_actor_transform=lambda: transform,
+                get_actor_rotation=lambda: rotator,
+            )
+
+        self.assertEqual(payload(actor())["scale"], [1.0, 1.0, 1.0])
+        for item in (
+            actor(location=(float("nan"), 2.0, 3.0)),
+            actor(rotation=(0.0, float("inf"), 0.0)),
+            actor(scale=(1.0, 1.0, float("nan"))),
+        ):
+            with self.assertRaises(RuntimeError):
+                payload(item)
+
+    def test_compact_json_serialization_has_guaranteed_failure_payload(self):
+        serialize = self._host_function("_compact_json_result", namespace={"json": json})
+        valid = serialize({"success": True, "value": 3})
+        self.assertEqual(valid, '{"success":true,"value":3}')
+        for bad in ({"bad": object()}, {"bad": float("nan")}):
+            result = serialize(bad)
+            self.assertNotIn('": ', result)
+            self.assertNotIn(', "', result)
+            decoded = json.loads(result)
+            self.assertFalse(decoded["success"])
+            self.assertFalse(decoded["complete"])
+            self.assertIn("serialization", decoded["error"].lower())
 
 
 if __name__ == "__main__":

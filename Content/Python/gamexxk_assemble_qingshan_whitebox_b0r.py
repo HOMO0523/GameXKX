@@ -137,10 +137,13 @@ def _vector_payload(vector) -> list[float]:
 def _transform_payload(actor) -> dict[str, Any]:
     transform = actor.get_actor_transform()
     rotation = actor.get_actor_rotation()
+    rotation_values = [float(rotation.roll), float(rotation.pitch), float(rotation.yaw)]
+    if not all(math.isfinite(value) for value in rotation_values):
+        raise RuntimeError(f"non-finite rotation: {rotation_values}")
     return {
         "class": _actor_class_path(actor),
         "location": _vector_payload(transform.translation),
-        "rotation": [float(rotation.roll), float(rotation.pitch), float(rotation.yaw)],
+        "rotation": rotation_values,
         "scale": _vector_payload(transform.scale3d),
     }
 
@@ -184,6 +187,37 @@ def _north_local_yaw(north_transform, local_yaw: float) -> float:
     if not math.isfinite(yaw):
         raise RuntimeError(f"non-finite north-local yaw: {local_yaw!r}")
     return yaw
+
+
+def _validate_north_anchor(actor, tolerance: float = 1.0e-3):
+    transform = actor.get_actor_transform()
+    rotation = actor.get_actor_rotation()
+    location = (
+        float(transform.translation.x),
+        float(transform.translation.y),
+        float(transform.translation.z),
+    )
+    rotation_values = (
+        float(rotation.pitch), float(rotation.yaw), float(rotation.roll),
+    )
+    scale = (
+        float(transform.scale3d.x),
+        float(transform.scale3d.y),
+        float(transform.scale3d.z),
+    )
+    if not all(math.isfinite(value) for value in (*location, *rotation_values, *scale)):
+        raise RuntimeError("north gate anchor transform must contain only finite values")
+    if abs(rotation_values[0]) > tolerance or abs(rotation_values[2]) > tolerance:
+        raise RuntimeError(
+            "north gate anchor must be upright within pitch/roll tolerance; "
+            f"rotation={rotation_values}, tolerance={tolerance}"
+        )
+    if any(abs(value - 1.0) > tolerance for value in scale):
+        raise RuntimeError(
+            "north gate anchor must have unit scale; "
+            f"scale={scale}, tolerance={tolerance}"
+        )
+    return transform
 
 
 def _parse_operation_payload(operation: str, payload: str) -> dict[str, Any]:
@@ -268,10 +302,19 @@ def _ensure_whitebox_map() -> bool:
         raise RuntimeError(f"failed to duplicate {SOURCE_MAP} to {WHITEBOX_MAP}")
     if not unreal.EditorAssetLibrary.save_loaded_asset(duplicate, True):
         raise RuntimeError(f"failed to save duplicated whitebox map {WHITEBOX_MAP}")
-    package = unreal.EditorAssetLibrary.get_package_for_object(duplicate)
-    if package is None or not unreal.EditorLoadingAndSavingUtils.unload_packages([package]):
-        raise RuntimeError(f"failed to unload duplicated whitebox package {WHITEBOX_MAP}")
-    del duplicate, package
+    duplicate_package = unreal.EditorAssetLibrary.get_package_for_object(duplicate)
+    if duplicate_package is None:
+        raise RuntimeError(f"could not resolve duplicated whitebox package {WHITEBOX_MAP}")
+    del duplicate
+    b_out_any_packages_unloaded, out_error_message = (
+        unreal.EditorLoadingAndSavingUtils.unload_packages([duplicate_package])
+    )
+    if not b_out_any_packages_unloaded:
+        raise RuntimeError(
+            f"failed to unload duplicated whitebox package {WHITEBOX_MAP}: "
+            f"{out_error_message}"
+        )
+    del duplicate_package
     unreal.SystemLibrary.collect_garbage()
     return True
 
@@ -336,36 +379,72 @@ def _create_or_update_managed_spline_actor(
     return actor
 
 
-def _sample_polyline(points, spacing: float) -> list[tuple[float, float, float]]:
-    samples = []
+def _build_curve_plate_specs(world_points, width_cm: float, thickness_cm: float) -> list:
+    width_cm = float(width_cm)
+    thickness_cm = float(thickness_cm)
+    if not math.isfinite(width_cm) or width_cm <= 0.0:
+        raise RuntimeError(f"curve proxy width must be positive and finite: {width_cm}")
+    if not math.isfinite(thickness_cm) or thickness_cm <= 0.0:
+        raise RuntimeError(f"curve proxy thickness must be positive and finite: {thickness_cm}")
+
+    def components(point):
+        if all(hasattr(point, name) for name in ("x", "y", "z")):
+            values = (float(point.x), float(point.y), float(point.z))
+        else:
+            values = tuple(float(point[index]) for index in range(3))
+        if not all(math.isfinite(value) for value in values):
+            raise RuntimeError(f"curve proxy point must be finite: {values}")
+        return values
+
+    points = [components(point) for point in world_points]
+    if len(points) < 2:
+        raise RuntimeError("curve proxy requires at least two world points")
+    specs = []
     for start, end in zip(points, points[1:]):
-        distance = math.dist(start, end)
-        steps = max(1, int(math.ceil(distance / spacing)))
-        for step in range(steps):
-            alpha = step / steps
-            samples.append(tuple(start[i] + (end[i] - start[i]) * alpha for i in range(3)))
-    samples.append(tuple(points[-1]))
-    return samples
+        delta_x, delta_y = end[0] - start[0], end[1] - start[1]
+        length_cm = math.hypot(delta_x, delta_y)
+        if length_cm <= 0.0:
+            raise RuntimeError(f"curve proxy has a zero-length horizontal segment: {start} -> {end}")
+        specs.append({
+            "location_cm": [
+                (start[0] + end[0]) / 2.0,
+                (start[1] + end[1]) / 2.0,
+                (start[2] + end[2]) / 2.0 - thickness_cm / 2.0,
+            ],
+            "length_cm": length_cm,
+            "width_cm": width_cm,
+            "thickness_cm": thickness_cm,
+            "yaw_degrees": math.degrees(math.atan2(delta_y, delta_x)),
+        })
+    return specs
 
 
 def _create_curve_plates(config, north_transform, cube_mesh) -> int:
     count = 0
-    for category, splines, spacing, thickness in (
-        ("Road", config["road_splines"], 500.0, 18.0),
-        ("River", config["river_splines"], 700.0, 12.0),
+    for category, splines, thickness in (
+        ("Road", config["road_splines"], 18.0),
+        ("River", config["river_splines"], 12.0),
     ):
         for spline in splines:
-            for index, point in enumerate(_sample_polyline(spline["points_cm"], spacing)):
+            world_points = [
+                _north_local_to_world(north_transform, point)
+                for point in spline["points_cm"]
+            ]
+            specs = _build_curve_plate_specs(world_points, spline["width_cm"], thickness)
+            for index, spec in enumerate(specs):
                 label = f"QS_B0R_{category}Plate_{spline['id']}_{index:03d}"
-                world = _north_local_to_world(north_transform, (point[0], point[1], point[2] - thickness / 2))
                 _create_or_update_managed_mesh_actor(
-                    label, cube_mesh, world,
+                    label, cube_mesh, unreal.Vector(*spec["location_cm"]),
                     unreal.Rotator(
                         pitch=0.0,
-                        yaw=_north_local_yaw(north_transform, 0.0),
+                        yaw=spec["yaw_degrees"],
                         roll=0.0,
                     ),
-                    (spacing / 100.0, float(spline["width_cm"]) / 100.0, thickness / 100.0),
+                    (
+                        spec["length_cm"] / 100.0,
+                        spec["width_cm"] / 100.0,
+                        spec["thickness_cm"] / 100.0,
+                    ),
                     (f"QingshanB0R{category}Proxy",),
                 )
                 count += 1
@@ -518,7 +597,7 @@ def setup_whitebox() -> dict[str, Any]:
     preserved_labels = _preserved_actor_labels(gate_label)
     preserved_before = _snapshot_preserved_actors(preserved_labels)
     north_gate = _find_unique_actor_by_label(gate_label, required=True)
-    north_transform = north_gate.get_actor_transform()
+    north_transform = _validate_north_anchor(north_gate)
     cube_mesh = _load_mesh(CUBE_MESH)
 
     bounds = config["world_bounds_cm"]
@@ -698,13 +777,31 @@ def _phase_from_argv(argv: list[str]) -> str:
     return phase
 
 
+def _compact_json_result(payload) -> str:
+    options = {"sort_keys": True, "separators": (",", ":"), "allow_nan": False}
+    try:
+        return json.dumps(payload, **options)
+    except Exception as error:
+        try:
+            return json.dumps(
+                {
+                    "success": False,
+                    "complete": False,
+                    "error": f"result serialization failed: {type(error).__name__}",
+                },
+                **options,
+            )
+        except Exception:
+            return '{"complete":false,"error":"result serialization failed","success":false}'
+
+
 def main() -> None:
     try:
         result = assemble_whitebox(_phase_from_argv(sys.argv[1:]))
     except Exception as error:
         unreal.log_error(f"GameXXK Qingshan B0R whitebox assembly failed: {error}")
         result = {"success": False, "complete": False, "error": str(error)}
-    print(json.dumps(result, sort_keys=True, separators=(",", ":"), allow_nan=False))
+    print(_compact_json_result(result))
 
 
 if __name__ == "__main__":
