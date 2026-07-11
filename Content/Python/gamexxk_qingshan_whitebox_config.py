@@ -23,12 +23,21 @@ def _require_id(value, field):
     return value
 
 
+def _is_finite_number(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except (OverflowError, TypeError, ValueError):
+        return False
+
+
 def _require_number(value, field):
     if isinstance(value, bool):
         raise ValueError(f"{field} must be a number, not bool")
     if not isinstance(value, (int, float)):
         raise ValueError(f"{field} must be a number")
-    if not math.isfinite(value):
+    if not _is_finite_number(value):
         raise ValueError(f"{field} must be finite")
     return value
 
@@ -41,7 +50,7 @@ def _require_vector(value, field, length=3):
             raise ValueError(f"{field} must contain numbers, not bool")
         if not isinstance(component, (int, float)):
             raise ValueError(f"{field} must be a {length}-number vector")
-        if not math.isfinite(component):
+        if not _is_finite_number(component):
             raise ValueError(f"{field} must contain only finite numbers")
     return value
 
@@ -149,6 +158,8 @@ def validate_config(data):
 
     def validate_splines(field):
         splines = _require_list(data.get(field), field)
+        if not splines:
+            raise ValueError(f"{field} must contain at least one spline")
         for index, raw in enumerate(splines):
             item = _require_object(raw, f"{field}[{index}]")
             register(item.get("id"), f"{field}[{index}].id")
@@ -201,20 +212,67 @@ def validate_config(data):
     proxy = _require_object(data.get("proxy_generation"), "proxy_generation")
     foliage = _require_object(proxy.get("foliage"), "proxy_generation.foliage")
     mountains = _require_object(proxy.get("mountains"), "proxy_generation.mountains")
-    _require_integer(foliage.get("count"), "proxy_generation.foliage.count", minimum=0)
-    _require_vector(foliage.get("scale_range"), "proxy_generation.foliage.scale_range", length=2)
-    _require_number(foliage.get("exclusion_margin_cm"), "proxy_generation.foliage.exclusion_margin_cm")
-    _require_integer(mountains.get("count"), "proxy_generation.mountains.count", minimum=0)
-    for field in ("scale_xy_range", "scale_z_range", "perimeter_band_cm"):
-        _require_vector(mountains.get(field), f"proxy_generation.mountains.{field}", length=2)
+    foliage_count = _require_integer(foliage.get("count"), "proxy_generation.foliage.count", minimum=0)
+    mountain_count = _require_integer(mountains.get("count"), "proxy_generation.mountains.count", minimum=0)
+    if foliage_count > spawn_caps["foliage"]:
+        raise ValueError("proxy_generation.foliage.count must not exceed spawn_caps.foliage")
+    if mountain_count > spawn_caps["mountains"]:
+        raise ValueError("proxy_generation.mountains.count must not exceed spawn_caps.mountains")
 
+    def require_scale_range(container, category, field):
+        value = _require_vector(
+            container.get(field),
+            f"proxy_generation.{category}.{field}",
+            length=2,
+        )
+        if value[0] <= 0 or value[1] <= 0:
+            raise ValueError(f"{field} must be strictly positive")
+        if value[1] <= value[0]:
+            raise ValueError(f"{field} must be ordered with max greater than min")
+
+    require_scale_range(foliage, "foliage", "scale_range")
+    require_scale_range(mountains, "mountains", "scale_xy_range")
+    require_scale_range(mountains, "mountains", "scale_z_range")
+    perimeter = _require_vector(
+        mountains.get("perimeter_band_cm"),
+        "proxy_generation.mountains.perimeter_band_cm",
+        length=2,
+    )
+    if perimeter[0] < 0 or perimeter[1] < 0:
+        raise ValueError("perimeter_band_cm must be nonnegative")
+    if perimeter[1] <= perimeter[0]:
+        raise ValueError("perimeter_band_cm must have outer greater than inner")
+    exclusion_margin = _require_number(
+        foliage.get("exclusion_margin_cm"),
+        "proxy_generation.foliage.exclusion_margin_cm",
+    )
+    if exclusion_margin < 0:
+        raise ValueError("exclusion_margin_cm must be nonnegative")
+
+    valid_exclusion_sources = {
+        "anchor_circle": set(anchor_by_id),
+        "road_corridor": {road["id"] for road in roads},
+        "river_corridor": {river["id"] for river in rivers},
+        "building_footprint": {plot["id"] for plot in plots},
+    }
+    exclusion_source_labels = {
+        "anchor_circle": "fixed_anchors",
+        "road_corridor": "road_splines",
+        "river_corridor": "river_splines",
+        "building_footprint": "building_plots",
+    }
     exclusions = _require_list(data.get("exclusion_zones"), "exclusion_zones")
     for index, raw in enumerate(exclusions):
         item = _require_object(raw, f"exclusion_zones[{index}]")
         register(item.get("id"), f"exclusion_zones[{index}].id")
-        if item.get("kind") not in ("anchor_circle", "spline_corridor", "building_footprint"):
+        kind = item.get("kind")
+        if kind not in ("anchor_circle", "road_corridor", "river_corridor", "building_footprint"):
             raise ValueError(f"exclusion_zones[{index}].kind is invalid")
-        _require_id(item.get("source_id"), f"exclusion_zones[{index}].source_id")
+        source_id = _require_id(item.get("source_id"), f"exclusion_zones[{index}].source_id")
+        if source_id not in valid_exclusion_sources[kind]:
+            raise ValueError(
+                f"{kind} source_id must resolve to {exclusion_source_labels[kind]}"
+            )
         margin = _require_number(item.get("margin_cm"), f"exclusion_zones[{index}].margin_cm")
         if margin < 0:
             raise ValueError(f"exclusion_zones[{index}].margin_cm must be at least 0")

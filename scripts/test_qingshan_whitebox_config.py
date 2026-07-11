@@ -112,10 +112,10 @@ class QingshanWhiteboxConfigTests(unittest.TestCase):
             ("EXC_ANCHOR_NORTH_GATE", "anchor_circle", "NorthGateFAnchor", 0),
             ("EXC_ANCHOR_MAIN_BRIDGE", "anchor_circle", "MainBridgeAnchor", 0),
             ("EXC_ANCHOR_SOUTH_DOCK", "anchor_circle", "SouthDockAnchor", 0),
-            ("EXC_ROAD_MAIN", "spline_corridor", "Road_Main", 250),
-            ("EXC_ROAD_CORE_NORTH", "spline_corridor", "Road_Core_North", 250),
-            ("EXC_ROAD_CORE_SOUTH", "spline_corridor", "Road_Core_South", 250),
-            ("EXC_RIVER_MAIN", "spline_corridor", "River_Main", 400),
+            ("EXC_ROAD_MAIN", "road_corridor", "Road_Main", 250),
+            ("EXC_ROAD_CORE_NORTH", "road_corridor", "Road_Core_North", 250),
+            ("EXC_ROAD_CORE_SOUTH", "road_corridor", "Road_Core_South", 250),
+            ("EXC_RIVER_MAIN", "river_corridor", "River_Main", 400),
         ] + [
             (f"EXC_{plot_id}", "building_footprint", plot_id, 200)
             for plot_id, *_ in expected_plots
@@ -142,6 +142,16 @@ class QingshanWhiteboxConfigTests(unittest.TestCase):
                 data = copy.deepcopy(self.data)
                 data["road_splines"][0]["points_cm"][0][0] = value
                 self.assert_invalid(data, "must contain only finite numbers")
+
+    def test_rejects_oversized_integer_scalars_and_vectors_as_non_finite(self):
+        huge = 10**10000
+        data = copy.deepcopy(self.data)
+        data["cameras"]["CAM_QS_GATE_ARRIVAL"]["fov_degrees"] = huge
+        self.assert_invalid(data, r"CAM_QS_GATE_ARRIVAL\.fov_degrees must be finite")
+
+        data = copy.deepcopy(self.data)
+        data["road_splines"][0]["points_cm"][0][0] = huge
+        self.assert_invalid(data, r"road_splines\[0\]\.points_cm\[0\] must contain only finite numbers")
 
     def test_requires_north_gate_anchor(self):
         data = copy.deepcopy(self.data)
@@ -176,6 +186,50 @@ class QingshanWhiteboxConfigTests(unittest.TestCase):
         data = copy.deepcopy(self.data)
         data["runtime_generation"] = True
         self.assert_invalid(data, "runtime_generation must be false")
+
+    def test_exclusion_sources_must_resolve_by_kind(self):
+        cases = (
+            (0, "MissingAnchor", "anchor_circle source_id must resolve to fixed_anchors"),
+            (3, "River_Main", "road_corridor source_id must resolve to road_splines"),
+            (6, "Road_Main", "river_corridor source_id must resolve to river_splines"),
+            (7, "TownCoreAnchor", "building_footprint source_id must resolve to building_plots"),
+        )
+        for index, source_id, pattern in cases:
+            with self.subTest(index=index, source_id=source_id):
+                data = copy.deepcopy(self.data)
+                data["exclusion_zones"][index]["source_id"] = source_id
+                self.assert_invalid(data, pattern)
+
+    def test_proxy_counts_must_not_exceed_spawn_caps(self):
+        cases = (("foliage", 101), ("mountains", 31))
+        for category, count in cases:
+            with self.subTest(category=category):
+                data = copy.deepcopy(self.data)
+                data["proxy_generation"][category]["count"] = count
+                self.assert_invalid(data, "count must not exceed spawn_caps")
+
+    def test_proxy_ranges_and_margin_are_valid(self):
+        mutations = (
+            (lambda d: d["proxy_generation"]["foliage"].__setitem__("scale_range", [6.5, 2.5]), "scale_range must be ordered"),
+            (lambda d: d["proxy_generation"]["foliage"].__setitem__("scale_range", [-1, 2]), "scale_range must be strictly positive"),
+            (lambda d: d["proxy_generation"]["mountains"].__setitem__("scale_xy_range", [65, 25]), "scale_xy_range must be ordered"),
+            (lambda d: d["proxy_generation"]["mountains"].__setitem__("scale_z_range", [0, 95]), "scale_z_range must be strictly positive"),
+            (lambda d: d["proxy_generation"]["mountains"].__setitem__("perimeter_band_cm", [7000, 1500]), "perimeter_band_cm must have outer greater than inner"),
+            (lambda d: d["proxy_generation"]["mountains"].__setitem__("perimeter_band_cm", [-1, 7000]), "perimeter_band_cm must be nonnegative"),
+            (lambda d: d["proxy_generation"]["foliage"].__setitem__("exclusion_margin_cm", -1), "exclusion_margin_cm must be nonnegative"),
+        )
+        for mutate, pattern in mutations:
+            with self.subTest(pattern=pattern):
+                data = copy.deepcopy(self.data)
+                mutate(data)
+                self.assert_invalid(data, pattern)
+
+    def test_requires_nonempty_road_and_river_splines(self):
+        for field in ("road_splines", "river_splines"):
+            with self.subTest(field=field):
+                data = copy.deepcopy(self.data)
+                data[field] = []
+                self.assert_invalid(data, f"{field} must contain at least one spline")
 
     def test_rejects_spatial_data_outside_world_bounds(self):
         cases = (
