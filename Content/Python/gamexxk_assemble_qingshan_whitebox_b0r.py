@@ -25,6 +25,7 @@ from qingshan_whitebox_acceptance import (
 
 SOURCE_MAP = "/Game/GameXXK/Maps/L_QingshanInn"
 WHITEBOX_MAP = "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R"
+B0R_CONTENT_ROOT = "/Game/GameXXK/Environment/TownPCG/B0R/"
 MANAGED_TAG = "QingshanB0RManaged"
 PHASE_SETUP = "setup"
 PHASE_FINALIZE = "finalize"
@@ -217,16 +218,37 @@ def _require_editor_clean(context: str) -> tuple[list[str], list[str]]:
     return maps, content
 
 
+def _validate_finalize_dirty_state(
+    current_map: str, dirty_maps, dirty_content,
+) -> None:
+    dirty_maps = set(dirty_maps)
+    dirty_content = set(dirty_content)
+    if SOURCE_MAP in dirty_maps or SOURCE_MAP in dirty_content:
+        raise RuntimeError(f"source map is dirty before finalize map load: {SOURCE_MAP}")
+    if current_map != WHITEBOX_MAP:
+        if dirty_maps or dirty_content:
+            raise RuntimeError(
+                "whitebox finalize refuses all dirtiness before switching maps: "
+                f"maps={sorted(dirty_maps)}, content={sorted(dirty_content)}"
+            )
+        return
+
+    unexpected_maps = dirty_maps - {WHITEBOX_MAP}
+    unexpected_content = {
+        package for package in dirty_content
+        if not package.startswith(B0R_CONTENT_ROOT)
+    }
+    if unexpected_maps or unexpected_content:
+        raise RuntimeError(
+            "whitebox finalize refuses unrelated map/content dirtiness: "
+            f"maps={sorted(unexpected_maps)}, content={sorted(unexpected_content)}"
+        )
+
+
 def _require_finalize_clean() -> tuple[list[str], list[str]]:
     dirty_maps = _dirty_map_package_names()
     dirty_content = _dirty_content_package_names()
-    if SOURCE_MAP in dirty_maps:
-        raise RuntimeError(f"source map is dirty before finalize map load: {SOURCE_MAP}")
-    if dirty_maps or dirty_content:
-        raise RuntimeError(
-            "whitebox finalize refuses map/content dirtiness before map load: "
-            f"maps={dirty_maps}, content={dirty_content}"
-        )
+    _validate_finalize_dirty_state(_current_map_package(), dirty_maps, dirty_content)
     return dirty_maps, dirty_content
 
 

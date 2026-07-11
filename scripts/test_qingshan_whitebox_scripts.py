@@ -117,6 +117,23 @@ class QingshanWhiteboxAssemblerSourceTests(unittest.TestCase):
             if isinstance(node, ast.FunctionDef) and node.name == name
         )
 
+    def _host_finalize_validator(self):
+        names = {"SOURCE_MAP", "WHITEBOX_MAP", "B0R_CONTENT_ROOT"}
+        constants = [
+            node for node in self.tree.body
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id in names
+        ]
+        module = ast.Module(
+            body=[*constants, self._function("_validate_finalize_dirty_state")],
+            type_ignores=[],
+        )
+        namespace = {}
+        exec(compile(ast.fix_missing_locations(module), str(ASSEMBLER), "exec"), namespace)
+        return namespace["_validate_finalize_dirty_state"]
+
     def test_stable_map_phase_and_ownership_contract(self):
         required = {
             "SOURCE_MAP": "/Game/GameXXK/Maps/L_QingshanInn",
@@ -244,9 +261,56 @@ class QingshanWhiteboxAssemblerSourceTests(unittest.TestCase):
         preflight = next(node for node in calls if node.func.id == "_require_finalize_clean")
         load = next(node for node in calls if node.func.id == "_load_whitebox_only")
         self.assertLess(preflight.lineno, load.lineno)
-        guard = ast.unparse(self._function("_require_finalize_clean"))
-        self.assertIn("SOURCE_MAP in dirty_maps", guard)
-        self.assertIn("_dirty_content_package_names()", guard)
+        preflight_source = ast.unparse(self._function("_require_finalize_clean"))
+        validator_source = ast.unparse(self._function("_validate_finalize_dirty_state"))
+        self.assertIn("SOURCE_MAP in dirty_maps", validator_source)
+        self.assertIn("_dirty_content_package_names()", preflight_source)
+
+    def test_finalize_allows_dirty_current_whitebox_and_managed_b0r_content(self):
+        validate = self._host_finalize_validator()
+        validate(
+            "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R",
+            ["/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R"],
+            [
+                "/Game/GameXXK/Environment/TownPCG/B0R/PCG_QS_B0R_Buildings",
+                "/Game/GameXXK/Environment/TownPCG/B0R/PCG_QS_B0R_Foliage",
+                "/Game/GameXXK/Environment/TownPCG/B0R/PCG_QS_B0R_Mountains",
+            ],
+        )
+
+    def test_finalize_blocks_dirty_source_before_load(self):
+        validate = self._host_finalize_validator()
+        with self.assertRaisesRegex(RuntimeError, "source map is dirty before finalize map load"):
+            validate(
+                "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R",
+                ["/Game/GameXXK/Maps/L_QingshanInn"],
+                [],
+            )
+
+    def test_finalize_blocks_unrelated_dirtiness_and_any_dirty_switch(self):
+        validate = self._host_finalize_validator()
+        cases = (
+            (
+                "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R",
+                ["/Game/GameXXK/Maps/L_Unrelated"], [],
+            ),
+            (
+                "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Whitebox_B0R",
+                [], ["/Game/GameXXK/UI/WBP_Unrelated"],
+            ),
+            (
+                "/Game/GameXXK/Maps/L_Main",
+                [], ["/Game/GameXXK/Environment/TownPCG/B0R/PCG_QS_B0R_Buildings"],
+            ),
+            (
+                "/Game/GameXXK/Maps/L_Main",
+                ["/Game/GameXXK/Maps/L_Main"], [],
+            ),
+        )
+        for current_map, dirty_maps, dirty_content in cases:
+            with self.subTest(current_map=current_map, content=dirty_content):
+                with self.assertRaisesRegex(RuntimeError, "refuses"):
+                    validate(current_map, dirty_maps, dirty_content)
 
     def test_mountain_cubes_are_raised_by_scaled_half_height(self):
         author = ast.unparse(self._function("_author_graphs"))
