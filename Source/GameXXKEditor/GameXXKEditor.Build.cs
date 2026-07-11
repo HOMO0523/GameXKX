@@ -24,6 +24,9 @@ public class GameXXKEditor : ModuleRules
 			"BlueprintGraph",
 			"Json",
 			"KismetCompiler",
+			"LevelEditor",
+			"Slate",
+			"SlateCore",
 			"UMG",
 			"UnrealEd",
 			"Landscape"

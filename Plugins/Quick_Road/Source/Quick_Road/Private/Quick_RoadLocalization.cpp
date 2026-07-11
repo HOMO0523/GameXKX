@@ -4,7 +4,6 @@
 
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
-#include "Interfaces/IPluginManager.h"
 
 namespace
 {
@@ -68,11 +67,8 @@ void QuickRoadLocalization::Initialize()
 
 	GCultureChangedHandle = FInternationalization::Get().OnCultureChanged().AddLambda([]()
 	{
-		ApplyLocalizedPluginDescriptor();
 		GLocalizationChangedDelegate.Broadcast();
 	});
-
-	ApplyLocalizedPluginDescriptor();
 }
 
 void QuickRoadLocalization::Shutdown()
@@ -152,19 +148,4 @@ FText QuickRoadLocalization::GetToolTooltip(FName CommandName)
 FText QuickRoadLocalization::GetSettingsSectionDescription()
 {
 	return GetText(TEXT("PluginDescription"));
-}
-
-void QuickRoadLocalization::ApplyLocalizedPluginDescriptor()
-{
-	TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("Quick_Road"));
-	if (!Plugin.IsValid())
-	{
-		return;
-	}
-
-	FPluginDescriptor NewDescriptor = Plugin->GetDescriptor();
-	NewDescriptor.Description = GetSettingsSectionDescription().ToString();
-
-	FText FailReason;
-	Plugin->UpdateDescriptor(NewDescriptor, FailReason);
 }

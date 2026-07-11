@@ -1,35 +1,35 @@
 {
-    "FileVersion":  3,
-    "Version":  1,
-    "VersionName":  "1.0",
-    "FriendlyName":  "Quick Road",
-    "Description":  "Quick Road V1 - UE5 editor plugin for terrain, layout, road splines, intersections, road mesh baking, and PCG workflows.",
-    "Category":  "Editor",
-    "CreatedBy":  "Aoife",
-    "CreatedByURL":  "",
-    "DocsURL":  "",
-    "MarketplaceURL":  "",
-    "SupportURL":  "",
-    "EngineVersion":  "5.8.0",
-    "CanContainContent":  true,
-    "Installed":  true,
-    "Modules":  [
-                    {
-                        "Name":  "Quick_Road",
-                        "Type":  "Editor",
-                        "LoadingPhase":  "Default"
-                    }
-                ],
-    "Plugins":  [
-                    {
-                        "Name":  "ProceduralMeshComponent",
-                        "Enabled":  true
-                    },
-                    {
-                        "Name":  "PCG",
-                        "Enabled":  true
-                    }
-                ],
-    "IsBetaVersion":  false,
-    "IsExperimentalVersion":  false
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Quick Road",
+	"Description": "Quick Road V1 (Free) — UE5 level/world building editor plugin: terrain, layout scoping, spline roads, intersections, and road mesh baking. Outputs feed PCG Graph workflows for partitioning, scattering, and ecology pipelines.",
+	"Category": "Editor",
+	"CreatedBy": "Aoife",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EngineVersion": "5.8.0",
+	"CanContainContent": true,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "Quick_Road",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ProceduralMeshComponent",
+			"Enabled": true
+		},
+		{
+			"Name": "PCG",
+			"Enabled": true
+		}
+	],
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false
 }

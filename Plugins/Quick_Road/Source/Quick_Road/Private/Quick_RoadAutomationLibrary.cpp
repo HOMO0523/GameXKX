@@ -498,6 +498,18 @@ namespace QuickRoadAutomation
 		return Sha256(Bytes.GetData(), static_cast<uint32>(Bytes.Num()));
 	}
 
+	FString PackedHeightLittleEndianDigest(const TArray<uint16>& Packed)
+	{
+		TArray<uint8> Bytes;
+		Bytes.Reserve(Packed.Num() * sizeof(uint16));
+		for (const uint16 Value : Packed)
+		{
+			Bytes.Add(static_cast<uint8>(Value & 0xFF));
+			Bytes.Add(static_cast<uint8>((Value >> 8) & 0xFF));
+		}
+		return Sha256(Bytes.GetData(), static_cast<uint32>(Bytes.Num()));
+	}
+
 	ALandscape* FindExactLandscape(UWorld* World, const FString& Label, FString& OutError)
 	{
 		const TArray<AActor*> Matches = FindActorsByExactLabel(World, Label);
@@ -2341,6 +2353,34 @@ FString UQuick_RoadAutomationLibrary::AuditInfrastructure(
 	{
 		return ErrorJson(Operation, TEXT("could not read raw road edit-layer delta heights"));
 	}
+	int32 MergedMinX = 0;
+	int32 MergedMinY = 0;
+	int32 MergedMaxX = 0;
+	int32 MergedMaxY = 0;
+	TArray<uint16> MergedPacked;
+	if (!ReadPackedHeights(
+		Landscape, FGuid(), MergedMinX, MergedMinY, MergedMaxX, MergedMaxY, MergedPacked)
+		|| MergedMinX != MinX || MergedMinY != MinY
+		|| MergedMaxX != MaxX || MergedMaxY != MaxY
+		|| MergedPacked.Num() != RawDelta.Num())
+	{
+		return ErrorJson(Operation, TEXT("could not read the complete merged Landscape height buffer"));
+	}
+	TArray<uint16> BasePacked;
+	BasePacked.SetNumUninitialized(MergedPacked.Num());
+	for (int32 Index = 0; Index < MergedPacked.Num(); ++Index)
+	{
+		const float BaseLocalHeight =
+			LandscapeDataAccess::GetLocalHeight(MergedPacked[Index])
+			- LandscapeDataAccess::GetLocalHeight(RawDelta[Index]);
+		BasePacked[Index] = LandscapeDataAccess::GetTexHeight(BaseLocalHeight);
+	}
+	const FString BaseHeightDigest = PackedHeightLittleEndianDigest(BasePacked);
+	const FString MergedHeightDigest = PackedHeightLittleEndianDigest(MergedPacked);
+	if (BaseHeightDigest.Len() != 64 || MergedHeightDigest.Len() != 64)
+	{
+		return ErrorJson(Operation, TEXT("could not hash live Landscape height buffers"));
+	}
 	int32 NonNeutralSampleCount = 0;
 	for (const uint16 Value : RawDelta)
 	{
@@ -2377,6 +2417,12 @@ FString UQuick_RoadAutomationLibrary::AuditInfrastructure(
 		MakeShared<FJsonValueNumber>(ReconstructedCenter.Y),
 		MakeShared<FJsonValueNumber>(ReconstructedCenter.Z),
 	};
+	TArray<TSharedPtr<FJsonValue>> JsonHeightBounds = {
+		MakeShared<FJsonValueNumber>(MinX),
+		MakeShared<FJsonValueNumber>(MinY),
+		MakeShared<FJsonValueNumber>(MaxX),
+		MakeShared<FJsonValueNumber>(MaxY),
+	};
 
 	TSharedRef<FJsonObject> Result = MakeResult(true, Operation);
 	Result->SetNumberField(TEXT("network_count"), AllNetworkCount);
@@ -2394,6 +2440,14 @@ FString UQuick_RoadAutomationLibrary::AuditInfrastructure(
 	Result->SetBoolField(TEXT("edit_layer_locked"), RoadLayer->IsLocked());
 	Result->SetNumberField(TEXT("non_neutral_sample_count"), NonNeutralSampleCount);
 	Result->SetStringField(TEXT("edit_layer_delta_sha256"), HeightDigest(MinX, MinY, MaxX, MaxY, RawDelta));
+	Result->SetStringField(TEXT("base_height_u16_sha256"), BaseHeightDigest);
+	Result->SetStringField(TEXT("merged_height_u16_sha256"), MergedHeightDigest);
+	Result->SetNumberField(TEXT("landscape_component_count"), Landscape->LandscapeComponents.Num());
+	Result->SetNumberField(TEXT("component_size_quads"), Landscape->ComponentSizeQuads);
+	Result->SetNumberField(TEXT("num_subsections"), Landscape->NumSubsections);
+	Result->SetNumberField(TEXT("subsection_size_quads"), Landscape->SubsectionSizeQuads);
+	Result->SetStringField(TEXT("heightmap_source_path"), Landscape->ReimportHeightmapFilePath);
+	Result->SetArrayField(TEXT("height_bounds"), JsonHeightBounds);
 	Result->SetArrayField(TEXT("reconstructed_grid_center_world"), JsonCenter);
 	Result->SetArrayField(TEXT("edge_actor_labels"), JsonEdgeLabels);
 	Result->SetNumberField(TEXT("edge_spline_count"), EdgeSplineCount);

@@ -61,6 +61,9 @@ EXPECTED_POPULATION_COUNTS = {
 MINIMUM_ROAD_CLEARANCE_CM = 250.0
 MAX_BUILDING_BOTTOM_ERROR_CM = 25.0
 ANIMATED_PLANT_CULL_CM = 12000.0
+BRIDGE_WATER_CLEARANCE_CM = 120.0
+BRIDGE_APPROACH_LIFT_CM = 90.0
+RIVER_SEGMENT_HALF_THICKNESS_CM = 10.0
 
 CAMERA_LABELS = (
     "CAM_QS_B1_GATE_ARRIVAL",
@@ -624,7 +627,8 @@ def _validate_sha256(value: Any, field: str) -> str:
 
 
 def _validate_quickroad_audit(
-        audit: dict[str, Any], config: dict[str, Any], expected_center_world) -> dict[str, Any]:
+        audit: dict[str, Any], config: dict[str, Any], expected_center_world, *,
+        require_active: bool = True) -> dict[str, Any]:
     if audit.get("network_count") != 1 or audit.get("owned_network_count") != 1:
         raise RuntimeError(f"QuickRoad audit requires one consolidated network: {audit}")
     if audit.get("unowned_network_count") != 0:
@@ -657,8 +661,10 @@ def _validate_quickroad_audit(
         raise RuntimeError(f"QuickRoad source_records mismatch: {observed} != {expected}")
     if audit.get("edit_layer") != config["landscape"]["edit_layer"]:
         raise RuntimeError("QuickRoad audit edit layer name drift")
-    if audit.get("edit_layer_active") is not True or audit.get("edit_layer_visible") is not True:
-        raise RuntimeError("QuickRoad audit edit layer must be active and visible")
+    if audit.get("edit_layer_visible") is not True:
+        raise RuntimeError("QuickRoad audit edit layer must be visible")
+    if require_active and audit.get("edit_layer_active") is not True:
+        raise RuntimeError("QuickRoad audit edit layer must be active during assembly")
     if audit.get("edit_layer_locked") is not False:
         raise RuntimeError("QuickRoad audit edit layer must remain unlocked")
     if int(audit.get("non_neutral_sample_count", 0)) <= 0:
@@ -1235,7 +1241,14 @@ def _set_primitive_policy(component, *, collision_enabled: bool, cull_end_cm: fl
         unreal.CollisionEnabled.QUERY_AND_PHYSICS
         if collision_enabled else unreal.CollisionEnabled.NO_COLLISION
     )
+    profile_name = "BlockAll" if collision_enabled else "NoCollision"
+    component.modify()
+    component.set_collision_profile_name(unreal.Name(profile_name))
     component.set_collision_enabled(collision)
+    if component.get_collision_enabled() != collision:
+        raise RuntimeError(
+            f"semantic collision readback mismatch: {profile_name}, {collision}"
+        )
     component.set_cull_distance(float(cull_end_cm))
 
 
@@ -1291,6 +1304,56 @@ def _world_with_z(world_location, z: float):
     return unreal.Vector(float(world_location.x), float(world_location.y), float(z))
 
 
+def _point_segment_distance_xy(point, first, second) -> float:
+    px, py = float(point[0]), float(point[1])
+    ax, ay = float(first[0]), float(first[1])
+    bx, by = float(second[0]), float(second[1])
+    dx, dy = bx - ax, by - ay
+    length_squared = dx * dx + dy * dy
+    if length_squared <= 1.0e-12:
+        return math.hypot(px - ax, py - ay)
+    alpha = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / length_squared))
+    return math.hypot(px - (ax + alpha * dx), py - (ay + alpha * dy))
+
+
+def _river_surface_top_world_z_at_local_point(
+        config: dict[str, Any], anchor_transform, local_point) -> float:
+    river = config["river_splines"][0]
+    candidates = []
+    for first, second in zip(river["points_cm"], river["points_cm"][1:]):
+        distance = _point_segment_distance_xy(local_point, first, second)
+        if distance <= float(river["width_cm"]) * 0.5 + 1.0e-6:
+            midpoint = tuple(
+                (float(first[index]) + float(second[index])) * 0.5
+                for index in range(3)
+            )
+            world_midpoint = local_to_world(anchor_transform, midpoint)
+            candidates.append(float(world_midpoint.z) + RIVER_SEGMENT_HALF_THICKNESS_CM)
+    if not candidates:
+        raise RuntimeError("MainBridgeAnchor does not overlap the authored river surface")
+    return max(candidates)
+
+
+def _compute_bridge_deck_center_z(
+        *, approach_ground_z_values, crossing_water_top_z: float,
+        deck_half_extent_z: float) -> float:
+    approach_values = [float(value) for value in approach_ground_z_values]
+    water_top = float(crossing_water_top_z)
+    half_extent = float(deck_half_extent_z)
+    if (
+        not approach_values
+        or not all(math.isfinite(value) for value in approach_values)
+        or not math.isfinite(water_top)
+        or not math.isfinite(half_extent)
+        or half_extent <= 0.0
+    ):
+        raise ValueError("bridge deck height inputs must be finite and nonempty")
+    return max(
+        max(approach_values) + BRIDGE_APPROACH_LIFT_CM,
+        water_top + BRIDGE_WATER_CLEARANCE_CM + half_extent,
+    )
+
+
 def _create_bridge_assembly(config: dict[str, Any], anchor_transform) -> list[str]:
     bridge = next(item for item in config["fixed_anchors"] if item["id"] == "MainBridgeAnchor")
     timber = config["building_materials"]["shared_slot_materials"]["Timber"]
@@ -1300,7 +1363,15 @@ def _create_bridge_assembly(config: dict[str, Any], anchor_transform) -> list[st
         _ground_snap_world(anchor_transform, _rotated_local_offset(bridge, direction * 1450.0, 0.0))
         for direction in (-1.0, 1.0)
     ]
-    deck_z = max(float(point.z) for point in approach_world) + 90.0
+    cube_bounds = _load_asset(cube_mesh).get_bounds()
+    deck_half_extent_z = float(cube_bounds.box_extent.z) * 1.2
+    crossing_water_top_z = _river_surface_top_world_z_at_local_point(
+        config, anchor_transform, bridge["location_cm"])
+    deck_z = _compute_bridge_deck_center_z(
+        approach_ground_z_values=[float(point.z) for point in approach_world],
+        crossing_water_top_z=crossing_water_top_z,
+        deck_half_extent_z=deck_half_extent_z,
+    )
     yaw = _anchor_local_yaw(anchor_transform, float(bridge["yaw_degrees"]))
     rotation = unreal.Rotator(pitch=0.0, yaw=yaw, roll=0.0)
     specs = [
@@ -1484,6 +1555,7 @@ def _create_animated_plants(config: dict[str, Any], anchor_transform) -> dict[st
         raise RuntimeError("animated plants must use FB_QS_B1_Plant_Sway")
     flipbook = _load_asset(flipbook_path)
     labels = []
+    pending_playback = []
     for record in sorted(records, key=lambda item: item["id"]):
         label = f"QS_B1_{record['id']}"
         actor = _find_unique_actor(label, unreal.PaperFlipbookActor)
@@ -1506,16 +1578,21 @@ def _create_animated_plants(config: dict[str, Any], anchor_transform) -> dict[st
         scale = float(record["scale"])
         actor.set_actor_scale3d(unreal.Vector(scale, scale, scale))
         component = _flipbook_component(actor)
+        component.stop()
         component.set_flipbook(flipbook)
         component.set_looping(True)
+        component.set_play_rate(1.0)
         start_frame = int(record["start_frame"])
-        component.set_playback_position_in_frames(start_frame, False)
-        component.play()
         component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
         component.set_cull_distance(ANIMATED_PLANT_CULL_CM)
         _set_tags(actor, (B1_MANAGED_TAG, "QingshanB1AnimatedPlant"))
         _set_tags(component, (B1_MANAGED_TAG, "QingshanB1AnimatedPlant"))
+        pending_playback.append((component, start_frame))
         labels.append(label)
+    for component, start_frame in pending_playback:
+        component.set_playback_position_in_frames(start_frame, False)
+    for component, _start_frame in pending_playback:
+        component.play()
     return {"count": len(labels), "labels": labels, "flipbook": flipbook_path}
 
 

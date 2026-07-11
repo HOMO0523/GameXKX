@@ -29,6 +29,4 @@ namespace QuickRoadLocalization
 
 	FText GetSettingsSectionDescription();
 
-	/** Sync .uplugin cached Description with current editor language (Plugins window). */
-	void ApplyLocalizedPluginDescriptor();
 }

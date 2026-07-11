@@ -1,0 +1,102 @@
+[
+  {
+    "camera_label": "CAM_QS_B1_GATE_ARRIVAL",
+    "dimensions": [
+      1920,
+      1080
+    ],
+    "mtime_ns": 1783809376252158800,
+    "path": "D:\\UE5 demo\\GameXXK\\docs\\production\\evidence\\qingshan-pcg-dress-b1\\camera-gate-arrival.png",
+    "poll_attempts": 2,
+    "sha256": "88aadb34143b62c6fa18470622f4be77aae7ed4259667eea254dea45c20f1b2d",
+    "size_bytes": 2157829,
+    "viewport_preflight": {
+      "error": "",
+      "invalidated": true,
+      "level_editor_tab_foreground": true,
+      "level_editor_tab_visible": true,
+      "operation": "PrepareLevelViewportForCapture",
+      "slate_window_active": true,
+      "success": true,
+      "viewport_focused": true,
+      "viewport_height": 424,
+      "viewport_visible": true,
+      "viewport_width": 1545
+    }
+  },
+  {
+    "camera_label": "CAM_QS_B1_TOWN_CORE",
+    "dimensions": [
+      1920,
+      1080
+    ],
+    "mtime_ns": 1783809376752424300,
+    "path": "D:\\UE5 demo\\GameXXK\\docs\\production\\evidence\\qingshan-pcg-dress-b1\\camera-town-core.png",
+    "poll_attempts": 1,
+    "sha256": "bb7842605aee6faa0c46b82414ddfb1929b56d5e89649a4cc221782170c98edb",
+    "size_bytes": 2449443,
+    "viewport_preflight": {
+      "error": "",
+      "invalidated": true,
+      "level_editor_tab_foreground": true,
+      "level_editor_tab_visible": true,
+      "operation": "PrepareLevelViewportForCapture",
+      "slate_window_active": true,
+      "success": true,
+      "viewport_focused": true,
+      "viewport_height": 424,
+      "viewport_visible": true,
+      "viewport_width": 1545
+    }
+  },
+  {
+    "camera_label": "CAM_QS_B1_MAIN_BRIDGE",
+    "dimensions": [
+      1920,
+      1080
+    ],
+    "mtime_ns": 1783809377281311900,
+    "path": "D:\\UE5 demo\\GameXXK\\docs\\production\\evidence\\qingshan-pcg-dress-b1\\camera-main-bridge.png",
+    "poll_attempts": 1,
+    "sha256": "513af09166c9dc7133497e3b4d2a62901e886dc22f8a44fd5fb85ad7ecec6774",
+    "size_bytes": 2520069,
+    "viewport_preflight": {
+      "error": "",
+      "invalidated": true,
+      "level_editor_tab_foreground": true,
+      "level_editor_tab_visible": true,
+      "operation": "PrepareLevelViewportForCapture",
+      "slate_window_active": true,
+      "success": true,
+      "viewport_focused": true,
+      "viewport_height": 424,
+      "viewport_visible": true,
+      "viewport_width": 1545
+    }
+  },
+  {
+    "camera_label": "CAM_QS_B1_SOUTH_DOCK",
+    "dimensions": [
+      1920,
+      1080
+    ],
+    "mtime_ns": 1783809377825895800,
+    "path": "D:\\UE5 demo\\GameXXK\\docs\\production\\evidence\\qingshan-pcg-dress-b1\\camera-south-dock.png",
+    "poll_attempts": 1,
+    "sha256": "39b6a7f7ced1de8bb5f447e2b1e961563694b5f5ee875e304b93dcdfb802db4e",
+    "size_bytes": 2554760,
+    "viewport_preflight": {
+      "error": "",
+      "invalidated": true,
+      "level_editor_tab_foreground": true,
+      "level_editor_tab_visible": true,
+      "operation": "PrepareLevelViewportForCapture",
+      "slate_window_active": true,
+      "success": true,
+      "viewport_focused": true,
+      "viewport_height": 424,
+      "viewport_visible": true,
+      "viewport_width": 1545
+    }
+  }
+]

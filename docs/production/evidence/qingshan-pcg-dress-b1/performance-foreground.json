@@ -1,0 +1,275 @@
+{
+  "csv_evidence_path": "D:\\UE5 demo\\GameXXK\\docs\\production\\evidence\\qingshan-pcg-dress-b1\\qingshan-b1-performance-foreground.csv",
+  "csv_metrics": {
+    "average_fps": 59.8844,
+    "average_frame_time_ms": 16.6988,
+    "counters": {
+      "GPUMem/LocalBudgetMB": {
+        "average": 7094.4079,
+        "max": 7189.0,
+        "median": 7189.0
+      },
+      "GPUMem/LocalUsedMB": {
+        "average": 3668.5894,
+        "max": 3717.5039,
+        "median": 3717.5039
+      },
+      "GPUSceneInstanceCount": {
+        "average": 7.0,
+        "max": 7.0,
+        "median": 7.0
+      },
+      "GPUTime": {
+        "average": 5.5695,
+        "max": 6.1727,
+        "median": 5.5516
+      },
+      "GameThreadTime": {
+        "average": 9.66,
+        "max": 18.2354,
+        "median": 9.3782
+      },
+      "PhysicalUsedMB": {
+        "average": 4452.0814,
+        "max": 4460.7539,
+        "median": 4452.2773
+      },
+      "RHI/DrawCalls": {
+        "average": 467.9671,
+        "max": 603.0,
+        "median": 458.0
+      },
+      "RHI/PrimitivesDrawn": {
+        "average": 349383.2697,
+        "max": 1097865.0,
+        "median": 223505.0
+      },
+      "RHIThreadTime": {
+        "average": 0.1361,
+        "max": 3.4447,
+        "median": 0.122
+      },
+      "RenderThreadTime": {
+        "average": 0.2942,
+        "max": 6.7741,
+        "median": 0.0022
+      },
+      "TextureStreaming/ResidentMeshMem": {
+        "average": 0.0,
+        "max": 0.0,
+        "median": 0.0
+      },
+      "TextureStreaming/StreamedMeshMem": {
+        "average": 0.0,
+        "max": 0.0,
+        "median": 0.0
+      },
+      "TextureStreaming/StreamingPool": {
+        "average": 1.4258,
+        "max": 1.4258,
+        "median": 1.4258
+      }
+    },
+    "frame_count": 304,
+    "hitch_count_over_50ms": 0,
+    "median_frame_time_ms": 16.6668,
+    "p95_frame_time_ms": 16.6873,
+    "p99_frame_time_ms": 18.0928
+  },
+  "csv_sha256": "90d4e0a23bce3b781462815ed65bc5d073f6dcea97f6aeb3237aae18e93992f4",
+  "csv_source_path": "D:\\UE5 demo\\GameXXK\\Saved\\Profiling\\CSV\\Profile(20260712_070035).csv",
+  "duration_seconds": 5.3280000002123415,
+  "editor_memory_mb": {
+    "delta": 1.400390625,
+    "end": 4452.7001953125,
+    "start": 4451.2998046875
+  },
+  "foreground_gate": {
+    "csv_average_fps": 59.8844,
+    "csv_median_frame_time_ms": 16.6668,
+    "limit_ms": 100.0,
+    "sample_median_frame_time_ms": 16.666702926158905
+  },
+  "frame_time_ms": {
+    "average": 16.666719181971118,
+    "max": 16.666799783706665,
+    "median": 16.666702926158905
+  },
+  "live_scene": {
+    "actor_count": 110,
+    "actor_tick_enabled_count": 0,
+    "component_count": 275,
+    "component_tick_enabled_count": 34,
+    "pcg_instance_count": 192,
+    "road_triangle_count": 768,
+    "tick_enabled_count": 34
+  },
+  "sample_count": 11,
+  "samples": [
+    {
+      "action": "performance_sample",
+      "actor_count": 131,
+      "component_count": 337,
+      "error": "",
+      "frame_delta_seconds": 0.016666699200868607,
+      "frame_time_ms": 16.666699200868607,
+      "game_time_seconds": 1.3019449040293694,
+      "pie_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+      "platform_time_seconds": 19908264.964412898,
+      "stat_frame_average_ms": null,
+      "stat_frame_max_ms": null,
+      "success": true,
+      "tick_enabled_count": 63
+    },
+    {
+      "action": "performance_sample",
+      "actor_count": 131,
+      "component_count": 337,
+      "error": "",
+      "frame_delta_seconds": 0.016666702926158905,
+      "frame_time_ms": 16.666702926158905,
+      "game_time_seconds": 1.8352908045053482,
+      "pie_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+      "platform_time_seconds": 19908265.4998806,
+      "stat_frame_average_ms": null,
+      "stat_frame_max_ms": null,
+      "success": true,
+      "tick_enabled_count": 63
+    },
+    {
+      "action": "performance_sample",
+      "actor_count": 131,
+      "component_count": 337,
+      "error": "",
+      "frame_delta_seconds": 0.016666702926158905,
+      "frame_time_ms": 16.666702926158905,
+      "game_time_seconds": 2.3536540046334267,
+      "pie_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+      "platform_time_seconds": 19908266.0179703,
+      "stat_frame_average_ms": null,
+      "stat_frame_max_ms": null,
+      "success": true,
+      "tick_enabled_count": 63
+    },
+    {
+      "action": "performance_sample",
+      "actor_count": 131,
+      "component_count": 337,
+      "error": "",
+      "frame_delta_seconds": 0.016666699200868607,
+      "frame_time_ms": 16.666699200868607,
+      "game_time_seconds": 2.8719543032348156,
+      "pie_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+      "platform_time_seconds": 19908266.5345377,
+      "stat_frame_average_ms": null,
+      "stat_frame_max_ms": null,
+      "success": true,
+      "tick_enabled_count": 63
+    },
+    {
+      "action": "performance_sample",
+      "actor_count": 131,
+      "component_count": 337,
+      "error": "",
+      "frame_delta_seconds": 0.016666699200868607,
+      "frame_time_ms": 16.666699200868607,
+      "game_time_seconds": 3.405289404094219,
+      "pie_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+      "platform_time_seconds": 19908267.0692854,
+      "stat_frame_average_ms": null,
+      "stat_frame_max_ms": null,
+      "success": true,
+      "tick_enabled_count": 63
+    },
+    {
+      "action": "performance_sample",
+      "actor_count": 131,
+      "component_count": 337,
+      "error": "",
+      "frame_delta_seconds": 0.016666702926158905,
+      "frame_time_ms": 16.666702926158905,
+      "game_time_seconds": 3.9229113049805164,
+      "pie_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+      "platform_time_seconds": 19908267.5875144,
+      "stat_frame_average_ms": null,
+      "stat_frame_max_ms": null,
+      "success": true,
+      "tick_enabled_count": 63
+    },
+    {
+      "action": "performance_sample",
+      "actor_count": 131,
+      "component_count": 337,
+      "error": "",
+      "frame_delta_seconds": 0.016666702926158905,
+      "frame_time_ms": 16.666702926158905,
+      "game_time_seconds": 4.441225204616785,
+      "pie_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+      "platform_time_seconds": 19908268.105282,
+      "stat_frame_average_ms": null,
+      "stat_frame_max_ms": null,
+      "success": true,
+      "tick_enabled_count": 63
+    },
+    {
+      "action": "performance_sample",
+      "actor_count": 131,
+      "component_count": 337,
+      "error": "",
+      "frame_delta_seconds": 0.016666699200868607,
+      "frame_time_ms": 16.666699200868607,
+      "game_time_seconds": 4.958963803946972,
+      "pie_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+      "platform_time_seconds": 19908268.6227595,
+      "stat_frame_average_ms": null,
+      "stat_frame_max_ms": null,
+      "success": true,
+      "tick_enabled_count": 63
+    },
+    {
+      "action": "performance_sample",
+      "actor_count": 131,
+      "component_count": 337,
+      "error": "",
+      "frame_delta_seconds": 0.016666799783706665,
+      "frame_time_ms": 16.666799783706665,
+      "game_time_seconds": 5.492765001952648,
+      "pie_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+      "platform_time_seconds": 19908269.1567619,
+      "stat_frame_average_ms": null,
+      "stat_frame_max_ms": null,
+      "success": true,
+      "tick_enabled_count": 63
+    },
+    {
+      "action": "performance_sample",
+      "actor_count": 131,
+      "component_count": 337,
+      "error": "",
+      "frame_delta_seconds": 0.016666702926158905,
+      "frame_time_ms": 16.666702926158905,
+      "game_time_seconds": 6.010125104337931,
+      "pie_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+      "platform_time_seconds": 19908269.6745768,
+      "stat_frame_average_ms": null,
+      "stat_frame_max_ms": null,
+      "success": true,
+      "tick_enabled_count": 63
+    },
+    {
+      "action": "performance_sample",
+      "actor_count": 131,
+      "component_count": 337,
+      "error": "",
+      "frame_delta_seconds": 0.016666799783706665,
+      "frame_time_ms": 16.666799783706665,
+      "game_time_seconds": 6.311570603400469,
+      "pie_map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+      "platform_time_seconds": 19908269.9751254,
+      "stat_frame_average_ms": null,
+      "stat_frame_max_ms": null,
+      "success": true,
+      "tick_enabled_count": 63
+    }
+  ]
+}
