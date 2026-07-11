@@ -11,7 +11,8 @@
     "style/references/style_env_day.jpeg",
     "style/references/style_env_night.jpeg",
     "style/references/style_creature_warm.jpeg",
-    "REF_QS_ENV_STYLE_LOCK"
+    "REF_QS_ENV_STYLE_LOCK",
+    "REF_QS_CAMERA_ROUTE"
   ],
   "detail_budget": {
     "forbidden_micro_detail": [
@@ -58,7 +59,7 @@
       "cropped subject",
       "PBR plastic shine"
     ],
-    "generation_calls_used": 0,
+    "generation_calls_used": 1,
     "input_image_roles": [
       {
         "path": "style/references/style_env_day.jpeg",
@@ -75,13 +76,18 @@
       {
         "path": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
         "role": "generated_style_lock"
+      },
+      {
+        "path": "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png",
+        "role": "generated_camera_route_terrain_context"
       }
     ],
     "input_images": [
       "style/references/style_env_day.jpeg",
       "style/references/style_env_night.jpeg",
       "style/references/style_creature_warm.jpeg",
-      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png"
+      "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
+      "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png"
     ],
     "lighting_mood": "neutral overcast-soft light for color comparison",
     "max_generation_calls": 3,
@@ -94,18 +100,18 @@
       "warm_ochre",
       "earth_ochre"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: game environment surface-palette board\nPrimary request: define the coordinated ground and water surfaces for Qingshan town\nInput images: project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock board defines final palette\nScene/backdrop: warm rice-paper presentation board, no written labels\nSubject: adjacent samples of compact earth, sparse grass ground, worn stone-and-dirt road, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; include two clean transition strips and one small player-camera terrain vignette\nStyle/medium: QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands\nComposition/framing: wide organized material board with separated but visually connected samples, no perspective-heavy hero object\nLighting/mood: neutral overcast-soft light for color comparison\nConstraints: no text, no labels, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors, no obvious repeating photo texture\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture.",
+    "prompt": "Use case: stylized-concept\nAsset type: game environment surface-palette board\nPrimary request: define the coordinated ground and water surfaces for Qingshan town\nInput images: project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock v003 board defines final palette and simplification; the route v002 board defines only the current terrain context and transitions; do not copy its small stones or tree-cluster micro-details\nScene/backdrop: warm rice-paper presentation board, no written labels\nSubject: seven large isolated irregular brush swatches for compact earth, sparse grass ground, worn stone-and-dirt QuickRoad surface, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; exactly two clean wide transition strips; one small fixed-camera terrain-only vignette showing the S-road, riverbank and open lower center\nStyle/medium: QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands\nComposition/framing: wide organized material board with separated but visually connected samples, no perspective-heavy hero object\nLighting/mood: neutral overcast-soft light for color comparison\nConstraints: no text, no labels, no icons, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors; road is not cobble and has at most three broad wear patches; water uses two broad color bands and at most three long flow strokes; bank uses broad mud, gravel and moss bands with no pebbles; rocks use at most three silhouettes with one shadow band each; no microtexture, no repeating photo patterns\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture.",
     "prompt_sections": {
       "asset_type": "game environment surface-palette board",
       "composition_framing": "wide organized material board with separated but visually connected samples, no perspective-heavy hero object",
-      "constraints": "no text, no labels, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors, no obvious repeating photo texture",
+      "constraints": "no text, no labels, no icons, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors; road is not cobble and has at most three broad wear patches; water uses two broad color bands and at most three long flow strokes; bank uses broad mud, gravel and moss bands with no pebbles; rocks use at most three silhouettes with one shadow band each; no microtexture, no repeating photo patterns",
       "detail_budget": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture.",
-      "input_images": "project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock board defines final palette",
+      "input_images": "project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock v003 board defines final palette and simplification; the route v002 board defines only the current terrain context and transitions; do not copy its small stones or tree-cluster micro-details",
       "lighting_mood": "neutral overcast-soft light for color comparison",
       "primary_request": "define the coordinated ground and water surfaces for Qingshan town",
       "scene_backdrop": "warm rice-paper presentation board, no written labels",
       "style_medium": "QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands",
-      "subject": "adjacent samples of compact earth, sparse grass ground, worn stone-and-dirt road, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; include two clean transition strips and one small player-camera terrain vignette",
+      "subject": "seven large isolated irregular brush swatches for compact earth, sparse grass ground, worn stone-and-dirt QuickRoad surface, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; exactly two clean wide transition strips; one small fixed-camera terrain-only vignette showing the S-road, riverbank and open lower center",
       "use_case": "stylized-concept",
       "view_contracts": {
         "board": {
@@ -123,7 +129,7 @@
     ],
     "scene_backdrop": "warm rice-paper presentation board, no written labels",
     "style_medium": "QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands",
-    "subject": "adjacent samples of compact earth, sparse grass ground, worn stone-and-dirt road, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; include two clean transition strips and one small player-camera terrain vignette",
+    "subject": "seven large isolated irregular brush swatches for compact earth, sparse grass ground, worn stone-and-dirt QuickRoad surface, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; exactly two clean wide transition strips; one small fixed-camera terrain-only vignette showing the S-road, riverbank and open lower center",
     "use_case": "stylized-concept"
   },
   "intended_zone": [
@@ -171,16 +177,44 @@
   "priority": "P0",
   "reference_images": [
     {
-      "approval_state": "planned",
+      "approval_state": "generated_pending_review",
       "background": "warm_rice_paper",
       "camera": "fixed_high_three_quarter_or_category_sheet",
       "file_stub": "REF_QS_SURFACE_PALETTE__board",
+      "generation_input_paths": [
+        "style/references/style_env_day.jpeg",
+        "style/references/style_env_night.jpeg",
+        "style/references/style_creature_warm.jpeg",
+        "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
+        "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png"
+      ],
+      "generation_prompt": "Use case: stylized-concept\nAsset type: game environment surface-palette board\nPrimary request: define the coordinated ground and water surfaces for Qingshan town\nInput images: project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock v003 board defines final palette and simplification; the route v002 board defines only the current terrain context and transitions; do not copy its small stones or tree-cluster micro-details\nScene/backdrop: warm rice-paper presentation board, no written labels\nSubject: seven large isolated irregular brush swatches for compact earth, sparse grass ground, worn stone-and-dirt QuickRoad surface, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; exactly two clean wide transition strips; one small fixed-camera terrain-only vignette showing the S-road, riverbank and open lower center\nStyle/medium: QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands\nComposition/framing: wide organized material board with separated but visually connected samples, no perspective-heavy hero object\nLighting/mood: neutral overcast-soft light for color comparison\nConstraints: no text, no labels, no icons, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors; road is not cobble and has at most three broad wear patches; water uses two broad color bands and at most three long flow strokes; bank uses broad mud, gravel and moss bands with no pebbles; rocks use at most three silhouettes with one shadow band each; no microtexture, no repeating photo patterns\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; surface uses broad flat swatches without cobble tessellation, pebble noise, or other micro-texture.",
+      "generation_reference_lineage": [
+        "style/references/style_env_day.jpeg",
+        "style/references/style_env_night.jpeg",
+        "style/references/style_character_scale.jpeg",
+        "style/references/style_nature_group.jpeg",
+        "style/references/style_creature_warm.jpeg",
+        "style/references/style_creature_mass.jpeg",
+        "style/references/layout_dense_foliage.jpg",
+        "style/boards/REF_QS_ENV_STYLE_LOCK__board__v001.png",
+        "style/boards/REF_QS_ENV_STYLE_LOCK__board__v002.png",
+        "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
+        "style/boards/REF_QS_SCALE_LINEUP__board__v001.png",
+        "style/boards/REF_QS_SCALE_LINEUP__board__v002.png",
+        "style/boards/REF_QS_SCALE_LINEUP__board__v003.png",
+        "style/boards/REF_QS_CAMERA_ROUTE__board__v001.png",
+        "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png"
+      ],
       "kind": "board",
+      "output_path": "style/boards/REF_QS_SURFACE_PALETTE__board__v001.png",
       "required_annotations": [
         "complete_board",
         "consistent_QS_InkToon_v1",
         "no_written_labels"
-      ]
+      ],
+      "sha256": "8cbda9d9282b3da457b6062469d1cc3a22caf63ad986558960ae63a5eadf6ba2",
+      "version": "v001"
     }
   ],
   "schema_version": 1,

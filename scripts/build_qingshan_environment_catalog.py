@@ -124,6 +124,7 @@ DETAIL_OBJECT_RULES = {
 GENERATED_BOARD_PATHS = {
     "REF_QS_ENV_STYLE_LOCK": "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
     "REF_QS_SCALE_LINEUP": "style/boards/REF_QS_SCALE_LINEUP__board__v001.png",
+    "REF_QS_CAMERA_ROUTE": "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png",
 }
 CAMERA_ROUTE_SCALE_BOARD_PATH = "style/boards/REF_QS_SCALE_LINEUP__board__v003.png"
 
@@ -404,13 +405,13 @@ Simplification: inherit v003 icon-level shape economy; every building, bridge, t
     "REF_QS_SURFACE_PALETTE": """Use case: stylized-concept
 Asset type: game environment surface-palette board
 Primary request: define the coordinated ground and water surfaces for Qingshan town
-Input images: project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock board defines final palette
+Input images: project environment references define ink wash and atmosphere; warm creature reference defines restrained ochre accents; the style-lock v003 board defines final palette and simplification; the route v002 board defines only the current terrain context and transitions; do not copy its small stones or tree-cluster micro-details
 Scene/backdrop: warm rice-paper presentation board, no written labels
-Subject: adjacent samples of compact earth, sparse grass ground, worn stone-and-dirt road, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; include two clean transition strips and one small player-camera terrain vignette
+Subject: seven large isolated irregular brush swatches for compact earth, sparse grass ground, worn stone-and-dirt QuickRoad surface, wet muddy riverbank, blue-green shallow river water, mossy field rock and dry mountain rock; exactly two clean wide transition strips; one small fixed-camera terrain-only vignette showing the S-road, riverbank and open lower center
 Style/medium: QS_InkToon_v1 hand-painted environment material concept, large readable shapes, dry-brush edges, two to three tonal bands
 Composition/framing: wide organized material board with separated but visually connected samples, no perspective-heavy hero object
 Lighting/mood: neutral overcast-soft light for color comparison
-Constraints: no text, no labels, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors, no obvious repeating photo texture""",
+Constraints: no text, no labels, no icons, no watermark, no photoreal PBR spheres, no shiny plastic, no neon colors; road is not cobble and has at most three broad wear patches; water uses two broad color bands and at most three long flow strokes; bank uses broad mud, gravel and moss bands with no pebbles; rocks use at most three silhouettes with one shadow band each; no microtexture, no repeating photo patterns""",
 }
 
 
@@ -739,6 +740,13 @@ def _generation(
     generated_inputs: list[tuple[str, str]] = []
     if asset_id in ("REF_QS_SCALE_LINEUP", "REF_QS_SURFACE_PALETTE"):
         generated_inputs.append((GENERATED_BOARD_PATHS["REF_QS_ENV_STYLE_LOCK"], "generated_style_lock"))
+        if asset_id == "REF_QS_SURFACE_PALETTE":
+            generated_inputs.append(
+                (
+                    GENERATED_BOARD_PATHS["REF_QS_CAMERA_ROUTE"],
+                    "generated_camera_route_terrain_context",
+                )
+            )
     elif asset_id == "REF_QS_CAMERA_ROUTE":
         generated_inputs.extend(
             (

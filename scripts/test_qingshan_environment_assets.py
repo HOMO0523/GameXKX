@@ -945,6 +945,46 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
             self.assertIn("player faces along the road, not toward the gate", prompt)
             self.assertIn("no panel borders", prompt)
 
+    def test_surface_palette_uses_current_route_only_for_terrain_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+            surface = assets["REF_QS_SURFACE_PALETTE"]
+
+            expected_inputs = [
+                "style/references/style_env_day.jpeg",
+                "style/references/style_env_night.jpeg",
+                "style/references/style_creature_warm.jpeg",
+                "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
+                "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png",
+            ]
+            self.assertEqual(surface["generation"]["input_images"], expected_inputs)
+            self.assertEqual(
+                surface["dependencies"],
+                [
+                    *expected_inputs[:3],
+                    "REF_QS_ENV_STYLE_LOCK",
+                    "REF_QS_CAMERA_ROUTE",
+                ],
+            )
+            self.assertEqual(
+                surface["generation"]["input_image_roles"][-1],
+                {
+                    "path": "style/boards/REF_QS_CAMERA_ROUTE__board__v002.png",
+                    "role": "generated_camera_route_terrain_context",
+                },
+            )
+            prompt = surface["generation"]["prompt"]
+            self.assertIn(
+                "route v002 board defines only the current terrain context and transitions",
+                prompt,
+            )
+            self.assertIn("do not copy its small stones or tree-cluster micro-details", prompt)
+            self.assertIn("exactly two clean wide transition strips", prompt)
+            self.assertIn("road is not cobble", prompt)
+            self.assertIn("water uses two broad color bands", prompt)
+            self.assertIn("rocks use at most three silhouettes", prompt)
+            self.assertIn("no microtexture", prompt)
+
     def test_generated_palettes_do_not_repeat_color_tokens(self):
         with tempfile.TemporaryDirectory() as directory:
             _root, _builder, _summary, assets = self._build(directory)
