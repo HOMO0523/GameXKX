@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import argparse
+import ast
 import copy
 import hashlib
+import io
 import json
 import os
+import subprocess
 import struct
 import sys
 import tempfile
@@ -31,6 +35,867 @@ from qingshan_golden_inn import (  # noqa: E402
 
 
 REQUIRED_MODULES = ["BODY", "ROOF_A", "DOOR_A", "WINDOW_A", "EAVE_A"]
+BLENDER_EXE = Path("D:/Blender/blender.exe")
+
+
+class BlenderBuilderStructureTests(unittest.TestCase):
+    @staticmethod
+    def _builder_tree() -> tuple[str, ast.Module]:
+        builder_path = PROJECT_ROOT / "scripts" / "blender" / "build_qingshan_golden_inn.py"
+        source = builder_path.read_text(encoding="utf-8")
+        return source, ast.parse(source, filename=str(builder_path))
+
+    def test_builder_exposes_required_blender_entry_points_and_cli_boundary(self):
+        builder_path = PROJECT_ROOT / "scripts" / "blender" / "build_qingshan_golden_inn.py"
+        self.assertTrue(builder_path.is_file(), f"missing Blender builder: {builder_path}")
+
+        source, tree = self._builder_tree()
+        functions = {
+            node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+        }
+        self.assertTrue(
+            {
+                "create_tapered_box",
+                "create_beam_between",
+                "create_curved_roof",
+                "create_chunky_window",
+                "create_single_capital",
+                "create_fixed_cameras",
+                "audit_scene",
+                "main",
+            }.issubset(functions)
+        )
+
+        imported_modules = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Import)
+            for alias in node.names
+        }
+        imported_modules.update(
+            node.module or ""
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom)
+        )
+        self.assertTrue({"argparse", "bpy", "qingshan_golden_inn"}.issubset(imported_modules))
+        helper_imports = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module == "qingshan_golden_inn"
+            for alias in node.names
+        }
+        required_helpers = {
+            "load_golden_contract",
+            "build_component_plan",
+            "output_paths",
+            "sha256_file",
+        }
+        self.assertTrue(required_helpers.issubset(helper_imports))
+        called_helpers = {
+            node.func.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        }
+        self.assertTrue(required_helpers.issubset(called_helpers))
+        self.assertFalse(
+            any(
+                module.lower().replace("_", "").split(".", maxsplit=1)[0]
+                in {"ue", "ue5", "unreal", "unrealbridge"}
+                for module in imported_modules
+            )
+        )
+        self.assertTrue({"importlib", "subprocess"}.isdisjoint(imported_modules))
+        self.assertTrue({"__import__", "eval", "exec"}.isdisjoint(called_helpers))
+
+        string_literals = {
+            node.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        }
+        self.assertIn("--", string_literals, "builder must parse Blender args after `--`")
+
+    def test_runtime_guard_rejects_foreground_and_pre_42_blender(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("_require_supported_background_blender", functions)
+        module = ast.Module(
+            body=[functions["_require_supported_background_blender"]], type_ignores=[]
+        )
+        ast.fix_missing_locations(module)
+        fake_bpy = mock.Mock()
+        namespace = {"bpy": fake_bpy}
+        exec(compile(module, "<blender-runtime-guard>", "exec"), namespace)
+        guard = namespace["_require_supported_background_blender"]
+
+        fake_bpy.app.background = False
+        fake_bpy.app.version = (4, 2, 3)
+        with self.assertRaisesRegex(RuntimeError, "background"):
+            guard()
+
+        fake_bpy.app.background = True
+        fake_bpy.app.version = (4, 1, 9)
+        with self.assertRaisesRegex(RuntimeError, "4.2"):
+            guard()
+
+        fake_bpy.app.version = (4, 2, 0)
+        guard()
+
+    def test_output_validation_rejects_escape_and_file_ancestor_before_reset(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("_validate_output_destinations", functions)
+        module = ast.Module(
+            body=[functions["_validate_output_destinations"]], type_ignores=[]
+        )
+        ast.fix_missing_locations(module)
+        namespace = {
+            "Path": Path,
+            "CANONICAL_OUTPUT_RELATIVE": Path(
+                "SourceAssets/TownPCG/QingshanEnvironment/assets/"
+                "BLD_QS_M_A_INN/source/blender"
+            ),
+        }
+        exec(compile(module, "<output-containment>", "exec"), namespace)
+        validate = namespace["_validate_output_destinations"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir).resolve()
+            paths = output_paths(root, "v001")
+            resolved_root, validated = validate(root, paths)
+            self.assertEqual(resolved_root, root)
+            self.assertEqual(validated, paths)
+
+            escaped = dict(paths)
+            escaped["front"] = root.parent / paths["front"].name
+            with self.assertRaisesRegex(RuntimeError, "canonical output"):
+                validate(root, escaped)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir).resolve()
+            (root / "SourceAssets").write_text("not a directory", encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "ancestor.*directory"):
+                validate(root, output_paths(root, "v001"))
+
+        main_calls = [
+            node
+            for node in ast.walk(functions["main"])
+            if isinstance(node, ast.Call)
+        ]
+        guard_line = next(
+            node.lineno
+            for node in main_calls
+            if isinstance(node.func, ast.Name)
+            and node.func.id == "_require_supported_background_blender"
+        )
+        validate_line = next(
+            node.lineno
+            for node in main_calls
+            if isinstance(node.func, ast.Name)
+            and node.func.id == "_validate_output_destinations"
+        )
+        reset_line = next(
+            node.lineno
+            for node in main_calls
+            if isinstance(node.func, ast.Name) and node.func.id == "_reset_and_build"
+        )
+        mkdir_lines = [
+            node.lineno
+            for node in main_calls
+            if isinstance(node.func, ast.Attribute) and node.func.attr == "mkdir"
+        ]
+        self.assertLess(guard_line, validate_line)
+        self.assertLess(validate_line, reset_line)
+        self.assertTrue(mkdir_lines)
+        self.assertLess(validate_line, min(mkdir_lines))
+
+    def test_output_validation_rejects_resolved_symlink_or_junction_redirect(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("_validate_output_destinations", functions)
+        module = ast.Module(
+            body=[functions["_validate_output_destinations"]], type_ignores=[]
+        )
+        ast.fix_missing_locations(module)
+        namespace = {
+            "Path": Path,
+            "CANONICAL_OUTPUT_RELATIVE": Path(
+                "SourceAssets/TownPCG/QingshanEnvironment/assets/"
+                "BLD_QS_M_A_INN/source/blender"
+            ),
+        }
+        exec(compile(module, "<output-containment>", "exec"), namespace)
+        validate = namespace["_validate_output_destinations"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir).resolve()
+            paths = output_paths(root, "v001")
+            paths["front"].parent.mkdir(parents=True)
+            paths["front"].write_bytes(b"old")
+            external = root.parent / f"{root.name}-escaped-front.png"
+            original_resolve = type(paths["front"]).resolve
+
+            def redirected_resolve(candidate, *args, **kwargs):
+                if candidate == paths["front"]:
+                    return external
+                return original_resolve(candidate, *args, **kwargs)
+
+            with mock.patch.object(type(paths["front"]), "resolve", redirected_resolve):
+                with self.assertRaisesRegex(RuntimeError, "redirect"):
+                    validate(root, paths)
+
+    def test_prior_outputs_are_invalidated_before_build_with_scoped_sidecars(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("_invalidate_previous_outputs", functions)
+        module = ast.Module(
+            body=[functions["_invalidate_previous_outputs"]], type_ignores=[]
+        )
+        ast.fix_missing_locations(module)
+        namespace = {"Path": Path}
+        exec(compile(module, "<output-invalidation>", "exec"), namespace)
+        invalidate = namespace["_invalidate_previous_outputs"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir).resolve()
+            paths = output_paths(root, "v001")
+            for path in paths.values():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"stale")
+            blend_backup = paths["blend"].with_name(f"{paths['blend'].name}1")
+            report_temp = paths["report"].with_name(f"{paths['report'].name}.tmp")
+            unrelated = paths["report"].parent / "preserve.txt"
+            blend_backup.write_bytes(b"backup")
+            report_temp.write_bytes(b"partial")
+            unrelated.write_bytes(b"preserve")
+
+            invalidate(paths)
+
+            self.assertTrue(all(not path.exists() for path in paths.values()))
+            self.assertFalse(blend_backup.exists())
+            self.assertFalse(report_temp.exists())
+            self.assertEqual(unrelated.read_bytes(), b"preserve")
+
+        calls = [
+            node
+            for node in ast.walk(functions["main"])
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        ]
+        invalidate_line = next(
+            node.lineno
+            for node in calls
+            if node.func.id == "_invalidate_previous_outputs"
+        )
+        reset_line = next(
+            node.lineno for node in calls if node.func.id == "_reset_and_build"
+        )
+        self.assertLess(invalidate_line, reset_line)
+
+    def test_render_and_save_results_must_finish_before_current_run_hashing(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("_require_finished", functions)
+        self.assertIn("_assert_current_run_outputs", functions)
+        module = ast.Module(body=[functions["_require_finished"]], type_ignores=[])
+        ast.fix_missing_locations(module)
+        namespace: dict = {}
+        exec(compile(module, "<operator-result>", "exec"), namespace)
+        require_finished = namespace["_require_finished"]
+        require_finished({"FINISHED"}, "render")
+        with self.assertRaisesRegex(RuntimeError, "render.*CANCELLED"):
+            require_finished({"CANCELLED"}, "render")
+
+        render_calls = {
+            node.func.id
+            for node in ast.walk(functions["_render_view"])
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        }
+        self.assertIn("_require_finished", render_calls)
+
+        main_calls = [
+            node for node in ast.walk(functions["main"]) if isinstance(node, ast.Call)
+        ]
+        save_line = next(
+            node.lineno
+            for node in main_calls
+            if isinstance(node.func, ast.Attribute) and node.func.attr == "save_as_mainfile"
+        )
+        require_lines = [
+            node.lineno
+            for node in main_calls
+            if isinstance(node.func, ast.Name) and node.func.id == "_require_finished"
+        ]
+        current_line = next(
+            node.lineno
+            for node in main_calls
+            if isinstance(node.func, ast.Name)
+            and node.func.id == "_assert_current_run_outputs"
+        )
+        hash_line = next(
+            node.lineno
+            for node in main_calls
+            if isinstance(node.func, ast.Name) and node.func.id == "sha256_file"
+        )
+        self.assertTrue(any(line > save_line for line in require_lines))
+        self.assertLess(current_line, hash_line)
+
+    def test_dense_curved_roof_enables_smooth_surface_shading(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("create_curved_roof", functions)
+        roof_function = functions["create_curved_roof"]
+        self.assertTrue(
+            any(
+                isinstance(node, ast.Assign)
+                and any(
+                    isinstance(target, ast.Attribute) and target.attr == "use_smooth"
+                    for target in node.targets
+                )
+                and isinstance(node.value, ast.Constant)
+                and node.value.value is True
+                for node in ast.walk(roof_function)
+            ),
+            "the visible high-resolution roof must not expose flat grid facets",
+        )
+
+    def test_main_renders_enable_dark_freestyle_ink_lines(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        configure = functions["_configure_scene"]
+        freestyle_true_targets = [
+            target
+            for node in ast.walk(configure)
+            if isinstance(node, ast.Assign)
+            and isinstance(node.value, ast.Constant)
+            and node.value.value is True
+            for target in node.targets
+            if isinstance(target, ast.Attribute) and target.attr == "use_freestyle"
+        ]
+        self.assertGreaterEqual(len(freestyle_true_targets), 2)
+        configure_attributes = {
+            node.attr for node in ast.walk(configure) if isinstance(node, ast.Attribute)
+        }
+        self.assertTrue(
+            {
+                "freestyle_settings",
+                "linestyle",
+                "color",
+                "thickness",
+                "select_silhouette",
+                "select_crease",
+            }.issubset(configure_attributes)
+        )
+
+    def test_block_primitives_apply_small_bevel_but_dense_roof_does_not(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        assignments = {
+            target.id: node.value
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            for target in node.targets
+            if isinstance(target, ast.Name)
+        }
+        self.assertIn("SMALL_BEVEL_WIDTH_M", assignments)
+        bevel_width = ast.literal_eval(assignments["SMALL_BEVEL_WIDTH_M"])
+        self.assertGreaterEqual(bevel_width, 0.005)
+        self.assertLessEqual(bevel_width, 0.015)
+        self.assertIn("_apply_small_bevel", functions)
+
+        bevel_calls = [
+            node
+            for node in ast.walk(functions["_apply_small_bevel"])
+            if isinstance(node, ast.Call)
+        ]
+        self.assertTrue(
+            any(
+                isinstance(node.func, ast.Attribute)
+                and node.func.attr == "modifier_apply"
+                for node in bevel_calls
+            )
+        )
+        self.assertTrue(
+            any(
+                isinstance(node.func, ast.Name) and node.func.id == "_require_finished"
+                for node in bevel_calls
+            )
+        )
+        mesh_factory_calls = {
+            node.func.id
+            for node in ast.walk(functions["_create_mesh_object"])
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        }
+        self.assertIn("_apply_small_bevel", mesh_factory_calls)
+
+        for primitive_name in ("create_tapered_box", "create_beam_between"):
+            mesh_calls = [
+                node
+                for node in ast.walk(functions[primitive_name])
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "_create_mesh_object"
+            ]
+            self.assertEqual(len(mesh_calls), 1)
+            self.assertIn("bevel_width", {keyword.arg for keyword in mesh_calls[0].keywords})
+
+        roof_names = {
+            node.id
+            for node in ast.walk(functions["create_curved_roof"])
+            if isinstance(node, ast.Name)
+        }
+        self.assertNotIn("SMALL_BEVEL_WIDTH_M", roof_names)
+
+    def test_silhouette_is_emission_black_on_white_and_restores_render_state(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("_make_emission_material", functions)
+        emission_literals = {
+            node.value
+            for node in ast.walk(functions["_make_emission_material"])
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        }
+        self.assertIn("ShaderNodeEmission", emission_literals)
+
+        silhouette = functions["_render_silhouette"]
+        called_names = {
+            node.func.id
+            for node in ast.walk(silhouette)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        }
+        self.assertIn("_make_emission_material", called_names)
+        self.assertNotIn("_make_material", called_names)
+        tuple_literals = {
+            tuple(ast.literal_eval(node))
+            for node in ast.walk(silhouette)
+            if isinstance(node, ast.Tuple)
+            and all(isinstance(item, ast.Constant) for item in node.elts)
+        }
+        self.assertIn((0.0, 0.0, 0.0, 1.0), tuple_literals)
+        self.assertIn((1.0, 1.0, 1.0, 1.0), tuple_literals)
+
+        try_node = next(node for node in ast.walk(silhouette) if isinstance(node, ast.Try))
+        final_names = {
+            node.id for node in ast.walk(ast.Module(body=try_node.finalbody)) if isinstance(node, ast.Name)
+        }
+        self.assertTrue(
+            {
+                "saved_camera",
+                "saved_filepath",
+                "saved_resolution",
+                "saved_film_transparent",
+                "saved_freestyle",
+                "saved_world",
+                "saved_materials",
+                "saved_view_settings",
+            }.issubset(final_names)
+        )
+
+    def test_silhouette_pixel_validator_rejects_color_border_alpha_and_trivial_masks(self):
+        _, tree = self._builder_tree()
+        validator = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "_validate_silhouette_pixels"
+        )
+        isolated = copy.deepcopy(validator)
+        isolated.returns = None
+        for argument in (*isolated.args.posonlyargs, *isolated.args.args):
+            argument.annotation = None
+        namespace: dict[str, object] = {}
+        module = ast.fix_missing_locations(ast.Module(body=[isolated], type_ignores=[]))
+        exec(compile(module, "<silhouette-validator>", "exec"), namespace)
+        validate = namespace["_validate_silhouette_pixels"]
+
+        def flattened(rows: list[list[tuple[float, float, float, float]]]) -> list[float]:
+            return [component for row in rows for pixel in row for component in pixel]
+
+        white = (1.0, 1.0, 1.0, 1.0)
+        black = (0.0, 0.0, 0.0, 1.0)
+        gray = (0.45, 0.45, 0.45, 1.0)
+        valid_rows = [[white for _ in range(5)] for _ in range(5)]
+        valid_rows[1][1] = black
+        valid_rows[1][2] = black
+        valid_rows[2][1] = black
+        valid_rows[2][2] = black
+        valid_rows[3][3] = gray
+        summary = validate(flattened(valid_rows), 5, 5)
+        self.assertEqual(summary["pure_black"], 4)
+        self.assertGreaterEqual(summary["pure_white"], 16)
+
+        invalid_cases = []
+        colored = copy.deepcopy(valid_rows)
+        colored[2][2] = (0.0, 0.2, 0.8, 1.0)
+        invalid_cases.append(colored)
+        dirty_border = copy.deepcopy(valid_rows)
+        dirty_border[0][2] = black
+        invalid_cases.append(dirty_border)
+        transparent = copy.deepcopy(valid_rows)
+        transparent[2][2] = (0.0, 0.0, 0.0, 0.5)
+        invalid_cases.append(transparent)
+        invalid_cases.append([[white for _ in range(5)] for _ in range(5)])
+        for rows in invalid_cases:
+            with self.subTest(rows=rows), self.assertRaises(RuntimeError):
+                validate(flattened(rows), 5, 5)
+
+    def test_windows_use_two_closed_matte_warm_paper_panes(self):
+        source, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("_create_closed_window_pane", functions)
+        self.assertIn('"MAT_XuanPaperWarm"', source)
+        self.assertIn('materials["paper"]', source)
+        self.assertIn('f"{name}_Pane_{pane_index + 1:02d}"', source)
+        pane_function = functions["_create_closed_window_pane"]
+        face_literals = [
+            node
+            for node in ast.walk(pane_function)
+            if isinstance(node, (ast.Tuple, ast.List))
+        ]
+        self.assertTrue(face_literals, "pane helper must create explicit closed mesh faces")
+        material_calls = [
+            node
+            for node in ast.walk(functions["_create_materials"])
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "_make_material"
+        ]
+        self.assertGreaterEqual(len(material_calls), 4)
+        audit_literals = {
+            node.value
+            for node in ast.walk(functions["audit_scene"])
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        }
+        self.assertIn("_Pane_", audit_literals)
+
+    def test_builder_validates_fixed_camera_framing_before_rendering(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("validate_camera_framing", functions)
+        called_names = {
+            node.func.id
+            for node in ast.walk(functions["_reset_and_build"])
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        }
+        self.assertIn("validate_camera_framing", called_names)
+
+    def test_builder_cli_parses_only_arguments_after_blender_boundary(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("_parse_blender_args", functions)
+        module = ast.Module(body=[functions["_parse_blender_args"]], type_ignores=[])
+        ast.fix_missing_locations(module)
+        namespace = {
+            "__doc__": "test builder",
+            "argparse": argparse,
+            "Path": Path,
+            "sys": sys,
+            "VERSIONS": ("v001", "v002", "v003"),
+        }
+        exec(compile(module, "<builder-cli>", "exec"), namespace)
+        parse_args = namespace["_parse_blender_args"]
+
+        for version in ("v001", "v002", "v003"):
+            with self.subTest(version=version), mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "blender",
+                    "--background",
+                    "--factory-startup",
+                    "--",
+                    "--project-root",
+                    str(PROJECT_ROOT),
+                    "--version",
+                    version,
+                ],
+            ):
+                parsed = parse_args()
+                self.assertEqual(parsed.project_root, PROJECT_ROOT)
+                self.assertEqual(parsed.version, version)
+
+        with mock.patch.object(
+            sys,
+            "argv",
+            ["blender", "--", "--project-root", str(PROJECT_ROOT), "--version", "v004"],
+        ), mock.patch.object(sys, "stderr", io.StringIO()):
+            with self.assertRaises(SystemExit):
+                parse_args()
+
+    def test_builder_saves_blend_before_hashing_outputs(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("main", functions)
+        calls = [node for node in ast.walk(functions["main"]) if isinstance(node, ast.Call)]
+        save_lines = [
+            node.lineno
+            for node in calls
+            if isinstance(node.func, ast.Attribute) and node.func.attr == "save_as_mainfile"
+        ]
+        hash_lines = [
+            node.lineno
+            for node in calls
+            if isinstance(node.func, ast.Name) and node.func.id == "sha256_file"
+        ]
+        self.assertEqual(len(save_lines), 1)
+        self.assertEqual(len(hash_lines), 1)
+        self.assertLess(save_lines[0], hash_lines[0])
+
+    def test_builder_disables_blend_backup_sidecars(self):
+        _, tree = self._builder_tree()
+        self.assertTrue(
+            any(
+                isinstance(node, ast.Assign)
+                and any(
+                    isinstance(target, ast.Attribute) and target.attr == "save_version"
+                    for target in node.targets
+                )
+                and isinstance(node.value, ast.Constant)
+                and node.value.value == 0
+                for node in ast.walk(tree)
+            )
+        )
+
+    def test_builder_removes_only_its_stale_blend_backup_sidecar(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("_remove_stale_blend_backup", functions)
+        module = ast.Module(body=[functions["_remove_stale_blend_backup"]], type_ignores=[])
+        ast.fix_missing_locations(module)
+        namespace = {"Path": Path}
+        exec(compile(module, "<blend-backup-cleanup>", "exec"), namespace)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            blend = root / "golden.blend"
+            backup = root / "golden.blend1"
+            unrelated = root / "other.blend1"
+            backup.write_bytes(b"stale")
+            unrelated.write_bytes(b"preserve")
+
+            namespace["_remove_stale_blend_backup"](blend)
+
+            self.assertFalse(backup.exists())
+            self.assertEqual(unrelated.read_bytes(), b"preserve")
+
+        main_calls = {
+            node.func.id
+            for node in ast.walk(functions["main"])
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        }
+        self.assertIn("_remove_stale_blend_backup", main_calls)
+
+    def test_scene_audit_checks_outward_signed_mesh_volume(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertIn("audit_scene", functions)
+        volume_calls = [
+            node
+            for node in ast.walk(functions["audit_scene"])
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "calc_volume"
+        ]
+        self.assertEqual(len(volume_calls), 1)
+        self.assertTrue(
+            any(
+                keyword.arg == "signed"
+                and isinstance(keyword.value, ast.Constant)
+                and keyword.value.value is True
+                for keyword in volume_calls[0].keywords
+            )
+        )
+
+    def test_scene_audit_measures_capital_layers_and_window_divisions(self):
+        _, tree = self._builder_tree()
+        functions = {
+            node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        audit = functions["audit_scene"]
+        report_return = next(
+            node
+            for node in ast.walk(audit)
+            if isinstance(node, ast.Return) and isinstance(node.value, ast.Dict)
+        )
+        report_values = {
+            key.value: value
+            for key, value in zip(report_return.value.keys, report_return.value.values)
+            if isinstance(key, ast.Constant) and isinstance(key.value, str)
+        }
+        self.assertIsInstance(report_values["capital_layers"], ast.Name)
+        self.assertEqual(report_values["capital_layers"].id, "measured_capital_layers")
+        self.assertIsInstance(report_values["window_divisions"], ast.Name)
+        self.assertEqual(
+            report_values["window_divisions"].id, "measured_window_divisions"
+        )
+        audit_literals = {
+            node.value
+            for node in ast.walk(audit)
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        }
+        self.assertTrue({"Capital_", "Column_", "_Post_L", "_Division_"}.issubset(audit_literals))
+
+    def test_builder_declares_readable_two_storey_large_form_contract(self):
+        _, tree = self._builder_tree()
+        assignments = {
+            target.id: node.value
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            for target in node.targets
+            if isinstance(target, ast.Name)
+        }
+        self.assertIn("LARGE_FORM_CONTRACT", assignments)
+        form = ast.literal_eval(assignments["LARGE_FORM_CONTRACT"])
+
+        self.assertEqual(form["storeys"], 2)
+        self.assertGreaterEqual(form["ground_floor_top_z_m"], 1.75)
+        self.assertLessEqual(form["ground_floor_top_z_m"], 2.15)
+        self.assertGreaterEqual(form["upper_floor_top_z_m"], 3.45)
+        self.assertGreaterEqual(form["door_width_m"], 1.45)
+        self.assertLessEqual(form["door_width_m"], 1.70)
+        self.assertGreaterEqual(form["door_height_m"], 1.55)
+        self.assertLessEqual(form["door_height_m"], 1.80)
+        shift_ratio = form["upper_floor_shift_x_m"] / form["body_width_m"]
+        self.assertGreaterEqual(shift_ratio, 0.05)
+        self.assertLessEqual(shift_ratio, 0.10)
+        self.assertEqual(form["window_count"], 3)
+        self.assertEqual(form["window_divisions"], 2)
+        self.assertGreaterEqual(form["min_window_width_m"], 1.15)
+        self.assertGreaterEqual(form["capital_top_width_m"], 0.85)
+        self.assertAlmostEqual(
+            form["balcony_band_z_m"], form["ground_floor_top_z_m"], delta=0.15
+        )
+
+        string_literals = {
+            node.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        }
+        self.assertTrue(
+            {"Body_Ground_Storey", "Body_Upper_Storey", "Balcony_Ledge_Front"}.issubset(
+                string_literals
+            )
+        )
+        consumed_form_keys = {
+            node.slice.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Subscript)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == "LARGE_FORM_CONTRACT"
+            and isinstance(node.slice, ast.Constant)
+            and isinstance(node.slice.value, str)
+        }
+        self.assertEqual(consumed_form_keys, set(form))
+
+    def test_column_lean_preserves_signed_values_from_component_plan(self):
+        _, tree = self._builder_tree()
+        column_top = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "_column_top"
+        )
+        called_names = {
+            node.func.id
+            for node in ast.walk(column_top)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        }
+        self.assertNotIn("abs", called_names)
+        self.assertIn(
+            "lean_deg",
+            {
+                node.value
+                for node in ast.walk(column_top)
+                if isinstance(node, ast.Constant) and isinstance(node.value, str)
+            },
+        )
+
+    @unittest.skipUnless(BLENDER_EXE.is_file(), "Blender 4.2+ is not installed")
+    def test_blender_self_test_rejects_capital_and_divider_mutations(self):
+        builder = PROJECT_ROOT / "scripts" / "blender" / "build_qingshan_golden_inn.py"
+        asset_relative = Path(
+            "SourceAssets/TownPCG/QingshanEnvironment/assets/BLD_QS_M_A_INN/asset.json"
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project_root = Path(temp_dir).resolve()
+            temporary_asset = project_root / asset_relative
+            temporary_asset.parent.mkdir(parents=True)
+            temporary_asset.write_bytes((PROJECT_ROOT / asset_relative).read_bytes())
+            command = [
+                str(BLENDER_EXE),
+                "--background",
+                "--factory-startup",
+                "--python",
+                str(builder),
+                "--",
+                "--project-root",
+                str(project_root),
+                "--version",
+                "v001",
+                "--self-test-audit",
+            ]
+            result = subprocess.run(
+                command,
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            combined = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 0, combined)
+            self.assertIn('"capital_mutation_rejected": true', combined)
+            self.assertIn('"divider_mutation_rejected": true', combined)
+            self.assertIn('"silhouette_black_white_verified": true', combined)
+            self.assertFalse((temporary_asset.parent / "source").exists())
+
+            output_directory = temporary_asset.parent / "source" / "blender"
+            output_directory.mkdir(parents=True)
+            existing_blend = output_directory / "BLD_QS_M_A_INN__golden__v001.blend"
+            existing_blend.write_bytes(b"existing-production-output")
+            refusal = subprocess.run(
+                command,
+                cwd=PROJECT_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            refusal_output = refusal.stdout + refusal.stderr
+            self.assertNotEqual(refusal.returncode, 0, refusal_output)
+            self.assertIn("self-test refuses existing canonical output", refusal_output)
+            self.assertEqual(existing_blend.read_bytes(), b"existing-production-output")
+            self.assertEqual(
+                sorted(path.name for path in output_directory.iterdir()),
+                [existing_blend.name],
+            )
 
 
 def valid_asset_contract() -> dict:
