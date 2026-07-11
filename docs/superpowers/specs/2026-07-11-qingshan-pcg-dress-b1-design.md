@@ -66,9 +66,9 @@ The deliverable scene uses real UE PCG graphs/components, not Python-spawned cat
 - Generate a deterministic 16-bit 505 x 505 base heightmap from the four B0R terrain zones, a broad river trench/bank profile, and low-amplitude low-frequency variation. Import it as the base Landscape content before applying the road edit layer.
 - Treat the configured Landscape position as the grid centre, not the Landscape Actor origin. Convert it with `originXY = centerXY - ((resolution - 1) * scaleXY / 2)` after the anchor transform; for the 505 x 505 grid at 100 cm scale this is a 25,200 cm half-extent on each axis.
 - Encode elevation using Unreal's Landscape convention: `uint16 = clamp(round(32768 + elevation_cm * 128 / scale_z_cm), 0, 65535)`. Validation decodes the stored values back to world centimetres before comparing samples.
-- Landscape Edit Layers must be enabled explicitly. QuickRoad does not create or enable them itself.
+- UE 5.8 creates the default Landscape edit layer during heightmap import. B1 creates/finds the named road layer with `CreateLayer`, rejects a locked layer, and never calls removed legacy `SetCanHaveLayersContent` APIs.
 - Use a dedicated unlocked `QR_B1_Roads` edit layer and make it active before conform/road-influence operations.
-- Clear the `QR_B1_Roads` height contribution before every infrastructure rebuild, then apply road influence once. Repeated builds must produce the same edit-layer height digest.
+- `QR_B1_Roads` is an Additive layer. Clear it before every infrastructure rebuild, read the base/final height with the road layer neutral, compute the desired road-shaped final height, and write only `DesiredFinal - BaseHeight` into the road layer. Edge smoothing operates on `Base + Delta` and converts back to Delta. The plugin's existing absolute-height influence function is forbidden for this layer because it would double the non-flat base terrain. Repeated builds must produce the same edit-layer delta digest.
 - Perimeter mountains remain separate 3D/2.5D dressing; do not attempt to generate the mountain ring from terrain noise.
 
 ## Road and Crossing Contract
@@ -82,6 +82,7 @@ The deliverable scene uses real UE PCG graphs/components, not Python-spawned cat
 - After visual acceptance, bake QuickRoad roads into 5,000 cm StaticMesh chunks with simple collision. Disable Nanite on chunks below 50,000 triangles; enable it only on larger chunks, record the decision per chunk, and preserve one fallback LOD for every non-Nanite chunk.
 - Extract QuickRoad road-edge splines after the network is rebuilt. B1 PCG generation records these tagged edges as exclusion inputs and validation proves all generated category points remain outside the required road corridor.
 - Road networks, intersection helpers, and extracted road-edge actors receive a dedicated `QingshanB1QuickRoadOwned` tag. Reset deletes only actors carrying both this ownership tag and an expected QuickRoad category tag, then edge extraction assigns stable B1 labels so a second build cannot accumulate `RoadEdge_NNN` actors.
+- Before any plugin generation or consolidation that can delete matching networks, the facade rejects every matching network lacking both the B1 owner and network-category tags. Each run also overwrites the spline width component explicitly so stale widths cannot survive a rebuild.
 - QuickRoad road and intersection meshes use the B1 earth-road material rather than the plugin fallback stone material; validation reads the live component material paths.
 
 ## Building Composition Contract
