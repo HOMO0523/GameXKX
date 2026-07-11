@@ -7,6 +7,7 @@ public class Quick_Road : ModuleRules
 	public Quick_Road(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+		AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenSSL");
 		
 		PublicIncludePaths.AddRange(
 			new string[] {

@@ -9,6 +9,7 @@ FACADE_SOURCE = ROOT / "Plugins/Quick_Road/Source/Quick_Road/Private/Quick_RoadA
 BUILD_RULES = ROOT / "Plugins/Quick_Road/Source/Quick_Road/Quick_Road.Build.cs"
 PCG_HEADER = ROOT / "Source/GameXXKEditor/Public/GameXXKTownPCGAutomationLibrary.h"
 PCG_SOURCE = ROOT / "Source/GameXXKEditor/Private/GameXXKTownPCGAutomationLibrary.cpp"
+PCG_BUILD_RULES = ROOT / "Source/GameXXKEditor/GameXXKEditor.Build.cs"
 
 REQUIRED_API = {
     "ResetRoadInfrastructure",
@@ -232,6 +233,23 @@ class QuickRoadFacadeSourceContractTests(unittest.TestCase):
         self.assertIn('#include "Serialization/JsonSerializer.h"', self.source)
         self.assertIn('#include "Serialization/JsonWriter.h"', self.source)
         self.assertIn("TCondensedJsonPrintPolicy", self.source)
+
+    def test_sha256_uses_linked_openssl_not_unimplemented_platform_stub(self):
+        pcg_source = PCG_SOURCE.read_text(encoding="utf-8")
+        for source in (self.source, pcg_source):
+            with self.subTest(source="quickroad" if source is self.source else "pcg"):
+                self.assertIn("#include <openssl/sha.h>", source)
+                self.assertIn("SHA256_Init", source)
+                self.assertIn("SHA256_Update", source)
+                self.assertIn("SHA256_Final", source)
+                self.assertNotIn("FPlatformMisc::GetSHA256Signature", source)
+        for rules_path in (BUILD_RULES, PCG_BUILD_RULES):
+            with self.subTest(rules=rules_path.name):
+                rules = rules_path.read_text(encoding="utf-8")
+                self.assertIn(
+                    'AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenSSL")',
+                    rules,
+                )
 
 
 class B1PCGAdvancedContractTests(unittest.TestCase):

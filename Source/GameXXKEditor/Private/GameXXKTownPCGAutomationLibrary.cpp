@@ -14,7 +14,6 @@
 #include "EngineUtils.h"
 #include "GameFramework/Actor.h"
 #include "HAL/FileManager.h"
-#include "HAL/PlatformMisc.h"
 #include "Helpers/PCGHelpers.h"
 #include "LevelUtils.h"
 #include "MeshSelectors/PCGMeshSelectorWeighted.h"
@@ -34,6 +33,8 @@
 #include "Subsystems/PCGSubsystem.h"
 #include "UObject/Package.h"
 #include "UObject/SavePackage.h"
+
+#include <openssl/sha.h>
 
 namespace GameXXKTownPCGAutomation
 {
@@ -421,7 +422,10 @@ namespace GameXXKTownPCGAutomation
 		const FString Canonical = FString::Join(Records, TEXT("\n"));
 		FTCHARToUTF8 Utf8(*Canonical);
 		FSHA256Signature Signature{};
-		if (!FPlatformMisc::GetSHA256Signature(Utf8.Get(), static_cast<uint32>(Utf8.Length()), Signature))
+		SHA256_CTX Context;
+		if (SHA256_Init(&Context) != 1
+			|| (Utf8.Length() > 0 && SHA256_Update(&Context, Utf8.Get(), Utf8.Length()) != 1)
+			|| SHA256_Final(Signature.Signature, &Context) != 1)
 		{
 			return FString();
 		}

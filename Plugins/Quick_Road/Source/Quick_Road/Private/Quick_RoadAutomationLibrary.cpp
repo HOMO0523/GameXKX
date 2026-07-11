@@ -19,7 +19,6 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "HAL/FileManager.h"
-#include "HAL/PlatformMisc.h"
 #include "Landscape.h"
 #include "LandscapeComponent.h"
 #include "LandscapeDataAccess.h"
@@ -37,6 +36,8 @@
 #include "Selection.h"
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
+
+#include <openssl/sha.h>
 
 namespace QuickRoadAutomation
 {
@@ -459,9 +460,19 @@ namespace QuickRoadAutomation
 
 	FString Sha256(const void* Data, const uint32 Size)
 	{
+		if (!Data && Size > 0)
+		{
+			return FString();
+		}
 		FSHA256Signature Signature{};
-		return FPlatformMisc::GetSHA256Signature(Data, Size, Signature)
-			? Signature.ToString().ToLower() : FString();
+		SHA256_CTX Context;
+		if (SHA256_Init(&Context) != 1
+			|| (Size > 0 && SHA256_Update(&Context, Data, Size) != 1)
+			|| SHA256_Final(Signature.Signature, &Context) != 1)
+		{
+			return FString();
+		}
+		return Signature.ToString().ToLower();
 	}
 
 	FString Sha256String(const FString& Value)

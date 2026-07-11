@@ -5,6 +5,7 @@ public class GameXXKEditor : ModuleRules
 	public GameXXKEditor(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+		AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenSSL");
 
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
