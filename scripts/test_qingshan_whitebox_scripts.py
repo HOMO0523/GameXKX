@@ -11,6 +11,8 @@ from types import SimpleNamespace
 ROOT = Path(__file__).resolve().parents[1]
 IMPLEMENTATION = ROOT / "Source/GameXXKEditor/Private/GameXXKTownPCGAutomationLibrary.cpp"
 ASSEMBLER = ROOT / "Content/Python/gamexxk_assemble_qingshan_whitebox_b0r.py"
+VALIDATOR = ROOT / "Content/Python/gamexxk_validate_qingshan_whitebox_b0r.py"
+ACCEPTANCE = ROOT / "Content/Python/gamexxk_qingshan_whitebox_acceptance.py"
 EXPECTED_ROOTS = {
     "VerticalSliceGraphRoot": "/Game/GameXXK/Environment/TownPCG/VerticalSlice/",
     "B0RGraphRoot": "/Game/GameXXK/Environment/TownPCG/B0R/",
@@ -346,6 +348,156 @@ class QingshanWhiteboxAssemblerSourceTests(unittest.TestCase):
                 self.assertEqual({keyword.arg for keyword in call.keywords}, {
                     "pitch", "yaw", "roll",
                 })
+
+
+class QingshanWhiteboxTask6SourceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.source = ASSEMBLER.read_text(encoding="utf-8")
+        cls.tree = ast.parse(cls.source)
+        cls.validator_source = VALIDATOR.read_text(encoding="utf-8")
+        cls.acceptance_source = ACCEPTANCE.read_text(encoding="utf-8")
+        cls.validator_tree = ast.parse(cls.validator_source)
+        cls.acceptance_tree = ast.parse(cls.acceptance_source)
+
+    def _function(self, tree, name=None):
+        if name is None:
+            name, tree = tree, self.tree
+        return next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == name)
+
+    def _host_function(self, tree, filename=None, name=None, dependencies=(), namespace=None):
+        if isinstance(tree, str):
+            name, tree, filename = tree, self.tree, ASSEMBLER
+        module = ast.Module(
+            body=[*(self._function(tree, item) for item in dependencies), self._function(tree, name)],
+            type_ignores=[],
+        )
+        scope = dict(namespace or {})
+        exec(compile(ast.fix_missing_locations(module), str(filename), "exec"), scope)
+        return scope[name]
+
+    def test_validator_and_probe_have_stable_entrypoints_and_camera_ids(self):
+        self.assertIn("def validate_whitebox", self.validator_source)
+        self.assertIn("GAMEXXK_QINGSHAN_B0R_VALIDATION", self.validator_source)
+        for action in ("snapshot", "view", "topdown"):
+            self.assertIn(f'"{action}"', self.acceptance_source)
+        camera_ids = {
+            "CAM_QS_GATE_ARRIVAL", "CAM_QS_TOWN_CORE",
+            "CAM_QS_MAIN_BRIDGE", "CAM_QS_SOUTH_DOCK",
+        }
+        self.assertEqual(
+            set(ast.literal_eval(next(
+                node.value for node in self.acceptance_tree.body
+                if isinstance(node, ast.Assign)
+                and any(isinstance(target, ast.Name) and target.id == "CAMERA_IDS" for target in node.targets)
+            ))),
+            camera_ids,
+        )
+
+    def test_scripts_are_read_only_except_viewport_camera(self):
+        combined = self.validator_source + self.acceptance_source
+        forbidden = (
+            "save_current_level", "save_asset", "save_loaded_asset", "delete_asset",
+            "destroy_actor", "spawn_actor", "set_actor_", "set_editor_property",
+            "add_instance", "remove_instance", "clear_instances", "generate_town_pcg",
+            "clear_town_pcg", "create_or_update", "attach_town_pcg_graph",
+        )
+        for token in forbidden:
+            with self.subTest(token=token):
+                self.assertNotIn(token, combined)
+        self.assertIn("set_level_viewport_camera_info", self.acceptance_source)
+
+    def test_validator_result_contract_and_deterministic_sources_are_explicit(self):
+        for key in (
+            "current_map", "source_map_clean", "protected_actor_snapshot",
+            "managed_label_uniqueness", "road_spline_count", "river_spline_count",
+            "bridge_road_horizontal_distance_cm", "bridge_river_horizontal_distance_cm",
+            "building_instance_count", "foliage_instance_count", "mountain_instance_count",
+            "crossing_count", "runtime_generation_disabled", "camera_count", "camera_ids",
+            "terrain_zone_count", "player_gate_facing_angle_degrees", "layout_sha256",
+            "errors", "success",
+        ):
+            self.assertIn(f'"{key}"', self.validator_source)
+        self.assertIn("load_config", self.validator_source)
+        self.assertIn("generate_seeded_proxy_transforms", self.validator_source)
+        self.assertIn("canonical_layout_hash", self.validator_source)
+        self.assertIn("get_town_pcg_status", self.validator_source)
+        self.assertIn("get_instance_transform", self.validator_source)
+
+    def test_spline_transform_ownership_and_geometry_checks_are_present(self):
+        required = (
+            "get_number_of_spline_points", "get_location_at_spline_point", "is_closed_loop",
+            "building_footprint_overlap", "protected_anchor_overlap", "road_overlap",
+            "river_overlap", "mountain_playable_bounds", "QingshanB0RManaged",
+            "get_level", "get_graph", "PCG Generated Component",
+        )
+        for token in required:
+            self.assertIn(token, self.validator_source)
+        self.assertIn("anchor_transform", self.validator_source)
+        self.assertIn("MainBridgeAnchor", self.validator_source)
+        self.assertIn("SouthDockAnchor", self.validator_source)
+
+    def test_all_task6_rotators_use_named_arguments(self):
+        for tree in (self.validator_tree, self.acceptance_tree):
+            for call in ast.walk(tree):
+                if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) and call.func.attr == "Rotator":
+                    self.assertEqual(call.args, [], f"positional Rotator at line {call.lineno}")
+                    self.assertEqual({item.arg for item in call.keywords}, {"pitch", "yaw", "roll"})
+
+    def test_pure_math_helpers_handle_wrap_vertical_and_polyline_projection(self):
+        angle = self._host_function(self.validator_tree, VALIDATOR, "_angle_delta_degrees", namespace={"math": math})
+        distance = self._host_function(self.validator_tree, VALIDATOR, "_horizontal_distance_to_polyline", namespace={"math": math})
+        look_at = self._host_function(self.acceptance_tree, ACCEPTANCE, "_look_at_degrees", namespace={"math": math})
+        self.assertAlmostEqual(angle(179.0, -179.0), 2.0)
+        self.assertAlmostEqual(distance((5, 3, 99), [(0, 0, 0), (10, 0, 0)]), 3.0)
+        self.assertEqual(look_at((0, 0, 0), (0, 0, 10)), (90.0, 0.0, 0.0))
+        with self.assertRaises(ValueError):
+            look_at((0, 0, 0), (float("nan"), 0, 0))
+        with self.assertRaises(ValueError):
+            distance((0, 0, 0), [(0, 0, 0)])
+
+    def test_transform_tolerance_rejects_nonfinite_and_uses_wrapped_angles(self):
+        matches = self._host_function(
+            self.validator_tree, VALIDATOR, "_transform_matches",
+            dependencies=("_angle_delta_degrees",), namespace={"math": math},
+        )
+        actual = {"location_cm": [1, 2, 3], "rotation_degrees": [0, 179.9, 0], "scale": [1, 1, 1]}
+        expected = {"location_cm": [1.05, 2, 3], "rotation_degrees": [0, -179.9, 0], "scale": [1, 1, 1]}
+        self.assertTrue(matches(actual, expected, 0.1, 0.3, 0.01))
+        actual["location_cm"][0] = float("inf")
+        self.assertFalse(matches(actual, expected, 0.1, 0.3, 0.01))
+
+    def test_acceptance_dirty_refusal_happens_before_map_load(self):
+        events = []
+        fake_unreal = SimpleNamespace(
+            EditorLevelLibrary=SimpleNamespace(get_editor_world=lambda: SimpleNamespace(get_outermost=lambda: SimpleNamespace(get_path_name=lambda: "/Game/Else"))),
+            EditorLoadingAndSavingUtils=SimpleNamespace(
+                get_dirty_map_packages=lambda: [SimpleNamespace(get_path_name=lambda: "/Game/Dirty")],
+                get_dirty_content_packages=lambda: [],
+                load_map=lambda path: events.append(path),
+            ),
+        )
+        ensure = self._host_function(
+            self.acceptance_tree, ACCEPTANCE, "_ensure_whitebox",
+            namespace={
+                "unreal": fake_unreal,
+                "WHITEBOX_MAP": "/Game/Whitebox",
+                "_current_map": self._host_function(self.acceptance_tree, ACCEPTANCE, "_current_map", dependencies=("_package_path",), namespace={"unreal": fake_unreal}),
+                "_dirty_maps": lambda: ["/Game/Dirty"], "_dirty_content": lambda: [],
+            },
+        )
+        with self.assertRaisesRegex(RuntimeError, "dirty"):
+            ensure()
+        self.assertEqual(events, [])
+
+    def test_view_verifies_configured_world_transform_before_moving_viewport(self):
+        view_source = ast.unparse(self._function(self.acceptance_tree, "_camera_view"))
+        self.assertIn("_north_local_location", view_source)
+        self.assertIn("_transform_matches", view_source)
+        self.assertIn("camera transform differs from config", view_source)
+        verify = view_source.index("_transform_matches")
+        move = view_source.index("set_level_viewport_camera_info")
+        self.assertLess(verify, move)
 
     def test_duplicate_reference_is_released_and_ue58_unload_outputs_are_checked(self):
         class Duplicate:
