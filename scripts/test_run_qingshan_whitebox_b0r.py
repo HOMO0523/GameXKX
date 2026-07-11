@@ -46,10 +46,14 @@ def _setup_payload(task_ids=None):
         "generation": {
             kind: {
                 "success": True,
+                "operation": "GenerateTownPCG",
+                "actor_label": f"QS_B0R_PCG_{kind.title()}",
                 "scheduled": True,
                 "generating": True,
                 "generated": False,
+                "generated_component_count": 0,
                 "task_id": task_ids[kind],
+                "error": "",
             }
             for kind in KINDS
         },
@@ -231,6 +235,74 @@ class WhiteboxB0RCoordinatorTests(unittest.TestCase):
             self.assertEqual(call["tool_name"], "run_project_python_file")
             self.assertEqual(call["arguments"]["relative_path"], ASSEMBLY_SCRIPT)
             self.assertTrue(call["arguments"]["run_as_main"])
+
+    def test_cpp_already_generated_state_needs_no_task_id(self):
+        setup = _setup_payload({"buildings": 7, "foliage": 8, "mountains": 9})
+        setup["generation"]["foliage"] = {
+            "success": True,
+            "operation": "GenerateTownPCG",
+            "actor_label": "QS_B0R_PCG_Foliage",
+            "scheduled": False,
+            "generating": False,
+            "generated": True,
+            "generated_component_count": 1,
+            "error": "",
+        }
+        result, _, _ = self._run(setup=setup, finals=[_complete_payload()])
+        self.assertTrue(result["success"])
+        self.assertEqual(result["task_ids"], {"buildings": 7, "mountains": 9})
+
+    def test_generation_state_booleans_and_consistency_are_required(self):
+        mutations = []
+        for missing_field in ("scheduled", "generating", "generated"):
+            payload = _setup_payload()
+            del payload["generation"]["buildings"][missing_field]
+            mutations.append(payload)
+        generating_without_scheduled = _setup_payload()
+        generating_without_scheduled["generation"]["buildings"]["scheduled"] = False
+        mutations.append(generating_without_scheduled)
+        generated_while_generating = _setup_payload()
+        generated_while_generating["generation"]["buildings"]["generated"] = True
+        mutations.append(generated_while_generating)
+        idle_unscheduled = _setup_payload()
+        idle_unscheduled["generation"]["buildings"].update(
+            scheduled=False, generating=False, generated=False
+        )
+        mutations.append(idle_unscheduled)
+        missing_required_id = _setup_payload()
+        del missing_required_id["generation"]["buildings"]["task_id"]
+        mutations.append(missing_required_id)
+        for payload in mutations:
+            with self.subTest(payload=payload):
+                result, _, _ = self._run(setup=payload)
+                self.assertEqual(result["terminal_state"], "setup_error")
+
+    def test_exact_task4_minimal_setup_failure_is_preserved(self):
+        failure = {
+            "success": False,
+            "complete": False,
+            "error": "whitebox setup exploded",
+        }
+        result, client, _ = self._run(setup=failure)
+        self.assertFalse(result["success"])
+        self.assertEqual(result["terminal_state"], "setup_error")
+        self.assertEqual(result["setup"], failure)
+        self.assertEqual(result["error"], failure["error"])
+        self.assertEqual(result["task_ids"], {})
+        self.assertEqual(len(client.calls), 1)
+
+    def test_exact_task4_minimal_finalize_failure_is_preserved(self):
+        failure = {
+            "success": False,
+            "complete": False,
+            "error": "whitebox finalize exploded",
+        }
+        result, client, _ = self._run(finals=[failure])
+        self.assertFalse(result["success"])
+        self.assertEqual(result["terminal_state"], "error")
+        self.assertEqual(result["final"], failure)
+        self.assertEqual(result["error"], failure["error"])
+        self.assertEqual(len(client.calls), 2)
 
     def test_calls_public_tool_with_remaining_deadline_timeout(self):
         clock = FakeClock()

@@ -100,36 +100,66 @@ def _require_exact_kind_mapping(payload: Any, field: str) -> dict[str, Any]:
 
 
 def _validate_setup_payload(payload: dict[str, Any]) -> dict[str, int]:
-    if payload.get("phase") != "setup":
-        raise RuntimeError("setup response phase must be 'setup'")
     success = _require_bool(payload, "success", "setup response")
     if not success:
+        if payload.get("complete") is not False:
+            raise RuntimeError("failed setup response complete must be false")
+        if not isinstance(payload.get("error"), str):
+            raise RuntimeError("failed setup response error must be a string")
+        if "phase" in payload and payload.get("phase") != "setup":
+            raise RuntimeError("failed setup response phase must be 'setup' when present")
         return {}
+    if payload.get("phase") != "setup":
+        raise RuntimeError("setup response phase must be 'setup'")
     generation = _require_exact_kind_mapping(payload.get("generation"), "generation")
     task_ids: dict[str, int] = {}
     for kind in KINDS:
         entry = generation[kind]
         if not isinstance(entry, dict):
             raise RuntimeError(f"generation.{kind} must be an object")
-        if entry.get("success") is not True:
+        if _require_bool(entry, "success", f"generation.{kind}") is not True:
             raise RuntimeError(f"generation.{kind}.success must be true")
+        scheduled = _require_bool(entry, "scheduled", f"generation.{kind}")
+        generating = _require_bool(entry, "generating", f"generation.{kind}")
+        generated = _require_bool(entry, "generated", f"generation.{kind}")
+        if generating and not scheduled:
+            raise RuntimeError(f"generation.{kind} cannot generate while unscheduled")
+        if generating and generated:
+            raise RuntimeError(f"generation.{kind} cannot be generating and generated")
+        if not scheduled and not generated:
+            raise RuntimeError(f"generation.{kind} must be scheduled or already generated")
         task_id = entry.get("task_id")
-        if (
-            isinstance(task_id, bool)
-            or not isinstance(task_id, (int, float))
-            or not math.isfinite(float(task_id))
-            or float(task_id) < 0.0
-            or not float(task_id).is_integer()
-        ):
-            raise RuntimeError(f"generation.{kind}.task_id must be a finite nonnegative integer")
-        task_ids[kind] = int(task_id)
+        needs_task_id = (scheduled or generating) and not generated
+        if task_id is None:
+            if needs_task_id:
+                raise RuntimeError(f"generation.{kind}.task_id is required while scheduled")
+        else:
+            if (
+                isinstance(task_id, bool)
+                or not isinstance(task_id, (int, float))
+                or not math.isfinite(float(task_id))
+                or float(task_id) < 0.0
+                or not float(task_id).is_integer()
+            ):
+                raise RuntimeError(
+                    f"generation.{kind}.task_id must be a finite nonnegative integer"
+                )
+            task_ids[kind] = int(task_id)
     return task_ids
 
 
 def _validate_finalize_payload(payload: dict[str, Any]) -> None:
+    success = _require_bool(payload, "success", "finalize response")
+    if not success and "statuses" not in payload:
+        if payload.get("complete") is not False:
+            raise RuntimeError("failed finalize response complete must be false")
+        if not isinstance(payload.get("error"), str):
+            raise RuntimeError("failed finalize response error must be a string")
+        if "phase" in payload and payload.get("phase") != "finalize":
+            raise RuntimeError("failed finalize response phase must be 'finalize' when present")
+        return
     if payload.get("phase") != "finalize":
         raise RuntimeError("finalize response phase must be 'finalize'")
-    success = _require_bool(payload, "success", "finalize response")
     complete = _require_bool(payload, "complete", "finalize response")
     pending = _require_bool(payload, "pending", "finalize response")
     statuses = _require_exact_kind_mapping(payload.get("statuses"), "statuses")
