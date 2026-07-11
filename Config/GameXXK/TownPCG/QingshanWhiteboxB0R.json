@@ -11,10 +11,10 @@
   "runtime_generation": false,
   "spawn_caps": {"buildings": 19, "foliage": 100, "mountains": 30, "crossings": 2},
   "fixed_anchors": [
-    {"id": "NorthGateFAnchor", "location_cm": [0, 0, 120], "yaw_degrees": 0, "radius_cm": 800},
-    {"id": "TownCoreAnchor", "location_cm": [-12000, -2200, 300], "yaw_degrees": 25, "radius_cm": 1200},
-    {"id": "MainBridgeAnchor", "location_cm": [-15500, -6500, 100], "yaw_degrees": -35, "radius_cm": 1200},
-    {"id": "SouthDockAnchor", "location_cm": [-21500, -10000, -200], "yaw_degrees": -20, "radius_cm": 1000}
+    {"id": "NorthGateFAnchor", "location_cm": [0, 0, 120], "yaw_degrees": 0, "protected_radius_cm": 800},
+    {"id": "TownCoreAnchor", "location_cm": [-12000, -2200, 300], "yaw_degrees": 25, "protected_radius_cm": 1200},
+    {"id": "MainBridgeAnchor", "location_cm": [-15500, -6500, 100], "yaw_degrees": -35, "protected_radius_cm": 1200},
+    {"id": "SouthDockAnchor", "location_cm": [-21500, -10000, -200], "yaw_degrees": -20, "protected_radius_cm": 1000}
   ],
   "road_splines": [
     {"id": "Road_Main", "width_cm": 800, "points_cm": [[0, 0, 120], [-3500, -500, 140], [-7500, -2500, 180], [-11500, -3500, 250], [-15500, -6500, 100], [-20500, -9000, -100]]},
@@ -50,7 +50,7 @@
   ],
   "proxy_generation": {
     "foliage": {"count": 100, "scale_range": [2.5, 6.5], "exclusion_margin_cm": 250},
-    "mountains": {"count": 24, "scale_xy": [25, 65], "scale_z": [35, 95], "perimeter_band_cm": [1500, 7000]}
+    "mountains": {"count": 24, "scale_xy_range": [25, 65], "scale_z_range": [35, 95], "perimeter_band_cm": [1500, 7000]}
   },
   "exclusion_zones": [
     {"id": "EXC_ANCHOR_NORTH_GATE", "kind": "anchor_circle", "source_id": "NorthGateFAnchor", "margin_cm": 0},

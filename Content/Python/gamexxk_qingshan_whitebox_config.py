@@ -135,9 +135,12 @@ def validate_config(data):
         location = _require_vector(item.get("location_cm"), f"fixed_anchors[{index}].location_cm")
         _require_inside_world(location, world_bounds, f"fixed_anchors[{index}].location_cm")
         _require_number(item.get("yaw_degrees"), f"fixed_anchors[{index}].yaw_degrees")
-        radius = _require_number(item.get("radius_cm"), f"fixed_anchors[{index}].radius_cm")
+        radius = _require_number(
+            item.get("protected_radius_cm"),
+            f"fixed_anchors[{index}].protected_radius_cm",
+        )
         if radius <= 0:
-            raise ValueError(f"fixed_anchors[{index}].radius_cm must be greater than 0")
+            raise ValueError(f"fixed_anchors[{index}].protected_radius_cm must be greater than 0")
         anchor_by_id[stable_id] = item
     if "NorthGateFAnchor" not in anchor_by_id:
         raise ValueError("fixed_anchors must contain NorthGateFAnchor")
@@ -202,7 +205,7 @@ def validate_config(data):
     _require_vector(foliage.get("scale_range"), "proxy_generation.foliage.scale_range", length=2)
     _require_number(foliage.get("exclusion_margin_cm"), "proxy_generation.foliage.exclusion_margin_cm")
     _require_integer(mountains.get("count"), "proxy_generation.mountains.count", minimum=0)
-    for field in ("scale_xy", "scale_z", "perimeter_band_cm"):
+    for field in ("scale_xy_range", "scale_z_range", "perimeter_band_cm"):
         _require_vector(mountains.get(field), f"proxy_generation.mountains.{field}", length=2)
 
     exclusions = _require_list(data.get("exclusion_zones"), "exclusion_zones")

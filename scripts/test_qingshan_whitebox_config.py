@@ -47,7 +47,7 @@ class QingshanWhiteboxConfigTests(unittest.TestCase):
             path.write_text(json.dumps(self.data), encoding="utf-8")
             self.assertEqual(self.module.load_config(path), self.data)
 
-    def test_canonical_contract(self):
+    def test_canonical_contract_values(self):
         data = self.data
         self.assertEqual(data["schema_version"], 1)
         self.assertEqual(data["revision_id"], "B0R")
@@ -59,12 +59,77 @@ class QingshanWhiteboxConfigTests(unittest.TestCase):
         self.assertEqual(data["coordinate_reference"]["actor_label"], "QingshanInn_TownExit")
         self.assertEqual(data["playable_bounds_cm"], [-30000, 0, -12000, 12000])
         self.assertEqual(data["world_bounds_cm"], [-38000, 7000, -19000, 19000])
-        self.assertEqual(len(data["building_plots"]), 16)
-        self.assertEqual(sum(p["size_class"] == "large" for p in data["building_plots"]), 1)
-        self.assertEqual(sum(p["size_class"] == "medium" for p in data["building_plots"]), 5)
-        self.assertEqual(sum(p["size_class"] == "small" for p in data["building_plots"]), 10)
-        self.assertEqual(set(data["cameras"]), {"CAM_QS_GATE_ARRIVAL", "CAM_QS_TOWN_CORE", "CAM_QS_MAIN_BRIDGE", "CAM_QS_SOUTH_DOCK"})
         self.assertFalse(data["runtime_generation"])
+        self.assertEqual(data["spawn_caps"], {"buildings": 19, "foliage": 100, "mountains": 30, "crossings": 2})
+        self.assertEqual(data["fixed_anchors"], [
+            {"id": "NorthGateFAnchor", "location_cm": [0, 0, 120], "yaw_degrees": 0, "protected_radius_cm": 800},
+            {"id": "TownCoreAnchor", "location_cm": [-12000, -2200, 300], "yaw_degrees": 25, "protected_radius_cm": 1200},
+            {"id": "MainBridgeAnchor", "location_cm": [-15500, -6500, 100], "yaw_degrees": -35, "protected_radius_cm": 1200},
+            {"id": "SouthDockAnchor", "location_cm": [-21500, -10000, -200], "yaw_degrees": -20, "protected_radius_cm": 1000},
+        ])
+        self.assertEqual(data["road_splines"], [
+            {"id": "Road_Main", "width_cm": 800, "points_cm": [[0, 0, 120], [-3500, -500, 140], [-7500, -2500, 180], [-11500, -3500, 250], [-15500, -6500, 100], [-20500, -9000, -100]]},
+            {"id": "Road_Core_North", "width_cm": 450, "points_cm": [[-7500, -2500, 180], [-9000, 1200, 250], [-13000, 2600, 400]]},
+            {"id": "Road_Core_South", "width_cm": 400, "points_cm": [[-11500, -3500, 250], [-14500, -1500, 300], [-18500, -3000, 250]]},
+        ])
+        self.assertEqual(data["river_splines"], [
+            {"id": "River_Main", "width_cm": 1800, "points_cm": [[-26000, -12000, -250], [-21000, -9000, -200], [-15500, -6500, -150], [-9000, -8000, -100], [-3500, -11000, -100]]},
+        ])
+        self.assertEqual(data["terrain_zones"], [
+            {"id": "Terrain_Base", "center_cm": [-15000, 0, -500], "size_cm": [30000, 24000, 400], "yaw_degrees": 0},
+            {"id": "Terrain_CorePlateau", "center_cm": [-12000, -1800, -150], "size_cm": [12500, 8500, 500], "yaw_degrees": 10},
+            {"id": "Terrain_SouthSlope", "center_cm": [-17800, -6800, -350], "size_cm": [10500, 6500, 350], "yaw_degrees": -25},
+            {"id": "Terrain_DockLowland", "center_cm": [-21800, -9800, -550], "size_cm": [8500, 4800, 250], "yaw_degrees": -20},
+        ])
+        expected_plots = [
+            ("BLD_L_01", "large", [-12000, -1800, 300], 25, [1800, 1400, 1200], "core"),
+            ("BLD_M_01", "medium", [-8200, -4700, 220], -15, [1200, 900, 800], "core"),
+            ("BLD_M_02", "medium", [-10000, 800, 380], 18, [1100, 850, 750], "core"),
+            ("BLD_M_03", "medium", [-14800, -1900, 360], 42, [1400, 1000, 900], "bridge"),
+            ("BLD_M_04", "medium", [-17400, -10800, 20], -28, [1000, 800, 700], "south"),
+            ("BLD_M_05", "medium", [-19200, -4800, 180], 12, [1300, 900, 850], "south"),
+            ("BLD_S_01", "small", [-5200, -2500, 180], -22, [800, 600, 500], "approach"),
+            ("BLD_S_02", "small", [-6500, 1700, 300], 31, [700, 550, 450], "approach"),
+            ("BLD_S_03", "small", [-7200, -6200, 80], 11, [900, 700, 600], "core"),
+            ("BLD_S_04", "small", [-12200, 3300, 460], -35, [750, 600, 500], "core"),
+            ("BLD_S_05", "small", [-14700, -3500, 180], 55, [850, 650, 550], "core"),
+            ("BLD_S_06", "small", [-16200, 900, 420], -12, [650, 550, 450], "bridge"),
+            ("BLD_S_07", "small", [-18500, -1500, 300], 27, [900, 650, 550], "bridge"),
+            ("BLD_S_08", "small", [-21400, -5200, -20], -46, [750, 550, 500], "south"),
+            ("BLD_S_09", "small", [-24800, -7600, -80], 16, [850, 700, 550], "south"),
+            ("BLD_S_10", "small", [-23800, -5800, 100], 39, [700, 600, 480], "south"),
+        ]
+        self.assertEqual(data["building_plots"], [
+            {"id": plot_id, "size_class": size_class, "location_cm": location, "yaw_degrees": yaw,
+             "size_cm": size, "entrance_axis": "+Y", "cluster_id": cluster}
+            for plot_id, size_class, location, yaw, size, cluster in expected_plots
+        ])
+        self.assertEqual(data["proxy_generation"], {
+            "foliage": {"count": 100, "scale_range": [2.5, 6.5], "exclusion_margin_cm": 250},
+            "mountains": {"count": 24, "scale_xy_range": [25, 65], "scale_z_range": [35, 95], "perimeter_band_cm": [1500, 7000]},
+        })
+        expected_exclusions = [
+            ("EXC_ANCHOR_NORTH_GATE", "anchor_circle", "NorthGateFAnchor", 0),
+            ("EXC_ANCHOR_MAIN_BRIDGE", "anchor_circle", "MainBridgeAnchor", 0),
+            ("EXC_ANCHOR_SOUTH_DOCK", "anchor_circle", "SouthDockAnchor", 0),
+            ("EXC_ROAD_MAIN", "spline_corridor", "Road_Main", 250),
+            ("EXC_ROAD_CORE_NORTH", "spline_corridor", "Road_Core_North", 250),
+            ("EXC_ROAD_CORE_SOUTH", "spline_corridor", "Road_Core_South", 250),
+            ("EXC_RIVER_MAIN", "spline_corridor", "River_Main", 400),
+        ] + [
+            (f"EXC_{plot_id}", "building_footprint", plot_id, 200)
+            for plot_id, *_ in expected_plots
+        ]
+        self.assertEqual(data["exclusion_zones"], [
+            {"id": zone_id, "kind": kind, "source_id": source_id, "margin_cm": margin}
+            for zone_id, kind, source_id, margin in expected_exclusions
+        ])
+        self.assertEqual(data["cameras"], {
+            "CAM_QS_GATE_ARRIVAL": {"location_cm": [-2500, 2500, 3200], "target_cm": [-6500, -1200, 300], "fov_degrees": 50},
+            "CAM_QS_TOWN_CORE": {"location_cm": [-5000, 3500, 4500], "target_cm": [-12500, -3000, 300], "fov_degrees": 50},
+            "CAM_QS_MAIN_BRIDGE": {"location_cm": [-9000, -1000, 4000], "target_cm": [-15500, -6500, 0], "fov_degrees": 48},
+            "CAM_QS_SOUTH_DOCK": {"location_cm": [-15000, -4000, 4200], "target_cm": [-21500, -9500, -200], "fov_degrees": 50},
+        })
 
     def test_rejects_duplicate_stable_ids(self):
         data = copy.deepcopy(self.data)
