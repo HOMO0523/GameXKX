@@ -429,14 +429,22 @@ def merge_config(overlay, base_config):
         overlay.get("additional_building_plots"),
         "additional_building_plots",
     )
+    assignments = [
+        _require_object(item, f"base_plot_assignments[{index}]")
+        for index, item in enumerate(assignments)
+    ]
+    additions = [
+        _require_object(item, f"additional_building_plots[{index}]")
+        for index, item in enumerate(additions)
+    ]
     base_plots = _require_list(base_config.get("building_plots"), "base_config.building_plots")
     base_ids = {plot["id"] for plot in base_plots}
-    assignment_ids = [item.get("id") for item in assignments if isinstance(item, dict)]
+    assignment_ids = [item.get("id") for item in assignments]
     if len(assignment_ids) != len(set(assignment_ids)) or set(assignment_ids) != base_ids:
         raise ValueError("base plot assignment IDs must exactly match B0R building plot IDs")
     assignment_by_id = {item["id"]: item for item in assignments}
 
-    additional_ids = [item.get("id") for item in additions if isinstance(item, dict)]
+    additional_ids = [item.get("id") for item in additions]
     if len(additional_ids) != len(set(additional_ids)) or set(additional_ids) != _ADDITIONAL_PLOT_IDS:
         raise ValueError("additional building plot IDs must match the approved B1 IDs")
     if base_ids.intersection(additional_ids):
@@ -457,7 +465,6 @@ def merge_config(overlay, base_config):
             building_materials,
         ))
     for addition in additions:
-        addition = _require_object(addition, "additional_building_plots item")
         geometry = {field: copy.deepcopy(addition.get(field)) for field in _GEOMETRY_FIELDS}
         plots.append(_style_plot(
             geometry,
@@ -479,7 +486,10 @@ def merge_config(overlay, base_config):
         merged[field] = copy.deepcopy(base_config[field])
 
     road_by_id = {road["id"]: road for road in base_config["road_splines"]}
-    for network in merged.get("quickroad", {}).get("networks", []):
+    quickroad = _require_object(merged.get("quickroad"), "quickroad")
+    networks = _require_list(quickroad.get("networks"), "quickroad.networks")
+    for index, raw_network in enumerate(networks):
+        network = _require_object(raw_network, f"quickroad.networks[{index}]")
         source_id = network.get("source_spline_id")
         if source_id not in road_by_id:
             raise ValueError(f"unknown QuickRoad source_spline_id: {source_id}")
@@ -589,9 +599,12 @@ def _validate_ground_point_clearance(
         building_margin_cm,
         allow_river_overlap=False,
         attachment_target_id=None):
-    bridge = next(anchor for anchor in base_config["fixed_anchors"] if anchor["id"] == "MainBridgeAnchor")
-    if math.dist(point[:2], bridge["location_cm"][:2]) <= bridge["protected_radius_cm"]:
-        raise ValueError(f"{field} overlaps bridge anchor")
+    _validate_fixed_anchor_clearance(
+        point,
+        field,
+        base_config,
+        building_margin_cm,
+    )
     for road in base_config["road_splines"]:
         if _polyline_distance(point, road["points_cm"]) <= road["width_cm"] / 2.0 + 250.0:
             raise ValueError(f"{field} overlaps road corridor {road['id']}")
@@ -604,6 +617,16 @@ def _validate_ground_point_clearance(
             continue
         if _point_to_plot_distance(point, plot) <= building_margin_cm:
             raise ValueError(f"{field} overlaps building OBB {plot['id']}")
+
+
+def _validate_fixed_anchor_clearance(point, field, base_config, category_clearance_cm):
+    for anchor in base_config["fixed_anchors"]:
+        minimum_distance = anchor["protected_radius_cm"] + category_clearance_cm
+        if math.dist(point[:2], anchor["location_cm"][:2]) <= minimum_distance:
+            bridge_suffix = " (bridge anchor)" if anchor["id"] == "MainBridgeAnchor" else ""
+            raise ValueError(
+                f"{field} overlaps fixed anchor {anchor['id']}{bridge_suffix}"
+            )
 
 
 def validate_config(data, *, base_config=None):
@@ -833,6 +856,12 @@ def validate_config(data, *, base_config=None):
             raise ValueError(f"prop_records[{index}].scale must be positive")
         if item.get("collision_enabled") is not collision_policy[prop_type]:
             raise ValueError(f"prop_records[{index}].collision_enabled violates collision_policy")
+        _validate_fixed_anchor_clearance(
+            location,
+            f"prop_records[{index}]",
+            base_config,
+            0.0,
+        )
         attachment_target_id = item.get("attachment_target_id")
         if prop_type in _ATTACHMENT_PROP_TYPES:
             attachment_target_id = _require_id(
@@ -939,11 +968,13 @@ def validate_config(data, *, base_config=None):
         )
 
     cameras = _require_list(data.get("cameras"), "cameras")
-    if len(cameras) != 4 or {item.get("id") for item in cameras if isinstance(item, dict)} != _CAMERA_IDS:
+    if len(cameras) != 4:
         raise ValueError("cameras must contain the four approved B1 review cameras")
+    observed_camera_ids = set()
     for index, item in enumerate(cameras):
         item = _require_object(item, f"cameras[{index}]")
         register(item.get("id"), f"cameras[{index}].id")
+        observed_camera_ids.add(item["id"])
         camera_location = _require_vector(item.get("location_cm"), f"cameras[{index}].location_cm")
         camera_target = _require_vector(item.get("target_cm"), f"cameras[{index}].target_cm")
         _require_point_in_spatial_bounds(
@@ -961,6 +992,8 @@ def validate_config(data, *, base_config=None):
         fov = _require_number(item.get("fov_degrees"), f"cameras[{index}].fov_degrees")
         if not 35 <= fov <= 65:
             raise ValueError(f"cameras[{index}].fov_degrees must be between 35 and 65")
+    if observed_camera_ids != _CAMERA_IDS:
+        raise ValueError("cameras must contain the four approved B1 review cameras")
 
     return data
 

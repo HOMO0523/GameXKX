@@ -441,6 +441,55 @@ class QingshanDressB1ConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "road_splines"):
             MODULE.merge_config(self.overlay, malformed)
 
+    def test_merge_rejects_malformed_quickroad_containers_as_value_error(self):
+        for value in (None, [], "invalid"):
+            with self.subTest(quickroad=value):
+                overlay = copy.deepcopy(self.overlay)
+                overlay["quickroad"] = value
+                with self.assertRaisesRegex(ValueError, "quickroad must be an object"):
+                    MODULE.merge_config(overlay, self.base)
+
+        for value in (None, {}, "invalid"):
+            with self.subTest(networks=value):
+                overlay = copy.deepcopy(self.overlay)
+                overlay["quickroad"]["networks"] = value
+                with self.assertRaisesRegex(ValueError, "quickroad.networks must be a list"):
+                    MODULE.merge_config(overlay, self.base)
+
+        for value in (None, [], "invalid"):
+            with self.subTest(network_item=value):
+                overlay = copy.deepcopy(self.overlay)
+                overlay["quickroad"]["networks"][0] = value
+                with self.assertRaisesRegex(ValueError, r"quickroad.networks\[0\] must be an object"):
+                    MODULE.merge_config(overlay, self.base)
+
+    def test_merge_rejects_malformed_overlay_items_as_value_error(self):
+        item_cases = (
+            ("base_plot_assignments", r"base_plot_assignments\[0\] must be an object"),
+            ("additional_building_plots", r"additional_building_plots\[0\] must be an object"),
+            ("prop_records", r"prop_records\[0\] must be an object"),
+            ("vegetation_records", r"vegetation_records\[0\] must be an object"),
+            ("mountain_records", r"mountain_records\[0\] must be an object"),
+            ("cameras", r"cameras\[0\] must be an object"),
+        )
+        for field, pattern in item_cases:
+            with self.subTest(item=field):
+                overlay = copy.deepcopy(self.overlay)
+                overlay[field][0] = None
+                with self.assertRaisesRegex(ValueError, pattern):
+                    MODULE.merge_config(overlay, self.base)
+
+        container_cases = (
+            "base_plot_assignments", "additional_building_plots", "prop_records",
+            "vegetation_records", "mountain_records", "cameras",
+        )
+        for field in container_cases:
+            with self.subTest(container=field):
+                overlay = copy.deepcopy(self.overlay)
+                overlay[field] = {}
+                with self.assertRaisesRegex(ValueError, f"{field} must be a list"):
+                    MODULE.merge_config(overlay, self.base)
+
     def test_plot_schema_and_positive_scales_are_complete(self):
         cases = (
             (lambda d: d["building_plots"][0]["size_cm"].__setitem__(0, 0), "size_cm must be strictly positive"),
@@ -522,6 +571,43 @@ class QingshanDressB1ConfigTests(unittest.TestCase):
                     data = copy.deepcopy(self.data)
                     select(data[field])["location_cm"] = list(location)
                     self.assert_invalid(data, pattern)
+
+    def test_every_ground_population_category_respects_all_fixed_anchors(self):
+        categories = (
+            (
+                "prop_records",
+                lambda items: next(i for i in items if i["prop_type"] == "crate"),
+                0.0,
+            ),
+            ("vegetation_records", lambda items: items[0], 100.0),
+            ("mountain_records", lambda items: items[0], 200.0),
+        )
+        for anchor in self.data["fixed_anchors"]:
+            for field, select, clearance in categories:
+                with self.subTest(anchor=anchor["id"], field=field):
+                    data = copy.deepcopy(self.data)
+                    offset = (
+                        anchor["protected_radius_cm"] - 1.0
+                        if clearance == 0.0
+                        else anchor["protected_radius_cm"] + clearance / 2.0
+                    )
+                    select(data[field])["location_cm"] = [
+                        anchor["location_cm"][0] + offset,
+                        anchor["location_cm"][1],
+                        anchor["location_cm"][2],
+                    ]
+                    self.assert_invalid(data, f"fixed anchor {anchor['id']}")
+
+    def test_attachment_and_dock_exceptions_do_not_bypass_fixed_anchors(self):
+        anchor_by_id = {item["id"]: item for item in self.data["fixed_anchors"]}
+        cases = (
+            (lambda items: next(i for i in items if i["prop_type"] == "sign"), "NorthGateFAnchor"),
+            (lambda items: next(i for i in items if i["prop_type"] == "dock_post"), "SouthDockAnchor"),
+        )
+        for select, anchor_id in cases:
+            data = copy.deepcopy(self.data)
+            select(data["prop_records"])["location_cm"] = list(anchor_by_id[anchor_id]["location_cm"])
+            self.assert_invalid(data, f"fixed anchor {anchor_id}")
 
     def test_attachment_props_require_valid_target_and_edge_band(self):
         attachment_types = {"sign", "lantern", "banner"}

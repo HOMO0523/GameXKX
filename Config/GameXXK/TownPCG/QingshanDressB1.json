@@ -1490,8 +1490,8 @@
       "plant_type": "plant_card",
       "render_mode": "animated_flipbook",
       "location_cm": [
-        -12680.761,
-        -1119.239,
+        -12746,
+        -1015,
         300
       ],
       "yaw_degrees": 174,
