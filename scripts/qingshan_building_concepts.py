@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import stat
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 
@@ -90,6 +92,15 @@ _PROMPT_NEGATIVE = [
     "individual roof tiles or tiny repeated lattice grids",
     "black window panes",
 ]
+_WINDOWS_RESERVED_NAMES = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    "CLOCK$",
+    *(f"COM{number}" for number in range(1, 10)),
+    *(f"LPT{number}" for number in range(1, 10)),
+}
 
 
 def _expect_mapping(value: object, path: str, fields: set[str]) -> dict:
@@ -143,6 +154,15 @@ def _validate_catalog_path(value: object, path: str) -> str:
         or value != posix_path.as_posix()
     ):
         raise ConceptError(f"{path} must be a canonical catalog-root-relative POSIX path")
+    for component in posix_path.parts:
+        device_stem = component.split(".", 1)[0].upper()
+        if (
+            ":" in component
+            or any(ord(character) < 32 or ord(character) == 127 for character in component)
+            or component.endswith((".", " "))
+            or device_stem in _WINDOWS_RESERVED_NAMES
+        ):
+            raise ConceptError(f"{path} must use Windows-safe path components")
     return value
 
 
@@ -162,9 +182,11 @@ def validate_building_style(data: dict) -> None:
     detail_budget = _expect_mapping(style["detail_budget"], "detail_budget", {"forbidden"})
     forbidden = _expect_string_list(detail_budget["forbidden"], "detail_budget.forbidden")
     if forbidden != _DETAIL_FORBIDDEN:
-        missing = set(_DETAIL_FORBIDDEN) - set(forbidden)
-        description = "individual roof tiles" if "individual_roof_tiles" in missing else "repeated window lattices"
-        raise ConceptError(f"detail_budget.forbidden must forbid {description}")
+        raise ConceptError(
+            "detail_budget.forbidden must equal the exact canonical list: "
+            "individual roof tiles (individual_roof_tiles), repeated window lattices "
+            "(repeated_window_lattices)"
+        )
 
     negative_prompt = _expect_string_list(style["negative_prompt"], "negative_prompt")
     if negative_prompt != _NEGATIVE_PROMPT:
@@ -194,13 +216,30 @@ def load_building_style(
     root: Path,
     style_path: str = "style/QS_InkToon_Building_v2.json",
 ) -> dict:
-    resolved_root = root.resolve()
-    if not resolved_root.is_dir():
-        raise ConceptError("root must resolve to an existing catalog directory")
-    style_file = _resolve_catalog_file(resolved_root, style_path, "style_path")
+    """Load a style from a trusted local catalog without concurrent writers.
+
+    Path and file-identity changes observed during a read are rejected. This is
+    consistency checking for a locally trusted catalog, not a defense against an
+    attacker who can modify the catalog directory concurrently.
+    """
     try:
-        data = json.loads(style_file.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        resolved_root = root.resolve(strict=True)
+        if not stat.S_ISDIR(resolved_root.stat().st_mode):
+            raise ConceptError("root must resolve to an existing catalog directory")
+    except ConceptError:
+        raise
+    except (OSError, ValueError) as error:
+        raise ConceptError(f"root could not be resolved safely: {error}") from error
+
+    style_bytes, _style_digest = _read_catalog_file(resolved_root, style_path, "style_path")
+    try:
+        data = json.loads(
+            style_bytes.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_json_fields,
+        )
+    except ConceptError:
+        raise
+    except (UnicodeError, json.JSONDecodeError) as error:
         raise ConceptError(f"style_path could not be loaded as UTF-8 JSON: {error}") from error
 
     validate_building_style(data)
@@ -216,15 +255,76 @@ def load_building_style(
     return data
 
 
-def _resolve_catalog_file(root: Path, stored_path: object, field_path: str) -> Path:
-    relative_path = _validate_catalog_path(stored_path, field_path)
-    candidate = root.joinpath(*PurePosixPath(relative_path).parts)
-    resolved = candidate.resolve()
+def _reject_duplicate_json_fields(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for field, value in pairs:
+        if field in result:
+            raise ConceptError(f"style_path contains duplicate JSON field {field}")
+        result[field] = value
+    return result
+
+
+def _read_catalog_file(root: Path, stored_path: object, field_path: str) -> tuple[bytes, str]:
+    """Read and hash one stable regular file from a trusted local catalog."""
+    try:
+        relative_path = _validate_catalog_path(stored_path, field_path)
+        candidate = root.joinpath(*PurePosixPath(relative_path).parts)
+        before_path, before_stat = _catalog_file_snapshot(root, candidate, field_path)
+
+        with candidate.open("rb") as handle:
+            descriptor_before = os.fstat(handle.fileno())
+            _require_same_file(before_stat, descriptor_before, field_path)
+            if not stat.S_ISREG(descriptor_before.st_mode):
+                raise ConceptError(f"{field_path} must name an existing regular file")
+
+            payload = handle.read()
+            descriptor_after = os.fstat(handle.fileno())
+            _require_unchanged_file(descriptor_before, descriptor_after, field_path)
+
+            after_path, after_stat = _catalog_file_snapshot(root, candidate, field_path)
+            if after_path != before_path:
+                raise ConceptError(f"{field_path} changed resolved path while being read")
+            _require_same_file(descriptor_after, after_stat, field_path)
+            _require_unchanged_file(before_stat, after_stat, field_path)
+
+        return payload, hashlib.sha256(payload).hexdigest()
+    except ConceptError:
+        raise
+    except (OSError, ValueError) as error:
+        raise ConceptError(f"{field_path} could not read catalog file safely: {error}") from error
+
+
+def _catalog_file_snapshot(root: Path, candidate: Path, field_path: str) -> tuple[Path, os.stat_result]:
+    resolved = candidate.resolve(strict=True)
     if not resolved.is_relative_to(root):
         raise ConceptError(f"{field_path} must resolve inside the catalog root")
-    if not resolved.is_file():
+
+    cursor = root
+    for component in candidate.relative_to(root).parts:
+        cursor /= component
+        link_stat = cursor.lstat()
+        file_attributes = getattr(link_stat, "st_file_attributes", 0)
+        reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+        if stat.S_ISLNK(link_stat.st_mode) or file_attributes & reparse_flag:
+            raise ConceptError(f"{field_path} must not traverse a symlink or reparse point")
+
+    path_stat = candidate.stat()
+    if not stat.S_ISREG(path_stat.st_mode):
         raise ConceptError(f"{field_path} must name an existing regular file")
-    return resolved
+    return resolved, path_stat
+
+
+def _require_same_file(first: os.stat_result, second: os.stat_result, field_path: str) -> None:
+    if not os.path.samestat(first, second):
+        raise ConceptError(f"{field_path} changed file identity while being read")
+
+
+def _require_unchanged_file(first: os.stat_result, second: os.stat_result, field_path: str) -> None:
+    _require_same_file(first, second, field_path)
+    first_state = (first.st_size, first.st_mtime_ns, first.st_ctime_ns)
+    second_state = (second.st_size, second.st_mtime_ns, second.st_ctime_ns)
+    if first_state != second_state:
+        raise ConceptError(f"{field_path} was modified while being read")
 
 
 def _verify_digest(
@@ -234,8 +334,7 @@ def _verify_digest(
     path_field: str,
     digest_field: str = "inherits_sha256",
 ) -> None:
-    file_path = _resolve_catalog_file(root, stored_path, path_field)
-    actual_digest = hashlib.sha256(file_path.read_bytes()).hexdigest()
+    _payload, actual_digest = _read_catalog_file(root, stored_path, path_field)
     if actual_digest != expected_digest:
         raise ConceptError(f"{digest_field} does not match {path_field}")
 

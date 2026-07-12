@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from scripts.qingshan_building_concepts import (
     ConceptError,
@@ -177,6 +178,21 @@ class BuildingStyleContractTests(unittest.TestCase):
             "negative_prompt",
         )
 
+    def test_detail_budget_reports_extra_and_order_drift(self) -> None:
+        cases = (
+            (
+                lambda data: data["detail_budget"]["forbidden"].append("extra_detail"),
+                "detail_budget.forbidden.*exact canonical list",
+            ),
+            (
+                lambda data: data["detail_budget"]["forbidden"].reverse(),
+                "detail_budget.forbidden.*exact canonical list",
+            ),
+        )
+        for mutation, message in cases:
+            with self.subTest(message=message):
+                self.assert_style_rejected(mutation, message)
+
     def test_rejects_shared_master_contract_drift(self) -> None:
         cases = (
             ("style id", lambda d: d.__setitem__("style_id", "QS_InkToon_v1"), "style_id"),
@@ -294,6 +310,34 @@ class BuildingStyleLoadingTests(unittest.TestCase):
                     with self.assertRaisesRegex(ConceptError, "style_path"):
                         load_building_style(root, style_path)
 
+    def test_rejects_windows_unsafe_path_components(self) -> None:
+        unsafe_paths = (
+            "style/master.json:stream",
+            "style/CON.txt",
+            "style/master.json.",
+            "style/master.json ",
+            "style/\x00master.json",
+        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            self.make_catalog(root)
+            for style_path in unsafe_paths:
+                with self.subTest(style_path=repr(style_path)):
+                    with self.assertRaisesRegex(ConceptError, "style_path.*Windows-safe"):
+                        load_building_style(root, style_path)
+
+    def test_rejects_nul_in_reference_path_without_leaking_system_error(self) -> None:
+        self.assert_load_rejected(
+            lambda _root, data: data["reference_images"][0].__setitem__(
+                "path", "style/references/\x00reference.jpeg"
+            ),
+            "reference_images\\[0\\].path.*Windows-safe",
+        )
+
+    def test_wraps_root_resolution_errors(self) -> None:
+        with self.assertRaisesRegex(ConceptError, "root"):
+            load_building_style(Path("\x00invalid-root"))
+
     def test_rejects_invalid_inheritance_paths(self) -> None:
         cases = (
             ("/absolute/base.json", "inherits"),
@@ -356,6 +400,36 @@ class BuildingStyleLoadingTests(unittest.TestCase):
             write_json(root / "style" / f"{STYLE_ID}.json", style)
             with self.assertRaisesRegex(ConceptError, "reference_images\\[0\\].path.*catalog root"):
                 load_building_style(root)
+
+    def test_rejects_duplicate_json_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            self.make_catalog(root)
+            style_file = root / "style" / f"{STYLE_ID}.json"
+            payload = style_file.read_text(encoding="utf-8").replace(
+                '"schema_version": 1,',
+                '"schema_version": 1,\n  "schema_version": 1,',
+                1,
+            )
+            style_file.write_text(payload, encoding="utf-8", newline="\n")
+            with self.assertRaisesRegex(ConceptError, "duplicate.*schema_version"):
+                load_building_style(root)
+
+    def test_wraps_dependency_disappearance_after_precheck(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            self.make_catalog(root)
+            reference = root / "style" / "references" / "reference.jpeg"
+            real_open = Path.open
+
+            def disappear_then_open(path: Path, *args, **kwargs):
+                if path == reference and reference.exists():
+                    reference.unlink()
+                return real_open(path, *args, **kwargs)
+
+            with mock.patch.object(Path, "open", new=disappear_then_open):
+                with self.assertRaisesRegex(ConceptError, "reference_images\\[0\\].path"):
+                    load_building_style(root)
 
 
 class GoldenAssetContractTests(unittest.TestCase):
