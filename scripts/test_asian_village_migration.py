@@ -30,6 +30,22 @@ def assert_gitignore_contract(test_case: unittest.TestCase, gitignore: Path) -> 
         test_case.assertLess(lines.index(negation), rule_index)
 
 
+def create_junction(test_case: unittest.TestCase, link: Path, target: Path) -> None:
+    try:
+        result = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        test_case.skipTest(f"directory junctions unavailable: {exc}")
+    if result.returncode != 0:
+        test_case.skipTest(
+            "directory junctions unavailable: "
+            f"{result.stderr.strip() or result.stdout.strip()}"
+        )
+
+
 class MigrationContractTests(unittest.TestCase):
     def test_module_exposes_exact_constants(self):
         module = migration_module()
@@ -78,7 +94,7 @@ class MigrationContractTests(unittest.TestCase):
                     ):
                         module.resolve_target(target, project_root)
 
-    def test_resolve_target_rejects_symlink_escape(self):
+    def test_resolve_target_rejects_target_symlink_escape(self):
         module = migration_module()
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
@@ -91,23 +107,47 @@ class MigrationContractTests(unittest.TestCase):
             try:
                 os.symlink(outside, target, target_is_directory=True)
             except OSError as exc:
-                junction = subprocess.run(
-                    ["cmd", "/c", "mklink", "/J", str(target), str(outside)],
-                    capture_output=True,
-                    text=True,
-                )
-                if junction.returncode != 0:
-                    self.skipTest(
-                        "directory symlinks and junctions unavailable: "
-                        f"{exc}; {junction.stderr.strip()}"
-                    )
+                self.skipTest(f"directory symlinks unavailable: {exc}")
 
             with self.assertRaisesRegex(
                 module.MigrationError, r"Content[/\\]Asian_Village"
             ):
                 module.resolve_target(target, project_root)
 
-    def test_resolve_target_normalizes_path_errors(self):
+    def test_resolve_target_rejects_target_junction_escape(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            project_root = base / "project"
+            content = project_root / "Content"
+            outside = base / "outside"
+            content.mkdir(parents=True)
+            outside.mkdir()
+            target = content / "Asian_Village"
+            create_junction(self, target, outside)
+
+            with self.assertRaisesRegex(
+                module.MigrationError, r"Content[/\\]Asian_Village"
+            ):
+                module.resolve_target(target, project_root)
+
+    def test_resolve_target_rejects_content_junction_escape(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            project_root = base / "project"
+            outside_content = base / "outside-content"
+            project_root.mkdir()
+            outside_content.mkdir()
+            create_junction(self, project_root / "Content", outside_content)
+            target = project_root / module.TARGET_RELATIVE_DIR
+
+            with self.assertRaisesRegex(
+                module.MigrationError, r"Content[/\\]Asian_Village"
+            ):
+                module.resolve_target(target, project_root)
+
+    def test_resolve_target_normalizes_missing_root_error(self):
         module = migration_module()
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
@@ -119,12 +159,16 @@ class MigrationContractTests(unittest.TestCase):
                     missing_root / module.TARGET_RELATIVE_DIR, missing_root
                 )
 
-            project_root = base / "project"
-            (project_root / "Content").mkdir(parents=True)
+    def test_resolve_target_normalizes_nul_root_error_with_cause(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / module.TARGET_RELATIVE_DIR
             with self.assertRaisesRegex(
                 module.MigrationError, r"Content[/\\]Asian_Village"
-            ):
-                module.resolve_target(Path("\0"), project_root)
+            ) as raised:
+                module.resolve_target(target, Path("\0"))
+
+            self.assertIsInstance(raised.exception.__cause__, (OSError, ValueError))
 
     def test_real_gitignore_keeps_vendor_rule_last(self):
         assert_gitignore_contract(self, PROJECT_ROOT / ".gitignore")
@@ -144,6 +188,41 @@ class MigrationContractTests(unittest.TestCase):
             )
             with self.assertRaises(AssertionError):
                 assert_gitignore_contract(self, gitignore)
+
+    def test_gitignore_semantics_only_ignore_vendor_content(self):
+        cases = (
+            ("Content/Asian_Village/example.uasset", 0),
+            ("Content/GameXXK/Test.uasset", 1),
+            ("Content/GameXXK/Test.umap", 1),
+            ("Plugins/Test/Content/Test.uasset", 1),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+            initialized = subprocess.run(
+                ["git", "init", "--quiet"],
+                cwd=repository,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(initialized.returncode, 0, initialized.stderr)
+            (repository / ".gitignore").write_text(
+                (PROJECT_ROOT / ".gitignore").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+
+            for path, expected_returncode in cases:
+                with self.subTest(path=path):
+                    checked = subprocess.run(
+                        ["git", "check-ignore", "-q", "--no-index", "--", path],
+                        cwd=repository,
+                        capture_output=True,
+                        text=True,
+                    )
+                    self.assertEqual(
+                        checked.returncode,
+                        expected_returncode,
+                        checked.stderr or checked.stdout,
+                    )
 
     def test_local_dependency_policy_records_collaboration_boundaries(self):
         policy = PROJECT_ROOT / "docs" / "production" / "asian-village-local-dependency.md"
