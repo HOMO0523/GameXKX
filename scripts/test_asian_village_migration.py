@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from contextlib import redirect_stderr, redirect_stdout
@@ -363,6 +364,80 @@ class ManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(module.MigrationError, "linked-assets"):
                 module.build_manifest(source)
 
+    def test_build_manifest_rejects_junction_in_source_path_components(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            actual = base / "actual"
+            source = actual / "source"
+            source.mkdir(parents=True)
+            (source / "asset.uasset").write_bytes(b"asset")
+            junction = base / "junction"
+            create_junction(self, junction, actual)
+
+            with self.assertRaisesRegex(module.MigrationError, "junction"):
+                module.build_manifest(junction / "source")
+
+    def test_build_manifest_raises_walk_errors_instead_of_returning_empty(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            denied = root / "denied"
+
+            def failing_walk(path, *, followlinks, onerror):
+                error = PermissionError("injected enumeration denial")
+                error.filename = str(denied)
+                onerror(error)
+                return []
+
+            with mock.patch.object(module.os, "walk", side_effect=failing_walk):
+                with self.assertRaisesRegex(
+                    module.MigrationError, "denied"
+                ) as raised:
+                    module.build_manifest(root)
+            self.assertIsInstance(raised.exception.__cause__, PermissionError)
+
+    def test_sha256_rejects_post_read_path_metadata_change(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "metadata.uasset"
+            path.write_bytes(b"asset")
+            real_stat = Path.stat
+
+            def changed_stat(candidate, *args, **kwargs):
+                value = real_stat(candidate, *args, **kwargs)
+                if candidate != path or kwargs.get("follow_symlinks") is False:
+                    return value
+                return types.SimpleNamespace(
+                    st_dev=value.st_dev,
+                    st_ino=value.st_ino,
+                    st_size=value.st_size,
+                    st_mtime_ns=value.st_mtime_ns + 1,
+                    st_ctime_ns=value.st_ctime_ns,
+                )
+
+            with mock.patch.object(Path, "stat", changed_stat):
+                with self.assertRaisesRegex(module.MigrationError, "metadata.uasset"):
+                    module.sha256_file(path)
+
+    def test_manifest_rejects_del_and_c1_control_characters_as_unsafe(self):
+        module = migration_module()
+        for control in ("\x7f", "\x85"):
+            manifest = {
+                "schema_version": 1,
+                "counts": {"files": 1, "uasset": 1, "umap": 0},
+                "files": [
+                    {
+                        "path": f"asset{control}.uasset",
+                        "bytes": 0,
+                        "sha256": "0" * 64,
+                    }
+                ],
+            }
+            with self.subTest(control=ord(control)):
+                with self.assertRaisesRegex(module.MigrationError, "unsafe"):
+                    module._validate_manifest(manifest)
+
     def test_verify_manifest_strictly_validates_schema_paths_order_and_content(self):
         module = migration_module()
         with tempfile.TemporaryDirectory() as directory:
@@ -385,6 +460,8 @@ class ManifestTests(unittest.TestCase):
                 "file.uasset:stream",
                 "bad\x00name.uasset",
                 "bad\x1fname.uasset",
+                "bad\x7fname.uasset",
+                "bad\x85name.uasset",
                 "taildot./asset.uasset",
                 "trail /asset.uasset",
                 "CON.uasset",

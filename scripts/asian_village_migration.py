@@ -6,6 +6,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path, PurePosixPath
 
 
@@ -26,6 +27,22 @@ _DEVICE_NAMES = {"CON", "PRN", "AUX", "NUL"} | {
 
 def _identity(value: os.stat_result) -> tuple[int, ...]:
     return tuple(getattr(value, field) for field in _IDENTITY_FIELDS)
+
+
+def _path_matches_handle(
+    handle_value: os.stat_result, path_value: os.stat_result
+) -> bool:
+    handle_identity = list(_identity(handle_value))
+    path_identity = _identity(path_value)
+    handle_birth = getattr(handle_value, "st_birthtime_ns", None)
+    path_birth = getattr(path_value, "st_birthtime_ns", None)
+    if (
+        os.name == "nt"
+        and handle_birth is not None
+        and handle_birth == path_birth == path_identity[4]
+    ):
+        handle_identity[4] = handle_birth
+    return tuple(handle_identity) == path_identity
 
 
 def _error(action: str, path: Path, exc: BaseException) -> MigrationError:
@@ -49,6 +66,16 @@ def _lstat_safe(path: Path) -> os.stat_result:
     return value
 
 
+def _check_path_components(path: Path) -> None:
+    """Reject links and reparse points in every existing lexical component."""
+    absolute = Path(path).absolute()
+    current = Path(absolute.anchor)
+    _lstat_safe(current)
+    for part in absolute.parts[1:]:
+        current = current / part
+        _lstat_safe(current)
+
+
 def sha256_file(path: Path) -> str:
     """Hash one stable regular file through a single open handle."""
     path = Path(path)
@@ -68,9 +95,7 @@ def sha256_file(path: Path) -> str:
             path_after = path.stat()
         if _identity(before) != _identity(after):
             raise MigrationError(f"file changed while hashing: {path}")
-        handle_identity = (after.st_dev, after.st_ino, after.st_size)
-        path_identity = (path_after.st_dev, path_after.st_ino, path_after.st_size)
-        if handle_identity != path_identity:
+        if not _path_matches_handle(after, path_after):
             raise MigrationError(f"file was replaced while hashing: {path}")
         return digest.hexdigest()
     except MigrationError:
@@ -81,7 +106,7 @@ def sha256_file(path: Path) -> str:
 
 def build_manifest(source: Path) -> dict:
     source = Path(source)
-    _lstat_safe(source)
+    _check_path_components(source)
     try:
         root = source.resolve(strict=True)
     except (OSError, RuntimeError, ValueError) as exc:
@@ -90,8 +115,15 @@ def build_manifest(source: Path) -> dict:
         raise MigrationError(f"source is not a directory: {source}")
 
     discovered: list[tuple[str, Path]] = []
+
+    def walk_error(exc: OSError) -> None:
+        failed_path = Path(exc.filename) if exc.filename else root
+        raise _error("unable to enumerate source", failed_path, exc) from exc
+
     try:
-        for current, directories, filenames in os.walk(root, followlinks=False):
+        for current, directories, filenames in os.walk(
+            root, followlinks=False, onerror=walk_error
+        ):
             current_path = Path(current)
             _lstat_safe(current_path)
             for name in directories:
@@ -163,7 +195,7 @@ def _validate_relative_path(value: object) -> str:
         raise MigrationError("manifest file path must be a non-empty string")
     if "\\" in value or "\0" in value or ":" in value:
         raise MigrationError(f"unsafe manifest path: {value!r}")
-    if any(ord(character) < 32 for character in value):
+    if any(unicodedata.category(character) == "Cc" for character in value):
         raise MigrationError(f"unsafe manifest path: {value!r}")
     pure = PurePosixPath(value)
     if pure.is_absolute() or any(part in ("", ".", "..") for part in pure.parts):
