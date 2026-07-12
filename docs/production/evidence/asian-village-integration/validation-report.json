@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "map": "/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Integration",
+  "gallery_count": 21,
+  "labels": [
+    "AV_Review_Bridge_Complete",
+    "AV_Review_Building_Doorway",
+    "AV_Review_Building_MainRoof",
+    "AV_Review_Building_ThatchedRoof",
+    "AV_Review_Building_Tower",
+    "AV_Review_Building_WallWindow",
+    "AV_Review_Building_WoodenFence",
+    "AV_Review_Plant_Bamboo",
+    "AV_Review_Plant_Bush",
+    "AV_Review_Plant_Flowers",
+    "AV_Review_Plant_Tree",
+    "AV_Review_Prop_BambooBox",
+    "AV_Review_Prop_Banner",
+    "AV_Review_Prop_FlowerBed",
+    "AV_Review_Prop_LampPost",
+    "AV_Review_Prop_Lantern",
+    "AV_Review_Prop_MarketTent",
+    "AV_Review_Prop_Table",
+    "AV_Review_Terrain_Cliff",
+    "AV_Review_Terrain_CliffTall",
+    "AV_Review_Water_Waterfall"
+  ]
+}
