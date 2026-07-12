@@ -2,6 +2,7 @@
 #include "Components/BoxComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/TextRenderComponent.h"
@@ -10,7 +11,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Materials/MaterialInterface.h"
+#include "Materials/Material.h"
 #include "Engine/Engine.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "MVP/GameXXKMVPGameMode.h"
@@ -19,6 +22,7 @@
 #include "PaperFlipbookComponent.h"
 #include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKPlayerOcclusionRevealComponent.h"
+#include "Town/GameXXKOcclusionMaterialMap.h"
 #include "Town/GameXXKTownExitActor.h"
 #include "Town/GameXXKTownNpcCharacter.h"
 #include "HAL/PlatformProcess.h"
@@ -196,6 +200,34 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 		RevealController->SetOcclusionOverrideForTest(false);
 		RevealController->UpdateRevealForTest(0.23f);
 		TestFalse(TEXT("clear view disables material cutout after release"), RevealController->IsRevealActive());
+
+		UMaterialInterface* OriginalRoof = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Asian_Village/materials/building_materials/M_thatched_roof.M_thatched_roof"));
+		UMaterialInterface* ExpectedCutout = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/GameXXK/Materials/Occlusion/AsianVillage/M_thatched_roof_Cutout.M_thatched_roof_Cutout"));
+		UMaterial* UnmappedMaterial = NewObject<UMaterial>(HeroCharacter);
+		UMaterialInterface* UnmappedInterface = UnmappedMaterial;
+		TestNotNull(TEXT("pilot original roof material loads"), OriginalRoof);
+		TestNotNull(TEXT("pilot cutout roof material loads"), ExpectedCutout);
+		FGameXXKOcclusionMaterialMap MaterialMap;
+		TestEqual(TEXT("pilot roof resolves to project cutout"), MaterialMap.Resolve(OriginalRoof), ExpectedCutout);
+		TestNull(TEXT("unmapped material is never replaced"), MaterialMap.Resolve(UnmappedInterface));
+
+		UStaticMesh* MaterialTestMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+		TestNotNull(TEXT("material test mesh loads"), MaterialTestMesh);
+		UStaticMeshComponent* MaterialTestComponent = NewObject<UStaticMeshComponent>(HeroCharacter);
+		MaterialTestComponent->SetStaticMesh(MaterialTestMesh);
+		MaterialTestComponent->SetMaterial(0, OriginalRoof);
+		RevealController->ApplyCutoutMaterialsForTest(MaterialTestComponent);
+		TestEqual(TEXT("mapped slot receives cutout"), MaterialTestComponent->GetMaterial(0), ExpectedCutout);
+		RevealController->RestoreAllModifiedComponentsForTest();
+		TestEqual(TEXT("restore returns mapped slot pointer-identically"), MaterialTestComponent->GetMaterial(0), OriginalRoof);
+
+		UStaticMeshComponent* UnmappedTestComponent = NewObject<UStaticMeshComponent>(HeroCharacter);
+		UnmappedTestComponent->SetStaticMesh(MaterialTestMesh);
+		UnmappedTestComponent->SetMaterial(0, UnmappedInterface);
+		RevealController->ApplyCutoutMaterialsForTest(UnmappedTestComponent);
+		TestEqual(TEXT("unmapped slot remains original"), UnmappedTestComponent->GetMaterial(0), UnmappedInterface);
+		RevealController->RestoreAllModifiedComponentsForTest();
+		TestEqual(TEXT("restore preserves unmapped slot pointer-identically"), UnmappedTestComponent->GetMaterial(0), UnmappedInterface);
 	}
 	if (HeroVisual)
 	{

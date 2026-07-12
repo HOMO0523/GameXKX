@@ -5,10 +5,13 @@
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "Kismet/KismetMaterialLibrary.h"
 #include "Materials/MaterialInterface.h"
+#include "Materials/MaterialParameterCollection.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "PaperFlipbookComponent.h"
 #include "Town/GameXXKHeroCharacter.h"
+#include "Town/GameXXKOcclusionMaterialMap.h"
 
 UGameXXKPlayerOcclusionRevealComponent::UGameXXKPlayerOcclusionRevealComponent()
 {
@@ -18,6 +21,7 @@ UGameXXKPlayerOcclusionRevealComponent::UGameXXKPlayerOcclusionRevealComponent()
 void UGameXXKPlayerOcclusionRevealComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	ParameterCollection = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/GameXXK/Materials/Occlusion/MPC_PlayerOcclusion.MPC_PlayerOcclusion"), nullptr, LOAD_NoWarn);
 	ApplyRevealState(false);
 }
 
@@ -51,11 +55,17 @@ void UGameXXKPlayerOcclusionRevealComponent::TickComponent(float DeltaTime, ELev
 	const float SampleDelta = TraceAccumulator;
 	TraceAccumulator = 0.0f;
 	UpdateReveal(SampleDelta);
+	UpdateMaterialParameters();
 }
 
 void UGameXXKPlayerOcclusionRevealComponent::UpdateRevealForTest(float DeltaSeconds)
 {
 	UpdateReveal(DeltaSeconds);
+}
+
+void UGameXXKPlayerOcclusionRevealComponent::ApplyCutoutMaterialsForTest(UPrimitiveComponent* Component)
+{
+	ApplyCutoutMaterials(Component);
 }
 
 void UGameXXKPlayerOcclusionRevealComponent::UpdateReveal(float DeltaSeconds)
@@ -155,10 +165,90 @@ void UGameXXKPlayerOcclusionRevealComponent::ApplyRevealState(bool bVisible)
 		RevealVisual->SetVisibility(false, true);
 		RevealVisual->SetHiddenInGame(true, true);
 	}
+	if (bVisible)
+	{
+		ApplyCutoutToBlockingComponents();
+	}
 	if (!bVisible)
 	{
 		RestoreAllModifiedComponents();
 	}
+}
+
+void UGameXXKPlayerOcclusionRevealComponent::ApplyCutoutToBlockingComponents()
+{
+	for (UPrimitiveComponent* Component : BlockingComponents)
+	{
+		ApplyCutoutMaterials(Component);
+	}
+}
+
+void UGameXXKPlayerOcclusionRevealComponent::ApplyCutoutMaterials(UPrimitiveComponent* Component)
+{
+	if (!IsValid(Component))
+	{
+		return;
+	}
+	for (const FGameXXKOcclusionOriginalMaterials& Existing : ModifiedComponents)
+	{
+		if (Existing.Component == Component)
+		{
+			return;
+		}
+	}
+
+	FGameXXKOcclusionMaterialMap MaterialMap;
+	FGameXXKOcclusionOriginalMaterials Entry;
+	Entry.Component = Component;
+	bool bChangedAnySlot = false;
+	const int32 SlotCount = Component->GetNumMaterials();
+	Entry.Slots.Reserve(SlotCount);
+	for (int32 SlotIndex = 0; SlotIndex < SlotCount; ++SlotIndex)
+	{
+		UMaterialInterface* Original = Component->GetMaterial(SlotIndex);
+		Entry.Slots.Add(Original);
+		if (UMaterialInterface* Cutout = MaterialMap.Resolve(Original))
+		{
+			Component->SetMaterial(SlotIndex, Cutout);
+			bChangedAnySlot = true;
+		}
+	}
+	if (bChangedAnySlot)
+	{
+		ModifiedComponents.Add(MoveTemp(Entry));
+	}
+}
+
+void UGameXXKPlayerOcclusionRevealComponent::UpdateMaterialParameters()
+{
+	if (!ParameterCollection)
+	{
+		return;
+	}
+	const AGameXXKHeroCharacter* Hero = Cast<AGameXXKHeroCharacter>(GetOwner());
+	APlayerController* Controller = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	const UPaperFlipbookComponent* HeroVisual = Hero ? Hero->GetTownVisualComponent() : nullptr;
+	if (!Controller || !HeroVisual)
+	{
+		return;
+	}
+
+	int32 ViewX = 1;
+	int32 ViewY = 1;
+	Controller->GetViewportSize(ViewX, ViewY);
+	FVector2D PixelPosition;
+	if (!Controller->ProjectWorldLocationToScreen(HeroVisual->Bounds.Origin, PixelPosition, false))
+	{
+		return;
+	}
+	UKismetMaterialLibrary::SetVectorParameterValue(
+		this, ParameterCollection, TEXT("OcclusionCenter"),
+		FLinearColor(PixelPosition.X / FMath::Max(1, ViewX), PixelPosition.Y / FMath::Max(1, ViewY), 0.0f, 0.0f));
+	UKismetMaterialLibrary::SetVectorParameterValue(
+		this, ParameterCollection, TEXT("OcclusionAspect"),
+		FLinearColor(static_cast<float>(ViewX) / FMath::Max(1, ViewY), 1.0f, 0.0f, 0.0f));
+	UKismetMaterialLibrary::SetScalarParameterValue(
+		this, ParameterCollection, TEXT("OcclusionRadius"), RevealRadiusNormalized);
 }
 
 void UGameXXKPlayerOcclusionRevealComponent::RestoreAllModifiedComponents()

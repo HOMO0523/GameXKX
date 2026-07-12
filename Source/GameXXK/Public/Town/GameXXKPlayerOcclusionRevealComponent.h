@@ -5,6 +5,7 @@
 #include "GameXXKPlayerOcclusionRevealComponent.generated.h"
 
 class UMaterialInterface;
+class UMaterialParameterCollection;
 class UPaperFlipbookComponent;
 class UPrimitiveComponent;
 
@@ -54,6 +55,8 @@ public:
 	void BindRevealVisual(UPaperFlipbookComponent* InRevealVisual);
 	void SetOcclusionOverrideForTest(TOptional<bool> InOverride) { OcclusionOverride = InOverride; }
 	void UpdateRevealForTest(float DeltaSeconds);
+	void ApplyCutoutMaterialsForTest(UPrimitiveComponent* Component);
+	void RestoreAllModifiedComponentsForTest() { RestoreAllModifiedComponents(); }
 
 private:
 	void UpdateReveal(float DeltaSeconds);
@@ -61,6 +64,9 @@ private:
 	bool IsRevealAllowedInCurrentScreen() const;
 	void ApplyRevealState(bool bVisible);
 	void RestoreAllModifiedComponents();
+	void ApplyCutoutMaterials(UPrimitiveComponent* Component);
+	void ApplyCutoutToBlockingComponents();
+	void UpdateMaterialParameters();
 
 	UPROPERTY(EditDefaultsOnly, Category="GameXXK|Town|Occlusion")
 	float TraceInterval = 0.05f;
@@ -91,6 +97,9 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<FGameXXKOcclusionOriginalMaterials> ModifiedComponents;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialParameterCollection> ParameterCollection;
 
 	float TraceAccumulator = 0.0f;
 	float ContinuousOccludedSeconds = 0.0f;
