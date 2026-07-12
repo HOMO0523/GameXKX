@@ -31,3 +31,6 @@ Plugins/**/__pycache__/
 !Content/**/*.umap
 !Plugins/**/Content/**
 !Plugins/**/Source/**
+
+# Licensed Fab dependency. Install locally from Stylized Eastern Village.
+Content/Asian_Village/**
