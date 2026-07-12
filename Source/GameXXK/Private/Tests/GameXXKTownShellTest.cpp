@@ -9,6 +9,7 @@
 #include "GameFramework/InputSettings.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Materials/MaterialInterface.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -17,6 +18,7 @@
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
 #include "Town/GameXXKHeroCharacter.h"
+#include "Town/GameXXKPlayerOcclusionRevealComponent.h"
 #include "Town/GameXXKTownExitActor.h"
 #include "Town/GameXXKTownNpcCharacter.h"
 #include "HAL/PlatformProcess.h"
@@ -140,6 +142,14 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("hero character owns interaction component"), HeroCharacter->GetInteractionComponent());
 	TestNotNull(TEXT("hero character owns Character movement component"), HeroCharacter->GetMovementComponent());
 	TestNotNull(TEXT("hero character has explicit Pawn overlap collision"), HeroCharacter->GetTownCollisionComponent());
+	TestEqual(TEXT("hero capsule supports physical walking collision"), HeroCharacter->GetTownCollisionComponent()->GetCollisionEnabled(), ECollisionEnabled::QueryAndPhysics);
+	TestEqual(TEXT("hero capsule blocks static gameplay proxies"), HeroCharacter->GetTownCollisionComponent()->GetCollisionResponseToChannel(ECC_WorldStatic), ECollisionResponse::ECR_Block);
+	TestTrue(TEXT("hero movement uses gravity for 3D town terrain"), HeroCharacter->GetCharacterMovement() && HeroCharacter->GetCharacterMovement()->GravityScale > 0.0f);
+	TestEqual(TEXT("hero defaults to walking movement"), HeroCharacter->GetCharacterMovement()->DefaultLandMovementMode, MOVE_Walking);
+	TestEqual(
+		TEXT("hero is not constrained to a fixed world-Z plane"),
+		HeroCharacter->GetCharacterMovement()->ConstrainDirectionToPlane(FVector::UpVector),
+		FVector::UpVector);
 	TestTrue(TEXT("hero W key is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::W));
 	TestTrue(TEXT("hero A key is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::A));
 	TestTrue(TEXT("hero S key is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::S));
@@ -153,6 +163,40 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("hero has Paper2D visual shell"), HeroCharacter->HasTownVisual());
 	const UPaperFlipbookComponent* HeroVisual = HeroCharacter->GetTownVisualComponent();
 	TestNotNull(TEXT("hero exposes Paper2D visual component"), HeroVisual);
+	UPaperFlipbookComponent* RevealVisual = HeroCharacter->GetOcclusionRevealVisualComponent();
+	UGameXXKPlayerOcclusionRevealComponent* RevealController = HeroCharacter->GetOcclusionRevealComponent();
+	TestNotNull(TEXT("hero owns a Paper2D occlusion reveal visual"), RevealVisual);
+	TestNotNull(TEXT("hero owns an occlusion reveal controller"), RevealController);
+	TestEqual(TEXT("cutout starts with no modified components"), RevealController ? RevealController->GetModifiedComponentCount() : INDEX_NONE, 0);
+	TestEqual(TEXT("scene reveal samples center plus eight circle points"), RevealController ? RevealController->GetOcclusionSampleCount() : INDEX_NONE, 9);
+	TestTrue(TEXT("scene reveal can peel multiple blocking layers per ray"), RevealController && RevealController->GetMaxOcclusionLayers() >= 4);
+	TestEqual(TEXT("scene reveal traces the same normalized radius as the post process circle"), RevealController ? RevealController->GetRevealRadiusNormalized() : -1.0f, 0.18f);
+	TestTrue(TEXT("cutout restores original material slots"), RevealController && RevealController->RestoresOriginalMaterials());
+	if (RevealVisual)
+	{
+		TestEqual(TEXT("reveal visual has no collision"), RevealVisual->GetCollisionEnabled(), ECollisionEnabled::NoCollision);
+		TestFalse(TEXT("reveal visual starts hidden"), RevealVisual->IsVisible());
+		TestFalse(TEXT("reveal visual does not cast shadows"), RevealVisual->CastShadow);
+	}
+	if (RevealController)
+	{
+		TestEqual(TEXT("reveal samples at 20 Hz"), RevealController->GetTraceInterval(), 0.05f);
+		TestEqual(TEXT("reveal trace uses a stable sphere"), RevealController->GetTraceRadius(), 36.0f);
+		TestEqual(TEXT("reveal waits before activation"), RevealController->GetActivationDelay(), 0.08f);
+		TestEqual(TEXT("reveal fades after visibility returns"), RevealController->GetReleaseDuration(), 0.22f);
+
+		UPaperFlipbook* RevealSyncFlipbook = NewObject<UPaperFlipbook>(HeroCharacter);
+		HeroCharacter->GetTownVisualComponent()->SetFlipbook(RevealSyncFlipbook);
+		RevealController->SetOcclusionOverrideForTest(true);
+		RevealController->UpdateRevealForTest(0.10f);
+		HeroCharacter->SynchronizeOcclusionRevealVisualForTest();
+		TestTrue(TEXT("continuous obstruction enables material cutout state"), RevealController->IsRevealActive());
+		TestFalse(TEXT("duplicate Paper2D renderer stays disabled in final path"), RevealVisual && RevealVisual->IsVisible());
+
+		RevealController->SetOcclusionOverrideForTest(false);
+		RevealController->UpdateRevealForTest(0.23f);
+		TestFalse(TEXT("clear view disables material cutout after release"), RevealController->IsRevealActive());
+	}
 	if (HeroVisual)
 	{
 		TestEqual(TEXT("hero Paper2D visual uses tuned HD2D land offset"), static_cast<float>(HeroVisual->GetRelativeLocation().Z), -80.0f);
@@ -197,8 +241,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 			if (HeroBlueprintCameraBoom)
 			{
 				TestTrue(TEXT("BP_HeroCharacter camera boom keeps Ocean-style absolute rotation"), HeroBlueprintCameraBoom->IsUsingAbsoluteRotation());
-				TestEqual(TEXT("BP_HeroCharacter camera boom keeps Ocean-style arm length"), HeroBlueprintCameraBoom->TargetArmLength, 800.0f);
-				TestEqual(TEXT("BP_HeroCharacter camera boom keeps Ocean-style pitch"), static_cast<float>(HeroBlueprintCameraBoom->GetRelativeRotation().Pitch), -60.0f);
+				TestEqual(TEXT("BP_HeroCharacter preserves the user-tuned camera arm length"), HeroBlueprintCameraBoom->TargetArmLength, 1000.0f);
+				TestEqual(TEXT("BP_HeroCharacter preserves the user-tuned camera pitch"), static_cast<float>(HeroBlueprintCameraBoom->GetRelativeRotation().Pitch), -30.0f);
 			}
 			if (HeroBlueprintCamera)
 			{
@@ -548,7 +592,7 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 			MovingHero->MoveHorizontal(1.0f);
 			InputFollowerNpc->ActivateFollower(MovingHero, 96.0f);
 			TestEqual(TEXT("hero exposes right movement intent for quest follower"), MovingHero->GetTownMovementIntentVector(), FVector::RightVector);
-			TestTrue(TEXT("moving hero exposes positive town movement speed"), MovingHero->GetCharacterMovement() && MovingHero->GetCharacterMovement()->MaxFlySpeed > 1.0f);
+			TestTrue(TEXT("moving hero exposes positive town movement speed"), MovingHero->GetCharacterMovement() && MovingHero->GetCharacterMovement()->MaxWalkSpeed > 1.0f);
 			TestTrue(TEXT("input follower is active before movement input tick"), InputFollowerNpc->IsFollowerActive());
 			TestTrue(TEXT("input follower targets moving hero before movement input tick"), InputFollowerNpc->GetFollowTarget() == MovingHero);
 			const FVector FollowerBeforeInputMove = InputFollowerNpc->GetActorLocation();

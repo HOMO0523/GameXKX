@@ -9,6 +9,7 @@
 #include "GameXXKHeroCharacter.generated.h"
 
 class UGameXXKInteractionComponent;
+class UGameXXKPlayerOcclusionRevealComponent;
 class UInputComponent;
 class UCameraComponent;
 class UPaperFlipbook;
@@ -43,6 +44,16 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
 	UPaperFlipbookComponent* GetTownVisualComponent() const { return Visual.Get(); }
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
+	UPaperFlipbookComponent* GetOcclusionRevealVisualComponent() const { return OcclusionRevealVisual.Get(); }
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
+	UGameXXKPlayerOcclusionRevealComponent* GetOcclusionRevealComponent() const { return OcclusionReveal.Get(); }
+
+	void SynchronizeOcclusionRevealVisualForTest();
+	FString GetOcclusionRevealMaterialPathString() const;
+	void InitializeOcclusionRevealMaterialForTest();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	bool IsSupportedMovementKey(FKey Key) const;
@@ -127,6 +138,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|Town")
 	TObjectPtr<UPaperFlipbookComponent> Visual;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TObjectPtr<UPaperFlipbookComponent> OcclusionRevealVisual;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TObjectPtr<UGameXXKPlayerOcclusionRevealComponent> OcclusionReveal;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|Town")
 	TObjectPtr<UGameXXKInteractionComponent> Interaction;
 
@@ -158,6 +175,8 @@ private:
 	UPaperFlipbook* GetTownIdleFlipbookForDirection(EGameXXKTownFacingDirection Direction) const;
 	UPaperFlipbook* GetTownWalkFlipbookForDirection(EGameXXKTownFacingDirection Direction) const;
 	void InitializeTownDirectionFlipbooks();
+	void SynchronizeOcclusionRevealVisual();
+	void InitializeOcclusionRevealMaterial();
 	void RefreshTownMovementIntent();
 	bool IsTownMovementBlockedByModalWindow() const;
 	void UpdateTownFacingFromIntent(float Horizontal, float Vertical);

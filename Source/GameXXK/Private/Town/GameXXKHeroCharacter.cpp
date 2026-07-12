@@ -1,4 +1,5 @@
 #include "Town/GameXXKHeroCharacter.h"
+#include "Town/GameXXKPlayerOcclusionRevealComponent.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -7,6 +8,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "HAL/PlatformTime.h"
 #include "Interaction/GameXXKInteractionComponent.h"
+#include "Materials/MaterialInterface.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
@@ -15,6 +17,7 @@ namespace
 {
 	constexpr float HeroTownMovementAxisDeadZone = 0.20f;
 	constexpr double HeroTownDiagonalReleaseGraceSeconds = 0.04;
+	const TCHAR* PlayerOcclusionRevealMaterialPath = TEXT("/Game/GameXXK/Materials/Player/M_PlayerOcclusionReveal.M_PlayerOcclusionReveal");
 
 	FSoftObjectPath MakeHeroCharacterWalkFlipbookPath(const TCHAR* DirectionName)
 	{
@@ -98,7 +101,7 @@ AGameXXKHeroCharacter::AGameXXKHeroCharacter()
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	Capsule->SetCapsuleRadius(36.0f);
 	Capsule->SetCapsuleHalfHeight(72.0f);
-	Capsule->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	Capsule->SetCollisionObjectType(ECC_Pawn);
 	Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
 	Capsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
@@ -106,15 +109,14 @@ AGameXXKHeroCharacter::AGameXXKHeroCharacter()
 	Capsule->SetGenerateOverlapEvents(true);
 
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
-	Movement->GravityScale = 0.0f;
-	Movement->DefaultLandMovementMode = MOVE_Flying;
-	Movement->DefaultWaterMovementMode = MOVE_Flying;
+	Movement->GravityScale = 1.0f;
+	Movement->DefaultLandMovementMode = MOVE_Walking;
 	Movement->MaxWalkSpeed = 260.0f;
-	Movement->MaxFlySpeed = 260.0f;
+	Movement->MaxStepHeight = 45.0f;
+	Movement->SetWalkableFloorAngle(50.0f);
 	Movement->bOrientRotationToMovement = false;
-	Movement->SetPlaneConstraintEnabled(true);
-	Movement->SetPlaneConstraintNormal(FVector::UpVector);
-	Movement->bSnapToPlaneAtStart = true;
+	Movement->SetPlaneConstraintEnabled(false);
+	Movement->bSnapToPlaneAtStart = false;
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
@@ -136,6 +138,20 @@ AGameXXKHeroCharacter::AGameXXKHeroCharacter()
 	Visual->SetCastShadow(false);
 	Visual->SetTranslucentSortPriority(10);
 
+	OcclusionRevealVisual = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("OcclusionRevealVisual"));
+	OcclusionRevealVisual->SetupAttachment(Capsule);
+	OcclusionRevealVisual->SetRelativeLocation(FVector(0.0f, 0.0f, -80.0f));
+	OcclusionRevealVisual->SetRelativeRotation(FRotator(0.0f, 90.0f, -30.0f));
+	OcclusionRevealVisual->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+	OcclusionRevealVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	OcclusionRevealVisual->SetCastShadow(false);
+	OcclusionRevealVisual->SetTranslucentSortPriority(11);
+	OcclusionRevealVisual->SetVisibility(false);
+	OcclusionRevealVisual->SetHiddenInGame(true);
+
+	OcclusionReveal = CreateDefaultSubobject<UGameXXKPlayerOcclusionRevealComponent>(TEXT("OcclusionReveal"));
+	OcclusionReveal->BindRevealVisual(OcclusionRevealVisual);
+
 	Interaction = CreateDefaultSubobject<UGameXXKInteractionComponent>(TEXT("Interaction"));
 
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
@@ -148,23 +164,52 @@ AGameXXKHeroCharacter::AGameXXKHeroCharacter()
 void AGameXXKHeroCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	InitializeOcclusionRevealMaterial();
 
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
 	{
-		Movement->SetMovementMode(MOVE_Flying);
+		Movement->SetMovementMode(MOVE_Walking);
 	}
 	ApplyTownFacingFlipbook();
+}
+
+FString AGameXXKHeroCharacter::GetOcclusionRevealMaterialPathString() const
+{
+	return PlayerOcclusionRevealMaterialPath;
+}
+
+void AGameXXKHeroCharacter::InitializeOcclusionRevealMaterialForTest()
+{
+	InitializeOcclusionRevealMaterial();
+}
+
+void AGameXXKHeroCharacter::InitializeOcclusionRevealMaterial()
+{
+	if (!OcclusionRevealVisual)
+	{
+		return;
+	}
+
+	UMaterialInterface* RevealMaterial = LoadObject<UMaterialInterface>(nullptr, PlayerOcclusionRevealMaterialPath, nullptr, LOAD_NoWarn);
+	if (!RevealMaterial)
+	{
+		OcclusionRevealVisual->SetVisibility(false);
+		UE_LOG(LogTemp, Warning, TEXT("GameXXK player occlusion reveal material is unavailable: %s"), PlayerOcclusionRevealMaterialPath);
+		return;
+	}
+
+	OcclusionRevealVisual->SetMaterial(0, RevealMaterial);
 }
 
 void AGameXXKHeroCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	SynchronizeOcclusionRevealVisual();
 
 	const FVector MoveDirection = (FVector::RightVector * HorizontalIntent) + (FVector::ForwardVector * VerticalIntent);
 	if (!MoveDirection.IsNearlyZero())
 	{
-		const float MoveSpeed = GetCharacterMovement() ? GetCharacterMovement()->MaxFlySpeed : 260.0f;
-		AddActorWorldOffset(MoveDirection.GetClampedToMaxSize(1.0f) * MoveSpeed * DeltaSeconds, false);
+		AddMovementInput(MoveDirection.GetClampedToMaxSize(1.0f));
 		if (bHasPendingStopDiagonalFacingDirection
 			&& !IsHeroTownDiagonalDirection(CurrentTownFacingDirection)
 			&& GetHeroTownInputTimeSeconds(this) - PendingStopDiagonalReleaseTimeSeconds > HeroTownDiagonalReleaseGraceSeconds)
@@ -172,6 +217,24 @@ void AGameXXKHeroCharacter::Tick(float DeltaSeconds)
 			bHasPendingStopDiagonalFacingDirection = false;
 		}
 	}
+}
+
+void AGameXXKHeroCharacter::SynchronizeOcclusionRevealVisualForTest()
+{
+	SynchronizeOcclusionRevealVisual();
+}
+
+void AGameXXKHeroCharacter::SynchronizeOcclusionRevealVisual()
+{
+	if (!Visual || !OcclusionRevealVisual || !OcclusionRevealVisual->IsVisible())
+	{
+		return;
+	}
+
+	OcclusionRevealVisual->SetFlipbook(Visual->GetFlipbook());
+	OcclusionRevealVisual->SetPlaybackPositionInFrames(Visual->GetPlaybackPositionInFrames(), false);
+	OcclusionRevealVisual->SetSpriteColor(Visual->GetSpriteColor());
+	OcclusionRevealVisual->SetRelativeTransform(Visual->GetRelativeTransform());
 }
 
 void AGameXXKHeroCharacter::UnPossessed()
