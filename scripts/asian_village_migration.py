@@ -1,4 +1,5 @@
 import argparse
+import ctypes
 import hashlib
 import json
 import os
@@ -7,6 +8,7 @@ import stat
 import subprocess
 import sys
 import unicodedata
+import secrets
 from pathlib import Path, PurePosixPath
 
 
@@ -76,32 +78,47 @@ def _check_path_components(path: Path) -> None:
         _lstat_safe(current)
 
 
-def sha256_file(path: Path) -> str:
-    """Hash one stable regular file through a single open handle."""
+def _snapshot_file(path: Path) -> tuple[str, int, tuple[int, ...]]:
+    """Hash and identify one file from a single stable open handle."""
     path = Path(path)
-    _lstat_safe(path)
+    _check_path_components(path.parent)
+    initial_path = _lstat_safe(path)
     try:
         digest = hashlib.sha256()
         with path.open("rb") as handle:
             before = os.fstat(handle.fileno())
             if not stat.S_ISREG(before.st_mode):
                 raise MigrationError(f"not a regular file: {path}")
+            _check_path_components(path.parent)
+            opened_path = _lstat_safe(path)
+            if not _path_matches_handle(before, initial_path) or not _path_matches_handle(
+                before, opened_path
+            ):
+                raise MigrationError(f"file was replaced while opening: {path}")
             while True:
                 block = handle.read(1024 * 1024)
                 if not block:
                     break
                 digest.update(block)
             after = os.fstat(handle.fileno())
-            path_after = path.stat()
-        if _identity(before) != _identity(after):
-            raise MigrationError(f"file changed while hashing: {path}")
-        if not _path_matches_handle(after, path_after):
-            raise MigrationError(f"file was replaced while hashing: {path}")
-        return digest.hexdigest()
+            before_close_path = _lstat_safe(path)
+            if _identity(before) != _identity(after):
+                raise MigrationError(f"file changed while hashing: {path}")
+            if not _path_matches_handle(after, before_close_path):
+                raise MigrationError(f"file was replaced while hashing: {path}")
+        _check_path_components(path.parent)
+        closed_path = _lstat_safe(path)
+        if not _path_matches_handle(after, closed_path):
+            raise MigrationError(f"file was replaced after hashing: {path}")
+        return digest.hexdigest(), after.st_size, _identity(after)
     except MigrationError:
         raise
     except (OSError, ValueError) as exc:
         raise _error("unable to hash", path, exc) from exc
+
+
+def sha256_file(path: Path) -> str:
+    return _snapshot_file(path)[0]
 
 
 def build_manifest(source: Path) -> dict:
@@ -142,11 +159,8 @@ def build_manifest(source: Path) -> dict:
 
     files = []
     for relative, path in sorted(discovered, key=lambda item: item[0]):
-        digest = sha256_file(path)
-        try:
-            size = path.stat().st_size
-        except (OSError, ValueError) as exc:
-            raise _error("unable to inspect hashed file", path, exc) from exc
+        _validate_relative_path(relative)
+        digest, size, _ = _snapshot_file(path)
         files.append({"path": relative, "bytes": size, "sha256": digest})
     counts = {
         "files": len(files),
@@ -167,17 +181,20 @@ def canonical_json_bytes(value: object) -> bytes:
 def write_manifest(path: Path, manifest: dict, *, replace: bool = False) -> None:
     path = Path(path)
     temporary = path.with_name(path.name + ".tmp")
-    if path.exists() and not replace:
-        raise MigrationError(f"manifest already exists: {path}")
-    if temporary.exists():
-        raise MigrationError(f"temporary manifest already exists: {temporary}")
     data = canonical_json_bytes(manifest)
     try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists() and not replace:
+            raise MigrationError(f"manifest already exists: {path}")
+        if temporary.exists():
+            raise MigrationError(f"temporary manifest already exists: {temporary}")
         with temporary.open("xb") as handle:
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
         temporary.replace(path)
+    except MigrationError:
+        raise
     except (OSError, ValueError) as exc:
         try:
             temporary.unlink(missing_ok=True)
@@ -193,12 +210,19 @@ def _plain_int(value: object) -> bool:
 def _validate_relative_path(value: object) -> str:
     if not isinstance(value, str) or not value:
         raise MigrationError("manifest file path must be a non-empty string")
-    if "\\" in value or "\0" in value or ":" in value:
+    segments = value.split("/")
+    if (
+        "\\" in value
+        or "\0" in value
+        or ":" in value
+        or value.endswith("/")
+        or any(segment in ("", ".", "..") for segment in segments)
+    ):
         raise MigrationError(f"unsafe manifest path: {value!r}")
-    if any(unicodedata.category(character) == "Cc" for character in value):
+    if any(unicodedata.category(character) in {"Cc", "Cf"} for character in value):
         raise MigrationError(f"unsafe manifest path: {value!r}")
     pure = PurePosixPath(value)
-    if pure.is_absolute() or any(part in ("", ".", "..") for part in pure.parts):
+    if pure.is_absolute() or pure.as_posix() != value:
         raise MigrationError(f"unsafe manifest path: {value!r}")
     for part in pure.parts:
         if part.endswith((".", " ")):
@@ -289,20 +313,102 @@ def _project_and_staging(target: Path, staging: Path) -> tuple[Path, Path, Path]
     return root, canonical_target, canonical_staging
 
 
-def _remove_safe_staging(staging: Path, project_root: Path) -> None:
-    """Remove only the exact migration staging directory after lexical checks."""
+def _directory_identity(path: Path) -> tuple[int, int]:
+    _check_path_components(path)
+    value = _lstat_safe(path)
+    if not stat.S_ISDIR(value.st_mode):
+        raise MigrationError(f"not a directory: {path}")
+    return value.st_dev, value.st_ino
+
+
+def _assert_directory_identity(path: Path, expected: tuple[int, int]) -> None:
+    if _directory_identity(path) != expected:
+        raise MigrationError(f"directory identity changed: {path}")
+
+
+def _lexists(path: Path) -> bool:
+    try:
+        return os.path.lexists(path)
+    except (OSError, ValueError) as exc:
+        raise _error("unable to inspect path", path, exc) from exc
+
+
+def _validate_staging_owner(
+    staging: Path,
+    ownership: dict,
+    parent_identity: tuple[int, int],
+) -> None:
+    _assert_directory_identity(staging.parent, parent_identity)
+    if _directory_identity(staging) != ownership["identity"]:
+        raise MigrationError(f"staging ownership identity changed: {staging}")
+    marker = ownership["marker"]
+    value = _lstat_safe(marker)
+    if not stat.S_ISREG(value.st_mode):
+        raise MigrationError(f"invalid staging owner marker: {marker}")
+    if _identity(value) != ownership["marker_identity"]:
+        raise MigrationError(f"staging owner marker identity changed: {marker}")
+    try:
+        nonce = marker.read_text(encoding="ascii")
+    except (OSError, ValueError, UnicodeError) as exc:
+        raise _error("unable to read staging owner marker", marker, exc) from exc
+    if nonce != ownership["nonce"]:
+        raise MigrationError(f"staging owner nonce changed: {marker}")
+
+
+def _remove_owned_staging(
+    staging: Path,
+    project_root: Path,
+    ownership: dict,
+    parent_identity: tuple[int, int],
+) -> None:
     expected = (
         project_root.resolve(strict=True)
         / "Saved"
         / "MigrationStaging"
         / "Asian_Village"
     )
-    absolute = staging.absolute()
-    resolved = staging.resolve(strict=False)
-    if absolute != expected or resolved != expected:
+    if staging.absolute() != expected or staging.resolve(strict=False) != expected:
         raise MigrationError(f"refusing to clean unsafe staging path: {staging}")
-    if staging.exists():
-        shutil.rmtree(staging)
+    _validate_staging_owner(staging, ownership, parent_identity)
+    shutil.rmtree(staging)
+    ownership["marker"].unlink()
+
+
+def _promote_no_replace(source: Path, target: Path) -> None:
+    source = Path(source)
+    target = Path(target)
+    try:
+        if os.name == "nt":
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            move_file = kernel32.MoveFileW
+            move_file.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p)
+            move_file.restype = ctypes.c_int
+            if not move_file(str(source), str(target)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            return
+        libc = ctypes.CDLL(None, use_errno=True)
+        if sys.platform.startswith("linux") and hasattr(libc, "renameat2"):
+            renameat2 = libc.renameat2
+            renameat2.argtypes = (
+                ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+                ctypes.c_char_p, ctypes.c_uint,
+            )
+            renameat2.restype = ctypes.c_int
+            if renameat2(-100, os.fsencode(source), -100, os.fsencode(target), 1):
+                raise OSError(ctypes.get_errno(), os.strerror(ctypes.get_errno()))
+            return
+        if sys.platform == "darwin" and hasattr(libc, "renamex_np"):
+            renamex = libc.renamex_np
+            renamex.argtypes = (ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint)
+            renamex.restype = ctypes.c_int
+            if renamex(os.fsencode(source), os.fsencode(target), 4):
+                raise OSError(ctypes.get_errno(), os.strerror(ctypes.get_errno()))
+            return
+        raise MigrationError("atomic no-replace directory promotion is unavailable")
+    except MigrationError:
+        raise
+    except (OSError, ValueError) as exc:
+        raise _error("unable to atomically promote without replacement", target, exc) from exc
 
 
 def stage_and_promote(
@@ -316,30 +422,60 @@ def stage_and_promote(
     source = Path(source)
     root, target, staging = _project_and_staging(target, staging)
     _validate_manifest(manifest)
-    if target.exists():
+    owner_marker = staging.with_name(staging.name + ".owner")
+    if _lexists(target):
         raise MigrationError(f"target already exists: {target}")
-    if staging.exists():
+    if _lexists(staging) or _lexists(owner_marker):
         raise MigrationError(f"staging already exists: {staging}")
     verify_manifest(source, manifest)
 
-    created_staging = False
+    ownership = None
     promoted = False
     try:
         staging.parent.mkdir(parents=True, exist_ok=True)
-        created_staging = True
-        shutil.copytree(source, staging, copy_function=copier)
+        content_identity = _directory_identity(target.parent)
+        staging_parent_identity = _directory_identity(staging.parent)
+        _assert_directory_identity(target.parent, content_identity)
+        _assert_directory_identity(staging.parent, staging_parent_identity)
+        staging.mkdir(exist_ok=False)
+        nonce = secrets.token_hex(32)
+        staging_identity = _directory_identity(staging)
+        with owner_marker.open("x", encoding="ascii", newline="") as handle:
+            handle.write(nonce)
+            handle.flush()
+            os.fsync(handle.fileno())
+        ownership = {
+            "identity": staging_identity,
+            "nonce": nonce,
+            "marker": owner_marker,
+            "marker_identity": _identity(_lstat_safe(owner_marker)),
+        }
+        _validate_staging_owner(staging, ownership, staging_parent_identity)
+        _assert_directory_identity(target.parent, content_identity)
+        shutil.copytree(
+            source, staging, copy_function=copier, dirs_exist_ok=True
+        )
+        _validate_staging_owner(staging, ownership, staging_parent_identity)
+        _assert_directory_identity(target.parent, content_identity)
         verify_manifest(source, manifest)
         verify_manifest(staging, manifest)
-        staging.replace(target)
+        _validate_staging_owner(staging, ownership, staging_parent_identity)
+        _assert_directory_identity(target.parent, content_identity)
+        if _lexists(target):
+            raise MigrationError(f"target appeared before promotion: {target}")
+        _promote_no_replace(staging, target)
         promoted = True
+        owner_marker.unlink()
         verify_manifest(target, manifest)
         return {
             "status": "promoted",
             "target": str(target),
             "counts": dict(manifest["counts"]),
         }
-    except Exception as exc:
+    except BaseException as exc:
         if promoted:
+            if isinstance(exc, KeyboardInterrupt):
+                raise
             if isinstance(exc, MigrationError):
                 detail = str(exc)
             else:
@@ -348,11 +484,15 @@ def stage_and_promote(
                 f"terminal failure after promotion; preserve target for isolation: {detail}"
             ) from exc
         cleanup_error = None
-        if created_staging:
+        if ownership is not None:
             try:
-                _remove_safe_staging(staging, root)
+                _remove_owned_staging(
+                    staging, root, ownership, staging_parent_identity
+                )
             except (MigrationError, OSError, ValueError) as cleanup_exc:
                 cleanup_error = cleanup_exc
+        if isinstance(exc, KeyboardInterrupt):
+            raise
         detail = str(exc)
         if cleanup_error is not None:
             detail += f"; safe staging cleanup failed: {cleanup_error}"

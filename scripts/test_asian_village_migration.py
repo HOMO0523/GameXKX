@@ -307,7 +307,7 @@ class ManifestTests(unittest.TestCase):
         expected = '{\n  "a": [\n    1\n  ],\n  "z": "村"\n}\n'.encode("utf-8")
         self.assertEqual(module.canonical_json_bytes(value), expected)
         with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "manifest.json"
+            output = Path(directory) / "new" / "nested" / "manifest.json"
             module.write_manifest(output, value)
             self.assertEqual(output.read_bytes(), expected)
             with self.assertRaises(module.MigrationError):
@@ -315,6 +315,23 @@ class ManifestTests(unittest.TestCase):
             module.write_manifest(output, {"replacement": True}, replace=True)
             self.assertIn(b"replacement", output.read_bytes())
             self.assertFalse(output.with_name(output.name + ".tmp").exists())
+
+    def test_write_manifest_creates_missing_parent_directories(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "missing" / "nested" / "manifest.json"
+            module.write_manifest(output, {"ok": True})
+            self.assertEqual(json.loads(output.read_text(encoding="utf-8")), {"ok": True})
+
+    def test_write_manifest_normalizes_parent_creation_failure(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "missing" / "manifest.json"
+            denial = PermissionError("injected parent denial")
+            with mock.patch.object(Path, "mkdir", side_effect=denial):
+                with self.assertRaises(module.MigrationError) as raised:
+                    module.write_manifest(output, {"ok": True})
+            self.assertIs(raised.exception.__cause__, denial)
 
     def test_build_manifest_rejects_symlink(self):
         module = migration_module()
@@ -329,6 +346,38 @@ class ManifestTests(unittest.TestCase):
                 self.skipTest(f"file symlinks unavailable: {exc}")
             with self.assertRaisesRegex(module.MigrationError, "link.uasset"):
                 module.build_manifest(root)
+
+    def test_lstat_rejects_mocked_windows_reparse_without_symlink_privilege(self):
+        module = migration_module()
+        value = types.SimpleNamespace(
+            st_mode=0o100644,
+            st_file_attributes=0x400,
+        )
+        with mock.patch.object(Path, "lstat", return_value=value):
+            with self.assertRaisesRegex(module.MigrationError, "reparse"):
+                module._lstat_safe(Path("mocked-reparse"))
+
+    def test_snapshot_rejects_path_swapped_to_reparse_after_open(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "asset.uasset"
+            path.write_bytes(b"asset")
+            real_lstat_safe = module._lstat_safe
+            target_calls = 0
+
+            def swapped_lstat(candidate):
+                nonlocal target_calls
+                if Path(candidate) == path:
+                    target_calls += 1
+                    if target_calls == 2:
+                        raise module.MigrationError(
+                            f"symbolic link or reparse point is forbidden: {path}"
+                        )
+                return real_lstat_safe(candidate)
+
+            with mock.patch.object(module, "_lstat_safe", side_effect=swapped_lstat):
+                with self.assertRaisesRegex(module.MigrationError, "reparse"):
+                    module.sha256_file(path)
 
     def test_build_manifest_rejects_file_changed_while_hashing(self):
         module = migration_module()
@@ -402,21 +451,34 @@ class ManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "metadata.uasset"
             path.write_bytes(b"asset")
-            real_stat = Path.stat
+            real_lstat = Path.lstat
+            target_calls = 0
 
-            def changed_stat(candidate, *args, **kwargs):
-                value = real_stat(candidate, *args, **kwargs)
-                if candidate != path or kwargs.get("follow_symlinks") is False:
+            def changed_lstat(candidate):
+                nonlocal target_calls
+                value = real_lstat(candidate)
+                if candidate != path:
                     return value
-                return types.SimpleNamespace(
-                    st_dev=value.st_dev,
-                    st_ino=value.st_ino,
-                    st_size=value.st_size,
-                    st_mtime_ns=value.st_mtime_ns + 1,
-                    st_ctime_ns=value.st_ctime_ns,
+                target_calls += 1
+                if target_calls < 3:
+                    return value
+                fields = {
+                    name: getattr(value, name)
+                    for name in (
+                        "st_mode", "st_dev", "st_ino", "st_size",
+                        "st_mtime_ns", "st_ctime_ns",
+                    )
+                }
+                fields["st_mtime_ns"] += 1
+                fields["st_file_attributes"] = getattr(
+                    value, "st_file_attributes", 0
                 )
+                fields["st_birthtime_ns"] = getattr(
+                    value, "st_birthtime_ns", None
+                )
+                return types.SimpleNamespace(**fields)
 
-            with mock.patch.object(Path, "stat", changed_stat):
+            with mock.patch.object(Path, "lstat", changed_lstat):
                 with self.assertRaisesRegex(module.MigrationError, "metadata.uasset"):
                     module.sha256_file(path)
 
@@ -437,6 +499,25 @@ class ManifestTests(unittest.TestCase):
             with self.subTest(control=ord(control)):
                 with self.assertRaisesRegex(module.MigrationError, "unsafe"):
                     module._validate_manifest(manifest)
+
+    def test_manifest_rejects_noncanonical_segments_and_format_controls(self):
+        module = migration_module()
+        for path in ("dir//x.uasset", "dir/./x.uasset", "x.uasset/", "x\u202e.uasset"):
+            with self.subTest(path=path):
+                with self.assertRaisesRegex(module.MigrationError, "unsafe"):
+                    module._validate_relative_path(path)
+
+    def test_build_manifest_rejects_real_noncanonical_filename_when_supported(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "asset\u202e.uasset"
+            try:
+                path.write_bytes(b"asset")
+            except OSError as exc:
+                self.skipTest(f"format-control filenames unavailable: {exc}")
+            with self.assertRaisesRegex(module.MigrationError, "unsafe"):
+                module.build_manifest(root)
 
     def test_verify_manifest_strictly_validates_schema_paths_order_and_content(self):
         module = migration_module()
@@ -541,14 +622,143 @@ class StageAndPromoteTests(unittest.TestCase):
         self.assertFalse(self.staging.exists())
         self.assertTrue(self.source.exists())
 
-        wrong = json.loads(json.dumps(self.manifest))
-        wrong["files"][0]["sha256"] = "0" * 64
+        def corrupting_copier(source, destination):
+            result = shutil.copy2(source, destination)
+            Path(destination).write_bytes(b"corrupted-in-staging")
+            return result
+
         with self.assertRaisesRegex(module.MigrationError, "verification"):
-            module.stage_and_promote(
-                self.source, self.target, self.staging, wrong
-            )
+            self.call(copier=corrupting_copier)
         self.assertFalse(self.target.exists())
         self.assertFalse(self.staging.exists())
+
+    def test_staging_creation_race_preserves_external_directory(self):
+        module = migration_module()
+        original_mkdir = Path.mkdir
+        raced = False
+
+        def racing_mkdir(path, *args, **kwargs):
+            nonlocal raced
+            if Path(path) == self.staging and not raced:
+                raced = True
+                original_mkdir(path, parents=True, exist_ok=False)
+                (path / "external.txt").write_text("external", encoding="utf-8")
+            return original_mkdir(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "mkdir", racing_mkdir):
+            with self.assertRaises(module.MigrationError):
+                self.call()
+        self.assertEqual(
+            (self.staging / "external.txt").read_text(encoding="utf-8"), "external"
+        )
+        self.assertFalse(self.target.exists())
+
+    def test_external_target_created_during_copy_is_not_overwritten(self):
+        module = migration_module()
+        created = False
+
+        def target_racing_copier(source, destination):
+            nonlocal created
+            result = shutil.copy2(source, destination)
+            if not created:
+                self.target.mkdir()
+                (self.target / "external.txt").write_text("external", encoding="utf-8")
+                created = True
+            return result
+
+        with self.assertRaises(module.MigrationError):
+            self.call(copier=target_racing_copier)
+        self.assertEqual(
+            (self.target / "external.txt").read_text(encoding="utf-8"), "external"
+        )
+        self.assertFalse(self.staging.exists())
+
+    def test_content_parent_junction_swap_prevents_external_write(self):
+        module = migration_module()
+        outside = self.base / "outside"
+        outside.mkdir()
+        original_content = self.project / "Content-original"
+        swapped = False
+
+        def swapping_copier(source, destination):
+            nonlocal swapped
+            result = shutil.copy2(source, destination)
+            if not swapped:
+                (self.project / "Content").rename(original_content)
+                create_junction(self, self.project / "Content", outside)
+                swapped = True
+            return result
+
+        try:
+            with self.assertRaises(module.MigrationError):
+                self.call(copier=swapping_copier)
+            self.assertFalse((outside / "Asian_Village").exists())
+        finally:
+            content = self.project / "Content"
+            if content.exists():
+                os.rmdir(content)
+            if original_content.exists():
+                original_content.rename(content)
+
+    def test_keyboard_interrupt_cleans_only_owned_staging_and_reraises(self):
+        def interrupting_copier(source, destination):
+            raise KeyboardInterrupt()
+
+        with self.assertRaises(KeyboardInterrupt):
+            self.call(copier=interrupting_copier)
+        self.assertFalse(self.staging.exists())
+        self.assertFalse(self.target.exists())
+
+    def test_changed_owner_nonce_prevents_staging_cleanup(self):
+        marker = self.staging.with_name(self.staging.name + ".owner")
+        changed = False
+
+        def tampering_copier(source, destination):
+            nonlocal changed
+            result = shutil.copy2(source, destination)
+            if not changed:
+                marker.write_text("external-owner", encoding="ascii")
+                changed = True
+            return result
+
+        with self.assertRaises(migration_module().MigrationError):
+            self.call(copier=tampering_copier)
+        self.assertTrue(self.staging.exists())
+        self.assertEqual(marker.read_text(encoding="ascii"), "external-owner")
+
+    def test_replaced_owner_marker_with_same_nonce_is_not_trusted(self):
+        marker = self.staging.with_name(self.staging.name + ".owner")
+        replaced = False
+
+        def replacing_copier(source, destination):
+            nonlocal replaced
+            result = shutil.copy2(source, destination)
+            if not replaced:
+                nonce = marker.read_text(encoding="ascii")
+                marker.unlink()
+                marker.write_text(nonce, encoding="ascii")
+                replaced = True
+            return result
+
+        with self.assertRaises(migration_module().MigrationError):
+            self.call(copier=replacing_copier)
+        self.assertTrue(self.staging.exists())
+        self.assertFalse(self.target.exists())
+
+    def test_atomic_promote_never_replaces_existing_target(self):
+        module = migration_module()
+        source = self.base / "promote-source"
+        destination = self.base / "promote-target"
+        source.mkdir()
+        destination.mkdir()
+        (source / "source.txt").write_text("source", encoding="utf-8")
+        (destination / "external.txt").write_text("external", encoding="utf-8")
+        with self.assertRaises(module.MigrationError):
+            module._promote_no_replace(source, destination)
+        self.assertEqual(
+            (destination / "external.txt").read_text(encoding="utf-8"), "external"
+        )
+        self.assertTrue(source.exists())
 
     def test_source_change_during_copy_is_rejected_and_staging_removed(self):
         module = migration_module()
@@ -570,14 +780,11 @@ class StageAndPromoteTests(unittest.TestCase):
 
     def test_promote_failure_cleans_staging_and_success_promotes(self):
         module = migration_module()
-        original_replace = Path.replace
-
-        def fail_staging_replace(path, target):
-            if Path(path) == self.staging:
-                raise OSError("injected promote failure")
-            return original_replace(path, target)
-
-        with mock.patch.object(Path, "replace", fail_staging_replace):
+        with mock.patch.object(
+            module,
+            "_promote_no_replace",
+            side_effect=module.MigrationError("injected promote failure"),
+        ):
             with self.assertRaisesRegex(module.MigrationError, "promote failure"):
                 self.call()
         self.assertFalse(self.target.exists())
@@ -623,6 +830,32 @@ class StageAndPromoteTests(unittest.TestCase):
 
 
 class CliTests(unittest.TestCase):
+    def test_process_detection_handles_all_tasklist_outcomes(self):
+        module = migration_module()
+        completed = subprocess.CompletedProcess
+        cases = (
+            (completed([], 0, '"UnrealEditor.exe","123"', ""), True),
+            (completed([], 0, "INFO: No tasks are running", ""), False),
+            (completed([], 0, "没有匹配的任务", ""), False),
+        )
+        for result, expected in cases:
+            with self.subTest(stdout=result.stdout):
+                with mock.patch.object(module.subprocess, "run", return_value=result):
+                    self.assertEqual(module.unreal_editor_running(), expected)
+
+        with mock.patch.object(
+            module.subprocess,
+            "run",
+            return_value=completed([], 1, "", "access denied"),
+        ):
+            with self.assertRaises(module.MigrationError):
+                module.unreal_editor_running()
+        with mock.patch.object(
+            module.subprocess, "run", side_effect=FileNotFoundError("tasklist missing")
+        ):
+            with self.assertRaises(module.MigrationError):
+                module.unreal_editor_running()
+
     def test_inventory_subprocess_writes_manifest_and_canonical_stdout(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "source"
@@ -646,7 +879,7 @@ class CliTests(unittest.TestCase):
             root.mkdir()
             make_asset_tree(root)
             manifest_path = Path(directory) / "manifest.json"
-            output = Path(directory) / "verification.json"
+            output = Path(directory) / "new" / "nested" / "verification.json"
             module = migration_module()
             module.write_manifest(manifest_path, module.build_manifest(root))
 
