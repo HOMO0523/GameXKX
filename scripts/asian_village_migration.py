@@ -9,6 +9,7 @@ import subprocess
 import sys
 import unicodedata
 import secrets
+from ctypes import wintypes
 from pathlib import Path, PurePosixPath
 
 
@@ -182,18 +183,26 @@ def write_manifest(path: Path, manifest: dict, *, replace: bool = False) -> None
     path = Path(path)
     temporary = path.with_name(path.name + ".tmp")
     data = canonical_json_bytes(manifest)
+    created_temporary = False
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        if path.exists() and not replace:
-            raise MigrationError(f"manifest already exists: {path}")
         if temporary.exists():
             raise MigrationError(f"temporary manifest already exists: {temporary}")
         with temporary.open("xb") as handle:
+            created_temporary = True
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
-        temporary.replace(path)
+        if replace:
+            os.replace(temporary, path)
+        else:
+            _atomic_no_replace(temporary, path)
     except MigrationError:
+        if created_temporary:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
         raise
     except (OSError, ValueError) as exc:
         try:
@@ -360,6 +369,7 @@ def _remove_owned_staging(
     project_root: Path,
     ownership: dict,
     parent_identity: tuple[int, int],
+    hooks: dict | None = None,
 ) -> None:
     expected = (
         project_root.resolve(strict=True)
@@ -369,8 +379,221 @@ def _remove_owned_staging(
     )
     if staging.absolute() != expected or staging.resolve(strict=False) != expected:
         raise MigrationError(f"refusing to clean unsafe staging path: {staging}")
+    if os.name == "nt":
+        _remove_owned_staging_windows(
+            staging, ownership, parent_identity, hooks
+        )
+        return
     _validate_staging_owner(staging, ownership, parent_identity)
-    shutil.rmtree(staging)
+    quarantine = staging.with_name(
+        f".{staging.name}.quarantine-{secrets.token_hex(16)}"
+    )
+    _promote_no_replace(staging, quarantine)
+    _validate_staging_owner(quarantine, ownership, parent_identity)
+    shutil.rmtree(quarantine)
+    ownership["marker"].unlink()
+
+
+def _run_hook(hooks: dict | None, name: str) -> None:
+    if hooks is not None and name in hooks:
+        hooks[name]()
+
+
+def _win_open_directory(
+    path: Path, *, delete: bool = False, share_delete: bool = True
+):
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    create_file = kernel32.CreateFileW
+    create_file.argtypes = (
+        wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p,
+        wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+    )
+    create_file.restype = wintypes.HANDLE
+    access = 0x80 | 0x20
+    if delete:
+        access |= 0x10000
+    share_mode = 0x1 | 0x2
+    if share_delete:
+        share_mode |= 0x4
+    handle = create_file(
+        str(Path(path).absolute()),
+        access,
+        share_mode,
+        None,
+        3,
+        0x02000000 | 0x00200000,
+        None,
+    )
+    if handle == wintypes.HANDLE(-1).value:
+        raise _error("unable to open stable directory handle", path, ctypes.WinError(ctypes.get_last_error()))
+    return handle
+
+
+def _win_close_handle(handle) -> None:
+    if handle is not None:
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        if not kernel32.CloseHandle(handle):
+            raise ctypes.WinError(ctypes.get_last_error())
+
+
+class _FILE_ATTRIBUTE_TAG_INFO(ctypes.Structure):
+    _fields_ = [
+        ("FileAttributes", wintypes.DWORD),
+        ("ReparseTag", wintypes.DWORD),
+    ]
+
+
+class _BY_HANDLE_FILE_INFORMATION(ctypes.Structure):
+    _fields_ = [
+        ("FileAttributes", wintypes.DWORD),
+        ("CreationTime", wintypes.FILETIME),
+        ("LastAccessTime", wintypes.FILETIME),
+        ("LastWriteTime", wintypes.FILETIME),
+        ("VolumeSerialNumber", wintypes.DWORD),
+        ("FileSizeHigh", wintypes.DWORD),
+        ("FileSizeLow", wintypes.DWORD),
+        ("NumberOfLinks", wintypes.DWORD),
+        ("FileIndexHigh", wintypes.DWORD),
+        ("FileIndexLow", wintypes.DWORD),
+    ]
+
+
+def _win_handle_final_path(handle) -> Path:
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    get_name = kernel32.GetFinalPathNameByHandleW
+    get_name.argtypes = (
+        wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD
+    )
+    get_name.restype = wintypes.DWORD
+    size = get_name(handle, None, 0, 0)
+    if not size:
+        raise ctypes.WinError(ctypes.get_last_error())
+    buffer = ctypes.create_unicode_buffer(size + 1)
+    if not get_name(handle, buffer, len(buffer), 0):
+        raise ctypes.WinError(ctypes.get_last_error())
+    value = buffer.value
+    if value.startswith("\\\\?\\UNC\\"):
+        value = "\\\\" + value[8:]
+    elif value.startswith("\\\\?\\"):
+        value = value[4:]
+    return Path(value)
+
+
+def _win_validate_directory_handle(
+    handle,
+    expected_path: Path,
+    *,
+    expected_ino: int | None = None,
+) -> tuple[int, int]:
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    get_ex = kernel32.GetFileInformationByHandleEx
+    get_ex.argtypes = (
+        wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD
+    )
+    get_ex.restype = wintypes.BOOL
+    tag = _FILE_ATTRIBUTE_TAG_INFO()
+    if not get_ex(handle, 9, ctypes.byref(tag), ctypes.sizeof(tag)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    if not tag.FileAttributes & 0x10 or tag.FileAttributes & 0x400:
+        raise MigrationError(f"directory handle is not a plain directory: {expected_path}")
+    information = _BY_HANDLE_FILE_INFORMATION()
+    get_info = kernel32.GetFileInformationByHandle
+    get_info.argtypes = (wintypes.HANDLE, ctypes.c_void_p)
+    get_info.restype = wintypes.BOOL
+    if not get_info(handle, ctypes.byref(information)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    identity = (
+        information.VolumeSerialNumber,
+        (information.FileIndexHigh << 32) | information.FileIndexLow,
+    )
+    if expected_ino is not None and identity[1] != expected_ino:
+        raise MigrationError(f"directory handle identity changed: {expected_path}")
+    final_path = _win_handle_final_path(handle)
+    if os.path.normcase(os.path.abspath(final_path)) != os.path.normcase(
+        os.path.abspath(expected_path)
+    ):
+        raise MigrationError(
+            f"directory handle path changed: expected {expected_path}, got {final_path}"
+        )
+    return identity
+
+
+def _win_rename_handle(source_handle, parent_handle, new_name: str) -> None:
+    padding_size = ctypes.sizeof(ctypes.c_void_p) - 1
+
+    class _RENAME_HEADER(ctypes.Structure):
+        _pack_ = 1
+        _fields_ = [
+            ("ReplaceIfExists", ctypes.c_ubyte),
+            ("Padding", ctypes.c_ubyte * padding_size),
+            ("RootDirectory", ctypes.c_void_p),
+            ("FileNameLength", wintypes.DWORD),
+        ]
+
+    destination = _win_handle_final_path(parent_handle) / new_name
+    encoded = str(destination).encode("utf-16-le")
+    buffer = ctypes.create_string_buffer(
+        ctypes.sizeof(_RENAME_HEADER) + len(encoded) + 2
+    )
+    header = _RENAME_HEADER.from_buffer(buffer)
+    header.ReplaceIfExists = 0
+    header.RootDirectory = None
+    header.FileNameLength = len(encoded)
+    ctypes.memmove(
+        ctypes.addressof(buffer) + ctypes.sizeof(_RENAME_HEADER),
+        encoded,
+        len(encoded),
+    )
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    set_info = kernel32.SetFileInformationByHandle
+    set_info.argtypes = (
+        wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD
+    )
+    set_info.restype = wintypes.BOOL
+    if not set_info(source_handle, 3, buffer, len(buffer)):
+        raise _error(
+            "unable to rename owned directory handle",
+            Path(new_name),
+            ctypes.WinError(ctypes.get_last_error()),
+        )
+
+
+def _remove_owned_staging_windows(
+    staging: Path,
+    ownership: dict,
+    parent_identity: tuple[int, int],
+    hooks: dict | None,
+) -> None:
+    parent_handle = None
+    staging_handle = None
+    quarantine = staging.with_name(
+        f".{staging.name}.quarantine-{secrets.token_hex(16)}"
+    )
+    try:
+        parent_handle = _win_open_directory(
+            staging.parent, share_delete=False
+        )
+        staging_handle = _win_open_directory(staging, delete=True)
+        _win_validate_directory_handle(
+            parent_handle, staging.parent, expected_ino=parent_identity[1]
+        )
+        _win_validate_directory_handle(
+            staging_handle, staging, expected_ino=ownership["identity"][1]
+        )
+        _validate_staging_owner(staging, ownership, parent_identity)
+        _run_hook(hooks, "before_cleanup_handle_rename")
+        _win_rename_handle(staging_handle, parent_handle, quarantine.name)
+    finally:
+        close_error = None
+        for handle in (staging_handle, parent_handle):
+            try:
+                _win_close_handle(handle)
+            except OSError as exc:
+                close_error = close_error or exc
+        if close_error is not None and sys.exc_info()[0] is None:
+            raise close_error
+    _validate_staging_owner(quarantine, ownership, parent_identity)
+    shutil.rmtree(quarantine)
     ownership["marker"].unlink()
 
 
@@ -411,6 +634,46 @@ def _promote_no_replace(source: Path, target: Path) -> None:
         raise _error("unable to atomically promote without replacement", target, exc) from exc
 
 
+def _atomic_no_replace(source: Path, target: Path) -> None:
+    _promote_no_replace(source, target)
+
+
+def _promote_owned_staging(
+    staging: Path,
+    target: Path,
+    ownership: dict,
+    content_identity: tuple[int, int],
+    hooks: dict | None,
+) -> None:
+    if os.name != "nt":
+        _promote_no_replace(staging, target)
+        return
+    content_handle = None
+    staging_handle = None
+    try:
+        content_handle = _win_open_directory(
+            target.parent, share_delete=False
+        )
+        staging_handle = _win_open_directory(staging, delete=True)
+        _win_validate_directory_handle(
+            content_handle, target.parent, expected_ino=content_identity[1]
+        )
+        _win_validate_directory_handle(
+            staging_handle, staging, expected_ino=ownership["identity"][1]
+        )
+        _run_hook(hooks, "before_promotion_handle_rename")
+        _win_rename_handle(staging_handle, content_handle, target.name)
+    finally:
+        close_error = None
+        for handle in (staging_handle, content_handle):
+            try:
+                _win_close_handle(handle)
+            except OSError as exc:
+                close_error = close_error or exc
+        if close_error is not None and sys.exc_info()[0] is None:
+            raise close_error
+
+
 def stage_and_promote(
     source: Path,
     target: Path,
@@ -418,6 +681,7 @@ def stage_and_promote(
     manifest: dict,
     *,
     copier=shutil.copy2,
+    hooks: dict | None = None,
 ) -> dict:
     source = Path(source)
     root, target, staging = _project_and_staging(target, staging)
@@ -463,7 +727,9 @@ def stage_and_promote(
         _assert_directory_identity(target.parent, content_identity)
         if _lexists(target):
             raise MigrationError(f"target appeared before promotion: {target}")
-        _promote_no_replace(staging, target)
+        _promote_owned_staging(
+            staging, target, ownership, content_identity, hooks
+        )
         promoted = True
         owner_marker.unlink()
         verify_manifest(target, manifest)
@@ -487,7 +753,7 @@ def stage_and_promote(
         if ownership is not None:
             try:
                 _remove_owned_staging(
-                    staging, root, ownership, staging_parent_identity
+                    staging, root, ownership, staging_parent_identity, hooks
                 )
             except (MigrationError, OSError, ValueError) as cleanup_exc:
                 cleanup_error = cleanup_exc
@@ -590,6 +856,11 @@ def _emit(value: object) -> None:
         stream.flush()
 
 
+def _safe_stderr_error(exc: BaseException) -> None:
+    text = str(exc).encode("ascii", "backslashreplace").decode("ascii")
+    print(f"error: {text}", file=sys.stderr)
+
+
 def main(argv: list[str] | None = None, *, process_checker=unreal_editor_running) -> int:
     try:
         arguments = _parser().parse_args(argv)
@@ -632,10 +903,10 @@ def main(argv: list[str] | None = None, *, process_checker=unreal_editor_running
         _emit(result)
         return 0
     except MigrationError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        _safe_stderr_error(exc)
         return 1
     except (OSError, RuntimeError, ValueError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        _safe_stderr_error(exc)
         return 1
 
 

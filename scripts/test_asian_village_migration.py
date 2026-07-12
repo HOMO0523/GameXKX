@@ -333,6 +333,25 @@ class ManifestTests(unittest.TestCase):
                     module.write_manifest(output, {"ok": True})
             self.assertIs(raised.exception.__cause__, denial)
 
+    def test_write_manifest_no_replace_loses_race_without_overwriting_external(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "manifest.json"
+            temporary = output.with_name(output.name + ".tmp")
+            real_install = module._atomic_no_replace
+
+            def racing_install(source, target):
+                target.write_bytes(b"external-winner")
+                return real_install(source, target)
+
+            with mock.patch.object(
+                module, "_atomic_no_replace", side_effect=racing_install
+            ):
+                with self.assertRaises(module.MigrationError):
+                    module.write_manifest(output, {"ours": True})
+            self.assertEqual(output.read_bytes(), b"external-winner")
+            self.assertFalse(temporary.exists())
+
     def test_build_manifest_rejects_symlink(self):
         module = migration_module()
         with tempfile.TemporaryDirectory() as directory:
@@ -760,6 +779,78 @@ class StageAndPromoteTests(unittest.TestCase):
         )
         self.assertTrue(source.exists())
 
+    def test_handle_bound_promotion_blocks_last_window_content_junction(self):
+        module = migration_module()
+        outside = self.base / "last-window-outside"
+        outside.mkdir()
+        original_content = self.project / "Content-last-window-original"
+
+        def swap_content():
+            (self.project / "Content").rename(original_content)
+            create_junction(self, self.project / "Content", outside)
+
+        try:
+            with self.assertRaises(module.MigrationError):
+                module.stage_and_promote(
+                    self.source,
+                    self.target,
+                    self.staging,
+                    self.manifest,
+                    hooks={"before_promotion_handle_rename": swap_content},
+                )
+            self.assertFalse((outside / "Asian_Village").exists())
+        finally:
+            content = self.project / "Content"
+            if content.exists():
+                os.rmdir(content)
+            if original_content.exists():
+                migrated = original_content / "Asian_Village"
+                if migrated.exists():
+                    shutil.rmtree(migrated)
+                original_content.rename(content)
+
+    def test_handle_bound_cleanup_preserves_last_window_external_staging(self):
+        module = migration_module()
+        moved_owned = self.staging.parent / "moved-owned-staging"
+
+        def replace_staging():
+            self.staging.rename(moved_owned)
+            self.staging.mkdir()
+            (self.staging / "external.txt").write_text("external", encoding="utf-8")
+
+        def fail_copy(source, destination):
+            raise OSError("injected copy failure")
+
+        with self.assertRaises(module.MigrationError):
+            module.stage_and_promote(
+                self.source,
+                self.target,
+                self.staging,
+                self.manifest,
+                copier=fail_copy,
+                hooks={"before_cleanup_handle_rename": replace_staging},
+            )
+        self.assertEqual(
+            (self.staging / "external.txt").read_text(encoding="utf-8"), "external"
+        )
+        self.assertFalse(moved_owned.exists())
+
+    def test_cleanup_handle_rename_failure_preserves_owned_staging(self):
+        module = migration_module()
+
+        def fail_copy(source, destination):
+            raise OSError("injected copy failure")
+
+        with mock.patch.object(
+            module,
+            "_win_rename_handle",
+            side_effect=module.MigrationError("injected handle rename failure"),
+        ):
+            with self.assertRaises(module.MigrationError):
+                self.call(copier=fail_copy)
+        self.assertTrue(self.staging.exists())
+        self.assertFalse(self.target.exists())
+
     def test_source_change_during_copy_is_rejected_and_staging_removed(self):
         module = migration_module()
         changed = False
@@ -782,7 +873,7 @@ class StageAndPromoteTests(unittest.TestCase):
         module = migration_module()
         with mock.patch.object(
             module,
-            "_promote_no_replace",
+            "_promote_owned_staging",
             side_effect=module.MigrationError("injected promote failure"),
         ):
             with self.assertRaisesRegex(module.MigrationError, "promote failure"):
