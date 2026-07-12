@@ -21,6 +21,7 @@ from qingshan_environment_assets import (  # noqa: E402
     EXPECTED_VIEWS,
     MAX_DIRECT_GENERATION_INPUTS,
     CatalogError,
+    expected_views_for_asset,
     register_output,
     validate_asset,
     validate_catalog,
@@ -439,6 +440,36 @@ class AssetValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(CatalogError, "reference_images"):
             validate_asset(data)
 
+    def test_s_a_v2_building_requires_only_hero_view(self):
+        data = valid_building()
+        data["asset_id"] = "BLD_QS_S_A_HOUSE"
+        data["style_profile"] = "QS_InkToon_Building_v2"
+        data["source_provenance"]["style_profile"] = "QS_InkToon_Building_v2"
+        data["generation"]["required_view_kinds"] = ["hero_3q"]
+        data["generation"]["max_generation_calls"] = 3
+        data["reference_images"] = data["reference_images"][:1]
+
+        try:
+            validate_asset(data)
+        except CatalogError as exc:
+            self.fail(f"S-A v2 single-view contract should validate: {exc}")
+
+    def test_building_view_exception_remains_asset_specific_and_exact(self):
+        ordinary = valid_building()
+        ordinary["reference_images"] = ordinary["reference_images"][:1]
+        ordinary["generation"]["required_view_kinds"] = ["hero_3q"]
+        ordinary["generation"]["max_generation_calls"] = 3
+        with self.assertRaisesRegex(CatalogError, "required_view_kinds"):
+            validate_asset(ordinary)
+
+        golden = valid_building()
+        golden["asset_id"] = "BLD_QS_S_A_HOUSE"
+        golden["style_profile"] = "QS_InkToon_Building_v2"
+        golden["source_provenance"]["style_profile"] = "QS_InkToon_Building_v2"
+        golden["generation"]["required_view_kinds"] = ["hero_3q", "structure_sheet"]
+        with self.assertRaisesRegex(CatalogError, "required_view_kinds|reference_images"):
+            validate_asset(golden)
+
     def test_v004_budget_is_impossible(self):
         data = valid_building()
         data["generation"]["max_versions_per_view"] = 4
@@ -854,7 +885,7 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
             )
 
             for asset_id, asset in assets.items():
-                expected_views = list(EXPECTED_VIEWS[asset["category"]])
+                expected_views = list(expected_views_for_asset(asset))
                 self.assertEqual(asset["generation"]["required_view_kinds"], expected_views)
                 self.assertEqual(
                     [reference["kind"] for reference in asset["reference_images"]],
@@ -1044,7 +1075,7 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                     [4.8, 5.6, 5.2], "asymmetric_xieshan", "warm_red_brown", [30000, 35000], 35000
                 ),
                 "BLD_QS_S_A_HOUSE": (
-                    [3.6, 4.2, 3.8], "double_slope", "indigo", [15000, 20000], 20000
+                    [3.6, 4.2, 3.8], "curved_double_slope", "orange", [45000, 55000], 50000
                 ),
                 "BLD_QS_M_B_STREET_SHOP": (
                     [4.2, 5, 4.6], "deep_eave_half_storey", "ink_green", [25000, 30000], 30000
@@ -1071,11 +1102,10 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                 self.assertEqual(asset["roof"]["form"], roof_form)
                 self.assertEqual(asset["roof"]["primary_color"], roof_color)
                 self.assertEqual(asset["retopo_target_quads"], target)
-                expected_source = (
-                    "Blender_procedural_golden"
-                    if asset_id == "BLD_QS_M_A_INN"
-                    else "Blender_modular_derivative"
-                )
+                expected_source = {
+                    "BLD_QS_M_A_INN": "Blender_procedural_golden",
+                    "BLD_QS_S_A_HOUSE": "Tripo_high_precision",
+                }.get(asset_id, "Blender_modular_derivative")
                 self.assertEqual(asset["building"]["model_pipeline"]["source"], expected_source)
                 self.assertEqual(
                     asset["building"]["model_pipeline"]["topology"], "quad_dominant"
@@ -1087,9 +1117,14 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                 self.assertEqual(
                     asset["building"]["model_pipeline"]["target_quad_faces"], target
                 )
+                expected_material_stage = (
+                    "after_retopology"
+                    if asset_id == "BLD_QS_S_A_HOUSE"
+                    else "ue_after_gate1_geometry_approval"
+                )
                 self.assertEqual(
                     asset["building"]["model_pipeline"]["material_stage"],
-                    "ue_after_gate1_geometry_approval",
+                    expected_material_stage,
                 )
                 self.assertEqual(asset["pcg"]["placement_pattern"], "staggered_not_row")
                 volume = 1
@@ -1100,6 +1135,128 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                 roof_colors.add(roof_color)
             self.assertEqual(len(roof_families), 5)
             self.assertEqual(len(roof_colors), 5)
+
+    def test_small_house_golden_declaration_is_single_view_v2_and_tripo_ready(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _root, _builder, _summary, assets = self._build(directory)
+            house = assets["BLD_QS_S_A_HOUSE"]
+            declaration = house["building"].get("visual_contract")
+
+            self.assertEqual(house["style_profile"], "QS_InkToon_Building_v2")
+            self.assertEqual(
+                house["source_provenance"]["style_profile"],
+                "QS_InkToon_Building_v2",
+            )
+            self.assertIn("QS_InkToon_Building_v2", house["material_language"])
+            self.assertEqual(
+                declaration,
+                {
+                    "building_type": "compact_two_storey_small_residence",
+                    "entrance": {
+                        "door_type": "chunky_double_leaf",
+                        "placement": "offset",
+                    },
+                    "roof": {
+                        "color": "orange",
+                        "form": "curved_double_slope",
+                    },
+                    "structure": {"beam_column_language": "chunky"},
+                    "windows": {
+                        "frame": "wide",
+                        "glazing": "warm_yellow_rice_paper",
+                        "micro_grid": "none",
+                        "quantity": "few",
+                    },
+                },
+            )
+            self.assertEqual(house["roof"]["form"], declaration["roof"]["form"])
+            self.assertEqual(house["roof"]["primary_color"], declaration["roof"]["color"])
+            self.assertEqual(house["generation"]["required_view_kinds"], ["hero_3q"])
+            self.assertEqual(
+                [item["kind"] for item in house["reference_images"]], ["hero_3q"]
+            )
+            self.assertEqual(
+                set(house["generation"]["prompt_sections"]["view_contracts"]),
+                {"hero_3q"},
+            )
+
+            pipeline = house["building"]["model_pipeline"]
+            self.assertEqual(pipeline["source"], "Tripo_high_precision")
+            self.assertEqual(pipeline["target_quad_faces"], 50000)
+            self.assertEqual(pipeline["approved_quad_face_range"], [45000, 55000])
+            self.assertEqual(pipeline["topology"], "quad_dominant")
+            self.assertEqual(pipeline["material_stage"], "after_retopology")
+            self.assertEqual(house["retopo_target_quads"], 50000)
+            for gate in (
+                "tripo_allowed",
+                "ue_import_allowed",
+                "model_or_sprite_production_allowed",
+            ):
+                self.assertIs(house["workflow_gates"][gate], False)
+
+            prompt = house["generation"]["prompt"]
+            for phrase in (
+                "single building",
+                "three-quarter",
+                "clean warm rice-paper",
+                "no labels",
+                "no text",
+                "warm yellow rice-paper windows",
+                "chunky masses",
+                "moderate playful asymmetry",
+                "no individual roof tiles",
+                "no fine window lattices",
+            ):
+                self.assertIn(phrase, prompt)
+            self.assertIn(house["detail_budget"]["prompt_instruction"], prompt)
+
+            inn = assets["BLD_QS_M_A_INN"]
+            self.assertEqual(inn["style_profile"], "QS_InkToon_v1")
+            self.assertEqual(
+                inn["generation"]["required_view_kinds"],
+                ["hero_3q", "structure_sheet"],
+            )
+            self.assertEqual(inn["retopo_target_quads"], 35000)
+
+    def test_small_house_rebuild_preserves_evidence_without_overwriting_declaration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, builder, _summary, assets = self._build(directory)
+            house = assets["BLD_QS_S_A_HOUSE"]
+            house["generation"]["generation_calls_used"] = 2
+            output = root / "concepts" / "house.png"
+            output.parent.mkdir(parents=True)
+            output.write_bytes(b"registered house evidence")
+            trace_input = root / "style" / "references" / "style_env_day.jpeg"
+            trace_input.parent.mkdir(parents=True, exist_ok=True)
+            trace_input.write_bytes(b"registered trace input")
+            house["reference_images"][0].update(
+                {
+                    "approval_state": "generated_pending_review",
+                    "output_path": "concepts/house.png",
+                    "sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
+                    "version": "v002",
+                    "generation_input_paths": ["style/references/style_env_day.jpeg"],
+                    "generation_reference_lineage": ["style/references/style_env_day.jpeg"],
+                    "generation_prompt": "registered evidence prompt",
+                }
+            )
+            house["style_profile"] = "evidence_must_not_own_declaration"
+            _write_json(root / "assets" / house["asset_id"] / "asset.json", house)
+
+            rebuilt = builder.write_catalog(root)
+            stored = _asset_jsons(root)["BLD_QS_S_A_HOUSE"]
+            self.assertEqual(rebuilt["asset_count"], 35)
+            self.assertEqual(stored["generation"]["generation_calls_used"], 2)
+            reference = stored["reference_images"][0]
+            for key, value in {
+                "output_path": "concepts/house.png",
+                "sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
+                "version": "v002",
+                "generation_prompt": "registered evidence prompt",
+            }.items():
+                self.assertEqual(reference[key], value)
+            self.assertEqual(stored["style_profile"], "QS_InkToon_Building_v2")
+            self.assertEqual(stored["building"]["model_pipeline"]["target_quad_faces"], 50000)
 
     def test_golden_inn_declares_buildable_visual_contract(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1232,9 +1389,10 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                     continue
                 self.assertIn("view_contracts", asset["generation"]["prompt_sections"], asset_id)
                 contracts = asset["generation"]["prompt_sections"]["view_contracts"]
-                self.assertEqual(set(contracts), set(EXPECTED_VIEWS[asset["category"]]), asset_id)
+                self.assertEqual(set(contracts), set(expected_views_for_asset(asset)), asset_id)
                 references = {item["kind"]: item for item in asset["reference_images"]}
-                for view_kind, expected_elements in required[asset["category"]].items():
+                for view_kind in expected_views_for_asset(asset):
+                    expected_elements = required[asset["category"]][view_kind]
                     contract = contracts[view_kind]
                     self.assertTrue(contract["instruction"].strip(), f"{asset_id}:{view_kind}")
                     self.assertTrue(

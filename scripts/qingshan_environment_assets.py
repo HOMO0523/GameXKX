@@ -31,6 +31,24 @@ EXPECTED_VIEWS = {
     "prop_kit": ("variant_lineup", "usage_scale_sheet"),
 }
 
+S_A_GOLDEN_ASSET_ID = "BLD_QS_S_A_HOUSE"
+S_A_GOLDEN_STYLE_PROFILE = "QS_InkToon_Building_v2"
+
+
+def expected_views_for_asset(data: dict[str, Any]) -> tuple[str, ...]:
+    """Return the exact view contract for one asset declaration."""
+
+    category = data.get("category")
+    if category not in EXPECTED_VIEWS:
+        raise CatalogError(f"unknown category: {category!r}")
+    if (
+        data.get("asset_id") == S_A_GOLDEN_ASSET_ID
+        and category == "building"
+        and data.get("style_profile") == S_A_GOLDEN_STYLE_PROFILE
+    ):
+        return ("hero_3q",)
+    return EXPECTED_VIEWS[category]
+
 BATCH_COUNTS = {"REGISTRY": 1, "B0": 4, "B1": 12, "B2": 13, "B3": 5}
 BATCH_CALL_CAPS = {"REGISTRY": 0, "B0": 12, "B1": 48, "B2": 52, "B3": 20}
 
@@ -577,7 +595,7 @@ def validate_asset(data: dict) -> None:
         raise CatalogError(f"unknown batch: {batch!r}")
 
     generation = _require_mapping(data["generation"], "generation")
-    expected = EXPECTED_VIEWS[category]
+    expected = expected_views_for_asset(data)
     _validate_generation(generation, expected, category)
     _validate_reference_images(data["reference_images"], expected)
     detail_budget = _validate_detail_budget(data["detail_budget"])

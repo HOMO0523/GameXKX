@@ -14,15 +14,35 @@
   "building": {
     "model_pipeline": {
       "approved_quad_face_range": [
-        15000,
-        20000
+        45000,
+        55000
       ],
-      "material_stage": "ue_after_gate1_geometry_approval",
-      "source": "Blender_modular_derivative",
-      "target_quad_faces": 20000,
+      "material_stage": "after_retopology",
+      "source": "Tripo_high_precision",
+      "target_quad_faces": 50000,
       "topology": "quad_dominant"
     },
-    "scale_anchor": "BLD_QS_L_A_MARKET_SHOP"
+    "scale_anchor": "BLD_QS_L_A_MARKET_SHOP",
+    "visual_contract": {
+      "building_type": "compact_two_storey_small_residence",
+      "entrance": {
+        "door_type": "chunky_double_leaf",
+        "placement": "offset"
+      },
+      "roof": {
+        "color": "orange",
+        "form": "curved_double_slope"
+      },
+      "structure": {
+        "beam_column_language": "chunky"
+      },
+      "windows": {
+        "frame": "wide",
+        "glazing": "warm_yellow_rice_paper",
+        "micro_grid": "none",
+        "quantity": "few"
+      }
+    }
   },
   "category": "building",
   "dependencies": [
@@ -56,7 +76,7 @@
   "forward_axis": "+Y",
   "gameplay_role": "small_house",
   "generation": {
-    "asset_type": "Qingshan building game environment reference",
+    "asset_type": "Qingshan golden small-house Tripo input",
     "avoid": [
       "photorealistic",
       "modern object",
@@ -69,7 +89,7 @@
       "PBR plastic shine"
     ],
     "blocked_after_revisions": 2,
-    "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
+    "composition_framing": "one complete uncropped single building in a Tripo-ready fixed high three-quarter view with a visible base and generous margins",
     "constraints": [
       "photorealistic",
       "modern object",
@@ -111,8 +131,8 @@
       "style/boards/REF_QS_ENV_STYLE_LOCK__board__v003.png",
       "style/boards/REF_QS_SCALE_LINEUP__board__v001.png"
     ],
-    "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
-    "max_generation_calls": 6,
+    "lighting_mood": "neutral soft daylight with calm warm contrast",
+    "max_generation_calls": 3,
     "max_versions_per_view": 3,
     "palette": [
       "warm_off_white",
@@ -120,61 +140,53 @@
       "jade_green",
       "blue_gray",
       "warm_ochre",
-      "indigo"
+      "orange"
     ],
-    "prompt": "Use case: stylized-concept\nAsset type: Qingshan building game environment reference\nPrimary request: Compact warm-white house with indigo double-slope roof\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background suitable for a single asset or the approved compact kit\nSubject: Compact warm-white house with indigo double-slope roof; intended gameplay role is small_house\nStyle/medium: QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands\nComposition/framing: complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera\nLighting/mood: neutral soft daylight with calm mist-compatible contrast\nConstraints: no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry\nView hero_3q: Show one complete Tripo-ready building from the fixed high three-quarter camera; required elements: complete_uncropped_silhouette, visible_base, entrance_direction, roof_readability, fixed_high_three_quarter_camera, single_asset_clean_warm_background\nView structure_sheet: Derive one controlled structure sheet from the approved hero view; required elements: entrance_front, side_and_rear, top_down_footprint, player_scale_reference, material_regions\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; building roof is one bold primary silhouette plus one ridge stroke; each wall has at most one door and one simple window shape.",
+    "prompt": "Use case: stylized-concept\nAsset type: Qingshan golden small-house Tripo input\nPrimary request: one single building, a compact two-storey small residence with an orange curved double-slope roof, chunky double-leaf door, few wide-framed warm yellow rice-paper windows, chunky beams and columns, and an offset entrance\nInput images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects\nScene/backdrop: clean warm rice-paper background, no labels and no text\nSubject: single building in a three-quarter view; compact two-storey small residence; orange curved double-slope roof; chunky double-leaf door; few wide-framed warm yellow rice-paper windows; chunky beams and columns; offset entrance\nStyle/medium: QS_InkToon_Building_v2 hand-drawn Chinese ink cartoon with dry-brush edges, chunky masses, two to three value bands, and moderate playful asymmetry\nComposition/framing: one complete uncropped single building in a Tripo-ready fixed high three-quarter view with a visible base and generous margins\nLighting/mood: neutral soft daylight with calm warm contrast\nConstraints: no labels, no text, no logos, no watermark, no individual roof tiles, no fine window lattices, no photorealism, no PBR shine, no modern objects, no mirror symmetry\nView hero_3q: Show one complete Tripo-ready golden small house from a fixed high three-quarter camera; required elements: complete_uncropped_silhouette, single_complete_uncropped_building, visible_base, entrance_direction, offset_entrance, roof_readability, curved_double_slope_roof, fixed_high_three_quarter_camera, single_asset_clean_warm_background, clean_warm_rice_paper_background\nDetail budget: Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; building roof is one bold primary silhouette plus one ridge stroke; each wall has at most one door and one simple window shape.",
     "prompt_sections": {
-      "asset_type": "Qingshan building game environment reference",
-      "composition_framing": "complete uncropped asset with readable base, scale and connection points for the fixed high three-quarter game camera",
-      "constraints": "no text, no logos, no watermark, no photorealism, no PBR shine, no neon green, no modern objects, no mirror symmetry",
+      "asset_type": "Qingshan golden small-house Tripo input",
+      "composition_framing": "one complete uncropped single building in a Tripo-ready fixed high three-quarter view with a visible base and generous margins",
+      "constraints": "no labels, no text, no logos, no watermark, no individual roof tiles, no fine window lattices, no photorealism, no PBR shine, no modern objects, no mirror symmetry",
       "detail_budget": "Every object must read at 128px; use at most 3 primary masses and 5 secondary internal accent strokes or stroke groups; use 2 main value bands plus 1 shadow accent; forbid individual_roof_tiles, repeated_window_lattices, leaf_by_leaf_foliage, stone_or_pebble_tessellation, tiny_prop_piles; building roof is one bold primary silhouette plus one ridge stroke; each wall has at most one door and one simple window shape.",
       "input_images": "project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects",
-      "lighting_mood": "neutral soft daylight with calm mist-compatible contrast",
-      "primary_request": "Compact warm-white house with indigo double-slope roof",
-      "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
-      "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
-      "subject": "Compact warm-white house with indigo double-slope roof; intended gameplay role is small_house",
+      "lighting_mood": "neutral soft daylight with calm warm contrast",
+      "primary_request": "one single building, a compact two-storey small residence with an orange curved double-slope roof, chunky double-leaf door, few wide-framed warm yellow rice-paper windows, chunky beams and columns, and an offset entrance",
+      "scene_backdrop": "clean warm rice-paper background, no labels and no text",
+      "style_medium": "QS_InkToon_Building_v2 hand-drawn Chinese ink cartoon with dry-brush edges, chunky masses, two to three value bands, and moderate playful asymmetry",
+      "subject": "single building in a three-quarter view; compact two-storey small residence; orange curved double-slope roof; chunky double-leaf door; few wide-framed warm yellow rice-paper windows; chunky beams and columns; offset entrance",
       "use_case": "stylized-concept",
       "view_contracts": {
         "hero_3q": {
-          "instruction": "Show one complete Tripo-ready building from the fixed high three-quarter camera",
+          "instruction": "Show one complete Tripo-ready golden small house from a fixed high three-quarter camera",
           "required_elements": [
             "complete_uncropped_silhouette",
+            "single_complete_uncropped_building",
             "visible_base",
             "entrance_direction",
+            "offset_entrance",
             "roof_readability",
+            "curved_double_slope_roof",
             "fixed_high_three_quarter_camera",
-            "single_asset_clean_warm_background"
-          ]
-        },
-        "structure_sheet": {
-          "instruction": "Derive one controlled structure sheet from the approved hero view",
-          "required_elements": [
-            "entrance_front",
-            "side_and_rear",
-            "top_down_footprint",
-            "player_scale_reference",
-            "material_regions"
+            "single_asset_clean_warm_background",
+            "clean_warm_rice_paper_background"
           ]
         }
       },
-      "view_hero_3q": "Show one complete Tripo-ready building from the fixed high three-quarter camera; required elements: complete_uncropped_silhouette, visible_base, entrance_direction, roof_readability, fixed_high_three_quarter_camera, single_asset_clean_warm_background",
-      "view_structure_sheet": "Derive one controlled structure sheet from the approved hero view; required elements: entrance_front, side_and_rear, top_down_footprint, player_scale_reference, material_regions"
+      "view_hero_3q": "Show one complete Tripo-ready golden small house from a fixed high three-quarter camera; required elements: complete_uncropped_silhouette, single_complete_uncropped_building, visible_base, entrance_direction, offset_entrance, roof_readability, curved_double_slope_roof, fixed_high_three_quarter_camera, single_asset_clean_warm_background, clean_warm_rice_paper_background"
     },
     "required_view_kinds": [
-      "hero_3q",
-      "structure_sheet"
+      "hero_3q"
     ],
-    "scene_backdrop": "clean warm rice-paper background suitable for a single asset or the approved compact kit",
-    "style_medium": "QS_InkToon_v1 hand-drawn Chinese ink cartoon, dry-brush broken edges, simplified chunky silhouettes, two to three value bands",
-    "subject": "Compact warm-white house with indigo double-slope roof; intended gameplay role is small_house",
+    "scene_backdrop": "clean warm rice-paper background, no labels and no text",
+    "style_medium": "QS_InkToon_Building_v2 hand-drawn Chinese ink cartoon with dry-brush edges, chunky masses, two to three value bands, and moderate playful asymmetry",
+    "subject": "single building in a three-quarter view; compact two-storey small residence; orange curved double-slope roof; chunky double-leaf door; few wide-framed warm yellow rice-paper windows; chunky beams and columns; offset entrance",
     "use_case": "stylized-concept"
   },
   "intended_zone": [
     "courtyard"
   ],
   "material_language": [
-    "QS_InkToon_v1",
+    "QS_InkToon_Building_v2",
     "two_to_three_value_bands",
     "dry_brush_edges"
   ],
@@ -195,7 +207,7 @@
     "jade_green",
     "blue_gray",
     "warm_ochre",
-    "indigo"
+    "orange"
   ],
   "pcg": {
     "allowed_zones": [
@@ -222,38 +234,28 @@
       "kind": "hero_3q",
       "required_annotations": [
         "complete_uncropped_silhouette",
+        "single_complete_uncropped_building",
         "visible_base",
         "entrance_direction",
+        "offset_entrance",
         "roof_readability",
+        "curved_double_slope_roof",
         "fixed_high_three_quarter_camera",
-        "single_asset_clean_warm_background"
-      ]
-    },
-    {
-      "approval_state": "planned",
-      "background": "warm_rice_paper",
-      "camera": "fixed_high_three_quarter_or_category_sheet",
-      "file_stub": "BLD_QS_S_A_HOUSE__structure_sheet",
-      "kind": "structure_sheet",
-      "required_annotations": [
-        "entrance_front",
-        "side_and_rear",
-        "top_down_footprint",
-        "player_scale_reference",
-        "material_regions"
+        "single_asset_clean_warm_background",
+        "clean_warm_rice_paper_background"
       ]
     }
   ],
-  "retopo_target_quads": 20000,
+  "retopo_target_quads": 50000,
   "roof": {
-    "form": "double_slope",
-    "primary_color": "indigo"
+    "form": "curved_double_slope",
+    "primary_color": "orange"
   },
   "schema_version": 1,
   "silhouette_keywords": [
-    "compact_house",
-    "double_slope",
-    "offset_door"
+    "compact_two_storey",
+    "curved_double_slope",
+    "offset_entrance"
   ],
   "simple_collision_required": true,
   "size_class": "S",
@@ -266,10 +268,10 @@
       "style/references/style_character_scale.jpeg",
       "style/references/style_nature_group.jpeg"
     ],
-    "style_profile": "QS_InkToon_v1"
+    "style_profile": "QS_InkToon_Building_v2"
   },
   "status": "concept_planned",
-  "style_profile": "QS_InkToon_v1",
+  "style_profile": "QS_InkToon_Building_v2",
   "target_dimensions_m": [
     3.6,
     4.2,
