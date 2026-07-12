@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -93,7 +94,7 @@ def valid_asset() -> dict:
 
 
 def write_json(path: Path, data: dict) -> bytes:
-    payload = canonical_json_bytes(data)
+    payload = (json.dumps(data, sort_keys=True, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(payload)
     return payload
