@@ -41,7 +41,7 @@ def valid_style() -> dict:
             "doors_windows": "few_large_thick_frames",
             "posts_beams": "chunky_single_readable_masses",
             "roof": "one_bold_bent_silhouette_no_tile_repetition",
-            "exaggeration": "expressive but not excessively distorted",
+            "exaggeration": "playful_asymmetric_moderate",
         },
         "detail_budget": {
             "forbidden": [
@@ -171,8 +171,8 @@ class BuildingStyleContractTests(unittest.TestCase):
             ),
             (
                 "distortion",
-                lambda d: d["shape_contract"].__setitem__("exaggeration", "extreme distortion"),
-                "not excessively distorted",
+                lambda d: d["shape_contract"].__setitem__("exaggeration", "extreme_distortion"),
+                "playful_asymmetric_moderate",
             ),
             (
                 "roof tiles allowed",
