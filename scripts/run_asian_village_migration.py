@@ -145,7 +145,8 @@ def run_commandlet(
     command = [
         str(editor_cmd),
         str(uproject),
-        f"-ExecutePythonScript={AUDIT_SCRIPT}",
+        "-run=pythonscript",
+        f"-script={AUDIT_SCRIPT.as_posix()}",
         "-unattended",
         "-nop4",
         "-nosplash",
@@ -159,10 +160,16 @@ def run_commandlet(
             "GAMEXXK_AV_AUDIT_OUTPUT": str(output),
         }
     )
-    completed = runner(command, env=environment, capture_output=True, text=True)
+    completed = runner(command, env=environment, capture_output=True)
+    def decode_stream(value: Any) -> str:
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="backslashreplace")
+        return str(value or "")
+    stdout = decode_stream(completed.stdout)
+    stderr = decode_stream(completed.stderr)
     log_path = LOG_ROOT / f"{mode}.log"
     log_path.write_text(
-        (completed.stdout or "") + "\n--- STDERR ---\n" + (completed.stderr or ""),
+        stdout + "\n--- STDERR ---\n" + stderr,
         encoding="utf-8",
     )
     if completed.returncode != 0:
@@ -173,6 +180,16 @@ def run_commandlet(
     if report.get("mode") != mode or report.get("ok") is not True:
         raise OrchestrationError(f"{mode} audit reported failure: {report}")
     return report
+
+
+def ensure_manifest(path: Path, manifest: dict[str, Any]) -> None:
+    """Write a new manifest or require an existing resume checkpoint to match."""
+    if path.exists():
+        existing = _load_manifest(path)
+        if existing != manifest:
+            raise OrchestrationError(f"existing migration checkpoint drifted: {path}")
+        return
+    write_manifest(path, manifest)
 
 
 def _assert_protected(expected: dict[str, str]) -> None:
@@ -189,7 +206,7 @@ def execute_migration() -> dict[str, Any]:
 
     EVIDENCE_ROOT.mkdir(parents=True, exist_ok=True)
     source_manifest = build_manifest(SOURCE_ASSET_DIR)
-    write_manifest(EVIDENCE_ROOT / "source-file-manifest.json", source_manifest)
+    ensure_manifest(EVIDENCE_ROOT / "source-file-manifest.json", source_manifest)
     state["phases"].append("source_inventory")
 
     save_and_close_editor()
@@ -209,7 +226,7 @@ def execute_migration() -> dict[str, Any]:
         STAGING_DIR,
         source_manifest,
     )
-    write_manifest(EVIDENCE_ROOT / "copied-file-manifest.json", copied)
+    ensure_manifest(EVIDENCE_ROOT / "copied-file-manifest.json", copied)
     state["phases"].append("copy_and_verify")
 
     run_commandlet(
@@ -221,7 +238,7 @@ def execute_migration() -> dict[str, Any]:
     state["phases"].append("target_ue58_upgrade")
 
     upgraded = build_manifest(TARGET_ASSET_DIR)
-    write_manifest(EVIDENCE_ROOT / "upgraded-file-manifest.json", upgraded)
+    ensure_manifest(EVIDENCE_ROOT / "upgraded-file-manifest.json", upgraded)
     run_commandlet(
         UE58_CMD,
         TARGET_UPROJECT,

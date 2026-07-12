@@ -57,6 +57,33 @@ class OrchestratorTests(unittest.TestCase):
                 with self.assertRaisesRegex(runner.OrchestrationError, "exit 3"):
                     runner.run_commandlet(Path("ue.exe"), Path("p.uproject"), "source-readonly", failed_output, runner=failure)
 
+    def test_commandlet_uses_python_commandlet_mode(self):
+        captured = {}
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "report.json"
+            with mock.patch.object(runner, "LOG_ROOT", root / "logs"), mock.patch.object(
+                runner, "AUDIT_SCRIPT", root / "audit.py"
+            ):
+                def execute(command, **kwargs):
+                    captured["command"] = command
+                    output.write_text(json.dumps({"mode": "source-readonly", "ok": True}), encoding="utf-8")
+                    return subprocess.CompletedProcess(command, 0, "", "")
+
+                runner.run_commandlet(Path("ue.exe"), Path("p.uproject"), "source-readonly", output, runner=execute)
+        self.assertIn("-run=pythonscript", captured["command"])
+        script_arg = next(item for item in captured["command"] if item.startswith("-script="))
+        self.assertNotIn("\\", script_arg)
+
+    def test_existing_manifest_checkpoint_must_match(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "manifest.json"
+            manifest = {"schema_version": 1, "counts": {"files": 0, "uasset": 0, "umap": 0}, "files": []}
+            runner.ensure_manifest(path, manifest)
+            runner.ensure_manifest(path, manifest)
+            with self.assertRaisesRegex(runner.OrchestrationError, "checkpoint drifted"):
+                runner.ensure_manifest(path, {**manifest, "counts": {"files": 1, "uasset": 1, "umap": 0}})
+
     def test_save_gate_refuses_unavailable_mcp(self):
         fake_client = mock.Mock()
         fake_client.connect.return_value = False
