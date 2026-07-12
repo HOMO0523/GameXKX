@@ -1,56 +1,63 @@
-# Player Occlusion Reveal Design
+# Player Occlusion Material Cutout Design
 
 ## Goal
 
-When any foreground object blocks the player, show the full-color player and the real scene around and behind the player through a soft circular window. Buildings, roofs, trees, foliage, props, and any other blocking primitive may be removed inside the reveal. The normal view outside the circle remains unchanged.
+When a town object lies between the active player camera and the Paper2D hero, cut a soft circular opening only in the blocking components. The hero and the scene behind the blocker remain the normal main-camera render at native resolution, scale, perspective, and color. The effect must never introduce a black backing, blurred capture, enlarged character, duplicate sprite, or second-camera color mismatch.
 
-## Rendering Architecture
+## Decision and Superseded Prototype
 
-The main camera renders normally. A hidden `SceneCaptureComponent2D` mirrors the active gameplay camera into a dedicated render target. While the reveal is active, the capture hides every primitive component identified as foreground occlusion and renders the unobstructed scene. A post-process material composites the capture into the main view only inside a soft screen-space circle centered on the projected player visual center.
+Use main-camera material cutout rather than `SceneCaptureComponent2D` compositing. The SceneCapture prototype demonstrated three unacceptable properties with the modular Asian Village assets: hollow buildings exposed black interiors, render-target scaling softened the image, and independent projection could change perceived character scale. The prototype capture, render target, post-process material, and duplicate Paper2D visual remain disabled during transition and are removed after the material route passes acceptance.
 
-This is a true scene reveal: the circle contains the player, ground, NPCs, props, water, and background geometry that should be visible after the foreground blockers are removed. It is not a player silhouette, sprite-only overlay, tinted rectangle, or modification of vendor materials.
+## Asset Strategy
 
-## Occluder Detection
+The imported `/Game/Asian_Village` library contains 127 material assets: 95 material instances and 32 materials. These vendor assets remain untouched.
 
-`UGameXXKPlayerOcclusionRevealComponent` samples the active camera toward the player and the intended reveal region. A center sphere trace plus eight perimeter rays approximates the circular footprint. Every blocking primitive before the player region is collected and hidden only from the secondary capture.
+Project-owned cutout copies live under `/Game/GameXXK/Materials/Occlusion/AsianVillage`. Only material families used by potential foreground blockers are copied: roofs, building walls and trim, trees, foliage, and props. Terrain, roads, water, sky, characters, and UI are excluded.
 
-- All blocking object categories are eligible, including buildings, trees, foliage, and props.
-- The player, owned components, UI, ground behind the player, and actors not between the camera and reveal region remain visible.
-- Components rather than entire modular buildings are hidden where the capture API permits it.
-- Activation waits roughly 0.08 seconds; release holds and fades for roughly 0.22 seconds to prevent edge flicker.
+Each copied root material preserves its original textures, shading, WPO, normal, emissive, and stylization. Opaque roots become Masked only in the project-owned copy. Existing opacity masks are multiplied by the new reveal mask. Material-instance ancestry is reproduced against the copied roots so appearance remains equivalent.
 
-## Composite
+## Cutout Material Contract
 
-The post-process material samples the unobstructed render target and the current scene color. A viewport-relative circular mask blends from capture color at the center to normal scene color at the edge.
+A shared material function and Material Parameter Collection provide:
 
-- Radius: initially 7% of the shorter viewport dimension.
-- Feather: initially 20% of the circle radius.
-- Center: projected Paper2D visual center, not capsule feet.
-- Color: unchanged captured scene color; no glow, desaturation, or grey backing.
-- The material is active only in the town gameplay screen while an occluder set is non-empty.
+- projected hero visual center in viewport UV;
+- viewport aspect correction;
+- normalized reveal radius, initially `0.18`;
+- short feather band implemented with temporal or stable screen-space dither;
+- per-component enable state supplied through a dynamic material parameter or custom primitive data.
+
+Inside the circle the selected foreground component is fully clipped. Outside it the component renders normally. The transition band softens the edge without making the entire component translucent. Because the main camera performs the only scene render, player scale and sharpness are identical inside and outside the opening.
+
+## Occluder Detection and State
+
+`UGameXXKPlayerOcclusionRevealComponent` runs only on the Town screen. At approximately 20Hz it samples from the actual `PlayerCameraManager` toward the projected hero region using one center trace and eight perimeter samples.
+
+Each sample may peel several blocking layers, but accepts only hit components whose depth is strictly before the hero plane. The hero, owned components, terrain near the hero, water, and components behind the hero are excluded. Eligible components are resolved through an original-material-to-cutout-material mapping.
+
+When a component first becomes an eligible blocker, the controller caches every original material slot and applies the matching cutout material instances. A roughly `0.08s` activation delay rejects momentary hits. A roughly `0.22s` release hold prevents flicker at roof and foliage edges. On release, level transition, component destruction, or feature shutdown, every cached original material is restored.
+
+If any slot lacks a valid cutout mapping, that slot keeps its original material and one diagnostic warning is logged. Missing mappings never produce a black, default, or checkerboard material.
 
 ## Performance
 
-The secondary capture is disabled when unobstructed. While active it uses a 512×512 render target initially and updates at 30Hz; fast camera/player movement may temporarily update every frame. The first acceptance target is an added GPU cost below 4ms on the local RTX 4060 Laptop GPU. No building dynamic material instances or vendor asset edits are allowed.
+There is no secondary scene render or render target. Traces run at 20Hz rather than every frame. Material swaps occur only when the blocker set changes, not during every tick. Dynamic instances are cached per component and reused. Masked overdraw is restricted to currently blocking components.
 
-## Transition from the Prototype
-
-The existing trace timing and hysteresis may be retained. The sprite-only reveal material, grey circular backing, and always-on-top Paper2D duplicate are not the final renderer. The duplicate may remain hidden as a diagnostic fallback until the SceneCapture composite passes visual acceptance, then should be removed or disabled by default.
+Initial acceptance targets on the local RTX 4060 Laptop GPU are no measurable character/UI sharpness loss and less than 1ms added GPU cost in a representative blocked view. CPU trace and material update cost must remain below 0.25ms average in the town test area.
 
 ## Validation
 
-- Unobstructed player: no secondary capture and no composite.
-- Roof, wall, tree, foliage, and prop obstruction: circle shows the player and genuine scene behind the blocker.
-- Outside the circle: the blocker remains fully visible.
-- Multiple simultaneous blockers are removed from the capture.
-- Circle center and radius remain stable at 720p, 1080p, and 1440p.
-- Town panels, route map, battle, and main menu disable the capture and composite.
-- No edits to Asian Village, foliage, bridge, or prop materials.
-- Existing camera, Paper2D, collision, NPC, save, and map-flow tests remain valid.
+- Clear view: no materials are swapped and the feature has no visible output.
+- Roof, wall, tree/foliage, and prop obstruction: the hero and real main-camera scene are visible through the opening.
+- Character scale, sprite pixels, camera perspective, and scene color are unchanged.
+- No black backing, RenderTarget blur, duplicate sprite, or circular color patch appears.
+- Multiple simultaneous blockers cut correctly; terrain and objects behind the hero remain rendered.
+- Original material slots restore after clearing the obstruction, leaving the town, route map, battle, or main menu, and after PIE ends.
+- Behavior remains stable at 720p, 1080p, 1440p, and non-16:9 editor viewports.
+- Asian Village source materials and user-tuned camera, Paper2D, placed level, and character assets are unchanged.
 
 ## Non-goals
 
-- Making the whole building transparent.
-- Permanently hiding foreground objects.
-- Applying the effect outside the town gameplay screen.
-- Replacing the main camera or changing its user-tuned transform.
+- Authoring interiors or backfaces for hollow imported buildings.
+- Making an entire building globally translucent.
+- Changing the camera transform, hero scale, or Paper2D render style.
+- Applying the feature outside town gameplay.
