@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +14,7 @@ from scripts.qingshan_building_concepts import (
     ConceptError,
     canonical_json_bytes,
     compile_prompt_packet,
+    load_building_style,
     validate_building_style,
     validate_golden_asset,
 )
@@ -25,6 +28,8 @@ def valid_style() -> dict:
     return {
         "schema_version": 1,
         "style_id": STYLE_ID,
+        "inherits": "style/QS_InkToon_v1.json",
+        "inherits_sha256": "0" * 64,
         "camera_contract": {
             "view": "fixed_high_three_quarter",
             "single_complete_object": True,
@@ -36,7 +41,9 @@ def valid_style() -> dict:
             "text_or_annotations": False,
         },
         "material_contract": {
+            "wall": "warm_off_white_plaster",
             "window_fill": "warm_yellow_translucent_rice_paper",
+            "outline": "dark_teal_variable_dry_brush",
         },
         "shape_contract": {
             "doors_windows": "few_large_thick_frames",
@@ -50,6 +57,20 @@ def valid_style() -> dict:
                 "repeated_window_lattices",
             ],
         },
+        "negative_prompt": [
+            "black_window_panes",
+            "individual_roof_tiles",
+            "fine_window_lattices",
+            "triple_layer_fine_column_capitals",
+            "over_fragmentation",
+            "speckled_noise",
+            "excessive_weirdness",
+            "mirror_symmetry",
+            "text",
+            "annotations",
+            "multiple_buildings",
+            "scene_collage",
+        ],
         "prompt_contract": {
             "positive": [
                 "fixed high three-quarter camera",
@@ -64,6 +85,13 @@ def valid_style() -> dict:
                 "black window panes",
             ],
         },
+        "reference_images": [
+            {
+                "path": "style/references/reference.jpeg",
+                "role": "mass_and_outline",
+                "sha256": "1" * 64,
+            }
+        ],
     }
 
 
@@ -114,6 +142,39 @@ class BuildingStyleContractTests(unittest.TestCase):
         self.assert_style_rejected(
             lambda data: data["material_contract"].pop("window_fill"),
             "window_fill",
+        )
+
+    def test_rejects_unknown_fields_at_every_level(self) -> None:
+        cases = (
+            ("top", lambda d: d.__setitem__("extra", True), "extra"),
+            ("camera", lambda d: d["camera_contract"].__setitem__("fov", 35), "camera_contract.fov"),
+            ("reference", lambda d: d["reference_images"][0].__setitem__("note", "x"), "reference_images\\[0\\].note"),
+        )
+        for label, mutation, message in cases:
+            with self.subTest(label=label):
+                self.assert_style_rejected(mutation, message)
+
+    def test_rejects_bool_where_integer_is_required(self) -> None:
+        self.assert_style_rejected(
+            lambda data: data["composition_contract"].__setitem__("subject_count", True),
+            "composition_contract.subject_count",
+        )
+
+    def test_rejects_wrong_container_and_scalar_types(self) -> None:
+        cases = (
+            (lambda d: d.__setitem__("camera_contract", []), "camera_contract"),
+            (lambda d: d.__setitem__("reference_images", {}), "reference_images"),
+            (lambda d: d["reference_images"][0].__setitem__("role", 7), "reference_images\\[0\\].role"),
+            (lambda d: d["prompt_contract"].__setitem__("positive", "prompt"), "prompt_contract.positive"),
+        )
+        for mutation, message in cases:
+            with self.subTest(message=message):
+                self.assert_style_rejected(mutation, message)
+
+    def test_locks_complete_negative_prompt_token_set(self) -> None:
+        self.assert_style_rejected(
+            lambda data: data["negative_prompt"].remove("scene_collage"),
+            "negative_prompt",
         )
 
     def test_rejects_shared_master_contract_drift(self) -> None:
@@ -189,6 +250,112 @@ class BuildingStyleContractTests(unittest.TestCase):
         for label, mutation, message in cases:
             with self.subTest(label=label):
                 self.assert_style_rejected(mutation, message)
+
+
+class BuildingStyleLoadingTests(unittest.TestCase):
+    def make_catalog(self, root: Path) -> dict:
+        inherited = b'{"style_id":"QS_InkToon_v1"}\n'
+        reference = b"stable reference image bytes"
+        (root / "style" / "references").mkdir(parents=True)
+        (root / "style" / "QS_InkToon_v1.json").write_bytes(inherited)
+        (root / "style" / "references" / "reference.jpeg").write_bytes(reference)
+        style = valid_style()
+        style["inherits_sha256"] = hashlib.sha256(inherited).hexdigest()
+        style["reference_images"][0]["sha256"] = hashlib.sha256(reference).hexdigest()
+        write_json(root / "style" / f"{STYLE_ID}.json", style)
+        return style
+
+    def assert_load_rejected(self, mutation, message: str) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            style = self.make_catalog(root)
+            mutation(root, style)
+            write_json(root / "style" / f"{STYLE_ID}.json", style)
+            with self.assertRaisesRegex(ConceptError, message):
+                load_building_style(root)
+
+    def test_loads_style_when_inheritance_and_reference_hashes_match(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            expected = self.make_catalog(root)
+            self.assertEqual(load_building_style(root), expected)
+
+    def test_loads_checked_in_building_style_master(self) -> None:
+        root = Path(__file__).resolve().parents[1] / "SourceAssets" / "TownPCG" / "QingshanEnvironment"
+        style = load_building_style(root)
+        self.assertEqual(style["style_id"], STYLE_ID)
+
+    def test_rejects_invalid_catalog_style_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            self.make_catalog(root)
+            for style_path in ("/absolute/style.json", "style\\master.json", "style/../style/master.json"):
+                with self.subTest(style_path=style_path):
+                    with self.assertRaisesRegex(ConceptError, "style_path"):
+                        load_building_style(root, style_path)
+
+    def test_rejects_invalid_inheritance_paths(self) -> None:
+        cases = (
+            ("/absolute/base.json", "inherits"),
+            ("style\\base.json", "inherits"),
+            ("style/../base.json", "inherits"),
+        )
+        for path, message in cases:
+            with self.subTest(path=path):
+                self.assert_load_rejected(lambda _root, d, value=path: d.__setitem__("inherits", value), message)
+
+    def test_rejects_missing_inheritance_file(self) -> None:
+        self.assert_load_rejected(
+            lambda root, _data: (root / "style" / "QS_InkToon_v1.json").unlink(),
+            "inherits.*file",
+        )
+
+    def test_rejects_invalid_reference_paths(self) -> None:
+        cases = (
+            ("C:/absolute/reference.jpeg", "reference_images\\[0\\].path"),
+            ("style\\references\\reference.jpeg", "reference_images\\[0\\].path"),
+            ("style/references/../reference.jpeg", "reference_images\\[0\\].path"),
+            ("style/references/missing.jpeg", "reference_images\\[0\\].path.*file"),
+        )
+        for path, message in cases:
+            with self.subTest(path=path):
+                self.assert_load_rejected(
+                    lambda _root, d, value=path: d["reference_images"][0].__setitem__("path", value),
+                    message,
+                )
+
+    def test_rejects_inheritance_and_reference_digest_mismatches(self) -> None:
+        cases = (
+            (lambda _root, d: d.__setitem__("inherits_sha256", "f" * 64), "inherits_sha256"),
+            (lambda _root, d: d["reference_images"][0].__setitem__("sha256", "f" * 64), "reference_images\\[0\\].sha256"),
+        )
+        for mutation, message in cases:
+            with self.subTest(message=message):
+                self.assert_load_rejected(mutation, message)
+
+    def test_rejects_symlink_escape(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory, tempfile.TemporaryDirectory() as outside_directory:
+            root = Path(temporary_directory)
+            style = self.make_catalog(root)
+            outside_root = Path(outside_directory)
+            outside = outside_root / "outside.jpeg"
+            outside.write_bytes(b"outside")
+            link = root / "style" / "references_escape"
+            try:
+                os.symlink(outside_root, link, target_is_directory=True)
+            except OSError:
+                result = subprocess.run(
+                    ["cmd", "/c", "mklink", "/J", str(link), str(outside_root)],
+                    capture_output=True,
+                    text=True,
+                )
+                if result.returncode:
+                    self.skipTest(f"symlinks and junctions unavailable: {result.stderr or result.stdout}")
+            style["reference_images"][0]["path"] = "style/references_escape/outside.jpeg"
+            style["reference_images"][0]["sha256"] = hashlib.sha256(outside.read_bytes()).hexdigest()
+            write_json(root / "style" / f"{STYLE_ID}.json", style)
+            with self.assertRaisesRegex(ConceptError, "reference_images\\[0\\].path.*catalog root"):
+                load_building_style(root)
 
 
 class GoldenAssetContractTests(unittest.TestCase):

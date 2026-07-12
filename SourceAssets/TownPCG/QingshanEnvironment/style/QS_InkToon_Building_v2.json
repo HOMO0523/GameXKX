@@ -1,0 +1,73 @@
+{
+  "camera_contract": {
+    "single_complete_object": true,
+    "view": "fixed_high_three_quarter",
+    "visible_base": true
+  },
+  "composition_contract": {
+    "background": "clean_warm_rice_paper",
+    "subject_count": 1,
+    "text_or_annotations": false
+  },
+  "detail_budget": {
+    "forbidden": [
+      "individual_roof_tiles",
+      "repeated_window_lattices"
+    ]
+  },
+  "inherits": "style/QS_InkToon_v1.json",
+  "inherits_sha256": "334819608d025ee23de5c3b2d6d70013e7d879c0fa28b5776644c6ac3c804486",
+  "material_contract": {
+    "outline": "dark_teal_variable_dry_brush",
+    "wall": "warm_off_white_plaster",
+    "window_fill": "warm_yellow_translucent_rice_paper"
+  },
+  "negative_prompt": [
+    "black_window_panes",
+    "individual_roof_tiles",
+    "fine_window_lattices",
+    "triple_layer_fine_column_capitals",
+    "over_fragmentation",
+    "speckled_noise",
+    "excessive_weirdness",
+    "mirror_symmetry",
+    "text",
+    "annotations",
+    "multiple_buildings",
+    "scene_collage"
+  ],
+  "prompt_contract": {
+    "negative": [
+      "text, labels, callouts, or dimension annotations",
+      "individual roof tiles or tiny repeated lattice grids",
+      "black window panes"
+    ],
+    "positive": [
+      "fixed high three-quarter camera",
+      "one standalone building on a solid warm rice-paper background",
+      "warm yellow xuan-paper windows",
+      "bold doors, windows, beams, and columns",
+      "expressive exaggeration without excessive distortion"
+    ]
+  },
+  "reference_images": [
+    {
+      "path": "style/references/style_env_day.jpeg",
+      "role": "environment_style",
+      "sha256": "bdc4c4e76938dfc416b37ad5d32c710d56604cf344a1346189b152b245bb15bf"
+    },
+    {
+      "path": "style/references/style_creature_mass.jpeg",
+      "role": "mass_and_outline",
+      "sha256": "0b38e1901489220b3d82bb6aff983ec2fbb49bac8a29ca7c0db050ce16df6a7d"
+    }
+  ],
+  "schema_version": 1,
+  "shape_contract": {
+    "doors_windows": "few_large_thick_frames",
+    "exaggeration": "playful_asymmetric_moderate",
+    "posts_beams": "chunky_single_readable_masses",
+    "roof": "one_bold_bent_silhouette_no_tile_repetition"
+  },
+  "style_id": "QS_InkToon_Building_v2"
+}
