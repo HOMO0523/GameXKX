@@ -6,6 +6,7 @@ import importlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -20,8 +21,8 @@ from qingshan_environment_assets import (  # noqa: E402
     BATCH_COUNTS,
     EXPECTED_VIEWS,
     MAX_DIRECT_GENERATION_INPUTS,
+    S_A_GOLDEN_CONTRACT,
     CatalogError,
-    expected_views_for_asset,
     register_output,
     validate_asset,
     validate_catalog,
@@ -78,7 +79,10 @@ def valid_building() -> dict:
         "negative_prompt": ["photorealistic", "modern_signage", "mirror_symmetry"],
         "dependencies": ["REF_QS_ENV_STYLE_LOCK", "REF_QS_SCALE_LINEUP"],
         "detail_budget": valid_detail_budget(),
-        "source_provenance": {"source_kind": "project_concept"},
+        "source_provenance": {
+            "source_kind": "project_concept",
+            "style_profile": "QS_InkToon_v1",
+        },
         "reference_images": [
             {
                 "kind": "hero_3q",
@@ -117,6 +121,18 @@ def valid_building() -> dict:
             "ue_import_allowed": False,
         },
         "acceptance": {"silhouette_unique": False, "player_camera_readability": False},
+        "building": {
+            "model_pipeline": {
+                "approved_quad_face_range": [30000, 35000],
+                "material_stage": "ue_after_gate1_geometry_approval",
+                "source": "Blender_procedural_golden",
+                "target_quad_faces": 35000,
+                "topology": "quad_dominant",
+            },
+            "scale_anchor": "BLD_QS_L_A_MARKET_SHOP",
+        },
+        "retopo_target_quads": 35000,
+        "roof": {"form": "asymmetric_xieshan", "primary_color": "warm_red_brown"},
     }
 
 
@@ -298,6 +314,19 @@ def _planned_b0_prompt(asset_id: str) -> str:
 
 
 class AssetValidationTests(unittest.TestCase):
+    @staticmethod
+    def _checked_in_asset(asset_id: str) -> dict:
+        path = (
+            PROJECT_ROOT
+            / "SourceAssets"
+            / "TownPCG"
+            / "QingshanEnvironment"
+            / "assets"
+            / asset_id
+            / "asset.json"
+        )
+        return json.loads(path.read_text(encoding="utf-8"))
+
     def test_reference_provenance(self):
         references_root = (
             PROJECT_ROOT
@@ -441,13 +470,8 @@ class AssetValidationTests(unittest.TestCase):
             validate_asset(data)
 
     def test_s_a_v2_building_requires_only_hero_view(self):
-        data = valid_building()
-        data["asset_id"] = "BLD_QS_S_A_HOUSE"
-        data["style_profile"] = "QS_InkToon_Building_v2"
-        data["source_provenance"]["style_profile"] = "QS_InkToon_Building_v2"
-        data["generation"]["required_view_kinds"] = ["hero_3q"]
-        data["generation"]["max_generation_calls"] = 3
-        data["reference_images"] = data["reference_images"][:1]
+        data = self._checked_in_asset("BLD_QS_S_A_HOUSE")
+        data["generation"]["max_generation_calls"] = 6
 
         try:
             validate_asset(data)
@@ -462,13 +486,124 @@ class AssetValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(CatalogError, "required_view_kinds"):
             validate_asset(ordinary)
 
-        golden = valid_building()
-        golden["asset_id"] = "BLD_QS_S_A_HOUSE"
-        golden["style_profile"] = "QS_InkToon_Building_v2"
-        golden["source_provenance"]["style_profile"] = "QS_InkToon_Building_v2"
+        golden = self._checked_in_asset("BLD_QS_S_A_HOUSE")
         golden["generation"]["required_view_kinds"] = ["hero_3q", "structure_sheet"]
+        golden["reference_images"].append(
+            {
+                "approval_state": "planned",
+                "file_stub": "BLD_QS_S_A_HOUSE__structure_sheet",
+                "kind": "structure_sheet",
+            }
+        )
         with self.assertRaisesRegex(CatalogError, "required_view_kinds|reference_images"):
             validate_asset(golden)
+
+    def test_style_profile_authority_cannot_be_downgraded_or_impersonated(self):
+        house = self._checked_in_asset("BLD_QS_S_A_HOUSE")
+        house["style_profile"] = "QS_InkToon_v1"
+        house["source_provenance"]["style_profile"] = "QS_InkToon_v1"
+        house["generation"]["required_view_kinds"] = ["hero_3q", "structure_sheet"]
+        house["generation"]["max_generation_calls"] = 6
+        house["reference_images"].append(
+            {
+                "approval_state": "planned",
+                "background": "warm_rice_paper",
+                "camera": "structure_sheet",
+                "file_stub": "BLD_QS_S_A_HOUSE__structure_sheet",
+                "kind": "structure_sheet",
+                "required_annotations": ["structure_sheet"],
+            }
+        )
+        with self.assertRaisesRegex(CatalogError, "S-A|style_profile"):
+            validate_asset(house)
+
+        ordinary = self._checked_in_asset("BLD_QS_M_A_INN")
+        ordinary["style_profile"] = "QS_InkToon_Building_v2"
+        ordinary["source_provenance"]["style_profile"] = "QS_InkToon_Building_v2"
+        with self.assertRaisesRegex(CatalogError, "reserved|style_profile"):
+            validate_asset(ordinary)
+
+    def test_s_a_authoritative_contract_is_deeply_immutable(self):
+        with self.assertRaises(TypeError):
+            S_A_GOLDEN_CONTRACT["style_profile"] = "downgraded"
+        with self.assertRaises(TypeError):
+            S_A_GOLDEN_CONTRACT["model_pipeline"]["target_quad_faces"] = 1
+        with self.assertRaises(TypeError):
+            S_A_GOLDEN_CONTRACT["visual_contract"]["roof"]["color"] = "indigo"
+
+    def test_top_level_and_provenance_style_profiles_must_match(self):
+        data = valid_building()
+        data["source_provenance"]["style_profile"] = "drifted_profile"
+        with self.assertRaisesRegex(CatalogError, "source_provenance.style_profile"):
+            validate_asset(data)
+
+    def test_building_pipeline_and_s_a_visual_contract_are_closed(self):
+        mutations = {
+            "missing visual field": lambda d: d["building"]["visual_contract"]["windows"].pop("frame"),
+            "unknown visual field": lambda d: d["building"]["visual_contract"].__setitem__("ornament", "extra"),
+            "wrong visual enum": lambda d: d["building"]["visual_contract"]["entrance"].__setitem__("placement", "centered"),
+            "wrong pipeline source": lambda d: d["building"]["model_pipeline"].__setitem__("source", "Maya_proxy"),
+            "missing pipeline field": lambda d: d["building"]["model_pipeline"].pop("topology"),
+            "unknown pipeline field": lambda d: d["building"]["model_pipeline"].__setitem__("proxy_lod", 1),
+            "wrong material stage": lambda d: d["building"]["model_pipeline"].__setitem__("material_stage", "before_retopology"),
+            "target one": lambda d: d["building"]["model_pipeline"].__setitem__("target_quad_faces", 1),
+            "range mismatch": lambda d: d["building"]["model_pipeline"].__setitem__("approved_quad_face_range", [1, 2]),
+            "top-level target drift": lambda d: d.__setitem__("retopo_target_quads", 49999),
+            "roof drift": lambda d: d["roof"].__setitem__("primary_color", "indigo"),
+            "contradictory golden contract": lambda d: d["building"].__setitem__(
+                "golden_contract", {"roof": {"form": "flat"}}
+            ),
+        }
+        for label, mutation in mutations.items():
+            with self.subTest(label=label):
+                house = self._checked_in_asset("BLD_QS_S_A_HOUSE")
+                mutation(house)
+                with self.assertRaisesRegex(CatalogError, "building|pipeline|retopo|roof|visual"):
+                    validate_asset(house)
+
+    def test_s_a_spec_material_and_provenance_are_authoritative(self):
+        mutations = {
+            "display name": lambda d: d.__setitem__("display_name", "漂移民居"),
+            "gameplay role": lambda d: d.__setitem__("gameplay_role", "warehouse"),
+            "dimensions": lambda d: d.__setitem__("target_dimensions_m", [99, 99, 99]),
+            "zones": lambda d: d.__setitem__("intended_zone", ["riverbank"]),
+            "silhouettes": lambda d: d.__setitem__("silhouette_keywords", ["generic_box"]),
+            "material language": lambda d: d.__setitem__("material_language", ["unrelated_style"]),
+            "palette": lambda d: d.__setitem__("palette", ["indigo"]),
+            "scale anchor": lambda d: d["building"].__setitem__("scale_anchor", "FAKE_ANCHOR"),
+            "generation prompt": lambda d: d["generation"].__setitem__(
+                "prompt",
+                "flat-roof warehouse\nDetail budget: "
+                + d["detail_budget"]["prompt_instruction"],
+            ),
+            "generation subject": lambda d: d["generation"].__setitem__(
+                "subject", "flat-roof warehouse"
+            ),
+            "source kind": lambda d: d["source_provenance"].__setitem__(
+                "source_kind", "third_party_model"
+            ),
+        }
+        for label, mutation in mutations.items():
+            with self.subTest(label=label):
+                house = self._checked_in_asset("BLD_QS_S_A_HOUSE")
+                mutation(house)
+                with self.assertRaisesRegex(CatalogError, "S-A|golden contract"):
+                    validate_asset(house)
+
+    def test_ordinary_building_pipeline_is_closed_without_inheriting_s_a_budget(self):
+        inn = self._checked_in_asset("BLD_QS_M_A_INN")
+        validate_asset(inn)
+        self.assertEqual(inn["retopo_target_quads"], 35000)
+        for field, value in (
+            ("source", "Maya_proxy"),
+            ("material_stage", "before_retopology"),
+            ("target_quad_faces", 1),
+        ):
+            with self.subTest(field=field):
+                malformed = copy.deepcopy(inn)
+                malformed["building"]["model_pipeline"][field] = value
+                with self.assertRaisesRegex(CatalogError, "model_pipeline"):
+                    validate_asset(malformed)
 
     def test_v004_budget_is_impossible(self):
         data = valid_building()
@@ -885,13 +1020,21 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
             )
 
             for asset_id, asset in assets.items():
-                expected_views = list(expected_views_for_asset(asset))
+                expected_views = (
+                    ["hero_3q"]
+                    if asset_id == "BLD_QS_S_A_HOUSE"
+                    else list(EXPECTED_VIEWS[asset["category"]])
+                )
                 self.assertEqual(asset["generation"]["required_view_kinds"], expected_views)
                 self.assertEqual(
                     [reference["kind"] for reference in asset["reference_images"]],
                     expected_views,
                 )
-                expected_calls = 0 if asset["category"] == "registry" else len(expected_views) * 3
+                expected_calls = (
+                    6
+                    if asset_id == "BLD_QS_S_A_HOUSE"
+                    else 0 if asset["category"] == "registry" else len(expected_views) * 3
+                )
                 self.assertEqual(asset["generation"]["max_generation_calls"], expected_calls)
                 self.assertEqual(asset["generation"]["generation_calls_used"], 0)
                 for gate in (
@@ -913,6 +1056,25 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                         assets[asset_id]["workflow_gates"]["concept_generation_allowed"],
                         False,
                     )
+
+    def test_rebuild_keeps_every_non_s_a_checked_in_asset_declaration_byte_identical(self):
+        source = PROJECT_ROOT / "SourceAssets" / "TownPCG" / "QingshanEnvironment"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "QingshanEnvironment"
+            shutil.copytree(source, root)
+            before = {
+                path.parent.name: path.read_bytes()
+                for path in (root / "assets").glob("*/asset.json")
+                if path.parent.name != "BLD_QS_S_A_HOUSE"
+            }
+            builder = _load_catalog_builder()
+            builder.write_catalog(root)
+            after = {
+                path.parent.name: path.read_bytes()
+                for path in (root / "assets").glob("*/asset.json")
+                if path.parent.name != "BLD_QS_S_A_HOUSE"
+            }
+            self.assertEqual(after, before)
 
     def test_builder_records_exact_b0_prompts_and_stable_reference_paths(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1258,6 +1420,48 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
             self.assertEqual(stored["style_profile"], "QS_InkToon_Building_v2")
             self.assertEqual(stored["building"]["model_pipeline"]["target_quad_faces"], 50000)
 
+    def test_small_house_migrates_legacy_two_view_evidence_without_cross_contamination(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, builder, _summary, assets = self._build(directory)
+            house = assets["BLD_QS_S_A_HOUSE"]
+            hero_output = root / "concepts" / "hero.png"
+            structure_output = root / "concepts" / "structure.png"
+            hero_output.parent.mkdir(parents=True)
+            hero_output.write_bytes(b"hero evidence")
+            structure_output.write_bytes(b"legacy structure evidence")
+            house["generation"]["generation_calls_used"] = 5
+            house["generation"]["max_generation_calls"] = 6
+            house["reference_images"][0].update(
+                {
+                    "approval_state": "generated_pending_review",
+                    "output_path": "concepts/hero.png",
+                    "sha256": hashlib.sha256(hero_output.read_bytes()).hexdigest(),
+                    "version": "v002",
+                }
+            )
+            house["reference_images"].append(
+                {
+                    "approval_state": "generated_pending_review",
+                    "file_stub": "BLD_QS_S_A_HOUSE__structure_sheet",
+                    "kind": "structure_sheet",
+                    "output_path": "concepts/structure.png",
+                    "sha256": hashlib.sha256(structure_output.read_bytes()).hexdigest(),
+                    "version": "v003",
+                }
+            )
+            _write_json(root / "assets" / house["asset_id"] / "asset.json", house)
+
+            builder.write_catalog(root)
+            stored = _asset_jsons(root)["BLD_QS_S_A_HOUSE"]
+            self.assertEqual(stored["generation"]["generation_calls_used"], 5)
+            self.assertGreaterEqual(
+                stored["generation"]["max_generation_calls"],
+                stored["generation"]["generation_calls_used"],
+            )
+            self.assertEqual([item["kind"] for item in stored["reference_images"]], ["hero_3q"])
+            self.assertEqual(stored["reference_images"][0]["output_path"], "concepts/hero.png")
+            self.assertNotIn("structure", json.dumps(stored["reference_images"][0]))
+
     def test_golden_inn_declares_buildable_visual_contract(self):
         with tempfile.TemporaryDirectory() as directory:
             _root, _builder, _summary, assets = self._build(directory)
@@ -1389,9 +1593,14 @@ class DeterministicCatalogBuilderTests(unittest.TestCase):
                     continue
                 self.assertIn("view_contracts", asset["generation"]["prompt_sections"], asset_id)
                 contracts = asset["generation"]["prompt_sections"]["view_contracts"]
-                self.assertEqual(set(contracts), set(expected_views_for_asset(asset)), asset_id)
+                expected_views = (
+                    ("hero_3q",)
+                    if asset_id == "BLD_QS_S_A_HOUSE"
+                    else EXPECTED_VIEWS[asset["category"]]
+                )
+                self.assertEqual(set(contracts), set(expected_views), asset_id)
                 references = {item["kind"]: item for item in asset["reference_images"]}
-                for view_kind in expected_views_for_asset(asset):
+                for view_kind in expected_views:
                     expected_elements = required[asset["category"]][view_kind]
                     contract = contracts[view_kind]
                     self.assertTrue(contract["instruction"].strip(), f"{asset_id}:{view_kind}")
@@ -2603,6 +2812,136 @@ class SchemaContractTests(unittest.TestCase):
         self.assertIn("direct tool inputs", direct_inputs["description"])
         self.assertNotIn("maxItems", lineage)
         self.assertIn("not limited to five", lineage["description"])
+
+    def test_schema_closes_building_pipeline_and_s_a_visual_contract(self):
+        schema_path = (
+            PROJECT_ROOT
+            / "SourceAssets"
+            / "TownPCG"
+            / "QingshanEnvironment"
+            / "schema"
+            / "qingshan_environment_asset.schema.json"
+        )
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        building = schema["properties"]["building"]
+        self.assertFalse(building["additionalProperties"])
+        self.assertEqual(set(building["required"]), {"model_pipeline", "scale_anchor"})
+        pipeline = building["properties"]["model_pipeline"]
+        self.assertFalse(pipeline["additionalProperties"])
+        self.assertEqual(
+            set(pipeline["required"]),
+            {
+                "approved_quad_face_range",
+                "material_stage",
+                "source",
+                "target_quad_faces",
+                "topology",
+            },
+        )
+        self.assertEqual(
+            set(pipeline["properties"]["source"]["enum"]),
+            {
+                "Blender_procedural_golden",
+                "Blender_modular_derivative",
+                "Tripo_high_precision",
+            },
+        )
+        serialized_conditions = json.dumps(schema["allOf"], ensure_ascii=False, sort_keys=True)
+        for token in (
+            "BLD_QS_S_A_HOUSE",
+            "QS_InkToon_Building_v2",
+            "hero_3q",
+            "visual_contract",
+            "Tripo_high_precision",
+            "curved_double_slope",
+            "50000",
+        ):
+            self.assertIn(token, serialized_conditions)
+        s_a_then = schema["allOf"][0]["then"]
+        self.assertTrue(
+            {
+                "category",
+                "style_profile",
+                "source_provenance",
+                "generation",
+                "reference_images",
+                "building",
+                "roof",
+                "retopo_target_quads",
+            }.issubset(s_a_then["required"])
+        )
+        self.assertIn(
+            {"required": ["golden_contract"]},
+            s_a_then["properties"]["building"]["not"]["anyOf"],
+        )
+
+    def test_powershell_json_schema_rejects_missing_or_malformed_s_a_contract(self):
+        powershell = shutil.which("pwsh")
+        self.assertIsNotNone(powershell, "PowerShell 7 Test-Json is required for schema QA")
+        catalog_root = (
+            PROJECT_ROOT / "SourceAssets" / "TownPCG" / "QingshanEnvironment"
+        )
+        schema_path = catalog_root / "schema" / "qingshan_environment_asset.schema.json"
+        valid = json.loads(
+            (catalog_root / "assets" / "BLD_QS_S_A_HOUSE" / "asset.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        command = (
+            "param($jsonPath,$schemaPath) "
+            "$json=Get-Content -Raw -LiteralPath $jsonPath; "
+            "Test-Json -Json $json -SchemaFile $schemaPath -ErrorAction SilentlyContinue"
+        )
+
+        def schema_accepts(candidate: dict, directory: str) -> bool:
+            path = Path(directory) / "candidate.json"
+            _write_json(path, candidate)
+            result = subprocess.run(
+                [
+                    powershell,
+                    "-NoProfile",
+                    "-CommandWithArgs",
+                    command,
+                    str(path),
+                    str(schema_path),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertIn(result.returncode, (0, 1), result.stderr)
+            self.assertRegex(result.stdout.strip(), r"(?:True|False)$")
+            return result.stdout.strip().endswith("True")
+
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertTrue(schema_accepts(valid, directory))
+            mutations = {
+                "missing building": lambda d: d.pop("building"),
+                "missing roof": lambda d: d.pop("roof"),
+                "missing retopo": lambda d: d.pop("retopo_target_quads"),
+                "bad pipeline source": lambda d: d["building"]["model_pipeline"].__setitem__(
+                    "source", "Blender_low_precision"
+                ),
+                "second declaration": lambda d: d["building"].__setitem__(
+                    "golden_contract", {"roof": {"form": "flat"}}
+                ),
+            }
+            for label, mutation in mutations.items():
+                with self.subTest(label=label):
+                    candidate = copy.deepcopy(valid)
+                    mutation(candidate)
+                    self.assertFalse(schema_accepts(candidate, directory))
+
+            workshop = json.loads(
+                (
+                    catalog_root
+                    / "assets"
+                    / "BLD_QS_S_B_WORKSHOP"
+                    / "asset.json"
+                ).read_text(encoding="utf-8")
+            )
+            workshop["building"]["golden_contract"] = {"roof": {"form": "flat"}}
+            self.assertFalse(schema_accepts(workshop, directory))
 
 
 if __name__ == "__main__":

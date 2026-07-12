@@ -6,6 +6,7 @@ import argparse
 import json
 import math
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -16,11 +17,11 @@ from qingshan_environment_assets import (
     BATCH_COUNTS,
     DETAIL_BUDGET_FORBIDDEN,
     EXPECTED_VIEWS,
-    S_A_GOLDEN_ASSET_ID,
-    S_A_GOLDEN_STYLE_PROFILE,
+    S_A_GOLDEN_CONTRACT,
     CatalogError,
     derive_manifest_generation,
     expected_views_for_asset,
+    s_a_generation_prompt,
     validate_asset,
     validate_catalog,
     verify_asset_evidence,
@@ -191,6 +192,14 @@ class AssetSpec:
     silhouettes: tuple[str, ...]
 
 
+def _plain_contract(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {key: _plain_contract(child) for key, child in value.items()}
+    if isinstance(value, tuple):
+        return [_plain_contract(child) for child in value]
+    return value
+
+
 SPECS = {
     "BLD_QS_L_A_MARKET_SHOP": AssetSpec(
         "registry", None, ("market",), "landmark_shop", "青山镇最大商铺 L-A（现有登记）",
@@ -222,10 +231,15 @@ SPECS = {
         "Two-storey inn with warm red-brown asymmetric xieshan roof", "warm_red_brown",
         ("two_storey", "asymmetric_xieshan", "deep_eaves"),
     ),
-    "BLD_QS_S_A_HOUSE": AssetSpec(
-        "building", (3.6, 4.2, 3.8), ("courtyard",), "small_house", "青山镇小民居 A",
-        "Compact two-storey small residence with an orange curved double-slope roof", "orange",
-        ("compact_two_storey", "curved_double_slope", "offset_entrance"),
+    S_A_GOLDEN_CONTRACT["asset_id"]: AssetSpec(
+        S_A_GOLDEN_CONTRACT["category"],
+        S_A_GOLDEN_CONTRACT["spec"]["dimensions"],
+        S_A_GOLDEN_CONTRACT["spec"]["zones"],
+        S_A_GOLDEN_CONTRACT["spec"]["role"],
+        S_A_GOLDEN_CONTRACT["spec"]["display_name"],
+        S_A_GOLDEN_CONTRACT["spec"]["primary_request"],
+        S_A_GOLDEN_CONTRACT["spec"]["accent"],
+        S_A_GOLDEN_CONTRACT["spec"]["silhouettes"],
     ),
     "LMK_QS_GATE_NORTH": AssetSpec(
         "landmark", (24, 6, 12), ("north_gate",), "fixed_anchor", "青山镇北门",
@@ -371,7 +385,12 @@ SPECS = {
 
 ROOFS = {
     "BLD_QS_M_A_INN": ("asymmetric_xieshan", "warm_red_brown", "M", 3.3),
-    "BLD_QS_S_A_HOUSE": ("curved_double_slope", "orange", "S", 2.4),
+    S_A_GOLDEN_CONTRACT["asset_id"]: (
+        S_A_GOLDEN_CONTRACT["roof"]["form"],
+        S_A_GOLDEN_CONTRACT["roof"]["primary_color"],
+        "S",
+        2.4,
+    ),
     "BLD_QS_M_B_STREET_SHOP": ("deep_eave_half_storey", "ink_green", "M", 2.9),
     "BLD_QS_S_B_WORKSHOP": ("hard_gable", "ochre", "S", 2.3),
     "BLD_QS_S_C_RIVER_HUT": ("low_eave", "teal", "S", 2.1),
@@ -380,9 +399,14 @@ ROOFS = {
 BUILDING_QUAD_BUDGETS = {
     "BLD_QS_M_A_INN": ([30000, 35000], 35000),
     "BLD_QS_M_B_STREET_SHOP": ([25000, 30000], 30000),
-    "BLD_QS_S_A_HOUSE": ([15000, 20000], 20000),
     "BLD_QS_S_B_WORKSHOP": ([12000, 18000], 18000),
     "BLD_QS_S_C_RIVER_HUT": ([15000, 20000], 20000),
+}
+
+# Historical v1 style-profile data remains byte-stable; it is not a production fallback for S-A.
+LEGACY_V1_BUILDING_QUAD_BUDGETS = {
+    **BUILDING_QUAD_BUDGETS,
+    S_A_GOLDEN_CONTRACT["asset_id"]: ([15000, 20000], 20000),
 }
 
 PLANTS = {
@@ -543,28 +567,8 @@ def _prompt_sections(prompt: str) -> dict[str, Any]:
 def _normal_prompt(
     asset_id: str, spec: AssetSpec, view_contracts: dict[str, dict[str, Any]]
 ) -> str:
-    if asset_id == S_A_GOLDEN_ASSET_ID:
-        lines = [
-            "Use case: stylized-concept",
-            "Asset type: Qingshan golden small-house Tripo input",
-            "Primary request: one single building, a compact two-storey small residence with an orange curved double-slope roof, chunky double-leaf door, few wide-framed warm yellow rice-paper windows, chunky beams and columns, and an offset entrance",
-            "Input images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects",
-            "Scene/backdrop: clean warm rice-paper background, no labels and no text",
-            "Subject: single building in a three-quarter view; compact two-storey small residence; orange curved double-slope roof; chunky double-leaf door; few wide-framed warm yellow rice-paper windows; chunky beams and columns; offset entrance",
-            "Style/medium: QS_InkToon_Building_v2 hand-drawn Chinese ink cartoon with dry-brush edges, chunky masses, two to three value bands, and moderate playful asymmetry",
-            "Composition/framing: one complete uncropped single building in a Tripo-ready fixed high three-quarter view with a visible base and generous margins",
-            "Lighting/mood: neutral soft daylight with calm warm contrast",
-            "Constraints: no labels, no text, no logos, no watermark, no individual roof tiles, no fine window lattices, no photorealism, no PBR shine, no modern objects, no mirror symmetry",
-        ]
-        lines.extend(
-            "View {kind}: {instruction}; required elements: {elements}".format(
-                kind=kind,
-                instruction=contract["instruction"],
-                elements=", ".join(contract["required_elements"]),
-            )
-            for kind, contract in view_contracts.items()
-        )
-        return "\n".join(lines)
+    if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]:
+        return s_a_generation_prompt()
     lines = [
             "Use case: stylized-concept",
             f"Asset type: Qingshan {spec.category} game environment reference",
@@ -609,24 +613,8 @@ def _view_contracts(asset_id: str, spec: AssetSpec) -> dict[str, dict[str, Any]]
             }
         }
     if category == "building":
-        if asset_id == S_A_GOLDEN_ASSET_ID:
-            return {
-                "hero_3q": {
-                    "instruction": "Show one complete Tripo-ready golden small house from a fixed high three-quarter camera",
-                    "required_elements": [
-                        "complete_uncropped_silhouette",
-                        "single_complete_uncropped_building",
-                        "visible_base",
-                        "entrance_direction",
-                        "offset_entrance",
-                        "roof_readability",
-                        "curved_double_slope_roof",
-                        "fixed_high_three_quarter_camera",
-                        "single_asset_clean_warm_background",
-                        "clean_warm_rice_paper_background",
-                    ],
-                }
-            }
+        if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]:
+            return _plain_contract(S_A_GOLDEN_CONTRACT["view_contracts"])
         return {
             "hero_3q": {
                 "instruction": "Show one complete Tripo-ready building from the fixed high three-quarter camera",
@@ -848,8 +836,8 @@ def _generation(
     sections = _prompt_sections(prompt)
     sections["view_contracts"] = view_contracts
     style_profile = (
-        S_A_GOLDEN_STYLE_PROFILE
-        if asset_id == S_A_GOLDEN_ASSET_ID
+        S_A_GOLDEN_CONTRACT["style_profile"]
+        if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]
         else "QS_InkToon_v1"
     )
     expected_views = list(
@@ -871,9 +859,17 @@ def _generation(
         "input_image_roles": input_roles,
         "input_images": inputs,
         "lighting_mood": sections["lighting_mood"],
-        "max_generation_calls": 0 if spec.category == "registry" else len(expected_views) * 3,
+        "max_generation_calls": (
+            S_A_GOLDEN_CONTRACT["max_generation_calls"]
+            if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]
+            else 0 if spec.category == "registry" else len(expected_views) * 3
+        ),
         "max_versions_per_view": 3,
-        "palette": _palette(spec.accent),
+        "palette": (
+            list(S_A_GOLDEN_CONTRACT["palette"])
+            if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]
+            else _palette(spec.accent)
+        ),
         "prompt": prompt,
         "prompt_sections": sections,
         "required_view_kinds": expected_views,
@@ -944,27 +940,38 @@ def _category_fields(asset_id: str, spec: AssetSpec, metrics: dict[str, Any]) ->
         }
     elif category == "building":
         roof_form, roof_color, size_class, eave_height = ROOFS[asset_id]
-        approved_range, target_quad_faces = BUILDING_QUAD_BUDGETS[asset_id]
-        if asset_id == S_A_GOLDEN_ASSET_ID:
-            approved_range, target_quad_faces = [45000, 55000], 50000
+        if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]:
+            pipeline_contract = S_A_GOLDEN_CONTRACT["model_pipeline"]
+            approved_range = list(pipeline_contract["approved_quad_face_range"])
+            target_quad_faces = pipeline_contract["target_quad_faces"]
+        else:
+            approved_range, target_quad_faces = BUILDING_QUAD_BUDGETS[asset_id]
         model_source = (
             "Blender_procedural_golden"
             if asset_id == "BLD_QS_M_A_INN"
             else "Blender_modular_derivative"
         )
         material_stage = "ue_after_gate1_geometry_approval"
-        if asset_id == S_A_GOLDEN_ASSET_ID:
-            model_source = "Tripo_high_precision"
-            material_stage = "after_retopology"
+        if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]:
+            model_source = pipeline_contract["source"]
+            material_stage = pipeline_contract["material_stage"]
         building = {
             "model_pipeline": {
                 "approved_quad_face_range": approved_range,
                 "material_stage": material_stage,
                 "source": model_source,
                 "target_quad_faces": target_quad_faces,
-                "topology": "quad_dominant",
+                "topology": (
+                    pipeline_contract["topology"]
+                    if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]
+                    else "quad_dominant"
+                ),
             },
-            "scale_anchor": "BLD_QS_L_A_MARKET_SHOP",
+            "scale_anchor": (
+                S_A_GOLDEN_CONTRACT["scale_anchor"]
+                if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]
+                else "BLD_QS_L_A_MARKET_SHOP"
+            ),
         }
         if asset_id == "BLD_QS_M_A_INN":
             building["golden_contract"] = {
@@ -979,25 +986,10 @@ def _category_fields(asset_id: str, spec: AssetSpec, metrics: dict[str, Any]) ->
                 "required_render_views": ["hero_3q", "front", "player_camera"],
                 "output_root": "assets/BLD_QS_M_A_INN/source/blender",
             }
-        elif asset_id == S_A_GOLDEN_ASSET_ID:
-            building["visual_contract"] = {
-                "building_type": "compact_two_storey_small_residence",
-                "entrance": {
-                    "door_type": "chunky_double_leaf",
-                    "placement": "offset",
-                },
-                "roof": {
-                    "color": "orange",
-                    "form": "curved_double_slope",
-                },
-                "structure": {"beam_column_language": "chunky"},
-                "windows": {
-                    "frame": "wide",
-                    "glazing": "warm_yellow_rice_paper",
-                    "micro_grid": "none",
-                    "quantity": "few",
-                },
-            }
+        elif asset_id == S_A_GOLDEN_CONTRACT["asset_id"]:
+            building["visual_contract"] = _plain_contract(
+                S_A_GOLDEN_CONTRACT["visual_contract"]
+            )
         fields.update(
             {
                 "allowed_cluster_roles": ["market_edge", "street_offset", "courtyard_offset"],
@@ -1007,7 +999,11 @@ def _category_fields(asset_id: str, spec: AssetSpec, metrics: dict[str, Any]) ->
                 "entrance_axis": "+Y",
                 "footprint_m": [spec.dimensions[0], spec.dimensions[1]],
                 "retopo_target_quads": target_quad_faces,
-                "roof": {"form": roof_form, "primary_color": roof_color},
+                "roof": (
+                    _plain_contract(S_A_GOLDEN_CONTRACT["roof"])
+                    if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]
+                    else {"form": roof_form, "primary_color": roof_color}
+                ),
                 "simple_collision_required": True,
                 "size_class": size_class,
                 "texture_resolution": "4K_source_2K_runtime",
@@ -1170,8 +1166,8 @@ def _make_asset(
     is_b0 = batch == "B0"
     is_registry = batch == "REGISTRY"
     style_profile = (
-        S_A_GOLDEN_STYLE_PROFILE
-        if asset_id == S_A_GOLDEN_ASSET_ID
+        S_A_GOLDEN_CONTRACT["style_profile"]
+        if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]
         else "QS_InkToon_v1"
     )
     expected_views = expected_views_for_asset(
@@ -1212,12 +1208,16 @@ def _make_asset(
         "generation": generation,
         "intended_zone": list(spec.zones),
         "material_language": (
-            [S_A_GOLDEN_STYLE_PROFILE, "two_to_three_value_bands", "dry_brush_edges"]
-            if asset_id == S_A_GOLDEN_ASSET_ID
+            list(S_A_GOLDEN_CONTRACT["material_language"])
+            if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]
             else COMMON_MATERIAL
         ),
         "negative_prompt": COMMON_NEGATIVE,
-        "palette": _palette(spec.accent),
+        "palette": (
+            list(S_A_GOLDEN_CONTRACT["palette"])
+            if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]
+            else _palette(spec.accent)
+        ),
         "pcg": pcg,
         "pivot": "bottom_center",
         "priority": "P0" if batch in ("REGISTRY", "B0", "B1") else "P1" if batch == "B2" else "P2",
@@ -1237,7 +1237,11 @@ def _make_asset(
         "source_provenance": {
             "production_intent": "concept_json_before_model_sprite_or_unreal_production",
             "reference_provenance": "style/references/provenance.json",
-            "source_kind": "existing_project_asset" if is_registry else "project_concept",
+            "source_kind": (
+                S_A_GOLDEN_CONTRACT["source_kind"]
+                if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]
+                else "existing_project_asset" if is_registry else "project_concept"
+            ),
             "stable_reference_images": stable_paths,
             "style_profile": style_profile,
         },
@@ -1344,7 +1348,7 @@ def _style_profile(references: list[dict[str, str]]) -> dict[str, Any]:
                     "approved_range": budget[0],
                     "target_quad_faces": budget[1],
                 }
-                for asset_id, budget in BUILDING_QUAD_BUDGETS.items()
+                for asset_id, budget in LEGACY_V1_BUILDING_QUAD_BUDGETS.items()
             },
             "material_stage": "ue_after_geometry_gate_approval",
         },

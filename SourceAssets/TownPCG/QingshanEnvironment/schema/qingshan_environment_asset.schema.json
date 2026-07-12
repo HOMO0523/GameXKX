@@ -33,6 +33,146 @@
     "workflow_gates",
     "acceptance"
   ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {"asset_id": {"const": "BLD_QS_S_A_HOUSE"}},
+        "required": ["asset_id"]
+      },
+      "then": {
+        "required": [
+          "category",
+          "style_profile",
+          "source_provenance",
+          "generation",
+          "reference_images",
+          "building",
+          "roof",
+          "retopo_target_quads"
+        ],
+        "properties": {
+          "category": {"const": "building"},
+          "style_profile": {"const": "QS_InkToon_Building_v2"},
+          "display_name": {"const": "青山镇小民居 A"},
+          "gameplay_role": {"const": "small_house"},
+          "target_dimensions_m": {"const": [3.6, 4.2, 3.8]},
+          "intended_zone": {"const": ["courtyard"]},
+          "silhouette_keywords": {
+            "const": ["compact_two_storey", "curved_double_slope", "offset_entrance"]
+          },
+          "material_language": {
+            "const": [
+              "QS_InkToon_Building_v2",
+              "two_to_three_value_bands",
+              "dry_brush_edges"
+            ]
+          },
+          "palette": {
+            "const": [
+              "warm_off_white",
+              "dark_teal_ink",
+              "jade_green",
+              "blue_gray",
+              "warm_ochre",
+              "orange"
+            ]
+          },
+          "source_provenance": {
+            "required": ["style_profile", "source_kind"],
+            "properties": {
+              "style_profile": {"const": "QS_InkToon_Building_v2"},
+              "source_kind": {"const": "project_concept"}
+            }
+          },
+          "generation": {
+            "properties": {
+              "required_view_kinds": {"const": ["hero_3q"]},
+              "max_generation_calls": {"const": 6}
+            }
+          },
+          "reference_images": {
+            "minItems": 1,
+            "maxItems": 1,
+            "items": {"properties": {"kind": {"const": "hero_3q"}}}
+          },
+          "retopo_target_quads": {"const": 50000},
+          "roof": {
+            "const": {"form": "curved_double_slope", "primary_color": "orange"}
+          },
+          "building": {
+            "required": ["model_pipeline", "scale_anchor", "visual_contract"],
+            "not": {
+              "anyOf": [
+                {"required": ["golden_contract"]}
+              ]
+            },
+            "properties": {
+              "scale_anchor": {"const": "BLD_QS_L_A_MARKET_SHOP"},
+              "model_pipeline": {
+                "const": {
+                  "approved_quad_face_range": [45000, 55000],
+                  "material_stage": "after_retopology",
+                  "source": "Tripo_high_precision",
+                  "target_quad_faces": 50000,
+                  "topology": "quad_dominant"
+                }
+              },
+              "visual_contract": {
+                "const": {
+                  "building_type": "compact_two_storey_small_residence",
+                  "entrance": {"door_type": "chunky_double_leaf", "placement": "offset"},
+                  "roof": {"color": "orange", "form": "curved_double_slope"},
+                  "structure": {"beam_column_language": "chunky"},
+                  "windows": {
+                    "frame": "wide",
+                    "glazing": "warm_yellow_rice_paper",
+                    "micro_grid": "none",
+                    "quantity": "few"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {"style_profile": {"const": "QS_InkToon_v1"}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"style_profile": {"const": "QS_InkToon_v1"}},
+        "required": ["style_profile"]
+      },
+      "then": {
+        "properties": {
+          "source_provenance": {
+            "properties": {"style_profile": {"const": "QS_InkToon_v1"}}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "category": {"const": "building"},
+          "asset_id": {"not": {"const": "BLD_QS_M_A_INN"}}
+        },
+        "required": ["category", "asset_id", "building"]
+      },
+      "then": {
+        "properties": {
+          "building": {
+            "not": {
+              "anyOf": [
+                {"required": ["golden_contract"]}
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
   "properties": {
     "schema_version": {
       "const": 1
@@ -75,7 +215,7 @@
       "$ref": "#/$defs/nonEmptyString"
     },
     "style_profile": {
-      "$ref": "#/$defs/nonEmptyString"
+      "enum": ["QS_InkToon_v1", "QS_InkToon_Building_v2"]
     },
     "intended_zone": {
       "$ref": "#/$defs/nonEmptyStringArray"
@@ -171,7 +311,13 @@
     },
     "source_provenance": {
       "type": "object",
-      "minProperties": 1
+      "minProperties": 1,
+      "required": ["style_profile"],
+      "properties": {
+        "style_profile": {
+          "enum": ["QS_InkToon_v1", "QS_InkToon_Building_v2"]
+        }
+      }
     },
     "reference_images": {
       "type": "array",
@@ -412,7 +558,86 @@
     },
     "building": {
       "type": "object",
-      "minProperties": 1
+      "additionalProperties": false,
+      "required": ["model_pipeline", "scale_anchor"],
+      "properties": {
+        "model_pipeline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "approved_quad_face_range",
+            "material_stage",
+            "source",
+            "target_quad_faces",
+            "topology"
+          ],
+          "properties": {
+            "approved_quad_face_range": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {"type": "integer", "minimum": 1}
+            },
+            "material_stage": {
+              "enum": ["ue_after_gate1_geometry_approval", "after_retopology"]
+            },
+            "source": {
+              "enum": [
+                "Blender_procedural_golden",
+                "Blender_modular_derivative",
+                "Tripo_high_precision"
+              ]
+            },
+            "target_quad_faces": {"type": "integer", "minimum": 1},
+            "topology": {"const": "quad_dominant"}
+          }
+        },
+        "scale_anchor": {"$ref": "#/$defs/nonEmptyString"},
+        "golden_contract": {"type": "object", "minProperties": 1},
+        "visual_contract": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["building_type", "entrance", "roof", "structure", "windows"],
+          "properties": {
+            "building_type": {"const": "compact_two_storey_small_residence"},
+            "entrance": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["door_type", "placement"],
+              "properties": {
+                "door_type": {"const": "chunky_double_leaf"},
+                "placement": {"const": "offset"}
+              }
+            },
+            "roof": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["color", "form"],
+              "properties": {
+                "color": {"const": "orange"},
+                "form": {"const": "curved_double_slope"}
+              }
+            },
+            "structure": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["beam_column_language"],
+              "properties": {"beam_column_language": {"const": "chunky"}}
+            },
+            "windows": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["frame", "glazing", "micro_grid", "quantity"],
+              "properties": {
+                "frame": {"const": "wide"},
+                "glazing": {"const": "warm_yellow_rice_paper"},
+                "micro_grid": {"const": "none"},
+                "quantity": {"const": "few"}
+              }
+            }
+          }
+        }
+      }
     },
     "landmark": {
       "type": "object",

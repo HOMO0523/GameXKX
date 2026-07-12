@@ -9,6 +9,7 @@ import os
 import re
 import tempfile
 from pathlib import Path, PurePosixPath
+from types import MappingProxyType
 from typing import Any, Callable
 from urllib.parse import quote
 
@@ -33,6 +34,147 @@ EXPECTED_VIEWS = {
 
 S_A_GOLDEN_ASSET_ID = "BLD_QS_S_A_HOUSE"
 S_A_GOLDEN_STYLE_PROFILE = "QS_InkToon_Building_v2"
+S_A_GOLDEN_CONTRACT = MappingProxyType(
+    {
+        "asset_id": S_A_GOLDEN_ASSET_ID,
+        "category": "building",
+        "style_profile": S_A_GOLDEN_STYLE_PROFILE,
+        "views": ("hero_3q",),
+        "max_generation_calls": 6,
+        "source_kind": "project_concept",
+        "scale_anchor": "BLD_QS_L_A_MARKET_SHOP",
+        "spec": MappingProxyType(
+            {
+                "dimensions": (3.6, 4.2, 3.8),
+                "zones": ("courtyard",),
+                "role": "small_house",
+                "display_name": "青山镇小民居 A",
+                "primary_request": (
+                    "Compact two-storey small residence with an orange curved "
+                    "double-slope roof"
+                ),
+                "accent": "orange",
+                "silhouettes": (
+                    "compact_two_storey",
+                    "curved_double_slope",
+                    "offset_entrance",
+                ),
+            }
+        ),
+        "material_language": (
+            S_A_GOLDEN_STYLE_PROFILE,
+            "two_to_three_value_bands",
+            "dry_brush_edges",
+        ),
+        "palette": (
+            "warm_off_white",
+            "dark_teal_ink",
+            "jade_green",
+            "blue_gray",
+            "warm_ochre",
+            "orange",
+        ),
+        "roof": MappingProxyType(
+            {"form": "curved_double_slope", "primary_color": "orange"}
+        ),
+        "model_pipeline": MappingProxyType(
+            {
+                "approved_quad_face_range": (45000, 55000),
+                "material_stage": "after_retopology",
+                "source": "Tripo_high_precision",
+                "target_quad_faces": 50000,
+                "topology": "quad_dominant",
+            }
+        ),
+        "visual_contract": MappingProxyType(
+            {
+                "building_type": "compact_two_storey_small_residence",
+                "entrance": MappingProxyType(
+                    {"door_type": "chunky_double_leaf", "placement": "offset"}
+                ),
+                "roof": MappingProxyType(
+                    {"color": "orange", "form": "curved_double_slope"}
+                ),
+                "structure": MappingProxyType({"beam_column_language": "chunky"}),
+                "windows": MappingProxyType(
+                    {
+                        "frame": "wide",
+                        "glazing": "warm_yellow_rice_paper",
+                        "micro_grid": "none",
+                        "quantity": "few",
+                    }
+                ),
+            }
+        ),
+        "view_contracts": MappingProxyType(
+            {
+                "hero_3q": MappingProxyType(
+                    {
+                        "instruction": (
+                            "Show one complete Tripo-ready golden small house from a fixed "
+                            "high three-quarter camera"
+                        ),
+                        "required_elements": (
+                            "complete_uncropped_silhouette",
+                            "single_complete_uncropped_building",
+                            "visible_base",
+                            "entrance_direction",
+                            "offset_entrance",
+                            "roof_readability",
+                            "curved_double_slope_roof",
+                            "fixed_high_three_quarter_camera",
+                            "single_asset_clean_warm_background",
+                            "clean_warm_rice_paper_background",
+                        ),
+                    }
+                )
+            }
+        ),
+    }
+)
+
+
+def _s_a_prompt_term(value: str) -> str:
+    return (
+        value.replace("double_leaf", "double-leaf")
+        .replace("double_slope", "double-slope")
+        .replace("rice_paper", "rice-paper")
+        .replace("_", " ")
+    )
+
+
+def s_a_generation_prompt(detail_instruction: str | None = None) -> str:
+    """Build the canonical S-A production prompt from the authoritative contract."""
+
+    contract = S_A_GOLDEN_CONTRACT
+    spec = contract["spec"]
+    visual = contract["visual_contract"]
+    roof = contract["roof"]
+    entrance = visual["entrance"]
+    windows = visual["windows"]
+    lines = [
+        "Use case: stylized-concept",
+        "Asset type: Qingshan golden small-house Tripo input",
+        f"Primary request: one single building, {spec['primary_request']}; {_s_a_prompt_term(entrance['door_type'])} door, {_s_a_prompt_term(windows['quantity'])} {_s_a_prompt_term(windows['frame'])}-framed {_s_a_prompt_term(windows['glazing'])} windows, {_s_a_prompt_term(visual['structure']['beam_column_language'])} beams and columns, and an {_s_a_prompt_term(entrance['placement'])} entrance",
+        "Input images: project references define ink-cartoon brushwork, scale, shape language and restrained palette; do not copy their subjects",
+        "Scene/backdrop: clean warm rice-paper background, no labels and no text",
+        f"Subject: single building in a three-quarter view; {_s_a_prompt_term(visual['building_type'])}; {_s_a_prompt_term(roof['primary_color'])} {_s_a_prompt_term(roof['form'])} roof; {_s_a_prompt_term(entrance['door_type'])} door; {_s_a_prompt_term(windows['quantity'])} {_s_a_prompt_term(windows['frame'])}-framed {_s_a_prompt_term(windows['glazing'])} windows; {_s_a_prompt_term(visual['structure']['beam_column_language'])} beams and columns; {_s_a_prompt_term(entrance['placement'])} entrance",
+        f"Style/medium: {contract['style_profile']} hand-drawn Chinese ink cartoon with dry-brush edges, chunky masses, two to three value bands, and moderate playful asymmetry",
+        "Composition/framing: one complete uncropped single building in a Tripo-ready fixed high three-quarter view with a visible base and generous margins",
+        "Lighting/mood: neutral soft daylight with calm warm contrast",
+        "Constraints: no labels, no text, no logos, no watermark, no individual roof tiles, no fine window lattices, no photorealism, no PBR shine, no modern objects, no mirror symmetry",
+    ]
+    for kind, view_contract in contract["view_contracts"].items():
+        lines.append(
+            "View {kind}: {instruction}; required elements: {elements}".format(
+                kind=kind,
+                instruction=view_contract["instruction"],
+                elements=", ".join(view_contract["required_elements"]),
+            )
+        )
+    if detail_instruction is not None:
+        lines.append(f"Detail budget: {detail_instruction}")
+    return "\n".join(lines)
 
 
 def expected_views_for_asset(data: dict[str, Any]) -> tuple[str, ...]:
@@ -41,12 +183,8 @@ def expected_views_for_asset(data: dict[str, Any]) -> tuple[str, ...]:
     category = data.get("category")
     if category not in EXPECTED_VIEWS:
         raise CatalogError(f"unknown category: {category!r}")
-    if (
-        data.get("asset_id") == S_A_GOLDEN_ASSET_ID
-        and category == "building"
-        and data.get("style_profile") == S_A_GOLDEN_STYLE_PROFILE
-    ):
-        return ("hero_3q",)
+    if data.get("asset_id") == S_A_GOLDEN_CONTRACT["asset_id"]:
+        return S_A_GOLDEN_CONTRACT["views"]
     return EXPECTED_VIEWS[category]
 
 BATCH_COUNTS = {"REGISTRY": 1, "B0": 4, "B1": 12, "B2": 13, "B3": 5}
@@ -195,6 +333,31 @@ PRODUCTION_GATES = (
     "ue_import_allowed",
 )
 REVIEW_NOTE_FIELDS = ("visual_risks", "production_guidance")
+BUILDING_FIELDS = ("model_pipeline", "scale_anchor", "golden_contract", "visual_contract")
+MODEL_PIPELINE_FIELDS = (
+    "approved_quad_face_range",
+    "material_stage",
+    "source",
+    "target_quad_faces",
+    "topology",
+)
+MODEL_PIPELINE_SOURCES = (
+    "Blender_procedural_golden",
+    "Blender_modular_derivative",
+    "Tripo_high_precision",
+)
+MODEL_PIPELINE_MATERIAL_STAGES = (
+    "ue_after_gate1_geometry_approval",
+    "after_retopology",
+)
+
+
+def _plain_contract(value: Any) -> Any:
+    if isinstance(value, dict) or isinstance(value, MappingProxyType):
+        return {key: _plain_contract(child) for key, child in value.items()}
+    if isinstance(value, tuple):
+        return [_plain_contract(child) for child in value]
+    return value
 
 
 def _require_mapping(value: Any, field: str) -> dict:
@@ -356,7 +519,12 @@ def _validate_reference_images(reference_images: Any, expected: tuple[str, ...])
         raise CatalogError(f"reference_images kinds must be {expected}, got {reference_kinds}")
 
 
-def _validate_generation(generation: dict, expected: tuple[str, ...], category: str) -> None:
+def _validate_generation(
+    generation: dict,
+    expected: tuple[str, ...],
+    category: str,
+    expected_maximum_calls: int | None = None,
+) -> None:
     _missing_fields(generation, GENERATION_FIELDS, "generation")
     _reject_unknown_fields(
         generation, GENERATION_FIELDS + GENERATION_OPTIONAL_FIELDS, "generation"
@@ -377,7 +545,8 @@ def _validate_generation(generation: dict, expected: tuple[str, ...], category: 
     maximum_calls = _require_nonnegative_integer(
         generation["max_generation_calls"], "max_generation_calls"
     )
-    expected_maximum_calls = 0 if category == "registry" else len(expected) * 3
+    if expected_maximum_calls is None:
+        expected_maximum_calls = 0 if category == "registry" else len(expected) * 3
     if maximum_calls != expected_maximum_calls:
         raise CatalogError(
             f"max_generation_calls must be {expected_maximum_calls} for {category}, "
@@ -427,6 +596,65 @@ def _validate_workflow_gates(gates: dict) -> None:
         raise CatalogError("workflow_gates.batch_approval_id must be a string or null")
     if any(gates[gate] is not False for gate in PRODUCTION_GATES):
         raise CatalogError("production gates must remain false during concept production")
+
+
+def _validate_building_contract(data: dict) -> None:
+    building = _require_mapping(data.get("building"), "building")
+    _missing_fields(building, ("model_pipeline", "scale_anchor"), "building")
+    _reject_unknown_fields(building, BUILDING_FIELDS, "building")
+    _require_string(building["scale_anchor"], "building.scale_anchor")
+
+    pipeline = _require_mapping(building["model_pipeline"], "building.model_pipeline")
+    _missing_fields(pipeline, MODEL_PIPELINE_FIELDS, "building.model_pipeline")
+    _reject_unknown_fields(pipeline, MODEL_PIPELINE_FIELDS, "building.model_pipeline")
+    approved_range = pipeline["approved_quad_face_range"]
+    if (
+        not isinstance(approved_range, list)
+        or len(approved_range) != 2
+        or any(type(value) is not int or value < 1 for value in approved_range)
+        or approved_range[0] > approved_range[1]
+    ):
+        raise CatalogError(
+            "building.model_pipeline.approved_quad_face_range must be two ordered positive integers"
+        )
+    target = _require_positive_integer(
+        pipeline["target_quad_faces"], "building.model_pipeline.target_quad_faces"
+    )
+    if not approved_range[0] <= target <= approved_range[1]:
+        raise CatalogError("building.model_pipeline target must be within approved range")
+    if pipeline["source"] not in MODEL_PIPELINE_SOURCES:
+        raise CatalogError(
+            f"building.model_pipeline.source must be one of {MODEL_PIPELINE_SOURCES}"
+        )
+    if pipeline["material_stage"] not in MODEL_PIPELINE_MATERIAL_STAGES:
+        raise CatalogError(
+            "building.model_pipeline.material_stage must be an approved retopology stage"
+        )
+    if pipeline["topology"] != "quad_dominant":
+        raise CatalogError("building.model_pipeline.topology must be quad_dominant")
+    if data.get("retopo_target_quads") != target:
+        raise CatalogError(
+            "retopo_target_quads must equal building.model_pipeline.target_quad_faces"
+        )
+
+    if data["asset_id"] == S_A_GOLDEN_CONTRACT["asset_id"]:
+        if "golden_contract" in building:
+            raise CatalogError("S-A building.golden_contract is forbidden; use authoritative contract")
+        if building["scale_anchor"] != S_A_GOLDEN_CONTRACT["scale_anchor"]:
+            raise CatalogError("S-A building.scale_anchor must match golden contract")
+        expected_pipeline = _plain_contract(S_A_GOLDEN_CONTRACT["model_pipeline"])
+        if pipeline != expected_pipeline:
+            raise CatalogError("S-A building.model_pipeline must match golden contract")
+        visual = building.get("visual_contract")
+        if visual != _plain_contract(S_A_GOLDEN_CONTRACT["visual_contract"]):
+            raise CatalogError("S-A building.visual_contract must match golden contract")
+        if data.get("roof") != _plain_contract(S_A_GOLDEN_CONTRACT["roof"]):
+            raise CatalogError("S-A roof must match golden visual contract")
+    else:
+        if "visual_contract" in building:
+            raise CatalogError("building.visual_contract is reserved for the S-A golden asset")
+        if "golden_contract" in building and data["asset_id"] != "BLD_QS_M_A_INN":
+            raise CatalogError("building.golden_contract is reserved for BLD_QS_M_A_INN")
 
 
 def _validate_detail_budget(detail_budget: Any) -> dict:
@@ -582,7 +810,7 @@ def validate_asset(data: dict) -> None:
     ):
         _require_string_array(data[field], field)
     _require_numeric_array(data["target_dimensions_m"], "target_dimensions_m", 3)
-    _require_mapping(data["source_provenance"], "source_provenance")
+    source_provenance = _require_mapping(data["source_provenance"], "source_provenance")
     _require_mapping(data["unreal"], "unreal")
     _require_mapping(data["pcg"], "pcg")
     _require_mapping(data["acceptance"], "acceptance")
@@ -594,9 +822,47 @@ def validate_asset(data: dict) -> None:
     if not isinstance(batch, str) or batch not in BATCH_COUNTS:
         raise CatalogError(f"unknown batch: {batch!r}")
 
+    provenance_style = _require_string(
+        source_provenance.get("style_profile"), "source_provenance.style_profile"
+    )
+    if provenance_style != data["style_profile"]:
+        raise CatalogError(
+            "source_provenance.style_profile must equal top-level style_profile"
+        )
+    if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]:
+        if category != S_A_GOLDEN_CONTRACT["category"]:
+            raise CatalogError("S-A category must be building")
+        if data["style_profile"] != S_A_GOLDEN_CONTRACT["style_profile"]:
+            raise CatalogError("S-A style_profile must match golden contract")
+        spec = S_A_GOLDEN_CONTRACT["spec"]
+        expected_declaration = {
+            "display_name": spec["display_name"],
+            "gameplay_role": spec["role"],
+            "target_dimensions_m": list(spec["dimensions"]),
+            "intended_zone": list(spec["zones"]),
+            "silhouette_keywords": list(spec["silhouettes"]),
+            "material_language": list(S_A_GOLDEN_CONTRACT["material_language"]),
+            "palette": list(S_A_GOLDEN_CONTRACT["palette"]),
+        }
+        drift = [
+            field for field, expected_value in expected_declaration.items()
+            if data[field] != expected_value
+        ]
+        if drift:
+            raise CatalogError(f"S-A declaration must match golden contract: {drift}")
+        if source_provenance.get("source_kind") != S_A_GOLDEN_CONTRACT["source_kind"]:
+            raise CatalogError("S-A source_provenance.source_kind must match golden contract")
+    elif data["style_profile"] == S_A_GOLDEN_CONTRACT["style_profile"]:
+        raise CatalogError("QS_InkToon_Building_v2 style_profile is reserved for S-A")
+
     generation = _require_mapping(data["generation"], "generation")
     expected = expected_views_for_asset(data)
-    _validate_generation(generation, expected, category)
+    expected_maximum_calls = (
+        S_A_GOLDEN_CONTRACT["max_generation_calls"]
+        if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]
+        else None
+    )
+    _validate_generation(generation, expected, category, expected_maximum_calls)
     _validate_reference_images(data["reference_images"], expected)
     detail_budget = _validate_detail_budget(data["detail_budget"])
     if (
@@ -606,10 +872,38 @@ def validate_asset(data: dict) -> None:
         and detail_budget["prompt_instruction"] not in generation["prompt"]
     ):
         raise CatalogError("generation.prompt must include detail_budget.prompt_instruction")
+    if asset_id == S_A_GOLDEN_CONTRACT["asset_id"]:
+        expected_prompt = s_a_generation_prompt(detail_budget["prompt_instruction"])
+        if generation.get("prompt") != expected_prompt:
+            raise CatalogError("S-A generation.prompt must match golden contract")
+        expected_sections: dict[str, Any] = {}
+        for line in expected_prompt.splitlines():
+            key, separator, value = line.partition(": ")
+            if separator:
+                expected_sections[key.lower().replace("/", "_").replace(" ", "_")] = value
+        expected_sections["view_contracts"] = _plain_contract(
+            S_A_GOLDEN_CONTRACT["view_contracts"]
+        )
+        if generation.get("prompt_sections") != expected_sections:
+            raise CatalogError("S-A generation.prompt_sections must match golden contract")
+        for field in (
+            "asset_type",
+            "scene_backdrop",
+            "subject",
+            "style_medium",
+            "composition_framing",
+            "lighting_mood",
+        ):
+            if generation.get(field) != expected_sections[field]:
+                raise CatalogError(f"S-A generation.{field} must match golden contract")
+        if generation.get("palette") != list(S_A_GOLDEN_CONTRACT["palette"]):
+            raise CatalogError("S-A generation.palette must match golden contract")
 
     gates = _require_mapping(data["workflow_gates"], "workflow_gates")
     _validate_workflow_gates(gates)
     _validate_optional_top_level_fields(data)
+    if category == "building":
+        _validate_building_contract(data)
 
 
 def _load_json(path: Path, label: str) -> dict:
