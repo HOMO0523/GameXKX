@@ -2,55 +2,55 @@
 
 ## Goal
 
-Keep the full-color Paper2D player readable when opaque town buildings stand between the active camera and the player. The reveal appears only while occluded, is constrained to a soft circular region around the player, and does not alter Asian Village building materials.
+When any foreground object blocks the player, show the full-color player and the real scene around and behind the player through a soft circular window. Buildings, roofs, trees, foliage, props, and any other blocking primitive may be removed inside the reveal. The normal view outside the circle remains unchanged.
 
-## Rendering Design
+## Rendering Architecture
 
-`AGameXXKHeroCharacter` keeps its existing `Visual` flipbook component and gains a non-colliding `OccludedVisual` flipbook component. The reveal component copies the active flipbook, playback position, facing, transform, tint, and scale from `Visual`.
+The main camera renders normally. A hidden `SceneCaptureComponent2D` mirrors the active gameplay camera into a dedicated render target. While the reveal is active, the capture hides every primitive component identified as foreground occlusion and renders the unobstructed scene. A post-process material composites the capture into the main view only inside a soft screen-space circle centered on the projected player visual center.
 
-`OccludedVisual` uses a dedicated unlit Paper2D material that can render through opaque scene depth. Screen-position math clips the duplicate to a resolution-independent circle centered on the player's visual center. A soft radial falloff removes the edge without creating a science-fiction glow. The center preserves the original sprite color; an optional low-strength dark-teal ink edge may be exposed as a parameter but defaults to subtle.
+This is a true scene reveal: the circle contains the player, ground, NPCs, props, water, and background geometry that should be visible after the foreground blockers are removed. It is not a player silhouette, sprite-only overlay, tinted rectangle, or modification of vendor materials.
 
-The normal component continues to render visible pixels. The duplicate supplies the player image only while runtime occlusion detection is active. It is hidden otherwise, preventing double-bright rendering.
+## Occluder Detection
 
-## Occlusion Detection
+`UGameXXKPlayerOcclusionRevealComponent` samples the active camera toward the player and the intended reveal region. A center sphere trace plus eight perimeter rays approximates the circular footprint. Every blocking primitive before the player region is collected and hidden only from the secondary capture.
 
-A small runtime component owned by the player samples the active gameplay camera to the player visual center with a sphere trace at 15–20 Hz. The trace:
+- All blocking object categories are eligible, including buildings, trees, foliage, and props.
+- The player, owned components, UI, ground behind the player, and actors not between the camera and reveal region remain visible.
+- Components rather than entire modular buildings are hidden where the capture API permits it.
+- Activation waits roughly 0.08 seconds; release holds and fades for roughly 0.22 seconds to prevent edge flicker.
 
-- ignores the player and owned components;
-- tests world-static occluders;
-- can require an opt-in component tag for fine control after the first validation pass;
-- uses a radius of roughly 30–45 Unreal units to avoid single-ray edge flicker;
-- activates after 0.06–0.10 seconds of continuous obstruction;
-- fades out over 0.18–0.25 seconds after visibility returns.
+## Composite
 
-The feature runs only in the town gameplay screen with a valid local player camera. It is disabled in menus, route maps, and battle presentation.
+The post-process material samples the unobstructed render target and the current scene color. A viewport-relative circular mask blends from capture color at the center to normal scene color at the edge.
 
-## Parameters
-
-- Radius: viewport-relative, initially 6–8% of the shorter viewport dimension.
-- Feather: initially 20% of the radius.
-- Circle center: player visual center rather than capsule origin or feet.
-- Reveal opacity: 1.0 at the center, smoothly approaching 0.0 at the edge.
-- Color: unchanged full-color sprite.
+- Radius: initially 7% of the shorter viewport dimension.
+- Feather: initially 20% of the circle radius.
+- Center: projected Paper2D visual center, not capsule feet.
+- Color: unchanged captured scene color; no glow, desaturation, or grey backing.
+- The material is active only in the town gameplay screen while an occluder set is non-empty.
 
 ## Performance
 
-The design adds one duplicate sprite draw only while the player is occluded and one throttled sphere trace. It adds no building dynamic material instances, no per-building fade updates, and no Scene Capture. It should not change Lumen, Virtual Shadow Map, or building draw-call behavior.
+The secondary capture is disabled when unobstructed. While active it uses a 512×512 render target initially and updates at 30Hz; fast camera/player movement may temporarily update every frame. The first acceptance target is an added GPU cost below 4ms on the local RTX 4060 Laptop GPU. No building dynamic material instances or vendor asset edits are allowed.
+
+## Transition from the Prototype
+
+The existing trace timing and hysteresis may be retained. The sprite-only reveal material, grey circular backing, and always-on-top Paper2D duplicate are not the final renderer. The duplicate may remain hidden as a diagnostic fallback until the SceneCapture composite passes visual acceptance, then should be removed or disabled by default.
 
 ## Validation
 
-- No reveal while the player is unobstructed.
-- Full-color reveal appears through an opaque roof, wall, and pillar.
-- Normal and reveal flipbooks remain on the same animation frame and facing.
-- Partial occlusion does not brighten already visible sprite pixels noticeably.
-- Reveal transitions do not flicker while passing thin modular pillars.
-- Circle position and radius remain correct at 720p, 1080p, and 1440p.
-- Opening town panels, entering the route map, or entering battle disables the reveal.
-- Existing camera arm length, camera pitch, character collision, and Paper2D tuning remain unchanged.
+- Unobstructed player: no secondary capture and no composite.
+- Roof, wall, tree, foliage, and prop obstruction: circle shows the player and genuine scene behind the blocker.
+- Outside the circle: the blocker remains fully visible.
+- Multiple simultaneous blockers are removed from the capture.
+- Circle center and radius remain stable at 720p, 1080p, and 1440p.
+- Town panels, route map, battle, and main menu disable the capture and composite.
+- No edits to Asian Village, foliage, bridge, or prop materials.
+- Existing camera, Paper2D, collision, NPC, save, and map-flow tests remain valid.
 
 ## Non-goals
 
-- Cutting a real hole in building geometry.
-- Fading whole buildings or roof modules.
-- Revealing NPCs in the first version.
-- Editing vendor materials or meshes.
+- Making the whole building transparent.
+- Permanently hiding foreground objects.
+- Applying the effect outside the town gameplay screen.
+- Replacing the main camera or changing its user-tuned transform.
