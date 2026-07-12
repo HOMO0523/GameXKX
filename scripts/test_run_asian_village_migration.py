@@ -11,6 +11,16 @@ import scripts.run_asian_village_migration as runner
 
 
 class OrchestratorTests(unittest.TestCase):
+    def test_direct_cli_imports_from_project_root(self):
+        completed = subprocess.run(
+            ["python", str(Path(runner.__file__)), "--help"],
+            cwd=str(Path(runner.__file__).resolve().parents[1]),
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("--preflight", completed.stdout)
+
     def test_phase_order_is_locked(self):
         self.assertEqual(
             runner.PHASES,

@@ -12,6 +12,10 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from scripts.asian_village_migration import (
     EXPECTED_COUNTS,
     SOURCE_ASSET_DIR,
@@ -27,7 +31,6 @@ from scripts.ue_mcp_client import DEFAULT_HOST, DEFAULT_PATH, DEFAULT_PORT, Unre
 from scripts.ue_tdd_pipeline import is_editor_running, kill_editor, launch_editor, wait_for_mcp
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_UPROJECT = Path(r"D:\UE5 demo\zzz\我的项目\我的项目.uproject")
 UE54_CMD = Path(r"D:\UE_5.4\Engine\Binaries\Win64\UnrealEditor-Cmd.exe")
 TARGET_UPROJECT = PROJECT_ROOT / "GameXXK.uproject"
