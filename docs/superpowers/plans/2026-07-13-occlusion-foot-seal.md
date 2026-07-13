@@ -1,16 +1,16 @@
-# Player Occlusion Foot Seal Implementation Plan
+# Player Occlusion Circle with Hero-Silhouette Gate Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Prevent the player occlusion circle from cutting any foreground geometry at or below the hero's feet.
+**Goal:** Keep the player occlusion circle, while preventing it from cutting foreground geometry that does not overlap the hero sprite.
 
-**Architecture:** The hero component already projects its visual bounds and writes `OcclusionFootY` to `MPC_PlayerOcclusion`. Remove its below-feet padding. The authored cutout material compares `ViewportUV.G` with that scalar and only multiplies the circle/depth reveal while the pixel is above the projected feet.
+**Architecture:** The hero Paper2D visual writes a dedicated Custom Stencil value. The authored cutout material samples Custom Stencil at the current screen pixel, and multiplies that silhouette hit with the existing circle and foreground-depth gates. The circle remains a scope/activation aid rather than a command to erase every foreground pixel inside it.
 
 **Tech Stack:** Unreal Engine 5.8 C++, Material Parameter Collection, editor Python material authoring, Python `unittest`.
 
 ---
 
-### Task 1: Lock the zero-padding behavior with a failing asset contract
+### Task 1: Lock the hero-silhouette material gate with a failing asset contract
 
 **Files:**
 - Modify: `scripts/test_occlusion_cutout_pilot_assets.py`
@@ -19,18 +19,18 @@
 - [ ] **Step 1: Write the failing test**
 
 ```python
-def test_authoring_script_uses_a_hard_foot_seal_without_below_feet_padding(self):
+def test_authoring_script_combines_circle_depth_and_hero_stencil(self):
     source = AUTHOR.read_text(encoding="utf-8")
-    self.assertIn("OcclusionFootY", source)
-    self.assertIn("foot_gate", source)
-    self.assertIn("MaterialExpressionMultiply", source)
+    self.assertIn("PPI_CustomStencil", source)
+    self.assertIn("OcclusionHeroStencilValue", source)
+    self.assertIn("hero_silhouette_gate", source)
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `python -m unittest scripts.test_occlusion_cutout_pilot_assets -v`
 
-Expected: FAIL because the foot-seal material graph contract is not yet declared.
+Expected: FAIL because the Custom Stencil silhouette material graph is not yet declared.
 
 - [ ] **Step 3: Keep the material foot gate as a multiply before `OneMinus`**
 
@@ -46,7 +46,7 @@ Run: `python -m unittest scripts.test_occlusion_cutout_pilot_assets -v`
 
 Expected: all tests pass.
 
-### Task 2: Publish the precise foot line from C++
+### Task 2: Configure the hero Paper2D visual for Custom Stencil
 
 **Files:**
 - Modify: `Source/GameXXK/Public/Town/GameXXKPlayerOcclusionRevealComponent.h`
@@ -56,23 +56,21 @@ Expected: all tests pass.
 - [ ] **Step 1: Write the failing automation assertion**
 
 ```cpp
-TestEqual(TEXT("foot seal has no below-feet screen padding"),
-    RevealController->GetRevealBelowFeetPaddingNormalized(), 0.0f);
+TestTrue(TEXT("hero visual writes the occlusion custom stencil"),
+    HeroVisual->bRenderCustomDepth);
 ```
 
 - [ ] **Step 2: Run a cold editor build to verify it fails**
 
 Run: `D:\UE_5.8\Engine\Build\BatchFiles\Build.bat GameXXKEditor Win64 Development -Project="D:\UE5 demo\GameXXK\GameXXK.uproject"`
 
-Expected: compile error because the test getter does not exist.
+Expected: test failure because the hero visual does not yet write Custom Stencil.
 
 - [ ] **Step 3: Implement the minimal runtime change**
 
 ```cpp
-float GetRevealBelowFeetPaddingNormalized() const { return RevealBelowFeetPaddingNormalized; }
-float RevealBelowFeetPaddingNormalized = 0.0f;
-
-FMath::Clamp(FootPixelPosition.Y / FMath::Max(1, ViewY), 0.0f, 1.0f)
+Visual->SetRenderCustomDepth(true);
+Visual->SetCustomDepthStencilValue(13);
 ```
 
 - [ ] **Step 4: Rebuild and run the material contract suite**

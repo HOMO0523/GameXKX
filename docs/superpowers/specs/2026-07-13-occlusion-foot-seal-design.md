@@ -1,12 +1,12 @@
-# Player Occlusion Foot Seal
+# Player Occlusion Circle with Hero-Silhouette Gate
 
 ## Goal
 
-Keep the wall, rail, and stair material visible at and below the hero's projected feet while retaining the existing depth-gated visibility opening around the hero's upper body.
+Keep the existing circular player-occlusion range, but only remove foreground pixels that overlap the hero's actual on-screen silhouette. A rail, wall, or stair that merely lies inside the circle must remain visible.
 
 ## Decision
 
-Use a screen-space foot seal in the existing project-owned cutout materials. The hero component publishes the exact projected foot Y coordinate; the material only applies its circle/depth reveal above that coordinate. The cutout terminates behind the boots with no below-feet padding or feather.
+Use the hero Paper2D visual's Custom Stencil value as a per-pixel silhouette gate in the existing project-owned cutout materials. The cutout remains `circle × foreground-depth × hero-stencil`; the circular scope stays unchanged, but pixels outside the hero silhouette—including the wall below the feet—retain their original material.
 
 ## Constraints
 
@@ -17,6 +17,6 @@ Use a screen-space foot seal in the existing project-owned cutout materials. The
 
 ## Acceptance
 
-- A rail or wall below the hero's feet is rendered normally, with no black opening below the boots.
-- A foreground roof or wall above/alongside the hero can still open to reveal the full-color hero.
+- A rail or wall below the hero's feet is rendered normally even when it falls inside the circular occlusion range.
+- A foreground roof or wall that overlaps the hero's screen-space silhouette can still open to reveal the full-color hero.
 - The existing material-depth gate and source opacity mask remain in the material graph.
