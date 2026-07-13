@@ -26,6 +26,13 @@ AUTHOR_SCRIPT = (
     / "Python"
     / "gamexxk_author_asian_village_occlusion_materials.py"
 )
+AUTHOR_REPORT = (
+    PROJECT_ROOT
+    / "Config"
+    / "GameXXK"
+    / "Occlusion"
+    / "AsianVillageMaterialAuthoringReport.json"
+)
 
 from gamexxk_occlusion_material_naming import (  # noqa: E402
     cutout_asset_name,
@@ -146,6 +153,11 @@ class OcclusionMaterialAuthoringContractTests(unittest.TestCase):
         self.assertIn("get_material_property_input_node", self.source)
         self.assertIn("get_material_property_input_node_output_name", self.source)
 
+    def test_opaque_is_circle_only_while_masked_and_translucent_preserve_input(self):
+        self.assertIn("preserve_existing = False", self.source)
+        self.assertGreaterEqual(self.source.count("preserve_existing = True"), 2)
+        self.assertIn("if preserve_existing", self.source)
+
     def test_author_recompiles_saves_and_only_forces_masked_roots(self):
         self.assertIn(
             "GameXXKMaterialAuthoringLibrary.force_masked_material_compilation",
@@ -164,6 +176,15 @@ class OcclusionMaterialAuthoringContractTests(unittest.TestCase):
         self.assertIn("cutout_object_path", self.source)
         self.assertIn("refusing", self.source.lower())
         self.assertNotIn("delete_asset(source_path", self.source)
+
+    def test_committed_authoring_report_proves_complete_inventory_coverage(self):
+        self.assertTrue(AUTHOR_REPORT.is_file())
+        report = json.loads(AUTHOR_REPORT.read_text(encoding="utf-8"))
+        self.assertEqual(report["eligible_count"], 74)
+        self.assertEqual(report["excluded_count"], 6)
+        self.assertEqual(report["inventory_mapping_count"], 74)
+        self.assertEqual(report["missing_targets"], [])
+        self.assertEqual(report["failures"], [])
 
 
 if __name__ == "__main__":

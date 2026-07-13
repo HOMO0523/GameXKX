@@ -19,6 +19,10 @@ INVENTORY_PATH = (
     Path(unreal.Paths.project_dir())
     / "Config/GameXXK/Occlusion/AsianVillageMaterialInventory.json"
 )
+REPORT_PATH = (
+    Path(unreal.Paths.project_dir())
+    / "Config/GameXXK/Occlusion/AsianVillageMaterialAuthoringReport.json"
+)
 SUPPORTED_BLENDS = {
     "BLEND_OPAQUE": unreal.BlendMode.BLEND_OPAQUE,
     "BLEND_MASKED": unreal.BlendMode.BLEND_MASKED,
@@ -148,20 +152,27 @@ def _patch_root(material, source_blend, collection):
         material_property = unreal.MaterialProperty.MP_OPACITY_MASK
         target_blend = unreal.BlendMode.BLEND_MASKED
         force_masked = True
+        preserve_existing = False
     elif source_blend == unreal.BlendMode.BLEND_MASKED:
         material_property = unreal.MaterialProperty.MP_OPACITY_MASK
         target_blend = unreal.BlendMode.BLEND_MASKED
         force_masked = True
+        preserve_existing = True
     elif source_blend == unreal.BlendMode.BLEND_TRANSLUCENT:
         material_property = unreal.MaterialProperty.MP_OPACITY
         target_blend = unreal.BlendMode.BLEND_TRANSLUCENT
         force_masked = False
+        preserve_existing = True
     else:
         raise RuntimeError(
             f"unsupported root blend mode {blend_name}: {material.get_path_name()}"
         )
 
-    existing = _existing_property_connection(material, material_property)
+    existing = (
+        _existing_property_connection(material, material_property)
+        if preserve_existing
+        else None
+    )
     circle = _circle_keep_mask(material, collection)
     final_node = circle
     if existing is not None:
@@ -296,6 +307,10 @@ def author():
         "missing_targets": missing_targets,
         "failures": failures,
     }
+    REPORT_PATH.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     print(json.dumps(report, ensure_ascii=False))
     if failures or missing_targets or len(mapping) != len(eligible):
         raise RuntimeError(f"authoring incomplete: {json.dumps(report, ensure_ascii=False)}")

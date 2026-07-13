@@ -1,0 +1,13 @@
+{
+  "ancestry_count": 98,
+  "created_count": 98,
+  "eligible_count": 74,
+  "excluded_count": 6,
+  "failures": [],
+  "inventory_mapping_count": 74,
+  "masked_source_count": 8,
+  "missing_targets": [],
+  "opaque_source_count": 65,
+  "root_count": 23,
+  "translucent_source_count": 1
+}
