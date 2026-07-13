@@ -6,6 +6,13 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "Content" / "Python"))
 
+INVENTORY_SCRIPT = (
+    PROJECT_ROOT
+    / "Content"
+    / "Python"
+    / "gamexxk_inventory_asian_village_occlusion_materials.py"
+)
+
 from gamexxk_occlusion_material_naming import (  # noqa: E402
     cutout_asset_name,
     cutout_object_path,
@@ -75,6 +82,26 @@ class OcclusionMaterialNamingTests(unittest.TestCase):
             cutout_object_path(source_path),
             f"/Game/GameXXK/Materials/Occlusion/AsianVillageFull/{asset_name}.{asset_name}",
         )
+
+
+class OcclusionMaterialInventoryContractTests(unittest.TestCase):
+    def test_inventory_script_has_required_read_only_contract(self):
+        self.assertTrue(INVENTORY_SCRIPT.is_file())
+        source = INVENTORY_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("StaticMeshComponent", source)
+        for field in (
+            '"source_path"',
+            '"target_path"',
+            '"blend_mode"',
+            '"usage_count"',
+            '"excluded"',
+        ):
+            with self.subTest(field=field):
+                self.assertIn(field, source)
+        self.assertIn("Config/GameXXK/Occlusion", source.replace("\\\\", "/"))
+        self.assertIn("gamexxk_occlusion_material_naming", source)
+        self.assertIn("is_excluded_source", source)
 
 
 if __name__ == "__main__":
