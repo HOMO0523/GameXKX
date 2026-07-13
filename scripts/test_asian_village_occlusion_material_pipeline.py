@@ -1,5 +1,6 @@
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -26,6 +27,7 @@ AUTHOR_SCRIPT = (
     / "Python"
     / "gamexxk_author_asian_village_occlusion_materials.py"
 )
+GENERATION_HELPERS = PROJECT_ROOT / "Content" / "Python" / "gamexxk_occlusion_generation.py"
 AUTHOR_REPORT = (
     PROJECT_ROOT
     / "Config"
@@ -40,11 +42,20 @@ ACTIVE_GENERATION = (
     / "Occlusion"
     / "AsianVillageOcclusionActiveGeneration.json"
 )
+INTEGRATION_EVIDENCE = (
+    PROJECT_ROOT
+    / "docs/production/evidence/asian-village-integration/occlusion-full-coverage"
+    / "immutable-generation-harness.json"
+)
 
 from gamexxk_occlusion_material_naming import (  # noqa: E402
     cutout_asset_name,
     cutout_object_path,
     is_eligible_material,
+)
+from gamexxk_occlusion_generation import (  # noqa: E402
+    aggregate_file_digest,
+    compute_content_signature,
 )
 
 
@@ -110,6 +121,41 @@ class OcclusionMaterialNamingTests(unittest.TestCase):
             cutout_object_path(source_path),
             f"/Game/GameXXK/Materials/Occlusion/AsianVillageFull/{asset_name}.{asset_name}",
         )
+
+    def test_content_signature_changes_with_source_or_recipe_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.uasset"
+            recipe = root / "recipe.py"
+            mpc = root / "mpc.uasset"
+            source.write_bytes(b"source-v1")
+            recipe.write_bytes(b"recipe-v1")
+            mpc.write_bytes(b"mpc-v1")
+            kwargs = dict(
+                inventory_bytes=b"inventory",
+                source_packages={"/Game/Source": source},
+                recipe_files={"author": recipe},
+                mpc_package=mpc,
+                schema_version=3,
+            )
+            baseline = compute_content_signature(**kwargs)
+            source.write_bytes(b"source-v2")
+            self.assertNotEqual(baseline, compute_content_signature(**kwargs))
+            source.write_bytes(b"source-v1")
+            recipe.write_bytes(b"recipe-v2")
+            self.assertNotEqual(baseline, compute_content_signature(**kwargs))
+
+    def test_aggregate_digest_is_order_independent_and_byte_sensitive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = root / "a.uasset"
+            second = root / "b.uasset"
+            first.write_bytes(b"a")
+            second.write_bytes(b"b")
+            baseline = aggregate_file_digest([first, second])
+            self.assertEqual(baseline, aggregate_file_digest([second, first]))
+            second.write_bytes(b"changed")
+            self.assertNotEqual(baseline, aggregate_file_digest([first, second]))
 
 
 class OcclusionMaterialInventoryContractTests(unittest.TestCase):
@@ -197,36 +243,57 @@ class OcclusionMaterialAuthoringContractTests(unittest.TestCase):
         self.assertEqual(report["opaque_count"], 65)
         self.assertEqual(report["masked_count"], 8)
         self.assertEqual(report["translucent_count"], 1)
-        self.assertRegex(report["content_signature"], r"^[0-9A-F]{12}$")
-        self.assertTrue(report["generation_folder"].endswith(report["content_signature"]))
+        self.assertRegex(report["content_signature"], r"^[0-9A-F]{16}$")
+        self.assertIn("Gen_" + report["content_signature"], report["generation_folder"])
         self.assertEqual(report["generation_asset_count"], 98)
         self.assertTrue(report["generation_reused"])
+        self.assertRegex(report["aggregate_digest"], r"^[0-9A-F]{64}$")
+        self.assertTrue(report["completion_record"].startswith("Config/GameXXK/Occlusion/Generations/"))
 
     def test_active_generation_manifest_has_concrete_complete_mapping(self):
         manifest = json.loads(ACTIVE_GENERATION.read_text(encoding="utf-8"))
-        self.assertRegex(manifest["content_signature"], r"^[0-9A-F]{12}$")
-        self.assertTrue(manifest["generation_folder"].endswith(manifest["content_signature"]))
+        self.assertRegex(manifest["content_signature"], r"^[0-9A-F]{16}$")
+        self.assertIn("Gen_" + manifest["content_signature"], manifest["generation_folder"])
         self.assertEqual(len(manifest["inventory_mapping"]), 74)
         for concrete_path in manifest["inventory_mapping"].values():
             self.assertTrue(concrete_path.startswith(manifest["generation_folder"] + "/"))
 
+    def test_integration_evidence_proves_fault_recovery_and_idempotency(self):
+        evidence = json.loads(INTEGRATION_EVIDENCE.read_text(encoding="utf-8"))
+        self.assertEqual(evidence["status"], "success")
+        self.assertTrue(evidence["mid_fault_active_manifest_unchanged"])
+        self.assertIn("_R", evidence["recovery_run"]["generation_folder"])
+        self.assertTrue(evidence["second_run"]["generation_reused"])
+        self.assertTrue(evidence["second_run_digest_unchanged"])
+        self.assertTrue(evidence["pre_switch_active_manifest_unchanged"])
+        self.assertEqual(evidence["failure_report"]["status"], "failure")
+        self.assertNotEqual(
+            evidence["signature_baseline"], evidence["signature_source_changed"]
+        )
+        self.assertNotEqual(
+            evidence["signature_baseline"], evidence["signature_recipe_changed"]
+        )
+
     def test_author_uses_immutable_generation_and_atomic_manifest_switch(self):
+        helper_source = GENERATION_HELPERS.read_text(encoding="utf-8")
         for required in (
             "Gen_",
             "content_signature",
             "ACTIVE_GENERATION_PATH",
-            "os.replace",
             "_validate_family",
             "generation_reused",
+            "COMPLETION_FOLDER",
+            "aggregate_file_digest",
         ):
             with self.subTest(required=required):
                 self.assertIn(required, self.source)
+        self.assertIn("os.replace", helper_source)
         self.assertNotIn("rename_asset", self.source)
         self.assertNotIn("delete_asset", self.source)
 
     def test_success_report_is_written_only_after_canonical_validation(self):
         validation = self.source.index("validation_errors = _validate_family")
-        report_write = self.source.index("REPORT_PATH.write_text")
+        report_write = self.source.index("atomic_write_json(REPORT_PATH, report)")
         self.assertLess(validation, report_write)
 
     def test_author_supports_controlled_promotion_fault_injection(self):

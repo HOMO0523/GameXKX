@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-import os
 import sys
+import uuid
 from pathlib import Path
 
 import unreal
 
 import gamexxk_occlusion_material_naming as naming
 from gamexxk_occlusion_material_naming import cutout_object_path
+from gamexxk_occlusion_generation import (
+    aggregate_file_digest,
+    atomic_write_json,
+    compute_content_signature,
+)
 
 
 DESTINATION = "/Game/GameXXK/Materials/Occlusion/AsianVillageFull"
@@ -30,7 +34,11 @@ ACTIVE_GENERATION_PATH = (
     Path(unreal.Paths.project_dir())
     / "Config/GameXXK/Occlusion/AsianVillageOcclusionActiveGeneration.json"
 )
-AUTHORING_SCHEMA_VERSION = 2
+AUTHORING_SCHEMA_VERSION = 3
+COMPLETION_FOLDER = (
+    Path(unreal.Paths.project_dir())
+    / "Config/GameXXK/Occlusion/Generations"
+)
 SUPPORTED_BLENDS = {
     "BLEND_OPAQUE": unreal.BlendMode.BLEND_OPAQUE,
     "BLEND_MASKED": unreal.BlendMode.BLEND_MASKED,
@@ -213,16 +221,49 @@ def _package_path(object_path):
     return str(object_path).split(".", 1)[0]
 
 
-def _content_signature(inventory_text):
-    payload = f"schema={AUTHORING_SCHEMA_VERSION}\n{inventory_text}".encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()[:12].upper()
+def _project_package_file(package_path):
+    if not package_path.startswith("/Game/"):
+        raise RuntimeError(f"source package is outside project Content:{package_path}")
+    content = Path(
+        unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_content_dir())
+    ).resolve()
+    filename = (content / (package_path.removeprefix("/Game/") + ".uasset")).resolve()
+    if content not in filename.parents or not filename.is_file():
+        raise RuntimeError(f"verified project package file missing:{filename}")
+    return filename
+
+
+def _collect_source_packages(eligible):
+    packages = {}
+
+    def add(asset):
+        if asset is None:
+            raise RuntimeError("missing source asset while collecting signature")
+        object_path = str(asset.get_path_name())
+        package_path = object_path.split(".", 1)[0]
+        packages[package_path] = _project_package_file(package_path)
+        if isinstance(asset, unreal.MaterialInstanceConstant):
+            add(asset.get_editor_property("parent"))
+
+    for entry in eligible:
+        add(unreal.EditorAssetLibrary.load_asset(entry["source_path"]))
+    return packages
+
+
+def _generation_package_files(generation_folder):
+    return [
+        _project_package_file(_package_path(path))
+        for path in unreal.EditorAssetLibrary.list_assets(
+            generation_folder, recursive=False, include_folder=False
+        )
+    ]
 
 
 def _generation_asset_path(source_path, generation_folder):
     return f"{generation_folder}/{naming.cutout_asset_name(source_path)}"
 
 
-def _duplicate_family(source, collection, cache, generation_folder):
+def _duplicate_family(source, collection, cache, generation_folder, fault_state=None):
     if source is None:
         raise RuntimeError("cannot duplicate a missing source asset")
     source_path = str(source.get_path_name())
@@ -238,7 +279,9 @@ def _duplicate_family(source, collection, cache, generation_folder):
         parent = source.get_editor_property("parent")
         if parent is None:
             raise RuntimeError(f"material instance has no parent: {source_path}")
-        copied_parent = _duplicate_family(parent, collection, cache, generation_folder)
+        copied_parent = _duplicate_family(
+            parent, collection, cache, generation_folder, fault_state
+        )
         depth = cache[str(parent.get_path_name())]["depth"] + 1
         duplicate = unreal.EditorAssetLibrary.duplicate_asset(source_path, concrete)
         if duplicate is None:
@@ -264,6 +307,12 @@ def _duplicate_family(source, collection, cache, generation_folder):
         "concrete": concrete,
         "depth": depth,
     }
+    if fault_state is not None:
+        fault_state["created"] += 1
+        if fault_state["limit"] and fault_state["created"] >= fault_state["limit"]:
+            raise RuntimeError(
+                f"intentional mid-generation fault after {fault_state['created']} assets"
+            )
     return duplicate
 
 
@@ -345,10 +394,66 @@ def _validate_family(eligible, records, generation_folder):
                 if current.get_blend_mode() == unreal.BlendMode.BLEND_TRANSLUCENT
                 else unreal.MaterialProperty.MP_OPACITY_MASK
             )
-            if unreal.MaterialEditingLibrary.get_material_property_input_node(
+            final_node = unreal.MaterialEditingLibrary.get_material_property_input_node(
                 current, prop
-            ) is None:
+            )
+            if final_node is None:
                 errors.append(f"missing property connection:{current.get_path_name()}:{prop}")
+            source_root = source
+            while isinstance(source_root, unreal.MaterialInstanceConstant):
+                source_root = source_root.get_editor_property("parent")
+            source_prop = (
+                unreal.MaterialProperty.MP_OPACITY
+                if source_root.get_blend_mode() == unreal.BlendMode.BLEND_TRANSLUCENT
+                else unreal.MaterialProperty.MP_OPACITY_MASK
+            )
+            original = unreal.MaterialEditingLibrary.get_material_property_input_node(
+                source_root, source_prop
+            )
+            if source_root.get_blend_mode() == unreal.BlendMode.BLEND_OPAQUE:
+                if not isinstance(final_node, unreal.MaterialExpressionSaturate):
+                    errors.append(f"opaque root is not circle-only:{current.get_path_name()}")
+            elif original is not None:
+                if not isinstance(final_node, unreal.MaterialExpressionMultiply):
+                    errors.append(f"preserved root is not Multiply:{current.get_path_name()}")
+                else:
+                    inputs = list(
+                        unreal.MaterialEditingLibrary.get_inputs_for_material_expression(
+                            current, final_node
+                        )
+                    )
+                    input_names = [str(node.get_name()) for node in inputs]
+                    original_input = next(
+                        (
+                            node
+                            for node in inputs
+                            if str(node.get_name()) == str(original.get_name())
+                        ),
+                        None,
+                    )
+                    if original_input is None:
+                        errors.append(f"Multiply lost original expression:{current.get_path_name()}")
+                    if not any(isinstance(node, unreal.MaterialExpressionSaturate) for node in inputs):
+                        errors.append(f"Multiply lost circle input:{current.get_path_name()}")
+                    expected_output = str(
+                        unreal.MaterialEditingLibrary.get_material_property_input_node_output_name(
+                            source_root, source_prop
+                        )
+                    )
+                    observed_output = (
+                        ""
+                        if original_input is None
+                        else str(
+                            unreal.MaterialEditingLibrary.get_input_node_output_name_for_material_expression(
+                                final_node, original_input
+                            )
+                        )
+                    )
+                    if original_input is not None and observed_output != expected_output:
+                        errors.append(
+                            f"Multiply original output changed:{current.get_path_name()}:"
+                            f"{observed_output!r}!={expected_output!r}"
+                        )
         else:
             errors.append(f"parent chain did not reach Material:{path}")
     if len(target_paths) != len(eligible) or len(set(target_paths)) != len(eligible):
@@ -397,20 +502,95 @@ def author():
         raise RuntimeError(f"required parameter collection is missing: {MPC_PATH}")
     if not unreal.EditorAssetLibrary.does_directory_exist(DESTINATION):
         unreal.EditorAssetLibrary.make_directory(DESTINATION)
-    content_signature = _content_signature(inventory_text)
-    generation_folder = f"{DESTINATION}/Gen_{content_signature}"
-    generation_reused = unreal.EditorAssetLibrary.does_directory_exist(generation_folder)
-    if generation_reused:
+    source_packages = _collect_source_packages(eligible)
+    signature_salt = ""
+    for argument in sys.argv[1:]:
+        if argument.startswith("--integration-signature-salt="):
+            signature_salt = argument.split("=", 1)[1]
+    author_file = Path(__file__).resolve()
+    recipe_files = {
+        "author": author_file,
+        "naming": Path(naming.__file__).resolve(),
+        "generation_helpers": Path(
+            sys.modules[compute_content_signature.__module__].__file__
+        ).resolve(),
+    }
+    content_signature = compute_content_signature(
+        inventory_bytes=(inventory_text + "\nintegration_salt=" + signature_salt).encode("utf-8"),
+        source_packages=source_packages,
+        recipe_files=recipe_files,
+        mpc_package=_project_package_file(MPC_PATH),
+        schema_version=AUTHORING_SCHEMA_VERSION,
+    )
+    base_generation_folder = f"{DESTINATION}/Gen_{content_signature}"
+    active = {}
+    if ACTIVE_GENERATION_PATH.is_file():
+        active = json.loads(ACTIVE_GENERATION_PATH.read_text(encoding="utf-8"))
+    active_folder = active.get("generation_folder", "")
+    generation_folder = (
+        active_folder
+        if active.get("content_signature") == content_signature
+        else base_generation_folder
+    )
+    completion_path = COMPLETION_FOLDER / (generation_folder.rsplit("/", 1)[-1] + ".json")
+    completion = {}
+    if completion_path.is_file():
+        completion = json.loads(completion_path.read_text(encoding="utf-8"))
+    generation_reused = False
+    if unreal.EditorAssetLibrary.does_directory_exist(generation_folder) and completion:
         records = _load_generation_records(eligible, generation_folder)
+        validation_errors = _validate_family(eligible, records, generation_folder)
+        current_digest = aggregate_file_digest(
+            _generation_package_files(generation_folder)
+        )
+        generation_reused = (
+            not validation_errors
+            and completion.get("content_signature") == content_signature
+            and completion.get("generation_folder") == generation_folder
+            and completion.get("aggregate_digest") == current_digest
+        )
+    if not generation_reused and unreal.EditorAssetLibrary.does_directory_exist(
+        generation_folder
+    ):
+        generation_folder = (
+            f"{base_generation_folder}_R{uuid.uuid4().hex[:8].upper()}"
+        )
+        completion_path = COMPLETION_FOLDER / (
+            generation_folder.rsplit("/", 1)[-1] + ".json"
+        )
+    if generation_reused:
+        pass
     else:
         unreal.EditorAssetLibrary.make_directory(generation_folder)
         records = {}
+        fault_limit = 0
+        for argument in sys.argv[1:]:
+            if argument.startswith("--fault-mid-generation="):
+                fault_limit = int(argument.split("=", 1)[1])
+        fault_state = {"created": 0, "limit": fault_limit}
         for entry in eligible:
             source = unreal.EditorAssetLibrary.load_asset(entry["source_path"])
-            _duplicate_family(source, collection, records, generation_folder)
+            _duplicate_family(
+                source, collection, records, generation_folder, fault_state
+            )
     validation_errors = _validate_family(eligible, records, generation_folder)
     if validation_errors:
         raise RuntimeError(f"immutable generation validation failed:{validation_errors}")
+    aggregate_digest = aggregate_file_digest(
+        _generation_package_files(generation_folder)
+    )
+    if not generation_reused:
+        atomic_write_json(
+            completion_path,
+            {
+                "schema_version": AUTHORING_SCHEMA_VERSION,
+                "content_signature": content_signature,
+                "generation_folder": generation_folder,
+                "aggregate_digest": aggregate_digest,
+                "asset_count": len(records),
+                "validation_errors": validation_errors,
+            },
+        )
     concrete_mapping = {
         entry["source_path"]: records[entry["source_path"]]["concrete"]
         for entry in eligible
@@ -427,17 +607,13 @@ def author():
         "generation_folder": generation_folder,
         "inventory_mapping": concrete_mapping,
     }
-    manifest_temp = ACTIVE_GENERATION_PATH.with_suffix(".json.tmp")
-    manifest_temp.write_text(
-        json.dumps(active_manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    os.replace(manifest_temp, ACTIVE_GENERATION_PATH)
+    atomic_write_json(ACTIVE_GENERATION_PATH, active_manifest)
     counts = {
         name: sum(entry["blend_mode"] == name for entry in eligible)
         for name in SUPPORTED_BLENDS
     }
     report = {
+        "status": "success",
         "eligible_count": len(eligible),
         "excluded_count": len(excluded),
         "created_count": len(records),
@@ -448,7 +624,11 @@ def author():
         "generation_folder": generation_folder,
         "generation_asset_count": len(records),
         "generation_reused": generation_reused,
-        "active_generation_manifest": str(ACTIVE_GENERATION_PATH),
+        "aggregate_digest": aggregate_digest,
+        "completion_record": str(
+            completion_path.relative_to(Path(unreal.Paths.project_dir()))
+        ).replace("\\", "/"),
+        "active_generation_manifest": "Config/GameXXK/Occlusion/AsianVillageOcclusionActiveGeneration.json",
         "opaque_count": counts["BLEND_OPAQUE"],
         "masked_count": counts["BLEND_MASKED"],
         "translucent_count": counts["BLEND_TRANSLUCENT"],
@@ -459,15 +639,28 @@ def author():
         "failures": [],
         "validation_errors": validation_errors,
     }
-    REPORT_PATH.write_text(
-        json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    atomic_write_json(REPORT_PATH, report)
     print(json.dumps(report, ensure_ascii=False))
     if validation_errors or missing_targets:
         raise RuntimeError(f"authoring incomplete: {json.dumps(report, ensure_ascii=False)}")
     return report
 
 
+def main():
+    try:
+        return author()
+    except Exception as exc:
+        atomic_write_json(
+            REPORT_PATH,
+            {
+                "status": "failure",
+                "error": repr(exc),
+                "active_generation_manifest": "Config/GameXXK/Occlusion/AsianVillageOcclusionActiveGeneration.json",
+                "validation_errors": [str(exc)],
+            },
+        )
+        raise
+
+
 if __name__ == "__main__":
-    author()
+    main()
