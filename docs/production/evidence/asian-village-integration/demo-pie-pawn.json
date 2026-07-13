@@ -11,9 +11,9 @@
     ]
   ],
   "location_cm": [
-    19693.19,
-    3065.41,
-    1612.67
+    16126.2,
+    7150.6,
+    1075.0
   ],
   "velocity_cm_s": [
     0.0,
@@ -21,11 +21,11 @@
     0.0
   ],
   "ground_hit_cm": [
-    19693.19,
-    3065.41,
-    1538.65
+    16126.2,
+    7150.6,
+    1698.0
   ],
-  "ground_actor": "SM_bench_7",
+  "ground_actor": "GXXK_Blocker_Building_ThatchedRoof11",
   "ground_component": "StaticMeshComponent0",
   "ground_payload_keys": [
     "blocking_hit",

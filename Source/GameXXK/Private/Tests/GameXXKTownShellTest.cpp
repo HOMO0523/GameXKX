@@ -167,6 +167,10 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("hero has Paper2D visual shell"), HeroCharacter->HasTownVisual());
 	const UPaperFlipbookComponent* HeroVisual = HeroCharacter->GetTownVisualComponent();
 	TestNotNull(TEXT("hero exposes Paper2D visual component"), HeroVisual);
+	TestTrue(TEXT("hero visual writes Custom Depth for occlusion silhouette gating"),
+		HeroVisual && HeroVisual->bRenderCustomDepth);
+	TestEqual(TEXT("hero visual uses the dedicated occlusion stencil"),
+		HeroVisual ? HeroVisual->CustomDepthStencilValue : INDEX_NONE, 13);
 	UPaperFlipbookComponent* RevealVisual = HeroCharacter->GetOcclusionRevealVisualComponent();
 	UGameXXKPlayerOcclusionRevealComponent* RevealController = HeroCharacter->GetOcclusionRevealComponent();
 	TestNotNull(TEXT("hero owns a Paper2D occlusion reveal visual"), RevealVisual);
@@ -174,7 +178,9 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("cutout starts with no modified components"), RevealController ? RevealController->GetModifiedComponentCount() : INDEX_NONE, 0);
 	TestEqual(TEXT("scene reveal samples center plus eight circle points"), RevealController ? RevealController->GetOcclusionSampleCount() : INDEX_NONE, 9);
 	TestTrue(TEXT("scene reveal can peel multiple blocking layers per ray"), RevealController && RevealController->GetMaxOcclusionLayers() >= 4);
-	TestEqual(TEXT("scene reveal traces the same normalized radius as the post process circle"), RevealController ? RevealController->GetRevealRadiusNormalized() : -1.0f, 0.18f);
+	TestEqual(TEXT("scene reveal keeps the player-facing visual radius"), RevealController ? RevealController->GetRevealRadiusNormalized() : -1.0f, 0.18f);
+	TestTrue(TEXT("scene reveal traces a tighter player-body footprint than its visual halo"),
+		RevealController && RevealController->GetOcclusionDetectionRadiusNormalized() < RevealController->GetRevealRadiusNormalized());
 	TestTrue(TEXT("cutout restores original material slots"), RevealController && RevealController->RestoresOriginalMaterials());
 	if (RevealVisual)
 	{
@@ -188,7 +194,12 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("reveal trace uses a stable sphere"), RevealController->GetTraceRadius(), 36.0f);
 		TestEqual(TEXT("reveal waits before activation"), RevealController->GetActivationDelay(), 0.08f);
 		TestEqual(TEXT("reveal fades after visibility returns"), RevealController->GetReleaseDuration(), 0.22f);
-
+		RevealController->UpdateMaterialParametersForTest(
+			FVector::ZeroVector, FVector::ForwardVector, FVector(500.0f, 0.0f, 0.0f));
+		TestEqual(TEXT("occlusion stores hero camera-forward depth"),
+			RevealController->GetLastHeroViewDepthForTest(), 500.0f);
+		TestTrue(TEXT("occlusion has positive front-depth bias"),
+			RevealController->GetOcclusionDepthBias() > 0.0f);
 		UPaperFlipbook* RevealSyncFlipbook = NewObject<UPaperFlipbook>(HeroCharacter);
 		HeroCharacter->GetTownVisualComponent()->SetFlipbook(RevealSyncFlipbook);
 		RevealController->SetOcclusionOverrideForTest(true);

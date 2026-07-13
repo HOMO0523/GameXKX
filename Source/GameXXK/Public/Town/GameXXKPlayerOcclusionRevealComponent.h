@@ -37,6 +37,9 @@ public:
 	int32 GetOcclusionSampleCount() const { return OcclusionSampleCount; }
 	int32 GetMaxOcclusionLayers() const { return MaxOcclusionLayers; }
 	float GetRevealRadiusNormalized() const { return RevealRadiusNormalized; }
+	float GetOcclusionDetectionRadiusNormalized() const { return OcclusionDetectionRadiusNormalized; }
+	float GetOcclusionDepthBias() const { return OcclusionDepthBias; }
+	float GetLastHeroViewDepthForTest() const { return LastHeroViewDepthForTest; }
 	bool RestoresOriginalMaterials() const { return true; }
 	bool IsRevealActive() const { return bRevealActive; }
 
@@ -55,6 +58,7 @@ public:
 	void BindRevealVisual(UPaperFlipbookComponent* InRevealVisual);
 	void SetOcclusionOverrideForTest(TOptional<bool> InOverride) { OcclusionOverride = InOverride; }
 	void UpdateRevealForTest(float DeltaSeconds);
+	void UpdateMaterialParametersForTest(FVector CameraLocation, FVector CameraForward, FVector HeroCenter);
 	void ApplyCutoutMaterialsForTest(UPrimitiveComponent* Component);
 	void RestoreAllModifiedComponentsForTest() { RestoreAllModifiedComponents(); }
 
@@ -67,6 +71,7 @@ private:
 	void ApplyCutoutMaterials(UPrimitiveComponent* Component);
 	void ApplyCutoutToBlockingComponents();
 	void UpdateMaterialParameters();
+	void UpdateMaterialParametersForView(FVector CameraLocation, FVector CameraForward, FVector HeroCenter);
 
 	UPROPERTY(EditDefaultsOnly, Category="GameXXK|Town|Occlusion")
 	float TraceInterval = 0.05f;
@@ -89,6 +94,14 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="GameXXK|Town|Occlusion", meta=(ClampMin="0.01", ClampMax="0.5"))
 	float RevealRadiusNormalized = 0.18f;
 
+	// Keep obstruction detection close to the Paper2D body. The visual halo may be wider,
+	// but must not cause nearby floor or rail geometry to activate the reveal on its own.
+	UPROPERTY(EditDefaultsOnly, Category="GameXXK|Town|Occlusion", meta=(ClampMin="0.01", ClampMax="0.5"))
+	float OcclusionDetectionRadiusNormalized = 0.055f;
+
+	UPROPERTY(EditDefaultsOnly, Category="GameXXK|Town|Occlusion", meta=(ClampMin="0.01"))
+	float OcclusionDepthBias = 5.0f;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UPaperFlipbookComponent> RevealVisual;
 
@@ -104,6 +117,7 @@ private:
 	float TraceAccumulator = 0.0f;
 	float ContinuousOccludedSeconds = 0.0f;
 	float ReleaseRemainingSeconds = 0.0f;
+	float LastHeroViewDepthForTest = 0.0f;
 	TOptional<bool> OcclusionOverride;
 	bool bRevealActive = false;
 };

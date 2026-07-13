@@ -15,18 +15,64 @@ class OcclusionCutoutPilotAssetContractTest(unittest.TestCase):
             "/Game/GameXXK/Materials/Occlusion/AsianVillage",
             "MPC_PlayerOcclusion",
             "BLEND_MASKED",
+            "BLEND_TRANSLUCENT",
             "MP_OPACITY_MASK",
+            "MP_OPACITY",
             "MaterialExpressionScreenPosition",
             "OcclusionCenter",
             "OcclusionAspect",
             "OcclusionRadius",
             "recompile_material",
             "save_asset",
+            "all_cutout_blends_preserved",
         ):
             self.assertIn(token, source)
         self.assertNotIn('save_asset("/Game/Asian_Village', source)
         self.assertIn("SM_thatched_roof_10", source)
         self.assertIn("SM_thatched_roof_12", source)
+
+    def test_authoring_script_combines_circle_with_camera_to_hero_depth_gate(self):
+        source = AUTHOR.read_text(encoding="utf-8")
+        for token in (
+            "OcclusionCameraLocation",
+            "OcclusionCameraForward",
+            "OcclusionHeroViewDepth",
+            "OcclusionDepthBias",
+            "MaterialExpressionWorldPosition",
+            "MaterialExpressionDotProduct",
+            "MaterialExpressionIf",
+            "MaterialExpressionOneMinus",
+            "A > B",
+            "A == B",
+            "A < B",
+        ):
+            self.assertIn(token, source)
+
+    def test_authoring_script_keeps_the_visual_halo_circular(self):
+        source = AUTHOR.read_text(encoding="utf-8")
+        for token in ("OcclusionFootY", "foot_gate", "foot_padding", "screen_g"):
+            self.assertNotIn(token, source)
+
+    def test_authoring_script_uses_hero_custom_stencil_inside_the_circle(self):
+        source = AUTHOR.read_text(encoding="utf-8")
+        for token in (
+            "PPI_CUSTOM_STENCIL",
+            "OcclusionHeroStencilValue",
+            "hero_silhouette_gate",
+            "gated_reveal_on_hero",
+        ):
+            self.assertIn(token, source)
+
+    def test_authoring_script_multiplies_existing_mask_before_depth_gate(self):
+        source = AUTHOR.read_text(encoding="utf-8")
+        for token in (
+            "_existing_property_connection",
+            "source_blend",
+            "preserve_existing",
+            "original_node",
+            "MaterialExpressionMultiply",
+        ):
+            self.assertIn(token, source)
 
     def test_authoring_and_runtime_mapping_cover_multistory_building_slots(self):
         source = AUTHOR.read_text(encoding="utf-8")

@@ -54,6 +54,23 @@ def _connect_property(source, outputs, prop):
     raise RuntimeError(f"material property connection failed: {prop}")
 
 
+def _existing_property_connection(material, material_property):
+    node = unreal.MaterialEditingLibrary.get_material_property_input_node(
+        material, material_property
+    )
+    if node is None:
+        return None
+    output_name = unreal.MaterialEditingLibrary.get_material_property_input_node_output_name(
+        material, material_property
+    )
+    if output_name is None:
+        raise RuntimeError(
+            f"connected {material_property} has no reflected output name in "
+            f"{material.get_path_name()}"
+        )
+    return node, str(output_name)
+
+
 def _ensure_collection():
     collection = unreal.EditorAssetLibrary.load_asset(MPC_PATH)
     if collection is None:
@@ -72,11 +89,26 @@ def _ensure_collection():
     aspect = unreal.CollectionVectorParameter()
     _set(aspect, "parameter_name", "OcclusionAspect")
     _set(aspect, "default_value", unreal.LinearColor(1.777778, 1.0, 0.0, 0.0))
+    camera_location = unreal.CollectionVectorParameter()
+    _set(camera_location, "parameter_name", "OcclusionCameraLocation")
+    _set(camera_location, "default_value", unreal.LinearColor(0.0, 0.0, 0.0, 0.0))
+    camera_forward = unreal.CollectionVectorParameter()
+    _set(camera_forward, "parameter_name", "OcclusionCameraForward")
+    _set(camera_forward, "default_value", unreal.LinearColor(1.0, 0.0, 0.0, 0.0))
     radius = unreal.CollectionScalarParameter()
     _set(radius, "parameter_name", "OcclusionRadius")
     _set(radius, "default_value", 0.18)
-    _set(collection, "vector_parameters", [center, aspect])
-    _set(collection, "scalar_parameters", [radius])
+    hero_view_depth = unreal.CollectionScalarParameter()
+    _set(hero_view_depth, "parameter_name", "OcclusionHeroViewDepth")
+    _set(hero_view_depth, "default_value", 0.0)
+    depth_bias = unreal.CollectionScalarParameter()
+    _set(depth_bias, "parameter_name", "OcclusionDepthBias")
+    _set(depth_bias, "default_value", 5.0)
+    hero_stencil_value = unreal.CollectionScalarParameter()
+    _set(hero_stencil_value, "parameter_name", "OcclusionHeroStencilValue")
+    _set(hero_stencil_value, "default_value", 13.0)
+    _set(collection, "vector_parameters", [center, aspect, camera_location, camera_forward])
+    _set(collection, "scalar_parameters", [radius, hero_view_depth, depth_bias, hero_stencil_value])
     collection.modify()
     if not unreal.EditorAssetLibrary.save_asset(MPC_PATH, only_if_is_dirty=False):
         raise RuntimeError(f"failed to save_asset {MPC_PATH}")
@@ -124,9 +156,33 @@ def _collection_parameter(material, collection, parameter_name, x, y):
 
 
 def _patch_cutout(material, collection):
+    source_blend = material.get_blend_mode()
+    if source_blend == unreal.BlendMode.BLEND_OPAQUE:
+        material_property = unreal.MaterialProperty.MP_OPACITY_MASK
+        target_blend = unreal.BlendMode.BLEND_MASKED
+        preserve_existing = False
+        force_masked = True
+    elif source_blend == unreal.BlendMode.BLEND_MASKED:
+        material_property = unreal.MaterialProperty.MP_OPACITY_MASK
+        target_blend = unreal.BlendMode.BLEND_MASKED
+        preserve_existing = True
+        force_masked = True
+    elif source_blend == unreal.BlendMode.BLEND_TRANSLUCENT:
+        material_property = unreal.MaterialProperty.MP_OPACITY
+        target_blend = unreal.BlendMode.BLEND_TRANSLUCENT
+        preserve_existing = True
+        force_masked = False
+    else:
+        raise RuntimeError(f"unsupported source blend: {source_blend}")
+    existing = (
+        _existing_property_connection(material, material_property)
+        if preserve_existing
+        else None
+    )
     _set(material, "material_domain", unreal.MaterialDomain.MD_SURFACE)
-    _set(material, "blend_mode", unreal.BlendMode.BLEND_MASKED)
-    _set(material, "opacity_mask_clip_value", 0.333)
+    _set(material, "blend_mode", target_blend)
+    if force_masked:
+        _set(material, "opacity_mask_clip_value", 0.333)
 
     screen = _node(material, unreal.MaterialExpressionScreenPosition, -1150, 640)
     center = _collection_parameter(material, collection, "OcclusionCenter", -1150, 780)
@@ -162,12 +218,81 @@ def _patch_cutout(material, collection):
     normalized = _node(material, unreal.MaterialExpressionDivide, 210, 720)
     _connect(edge, ("",), normalized, ("A",))
     _connect(feather, ("",), normalized, ("B",))
-    keep_mask = _node(material, unreal.MaterialExpressionSaturate, 420, 720)
-    _connect(normalized, ("",), keep_mask, ("Input", ""))
-    _connect_property(keep_mask, ("",), unreal.MaterialProperty.MP_OPACITY_MASK)
+    circle_keep = _node(material, unreal.MaterialExpressionSaturate, 420, 720)
+    _connect(normalized, ("",), circle_keep, ("Input", ""))
+    circle_reveal = _node(material, unreal.MaterialExpressionOneMinus, 620, 720)
+    _connect(circle_keep, ("",), circle_reveal, ("Input", ""))
+
+    world_position = _node(material, unreal.MaterialExpressionWorldPosition, -1150, 1040)
+    camera_location = _collection_parameter(material, collection, "OcclusionCameraLocation", -940, 1080)
+    camera_location_rgb = _node(material, unreal.MaterialExpressionComponentMask, -730, 1080)
+    for channel, enabled in (("r", True), ("g", True), ("b", True), ("a", False)):
+        _set(camera_location_rgb, channel, enabled)
+    _connect(camera_location, ("", "RGB"), camera_location_rgb, ("Input", ""))
+    relative_position = _node(material, unreal.MaterialExpressionSubtract, -730, 990)
+    _connect(world_position, ("", "XYZ"), relative_position, ("A",))
+    _connect(camera_location_rgb, ("",), relative_position, ("B",))
+    camera_forward = _collection_parameter(material, collection, "OcclusionCameraForward", -730, 1210)
+    camera_forward_rgb = _node(material, unreal.MaterialExpressionComponentMask, -510, 1210)
+    for channel, enabled in (("r", True), ("g", True), ("b", True), ("a", False)):
+        _set(camera_forward_rgb, channel, enabled)
+    _connect(camera_forward, ("", "RGB"), camera_forward_rgb, ("Input", ""))
+    pixel_view_depth = _node(material, unreal.MaterialExpressionDotProduct, -480, 1010)
+    _connect(relative_position, ("",), pixel_view_depth, ("A",))
+    _connect(camera_forward_rgb, ("",), pixel_view_depth, ("B",))
+    hero_view_depth = _collection_parameter(material, collection, "OcclusionHeroViewDepth", -500, 1120)
+    depth_bias = _collection_parameter(material, collection, "OcclusionDepthBias", -300, 1160)
+    foreground_threshold = _node(material, unreal.MaterialExpressionSubtract, -250, 1090)
+    _connect(hero_view_depth, ("",), foreground_threshold, ("A",))
+    _connect(depth_bias, ("",), foreground_threshold, ("B",))
+    zero = _node(material, unreal.MaterialExpressionConstant, -50, 970)
+    _set(zero, "r", 0.0)
+    one = _node(material, unreal.MaterialExpressionConstant, -50, 1060)
+    _set(one, "r", 1.0)
+    is_foreground = _node(material, unreal.MaterialExpressionIf, 0, 1010)
+    _connect(pixel_view_depth, ("",), is_foreground, ("A",))
+    _connect(foreground_threshold, ("",), is_foreground, ("B",))
+    _connect(zero, ("",), is_foreground, ("A > B", "A == B"))
+    _connect(one, ("",), is_foreground, ("A < B",))
+
+    # Keep the circle as the visibility scope, but only cut a foreground pixel
+    # where the hero itself wrote the dedicated Custom Stencil value.
+    hero_stencil = _node(material, unreal.MaterialExpressionSceneTexture, -250, 1320)
+    _set(hero_stencil, "scene_texture_id", unreal.SceneTextureId.PPI_CUSTOM_STENCIL)
+    hero_stencil_r = _node(material, unreal.MaterialExpressionComponentMask, -40, 1320)
+    for channel, enabled in (("r", True), ("g", False), ("b", False), ("a", False)):
+        _set(hero_stencil_r, channel, enabled)
+    _connect(hero_stencil, ("Color", ""), hero_stencil_r, ("Input", ""))
+    hero_stencil_value = _collection_parameter(material, collection, "OcclusionHeroStencilValue", -30, 1410)
+    hero_silhouette_zero = _node(material, unreal.MaterialExpressionConstant, 160, 1280)
+    _set(hero_silhouette_zero, "r", 0.0)
+    hero_silhouette_one = _node(material, unreal.MaterialExpressionConstant, 160, 1360)
+    _set(hero_silhouette_one, "r", 1.0)
+    hero_silhouette_gate = _node(material, unreal.MaterialExpressionIf, 360, 1320)
+    _connect(hero_stencil_r, ("",), hero_silhouette_gate, ("A",))
+    _connect(hero_stencil_value, ("",), hero_silhouette_gate, ("B",))
+    _connect(hero_silhouette_zero, ("",), hero_silhouette_gate, ("A > B",))
+    _connect(hero_silhouette_zero, ("",), hero_silhouette_gate, ("A < B",))
+    _connect(hero_silhouette_one, ("",), hero_silhouette_gate, ("A == B",))
+    gated_reveal = _node(material, unreal.MaterialExpressionMultiply, 200, 860)
+    _connect(circle_reveal, ("",), gated_reveal, ("A",))
+    _connect(is_foreground, ("",), gated_reveal, ("B",))
+    gated_reveal_on_hero = _node(material, unreal.MaterialExpressionMultiply, 420, 860)
+    _connect(gated_reveal, ("",), gated_reveal_on_hero, ("A",))
+    _connect(hero_silhouette_gate, ("",), gated_reveal_on_hero, ("B",))
+    keep_mask = _node(material, unreal.MaterialExpressionOneMinus, 620, 860)
+    _connect(gated_reveal_on_hero, ("",), keep_mask, ("Input", ""))
+    final_mask = keep_mask
+    if existing is not None:
+        original_node, output_name = existing
+        combined_mask = _node(material, unreal.MaterialExpressionMultiply, 620, 860)
+        _connect(original_node, (output_name, ""), combined_mask, ("A",))
+        _connect(keep_mask, ("",), combined_mask, ("B",))
+        final_mask = combined_mask
+    _connect_property(final_mask, ("",), material_property)
 
     unreal.MaterialEditingLibrary.layout_material_expressions(material)
-    if not unreal.GameXXKMaterialAuthoringLibrary.force_masked_material_compilation(material):
+    if force_masked and not unreal.GameXXKMaterialAuthoringLibrary.force_masked_material_compilation(material):
         raise RuntimeError(f"failed to force masked compilation for {material.get_path_name()}")
     errors = [str(item) for item in unreal.MaterialEditingLibrary.recompile_material(material)]
     if errors:
@@ -218,11 +343,14 @@ def author():
         duplicate = _duplicate_cutout_family(source, collection, cache, created)
         mapping[source_path] = str(duplicate.get_path_name()).split(".", 1)[0]
 
-    # Reassert Masked after the full instance graph has been reparented. UE may
+    # Reassert masked roots after the full instance graph has been reparented. UE may
     # recache a copied root's base properties while child parents are changing.
     for duplicate in cache.values():
         if isinstance(duplicate, unreal.Material):
-            if not unreal.GameXXKMaterialAuthoringLibrary.force_masked_material_compilation(duplicate):
+            if (
+                duplicate.get_blend_mode() == unreal.BlendMode.BLEND_MASKED
+                and not unreal.GameXXKMaterialAuthoringLibrary.force_masked_material_compilation(duplicate)
+            ):
                 raise RuntimeError(f"final masked compilation failed for {duplicate.get_path_name()}")
             errors = [str(item) for item in unreal.MaterialEditingLibrary.recompile_material(duplicate)]
             if errors:
@@ -232,20 +360,25 @@ def author():
             ):
                 raise RuntimeError(f"failed final root save for {duplicate.get_path_name()}")
 
-    invalid_blends = {
-        source_path: str(cutout.get_blend_mode())
-        for source_path, cutout in cache.items()
-        if cutout.get_blend_mode() != unreal.BlendMode.BLEND_MASKED
-    }
+    invalid_blends = {}
+    for source_path, cutout in cache.items():
+        source = unreal.EditorAssetLibrary.load_asset(source_path)
+        expected = (
+            unreal.BlendMode.BLEND_TRANSLUCENT
+            if source.get_blend_mode() == unreal.BlendMode.BLEND_TRANSLUCENT
+            else unreal.BlendMode.BLEND_MASKED
+        )
+        if cutout.get_blend_mode() != expected:
+            invalid_blends[source_path] = str(cutout.get_blend_mode())
     if invalid_blends:
-        raise RuntimeError(f"cutout family did not inherit BLEND_MASKED: {invalid_blends}")
+        raise RuntimeError(f"cutout family did not preserve target blend: {invalid_blends}")
 
     report = {
         "actors": observed,
         "mapping": mapping,
         "created": created,
         "collection": MPC_PATH,
-        "all_cutout_blends_masked": True,
+        "all_cutout_blends_preserved": True,
     }
     print(json.dumps(report, ensure_ascii=False))
     return report

@@ -63,6 +63,12 @@ void UGameXXKPlayerOcclusionRevealComponent::UpdateRevealForTest(float DeltaSeco
 	UpdateReveal(DeltaSeconds);
 }
 
+void UGameXXKPlayerOcclusionRevealComponent::UpdateMaterialParametersForTest(
+	FVector CameraLocation, FVector CameraForward, FVector HeroCenter)
+{
+	UpdateMaterialParametersForView(CameraLocation, CameraForward, HeroCenter);
+}
+
 void UGameXXKPlayerOcclusionRevealComponent::ApplyCutoutMaterialsForTest(UPrimitiveComponent* Component)
 {
 	ApplyCutoutMaterials(Component);
@@ -113,7 +119,7 @@ bool UGameXXKPlayerOcclusionRevealComponent::CollectWorldOccluders()
 	const float TargetDistance = FVector::Distance(CameraLocation, TargetCenter);
 	const float SampleRingRadius = 2.0f * TargetDistance
 		* FMath::Tan(FMath::DegreesToRadians(CameraManager->GetFOVAngle() * 0.5f))
-		* RevealRadiusNormalized;
+		* OcclusionDetectionRadiusNormalized;
 
 	for (int32 SampleIndex = 0; SampleIndex < OcclusionSampleCount; ++SampleIndex)
 	{
@@ -221,14 +227,18 @@ void UGameXXKPlayerOcclusionRevealComponent::ApplyCutoutMaterials(UPrimitiveComp
 
 void UGameXXKPlayerOcclusionRevealComponent::UpdateMaterialParameters()
 {
-	if (!ParameterCollection)
-	{
-		return;
-	}
 	const AGameXXKHeroCharacter* Hero = Cast<AGameXXKHeroCharacter>(GetOwner());
 	APlayerController* Controller = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
 	const UPaperFlipbookComponent* HeroVisual = Hero ? Hero->GetTownVisualComponent() : nullptr;
-	if (!Controller || !HeroVisual)
+	APlayerCameraManager* CameraManager = Controller ? Controller->PlayerCameraManager : nullptr;
+	if (!Controller || !HeroVisual || !CameraManager)
+	{
+		return;
+	}
+	const FVector HeroCenter = HeroVisual->Bounds.Origin;
+	UpdateMaterialParametersForView(
+		CameraManager->GetCameraLocation(), CameraManager->GetCameraRotation().Vector(), HeroCenter);
+	if (!ParameterCollection)
 	{
 		return;
 	}
@@ -237,7 +247,7 @@ void UGameXXKPlayerOcclusionRevealComponent::UpdateMaterialParameters()
 	int32 ViewY = 1;
 	Controller->GetViewportSize(ViewX, ViewY);
 	FVector2D PixelPosition;
-	if (!Controller->ProjectWorldLocationToScreen(HeroVisual->Bounds.Origin, PixelPosition, false))
+	if (!Controller->ProjectWorldLocationToScreen(HeroCenter, PixelPosition, false))
 	{
 		return;
 	}
@@ -249,6 +259,33 @@ void UGameXXKPlayerOcclusionRevealComponent::UpdateMaterialParameters()
 		FLinearColor(static_cast<float>(ViewX) / FMath::Max(1, ViewY), 1.0f, 0.0f, 0.0f));
 	UKismetMaterialLibrary::SetScalarParameterValue(
 		this, ParameterCollection, TEXT("OcclusionRadius"), RevealRadiusNormalized);
+}
+
+void UGameXXKPlayerOcclusionRevealComponent::UpdateMaterialParametersForView(
+	FVector CameraLocation, FVector CameraForward, FVector HeroCenter)
+{
+	const FVector NormalizedCameraForward = CameraForward.GetSafeNormal();
+	if (NormalizedCameraForward.IsNearlyZero())
+	{
+		return;
+	}
+
+	LastHeroViewDepthForTest = FVector::DotProduct(HeroCenter - CameraLocation, NormalizedCameraForward);
+	if (!ParameterCollection)
+	{
+		return;
+	}
+
+	UKismetMaterialLibrary::SetVectorParameterValue(
+		this, ParameterCollection, TEXT("OcclusionCameraLocation"),
+		FLinearColor(CameraLocation.X, CameraLocation.Y, CameraLocation.Z, 0.0f));
+	UKismetMaterialLibrary::SetVectorParameterValue(
+		this, ParameterCollection, TEXT("OcclusionCameraForward"),
+		FLinearColor(NormalizedCameraForward.X, NormalizedCameraForward.Y, NormalizedCameraForward.Z, 0.0f));
+	UKismetMaterialLibrary::SetScalarParameterValue(
+		this, ParameterCollection, TEXT("OcclusionHeroViewDepth"), LastHeroViewDepthForTest);
+	UKismetMaterialLibrary::SetScalarParameterValue(
+		this, ParameterCollection, TEXT("OcclusionDepthBias"), OcclusionDepthBias);
 }
 
 void UGameXXKPlayerOcclusionRevealComponent::RestoreAllModifiedComponents()

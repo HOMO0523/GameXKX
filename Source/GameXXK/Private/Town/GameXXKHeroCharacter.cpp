@@ -137,6 +137,8 @@ AGameXXKHeroCharacter::AGameXXKHeroCharacter()
 	Visual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Visual->SetCastShadow(false);
 	Visual->SetTranslucentSortPriority(10);
+	Visual->SetRenderCustomDepth(true);
+	Visual->SetCustomDepthStencilValue(13);
 
 	OcclusionRevealVisual = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("OcclusionRevealVisual"));
 	OcclusionRevealVisual->SetupAttachment(Capsule);
