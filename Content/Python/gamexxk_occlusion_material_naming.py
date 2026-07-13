@@ -30,4 +30,5 @@ def is_eligible_material(source_object_path: str) -> bool:
     normalized_path = source_object_path.lower()
     if not normalized_path.startswith(SOURCE_PATH_PREFIX.lower()):
         return False
-    return not any(part in normalized_path for part in EXCLUDED_PATH_PARTS)
+    directory_segments = normalized_path.rsplit("/", 1)[0].split("/")
+    return not any(part in directory_segments for part in EXCLUDED_PATH_PARTS)

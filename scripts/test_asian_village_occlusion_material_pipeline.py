@@ -47,6 +47,21 @@ class OcclusionMaterialNamingTests(unittest.TestCase):
 
         self.assertTrue(is_eligible_material(source_path))
 
+    def test_near_match_exclusion_directory_is_eligible(self):
+        source_path = (
+            "/Game/Asian_Village/materials/notwater_materials_backup/MI_Wall.MI_Wall"
+        )
+
+        self.assertTrue(is_eligible_material(source_path))
+
+    def test_asset_name_containing_exclusion_text_is_eligible(self):
+        source_path = (
+            "/Game/Asian_Village/Materials/Buildings/"
+            "MI_sky_materials_Wall.MI_sky_materials_Wall"
+        )
+
+        self.assertTrue(is_eligible_material(source_path))
+
     def test_material_outside_asian_village_is_excluded(self):
         source_path = "/Game/GameXXK/Materials/MI_Wall.MI_Wall"
 
