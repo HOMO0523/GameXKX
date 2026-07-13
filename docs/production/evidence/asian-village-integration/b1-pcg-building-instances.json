@@ -1,0 +1,412 @@
+{
+  "ok": true,
+  "map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+  "matches": {
+    "CoreThatchedShop": [
+      {
+        "distance_cm": 0.0,
+        "actor": "QS_B1_PCG_Building_courtyard_wing_orange",
+        "component": "ISM_SM_QS_B1_CourtyardWing_Orange_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/Variants/SM_QS_B1_CourtyardWing_Orange",
+        "instance_index": 1,
+        "location_cm": [
+          -13600.0,
+          1180.0,
+          -27.66
+        ]
+      },
+      {
+        "distance_cm": 780.0,
+        "actor": "QS_B1_PCG_Prop_sign",
+        "component": "ISM_SM_QS_B1_Sign_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Sign",
+        "instance_index": 1,
+        "location_cm": [
+          -13929.64,
+          1886.92,
+          632.34
+        ]
+      },
+      {
+        "distance_cm": 1009.01,
+        "actor": "QS_B1_PCG_Prop_fence",
+        "component": "ISM_SM_QS_B1_Fence_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Fence",
+        "instance_index": 3,
+        "location_cm": [
+          -14509.71,
+          743.51,
+          -35.84
+        ]
+      },
+      {
+        "distance_cm": 1150.0,
+        "actor": "QS_B1_PCG_Prop_stall",
+        "component": "ISM_SM_QS_B1_Stall_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Stall",
+        "instance_index": 0,
+        "location_cm": [
+          -14086.01,
+          2222.25,
+          -23.75
+        ]
+      },
+      {
+        "distance_cm": 1150.0,
+        "actor": "QS_B1_PCG_Prop_well",
+        "component": "ISM_SM_QS_B1_Well_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Well",
+        "instance_index": 1,
+        "location_cm": [
+          -13113.99,
+          137.75,
+          -32.79
+        ]
+      }
+    ],
+    "CoreCanopyShop": [
+      {
+        "distance_cm": 0.0,
+        "actor": "QS_B1_PCG_Building_tall_house_indigo",
+        "component": "ISM_SM_QS_B1_TallHouse_Indigo_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/Variants/SM_QS_B1_TallHouse_Indigo",
+        "instance_index": 0,
+        "location_cm": [
+          -10200.0,
+          1980.0,
+          -34.69
+        ]
+      },
+      {
+        "distance_cm": 505.0,
+        "actor": "QS_B1_PCG_Prop_banner",
+        "component": "ISM_SM_QS_B1_Banner_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Banner",
+        "instance_index": 0,
+        "location_cm": [
+          -10356.05,
+          2460.28,
+          377.81
+        ]
+      },
+      {
+        "distance_cm": 875.0,
+        "actor": "QS_B1_PCG_Prop_cart",
+        "component": "ISM_SM_QS_B1_Cart_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Cart",
+        "instance_index": 6,
+        "location_cm": [
+          -9929.61,
+          1147.83,
+          -34.7
+        ]
+      },
+      {
+        "distance_cm": 1000.0,
+        "actor": "QS_B1_PCG_Prop_well",
+        "component": "ISM_SM_QS_B1_Well_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Well",
+        "instance_index": 0,
+        "location_cm": [
+          -11151.06,
+          1670.98,
+          -30.39
+        ]
+      }
+    ],
+    "ApproachLowHouse": [
+      {
+        "distance_cm": 0.0,
+        "actor": "QS_B1_PCG_Building_gable_shop_teal",
+        "component": "ISM_SM_QS_B1_GableShop_Teal_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/Variants/SM_QS_B1_GableShop_Teal",
+        "instance_index": 1,
+        "location_cm": [
+          -8200.0,
+          -3320.0,
+          -82.35
+        ]
+      },
+      {
+        "distance_cm": 530.0,
+        "actor": "QS_B1_PCG_Prop_lantern",
+        "component": "ISM_SM_QS_B1_Lantern_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Lantern",
+        "instance_index": 6,
+        "location_cm": [
+          -8062.83,
+          -2808.06,
+          357.65
+        ]
+      },
+      {
+        "distance_cm": 900.0,
+        "actor": "QS_B1_PCG_Prop_cart",
+        "component": "ISM_SM_QS_B1_Cart_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Cart",
+        "instance_index": 5,
+        "location_cm": [
+          -8432.94,
+          -4189.33,
+          -293.73
+        ]
+      },
+      {
+        "distance_cm": 900.0,
+        "actor": "QS_B1_PCG_Prop_well",
+        "component": "ISM_SM_QS_B1_Well_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Well",
+        "instance_index": 6,
+        "location_cm": [
+          -7967.06,
+          -2450.67,
+          -19.32
+        ]
+      },
+      {
+        "distance_cm": 1019.8,
+        "actor": "QS_B1_PCG_Plant_Frame_1",
+        "component": "ISM_SM_QS_B1_PlantCard_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_PlantCard",
+        "instance_index": 17,
+        "location_cm": [
+          -7200.0,
+          -3520.0,
+          -171.41
+        ]
+      },
+      {
+        "distance_cm": 1050.0,
+        "actor": "QS_B1_PCG_Prop_crate",
+        "component": "ISM_SM_QS_B1_Crate_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Crate",
+        "instance_index": 6,
+        "location_cm": [
+          -7185.78,
+          -3591.76,
+          -190.02
+        ]
+      },
+      {
+        "distance_cm": 1050.0,
+        "actor": "QS_B1_PCG_Prop_stall",
+        "component": "ISM_SM_QS_B1_Stall_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Stall",
+        "instance_index": 6,
+        "location_cm": [
+          -9214.22,
+          -3048.24,
+          -20.72
+        ]
+      }
+    ],
+    "BridgeHouse": [
+      {
+        "distance_cm": 0.0,
+        "actor": "QS_B1_PCG_Building_tall_house_ochre",
+        "component": "ISM_SM_QS_B1_TallHouse_Ochre_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/Variants/SM_QS_B1_TallHouse_Ochre",
+        "instance_index": 0,
+        "location_cm": [
+          -18500.0,
+          -120.0,
+          -276.1
+        ]
+      },
+      {
+        "distance_cm": 405.0,
+        "actor": "QS_B1_PCG_Prop_sign",
+        "component": "ISM_SM_QS_B1_Sign_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Sign",
+        "instance_index": 3,
+        "location_cm": [
+          -18683.87,
+          240.86,
+          26.4
+        ]
+      },
+      {
+        "distance_cm": 1249.77,
+        "actor": "QS_B1_PCG_Prop_rock",
+        "component": "ISM_SM_QS_B1_Rock_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Rock",
+        "instance_index": 3,
+        "location_cm": [
+          -17490.29,
+          616.49,
+          -96.69
+        ]
+      },
+      {
+        "distance_cm": 1300.0,
+        "actor": "QS_B1_PCG_Plant_Frame_0",
+        "component": "ISM_SM_QS_B1_PlantCard_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_PlantCard",
+        "instance_index": 8,
+        "location_cm": [
+          -17200.0,
+          -120.0,
+          -78.45
+        ]
+      },
+      {
+        "distance_cm": 1300.0,
+        "actor": "QS_B1_PCG_Plant_Frame_2",
+        "component": "ISM_SM_QS_B1_PlantCard_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_PlantCard",
+        "instance_index": 2,
+        "location_cm": [
+          -18500.0,
+          1180.0,
+          -241.73
+        ]
+      },
+      {
+        "distance_cm": 1300.0,
+        "actor": "QS_B1_PCG_Plant_Frame_3",
+        "component": "ISM_SM_QS_B1_PlantCard_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_PlantCard",
+        "instance_index": 9,
+        "location_cm": [
+          -19800.0,
+          -120.0,
+          -369.07
+        ]
+      }
+    ],
+    "SouthTower": [
+      {
+        "distance_cm": 0.0,
+        "actor": "QS_B1_PCG_Building_dock_shed_teal",
+        "component": "ISM_SM_QS_B1_DockShed_Teal_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/Variants/SM_QS_B1_DockShed_Teal",
+        "instance_index": 0,
+        "location_cm": [
+          -17400.0,
+          -9420.0,
+          -371.41
+        ]
+      },
+      {
+        "distance_cm": 480.0,
+        "actor": "QS_B1_PCG_Prop_lantern",
+        "component": "ISM_SM_QS_B1_Lantern_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Lantern",
+        "instance_index": 2,
+        "location_cm": [
+          -17174.65,
+          -8996.18,
+          13.59
+        ]
+      },
+      {
+        "distance_cm": 850.0,
+        "actor": "QS_B1_PCG_Prop_cart",
+        "component": "ISM_SM_QS_B1_Cart_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Cart",
+        "instance_index": 2,
+        "location_cm": [
+          -17799.05,
+          -10170.5,
+          -391.69
+        ]
+      },
+      {
+        "distance_cm": 850.0,
+        "actor": "QS_B1_PCG_Prop_well",
+        "component": "ISM_SM_QS_B1_Well_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Well",
+        "instance_index": 3,
+        "location_cm": [
+          -17000.95,
+          -8669.5,
+          -269.97
+        ]
+      },
+      {
+        "distance_cm": 950.0,
+        "actor": "QS_B1_PCG_Prop_crate",
+        "component": "ISM_SM_QS_B1_Crate_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Crate",
+        "instance_index": 2,
+        "location_cm": [
+          -16561.2,
+          -9866.0,
+          -361.05
+        ]
+      },
+      {
+        "distance_cm": 950.0,
+        "actor": "QS_B1_PCG_Prop_stall",
+        "component": "ISM_SM_QS_B1_Stall_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Stall",
+        "instance_index": 2,
+        "location_cm": [
+          -18238.8,
+          -8974.0,
+          -434.96
+        ]
+      },
+      {
+        "distance_cm": 1274.75,
+        "actor": "QS_B1_PCG_Prop_crate",
+        "component": "ISM_SM_QS_B1_Crate_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Crate",
+        "instance_index": 3,
+        "location_cm": [
+          -16960.25,
+          -10616.5,
+          -381.57
+        ]
+      },
+      {
+        "distance_cm": 1274.75,
+        "actor": "QS_B1_PCG_Prop_fence",
+        "component": "ISM_SM_QS_B1_Fence_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Fence",
+        "instance_index": 4,
+        "location_cm": [
+          -17839.75,
+          -8223.5,
+          -431.77
+        ]
+      },
+      {
+        "distance_cm": 1274.75,
+        "actor": "QS_B1_PCG_Prop_rock",
+        "component": "ISM_SM_QS_B1_Rock_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Rock",
+        "instance_index": 2,
+        "location_cm": [
+          -16162.15,
+          -9115.49,
+          -244.7
+        ]
+      },
+      {
+        "distance_cm": 1274.75,
+        "actor": "QS_B1_PCG_Prop_stall",
+        "component": "ISM_SM_QS_B1_Stall_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_Stall",
+        "instance_index": 3,
+        "location_cm": [
+          -18637.85,
+          -9724.51,
+          -429.52
+        ]
+      },
+      {
+        "distance_cm": 1300.0,
+        "actor": "QS_B1_PCG_Plant_Frame_2",
+        "component": "ISM_SM_QS_B1_PlantCard_0",
+        "mesh": "/Game/GameXXK/Environment/TownPCG/B1/Meshes/SM_QS_B1_PlantCard",
+        "instance_index": 0,
+        "location_cm": [
+          -17400.0,
+          -10720.0,
+          -379.23
+        ]
+      }
+    ]
+  }
+}

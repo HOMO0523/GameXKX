@@ -279,7 +279,7 @@ class QingshanDressB1ConfigTests(unittest.TestCase):
         })
         self.assertEqual(quickroad["landscape_influence"], {
             "falloff_cm": 250,
-            "blend": 0.9,
+            "blend": 1.0,
             "vertical_offset_cm": -5,
             "smooth_iterations": 4,
             "smooth_strength": 0.6,

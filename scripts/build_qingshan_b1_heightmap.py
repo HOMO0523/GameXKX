@@ -210,6 +210,18 @@ def terrain_elevation_cm(config: dict, x_cm: float, y_cm: float) -> float:
     return elevation
 
 
+def road_support_elevation_cm(config: dict, x_cm: float, y_cm: float) -> float:
+    """Return the broad terrain surface before the river trench is subtracted."""
+
+    elevation = terrain_elevation_cm(config, x_cm, y_cm)
+    river_points = main_river_spline(config)["points_cm"]
+    river_distance = polyline_distance_cm((x_cm, y_cm), river_points)
+    trench = RIVER_TRENCH_DEPTH_CM * math.exp(
+        -0.5 * (river_distance / RIVER_TRENCH_SIGMA_CM) ** 2
+    )
+    return elevation + trench
+
+
 def encode_height_cm(elevation_cm: float, scale_z_cm: float) -> int:
     encoded = ZERO_RAW + float(elevation_cm) * 128.0 / float(scale_z_cm)
     return max(0, min(65535, int(math.floor(encoded + 0.5))))

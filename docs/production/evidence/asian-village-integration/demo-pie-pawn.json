@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "world": "/Game/GameXXK/Maps/Prototype/UEDPIE_0_L_Qingshan_AsianVillage_Demo",
+  "pawn_class": "/Game/GameXXK/Characters/Hero/BP_HeroCharacter.BP_HeroCharacter_C",
+  "game_mode_class": "/Script/GameXXK.GameXXKMVPGameMode",
+  "player_starts_cm": [
+    [
+      15740.0,
+      5240.0,
+      1162.0
+    ]
+  ],
+  "location_cm": [
+    19693.19,
+    3065.41,
+    1612.67
+  ],
+  "velocity_cm_s": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "ground_hit_cm": [
+    19693.19,
+    3065.41,
+    1538.65
+  ],
+  "ground_actor": "SM_bench_7",
+  "ground_component": "StaticMeshComponent0",
+  "ground_payload_keys": [
+    "blocking_hit",
+    "bone_name",
+    "distance",
+    "element_index",
+    "face_index",
+    "hit_actor",
+    "hit_bone_name",
+    "hit_component",
+    "hit_item",
+    "impact_normal",
+    "impact_point",
+    "initial_overlap",
+    "location",
+    "normal",
+    "phys_mat",
+    "time",
+    "trace_end",
+    "trace_start"
+  ],
+  "root_collision": "<CollisionEnabled.QUERY_AND_PHYSICS: 3>",
+  "blocker_sweep_requested": false,
+  "blocker_sweep_result": ""
+}

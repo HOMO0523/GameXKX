@@ -13,6 +13,18 @@ namespace
 {
 	const FVector QingshanTownExitLocation(0.0f, 1380.0f, 120.0f);
 	const FName QingshanTownExitActorName(TEXT("QingshanInn_TownExit"));
+
+	bool IsQingshanInnMap(const UWorld* World)
+	{
+		if (!World)
+		{
+			return false;
+		}
+
+		FString MapName = World->GetMapName();
+		MapName.RemoveFromStart(World->StreamingLevelsPrefix);
+		return MapName == TEXT("L_QingshanInn");
+	}
 }
 
 AGameXXKMVPGameMode::AGameXXKMVPGameMode()
@@ -35,6 +47,14 @@ AGameXXKMVPGameMode::AGameXXKMVPGameMode()
 void AGameXXKMVPGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// This game mode is also used by prototype maps.  Only the gameplay town
+	// should restore its persisted actors and player location; a showcase map
+	// must keep its own PlayerStart and placed scene intact.
+	if (!IsQingshanInnMap(GetWorld()))
+	{
+		return;
+	}
 
 	UGameXXKMVPSubsystem* Subsystem = GetGameInstance() ? GetGameInstance()->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr;
 	if (Subsystem)

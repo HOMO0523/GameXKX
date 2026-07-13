@@ -14,6 +14,7 @@
 #include "Engine/Texture2D.h"
 #include "GameXXKMVPRules.h"
 #include "Kismet/GameplayStatics.h"
+#include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Styling/SlateBrush.h"
@@ -22,7 +23,6 @@
 
 namespace
 {
-	static const FName MainMenuQingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 	static const FName ResolveEventGoldCommand(TEXT("ResolveEventGold"));
 	static const FName ResolveCampHealCommand(TEXT("ResolveCampHeal"));
 	static const FName BuyHealingPowderCommand(TEXT("BuyHealingPowder"));
@@ -404,7 +404,7 @@ void UGameXXKMainMenuWidget::RequestPlayableMapForRuntimeState()
 	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
 	if (State.Screen == EGameXXKScreen::Town && State.CurrentRegion == UGameXXKMVPRules::RegionQingshan())
 	{
-		RequestOpenTownMap(MainMenuQingshanTownMap);
+		RequestOpenTownMap(GameXXKLevelFlow::MapForRuntimeState(State));
 	}
 }
 

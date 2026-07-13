@@ -12,6 +12,22 @@ MPC_FOLDER = "/Game/GameXXK/Materials/Occlusion"
 MPC_PATH = f"{MPC_FOLDER}/MPC_PlayerOcclusion"
 MPC_NAME = "MPC_PlayerOcclusion"
 TARGET_LABELS = ("SM_thatched_roof_10", "SM_thatched_roof_12")
+EXTRA_BLOCKER_MATERIALS = (
+    "/Game/Asian_Village/materials/building_materials/base_materials/MI_bamboo_wall_01_Inst.MI_bamboo_wall_01_Inst",
+    "/Game/Asian_Village/materials/building_materials/base_materials/MI_concrete_03_Inst.MI_concrete_03_Inst",
+    "/Game/Asian_Village/materials/building_materials/base_materials/MI_glass_01_Inst.MI_glass_01_Inst",
+    "/Game/Asian_Village/materials/building_materials/base_materials/MI_roof_02_Inst.MI_roof_02_Inst",
+    "/Game/Asian_Village/materials/building_materials/base_materials/MI_stone_tiles_01_Inst.MI_stone_tiles_01_Inst",
+    "/Game/Asian_Village/materials/building_materials/base_materials/MI_wallpaper_01_Inst.MI_wallpaper_01_Inst",
+    "/Game/Asian_Village/materials/building_materials/base_materials/MI_wood_02_Inst.MI_wood_02_Inst",
+    "/Game/Asian_Village/materials/building_materials/base_materials/MI_wooden_board_02_Inst.MI_wooden_board_02_Inst",
+    "/Game/Asian_Village/materials/building_materials/base_materials/MI_wooden_board_WPO_01_Inst.MI_wooden_board_WPO_01_Inst",
+    "/Game/Asian_Village/materials/building_materials/base_materials/MI_wooden_board_WPO_02_Inst.MI_wooden_board_WPO_02_Inst",
+    "/Game/Asian_Village/materials/building_materials/base_materials/MI_wooden_board_WPO_03_Inst.MI_wooden_board_WPO_03_Inst",
+    "/Game/Asian_Village/materials/building_materials/MI_building_concrete_WPO_01_Inst.MI_building_concrete_WPO_01_Inst",
+    "/Game/Asian_Village/materials/building_materials/MI_building_metal_03_Inst.MI_building_metal_03_Inst",
+    "/Game/Asian_Village/materials/building_materials/MI_building_wood_01_Inst.MI_building_wood_01_Inst",
+)
 
 
 def _set(obj, name, value):
@@ -77,12 +93,14 @@ def _inspect_target_materials():
         if not unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).load_level(MAP):
             raise RuntimeError(f"failed to load pilot map {MAP}")
     actors = {str(actor.get_actor_label()): actor for actor in unreal.EditorLevelLibrary.get_all_level_actors()}
+    for required_label in TARGET_LABELS:
+        if required_label not in actors:
+            raise RuntimeError(f"pilot actor missing: {required_label}")
+    selected_labels = sorted(label for label in actors if label.startswith("SM_thatched_roof"))
     observed = {}
     material_paths = set()
-    for label in TARGET_LABELS:
+    for label in selected_labels:
         actor = actors.get(label)
-        if actor is None:
-            raise RuntimeError(f"pilot actor missing: {label}")
         slots = []
         for component in actor.get_components_by_class(unreal.StaticMeshComponent):
             for slot_index in range(component.get_num_materials()):
@@ -94,6 +112,7 @@ def _inspect_target_materials():
         observed[label] = slots
     if not material_paths:
         raise RuntimeError(f"no materials found on {TARGET_LABELS}")
+    material_paths.update(EXTRA_BLOCKER_MATERIALS)
     return observed, sorted(material_paths)
 
 
@@ -148,6 +167,8 @@ def _patch_cutout(material, collection):
     _connect_property(keep_mask, ("",), unreal.MaterialProperty.MP_OPACITY_MASK)
 
     unreal.MaterialEditingLibrary.layout_material_expressions(material)
+    if not unreal.GameXXKMaterialAuthoringLibrary.force_masked_material_compilation(material):
+        raise RuntimeError(f"failed to force masked compilation for {material.get_path_name()}")
     errors = [str(item) for item in unreal.MaterialEditingLibrary.recompile_material(material)]
     if errors:
         raise RuntimeError(f"recompile_material failed for {material.get_path_name()}: {errors}")
@@ -197,11 +218,34 @@ def author():
         duplicate = _duplicate_cutout_family(source, collection, cache, created)
         mapping[source_path] = str(duplicate.get_path_name()).split(".", 1)[0]
 
+    # Reassert Masked after the full instance graph has been reparented. UE may
+    # recache a copied root's base properties while child parents are changing.
+    for duplicate in cache.values():
+        if isinstance(duplicate, unreal.Material):
+            if not unreal.GameXXKMaterialAuthoringLibrary.force_masked_material_compilation(duplicate):
+                raise RuntimeError(f"final masked compilation failed for {duplicate.get_path_name()}")
+            errors = [str(item) for item in unreal.MaterialEditingLibrary.recompile_material(duplicate)]
+            if errors:
+                raise RuntimeError(f"final root recompile failed for {duplicate.get_path_name()}: {errors}")
+            if not unreal.EditorAssetLibrary.save_asset(
+                str(duplicate.get_path_name()).split(".", 1)[0], only_if_is_dirty=False
+            ):
+                raise RuntimeError(f"failed final root save for {duplicate.get_path_name()}")
+
+    invalid_blends = {
+        source_path: str(cutout.get_blend_mode())
+        for source_path, cutout in cache.items()
+        if cutout.get_blend_mode() != unreal.BlendMode.BLEND_MASKED
+    }
+    if invalid_blends:
+        raise RuntimeError(f"cutout family did not inherit BLEND_MASKED: {invalid_blends}")
+
     report = {
         "actors": observed,
         "mapping": mapping,
         "created": created,
         "collection": MPC_PATH,
+        "all_cutout_blends_masked": True,
     }
     print(json.dumps(report, ensure_ascii=False))
     return report

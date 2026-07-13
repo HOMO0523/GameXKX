@@ -1,0 +1,81 @@
+{
+  "ok": true,
+  "map": "/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo",
+  "player_start_count": 1,
+  "player_starts": [
+    {
+      "label": "Player Start",
+      "location_cm": [
+        15740.0,
+        5240.0,
+        1162.0
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "location_cm": [
+        0.0,
+        0.0,
+        1478.12
+      ],
+      "actor": ""
+    },
+    {
+      "location_cm": [
+        1000.0,
+        0.0,
+        1543.75
+      ],
+      "actor": ""
+    },
+    {
+      "location_cm": [
+        -1000.0,
+        0.0,
+        1410.93
+      ],
+      "actor": ""
+    },
+    {
+      "location_cm": [
+        0.0,
+        1000.0,
+        1478.12
+      ],
+      "actor": ""
+    },
+    {
+      "location_cm": [
+        0.0,
+        -1000.0,
+        1471.86
+      ],
+      "actor": ""
+    },
+    {
+      "location_cm": [
+        2000.0,
+        1000.0,
+        1595.3
+      ],
+      "actor": ""
+    },
+    {
+      "location_cm": [
+        -2000.0,
+        -1000.0,
+        1335.14
+      ],
+      "actor": ""
+    },
+    {
+      "location_cm": [
+        15740.0,
+        5240.0,
+        1001.56
+      ],
+      "actor": ""
+    }
+  ]
+}

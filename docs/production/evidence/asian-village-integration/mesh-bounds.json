@@ -1,0 +1,148 @@
+{
+  "ok": true,
+  "meshes": [
+    {
+      "path": "/Game/Asian_Village/meshes/building/SM_foundation_01.SM_foundation_01",
+      "size_cm": [
+        400.0,
+        80.557,
+        204.002
+      ],
+      "origin_cm": [
+        200.0,
+        -0.278,
+        102.001
+      ]
+    },
+    {
+      "path": "/Game/Asian_Village/meshes/building/SM_floor_01.SM_floor_01",
+      "size_cm": [
+        400.0,
+        400.0,
+        20.0
+      ],
+      "origin_cm": [
+        200.0,
+        -200.0,
+        10.0
+      ]
+    },
+    {
+      "path": "/Game/Asian_Village/meshes/building/SM_wall_01.SM_wall_01",
+      "size_cm": [
+        400.0,
+        20.0,
+        400.0
+      ],
+      "origin_cm": [
+        200.0,
+        0.0,
+        200.0
+      ]
+    },
+    {
+      "path": "/Game/Asian_Village/meshes/building/SM_wall_window_01.SM_wall_window_01",
+      "size_cm": [
+        400.0,
+        44.514,
+        400.0
+      ],
+      "origin_cm": [
+        200.0,
+        0.0,
+        200.0
+      ]
+    },
+    {
+      "path": "/Game/Asian_Village/meshes/building/SM_wall_door_01.SM_wall_door_01",
+      "size_cm": [
+        400.0,
+        47.257,
+        400.0
+      ],
+      "origin_cm": [
+        200.0,
+        -1.371,
+        200.0
+      ]
+    },
+    {
+      "path": "/Game/Asian_Village/meshes/building/SM_roof_03.SM_roof_03",
+      "size_cm": [
+        400.0,
+        407.5,
+        302.99
+      ],
+      "origin_cm": [
+        200.0,
+        -203.75,
+        138.505
+      ]
+    },
+    {
+      "path": "/Game/Asian_Village/meshes/building/SM_roof_canopy_01.SM_roof_canopy_01",
+      "size_cm": [
+        1714.879,
+        473.661,
+        450.271
+      ],
+      "origin_cm": [
+        -0.269,
+        11.83,
+        196.462
+      ]
+    },
+    {
+      "path": "/Game/Asian_Village/meshes/building/SM_bridge_01.SM_bridge_01",
+      "size_cm": [
+        400.0,
+        540.203,
+        707.245
+      ],
+      "origin_cm": [
+        0.0,
+        -0.115,
+        198.663
+      ]
+    },
+    {
+      "path": "/Game/Asian_Village/meshes/props/SM_market_tent_01.SM_market_tent_01",
+      "size_cm": [
+        412.246,
+        427.011,
+        312.926
+      ],
+      "origin_cm": [
+        -3.678,
+        -42.539,
+        154.055
+      ]
+    },
+    {
+      "path": "/Game/Asian_Village/meshes/trees/SM_tree_01.SM_tree_01",
+      "size_cm": [
+        812.533,
+        893.49,
+        1094.702
+      ],
+      "origin_cm": [
+        8.944,
+        -4.692,
+        505.714
+      ]
+    },
+    {
+      "path": "/Game/Asian_Village/meshes/trees/SM_bamboo_01.SM_bamboo_01",
+      "size_cm": [
+        349.356,
+        314.66,
+        873.364
+      ],
+      "origin_cm": [
+        15.983,
+        -17.796,
+        392.442
+      ]
+    }
+  ]
+}

@@ -57,19 +57,43 @@
         "id": "QRN_B1_MAIN",
         "tag": "QS_B1_Main",
         "source_spline_id": "Road_Main",
-        "width_cm": 800
+        "width_cm": 800,
+        "fixed_source_z_point_indices": [
+          0,
+          4
+        ],
+        "points_cm": [
+          [0, 0, 120],
+          [-3500, -500, -503.628],
+          [-7500, -2500, -134.691],
+          [-11500, -3500, -147.991],
+          [-15500, -6500, 100],
+          [-20500, -9000, -557.569]
+        ]
       },
       {
         "id": "QRN_B1_CORE_NORTH",
         "tag": "QS_B1_CoreNorth",
         "source_spline_id": "Road_Core_North",
-        "width_cm": 450
+        "width_cm": 450,
+        "fixed_source_z_point_indices": [],
+        "points_cm": [
+          [-7500, -2500, -134.691],
+          [-9000, 1200, -151.787],
+          [-13000, 2600, -435.741]
+        ]
       },
       {
         "id": "QRN_B1_CORE_SOUTH",
         "tag": "QS_B1_CoreSouth",
         "source_spline_id": "Road_Core_South",
-        "width_cm": 400
+        "width_cm": 400,
+        "fixed_source_z_point_indices": [],
+        "points_cm": [
+          [-11500, -3500, -147.991],
+          [-14500, -1500, -155.582],
+          [-18500, -3000, -396.686]
+        ]
       }
     ],
     "ribbon": {
@@ -80,7 +104,7 @@
     },
     "landscape_influence": {
       "falloff_cm": 250,
-      "blend": 0.9,
+      "blend": 1.0,
       "vertical_offset_cm": -5,
       "smooth_iterations": 4,
       "smooth_strength": 0.6

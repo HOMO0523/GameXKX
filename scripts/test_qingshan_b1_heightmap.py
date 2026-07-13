@@ -76,6 +76,35 @@ class QingshanB1HeightmapTests(unittest.TestCase):
         self.assertTrue(samples.is_file())
         return heightmap, samples, json.loads(samples.read_text(encoding="utf-8"))
 
+    def test_quickroad_control_points_follow_broad_terrain_except_gate_and_bridge(self):
+        self.assertTrue(
+            hasattr(self.builder, "road_support_elevation_cm"),
+            "heightmap builder is missing the road-support elevation contract",
+        )
+        config = self.builder.load_b1_config()
+        source_by_id = {road["id"]: road for road in config["road_splines"]}
+        expected_fixed = {
+            "QS_B1_Main": [0, 4],
+            "QS_B1_CoreNorth": [],
+            "QS_B1_CoreSouth": [],
+        }
+        for network in config["quickroad"]["networks"]:
+            fixed = network.get("fixed_source_z_point_indices")
+            self.assertEqual(fixed, expected_fixed[network["tag"]])
+            source = source_by_id[network["source_spline_id"]]["points_cm"]
+            self.assertEqual(
+                [point[:2] for point in network["points_cm"]],
+                [point[:2] for point in source],
+            )
+            for index, point in enumerate(network["points_cm"]):
+                if index in fixed:
+                    self.assertEqual(point[2], source[index][2])
+                else:
+                    expected_z = self.builder.road_support_elevation_cm(
+                        config, point[0], point[1]
+                    ) + 5.0
+                    self.assertAlmostEqual(point[2], expected_z, delta=0.001)
+
     def test_generation_is_byte_deterministic_and_writes_current_digest(self):
         with tempfile.TemporaryDirectory() as first_dir, tempfile.TemporaryDirectory() as second_dir:
             first_png, first_json, first = self._generate_pair(Path(first_dir))

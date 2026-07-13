@@ -9,7 +9,7 @@
 namespace
 {
 	const FName MainMap(TEXT("/Game/GameXXK/Maps/L_Main"));
-	const FName QingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
+	const FName QingshanTownMap(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo"));
 	const FName RouteMap(TEXT("/Game/GameXXK/Maps/L_RouteMap"));
 	const FName RouteEventMap(TEXT("/Game/GameXXK/Maps/L_RouteEvent"));
 	const FName RouteCampMap(TEXT("/Game/GameXXK/Maps/L_RouteCamp"));

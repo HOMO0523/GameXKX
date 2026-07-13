@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+  "integrated_actor_count": 84,
+  "protected_locations": {
+    "QingshanInn_TownExit": [
+      0.0,
+      1380.0,
+      120.0
+    ],
+    "PlayerStart_QingshanInn": [
+      -1250.0,
+      -900.0,
+      120.0
+    ]
+  }
+}

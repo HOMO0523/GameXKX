@@ -15,7 +15,7 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 	TestEqual(
 		TEXT("town map"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::Town),
-		FName(TEXT("/Game/GameXXK/Maps/L_QingshanInn")));
+		FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
 	TestEqual(
 		TEXT("route map"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::DungeonMap),

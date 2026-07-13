@@ -4,23 +4,7 @@
 
 namespace
 {
-	struct FGameXXKOcclusionMaterialPathPair
-	{
-		const TCHAR* Original;
-		const TCHAR* Cutout;
-	};
-
-	constexpr FGameXXKOcclusionMaterialPathPair PilotMappings[] =
-	{
-		{
-			TEXT("/Game/Asian_Village/materials/building_materials/M_thatched_roof.M_thatched_roof"),
-			TEXT("/Game/GameXXK/Materials/Occlusion/AsianVillage/M_thatched_roof_Cutout.M_thatched_roof_Cutout")
-		},
-		{
-			TEXT("/Game/Asian_Village/materials/building_materials/MI_building_wood_06_Inst.MI_building_wood_06_Inst"),
-			TEXT("/Game/GameXXK/Materials/Occlusion/AsianVillage/MI_building_wood_06_Inst_Cutout.MI_building_wood_06_Inst_Cutout")
-		}
-	};
+	constexpr const TCHAR* CutoutFolder = TEXT("/Game/GameXXK/Materials/Occlusion/AsianVillage");
 }
 
 UMaterialInterface* FGameXXKOcclusionMaterialMap::Resolve(const UMaterialInterface* OriginalMaterial) const
@@ -29,13 +13,12 @@ UMaterialInterface* FGameXXKOcclusionMaterialMap::Resolve(const UMaterialInterfa
 	{
 		return nullptr;
 	}
-	const FString OriginalPath = OriginalMaterial->GetPathName();
-	for (const FGameXXKOcclusionMaterialPathPair& Pair : PilotMappings)
-	{
-		if (OriginalPath == Pair.Original)
-		{
-			return LoadObject<UMaterialInterface>(nullptr, Pair.Cutout, nullptr, LOAD_NoWarn);
-		}
-	}
-	return nullptr;
+	const FString OriginalName = OriginalMaterial->GetName();
+	const FString CutoutName = OriginalName + TEXT("_Cutout");
+	const FString CutoutPath = FString::Printf(
+		TEXT("%s/%s.%s"),
+		CutoutFolder,
+		*CutoutName,
+		*CutoutName);
+	return LoadObject<UMaterialInterface>(nullptr, *CutoutPath, nullptr, LOAD_NoWarn);
 }

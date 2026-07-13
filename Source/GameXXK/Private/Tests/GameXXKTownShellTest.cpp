@@ -209,6 +209,19 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 		TestNotNull(TEXT("pilot cutout roof material loads"), ExpectedCutout);
 		FGameXXKOcclusionMaterialMap MaterialMap;
 		TestEqual(TEXT("pilot roof resolves to project cutout"), MaterialMap.Resolve(OriginalRoof), ExpectedCutout);
+		UMaterialInterface* OriginalRoofBeam = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Asian_Village/materials/building_materials/base_materials/MI_wooden_board_03_Inst.MI_wooden_board_03_Inst"));
+		UMaterialInterface* ExpectedBeamCutout = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/GameXXK/Materials/Occlusion/AsianVillage/MI_wooden_board_03_Inst_Cutout.MI_wooden_board_03_Inst_Cutout"));
+		TestNotNull(TEXT("roof beam original material loads"), OriginalRoofBeam);
+		TestNotNull(TEXT("roof beam cutout material loads"), ExpectedBeamCutout);
+		TestEqual(TEXT("roof beam resolves with every component slot"), MaterialMap.Resolve(OriginalRoofBeam), ExpectedBeamCutout);
+		UMaterialInterface* OriginalBambooWall = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Asian_Village/materials/building_materials/base_materials/MI_bamboo_wall_01_Inst.MI_bamboo_wall_01_Inst"));
+		UMaterialInterface* ExpectedBambooCutout = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/GameXXK/Materials/Occlusion/AsianVillage/MI_bamboo_wall_01_Inst_Cutout.MI_bamboo_wall_01_Inst_Cutout"));
+		UMaterialInterface* OriginalBuildingWood = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Asian_Village/materials/building_materials/MI_building_wood_01_Inst.MI_building_wood_01_Inst"));
+		UMaterialInterface* ExpectedBuildingWoodCutout = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/GameXXK/Materials/Occlusion/AsianVillage/MI_building_wood_01_Inst_Cutout.MI_building_wood_01_Inst_Cutout"));
+		TestNotNull(TEXT("bamboo wall cutout material loads"), ExpectedBambooCutout);
+		TestNotNull(TEXT("building wood cutout material loads"), ExpectedBuildingWoodCutout);
+		TestEqual(TEXT("bamboo wall resolves with every component slot"), MaterialMap.Resolve(OriginalBambooWall), ExpectedBambooCutout);
+		TestEqual(TEXT("building wood resolves with every component slot"), MaterialMap.Resolve(OriginalBuildingWood), ExpectedBuildingWoodCutout);
 		TestNull(TEXT("unmapped material is never replaced"), MaterialMap.Resolve(UnmappedInterface));
 
 		UStaticMesh* MaterialTestMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));

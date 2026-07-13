@@ -207,7 +207,7 @@ bool FGameXXKMainMenuPlayerFlowTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("continue loads populated slot 1"), MainMenu->ContinueFromSlotIndex(0));
 	TestEqual(TEXT("loaded slot restores town screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("loaded slot restores level 2"), Subsystem->GetRuntimeState().PlayerLevel, 2);
-	TestEqual(TEXT("continue requests playable Qingshan town map"), MainMenu->GetLastRequestedTownMapForTest(), FName(TEXT("/Game/GameXXK/Maps/L_QingshanInn")));
+	TestEqual(TEXT("continue requests playable Qingshan town map"), MainMenu->GetLastRequestedTownMapForTest(), FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
 	TestEqual(TEXT("continue hides main menu after load"), MainMenu->GetVisibility(), ESlateVisibility::Collapsed);
 	TestFalse(TEXT("continue disables main menu after load"), MainMenu->GetIsEnabled());
 
@@ -234,7 +234,7 @@ bool FGameXXKMainMenuPlayerFlowTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("main menu start creates new game and opens Qingshan town"), MainMenu->StartGame());
 	TestEqual(TEXT("town screen after player-facing main menu start"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("Qingshan selected after player-facing main menu start"), Subsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionQingshan());
-	TestEqual(TEXT("new game requests playable Qingshan town map"), MainMenu->GetLastRequestedTownMapForTest(), FName(TEXT("/Game/GameXXK/Maps/L_QingshanInn")));
+	TestEqual(TEXT("new game requests playable Qingshan town map"), MainMenu->GetLastRequestedTownMapForTest(), FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
 	TestEqual(TEXT("new game hides main menu after entering town"), MainMenu->GetVisibility(), ESlateVisibility::Collapsed);
 	TestFalse(TEXT("new game disables main menu after entering town"), MainMenu->GetIsEnabled());
 

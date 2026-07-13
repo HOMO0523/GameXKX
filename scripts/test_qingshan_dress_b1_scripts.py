@@ -393,6 +393,39 @@ class B1AssemblerSourceContractTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "impact_point"):
             module._impact_point_from_hit_result(hit_result)
 
+    def test_attachment_props_preserve_target_relative_height_after_ground_snap(self):
+        module = _load_module(
+            ASSEMBLER_PATH, "_gamexxk_b1_attachment_grounding_test"
+        )
+        plots = {
+            "BLD_L_01": {
+                "id": "BLD_L_01",
+                "location_cm": [-14000.0, 500.0, 300.0],
+            },
+        }
+        record = {
+            "id": "PROP_001",
+            "location_cm": [-13900.0, 510.0, 960.0],
+            "attachment_target_id": "BLD_L_01",
+        }
+        self.assertTrue(
+            hasattr(module, "_attachment_height_above_target_base"),
+            "assembler is missing target-relative attachment height resolution",
+        )
+        self.assertEqual(
+            module._attachment_height_above_target_base(record, plots), 660.0
+        )
+        with self.assertRaisesRegex(RuntimeError, "attachment target"):
+            module._attachment_height_above_target_base(
+                {**record, "attachment_target_id": "BLD_UNKNOWN"}, plots
+            )
+
+        transform_body = _function_body(self.source, "_record_transform")
+        self.assertIn("_attachment_height_above_target_base", transform_body)
+        self.assertIn("target_base", transform_body)
+        self.assertIn("attachment_world", transform_body)
+        self.assertIn("float(target_base.z) + attachment_height", transform_body)
+
     def test_save_scope_is_only_b1_map_and_b1_assets(self):
         save = _function_body(self.source, "_save_b1_only")
         self.assertIn("_validate_dirty_scope", save)

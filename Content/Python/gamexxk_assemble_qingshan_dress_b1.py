@@ -911,11 +911,35 @@ def _trace_ground_at_world_location(world_location, *, actors_to_ignore=None):
     return _impact_point_from_hit_result(hit_result)
 
 
-def _record_transform(anchor_transform, group: dict[str, Any], record: dict[str, Any]):
+def _attachment_height_above_target_base(
+        record: dict[str, Any], building_plots_by_id: dict[str, dict[str, Any]]) -> float:
+    target_id = str(record.get("attachment_target_id", ""))
+    target = building_plots_by_id.get(target_id)
+    if target is None:
+        raise RuntimeError(
+            f"attachment target {target_id!r} is missing for {record.get('id')!r}"
+        )
+    return float(record["location_cm"][2]) - float(target["location_cm"][2])
+
+
+def _record_transform(
+        anchor_transform, group: dict[str, Any], record: dict[str, Any],
+        building_plots_by_id: dict[str, dict[str, Any]] | None = None):
     category = group["category"]
     local = record["location_cm"]
     if category == "prop" and record.get("attachment_target_id"):
-        location = local_to_world(anchor_transform, local)
+        if building_plots_by_id is None:
+            raise RuntimeError("attachment props require the building plot lookup")
+        target = building_plots_by_id[str(record["attachment_target_id"])]
+        attachment_height = _attachment_height_above_target_base(
+            record, building_plots_by_id)
+        target_base = _ground_snap_world(anchor_transform, target["location_cm"])
+        attachment_world = local_to_world(anchor_transform, local)
+        location = unreal.Vector(
+            float(attachment_world.x),
+            float(attachment_world.y),
+            float(target_base.z) + attachment_height,
+        )
     else:
         location = _ground_snap_world(anchor_transform, local)
     if category == "building":
@@ -1030,10 +1054,17 @@ def _author_pcg_groups(
     center, extent = _pcg_volume_center_extent(config, anchor_transform)
     library = unreal.GameXXKTownPCGAutomationLibrary
     authored = {}
+    building_plots_by_id = {
+        str(record["id"]): record for record in config["building_plots"]
+    }
 
     for group in groups:
         record_transforms = [
-            (record, _record_transform(anchor_transform, group, record))
+            (
+                record,
+                _record_transform(
+                    anchor_transform, group, record, building_plots_by_id),
+            )
             for record in group["records"]
         ]
         transforms = [transform for _, transform in record_transforms]

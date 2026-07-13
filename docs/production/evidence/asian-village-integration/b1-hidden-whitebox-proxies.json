@@ -1,0 +1,127 @@
+{
+  "ok": true,
+  "map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+  "hidden_proxy_count": 5,
+  "entries": [
+    {
+      "purpose": "CoreThatchedShop",
+      "actor": "QS_B1_PCG_Building_courtyard_wing_orange",
+      "component": "ISM_SM_QS_B1_CourtyardWing_Orange_0",
+      "instance_index": 1,
+      "original_transform": {
+        "translation": [
+          -13600.0,
+          1180.0,
+          -27.66050583658216
+        ],
+        "rotation_quat": [
+          0.0,
+          0.0,
+          0.2164396139381029,
+          0.9762960071199335
+        ],
+        "scale": [
+          18.0,
+          14.0,
+          12.0
+        ]
+      }
+    },
+    {
+      "purpose": "CoreCanopyShop",
+      "actor": "QS_B1_PCG_Building_tall_house_indigo",
+      "component": "ISM_SM_QS_B1_TallHouse_Indigo_0",
+      "instance_index": 0,
+      "original_transform": {
+        "translation": [
+          -10200.0,
+          1980.0,
+          -34.69214923323307
+        ],
+        "rotation_quat": [
+          0.0,
+          0.0,
+          0.1564344650402309,
+          0.9876883405951378
+        ],
+        "scale": [
+          11.0,
+          8.5,
+          7.5
+        ]
+      }
+    },
+    {
+      "purpose": "ApproachLowHouse",
+      "actor": "QS_B1_PCG_Building_gable_shop_teal",
+      "component": "ISM_SM_QS_B1_GableShop_Teal_0",
+      "instance_index": 1,
+      "original_transform": {
+        "translation": [
+          -8200.0,
+          -3320.0,
+          -82.34832770657522
+        ],
+        "rotation_quat": [
+          0.0,
+          0.0,
+          -0.13052619222005157,
+          0.9914448613738105
+        ],
+        "scale": [
+          12.000000000000002,
+          9.0,
+          8.0
+        ]
+      }
+    },
+    {
+      "purpose": "BridgeHouse",
+      "actor": "QS_B1_PCG_Building_tall_house_ochre",
+      "component": "ISM_SM_QS_B1_TallHouse_Ochre_0",
+      "instance_index": 0,
+      "original_transform": {
+        "translation": [
+          -18500.0,
+          -120.0,
+          -276.0972905699309
+        ],
+        "rotation_quat": [
+          0.0,
+          0.0,
+          0.2334453638559055,
+          0.9723699203976766
+        ],
+        "scale": [
+          9.0,
+          6.5,
+          5.5
+        ]
+      }
+    },
+    {
+      "purpose": "SouthTower",
+      "actor": "QS_B1_PCG_Building_dock_shed_teal",
+      "component": "ISM_SM_QS_B1_DockShed_Teal_0",
+      "instance_index": 0,
+      "original_transform": {
+        "translation": [
+          -17400.0,
+          -9420.0,
+          -371.4123655298754
+        ],
+        "rotation_quat": [
+          0.0,
+          0.0,
+          -0.2419218955996679,
+          0.9702957262759966
+        ],
+        "scale": [
+          10.0,
+          8.0,
+          7.0
+        ]
+      }
+    }
+  ]
+}

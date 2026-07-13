@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "map": "/Game/GameXXK/Maps/Dev/L_Qingshan_PCG_Dress_B1",
+  "removed_prior_owned": 184,
+  "count": 14,
+  "labels": [
+    "AV_B1_Bridge_Main",
+    "AV_B1_MarketTent_West",
+    "AV_B1_MarketTent_East",
+    "AV_B1_MarketTable_West",
+    "AV_B1_MarketBoxes",
+    "AV_B1_Lantern_Core_L",
+    "AV_B1_Lantern_Core_R",
+    "AV_B1_Banner_Core",
+    "AV_B1_Tree_Approach",
+    "AV_B1_Bamboo_Approach",
+    "AV_B1_Tree_BridgeBank",
+    "AV_B1_Bamboo_BridgeBank",
+    "AV_B1_Bush_BridgeBank",
+    "AV_B1_Cliff_RiverFrame"
+  ]
+}

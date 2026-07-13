@@ -493,7 +493,6 @@ def merge_config(overlay, base_config):
         source_id = network.get("source_spline_id")
         if source_id not in road_by_id:
             raise ValueError(f"unknown QuickRoad source_spline_id: {source_id}")
-        network["points_cm"] = copy.deepcopy(road_by_id[source_id]["points_cm"])
 
     return validate_config(merged, base_config=base_config)
 
@@ -726,8 +725,32 @@ def validate_config(data, *, base_config=None):
         observed = (network.get("tag"), network.get("source_spline_id"), width)
         if observed != expected:
             raise ValueError(f"quickroad.networks[{index}] does not match its approved width group")
-        if network.get("points_cm") != road_by_id[expected[1]]["points_cm"]:
-            raise ValueError(f"quickroad.networks[{index}].points_cm must copy B0R geometry")
+        points = _require_list(
+            network.get("points_cm"), f"quickroad.networks[{index}].points_cm")
+        source_points = road_by_id[expected[1]]["points_cm"]
+        if len(points) != len(source_points):
+            raise ValueError(
+                f"quickroad.networks[{index}].points_cm must preserve B0R point count")
+        for point_index, (point, source_point) in enumerate(zip(points, source_points)):
+            point = _require_vector(
+                point, f"quickroad.networks[{index}].points_cm[{point_index}]", 3)
+            if point[:2] != source_point[:2]:
+                raise ValueError(
+                    f"quickroad.networks[{index}].points_cm must preserve B0R XY geometry")
+        fixed_indices = _require_list(
+            network.get("fixed_source_z_point_indices"),
+            f"quickroad.networks[{index}].fixed_source_z_point_indices",
+        )
+        if any(
+                isinstance(value, bool) or not isinstance(value, int)
+                for value in fixed_indices):
+            raise ValueError("fixed_source_z_point_indices must contain only integers")
+        if fixed_indices != sorted(set(fixed_indices)) or any(
+                value < 0 or value >= len(points) for value in fixed_indices):
+            raise ValueError("fixed_source_z_point_indices must be sorted, unique, and in range")
+        for point_index in fixed_indices:
+            if points[point_index][2] != source_points[point_index][2]:
+                raise ValueError("fixed source-Z road points must preserve their B0R elevation")
     if quickroad.get("combined_tag_expression") != "QS_B1_Main|QS_B1_CoreNorth|QS_B1_CoreSouth":
         raise ValueError("quickroad.combined_tag_expression is invalid")
     exact_quickroad_sections = {
@@ -739,7 +762,7 @@ def validate_config(data, *, base_config=None):
         },
         "landscape_influence": {
             "falloff_cm": 250,
-            "blend": 0.9,
+            "blend": 1.0,
             "vertical_offset_cm": -5,
             "smooth_iterations": 4,
             "smooth_strength": 0.6,
