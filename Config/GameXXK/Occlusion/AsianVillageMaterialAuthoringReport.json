@@ -1,13 +1,22 @@
 {
+  "active_generation_manifest": "..\\..\\..\\..\\UE5 demo\\GameXXK\\Config\\GameXXK\\Occlusion\\AsianVillageOcclusionActiveGeneration.json",
   "ancestry_count": 98,
+  "content_signature": "989ECA075E21",
   "created_count": 98,
   "eligible_count": 74,
   "excluded_count": 6,
   "failures": [],
+  "generation_asset_count": 98,
+  "generation_folder": "/Game/GameXXK/Materials/Occlusion/AsianVillageFull/Gen_989ECA075E21",
+  "generation_reused": true,
   "inventory_mapping_count": 74,
+  "masked_count": 8,
   "masked_source_count": 8,
   "missing_targets": [],
+  "opaque_count": 65,
   "opaque_source_count": 65,
   "root_count": 23,
-  "translucent_source_count": 1
+  "translucent_count": 1,
+  "translucent_source_count": 1,
+  "validation_errors": []
 }

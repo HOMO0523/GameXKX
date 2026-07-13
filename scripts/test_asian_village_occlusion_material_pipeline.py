@@ -33,6 +33,13 @@ AUTHOR_REPORT = (
     / "Occlusion"
     / "AsianVillageMaterialAuthoringReport.json"
 )
+ACTIVE_GENERATION = (
+    PROJECT_ROOT
+    / "Config"
+    / "GameXXK"
+    / "Occlusion"
+    / "AsianVillageOcclusionActiveGeneration.json"
+)
 
 from gamexxk_occlusion_material_naming import (  # noqa: E402
     cutout_asset_name,
@@ -152,6 +159,7 @@ class OcclusionMaterialAuthoringContractTests(unittest.TestCase):
         self.assertIn("MaterialExpressionMultiply", self.source)
         self.assertIn("get_material_property_input_node", self.source)
         self.assertIn("get_material_property_input_node_output_name", self.source)
+        self.assertIn("exact_output=True", self.source)
 
     def test_opaque_is_circle_only_while_masked_and_translucent_preserve_input(self):
         self.assertIn("preserve_existing = False", self.source)
@@ -185,6 +193,45 @@ class OcclusionMaterialAuthoringContractTests(unittest.TestCase):
         self.assertEqual(report["inventory_mapping_count"], 74)
         self.assertEqual(report["missing_targets"], [])
         self.assertEqual(report["failures"], [])
+        self.assertEqual(report["validation_errors"], [])
+        self.assertEqual(report["opaque_count"], 65)
+        self.assertEqual(report["masked_count"], 8)
+        self.assertEqual(report["translucent_count"], 1)
+        self.assertRegex(report["content_signature"], r"^[0-9A-F]{12}$")
+        self.assertTrue(report["generation_folder"].endswith(report["content_signature"]))
+        self.assertEqual(report["generation_asset_count"], 98)
+        self.assertTrue(report["generation_reused"])
+
+    def test_active_generation_manifest_has_concrete_complete_mapping(self):
+        manifest = json.loads(ACTIVE_GENERATION.read_text(encoding="utf-8"))
+        self.assertRegex(manifest["content_signature"], r"^[0-9A-F]{12}$")
+        self.assertTrue(manifest["generation_folder"].endswith(manifest["content_signature"]))
+        self.assertEqual(len(manifest["inventory_mapping"]), 74)
+        for concrete_path in manifest["inventory_mapping"].values():
+            self.assertTrue(concrete_path.startswith(manifest["generation_folder"] + "/"))
+
+    def test_author_uses_immutable_generation_and_atomic_manifest_switch(self):
+        for required in (
+            "Gen_",
+            "content_signature",
+            "ACTIVE_GENERATION_PATH",
+            "os.replace",
+            "_validate_family",
+            "generation_reused",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, self.source)
+        self.assertNotIn("rename_asset", self.source)
+        self.assertNotIn("delete_asset", self.source)
+
+    def test_success_report_is_written_only_after_canonical_validation(self):
+        validation = self.source.index("validation_errors = _validate_family")
+        report_write = self.source.index("REPORT_PATH.write_text")
+        self.assertLess(validation, report_write)
+
+    def test_author_supports_controlled_promotion_fault_injection(self):
+        self.assertIn("--fault-before-manifest-switch", self.source)
+        self.assertIn("intentional pre-switch fault", self.source)
 
 
 if __name__ == "__main__":

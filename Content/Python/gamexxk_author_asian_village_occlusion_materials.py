@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
+import sys
 from pathlib import Path
 
 import unreal
@@ -23,6 +26,11 @@ REPORT_PATH = (
     Path(unreal.Paths.project_dir())
     / "Config/GameXXK/Occlusion/AsianVillageMaterialAuthoringReport.json"
 )
+ACTIVE_GENERATION_PATH = (
+    Path(unreal.Paths.project_dir())
+    / "Config/GameXXK/Occlusion/AsianVillageOcclusionActiveGeneration.json"
+)
+AUTHORING_SCHEMA_VERSION = 2
 SUPPORTED_BLENDS = {
     "BLEND_OPAQUE": unreal.BlendMode.BLEND_OPAQUE,
     "BLEND_MASKED": unreal.BlendMode.BLEND_MASKED,
@@ -42,8 +50,10 @@ def _node(material, cls, x, y):
 
 
 def _connect(source, output, destination, input_name, exact_output=False):
-    outputs = (output,) if exact_output or output == "" else (output, "")
-    inputs = (input_name,) if input_name == "" else (input_name, "")
+    outputs = tuple(output) if isinstance(output, (tuple, list)) else (output,)
+    inputs = tuple(input_name) if isinstance(input_name, (tuple, list)) else (input_name,)
+    if exact_output and len(outputs) != 1:
+        raise RuntimeError(f"exact output connection requires one name, got {outputs}")
     for candidate_output in outputs:
         for candidate_input in inputs:
             if unreal.MaterialEditingLibrary.connect_material_expressions(
@@ -85,17 +95,19 @@ def _circle_keep_mask(material, collection):
     center_rg = _node(material, unreal.MaterialExpressionComponentMask, -1040, 790)
     for channel, enabled in (("r", True), ("g", True), ("b", False), ("a", False)):
         _set(center_rg, channel, enabled)
-    _connect(center, "RGB", center_rg, "Input")
+    # CollectionParameter's unnamed output is the same vector as RGB in UE 5.8.
+    _connect(center, ("RGB", ""), center_rg, ("Input", ""))
 
     delta = _node(material, unreal.MaterialExpressionSubtract, -1000, 650)
-    _connect(screen, "ViewportUV", delta, "A")
+    # ScreenPosition's unnamed output aliases ViewportUV in this material domain.
+    _connect(screen, ("ViewportUV", ""), delta, "A")
     _connect(center_rg, "", delta, "B")
 
     aspect = _collection_parameter(material, collection, "OcclusionAspect", -1000, 930)
     aspect_rg = _node(material, unreal.MaterialExpressionComponentMask, -790, 930)
     for channel, enabled in (("r", True), ("g", True), ("b", False), ("a", False)):
         _set(aspect_rg, channel, enabled)
-    _connect(aspect, "RGB", aspect_rg, "Input")
+    _connect(aspect, ("RGB", ""), aspect_rg, ("Input", ""))
     corrected = _node(material, unreal.MaterialExpressionMultiply, -750, 650)
     _connect(delta, "", corrected, "A")
     _connect(aspect_rg, "", corrected, "B")
@@ -104,7 +116,7 @@ def _circle_keep_mask(material, collection):
     _connect(corrected, "", dot, "A")
     _connect(corrected, "", dot, "B")
     distance = _node(material, unreal.MaterialExpressionSquareRoot, -320, 650)
-    _connect(dot, "", distance, "Input")
+    _connect(dot, "", distance, ("Input", ""))
     radius = _collection_parameter(material, collection, "OcclusionRadius", -320, 830)
     edge = _node(material, unreal.MaterialExpressionSubtract, -100, 690)
     _connect(distance, "", edge, "A")
@@ -115,7 +127,7 @@ def _circle_keep_mask(material, collection):
     _connect(edge, "", normalized, "A")
     _connect(feather, "", normalized, "B")
     keep_mask = _node(material, unreal.MaterialExpressionSaturate, 340, 710)
-    _connect(normalized, "", keep_mask, "Input")
+    _connect(normalized, "", keep_mask, ("Input", ""))
     return keep_mask
 
 
@@ -201,49 +213,167 @@ def _package_path(object_path):
     return str(object_path).split(".", 1)[0]
 
 
-def _duplicate_family(source, collection, cache, created, roots):
+def _content_signature(inventory_text):
+    payload = f"schema={AUTHORING_SCHEMA_VERSION}\n{inventory_text}".encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()[:12].upper()
+
+
+def _generation_asset_path(source_path, generation_folder):
+    return f"{generation_folder}/{naming.cutout_asset_name(source_path)}"
+
+
+def _duplicate_family(source, collection, cache, generation_folder):
     if source is None:
         raise RuntimeError("cannot duplicate a missing source asset")
     source_path = str(source.get_path_name())
     if source_path in cache:
-        return cache[source_path]
-    target_object_path = cutout_object_path(source_path)
-    destination = _package_path(target_object_path)
-    if not destination.startswith(DESTINATION + "/"):
-        raise RuntimeError(f"refusing non-project destination {destination}")
+        return cache[source_path]["asset"]
+    concrete = _generation_asset_path(source_path, generation_folder)
+    if not concrete.startswith(generation_folder + "/"):
+        raise RuntimeError(f"refusing non-generation destination {concrete}")
     if source_path.startswith(DESTINATION + "/"):
         raise RuntimeError(f"refusing to use generated asset as source: {source_path}")
-    if unreal.EditorAssetLibrary.does_asset_exist(destination):
-        if not unreal.EditorAssetLibrary.delete_asset(destination):
-            raise RuntimeError(f"failed to replace project-owned destination {destination}")
-    duplicate = unreal.EditorAssetLibrary.duplicate_asset(source_path, destination)
-    if duplicate is None:
-        raise RuntimeError(f"failed to duplicate {source_path} -> {destination}")
-    cache[source_path] = duplicate
-    created.append(destination)
 
     if isinstance(source, unreal.MaterialInstanceConstant):
         parent = source.get_editor_property("parent")
         if parent is None:
             raise RuntimeError(f"material instance has no parent: {source_path}")
-        copied_parent = _duplicate_family(parent, collection, cache, created, roots)
+        copied_parent = _duplicate_family(parent, collection, cache, generation_folder)
+        depth = cache[str(parent.get_path_name())]["depth"] + 1
+        duplicate = unreal.EditorAssetLibrary.duplicate_asset(source_path, concrete)
+        if duplicate is None:
+            raise RuntimeError(f"failed to duplicate {source_path} -> {concrete}")
         unreal.MaterialEditingLibrary.set_material_instance_parent(duplicate, copied_parent)
         duplicate.modify()
     elif isinstance(source, unreal.Material):
+        depth = 0
+        duplicate = unreal.EditorAssetLibrary.duplicate_asset(source_path, concrete)
+        if duplicate is None:
+            raise RuntimeError(f"failed to duplicate {source_path} -> {concrete}")
         _patch_root(duplicate, source.get_blend_mode(), collection)
-        roots.append(destination)
     else:
         raise RuntimeError(
             f"unsupported material ancestry asset {source_path}: "
             f"{source.get_class().get_name()}"
         )
-    if not unreal.EditorAssetLibrary.save_asset(destination, only_if_is_dirty=False):
-        raise RuntimeError(f"failed to save_asset {destination}")
+    if not unreal.EditorAssetLibrary.save_asset(concrete, only_if_is_dirty=False):
+        raise RuntimeError(f"failed to save_asset {concrete}")
+    cache[source_path] = {
+        "asset": duplicate,
+        "source": source_path,
+        "concrete": concrete,
+        "depth": depth,
+    }
     return duplicate
 
 
+def _load_generation_records(eligible, generation_folder):
+    records = {}
+
+    def add(source):
+        source_path = str(source.get_path_name())
+        if source_path in records:
+            return records[source_path]
+        if isinstance(source, unreal.MaterialInstanceConstant):
+            parent = source.get_editor_property("parent")
+            if parent is None:
+                raise RuntimeError(f"material instance has no parent:{source_path}")
+            parent_record = add(parent)
+            depth = parent_record["depth"] + 1
+        elif isinstance(source, unreal.Material):
+            depth = 0
+        else:
+            raise RuntimeError(f"unsupported ancestry type:{source_path}")
+        concrete = _generation_asset_path(source_path, generation_folder)
+        records[source_path] = {
+            "asset": unreal.EditorAssetLibrary.load_asset(concrete),
+            "source": source_path,
+            "concrete": concrete,
+            "depth": depth,
+        }
+        return records[source_path]
+
+    for entry in eligible:
+        add(unreal.EditorAssetLibrary.load_asset(entry["source_path"]))
+    return records
+
+
+def _validate_family(eligible, records, generation_folder):
+    errors = []
+    expected_paths = {record["concrete"] for record in records.values()}
+    target_paths = []
+    for entry in eligible:
+        record = records.get(entry["source_path"])
+        if record is None:
+            errors.append(f"mapping missing:{entry['source_path']}")
+            continue
+        path = record["concrete"]
+        target_paths.append(path)
+        target = unreal.EditorAssetLibrary.load_asset(path)
+        source = unreal.EditorAssetLibrary.load_asset(entry["source_path"])
+        if target is None or source is None:
+            errors.append(f"reload failed:{entry['source_path']}:{path}")
+            continue
+        if isinstance(source, unreal.MaterialInstanceConstant) != isinstance(
+            target, unreal.MaterialInstanceConstant
+        ):
+            errors.append(f"type mismatch:{entry['source_path']}:{path}")
+        expected_blend = (
+            unreal.BlendMode.BLEND_TRANSLUCENT
+            if entry["blend_mode"] == "BLEND_TRANSLUCENT"
+            else unreal.BlendMode.BLEND_MASKED
+        )
+        if target.get_blend_mode() != expected_blend:
+            errors.append(f"blend mismatch:{path}:{target.get_blend_mode()}")
+        visited = set()
+        current = target
+        while isinstance(current, unreal.MaterialInstanceConstant):
+            current_path = _package_path(current.get_path_name())
+            if current_path in visited:
+                errors.append(f"parent cycle:{path}")
+                break
+            visited.add(current_path)
+            parent = current.get_editor_property("parent")
+            parent_path = "" if parent is None else _package_path(parent.get_path_name())
+            if parent_path not in expected_paths:
+                errors.append(f"non-owned parent:{current_path}:{parent_path}")
+                break
+            current = parent
+        if isinstance(current, unreal.Material):
+            prop = (
+                unreal.MaterialProperty.MP_OPACITY
+                if current.get_blend_mode() == unreal.BlendMode.BLEND_TRANSLUCENT
+                else unreal.MaterialProperty.MP_OPACITY_MASK
+            )
+            if unreal.MaterialEditingLibrary.get_material_property_input_node(
+                current, prop
+            ) is None:
+                errors.append(f"missing property connection:{current.get_path_name()}:{prop}")
+        else:
+            errors.append(f"parent chain did not reach Material:{path}")
+    if len(target_paths) != len(eligible) or len(set(target_paths)) != len(eligible):
+        errors.append(
+            f"inventory mapping count/duplicate mismatch:{len(target_paths)}:{len(set(target_paths))}"
+        )
+    for expected in expected_paths:
+        if not unreal.EditorAssetLibrary.does_asset_exist(expected):
+            errors.append(f"family asset missing:{expected}")
+    actual = {
+        _package_path(path)
+        for path in unreal.EditorAssetLibrary.list_assets(
+            generation_folder, recursive=False, include_folder=False
+        )
+    }
+    if actual != expected_paths:
+        errors.append(
+            f"generation family mismatch:expected={len(expected_paths)} actual={len(actual)}"
+        )
+    return errors
+
+
 def author():
-    inventory = json.loads(INVENTORY_PATH.read_text(encoding="utf-8"))
+    inventory_text = INVENTORY_PATH.read_text(encoding="utf-8")
+    inventory = json.loads(inventory_text)
     entries = list(inventory["materials"])
     eligible = [entry for entry in entries if not entry["excluded"]]
     excluded = [entry for entry in entries if entry["excluded"]]
@@ -267,29 +397,42 @@ def author():
         raise RuntimeError(f"required parameter collection is missing: {MPC_PATH}")
     if not unreal.EditorAssetLibrary.does_directory_exist(DESTINATION):
         unreal.EditorAssetLibrary.make_directory(DESTINATION)
-
-    created = []
-    roots = []
-    cache = {}
-    failures = []
-    mapping = {}
-    for entry in eligible:
-        source_path = entry["source_path"]
-        try:
-            source = unreal.EditorAssetLibrary.load_asset(source_path)
-            copied = _duplicate_family(source, collection, cache, created, roots)
-            mapping[source_path] = str(copied.get_path_name())
-        except Exception as exc:
-            failures.append({"source_path": source_path, "error": repr(exc)})
-            unreal.log_error(
-                f"AsianVillage occlusion authoring failure for {source_path}: {exc!r}"
-            )
-            break
-    missing_targets = [
-        entry["target_path"]
+    content_signature = _content_signature(inventory_text)
+    generation_folder = f"{DESTINATION}/Gen_{content_signature}"
+    generation_reused = unreal.EditorAssetLibrary.does_directory_exist(generation_folder)
+    if generation_reused:
+        records = _load_generation_records(eligible, generation_folder)
+    else:
+        unreal.EditorAssetLibrary.make_directory(generation_folder)
+        records = {}
+        for entry in eligible:
+            source = unreal.EditorAssetLibrary.load_asset(entry["source_path"])
+            _duplicate_family(source, collection, records, generation_folder)
+    validation_errors = _validate_family(eligible, records, generation_folder)
+    if validation_errors:
+        raise RuntimeError(f"immutable generation validation failed:{validation_errors}")
+    concrete_mapping = {
+        entry["source_path"]: records[entry["source_path"]]["concrete"]
         for entry in eligible
-        if not unreal.EditorAssetLibrary.does_asset_exist(_package_path(entry["target_path"]))
+    }
+    missing_targets = [
+        path for path in concrete_mapping.values()
+        if not unreal.EditorAssetLibrary.does_asset_exist(path)
     ]
+    if "--fault-before-manifest-switch" in sys.argv[1:]:
+        raise RuntimeError("intentional pre-switch fault")
+    active_manifest = {
+        "schema_version": AUTHORING_SCHEMA_VERSION,
+        "content_signature": content_signature,
+        "generation_folder": generation_folder,
+        "inventory_mapping": concrete_mapping,
+    }
+    manifest_temp = ACTIVE_GENERATION_PATH.with_suffix(".json.tmp")
+    manifest_temp.write_text(
+        json.dumps(active_manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    os.replace(manifest_temp, ACTIVE_GENERATION_PATH)
     counts = {
         name: sum(entry["blend_mode"] == name for entry in eligible)
         for name in SUPPORTED_BLENDS
@@ -297,22 +440,31 @@ def author():
     report = {
         "eligible_count": len(eligible),
         "excluded_count": len(excluded),
-        "created_count": len(created),
-        "inventory_mapping_count": len(mapping),
-        "ancestry_count": len(cache),
-        "root_count": len(roots),
+        "created_count": len(records),
+        "inventory_mapping_count": len(eligible),
+        "ancestry_count": len(records),
+        "root_count": sum(record["depth"] == 0 for record in records.values()),
+        "content_signature": content_signature,
+        "generation_folder": generation_folder,
+        "generation_asset_count": len(records),
+        "generation_reused": generation_reused,
+        "active_generation_manifest": str(ACTIVE_GENERATION_PATH),
+        "opaque_count": counts["BLEND_OPAQUE"],
+        "masked_count": counts["BLEND_MASKED"],
+        "translucent_count": counts["BLEND_TRANSLUCENT"],
         "opaque_source_count": counts["BLEND_OPAQUE"],
         "masked_source_count": counts["BLEND_MASKED"],
         "translucent_source_count": counts["BLEND_TRANSLUCENT"],
         "missing_targets": missing_targets,
-        "failures": failures,
+        "failures": [],
+        "validation_errors": validation_errors,
     }
     REPORT_PATH.write_text(
         json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     print(json.dumps(report, ensure_ascii=False))
-    if failures or missing_targets or len(mapping) != len(eligible):
+    if validation_errors or missing_targets:
         raise RuntimeError(f"authoring incomplete: {json.dumps(report, ensure_ascii=False)}")
     return report
 
