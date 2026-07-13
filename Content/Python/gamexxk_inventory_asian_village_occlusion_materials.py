@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -21,8 +22,11 @@ def is_excluded_source(source_path: str) -> bool:
 
 
 def _blend_mode_name(material: object) -> str:
-    value = str(material.get_blend_mode())
-    return value.rsplit(".", 1)[-1].upper()
+    value = str(material.get_blend_mode()).upper()
+    match = re.search(r"\bBLEND_[A-Z_]+\b", value)
+    if match is None:
+        raise RuntimeError(f"Could not normalize material blend mode: {value!r}")
+    return match.group(0)
 
 
 def _actor_label(actor: object) -> str:

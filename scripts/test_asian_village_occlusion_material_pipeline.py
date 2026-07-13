@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -11,6 +12,13 @@ INVENTORY_SCRIPT = (
     / "Content"
     / "Python"
     / "gamexxk_inventory_asian_village_occlusion_materials.py"
+)
+INVENTORY_MANIFEST = (
+    PROJECT_ROOT
+    / "Config"
+    / "GameXXK"
+    / "Occlusion"
+    / "AsianVillageMaterialInventory.json"
 )
 
 from gamexxk_occlusion_material_naming import (  # noqa: E402
@@ -102,6 +110,13 @@ class OcclusionMaterialInventoryContractTests(unittest.TestCase):
         self.assertIn("Config/GameXXK/Occlusion", source.replace("\\\\", "/"))
         self.assertIn("gamexxk_occlusion_material_naming", source)
         self.assertIn("is_excluded_source", source)
+
+    def test_manifest_blend_modes_are_canonical_enum_names(self):
+        inventory = json.loads(INVENTORY_MANIFEST.read_text(encoding="utf-8"))
+
+        for material in inventory["materials"]:
+            with self.subTest(source_path=material["source_path"]):
+                self.assertRegex(material["blend_mode"], r"^BLEND_[A-Z_]+$")
 
 
 if __name__ == "__main__":

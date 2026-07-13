@@ -2,7 +2,7 @@
   "map": "/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo",
   "materials": [
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 4,
       "excluded": true,
       "representative_actor_labels": [
@@ -16,7 +16,7 @@
       "usage_count": 4
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 91,
       "excluded": false,
       "representative_actor_labels": [
@@ -36,7 +36,7 @@
       "usage_count": 91
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 587,
       "excluded": false,
       "representative_actor_labels": [
@@ -56,7 +56,7 @@
       "usage_count": 587
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 34,
       "excluded": false,
       "representative_actor_labels": [
@@ -76,7 +76,7 @@
       "usage_count": 34
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 34,
       "excluded": false,
       "representative_actor_labels": [
@@ -96,7 +96,7 @@
       "usage_count": 34
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 46,
       "excluded": false,
       "representative_actor_labels": [
@@ -116,7 +116,7 @@
       "usage_count": 46
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 4,
       "excluded": false,
       "representative_actor_labels": [
@@ -130,7 +130,7 @@
       "usage_count": 4
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 4,
       "excluded": false,
       "representative_actor_labels": [
@@ -144,7 +144,7 @@
       "usage_count": 4
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 1318,
       "excluded": false,
       "representative_actor_labels": [
@@ -164,7 +164,7 @@
       "usage_count": 1334
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 8,
       "excluded": false,
       "representative_actor_labels": [
@@ -182,7 +182,7 @@
       "usage_count": 8
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 39,
       "excluded": false,
       "representative_actor_labels": [
@@ -202,7 +202,7 @@
       "usage_count": 39
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 19,
       "excluded": false,
       "representative_actor_labels": [
@@ -222,7 +222,7 @@
       "usage_count": 19
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 21,
       "excluded": false,
       "representative_actor_labels": [
@@ -242,7 +242,7 @@
       "usage_count": 21
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 88,
       "excluded": false,
       "representative_actor_labels": [
@@ -262,7 +262,7 @@
       "usage_count": 88
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 384,
       "excluded": false,
       "representative_actor_labels": [
@@ -282,7 +282,7 @@
       "usage_count": 384
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 11,
       "excluded": false,
       "representative_actor_labels": [
@@ -302,7 +302,7 @@
       "usage_count": 11
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 20,
       "excluded": false,
       "representative_actor_labels": [
@@ -322,7 +322,7 @@
       "usage_count": 20
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 5,
       "excluded": false,
       "representative_actor_labels": [
@@ -337,7 +337,7 @@
       "usage_count": 5
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 40,
       "excluded": false,
       "representative_actor_labels": [
@@ -357,7 +357,7 @@
       "usage_count": 40
     },
     {
-      "blend_mode": "BLEND_MASKED: 1>",
+      "blend_mode": "BLEND_MASKED",
       "component_count": 20,
       "excluded": false,
       "representative_actor_labels": [
@@ -377,7 +377,7 @@
       "usage_count": 20
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 41,
       "excluded": false,
       "representative_actor_labels": [
@@ -397,7 +397,7 @@
       "usage_count": 70
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 268,
       "excluded": false,
       "representative_actor_labels": [
@@ -417,7 +417,7 @@
       "usage_count": 276
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 198,
       "excluded": false,
       "representative_actor_labels": [
@@ -437,7 +437,7 @@
       "usage_count": 202
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 50,
       "excluded": false,
       "representative_actor_labels": [
@@ -457,7 +457,7 @@
       "usage_count": 50
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 357,
       "excluded": false,
       "representative_actor_labels": [
@@ -477,7 +477,7 @@
       "usage_count": 391
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 455,
       "excluded": false,
       "representative_actor_labels": [
@@ -497,7 +497,7 @@
       "usage_count": 539
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 4,
       "excluded": false,
       "representative_actor_labels": [
@@ -511,7 +511,7 @@
       "usage_count": 4
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 62,
       "excluded": false,
       "representative_actor_labels": [
@@ -531,7 +531,7 @@
       "usage_count": 62
     },
     {
-      "blend_mode": "BLEND_TRANSLUCENT: 2>",
+      "blend_mode": "BLEND_TRANSLUCENT",
       "component_count": 91,
       "excluded": false,
       "representative_actor_labels": [
@@ -551,7 +551,7 @@
       "usage_count": 91
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 9,
       "excluded": false,
       "representative_actor_labels": [
@@ -570,7 +570,7 @@
       "usage_count": 9
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 260,
       "excluded": false,
       "representative_actor_labels": [
@@ -590,7 +590,7 @@
       "usage_count": 343
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 73,
       "excluded": false,
       "representative_actor_labels": [
@@ -610,7 +610,7 @@
       "usage_count": 86
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 52,
       "excluded": false,
       "representative_actor_labels": [
@@ -630,7 +630,7 @@
       "usage_count": 52
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 49,
       "excluded": false,
       "representative_actor_labels": [
@@ -650,7 +650,7 @@
       "usage_count": 49
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 38,
       "excluded": false,
       "representative_actor_labels": [
@@ -670,7 +670,7 @@
       "usage_count": 38
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 95,
       "excluded": false,
       "representative_actor_labels": [
@@ -690,7 +690,7 @@
       "usage_count": 95
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 19,
       "excluded": false,
       "representative_actor_labels": [
@@ -710,7 +710,7 @@
       "usage_count": 19
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 9,
       "excluded": false,
       "representative_actor_labels": [
@@ -729,7 +729,7 @@
       "usage_count": 9
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 63,
       "excluded": false,
       "representative_actor_labels": [
@@ -749,7 +749,7 @@
       "usage_count": 77
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 10,
       "excluded": false,
       "representative_actor_labels": [
@@ -769,7 +769,7 @@
       "usage_count": 10
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 15,
       "excluded": false,
       "representative_actor_labels": [
@@ -789,7 +789,7 @@
       "usage_count": 15
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 29,
       "excluded": false,
       "representative_actor_labels": [
@@ -809,7 +809,7 @@
       "usage_count": 42
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 4,
       "excluded": false,
       "representative_actor_labels": [
@@ -823,7 +823,7 @@
       "usage_count": 4
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 3,
       "excluded": false,
       "representative_actor_labels": [
@@ -836,7 +836,7 @@
       "usage_count": 3
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 159,
       "excluded": false,
       "representative_actor_labels": [
@@ -856,7 +856,7 @@
       "usage_count": 169
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 13,
       "excluded": false,
       "representative_actor_labels": [
@@ -876,7 +876,7 @@
       "usage_count": 13
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 36,
       "excluded": false,
       "representative_actor_labels": [
@@ -896,7 +896,7 @@
       "usage_count": 36
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 3,
       "excluded": false,
       "representative_actor_labels": [
@@ -909,7 +909,7 @@
       "usage_count": 3
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 346,
       "excluded": false,
       "representative_actor_labels": [
@@ -929,7 +929,7 @@
       "usage_count": 346
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 59,
       "excluded": false,
       "representative_actor_labels": [
@@ -949,7 +949,7 @@
       "usage_count": 69
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 359,
       "excluded": false,
       "representative_actor_labels": [
@@ -969,7 +969,7 @@
       "usage_count": 530
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 452,
       "excluded": false,
       "representative_actor_labels": [
@@ -989,7 +989,7 @@
       "usage_count": 550
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 311,
       "excluded": false,
       "representative_actor_labels": [
@@ -1009,7 +1009,7 @@
       "usage_count": 371
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 7,
       "excluded": false,
       "representative_actor_labels": [
@@ -1026,7 +1026,7 @@
       "usage_count": 7
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 37,
       "excluded": false,
       "representative_actor_labels": [
@@ -1046,7 +1046,7 @@
       "usage_count": 37
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 45,
       "excluded": false,
       "representative_actor_labels": [
@@ -1066,7 +1066,7 @@
       "usage_count": 62
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 6,
       "excluded": false,
       "representative_actor_labels": [
@@ -1082,7 +1082,7 @@
       "usage_count": 6
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 14,
       "excluded": false,
       "representative_actor_labels": [
@@ -1102,7 +1102,7 @@
       "usage_count": 14
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 47,
       "excluded": false,
       "representative_actor_labels": [
@@ -1122,7 +1122,7 @@
       "usage_count": 47
     },
     {
-      "blend_mode": "BLEND_MASKED: 1>",
+      "blend_mode": "BLEND_MASKED",
       "component_count": 15,
       "excluded": false,
       "representative_actor_labels": [
@@ -1142,7 +1142,7 @@
       "usage_count": 15
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 23,
       "excluded": false,
       "representative_actor_labels": [
@@ -1162,7 +1162,7 @@
       "usage_count": 23
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 86,
       "excluded": false,
       "representative_actor_labels": [
@@ -1182,7 +1182,7 @@
       "usage_count": 86
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 1,
       "excluded": false,
       "representative_actor_labels": [
@@ -1193,7 +1193,7 @@
       "usage_count": 1
     },
     {
-      "blend_mode": "BLEND_TRANSLUCENT: 2>",
+      "blend_mode": "BLEND_TRANSLUCENT",
       "component_count": 1,
       "excluded": true,
       "representative_actor_labels": [
@@ -1204,7 +1204,7 @@
       "usage_count": 1
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 3,
       "excluded": false,
       "representative_actor_labels": [
@@ -1215,7 +1215,7 @@
       "usage_count": 3
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 6,
       "excluded": false,
       "representative_actor_labels": [
@@ -1230,7 +1230,7 @@
       "usage_count": 6
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 19,
       "excluded": false,
       "representative_actor_labels": [
@@ -1250,7 +1250,7 @@
       "usage_count": 19
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 4,
       "excluded": false,
       "representative_actor_labels": [
@@ -1264,7 +1264,7 @@
       "usage_count": 4
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 8,
       "excluded": false,
       "representative_actor_labels": [
@@ -1279,7 +1279,7 @@
       "usage_count": 8
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 3,
       "excluded": false,
       "representative_actor_labels": [
@@ -1292,7 +1292,7 @@
       "usage_count": 3
     },
     {
-      "blend_mode": "BLEND_MASKED: 1>",
+      "blend_mode": "BLEND_MASKED",
       "component_count": 19,
       "excluded": false,
       "representative_actor_labels": [
@@ -1312,7 +1312,7 @@
       "usage_count": 19
     },
     {
-      "blend_mode": "BLEND_MASKED: 1>",
+      "blend_mode": "BLEND_MASKED",
       "component_count": 2,
       "excluded": false,
       "representative_actor_labels": [
@@ -1324,7 +1324,7 @@
       "usage_count": 2
     },
     {
-      "blend_mode": "BLEND_MASKED: 1>",
+      "blend_mode": "BLEND_MASKED",
       "component_count": 15,
       "excluded": false,
       "representative_actor_labels": [
@@ -1344,7 +1344,7 @@
       "usage_count": 15
     },
     {
-      "blend_mode": "BLEND_MASKED: 1>",
+      "blend_mode": "BLEND_MASKED",
       "component_count": 2,
       "excluded": false,
       "representative_actor_labels": [
@@ -1356,7 +1356,7 @@
       "usage_count": 2
     },
     {
-      "blend_mode": "BLEND_MASKED: 1>",
+      "blend_mode": "BLEND_MASKED",
       "component_count": 3,
       "excluded": false,
       "representative_actor_labels": [
@@ -1367,7 +1367,7 @@
       "usage_count": 3
     },
     {
-      "blend_mode": "BLEND_MASKED: 1>",
+      "blend_mode": "BLEND_MASKED",
       "component_count": 19,
       "excluded": false,
       "representative_actor_labels": [
@@ -1387,7 +1387,7 @@
       "usage_count": 19
     },
     {
-      "blend_mode": "BLEND_TRANSLUCENT: 2>",
+      "blend_mode": "BLEND_TRANSLUCENT",
       "component_count": 1,
       "excluded": true,
       "representative_actor_labels": [
@@ -1398,7 +1398,7 @@
       "usage_count": 1
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 3,
       "excluded": true,
       "representative_actor_labels": [
@@ -1411,7 +1411,7 @@
       "usage_count": 3
     },
     {
-      "blend_mode": "BLEND_TRANSLUCENT: 2>",
+      "blend_mode": "BLEND_TRANSLUCENT",
       "component_count": 3,
       "excluded": true,
       "representative_actor_labels": [
@@ -1424,7 +1424,7 @@
       "usage_count": 3
     },
     {
-      "blend_mode": "BLEND_OPAQUE: 0>",
+      "blend_mode": "BLEND_OPAQUE",
       "component_count": 1,
       "excluded": true,
       "representative_actor_labels": [
