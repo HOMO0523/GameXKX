@@ -20,6 +20,12 @@ INVENTORY_MANIFEST = (
     / "Occlusion"
     / "AsianVillageMaterialInventory.json"
 )
+AUTHOR_SCRIPT = (
+    PROJECT_ROOT
+    / "Content"
+    / "Python"
+    / "gamexxk_author_asian_village_occlusion_materials.py"
+)
 
 from gamexxk_occlusion_material_naming import (  # noqa: E402
     cutout_asset_name,
@@ -117,6 +123,47 @@ class OcclusionMaterialInventoryContractTests(unittest.TestCase):
         for material in inventory["materials"]:
             with self.subTest(source_path=material["source_path"]):
                 self.assertRegex(material["blend_mode"], r"^BLEND_[A-Z_]+$")
+
+
+class OcclusionMaterialAuthoringContractTests(unittest.TestCase):
+    def setUp(self):
+        self.assertTrue(AUTHOR_SCRIPT.is_file())
+        self.source = AUTHOR_SCRIPT.read_text(encoding="utf-8")
+
+    def test_author_handles_each_supported_blend_mode_explicitly(self):
+        for blend_mode in (
+            "BLEND_OPAQUE",
+            "BLEND_MASKED",
+            "BLEND_TRANSLUCENT",
+        ):
+            with self.subTest(blend_mode=blend_mode):
+                self.assertIn(blend_mode, self.source)
+
+    def test_author_uses_blend_safe_material_properties(self):
+        self.assertIn("MP_OPACITY_MASK", self.source)
+        self.assertIn("MP_OPACITY", self.source)
+        self.assertIn("MaterialExpressionMultiply", self.source)
+        self.assertIn("get_material_property_input_node", self.source)
+        self.assertIn("get_material_property_input_node_output_name", self.source)
+
+    def test_author_recompiles_saves_and_only_forces_masked_roots(self):
+        self.assertIn(
+            "GameXXKMaterialAuthoringLibrary.force_masked_material_compilation",
+            self.source,
+        )
+        self.assertIn("MaterialEditingLibrary.recompile_material", self.source)
+        self.assertIn("EditorAssetLibrary.save_asset", self.source)
+        self.assertIn("force_masked", self.source)
+
+    def test_author_is_inventory_driven_and_project_owned(self):
+        normalized = self.source.replace("\\\\", "/")
+        self.assertIn("AsianVillageMaterialInventory.json", normalized)
+        self.assertIn(
+            "/Game/GameXXK/Materials/Occlusion/AsianVillageFull", self.source
+        )
+        self.assertIn("cutout_object_path", self.source)
+        self.assertIn("refusing", self.source.lower())
+        self.assertNotIn("delete_asset(source_path", self.source)
 
 
 if __name__ == "__main__":
