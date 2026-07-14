@@ -16,11 +16,16 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "PaperFlipbookComponent.h"
 #include "Town/GameXXKHeroCharacter.h"
+#include "Town/GameXXKTownNpcActor.h"
+#include "Town/GameXXKTownNpcCharacter.h"
 #include "Town/GameXXKTownPlayerPawn.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
+#include "UI/GameXXKQuestDialogWidget.h"
+#include "UI/GameXXKTaskPanelWidget.h"
+#include "UI/GameXXKTownHudWidget.h"
 #include "UI/GameXXKTownOverlayWidget.h"
 
 namespace
@@ -77,6 +82,21 @@ namespace
 		ViewportSubsystem->SetWidgetSlot(InventoryWidget, InventorySlot);
 	}
 
+	void ConfigureFullscreenTaskPanelSlot(UWidget* TaskPanelWidget)
+	{
+		UGameViewportSubsystem* ViewportSubsystem = UGameViewportSubsystem::Get();
+		if (!ViewportSubsystem || !TaskPanelWidget)
+		{
+			return;
+		}
+
+		FGameViewportWidgetSlot TaskSlot = ViewportSubsystem->GetWidgetSlot(TaskPanelWidget);
+		TaskSlot.Anchors = FAnchors(0.0f, 0.0f, 1.0f, 1.0f);
+		TaskSlot.Offsets = FMargin(0.0f);
+		TaskSlot.Alignment = FVector2D::ZeroVector;
+		ViewportSubsystem->SetWidgetSlot(TaskPanelWidget, TaskSlot);
+	}
+
 	void ConfigureBattleSceneCameraActor(ACameraActor* CameraActor)
 	{
 		if (!CameraActor)
@@ -107,6 +127,9 @@ AGameXXKMVPPlayerController::AGameXXKMVPPlayerController()
 	RouteMapWidgetClass = UGameXXKOneGameRouteMapWidget::StaticClass();
 	BattleBoardWidgetClass = UGameXXKBattleBoardWidget::StaticClass();
 	InventoryWindowWidgetClass = UGameXXKInventoryWindowWidget::StaticClass();
+	QuestDialogWidgetClass = UGameXXKQuestDialogWidget::StaticClass();
+	TaskPanelWidgetClass = UGameXXKTaskPanelWidget::StaticClass();
+	TownHudWidgetClass = UGameXXKTownHudWidget::StaticClass();
 }
 
 void AGameXXKMVPPlayerController::BeginPlay()
@@ -144,6 +167,14 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 	if (Params.Key == EKeys::Escape && Params.Event == IE_Pressed)
 	{
 		EnsurePlayerFlowWidgets();
+		if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
+		{
+			return CloseQuestDialog();
+		}
+		if (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest())
+		{
+			return CloseTaskPanel();
+		}
 		if (InventoryWindowWidget && InventoryWindowWidget->CloseInventoryWindow())
 		{
 			ApplyPlayerFlowInputMode();
@@ -153,6 +184,10 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 		{
 			return true;
 		}
+	}
+	if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
+	{
+		return Super::InputKey(Params);
 	}
 	if (Params.Key == EKeys::I && Params.Event == IE_Pressed)
 	{
@@ -249,6 +284,21 @@ UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::GetInventoryWindowWi
 	return InventoryWindowWidget;
 }
 
+UGameXXKQuestDialogWidget* AGameXXKMVPPlayerController::GetQuestDialogWidgetForTest() const
+{
+	return QuestDialogWidget;
+}
+
+UGameXXKTaskPanelWidget* AGameXXKMVPPlayerController::GetTaskPanelWidgetForTest() const
+{
+	return TaskPanelWidget;
+}
+
+UGameXXKTownHudWidget* AGameXXKMVPPlayerController::GetTownHudWidgetForTest() const
+{
+	return TownHudWidget;
+}
+
 bool AGameXXKMVPPlayerController::HasMainMenuWidgetInViewportForTest() const
 {
 	return MainMenuWidget && MainMenuWidget->IsInViewport();
@@ -279,8 +329,84 @@ bool AGameXXKMVPPlayerController::IsInventoryWindowModalInputLocked() const
 	return InventoryWindowWidget && InventoryWindowWidget->IsModalInputLockActiveForTest();
 }
 
+bool AGameXXKMVPPlayerController::IsQuestDialogOpenForTest() const
+{
+	return QuestDialogWidget && QuestDialogWidget->IsDialogOpen();
+}
+
+bool AGameXXKMVPPlayerController::IsQuestDialogModalInputLockedForTest() const
+{
+	return IsQuestDialogOpenForTest();
+}
+
+bool AGameXXKMVPPlayerController::OpenQuestDialogPreviewForTest()
+{
+	UGameXXKQuestDialogWidget* Dialog = EnsureQuestDialogWidget();
+	if (!Dialog)
+	{
+		return false;
+	}
+
+	PendingQuestNpc.Reset();
+	PendingQuestInstigator.Reset();
+	Dialog->OpenDialog();
+	SetIgnoreMoveInput(true);
+	ApplyPlayerFlowInputMode();
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::OpenQuestDialogForNpc(AActor* QuestNpc, APawn* InstigatorPawn)
+{
+	UGameXXKQuestDialogWidget* Dialog = EnsureQuestDialogWidget();
+	if (!QuestNpc || !InstigatorPawn || !Dialog)
+	{
+		return false;
+	}
+
+	PendingQuestNpc = QuestNpc;
+	PendingQuestInstigator = InstigatorPawn;
+	Dialog->OpenDialog();
+	FlushPressedKeys();
+	SetIgnoreMoveInput(true);
+	ApplyPlayerFlowInputMode();
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::AcceptQuestDialog()
+{
+	if (!QuestDialogWidget || !QuestDialogWidget->IsDialogOpen())
+	{
+		return false;
+	}
+
+	const bool bAccepted = ConfirmPendingQuestNpc();
+	if (bAccepted)
+	{
+		QuestDialogWidget->OnQuestAccepted();
+	}
+
+	CloseQuestDialog();
+	RefreshPlayerFlowWidgets();
+	return bAccepted;
+}
+
+bool AGameXXKMVPPlayerController::CloseQuestDialog()
+{
+	if (!QuestDialogWidget || !QuestDialogWidget->CloseDialog())
+	{
+		return false;
+	}
+
+	PendingQuestNpc.Reset();
+	PendingQuestInstigator.Reset();
+	SetIgnoreMoveInput(false);
+	ApplyPlayerFlowInputMode();
+	return true;
+}
+
 bool AGameXXKMVPPlayerController::OpenFreeInventoryWindow()
 {
+	CloseTaskPanel();
 	UGameXXKInventoryWindowWidget* InventoryWindow = EnsureInventoryWindowWidget();
 	const bool bOpened = InventoryWindow && InventoryWindow->OpenFreeInventory();
 	if (bOpened)
@@ -299,6 +425,7 @@ bool AGameXXKMVPPlayerController::OpenMerchantTradeWindow()
 		return CloseInventoryWindow();
 	}
 
+	CloseTaskPanel();
 	UGameXXKInventoryWindowWidget* InventoryWindow = EnsureInventoryWindowWidget();
 	const bool bOpened = InventoryWindow && InventoryWindow->OpenMerchantTrade();
 	if (bOpened)
@@ -314,12 +441,55 @@ bool AGameXXKMVPPlayerController::OpenMerchantTradeWindow()
 
 bool AGameXXKMVPPlayerController::CloseInventoryWindow()
 {
+	const bool bWasMerchantTrade = InventoryWindowWidget
+		&& InventoryWindowWidget->GetWindowModeForTest() == EGameXXKInventoryWindowMode::MerchantTrade;
 	const bool bClosed = InventoryWindowWidget && InventoryWindowWidget->CloseInventoryWindow();
 	if (bClosed)
 	{
+		if (bWasMerchantTrade)
+		{
+			if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
+			{
+				Subsystem->CloseTownPanel();
+			}
+		}
 		ApplyPlayerFlowInputMode();
 	}
 	return bClosed;
+}
+
+bool AGameXXKMVPPlayerController::OpenTaskPanel()
+{
+	if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
+	{
+		return false;
+	}
+	CloseInventoryWindow();
+	UGameXXKTaskPanelWidget* TaskPanel = EnsureTaskPanelWidget();
+	const bool bOpened = TaskPanel && TaskPanel->OpenTaskPanel();
+	if (bOpened)
+	{
+		FlushPressedKeys();
+		SetIgnoreMoveInput(true);
+		ApplyPlayerFlowInputMode();
+	}
+	return bOpened;
+}
+
+bool AGameXXKMVPPlayerController::CloseTaskPanel()
+{
+	const bool bClosed = TaskPanelWidget && TaskPanelWidget->CloseTaskPanel();
+	if (bClosed)
+	{
+		SetIgnoreMoveInput(false);
+		ApplyPlayerFlowInputMode();
+	}
+	return bClosed;
+}
+
+bool AGameXXKMVPPlayerController::IsTaskPanelOpenForTest() const
+{
+	return TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest();
 }
 
 bool AGameXXKMVPPlayerController::OpenBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
@@ -420,6 +590,11 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
 		}
 	}
 
+	if (!TownHudWidget)
+	{
+		EnsureTownHudWidget();
+	}
+
 	if (!RouteMapWidget)
 	{
 		TSubclassOf<UGameXXKOneGameRouteMapWidget> WidgetClass = RouteMapWidgetClass;
@@ -470,8 +645,18 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
 		EnsureInventoryWindowWidget();
 	}
 
+	if (!QuestDialogWidget)
+	{
+		EnsureQuestDialogWidget();
+	}
+
+	if (!TaskPanelWidget)
+	{
+		EnsureTaskPanelWidget();
+	}
+
 	RefreshPlayerFlowWidgets();
-	return MainMenuWidget && TownOverlayWidget && RouteMapWidget && BattleBoardWidget && InventoryWindowWidget;
+	return MainMenuWidget && TownOverlayWidget && TownHudWidget && RouteMapWidget && BattleBoardWidget && InventoryWindowWidget && QuestDialogWidget && TaskPanelWidget;
 }
 
 UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::EnsureInventoryWindowWidget()
@@ -510,6 +695,120 @@ UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::EnsureInventoryWindo
 	return InventoryWindowWidget;
 }
 
+UGameXXKQuestDialogWidget* AGameXXKMVPPlayerController::EnsureQuestDialogWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	bool bCreatedQuestDialog = false;
+	if (!QuestDialogWidget)
+	{
+		TSubclassOf<UGameXXKQuestDialogWidget> WidgetClass = QuestDialogWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKQuestDialogWidget::StaticClass();
+		}
+		QuestDialogWidget = bCanAddToViewport ? CreateWidget<UGameXXKQuestDialogWidget>(this, WidgetClass) : nullptr;
+		if (!QuestDialogWidget)
+		{
+			QuestDialogWidget = NewObject<UGameXXKQuestDialogWidget>(this, WidgetClass);
+		}
+		bCreatedQuestDialog = QuestDialogWidget != nullptr;
+	}
+	if (QuestDialogWidget)
+	{
+		QuestDialogWidget->SetMVPSubsystem(Subsystem);
+		if (bCreatedQuestDialog)
+		{
+			QuestDialogWidget->CloseDialog();
+		}
+		if (bCanAddToViewport && !QuestDialogWidget->IsInViewport())
+		{
+			QuestDialogWidget->AddToViewport(160);
+		}
+	}
+	return QuestDialogWidget;
+}
+
+UGameXXKTaskPanelWidget* AGameXXKMVPPlayerController::EnsureTaskPanelWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	bool bCreatedTaskPanel = false;
+	if (!TaskPanelWidget)
+	{
+		TSubclassOf<UGameXXKTaskPanelWidget> WidgetClass = TaskPanelWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKTaskPanelWidget::StaticClass();
+		}
+		TaskPanelWidget = bCanAddToViewport ? CreateWidget<UGameXXKTaskPanelWidget>(this, WidgetClass) : nullptr;
+		if (!TaskPanelWidget)
+		{
+			TaskPanelWidget = NewObject<UGameXXKTaskPanelWidget>(this, WidgetClass);
+		}
+		bCreatedTaskPanel = TaskPanelWidget != nullptr;
+	}
+	if (TaskPanelWidget)
+	{
+		TaskPanelWidget->SetMVPSubsystem(Subsystem);
+		if (bCreatedTaskPanel)
+		{
+			TaskPanelWidget->CloseTaskPanel();
+		}
+		ConfigureFullscreenTaskPanelSlot(TaskPanelWidget);
+		if (bCanAddToViewport && !TaskPanelWidget->IsInViewport())
+		{
+			TaskPanelWidget->AddToViewport(140);
+			ConfigureFullscreenTaskPanelSlot(TaskPanelWidget);
+		}
+	}
+	return TaskPanelWidget;
+}
+
+UGameXXKTownHudWidget* AGameXXKMVPPlayerController::EnsureTownHudWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!TownHudWidget)
+	{
+		TSubclassOf<UGameXXKTownHudWidget> WidgetClass = TownHudWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKTownHudWidget::StaticClass();
+		}
+		TownHudWidget = bCanAddToViewport ? CreateWidget<UGameXXKTownHudWidget>(this, WidgetClass) : nullptr;
+		if (!TownHudWidget)
+		{
+			TownHudWidget = NewObject<UGameXXKTownHudWidget>(this, WidgetClass);
+		}
+	}
+	if (TownHudWidget)
+	{
+		TownHudWidget->SetMVPSubsystem(Subsystem);
+		ConfigureFullscreenTaskPanelSlot(TownHudWidget);
+		if (bCanAddToViewport && !TownHudWidget->IsInViewport())
+		{
+			TownHudWidget->AddToViewport(35);
+			ConfigureFullscreenTaskPanelSlot(TownHudWidget);
+		}
+	}
+	return TownHudWidget;
+}
+
+bool AGameXXKMVPPlayerController::ConfirmPendingQuestNpc()
+{
+	APawn* InstigatorPawn = PendingQuestInstigator.Get();
+	if (AGameXXKTownNpcCharacter* CharacterNpc = Cast<AGameXXKTownNpcCharacter>(PendingQuestNpc.Get()))
+	{
+		return CharacterNpc->ConfirmQuestDialogInteraction(InstigatorPawn);
+	}
+	if (AGameXXKTownNpcActor* ActorNpc = Cast<AGameXXKTownNpcActor>(PendingQuestNpc.Get()))
+	{
+		return ActorNpc->ConfirmQuestDialogInteraction(InstigatorPawn);
+	}
+	return false;
+}
+
 void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
@@ -522,6 +821,11 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	{
 		TownOverlayWidget->SetMVPSubsystem(Subsystem);
 		TownOverlayWidget->RefreshFromState();
+	}
+	if (TownHudWidget)
+	{
+		TownHudWidget->SetMVPSubsystem(Subsystem);
+		TownHudWidget->RefreshFromState();
 	}
 	if (RouteMapWidget)
 	{
@@ -537,6 +841,29 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	if (InventoryWindowWidget)
 	{
 		InventoryWindowWidget->SetMVPSubsystem(Subsystem);
+		if (Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town && !InventoryWindowWidget->IsWindowVisibleForTest())
+		{
+			switch (Subsystem->GetRuntimeState().TownPanelMode)
+			{
+			case EGameXXKTownPanelMode::Inventory:
+				InventoryWindowWidget->OpenFreeInventory();
+				break;
+			case EGameXXKTownPanelMode::Trade:
+				InventoryWindowWidget->OpenMerchantTrade();
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	if (QuestDialogWidget)
+	{
+		QuestDialogWidget->SetMVPSubsystem(Subsystem);
+	}
+	if (TaskPanelWidget)
+	{
+		TaskPanelWidget->SetMVPSubsystem(Subsystem);
+		TaskPanelWidget->RefreshFromState();
 	}
 	EnsureBattleScenePresenter();
 
@@ -581,6 +908,14 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	{
 		InputMode.SetWidgetToFocus(MainMenuWidget->TakeWidget());
 	}
+	else if (ActiveScreen == EGameXXKScreen::Town && QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
+	{
+		InputMode.SetWidgetToFocus(QuestDialogWidget->TakeWidget());
+	}
+	else if (ActiveScreen == EGameXXKScreen::Town && TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest())
+	{
+		InputMode.SetWidgetToFocus(TaskPanelWidget->TakeWidget());
+	}
 	else if (ActiveScreen == EGameXXKScreen::DungeonMap && RouteMapWidget)
 	{
 		InputMode.SetWidgetToFocus(RouteMapWidget->TakeWidget());
@@ -591,7 +926,9 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	}
 	SetInputMode(InputMode);
 
-	if (ActiveScreen == EGameXXKScreen::Town && FSlateApplication::IsInitialized())
+	if (ActiveScreen == EGameXXKScreen::Town
+		&& (!QuestDialogWidget || !QuestDialogWidget->IsDialogOpen())
+		&& FSlateApplication::IsInitialized())
 	{
 		FSlateApplication::Get().SetAllUserFocusToGameViewport(EFocusCause::SetDirectly);
 	}

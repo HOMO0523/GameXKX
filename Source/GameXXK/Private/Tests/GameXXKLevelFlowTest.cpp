@@ -49,6 +49,15 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 	TestTrue(
 		TEXT("PIE battle map package matches battle target"),
 		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_BattleScene"), FName(TEXT("/Game/GameXXK/Maps/L_BattleScene"))));
+	TestTrue(
+		TEXT("playable Asian Village demo is a Town gameplay map"),
+		GameXXKLevelFlow::IsTownGameplayMapPackage(TEXT("/Game/GameXXK/Maps/Prototype/UEDPIE_0_L_Qingshan_AsianVillage_Demo")));
+	TestTrue(
+		TEXT("legacy QingshanInn remains a Town gameplay map"),
+		GameXXKLevelFlow::IsTownGameplayMapPackage(TEXT("/Game/GameXXK/Maps/L_QingshanInn")));
+	TestFalse(
+		TEXT("route map is not a Town gameplay map"),
+		GameXXKLevelFlow::IsTownGameplayMapPackage(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap")));
 	TestFalse(
 		TEXT("route map package does not match battle target"),
 		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap"), FName(TEXT("/Game/GameXXK/Maps/L_BattleScene"))));

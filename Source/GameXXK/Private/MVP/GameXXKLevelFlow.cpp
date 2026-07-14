@@ -10,6 +10,7 @@ namespace
 {
 	const FName MainMap(TEXT("/Game/GameXXK/Maps/L_Main"));
 	const FName QingshanTownMap(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo"));
+	const FName LegacyQingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 	const FName RouteMap(TEXT("/Game/GameXXK/Maps/L_RouteMap"));
 	const FName RouteEventMap(TEXT("/Game/GameXXK/Maps/L_RouteEvent"));
 	const FName RouteCampMap(TEXT("/Game/GameXXK/Maps/L_RouteCamp"));
@@ -87,6 +88,12 @@ bool GameXXKLevelFlow::MapPackageMatches(const FString& CurrentPackageName, FNam
 	const FString TargetPackageName = TargetMap.ToString();
 	return CurrentPackageName == TargetPackageName
 		|| ShortMapNameForPackage(CurrentPackageName) == ShortMapNameForPackage(TargetPackageName);
+}
+
+bool GameXXKLevelFlow::IsTownGameplayMapPackage(const FString& CurrentPackageName)
+{
+	return MapPackageMatches(CurrentPackageName, QingshanTownMap)
+		|| MapPackageMatches(CurrentPackageName, LegacyQingshanTownMap);
 }
 
 bool GameXXKLevelFlow::OpenMapForRuntimeState(UGameXXKMVPSubsystem* Subsystem)

@@ -38,7 +38,9 @@ UENUM(BlueprintType)
 enum class EGameXXKTaskCategory : uint8
 {
 	Main,
-	Side
+	Side,
+	Daily,
+	Adventure
 };
 
 UENUM(BlueprintType)

@@ -345,7 +345,7 @@ def _widget_summary(widget):
         result["is_enabled"] = bool(widget.get_is_enabled())
     except Exception:
         pass
-    for method_name in ("is_town_overlay_visible", "is_battle_board_visible"):
+    for method_name in ("is_town_overlay_visible", "is_battle_board_visible", "is_dialog_open"):
         try:
             result[method_name] = bool(getattr(widget, method_name)())
         except Exception:
@@ -403,6 +403,7 @@ def _player_controller_summary(player_controller):
         ("town_overlay", "get_town_overlay_widget_for_test"),
         ("route_map", "get_route_map_widget_for_test"),
         ("battle_board", "get_battle_board_widget_for_test"),
+        ("quest_dialog", "get_quest_dialog_widget_for_test"),
     ):
         try:
             flow_widgets[key] = _widget_summary(getattr(player_controller, getter_name)())

@@ -73,6 +73,11 @@ def _existing_property_connection(material, material_property):
 
 def _ensure_collection():
     collection = unreal.EditorAssetLibrary.load_asset(MPC_PATH)
+    # MPC parameter GUIDs are referenced directly by material expression nodes.
+    # Replacing these arrays on a later authoring pass would assign fresh GUIDs
+    # and make already-generated Cutout materials fail to compile.
+    if collection is not None:
+        return collection
     if collection is None:
         collection = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
             MPC_NAME,
@@ -150,8 +155,10 @@ def _inspect_target_materials():
 
 def _collection_parameter(material, collection, parameter_name, x, y):
     expression = _node(material, unreal.MaterialExpressionCollectionParameter, x, y)
-    _set(expression, "collection", collection)
-    _set(expression, "parameter_name", parameter_name)
+    if not unreal.GameXXKMaterialAuthoringLibrary.bind_collection_parameter(
+        expression, collection, parameter_name
+    ):
+        raise RuntimeError(f"failed to bind collection parameter: {parameter_name}")
     return expression
 
 
@@ -255,33 +262,14 @@ def _patch_cutout(material, collection):
     _connect(zero, ("",), is_foreground, ("A > B", "A == B"))
     _connect(one, ("",), is_foreground, ("A < B",))
 
-    # Keep the circle as the visibility scope, but only cut a foreground pixel
-    # where the hero itself wrote the dedicated Custom Stencil value.
-    hero_stencil = _node(material, unreal.MaterialExpressionSceneTexture, -250, 1320)
-    _set(hero_stencil, "scene_texture_id", unreal.SceneTextureId.PPI_CUSTOM_STENCIL)
-    hero_stencil_r = _node(material, unreal.MaterialExpressionComponentMask, -40, 1320)
-    for channel, enabled in (("r", True), ("g", False), ("b", False), ("a", False)):
-        _set(hero_stencil_r, channel, enabled)
-    _connect(hero_stencil, ("Color", ""), hero_stencil_r, ("Input", ""))
-    hero_stencil_value = _collection_parameter(material, collection, "OcclusionHeroStencilValue", -30, 1410)
-    hero_silhouette_zero = _node(material, unreal.MaterialExpressionConstant, 160, 1280)
-    _set(hero_silhouette_zero, "r", 0.0)
-    hero_silhouette_one = _node(material, unreal.MaterialExpressionConstant, 160, 1360)
-    _set(hero_silhouette_one, "r", 1.0)
-    hero_silhouette_gate = _node(material, unreal.MaterialExpressionIf, 360, 1320)
-    _connect(hero_stencil_r, ("",), hero_silhouette_gate, ("A",))
-    _connect(hero_stencil_value, ("",), hero_silhouette_gate, ("B",))
-    _connect(hero_silhouette_zero, ("",), hero_silhouette_gate, ("A > B",))
-    _connect(hero_silhouette_zero, ("",), hero_silhouette_gate, ("A < B",))
-    _connect(hero_silhouette_one, ("",), hero_silhouette_gate, ("A == B",))
+    # Masked surface materials cannot sample CustomStencil in UE 5.8.  Keep the
+    # stable legacy fallback: the circular scope is restricted to geometry that
+    # lies between the camera and hero, without sampling scene textures here.
     gated_reveal = _node(material, unreal.MaterialExpressionMultiply, 200, 860)
     _connect(circle_reveal, ("",), gated_reveal, ("A",))
     _connect(is_foreground, ("",), gated_reveal, ("B",))
-    gated_reveal_on_hero = _node(material, unreal.MaterialExpressionMultiply, 420, 860)
-    _connect(gated_reveal, ("",), gated_reveal_on_hero, ("A",))
-    _connect(hero_silhouette_gate, ("",), gated_reveal_on_hero, ("B",))
     keep_mask = _node(material, unreal.MaterialExpressionOneMinus, 620, 860)
-    _connect(gated_reveal_on_hero, ("",), keep_mask, ("Input", ""))
+    _connect(gated_reveal, ("",), keep_mask, ("Input", ""))
     final_mask = keep_mask
     if existing is not None:
         original_node, output_name = existing

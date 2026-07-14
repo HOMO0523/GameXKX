@@ -1,5 +1,6 @@
 #include "MVP/GameXXKMVPGameMode.h"
 
+#include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "Town/GameXXKHeroCharacter.h"
@@ -14,16 +15,26 @@ namespace
 	const FVector QingshanTownExitLocation(0.0f, 1380.0f, 120.0f);
 	const FName QingshanTownExitActorName(TEXT("QingshanInn_TownExit"));
 
-	bool IsQingshanInnMap(const UWorld* World)
+	bool IsTownGameplayMap(const UWorld* World)
 	{
 		if (!World)
 		{
 			return false;
 		}
 
-		FString MapName = World->GetMapName();
-		MapName.RemoveFromStart(World->StreamingLevelsPrefix);
-		return MapName == TEXT("L_QingshanInn");
+		const FString PackageName = World->GetOutermost() ? World->GetOutermost()->GetName() : FString();
+		return GameXXKLevelFlow::IsTownGameplayMapPackage(PackageName);
+	}
+
+	bool IsLegacyQingshanInnMap(const UWorld* World)
+	{
+		if (!World)
+		{
+			return false;
+		}
+
+		const FString PackageName = World->GetOutermost() ? World->GetOutermost()->GetName() : FString();
+		return GameXXKLevelFlow::MapPackageMatches(PackageName, FName(TEXT("/Game/GameXXK/Maps/L_QingshanInn")));
 	}
 }
 
@@ -51,7 +62,7 @@ void AGameXXKMVPGameMode::BeginPlay()
 	// This game mode is also used by prototype maps.  Only the gameplay town
 	// should restore its persisted actors and player location; a showcase map
 	// must keep its own PlayerStart and placed scene intact.
-	if (!IsQingshanInnMap(GetWorld()))
+	if (!IsTownGameplayMap(GetWorld()))
 	{
 		return;
 	}
@@ -63,11 +74,20 @@ void AGameXXKMVPGameMode::BeginPlay()
 	}
 
 	AGameXXKTownNpcCharacter* QuestNpc = FindSpawnedTownNpc(EGameXXKTownNpcRole::Quest);
-	if (SpawnedTownNpcs.Num() == 0)
+	if (IsLegacyQingshanInnMap(GetWorld()))
 	{
-		QuestNpc = SpawnTownNpc(EGameXXKTownNpcRole::Quest, FVector(260.0f, -120.0f, 120.0f), PersonTownNpcCharacterClass);
-		SpawnTownNpc(EGameXXKTownNpcRole::Merchant, FVector(260.0f, 120.0f, 120.0f), MerchantTownNpcCharacterClass);
-		SpawnTownNpc(EGameXXKTownNpcRole::Follower, FVector(100.0f, -220.0f, 120.0f), PersonTownNpcCharacterClass);
+		if (!QuestNpc)
+		{
+			QuestNpc = SpawnTownNpc(EGameXXKTownNpcRole::Quest, FVector(260.0f, -120.0f, 120.0f), PersonTownNpcCharacterClass);
+		}
+		if (!FindSpawnedTownNpc(EGameXXKTownNpcRole::Merchant))
+		{
+			SpawnTownNpc(EGameXXKTownNpcRole::Merchant, FVector(260.0f, 120.0f, 120.0f), MerchantTownNpcCharacterClass);
+		}
+		if (!FindSpawnedTownNpc(EGameXXKTownNpcRole::Follower))
+		{
+			SpawnTownNpc(EGameXXKTownNpcRole::Follower, FVector(100.0f, -220.0f, 120.0f), PersonTownNpcCharacterClass);
+		}
 	}
 
 	EnsureTownExit();
@@ -180,6 +200,20 @@ AGameXXKTownNpcCharacter* AGameXXKMVPGameMode::FindSpawnedTownNpc(EGameXXKTownNp
 	for (AGameXXKTownNpcCharacter* Npc : SpawnedTownNpcs)
 	{
 		if (Npc && Npc->GetNpcRole() == NpcRole)
+		{
+			return Npc;
+		}
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	for (TActorIterator<AGameXXKTownNpcCharacter> It(World); It; ++It)
+	{
+		if (AGameXXKTownNpcCharacter* Npc = *It; Npc && Npc->GetNpcRole() == NpcRole)
 		{
 			return Npc;
 		}

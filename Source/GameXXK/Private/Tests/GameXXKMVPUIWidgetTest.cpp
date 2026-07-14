@@ -1,6 +1,7 @@
 #include "GameXXKMVPRules.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
+#include "Components/Button.h"
 #include "Components/SizeBox.h"
 #include "Components/Widget.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -47,6 +48,24 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	MainMenu->SetMVPSubsystem(Subsystem);
 	WorldMap->SetMVPSubsystem(Subsystem);
 	QuestDialog->SetMVPSubsystem(Subsystem);
+	QuestDialog->TakeWidget();
+	TestNotNull(TEXT("quest dialog builds a full-screen ink backdrop"), QuestDialog->WidgetTree ? QuestDialog->WidgetTree->FindWidget(TEXT("QuestDialogBackdrop")) : nullptr);
+	UBorder* QuestDialogFrame = QuestDialog->WidgetTree ? Cast<UBorder>(QuestDialog->WidgetTree->FindWidget(TEXT("QuestDialogFrame"))) : nullptr;
+	UButton* QuestDialogAcceptButton = QuestDialog->WidgetTree ? Cast<UButton>(QuestDialog->WidgetTree->FindWidget(TEXT("QuestDialogAcceptButton"))) : nullptr;
+	UButton* QuestDialogLeaveButton = QuestDialog->WidgetTree ? Cast<UButton>(QuestDialog->WidgetTree->FindWidget(TEXT("QuestDialogLeaveButton"))) : nullptr;
+	TestNotNull(TEXT("quest dialog builds a centered paper frame"), QuestDialogFrame);
+	TestNotNull(TEXT("quest dialog exposes the accept button"), QuestDialogAcceptButton);
+	TestNotNull(TEXT("quest dialog exposes the leave button"), QuestDialogLeaveButton);
+	TestNotNull(TEXT("quest dialog frame resolves the generated parchment texture"), QuestDialogFrame ? QuestDialogFrame->Background.GetResourceObject() : nullptr);
+	TestNotNull(TEXT("quest dialog accept button resolves the generated jade texture"), QuestDialogAcceptButton ? QuestDialogAcceptButton->GetStyle().Normal.GetResourceObject() : nullptr);
+	TestNotNull(TEXT("quest dialog leave button resolves the generated ochre texture"), QuestDialogLeaveButton ? QuestDialogLeaveButton->GetStyle().Normal.GetResourceObject() : nullptr);
+	TestTrue(TEXT("quest dialog frame is sourced from the generated parchment texture"), QuestDialog->GetDialogFrameResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/QuestDialog/Textures/T_QuestDialogFrame")));
+	TestTrue(TEXT("quest dialog accept action is sourced from the generated jade texture"), QuestDialog->GetAcceptButtonResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/QuestDialog/Textures/T_QuestDialogAccept")));
+	TestTrue(TEXT("quest dialog leave action is sourced from the generated ochre texture"), QuestDialog->GetLeaveButtonResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/QuestDialog/Textures/T_QuestDialogLeave")));
+	TestTrue(TEXT("quest dialog can open after its visual layout is built"), !QuestDialog->IsDialogOpen());
+	QuestDialog->OpenDialog();
+	TestTrue(TEXT("quest dialog opens the ink paper modal"), QuestDialog->IsDialogOpen());
+	TestTrue(TEXT("quest dialog can close after the preview"), QuestDialog->CloseDialog());
 	Trade->SetMVPSubsystem(Subsystem);
 	Inventory->SetMVPSubsystem(Subsystem);
 	InventoryWindow->SetMVPSubsystem(Subsystem);

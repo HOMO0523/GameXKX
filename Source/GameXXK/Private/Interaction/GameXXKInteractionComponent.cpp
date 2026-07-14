@@ -5,6 +5,31 @@
 #include "GameFramework/Pawn.h"
 #include "Town/GameXXKTownExitActor.h"
 #include "Town/GameXXKTownNpcActor.h"
+#include "Town/GameXXKTownNpcCharacter.h"
+
+namespace
+{
+	bool IsAvailableInteractionTarget(const AActor* Actor)
+	{
+		if (!Actor || Actor->IsPendingKillPending()
+			|| !Actor->GetClass()->ImplementsInterface(UGameXXKInteractable::StaticClass()))
+		{
+			return false;
+		}
+
+		if (const AGameXXKTownNpcActor* TownNpc = Cast<AGameXXKTownNpcActor>(Actor))
+		{
+			return !TownNpc->IsFollowerActive();
+		}
+
+		if (const AGameXXKTownNpcCharacter* TownNpc = Cast<AGameXXKTownNpcCharacter>(Actor))
+		{
+			return !TownNpc->IsFollowerActive();
+		}
+
+		return true;
+	}
+}
 
 UGameXXKInteractionComponent::UGameXXKInteractionComponent()
 {
@@ -25,7 +50,7 @@ FKey UGameXXKInteractionComponent::GetInteractionKey() const
 void UGameXXKInteractionComponent::Interact()
 {
 	AActor* Actor = FocusedActor.Get();
-	if (!Actor)
+	if (!IsAvailableInteractionTarget(Actor))
 	{
 		Actor = FindNearbyInteractableActor();
 		if (!Actor)
@@ -81,7 +106,7 @@ AActor* UGameXXKInteractionComponent::FindNearbyInteractableActor() const
 		{
 			continue;
 		}
-		if (!Candidate->GetClass()->ImplementsInterface(UGameXXKInteractable::StaticClass()))
+		if (!IsAvailableInteractionTarget(Candidate))
 		{
 			continue;
 		}

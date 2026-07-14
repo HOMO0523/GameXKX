@@ -86,6 +86,17 @@ void UGameXXKTownOverlayWidget::RefreshFromState()
 
 	CachedStatusText = GameXXKMVPCommandRouter::BuildStatusText(Subsystem);
 	ConfigureProgrammaticLayout();
+
+	// Keep the legacy command surface alive for saves and automation, but do not
+	// present it alongside the new player-facing ink HUD.
+	if (PanelBox)
+	{
+		PanelBox->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (ActivePanelBox)
+	{
+		ActivePanelBox->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
 
 bool UGameXXKTownOverlayWidget::EnterRouteMap()

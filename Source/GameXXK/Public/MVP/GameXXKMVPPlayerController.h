@@ -9,6 +9,9 @@ class UGameXXKInventoryWindowWidget;
 class UGameXXKMainMenuWidget;
 class UGameXXKMVPSubsystem;
 class UGameXXKOneGameRouteMapWidget;
+class UGameXXKQuestDialogWidget;
+class UGameXXKTaskPanelWidget;
+class UGameXXKTownHudWidget;
 class UGameXXKTownOverlayWidget;
 class AGameXXKBattleScenePresenter;
 class AGameXXKBattleSceneUnitActor;
@@ -56,6 +59,15 @@ public:
 	UGameXXKInventoryWindowWidget* GetInventoryWindowWidgetForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	UGameXXKQuestDialogWidget* GetQuestDialogWidgetForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	UGameXXKTaskPanelWidget* GetTaskPanelWidgetForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	UGameXXKTownHudWidget* GetTownHudWidgetForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
 	bool HasMainMenuWidgetInViewportForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
@@ -73,6 +85,24 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow")
 	bool IsInventoryWindowModalInputLocked() const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	bool IsQuestDialogOpenForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	bool IsQuestDialogModalInputLockedForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
+	bool OpenQuestDialogPreviewForTest();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool OpenQuestDialogForNpc(AActor* QuestNpc, APawn* InstigatorPawn);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool AcceptQuestDialog();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool CloseQuestDialog();
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool OpenFreeInventoryWindow();
 
@@ -81,6 +111,15 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool CloseInventoryWindow();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool OpenTaskPanel();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool CloseTaskPanel();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	bool IsTaskPanelOpenForTest() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
 	bool OpenBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
@@ -101,6 +140,10 @@ private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
 	bool EnsurePlayerFlowWidgets();
 	UGameXXKInventoryWindowWidget* EnsureInventoryWindowWidget();
+	UGameXXKQuestDialogWidget* EnsureQuestDialogWidget();
+	UGameXXKTaskPanelWidget* EnsureTaskPanelWidget();
+	UGameXXKTownHudWidget* EnsureTownHudWidget();
+	bool ConfirmPendingQuestNpc();
 	void RefreshPlayerFlowWidgets();
 	void ConfigureRouteMapWidgetViewport(UGameXXKOneGameRouteMapWidget* RouteWidget) const;
 	void ApplyPlayerFlowInputMode();
@@ -133,6 +176,15 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
 	TSubclassOf<UGameXXKInventoryWindowWidget> InventoryWindowWidgetClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
+	TSubclassOf<UGameXXKQuestDialogWidget> QuestDialogWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
+	TSubclassOf<UGameXXKTaskPanelWidget> TaskPanelWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
+	TSubclassOf<UGameXXKTownHudWidget> TownHudWidgetClass;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMainMenuWidget> MainMenuWidget;
 
@@ -147,6 +199,21 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKInventoryWindowWidget> InventoryWindowWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKQuestDialogWidget> QuestDialogWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKTaskPanelWidget> TaskPanelWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKTownHudWidget> TownHudWidget;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AActor> PendingQuestNpc;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<APawn> PendingQuestInstigator;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AGameXXKBattleScenePresenter> BattleScenePresenter;

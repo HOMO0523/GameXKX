@@ -621,6 +621,51 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 		}
 	}
 
+	if (UWorld* GatePriorityWorld = GWorld)
+	{
+		const FVector GatePriorityOrigin(750000.0f, 750000.0f, 100000.0f);
+		AGameXXKTownPlayerPawn* GatePriorityPlayer = GatePriorityWorld->SpawnActor<AGameXXKTownPlayerPawn>(
+			GatePriorityOrigin,
+			FRotator::ZeroRotator);
+		AGameXXKTownNpcActor* GatePriorityFollower = GatePriorityWorld->SpawnActor<AGameXXKTownNpcActor>(
+			GatePriorityOrigin + FVector(96.0f, 0.0f, 0.0f),
+			FRotator::ZeroRotator);
+		AGameXXKTownExitActor* GatePriorityExit = GatePriorityWorld->SpawnActor<AGameXXKTownExitActor>(
+			GatePriorityOrigin + FVector(256.0f, 0.0f, 0.0f),
+			FRotator::ZeroRotator);
+		TestNotNull(TEXT("gate priority test spawns player"), GatePriorityPlayer);
+		TestNotNull(TEXT("gate priority test spawns following quest NPC"), GatePriorityFollower);
+		TestNotNull(TEXT("gate priority test spawns town exit"), GatePriorityExit);
+		if (GatePriorityPlayer && GatePriorityFollower && GatePriorityExit)
+		{
+			GatePriorityFollower->SetNpcRole(EGameXXKTownNpcRole::Quest);
+			GatePriorityFollower->SetMVPSubsystemForTest(Subsystem);
+			GatePriorityFollower->ActivateFollower(GatePriorityPlayer, 96.0f);
+			GatePriorityExit->SetMVPSubsystemForTest(Subsystem);
+			GatePriorityPlayer->GetInteractionComponent()->SetFocusedActorForTest(GatePriorityFollower);
+			TestTrue(TEXT("following quest NPC initially owns F focus"),
+				GatePriorityPlayer->GetInteractionComponent()->GetFocusedActor() == GatePriorityFollower);
+			GatePriorityPlayer->Interact();
+			TestTrue(TEXT("F at town exit bypasses following quest NPC"), GatePriorityExit->WasLastInteractionSuccessful());
+			TestEqual(TEXT("F at town exit opens route when follower is nearby"),
+				Subsystem->GetRuntimeState().Screen,
+				EGameXXKScreen::DungeonMap);
+			Subsystem->FailDungeonToTown();
+		}
+		if (GatePriorityExit)
+		{
+			GatePriorityExit->Destroy();
+		}
+		if (GatePriorityFollower)
+		{
+			GatePriorityFollower->Destroy();
+		}
+		if (GatePriorityPlayer)
+		{
+			GatePriorityPlayer->Destroy();
+		}
+	}
+
 	AGameXXKTownNpcActor* FollowerNpc = NewObject<AGameXXKTownNpcActor>();
 	FollowerNpc->SetNpcRole(EGameXXKTownNpcRole::Follower);
 	FollowerNpc->ActivateFollower(Player, 96.0f);

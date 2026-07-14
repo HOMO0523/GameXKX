@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import unittest
 
 
@@ -31,6 +32,24 @@ class OcclusionCutoutPilotAssetContractTest(unittest.TestCase):
         self.assertIn("SM_thatched_roof_10", source)
         self.assertIn("SM_thatched_roof_12", source)
 
+    def test_authoring_script_does_not_reinitialize_an_existing_collection(self):
+        """Existing MPC parameter GUIDs are part of material-expression bindings.
+
+        Replacing the parameter arrays on every authoring pass gives every
+        scalar/vector a new GUID, invalidating already-authored Cutout and
+        full-family materials.  The script must only author defaults when it
+        creates the collection for the first time.
+        """
+        source = AUTHOR.read_text(encoding="utf-8")
+        self.assertRegex(
+            source,
+            re.compile(
+                r"collection = unreal\.EditorAssetLibrary\.load_asset\(MPC_PATH\)"
+                r"(?:\n    #.*)*"
+                r"\n    if collection is not None:\n        return collection"
+            ),
+        )
+
     def test_authoring_script_combines_circle_with_camera_to_hero_depth_gate(self):
         source = AUTHOR.read_text(encoding="utf-8")
         for token in (
@@ -53,14 +72,22 @@ class OcclusionCutoutPilotAssetContractTest(unittest.TestCase):
         for token in ("OcclusionFootY", "foot_gate", "foot_padding", "screen_g"):
             self.assertNotIn(token, source)
 
-    def test_authoring_script_uses_hero_custom_stencil_inside_the_circle(self):
+    def test_authoring_script_keeps_masked_surface_material_scene_texture_free(self):
+        """Masked surface materials cannot sample CustomStencil in UE 5.8.
+
+        The legacy fallback must retain its circular camera-to-hero depth gate,
+        but leave silhouette-only refinement to a future post-process path.
+        Otherwise UE substitutes the default grey material at runtime.
+        """
         source = AUTHOR.read_text(encoding="utf-8")
         for token in (
             "PPI_CUSTOM_STENCIL",
-            "OcclusionHeroStencilValue",
+            "MaterialExpressionSceneTexture",
             "hero_silhouette_gate",
             "gated_reveal_on_hero",
         ):
+            self.assertNotIn(token, source)
+        for token in ("OcclusionCameraLocation", "OcclusionHeroViewDepth", "gated_reveal"):
             self.assertIn(token, source)
 
     def test_authoring_script_multiplies_existing_mask_before_depth_gate(self):

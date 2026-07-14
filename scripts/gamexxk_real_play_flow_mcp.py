@@ -278,6 +278,15 @@ def _quest_interacted(probe: dict[str, Any]) -> bool:
     return bool(npc.get("was_last_interaction_successful") and npc.get("is_follower_active"))
 
 
+def _quest_dialog_open(probe: dict[str, Any]) -> bool:
+    dialog = _flow_widgets(probe).get("quest_dialog", {})
+    return bool(
+        isinstance(dialog, dict)
+        and _widget_visible(probe, "quest_dialog")
+        and dialog.get("is_dialog_open")
+    )
+
+
 def _expect_visual_state(probe: dict[str, Any], expected_state: str, expected_direction: str) -> dict[str, Any]:
     flipbook = _current_flipbook(probe)
     expected_token = f"/FB_Hero_{expected_state}_{expected_direction}."
@@ -798,6 +807,28 @@ class RealFlowHarness:
             )
         return best
 
+    def slate_button_for_visible_text(self, label: str) -> dict[str, Any]:
+        snapshot = self.slate_preview_snapshot()
+        label_index = snapshot.rfind(f'"{label}"')
+        if label_index < 0:
+            raise RuntimeError(f"Slate text '{label}' was not present in the preview snapshot: {snapshot[:2400]}")
+
+        candidates = [
+            {
+                "ref": match.group("ref"),
+                "disabled": bool(match.group("disabled")),
+                "x": int(match.group("x")),
+                "y": int(match.group("y")),
+                "w": int(match.group("w")),
+                "h": int(match.group("h")),
+            }
+            for match in SLATE_BUTTON_PATTERN.finditer(snapshot[:label_index])
+        ]
+        candidates = [candidate for candidate in candidates if not candidate["disabled"]]
+        if not candidates:
+            raise RuntimeError(f"No enabled Slate button precedes dialog text '{label}': {snapshot[:2400]}")
+        return candidates[-1]
+
     def click_route_node(self, probe: dict[str, Any], node_id: int) -> dict[str, Any]:
         node_state = _route_node_visual_state(probe, node_id)
         if not node_state:
@@ -814,6 +845,20 @@ class RealFlowHarness:
         self.event("route_node_slate_click", node_id=node_id, click_ok=click_ok, button=button, node_state=node_state)
         if not click_ok:
             raise RuntimeError(f"Slate click failed for route node {node_id}: button={button}")
+        time.sleep(0.45)
+        return self.probe()
+
+    def click_quest_dialog_accept(self) -> dict[str, Any]:
+        button = self.slate_button_for_visible_text("接取委托")
+        click_ok = bool(self.client.call_tool(
+            "Click",
+            {"ref": button["ref"], "button": "left", "doubleClick": False},
+            toolset_name=SLATE_TOOLSET,
+            timeout=self.client.timeout,
+        ))
+        self.event("quest_dialog_slate_click", click_ok=click_ok, button=button)
+        if not click_ok:
+            raise RuntimeError(f"Slate click failed for quest dialog accept button: {button}")
         time.sleep(0.45)
         return self.probe()
 
@@ -998,7 +1043,7 @@ class RealFlowHarness:
             raise RuntimeError("Quest NPC was not found in the playable town map")
         window = self.input.find_preview_window()
         near_quest = self.walk_to_world_location(window, after_move, quest_location)
-        after_interact: dict[str, Any] = {}
+        dialog_probe: dict[str, Any] = {}
         interact_probe: dict[str, Any] = near_quest
         for attempt in range(3):
             self.input.press_key(window, ord("F"), hold_seconds=0.08)
@@ -1006,15 +1051,32 @@ class RealFlowHarness:
             deadline = time.monotonic() + 2.0
             while time.monotonic() < deadline:
                 interact_probe = self.probe()
-                if _quest_interacted(interact_probe):
-                    after_interact = interact_probe
-                    self.event("wait_ok", label="F accepts quest through real interaction overlap", attempt=attempt + 1)
+                if _quest_dialog_open(interact_probe) and not _quest_interacted(interact_probe):
+                    dialog_probe = interact_probe
+                    self.event("wait_ok", label="F opens quest dialog without accepting the quest", attempt=attempt + 1)
                     break
                 time.sleep(0.35)
-            if after_interact:
+            if dialog_probe:
                 break
-        if not after_interact:
-            raise RuntimeError(f"Timed out waiting for F accepts quest through real interaction overlap; last probe={json.dumps(interact_probe, ensure_ascii=False)}")
+        if not dialog_probe:
+            raise RuntimeError(f"Timed out waiting for F to open the quest dialog without accepting; last probe={json.dumps(interact_probe, ensure_ascii=False)}")
+        quest_dialog_probe = {
+            "ok": _quest_dialog_open(dialog_probe) and not _quest_interacted(dialog_probe),
+            "widgets": _flow_widgets(dialog_probe),
+            "quest_npc": _quest_npc(dialog_probe),
+        }
+        self.event("quest_dialog_probe", **quest_dialog_probe)
+        if not quest_dialog_probe["ok"]:
+            raise RuntimeError(f"Quest dialog did not hold the confirmation state: {quest_dialog_probe}")
+        quest_dialog_path, _ = self.screenshot("real_flow_quest_dialog.png")
+
+        after_interact = self.click_quest_dialog_accept()
+        after_interact = self.wait_for(
+            "quest dialog accept button confirms quest and activates follower",
+            lambda probe: _quest_interacted(probe) and not _quest_dialog_open(probe),
+            timeout=5.0,
+            interval=0.35,
+        )
         quest_after_interact = _quest_npc(after_interact)
         quest_location_after_interact = quest_after_interact.get("location") if isinstance(quest_after_interact.get("location"), dict) else {}
         if not quest_location_after_interact:
@@ -1208,6 +1270,7 @@ class RealFlowHarness:
             "screenshots": {
                 "before_start": str(before_start_path),
                 "after_qingshan": str(after_qingshan_path),
+                "quest_dialog": str(quest_dialog_path),
                 "after_route_map": str(after_route_map_path),
                 "after_battle": str(after_battle_path),
             },

@@ -192,12 +192,22 @@ FText AGameXXKTownNpcCharacter::GetInteractionPrompt_Implementation() const
 
 void AGameXXKTownNpcCharacter::Interact_Implementation(APawn* InstigatorPawn)
 {
-	bLastInteractionSuccessful = ApplyDefaultInteraction(InstigatorPawn);
 	if (CanOfferQuest())
 	{
-		OnQuestInteract(InstigatorPawn);
+		if (AGameXXKMVPPlayerController* PlayerController = InstigatorPawn ? Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()) : nullptr)
+		{
+			if (PlayerController->OpenQuestDialogForNpc(this, InstigatorPawn))
+			{
+				bLastInteractionSuccessful = true;
+				return;
+			}
+		}
+		ConfirmQuestDialogInteraction(InstigatorPawn);
+		return;
 	}
-	else if (CanTrade())
+
+	bLastInteractionSuccessful = ApplyDefaultInteraction(InstigatorPawn);
+	if (CanTrade())
 	{
 		OnMerchantInteract(InstigatorPawn);
 	}
@@ -209,6 +219,27 @@ void AGameXXKTownNpcCharacter::Interact_Implementation(APawn* InstigatorPawn)
 			PlayerController->RefreshPlayerFlowWidgetsFromState();
 		}
 	}
+}
+
+bool AGameXXKTownNpcCharacter::ConfirmQuestDialogInteraction(APawn* InstigatorPawn)
+{
+	if (!CanOfferQuest())
+	{
+		bLastInteractionSuccessful = false;
+		return false;
+	}
+
+	bLastInteractionSuccessful = ApplyDefaultInteraction(InstigatorPawn);
+	OnQuestInteract(InstigatorPawn);
+	OnDefaultInteractionResolved(InstigatorPawn, bLastInteractionSuccessful);
+	if (bLastInteractionSuccessful && InstigatorPawn)
+	{
+		if (AGameXXKMVPPlayerController* PlayerController = Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()))
+		{
+			PlayerController->RefreshPlayerFlowWidgetsFromState();
+		}
+	}
+	return bLastInteractionSuccessful;
 }
 
 bool AGameXXKTownNpcCharacter::ApplyDefaultInteraction(APawn* InstigatorPawn)

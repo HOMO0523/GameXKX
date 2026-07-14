@@ -92,8 +92,10 @@ def _connect_property(source, output, material_property):
 
 def _collection_parameter(material, collection, parameter_name, x, y):
     expression = _node(material, unreal.MaterialExpressionCollectionParameter, x, y)
-    _set(expression, "collection", collection)
-    _set(expression, "parameter_name", parameter_name)
+    if not unreal.GameXXKMaterialAuthoringLibrary.bind_collection_parameter(
+        expression, collection, parameter_name
+    ):
+        raise RuntimeError(f"failed to bind collection parameter: {parameter_name}")
     return expression
 
 

@@ -59,6 +59,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town")
 	bool ApplyDefaultInteraction(APawn* InstigatorPawn);
 
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town")
+	bool ConfirmQuestDialogInteraction(APawn* InstigatorPawn);
+
 	void SetMVPSubsystemForTest(UGameXXKMVPSubsystem* InSubsystem);
 
 	virtual FText GetInteractionPrompt_Implementation() const override;

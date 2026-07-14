@@ -5,15 +5,15 @@
   "game_mode_class": "/Script/GameXXK.GameXXKMVPGameMode",
   "player_starts_cm": [
     [
-      15740.0,
-      5240.0,
-      1162.0
+      20170.0,
+      1700.0,
+      1592.0
     ]
   ],
   "location_cm": [
-    16126.2,
-    7150.6,
-    1075.0
+    19985.92,
+    5489.78,
+    1594.61
   ],
   "velocity_cm_s": [
     0.0,
@@ -21,11 +21,11 @@
     0.0
   ],
   "ground_hit_cm": [
-    16126.2,
-    7150.6,
-    1698.0
+    19985.92,
+    5489.78,
+    1505.0
   ],
-  "ground_actor": "GXXK_Blocker_Building_ThatchedRoof11",
+  "ground_actor": "SM_floor_03",
   "ground_component": "StaticMeshComponent0",
   "ground_payload_keys": [
     "blocking_hit",

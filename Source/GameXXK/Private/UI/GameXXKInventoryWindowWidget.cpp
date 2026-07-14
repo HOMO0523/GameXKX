@@ -18,6 +18,7 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/Texture2D.h"
 #include "GameXXKMVPRules.h"
+#include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
 namespace
@@ -1223,6 +1224,11 @@ bool UGameXXKInventoryWindowWidget::CancelDialog()
 
 void UGameXXKInventoryWindowWidget::HandleCloseClicked()
 {
+	if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
+	{
+		PlayerController->CloseInventoryWindow();
+		return;
+	}
 	CloseInventoryWindow();
 }
 
