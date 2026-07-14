@@ -35,6 +35,13 @@ enum class EGameXXKQuestState : uint8
 };
 
 UENUM(BlueprintType)
+enum class EGameXXKTaskCategory : uint8
+{
+	Main,
+	Side
+};
+
+UENUM(BlueprintType)
 enum class EGameXXKNodeKind : uint8
 {
 	Start,
@@ -93,6 +100,54 @@ struct FGameXXKItemDef
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MaxMPBonus = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FGameXXKTaskReward
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 Gold = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 Experience = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 Token = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FGameXXKTaskView
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName Id;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKTaskCategory Category = EGameXXKTaskCategory::Main;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FText Title;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FText Description;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 ProgressCurrent = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 ProgressTarget = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FGameXXKTaskReward Reward;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bCanNavigate = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName NavigationTarget;
 };
 
 USTRUCT(BlueprintType)
@@ -233,6 +288,9 @@ struct FGameXXKRuntimeState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKQuestState QuestState = EGameXXKQuestState::NotAccepted;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName TrackedTaskId = NAME_None;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName CurrentRegion;
@@ -422,6 +480,9 @@ public:
 	static FName ItemClothTalisman();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FName TaskQingshanMain();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FGameXXKItemDef GetItemDef(FName ItemId, bool& bFound);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
@@ -432,6 +493,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FGameXXKRuntimeState CreateNewGame();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static TArray<FGameXXKTaskView> BuildTaskViews(const FGameXXKRuntimeState& State, EGameXXKTaskCategory Category);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool ToggleTrackedTask(UPARAM(ref) FGameXXKRuntimeState& State, FName TaskId);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool OpenWorldMap(UPARAM(ref) FGameXXKRuntimeState& State);

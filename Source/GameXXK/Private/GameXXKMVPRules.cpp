@@ -16,6 +16,9 @@ namespace GameXXKMVP
 	static const FName ItemWoodenSwordName(TEXT("Item.WoodenSword"));
 	static const FName ItemStarterClothArmorName(TEXT("Item.StarterClothArmor"));
 	static const FName ItemClothTalismanName(TEXT("Item.ClothTalisman"));
+	static const FName TaskQingshanMainName(TEXT("Task.QingshanMain"));
+	static const FName QingshanTownQuestNpcNavigationTarget(TEXT("QingshanTown_QuestNpc"));
+	static const FName QingshanInnTownExitNavigationTarget(TEXT("QingshanInn_TownExit"));
 
 	static FGameXXKItemDef MakeItem(FName Id, const TCHAR* DisplayName, EGameXXKItemKind Kind, int32 Buy, int32 Sell, int32 Heal, int32 MPHeal, int32 Attack, int32 Defense, int32 MaxHP, int32 MaxMP)
 	{
@@ -882,6 +885,62 @@ FGameXXKRuntimeState UGameXXKMVPRules::CreateNewGame()
 	AddItem(State, ItemStarterClothArmor(), 1);
 	AddItem(State, ItemClothTalisman(), 1);
 	return State;
+}
+
+FName UGameXXKMVPRules::TaskQingshanMain()
+{
+	return GameXXKMVP::TaskQingshanMainName;
+}
+
+TArray<FGameXXKTaskView> UGameXXKMVPRules::BuildTaskViews(const FGameXXKRuntimeState& State, EGameXXKTaskCategory Category)
+{
+	TArray<FGameXXKTaskView> Tasks;
+	if (Category != EGameXXKTaskCategory::Main)
+	{
+		return Tasks;
+	}
+
+	FGameXXKTaskView Task;
+	Task.Id = TaskQingshanMain();
+	Task.Category = EGameXXKTaskCategory::Main;
+	Task.Title = NSLOCTEXT("GameXXKTaskPanel", "QingshanMainTitle", "初入江湖");
+	Task.ProgressTarget = 1;
+	Task.Reward.Gold = 500;
+	Task.Reward.Experience = 1200;
+	Task.Reward.Token = 10;
+
+	switch (State.QuestState)
+	{
+	case EGameXXKQuestState::Accepted:
+		Task.Description = NSLOCTEXT("GameXXKTaskPanel", "QingshanMainAcceptedDescription", "与引路人同行，前往北门出口");
+		Task.ProgressCurrent = 1;
+		Task.bCanNavigate = true;
+		Task.NavigationTarget = GameXXKMVP::QingshanInnTownExitNavigationTarget;
+		break;
+	case EGameXXKQuestState::Completed:
+		Task.Description = NSLOCTEXT("GameXXKTaskPanel", "QingshanMainCompletedDescription", "黄山之行已经完成");
+		Task.ProgressCurrent = 1;
+		break;
+	case EGameXXKQuestState::NotAccepted:
+	default:
+		Task.Description = NSLOCTEXT("GameXXKTaskPanel", "QingshanMainNotAcceptedDescription", "前往青山镇寻找引路人");
+		Task.NavigationTarget = GameXXKMVP::QingshanTownQuestNpcNavigationTarget;
+		break;
+	}
+
+	Tasks.Add(MoveTemp(Task));
+	return Tasks;
+}
+
+bool UGameXXKMVPRules::ToggleTrackedTask(FGameXXKRuntimeState& State, FName TaskId)
+{
+	if (TaskId != TaskQingshanMain())
+	{
+		return false;
+	}
+
+	State.TrackedTaskId = State.TrackedTaskId == TaskId ? NAME_None : TaskId;
+	return true;
 }
 
 bool UGameXXKMVPRules::OpenWorldMap(FGameXXKRuntimeState& State)
