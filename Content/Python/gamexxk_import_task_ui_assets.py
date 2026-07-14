@@ -52,23 +52,20 @@ def import_texture(filename: str, asset_name: str) -> str:
     asset_registry.scan_paths_synchronous([DESTINATION], True)
     asset_path = f"{DESTINATION}/{asset_name}"
     object_path = f"{asset_path}.{asset_name}"
+    # Always import with replacement so the commandlet updates existing task
+    # textures after their source PNG has been revised.
+    task = unreal.AssetImportTask()
+    task.filename = str(source)
+    task.destination_path = DESTINATION
+    task.destination_name = asset_name
+    task.automated = True
+    task.replace_existing = True
+    task.save = False
+    unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
     texture = (
         unreal.EditorAssetLibrary.load_asset(object_path)
         or unreal.EditorAssetLibrary.load_asset(asset_path)
     )
-    if not isinstance(texture, unreal.Texture2D):
-        task = unreal.AssetImportTask()
-        task.filename = str(source)
-        task.destination_path = DESTINATION
-        task.destination_name = asset_name
-        task.automated = True
-        task.replace_existing = True
-        task.save = False
-        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-        texture = (
-            unreal.EditorAssetLibrary.load_asset(object_path)
-            or unreal.EditorAssetLibrary.load_asset(asset_path)
-        )
 
     if not isinstance(texture, unreal.Texture2D):
         loaded_class = texture.get_class().get_name() if texture else "None"
