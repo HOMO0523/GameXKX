@@ -125,10 +125,10 @@ void UGameXXKTownHudWidget::RefreshFromState()
 	}
 
 	const int32 Power = State->PlayerAttack + State->PlayerDefense + State->PlayerSpeed;
-	int32 MaterialCount = 0;
+	int32 InventoryStackCount = 0;
 	for (const TPair<FName, int32>& Entry : State->Inventory)
 	{
-		MaterialCount += FMath::Max(0, Entry.Value);
+		InventoryStackCount += FMath::Max(0, Entry.Value);
 	}
 	if (LevelText)
 	{
@@ -146,13 +146,13 @@ void UGameXXKTownHudWidget::RefreshFromState()
 	{
 		GoldText->SetText(FText::FromString(FString::FromInt(State->PlayerGold)));
 	}
-	if (ExperienceResourceText)
+	if (EnhancementMaterialText)
 	{
-		ExperienceResourceText->SetText(FText::FromString(FString::FromInt(State->PlayerXP)));
+		EnhancementMaterialText->SetText(FText::AsNumber(FMath::Max(0, State->EnhancementMaterial)));
 	}
 	if (MaterialText)
 	{
-		MaterialText->SetText(FText::FromString(FString::FromInt(MaterialCount)));
+		MaterialText->SetText(FText::AsNumber(InventoryStackCount));
 	}
 	RefreshPanels();
 }
@@ -182,22 +182,22 @@ void UGameXXKTownHudWidget::BuildProgrammaticLayout()
 	AddCanvasChild(RootCanvas, ExperienceText, FVector2D(185.0f, 83.0f), FVector2D(180.0f, 28.0f));
 	AddCanvasChild(RootCanvas, PowerText, FVector2D(185.0f, 120.0f), FVector2D(190.0f, 30.0f));
 
-	if (UImage* Sidebar = MakeImage(WidgetTree, NavSidebarTexturePath, FVector2D(78.0f, 430.0f)))
+	if (UImage* Sidebar = MakeImage(WidgetTree, NavSidebarTexturePath, FVector2D(78.0f, 324.0f)))
 	{
-		AddCanvasChild(RootCanvas, Sidebar, FVector2D(22.0f, 210.0f), FVector2D(78.0f, 430.0f));
+		AddCanvasChild(RootCanvas, Sidebar, FVector2D(22.0f, 210.0f), FVector2D(78.0f, 324.0f));
 	}
 	auto MakeNavButton = [this](const FName Name, const FString& TexturePath, float Y) -> UButton*
 	{
 		UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
-		Button->SetStyle(MakeTextureButtonStyle(TexturePath, FVector2D(66.0f, 68.0f)));
-		AddCanvasChild(RootCanvas, Button, FVector2D(28.0f, Y), FVector2D(66.0f, 68.0f));
+		Button->SetStyle(MakeTextureButtonStyle(TexturePath, FVector2D(66.0f, 59.0f)));
+		AddCanvasChild(RootCanvas, Button, FVector2D(28.0f, Y), FVector2D(66.0f, 59.0f));
 		return Button;
 	};
-	TaskButton = MakeNavButton(TEXT("TownHudTask"), NavTaskTexturePath, 225.0f);
-	InventoryButton = MakeNavButton(TEXT("TownHudInventory"), NavInventoryTexturePath, 305.0f);
-	CharacterButton = MakeNavButton(TEXT("TownHudCharacter"), NavRefineTexturePath, 385.0f);
-	MapButton = MakeNavButton(TEXT("TownHudMap"), NavMapTexturePath, 465.0f);
-	CompanionButton = MakeNavButton(TEXT("TownHudCompanion"), NavFriendsTexturePath, 545.0f);
+	TaskButton = MakeNavButton(TEXT("TownHudTask"), NavTaskTexturePath, 221.0f);
+	InventoryButton = MakeNavButton(TEXT("TownHudInventory"), NavInventoryTexturePath, 284.0f);
+	CharacterButton = MakeNavButton(TEXT("TownHudCharacter"), NavRefineTexturePath, 347.0f);
+	MapButton = MakeNavButton(TEXT("TownHudMap"), NavMapTexturePath, 410.0f);
+	CompanionButton = MakeNavButton(TEXT("TownHudCompanion"), NavFriendsTexturePath, 473.0f);
 	if (TaskButton)
 	{
 		TaskButton->OnClicked.AddDynamic(this, &UGameXXKTownHudWidget::HandleTaskClicked);
@@ -219,46 +219,58 @@ void UGameXXKTownHudWidget::BuildProgrammaticLayout()
 		CompanionButton->OnClicked.AddDynamic(this, &UGameXXKTownHudWidget::HandleCompanionClicked);
 	}
 
-	auto MakeResource = [this](const FString& TexturePath, float X, UTextBlock*& OutText)
+	auto MakeResource = [this](const FString& TexturePath, const FVector2D& IconSize, float X) -> UTextBlock*
 	{
-		if (UImage* Icon = MakeImage(WidgetTree, TexturePath, FVector2D(30.0f, 30.0f)))
+		if (UImage* Icon = MakeImage(WidgetTree, TexturePath, IconSize))
 		{
-			AddCanvasChild(RootCanvas, Icon, FVector2D(X, 24.0f), FVector2D(30.0f, 30.0f), FVector2D::ZeroVector, FAnchors(1.0f, 0.0f));
+			AddCanvasChild(RootCanvas, Icon, FVector2D(X, 22.0f), IconSize, FVector2D::ZeroVector, FAnchors(1.0f, 0.0f));
 		}
-		OutText = MakeText(WidgetTree, FText::GetEmpty(), 18);
-		AddCanvasChild(RootCanvas, OutText, FVector2D(X + 35.0f, 23.0f), FVector2D(72.0f, 31.0f), FVector2D::ZeroVector, FAnchors(1.0f, 0.0f));
+		UTextBlock* OutText = MakeText(WidgetTree, FText::GetEmpty(), 17);
+		AddCanvasChild(RootCanvas, OutText, FVector2D(X + IconSize.X + 5.0f, 22.0f), FVector2D(60.0f, 31.0f), FVector2D::ZeroVector, FAnchors(1.0f, 0.0f));
+		return OutText;
 	};
-	MakeResource(ResourceCoinTexturePath, -380.0f, GoldText);
-	MakeResource(ResourceGreenTexturePath, -250.0f, ExperienceResourceText);
-	MakeResource(ResourceIngotTexturePath, -120.0f, MaterialText);
-	ResourcePlusButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("TownHudResourcePlus"));
-	ResourcePlusButton->SetStyle(MakeTextureButtonStyle(ResourcePlusTexturePath, FVector2D(28.0f, 28.0f)));
-	ResourcePlusButton->OnClicked.AddDynamic(this, &UGameXXKTownHudWidget::HandleResourcePlusClicked);
-	AddCanvasChild(RootCanvas, ResourcePlusButton, FVector2D(-38.0f, 25.0f), FVector2D(28.0f, 28.0f), FVector2D::ZeroVector, FAnchors(1.0f, 0.0f));
+	GoldText = MakeResource(ResourceCoinTexturePath, FVector2D(30.6f, 30.0f), -650.0f);
+	EnhancementMaterialText = MakeResource(ResourceGreenTexturePath, FVector2D(31.9f, 30.0f), -470.0f);
+	MaterialText = MakeResource(ResourceIngotTexturePath, FVector2D(31.5f, 30.0f), -290.0f);
+	auto MakeResourcePlusButton = [this](const FName Name, float X) -> UButton*
+	{
+		const FVector2D PlusSize(21.6f, 24.0f);
+		UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
+		Button->SetStyle(MakeTextureButtonStyle(ResourcePlusTexturePath, PlusSize));
+		Button->OnClicked.AddDynamic(this, &UGameXXKTownHudWidget::HandleResourcePlusClicked);
+		AddCanvasChild(RootCanvas, Button, FVector2D(X, 25.0f), PlusSize, FVector2D::ZeroVector, FAnchors(1.0f, 0.0f));
+		return Button;
+	};
+	CoinResourcePlusButton = MakeResourcePlusButton(TEXT("TownHudCoinResourcePlus"), -550.0f);
+	EnhancementMaterialPlusButton = MakeResourcePlusButton(TEXT("TownHudEnhancementMaterialPlus"), -370.0f);
+	InventoryStackPlusButton = MakeResourcePlusButton(TEXT("TownHudInventoryStackPlus"), -190.0f);
 
 	CharacterPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("TownHudCharacterPanel"));
-	CharacterPanel->SetPadding(FMargin(24.0f));
+	CharacterPanel->SetPadding(FMargin(26.0f, 78.0f, 24.0f, 24.0f));
 	CharacterPanel->SetBrushColor(FLinearColor(0.95f, 0.91f, 0.83f, 0.97f));
-	CharacterStatsText = MakeText(WidgetTree, FText::GetEmpty(), 20);
+	CharacterStatsText = MakeText(WidgetTree, FText::GetEmpty(), 18);
 	CharacterPanel->SetContent(CharacterStatsText);
 	CharacterPanel->SetVisibility(ESlateVisibility::Collapsed);
-	AddCanvasChild(RootCanvas, CharacterPanel, FVector2D(-28.0f, 130.0f), FVector2D(410.0f, 300.0f), FVector2D(1.0f, 0.0f), FAnchors(1.0f, 0.0f));
-	if (UImage* CharacterLabel = MakeImage(WidgetTree, CharacterAttributeTexturePath, FVector2D(105.0f, 40.0f)))
+	AddCanvasChild(RootCanvas, CharacterPanel, FVector2D(-28.0f, 130.0f), FVector2D(410.0f, 360.0f), FVector2D(1.0f, 0.0f), FAnchors(1.0f, 0.0f));
+	CharacterLabel = MakeImage(WidgetTree, CharacterAttributeTexturePath, FVector2D(105.0f, 55.0f));
+	if (CharacterLabel)
 	{
-		AddCanvasChild(RootCanvas, CharacterLabel, FVector2D(-408.0f, 140.0f), FVector2D(105.0f, 40.0f), FVector2D::ZeroVector, FAnchors(1.0f, 0.0f));
+		CharacterLabel->SetVisibility(ESlateVisibility::Collapsed);
+		AddCanvasChild(RootCanvas, CharacterLabel, FVector2D(-408.0f, 140.0f), FVector2D(105.0f, 55.0f), FVector2D::ZeroVector, FAnchors(1.0f, 0.0f));
 	}
 
 	CompanionPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("TownHudCompanionPanel"));
-	CompanionPanel->SetPadding(FMargin(24.0f));
+	CompanionPanel->SetPadding(FMargin(26.0f, 78.0f, 24.0f, 22.0f));
 	CompanionPanel->SetBrushColor(FLinearColor(0.95f, 0.91f, 0.83f, 0.97f));
-	CompanionStatusText = MakeText(WidgetTree, FText::GetEmpty(), 20);
+	CompanionStatusText = MakeText(WidgetTree, FText::GetEmpty(), 19);
 	CompanionPanel->SetContent(CompanionStatusText);
 	CompanionPanel->SetVisibility(ESlateVisibility::Collapsed);
-	AddCanvasChild(RootCanvas, CompanionPanel, FVector2D(-28.0f, 130.0f), FVector2D(410.0f, 240.0f), FVector2D(1.0f, 0.0f), FAnchors(1.0f, 0.0f));
-	if (UImage* CompanionLabel = MakeImage(WidgetTree, CompanionTabTexturePath, FVector2D(105.0f, 40.0f)))
+	AddCanvasChild(RootCanvas, CompanionPanel, FVector2D(-28.0f, 130.0f), FVector2D(410.0f, 260.0f), FVector2D(1.0f, 0.0f), FAnchors(1.0f, 0.0f));
+	CompanionLabel = MakeImage(WidgetTree, CompanionTabTexturePath, FVector2D(105.0f, 53.0f));
+	if (CompanionLabel)
 	{
-		CompanionLabel->SetVisibility(ESlateVisibility::HitTestInvisible);
-		AddCanvasChild(RootCanvas, CompanionLabel, FVector2D(-408.0f, 140.0f), FVector2D(105.0f, 40.0f), FVector2D::ZeroVector, FAnchors(1.0f, 0.0f));
+		CompanionLabel->SetVisibility(ESlateVisibility::Collapsed);
+		AddCanvasChild(RootCanvas, CompanionLabel, FVector2D(-408.0f, 140.0f), FVector2D(105.0f, 53.0f), FVector2D::ZeroVector, FAnchors(1.0f, 0.0f));
 	}
 
 	NoticeText = MakeText(WidgetTree, FText::GetEmpty(), 19, FLinearColor(0.24f, 0.18f, 0.10f, 1.0f));
@@ -268,6 +280,17 @@ void UGameXXKTownHudWidget::BuildProgrammaticLayout()
 
 void UGameXXKTownHudWidget::RefreshPanels()
 {
+	const bool bCharacterOpen = CharacterPanel && CharacterPanel->GetVisibility() != ESlateVisibility::Collapsed;
+	const bool bCompanionOpen = CompanionPanel && CompanionPanel->GetVisibility() != ESlateVisibility::Collapsed;
+	if (CharacterLabel)
+	{
+		CharacterLabel->SetVisibility(bCharacterOpen ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (CompanionLabel)
+	{
+		CompanionLabel->SetVisibility(bCompanionOpen ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem)
 	{
@@ -298,6 +321,19 @@ void UGameXXKTownHudWidget::RefreshPanels()
 	}
 }
 
+void UGameXXKTownHudWidget::CloseAuxiliaryPanels()
+{
+	if (CharacterPanel)
+	{
+		CharacterPanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (CompanionPanel)
+	{
+		CompanionPanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	RefreshPanels();
+}
+
 void UGameXXKTownHudWidget::SetNotice(const FText& Notice)
 {
 	if (NoticeText)
@@ -310,14 +346,8 @@ void UGameXXKTownHudWidget::HandleTaskClicked()
 {
 	if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
 	{
-		if (CharacterPanel)
-		{
-			CharacterPanel->SetVisibility(ESlateVisibility::Collapsed);
-		}
-		if (CompanionPanel)
-		{
-			CompanionPanel->SetVisibility(ESlateVisibility::Collapsed);
-		}
+		CloseAuxiliaryPanels();
+		SetNotice(FText::GetEmpty());
 		PlayerController->OpenTaskPanel();
 	}
 }
@@ -326,17 +356,19 @@ void UGameXXKTownHudWidget::HandleInventoryClicked()
 {
 	if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
 	{
-		PlayerController->CloseTaskPanel();
+		CloseAuxiliaryPanels();
+		SetNotice(FText::GetEmpty());
 		PlayerController->OpenFreeInventoryWindow();
 	}
 }
 
 void UGameXXKTownHudWidget::HandleCharacterClicked()
 {
+	SetNotice(FText::GetEmpty());
 	if (CharacterPanel)
 	{
 		const bool bOpen = CharacterPanel->GetVisibility() != ESlateVisibility::Collapsed;
-		CharacterPanel->SetVisibility(bOpen ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		CharacterPanel->SetVisibility(bOpen ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
 	}
 	if (CompanionPanel)
 	{
@@ -347,15 +379,17 @@ void UGameXXKTownHudWidget::HandleCharacterClicked()
 
 void UGameXXKTownHudWidget::HandleMapClicked()
 {
+	CloseAuxiliaryPanels();
 	SetNotice(NSLOCTEXT("GameXXKTownHud", "MapLocked", "黄山世界地图暂未开放，当前请在青山镇推进主线。"));
 }
 
 void UGameXXKTownHudWidget::HandleCompanionClicked()
 {
+	SetNotice(FText::GetEmpty());
 	if (CompanionPanel)
 	{
 		const bool bOpen = CompanionPanel->GetVisibility() != ESlateVisibility::Collapsed;
-		CompanionPanel->SetVisibility(bOpen ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		CompanionPanel->SetVisibility(bOpen ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
 	}
 	if (CharacterPanel)
 	{
@@ -368,9 +402,8 @@ void UGameXXKTownHudWidget::HandleResourcePlusClicked()
 {
 	if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
 	{
-		if (PlayerController->OpenMerchantTradeWindow())
-		{
-			SetNotice(NSLOCTEXT("GameXXKTownHud", "MerchantOpened", "已打开商店。"));
-		}
+		CloseAuxiliaryPanels();
+		SetNotice(FText::GetEmpty());
+		PlayerController->OpenFreeInventoryWindow();
 	}
 }

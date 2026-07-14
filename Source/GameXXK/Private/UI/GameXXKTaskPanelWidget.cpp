@@ -8,6 +8,8 @@
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
+#include "Components/SizeBox.h"
+#include "Components/Spacer.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
@@ -18,18 +20,24 @@
 namespace
 {
 	const FVector2D PanelSize(1040.0f, 660.0f);
-	const FString TextureRoot(TEXT("/Game/GameXXK/UI/Town/Textures/Task/"));
-	const FString BackArrowTexturePath(TextureRoot + TEXT("T_TownTask_BackArrow.T_TownTask_BackArrow"));
-	const FString TitleTexturePath(TextureRoot + TEXT("T_TownTask_Title.T_TownTask_Title"));
-	const FString TabMainTexturePath(TextureRoot + TEXT("T_TownTask_TabMain.T_TownTask_TabMain"));
-	const FString TabSideTexturePath(TextureRoot + TEXT("T_TownTask_TabSide.T_TownTask_TabSide"));
-	const FString TabDailyTexturePath(TextureRoot + TEXT("T_TownTask_TabDaily.T_TownTask_TabDaily"));
-	const FString TabAdventureTexturePath(TextureRoot + TEXT("T_TownTask_TabAdventure.T_TownTask_TabAdventure"));
-	const FString ActionTrackTexturePath(TextureRoot + TEXT("T_TownTask_ActionTrack.T_TownTask_ActionTrack"));
-	const FString ActionGoTexturePath(TextureRoot + TEXT("T_TownTask_ActionGo.T_TownTask_ActionGo"));
-	const FString RewardCoinTexturePath(TextureRoot + TEXT("T_TownTask_RewardCoin.T_TownTask_RewardCoin"));
-	const FString RewardExperienceTexturePath(TextureRoot + TEXT("T_TownTask_RewardExp.T_TownTask_RewardExp"));
-	const FString RewardTokenTexturePath(TextureRoot + TEXT("T_TownTask_RewardToken.T_TownTask_RewardToken"));
+	// The reference task panel supports three compact rows. Keep the row itself
+	// fixed instead of filling all remaining list height when only one task is
+	// available, so the paper frame and action keep their intended proportions.
+	constexpr float TaskEntryHeight = 145.0f;
+	constexpr float TaskEntryGap = 10.0f;
+	const FString TextureRoot(TEXT("/Game/GameXXK/UI/Tasks/Textures/"));
+	const FString PanelFrameTexturePath(TextureRoot + TEXT("T_TaskPanelFrame.T_TaskPanelFrame"));
+	const FString BackArrowTexturePath(TextureRoot + TEXT("T_TaskPanelBackArrow.T_TaskPanelBackArrow"));
+	const FString TitleTexturePath(TextureRoot + TEXT("T_TaskPanelTitle.T_TaskPanelTitle"));
+	const FString TabSelectedTexturePath(TextureRoot + TEXT("T_TaskTabSelected.T_TaskTabSelected"));
+	const FString TabNormalTexturePath(TextureRoot + TEXT("T_TaskTabNormal.T_TaskTabNormal"));
+	const FString TabMainLabelTexturePath(TextureRoot + TEXT("T_TaskTabLabelMain.T_TaskTabLabelMain"));
+	const FString TabSideLabelTexturePath(TextureRoot + TEXT("T_TaskTabLabelSide.T_TaskTabLabelSide"));
+	const FString EntryFrameTexturePath(TextureRoot + TEXT("T_TaskEntryFrame.T_TaskEntryFrame"));
+	const FString AcceptActionTexturePath(TextureRoot + TEXT("T_TaskActionTrack.T_TaskActionTrack"));
+	const FString RewardCoinTexturePath(TextureRoot + TEXT("T_RewardCoin.T_RewardCoin"));
+	const FString RewardExperienceTexturePath(TextureRoot + TEXT("T_RewardExp.T_RewardExp"));
+	const FString RewardTokenTexturePath(TextureRoot + TEXT("T_RewardToken.T_RewardToken"));
 
 	UTexture2D* LoadTexture(const FString& Path)
 	{
@@ -46,6 +54,14 @@ namespace
 		return Brush;
 	}
 
+	FSlateBrush MakeTextureBoxBrush(const FString& Path, const FVector2D& ImageSize, const FMargin& Margin, const FLinearColor& Tint = FLinearColor::White)
+	{
+		FSlateBrush Brush = MakeTextureBrush(Path, ImageSize, Tint);
+		Brush.DrawAs = ESlateBrushDrawType::Box;
+		Brush.Margin = Margin;
+		return Brush;
+	}
+
 	FButtonStyle MakeTextureButtonStyle(const FString& Path, const FVector2D& ImageSize)
 	{
 		FButtonStyle Style;
@@ -53,6 +69,16 @@ namespace
 		Style.SetHovered(MakeTextureBrush(Path, ImageSize, FLinearColor(1.08f, 1.08f, 1.08f, 1.0f)));
 		Style.SetPressed(MakeTextureBrush(Path, ImageSize, FLinearColor(0.82f, 0.82f, 0.82f, 1.0f)));
 		Style.SetDisabled(MakeTextureBrush(Path, ImageSize, FLinearColor(0.5f, 0.5f, 0.5f, 0.72f)));
+		return Style;
+	}
+
+	FButtonStyle MakeTextureBoxButtonStyle(const FString& Path, const FVector2D& ImageSize, const FMargin& Margin)
+	{
+		FButtonStyle Style;
+		Style.SetNormal(MakeTextureBoxBrush(Path, ImageSize, Margin));
+		Style.SetHovered(MakeTextureBoxBrush(Path, ImageSize, Margin, FLinearColor(1.08f, 1.08f, 1.08f, 1.0f)));
+		Style.SetPressed(MakeTextureBoxBrush(Path, ImageSize, Margin, FLinearColor(0.82f, 0.82f, 0.82f, 1.0f)));
+		Style.SetDisabled(MakeTextureBoxBrush(Path, ImageSize, Margin, FLinearColor(0.5f, 0.5f, 0.5f, 0.72f)));
 		return Style;
 	}
 
@@ -142,7 +168,16 @@ void UGameXXKTaskPanelWidget::RefreshFromState()
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Town)
 	{
-		CloseTaskPanel();
+		// Route state-driven closure through the controller so its modal input lock is
+		// released together with the visual panel.
+		if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
+		{
+			PlayerController->CloseTaskPanel();
+		}
+		else
+		{
+			CloseTaskPanel();
+		}
 		return;
 	}
 	if (IsTaskPanelOpenForTest())
@@ -153,6 +188,27 @@ void UGameXXKTaskPanelWidget::RefreshFromState()
 
 bool UGameXXKTaskPanelWidget::OpenTaskPanel()
 {
+	bShowingTaskOffers = false;
+	// Q/HUD always presents the accepted main-task list first.  Do not retain an
+	// old Side selection, because the MVP currently has no accepted side task.
+	ActiveCategory = EGameXXKTaskCategory::Main;
+	BuildProgrammaticLayout();
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Town)
+	{
+		return false;
+	}
+	SetVisibility(ESlateVisibility::Visible);
+	RebuildTaskList();
+	return true;
+}
+
+bool UGameXXKTaskPanelWidget::OpenTaskOfferPanel()
+{
+	bShowingTaskOffers = true;
+	// Every F interaction starts from the NPC's available main-task offer,
+	// rather than retaining a category selected during a previous interaction.
+	ActiveCategory = EGameXXKTaskCategory::Main;
 	BuildProgrammaticLayout();
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Town)
@@ -177,7 +233,27 @@ bool UGameXXKTaskPanelWidget::IsTaskPanelOpenForTest() const
 
 bool UGameXXKTaskPanelWidget::HasAllTaskFiltersForTest() const
 {
-	return MainTabButton && SideTabButton && DailyTabButton && AdventureTabButton;
+	return HasMainAndSideTaskFiltersForTest();
+}
+
+bool UGameXXKTaskPanelWidget::HasMainAndSideTaskFiltersForTest() const
+{
+	return MainTabButton && SideTabButton;
+}
+
+bool UGameXXKTaskPanelWidget::IsShowingTaskOffersForTest() const
+{
+	return bShowingTaskOffers;
+}
+
+bool UGameXXKTaskPanelWidget::IsShowingAcceptedTasksForTest() const
+{
+	return !bShowingTaskOffers;
+}
+
+bool UGameXXKTaskPanelWidget::HasPrimaryTaskActionForTest() const
+{
+	return bHasPrimaryTaskAction;
 }
 
 EGameXXKTaskCategory UGameXXKTaskPanelWidget::GetActiveCategoryForTest() const
@@ -200,6 +276,24 @@ bool UGameXXKTaskPanelWidget::TriggerPrimaryTaskActionForTest()
 	return TriggerTaskAction(0);
 }
 
+bool UGameXXKTaskPanelWidget::HasVisibleTaskOffer(FName TaskId) const
+{
+	if (!bShowingTaskOffers || TaskId.IsNone())
+	{
+		return false;
+	}
+
+	for (int32 TaskIndex = 0; TaskIndex < VisibleTasks.Num() && TaskIndex < 3; ++TaskIndex)
+	{
+		const FGameXXKTaskView& Task = VisibleTasks[TaskIndex];
+		if (Task.Id == TaskId)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 void UGameXXKTaskPanelWidget::BuildProgrammaticLayout()
 {
 	if (!WidgetTree)
@@ -215,35 +309,36 @@ void UGameXXKTaskPanelWidget::BuildProgrammaticLayout()
 	WidgetTree->RootWidget = RootCanvas;
 
 	PanelBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("TownTaskPanelPaper"));
-	PanelBorder->SetPadding(FMargin(28.0f));
-	PanelBorder->SetBrushColor(FLinearColor(0.955f, 0.915f, 0.83f, 0.985f));
+	PanelBorder->SetPadding(FMargin(34.0f));
+	PanelBorder->SetBrush(MakeTextureBoxBrush(PanelFrameTexturePath, PanelSize, FMargin(0.045f)));
 	AddCanvasChild(RootCanvas, PanelBorder, FVector2D::ZeroVector, PanelSize, FVector2D(0.5f, 0.5f), FAnchors(0.5f, 0.5f));
 
 	UCanvasPanel* ContentCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("TownTaskPanelContent"));
 	PanelBorder->SetContent(ContentCanvas);
 
 	CloseButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("TownTaskPanelClose"));
-	CloseButton->SetStyle(MakeTextureButtonStyle(BackArrowTexturePath, FVector2D(42.0f, 38.0f)));
+	CloseButton->SetStyle(MakeTextureButtonStyle(BackArrowTexturePath, FVector2D(50.0f, 27.0f)));
 	CloseButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleCloseClicked);
-	AddCanvasChild(ContentCanvas, CloseButton, FVector2D(12.0f, 12.0f), FVector2D(42.0f, 38.0f));
+	AddCanvasChild(ContentCanvas, CloseButton, FVector2D(12.0f, 25.0f), FVector2D(50.0f, 27.0f));
 
-	if (UImage* TitleImage = MakeImage(WidgetTree, TitleTexturePath, FVector2D(145.0f, 50.0f)))
+	if (UImage* TitleImage = MakeImage(WidgetTree, TitleTexturePath, FVector2D(110.0f, 56.0f)))
 	{
-		AddCanvasChild(ContentCanvas, TitleImage, FVector2D(70.0f, 8.0f), FVector2D(145.0f, 50.0f));
+		AddCanvasChild(ContentCanvas, TitleImage, FVector2D(72.0f, 10.0f), FVector2D(110.0f, 56.0f));
 	}
 
-	auto MakeTabButton = [this, ContentCanvas](const FName Name, const FString& TexturePath, const FVector2D& Position) -> UButton*
+	auto MakeTabButton = [this, ContentCanvas](const FName Name, const FString& LabelTexturePath, const FVector2D& Position) -> UButton*
 	{
 		UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
-		Button->SetStyle(MakeTextureButtonStyle(TexturePath, FVector2D(150.0f, 62.0f)));
-		AddCanvasChild(ContentCanvas, Button, Position, FVector2D(150.0f, 62.0f));
+		if (UImage* LabelImage = MakeImage(WidgetTree, LabelTexturePath, FVector2D(160.0f, 80.0f)))
+		{
+			Button->SetContent(LabelImage);
+		}
+		AddCanvasChild(ContentCanvas, Button, Position, FVector2D(160.0f, 80.0f));
 		return Button;
 	};
 
-	MainTabButton = MakeTabButton(TEXT("TownTaskTabMain"), TabMainTexturePath, FVector2D(14.0f, 95.0f));
-	SideTabButton = MakeTabButton(TEXT("TownTaskTabSide"), TabSideTexturePath, FVector2D(14.0f, 177.0f));
-	DailyTabButton = MakeTabButton(TEXT("TownTaskTabDaily"), TabDailyTexturePath, FVector2D(14.0f, 259.0f));
-	AdventureTabButton = MakeTabButton(TEXT("TownTaskTabAdventure"), TabAdventureTexturePath, FVector2D(14.0f, 341.0f));
+	MainTabButton = MakeTabButton(TEXT("TownTaskTabMain"), TabMainLabelTexturePath, FVector2D(12.0f, 110.0f));
+	SideTabButton = MakeTabButton(TEXT("TownTaskTabSide"), TabSideLabelTexturePath, FVector2D(12.0f, 204.0f));
 	if (MainTabButton)
 	{
 		MainTabButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleMainTabClicked);
@@ -252,17 +347,9 @@ void UGameXXKTaskPanelWidget::BuildProgrammaticLayout()
 	{
 		SideTabButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleSideTabClicked);
 	}
-	if (DailyTabButton)
-	{
-		DailyTabButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleDailyTabClicked);
-	}
-	if (AdventureTabButton)
-	{
-		AdventureTabButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleAdventureTabClicked);
-	}
 
 	TaskListBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("TownTaskList"));
-	AddCanvasChild(ContentCanvas, TaskListBox, FVector2D(190.0f, 82.0f), FVector2D(790.0f, 520.0f));
+	AddCanvasChild(ContentCanvas, TaskListBox, FVector2D(200.0f, 92.0f), FVector2D(770.0f, 510.0f));
 	RefreshTabVisuals();
 }
 
@@ -275,24 +362,30 @@ void UGameXXKTaskPanelWidget::RebuildTaskList()
 
 	TaskListBox->ClearChildren();
 	VisibleTasks.Reset();
+	bHasPrimaryTaskAction = false;
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem)
 	{
 		return;
 	}
-	VisibleTasks = UGameXXKMVPRules::BuildTaskViews(Subsystem->GetRuntimeState(), ActiveCategory);
+	VisibleTasks = bShowingTaskOffers
+		? UGameXXKMVPRules::BuildAvailableTaskViews(Subsystem->GetRuntimeState(), ActiveCategory)
+		: UGameXXKMVPRules::BuildAcceptedTaskViews(Subsystem->GetRuntimeState(), ActiveCategory);
 	RefreshTabVisuals();
 
 	if (VisibleTasks.IsEmpty())
 	{
-		EmptyStateText = MakeText(WidgetTree, NSLOCTEXT("GameXXKTaskPanel", "NoTasks", "当前分类暂无任务"), 23, FLinearColor(0.28f, 0.24f, 0.19f, 1.0f));
+		const FText EmptyText = bShowingTaskOffers
+			? NSLOCTEXT("GameXXKTaskPanel", "NoAvailableTasks", "当前分类暂无可接任务")
+			: NSLOCTEXT("GameXXKTaskPanel", "NoAcceptedTasks", "当前分类暂无已接任务");
+		EmptyStateText = MakeText(WidgetTree, EmptyText, 23, FLinearColor(0.28f, 0.24f, 0.19f, 1.0f));
 		if (EmptyStateText)
 		{
 			EmptyStateText->SetJustification(ETextJustify::Center);
-			if (UVerticalBoxSlot* Slot = TaskListBox->AddChildToVerticalBox(EmptyStateText))
+			if (UVerticalBoxSlot* EmptySlot = TaskListBox->AddChildToVerticalBox(EmptyStateText))
 			{
-				Slot->SetPadding(FMargin(0.0f, 170.0f, 0.0f, 0.0f));
-				Slot->SetHorizontalAlignment(HAlign_Fill);
+				EmptySlot->SetPadding(FMargin(0.0f, 170.0f, 0.0f, 0.0f));
+				EmptySlot->SetHorizontalAlignment(HAlign_Fill);
 			}
 		}
 		return;
@@ -301,13 +394,17 @@ void UGameXXKTaskPanelWidget::RebuildTaskList()
 	for (int32 TaskIndex = 0; TaskIndex < VisibleTasks.Num() && TaskIndex < 3; ++TaskIndex)
 	{
 		const FGameXXKTaskView& Task = VisibleTasks[TaskIndex];
+		USizeBox* EntrySizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		EntrySizeBox->SetWidthOverride(770.0f);
+		EntrySizeBox->SetHeightOverride(TaskEntryHeight);
 		UBorder* EntryBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
-		EntryBorder->SetPadding(FMargin(22.0f, 15.0f));
-		EntryBorder->SetBrushColor(FLinearColor(0.87f, 0.82f, 0.71f, 0.92f));
-		if (UVerticalBoxSlot* Slot = TaskListBox->AddChildToVerticalBox(EntryBorder))
+		EntryBorder->SetPadding(FMargin(28.0f, 12.0f));
+		EntryBorder->SetBrush(MakeTextureBoxBrush(EntryFrameTexturePath, FVector2D(770.0f, TaskEntryHeight), FMargin(0.055f, 0.18f)));
+		EntrySizeBox->SetContent(EntryBorder);
+		if (UVerticalBoxSlot* EntrySlot = TaskListBox->AddChildToVerticalBox(EntrySizeBox))
 		{
-			Slot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 15.0f));
-			Slot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+			EntrySlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, TaskEntryGap));
+			EntrySlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
 		}
 
 		UVerticalBox* EntryBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
@@ -321,10 +418,16 @@ void UGameXXKTaskPanelWidget::RebuildTaskList()
 		}
 		if (UTextBlock* Description = MakeText(WidgetTree, Task.Description, 18, FLinearColor(0.28f, 0.24f, 0.19f, 1.0f)))
 		{
-			if (UVerticalBoxSlot* Slot = EntryBox->AddChildToVerticalBox(Description))
+			if (UVerticalBoxSlot* DescriptionSlot = EntryBox->AddChildToVerticalBox(Description))
 			{
-				Slot->SetPadding(FMargin(0.0f, 4.0f, 0.0f, 4.0f));
+				DescriptionSlot->SetPadding(FMargin(0.0f, 2.0f));
 			}
+		}
+		USpacer* ContentSpacer = WidgetTree->ConstructWidget<USpacer>(USpacer::StaticClass());
+		ContentSpacer->SetSize(FVector2D(1.0f, 1.0f));
+		if (UVerticalBoxSlot* SpacerSlot = EntryBox->AddChildToVerticalBox(ContentSpacer))
+		{
+			SpacerSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 		}
 
 		UHorizontalBox* BottomRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
@@ -348,41 +451,42 @@ void UGameXXKTaskPanelWidget::RebuildTaskList()
 			}
 		}
 
-		const bool bTracked = Subsystem->GetRuntimeState().TrackedTaskId == Task.Id;
-		const FString& ActionPath = Task.bCanNavigate && !bTracked ? ActionGoTexturePath : ActionTrackTexturePath;
-		UButton* ActionButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass());
-		ActionButton->SetStyle(MakeTextureButtonStyle(ActionPath, FVector2D(105.0f, 52.0f)));
-		if (UHorizontalBoxSlot* ActionSlot = BottomRow->AddChildToHorizontalBox(ActionButton))
+		if (bShowingTaskOffers)
 		{
-			ActionSlot->SetVerticalAlignment(VAlign_Center);
-		}
-		switch (TaskIndex)
-		{
-		case 0:
-			ActionButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleTaskAction0Clicked);
-			break;
-		case 1:
-			ActionButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleTaskAction1Clicked);
-			break;
-		case 2:
-			ActionButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleTaskAction2Clicked);
-			break;
-		default:
-			break;
+			UButton* AcceptButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass());
+			AcceptButton->SetStyle(MakeTextureBoxButtonStyle(AcceptActionTexturePath, FVector2D(120.0f, 56.0f), FMargin(0.09f, 0.18f)));
+			if (UTextBlock* AcceptText = MakeText(WidgetTree, NSLOCTEXT("GameXXKTaskPanel", "AcceptTask", "接取"), 20, FLinearColor(0.13f, 0.09f, 0.05f, 1.0f)))
+			{
+				AcceptText->SetJustification(ETextJustify::Center);
+				AcceptButton->SetContent(AcceptText);
+			}
+			if (UHorizontalBoxSlot* ActionSlot = BottomRow->AddChildToHorizontalBox(AcceptButton))
+			{
+				ActionSlot->SetVerticalAlignment(VAlign_Center);
+			}
+			switch (TaskIndex)
+			{
+			case 0:
+				AcceptButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleTaskAction0Clicked);
+				break;
+			case 1:
+				AcceptButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleTaskAction1Clicked);
+				break;
+			case 2:
+				AcceptButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleTaskAction2Clicked);
+				break;
+			default:
+				break;
+			}
+			bHasPrimaryTaskAction = true;
 		}
 	}
 }
 
 bool UGameXXKTaskPanelWidget::SelectTaskCategory(EGameXXKTaskCategory Category)
 {
-	switch (Category)
+	if (Category != EGameXXKTaskCategory::Main && Category != EGameXXKTaskCategory::Side)
 	{
-	case EGameXXKTaskCategory::Main:
-	case EGameXXKTaskCategory::Side:
-	case EGameXXKTaskCategory::Daily:
-	case EGameXXKTaskCategory::Adventure:
-		break;
-	default:
 		return false;
 	}
 	ActiveCategory = Category;
@@ -392,39 +496,35 @@ bool UGameXXKTaskPanelWidget::SelectTaskCategory(EGameXXKTaskCategory Category)
 
 bool UGameXXKTaskPanelWidget::TriggerTaskAction(int32 TaskIndex)
 {
-	if (!VisibleTasks.IsValidIndex(TaskIndex))
+	if (!bShowingTaskOffers || !VisibleTasks.IsValidIndex(TaskIndex))
 	{
 		return false;
 	}
-	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || !UGameXXKMVPRules::ToggleTrackedTask(Subsystem->GetMutableRuntimeState(), VisibleTasks[TaskIndex].Id))
+	const FName TaskId = VisibleTasks[TaskIndex].Id;
+	if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
 	{
-		return false;
+		return PlayerController->AcceptTaskOfferById(TaskId);
 	}
-	if (!NotifyPlayerFlowStateChanged())
-	{
-		RefreshFromState();
-	}
-	return true;
+	return false;
 }
 
 void UGameXXKTaskPanelWidget::RefreshTabVisuals()
 {
 	if (MainTabButton)
 	{
-		MainTabButton->SetRenderOpacity(ActiveCategory == EGameXXKTaskCategory::Main ? 1.0f : 0.65f);
+		const bool bSelected = ActiveCategory == EGameXXKTaskCategory::Main;
+		MainTabButton->SetStyle(MakeTextureButtonStyle(
+			bSelected ? TabSelectedTexturePath : TabNormalTexturePath,
+			FVector2D(160.0f, 80.0f)));
+		MainTabButton->SetRenderOpacity(bSelected ? 1.0f : 0.85f);
 	}
 	if (SideTabButton)
 	{
-		SideTabButton->SetRenderOpacity(ActiveCategory == EGameXXKTaskCategory::Side ? 1.0f : 0.65f);
-	}
-	if (DailyTabButton)
-	{
-		DailyTabButton->SetRenderOpacity(ActiveCategory == EGameXXKTaskCategory::Daily ? 1.0f : 0.65f);
-	}
-	if (AdventureTabButton)
-	{
-		AdventureTabButton->SetRenderOpacity(ActiveCategory == EGameXXKTaskCategory::Adventure ? 1.0f : 0.65f);
+		const bool bSelected = ActiveCategory == EGameXXKTaskCategory::Side;
+		SideTabButton->SetStyle(MakeTextureButtonStyle(
+			bSelected ? TabSelectedTexturePath : TabNormalTexturePath,
+			FVector2D(160.0f, 80.0f)));
+		SideTabButton->SetRenderOpacity(bSelected ? 1.0f : 0.85f);
 	}
 }
 
@@ -446,16 +546,6 @@ void UGameXXKTaskPanelWidget::HandleMainTabClicked()
 void UGameXXKTaskPanelWidget::HandleSideTabClicked()
 {
 	SelectTaskCategory(EGameXXKTaskCategory::Side);
-}
-
-void UGameXXKTaskPanelWidget::HandleDailyTabClicked()
-{
-	SelectTaskCategory(EGameXXKTaskCategory::Daily);
-}
-
-void UGameXXKTaskPanelWidget::HandleAdventureTabClicked()
-{
-	SelectTaskCategory(EGameXXKTaskCategory::Adventure);
 }
 
 void UGameXXKTaskPanelWidget::HandleTaskAction0Clicked()

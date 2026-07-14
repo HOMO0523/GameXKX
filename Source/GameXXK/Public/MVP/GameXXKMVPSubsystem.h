@@ -124,6 +124,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool SellItem(FName ItemId, int32 Quantity);
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	int32 GetItemEnhancementLevel(FName ItemId) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	bool CanEnhanceItem(FName ItemId) const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool EnhanceItem(FName ItemId);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool UseHealingItem();
 

@@ -17,8 +17,7 @@ namespace GameXXKMVP
 	static const FName ItemStarterClothArmorName(TEXT("Item.StarterClothArmor"));
 	static const FName ItemClothTalismanName(TEXT("Item.ClothTalisman"));
 	static const FName TaskQingshanMainName(TEXT("Task.QingshanMain"));
-	static const FName QingshanTownQuestNpcNavigationTarget(TEXT("QingshanTown_QuestNpc"));
-	static const FName QingshanInnTownExitNavigationTarget(TEXT("QingshanInn_TownExit"));
+	static constexpr int32 MaxItemEnhancementLevel = 10;
 
 	static FGameXXKItemDef MakeItem(FName Id, const TCHAR* DisplayName, EGameXXKItemKind Kind, int32 Buy, int32 Sell, int32 Heal, int32 MPHeal, int32 Attack, int32 Defense, int32 MaxHP, int32 MaxMP)
 	{
@@ -153,7 +152,12 @@ namespace GameXXKMVP
 		return 10 + FMath::Max(0, Level - 1);
 	}
 
-	static void AddEquipmentBonuses(const FGameXXKRuntimeState& State, FName ItemId, int32& Attack, int32& Defense, int32& MaxHP, int32& MaxMP)
+	static int32 GetClampedItemEnhancementLevel(const FGameXXKRuntimeState& State, FName ItemId)
+	{
+		return ItemId.IsNone() ? 0 : FMath::Clamp(State.ItemEnhancementLevels.FindRef(ItemId), 0, MaxItemEnhancementLevel);
+	}
+
+	static void AddEquipmentBonuses(const FGameXXKRuntimeState& State, FName ItemId, int32& Attack, int32& Defense, int32& MaxHP, int32& MaxMP, int32& Speed)
 	{
 		if (ItemId.IsNone() || State.Inventory.FindRef(ItemId) <= 0)
 		{
@@ -168,6 +172,20 @@ namespace GameXXKMVP
 		Defense += Def.DefenseBonus;
 		MaxHP += Def.MaxHPBonus;
 		MaxMP += Def.MaxMPBonus;
+
+		const int32 EnhancementLevel = GetClampedItemEnhancementLevel(State, ItemId);
+		if (Def.Kind == EGameXXKItemKind::Weapon)
+		{
+			Attack += EnhancementLevel;
+		}
+		else if (Def.Kind == EGameXXKItemKind::Armor)
+		{
+			Defense += EnhancementLevel;
+		}
+		else if (Def.Kind == EGameXXKItemKind::Accessory)
+		{
+			Speed += EnhancementLevel;
+		}
 	}
 
 	static void RecalculatePlayerStats(FGameXXKRuntimeState& State, bool bPreserveMissingResources = true)
@@ -196,9 +214,9 @@ namespace GameXXKMVP
 			State.EquippedAccessory = NAME_None;
 		}
 
-		AddEquipmentBonuses(State, State.EquippedWeapon, State.PlayerAttack, State.PlayerDefense, State.PlayerMaxHP, State.PlayerMaxMP);
-		AddEquipmentBonuses(State, State.EquippedArmor, State.PlayerAttack, State.PlayerDefense, State.PlayerMaxHP, State.PlayerMaxMP);
-		AddEquipmentBonuses(State, State.EquippedAccessory, State.PlayerAttack, State.PlayerDefense, State.PlayerMaxHP, State.PlayerMaxMP);
+		AddEquipmentBonuses(State, State.EquippedWeapon, State.PlayerAttack, State.PlayerDefense, State.PlayerMaxHP, State.PlayerMaxMP, State.PlayerSpeed);
+		AddEquipmentBonuses(State, State.EquippedArmor, State.PlayerAttack, State.PlayerDefense, State.PlayerMaxHP, State.PlayerMaxMP, State.PlayerSpeed);
+		AddEquipmentBonuses(State, State.EquippedAccessory, State.PlayerAttack, State.PlayerDefense, State.PlayerMaxHP, State.PlayerMaxMP, State.PlayerSpeed);
 
 		State.PlayerHP = FMath::Clamp(State.PlayerMaxHP - MissingHP, 0, State.PlayerMaxHP);
 		State.PlayerMP = FMath::Clamp(State.PlayerMaxMP - MissingMP, 0, State.PlayerMaxMP);
@@ -878,6 +896,7 @@ FGameXXKRuntimeState UGameXXKMVPRules::CreateNewGame()
 	State.Screen = EGameXXKScreen::MainMenu;
 	State.CurrentRegion = NAME_None;
 	State.CurrentMapId = TEXT("MainMenu");
+	State.EnhancementMaterial = 10;
 	GameXXKMVP::RecalculatePlayerStats(State, false);
 	State.UnlockedRegions.Add(RegionQingshan());
 	AddItem(State, ItemHealingPowder(), 1);
@@ -892,10 +911,10 @@ FName UGameXXKMVPRules::TaskQingshanMain()
 	return GameXXKMVP::TaskQingshanMainName;
 }
 
-TArray<FGameXXKTaskView> UGameXXKMVPRules::BuildTaskViews(const FGameXXKRuntimeState& State, EGameXXKTaskCategory Category)
+TArray<FGameXXKTaskView> UGameXXKMVPRules::BuildAvailableTaskViews(const FGameXXKRuntimeState& State, EGameXXKTaskCategory Category)
 {
 	TArray<FGameXXKTaskView> Tasks;
-	if (Category != EGameXXKTaskCategory::Main)
+	if (Category != EGameXXKTaskCategory::Main || State.QuestState != EGameXXKQuestState::NotAccepted)
 	{
 		return Tasks;
 	}
@@ -909,38 +928,39 @@ TArray<FGameXXKTaskView> UGameXXKMVPRules::BuildTaskViews(const FGameXXKRuntimeS
 	Task.Reward.Experience = 1200;
 	Task.Reward.Token = 10;
 
-	switch (State.QuestState)
-	{
-	case EGameXXKQuestState::Accepted:
-		Task.Description = NSLOCTEXT("GameXXKTaskPanel", "QingshanMainAcceptedDescription", "与引路人同行，前往北门出口");
-		Task.ProgressCurrent = 1;
-		Task.bCanNavigate = true;
-		Task.NavigationTarget = GameXXKMVP::QingshanInnTownExitNavigationTarget;
-		break;
-	case EGameXXKQuestState::Completed:
-		Task.Description = NSLOCTEXT("GameXXKTaskPanel", "QingshanMainCompletedDescription", "黄山之行已经完成");
-		Task.ProgressCurrent = 1;
-		break;
-	case EGameXXKQuestState::NotAccepted:
-	default:
-		Task.Description = NSLOCTEXT("GameXXKTaskPanel", "QingshanMainNotAcceptedDescription", "前往青山镇寻找引路人");
-		Task.NavigationTarget = GameXXKMVP::QingshanTownQuestNpcNavigationTarget;
-		break;
-	}
+	Task.Description = NSLOCTEXT("GameXXKTaskPanel", "QingshanMainNotAcceptedDescription", "前往青山镇寻找引路人");
 
 	Tasks.Add(MoveTemp(Task));
 	return Tasks;
 }
 
-bool UGameXXKMVPRules::ToggleTrackedTask(FGameXXKRuntimeState& State, FName TaskId)
+TArray<FGameXXKTaskView> UGameXXKMVPRules::BuildAcceptedTaskViews(const FGameXXKRuntimeState& State, EGameXXKTaskCategory Category)
 {
-	if (TaskId != TaskQingshanMain())
+	TArray<FGameXXKTaskView> Tasks;
+	if (Category != EGameXXKTaskCategory::Main || State.QuestState != EGameXXKQuestState::Accepted)
 	{
-		return false;
+		return Tasks;
 	}
 
-	State.TrackedTaskId = State.TrackedTaskId == TaskId ? NAME_None : TaskId;
-	return true;
+	FGameXXKTaskView Task;
+	Task.Id = TaskQingshanMain();
+	Task.Category = EGameXXKTaskCategory::Main;
+	Task.Title = NSLOCTEXT("GameXXKTaskPanel", "QingshanMainTitle", "初入江湖");
+	Task.Description = NSLOCTEXT("GameXXKTaskPanel", "QingshanMainAcceptedDescription", "与引路人同行，前往北门出口");
+	Task.ProgressCurrent = 1;
+	Task.ProgressTarget = 1;
+	Task.Reward.Gold = 500;
+	Task.Reward.Experience = 1200;
+	Task.Reward.Token = 10;
+	Tasks.Add(MoveTemp(Task));
+	return Tasks;
+}
+
+TArray<FGameXXKTaskView> UGameXXKMVPRules::BuildTaskViews(const FGameXXKRuntimeState& State, EGameXXKTaskCategory Category)
+{
+	return State.QuestState == EGameXXKQuestState::NotAccepted
+		? BuildAvailableTaskViews(State, Category)
+		: BuildAcceptedTaskViews(State, Category);
 }
 
 bool UGameXXKMVPRules::OpenWorldMap(FGameXXKRuntimeState& State)
@@ -973,6 +993,7 @@ bool UGameXXKMVPRules::AcceptTownQuest(FGameXXKRuntimeState& State)
 	}
 	State.QuestState = EGameXXKQuestState::Accepted;
 	State.bFollowerJoined = true;
+	State.TrackedTaskId = NAME_None;
 	return true;
 }
 
@@ -1478,10 +1499,54 @@ bool UGameXXKMVPRules::SellItem(FGameXXKRuntimeState& State, FName ItemId, int32
 		return false;
 	}
 	State.PlayerGold += Def.SellPrice * Quantity;
+	if (GetItemCount(State, ItemId) <= 0)
+	{
+		State.ItemEnhancementLevels.Remove(ItemId);
+	}
 	if (State.EquippedWeapon == ItemId || State.EquippedArmor == ItemId || State.EquippedAccessory == ItemId)
 	{
 		GameXXKMVP::RecalculatePlayerStats(State, true);
 	}
+	return true;
+}
+
+int32 UGameXXKMVPRules::GetMaxItemEnhancementLevel()
+{
+	return GameXXKMVP::MaxItemEnhancementLevel;
+}
+
+int32 UGameXXKMVPRules::GetItemEnhancementLevel(const FGameXXKRuntimeState& State, FName ItemId)
+{
+	return GameXXKMVP::GetClampedItemEnhancementLevel(State, ItemId);
+}
+
+bool UGameXXKMVPRules::CanEnhanceItem(const FGameXXKRuntimeState& State, FName ItemId)
+{
+	FGameXXKItemDef Def;
+	if (ItemId.IsNone()
+		|| State.EnhancementMaterial <= 0
+		|| GetItemCount(State, ItemId) <= 0
+		|| !GameXXKMVP::GetItemDef(ItemId, Def))
+	{
+		return false;
+	}
+
+	const bool bIsEquipment = Def.Kind == EGameXXKItemKind::Weapon
+		|| Def.Kind == EGameXXKItemKind::Armor
+		|| Def.Kind == EGameXXKItemKind::Accessory;
+	return bIsEquipment && GetItemEnhancementLevel(State, ItemId) < GetMaxItemEnhancementLevel();
+}
+
+bool UGameXXKMVPRules::EnhanceItem(FGameXXKRuntimeState& State, FName ItemId)
+{
+	if (!CanEnhanceItem(State, ItemId))
+	{
+		return false;
+	}
+
+	State.EnhancementMaterial -= 1;
+	State.ItemEnhancementLevels.Add(ItemId, GetItemEnhancementLevel(State, ItemId) + 1);
+	GameXXKMVP::RecalculatePlayerStats(State, true);
 	return true;
 }
 
@@ -1652,7 +1717,7 @@ TArray<FName> UGameXXKMVPRules::BuildTurnOrder(const FGameXXKRuntimeState& State
 FGameXXKSaveState UGameXXKMVPRules::MakeSaveState(const FGameXXKRuntimeState& State)
 {
 	FGameXXKSaveState SaveState;
-	SaveState.SaveVersion = 2;
+	SaveState.SaveVersion = 3;
 	SaveState.RuntimeState = State;
 	SaveState.bHasPlayerLocation = State.bHasPlayerLocation;
 	SaveState.PlayerLocation = State.PlayerLocation;
@@ -1669,9 +1734,21 @@ FGameXXKSaveState UGameXXKMVPRules::MakeSaveState(const FGameXXKRuntimeState& St
 
 FGameXXKRuntimeState UGameXXKMVPRules::RestoreFromSaveState(const FGameXXKSaveState& SaveState)
 {
-	if (SaveState.SaveVersion >= 2)
+	if (SaveState.SaveVersion >= 3)
 	{
 		FGameXXKRuntimeState State = SaveState.RuntimeState;
+		if (SaveState.bHasPlayerLocation)
+		{
+			State.bHasPlayerLocation = true;
+			State.PlayerLocation = SaveState.PlayerLocation;
+		}
+		return State;
+	}
+	if (SaveState.SaveVersion == 2)
+	{
+		FGameXXKRuntimeState State = SaveState.RuntimeState;
+		State.EnhancementMaterial = 10;
+		State.ItemEnhancementLevels.Reset();
 		if (SaveState.bHasPlayerLocation)
 		{
 			State.bHasPlayerLocation = true;
@@ -1688,6 +1765,7 @@ FGameXXKRuntimeState UGameXXKMVPRules::RestoreFromSaveState(const FGameXXKSaveSt
 	State.PlayerGold = SaveState.PlayerGold;
 	State.UnlockedRegions = SaveState.UnlockedRegions;
 	State.Inventory.Reset();
+	State.ItemEnhancementLevels.Reset();
 	State.EquippedWeapon = NAME_None;
 	State.EquippedArmor = NAME_None;
 	State.EquippedAccessory = NAME_None;

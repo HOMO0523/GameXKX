@@ -203,11 +203,8 @@ void AGameXXKTownNpcActor::Interact_Implementation(APawn* InstigatorPawn)
 	{
 		if (AGameXXKMVPPlayerController* PlayerController = InstigatorPawn ? Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()) : nullptr)
 		{
-			if (PlayerController->OpenQuestDialogForNpc(this, InstigatorPawn))
-			{
-				bLastInteractionSuccessful = true;
-				return;
-			}
+			bLastInteractionSuccessful = PlayerController->OpenTaskOfferPanelForNpc(this, InstigatorPawn);
+			return;
 		}
 		ConfirmQuestDialogInteraction(InstigatorPawn);
 		return;

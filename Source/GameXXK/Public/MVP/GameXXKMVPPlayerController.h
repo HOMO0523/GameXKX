@@ -98,7 +98,18 @@ public:
 	bool OpenQuestDialogForNpc(AActor* QuestNpc, APawn* InstigatorPawn);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool OpenTaskOfferPanelForNpc(AActor* QuestNpc, APawn* InstigatorPawn);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool AcceptQuestDialog();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool AcceptTaskOfferById(FName TaskId);
+
+	// Kept only for serialized Blueprint compatibility. Task offers must carry
+	// their selected id, so this legacy entry point intentionally cannot accept.
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow", meta = (DeprecatedFunction, DeprecationMessage = "Use AcceptTaskOfferById with the clicked task id."))
+	bool AcceptTaskOffer();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool CloseQuestDialog();
@@ -143,7 +154,7 @@ private:
 	UGameXXKQuestDialogWidget* EnsureQuestDialogWidget();
 	UGameXXKTaskPanelWidget* EnsureTaskPanelWidget();
 	UGameXXKTownHudWidget* EnsureTownHudWidget();
-	bool ConfirmPendingQuestNpc();
+	bool ConfirmPendingQuestNpc(FName TaskId);
 	void RefreshPlayerFlowWidgets();
 	void ConfigureRouteMapWidgetViewport(UGameXXKOneGameRouteMapWidget* RouteWidget) const;
 	void ApplyPlayerFlowInputMode();

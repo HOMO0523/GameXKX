@@ -10,6 +10,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "EngineUtils.h"
 #include "InputKeyEventArgs.h"
+#include "GameXXKMVPRules.h"
 #include "MVP/GameXXKBattleScenePresenter.h"
 #include "MVP/GameXXKBattleSceneUnitActor.h"
 #include "MVP/GameXXKRouteEncounterSceneActor.h"
@@ -156,10 +157,9 @@ void AGameXXKMVPPlayerController::PlayerTick(float DeltaTime)
 void AGameXXKMVPPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
-	if (InputComponent)
-	{
-		InputComponent->BindKey(EKeys::LeftMouseButton, IE_Released, this, &AGameXXKMVPPlayerController::HandleRouteMapPrimaryClick);
-	}
+	// Route-map pointer-up handling is centralized in InputKey so a physical
+	// release cannot be dispatched once by the raw binding and once again by
+	// the controller override.
 }
 
 bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
@@ -175,10 +175,9 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 		{
 			return CloseTaskPanel();
 		}
-		if (InventoryWindowWidget && InventoryWindowWidget->CloseInventoryWindow())
+		if (InventoryWindowWidget && InventoryWindowWidget->IsWindowVisibleForTest())
 		{
-			ApplyPlayerFlowInputMode();
-			return true;
+			return CloseInventoryWindow();
 		}
 		if (BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting())
 		{
@@ -188,6 +187,27 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 	if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
 	{
 		return Super::InputKey(Params);
+	}
+	if (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest()
+		&& (Params.Key == EKeys::F || Params.Key == EKeys::Q || Params.Key == EKeys::I))
+	{
+		return true;
+	}
+	if (Params.Key == EKeys::Q && Params.Event == IE_Pressed)
+	{
+		EnsurePlayerFlowWidgets();
+		UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+		if (Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
+		{
+			// While a task modal is open Q is intentionally consumed above; Escape/back
+			// is the close action. Q only opens the accepted-task panel from gameplay.
+			const bool bHandled = OpenTaskPanel();
+			if (bHandled)
+			{
+				RefreshPlayerFlowWidgets();
+				return true;
+			}
+		}
 	}
 	if (Params.Key == EKeys::I && Params.Event == IE_Pressed)
 	{
@@ -357,8 +377,15 @@ bool AGameXXKMVPPlayerController::OpenQuestDialogPreviewForTest()
 
 bool AGameXXKMVPPlayerController::OpenQuestDialogForNpc(AActor* QuestNpc, APawn* InstigatorPawn)
 {
+	// Do not replace the active task-offer modal or overwrite its pending NPC.
+	if (!QuestNpc || !InstigatorPawn
+		|| (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
+		|| (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest()))
+	{
+		return false;
+	}
 	UGameXXKQuestDialogWidget* Dialog = EnsureQuestDialogWidget();
-	if (!QuestNpc || !InstigatorPawn || !Dialog)
+	if (!Dialog)
 	{
 		return false;
 	}
@@ -372,6 +399,32 @@ bool AGameXXKMVPPlayerController::OpenQuestDialogForNpc(AActor* QuestNpc, APawn*
 	return true;
 }
 
+bool AGameXXKMVPPlayerController::OpenTaskOfferPanelForNpc(AActor* QuestNpc, APawn* InstigatorPawn)
+{
+	// A second modal request is rejected before it can replace the original
+	// pending NPC/instigator pair.
+	if (!QuestNpc || !InstigatorPawn
+		|| (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
+		|| (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest()))
+	{
+		return false;
+	}
+
+	CloseInventoryWindow();
+	UGameXXKTaskPanelWidget* TaskPanel = EnsureTaskPanelWidget();
+	if (!TaskPanel || !TaskPanel->OpenTaskOfferPanel())
+	{
+		return false;
+	}
+
+	PendingQuestNpc = QuestNpc;
+	PendingQuestInstigator = InstigatorPawn;
+	FlushPressedKeys();
+	SetIgnoreMoveInput(true);
+	ApplyPlayerFlowInputMode();
+	return true;
+}
+
 bool AGameXXKMVPPlayerController::AcceptQuestDialog()
 {
 	if (!QuestDialogWidget || !QuestDialogWidget->IsDialogOpen())
@@ -379,7 +432,7 @@ bool AGameXXKMVPPlayerController::AcceptQuestDialog()
 		return false;
 	}
 
-	const bool bAccepted = ConfirmPendingQuestNpc();
+	const bool bAccepted = ConfirmPendingQuestNpc(UGameXXKMVPRules::TaskQingshanMain());
 	if (bAccepted)
 	{
 		QuestDialogWidget->OnQuestAccepted();
@@ -388,6 +441,36 @@ bool AGameXXKMVPPlayerController::AcceptQuestDialog()
 	CloseQuestDialog();
 	RefreshPlayerFlowWidgets();
 	return bAccepted;
+}
+
+bool AGameXXKMVPPlayerController::AcceptTaskOfferById(FName TaskId)
+{
+	if (TaskId.IsNone()
+		|| !TaskPanelWidget
+		|| !TaskPanelWidget->IsTaskPanelOpenForTest()
+		|| !TaskPanelWidget->IsShowingTaskOffersForTest()
+		|| !TaskPanelWidget->HasVisibleTaskOffer(TaskId))
+	{
+		return false;
+	}
+
+	const bool bAccepted = ConfirmPendingQuestNpc(TaskId);
+	if (!bAccepted)
+	{
+		return false;
+	}
+
+	PendingQuestNpc.Reset();
+	PendingQuestInstigator.Reset();
+	RefreshPlayerFlowWidgets();
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::AcceptTaskOffer()
+{
+	// A task click must explicitly carry the row's id. Accepting the pending NPC
+	// without that identity would silently turn any row into the first main quest.
+	return false;
 }
 
 bool AGameXXKMVPPlayerController::CloseQuestDialog()
@@ -465,6 +548,8 @@ bool AGameXXKMVPPlayerController::OpenTaskPanel()
 		return false;
 	}
 	CloseInventoryWindow();
+	PendingQuestNpc.Reset();
+	PendingQuestInstigator.Reset();
 	UGameXXKTaskPanelWidget* TaskPanel = EnsureTaskPanelWidget();
 	const bool bOpened = TaskPanel && TaskPanel->OpenTaskPanel();
 	if (bOpened)
@@ -481,6 +566,8 @@ bool AGameXXKMVPPlayerController::CloseTaskPanel()
 	const bool bClosed = TaskPanelWidget && TaskPanelWidget->CloseTaskPanel();
 	if (bClosed)
 	{
+		PendingQuestNpc.Reset();
+		PendingQuestInstigator.Reset();
 		SetIgnoreMoveInput(false);
 		ApplyPlayerFlowInputMode();
 	}
@@ -795,8 +882,15 @@ UGameXXKTownHudWidget* AGameXXKMVPPlayerController::EnsureTownHudWidget()
 	return TownHudWidget;
 }
 
-bool AGameXXKMVPPlayerController::ConfirmPendingQuestNpc()
+bool AGameXXKMVPPlayerController::ConfirmPendingQuestNpc(FName TaskId)
 {
+	// The current quest NPC owns the Qingshan main offer. Future NPC/task pairs
+	// can extend this mapping without accidentally accepting an unrelated offer.
+	if (TaskId != UGameXXKMVPRules::TaskQingshanMain())
+	{
+		return false;
+	}
+
 	APawn* InstigatorPawn = PendingQuestInstigator.Get();
 	if (AGameXXKTownNpcCharacter* CharacterNpc = Cast<AGameXXKTownNpcCharacter>(PendingQuestNpc.Get()))
 	{
@@ -812,6 +906,16 @@ bool AGameXXKMVPPlayerController::ConfirmPendingQuestNpc()
 void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
+	if (InventoryWindowWidget
+		&& ActiveScreen != EGameXXKScreen::Town
+		&& (InventoryWindowWidget->IsWindowVisibleForTest()
+			|| InventoryWindowWidget->GetWindowModeForTest() != EGameXXKInventoryWindowMode::None))
+	{
+		// A town inventory cannot survive into route/battle screens. Go through
+		// the controller close path so it clears trade state and restores focus.
+		CloseInventoryWindow();
+	}
 	if (MainMenuWidget)
 	{
 		MainMenuWidget->SetMVPSubsystem(Subsystem);
@@ -928,6 +1032,7 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 
 	if (ActiveScreen == EGameXXKScreen::Town
 		&& (!QuestDialogWidget || !QuestDialogWidget->IsDialogOpen())
+		&& (!TaskPanelWidget || !TaskPanelWidget->IsTaskPanelOpenForTest())
 		&& FSlateApplication::IsInitialized())
 	{
 		FSlateApplication::Get().SetAllUserFocusToGameViewport(EFocusCause::SetDirectly);

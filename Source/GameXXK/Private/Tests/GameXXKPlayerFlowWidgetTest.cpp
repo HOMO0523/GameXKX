@@ -1,5 +1,6 @@
 #include "GameXXKMVPRules.h"
 #include "Blueprint/GameViewportSubsystem.h"
+#include "Components/InputComponent.h"
 #include "InputKeyEventArgs.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
@@ -15,6 +16,65 @@
 #include "Town/GameXXKTownPlayerPawn.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKPlayerControllerTownExitInventoryCleanupTest,
+	"GameXXK.MVP.UI.PlayerControllerTownExitInventoryCleanup",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKPlayerControllerTownExitInventoryCleanupTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	AGameXXKMVPPlayerController* PlayerController = NewObject<AGameXXKMVPPlayerController>();
+	PlayerController->SetMVPSubsystemForTest(Subsystem);
+
+	TestTrue(TEXT("controller creates the inventory window for town-exit cleanup"), PlayerController->EnsurePlayerFlowWidgetsForTest());
+	TestTrue(TEXT("town-exit cleanup starts a game"), Subsystem->StartGame());
+	TestTrue(TEXT("town-exit cleanup enters Qingshan"), Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan()));
+	TestTrue(TEXT("town-exit cleanup accepts the prerequisite quest"), Subsystem->AcceptQuest());
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+
+	TestTrue(TEXT("merchant inventory is open before the town exit"), PlayerController->OpenMerchantTradeWindow());
+	TestTrue(TEXT("merchant inventory owns modal input before the town exit"), PlayerController->IsInventoryWindowModalInputLockedForTest());
+	TestTrue(TEXT("town exit transitions to the route map"), Subsystem->OpenDungeonFromTownExit());
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+
+	TestEqual(TEXT("town exit clears the inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
+	TestFalse(TEXT("town exit releases the inventory modal input lock"), PlayerController->IsInventoryWindowModalInputLockedForTest());
+	TestFalse(TEXT("town exit hides the inventory window"), PlayerController->GetInventoryWindowWidgetForTest()->IsWindowVisibleForTest());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKPlayerControllerRouteClickDispatchTest,
+	"GameXXK.MVP.UI.PlayerControllerRouteClickDispatch",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKPlayerControllerRouteClickDispatchTest::RunTest(const FString& Parameters)
+{
+	AGameXXKMVPPlayerController* PlayerController = NewObject<AGameXXKMVPPlayerController>();
+	// The editor-context test owns no world, so seed the controller with an
+	// unregistered input component before invoking the normal setup hook.
+	PlayerController->InputComponent = NewObject<UInputComponent>(PlayerController, TEXT("RouteClickDispatchInputComponent"));
+	PlayerController->SetupInputComponent();
+	TestNotNull(TEXT("controller owns an input component after setup"), PlayerController->InputComponent.Get());
+
+	int32 LeftMouseReleaseBindingCount = 0;
+	if (PlayerController->InputComponent)
+	{
+		for (const FInputKeyBinding& Binding : PlayerController->InputComponent->KeyBindings)
+		{
+			if (Binding.Chord.Key == EKeys::LeftMouseButton && Binding.KeyEvent == IE_Released)
+			{
+				++LeftMouseReleaseBindingCount;
+			}
+		}
+	}
+
+	TestEqual(TEXT("route clicks are dispatched exclusively by InputKey, without a duplicate raw release binding"), LeftMouseReleaseBindingCount, 0);
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTownOverlayCommandsTest,

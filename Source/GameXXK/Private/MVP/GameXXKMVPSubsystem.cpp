@@ -269,6 +269,21 @@ bool UGameXXKMVPSubsystem::SellItem(FName ItemId, int32 Quantity)
 	return UGameXXKMVPRules::SellItem(RuntimeState, ItemId, Quantity);
 }
 
+int32 UGameXXKMVPSubsystem::GetItemEnhancementLevel(FName ItemId) const
+{
+	return UGameXXKMVPRules::GetItemEnhancementLevel(RuntimeState, ItemId);
+}
+
+bool UGameXXKMVPSubsystem::CanEnhanceItem(FName ItemId) const
+{
+	return UGameXXKMVPRules::CanEnhanceItem(RuntimeState, ItemId);
+}
+
+bool UGameXXKMVPSubsystem::EnhanceItem(FName ItemId)
+{
+	return UGameXXKMVPRules::EnhanceItem(RuntimeState, ItemId);
+}
+
 bool UGameXXKMVPSubsystem::UseHealingItem()
 {
 	return UGameXXKMVPRules::UseHealingItem(RuntimeState);

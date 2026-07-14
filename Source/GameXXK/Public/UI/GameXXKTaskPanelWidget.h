@@ -27,6 +27,9 @@ public:
 	bool OpenTaskPanel();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|TaskPanel")
+	bool OpenTaskOfferPanel();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|TaskPanel")
 	bool CloseTaskPanel();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|TaskPanel|Test")
@@ -34,6 +37,18 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|TaskPanel|Test")
 	bool HasAllTaskFiltersForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|TaskPanel|Test")
+	bool HasMainAndSideTaskFiltersForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|TaskPanel|Test")
+	bool IsShowingTaskOffersForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|TaskPanel|Test")
+	bool IsShowingAcceptedTasksForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|TaskPanel|Test")
+	bool HasPrimaryTaskActionForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|TaskPanel|Test")
 	EGameXXKTaskCategory GetActiveCategoryForTest() const;
@@ -46,6 +61,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|TaskPanel|Test")
 	bool TriggerPrimaryTaskActionForTest();
+
+	// The controller validates a click against the currently rendered offer rows.
+	// This prevents a stale or unrelated task id from accepting the active NPC quest.
+	bool HasVisibleTaskOffer(FName TaskId) const;
 
 private:
 	void BuildProgrammaticLayout();
@@ -62,12 +81,6 @@ private:
 
 	UFUNCTION()
 	void HandleSideTabClicked();
-
-	UFUNCTION()
-	void HandleDailyTabClicked();
-
-	UFUNCTION()
-	void HandleAdventureTabClicked();
 
 	UFUNCTION()
 	void HandleTaskAction0Clicked();
@@ -94,17 +107,13 @@ private:
 	TObjectPtr<UButton> SideTabButton;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UButton> DailyTabButton;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UButton> AdventureTabButton;
-
-	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> TaskListBox;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> EmptyStateText;
 
 	EGameXXKTaskCategory ActiveCategory = EGameXXKTaskCategory::Main;
+	bool bShowingTaskOffers = false;
+	bool bHasPrimaryTaskAction = false;
 	TArray<FGameXXKTaskView> VisibleTasks;
 };

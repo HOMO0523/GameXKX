@@ -345,7 +345,13 @@ def _widget_summary(widget):
         result["is_enabled"] = bool(widget.get_is_enabled())
     except Exception:
         pass
-    for method_name in ("is_town_overlay_visible", "is_battle_board_visible", "is_dialog_open"):
+    for method_name in (
+        "is_town_overlay_visible",
+        "is_battle_board_visible",
+        "is_dialog_open",
+        "is_task_panel_open_for_test",
+        "is_showing_task_offers_for_test",
+    ):
         try:
             result[method_name] = bool(getattr(widget, method_name)())
         except Exception:
@@ -404,6 +410,7 @@ def _player_controller_summary(player_controller):
         ("route_map", "get_route_map_widget_for_test"),
         ("battle_board", "get_battle_board_widget_for_test"),
         ("quest_dialog", "get_quest_dialog_widget_for_test"),
+        ("task_panel", "get_task_panel_widget_for_test"),
     ):
         try:
             flow_widgets[key] = _widget_summary(getattr(player_controller, getter_name)())
@@ -464,22 +471,6 @@ def _handle_hud_command(world, command_name):
         return {"ok": result, "command": command_name}
     except Exception as exc:
         return {"ok": False, "command": command_name, "reason": str(exc)}
-
-
-def _handle_main_menu_start(world):
-    player_controller = _first_player_controller(world)
-    if not player_controller:
-        return {"ok": False, "reason": "player_controller_missing"}
-    try:
-        main_menu = player_controller.get_main_menu_widget_for_test()
-    except Exception as exc:
-        return {"ok": False, "reason": str(exc)}
-    if not main_menu:
-        return {"ok": False, "reason": "main_menu_missing"}
-    try:
-        return {"ok": bool(main_menu.start_game())}
-    except Exception as exc:
-        return {"ok": False, "reason": str(exc)}
 
 
 def _handle_town_command(world, command_name):
@@ -896,7 +887,6 @@ def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("--delete-default-save", action="store_true")
     parser.add_argument("--hud-command", default="")
-    parser.add_argument("--main-menu-start", action="store_true")
     parser.add_argument("--town-command", default="")
     parser.add_argument("--route-node", type=int, default=None)
     args = parser.parse_args(argv)
@@ -910,8 +900,6 @@ def main(argv):
             result["delete_default_save_error"] = str(exc)
     if args.hud_command:
         result["hud_command"] = _handle_hud_command(world, args.hud_command)
-    if args.main_menu_start:
-        result["main_menu_start"] = _handle_main_menu_start(world)
     if args.town_command:
         result["town_command"] = _handle_town_command(world, args.town_command)
     if args.route_node is not None:

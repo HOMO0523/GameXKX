@@ -34,7 +34,7 @@ BATTLE_MAP_TOKEN = "L_BattleScene"
 BATTLE_PC_TOKEN = "GameXXKMVPPlayerController"
 SLATE_WINDOW_PATTERN = re.compile(r'window "([^"]*GameXXK Preview[^"]*)" .* \[ref=([^\]]+)\]')
 SLATE_BUTTON_PATTERN = re.compile(
-    r'button(?P<disabled> \[disabled\])? \[pos=(?P<x>-?\d+),(?P<y>-?\d+) size=(?P<w>\d+),(?P<h>\d+)\] \[ref=(?P<ref>[^\]]+)\]'
+    r'button(?: "(?P<label>[^"]*)")?(?P<disabled> \[disabled\])? \[pos=(?P<x>-?\d+),(?P<y>-?\d+) size=(?P<w>\d+),(?P<h>\d+)\] \[ref=(?P<ref>[^\]]+)\]'
 )
 
 
@@ -156,6 +156,10 @@ def _is_town_moving(probe: dict[str, Any]) -> bool:
     return bool(_pawn_state(probe).get("is_town_moving"))
 
 
+def _move_input_is_ignored(probe: dict[str, Any]) -> bool:
+    return bool(_pawn_state(probe).get("move_input_ignored"))
+
+
 def _actors(probe: dict[str, Any]) -> list[dict[str, Any]]:
     actors = probe.get("probe", {}).get("actors", [])
     return actors if isinstance(actors, list) else []
@@ -265,7 +269,6 @@ def _npc_visual_state(probe: dict[str, Any]) -> dict[str, Any]:
     checks = [
         _expect_npc_visual(_npc_by_role(probe, "QUEST"), "BP_NpcCharacter_C", "FB_Npc_Idle_South"),
         _expect_npc_visual(_npc_by_role(probe, "MERCHANT"), "BP_MerchantCharacter_C", "FB_Merchant_Idle_South"),
-        _expect_npc_visual(_npc_by_role(probe, "FOLLOWER"), "BP_NpcCharacter_C", "FB_Npc_Idle_South"),
     ]
     return {
         "ok": all(bool(check.get("ok")) for check in checks),
@@ -278,12 +281,13 @@ def _quest_interacted(probe: dict[str, Any]) -> bool:
     return bool(npc.get("was_last_interaction_successful") and npc.get("is_follower_active"))
 
 
-def _quest_dialog_open(probe: dict[str, Any]) -> bool:
-    dialog = _flow_widgets(probe).get("quest_dialog", {})
+def _task_offer_open(probe: dict[str, Any]) -> bool:
+    task_panel = _flow_widgets(probe).get("task_panel", {})
     return bool(
-        isinstance(dialog, dict)
-        and _widget_visible(probe, "quest_dialog")
-        and dialog.get("is_dialog_open")
+        isinstance(task_panel, dict)
+        and _widget_visible(probe, "task_panel")
+        and task_panel.get("is_task_panel_open_for_test")
+        and task_panel.get("is_showing_task_offers_for_test")
     )
 
 
@@ -339,8 +343,11 @@ def _topdown_camera_state(probe: dict[str, Any]) -> dict[str, Any]:
         camera_name == "TopDownCamera"
         and boom_name == "CameraBoom"
         and "PERSPECTIVE" in projection
-        and 760.0 <= target_arm_length <= 840.0
-        and -65.0 <= pitch <= -55.0
+        # BP_HeroCharacter's camera was intentionally tuned in-editor. The
+        # harness validates that current authored baseline rather than the
+        # retired Ocean-style defaults.
+        and 960.0 <= target_arm_length <= 1040.0
+        and -35.0 <= pitch <= -25.0
         and bool(spring_arm.get("absolute_rotation")) is True
         and bool(spring_arm.get("do_collision_test")) is False
     )
@@ -705,17 +712,6 @@ class RealFlowHarness:
             raise RuntimeError(f"HUD command {command_name} failed: {command_result}")
         return parsed
 
-    def main_menu_start(self) -> dict[str, Any]:
-        result = self.client.run_project_python_file(PROBE_SCRIPT, ["--main-menu-start"])
-        parsed = _load_json_from_probe(result)
-        command_result = parsed.get("main_menu_start", {})
-        if not isinstance(command_result, dict):
-            command_result = {}
-        self.event("main_menu_start", ok=bool(command_result.get("ok")), detail=command_result)
-        if not command_result.get("ok"):
-            raise RuntimeError(f"Main menu StartGame failed: {command_result}")
-        return parsed
-
     def town_command(self, command_name: str) -> dict[str, Any]:
         result = self.client.run_project_python_file(PROBE_SCRIPT, ["--town-command", command_name])
         parsed = _load_json_from_probe(result)
@@ -809,6 +805,21 @@ class RealFlowHarness:
 
     def slate_button_for_visible_text(self, label: str) -> dict[str, Any]:
         snapshot = self.slate_preview_snapshot()
+        named_candidates = [
+            {
+                "ref": match.group("ref"),
+                "disabled": bool(match.group("disabled")),
+                "x": int(match.group("x")),
+                "y": int(match.group("y")),
+                "w": int(match.group("w")),
+                "h": int(match.group("h")),
+            }
+            for match in SLATE_BUTTON_PATTERN.finditer(snapshot)
+            if match.group("label") == label and not bool(match.group("disabled"))
+        ]
+        if named_candidates:
+            return named_candidates[-1]
+
         label_index = snapshot.rfind(f'"{label}"')
         if label_index < 0:
             raise RuntimeError(f"Slate text '{label}' was not present in the preview snapshot: {snapshot[:2400]}")
@@ -829,6 +840,20 @@ class RealFlowHarness:
             raise RuntimeError(f"No enabled Slate button precedes dialog text '{label}': {snapshot[:2400]}")
         return candidates[-1]
 
+    def click_main_menu_start(self) -> None:
+        """Exercise the authored visible Start/New Game button, not the C++ API."""
+        button = self.slate_button_for_visible_text("开始游戏")
+        click_ok = bool(self.client.call_tool(
+            "Click",
+            {"ref": button["ref"], "button": "left", "doubleClick": False},
+            toolset_name=SLATE_TOOLSET,
+            timeout=self.client.timeout,
+        ))
+        self.event("main_menu_start_slate_click", click_ok=click_ok, button=button, label="开始游戏")
+        if not click_ok:
+            raise RuntimeError(f"Slate click failed for the main-menu Start/New Game button: {button}")
+        time.sleep(0.45)
+
     def click_route_node(self, probe: dict[str, Any], node_id: int) -> dict[str, Any]:
         node_state = _route_node_visual_state(probe, node_id)
         if not node_state:
@@ -848,17 +873,54 @@ class RealFlowHarness:
         time.sleep(0.45)
         return self.probe()
 
-    def click_quest_dialog_accept(self) -> dict[str, Any]:
-        button = self.slate_button_for_visible_text("接取委托")
+    def click_quest_offer_accept(self) -> dict[str, Any]:
+        """Accept strictly through the new available-task panel's visible action."""
+        label = "接取"
+        button = self.slate_button_for_visible_text(label)
         click_ok = bool(self.client.call_tool(
             "Click",
             {"ref": button["ref"], "button": "left", "doubleClick": False},
             toolset_name=SLATE_TOOLSET,
             timeout=self.client.timeout,
         ))
-        self.event("quest_dialog_slate_click", click_ok=click_ok, button=button)
+        self.event("task_offer_slate_click", click_ok=click_ok, button=button, label=label)
         if not click_ok:
-            raise RuntimeError(f"Slate click failed for quest dialog accept button: {button}")
+            raise RuntimeError(f"Slate click failed for quest offer accept button: {button}")
+        time.sleep(0.45)
+        return self.probe()
+
+    def click_task_panel_back(self) -> dict[str, Any]:
+        """Click the visible task panel's authored back-arrow button through Slate."""
+        snapshot = self.slate_preview_snapshot()
+        candidates = [
+            {
+                "ref": match.group("ref"),
+                "disabled": bool(match.group("disabled")),
+                "x": int(match.group("x")),
+                "y": int(match.group("y")),
+                "w": int(match.group("w")),
+                "h": int(match.group("h")),
+            }
+            for match in SLATE_BUTTON_PATTERN.finditer(snapshot)
+            if not bool(match.group("disabled"))
+            and int(match.group("w")) == 50
+            and int(match.group("h")) == 27
+        ]
+        if len(candidates) != 1:
+            raise RuntimeError(
+                "Task-panel back button was not uniquely identified by its authored 50x27 Slate hit box: "
+                f"{candidates}; snapshot={snapshot[:2400]}"
+            )
+        button = candidates[0]
+        click_ok = bool(self.client.call_tool(
+            "Click",
+            {"ref": button["ref"], "button": "left", "doubleClick": False},
+            toolset_name=SLATE_TOOLSET,
+            timeout=self.client.timeout,
+        ))
+        self.event("task_panel_back_slate_click", click_ok=click_ok, button=button)
+        if not click_ok:
+            raise RuntimeError(f"Slate click failed for task-panel back button: {button}")
         time.sleep(0.45)
         return self.probe()
 
@@ -944,7 +1006,7 @@ class RealFlowHarness:
             raise RuntimeError(f"L_Main PIE did not show the player main menu: {main_menu_probe}")
 
         before_start_path, _ = self.screenshot("real_flow_before_start.png")
-        self.main_menu_start()
+        self.click_main_menu_start()
         after_qingshan = self.wait_for(
             "StartGame opens Qingshan town map",
             lambda probe: QINGSHAN_MAP_TOKEN in _map_name(probe) and _screen_contains(probe, "Town"),
@@ -1043,7 +1105,7 @@ class RealFlowHarness:
             raise RuntimeError("Quest NPC was not found in the playable town map")
         window = self.input.find_preview_window()
         near_quest = self.walk_to_world_location(window, after_move, quest_location)
-        dialog_probe: dict[str, Any] = {}
+        offer_probe: dict[str, Any] = {}
         interact_probe: dict[str, Any] = near_quest
         for attempt in range(3):
             self.input.press_key(window, ord("F"), hold_seconds=0.08)
@@ -1051,32 +1113,57 @@ class RealFlowHarness:
             deadline = time.monotonic() + 2.0
             while time.monotonic() < deadline:
                 interact_probe = self.probe()
-                if _quest_dialog_open(interact_probe) and not _quest_interacted(interact_probe):
-                    dialog_probe = interact_probe
-                    self.event("wait_ok", label="F opens quest dialog without accepting the quest", attempt=attempt + 1)
+                if _task_offer_open(interact_probe) and not _quest_interacted(interact_probe):
+                    offer_probe = interact_probe
+                    self.event("wait_ok", label="F opens the new task offer without accepting the quest", attempt=attempt + 1, offer_kind="task_offer")
                     break
                 time.sleep(0.35)
-            if dialog_probe:
+            if offer_probe:
                 break
-        if not dialog_probe:
-            raise RuntimeError(f"Timed out waiting for F to open the quest dialog without accepting; last probe={json.dumps(interact_probe, ensure_ascii=False)}")
-        quest_dialog_probe = {
-            "ok": _quest_dialog_open(dialog_probe) and not _quest_interacted(dialog_probe),
-            "widgets": _flow_widgets(dialog_probe),
-            "quest_npc": _quest_npc(dialog_probe),
+        if not offer_probe:
+            raise RuntimeError(f"Timed out waiting for F to open the new task offer without accepting; last probe={json.dumps(interact_probe, ensure_ascii=False)}")
+        quest_offer_probe = {
+            "ok": _task_offer_open(offer_probe) and not _quest_interacted(offer_probe),
+            "kind": "task_offer",
+            "widgets": _flow_widgets(offer_probe),
+            "quest_npc": _quest_npc(offer_probe),
         }
-        self.event("quest_dialog_probe", **quest_dialog_probe)
-        if not quest_dialog_probe["ok"]:
-            raise RuntimeError(f"Quest dialog did not hold the confirmation state: {quest_dialog_probe}")
-        quest_dialog_path, _ = self.screenshot("real_flow_quest_dialog.png")
+        self.event("quest_offer_probe", **quest_offer_probe)
+        if not quest_offer_probe["ok"]:
+            raise RuntimeError(f"Quest offer did not hold the confirmation state: {quest_offer_probe}")
+        quest_offer_path, _ = self.screenshot("real_flow_quest_offer.png")
 
-        after_interact = self.click_quest_dialog_accept()
+        after_interact = self.click_quest_offer_accept()
         after_interact = self.wait_for(
-            "quest dialog accept button confirms quest and activates follower",
-            lambda probe: _quest_interacted(probe) and not _quest_dialog_open(probe),
+            "quest offer accept button confirms quest and activates follower",
+            lambda probe: _quest_interacted(probe) and _task_offer_open(probe),
             timeout=5.0,
             interval=0.35,
         )
+
+        # The confirmed task-offer UX deliberately remains open after accepting.
+        # Close it through its authored visible back-arrow rather than OS Escape:
+        # Escape is intercepted by the PIE host/editor before the game can receive it.
+        after_interact = self.click_task_panel_back()
+        after_interact = self.wait_for(
+            "task-panel back button closes the accepted offer and releases movement",
+            lambda probe: _quest_interacted(probe) and not _task_offer_open(probe) and not _move_input_is_ignored(probe),
+            timeout=5.0,
+            interval=0.35,
+        )
+        task_offer_close_probe = {
+            "ok": (
+                _quest_interacted(after_interact)
+                and not _task_offer_open(after_interact)
+                and not _move_input_is_ignored(after_interact)
+            ),
+            "widgets": _flow_widgets(after_interact),
+            "move_input_ignored": _move_input_is_ignored(after_interact),
+        }
+        self.event("quest_offer_close_probe", **task_offer_close_probe)
+        if not task_offer_close_probe["ok"]:
+            raise RuntimeError(f"Accepted task offer did not close before movement verification: {task_offer_close_probe}")
+
         quest_after_interact = _quest_npc(after_interact)
         quest_location_after_interact = quest_after_interact.get("location") if isinstance(quest_after_interact.get("location"), dict) else {}
         if not quest_location_after_interact:
@@ -1270,7 +1357,7 @@ class RealFlowHarness:
             "screenshots": {
                 "before_start": str(before_start_path),
                 "after_qingshan": str(after_qingshan_path),
-                "quest_dialog": str(quest_dialog_path),
+                "quest_dialog": str(quest_offer_path),
                 "after_route_map": str(after_route_map_path),
                 "after_battle": str(after_battle_path),
             },

@@ -25,6 +25,7 @@ public:
 private:
 	void BuildProgrammaticLayout();
 	void RefreshPanels();
+	void CloseAuxiliaryPanels();
 	void SetNotice(const FText& Notice);
 
 	UFUNCTION()
@@ -61,7 +62,7 @@ private:
 	TObjectPtr<UTextBlock> GoldText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> ExperienceResourceText;
+	TObjectPtr<UTextBlock> EnhancementMaterialText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> MaterialText;
@@ -103,5 +104,11 @@ private:
 	TObjectPtr<UButton> CompanionButton;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UButton> ResourcePlusButton;
+	TObjectPtr<UButton> CoinResourcePlusButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> EnhancementMaterialPlusButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> InventoryStackPlusButton;
 };

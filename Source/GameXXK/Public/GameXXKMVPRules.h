@@ -38,9 +38,7 @@ UENUM(BlueprintType)
 enum class EGameXXKTaskCategory : uint8
 {
 	Main,
-	Side,
-	Daily,
-	Adventure
+	Side
 };
 
 UENUM(BlueprintType)
@@ -315,6 +313,10 @@ struct FGameXXKRuntimeState
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 PlayerGold = 50;
 
+	// Used exclusively by equipment enhancement. New games and migrated saves begin with ten.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 EnhancementMaterial = 10;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 PlayerHP = 100;
 
@@ -404,6 +406,10 @@ struct FGameXXKRuntimeState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TMap<FName, int32> Inventory;
+
+	// Enhancement levels belong to the item definition and are only applied while that item is equipped.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TMap<FName, int32> ItemEnhancementLevels;
 };
 
 USTRUCT(BlueprintType)
@@ -497,10 +503,16 @@ public:
 	static FGameXXKRuntimeState CreateNewGame();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
-	static TArray<FGameXXKTaskView> BuildTaskViews(const FGameXXKRuntimeState& State, EGameXXKTaskCategory Category);
+	static TArray<FGameXXKTaskView> BuildAvailableTaskViews(const FGameXXKRuntimeState& State, EGameXXKTaskCategory Category);
 
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
-	static bool ToggleTrackedTask(UPARAM(ref) FGameXXKRuntimeState& State, FName TaskId);
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static TArray<FGameXXKTaskView> BuildAcceptedTaskViews(const FGameXXKRuntimeState& State, EGameXXKTaskCategory Category);
+
+	// Compatibility view for existing Blueprints. It follows runtime quest state;
+	// the task UI uses the explicit available/accepted lists above to keep offer
+	// and accepted-task panels distinct.
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static TArray<FGameXXKTaskView> BuildTaskViews(const FGameXXKRuntimeState& State, EGameXXKTaskCategory Category);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool OpenWorldMap(UPARAM(ref) FGameXXKRuntimeState& State);
@@ -576,6 +588,18 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool SellItem(UPARAM(ref) FGameXXKRuntimeState& State, FName ItemId, int32 Quantity);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static int32 GetMaxItemEnhancementLevel();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static int32 GetItemEnhancementLevel(const FGameXXKRuntimeState& State, FName ItemId);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static bool CanEnhanceItem(const FGameXXKRuntimeState& State, FName ItemId);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool EnhanceItem(UPARAM(ref) FGameXXKRuntimeState& State, FName ItemId);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool EquipItem(UPARAM(ref) FGameXXKRuntimeState& State, FName ItemId);

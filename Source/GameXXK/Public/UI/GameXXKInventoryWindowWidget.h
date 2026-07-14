@@ -23,6 +23,16 @@ enum class EGameXXKInventoryWindowMode : uint8
 	MerchantTrade
 };
 
+UENUM(BlueprintType)
+enum class EGameXXKInventoryFilter : uint8
+{
+	All,
+	Equipment,
+	Props,
+	Materials,
+	Tasks
+};
+
 enum class EGameXXKInventorySlotSource : uint8
 {
 	None,
@@ -49,6 +59,24 @@ private:
 	EGameXXKInventorySlotSource Source = EGameXXKInventorySlotSource::None;
 	int32 SlotIndex = INDEX_NONE;
 	FName EquipmentSlotId;
+};
+
+UCLASS()
+class GAMEXXK_API UGameXXKInventoryFilterButton : public UButton
+{
+	GENERATED_BODY()
+
+public:
+	void Configure(class UGameXXKInventoryWindowWidget* InOwner, EGameXXKInventoryFilter InFilter);
+
+	UFUNCTION()
+	void HandleClicked();
+
+private:
+	UPROPERTY(Transient)
+	TObjectPtr<class UGameXXKInventoryWindowWidget> Owner;
+
+	EGameXXKInventoryFilter Filter = EGameXXKInventoryFilter::All;
 };
 
 UCLASS(Blueprintable)
@@ -147,14 +175,44 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	bool HasConfirmationCancelButtonForTest() const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	EGameXXKInventoryFilter GetActiveInventoryFilterForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow|Test")
+	bool SelectInventoryFilterForTest(EGameXXKInventoryFilter Filter);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	TArray<FName> GetVisibleBackpackItemIdsForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	int32 GetSelectedBackpackSlotIndexForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow|Test")
+	bool SortInventoryForTest();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow|Test")
+	bool RequestSelectedDecomposeForTest();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow|Test")
+	bool RequestSelectedEnhanceForTest();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	FText GetSelectedDetailTextForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	FString GetInventoryFilterTexturePathForTest(EGameXXKInventoryFilter Filter) const;
+
 	void HandleConfiguredSlotClicked(EGameXXKInventorySlotSource Source, int32 SlotIndex, FName EquipmentSlotId);
+	void HandleInventoryFilterClicked(EGameXXKInventoryFilter Filter);
 
 private:
 	enum class EConfirmationAction : uint8
 	{
 		None,
 		Buy,
-		Sell
+		Sell,
+		Decompose,
+		Enhance
 	};
 
 	void BuildProgrammaticLayout();
@@ -169,8 +227,12 @@ private:
 	bool SelectPlayerBackpackSlot(int32 SlotIndex);
 	bool SelectMerchantStockSlot(int32 SlotIndex);
 	bool SelectEquipmentSlot(FName SlotId);
+	bool SelectInventoryFilter(EGameXXKInventoryFilter Filter);
+	bool SortInventory();
 	bool RequestBuyForSelectedItem();
 	bool RequestSellForSelectedItem();
+	bool RequestDecomposeForSelectedItem();
+	bool RequestEnhanceForSelectedItem();
 	bool ConfirmDialog();
 	bool CancelDialog();
 
@@ -182,6 +244,15 @@ private:
 
 	UFUNCTION()
 	void HandleSecondaryActionClicked();
+
+	UFUNCTION()
+	void HandleSortClicked();
+
+	UFUNCTION()
+	void HandleDecomposeClicked();
+
+	UFUNCTION()
+	void HandleEnhanceClicked();
 
 	UFUNCTION()
 	void HandleConfirmClicked();
@@ -223,6 +294,15 @@ private:
 	TObjectPtr<UUniformGridPanel> BackpackGrid;
 
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<UGameXXKInventoryFilterButton>> InventoryFilterButtons;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> SortButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> DecomposeButton;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UBorder> DetailPanelFrame;
 
 	UPROPERTY(Transient)
@@ -242,6 +322,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> SecondaryActionTextBlock;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> EnhanceButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> EnhanceActionTextBlock;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> ConfirmationDialogFrame;
@@ -305,6 +391,8 @@ private:
 	int32 PendingConfirmationPrice = 0;
 	FText CurrentPrimaryActionText;
 	FText CurrentSecondaryActionText;
+	EGameXXKInventoryFilter ActiveInventoryFilter = EGameXXKInventoryFilter::All;
+	bool bBackpackSorted = false;
 	TArray<FName> CurrentBackpackSlotItemIds;
 	TArray<FString> CurrentBackpackSlotIconPaths;
 	TArray<FName> CurrentMerchantStockSlotItemIds;
