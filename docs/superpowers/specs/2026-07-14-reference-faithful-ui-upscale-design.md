@@ -6,15 +6,15 @@ Improve the resolution of selected task-panel UI atoms while preserving the supp
 
 ## Scope
 
+The user-approved panel composition, large paper frame, paper-arrow treatment, and selected-tab treatment are style anchors. Do not change those approved atoms in this pass.
+
 Rework only these source atoms first:
 
 - `reward_coin.png`
 - `reward_exp.png`
 - `reward_token.png`
-- `task_panel_back_arrow.png`
-- `task_tab_selected.png`
 
-Keep the currently accepted panel/card/button base textures unchanged during this correction. Do not change widgets, gameplay, UMG layout, maps, or unrelated assets.
+Keep the currently accepted panel/card/button base textures, arrow, and tab textures unchanged during this correction. Do not change widgets, gameplay, UMG layout, maps, or unrelated assets.
 
 ## Source Authority
 
