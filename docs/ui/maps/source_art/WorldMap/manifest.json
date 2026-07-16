@@ -1,0 +1,157 @@
+{
+  "canvas": {
+    "width": 1920,
+    "height": 1080
+  },
+  "sourceReference": {
+    "path": "PSD clean_assets_v2/094.png",
+    "usage": "visual reference only; not a runtime source and not a source-art layer"
+  },
+  "layers": [
+    {
+      "name": "world_map_terrain",
+      "file": "world_map_terrain.png",
+      "kind": "terrain",
+      "requiresAlpha": false,
+      "forbiddenContent": [
+        "route",
+        "node",
+        "label",
+        "player_marker",
+        "settlement_marker",
+        "skull",
+        "text",
+        "number"
+      ],
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGB",
+      "alphaExtrema": [
+        255,
+        255
+      ],
+      "sha256": "efe8db92da220393dad35bd0367b624149da9b449a8297dd3c3ae1849ee02aef"
+    },
+    {
+      "name": "world_map_region_paths",
+      "file": "world_map_region_paths.png",
+      "kind": "decorative_path",
+      "requiresAlpha": true,
+      "forbiddenContent": [
+        "node",
+        "label",
+        "player_marker",
+        "skull",
+        "text",
+        "number",
+        "marker",
+        "terrain",
+        "frame"
+      ],
+      "size": [
+        1536,
+        1024
+      ],
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "sha256": "18b2dc94eb04c0bb26d25ca6900f5cbb980eec9ee34b559bff499a7e90c1efcf"
+    },
+    {
+      "name": "world_map_qingshan_marker",
+      "file": "world_map_qingshan_marker.png",
+      "kind": "marker",
+      "requiresAlpha": true,
+      "forbiddenContent": [
+        "text",
+        "number",
+        "map",
+        "terrain",
+        "frame"
+      ],
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "sha256": "dfb31ecd44508a2754d0c92f73d781f6e03ee0178fb45c270608f1d57fe451e1"
+    },
+    {
+      "name": "world_map_locked_marker",
+      "file": "world_map_locked_marker.png",
+      "kind": "marker",
+      "requiresAlpha": true,
+      "forbiddenContent": [
+        "text",
+        "number",
+        "map",
+        "terrain",
+        "frame"
+      ],
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "sha256": "1ab24fe9166fe15ffaa059d71533284134df6c8aaf7c5cf8a46ed6366a252dbe"
+    },
+    {
+      "name": "world_map_player_marker",
+      "file": "world_map_player_marker.png",
+      "kind": "marker",
+      "requiresAlpha": true,
+      "forbiddenContent": [
+        "text",
+        "number",
+        "map",
+        "terrain",
+        "frame"
+      ],
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "sha256": "c8ad9fa7e9c6f59225212b6869b5f20f93f740d918d13a1bf9c505711bceb724"
+    },
+    {
+      "name": "world_map_label_plate",
+      "file": "world_map_label_plate.png",
+      "kind": "label_plate",
+      "requiresAlpha": true,
+      "forbiddenContent": [
+        "text",
+        "number",
+        "icon",
+        "map",
+        "frame"
+      ],
+      "size": [
+        1808,
+        870
+      ],
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "sha256": "d64eb61d4ccd72c03ffbeee8c53cf806118c0a261c15983addb3bd0bea315567"
+    }
+  ]
+}
