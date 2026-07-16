@@ -1476,12 +1476,13 @@ namespace
 		case EGameXXKCardStatus::CannotReceiveVulnerability:
 		case EGameXXKCardStatus::NextAttackBonus:
 		case EGameXXKCardStatus::NextAttackAppliesVulnerability:
-		case EGameXXKCardStatus::NextHealingBonus:
 		case EGameXXKCardStatus::TerrainBonusDouble:
 		case EGameXXKCardStatus::NextTerrainCardFree:
 		case EGameXXKCardStatus::NextTerrainCardEnergyReduction:
 		case EGameXXKCardStatus::RedirectSingleTargetEnemyAttack:
 			return 1;
+		case EGameXXKCardStatus::NextHealingBonus:
+			return 99;
 		case EGameXXKCardStatus::Invalid:
 		case EGameXXKCardStatus::None:
 		case EGameXXKCardStatus::Guard:
@@ -2007,6 +2008,28 @@ namespace
 		return true;
 	}
 
+	bool IsConditionSatisfied(
+		const FGameXXKCardEffectCondition& Condition,
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardCombatUnit& Owner,
+		const FGameXXKCardCombatUnit* Target,
+		bool& OutSatisfied,
+		FString& OutError);
+
+	bool BuildEffectiveCardEnergyCost(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardInstance& Instance,
+		const FGameXXKCardCombatUnit& Owner,
+		int32& OutEnergyCost,
+		TArray<FName>* OutAppliedModifierIds,
+		FString& OutError);
+
+	bool ConsumeOnCardPlayedModifiers(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FName>& ModifierIds,
+		FString& OutError);
+
 	bool BuildCardPlayPreviewInternal(
 		const FGameXXKCardBattleRuntime& Runtime,
 		const FName CardInstanceId,
@@ -2053,7 +2076,17 @@ namespace
 			OutError = TEXT("The card owner is absent or defeated.");
 			return false;
 		}
-		if (Definition->EnergyCost < 0 || Definition->ManaCost < 0 || Runtime.Deck.SharedEnergy < Definition->EnergyCost || Owner->Mana < Definition->ManaCost)
+		if (Definition->EnergyCost < 0 || Definition->ManaCost < 0)
+		{
+			OutError = TEXT("The requested hand card has invalid resource costs.");
+			return false;
+		}
+		int32 EffectiveEnergyCost = Definition->EnergyCost;
+		if (!BuildEffectiveCardEnergyCost(Runtime, *Definition, *Instance, *Owner, EffectiveEnergyCost, nullptr, OutError))
+		{
+			return false;
+		}
+		if (Runtime.Deck.SharedEnergy < EffectiveEnergyCost || Owner->Mana < Definition->ManaCost)
 		{
 			OutError = TEXT("The card owner does not have enough shared energy or mana.");
 			return false;
@@ -2063,7 +2096,7 @@ namespace
 		NewPreview.CardInstanceId = Instance->InstanceId;
 		NewPreview.CardId = Instance->CardId;
 		NewPreview.OwnerUnitId = Instance->OwnerUnitId;
-		NewPreview.EffectiveEnergyCost = Definition->EnergyCost;
+		NewPreview.EffectiveEnergyCost = EffectiveEnergyCost;
 		NewPreview.EffectiveManaCost = Definition->ManaCost;
 		if (!GameXXKCardRules::BuildTargetRequest(*Definition, *Instance, Runtime.Terrain, BuildTargetUnitView(Runtime.Units), NewPreview.TargetRequest, &OutError))
 		{
@@ -2132,6 +2165,163 @@ namespace
 			return false;
 		}
 		OutSatisfied = Condition.bNegate ? !bConditionValue : bConditionValue;
+		return true;
+	}
+
+	bool DoesOnCardPlayedModifierApply(
+		const FGameXXKCardBattleModifierRuntime& Modifier,
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardDefinition& PlayedDefinition,
+		const FGameXXKCardInstance& PlayedInstance,
+		const FGameXXKCardCombatUnit& PlayedOwner,
+		bool& OutApplies,
+		FString& OutError)
+	{
+		OutApplies = false;
+		OutError.Reset();
+		const FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
+		if (ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::OnCardPlayed
+			|| ModifierDefinition.EffectType != EGameXXKCardEffectType::ModifyEnergyCost)
+		{
+			return true;
+		}
+		if (ModifierDefinition.Target != EGameXXKCardEffectTarget::PlayedCard)
+		{
+			OutError = TEXT("A card-play cost modifier must explicitly target the played card.");
+			return false;
+		}
+		if (ModifierDefinition.RecipientScope != EGameXXKCardModifierRecipientScope::SharedDeck
+			&& !Modifier.RecipientUnitIds.Contains(PlayedInstance.OwnerUnitId))
+		{
+			return true;
+		}
+		if (ModifierDefinition.RequiredTriggeredRole != EGameXXKCharacterRole::Invalid
+			&& ModifierDefinition.RequiredTriggeredRole != PlayedOwner.Role)
+		{
+			return true;
+		}
+		if (!ModifierDefinition.RequiredTriggeredOwnerId.IsNone()
+			&& ModifierDefinition.RequiredTriggeredOwnerId != PlayedDefinition.OwnerId)
+		{
+			return true;
+		}
+		if (ModifierDefinition.Condition.bConsumeStatus || ModifierDefinition.Condition.bConsumeOwnerArmor)
+		{
+			OutError = TEXT("A card-play cost modifier cannot consume combat state during a non-mutating preview.");
+			return false;
+		}
+		bool bConditionSatisfied = false;
+		if (!IsConditionSatisfied(ModifierDefinition.Condition, Runtime, PlayedOwner, nullptr, bConditionSatisfied, OutError))
+		{
+			return false;
+		}
+		OutApplies = bConditionSatisfied;
+		return true;
+	}
+
+	bool BuildEffectiveCardEnergyCost(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardInstance& Instance,
+		const FGameXXKCardCombatUnit& Owner,
+		int32& OutEnergyCost,
+		TArray<FName>* OutAppliedModifierIds,
+		FString& OutError)
+	{
+		OutError.Reset();
+		if (Definition.EnergyCost < 0)
+		{
+			OutError = TEXT("Card energy cost cannot be negative.");
+			return false;
+		}
+		if (OutAppliedModifierIds)
+		{
+			OutAppliedModifierIds->Reset();
+		}
+		int64 EffectiveCost = Definition.EnergyCost;
+		for (const FGameXXKCardBattleModifierRuntime& Modifier : Runtime.Modifiers)
+		{
+			bool bApplies = false;
+			if (!DoesOnCardPlayedModifierApply(Modifier, Runtime, Definition, Instance, Owner, bApplies, OutError))
+			{
+				return false;
+			}
+			if (!bApplies)
+			{
+				continue;
+			}
+			EffectiveCost += Modifier.Definition.Magnitude;
+			if (OutAppliedModifierIds)
+			{
+				OutAppliedModifierIds->Add(Modifier.ModifierId);
+			}
+		}
+		OutEnergyCost = EffectiveCost <= 0
+			? 0
+			: EffectiveCost > MAX_int32
+				? MAX_int32
+				: static_cast<int32>(EffectiveCost);
+		return true;
+	}
+
+	bool ConsumeOnCardPlayedModifiers(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FName>& ModifierIds,
+		FString& OutError)
+	{
+		OutError.Reset();
+		TSet<FName> RequestedIds;
+		for (const FName ModifierId : ModifierIds)
+		{
+			if (ModifierId.IsNone() || RequestedIds.Contains(ModifierId))
+			{
+				OutError = TEXT("Applied card-play modifier IDs must be unique and non-empty.");
+				return false;
+			}
+			RequestedIds.Add(ModifierId);
+		}
+		for (int32 Index = InOutRuntime.Modifiers.Num() - 1; Index >= 0; --Index)
+		{
+			FGameXXKCardBattleModifierRuntime& Modifier = InOutRuntime.Modifiers[Index];
+			if (!RequestedIds.Contains(Modifier.ModifierId))
+			{
+				continue;
+			}
+			FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
+			if (ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::OnCardPlayed
+				|| ModifierDefinition.EffectType != EGameXXKCardEffectType::ModifyEnergyCost)
+			{
+				OutError = TEXT("A non-cost modifier was selected for card-play consumption.");
+				return false;
+			}
+			switch (ModifierDefinition.Expiry)
+			{
+			case EGameXXKCardModifierExpiry::AfterTriggerCount:
+				if (ModifierDefinition.RemainingTriggers <= 0)
+				{
+					OutError = TEXT("A trigger-count cost modifier has no remaining uses.");
+					return false;
+				}
+				--ModifierDefinition.RemainingTriggers;
+				if (ModifierDefinition.RemainingTriggers == 0)
+				{
+					InOutRuntime.Modifiers.RemoveAt(Index, 1, EAllowShrinking::No);
+				}
+				break;
+			case EGameXXKCardModifierExpiry::EndOfCurrentRound:
+				break;
+			case EGameXXKCardModifierExpiry::EndOfCurrentRoundOrTriggerCount:
+				if (ModifierDefinition.RemainingTriggers > 0 && --ModifierDefinition.RemainingTriggers == 0)
+				{
+					InOutRuntime.Modifiers.RemoveAt(Index, 1, EAllowShrinking::No);
+				}
+				break;
+			case EGameXXKCardModifierExpiry::Invalid:
+			default:
+				OutError = TEXT("A card-play cost modifier has an invalid expiry policy.");
+				return false;
+			}
+		}
 		return true;
 	}
 
@@ -2244,6 +2434,83 @@ namespace
 		return true;
 	}
 
+	bool ResolveModifierRecipientIds(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardInstance& Instance,
+		const TArray<FName>& CardTargetIds,
+		const FGameXXKCardBattleModifier& Modifier,
+		TArray<FName>& OutRecipientUnitIds,
+		FString& OutError)
+	{
+		OutError.Reset();
+		OutRecipientUnitIds.Reset();
+		if (Modifier.RecipientScope == EGameXXKCardModifierRecipientScope::SharedDeck)
+		{
+			if (Modifier.RecipientTarget != EGameXXKCardEffectTarget::PlayedCard)
+			{
+				OutError = TEXT("A shared-deck modifier must explicitly identify the played-card recipient scope.");
+				return false;
+			}
+			return true;
+		}
+		if (Modifier.RecipientScope == EGameXXKCardModifierRecipientScope::Invalid)
+		{
+			OutError = TEXT("A persistent modifier has no recipient scope.");
+			return false;
+		}
+		if (!ResolveEffectTargetIds(Runtime, Instance.OwnerUnitId, CardTargetIds, Modifier.RecipientTarget, OutRecipientUnitIds, OutError))
+		{
+			return false;
+		}
+		return true;
+	}
+
+	bool RegisterBattleModifier(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardInstance& Instance,
+		const TArray<FName>& CardTargetIds,
+		const FGameXXKCardBattleModifier& ModifierDefinition,
+		FString& OutError)
+	{
+		OutError.Reset();
+		if (!ModifierDefinition.bPersistent
+			|| ModifierDefinition.Trigger == EGameXXKCardBattleModifierTrigger::Invalid
+			|| ModifierDefinition.EffectType == EGameXXKCardEffectType::Invalid
+			|| ModifierDefinition.Expiry == EGameXXKCardModifierExpiry::Invalid)
+		{
+			OutError = TEXT("A battle modifier must have a persistent trigger, effect, and expiry policy.");
+			return false;
+		}
+		TArray<FName> RecipientUnitIds;
+		if (!ResolveModifierRecipientIds(InOutRuntime, Instance, CardTargetIds, ModifierDefinition, RecipientUnitIds, OutError))
+		{
+			return false;
+		}
+		TSet<FName> ExistingModifierIds;
+		for (const FGameXXKCardBattleModifierRuntime& ExistingModifier : InOutRuntime.Modifiers)
+		{
+			ExistingModifierIds.Add(ExistingModifier.ModifierId);
+		}
+		FName NewModifierId = NAME_None;
+		while (NewModifierId.IsNone() || ExistingModifierIds.Contains(NewModifierId))
+		{
+			if (InOutRuntime.NextModifierOrdinal == MAX_int32)
+			{
+				OutError = TEXT("Battle modifier ordinal has exhausted the supported range.");
+				return false;
+			}
+			NewModifierId = FName(*FString::Printf(TEXT("Modifier.%d"), InOutRuntime.NextModifierOrdinal++));
+		}
+		FGameXXKCardBattleModifierRuntime& NewModifier = InOutRuntime.Modifiers.AddDefaulted_GetRef();
+		NewModifier.ModifierId = NewModifierId;
+		NewModifier.SourceCardInstanceId = Instance.InstanceId;
+		NewModifier.SourceUnitId = Instance.OwnerUnitId;
+		NewModifier.OriginalSelectedTargetUnitId = CardTargetIds.Num() == 1 ? CardTargetIds[0] : NAME_None;
+		NewModifier.RecipientUnitIds = MoveTemp(RecipientUnitIds);
+		NewModifier.Definition = ModifierDefinition;
+		return true;
+	}
+
 	bool IsCurrentlySupportedEffect(const FGameXXKCardEffect& Effect, FString& OutError)
 	{
 		OutError.Reset();
@@ -2262,11 +2529,16 @@ namespace
 		case EGameXXKCardEffectType::RemoveStatus:
 		case EGameXXKCardEffectType::RemoveAnyDamageOverTime:
 		case EGameXXKCardEffectType::Insight:
+		case EGameXXKCardEffectType::DiscoverCards:
 		case EGameXXKCardEffectType::ReorderCards:
+		case EGameXXKCardEffectType::DiscardCards:
 		case EGameXXKCardEffectType::IgnoreDefense:
 		case EGameXXKCardEffectType::BonusDamagePercent:
 		case EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus:
 		case EGameXXKCardEffectType::BonusDamagePercentPerConsumedArmor:
+		case EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget:
+		case EGameXXKCardEffectType::ApplyGuardLink:
+		case EGameXXKCardEffectType::ApplyBattleModifier:
 		case EGameXXKCardEffectType::DoubleTerrainBonus:
 			return true;
 		default:
@@ -2394,6 +2666,310 @@ namespace
 		return true;
 	}
 
+	bool DoesOnNextAttackModifierApply(
+		const FGameXXKCardBattleModifierRuntime& Modifier,
+		const FGameXXKCardDefinition& PlayedDefinition,
+		const FGameXXKCardInstance& PlayedInstance,
+		const FGameXXKCardCombatUnit& PlayedOwner,
+		bool& OutApplies,
+		FString& OutError)
+	{
+		OutApplies = false;
+		OutError.Reset();
+		const FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
+		if (ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::OnNextAttack
+			|| ModifierDefinition.EffectType != EGameXXKCardEffectType::BonusDamagePercent)
+		{
+			return true;
+		}
+		if (ModifierDefinition.Target != EGameXXKCardEffectTarget::PlayedCard)
+		{
+			OutError = TEXT("A next-attack modifier must explicitly target the played card.");
+			return false;
+		}
+		if (ModifierDefinition.RecipientScope != EGameXXKCardModifierRecipientScope::SharedDeck
+			&& !Modifier.RecipientUnitIds.Contains(PlayedInstance.OwnerUnitId))
+		{
+			return true;
+		}
+		if (ModifierDefinition.RequiredTriggeredRole != EGameXXKCharacterRole::Invalid
+			&& ModifierDefinition.RequiredTriggeredRole != PlayedOwner.Role)
+		{
+			return true;
+		}
+		if (!ModifierDefinition.RequiredTriggeredOwnerId.IsNone()
+			&& ModifierDefinition.RequiredTriggeredOwnerId != PlayedDefinition.OwnerId)
+		{
+			return true;
+		}
+		if (ModifierDefinition.Expiry == EGameXXKCardModifierExpiry::AfterTriggerCount && ModifierDefinition.RemainingTriggers <= 0)
+		{
+			OutError = TEXT("A next-attack modifier has no remaining trigger count.");
+			return false;
+		}
+		OutApplies = true;
+		return true;
+	}
+
+	bool CollectOnNextAttackBonuses(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& PlayedDefinition,
+		const FGameXXKCardInstance& PlayedInstance,
+		FGameXXKCardCombatUnit& InOutOwner,
+		FGameXXKCardCombatUnit* ConditionTarget,
+		int32& OutBonusPercent,
+		TArray<FName>& OutModifierIds,
+		FString& OutError)
+	{
+		OutBonusPercent = 0;
+		OutModifierIds.Reset();
+		OutError.Reset();
+		for (const FGameXXKCardBattleModifierRuntime& Modifier : InOutRuntime.Modifiers)
+		{
+			bool bModifierApplies = false;
+			if (!DoesOnNextAttackModifierApply(Modifier, PlayedDefinition, PlayedInstance, InOutOwner, bModifierApplies, OutError))
+			{
+				return false;
+			}
+			if (!bModifierApplies)
+			{
+				continue;
+			}
+			bool bConditionSatisfied = false;
+			int32 IgnoredConsumed = 0;
+			if (!TryApplyEffectConditionAndConsumption(Modifier.Definition.Condition, InOutRuntime, InOutOwner, ConditionTarget, bConditionSatisfied, IgnoredConsumed, OutError))
+			{
+				return false;
+			}
+			if (!bConditionSatisfied)
+			{
+				continue;
+			}
+			if ((Modifier.Definition.Magnitude > 0 && OutBonusPercent > MAX_int32 - Modifier.Definition.Magnitude)
+				|| (Modifier.Definition.Magnitude < 0 && OutBonusPercent < MIN_int32 - Modifier.Definition.Magnitude))
+			{
+				OutError = TEXT("Next-attack modifier bonuses exceed the supported range.");
+				return false;
+			}
+			OutBonusPercent += Modifier.Definition.Magnitude;
+			OutModifierIds.Add(Modifier.ModifierId);
+		}
+		return true;
+	}
+
+	bool ConsumeOnNextAttackModifiers(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FName>& ModifierIds,
+		FString& OutError)
+	{
+		OutError.Reset();
+		TSet<FName> RequestedIds;
+		for (const FName ModifierId : ModifierIds)
+		{
+			if (ModifierId.IsNone() || RequestedIds.Contains(ModifierId))
+			{
+				OutError = TEXT("Triggered next-attack modifier IDs must be unique and non-empty.");
+				return false;
+			}
+			RequestedIds.Add(ModifierId);
+		}
+		for (int32 Index = InOutRuntime.Modifiers.Num() - 1; Index >= 0; --Index)
+		{
+			FGameXXKCardBattleModifierRuntime& Modifier = InOutRuntime.Modifiers[Index];
+			if (!RequestedIds.Contains(Modifier.ModifierId))
+			{
+				continue;
+			}
+			FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
+			if (ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::OnNextAttack
+				|| ModifierDefinition.EffectType != EGameXXKCardEffectType::BonusDamagePercent)
+			{
+				OutError = TEXT("A non-attack modifier was selected for next-attack consumption.");
+				return false;
+			}
+			switch (ModifierDefinition.Expiry)
+			{
+			case EGameXXKCardModifierExpiry::AfterTriggerCount:
+				if (ModifierDefinition.RemainingTriggers <= 0)
+				{
+					OutError = TEXT("A next-attack modifier has no remaining trigger count.");
+					return false;
+				}
+				--ModifierDefinition.RemainingTriggers;
+				if (ModifierDefinition.RemainingTriggers == 0)
+				{
+					InOutRuntime.Modifiers.RemoveAt(Index, 1, EAllowShrinking::No);
+				}
+				break;
+			case EGameXXKCardModifierExpiry::EndOfCurrentRound:
+				break;
+			case EGameXXKCardModifierExpiry::EndOfCurrentRoundOrTriggerCount:
+				if (ModifierDefinition.RemainingTriggers > 0 && --ModifierDefinition.RemainingTriggers == 0)
+				{
+					InOutRuntime.Modifiers.RemoveAt(Index, 1, EAllowShrinking::No);
+				}
+				break;
+			case EGameXXKCardModifierExpiry::Invalid:
+			default:
+				OutError = TEXT("A next-attack modifier has an invalid expiry policy.");
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool DoesOnNextHealingModifierApply(
+		const FGameXXKCardBattleModifierRuntime& Modifier,
+		const FGameXXKCardDefinition& PlayedDefinition,
+		const FGameXXKCardInstance& PlayedInstance,
+		const FGameXXKCardCombatUnit& PlayedOwner,
+		bool& OutApplies,
+		FString& OutError)
+	{
+		OutApplies = false;
+		OutError.Reset();
+		const FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
+		if (ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::OnNextHealing
+			|| ModifierDefinition.EffectType != EGameXXKCardEffectType::ModifyHealingPercent)
+		{
+			return true;
+		}
+		if (ModifierDefinition.Target != EGameXXKCardEffectTarget::PlayedCard)
+		{
+			OutError = TEXT("A healing modifier must explicitly target the played card.");
+			return false;
+		}
+		if (ModifierDefinition.RecipientScope != EGameXXKCardModifierRecipientScope::SharedDeck
+			&& !Modifier.RecipientUnitIds.Contains(PlayedInstance.OwnerUnitId))
+		{
+			return true;
+		}
+		if (ModifierDefinition.RequiredTriggeredRole != EGameXXKCharacterRole::Invalid
+			&& ModifierDefinition.RequiredTriggeredRole != PlayedOwner.Role)
+		{
+			return true;
+		}
+		if (!ModifierDefinition.RequiredTriggeredOwnerId.IsNone()
+			&& ModifierDefinition.RequiredTriggeredOwnerId != PlayedDefinition.OwnerId)
+		{
+			return true;
+		}
+		if (ModifierDefinition.Expiry == EGameXXKCardModifierExpiry::AfterTriggerCount && ModifierDefinition.RemainingTriggers <= 0)
+		{
+			OutError = TEXT("A next-healing modifier has no remaining trigger count.");
+			return false;
+		}
+		OutApplies = true;
+		return true;
+	}
+
+	bool CollectOnNextHealingBonuses(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& PlayedDefinition,
+		const FGameXXKCardInstance& PlayedInstance,
+		FGameXXKCardCombatUnit& InOutOwner,
+		FGameXXKCardCombatUnit* ConditionTarget,
+		int32& OutBonusPercent,
+		TArray<FName>& OutModifierIds,
+		FString& OutError)
+	{
+		OutBonusPercent = 0;
+		OutModifierIds.Reset();
+		OutError.Reset();
+		for (const FGameXXKCardBattleModifierRuntime& Modifier : InOutRuntime.Modifiers)
+		{
+			bool bModifierApplies = false;
+			if (!DoesOnNextHealingModifierApply(Modifier, PlayedDefinition, PlayedInstance, InOutOwner, bModifierApplies, OutError))
+			{
+				return false;
+			}
+			if (!bModifierApplies)
+			{
+				continue;
+			}
+			bool bConditionSatisfied = false;
+			int32 IgnoredConsumed = 0;
+			if (!TryApplyEffectConditionAndConsumption(Modifier.Definition.Condition, InOutRuntime, InOutOwner, ConditionTarget, bConditionSatisfied, IgnoredConsumed, OutError))
+			{
+				return false;
+			}
+			if (!bConditionSatisfied)
+			{
+				continue;
+			}
+			const int64 NewBonus = static_cast<int64>(OutBonusPercent) + Modifier.Definition.Magnitude;
+			if (NewBonus < MIN_int32 || NewBonus > MAX_int32)
+			{
+				OutError = TEXT("Next-healing modifier bonuses exceed the supported range.");
+				return false;
+			}
+			OutBonusPercent = static_cast<int32>(NewBonus);
+			OutModifierIds.Add(Modifier.ModifierId);
+		}
+		return true;
+	}
+
+	bool ConsumeOnNextHealingModifiers(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FName>& ModifierIds,
+		FString& OutError)
+	{
+		OutError.Reset();
+		TSet<FName> RequestedIds;
+		for (const FName ModifierId : ModifierIds)
+		{
+			if (ModifierId.IsNone() || RequestedIds.Contains(ModifierId))
+			{
+				OutError = TEXT("Triggered next-healing modifier IDs must be unique and non-empty.");
+				return false;
+			}
+			RequestedIds.Add(ModifierId);
+		}
+		for (int32 Index = InOutRuntime.Modifiers.Num() - 1; Index >= 0; --Index)
+		{
+			FGameXXKCardBattleModifierRuntime& Modifier = InOutRuntime.Modifiers[Index];
+			if (!RequestedIds.Contains(Modifier.ModifierId))
+			{
+				continue;
+			}
+			FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
+			if (ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::OnNextHealing
+				|| ModifierDefinition.EffectType != EGameXXKCardEffectType::ModifyHealingPercent)
+			{
+				OutError = TEXT("A non-healing modifier was selected for next-healing consumption.");
+				return false;
+			}
+			switch (ModifierDefinition.Expiry)
+			{
+			case EGameXXKCardModifierExpiry::AfterTriggerCount:
+				if (ModifierDefinition.RemainingTriggers <= 0)
+				{
+					OutError = TEXT("A next-healing modifier has no remaining trigger count.");
+					return false;
+				}
+				--ModifierDefinition.RemainingTriggers;
+				if (ModifierDefinition.RemainingTriggers == 0)
+				{
+					InOutRuntime.Modifiers.RemoveAt(Index, 1, EAllowShrinking::No);
+				}
+				break;
+			case EGameXXKCardModifierExpiry::EndOfCurrentRound:
+				break;
+			case EGameXXKCardModifierExpiry::EndOfCurrentRoundOrTriggerCount:
+				if (ModifierDefinition.RemainingTriggers > 0 && --ModifierDefinition.RemainingTriggers == 0)
+				{
+					InOutRuntime.Modifiers.RemoveAt(Index, 1, EAllowShrinking::No);
+				}
+				break;
+			case EGameXXKCardModifierExpiry::Invalid:
+			default:
+				OutError = TEXT("A next-healing modifier has an invalid expiry policy.");
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool ResolveAttackPacket(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FGameXXKCardDefinition& Definition,
@@ -2421,6 +2997,10 @@ namespace
 		{
 			return false;
 		}
+		bool bPreparedTriggeredAttack = false;
+		int32 TriggeredAttackBonusPercent = 0;
+		bool bApplyNextAttackVulnerability = false;
+		bool bApplyNextAttackMark = false;
 		for (const FName TargetId : TargetIds)
 		{
 			FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
@@ -2485,7 +3065,20 @@ namespace
 					IgnoredDefense += Attachment.Magnitude;
 					break;
 				case EGameXXKCardEffectType::BonusDamagePercent:
-					Percent += Attachment.Magnitude;
+					if (Attachment.SecondaryMagnitude > 0)
+					{
+						if (!ConditionTarget || Attachment.Condition.Type != EGameXXKCardEffectConditionType::TargetHasStatus)
+						{
+							OutError = TEXT("A per-status attack bonus requires a concrete target-status condition.");
+							return false;
+						}
+						const int32 StatusStacks = GameXXKCardRules::GetCombatStatusStacks(*ConditionTarget, Attachment.Condition.Status);
+						Percent += static_cast<int64>(Attachment.Magnitude) * FMath::Min(StatusStacks, Attachment.SecondaryMagnitude);
+					}
+					else
+					{
+						Percent += Attachment.Magnitude;
+					}
 					break;
 				case EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus:
 				case EGameXXKCardEffectType::BonusDamagePercentPerConsumedArmor:
@@ -2506,6 +3099,30 @@ namespace
 			{
 				continue;
 			}
+			if (!bPreparedTriggeredAttack)
+			{
+				TArray<FName> TriggeredModifierIds;
+				if (!CollectOnNextAttackBonuses(InOutRuntime, Definition, Instance, *Owner, ConditionTarget, TriggeredAttackBonusPercent, TriggeredModifierIds, OutError))
+				{
+					return false;
+				}
+				if (!ConsumeOnNextAttackModifiers(InOutRuntime, TriggeredModifierIds, OutError))
+				{
+					return false;
+				}
+				bApplyNextAttackVulnerability = GameXXKCardRules::GetCombatStatusStacks(*Owner, EGameXXKCardStatus::NextAttackAppliesVulnerability) > 0;
+				bApplyNextAttackMark = GameXXKCardRules::GetCombatStatusStacks(*Owner, EGameXXKCardStatus::NextAttackBonus) > 0;
+				if (bApplyNextAttackVulnerability)
+				{
+					GameXXKCardRules::ConsumeCombatStatus(*Owner, EGameXXKCardStatus::NextAttackAppliesVulnerability, 1);
+				}
+				if (bApplyNextAttackMark)
+				{
+					GameXXKCardRules::ConsumeCombatStatus(*Owner, EGameXXKCardStatus::NextAttackBonus, 1);
+				}
+				bPreparedTriggeredAttack = true;
+			}
+			Percent += TriggeredAttackBonusPercent;
 			const int64 RawDamage = static_cast<int64>(Owner->Attack) * Percent / 100 + FlatDamage;
 			if (RawDamage <= 0 || RawDamage > MAX_int32 || IgnoredDefense < 0 || IgnoredDefense > MAX_int32)
 			{
@@ -2535,6 +3152,18 @@ namespace
 						Status.Stacks = OnHitEffect->Magnitude;
 					}
 				}
+				if (HitIndex == 0 && bApplyNextAttackVulnerability)
+				{
+					FGameXXKCardStatusStack& Status = Context.OnHitStatuses.AddDefaulted_GetRef();
+					Status.Status = EGameXXKCardStatus::Vulnerability;
+					Status.Stacks = 1;
+				}
+				if (HitIndex == 0 && bApplyNextAttackMark)
+				{
+					FGameXXKCardStatusStack& Status = Context.OnHitStatuses.AddDefaulted_GetRef();
+					Status.Status = EGameXXKCardStatus::Mark;
+					Status.Stacks = 1;
+				}
 				FGameXXKCardDamageResult DamageResult;
 				if (!GameXXKCardRules::ApplyCombatDirectDamage(InOutRuntime.Units, InOutRuntime.GuardLinks, Context, TargetId, static_cast<int32>(RawDamage), DamageResult, &OutError))
 				{
@@ -2561,6 +3190,9 @@ namespace
 	{
 		TSet<int32> AttachedEffectIndices;
 		TMap<FName, int32> ConsumptionResults;
+		bool bPreparedHealingAction = false;
+		int32 HealingBonusPercent = 0;
+		int32 HealingFlatBonus = 0;
 		for (int32 EffectIndex = 0; EffectIndex < Definition.Effects.Num(); ++EffectIndex)
 		{
 			if (AttachedEffectIndices.Contains(EffectIndex))
@@ -2589,6 +3221,37 @@ namespace
 			{
 				continue;
 			}
+			if (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier)
+			{
+				FGameXXKCardCombatUnit* ModifierOwner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+				if (!ModifierOwner || !ModifierOwner->bLiving)
+				{
+					OutError = TEXT("Card owner was defeated before its persistent modifier could register.");
+					return false;
+				}
+				FGameXXKCardCombatUnit* ModifierConditionTarget = CardTargetIds.Num() == 1
+					? FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0])
+					: nullptr;
+				bool bConditionSatisfied = false;
+				int32 Consumed = 0;
+				if (!TryApplyEffectConditionAndConsumption(Effect.Condition, InOutRuntime, *ModifierOwner, ModifierConditionTarget, bConditionSatisfied, Consumed, OutError))
+				{
+					return false;
+				}
+				if (!bConditionSatisfied)
+				{
+					continue;
+				}
+				if (!Effect.ConsumptionGroupId.IsNone())
+				{
+					ConsumptionResults.FindOrAdd(Effect.ConsumptionGroupId) += Consumed;
+				}
+				if (!RegisterBattleModifier(InOutRuntime, Instance, CardTargetIds, Effect.Modifier, OutError))
+				{
+					return false;
+				}
+				continue;
+			}
 			TArray<FName> EffectTargetIds;
 			if (!ResolveEffectTargetIds(InOutRuntime, Instance.OwnerUnitId, CardTargetIds, Effect.Target, EffectTargetIds, OutError))
 			{
@@ -2606,7 +3269,13 @@ namespace
 				ConditionTarget = FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0]);
 			}
 
-			if (Effect.Type == EGameXXKCardEffectType::DrawCards || Effect.Type == EGameXXKCardEffectType::Insight || Effect.Type == EGameXXKCardEffectType::ReorderCards || Effect.Type == EGameXXKCardEffectType::GainEnergy || Effect.Type == EGameXXKCardEffectType::DoubleTerrainBonus)
+			if (Effect.Type == EGameXXKCardEffectType::DrawCards
+				|| Effect.Type == EGameXXKCardEffectType::Insight
+				|| Effect.Type == EGameXXKCardEffectType::DiscoverCards
+				|| Effect.Type == EGameXXKCardEffectType::ReorderCards
+				|| Effect.Type == EGameXXKCardEffectType::DiscardCards
+				|| Effect.Type == EGameXXKCardEffectType::GainEnergy
+				|| Effect.Type == EGameXXKCardEffectType::DoubleTerrainBonus)
 			{
 				bool bConditionSatisfied = false;
 				int32 Consumed = 0;
@@ -2624,15 +3293,34 @@ namespace
 				}
 				if (Effect.Type == EGameXXKCardEffectType::DrawCards)
 				{
-					if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, Effect.Magnitude, false, &OutError))
+					bool bWillResolveDeclaredDiscard = false;
+					for (int32 LaterEffectIndex = EffectIndex + 1; LaterEffectIndex < Definition.Effects.Num(); ++LaterEffectIndex)
+					{
+						if (Definition.Effects[LaterEffectIndex].Type == EGameXXKCardEffectType::DiscardCards)
+						{
+							bWillResolveDeclaredDiscard = true;
+							break;
+						}
+					}
+					if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, Effect.Magnitude, bWillResolveDeclaredDiscard, &OutError))
 					{
 						return false;
 					}
+					InOutResult.bOpenedPendingChoice |= InOutRuntime.Deck.PendingChoice.Kind == EGameXXKCardPendingChoiceKind::ForcedDiscard;
 				}
 				else if (Effect.Type == EGameXXKCardEffectType::Insight)
 				{
 					if (!GameXXKCardRules::BeginInsight(InOutRuntime.Deck, Effect.Magnitude, &OutError))
 					{
+						return false;
+					}
+					InOutResult.bOpenedPendingChoice = true;
+				}
+				else if (Effect.Type == EGameXXKCardEffectType::DiscoverCards)
+				{
+					if (Effect.Magnitude != 1 || InOutRuntime.Deck.PendingChoice.Kind != EGameXXKCardPendingChoiceKind::InsightChooseToHand)
+					{
+						OutError = TEXT("Discover effect requires the card's active one-card insight choice.");
 						return false;
 					}
 					InOutResult.bOpenedPendingChoice = true;
@@ -2643,6 +3331,18 @@ namespace
 					{
 						OutError = TEXT("Reorder effect requires an insight choice opened by the same card.");
 						return false;
+					}
+				}
+				else if (Effect.Type == EGameXXKCardEffectType::DiscardCards)
+				{
+					if (InOutRuntime.Deck.PendingChoice.Kind == EGameXXKCardPendingChoiceKind::ForcedDiscard)
+					{
+						if (InOutRuntime.Deck.PendingChoice.RequiredDiscardCount > Effect.Magnitude)
+						{
+							OutError = TEXT("Draw-then-discard created more required discards than the card declares.");
+							return false;
+						}
+						InOutResult.bOpenedPendingChoice = true;
 					}
 				}
 				else if (Effect.Type == EGameXXKCardEffectType::GainEnergy)
@@ -2728,8 +3428,44 @@ namespace
 					break;
 				}
 				case EGameXXKCardEffectType::Heal:
-					Target->HP = static_cast<int32>(FMath::Min<int64>(Target->MaxHP, static_cast<int64>(Target->HP) + FMath::Max(0, Effect.Magnitude)));
+				{
+					int64 BaseHealing = FMath::Max(0, Effect.Magnitude);
+					if (Effect.SecondaryMagnitude > 0)
+					{
+						int64 DirectHealthDamage = 0;
+						for (const FGameXXKCardDamageResult& DamageResult : InOutResult.DamageResults)
+						{
+							DirectHealthDamage = FMath::Min<int64>(MAX_int32, DirectHealthDamage + FMath::Max(0, DamageResult.HealthDamage));
+						}
+						BaseHealing = FMath::Min<int64>(Effect.SecondaryMagnitude, DirectHealthDamage * BaseHealing / 100);
+					}
+					if (BaseHealing <= 0)
+					{
+						break;
+					}
+					if (!bPreparedHealingAction)
+					{
+						HealingFlatBonus = GameXXKCardRules::GetCombatStatusStacks(*Owner, EGameXXKCardStatus::NextHealingBonus);
+						if (HealingFlatBonus > 0)
+						{
+							GameXXKCardRules::ConsumeCombatStatus(*Owner, EGameXXKCardStatus::NextHealingBonus, HealingFlatBonus);
+						}
+						TArray<FName> TriggeredHealingModifierIds;
+						if (!CollectOnNextHealingBonuses(InOutRuntime, Definition, Instance, *Owner, PerTargetCondition, HealingBonusPercent, TriggeredHealingModifierIds, OutError))
+						{
+							return false;
+						}
+						if (!ConsumeOnNextHealingModifiers(InOutRuntime, TriggeredHealingModifierIds, OutError))
+						{
+							return false;
+						}
+						bPreparedHealingAction = true;
+					}
+					const int64 MultiplierPercent = FMath::Max<int64>(0, 100 + static_cast<int64>(HealingBonusPercent));
+					const int64 FinalHealing = BaseHealing * MultiplierPercent / 100 + HealingFlatBonus;
+					Target->HP = static_cast<int32>(FMath::Min<int64>(Target->MaxHP, static_cast<int64>(Target->HP) + FMath::Max<int64>(0, FinalHealing)));
 					break;
+				}
 				case EGameXXKCardEffectType::AddArmor:
 					GameXXKCardRules::AddCombatArmor(*Target, Effect.Magnitude);
 					break;
@@ -2751,6 +3487,107 @@ namespace
 				case EGameXXKCardEffectType::RemoveAnyDamageOverTime:
 					RemoveAnyDamageOverTime(*Target, Effect.Magnitude);
 					break;
+				case EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget:
+				{
+					if (Effect.Magnitude <= 0 || CardTargetIds.Num() != 1 || EffectTargetId != CardTargetIds[0])
+					{
+						OutError = TEXT("Joint attack requires one selected living target and a positive attack percentage.");
+						return false;
+					}
+					struct FJointAttackSource
+					{
+						FName UnitId = NAME_None;
+						int32 Attack = 0;
+						int32 StableSortOrder = INDEX_NONE;
+					};
+					TArray<FJointAttackSource> Sources;
+					const EGameXXKCardTargetSide TeamSide = Owner->Side;
+					for (const FGameXXKCardCombatUnit& Candidate : InOutRuntime.Units)
+					{
+						if (Candidate.bLiving && Candidate.Side == TeamSide)
+						{
+							FJointAttackSource& Source = Sources.AddDefaulted_GetRef();
+							Source.UnitId = Candidate.UnitId;
+							Source.Attack = Candidate.Attack;
+							Source.StableSortOrder = Candidate.StableSortOrder;
+						}
+					}
+					Sources.Sort([](const FJointAttackSource& Left, const FJointAttackSource& Right)
+					{
+						return Left.StableSortOrder != Right.StableSortOrder
+							? Left.StableSortOrder < Right.StableSortOrder
+							: Left.UnitId.LexicalLess(Right.UnitId);
+					});
+					for (const FJointAttackSource& Source : Sources)
+					{
+						const FGameXXKCardCombatUnit* CurrentTarget = FindCombatUnitById(InOutRuntime.Units, EffectTargetId);
+						if (!CurrentTarget || !CurrentTarget->bLiving)
+						{
+							break;
+						}
+						const int64 RawDamage = static_cast<int64>(Source.Attack) * Effect.Magnitude / 100;
+						if (RawDamage <= 0 || RawDamage > MAX_int32)
+						{
+							OutError = TEXT("Joint attack produced an unsupported direct-damage amount.");
+							return false;
+						}
+						FGameXXKCardDamageContext Context;
+						Context.SourceUnitId = Source.UnitId;
+						Context.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+						FGameXXKCardDamageResult DamageResult;
+						if (!GameXXKCardRules::ApplyCombatDirectDamage(InOutRuntime.Units, InOutRuntime.GuardLinks, Context, EffectTargetId, static_cast<int32>(RawDamage), DamageResult, &OutError))
+						{
+							return false;
+						}
+						InOutResult.DamageResults.Add(MoveTemp(DamageResult));
+					}
+					break;
+				}
+				case EGameXXKCardEffectType::ApplyGuardLink:
+				{
+					if (Effect.GuardLink.Stacks <= 0 || Effect.GuardLink.RedirectPolicy == EGameXXKCardGuardRedirectPolicy::Invalid)
+					{
+						OutError = TEXT("Guard-link effect has invalid stack or redirect data.");
+						return false;
+					}
+					TArray<FName> GuardianUnitIds;
+					if (!ResolveEffectTargetIds(InOutRuntime, Instance.OwnerUnitId, CardTargetIds, Effect.GuardLink.Guardian, GuardianUnitIds, OutError))
+					{
+						return false;
+					}
+					for (const FName GuardianUnitId : GuardianUnitIds)
+					{
+						if (GuardianUnitId == EffectTargetId)
+						{
+							OutError = TEXT("A guard link cannot protect its own guardian.");
+							return false;
+						}
+						FGameXXKCardGuardLinkRuntime* ExistingLink = InOutRuntime.GuardLinks.FindByPredicate([GuardianUnitId, EffectTargetId, &Effect](const FGameXXKCardGuardLinkRuntime& Link)
+						{
+							return Link.GuardianUnitId == GuardianUnitId
+								&& Link.ProtectedUnitId == EffectTargetId
+								&& Link.RedirectPolicy == Effect.GuardLink.RedirectPolicy;
+						});
+						if (ExistingLink)
+						{
+							if (ExistingLink->Stacks > MAX_int32 - Effect.GuardLink.Stacks)
+							{
+								OutError = TEXT("Guard-link stacks exceed supported range.");
+								return false;
+							}
+							ExistingLink->Stacks += Effect.GuardLink.Stacks;
+						}
+						else
+						{
+							FGameXXKCardGuardLinkRuntime& NewLink = InOutRuntime.GuardLinks.AddDefaulted_GetRef();
+							NewLink.GuardianUnitId = GuardianUnitId;
+							NewLink.ProtectedUnitId = EffectTargetId;
+							NewLink.Stacks = Effect.GuardLink.Stacks;
+							NewLink.RedirectPolicy = Effect.GuardLink.RedirectPolicy;
+						}
+					}
+					break;
+				}
 				default:
 					OutError = TEXT("Card effect reached an unsupported resolution branch.");
 					return false;
@@ -2883,6 +3720,16 @@ bool GameXXKCardRules::ResolveCardPlay(
 	{
 		return SetFailure(OutError, TEXT("The card, catalog definition, or living owner changed before card play could commit."));
 	}
+	TArray<FName> AppliedCostModifierIds;
+	int32 FreshEffectiveEnergyCost = Definition->EnergyCost;
+	if (!BuildEffectiveCardEnergyCost(NewRuntime, *Definition, *Instance, *Owner, FreshEffectiveEnergyCost, &AppliedCostModifierIds, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (FreshEffectiveEnergyCost != Preview.EffectiveEnergyCost)
+	{
+		return SetFailure(OutError, TEXT("A card-play modifier changed after the preview was built."));
+	}
 	if (NewRuntime.Deck.SharedEnergy < Preview.EffectiveEnergyCost || Owner->Mana < Preview.EffectiveManaCost)
 	{
 		return SetFailure(OutError, TEXT("Card resources changed before card play could commit."));
@@ -2891,6 +3738,10 @@ bool GameXXKCardRules::ResolveCardPlay(
 	Owner->Mana -= Preview.EffectiveManaCost;
 	const FGameXXKCardInstance CopiedInstance = *Instance;
 	if (!MoveHandCardToDiscard(NewRuntime.Deck, CardInstanceId, &ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (!ConsumeOnCardPlayedModifiers(NewRuntime, AppliedCostModifierIds, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}

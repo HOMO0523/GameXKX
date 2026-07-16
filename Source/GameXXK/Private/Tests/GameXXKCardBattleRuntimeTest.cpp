@@ -65,6 +65,27 @@ namespace
 			return Instance.InstanceId == InstanceId;
 		});
 	}
+
+	bool EnsureCardIsInHand(FGameXXKBattleDeckState& InOutDeck, const FName CardId)
+	{
+		if (InOutDeck.Hand.ContainsByPredicate([CardId](const FGameXXKCardInstance& Instance)
+		{
+			return Instance.CardId == CardId;
+		}))
+		{
+			return true;
+		}
+		const int32 DrawPileIndex = InOutDeck.DrawPile.IndexOfByPredicate([CardId](const FGameXXKCardInstance& Instance)
+		{
+			return Instance.CardId == CardId;
+		});
+		if (DrawPileIndex == INDEX_NONE || InOutDeck.Hand.IsEmpty())
+		{
+			return false;
+		}
+		Swap(InOutDeck.Hand.Last(), InOutDeck.DrawPile[DrawPileIndex]);
+		return true;
+	}
 }
 
 bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
@@ -199,6 +220,170 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the first of three seventy-percent hits is avoided and the next two deal fourteen each"), FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy"))->HP, 72);
 	TestEqual(TEXT("the two landed multi-hits apply two bleed layers"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Bleed), 2);
 	TestEqual(TEXT("multi-hit result carries all three hit attempts"), MultiHitResult.DamageResults.Num(), 3);
+
+	TArray<FGameXXKCardCombatUnit> GuardLinkUnits;
+	GuardLinkUnits.Add(MakeRuntimeUnit(TEXT("Guard"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Guard, 100, 100, 12, 0, 0, 1));
+	GuardLinkUnits.Add(MakeRuntimeUnit(TEXT("Ally"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 0, 0, 2));
+	GuardLinkUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime GuardLinkRuntime;
+	TestTrue(TEXT("guard-link runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(GuardLinkRuntime, MakeRuntimeInstances(TEXT("Profession.Guard.HuZhu"), 6, TEXT("Guard")), GuardLinkUnits, EGameXXKCardTerrain::Plain, 778));
+	FGameXXKCardPlayResult GuardLinkResult;
+	TestTrue(TEXT("a guard card resolves its data-bound guardian and protected ally"), GameXXKCardRules::ResolveCardPlay(GuardLinkRuntime, GuardLinkRuntime.Deck.Hand[0].InstanceId, TEXT("Ally"), GuardLinkResult));
+	TestEqual(TEXT("guard card adds exactly one bound redirect record"), GuardLinkRuntime.GuardLinks.Num(), 1);
+	if (GuardLinkRuntime.GuardLinks.Num() == 1)
+	{
+		TestEqual(TEXT("guard card records the stable guardian UnitId"), GuardLinkRuntime.GuardLinks[0].GuardianUnitId, FName(TEXT("Guard")));
+		TestEqual(TEXT("guard card records the selected stable protected UnitId"), GuardLinkRuntime.GuardLinks[0].ProtectedUnitId, FName(TEXT("Ally")));
+		TestEqual(TEXT("guard card keeps its declared single redirect stack"), GuardLinkRuntime.GuardLinks[0].Stacks, 1);
+	}
+
+	TArray<FGameXXKCardCombatUnit> JointAttackUnits;
+	JointAttackUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 6, 6, 1));
+	JointAttackUnits.Add(MakeRuntimeUnit(TEXT("Partner"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Blade, 100, 100, 15, 0, 0, 2));
+	JointAttackUnits.Add(MakeRuntimeUnit(TEXT("TaskNpc"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 100, 100, 10, 0, 0, 3));
+	JointAttackUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 12, 0, 0, 10));
+	FGameXXKCardBattleRuntime JointAttackRuntime;
+	TestTrue(TEXT("joint-attack runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(JointAttackRuntime, MakeRuntimeInstances(TEXT("Route.General.HeJiLing"), 6), JointAttackUnits, EGameXXKCardTerrain::Plain, 780));
+	FGameXXKCardPlayResult JointAttackResult;
+	TestTrue(TEXT("each living party member attacks the one selected enemy from a data-only joint-attack effect"), GameXXKCardRules::ResolveCardPlay(JointAttackRuntime, JointAttackRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), JointAttackResult));
+	TestEqual(TEXT("joint attack uses each current party member's own attack value"), FindRuntimeUnit(JointAttackRuntime.Units, TEXT("Enemy"))->HP, 78);
+	TestEqual(TEXT("joint attack creates one stable damage audit per living party member"), JointAttackResult.DamageResults.Num(), 3);
+
+	TArray<FGameXXKCardCombatUnit> DiscardChoiceUnits;
+	DiscardChoiceUnits.Add(MakeRuntimeUnit(TEXT("JinGui"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 100, 100, 10, 0, 0, 1));
+	DiscardChoiceUnits.Add(MakeRuntimeUnit(TEXT("Ally"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 80, 100, 20, 0, 0, 2));
+	DiscardChoiceUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime DiscardChoiceRuntime;
+	TestTrue(TEXT("draw-then-discard runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(DiscardChoiceRuntime, MakeRuntimeInstances(TEXT("Npc.JinGui.ZaYiChouBei"), 7, TEXT("JinGui")), DiscardChoiceUnits, EGameXXKCardTerrain::Plain, 781));
+	FGameXXKCardPlayResult DiscardChoiceResult;
+	TestTrue(TEXT("draw two discard one card opens an explicit blocking forced-discard choice"), GameXXKCardRules::ResolveCardPlay(DiscardChoiceRuntime, DiscardChoiceRuntime.Deck.Hand[0].InstanceId, TEXT("Ally"), DiscardChoiceResult));
+	TestTrue(TEXT("draw-then-discard result reports its pending choice to the HUD"), DiscardChoiceResult.bOpenedPendingChoice);
+	TestEqual(TEXT("draw-then-discard is represented by the serialized forced-discard choice"), DiscardChoiceRuntime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
+	TestEqual(TEXT("draw-then-discard allows exactly one card to be selected for discard"), DiscardChoiceRuntime.Deck.PendingChoice.RequiredDiscardCount, 1);
+	const FName DiscardedAfterDrawId = DiscardChoiceRuntime.Deck.Hand[0].InstanceId;
+	TestTrue(TEXT("submitting one stable hand instance completes the forced-discard choice"), GameXXKCardRules::SubmitForcedDiscard(DiscardChoiceRuntime.Deck, { DiscardedAfterDrawId }));
+	TestEqual(TEXT("discard choice returns the hand to the normal five-card limit"), DiscardChoiceRuntime.Deck.Hand.Num(), 5);
+
+	TArray<FGameXXKCardCombatUnit> DiscoverUnits;
+	DiscoverUnits.Add(MakeRuntimeUnit(TEXT("YueBai"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 100, 100, 10, 0, 0, 1));
+	DiscoverUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime DiscoverRuntime;
+	TestTrue(TEXT("discover runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(DiscoverRuntime, MakeRuntimeInstances(TEXT("Npc.YueBai.CanJuanPiZhu"), 8, TEXT("YueBai")), DiscoverUnits, EGameXXKCardTerrain::Plain, 782));
+	FGameXXKCardPlayResult DiscoverResult;
+	TestTrue(TEXT("insight followed by discover preserves one explicit top-card choice"), GameXXKCardRules::ResolveCardPlay(DiscoverRuntime, DiscoverRuntime.Deck.Hand[0].InstanceId, NAME_None, DiscoverResult));
+	TestTrue(TEXT("discover result reports its pending insight choice"), DiscoverResult.bOpenedPendingChoice);
+	TestEqual(TEXT("discover remains a serialized insight choose-to-hand operation"), DiscoverRuntime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::InsightChooseToHand);
+	TestEqual(TEXT("discover exposes the requested top three card candidates"), DiscoverRuntime.Deck.PendingChoice.Candidates.Num(), 3);
+	const FName DiscoverPickId = DiscoverRuntime.Deck.PendingChoice.Candidates[0].InstanceId;
+	TArray<FName> DiscoverRemainingIds;
+	for (int32 DiscoverIndex = 1; DiscoverIndex < DiscoverRuntime.Deck.PendingChoice.Candidates.Num(); ++DiscoverIndex)
+	{
+		DiscoverRemainingIds.Add(DiscoverRuntime.Deck.PendingChoice.Candidates[DiscoverIndex].InstanceId);
+	}
+	TestTrue(TEXT("submitting a discover choice moves one offered card to hand and commits the remaining order"), GameXXKCardRules::SubmitInsightChoice(DiscoverRuntime.Deck, DiscoverPickId, DiscoverRemainingIds));
+	TestEqual(TEXT("discover returns to a legal no-choice deck state"), DiscoverRuntime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::None);
+
+	TArray<FGameXXKCardCombatUnit> CostModifierUnits;
+	CostModifierUnits.Add(MakeRuntimeUnit(TEXT("SongJinBao"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 100, 100, 10, 30, 30, 1));
+	CostModifierUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime CostModifierRuntime;
+	TestTrue(TEXT("future-card cost modifier runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(CostModifierRuntime, MakeRuntimeInstances(TEXT("Npc.SongJinBao.YiNuoQianJin"), 6, TEXT("SongJinBao")), CostModifierUnits, EGameXXKCardTerrain::Plain, 783));
+	const FName CostModifierFirstInstanceId = CostModifierRuntime.Deck.Hand[0].InstanceId;
+	FGameXXKCardPlayResult CostModifierFirstResult;
+	TestTrue(TEXT("a delayed shared-deck cost card resolves and registers a persistent modifier"), GameXXKCardRules::ResolveCardPlay(CostModifierRuntime, CostModifierFirstInstanceId, NAME_None, CostModifierFirstResult));
+	TestEqual(TEXT("the first delayed card creates one persisted modifier record"), CostModifierRuntime.Modifiers.Num(), 1);
+	const FName CostModifierId = CostModifierRuntime.Modifiers.Num() == 1 ? CostModifierRuntime.Modifiers[0].ModifierId : NAME_None;
+	const FName CostModifierSecondInstanceId = CostModifierRuntime.Deck.Hand[0].InstanceId;
+	FGameXXKCardPlayPreview CostModifierPreview;
+	TestTrue(TEXT("a subsequent hand card previews with the registered shared-deck energy reduction"), GameXXKCardRules::BuildCardPlayPreview(CostModifierRuntime, CostModifierSecondInstanceId, CostModifierPreview));
+	TestEqual(TEXT("the delayed modifier reduces the next card's energy cost without changing its mana cost"), CostModifierPreview.EffectiveEnergyCost, 1);
+	FGameXXKCardPlayResult CostModifierSecondResult;
+	TestTrue(TEXT("the discounted second card resolves with the one remaining shared energy"), GameXXKCardRules::ResolveCardPlay(CostModifierRuntime, CostModifierSecondInstanceId, NAME_None, CostModifierSecondResult));
+	const FGameXXKCardBattleModifierRuntime* ConsumedCostModifier = CostModifierRuntime.Modifiers.FindByPredicate([CostModifierId](const FGameXXKCardBattleModifierRuntime& Modifier)
+	{
+		return Modifier.ModifierId == CostModifierId;
+	});
+	TestNotNull(TEXT("the first cost modifier remains persisted after consuming one of its two triggers"), ConsumedCostModifier);
+	if (ConsumedCostModifier)
+	{
+		TestEqual(TEXT("the first cost modifier decrements exactly once after the discounted card commits"), ConsumedCostModifier->Definition.RemainingTriggers, 1);
+	}
+
+	TArray<FGameXXKCardInstance> AttackModifierInstances = MakeRuntimeInstances(TEXT("Profession.Blade.JieShiHuiFeng"), 1, TEXT("Blade"));
+	AttackModifierInstances.Append(MakeRuntimeInstances(TEXT("Profession.Blade.LieFengZhan"), 6, TEXT("Blade")));
+	TArray<FGameXXKCardCombatUnit> AttackModifierUnits;
+	AttackModifierUnits.Add(MakeRuntimeUnit(TEXT("Blade"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Blade, 100, 100, 20, 0, 0, 1));
+	AttackModifierUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime AttackModifierRuntime;
+	TestTrue(TEXT("next-attack modifier runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(AttackModifierRuntime, AttackModifierInstances, AttackModifierUnits, EGameXXKCardTerrain::Plain, 784));
+	TestTrue(TEXT("next-attack modifier fixture can expose its setup card in the current hand"), EnsureCardIsInHand(AttackModifierRuntime.Deck, TEXT("Profession.Blade.JieShiHuiFeng")));
+	TestTrue(TEXT("next-attack modifier fixture can expose its attack card in the current hand"), EnsureCardIsInHand(AttackModifierRuntime.Deck, TEXT("Profession.Blade.LieFengZhan")));
+	const FGameXXKCardInstance* AttackModifierSetupInstance = AttackModifierRuntime.Deck.Hand.FindByPredicate([](const FGameXXKCardInstance& Instance)
+	{
+		return Instance.CardId == TEXT("Profession.Blade.JieShiHuiFeng");
+	});
+	TestNotNull(TEXT("next-attack modifier fixture retains the setup card in hand"), AttackModifierSetupInstance);
+	if (AttackModifierSetupInstance)
+	{
+		FGameXXKCardPlayResult AttackModifierSetupResult;
+		TestTrue(TEXT("a next-attack setup card registers its recipient-bound persistent modifier"), GameXXKCardRules::ResolveCardPlay(AttackModifierRuntime, AttackModifierSetupInstance->InstanceId, NAME_None, AttackModifierSetupResult));
+		TestEqual(TEXT("next-attack setup leaves one persistent modifier ready for the blade"), AttackModifierRuntime.Modifiers.Num(), 1);
+		const FGameXXKCardInstance* AttackModifierAttackInstance = AttackModifierRuntime.Deck.Hand.FindByPredicate([](const FGameXXKCardInstance& Instance)
+		{
+			return Instance.CardId == TEXT("Profession.Blade.LieFengZhan");
+		});
+		TestNotNull(TEXT("next-attack modifier fixture retains an attack card after the setup card leaves hand"), AttackModifierAttackInstance);
+		if (AttackModifierAttackInstance)
+		{
+			FGameXXKCardPlayResult AttackModifierAttackResult;
+			TestTrue(TEXT("the next blade attack consumes the registered modifier and resolves"), GameXXKCardRules::ResolveCardPlay(AttackModifierRuntime, AttackModifierAttackInstance->InstanceId, TEXT("Enemy"), AttackModifierAttackResult));
+			TestEqual(TEXT("the next-attack modifier upgrades 110 percent to 150 percent before mitigation"), FindRuntimeUnit(AttackModifierRuntime.Units, TEXT("Enemy"))->HP, 70);
+			TestEqual(TEXT("a one-trigger next-attack modifier expires after the qualified attack"), AttackModifierRuntime.Modifiers.Num(), 0);
+		}
+	}
+
+	TArray<FGameXXKCardCombatUnit> LifestealUnits;
+	LifestealUnits.Add(MakeRuntimeUnit(TEXT("Blade"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Blade, 50, 100, 20, 0, 0, 1));
+	LifestealUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime LifestealRuntime;
+	TestTrue(TEXT("lifesteal runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(LifestealRuntime, MakeRuntimeInstances(TEXT("Profession.Blade.YinXueDao"), 6, TEXT("Blade")), LifestealUnits, EGameXXKCardTerrain::Plain, 785));
+	FGameXXKCardPlayResult LifestealResult;
+	TestTrue(TEXT("lifesteal card resolves its attack before calculating its recovery"), GameXXKCardRules::ResolveCardPlay(LifestealRuntime, LifestealRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), LifestealResult));
+	TestEqual(TEXT("lifesteal heals 25 percent of direct health damage rather than its percentage field as a fixed amount"), FindRuntimeUnit(LifestealRuntime.Units, TEXT("Blade"))->HP, 56);
+	TestEqual(TEXT("lifesteal still applies its declared one-hundred-twenty-percent attack"), FindRuntimeUnit(LifestealRuntime.Units, TEXT("Enemy"))->HP, 76);
+
+	TArray<FGameXXKCardInstance> HealingBonusInstances = MakeRuntimeInstances(TEXT("Profession.Healer.YaoYin"), 1, TEXT("Healer"));
+	HealingBonusInstances.Append(MakeRuntimeInstances(TEXT("Profession.Healer.CaoMuFuZhi"), 6, TEXT("Healer")));
+	TArray<FGameXXKCardCombatUnit> HealingBonusUnits;
+	HealingBonusUnits.Add(MakeRuntimeUnit(TEXT("Healer"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Healer, 50, 100, 10, 0, 10, 1));
+	HealingBonusUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime HealingBonusRuntime;
+	TestTrue(TEXT("next-healing bonus runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(HealingBonusRuntime, HealingBonusInstances, HealingBonusUnits, EGameXXKCardTerrain::Plain, 786));
+	TestTrue(TEXT("next-healing fixture can expose its setup card in the current hand"), EnsureCardIsInHand(HealingBonusRuntime.Deck, TEXT("Profession.Healer.YaoYin")));
+	TestTrue(TEXT("next-healing fixture can expose its heal card in the current hand"), EnsureCardIsInHand(HealingBonusRuntime.Deck, TEXT("Profession.Healer.CaoMuFuZhi")));
+	const FGameXXKCardInstance* HealingBonusSetupInstance = HealingBonusRuntime.Deck.Hand.FindByPredicate([](const FGameXXKCardInstance& Instance)
+	{
+		return Instance.CardId == TEXT("Profession.Healer.YaoYin");
+	});
+	TestNotNull(TEXT("next-healing fixture retains the setup card in hand"), HealingBonusSetupInstance);
+	if (HealingBonusSetupInstance)
+	{
+		FGameXXKCardPlayResult HealingBonusSetupResult;
+		TestTrue(TEXT("healing setup applies an explicit six-point next-healing bonus to its selected owner"), GameXXKCardRules::ResolveCardPlay(HealingBonusRuntime, HealingBonusSetupInstance->InstanceId, TEXT("Healer"), HealingBonusSetupResult));
+		TestEqual(TEXT("next-healing bonus stores its declared magnitude instead of collapsing to one flag stack"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(HealingBonusRuntime.Units, TEXT("Healer")), EGameXXKCardStatus::NextHealingBonus), 6);
+		const FGameXXKCardInstance* HealingBonusHealInstance = HealingBonusRuntime.Deck.Hand.FindByPredicate([](const FGameXXKCardInstance& Instance)
+		{
+			return Instance.CardId == TEXT("Profession.Healer.CaoMuFuZhi");
+		});
+		TestNotNull(TEXT("next-healing fixture retains the healing card after setup resolves"), HealingBonusHealInstance);
+		if (HealingBonusHealInstance)
+		{
+			FGameXXKCardPlayResult HealingBonusHealResult;
+			TestTrue(TEXT("the next healing card consumes the stored flat healing bonus"), GameXXKCardRules::ResolveCardPlay(HealingBonusRuntime, HealingBonusHealInstance->InstanceId, TEXT("Healer"), HealingBonusHealResult));
+			TestEqual(TEXT("the next healing bonus adds six to the card's declared sixteen healing"), FindRuntimeUnit(HealingBonusRuntime.Units, TEXT("Healer"))->HP, 72);
+			TestEqual(TEXT("next-healing bonus is consumed after the qualified healing action"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(HealingBonusRuntime.Units, TEXT("Healer")), EGameXXKCardStatus::NextHealingBonus), 0);
+		}
+	}
 
 	return true;
 }
