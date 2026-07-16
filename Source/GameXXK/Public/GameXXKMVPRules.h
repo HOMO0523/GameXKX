@@ -63,6 +63,16 @@ enum class EGameXXKItemKind : uint8
 	Accessory
 };
 
+UENUM(BlueprintType)
+enum class EGameXXKCodexCategory : uint8
+{
+	All,
+	Hero,
+	Spirit,
+	Monster,
+	Beast
+};
+
 USTRUCT(BlueprintType)
 struct FGameXXKItemDef
 {
@@ -100,6 +110,54 @@ struct FGameXXKItemDef
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MaxMPBonus = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FGameXXKCodexEntryDef
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName Id = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCodexCategory Category = EGameXXKCodexCategory::All;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FText DisplayName;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FText Description;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FSoftObjectPath IconPath;
+};
+
+USTRUCT(BlueprintType)
+struct FGameXXKCodexEntryView
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName Id = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCodexCategory Category = EGameXXKCodexCategory::All;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FText DisplayName;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FText Description;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FSoftObjectPath IconPath;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bIsDiscovered = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bIsRead = false;
 };
 
 USTRUCT(BlueprintType)
@@ -410,6 +468,12 @@ struct FGameXXKRuntimeState
 	// Enhancement levels belong to the item definition and are only applied while that item is equipped.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TMap<FName, int32> ItemEnhancementLevels;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TSet<FName> DiscoveredCodexEntryIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TSet<FName> ReadCodexEntryIds;
 };
 
 USTRUCT(BlueprintType)
@@ -498,6 +562,30 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static TArray<FName> GetShopItemIds();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static TArray<FGameXXKCodexEntryDef> GetCodexEntryDefs();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FGameXXKCodexEntryDef GetCodexEntryDef(FName EntryId, bool& bFound);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static TArray<FGameXXKCodexEntryView> BuildCodexEntryViews(const FGameXXKRuntimeState& State, EGameXXKCodexCategory Category);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static int32 GetCodexEntryCount(EGameXXKCodexCategory Category);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static int32 GetDiscoveredCodexEntryCount(const FGameXXKRuntimeState& State, EGameXXKCodexCategory Category);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static bool HasUnreadCodexEntries(const FGameXXKRuntimeState& State);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool DiscoverCodexEntry(UPARAM(ref) FGameXXKRuntimeState& State, FName EntryId);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool MarkCodexEntryRead(UPARAM(ref) FGameXXKRuntimeState& State, FName EntryId);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FGameXXKRuntimeState CreateNewGame();

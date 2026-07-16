@@ -17,6 +17,15 @@ namespace GameXXKMVP
 	static const FName ItemStarterClothArmorName(TEXT("Item.StarterClothArmor"));
 	static const FName ItemClothTalismanName(TEXT("Item.ClothTalisman"));
 	static const FName TaskQingshanMainName(TEXT("Task.QingshanMain"));
+	static const FName CodexGuideName(TEXT("Codex.Guide"));
+	static const FName CodexBanditName(TEXT("Codex.Bandit"));
+	static const FName CodexWolfName(TEXT("Codex.Wolf"));
+	static const FName CodexEliteBanditName(TEXT("Codex.EliteBandit"));
+	static const FName CodexBossName(TEXT("Codex.Boss"));
+	static const FName BattleRuntimeBanditName(TEXT("Bandit"));
+	static const FName BattleRuntimeWolfName(TEXT("Wolf"));
+	static const FName BattleRuntimeEliteBanditName(TEXT("EliteBandit"));
+	static const FName BattleRuntimeBossName(TEXT("Boss"));
 	static constexpr int32 MaxItemEnhancementLevel = 10;
 
 	static FGameXXKItemDef MakeItem(FName Id, const TCHAR* DisplayName, EGameXXKItemKind Kind, int32 Buy, int32 Sell, int32 Heal, int32 MPHeal, int32 Attack, int32 Defense, int32 MaxHP, int32 MaxMP)
@@ -34,6 +43,66 @@ namespace GameXXKMVP
 		Def.MaxHPBonus = MaxHP;
 		Def.MaxMPBonus = MaxMP;
 		return Def;
+	}
+
+	static FGameXXKCodexEntryDef MakeCodexEntry(
+		FName Id,
+		EGameXXKCodexCategory Category,
+		const TCHAR* DisplayName,
+		const TCHAR* Description)
+	{
+		FGameXXKCodexEntryDef Def;
+		Def.Id = Id;
+		Def.Category = Category;
+		Def.DisplayName = FText::FromString(DisplayName);
+		Def.Description = FText::FromString(Description);
+		return Def;
+	}
+
+	static const TArray<FGameXXKCodexEntryDef>& GetCodexEntryDefsInternal()
+	{
+		static const TArray<FGameXXKCodexEntryDef> EntryDefs = {
+			MakeCodexEntry(CodexGuideName, EGameXXKCodexCategory::Hero, TEXT("引路人"), TEXT("在青山镇相遇的同行者。")),
+			MakeCodexEntry(CodexBanditName, EGameXXKCodexCategory::Monster, TEXT("山匪"), TEXT("盘踞在青山道上的敌人。")),
+			MakeCodexEntry(CodexWolfName, EGameXXKCodexCategory::Beast, TEXT("野狼"), TEXT("出没于山道的凶兽。")),
+			MakeCodexEntry(CodexEliteBanditName, EGameXXKCodexCategory::Monster, TEXT("精英山匪"), TEXT("比普通山匪更难应对的精锐。")),
+			MakeCodexEntry(CodexBossName, EGameXXKCodexCategory::Monster, TEXT("虎王"), TEXT("守在青山尽头的首领。")),
+		};
+		return EntryDefs;
+	}
+
+	static const FGameXXKCodexEntryDef* FindCodexEntryDef(FName EntryId)
+	{
+		return GetCodexEntryDefsInternal().FindByPredicate([EntryId](const FGameXXKCodexEntryDef& EntryDef)
+		{
+			return EntryDef.Id == EntryId;
+		});
+	}
+
+	static bool MatchesCodexCategory(const FGameXXKCodexEntryDef& EntryDef, EGameXXKCodexCategory Category)
+	{
+		return Category == EGameXXKCodexCategory::All || EntryDef.Category == Category;
+	}
+
+	static FName GetCodexEntryIdForBattleRuntimeId(FName RuntimeEnemyId)
+	{
+		if (RuntimeEnemyId == BattleRuntimeBanditName)
+		{
+			return CodexBanditName;
+		}
+		if (RuntimeEnemyId == BattleRuntimeWolfName)
+		{
+			return CodexWolfName;
+		}
+		if (RuntimeEnemyId == BattleRuntimeEliteBanditName)
+		{
+			return CodexEliteBanditName;
+		}
+		if (RuntimeEnemyId == BattleRuntimeBossName)
+		{
+			return CodexBossName;
+		}
+		return NAME_None;
 	}
 
 	static TArray<FName> GetKnownItemIds()
@@ -666,6 +735,15 @@ namespace GameXXKMVP
 			State.ActiveBattleEnemies.Add(MakeBattleRuntimeUnit(TEXT("Wolf"), TEXT("Wolf"), 45, 8, 2, 12, 1, true));
 		}
 
+		for (const FGameXXKBattleRuntimeUnit& Enemy : State.ActiveBattleEnemies)
+		{
+			const FName CodexEntryId = GetCodexEntryIdForBattleRuntimeId(Enemy.Id);
+			if (!CodexEntryId.IsNone())
+			{
+				UGameXXKMVPRules::DiscoverCodexEntry(State, CodexEntryId);
+			}
+		}
+
 		State.Screen = EGameXXKScreen::Battle;
 		State.CurrentMapId = TEXT("Battle");
 		State.TownPanelMode = EGameXXKTownPanelMode::None;
@@ -890,6 +968,115 @@ TArray<FName> UGameXXKMVPRules::GetShopItemIds()
 	return GameXXKMVP::GetShopItemIds();
 }
 
+TArray<FGameXXKCodexEntryDef> UGameXXKMVPRules::GetCodexEntryDefs()
+{
+	return GameXXKMVP::GetCodexEntryDefsInternal();
+}
+
+FGameXXKCodexEntryDef UGameXXKMVPRules::GetCodexEntryDef(FName EntryId, bool& bFound)
+{
+	bFound = false;
+	if (const FGameXXKCodexEntryDef* EntryDef = GameXXKMVP::FindCodexEntryDef(EntryId))
+	{
+		bFound = true;
+		return *EntryDef;
+	}
+	return FGameXXKCodexEntryDef();
+}
+
+TArray<FGameXXKCodexEntryView> UGameXXKMVPRules::BuildCodexEntryViews(const FGameXXKRuntimeState& State, EGameXXKCodexCategory Category)
+{
+	TArray<FGameXXKCodexEntryView> EntryViews;
+	for (const FGameXXKCodexEntryDef& EntryDef : GameXXKMVP::GetCodexEntryDefsInternal())
+	{
+		if (!GameXXKMVP::MatchesCodexCategory(EntryDef, Category))
+		{
+			continue;
+		}
+
+		FGameXXKCodexEntryView EntryView;
+		EntryView.Id = EntryDef.Id;
+		EntryView.Category = EntryDef.Category;
+		EntryView.bIsDiscovered = State.DiscoveredCodexEntryIds.Contains(EntryDef.Id);
+		if (EntryView.bIsDiscovered)
+		{
+			EntryView.DisplayName = EntryDef.DisplayName;
+			EntryView.Description = EntryDef.Description;
+			EntryView.IconPath = EntryDef.IconPath;
+			EntryView.bIsRead = State.ReadCodexEntryIds.Contains(EntryDef.Id);
+		}
+		else
+		{
+			EntryView.DisplayName = FText::FromString(TEXT("????"));
+			EntryView.Description = FText::FromString(TEXT("未遇见"));
+			EntryView.IconPath = FSoftObjectPath();
+			EntryView.bIsRead = false;
+		}
+		EntryViews.Add(MoveTemp(EntryView));
+	}
+	return EntryViews;
+}
+
+int32 UGameXXKMVPRules::GetCodexEntryCount(EGameXXKCodexCategory Category)
+{
+	int32 EntryCount = 0;
+	for (const FGameXXKCodexEntryDef& EntryDef : GameXXKMVP::GetCodexEntryDefsInternal())
+	{
+		if (GameXXKMVP::MatchesCodexCategory(EntryDef, Category))
+		{
+			++EntryCount;
+		}
+	}
+	return EntryCount;
+}
+
+int32 UGameXXKMVPRules::GetDiscoveredCodexEntryCount(const FGameXXKRuntimeState& State, EGameXXKCodexCategory Category)
+{
+	int32 DiscoveredEntryCount = 0;
+	for (const FGameXXKCodexEntryDef& EntryDef : GameXXKMVP::GetCodexEntryDefsInternal())
+	{
+		if (GameXXKMVP::MatchesCodexCategory(EntryDef, Category) && State.DiscoveredCodexEntryIds.Contains(EntryDef.Id))
+		{
+			++DiscoveredEntryCount;
+		}
+	}
+	return DiscoveredEntryCount;
+}
+
+bool UGameXXKMVPRules::HasUnreadCodexEntries(const FGameXXKRuntimeState& State)
+{
+	for (const FGameXXKCodexEntryDef& EntryDef : GameXXKMVP::GetCodexEntryDefsInternal())
+	{
+		if (State.DiscoveredCodexEntryIds.Contains(EntryDef.Id) && !State.ReadCodexEntryIds.Contains(EntryDef.Id))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UGameXXKMVPRules::DiscoverCodexEntry(FGameXXKRuntimeState& State, FName EntryId)
+{
+	if (!GameXXKMVP::FindCodexEntryDef(EntryId) || State.DiscoveredCodexEntryIds.Contains(EntryId))
+	{
+		return false;
+	}
+	State.DiscoveredCodexEntryIds.Add(EntryId);
+	return true;
+}
+
+bool UGameXXKMVPRules::MarkCodexEntryRead(FGameXXKRuntimeState& State, FName EntryId)
+{
+	if (!GameXXKMVP::FindCodexEntryDef(EntryId)
+		|| !State.DiscoveredCodexEntryIds.Contains(EntryId)
+		|| State.ReadCodexEntryIds.Contains(EntryId))
+	{
+		return false;
+	}
+	State.ReadCodexEntryIds.Add(EntryId);
+	return true;
+}
+
 FGameXXKRuntimeState UGameXXKMVPRules::CreateNewGame()
 {
 	FGameXXKRuntimeState State;
@@ -994,6 +1181,7 @@ bool UGameXXKMVPRules::AcceptTownQuest(FGameXXKRuntimeState& State)
 	State.QuestState = EGameXXKQuestState::Accepted;
 	State.bFollowerJoined = true;
 	State.TrackedTaskId = NAME_None;
+	DiscoverCodexEntry(State, GameXXKMVP::CodexGuideName);
 	return true;
 }
 
