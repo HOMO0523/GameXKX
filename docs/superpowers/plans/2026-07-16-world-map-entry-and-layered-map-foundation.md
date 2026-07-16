@@ -67,12 +67,15 @@ Save only the accepted PNG results under `docs/ui/maps/source_art/WorldMap/` wit
 
 - [ ] **Step 2: Create the manifest after ImageGen output exists.**
 
-Write `manifest.json` with this exact schema and actual generated dimensions/checksums:
+Write `manifest.json` with this required structure and actual generated dimensions/checksums:
 
 ```json
 {
   "canvas": { "width": 1920, "height": 1080 },
-  "sourceReference": "PSD clean_assets_v2/094.png (reference only; not a runtime source)",
+  "sourceReference": {
+    "path": "PSD clean_assets_v2/094.png",
+    "usage": "visual reference only; not a runtime source and not a source-art layer"
+  },
   "layers": [
     { "name": "world_map_terrain", "file": "world_map_terrain.png", "kind": "terrain", "requiresAlpha": false, "forbiddenContent": ["route", "node", "label", "player_marker"] },
     { "name": "world_map_region_paths", "file": "world_map_region_paths.png", "kind": "decorative_path", "requiresAlpha": true, "forbiddenContent": ["node", "label", "player_marker"] },
@@ -86,7 +89,7 @@ Write `manifest.json` with this exact schema and actual generated dimensions/che
 
 - [ ] **Step 3: Write the failing source-art validator.**
 
-Create a Python script that accepts `--check` and rejects missing layers, a forbidden `094.png` filename or source reference, non-RGBA marker atoms, and markers without transparent pixels. It may inspect images and write a JSON report but must never redraw pixels. The core validation must be:
+Create a Python script that accepts `--check` and rejects missing layers, a forbidden `094.png` filename in any runtime layer, non-RGBA marker atoms, and markers without transparent pixels. The provenance field may mention `094.png` only when it explicitly says it is reference-only and not a runtime source. It may inspect images and write a JSON report but must never redraw pixels. The core validation must be:
 
 ```python
 def validate_layer(root: Path, layer: dict[str, object]) -> dict[str, object]:
