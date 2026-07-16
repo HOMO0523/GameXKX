@@ -12,6 +12,22 @@ namespace
 			return EntryView.Id == EntryId;
 		});
 	}
+
+	static FGameXXKRuntimeState BuildReachableCombatRouteState(EGameXXKNodeKind NodeKind)
+	{
+		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		State.Screen = EGameXXKScreen::DungeonMap;
+		State.CurrentMapId = TEXT("HuangshanRoute");
+		State.QuestState = EGameXXKQuestState::Accepted;
+		State.bDungeonActive = true;
+		State.bHasGeneratedRouteMap = true;
+		State.RouteMapNodes.Add(FGameXXKRouteMapNode{0, 0, 0, EGameXXKNodeKind::Start, FVector2D(0.5f, 0.0f), TArray<int32>{1}});
+		State.RouteMapNodes.Add(FGameXXKRouteMapNode{1, 1, 0, NodeKind, FVector2D(0.5f, 1.0f), TArray<int32>{}});
+		State.RouteMapEdges.Add(FGameXXKRouteMapEdge{0, 1});
+		State.VisitedRouteNodeIds.Add(0);
+		State.ReachableRouteNodeIds.Add(1);
+		return State;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -24,6 +40,8 @@ bool FGameXXKCompanionCodexRulesTest::RunTest(const FString& Parameters)
 	const FName GuideId(TEXT("Codex.Guide"));
 	const FName BanditId(TEXT("Codex.Bandit"));
 	const FName WolfId(TEXT("Codex.Wolf"));
+	const FName EliteBanditId(TEXT("Codex.EliteBandit"));
+	const FName BossId(TEXT("Codex.Boss"));
 	const FName UnknownId(TEXT("Codex.Unknown"));
 
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
@@ -61,6 +79,17 @@ bool FGameXXKCompanionCodexRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("normal battle discovers the bandit"), State.DiscoveredCodexEntryIds.Contains(BanditId));
 	TestTrue(TEXT("normal battle discovers the wolf"), State.DiscoveredCodexEntryIds.Contains(WolfId));
 	TestTrue(TEXT("battle discoveries are unread"), UGameXXKMVPRules::HasUnreadCodexEntries(State));
+
+	FGameXXKRuntimeState EliteState = BuildReachableCombatRouteState(EGameXXKNodeKind::Elite);
+	TestTrue(TEXT("elite route node selection begins battle"), UGameXXKMVPRules::SelectRouteNodeById(EliteState, 1));
+	TestEqual(TEXT("elite route node opens battle screen"), EliteState.Screen, EGameXXKScreen::Battle);
+	TestTrue(TEXT("elite battle discovers the elite bandit"), EliteState.DiscoveredCodexEntryIds.Contains(EliteBanditId));
+	TestTrue(TEXT("elite battle discovers the wolf"), EliteState.DiscoveredCodexEntryIds.Contains(WolfId));
+
+	FGameXXKRuntimeState BossState = BuildReachableCombatRouteState(EGameXXKNodeKind::Boss);
+	TestTrue(TEXT("boss route node selection begins battle"), UGameXXKMVPRules::SelectRouteNodeById(BossState, 1));
+	TestEqual(TEXT("boss route node opens battle screen"), BossState.Screen, EGameXXKScreen::Battle);
+	TestTrue(TEXT("boss battle discovers the boss"), BossState.DiscoveredCodexEntryIds.Contains(BossId));
 
 	return true;
 }
