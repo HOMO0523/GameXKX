@@ -581,7 +581,7 @@ namespace
 			{ Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::SelectedTarget, 16), Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::None, 1, TerrainIs(EGameXXKCardTerrain::Cliff, EGameXXKCardTerrain::Forest)) }, Frame, TEXT("Npc.ZhouGuangZu"), false, true);
 		AddCard(Cards, EGameXXKCardOwner::QuestNpc, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::QuestNpc, Zhou, Zhou,
 			TEXT("Npc.ZhouGuangZu.DiZhiMoTu"), TEXT("地志摹图"), 1, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::DoubleTerrainBonus, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, TEXT("Npc.ZhouGuangZu"), false, true);
+			{ Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::DoubleTerrainBonus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::TerrainBonusDoubleThisRound) }, Frame, TEXT("Npc.ZhouGuangZu"), false, true);
 		AddCard(Cards, EGameXXKCardOwner::QuestNpc, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::QuestNpc, Zhou, Zhou,
 			TEXT("Npc.ZhouGuangZu.YanFenFengMai"), TEXT("岩粉封脉"), 2, 6, EGameXXKCardTargetMode::SingleEnemy,
 			{ Attack(100, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Poison, 1, TerrainIs(EGameXXKCardTerrain::Cliff, EGameXXKCardTerrain::Cave)) }, Frame, TEXT("Npc.ZhouGuangZu"), false, true);
@@ -914,7 +914,7 @@ namespace
 			{ Attack(150, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Vulnerability, 1, TargetHasStatus(EGameXXKCardStatus::Burn)) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Sorcerer, OwnerId, nullptr,
 			TEXT("Profession.Sorcerer.XingHuoHuiShou"), TEXT("星火回收"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ WithConsumptionProducer(Effect(EGameXXKCardEffectType::GainManaPerConsumedStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::None, 1, ConsumeTargetStatus(EGameXXKCardStatus::Burn, 4)), TEXT("Consumption.XingHuoHuiShou.Burn")), WithConsumedStackResult(Effect(EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus, EGameXXKCardEffectTarget::SelectedTarget, 20), TEXT("Consumption.XingHuoHuiShou.Burn")) }, Frame, Pool);
+			{ WithConsumptionProducer(Effect(EGameXXKCardEffectType::GainManaPerConsumedStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::None, 1, ConsumeTargetStatus(EGameXXKCardStatus::Burn, 4)), TEXT("Consumption.XingHuoHuiShou.Burn")), Attack(100, EGameXXKCardEffectTarget::SelectedTarget), WithConsumedStackResult(Effect(EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus, EGameXXKCardEffectTarget::SelectedTarget, 20), TEXT("Consumption.XingHuoHuiShou.Burn")) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Sorcerer, OwnerId, nullptr,
 			TEXT("Profession.Sorcerer.ChiYanFengJie"), TEXT("赤焰封界"), 3, 12, EGameXXKCardTargetMode::AllEnemies,
 			{ Attack(70, EGameXXKCardEffectTarget::AllEnemies), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 4, EGameXXKCardStatus::Burn) }, Frame, Pool);

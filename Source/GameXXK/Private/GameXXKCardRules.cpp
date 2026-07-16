@@ -703,6 +703,243 @@ namespace
 		}
 		return true;
 	}
+
+	// Phase helpers live beside the deck invariants, while their combat-only primitives are defined
+	// later in this translation unit. Keep the forward declarations narrow so UI callers can only use
+	// the public phase API below.
+	constexpr int32 MaxDeferredPhaseEnergy = 99;
+	bool IsStableUnitOrderBefore(const FGameXXKCardCombatUnit& Left, const FGameXXKCardCombatUnit& Right);
+	FGameXXKCardCombatUnit* FindCombatUnitById(TArray<FGameXXKCardCombatUnit>& Units, FName UnitId);
+	const FGameXXKCardCombatUnit* FindCombatUnitById(const TArray<FGameXXKCardCombatUnit>& Units, FName UnitId);
+	bool TryApplyEffectConditionAndConsumption(
+		const FGameXXKCardEffectCondition& Condition,
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKCardCombatUnit& InOutOwner,
+		FGameXXKCardCombatUnit* Target,
+		bool& OutSatisfied,
+		int32& OutConsumed,
+		FString& OutError);
+
+	void UpdateBattleTerminalPhase(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		bool bHasLivingParty = false;
+		bool bHasLivingEnemy = false;
+		for (const FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+		{
+			bHasLivingParty |= Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Party;
+			bHasLivingEnemy |= Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Enemy;
+		}
+		if (!bHasLivingParty)
+		{
+			// A simultaneous final hit is a loss because the fixed hero is part of the party.
+			InOutRuntime.Phase = EGameXXKCardBattlePhase::Defeat;
+		}
+		else if (!bHasLivingEnemy)
+		{
+			InOutRuntime.Phase = EGameXXKCardBattlePhase::Victory;
+		}
+	}
+
+	TArray<FName> CollectLivingUnitIdsForSide(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const EGameXXKCardTargetSide Side)
+	{
+		TArray<const FGameXXKCardCombatUnit*> OrderedUnits;
+		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		{
+			if (Unit.bLiving && Unit.Side == Side)
+			{
+				OrderedUnits.Add(&Unit);
+			}
+		}
+		OrderedUnits.Sort([](const FGameXXKCardCombatUnit& Left, const FGameXXKCardCombatUnit& Right)
+		{
+			return IsStableUnitOrderBefore(Left, Right);
+		});
+		TArray<FName> UnitIds;
+		UnitIds.Reserve(OrderedUnits.Num());
+		for (const FGameXXKCardCombatUnit* Unit : OrderedUnits)
+		{
+			UnitIds.Add(Unit->UnitId);
+		}
+		return UnitIds;
+	}
+
+	bool DiscardRemainingHand(
+		FGameXXKBattleDeckState& InOutDeck,
+		FString& OutError)
+	{
+		OutError.Reset();
+		if (!ValidateDeckStateInternal(InOutDeck, OutError) || !RequireNoPendingChoice(InOutDeck, &OutError))
+		{
+			return false;
+		}
+		FGameXXKBattleDeckState NewDeck = InOutDeck;
+		for (FGameXXKCardInstance& Instance : NewDeck.Hand)
+		{
+			NewDeck.DiscardPile.Add(MoveTemp(Instance));
+		}
+		NewDeck.Hand.Reset();
+		if (!ValidateDeckStateInternal(NewDeck, OutError))
+		{
+			return false;
+		}
+		InOutDeck = MoveTemp(NewDeck);
+		return true;
+	}
+
+	bool ApplyEndPhaseDotForSide(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const EGameXXKCardTargetSide Side,
+		TArray<FGameXXKCardDamageResult>& OutResults,
+		FString& OutError)
+	{
+		OutError.Reset();
+		for (const FName UnitId : CollectLivingUnitIdsForSide(InOutRuntime, Side))
+		{
+			int32 HealthDamage = 0;
+			if (!GameXXKCardRules::ApplyCombatEndPhaseDot(InOutRuntime.Units, InOutRuntime.GuardLinks, UnitId, HealthDamage, &OutError))
+			{
+				return false;
+			}
+			if (HealthDamage > 0)
+			{
+				FGameXXKCardDamageResult& Result = OutResults.AddDefaulted_GetRef();
+				Result.OriginalTargetUnitId = UnitId;
+				Result.ResolvedTargetUnitId = UnitId;
+				Result.RequestedDamage = HealthDamage;
+				Result.DamageAfterDefense = HealthDamage;
+				Result.DamageAfterVulnerability = HealthDamage;
+				Result.HealthDamage = HealthDamage;
+			}
+		}
+		return true;
+	}
+
+	void ClearArmorAtSidePhaseStart(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const EGameXXKCardTargetSide Side)
+	{
+		for (FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+		{
+			if (Unit.bLiving && Unit.Side == Side)
+			{
+				GameXXKCardRules::BeginCombatUnitPhase(Unit);
+			}
+		}
+	}
+
+	bool ResolveEndOfRoundModifiers(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FString& OutError)
+	{
+		OutError.Reset();
+		for (int32 Index = InOutRuntime.Modifiers.Num() - 1; Index >= 0; --Index)
+		{
+			FGameXXKCardBattleModifierRuntime& Modifier = InOutRuntime.Modifiers[Index];
+			FGameXXKCardBattleModifier& Definition = Modifier.Definition;
+			if (Definition.Trigger != EGameXXKCardBattleModifierTrigger::EndOfRound)
+			{
+				continue;
+			}
+			if (Definition.EffectType != EGameXXKCardEffectType::GainEnergy
+				|| Definition.Target != EGameXXKCardEffectTarget::CardOwner
+				|| Definition.Magnitude <= 0)
+			{
+				OutError = TEXT("An end-of-round modifier must grant a positive amount of shared energy to its card owner.");
+				return false;
+			}
+			FGameXXKCardCombatUnit* ConditionTarget = Modifier.OriginalSelectedTargetUnitId.IsNone()
+				? nullptr
+				: FindCombatUnitById(InOutRuntime.Units, Modifier.OriginalSelectedTargetUnitId);
+			for (const FName RecipientUnitId : Modifier.RecipientUnitIds)
+			{
+				FGameXXKCardCombatUnit* Recipient = FindCombatUnitById(InOutRuntime.Units, RecipientUnitId);
+				if (!Recipient || !Recipient->bLiving)
+				{
+					continue;
+				}
+				bool bConditionSatisfied = false;
+				int32 IgnoredConsumed = 0;
+				if (!TryApplyEffectConditionAndConsumption(Definition.Condition, InOutRuntime, *Recipient, ConditionTarget, bConditionSatisfied, IgnoredConsumed, OutError))
+				{
+					return false;
+				}
+				if (bConditionSatisfied)
+				{
+					InOutRuntime.PendingNextRoundEnergyBonus = FMath::Min(
+						MaxDeferredPhaseEnergy,
+						InOutRuntime.PendingNextRoundEnergyBonus + Definition.Magnitude);
+				}
+			}
+
+			if (Definition.Expiry == EGameXXKCardModifierExpiry::AfterTriggerCount)
+			{
+				if (Definition.RemainingTriggers <= 0)
+				{
+					OutError = TEXT("An end-of-round modifier has no remaining trigger count.");
+					return false;
+				}
+				if (--Definition.RemainingTriggers > 0)
+				{
+					continue;
+				}
+			}
+			InOutRuntime.Modifiers.RemoveAt(Index, 1, EAllowShrinking::No);
+		}
+		return true;
+	}
+
+	void ExpireRoundBoundState(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		for (FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+		{
+			GameXXKCardRules::ConsumeCombatStatus(Unit, EGameXXKCardStatus::TerrainBonusDoubleThisRound, MAX_int32);
+		}
+		InOutRuntime.Modifiers.RemoveAll([](const FGameXXKCardBattleModifierRuntime& Modifier)
+		{
+			return Modifier.Definition.Trigger == EGameXXKCardBattleModifierTrigger::FirstDirectDamageReceivedThisRound
+				|| Modifier.Definition.Expiry == EGameXXKCardModifierExpiry::EndOfCurrentRound
+				|| Modifier.Definition.Expiry == EGameXXKCardModifierExpiry::EndOfCurrentRoundOrTriggerCount;
+		});
+	}
+
+	bool ApplySingleTargetEnemyRedirect(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDamageContext& Context,
+		const FName SelectedPartyTargetUnitId,
+		FName& OutAppliedTargetUnitId,
+		bool& bOutRedirected,
+		FString& OutError)
+	{
+		OutError.Reset();
+		OutAppliedTargetUnitId = SelectedPartyTargetUnitId;
+		bOutRedirected = false;
+		if (Context.Kind != EGameXXKCardDamageKind::SingleTargetAttack)
+		{
+			return true;
+		}
+		for (const FName CandidateUnitId : CollectLivingUnitIdsForSide(InOutRuntime, EGameXXKCardTargetSide::Party))
+		{
+			if (CandidateUnitId == SelectedPartyTargetUnitId)
+			{
+				continue;
+			}
+			FGameXXKCardCombatUnit* Candidate = FindCombatUnitById(InOutRuntime.Units, CandidateUnitId);
+			if (Candidate && GameXXKCardRules::GetCombatStatusStacks(*Candidate, EGameXXKCardStatus::RedirectSingleTargetEnemyAttack) > 0)
+			{
+				if (GameXXKCardRules::ConsumeCombatStatus(*Candidate, EGameXXKCardStatus::RedirectSingleTargetEnemyAttack, 1) != 1)
+				{
+					OutError = TEXT("A single-target enemy-attack redirect changed before it could commit.");
+					return false;
+				}
+				OutAppliedTargetUnitId = CandidateUnitId;
+				bOutRedirected = true;
+				return true;
+			}
+		}
+		return true;
+	}
 }
 
 bool GameXXKCardRules::InitializeBattleDeck(
@@ -1477,10 +1714,12 @@ namespace
 		case EGameXXKCardStatus::NextAttackBonus:
 		case EGameXXKCardStatus::NextAttackAppliesVulnerability:
 		case EGameXXKCardStatus::TerrainBonusDouble:
+		case EGameXXKCardStatus::TerrainBonusDoubleThisRound:
 		case EGameXXKCardStatus::NextTerrainCardFree:
 		case EGameXXKCardStatus::NextTerrainCardEnergyReduction:
-		case EGameXXKCardStatus::RedirectSingleTargetEnemyAttack:
 			return 1;
+		case EGameXXKCardStatus::RedirectSingleTargetEnemyAttack:
+			return 8;
 		case EGameXXKCardStatus::NextHealingBonus:
 			return 99;
 		case EGameXXKCardStatus::Invalid:
@@ -1841,6 +2080,7 @@ bool GameXXKCardRules::ApplyCombatDirectDamage(
 	}
 
 	FGameXXKCardDamageResult NewResult;
+	NewResult.SourceUnitId = Context.SourceUnitId;
 	NewResult.OriginalTargetUnitId = TargetUnitId;
 	NewResult.ResolvedTargetUnitId = TargetUnitId;
 	NewResult.RequestedDamage = RequestedDamage;
@@ -1956,9 +2196,11 @@ namespace
 	bool ValidateCardBattleRuntimeInternal(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
 	{
 		OutError.Reset();
-		if (!IsSupportedCardBattlePhase(Runtime.Phase) || !IsConcreteTerrain(Runtime.Terrain) || Runtime.RoundNumber < 1 || Runtime.NextModifierOrdinal < 0)
+		if (!IsSupportedCardBattlePhase(Runtime.Phase) || !IsConcreteTerrain(Runtime.Terrain) || Runtime.RoundNumber < 1 || Runtime.NextModifierOrdinal < 0
+			|| Runtime.RevealedEnemyIntentCount < 0 || Runtime.RevealedEnemyIntentCount > MaxCardBattleEnergy
+			|| Runtime.PendingNextRoundEnergyBonus < 0 || Runtime.PendingNextRoundEnergyBonus > MaxCardBattleEnergy)
 		{
-			OutError = TEXT("Card battle runtime has an invalid phase, terrain, round, or modifier counter.");
+			OutError = TEXT("Card battle runtime has an invalid phase, terrain, round, modifier counter, or deferred card state.");
 			return false;
 		}
 		if (!ValidateDeckStateInternal(Runtime.Deck, OutError))
@@ -2023,6 +2265,8 @@ namespace
 		const FGameXXKCardCombatUnit& Owner,
 		int32& OutEnergyCost,
 		TArray<FName>* OutAppliedModifierIds,
+		TArray<FName>* OutTerrainFreeUnitIds,
+		TArray<FName>* OutTerrainReductionUnitIds,
 		FString& OutError);
 
 	bool ConsumeOnCardPlayedModifiers(
@@ -2082,7 +2326,7 @@ namespace
 			return false;
 		}
 		int32 EffectiveEnergyCost = Definition->EnergyCost;
-		if (!BuildEffectiveCardEnergyCost(Runtime, *Definition, *Instance, *Owner, EffectiveEnergyCost, nullptr, OutError))
+		if (!BuildEffectiveCardEnergyCost(Runtime, *Definition, *Instance, *Owner, EffectiveEnergyCost, nullptr, nullptr, nullptr, OutError))
 		{
 			return false;
 		}
@@ -2219,6 +2463,88 @@ namespace
 		return true;
 	}
 
+	bool IsRouteTerrainCard(const FGameXXKCardDefinition& Definition)
+	{
+		return Definition.Owner == EGameXXKCardOwner::Route
+			&& Definition.AcquisitionKey == TEXT("Route.Terrain");
+	}
+
+	void CollectTerrainCardCostStatusOwners(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardCombatUnit& Owner,
+		TArray<FName>& OutFreeUnitIds,
+		TArray<FName>& OutReductionUnitIds)
+	{
+		OutFreeUnitIds.Reset();
+		OutReductionUnitIds.Reset();
+		if (!IsRouteTerrainCard(Definition))
+		{
+			return;
+		}
+		TArray<const FGameXXKCardCombatUnit*> OrderedAllies;
+		for (const FGameXXKCardCombatUnit& Candidate : Runtime.Units)
+		{
+			if (Candidate.bLiving && Candidate.Side == Owner.Side)
+			{
+				OrderedAllies.Add(&Candidate);
+			}
+		}
+		OrderedAllies.Sort([](const FGameXXKCardCombatUnit& Left, const FGameXXKCardCombatUnit& Right)
+		{
+			return IsStableUnitOrderBefore(Left, Right);
+		});
+		for (const FGameXXKCardCombatUnit* Candidate : OrderedAllies)
+		{
+			if (GetCombatStatusStacksInternal(*Candidate, EGameXXKCardStatus::NextTerrainCardFree) > 0)
+			{
+				OutFreeUnitIds.Add(Candidate->UnitId);
+				return;
+			}
+		}
+		for (const FGameXXKCardCombatUnit* Candidate : OrderedAllies)
+		{
+			if (GetCombatStatusStacksInternal(*Candidate, EGameXXKCardStatus::NextTerrainCardEnergyReduction) > 0)
+			{
+				OutReductionUnitIds.Add(Candidate->UnitId);
+			}
+		}
+	}
+
+	bool ConsumeTerrainCardCostStatuses(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FName>& FreeUnitIds,
+		const TArray<FName>& ReductionUnitIds,
+		FString& OutError)
+	{
+		OutError.Reset();
+		TSet<FName> SeenFreeIds;
+		for (const FName UnitId : FreeUnitIds)
+		{
+			FGameXXKCardCombatUnit* Unit = FindCombatUnitById(InOutRuntime.Units, UnitId);
+			if (UnitId.IsNone() || SeenFreeIds.Contains(UnitId) || !Unit || !Unit->bLiving
+				|| GameXXKCardRules::ConsumeCombatStatus(*Unit, EGameXXKCardStatus::NextTerrainCardFree, 1) != 1)
+			{
+				OutError = TEXT("A terrain-card free-cost status changed before the card could commit.");
+				return false;
+			}
+			SeenFreeIds.Add(UnitId);
+		}
+		TSet<FName> SeenReductionIds;
+		for (const FName UnitId : ReductionUnitIds)
+		{
+			FGameXXKCardCombatUnit* Unit = FindCombatUnitById(InOutRuntime.Units, UnitId);
+			if (UnitId.IsNone() || SeenReductionIds.Contains(UnitId) || !Unit || !Unit->bLiving
+				|| GameXXKCardRules::ConsumeCombatStatus(*Unit, EGameXXKCardStatus::NextTerrainCardEnergyReduction, 1) != 1)
+			{
+				OutError = TEXT("A terrain-card energy-reduction status changed before the card could commit.");
+				return false;
+			}
+			SeenReductionIds.Add(UnitId);
+		}
+		return true;
+	}
+
 	bool BuildEffectiveCardEnergyCost(
 		const FGameXXKCardBattleRuntime& Runtime,
 		const FGameXXKCardDefinition& Definition,
@@ -2226,6 +2552,8 @@ namespace
 		const FGameXXKCardCombatUnit& Owner,
 		int32& OutEnergyCost,
 		TArray<FName>* OutAppliedModifierIds,
+		TArray<FName>* OutTerrainFreeUnitIds,
+		TArray<FName>* OutTerrainReductionUnitIds,
 		FString& OutError)
 	{
 		OutError.Reset();
@@ -2237,6 +2565,17 @@ namespace
 		if (OutAppliedModifierIds)
 		{
 			OutAppliedModifierIds->Reset();
+		}
+		TArray<FName> TerrainFreeUnitIds;
+		TArray<FName> TerrainReductionUnitIds;
+		CollectTerrainCardCostStatusOwners(Runtime, Definition, Owner, TerrainFreeUnitIds, TerrainReductionUnitIds);
+		if (OutTerrainFreeUnitIds)
+		{
+			*OutTerrainFreeUnitIds = TerrainFreeUnitIds;
+		}
+		if (OutTerrainReductionUnitIds)
+		{
+			*OutTerrainReductionUnitIds = TerrainReductionUnitIds;
 		}
 		int64 EffectiveCost = Definition.EnergyCost;
 		for (const FGameXXKCardBattleModifierRuntime& Modifier : Runtime.Modifiers)
@@ -2256,7 +2595,8 @@ namespace
 				OutAppliedModifierIds->Add(Modifier.ModifierId);
 			}
 		}
-		OutEnergyCost = EffectiveCost <= 0
+		EffectiveCost -= TerrainReductionUnitIds.Num();
+		OutEnergyCost = !TerrainFreeUnitIds.IsEmpty() || EffectiveCost <= 0
 			? 0
 			: EffectiveCost > MAX_int32
 				? MAX_int32
@@ -2539,7 +2879,9 @@ namespace
 		case EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget:
 		case EGameXXKCardEffectType::ApplyGuardLink:
 		case EGameXXKCardEffectType::ApplyBattleModifier:
+		case EGameXXKCardEffectType::RevealEnemyIntent:
 		case EGameXXKCardEffectType::DoubleTerrainBonus:
+		case EGameXXKCardEffectType::RedirectSingleTargetEnemyAttacks:
 			return true;
 		default:
 			OutError = TEXT("This card effect is not yet supported by the runtime effect planner.");
@@ -2970,6 +3312,153 @@ namespace
 		return true;
 	}
 
+	bool ConsumeFirstDirectDamageModifiers(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FName>& ModifierIds,
+		FString& OutError)
+	{
+		OutError.Reset();
+		TSet<FName> RequestedIds;
+		for (const FName ModifierId : ModifierIds)
+		{
+			if (ModifierId.IsNone() || RequestedIds.Contains(ModifierId))
+			{
+				OutError = TEXT("Triggered first-direct-damage modifier IDs must be unique and non-empty.");
+				return false;
+			}
+			RequestedIds.Add(ModifierId);
+		}
+		for (int32 Index = InOutRuntime.Modifiers.Num() - 1; Index >= 0; --Index)
+		{
+			FGameXXKCardBattleModifierRuntime& Modifier = InOutRuntime.Modifiers[Index];
+			if (!RequestedIds.Contains(Modifier.ModifierId))
+			{
+				continue;
+			}
+			FGameXXKCardBattleModifier& Definition = Modifier.Definition;
+			if (Definition.Trigger != EGameXXKCardBattleModifierTrigger::FirstDirectDamageReceivedThisRound)
+			{
+				OutError = TEXT("A non-reactive modifier was selected for first-direct-damage consumption.");
+				return false;
+			}
+			switch (Definition.Expiry)
+			{
+			case EGameXXKCardModifierExpiry::AfterTriggerCount:
+				if (Definition.RemainingTriggers <= 0)
+				{
+					OutError = TEXT("A first-direct-damage modifier has no remaining trigger count.");
+					return false;
+				}
+				if (--Definition.RemainingTriggers == 0)
+				{
+					InOutRuntime.Modifiers.RemoveAt(Index, 1, EAllowShrinking::No);
+				}
+				break;
+			case EGameXXKCardModifierExpiry::EndOfCurrentRound:
+				break;
+			case EGameXXKCardModifierExpiry::EndOfCurrentRoundOrTriggerCount:
+				if (Definition.RemainingTriggers > 0 && --Definition.RemainingTriggers == 0)
+				{
+					InOutRuntime.Modifiers.RemoveAt(Index, 1, EAllowShrinking::No);
+				}
+				break;
+			case EGameXXKCardModifierExpiry::Invalid:
+			default:
+				OutError = TEXT("A first-direct-damage modifier has an invalid expiry policy.");
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool ResolveFirstDirectDamageReactiveModifiers(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDamageContext& IncomingContext,
+		const FGameXXKCardDamageResult& IncomingResult,
+		TArray<FGameXXKCardDamageResult>* OutAdditionalDamageResults,
+		FString& OutError)
+	{
+		OutError.Reset();
+		if ((IncomingContext.Kind != EGameXXKCardDamageKind::SingleTargetAttack && IncomingContext.Kind != EGameXXKCardDamageKind::GroupAttack)
+			|| IncomingResult.bAvoidedByAgility)
+		{
+			return true;
+		}
+		FGameXXKCardCombatUnit* Recipient = FindCombatUnitById(InOutRuntime.Units, IncomingResult.ResolvedTargetUnitId);
+		FGameXXKCardCombatUnit* Attacker = FindCombatUnitById(InOutRuntime.Units, IncomingContext.SourceUnitId);
+		if (!Recipient || !Recipient->bLiving || !Attacker || !Attacker->bLiving || Recipient->Side == Attacker->Side)
+		{
+			return true;
+		}
+		const FName RecipientUnitId = Recipient->UnitId;
+		const FName AttackerUnitId = Attacker->UnitId;
+		TArray<FName> TriggeredModifierIds;
+		for (const FGameXXKCardBattleModifierRuntime& Modifier : InOutRuntime.Modifiers)
+		{
+			const FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
+			if (ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::FirstDirectDamageReceivedThisRound
+				|| !Modifier.RecipientUnitIds.Contains(RecipientUnitId))
+			{
+				continue;
+			}
+			if (ModifierDefinition.Target != EGameXXKCardEffectTarget::Attacker
+				|| (ModifierDefinition.EffectType != EGameXXKCardEffectType::DamagePercentAttack
+					&& ModifierDefinition.EffectType != EGameXXKCardEffectType::ApplyStatus))
+			{
+				OutError = TEXT("A first-direct-damage modifier has an unsupported target or effect type.");
+				return false;
+			}
+			Recipient = FindCombatUnitById(InOutRuntime.Units, RecipientUnitId);
+			Attacker = FindCombatUnitById(InOutRuntime.Units, AttackerUnitId);
+			if (!Recipient || !Recipient->bLiving || !Attacker || !Attacker->bLiving)
+			{
+				continue;
+			}
+			bool bConditionSatisfied = false;
+			int32 IgnoredConsumed = 0;
+			if (!TryApplyEffectConditionAndConsumption(ModifierDefinition.Condition, InOutRuntime, *Recipient, Attacker, bConditionSatisfied, IgnoredConsumed, OutError))
+			{
+				return false;
+			}
+			if (!bConditionSatisfied)
+			{
+				continue;
+			}
+			if (ModifierDefinition.EffectType == EGameXXKCardEffectType::DamagePercentAttack)
+			{
+				const int64 RequestedDamage = static_cast<int64>(Recipient->Attack) * ModifierDefinition.Magnitude / 100;
+				if (RequestedDamage <= 0 || RequestedDamage > MAX_int32)
+				{
+					OutError = TEXT("A first-direct-damage counterattack produced an unsupported damage amount.");
+					return false;
+				}
+				FGameXXKCardDamageContext CounterContext;
+				CounterContext.SourceUnitId = RecipientUnitId;
+				CounterContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+				FGameXXKCardDamageResult CounterResult;
+				if (!GameXXKCardRules::ApplyCombatDirectDamage(InOutRuntime.Units, InOutRuntime.GuardLinks, CounterContext, AttackerUnitId, static_cast<int32>(RequestedDamage), CounterResult, &OutError))
+				{
+					return false;
+				}
+				if (OutAdditionalDamageResults)
+				{
+					OutAdditionalDamageResults->Add(MoveTemp(CounterResult));
+				}
+			}
+			else
+			{
+				if (!IsConcreteCombatStatus(ModifierDefinition.Status) || ModifierDefinition.Magnitude <= 0)
+				{
+					OutError = TEXT("A first-direct-damage status reaction is missing concrete positive status data.");
+					return false;
+				}
+				GameXXKCardRules::AddCombatStatus(*Attacker, ModifierDefinition.Status, ModifierDefinition.Magnitude);
+			}
+			TriggeredModifierIds.Add(Modifier.ModifierId);
+		}
+		return ConsumeFirstDirectDamageModifiers(InOutRuntime, TriggeredModifierIds, OutError);
+	}
+
 	bool ResolveAttackPacket(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FGameXXKCardDefinition& Definition,
@@ -3005,7 +3494,11 @@ namespace
 		{
 			FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
 			FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, TargetId);
-			if (!Owner || !Owner->bLiving || !Target || !Target->bLiving)
+			if (!Owner || !Owner->bLiving)
+			{
+				return true;
+			}
+			if (!Target || !Target->bLiving)
 			{
 				continue;
 			}
@@ -3082,8 +3575,16 @@ namespace
 					break;
 				case EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus:
 				case EGameXXKCardEffectType::BonusDamagePercentPerConsumedArmor:
-					Percent += static_cast<int64>(Attachment.Magnitude) * AttachmentConsumed;
+				{
+					// A packet attachment can either consume state itself, or reference an
+					// earlier producer in this card.  In the latter case the attachment has
+					// no local consumption and must use the stable recorded producer result.
+					const int32 ConsumedStackCount = Attachment.ConsumedStackResultRef.IsNone()
+						? AttachmentConsumed
+						: InOutConsumptionResults.FindRef(Attachment.ConsumedStackResultRef);
+					Percent += static_cast<int64>(Attachment.Magnitude) * ConsumedStackCount;
 					break;
+				}
 				case EGameXXKCardEffectType::ApplyStatus:
 					OnHitStatusEffects.Add(&Attachment);
 					break;
@@ -3134,8 +3635,7 @@ namespace
 				const FGameXXKCardCombatUnit* HitOwner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
 				if (!HitOwner || !HitOwner->bLiving)
 				{
-					OutError = TEXT("Attack packet owner is absent or defeated before all hits resolved.");
-					return false;
+					break;
 				}
 				FGameXXKCardDamageContext Context;
 				Context.SourceUnitId = HitOwner->UnitId;
@@ -3169,12 +3669,107 @@ namespace
 				{
 					return false;
 				}
-				InOutResult.DamageResults.Add(MoveTemp(DamageResult));
+				InOutResult.DamageResults.Add(DamageResult);
+				if (!ResolveFirstDirectDamageReactiveModifiers(InOutRuntime, Context, DamageResult, &InOutResult.DamageResults, OutError))
+				{
+					return false;
+				}
 				const FGameXXKCardCombatUnit* CurrentTarget = FindCombatUnitById(InOutRuntime.Units, TargetId);
 				if (!CurrentTarget || !CurrentTarget->bLiving)
 				{
 					break;
 				}
+			}
+		}
+		return true;
+	}
+
+	bool BuildTerrainAmplifiedDefinition(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardInstance& Instance,
+		FGameXXKCardDefinition& OutDefinition,
+		FString& OutError)
+	{
+		OutDefinition = Definition;
+		if (!IsRouteTerrainCard(Definition))
+		{
+			return true;
+		}
+		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+		if (!Owner || !Owner->bLiving)
+		{
+			OutError = TEXT("A terrain card requires a living stable owner before terrain bonuses can resolve.");
+			return false;
+		}
+		TArray<FGameXXKCardCombatUnit*> OrderedAllies;
+		for (FGameXXKCardCombatUnit& Candidate : InOutRuntime.Units)
+		{
+			if (Candidate.bLiving && Candidate.Side == Owner->Side)
+			{
+				OrderedAllies.Add(&Candidate);
+			}
+		}
+		OrderedAllies.Sort([](const FGameXXKCardCombatUnit& Left, const FGameXXKCardCombatUnit& Right)
+		{
+			return IsStableUnitOrderBefore(Left, Right);
+		});
+		FGameXXKCardCombatUnit* DoubleSource = nullptr;
+		EGameXXKCardStatus DoubleStatus = EGameXXKCardStatus::None;
+		for (FGameXXKCardCombatUnit* Candidate : OrderedAllies)
+		{
+			if (GameXXKCardRules::GetCombatStatusStacks(*Candidate, EGameXXKCardStatus::TerrainBonusDoubleThisRound) > 0)
+			{
+				DoubleSource = Candidate;
+				DoubleStatus = EGameXXKCardStatus::TerrainBonusDoubleThisRound;
+				break;
+			}
+			if (GameXXKCardRules::GetCombatStatusStacks(*Candidate, EGameXXKCardStatus::TerrainBonusDouble) > 0)
+			{
+				DoubleSource = Candidate;
+				DoubleStatus = EGameXXKCardStatus::TerrainBonusDouble;
+				break;
+			}
+		}
+		if (!DoubleSource)
+		{
+			return true;
+		}
+		if (GameXXKCardRules::ConsumeCombatStatus(*DoubleSource, DoubleStatus, 1) != 1)
+		{
+			OutError = TEXT("A terrain-bonus doubling status changed before the terrain card could commit.");
+			return false;
+		}
+
+		OutDefinition.Effects.Reset();
+		for (int32 EffectIndex = 0; EffectIndex < Definition.Effects.Num(); ++EffectIndex)
+		{
+			const FGameXXKCardEffect& Effect = Definition.Effects[EffectIndex];
+			if (Effect.Type == EGameXXKCardEffectType::DamagePercentAttack
+				&& Effect.Condition.Type == EGameXXKCardEffectConditionType::TerrainIsAny)
+			{
+				int32 GroupEndIndex = EffectIndex;
+				while (GroupEndIndex + 1 < Definition.Effects.Num()
+					&& Definition.Effects[GroupEndIndex + 1].Type != EGameXXKCardEffectType::DamagePercentAttack
+					&& IsAttackPacketAttachment(Definition.Effects[GroupEndIndex + 1], Effect))
+				{
+					++GroupEndIndex;
+				}
+				for (int32 CopyIndex = EffectIndex; CopyIndex <= GroupEndIndex; ++CopyIndex)
+				{
+					OutDefinition.Effects.Add(Definition.Effects[CopyIndex]);
+				}
+				for (int32 CopyIndex = EffectIndex; CopyIndex <= GroupEndIndex; ++CopyIndex)
+				{
+					OutDefinition.Effects.Add(Definition.Effects[CopyIndex]);
+				}
+				EffectIndex = GroupEndIndex;
+				continue;
+			}
+			OutDefinition.Effects.Add(Effect);
+			if (Effect.Condition.Type == EGameXXKCardEffectConditionType::TerrainIsAny)
+			{
+				OutDefinition.Effects.Add(Effect);
 			}
 		}
 		return true;
@@ -3260,8 +3855,7 @@ namespace
 			FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
 			if (!Owner || !Owner->bLiving)
 			{
-				OutError = TEXT("Card owner was defeated before its card effects finished resolving.");
-				return false;
+				return true;
 			}
 			FGameXXKCardCombatUnit* ConditionTarget = nullptr;
 			if (CardTargetIds.Num() == 1)
@@ -3275,6 +3869,7 @@ namespace
 				|| Effect.Type == EGameXXKCardEffectType::ReorderCards
 				|| Effect.Type == EGameXXKCardEffectType::DiscardCards
 				|| Effect.Type == EGameXXKCardEffectType::GainEnergy
+				|| Effect.Type == EGameXXKCardEffectType::RevealEnemyIntent
 				|| Effect.Type == EGameXXKCardEffectType::DoubleTerrainBonus)
 			{
 				bool bConditionSatisfied = false;
@@ -3349,9 +3944,23 @@ namespace
 				{
 					InOutRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, InOutRuntime.Deck.SharedEnergy + FMath::Max(0, Effect.Magnitude));
 				}
+				else if (Effect.Type == EGameXXKCardEffectType::RevealEnemyIntent)
+				{
+					InOutRuntime.RevealedEnemyIntentCount = FMath::Min(MaxCardBattleEnergy, InOutRuntime.RevealedEnemyIntentCount + FMath::Max(0, Effect.Magnitude));
+				}
 				else
 				{
-					GameXXKCardRules::AddCombatStatus(*Owner, EGameXXKCardStatus::TerrainBonusDouble, 1);
+					const EGameXXKCardStatus DoubleStatus = Effect.Status == EGameXXKCardStatus::None
+						? EGameXXKCardStatus::TerrainBonusDouble
+						: Effect.Status;
+					if ((DoubleStatus != EGameXXKCardStatus::TerrainBonusDouble
+							&& DoubleStatus != EGameXXKCardStatus::TerrainBonusDoubleThisRound)
+						|| Effect.Magnitude <= 0)
+					{
+						OutError = TEXT("Terrain-bonus doubling requires a positive supported status window.");
+						return false;
+					}
+					GameXXKCardRules::AddCombatStatus(*Owner, DoubleStatus, 1);
 				}
 				continue;
 			}
@@ -3433,9 +4042,13 @@ namespace
 					if (Effect.SecondaryMagnitude > 0)
 					{
 						int64 DirectHealthDamage = 0;
-						for (const FGameXXKCardDamageResult& DamageResult : InOutResult.DamageResults)
+					for (const FGameXXKCardDamageResult& DamageResult : InOutResult.DamageResults)
+					{
+						const FGameXXKCardCombatUnit* DamagedUnit = FindCombatUnitById(InOutRuntime.Units, DamageResult.ResolvedTargetUnitId);
+						if (DamageResult.SourceUnitId == Owner->UnitId && DamagedUnit && DamagedUnit->Side != Owner->Side)
 						{
 							DirectHealthDamage = FMath::Min<int64>(MAX_int32, DirectHealthDamage + FMath::Max(0, DamageResult.HealthDamage));
+						}
 						}
 						BaseHealing = FMath::Min<int64>(Effect.SecondaryMagnitude, DirectHealthDamage * BaseHealing / 100);
 					}
@@ -3539,7 +4152,11 @@ namespace
 						{
 							return false;
 						}
-						InOutResult.DamageResults.Add(MoveTemp(DamageResult));
+						InOutResult.DamageResults.Add(DamageResult);
+						if (!ResolveFirstDirectDamageReactiveModifiers(InOutRuntime, Context, DamageResult, &InOutResult.DamageResults, OutError))
+						{
+							return false;
+						}
 					}
 					break;
 				}
@@ -3588,6 +4205,9 @@ namespace
 					}
 					break;
 				}
+				case EGameXXKCardEffectType::RedirectSingleTargetEnemyAttacks:
+					GameXXKCardRules::AddCombatStatus(*Target, EGameXXKCardStatus::RedirectSingleTargetEnemyAttack, Effect.Magnitude);
+					break;
 				default:
 					OutError = TEXT("Card effect reached an unsupported resolution branch.");
 					return false;
@@ -3721,8 +4341,10 @@ bool GameXXKCardRules::ResolveCardPlay(
 		return SetFailure(OutError, TEXT("The card, catalog definition, or living owner changed before card play could commit."));
 	}
 	TArray<FName> AppliedCostModifierIds;
+	TArray<FName> TerrainFreeStatusUnitIds;
+	TArray<FName> TerrainReductionStatusUnitIds;
 	int32 FreshEffectiveEnergyCost = Definition->EnergyCost;
-	if (!BuildEffectiveCardEnergyCost(NewRuntime, *Definition, *Instance, *Owner, FreshEffectiveEnergyCost, &AppliedCostModifierIds, ValidationError))
+	if (!BuildEffectiveCardEnergyCost(NewRuntime, *Definition, *Instance, *Owner, FreshEffectiveEnergyCost, &AppliedCostModifierIds, &TerrainFreeStatusUnitIds, &TerrainReductionStatusUnitIds, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
@@ -3745,21 +4367,205 @@ bool GameXXKCardRules::ResolveCardPlay(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	if (!ConsumeTerrainCardCostStatuses(NewRuntime, TerrainFreeStatusUnitIds, TerrainReductionStatusUnitIds, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 
 	FGameXXKCardPlayResult NewResult;
 	NewResult.CardInstanceId = CopiedInstance.InstanceId;
 	NewResult.CardId = CopiedInstance.CardId;
 	NewResult.OwnerUnitId = CopiedInstance.OwnerUnitId;
 	NewResult.TargetUnitIds = TargetIds;
-	if (!ResolveCurrentCardEffects(NewRuntime, *Definition, CopiedInstance, TargetIds, NewResult, ValidationError))
+	FGameXXKCardDefinition EffectiveDefinition;
+	if (!BuildTerrainAmplifiedDefinition(NewRuntime, *Definition, CopiedInstance, EffectiveDefinition, ValidationError)
+		|| !ResolveCurrentCardEffects(NewRuntime, EffectiveDefinition, CopiedInstance, TargetIds, NewResult, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	UpdateBattleTerminalPhase(NewRuntime);
 	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
 	InOutRuntime = MoveTemp(NewRuntime);
 	OutResult = MoveTemp(NewResult);
+	return true;
+}
+
+bool GameXXKCardRules::EndPlayerCardPhase(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	TArray<FGameXXKCardDamageResult>& OutEndPhaseDamageResults,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	FString ValidationError;
+	if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (InOutRuntime.Phase != EGameXXKCardBattlePhase::Player)
+	{
+		return SetFailure(OutError, TEXT("Only an active player card phase can be ended."));
+	}
+	if (!RequireNoPendingChoice(InOutRuntime.Deck, &ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	TArray<FGameXXKCardDamageResult> NewEndPhaseDamageResults;
+	if (!DiscardRemainingHand(NewRuntime.Deck, ValidationError)
+		|| !ApplyEndPhaseDotForSide(NewRuntime, EGameXXKCardTargetSide::Party, NewEndPhaseDamageResults, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	UpdateBattleTerminalPhase(NewRuntime);
+	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Player)
+	{
+		// Enemies begin their own phase after player-side DoT resolves, so only their armor expires here.
+		ClearArmorAtSidePhaseStart(NewRuntime, EGameXXKCardTargetSide::Enemy);
+		NewRuntime.Phase = EGameXXKCardBattlePhase::Enemy;
+	}
+	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	InOutRuntime = MoveTemp(NewRuntime);
+	OutEndPhaseDamageResults = MoveTemp(NewEndPhaseDamageResults);
+	return true;
+}
+
+bool GameXXKCardRules::ResolveEnemyDirectAttack(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	const FGameXXKCardDamageContext& Context,
+	const FName SelectedPartyTargetUnitId,
+	const int32 RequestedDamage,
+	FGameXXKCardDamageResult& OutResult,
+	TArray<FGameXXKCardDamageResult>* OutReactiveDamageResults,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	FString ValidationError;
+	if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (InOutRuntime.Phase != EGameXXKCardBattlePhase::Enemy)
+	{
+		return SetFailure(OutError, TEXT("Enemy direct attacks can only resolve during the enemy phase."));
+	}
+	if ((Context.Kind != EGameXXKCardDamageKind::SingleTargetAttack && Context.Kind != EGameXXKCardDamageKind::GroupAttack)
+		|| Context.SourceUnitId.IsNone() || SelectedPartyTargetUnitId.IsNone() || RequestedDamage <= 0)
+	{
+		return SetFailure(OutError, TEXT("Enemy direct attacks require a concrete direct-attack context, source, party target, and positive damage."));
+	}
+	const FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(InOutRuntime.Units, Context.SourceUnitId);
+	const FGameXXKCardCombatUnit* SelectedTarget = FindCombatUnitById(InOutRuntime.Units, SelectedPartyTargetUnitId);
+	if (!Enemy || !Enemy->bLiving || Enemy->Side != EGameXXKCardTargetSide::Enemy
+		|| !SelectedTarget || !SelectedTarget->bLiving || SelectedTarget->Side != EGameXXKCardTargetSide::Party)
+	{
+		return SetFailure(OutError, TEXT("Enemy direct attacks require one living enemy source and one living party target."));
+	}
+
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	FName AppliedTargetUnitId = SelectedPartyTargetUnitId;
+	bool bRedirectedByCard = false;
+	if (!ApplySingleTargetEnemyRedirect(NewRuntime, Context, SelectedPartyTargetUnitId, AppliedTargetUnitId, bRedirectedByCard, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	FGameXXKCardDamageResult NewResult;
+	if (!ApplyCombatDirectDamage(NewRuntime.Units, NewRuntime.GuardLinks, Context, AppliedTargetUnitId, RequestedDamage, NewResult, &ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	NewResult.OriginalTargetUnitId = SelectedPartyTargetUnitId;
+	NewResult.bRedirected |= bRedirectedByCard;
+	TArray<FGameXXKCardDamageResult> NewReactiveDamageResults;
+	if (!ResolveFirstDirectDamageReactiveModifiers(NewRuntime, Context, NewResult, &NewReactiveDamageResults, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	UpdateBattleTerminalPhase(NewRuntime);
+	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	InOutRuntime = MoveTemp(NewRuntime);
+	OutResult = MoveTemp(NewResult);
+	if (OutReactiveDamageResults)
+	{
+		*OutReactiveDamageResults = MoveTemp(NewReactiveDamageResults);
+	}
+	return true;
+}
+
+bool GameXXKCardRules::BeginNextPlayerCardRound(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	TArray<FGameXXKCardDamageResult>& OutEndPhaseDamageResults,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	FString ValidationError;
+	if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (InOutRuntime.Phase != EGameXXKCardBattlePhase::Enemy)
+	{
+		return SetFailure(OutError, TEXT("A new player card phase can only begin after the enemy phase."));
+	}
+	if (!RequireNoPendingChoice(InOutRuntime.Deck, &ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	TArray<FGameXXKCardDamageResult> NewEndPhaseDamageResults;
+	if (!ApplyEndPhaseDotForSide(NewRuntime, EGameXXKCardTargetSide::Enemy, NewEndPhaseDamageResults, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	UpdateBattleTerminalPhase(NewRuntime);
+	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Enemy)
+	{
+		// A full round ends only after enemy-side DoT. Evaluate this before clearing party armor.
+		if (!ResolveEndOfRoundModifiers(NewRuntime, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		ClearArmorAtSidePhaseStart(NewRuntime, EGameXXKCardTargetSide::Party);
+		ExpireRoundBoundState(NewRuntime);
+		NewRuntime.RevealedEnemyIntentCount = FMath::Max(0, NewRuntime.RevealedEnemyIntentCount - 1);
+		if (NewRuntime.RoundNumber == MAX_int32)
+		{
+			return SetFailure(OutError, TEXT("Card battle round counter has exhausted the supported range."));
+		}
+		++NewRuntime.RoundNumber;
+		NewRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, 3 + NewRuntime.PendingNextRoundEnergyBonus);
+		NewRuntime.PendingNextRoundEnergyBonus = 0;
+		const int32 DrawCount = FMath::Max(0, NewRuntime.Deck.HandLimit - NewRuntime.Deck.Hand.Num());
+		if (!DrawCards(NewRuntime.Deck, DrawCount, false, &ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		NewRuntime.Phase = EGameXXKCardBattlePhase::Player;
+	}
+	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	InOutRuntime = MoveTemp(NewRuntime);
+	OutEndPhaseDamageResults = MoveTemp(NewEndPhaseDamageResults);
 	return true;
 }

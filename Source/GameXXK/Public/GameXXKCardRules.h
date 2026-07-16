@@ -130,6 +130,40 @@ namespace GameXXKCardRules
 		FGameXXKCardPlayResult& OutResult,
 		FString* OutError = nullptr);
 
+	/**
+	 * Ends the player card phase: rejects unresolved choices, discards unused hand cards, resolves
+	 * player-side end-phase DoT, and enters the enemy phase without allowing enemy actions to
+	 * interleave with individual card plays.
+	 */
+	GAMEXXK_API bool EndPlayerCardPhase(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		TArray<FGameXXKCardDamageResult>& OutEndPhaseDamageResults,
+		FString* OutError = nullptr);
+
+	/**
+	 * Resolves one declared enemy direct-damage packet during the enemy phase. The context carries
+	 * on-hit statuses and defense bypass so agility can cancel the entire packet. For a single-target
+	 * packet, card-driven redirects are applied before normal guard handling; group packets bypass
+	 * that redirect but still use the same explicit mitigation rules.
+	 */
+	GAMEXXK_API bool ResolveEnemyDirectAttack(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDamageContext& Context,
+		FName SelectedPartyTargetUnitId,
+		int32 RequestedDamage,
+		FGameXXKCardDamageResult& OutResult,
+		TArray<FGameXXKCardDamageResult>* OutReactiveDamageResults = nullptr,
+		FString* OutError = nullptr);
+
+	/**
+	 * Completes the enemy phase, applies enemy-side DoT, expires round-bound modifiers, then starts a
+	 * fresh player phase by resetting shared energy and drawing back to the normal hand limit.
+	 */
+	GAMEXXK_API bool BeginNextPlayerCardRound(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		TArray<FGameXXKCardDamageResult>& OutEndPhaseDamageResults,
+		FString* OutError = nullptr);
+
 	/** Returns the total number of stored stacks for one combat status, saturating malformed duplicate entries safely. */
 	GAMEXXK_API int32 GetCombatStatusStacks(const FGameXXKCardCombatUnit& Unit, EGameXXKCardStatus Status);
 

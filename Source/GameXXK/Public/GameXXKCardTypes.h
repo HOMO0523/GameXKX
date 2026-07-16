@@ -114,7 +114,9 @@ enum class EGameXXKCardStatus : uint8
 	TerrainBonusDouble = 15,
 	NextTerrainCardFree = 16,
 	NextTerrainCardEnergyReduction = 17,
-	RedirectSingleTargetEnemyAttack = 18
+	RedirectSingleTargetEnemyAttack = 18,
+	/** A one-round terrain-bonus doubling window; expires before the next player phase. */
+	TerrainBonusDoubleThisRound = 19
 };
 
 UENUM(BlueprintType)
@@ -940,6 +942,10 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 {
 	GENERATED_BODY()
 
+	/** Stable source identity captured from the explicit damage context for audit and follow-up effects. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName SourceUnitId = NAME_None;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName OriginalTargetUnitId = NAME_None;
 
@@ -1034,6 +1040,14 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	/** Monotonic per-battle source for stable modifier IDs. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 NextModifierOrdinal = 0;
+
+	/** Extra future enemy intentions currently disclosed by cards or task-NPC passives. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RevealedEnemyIntentCount = 0;
+
+	/** End-of-round effects that augment the next player phase's normal three shared energy. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingNextRoundEnergyBonus = 0;
 };
 
 /** Read-only card-check result consumed by the hand UI before it enters the arrow-targeting state. */

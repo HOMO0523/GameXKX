@@ -86,6 +86,46 @@ namespace
 		Swap(InOutDeck.Hand.Last(), InOutDeck.DrawPile[DrawPileIndex]);
 		return true;
 	}
+
+	const FGameXXKCardInstance* FindHandCardById(const FGameXXKBattleDeckState& Deck, const FName CardId)
+	{
+		return Deck.Hand.FindByPredicate([CardId](const FGameXXKCardInstance& Instance)
+		{
+			return Instance.CardId == CardId;
+		});
+	}
+
+	FGameXXKCardDamageContext MakeEnemyAttackContext(
+		const TCHAR* EnemyUnitId,
+		const EGameXXKCardDamageKind Kind = EGameXXKCardDamageKind::SingleTargetAttack)
+	{
+		FGameXXKCardDamageContext Context;
+		Context.SourceUnitId = FName(EnemyUnitId);
+		Context.Kind = Kind;
+		return Context;
+	}
+
+	void AddOneShotReflectModifier(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName RecipientUnitId,
+		const int32 Percent,
+		const TCHAR* ModifierId)
+	{
+		FGameXXKCardBattleModifierRuntime& Modifier = InOutRuntime.Modifiers.AddDefaulted_GetRef();
+		Modifier.ModifierId = FName(ModifierId);
+		Modifier.SourceCardInstanceId = InOutRuntime.Deck.ActiveInstanceIds[0];
+		Modifier.SourceUnitId = RecipientUnitId;
+		Modifier.RecipientUnitIds = { RecipientUnitId };
+		Modifier.Definition.Trigger = EGameXXKCardBattleModifierTrigger::FirstDirectDamageReceivedThisRound;
+		Modifier.Definition.EffectType = EGameXXKCardEffectType::DamagePercentAttack;
+		Modifier.Definition.Target = EGameXXKCardEffectTarget::Attacker;
+		Modifier.Definition.RecipientScope = EGameXXKCardModifierRecipientScope::CardOwner;
+		Modifier.Definition.RecipientTarget = EGameXXKCardEffectTarget::CardOwner;
+		Modifier.Definition.Expiry = EGameXXKCardModifierExpiry::AfterTriggerCount;
+		Modifier.Definition.Magnitude = Percent;
+		Modifier.Definition.RemainingTriggers = 1;
+		Modifier.Definition.bPersistent = true;
+	}
 }
 
 bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
@@ -384,6 +424,164 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("next-healing bonus is consumed after the qualified healing action"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(HealingBonusRuntime.Units, TEXT("Healer")), EGameXXKCardStatus::NextHealingBonus), 0);
 		}
 	}
+
+	TArray<FGameXXKCardCombatUnit> ReflectUnits;
+	ReflectUnits.Add(MakeRuntimeUnit(TEXT("Guard"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Guard, 100, 100, 20, 10, 10, 1));
+	ReflectUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime ReflectRuntime;
+	TestTrue(TEXT("first-direct-damage reflection runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(ReflectRuntime, MakeRuntimeInstances(TEXT("Profession.Guard.FanZhenJia"), 6, TEXT("Guard")), ReflectUnits, EGameXXKCardTerrain::Plain, 787));
+	FGameXXKCardPlayResult ReflectSetupResult;
+	TestTrue(TEXT("reflection armor registers its first-direct-damage modifier"), GameXXKCardRules::ResolveCardPlay(ReflectRuntime, ReflectRuntime.Deck.Hand[0].InstanceId, NAME_None, ReflectSetupResult));
+	TArray<FGameXXKCardDamageResult> ReflectPlayerDotResults;
+	TestTrue(TEXT("reflection setup can end into one enemy phase"), GameXXKCardRules::EndPlayerCardPhase(ReflectRuntime, ReflectPlayerDotResults));
+	FGameXXKCardDamageResult ReflectIncomingResult;
+	TArray<FGameXXKCardDamageResult> ReflectReactionResults;
+	TestTrue(TEXT("a first enemy direct attack resolves through the reactive modifier"), GameXXKCardRules::ResolveEnemyDirectAttack(ReflectRuntime, MakeEnemyAttackContext(TEXT("Enemy")), TEXT("Guard"), 10, ReflectIncomingResult, &ReflectReactionResults));
+	TestEqual(TEXT("armor can absorb the triggering hit while reflection still triggers"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Guard"))->HP, 100);
+	TestEqual(TEXT("the reflection uses the defended unit attack percentage against the attacker"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Enemy"))->HP, 88);
+	TestEqual(TEXT("the reaction creates one separate stable audit packet"), ReflectReactionResults.Num(), 1);
+	if (ReflectReactionResults.Num() == 1)
+	{
+		TestEqual(TEXT("the reflection audit records the guard as its true source"), ReflectReactionResults[0].SourceUnitId, FName(TEXT("Guard")));
+	}
+	TestEqual(TEXT("a one-shot first-direct-damage modifier is consumed after the first hit"), ReflectRuntime.Modifiers.Num(), 0);
+
+	TArray<FGameXXKCardCombatUnit> RedirectUnits;
+	RedirectUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 10, 10, 1));
+	RedirectUnits.Add(MakeRuntimeUnit(TEXT("Guard"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Guard, 100, 100, 16, 10, 10, 2));
+	RedirectUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime RedirectRuntime;
+	TestTrue(TEXT("single-target redirect runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(RedirectRuntime, MakeRuntimeInstances(TEXT("Profession.Guard.TieSuoHengJiang"), 6, TEXT("Guard")), RedirectUnits, EGameXXKCardTerrain::Plain, 788));
+	FGameXXKCardPlayResult RedirectSetupResult;
+	TestTrue(TEXT("guard redirect card resolves before the enemy phase"), GameXXKCardRules::ResolveCardPlay(RedirectRuntime, RedirectRuntime.Deck.Hand[0].InstanceId, NAME_None, RedirectSetupResult));
+	TArray<FGameXXKCardDamageResult> RedirectPlayerDotResults;
+	TestTrue(TEXT("redirect setup enters the enemy phase without a legacy counterattack"), GameXXKCardRules::EndPlayerCardPhase(RedirectRuntime, RedirectPlayerDotResults));
+	FGameXXKCardDamageContext RedirectContext = MakeEnemyAttackContext(TEXT("Enemy"));
+	FGameXXKCardStatusStack& RedirectBurn = RedirectContext.OnHitStatuses.AddDefaulted_GetRef();
+	RedirectBurn.Status = EGameXXKCardStatus::Burn;
+	RedirectBurn.Stacks = 1;
+	FGameXXKCardDamageResult RedirectIncomingResult;
+	TestTrue(TEXT("an enemy packet redirects through the guard status before normal direct-damage mitigation"), GameXXKCardRules::ResolveEnemyDirectAttack(RedirectRuntime, RedirectContext, TEXT("Hero"), 10, RedirectIncomingResult));
+	TestEqual(TEXT("redirect audit preserves the enemy intent's original selected hero"), RedirectIncomingResult.OriginalTargetUnitId, FName(TEXT("Hero")));
+	TestEqual(TEXT("redirect audit exposes the stable final guard target"), RedirectIncomingResult.ResolvedTargetUnitId, FName(TEXT("Guard")));
+	TestTrue(TEXT("redirect audit flags the interception"), RedirectIncomingResult.bRedirected);
+	TestEqual(TEXT("the guard's armor receives the intercepted packet"), FindRuntimeUnit(RedirectRuntime.Units, TEXT("Guard"))->Armor, 4);
+	TestEqual(TEXT("one of the card's two redirect layers is consumed"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(RedirectRuntime.Units, TEXT("Guard")), EGameXXKCardStatus::RedirectSingleTargetEnemyAttack), 1);
+	TestEqual(TEXT("enemy on-hit statuses remain inside the redirected packet and land on the final target"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(RedirectRuntime.Units, TEXT("Guard")), EGameXXKCardStatus::Burn), 1);
+
+	TArray<FGameXXKCardCombatUnit> EndRoundUnits;
+	EndRoundUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 0, 0, 1));
+	EndRoundUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime EndRoundRuntime;
+	TestTrue(TEXT("end-of-round energy runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(EndRoundRuntime, MakeRuntimeInstances(TEXT("Route.Rare.TieYiYiJue"), 6), EndRoundUnits, EGameXXKCardTerrain::Plain, 789));
+	FGameXXKCardPlayResult EndRoundSetupResult;
+	TestTrue(TEXT("iron-clad legacy card registers its full-round modifier"), GameXXKCardRules::ResolveCardPlay(EndRoundRuntime, EndRoundRuntime.Deck.Hand[0].InstanceId, NAME_None, EndRoundSetupResult));
+	TArray<FGameXXKCardDamageResult> EndRoundPlayerDotResults;
+	TestTrue(TEXT("iron-clad card can close the player phase"), GameXXKCardRules::EndPlayerCardPhase(EndRoundRuntime, EndRoundPlayerDotResults));
+	TestEqual(TEXT("player armor remains through the intervening enemy phase"), FindRuntimeUnit(EndRoundRuntime.Units, TEXT("Hero"))->Armor, 18);
+	TArray<FGameXXKCardDamageResult> EndRoundEnemyDotResults;
+	TestTrue(TEXT("the new player phase resolves after the empty enemy phase"), GameXXKCardRules::BeginNextPlayerCardRound(EndRoundRuntime, EndRoundEnemyDotResults));
+	TestEqual(TEXT("iron-clad checks armor only after the full enemy phase and grants next-round energy"), EndRoundRuntime.Deck.SharedEnergy, 4);
+	TestEqual(TEXT("party armor clears at the next party phase start after the end-round check"), FindRuntimeUnit(EndRoundRuntime.Units, TEXT("Hero"))->Armor, 0);
+	TestEqual(TEXT("the full-round energy modifier expires after its one declared trigger"), EndRoundRuntime.Modifiers.Num(), 0);
+	TestEqual(TEXT("a new player phase refills the normal hand after unused cards were discarded"), EndRoundRuntime.Deck.Hand.Num(), 5);
+
+	TArray<FGameXXKCardCombatUnit> TimedTerrainUnits;
+	TimedTerrainUnits.Add(MakeRuntimeUnit(TEXT("Zhou"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 100, 100, 12, 0, 0, 1));
+	TimedTerrainUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime TimedTerrainRuntime;
+	TestTrue(TEXT("timed terrain-bonus runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(TimedTerrainRuntime, MakeRuntimeInstances(TEXT("Npc.ZhouGuangZu.DiZhiMoTu"), 6, TEXT("Zhou")), TimedTerrainUnits, EGameXXKCardTerrain::Plain, 790));
+	FGameXXKCardPlayResult TimedTerrainResult;
+	TestTrue(TEXT("the Zhou card creates its explicit one-round terrain bonus window"), GameXXKCardRules::ResolveCardPlay(TimedTerrainRuntime, TimedTerrainRuntime.Deck.Hand[0].InstanceId, NAME_None, TimedTerrainResult));
+	TestEqual(TEXT("Zhou terrain doubling uses the round-scoped status rather than the persistent variant"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(TimedTerrainRuntime.Units, TEXT("Zhou")), EGameXXKCardStatus::TerrainBonusDoubleThisRound), 1);
+	TArray<FGameXXKCardDamageResult> TimedTerrainPlayerDots;
+	TArray<FGameXXKCardDamageResult> TimedTerrainEnemyDots;
+	TestTrue(TEXT("timed terrain bonus can pass through the player phase"), GameXXKCardRules::EndPlayerCardPhase(TimedTerrainRuntime, TimedTerrainPlayerDots));
+	TestTrue(TEXT("timed terrain bonus expires before the subsequent player phase"), GameXXKCardRules::BeginNextPlayerCardRound(TimedTerrainRuntime, TimedTerrainEnemyDots));
+	TestEqual(TEXT("an unused current-round terrain bonus cannot leak into the next round"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(TimedTerrainRuntime.Units, TEXT("Zhou")), EGameXXKCardStatus::TerrainBonusDoubleThisRound), 0);
+
+	TArray<FGameXXKCardCombatUnit> TerrainCostUnits;
+	TerrainCostUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 0, 20, 1));
+	TerrainCostUnits.Add(MakeRuntimeUnit(TEXT("Formation"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::FormationMaster, 100, 100, 10, 0, 20, 2));
+	TerrainCostUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime TerrainCostRuntime;
+	TestTrue(TEXT("terrain-cost status runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(TerrainCostRuntime, MakeRuntimeInstances(TEXT("Route.Terrain.DuanYaLuoShi"), 6), TerrainCostUnits, EGameXXKCardTerrain::Plain, 791));
+	TestEqual(TEXT("terrain-cost fixture applies a party reduction source"), GameXXKCardRules::AddCombatStatus(*FindRuntimeUnit(TerrainCostRuntime.Units, TEXT("Formation")), EGameXXKCardStatus::NextTerrainCardEnergyReduction, 1), 1);
+	TestEqual(TEXT("terrain-cost fixture applies a higher-priority free source"), GameXXKCardRules::AddCombatStatus(*FindRuntimeUnit(TerrainCostRuntime.Units, TEXT("Hero")), EGameXXKCardStatus::NextTerrainCardFree, 1), 1);
+	FGameXXKCardPlayPreview TerrainFreePreview;
+	TestTrue(TEXT("a route terrain card sees the party free-cost source in preview"), GameXXKCardRules::BuildCardPlayPreview(TerrainCostRuntime, TerrainCostRuntime.Deck.Hand[0].InstanceId, TerrainFreePreview));
+	TestEqual(TEXT("a terrain free-cost source overrides the ordinary terrain reduction"), TerrainFreePreview.EffectiveEnergyCost, 0);
+	FGameXXKCardPlayResult TerrainFreeResult;
+	TestTrue(TEXT("the free terrain card resolves through its stable enemy target"), GameXXKCardRules::ResolveCardPlay(TerrainCostRuntime, TerrainCostRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), TerrainFreeResult));
+	TestEqual(TEXT("the chosen free source is consumed exactly once"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(TerrainCostRuntime.Units, TEXT("Hero")), EGameXXKCardStatus::NextTerrainCardFree), 0);
+	TestEqual(TEXT("the unused reduction source is preserved for the following terrain card"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(TerrainCostRuntime.Units, TEXT("Formation")), EGameXXKCardStatus::NextTerrainCardEnergyReduction), 1);
+	const FGameXXKCardInstance* TerrainDiscountInstance = FindHandCardById(TerrainCostRuntime.Deck, TEXT("Route.Terrain.DuanYaLuoShi"));
+	TestNotNull(TEXT("a second terrain card remains available after the free terrain card resolves"), TerrainDiscountInstance);
+	if (TerrainDiscountInstance)
+	{
+		FGameXXKCardPlayPreview TerrainDiscountPreview;
+		TestTrue(TEXT("a remaining terrain reduction lowers the next terrain card by one energy"), GameXXKCardRules::BuildCardPlayPreview(TerrainCostRuntime, TerrainDiscountInstance->InstanceId, TerrainDiscountPreview));
+		TestEqual(TEXT("a two-energy terrain card previews at one energy after one reduction"), TerrainDiscountPreview.EffectiveEnergyCost, 1);
+		FGameXXKCardPlayResult TerrainDiscountResult;
+		TestTrue(TEXT("the discounted terrain card resolves"), GameXXKCardRules::ResolveCardPlay(TerrainCostRuntime, TerrainDiscountInstance->InstanceId, TEXT("Enemy"), TerrainDiscountResult));
+		TestEqual(TEXT("the applied terrain reduction consumes after its actual contribution"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(TerrainCostRuntime.Units, TEXT("Formation")), EGameXXKCardStatus::NextTerrainCardEnergyReduction), 0);
+	}
+
+	TArray<FGameXXKCardCombatUnit> TerrainDoubleUnits;
+	TerrainDoubleUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 0, 20, 1));
+	TerrainDoubleUnits.Add(MakeRuntimeUnit(TEXT("Ally"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Healer, 100, 100, 10, 0, 20, 2));
+	TerrainDoubleUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime TerrainDoubleRuntime;
+	TestTrue(TEXT("terrain-bonus double runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(TerrainDoubleRuntime, MakeRuntimeInstances(TEXT("Route.Terrain.DuKouHuiLiu"), 6), TerrainDoubleUnits, EGameXXKCardTerrain::WaterShore, 792));
+	TestEqual(TEXT("terrain-bonus fixture adds one persistent doubling status"), GameXXKCardRules::AddCombatStatus(*FindRuntimeUnit(TerrainDoubleRuntime.Units, TEXT("Hero")), EGameXXKCardStatus::TerrainBonusDouble, 1), 1);
+	FGameXXKCardPlayResult TerrainDoubleResult;
+	TestTrue(TEXT("terrain-bonus double duplicates only the declared water-shore bonus effects"), GameXXKCardRules::ResolveCardPlay(TerrainDoubleRuntime, TerrainDoubleRuntime.Deck.Hand[0].InstanceId, NAME_None, TerrainDoubleResult));
+	TestEqual(TEXT("base plus two water-shore mana bonuses give the hero nine mana"), FindRuntimeUnit(TerrainDoubleRuntime.Units, TEXT("Hero"))->Mana, 9);
+	TestEqual(TEXT("base plus two water-shore mana bonuses give each ally nine mana"), FindRuntimeUnit(TerrainDoubleRuntime.Units, TEXT("Ally"))->Mana, 9);
+	TestEqual(TEXT("terrain-bonus doubling consumes exactly one ready status"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(TerrainDoubleRuntime.Units, TEXT("Hero")), EGameXXKCardStatus::TerrainBonusDouble), 0);
+
+	TArray<FGameXXKCardCombatUnit> XingHuoUnits;
+	XingHuoUnits.Add(MakeRuntimeUnit(TEXT("Sorcerer"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Sorcerer, 100, 100, 20, 0, 20, 1));
+	XingHuoUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	TestEqual(TEXT("starfire fixture gives the target four burn stacks"), GameXXKCardRules::AddCombatStatus(XingHuoUnits[1], EGameXXKCardStatus::Burn, 4), 4);
+	FGameXXKCardBattleRuntime XingHuoRuntime;
+	TestTrue(TEXT("starfire recovery runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(XingHuoRuntime, MakeRuntimeInstances(TEXT("Profession.Sorcerer.XingHuoHuiShou"), 6, TEXT("Sorcerer")), XingHuoUnits, EGameXXKCardTerrain::Plain, 793));
+	FGameXXKCardPlayResult XingHuoResult;
+	TestTrue(TEXT("starfire recovery has a base attack packet after consuming burn"), GameXXKCardRules::ResolveCardPlay(XingHuoRuntime, XingHuoRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), XingHuoResult));
+	TestEqual(TEXT("starfire recovery turns four consumed burns into an eighty-percent attack bonus"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Enemy"))->HP, 64);
+	TestEqual(TEXT("starfire recovery gains two mana per consumed burn stack"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Sorcerer"))->Mana, 8);
+	TestEqual(TEXT("starfire recovery removes exactly the declared burn stacks"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Burn), 0);
+
+	TArray<FGameXXKCardCombatUnit> LifestealReflectUnits;
+	LifestealReflectUnits.Add(MakeRuntimeUnit(TEXT("Blade"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Blade, 50, 100, 20, 0, 0, 1));
+	LifestealReflectUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime LifestealReflectRuntime;
+	TestTrue(TEXT("lifesteal reflection runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(LifestealReflectRuntime, MakeRuntimeInstances(TEXT("Profession.Blade.YinXueDao"), 6, TEXT("Blade")), LifestealReflectUnits, EGameXXKCardTerrain::Plain, 794));
+	AddOneShotReflectModifier(LifestealReflectRuntime, TEXT("Enemy"), 50, TEXT("Modifier.LifestealReflect"));
+	FGameXXKCardPlayResult LifestealReflectResult;
+	TestTrue(TEXT("lifesteal resolves through an enemy reflection without rolling back its hit"), GameXXKCardRules::ResolveCardPlay(LifestealReflectRuntime, LifestealReflectRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), LifestealReflectResult));
+	TestEqual(TEXT("lifesteal only counts the card owner's outgoing enemy health damage, not the enemy counter"), FindRuntimeUnit(LifestealReflectRuntime.Units, TEXT("Blade"))->HP, 51);
+	TestEqual(TEXT("the enemy still receives the full lifesteal card attack"), FindRuntimeUnit(LifestealReflectRuntime.Units, TEXT("Enemy"))->HP, 76);
+	TestEqual(TEXT("primary damage remains before the reactive counter in the UI audit order"), LifestealReflectResult.DamageResults.Num(), 2);
+	if (LifestealReflectResult.DamageResults.Num() == 2)
+	{
+		TestEqual(TEXT("the first audit packet belongs to the played blade card"), LifestealReflectResult.DamageResults[0].SourceUnitId, FName(TEXT("Blade")));
+		TestEqual(TEXT("the second audit packet belongs to the enemy reflection"), LifestealReflectResult.DamageResults[1].SourceUnitId, FName(TEXT("Enemy")));
+	}
+
+	TArray<FGameXXKCardCombatUnit> DefeatDuringCardUnits;
+	DefeatDuringCardUnits.Add(MakeRuntimeUnit(TEXT("Blade"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Blade, 5, 100, 20, 8, 8, 1));
+	DefeatDuringCardUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 20, 0, 0, 10));
+	FGameXXKCardBattleRuntime DefeatDuringCardRuntime;
+	TestTrue(TEXT("defeat-during-card runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(DefeatDuringCardRuntime, MakeRuntimeInstances(TEXT("Profession.Blade.CanYueSanDie"), 6, TEXT("Blade")), DefeatDuringCardUnits, EGameXXKCardTerrain::Plain, 795));
+	const FName DefeatCardInstanceId = DefeatDuringCardRuntime.Deck.Hand[0].InstanceId;
+	AddOneShotReflectModifier(DefeatDuringCardRuntime, TEXT("Enemy"), 100, TEXT("Modifier.DefeatReflect"));
+	FGameXXKCardPlayResult DefeatDuringCardResult;
+	TestTrue(TEXT("a lethal counterattack commits the already-resolved card hit instead of rolling it back"), GameXXKCardRules::ResolveCardPlay(DefeatDuringCardRuntime, DefeatCardInstanceId, TEXT("Enemy"), DefeatDuringCardResult));
+	TestEqual(TEXT("a lethal counterattack sets the serializable battle terminal phase"), DefeatDuringCardRuntime.Phase, EGameXXKCardBattlePhase::Defeat);
+	TestEqual(TEXT("the first multi-hit packet remains committed before the card owner falls"), FindRuntimeUnit(DefeatDuringCardRuntime.Units, TEXT("Enemy"))->HP, 86);
+	TestFalse(TEXT("the reflected source card owner is defeated"), FindRuntimeUnit(DefeatDuringCardRuntime.Units, TEXT("Blade"))->bLiving);
+	TestTrue(TEXT("the committed card instance remains in the discard pile after defeat"), IsInDiscard(DefeatDuringCardRuntime.Deck, DefeatCardInstanceId));
 
 	return true;
 }
