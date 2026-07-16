@@ -94,6 +94,42 @@ namespace GameXXKCardRules
 	/** Returns whether an already-built manual target request contains exactly one legal stable candidate ID. */
 	GAMEXXK_API bool IsManualTargetLegal(const FGameXXKCardTargetRequest& Request, FName UnitId);
 
+	/**
+	 * Creates a serializable player-phase battle state and its shuffled five-card opening hand.
+	 * The operation validates all stable battle/unit identities and commits only on success.
+	 */
+	GAMEXXK_API bool InitializeCardBattleRuntime(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FGameXXKCardInstance>& Instances,
+		const TArray<FGameXXKCardCombatUnit>& Units,
+		EGameXXKCardTerrain Terrain,
+		int32 InitialRandomSeed,
+		FString* OutError = nullptr);
+
+	/** Validates a persisted card-battle state before it is projected into UI, scene, or save-game code. */
+	GAMEXXK_API bool ValidateCardBattleRuntime(const FGameXXKCardBattleRuntime& Runtime, FString* OutError = nullptr);
+
+	/**
+	 * Runs the non-mutating CardCheck stage. A successful manual preview is the contract for legal
+	 * highlight outlines and owner-to-cursor arrow targeting; no resource or card-zone changes occur here.
+	 */
+	GAMEXXK_API bool BuildCardPlayPreview(
+		const FGameXXKCardBattleRuntime& Runtime,
+		FName CardInstanceId,
+		FGameXXKCardPlayPreview& OutPreview,
+		FString* OutError = nullptr);
+
+	/**
+	 * Rebuilds card legality immediately before commit, validates the selected stable UnitId when needed,
+	 * then pays resources, moves the exact hand card to discard, resolves its data-only effects, and commits atomically.
+	 */
+	GAMEXXK_API bool ResolveCardPlay(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FName CardInstanceId,
+		FName SelectedTargetUnitId,
+		FGameXXKCardPlayResult& OutResult,
+		FString* OutError = nullptr);
+
 	/** Returns the total number of stored stacks for one combat status, saturating malformed duplicate entries safely. */
 	GAMEXXK_API int32 GetCombatStatusStacks(const FGameXXKCardCombatUnit& Unit, EGameXXKCardStatus Status);
 

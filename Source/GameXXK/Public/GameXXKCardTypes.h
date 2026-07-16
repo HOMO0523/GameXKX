@@ -967,3 +967,127 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bAvoidedByAgility = false;
 };
+
+/** Explicit serializable phase for the card-driven battle runtime. */
+UENUM(BlueprintType)
+enum class EGameXXKCardBattlePhase : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	Player = 1,
+	Enemy = 2,
+	Victory = 3,
+	Defeat = 4
+};
+
+/** One persisted delayed-effect instance. Recipient IDs are resolved when the source card is played. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardBattleModifierRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName ModifierId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceCardInstanceId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName OriginalSelectedTargetUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> RecipientUnitIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKCardBattleModifier Definition;
+};
+
+/** Complete pure state of an in-progress card battle. It is deliberately independent from widget and scene indexes. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardBattleRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardBattlePhase Phase = EGameXXKCardBattlePhase::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardTerrain Terrain = EGameXXKCardTerrain::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RoundNumber = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKBattleDeckState Deck;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardCombatUnit> Units;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardGuardLinkRuntime> GuardLinks;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardBattleModifierRuntime> Modifiers;
+
+	/** Monotonic per-battle source for stable modifier IDs. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 NextModifierOrdinal = 0;
+};
+
+/** Read-only card-check result consumed by the hand UI before it enters the arrow-targeting state. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardPlayPreview
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName CardInstanceId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName CardId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName OwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 EffectiveEnergyCost = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 EffectiveManaCost = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bCanPlay = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKCardTargetRequest TargetRequest;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FString FailureReason;
+};
+
+/** Stable audit result of one committed card play. It contains IDs and numerical packets, never UI indices. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardPlayResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName CardInstanceId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName CardId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName OwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> TargetUnitIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardDamageResult> DamageResults;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bOpenedPendingChoice = false;
+};
