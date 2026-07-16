@@ -237,6 +237,471 @@ namespace
 			return Instance.InstanceId == InstanceId;
 		});
 	}
+
+	bool IsConcreteTargetSide(const EGameXXKCardTargetSide Side)
+	{
+		return Side == EGameXXKCardTargetSide::Party || Side == EGameXXKCardTargetSide::Enemy;
+	}
+
+	bool IsManualTargetMode(const EGameXXKCardTargetMode Mode)
+	{
+		return Mode == EGameXXKCardTargetMode::SingleEnemy
+			|| Mode == EGameXXKCardTargetMode::SingleAlly
+			|| Mode == EGameXXKCardTargetMode::OtherAlly
+			|| Mode == EGameXXKCardTargetMode::AnyLivingUnit;
+	}
+
+	bool IsAutomaticTargetMode(const EGameXXKCardTargetMode Mode)
+	{
+		return Mode == EGameXXKCardTargetMode::None
+			|| Mode == EGameXXKCardTargetMode::Self
+			|| Mode == EGameXXKCardTargetMode::AllEnemies
+			|| Mode == EGameXXKCardTargetMode::AllAllies
+			|| Mode == EGameXXKCardTargetMode::AllOtherAllies
+			|| Mode == EGameXXKCardTargetMode::RandomEnemy
+			|| Mode == EGameXXKCardTargetMode::LowestHealthAlly
+			|| Mode == EGameXXKCardTargetMode::LowestHealthOtherAlly;
+	}
+
+	bool IsSupportedTargetMode(const EGameXXKCardTargetMode Mode)
+	{
+		return IsManualTargetMode(Mode) || IsAutomaticTargetMode(Mode);
+	}
+
+	bool TargetModeRequiresDifferentFromOwner(const EGameXXKCardTargetMode Mode)
+	{
+		return Mode == EGameXXKCardTargetMode::OtherAlly
+			|| Mode == EGameXXKCardTargetMode::AllOtherAllies
+			|| Mode == EGameXXKCardTargetMode::LowestHealthOtherAlly;
+	}
+
+	EGameXXKCardTargetPresentation PresentationForTargetMode(const EGameXXKCardTargetMode Mode)
+	{
+		switch (Mode)
+		{
+		case EGameXXKCardTargetMode::None:
+			return EGameXXKCardTargetPresentation::NoSelection;
+		case EGameXXKCardTargetMode::Self:
+			return EGameXXKCardTargetPresentation::Self;
+		case EGameXXKCardTargetMode::SingleEnemy:
+		case EGameXXKCardTargetMode::SingleAlly:
+		case EGameXXKCardTargetMode::OtherAlly:
+		case EGameXXKCardTargetMode::AnyLivingUnit:
+			return EGameXXKCardTargetPresentation::PlayerSelectsUnit;
+		case EGameXXKCardTargetMode::AllEnemies:
+		case EGameXXKCardTargetMode::AllAllies:
+		case EGameXXKCardTargetMode::AllOtherAllies:
+			return EGameXXKCardTargetPresentation::Group;
+		case EGameXXKCardTargetMode::RandomEnemy:
+		case EGameXXKCardTargetMode::LowestHealthAlly:
+		case EGameXXKCardTargetMode::LowestHealthOtherAlly:
+			return EGameXXKCardTargetPresentation::AutomaticUnit;
+		case EGameXXKCardTargetMode::Invalid:
+		default:
+			return EGameXXKCardTargetPresentation::Invalid;
+		}
+	}
+
+	bool IsConcreteTerrain(const EGameXXKCardTerrain Terrain)
+	{
+		return Terrain == EGameXXKCardTerrain::Plain
+			|| Terrain == EGameXXKCardTerrain::Cliff
+			|| Terrain == EGameXXKCardTerrain::Forest
+			|| Terrain == EGameXXKCardTerrain::WaterShore
+			|| Terrain == EGameXXKCardTerrain::Ferry
+			|| Terrain == EGameXXKCardTerrain::Village
+			|| Terrain == EGameXXKCardTerrain::Cave;
+	}
+
+	bool IsValidTargetPresentation(const EGameXXKCardTargetMode Mode, const EGameXXKCardTargetPresentation Presentation)
+	{
+		return Presentation == EGameXXKCardTargetPresentation::Invalid
+			|| Presentation == PresentationForTargetMode(Mode);
+	}
+
+	bool ValidateTargetSpec(const FGameXXKCardTargetSpec& TargetSpec, FString& OutError)
+	{
+		if (!IsSupportedTargetMode(TargetSpec.Mode))
+		{
+			OutError = TEXT("Card definition has an invalid or unsupported target mode.");
+			return false;
+		}
+		if (!IsValidTargetPresentation(TargetSpec.Mode, TargetSpec.Presentation))
+		{
+			OutError = TEXT("Card definition target mode and presentation do not form a valid interaction contract.");
+			return false;
+		}
+		const EGameXXKCardUnitState ExpectedUnitState = TargetSpec.Mode == EGameXXKCardTargetMode::None
+			? EGameXXKCardUnitState::Any
+			: EGameXXKCardUnitState::Living;
+		// First release only supports living combatants. Defeated-target flows require their own mode and UI.
+		if (TargetSpec.RequiredUnitState != ExpectedUnitState)
+		{
+			OutError = TEXT("Card definition requests an unsupported target unit state for its target mode.");
+			return false;
+		}
+		if (TargetSpec.RequiredStatus == EGameXXKCardStatus::Invalid
+			|| TargetSpec.ForbiddenStatus == EGameXXKCardStatus::Invalid
+			|| (TargetSpec.RequiredStatus != EGameXXKCardStatus::None && TargetSpec.RequiredStatus == TargetSpec.ForbiddenStatus))
+		{
+			OutError = TEXT("Card definition contains an invalid target status filter.");
+			return false;
+		}
+		if ((TargetSpec.RequiredStatus == EGameXXKCardStatus::None && TargetSpec.RequiredStatusMinimumStacks != 0)
+			|| (TargetSpec.RequiredStatus != EGameXXKCardStatus::None && TargetSpec.RequiredStatusMinimumStacks <= 0))
+		{
+			OutError = TEXT("Card definition has inconsistent required-status stack metadata.");
+			return false;
+		}
+		if (!FMath::IsFinite(TargetSpec.MinimumHealthPercent)
+			|| !FMath::IsFinite(TargetSpec.MaximumHealthPercent)
+			|| TargetSpec.MinimumHealthPercent < 0.0f
+			|| TargetSpec.MaximumHealthPercent > 100.0f
+			|| TargetSpec.MinimumHealthPercent > TargetSpec.MaximumHealthPercent)
+		{
+			OutError = TEXT("Card definition has an invalid target health-percent range.");
+			return false;
+		}
+		if ((TargetSpec.RequiredTerrain != EGameXXKCardTerrain::Invalid && !IsConcreteTerrain(TargetSpec.RequiredTerrain))
+			|| (TargetSpec.AlternateRequiredTerrain != EGameXXKCardTerrain::Invalid && !IsConcreteTerrain(TargetSpec.AlternateRequiredTerrain))
+			|| (TargetSpec.RequiredTerrain == EGameXXKCardTerrain::Invalid && TargetSpec.AlternateRequiredTerrain != EGameXXKCardTerrain::Invalid)
+			|| (TargetSpec.RequiredTerrain != EGameXXKCardTerrain::Invalid && TargetSpec.RequiredTerrain == TargetSpec.AlternateRequiredTerrain))
+		{
+			OutError = TEXT("Card definition has invalid target terrain metadata.");
+			return false;
+		}
+		if (TargetSpec.bRequireDifferentFromOwner != TargetModeRequiresDifferentFromOwner(TargetSpec.Mode))
+		{
+			OutError = TEXT("Card definition owner-difference metadata does not match its target mode.");
+			return false;
+		}
+
+		for (const FGameXXKCardTargetModeOverride& Override : TargetSpec.ModeOverrides)
+		{
+			if (!IsSupportedTargetMode(Override.Mode) || !IsValidTargetPresentation(Override.Mode, Override.Presentation))
+			{
+				OutError = TEXT("Card definition has an invalid target-mode override contract.");
+				return false;
+			}
+			switch (Override.ConditionType)
+			{
+			case EGameXXKCardTargetModeOverrideConditionType::TerrainIsAny:
+				if (!IsConcreteTerrain(Override.Terrain)
+					|| (Override.AlternateTerrain != EGameXXKCardTerrain::Invalid && !IsConcreteTerrain(Override.AlternateTerrain))
+					|| Override.Terrain == Override.AlternateTerrain
+					|| Override.Status != EGameXXKCardStatus::None
+					|| Override.MinimumStatusStacks != 0)
+				{
+					OutError = TEXT("Terrain target-mode override has invalid terrain metadata.");
+					return false;
+				}
+				break;
+			case EGameXXKCardTargetModeOverrideConditionType::OwnerHasStatus:
+				if (Override.Status == EGameXXKCardStatus::Invalid
+					|| Override.Status == EGameXXKCardStatus::None
+					|| Override.MinimumStatusStacks <= 0
+					|| Override.Terrain != EGameXXKCardTerrain::Invalid
+					|| Override.AlternateTerrain != EGameXXKCardTerrain::Invalid)
+				{
+					OutError = TEXT("Owner-status target-mode override has invalid status metadata.");
+					return false;
+				}
+				break;
+			case EGameXXKCardTargetModeOverrideConditionType::TargetHasStatus:
+				OutError = TEXT("Target-status target-mode overrides require a selected target and are unsupported before selection.");
+				return false;
+			case EGameXXKCardTargetModeOverrideConditionType::Invalid:
+			default:
+				OutError = TEXT("Card definition has an invalid target-mode override condition.");
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool DoesTerrainMatch(
+		const EGameXXKCardTerrain CurrentTerrain,
+		const EGameXXKCardTerrain RequiredTerrain,
+		const EGameXXKCardTerrain AlternateTerrain)
+	{
+		return RequiredTerrain == EGameXXKCardTerrain::Invalid
+			|| CurrentTerrain == RequiredTerrain
+			|| (AlternateTerrain != EGameXXKCardTerrain::Invalid && CurrentTerrain == AlternateTerrain);
+	}
+
+	int32 GetTargetStatusStacks(const FGameXXKCardTargetUnit& Unit, const EGameXXKCardStatus Status)
+	{
+		int64 Total = 0;
+		for (const FGameXXKCardStatusStack& Stack : Unit.Statuses)
+		{
+			if (Stack.Status == Status && Stack.Stacks > 0)
+			{
+				Total = FMath::Min<int64>(MAX_int32, Total + static_cast<int64>(Stack.Stacks));
+			}
+		}
+		return static_cast<int32>(Total);
+	}
+
+	bool ValidateAndSortTargetUnits(
+		const TArray<FGameXXKCardTargetUnit>& TargetUnits,
+		TArray<const FGameXXKCardTargetUnit*>& OutSortedUnits,
+		FString& OutError)
+	{
+		OutSortedUnits.Reset();
+		TSet<FName> SeenIds;
+		for (const FGameXXKCardTargetUnit& Unit : TargetUnits)
+		{
+			if (Unit.UnitId.IsNone() || SeenIds.Contains(Unit.UnitId))
+			{
+				OutError = TEXT("Target units must have unique, non-empty stable UnitIds.");
+				return false;
+			}
+			if (!IsConcreteTargetSide(Unit.Side) || Unit.MaxHP <= 0 || Unit.HP < 0 || Unit.HP > Unit.MaxHP || Unit.StableSortOrder == INDEX_NONE || Unit.StableSortOrder < 0)
+			{
+				OutError = TEXT("Target unit has invalid side, health, or stable sort data.");
+				return false;
+			}
+			if (Unit.bLiving != (Unit.HP > 0))
+			{
+				OutError = TEXT("Target unit living state must match its health.");
+				return false;
+			}
+			for (const FGameXXKCardStatusStack& Stack : Unit.Statuses)
+			{
+				if (Stack.Status == EGameXXKCardStatus::Invalid || Stack.Stacks < 0)
+				{
+					OutError = TEXT("Target unit contains an invalid status stack.");
+					return false;
+				}
+			}
+			SeenIds.Add(Unit.UnitId);
+			OutSortedUnits.Add(&Unit);
+		}
+
+		OutSortedUnits.Sort([](const FGameXXKCardTargetUnit& Left, const FGameXXKCardTargetUnit& Right)
+		{
+			if (Left.StableSortOrder != Right.StableSortOrder)
+			{
+				return Left.StableSortOrder < Right.StableSortOrder;
+			}
+			return Left.UnitId.LexicalLess(Right.UnitId);
+		});
+		return true;
+	}
+
+	const FGameXXKCardTargetUnit* FindTargetUnitById(
+		const TArray<const FGameXXKCardTargetUnit*>& SortedUnits,
+		const FName UnitId)
+	{
+		for (const FGameXXKCardTargetUnit* Unit : SortedUnits)
+		{
+			if (Unit && Unit->UnitId == UnitId)
+			{
+				return Unit;
+			}
+		}
+		return nullptr;
+	}
+
+	bool ResolveEffectiveTargetMode(
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardTargetUnit& SourceUnit,
+		const EGameXXKCardTerrain Terrain,
+		EGameXXKCardTargetMode& OutMode,
+		EGameXXKCardTargetPresentation& OutPresentation,
+		FString& OutError)
+	{
+		OutMode = Definition.TargetSpec.Mode;
+		OutPresentation = Definition.TargetSpec.Presentation == EGameXXKCardTargetPresentation::Invalid
+			? PresentationForTargetMode(OutMode)
+			: Definition.TargetSpec.Presentation;
+		if (OutMode == EGameXXKCardTargetMode::Invalid || OutPresentation == EGameXXKCardTargetPresentation::Invalid)
+		{
+			OutError = TEXT("Card definition has an invalid target mode or presentation.");
+			return false;
+		}
+
+		for (const FGameXXKCardTargetModeOverride& Override : Definition.TargetSpec.ModeOverrides)
+		{
+			if (Override.ConditionType == EGameXXKCardTargetModeOverrideConditionType::Invalid
+				|| Override.Mode == EGameXXKCardTargetMode::Invalid)
+			{
+				OutError = TEXT("Card definition has an invalid target-mode override.");
+				return false;
+			}
+
+			bool bMatches = false;
+			switch (Override.ConditionType)
+			{
+			case EGameXXKCardTargetModeOverrideConditionType::TerrainIsAny:
+				bMatches = DoesTerrainMatch(Terrain, Override.Terrain, Override.AlternateTerrain);
+				break;
+			case EGameXXKCardTargetModeOverrideConditionType::OwnerHasStatus:
+				bMatches = Override.Status != EGameXXKCardStatus::Invalid
+					&& Override.Status != EGameXXKCardStatus::None
+					&& Override.MinimumStatusStacks > 0
+					&& GetTargetStatusStacks(SourceUnit, Override.Status) >= Override.MinimumStatusStacks;
+				break;
+			case EGameXXKCardTargetModeOverrideConditionType::TargetHasStatus:
+				OutError = TEXT("Target-status target-mode overrides require a selected target and cannot build a pre-selection request.");
+				return false;
+			default:
+				OutError = TEXT("Card definition has an unsupported target-mode override.");
+				return false;
+			}
+
+			if (bMatches)
+			{
+				OutMode = Override.Mode;
+				OutPresentation = Override.Presentation == EGameXXKCardTargetPresentation::Invalid
+					? PresentationForTargetMode(Override.Mode)
+					: Override.Presentation;
+				if (OutPresentation == EGameXXKCardTargetPresentation::Invalid)
+				{
+					OutError = TEXT("Target-mode override has an invalid presentation.");
+					return false;
+				}
+				break;
+			}
+		}
+		return true;
+	}
+
+	EGameXXKCardTargetDisabledReason EvaluateTargetCandidate(
+		const FGameXXKCardTargetSpec& TargetSpec,
+		const EGameXXKCardTargetMode Mode,
+		const EGameXXKCardTerrain Terrain,
+		const FName SourceUnitId,
+		const FGameXXKCardTargetUnit& Candidate)
+	{
+		const bool bIsSource = Candidate.UnitId == SourceUnitId;
+		switch (Mode)
+		{
+		case EGameXXKCardTargetMode::Self:
+			if (!bIsSource)
+			{
+				return EGameXXKCardTargetDisabledReason::NotSource;
+			}
+			break;
+		case EGameXXKCardTargetMode::SingleEnemy:
+		case EGameXXKCardTargetMode::AllEnemies:
+		case EGameXXKCardTargetMode::RandomEnemy:
+			if (Candidate.Side != EGameXXKCardTargetSide::Enemy)
+			{
+				return EGameXXKCardTargetDisabledReason::WrongSide;
+			}
+			break;
+		case EGameXXKCardTargetMode::SingleAlly:
+		case EGameXXKCardTargetMode::OtherAlly:
+		case EGameXXKCardTargetMode::AllAllies:
+		case EGameXXKCardTargetMode::AllOtherAllies:
+		case EGameXXKCardTargetMode::LowestHealthAlly:
+		case EGameXXKCardTargetMode::LowestHealthOtherAlly:
+			if (Candidate.Side != EGameXXKCardTargetSide::Party)
+			{
+				return EGameXXKCardTargetDisabledReason::WrongSide;
+			}
+			break;
+		case EGameXXKCardTargetMode::AnyLivingUnit:
+			break;
+		case EGameXXKCardTargetMode::None:
+		case EGameXXKCardTargetMode::Invalid:
+		default:
+			return EGameXXKCardTargetDisabledReason::InvalidHealth;
+		}
+
+		const bool bOtherAllyMode = Mode == EGameXXKCardTargetMode::OtherAlly
+			|| Mode == EGameXXKCardTargetMode::AllOtherAllies
+			|| Mode == EGameXXKCardTargetMode::LowestHealthOtherAlly;
+		if ((bOtherAllyMode || TargetSpec.bRequireDifferentFromOwner) && bIsSource)
+		{
+			return EGameXXKCardTargetDisabledReason::OwnerExcluded;
+		}
+
+		if (!Candidate.bLiving)
+		{
+			return EGameXXKCardTargetDisabledReason::NotLiving;
+		}
+		if (!DoesTerrainMatch(Terrain, TargetSpec.RequiredTerrain, TargetSpec.AlternateRequiredTerrain))
+		{
+			return EGameXXKCardTargetDisabledReason::TerrainMismatch;
+		}
+		if (TargetSpec.RequiredStatus != EGameXXKCardStatus::None
+			&& (TargetSpec.RequiredStatus == EGameXXKCardStatus::Invalid
+				|| TargetSpec.RequiredStatusMinimumStacks <= 0
+				|| GetTargetStatusStacks(Candidate, TargetSpec.RequiredStatus) < TargetSpec.RequiredStatusMinimumStacks))
+		{
+			return EGameXXKCardTargetDisabledReason::RequiredStatusMissing;
+		}
+		if (TargetSpec.ForbiddenStatus != EGameXXKCardStatus::None
+			&& TargetSpec.ForbiddenStatus != EGameXXKCardStatus::Invalid
+			&& GetTargetStatusStacks(Candidate, TargetSpec.ForbiddenStatus) > 0)
+		{
+			return EGameXXKCardTargetDisabledReason::ForbiddenStatusPresent;
+		}
+		if (Candidate.MaxHP <= 0)
+		{
+			return EGameXXKCardTargetDisabledReason::InvalidHealth;
+		}
+		const float HealthPercent = 100.0f * static_cast<float>(Candidate.HP) / static_cast<float>(Candidate.MaxHP);
+		if (HealthPercent < TargetSpec.MinimumHealthPercent)
+		{
+			return EGameXXKCardTargetDisabledReason::HealthBelowMinimum;
+		}
+		if (HealthPercent > TargetSpec.MaximumHealthPercent)
+		{
+			return EGameXXKCardTargetDisabledReason::HealthAboveMaximum;
+		}
+		return EGameXXKCardTargetDisabledReason::None;
+	}
+
+	bool IsLowerHealthCandidate(const FGameXXKCardTargetUnit& Left, const FGameXXKCardTargetUnit& Right)
+	{
+		const int64 LeftScaledHealth = static_cast<int64>(Left.HP) * static_cast<int64>(Right.MaxHP);
+		const int64 RightScaledHealth = static_cast<int64>(Right.HP) * static_cast<int64>(Left.MaxHP);
+		if (LeftScaledHealth != RightScaledHealth)
+		{
+			return LeftScaledHealth < RightScaledHealth;
+		}
+		if (Left.StableSortOrder != Right.StableSortOrder)
+		{
+			return Left.StableSortOrder < Right.StableSortOrder;
+		}
+		return Left.UnitId.LexicalLess(Right.UnitId);
+	}
+
+	bool ValidateRequestCandidateViews(
+		const FGameXXKCardTargetRequest& Request,
+		const TArray<const FGameXXKCardTargetUnit*>& SortedUnits,
+		FString& OutError)
+	{
+		if (Request.EffectiveMode == EGameXXKCardTargetMode::None)
+		{
+			if (!Request.CandidateViews.IsEmpty() || !Request.AutomaticTargetUnitIds.IsEmpty())
+			{
+				OutError = TEXT("No-target request contains unexpected unit candidates.");
+				return false;
+			}
+			return true;
+		}
+		if (Request.CandidateViews.Num() != SortedUnits.Num())
+		{
+			OutError = TEXT("Target request candidate views no longer match the battle-unit set.");
+			return false;
+		}
+		TSet<FName> SeenCandidateIds;
+		for (const FGameXXKCardTargetCandidateView& Candidate : Request.CandidateViews)
+		{
+			const FGameXXKCardTargetUnit* Unit = FindTargetUnitById(SortedUnits, Candidate.UnitId);
+			if (Candidate.UnitId.IsNone() || SeenCandidateIds.Contains(Candidate.UnitId) || !Unit || Candidate.Side != Unit->Side)
+			{
+				OutError = TEXT("Target request candidate views contain stale or duplicate unit IDs.");
+				return false;
+			}
+			SeenCandidateIds.Add(Candidate.UnitId);
+		}
+		return true;
+	}
 }
 
 bool GameXXKCardRules::InitializeBattleDeck(
@@ -665,4 +1130,317 @@ const FGameXXKCardInstance* GameXXKCardRules::GetDrawPileTop(const FGameXXKBattl
 bool GameXXKCardRules::HasPendingChoice(const FGameXXKBattleDeckState& Deck)
 {
 	return IsActiveChoice(Deck.PendingChoice.Kind);
+}
+
+bool GameXXKCardRules::BuildTargetRequest(
+	const FGameXXKCardDefinition& Definition,
+	const FGameXXKCardInstance& CardInstance,
+	const EGameXXKCardTerrain Terrain,
+	const TArray<FGameXXKCardTargetUnit>& TargetUnits,
+	FGameXXKCardTargetRequest& OutRequest,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	if (!IsValidInstance(CardInstance) || Definition.Id.IsNone() || Definition.Id != CardInstance.CardId)
+	{
+		return SetFailure(OutError, TEXT("Card instance and immutable definition do not match."));
+	}
+
+	FString ValidationError;
+	TArray<const FGameXXKCardTargetUnit*> SortedUnits;
+	if (!ValidateAndSortTargetUnits(TargetUnits, SortedUnits, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	const FGameXXKCardTargetUnit* SourceUnit = FindTargetUnitById(SortedUnits, CardInstance.OwnerUnitId);
+	if (!SourceUnit || !SourceUnit->bLiving)
+	{
+		return SetFailure(OutError, TEXT("Card owner is absent from the current living battle-unit set."));
+	}
+	if (!ValidateTargetSpec(Definition.TargetSpec, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+
+	EGameXXKCardTargetMode EffectiveMode = EGameXXKCardTargetMode::Invalid;
+	EGameXXKCardTargetPresentation EffectivePresentation = EGameXXKCardTargetPresentation::Invalid;
+	if (!ResolveEffectiveTargetMode(Definition, *SourceUnit, Terrain, EffectiveMode, EffectivePresentation, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (EffectivePresentation != PresentationForTargetMode(EffectiveMode))
+	{
+		return SetFailure(OutError, TEXT("Target mode and presentation do not form a valid interaction contract."));
+	}
+	if (!IsManualTargetMode(EffectiveMode) && !IsAutomaticTargetMode(EffectiveMode))
+	{
+		return SetFailure(OutError, TEXT("Card definition resolves to an unsupported target mode."));
+	}
+
+	FGameXXKCardTargetRequest NewRequest;
+	NewRequest.CardInstanceId = CardInstance.InstanceId;
+	NewRequest.SourceUnitId = SourceUnit->UnitId;
+	NewRequest.EffectiveMode = EffectiveMode;
+	NewRequest.Presentation = EffectivePresentation;
+	NewRequest.bRequiresManualSelection = IsManualTargetMode(EffectiveMode);
+	NewRequest.bRequiresRandomResolution = EffectiveMode == EGameXXKCardTargetMode::RandomEnemy;
+
+	if (EffectiveMode == EGameXXKCardTargetMode::None)
+	{
+		OutRequest = MoveTemp(NewRequest);
+		return true;
+	}
+
+	TArray<const FGameXXKCardTargetUnit*> LegalUnits;
+	for (const FGameXXKCardTargetUnit* Unit : SortedUnits)
+	{
+		check(Unit);
+		FGameXXKCardTargetCandidateView Candidate;
+		Candidate.UnitId = Unit->UnitId;
+		Candidate.Side = Unit->Side;
+		Candidate.DisabledReason = EvaluateTargetCandidate(Definition.TargetSpec, EffectiveMode, Terrain, SourceUnit->UnitId, *Unit);
+		Candidate.bCanSelect = Candidate.DisabledReason == EGameXXKCardTargetDisabledReason::None;
+		if (Candidate.bCanSelect)
+		{
+			LegalUnits.Add(Unit);
+		}
+		NewRequest.CandidateViews.Add(Candidate);
+	}
+
+	if (LegalUnits.IsEmpty())
+	{
+		NewRequest.FailureReason = TEXT("No legal target is available for this card.");
+		OutRequest = MoveTemp(NewRequest);
+		return SetFailure(OutError, OutRequest.FailureReason);
+	}
+
+	switch (EffectiveMode)
+	{
+	case EGameXXKCardTargetMode::Self:
+		NewRequest.AutomaticTargetUnitIds.Add(SourceUnit->UnitId);
+		break;
+	case EGameXXKCardTargetMode::AllEnemies:
+	case EGameXXKCardTargetMode::AllAllies:
+	case EGameXXKCardTargetMode::AllOtherAllies:
+		for (const FGameXXKCardTargetUnit* Unit : LegalUnits)
+		{
+			NewRequest.AutomaticTargetUnitIds.Add(Unit->UnitId);
+		}
+		break;
+	case EGameXXKCardTargetMode::LowestHealthAlly:
+	case EGameXXKCardTargetMode::LowestHealthOtherAlly:
+	{
+		const FGameXXKCardTargetUnit* BestUnit = LegalUnits[0];
+		for (const FGameXXKCardTargetUnit* Unit : LegalUnits)
+		{
+			if (IsLowerHealthCandidate(*Unit, *BestUnit))
+			{
+				BestUnit = Unit;
+			}
+		}
+		NewRequest.AutomaticTargetUnitIds.Add(BestUnit->UnitId);
+		break;
+	}
+	case EGameXXKCardTargetMode::RandomEnemy:
+		// The preview exposes candidates but cannot consume the battle PRNG.
+		break;
+	case EGameXXKCardTargetMode::SingleEnemy:
+	case EGameXXKCardTargetMode::SingleAlly:
+	case EGameXXKCardTargetMode::OtherAlly:
+	case EGameXXKCardTargetMode::AnyLivingUnit:
+		break;
+	case EGameXXKCardTargetMode::None:
+	case EGameXXKCardTargetMode::Invalid:
+	default:
+		return SetFailure(OutError, TEXT("Card definition resolves to an unsupported target mode."));
+	}
+
+	if (!NewRequest.bRequiresManualSelection && !NewRequest.bRequiresRandomResolution)
+	{
+		TSet<FName> LockedIds(NewRequest.AutomaticTargetUnitIds);
+		for (FGameXXKCardTargetCandidateView& Candidate : NewRequest.CandidateViews)
+		{
+			Candidate.bAutoLocked = Candidate.bCanSelect && LockedIds.Contains(Candidate.UnitId);
+		}
+	}
+
+	OutRequest = MoveTemp(NewRequest);
+	return true;
+}
+
+bool GameXXKCardRules::ResolveAutomaticTargetIds(
+	const FGameXXKCardTargetRequest& Request,
+	const TArray<FGameXXKCardTargetUnit>& TargetUnits,
+	int32& InOutRandomState,
+	TArray<FName>& OutTargetIds,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	if (Request.CardInstanceId.IsNone() || Request.SourceUnitId.IsNone() || !Request.FailureReason.IsEmpty())
+	{
+		return SetFailure(OutError, TEXT("Automatic target request is incomplete or already failed."));
+	}
+	if (!IsAutomaticTargetMode(Request.EffectiveMode) || IsManualTargetMode(Request.EffectiveMode)
+		|| Request.bRequiresManualSelection
+		|| Request.Presentation != PresentationForTargetMode(Request.EffectiveMode)
+		|| Request.bRequiresRandomResolution != (Request.EffectiveMode == EGameXXKCardTargetMode::RandomEnemy))
+	{
+		return SetFailure(OutError, TEXT("Automatic target request has incompatible mode metadata."));
+	}
+
+	FString ValidationError;
+	TArray<const FGameXXKCardTargetUnit*> SortedUnits;
+	if (!ValidateAndSortTargetUnits(TargetUnits, SortedUnits, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	const FGameXXKCardTargetUnit* SourceUnit = FindTargetUnitById(SortedUnits, Request.SourceUnitId);
+	if (!SourceUnit || !SourceUnit->bLiving)
+	{
+		return SetFailure(OutError, TEXT("Automatic target request source is absent or defeated."));
+	}
+	if (!ValidateRequestCandidateViews(Request, SortedUnits, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+
+	if (Request.EffectiveMode == EGameXXKCardTargetMode::None)
+	{
+		TArray<FName> NewTargetIds;
+		OutTargetIds = MoveTemp(NewTargetIds);
+		return true;
+	}
+
+	TMap<FName, const FGameXXKCardTargetCandidateView*> CandidateById;
+	for (const FGameXXKCardTargetCandidateView& Candidate : Request.CandidateViews)
+	{
+		CandidateById.Add(Candidate.UnitId, &Candidate);
+	}
+	TArray<const FGameXXKCardTargetUnit*> LegalUnits;
+	for (const FGameXXKCardTargetUnit* Unit : SortedUnits)
+	{
+		const FGameXXKCardTargetCandidateView* Candidate = CandidateById.FindRef(Unit->UnitId);
+		if (Candidate && Candidate->bCanSelect)
+		{
+			if (!Unit->bLiving)
+			{
+				return SetFailure(OutError, TEXT("Automatic target request became stale because a legal unit is no longer living."));
+			}
+			LegalUnits.Add(Unit);
+		}
+	}
+
+	if (Request.EffectiveMode == EGameXXKCardTargetMode::RandomEnemy)
+	{
+		if (!Request.AutomaticTargetUnitIds.IsEmpty() || LegalUnits.IsEmpty())
+		{
+			return SetFailure(OutError, TEXT("Random target request contains invalid automatic target metadata."));
+		}
+		for (const FGameXXKCardTargetUnit* Unit : LegalUnits)
+		{
+			if (Unit->Side != EGameXXKCardTargetSide::Enemy)
+			{
+				return SetFailure(OutError, TEXT("Random enemy request contains a non-enemy legal candidate."));
+			}
+		}
+		int32 NewRandomState = InOutRandomState;
+		TArray<FName> NewTargetIds;
+		NewTargetIds.Add(LegalUnits[NextRandomIndex(NewRandomState, LegalUnits.Num())]->UnitId);
+		InOutRandomState = NewRandomState;
+		OutTargetIds = MoveTemp(NewTargetIds);
+		return true;
+	}
+
+	TSet<FName> SeenAutomaticIds;
+	for (const FName UnitId : Request.AutomaticTargetUnitIds)
+	{
+		const FGameXXKCardTargetCandidateView* Candidate = CandidateById.FindRef(UnitId);
+		if (UnitId.IsNone() || SeenAutomaticIds.Contains(UnitId) || !Candidate || !Candidate->bCanSelect || !Candidate->bAutoLocked)
+		{
+			return SetFailure(OutError, TEXT("Automatic target request contains an invalid locked target ID."));
+		}
+		SeenAutomaticIds.Add(UnitId);
+	}
+
+	TArray<FName> ExpectedIds;
+	switch (Request.EffectiveMode)
+	{
+	case EGameXXKCardTargetMode::Self:
+		ExpectedIds.Add(Request.SourceUnitId);
+		break;
+	case EGameXXKCardTargetMode::AllEnemies:
+	case EGameXXKCardTargetMode::AllAllies:
+	case EGameXXKCardTargetMode::AllOtherAllies:
+		for (const FGameXXKCardTargetUnit* Unit : LegalUnits)
+		{
+			ExpectedIds.Add(Unit->UnitId);
+		}
+		break;
+	case EGameXXKCardTargetMode::LowestHealthAlly:
+	case EGameXXKCardTargetMode::LowestHealthOtherAlly:
+		if (LegalUnits.IsEmpty())
+		{
+			return SetFailure(OutError, TEXT("Automatic lowest-health target request has no legal candidates."));
+		}
+		{
+			const FGameXXKCardTargetUnit* BestUnit = LegalUnits[0];
+			for (const FGameXXKCardTargetUnit* Unit : LegalUnits)
+			{
+				if (IsLowerHealthCandidate(*Unit, *BestUnit))
+				{
+					BestUnit = Unit;
+				}
+			}
+			ExpectedIds.Add(BestUnit->UnitId);
+		}
+		break;
+	case EGameXXKCardTargetMode::None:
+	case EGameXXKCardTargetMode::RandomEnemy:
+	case EGameXXKCardTargetMode::Invalid:
+	case EGameXXKCardTargetMode::SingleEnemy:
+	case EGameXXKCardTargetMode::SingleAlly:
+	case EGameXXKCardTargetMode::OtherAlly:
+	case EGameXXKCardTargetMode::AnyLivingUnit:
+	default:
+		return SetFailure(OutError, TEXT("Automatic target request has an unsupported target mode."));
+	}
+	if (Request.AutomaticTargetUnitIds != ExpectedIds)
+	{
+		return SetFailure(OutError, TEXT("Automatic target request no longer matches the stable legal-target order."));
+	}
+
+	TArray<FName> NewTargetIds = ExpectedIds;
+	OutTargetIds = MoveTemp(NewTargetIds);
+	return true;
+}
+
+bool GameXXKCardRules::IsManualTargetLegal(const FGameXXKCardTargetRequest& Request, const FName UnitId)
+{
+	if (!Request.bRequiresManualSelection || UnitId.IsNone())
+	{
+		return false;
+	}
+	bool bFound = false;
+	for (const FGameXXKCardTargetCandidateView& Candidate : Request.CandidateViews)
+	{
+		if (Candidate.UnitId == UnitId)
+		{
+			if (bFound)
+			{
+				return false;
+			}
+			bFound = true;
+			if (!Candidate.bCanSelect || Candidate.bAutoLocked)
+			{
+				return false;
+			}
+		}
+	}
+	return bFound;
 }

@@ -700,3 +700,128 @@ struct GAMEXXK_API FGameXXKBattleDeckState
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FName> ActiveInstanceIds;
 };
+
+/** Logical battle side used by pure target selection. This is never a widget index. */
+UENUM(BlueprintType)
+enum class EGameXXKCardTargetSide : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	Party = 1,
+	Enemy = 2
+};
+
+/** Why a stable unit is visible but unavailable to a target-selection UI. */
+UENUM(BlueprintType)
+enum class EGameXXKCardTargetDisabledReason : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	None = 1,
+	WrongSide = 2,
+	NotLiving = 3,
+	OwnerExcluded = 4,
+	NotSource = 5,
+	RequiredStatusMissing = 6,
+	ForbiddenStatusPresent = 7,
+	HealthBelowMinimum = 8,
+	HealthAboveMaximum = 9,
+	TerrainMismatch = 10,
+	InvalidHealth = 11
+};
+
+/** One status stack view supplied by the battle layer for targeting. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardStatusStack
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardStatus Status = EGameXXKCardStatus::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Stacks = 0;
+};
+
+/** Stable battle-unit facts needed to calculate card target candidates. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardTargetUnit
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName UnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardTargetSide Side = EGameXXKCardTargetSide::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bLiving = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 HP = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 MaxHP = 0;
+
+	/** Persistent battle slot/order, rather than a temporary UI list position. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 StableSortOrder = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardStatusStack> Statuses;
+};
+
+/** UI-safe target candidate view. Invalid candidates remain visible with an explicit reason. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardTargetCandidateView
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName UnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardTargetSide Side = EGameXXKCardTargetSide::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bCanSelect = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardTargetDisabledReason DisabledReason = EGameXXKCardTargetDisabledReason::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bAutoLocked = false;
+};
+
+/** Pure target-selection result passed to a future battle UI or resolver. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardTargetRequest
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName CardInstanceId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardTargetMode EffectiveMode = EGameXXKCardTargetMode::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardTargetPresentation Presentation = EGameXXKCardTargetPresentation::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bRequiresManualSelection = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bRequiresRandomResolution = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardTargetCandidateView> CandidateViews;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> AutomaticTargetUnitIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FString FailureReason;
+};

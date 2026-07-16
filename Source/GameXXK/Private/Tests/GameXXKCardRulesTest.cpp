@@ -117,6 +117,119 @@ namespace
 		}
 		return Result;
 	}
+
+	FGameXXKCardTargetUnit MakeTargetUnit(
+		const TCHAR* UnitId,
+		const EGameXXKCardTargetSide Side,
+		const bool bLiving,
+		const int32 HP,
+		const int32 MaxHP,
+		const int32 StableSortOrder)
+	{
+		FGameXXKCardTargetUnit Unit;
+		Unit.UnitId = FName(UnitId);
+		Unit.Side = Side;
+		Unit.bLiving = bLiving;
+		Unit.HP = HP;
+		Unit.MaxHP = MaxHP;
+		Unit.StableSortOrder = StableSortOrder;
+		return Unit;
+	}
+
+	void AddTargetStatus(FGameXXKCardTargetUnit& Unit, const EGameXXKCardStatus Status, const int32 Stacks)
+	{
+		FGameXXKCardStatusStack& Stack = Unit.Statuses.AddDefaulted_GetRef();
+		Stack.Status = Status;
+		Stack.Stacks = Stacks;
+	}
+
+	TArray<FGameXXKCardTargetUnit> MakeTargetUnits()
+	{
+		TArray<FGameXXKCardTargetUnit> Units;
+		Units.Add(MakeTargetUnit(TEXT("Player"), EGameXXKCardTargetSide::Party, true, 90, 100, 1));
+		AddTargetStatus(Units.Last(), EGameXXKCardStatus::Momentum, 2);
+		Units.Add(MakeTargetUnit(TEXT("AllyHigh"), EGameXXKCardTargetSide::Party, true, 50, 100, 2));
+		Units.Add(MakeTargetUnit(TEXT("ZetaLow"), EGameXXKCardTargetSide::Party, true, 10, 100, 3));
+		Units.Add(MakeTargetUnit(TEXT("AlphaLow"), EGameXXKCardTargetSide::Party, true, 10, 100, 4));
+		Units.Add(MakeTargetUnit(TEXT("AllyDefeated"), EGameXXKCardTargetSide::Party, false, 0, 100, 5));
+		Units.Add(MakeTargetUnit(TEXT("EnemyMarked"), EGameXXKCardTargetSide::Enemy, true, 50, 100, 10));
+		AddTargetStatus(Units.Last(), EGameXXKCardStatus::Burn, 2);
+		Units.Add(MakeTargetUnit(TEXT("EnemyOther"), EGameXXKCardTargetSide::Enemy, true, 35, 100, 11));
+		Units.Add(MakeTargetUnit(TEXT("EnemyDefeated"), EGameXXKCardTargetSide::Enemy, false, 0, 100, 12));
+		return Units;
+	}
+
+	FGameXXKCardInstance MakeTargetCard()
+	{
+		FGameXXKCardInstance Card;
+		Card.InstanceId = TEXT("Instance.Target");
+		Card.CardId = TEXT("Card.Target");
+		Card.OwnerUnitId = TEXT("Player");
+		Card.SourceEntryId = TEXT("Entry.Target");
+		Card.AcquisitionOrdinal = 77;
+		return Card;
+	}
+
+	FGameXXKCardDefinition MakeTargetDefinition(const EGameXXKCardTargetMode Mode)
+	{
+		FGameXXKCardDefinition Definition;
+		Definition.Id = TEXT("Card.Target");
+		Definition.OwnerId = TEXT("Hero");
+		Definition.TargetSpec.Mode = Mode;
+		Definition.TargetSpec.RequiredUnitState = Mode == EGameXXKCardTargetMode::None
+			? EGameXXKCardUnitState::Any
+			: EGameXXKCardUnitState::Living;
+		Definition.TargetSpec.bRequireDifferentFromOwner = Mode == EGameXXKCardTargetMode::OtherAlly
+			|| Mode == EGameXXKCardTargetMode::AllOtherAllies
+			|| Mode == EGameXXKCardTargetMode::LowestHealthOtherAlly;
+		return Definition;
+	}
+
+	const FGameXXKCardTargetCandidateView* FindTargetCandidate(const FGameXXKCardTargetRequest& Request, const FName UnitId)
+	{
+		return Request.CandidateViews.FindByPredicate([UnitId](const FGameXXKCardTargetCandidateView& Candidate)
+		{
+			return Candidate.UnitId == UnitId;
+		});
+	}
+
+	FString TargetUnitSnapshot(const TArray<FGameXXKCardTargetUnit>& Units)
+	{
+		FString Result;
+		for (const FGameXXKCardTargetUnit& Unit : Units)
+		{
+			Result += FString::Printf(TEXT("{%s|%d|%d|%d|%d|%d"), *Unit.UnitId.ToString(), static_cast<int32>(Unit.Side), static_cast<int32>(Unit.bLiving), Unit.HP, Unit.MaxHP, Unit.StableSortOrder);
+			for (const FGameXXKCardStatusStack& Status : Unit.Statuses)
+			{
+				Result += FString::Printf(TEXT("|%d:%d"), static_cast<int32>(Status.Status), Status.Stacks);
+			}
+			Result += TEXT("}");
+		}
+		return Result;
+	}
+
+	FString TargetRequestSnapshot(const FGameXXKCardTargetRequest& Request)
+	{
+		FString Result = FString::Printf(
+			TEXT("{%s|%s|%d|%d|%d|%d|%s"),
+			*Request.CardInstanceId.ToString(),
+			*Request.SourceUnitId.ToString(),
+			static_cast<int32>(Request.EffectiveMode),
+			static_cast<int32>(Request.Presentation),
+			static_cast<int32>(Request.bRequiresManualSelection),
+			static_cast<int32>(Request.bRequiresRandomResolution),
+			*Request.FailureReason);
+		for (const FGameXXKCardTargetCandidateView& Candidate : Request.CandidateViews)
+		{
+			Result += FString::Printf(TEXT("|%s:%d:%d:%d:%d"), *Candidate.UnitId.ToString(), static_cast<int32>(Candidate.Side), static_cast<int32>(Candidate.bCanSelect), static_cast<int32>(Candidate.DisabledReason), static_cast<int32>(Candidate.bAutoLocked));
+		}
+		Result += TEXT("|auto=");
+		for (const FName UnitId : Request.AutomaticTargetUnitIds)
+		{
+			Result += UnitId.ToString() + TEXT(",");
+		}
+		return Result + TEXT("}");
+	}
 }
 
 bool FGameXXKCardRulesTest::RunTest(const FString& Parameters)
@@ -285,6 +398,267 @@ bool FGameXXKCardRulesTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("insight candidate view must exactly match the canonical draw instance"), GameXXKCardRules::ValidateDeckState(TamperedCandidateDeck));
 	TestFalse(TEXT("insight submission rejects a tampered candidate view"), GameXXKCardRules::SubmitInsightChoice(TamperedCandidateDeck, TamperedPickedId, TamperedReorderedIds));
 	TestEqual(TEXT("tampered insight submit preserves every persisted deck field"), DeckSnapshot(TamperedCandidateDeck), TamperedCandidateSnapshot);
+
+	// Target request rules are intentionally pure: this is the complete input view a future UI may highlight.
+	const TArray<FGameXXKCardTargetUnit> TargetUnits = MakeTargetUnits();
+	const FGameXXKCardInstance TargetCard = MakeTargetCard();
+	const FString TargetUnitsBeforeBuild = TargetUnitSnapshot(TargetUnits);
+	const auto BuildModeRequest = [&TargetCard, &TargetUnits](const EGameXXKCardTargetMode Mode, FGameXXKCardTargetRequest& OutRequest)
+	{
+		return GameXXKCardRules::BuildTargetRequest(MakeTargetDefinition(Mode), TargetCard, EGameXXKCardTerrain::Plain, TargetUnits, OutRequest, nullptr);
+	};
+
+	FGameXXKCardTargetRequest SingleEnemyRequest;
+	TestTrue(TEXT("single enemy builds a target request"), BuildModeRequest(EGameXXKCardTargetMode::SingleEnemy, SingleEnemyRequest));
+	TestEqual(TEXT("target request does not mutate its unit input"), TargetUnitSnapshot(TargetUnits), TargetUnitsBeforeBuild);
+	TestTrue(TEXT("single enemy is a manual arrow mode"), SingleEnemyRequest.bRequiresManualSelection);
+	TestFalse(TEXT("single enemy is not a random resolution mode"), SingleEnemyRequest.bRequiresRandomResolution);
+	TestEqual(TEXT("single enemy uses player-select presentation"), SingleEnemyRequest.Presentation, EGameXXKCardTargetPresentation::PlayerSelectsUnit);
+	TestTrue(TEXT("living enemy is manually legal"), GameXXKCardRules::IsManualTargetLegal(SingleEnemyRequest, TEXT("EnemyMarked")));
+	TestFalse(TEXT("party target is not legal for single enemy"), GameXXKCardRules::IsManualTargetLegal(SingleEnemyRequest, TEXT("Player")));
+	TestFalse(TEXT("empty target is not legal for single enemy"), GameXXKCardRules::IsManualTargetLegal(SingleEnemyRequest, NAME_None));
+	const FGameXXKCardTargetCandidateView* PartyForEnemy = FindTargetCandidate(SingleEnemyRequest, TEXT("Player"));
+	TestNotNull(TEXT("single enemy keeps party candidate as a disabled view"), PartyForEnemy);
+	if (PartyForEnemy)
+	{
+		TestFalse(TEXT("party candidate cannot be selected as an enemy"), PartyForEnemy->bCanSelect);
+		TestEqual(TEXT("party candidate exposes wrong-side reason"), PartyForEnemy->DisabledReason, EGameXXKCardTargetDisabledReason::WrongSide);
+	}
+	const FGameXXKCardTargetCandidateView* DeadEnemyForEnemy = FindTargetCandidate(SingleEnemyRequest, TEXT("EnemyDefeated"));
+	TestNotNull(TEXT("single enemy keeps defeated enemy as a disabled view"), DeadEnemyForEnemy);
+	if (DeadEnemyForEnemy)
+	{
+		TestEqual(TEXT("defeated candidate exposes living-state reason"), DeadEnemyForEnemy->DisabledReason, EGameXXKCardTargetDisabledReason::NotLiving);
+	}
+
+	FGameXXKCardTargetRequest SingleAllyRequest;
+	TestTrue(TEXT("single ally builds a target request"), BuildModeRequest(EGameXXKCardTargetMode::SingleAlly, SingleAllyRequest));
+	TestTrue(TEXT("single ally allows its owner when the spec allows it"), GameXXKCardRules::IsManualTargetLegal(SingleAllyRequest, TEXT("Player")));
+	TestTrue(TEXT("single ally allows a living party ally"), GameXXKCardRules::IsManualTargetLegal(SingleAllyRequest, TEXT("AllyHigh")));
+
+	FGameXXKCardTargetRequest OtherAllyRequest;
+	TestTrue(TEXT("other ally builds a target request"), BuildModeRequest(EGameXXKCardTargetMode::OtherAlly, OtherAllyRequest));
+	TestTrue(TEXT("other ally remains a manual arrow mode"), OtherAllyRequest.bRequiresManualSelection);
+	TestFalse(TEXT("other ally excludes its owner"), GameXXKCardRules::IsManualTargetLegal(OtherAllyRequest, TEXT("Player")));
+	TestTrue(TEXT("other ally allows a different living party member"), GameXXKCardRules::IsManualTargetLegal(OtherAllyRequest, TEXT("AllyHigh")));
+	const FGameXXKCardTargetCandidateView* OwnerForOtherAlly = FindTargetCandidate(OtherAllyRequest, TEXT("Player"));
+	TestNotNull(TEXT("other ally retains owner as a disabled view"), OwnerForOtherAlly);
+	if (OwnerForOtherAlly)
+	{
+		TestEqual(TEXT("other ally exposes owner-excluded reason"), OwnerForOtherAlly->DisabledReason, EGameXXKCardTargetDisabledReason::OwnerExcluded);
+	}
+
+	FGameXXKCardTargetRequest AnyLivingRequest;
+	TestTrue(TEXT("any living unit builds a target request"), BuildModeRequest(EGameXXKCardTargetMode::AnyLivingUnit, AnyLivingRequest));
+	TestTrue(TEXT("any living unit remains a manual arrow mode"), AnyLivingRequest.bRequiresManualSelection);
+	TestTrue(TEXT("any living unit accepts a party candidate"), GameXXKCardRules::IsManualTargetLegal(AnyLivingRequest, TEXT("AllyHigh")));
+	TestTrue(TEXT("any living unit accepts an enemy candidate"), GameXXKCardRules::IsManualTargetLegal(AnyLivingRequest, TEXT("EnemyOther")));
+	TestFalse(TEXT("any living unit rejects a defeated candidate"), GameXXKCardRules::IsManualTargetLegal(AnyLivingRequest, TEXT("AllyDefeated")));
+
+	FGameXXKCardTargetRequest NoneRequest;
+	TestTrue(TEXT("no-target mode builds a request"), BuildModeRequest(EGameXXKCardTargetMode::None, NoneRequest));
+	TestFalse(TEXT("no-target mode never requests a manual arrow"), NoneRequest.bRequiresManualSelection);
+	TestFalse(TEXT("no-target mode never requests random resolution"), NoneRequest.bRequiresRandomResolution);
+	TestEqual(TEXT("no-target mode has no automatic unit IDs"), NoneRequest.AutomaticTargetUnitIds.Num(), 0);
+
+	FGameXXKCardTargetRequest SelfRequest;
+	TestTrue(TEXT("self mode builds a request"), BuildModeRequest(EGameXXKCardTargetMode::Self, SelfRequest));
+	TestFalse(TEXT("self mode never requests a manual arrow"), SelfRequest.bRequiresManualSelection);
+	TestEqual(TEXT("self mode automatically locks the stable source unit"), SelfRequest.AutomaticTargetUnitIds, TArray<FName>{TEXT("Player")});
+	const FGameXXKCardTargetCandidateView* SelfCandidate = FindTargetCandidate(SelfRequest, TEXT("Player"));
+	TestNotNull(TEXT("self mode includes its source candidate"), SelfCandidate);
+	if (SelfCandidate)
+	{
+		TestTrue(TEXT("self source is automatically locked"), SelfCandidate->bAutoLocked);
+	}
+
+	FGameXXKCardTargetRequest AllEnemiesRequest;
+	TestTrue(TEXT("all enemies builds a target request"), BuildModeRequest(EGameXXKCardTargetMode::AllEnemies, AllEnemiesRequest));
+	TestFalse(TEXT("all enemies never requests a manual arrow"), AllEnemiesRequest.bRequiresManualSelection);
+	TestEqual(TEXT("all enemies locks living enemies in stable order"), AllEnemiesRequest.AutomaticTargetUnitIds, TArray<FName>{TEXT("EnemyMarked"), TEXT("EnemyOther")});
+
+	FGameXXKCardTargetRequest AllAlliesRequest;
+	TestTrue(TEXT("all allies builds a target request"), BuildModeRequest(EGameXXKCardTargetMode::AllAllies, AllAlliesRequest));
+	TestFalse(TEXT("all allies never requests a manual arrow"), AllAlliesRequest.bRequiresManualSelection);
+	TestEqual(TEXT("all allies locks living party units in stable order"), AllAlliesRequest.AutomaticTargetUnitIds, TArray<FName>{TEXT("Player"), TEXT("AllyHigh"), TEXT("ZetaLow"), TEXT("AlphaLow")});
+
+	FGameXXKCardTargetRequest AllOtherAlliesRequest;
+	TestTrue(TEXT("all other allies builds a target request"), BuildModeRequest(EGameXXKCardTargetMode::AllOtherAllies, AllOtherAlliesRequest));
+	TestFalse(TEXT("all other allies never requests a manual arrow"), AllOtherAlliesRequest.bRequiresManualSelection);
+	TestEqual(TEXT("all other allies excludes the source and keeps stable order"), AllOtherAlliesRequest.AutomaticTargetUnitIds, TArray<FName>{TEXT("AllyHigh"), TEXT("ZetaLow"), TEXT("AlphaLow")});
+
+	FGameXXKCardTargetRequest RandomEnemyRequest;
+	TestTrue(TEXT("random enemy builds a target request"), BuildModeRequest(EGameXXKCardTargetMode::RandomEnemy, RandomEnemyRequest));
+	TestFalse(TEXT("random enemy never requests a manual arrow"), RandomEnemyRequest.bRequiresManualSelection);
+	TestTrue(TEXT("random enemy explicitly requests later random resolution"), RandomEnemyRequest.bRequiresRandomResolution);
+	TestEqual(TEXT("random enemy does not pre-lock a target during request build"), RandomEnemyRequest.AutomaticTargetUnitIds.Num(), 0);
+	const FString RandomRequestSnapshot = TargetRequestSnapshot(RandomEnemyRequest);
+	int32 RandomStateA = 90210;
+	int32 RandomStateB = 90210;
+	TArray<FName> RandomTargetsA = { TEXT("DoNotKeep") };
+	TArray<FName> RandomTargetsB = { TEXT("DoNotKeep") };
+	TestTrue(TEXT("first random enemy resolution succeeds"), GameXXKCardRules::ResolveAutomaticTargetIds(RandomEnemyRequest, TargetUnits, RandomStateA, RandomTargetsA, nullptr));
+	TestTrue(TEXT("second random enemy resolution succeeds"), GameXXKCardRules::ResolveAutomaticTargetIds(RandomEnemyRequest, TargetUnits, RandomStateB, RandomTargetsB, nullptr));
+	TestEqual(TEXT("same random state resolves the same random enemy"), RandomTargetsA, RandomTargetsB);
+	TestEqual(TEXT("same random state advances identically once"), RandomStateA, RandomStateB);
+	TestEqual(TEXT("preview request does not consume or mutate random data"), TargetRequestSnapshot(RandomEnemyRequest), RandomRequestSnapshot);
+
+	FGameXXKCardTargetRequest LowestAllyRequest;
+	TestTrue(TEXT("lowest-health ally builds a target request"), BuildModeRequest(EGameXXKCardTargetMode::LowestHealthAlly, LowestAllyRequest));
+	TestFalse(TEXT("lowest-health ally never requests a manual arrow"), LowestAllyRequest.bRequiresManualSelection);
+	TestEqual(TEXT("lowest-health ally resolves percentage ties by stable sort order before name"), LowestAllyRequest.AutomaticTargetUnitIds, TArray<FName>{TEXT("ZetaLow")});
+
+	FGameXXKCardTargetRequest LowestOtherAllyRequest;
+	TestTrue(TEXT("lowest-health other ally builds a target request"), BuildModeRequest(EGameXXKCardTargetMode::LowestHealthOtherAlly, LowestOtherAllyRequest));
+	TestEqual(TEXT("lowest-health other ally excludes source"), LowestOtherAllyRequest.AutomaticTargetUnitIds, TArray<FName>{TEXT("ZetaLow")});
+	TArray<FGameXXKCardTargetUnit> SameSlotTieUnits = TargetUnits;
+	SameSlotTieUnits.FindByPredicate([](const FGameXXKCardTargetUnit& Unit) { return Unit.UnitId == TEXT("ZetaLow"); })->StableSortOrder = 4;
+	FGameXXKCardTargetRequest SameSlotTieRequest;
+	TestTrue(TEXT("same-slot lowest-health tie builds a request"), GameXXKCardRules::BuildTargetRequest(MakeTargetDefinition(EGameXXKCardTargetMode::LowestHealthAlly), TargetCard, EGameXXKCardTerrain::Plain, SameSlotTieUnits, SameSlotTieRequest, nullptr));
+	TestEqual(TEXT("same stable slot falls back to lexical stable UnitId"), SameSlotTieRequest.AutomaticTargetUnitIds, TArray<FName>{TEXT("AlphaLow")});
+
+	FGameXXKCardDefinition TerrainOverrideDefinition = MakeTargetDefinition(EGameXXKCardTargetMode::SingleAlly);
+	FGameXXKCardTargetModeOverride& TerrainOverride = TerrainOverrideDefinition.TargetSpec.ModeOverrides.AddDefaulted_GetRef();
+	TerrainOverride.ConditionType = EGameXXKCardTargetModeOverrideConditionType::TerrainIsAny;
+	TerrainOverride.Terrain = EGameXXKCardTerrain::Forest;
+	TerrainOverride.Mode = EGameXXKCardTargetMode::AllAllies;
+	TerrainOverride.Presentation = EGameXXKCardTargetPresentation::Group;
+	FGameXXKCardTargetRequest PlainTerrainRequest;
+	FGameXXKCardTargetRequest ForestTerrainRequest;
+	TestTrue(TEXT("plain terrain leaves the base single-ally mode active"), GameXXKCardRules::BuildTargetRequest(TerrainOverrideDefinition, TargetCard, EGameXXKCardTerrain::Plain, TargetUnits, PlainTerrainRequest, nullptr));
+	TestEqual(TEXT("plain terrain remains single ally"), PlainTerrainRequest.EffectiveMode, EGameXXKCardTargetMode::SingleAlly);
+	TestTrue(TEXT("plain terrain still uses manual selection"), PlainTerrainRequest.bRequiresManualSelection);
+	TestTrue(TEXT("forest terrain applies the catalog terrain target override"), GameXXKCardRules::BuildTargetRequest(TerrainOverrideDefinition, TargetCard, EGameXXKCardTerrain::Forest, TargetUnits, ForestTerrainRequest, nullptr));
+	TestEqual(TEXT("forest terrain switches to all allies"), ForestTerrainRequest.EffectiveMode, EGameXXKCardTargetMode::AllAllies);
+	TestFalse(TEXT("forest all-allies override removes the manual arrow"), ForestTerrainRequest.bRequiresManualSelection);
+	TestEqual(TEXT("forest all-allies override locks all living allies"), ForestTerrainRequest.AutomaticTargetUnitIds, TArray<FName>{TEXT("Player"), TEXT("AllyHigh"), TEXT("ZetaLow"), TEXT("AlphaLow")});
+
+	FGameXXKCardDefinition OwnerStatusOverrideDefinition = MakeTargetDefinition(EGameXXKCardTargetMode::SingleEnemy);
+	FGameXXKCardTargetModeOverride& OwnerStatusOverride = OwnerStatusOverrideDefinition.TargetSpec.ModeOverrides.AddDefaulted_GetRef();
+	OwnerStatusOverride.ConditionType = EGameXXKCardTargetModeOverrideConditionType::OwnerHasStatus;
+	OwnerStatusOverride.Status = EGameXXKCardStatus::Momentum;
+	OwnerStatusOverride.MinimumStatusStacks = 2;
+	OwnerStatusOverride.Mode = EGameXXKCardTargetMode::AllEnemies;
+	OwnerStatusOverride.Presentation = EGameXXKCardTargetPresentation::Group;
+	FGameXXKCardTargetRequest OwnerStatusRequest;
+	TestTrue(TEXT("owner-status override builds from the source status view"), GameXXKCardRules::BuildTargetRequest(OwnerStatusOverrideDefinition, TargetCard, EGameXXKCardTerrain::Plain, TargetUnits, OwnerStatusRequest, nullptr));
+	TestEqual(TEXT("owner momentum override switches single enemy to all enemies"), OwnerStatusRequest.EffectiveMode, EGameXXKCardTargetMode::AllEnemies);
+
+	FGameXXKCardDefinition HardFilterDefinition = MakeTargetDefinition(EGameXXKCardTargetMode::SingleEnemy);
+	HardFilterDefinition.TargetSpec.RequiredStatus = EGameXXKCardStatus::Burn;
+	HardFilterDefinition.TargetSpec.RequiredStatusMinimumStacks = 2;
+	HardFilterDefinition.TargetSpec.ForbiddenStatus = EGameXXKCardStatus::Guard;
+	HardFilterDefinition.TargetSpec.MinimumHealthPercent = 20.0f;
+	HardFilterDefinition.TargetSpec.MaximumHealthPercent = 60.0f;
+	HardFilterDefinition.TargetSpec.RequiredTerrain = EGameXXKCardTerrain::Forest;
+	FGameXXKCardTargetRequest HardFilterRequest;
+	TestTrue(TEXT("hard target filters build on a matching terrain"), GameXXKCardRules::BuildTargetRequest(HardFilterDefinition, TargetCard, EGameXXKCardTerrain::Forest, TargetUnits, HardFilterRequest, nullptr));
+	TestTrue(TEXT("status and health-filtered enemy remains manually legal"), GameXXKCardRules::IsManualTargetLegal(HardFilterRequest, TEXT("EnemyMarked")));
+	const FGameXXKCardTargetCandidateView* FilteredEnemy = FindTargetCandidate(HardFilterRequest, TEXT("EnemyOther"));
+	TestNotNull(TEXT("hard filter keeps nonmatching enemy visible as disabled"), FilteredEnemy);
+	if (FilteredEnemy)
+	{
+		TestEqual(TEXT("hard filter exposes missing-status reason"), FilteredEnemy->DisabledReason, EGameXXKCardTargetDisabledReason::RequiredStatusMissing);
+	}
+	FGameXXKCardTargetRequest WrongTerrainRequest;
+	TestFalse(TEXT("no legal target on a wrong required terrain fails the request"), GameXXKCardRules::BuildTargetRequest(HardFilterDefinition, TargetCard, EGameXXKCardTerrain::Plain, TargetUnits, WrongTerrainRequest, nullptr));
+	TestFalse(TEXT("wrong terrain failure has a clear reason"), WrongTerrainRequest.FailureReason.IsEmpty());
+
+	FGameXXKCardDefinition TargetStatusOverrideDefinition = MakeTargetDefinition(EGameXXKCardTargetMode::SingleEnemy);
+	FGameXXKCardTargetModeOverride& TargetStatusOverride = TargetStatusOverrideDefinition.TargetSpec.ModeOverrides.AddDefaulted_GetRef();
+	TargetStatusOverride.ConditionType = EGameXXKCardTargetModeOverrideConditionType::TargetHasStatus;
+	TargetStatusOverride.Status = EGameXXKCardStatus::Burn;
+	TargetStatusOverride.MinimumStatusStacks = 1;
+	TargetStatusOverride.Mode = EGameXXKCardTargetMode::AllEnemies;
+	TargetStatusOverride.Presentation = EGameXXKCardTargetPresentation::Group;
+	FGameXXKCardTargetRequest UnchangedInvalidRequest = SelfRequest;
+	const FString TargetStatusOverrideSnapshot = TargetRequestSnapshot(UnchangedInvalidRequest);
+	TestFalse(TEXT("target-status override is explicitly rejected before a target exists"), GameXXKCardRules::BuildTargetRequest(TargetStatusOverrideDefinition, TargetCard, EGameXXKCardTerrain::Plain, TargetUnits, UnchangedInvalidRequest, nullptr));
+	TestEqual(TEXT("rejected target-status override leaves output request unchanged"), TargetRequestSnapshot(UnchangedInvalidRequest), TargetStatusOverrideSnapshot);
+
+	FGameXXKCardDefinition DefeatedTargetDefinition = MakeTargetDefinition(EGameXXKCardTargetMode::SingleAlly);
+	DefeatedTargetDefinition.TargetSpec.RequiredUnitState = EGameXXKCardUnitState::Defeated;
+	TestFalse(TEXT("first-release target rules reject defeated-unit metadata instead of faking an arrow candidate"), GameXXKCardRules::BuildTargetRequest(DefeatedTargetDefinition, TargetCard, EGameXXKCardTerrain::Plain, TargetUnits, UnchangedInvalidRequest, nullptr));
+	TestEqual(TEXT("unsupported defeated-target metadata leaves output request unchanged"), TargetRequestSnapshot(UnchangedInvalidRequest), TargetStatusOverrideSnapshot);
+	FGameXXKCardDefinition AnyTargetDefinition = MakeTargetDefinition(EGameXXKCardTargetMode::SingleAlly);
+	AnyTargetDefinition.TargetSpec.RequiredUnitState = EGameXXKCardUnitState::Any;
+	TestFalse(TEXT("first-release target rules reject any-unit-state metadata instead of silently narrowing it to living"), GameXXKCardRules::BuildTargetRequest(AnyTargetDefinition, TargetCard, EGameXXKCardTerrain::Plain, TargetUnits, UnchangedInvalidRequest, nullptr));
+	TestEqual(TEXT("unsupported any-unit-state metadata leaves output request unchanged"), TargetRequestSnapshot(UnchangedInvalidRequest), TargetStatusOverrideSnapshot);
+	FGameXXKCardDefinition InvalidForbiddenStatusDefinition = MakeTargetDefinition(EGameXXKCardTargetMode::SingleEnemy);
+	InvalidForbiddenStatusDefinition.TargetSpec.ForbiddenStatus = EGameXXKCardStatus::Invalid;
+	TestFalse(TEXT("invalid forbidden-status metadata is rejected instead of treated as no filter"), GameXXKCardRules::BuildTargetRequest(InvalidForbiddenStatusDefinition, TargetCard, EGameXXKCardTerrain::Plain, TargetUnits, UnchangedInvalidRequest, nullptr));
+	TestEqual(TEXT("invalid forbidden-status metadata leaves output request unchanged"), TargetRequestSnapshot(UnchangedInvalidRequest), TargetStatusOverrideSnapshot);
+	FGameXXKCardDefinition InvertedHealthDefinition = MakeTargetDefinition(EGameXXKCardTargetMode::SingleEnemy);
+	InvertedHealthDefinition.TargetSpec.MinimumHealthPercent = 70.0f;
+	InvertedHealthDefinition.TargetSpec.MaximumHealthPercent = 30.0f;
+	TestFalse(TEXT("inverted health-range metadata is rejected before candidate construction"), GameXXKCardRules::BuildTargetRequest(InvertedHealthDefinition, TargetCard, EGameXXKCardTerrain::Plain, TargetUnits, UnchangedInvalidRequest, nullptr));
+	TestEqual(TEXT("inverted health-range metadata leaves output request unchanged"), TargetRequestSnapshot(UnchangedInvalidRequest), TargetStatusOverrideSnapshot);
+	FGameXXKCardDefinition InactiveMalformedOverrideDefinition = MakeTargetDefinition(EGameXXKCardTargetMode::SingleEnemy);
+	FGameXXKCardTargetModeOverride& InactiveMalformedOverride = InactiveMalformedOverrideDefinition.TargetSpec.ModeOverrides.AddDefaulted_GetRef();
+	InactiveMalformedOverride.ConditionType = EGameXXKCardTargetModeOverrideConditionType::TerrainIsAny;
+	InactiveMalformedOverride.Terrain = EGameXXKCardTerrain::Forest;
+	InactiveMalformedOverride.Mode = EGameXXKCardTargetMode::AllEnemies;
+	InactiveMalformedOverride.Presentation = EGameXXKCardTargetPresentation::PlayerSelectsUnit;
+	TestFalse(TEXT("inactive malformed target override is rejected before a later terrain change can activate it"), GameXXKCardRules::BuildTargetRequest(InactiveMalformedOverrideDefinition, TargetCard, EGameXXKCardTerrain::Plain, TargetUnits, UnchangedInvalidRequest, nullptr));
+	TestEqual(TEXT("inactive malformed target override leaves output request unchanged"), TargetRequestSnapshot(UnchangedInvalidRequest), TargetStatusOverrideSnapshot);
+	TArray<FGameXXKCardTargetUnit> SaturatedStatusUnits = TargetUnits;
+	FGameXXKCardTargetUnit* SaturatedSource = SaturatedStatusUnits.FindByPredicate([](const FGameXXKCardTargetUnit& Unit) { return Unit.UnitId == TEXT("Player"); });
+	TestNotNull(TEXT("saturated-status test locates the target source"), SaturatedSource);
+	if (SaturatedSource)
+	{
+		AddTargetStatus(*SaturatedSource, EGameXXKCardStatus::Momentum, MAX_int32);
+		AddTargetStatus(*SaturatedSource, EGameXXKCardStatus::Momentum, 1);
+	}
+	FGameXXKCardDefinition SaturatedStatusOverrideDefinition = MakeTargetDefinition(EGameXXKCardTargetMode::SingleEnemy);
+	FGameXXKCardTargetModeOverride& SaturatedStatusOverride = SaturatedStatusOverrideDefinition.TargetSpec.ModeOverrides.AddDefaulted_GetRef();
+	SaturatedStatusOverride.ConditionType = EGameXXKCardTargetModeOverrideConditionType::OwnerHasStatus;
+	SaturatedStatusOverride.Status = EGameXXKCardStatus::Momentum;
+	SaturatedStatusOverride.MinimumStatusStacks = MAX_int32;
+	SaturatedStatusOverride.Mode = EGameXXKCardTargetMode::AllEnemies;
+	SaturatedStatusOverride.Presentation = EGameXXKCardTargetPresentation::Group;
+	FGameXXKCardTargetRequest SaturatedStatusRequest;
+	TestTrue(TEXT("status totals saturate instead of overflowing when evaluating an owner override"), GameXXKCardRules::BuildTargetRequest(SaturatedStatusOverrideDefinition, TargetCard, EGameXXKCardTerrain::Plain, SaturatedStatusUnits, SaturatedStatusRequest, nullptr));
+	TestEqual(TEXT("saturated owner status still activates the intended override"), SaturatedStatusRequest.EffectiveMode, EGameXXKCardTargetMode::AllEnemies);
+
+	FGameXXKCardInstance WrongCardId = TargetCard;
+	WrongCardId.CardId = TEXT("Card.Wrong");
+	FGameXXKCardTargetRequest InvalidBuildRequest = SelfRequest;
+	const FString InvalidBuildSnapshot = TargetRequestSnapshot(InvalidBuildRequest);
+	TestFalse(TEXT("card definition mismatch is rejected"), GameXXKCardRules::BuildTargetRequest(MakeTargetDefinition(EGameXXKCardTargetMode::Self), WrongCardId, EGameXXKCardTerrain::Plain, TargetUnits, InvalidBuildRequest, nullptr));
+	TestEqual(TEXT("card definition mismatch leaves output request unchanged"), TargetRequestSnapshot(InvalidBuildRequest), InvalidBuildSnapshot);
+	FGameXXKCardInstance MissingOwnerCard = TargetCard;
+	MissingOwnerCard.OwnerUnitId = TEXT("AbsentOwner");
+	TestFalse(TEXT("missing source owner is rejected"), GameXXKCardRules::BuildTargetRequest(MakeTargetDefinition(EGameXXKCardTargetMode::Self), MissingOwnerCard, EGameXXKCardTerrain::Plain, TargetUnits, InvalidBuildRequest, nullptr));
+	TestEqual(TEXT("missing source owner leaves output request unchanged"), TargetRequestSnapshot(InvalidBuildRequest), InvalidBuildSnapshot);
+	TArray<FGameXXKCardTargetUnit> DuplicateUnitIds = TargetUnits;
+	const FGameXXKCardTargetUnit DuplicateTargetUnit = DuplicateUnitIds[0];
+	DuplicateUnitIds.Add(DuplicateTargetUnit);
+	const FString DuplicateUnitInputSnapshot = TargetUnitSnapshot(DuplicateUnitIds);
+	TestFalse(TEXT("duplicate stable target UnitId is rejected"), GameXXKCardRules::BuildTargetRequest(MakeTargetDefinition(EGameXXKCardTargetMode::Self), TargetCard, EGameXXKCardTerrain::Plain, DuplicateUnitIds, InvalidBuildRequest, nullptr));
+	TestEqual(TEXT("duplicate-unit build failure does not mutate input units"), TargetUnitSnapshot(DuplicateUnitIds), DuplicateUnitInputSnapshot);
+	TestEqual(TEXT("duplicate-unit build failure leaves output request unchanged"), TargetRequestSnapshot(InvalidBuildRequest), InvalidBuildSnapshot);
+
+	int32 ManualResolveRandomState = 443;
+	TArray<FName> ManualResolveOutput = { TEXT("Preserve") };
+	const TArray<FName> ManualResolveOutputBefore = ManualResolveOutput;
+	TestFalse(TEXT("automatic resolver rejects manual request modes"), GameXXKCardRules::ResolveAutomaticTargetIds(SingleEnemyRequest, TargetUnits, ManualResolveRandomState, ManualResolveOutput, nullptr));
+	TestEqual(TEXT("manual request rejected by automatic resolver preserves random state"), ManualResolveRandomState, 443);
+	TestEqual(TEXT("manual request rejected by automatic resolver preserves output"), ManualResolveOutput, ManualResolveOutputBefore);
+	FGameXXKCardTargetRequest WrongRandomTypeRequest = RandomEnemyRequest;
+	WrongRandomTypeRequest.bRequiresRandomResolution = false;
+	int32 WrongRandomTypeState = 991;
+	TArray<FName> WrongRandomTypeOutput = { TEXT("Preserve") };
+	TestFalse(TEXT("automatic resolver rejects malformed random request metadata"), GameXXKCardRules::ResolveAutomaticTargetIds(WrongRandomTypeRequest, TargetUnits, WrongRandomTypeState, WrongRandomTypeOutput, nullptr));
+	TestEqual(TEXT("malformed random request preserves random state"), WrongRandomTypeState, 991);
+	TestEqual(TEXT("malformed random request preserves output"), WrongRandomTypeOutput, TArray<FName>{TEXT("Preserve")});
+	int32 DuplicateResolveRandomState = 992;
+	TArray<FName> DuplicateResolveOutput = { TEXT("Preserve") };
+	TestFalse(TEXT("automatic resolver rejects duplicate input target IDs"), GameXXKCardRules::ResolveAutomaticTargetIds(RandomEnemyRequest, DuplicateUnitIds, DuplicateResolveRandomState, DuplicateResolveOutput, nullptr));
+	TestEqual(TEXT("duplicate automatic resolution preserves random state"), DuplicateResolveRandomState, 992);
+	TestEqual(TEXT("duplicate automatic resolution preserves output"), DuplicateResolveOutput, TArray<FName>{TEXT("Preserve")});
+	FGameXXKCardTargetRequest DuplicateManualCandidateRequest = SingleEnemyRequest;
+	DuplicateManualCandidateRequest.CandidateViews.Add(*FindTargetCandidate(SingleEnemyRequest, TEXT("EnemyMarked")));
+	TestFalse(TEXT("manual validation rejects duplicate candidate IDs"), GameXXKCardRules::IsManualTargetLegal(DuplicateManualCandidateRequest, TEXT("EnemyMarked")));
 
 	return true;
 }

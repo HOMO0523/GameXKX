@@ -67,4 +67,30 @@ namespace GameXXKCardRules
 	GAMEXXK_API const FGameXXKCardInstance* GetDrawPileTop(const FGameXXKBattleDeckState& Deck);
 
 	GAMEXXK_API bool HasPendingChoice(const FGameXXKBattleDeckState& Deck);
+
+	/**
+	 * Produces a pure, stable target-selection request from catalog data and the current battle-unit view.
+	 * The function never consumes random state or mutates its input views.
+	 */
+	GAMEXXK_API bool BuildTargetRequest(
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardInstance& CardInstance,
+		EGameXXKCardTerrain Terrain,
+		const TArray<FGameXXKCardTargetUnit>& TargetUnits,
+		FGameXXKCardTargetRequest& OutRequest,
+		FString* OutError = nullptr);
+
+	/**
+	 * Resolves a non-manual target request. RandomEnemy advances the supplied deterministic state once;
+	 * every other automatic mode leaves it untouched. Outputs change only on success.
+	 */
+	GAMEXXK_API bool ResolveAutomaticTargetIds(
+		const FGameXXKCardTargetRequest& Request,
+		const TArray<FGameXXKCardTargetUnit>& TargetUnits,
+		int32& InOutRandomState,
+		TArray<FName>& OutTargetIds,
+		FString* OutError = nullptr);
+
+	/** Returns whether an already-built manual target request contains exactly one legal stable candidate ID. */
+	GAMEXXK_API bool IsManualTargetLegal(const FGameXXKCardTargetRequest& Request, FName UnitId);
 }
