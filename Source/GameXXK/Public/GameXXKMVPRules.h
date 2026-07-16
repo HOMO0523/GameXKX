@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameXXKCardRunTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GameXXKMVPRules.generated.h"
 
@@ -474,6 +475,10 @@ struct FGameXXKRuntimeState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TSet<FName> ReadCodexEntryIds;
+
+	/** Save-authoritative shared deck, companion roster, temporary NPC, reward and battle session state. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKCardRunState CardRun;
 };
 
 USTRUCT(BlueprintType)
