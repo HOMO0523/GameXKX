@@ -574,3 +574,129 @@ struct GAMEXXK_API FGameXXKCardVisualDefinition
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bIdentityLocked = false;
 };
+
+/** Serialized choice states for deck operations. Invalid is deliberately the default. */
+UENUM(BlueprintType)
+enum class EGameXXKCardPendingChoiceKind : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	None = 1,
+	ForcedDiscard = 2,
+	InsightChooseToHand = 3
+};
+
+/** A logical card zone. Pending-choice candidates are references/views, not a second owning zone. */
+UENUM(BlueprintType)
+enum class EGameXXKCardZone : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	DrawPile = 1,
+	Hand = 2,
+	DiscardPile = 3
+};
+
+/** One materialized battle card. InstanceId, rather than CardId, is the unique runtime identity. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardInstance
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName InstanceId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName CardId = NAME_None;
+
+	/** Existing battle-unit identity; rules never substitute a UI index for this value. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName OwnerUnitId = NAME_None;
+
+	/** Stable run-deck entry from which this battle instance was materialized. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceEntryId = NAME_None;
+
+	/** Stable acquisition order within the source deck. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 AcquisitionOrdinal = INDEX_NONE;
+};
+
+/** Persisted data for a choice that blocks normal deck mutations until it is resolved or cancelled. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKPendingCardChoice
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardPendingChoiceKind Kind = EGameXXKCardPendingChoiceKind::Invalid;
+
+	/** Candidate copies are views; the owning instance remains in Hand or DrawPile until confirmation. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardInstance> Candidates;
+
+	/** Generic number of selections required by the active choice. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RequiredCount = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RequiredDiscardCount = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RequiredHandPickCount = 0;
+
+	/** Insight candidates in logical top-to-bottom order. DrawPile.Last() is the logical top. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> InsightTopOrder;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName InsightPickedInstanceId = NAME_None;
+
+	/** Requested remaining insight order, also logical top-to-bottom. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> InsightReorderedInstanceIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bCanCancel = false;
+
+	/** Insight cancellation only clears the choice; it never rewinds a card previously moved to discard. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bCancelPreservesDrawTop = true;
+};
+
+/**
+ * Serializable deck runtime state. DrawPile.Last() is the logical top: draws Pop() from the end,
+ * and insight order is always expressed from that top toward index zero.
+ */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKBattleDeckState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 InitialRandomSeed = 0;
+
+	/** Persisted state of the rules-local deterministic PRNG, not a UI or engine global random source. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 CurrentRandomState = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardInstance> DrawPile;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardInstance> Hand;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardInstance> DiscardPile;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKPendingCardChoice PendingChoice;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 SharedEnergy = 3;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 HandLimit = 5;
+
+	/** Stable non-zone ledger used to prove that every initialized instance remains in exactly one zone. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> ActiveInstanceIds;
+};
