@@ -1444,3 +1444,470 @@ bool GameXXKCardRules::IsManualTargetLegal(const FGameXXKCardTargetRequest& Requ
 	}
 	return bFound;
 }
+
+namespace
+{
+	constexpr int32 MaxCombatArmor = 99;
+
+	bool IsConcreteCombatStatus(const EGameXXKCardStatus Status)
+	{
+		return Status != EGameXXKCardStatus::Invalid
+			&& Status != EGameXXKCardStatus::None
+			&& Status != EGameXXKCardStatus::Guard;
+	}
+
+	int32 GetCombatStatusCap(const EGameXXKCardStatus Status)
+	{
+		switch (Status)
+		{
+		case EGameXXKCardStatus::Momentum:
+			return 3;
+		case EGameXXKCardStatus::Agility:
+			return 2;
+		case EGameXXKCardStatus::Vulnerability:
+		case EGameXXKCardStatus::Mark:
+			return 5;
+		case EGameXXKCardStatus::Bleed:
+		case EGameXXKCardStatus::Poison:
+		case EGameXXKCardStatus::Burn:
+		case EGameXXKCardStatus::DamageOverTime:
+			return 8;
+		case EGameXXKCardStatus::CannotReceiveVulnerability:
+		case EGameXXKCardStatus::NextAttackBonus:
+		case EGameXXKCardStatus::NextAttackAppliesVulnerability:
+		case EGameXXKCardStatus::NextHealingBonus:
+		case EGameXXKCardStatus::TerrainBonusDouble:
+		case EGameXXKCardStatus::NextTerrainCardFree:
+		case EGameXXKCardStatus::NextTerrainCardEnergyReduction:
+		case EGameXXKCardStatus::RedirectSingleTargetEnemyAttack:
+			return 1;
+		case EGameXXKCardStatus::Invalid:
+		case EGameXXKCardStatus::None:
+		case EGameXXKCardStatus::Guard:
+		default:
+			return 0;
+		}
+	}
+
+	int32 GetCombatStatusStacksInternal(const FGameXXKCardCombatUnit& Unit, const EGameXXKCardStatus Status)
+	{
+		int64 Total = 0;
+		for (const FGameXXKCardStatusStack& Stack : Unit.Statuses)
+		{
+			if (Stack.Status == Status && Stack.Stacks > 0)
+			{
+				Total = FMath::Min<int64>(MAX_int32, Total + static_cast<int64>(Stack.Stacks));
+			}
+		}
+		return static_cast<int32>(Total);
+	}
+
+	void RemoveEmptyCombatStatusEntries(FGameXXKCardCombatUnit& InOutUnit)
+	{
+		for (int32 Index = InOutUnit.Statuses.Num() - 1; Index >= 0; --Index)
+		{
+			if (InOutUnit.Statuses[Index].Stacks <= 0)
+			{
+				InOutUnit.Statuses.RemoveAt(Index, 1, EAllowShrinking::No);
+			}
+		}
+	}
+
+	FGameXXKCardCombatUnit* FindCombatUnitById(TArray<FGameXXKCardCombatUnit>& Units, const FName UnitId)
+	{
+		return Units.FindByPredicate([UnitId](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == UnitId;
+		});
+	}
+
+	const FGameXXKCardCombatUnit* FindCombatUnitById(const TArray<FGameXXKCardCombatUnit>& Units, const FName UnitId)
+	{
+		return Units.FindByPredicate([UnitId](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == UnitId;
+		});
+	}
+
+	bool ValidateCombatUnits(const TArray<FGameXXKCardCombatUnit>& Units, FString& OutError)
+	{
+		TSet<FName> SeenUnitIds;
+		for (const FGameXXKCardCombatUnit& Unit : Units)
+		{
+			if (Unit.UnitId.IsNone() || SeenUnitIds.Contains(Unit.UnitId)
+				|| !IsConcreteTargetSide(Unit.Side)
+				|| Unit.MaxHP <= 0 || Unit.HP < 0 || Unit.HP > Unit.MaxHP
+				|| Unit.MaxMana < 0 || Unit.Mana < 0 || Unit.Mana > Unit.MaxMana
+				|| Unit.Attack < 0 || Unit.Defense < 0
+				|| Unit.Armor < 0 || Unit.Armor > MaxCombatArmor
+				|| Unit.StableSortOrder == INDEX_NONE || Unit.StableSortOrder < 0
+				|| Unit.bLiving != (Unit.HP > 0))
+			{
+				OutError = TEXT("Combat units must have unique stable IDs and internally consistent combat values.");
+				return false;
+			}
+			for (const FGameXXKCardStatusStack& Stack : Unit.Statuses)
+			{
+				if (!IsConcreteCombatStatus(Stack.Status) || Stack.Stacks <= 0 || Stack.Stacks > GetCombatStatusCap(Stack.Status)
+					|| GetCombatStatusStacksInternal(Unit, Stack.Status) > GetCombatStatusCap(Stack.Status))
+				{
+					OutError = TEXT("Combat unit contains an invalid or unbound status stack.");
+					return false;
+				}
+			}
+			SeenUnitIds.Add(Unit.UnitId);
+		}
+		return true;
+	}
+
+	bool ValidateGuardLinks(const TArray<FGameXXKCardCombatUnit>& Units, const TArray<FGameXXKCardGuardLinkRuntime>& GuardLinks, FString& OutError)
+	{
+		for (const FGameXXKCardGuardLinkRuntime& Link : GuardLinks)
+		{
+			const FGameXXKCardCombatUnit* Guardian = FindCombatUnitById(Units, Link.GuardianUnitId);
+			const FGameXXKCardCombatUnit* Protected = FindCombatUnitById(Units, Link.ProtectedUnitId);
+			if (!Guardian || !Protected || Link.GuardianUnitId == Link.ProtectedUnitId || Link.Stacks <= 0
+				|| Link.RedirectPolicy != EGameXXKCardGuardRedirectPolicy::RedirectNextSingleTargetDirectAttackToGuardian
+				|| Guardian->Side != Protected->Side)
+			{
+				OutError = TEXT("Combat guard bindings must reference two allied stable units with a valid redirect policy.");
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool IsPreferredGuardian(const FGameXXKCardCombatUnit& Candidate, const FGameXXKCardCombatUnit& Current)
+	{
+		if (Candidate.StableSortOrder != Current.StableSortOrder)
+		{
+			return Candidate.StableSortOrder < Current.StableSortOrder;
+		}
+		return Candidate.UnitId.LexicalLess(Current.UnitId);
+	}
+
+	void RemoveLinksForDefeatedUnits(TArray<FGameXXKCardGuardLinkRuntime>& InOutGuardLinks, const TArray<FGameXXKCardCombatUnit>& Units)
+	{
+		InOutGuardLinks.RemoveAll([&Units](const FGameXXKCardGuardLinkRuntime& Link)
+		{
+			const FGameXXKCardCombatUnit* Guardian = FindCombatUnitById(Units, Link.GuardianUnitId);
+			const FGameXXKCardCombatUnit* Protected = FindCombatUnitById(Units, Link.ProtectedUnitId);
+			return Link.Stacks <= 0 || !Guardian || !Protected || !Guardian->bLiving || !Protected->bLiving;
+		});
+	}
+
+	bool IsDirectAttackDamageKind(const EGameXXKCardDamageKind Kind)
+	{
+		return Kind == EGameXXKCardDamageKind::SingleTargetAttack || Kind == EGameXXKCardDamageKind::GroupAttack;
+	}
+
+	bool ValidateOnHitStatuses(const TArray<FGameXXKCardStatusStack>& OnHitStatuses, FString& OutError)
+	{
+		TMap<EGameXXKCardStatus, int64> TotalByStatus;
+		for (const FGameXXKCardStatusStack& Stack : OnHitStatuses)
+		{
+			if (!IsConcreteCombatStatus(Stack.Status) || Stack.Stacks <= 0 || Stack.Stacks > GetCombatStatusCap(Stack.Status))
+			{
+				OutError = TEXT("On-hit statuses must be bounded, concrete combat statuses.");
+				return false;
+			}
+			const int64 NewTotal = TotalByStatus.FindRef(Stack.Status) + static_cast<int64>(Stack.Stacks);
+			if (NewTotal > GetCombatStatusCap(Stack.Status))
+			{
+				OutError = TEXT("On-hit statuses cannot exceed their approved aggregate cap.");
+				return false;
+			}
+			TotalByStatus.Add(Stack.Status, NewTotal);
+		}
+		return true;
+	}
+
+	bool ValidateDamageContext(
+		const FGameXXKCardDamageContext& Context,
+		const TArray<FGameXXKCardCombatUnit>& Units,
+		const FGameXXKCardCombatUnit& OriginalTarget,
+		FString& OutError)
+	{
+		if (Context.IgnoredDefense < 0)
+		{
+			OutError = TEXT("Damage context cannot ignore a negative amount of defense.");
+			return false;
+		}
+
+		if (IsDirectAttackDamageKind(Context.Kind))
+		{
+			const FGameXXKCardCombatUnit* SourceUnit = FindCombatUnitById(Units, Context.SourceUnitId);
+			if (!SourceUnit || !SourceUnit->bLiving || SourceUnit->Side == OriginalTarget.Side)
+			{
+				OutError = TEXT("A direct attack requires one living attacker on the opposing side.");
+				return false;
+			}
+			return ValidateOnHitStatuses(Context.OnHitStatuses, OutError);
+		}
+
+		if (Context.Kind == EGameXXKCardDamageKind::SelfHealthLoss)
+		{
+			const FGameXXKCardCombatUnit* SourceUnit = FindCombatUnitById(Units, Context.SourceUnitId);
+			if (!SourceUnit || !SourceUnit->bLiving || SourceUnit->UnitId != OriginalTarget.UnitId
+				|| Context.IgnoredDefense != 0 || !Context.OnHitStatuses.IsEmpty())
+			{
+				OutError = TEXT("Self health loss must target its own living stable source and cannot carry defense bypass or hit statuses.");
+				return false;
+			}
+			return true;
+		}
+
+		if (Context.Kind == EGameXXKCardDamageKind::EnvironmentalHealthLoss)
+		{
+			if (!Context.SourceUnitId.IsNone() || Context.IgnoredDefense != 0 || !Context.OnHitStatuses.IsEmpty())
+			{
+				OutError = TEXT("Environmental health loss cannot carry a source unit, defense bypass, or hit statuses.");
+				return false;
+			}
+			return true;
+		}
+
+		OutError = TEXT("Direct damage requires a supported explicit damage kind.");
+		return false;
+	}
+
+	int32 ComputeDamageAfterDefense(const int32 RequestedDamage, const FGameXXKCardCombatUnit& Target, const int32 IgnoredDefense)
+	{
+		const int32 EffectiveDefense = FMath::Max(0, Target.Defense - IgnoredDefense);
+		const int64 MitigatedDamage = static_cast<int64>(RequestedDamage) - EffectiveDefense;
+		return static_cast<int32>(FMath::Clamp<int64>(MitigatedDamage, 1, MAX_int32));
+	}
+}
+
+int32 GameXXKCardRules::GetCombatStatusStacks(const FGameXXKCardCombatUnit& Unit, const EGameXXKCardStatus Status)
+{
+	return IsConcreteCombatStatus(Status) ? GetCombatStatusStacksInternal(Unit, Status) : 0;
+}
+
+int32 GameXXKCardRules::AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, const EGameXXKCardStatus Status, const int32 Amount)
+{
+	if (!InOutUnit.bLiving || !IsConcreteCombatStatus(Status) || Amount <= 0)
+	{
+		return 0;
+	}
+	if (Status == EGameXXKCardStatus::Vulnerability
+		&& GetCombatStatusStacksInternal(InOutUnit, EGameXXKCardStatus::CannotReceiveVulnerability) > 0)
+	{
+		return 0;
+	}
+	const int32 CurrentStacks = GetCombatStatusStacksInternal(InOutUnit, Status);
+	const int32 AppliedStacks = FMath::Max(0, FMath::Min(GetCombatStatusCap(Status) - CurrentStacks, Amount));
+	if (AppliedStacks <= 0)
+	{
+		return 0;
+	}
+	FGameXXKCardStatusStack* ExistingStack = InOutUnit.Statuses.FindByPredicate([Status](const FGameXXKCardStatusStack& Stack)
+	{
+		return Stack.Status == Status;
+	});
+	if (ExistingStack)
+	{
+		ExistingStack->Stacks += AppliedStacks;
+	}
+	else
+	{
+		FGameXXKCardStatusStack& NewStack = InOutUnit.Statuses.AddDefaulted_GetRef();
+		NewStack.Status = Status;
+		NewStack.Stacks = AppliedStacks;
+	}
+	return AppliedStacks;
+}
+
+int32 GameXXKCardRules::ConsumeCombatStatus(FGameXXKCardCombatUnit& InOutUnit, const EGameXXKCardStatus Status, const int32 Maximum)
+{
+	if (!IsConcreteCombatStatus(Status) || Maximum < 0)
+	{
+		return 0;
+	}
+	const int32 EffectiveMaximum = Maximum == 0 ? MAX_int32 : Maximum;
+	int32 Remaining = EffectiveMaximum;
+	for (FGameXXKCardStatusStack& Stack : InOutUnit.Statuses)
+	{
+		if (Stack.Status == Status && Stack.Stacks > 0 && Remaining > 0)
+		{
+			const int32 ConsumedHere = FMath::Min(Stack.Stacks, Remaining);
+			Stack.Stacks -= ConsumedHere;
+			Remaining -= ConsumedHere;
+		}
+	}
+	RemoveEmptyCombatStatusEntries(InOutUnit);
+	return EffectiveMaximum - Remaining;
+}
+
+int32 GameXXKCardRules::AddCombatArmor(FGameXXKCardCombatUnit& InOutUnit, const int32 Amount)
+{
+	if (!InOutUnit.bLiving || Amount <= 0)
+	{
+		return 0;
+	}
+	const int32 OriginalArmor = FMath::Clamp(InOutUnit.Armor, 0, MaxCombatArmor);
+	const int64 RequestedArmor = static_cast<int64>(OriginalArmor) + static_cast<int64>(Amount);
+	InOutUnit.Armor = static_cast<int32>(FMath::Min<int64>(MaxCombatArmor, RequestedArmor));
+	return InOutUnit.Armor - OriginalArmor;
+}
+
+void GameXXKCardRules::BeginCombatUnitPhase(FGameXXKCardCombatUnit& InOutUnit)
+{
+	if (InOutUnit.bLiving)
+	{
+		InOutUnit.Armor = 0;
+	}
+}
+
+bool GameXXKCardRules::ApplyCombatEndPhaseDot(
+	TArray<FGameXXKCardCombatUnit>& InOutUnits,
+	TArray<FGameXXKCardGuardLinkRuntime>& InOutGuardLinks,
+	const FName TargetUnitId,
+	int32& OutHealthDamage,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	if (TargetUnitId.IsNone())
+	{
+		return SetFailure(OutError, TEXT("End-phase DoT requires a living stable target ID."));
+	}
+
+	TArray<FGameXXKCardCombatUnit> NewUnits = InOutUnits;
+	TArray<FGameXXKCardGuardLinkRuntime> NewGuardLinks = InOutGuardLinks;
+	FString ValidationError;
+	if (!ValidateCombatUnits(NewUnits, ValidationError) || !ValidateGuardLinks(NewUnits, NewGuardLinks, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	FGameXXKCardCombatUnit* Target = FindCombatUnitById(NewUnits, TargetUnitId);
+	if (!Target || !Target->bLiving)
+	{
+		return SetFailure(OutError, TEXT("End-phase DoT target is absent or defeated."));
+	}
+
+	const int64 RawDamage = static_cast<int64>(GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Bleed)) * 3
+		+ static_cast<int64>(GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Poison)) * 2
+		+ static_cast<int64>(GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Burn)) * 3
+		+ static_cast<int64>(GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::DamageOverTime)) * 3;
+	const int32 NewHealthDamage = static_cast<int32>(FMath::Min<int64>(Target->HP, RawDamage));
+	Target->HP -= NewHealthDamage;
+	Target->bLiving = Target->HP > 0;
+	RemoveLinksForDefeatedUnits(NewGuardLinks, NewUnits);
+
+	InOutUnits = MoveTemp(NewUnits);
+	InOutGuardLinks = MoveTemp(NewGuardLinks);
+	OutHealthDamage = NewHealthDamage;
+	return true;
+}
+
+bool GameXXKCardRules::ApplyCombatDirectDamage(
+	TArray<FGameXXKCardCombatUnit>& InOutUnits,
+	TArray<FGameXXKCardGuardLinkRuntime>& InOutGuardLinks,
+	const FGameXXKCardDamageContext& Context,
+	const FName TargetUnitId,
+	const int32 RequestedDamage,
+	FGameXXKCardDamageResult& OutResult,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	if (TargetUnitId.IsNone() || RequestedDamage <= 0)
+	{
+		return SetFailure(OutError, TEXT("Direct damage requires a living stable target ID and a positive amount."));
+	}
+
+	TArray<FGameXXKCardCombatUnit> NewUnits = InOutUnits;
+	TArray<FGameXXKCardGuardLinkRuntime> NewGuardLinks = InOutGuardLinks;
+	FString ValidationError;
+	if (!ValidateCombatUnits(NewUnits, ValidationError) || !ValidateGuardLinks(NewUnits, NewGuardLinks, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	FGameXXKCardCombatUnit* OriginalTarget = FindCombatUnitById(NewUnits, TargetUnitId);
+	if (!OriginalTarget || !OriginalTarget->bLiving)
+	{
+		return SetFailure(OutError, TEXT("Direct damage target is absent or defeated."));
+	}
+	if (!ValidateDamageContext(Context, NewUnits, *OriginalTarget, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+
+	FGameXXKCardDamageResult NewResult;
+	NewResult.OriginalTargetUnitId = TargetUnitId;
+	NewResult.ResolvedTargetUnitId = TargetUnitId;
+	NewResult.RequestedDamage = RequestedDamage;
+	FGameXXKCardCombatUnit* ResolvedTarget = OriginalTarget;
+	int32 SelectedGuardLinkIndex = INDEX_NONE;
+	for (int32 LinkIndex = 0; Context.Kind == EGameXXKCardDamageKind::SingleTargetAttack && LinkIndex < NewGuardLinks.Num(); ++LinkIndex)
+	{
+		const FGameXXKCardGuardLinkRuntime& Link = NewGuardLinks[LinkIndex];
+		if (Link.ProtectedUnitId != TargetUnitId)
+		{
+			continue;
+		}
+		FGameXXKCardCombatUnit* Guardian = FindCombatUnitById(NewUnits, Link.GuardianUnitId);
+		if (!Guardian || !Guardian->bLiving)
+		{
+			continue;
+		}
+		if (SelectedGuardLinkIndex == INDEX_NONE || IsPreferredGuardian(*Guardian, *ResolvedTarget))
+		{
+			SelectedGuardLinkIndex = LinkIndex;
+			ResolvedTarget = Guardian;
+		}
+	}
+	if (SelectedGuardLinkIndex != INDEX_NONE)
+	{
+		FGameXXKCardGuardLinkRuntime& SelectedLink = NewGuardLinks[SelectedGuardLinkIndex];
+		--SelectedLink.Stacks;
+		NewResult.bRedirected = true;
+		NewResult.ResolvedTargetUnitId = ResolvedTarget->UnitId;
+	}
+
+	if (IsDirectAttackDamageKind(Context.Kind) && GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Agility) > 0)
+	{
+		ConsumeCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Agility, 1);
+		NewResult.bAvoidedByAgility = true;
+	}
+	else
+	{
+		NewResult.DamageAfterDefense = IsDirectAttackDamageKind(Context.Kind)
+			? ComputeDamageAfterDefense(RequestedDamage, *ResolvedTarget, Context.IgnoredDefense)
+			: RequestedDamage;
+		const int32 VulnerabilityStacks = IsDirectAttackDamageKind(Context.Kind)
+			? GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Vulnerability)
+			: 0;
+		const int64 AmplifiedDamage = static_cast<int64>(NewResult.DamageAfterDefense) * static_cast<int64>(100 + 10 * VulnerabilityStacks) / 100;
+		NewResult.DamageAfterVulnerability = static_cast<int32>(FMath::Min<int64>(MAX_int32, AmplifiedDamage));
+		if (VulnerabilityStacks > 0)
+		{
+			ConsumeCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Vulnerability, MAX_int32);
+		}
+		NewResult.ArmorAbsorbed = IsDirectAttackDamageKind(Context.Kind)
+			? FMath::Min(ResolvedTarget->Armor, NewResult.DamageAfterVulnerability)
+			: 0;
+		ResolvedTarget->Armor -= NewResult.ArmorAbsorbed;
+		NewResult.HealthDamage = FMath::Min(ResolvedTarget->HP, NewResult.DamageAfterVulnerability - NewResult.ArmorAbsorbed);
+		ResolvedTarget->HP -= NewResult.HealthDamage;
+		ResolvedTarget->bLiving = ResolvedTarget->HP > 0;
+		if (ResolvedTarget->bLiving && IsDirectAttackDamageKind(Context.Kind))
+		{
+			for (const FGameXXKCardStatusStack& OnHitStatus : Context.OnHitStatuses)
+			{
+				AddCombatStatus(*ResolvedTarget, OnHitStatus.Status, OnHitStatus.Stacks);
+			}
+		}
+	}
+
+	RemoveLinksForDefeatedUnits(NewGuardLinks, NewUnits);
+	InOutUnits = MoveTemp(NewUnits);
+	InOutGuardLinks = MoveTemp(NewGuardLinks);
+	OutResult = MoveTemp(NewResult);
+	return true;
+}

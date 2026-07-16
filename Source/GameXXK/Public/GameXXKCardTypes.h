@@ -825,3 +825,145 @@ struct GAMEXXK_API FGameXXKCardTargetRequest
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FString FailureReason;
 };
+
+/**
+ * Pure combat-unit state used by card rules before the legacy MVP battle facade is connected.
+ * UnitId and StableSortOrder are gameplay identities; neither may be derived from a widget index.
+ */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardCombatUnit
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName UnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardTargetSide Side = EGameXXKCardTargetSide::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCharacterRole Role = EGameXXKCharacterRole::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bLiving = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 HP = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 MaxHP = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Mana = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 MaxMana = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Attack = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Defense = 0;
+
+	/** Armor is authoritative for card resolution and capped at 99. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Armor = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 StableSortOrder = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardStatusStack> Statuses;
+};
+
+/** Selects the only valid mitigation policy for one resolved damage packet. */
+UENUM(BlueprintType)
+enum class EGameXXKCardDamageKind : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	/** One directed attack: guard, agility, defense, vulnerability, armor, then health. */
+	SingleTargetAttack = 1,
+	/** One attack packet against one member of a group: agility, defense, vulnerability, armor, then health; never guard. */
+	GroupAttack = 2,
+	/** Intentional self-health loss: health only, with no guard, agility, defense, or vulnerability. */
+	SelfHealthLoss = 3,
+	/** Global or map-source health loss: health only, with no guard, agility, defense, or vulnerability. */
+	EnvironmentalHealthLoss = 4,
+	/** End-phase status health loss. The dedicated DoT resolver owns this case. */
+	DamageOverTime = 5
+};
+
+/** Source and policy metadata for one atomic damage packet. It is never inferred from a UI widget. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardDamageContext
+{
+	GENERATED_BODY()
+
+	/** Required and living for direct attacks and self loss; empty for environmental health loss. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName SourceUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardDamageKind Kind = EGameXXKCardDamageKind::Invalid;
+
+	/** Fixed defense points ignored after the resolved target (including a guardian) is known. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 IgnoredDefense = 0;
+
+	/** Statuses that belong to this direct hit and therefore are cancelled when agility avoids it. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FGameXXKCardStatusStack> OnHitStatuses;
+};
+
+/** A unit-specific guard redirect. Guard is never represented by an unbound status stack. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardGuardLinkRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName GuardianUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName ProtectedUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Stacks = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardGuardRedirectPolicy RedirectPolicy = EGameXXKCardGuardRedirectPolicy::Invalid;
+};
+
+/** A UI-safe audit of one direct-damage attempt. It carries stable IDs, never array positions. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardDamageResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName OriginalTargetUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName ResolvedTargetUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 RequestedDamage = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 DamageAfterDefense = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 DamageAfterVulnerability = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 ArmorAbsorbed = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 HealthDamage = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bRedirected = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bAvoidedByAgility = false;
+};

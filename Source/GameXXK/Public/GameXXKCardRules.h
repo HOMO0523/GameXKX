@@ -93,4 +93,43 @@ namespace GameXXKCardRules
 
 	/** Returns whether an already-built manual target request contains exactly one legal stable candidate ID. */
 	GAMEXXK_API bool IsManualTargetLegal(const FGameXXKCardTargetRequest& Request, FName UnitId);
+
+	/** Returns the total number of stored stacks for one combat status, saturating malformed duplicate entries safely. */
+	GAMEXXK_API int32 GetCombatStatusStacks(const FGameXXKCardCombatUnit& Unit, EGameXXKCardStatus Status);
+
+	/** Adds up to the approved cap for a combat status and returns the number of stacks actually applied. */
+	GAMEXXK_API int32 AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, EGameXXKCardStatus Status, int32 Amount);
+
+	/** Removes up to Maximum stacks for one combat status and returns the amount actually consumed. */
+	GAMEXXK_API int32 ConsumeCombatStatus(FGameXXKCardCombatUnit& InOutUnit, EGameXXKCardStatus Status, int32 Maximum);
+
+	/** Adds armor up to the approved cap of 99 and returns the amount actually applied. */
+	GAMEXXK_API int32 AddCombatArmor(FGameXXKCardCombatUnit& InOutUnit, int32 Amount);
+
+	/** Applies owner-phase-start cleanup that is intrinsic to card combat (currently armor expiry). */
+	GAMEXXK_API void BeginCombatUnitPhase(FGameXXKCardCombatUnit& InOutUnit);
+
+	/**
+	 * Applies bleed/poison/burn end-phase damage to one stable unit without consulting armor or agility.
+	 * The atomic snapshot also removes guard links made stale when this DoT defeats a unit.
+	 */
+	GAMEXXK_API bool ApplyCombatEndPhaseDot(
+		TArray<FGameXXKCardCombatUnit>& InOutUnits,
+		TArray<FGameXXKCardGuardLinkRuntime>& InOutGuardLinks,
+		FName TargetUnitId,
+		int32& OutHealthDamage,
+		FString* OutError = nullptr);
+
+	/**
+	 * Resolves one positive damage packet by stable UnitId using its explicit damage-context policy.
+	 * Inputs and outputs are committed atomically only when all supplied combat state is valid.
+	 */
+	GAMEXXK_API bool ApplyCombatDirectDamage(
+		TArray<FGameXXKCardCombatUnit>& InOutUnits,
+		TArray<FGameXXKCardGuardLinkRuntime>& InOutGuardLinks,
+		const FGameXXKCardDamageContext& Context,
+		FName TargetUnitId,
+		int32 RequestedDamage,
+		FGameXXKCardDamageResult& OutResult,
+		FString* OutError = nullptr);
 }
