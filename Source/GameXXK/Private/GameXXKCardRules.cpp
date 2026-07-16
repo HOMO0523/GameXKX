@@ -2091,11 +2091,6 @@ namespace
 		FString& OutError)
 	{
 		OutError.Reset();
-		if (Condition.bConsumeStatus || Condition.bConsumeOwnerArmor || Condition.bScaleMagnitudeByConsumedStacks)
-		{
-			OutError = TEXT("A consumption-backed condition requires the card effect planner.");
-			return false;
-		}
 		bool bConditionValue = false;
 		switch (Condition.Type)
 		{
@@ -2175,13 +2170,18 @@ namespace
 			NewTargetIds.Add(OwnerUnitId);
 			break;
 		case EGameXXKCardEffectTarget::SelectedTarget:
-			if (CardTargetIds.Num() != 1 || CardTargetIds[0].IsNone() || !FindCombatUnitById(Runtime.Units, CardTargetIds[0])->bLiving)
+		{
+			const FGameXXKCardCombatUnit* SelectedTarget = CardTargetIds.Num() == 1
+				? FindCombatUnitById(Runtime.Units, CardTargetIds[0])
+				: nullptr;
+			if (!SelectedTarget || !SelectedTarget->bLiving)
 			{
 				OutError = TEXT("Selected-target effect has no current living stable target.");
 				return false;
 			}
 			NewTargetIds.Add(CardTargetIds[0]);
 			break;
+		}
 		case EGameXXKCardEffectTarget::AllEnemies:
 			for (const FGameXXKCardCombatUnit* Candidate : Candidates)
 			{
@@ -2247,19 +2247,15 @@ namespace
 	bool IsCurrentlySupportedEffect(const FGameXXKCardEffect& Effect, FString& OutError)
 	{
 		OutError.Reset();
-		if (!Effect.ConsumedStackResultRef.IsNone() || !Effect.ConsumptionGroupId.IsNone()
-			|| Effect.Condition.bConsumeStatus || Effect.Condition.bConsumeOwnerArmor || Effect.Condition.bScaleMagnitudeByConsumedStacks)
-		{
-			OutError = TEXT("This card requires the pending consumption-aware effect planner.");
-			return false;
-		}
 		switch (Effect.Type)
 		{
 		case EGameXXKCardEffectType::DamagePercentAttack:
+		case EGameXXKCardEffectType::DamageFlat:
 		case EGameXXKCardEffectType::LoseHealth:
 		case EGameXXKCardEffectType::Heal:
 		case EGameXXKCardEffectType::AddArmor:
 		case EGameXXKCardEffectType::GainMana:
+		case EGameXXKCardEffectType::GainManaPerConsumedStatus:
 		case EGameXXKCardEffectType::GainEnergy:
 		case EGameXXKCardEffectType::DrawCards:
 		case EGameXXKCardEffectType::ApplyStatus:
@@ -2267,6 +2263,10 @@ namespace
 		case EGameXXKCardEffectType::RemoveAnyDamageOverTime:
 		case EGameXXKCardEffectType::Insight:
 		case EGameXXKCardEffectType::ReorderCards:
+		case EGameXXKCardEffectType::IgnoreDefense:
+		case EGameXXKCardEffectType::BonusDamagePercent:
+		case EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus:
+		case EGameXXKCardEffectType::BonusDamagePercentPerConsumedArmor:
 		case EGameXXKCardEffectType::DoubleTerrainBonus:
 			return true;
 		default:
@@ -2282,23 +2282,6 @@ namespace
 			if (!IsCurrentlySupportedEffect(Effect, OutError))
 			{
 				return false;
-			}
-		}
-		for (int32 AttackIndex = 0; AttackIndex < Definition.Effects.Num(); ++AttackIndex)
-		{
-			const FGameXXKCardEffect& Attack = Definition.Effects[AttackIndex];
-			if (Attack.Type != EGameXXKCardEffectType::DamagePercentAttack)
-			{
-				continue;
-			}
-			for (int32 EffectIndex = AttackIndex + 1; EffectIndex < Definition.Effects.Num(); ++EffectIndex)
-			{
-				const FGameXXKCardEffect& LaterEffect = Definition.Effects[EffectIndex];
-				if (LaterEffect.Type == EGameXXKCardEffectType::ApplyStatus && LaterEffect.Target == Attack.Target)
-				{
-					OutError = TEXT("Attack-linked on-hit status requires the pending packet effect planner.");
-					return false;
-				}
 			}
 		}
 		return true;
@@ -2321,6 +2304,253 @@ namespace
 		return Removed;
 	}
 
+	bool IsCardEffectTargetCompatibleWithAttack(const FGameXXKCardEffect& Candidate, const FGameXXKCardEffect& Attack)
+	{
+		return Candidate.Target == Attack.Target;
+	}
+
+	bool IsAttackPacketAttachment(const FGameXXKCardEffect& Candidate, const FGameXXKCardEffect& Attack)
+	{
+		if (!IsCardEffectTargetCompatibleWithAttack(Candidate, Attack))
+		{
+			return false;
+		}
+		return Candidate.Type == EGameXXKCardEffectType::DamageFlat
+			|| Candidate.Type == EGameXXKCardEffectType::IgnoreDefense
+			|| Candidate.Type == EGameXXKCardEffectType::BonusDamagePercent
+			|| Candidate.Type == EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus
+			|| Candidate.Type == EGameXXKCardEffectType::BonusDamagePercentPerConsumedArmor
+			|| Candidate.Type == EGameXXKCardEffectType::ApplyStatus;
+	}
+
+	bool HasSuccessfulConsumptionReference(const FGameXXKCardEffect& Effect, const TMap<FName, int32>& ConsumptionResults)
+	{
+		return Effect.ConsumedStackResultRef.IsNone() || ConsumptionResults.FindRef(Effect.ConsumedStackResultRef) > 0;
+	}
+
+	bool TryApplyEffectConditionAndConsumption(
+		const FGameXXKCardEffectCondition& Condition,
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKCardCombatUnit& InOutOwner,
+		FGameXXKCardCombatUnit* Target,
+		bool& OutSatisfied,
+		int32& OutConsumed,
+		FString& OutError)
+	{
+		OutSatisfied = false;
+		OutConsumed = 0;
+		if (!IsConditionSatisfied(Condition, InOutRuntime, InOutOwner, Target, OutSatisfied, OutError) || !OutSatisfied)
+		{
+			return OutError.IsEmpty();
+		}
+		if (Condition.bNegate && (Condition.bConsumeStatus || Condition.bConsumeOwnerArmor))
+		{
+			OutError = TEXT("A negated card condition cannot consume the state it negates.");
+			return false;
+		}
+		if (Condition.bConsumeStatus)
+		{
+			FGameXXKCardCombatUnit* ConsumedUnit = nullptr;
+			if (Condition.Type == EGameXXKCardEffectConditionType::TargetHasStatus || Condition.Type == EGameXXKCardEffectConditionType::TargetHasAnyDamageOverTime)
+			{
+				ConsumedUnit = Target;
+			}
+			else if (Condition.Type == EGameXXKCardEffectConditionType::OwnerHasStatus || Condition.Type == EGameXXKCardEffectConditionType::OwnerHasDamageOverTime)
+			{
+				ConsumedUnit = &InOutOwner;
+			}
+			if (!ConsumedUnit)
+			{
+				OutError = TEXT("The requested status consumption does not have a concrete source unit.");
+				return false;
+			}
+			const int32 Maximum = Condition.MaxConsumedStatusStacks;
+			if (Condition.Type == EGameXXKCardEffectConditionType::TargetHasAnyDamageOverTime || Condition.Type == EGameXXKCardEffectConditionType::OwnerHasDamageOverTime)
+			{
+				OutConsumed = RemoveAnyDamageOverTime(*ConsumedUnit, Maximum == 0 ? MAX_int32 : Maximum);
+			}
+			else
+			{
+				OutConsumed = GameXXKCardRules::ConsumeCombatStatus(*ConsumedUnit, Condition.Status, Maximum);
+			}
+			if (OutConsumed <= 0)
+			{
+				OutError = TEXT("A card condition was satisfied but failed to consume its declared status.");
+				return false;
+			}
+		}
+		if (Condition.bConsumeOwnerArmor)
+		{
+			const int32 Maximum = Condition.MaxConsumedArmor == 0 ? InOutOwner.Armor : Condition.MaxConsumedArmor;
+			const int32 RemovedArmor = FMath::Min(FMath::Max(0, Maximum), InOutOwner.Armor);
+			if (RemovedArmor <= 0)
+			{
+				OutError = TEXT("A card condition was satisfied but failed to consume its declared armor.");
+				return false;
+			}
+			InOutOwner.Armor -= RemovedArmor;
+			OutConsumed += RemovedArmor;
+		}
+		return true;
+	}
+
+	bool ResolveAttackPacket(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardInstance& Instance,
+		const TArray<FName>& CardTargetIds,
+		const int32 AttackIndex,
+		TSet<int32>& OutAttachedEffectIndices,
+		TMap<FName, int32>& InOutConsumptionResults,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError)
+	{
+		const FGameXXKCardEffect& Attack = Definition.Effects[AttackIndex];
+		TArray<int32> AttachmentIndices;
+		for (int32 Index = AttackIndex + 1; Index < Definition.Effects.Num() && Definition.Effects[Index].Type != EGameXXKCardEffectType::DamagePercentAttack; ++Index)
+		{
+			if (IsAttackPacketAttachment(Definition.Effects[Index], Attack))
+			{
+				AttachmentIndices.Add(Index);
+				OutAttachedEffectIndices.Add(Index);
+			}
+		}
+
+		TArray<FName> TargetIds;
+		if (!ResolveEffectTargetIds(InOutRuntime, Instance.OwnerUnitId, CardTargetIds, Attack.Target, TargetIds, OutError))
+		{
+			return false;
+		}
+		for (const FName TargetId : TargetIds)
+		{
+			FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+			FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, TargetId);
+			if (!Owner || !Owner->bLiving || !Target || !Target->bLiving)
+			{
+				continue;
+			}
+			FGameXXKCardCombatUnit* ConditionTarget = CardTargetIds.Num() == 1 ? FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0]) : Target;
+			bool bBaseSatisfied = false;
+			int32 BaseConsumed = 0;
+			if (!TryApplyEffectConditionAndConsumption(Attack.Condition, InOutRuntime, *Owner, ConditionTarget, bBaseSatisfied, BaseConsumed, OutError))
+			{
+				return false;
+			}
+			if (!bBaseSatisfied)
+			{
+				continue;
+			}
+			if (!Attack.ConsumptionGroupId.IsNone())
+			{
+				InOutConsumptionResults.FindOrAdd(Attack.ConsumptionGroupId) += BaseConsumed;
+			}
+
+			int64 Percent = Attack.Magnitude;
+			int64 FlatDamage = 0;
+			int32 IgnoredDefense = 0;
+			TArray<const FGameXXKCardEffect*> OnHitStatusEffects;
+			for (const int32 AttachmentIndex : AttachmentIndices)
+			{
+				const FGameXXKCardEffect& Attachment = Definition.Effects[AttachmentIndex];
+				if (!HasSuccessfulConsumptionReference(Attachment, InOutConsumptionResults))
+				{
+					continue;
+				}
+				Owner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+				Target = FindCombatUnitById(InOutRuntime.Units, TargetId);
+				if (!Owner || !Owner->bLiving || !Target || !Target->bLiving)
+				{
+					break;
+				}
+				bool bAttachmentSatisfied = false;
+				int32 AttachmentConsumed = 0;
+				if (!TryApplyEffectConditionAndConsumption(Attachment.Condition, InOutRuntime, *Owner, ConditionTarget, bAttachmentSatisfied, AttachmentConsumed, OutError))
+				{
+					return false;
+				}
+				if (!bAttachmentSatisfied)
+				{
+					continue;
+				}
+				if (!Attachment.ConsumptionGroupId.IsNone())
+				{
+					InOutConsumptionResults.FindOrAdd(Attachment.ConsumptionGroupId) += AttachmentConsumed;
+				}
+				switch (Attachment.Type)
+				{
+				case EGameXXKCardEffectType::DamageFlat:
+					FlatDamage += Attachment.Magnitude;
+					break;
+				case EGameXXKCardEffectType::IgnoreDefense:
+					IgnoredDefense += Attachment.Magnitude;
+					break;
+				case EGameXXKCardEffectType::BonusDamagePercent:
+					Percent += Attachment.Magnitude;
+					break;
+				case EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus:
+				case EGameXXKCardEffectType::BonusDamagePercentPerConsumedArmor:
+					Percent += static_cast<int64>(Attachment.Magnitude) * AttachmentConsumed;
+					break;
+				case EGameXXKCardEffectType::ApplyStatus:
+					OnHitStatusEffects.Add(&Attachment);
+					break;
+				default:
+					OutError = TEXT("Attack packet contains an unsupported attached effect.");
+					return false;
+				}
+			}
+
+			Owner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+			Target = FindCombatUnitById(InOutRuntime.Units, TargetId);
+			if (!Owner || !Owner->bLiving || !Target || !Target->bLiving)
+			{
+				continue;
+			}
+			const int64 RawDamage = static_cast<int64>(Owner->Attack) * Percent / 100 + FlatDamage;
+			if (RawDamage <= 0 || RawDamage > MAX_int32 || IgnoredDefense < 0 || IgnoredDefense > MAX_int32)
+			{
+				OutError = TEXT("Attack packet produced unsupported damage or defense-ignore values.");
+				return false;
+			}
+			for (int32 HitIndex = 0; HitIndex < Attack.HitCount; ++HitIndex)
+			{
+				const FGameXXKCardCombatUnit* HitOwner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+				if (!HitOwner || !HitOwner->bLiving)
+				{
+					OutError = TEXT("Attack packet owner is absent or defeated before all hits resolved.");
+					return false;
+				}
+				FGameXXKCardDamageContext Context;
+				Context.SourceUnitId = HitOwner->UnitId;
+				Context.Kind = Attack.Target == EGameXXKCardEffectTarget::AllEnemies
+					? EGameXXKCardDamageKind::GroupAttack
+					: EGameXXKCardDamageKind::SingleTargetAttack;
+				Context.IgnoredDefense = IgnoredDefense;
+				for (const FGameXXKCardEffect* OnHitEffect : OnHitStatusEffects)
+				{
+					if (OnHitEffect->HitCount == Attack.HitCount || HitIndex < OnHitEffect->HitCount)
+					{
+						FGameXXKCardStatusStack& Status = Context.OnHitStatuses.AddDefaulted_GetRef();
+						Status.Status = OnHitEffect->Status;
+						Status.Stacks = OnHitEffect->Magnitude;
+					}
+				}
+				FGameXXKCardDamageResult DamageResult;
+				if (!GameXXKCardRules::ApplyCombatDirectDamage(InOutRuntime.Units, InOutRuntime.GuardLinks, Context, TargetId, static_cast<int32>(RawDamage), DamageResult, &OutError))
+				{
+					return false;
+				}
+				InOutResult.DamageResults.Add(MoveTemp(DamageResult));
+				const FGameXXKCardCombatUnit* CurrentTarget = FindCombatUnitById(InOutRuntime.Units, TargetId);
+				if (!CurrentTarget || !CurrentTarget->bLiving)
+				{
+					break;
+				}
+			}
+		}
+		return true;
+	}
+
 	bool ResolveCurrentCardEffects(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FGameXXKCardDefinition& Definition,
@@ -2329,8 +2559,36 @@ namespace
 		FGameXXKCardPlayResult& InOutResult,
 		FString& OutError)
 	{
-		for (const FGameXXKCardEffect& Effect : Definition.Effects)
+		TSet<int32> AttachedEffectIndices;
+		TMap<FName, int32> ConsumptionResults;
+		for (int32 EffectIndex = 0; EffectIndex < Definition.Effects.Num(); ++EffectIndex)
 		{
+			if (AttachedEffectIndices.Contains(EffectIndex))
+			{
+				continue;
+			}
+			const FGameXXKCardEffect& Effect = Definition.Effects[EffectIndex];
+			if (Effect.Type == EGameXXKCardEffectType::DamagePercentAttack)
+			{
+				if (!ResolveAttackPacket(InOutRuntime, Definition, Instance, CardTargetIds, EffectIndex, AttachedEffectIndices, ConsumptionResults, InOutResult, OutError))
+				{
+					return false;
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKCardEffectType::DamageFlat
+				|| Effect.Type == EGameXXKCardEffectType::IgnoreDefense
+				|| Effect.Type == EGameXXKCardEffectType::BonusDamagePercent
+				|| Effect.Type == EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus
+				|| Effect.Type == EGameXXKCardEffectType::BonusDamagePercentPerConsumedArmor)
+			{
+				OutError = TEXT("An attack-packet modifier was not attached to a preceding attack effect.");
+				return false;
+			}
+			if (!HasSuccessfulConsumptionReference(Effect, ConsumptionResults))
+			{
+				continue;
+			}
 			TArray<FName> EffectTargetIds;
 			if (!ResolveEffectTargetIds(InOutRuntime, Instance.OwnerUnitId, CardTargetIds, Effect.Target, EffectTargetIds, OutError))
 			{
@@ -2342,7 +2600,7 @@ namespace
 				OutError = TEXT("Card owner was defeated before its card effects finished resolving.");
 				return false;
 			}
-			const FGameXXKCardCombatUnit* ConditionTarget = nullptr;
+			FGameXXKCardCombatUnit* ConditionTarget = nullptr;
 			if (CardTargetIds.Num() == 1)
 			{
 				ConditionTarget = FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0]);
@@ -2351,13 +2609,18 @@ namespace
 			if (Effect.Type == EGameXXKCardEffectType::DrawCards || Effect.Type == EGameXXKCardEffectType::Insight || Effect.Type == EGameXXKCardEffectType::ReorderCards || Effect.Type == EGameXXKCardEffectType::GainEnergy || Effect.Type == EGameXXKCardEffectType::DoubleTerrainBonus)
 			{
 				bool bConditionSatisfied = false;
-				if (!IsConditionSatisfied(Effect.Condition, InOutRuntime, *Owner, ConditionTarget, bConditionSatisfied, OutError))
+				int32 Consumed = 0;
+				if (!TryApplyEffectConditionAndConsumption(Effect.Condition, InOutRuntime, *Owner, ConditionTarget, bConditionSatisfied, Consumed, OutError))
 				{
 					return false;
 				}
 				if (!bConditionSatisfied)
 				{
 					continue;
+				}
+				if (!Effect.ConsumptionGroupId.IsNone())
+				{
+					ConsumptionResults.FindOrAdd(Effect.ConsumptionGroupId) += Consumed;
 				}
 				if (Effect.Type == EGameXXKCardEffectType::DrawCards)
 				{
@@ -2400,15 +2663,20 @@ namespace
 				{
 					continue;
 				}
-				const FGameXXKCardCombatUnit* PerTargetCondition = ConditionTarget ? ConditionTarget : Target;
+				FGameXXKCardCombatUnit* PerTargetCondition = ConditionTarget ? ConditionTarget : Target;
 				bool bConditionSatisfied = false;
-				if (!IsConditionSatisfied(Effect.Condition, InOutRuntime, *Owner, PerTargetCondition, bConditionSatisfied, OutError))
+				int32 Consumed = 0;
+				if (!TryApplyEffectConditionAndConsumption(Effect.Condition, InOutRuntime, *Owner, PerTargetCondition, bConditionSatisfied, Consumed, OutError))
 				{
 					return false;
 				}
 				if (!bConditionSatisfied)
 				{
 					continue;
+				}
+				if (!Effect.ConsumptionGroupId.IsNone())
+				{
+					ConsumptionResults.FindOrAdd(Effect.ConsumptionGroupId) += Consumed;
 				}
 
 				switch (Effect.Type)
@@ -2468,6 +2736,12 @@ namespace
 				case EGameXXKCardEffectType::GainMana:
 					Target->Mana = static_cast<int32>(FMath::Min<int64>(Target->MaxMana, static_cast<int64>(Target->Mana) + FMath::Max(0, Effect.Magnitude)));
 					break;
+				case EGameXXKCardEffectType::GainManaPerConsumedStatus:
+				{
+					const int64 ManaGain = static_cast<int64>(FMath::Max(0, Effect.Magnitude)) * Consumed;
+					Target->Mana = static_cast<int32>(FMath::Min<int64>(Target->MaxMana, static_cast<int64>(Target->Mana) + ManaGain));
+					break;
+				}
 				case EGameXXKCardEffectType::ApplyStatus:
 					GameXXKCardRules::AddCombatStatus(*Target, Effect.Status, Effect.Magnitude);
 					break;

@@ -35,7 +35,7 @@ namespace
 		return Unit;
 	}
 
-	TArray<FGameXXKCardInstance> MakeRuntimeInstances(const TCHAR* CardId, const int32 Count)
+	TArray<FGameXXKCardInstance> MakeRuntimeInstances(const TCHAR* CardId, const int32 Count, const TCHAR* OwnerUnitId = TEXT("Hero"))
 	{
 		TArray<FGameXXKCardInstance> Instances;
 		for (int32 Index = 0; Index < Count; ++Index)
@@ -43,7 +43,7 @@ namespace
 			FGameXXKCardInstance& Instance = Instances.AddDefaulted_GetRef();
 			Instance.InstanceId = FName(*FString::Printf(TEXT("Instance.%s.%d"), CardId, Index));
 			Instance.CardId = FName(CardId);
-			Instance.OwnerUnitId = TEXT("Hero");
+			Instance.OwnerUnitId = FName(OwnerUnitId);
 			Instance.SourceEntryId = FName(*FString::Printf(TEXT("Source.%s.%d"), CardId, Index));
 			Instance.AcquisitionOrdinal = Index;
 		}
@@ -137,6 +137,68 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("self-target card applies its owner status"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(SelfRuntime.Units, TEXT("Hero")), EGameXXKCardStatus::Agility), 1);
 	TestEqual(TEXT("moving a card to discard before its draw lets the replacement return to a five-card hand"), SelfRuntime.Deck.Hand.Num(), 5);
 	TestEqual(TEXT("self-target card creates one discard entry while drawing its replacement"), SelfRuntime.Deck.DiscardPile.Num(), 1);
+
+	TArray<FGameXXKCardCombatUnit> PacketUnits;
+	PacketUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 20, 20, 1));
+	PacketUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime PacketRuntime;
+	TestTrue(TEXT("fixed-damage attack packet runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(PacketRuntime, MakeRuntimeInstances(TEXT("Hero.HeYuZhan"), 6), PacketUnits, EGameXXKCardTerrain::Plain, 774));
+	FGameXXKCardPlayResult PacketResult;
+	TestTrue(TEXT("one attack packet combines percentage attack and its declared flat damage before mitigation"), GameXXKCardRules::ResolveCardPlay(PacketRuntime, PacketRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), PacketResult));
+	TestEqual(TEXT("160 percent of 20 plus six is one thirty-eight damage packet"), FindRuntimeUnit(PacketRuntime.Units, TEXT("Enemy"))->HP, 62);
+	TestEqual(TEXT("one attack packet produces one auditable direct-damage result"), PacketResult.DamageResults.Num(), 1);
+	if (PacketResult.DamageResults.Num() == 1)
+	{
+		TestEqual(TEXT("the combined packet reports its pre-mitigation amount"), PacketResult.DamageResults[0].RequestedDamage, 38);
+	}
+
+	TArray<FGameXXKCardCombatUnit> OnHitUnits;
+	OnHitUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 20, 20, 1));
+	OnHitUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	TestEqual(TEXT("on-hit fixture gives its enemy one agility layer"), GameXXKCardRules::AddCombatStatus(OnHitUnits[1], EGameXXKCardStatus::Agility, 1), 1);
+	FGameXXKCardBattleRuntime OnHitRuntime;
+	TestTrue(TEXT("on-hit attack runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(OnHitRuntime, MakeRuntimeInstances(TEXT("Hero.SuiYanJi"), 6), OnHitUnits, EGameXXKCardTerrain::Plain, 775));
+	FGameXXKCardPlayResult OnHitResult;
+	TestTrue(TEXT("attack-linked status card resolves against an agile target"), GameXXKCardRules::ResolveCardPlay(OnHitRuntime, OnHitRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), OnHitResult));
+	TestEqual(TEXT("agility avoids the whole combined attack packet"), FindRuntimeUnit(OnHitRuntime.Units, TEXT("Enemy"))->HP, 100);
+	TestEqual(TEXT("agility also cancels packet-linked vulnerability"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(OnHitRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Vulnerability), 0);
+
+	TArray<FGameXXKCardCombatUnit> ConsumptionUnits;
+	ConsumptionUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 20, 20, 1));
+	ConsumptionUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	TestEqual(TEXT("consumption fixture gives the hero agility"), GameXXKCardRules::AddCombatStatus(ConsumptionUnits[0], EGameXXKCardStatus::Agility, 1), 1);
+	FGameXXKCardBattleRuntime ConsumptionRuntime;
+	TestTrue(TEXT("consumption attack runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(ConsumptionRuntime, MakeRuntimeInstances(TEXT("Hero.PoYunYiShan"), 6), ConsumptionUnits, EGameXXKCardTerrain::Plain, 776));
+	FGameXXKCardPlayResult ConsumptionResult;
+	TestTrue(TEXT("consuming agility upgrades the declared attack packet and enables its dependent draw"), GameXXKCardRules::ResolveCardPlay(ConsumptionRuntime, ConsumptionRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), ConsumptionResult));
+	TestEqual(TEXT("consumed agility upgrades 110 percent to 160 percent before mitigation"), FindRuntimeUnit(ConsumptionRuntime.Units, TEXT("Enemy"))->HP, 68);
+	TestEqual(TEXT("packet consumption removes exactly the declared agility stack"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(ConsumptionRuntime.Units, TEXT("Hero")), EGameXXKCardStatus::Agility), 0);
+	TestEqual(TEXT("dependent draw returns the post-play hand to five"), ConsumptionRuntime.Deck.Hand.Num(), 5);
+
+	TArray<FGameXXKCardCombatUnit> ManaConsumptionUnits;
+	ManaConsumptionUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 12, 30, 1));
+	ManaConsumptionUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	TestEqual(TEXT("mana-consumption fixture gives the hero two momentum stacks"), GameXXKCardRules::AddCombatStatus(ManaConsumptionUnits[0], EGameXXKCardStatus::Momentum, 2), 2);
+	FGameXXKCardBattleRuntime ManaConsumptionRuntime;
+	TestTrue(TEXT("mana-per-consumed-status runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(ManaConsumptionRuntime, MakeRuntimeInstances(TEXT("Hero.JianYiGuanHong"), 6), ManaConsumptionUnits, EGameXXKCardTerrain::Plain, 779));
+	FGameXXKCardPlayResult ManaConsumptionResult;
+	TestTrue(TEXT("mana-per-consumed-status consumes every declared momentum stack and resolves"), GameXXKCardRules::ResolveCardPlay(ManaConsumptionRuntime, ManaConsumptionRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), ManaConsumptionResult));
+	TestEqual(TEXT("cost is paid first, then each consumed momentum grants four mana"), FindRuntimeUnit(ManaConsumptionRuntime.Units, TEXT("Hero"))->Mana, 8);
+	TestEqual(TEXT("mana-per-consumed-status removes the consumed momentum stacks"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(ManaConsumptionRuntime.Units, TEXT("Hero")), EGameXXKCardStatus::Momentum), 0);
+
+	TArray<FGameXXKCardCombatUnit> MultiHitUnits;
+	MultiHitUnits.Add(MakeRuntimeUnit(TEXT("Blade"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Blade, 100, 100, 20, 20, 20, 1));
+	MultiHitUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	TestEqual(TEXT("multi-hit fixture gives its enemy one agility layer"), GameXXKCardRules::AddCombatStatus(MultiHitUnits[1], EGameXXKCardStatus::Agility, 1), 1);
+	FGameXXKCardBattleRuntime MultiHitRuntime;
+	TestTrue(TEXT("multi-hit runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(MultiHitRuntime, MakeRuntimeInstances(TEXT("Profession.Blade.CanYueSanDie"), 6, TEXT("Blade")), MultiHitUnits, EGameXXKCardTerrain::Plain, 777));
+	FGameXXKCardPlayResult MultiHitResult;
+	FString MultiHitError;
+	const bool bResolvedMultiHit = GameXXKCardRules::ResolveCardPlay(MultiHitRuntime, MultiHitRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), MultiHitResult, &MultiHitError);
+	TestTrue(FString::Printf(TEXT("each multi-hit packet resolves and attaches its per-hit bleeding only when the hit lands: %s"), *MultiHitError), bResolvedMultiHit);
+	TestEqual(TEXT("the first of three seventy-percent hits is avoided and the next two deal fourteen each"), FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy"))->HP, 72);
+	TestEqual(TEXT("the two landed multi-hits apply two bleed layers"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Bleed), 2);
+	TestEqual(TEXT("multi-hit result carries all three hit attempts"), MultiHitResult.DamageResults.Num(), 3);
 
 	return true;
 }
