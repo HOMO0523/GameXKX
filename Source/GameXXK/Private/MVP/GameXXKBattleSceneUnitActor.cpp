@@ -239,11 +239,6 @@ UWidgetComponent* AGameXXKBattleSceneUnitActor::GetStatusEffectsWidgetComponentF
 	return StatusEffectsWidgetComponent;
 }
 
-FVector AGameXXKBattleSceneUnitActor::GetBattleFooterWorldLocation() const
-{
-	return HudAnchorComponent ? HudAnchorComponent->GetComponentLocation() : GetActorLocation();
-}
-
 int32 AGameXXKBattleSceneUnitActor::GetSlotNumberForTest() const
 {
 	return SlotNumber;

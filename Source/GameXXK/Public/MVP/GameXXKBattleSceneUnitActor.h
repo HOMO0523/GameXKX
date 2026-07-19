@@ -73,10 +73,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
 	UWidgetComponent* GetStatusEffectsWidgetComponentForTest() const;
 
-	/** Temporary compatibility anchor for the Board footer path removed in Task 4. */
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene")
-	FVector GetBattleFooterWorldLocation() const;
-
 	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
 	int32 GetSlotNumberForTest() const;
 
