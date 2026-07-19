@@ -33,6 +33,7 @@ public:
 	float GetHealthPercentForTest() const;
 	float GetQiPercentForTest() const;
 	bool IsQiRowVisibleForTest() const;
+	bool AreContentWidgetsHitTestTransparentForTest() const;
 	static ESlateVisibility GetRootHitTestVisibilityForTest();
 
 protected:
@@ -47,6 +48,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> IdentityText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> HealthRow;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> HealthText;

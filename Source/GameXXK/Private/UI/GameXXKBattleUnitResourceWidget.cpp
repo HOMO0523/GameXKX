@@ -63,7 +63,7 @@ namespace
 	float GetSafePercent(const int32 CurrentValue, const int32 MaximumValue)
 	{
 		return FMath::Clamp(
-			static_cast<float>(FMath::Max(0, CurrentValue)) / static_cast<float>(FMath::Max(1, MaximumValue)),
+			static_cast<float>(CurrentValue) / static_cast<float>(FMath::Max(1, MaximumValue)),
 			0.0f,
 			1.0f);
 	}
@@ -87,10 +87,10 @@ void UGameXXKBattleUnitResourceWidget::SetUnitResources(
 {
 	SlotLabel = InSlotLabel;
 	DisplayName = InDisplayName;
-	CurrentHP = FMath::Max(0, InCurrentHP);
-	MaxHP = FMath::Max(1, InMaxHP);
-	CurrentMana = FMath::Max(0, InCurrentMana);
-	MaxMana = FMath::Max(0, InMaxMana);
+	CurrentHP = InCurrentHP;
+	MaxHP = InMaxHP;
+	CurrentMana = InCurrentMana;
+	MaxMana = InMaxMana;
 	bShowQi = bInShowQi;
 	RefreshDisplay();
 }
@@ -130,7 +130,17 @@ float UGameXXKBattleUnitResourceWidget::GetQiPercentForTest() const
 
 bool UGameXXKBattleUnitResourceWidget::IsQiRowVisibleForTest() const
 {
-	return QiRow && QiRow->GetVisibility() == ESlateVisibility::SelfHitTestInvisible;
+	return QiRow && QiRow->GetVisibility() == ESlateVisibility::HitTestInvisible;
+}
+
+bool UGameXXKBattleUnitResourceWidget::AreContentWidgetsHitTestTransparentForTest() const
+{
+	return IdentityText
+		&& IdentityText->GetVisibility() == ESlateVisibility::HitTestInvisible
+		&& HealthRow
+		&& HealthRow->GetVisibility() == ESlateVisibility::HitTestInvisible
+		&& QiRow
+		&& (QiRow->GetVisibility() == ESlateVisibility::HitTestInvisible || QiRow->GetVisibility() == ESlateVisibility::Collapsed);
 }
 
 ESlateVisibility UGameXXKBattleUnitResourceWidget::GetRootHitTestVisibilityForTest()
@@ -152,10 +162,11 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	IdentityText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("IdentityText"));
 	ConfigureReadableText(IdentityText, 13);
 	IdentityText->SetJustification(ETextJustify::Center);
+	IdentityText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	RootBox->AddChildToVerticalBox(IdentityText);
 
-	UHorizontalBox* HealthRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("HealthRow"));
-	HealthRow->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	HealthRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("HealthRow"));
+	HealthRow->SetVisibility(ESlateVisibility::HitTestInvisible);
 	HealthText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("HealthText"));
 	ConfigureReadableText(HealthText, 12);
 	HealthRow->AddChildToHorizontalBox(HealthText);
@@ -173,7 +184,7 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	}
 
 	QiRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("QiRow"));
-	QiRow->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	QiRow->SetVisibility(ESlateVisibility::HitTestInvisible);
 	QiText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("QiText"));
 	ConfigureReadableText(QiText, 12);
 	QiRow->AddChildToHorizontalBox(QiText);
@@ -221,6 +232,6 @@ void UGameXXKBattleUnitResourceWidget::RefreshDisplay()
 	}
 	if (QiRow)
 	{
-		QiRow->SetVisibility(bShowQi ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		QiRow->SetVisibility(bShowQi ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
