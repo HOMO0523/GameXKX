@@ -12,11 +12,16 @@
 
 namespace
 {
-	FGameXXKBattleRuntimeUnit MakeLegacyFooterTestEnemy()
+	FName MakeRetiredBoardWidgetName(const TCHAR* Suffix)
+	{
+		return FName(*(FString(TEXT("Battle")) + TEXT("Status") + Suffix));
+	}
+
+	FGameXXKBattleRuntimeUnit MakeActorHudRetirementEnemy()
 	{
 		FGameXXKBattleRuntimeUnit Unit;
-		Unit.Id = TEXT("LegacyFooter.Enemy");
-		Unit.DisplayName = FText::FromString(TEXT("旧页脚敌人"));
+		Unit.Id = TEXT("ActorHudRetirement.Enemy");
+		Unit.DisplayName = FText::FromString(TEXT("界面归属敌人"));
 		Unit.HP = 240;
 		Unit.MaxHP = 240;
 		Unit.Attack = 8;
@@ -26,7 +31,7 @@ namespace
 		return Unit;
 	}
 
-	bool BuildLegacyFooterRetirementFixture(
+	bool BuildActorHudRetirementFixture(
 		UGameXXKMVPSubsystem* Subsystem,
 		FName& OutCardInstanceId,
 		FName& OutTargetUnitId,
@@ -50,7 +55,7 @@ namespace
 			State.Screen = EGameXXKScreen::Battle;
 			State.bHasActiveBattle = true;
 			State.ActiveBattleNodeId = 47;
-			State.ActiveBattleEnemies = {MakeLegacyFooterTestEnemy()};
+			State.ActiveBattleEnemies = {MakeActorHudRetirementEnemy()};
 
 			FString Error;
 			if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error)
@@ -95,11 +100,11 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FGameXXKBattleLegacyFooterRetirementTest,
-	"GameXXK.UI.Battle.LegacyFooterRetirement",
+	FGameXXKBattleActorHudRetirementTest,
+	"GameXXK.UI.Battle.ActorHudRetirement",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FGameXXKBattleLegacyFooterRetirementTest::RunTest(const FString& Parameters)
+bool FGameXXKBattleActorHudRetirementTest::RunTest(const FString& Parameters)
 {
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
@@ -109,7 +114,7 @@ bool FGameXXKBattleLegacyFooterRetirementTest::RunTest(const FString& Parameters
 	FString Error;
 	TestTrue(
 		FString::Printf(TEXT("retirement fixture enters a deterministic card battle: %s"), *Error),
-		BuildLegacyFooterRetirementFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Error));
+		BuildActorHudRetirementFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Error));
 	if (CardInstanceId.IsNone() || TargetUnitId.IsNone() || OwnerUnitId.IsNone())
 	{
 		return false;
@@ -121,16 +126,22 @@ bool FGameXXKBattleLegacyFooterRetirementTest::RunTest(const FString& Parameters
 	Board->NativeConstruct();
 	Board->RefreshFromState();
 	TestNull(
-		TEXT("actor-owned HUD leaves no legacy BattleUnitFooter widget on the board"),
+		TEXT("actor-owned HUD leaves no duplicate footer widget on the board"),
 		Board->WidgetTree ? Board->WidgetTree->FindWidget(TEXT("BattleUnitFooter_00")) : nullptr);
+	TestNull(
+		TEXT("actor-owned HUD leaves no board-level resource and status paper panel"),
+		Board->WidgetTree ? Board->WidgetTree->FindWidget(MakeRetiredBoardWidgetName(TEXT("PaperPanel"))) : nullptr);
+	TestNull(
+		TEXT("actor-owned HUD leaves no board-level resource and status text"),
+		Board->WidgetTree ? Board->WidgetTree->FindWidget(MakeRetiredBoardWidgetName(TEXT("Text"))) : nullptr);
 
 	const FVector2D OwnerProjection(786.0f, 406.0f);
 	const FVector2D PointerProjection(442.0f, 283.0f);
 	Board->RegisterBattleUnitScreenPosition(OwnerUnitId, OwnerProjection);
-	TestTrue(TEXT("manual card still enters arrow targeting after footer retirement"), Board->ClickCardInHand(CardInstanceId));
-	TestTrue(TEXT("manual card remains in targeting state after footer retirement"), Board->IsCardTargetingActive());
+	TestTrue(TEXT("manual card still enters arrow targeting after actor HUD retirement"), Board->ClickCardInHand(CardInstanceId));
+	TestTrue(TEXT("manual card remains in targeting state after actor HUD retirement"), Board->IsCardTargetingActive());
 	TestEqual(TEXT("registered actor projection remains the card-arrow source"), Board->GetTargetingSourcePositionForTest(), OwnerProjection);
-	TestTrue(TEXT("legal enemy remains highlighted after footer retirement"), Board->IsTargetUnitHighlighted(TargetUnitId));
+	TestTrue(TEXT("legal enemy remains highlighted after actor HUD retirement"), Board->IsTargetUnitHighlighted(TargetUnitId));
 	Board->UpdateTargetingPointer(PointerProjection);
 	TestEqual(TEXT("mouse pointer still drives the targeting arrow endpoint"), Board->GetTargetingPointerPositionForTest(), PointerProjection);
 	Board->ClearBattleUnitScreenPositions();

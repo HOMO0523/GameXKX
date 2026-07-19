@@ -438,10 +438,6 @@ FVector2D UGameXXKBattleBoardWidget::GetPartySlotPositionForTest(int32 SlotIndex
 	return FVector2D::ZeroVector;
 }
 
-FString UGameXXKBattleBoardWidget::GetBattleStatusTextForTest() const
-{
-	return BuildBattleStatusText();
-}
 
 bool UGameXXKBattleBoardWidget::HasBattleActionForTest(FName ActionName, bool bRequireEnabled) const
 {
@@ -580,19 +576,6 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("GameXXKBattleBoardRoot"));
 	WidgetTree->RootWidget = RootCanvas;
 
-	StatusText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleStatusText"));
-	StatusText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
-	StatusText->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.85f));
-	StatusText->SetShadowOffset(FVector2D(1.0f, 1.0f));
-	FSlateFontInfo StatusFont = StatusText->GetFont();
-	StatusFont.Size = 20;
-	StatusText->SetFont(StatusFont);
-	if (UCanvasPanelSlot* StatusSlot = RootCanvas->AddChildToCanvas(StatusText))
-	{
-		StatusSlot->SetAnchors(FAnchors(0.02f, 0.04f, 0.46f, 0.04f));
-		StatusSlot->SetOffsets(FMargin(0.0f, 0.0f, 0.0f, 180.0f));
-		StatusSlot->SetAlignment(FVector2D(0.0f, 0.0f));
-	}
 
 	ActionBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("BattleActionBox"));
 	if (UCanvasPanelSlot* ActionSlot = RootCanvas->AddChildToCanvas(ActionBox))
@@ -660,10 +643,6 @@ UButton* UGameXXKBattleBoardWidget::AddBattleActionButton(const FText& Label, FN
 
 void UGameXXKBattleBoardWidget::RefreshProgrammaticLayout()
 {
-	if (StatusText)
-	{
-		StatusText->SetText(FText::FromString(BuildBattleStatusText()));
-	}
 	if (ActionBox)
 	{
 		if (UCanvasPanelSlot* ActionSlot = Cast<UCanvasPanelSlot>(ActionBox->Slot))
@@ -904,38 +883,6 @@ int32 UGameXXKBattleBoardWidget::FindFirstLivingEnemyIndex() const
 	return INDEX_NONE;
 }
 
-FString UGameXXKBattleBoardWidget::BuildBattleStatusText() const
-{
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
-	{
-		return TEXT("");
-	}
-
-	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
-	TArray<FString> Lines;
-	if (State.ActiveBattleParty.IsValidIndex(0))
-	{
-		const FGameXXKBattleRuntimeUnit& Hero = State.ActiveBattleParty[0];
-		Lines.Add(FString::Printf(TEXT("主角 HP %d/%d   MP %d/%d"), Hero.HP, Hero.MaxHP, Hero.MP, Hero.MaxMP));
-	}
-	if (State.ActiveBattleParty.IsValidIndex(1))
-	{
-		const FGameXXKBattleRuntimeUnit& Follower = State.ActiveBattleParty[1];
-		Lines.Add(FString::Printf(TEXT("队友 HP %d/%d"), Follower.HP, Follower.MaxHP));
-	}
-	Lines.Add(FString::Printf(TEXT("金疮药 x%d"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder())));
-	for (const FGameXXKBattleRuntimeUnit& Enemy : State.ActiveBattleEnemies)
-	{
-		Lines.Add(FString::Printf(
-			TEXT("%s HP %d/%d%s"),
-			*Enemy.DisplayName.ToString(),
-			Enemy.HP,
-			Enemy.MaxHP,
-			Enemy.bDefeated ? TEXT(" 已倒下") : TEXT("")));
-	}
-	return FString::Join(Lines, TEXT("\n"));
-}
 
 void UGameXXKBattleBoardWidget::HandleBasicAttackClicked()
 {

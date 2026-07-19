@@ -95,7 +95,6 @@ public:
 
 	FVector2D GetEnemySlotPositionForTest(int32 SlotIndex) const;
 	FVector2D GetPartySlotPositionForTest(int32 SlotIndex) const;
-	FString GetBattleStatusTextForTest() const;
 	bool HasBattleActionForTest(FName ActionName, bool bRequireEnabled) const;
 	bool IsCommandMenuVisibleForTest() const;
 	bool IsTargetingBattleActionForTest() const;
@@ -128,7 +127,6 @@ private:
 	bool BeginTargetingBattleAction(FName ActionName);
 	bool ExecuteBattleAction(FName ActionName);
 	int32 FindFirstLivingEnemyIndex() const;
-	FString BuildBattleStatusText() const;
 
 	UFUNCTION()
 	void HandleBasicAttackClicked();
@@ -148,8 +146,6 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> StatusText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> ActionBox;

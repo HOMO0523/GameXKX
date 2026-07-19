@@ -37,8 +37,6 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("battle board remains active as a battle input/status layer"), BattleWidget->IsBattleBoardVisible());
 	TestEqual(TEXT("battle board leaves enemies to scene actors instead of UMG cards"), BattleWidget->GetEnemySlotCount(), 0);
 	TestEqual(TEXT("battle board leaves party members to scene actors instead of UMG cards"), BattleWidget->GetPartySlotCount(), 0);
-	TestTrue(TEXT("battle board status exposes HP"), BattleWidget->GetBattleStatusTextForTest().Contains(TEXT("HP")));
-	TestTrue(TEXT("battle board status exposes MP"), BattleWidget->GetBattleStatusTextForTest().Contains(TEXT("MP")));
 	TestFalse(TEXT("battle board command menu starts hidden"), BattleWidget->IsCommandMenuVisibleForTest());
 	TestFalse(TEXT("battle board starts outside targeting mode"), BattleWidget->IsTargetingBattleActionForTest());
 	const FVector2D EmbeddedPieCanvasSize(1540.0f, 720.0f);
