@@ -19,6 +19,10 @@ bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("resource widget prepares a native runtime tree for screen-space embedding"), ResourceWidget->PrepareForScreenSpaceEmbedding());
 	TestTrue(TEXT("resource widget retains its native runtime tree"), ResourceWidget->HasRuntimeWidgetTreeForTest());
+	TestEqual(TEXT("resource widget wrapper itself is input-transparent"), ResourceWidget->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
+	ResourceWidget->SetVisibility(ESlateVisibility::Visible);
+	TestTrue(TEXT("resource widget can reprepare its native runtime tree"), ResourceWidget->PrepareForScreenSpaceEmbedding());
+	TestEqual(TEXT("repreparing restores wrapper input transparency"), ResourceWidget->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
 
 	ResourceWidget->SetUnitResources(TEXT("我 1P"), FText::FromString(TEXT("主角")), 0, 0, 0, 0, true);
 	TestEqual(TEXT("zero health snapshot retains its supplied maximum label"), ResourceWidget->GetHealthDisplayTextForTest(), FString(TEXT("气血 0 / 0")));

@@ -150,6 +150,8 @@ ESlateVisibility UGameXXKBattleUnitResourceWidget::GetRootHitTestVisibilityForTe
 
 void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 {
+	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+
 	if (RootBox || !WidgetTree)
 	{
 		return;
