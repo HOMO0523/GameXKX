@@ -72,7 +72,7 @@ Before card combat is initialized, the existing validated legacy runtime unit re
 - Health and qi are separate rows, each with a PSD-consistent frame/fill treatment. Health fill is red; qi fill is muted blue.
 - Text sits above or within its own row at readable contrast and always contains current and maximum values; it never relies only on bar fill percentage.
 - Status badges preserve `SelfHitTestInvisible` on the noninteractive footer layer and `Visible` tooltip-bearing icon children, so selecting a target through the HUD remains possible while status tooltips still work.
-- The old world-space widget cannot remain visibly rendered alongside the screen-space component. It may only be retained as a nonvisual hit bridge if the dedicated hover regression test proves it is needed.
+- The old world-space widget and its `UWidgetInteractionComponent` hover bridge are removed. In UE 5.8, a screen-space `UWidgetComponent` has no traceable collision body, so status-icon hover must use the native screen-layer UMG pointer path instead. The acceptance pass must prove that the visible badge child still receives hover while the noninteractive footer area lets card-target clicks reach the actor's `HitArea`.
 
 ## Acceptance tests
 
