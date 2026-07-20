@@ -511,6 +511,26 @@ def _handle_route_node(world, node_index):
         return {"ok": False, "node_index": node_index, "reason": str(exc)}
 
 
+def _fixture_apply_result(value):
+    """Normalize UE Python's bool/out-parameter return variants."""
+    if value is None:
+        return False, ""
+    if isinstance(value, str):
+        # UE 5.8 returns the sole FString out parameter directly for a bool + one-out call.
+        # An empty string is therefore a successful call with no error text.
+        return True, value
+    if isinstance(value, (tuple, list)):
+        ok = bool(value[0]) if value else False
+        error = "" if len(value) < 2 or value[1] is None else str(value[1])
+        return ok, error
+    if isinstance(value, dict):
+        return (
+            bool(value.get("return_value", value.get("ok", False))),
+            str(value.get("out_error", value.get("error", "")) or ""),
+        )
+    return bool(value), ""
+
+
 def _all_actors(world):
     if not world:
         return []
