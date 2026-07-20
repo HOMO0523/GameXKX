@@ -51,7 +51,7 @@
 ```
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Battle+GameXXK.CardBattle;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.UI.Battle+GameXXK.MVP.Battle+GameXXK.Integration.CardBattle+GameXXK.Data.CardBattleRuntime+GameXXK.Data.CardCombatRules;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 ### Task 1: Add the missing real-PIE HUD observation contract
@@ -76,7 +76,7 @@ def test_battle_probe_contract_requires_live_actor_hud_geometry(self) -> None:
         "SlateBlueprintLibrary.local_to_viewport",
         '"battle_hud"',
         '"screen_rect"',
-        '"shared_energy"',
+        '"mana_row_visible"',
     ):
         self.assertIn(token, source)
 ```
@@ -158,6 +158,9 @@ summary["battle_hud"] = {
              "max": int(actor.get_max_mana_for_test())},
     "armor": int(actor.get_armor_for_test()),
     "status_text": str(actor.get_status_text_for_test()),
+    # This is only the actor-local personal-MP-row visibility switch;
+    # it is not the board-owned shared-Qi value.
+    "mana_row_visible": bool(actor.should_show_mana_for_test()),
     "resource_hud": _widget_component_summary(world, resource_component),
     "status_hud": _widget_component_summary(world, status_component),
 }
@@ -173,14 +176,14 @@ def _rect_intersects(rect: dict | None, viewport: dict) -> bool:
 
 def _battle_hud_verdict(probe: dict, viewport: dict) -> dict:
     errors: list[str] = []
-    for unit in probe.get("units", []):
-        resource = unit.get("resource_hud", {})
+    for unit in _battle_hud_units_from_probe(probe):
+        resource = unit.get("battle_hud", {}).get("resource_hud", {})
         if not (resource.get("component_visible") and resource.get("widget_visible")
                 and _rect_intersects(resource.get("screen_rect"), viewport)):
             errors.append(f"{unit.get('unit_id')}: resource HUD is not visibly on screen")
-        if unit.get("is_enemy") and unit.get("mana_row_visible"):
+        if unit.get("is_enemy_unit") and unit.get("battle_hud", {}).get("mana_row_visible"):
             errors.append(f"{unit.get('unit_id')}: enemy MP row is visible")
-        if not unit.get("is_enemy") and not unit.get("mana_row_visible"):
+        if not unit.get("is_enemy_unit") and not unit.get("battle_hud", {}).get("mana_row_visible"):
             errors.append(f"{unit.get('unit_id')}: party MP row is missing")
     return {"ok": not errors, "errors": errors}
 ```
@@ -236,7 +239,7 @@ TestFalse(TEXT("enemy hides MP"), EnemyActor->ShouldShowManaForTest());
 Run the UBT cold-build command, then:
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Battle.UnitResource+GameXXK.Battle.SceneActorHud+GameXXK.Battle.SceneActor;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.UI.Battle.UnitResourceWidget+GameXXK.MVP.Battle.SceneActorHud+GameXXK.MVP.Battle.SceneActors;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 Expected: failure because `SetUnitVitals`, `GetManaDisplayTextForTest`, and `ShouldShowManaForTest` do not yet exist.
@@ -320,7 +323,7 @@ TestEqual(TEXT("legacy is compatibility projection only"),
 - [ ] **Step 2: Run the adapter test and confirm it fails at opening armor.**
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.CardBattle.Adapter;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Integration.CardBattleAdapter;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 Expected: the old `Unit.Armor = 0` causes the opening assertion to fail.
@@ -339,7 +342,7 @@ Keep the existing later `CardUnit.Armor -> LegacyUnit.Shield` synchronization. D
 - [ ] **Step 4: Re-run adapter plus actor tests.**
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.CardBattle.Adapter+GameXXK.Battle.SceneActor;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Integration.CardBattleAdapter+GameXXK.MVP.Battle.SceneActors;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 Expected: PASS; runtime armor starts at seven and card mutations project backward once.
@@ -381,7 +384,7 @@ Also retain the dead-unit test, requiring both widget components to hide togethe
 Run the cold build and:
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Battle.SceneActorHud+GameXXK.Battle.SceneActor;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.MVP.Battle.SceneActorHud+GameXXK.MVP.Battle.SceneActors;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 Expected: failure because the old components are `300x96/300x46` and the resource component uses a bottom pivot.
@@ -461,7 +464,7 @@ TestEqual(TEXT("bleed hover text"),
 - [ ] **Step 2: Run the status test and confirm the old 38px floor fails.**
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Battle.StatusEffects;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.UI.Battle.StatusEffectsWidget;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 Expected: failure at the 44px assertion.
@@ -611,7 +614,7 @@ TestEqual(TEXT("successful card charges exactly once"),
 - [ ] **Step 2: Run Board tests and confirm the panel seams are missing.**
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.CardBattle.BoardWidget+GameXXK.Battle.BoardWidget;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Integration.CardBattle.BoardTargeting+GameXXK.MVP.Battle.BoardWidget;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 Expected: compile/test failure for the missing party-Qi methods.
@@ -828,7 +831,7 @@ Expected: `Result: Succeeded`; no Live Coding or Hot Reload is used as verificat
 - [ ] **Step 3: Run focused automation, MVP automation, and the real flow.**
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Battle+GameXXK.CardBattle+GameXXK.MVP;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.UI.Battle+GameXXK.MVP.Battle+GameXXK.Integration.CardBattle+GameXXK.Data.CardBattleRuntime+GameXXK.Data.CardCombatRules;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 & 'C:\Users\shxuw\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report 'Saved\HarnessReports\battle-hud-mvp.json'
 & 'C:\Users\shxuw\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' scripts\gamexxk_real_play_flow_mcp.py --keep-pie --timeout 180 --report 'Saved\HarnessReports\battle-hud-final.json'
 ```
@@ -1028,7 +1031,7 @@ TestTrue(TEXT("DOT is a semantic event"),
 - [ ] **Step 2: Run focused card-runtime and adapter tests to establish the red baseline.**
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.CardBattle.Runtime+GameXXK.CardBattle.Adapter;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Data.CardBattleRuntime+GameXXK.Integration.CardBattleAdapter;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 Expected: compile failure because `PresentationEvents` and semantic event types do not exist.
@@ -1144,7 +1147,7 @@ TestTrue(TEXT("status icon pulse is active"), StatusWidget->IsStatusPulseActiveF
 - [ ] **Step 2: Run the actor/widget tests and observe the absence of FX anchors and feedback state.**
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Battle.SceneActor+GameXXK.Battle.StatusEffects+GameXXK.Battle.UnitResource;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.MVP.Battle.SceneActors+GameXXK.UI.Battle.StatusEffectsWidget+GameXXK.UI.Battle.UnitResourceWidget;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 Expected: compile/test failure because the actor has only one wobble state and widgets have no delta feedback APIs.
@@ -1248,7 +1251,7 @@ TestTrue(TEXT("first valid card unlocks"),
 - [ ] **Step 2: Run the existing Board tests and confirm the current static hand refresh has no state.**
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.CardBattle.BoardWidget+GameXXK.CardBattle.BoardEnemyIntentPresentation;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Integration.CardBattle.BoardTargeting+GameXXK.Integration.CardBattle.BoardEnemyIntentPresentation;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 Expected: compile/test failure because `EGameXXKHandPresentationState` and the hand animation test seam do not exist.
@@ -1352,7 +1355,7 @@ TestTrue(TEXT("armor-only result queues shield effect"),
 - [ ] **Step 2: Run enemy-intent and actor tests to verify the old three-state display is insufficient.**
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.CardBattle.BoardEnemyIntentPresentation+GameXXK.Battle.SceneActor;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Integration.CardBattle.BoardEnemyIntentPresentation+GameXXK.MVP.Battle.SceneActors;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 Expected: compile/test failure because `Focus`, `Cast`, `Impact`, and presentation event routing are absent.
@@ -1493,7 +1496,7 @@ The report must reject an invisible Niagara component, an effect overlapping the
 
 ```powershell
 & 'D:\UE_5.8\Engine\Build\BatchFiles\Build.bat' GameXXKEditor Win64 Development '-Project=D:\UE5 demo\GameXXK\GameXXK.uproject' -NoHotReload
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Battle+GameXXK.CardBattle+GameXXK.MVP;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.UI.Battle+GameXXK.MVP.Battle+GameXXK.Integration.CardBattle+GameXXK.Data.CardBattleRuntime+GameXXK.Data.CardCombatRules;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 ```powershell
