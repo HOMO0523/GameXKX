@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn the current single-map, single-enemy route into a deterministic three-chapter run with 21 data-driven enemies, complete enemy intents and phases, six closed-loop task-NPC kits, idempotent route settlement, approved versioned visuals, and a real-rules 100-seed balance system.
+**Goal:** Turn the current single-map, single-enemy route into a deterministic three-chapter run with 21 data-driven enemies, complete enemy intents and phases, six closed-loop task-NPC kits, idempotent route settlement, approved versioned visuals, and a real-rules bounded balance system whose Full target uses 100 fixed seeds and whose declared budget profiles use 50 or 36-seed prefixes.
 
 **Architecture:** Preserve the shipped seven-layer random map generator and run it three times from chapter-derived seeds. Put immutable enemy/intent data in a catalog, saved per-enemy phase and cooldown state in the card battle runtime, deterministic encounter construction in pure rules, and all route settlement behind a copy-validate-commit receipt. Extend the equipment plan's existing `FGameXXKCombatSimulationRules` so both PIE and headless balance use `FGameXXKCardBattleAdapter`/`GameXXKCardRules` rather than parallel damage formulas.
 
@@ -44,7 +44,7 @@
 - `Source/GameXXK/Public/GameXXKRouteSettlementRules.h`
 - `Source/GameXXK/Private/GameXXKRouteSettlementRules.cpp` — unique receipt generation, successful/failed/abandoned conversion, idempotent permanent award, and route-local clear.
 - `Source/GameXXK/Public/GameXXKRouteBalanceCommandlet.h`
-- `Source/GameXXK/Private/GameXXKRouteBalanceCommandlet.cpp` — no-render sharded matrix entry point and JSON/CSV output.
+- `Source/GameXXK/Private/GameXXKRouteBalanceCommandlet.cpp` — no-render benchmark and persistent-process matrix entry point with JSON/CSV output.
 
 ### Existing gameplay files to modify
 
@@ -106,9 +106,11 @@
 
 ### New balance and PIE scripts
 
-- `SourceAssets/Balance/route-balance-matrix-v1.json` — versioned levels, gear fixtures, formations, 100 fixed seeds, threshold cohorts, and report schema.
-- `scripts/run_route_balance_matrix.py` — shard orchestration, commandlet invocation, schema validation, and aggregate report.
+- `SourceAssets/Balance/route-balance-matrix-v1.json` — versioned levels, gear fixtures, formations, 100 fixed seeds, nested `Full`/`Standard`/`Compact` schedules, threshold cohorts, and report schema.
+- `scripts/run_route_balance_matrix.py` — diagnostic batching, commandlet invocation, schema validation, and aggregate report.
+- `scripts/run_route_balance_certification.py` — end-to-end cold-build, editor-lifecycle, one-battle gate, profile selection, deadline, and certification orchestration.
 - `scripts/test_route_balance_matrix.py` — command construction, shard partition, merge, threshold, and no-source-write tests.
+- `scripts/test_route_balance_certification.py` — performance boundary, profile selection, lifecycle clock, deadline, and certification-schema tests.
 - `Content/Python/gamexxk_probe_three_chapter_route.py` — read-only live state/UMG/actor probe plus player-facing actions only.
 - `scripts/gamexxk_three_chapter_route_acceptance.py` — PIE scenarios for formations, intent cards, phases, chapter jumps, settlement, and click recovery.
 - `scripts/test_gamexxk_three_chapter_route_acceptance.py` — offline report and command contract tests.
@@ -1099,7 +1101,7 @@ git commit -m "feat: extend skilled route combat simulation"
 
 ---
 
-## Task 12: Run the sharded 100-seed balance matrix and emit recommendations only
+## Task 12: Gate one battle below one second, then run a bounded balance certification
 
 **Files:**
 
@@ -1107,48 +1109,62 @@ git commit -m "feat: extend skilled route combat simulation"
 - Create: `Source/GameXXK/Public/GameXXKRouteBalanceCommandlet.h`
 - Create: `Source/GameXXK/Private/GameXXKRouteBalanceCommandlet.cpp`
 - Create: `scripts/run_route_balance_matrix.py`
+- Create: `scripts/run_route_balance_certification.py`
 - Create: `scripts/test_route_balance_matrix.py`
+- Create: `scripts/test_route_balance_certification.py`
 - Modify: `Source/GameXXK/GameXXK.Build.cs`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKRouteBalanceSimulationTest.cpp`
 
-- [ ] **Step 1: Write failing matrix-schema and cardinality tests**
+- [ ] **Step 1: Write failing fixed-profile schema and cardinality tests**
 
 The JSON config must declare schema `1`, levels `[1,5,10,15,20]`, fixed seeds `0..99` under a stable namespace, all six equipment sets, gear fixtures `Naked`, `Common+0`, `Rare+0`, `Epic+0`, `Epic+10`, all six partner roles, all six task NPCs, and all legal formations. Assert formation expansion is exactly 18 normal pairs (`3 * C(4,2)`), 36 elite formations (`3 * 2 * C(4,2)`), and 3 boss formations. Each non-naked band expands to all six sets; naked is one fixture, producing 25 gear fixtures total.
 
-Do **not** form the universal Cartesian product `25 gear * 5 levels * 57 formations * 6 roles * 6 NPCs * 100 seeds`: that would be 25,650,000 real-rule battles before full-route and tuning reruns. Instead, store four explicit versioned cohort schedules in the JSON. A schedule row has a stable row ID and one of the fixed seeds; schedules are data, not runtime random sampling.
+Do **not** form the universal Cartesian product `25 gear * 5 levels * 57 formations * 6 roles * 6 NPCs * 100 seeds`. Store four explicit, nested, versioned cohort schedules in the JSON. A schedule row has a stable row ID and one fixed seed; schedules are reviewed data, not runtime random sampling. Declare three profiles whose rows are deterministic prefixes of the same schedule:
 
-| Cohort | Fixed cells | Seed/arm rule | Exact baseline work |
-| --- | --- | --- | ---: |
-| `BasePressure` | `57 formations * 5 levels = 285` | each cell uses seeds `0..99` once; a checked 100-row orthogonal schedule assigns partner role, task NPC, and one of six `Common+0` sets | `28,500` single-encounter simulations |
-| `EquipmentPower` | `24 non-naked fixtures * 5 levels = 120` | each cell uses seeds `0..99` once; every row runs the equipped arm and its exact same-seed naked arm; a checked schedule assigns formation, role, and NPC | `24,000` single-encounter simulations (`12,000` pairs) |
-| `NpcContribution` | `6 NPCs * 5 levels = 30` | each cell uses seeds `0..99` once; every row runs that NPC arm and the exact same-seed Common+0 permanent-partner reference arm; a checked schedule assigns formation, role, and Common set | `6,000` single-encounter simulations (`3,000` pairs) |
-| `FullRouteGrowth` | one route cohort | exactly one three-chapter route for each seed `0..99`; the 100-row schedule assigns level, role, NPC, and Common set | exactly `100` full-route simulations |
+| Profile | Seeds | `BasePressure` | `EquipmentPower` | incremental `NpcContribution` | `FullRouteGrowth` | maximum effective battles |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `Full` | `0..99` | 300 | 200 | 100 | 100 routes, at most 1800 battles | 2400 |
+| `Standard` | `0..49` | 150 | 100 | 50 | 50 routes, at most 900 battles | 1200 |
+| `Compact` | `0..35` | 108 | 72 | 36 | 36 routes, at most 648 battles | 864 |
 
-The baseline therefore contains exactly `58,500` single-encounter simulations plus `100` full routes. A current-topology route can contain at most 18 battles across three chapters, so the baseline upper bound is `60,300` effective battle simulations. Catalog integrity, all 21 enemy definitions, and all 57 legal formation shapes are additionally exhaustive pure-data tests and do not multiply the simulation matrix.
+For each seed, `BasePressure` runs one normal, one elite, and one boss encounter. Its balanced schedule covers all 57 legal formations even in `Compact`, all five levels, all six roles, all six NPCs, and all six `Common+0` sets. `EquipmentPower` runs one exact same-seed equipped/naked pair per seed; the first 25 rows cover all 24 non-naked fixtures at least once. `NpcContribution` names one compatible `BasePressure` arm by stable row ID and adds only its same-seed permanent-partner reference arm, so shared measurements are not rerun or counted twice. `FullRouteGrowth` runs one real three-chapter route per selected seed; the current route contains at most 18 battles. Catalog integrity, all 21 enemy definitions, and every legal formation/fixture remain exhaustive pure-data tests and do not multiply the simulation matrix.
 
 Freeze the schedule coverage contract in schema tests:
 
-- every declared cohort row has a unique stable ID and every fixed seed `0..99` appears exactly once in each fixed cell;
-- each `BasePressure` cell uses every role, NPC, and Common set either 16 or 17 times, and every role/NPC, role/set, and NPC/set pair either two or three times;
-- each `EquipmentPower` fixture/level cell uses every formation once or twice, every role and NPC 16 or 17 times, and every role/NPC pair two or three times; the naked/equipped arms differ only by loadout;
-- each `NpcContribution` NPC/level cell uses every formation once or twice, every role and Common set 16 or 17 times, and every role/set pair two or three times; the two arms differ only by the compared support slot;
-- the 100 `FullRouteGrowth` rows use each level exactly 20 times, every role/NPC/Common-set value 16 or 17 times, every pair among the three six-value factors two or three times, and every level-to-six-value pair three or four times;
+- every declared row has a unique stable ID; `Compact` is the first 36 seeds, `Standard` the first 50, and `Full` all 100, without profile-specific reshuffling;
+- every profile covers all five levels, six roles, six NPCs, six Common sets, three encounter tiers, and all 57 legal formations; `Compact` covers each formation at least once;
+- every `EquipmentPower` pair differs only by loadout, and every `NpcContribution` reference differs only by the compared support slot;
+- the six-value and five-level factors differ by at most one occurrence inside each profile wherever cardinality allows; stable tie-breaking is documented and tested;
+- for `N=100/50/36`, exact non-route unique battles are `6N` (`600/300/216`), exact top-level work items including routes are `7N` (`700/350/252`), and actual effective battles are `6N + sum(route_battle_count)` with upper bounds `24N` (`2400/1200/864`); never count a reused arm twice;
 - coverage rows and their SHA-256 are checked in tests. Changing the schedule is a reviewed data change, never an incidental result of iteration order.
 
-- [ ] **Step 2: Write failing process-safety, shard/merge, and no-write Python tests**
+- [ ] **Step 2: Write failing benchmark, budget, process-safety, and no-write Python tests**
 
-Test `--shard-count 16` assigns every stable scenario ID or inseparable paired-arm work item to exactly one shard through a deterministic cost-balanced partition (stable work-weight descending, then stable row ID; ties choose the lowest current projected cost, then shard index). Restart skips only a shard whose config hash and output checksum match, aggregate merge is independent of shard completion order, duplicate/missing scenarios fail, and malformed metrics fail with a precise ID. Assert the full baseline expands to exactly `58,500` single encounters and `100` routes; any attempt to request the universal five-factor Cartesian product fails schema validation. Assert every coverage invariant in Step 1 and a maximum 10-percent projected-cost spread across the 16 frozen shards before a commandlet can launch.
+Test `--shard-count 16` assigns every stable scenario ID or inseparable paired-arm work item to exactly one shard through a deterministic cost-balanced partition (stable work-weight descending, then stable row ID; ties choose the lowest current projected cost, then shard index). Aggregate merge is independent of shard completion order, duplicate/missing scenarios fail, and malformed metrics fail with a precise ID. Assert the three profiles expand to the exact Step-1 cardinalities, any request above `2400` effective battles fails schema validation, and the universal five-factor Cartesian product is not representable.
 
-If any `UnrealEditor.exe` or another GameXXK `UnrealEditor-Cmd.exe` is running, the runner must launch zero commandlets and print `GameXXK editor is running; save and close it before balance commandlets`. `--jobs` accepts only `1`; a larger value fails before launch so Zen/D3D/DotNet processes are never shared by concurrent UE instances. The runner creates a short-lived orchestration token only after the process-exit proof; the commandlet refuses a missing, expired, wrong-parent, or config-hash-mismatched token, so the raw commandlet cannot be used as a supported bypass around mutual exclusion. Snapshot SHA-256 for catalog/card/equipment `.h/.cpp/.json` inputs before and after a fake commandlet run; any source mutation fails the runner.
+The certification wrapper has a monotonic clock that starts before it invokes the cold-build pipeline and ends only after validated reports and checksums are durable. Add fake-process tests proving:
+
+- one fixed third-chapter Boss benchmark is always the first simulated battle;
+- measured simulator-core duration `>=1000 ms` returns `SingleBattleBudgetExceeded`, launches zero matrix shards, and records the offending stable scenario ID;
+- only a passing benchmark may reach profile projection and the matrix phase;
+- `Full` is selected when its conservative projection fits `1800 s`; otherwise the largest nested profile projected within `1800 s` is selected; if none fits the target, only `Compact` may run and only when its projection fits the remaining `3600 s` hard budget;
+- the projection includes elapsed cold-build/editor lifecycle and benchmark time, a second persistent-commandlet startup reserve equal to the measured benchmark startup (minimum `30 s`), `1.25 * benchmark core duration * maximum effective battle count`, `1.25 * measured no-battle route-skeleton duration * route count`, and a fixed `120 s` aggregation reserve;
+- official certification mode rejects `--resume`, stale outputs, skipped cold builds, and pre-existing completed shards; resume remains diagnostic-only and can never produce a certification pass;
+- every matrix scenario fails immediately when its own core duration is `>=1000 ms`; the full command checks its hard deadline before every scenario and reserves enough time for one maximum-duration battle plus report flush;
+- reaching `3600 s`, timing out, choosing an undeclared sample size, or writing an incomplete profile exits nonzero. A smaller completed profile is valid only when the report names the declared profile and records why `Full` could not satisfy the 30-minute target.
+
+If an unrelated `UnrealEditor.exe` or another GameXXK `UnrealEditor-Cmd.exe` is running before certification starts, launch zero commandlets and print `GameXXK editor is running; save and close it before balance certification`. The wrapper may manage only the editor instance it launched through the approved cold pipeline. `--jobs` accepts only `1`; a larger value fails before launch so Zen/D3D/DotNet processes are never shared by concurrent UE instances. The runner creates a short-lived orchestration token only after the process-exit proof; the commandlet refuses a missing, expired, wrong-parent, or config-hash-mismatched token. Snapshot SHA-256 for catalog/card/equipment `.h/.cpp/.json` inputs before and after the run; any source mutation fails certification.
 
 - [ ] **Step 3: Define acceptance cohorts and exact thresholds**
 
-The config separates diagnostics from gates:
+The config separates diagnostics from gates and never claims the 36/50-seed profiles have the same statistical power as `Full`. Every aggregate row includes `Profile`, `SampleSize`, confidence interval, and `ConfidenceClass=Full|Reduced`; insufficient cells remain diagnostic instead of being silently treated as passes:
 
-- `BasePressure`: Common+0 compatible six-piece set, starting 18-card deck, no route relics/event gains/shop cards, every legal formation/level cell, skilled policy, with role/NPC/set assigned by the approved orthogonal rows. Aggregate by level/chapter/partner role/NPC and require normal `55%..70%`, elite `35%..50%`, boss `15%..35%`.
+Freeze `minimum_gate_sample` in the matrix schema at the `Compact` coverage floor: `BasePressure` at least 36 battles per encounter tier, `FullRouteGrowth` at least 36 routes, `EquipmentPower` at least nine same-seed pairs per Common/Rare/Epic/Epic+10 band, and pooled `NpcContribution` at least 36 pairs. A selected declared profile that misses any minimum is `InsufficientSample` and cannot certify. Per-formation, per-fixture, per-set, and per-NPC rows remain diagnostic unless a later reviewed schema version declares a separate minimum; `ConfidenceClass=Reduced` may pass only at or above these frozen pooled minima and must keep its wider interval visible.
+
+- `BasePressure`: Common+0 compatible six-piece set, starting 18-card deck, no route relics/event gains/shop cards, skilled policy, with formation, level, role, NPC, and set assigned by the approved balanced rows. Every profile covers the separate marginals of all 57 formations, five levels, six roles, six NPCs, and six sets; it does not promise every `formation * level` cross-cell. Gate the pooled encounter tiers at normal `55%..70%`, elite `35%..50%`, boss `15%..35%`; level/chapter/role/NPC/set marginals and high-order cells are diagnostic with explicit sample counts.
 - `FullRouteGrowth`: actual random maps, reward cards/quality merge, relics, route shop, positive events, three chapter heals, and current settlement-independent combat state. For Common+0 entry equipment require three-chapter clear rate `82%..88%`, whose midpoint is the locked 85% target.
-- `EquipmentPower`: compare every non-naked fixture to its exact same-seed, same-level, same-formation, same-role, same-NPC naked arm using the simulator composite of damage, survival, resource efficiency, and status contribution. Require Common `+50%..+70%`, Rare `+135%..+165%`, Epic `+270%..+330%`; Epic+10 is reported separately and must be monotonic above Epic+0.
-- `NpcContribution`: compare each task NPC with the exact same-seed, same-level, same-formation, same-role, same-Common-set permanent-partner reference arm. Total contribution ratio must be `85%..115%`, its declared specialty component must be at least `110%` of the reference component, key loop consumption rate `60%..85%`, status overflow below `15%`, and no generated key status may remain unconsumed for the entire battle.
+- `EquipmentPower`: compare every non-naked fixture to its exact same-seed, same-level, same-formation, same-role, same-NPC naked arm using the simulator composite of damage, survival, resource efficiency, and status contribution. Gate pooled quality bands at Common `+50%..+70%`, Rare `+135%..+165%`, Epic `+270%..+330%`; Epic+10 must be monotonic above Epic+0. Individual fixture/set rows are diagnostic because reduced profiles contain only one or two pairs per fixture.
+- `NpcContribution`: compare each task NPC with the exact same-seed, same-level, same-formation, same-role, same-Common-set permanent-partner reference arm. Gate the pooled NPC cohort at total contribution ratio `85%..115%`, specialty contribution at least `110%` of the reference component, key-loop consumption `60%..85%`, and status overflow below `15%`. Per-NPC rows report their smaller `n` and confidence interval; no generated key status may remain unconsumed for an entire battle in any individual row.
 
 All declared schedule marginals remain diagnostic even when not named as a gate; schema, coverage, legality, pairing, or determinism failures always fail the run. No unlisted high-order Cartesian cell is implied.
 
@@ -1162,48 +1178,78 @@ Register `UGameXXKRouteBalanceCommandlet`. The following is the runner's interna
 
 Expected exit `0`: token, config, coverage, and all assigned scenarios are valid and the shard JSON/CSV is written. Exit nonzero for absent/invalid orchestration token, invalid content, nondeterminism, missing scenario, simulator guard, or write outside the output root. A threshold miss remains a completed measurement and is recorded for the aggregate recommendation phase rather than mutating source data.
 
-- [ ] **Step 5: Implement resumable orchestration and report aggregation**
+Add `-Mode=Benchmark -ScenarioId=BasePressure.Ch3BossWorstCase.Seed0` to run exactly one frozen high-complexity `BasePressure` row: level-20 hero, a full three-person party, skilled policy, chapter-three Boss in 2P plus two elites, the cohort's legal Common+0 loadout, and seed 0. Preload immutable catalogs before starting the high-resolution simulator-core timer. Process startup, catalog preload, JSON serialization, and file flush remain separately timed phases and must not be hidden inside the core value. The benchmark output contains authoritative initial/final state checksums, action count, round count, result, `core_elapsed_us`, and phase timings. After profile selection, verify the benchmark config/input checksum is byte-identical to that profile's named row and reuse its result; never rerun or recount it, so `Full` remains at most 2400 rather than 2401 effective battles.
 
-`scripts/run_route_balance_matrix.py` accepts `--shard-count`, `--jobs 1`, `--resume`, `--mode smoke|full|cohort`, `--cohort`, `--estimate-only`, `--max-estimated-minutes` (default `120`), `--wall-budget-minutes` (default `120`), `--close-editor-safely`, and `--out-dir`. `full` expands only the four exact schedules in Step 1. `smoke` is fixed at 648 single encounters plus two full routes: 432 BasePressure cases (`3` representative tiers * `2` levels * `36` role/NPC pairs * seeds `0,1`), 72 paired EquipmentPower simulations (`3` non-naked representative bands * `3` tiers * `2` levels * `2` seeds * `2` arms), and 144 paired NpcContribution simulations (`6` NPCs * `3` tiers * `2` levels * `2` seeds * `2` arms).
+Every matrix scenario uses the same core timer boundary. A duration of exactly `1000000 us` is a failure, not a pass. Keep full action traces only for failed scenarios and a fixed one-percent diagnostic sample; successful rows retain summary metrics and checksums so logging cost cannot dominate the measurement.
 
-With `--close-editor-safely`, connect through `scripts/ue_mcp_client.py`, call `save_dirty_packages`, require `dirty_after` empty, issue `QUIT_EDITOR`, and poll until both `UnrealEditor.exe` and GameXXK `UnrealEditor-Cmd.exe` are absent. If MCP save/quit or the 120-second process-exit proof fails, stop without force-killing or launching a commandlet. Execute shard commandlets sequentially, one UE process at a time. Write partial outputs only beneath `Saved/BalanceReports/RouteEnemies/V1/`, then aggregate to `summary.json`, `summary.csv`, `failures.csv`, `npc-loops.csv`, `recommendations.json`, and `performance.json`.
+In the same preflight process, measure one fixed route skeleton with combat replaced by prevalidated deterministic receipts. This executes chapter setup, route-node transitions, rewards, positive events, shops, and chapter healing but simulates no second battle. It supplies only the non-combat route-overhead term for projection and cannot satisfy or inflate any balance row.
 
-Smoke records warm-start, median, p95, and maximum duration separately for single encounters and full routes. Before `full`, project the exact Step-1 cardinality; if projected wall time exceeds 120 minutes, fail before launching the first full shard and print the two measured rates and projected minutes. During a full run the commandlet checks the 120-minute wall budget between scenarios, writes a resumable checkpoint, and exits cleanly with `BudgetExceeded`; the runner never terminates a UE process. The deterministic partition must keep projected shard costs within 10 percent. A completed baseline must remain within the 120-minute budget on the current machine.
+Inside `FullRouteGrowth`, time every child encounter separately with the identical core boundary and stable child ID. Check the absolute certification deadline before every child battle and before every non-combat route step. A route cannot hide an over-one-second child battle inside an acceptable top-level duration or cross the hard deadline between route-level checks.
 
-- [ ] **Step 6: Generate bounded in-memory tuning recommendations**
+- [ ] **Step 5: Implement the end-to-end certification wrapper and bounded matrix runner**
+
+`scripts/run_route_balance_matrix.py` accepts `--shard-count`, `--jobs 1`, `--resume`, `--mode benchmark|profile|cohort`, `--profile Full|Standard|Compact`, `--cohort`, `--max-battle-us` (release value `1000000`), `--deadline-monotonic-ns`, `--orchestration-token`, and `--out-dir`. It runs only the exact schedules from Step 1. `--resume` is available for local diagnosis but writes `certifiable=false` permanently into that run manifest. Measure with a high-resolution monotonic clock and fail on `elapsed_us >= 1000000`; do not round to integer milliseconds.
+
+`scripts/run_route_balance_certification.py` is the only supported official gate. It accepts required `--fresh`, optional `--benchmark-only`, `--target-seconds 1800`, `--wall-budget-seconds 3600`, `--max-battle-us 1000000`, `--desired-effective-battles 2400`, `--shard-count 1`, `--jobs 1`, and `--out-dir`; it rejects altered target/wall/max-battle/shard values, an existing output directory, or a missing `--fresh` for release certification. `--benchmark-only` still performs the cold compile and safe editor lifecycle, then records exactly one benchmark and the route-skeleton probe with `matrix_rows_started=0`. Start its monotonic clock before calling `scripts/ue_tdd_pipeline.py`. After the cold build and editor relaunch, use `scripts/ue_mcp_client.py` to verify the loaded GameXXK DLL, save dirty packages, require `dirty_after` empty, issue `QUIT_EDITOR`, and poll until both `UnrealEditor.exe` and GameXXK `UnrealEditor-Cmd.exe` are absent. If save/quit or the 120-second process-exit proof fails, stop without force-killing or launching a commandlet.
+
+Run exactly one benchmark commandlet next. If its simulator core is not strictly below one second, exit nonzero before matrix expansion. For a passing benchmark, use the Step-4 process-start and route-skeleton measurements with the Step-2 conservative formula to project each fixed profile. Choose the largest profile projected within 1800 seconds. If none fits, `Compact` may run only when projected below 3600 seconds; otherwise return `OptimizationRequired`. Write the selected profile and rejected-profile projections before launching the persistent matrix process.
+
+Execute commandlets sequentially, one UE process at a time. The wrapper passes the absolute monotonic deadline to every child; children check before each scenario and stop cleanly with `BudgetExceeded` while enough budget remains to flush a failure report. Partial outputs never count as success. Write outputs only beneath `Saved/BalanceReports/RouteEnemies/V1/`, then aggregate to `summary.json`, `summary.csv`, `failures.csv`, `npc-loops.csv`, `recommendations.json`, `performance.json`, and `certification.json`.
+
+`performance.json` and `certification.json` expose enough evidence to audit the count and clock independently: `timer_scope`, `fresh_run`, `certifiable`, `complete`, requested/selected profile and reason, `seed_count`, top-level scenario count, unique effective-battle count, route-child-battle count, reused-arm count, preflight scenario ID/core microseconds/`preflight_reused`, config/DLL/catalog/schedule hashes, every phase duration, per-battle minimum/median/P95/P99/maximum, breach count and slowest IDs, projected 30-minute result, actual target-met flag, hard-budget remainder, and each balance aggregate's sample size/confidence interval/confidence class. Certification passes only when the declared profile is complete, `preflight_reused=true`, checksums and coverage validate, no battle reaches one second, total elapsed is below 3600 seconds, and source hashes remain unchanged.
+
+- [ ] **Step 6: Add a result-preserving performance compression loop**
+
+First run the frozen one-battle benchmark without speculative optimization and store its authoritative input/output checksums. If it is at or above one second, profile only the pure simulation path. Apply changes in this order: cache immutable catalog snapshots, reuse rule context and temporary buffers, remove UObject construction from per-decision work, replace repeated full-state copies with scoped/copy-on-write candidate state, and defer strings/full traces to failures or sampled diagnostics. Do not change decision ordering, RNG consumption, guard limits, combat formulas, card results, or target tie breaks.
+
+Add `GameXXK.Simulation.PerformanceEquivalence` tests that run pre-recorded golden inputs through optimized and reference paths and require identical result, RNG cursor, action sequence checksum, final authoritative-state checksum, contribution metrics, and failure reason. Re-run the cold pipeline and exactly the same benchmark after each compression batch. Matrix execution remains blocked until equivalence is green and `core_elapsed_us < 1000000`.
+
+- [ ] **Step 7: Generate bounded in-memory tuning recommendations**
 
 For each missed cohort, rerun only that cohort's paired/orthogonal rows with temporary in-memory tier/stat/NPC-effect overrides and perform a deterministic bounded search toward normal `62.5%`, elite `42.5%`, boss `25%`, full route `85%`, equipment `+60/+150/+300%`, and NPC contribution `100%`. Preserve the same schedule and seed IDs; do not expand unrelated dimensions. `recommendations.json` records current value, suggested value, confidence interval, affected cohort, and paired before/after metrics. It never writes C++/JSON catalogs or imports assets; applying a recommendation requires a separately reviewed manual patch and another measured run.
 
-- [ ] **Step 7: Cold compile and run smoke green**
+- [ ] **Step 8: Run the Python red/green suite, then prove the one-battle gate alone**
 
-Run `python scripts/ue_tdd_pipeline.py` first. Expected: successful cold build/relaunch with `Json` and `JsonUtilities`. Then use MCP to run `StartsWith:GameXXK.Simulation.RouteBalance`; expected green. Finally run the orchestrator with the safe-close flag. It must save through MCP, request normal editor quit, prove the GUI process exited, and only then start sequential `-nullrhi` commandlets:
+Run the offline contract tests first:
 
 ```powershell
 python scripts/test_route_balance_matrix.py
-python scripts/run_route_balance_matrix.py --mode smoke --shard-count 2 --jobs 1 --close-editor-safely --out-dir Saved/BalanceReports/RouteEnemies/V1/Smoke
+python scripts/test_route_balance_certification.py
 ```
 
-Expected: Python tests pass; exactly 648 smoke single encounters and two smoke routes are present once; report schemas validate; repeated run is byte-identical; source hashes are unchanged; and `performance.json` projects the full baseline at no more than 120 minutes.
+Expected: exact profile cardinalities, nested schedules, 57-formation coverage, benchmark reuse, microsecond threshold boundaries, target/hard-budget selection, official no-resume behavior, lifecycle timing, deadline failure, report schemas, and source no-write checks pass.
 
-- [ ] **Step 8: Run the first full 100-seed matrix and commit the measured infrastructure**
+Next run only the official preflight through the certification wrapper:
 
 ```powershell
-python scripts/run_route_balance_matrix.py --mode full --shard-count 16 --jobs 1 --resume --close-editor-safely --max-estimated-minutes 120 --wall-budget-minutes 120 --out-dir Saved/BalanceReports/RouteEnemies/V1/Full
+$RunId = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+python scripts/run_route_balance_certification.py --fresh --benchmark-only --target-seconds 1800 --wall-budget-seconds 3600 --max-battle-us 1000000 --desired-effective-battles 2400 --shard-count 1 --jobs 1 --out-dir "Saved/BalanceReports/RouteEnemies/V1/Benchmark-$RunId"
 ```
 
-Expected: exactly 58,500 baseline single encounters and 100 full routes are present; every fixed cell has the exact 100-seed and coverage guarantees from Step 1; aggregate gates and confidence intervals are present; no simulator/schema/coverage/pairing/determinism failure exists; all threshold misses have recommendation rows; and measured wall time is at most 120 minutes. The editor remains closed throughout all commandlet shards.
+Expected: the wrapper cold-builds, verifies the loaded DLL, saves and normally closes the editor, starts one `-nullrhi` process, executes exactly the frozen `BasePressure` benchmark row, and reports `core_elapsed_us < 1000000`. It launches no matrix row after the benchmark. If the gate fails, return to Step 6; do not continue by reducing sample count.
+
+- [ ] **Step 9: Run the first fresh bounded certification and commit the measured infrastructure**
+
+The official run uses one persistent commandlet process. Logical batches may checkpoint inside that process, but release certification does not pay for 16 UE process startups and cannot resume old batches:
 
 ```powershell
-git add SourceAssets/Balance/route-balance-matrix-v1.json Source/GameXXK/Public/GameXXKRouteBalanceCommandlet.h Source/GameXXK/Private/GameXXKRouteBalanceCommandlet.cpp scripts/run_route_balance_matrix.py scripts/test_route_balance_matrix.py Source/GameXXK/GameXXK.Build.cs Source/GameXXK/Private/Tests/GameXXKRouteBalanceSimulationTest.cpp
+$RunId = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+python scripts/run_route_balance_certification.py --fresh --target-seconds 1800 --wall-budget-seconds 3600 --max-battle-us 1000000 --desired-effective-battles 2400 --shard-count 1 --jobs 1 --out-dir "Saved/BalanceReports/RouteEnemies/V1/Full-$RunId"
+```
+
+Expected: the benchmark result is reused as its named matrix row; every simulated battle is below one second; `Full` is selected whenever its conservative projection fits 30 minutes, otherwise the largest declared profile fitting the target is selected; a 30-minute miss is explained; total end-to-end time remains below 60 minutes. For the selected `N`, exact non-route/top-level schedule counts are `6N/7N`, actual effective battles equal `6N + sum(route_battle_count)` and remain at or below `2400`, `1200`, or `864`. Every declared coverage/checksum/pairing gate passes, all threshold misses have recommendation rows, and no incomplete or resumed output is accepted.
+
+```powershell
+git add SourceAssets/Balance/route-balance-matrix-v1.json Source/GameXXK/Public/GameXXKRouteBalanceCommandlet.h Source/GameXXK/Private/GameXXKRouteBalanceCommandlet.cpp scripts/run_route_balance_matrix.py scripts/run_route_balance_certification.py scripts/test_route_balance_matrix.py scripts/test_route_balance_certification.py Source/GameXXK/GameXXK.Build.cs Source/GameXXK/Private/Tests/GameXXKRouteBalanceSimulationTest.cpp
 git diff --check
-git commit -m "test: add sharded route balance matrix"
+git commit -m "test: add bounded route balance certification"
 ```
 
-- [ ] **Step 9: Apply reviewed recommendation values manually and close every gate**
+- [ ] **Step 10: Apply reviewed recommendation values manually and close every gate**
 
-Read `recommendations.json` in stable `(Cohort, DefinitionId, Field)` order. For each recommendation with paired-seed confidence at least `0.95`, patch its exact `SuggestedValue` manually with `apply_patch` in `GameXXKEnemyCatalog.cpp`, the six NPC rows in `GameXXKCardCatalog.cpp`, or the planned equipment catalog/affix/set scalar files. Do not change mechanics, IDs, pools, target modes, or visual paths during this tuning step. For a lower-confidence row, expand only the affected paired cohort row from 100 to at most 500 fixed seeds, regenerate its suggestion, and then apply the resulting `>=0.95` value; never expand the universal Cartesian product.
+Read `recommendations.json` in stable `(Cohort, DefinitionId, Field)` order. Patch a recommendation only after reviewing its confidence interval and exact affected scalar in `GameXXKEnemyCatalog.cpp`, the six NPC rows in `GameXXKCardCatalog.cpp`, or the planned equipment catalog/affix/set scalar files. Do not change mechanics, IDs, pools, target modes, or visual paths during this tuning step. A lower-confidence result remains explicitly `InsufficientSample`; it cannot be promoted by silently expanding the universal matrix or replaying the same seeds.
 
-After each reviewed batch, run `python scripts/ue_tdd_pipeline.py`, use MCP to run enemy catalog, NPC loop, equipment, and simulation filters, then invoke only the affected `--mode cohort --cohort <Name>` schedule with `--close-editor-safely`; this saves and normally closes the editor before sequential commandlets. Give each targeted tuning iteration a 30-minute wall budget. Repeat affected cohorts until their locked gates pass and equipment quality remains monotonic, then run the exact full baseline once as the final cross-cohort regression. Store iterations as `Saved/BalanceReports/RouteEnemies/V1/Tuning-01`, then `Tuning-02`, incrementing the two-digit suffix without reuse; never overwrite a prior report.
+After each reviewed batch, run the same one-battle gate, then an affected fixed cohort or declared profile through the bounded wrapper. Every tuning command independently targets 30 minutes, hard-stops before 60 minutes, caps work at 2400 effective battles, rejects resume as certification, and keeps a new non-overwriting output directory. Repeat affected cohorts until their locked gates pass and equipment quality remains monotonic, then run one fresh Step-9 certification as the final cross-cohort regression. Store iterations as `Saved/BalanceReports/RouteEnemies/V1/Tuning-01`, then `Tuning-02`, incrementing the two-digit suffix without reuse.
 
 ```powershell
 git add Source/GameXXK/Private/GameXXKEnemyCatalog.cpp Source/GameXXK/Private/GameXXKCardCatalog.cpp Source/GameXXK/Private/GameXXKEquipmentCatalog.cpp Source/GameXXK/Private/GameXXKAffixCatalog.cpp Source/GameXXK/Private/GameXXKEquipmentSetCatalog.cpp
@@ -1211,7 +1257,7 @@ git diff --check
 git commit -m "balance: tune route enemies npc loops and equipment"
 ```
 
-Expected: normal `55%..70%`, elite `35%..50%`, boss `15%..35%`, full route `82%..88%`, equipment bands, and NPC contribution/consumption/overflow gates all pass in the final scheduled 100-seed report; source changes came only from reviewed `apply_patch` edits; and no tuning or final run exceeds its declared time budget.
+Expected: normal `55%..70%`, elite `35%..50%`, boss `15%..35%`, full route `82%..88%`, equipment bands, and NPC contribution/consumption/overflow gates pass for the selected declared profile; the report exposes that profile's sample confidence rather than claiming a hidden 100-seed result. Source changes came only from reviewed `apply_patch` edits, every simulated battle is below one second, and no tuning or final certification exceeds its declared time budget.
 
 ---
 
@@ -1544,6 +1590,7 @@ Before Step 2, treat the rebased route-merchant implementation as a hard prerequ
 
 ```powershell
 python scripts/test_route_balance_matrix.py
+python scripts/test_route_balance_certification.py
 python scripts/test_route_enemy_visual_manifest.py
 python scripts/test_route_enemy_sprite_atlas.py
 python scripts/test_route_enemy_sprite_import_pipeline.py
@@ -1587,15 +1634,16 @@ StartsWith:GameXXK.Equipment.SaveMigration
 
 Expected: zero failed tests and no ensure/assert/crash in the current session log. Save migration proves route merchant no longer owns global version 7 and exercises a real unique temporary main slot through the dynamic `<SlotName>.PreV<TargetVersion>Backup[.NNN]` chain: the selected attempt backup reloads with the original source checksum, pre-existing mismatched backups remain byte-identical and force a numbered non-overwriting attempt, the migrated main slot passes write/reload serialization equality, and an already-current slot is idempotent without a new backup. Failure injection at backup, dispatcher, validation, main-write, and post-write reload/equality boundaries must prove the main slot and live `RuntimeState` remain equal to their pre-call values; after a main write, rollback must use only that attempt's checksum-matched backup and reload-verify the original main checksum. Route lifecycle/card-adapter tests prove the exact `8 + 5 + 3 + 2 = 18` base recipe; chapter-transition tests prove only chapter 3 settles or clears the run. Any missing real-slot proof is a hard stop.
 
-- [ ] **Step 5: Save and normally close the editor, then rerun the final full balance matrix alone**
+- [ ] **Step 5: Normally close the test editor, then run the final official balance certification alone**
 
-Invoke the safe-close orchestrator; it must prove `UnrealEditor.exe` exited before launching a single sequential commandlet process:
+First use UE MCP to save dirty packages, require `dirty_after` empty, request normal editor quit, and prove the Step-4 GUI process exited. Do not force-close it. Then invoke the official certification wrapper from a clean process state. The 60-minute hard limit applies to this one certification command: its own timer starts before its internal cold compile and ends only after validated reports are flushed and checksummed. Task-17 visual checks and later PIE acceptance are separate gates and are not hidden inside or charged against this balance-certification clock.
 
 ```powershell
-python scripts/run_route_balance_matrix.py --mode full --shard-count 16 --jobs 1 --resume --close-editor-safely --max-estimated-minutes 120 --wall-budget-minutes 120 --out-dir Saved/BalanceReports/RouteEnemies/V1/Final
+$RunId = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+python scripts/run_route_balance_certification.py --fresh --target-seconds 1800 --wall-budget-seconds 3600 --max-battle-us 1000000 --desired-effective-battles 2400 --shard-count 1 --jobs 1 --out-dir "Saved/BalanceReports/RouteEnemies/V1/Final-$RunId"
 ```
 
-Expected: no GUI/commandlet overlap; exactly 58,500 single encounters and 100 full routes satisfy the frozen coverage schedules; measured wall time is at most 120 minutes; no invalid/nondeterministic/coverage/pairing/guard failure exists; every locked win-rate/equipment/NPC gate passes; source hashes remain unchanged; and repeated aggregate output is byte-identical.
+Expected: no GUI/commandlet overlap; the one-battle preflight passes below one second and is reused; the selected `Full`, `Standard`, or `Compact` profile has its exact `6N` non-route battles and `7N` top-level work items, while actual effective battles equal `6N + sum(route_battle_count)` and stay at or below `2400`, `1200`, or `864`. `Full` is mandatory when projected below 30 minutes. End-to-end certification time is below 60 minutes, no individual battle reaches one second, and no invalid/nondeterministic/coverage/pairing/guard failure exists. Every locked pooled win-rate/equipment/NPC gate passes with profile/sample-size/confidence fields, source hashes remain unchanged, and repeated aggregation of the same raw outputs is byte-identical.
 
 - [ ] **Step 6: Reopen through the cold pipeline and rerun player-facing PIE acceptance**
 
@@ -1629,7 +1677,8 @@ Expected: verification is committed, no named plan file is missing, and remainin
 - [ ] Opening deck remains exactly `8 + 5 + 3 + 2 = 18`; global definitions remain 174; each NPC exposes `4 unique / 12 repeated personal / 3 locked battle` and closes its loop.
 - [ ] Chapter transitions heal hero/partner/NPC, clear battle-local effects, and preserve every route-growth field.
 - [ ] Clear/fail/abandon settlements convert at the locked ratios exactly once and survive replay/reload safely.
-- [ ] Base-pressure, full-route 85% target band, equipment `+60/+150/+300%`, and NPC contribution/consumption gates pass the final paired 100-seed matrix.
+- [ ] The final fresh declared profile passes base-pressure, full-route 85% target band, pooled equipment `+60/+150/+300%`, and pooled NPC contribution/consumption gates with explicit profile, sample size, and confidence; `Full` uses 100 seeds when its projection fits 30 minutes.
+- [ ] The official balance command includes its own cold compile, editor lifecycle, one-battle preflight, matrix, aggregation, and checksum write; it stays below 60 minutes, targets 30 minutes, and every battle is strictly below one second.
 - [ ] Six profession partners share six approved simplified-Q V1 identities; six task NPCs retain six distinct approved identities; all have standing art, eight directions, battle Idle, card/Codex art, and new PaperZD assembly.
 - [ ] Eighteen new monster suites and seven one-color low-saturation ink status glyphs are approved/imported; existing three bosses and all protected user assets remain unchanged.
 - [ ] Player-facing PIE proves formation, intents, target selection, damage/status state, phases, chapters, rewards, settlement, hover Tooltips, and post-modal mouse recovery.
