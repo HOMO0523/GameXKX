@@ -1,6 +1,8 @@
 #include "UI/GameXXKMVPCommandRouter.h"
 
 #include "GameXXKMVPRules.h"
+#include "GameXXKRelicCatalog.h"
+#include "GameXXKRouteEncounterCatalog.h"
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
@@ -24,6 +26,9 @@ namespace
 	static const FName SelectStart(TEXT("SelectStart"));
 	static const FName SelectBattle(TEXT("SelectBattle"));
 	static const FName ResolveEventGold(TEXT("ResolveEventGold"));
+	static const FName ResolveRouteChoice0(TEXT("ResolveRouteChoice0"));
+	static const FName ResolveRouteChoice1(TEXT("ResolveRouteChoice1"));
+	static const FName ResolveRouteChoice2(TEXT("ResolveRouteChoice2"));
 	static const FName ResolveCampHeal(TEXT("ResolveCampHeal"));
 	static const FName CompleteMerchantNode(TEXT("CompleteMerchantNode"));
 	static const FName SelectBoss(TEXT("SelectBoss"));
@@ -55,6 +60,26 @@ namespace
 		}
 		OutNodeId = FCString::Atoi(*IndexString);
 		return OutNodeId >= 0;
+	}
+
+	static const FName& RouteChoiceCommandForIndex(const int32 ChoiceIndex)
+	{
+		static const FName ChoiceCommands[3] = {ResolveRouteChoice0, ResolveRouteChoice1, ResolveRouteChoice2};
+		check(ChoiceIndex >= 0 && ChoiceIndex < UE_ARRAY_COUNT(ChoiceCommands));
+		return ChoiceCommands[ChoiceIndex];
+	}
+
+	static bool TryGetRouteChoiceIndex(const FName CommandName, int32& OutChoiceIndex)
+	{
+		for (int32 ChoiceIndex = 0; ChoiceIndex < 3; ++ChoiceIndex)
+		{
+			if (CommandName == RouteChoiceCommandForIndex(ChoiceIndex))
+			{
+				OutChoiceIndex = ChoiceIndex;
+				return true;
+			}
+		}
+		return false;
 	}
 
 	static FName MakeIndexedCommandName(const TCHAR* Prefix, int32 SlotIndex)
@@ -90,6 +115,33 @@ namespace
 	static void AddCommand(TArray<FGameXXKMVPCommandDescriptor>& Commands, FName Name, const TCHAR* Label, bool bEnabled)
 	{
 		Commands.Emplace(Name, FText::FromString(Label), bEnabled);
+	}
+
+	static void AddPendingRouteChoiceCommands(TArray<FGameXXKMVPCommandDescriptor>& Commands, const FGameXXKRuntimeState& State)
+	{
+		if (!State.CardRun.PendingRelicOffer.RelicIds.IsEmpty())
+		{
+			for (int32 ChoiceIndex = 0; ChoiceIndex < State.CardRun.PendingRelicOffer.RelicIds.Num() && ChoiceIndex < 3; ++ChoiceIndex)
+			{
+				const FGameXXKRelicDefinition* Relic = FGameXXKRelicCatalog::FindDefinition(State.CardRun.PendingRelicOffer.RelicIds[ChoiceIndex]);
+				Commands.Emplace(
+					RouteChoiceCommandForIndex(ChoiceIndex),
+					Relic ? FText::Format(NSLOCTEXT("GameXXKMVPCommandRouter", "ChooseRelic", "选择遗物 · {0}"), Relic->DisplayName)
+						: NSLOCTEXT("GameXXKMVPCommandRouter", "ChooseRelicUnknown", "选择遗物"),
+					Relic != nullptr);
+			}
+			return;
+		}
+
+		const FGameXXKRouteEncounterDefinition* Encounter = FGameXXKRouteEncounterCatalog::FindDefinition(State.CardRun.PendingEvent.EncounterId);
+		if (!Encounter)
+		{
+			return;
+		}
+		for (int32 ChoiceIndex = 0; ChoiceIndex < Encounter->Choices.Num() && ChoiceIndex < 3; ++ChoiceIndex)
+		{
+			Commands.Emplace(RouteChoiceCommandForIndex(ChoiceIndex), Encounter->Choices[ChoiceIndex].Label, true);
+		}
 	}
 
 	static void AddSaveSlotCommands(TArray<FGameXXKMVPCommandDescriptor>& Commands)
@@ -303,7 +355,7 @@ TArray<FGameXXKMVPCommandDescriptor> GameXXKMVPCommandRouter::BuildVisibleComman
 		break;
 	case EGameXXKScreen::WorldMap:
 		AddCommand(Commands, SelectQingshan, TEXT("Qingshan Town"), State.UnlockedRegions.Contains(UGameXXKMVPRules::RegionQingshan()));
-		AddCommand(Commands, SelectTanjiang, TEXT("Tanjiang Town"), State.UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));
+		AddCommand(Commands, SelectTanjiang, TEXT("Tanjiang Town"), false);
 		AddCommand(Commands, SaveGame, TEXT("Save Game"), true);
 		AddSaveSlotCommands(Commands);
 		break;
@@ -347,10 +399,6 @@ TArray<FGameXXKMVPCommandDescriptor> GameXXKMVPCommandRouter::BuildVisibleComman
 			if (HasReachableNodeKind(State, EGameXXKNodeKind::Battle) || HasReachableNodeKind(State, EGameXXKNodeKind::Elite))
 			{
 				AddCommand(Commands, SelectBattle, TEXT("Battle Node"), true);
-			}
-			if (HasReachableNodeKind(State, EGameXXKNodeKind::Event) || HasReachableNodeKind(State, EGameXXKNodeKind::Chest) || HasReachableNodeKind(State, EGameXXKNodeKind::Merchant))
-			{
-				AddCommand(Commands, ResolveEventGold, TEXT("Event: Take Gold"), true);
 			}
 			if (HasReachableNodeKind(State, EGameXXKNodeKind::Camp))
 			{
@@ -399,7 +447,7 @@ TArray<FGameXXKMVPCommandDescriptor> GameXXKMVPCommandRouter::BuildVisibleComman
 		AddSaveSlotCommands(Commands);
 		break;
 	case EGameXXKScreen::RouteEvent:
-		AddCommand(Commands, ResolveEventGold, TEXT("Event: Take Gold"), true);
+		AddPendingRouteChoiceCommands(Commands, State);
 		break;
 	case EGameXXKScreen::RouteCamp:
 		AddCommand(Commands, ResolveCampHeal, TEXT("Camp: Heal"), true);
@@ -426,7 +474,8 @@ TArray<FGameXXKMVPRouteNodeDescriptor> GameXXKMVPCommandRouter::BuildRouteMapNod
 	}
 
 	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
-	if (State.Screen != EGameXXKScreen::DungeonMap || !State.bDungeonActive)
+	const bool bRouteEventOverlay = State.Screen == EGameXXKScreen::RouteEvent;
+	if ((State.Screen != EGameXXKScreen::DungeonMap && !bRouteEventOverlay) || !State.bDungeonActive)
 	{
 		return Nodes;
 	}
@@ -440,7 +489,7 @@ TArray<FGameXXKMVPRouteNodeDescriptor> GameXXKMVPCommandRouter::BuildRouteMapNod
 				FText::FromString(LabelForNode(RouteNode.NodeKind)),
 				RouteNode.NodeKind,
 				RouteNode.NodeId,
-				State.ReachableRouteNodeIds.Contains(RouteNode.NodeId),
+				!bRouteEventOverlay && State.ReachableRouteNodeIds.Contains(RouteNode.NodeId),
 				RouteNode.NormalizedPosition,
 				RouteNode.OutgoingNodeIds);
 		}
@@ -459,7 +508,7 @@ TArray<FGameXXKMVPRouteNodeDescriptor> GameXXKMVPCommandRouter::BuildRouteMapNod
 			FText::FromString(LabelForNode(NodeKind)),
 			NodeKind,
 			NodeIndex,
-			NodeIndex == State.DungeonNodeIndex,
+			!bRouteEventOverlay && NodeIndex == State.DungeonNodeIndex,
 			FVector2D(X, Y));
 	}
 
@@ -514,6 +563,11 @@ bool GameXXKMVPCommandRouter::ExecuteVisibleCommand(UGameXXKMVPSubsystem* Subsys
 	{
 		return FinishCommandAndTravel(Subsystem, Subsystem->SelectRouteNodeById(RouteNodeId));
 	}
+	int32 RouteChoiceIndex = INDEX_NONE;
+	if (TryGetRouteChoiceIndex(CommandName, RouteChoiceIndex))
+	{
+		return FinishCommandAndTravel(Subsystem, Subsystem->ResolveRouteEncounterChoice(RouteChoiceIndex));
+	}
 	if (CommandName == SaveGame)
 	{
 		return SavePlayableSlot(Subsystem, SlotName, UserIndex);
@@ -528,7 +582,7 @@ bool GameXXKMVPCommandRouter::ExecuteVisibleCommand(UGameXXKMVPSubsystem* Subsys
 	}
 	if (CommandName == OpenWorldMap)
 	{
-		return FinishCommand(Subsystem->OpenWorldMap());
+		return FinishCommandAndTravel(Subsystem, Subsystem->OpenWorldMap());
 	}
 	if (CommandName == AcceptQuest)
 	{

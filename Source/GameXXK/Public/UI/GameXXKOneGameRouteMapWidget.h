@@ -16,6 +16,7 @@ class USizeBox;
 class UTexture2D;
 class UTextBlock;
 class UUserWidget;
+class UVerticalBox;
 class UWidget;
 
 UENUM(BlueprintType)
@@ -118,6 +119,31 @@ struct GAMEXXK_API FGameXXKOneGameRouteNodeVisualState
 	FString IconPath;
 };
 
+/** Tick-free route-map HUD data projected from the authoritative run state. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKRouteMapSummaryView
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 RouteTravelMoney = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 CompletedNodeCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 TotalNodeCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 CapacityUsed = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 CapacityLimit = 12;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	bool bCapacityValid = false;
+};
+
 UCLASS(Blueprintable)
 class GAMEXXK_API UGameXXKOneGameRouteMapWidget : public UGameXXKMVPWidgetBase
 {
@@ -143,6 +169,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
 	TArray<FGameXXKOneGameRouteNodeVisualState> GetRouteNodeVisualStatesForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap|Test")
+	FGameXXKRouteMapSummaryView GetRouteSummaryViewForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap|Test")
+	FText GetRouteMoneySummaryTextForTest() const;
 
 	void SetRouteMapViewportGeometry(FVector2D InViewportPosition, FVector2D InViewportSize);
 
@@ -200,7 +232,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
 	float GetLastAppliedScrollOffsetForTest() const;
 
-	bool IsRouteScrollBarHiddenForTest() const;
+	bool IsRouteScrollBarVisibleForTest() const;
 	float GetMaxScrollOffsetForTest() const;
 	bool HasRouteDragSurfaceForTest() const;
 	bool ApplyRouteMapDragDeltaForTest(float PointerDeltaY);
@@ -292,6 +324,8 @@ private:
 	FEventReply HandleRouteDragSurfaceMouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
 
 	void BuildProgrammaticLayout();
+	FGameXXKRouteMapSummaryView BuildRouteSummaryView() const;
+	void UpdateRouteSummary();
 	void ConfigureNodeButton(int32 ButtonIndex, const FGameXXKOneGameRouteNode* Node);
 	void ConfigureLineVisual(int32 LineIndex, const TArray<FGameXXKOneGameRouteNode>& Nodes);
 	void ExecuteNodeButtonAtIndex(int32 ButtonIndex);
@@ -378,6 +412,21 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UScrollBox> RouteScrollBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> RouteSummaryBorder;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> RouteSummaryStack;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> RouteMoneySummaryText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> RouteProgressSummaryText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> RouteCapacitySummaryText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<USizeBox> RouteContentSizeBox;

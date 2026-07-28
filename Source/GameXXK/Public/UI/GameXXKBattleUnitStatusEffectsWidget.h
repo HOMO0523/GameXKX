@@ -21,8 +21,15 @@ public:
 	bool HasRuntimeWidgetTreeForTest() const;
 	static FString BuildStatusText(const TArray<FGameXXKCardStatusStack>& InStatuses);
 	static TArray<FGameXXKBattleStatusBadgeModel> BuildBadgeModels(int32 InArmor, const TArray<FGameXXKCardStatusStack>& InStatuses);
+
+	/** Read-only rendered-badge seams used by the real-PIE HUD probe. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	int32 GetIconCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	FName GetIconIdForTest(int32 Index) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	FString GetIconDisplayedStackForTest(int32 Index) const;
 	int32 GetIconRebuildGenerationForTest() const;
 	static ESlateVisibility GetRootHitTestVisibilityForTest();

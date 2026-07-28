@@ -6,7 +6,6 @@
 #include "GameFramework/Pawn.h"
 #include "Interaction/GameXXKInteractionComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
@@ -120,37 +119,42 @@ bool AGameXXKRouteEncounterSceneActor::ApplyDefaultInteraction(APawn* Instigator
 		return false;
 	}
 
-	switch (EncounterScreen)
+	// Resolution is deliberately controller-owned.  Existing Blueprint callers
+	// still get a useful interaction here--opening the modal--but can never
+	// mutate a route node until the player clicks a visible panel action.
+	AGameXXKMVPPlayerController* PlayerController = InstigatorPawn
+		? Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController())
+		: nullptr;
+	if (!PlayerController && GetWorld())
 	{
-	case EGameXXKScreen::RouteEvent:
-		bLastInteractionSuccessful = Subsystem->ResolveEventReward(true);
-		break;
-	case EGameXXKScreen::RouteCamp:
-		bLastInteractionSuccessful = Subsystem->ResolveCampReward(true);
-		break;
-	case EGameXXKScreen::RouteMerchant:
-		bLastInteractionSuccessful = Subsystem->ResolveMerchantRouteNode();
-		break;
-	default:
-		bLastInteractionSuccessful = false;
-		break;
+		PlayerController = Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
 	}
 
-	LastFailureReason = bLastInteractionSuccessful
+	// This actor is the only production route-panel source.  The controller
+	// re-checks that this exact actor is still the instigator's focused target,
+	// which also prevents InteractionComponent's nearby-target fallback from
+	// turning an unfocused F press into a route resolution path.
+	const bool bOpened = PlayerController && PlayerController->OpenRouteEncounterPanelFromActor(this);
+	bLastInteractionSuccessful = false;
+	LastFailureReason = bOpened
 		? FText::GetEmpty()
-		: NSLOCTEXT("GameXXK", "RouteEncounterResolveFailed", "节点尚未满足条件");
+		: NSLOCTEXT("GameXXK", "RouteEncounterOpenFailed", "无法打开遭遇选择");
 	if (FeedbackText)
 	{
-		FeedbackText->SetText(bLastInteractionSuccessful ? BuildDefaultLabel() : LastFailureReason);
+		FeedbackText->SetText(bOpened ? BuildDefaultLabel() : LastFailureReason);
 	}
+	return bOpened;
+}
 
-	if (bLastInteractionSuccessful)
+void AGameXXKRouteEncounterSceneActor::RecordExplicitChoiceResolved(APawn* InstigatorPawn)
+{
+	bLastInteractionSuccessful = true;
+	LastFailureReason = FText::GetEmpty();
+	if (FeedbackText)
 	{
-		GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
-		RefreshPlayerFlowWidgets(InstigatorPawn);
+		FeedbackText->SetText(BuildDefaultLabel());
 	}
-
-	return bLastInteractionSuccessful;
+	OnEncounterInteractionResolved(InstigatorPawn, true, LastFailureReason);
 }
 
 void AGameXXKRouteEncounterSceneActor::SetEncounterScreenForTest(EGameXXKScreen InEncounterScreen)
@@ -171,8 +175,13 @@ FText AGameXXKRouteEncounterSceneActor::GetInteractionPrompt_Implementation() co
 
 void AGameXXKRouteEncounterSceneActor::Interact_Implementation(APawn* InstigatorPawn)
 {
-	const bool bSucceeded = ApplyDefaultInteraction(InstigatorPawn);
-	OnEncounterInteractionResolved(InstigatorPawn, bSucceeded, LastFailureReason);
+	const bool bOpened = ApplyDefaultInteraction(InstigatorPawn);
+	// Opening a modal is not a route-node resolution.  Blueprints that consume
+	// OnEncounterInteractionResolved must only observe a successful choice.
+	if (!bOpened)
+	{
+		OnEncounterInteractionResolved(InstigatorPawn, false, LastFailureReason);
+	}
 }
 
 UGameXXKMVPSubsystem* AGameXXKRouteEncounterSceneActor::ResolveMVPSubsystem(APawn* InstigatorPawn) const
@@ -200,11 +209,11 @@ FText AGameXXKRouteEncounterSceneActor::BuildDefaultLabel() const
 	switch (EncounterScreen)
 	{
 	case EGameXXKScreen::RouteEvent:
-		return NSLOCTEXT("GameXXK", "RouteEncounterEventLabel", "F: 处理事件");
+		return NSLOCTEXT("GameXXK", "RouteEncounterEventLabel", "F: 查看事件选择");
 	case EGameXXKScreen::RouteCamp:
-		return NSLOCTEXT("GameXXK", "RouteEncounterCampLabel", "F: 休息");
+		return NSLOCTEXT("GameXXK", "RouteEncounterCampLabel", "F: 查看营火选择");
 	case EGameXXKScreen::RouteMerchant:
-		return NSLOCTEXT("GameXXK", "RouteEncounterMerchantLabel", "F: 离开商人");
+		return NSLOCTEXT("GameXXK", "RouteEncounterMerchantLabel", "F: 查看行商选择");
 	default:
 		return NSLOCTEXT("GameXXK", "RouteEncounterUnknownLabel", "F");
 	}

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameXXKEnemyTypes.h"
+#include "GameXXKEquipmentSetCatalog.h"
 #include "GameXXKCardTypes.generated.h"
 
 /** Card-data enum values are serialized contract values. Append new values; never renumber existing values. */
@@ -54,6 +56,16 @@ enum class EGameXXKCardRarity : uint8
 	Common = 2,
 	Rare = 3,
 	Boss = 4
+};
+
+/** Independent card/relic quality contract. Do not conflate this with acquisition-source rarity. */
+UENUM(BlueprintType)
+enum class EGameXXKCardQuality : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	Common = 1 UMETA(DisplayName = "普通"),
+	Rare = 2 UMETA(DisplayName = "稀有"),
+	Epic = 3 UMETA(DisplayName = "珍稀")
 };
 
 UENUM(BlueprintType)
@@ -116,7 +128,14 @@ enum class EGameXXKCardStatus : uint8
 	NextTerrainCardEnergyReduction = 17,
 	RedirectSingleTargetEnemyAttack = 18,
 	/** A one-round terrain-bonus doubling window; expires before the next player phase. */
-	TerrainBonusDoubleThisRound = 19
+	TerrainBonusDoubleThisRound = 19,
+	Medicine = 20,
+	Weak = 21,
+	Wealth = 22,
+	Rage = 23,
+	Prey = 24,
+	Charge = 25,
+	Counter = 26
 };
 
 UENUM(BlueprintType)
@@ -510,6 +529,9 @@ struct GAMEXXK_API FGameXXKCardDefinition
 	EGameXXKCardRarity Rarity = EGameXXKCardRarity::Invalid;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardQuality BaseQuality = EGameXXKCardQuality::Common;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKCharacterRole Role = EGameXXKCharacterRole::Invalid;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -609,6 +631,9 @@ struct GAMEXXK_API FGameXXKCardInstance
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName CardId = NAME_None;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardQuality CurrentQuality = EGameXXKCardQuality::Common;
+
 	/** Existing battle-unit identity; rules never substitute a UI index for this value. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName OwnerUnitId = NAME_None;
@@ -695,6 +720,7 @@ struct GAMEXXK_API FGameXXKBattleDeckState
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 SharedEnergy = 3;
 
+	/** Normal round-start refill target. Card effects may grow Hand to the rules-owned hard capacity. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 HandLimit = 5;
 
@@ -867,12 +893,25 @@ struct GAMEXXK_API FGameXXKCardCombatUnit
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 Defense = 0;
 
+	/** Persistent turn-order stat projected once from the permanent character loadout. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Speed = 1;
+
 	/** Armor is authoritative for card resolution and capped at 99. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 Armor = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 StableSortOrder = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName EnemyDefinitionId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 BattleSlotNumber = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 CombatLevel = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKCardStatusStack> Statuses;
@@ -994,6 +1033,10 @@ struct GAMEXXK_API FGameXXKCardBattleModifierRuntime
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName ModifierId = NAME_None;
 
+	/** Optional exact hand-card binding for a modifier that must never affect a different instance. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName RequiredPlayedCardInstanceId = NAME_None;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName SourceCardInstanceId = NAME_None;
 
@@ -1008,6 +1051,62 @@ struct GAMEXXK_API FGameXXKCardBattleModifierRuntime
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKCardBattleModifier Definition;
+};
+
+/** Declarative permanent-character equipment effect. Battle runtime materializes these at combat start. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKEquipmentActiveEffect
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
+	FName EffectId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
+	FName SourceCharacterId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
+	EGameXXKEquipmentSet Set = EGameXXKEquipmentSet::Invalid;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
+	int32 RequiredPieces = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
+	EGameXXKEquipmentSetBonusScope Scope = EGameXXKEquipmentSetBonusScope::Invalid;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
+	EGameXXKEquipmentSetBonusHook Hook = EGameXXKEquipmentSetBonusHook::Invalid;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
+	EGameXXKEquipmentModifierKind ModifierKind = EGameXXKEquipmentModifierKind::Invalid;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
+	int32 Magnitude = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
+	EGameXXKEquipmentMagnitudeUnit Unit = EGameXXKEquipmentMagnitudeUnit::Invalid;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
+	int32 MaxTriggersPerRound = 0;
+};
+
+/** One persistent equipment descriptor attached exactly once to its permanent party source. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKEquipmentBattleEffectRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKEquipmentActiveEffect ActiveEffect;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceCharacterId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 CurrentRoundTriggerCount = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 LastTriggerRound = 0;
 };
 
 /** Complete pure state of an in-progress card battle. It is deliberately independent from widget and scene indexes. */
@@ -1032,10 +1131,17 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	TArray<FGameXXKCardCombatUnit> Units;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<FName, FGameXXKEnemyBattleState> EnemyStates;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKCardGuardLinkRuntime> GuardLinks;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKCardBattleModifierRuntime> Modifiers;
+
+	/** Equipment snapshots are materialized at battle start; card rules must never recalculate loadouts. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKEquipmentBattleEffectRuntime> EquipmentEffects;
 
 	/** Monotonic per-battle source for stable modifier IDs. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
@@ -1048,6 +1154,14 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	/** End-of-round effects that augment the next player phase's normal three shared energy. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 PendingNextRoundEnergyBonus = 0;
+
+	/** One enemy-phase request to surcharge one deterministic playable instance after the next hand refresh. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingNextPlayerHandEnergySurcharge = 0;
+
+	/** Stable enemy source retained until the pending next-hand surcharge is materialized or expires. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName PendingNextPlayerHandEnergySurchargeSourceUnitId = NAME_None;
 };
 
 /** Read-only card-check result consumed by the hand UI before it enters the arrow-targeting state. */

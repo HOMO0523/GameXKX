@@ -6,7 +6,7 @@
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKCardRulesTest,
-	"GameXXK.Data.CardRules",
+	"GameXXK.Data.CardRules.CoreZoneAndHandCapacity",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 namespace
@@ -269,24 +269,42 @@ bool FGameXXKCardRulesTest::RunTest(const FString& Parameters)
 	FGameXXKBattleDeckState OversizedHandLimitDeck = Deck;
 	OversizedHandLimitDeck.HandLimit = MAX_int32;
 	const FString OversizedHandLimitSnapshot = DeckSnapshot(OversizedHandLimitDeck);
-	TestFalse(TEXT("serialized hand limits cannot overflow temporary-overdraw arithmetic"), GameXXKCardRules::DrawCards(OversizedHandLimitDeck, 1, true));
+	TestFalse(TEXT("serialized hand limits outside the hard-cap range are rejected"), GameXXKCardRules::DrawCards(OversizedHandLimitDeck, 1, 0));
 	TestEqual(TEXT("oversized hand limit rejection preserves every persisted deck field"), DeckSnapshot(OversizedHandLimitDeck), OversizedHandLimitSnapshot);
 	FGameXXKBattleDeckState StaleNoneChoiceDeck = Deck;
 	StaleNoneChoiceDeck.PendingChoice.Candidates.Add(StaleNoneChoiceDeck.Hand[0]);
 	const FString StaleNoneChoiceSnapshot = DeckSnapshot(StaleNoneChoiceDeck);
-	TestFalse(TEXT("no-pending-choice state rejects stale candidate UI data"), GameXXKCardRules::DrawCards(StaleNoneChoiceDeck, 1, false));
+	TestFalse(TEXT("no-pending-choice state rejects stale candidate UI data"), GameXXKCardRules::DrawCards(StaleNoneChoiceDeck, 1, 0));
 	TestEqual(TEXT("stale no-choice data rejection preserves every persisted deck field"), DeckSnapshot(StaleNoneChoiceDeck), StaleNoneChoiceSnapshot);
 
-	const FString FullHandSnapshot = DeckSnapshot(Deck);
-	TestTrue(TEXT("normal draw at the hand cap succeeds without burning cards"), GameXXKCardRules::DrawCards(Deck, 2, false));
-	TestEqual(TEXT("normal draw never exceeds the five-card hand cap"), Deck.Hand.Num(), 5);
-	TestEqual(TEXT("normal capped draw leaves state unchanged"), DeckSnapshot(Deck), FullHandSnapshot);
+	TestTrue(TEXT("card effects may draw beyond the five-card round refill target"), GameXXKCardRules::DrawCards(Deck, 2, 0));
+	TestEqual(TEXT("normal draw grows the hand beyond the round refill target"), Deck.Hand.Num(), 7);
+
+	FGameXXKBattleDeckState CapacityDeck;
+	TestTrue(TEXT("twenty-five-card capacity fixture initializes"), GameXXKCardRules::InitializeBattleDeck(CapacityDeck, MakeInstances(25), 1208));
+	TestTrue(TEXT("draw effects fill the hand to the twenty-card battle capacity"), GameXXKCardRules::DrawCards(CapacityDeck, 15, 0));
+	TestEqual(TEXT("the battle hand capacity is exactly twenty"), CapacityDeck.Hand.Num(), 20);
+	TestEqual(TEXT("five cards remain available before overflow"), CapacityDeck.DrawPile.Num(), 5);
+	const int32 OverflowRandomStateBefore = CapacityDeck.CurrentRandomState;
+	const TArray<FName> OverflowLedgerBefore = CapacityDeck.ActiveInstanceIds;
+	const int32 OverflowZoneCountBefore = CapacityDeck.DrawPile.Num() + CapacityDeck.Hand.Num() + CapacityDeck.DiscardPile.Num();
+	FGameXXKBattleDeckState CapacityTwin = CapacityDeck;
+	TestTrue(TEXT("draws beyond twenty resolve by shuffling the remainder back"), GameXXKCardRules::DrawCards(CapacityDeck, 3, 0));
+	TestTrue(TEXT("identical overflow shuffle also resolves"), GameXXKCardRules::DrawCards(CapacityTwin, 3, 0));
+	TestEqual(TEXT("overflow never grows the hand past twenty"), CapacityDeck.Hand.Num(), 20);
+	TestEqual(TEXT("overflow shuffle keeps every remaining card in the draw pile"), CapacityDeck.DrawPile.Num(), 5);
+	TestEqual(TEXT("overflow never shrinks or rewrites the battle instance ledger"), CapacityDeck.ActiveInstanceIds, OverflowLedgerBefore);
+	TestEqual(TEXT("overflow never removes a card from the battle zones"),
+		CapacityDeck.DrawPile.Num() + CapacityDeck.Hand.Num() + CapacityDeck.DiscardPile.Num(), OverflowZoneCountBefore);
+	TestNotEqual(TEXT("overflow shuffle advances the deterministic deck random state"), CapacityDeck.CurrentRandomState, OverflowRandomStateBefore);
+	TestEqual(TEXT("identical overflow shuffles produce identical complete state"), DeckSnapshot(CapacityDeck), DeckSnapshot(CapacityTwin));
+	TestTrue(TEXT("overflow shuffle keeps every card represented exactly once"), GameXXKCardRules::ValidateDeckState(CapacityDeck));
 	const FString NegativeDrawSnapshot = DeckSnapshot(Deck);
-	TestFalse(TEXT("negative draw count is rejected"), GameXXKCardRules::DrawCards(Deck, -1, false));
+	TestFalse(TEXT("negative draw count is rejected"), GameXXKCardRules::DrawCards(Deck, -1, 0));
 	TestEqual(TEXT("negative draw preserves every persisted deck field"), DeckSnapshot(Deck), NegativeDrawSnapshot);
-	const FString InvalidBeginInsightSnapshot = DeckSnapshot(Deck);
-	TestFalse(TEXT("insight is rejected without a free hand slot"), GameXXKCardRules::BeginInsight(Deck, 3));
-	TestEqual(TEXT("invalid insight begin preserves every persisted deck field"), DeckSnapshot(Deck), InvalidBeginInsightSnapshot);
+	const FString InvalidBeginInsightSnapshot = DeckSnapshot(CapacityDeck);
+	TestFalse(TEXT("insight is rejected at the twenty-card battle capacity"), GameXXKCardRules::BeginInsight(CapacityDeck, 2));
+	TestEqual(TEXT("capacity-blocked insight preserves every persisted deck field"), DeckSnapshot(CapacityDeck), InvalidBeginInsightSnapshot);
 	const FString InvalidCancelInsightSnapshot = DeckSnapshot(Deck);
 	TestFalse(TEXT("cancel insight is rejected without an active insight choice"), GameXXKCardRules::CancelInsight(Deck));
 	TestEqual(TEXT("invalid insight cancel preserves every persisted deck field"), DeckSnapshot(Deck), InvalidCancelInsightSnapshot);
@@ -297,14 +315,14 @@ bool FGameXXKCardRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("unknown hand instance does not mutate any zone"), DeckSnapshot(Deck), MissingMoveSnapshot);
 
 	FGameXXKBattleDeckState DrawDiscardDeck;
-	TestTrue(TEXT("temporary-overdraw deck initializes"), GameXXKCardRules::InitializeBattleDeck(DrawDiscardDeck, Instances, 1209));
+	TestTrue(TEXT("declared-discard deck initializes"), GameXXKCardRules::InitializeBattleDeck(DrawDiscardDeck, Instances, 1209));
 	const FName PlayedInstanceId = DrawDiscardDeck.Hand.Last().InstanceId;
 	TestTrue(TEXT("a played card can move from hand to discard"), GameXXKCardRules::MoveHandCardToDiscard(DrawDiscardDeck, PlayedInstanceId));
 	TestEqual(TEXT("played card frees a hand slot"), DrawDiscardDeck.Hand.Num(), 4);
-	TestTrue(TEXT("draw two may temporarily make a six-card hand"), GameXXKCardRules::DrawCards(DrawDiscardDeck, 2, true));
-	TestEqual(TEXT("temporary overdraw reaches six cards"), DrawDiscardDeck.Hand.Num(), 6);
-	TestEqual(TEXT("temporary overdraw opens forced discard"), DrawDiscardDeck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
-	TestEqual(TEXT("temporary overdraw requires exactly one discard"), DrawDiscardDeck.PendingChoice.RequiredCount, 1);
+	TestTrue(TEXT("draw two with one declared discard may make a six-card hand"), GameXXKCardRules::DrawCards(DrawDiscardDeck, 2, 1));
+	TestEqual(TEXT("the draw reaches six cards above the round-refill target"), DrawDiscardDeck.Hand.Num(), 6);
+	TestEqual(TEXT("declared discard opens forced discard"), DrawDiscardDeck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
+	TestEqual(TEXT("declared discard requires exactly one discard"), DrawDiscardDeck.PendingChoice.RequiredCount, 1);
 	TestEqual(TEXT("forced discard exposes every current hand card as a candidate"), DrawDiscardDeck.PendingChoice.Candidates.Num(), 6);
 	FGameXXKBattleDeckState OverflowedForcedDiscardDeck = DrawDiscardDeck;
 	OverflowedForcedDiscardDeck.PendingChoice.RequiredCount = MAX_int32;
@@ -312,7 +330,7 @@ bool FGameXXKCardRulesTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("serialized forced-discard count cannot overflow hand-limit validation"), GameXXKCardRules::SubmitForcedDiscard(OverflowedForcedDiscardDeck, { OverflowedForcedDiscardDeck.Hand.Last().InstanceId }));
 	TestEqual(TEXT("overflowed forced-discard rejection preserves every persisted deck field"), DeckSnapshot(OverflowedForcedDiscardDeck), OverflowedForcedDiscardSnapshot);
 	const FString PendingDrawSnapshot = DeckSnapshot(DrawDiscardDeck);
-	TestFalse(TEXT("pending forced discard blocks an additional draw"), GameXXKCardRules::DrawCards(DrawDiscardDeck, 1, false));
+	TestFalse(TEXT("pending forced discard blocks an additional draw"), GameXXKCardRules::DrawCards(DrawDiscardDeck, 1, 0));
 	TestEqual(TEXT("pending-blocked draw preserves every persisted deck field"), DeckSnapshot(DrawDiscardDeck), PendingDrawSnapshot);
 
 	const FString WrongDiscardSnapshot = DeckSnapshot(DrawDiscardDeck);
@@ -331,7 +349,7 @@ bool FGameXXKCardRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("test setup preserves zone invariant before the just-played move"), GameXXKCardRules::ValidateDeckState(ReshuffleDeck));
 	const FName JustMovedInstanceId = ReshuffleDeck.Hand.Last().InstanceId;
 	TestTrue(TEXT("just-played card moves to discard before the empty draw"), GameXXKCardRules::MoveHandCardToDiscard(ReshuffleDeck, JustMovedInstanceId));
-	TestTrue(TEXT("draw from an empty pile deterministically reshuffles discard"), GameXXKCardRules::DrawCards(ReshuffleDeck, 1, false));
+	TestTrue(TEXT("draw from an empty pile deterministically reshuffles discard"), GameXXKCardRules::DrawCards(ReshuffleDeck, 1, 0));
 	TestEqual(TEXT("reshuffle consumes the entire discard pile"), ReshuffleDeck.DiscardPile.Num(), 0);
 	TestTrue(TEXT("reshuffle includes the just-moved instance"), IsInAnyZone(ReshuffleDeck, JustMovedInstanceId));
 	TestFalse(TEXT("just-moved instance is not left outside the reshuffled draw/hand zones"), ReshuffleDeck.DiscardPile.ContainsByPredicate([JustMovedInstanceId](const FGameXXKCardInstance& Instance) { return Instance.InstanceId == JustMovedInstanceId; }));
@@ -348,8 +366,8 @@ bool FGameXXKCardRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("first deterministic reshuffle setup moves its played card"), GameXXKCardRules::MoveHandCardToDiscard(SameReshuffleDeckA, SameReshuffleDeckA.Hand.Last().InstanceId));
 	TestTrue(TEXT("second deterministic reshuffle setup moves its played card"), GameXXKCardRules::MoveHandCardToDiscard(SameReshuffleDeckB, SameReshuffleDeckB.Hand.Last().InstanceId));
 	TestEqual(TEXT("identical pre-reshuffle states are byte-for-byte equivalent"), DeckSnapshot(SameReshuffleDeckA), DeckSnapshot(SameReshuffleDeckB));
-	TestTrue(TEXT("first deterministic reshuffle draws"), GameXXKCardRules::DrawCards(SameReshuffleDeckA, 1, false));
-	TestTrue(TEXT("second deterministic reshuffle draws"), GameXXKCardRules::DrawCards(SameReshuffleDeckB, 1, false));
+	TestTrue(TEXT("first deterministic reshuffle draws"), GameXXKCardRules::DrawCards(SameReshuffleDeckA, 1, 0));
+	TestTrue(TEXT("second deterministic reshuffle draws"), GameXXKCardRules::DrawCards(SameReshuffleDeckB, 1, 0));
 	TestEqual(TEXT("identical reshuffles produce the same complete state"), DeckSnapshot(SameReshuffleDeckA), DeckSnapshot(SameReshuffleDeckB));
 	TestEqual(TEXT("identical reshuffles persist the same random state"), SameReshuffleDeckA.CurrentRandomState, SameReshuffleDeckB.CurrentRandomState);
 

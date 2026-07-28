@@ -21,34 +21,34 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::DungeonMap),
 		FName(TEXT("/Game/GameXXK/Maps/L_RouteMap")));
 	TestEqual(
-		TEXT("route event map"),
+		TEXT("route event stays on the route map beneath its HUD modal"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::RouteEvent),
-		FName(TEXT("/Game/GameXXK/Maps/L_RouteEvent")));
+		FName(TEXT("/Game/GameXXK/Maps/L_RouteMap")));
 	TestEqual(
 		TEXT("route camp map"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::RouteCamp),
 		FName(TEXT("/Game/GameXXK/Maps/L_RouteCamp")));
 	TestEqual(
-		TEXT("route merchant map"),
+		TEXT("route merchant stays on the route map beneath its HUD modal"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::RouteMerchant),
-		FName(TEXT("/Game/GameXXK/Maps/L_RouteMerchant")));
+		FName(TEXT("/Game/GameXXK/Maps/L_RouteMap")));
 	TestEqual(
-		TEXT("GameXXK battle scene map"),
+		TEXT("GameXXK town-backdrop battle map"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::Battle),
-		FName(TEXT("/Game/GameXXK/Maps/L_BattleScene")));
+		FName(TEXT("/Game/GameXXK/Maps/L_BattleTown")));
 
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
 	State.Screen = EGameXXKScreen::Battle;
 	TestEqual(
-		TEXT("runtime battle state maps to GameXXK battle scene"),
+		TEXT("runtime battle state maps to GameXXK town-backdrop battle map"),
 		GameXXKLevelFlow::MapForRuntimeState(State),
-		FName(TEXT("/Game/GameXXK/Maps/L_BattleScene")));
+		FName(TEXT("/Game/GameXXK/Maps/L_BattleTown")));
 	TestTrue(
 		TEXT("PIE route map package matches route target"),
 		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap"), FName(TEXT("/Game/GameXXK/Maps/L_RouteMap"))));
 	TestTrue(
 		TEXT("PIE battle map package matches battle target"),
-		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_BattleScene"), FName(TEXT("/Game/GameXXK/Maps/L_BattleScene"))));
+		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_BattleTown"), FName(TEXT("/Game/GameXXK/Maps/L_BattleTown"))));
 	TestTrue(
 		TEXT("playable Asian Village demo is a Town gameplay map"),
 		GameXXKLevelFlow::IsTownGameplayMapPackage(TEXT("/Game/GameXXK/Maps/Prototype/UEDPIE_0_L_Qingshan_AsianVillage_Demo")));
@@ -60,7 +60,7 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 		GameXXKLevelFlow::IsTownGameplayMapPackage(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap")));
 	TestFalse(
 		TEXT("route map package does not match battle target"),
-		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap"), FName(TEXT("/Game/GameXXK/Maps/L_BattleScene"))));
+		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap"), FName(TEXT("/Game/GameXXK/Maps/L_BattleTown"))));
 
 	return true;
 }

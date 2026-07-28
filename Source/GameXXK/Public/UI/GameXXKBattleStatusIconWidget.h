@@ -23,13 +23,19 @@ public:
 	FName GetIconIdForTest() const;
 	FString GetDisplayedStackForTest() const;
 	static FString FormatStackForTest(int32 Stacks);
+	static float GetIconOverscanPaddingForTest();
 	static ESlateVisibility GetHitTargetVisibilityForTest();
 	static ESlateVisibility GetTooltipVisibilityForTest();
+	FReply GetMouseButtonDownReplyForTest() const;
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	bool DoesMouseDownPassThroughForTest() const;
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
 private:
+	static FReply MakeMouseButtonDownReply();
 	void EnsureWidgetTree();
 	void RefreshDisplay();
 

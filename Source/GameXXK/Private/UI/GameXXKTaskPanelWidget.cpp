@@ -19,25 +19,23 @@
 
 namespace
 {
-	const FVector2D PanelSize(1040.0f, 660.0f);
+	const FVector2D PanelSize(900.0f, 776.0f);
 	// The reference task panel supports three compact rows. Keep the row itself
 	// fixed instead of filling all remaining list height when only one task is
 	// available, so the paper frame and action keep their intended proportions.
 	constexpr float TaskEntryHeight = 145.0f;
 	constexpr float TaskEntryGap = 10.0f;
 	const FString TextureRoot(TEXT("/Game/GameXXK/UI/Tasks/Textures/"));
-	const FString PanelFrameTexturePath(TextureRoot + TEXT("T_TaskPanelFrame.T_TaskPanelFrame"));
+	const FString PsdTextureRoot(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/"));
+	const FString PanelFrameTexturePath(PsdTextureRoot + TEXT("Backgrounds/T_TownPsd_Background_Task.T_TownPsd_Background_Task"));
 	const FString BackArrowTexturePath(TextureRoot + TEXT("T_TaskPanelBackArrow.T_TaskPanelBackArrow"));
-	const FString TitleTexturePath(TextureRoot + TEXT("T_TaskPanelTitle.T_TaskPanelTitle"));
-	const FString TabSelectedTexturePath(TextureRoot + TEXT("T_TaskTabSelected.T_TaskTabSelected"));
-	const FString TabNormalTexturePath(TextureRoot + TEXT("T_TaskTabNormal.T_TaskTabNormal"));
-	const FString TabMainLabelTexturePath(TextureRoot + TEXT("T_TaskTabLabelMain.T_TaskTabLabelMain"));
-	const FString TabSideLabelTexturePath(TextureRoot + TEXT("T_TaskTabLabelSide.T_TaskTabLabelSide"));
-	const FString EntryFrameTexturePath(TextureRoot + TEXT("T_TaskEntryFrame.T_TaskEntryFrame"));
-	const FString AcceptActionTexturePath(TextureRoot + TEXT("T_TaskActionTrack.T_TaskActionTrack"));
-	const FString RewardCoinTexturePath(TextureRoot + TEXT("T_RewardCoin.T_RewardCoin"));
-	const FString RewardExperienceTexturePath(TextureRoot + TEXT("T_RewardExp.T_RewardExp"));
-	const FString RewardTokenTexturePath(TextureRoot + TEXT("T_RewardToken.T_RewardToken"));
+	const FString TabSelectedTexturePath(PsdTextureRoot + TEXT("Task/T_TownPsd_TaskTabOne.T_TownPsd_TaskTabOne"));
+	const FString TabNormalTexturePath(PsdTextureRoot + TEXT("Task/T_TownPsd_TaskTabTwo.T_TownPsd_TaskTabTwo"));
+	const FString EntryFrameTexturePath(PsdTextureRoot + TEXT("Task/T_TownPsd_TaskRow.T_TownPsd_TaskRow"));
+	const FString AcceptActionTexturePath(PsdTextureRoot + TEXT("Controls/T_TownPsd_ButtonPrimary.T_TownPsd_ButtonPrimary"));
+	const FString RewardCoinTexturePath(PsdTextureRoot + TEXT("Task/T_TownPsd_TaskRewardCoin.T_TownPsd_TaskRewardCoin"));
+	const FString RewardExperienceTexturePath(PsdTextureRoot + TEXT("Task/T_TownPsd_TaskRewardExperience.T_TownPsd_TaskRewardExperience"));
+	const FString RewardTokenTexturePath(PsdTextureRoot + TEXT("Task/T_TownPsd_TaskRewardJade.T_TownPsd_TaskRewardJade"));
 
 	UTexture2D* LoadTexture(const FString& Path)
 	{
@@ -321,24 +319,26 @@ void UGameXXKTaskPanelWidget::BuildProgrammaticLayout()
 	CloseButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleCloseClicked);
 	AddCanvasChild(ContentCanvas, CloseButton, FVector2D(12.0f, 25.0f), FVector2D(50.0f, 27.0f));
 
-	if (UImage* TitleImage = MakeImage(WidgetTree, TitleTexturePath, FVector2D(110.0f, 56.0f)))
+	if (UTextBlock* TitleText = MakeText(WidgetTree, NSLOCTEXT("GameXXKTaskPanel", "PanelTitle", "任务"), 26))
 	{
-		AddCanvasChild(ContentCanvas, TitleImage, FVector2D(72.0f, 10.0f), FVector2D(110.0f, 56.0f));
+		TitleText->SetJustification(ETextJustify::Center);
+		AddCanvasChild(ContentCanvas, TitleText, FVector2D(52.0f, 18.0f), FVector2D(120.0f, 42.0f));
 	}
 
-	auto MakeTabButton = [this, ContentCanvas](const FName Name, const FString& LabelTexturePath, const FVector2D& Position) -> UButton*
+	auto MakeTabButton = [this, ContentCanvas](const FName Name, const FText& Label, const FVector2D& Position) -> UButton*
 	{
 		UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
-		if (UImage* LabelImage = MakeImage(WidgetTree, LabelTexturePath, FVector2D(160.0f, 80.0f)))
+		if (UTextBlock* LabelText = MakeText(WidgetTree, Label, 18))
 		{
-			Button->SetContent(LabelImage);
+			LabelText->SetJustification(ETextJustify::Center);
+			Button->SetContent(LabelText);
 		}
 		AddCanvasChild(ContentCanvas, Button, Position, FVector2D(160.0f, 80.0f));
 		return Button;
 	};
 
-	MainTabButton = MakeTabButton(TEXT("TownTaskTabMain"), TabMainLabelTexturePath, FVector2D(12.0f, 110.0f));
-	SideTabButton = MakeTabButton(TEXT("TownTaskTabSide"), TabSideLabelTexturePath, FVector2D(12.0f, 204.0f));
+	MainTabButton = MakeTabButton(TEXT("TownTaskTabMain"), NSLOCTEXT("GameXXKTaskPanel", "MainTab", "主线"), FVector2D(12.0f, 110.0f));
+	SideTabButton = MakeTabButton(TEXT("TownTaskTabSide"), NSLOCTEXT("GameXXKTaskPanel", "SideTab", "支线"), FVector2D(12.0f, 204.0f));
 	if (MainTabButton)
 	{
 		MainTabButton->OnClicked.AddDynamic(this, &UGameXXKTaskPanelWidget::HandleMainTabClicked);
@@ -349,7 +349,7 @@ void UGameXXKTaskPanelWidget::BuildProgrammaticLayout()
 	}
 
 	TaskListBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("TownTaskList"));
-	AddCanvasChild(ContentCanvas, TaskListBox, FVector2D(200.0f, 92.0f), FVector2D(770.0f, 510.0f));
+	AddCanvasChild(ContentCanvas, TaskListBox, FVector2D(190.0f, 92.0f), FVector2D(620.0f, 620.0f));
 	RefreshTabVisuals();
 }
 
@@ -395,11 +395,11 @@ void UGameXXKTaskPanelWidget::RebuildTaskList()
 	{
 		const FGameXXKTaskView& Task = VisibleTasks[TaskIndex];
 		USizeBox* EntrySizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		EntrySizeBox->SetWidthOverride(770.0f);
+		EntrySizeBox->SetWidthOverride(620.0f);
 		EntrySizeBox->SetHeightOverride(TaskEntryHeight);
 		UBorder* EntryBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
 		EntryBorder->SetPadding(FMargin(28.0f, 12.0f));
-		EntryBorder->SetBrush(MakeTextureBoxBrush(EntryFrameTexturePath, FVector2D(770.0f, TaskEntryHeight), FMargin(0.055f, 0.18f)));
+		EntryBorder->SetBrush(MakeTextureBoxBrush(EntryFrameTexturePath, FVector2D(620.0f, TaskEntryHeight), FMargin(0.055f, 0.18f)));
 		EntrySizeBox->SetContent(EntryBorder);
 		if (UVerticalBoxSlot* EntrySlot = TaskListBox->AddChildToVerticalBox(EntrySizeBox))
 		{

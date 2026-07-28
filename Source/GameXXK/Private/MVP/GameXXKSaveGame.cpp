@@ -2,5 +2,6 @@
 
 UGameXXKSaveGame::UGameXXKSaveGame()
 {
-	SaveState = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
+	// Serialization-neutral by design: only the explicit new-game path creates starter content.
+	SaveState = FGameXXKSaveState();
 }

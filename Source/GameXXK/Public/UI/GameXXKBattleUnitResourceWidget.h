@@ -6,8 +6,12 @@
 #include "GameXXKBattleUnitResourceWidget.generated.h"
 
 class UHorizontalBox;
+class UImage;
+class UMaterialInstanceDynamic;
 class UProgressBar;
+class USizeBox;
 class UTextBlock;
+class UTexture2D;
 class UVerticalBox;
 
 /** Native, actor-independent screen-space projection of one unit's resources. */
@@ -17,22 +21,57 @@ class GAMEXXK_API UGameXXKBattleUnitResourceWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	void SetUnitResources(
+	void SetUnitVitals(
 		const FString& InSlotLabel,
 		const FText& InDisplayName,
 		int32 InCurrentHP,
 		int32 InMaxHP,
 		int32 InCurrentMana,
 		int32 InMaxMana,
-		bool bInShowQi);
+		bool bInShowMana);
 
 	bool PrepareForScreenSpaceEmbedding();
 	bool HasRuntimeWidgetTreeForTest() const;
+
+	/** Read-only rendered-value seams used by the real-PIE HUD probe. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	FString GetHealthDisplayTextForTest() const;
-	FString GetQiDisplayTextForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FString GetManaDisplayTextForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	float GetHealthPercentForTest() const;
-	float GetQiPercentForTest() const;
-	bool IsQiRowVisibleForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	float GetManaPercentForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	bool IsHealthFillLeftToRightForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	bool IsManaFillLeftToRightForTest() const;
+	static bool UsesWholeFullBarMaskForTest();
+
+	/** The four texture sources must remain distinct PSD-derived Track/Full assets. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FString GetHealthTrackResourcePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FString GetHealthFullResourcePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FString GetManaTrackResourcePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FString GetManaFullResourcePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FString GetResourceMaskMaterialPathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	bool IsManaRowVisibleForTest() const;
+	ESlateVisibility GetManaRowVisibilityForTest() const;
 	bool AreContentWidgetsHitTestTransparentForTest() const;
 	static ESlateVisibility GetRootHitTestVisibilityForTest();
 
@@ -56,16 +95,46 @@ private:
 	TObjectPtr<UTextBlock> HealthText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UProgressBar> HealthBar;
+	TObjectPtr<UImage> HealthBar;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UHorizontalBox> QiRow;
+	TObjectPtr<UProgressBar> HealthProgressBar;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> QiText;
+	TObjectPtr<USizeBox> HealthBarSizeBox;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UProgressBar> QiBar;
+	TObjectPtr<UMaterialInstanceDynamic> HealthMaskMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> HealthTrackTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> HealthFullTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> ManaRow;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ManaText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> ManaBar;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UProgressBar> ManaProgressBar;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> ManaBarSizeBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> ManaMaskMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> ManaTrackTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> ManaFullTexture;
 
 	FString SlotLabel;
 	FText DisplayName;
@@ -73,5 +142,7 @@ private:
 	int32 MaxHP = 1;
 	int32 CurrentMana = 0;
 	int32 MaxMana = 0;
-	bool bShowQi = false;
+	bool bShowMana = false;
+	float HealthPercent = 0.0f;
+	float ManaPercent = 0.0f;
 };

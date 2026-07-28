@@ -268,6 +268,24 @@ class UnrealMCPClient:
         self.call_tool("StopPIE", toolset_name=EDITOR_TOOLSET, timeout=max(self.timeout, 45.0))
         return True
 
+    def wait_for_pie_state(self, expected: bool, timeout: float = 30.0, interval: float = 0.25) -> bool:
+        """Poll the editor until PIE reaches ``expected`` or the deadline expires.
+
+        StopPIE acknowledges the request before the editor has necessarily
+        finished tearing down its PIE world, so callers that reuse the editor
+        must wait for the observed state rather than rely on a fixed sleep.
+        """
+        expected_state = bool(expected)
+        deadline = time.monotonic() + max(0.0, float(timeout))
+        poll_interval = max(0.01, float(interval))
+        while True:
+            if self.is_in_pie() == expected_state:
+                return True
+            remaining = deadline - time.monotonic()
+            if remaining <= 0.0:
+                return False
+            time.sleep(min(poll_interval, remaining))
+
     def clear_log_buffer(self) -> None:
         self._log_marker = f"[TDD] MCP log marker {uuid.uuid4().hex}"
         self.write_log(self._log_marker)

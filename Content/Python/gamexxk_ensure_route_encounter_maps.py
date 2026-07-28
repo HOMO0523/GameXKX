@@ -38,7 +38,9 @@ BATTLE_SCENE_MAP = {
     "camera_tag": "GameXXK_BattleScene_Camera",
     "camera_location": unreal.Vector(-420.0, 0.0, 720.0),
     "camera_rotation": {"pitch": -60.0, "yaw": 0.0, "roll": 0.0},
-    "camera_fov": 55.0,
+    # Match the runtime fallback: a slightly wider lens gives the battle
+    # ground enough visible perimeter for grass treatment around the lanes.
+    "camera_fov": 63.0,
 }
 
 ENEMY_TEXTURE_DIR = "/Game/GameXXK/Characters/Enemies/Textures"

@@ -8,6 +8,7 @@
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
+#include "Math/Box2D.h"
 #include "Styling/SlateBrush.h"
 
 namespace
@@ -48,6 +49,16 @@ namespace
 	{
 		return Stacks > 99 ? TEXT("99+") : FString::FromInt(FMath::Max(1, Stacks));
 	}
+
+	FSlateBrush MakeCroppedIconBrush(UTexture2D* const Texture, const FLinearColor& Tint)
+	{
+		FSlateBrush Brush;
+		Brush.DrawAs = ESlateBrushDrawType::Image;
+		Brush.TintColor = FSlateColor(Tint);
+		Brush.SetResourceObject(Texture);
+		Brush.SetUVRegion(FBox2f(FVector2f(0.22f, 0.20f), FVector2f(0.80f, 0.80f)));
+		return Brush;
+	}
 }
 
 void UGameXXKBattleStatusIconWidget::NativeConstruct()
@@ -55,6 +66,13 @@ void UGameXXKBattleStatusIconWidget::NativeConstruct()
 	Super::NativeConstruct();
 	EnsureWidgetTree();
 	RefreshDisplay();
+}
+
+FReply UGameXXKBattleStatusIconWidget::NativeOnMouseButtonDown(
+	const FGeometry& InGeometry,
+	const FPointerEvent& InMouseEvent)
+{
+	return MakeMouseButtonDownReply();
 }
 
 void UGameXXKBattleStatusIconWidget::SetBadgeModel(
@@ -94,6 +112,11 @@ FString UGameXXKBattleStatusIconWidget::FormatStackForTest(const int32 Stacks)
 	return FormatStack(Stacks);
 }
 
+float UGameXXKBattleStatusIconWidget::GetIconOverscanPaddingForTest()
+{
+	return -3.0f;
+}
+
 ESlateVisibility UGameXXKBattleStatusIconWidget::GetHitTargetVisibilityForTest()
 {
 	return ESlateVisibility::Visible;
@@ -102,6 +125,21 @@ ESlateVisibility UGameXXKBattleStatusIconWidget::GetHitTargetVisibilityForTest()
 ESlateVisibility UGameXXKBattleStatusIconWidget::GetTooltipVisibilityForTest()
 {
 	return ESlateVisibility::HitTestInvisible;
+}
+
+FReply UGameXXKBattleStatusIconWidget::GetMouseButtonDownReplyForTest() const
+{
+	return MakeMouseButtonDownReply();
+}
+
+bool UGameXXKBattleStatusIconWidget::DoesMouseDownPassThroughForTest() const
+{
+	return !GetMouseButtonDownReplyForTest().IsEventHandled();
+}
+
+FReply UGameXXKBattleStatusIconWidget::MakeMouseButtonDownReply()
+{
+	return FReply::Unhandled();
 }
 
 void UGameXXKBattleStatusIconWidget::EnsureWidgetTree()
@@ -115,24 +153,28 @@ void UGameXXKBattleStatusIconWidget::EnsureWidgetTree()
 
 	RootBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("BattleStatusIconRoot"));
 	WidgetTree->RootWidget = RootBox;
-	RootBox->SetWidthOverride(38.0f);
-	RootBox->SetHeightOverride(38.0f);
+	// Keep the native 44px slot so six badges plus the overflow badge still fit
+	// inside the fixed 320px actor HUD. The source art is enlarged by UV crop,
+	// not by widening the row and pushing the status rail into the next unit.
+	RootBox->SetWidthOverride(44.0f);
+	RootBox->SetHeightOverride(44.0f);
 	RootBox->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 
 	HitTarget = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("BattleStatusIconHitTarget"));
 	HitTarget->SetBrush(MakeRoundedBrush(InkColor, InkColor, 1.0f, 6.0f));
-	HitTarget->SetPadding(FMargin(2.0f));
+	HitTarget->SetPadding(FMargin(1.0f));
 	HitTarget->SetVisibility(GetHitTargetVisibilityForTest());
 	RootBox->SetContent(HitTarget);
 
 	UBorder* const BadgePaper = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("BattleStatusIconPaper"));
 	BadgePaper->SetBrush(MakeRoundedBrush(PaperColor, InkColor, 1.0f, 5.0f));
-	BadgePaper->SetPadding(FMargin(1.0f));
+	BadgePaper->SetPadding(FMargin(0.0f));
 	BadgePaper->SetVisibility(ESlateVisibility::HitTestInvisible);
 	HitTarget->SetContent(BadgePaper);
 
 	UOverlay* const BadgeOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("BattleStatusIconOverlay"));
 	BadgeOverlay->SetVisibility(ESlateVisibility::HitTestInvisible);
+	BadgeOverlay->SetClipping(EWidgetClipping::ClipToBounds);
 	BadgePaper->SetContent(BadgeOverlay);
 
 	UImage* const IconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("BattleStatusIconImage"));
@@ -141,6 +183,7 @@ void UGameXXKBattleStatusIconWidget::EnsureWidgetTree()
 	{
 		IconSlot->SetHorizontalAlignment(HAlign_Fill);
 		IconSlot->SetVerticalAlignment(VAlign_Fill);
+		IconSlot->SetPadding(FMargin(GetIconOverscanPaddingForTest()));
 	}
 
 	UTextBlock* const GlyphText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleStatusIconGlyph"));
@@ -198,8 +241,7 @@ void UGameXXKBattleStatusIconWidget::RefreshDisplay()
 		{
 			if (IconImage)
 			{
-				IconImage->SetBrushFromTexture(Texture, true);
-				IconImage->SetColorAndOpacity(CachedBadgeModel.Style.Tint);
+				IconImage->SetBrush(MakeCroppedIconBrush(Texture, CachedBadgeModel.Style.Tint));
 				IconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 			}
 			bUseFallbackGlyph = false;

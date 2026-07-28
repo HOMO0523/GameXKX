@@ -1,9 +1,18 @@
 #include "GameXXKCardBattleAdapter.h"
 
 #include "GameXXKCardCatalog.h"
+#include "GameXXKBattlePresentation.h"
 #include "GameXXKCardRules.h"
+#include "GameXXKCharacterStatRules.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKEquipmentRules.h"
+#include "GameXXKEnemyCatalog.h"
+#include "GameXXKRelicRules.h"
+#include "GameXXKRouteCardRecipe.h"
+#include "GameXXKRouteEncounterCatalog.h"
+#include "GameXXKRunDeckRules.h"
+#include "Misc/Crc.h"
 
 namespace
 {
@@ -13,9 +22,9 @@ namespace
 	constexpr int32 BaseRouteCardCount = 2;
 	constexpr int32 StartingDeckCardCount = 18;
 	constexpr int32 MaximumDeckCardCount = 30;
-	constexpr int32 MaximumRouteRewardCardCount = MaximumDeckCardCount - StartingDeckCardCount;
 
 	const FName HeroUnitId(TEXT("Player"));
+	const FName SpiralHornDeerSpringHealIntentId(TEXT("SpringHeal"));
 	const TArray<FName> BaseRouteCards = {
 		FName(TEXT("Route.General.PoJiaTuCi")),
 		FName(TEXT("Route.General.ShouShiHuiYuan"))};
@@ -178,7 +187,7 @@ namespace
 		Unit.MaxMP = Attributes.Mana;
 		Unit.Attack = Attributes.Attack;
 		Unit.Defense = Attributes.Defense;
-		Unit.Speed = bEnemy ? 8 : 10;
+		Unit.Speed = FMath::Max(1, Attributes.Speed);
 		Unit.Shield = 1;
 		Unit.bEnemy = bEnemy;
 		Unit.bDefeated = Attributes.Health <= 0;
@@ -237,8 +246,12 @@ namespace
 		Unit.Mana = FMath::Clamp(LegacyUnit.MP, 0, Unit.MaxMana);
 		Unit.Attack = FMath::Max(0, LegacyUnit.Attack);
 		Unit.Defense = FMath::Max(0, LegacyUnit.Defense);
-		Unit.Armor = 0;
+		Unit.Speed = FMath::Max(1, LegacyUnit.Speed);
+		Unit.Armor = FMath::Clamp(LegacyUnit.Shield, 0, 99);
 		Unit.StableSortOrder = StableSortOrder;
+		Unit.EnemyDefinitionId = LegacyUnit.EnemyDefinitionId;
+		Unit.BattleSlotNumber = LegacyUnit.BattleSlotNumber;
+		Unit.CombatLevel = LegacyUnit.CombatLevel;
 		Unit.bLiving = Unit.HP > 0;
 		return Unit;
 	}
@@ -252,15 +265,56 @@ namespace
 			return false;
 		}
 
-		TArray<FGameXXKBattleRuntimeUnit> NewParty;
-		NewParty.Add(MakeHeroProjectionUnit(InOutState));
+		FGameXXKEquipmentLoadoutSnapshot HeroSnapshot;
+		if (!FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+			InOutState.EquipmentCollection,
+			FGameXXKEquipmentRules::HeroCharacterId(),
+			FGameXXKCharacterStatRules::GetBareHeroStats(InOutState.PlayerLevel),
+			HeroSnapshot,
+			OutError))
+		{
+			return false;
+		}
+
+	TArray<FGameXXKBattleRuntimeUnit> NewParty;
+	FGameXXKBattleRuntimeUnit Hero = MakeHeroProjectionUnit(InOutState);
+	const FGameXXKRouteAttributeBonuses& RouteBonus = Run.RouteAttributeBonuses;
+	// Route bonuses are derived from the persistent hero baseline every battle, including an
+	// unequipped hero. ActiveBattleParty is only a presentation projection and may already
+	// include these bonuses from the previous room, so incrementing that projection would
+	// silently double every event reward.
+	const int32 PreviousHeroMaxHP = FMath::Max(1, InOutState.PlayerMaxHP + FMath::Max(0, RouteBonus.MaxHealth));
+	const int32 PreviousHeroMaxMP = FMath::Max(0, InOutState.PlayerMaxMP + FMath::Max(0, RouteBonus.MaxMana));
+	const int32 MissingHeroHP = FMath::Max(0, PreviousHeroMaxHP - InOutState.PlayerHP);
+	const int32 MissingHeroMP = FMath::Max(0, PreviousHeroMaxMP - InOutState.PlayerMP);
+	Hero.MaxHP = FMath::Max(1, HeroSnapshot.AttributesBeforeRoute.MaxHealth + FMath::Max(0, RouteBonus.MaxHealth));
+	Hero.HP = FMath::Clamp(Hero.MaxHP - MissingHeroHP, 1, Hero.MaxHP);
+	Hero.MaxMP = FMath::Max(0, HeroSnapshot.AttributesBeforeRoute.MaxMana + FMath::Max(0, RouteBonus.MaxMana));
+	Hero.MP = FMath::Clamp(Hero.MaxMP - MissingHeroMP, 0, Hero.MaxMP);
+	Hero.Attack = FMath::Max(0, HeroSnapshot.AttributesBeforeRoute.Attack + FMath::Max(0, RouteBonus.Attack));
+	Hero.Defense = FMath::Max(0, HeroSnapshot.AttributesBeforeRoute.Defense + FMath::Max(0, RouteBonus.Defense));
+	Hero.Speed = FMath::Max(1, HeroSnapshot.AttributesBeforeRoute.Speed + FMath::Max(0, RouteBonus.Speed));
+	NewParty.Add(Hero);
 		if (const FGameXXKPermanentCompanion* Companion = FindActiveCompanion(Run.CompanionRoster))
 		{
-			FGameXXKCompanionAttributes Attributes;
-			if (!FGameXXKCompanionRules::GetCompanionAttributes(Companion->Role, Companion->Level, Companion->Star, FGameXXKCompanionAttributes(), Attributes, OutError))
+			FGameXXKCharacterStats BareStats;
+			FGameXXKEquipmentLoadoutSnapshot CompanionSnapshot;
+			if (!FGameXXKCharacterStatRules::GetBareCompanionStats(Companion->Role, Companion->Level, Companion->Star, BareStats, OutError)
+				|| !FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+					InOutState.EquipmentCollection,
+					Companion->InstanceId,
+					BareStats,
+					CompanionSnapshot,
+					OutError))
 			{
 				return false;
 			}
+			FGameXXKCompanionAttributes Attributes;
+			Attributes.Health = CompanionSnapshot.AttributesBeforeRoute.MaxHealth;
+			Attributes.Mana = CompanionSnapshot.AttributesBeforeRoute.MaxMana;
+			Attributes.Attack = CompanionSnapshot.AttributesBeforeRoute.Attack;
+			Attributes.Defense = CompanionSnapshot.AttributesBeforeRoute.Defense;
+			Attributes.Speed = CompanionSnapshot.AttributesBeforeRoute.Speed;
 			NewParty.Add(MakeLegacyProjectionUnit(
 				Companion->InstanceId,
 				FText::FromString(TEXT("伙伴")),
@@ -275,7 +329,13 @@ namespace
 				return SetFailure(OutError, TEXT("The route-local task NPC provenance does not match the configured NPC cards."));
 			}
 			FGameXXKCompanionAttributes Attributes;
-			if (!FGameXXKCompanionRules::GetQuestNpcAttributes(Run.ActiveTemporaryQuestNpcId, FMath::Max(1, InOutState.PlayerLevel), Attributes, OutError))
+			const FGameXXKRouteProgress& RouteProgress = Run.RouteProgress;
+			const int32 TaskNpcProjectionLevel = RouteProgress.SchemaVersion == 1
+				&& RouteProgress.RouteCombatLevel >= 1
+				&& RouteProgress.RouteCombatLevel <= 20
+				? RouteProgress.RouteCombatLevel
+				: FMath::Max(1, InOutState.PlayerLevel);
+			if (!FGameXXKCompanionRules::GetQuestNpcAttributes(Run.ActiveTemporaryQuestNpcId, TaskNpcProjectionLevel, Attributes, OutError))
 			{
 				return false;
 			}
@@ -294,6 +354,77 @@ namespace
 		return true;
 	}
 
+	bool MaterializeEquipmentBattleEffects(FGameXXKRuntimeState& InOutState, FGameXXKCardBattleRuntime& InOutRuntime, FString* OutError)
+	{
+		TArray<FGameXXKEquipmentLoadoutSnapshot> Snapshots;
+		FGameXXKEquipmentLoadoutSnapshot HeroSnapshot;
+		if (!FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+			InOutState.EquipmentCollection,
+			FGameXXKEquipmentRules::HeroCharacterId(),
+			FGameXXKCharacterStatRules::GetBareHeroStats(InOutState.PlayerLevel),
+			HeroSnapshot,
+			OutError))
+		{
+			return false;
+		}
+		Snapshots.Add(MoveTemp(HeroSnapshot));
+
+		if (const FGameXXKPermanentCompanion* Companion = FindActiveCompanion(InOutState.CardRun.CompanionRoster))
+		{
+			FGameXXKCharacterStats CompanionBareStats;
+			FGameXXKEquipmentLoadoutSnapshot CompanionSnapshot;
+			if (!FGameXXKCharacterStatRules::GetBareCompanionStats(Companion->Role, Companion->Level, Companion->Star, CompanionBareStats, OutError)
+				|| !FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+					InOutState.EquipmentCollection,
+					Companion->InstanceId,
+					CompanionBareStats,
+					CompanionSnapshot,
+					OutError))
+			{
+				return false;
+			}
+			Snapshots.Add(MoveTemp(CompanionSnapshot));
+		}
+
+		InOutRuntime.EquipmentEffects.Reset();
+		TSet<FString> EffectKeys;
+		const auto AddEffect = [&InOutRuntime, &EffectKeys, OutError](const FGameXXKEquipmentActiveEffect& Effect)
+		{
+			if (Effect.EffectId.IsNone() || Effect.SourceCharacterId.IsNone())
+			{
+				return SetFailure(OutError, TEXT("Equipment battle descriptors require stable effect and source IDs."));
+			}
+			const FString Key = Effect.EffectId.ToString() + TEXT("|") + Effect.SourceCharacterId.ToString();
+			if (EffectKeys.Contains(Key))
+			{
+				return SetFailure(OutError, TEXT("Equipment battle descriptors may not duplicate an effect-source pair."));
+			}
+			EffectKeys.Add(Key);
+			FGameXXKEquipmentBattleEffectRuntime& RuntimeEffect = InOutRuntime.EquipmentEffects.AddDefaulted_GetRef();
+			RuntimeEffect.ActiveEffect = Effect;
+			RuntimeEffect.SourceCharacterId = Effect.SourceCharacterId;
+			return true;
+		};
+		for (const FGameXXKEquipmentLoadoutSnapshot& Snapshot : Snapshots)
+		{
+			for (const FGameXXKEquipmentActiveEffect& Effect : Snapshot.ActivePersonalEffects)
+			{
+				if (!AddEffect(Effect))
+				{
+					return false;
+				}
+			}
+		}
+		for (const FGameXXKEquipmentActiveEffect& Effect : FGameXXKEquipmentRules::ResolveTeamEffects(Snapshots))
+		{
+			if (!AddEffect(Effect))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool BuildStartingCardInstances(
 		const FGameXXKRuntimeState& State,
 		const int32 SourceNodeId,
@@ -302,6 +433,83 @@ namespace
 	{
 		OutInstances.Reset();
 		const FGameXXKCardRunState& Run = State.CardRun;
+		if (!Run.RouteCardEntries.IsEmpty())
+		{
+			int32 CapacityUsed = 0;
+			if (!FGameXXKRunDeckRules::GetCapacityUsed(Run.RouteCardEntries, CapacityUsed, OutError))
+			{
+				return false;
+			}
+			if (CapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity)
+			{
+				return SetFailure(OutError, TEXT("The persisted route deck exceeds its twelve-card route capacity."));
+			}
+
+			TArray<FGameXXKRouteCardEntry> SortedEntries = Run.RouteCardEntries;
+			SortedEntries.Sort([](const FGameXXKRouteCardEntry& Left, const FGameXXKRouteCardEntry& Right)
+			{
+				return Left.AcquisitionOrdinal < Right.AcquisitionOrdinal;
+			});
+			TSet<int32> UsedMaterializationOrdinals;
+			OutInstances.Reserve(SortedEntries.Num() + Run.RouteCardIds.Num());
+			for (const FGameXXKRouteCardEntry& Entry : SortedEntries)
+			{
+				if (!FGameXXKCardCatalog::FindCardDefinition(Entry.CardId) || Entry.OwnerUnitId.IsNone())
+				{
+					return SetFailure(OutError, TEXT("A persisted route-card entry references an unknown card or invalid owner."));
+				}
+				FGameXXKCardInstance& Instance = OutInstances.AddDefaulted_GetRef();
+				Instance.InstanceId = FName(*FString::Printf(
+					TEXT("CardRun.%d.%03d"),
+					SourceNodeId,
+					Entry.AcquisitionOrdinal));
+				Instance.CardId = Entry.CardId;
+				Instance.CurrentQuality = Entry.CurrentQuality;
+				Instance.OwnerUnitId = Entry.OwnerUnitId;
+				Instance.SourceEntryId = Entry.EntryId;
+				Instance.AcquisitionOrdinal = Entry.AcquisitionOrdinal;
+				UsedMaterializationOrdinals.Add(Entry.AcquisitionOrdinal);
+			}
+
+			// TODO: Remove this compatibility projection once pre-entry route rewards have a save migration.
+			int32 CompatibilityOrdinal = 0;
+			for (const FName CardId : Run.RouteCardIds)
+			{
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+				if (!Definition || !IsRouteCard(CardId))
+				{
+					return SetFailure(OutError, TEXT("The legacy route-local deck contains an invalid reward card."));
+				}
+				while (UsedMaterializationOrdinals.Contains(CompatibilityOrdinal))
+				{
+					if (CompatibilityOrdinal == MAX_int32)
+					{
+						return SetFailure(OutError, TEXT("The legacy route-card compatibility sequence is exhausted."));
+					}
+					++CompatibilityOrdinal;
+				}
+				FGameXXKCardInstance& Instance = OutInstances.AddDefaulted_GetRef();
+				Instance.InstanceId = FName(*FString::Printf(
+					TEXT("CardRun.%d.%03d"),
+					SourceNodeId,
+					CompatibilityOrdinal));
+				Instance.CardId = Definition->Id;
+				Instance.CurrentQuality = Definition->BaseQuality;
+				Instance.OwnerUnitId = HeroUnitId;
+				Instance.SourceEntryId = FName(*FString::Printf(
+					TEXT("LegacyRouteEntry.%d.%03d"),
+					SourceNodeId,
+					CompatibilityOrdinal));
+				Instance.AcquisitionOrdinal = CompatibilityOrdinal;
+				UsedMaterializationOrdinals.Add(CompatibilityOrdinal);
+			}
+
+			if (OutInstances.Num() < StartingDeckCardCount || OutInstances.Num() > MaximumDeckCardCount)
+			{
+				return SetFailure(OutError, TEXT("The materialized persisted route deck is outside its 18-30 card contract."));
+			}
+			return true;
+		}
 		if (!ValidateHeroLoadout(Run, OutError))
 		{
 			return false;
@@ -417,11 +625,12 @@ namespace
 
 	bool BuildCardCombatUnits(const FGameXXKRuntimeState& State, TArray<FGameXXKCardCombatUnit>& OutUnits, FString* OutError)
 	{
-		OutUnits.Reset();
 		if (State.ActiveBattleParty.IsEmpty() || State.ActiveBattleEnemies.IsEmpty())
 		{
 			return SetFailure(OutError, TEXT("A card battle requires non-empty party and enemy projections."));
 		}
+		TArray<FGameXXKCardCombatUnit> NewUnits;
+		NewUnits.Reserve(State.ActiveBattleParty.Num() + State.ActiveBattleEnemies.Num());
 		for (int32 PartyIndex = 0; PartyIndex < State.ActiveBattleParty.Num(); ++PartyIndex)
 		{
 			const FGameXXKBattleRuntimeUnit& LegacyUnit = State.ActiveBattleParty[PartyIndex];
@@ -437,8 +646,9 @@ namespace
 			{
 				Role = Companion->Role;
 			}
-			OutUnits.Add(MakeCardCombatUnit(LegacyUnit, EGameXXKCardTargetSide::Party, Role, PartyIndex));
+			NewUnits.Add(MakeCardCombatUnit(LegacyUnit, EGameXXKCardTargetSide::Party, Role, PartyIndex));
 		}
+		TSet<int32> ExplicitEnemySlots;
 		for (int32 EnemyIndex = 0; EnemyIndex < State.ActiveBattleEnemies.Num(); ++EnemyIndex)
 		{
 			const FGameXXKBattleRuntimeUnit& LegacyUnit = State.ActiveBattleEnemies[EnemyIndex];
@@ -446,8 +656,21 @@ namespace
 			{
 				return SetFailure(OutError, TEXT("The battle enemy projection contains an invalid stable enemy unit."));
 			}
-			OutUnits.Add(MakeCardCombatUnit(LegacyUnit, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100 + EnemyIndex));
+			if (LegacyUnit.BattleSlotNumber != INDEX_NONE)
+			{
+				if (LegacyUnit.BattleSlotNumber < 1 || LegacyUnit.BattleSlotNumber > 3)
+				{
+					return SetFailure(OutError, TEXT("An explicit enemy battle slot must be one of 1P, 2P, or 3P."));
+				}
+				if (ExplicitEnemySlots.Contains(LegacyUnit.BattleSlotNumber))
+				{
+					return SetFailure(OutError, TEXT("The battle enemy projection contains duplicate explicit presentation slots."));
+				}
+				ExplicitEnemySlots.Add(LegacyUnit.BattleSlotNumber);
+			}
+			NewUnits.Add(MakeCardCombatUnit(LegacyUnit, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, EnemyIndex));
 		}
+		OutUnits = MoveTemp(NewUnits);
 		return true;
 	}
 
@@ -488,91 +711,1405 @@ namespace
 		return Result;
 	}
 
-	void BuildEnemyIntents(FGameXXKCardRunState& InOutRun)
+	bool ValidateLivingEnemyIntentPresentation(const FGameXXKCardBattleRuntime& Runtime, FString* OutError)
 	{
-		InOutRun.EnemyIntents.Reset();
-		InOutRun.NextEnemyIntentIndex = 0;
-		if (InOutRun.ActiveBattle.Phase != EGameXXKCardBattlePhase::Enemy)
+		int32 LivingEnemyCount = 0;
+		TSet<int32> OccupiedEnemySlots;
+		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		{
+			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy)
+			{
+				continue;
+			}
+			if (++LivingEnemyCount > 3)
+			{
+				return SetFailure(OutError, TEXT("Enemy intent presentation supports at most three living enemies."));
+			}
+			const int32 SlotNumber = FGameXXKBattlePresentation::GetSlotNumber(Runtime, Unit.UnitId);
+			if (SlotNumber == INDEX_NONE || OccupiedEnemySlots.Contains(SlotNumber))
+			{
+				return SetFailure(OutError, TEXT("Living enemy intents require unique supported enemy presentation slots."));
+			}
+			OccupiedEnemySlots.Add(SlotNumber);
+		}
+		return true;
+	}
+
+	const FGameXXKCardCombatUnit* FindLowestLivingUnitForSide(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const EGameXXKCardTargetSide Side,
+		const EGameXXKCardStatus RequiredStatus = EGameXXKCardStatus::None)
+	{
+		const FGameXXKCardCombatUnit* Result = nullptr;
+		for (const FGameXXKCardCombatUnit& Candidate : Runtime.Units)
+		{
+			if (!Candidate.bLiving || Candidate.Side != Side
+				|| (RequiredStatus != EGameXXKCardStatus::None
+					&& GameXXKCardRules::GetCombatStatusStacks(Candidate, RequiredStatus) <= 0))
+			{
+				continue;
+			}
+			if (!Result
+				|| static_cast<int64>(Candidate.HP) * Result->MaxHP < static_cast<int64>(Result->HP) * Candidate.MaxHP
+				|| (static_cast<int64>(Candidate.HP) * Result->MaxHP == static_cast<int64>(Result->HP) * Candidate.MaxHP
+					&& (Candidate.StableSortOrder < Result->StableSortOrder
+						|| (Candidate.StableSortOrder == Result->StableSortOrder && NameLess(Candidate.UnitId, Result->UnitId)))))
+			{
+				Result = &Candidate;
+			}
+		}
+		return Result;
+	}
+
+	bool IsConcretePersistentTargetStatus(const EGameXXKCardStatus Status)
+	{
+		const uint8 SerializedStatus = static_cast<uint8>(Status);
+		return SerializedStatus > static_cast<uint8>(EGameXXKCardStatus::None)
+			&& SerializedStatus <= static_cast<uint8>(EGameXXKCardStatus::Counter);
+	}
+
+	const FGameXXKCardCombatUnit* FindLivingPersistentTarget(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKEnemyBattleState& EnemyState)
+	{
+		const EGameXXKCardStatus TargetStatus = static_cast<EGameXXKCardStatus>(EnemyState.PersistentTargetStatus);
+		if (EnemyState.PersistentTargetUnitId.IsNone()
+			|| !IsConcretePersistentTargetStatus(TargetStatus))
+		{
+			return nullptr;
+		}
+		const FGameXXKCardCombatUnit* Target = FindCardUnit(Runtime.Units, EnemyState.PersistentTargetUnitId);
+		return Target
+			&& Target->bLiving
+			&& Target->Side == EGameXXKCardTargetSide::Party
+			&& GameXXKCardRules::GetCombatStatusStacks(*Target, TargetStatus) > 0
+			? Target
+			: nullptr;
+	}
+
+	void ClearPersistentTarget(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKEnemyBattleState& InOutEnemyState)
+	{
+		const EGameXXKCardStatus TargetStatus = static_cast<EGameXXKCardStatus>(InOutEnemyState.PersistentTargetStatus);
+		if (!InOutEnemyState.PersistentTargetUnitId.IsNone()
+			&& IsConcretePersistentTargetStatus(TargetStatus))
+		{
+			if (FGameXXKCardCombatUnit* ExistingTarget = FindCardUnit(
+				InOutRuntime.Units,
+				InOutEnemyState.PersistentTargetUnitId))
+			{
+				GameXXKCardRules::ConsumeCombatStatus(
+					*ExistingTarget,
+					TargetStatus,
+					MAX_int32);
+			}
+		}
+		InOutEnemyState.PersistentTargetUnitId = NAME_None;
+		InOutEnemyState.PersistentTargetStatus = static_cast<uint8>(EGameXXKCardStatus::None);
+	}
+
+	bool AssignPersistentTarget(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName SourceUnitId,
+		const FName TargetUnitId,
+		const EGameXXKCardStatus Status,
+		FString* OutError)
+	{
+		if (!IsConcretePersistentTargetStatus(Status))
+		{
+			return SetFailure(OutError, TEXT("A persistent enemy target requires a concrete combat status."));
+		}
+		FGameXXKCardCombatUnit* Source = FindCardUnit(InOutRuntime.Units, SourceUnitId);
+		FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+		FGameXXKEnemyBattleState* EnemyState = InOutRuntime.EnemyStates.Find(SourceUnitId);
+		if (!Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Enemy
+			|| !Target || !Target->bLiving || Target->Side != EGameXXKCardTargetSide::Party
+			|| !EnemyState)
+		{
+			return SetFailure(OutError, TEXT("A persistent enemy target requires a living catalog source and living party target."));
+		}
+
+		ClearPersistentTarget(InOutRuntime, *EnemyState);
+		if (GameXXKCardRules::AddCombatStatus(*Target, Status, 1) <= 0)
+		{
+			return SetFailure(OutError, TEXT("The persistent enemy target status could not be applied."));
+		}
+		if (!GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(InOutRuntime, *Target, OutError))
+		{
+			return false;
+		}
+		EnemyState->PersistentTargetUnitId = TargetUnitId;
+		EnemyState->PersistentTargetStatus = static_cast<uint8>(Status);
+		return true;
+	}
+
+	bool HasPhaseTwoPersistentTargetFallback(const FGameXXKEnemyDefinition& Definition)
+	{
+		for (const FGameXXKEnemyIntentDefinition& Intent : Definition.Intents)
+		{
+			if (Intent.Effects.ContainsByPredicate([](const FGameXXKEnemyIntentEffectDefinition& Effect)
+			{
+				return Effect.bPhaseTwoFallbackToLowestHealth
+					&& Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+					&& Effect.Target == EGameXXKEnemyIntentTargetRule::PreyTarget;
+			}))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool RetargetDefeatedPersistentTargets(FGameXXKCardBattleRuntime& InOutRuntime, FString* OutError)
+	{
+		for (const FGameXXKCardCombatUnit& Enemy : InOutRuntime.Units)
+		{
+			if (!Enemy.bLiving || Enemy.Side != EGameXXKCardTargetSide::Enemy)
+			{
+				continue;
+			}
+			FGameXXKEnemyBattleState* EnemyState = InOutRuntime.EnemyStates.Find(Enemy.UnitId);
+			if (!EnemyState)
+			{
+				continue;
+			}
+			const EGameXXKCardStatus Status = static_cast<EGameXXKCardStatus>(EnemyState->PersistentTargetStatus);
+			if (!IsConcretePersistentTargetStatus(Status))
+			{
+				ClearPersistentTarget(InOutRuntime, *EnemyState);
+				continue;
+			}
+			if (FindLivingPersistentTarget(InOutRuntime, *EnemyState))
+			{
+				continue;
+			}
+
+			const FGameXXKEnemyDefinition* Definition = Enemy.EnemyDefinitionId.IsNone()
+				? nullptr
+				: FGameXXKEnemyCatalog::Find(Enemy.EnemyDefinitionId);
+			const bool bCanRetarget = Definition
+				&& EnemyState->bPhaseTwo
+				&& HasPhaseTwoPersistentTargetFallback(*Definition);
+			ClearPersistentTarget(InOutRuntime, *EnemyState);
+			if (!bCanRetarget)
+			{
+				continue;
+			}
+			if (const FGameXXKCardCombatUnit* NextTarget = FindLowestLivingUnitForSide(
+				InOutRuntime,
+				EGameXXKCardTargetSide::Party))
+			{
+				if (!AssignPersistentTarget(InOutRuntime, Enemy.UnitId, NextTarget->UnitId, Status, OutError))
+				{
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	bool RefreshPersistentTargetReferencesForIntent(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKCardEnemyIntent& InOutIntent)
+	{
+		const FGameXXKEnemyBattleState* EnemyState = InOutRuntime.EnemyStates.Find(InOutIntent.SourceUnitId);
+		if (!EnemyState)
+		{
+			return true;
+		}
+		for (FGameXXKResolvedEnemyIntentEffect& Effect : InOutIntent.Effects)
+		{
+			if (Effect.TargetRule != EGameXXKEnemyIntentTargetRule::PreyTarget)
+			{
+				continue;
+			}
+			Effect.TargetUnitIds.Reset();
+			if (const FGameXXKCardCombatUnit* Target = FindLivingPersistentTarget(InOutRuntime, *EnemyState))
+			{
+				Effect.TargetUnitIds.Add(Target->UnitId);
+				InOutIntent.SuggestedTargetUnitId = Target->UnitId;
+				InOutIntent.TargetSlotNumber = FGameXXKBattlePresentation::GetSlotNumber(InOutRuntime, Target->UnitId);
+			}
+			else
+			{
+				InOutIntent.SuggestedTargetUnitId = NAME_None;
+				InOutIntent.TargetSlotNumber = INDEX_NONE;
+			}
+		}
+		return true;
+	}
+
+	TArray<FName> ResolveEnemyIntentTargets(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardCombatUnit& Source,
+		const EGameXXKEnemyIntentTargetRule TargetRule)
+	{
+		TArray<FName> Result;
+		const auto AppendLivingSide = [&Runtime, &Result](const EGameXXKCardTargetSide Side)
+		{
+			TArray<const FGameXXKCardCombatUnit*> Candidates;
+			for (const FGameXXKCardCombatUnit& Candidate : Runtime.Units)
+			{
+				if (Candidate.bLiving && Candidate.Side == Side)
+				{
+					Candidates.Add(&Candidate);
+				}
+			}
+			Candidates.Sort([](const FGameXXKCardCombatUnit& Left, const FGameXXKCardCombatUnit& Right)
+			{
+				return Left.StableSortOrder != Right.StableSortOrder
+					? Left.StableSortOrder < Right.StableSortOrder
+					: NameLess(Left.UnitId, Right.UnitId);
+			});
+			for (const FGameXXKCardCombatUnit* Candidate : Candidates)
+			{
+				Result.Add(Candidate->UnitId);
+			}
+		};
+
+		switch (TargetRule)
+		{
+		case EGameXXKEnemyIntentTargetRule::None:
+			break;
+		case EGameXXKEnemyIntentTargetRule::Self:
+			Result.Add(Source.UnitId);
+			break;
+		case EGameXXKEnemyIntentTargetRule::LowestHealthParty:
+			if (const FGameXXKCardCombatUnit* Target = FindLowestLivingUnitForSide(Runtime, EGameXXKCardTargetSide::Party)) Result.Add(Target->UnitId);
+			break;
+		case EGameXXKEnemyIntentTargetRule::RandomLivingParty:
+		{
+			AppendLivingSide(EGameXXKCardTargetSide::Party);
+			if (Result.Num() > 1)
+			{
+				const uint32 Seed = FGameXXKCardBattleAdapter::MakeStableEnemyIntentTargetSeed(Source.UnitId, Runtime.RoundNumber);
+				const FName Selected = Result[Seed % static_cast<uint32>(Result.Num())];
+				Result.Reset();
+				Result.Add(Selected);
+			}
+			break;
+		}
+		case EGameXXKEnemyIntentTargetRule::AllLivingParty:
+			AppendLivingSide(EGameXXKCardTargetSide::Party);
+			break;
+		case EGameXXKEnemyIntentTargetRule::AllEnemyAllies:
+			AppendLivingSide(EGameXXKCardTargetSide::Enemy);
+			break;
+		case EGameXXKEnemyIntentTargetRule::LowestHealthEnemyAlly:
+			if (const FGameXXKCardCombatUnit* Target = FindLowestLivingUnitForSide(Runtime, EGameXXKCardTargetSide::Enemy)) Result.Add(Target->UnitId);
+			break;
+		case EGameXXKEnemyIntentTargetRule::MarkedParty:
+			if (const FGameXXKCardCombatUnit* MarkedTarget = FindLowestLivingUnitForSide(Runtime, EGameXXKCardTargetSide::Party, EGameXXKCardStatus::Mark)) Result.Add(MarkedTarget->UnitId);
+			break;
+		case EGameXXKEnemyIntentTargetRule::PreyTarget:
+			if (const FGameXXKEnemyBattleState* EnemyState = Runtime.EnemyStates.Find(Source.UnitId))
+			{
+				if (const FGameXXKCardCombatUnit* PreyTarget = FindLivingPersistentTarget(Runtime, *EnemyState))
+				{
+					Result.Add(PreyTarget->UnitId);
+				}
+			}
+			break;
+		default:
+			break;
+		}
+		return Result;
+	}
+
+	bool HasRequiredCatalogIntentTargetStatus(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardCombatUnit& Source,
+		const FGameXXKEnemyIntentDefinition& Candidate)
+	{
+		if (Candidate.RequiredTargetStatus == EGameXXKCardStatus::None)
+		{
+			return true;
+		}
+
+		for (const FGameXXKEnemyIntentEffectDefinition& Effect : Candidate.Effects)
+		{
+			for (const FName TargetUnitId : ResolveEnemyIntentTargets(Runtime, Source, Effect.Target))
+			{
+				const FGameXXKCardCombatUnit* Target = FindCardUnit(Runtime.Units, TargetUnitId);
+				if (Target
+					&& Target->bLiving
+					&& GameXXKCardRules::GetCombatStatusStacks(*Target, Candidate.RequiredTargetStatus) > 0)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	int32 ComputeEnemyIntentMagnitude(const FGameXXKCardCombatUnit& Source, const FGameXXKEnemyIntentEffectDefinition& Effect)
+	{
+		const int64 Value = static_cast<int64>(Effect.FlatMagnitude)
+			+ static_cast<int64>(FMath::Max(0, Source.Attack)) * Effect.AttackPercent / 100;
+		return static_cast<int32>(FMath::Clamp<int64>(Value, 0, MAX_int32));
+	}
+
+	int32 RemovePositiveCombatStatusStacks(FGameXXKCardCombatUnit& InOutUnit, const int32 Maximum)
+	{
+		if (Maximum <= 0 || !InOutUnit.bLiving)
+		{
+			return 0;
+		}
+
+		// Intent resolution must be deterministic across save/reload. The list is deliberately stable
+		// and only contains player-beneficial combat statuses; harmful states such as Poison, Bleed,
+		// Weak, Mark, and Prey are never eligible for enemy "remove positive status" effects.
+		constexpr EGameXXKCardStatus PositiveStatusPriority[] = {
+			EGameXXKCardStatus::Momentum,
+			EGameXXKCardStatus::Agility,
+			EGameXXKCardStatus::CannotReceiveVulnerability,
+			EGameXXKCardStatus::NextAttackBonus,
+			EGameXXKCardStatus::NextAttackAppliesVulnerability,
+			EGameXXKCardStatus::NextHealingBonus,
+			EGameXXKCardStatus::TerrainBonusDouble,
+			EGameXXKCardStatus::NextTerrainCardFree,
+			EGameXXKCardStatus::NextTerrainCardEnergyReduction,
+			EGameXXKCardStatus::RedirectSingleTargetEnemyAttack,
+			EGameXXKCardStatus::TerrainBonusDoubleThisRound,
+			EGameXXKCardStatus::Medicine,
+			EGameXXKCardStatus::Wealth,
+			EGameXXKCardStatus::Rage,
+			EGameXXKCardStatus::Charge,
+			EGameXXKCardStatus::Counter};
+
+		int32 Removed = 0;
+		for (const EGameXXKCardStatus Status : PositiveStatusPriority)
+		{
+			Removed += GameXXKCardRules::ConsumeCombatStatus(InOutUnit, Status, Maximum - Removed);
+			if (Removed >= Maximum)
+			{
+				break;
+			}
+		}
+		return Removed;
+	}
+
+	bool BuildCatalogEnemyIntent(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardCombatUnit& Enemy,
+		TMap<FName, FGameXXKEnemyBattleState>& InOutEnemyStates,
+		const int32 ResolutionOrder,
+		FGameXXKCardEnemyIntent& OutIntent,
+		FString* OutError)
+	{
+		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Enemy.EnemyDefinitionId);
+		if (!Definition)
+		{
+			return false;
+		}
+		FGameXXKEnemyBattleState& EnemyState = InOutEnemyStates.FindOrAdd(Enemy.UnitId);
+		if (EnemyState.DefinitionId.IsNone())
+		{
+			EnemyState.DefinitionId = Definition->Id;
+		}
+		if (EnemyState.DefinitionId != Definition->Id || Definition->Intents.IsEmpty())
+		{
+			return SetFailure(OutError, TEXT("Enemy catalog state does not match a valid intent definition."));
+		}
+
+		const FGameXXKEnemyIntentDefinition* Chosen = nullptr;
+		bool bExecutingPendingCharge = false;
+		bool bContinuingCharge = false;
+		if (!EnemyState.PendingChargedIntentId.IsNone())
+		{
+			Chosen = Definition->Intents.FindByPredicate([&EnemyState](const FGameXXKEnemyIntentDefinition& Candidate)
+			{
+				return Candidate.Id == EnemyState.PendingChargedIntentId;
+			});
+			if (!Chosen)
+			{
+				return SetFailure(OutError, TEXT("A saved enemy charge does not exist in its catalog definition."));
+			}
+			bContinuingCharge = EnemyState.ChargeRoundsRemaining > 0;
+			bExecutingPendingCharge = !bContinuingCharge;
+		}
+		else for (int32 Offset = 0; Offset < Definition->Intents.Num(); ++Offset)
+		{
+			const FGameXXKEnemyIntentDefinition& Candidate = Definition->Intents[(EnemyState.IntentCursor + Offset) % Definition->Intents.Num()];
+			const bool bBelowHalf = static_cast<int64>(Enemy.HP) * 2 <= Enemy.MaxHP;
+			if ((Candidate.bPhaseTwoOnly && !EnemyState.bPhaseTwo)
+				|| (Candidate.bRequiresSourceBelowHalf && !bBelowHalf)
+				|| (Candidate.CooldownRounds > 0 && EnemyState.HealingCooldownRounds > 0)
+				|| !HasRequiredCatalogIntentTargetStatus(Runtime, Enemy, Candidate))
+			{
+				continue;
+			}
+			Chosen = &Candidate;
+			break;
+		}
+		if (!Chosen)
+		{
+			return SetFailure(OutError, TEXT("No catalog enemy intent is currently eligible."));
+		}
+
+		OutIntent = FGameXXKCardEnemyIntent();
+		OutIntent.CardId = FName(*FString::Printf(TEXT("Monster.Intent.%s.%s"), *Definition->Id.ToString(), *Chosen->Id.ToString()));
+		OutIntent.CardDisplayName = Chosen->DisplayName.ToString();
+		OutIntent.SourceUnitId = Enemy.UnitId;
+		OutIntent.SourceSlotNumber = FGameXXKBattlePresentation::GetSlotNumber(Runtime, Enemy.UnitId);
+		OutIntent.IntentDefinitionId = Chosen->Id;
+		OutIntent.ResolutionOrder = ResolutionOrder;
+		const bool bStartingCharge = !bExecutingPendingCharge && !bContinuingCharge && Chosen->ChargeRounds > 0;
+		if (bStartingCharge)
+		{
+			EnemyState.PendingChargedIntentId = Chosen->Id;
+			EnemyState.ChargeRoundsRemaining = Chosen->ChargeRounds;
+			EnemyState.PendingChargeTargetUnitIds.Reset();
+		}
+		OutIntent.bCharging = bStartingCharge || bContinuingCharge;
+		OutIntent.ChargeRounds = Chosen->ChargeRounds;
+		OutIntent.TooltipLines.Add(OutIntent.CardDisplayName);
+		for (const FGameXXKEnemyIntentEffectDefinition& EffectDefinition : Chosen->Effects)
+		{
+			FGameXXKResolvedEnemyIntentEffect& Effect = OutIntent.Effects.AddDefaulted_GetRef();
+			Effect.Type = EffectDefinition.Type;
+			Effect.TargetRule = EffectDefinition.Target;
+			Effect.bAssignsPersistentTarget = EffectDefinition.bAssignsPersistentTarget;
+			Effect.bPhaseTwoFallbackToLowestHealth = EffectDefinition.bPhaseTwoFallbackToLowestHealth;
+			Effect.bClearsPersistentTargetAfterResolve = EffectDefinition.bClearsPersistentTargetAfterResolve;
+			Effect.TargetUnitIds = ResolveEnemyIntentTargets(Runtime, Enemy, EffectDefinition.Target);
+			if (bExecutingPendingCharge
+				&& EffectDefinition.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+				&& !EnemyState.PendingChargeTargetUnitIds.IsEmpty())
+			{
+				Effect.TargetUnitIds = EnemyState.PendingChargeTargetUnitIds;
+			}
+			else if (bStartingCharge
+				&& EffectDefinition.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+				&& EnemyState.PendingChargeTargetUnitIds.IsEmpty())
+			{
+				EnemyState.PendingChargeTargetUnitIds = Effect.TargetUnitIds;
+			}
+			Effect.BaseMagnitude = ComputeEnemyIntentMagnitude(Enemy, EffectDefinition);
+			Effect.Magnitude = Effect.BaseMagnitude;
+			Effect.ConsumedStatus = EffectDefinition.ConsumedStatus;
+			Effect.MagnitudePerConsumedStack = FMath::Max(0, EffectDefinition.MagnitudePerConsumedStack);
+			Effect.bMagnitudePerConsumedStackUsesTargetMaxHealthPercent = EffectDefinition.bMagnitudePerConsumedStackUsesTargetMaxHealthPercent;
+			if (Effect.ConsumedStatus != EGameXXKCardStatus::None
+				&& EffectDefinition.MaxConsumedStacks > 0
+				&& Effect.MagnitudePerConsumedStack > 0)
+			{
+				Effect.ConsumedStacks = FMath::Min(
+					FMath::Max(0, EffectDefinition.MaxConsumedStacks),
+					GameXXKCardRules::GetCombatStatusStacks(Enemy, Effect.ConsumedStatus));
+				if (Effect.ConsumedStacks > 0)
+				{
+					int64 ConsumedMagnitude = static_cast<int64>(Effect.MagnitudePerConsumedStack) * Effect.ConsumedStacks;
+					if (Effect.bMagnitudePerConsumedStackUsesTargetMaxHealthPercent && Effect.TargetUnitIds.Num() > 0)
+					{
+					if (const FGameXXKCardCombatUnit* Target = FindCardUnit(Runtime.Units, Effect.TargetUnitIds[0]))
+					{
+						const int64 PerStackMagnitude = static_cast<int64>(Target->MaxHP)
+							* Effect.MagnitudePerConsumedStack / 100;
+						ConsumedMagnitude = PerStackMagnitude * Effect.ConsumedStacks;
+					}
+					}
+					Effect.Magnitude = static_cast<int32>(FMath::Clamp<int64>(
+						static_cast<int64>(Effect.BaseMagnitude) + ConsumedMagnitude,
+						0,
+						MAX_int32));
+				}
+			}
+			if (EffectDefinition.SourceStatusForFlatMagnitude != EGameXXKCardStatus::None
+				&& EffectDefinition.FlatMagnitudePerSourceStatusStack > 0)
+			{
+				const int32 SourceStatusStacks = GameXXKCardRules::GetCombatStatusStacks(
+					Enemy,
+					EffectDefinition.SourceStatusForFlatMagnitude);
+				Effect.Magnitude = static_cast<int32>(FMath::Clamp<int64>(
+					static_cast<int64>(Effect.Magnitude)
+						+ static_cast<int64>(EffectDefinition.FlatMagnitudePerSourceStatusStack) * SourceStatusStacks,
+					0,
+					MAX_int32));
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+				&& EnemyState.bPhaseTwo
+				&& Definition->PhaseTwoDirectDamagePercent != 100)
+			{
+				Effect.Magnitude = static_cast<int32>(FMath::Clamp<int64>(
+					static_cast<int64>(Effect.Magnitude) * Definition->PhaseTwoDirectDamagePercent / 100,
+					0,
+					MAX_int32));
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+				&& EnemyState.bPhaseTwo
+				&& Chosen->PhaseTwoDirectDamagePercent != 100)
+			{
+				Effect.Magnitude = static_cast<int32>(FMath::Clamp<int64>(
+					static_cast<int64>(Effect.Magnitude) * Chosen->PhaseTwoDirectDamagePercent / 100,
+					0,
+					MAX_int32));
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+				&& Definition->PassiveId == EGameXXKEnemyPassiveId::RedtuskRage
+				&& Chosen->Id == TEXT("RageStrike"))
+			{
+				const int32 RageStacks = GameXXKCardRules::GetCombatStatusStacks(Enemy, EGameXXKCardStatus::Rage);
+				Effect.Magnitude = static_cast<int32>(FMath::Min<int64>(
+					MAX_int32,
+					static_cast<int64>(Effect.Magnitude) + static_cast<int64>(FMath::Max(0, RageStacks)) * 20));
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+				&& Definition->PassiveId == EGameXXKEnemyPassiveId::GraymaneMarkedHunt
+				&& Effect.TargetUnitIds.Num() == 1)
+			{
+				const FGameXXKCardCombatUnit* Target = FindCardUnit(Runtime.Units, Effect.TargetUnitIds[0]);
+				if (Target
+					&& Target->bLiving
+					&& Target->Side == EGameXXKCardTargetSide::Party
+					&& GameXXKCardRules::GetCombatStatusStacks(*Target, EGameXXKCardStatus::Mark) > 0)
+				{
+					Effect.Magnitude = static_cast<int32>(FMath::Min<int64>(
+						MAX_int32,
+						static_cast<int64>(Effect.Magnitude) * 120 / 100));
+				}
+			}
+			Effect.HitCount = FMath::Max(1, EffectDefinition.HitCount);
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+				&& EnemyState.bPhaseTwo
+				&& Definition->PhaseTwoAdditionalHitIntentIds.Contains(Chosen->Id))
+			{
+				Effect.HitCount = FMath::Min(MAX_int32, Effect.HitCount + 1);
+			}
+			Effect.Status = EffectDefinition.Status;
+			Effect.StatusStacks = FMath::Max(0, EffectDefinition.StatusStacks);
+			if (OutIntent.TargetRule == EGameXXKEnemyIntentTargetRule::None)
+			{
+				OutIntent.TargetRule = EffectDefinition.Target;
+				OutIntent.SuggestedTargetUnitId = Effect.TargetUnitIds.IsEmpty() ? NAME_None : Effect.TargetUnitIds[0];
+				const FGameXXKCardCombatUnit* Target = FindCardUnit(Runtime.Units, OutIntent.SuggestedTargetUnitId);
+				OutIntent.TargetSlotNumber = Target ? FGameXXKBattlePresentation::GetSlotNumber(Runtime, Target->UnitId) : INDEX_NONE;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage && OutIntent.Damage == 0)
+			{
+				OutIntent.Damage = Effect.Magnitude;
+				OutIntent.Kind = Effect.TargetUnitIds.Num() > 1 ? EGameXXKCardDamageKind::GroupAttack : EGameXXKCardDamageKind::SingleTargetAttack;
+				if (Effect.Status != EGameXXKCardStatus::None && Effect.StatusStacks > 0)
+				{
+					OutIntent.OnHitStatuses.Add({Effect.Status, Effect.StatusStacks});
+				}
+			}
+			OutIntent.TooltipLines.Add(FString::Printf(TEXT("效果 %d：%d"), static_cast<int32>(Effect.Type), Effect.Magnitude));
+		}
+		return OutIntent.SourceSlotNumber != INDEX_NONE;
+	}
+
+	bool GetNextCatalogIntentCursor(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardEnemyIntent& Intent,
+	int32& OutNextCursor,
+	FString* OutError)
+	{
+		OutNextCursor = INDEX_NONE;
+		if (Intent.bCharging)
+		{
+			return true;
+		}
+		const FGameXXKCardCombatUnit* Source = FindCardUnit(Runtime.Units, Intent.SourceUnitId);
+		if (!Source || Source->EnemyDefinitionId.IsNone() || Intent.IntentDefinitionId.IsNone())
+		{
+			return true;
+		}
+		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Source->EnemyDefinitionId);
+		const FGameXXKEnemyBattleState* EnemyState = Runtime.EnemyStates.Find(Intent.SourceUnitId);
+		if (!Definition || !EnemyState || EnemyState->DefinitionId != Definition->Id || Definition->Intents.IsEmpty())
+		{
+			return SetFailure(OutError, TEXT("A catalog enemy intent cannot advance without matching persisted enemy state."));
+		}
+		const int32 ResolvedIntentIndex = Definition->Intents.IndexOfByPredicate([&Intent](const FGameXXKEnemyIntentDefinition& Candidate)
+		{
+			return Candidate.Id == Intent.IntentDefinitionId;
+		});
+		if (ResolvedIntentIndex == INDEX_NONE)
+		{
+			return SetFailure(OutError, TEXT("The saved catalog enemy intent does not exist in its source definition."));
+		}
+		OutNextCursor = (ResolvedIntentIndex + 1) % Definition->Intents.Num();
+		return true;
+	}
+
+	bool StartSpiralHornDeerHealingCooldown(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardEnemyIntent& Intent,
+		FString* OutError)
+	{
+		if (Intent.IntentDefinitionId != SpiralHornDeerSpringHealIntentId
+			|| !Intent.Effects.ContainsByPredicate([](const FGameXXKResolvedEnemyIntentEffect& Effect)
+			{
+				return Effect.Type == EGameXXKEnemyIntentEffectType::Heal;
+			}))
+		{
+			return true;
+		}
+
+		const FGameXXKCardCombatUnit* Source = FindCardUnit(InOutRuntime.Units, Intent.SourceUnitId);
+		if (!Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Enemy || Source->EnemyDefinitionId.IsNone())
+		{
+			return true;
+		}
+		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Source->EnemyDefinitionId);
+		if (!Definition || Definition->PassiveId != EGameXXKEnemyPassiveId::DeerHealCooldown)
+		{
+			return true;
+		}
+		const FGameXXKEnemyIntentDefinition* SpringHealDefinition = Definition->Intents.FindByPredicate([](const FGameXXKEnemyIntentDefinition& Candidate)
+		{
+			return Candidate.Id == SpiralHornDeerSpringHealIntentId;
+		});
+		if (!SpringHealDefinition
+			|| SpringHealDefinition->CooldownRounds <= 0
+			|| !SpringHealDefinition->Effects.ContainsByPredicate([](const FGameXXKEnemyIntentEffectDefinition& Effect)
+			{
+				return Effect.Type == EGameXXKEnemyIntentEffectType::Heal;
+			}))
+		{
+			return SetFailure(OutError, TEXT("Spiral Horn Deer Spring Heal is missing its catalog cooldown definition."));
+		}
+
+		FGameXXKEnemyBattleState NewEnemyState;
+		if (const FGameXXKEnemyBattleState* ExistingEnemyState = InOutRuntime.EnemyStates.Find(Source->UnitId))
+		{
+			NewEnemyState = *ExistingEnemyState;
+		}
+		if (NewEnemyState.DefinitionId.IsNone())
+		{
+			NewEnemyState.DefinitionId = Definition->Id;
+		}
+		if (NewEnemyState.DefinitionId != Definition->Id)
+		{
+			return SetFailure(OutError, TEXT("Spiral Horn Deer Spring Heal found a mismatched persisted enemy definition."));
+		}
+
+		NewEnemyState.HealingCooldownRounds = SpringHealDefinition->CooldownRounds;
+		NewEnemyState.bHealingCooldownStartedThisEnemyPhase = true;
+		InOutRuntime.EnemyStates.Add(Source->UnitId, MoveTemp(NewEnemyState));
+		return true;
+	}
+
+	void ApplyEnemyDamagingStatusHealing(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName SourceUnitId,
+		const FGameXXKCardDamageResult& DamageResult)
+	{
+		if (DamageResult.HealthDamage <= 0)
 		{
 			return;
 		}
+		FGameXXKCardCombatUnit* Source = FindCardUnit(InOutRuntime.Units, SourceUnitId);
+		const FGameXXKCardCombatUnit* DamagedTarget = FindCardUnit(
+			InOutRuntime.Units,
+			DamageResult.ResolvedTargetUnitId);
+		if (!Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Enemy
+			|| !DamagedTarget || DamagedTarget->Side != EGameXXKCardTargetSide::Party
+			|| Source->EnemyDefinitionId.IsNone())
+		{
+			return;
+		}
+		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Source->EnemyDefinitionId);
+		if (!Definition
+			|| Definition->HealOnDamagingTargetStatus == EGameXXKCardStatus::None
+			|| Definition->HealMissingHealthPercentOnDamagingTargetStatus <= 0
+			|| GameXXKCardRules::GetCombatStatusStacks(*DamagedTarget, Definition->HealOnDamagingTargetStatus) <= 0)
+		{
+			return;
+		}
+		const int32 MissingHealth = FMath::Max(0, Source->MaxHP - Source->HP);
+		const int32 Healing = static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(MissingHealth) * Definition->HealMissingHealthPercentOnDamagingTargetStatus / 100,
+			0,
+			MAX_int32));
+		GameXXKCardRules::HealCombatUnit(*Source, Healing);
+	}
+
+	void ClearExpiredPersistentTargetAfterIntent(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardEnemyIntent& Intent)
+	{
+		if (!Intent.Effects.ContainsByPredicate([](const FGameXXKResolvedEnemyIntentEffect& Effect)
+		{
+			return Effect.bClearsPersistentTargetAfterResolve;
+		}))
+		{
+			return;
+		}
+		if (FGameXXKEnemyBattleState* EnemyState = InOutRuntime.EnemyStates.Find(Intent.SourceUnitId);
+			EnemyState && !EnemyState->bPhaseTwo)
+		{
+			ClearPersistentTarget(InOutRuntime, *EnemyState);
+		}
+	}
+
+	bool ResolveCatalogIntentEffects(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardEnemyIntent& Intent,
+		TArray<FGameXXKCardDamageResult>& OutDamageResults,
+		FString* OutError)
+	{
+		for (const FGameXXKResolvedEnemyIntentEffect& Effect : Intent.Effects)
+		{
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::AddArmor)
+			{
+				for (const FName TargetUnitId : Effect.TargetUnitIds)
+				{
+					FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!Target || !Target->bLiving)
+					{
+						continue;
+					}
+					GameXXKCardRules::AddCombatArmor(*Target, Effect.Magnitude);
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::ApplyStatus)
+			{
+				if (Effect.bAssignsPersistentTarget)
+				{
+					TArray<FName> ResolvedTargetUnitIds;
+					for (const FName TargetUnitId : Effect.TargetUnitIds)
+					{
+						const FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+						if (Target && Target->bLiving && Target->Side == EGameXXKCardTargetSide::Party)
+						{
+							ResolvedTargetUnitIds.Add(TargetUnitId);
+						}
+					}
+					if (ResolvedTargetUnitIds.IsEmpty())
+					{
+						if (const FGameXXKCardCombatUnit* Source = FindCardUnit(InOutRuntime.Units, Intent.SourceUnitId))
+						{
+							ResolvedTargetUnitIds = ResolveEnemyIntentTargets(InOutRuntime, *Source, Effect.TargetRule);
+						}
+					}
+					for (const FName TargetUnitId : ResolvedTargetUnitIds)
+					{
+						if (!AssignPersistentTarget(
+							InOutRuntime,
+							Intent.SourceUnitId,
+							TargetUnitId,
+							Effect.Status,
+							OutError))
+						{
+							return false;
+						}
+					}
+					continue;
+				}
+				for (const FName TargetUnitId : Effect.TargetUnitIds)
+				{
+					FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!Target || !Target->bLiving)
+					{
+						continue;
+					}
+					if (GameXXKCardRules::AddCombatStatus(*Target, Effect.Status, Effect.StatusStacks) > 0
+						&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(InOutRuntime, *Target, OutError))
+					{
+						return false;
+					}
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::Heal)
+			{
+				const bool bUsesConsumedStacks = Effect.ConsumedStatus != EGameXXKCardStatus::None
+					&& Effect.ConsumedStacks > 0
+					&& Effect.MagnitudePerConsumedStack > 0;
+				int32 ActuallyConsumedStacks = 0;
+				if (bUsesConsumedStacks)
+				{
+					FGameXXKCardCombatUnit* Source = FindCardUnit(InOutRuntime.Units, Intent.SourceUnitId);
+					if (!Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Enemy)
+					{
+						return SetFailure(OutError, TEXT("A consumed-status heal lost its living enemy source."));
+					}
+					ActuallyConsumedStacks = GameXXKCardRules::ConsumeCombatStatus(
+						*Source,
+						Effect.ConsumedStatus,
+						Effect.ConsumedStacks);
+				}
+				for (const FName TargetUnitId : Effect.TargetUnitIds)
+				{
+					FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!Target || !Target->bLiving)
+					{
+						continue;
+					}
+					int64 HealingMagnitude = bUsesConsumedStacks ? Effect.BaseMagnitude : Effect.Magnitude;
+					if (bUsesConsumedStacks)
+					{
+						int64 ConsumedMagnitude = static_cast<int64>(Effect.MagnitudePerConsumedStack) * ActuallyConsumedStacks;
+						if (Effect.bMagnitudePerConsumedStackUsesTargetMaxHealthPercent)
+						{
+							const int64 PerStackMagnitude = static_cast<int64>(Target->MaxHP)
+								* Effect.MagnitudePerConsumedStack / 100;
+							ConsumedMagnitude = PerStackMagnitude * ActuallyConsumedStacks;
+						}
+						HealingMagnitude += ConsumedMagnitude;
+					}
+					GameXXKCardRules::HealCombatUnit(*Target, static_cast<int32>(FMath::Clamp<int64>(HealingMagnitude, 0, MAX_int32)));
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::ConsumeSharedQi)
+			{
+				GameXXKCardRules::ConsumeSharedCombatEnergy(InOutRuntime, Effect.Magnitude);
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::IncreaseNextCardEnergy)
+			{
+				if (!GameXXKCardRules::QueueNextPlayerHandEnergySurcharge(
+					InOutRuntime,
+					Effect.Magnitude,
+					Intent.SourceUnitId,
+					OutError))
+				{
+					return false;
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::ModifyAttack)
+			{
+				for (const FName TargetUnitId : Effect.TargetUnitIds)
+				{
+					FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!Target || !Target->bLiving)
+					{
+						continue;
+					}
+					const int32 OriginalAttack = FMath::Max(0, Target->Attack);
+					Target->Attack = static_cast<int32>(FMath::Clamp<int64>(
+						static_cast<int64>(Target->Attack) + Effect.Magnitude,
+						0,
+						MAX_int32));
+					if (Target->Side == EGameXXKCardTargetSide::Enemy)
+					{
+						FGameXXKEnemyBattleState& TargetState = InOutRuntime.EnemyStates.FindOrAdd(TargetUnitId);
+						TargetState.TemporaryAttackModifier = static_cast<int32>(FMath::Clamp<int64>(
+							static_cast<int64>(TargetState.TemporaryAttackModifier) + (Target->Attack - OriginalAttack),
+							MIN_int32,
+							MAX_int32));
+					}
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::ModifySpeed)
+			{
+				for (const FName TargetUnitId : Effect.TargetUnitIds)
+				{
+					FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!Target || !Target->bLiving)
+					{
+						continue;
+					}
+					const int32 OriginalSpeed = FMath::Max(0, Target->Speed);
+					Target->Speed = static_cast<int32>(FMath::Clamp<int64>(
+						static_cast<int64>(Target->Speed) + Effect.Magnitude,
+						0,
+						MAX_int32));
+					if (Target->Side == EGameXXKCardTargetSide::Enemy)
+					{
+						const int32 AppliedSpeed = Target->Speed - OriginalSpeed;
+						FGameXXKEnemyBattleState& TargetState = InOutRuntime.EnemyStates.FindOrAdd(TargetUnitId);
+						TargetState.TemporarySpeedModifier = static_cast<int32>(FMath::Clamp<int64>(
+							static_cast<int64>(TargetState.TemporarySpeedModifier) + AppliedSpeed,
+							MIN_int32,
+							MAX_int32));
+						TargetState.PendingNextEnemyPhaseSpeedModifier = static_cast<int32>(FMath::Clamp<int64>(
+							static_cast<int64>(TargetState.PendingNextEnemyPhaseSpeedModifier) + AppliedSpeed,
+							MIN_int32,
+							MAX_int32));
+					}
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::RemovePositiveStatus)
+			{
+				for (const FName TargetUnitId : Effect.TargetUnitIds)
+				{
+					FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!Target || !Target->bLiving)
+					{
+						continue;
+					}
+					RemovePositiveCombatStatusStacks(*Target, Effect.Magnitude);
+				}
+				continue;
+			}
+			if (Effect.Type != EGameXXKEnemyIntentEffectType::DirectDamage)
+			{
+				continue;
+			}
+			for (const FName TargetUnitId : Effect.TargetUnitIds)
+			{
+				const FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+				if (!Target || !Target->bLiving || Target->Side != EGameXXKCardTargetSide::Party)
+				{
+					continue;
+				}
+				FGameXXKCardDamageContext Context;
+				Context.SourceUnitId = Intent.SourceUnitId;
+				Context.Kind = Effect.TargetUnitIds.Num() > 1
+					? EGameXXKCardDamageKind::GroupAttack
+					: EGameXXKCardDamageKind::SingleTargetAttack;
+				if (Effect.Status != EGameXXKCardStatus::None && Effect.StatusStacks > 0)
+				{
+					Context.OnHitStatuses.Add({Effect.Status, Effect.StatusStacks});
+				}
+				for (int32 HitIndex = 0; HitIndex < FMath::Max(1, Effect.HitCount); ++HitIndex)
+				{
+					FGameXXKCardDamageResult DamageResult;
+					TArray<FGameXXKCardDamageResult> ReactiveResults;
+					if (!GameXXKCardRules::ResolveEnemyDirectAttack(
+						InOutRuntime,
+						Context,
+						TargetUnitId,
+						Effect.Magnitude,
+						DamageResult,
+						&ReactiveResults,
+						OutError))
+					{
+						return false;
+					}
+					ApplyEnemyDamagingStatusHealing(InOutRuntime, Intent.SourceUnitId, DamageResult);
+					OutDamageResults.Add(MoveTemp(DamageResult));
+					OutDamageResults.Append(MoveTemp(ReactiveResults));
+					const FGameXXKCardCombatUnit* UpdatedTarget = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!UpdatedTarget || !UpdatedTarget->bLiving)
+					{
+						break;
+					}
+				}
+			}
+		}
+		ClearExpiredPersistentTargetAfterIntent(InOutRuntime, Intent);
+		return true;
+	}
+
+	void ExpireEnemyPhaseTemporaryModifiers(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		for (FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+		{
+			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy)
+			{
+				continue;
+			}
+			FGameXXKEnemyBattleState* EnemyState = InOutRuntime.EnemyStates.Find(Unit.UnitId);
+			if (!EnemyState)
+			{
+				continue;
+			}
+			if (EnemyState->TemporaryAttackModifier != 0)
+			{
+				Unit.Attack = static_cast<int32>(FMath::Clamp<int64>(
+					static_cast<int64>(Unit.Attack) - EnemyState->TemporaryAttackModifier,
+					0,
+					MAX_int32));
+				EnemyState->TemporaryAttackModifier = 0;
+			}
+			if (EnemyState->SpeedModifierExpiringAfterCurrentEnemyPhase != 0)
+			{
+				const int32 ExpiringSpeed = EnemyState->SpeedModifierExpiringAfterCurrentEnemyPhase;
+				Unit.Speed = static_cast<int32>(FMath::Clamp<int64>(
+					static_cast<int64>(Unit.Speed) - ExpiringSpeed,
+					0,
+					MAX_int32));
+				EnemyState->TemporarySpeedModifier = static_cast<int32>(FMath::Clamp<int64>(
+					static_cast<int64>(EnemyState->TemporarySpeedModifier) - ExpiringSpeed,
+					MIN_int32,
+					MAX_int32));
+			}
+			EnemyState->SpeedModifierExpiringAfterCurrentEnemyPhase = EnemyState->PendingNextEnemyPhaseSpeedModifier;
+			EnemyState->PendingNextEnemyPhaseSpeedModifier = 0;
+		}
+	}
+
+	void AdvancePendingEnemyCharges(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		for (const FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+		{
+			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy)
+			{
+				continue;
+			}
+			FGameXXKEnemyBattleState* EnemyState = InOutRuntime.EnemyStates.Find(Unit.UnitId);
+			if (!EnemyState)
+			{
+				continue;
+			}
+			if (!EnemyState->PendingChargedIntentId.IsNone() && EnemyState->ChargeRoundsRemaining > 0)
+			{
+				--EnemyState->ChargeRoundsRemaining;
+			}
+		}
+	}
+
+	bool AdvanceSpiralHornDeerHealingCooldowns(FGameXXKCardBattleRuntime& InOutRuntime, FString* OutError)
+	{
+		TMap<FName, FGameXXKEnemyBattleState> NewEnemyStates = InOutRuntime.EnemyStates;
+		for (const FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+		{
+			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy || Unit.EnemyDefinitionId.IsNone())
+			{
+				continue;
+			}
+			const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Unit.EnemyDefinitionId);
+			if (!Definition || Definition->PassiveId != EGameXXKEnemyPassiveId::DeerHealCooldown)
+			{
+				continue;
+			}
+
+			FGameXXKEnemyBattleState& EnemyState = NewEnemyStates.FindOrAdd(Unit.UnitId);
+			if (EnemyState.DefinitionId.IsNone())
+			{
+				EnemyState.DefinitionId = Definition->Id;
+			}
+			if (EnemyState.DefinitionId != Definition->Id)
+			{
+				return SetFailure(OutError, TEXT("Spiral Horn Deer cooldown advance found a mismatched persisted enemy definition."));
+			}
+			if (EnemyState.bHealingCooldownStartedThisEnemyPhase)
+			{
+				EnemyState.bHealingCooldownStartedThisEnemyPhase = false;
+			}
+			else if (EnemyState.HealingCooldownRounds > 0)
+			{
+				EnemyState.HealingCooldownRounds = FMath::Max(0, EnemyState.HealingCooldownRounds - 1);
+			}
+		}
+		InOutRuntime.EnemyStates = MoveTemp(NewEnemyStates);
+		return true;
+	}
+
+	bool ApplyCatalogEnemyRoundStartStatuses(FGameXXKCardBattleRuntime& InOutRuntime, FString* OutError)
+	{
+		FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+		for (FGameXXKCardCombatUnit& Unit : NewRuntime.Units)
+		{
+			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy || Unit.EnemyDefinitionId.IsNone())
+			{
+				continue;
+			}
+			const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Unit.EnemyDefinitionId);
+			if (!Definition || Definition->RoundStartStatus == EGameXXKCardStatus::None)
+			{
+				continue;
+			}
+
+			FGameXXKEnemyBattleState& EnemyState = NewRuntime.EnemyStates.FindOrAdd(Unit.UnitId);
+			if (EnemyState.DefinitionId.IsNone())
+			{
+				EnemyState.DefinitionId = Definition->Id;
+			}
+			if (EnemyState.DefinitionId != Definition->Id)
+			{
+				return SetFailure(OutError, TEXT("Enemy round-start status found a mismatched persisted enemy definition."));
+			}
+
+			const int32 StatusStacks = EnemyState.bPhaseTwo && Definition->PhaseTwoRoundStartStatusStacks > 0
+				? Definition->PhaseTwoRoundStartStatusStacks
+				: Definition->RoundStartStatusStacks;
+			if (StatusStacks <= 0)
+			{
+				continue;
+			}
+			if (GameXXKCardRules::AddCombatStatus(Unit, Definition->RoundStartStatus, StatusStacks) > 0
+				&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(NewRuntime, Unit, OutError))
+			{
+				return false;
+			}
+		}
+		InOutRuntime = MoveTemp(NewRuntime);
+		return true;
+	}
+
+	bool BuildEnemyIntents(FGameXXKCardRunState& InOutRun, FString* OutError)
+	{
+		FGameXXKCardBattleRuntime NewRuntime = InOutRun.ActiveBattle;
+		if (NewRuntime.Phase != EGameXXKCardBattlePhase::Player
+			&& NewRuntime.Phase != EGameXXKCardBattlePhase::Enemy)
+		{
+			return SetFailure(OutError, TEXT("Enemy intents can only be forecast during a player or enemy card phase."));
+		}
+		if (!RetargetDefeatedPersistentTargets(NewRuntime, OutError)
+			|| !ValidateLivingEnemyIntentPresentation(NewRuntime, OutError))
+		{
+			return false;
+		}
+
+		// Build into a temporary array so a rejected presentation slot never clears a saved forecast.
+		TArray<FGameXXKCardEnemyIntent> NewEnemyIntents;
 		TArray<const FGameXXKCardCombatUnit*> Enemies;
-		for (const FGameXXKCardCombatUnit& Unit : InOutRun.ActiveBattle.Units)
+		for (const FGameXXKCardCombatUnit& Unit : NewRuntime.Units)
 		{
 			if (Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Enemy)
 			{
 				Enemies.Add(&Unit);
 			}
 		}
-		Enemies.Sort([](const FGameXXKCardCombatUnit& Left, const FGameXXKCardCombatUnit& Right)
+		Enemies.Sort([&NewRuntime](const FGameXXKCardCombatUnit& Left, const FGameXXKCardCombatUnit& Right)
 		{
-			return Left.StableSortOrder != Right.StableSortOrder
-				? Left.StableSortOrder < Right.StableSortOrder
-				: NameLess(Left.UnitId, Right.UnitId);
+			if (Left.Speed != Right.Speed)
+			{
+				return Left.Speed > Right.Speed;
+			}
+			const int32 LeftSlot = FGameXXKBattlePresentation::GetSlotNumber(NewRuntime, Left.UnitId);
+			const int32 RightSlot = FGameXXKBattlePresentation::GetSlotNumber(NewRuntime, Right.UnitId);
+			if (LeftSlot != RightSlot)
+			{
+				return LeftSlot < RightSlot;
+			}
+			return NameLess(Left.UnitId, Right.UnitId);
 		});
+		TMap<FName, FGameXXKEnemyBattleState> NewEnemyStates = NewRuntime.EnemyStates;
 		for (const FGameXXKCardCombatUnit* Enemy : Enemies)
 		{
-			const FGameXXKCardCombatUnit* Target = FindLowestLivingPartyUnit(InOutRun.ActiveBattle);
+			FGameXXKCardEnemyIntent Intent;
+			if (!Enemy->EnemyDefinitionId.IsNone())
+			{
+				if (!BuildCatalogEnemyIntent(
+					NewRuntime,
+					*Enemy,
+					NewEnemyStates,
+					NewEnemyIntents.Num(),
+					Intent,
+					OutError))
+				{
+					return false;
+				}
+				NewEnemyIntents.Add(MoveTemp(Intent));
+				continue;
+			}
+
+			const FGameXXKCardCombatUnit* Target = FindLowestLivingPartyUnit(NewRuntime);
 			if (!Target)
 			{
 				break;
 			}
-			FGameXXKCardEnemyIntent& Intent = InOutRun.EnemyIntents.AddDefaulted_GetRef();
+			Intent.CardId = FName(*FString::Printf(TEXT("Monster.Intent.%s"), *Enemy->UnitId.ToString()));
+			Intent.CardDisplayName = TEXT("攻击");
 			Intent.SourceUnitId = Enemy->UnitId;
 			Intent.SuggestedTargetUnitId = Target->UnitId;
+			Intent.SourceSlotNumber = FGameXXKBattlePresentation::GetSlotNumber(NewRuntime, Enemy->UnitId);
+			Intent.TargetSlotNumber = FGameXXKBattlePresentation::GetSlotNumber(NewRuntime, Target->UnitId);
+			if (Intent.SourceSlotNumber == INDEX_NONE)
+			{
+				return SetFailure(OutError, TEXT("Living enemy intents require a supported enemy presentation slot."));
+			}
 			Intent.Damage = FMath::Max(1, Enemy->Attack);
 			Intent.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+			Intent.ResolutionOrder = NewEnemyIntents.Num();
+			NewEnemyIntents.Add(MoveTemp(Intent));
 		}
+		NewRuntime.EnemyStates = MoveTemp(NewEnemyStates);
+		InOutRun.ActiveBattle = MoveTemp(NewRuntime);
+		InOutRun.EnemyIntents = MoveTemp(NewEnemyIntents);
+		InOutRun.NextEnemyIntentIndex = 0;
+		return true;
 	}
 
-	TArray<FName> BuildBaseDeckCardIds(const FGameXXKCardRunState& Run)
+	void PruneUnexecutableEnemyIntents(FGameXXKCardRunState& InOutRun)
 	{
-		TArray<FName> Result = Run.HeroSelectedCardIds;
-		int32 MissingFillIndex = 0;
-		if (const FGameXXKPermanentCompanion* Companion = FindActiveCompanion(Run.CompanionRoster))
+		InOutRun.EnemyIntents.RemoveAll([&InOutRun](const FGameXXKCardEnemyIntent& Intent)
 		{
-			Result.Append(Companion->SelectedCardIds);
-		}
-		else
-		{
-			for (int32 Index = 0; Index < PermanentCompanionSelectedCardCount; ++Index)
-			{
-				Result.Add(MissingPartyFillCards[MissingFillIndex++]);
-			}
-		}
-		if (Run.ActiveTemporaryQuestNpcId != NAME_None)
-		{
-			Result.Append(Run.PartySelection.QuestNpc.SelectedCardIds);
-		}
-		else
-		{
-			for (int32 Index = 0; Index < QuestNpcSelectedCardCount; ++Index)
-			{
-				Result.Add(MissingPartyFillCards[MissingFillIndex++]);
-			}
-		}
-		Result.Append(BaseRouteCards);
-		return Result;
+			const FGameXXKCardCombatUnit* Source = FindCardUnit(InOutRun.ActiveBattle.Units, Intent.SourceUnitId);
+			return !Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Enemy;
+		});
+		// Forecasts always begin from the first card when the enemy presentation starts.
+		InOutRun.NextEnemyIntentIndex = 0;
 	}
 
-	int32 GetCurrentCardCopyCount(const FGameXXKCardRunState& Run, const FName CardId, const FName ExcludedRouteCardId = NAME_None)
+	bool IsRewardNodeKind(const EGameXXKNodeKind NodeKind)
 	{
-		int32 Result = 0;
-		for (const FName ExistingCardId : BuildBaseDeckCardIds(Run))
+		return NodeKind == EGameXXKNodeKind::Battle
+			|| NodeKind == EGameXXKNodeKind::Elite
+			|| NodeKind == EGameXXKNodeKind::Boss;
+	}
+
+	int32 GetActiveRewardSourceNodeId(const FGameXXKRuntimeState& State)
+	{
+		if (State.CardRun.ActiveBattleSourceNodeId >= 0)
 		{
-			Result += ExistingCardId == CardId;
+			return State.CardRun.ActiveBattleSourceNodeId;
 		}
-		bool bExcluded = false;
-		for (const FName ExistingCardId : Run.RouteCardIds)
+		return !State.bHasGeneratedRouteMap && State.DungeonNodeIndex >= 0
+			? State.DungeonNodeIndex
+			: INDEX_NONE;
+	}
+
+	bool ValidateRouteRewardEntryAuthority(
+		const FGameXXKRuntimeState& State,
+		const bool bRequireIncrementableEntryOrdinal,
+		int32& OutCapacityUsed,
+		FString* OutError)
+	{
+		OutCapacityUsed = 0;
+		const FGameXXKCardRunState& Run = State.CardRun;
+		if (!State.bDungeonActive || !Run.bLoadoutLockedForRoute)
 		{
-			if (!bExcluded && ExistingCardId == ExcludedRouteCardId)
+			return SetFailure(OutError, TEXT("Route rewards require an active route with its loadout locked."));
+		}
+		if (!Run.RouteCardEntries.IsEmpty() && !Run.RouteCardIds.IsEmpty())
+		{
+			return SetFailure(OutError, TEXT("Route rewards reject mixed RouteCardEntries and legacy RouteCardIds authority."));
+		}
+		if (Run.RouteCardEntries.IsEmpty())
+		{
+			return SetFailure(OutError, Run.RouteCardIds.IsEmpty()
+				? TEXT("Route rewards require non-empty stable RouteCardEntries authority.")
+				: TEXT("Legacy-only RouteCardIds cannot acquire a new stable route reward."));
+		}
+		if (Run.RouteProgress.RootSeed == 0)
+		{
+			return SetFailure(OutError, TEXT("Route rewards require a non-zero route root seed."));
+		}
+		if (Run.NextRouteCardEntryOrdinal < 0
+			|| (bRequireIncrementableEntryOrdinal && Run.NextRouteCardEntryOrdinal == MAX_int32))
+		{
+			return SetFailure(OutError, TEXT("The next route-card entry ordinal must be non-negative and safely incrementable."));
+		}
+		if (!FGameXXKRunDeckRules::GetCapacityUsed(Run.RouteCardEntries, OutCapacityUsed, OutError))
+		{
+			return false;
+		}
+		if (OutCapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity)
+		{
+			return SetFailure(OutError, TEXT("The stable route deck already exceeds its twelve-card acquisition capacity."));
+		}
+
+		int32 MaximumEntryOrdinal = INDEX_NONE;
+		for (const FGameXXKRouteCardEntry& Entry : Run.RouteCardEntries)
+		{
+			if (!FGameXXKCardCatalog::FindCardDefinition(Entry.CardId) || Entry.OwnerUnitId.IsNone())
 			{
-				bExcluded = true;
-				continue;
+				return SetFailure(OutError, TEXT("A stable route-card entry references an unknown catalog card or empty owner."));
 			}
-			Result += ExistingCardId == CardId;
+			FName ExpectedEntryId;
+			if (!FGameXXKRouteCardRecipe::MakeStableEntryId(
+				Run.RouteProgress.RootSeed,
+				Entry.AcquisitionOrdinal,
+				ExpectedEntryId,
+				OutError))
+			{
+				return false;
+			}
+			if (Entry.EntryId != ExpectedEntryId)
+			{
+				return SetFailure(OutError, TEXT("A stable route-card EntryId does not match the route root seed and acquisition ordinal."));
+			}
+			MaximumEntryOrdinal = FMath::Max(MaximumEntryOrdinal, Entry.AcquisitionOrdinal);
 		}
-		return Result;
+		if (Run.NextRouteCardEntryOrdinal <= MaximumEntryOrdinal)
+		{
+			return SetFailure(OutError, TEXT("The next route-card entry ordinal must follow every persisted entry."));
+		}
+		return true;
+	}
+
+	bool ValidatePendingRouteRewardGate(
+		const FGameXXKRuntimeState& State,
+		const bool bRequirePendingReward,
+		FString* OutError)
+	{
+		const FGameXXKCardRunState& Run = State.CardRun;
+		if (!Run.bHasActiveCardBattle
+			|| Run.ActiveBattle.Phase != EGameXXKCardBattlePhase::Victory
+			|| Run.bActiveBattleRewardResolved
+			|| GetActiveRewardSourceNodeId(State) < 0)
+		{
+			return SetFailure(OutError, TEXT("Route rewards require one unresolved active card-battle victory gate."));
+		}
+
+		const FGameXXKPendingRouteCardReward& Pending = Run.PendingReward;
+		if (Pending.CardIds.IsEmpty())
+		{
+			if (Pending.SourceNodeId != INDEX_NONE
+				|| Pending.ChoiceSeed != 0)
+			{
+				return SetFailure(OutError, TEXT("An empty pending route reward retains inconsistent metadata."));
+			}
+			return bRequirePendingReward
+				? SetFailure(OutError, TEXT("There is no pending route reward to preview or resolve."))
+				: true;
+		}
+
+		if (Pending.SourceNodeId < 0
+			|| Pending.SourceNodeId != GetActiveRewardSourceNodeId(State)
+			|| Pending.ChoiceSeed == 0
+			|| Pending.CardIds.Num() != 3)
+		{
+			return SetFailure(OutError, TEXT("The pending route reward metadata does not match the active victory gate."));
+		}
+		TSet<FName> SeenCardIds;
+		for (const FName CardId : Pending.CardIds)
+		{
+			const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+			if (CardId.IsNone()
+				|| SeenCardIds.Contains(CardId)
+				|| !Definition
+				|| Definition->Owner != EGameXXKCardOwner::Route)
+			{
+				return SetFailure(OutError, TEXT("The pending route reward must contain three distinct catalog route cards."));
+			}
+			SeenCardIds.Add(CardId);
+		}
+		return true;
+	}
+
+	bool BuildPendingRouteRewardCandidate(
+		const FGameXXKRuntimeState& State,
+		const FName RewardCardId,
+		FGameXXKRouteCardEntry& OutCandidate,
+		FString* OutError)
+	{
+		OutCandidate = FGameXXKRouteCardEntry();
+		int32 CapacityUsed = 0;
+		if (!ValidateRouteRewardEntryAuthority(State, true, CapacityUsed, OutError)
+			|| !ValidatePendingRouteRewardGate(State, true, OutError))
+		{
+			return false;
+		}
+		const FGameXXKCardRunState& Run = State.CardRun;
+		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(RewardCardId);
+		if (RewardCardId.IsNone()
+			|| !Run.PendingReward.CardIds.Contains(RewardCardId)
+			|| !Definition
+			|| Definition->Owner != EGameXXKCardOwner::Route)
+		{
+			return SetFailure(OutError, TEXT("The selected route reward is not a catalog card in the saved pending offer."));
+		}
+
+		FGameXXKRouteCardEntry Candidate;
+		Candidate.CardId = RewardCardId;
+		Candidate.CurrentQuality = Definition->BaseQuality;
+		Candidate.SourceKind = EGameXXKRouteCardSourceKind::RouteReward;
+		Candidate.OwnerUnitId = HeroUnitId;
+		Candidate.bTemporaryRouteCard = true;
+		Candidate.bConsumesRouteCapacity = true;
+		Candidate.AcquisitionOrdinal = Run.NextRouteCardEntryOrdinal;
+		if (!FGameXXKRouteCardRecipe::MakeStableEntryId(
+			Run.RouteProgress.RootSeed,
+			Candidate.AcquisitionOrdinal,
+			Candidate.EntryId,
+			OutError))
+		{
+			return false;
+		}
+		OutCandidate = MoveTemp(Candidate);
+		return true;
+	}
+
+	bool HasEpicRouteCardEntry(const FGameXXKCardRunState& Run, const FName CardId)
+	{
+		return Run.RouteCardEntries.ContainsByPredicate([CardId](const FGameXXKRouteCardEntry& Entry)
+		{
+			return Entry.CardId == CardId && Entry.CurrentQuality == EGameXXKCardQuality::Epic;
+		});
 	}
 
 	void AppendEligibleRouteCards(
@@ -584,7 +2121,7 @@ namespace
 		{
 			if (Definition.Owner == EGameXXKCardOwner::Route
 				&& Predicate(Definition)
-				&& GetCurrentCardCopyCount(Run, Definition.Id) < 2)
+				&& !HasEpicRouteCardEntry(Run, Definition.Id))
 			{
 				OutCards.Add(Definition.Id);
 			}
@@ -613,6 +2150,27 @@ namespace
 		InOutPickedIds.Add(Available[PickedIndex]);
 		return true;
 	}
+
+	bool DidAnyBossEnterPhaseTwo(
+		const FGameXXKCardBattleRuntime& Before,
+		const FGameXXKCardBattleRuntime& After)
+	{
+		for (const TPair<FName, FGameXXKEnemyBattleState>& Pair : After.EnemyStates)
+		{
+			const FGameXXKEnemyBattleState* BeforeState = Before.EnemyStates.Find(Pair.Key);
+			if (Pair.Value.bPhaseTwo && (!BeforeState || !BeforeState->bPhaseTwo))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+uint32 FGameXXKCardBattleAdapter::MakeStableEnemyIntentTargetSeed(const FName SourceUnitId, const int32 RoundNumber)
+{
+	return FCrc::StrCrc32(*SourceUnitId.ToString())
+		^ (static_cast<uint32>(RoundNumber) * 2654435761U);
 }
 
 bool FGameXXKCardBattleAdapter::EnsureCardRunInitialized(FGameXXKRuntimeState& InOutState, FString* OutError)
@@ -629,7 +2187,23 @@ bool FGameXXKCardBattleAdapter::EnsureCardRunInitialized(FGameXXKRuntimeState& I
 	}
 	if (Run.HeroUnlockedCardIds.IsEmpty())
 	{
-		Run.HeroUnlockedCardIds.Append(HeroCatalogIds.GetData(), HeroSelectedCardCount);
+		// The fixed hero owns all twelve permanent cards; the player equips eight of
+		// them in town.  This is deliberately separate from the selected eight-card
+		// combat loadout so the backpack editor has a real four-card swap frontier.
+		Run.HeroUnlockedCardIds = HeroCatalogIds;
+	}
+	else
+	{
+		// Early card-run saves persisted only the first eight defaults.  The hero
+		// has no progressive card unlock currency, so safely backfill every missing
+		// approved hero card while preserving the saved order and selected loadout.
+		for (const FName HeroCardId : HeroCatalogIds)
+		{
+			if (!Run.HeroUnlockedCardIds.Contains(HeroCardId))
+			{
+				Run.HeroUnlockedCardIds.Add(HeroCardId);
+			}
+		}
 	}
 	if (Run.HeroSelectedCardIds.IsEmpty())
 	{
@@ -695,36 +2269,117 @@ bool FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
 	const TArray<FName>& SelectedCardIds,
 	FString* OutError)
 {
-	if (!EnsureCardRunInitialized(InOutState, OutError))
+	FGameXXKRuntimeState Candidate = InOutState;
+	if (!EnsureCardRunInitialized(Candidate, OutError))
 	{
 		return false;
 	}
-	FGameXXKCardRunState& Run = InOutState.CardRun;
-	if (Run.bLoadoutLockedForRoute || Run.bHasActiveCardBattle)
+	FGameXXKCardRunState& Run = Candidate.CardRun;
+	if (Run.bHasActiveCardBattle)
 	{
-		return SetFailure(OutError, TEXT("Task NPC cards cannot change after entering the route."));
+		return SetFailure(OutError, TEXT("Task NPC cards cannot change during an active card battle."));
 	}
 	if (QuestNpcId.IsNone())
 	{
 		Run.ActiveTemporaryQuestNpcId = NAME_None;
 		Run.PartySelection.QuestNpc = FGameXXKQuestNpcCardSelection();
+	}
+	else
+	{
+		const FGameXXKQuestNpcDefinition* Definition = FGameXXKCompanionCatalog::FindQuestNpcDefinition(QuestNpcId);
+		if (!Definition)
+		{
+			return SetFailure(OutError, TEXT("The route task NPC is not one of the approved named task NPCs."));
+		}
+		TArray<FName> EffectiveSelection = SelectedCardIds;
+		if (EffectiveSelection.IsEmpty())
+		{
+			EffectiveSelection = Definition->DefaultRouteCardIds;
+		}
+		if (!FGameXXKCompanionRules::SetQuestNpcCardSelection(
+			Run.PartySelection.QuestNpc,
+			QuestNpcId,
+			EffectiveSelection,
+			OutError))
+		{
+			return false;
+		}
+		Run.ActiveTemporaryQuestNpcId = QuestNpcId;
+	}
+
+	if (!Candidate.bDungeonActive || Run.RouteCardEntries.IsEmpty())
+	{
+		InOutState = MoveTemp(Candidate);
 		return true;
 	}
-	const FGameXXKQuestNpcDefinition* Definition = FGameXXKCompanionCatalog::FindQuestNpcDefinition(QuestNpcId);
-	if (!Definition)
+	if (Run.RouteProgress.RootSeed == 0)
 	{
-		return SetFailure(OutError, TEXT("The route task NPC is not one of the approved named task NPCs."));
+		return SetFailure(OutError, TEXT("An active canonical route requires a non-zero root seed before task-NPC slots can change."));
 	}
-	TArray<FName> EffectiveSelection = SelectedCardIds;
-	if (EffectiveSelection.IsEmpty())
+
+	int32 CapacityUsed = 0;
+	if (!FGameXXKRunDeckRules::GetCapacityUsed(Run.RouteCardEntries, CapacityUsed, OutError)
+		|| CapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity)
 	{
-		EffectiveSelection.Append(Definition->FixedCardIds.GetData(), QuestNpcSelectedCardCount);
+		return CapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity
+			? SetFailure(OutError, TEXT("The persisted route deck exceeds its twelve-card route capacity."))
+			: false;
 	}
-	if (!FGameXXKCompanionRules::SetQuestNpcCardSelection(Run.PartySelection.QuestNpc, QuestNpcId, EffectiveSelection, OutError))
+	TArray<FGameXXKRouteCardEntry> RebuiltBaseEntries;
+	if (!FGameXXKRouteCardRecipe::BuildBaseEntries(
+		Candidate,
+		Run.RouteProgress.RootSeed,
+		RebuiltBaseEntries,
+		OutError))
 	{
 		return false;
 	}
-	Run.ActiveTemporaryQuestNpcId = QuestNpcId;
+
+	constexpr int32 FirstSupportOrdinal = HeroSelectedCardCount + PermanentCompanionSelectedCardCount;
+	constexpr int32 LastSupportOrdinal = FirstSupportOrdinal + QuestNpcSelectedCardCount - 1;
+	for (int32 Ordinal = FirstSupportOrdinal; Ordinal <= LastSupportOrdinal; ++Ordinal)
+	{
+		int32 ExistingIndex = INDEX_NONE;
+		for (int32 Index = 0; Index < Run.RouteCardEntries.Num(); ++Index)
+		{
+			if (Run.RouteCardEntries[Index].AcquisitionOrdinal != Ordinal)
+			{
+				continue;
+			}
+			if (ExistingIndex != INDEX_NONE)
+			{
+				return SetFailure(OutError, TEXT("The canonical task-NPC support ordinal is duplicated."));
+			}
+			ExistingIndex = Index;
+		}
+		const FGameXXKRouteCardEntry* RebuiltEntry = RebuiltBaseEntries.FindByPredicate([Ordinal](const FGameXXKRouteCardEntry& Entry)
+		{
+			return Entry.AcquisitionOrdinal == Ordinal;
+		});
+		if (ExistingIndex == INDEX_NONE || !RebuiltEntry)
+		{
+			return SetFailure(OutError, TEXT("The canonical task-NPC support slots are incomplete."));
+		}
+
+		const FGameXXKRouteCardEntry& ExistingEntry = Run.RouteCardEntries[ExistingIndex];
+		if (ExistingEntry.bConsumesRouteCapacity
+			|| (ExistingEntry.SourceKind != EGameXXKRouteCardSourceKind::QuestNpcBase
+				&& ExistingEntry.SourceKind != EGameXXKRouteCardSourceKind::RouteBase)
+			|| ExistingEntry.EntryId != RebuiltEntry->EntryId)
+		{
+			return SetFailure(OutError, TEXT("A canonical task-NPC support slot has unexpected source or stable identity."));
+		}
+		Run.RouteCardEntries[ExistingIndex] = *RebuiltEntry;
+	}
+
+	if (!FGameXXKRunDeckRules::GetCapacityUsed(Run.RouteCardEntries, CapacityUsed, OutError)
+		|| CapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity)
+	{
+		return CapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity
+			? SetFailure(OutError, TEXT("Task-NPC slot replacement exceeds the route-card capacity."))
+			: false;
+	}
+	InOutState = MoveTemp(Candidate);
 	return true;
 }
 
@@ -739,39 +2394,65 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	{
 		OutError->Reset();
 	}
+	if (InOutState.CardRun.bHasActiveCardBattle)
+	{
+		return SetFailure(OutError, TEXT("An existing active card battle must be resumed or cleared before another battle begins."));
+	}
 	if ((NodeKind != EGameXXKNodeKind::Battle && NodeKind != EGameXXKNodeKind::Elite && NodeKind != EGameXXKNodeKind::Boss)
 		|| Terrain == EGameXXKCardTerrain::Invalid || !InOutState.bHasActiveBattle || InOutState.ActiveBattleEnemies.IsEmpty())
 	{
 		return SetFailure(OutError, TEXT("Card battle initialization requires an active battle node, a concrete terrain, and enemies."));
 	}
-	if (!EnsureCardRunInitialized(InOutState, OutError) || !BuildRoutePartyProjection(InOutState, OutError))
+
+	// Build and project a complete candidate state first. A rejected setup must not leave a partial
+	// card battle, shuffled deck, or forecast in the save-authoritative runtime state.
+	FGameXXKRuntimeState NewState = InOutState;
+	if (!EnsureCardRunInitialized(NewState, OutError) || !BuildRoutePartyProjection(NewState, OutError))
 	{
 		return false;
 	}
 
-	FGameXXKCardRunState& Run = InOutState.CardRun;
+	FGameXXKCardRunState& Run = NewState.CardRun;
 	TArray<FGameXXKCardCombatUnit> Units;
 	TArray<FGameXXKCardInstance> Instances;
-	if (!BuildCardCombatUnits(InOutState, Units, OutError)
-		|| !BuildStartingCardInstances(InOutState, InOutState.ActiveBattleNodeId, Instances, OutError))
+	if (!BuildCardCombatUnits(NewState, Units, OutError)
+		|| !BuildStartingCardInstances(NewState, NewState.ActiveBattleNodeId, Instances, OutError))
 	{
 		return false;
 	}
 	FGameXXKCardBattleRuntime NewRuntime;
 	const int32 EffectiveSeed = InitialRandomSeed != 0
 		? InitialRandomSeed
-		: Run.RouteRandomSeed ^ (InOutState.ActiveBattleNodeId * 486187739);
+		: Run.RouteRandomSeed ^ (NewState.ActiveBattleNodeId * 486187739);
 	if (!GameXXKCardRules::InitializeCardBattleRuntime(NewRuntime, Instances, Units, Terrain, EffectiveSeed, OutError))
+	{
+		return false;
+	}
+	if (!MaterializeEquipmentBattleEffects(NewState, NewRuntime, OutError))
+	{
+		return false;
+	}
+	if (!ValidateLivingEnemyIntentPresentation(NewRuntime, OutError))
 	{
 		return false;
 	}
 	Run.bLoadoutLockedForRoute = true;
 	Run.bHasActiveCardBattle = true;
-	Run.ActiveBattleSourceNodeId = InOutState.ActiveBattleNodeId;
+	Run.ActiveBattleSourceNodeId = NewState.ActiveBattleNodeId;
 	Run.ActiveBattle = MoveTemp(NewRuntime);
 	Run.EnemyIntents.Reset();
 	Run.NextEnemyIntentIndex = 0;
-	return SyncCardBattleToLegacyProjection(InOutState, OutError);
+	Run.PendingReward = FGameXXKPendingRouteCardReward();
+	Run.bActiveBattleRewardResolved = false;
+	FGameXXKRelicRules::ApplyBattleStart(NewState);
+	if (!ApplyCatalogEnemyRoundStartStatuses(Run.ActiveBattle, OutError)
+		|| !BuildEnemyIntents(Run, OutError)
+		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
+	{
+		return false;
+	}
+	InOutState = MoveTemp(NewState);
+	return true;
 }
 
 bool FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(FGameXXKRuntimeState& InOutState, FString* OutError)
@@ -800,6 +2481,10 @@ bool FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(FGameXXKRuntime
 			LegacyUnit.MaxMP = CardUnit->MaxMana;
 			LegacyUnit.Attack = CardUnit->Attack;
 			LegacyUnit.Defense = CardUnit->Defense;
+			LegacyUnit.Speed = CardUnit->Speed;
+			// Card runtime owns armor.  Legacy scenes still render Shield, so keep it
+			// as a one-way compatibility projection rather than a second mitigation pool.
+			LegacyUnit.Shield = FMath::Clamp(CardUnit->Armor, 0, 99);
 			LegacyUnit.bDefeated = !CardUnit->bLiving;
 			LegacyUnit.bDefending = false;
 		}
@@ -812,8 +2497,10 @@ bool FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(FGameXXKRuntime
 	}
 	if (const FGameXXKCardCombatUnit* Hero = FindCardUnit(Run.ActiveBattle.Units, HeroUnitId))
 	{
-		InOutState.PlayerHP = FMath::Clamp(Hero->HP, 0, InOutState.PlayerMaxHP);
-		InOutState.PlayerMP = FMath::Clamp(Hero->Mana, 0, InOutState.PlayerMaxMP);
+		// Keep the current route value, including any temporary event-created capacity.  The permanent
+		// maxima remain unchanged and route cleanup restores the town baseline.
+		InOutState.PlayerHP = FMath::Clamp(Hero->HP, 0, Hero->MaxHP);
+		InOutState.PlayerMP = FMath::Clamp(Hero->Mana, 0, Hero->MaxMana);
 	}
 	return true;
 }
@@ -842,7 +2529,88 @@ bool FGameXXKCardBattleAdapter::ResolveCardPlay(
 	{
 		return SetFailure(OutError, TEXT("There is no active card battle session."));
 	}
-	if (!GameXXKCardRules::ResolveCardPlay(InOutState.CardRun.ActiveBattle, CardInstanceId, SelectedTargetUnitId, OutResult, OutError))
+
+	FGameXXKRuntimeState NewState = InOutState;
+	FGameXXKCardPlayResult NewResult;
+	const FGameXXKCardBattleRuntime BeforeCardPlay = NewState.CardRun.ActiveBattle;
+	if (!GameXXKCardRules::ResolveCardPlay(NewState.CardRun.ActiveBattle, CardInstanceId, SelectedTargetUnitId, NewResult, OutError))
+	{
+		return false;
+	}
+
+	// The saved forecast represents the next enemy phase. Rebuild it exactly when a completed
+	// player packet entered a new boss phase, so phase-only actions and tooltip data never lag a turn.
+	if (DidAnyBossEnterPhaseTwo(BeforeCardPlay, NewState.CardRun.ActiveBattle)
+		&& NewState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Player)
+	{
+		NewState.CardRun.EnemyIntents.Reset();
+		NewState.CardRun.NextEnemyIntentIndex = 0;
+		if (!BuildEnemyIntents(NewState.CardRun, OutError))
+		{
+			return false;
+		}
+	}
+
+	FGameXXKRelicRules::ApplyCardPlayed(NewState, NewResult.OwnerUnitId, NewResult.DamageResults);
+	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	{
+		return false;
+	}
+
+	InOutState = MoveTemp(NewState);
+	OutResult = MoveTemp(NewResult);
+	return true;
+}
+
+bool FGameXXKCardBattleAdapter::SubmitInsightChoice(
+	FGameXXKRuntimeState& InOutState,
+	const FName PickedInstanceId,
+	const TArray<FName>& ReorderedRemainingInstanceIds,
+	FString* OutError)
+{
+	if (!InOutState.CardRun.bHasActiveCardBattle)
+	{
+		return SetFailure(OutError, TEXT("There is no active card battle session."));
+	}
+	if (!GameXXKCardRules::SubmitInsightChoice(
+		InOutState.CardRun.ActiveBattle.Deck,
+		PickedInstanceId,
+		ReorderedRemainingInstanceIds,
+		OutError))
+	{
+		return false;
+	}
+	return SyncCardBattleToLegacyProjection(InOutState, OutError);
+}
+
+bool FGameXXKCardBattleAdapter::SubmitForcedDiscard(
+	FGameXXKRuntimeState& InOutState,
+	const TArray<FName>& DiscardedInstanceIds,
+	FString* OutError)
+{
+	if (!InOutState.CardRun.bHasActiveCardBattle)
+	{
+		return SetFailure(OutError, TEXT("There is no active card battle session."));
+	}
+	if (!GameXXKCardRules::SubmitForcedDiscard(
+		InOutState.CardRun.ActiveBattle,
+		DiscardedInstanceIds,
+		OutError))
+	{
+		return false;
+	}
+	return SyncCardBattleToLegacyProjection(InOutState, OutError);
+}
+
+bool FGameXXKCardBattleAdapter::CancelInsight(
+	FGameXXKRuntimeState& InOutState,
+	FString* OutError)
+{
+	if (!InOutState.CardRun.bHasActiveCardBattle)
+	{
+		return SetFailure(OutError, TEXT("There is no active card battle session."));
+	}
+	if (!GameXXKCardRules::CancelInsight(InOutState.CardRun.ActiveBattle.Deck, OutError))
 	{
 		return false;
 	}
@@ -859,20 +2627,46 @@ bool FGameXXKCardBattleAdapter::EndPlayerCardPhase(
 	{
 		return SetFailure(OutError, TEXT("There is no active card battle session."));
 	}
+	if (!ValidateLivingEnemyIntentPresentation(InOutState.CardRun.ActiveBattle, OutError))
+	{
+		return false;
+	}
 	if (!GameXXKCardRules::EndPlayerCardPhase(InOutState.CardRun.ActiveBattle, OutDamageResults, OutError))
 	{
 		return false;
 	}
-	BuildEnemyIntents(InOutState.CardRun);
+	FGameXXKRelicRules::ApplyPlayerRoundEnd(InOutState);
+	FGameXXKRelicRules::ApplyDamageTaken(InOutState, OutDamageResults);
+
+	FGameXXKCardRunState& Run = InOutState.CardRun;
+	if (Run.ActiveBattle.Phase != EGameXXKCardBattlePhase::Enemy)
+	{
+		// Player-side end-phase effects can finish the battle. Terminal states never retain a forecast.
+		Run.EnemyIntents.Reset();
+		Run.NextEnemyIntentIndex = 0;
+		return SyncCardBattleToLegacyProjection(InOutState, OutError);
+	}
+
+	// Reuse the forecast created at player-phase start. Only a legacy/recovery state without one
+	// may create a new list here. Defeated sources are removed before presentation can show them.
+	PruneUnexecutableEnemyIntents(Run);
+	if (Run.EnemyIntents.IsEmpty() && !BuildEnemyIntents(Run, OutError))
+	{
+		return false;
+	}
 	return SyncCardBattleToLegacyProjection(InOutState, OutError);
 }
 
-bool FGameXXKCardBattleAdapter::ResolveEnemyPhase(
+static bool ResolveNextEnemyIntentImpl(
 	FGameXXKRuntimeState& InOutState,
+	FGameXXKCardEnemyIntent& OutResolvedIntent,
 	TArray<FGameXXKCardDamageResult>& OutDamageResults,
+	bool& bOutIntentsFinished,
 	FString* OutError)
 {
+	OutResolvedIntent = FGameXXKCardEnemyIntent();
 	OutDamageResults.Reset();
+	bOutIntentsFinished = false;
 	FGameXXKCardRunState& Run = InOutState.CardRun;
 	if (!Run.bHasActiveCardBattle || Run.ActiveBattle.Phase != EGameXXKCardBattlePhase::Enemy)
 	{
@@ -880,50 +2674,283 @@ bool FGameXXKCardBattleAdapter::ResolveEnemyPhase(
 	}
 	if (Run.EnemyIntents.IsEmpty())
 	{
-		BuildEnemyIntents(Run);
-	}
-	while (Run.NextEnemyIntentIndex < Run.EnemyIntents.Num()
-		&& Run.ActiveBattle.Phase == EGameXXKCardBattlePhase::Enemy)
-	{
-		const FGameXXKCardEnemyIntent Intent = Run.EnemyIntents[Run.NextEnemyIntentIndex++];
-		const FGameXXKCardCombatUnit* Enemy = FindCardUnit(Run.ActiveBattle.Units, Intent.SourceUnitId);
-		if (!Enemy || !Enemy->bLiving || Enemy->Side != EGameXXKCardTargetSide::Enemy)
-		{
-			continue;
-		}
-		const FGameXXKCardCombatUnit* Target = FindCardUnit(Run.ActiveBattle.Units, Intent.SuggestedTargetUnitId);
-		if (!Target || !Target->bLiving || Target->Side != EGameXXKCardTargetSide::Party)
-		{
-			Target = FindLowestLivingPartyUnit(Run.ActiveBattle);
-		}
-		if (!Target)
-		{
-			break;
-		}
-		FGameXXKCardDamageContext Context;
-		Context.SourceUnitId = Intent.SourceUnitId;
-		Context.Kind = Intent.Kind;
-		FGameXXKCardDamageResult DamageResult;
-		TArray<FGameXXKCardDamageResult> ReactiveResults;
-		if (!GameXXKCardRules::ResolveEnemyDirectAttack(Run.ActiveBattle, Context, Target->UnitId, Intent.Damage, DamageResult, &ReactiveResults, OutError))
+		if (!BuildEnemyIntents(Run, OutError))
 		{
 			return false;
 		}
-		OutDamageResults.Add(MoveTemp(DamageResult));
-		OutDamageResults.Append(MoveTemp(ReactiveResults));
 	}
-	if (Run.ActiveBattle.Phase == EGameXXKCardBattlePhase::Enemy)
+	if (Run.NextEnemyIntentIndex >= Run.EnemyIntents.Num())
 	{
-		TArray<FGameXXKCardDamageResult> EnemyDotResults;
-		if (!GameXXKCardRules::BeginNextPlayerCardRound(Run.ActiveBattle, EnemyDotResults, OutError))
+		bOutIntentsFinished = true;
+		return FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(InOutState, OutError);
+	}
+
+	FGameXXKCardEnemyIntent Intent = Run.EnemyIntents[Run.NextEnemyIntentIndex];
+	if (!RetargetDefeatedPersistentTargets(Run.ActiveBattle, OutError)
+		|| !RefreshPersistentTargetReferencesForIntent(Run.ActiveBattle, Intent))
+	{
+		return false;
+	}
+	OutResolvedIntent = Intent;
+	bool bIntentConsumed = false;
+	int32 NextCatalogIntentCursor = INDEX_NONE;
+	if (!GetNextCatalogIntentCursor(Run.ActiveBattle, Intent, NextCatalogIntentCursor, OutError))
+	{
+		return false;
+	}
+	const FGameXXKCardCombatUnit* Enemy = FindCardUnit(Run.ActiveBattle.Units, Intent.SourceUnitId);
+	if (Enemy && Enemy->bLiving && Enemy->Side == EGameXXKCardTargetSide::Enemy)
+	{
+		const bool bHasCatalogResolvedEffect = Intent.Effects.ContainsByPredicate([](const FGameXXKResolvedEnemyIntentEffect& Effect)
+		{
+			return Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::AddArmor
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::ApplyStatus
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::Heal
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::ConsumeSharedQi
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::IncreaseNextCardEnergy
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::ModifyAttack
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::ModifySpeed
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::RemovePositiveStatus;
+		});
+		if (bHasCatalogResolvedEffect)
+		{
+			if (!Intent.bCharging && !ResolveCatalogIntentEffects(Run.ActiveBattle, Intent, OutDamageResults, OutError))
+			{
+				return false;
+			}
+			bIntentConsumed = true;
+		}
+		else
+		{
+			const FGameXXKCardCombatUnit* Target = FindCardUnit(Run.ActiveBattle.Units, Intent.SuggestedTargetUnitId);
+			if (!Target || !Target->bLiving || Target->Side != EGameXXKCardTargetSide::Party)
+			{
+				Target = FindLowestLivingPartyUnit(Run.ActiveBattle);
+			}
+			if (Target)
+			{
+				FGameXXKCardDamageContext Context;
+				Context.SourceUnitId = Intent.SourceUnitId;
+				Context.Kind = Intent.Kind;
+				Context.OnHitStatuses = Intent.OnHitStatuses;
+				FGameXXKCardDamageResult DamageResult;
+				TArray<FGameXXKCardDamageResult> ReactiveResults;
+				if (!GameXXKCardRules::ResolveEnemyDirectAttack(Run.ActiveBattle, Context, Target->UnitId, Intent.Damage, DamageResult, &ReactiveResults, OutError))
+				{
+					return false;
+				}
+				OutDamageResults.Add(MoveTemp(DamageResult));
+				OutDamageResults.Append(MoveTemp(ReactiveResults));
+			}
+			// There is no living party target for this saved action, so deliberately skip it.
+			bIntentConsumed = true;
+		}
+	}
+	else
+	{
+		// A defeated or invalid persisted source cannot execute its saved action, so deliberately skip it.
+		bIntentConsumed = true;
+	}
+	if (bIntentConsumed)
+	{
+		if (NextCatalogIntentCursor != INDEX_NONE)
+		{
+			FGameXXKEnemyBattleState* EnemyState = Run.ActiveBattle.EnemyStates.Find(Intent.SourceUnitId);
+			if (!EnemyState)
+			{
+				return SetFailure(OutError, TEXT("A resolved catalog enemy intent lost its persisted enemy state."));
+			}
+			EnemyState->IntentCursor = NextCatalogIntentCursor;
+		}
+		if (!Intent.bCharging)
+		{
+			if (FGameXXKEnemyBattleState* EnemyState = Run.ActiveBattle.EnemyStates.Find(Intent.SourceUnitId);
+				EnemyState && EnemyState->PendingChargedIntentId == Intent.IntentDefinitionId)
+			{
+				EnemyState->PendingChargedIntentId = NAME_None;
+				EnemyState->ChargeRoundsRemaining = 0;
+				EnemyState->PendingChargeTargetUnitIds.Reset();
+			}
+		}
+		if (!StartSpiralHornDeerHealingCooldown(Run.ActiveBattle, Intent, OutError))
 		{
 			return false;
 		}
-		OutDamageResults.Append(MoveTemp(EnemyDotResults));
+		if (!RetargetDefeatedPersistentTargets(Run.ActiveBattle, OutError))
+		{
+			return false;
+		}
+		++Run.NextEnemyIntentIndex;
+	}
+	FGameXXKRelicRules::ApplyDamageTaken(InOutState, OutDamageResults);
+
+	bOutIntentsFinished = Run.NextEnemyIntentIndex >= Run.EnemyIntents.Num();
+	return FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(InOutState, OutError);
+}
+
+bool FGameXXKCardBattleAdapter::ResolveNextEnemyIntent(
+	FGameXXKRuntimeState& InOutState,
+	FGameXXKCardEnemyIntent& OutResolvedIntent,
+	TArray<FGameXXKCardDamageResult>& OutDamageResults,
+	bool& bOutIntentsFinished,
+	FString* OutError)
+{
+	OutResolvedIntent = FGameXXKCardEnemyIntent();
+	OutDamageResults.Reset();
+	bOutIntentsFinished = false;
+
+	FGameXXKRuntimeState NewState = InOutState;
+	FGameXXKCardEnemyIntent NewResolvedIntent;
+	TArray<FGameXXKCardDamageResult> NewDamageResults;
+	bool bNewIntentsFinished = false;
+	if (!ResolveNextEnemyIntentImpl(NewState, NewResolvedIntent, NewDamageResults, bNewIntentsFinished, OutError))
+	{
+		return false;
+	}
+
+	InOutState = MoveTemp(NewState);
+	OutResolvedIntent = MoveTemp(NewResolvedIntent);
+	OutDamageResults = MoveTemp(NewDamageResults);
+	bOutIntentsFinished = bNewIntentsFinished;
+	return true;
+}
+
+bool FGameXXKCardBattleAdapter::SkipCurrentEnemyIntent(
+	FGameXXKRuntimeState& InOutState,
+	FString* OutError)
+{
+	FGameXXKRuntimeState NewState = InOutState;
+	FGameXXKCardRunState& Run = NewState.CardRun;
+	if (!Run.bHasActiveCardBattle || Run.ActiveBattle.Phase != EGameXXKCardBattlePhase::Enemy)
+	{
+		return SetFailure(OutError, TEXT("Enemy intents can only be skipped during an active enemy card phase."));
+	}
+	if (Run.EnemyIntents.IsEmpty() || !Run.EnemyIntents.IsValidIndex(Run.NextEnemyIntentIndex))
+	{
+		return SetFailure(OutError, TEXT("There is no pending enemy intent to skip."));
+	}
+
+	++Run.NextEnemyIntentIndex;
+	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	{
+		return false;
+	}
+	InOutState = MoveTemp(NewState);
+	return true;
+}
+
+bool FGameXXKCardBattleAdapter::CompleteEnemyCardPhase(
+	FGameXXKRuntimeState& InOutState,
+	TArray<FGameXXKCardDamageResult>& OutDamageResults,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+
+	FGameXXKRuntimeState NewState = InOutState;
+	FGameXXKCardRunState& Run = NewState.CardRun;
+	if (!Run.bHasActiveCardBattle)
+	{
+		return SetFailure(OutError, TEXT("Enemy intents can only complete during an active card battle."));
+	}
+	if (Run.ActiveBattle.Phase != EGameXXKCardBattlePhase::Enemy
+		&& Run.ActiveBattle.Phase != EGameXXKCardBattlePhase::Victory
+		&& Run.ActiveBattle.Phase != EGameXXKCardBattlePhase::Defeat)
+	{
+		return SetFailure(OutError, TEXT("Enemy intents can only complete during an enemy or terminal card phase."));
+	}
+	if (Run.ActiveBattle.Phase == EGameXXKCardBattlePhase::Enemy
+		&& Run.NextEnemyIntentIndex < Run.EnemyIntents.Num())
+	{
+		return SetFailure(OutError, TEXT("All pending enemy intents must resolve before completing the enemy phase."));
+	}
+	TArray<FGameXXKCardDamageResult> NewDamageResults;
+	if (Run.ActiveBattle.Phase == EGameXXKCardBattlePhase::Enemy
+		&& !GameXXKCardRules::BeginNextPlayerCardRound(Run.ActiveBattle, NewDamageResults, OutError))
+	{
+		return false;
+	}
+	if (Run.ActiveBattle.Phase == EGameXXKCardBattlePhase::Player)
+	{
+		if (!GameXXKCardRules::ResetWhiteApeStatusGuardsForPlayerRound(Run.ActiveBattle, OutError))
+		{
+			return false;
+		}
+		if (!AdvanceSpiralHornDeerHealingCooldowns(Run.ActiveBattle, OutError))
+		{
+			return false;
+		}
+		// Enemy-end DOT and terminal cleanup have completed.  Only living enemies that
+		// survived the boundary may advance charges or expire one-phase modifiers.
+		AdvancePendingEnemyCharges(Run.ActiveBattle);
+		ExpireEnemyPhaseTemporaryModifiers(Run.ActiveBattle);
+		FGameXXKRelicRules::ApplyPlayerRoundStart(NewState);
+		FGameXXKRelicRules::ApplyDamageTaken(NewState, NewDamageResults);
+		if (!ApplyCatalogEnemyRoundStartStatuses(Run.ActiveBattle, OutError))
+		{
+			return false;
+		}
 	}
 	Run.EnemyIntents.Reset();
 	Run.NextEnemyIntentIndex = 0;
-	return SyncCardBattleToLegacyProjection(InOutState, OutError);
+	if (Run.ActiveBattle.Phase == EGameXXKCardBattlePhase::Player
+		&& !BuildEnemyIntents(Run, OutError))
+	{
+		return false;
+	}
+	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	{
+		return false;
+	}
+
+	InOutState = MoveTemp(NewState);
+	OutDamageResults = MoveTemp(NewDamageResults);
+	return true;
+}
+
+bool FGameXXKCardBattleAdapter::ResolveEnemyPhase(
+	FGameXXKRuntimeState& InOutState,
+	TArray<FGameXXKCardDamageResult>& OutDamageResults,
+	FString* OutError)
+{
+	FGameXXKRuntimeState NewState = InOutState;
+	if (!NewState.CardRun.bHasActiveCardBattle || NewState.CardRun.ActiveBattle.Phase != EGameXXKCardBattlePhase::Enemy)
+	{
+		return SetFailure(OutError, TEXT("Enemy intents can only resolve during an active enemy card phase."));
+	}
+	if (NewState.CardRun.EnemyIntents.IsEmpty())
+	{
+		if (!BuildEnemyIntents(NewState.CardRun, OutError))
+		{
+			return false;
+		}
+	}
+	TArray<FGameXXKCardDamageResult> NewDamageResults;
+	while (NewState.CardRun.NextEnemyIntentIndex < NewState.CardRun.EnemyIntents.Num()
+		&& NewState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Enemy)
+	{
+		FGameXXKCardEnemyIntent ResolvedIntent;
+		TArray<FGameXXKCardDamageResult> IntentDamageResults;
+		bool bIntentsFinished = false;
+		if (!ResolveNextEnemyIntent(NewState, ResolvedIntent, IntentDamageResults, bIntentsFinished, OutError))
+		{
+			return false;
+		}
+		NewDamageResults.Append(MoveTemp(IntentDamageResults));
+	}
+
+	TArray<FGameXXKCardDamageResult> CompletionDamageResults;
+	if (!CompleteEnemyCardPhase(NewState, CompletionDamageResults, OutError))
+	{
+		return false;
+	}
+	NewDamageResults.Append(MoveTemp(CompletionDamageResults));
+	InOutState = MoveTemp(NewState);
+	OutDamageResults = MoveTemp(NewDamageResults);
+	return true;
 }
 
 bool FGameXXKCardBattleAdapter::CreateRouteRewardOffer(
@@ -934,24 +2961,49 @@ bool FGameXXKCardBattleAdapter::CreateRouteRewardOffer(
 	TArray<FName>& OutCardIds,
 	FString* OutError)
 {
-	OutCardIds.Reset();
-	if (!EnsureCardRunInitialized(InOutState, OutError) || SourceNodeId == INDEX_NONE || ChoiceSeed == 0)
+	if (OutError)
 	{
-		return SetFailure(OutError, TEXT("Route rewards require initialized card state, a stable source node, and a non-zero choice seed."));
+		OutError->Reset();
 	}
-	FGameXXKCardRunState& Run = InOutState.CardRun;
+	OutCardIds.Reset();
+	if (SourceNodeId < 0)
+	{
+		return SetFailure(OutError, TEXT("Route rewards require a non-negative source node."));
+	}
+
+	FGameXXKRuntimeState CandidateState = InOutState;
+	if (!EnsureCardRunInitialized(CandidateState, OutError))
+	{
+		return false;
+	}
+	int32 CapacityUsed = 0;
+	if (!ValidateRouteRewardEntryAuthority(CandidateState, false, CapacityUsed, OutError)
+		|| !ValidatePendingRouteRewardGate(CandidateState, false, OutError))
+	{
+		return false;
+	}
+
+	FGameXXKCardRunState& Run = CandidateState.CardRun;
 	if (!Run.PendingReward.CardIds.IsEmpty())
 	{
 		if (Run.PendingReward.SourceNodeId != SourceNodeId)
 		{
-			return SetFailure(OutError, TEXT("A different route reward must be resolved before opening another offer."));
+			return SetFailure(OutError, TEXT("A different route reward source cannot replace the saved pending offer."));
 		}
 		OutCardIds = Run.PendingReward.CardIds;
 		return true;
 	}
-	if (Run.RouteCardIds.Num() > MaximumRouteRewardCardCount)
+	if (!IsRewardNodeKind(NodeKind) || ChoiceSeed == 0)
 	{
-		return SetFailure(OutError, TEXT("The route reward list already exceeds the twelve-card temporary cap."));
+		return SetFailure(OutError, TEXT("A new route reward requires a battle, elite, or boss node and a non-zero choice seed."));
+	}
+	if (SourceNodeId != GetActiveRewardSourceNodeId(CandidateState))
+	{
+		return SetFailure(OutError, TEXT("The route reward source does not match the active card-battle victory."));
+	}
+	if (Run.NextRewardOrdinal < 0 || Run.NextRewardOrdinal == MAX_int32)
+	{
+		return SetFailure(OutError, TEXT("The next route reward ordinal must be non-negative and safely incrementable."));
 	}
 
 	TArray<FName> AllEligible;
@@ -979,7 +3031,7 @@ bool FGameXXKCardBattleAdapter::CreateRouteRewardOffer(
 	TArray<FName> Picks;
 	if (NodeKind == EGameXXKNodeKind::Boss)
 	{
-		const bool bTiger = InOutState.ActiveBattleEnemies.ContainsByPredicate([](const FGameXXKBattleRuntimeUnit& Enemy)
+		const bool bTiger = CandidateState.ActiveBattleEnemies.ContainsByPredicate([](const FGameXXKBattleRuntimeUnit& Enemy)
 		{
 			return Enemy.Id == TEXT("Tiger");
 		});
@@ -1017,69 +3069,197 @@ bool FGameXXKCardBattleAdapter::CreateRouteRewardOffer(
 	Run.PendingReward.SourceNodeId = SourceNodeId;
 	Run.PendingReward.ChoiceSeed = ChoiceSeed;
 	Run.PendingReward.CardIds = Picks;
-	Run.PendingReward.bRequiresRouteCardReplacement = Run.RouteCardIds.Num() >= MaximumRouteRewardCardCount;
+	Run.PendingReward.bRequiresRouteCardReplacement = false;
 	++Run.NextRewardOrdinal;
+	InOutState = MoveTemp(CandidateState);
 	OutCardIds = MoveTemp(Picks);
+	return true;
+}
+
+bool FGameXXKCardBattleAdapter::PreviewPendingRouteReward(
+	const FGameXXKRuntimeState& State,
+	const FName RewardCardId,
+	const FName ReplacementEntryId,
+	FGameXXKRouteCardAcquisitionPreview& OutPreview,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	OutPreview = FGameXXKRouteCardAcquisitionPreview();
+	FGameXXKRouteCardEntry Candidate;
+	if (!BuildPendingRouteRewardCandidate(State, RewardCardId, Candidate, OutError))
+	{
+		return false;
+	}
+
+	FGameXXKRouteCardAcquisitionPreview CandidatePreview;
+	if (!FGameXXKRunDeckRules::PreviewAcquisition(
+		State.CardRun,
+		Candidate,
+		ReplacementEntryId,
+		CandidatePreview,
+		OutError))
+	{
+		return false;
+	}
+	OutPreview = MoveTemp(CandidatePreview);
 	return true;
 }
 
 bool FGameXXKCardBattleAdapter::ChoosePendingRouteReward(
 	FGameXXKRuntimeState& InOutState,
 	const FName RewardCardId,
-	const FName ReplacedRouteCardId,
+	const FName ReplacementEntryId,
 	FString* OutError)
 {
-	if (!EnsureCardRunInitialized(InOutState, OutError))
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+
+	FGameXXKRuntimeState CandidateState = InOutState;
+	FGameXXKRouteCardAcquisitionPreview InitialPreview;
+	if (!PreviewPendingRouteReward(
+		CandidateState,
+		RewardCardId,
+		NAME_None,
+		InitialPreview,
+		OutError))
 	{
 		return false;
 	}
-	FGameXXKCardRunState& Run = InOutState.CardRun;
-	if (RewardCardId.IsNone() || !Run.PendingReward.CardIds.Contains(RewardCardId) || !IsRouteCard(RewardCardId))
+
+	if (InitialPreview.Decision == EGameXXKRouteCardAcquisitionDecision::CanCommit)
 	{
-		return SetFailure(OutError, TEXT("The selected route reward is not in the saved pending offer."));
-	}
-	const bool bAtCapacity = Run.RouteCardIds.Num() >= MaximumRouteRewardCardCount;
-	if (Run.PendingReward.bRequiresRouteCardReplacement != bAtCapacity)
-	{
-		return SetFailure(OutError, TEXT("The saved route reward replacement requirement no longer matches the temporary deck size."));
-	}
-	if (bAtCapacity)
-	{
-		if (ReplacedRouteCardId.IsNone() || !Run.RouteCardIds.Contains(ReplacedRouteCardId))
+		if (!ReplacementEntryId.IsNone())
 		{
-			return SetFailure(OutError, TEXT("A full route deck may replace only one existing temporary route reward card."));
+			return SetFailure(OutError, TEXT("This reward candidate can commit without replacing a route-card entry."));
 		}
 	}
-	else if (!ReplacedRouteCardId.IsNone())
+	else
 	{
-		return SetFailure(OutError, TEXT("A route-card replacement is only valid at the thirty-card deck cap."));
+		if (ReplacementEntryId.IsNone())
+		{
+			return SetFailure(OutError, TEXT("This reward candidate requires one stable replacement EntryId."));
+		}
+		if (!InitialPreview.EligibleReplacementEntryIds.Contains(ReplacementEntryId))
+		{
+			return SetFailure(OutError, TEXT("The selected replacement EntryId is not eligible for this reward candidate."));
+		}
 	}
-	if (GetCurrentCardCopyCount(Run, RewardCardId, bAtCapacity ? ReplacedRouteCardId : NAME_None) >= 2)
+
+	FGameXXKRouteCardAcquisitionPreview CommitPreview;
+	if (!PreviewPendingRouteReward(
+		CandidateState,
+		RewardCardId,
+		ReplacementEntryId,
+		CommitPreview,
+		OutError))
 	{
-		return SetFailure(OutError, TEXT("The chosen reward would create more than two copies of one CardId in the shared deck."));
+		return false;
 	}
-	if (bAtCapacity)
+	if (CommitPreview.Decision != EGameXXKRouteCardAcquisitionDecision::CanCommit)
 	{
-		const int32 RemoveIndex = Run.RouteCardIds.IndexOfByKey(ReplacedRouteCardId);
-		Run.RouteCardIds.RemoveAt(RemoveIndex);
+		return SetFailure(OutError, TEXT("The selected reward candidate still requires a valid replacement EntryId."));
 	}
-	Run.RouteCardIds.Add(RewardCardId);
-	Run.PendingReward = FGameXXKPendingRouteCardReward();
+
+	FGameXXKRouteCardEntry CandidateEntry;
+	if (!BuildPendingRouteRewardCandidate(CandidateState, RewardCardId, CandidateEntry, OutError))
+	{
+		return false;
+	}
+	FGameXXKRouteCardAcquisitionPreview AppliedPreview;
+	if (!FGameXXKRunDeckRules::CommitAcquisition(
+		CandidateState.CardRun,
+		CandidateEntry,
+		ReplacementEntryId,
+		AppliedPreview,
+		OutError))
+	{
+		return false;
+	}
+
+	++CandidateState.CardRun.NextRouteCardEntryOrdinal;
+	CandidateState.CardRun.PendingReward = FGameXXKPendingRouteCardReward();
+	CandidateState.CardRun.bActiveBattleRewardResolved = true;
+	InOutState = MoveTemp(CandidateState);
 	return true;
 }
 
 bool FGameXXKCardBattleAdapter::SkipPendingRouteReward(FGameXXKRuntimeState& InOutState, FString* OutError)
 {
-	if (!EnsureCardRunInitialized(InOutState, OutError))
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	FGameXXKRuntimeState CandidateState = InOutState;
+	if (!EnsureCardRunInitialized(CandidateState, OutError))
 	{
 		return false;
 	}
-	if (InOutState.CardRun.PendingReward.CardIds.IsEmpty())
+	int32 CapacityUsed = 0;
+	if (!ValidateRouteRewardEntryAuthority(CandidateState, false, CapacityUsed, OutError)
+		|| !ValidatePendingRouteRewardGate(CandidateState, true, OutError))
 	{
-		return SetFailure(OutError, TEXT("There is no pending route reward to skip."));
+		return false;
 	}
-	InOutState.CardRun.PendingReward = FGameXXKPendingRouteCardReward();
+	CandidateState.CardRun.PendingReward = FGameXXKPendingRouteCardReward();
+	CandidateState.CardRun.bActiveBattleRewardResolved = true;
+	InOutState = MoveTemp(CandidateState);
 	return true;
+}
+
+bool FGameXXKCardBattleAdapter::CreateRouteEventOffer(
+	FGameXXKRuntimeState& InOutState,
+	const int32 SourceNodeId,
+	const int32 ChoiceSeed,
+	FName& OutEventNpcId,
+	FString* OutError)
+{
+	OutEventNpcId = NAME_None;
+	if (!EnsureCardRunInitialized(InOutState, OutError) || SourceNodeId == INDEX_NONE || ChoiceSeed == 0)
+	{
+		return SetFailure(OutError, TEXT("Route events require initialized card state, a stable source node, and a non-zero choice seed."));
+	}
+	FGameXXKCardRunState& Run = InOutState.CardRun;
+	if (Run.PendingEvent.SourceNodeId != INDEX_NONE)
+	{
+		if (Run.PendingEvent.SourceNodeId != SourceNodeId)
+		{
+			return SetFailure(OutError, TEXT("A different route event must be resolved before opening another event offer."));
+		}
+		OutEventNpcId = Run.PendingEvent.EventNpcId;
+		return !OutEventNpcId.IsNone();
+	}
+
+	const FGameXXKRouteEncounterDefinition* Encounter = FGameXXKRouteEncounterCatalog::ChooseDeterministic(
+		EGameXXKRouteEncounterKind::Event,
+		ChoiceSeed);
+	if (!Encounter)
+	{
+		return SetFailure(OutError, TEXT("The route event catalog does not contain any approved event identity."));
+	}
+	Run.PendingEvent.SourceNodeId = SourceNodeId;
+	Run.PendingEvent.ChoiceSeed = ChoiceSeed;
+	Run.PendingEvent.EncounterId = Encounter->Id;
+	Run.PendingEvent.EventNpcId = Encounter->EventNpcId;
+	Run.PendingEvent.bCanRecruitPermanentCompanion = false;
+	OutEventNpcId = Run.PendingEvent.EventNpcId;
+	return true;
+}
+
+void FGameXXKCardBattleAdapter::ClearActiveCardBattle(FGameXXKRuntimeState& InOutState)
+{
+	FGameXXKCardRunState& Run = InOutState.CardRun;
+	Run.bHasActiveCardBattle = false;
+	Run.ActiveBattleSourceNodeId = INDEX_NONE;
+	Run.ActiveBattle = FGameXXKCardBattleRuntime();
+	Run.EnemyIntents.Reset();
+	Run.NextEnemyIntentIndex = 0;
+	Run.PendingReward = FGameXXKPendingRouteCardReward();
+	Run.bActiveBattleRewardResolved = false;
 }
 
 void FGameXXKCardBattleAdapter::ClearRouteLocalCardState(FGameXXKRuntimeState& InOutState)
@@ -1089,13 +3269,12 @@ void FGameXXKCardBattleAdapter::ClearRouteLocalCardState(FGameXXKRuntimeState& I
 	Run.ActiveTemporaryQuestNpcId = NAME_None;
 	Run.PartySelection.QuestNpc = FGameXXKQuestNpcCardSelection();
 	Run.RouteCardIds.Reset();
-	Run.bHasActiveCardBattle = false;
-	Run.ActiveBattleSourceNodeId = INDEX_NONE;
-	Run.ActiveBattle = FGameXXKCardBattleRuntime();
-	Run.EnemyIntents.Reset();
-	Run.NextEnemyIntentIndex = 0;
-	Run.PendingReward = FGameXXKPendingRouteCardReward();
+	Run.RouteCardEntries.Reset();
+	Run.NextRouteCardEntryOrdinal = 0;
+	ClearActiveCardBattle(InOutState);
 	Run.PendingEvent = FGameXXKPendingRouteEvent();
+	Run.RouteMerchant = FGameXXKRouteMerchantState();
+	FGameXXKRelicRules::ClearRouteRelics(InOutState);
 }
 
 bool FGameXXKCardBattleAdapter::IsCardBattleTerminal(const FGameXXKRuntimeState& State)

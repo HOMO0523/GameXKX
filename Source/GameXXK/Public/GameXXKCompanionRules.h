@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameXXKCharacterStatRules.h"
 #include "GameXXKCompanionTypes.h"
 
 /** Pure deterministic rules for permanent companion progression and deck ownership. */
@@ -8,7 +9,7 @@ class GAMEXXK_API FGameXXKCompanionRules final
 {
 public:
 	static constexpr int32 MaxPermanentCompanions = 12;
-	static constexpr int32 MaxCompanionLevel = 20;
+	static constexpr int32 MaxCompanionLevel = FGameXXKCharacterStatRules::MaxCharacterLevel;
 
 	/** Builds the immutable twelve-card pool: four role cores plus eight seeded, distinct choices. */
 	static bool BuildPersonalCardPool(
@@ -27,6 +28,16 @@ public:
 		FGameXXKCompanionRosterState& InOutRoster,
 		int32 RecruitOrderSeed,
 		FGameXXKCompanionRecruitOrder& OutOrder,
+		FString* OutError = nullptr);
+
+	/**
+	 * Creates (or reopens) the next save-owned random recruit ticket and immediately resolves it.
+	 * The first 24 tickets form a seed-ordered permutation of the approved templates, so a new
+	 * roster receives varied roles before duplicate-template sigil behavior can occur.
+	 */
+	static bool CreateAndResolveNextRecruitment(
+		FGameXXKCompanionRosterState& InOutRoster,
+		FGameXXKCompanionRecruitResult& OutResult,
 		FString* OutError = nullptr);
 
 	/** Claims the single stored order; full-roster outcomes retain the same order and candidate until explicitly resolved. */
@@ -74,7 +85,9 @@ public:
 		FString* OutError = nullptr);
 
 	/**
-	 * Commits a full-roster pending candidate after one existing companion is explicitly dismissed.
+	 * Roster-only rule that commits a full-roster pending candidate after one existing companion is
+	 * explicitly dismissed. Central equipment ownership is handled by a complete-state caller before
+	 * this rule runs.
 	 * When dismissing the active companion, the caller must explicitly choose the new active instance
 	 * (including the pending candidate) or NAME_None to confirm no permanent partner.
 	 */
@@ -84,6 +97,9 @@ public:
 		FName ActivePermanentCompanionInstanceIdAfterReplacement,
 		FGameXXKCompanionDismissalRefund& OutRefund,
 		FString* OutError = nullptr);
+
+	/** Explicitly abandons one saved full-roster candidate; the persistent sequence does not rewind. */
+	static bool DiscardPendingRecruitment(FGameXXKCompanionRosterState& InOutRoster, FString* OutError = nullptr);
 
 	static int32 GetExperienceRequiredForNextLevel(int32 CurrentLevel);
 	static bool AwardExperience(FGameXXKPermanentCompanion& InOutCompanion, int32 ExperienceAmount, FString* OutError = nullptr);

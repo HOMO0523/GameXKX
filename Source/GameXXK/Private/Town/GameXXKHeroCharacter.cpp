@@ -84,12 +84,11 @@ namespace
 			|| Direction == EGameXXKTownFacingDirection::SouthEast;
 	}
 
-	double GetHeroTownInputTimeSeconds(const AActor* Actor)
+	// This grace represents elapsed time between input events.  It must remain
+	// independent of world simulation because editor/MCP input can arrive while
+	// PIE world time is paused between synchronous requests.
+	double GetHeroTownInputTimeSeconds()
 	{
-		if (const UWorld* World = Actor ? Actor->GetWorld() : nullptr)
-		{
-			return static_cast<double>(World->GetTimeSeconds());
-		}
 		return FPlatformTime::Seconds();
 	}
 }
@@ -214,7 +213,7 @@ void AGameXXKHeroCharacter::Tick(float DeltaSeconds)
 		AddMovementInput(MoveDirection.GetClampedToMaxSize(1.0f));
 		if (bHasPendingStopDiagonalFacingDirection
 			&& !IsHeroTownDiagonalDirection(CurrentTownFacingDirection)
-			&& GetHeroTownInputTimeSeconds(this) - PendingStopDiagonalReleaseTimeSeconds > HeroTownDiagonalReleaseGraceSeconds)
+			&& GetHeroTownInputTimeSeconds() - PendingStopDiagonalReleaseTimeSeconds > HeroTownDiagonalReleaseGraceSeconds)
 		{
 			bHasPendingStopDiagonalFacingDirection = false;
 		}
@@ -510,7 +509,7 @@ void AGameXXKHeroCharacter::InitializeTownDirectionFlipbooks()
 void AGameXXKHeroCharacter::UpdateTownFacingFromIntent(float Horizontal, float Vertical)
 {
 	const bool bNewTownMoving = !FMath::IsNearlyZero(Horizontal) || !FMath::IsNearlyZero(Vertical);
-	const double InputTimeSeconds = GetHeroTownInputTimeSeconds(this);
+	const double InputTimeSeconds = GetHeroTownInputTimeSeconds();
 	EGameXXKTownFacingDirection NewDirection = bNewTownMoving
 		? ResolveHeroTownFacingDirection(Horizontal, Vertical, CurrentTownFacingDirection)
 		: CurrentTownFacingDirection;
@@ -558,6 +557,7 @@ void AGameXXKHeroCharacter::RefreshTownMovementIntent()
 {
 	if (IsTownMovementBlockedByModalWindow())
 	{
+		ReleaseHeldTownAutomationKeys();
 		RightInputPressCount = 0;
 		LeftInputPressCount = 0;
 		ForwardInputPressCount = 0;
@@ -588,6 +588,7 @@ void AGameXXKHeroCharacter::UpdateTownVisualFromMovementIntent(float Horizontal,
 
 void AGameXXKHeroCharacter::ResetTownMovementInput()
 {
+	ReleaseHeldTownAutomationKeys();
 	RightInputPressCount = 0;
 	LeftInputPressCount = 0;
 	ForwardInputPressCount = 0;
@@ -595,6 +596,82 @@ void AGameXXKHeroCharacter::ResetTownMovementInput()
 	AxisHorizontalIntent = 0.0f;
 	AxisVerticalIntent = 0.0f;
 	RefreshTownMovementIntent();
+}
+
+bool AGameXXKHeroCharacter::SetTownAutomationKeyState(FName KeyName, bool bPressed)
+{
+	if (KeyName == EKeys::D.GetFName())
+	{
+		if (bTownAutomationRightHeld == bPressed)
+		{
+			return true;
+		}
+		bTownAutomationRightHeld = bPressed;
+		bPressed ? MoveRightPressed() : MoveRightReleased();
+		return true;
+	}
+	if (KeyName == EKeys::A.GetFName())
+	{
+		if (bTownAutomationLeftHeld == bPressed)
+		{
+			return true;
+		}
+		bTownAutomationLeftHeld = bPressed;
+		bPressed ? MoveLeftPressed() : MoveLeftReleased();
+		return true;
+	}
+	if (KeyName == EKeys::W.GetFName())
+	{
+		if (bTownAutomationForwardHeld == bPressed)
+		{
+			return true;
+		}
+		bTownAutomationForwardHeld = bPressed;
+		bPressed ? MoveForwardPressed() : MoveForwardReleased();
+		return true;
+	}
+	if (KeyName == EKeys::S.GetFName())
+	{
+		if (bTownAutomationBackwardHeld == bPressed)
+		{
+			return true;
+		}
+		bTownAutomationBackwardHeld = bPressed;
+		bPressed ? MoveBackwardPressed() : MoveBackwardReleased();
+		return true;
+	}
+	return false;
+}
+
+void AGameXXKHeroCharacter::ReleaseHeldTownAutomationKeys()
+{
+	const bool bReleaseRight = bTownAutomationRightHeld;
+	const bool bReleaseLeft = bTownAutomationLeftHeld;
+	const bool bReleaseForward = bTownAutomationForwardHeld;
+	const bool bReleaseBackward = bTownAutomationBackwardHeld;
+
+	// Clear every held bit before dispatching releases because each release refreshes modal input state.
+	bTownAutomationRightHeld = false;
+	bTownAutomationLeftHeld = false;
+	bTownAutomationForwardHeld = false;
+	bTownAutomationBackwardHeld = false;
+
+	if (bReleaseRight)
+	{
+		MoveRightReleased();
+	}
+	if (bReleaseLeft)
+	{
+		MoveLeftReleased();
+	}
+	if (bReleaseForward)
+	{
+		MoveForwardReleased();
+	}
+	if (bReleaseBackward)
+	{
+		MoveBackwardReleased();
+	}
 }
 
 float AGameXXKHeroCharacter::GetKeyboardHorizontalIntent() const

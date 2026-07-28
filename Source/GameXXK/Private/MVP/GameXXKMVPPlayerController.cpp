@@ -5,14 +5,20 @@
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/InputComponent.h"
 #include "Engine/GameInstance.h"
 #include "Framework/Application/SlateApplication.h"
 #include "EngineUtils.h"
 #include "InputKeyEventArgs.h"
+#include "Interaction/GameXXKInteractionComponent.h"
+#include "GameXXKCompanionCatalog.h"
+#include "GameXXKBattlePresentation.h"
 #include "GameXXKMVPRules.h"
+#include "MVP/GameXXKHeroHitCameraShake.h"
 #include "MVP/GameXXKBattleScenePresenter.h"
 #include "MVP/GameXXKBattleSceneUnitActor.h"
+#include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKRouteEncounterSceneActor.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "PaperFlipbookComponent.h"
@@ -21,13 +27,19 @@
 #include "Town/GameXXKTownNpcCharacter.h"
 #include "Town/GameXXKTownPlayerPawn.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKBattleAnimationPresentation.h"
+#include "UI/GameXXKCompanionRosterWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
 #include "UI/GameXXKQuestDialogWidget.h"
+#include "UI/GameXXKRouteEncounterPanelWidget.h"
+#include "UI/GameXXKRouteMerchantWidget.h"
+#include "UI/GameXXKRelicBarWidget.h"
 #include "UI/GameXXKTaskPanelWidget.h"
 #include "UI/GameXXKTownHudWidget.h"
 #include "UI/GameXXKTownOverlayWidget.h"
+#include "UI/GameXXKWorldMapWidget.h"
 
 namespace
 {
@@ -35,7 +47,9 @@ namespace
 	const FName BattleSceneCameraTag(TEXT("GameXXK_BattleScene_Camera"));
 	const FVector BattleSceneCameraFallbackLocation(-420.0f, 0.0f, 720.0f);
 	const FRotator BattleSceneCameraFallbackRotation(-60.0f, 0.0f, 0.0f);
-	constexpr float BattleSceneCameraFallbackFOV = 55.0f;
+	// Wider framing keeps the combat lanes, projected foot HUD, and the new
+	// grass edge treatment visible without moving a user-tuned camera actor.
+	constexpr float BattleSceneCameraFallbackFOV = 63.0f;
 
 	FVector2D ResolveRouteMapViewportSize(const APlayerController* PlayerController)
 	{
@@ -100,21 +114,23 @@ namespace
 
 	void ConfigureBattleSceneCameraActor(ACameraActor* CameraActor)
 	{
-		if (!CameraActor)
-		{
-			return;
-		}
+	if (!CameraActor)
+	{
+		return;
+	}
 
-		const FRotator CurrentRotation = CameraActor->GetActorRotation();
-		if (CurrentRotation.Pitch < -65.0f || CurrentRotation.Pitch > -55.0f)
-		{
-			CameraActor->SetActorRotation(BattleSceneCameraFallbackRotation);
-		}
-		if (UCameraComponent* CameraComponent = CameraActor->GetCameraComponent())
-		{
-			CameraComponent->ProjectionMode = ECameraProjectionMode::Perspective;
-			CameraComponent->FieldOfView = BattleSceneCameraFallbackFOV;
-		}
+	if (UCameraComponent* CameraComponent = CameraActor->GetCameraComponent())
+	{
+		CameraComponent->ProjectionMode = ECameraProjectionMode::Perspective;
+		CameraComponent->AspectRatio = 16.0f / 9.0f;
+		CameraComponent->bConstrainAspectRatio = true;
+	}
+	}
+
+	bool IsGenericRouteEncounterScreen(const EGameXXKScreen Screen)
+	{
+		return Screen == EGameXXKScreen::RouteEvent
+			|| Screen == EGameXXKScreen::RouteCamp;
 	}
 }
 
@@ -124,11 +140,16 @@ AGameXXKMVPPlayerController::AGameXXKMVPPlayerController()
 	bEnableClickEvents = true;
 	bEnableMouseOverEvents = true;
 	MainMenuWidgetClass = UGameXXKMainMenuWidget::StaticClass();
+	WorldMapWidgetClass = UGameXXKWorldMapWidget::StaticClass();
 	TownOverlayWidgetClass = UGameXXKTownOverlayWidget::StaticClass();
 	RouteMapWidgetClass = UGameXXKOneGameRouteMapWidget::StaticClass();
 	BattleBoardWidgetClass = UGameXXKBattleBoardWidget::StaticClass();
 	InventoryWindowWidgetClass = UGameXXKInventoryWindowWidget::StaticClass();
+	CompanionRosterWidgetClass = UGameXXKCompanionRosterWidget::StaticClass();
 	QuestDialogWidgetClass = UGameXXKQuestDialogWidget::StaticClass();
+	RouteEncounterPanelWidgetClass = UGameXXKRouteEncounterPanelWidget::StaticClass();
+	RouteMerchantWidgetClass = UGameXXKRouteMerchantWidget::StaticClass();
+	RelicBarWidgetClass = UGameXXKRelicBarWidget::StaticClass();
 	TaskPanelWidgetClass = UGameXXKTaskPanelWidget::StaticClass();
 	TownHudWidgetClass = UGameXXKTownHudWidget::StaticClass();
 }
@@ -151,6 +172,7 @@ void AGameXXKMVPPlayerController::BeginPlay()
 void AGameXXKMVPPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
+	RefreshBattleCardTargetingBridge();
 	UpdateBattleTargetingPointerFromMouse();
 }
 
@@ -171,6 +193,10 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 		{
 			return CloseQuestDialog();
 		}
+		if (IsRouteEncounterPanelOpenForTest())
+		{
+			return CloseRouteEncounterPanel();
+		}
 		if (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest())
 		{
 			return CloseTaskPanel();
@@ -179,14 +205,39 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 		{
 			return CloseInventoryWindow();
 		}
+		if (IsCompanionRosterOpenForTest())
+		{
+			return CloseCompanionRoster();
+		}
+		if (TownHudWidget && TownHudWidget->IsCompanionCodexOpenForTest())
+		{
+			return TownHudWidget->CloseCompanionCodex();
+		}
 		if (BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting())
 		{
+			RefreshBattleCardTargetingBridge();
 			return true;
 		}
 	}
 	if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
 	{
 		return Super::InputKey(Params);
+	}
+	if (IsRouteEncounterPanelOpenForTest()
+		&& Params.Key == EKeys::F
+		&& Params.Event == IE_Pressed)
+	{
+		// F only opens the paper panel. Visible choices are always mouse/touch
+		// buttons, so a second F cannot silently resolve the encounter.
+		return true;
+	}
+	if (IsRouteMerchantWidgetOpenForTest()
+		&& Params.Key == EKeys::F
+		&& Params.Event == IE_Pressed)
+	{
+		// The dedicated merchant HUD owns the route-merchant interaction. Do not
+		// let legacy world interaction reopen the generic encounter panel.
+		return true;
 	}
 	if (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest()
 		&& (Params.Key == EKeys::F || Params.Key == EKeys::Q || Params.Key == EKeys::I))
@@ -225,6 +276,20 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 			}
 		}
 	}
+	if (Params.Key == EKeys::C && Params.Event == IE_Pressed)
+	{
+		EnsurePlayerFlowWidgets();
+		UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+		if (Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
+		{
+			const bool bHandled = IsCompanionRosterOpenForTest() ? CloseCompanionRoster() : OpenCompanionRoster();
+			if (bHandled)
+			{
+				RefreshPlayerFlowWidgets();
+				return true;
+			}
+		}
+	}
 	if (Params.Key == EKeys::LeftMouseButton && Params.Event == IE_Released)
 	{
 		if (TryHandleBattleSceneLeftClick())
@@ -233,9 +298,18 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 		}
 		HandleRouteMapPrimaryClick();
 	}
-	if (Params.Key == EKeys::F && Params.Event == IE_Pressed && TryHandleRouteEncounterInteract())
+	if (Params.Key == EKeys::F && Params.Event == IE_Pressed)
 	{
-		return true;
+		const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+		if (Subsystem && IsGenericRouteEncounterScreen(Subsystem->GetRuntimeState().Screen))
+		{
+			const bool bOpened = TryHandleRouteEncounterInteract();
+			// In a live route world this controller owns F so an unfocused input
+			// cannot fall through to the pawn component's nearby-actor fallback.
+			// Headless automation still receives false and must use its explicit
+			// panel seam instead.
+			return bOpened || CanAddPlayerWidgetsToViewport();
+		}
 	}
 	if (Params.Key == EKeys::RightMouseButton && Params.Event == IE_Released && TryHandleBattleSceneRightClick())
 	{
@@ -274,6 +348,11 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgetsForTest()
 	RefreshPlayerFlowWidgetsFromState();
 }
 
+void AGameXXKMVPPlayerController::ConfigureBattleSceneCameraForTest(ACameraActor* CameraActor)
+{
+	ConfigureBattleSceneCameraActor(CameraActor);
+}
+
 void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgetsFromState()
 {
 	RefreshPlayerFlowWidgets();
@@ -282,6 +361,11 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgetsFromState()
 UGameXXKMainMenuWidget* AGameXXKMVPPlayerController::GetMainMenuWidgetForTest() const
 {
 	return MainMenuWidget;
+}
+
+UGameXXKWorldMapWidget* AGameXXKMVPPlayerController::GetWorldMapWidgetForTest() const
+{
+	return WorldMapWidget;
 }
 
 UGameXXKTownOverlayWidget* AGameXXKMVPPlayerController::GetTownOverlayWidgetForTest() const
@@ -304,6 +388,11 @@ UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::GetInventoryWindowWi
 	return InventoryWindowWidget;
 }
 
+UGameXXKCompanionRosterWidget* AGameXXKMVPPlayerController::GetCompanionRosterWidgetForTest() const
+{
+	return CompanionRosterWidget;
+}
+
 UGameXXKQuestDialogWidget* AGameXXKMVPPlayerController::GetQuestDialogWidgetForTest() const
 {
 	return QuestDialogWidget;
@@ -314,6 +403,28 @@ UGameXXKTaskPanelWidget* AGameXXKMVPPlayerController::GetTaskPanelWidgetForTest(
 	return TaskPanelWidget;
 }
 
+UGameXXKRouteEncounterPanelWidget* AGameXXKMVPPlayerController::GetRouteEncounterPanelWidgetForTest() const
+{
+	return RouteEncounterPanelWidget;
+}
+
+UGameXXKRouteMerchantWidget* AGameXXKMVPPlayerController::GetRouteMerchantWidgetForTest() const
+{
+	return RouteMerchantWidget;
+}
+
+bool AGameXXKMVPPlayerController::IsRouteMerchantWidgetOpenForTest() const
+{
+	return RouteMerchantWidget
+		&& RouteMerchantWidget->GetVisibility() != ESlateVisibility::Collapsed
+		&& RouteMerchantWidget->GetVisibility() != ESlateVisibility::Hidden;
+}
+
+bool AGameXXKMVPPlayerController::IsRouteMerchantInputLockedForTest() const
+{
+	return bRouteMerchantInputLocked;
+}
+
 UGameXXKTownHudWidget* AGameXXKMVPPlayerController::GetTownHudWidgetForTest() const
 {
 	return TownHudWidget;
@@ -322,6 +433,11 @@ UGameXXKTownHudWidget* AGameXXKMVPPlayerController::GetTownHudWidgetForTest() co
 bool AGameXXKMVPPlayerController::HasMainMenuWidgetInViewportForTest() const
 {
 	return MainMenuWidget && MainMenuWidget->IsInViewport();
+}
+
+bool AGameXXKMVPPlayerController::HasWorldMapWidgetInViewportForTest() const
+{
+	return WorldMapWidget && WorldMapWidget->IsInViewport();
 }
 
 bool AGameXXKMVPPlayerController::HasTownOverlayWidgetInViewportForTest() const
@@ -347,6 +463,11 @@ bool AGameXXKMVPPlayerController::IsInventoryWindowModalInputLockedForTest() con
 bool AGameXXKMVPPlayerController::IsInventoryWindowModalInputLocked() const
 {
 	return InventoryWindowWidget && InventoryWindowWidget->IsModalInputLockActiveForTest();
+}
+
+bool AGameXXKMVPPlayerController::IsCompanionRosterOpenForTest() const
+{
+	return CompanionRosterWidget && CompanionRosterWidget->GetVisibility() != ESlateVisibility::Collapsed;
 }
 
 bool AGameXXKMVPPlayerController::IsQuestDialogOpenForTest() const
@@ -489,6 +610,7 @@ bool AGameXXKMVPPlayerController::CloseQuestDialog()
 
 bool AGameXXKMVPPlayerController::OpenFreeInventoryWindow()
 {
+	CloseCompanionRoster();
 	CloseTaskPanel();
 	UGameXXKInventoryWindowWidget* InventoryWindow = EnsureInventoryWindowWidget();
 	const bool bOpened = InventoryWindow && InventoryWindow->OpenFreeInventory();
@@ -508,6 +630,7 @@ bool AGameXXKMVPPlayerController::OpenMerchantTradeWindow()
 		return CloseInventoryWindow();
 	}
 
+	CloseCompanionRoster();
 	CloseTaskPanel();
 	UGameXXKInventoryWindowWidget* InventoryWindow = EnsureInventoryWindowWidget();
 	const bool bOpened = InventoryWindow && InventoryWindow->OpenMerchantTrade();
@@ -541,12 +664,57 @@ bool AGameXXKMVPPlayerController::CloseInventoryWindow()
 	return bClosed;
 }
 
+bool AGameXXKMVPPlayerController::OpenCompanionRoster()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Town)
+	{
+		return false;
+	}
+	if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
+	{
+		return false;
+	}
+
+	CloseInventoryWindow();
+	CloseTaskPanel();
+	if (TownHudWidget)
+	{
+		TownHudWidget->CloseCompanionCodex();
+	}
+	UGameXXKCompanionRosterWidget* Roster = EnsureCompanionRosterWidget();
+	if (!Roster)
+	{
+		return false;
+	}
+	Roster->SetMVPSubsystem(Subsystem);
+	Roster->RefreshFromState();
+	Roster->SetVisibility(ESlateVisibility::Visible);
+	FlushPressedKeys();
+	SetIgnoreMoveInput(true);
+	ApplyPlayerFlowInputMode();
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::CloseCompanionRoster()
+{
+	if (!IsCompanionRosterOpenForTest())
+	{
+		return false;
+	}
+	CompanionRosterWidget->SetVisibility(ESlateVisibility::Collapsed);
+	SetIgnoreMoveInput(false);
+	ApplyPlayerFlowInputMode();
+	return true;
+}
+
 bool AGameXXKMVPPlayerController::OpenTaskPanel()
 {
 	if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
 	{
 		return false;
 	}
+	CloseCompanionRoster();
 	CloseInventoryWindow();
 	PendingQuestNpc.Reset();
 	PendingQuestInstigator.Reset();
@@ -579,6 +747,171 @@ bool AGameXXKMVPPlayerController::IsTaskPanelOpenForTest() const
 	return TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest();
 }
 
+bool AGameXXKMVPPlayerController::OpenRouteEncounterPanel()
+{
+	if (CanAddPlayerWidgetsToViewport())
+	{
+		return false;
+	}
+	return OpenRouteEncounterPanelInternal(nullptr);
+}
+
+bool AGameXXKMVPPlayerController::OpenRouteEncounterPanelFromActor(AGameXXKRouteEncounterSceneActor* SourceActor)
+{
+	if (!SourceActor || SourceActor != GetFocusedRouteEncounterActor())
+	{
+		return false;
+	}
+	return OpenRouteEncounterPanelInternal(SourceActor);
+}
+
+bool AGameXXKMVPPlayerController::OpenRouteEncounterPanelInternal(AGameXXKRouteEncounterSceneActor* SourceActor)
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !IsGenericRouteEncounterScreen(Subsystem->GetRuntimeState().Screen))
+	{
+		return false;
+	}
+	if (IsRouteEncounterPanelOpenForTest())
+	{
+		return ActiveRouteEncounterSourceActor.Get() == SourceActor;
+	}
+
+	UGameXXKRouteEncounterPanelWidget* Panel = EnsureRouteEncounterPanelWidget();
+	const bool bOpened = Panel && Panel->OpenEncounterPanel();
+	if (bOpened)
+	{
+		ActiveRouteEncounterSourceActor = SourceActor;
+		ActiveRouteEncounterScreen = Subsystem->GetRuntimeState().Screen;
+		ActiveRouteEncounterNodeId = Subsystem->GetRuntimeState().PendingRouteNodeId;
+		FlushPressedKeys();
+		SetIgnoreMoveInput(true);
+		ApplyPlayerFlowInputMode();
+	}
+	return bOpened;
+}
+
+bool AGameXXKMVPPlayerController::CloseRouteEncounterPanel()
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (CanAddPlayerWidgetsToViewport()
+		&& Subsystem
+		&& Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteEvent
+		&& !ActiveRouteEncounterSourceActor.IsValid())
+	{
+		// A route-map event/chest cannot be dismissed into an unresolved state:
+		// it has no world actor to reopen it from, and the player must explicitly
+		// select one reward before the route becomes interactive again.
+		return false;
+	}
+
+	const bool bClosed = RouteEncounterPanelWidget && RouteEncounterPanelWidget->CloseEncounterPanel();
+	ClearRouteEncounterContext();
+	if (bClosed)
+	{
+		SetIgnoreMoveInput(false);
+		ApplyPlayerFlowInputMode();
+	}
+	return bClosed;
+}
+
+bool AGameXXKMVPPlayerController::IsRouteEncounterPanelOpenForTest() const
+{
+	return RouteEncounterPanelWidget && RouteEncounterPanelWidget->IsEncounterPanelOpenForTest();
+}
+
+AGameXXKRouteEncounterSceneActor* AGameXXKMVPPlayerController::GetRouteEncounterSourceActorForTest() const
+{
+	return ActiveRouteEncounterSourceActor.Get();
+}
+
+bool AGameXXKMVPPlayerController::ResolveRouteEncounterAction(const EGameXXKRouteEncounterAction Action)
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !IsRouteEncounterPanelOpenForTest())
+	{
+		return false;
+	}
+
+	if (Action == EGameXXKRouteEncounterAction::ClosePanel)
+	{
+		return CloseRouteEncounterPanel();
+	}
+
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	if (!IsGenericRouteEncounterScreen(State.Screen))
+	{
+		return false;
+	}
+	if (!HasValidRouteEncounterContext())
+	{
+		CloseRouteEncounterPanel();
+		return false;
+	}
+	// The panel has one immutable source context.  Preserve it before the route
+	// rule changes screen/state, then notify only that exact actor after a real
+	// visible choice succeeds.
+	AGameXXKRouteEncounterSceneActor* EncounterActor = ActiveRouteEncounterSourceActor.Get();
+
+	const bool bTaskNpcEvent = State.Screen == EGameXXKScreen::RouteEvent
+		&& FGameXXKCompanionCatalog::FindQuestNpcDefinition(State.CardRun.PendingEvent.EventNpcId) != nullptr;
+	bool bResolved = false;
+	switch (Action)
+	{
+	case EGameXXKRouteEncounterAction::SelectChoice0:
+		bResolved = State.Screen == EGameXXKScreen::RouteEvent && Subsystem->ResolveRouteEncounterChoice(0);
+		break;
+	case EGameXXKRouteEncounterAction::SelectChoice1:
+		bResolved = State.Screen == EGameXXKScreen::RouteEvent && Subsystem->ResolveRouteEncounterChoice(1);
+		break;
+	case EGameXXKRouteEncounterAction::SelectChoice2:
+		bResolved = State.Screen == EGameXXKScreen::RouteEvent && Subsystem->ResolveRouteEncounterChoice(2);
+		break;
+	case EGameXXKRouteEncounterAction::AcceptTaskNpcSupport:
+		bResolved = bTaskNpcEvent && State.CardRun.PartySelection.QuestNpc.NpcId.IsNone()
+			&& Subsystem->AcceptRouteEventNpcSupport();
+		break;
+	case EGameXXKRouteEncounterAction::TakeGold:
+		// Task-NPC events deliberately offer a support-or-supply decision, not a
+		// bypass that silently turns the NPC into gold through an external call.
+		bResolved = State.Screen == EGameXXKScreen::RouteEvent && !bTaskNpcEvent
+			&& Subsystem->ResolveEventReward(true);
+		break;
+	case EGameXXKRouteEncounterAction::TakeHealingPowder:
+		bResolved = State.Screen == EGameXXKScreen::RouteEvent
+			&& Subsystem->ResolveEventReward(false);
+		break;
+	case EGameXXKRouteEncounterAction::CampRest:
+		bResolved = State.Screen == EGameXXKScreen::RouteCamp
+			&& Subsystem->ResolveCampReward(true);
+		break;
+	case EGameXXKRouteEncounterAction::CampTakeHealingPowder:
+		bResolved = State.Screen == EGameXXKScreen::RouteCamp
+			&& Subsystem->ResolveCampReward(false);
+		break;
+	default:
+		break;
+	}
+
+	if (!bResolved)
+	{
+		if (RouteEncounterPanelWidget)
+		{
+			RouteEncounterPanelWidget->RefreshFromState();
+		}
+		return false;
+	}
+
+	CloseRouteEncounterPanel();
+	if (EncounterActor)
+	{
+		EncounterActor->RecordExplicitChoiceResolved(GetPawn());
+	}
+	GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
+	RefreshPlayerFlowWidgets();
+	return true;
+}
+
 bool AGameXXKMVPPlayerController::OpenBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
 {
 	if (!UnitActor || !UnitActor->CanOpenPartyCommandMenu())
@@ -597,18 +930,18 @@ bool AGameXXKMVPPlayerController::ToggleBattleCommandMenuForUnitForTest(AGameXXK
 
 bool AGameXXKMVPPlayerController::ConfirmBattleTargetForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor)
 {
-	if (!UnitActor || !UnitActor->CanReceiveTargetedBattleAction())
-	{
-		return false;
-	}
-	EnsurePlayerFlowWidgets();
-	return BattleBoardWidget && BattleBoardWidget->ConfirmTargetingEnemy(UnitActor->GetUnitIndex());
+	return ConfirmBattleTargetForSceneUnit(UnitActor);
 }
 
 bool AGameXXKMVPPlayerController::CancelBattleTargetingForTest()
 {
 	EnsurePlayerFlowWidgets();
-	return BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting();
+	const bool bCancelled = BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting();
+	if (bCancelled)
+	{
+		RefreshBattleCardTargetingBridge();
+	}
+	return bCancelled;
 }
 
 bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerForTest(FVector2D CursorScreenPosition)
@@ -616,6 +949,25 @@ bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerForTest(FVector2D 
 	EnsurePlayerFlowWidgets();
 	return UpdateBattleTargetingPointer(CursorScreenPosition);
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+void AGameXXKMVPPlayerController::SetBattleSceneCursorHitOverrideForTest(AGameXXKBattleSceneUnitActor* InUnitActor)
+{
+	bUseBattleSceneCursorHitOverrideForTest = true;
+	BattleSceneCursorHitOverrideForTest = InUnitActor;
+}
+
+void AGameXXKMVPPlayerController::ClearBattleSceneCursorHitOverrideForTest()
+{
+	bUseBattleSceneCursorHitOverrideForTest = false;
+	BattleSceneCursorHitOverrideForTest.Reset();
+}
+
+void AGameXXKMVPPlayerController::SetBattleWorldProjectionOverrideForTest(const bool bEnabled)
+{
+	bUseBattleWorldProjectionOverrideForTest = bEnabled;
+}
+#endif
 
 UGameXXKMVPSubsystem* AGameXXKMVPPlayerController::ResolveMVPSubsystem() const
 {
@@ -653,6 +1005,11 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
 		{
 			MainMenuWidget->AddToViewport(100);
 		}
+	}
+
+	if (!WorldMapWidget)
+	{
+		EnsureWorldMapWidget();
 	}
 
 	if (!TownOverlayWidget)
@@ -732,9 +1089,26 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
 		EnsureInventoryWindowWidget();
 	}
 
+	if (!CompanionRosterWidget)
+	{
+		EnsureCompanionRosterWidget();
+	}
+
 	if (!QuestDialogWidget)
 	{
 		EnsureQuestDialogWidget();
+	}
+	if (!RouteEncounterPanelWidget)
+	{
+		EnsureRouteEncounterPanelWidget();
+	}
+	if (!RouteMerchantWidget)
+	{
+		EnsureRouteMerchantWidget();
+	}
+	if (!RelicBarWidget)
+	{
+		EnsureRelicBarWidget();
 	}
 
 	if (!TaskPanelWidget)
@@ -743,7 +1117,37 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
 	}
 
 	RefreshPlayerFlowWidgets();
-	return MainMenuWidget && TownOverlayWidget && TownHudWidget && RouteMapWidget && BattleBoardWidget && InventoryWindowWidget && QuestDialogWidget && TaskPanelWidget;
+	return MainMenuWidget && WorldMapWidget && TownOverlayWidget && TownHudWidget && RouteMapWidget && BattleBoardWidget && InventoryWindowWidget && CompanionRosterWidget && QuestDialogWidget && RouteEncounterPanelWidget && RouteMerchantWidget && RelicBarWidget && TaskPanelWidget;
+}
+
+UGameXXKWorldMapWidget* AGameXXKMVPPlayerController::EnsureWorldMapWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!WorldMapWidget)
+	{
+		TSubclassOf<UGameXXKWorldMapWidget> WidgetClass = WorldMapWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKWorldMapWidget::StaticClass();
+		}
+		WorldMapWidget = bCanAddToViewport ? CreateWidget<UGameXXKWorldMapWidget>(this, WidgetClass) : nullptr;
+		if (!WorldMapWidget)
+		{
+			WorldMapWidget = NewObject<UGameXXKWorldMapWidget>(this, WidgetClass);
+		}
+	}
+	if (WorldMapWidget)
+	{
+		WorldMapWidget->SetMVPSubsystem(Subsystem);
+		ConfigureFullscreenRouteMapSlot(WorldMapWidget);
+		if (bCanAddToViewport && !WorldMapWidget->IsInViewport())
+		{
+			WorldMapWidget->AddToViewport(45);
+			ConfigureFullscreenRouteMapSlot(WorldMapWidget);
+		}
+	}
+	return WorldMapWidget;
 }
 
 UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::EnsureInventoryWindowWidget()
@@ -782,6 +1186,43 @@ UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::EnsureInventoryWindo
 	return InventoryWindowWidget;
 }
 
+UGameXXKCompanionRosterWidget* AGameXXKMVPPlayerController::EnsureCompanionRosterWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	bool bCreatedRoster = false;
+	if (!CompanionRosterWidget)
+	{
+		TSubclassOf<UGameXXKCompanionRosterWidget> WidgetClass = CompanionRosterWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKCompanionRosterWidget::StaticClass();
+		}
+		CompanionRosterWidget = bCanAddToViewport ? CreateWidget<UGameXXKCompanionRosterWidget>(this, WidgetClass) : nullptr;
+		if (!CompanionRosterWidget)
+		{
+			CompanionRosterWidget = NewObject<UGameXXKCompanionRosterWidget>(this, WidgetClass);
+		}
+		bCreatedRoster = CompanionRosterWidget != nullptr;
+	}
+	if (CompanionRosterWidget)
+	{
+		CompanionRosterWidget->SetMVPSubsystem(Subsystem);
+		CompanionRosterWidget->RefreshFromState();
+		if (bCreatedRoster)
+		{
+			CompanionRosterWidget->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		ConfigureFullscreenInventoryWindowSlot(CompanionRosterWidget);
+		if (bCanAddToViewport && !CompanionRosterWidget->IsInViewport())
+		{
+			CompanionRosterWidget->AddToViewport(150);
+			ConfigureFullscreenInventoryWindowSlot(CompanionRosterWidget);
+		}
+	}
+	return CompanionRosterWidget;
+}
+
 UGameXXKQuestDialogWidget* AGameXXKMVPPlayerController::EnsureQuestDialogWidget()
 {
 	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
@@ -814,6 +1255,107 @@ UGameXXKQuestDialogWidget* AGameXXKMVPPlayerController::EnsureQuestDialogWidget(
 		}
 	}
 	return QuestDialogWidget;
+}
+
+UGameXXKRouteEncounterPanelWidget* AGameXXKMVPPlayerController::EnsureRouteEncounterPanelWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	bool bCreatedRouteEncounterPanel = false;
+	if (!RouteEncounterPanelWidget)
+	{
+		TSubclassOf<UGameXXKRouteEncounterPanelWidget> WidgetClass = RouteEncounterPanelWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKRouteEncounterPanelWidget::StaticClass();
+		}
+		RouteEncounterPanelWidget = bCanAddToViewport ? CreateWidget<UGameXXKRouteEncounterPanelWidget>(this, WidgetClass) : nullptr;
+		if (!RouteEncounterPanelWidget)
+		{
+			RouteEncounterPanelWidget = NewObject<UGameXXKRouteEncounterPanelWidget>(this, WidgetClass);
+		}
+		bCreatedRouteEncounterPanel = RouteEncounterPanelWidget != nullptr;
+	}
+	if (RouteEncounterPanelWidget)
+	{
+		RouteEncounterPanelWidget->SetMVPSubsystem(Subsystem);
+		if (bCreatedRouteEncounterPanel)
+		{
+			RouteEncounterPanelWidget->CloseEncounterPanel();
+		}
+		ConfigureFullscreenTaskPanelSlot(RouteEncounterPanelWidget);
+		if (bCanAddToViewport && !RouteEncounterPanelWidget->IsInViewport())
+		{
+			RouteEncounterPanelWidget->AddToViewport(180);
+			ConfigureFullscreenTaskPanelSlot(RouteEncounterPanelWidget);
+		}
+	}
+	return RouteEncounterPanelWidget;
+}
+
+UGameXXKRouteMerchantWidget* AGameXXKMVPPlayerController::EnsureRouteMerchantWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	bool bCreatedRouteMerchant = false;
+	if (!RouteMerchantWidget)
+	{
+		TSubclassOf<UGameXXKRouteMerchantWidget> WidgetClass = RouteMerchantWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKRouteMerchantWidget::StaticClass();
+		}
+		RouteMerchantWidget = bCanAddToViewport
+			? CreateWidget<UGameXXKRouteMerchantWidget>(this, WidgetClass)
+			: nullptr;
+		if (!RouteMerchantWidget)
+		{
+			RouteMerchantWidget = NewObject<UGameXXKRouteMerchantWidget>(this, WidgetClass);
+		}
+		bCreatedRouteMerchant = RouteMerchantWidget != nullptr;
+	}
+	if (RouteMerchantWidget)
+	{
+		RouteMerchantWidget->SetMVPSubsystem(Subsystem);
+		RouteMerchantWidget->SetIsFocusable(true);
+		if (bCreatedRouteMerchant)
+		{
+			RouteMerchantWidget->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		ConfigureFullscreenTaskPanelSlot(RouteMerchantWidget);
+		if (bCanAddToViewport && !RouteMerchantWidget->IsInViewport())
+		{
+			RouteMerchantWidget->AddToViewport(185);
+			ConfigureFullscreenTaskPanelSlot(RouteMerchantWidget);
+		}
+	}
+	return RouteMerchantWidget;
+}
+
+UGameXXKRelicBarWidget* AGameXXKMVPPlayerController::EnsureRelicBarWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!RelicBarWidget)
+	{
+		TSubclassOf<UGameXXKRelicBarWidget> WidgetClass = RelicBarWidgetClass;
+		if (!WidgetClass) WidgetClass = UGameXXKRelicBarWidget::StaticClass();
+		RelicBarWidget = bCanAddToViewport ? CreateWidget<UGameXXKRelicBarWidget>(this, WidgetClass) : nullptr;
+		if (!RelicBarWidget) RelicBarWidget = NewObject<UGameXXKRelicBarWidget>(this, WidgetClass);
+	}
+	if (RelicBarWidget)
+	{
+		RelicBarWidget->SetMVPSubsystem(Subsystem);
+		RelicBarWidget->PrepareForEmbedding();
+		RelicBarWidget->RefreshFromState();
+		ConfigureFullscreenTaskPanelSlot(RelicBarWidget);
+		if (bCanAddToViewport && !RelicBarWidget->IsInViewport())
+		{
+			RelicBarWidget->AddToViewport(170);
+			ConfigureFullscreenTaskPanelSlot(RelicBarWidget);
+		}
+	}
+	return RelicBarWidget;
 }
 
 UGameXXKTaskPanelWidget* AGameXXKMVPPlayerController::EnsureTaskPanelWidget()
@@ -916,10 +1458,28 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 		// the controller close path so it clears trade state and restores focus.
 		CloseInventoryWindow();
 	}
+	if (CompanionRosterWidget && ActiveScreen != EGameXXKScreen::Town && IsCompanionRosterOpenForTest())
+	{
+		// Permanent roster configuration is town-only. Do not let a full-screen
+		// backpack cover the route, event, or card battle after a level transition.
+		CloseCompanionRoster();
+	}
+	if (RouteEncounterPanelWidget && !IsGenericRouteEncounterScreen(ActiveScreen) && IsRouteEncounterPanelOpenForTest())
+	{
+		// The modal belongs only to a pending route encounter. Explicit choices
+		// close it before state changes; this also covers external transitions.
+		CloseRouteEncounterPanel();
+	}
 	if (MainMenuWidget)
 	{
 		MainMenuWidget->SetMVPSubsystem(Subsystem);
 		MainMenuWidget->RefreshFromState();
+	}
+	if (WorldMapWidget)
+	{
+		WorldMapWidget->SetMVPSubsystem(Subsystem);
+		ConfigureFullscreenRouteMapSlot(WorldMapWidget);
+		WorldMapWidget->RefreshFromState();
 	}
 	if (TownOverlayWidget)
 	{
@@ -960,9 +1520,64 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 			}
 		}
 	}
+	if (CompanionRosterWidget)
+	{
+		CompanionRosterWidget->SetMVPSubsystem(Subsystem);
+		CompanionRosterWidget->RefreshFromState();
+		if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Town)
+		{
+			CompanionRosterWidget->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
 	if (QuestDialogWidget)
 	{
 		QuestDialogWidget->SetMVPSubsystem(Subsystem);
+	}
+	if (RouteEncounterPanelWidget)
+	{
+		RouteEncounterPanelWidget->SetMVPSubsystem(Subsystem);
+		RouteEncounterPanelWidget->RefreshFromState();
+	}
+	if (RouteMerchantWidget)
+	{
+		RouteMerchantWidget->SetMVPSubsystem(Subsystem);
+		RouteMerchantWidget->RefreshFromState();
+	}
+	if (RelicBarWidget)
+	{
+		RelicBarWidget->SetMVPSubsystem(Subsystem);
+		RelicBarWidget->RefreshFromState();
+	}
+	if (!Subsystem || !IsGenericRouteEncounterScreen(Subsystem->GetRuntimeState().Screen))
+	{
+		CloseRouteEncounterPanel();
+	}
+	else if (IsGenericRouteEncounterScreen(Subsystem->GetRuntimeState().Screen)
+		&& !IsRouteEncounterPanelOpenForTest())
+	{
+		// Event, chest and camp nodes use this shared pure-HUD choice panel.
+		// RouteMerchant is deliberately hosted by RouteMerchantWidget instead.
+		OpenRouteEncounterPanelInternal(nullptr);
+	}
+	else if (CanAddPlayerWidgetsToViewport() && IsRouteEncounterPanelOpenForTest() && !HasValidRouteEncounterContext())
+	{
+		// A route transition or a destroyed/replaced source actor invalidates the
+		// modal context.  Do not leave a stale panel that could resolve a new node.
+		CloseRouteEncounterPanel();
+	}
+
+	const bool bRouteMerchantOpen = ActiveScreen == EGameXXKScreen::RouteMerchant
+		&& IsRouteMerchantWidgetOpenForTest();
+	if (bRouteMerchantOpen && !bRouteMerchantInputLocked)
+	{
+		FlushPressedKeys();
+		SetIgnoreMoveInput(true);
+		bRouteMerchantInputLocked = true;
+	}
+	else if (!bRouteMerchantOpen && bRouteMerchantInputLocked)
+	{
+		SetIgnoreMoveInput(false);
+		bRouteMerchantInputLocked = false;
 	}
 	if (TaskPanelWidget)
 	{
@@ -970,6 +1585,7 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 		TaskPanelWidget->RefreshFromState();
 	}
 	EnsureBattleScenePresenter();
+	RefreshBattleCardTargetingBridge();
 
 	ApplyPlayerFlowInputMode();
 }
@@ -1012,6 +1628,10 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	{
 		InputMode.SetWidgetToFocus(MainMenuWidget->TakeWidget());
 	}
+	else if (ActiveScreen == EGameXXKScreen::WorldMap && WorldMapWidget)
+	{
+		InputMode.SetWidgetToFocus(WorldMapWidget->TakeWidget());
+	}
 	else if (ActiveScreen == EGameXXKScreen::Town && QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
 	{
 		InputMode.SetWidgetToFocus(QuestDialogWidget->TakeWidget());
@@ -1019,6 +1639,18 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	else if (ActiveScreen == EGameXXKScreen::Town && TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest())
 	{
 		InputMode.SetWidgetToFocus(TaskPanelWidget->TakeWidget());
+	}
+	else if (ActiveScreen == EGameXXKScreen::Town && IsCompanionRosterOpenForTest())
+	{
+		InputMode.SetWidgetToFocus(CompanionRosterWidget->TakeWidget());
+	}
+	else if (ActiveScreen == EGameXXKScreen::RouteMerchant && IsRouteMerchantWidgetOpenForTest())
+	{
+		InputMode.SetWidgetToFocus(RouteMerchantWidget->TakeWidget());
+	}
+	else if (IsGenericRouteEncounterScreen(ActiveScreen) && IsRouteEncounterPanelOpenForTest())
+	{
+		InputMode.SetWidgetToFocus(RouteEncounterPanelWidget->TakeWidget());
 	}
 	else if (ActiveScreen == EGameXXKScreen::DungeonMap && RouteMapWidget)
 	{
@@ -1033,13 +1665,20 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	if (ActiveScreen == EGameXXKScreen::Town
 		&& (!QuestDialogWidget || !QuestDialogWidget->IsDialogOpen())
 		&& (!TaskPanelWidget || !TaskPanelWidget->IsTaskPanelOpenForTest())
+		&& !IsCompanionRosterOpenForTest()
 		&& FSlateApplication::IsInitialized())
 	{
 		FSlateApplication::Get().SetAllUserFocusToGameViewport(EFocusCause::SetDirectly);
 	}
 	else if ((ActiveScreen == EGameXXKScreen::RouteEvent
-		|| ActiveScreen == EGameXXKScreen::RouteCamp
-		|| ActiveScreen == EGameXXKScreen::RouteMerchant)
+		|| ActiveScreen == EGameXXKScreen::RouteCamp)
+		&& !IsRouteEncounterPanelOpenForTest()
+		&& FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetAllUserFocusToGameViewport(EFocusCause::SetDirectly);
+	}
+	else if (ActiveScreen == EGameXXKScreen::RouteMerchant
+		&& !IsRouteMerchantWidgetOpenForTest()
 		&& FSlateApplication::IsInitialized())
 	{
 		FSlateApplication::Get().SetAllUserFocusToGameViewport(EFocusCause::SetDirectly);
@@ -1106,41 +1745,69 @@ void AGameXXKMVPPlayerController::HandleRouteMapPrimaryClick()
 
 bool AGameXXKMVPPlayerController::TryHandleRouteEncounterInteract()
 {
-	AGameXXKRouteEncounterSceneActor* EncounterActor = FindRouteEncounterActorForActiveScreen();
-	if (!EncounterActor)
+	AGameXXKRouteEncounterSceneActor* SourceActor = GetFocusedRouteEncounterActor();
+	return SourceActor && SourceActor->ApplyDefaultInteraction(GetPawn());
+}
+
+AGameXXKRouteEncounterSceneActor* AGameXXKMVPPlayerController::GetFocusedRouteEncounterActor() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
+	if (!IsGenericRouteEncounterScreen(ActiveScreen))
+	{
+		return nullptr;
+	}
+
+	APawn* ControlledPawn = GetPawn();
+	UGameXXKInteractionComponent* Interaction = ControlledPawn ? ControlledPawn->FindComponentByClass<UGameXXKInteractionComponent>() : nullptr;
+	AGameXXKRouteEncounterSceneActor* SourceActor = Interaction
+		? Cast<AGameXXKRouteEncounterSceneActor>(Interaction->GetFocusedActor())
+		: nullptr;
+	if (!SourceActor || SourceActor->GetWorld() != GetWorld() || !SourceActor->MatchesRuntimeScreen(ActiveScreen))
+	{
+		return nullptr;
+	}
+	return SourceActor;
+}
+
+
+bool AGameXXKMVPPlayerController::HasValidRouteEncounterContext() const
+
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !IsGenericRouteEncounterScreen(Subsystem->GetRuntimeState().Screen))
 	{
 		return false;
 	}
 
-	return EncounterActor->ApplyDefaultInteraction(GetPawn());
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	if (!ActiveRouteEncounterSourceActor.IsValid())
+	{
+		if (!CanAddPlayerWidgetsToViewport())
+		{
+			return true;
+		}
+
+		// Non-combat route scenes are source-less HUD choices. Their world map is
+		// only presentation, so the screen-to-map contract is the full context.
+		const UWorld* World = GetWorld();
+		const FString CurrentPackageName = World && World->GetOutermost() ? World->GetOutermost()->GetName() : FString();
+		return GameXXKLevelFlow::MapPackageMatches(CurrentPackageName, GameXXKLevelFlow::MapForScreen(State.Screen));
+	}
+
+	AGameXXKRouteEncounterSceneActor* SourceActor = ActiveRouteEncounterSourceActor.Get();
+	return SourceActor
+		&& SourceActor->GetWorld() == GetWorld()
+		&& SourceActor->MatchesRuntimeScreen(State.Screen)
+		&& ActiveRouteEncounterScreen == State.Screen
+		&& ActiveRouteEncounterNodeId == State.PendingRouteNodeId;
 }
 
-AGameXXKRouteEncounterSceneActor* AGameXXKMVPPlayerController::FindRouteEncounterActorForActiveScreen() const
+void AGameXXKMVPPlayerController::ClearRouteEncounterContext()
 {
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
-	if (ActiveScreen != EGameXXKScreen::RouteEvent
-		&& ActiveScreen != EGameXXKScreen::RouteCamp
-		&& ActiveScreen != EGameXXKScreen::RouteMerchant)
-	{
-		return nullptr;
-	}
-
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return nullptr;
-	}
-
-	for (TActorIterator<AGameXXKRouteEncounterSceneActor> It(World); It; ++It)
-	{
-		AGameXXKRouteEncounterSceneActor* Candidate = *It;
-		if (Candidate && Candidate->MatchesRuntimeScreen(ActiveScreen))
-		{
-			return Candidate;
-		}
-	}
-	return nullptr;
+	ActiveRouteEncounterSourceActor.Reset();
+	ActiveRouteEncounterScreen = EGameXXKScreen::MainMenu;
+	ActiveRouteEncounterNodeId = INDEX_NONE;
 }
 
 void AGameXXKMVPPlayerController::EnsureBattleScenePresenter()
@@ -1180,9 +1847,166 @@ void AGameXXKMVPPlayerController::EnsureBattleScenePresenter()
 	if (BattleScenePresenter)
 	{
 		BattleScenePresenter->SetMVPSubsystemForTest(Subsystem);
-		BattleScenePresenter->EnsureBattleScene();
+		// Normal card resolution must retain the same actors so targeting state and
+		// their short feedback animations are not destroyed every mutation.
+		BattleScenePresenter->RefreshBattleScene();
 	}
 	ApplyBattleSceneCamera();
+}
+
+void AGameXXKMVPPlayerController::RefreshBattleSceneAfterCardMutation(
+	const FName AttackerUnitId,
+	const TArray<FGameXXKCardDamageResult>& DamageResults)
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if (BattleBoardWidget && RuntimeState && RuntimeState->CardRun.bHasActiveCardBattle)
+	{
+		const TArray<FGameXXKBattleAnimationCombatRequest> Requests =
+			FGameXXKBattleAnimationPresentation::BuildCombatRequests(
+				RuntimeState->CardRun.ActiveBattle,
+				AttackerUnitId,
+				DamageResults);
+		for (const FGameXXKBattleAnimationCombatRequest& Request : Requests)
+		{
+			BattleBoardWidget->QueueCombatAnimation(
+				Request.AttackerUnitId,
+				Request.bAttackerEnemy,
+				Request.TargetUnitId,
+				Request.bTargetEnemy,
+				Request.bTargetDefeated);
+		}
+	}
+
+	if (!IsValid(BattleScenePresenter) || !BattleScenePresenter->RefreshBattleScene())
+	{
+		return;
+	}
+
+	const TArray<AGameXXKBattleSceneUnitActor*> SceneUnits = BattleScenePresenter->GetSpawnedUnitsForTest();
+	const auto FindSceneUnit = [&SceneUnits](const FName UnitId) -> AGameXXKBattleSceneUnitActor*
+	{
+		AGameXXKBattleSceneUnitActor* const* FoundUnit = SceneUnits.FindByPredicate([UnitId](const AGameXXKBattleSceneUnitActor* UnitActor)
+		{
+			return UnitActor && UnitActor->GetUnitId() == UnitId;
+		});
+		return FoundUnit ? *FoundUnit : nullptr;
+	};
+
+	if (AGameXXKBattleSceneUnitActor* Attacker = FindSceneUnit(AttackerUnitId))
+	{
+		Attacker->PlayIntentAttackFeedback();
+	}
+
+	bool bHeroReceivedHealthDamage = false;
+	TSet<FName> HitUnitIds;
+	for (const FGameXXKCardDamageResult& DamageResult : DamageResults)
+	{
+		bHeroReceivedHealthDamage |= RuntimeState && ShouldTriggerHeroHitCameraShake(*RuntimeState, DamageResult);
+		const FName HitUnitId = DamageResult.ResolvedTargetUnitId.IsNone()
+			? DamageResult.OriginalTargetUnitId
+			: DamageResult.ResolvedTargetUnitId;
+		if (!HitUnitId.IsNone() && !HitUnitIds.Contains(HitUnitId))
+		{
+			HitUnitIds.Add(HitUnitId);
+			if (AGameXXKBattleSceneUnitActor* HitUnit = FindSceneUnit(HitUnitId))
+			{
+				HitUnit->PlayHitFeedback();
+			}
+		}
+	}
+
+	if (bHeroReceivedHealthDamage && PlayerCameraManager)
+	{
+		// This is an additive, camera-manager-owned CameraLocal shake. It never
+		// mutates the placed or fallback battle camera actor's transform.
+		PlayerCameraManager->StartCameraShake(
+			UGameXXKHeroHitCameraShake::StaticClass(),
+			0.45f,
+			ECameraShakePlaySpace::CameraLocal);
+	}
+}
+
+bool AGameXXKMVPPlayerController::ShouldTriggerHeroHitCameraShake(
+	const FGameXXKRuntimeState& State,
+	const FGameXXKCardDamageResult& DamageResult)
+{
+	if (DamageResult.HealthDamage <= 0)
+	{
+		return false;
+	}
+
+	const FName TargetUnitId = DamageResult.ResolvedTargetUnitId.IsNone()
+		? DamageResult.OriginalTargetUnitId
+		: DamageResult.ResolvedTargetUnitId;
+	if (TargetUnitId.IsNone() || !State.CardRun.bHasActiveCardBattle)
+	{
+		return false;
+	}
+
+	const FGameXXKCardCombatUnit* Target = State.CardRun.ActiveBattle.Units.FindByPredicate([TargetUnitId](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TargetUnitId;
+	});
+	return Target
+		&& Target->Side == EGameXXKCardTargetSide::Party
+		&& Target->Role == EGameXXKCharacterRole::Hero;
+}
+
+void AGameXXKMVPPlayerController::RefreshBattleCardTargetingBridge()
+{
+	if (!BattleBoardWidget)
+	{
+		return;
+	}
+
+	BattleBoardWidget->ClearBattleUnitScreenPositions();
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	UWorld* World = GetWorld();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle || !World)
+	{
+		return;
+	}
+
+	const bool bCardTargetingActive = BattleBoardWidget->IsCardTargetingActive();
+	for (TActorIterator<AGameXXKBattleSceneUnitActor> It(World); It; ++It)
+	{
+		AGameXXKBattleSceneUnitActor* UnitActor = *It;
+		if (!UnitActor || UnitActor->GetUnitId().IsNone())
+		{
+			continue;
+		}
+
+		FVector UnitWorldPosition = UnitActor->GetActorLocation();
+		if (const UPaperFlipbookComponent* BattleVisual = UnitActor->GetBattleVisualComponent())
+		{
+			UnitWorldPosition = BattleVisual->Bounds.Origin;
+		}
+
+		FVector2D UnitLocalScreenPosition;
+		if (ProjectBattleWorldLocationToWidgetPosition(UnitWorldPosition, UnitLocalScreenPosition))
+		{
+			BattleBoardWidget->RegisterBattleUnitScreenPosition(UnitActor->GetUnitId(), UnitLocalScreenPosition);
+		}
+
+		UnitActor->SetCardTargetHighlight(
+			bCardTargetingActive && BattleBoardWidget->IsTargetUnitHighlighted(UnitActor->GetUnitId()));
+	}
+}
+
+bool AGameXXKMVPPlayerController::ProjectBattleWorldLocationToWidgetPosition(
+	const FVector WorldLocation,
+	FVector2D& OutScreenPosition) const
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (bUseBattleWorldProjectionOverrideForTest)
+	{
+		OutScreenPosition = FVector2D(WorldLocation.X + WorldLocation.Z, WorldLocation.Y);
+		return true;
+	}
+#endif
+
+	return UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(this, WorldLocation, OutScreenPosition, true);
 }
 
 void AGameXXKMVPPlayerController::ApplyBattleSceneCamera()
@@ -1214,7 +2038,6 @@ void AGameXXKMVPPlayerController::ApplyBattleSceneCamera()
 			SpawnedCamera->Tags.AddUnique(BattleSceneCameraTag);
 			if (UCameraComponent* CameraComponent = SpawnedCamera->GetCameraComponent())
 			{
-				CameraComponent->ProjectionMode = ECameraProjectionMode::Perspective;
 				CameraComponent->FieldOfView = BattleSceneCameraFallbackFOV;
 			}
 			CameraActor = SpawnedCamera;
@@ -1235,6 +2058,12 @@ void AGameXXKMVPPlayerController::ApplyBattleSceneCamera()
 bool AGameXXKMVPPlayerController::TryHandleBattleSceneRightClick()
 {
 	EnsurePlayerFlowWidgets();
+	if (BattleBoardWidget && BattleBoardWidget->IsCardTargetingActive())
+	{
+		const bool bCancelled = BattleBoardWidget->CancelBattleTargeting();
+		RefreshBattleCardTargetingBridge();
+		return bCancelled;
+	}
 
 	AGameXXKBattleSceneUnitActor* UnitActor = FindBattleSceneUnitUnderCursor(false);
 	if (!UnitActor || !UnitActor->CanOpenPartyCommandMenu())
@@ -1268,7 +2097,29 @@ bool AGameXXKMVPPlayerController::TryHandleBattleSceneRightClick()
 bool AGameXXKMVPPlayerController::TryHandleBattleSceneLeftClick()
 {
 	EnsurePlayerFlowWidgets();
-	if (!BattleBoardWidget || !BattleBoardWidget->IsTargetingBattleActionForTest())
+	if (!BattleBoardWidget)
+	{
+		return false;
+	}
+
+	if (BattleBoardWidget->IsCardTargetingActive())
+	{
+		UpdateBattleTargetingPointerFromMouse();
+		if (AGameXXKBattleSceneUnitActor* UnitActor = FindAnyBattleSceneUnitUnderCursor())
+		{
+			// CardCheck owns legality.  Any clicked scene actor is submitted by its
+			// stable card-runtime ID, so ally targets never pass through enemy indices.
+			ConfirmBattleTargetForSceneUnit(UnitActor);
+		}
+		else
+		{
+			BattleBoardWidget->KeepTargetingAfterEmptyClickForTest();
+		}
+		RefreshBattleCardTargetingBridge();
+		return true;
+	}
+
+	if (!BattleBoardWidget->IsTargetingBattleActionForTest())
 	{
 		return false;
 	}
@@ -1305,6 +2156,56 @@ AGameXXKBattleSceneUnitActor* AGameXXKMVPPlayerController::FindBattleSceneUnitUn
 	return nullptr;
 }
 
+AGameXXKBattleSceneUnitActor* AGameXXKMVPPlayerController::FindAnyBattleSceneUnitUnderCursor() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
+	{
+		return nullptr;
+	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	if (bUseBattleSceneCursorHitOverrideForTest)
+	{
+		return BattleSceneCursorHitOverrideForTest.Get();
+	}
+#endif
+
+	FHitResult HitResult;
+	if (!GetHitResultUnderCursor(ECC_Visibility, true, HitResult))
+	{
+		return nullptr;
+	}
+	return Cast<AGameXXKBattleSceneUnitActor>(HitResult.GetActor());
+}
+
+bool AGameXXKMVPPlayerController::ConfirmBattleTargetForSceneUnit(AGameXXKBattleSceneUnitActor* UnitActor)
+{
+	if (!UnitActor)
+	{
+		return false;
+	}
+
+	EnsurePlayerFlowWidgets();
+	if (!BattleBoardWidget)
+	{
+		return false;
+	}
+
+	if (BattleBoardWidget->IsCardTargetingActive())
+	{
+		const bool bCommitted = BattleBoardWidget->ConfirmTargetingUnit(UnitActor->GetUnitId());
+		RefreshBattleCardTargetingBridge();
+		return bCommitted;
+	}
+
+	if (!UnitActor->CanReceiveTargetedBattleAction())
+	{
+		return false;
+	}
+	return BattleBoardWidget->ConfirmTargetingEnemy(UnitActor->GetUnitIndex());
+}
+
 bool AGameXXKMVPPlayerController::ToggleBattleCommandMenuForUnit(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
 {
 	if (!UnitActor || !UnitActor->CanOpenPartyCommandMenu())
@@ -1317,7 +2218,8 @@ bool AGameXXKMVPPlayerController::ToggleBattleCommandMenuForUnit(AGameXXKBattleS
 
 bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointer(FVector2D CursorScreenPosition)
 {
-	if (!BattleBoardWidget || !BattleBoardWidget->IsTargetingBattleActionForTest())
+	if (!BattleBoardWidget
+		|| (!BattleBoardWidget->IsTargetingBattleActionForTest() && !BattleBoardWidget->IsCardTargetingActive()))
 	{
 		return false;
 	}
@@ -1327,7 +2229,8 @@ bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointer(FVector2D CursorS
 
 bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerFromMouse()
 {
-	if (!BattleBoardWidget || !BattleBoardWidget->IsTargetingBattleActionForTest())
+	if (!BattleBoardWidget
+		|| (!BattleBoardWidget->IsTargetingBattleActionForTest() && !BattleBoardWidget->IsCardTargetingActive()))
 	{
 		return false;
 	}

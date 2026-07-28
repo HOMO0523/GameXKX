@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameXXKCardRunTypes.h"
+#include "GameXXKEquipmentTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GameXXKMVPRules.generated.h"
 
@@ -61,7 +62,9 @@ enum class EGameXXKItemKind : uint8
 	Consumable,
 	Weapon,
 	Armor,
-	Accessory
+	Accessory,
+	Material,
+	Task
 };
 
 UENUM(BlueprintType)
@@ -268,6 +271,15 @@ struct FGameXXKBattleRuntimeUnit
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 Speed = 1;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName EnemyDefinitionId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 BattleSlotNumber = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 CombatLevel = 0;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 Shield = 1;
 
@@ -372,7 +384,7 @@ struct FGameXXKRuntimeState
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 PlayerGold = 50;
 
-	// Used exclusively by equipment enhancement. New games and migrated saves begin with ten.
+	// Legacy HUD mirror of Item.EnhancementStone. Rules keep this synchronized for saved games and existing UI.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 EnhancementMaterial = 10;
 
@@ -470,6 +482,10 @@ struct FGameXXKRuntimeState
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TMap<FName, int32> ItemEnhancementLevels;
 
+	/** Save-authoritative equipment instances, warehouse order, and six-slot character loadouts. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKEquipmentCollectionState EquipmentCollection;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TSet<FName> DiscoveredCodexEntryIds;
 
@@ -542,6 +558,12 @@ public:
 	static FName ItemHealingPowder();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FName ItemEnhancementStone();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FName ItemQingshanRouteSeal();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FName ItemIronSword();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
@@ -596,6 +618,9 @@ public:
 	static FGameXXKRuntimeState CreateNewGame();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static int32 GetCurrentSaveVersion();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static TArray<FGameXXKTaskView> BuildAvailableTaskViews(const FGameXXKRuntimeState& State, EGameXXKTaskCategory Category);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
@@ -634,6 +659,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveBattleVictory(UPARAM(ref) FGameXXKRuntimeState& State, bool bBossBattle);
 
+	/** Atomically commits one pending route-card reward and the gated battle victory settlement. */
+	static bool ResolvePendingRouteRewardChoiceAndFinish(
+		FGameXXKRuntimeState& State,
+		FName RewardCardId,
+		FName ReplacementEntryId = NAME_None,
+		FString* OutError = nullptr);
+
+	/** Atomically skips the pending route-card reward and finishes the gated battle victory settlement. */
+	static bool SkipPendingRouteRewardAndFinish(
+		FGameXXKRuntimeState& State,
+		FString* OutError = nullptr);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ExecuteBattleBasicAttack(UPARAM(ref) FGameXXKRuntimeState& State, int32 PartyIndex, int32 EnemyIndex);
 
@@ -652,14 +689,56 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveEventReward(UPARAM(ref) FGameXXKRuntimeState& State, bool bTakeGold);
 
+	/** Resolves one visible choice from the deterministic positive event or three-relic treasure offer. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool ResolveRouteEncounterChoice(UPARAM(ref) FGameXXKRuntimeState& State, int32 ChoiceIndex);
+
+	/** Accepts a named route-event NPC as this route's one temporary task-NPC support slot. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool AcceptRouteEventNpcSupport(UPARAM(ref) FGameXXKRuntimeState& State);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveCampReward(UPARAM(ref) FGameXXKRuntimeState& State, bool bHealNow);
+
+	/** Ensures the pending generated merchant node owns one stable persisted 3-card/3-relic snapshot. */
+	static bool EnsureRouteMerchantStock(FGameXXKRuntimeState& State, FString* OutError = nullptr);
+
+	/** Builds the dedicated route-merchant read model without mutating or rerolling stock. */
+	static bool GetRouteMerchantView(
+		const FGameXXKRuntimeState& State,
+		FGameXXKRouteMerchantView& OutView,
+		FString* OutError = nullptr);
+
+	/** Atomically pays the current refresh price and replaces all six persisted offers. */
+	static bool RefreshRouteMerchant(FGameXXKRuntimeState& State, FString* OutError = nullptr);
+
+	/** Pure purchase preview keyed by stable OfferId and optional stable route-card EntryId. */
+	static bool PreviewRouteMerchantPurchase(
+		const FGameXXKRuntimeState& State,
+		FName OfferId,
+		FName ReplacementEntryId,
+		FGameXXKRouteMerchantPurchasePreview& OutPreview,
+		FString* OutError = nullptr);
+
+	/** Atomically commits a route-card/relic purchase or persists its replacement prompt. */
+	static bool PurchaseRouteMerchant(
+		FGameXXKRuntimeState& State,
+		FName OfferId,
+		FName ReplacementEntryId,
+		FGameXXKRouteMerchantPurchaseResult& OutResult);
+
+	/** Clears only an unfinished replacement prompt and never spends route money. */
+	static bool CancelPendingRouteMerchantPurchase(FGameXXKRuntimeState& State, FString* OutError = nullptr);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveMerchantRouteNode(UPARAM(ref) FGameXXKRuntimeState& State);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool FailDungeonToTown(UPARAM(ref) FGameXXKRuntimeState& State);
+
+	/** Player-initiated route exit. It preserves the accepted quest but uses the locked abandoned settlement ratios. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool AbandonDungeonToTown(UPARAM(ref) FGameXXKRuntimeState& State);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveBossClear(UPARAM(ref) FGameXXKRuntimeState& State);
@@ -683,6 +762,9 @@ public:
 	static bool SellItem(UPARAM(ref) FGameXXKRuntimeState& State, FName ItemId, int32 Quantity);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static bool CanSellItem(const FGameXXKRuntimeState& State, FName ItemId);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static int32 GetMaxItemEnhancementLevel();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
@@ -693,6 +775,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool EnhanceItem(UPARAM(ref) FGameXXKRuntimeState& State, FName ItemId);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static bool CanDecomposeItem(const FGameXXKRuntimeState& State, FName ItemId);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool DecomposeItem(UPARAM(ref) FGameXXKRuntimeState& State, FName ItemId);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool EquipItem(UPARAM(ref) FGameXXKRuntimeState& State, FName ItemId);
@@ -721,6 +809,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FGameXXKSaveState MakeSaveState(const FGameXXKRuntimeState& State);
 
-	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	/** Compatibility-only restore facade. Returns a neutral runtime on rejection; new load/preview callers must use FGameXXKSaveMigration for an explicit report. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP", meta = (DeprecatedFunction, DeprecationMessage = "Use FGameXXKSaveMigration::TryRestoreRuntimeState so load rejection is explicit."))
 	static FGameXXKRuntimeState RestoreFromSaveState(const FGameXXKSaveState& SaveState);
 };

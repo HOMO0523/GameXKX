@@ -23,12 +23,12 @@
 
 namespace
 {
-	const FVector2D InventoryWindowSize(1024.0f, 640.0f);
-	const FVector2D CloseButtonSize(44.0f, 44.0f);
-	const FVector2D BackpackSlotSize(72.0f, 72.0f);
+	const FVector2D InventoryWindowSize(1024.0f, 809.0f);
+	const FVector2D CloseButtonSize(32.0f, 24.0f);
+	const FVector2D BackpackSlotSize(64.0f, 64.0f);
 	const FVector2D BackpackIconSize(46.0f, 46.0f);
 	const FVector2D EquipmentSlotSize(220.0f, 86.0f);
-	const FVector2D ActionButtonSize(206.0f, 44.0f);
+	const FVector2D ActionButtonSize(206.0f, 64.0f);
 	const int32 BackpackSlotCount = 20;
 	const int32 BackpackColumns = 5;
 	const FName WeaponSlotId(TEXT("Weapon"));
@@ -36,23 +36,28 @@ namespace
 	const FName AccessorySlotId(TEXT("Accessory"));
 
 	const FString TextureRoot(TEXT("/Game/GameXXK/UI/Inventory/Textures/"));
-	const FString WindowFrameTexturePath(TextureRoot + TEXT("T_InventoryWindowFrame.T_InventoryWindowFrame"));
-	const FString ConfirmationDialogTexturePath(TextureRoot + TEXT("T_InventoryConfirmationDialog.T_InventoryConfirmationDialog"));
-	const FString CloseButtonTexturePath(TextureRoot + TEXT("T_InventoryCloseButton.T_InventoryCloseButton"));
-	const FString BackpackSlotTexturePath(TextureRoot + TEXT("T_InkBackpackSlot.T_InkBackpackSlot"));
-	const FString EquipmentSlotTexturePath(TextureRoot + TEXT("T_InventoryEquipmentSlots.T_InventoryEquipmentSlots"));
-	const FString ActionButtonTexturePath(TextureRoot + TEXT("T_InventoryActionButtons.T_InventoryActionButtons"));
 	const FString SlotStatesTexturePath(TextureRoot + TEXT("T_InventorySlotStates.T_InventorySlotStates"));
-	const FString TownBackpackTextureRoot(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/"));
-	const FString BackpackTabAllTexturePath(TownBackpackTextureRoot + TEXT("T_TownBackpack_TabAll.T_TownBackpack_TabAll"));
-	const FString BackpackTabEquipmentTexturePath(TownBackpackTextureRoot + TEXT("T_TownBackpack_TabEquipment.T_TownBackpack_TabEquipment"));
-	const FString BackpackTabPropTexturePath(TownBackpackTextureRoot + TEXT("T_TownBackpack_TabProp.T_TownBackpack_TabProp"));
-	const FString BackpackTabMaterialTexturePath(TownBackpackTextureRoot + TEXT("T_TownBackpack_TabMaterial.T_TownBackpack_TabMaterial"));
-	const FString BackpackTabTaskTexturePath(TownBackpackTextureRoot + TEXT("T_TownBackpack_TabTask.T_TownBackpack_TabTask"));
-	const FString BackpackSortTexturePath(TownBackpackTextureRoot + TEXT("T_TownBackpack_ButtonSort.T_TownBackpack_ButtonSort"));
-	const FString BackpackDisassembleTexturePath(TownBackpackTextureRoot + TEXT("T_TownBackpack_ButtonDisassemble.T_TownBackpack_ButtonDisassemble"));
-	const FVector2D BackpackTabSize(72.0f, 31.5f);
-	const FVector2D BackpackUtilityButtonSize(82.0f, 36.0f);
+	const FString PsdTextureRoot(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/"));
+	const FString LegacyBackpackTextureRoot(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/"));
+	const FString WindowFrameTexturePath(PsdTextureRoot + TEXT("Backgrounds/T_TownPsd_Background_Backpack.T_TownPsd_Background_Backpack"));
+	const FString PanelFrameTexturePath(LegacyBackpackTextureRoot + TEXT("T_TownBackpack_WindowFrame.T_TownBackpack_WindowFrame"));
+	const FString ConfirmationDialogTexturePath(PanelFrameTexturePath);
+	const FString CloseButtonTexturePath(LegacyBackpackTextureRoot + TEXT("T_TownBackpack_BackArrow.T_TownBackpack_BackArrow"));
+	const FString BackpackSlotTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackSlot.T_TownPsd_BackpackSlot"));
+	const FString EquipmentSlotTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackSlot.T_TownPsd_BackpackSlot"));
+	const FString ActionButtonTexturePath(PsdTextureRoot + TEXT("Controls/T_TownPsd_ButtonNeutral.T_TownPsd_ButtonNeutral"));
+	const FString BackpackHeaderTexturePath(LegacyBackpackTextureRoot + TEXT("T_TownBackpack_Header.T_TownBackpack_Header"));
+	const FString BackpackTabAllTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackTabAll.T_TownPsd_BackpackTabAll"));
+	const FString BackpackTabEquipmentTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackTabEquipment.T_TownPsd_BackpackTabEquipment"));
+	const FString BackpackTabPropTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackTabProp.T_TownPsd_BackpackTabProp"));
+	const FString BackpackTabMaterialTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackTabMaterial.T_TownPsd_BackpackTabMaterial"));
+	const FString BackpackTabTaskTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackTabTask.T_TownPsd_BackpackTabTask"));
+	const FString BackpackSortTexturePath(PsdTextureRoot + TEXT("Controls/T_TownPsd_ButtonSort.T_TownPsd_ButtonSort"));
+	const FString BackpackDisassembleTexturePath(PsdTextureRoot + TEXT("Controls/T_TownPsd_ButtonDestructive.T_TownPsd_ButtonDestructive"));
+	const FVector2D BackpackTabSize(74.0f, 32.0f);
+	const FVector2D BackpackUtilityButtonSize(82.0f, 34.8f);
+	const FMargin SlotFrameMargin(5.0f / 61.0f, 5.0f / 56.0f, 5.0f / 61.0f, 5.0f / 56.0f);
+	const FMargin ActionFrameMargin(0.05f, 0.11f, 0.05f, 0.11f);
 
 	UTexture2D* LoadTexture(const FString& Path)
 	{
@@ -69,6 +74,14 @@ namespace
 		return Brush;
 	}
 
+	FSlateBrush MakeBoxTextureBrush(const FString& Path, const FVector2D& ImageSize, const FLinearColor& Tint = FLinearColor::White)
+	{
+		FSlateBrush Brush = MakeTextureBrush(Path, ImageSize, Tint);
+		Brush.DrawAs = ESlateBrushDrawType::Box;
+		Brush.Margin = FMargin(0.065f);
+		return Brush;
+	}
+
 	FButtonStyle MakeTextureButtonStyle(const FString& Path, const FVector2D& ImageSize, const FLinearColor& Tint = FLinearColor::White)
 	{
 		const FSlateBrush NormalBrush = MakeTextureBrush(Path, ImageSize, Tint);
@@ -77,6 +90,39 @@ namespace
 		Style.SetHovered(MakeTextureBrush(Path, ImageSize, Tint * FLinearColor(1.08f, 1.08f, 1.08f, 1.0f)));
 		Style.SetPressed(MakeTextureBrush(Path, ImageSize, Tint * FLinearColor(0.82f, 0.82f, 0.82f, 1.0f)));
 		Style.SetDisabled(MakeTextureBrush(Path, ImageSize, FLinearColor(0.45f, 0.45f, 0.45f, 0.75f)));
+		return Style;
+	}
+
+	FButtonStyle MakeBoxTextureButtonStyle(const FString& Path, const FVector2D& ImageSize, const FMargin& Margin, const FLinearColor& Tint = FLinearColor::White)
+	{
+		FButtonStyle Style = MakeTextureButtonStyle(Path, ImageSize, Tint);
+		FSlateBrush NormalBrush = Style.Normal;
+		NormalBrush.DrawAs = ESlateBrushDrawType::Box;
+		NormalBrush.Margin = Margin;
+		Style.SetNormal(NormalBrush);
+		FSlateBrush HoveredBrush = Style.Hovered;
+		HoveredBrush.DrawAs = ESlateBrushDrawType::Box;
+		HoveredBrush.Margin = Margin;
+		Style.SetHovered(HoveredBrush);
+		FSlateBrush PressedBrush = Style.Pressed;
+		PressedBrush.DrawAs = ESlateBrushDrawType::Box;
+		PressedBrush.Margin = Margin;
+		Style.SetPressed(PressedBrush);
+		FSlateBrush DisabledBrush = Style.Disabled;
+		DisabledBrush.DrawAs = ESlateBrushDrawType::Box;
+		DisabledBrush.Margin = Margin;
+		Style.SetDisabled(DisabledBrush);
+		return Style;
+	}
+
+	FButtonStyle MakeInvisibleButtonStyle()
+	{
+		const FSlateBrush EmptyBrush;
+		FButtonStyle Style;
+		Style.SetNormal(EmptyBrush);
+		Style.SetHovered(EmptyBrush);
+		Style.SetPressed(EmptyBrush);
+		Style.SetDisabled(EmptyBrush);
 		return Style;
 	}
 
@@ -103,9 +149,9 @@ namespace
 			return nullptr;
 		}
 		UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass());
-		Button->SetStyle(MakeTextureButtonStyle(ActionButtonTexturePath, ActionButtonSize));
+		Button->SetStyle(MakeBoxTextureButtonStyle(ActionButtonTexturePath, ActionButtonSize, ActionFrameMargin));
 		Button->SetBackgroundColor(FLinearColor::White);
-		OutText = MakeText(WidgetTree, Text, 16, FLinearColor::White);
+		OutText = MakeText(WidgetTree, Text, 16, FLinearColor(0.10f, 0.08f, 0.05f, 1.0f));
 		if (OutText)
 		{
 			OutText->SetJustification(ETextJustify::Center);
@@ -134,6 +180,14 @@ namespace
 		if (ItemId == UGameXXKMVPRules::ItemHealingPowder())
 		{
 			return TextureRoot + TEXT("T_ItemHealingPowder.T_ItemHealingPowder");
+		}
+		if (ItemId == UGameXXKMVPRules::ItemEnhancementStone())
+		{
+			return TEXT("/Game/GameXXK/UI/Town/Textures/HUD/T_TownHUD_ResourceGreen.T_TownHUD_ResourceGreen");
+		}
+		if (ItemId == UGameXXKMVPRules::ItemQingshanRouteSeal())
+		{
+			return TEXT("/Game/GameXXK/UI/Tasks/Textures/T_RewardToken.T_RewardToken");
 		}
 		if (ItemId == FName(TEXT("Item.LingzhiPowder")))
 		{
@@ -208,7 +262,9 @@ namespace
 		case EGameXXKInventoryFilter::Props:
 			return Kind == EGameXXKItemKind::Consumable;
 		case EGameXXKInventoryFilter::Materials:
+			return Kind == EGameXXKItemKind::Material;
 		case EGameXXKInventoryFilter::Tasks:
+			return Kind == EGameXXKItemKind::Task;
 		default:
 			return false;
 		}
@@ -224,8 +280,12 @@ namespace
 			return 0;
 		case EGameXXKItemKind::Consumable:
 			return 1;
-		default:
+		case EGameXXKItemKind::Material:
+			return 2;
+		case EGameXXKItemKind::Task:
 			return 3;
+		default:
+			return 4;
 		}
 	}
 
@@ -241,6 +301,10 @@ namespace
 			return NSLOCTEXT("GameXXKInventoryWindow", "KindArmor", "防具");
 		case EGameXXKItemKind::Accessory:
 			return NSLOCTEXT("GameXXKInventoryWindow", "KindAccessory", "饰品");
+		case EGameXXKItemKind::Material:
+			return NSLOCTEXT("GameXXKInventoryWindow", "KindMaterial", "材料");
+		case EGameXXKItemKind::Task:
+			return NSLOCTEXT("GameXXKInventoryWindow", "KindTask", "任务");
 		default:
 			return NSLOCTEXT("GameXXKInventoryWindow", "KindUnknown", "物品");
 		}
@@ -278,7 +342,10 @@ namespace
 		{
 			Lines.Add(FString::Printf(TEXT("强化 +%d / +%d"), EnhancementLevel, UGameXXKMVPRules::GetMaxItemEnhancementLevel()));
 		}
-		Lines.Add(FString::Printf(TEXT("买入 %d金 / 卖出 %d金"), Def.BuyPrice, Def.SellPrice));
+		if (Def.Kind != EGameXXKItemKind::Task)
+		{
+			Lines.Add(FString::Printf(TEXT("买入 %d金 / 卖出 %d金"), Def.BuyPrice, Def.SellPrice));
+		}
 		return FString::Join(Lines, TEXT("\n"));
 	}
 
@@ -656,7 +723,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	AddCanvasChild(RootCanvas, ModalBackdrop, FVector2D::ZeroVector, FVector2D::ZeroVector, FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
 
 	WindowFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryWindowFrame"));
-	WindowFrame->SetBrush(MakeTextureBrush(WindowFrameTexturePath, InventoryWindowSize));
+	WindowFrame->SetBrush(MakeBoxTextureBrush(WindowFrameTexturePath, InventoryWindowSize));
 	WindowFrame->SetBrushColor(FLinearColor::White);
 	WindowFrame->SetPadding(FMargin(42.0f, 38.0f, 42.0f, 38.0f));
 	AddCanvasChild(RootCanvas, WindowFrame, FVector2D::ZeroVector, InventoryWindowSize, FAnchors(0.5f, 0.5f), FVector2D(0.5f, 0.5f));
@@ -664,20 +731,26 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	FrameCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("InventoryWindowFrameCanvas"));
 	WindowFrame->AddChild(FrameCanvas);
 
-	TitleTextBlock = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "TitleInventory", "行囊"), 26, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
-	AddCanvasChild(FrameCanvas, TitleTextBlock, FVector2D(22.0f, 0.0f), FVector2D(180.0f, 52.0f));
+	BackpackHeaderImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryBackpackHeader"));
+	if (BackpackHeaderImage)
+	{
+		BackpackHeaderImage->SetBrush(MakeTextureBrush(BackpackHeaderTexturePath, FVector2D(120.0f, 36.0f)));
+		AddCanvasChild(FrameCanvas, BackpackHeaderImage, FVector2D::ZeroVector, FVector2D(120.0f, 36.0f));
+	}
+	TitleTextBlock = MakeText(WidgetTree, FText::GetEmpty(), 26, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
+	AddCanvasChild(FrameCanvas, TitleTextBlock, FVector2D(130.0f, 0.0f), FVector2D(180.0f, 52.0f));
 
 	GoldTextBlock = MakeText(WidgetTree, FText::GetEmpty(), 16);
-	AddCanvasChild(FrameCanvas, GoldTextBlock, FVector2D(206.0f, 8.0f), FVector2D(190.0f, 34.0f));
+	AddCanvasChild(FrameCanvas, GoldTextBlock, FVector2D(320.0f, 8.0f), FVector2D(190.0f, 34.0f));
 
 	CloseButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("InventoryCloseButton"));
-	CloseButton->SetStyle(MakeTextureButtonStyle(CloseButtonTexturePath, CloseButtonSize));
-	CloseButton->SetBackgroundColor(FLinearColor::White);
+	CloseButton->SetStyle(MakeInvisibleButtonStyle());
 	CloseButton->OnClicked.AddDynamic(this, &UGameXXKInventoryWindowWidget::HandleCloseClicked);
-	AddCanvasChild(FrameCanvas, CloseButton, FVector2D(894.0f, 0.0f), CloseButtonSize);
+	AddCanvasChild(FrameCanvas, CloseButton, FVector2D(8.0f, 11.0f), CloseButtonSize);
 
 	LeftRailFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryLeftRailFrame"));
-	LeftRailFrame->SetBrushColor(FLinearColor(0.93f, 0.86f, 0.70f, 0.48f));
+	LeftRailFrame->SetBrush(MakeBoxTextureBrush(PanelFrameTexturePath, FVector2D(220.0f, 470.0f)));
+	LeftRailFrame->SetBrushColor(FLinearColor::White);
 	LeftRailFrame->SetPadding(FMargin(12.0f));
 	AddCanvasChild(FrameCanvas, LeftRailFrame, FVector2D(0.0f, 78.0f), FVector2D(220.0f, 470.0f));
 
@@ -691,7 +764,8 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	LeftRailOverlay->AddChildToOverlay(MerchantStockGrid);
 
 	UBorder* BackpackFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryBackpackFrame"));
-	BackpackFrame->SetBrushColor(FLinearColor(0.95f, 0.89f, 0.74f, 0.42f));
+	BackpackFrame->SetBrush(MakeBoxTextureBrush(PanelFrameTexturePath, FVector2D(430.0f, 470.0f)));
+	BackpackFrame->SetBrushColor(FLinearColor::White);
 	BackpackFrame->SetPadding(FMargin(14.0f, 16.0f));
 	AddCanvasChild(FrameCanvas, BackpackFrame, FVector2D(242.0f, 78.0f), FVector2D(430.0f, 470.0f));
 
@@ -732,7 +806,8 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	AddCanvasChild(BackpackCanvas, DecomposeButton, FVector2D(202.0f, 392.0f), BackpackUtilityButtonSize);
 
 	DetailPanelFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryDetailPanel"));
-	DetailPanelFrame->SetBrushColor(FLinearColor(0.92f, 0.84f, 0.67f, 0.52f));
+	DetailPanelFrame->SetBrush(MakeBoxTextureBrush(PanelFrameTexturePath, FVector2D(246.0f, 470.0f)));
+	DetailPanelFrame->SetBrushColor(FLinearColor::White);
 	DetailPanelFrame->SetPadding(FMargin(14.0f));
 	AddCanvasChild(FrameCanvas, DetailPanelFrame, FVector2D(694.0f, 78.0f), FVector2D(246.0f, 470.0f));
 
@@ -774,7 +849,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	{
 		UGameXXKInventorySlotButton* SlotButton = WidgetTree->ConstructWidget<UGameXXKInventorySlotButton>(UGameXXKInventorySlotButton::StaticClass(), *FString::Printf(TEXT("InventoryBackpackSlot_%02d"), SlotIndex));
 		SlotButton->Configure(this, EGameXXKInventorySlotSource::PlayerBackpack, SlotIndex);
-		SlotButton->SetStyle(MakeTextureButtonStyle(BackpackSlotTexturePath, BackpackSlotSize));
+		SlotButton->SetStyle(MakeBoxTextureButtonStyle(BackpackSlotTexturePath, BackpackSlotSize, SlotFrameMargin));
 		SlotButton->SetBackgroundColor(FLinearColor::White);
 
 		UOverlay* SlotOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
@@ -817,7 +892,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	{
 		UGameXXKInventorySlotButton* SlotButton = WidgetTree->ConstructWidget<UGameXXKInventorySlotButton>(UGameXXKInventorySlotButton::StaticClass(), *FString::Printf(TEXT("InventoryMerchantStockSlot_%02d"), SlotIndex));
 		SlotButton->Configure(this, EGameXXKInventorySlotSource::MerchantStock, SlotIndex);
-		SlotButton->SetStyle(MakeTextureButtonStyle(BackpackSlotTexturePath, BackpackSlotSize));
+		SlotButton->SetStyle(MakeBoxTextureButtonStyle(BackpackSlotTexturePath, BackpackSlotSize, SlotFrameMargin));
 		SlotButton->SetBackgroundColor(FLinearColor::White);
 
 		UOverlay* SlotOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
@@ -862,7 +937,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		const TPair<FName, FText>& SlotDef = EquipmentSlots[SlotIndex];
 		UGameXXKInventorySlotButton* SlotButton = WidgetTree->ConstructWidget<UGameXXKInventorySlotButton>(UGameXXKInventorySlotButton::StaticClass(), *FString::Printf(TEXT("InventoryEquipmentSlot_%s"), *SlotDef.Key.ToString()));
 		SlotButton->Configure(this, EGameXXKInventorySlotSource::Equipment, SlotIndex, SlotDef.Key);
-		SlotButton->SetStyle(MakeTextureButtonStyle(EquipmentSlotTexturePath, EquipmentSlotSize));
+		SlotButton->SetStyle(MakeBoxTextureButtonStyle(EquipmentSlotTexturePath, EquipmentSlotSize, SlotFrameMargin));
 		SlotButton->SetBackgroundColor(FLinearColor::White);
 
 		UOverlay* SlotOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
@@ -903,7 +978,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	}
 
 	ConfirmationDialogFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryConfirmationDialogFrame"));
-	ConfirmationDialogFrame->SetBrush(MakeTextureBrush(ConfirmationDialogTexturePath, FVector2D(520.0f, 260.0f)));
+	ConfirmationDialogFrame->SetBrush(MakeBoxTextureBrush(ConfirmationDialogTexturePath, FVector2D(520.0f, 260.0f)));
 	ConfirmationDialogFrame->SetBrushColor(FLinearColor::White);
 	ConfirmationDialogFrame->SetPadding(FMargin(34.0f, 30.0f));
 	AddCanvasChild(RootCanvas, ConfirmationDialogFrame, FVector2D::ZeroVector, FVector2D(520.0f, 260.0f), FAnchors(0.5f, 0.5f), FVector2D(0.5f, 0.5f));
@@ -957,9 +1032,25 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 	}
 	if (TitleTextBlock)
 	{
-		TitleTextBlock->SetText(WindowMode == EGameXXKInventoryWindowMode::MerchantTrade
+		const bool bMerchantTitle = WindowMode == EGameXXKInventoryWindowMode::MerchantTrade;
+		TitleTextBlock->SetText(bMerchantTitle
 			? NSLOCTEXT("GameXXKInventoryWindow", "TitleTrade", "商铺")
-			: NSLOCTEXT("GameXXKInventoryWindow", "TitleInventory", "行囊"));
+			: FText::GetEmpty());
+		TitleTextBlock->SetVisibility(bMerchantTitle ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (UCanvasPanelSlot* TitleSlot = Cast<UCanvasPanelSlot>(TitleTextBlock->Slot))
+		{
+			TitleSlot->SetPosition(bMerchantTitle ? FVector2D(48.0f, 0.0f) : FVector2D(130.0f, 0.0f));
+		}
+		if (BackpackHeaderImage)
+		{
+			BackpackHeaderImage->SetVisibility(bMerchantTitle ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		}
+		if (CloseButton)
+		{
+			CloseButton->SetStyle(bMerchantTitle
+				? MakeTextureButtonStyle(CloseButtonTexturePath, CloseButtonSize)
+				: MakeInvisibleButtonStyle());
+		}
 	}
 	if (GoldTextBlock)
 	{
@@ -996,7 +1087,7 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 		const bool bCanDecompose = Subsystem
 			&& (SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack || SelectedSlotSource == EGameXXKInventorySlotSource::Equipment)
 			&& !SelectedItemId.IsNone()
-			&& UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), SelectedItemId) > 0;
+			&& Subsystem->CanDecomposeItem(SelectedItemId);
 		DecomposeButton->SetVisibility(bWindowVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		DecomposeButton->SetIsEnabled(bCanDecompose);
 	}
@@ -1269,10 +1360,15 @@ void UGameXXKInventoryWindowWidget::RefreshDetailPanel()
 
 	if (SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack)
 	{
-		CurrentPrimaryActionText = Def.Kind == EGameXXKItemKind::Consumable
-			? NSLOCTEXT("GameXXKInventoryWindow", "UseAction", "使用")
-			: NSLOCTEXT("GameXXKInventoryWindow", "EquipAction", "装备");
-		if (WindowMode == EGameXXKInventoryWindowMode::MerchantTrade)
+		if (Def.Kind == EGameXXKItemKind::Consumable)
+		{
+			CurrentPrimaryActionText = NSLOCTEXT("GameXXKInventoryWindow", "UseAction", "使用");
+		}
+		else if (bIsEquipment)
+		{
+			CurrentPrimaryActionText = NSLOCTEXT("GameXXKInventoryWindow", "EquipAction", "装备");
+		}
+		if (WindowMode == EGameXXKInventoryWindowMode::MerchantTrade && Subsystem && Subsystem->CanSellItem(SelectedItemId))
 		{
 			CurrentSecondaryActionText = NSLOCTEXT("GameXXKInventoryWindow", "SellAction", "出售");
 		}
@@ -1352,7 +1448,7 @@ void UGameXXKInventoryWindowWidget::RefreshConfirmationDialog()
 	{
 		if (PendingConfirmationAction == EConfirmationAction::Decompose)
 		{
-			ConfirmationSummaryTextBlock->SetText(FText::FromString(FString::Printf(TEXT("分解 x%d / +金币 %d"), FMath::Max(1, PendingConfirmationQuantity), PendingConfirmationPrice)));
+			ConfirmationSummaryTextBlock->SetText(FText::FromString(FString::Printf(TEXT("分解 x%d / +强化石 %d"), FMath::Max(1, PendingConfirmationQuantity), PendingConfirmationPrice)));
 		}
 		else if (PendingConfirmationAction == EConfirmationAction::Enhance)
 		{
@@ -1497,7 +1593,7 @@ bool UGameXXKInventoryWindowWidget::RequestSellForSelectedItem()
 		|| SelectedSlotSource != EGameXXKInventorySlotSource::PlayerBackpack
 		|| SelectedItemId.IsNone()
 		|| !Subsystem
-		|| UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), SelectedItemId) <= 0)
+		|| !Subsystem->CanSellItem(SelectedItemId))
 	{
 		return false;
 	}
@@ -1522,14 +1618,7 @@ bool UGameXXKInventoryWindowWidget::RequestDecomposeForSelectedItem()
 		|| (SelectedSlotSource != EGameXXKInventorySlotSource::PlayerBackpack && SelectedSlotSource != EGameXXKInventorySlotSource::Equipment)
 		|| SelectedItemId.IsNone()
 		|| !Subsystem
-		|| UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), SelectedItemId) <= 0)
-	{
-		return false;
-	}
-
-	bool bFound = false;
-	const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(SelectedItemId, bFound);
-	if (!bFound)
+		|| !Subsystem->CanDecomposeItem(SelectedItemId))
 	{
 		return false;
 	}
@@ -1537,7 +1626,7 @@ bool UGameXXKInventoryWindowWidget::RequestDecomposeForSelectedItem()
 	PendingConfirmationAction = EConfirmationAction::Decompose;
 	PendingConfirmationItemId = SelectedItemId;
 	PendingConfirmationQuantity = 1;
-	PendingConfirmationPrice = Def.SellPrice;
+	PendingConfirmationPrice = 1;
 	RefreshProgrammaticLayout();
 	return true;
 }
@@ -1586,7 +1675,7 @@ bool UGameXXKInventoryWindowWidget::ConfirmDialog()
 	}
 	else if (PendingConfirmationAction == EConfirmationAction::Decompose)
 	{
-		bExecuted = Subsystem->SellItem(PendingConfirmationItemId, FMath::Max(1, PendingConfirmationQuantity));
+		bExecuted = Subsystem->DecomposeItem(PendingConfirmationItemId);
 	}
 	else if (PendingConfirmationAction == EConfirmationAction::Enhance)
 	{

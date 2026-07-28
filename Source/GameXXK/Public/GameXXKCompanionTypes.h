@@ -74,7 +74,11 @@ struct GAMEXXK_API FGameXXKPermanentCompanion
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FName> SelectedCardIds;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	/**
+	 * Deprecated pre-v7 migration source. EquipmentCollection is authoritative after migration;
+	 * current recruitment, dismissal, replacement, and equipment gameplay must never write this array.
+	 */
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame, meta = (DeprecatedProperty, DeprecationMessage = "Pre-v7 migration source only; EquipmentCollection is authoritative."))
 	TArray<FName> EquippedItemIds;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
@@ -145,6 +149,17 @@ struct GAMEXXK_API FGameXXKCompanionRosterState
 {
 	GENERATED_BODY()
 
+	/**
+	 * Immutable key for this save's recruit sequence. Zero is deliberately reserved so old saves can
+	 * lazily receive the safe default key without a save-version migration.
+	 */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RecruitSequenceSeed = 0;
+
+	/** Next deterministic ticket ordinal; it advances only after a new ticket is persisted. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RecruitSequenceOrdinal = 0;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKPermanentCompanion> PermanentCompanions;
 
@@ -188,6 +203,9 @@ struct GAMEXXK_API FGameXXKCompanionAttributes
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 Mana = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 Speed = 0;
 };
 
 /** Per-level attribute increments; fractional attack/defense values are intentional. */
@@ -232,6 +250,10 @@ struct GAMEXXK_API FGameXXKQuestNpcDefinition
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TArray<FName> FixedCardIds;
+
+	/** Authored three-card order used when this named task NPC joins a route without an explicit selection. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TArray<FName> DefaultRouteCardIds;
 };
 
 /** Route-local three-card configuration for one temporary task NPC. */

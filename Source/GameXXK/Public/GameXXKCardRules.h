@@ -14,13 +14,16 @@ namespace GameXXKCardRules
 		FString* OutError = nullptr);
 
 	/**
-	 * Draws up to Count cards. Normal draws stop at HandLimit; a temporary overdraw may stop at
-	 * HandLimit + 1 and creates a ForcedDiscard choice for the exact excess.
+	 * Draws up to Count cards into a hard twenty-card battle hand. HandLimit remains only the
+	 * round-refill target. Once the hard capacity is reached, undrawn cards stay in play and the
+	 * remaining draw pile is deterministically shuffled. A positive RequiredDiscardCount opens
+	 * an exact ForcedDiscard choice after the draw. The battle instance ledger remains unchanged;
+	 * route-deck authority is outside this battle-only API and is never consumed by a draw.
 	 */
 	GAMEXXK_API bool DrawCards(
 		FGameXXKBattleDeckState& InOutDeck,
 		int32 Count,
-		bool bAllowTemporaryOverdraw,
+		int32 RequiredDiscardCount,
 		FString* OutError = nullptr);
 
 	/** Moves exactly one existing hand instance to the end of the discard pile. */
@@ -109,6 +112,22 @@ namespace GameXXKCardRules
 	/** Validates a persisted card-battle state before it is projected into UI, scene, or save-game code. */
 	GAMEXXK_API bool ValidateCardBattleRuntime(const FGameXXKCardBattleRuntime& Runtime, FString* OutError = nullptr);
 
+	/** Queues one non-stacking enemy-phase surcharge to bind after the next player hand refresh. */
+	GAMEXXK_API bool QueueNextPlayerHandEnergySurcharge(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		int32 SurchargeAmount,
+		FName SourceUnitId,
+		FString* OutError = nullptr);
+
+	/**
+	 * Resolves a ForcedDiscard choice and commits the deck mutation together with cleanup of any
+	 * exact hand-bound energy surcharge whose target has just left the hand.
+	 */
+	GAMEXXK_API bool SubmitForcedDiscard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FName>& DiscardedInstanceIds,
+		FString* OutError = nullptr);
+
 	/**
 	 * Runs the non-mutating CardCheck stage. A successful manual preview is the contract for legal
 	 * highlight outlines and owner-to-cursor arrow targeting; no resource or card-zone changes occur here.
@@ -170,11 +189,31 @@ namespace GameXXKCardRules
 	/** Adds up to the approved cap for a combat status and returns the number of stacks actually applied. */
 	GAMEXXK_API int32 AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, EGameXXKCardStatus Status, int32 Amount);
 
+	/**
+	 * Applies the White Ape's runtime-only status reaction after AddCombatStatus has already
+	 * returned a positive applied-stack count for the supplied final status target.
+	 */
+	GAMEXXK_API bool ResolveWhiteApeStatusGuardAfterStatusApplied(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKCardCombatUnit& InOutStatusTarget,
+		FString* OutError = nullptr);
+
+	/** Resets living White Ape status guards after a completed enemy phase has entered the player phase. */
+	GAMEXXK_API bool ResetWhiteApeStatusGuardsForPlayerRound(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FString* OutError = nullptr);
+
 	/** Removes up to Maximum stacks for one combat status and returns the amount actually consumed. */
 	GAMEXXK_API int32 ConsumeCombatStatus(FGameXXKCardCombatUnit& InOutUnit, EGameXXKCardStatus Status, int32 Maximum);
 
 	/** Adds armor up to the approved cap of 99 and returns the amount actually applied. */
 	GAMEXXK_API int32 AddCombatArmor(FGameXXKCardCombatUnit& InOutUnit, int32 Amount);
+
+	/** Restores health up to the unit's saved maximum and returns the amount actually restored. */
+	GAMEXXK_API int32 HealCombatUnit(FGameXXKCardCombatUnit& InOutUnit, int32 Amount);
+
+	/** Removes shared party energy down to zero and returns the amount actually consumed. */
+	GAMEXXK_API int32 ConsumeSharedCombatEnergy(FGameXXKCardBattleRuntime& InOutRuntime, int32 Amount);
 
 	/** Applies owner-phase-start cleanup that is intrinsic to card combat (currently armor expiry). */
 	GAMEXXK_API void BeginCombatUnitPhase(FGameXXKCardCombatUnit& InOutUnit);
@@ -197,6 +236,19 @@ namespace GameXXKCardRules
 	GAMEXXK_API bool ApplyCombatDirectDamage(
 		TArray<FGameXXKCardCombatUnit>& InOutUnits,
 		TArray<FGameXXKCardGuardLinkRuntime>& InOutGuardLinks,
+		const FGameXXKCardDamageContext& Context,
+		FName TargetUnitId,
+		int32 RequestedDamage,
+		FGameXXKCardDamageResult& OutResult,
+		FString* OutError = nullptr);
+
+	/**
+	 * Resolves one direct damage packet emitted by a player-owned card against the complete
+	 * runtime, allowing the final living receiver to apply serializable receiver passives
+	 * before health/death commits. Inputs and outputs commit atomically.
+	 */
+	GAMEXXK_API bool ApplyPlayerCardDirectDamage(
+		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FGameXXKCardDamageContext& Context,
 		FName TargetUnitId,
 		int32 RequestedDamage,

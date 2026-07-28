@@ -29,6 +29,7 @@
 ## 全局视频约束
 
 - 720p、5 秒、1:1 正方形画布。
+- 所有 13 个角色和 21 个怪物母图在提交前统一扩展到 1600×1600：保持原图像素不缩放并居中，新增区域只延展洋红背景。保留完整动作力度，但每一帧的全身、武器和附属物必须完整留在画幅内，攻击端或受击后仰端与对应边缘至少保留 5% 洋红间距。
 - 镜头完全固定，不缩放、不平移、不旋转。
 - 背景保持纯 `#FF00FF`，无地面、阴影、环境和额外景物。
 - 保持母图身份、比例、服饰、武器和水墨水彩笔触，不换装、不翻向、不改变身体结构。
@@ -75,7 +76,8 @@
 
 ## 输出与记录
 
-- 输出根目录：`SourceAssets/AnimationProduction/pilot_v1/`。
+- 1600×1600 安全画幅输入输出到 `SourceAssets/AnimationProduction/safe_frame_1600/`，不覆盖 `final_selected_v1` 母图。
+- 试产视频输出根目录：`SourceAssets/AnimationProduction/pilot_v1/`。
 - 每条资产保留原始 MP4、提交参数 JSON、提示词、任务 ID、模型、积分、下载时间和验收结果。
 - 命名固定为：`hero_attack`、`hero_hit`、`rooster_attack`、`rooster_hit`、`status_buff_generic`、`status_debuff_generic`、`impact_ink_generic`。
 - 试产阶段只生成并整理源视频，不批量生成剩余单位，不覆盖 UE 中现有角色、怪物、PaperZD、关卡或镜头资产。

@@ -10,6 +10,34 @@
 
 ---
 
+### Task 0: Expand every unit source to a fixed 1600-by-1600 safety canvas
+
+**Files:**
+- Create: `scripts/prepare_animation_safe_frames.py`
+- Create: `scripts/test_prepare_animation_safe_frames.py`
+- Create: `SourceAssets/AnimationProduction/safe_frame_1600/characters/*.png`
+- Create: `SourceAssets/AnimationProduction/safe_frame_1600/enemies/*.png`
+
+- [ ] **Step 1: Write a failing test that requires 34 safe-frame images**
+
+Require 13 character outputs and 21 enemy outputs. Every output must be exactly 1600×1600. Compute centered offsets from the source dimensions and require the pasted center rectangle to be pixel-identical to the original source.
+
+- [ ] **Step 2: Run the test and verify it fails because the safe-frame outputs do not exist**
+
+Run `python scripts/test_prepare_animation_safe_frames.py`.
+
+- [ ] **Step 3: Implement deterministic canvas expansion**
+
+For each source PNG, preserve its pixels, extend its four magenta edge rows/columns outward to a 1600×1600 square canvas, and paste the original at the exact centered offset. Never rescale the artwork and never modify files under either `final_selected_v1` directory.
+
+- [ ] **Step 4: Generate and verify all 34 safe-frame inputs**
+
+Run `python scripts/prepare_animation_safe_frames.py`, then `python scripts/test_prepare_animation_safe_frames.py`. Expected: 34 outputs and all tests pass.
+
+- [ ] **Step 5: Use safe-frame paths in all paid unit submissions**
+
+Update the pilot manifest so `hero_attack` and `hero_hit` use `safe_frame_1600/characters/00_hero.png`, and the rooster entries use `safe_frame_1600/enemies/01_rooster.png`. Preserve the intended action amplitude, but require the full body, weapon, and every accessory to remain inside the frame on every frame; the leading attack or recoil extremity must retain at least 5% magenta clearance from the relevant edge.
+
 ### Task 1: Create the immutable pilot inputs and manifest
 
 **Files:**

@@ -401,13 +401,15 @@ StatusEffectsWidgetComponent->SetupAttachment(HudAnchorComponent);
 ResourceHudWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
 ResourceHudWidgetComponent->SetDrawSize(FVector2D(320.0f, 104.0f));
 ResourceHudWidgetComponent->SetPivot(FVector2D(0.5f, 0.0f));
-ResourceHudWidgetComponent->SetInitialSharedLayerName(TEXT("GameXXKBattleActorHud"));
+// WidgetComponent latches the Z order when a shared layer is first created,
+// so the two rows need distinct layers for deterministic ordering.
+ResourceHudWidgetComponent->SetInitialSharedLayerName(TEXT("GameXXKBattleActorHud.Resource"));
 ResourceHudWidgetComponent->SetInitialLayerZOrder(20);
 
 StatusEffectsWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
 StatusEffectsWidgetComponent->SetDrawSize(FVector2D(320.0f, 54.0f));
 StatusEffectsWidgetComponent->SetPivot(FVector2D(0.5f, 0.0f));
-StatusEffectsWidgetComponent->SetInitialSharedLayerName(TEXT("GameXXKBattleActorHud"));
+StatusEffectsWidgetComponent->SetInitialSharedLayerName(TEXT("GameXXKBattleActorHud.Status"));
 StatusEffectsWidgetComponent->SetInitialLayerZOrder(21);
 ```
 
@@ -446,19 +448,19 @@ git commit -m "fix: anchor battle unit HUD below actor feet"
 - [ ] **Step 1: Write failing tests for 44px status badges and real descriptions.**
 
 ```cpp
-StatusWidget->SetStatuses(
+StatusWidget->SetStatusEffects(
     { MakeStatus(EGameXXKCardStatus::Poison, 2), MakeStatus(EGameXXKCardStatus::Bleed, 3) }, 7);
 TestTrue(TEXT("icons are at least 44 logical pixels"),
     StatusWidget->GetIconSizeForTest().X >= 44.0f
     && StatusWidget->GetIconSizeForTest().Y >= 44.0f);
 TestEqual(TEXT("armor plus two statuses are visible"),
     StatusWidget->GetVisibleBadgeCountForTest(), 3);
-TestEqual(TEXT("poison hover text"),
-    StatusWidget->GetBadgeTooltipForTest(EGameXXKCardStatus::Poison),
-    FString(TEXT("中毒：回合结束时受到层数×2伤害。")));
-TestEqual(TEXT("bleed hover text"),
-    StatusWidget->GetBadgeTooltipForTest(EGameXXKCardStatus::Bleed),
-    FString(TEXT("流血：回合结束时受到层数×3伤害。")));
+TestTrue(TEXT("poison hover text retains its rule timing and amount"),
+    StatusWidget->GetBadgeTooltipForTest(EGameXXKCardStatus::Poison).Contains(TEXT("回合结束"))
+    && StatusWidget->GetBadgeTooltipForTest(EGameXXKCardStatus::Poison).Contains(TEXT("2")));
+TestTrue(TEXT("bleed hover text retains its rule timing and amount"),
+    StatusWidget->GetBadgeTooltipForTest(EGameXXKCardStatus::Bleed).Contains(TEXT("回合结束"))
+    && StatusWidget->GetBadgeTooltipForTest(EGameXXKCardStatus::Bleed).Contains(TEXT("3")));
 ```
 
 - [ ] **Step 2: Run the status test and confirm the old 38px floor fails.**
@@ -486,7 +488,12 @@ BadgeRow->SetVisibility(
     VisibleBadges.Num() > 0 ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 ```
 
-Do not replace the existing single-color, low-saturation ink-wash brushes or tooltip binding.
+Keep each individual badge hit target `Visible` so it can still hover; the outer
+widget, row, badge root, and tooltip stay input-transparent. Reduce horizontal
+badge padding to 0.5 logical pixels per side so six normal badges plus the
+overflow badge occupy 315 pixels, inside the 320-pixel actor status component.
+Do not replace the existing single-color, low-saturation ink-wash brushes or
+style-driven tooltip binding.
 
 - [ ] **Step 4: Re-run the status suite.**
 
@@ -513,7 +520,7 @@ git commit -m "fix: enlarge battle status badges"
 
 ```cpp
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKBattlePartyQiWidgetTest,
-    "GameXXK.Battle.PartyQiWidget",
+    "GameXXK.UI.Battle.PartyQiWidget",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKBattlePartyQiWidgetTest::RunTest(const FString& Parameters)
@@ -532,7 +539,7 @@ bool FGameXXKBattlePartyQiWidgetTest::RunTest(const FString& Parameters)
 - [ ] **Step 2: Cold-build and run the isolated test.**
 
 ```powershell
-& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.Battle.PartyQiWidget;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
+& 'D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' 'D:\UE5 demo\GameXXK\GameXXK.uproject' -Unattended -NoSplash -NoSound -NullRHI '-ExecCmds=Automation RunTests GameXXK.UI.Battle.PartyQiWidget;Quit' '-TestExit=Automation Test Queue Empty' -log -stdout -FullStdOutLogOutput
 ```
 
 Expected: compile failure because the class does not exist.
@@ -601,8 +608,12 @@ TestEqual(TEXT("Qi reads the deck"), Board->GetPartyQiForTest(),
 TestEqual(TEXT("Qi text is current value"), Board->GetPartyQiTextForTest(),
     FString::Printf(TEXT("气力 %d"), State.CardRun.ActiveBattle.Deck.SharedEnergy));
 TestTrue(TEXT("Qi does not steal input"), Board->IsPartyQiHitTestTransparentForTest());
-TestEqual(TEXT("safe right-side slot"), Board->GetPartyQiSlotOffsetsForTest(),
-    FMargin(-416.0f, -143.0f, 170.0f, 72.0f));
+const FGameXXKBattlePartyQiLayout CompactLayout =
+    Board->ResolvePartyQiLayoutForTest(FVector2D(1280.0f, 722.0f));
+TestFalse(TEXT("compact Qi never overlaps an expanded hand card"),
+    RectsIntersect(CompactLayout.QiRect, CompactLayout.HandHoverSafeRect));
+TestFalse(TEXT("compact Qi never overlaps End Turn"),
+    RectsIntersect(CompactLayout.QiRect, CompactLayout.EndTurnRect));
 
 const int32 Before = State.CardRun.ActiveBattle.Deck.SharedEnergy;
 PlayKnownOneEnergyCard(State);
@@ -639,11 +650,25 @@ PartyQiWidget->PrepareForBoardEmbedding();
 UCanvasPanelSlot* PartyQiSlot = RootCanvas->AddChildToCanvas(PartyQiWidget);
 PartyQiSlot->SetAnchors(FAnchors(1.0f, 1.0f));
 PartyQiSlot->SetAlignment(FVector2D(0.0f, 0.0f));
-PartyQiSlot->SetOffsets(FMargin(-416.0f, -143.0f, 170.0f, 72.0f));
+// The preferred wide-screen location is above End Turn.  On compact canvases
+// that position intersects the five-card hand, so RefreshPartyQiLayout moves
+// the same right-aligned panel above the largest selected-card hover envelope.
+PartyQiSlot->SetOffsets(FMargin(-230.0f, -230.0f, 190.0f, 72.0f));
 PartyQiSlot->SetZOrder(35);
 ```
 
-Call `RefreshPartyQi()` immediately after `RefreshHandCards()` in `RefreshProgrammaticLayout`:
+Call `RefreshPartyQi()` immediately after `RefreshHandCards()` in `RefreshProgrammaticLayout`, then resolve its Canvas slot using the current RootCanvas local size. Keep the preferred right-rail position above End Turn when it does not intersect the hand. When it would intersect, move it upward by the selected-card envelope (`1.20` scale at bottom pivot plus `-32` lift) and a 12 logical-pixel gap. This keeps the panel right-aligned and avoids obscuring a hovered fifth card at the observed 1280×722 PIE size.
+
+```cpp
+void UGameXXKBattleBoardWidget::RefreshPartyQiLayout()
+{
+    const FVector2D CanvasSize = RootCanvas->GetCachedGeometry().GetLocalSize();
+    const FGameXXKBattlePartyQiLayout Layout = ResolvePartyQiLayout(CanvasSize);
+    PartyQiSlot->SetOffsets(Layout.QiOffsets);
+}
+```
+
+Then refresh its true Board-owned value:
 
 ```cpp
 void UGameXXKBattleBoardWidget::RefreshPartyQi()
@@ -652,13 +677,17 @@ void UGameXXKBattleBoardWidget::RefreshPartyQi()
     {
         return;
     }
-    const FGameXXKCardBattleRuntime* Battle = GetActiveCardBattle();
-    const bool bVisible = Battle && IsBattleBoardVisible() && !IsRewardSelectionVisible();
+    const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+    const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+    const bool bVisible = State
+        && State->Screen == EGameXXKScreen::Battle
+        && State->CardRun.bHasActiveCardBattle
+        && !HasPendingRouteReward();
     PartyQiWidget->SetVisibility(
         bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
     if (bVisible)
     {
-        PartyQiWidget->SetSharedQi(Battle->Deck.SharedEnergy);
+        PartyQiWidget->SetSharedQi(State->CardRun.ActiveBattle.Deck.SharedEnergy);
     }
 }
 ```

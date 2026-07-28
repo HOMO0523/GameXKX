@@ -2,18 +2,12 @@
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
-#include "Components/WidgetComponent.h"
-#include "Components/TextRenderComponent.h"
 #include "Engine/GameInstance.h"
-#include "GameFramework/Pawn.h"
-#include "Kismet/GameplayStatics.h"
-#include "MVP/GameXXKLevelFlow.h"
-#include "MVP/GameXXKMVPPlayerController.h"
+#include "GameXXKBattlePresentation.h"
 #include "MVP/GameXXKMVPSubsystem.h"
-#include "UI/GameXXKBattleUnitResourceWidget.h"
-#include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
+#include "UI/GameXXKBattleAnimationPresentation.h"
 
 namespace
 {
@@ -24,57 +18,98 @@ namespace
 	const FSoftObjectPath NiuHuanBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_NiuHuan.FB_Enemy_NiuHuan"));
 	const FSoftObjectPath BlackBearBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_BlackBear.FB_Enemy_BlackBear"));
 	const FSoftObjectPath TigerBossBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Boss_Tiger.FB_Boss_Tiger"));
+	const FSoftObjectPath TusiChiefBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckNPC/TusiChief/Flipbooks/FB_PartyDeckNPC_TusiChief_Idle_South.FB_PartyDeckNPC_TusiChief_Idle_South"));
+	const FSoftObjectPath SongJinBaoBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckNPC/SongJinBao/Flipbooks/FB_PartyDeckNPC_SongJinBao_Idle_South.FB_PartyDeckNPC_SongJinBao_Idle_South"));
+	const FSoftObjectPath YueBaiBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckNPC/YueBai/Flipbooks/FB_PartyDeckNPC_YueBai_Idle_South.FB_PartyDeckNPC_YueBai_Idle_South"));
+	const FSoftObjectPath ZhouGuangZuBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckNPC/ZhouGuangZu/Flipbooks/FB_PartyDeckNPC_ZhouGuangZu_Idle_South.FB_PartyDeckNPC_ZhouGuangZu_Idle_South"));
+	const FSoftObjectPath JinGuiBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckNPC/JinGui/Flipbooks/FB_PartyDeckNPC_JinGui_Idle_South.FB_PartyDeckNPC_JinGui_Idle_South"));
+	const FSoftObjectPath QiongMeiErBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckNPC/QiongMeiEr/Flipbooks/FB_PartyDeckNPC_QiongMeiEr_Idle_South.FB_PartyDeckNPC_QiongMeiEr_Idle_South"));
+	const FSoftObjectPath BladeCompanionBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckPartners/Blade/Flipbooks/FB_PartyDeckPartner_Blade_Idle_South.FB_PartyDeckPartner_Blade_Idle_South"));
+	const FSoftObjectPath GuardCompanionBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckPartners/Guard/Flipbooks/FB_PartyDeckPartner_Guard_Idle_South.FB_PartyDeckPartner_Guard_Idle_South"));
+	const FSoftObjectPath HealerCompanionBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckPartners/Healer/Flipbooks/FB_PartyDeckPartner_Healer_Idle_South.FB_PartyDeckPartner_Healer_Idle_South"));
+	const FSoftObjectPath HunterCompanionBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckPartners/Hunter/Flipbooks/FB_PartyDeckPartner_Hunter_Idle_South.FB_PartyDeckPartner_Hunter_Idle_South"));
+	const FSoftObjectPath SorcererCompanionBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckPartners/Sorcerer/Flipbooks/FB_PartyDeckPartner_Sorcerer_Idle_South.FB_PartyDeckPartner_Sorcerer_Idle_South"));
+	const FSoftObjectPath FormationMasterCompanionBattleFlipbookPath(TEXT("/Game/GameXXK/Characters/PartyDeckPartners/FormationMaster/Flipbooks/FB_PartyDeckPartner_FormationMaster_Idle_South.FB_PartyDeckPartner_FormationMaster_Idle_South"));
 	const FLinearColor EnemyBattleTint(1.0f, 1.0f, 1.0f, 1.0f);
 	const FLinearColor PartyBattleTint(1.0f, 1.0f, 1.0f, 1.0f);
+	const FLinearColor CardTargetHighlightTint(1.0f, 0.86f, 0.34f, 1.0f);
+	// The fixed battle camera projects +Y toward screen-right.  These compensate
+	// only for transparent/asymmetric art padding; SceneRoot and HitArea stay on
+	// their canonical P-slot so targeting and fixed HUD layout remain stable.
+	const FVector PartyP1VisualCenterOffset(0.0f, 24.0f, 0.0f);
+	const FVector PartyP2VisualCenterOffset = FVector::ZeroVector;
+	const FVector PartyP3VisualCenterOffset(0.0f, -8.0f, 0.0f);
 
-	int32 ResolveDisplaySlot(const FGameXXKCardCombatUnit& Unit, const int32 FallbackIndex)
+	UPaperFlipbook* LoadPartyDeckFlipbook(const FSoftObjectPath& AssetPath)
 	{
-		if (Unit.Side == EGameXXKCardTargetSide::Party)
-		{
-			if (Unit.Role == EGameXXKCharacterRole::Hero)
-			{
-				return 1;
-			}
-			if (Unit.Role == EGameXXKCharacterRole::QuestNpc)
-			{
-				return 3;
-			}
-			if (Unit.Role != EGameXXKCharacterRole::Invalid)
-			{
-				return 2;
-			}
-		}
-
-		if (Unit.Side == EGameXXKCardTargetSide::Enemy && Unit.StableSortOrder >= 0 && Unit.StableSortOrder <= 2)
-		{
-			return Unit.StableSortOrder + 1;
-		}
-
-		return FMath::Clamp(FallbackIndex + 1, 1, 3);
+		return TSoftObjectPtr<UPaperFlipbook>(AssetPath).LoadSynchronous();
 	}
 
-	bool AreStatusStacksEquivalent(const TArray<FGameXXKCardStatusStack>& Left, const TArray<FGameXXKCardStatusStack>& Right)
+	UPaperFlipbook* ResolveNamedTaskNpcFlipbook(FName RuntimeUnitId)
 	{
-		if (Left.Num() != Right.Num())
+		if (RuntimeUnitId == TEXT("Npc.TusiChief"))
 		{
-			return false;
+			return LoadPartyDeckFlipbook(TusiChiefBattleFlipbookPath);
 		}
-
-		for (int32 Index = 0; Index < Left.Num(); ++Index)
+		if (RuntimeUnitId == TEXT("Npc.SongJinBao"))
 		{
-			if (Left[Index].Status != Right[Index].Status || Left[Index].Stacks != Right[Index].Stacks)
-			{
-				return false;
-			}
+			return LoadPartyDeckFlipbook(SongJinBaoBattleFlipbookPath);
 		}
-
-		return true;
+		if (RuntimeUnitId == TEXT("Npc.YueBai"))
+		{
+			return LoadPartyDeckFlipbook(YueBaiBattleFlipbookPath);
+		}
+		if (RuntimeUnitId == TEXT("Npc.ZhouGuangZu"))
+		{
+			return LoadPartyDeckFlipbook(ZhouGuangZuBattleFlipbookPath);
+		}
+		if (RuntimeUnitId == TEXT("Npc.JinGui"))
+		{
+			return LoadPartyDeckFlipbook(JinGuiBattleFlipbookPath);
+		}
+		if (RuntimeUnitId == TEXT("Npc.QiongMeiEr"))
+		{
+			return LoadPartyDeckFlipbook(QiongMeiErBattleFlipbookPath);
+		}
+		return nullptr;
 	}
+
+	UPaperFlipbook* ResolvePersistentCompanionFlipbook(FName RuntimeUnitId)
+	{
+		const FString RuntimeId = RuntimeUnitId.ToString();
+		if (RuntimeId.StartsWith(TEXT("CompanionInstance.Companion_Blade_")))
+		{
+			return LoadPartyDeckFlipbook(BladeCompanionBattleFlipbookPath);
+		}
+		if (RuntimeId.StartsWith(TEXT("CompanionInstance.Companion_Guard_")))
+		{
+			return LoadPartyDeckFlipbook(GuardCompanionBattleFlipbookPath);
+		}
+		if (RuntimeId.StartsWith(TEXT("CompanionInstance.Companion_Healer_")))
+		{
+			return LoadPartyDeckFlipbook(HealerCompanionBattleFlipbookPath);
+		}
+		if (RuntimeId.StartsWith(TEXT("CompanionInstance.Companion_Hunter_")))
+		{
+			return LoadPartyDeckFlipbook(HunterCompanionBattleFlipbookPath);
+		}
+		if (RuntimeId.StartsWith(TEXT("CompanionInstance.Companion_Sorcerer_")))
+		{
+			return LoadPartyDeckFlipbook(SorcererCompanionBattleFlipbookPath);
+		}
+		if (RuntimeId.StartsWith(TEXT("CompanionInstance.Companion_FormationMaster_")))
+		{
+			return LoadPartyDeckFlipbook(FormationMasterCompanionBattleFlipbookPath);
+		}
+		return nullptr;
+	}
+
 }
 
 AGameXXKBattleSceneUnitActor::AGameXXKBattleSceneUnitActor()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	SetActorTickEnabled(false);
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
@@ -98,48 +133,6 @@ AGameXXKBattleSceneUnitActor::AGameXXKBattleSceneUnitActor()
 	BattleVisual->SetTranslucentSortPriority(20);
 	BattleVisual->SetLooping(true);
 
-	LabelText = CreateDefaultSubobject<UTextRenderComponent>(TEXT("LabelText"));
-	LabelText->SetupAttachment(SceneRoot);
-	LabelText->SetRelativeLocation(FVector(0.0f, 0.0f, 145.0f));
-	LabelText->SetHorizontalAlignment(EHTA_Center);
-	LabelText->SetVerticalAlignment(EVRTA_TextCenter);
-	LabelText->SetWorldSize(24.0f);
-	LabelText->SetVisibility(false);
-	LabelText->SetHiddenInGame(true);
-
-	HudAnchorComponent = CreateDefaultSubobject<USceneComponent>(TEXT("HudAnchor"));
-	HudAnchorComponent->SetupAttachment(BattleVisual);
-
-	ResourceHudAnchorComponent = CreateDefaultSubobject<USceneComponent>(TEXT("ResourceHudAnchor"));
-	ResourceHudAnchorComponent->SetupAttachment(HudAnchorComponent);
-
-	StatusEffectsAnchorComponent = CreateDefaultSubobject<USceneComponent>(TEXT("StatusEffectsAnchor"));
-	StatusEffectsAnchorComponent->SetupAttachment(HudAnchorComponent);
-
-	ResourceHudWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("ResourceHudWidget"));
-	ResourceHudWidgetComponent->SetupAttachment(ResourceHudAnchorComponent);
-	ResourceHudWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
-	ResourceHudWidgetComponent->SetDrawSize(FIntPoint(300, 96));
-	ResourceHudWidgetComponent->SetPivot(FVector2D(0.5f, 1.0f));
-	ResourceHudWidgetComponent->SetTwoSided(false);
-	ResourceHudWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ResourceHudWidgetComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
-	ResourceHudWidgetComponent->SetGenerateOverlapEvents(false);
-	ResourceHudWidgetComponent->SetWidgetClass(UGameXXKBattleUnitResourceWidget::StaticClass());
-	ResourceHudWidgetComponent->SetVisibility(false);
-
-	StatusEffectsWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("StatusEffectsWidget"));
-	StatusEffectsWidgetComponent->SetupAttachment(StatusEffectsAnchorComponent);
-	StatusEffectsWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
-	StatusEffectsWidgetComponent->SetDrawSize(FIntPoint(300, 46));
-	StatusEffectsWidgetComponent->SetPivot(FVector2D(0.5f, 0.0f));
-	StatusEffectsWidgetComponent->SetTwoSided(false);
-	StatusEffectsWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	StatusEffectsWidgetComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
-	StatusEffectsWidgetComponent->SetGenerateOverlapEvents(false);
-	StatusEffectsWidgetComponent->SetWidgetClass(UGameXXKBattleUnitStatusEffectsWidget::StaticClass());
-	StatusEffectsWidgetComponent->SetVisibility(false);
-
 	HeroBattleFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(HeroBattleFlipbookPath);
 	FollowerBattleFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FollowerBattleFlipbookPath);
 	EnemyBattleFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(EnemyBattleFlipbookPath);
@@ -147,21 +140,61 @@ AGameXXKBattleSceneUnitActor::AGameXXKBattleSceneUnitActor()
 	NiuHuanBattleFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(NiuHuanBattleFlipbookPath);
 	BlackBearBattleFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(BlackBearBattleFlipbookPath);
 	TigerBossBattleFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(TigerBossBattleFlipbookPath);
-	RefreshHudAnchor();
 }
 
-void AGameXXKBattleSceneUnitActor::ConfigureFromRuntimeUnit(bool bInEnemy, int32 InUnitIndex, const FGameXXKBattleRuntimeUnit& Unit)
+void AGameXXKBattleSceneUnitActor::Tick(const float DeltaSeconds)
 {
+	Super::Tick(DeltaSeconds);
+	if (!BattleVisual)
+	{
+		SetActorTickEnabled(false);
+		return;
+	}
+	if (!bFeedbackActive)
+	{
+		SetActorTickEnabled(false);
+		return;
+	}
+
+	FeedbackElapsed += FMath::Max(0.0f, DeltaSeconds);
+	const float Alpha = FMath::Clamp(FeedbackElapsed / 0.18f, 0.0f, 1.0f);
+	const float LocalXOffset = bFeedbackIsAttack
+		? (Alpha < 0.34f ? 6.0f : Alpha < 0.67f ? -6.0f : Alpha < 0.84f ? 3.0f : 0.0f)
+		: (Alpha < 0.34f ? -6.0f : Alpha < 0.67f ? 6.0f : Alpha < 0.84f ? -3.0f : 0.0f);
+	BattleVisual->SetRelativeLocation(FeedbackBaseLocation + FVector(LocalXOffset, 0.0f, 0.0f));
+	BattleVisual->SetRelativeScale3D(FeedbackBaseScale);
+	if (Alpha >= 1.0f)
+	{
+		RestoreFeedbackVisual();
+	}
+}
+
+void AGameXXKBattleSceneUnitActor::ConfigureFromRuntimeUnit(const bool bInEnemy, const int32 InUnitIndex, const FGameXXKBattleRuntimeUnit& Unit, const int32 InSlotNumber)
+{
+	if (UnitId != Unit.Id)
+	{
+		bCardTargetHighlighted = false;
+	}
 	bEnemy = bInEnemy;
 	UnitIndex = InUnitIndex;
 	UnitId = Unit.Id;
-	SlotNumber = FMath::Clamp(InUnitIndex + 1, 1, 3);
-	DisplayName = Unit.DisplayName.IsEmpty() ? FText::FromName(Unit.Id) : Unit.DisplayName;
+	SlotNumber = InSlotNumber;
+	bFeedbackActive = false;
+	FeedbackElapsed = 0.0f;
+	SetActorTickEnabled(false);
 	ResolveCardRuntimePresentation(Unit);
-	RefreshLabel();
+	ApplyBattleVisualSlotOffset();
 	RefreshVisual();
-	RefreshResourceHudWidget();
-	RefreshStatusEffectsWidget();
+}
+
+void AGameXXKBattleSceneUnitActor::PlayIntentAttackFeedback()
+{
+	BeginFeedback(true);
+}
+
+void AGameXXKBattleSceneUnitActor::PlayHitFeedback()
+{
+	BeginFeedback(false);
 }
 
 bool AGameXXKBattleSceneUnitActor::ApplyPrimaryPartyAttack(APawn* InstigatorPawn)
@@ -204,49 +237,29 @@ UBoxComponent* AGameXXKBattleSceneUnitActor::GetHitArea() const
 	return HitArea;
 }
 
-UTextRenderComponent* AGameXXKBattleSceneUnitActor::GetLabelTextComponent() const
-{
-	return LabelText;
-}
-
 UPaperFlipbookComponent* AGameXXKBattleSceneUnitActor::GetBattleVisualComponent() const
 {
 	return BattleVisual;
 }
 
-USceneComponent* AGameXXKBattleSceneUnitActor::GetHudAnchorComponentForTest() const
+FVector AGameXXKBattleSceneUnitActor::GetBattleHudProjectionWorldLocation() const
 {
-	return HudAnchorComponent;
+	if (!BattleVisual)
+	{
+		return GetActorLocation();
+	}
+
+	return BattleVisual->Bounds.Origin - FVector(0.0f, 0.0f, BattleVisual->Bounds.BoxExtent.Z);
 }
 
-USceneComponent* AGameXXKBattleSceneUnitActor::GetResourceHudAnchorComponentForTest() const
+UPaperFlipbook* AGameXXKBattleSceneUnitActor::GetCurrentBattleFlipbook() const
 {
-	return ResourceHudAnchorComponent;
-}
-
-USceneComponent* AGameXXKBattleSceneUnitActor::GetStatusEffectsAnchorComponentForTest() const
-{
-	return StatusEffectsAnchorComponent;
-}
-
-UWidgetComponent* AGameXXKBattleSceneUnitActor::GetResourceHudWidgetComponentForTest() const
-{
-	return ResourceHudWidgetComponent;
-}
-
-UWidgetComponent* AGameXXKBattleSceneUnitActor::GetStatusEffectsWidgetComponentForTest() const
-{
-	return StatusEffectsWidgetComponent;
+	return BattleVisual ? BattleVisual->GetFlipbook() : nullptr;
 }
 
 int32 AGameXXKBattleSceneUnitActor::GetSlotNumberForTest() const
 {
 	return SlotNumber;
-}
-
-int32 AGameXXKBattleSceneUnitActor::GetArmorForTest() const
-{
-	return CurrentArmor;
 }
 
 int32 AGameXXKBattleSceneUnitActor::GetCurrentHealthForTest() const
@@ -259,39 +272,26 @@ int32 AGameXXKBattleSceneUnitActor::GetMaxHealthForTest() const
 	return MaxHP;
 }
 
-int32 AGameXXKBattleSceneUnitActor::GetCurrentManaForTest() const
+void AGameXXKBattleSceneUnitActor::SetCardTargetHighlight(bool bHighlighted)
 {
-	return CurrentMana;
+	const bool bDesiredHighlight = bHighlighted && !bDefeated && CurrentHP > 0;
+	if (bCardTargetHighlighted == bDesiredHighlight)
+	{
+		return;
+	}
+
+	bCardTargetHighlighted = bDesiredHighlight;
+	RefreshVisual();
 }
 
-int32 AGameXXKBattleSceneUnitActor::GetMaxManaForTest() const
+bool AGameXXKBattleSceneUnitActor::IsCardTargetHighlighted() const
 {
-	return MaxMana;
+	return bCardTargetHighlighted;
 }
 
-bool AGameXXKBattleSceneUnitActor::ShouldShowQiForTest() const
+bool AGameXXKBattleSceneUnitActor::IsCardTargetOutlineEnabled() const
 {
-	return bShowQi;
-}
-
-int32 AGameXXKBattleSceneUnitActor::GetResourcePresentationGenerationForTest() const
-{
-	return ResourcePresentationGeneration;
-}
-
-int32 AGameXXKBattleSceneUnitActor::GetStatusEffectsPresentationGenerationForTest() const
-{
-	return StatusEffectsPresentationGeneration;
-}
-
-FString AGameXXKBattleSceneUnitActor::GetStatusTextForTest() const
-{
-	return UGameXXKBattleUnitStatusEffectsWidget::BuildStatusText(CurrentStatuses);
-}
-
-UPaperFlipbook* AGameXXKBattleSceneUnitActor::GetCurrentBattleFlipbook() const
-{
-	return BattleVisual ? BattleVisual->GetFlipbook() : nullptr;
+	return bCardTargetHighlighted && BattleVisual && BattleVisual->bRenderCustomDepth;
 }
 
 void AGameXXKBattleSceneUnitActor::SetMVPSubsystemForTest(UGameXXKMVPSubsystem* InSubsystem)
@@ -318,39 +318,40 @@ UGameXXKMVPSubsystem* AGameXXKBattleSceneUnitActor::ResolveMVPSubsystem(APawn* I
 	return GameInstance ? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr;
 }
 
-void AGameXXKBattleSceneUnitActor::RefreshFromRuntimeState(UGameXXKMVPSubsystem* Subsystem)
+FVector AGameXXKBattleSceneUnitActor::ResolveBattleVisualSlotOffset() const
 {
-	if (!Subsystem)
+	if (bEnemy)
 	{
-		return;
+		return FVector::ZeroVector;
 	}
 
-	const TArray<FGameXXKBattleRuntimeUnit>& Units = bEnemy
-		? Subsystem->GetRuntimeState().ActiveBattleEnemies
-		: Subsystem->GetRuntimeState().ActiveBattleParty;
-	if (!Units.IsValidIndex(UnitIndex))
+	switch (SlotNumber)
 	{
-		return;
+	case 1:
+		return PartyP1VisualCenterOffset;
+	case 2:
+		return PartyP2VisualCenterOffset;
+	case 3:
+		return PartyP3VisualCenterOffset;
+	default:
+		return FVector::ZeroVector;
 	}
-	ConfigureFromRuntimeUnit(bEnemy, UnitIndex, Units[UnitIndex]);
 }
 
-void AGameXXKBattleSceneUnitActor::RefreshLabel()
+void AGameXXKBattleSceneUnitActor::ApplyBattleVisualSlotOffset()
 {
-	if (!LabelText)
+	if (!BattleVisual)
 	{
 		return;
 	}
 
-	const FString Side = bEnemy ? TEXT("Enemy") : TEXT("Party");
-	const FString DefeatedSuffix = bDefeated ? TEXT(" defeated") : TEXT("");
-	LabelText->SetText(FText::FromString(FString::Printf(
-		TEXT("%s %s\nHP %d/%d%s"),
-		*Side,
-		*UnitId.ToString(),
-		CurrentHP,
-		MaxHP,
-		*DefeatedSuffix)));
+	if (!bHasBattleVisualAuthoredBaseLocation)
+	{
+		BattleVisualAuthoredBaseLocation = BattleVisual->GetRelativeLocation();
+		bHasBattleVisualAuthoredBaseLocation = true;
+	}
+
+	BattleVisual->SetRelativeLocation(BattleVisualAuthoredBaseLocation + ResolveBattleVisualSlotOffset());
 }
 
 void AGameXXKBattleSceneUnitActor::RefreshVisual()
@@ -363,6 +364,12 @@ void AGameXXKBattleSceneUnitActor::RefreshVisual()
 	BattleVisual->SetFlipbook(ResolveBattleFlipbook());
 	BattleVisual->SetSpriteColor(bEnemy ? EnemyBattleTint : PartyBattleTint);
 	BattleVisual->SetTranslucentSortPriority(bEnemy ? 18 : 20);
+	BattleVisual->SetRenderCustomDepth(bCardTargetHighlighted && !bDefeated);
+	BattleVisual->SetCustomDepthStencilValue(252);
+	if (bCardTargetHighlighted && !bDefeated)
+	{
+		BattleVisual->SetSpriteColor(CardTargetHighlightTint);
+	}
 	if (bDefeated)
 	{
 		BattleVisual->SetSpriteColor(FLinearColor(0.22f, 0.22f, 0.22f, 0.65f));
@@ -371,129 +378,12 @@ void AGameXXKBattleSceneUnitActor::RefreshVisual()
 	{
 		BattleVisual->PlayFromStart();
 	}
-	RefreshHudAnchor();
-}
-
-void AGameXXKBattleSceneUnitActor::RefreshHudAnchor()
-{
-	if (!HudAnchorComponent || !BattleVisual)
-	{
-		return;
-	}
-
-	const FBoxSphereBounds VisualBounds = BattleVisual->Bounds;
-	FVector Foot = VisualBounds.Origin - FVector(0.0f, 0.0f, VisualBounds.BoxExtent.Z);
-	if (VisualBounds.SphereRadius <= KINDA_SMALL_NUMBER)
-	{
-		Foot = BattleVisual->GetComponentLocation();
-	}
-	if (Foot.ContainsNaN())
-	{
-		return;
-	}
-
-	HudAnchorComponent->SetWorldLocation(Foot + FVector(0.0f, 0.0f, 8.0f));
-}
-
-void AGameXXKBattleSceneUnitActor::RefreshResourceHudWidget()
-{
-	if (!ResourceHudWidgetComponent)
-	{
-		return;
-	}
-
-	const bool bHudVisible = !bDefeated && CurrentHP > 0;
-	const bool bPresentationChanged = !bHasResourcePresentation
-		|| LastResourceCurrentHP != CurrentHP
-		|| LastResourceMaxHP != MaxHP
-		|| LastResourceCurrentMana != CurrentMana
-		|| LastResourceMaxMana != MaxMana
-		|| LastResourceSlotNumber != SlotNumber
-		|| !LastResourceDisplayName.EqualTo(DisplayName)
-		|| bLastResourceShowQi != bShowQi;
-	if (bPresentationChanged)
-	{
-		bHasResourcePresentation = true;
-		LastResourceCurrentHP = CurrentHP;
-		LastResourceMaxHP = MaxHP;
-		LastResourceCurrentMana = CurrentMana;
-		LastResourceMaxMana = MaxMana;
-		LastResourceSlotNumber = SlotNumber;
-		LastResourceDisplayName = DisplayName;
-		bLastResourceShowQi = bShowQi;
-		++ResourcePresentationGeneration;
-	}
-
-	ResourceHudWidgetComponent->SetVisibility(bHudVisible, true);
-	if (!GetWorld())
-	{
-		return;
-	}
-
-	ResourceHudWidgetComponent->InitWidget();
-	if (UGameXXKBattleUnitResourceWidget* ResourceWidget = Cast<UGameXXKBattleUnitResourceWidget>(ResourceHudWidgetComponent->GetUserWidgetObject()))
-	{
-		if (!bHudVisible)
-		{
-			ResourceWidget->SetVisibility(ESlateVisibility::Collapsed);
-			return;
-		}
-
-		const FString SlotLabel = SlotNumber == INDEX_NONE
-			? FString()
-			: FString::Printf(bEnemy ? TEXT("敌 %dP") : TEXT("我 %dP"), SlotNumber);
-		ResourceWidget->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-		ResourceWidget->SetUnitResources(SlotLabel, DisplayName, CurrentHP, MaxHP, CurrentMana, MaxMana, bShowQi);
-	}
-}
-
-void AGameXXKBattleSceneUnitActor::RefreshStatusEffectsWidget()
-{
-	if (!StatusEffectsWidgetComponent)
-	{
-		return;
-	}
-
-	const bool bHudVisible = !bDefeated && CurrentHP > 0;
-	const bool bPresentationChanged = !bHasStatusEffectsPresentation
-		|| LastStatusEffectsArmor != CurrentArmor
-		|| !AreStatusStacksEquivalent(LastStatusEffectsStatuses, CurrentStatuses);
-	if (bPresentationChanged)
-	{
-		bHasStatusEffectsPresentation = true;
-		LastStatusEffectsArmor = CurrentArmor;
-		LastStatusEffectsStatuses = CurrentStatuses;
-		++StatusEffectsPresentationGeneration;
-	}
-
-	StatusEffectsWidgetComponent->SetVisibility(bHudVisible, true);
-	if (!GetWorld())
-	{
-		return;
-	}
-
-	StatusEffectsWidgetComponent->InitWidget();
-	if (UGameXXKBattleUnitStatusEffectsWidget* StatusEffectsWidget = Cast<UGameXXKBattleUnitStatusEffectsWidget>(StatusEffectsWidgetComponent->GetUserWidgetObject()))
-	{
-		if (!bHudVisible)
-		{
-			StatusEffectsWidget->SetVisibility(ESlateVisibility::Collapsed);
-			return;
-		}
-
-		StatusEffectsWidget->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-		StatusEffectsWidget->SetStatusEffects(CurrentArmor, CurrentStatuses);
-	}
 }
 
 void AGameXXKBattleSceneUnitActor::ResolveCardRuntimePresentation(const FGameXXKBattleRuntimeUnit& LegacyUnit)
 {
 	MaxHP = FMath::Max(1, LegacyUnit.MaxHP);
 	CurrentHP = FMath::Clamp(LegacyUnit.HP, 0, MaxHP);
-	MaxMana = FMath::Max(0, LegacyUnit.MaxMP);
-	CurrentMana = FMath::Clamp(LegacyUnit.MP, 0, MaxMana);
-	CurrentArmor = FMath::Max(0, LegacyUnit.Shield);
-	CurrentStatuses.Reset();
 	bDefeated = LegacyUnit.bDefeated;
 
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem(nullptr);
@@ -508,56 +398,77 @@ void AGameXXKBattleSceneUnitActor::ResolveCardRuntimePresentation(const FGameXXK
 		{
 			MaxHP = FMath::Max(1, CardUnit->MaxHP);
 			CurrentHP = FMath::Clamp(CardUnit->HP, 0, MaxHP);
-			MaxMana = FMath::Max(0, CardUnit->MaxMana);
-			CurrentMana = FMath::Clamp(CardUnit->Mana, 0, MaxMana);
-			CurrentArmor = FMath::Clamp(CardUnit->Armor, 0, 99);
-			CurrentStatuses = CardUnit->Statuses;
 			bDefeated = !CardUnit->bLiving;
-			SlotNumber = ResolveDisplaySlot(*CardUnit, UnitIndex);
+			if (SlotNumber == INDEX_NONE)
+			{
+				SlotNumber = FGameXXKBattlePresentation::GetSlotNumber(Runtime, UnitId);
+			}
 		}
 	}
 
-	bShowQi = !bEnemy && MaxMana > 0;
+}
+
+void AGameXXKBattleSceneUnitActor::BeginFeedback(const bool bInAttackFeedback)
+{
+	if (!BattleVisual)
+	{
+		return;
+	}
+	FeedbackBaseLocation = BattleVisual->GetRelativeLocation();
+	FeedbackBaseScale = BattleVisual->GetRelativeScale3D();
+	bFeedbackIsAttack = bInAttackFeedback;
+	bFeedbackActive = true;
+	FeedbackElapsed = 0.0f;
+	SetActorTickEnabled(true);
+}
+
+void AGameXXKBattleSceneUnitActor::RestoreFeedbackVisual()
+{
+	if (BattleVisual)
+	{
+		BattleVisual->SetRelativeLocation(FeedbackBaseLocation);
+		BattleVisual->SetRelativeScale3D(FeedbackBaseScale);
+	}
+	bFeedbackActive = false;
+	FeedbackElapsed = 0.0f;
+	SetActorTickEnabled(false);
 }
 
 UPaperFlipbook* AGameXXKBattleSceneUnitActor::ResolveBattleFlipbook() const
 {
+	const FSoftObjectPath ProductionIdlePath = FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(UnitId, bEnemy);
+	if (UPaperFlipbook* ProductionIdle = TSoftObjectPtr<UPaperFlipbook>(ProductionIdlePath).LoadSynchronous())
+	{
+		return ProductionIdle;
+	}
+
 	if (bEnemy)
 	{
-		if (UnitId == TEXT("Boss"))
+		if (UnitId == TEXT("Tiger") || UnitId == TEXT("Boss"))
 		{
 			return TigerBossBattleFlipbookAsset.LoadSynchronous();
 		}
-		if (UnitId == TEXT("EliteBandit"))
+		if (UnitId == TEXT("BlackBear") || UnitId == TEXT("EliteBandit"))
 		{
 			return BlackBearBattleFlipbookAsset.LoadSynchronous();
 		}
-		if (UnitId == TEXT("Wolf"))
-		{
-			return NiuHuanBattleFlipbookAsset.LoadSynchronous();
-		}
-		if (UnitId == TEXT("Bandit"))
+		if (UnitId == TEXT("MoneyRat") || UnitId == TEXT("Bandit"))
 		{
 			return MoneyMouseBattleFlipbookAsset.LoadSynchronous();
 		}
 		return EnemyBattleFlipbookAsset.LoadSynchronous();
+	}
+	if (UPaperFlipbook* NamedTaskNpcFlipbook = ResolveNamedTaskNpcFlipbook(UnitId))
+	{
+		return NamedTaskNpcFlipbook;
+	}
+	if (UPaperFlipbook* PersistentCompanionFlipbook = ResolvePersistentCompanionFlipbook(UnitId))
+	{
+		return PersistentCompanionFlipbook;
 	}
 	if (UnitId == TEXT("Follower") || UnitIndex > 0)
 	{
 		return FollowerBattleFlipbookAsset.LoadSynchronous();
 	}
 	return HeroBattleFlipbookAsset.LoadSynchronous();
-}
-
-void AGameXXKBattleSceneUnitActor::RefreshPlayerFlowWidgets(APawn* InstigatorPawn) const
-{
-	AGameXXKMVPPlayerController* PlayerController = InstigatorPawn ? Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()) : nullptr;
-	if (!PlayerController && GetWorld())
-	{
-		PlayerController = Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
-	}
-	if (PlayerController)
-	{
-		PlayerController->RefreshPlayerFlowWidgetsFromState();
-	}
 }

@@ -10,12 +10,8 @@
 class UBoxComponent;
 class USceneComponent;
 class UGameXXKMVPSubsystem;
-class UGameXXKBattleUnitResourceWidget;
-class UGameXXKBattleUnitStatusEffectsWidget;
 class UPaperFlipbook;
 class UPaperFlipbookComponent;
-class UTextRenderComponent;
-class UWidgetComponent;
 
 UCLASS(Blueprintable)
 class GAMEXXK_API AGameXXKBattleSceneUnitActor : public AActor
@@ -24,9 +20,17 @@ class GAMEXXK_API AGameXXKBattleSceneUnitActor : public AActor
 
 public:
 	AGameXXKBattleSceneUnitActor();
+	virtual void Tick(float DeltaSeconds) override;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|BattleScene")
-	void ConfigureFromRuntimeUnit(bool bInEnemy, int32 InUnitIndex, const FGameXXKBattleRuntimeUnit& Unit);
+	// UHT requires a literal default here; -1 is UE's INDEX_NONE value.
+	void ConfigureFromRuntimeUnit(bool bInEnemy, int32 InUnitIndex, const FGameXXKBattleRuntimeUnit& Unit, int32 InSlotNumber = -1);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|BattleScene|Feedback")
+	void PlayIntentAttackFeedback();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|BattleScene|Feedback")
+	void PlayHitFeedback();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|BattleScene")
 	bool ApplyPrimaryPartyAttack(APawn* InstigatorPawn);
@@ -53,31 +57,17 @@ public:
 	UBoxComponent* GetHitArea() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene")
-	UTextRenderComponent* GetLabelTextComponent() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene")
 	UPaperFlipbookComponent* GetBattleVisualComponent() const;
 
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	USceneComponent* GetHudAnchorComponentForTest() const;
+	/** Returns the visual foot used by the board-owned projected battle HUD. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene")
+	FVector GetBattleHudProjectionWorldLocation() const;
 
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	USceneComponent* GetResourceHudAnchorComponentForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	USceneComponent* GetStatusEffectsAnchorComponentForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	UWidgetComponent* GetResourceHudWidgetComponentForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	UWidgetComponent* GetStatusEffectsWidgetComponentForTest() const;
+	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene")
+	UPaperFlipbook* GetCurrentBattleFlipbook() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
 	int32 GetSlotNumberForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	int32 GetArmorForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
 	int32 GetCurrentHealthForTest() const;
@@ -85,26 +75,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
 	int32 GetMaxHealthForTest() const;
 
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	int32 GetCurrentManaForTest() const;
+	/** Scene-facing half of card targeting: the controller applies the Board's legal stable UnitId set here. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|BattleScene|Cards")
+	void SetCardTargetHighlight(bool bHighlighted);
 
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	int32 GetMaxManaForTest() const;
+	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Cards")
+	bool IsCardTargetHighlighted() const;
 
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	bool ShouldShowQiForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	int32 GetResourcePresentationGenerationForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	int32 GetStatusEffectsPresentationGenerationForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Test")
-	FString GetStatusTextForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene")
-	UPaperFlipbook* GetCurrentBattleFlipbook() const;
+	UFUNCTION(BlueprintPure, Category = "GameXXK|BattleScene|Cards")
+	bool IsCardTargetOutlineEnabled() const;
 
 	void SetMVPSubsystemForTest(UGameXXKMVPSubsystem* InSubsystem);
 
@@ -117,24 +96,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|BattleScene")
 	TObjectPtr<UPaperFlipbookComponent> BattleVisual;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|BattleScene")
-	TObjectPtr<UTextRenderComponent> LabelText;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|BattleScene")
-	TObjectPtr<USceneComponent> HudAnchorComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|BattleScene")
-	TObjectPtr<USceneComponent> ResourceHudAnchorComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|BattleScene")
-	TObjectPtr<USceneComponent> StatusEffectsAnchorComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|BattleScene")
-	TObjectPtr<UWidgetComponent> ResourceHudWidgetComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|BattleScene")
-	TObjectPtr<UWidgetComponent> StatusEffectsWidgetComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|BattleScene|Visual")
 	TSoftObjectPtr<UPaperFlipbook> HeroBattleFlipbookAsset;
@@ -159,14 +120,14 @@ protected:
 
 private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem(APawn* InstigatorPawn) const;
-	void RefreshFromRuntimeState(UGameXXKMVPSubsystem* Subsystem);
-	void RefreshLabel();
+	/** Sprite-content correction inside a fixed P slot; never moves SceneRoot or HitArea. */
+	FVector ResolveBattleVisualSlotOffset() const;
+	/** Adds the fixed-slot correction to the authored Paper2D local position without accumulating it. */
+	void ApplyBattleVisualSlotOffset();
 	void RefreshVisual();
-	void RefreshHudAnchor();
-	void RefreshResourceHudWidget();
-	void RefreshStatusEffectsWidget();
 	void ResolveCardRuntimePresentation(const FGameXXKBattleRuntimeUnit& LegacyUnit);
-	void RefreshPlayerFlowWidgets(APawn* InstigatorPawn) const;
+	void BeginFeedback(bool bInAttackFeedback);
+	void RestoreFeedbackVisual();
 	UPaperFlipbook* ResolveBattleFlipbook() const;
 
 	UPROPERTY(Transient)
@@ -188,41 +149,20 @@ private:
 	int32 MaxHP = 1;
 
 	UPROPERTY(Transient)
-	int32 CurrentMana = 0;
-
-	UPROPERTY(Transient)
-	int32 MaxMana = 0;
-
-	UPROPERTY(Transient)
 	int32 SlotNumber = INDEX_NONE;
-
-	UPROPERTY(Transient)
-	int32 CurrentArmor = 0;
-
-	UPROPERTY(Transient)
-	TArray<FGameXXKCardStatusStack> CurrentStatuses;
-
-	UPROPERTY(Transient)
-	FText DisplayName;
 
 	UPROPERTY(Transient)
 	bool bDefeated = false;
 
 	UPROPERTY(Transient)
-	bool bShowQi = false;
+	bool bCardTargetHighlighted = false;
 
-	bool bHasResourcePresentation = false;
-	int32 LastResourceCurrentHP = 0;
-	int32 LastResourceMaxHP = 1;
-	int32 LastResourceCurrentMana = 0;
-	int32 LastResourceMaxMana = 0;
-	int32 LastResourceSlotNumber = INDEX_NONE;
-	FText LastResourceDisplayName;
-	bool bLastResourceShowQi = false;
-	int32 ResourcePresentationGeneration = 0;
+	bool bFeedbackActive = false;
+	bool bFeedbackIsAttack = false;
+	float FeedbackElapsed = 0.0f;
+	FVector FeedbackBaseLocation = FVector::ZeroVector;
+	FVector FeedbackBaseScale = FVector(0.55f, 0.55f, 0.55f);
+	FVector BattleVisualAuthoredBaseLocation = FVector::ZeroVector;
+	bool bHasBattleVisualAuthoredBaseLocation = false;
 
-	bool bHasStatusEffectsPresentation = false;
-	int32 LastStatusEffectsArmor = 0;
-	TArray<FGameXXKCardStatusStack> LastStatusEffectsStatuses;
-	int32 StatusEffectsPresentationGeneration = 0;
 };

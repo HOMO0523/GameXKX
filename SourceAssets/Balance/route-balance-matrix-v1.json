@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "Full": {
+      "seed_count": 100,
+      "node_kinds": ["Battle", "Elite", "Boss"]
+    }
+  },
+  "route_levels": {
+    "1": 5,
+    "2": 10,
+    "3": 15
+  },
+  "cohorts": [
+    {"id": "NakedBaseline", "quest_npc": "Npc.TusiChief", "set": "None", "quality": "Common", "enhancement": 0},
+    {"id": "PoJunSong", "quest_npc": "Npc.SongJinBao", "set": "PoJun", "quality": "Rare", "enhancement": 0},
+    {"id": "XuanJiaYueBai", "quest_npc": "Npc.YueBai", "set": "XuanJia", "quality": "Rare", "enhancement": 0},
+    {"id": "QingNangZhou", "quest_npc": "Npc.ZhouGuangZu", "set": "QingNang", "quality": "Rare", "enhancement": 0},
+    {"id": "ZhuiFengJinGui", "quest_npc": "Npc.JinGui", "set": "ZhuiFeng", "quality": "Rare", "enhancement": 0},
+    {"id": "ShiGuQiong", "quest_npc": "Npc.QiongMeiEr", "set": "ShiGu", "quality": "Rare", "enhancement": 0},
+    {"id": "ShanHeTusi", "quest_npc": "Npc.TusiChief", "set": "ShanHe", "quality": "Epic", "enhancement": 5},
+    {"id": "MixedMaxRegression", "quest_npc": "Npc.SongJinBao", "set": "PoJun", "quality": "Epic", "enhancement": 10}
+  ],
+  "gates": {
+    "Battle": [0.55, 0.7],
+    "Elite": [0.35, 0.5],
+    "Boss": [0.15, 0.35]
+  }
+}

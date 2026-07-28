@@ -39,8 +39,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteEncounter")
 	FText GetLastFailureReason() const;
 
+	/**
+	 * Legacy no-resolution entry point retained for compatibility.  Route choices
+	 * are controller-owned now, so callers must open the encounter panel and let
+	 * the player press one of its explicit actions instead.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteEncounter")
 	bool ApplyDefaultInteraction(APawn* InstigatorPawn);
+
+	/** Records the completion of a concrete panel choice, rather than of panel opening. */
+	void RecordExplicitChoiceResolved(APawn* InstigatorPawn);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteEncounter|Test")
 	void SetEncounterScreenForTest(EGameXXKScreen InEncounterScreen);

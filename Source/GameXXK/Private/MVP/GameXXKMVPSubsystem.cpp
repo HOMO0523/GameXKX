@@ -1,13 +1,22 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 
+#include "GameXXKCardBattleAdapter.h"
+#include "GameXXKCardCatalog.h"
+#include "GameXXKCharacterStatRules.h"
+#include "GameXXKCompanionRules.h"
+#include "GameXXKEquipmentEconomyRules.h"
+#include "GameXXKEquipmentRules.h"
 #include "MVP/GameXXKSaveGame.h"
+#include "MVP/GameXXKSaveMigration.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/Crc.h"
 
 namespace
 {
 	static constexpr int32 ManualSaveSlotCount = 5;
+	static constexpr int32 MaximumMigrationBackupAttempts = 999;
 	static const FString ManualSaveSlotPrefix(TEXT("GameXXK_MVP_SaveSlot_"));
 	static const FString DefaultSaveSlotName(TEXT("GameXXK_MVP_SaveSlot_1"));
 
@@ -16,10 +25,265 @@ namespace
 		return SlotName.IsEmpty() ? UGameXXKMVPSubsystem::GetDefaultSaveSlotName() : SlotName;
 	}
 
+	static FString BuildMigrationBackupBaseSlotName(const FString& SlotName)
+	{
+		return FString::Printf(
+			TEXT("%s.PreV%dBackup"),
+			*SlotName,
+			FGameXXKSaveMigration::CurrentSaveVersion);
+	}
+
+	static FString BuildMigrationBackupAttemptSlotName(const FString& BaseSlotName, const int32 AttemptNumber)
+	{
+		return AttemptNumber == 0
+			? BaseSlotName
+			: FString::Printf(TEXT("%s.%03d"), *BaseSlotName, AttemptNumber);
+	}
+
+	static bool TryGetSaveObjectChecksum(USaveGame* SaveGame, uint32& OutChecksum)
+	{
+		OutChecksum = 0;
+		TArray<uint8> Bytes;
+		if (!SaveGame || !UGameplayStatics::SaveGameToMemory(SaveGame, Bytes))
+		{
+			return false;
+		}
+		OutChecksum = FCrc::MemCrc32(Bytes.GetData(), Bytes.Num());
+		return true;
+	}
+
+	static bool AreSaveObjectsSerializationEquivalent(USaveGame* Left, USaveGame* Right)
+	{
+		if (!Left || !Right || Left->GetClass() != Right->GetClass())
+		{
+			return false;
+		}
+		TArray<uint8> LeftBytes;
+		TArray<uint8> RightBytes;
+		return UGameplayStatics::SaveGameToMemory(Left, LeftBytes)
+			&& UGameplayStatics::SaveGameToMemory(Right, RightBytes)
+			&& LeftBytes == RightBytes;
+	}
+
 	static APawn* GetLivePlayerPawnForSave(const UGameXXKMVPSubsystem* Subsystem)
 	{
 		UWorld* World = Subsystem ? Subsystem->GetWorld() : nullptr;
 		return World && World->IsGameWorld() ? UGameplayStatics::GetPlayerPawn(World, 0) : nullptr;
+	}
+
+	static bool IsCompanionConfigurationLocked(const FGameXXKRuntimeState& RuntimeState)
+	{
+		return RuntimeState.CardRun.bLoadoutLockedForRoute || RuntimeState.CardRun.bHasActiveCardBattle;
+	}
+
+	static bool IsTownCompanionConfigurationAvailable(const FGameXXKRuntimeState& RuntimeState)
+	{
+		return RuntimeState.Screen == EGameXXKScreen::Town && !IsCompanionConfigurationLocked(RuntimeState);
+	}
+
+	static bool ResolvePermanentEquipmentOwnerBareStats(
+		const FGameXXKRuntimeState& RuntimeState,
+		const FName CharacterId,
+		FGameXXKCharacterStats& OutBareStats)
+	{
+		OutBareStats = FGameXXKCharacterStats();
+		if (CharacterId == FGameXXKEquipmentRules::HeroCharacterId())
+		{
+			OutBareStats = FGameXXKCharacterStatRules::GetBareHeroStats(RuntimeState.PlayerLevel);
+			return true;
+		}
+
+		const FGameXXKPermanentCompanion* Companion = RuntimeState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[CharacterId](const FGameXXKPermanentCompanion& Candidate)
+			{
+				return Candidate.InstanceId == CharacterId;
+			});
+		return Companion && FGameXXKCharacterStatRules::GetBareCompanionStats(
+			Companion->Role,
+			Companion->Level,
+			Companion->Star,
+			OutBareStats);
+	}
+
+	static FGameXXKPermanentCompanion* FindPermanentCompanion(FGameXXKRuntimeState& RuntimeState, const FName InstanceId)
+	{
+		return RuntimeState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([InstanceId](const FGameXXKPermanentCompanion& Candidate)
+		{
+			return Candidate.InstanceId == InstanceId;
+		});
+	}
+
+	static bool EnsureCompanionCardRun(FGameXXKRuntimeState& RuntimeState)
+	{
+		FString Error;
+		return FGameXXKCardBattleAdapter::EnsureCardRunInitialized(RuntimeState, &Error);
+	}
+
+	static bool HasUnclaimedDismissalRefund(
+		const FGameXXKPermanentCompanion& Companion,
+		const FGameXXKEquipmentCollectionState& EquipmentCollection)
+	{
+		// Accumulated experience still has no authoritative material destination. Equipment is claimed
+		// only from the v7+ central collection; the deprecated companion array is migration input only.
+		return Companion.Level > 1
+			|| Companion.Experience > 0
+			|| EquipmentCollection.CharacterLoadouts.Contains(Companion.InstanceId);
+	}
+
+	static void SetEquipmentTransactionFailure(
+		FGameXXKEquipmentTransactionResult& OutResult,
+		const EGameXXKEquipmentTransactionError Error)
+	{
+		OutResult = FGameXXKEquipmentTransactionResult();
+		OutResult.Error = Error;
+		OutResult.Message = FGameXXKEquipmentRules::GetTransactionErrorMessage(Error);
+	}
+
+	static bool IsValidPostReplacementActiveCompanion(
+		const FGameXXKCompanionRosterState& Roster,
+		const FName DismissedInstanceId,
+		const FName RequestedActiveInstanceId)
+	{
+		if (RequestedActiveInstanceId.IsNone())
+		{
+			return true;
+		}
+		if (RequestedActiveInstanceId == DismissedInstanceId)
+		{
+			return false;
+		}
+		if (Roster.PendingRecruitment.bHasPendingRecruitment
+			&& Roster.PendingRecruitment.Candidate.InstanceId == RequestedActiveInstanceId)
+		{
+			return true;
+		}
+		return Roster.PermanentCompanions.ContainsByPredicate(
+			[DismissedInstanceId, RequestedActiveInstanceId](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.InstanceId != DismissedInstanceId
+					&& Companion.InstanceId == RequestedActiveInstanceId;
+			});
+	}
+
+	static int32 MakeStarterRecruitSequenceSeed()
+	{
+		const int32 Seed = FMath::Rand();
+		return Seed == 0 || Seed == MIN_int32 ? 1 : Seed;
+	}
+
+	/** Every facade mutation invalidates the copied development-only HUD view before it can become stale. */
+	static void BeginRuntimeStateMutation(TOptional<FGameXXKRuntimeState>& InOutBattleHudFixtureView)
+	{
+		InOutBattleHudFixtureView.Reset();
+	}
+
+	static FName ResolveBattleHudFixtureCardOwner(
+		const FGameXXKCardInstance& CardInstance,
+		const FName HeroId,
+		const FName CompanionId,
+		const FName QuestNpcId)
+	{
+		const FGameXXKCardDefinition* const Definition = FGameXXKCardCatalog::FindCardDefinition(CardInstance.CardId);
+		if (!Definition)
+		{
+			return HeroId;
+		}
+
+		switch (Definition->Owner)
+		{
+		case EGameXXKCardOwner::Profession:
+			return CompanionId;
+		case EGameXXKCardOwner::QuestNpc:
+			return QuestNpcId;
+		case EGameXXKCardOwner::Hero:
+		case EGameXXKCardOwner::Route:
+		default:
+			return HeroId;
+		}
+	}
+
+	static void RebindBattleHudFixtureDeckOwners(
+		FGameXXKBattleDeckState& InOutDeck,
+		const FName HeroId,
+		const FName CompanionId,
+		const FName QuestNpcId)
+	{
+		const auto RebindPile = [HeroId, CompanionId, QuestNpcId](TArray<FGameXXKCardInstance>& InOutPile)
+		{
+			for (FGameXXKCardInstance& CardInstance : InOutPile)
+			{
+				CardInstance.OwnerUnitId = ResolveBattleHudFixtureCardOwner(CardInstance, HeroId, CompanionId, QuestNpcId);
+			}
+		};
+
+		RebindPile(InOutDeck.DrawPile);
+		RebindPile(InOutDeck.Hand);
+		RebindPile(InOutDeck.DiscardPile);
+		RebindPile(InOutDeck.PendingChoice.Candidates);
+	}
+
+	static FGameXXKCardCombatUnit MakeBattleHudFixtureCombatUnit(
+		const FName UnitId,
+		const EGameXXKCardTargetSide Side,
+		const EGameXXKCharacterRole Role,
+		const int32 StableSortOrder,
+		const int32 HP,
+		const int32 MaxHP,
+		const int32 Mana,
+		const int32 MaxMana,
+		const int32 Attack,
+		const int32 Defense,
+		const int32 Armor)
+	{
+		FGameXXKCardCombatUnit Unit;
+		Unit.UnitId = UnitId;
+		Unit.Side = Side;
+		Unit.Role = Role;
+		Unit.StableSortOrder = StableSortOrder;
+		Unit.HP = HP;
+		Unit.MaxHP = MaxHP;
+		Unit.Mana = Mana;
+		Unit.MaxMana = MaxMana;
+		Unit.Attack = Attack;
+		Unit.Defense = Defense;
+		Unit.Armor = Armor;
+		Unit.bLiving = HP > 0;
+		return Unit;
+	}
+
+	static FGameXXKBattleRuntimeUnit MakeBattleHudFixtureLegacyProjection(
+		const FName UnitId,
+		const FText& DisplayName,
+		const bool bEnemy)
+	{
+		FGameXXKBattleRuntimeUnit Projection;
+		Projection.Id = UnitId;
+		Projection.DisplayName = DisplayName;
+		Projection.bEnemy = bEnemy;
+		// HP/MP/attack/defense/armor stay at placeholders here.  The adapter below is the
+		// sole authoritative path that projects those card-runtime values into the legacy facade.
+		return Projection;
+	}
+
+	static FGameXXKCardEnemyIntent MakeBattleHudFixtureEnemyIntent(
+		const FName CardId,
+		const FString& CardDisplayName,
+		const FName SourceUnitId,
+		const int32 SourceSlotNumber,
+		const FName SuggestedTargetUnitId,
+		const int32 TargetSlotNumber,
+		const int32 Damage)
+	{
+		FGameXXKCardEnemyIntent Intent;
+		Intent.CardId = CardId;
+		Intent.CardDisplayName = CardDisplayName;
+		Intent.SourceUnitId = SourceUnitId;
+		Intent.SourceSlotNumber = SourceSlotNumber;
+		Intent.SuggestedTargetUnitId = SuggestedTargetUnitId;
+		Intent.TargetSlotNumber = TargetSlotNumber;
+		Intent.Damage = Damage;
+		Intent.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+		return Intent;
 	}
 }
 
@@ -30,17 +294,176 @@ UGameXXKMVPSubsystem::UGameXXKMVPSubsystem()
 
 const FGameXXKRuntimeState& UGameXXKMVPSubsystem::GetRuntimeState() const
 {
-	return RuntimeState;
+	return BattleHudFixtureView.IsSet() ? BattleHudFixtureView.GetValue() : RuntimeState;
 }
 
 FGameXXKRuntimeState& UGameXXKMVPSubsystem::GetMutableRuntimeState()
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return RuntimeState;
 }
 
 FGameXXKRuntimeState UGameXXKMVPSubsystem::GetRuntimeStateCopy() const
 {
-	return RuntimeState;
+	return GetRuntimeState();
+}
+
+bool UGameXXKMVPSubsystem::ApplyBattleHudFixtureForTest(FString& OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	OutError.Reset();
+	if (RuntimeState.Screen != EGameXXKScreen::Battle)
+	{
+		OutError = TEXT("Battle HUD fixture requires the Battle screen.");
+		return false;
+	}
+	if (!RuntimeState.CardRun.bHasActiveCardBattle)
+	{
+		OutError = TEXT("Battle HUD fixture requires an active card battle.");
+		return false;
+	}
+
+	FGameXXKRuntimeState FixtureState = RuntimeState;
+	// This is a static read-only visual board, not a second live turn.  If the
+	// raw save happens to be in Enemy phase, BattleBoardWidget would otherwise
+	// begin its tick-driven intent resolver and mutate the raw state, which
+	// intentionally clears this non-persistent overlay.  Keep the forecast rail
+	// visible while presenting the fixture as a safe player-phase snapshot.
+	FixtureState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Player;
+	const FName HeroId(TEXT("Player"));
+	const FName CompanionId(TEXT("CompanionInstance.Companion_Blade_01.HudFixture"));
+	const FName QuestNpcId(TEXT("Npc.TusiChief"));
+	const FName MoneyRatId(TEXT("MoneyRat"));
+	const FName BlackBearId(TEXT("BlackBear"));
+	const FName TigerId(TEXT("Tiger"));
+
+	// This is intentionally a copied render/verification state.  It does not create a roster
+	// companion, alter the route-local NPC provenance, or invoke any battle lifecycle mutation.
+	FGameXXKCardCombatUnit Companion = MakeBattleHudFixtureCombatUnit(
+		CompanionId,
+		EGameXXKCardTargetSide::Party,
+		EGameXXKCharacterRole::Blade,
+		0,
+		61,
+		92,
+		12,
+		22,
+		17,
+		6,
+		3);
+	FGameXXKCardCombatUnit Hero = MakeBattleHudFixtureCombatUnit(
+		HeroId,
+		EGameXXKCardTargetSide::Party,
+		EGameXXKCharacterRole::Hero,
+		1,
+		72,
+		100,
+		18,
+		30,
+		20,
+		8,
+		7);
+	FGameXXKCardCombatUnit QuestNpc = MakeBattleHudFixtureCombatUnit(
+		QuestNpcId,
+		EGameXXKCardTargetSide::Party,
+		EGameXXKCharacterRole::QuestNpc,
+		2,
+		86,
+		115,
+		14,
+		24,
+		15,
+		10,
+		1);
+	FGameXXKCardCombatUnit MoneyRat = MakeBattleHudFixtureCombatUnit(
+		MoneyRatId,
+		EGameXXKCardTargetSide::Enemy,
+		EGameXXKCharacterRole::Invalid,
+		0,
+		42,
+		60,
+		0,
+		0,
+		10,
+		3,
+		0);
+	FGameXXKCardCombatUnit BlackBear = MakeBattleHudFixtureCombatUnit(
+		BlackBearId,
+		EGameXXKCardTargetSide::Enemy,
+		EGameXXKCharacterRole::Invalid,
+		1,
+		84,
+		110,
+		0,
+		0,
+		15,
+		5,
+		0);
+	FGameXXKCardCombatUnit Tiger = MakeBattleHudFixtureCombatUnit(
+		TigerId,
+		EGameXXKCardTargetSide::Enemy,
+		EGameXXKCharacterRole::Invalid,
+		2,
+		152,
+		180,
+		0,
+		0,
+		21,
+		8,
+		0);
+	FGameXXKCardStatusStack& Poison = MoneyRat.Statuses.AddDefaulted_GetRef();
+	Poison.Status = EGameXXKCardStatus::Poison;
+	Poison.Stacks = 2;
+	FGameXXKCardStatusStack& Bleed = MoneyRat.Statuses.AddDefaulted_GetRef();
+	Bleed.Status = EGameXXKCardStatus::Bleed;
+	Bleed.Stacks = 3;
+
+	FixtureState.CardRun.ActiveBattle.Units = {
+		MoveTemp(Companion),
+		MoveTemp(Hero),
+		MoveTemp(QuestNpc),
+		MoveTemp(MoneyRat),
+		MoveTemp(BlackBear),
+		MoveTemp(Tiger)};
+	RebindBattleHudFixtureDeckOwners(FixtureState.CardRun.ActiveBattle.Deck, HeroId, CompanionId, QuestNpcId);
+	FixtureState.ActiveBattleParty = {
+		MakeBattleHudFixtureLegacyProjection(CompanionId, FText::FromString(TEXT("伙伴")), false),
+		MakeBattleHudFixtureLegacyProjection(HeroId, FText::FromString(TEXT("主角")), false),
+		MakeBattleHudFixtureLegacyProjection(QuestNpcId, FText::FromString(TEXT("土司首领")), false)};
+	FixtureState.ActiveBattleEnemies = {
+		MakeBattleHudFixtureLegacyProjection(MoneyRatId, FText::FromString(TEXT("金钱鼠")), true),
+		MakeBattleHudFixtureLegacyProjection(BlackBearId, FText::FromString(TEXT("黑熊")), true),
+		MakeBattleHudFixtureLegacyProjection(TigerId, FText::FromString(TEXT("虎王")), true)};
+	FixtureState.CardRun.ActiveBattle.GuardLinks.Reset();
+	FixtureState.CardRun.ActiveBattle.Modifiers.Reset();
+	FixtureState.CardRun.ActiveBattle.NextModifierOrdinal = 0;
+	FixtureState.CardRun.ActiveBattle.Deck.SharedEnergy = 2;
+
+	// Intent cards are read-only disclosure for the fixture's three living enemies; no enemy
+	// action, damage resolution, draw, or other gameplay mutation is performed to create them.
+	FixtureState.CardRun.EnemyIntents = {
+		MakeBattleHudFixtureEnemyIntent(TEXT("Fixture.Intent.MoneyRat.Bite"), TEXT("撕咬"), MoneyRatId, 1, HeroId, 2, 10),
+		MakeBattleHudFixtureEnemyIntent(TEXT("Fixture.Intent.BlackBear.Swipe"), TEXT("扑击"), BlackBearId, 2, HeroId, 2, 15),
+		MakeBattleHudFixtureEnemyIntent(TEXT("Fixture.Intent.Tiger.Pounce"), TEXT("虎扑"), TigerId, 3, HeroId, 2, 22)};
+	FixtureState.CardRun.NextEnemyIntentIndex = 0;
+
+	if (!FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(FixtureState, &OutError))
+	{
+		return false;
+	}
+
+	BattleHudFixtureView.Emplace(MoveTemp(FixtureState));
+	return true;
+}
+
+void UGameXXKMVPSubsystem::ClearBattleHudFixtureForTest()
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+}
+
+bool UGameXXKMVPSubsystem::IsBattleHudFixtureActiveForTest() const
+{
+	return BattleHudFixtureView.IsSet();
 }
 
 bool UGameXXKMVPSubsystem::StartGame()
@@ -50,7 +473,26 @@ bool UGameXXKMVPSubsystem::StartGame()
 
 bool UGameXXKMVPSubsystem::StartNewGame()
 {
+	LastSaveLoadError = FText::GetEmpty();
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	RuntimeState = UGameXXKMVPRules::CreateNewGame();
+	FString Error;
+	if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(RuntimeState, &Error))
+	{
+		return false;
+	}
+
+	FGameXXKCompanionRosterState& StarterRoster = RuntimeState.CardRun.CompanionRoster;
+	StarterRoster.RecruitSequenceSeed = MakeStarterRecruitSequenceSeed();
+	FGameXXKCompanionRecruitResult StarterRecruit;
+	if (!FGameXXKCompanionRules::CreateAndResolveNextRecruitment(StarterRoster, StarterRecruit, &Error)
+		|| StarterRecruit.Outcome != EGameXXKCompanionRecruitOutcome::Recruited
+		|| !FGameXXKCompanionRules::SetActivePermanentCompanion(StarterRoster, StarterRecruit.Companion.InstanceId, &Error)
+		|| !FGameXXKCardBattleAdapter::EnsureCardRunInitialized(RuntimeState, &Error))
+	{
+		return false;
+	}
+
 	return UGameXXKMVPRules::OpenWorldMap(RuntimeState);
 }
 
@@ -78,7 +520,7 @@ bool UGameXXKMVPSubsystem::SaveCurrentGame(FString SlotName, int32 UserIndex)
 	}
 
 	SaveGame->SaveState = UGameXXKMVPRules::MakeSaveState(RuntimeState);
-	return UGameplayStatics::SaveGameToSlot(SaveGame, ResolveSaveSlotName(SlotName), UserIndex);
+	return WriteSaveGameToSlot(SaveGame, ResolveSaveSlotName(SlotName), UserIndex);
 }
 
 bool UGameXXKMVPSubsystem::DoesSaveGameExist(FString SlotName, int32 UserIndex) const
@@ -95,19 +537,166 @@ bool UGameXXKMVPSubsystem::DeleteSaveGame(FString SlotName, int32 UserIndex)
 
 bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 {
+	LastSaveLoadError = FText::GetEmpty();
 	const FString ResolvedSlotName = ResolveSaveSlotName(SlotName);
 	if (!UGameplayStatics::DoesSaveGameExist(ResolvedSlotName, UserIndex))
 	{
 		return false;
 	}
 
-	UGameXXKSaveGame* SaveGame = Cast<UGameXXKSaveGame>(UGameplayStatics::LoadGameFromSlot(ResolvedSlotName, UserIndex));
-	if (!SaveGame)
+	UGameXXKSaveGame* OriginalSaveGame = Cast<UGameXXKSaveGame>(UGameplayStatics::LoadGameFromSlot(ResolvedSlotName, UserIndex));
+	if (!OriginalSaveGame)
 	{
+		SetSaveMigrationFailure();
 		return false;
 	}
 
-	RuntimeState = UGameXXKMVPRules::RestoreFromSaveState(SaveGame->SaveState);
+	FGameXXKSaveState MigratedSaveState;
+	FGameXXKSaveMigrationReport MigrationReport;
+	if (OriginalSaveGame->SaveState.SaveVersion == FGameXXKSaveMigration::CurrentSaveVersion)
+	{
+		if (!FGameXXKSaveMigration::MigrateToCurrent(OriginalSaveGame->SaveState, MigratedSaveState, MigrationReport))
+		{
+			SetSaveMigrationFailure();
+			return false;
+		}
+		BeginRuntimeStateMutation(BattleHudFixtureView);
+		RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
+		return true;
+	}
+
+	// Invalid/future versions are rejected before any backup or main-slot write.
+	if (OriginalSaveGame->SaveState.SaveVersion < 0
+		|| OriginalSaveGame->SaveState.SaveVersion > FGameXXKSaveMigration::CurrentSaveVersion)
+	{
+		SetSaveMigrationFailure();
+		return false;
+	}
+
+	uint32 OriginalChecksum = 0;
+	if (!TryGetSaveObjectChecksum(OriginalSaveGame, OriginalChecksum))
+	{
+		SetSaveMigrationFailure();
+		return false;
+	}
+
+	const FString BackupBaseSlotName = BuildMigrationBackupBaseSlotName(ResolvedSlotName);
+	FString BackupSlotName;
+	UGameXXKSaveGame* VerifiedBackup = nullptr;
+	for (int32 AttemptNumber = 0; AttemptNumber <= MaximumMigrationBackupAttempts; ++AttemptNumber)
+	{
+		const FString CandidateBackupSlotName = BuildMigrationBackupAttemptSlotName(BackupBaseSlotName, AttemptNumber);
+		if (UGameplayStatics::DoesSaveGameExist(CandidateBackupSlotName, UserIndex))
+		{
+			UGameXXKSaveGame* CandidateBackup = Cast<UGameXXKSaveGame>(
+				UGameplayStatics::LoadGameFromSlot(CandidateBackupSlotName, UserIndex));
+			uint32 CandidateChecksum = 0;
+			if (CandidateBackup
+				&& TryGetSaveObjectChecksum(CandidateBackup, CandidateChecksum)
+				&& CandidateChecksum == OriginalChecksum
+				&& AreSaveObjectsSerializationEquivalent(OriginalSaveGame, CandidateBackup))
+			{
+				VerifiedBackup = CandidateBackup;
+				BackupSlotName = CandidateBackupSlotName;
+				break;
+			}
+			continue;
+		}
+
+		if (!WriteSaveGameToSlot(OriginalSaveGame, CandidateBackupSlotName, UserIndex))
+		{
+			SetSaveMigrationFailure();
+			return false;
+		}
+		UGameXXKSaveGame* CandidateBackup = Cast<UGameXXKSaveGame>(
+			UGameplayStatics::LoadGameFromSlot(CandidateBackupSlotName, UserIndex));
+		uint32 CandidateChecksum = 0;
+		if (!CandidateBackup
+			|| !TryGetSaveObjectChecksum(CandidateBackup, CandidateChecksum)
+			|| CandidateChecksum != OriginalChecksum
+			|| !AreSaveObjectsSerializationEquivalent(OriginalSaveGame, CandidateBackup))
+		{
+			SetSaveMigrationFailure();
+			return false;
+		}
+		VerifiedBackup = CandidateBackup;
+		BackupSlotName = CandidateBackupSlotName;
+		break;
+	}
+	if (!VerifiedBackup || BackupSlotName.IsEmpty())
+	{
+		SetSaveMigrationFailure();
+		return false;
+	}
+
+	if (!FGameXXKSaveMigration::MigrateToCurrent(OriginalSaveGame->SaveState, MigratedSaveState, MigrationReport))
+	{
+		SetSaveMigrationFailure();
+		return false;
+	}
+	MigrationReport.SourceChecksum = OriginalChecksum;
+	MigrationReport.BackupChecksum = OriginalChecksum;
+	MigrationReport.BackupSlotName = BackupSlotName;
+
+	UGameXXKSaveGame* MigratedSaveGame = Cast<UGameXXKSaveGame>(
+		UGameplayStatics::CreateSaveGameObject(UGameXXKSaveGame::StaticClass()));
+	if (!MigratedSaveGame)
+	{
+		SetSaveMigrationFailure();
+		return false;
+	}
+	MigratedSaveGame->SaveState = MigratedSaveState;
+	const auto RestoreOriginalMain = [this, VerifiedBackup, OriginalSaveGame, OriginalChecksum, &ResolvedSlotName, UserIndex]()
+	{
+		if (!WriteSaveGameToSlot(VerifiedBackup, ResolvedSlotName, UserIndex))
+		{
+			return false;
+		}
+		UGameXXKSaveGame* RestoredSaveGame = Cast<UGameXXKSaveGame>(
+			UGameplayStatics::LoadGameFromSlot(ResolvedSlotName, UserIndex));
+		uint32 RestoredChecksum = 0;
+		return TryGetSaveObjectChecksum(RestoredSaveGame, RestoredChecksum)
+			&& RestoredChecksum == OriginalChecksum
+			&& AreSaveObjectsSerializationEquivalent(OriginalSaveGame, RestoredSaveGame);
+	};
+
+	if (!WriteSaveGameToSlot(MigratedSaveGame, ResolvedSlotName, UserIndex))
+	{
+		const bool bRollbackVerified = RestoreOriginalMain();
+		if (bRollbackVerified)
+		{
+			SetSaveMigrationFailure();
+		}
+		else
+		{
+			SetSaveRollbackFailure();
+		}
+		return false;
+	}
+
+	UGameXXKSaveGame* VerifiedMigratedSave = Cast<UGameXXKSaveGame>(
+		UGameplayStatics::LoadGameFromSlot(ResolvedSlotName, UserIndex));
+	uint32 MigratedChecksum = 0;
+	uint32 VerifiedMigratedChecksum = 0;
+	if (!TryGetSaveObjectChecksum(MigratedSaveGame, MigratedChecksum)
+		|| !TryGetSaveObjectChecksum(VerifiedMigratedSave, VerifiedMigratedChecksum)
+		|| MigratedChecksum != VerifiedMigratedChecksum
+		|| !AreSaveObjectsSerializationEquivalent(MigratedSaveGame, VerifiedMigratedSave))
+	{
+		const bool bRollbackVerified = RestoreOriginalMain();
+		if (bRollbackVerified)
+		{
+			SetSaveMigrationFailure();
+		}
+		else
+		{
+			SetSaveRollbackFailure();
+		}
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
 	return true;
 }
 
@@ -121,6 +710,226 @@ bool UGameXXKMVPSubsystem::LoadOrCreateGame(FString SlotName, int32 UserIndex)
 
 	return StartNewGame();
 }
+
+FText UGameXXKMVPSubsystem::GetLastSaveLoadError() const
+{
+	return LastSaveLoadError;
+}
+
+bool UGameXXKMVPSubsystem::GetEquipmentWarehouseSnapshot(TArray<FName>& OutOrderedInstanceIds) const
+{
+	OutOrderedInstanceIds.Reset();
+	FString Error;
+	if (!FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(
+		RuntimeState.EquipmentCollection,
+		RuntimeState.CardRun.CompanionRoster,
+		&Error))
+	{
+		return false;
+	}
+	OutOrderedInstanceIds = RuntimeState.EquipmentCollection.WarehouseInstanceIds;
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::GetEquipmentLoadoutSnapshot(
+	const FName CharacterId,
+	FGameXXKEquipmentLoadoutSnapshot& OutSnapshot) const
+{
+	OutSnapshot = FGameXXKEquipmentLoadoutSnapshot();
+	FGameXXKCharacterStats BareStats;
+	FString Error;
+	return ResolvePermanentEquipmentOwnerBareStats(RuntimeState, CharacterId, BareStats)
+		&& FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+			RuntimeState.EquipmentCollection,
+			CharacterId,
+			BareStats,
+			OutSnapshot,
+			&Error);
+}
+
+bool UGameXXKMVPSubsystem::GetEquipmentTooltipSnapshot(
+	const FName InstanceId,
+	const FName CompareCharacterId,
+	FGameXXKEquipmentTooltipSnapshot& OutSnapshot) const
+{
+	OutSnapshot = FGameXXKEquipmentTooltipSnapshot();
+	FGameXXKCharacterStats CompareBareStats;
+	FString Error;
+	return ResolvePermanentEquipmentOwnerBareStats(RuntimeState, CompareCharacterId, CompareBareStats)
+		&& FGameXXKEquipmentRules::BuildTooltipSnapshot(
+			RuntimeState.EquipmentCollection,
+			InstanceId,
+			CompareCharacterId,
+			CompareBareStats,
+			OutSnapshot,
+			&Error);
+}
+
+bool UGameXXKMVPSubsystem::EquipEquipmentInstance(
+	const FName CharacterId,
+	const EGameXXKEquipmentSlot Slot,
+	const FName InstanceId,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentEconomyRules::Equip(Candidate, CharacterId, Slot, InstanceId, OutResult))
+	{
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::UnequipEquipmentSlot(
+	const FName CharacterId,
+	const EGameXXKEquipmentSlot Slot,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentEconomyRules::Unequip(Candidate, CharacterId, Slot, OutResult))
+	{
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::EnhanceEquipmentInstance(const FName InstanceId, FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentEconomyRules::EnhanceInstance(Candidate, InstanceId, OutResult))
+	{
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::BeginEquipmentReforge(
+	const FName InstanceId,
+	const int32 AffixIndex,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentEconomyRules::BeginReforge(Candidate, InstanceId, AffixIndex, OutResult))
+	{
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ResolveEquipmentReforge(const bool bAccept, FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentEconomyRules::ResolvePendingReforge(Candidate, bAccept, OutResult))
+	{
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::DismantleEquipmentInstances(
+	const TArray<FName>& InstanceIds,
+	const bool bConfirmedProtected,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentEconomyRules::DismantleBatch(Candidate, InstanceIds, bConfirmedProtected, OutResult))
+	{
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::WriteSaveGameToSlot(USaveGame* SaveGame, const FString& SlotName, const int32 UserIndex)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (SaveSlotWriteDelegateForTest.IsBound())
+	{
+		return SaveSlotWriteDelegateForTest.Execute(SaveGame, SlotName, UserIndex);
+	}
+#endif
+	return UGameplayStatics::SaveGameToSlot(SaveGame, SlotName, UserIndex);
+}
+
+void UGameXXKMVPSubsystem::SetSaveMigrationFailure()
+{
+	LastSaveLoadError = FGameXXKEquipmentRules::GetTransactionErrorMessage(
+		EGameXXKEquipmentTransactionError::SaveMigrationFailed);
+}
+
+void UGameXXKMVPSubsystem::SetSaveRollbackFailure()
+{
+	// The fixed-name backup was already written and verified before touching the main
+	// slot. If automatic main-slot rollback fails, never claim the main was preserved.
+	LastSaveLoadError = NSLOCTEXT(
+		"GameXXKSaveMigration",
+		"RollbackFailed",
+		"存档迁移失败，原存档仍保存在迁移备份中，请勿覆盖当前存档。");
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+void UGameXXKMVPSubsystem::SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate InDelegate)
+{
+	SaveSlotWriteDelegateForTest = MoveTemp(InDelegate);
+}
+
+void UGameXXKMVPSubsystem::ResetSaveSlotWriteDelegateForTest()
+{
+	SaveSlotWriteDelegateForTest.Unbind();
+}
+#endif
 
 FString UGameXXKMVPSubsystem::GetDefaultSaveSlotName()
 {
@@ -140,16 +949,19 @@ FString UGameXXKMVPSubsystem::GetManualSaveSlotName(int32 SlotIndex)
 
 bool UGameXXKMVPSubsystem::OpenWorldMap()
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::OpenWorldMap(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::SelectWorldRegion(FName RegionId)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::EnterWorldRegion(RuntimeState, RegionId);
 }
 
 bool UGameXXKMVPSubsystem::EnsureQingshanTownRuntimeForDirectMap()
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	if (RuntimeState.Screen == EGameXXKScreen::Town && RuntimeState.CurrentRegion == UGameXXKMVPRules::RegionQingshan())
 	{
 		return true;
@@ -174,17 +986,20 @@ bool UGameXXKMVPSubsystem::IsRegionUnlocked(FName RegionId) const
 
 bool UGameXXKMVPSubsystem::AcceptQuest()
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::AcceptTownQuest(RuntimeState);
 }
 
 void UGameXXKMVPSubsystem::RecordQuestNpcLocation(FVector Location)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	RuntimeState.bHasQuestNpcLocation = true;
 	RuntimeState.QuestNpcLocation = Location;
 }
 
 void UGameXXKMVPSubsystem::RecordPlayerLocation(FVector Location)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	RuntimeState.bHasPlayerLocation = true;
 	RuntimeState.PlayerLocation = Location;
 }
@@ -196,77 +1011,180 @@ bool UGameXXKMVPSubsystem::CanEnterDungeon() const
 
 bool UGameXXKMVPSubsystem::OpenDungeonFromTownExit()
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::EnterDungeon(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::SelectDungeonNode(EGameXXKNodeKind ExpectedNode)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::AdvanceDungeonNode(RuntimeState, ExpectedNode);
 }
 
 bool UGameXXKMVPSubsystem::SelectRouteNodeById(int32 NodeId)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::SelectRouteNodeById(RuntimeState, NodeId);
 }
 
 bool UGameXXKMVPSubsystem::ResolveBattleVictory(bool bBossBattle)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::ResolveBattleVictory(RuntimeState, bBossBattle);
+}
+
+bool UGameXXKMVPSubsystem::ResolvePendingRouteRewardChoiceAndFinish(
+	const FName RewardCardId,
+	const FName ReplacementEntryId,
+	FString* OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return UGameXXKMVPRules::ResolvePendingRouteRewardChoiceAndFinish(
+		RuntimeState,
+		RewardCardId,
+		ReplacementEntryId,
+		OutError);
+}
+
+bool UGameXXKMVPSubsystem::SkipPendingRouteRewardAndFinish(FString* OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return UGameXXKMVPRules::SkipPendingRouteRewardAndFinish(RuntimeState, OutError);
 }
 
 bool UGameXXKMVPSubsystem::ExecuteBattleBasicAttack(int32 PartyIndex, int32 EnemyIndex)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::ExecuteBattleBasicAttack(RuntimeState, PartyIndex, EnemyIndex);
 }
 
 bool UGameXXKMVPSubsystem::ExecuteBattleCraneWingSlash(int32 PartyIndex, int32 EnemyIndex)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::ExecuteBattleCraneWingSlash(RuntimeState, PartyIndex, EnemyIndex);
 }
 
 bool UGameXXKMVPSubsystem::ExecuteBattleGuiyuanArt(int32 PartyIndex)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::ExecuteBattleGuiyuanArt(RuntimeState, PartyIndex);
 }
 
 bool UGameXXKMVPSubsystem::ExecuteBattleDefend(int32 PartyIndex)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::ExecuteBattleDefend(RuntimeState, PartyIndex);
 }
 
 bool UGameXXKMVPSubsystem::ExecuteBattleHealingPowder(int32 PartyIndex)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::ExecuteBattleHealingPowder(RuntimeState, PartyIndex);
 }
 
 bool UGameXXKMVPSubsystem::ResolveEventReward(bool bTakeGold)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::ResolveEventReward(RuntimeState, bTakeGold);
+}
+
+bool UGameXXKMVPSubsystem::ResolveRouteEncounterChoice(const int32 ChoiceIndex)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return UGameXXKMVPRules::ResolveRouteEncounterChoice(RuntimeState, ChoiceIndex);
+}
+
+bool UGameXXKMVPSubsystem::AcceptRouteEventNpcSupport()
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return UGameXXKMVPRules::AcceptRouteEventNpcSupport(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::ResolveCampReward(bool bHealNow)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::ResolveCampReward(RuntimeState, bHealNow);
+}
+
+bool UGameXXKMVPSubsystem::EnsureRouteMerchantStock(FString* OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return UGameXXKMVPRules::EnsureRouteMerchantStock(RuntimeState, OutError);
+}
+
+bool UGameXXKMVPSubsystem::GetRouteMerchantView(
+	FGameXXKRouteMerchantView& OutView,
+	FString* OutError) const
+{
+	return UGameXXKMVPRules::GetRouteMerchantView(RuntimeState, OutView, OutError);
+}
+
+bool UGameXXKMVPSubsystem::RefreshRouteMerchant(FString* OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return UGameXXKMVPRules::RefreshRouteMerchant(RuntimeState, OutError);
+}
+
+bool UGameXXKMVPSubsystem::PreviewRouteMerchantPurchase(
+	const FName OfferId,
+	const FName ReplacementEntryId,
+	FGameXXKRouteMerchantPurchasePreview& OutPreview,
+	FString* OutError) const
+{
+	return UGameXXKMVPRules::PreviewRouteMerchantPurchase(
+		RuntimeState,
+		OfferId,
+		ReplacementEntryId,
+		OutPreview,
+		OutError);
+}
+
+bool UGameXXKMVPSubsystem::PurchaseRouteMerchant(
+	const FName OfferId,
+	const FName ReplacementEntryId,
+	FGameXXKRouteMerchantPurchaseResult& OutResult)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return UGameXXKMVPRules::PurchaseRouteMerchant(
+		RuntimeState,
+		OfferId,
+		ReplacementEntryId,
+		OutResult);
+}
+
+bool UGameXXKMVPSubsystem::CancelPendingRouteMerchantPurchase(FString* OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return UGameXXKMVPRules::CancelPendingRouteMerchantPurchase(RuntimeState, OutError);
 }
 
 bool UGameXXKMVPSubsystem::ResolveMerchantRouteNode()
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::ResolveMerchantRouteNode(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::FailDungeonToTown()
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::FailDungeonToTown(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::BuyItem(FName ItemId, int32 Quantity)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::BuyItem(RuntimeState, ItemId, Quantity);
 }
 
 bool UGameXXKMVPSubsystem::SellItem(FName ItemId, int32 Quantity)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::SellItem(RuntimeState, ItemId, Quantity);
+}
+
+bool UGameXXKMVPSubsystem::CanSellItem(FName ItemId) const
+{
+	return UGameXXKMVPRules::CanSellItem(RuntimeState, ItemId);
 }
 
 int32 UGameXXKMVPSubsystem::GetItemEnhancementLevel(FName ItemId) const
@@ -281,42 +1199,363 @@ bool UGameXXKMVPSubsystem::CanEnhanceItem(FName ItemId) const
 
 bool UGameXXKMVPSubsystem::EnhanceItem(FName ItemId)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::EnhanceItem(RuntimeState, ItemId);
+}
+
+bool UGameXXKMVPSubsystem::CanDecomposeItem(FName ItemId) const
+{
+	return UGameXXKMVPRules::CanDecomposeItem(RuntimeState, ItemId);
+}
+
+bool UGameXXKMVPSubsystem::DecomposeItem(FName ItemId)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return UGameXXKMVPRules::DecomposeItem(RuntimeState, ItemId);
 }
 
 bool UGameXXKMVPSubsystem::UseHealingItem()
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::UseHealingItem(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::UseItem(FName ItemId)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::UseItem(RuntimeState, ItemId);
 }
 
 bool UGameXXKMVPSubsystem::EquipItem(FName ItemId)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::EquipItem(RuntimeState, ItemId);
 }
 
 bool UGameXXKMVPSubsystem::UnequipItem(FName ItemId)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::UnequipItem(RuntimeState, ItemId);
 }
 
 bool UGameXXKMVPSubsystem::OpenTownPanel(EGameXXKTownPanelMode PanelMode)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::OpenTownPanel(RuntimeState, PanelMode);
 }
 
 bool UGameXXKMVPSubsystem::CloseTownPanel()
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView);
 	return UGameXXKMVPRules::CloseTownPanel(RuntimeState);
 }
 
 int32 UGameXXKMVPSubsystem::GetItemCount(FName ItemId) const
 {
 	return UGameXXKMVPRules::GetItemCount(RuntimeState, ItemId);
+}
+
+TArray<FGameXXKCodexEntryView> UGameXXKMVPSubsystem::GetCodexEntryViews(EGameXXKCodexCategory Category) const
+{
+	return UGameXXKMVPRules::BuildCodexEntryViews(RuntimeState, Category);
+}
+
+int32 UGameXXKMVPSubsystem::GetCodexEntryCount(EGameXXKCodexCategory Category) const
+{
+	return UGameXXKMVPRules::GetCodexEntryCount(Category);
+}
+
+int32 UGameXXKMVPSubsystem::GetDiscoveredCodexEntryCount(EGameXXKCodexCategory Category) const
+{
+	return UGameXXKMVPRules::GetDiscoveredCodexEntryCount(RuntimeState, Category);
+}
+
+bool UGameXXKMVPSubsystem::HasUnreadCodexEntries() const
+{
+	return UGameXXKMVPRules::HasUnreadCodexEntries(RuntimeState);
+}
+
+bool UGameXXKMVPSubsystem::MarkCodexEntryRead(FName EntryId)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return UGameXXKMVPRules::MarkCodexEntryRead(RuntimeState, EntryId);
+}
+
+TArray<FGameXXKPermanentCompanion> UGameXXKMVPSubsystem::GetPermanentCompanionViews() const
+{
+	return RuntimeState.CardRun.CompanionRoster.PermanentCompanions;
+}
+
+bool UGameXXKMVPSubsystem::TryGetPermanentCompanionView(const FName InstanceId, FGameXXKPermanentCompanion& OutCompanion) const
+{
+	OutCompanion = FGameXXKPermanentCompanion();
+	const FGameXXKPermanentCompanion* Companion = RuntimeState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([InstanceId](const FGameXXKPermanentCompanion& Candidate)
+	{
+		return Candidate.InstanceId == InstanceId;
+	});
+	if (!Companion)
+	{
+		return false;
+	}
+	OutCompanion = *Companion;
+	return true;
+}
+
+int32 UGameXXKMVPSubsystem::GetPermanentCompanionRosterCapacity() const
+{
+	return FGameXXKCompanionRules::MaxPermanentCompanions;
+}
+
+bool UGameXXKMVPSubsystem::IsCompanionLoadoutMutationLocked() const
+{
+	return IsCompanionConfigurationLocked(RuntimeState);
+}
+
+TArray<FName> UGameXXKMVPSubsystem::GetHeroCardLoadout() const
+{
+	return RuntimeState.CardRun.HeroSelectedCardIds;
+}
+
+FGameXXKQuestNpcCardSelection UGameXXKMVPSubsystem::GetQuestNpcCardLoadout() const
+{
+	return RuntimeState.CardRun.PartySelection.QuestNpc;
+}
+
+bool UGameXXKMVPSubsystem::PrepareCompanionRosterForTown()
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		// Hidden town widgets are refreshed alongside the battle board.  A rejected
+		// town-only request must be observational, otherwise it discards the
+		// development-only battle HUD overlay before the scene presenter reads it.
+		return false;
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return EnsureCompanionCardRun(RuntimeState);
+}
+
+bool UGameXXKMVPSubsystem::RecruitPermanentCompanionFromSeed(const int32 RecruitOrderSeed, FGameXXKCompanionRecruitResult& OutResult)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	OutResult = FGameXXKCompanionRecruitResult();
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
+	{
+		return false;
+	}
+
+	FGameXXKCompanionRecruitOrder Order;
+	FString Error;
+	return FGameXXKCompanionRules::CreateRecruitOrder(RuntimeState.CardRun.CompanionRoster, RecruitOrderSeed, Order, &Error)
+		&& FGameXXKCompanionRules::ResolvePendingRecruitOrder(RuntimeState.CardRun.CompanionRoster, OutResult, &Error);
+}
+
+bool UGameXXKMVPSubsystem::StartRandomPermanentCompanionRecruitment(FGameXXKCompanionRecruitResult& OutResult)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	OutResult = FGameXXKCompanionRecruitResult();
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
+	{
+		return false;
+	}
+
+	FString Error;
+	return FGameXXKCompanionRules::CreateAndResolveNextRecruitment(RuntimeState.CardRun.CompanionRoster, OutResult, &Error);
+}
+
+bool UGameXXKMVPSubsystem::TryGetPendingPermanentCompanionRecruitment(FGameXXKPermanentCompanion& OutCandidate) const
+{
+	OutCandidate = FGameXXKPermanentCompanion();
+	const FGameXXKPendingCompanionRecruitment& Pending = RuntimeState.CardRun.CompanionRoster.PendingRecruitment;
+	if (!Pending.bHasPendingRecruitment)
+	{
+		return false;
+	}
+
+	OutCandidate = Pending.Candidate;
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ResolvePendingPermanentCompanionReplacement(
+	const FName DismissedInstanceId,
+	const FName ActivePermanentCompanionInstanceIdAfterReplacement)
+{
+	FGameXXKEquipmentTransactionResult Result;
+	return ResolvePendingPermanentCompanionReplacement(
+		DismissedInstanceId,
+		ActivePermanentCompanionInstanceIdAfterReplacement,
+		Result);
+}
+
+bool UGameXXKMVPSubsystem::ResolvePendingPermanentCompanionReplacement(
+	const FName DismissedInstanceId,
+	const FName ActivePermanentCompanionInstanceIdAfterReplacement,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	OutResult = FGameXXKEquipmentTransactionResult();
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return OutResult.bSucceeded;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FGameXXKPermanentCompanion* DismissedCompanion = FindPermanentCompanion(Candidate, DismissedInstanceId);
+	if (!DismissedCompanion
+		|| !IsValidPostReplacementActiveCompanion(
+			Candidate.CardRun.CompanionRoster,
+			DismissedInstanceId,
+			ActivePermanentCompanionInstanceIdAfterReplacement))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::InvalidOwner);
+		return OutResult.bSucceeded;
+	}
+
+	FGameXXKEquipmentTransactionResult EquipmentResult = FGameXXKEquipmentRules::ReturnAllEquipmentToWarehouse(
+		Candidate.EquipmentCollection,
+		DismissedInstanceId);
+	if (!EquipmentResult.bSucceeded)
+	{
+		OutResult = MoveTemp(EquipmentResult);
+		return OutResult.bSucceeded;
+	}
+
+	if (HasUnclaimedDismissalRefund(*DismissedCompanion, Candidate.EquipmentCollection))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::InvalidRequest);
+		return OutResult.bSucceeded;
+	}
+
+	FGameXXKCompanionDismissalRefund LegacyRefund;
+	FString Error;
+	if (!FGameXXKCompanionRules::ResolvePendingRecruitment(
+		Candidate.CardRun.CompanionRoster,
+		DismissedInstanceId,
+		ActivePermanentCompanionInstanceIdAfterReplacement,
+		LegacyRefund,
+		&Error))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::InvalidRequest);
+		return OutResult.bSucceeded;
+	}
+	if (!FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(
+		Candidate.EquipmentCollection,
+		Candidate.CardRun.CompanionRoster,
+		&Error))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::CollectionInvalid);
+		return OutResult.bSucceeded;
+	}
+	if (!EnsureCompanionCardRun(Candidate))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::InvalidRequest);
+		return OutResult.bSucceeded;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	RuntimeState = MoveTemp(Candidate);
+	OutResult = MoveTemp(EquipmentResult);
+	return OutResult.bSucceeded;
+}
+
+bool UGameXXKMVPSubsystem::DiscardPendingPermanentCompanionRecruitment()
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
+	{
+		return false;
+	}
+
+	FString Error;
+	return FGameXXKCompanionRules::DiscardPendingRecruitment(RuntimeState.CardRun.CompanionRoster, &Error);
+}
+
+int32 UGameXXKMVPSubsystem::GetPermanentCompanionSigilCount() const
+{
+	return FMath::Max(0, RuntimeState.CardRun.CompanionRoster.SigilCount);
+}
+
+bool UGameXXKMVPSubsystem::SetActivePermanentCompanion(const FName InstanceId)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
+	{
+		return false;
+	}
+
+	FString Error;
+	return FGameXXKCompanionRules::SetActivePermanentCompanion(RuntimeState.CardRun.CompanionRoster, InstanceId, &Error)
+		&& EnsureCompanionCardRun(RuntimeState);
+}
+
+bool UGameXXKMVPSubsystem::ClearActivePermanentCompanion()
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
+	{
+		return false;
+	}
+
+	FString Error;
+	return FGameXXKCompanionRules::SetActivePermanentCompanion(RuntimeState.CardRun.CompanionRoster, NAME_None, &Error)
+		&& EnsureCompanionCardRun(RuntimeState);
+}
+
+bool UGameXXKMVPSubsystem::SetPermanentCompanionCardLoadout(const FName InstanceId, const TArray<FName>& SelectedCardIds)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
+	{
+		return false;
+	}
+
+	FGameXXKPermanentCompanion* Companion = FindPermanentCompanion(RuntimeState, InstanceId);
+	FString Error;
+	return Companion && FGameXXKCompanionRules::SetSelectedPersonalCards(*Companion, SelectedCardIds, &Error);
+}
+
+bool UGameXXKMVPSubsystem::SetHeroCardLoadout(const TArray<FName>& SelectedCardIds)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		return false;
+	}
+	FString Error;
+	return FGameXXKCardBattleAdapter::SetHeroSelectedCards(RuntimeState, SelectedCardIds, &Error);
+}
+
+bool UGameXXKMVPSubsystem::SetTemporaryQuestNpcCardLoadout(const FName QuestNpcId, const TArray<FName>& SelectedCardIds)
+{
+	// This public Blueprint-facing entry point remains for source/save compatibility only.
+	// Route/event resolution owns temporary task NPC selection and assigns the canonical three
+	// fixed cards internally, so a player-facing caller must never be able to persist an edit.
+	(void)QuestNpcId;
+	(void)SelectedCardIds;
+	return false;
+}
+
+bool UGameXXKMVPSubsystem::AwardPermanentCompanionExperience(const FName InstanceId, const int32 ExperienceAmount)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	if (IsCompanionConfigurationLocked(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
+	{
+		return false;
+	}
+	FGameXXKPermanentCompanion* Companion = FindPermanentCompanion(RuntimeState, InstanceId);
+	FString Error;
+	return Companion && FGameXXKCompanionRules::AwardExperience(*Companion, ExperienceAmount, &Error);
+}
+
+bool UGameXXKMVPSubsystem::PromotePermanentCompanionStar(const FName InstanceId)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	if (IsCompanionConfigurationLocked(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
+	{
+		return false;
+	}
+	FGameXXKPermanentCompanion* Companion = FindPermanentCompanion(RuntimeState, InstanceId);
+	FString Error;
+	return Companion && FGameXXKCompanionRules::PromoteCompanionStar(*Companion, RuntimeState.CardRun.CompanionRoster.SigilCount, &Error);
 }
 
 TArray<FName> UGameXXKMVPSubsystem::BuildTurnOrder(bool bBossBattle) const

@@ -45,10 +45,12 @@ namespace
 		const int32 Attack,
 		const int32 Defense,
 		const int32 Mana,
+		const int32 Speed,
 		const float HealthGrowth,
 		const float AttackGrowth,
 		const float DefenseGrowth,
-		const float ManaGrowth)
+		const float ManaGrowth,
+		const TArray<FName>& DefaultRouteCardIds)
 	{
 		FGameXXKQuestNpcDefinition& Definition = OutDefinitions.AddDefaulted_GetRef();
 		Definition.NpcId = FName(NpcId);
@@ -58,6 +60,7 @@ namespace
 		Definition.BaseAttributes.Attack = Attack;
 		Definition.BaseAttributes.Defense = Defense;
 		Definition.BaseAttributes.Mana = Mana;
+		Definition.BaseAttributes.Speed = FMath::Max(1, Speed);
 		Definition.GrowthPerLevel.Health = HealthGrowth;
 		Definition.GrowthPerLevel.Attack = AttackGrowth;
 		Definition.GrowthPerLevel.Defense = DefenseGrowth;
@@ -71,18 +74,25 @@ namespace
 			}
 		}
 		Definition.FixedCardIds.Sort(NameLess);
+		Definition.DefaultRouteCardIds = DefaultRouteCardIds;
 	}
 
 	TArray<FGameXXKQuestNpcDefinition> BuildQuestNpcDefinitions()
 	{
 		TArray<FGameXXKQuestNpcDefinition> Definitions;
 		Definitions.Reserve(6);
-		AddQuestNpcDefinition(Definitions, TEXT("Npc.TusiChief"), TEXT("Passive.TusiChief.ZhaiWei"), 115, 14, 10, 24, 11.0f, 1.4f, 1.0f, 1.0f);
-		AddQuestNpcDefinition(Definitions, TEXT("Npc.SongJinBao"), TEXT("Passive.SongJinBao.RenQingMian"), 88, 10, 7, 30, 8.0f, 1.0f, 0.6f, 2.0f);
-		AddQuestNpcDefinition(Definitions, TEXT("Npc.YueBai"), TEXT("Passive.YueBai.CanJuanXianZhi"), 84, 15, 6, 34, 7.0f, 1.5f, 0.5f, 2.0f);
-		AddQuestNpcDefinition(Definitions, TEXT("Npc.ZhouGuangZu"), TEXT("Passive.ZhouGuangZu.CaoMuZhaJi"), 90, 12, 7, 32, 8.0f, 1.2f, 0.7f, 2.0f);
-		AddQuestNpcDefinition(Definitions, TEXT("Npc.JinGui"), TEXT("Passive.JinGui.ShiJingMenLu"), 92, 12, 8, 28, 9.0f, 1.1f, 0.8f, 2.0f);
-		AddQuestNpcDefinition(Definitions, TEXT("Npc.QiongMeiEr"), TEXT("Passive.QiongMeiEr.MiaoLingYinLu"), 96, 13, 8, 30, 9.0f, 1.3f, 0.8f, 2.0f);
+		AddQuestNpcDefinition(Definitions, TEXT("Npc.TusiChief"), TEXT("Passive.TusiChief.ZhaiWei"), 115, 14, 10, 24, 10, 11.0f, 1.4f, 1.0f, 1.0f,
+			{TEXT("Npc.TusiChief.ZhaiZhuHaoLing"), TEXT("Npc.TusiChief.ShiMenShouShi"), TEXT("Npc.TusiChief.TuSiJunLing")});
+		AddQuestNpcDefinition(Definitions, TEXT("Npc.SongJinBao"), TEXT("Passive.SongJinBao.RenQingMian"), 88, 10, 7, 30, 10, 8.0f, 1.0f, 0.6f, 2.0f,
+			{TEXT("Npc.SongJinBao.ErMuMiBao"), TEXT("Npc.SongJinBao.ShangQianGuWu"), TEXT("Npc.SongJinBao.YiNuoQianJin")});
+		AddQuestNpcDefinition(Definitions, TEXT("Npc.YueBai"), TEXT("Passive.YueBai.CanJuanXianZhi"), 84, 15, 6, 34, 10, 7.0f, 1.5f, 0.5f, 2.0f,
+			{TEXT("Npc.YueBai.QingYanDianDeng"), TEXT("Npc.YueBai.CanJuanPiZhu"), TEXT("Npc.YueBai.YueBaiZhaoYe")});
+		AddQuestNpcDefinition(Definitions, TEXT("Npc.ZhouGuangZu"), TEXT("Passive.ZhouGuangZu.CaoMuZhaJi"), 90, 12, 7, 32, 10, 8.0f, 1.2f, 0.7f, 2.0f,
+			{TEXT("Npc.ZhouGuangZu.YiCaoBianShi"), TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"), TEXT("Npc.ZhouGuangZu.YanFenFengMai")});
+		AddQuestNpcDefinition(Definitions, TEXT("Npc.JinGui"), TEXT("Passive.JinGui.ShiJingMenLu"), 92, 12, 8, 28, 10, 9.0f, 1.1f, 0.8f, 2.0f,
+			{TEXT("Npc.JinGui.ShiJingErMu"), TEXT("Npc.JinGui.QiaoYanZhouXuan"), TEXT("Npc.JinGui.ZaYiChouBei")});
+		AddQuestNpcDefinition(Definitions, TEXT("Npc.QiongMeiEr"), TEXT("Passive.QiongMeiEr.MiaoLingYinLu"), 96, 13, 8, 30, 10, 9.0f, 1.3f, 0.8f, 2.0f,
+			{TEXT("Npc.QiongMeiEr.TengQiaoFeiDu"), TEXT("Npc.QiongMeiEr.GuWuMiZong"), TEXT("Npc.QiongMeiEr.YinLingZhenXin")});
 		return Definitions;
 	}
 }

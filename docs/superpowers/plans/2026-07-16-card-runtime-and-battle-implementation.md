@@ -469,42 +469,44 @@ git commit -m "feat: add party deck card catalogue"
 
 - [ ] **Step 1: Write red tests for draw, reshuffle, caps and keyword timing.**
 
-Create a test that constructs 18 unique temporary instances, initializes a deck with `FRandomStream(1207)`, and asserts the following contract:
+Create a test that constructs 18 unique temporary instances, initializes a deck with saved seed `1207`, and asserts the following contract:
 
 ```cpp
 TestEqual(TEXT("18 instances start as 5 hand / 13 draw / 0 discard"), Deck.Hand.Num(), 5);
 TestEqual(TEXT("18 instances leave thirteen in draw pile"), Deck.DrawPile.Num(), 13);
 TestEqual(TEXT("battle starts with no discarded cards"), Deck.DiscardPile.Num(), 0);
 TestEqual(TEXT("battle starts at three shared energy"), Deck.SharedEnergy, 3);
-TestTrue(TEXT("discarding and drawing returns hand to five"), GameXXKCardRules::BeginNextPlayerPhase(Deck, Stream));
-TestEqual(TEXT("unplayed cards were discarded before replacement draw"), Deck.Hand.Num(), 5);
-TestTrue(TEXT("empty draw pile reshuffles discard"), GameXXKCardRules::DrawToHand(Deck, 5, Stream));
-TestEqual(TEXT("hand cap stays five"), Deck.Hand.Num(), 5);
-TestEqual(TEXT("same CardId cannot exceed two in a run deck"), GameXXKCardRules::ValidateCardCopies(Instances), false);
+TestEqual(TEXT("normal round refill target stays five"), Deck.HandLimit, 5);
+FGameXXKBattleDeckState CapacityDeck;
+TestTrue(TEXT("25 instances initialize for hard-cap coverage"), GameXXKCardRules::InitializeBattleDeck(CapacityDeck, MakeInstances(25), 1208));
+TestTrue(TEXT("effect draws fill the twenty-card hard capacity"), GameXXKCardRules::DrawCards(CapacityDeck, 15, 0));
+TestEqual(TEXT("battle hand hard capacity is twenty"), CapacityDeck.Hand.Num(), 20);
+TestTrue(TEXT("overflow resolves without consuming cards"), GameXXKCardRules::DrawCards(CapacityDeck, 3, 0));
+TestEqual(TEXT("five undrawn cards remain in the shuffled draw pile"), CapacityDeck.DrawPile.Num(), 5);
 FGameXXKBattleDeckState DrawDiscardDeck;
-TestTrue(TEXT("draw-discard deck initializes"), GameXXKCardRules::InitializeBattleDeck(DrawDiscardDeck, Instances, EGameXXKTerrain::Plains, 1209));
-DrawDiscardDeck.DiscardPile.Add(DrawDiscardDeck.Hand.Pop()); // emulate the card being played before its DrawThenDiscard effect.
-TestTrue(TEXT("draw-two-discard-one can temporarily exceed normal hand limit"), GameXXKCardRules::BeginDrawThenDiscard(DrawDiscardDeck, 2, 1, Stream));
+TestTrue(TEXT("draw-discard deck initializes"), GameXXKCardRules::InitializeBattleDeck(DrawDiscardDeck, Instances, 1209));
+TestTrue(TEXT("played card frees a hand slot"), GameXXKCardRules::MoveHandCardToDiscard(DrawDiscardDeck, DrawDiscardDeck.Hand.Last().InstanceId));
+TestTrue(TEXT("draw-two-discard-one declares exactly one discard"), GameXXKCardRules::DrawCards(DrawDiscardDeck, 2, 1));
 TestEqual(TEXT("draw-two-discard-one exposes six cards from a four-card post-play hand"), DrawDiscardDeck.Hand.Num(), 6);
 TestEqual(TEXT("one chosen discard is required"), DrawDiscardDeck.PendingChoice.RequiredDiscardCount, 1);
-TestTrue(TEXT("submit pending discard returns hand to five"), GameXXKCardRules::SubmitPendingDiscards(DrawDiscardDeck, { DrawDiscardDeck.Hand.Last().InstanceId }));
-TestEqual(TEXT("hand is back to its normal limit"), DrawDiscardDeck.Hand.Num(), 5);
+TestTrue(TEXT("submit forced discard returns hand to five"), GameXXKCardRules::SubmitForcedDiscard(DrawDiscardDeck, { DrawDiscardDeck.Hand.Last().InstanceId }));
+TestEqual(TEXT("this draw-two/discard-one fixture returns to the round-refill target"), DrawDiscardDeck.Hand.Num(), 5);
 FGameXXKBattleDeckState ShortDrawDeck;
 TArray<FGameXXKCardInstance> ShortInstances = Instances;
 ShortInstances.SetNum(5);
-TestTrue(TEXT("short draw deck initializes"), GameXXKCardRules::InitializeBattleDeck(ShortDrawDeck, ShortInstances, EGameXXKTerrain::Plains, 1210));
-ShortDrawDeck.DiscardPile.Add(ShortDrawDeck.Hand.Pop());
-TestTrue(TEXT("short draw still resolves"), GameXXKCardRules::BeginDrawThenDiscard(ShortDrawDeck, 2, 1, Stream));
-TestEqual(TEXT("short draw never forces discard below normal hand limit"), ShortDrawDeck.PendingChoice.RequiredDiscardCount, 0);
+TestTrue(TEXT("short draw deck initializes"), GameXXKCardRules::InitializeBattleDeck(ShortDrawDeck, ShortInstances, 1210));
+TestTrue(TEXT("short draw fixture frees one slot"), GameXXKCardRules::MoveHandCardToDiscard(ShortDrawDeck, ShortDrawDeck.Hand.Last().InstanceId));
+TestTrue(TEXT("short draw still resolves its declared discard"), GameXXKCardRules::DrawCards(ShortDrawDeck, 2, 1));
+TestEqual(TEXT("short draw retains the explicitly declared discard count"), ShortDrawDeck.PendingChoice.RequiredDiscardCount, 1);
 FGameXXKBattleDeckState InsightDeck;
-TestTrue(TEXT("insight deck initializes"), GameXXKCardRules::InitializeBattleDeck(InsightDeck, Instances, EGameXXKTerrain::Plains, 1208));
-InsightDeck.DiscardPile.Add(InsightDeck.Hand.Pop()); // emulate a successfully played insight card freeing one hand slot.
-TestTrue(TEXT("insight opens a three-card choose-and-reorder preview"), GameXXKCardRules::BeginInsight(InsightDeck, 3, 1));
-TestEqual(TEXT("insight exposes only three top cards"), InsightDeck.PendingChoice.InsightTopCards.Num(), 3);
+TestTrue(TEXT("insight deck initializes"), GameXXKCardRules::InitializeBattleDeck(InsightDeck, Instances, 1208));
+TestTrue(TEXT("played insight card frees one hand slot"), GameXXKCardRules::MoveHandCardToDiscard(InsightDeck, InsightDeck.Hand.Last().InstanceId));
+TestTrue(TEXT("insight opens a three-card choose-and-reorder preview"), GameXXKCardRules::BeginInsight(InsightDeck, 3));
+TestEqual(TEXT("insight exposes only three top cards"), InsightDeck.PendingChoice.Candidates.Num(), 3);
 TestEqual(TEXT("insight requires one card to hand"), InsightDeck.PendingChoice.RequiredHandPickCount, 1);
 TestTrue(TEXT("insight selection moves one top card into hand and reorders the rest"),
-    GameXXKCardRules::CommitInsightChoice(InsightDeck, InsightDeck.PendingChoice.InsightTopCards[1].InstanceId,
-        { InsightDeck.PendingChoice.InsightTopCards[2].InstanceId, InsightDeck.PendingChoice.InsightTopCards[0].InstanceId }));
+    GameXXKCardRules::SubmitInsightChoice(InsightDeck, InsightDeck.PendingChoice.Candidates[1].InstanceId,
+        { InsightDeck.PendingChoice.Candidates[2].InstanceId, InsightDeck.PendingChoice.Candidates[0].InstanceId }));
 TestEqual(TEXT("insight returns hand to five after played card freed a slot"), InsightDeck.Hand.Num(), 5);
 ```
 
@@ -521,15 +523,14 @@ Create this public API in `GameXXKCardRules.h`:
 ```cpp
 namespace GameXXKCardRules
 {
-    bool InitializeBattleDeck(FGameXXKBattleDeckState& Deck, const TArray<FGameXXKCardInstance>& Cards, EGameXXKTerrain Terrain, int32 Seed);
-    bool BeginNextPlayerPhase(FGameXXKBattleDeckState& Deck, FRandomStream& Stream);
-    bool DrawToHand(FGameXXKBattleDeckState& Deck, int32 HandLimit, FRandomStream& Stream);
-    bool BeginDrawThenDiscard(FGameXXKBattleDeckState& Deck, int32 DrawCount, int32 DiscardCount, FRandomStream& Stream);
-    bool SubmitPendingDiscards(FGameXXKBattleDeckState& Deck, const TArray<FName>& DiscardedInstanceIds);
-    bool BeginInsight(FGameXXKBattleDeckState& Deck, int32 LookCount, int32 TakeIntoHandCount);
-    bool CommitInsightChoice(FGameXXKBattleDeckState& Deck, FName SelectedTopInstanceId, const TArray<FName>& OrderedRemainingInstanceIds);
-    bool CancelPendingChoice(FGameXXKBattleDeckState& Deck);
-    bool ValidateZoneInvariant(const FGameXXKBattleDeckState& Deck, int32 ExpectedInstanceCount);
+    bool InitializeBattleDeck(FGameXXKBattleDeckState& Deck, const TArray<FGameXXKCardInstance>& Cards, int32 Seed);
+    bool DrawCards(FGameXXKBattleDeckState& Deck, int32 Count, int32 RequiredDiscardCount);
+    bool MoveHandCardToDiscard(FGameXXKBattleDeckState& Deck, FName InstanceId);
+    bool SubmitForcedDiscard(FGameXXKBattleDeckState& Deck, const TArray<FName>& DiscardedInstanceIds);
+    bool BeginInsight(FGameXXKBattleDeckState& Deck, int32 LookCount);
+    bool SubmitInsightChoice(FGameXXKBattleDeckState& Deck, FName SelectedTopInstanceId, const TArray<FName>& OrderedRemainingInstanceIds);
+    bool CancelInsight(FGameXXKBattleDeckState& Deck);
+    bool ValidateDeckState(const FGameXXKBattleDeckState& Deck);
     bool ValidateCardCopies(const TArray<FGameXXKCardInstance>& Cards);
     int32 GetStatusStacks(const FGameXXKBattleRuntimeUnit& Unit, EGameXXKStatusType Type);
     void AddStatus(FGameXXKBattleRuntimeUnit& Unit, EGameXXKStatusType Type, int32 Amount, FName GuardedUnitId = NAME_None);
@@ -539,9 +540,9 @@ namespace GameXXKCardRules
 }
 ```
 
-Implement draw as "move old hand to discard → shuffle discard only when draw pile is exhausted → draw until five or no cards remain". Persist `InitialShuffleSeed` and the random stream's current seed into `FGameXXKBattleDeckState` after each shuffle/draw, then reconstruct the stream from that saved state after a load; never use `FMath::Rand`, so save/load and tests are deterministic.
+The round transition discards the old hand and refills only to the normal `HandLimit` target of five, reshuffling discard only when the draw pile is exhausted. Effect-driven `DrawCards` is separate: it may grow the hand up to the hard battle capacity of twenty. Persist the initial and current random states in `FGameXXKBattleDeckState`; never use `FMath::Rand`, so save/load and tests remain deterministic.
 
-`DrawToHand` must leave cards above the requested hand limit in `DrawPile`, never burn or silently discard them. `BeginDrawThenDiscard` is the only normal-limit exception: it may draw into `HandLimit + DiscardCount`, records a `DiscardFromHand` pending choice, and blocks card play/end turn until `SubmitPendingDiscards` validates distinct currently-in-hand IDs and restores the normal limit. `BeginInsight` copies (but does not remove) the first N `DrawPile` cards into `PendingChoice`, records how many must go to hand, and opens only when that many hand slots exist. `CommitInsightChoice` accepts exactly one selected offered instance (for current cards) and a complete permutation of the remaining offered IDs, moves the selected card to hand, rewrites only the remaining top order, and clears the choice; cancel changes neither top cards nor hand. All transitions call `ValidateZoneInvariant` in non-shipping tests/checks.
+`DrawCards` draws until the request is satisfied, no card remains available, or the hand reaches twenty. Once the hand is full, every unfulfilled draw consumes, destroys, and discards nothing: all undrawn instances remain represented and the complete remaining draw pile is deterministically shuffled. `RequiredDiscardCount` is explicit—capacity overflow never invents a discard—and a positive value opens the exact `ForcedDiscard` choice. Neither a draw nor its overflow path may shrink or rewrite `ActiveInstanceIds`; the source `RouteCardEntries`/`RouteCardIds` authority lives outside this battle-only API and remains unchanged. `BeginInsight` copies (but does not remove) the first N `DrawPile` cards into `PendingChoice` and opens only below the twenty-card capacity. `SubmitInsightChoice` accepts exactly one selected offered instance and a complete permutation of the remaining offered IDs, moves the selected card to hand, rewrites only the remaining top order, and clears the choice; cancel changes neither top cards nor hand. All transitions call `ValidateDeckState` before commit.
 
 - [ ] **Step 4: Add status fields to battle units and implement their exact effects.**
 

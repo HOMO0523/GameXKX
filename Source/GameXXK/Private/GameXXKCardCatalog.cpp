@@ -1,5 +1,7 @@
 #include "GameXXKCardCatalog.h"
 
+#include "GameXXKCardQualityRules.h"
+
 #include "UObject/Class.h"
 
 namespace
@@ -469,6 +471,7 @@ namespace
 		Definition.DisplayName = FText::FromString(FString(DisplayName));
 		Definition.Owner = Owner;
 		Definition.Rarity = Rarity;
+		Definition.BaseQuality = FGameXXKCardQualityRules::GetCardBaseQuality(Definition.Id);
 		Definition.Role = Role;
 		Definition.OwnerId = FName(OwnerId);
 		Definition.NpcId = NpcId ? FName(NpcId) : NAME_None;
@@ -1100,6 +1103,11 @@ const TArray<FGameXXKCardDefinition>& FGameXXKCardCatalog::GetAllCardDefinitions
 		AddSorcererCards(Cards);
 		AddFormationCards(Cards);
 		AddRouteCards(Cards);
+		FString QualityValidationError;
+		if (!FGameXXKCardQualityRules::ValidateCardCatalog(Cards, QualityValidationError))
+		{
+			UE_LOG(LogTemp, Fatal, TEXT("Invalid card quality catalog: %s"), *QualityValidationError);
+		}
 		return Cards;
 	}();
 	return Definitions;

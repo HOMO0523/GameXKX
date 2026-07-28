@@ -1,4 +1,6 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKCardBattleAdapter.h"
+#include "GameXXKRouteEconomyRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
@@ -113,17 +115,59 @@ namespace
 		State.RouteMapEdges.Add(FGameXXKRouteMapEdge{1, 2});
 		State.VisitedRouteNodeIds.Add(0);
 		State.ReachableRouteNodeIds.Add(1);
+		State.CardRun.RouteProgress.SchemaVersion = 1;
+		State.CardRun.RouteProgress.RootSeed = State.RouteSeed;
+		State.CardRun.RouteProgress.CurrentChapter = 1;
+		State.CardRun.RouteProgress.RouteCombatLevel = 1;
+		State.CardRun.bLoadoutLockedForRoute = true;
+		FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun);
 		return State;
+	}
+
+	static bool ForceActiveCardBattleVictory(FGameXXKRuntimeState& State)
+	{
+		if (!State.CardRun.bHasActiveCardBattle)
+		{
+			return false;
+		}
+		for (FGameXXKCardCombatUnit& Unit : State.CardRun.ActiveBattle.Units)
+		{
+			if (Unit.Side == EGameXXKCardTargetSide::Enemy)
+			{
+				Unit.HP = 0;
+				Unit.bLiving = false;
+			}
+		}
+		State.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+		return true;
 	}
 
 	static bool ResolvePendingRouteRoom(FGameXXKRuntimeState& State, EGameXXKNodeKind NodeKind)
 	{
 		if (State.Screen == EGameXXKScreen::Battle)
 		{
-			return UGameXXKMVPRules::ResolveBattleVictory(State, NodeKind == EGameXXKNodeKind::Boss);
+			if (!ForceActiveCardBattleVictory(State))
+			{
+				return false;
+			}
+			if (!UGameXXKMVPRules::ResolveBattleVictory(State, NodeKind == EGameXXKNodeKind::Boss))
+			{
+				return false;
+			}
+			if (!State.CardRun.PendingReward.CardIds.IsEmpty())
+			{
+				FString RewardError;
+				return FGameXXKCardBattleAdapter::SkipPendingRouteReward(State, &RewardError)
+					&& UGameXXKMVPRules::ResolveBattleVictory(State, NodeKind == EGameXXKNodeKind::Boss);
+			}
+			return State.Screen == EGameXXKScreen::DungeonMap;
 		}
 		if (State.Screen == EGameXXKScreen::RouteEvent)
 		{
+			if (NodeKind == EGameXXKNodeKind::Chest)
+			{
+				return UGameXXKMVPRules::ResolveRouteEncounterChoice(State, 0);
+			}
 			return UGameXXKMVPRules::ResolveEventReward(State, true);
 		}
 		if (State.Screen == EGameXXKScreen::RouteCamp)
@@ -239,6 +283,8 @@ bool FGameXXKRouteMapSeedRulesTest::RunTest(const FString& Parameters)
 	FlowState.Screen = EGameXXKScreen::DungeonMap;
 	FlowState.CurrentMapId = TEXT("HuangshanRoute");
 	FlowState.bDungeonActive = true;
+	FlowState.CardRun.RouteProgress.CurrentChapter = 1;
+	TestTrue(TEXT("generated route flow initializes its route economy"), FGameXXKRouteEconomyRules::InitializeRoute(FlowState.CardRun));
 	TestTrue(TEXT("start node selection succeeds"), UGameXXKMVPRules::SelectRouteNodeById(FlowState, 0));
 	TestEqual(TEXT("non-combat start keeps route map active"), FlowState.Screen, EGameXXKScreen::DungeonMap);
 	TestTrue(TEXT("start node is visited"), FlowState.VisitedRouteNodeIds.Contains(0));
@@ -291,33 +337,48 @@ bool FGameXXKRouteMapSeedRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("combat node becomes pending, not visited"), FlowState.PendingRouteNodeId, CombatNodeId);
 	TestFalse(TEXT("pending combat node waits for victory before visited"), FlowState.VisitedRouteNodeIds.Contains(CombatNodeId));
 
-	TestTrue(TEXT("battle victory resolves pending route node"), UGameXXKMVPRules::ResolveBattleVictory(FlowState, false));
+	TestTrue(TEXT("combat victory fixture marks all card-runtime enemies defeated"), ForceActiveCardBattleVictory(FlowState));
+	TestTrue(TEXT("battle victory opens the saved three-card route reward"), UGameXXKMVPRules::ResolveBattleVictory(FlowState, false));
+	TestEqual(TEXT("pending battle reward keeps the player on the battle screen"), FlowState.Screen, EGameXXKScreen::Battle);
+	TestEqual(TEXT("pending battle reward presents exactly three route cards"), FlowState.CardRun.PendingReward.CardIds.Num(), 3);
+	FString RewardError;
+	TestTrue(FString::Printf(TEXT("skipping the pending reward unlocks route completion: %s"), *RewardError),
+		FGameXXKCardBattleAdapter::SkipPendingRouteReward(FlowState, &RewardError));
+	TestTrue(TEXT("resolved battle reward completes the pending route node"), UGameXXKMVPRules::ResolveBattleVictory(FlowState, false));
 	TestEqual(TEXT("battle victory returns to route map"), FlowState.Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(TEXT("pending node is cleared"), FlowState.PendingRouteNodeId, INDEX_NONE);
 	TestTrue(TEXT("battle node is visited after victory"), FlowState.VisitedRouteNodeIds.Contains(CombatNodeId));
 
 	FGameXXKRuntimeState EventState = BuildPendingRoomRouteState(EGameXXKNodeKind::Event);
 	const int32 EventGoldBefore = EventState.PlayerGold;
+	const int32 EventTravelMoneyBefore = EventState.CardRun.RouteTravelMoney;
 	TestTrue(TEXT("event route node selection succeeds"), UGameXXKMVPRules::SelectRouteNodeById(EventState, 1));
 	TestEqual(TEXT("event route node opens event scene"), EventState.Screen, EGameXXKScreen::RouteEvent);
 	TestEqual(TEXT("event route node becomes pending"), EventState.PendingRouteNodeId, 1);
 	TestFalse(TEXT("pending event route node is not visited until event scene resolves"), EventState.VisitedRouteNodeIds.Contains(1));
-	TestTrue(TEXT("pending event reward resolves from event scene"), UGameXXKMVPRules::ResolveEventReward(EventState, true));
+	TestTrue(TEXT("pending formal event resolves through an explicit catalog choice"), UGameXXKMVPRules::ResolveRouteEncounterChoice(EventState, 0));
 	TestEqual(TEXT("event reward returns to route map"), EventState.Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(TEXT("event reward clears pending node"), EventState.PendingRouteNodeId, INDEX_NONE);
 	TestTrue(TEXT("event reward marks node visited"), EventState.VisitedRouteNodeIds.Contains(1));
-	TestEqual(TEXT("event reward grants gold"), EventState.PlayerGold, EventGoldBefore + 12);
+	TestEqual(TEXT("event reward does not grant permanent gold"), EventState.PlayerGold, EventGoldBefore);
+	TestEqual(TEXT("formal event choices add no hidden base travel money"), EventState.CardRun.RouteTravelMoney, EventTravelMoneyBefore);
 
 	FGameXXKRuntimeState ChestState = BuildPendingRoomRouteState(EGameXXKNodeKind::Chest);
-	const int32 ChestPowderBefore = UGameXXKMVPRules::GetItemCount(ChestState, UGameXXKMVPRules::ItemHealingPowder());
 	TestTrue(TEXT("chest route node selection succeeds"), UGameXXKMVPRules::SelectRouteNodeById(ChestState, 1));
 	TestEqual(TEXT("chest route node opens event scene"), ChestState.Screen, EGameXXKScreen::RouteEvent);
 	TestEqual(TEXT("chest route node becomes pending"), ChestState.PendingRouteNodeId, 1);
 	TestFalse(TEXT("pending chest route node is not visited until event scene resolves"), ChestState.VisitedRouteNodeIds.Contains(1));
-	TestTrue(TEXT("pending chest reward resolves from event scene"), UGameXXKMVPRules::ResolveEventReward(ChestState, false));
+	TestEqual(TEXT("chest route node offers three relic choices"), ChestState.CardRun.PendingRelicOffer.RelicIds.Num(), 3);
+	const FName ChosenChestRelic = ChestState.CardRun.PendingRelicOffer.RelicIds.IsValidIndex(0)
+		? ChestState.CardRun.PendingRelicOffer.RelicIds[0]
+		: NAME_None;
+	TestTrue(TEXT("pending chest reward resolves through its explicit relic choice"), UGameXXKMVPRules::ResolveRouteEncounterChoice(ChestState, 0));
 	TestEqual(TEXT("chest reward returns to route map"), ChestState.Screen, EGameXXKScreen::DungeonMap);
 	TestTrue(TEXT("chest reward marks node visited"), ChestState.VisitedRouteNodeIds.Contains(1));
-	TestEqual(TEXT("chest reward grants one healing powder"), UGameXXKMVPRules::GetItemCount(ChestState, UGameXXKMVPRules::ItemHealingPowder()), ChestPowderBefore + 1);
+	TestTrue(TEXT("chest reward grants the selected relic"), ChestState.CardRun.Relics.ContainsByPredicate([ChosenChestRelic](const FGameXXKRelicInstance& Relic)
+	{
+		return Relic.RelicId == ChosenChestRelic;
+	}));
 
 	FGameXXKRuntimeState CampState = BuildPendingRoomRouteState(EGameXXKNodeKind::Camp);
 	CampState.PlayerHP = 1;

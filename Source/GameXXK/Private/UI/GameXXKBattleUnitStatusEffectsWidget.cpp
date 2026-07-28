@@ -234,7 +234,7 @@ void UGameXXKBattleUnitStatusEffectsWidget::RefreshStatusIcons()
 		IconWidget->SetBadgeModel(CachedBadgeModels[BadgeIndex]);
 		if (UHorizontalBoxSlot* const IconSlot = StatusIconRow->AddChildToHorizontalBox(IconWidget))
 		{
-			IconSlot->SetPadding(FMargin(1.0f, 0.0f));
+			IconSlot->SetPadding(FMargin(0.5f, 0.0f));
 			IconSlot->SetVerticalAlignment(VAlign_Center);
 		}
 	}
@@ -246,7 +246,7 @@ void UGameXXKBattleUnitStatusEffectsWidget::RefreshStatusIcons()
 		OverflowIcon->SetBadgeModel(MakeOverflowBadge(CachedBadgeModels, VisibleCount), true);
 		if (UHorizontalBoxSlot* const OverflowSlot = StatusIconRow->AddChildToHorizontalBox(OverflowIcon))
 		{
-			OverflowSlot->SetPadding(FMargin(1.0f, 0.0f));
+			OverflowSlot->SetPadding(FMargin(0.5f, 0.0f));
 			OverflowSlot->SetVerticalAlignment(VAlign_Center);
 		}
 	}

@@ -1,6 +1,7 @@
 #include "GameXXKCompanionRules.h"
 
 #include "GameXXKCardCatalog.h"
+#include "GameXXKCharacterStatRules.h"
 #include "GameXXKCompanionCatalog.h"
 
 namespace
@@ -44,6 +45,29 @@ namespace
 		InOutState ^= InOutState >> 17;
 		InOutState ^= InOutState << 5;
 		return InOutState;
+	}
+
+	constexpr int32 DefaultRecruitSequenceSeed = 0x1F4A7C15;
+	constexpr int32 RecruitSequenceStepOptions[] = {1, 5, 7, 11, 13, 17, 19, 23};
+
+	int32 GetOrInitializeRecruitSequenceSeed(FGameXXKCompanionRosterState& InOutRoster)
+	{
+		if (InOutRoster.RecruitSequenceSeed == 0 || InOutRoster.RecruitSequenceSeed == MIN_int32)
+		{
+			InOutRoster.RecruitSequenceSeed = DefaultRecruitSequenceSeed;
+		}
+		if (InOutRoster.RecruitSequenceOrdinal < 0)
+		{
+			InOutRoster.RecruitSequenceOrdinal = 0;
+		}
+		return InOutRoster.RecruitSequenceSeed;
+	}
+
+	int32 MakeSequenceCardSeed(const uint32 SequenceSeed, const uint32 Ordinal)
+	{
+		uint32 RandomState = SequenceSeed ^ (Ordinal * 0x85EBCA6BU) ^ 0x9E3779B9U;
+		const uint32 Result = NextCardRandom(RandomState);
+		return static_cast<int32>(Result == 0 ? 0x6D2B79F5U : Result);
 	}
 
 	FName MakeCompanionInstanceId(const FName TemplateId, const int32 RecruitSeed)
@@ -171,54 +195,6 @@ namespace
 		return static_cast<int32>(TotalExperience);
 	}
 
-	bool TryGetRoleAttributes(
-		const EGameXXKCharacterRole Role,
-		FGameXXKCompanionAttributes& OutBase,
-		FGameXXKCompanionAttributeGrowth& OutGrowth)
-	{
-		switch (Role)
-		{
-		case EGameXXKCharacterRole::Blade:
-			OutBase = {92, 17, 6, 22};
-			OutGrowth = {9.0f, 2.0f, 0.7f, 1.0f};
-			return true;
-		case EGameXXKCharacterRole::Guard:
-			OutBase = {120, 11, 12, 18};
-			OutGrowth = {12.0f, 1.0f, 1.2f, 1.0f};
-			return true;
-		case EGameXXKCharacterRole::Healer:
-			OutBase = {90, 10, 7, 30};
-			OutGrowth = {8.0f, 1.0f, 0.7f, 2.0f};
-			return true;
-		case EGameXXKCharacterRole::Hunter:
-			OutBase = {86, 16, 6, 24};
-			OutGrowth = {8.0f, 2.0f, 0.6f, 1.0f};
-			return true;
-		case EGameXXKCharacterRole::Sorcerer:
-			OutBase = {80, 15, 5, 34};
-			OutGrowth = {7.0f, 1.5f, 0.5f, 2.0f};
-			return true;
-		case EGameXXKCharacterRole::FormationMaster:
-			OutBase = {94, 12, 8, 30};
-			OutGrowth = {9.0f, 1.2f, 0.8f, 2.0f};
-			return true;
-		default:
-			return false;
-		}
-	}
-
-	int32 ComputeProgressedAttribute(
-		const int32 BaseValue,
-		const float GrowthValue,
-		const int32 Level,
-		const int32 Star,
-		const int32 EquipmentBonus)
-	{
-		const float PreStarValue = static_cast<float>(BaseValue) + GrowthValue * static_cast<float>(Level - 1);
-		const float StarMultiplier = 1.0f + 0.08f * static_cast<float>(Star - 1);
-		return FMath::FloorToInt(PreStarValue * StarMultiplier) + EquipmentBonus;
-	}
-
 	int32 ComputeNpcAttribute(const int32 BaseValue, const float GrowthValue, const int32 HeroLevel)
 	{
 		return FMath::FloorToInt(static_cast<float>(BaseValue) + GrowthValue * static_cast<float>(HeroLevel - 1));
@@ -335,6 +311,54 @@ bool FGameXXKCompanionRules::CreateRecruitOrder(
 	InOutRoster.PendingRecruitOrder = NewOrder;
 	OutOrder = NewOrder;
 	return true;
+}
+
+bool FGameXXKCompanionRules::CreateAndResolveNextRecruitment(
+	FGameXXKCompanionRosterState& InOutRoster,
+	FGameXXKCompanionRecruitResult& OutResult,
+	FString* OutError)
+{
+	OutResult = FGameXXKCompanionRecruitResult();
+	if (InOutRoster.PendingRecruitment.bHasPendingRecruitment || InOutRoster.PendingRecruitOrder.bHasPendingOrder)
+	{
+		// A ticket is save-authoritative once created. Reopening the backpack must reveal the same
+		// candidate rather than consuming a new sequence ordinal or rerolling its personal cards.
+		return ResolvePendingRecruitOrder(InOutRoster, OutResult, OutError);
+	}
+
+	const TArray<FGameXXKCompanionTemplateDefinition>& Templates = FGameXXKCompanionCatalog::GetRecruitTemplates();
+	if (Templates.Num() != 24)
+	{
+		SetError(OutError, TEXT("The deterministic recruit catalog must expose exactly twenty-four templates."));
+		return false;
+	}
+
+	const uint32 SequenceSeed = static_cast<uint32>(GetOrInitializeRecruitSequenceSeed(InOutRoster));
+	const uint32 Ordinal = static_cast<uint32>(InOutRoster.RecruitSequenceOrdinal);
+	const int32 SequenceStep = RecruitSequenceStepOptions[(SequenceSeed >> 8U) % UE_ARRAY_COUNT(RecruitSequenceStepOptions)];
+	const int32 TemplateIndex = static_cast<int32>((SequenceSeed % static_cast<uint32>(Templates.Num())
+		+ (Ordinal % static_cast<uint32>(Templates.Num())) * static_cast<uint32>(SequenceStep))
+		% static_cast<uint32>(Templates.Num()));
+	if (!Templates.IsValidIndex(TemplateIndex) || Templates[TemplateIndex].TemplateId.IsNone())
+	{
+		SetError(OutError, TEXT("The saved recruit sequence selected an invalid approved template."));
+		return false;
+	}
+
+	FGameXXKCompanionRecruitOrder NewOrder;
+	NewOrder.bHasPendingOrder = true;
+	NewOrder.RecruitOrderSeed = static_cast<int32>(SequenceSeed ^ (Ordinal * 0x27D4EB2DU));
+	NewOrder.ResolvedTemplateId = Templates[TemplateIndex].TemplateId;
+	NewOrder.CardSeed = MakeSequenceCardSeed(SequenceSeed, Ordinal);
+	InOutRoster.PendingRecruitOrder = NewOrder;
+	if (InOutRoster.RecruitSequenceOrdinal == MAX_int32)
+	{
+		SetError(OutError, TEXT("The persistent recruit sequence cannot advance beyond its supported ticket range."));
+		InOutRoster.PendingRecruitOrder = FGameXXKCompanionRecruitOrder();
+		return false;
+	}
+	++InOutRoster.RecruitSequenceOrdinal;
+	return ResolvePendingRecruitOrder(InOutRoster, OutResult, OutError);
 }
 
 bool FGameXXKCompanionRules::ResolvePendingRecruitOrder(
@@ -681,6 +705,8 @@ bool FGameXXKCompanionRules::ResolvePendingRecruitment(
 
 	OutRefund.DismissedInstanceId = Dismissed.InstanceId;
 	OutRefund.ReturnedExperienceMaterials = GetReturnedExperienceMaterialCount(Dismissed);
+	// Legacy compatibility payload only. The v7+ authoritative equipment collection is neither read
+	// nor mutated by this roster-only rule.
 	OutRefund.ReturnedEquippedItemIds = Dismissed.EquippedItemIds;
 	OutRefund.bDismissedWasActive = Dismissed.bIsActive;
 
@@ -692,6 +718,32 @@ bool FGameXXKCompanionRules::ResolvePendingRecruitment(
 	{
 		Companion.bIsActive = !DesiredActiveInstanceId.IsNone() && Companion.InstanceId == DesiredActiveInstanceId;
 	}
+	InOutRoster.PendingRecruitment = FGameXXKPendingCompanionRecruitment();
+	InOutRoster.PendingRecruitOrder = FGameXXKCompanionRecruitOrder();
+	return true;
+}
+
+bool FGameXXKCompanionRules::DiscardPendingRecruitment(FGameXXKCompanionRosterState& InOutRoster, FString* OutError)
+{
+	if (!InOutRoster.PendingRecruitment.bHasPendingRecruitment)
+	{
+		SetError(OutError, TEXT("There is no saved full-roster recruit candidate to discard."));
+		return false;
+	}
+
+	const FGameXXKPermanentCompanion& Candidate = InOutRoster.PendingRecruitment.Candidate;
+	if (!ValidatePermanentCompanionProfile(Candidate, OutError))
+	{
+		return false;
+	}
+	if (InOutRoster.PendingRecruitOrder.bHasPendingOrder
+		&& (Candidate.RecruitTemplateId != InOutRoster.PendingRecruitOrder.ResolvedTemplateId
+			|| Candidate.CardSeed != InOutRoster.PendingRecruitOrder.CardSeed))
+	{
+		SetError(OutError, TEXT("The saved full-roster candidate does not match its no-reroll recruit ticket."));
+		return false;
+	}
+
 	InOutRoster.PendingRecruitment = FGameXXKPendingCompanionRecruitment();
 	InOutRoster.PendingRecruitOrder = FGameXXKCompanionRecruitOrder();
 	return true;
@@ -777,18 +829,17 @@ bool FGameXXKCompanionRules::GetCompanionAttributes(
 	FString* OutError)
 {
 	OutAttributes = FGameXXKCompanionAttributes();
-	FGameXXKCompanionAttributes BaseAttributes;
-	FGameXXKCompanionAttributeGrowth Growth;
-	if (Level < 1 || Level > MaxCompanionLevel || Star < 1 || Star > 5 || !TryGetRoleAttributes(Role, BaseAttributes, Growth))
+	FGameXXKCharacterStats BareStats;
+	if (!FGameXXKCharacterStatRules::GetBareCompanionStats(Role, Level, Star, BareStats, OutError))
 	{
-		SetError(OutError, TEXT("Companion attributes require a permanent role with level 1-20 and star 1-5."));
 		return false;
 	}
 
-	OutAttributes.Health = ComputeProgressedAttribute(BaseAttributes.Health, Growth.Health, Level, Star, EquipmentBonus.Health);
-	OutAttributes.Attack = ComputeProgressedAttribute(BaseAttributes.Attack, Growth.Attack, Level, Star, EquipmentBonus.Attack);
-	OutAttributes.Defense = ComputeProgressedAttribute(BaseAttributes.Defense, Growth.Defense, Level, Star, EquipmentBonus.Defense);
-	OutAttributes.Mana = ComputeProgressedAttribute(BaseAttributes.Mana, Growth.Mana, Level, Star, EquipmentBonus.Mana);
+	OutAttributes.Health = BareStats.MaxHealth + EquipmentBonus.Health;
+	OutAttributes.Attack = BareStats.Attack + EquipmentBonus.Attack;
+	OutAttributes.Defense = BareStats.Defense + EquipmentBonus.Defense;
+	OutAttributes.Mana = BareStats.MaxMana + EquipmentBonus.Mana;
+	OutAttributes.Speed = BareStats.Speed + EquipmentBonus.Speed;
 	return true;
 }
 
@@ -810,6 +861,7 @@ bool FGameXXKCompanionRules::GetQuestNpcAttributes(
 	OutAttributes.Attack = ComputeNpcAttribute(Definition->BaseAttributes.Attack, Definition->GrowthPerLevel.Attack, HeroLevel);
 	OutAttributes.Defense = ComputeNpcAttribute(Definition->BaseAttributes.Defense, Definition->GrowthPerLevel.Defense, HeroLevel);
 	OutAttributes.Mana = ComputeNpcAttribute(Definition->BaseAttributes.Mana, Definition->GrowthPerLevel.Mana, HeroLevel);
+	OutAttributes.Speed = Definition->BaseAttributes.Speed;
 	return true;
 }
 

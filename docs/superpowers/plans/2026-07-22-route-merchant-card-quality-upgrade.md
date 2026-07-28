@@ -85,7 +85,7 @@
 - Modify: `Source/GameXXK/Public/GameXXKRelicTypes.h`
 - Modify: `Source/GameXXK/Private/GameXXKRelicCatalog.cpp`
 
-- [ ] **Step 1: Write the failing parameterized catalog test**
+- [x] **Step 1: Write the failing parameterized catalog test**
 
 Add automation assertions for:
 
@@ -102,7 +102,7 @@ TestEqual(TEXT("epic relics"), CountRelics(EGameXXKCardQuality::Epic), 5);
 
 Also iterate every ID in appendices A and B of the approved specification and assert its exact quality. Assert that `EGameXXKCardRarity` remains unchanged and still expresses acquisition/source semantics.
 
-- [ ] **Step 2: Run the red build**
+- [x] **Step 2: Run the red build**
 
 Run:
 
@@ -112,7 +112,7 @@ Run:
 
 Expected: compile failure because `EGameXXKCardQuality` and `BaseQuality` do not exist.
 
-- [ ] **Step 3: Add the reflected quality fields**
+- [x] **Step 3: Add the reflected quality fields**
 
 Add without renumbering `EGameXXKCardRarity`:
 
@@ -120,15 +120,16 @@ Add without renumbering `EGameXXKCardRarity`:
 UENUM(BlueprintType)
 enum class EGameXXKCardQuality : uint8
 {
-    Common = 0,
-    Rare = 1,
-    Epic = 2
+    Invalid = 0 UMETA(Hidden),
+    Common = 1,
+    Rare = 2,
+    Epic = 3
 };
 ```
 
 Add `EGameXXKCardQuality BaseQuality = EGameXXKCardQuality::Common;` to both `FGameXXKCardDefinition` and `FGameXXKRelicDefinition`. Add `CurrentQuality` to `FGameXXKCardInstance` so battle snapshots carry the resolved route-entry quality.
 
-- [ ] **Step 4: Implement exact classification with Common as the default**
+- [x] **Step 4: Implement exact classification with Common as the default**
 
 `GetCardBaseQuality(FName)` must return Epic for exactly these 31 IDs, Rare for exactly these 51 IDs, and Common for all other catalog IDs:
 
@@ -172,7 +173,7 @@ Route.Rare.JueJingFanJi, Route.Rare.TongXinHeBi
 
 Relic Epic IDs are `BambooTally`, `CraneFeather`, `ChessStone`, `DrumCharm`, `OldMap`; Rare IDs are `TigerSeal`, `InkTalisman`, `CloudMirror`, `StoneBead`, `IronKnot`, `Compass`, `RedCord`, `BronzeNeedle`, `LotusSeed`, `SwordGuard`, all with the `Relic.` prefix. The remaining 15 are Common.
 
-- [ ] **Step 5: Assign catalog definitions and run green verification**
+- [x] **Step 5: Assign catalog definitions and run green verification**
 
 `GameXXKCardCatalog.cpp` and `GameXXKRelicCatalog.cpp` must assign `BaseQuality` at definition construction. Run the cold build, then:
 
@@ -182,7 +183,7 @@ Relic Epic IDs are `BambooTally`, `CraneFeather`, `ChessStone`, `DrumCharm`, `Ol
 
 Expected: all catalog count and exact-ID assertions pass.
 
-- [ ] **Step 6: Commit only the new quality files and isolated catalog hunks**
+- [x] **Step 6: Leave the verified feature slice unstaged on the dirty main worktree**
 
 ```powershell
 git add Source/GameXXK/Public/GameXXKCardQualityRules.h Source/GameXXK/Private/GameXXKCardQualityRules.cpp Source/GameXXK/Private/Tests/GameXXKCardQualityRulesTest.cpp
@@ -190,7 +191,7 @@ git diff --check
 git commit -m "feat: classify card and relic quality"
 ```
 
-Do not stage a pre-existing dirty catalog/type hunk unless it is cleanly isolated.
+No files were staged or committed because the project is intentionally being developed on a dirty `main` worktree and the touched type/catalog files contain user-owned work. Verification evidence: cold UBT `Result: Succeeded`; `GameXXK.Data.CardQuality` passed; spec review and code-quality review both approved.
 
 ---
 
@@ -205,7 +206,7 @@ Do not stage a pre-existing dirty catalog/type hunk unless it is cleanly isolate
 - Modify: `Source/GameXXK/Private/GameXXKCardText.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKCardTextTest.cpp`
 
-- [ ] **Step 1: Add failing table-driven effect tests**
+- [x] **Step 1: Add failing table-driven effect tests**
 
 For each base effect, assert Common/Rare/Epic results:
 
@@ -221,11 +222,11 @@ For each base effect, assert Common/Rare/Epic results:
 
 Include nested `FGameXXKCardBattleModifier.Magnitude` cases so delayed damage/status magnitudes scale but `RemainingTriggers`, expiry, and conditions do not.
 
-- [ ] **Step 2: Run the targeted red test**
+- [x] **Step 2: Run the targeted red test**
 
 Run `GameXXK.Data.CardQuality.Scaling`; expected failures show unscaled Rare/Epic values.
 
-- [ ] **Step 3: Implement `BuildEffectiveDefinition`**
+- [x] **Step 3: Implement `BuildEffectiveDefinition`**
 
 Expose:
 
@@ -244,7 +245,7 @@ struct GAMEXXK_API FGameXXKCardQualityRules
 
 Use multiplier `1/2/4` only for `DamagePercentAttack`, `DamageFlat`, `EachLivingAllyAttackSelectedTarget`, `Heal`, and `AddArmor`. Use additive `0/1/2` for `DrawCards`, `ApplyStatus`, `RemoveStatus`, and `RemoveAnyDamageOverTime`. Use additive `0/2/4` for `GainMana` and `GainManaPerConsumedStatus`. Do not scale `LoseHealth`, costs, conditions, hit counts, durations, trigger counts, or percentage modifiers. Apply the same effect-type rule to nested modifier magnitudes.
 
-- [ ] **Step 4: Make text consume the effective definition**
+- [x] **Step 4: Make text consume the effective definition**
 
 Change `DescribeEffects`, `DescribeDetail`, and `DescribeTooltip` to accept a quality. Build the effective definition once, show the effective values, and prefix or badge the quality using:
 
@@ -256,18 +257,17 @@ Epic:   FLinearColor(0.55f, 0.35f, 0.78f, 1.0f)
 
 The Chinese labels are `普通`, `稀有`, `珍稀`.
 
-- [ ] **Step 5: Run green tests and commit**
+- [x] **Step 5: Run green tests and leave the verified slice unstaged**
 
 Run `GameXXK.Data.CardQuality.Scaling` and `GameXXK.Integration.CardText`. Expected: effective numerical descriptions match resolution inputs and all prior target descriptions remain unchanged.
 
-```powershell
-git add Source/GameXXK/Public/GameXXKCardQualityRules.h Source/GameXXK/Private/GameXXKCardQualityRules.cpp Source/GameXXK/Private/Tests/GameXXKCardQualityRulesTest.cpp
-git commit -m "feat: scale effective card definitions by quality"
-```
+No files were staged or committed on the dirty `main` worktree. Verification evidence: cold UBT `Result: Succeeded`; `GameXXK.Data.CardQuality.Catalog`, `GameXXK.Data.CardQuality.Scaling`, and `GameXXK.Integration.CardText` passed; spec and code-quality reviews approved.
 
 ---
 
 ## Task 3: Persist route card entries and deterministic pair merging
+
+> **Execution split:** Task 3A implements the persisted entry vocabulary and pure deterministic merge core only. The capacity boundary is now locked by the approved design: the twelve slots count only temporary route-card entries; hero, companion, quest-NPC, and route-start fallback/base recipe entries do not consume those slots. Capacity/replacement assertions remain Task 3B. Task 3A must not change `RouteCardIds` consumers or battle/reward behavior.
 
 **Files:**
 
@@ -276,7 +276,7 @@ git commit -m "feat: scale effective card definitions by quality"
 - Create: `Source/GameXXK/Private/Tests/GameXXKRunDeckRulesTest.cpp`
 - Modify: `Source/GameXXK/Public/GameXXKCardRunTypes.h`
 
-- [ ] **Step 1: Write failing entry/merge tests**
+- [x] **Step 1A: Write failing entry/merge-core tests**
 
 Cover:
 
@@ -286,15 +286,15 @@ Cover:
 - Epic never upgrades and never disappears;
 - different CardIds never merge;
 - base recipe entry survives over a temporary entry, then lower `AcquisitionOrdinal` wins;
-- immediate merge at 12 temporary cards does not require replacement;
-- a non-merging thirteenth temporary entry does require replacement;
 - preview and commit return the same survivor ID, consumed IDs, final quality, and temporary-count delta.
 
-- [ ] **Step 2: Run red build/test**
+Capacity assertions are intentionally deferred to Task 3B. The locked boundary is twelve temporary route-card entries; base/fallback recipe entries are excluded.
+
+- [x] **Step 2A: Run the merge-core red build/test**
 
 Expected: compile failure because route entry and merge APIs do not exist.
 
-- [ ] **Step 3: Add serializable route-entry types**
+- [x] **Step 3A: Add serializable route-entry types**
 
 Add:
 
@@ -302,11 +302,12 @@ Add:
 UENUM(BlueprintType)
 enum class EGameXXKRouteCardSourceKind : uint8
 {
-    HeroBase,
-    CompanionBase,
-    QuestNpcBase,
-    RouteReward,
-    Merchant
+    Invalid = 0 UMETA(Hidden),
+    HeroBase = 1,
+    CompanionBase = 2,
+    QuestNpcBase = 3,
+    RouteReward = 4,
+    Merchant = 5
 };
 
 USTRUCT(BlueprintType)
@@ -326,7 +327,7 @@ struct GAMEXXK_API FGameXXKRouteCardEntry
 
 Replace save authority of `RouteCardIds` with `TArray<FGameXXKRouteCardEntry> RouteCardEntries`. Keep the legacy array temporarily only as a migration input and never append new rewards to it.
 
-- [ ] **Step 4: Implement deterministic preview and commit**
+- [x] **Step 4A: Implement deterministic preview and commit**
 
 Expose:
 
@@ -352,14 +353,42 @@ static bool AddAndMerge(
 
 Sort merge candidates by `bTemporaryRouteCard` ascending and then `AcquisitionOrdinal` ascending. Pair exactly two equal CardId/equal-quality entries at a time. Continue until no Common/Common or Rare/Rare pair remains. Preserve array order by replacing the survivor in place and removing consumed entries from highest index to lowest.
 
-- [ ] **Step 5: Run green tests and commit**
+- [x] **Step 5A: Run green merge-core tests**
 
-Run `GameXXK.Route.RunDeck`. Expected: all identity, chain, capacity, and preview/commit parity assertions pass.
+Run `GameXXK.Route.RunDeck.Merge`. Expected: all identity, chain, validation, ordering, and preview/commit parity assertions pass. Capacity/replacement remains Task 3B.
 
 ```powershell
 git add Source/GameXXK/Public/GameXXKRunDeckRules.h Source/GameXXK/Private/GameXXKRunDeckRules.cpp Source/GameXXK/Private/Tests/GameXXKRunDeckRulesTest.cpp
 git commit -m "feat: persist and merge route card entries"
 ```
+
+Task 3A verification evidence (2026-07-24): cold UBT `Result: Succeeded`; `GameXXK.Route.RunDeck.Merge` found 1 / succeeded 1 / failed 0; `GameXXK.Data.CardQuality` found 2 / succeeded 2 / failed 0. Spec and static code-quality reviews approved. Nothing was staged or committed on the intentionally dirty `main` worktree.
+
+### Task 3B: Shared acquisition, capacity, and stable replacement
+
+- [x] Add persisted `bConsumesRouteCapacity` to each route-card entry. It is the only authority for the twelve acquired-card slots; `bTemporaryRouteCard` remains an orthogonal lifetime/merge-priority flag.
+- [x] Append `RouteBase = 6` without renumbering existing source kinds. Hero, companion, quest-NPC, fallback, and fixed route-base recipe entries consume zero capacity; route rewards and merchant acquisitions consume capacity.
+- [x] Add one shared preview/commit simulation in `FGameXXKRunDeckRules`. Simulate merge before deciding replacement, re-simulate from the original state after removing a stable replacement `EntryId`, reject an unnecessary replacement, and increment the route acquisition counter only on successful commit.
+- [x] Register `GameXXK.Route.RunDeck.Acquisition` for 0/11/12-slot boundaries, merge-at-capacity, different-quality replacement, exact duplicate-CardId identity, invalid/negative/`MAX_int32` rollback, validated capacity queries, and preview/commit parity.
+- [x] Keep this pure-rule slice separate from save migration, battle adapter, reward, merchant, and UI integration; those follow in Task 4 and Task 7.
+
+Task 3B pure-rule verification evidence (2026-07-24): initial missing-contract, validated-query, non-capacity acquisition, and negative-counter REDs were reproduced. Cold UBT GREEN; `GameXXK.Route.RunDeck` found 2 / succeeded 2 / failed 0. Card-quality, card-text, route-economy, save-v9, and settlement regressions found 11 / succeeded 11 / failed 0. Independent review reported no Critical or Important findings; nothing was staged or committed.
+
+### Task 3C: Canonical base recipe, v8 migration, and v9 single authority
+
+- [x] Add a shared pure builder for the deterministic 18-card base recipe plus a route-seed/ordinal `EntryId` helper. Add the dedicated persisted `NextRouteCardEntryOrdinal`; do not reuse reward-offer ordinals.
+- [x] For every `<9` save, discard any prerelease `RouteCardEntries`, rebuild the canonical base recipe, migrate at most twelve valid legacy `RouteCardIds` in their original index order through deterministic merge rules, then clear the legacy array. Invalid legacy cards warn and consume their ordinal hole; migration must not increment acquisition history.
+- [x] Switch new-route initialization and battle materialization to persisted entries. Stable/unique identity and ordinals, at most twelve capacity entries, and inactive-route cleanup of entries plus the next ordinal are validated now.
+- [ ] After reward, merchant, and every remaining producer/consumer use entries, remove the read-only compatibility projection and enforce the final v9 single-authority rule that `RouteCardIds` is empty.
+- [x] Keep an already-active migrated v8 battle's zones/RNG/instance IDs intact; the next battle becomes the first strict projection from route entries.
+
+Task 3C Phase 2A verification evidence (2026-07-24): two genuine REDs were reproduced (missing recipe contract, then a same-role but locked companion card being accepted). Final cold UBT succeeded; `GameXXK.Route.CardRecipe` found 4 / succeeded 4; RunDeck, CardBattleAdapter, Save v9, RouteEconomy, and Settlement regressions found 11 / succeeded 11. Two independent static reviews found no remaining Critical or Important issues. Nothing was staged or committed.
+
+Phase 2B is a deliberately playable transition: new routes persist and battle-project canonical entries, while an empty-entry direct test fixture and any still-legacy reward IDs retain a read-only compatibility projection. This compatibility path may not create or mutate entries and is removed only after reward selection and v8 migration both write the new authority. Task-NPC changes replace the complete support-slot slice at ordinals 13–15; those three slots reset to the new support recipe's catalog base quality, while every other entry and acquisition counter remains exact.
+
+Task 3C Phase 2B verification evidence (2026-07-24): behavior REDs reproduced missing route initialization, legacy battle materialization/max-two rejection, missing NPC support-slot replacement, and incomplete lifecycle cleanup. Final cold UBT succeeded. CardRecipe, CardBattleAdapter, BattleEntry, QuestNpc, Lifecycle, QingshanTaskNpc, ThreeChapter, Settlement, RouteEconomy, and RouteEconomyV9 filters found 20 / succeeded 20, and all five new canonical-entry integration tests passed individually. Independent review reported zero Critical, Important, or Minor findings. Nothing was staged or committed.
+
+Task 3C Phase 2C1 verification evidence (2026-07-24): the focused v8-to-v9 migration suite first reproduced four behavioral REDs, then passed 4 / 4. A fresh cold UBT succeeded, and the specified save, equipment, run-deck, battle-entry, route-economy, three-chapter, and settlement regressions passed 20 / 20 (24 / 24 total). Migration is candidate-copy atomic, version-beats-fields, preserves active battle snapshots exactly, consumes invalid legacy ordinal holes, rejects int32 sequence overflow, and leaves transitional current-v9 legacy-only data readable until every reward and merchant writer switches authority. Independent review reported no Critical or Important findings; both Minor test-coverage findings were strengthened before the final build. Nothing was staged or committed.
 
 ---
 
@@ -374,21 +403,21 @@ git commit -m "feat: persist and merge route card entries"
 - Modify: `Source/GameXXK/Private/Tests/GameXXKCardRouteRewardChoiceTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKCardRulesTest.cpp`
 
-- [ ] **Step 1: Add failing adapter/reward tests**
+- [x] **Step 1: Add failing adapter/reward tests**
 
 Assert that starting battle instances retain each route entry's `EntryId`, `AcquisitionOrdinal`, owner, and `CurrentQuality`; base hero/companion/NPC recipes are stable across battles; reward selection automatically merges; replacement targets `EntryId`, not CardId; and a merge with no net temporary-card increase skips replacement at capacity.
 
-- [ ] **Step 2: Run red targeted tests**
+- [x] **Step 2: Run red targeted tests**
 
 Run `GameXXK.Integration.CardBattleAdapter` and `GameXXK.Integration.CardRoute.RewardChoice`. Expected failures point to regenerated battle IDs and legacy `RouteCardIds` behavior.
 
-- [ ] **Step 3: Materialize battle instances from route entries**
+- [x] **Step 3: Materialize battle instances from route entries**
 
-At route start, build and persist the base recipe once from the selected hero cards, active companion's 12 personal cards, and active task NPC cards. On battle start, copy route entries into `FGameXXKCardInstance` and build an effective definition from catalog definition plus `CurrentQuality`. Do not mutate the immutable catalog entry.
+At route start, after the route/root seed and task-NPC provenance are finalized, build and persist the exact 18-card base recipe once: eight selected hero cards, the active companion's five selected cards (or shared-cursor fallback cards), three active task-NPC cards (or continued shared-cursor fallback cards), and two fixed route cards. Base and fallback entries do not consume the twelve acquired-card slots. On battle start, copy route entries into `FGameXXKCardInstance` and build an effective definition from catalog definition plus `CurrentQuality`. Do not mutate the immutable catalog entry.
 
-- [ ] **Step 4: Route all reward adds through `FGameXXKRunDeckRules`**
+- [x] **Step 4: Route all reward adds through `FGameXXKRunDeckRules`**
 
-`CreateRouteRewardOffer` still offers catalog BaseQuality. `ChoosePendingRouteReward` constructs a new temporary entry with a stable ID derived from route seed and `NextRewardOrdinal`, previews merge/capacity, optionally replaces by `EntryId`, then commits the merge. Remove the two-copy CardId cap; Epic cap is the quality cap.
+`CreateRouteRewardOffer` still offers catalog BaseQuality. `ChoosePendingRouteReward` constructs a new temporary entry with a stable ID derived from route seed and the dedicated `NextRouteCardEntryOrdinal`, previews merge/capacity per chosen candidate, optionally replaces by stable `EntryId`, then commits the merge. Increase the ordinal only after a successful commit, including merge-only commits. Remove the two-copy CardId cap; Epic cap is the quality cap. The legacy global `bRequiresRouteCardReplacement` remains serialization-only and must not decide the new flow.
 
 - [ ] **Step 5: Verify actual combat equals preview/text**
 
@@ -412,34 +441,76 @@ Expected: battle, reward, card rules, and card text tests pass; no existing enem
 - Modify: `Source/GameXXK/Public/GameXXKRelicTypes.h`
 - Modify: `Source/GameXXK/Private/GameXXKRelicCatalog.cpp`
 - Modify: `Source/GameXXK/Private/GameXXKRelicRules.cpp`
+- Modify: `Source/GameXXK/Private/GameXXKRouteSettlementRules.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKRouteEconomyIntegrationTest.cpp`
+- Modify: route-flow, relic, settlement, save-migration, HUD, probe, and acceptance tests listed in the Task 5B checkpoint below
 
-- [ ] **Step 1: Write failing economy tests**
+- [x] **Step 1A: Write failing pure economy-rule tests**
 
-Assert start balance 60; normal/elite/boss payouts 20/35/50; positive event payout is clamped to 20–40; the same node cannot pay twice after UI refresh or save/load; PlayerGold never changes; `Relic.WineCup` increases travel money; and fail/boss-clear/abandon reset travel money and receipts.
+Assert receipt/default/reflection contracts; exact start balance 60; idempotent initialization; chapter-scoped node awards; zero-value receipts; checked overflow/subtraction; invalid-input rollback; uninitialized `CanAfford`/`Spend`; and economy-only clearing that preserves the complete remaining `CardRun` state.
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2A: Run the pure-rule red test**
 
-Run `GameXXK.Route.Economy`. Expected failures show current `PlayerGold +=` route rewards.
+Run `GameXXK.Route.Economy.Rules`. The recorded RED was the expected missing receipt/state/rules API compilation failure.
 
-- [ ] **Step 3: Add route economy state and rules**
+- [x] **Step 3A: Add route economy state and pure rules**
 
 Add to `FGameXXKCardRunState`:
 
 ```cpp
 UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int32 RouteTravelMoney = 0;
 UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) bool bRouteEconomyInitialized = false;
-UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) TArray<int32> RewardedTravelMoneyNodeIds;
+UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) TArray<FGameXXKRouteTravelMoneyReceipt> RewardedTravelMoneyNodes;
 ```
 
-Implement `InitializeRoute(60)`, `AwardNodeOnce(NodeId, Amount)`, `CanAfford`, `Spend`, and `ClearRouteEconomy`. Reject negative spends and use checked subtraction.
+`FGameXXKRouteTravelMoneyReceipt` stores `Chapter`, `NodeId`, and `Amount`. `AwardNodeOnce(Chapter, NodeId, Amount)` uses `(Chapter, NodeId)` as its stable key because generated node IDs restart in every chapter. Implement `InitializeRoute(60)`, `CanAfford`, `Spend`, and `ClearRouteEconomy`; reject invalid inputs and use candidate-copy validation plus checked arithmetic.
 
-- [ ] **Step 4: Replace route permanent-gold mutations**
+- [x] **Step 4B: Write failing route-economy integration tests**
 
-In `ResolveBattleVictory` award 20/35/50 by node kind, in positive event choices award a deterministic 20–40 amount, and leave town purchases/sales on `PlayerGold`. Append `GainRouteTravelMoney` to `EGameXXKRelicEffectKind` without renumbering old values; change only `Relic.WineCup` to the new effect.
+Create `GameXXKRouteEconomyIntegrationTest.cpp`. Assert exact new-route 60; Normal/Elite/Boss 20/35/50; no award before the saved card-reward gate resolves; zero-value nodes still receive receipts; WineCup `3 x stacks`; legacy take-money event 20; formal catalog events do not silently add money; PlayerGold never changes; duplicate completion has no reward side effects; Chapter 1/2 preserve economy; failure/abandon/Chapter 3 terminal settlement clears economy while preserving `LastAppliedRouteSettlementId`; and an invalid/overflowing economy leaves the complete runtime state unchanged.
 
-- [ ] **Step 5: Run green tests and commit**
+- [x] **Step 5B: Centralize node settlement and replace direct mutations**
 
-Run `GameXXK.Route.Economy` plus existing MVP flow and relic tests. Expected: all route money assertions pass and town economy assertions remain unchanged.
+Initialize every new route through `InitializeRoute(60)`. Before one structural node completion, aggregate the node's base award with `WineCup` (`3 x stacks`) and call `AwardNodeOnce` exactly once. Only a newly awarded receipt may apply XP/items/attributes/NPC/relic side effects. Normal/Elite/Boss use 20/35/50; legacy `ResolveEventReward(true)` uses explicit 20 and `false` uses 0; formal event-catalog choices remain attribute/NPC/relic only. Boss settlement must run this same node path before `ResolveBossClear`. Remove direct `AddRouteTravelMoney`, reject negative merchant state instead of clamping, and leave town purchases/sales on `PlayerGold`.
+
+Append `GainRouteTravelMoney` to `EGameXXKRelicEffectKind` without renumbering old values; change only `Relic.WineCup` to the new effect. Split route-node relic handling into a pure money-bonus query plus one-time non-money effects so the receipt gates every side effect.
+
+- [x] **Step 6B: Integrate terminal clearing**
+
+Have settlement cleanup call `ClearRouteEconomy` after the unique atomic receipt is applied, preserving `LastAppliedRouteSettlementId`. An already-applied receipt may clean a matching partially committed snapshot, but replay against a later route is a pure no-op.
+
+- [x] **Step 6C: Add save-version 9 migration and validation**
+
+Freeze the existing three-chapter and merchant feature-version constants at 8, bump the current save version to 9, and migrate valid version-8 active routes into an initialized economy without resetting their chapter or merchant snapshot. Validate receipt fields, unique chapter/node keys, active/inactive initialization invariants, and settlement-source consistency.
+
+- [ ] **Step 7B: Update HUD text, probes, and all affected fixtures**
+
+Change the legacy event copy to “收下 20 行旅钱”, expose route balance/initialization/chapter/receipts through the real-play probes, remove stale `PlayerGold +18/+12` assertions, and initialize every manual active-route fixture explicitly. Route HUD and merchant UI must read the rule-owned balance rather than mutate it.
+
+- [ ] **Step 8B: Run green tests and review**
+
+Run `GameXXK.Route.Economy` plus MVP flow/UI, route map, relic, settlement, three-chapter, save/migration, merchant, lifecycle, playable-shell, and Python probe/acceptance regressions. Expected: exact values and once-only receipts pass; town economy remains unchanged. Cold UBT only, then independent specification and code-quality review; do not stage or commit without an explicit user request.
+
+**Task 5A verification checkpoint (2026-07-24):**
+
+- Cold UBT GREEN: 118 actions, `Result: Succeeded`; reviewer-fix rebuild: 4 actions, `Result: Succeeded`.
+- `GameXXK.Route.Economy.Rules`: Found 1, Success.
+- `GameXXK.Data.CardQuality` plus `GameXXK.Route.RunDeck.Merge`: Found 3, all Success.
+- Independent specification review resolved the full-CardRun clear-preservation test gap. Final code-quality review found one initialized-negative-start ordering issue; its test-first fix plus malformed/duplicate receipt regressions passed cold UBT and both automation filters. Read-only re-review found no remaining Critical or Important issue and approved Step 4B.
+
+**Task 5B1 verification checkpoint (2026-07-24):**
+
+- Real-behavior RED covered route start `0` vs `60`, old `18/24/35/12` payouts, missing receipts, duplicate side effects, overflow partial commit, and terminal economy leakage.
+- Review-driven RED/GREEN cycles additionally closed formal-event legacy bypass, battle settlement without a resolved card-reward gate, and destructive replay of an old settlement receipt against a new route.
+- Cold UBT GREEN after final fixes. Twelve-prefix route/MVP/relic/settlement/merchant/lifecycle regression union: Found 21, all Success. Direct consumers plus Task 5A: Found 6, all Success. OneGameAdapter: Found 1, Success.
+- Independent final review found no remaining Critical or Important issue. No editor, assets, Python probes, save-version migration, staging, or commit were involved.
+
+**Task 5B2 verification checkpoint (2026-07-24):**
+
+- Save feature gates are frozen at three-chapter `8`, merchant snapshot `8`, route economy `9`, and current save version `9`.
+- RED covered the version contract, v8 active/inactive migration, legacy-chain ordering, active/inactive invariants, malformed/duplicate node receipts, detached settlement sources, outcome-only and undefined settlement outcomes, plus zero-balance preservation.
+- Cold UBT GREEN: `D:\GameXXKBuildTemp\Task5B2\final2_cold_ubt.log`. Focused save/migration/economy/settlement/three-chapter/merchant regression union: Found 19, all Success (`final2_focused_regression.log`).
+- Independent review findings on migration ordering, exact empty-receipt comparison, enum validation, version-test drift, and full-runtime preservation were fixed test-first. Final re-review reported no Critical, Important, or Minor findings. Nothing was staged or committed.
 
 ---
 
@@ -455,15 +526,15 @@ Run `GameXXK.Route.Economy` plus existing MVP flow and relic tests. Expected: al
 - Modify: `Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h`
 - Modify: `Source/GameXXK/Private/MVP/GameXXKMVPSubsystem.cpp`
 
-- [ ] **Step 1: Write failing deterministic stock tests**
+- [x] **Step 1: Write failing deterministic stock tests**
 
 Cover active companion and no-companion cases, exact three card/three relic slots, stable stock across refreshes of widgets and save/load, no quest-NPC cards, only unlocked hero cards, active companion's `PersonalCardIds`, route cards, catalog BaseQuality only, exclusion of Epic-owned card IDs, exclusion of owned/duplicate relics, and fallback behavior when a source pool has fewer candidates than slots.
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 Run `GameXXK.Route.Merchant.Stock`; expected compile failure for missing merchant types/rules.
 
-- [ ] **Step 3: Add serializable merchant state**
+- [x] **Step 3: Add serializable merchant state**
 
 Use:
 
@@ -494,11 +565,11 @@ struct FGameXXKRouteMerchantState
 };
 ```
 
-- [ ] **Step 4: Implement stock generation**
+- [x] **Step 4: Implement stock generation**
 
 With an active companion, slot sources are hero / active-companion / route. Without one, hero / route / route. Relics are three unique unowned IDs. Card prices are 25/40/60 and relic prices 70/100/140 by quality. Store the generated offers immediately; reopening the screen only reads them.
 
-- [ ] **Step 5: Implement refresh**
+- [x] **Step 5: Implement refresh**
 
 Refresh cost is `20, 30, 40, 50, 50...`, charged only after validation. One refresh replaces all six offers and increments `RefreshCount`. It may repeat previous cards but never offers owned relics or an already-Epic CardId.
 
@@ -519,23 +590,23 @@ Facade methods: `EnsureRouteMerchantStock`, `GetRouteMerchantSnapshot`, `Refresh
 - Modify: `Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h`
 - Modify: `Source/GameXXK/Private/MVP/GameXXKMVPSubsystem.cpp`
 
-- [ ] **Step 1: Write failing transaction tests**
+- [x] **Step 1: Write failing transaction tests**
 
 Test insufficient money, sold offers, stale offer IDs, duplicate relic rejection, card purchase with immediate merge/no replacement, card purchase at capacity requiring replacement, invalid replacement, valid replacement, exact one-time debit, exact one-time sold marking, and rollback of every field when any validation fails.
 
-- [ ] **Step 2: Run red test**
+- [x] **Step 2: Run red test**
 
 Run `GameXXK.Route.Merchant.Purchase`; expected failures show absent preview/atomic commit.
 
-- [ ] **Step 3: Add purchase preview/result types**
+- [x] **Step 3: Add purchase preview/result types**
 
 The preview must include offer ID, balance before/after, price, merge survivor/consumed IDs/final quality, temporary-count delta, `bRequiresReplacement`, and eligible replacement entry IDs. The commit call must accept offer ID plus optional replacement `EntryId` and return a typed failure reason for UI tooltip/dialog text.
 
-- [ ] **Step 4: Implement validate-copy-commit**
+- [x] **Step 4: Implement validate-copy-commit**
 
 Copy `CardRun` to a local candidate. Validate offer and balance; for cards, run `PreviewAdd`, validate replacement if needed, then `AddAndMerge`; for relics, acquire only when unowned. Debit candidate travel money and mark candidate offer sold. Assign the candidate back only after every operation succeeds.
 
-- [ ] **Step 5: Run green transaction tests**
+- [x] **Step 5: Run green transaction tests**
 
 Expected: failed transactions produce byte-equivalent merchant/economy/deck/relic state; successful transactions debit once and leave a persistent `已售` offer.
 
@@ -566,7 +637,7 @@ Set `CurrentSaveVersion = 7`. In `RestoreFromSaveState`, migrate before normal v
 
 - [ ] **Step 4: Centralize route-local clear**
 
-`ClearRouteLocalCardState` must reset temporary/base route entries, battle/reward/event state, relics, attribute bonuses, travel money, payout receipts, merchant state, route state version, and initialization flags. Invoke it on route failure, boss completion, and explicit abandon only; do not invoke it when leaving/reopening the merchant screen.
+`ClearRouteLocalCardState` must reset temporary/base route entries, battle/reward/event state, relics, attribute bonuses, travel money, payout receipts, merchant state, route state version, and initialization flags. Invoke it only on route failure, third-chapter final Boss completion, and explicit abandon; first- and second-chapter Boss completion must preserve route-local state, and leaving/reopening the merchant screen must not clear anything.
 
 - [ ] **Step 5: Run green tests**
 
@@ -676,7 +747,7 @@ Run `GameXXK.UI.RouteMerchant` and route-map adapter tests; expected failures sh
 
 - [ ] **Step 3: Build the route map summary**
 
-Use the new travel-money texture at top left. Keep values bound to snapshots refreshed on state changes, not per-frame Tick. Count completed nodes from `VisitedRouteNodeIds`, total actionable nodes from route map nodes excluding Start, and temporary entries from `bTemporaryRouteCard`.
+Use the new travel-money texture at top left. Keep values bound to snapshots refreshed on state changes, not per-frame Tick. Count completed nodes from `VisitedRouteNodeIds`, total actionable nodes from route map nodes excluding Start, and occupied acquired-card slots exclusively through `FGameXXKRunDeckRules::GetCapacityUsed` / `bConsumesRouteCapacity`. Do not count `bTemporaryRouteCard`: fallback/base entries may be temporary in lifecycle but explicitly consume zero of the twelve acquired-card slots.
 
 - [ ] **Step 4: Build merchant presentation**
 

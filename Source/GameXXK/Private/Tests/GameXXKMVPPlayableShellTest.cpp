@@ -1,3 +1,4 @@
+#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPGameMode.h"
 #include "MVP/GameXXKMVPPlayerController.h"
@@ -96,7 +97,40 @@ namespace
 		return nullptr;
 	}
 
-	static bool HandleRouteTowardKind(AGameXXKMVPHUD* HUD, const UGameXXKMVPSubsystem* Subsystem, EGameXXKNodeKind TargetKind)
+	static bool ResolveHUDBattleVictoryAndSkipRouteReward(AGameXXKMVPHUD* HUD, UGameXXKMVPSubsystem* Subsystem)
+	{
+		if (!HUD || !Subsystem)
+		{
+			return false;
+		}
+
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		if (State.Screen != EGameXXKScreen::Battle || !State.CardRun.bHasActiveCardBattle)
+		{
+			return false;
+		}
+		for (FGameXXKCardCombatUnit& Unit : State.CardRun.ActiveBattle.Units)
+		{
+			if (Unit.Side == EGameXXKCardTargetSide::Enemy)
+			{
+				Unit.HP = 0;
+				Unit.bLiving = false;
+			}
+		}
+		State.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+		if (!HUD->HandleDemoCommand(FName(TEXT("ResolveBattleVictory")))
+			|| State.Screen != EGameXXKScreen::Battle
+			|| State.CardRun.PendingReward.CardIds.Num() != 3)
+		{
+			return false;
+		}
+
+		FString RewardError;
+		return FGameXXKCardBattleAdapter::SkipPendingRouteReward(State, &RewardError)
+			&& HUD->HandleDemoCommand(FName(TEXT("ResolveBattleVictory")));
+	}
+
+	static bool HandleRouteTowardKind(AGameXXKMVPHUD* HUD, UGameXXKMVPSubsystem* Subsystem, EGameXXKNodeKind TargetKind)
 	{
 		if (!HUD || !Subsystem)
 		{
@@ -114,13 +148,21 @@ namespace
 			{
 				return false;
 			}
-			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle && !HUD->HandleDemoCommand(FName(TEXT("ResolveBattleVictory"))))
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle && !ResolveHUDBattleVictoryAndSkipRouteReward(HUD, Subsystem))
 			{
 				return false;
 			}
-			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteEvent && !HUD->HandleDemoCommand(FName(TEXT("ResolveEventGold"))))
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteEvent)
 			{
-				return false;
+				bool bResolved = false;
+				for (int32 ChoiceIndex = 0; ChoiceIndex < 3 && !bResolved; ++ChoiceIndex)
+				{
+					bResolved = HUD->HandleDemoCommand(FName(*FString::Printf(TEXT("ResolveRouteChoice%d"), ChoiceIndex)));
+				}
+				if (!bResolved)
+				{
+					return false;
+				}
 			}
 			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteCamp && !HUD->HandleDemoCommand(FName(TEXT("ResolveCampHeal"))))
 			{
@@ -224,7 +266,13 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 	Subsystem->GetMutableRuntimeState().PlayerHP = 1;
 	TestTrue(TEXT("HUD follows generated route to a camp"), HandleRouteTowardKind(HUD, Subsystem, EGameXXKNodeKind::Camp));
 	TestEqual(TEXT("camp restored HP"), Subsystem->GetRuntimeState().PlayerHP, Subsystem->GetRuntimeState().PlayerMaxHP);
-	TestTrue(TEXT("HUD follows generated route to boss and clears it"), HandleRouteTowardKind(HUD, Subsystem, EGameXXKNodeKind::Boss));
+	TestTrue(TEXT("HUD follows generated route to the chapter one boss"), HandleRouteTowardKind(HUD, Subsystem, EGameXXKNodeKind::Boss));
+	TestEqual(TEXT("chapter one Boss returns the HUD to the next route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestEqual(TEXT("chapter one Boss advances the HUD route to chapter two"), Subsystem->GetRuntimeState().CardRun.RouteProgress.CurrentChapter, 2);
+	TestTrue(TEXT("HUD follows generated route to the chapter two boss"), HandleRouteTowardKind(HUD, Subsystem, EGameXXKNodeKind::Boss));
+	TestEqual(TEXT("chapter two Boss returns the HUD to the next route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestEqual(TEXT("chapter two Boss advances the HUD route to chapter three"), Subsystem->GetRuntimeState().CardRun.RouteProgress.CurrentChapter, 3);
+	TestTrue(TEXT("HUD follows generated route to the terminal chapter three boss"), HandleRouteTowardKind(HUD, Subsystem, EGameXXKNodeKind::Boss));
 	TestEqual(TEXT("boss returns to world map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 
 	const FGameXXKRuntimeState CompletedRouteState = Subsystem->GetRuntimeState();
@@ -242,9 +290,9 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 
 	bTanjiangEnabled = false;
 	TestTrue(TEXT("world map still shows Tanjiang button"), HasCommand(HUD->BuildVisibleCommands(), FName(TEXT("SelectTanjiang")), &bTanjiangEnabled));
-	TestTrue(TEXT("Tanjiang enabled after Boss"), bTanjiangEnabled);
-	TestTrue(TEXT("Tanjiang command enters next town"), HUD->HandleDemoCommand(FName(TEXT("SelectTanjiang"))));
-	TestEqual(TEXT("Tanjiang opens town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestFalse(TEXT("Tanjiang stays disabled until a playable town target exists"), bTanjiangEnabled);
+	TestFalse(TEXT("unimplemented Tanjiang command is rejected after Boss"), HUD->HandleDemoCommand(FName(TEXT("SelectTanjiang"))));
+	TestEqual(TEXT("unimplemented Tanjiang keeps HUD on world map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 
 	UGameplayStatics::DeleteGameInSlot(TestSlotName, 0);
 	return true;

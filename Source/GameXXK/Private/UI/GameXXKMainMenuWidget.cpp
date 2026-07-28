@@ -16,6 +16,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKSaveGame.h"
+#include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Styling/SlateBrush.h"
 #include "Styling/SlateTypes.h"
@@ -69,15 +70,16 @@ void UGameXXKMainMenuWidget::NativeConstruct()
 bool UGameXXKMainMenuWidget::StartGame()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const bool bStarted = Subsystem
-		&& Subsystem->StartGame()
-		&& Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan());
+	const bool bStarted = Subsystem && Subsystem->StartGame();
 	if (bStarted)
 	{
 		RequestPlayableMapForRuntimeState();
 		SetMenuLayer(EGameXXKMainMenuLayer::Landing);
 		OnStartGameSucceeded();
-		RefreshFromState();
+		if (!NotifyPlayerFlowStateChanged())
+		{
+			RefreshFromState();
+		}
 	}
 	return bStarted;
 }
@@ -96,6 +98,11 @@ bool UGameXXKMainMenuWidget::ContinueGameFromSlot(FString SlotName, int32 UserIn
 		RequestPlayableMapForRuntimeState();
 		SetMenuLayer(EGameXXKMainMenuLayer::Landing);
 		OnStartGameSucceeded();
+		RefreshFromState();
+	}
+	else
+	{
+		// Keep the continue modal open and surface the subsystem's stable migration/load error.
 		RefreshFromState();
 	}
 	return bStarted;
@@ -335,15 +342,24 @@ FGameXXKMainMenuSaveSlotRow UGameXXKMainMenuWidget::BuildSaveSlotRow(int32 SlotI
 	if (!SaveGame)
 	{
 		Row.Label = FText::Format(
-			NSLOCTEXT("GameXXKMainMenu", "UnreadableSlotLabel", "Slot {0}: Empty"),
+			NSLOCTEXT("GameXXKMainMenu", "UnreadableSlotLabel", "Slot {0}: Incompatible Save"),
 			FText::AsNumber(SlotIndex + 1));
-		Row.bOccupied = false;
 		Row.bCanLoad = false;
-		Row.bCanDelete = false;
 		return Row;
 	}
 
-	const FGameXXKRuntimeState RestoredState = UGameXXKMVPRules::RestoreFromSaveState(SaveGame->SaveState);
+	FGameXXKSaveState PreviewSaveState;
+	FGameXXKSaveMigrationReport PreviewReport;
+	if (!FGameXXKSaveMigration::MigrateToCurrent(SaveGame->SaveState, PreviewSaveState, PreviewReport))
+	{
+		Row.Label = FText::Format(
+			NSLOCTEXT("GameXXKMainMenu", "IncompatibleSlotLabel", "Slot {0}: Incompatible Save"),
+			FText::AsNumber(SlotIndex + 1));
+		Row.bCanLoad = false;
+		return Row;
+	}
+
+	const FGameXXKRuntimeState& RestoredState = PreviewSaveState.RuntimeState;
 	Row.Label = BuildSlotLabel(SlotIndex, BuildScreenLabel(RestoredState), RestoredState.PlayerLevel);
 	return Row;
 }
@@ -631,6 +647,14 @@ void UGameXXKMainMenuWidget::RefreshProgrammaticLayout()
 	if (MenuLayer == EGameXXKMainMenuLayer::ContinueModal)
 	{
 		AddTextBlock(ModalBox, NSLOCTEXT("GameXXKMainMenu", "ContinueTitle", "Continue"));
+		if (const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
+		{
+			const FText LoadError = Subsystem->GetLastSaveLoadError();
+			if (!LoadError.IsEmpty())
+			{
+				AddTextBlock(ModalBox, LoadError);
+			}
+		}
 		for (const FGameXXKMainMenuSaveSlotRow& Row : BuildSaveSlotRowsForTest())
 		{
 			AddSaveSlotRow(ModalBox, Row);

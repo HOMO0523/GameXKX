@@ -1,11 +1,15 @@
 #include "GameXXKCardRules.h"
 #include "GameXXKCardCatalog.h"
+#include "GameXXKCardQualityRules.h"
+#include "GameXXKEnemyCatalog.h"
+#include "GameXXKEquipmentRules.h"
 
 namespace
 {
-	// Five is the current gameplay limit; this ceiling leaves room for future effects while
-	// bounding serialized input and keeping all hand-size arithmetic safely representable.
-	constexpr int32 MaxSupportedHandLimit = 64;
+	// HandLimit is the normal round-refill target. Card effects may grow the hand to this separate
+	// hard capacity; attempted draws beyond it keep every card in battle and reshuffle the remainder.
+	constexpr int32 BattleHandCapacity = 20;
+	constexpr int32 MaxSupportedHandLimit = BattleHandCapacity;
 
 	bool IsActiveChoice(const EGameXXKCardPendingChoiceKind Kind)
 	{
@@ -13,10 +17,18 @@ namespace
 			|| Kind == EGameXXKCardPendingChoiceKind::InsightChooseToHand;
 	}
 
+	bool IsConcreteCardQuality(const EGameXXKCardQuality Quality)
+	{
+		return Quality == EGameXXKCardQuality::Common
+			|| Quality == EGameXXKCardQuality::Rare
+			|| Quality == EGameXXKCardQuality::Epic;
+	}
+
 	bool IsValidInstance(const FGameXXKCardInstance& Instance)
 	{
 		return !Instance.InstanceId.IsNone()
 			&& !Instance.CardId.IsNone()
+			&& IsConcreteCardQuality(Instance.CurrentQuality)
 			&& !Instance.OwnerUnitId.IsNone()
 			&& !Instance.SourceEntryId.IsNone()
 			&& Instance.AcquisitionOrdinal != INDEX_NONE;
@@ -27,6 +39,7 @@ namespace
 	{
 		return Left.InstanceId == Right.InstanceId
 			&& Left.CardId == Right.CardId
+			&& Left.CurrentQuality == Right.CurrentQuality
 			&& Left.OwnerUnitId == Right.OwnerUnitId
 			&& Left.SourceEntryId == Right.SourceEntryId
 			&& Left.AcquisitionOrdinal == Right.AcquisitionOrdinal;
@@ -153,12 +166,16 @@ namespace
 			OutError = TEXT("A ledger instance is not present in any logical card zone.");
 			return false;
 		}
+		if (Deck.Hand.Num() > BattleHandCapacity)
+		{
+			OutError = TEXT("Hand exceeds the twenty-card battle capacity.");
+			return false;
+		}
 
 		switch (Deck.PendingChoice.Kind)
 		{
 		case EGameXXKCardPendingChoiceKind::None:
-			if (Deck.Hand.Num() > Deck.HandLimit
-				|| !Deck.PendingChoice.Candidates.IsEmpty()
+			if (!Deck.PendingChoice.Candidates.IsEmpty()
 				|| Deck.PendingChoice.RequiredCount != 0
 				|| Deck.PendingChoice.RequiredDiscardCount != 0
 				|| Deck.PendingChoice.RequiredHandPickCount != 0
@@ -168,7 +185,7 @@ namespace
 				|| Deck.PendingChoice.bCanCancel
 				|| !Deck.PendingChoice.bCancelPreservesDrawTop)
 			{
-				OutError = TEXT("No-pending-choice state contains a hand overflow or stale choice data.");
+				OutError = TEXT("No-pending-choice state contains stale choice data.");
 				return false;
 			}
 			return true;
@@ -178,8 +195,6 @@ namespace
 				|| Deck.PendingChoice.RequiredCount > Deck.Hand.Num()
 				|| Deck.PendingChoice.RequiredDiscardCount != Deck.PendingChoice.RequiredCount
 				|| Deck.PendingChoice.RequiredHandPickCount != 0
-				|| Deck.Hand.Num() <= Deck.HandLimit
-				|| Deck.Hand.Num() - Deck.HandLimit != Deck.PendingChoice.RequiredCount
 				|| Deck.PendingChoice.bCanCancel
 				|| !Deck.PendingChoice.InsightTopOrder.IsEmpty())
 			{
@@ -193,7 +208,7 @@ namespace
 				|| Deck.PendingChoice.RequiredHandPickCount != 1
 				|| Deck.PendingChoice.RequiredDiscardCount != 0
 				|| !Deck.PendingChoice.bCanCancel
-				|| Deck.Hand.Num() >= Deck.HandLimit
+				|| Deck.Hand.Num() >= BattleHandCapacity
 				|| Deck.PendingChoice.Candidates.IsEmpty()
 				|| Deck.PendingChoice.Candidates.Num() != Deck.PendingChoice.InsightTopOrder.Num()
 				|| Deck.DrawPile.Num() < Deck.PendingChoice.Candidates.Num())
@@ -729,15 +744,107 @@ namespace
 			bHasLivingParty |= Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Party;
 			bHasLivingEnemy |= Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Enemy;
 		}
-		if (!bHasLivingParty)
+		if (!bHasLivingParty || !bHasLivingEnemy)
 		{
 			// A simultaneous final hit is a loss because the fixed hero is part of the party.
-			InOutRuntime.Phase = EGameXXKCardBattlePhase::Defeat;
+			InOutRuntime.Phase = !bHasLivingParty
+				? EGameXXKCardBattlePhase::Defeat
+				: EGameXXKCardBattlePhase::Victory;
+			// A next-player-hand effect has no legal recipient after a terminal transition.
+			InOutRuntime.PendingNextPlayerHandEnergySurcharge = 0;
+			InOutRuntime.PendingNextPlayerHandEnergySurchargeSourceUnitId = NAME_None;
 		}
-		else if (!bHasLivingEnemy)
+	}
+
+	/**
+	 * Commits the one-way boss phase threshold after a complete combat packet has resolved.
+	 * Callers operate on a transaction copy, so a malformed persisted enemy state cannot leak a
+	 * partially entered phase into the live battle.
+	 */
+	bool EvaluateBossPhaseTransitions(FGameXXKCardBattleRuntime& InOutRuntime, FString& OutError)
+	{
+		FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+		for (FGameXXKCardCombatUnit& Unit : NewRuntime.Units)
 		{
-			InOutRuntime.Phase = EGameXXKCardBattlePhase::Victory;
+			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy || Unit.EnemyDefinitionId.IsNone())
+			{
+				continue;
+			}
+
+			const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Unit.EnemyDefinitionId);
+			if (!Definition || Definition->PhaseId == EGameXXKEnemyPhaseId::None)
+			{
+				continue;
+			}
+			if (Definition->PhaseThresholdPercent <= 0 || Definition->PhaseThresholdPercent > 100)
+			{
+				OutError = TEXT("A boss phase definition has an unsupported health threshold.");
+				return false;
+			}
+
+			FGameXXKEnemyBattleState& EnemyState = NewRuntime.EnemyStates.FindOrAdd(Unit.UnitId);
+			if (EnemyState.DefinitionId.IsNone())
+			{
+				EnemyState.DefinitionId = Definition->Id;
+			}
+			if (EnemyState.DefinitionId != Definition->Id)
+			{
+				OutError = TEXT("A boss phase transition found a mismatched persisted enemy definition.");
+				return false;
+			}
+
+			const bool bAtOrBelowPhaseThreshold = static_cast<int64>(Unit.HP) * 100
+				<= static_cast<int64>(Unit.MaxHP) * Definition->PhaseThresholdPercent;
+			if (bAtOrBelowPhaseThreshold)
+			{
+				// This value is deliberately never cleared: healing above the threshold does not
+				// replay, undo, or re-enter a boss phase.
+				EnemyState.bPhaseTwo = true;
+			}
+
+			if (!EnemyState.bPhaseTwo || EnemyState.bPhaseStatModifiersApplied)
+			{
+				continue;
+			}
+
+			if (EnemyState.PhaseAttackModifier != 0 || EnemyState.PhaseDefenseModifier != 0)
+			{
+				OutError = TEXT("A boss phase state has a stat modifier without a committed phase entry.");
+				return false;
+			}
+
+			const int64 BaselineAttack = FMath::Max<int64>(0,
+				static_cast<int64>(Unit.Attack) - EnemyState.TemporaryAttackModifier);
+			const int64 BaselineDefense = FMath::Max<int64>(0, Unit.Defense);
+			const int32 PhaseAttack = static_cast<int32>(FMath::Clamp<int64>(
+				BaselineAttack * Definition->PhaseTwoAttackPercent / 100,
+				0,
+				MAX_int32));
+			const int32 PhaseDefense = static_cast<int32>(FMath::Clamp<int64>(
+				BaselineDefense * Definition->PhaseTwoDefensePercent / 100,
+				0,
+				MAX_int32));
+			EnemyState.PhaseAttackModifier = static_cast<int32>(FMath::Clamp<int64>(
+				static_cast<int64>(PhaseAttack) - BaselineAttack,
+				MIN_int32,
+				MAX_int32));
+			EnemyState.PhaseDefenseModifier = static_cast<int32>(FMath::Clamp<int64>(
+				static_cast<int64>(PhaseDefense) - BaselineDefense,
+				MIN_int32,
+				MAX_int32));
+			Unit.Attack = static_cast<int32>(FMath::Clamp<int64>(
+				static_cast<int64>(Unit.Attack) + EnemyState.PhaseAttackModifier,
+				0,
+				MAX_int32));
+			Unit.Defense = static_cast<int32>(FMath::Clamp<int64>(
+				static_cast<int64>(Unit.Defense) + EnemyState.PhaseDefenseModifier,
+				0,
+				MAX_int32));
+			EnemyState.bPhaseStatModifiersApplied = true;
 		}
+
+		InOutRuntime = MoveTemp(NewRuntime);
+		return true;
 	}
 
 	TArray<FName> CollectLivingUnitIdsForSide(
@@ -816,17 +923,41 @@ namespace
 		return true;
 	}
 
-	void ClearArmorAtSidePhaseStart(
+	bool ClearArmorAtSidePhaseStart(
 		FGameXXKCardBattleRuntime& InOutRuntime,
-		const EGameXXKCardTargetSide Side)
+		const EGameXXKCardTargetSide Side,
+		FString& OutError)
 	{
 		for (FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
 		{
-			if (Unit.bLiving && Unit.Side == Side)
+			if (!Unit.bLiving || Unit.Side != Side)
 			{
-				GameXXKCardRules::BeginCombatUnitPhase(Unit);
+				continue;
 			}
+
+			if (Side == EGameXXKCardTargetSide::Enemy && !Unit.EnemyDefinitionId.IsNone())
+			{
+				const FGameXXKEnemyDefinition* EnemyDefinition = FGameXXKEnemyCatalog::Find(Unit.EnemyDefinitionId);
+				if (EnemyDefinition && EnemyDefinition->PassiveId == EGameXXKEnemyPassiveId::BluehornArmorRetention)
+				{
+					FGameXXKEnemyBattleState& EnemyState = InOutRuntime.EnemyStates.FindOrAdd(Unit.UnitId);
+					if (EnemyState.DefinitionId.IsNone())
+					{
+						EnemyState.DefinitionId = EnemyDefinition->Id;
+					}
+					if (EnemyState.DefinitionId != EnemyDefinition->Id)
+					{
+						OutError = TEXT("Enemy armor retention found a mismatched persisted enemy definition.");
+						return false;
+					}
+					Unit.Armor /= 2;
+					continue;
+				}
+			}
+
+			GameXXKCardRules::BeginCombatUnitPhase(Unit);
 		}
+		return true;
 	}
 
 	bool ResolveEndOfRoundModifiers(
@@ -996,7 +1127,7 @@ bool GameXXKCardRules::InitializeBattleDeck(
 bool GameXXKCardRules::DrawCards(
 	FGameXXKBattleDeckState& InOutDeck,
 	const int32 Count,
-	const bool bAllowTemporaryOverdraw,
+	const int32 RequiredDiscardCount,
 	FString* OutError)
 {
 	if (OutError)
@@ -1006,6 +1137,10 @@ bool GameXXKCardRules::DrawCards(
 	if (Count < 0)
 	{
 		return SetFailure(OutError, TEXT("Draw count cannot be negative."));
+	}
+	if (RequiredDiscardCount < 0)
+	{
+		return SetFailure(OutError, TEXT("Required discard count cannot be negative."));
 	}
 
 	FString ValidationError;
@@ -1019,21 +1154,37 @@ bool GameXXKCardRules::DrawCards(
 	}
 
 	FGameXXKBattleDeckState NewDeck = InOutDeck;
-	const int32 MaximumHandSize = NewDeck.HandLimit + (bAllowTemporaryOverdraw ? 1 : 0);
-	int32 RemainingToDraw = FMath::Min(Count, FMath::Max(0, MaximumHandSize - NewDeck.Hand.Num()));
-	while (RemainingToDraw > 0 && EnsureDrawPileHasCard(NewDeck))
+	int32 RemainingToDraw = Count;
+	while (RemainingToDraw > 0
+		&& NewDeck.Hand.Num() < BattleHandCapacity
+		&& EnsureDrawPileHasCard(NewDeck))
 	{
 		NewDeck.Hand.Add(MoveTemp(NewDeck.DrawPile.Last()));
 		NewDeck.DrawPile.Pop(EAllowShrinking::No);
 		--RemainingToDraw;
 	}
 
-	if (bAllowTemporaryOverdraw && NewDeck.Hand.Num() > NewDeck.HandLimit)
+	if (RemainingToDraw > 0 && NewDeck.Hand.Num() >= BattleHandCapacity)
 	{
+		// No card is consumed by the overflow. If the draw pile was just exhausted, recycle the
+		// discard pile once; then shuffle the complete remaining draw pile deterministically.
+		if (NewDeck.DrawPile.IsEmpty() && !NewDeck.DiscardPile.IsEmpty())
+		{
+			NewDeck.DrawPile = MoveTemp(NewDeck.DiscardPile);
+		}
+		ShufflePile(NewDeck.DrawPile, NewDeck.CurrentRandomState);
+	}
+
+	if (RequiredDiscardCount > 0)
+	{
+		if (RequiredDiscardCount > NewDeck.Hand.Num())
+		{
+			return SetFailure(OutError, TEXT("Required discard count exceeds the cards available in hand."));
+		}
 		ClearPendingChoice(NewDeck.PendingChoice);
 		NewDeck.PendingChoice.Kind = EGameXXKCardPendingChoiceKind::ForcedDiscard;
 		NewDeck.PendingChoice.Candidates = NewDeck.Hand;
-		NewDeck.PendingChoice.RequiredCount = NewDeck.Hand.Num() - NewDeck.HandLimit;
+		NewDeck.PendingChoice.RequiredCount = RequiredDiscardCount;
 		NewDeck.PendingChoice.RequiredDiscardCount = NewDeck.PendingChoice.RequiredCount;
 		NewDeck.PendingChoice.RequiredHandPickCount = 0;
 		NewDeck.PendingChoice.bCanCancel = false;
@@ -1170,9 +1321,9 @@ bool GameXXKCardRules::BeginInsight(
 	{
 		return false;
 	}
-	if (InOutDeck.Hand.Num() >= InOutDeck.HandLimit)
+	if (InOutDeck.Hand.Num() >= BattleHandCapacity)
 	{
-		return SetFailure(OutError, TEXT("Insight requires an open hand slot."));
+		return SetFailure(OutError, TEXT("Insight requires an open slot below the twenty-card battle capacity."));
 	}
 	if (InOutDeck.DrawPile.IsEmpty())
 	{
@@ -1686,6 +1837,19 @@ bool GameXXKCardRules::IsManualTargetLegal(const FGameXXKCardTargetRequest& Requ
 namespace
 {
 	constexpr int32 MaxCombatArmor = 99;
+	constexpr int32 WhiteApeStatusGuardArmor = 8;
+
+	const FGameXXKEnemyDefinition* FindWhiteApeStatusGuardDefinition(const FGameXXKCardCombatUnit& Unit)
+	{
+		if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy || Unit.EnemyDefinitionId.IsNone())
+		{
+			return nullptr;
+		}
+		const FGameXXKEnemyDefinition* EnemyDefinition = FGameXXKEnemyCatalog::Find(Unit.EnemyDefinitionId);
+		return EnemyDefinition && EnemyDefinition->PassiveId == EGameXXKEnemyPassiveId::WhiteApeStatusGuard
+			? EnemyDefinition
+			: nullptr;
+	}
 
 	bool IsConcreteCombatStatus(const EGameXXKCardStatus Status)
 	{
@@ -1709,7 +1873,14 @@ namespace
 		case EGameXXKCardStatus::Poison:
 		case EGameXXKCardStatus::Burn:
 		case EGameXXKCardStatus::DamageOverTime:
+		case EGameXXKCardStatus::Medicine:
+		case EGameXXKCardStatus::Wealth:
+		case EGameXXKCardStatus::Counter:
 			return 8;
+		case EGameXXKCardStatus::Rage:
+			return 5;
+		case EGameXXKCardStatus::Weak:
+			return 5;
 		case EGameXXKCardStatus::CannotReceiveVulnerability:
 		case EGameXXKCardStatus::NextAttackBonus:
 		case EGameXXKCardStatus::NextAttackAppliesVulnerability:
@@ -1717,6 +1888,8 @@ namespace
 		case EGameXXKCardStatus::TerrainBonusDoubleThisRound:
 		case EGameXXKCardStatus::NextTerrainCardFree:
 		case EGameXXKCardStatus::NextTerrainCardEnergyReduction:
+		case EGameXXKCardStatus::Prey:
+		case EGameXXKCardStatus::Charge:
 			return 1;
 		case EGameXXKCardStatus::RedirectSingleTargetEnemyAttack:
 			return 8;
@@ -1773,18 +1946,38 @@ namespace
 	bool ValidateCombatUnits(const TArray<FGameXXKCardCombatUnit>& Units, FString& OutError)
 	{
 		TSet<FName> SeenUnitIds;
+		TSet<int32> SeenExplicitEnemySlots;
 		for (const FGameXXKCardCombatUnit& Unit : Units)
 		{
 			if (Unit.UnitId.IsNone() || SeenUnitIds.Contains(Unit.UnitId)
 				|| !IsConcreteTargetSide(Unit.Side)
 				|| Unit.MaxHP <= 0 || Unit.HP < 0 || Unit.HP > Unit.MaxHP
 				|| Unit.MaxMana < 0 || Unit.Mana < 0 || Unit.Mana > Unit.MaxMana
-				|| Unit.Attack < 0 || Unit.Defense < 0
+				|| Unit.Attack < 0 || Unit.Defense < 0 || Unit.Speed < 1
 				|| Unit.Armor < 0 || Unit.Armor > MaxCombatArmor
 				|| Unit.StableSortOrder == INDEX_NONE || Unit.StableSortOrder < 0
 				|| Unit.bLiving != (Unit.HP > 0))
 			{
 				OutError = TEXT("Combat units must have unique stable IDs and internally consistent combat values.");
+				return false;
+			}
+			if (Unit.Side == EGameXXKCardTargetSide::Enemy && Unit.BattleSlotNumber != INDEX_NONE)
+			{
+				if (Unit.BattleSlotNumber < 1 || Unit.BattleSlotNumber > 3 || SeenExplicitEnemySlots.Contains(Unit.BattleSlotNumber))
+				{
+					OutError = TEXT("Enemy combat units must use unique explicit 1P, 2P, or 3P presentation slots when a slot is saved.");
+					return false;
+				}
+				if (Unit.EnemyDefinitionId.IsNone() || Unit.CombatLevel < 1 || Unit.CombatLevel > 20)
+				{
+					OutError = TEXT("An explicitly slotted enemy combat unit requires a catalog identity and a valid route combat level.");
+					return false;
+				}
+				SeenExplicitEnemySlots.Add(Unit.BattleSlotNumber);
+			}
+			else if (Unit.Side != EGameXXKCardTargetSide::Enemy && (Unit.BattleSlotNumber != INDEX_NONE || !Unit.EnemyDefinitionId.IsNone() || Unit.CombatLevel != 0))
+			{
+				OutError = TEXT("Only enemy combat units may persist an enemy definition, combat level, or presentation slot.");
 				return false;
 			}
 			for (const FGameXXKCardStatusStack& Stack : Unit.Statuses)
@@ -1959,6 +2152,67 @@ int32 GameXXKCardRules::AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, const
 	return AppliedStacks;
 }
 
+bool GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	FGameXXKCardCombatUnit& InOutStatusTarget,
+	FString* OutError)
+{
+	const FGameXXKEnemyDefinition* EnemyDefinition = FindWhiteApeStatusGuardDefinition(InOutStatusTarget);
+	if (!EnemyDefinition)
+	{
+		return true;
+	}
+
+	FGameXXKEnemyBattleState NewEnemyState;
+	if (const FGameXXKEnemyBattleState* ExistingEnemyState = InOutRuntime.EnemyStates.Find(InOutStatusTarget.UnitId))
+	{
+		NewEnemyState = *ExistingEnemyState;
+	}
+	if (NewEnemyState.DefinitionId.IsNone())
+	{
+		NewEnemyState.DefinitionId = EnemyDefinition->Id;
+	}
+	if (NewEnemyState.DefinitionId != EnemyDefinition->Id)
+	{
+		return SetFailure(OutError, TEXT("White Ape status guard found a mismatched persisted enemy definition."));
+	}
+	if (NewEnemyState.bFirstStatusPassiveAvailable)
+	{
+		GameXXKCardRules::AddCombatArmor(InOutStatusTarget, WhiteApeStatusGuardArmor);
+		NewEnemyState.bFirstStatusPassiveAvailable = false;
+	}
+	InOutRuntime.EnemyStates.Add(InOutStatusTarget.UnitId, MoveTemp(NewEnemyState));
+	return true;
+}
+
+bool GameXXKCardRules::ResetWhiteApeStatusGuardsForPlayerRound(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	FString* OutError)
+{
+	TMap<FName, FGameXXKEnemyBattleState> NewEnemyStates = InOutRuntime.EnemyStates;
+	for (const FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+	{
+		const FGameXXKEnemyDefinition* EnemyDefinition = FindWhiteApeStatusGuardDefinition(Unit);
+		if (!EnemyDefinition)
+		{
+			continue;
+		}
+
+		FGameXXKEnemyBattleState& EnemyState = NewEnemyStates.FindOrAdd(Unit.UnitId);
+		if (EnemyState.DefinitionId.IsNone())
+		{
+			EnemyState.DefinitionId = EnemyDefinition->Id;
+		}
+		if (EnemyState.DefinitionId != EnemyDefinition->Id)
+		{
+			return SetFailure(OutError, TEXT("White Ape status guard reset found a mismatched persisted enemy definition."));
+		}
+		EnemyState.bFirstStatusPassiveAvailable = true;
+	}
+	InOutRuntime.EnemyStates = MoveTemp(NewEnemyStates);
+	return true;
+}
+
 int32 GameXXKCardRules::ConsumeCombatStatus(FGameXXKCardCombatUnit& InOutUnit, const EGameXXKCardStatus Status, const int32 Maximum)
 {
 	if (!IsConcreteCombatStatus(Status) || Maximum < 0)
@@ -1990,6 +2244,30 @@ int32 GameXXKCardRules::AddCombatArmor(FGameXXKCardCombatUnit& InOutUnit, const 
 	const int64 RequestedArmor = static_cast<int64>(OriginalArmor) + static_cast<int64>(Amount);
 	InOutUnit.Armor = static_cast<int32>(FMath::Min<int64>(MaxCombatArmor, RequestedArmor));
 	return InOutUnit.Armor - OriginalArmor;
+}
+
+int32 GameXXKCardRules::HealCombatUnit(FGameXXKCardCombatUnit& InOutUnit, const int32 Amount)
+{
+	if (!InOutUnit.bLiving || Amount <= 0)
+	{
+		return 0;
+	}
+	const int32 MaximumHealth = FMath::Max(1, InOutUnit.MaxHP);
+	const int32 OriginalHealth = FMath::Clamp(InOutUnit.HP, 0, MaximumHealth);
+	const int64 RequestedHealth = static_cast<int64>(OriginalHealth) + static_cast<int64>(Amount);
+	InOutUnit.HP = static_cast<int32>(FMath::Min<int64>(MaximumHealth, RequestedHealth));
+	return InOutUnit.HP - OriginalHealth;
+}
+
+int32 GameXXKCardRules::ConsumeSharedCombatEnergy(FGameXXKCardBattleRuntime& InOutRuntime, const int32 Amount)
+{
+	if (Amount <= 0)
+	{
+		return 0;
+	}
+	const int32 OriginalEnergy = FMath::Max(0, InOutRuntime.Deck.SharedEnergy);
+	InOutRuntime.Deck.SharedEnergy = FMath::Max(0, OriginalEnergy - Amount);
+	return OriginalEnergy - InOutRuntime.Deck.SharedEnergy;
 }
 
 void GameXXKCardRules::BeginCombatUnitPhase(FGameXXKCardCombatUnit& InOutUnit)
@@ -2044,13 +2322,16 @@ bool GameXXKCardRules::ApplyCombatEndPhaseDot(
 	return true;
 }
 
-bool GameXXKCardRules::ApplyCombatDirectDamage(
+namespace
+{
+	bool ApplyCombatDirectDamageInternal(
 	TArray<FGameXXKCardCombatUnit>& InOutUnits,
 	TArray<FGameXXKCardGuardLinkRuntime>& InOutGuardLinks,
 	const FGameXXKCardDamageContext& Context,
 	const FName TargetUnitId,
 	const int32 RequestedDamage,
 	FGameXXKCardDamageResult& OutResult,
+	FGameXXKCardBattleRuntime* PlayerCardRuntime,
 	FString* OutError)
 {
 	if (OutError)
@@ -2114,7 +2395,7 @@ bool GameXXKCardRules::ApplyCombatDirectDamage(
 
 	if (IsDirectAttackDamageKind(Context.Kind) && GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Agility) > 0)
 	{
-		ConsumeCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Agility, 1);
+		GameXXKCardRules::ConsumeCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Agility, 1);
 		NewResult.bAvoidedByAgility = true;
 	}
 	else
@@ -2129,20 +2410,72 @@ bool GameXXKCardRules::ApplyCombatDirectDamage(
 		NewResult.DamageAfterVulnerability = static_cast<int32>(FMath::Min<int64>(MAX_int32, AmplifiedDamage));
 		if (VulnerabilityStacks > 0)
 		{
-			ConsumeCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Vulnerability, MAX_int32);
+			GameXXKCardRules::ConsumeCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Vulnerability, MAX_int32);
 		}
 		NewResult.ArmorAbsorbed = IsDirectAttackDamageKind(Context.Kind)
 			? FMath::Min(ResolvedTarget->Armor, NewResult.DamageAfterVulnerability)
 			: 0;
 		ResolvedTarget->Armor -= NewResult.ArmorAbsorbed;
-		NewResult.HealthDamage = FMath::Min(ResolvedTarget->HP, NewResult.DamageAfterVulnerability - NewResult.ArmorAbsorbed);
+		NewResult.HealthDamage = NewResult.DamageAfterVulnerability - NewResult.ArmorAbsorbed;
+		EGameXXKEnemyPassiveId ResolvedPlayerCardEnemyPassive = EGameXXKEnemyPassiveId::None;
+		if (PlayerCardRuntime
+			&& ResolvedTarget->Side == EGameXXKCardTargetSide::Enemy
+			&& !ResolvedTarget->EnemyDefinitionId.IsNone())
+		{
+			const FGameXXKEnemyDefinition* EnemyDefinition = FGameXXKEnemyCatalog::Find(ResolvedTarget->EnemyDefinitionId);
+			if (!EnemyDefinition)
+			{
+				return SetFailure(OutError, TEXT("A player-card enemy target must resolve to a catalog definition."));
+			}
+
+			FGameXXKEnemyBattleState& EnemyState = PlayerCardRuntime->EnemyStates.FindOrAdd(ResolvedTarget->UnitId);
+			if (EnemyState.DefinitionId.IsNone())
+			{
+				EnemyState.DefinitionId = EnemyDefinition->Id;
+			}
+			if (EnemyState.DefinitionId != EnemyDefinition->Id)
+			{
+				return SetFailure(OutError, TEXT("Player-card enemy damage found a mismatched persisted enemy definition."));
+			}
+			ResolvedPlayerCardEnemyPassive = EnemyDefinition->PassiveId;
+
+			if (EnemyDefinition->PassiveId == EGameXXKEnemyPassiveId::IronfeatherFirstHit
+				&& EnemyState.bFirstHitPassiveAvailable)
+			{
+				const int32 PassiveReducedHealthDamage = NewResult.HealthDamage / 2;
+				NewResult.HealthDamage = PassiveReducedHealthDamage;
+				if (PassiveReducedHealthDamage > 0)
+				{
+					EnemyState.bFirstHitPassiveAvailable = false;
+				}
+			}
+			else if (EnemyDefinition->PassiveId == EGameXXKEnemyPassiveId::BlackBearThickHide)
+			{
+				const int64 ThickHideReducedHealthDamage = static_cast<int64>(NewResult.HealthDamage) * 85 / 100;
+				NewResult.HealthDamage = static_cast<int32>(FMath::Min<int64>(MAX_int32, ThickHideReducedHealthDamage));
+			}
+		}
+		NewResult.HealthDamage = FMath::Min(ResolvedTarget->HP, NewResult.HealthDamage);
+		if (ResolvedPlayerCardEnemyPassive == EGameXXKEnemyPassiveId::RedtuskRage && NewResult.HealthDamage > 0)
+		{
+			const int32 CurrentRage = GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Rage);
+			if (CurrentRage < 5)
+			{
+				GameXXKCardRules::AddCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Rage, 1);
+			}
+		}
 		ResolvedTarget->HP -= NewResult.HealthDamage;
 		ResolvedTarget->bLiving = ResolvedTarget->HP > 0;
 		if (ResolvedTarget->bLiving && IsDirectAttackDamageKind(Context.Kind))
 		{
 			for (const FGameXXKCardStatusStack& OnHitStatus : Context.OnHitStatuses)
 			{
-				AddCombatStatus(*ResolvedTarget, OnHitStatus.Status, OnHitStatus.Stacks);
+				if (GameXXKCardRules::AddCombatStatus(*ResolvedTarget, OnHitStatus.Status, OnHitStatus.Stacks) > 0
+					&& PlayerCardRuntime
+					&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(*PlayerCardRuntime, *ResolvedTarget, OutError))
+				{
+					return false;
+				}
 			}
 		}
 	}
@@ -2152,6 +2485,19 @@ bool GameXXKCardRules::ApplyCombatDirectDamage(
 	InOutGuardLinks = MoveTemp(NewGuardLinks);
 	OutResult = MoveTemp(NewResult);
 	return true;
+}
+}
+
+bool GameXXKCardRules::ApplyCombatDirectDamage(
+	TArray<FGameXXKCardCombatUnit>& InOutUnits,
+	TArray<FGameXXKCardGuardLinkRuntime>& InOutGuardLinks,
+	const FGameXXKCardDamageContext& Context,
+	const FName TargetUnitId,
+	const int32 RequestedDamage,
+	FGameXXKCardDamageResult& OutResult,
+	FString* OutError)
+{
+	return ApplyCombatDirectDamageInternal(InOutUnits, InOutGuardLinks, Context, TargetUnitId, RequestedDamage, OutResult, nullptr, OutError);
 }
 
 namespace
@@ -2193,12 +2539,22 @@ namespace
 		return Result;
 	}
 
+	bool IsCurrentHandInstance(const FGameXXKBattleDeckState& Deck, const FName InstanceId)
+	{
+		return !InstanceId.IsNone() && Deck.Hand.ContainsByPredicate([InstanceId](const FGameXXKCardInstance& Instance)
+		{
+			return Instance.InstanceId == InstanceId;
+		});
+	}
+
 	bool ValidateCardBattleRuntimeInternal(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
 	{
 		OutError.Reset();
 		if (!IsSupportedCardBattlePhase(Runtime.Phase) || !IsConcreteTerrain(Runtime.Terrain) || Runtime.RoundNumber < 1 || Runtime.NextModifierOrdinal < 0
 			|| Runtime.RevealedEnemyIntentCount < 0 || Runtime.RevealedEnemyIntentCount > MaxCardBattleEnergy
-			|| Runtime.PendingNextRoundEnergyBonus < 0 || Runtime.PendingNextRoundEnergyBonus > MaxCardBattleEnergy)
+			|| Runtime.PendingNextRoundEnergyBonus < 0 || Runtime.PendingNextRoundEnergyBonus > MaxCardBattleEnergy
+			|| Runtime.PendingNextPlayerHandEnergySurcharge < 0 || Runtime.PendingNextPlayerHandEnergySurcharge > 1
+			|| (Runtime.PendingNextPlayerHandEnergySurcharge == 0) != Runtime.PendingNextPlayerHandEnergySurchargeSourceUnitId.IsNone())
 		{
 			OutError = TEXT("Card battle runtime has an invalid phase, terrain, round, modifier counter, or deferred card state.");
 			return false;
@@ -2224,6 +2580,7 @@ namespace
 		bool bHasParty = false;
 		bool bHasEnemy = false;
 		TSet<FName> ModifierIds;
+		int32 HandBoundEnergySurchargeCount = 0;
 		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
 		{
 			bHasParty |= Unit.Side == EGameXXKCardTargetSide::Party;
@@ -2231,16 +2588,104 @@ namespace
 		}
 		for (const FGameXXKCardBattleModifierRuntime& Modifier : Runtime.Modifiers)
 		{
+			const FGameXXKCardCombatUnit* ModifierSource = FindCombatUnitById(Runtime.Units, Modifier.SourceUnitId);
+			const FGameXXKCardEffectCondition& ModifierCondition = Modifier.Definition.Condition;
 			if (Modifier.ModifierId.IsNone() || ModifierIds.Contains(Modifier.ModifierId)
 				|| Modifier.SourceCardInstanceId.IsNone() || Modifier.SourceUnitId.IsNone()
-				|| !FindCombatUnitById(Runtime.Units, Modifier.SourceUnitId)
+				|| !ModifierSource
 				|| Modifier.Definition.Trigger == EGameXXKCardBattleModifierTrigger::Invalid
 				|| Modifier.Definition.EffectType == EGameXXKCardEffectType::Invalid)
 			{
 				OutError = TEXT("Card battle runtime contains an invalid persistent modifier.");
 				return false;
 			}
+			if (!Modifier.RequiredPlayedCardInstanceId.IsNone()
+				&& (Modifier.SourceCardInstanceId != Modifier.RequiredPlayedCardInstanceId
+					|| !IsCurrentHandInstance(Runtime.Deck, Modifier.RequiredPlayedCardInstanceId)
+					|| ModifierSource->Side != EGameXXKCardTargetSide::Enemy
+					|| (Runtime.Phase != EGameXXKCardBattlePhase::Player && Runtime.Phase != EGameXXKCardBattlePhase::Victory)
+					|| Modifier.Definition.Trigger != EGameXXKCardBattleModifierTrigger::OnCardPlayed
+					|| Modifier.Definition.EffectType != EGameXXKCardEffectType::ModifyEnergyCost
+					|| Modifier.Definition.Target != EGameXXKCardEffectTarget::PlayedCard
+					|| Modifier.Definition.RecipientScope != EGameXXKCardModifierRecipientScope::SharedDeck
+					|| Modifier.Definition.RecipientTarget != EGameXXKCardEffectTarget::PlayedCard
+					|| Modifier.Definition.RequiredTriggeredRole != EGameXXKCharacterRole::Invalid
+					|| !Modifier.Definition.RequiredTriggeredOwnerId.IsNone()
+					|| Modifier.Definition.Expiry != EGameXXKCardModifierExpiry::AfterTriggerCount
+					|| Modifier.Definition.TriggeredAttackTargetScope != EGameXXKCardTriggeredAttackTargetScope::Invalid
+					|| Modifier.Definition.Status != EGameXXKCardStatus::None
+					|| Modifier.Definition.Magnitude != 1
+					|| Modifier.Definition.RemainingTriggers != 1
+					|| Modifier.Definition.MinimumResult != 0
+					|| !Modifier.Definition.bPersistent
+					|| !Modifier.OriginalSelectedTargetUnitId.IsNone()
+					|| !Modifier.RecipientUnitIds.IsEmpty()
+					|| ModifierCondition.Type != EGameXXKCardEffectConditionType::None
+					|| ModifierCondition.Status != EGameXXKCardStatus::None
+					|| ModifierCondition.MinimumStatusStacks != 0
+					|| ModifierCondition.MinimumArmor != 0
+					|| ModifierCondition.HealthPercentThreshold != 0.0f
+					|| ModifierCondition.Terrain != EGameXXKCardTerrain::Invalid
+					|| ModifierCondition.AlternateTerrain != EGameXXKCardTerrain::Invalid
+					|| ModifierCondition.bConsumeStatus
+					|| ModifierCondition.MaxConsumedStatusStacks != 0
+					|| ModifierCondition.bScaleMagnitudeByConsumedStacks
+					|| ModifierCondition.bConsumeOwnerArmor
+					|| ModifierCondition.MaxConsumedArmor != 0
+					|| ModifierCondition.bNegate))
+			{
+				OutError = TEXT("A hand-bound energy surcharge modifier is malformed or no longer bound to its exact current hand instance.");
+				return false;
+			}
+			if (!Modifier.RequiredPlayedCardInstanceId.IsNone() && ++HandBoundEnergySurchargeCount > 1)
+			{
+				OutError = TEXT("Card battle runtime cannot stack multiple hand-bound energy surcharge modifiers.");
+				return false;
+			}
 			ModifierIds.Add(Modifier.ModifierId);
+		}
+		if (Runtime.PendingNextPlayerHandEnergySurcharge > 0)
+		{
+			if (Runtime.Phase != EGameXXKCardBattlePhase::Enemy)
+			{
+				OutError = TEXT("A pending next-hand energy surcharge can only persist during the enemy phase.");
+				return false;
+			}
+			const FGameXXKCardCombatUnit* PendingSource = FindCombatUnitById(Runtime.Units, Runtime.PendingNextPlayerHandEnergySurchargeSourceUnitId);
+			if (!PendingSource || PendingSource->Side != EGameXXKCardTargetSide::Enemy)
+			{
+				OutError = TEXT("A pending next-hand energy surcharge requires a stable enemy source.");
+				return false;
+			}
+		}
+		TSet<FString> EquipmentEffectKeys;
+		for (const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : Runtime.EquipmentEffects)
+		{
+			const FGameXXKCardCombatUnit* Source = FindCombatUnitById(Runtime.Units, EffectRuntime.SourceCharacterId);
+			const FGameXXKEquipmentActiveEffect& Effect = EffectRuntime.ActiveEffect;
+			const FString Key = Effect.EffectId.ToString() + TEXT("|") + EffectRuntime.SourceCharacterId.ToString();
+			if (EffectRuntime.SourceCharacterId.IsNone()
+				|| Effect.EffectId.IsNone()
+				|| Effect.SourceCharacterId != EffectRuntime.SourceCharacterId
+				|| !Source
+				|| Source->Side != EGameXXKCardTargetSide::Party
+				|| Source->Role == EGameXXKCharacterRole::QuestNpc
+				|| Effect.Set == EGameXXKEquipmentSet::Invalid
+				|| Effect.Scope == EGameXXKEquipmentSetBonusScope::Invalid
+				|| Effect.Hook == EGameXXKEquipmentSetBonusHook::Invalid
+				|| Effect.ModifierKind == EGameXXKEquipmentModifierKind::Invalid
+				|| Effect.Unit == EGameXXKEquipmentMagnitudeUnit::Invalid
+				|| Effect.Magnitude <= 0
+				|| !FGameXXKEquipmentRules::IsKnownActiveEffect(Effect)
+				|| EffectRuntime.CurrentRoundTriggerCount < 0
+				|| EffectRuntime.LastTriggerRound < 0
+				|| EffectRuntime.LastTriggerRound > Runtime.RoundNumber
+				|| EquipmentEffectKeys.Contains(Key))
+			{
+				OutError = TEXT("Card battle runtime contains an invalid equipment effect descriptor.");
+				return false;
+			}
+			EquipmentEffectKeys.Add(Key);
 		}
 		if (!bHasParty || !bHasEnemy)
 		{
@@ -2308,29 +2753,32 @@ namespace
 			OutError = TEXT("The requested card instance is not in the current hand.");
 			return false;
 		}
-		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(Instance->CardId);
-		if (!Definition)
+		const FGameXXKCardDefinition* BaseDefinition = FGameXXKCardCatalog::FindCardDefinition(Instance->CardId);
+		if (!BaseDefinition)
 		{
 			OutError = TEXT("The requested hand card has no catalog definition.");
 			return false;
 		}
+		const FGameXXKCardDefinition EffectiveDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
+			*BaseDefinition,
+			Instance->CurrentQuality);
 		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(Runtime.Units, Instance->OwnerUnitId);
 		if (!Owner || !Owner->bLiving)
 		{
 			OutError = TEXT("The card owner is absent or defeated.");
 			return false;
 		}
-		if (Definition->EnergyCost < 0 || Definition->ManaCost < 0)
+		if (EffectiveDefinition.EnergyCost < 0 || EffectiveDefinition.ManaCost < 0)
 		{
 			OutError = TEXT("The requested hand card has invalid resource costs.");
 			return false;
 		}
-		int32 EffectiveEnergyCost = Definition->EnergyCost;
-		if (!BuildEffectiveCardEnergyCost(Runtime, *Definition, *Instance, *Owner, EffectiveEnergyCost, nullptr, nullptr, nullptr, OutError))
+		int32 EffectiveEnergyCost = EffectiveDefinition.EnergyCost;
+		if (!BuildEffectiveCardEnergyCost(Runtime, EffectiveDefinition, *Instance, *Owner, EffectiveEnergyCost, nullptr, nullptr, nullptr, OutError))
 		{
 			return false;
 		}
-		if (Runtime.Deck.SharedEnergy < EffectiveEnergyCost || Owner->Mana < Definition->ManaCost)
+		if (Runtime.Deck.SharedEnergy < EffectiveEnergyCost || Owner->Mana < EffectiveDefinition.ManaCost)
 		{
 			OutError = TEXT("The card owner does not have enough shared energy or mana.");
 			return false;
@@ -2341,8 +2789,8 @@ namespace
 		NewPreview.CardId = Instance->CardId;
 		NewPreview.OwnerUnitId = Instance->OwnerUnitId;
 		NewPreview.EffectiveEnergyCost = EffectiveEnergyCost;
-		NewPreview.EffectiveManaCost = Definition->ManaCost;
-		if (!GameXXKCardRules::BuildTargetRequest(*Definition, *Instance, Runtime.Terrain, BuildTargetUnitView(Runtime.Units), NewPreview.TargetRequest, &OutError))
+		NewPreview.EffectiveManaCost = EffectiveDefinition.ManaCost;
+		if (!GameXXKCardRules::BuildTargetRequest(EffectiveDefinition, *Instance, Runtime.Terrain, BuildTargetUnitView(Runtime.Units), NewPreview.TargetRequest, &OutError))
 		{
 			return false;
 		}
@@ -2433,6 +2881,11 @@ namespace
 		{
 			OutError = TEXT("A card-play cost modifier must explicitly target the played card.");
 			return false;
+		}
+		if (!Modifier.RequiredPlayedCardInstanceId.IsNone()
+			&& Modifier.RequiredPlayedCardInstanceId != PlayedInstance.InstanceId)
+		{
+			return true;
 		}
 		if (ModifierDefinition.RecipientScope != EGameXXKCardModifierRecipientScope::SharedDeck
 			&& !Modifier.RecipientUnitIds.Contains(PlayedInstance.OwnerUnitId))
@@ -2663,6 +3116,101 @@ namespace
 			}
 		}
 		return true;
+	}
+
+	bool MaterializePendingNextPlayerHandEnergySurcharge(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FString& OutError)
+	{
+		OutError.Reset();
+		const int32 SurchargeAmount = InOutRuntime.PendingNextPlayerHandEnergySurcharge;
+		if (SurchargeAmount == 0)
+		{
+			return true;
+		}
+		if (InOutRuntime.Phase != EGameXXKCardBattlePhase::Player
+			|| SurchargeAmount != 1
+			|| InOutRuntime.PendingNextPlayerHandEnergySurchargeSourceUnitId.IsNone())
+		{
+			OutError = TEXT("A pending next-hand energy surcharge cannot be materialized from this card-battle state.");
+			return false;
+		}
+
+		FGameXXKCardBattleRuntime PreviewRuntime = InOutRuntime;
+		PreviewRuntime.PendingNextPlayerHandEnergySurcharge = 0;
+		PreviewRuntime.PendingNextPlayerHandEnergySurchargeSourceUnitId = NAME_None;
+		const FGameXXKCardInstance* SelectedInstance = nullptr;
+		int32 SelectedNormalEnergyCost = INDEX_NONE;
+		for (const FGameXXKCardInstance& Candidate : InOutRuntime.Deck.Hand)
+		{
+			FGameXXKCardPlayPreview CandidatePreview;
+			FString CandidateError;
+			if (!BuildCardPlayPreviewInternal(PreviewRuntime, Candidate.InstanceId, CandidatePreview, CandidateError))
+			{
+				continue;
+			}
+			const bool bIsBetterCandidate = !SelectedInstance
+				|| CandidatePreview.EffectiveEnergyCost > SelectedNormalEnergyCost
+				|| (CandidatePreview.EffectiveEnergyCost == SelectedNormalEnergyCost
+					&& (Candidate.AcquisitionOrdinal < SelectedInstance->AcquisitionOrdinal
+						|| (Candidate.AcquisitionOrdinal == SelectedInstance->AcquisitionOrdinal
+							&& Candidate.InstanceId.LexicalLess(SelectedInstance->InstanceId))));
+			if (bIsBetterCandidate)
+			{
+				SelectedInstance = &Candidate;
+				SelectedNormalEnergyCost = CandidatePreview.EffectiveEnergyCost;
+			}
+		}
+
+		if (!SelectedInstance)
+		{
+			InOutRuntime.PendingNextPlayerHandEnergySurcharge = 0;
+			InOutRuntime.PendingNextPlayerHandEnergySurchargeSourceUnitId = NAME_None;
+			return true;
+		}
+
+		TSet<FName> ExistingModifierIds;
+		for (const FGameXXKCardBattleModifierRuntime& ExistingModifier : InOutRuntime.Modifiers)
+		{
+			ExistingModifierIds.Add(ExistingModifier.ModifierId);
+		}
+		FName ModifierId = NAME_None;
+		while (ModifierId.IsNone() || ExistingModifierIds.Contains(ModifierId))
+		{
+			if (InOutRuntime.NextModifierOrdinal == MAX_int32)
+			{
+				OutError = TEXT("Battle modifier ordinal has exhausted the supported range.");
+				return false;
+			}
+			ModifierId = FName(*FString::Printf(TEXT("Modifier.%d"), InOutRuntime.NextModifierOrdinal++));
+		}
+
+		FGameXXKCardBattleModifierRuntime& NewModifier = InOutRuntime.Modifiers.AddDefaulted_GetRef();
+		NewModifier.ModifierId = ModifierId;
+		NewModifier.RequiredPlayedCardInstanceId = SelectedInstance->InstanceId;
+		NewModifier.SourceCardInstanceId = SelectedInstance->InstanceId;
+		NewModifier.SourceUnitId = InOutRuntime.PendingNextPlayerHandEnergySurchargeSourceUnitId;
+		NewModifier.Definition.Trigger = EGameXXKCardBattleModifierTrigger::OnCardPlayed;
+		NewModifier.Definition.EffectType = EGameXXKCardEffectType::ModifyEnergyCost;
+		NewModifier.Definition.Target = EGameXXKCardEffectTarget::PlayedCard;
+		NewModifier.Definition.RecipientScope = EGameXXKCardModifierRecipientScope::SharedDeck;
+		NewModifier.Definition.RecipientTarget = EGameXXKCardEffectTarget::PlayedCard;
+		NewModifier.Definition.Expiry = EGameXXKCardModifierExpiry::AfterTriggerCount;
+		NewModifier.Definition.Magnitude = SurchargeAmount;
+		NewModifier.Definition.RemainingTriggers = 1;
+		NewModifier.Definition.bPersistent = true;
+		InOutRuntime.PendingNextPlayerHandEnergySurcharge = 0;
+		InOutRuntime.PendingNextPlayerHandEnergySurchargeSourceUnitId = NAME_None;
+		return true;
+	}
+
+	void RemoveHandBoundEnergySurchargesOutsideCurrentHand(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		InOutRuntime.Modifiers.RemoveAll([&InOutRuntime](const FGameXXKCardBattleModifierRuntime& Modifier)
+		{
+			return !Modifier.RequiredPlayedCardInstanceId.IsNone()
+				&& !IsCurrentHandInstance(InOutRuntime.Deck, Modifier.RequiredPlayedCardInstanceId);
+		});
 	}
 
 	bool ResolveEffectTargetIds(
@@ -3452,7 +4000,11 @@ namespace
 					OutError = TEXT("A first-direct-damage status reaction is missing concrete positive status data.");
 					return false;
 				}
-				GameXXKCardRules::AddCombatStatus(*Attacker, ModifierDefinition.Status, ModifierDefinition.Magnitude);
+				if (GameXXKCardRules::AddCombatStatus(*Attacker, ModifierDefinition.Status, ModifierDefinition.Magnitude) > 0
+					&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(InOutRuntime, *Attacker, &OutError))
+				{
+					return false;
+				}
 			}
 			TriggeredModifierIds.Add(Modifier.ModifierId);
 		}
@@ -3665,7 +4217,7 @@ namespace
 					Status.Stacks = 1;
 				}
 				FGameXXKCardDamageResult DamageResult;
-				if (!GameXXKCardRules::ApplyCombatDirectDamage(InOutRuntime.Units, InOutRuntime.GuardLinks, Context, TargetId, static_cast<int32>(RawDamage), DamageResult, &OutError))
+				if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(InOutRuntime, Context, TargetId, static_cast<int32>(RawDamage), DamageResult, &OutError))
 				{
 					return false;
 				}
@@ -3888,16 +4440,16 @@ namespace
 				}
 				if (Effect.Type == EGameXXKCardEffectType::DrawCards)
 				{
-					bool bWillResolveDeclaredDiscard = false;
+					int32 DeclaredDiscardCount = 0;
 					for (int32 LaterEffectIndex = EffectIndex + 1; LaterEffectIndex < Definition.Effects.Num(); ++LaterEffectIndex)
 					{
 						if (Definition.Effects[LaterEffectIndex].Type == EGameXXKCardEffectType::DiscardCards)
 						{
-							bWillResolveDeclaredDiscard = true;
+							DeclaredDiscardCount = Definition.Effects[LaterEffectIndex].Magnitude;
 							break;
 						}
 					}
-					if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, Effect.Magnitude, bWillResolveDeclaredDiscard, &OutError))
+					if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, Effect.Magnitude, DeclaredDiscardCount, &OutError))
 					{
 						return false;
 					}
@@ -3932,9 +4484,9 @@ namespace
 				{
 					if (InOutRuntime.Deck.PendingChoice.Kind == EGameXXKCardPendingChoiceKind::ForcedDiscard)
 					{
-						if (InOutRuntime.Deck.PendingChoice.RequiredDiscardCount > Effect.Magnitude)
+						if (InOutRuntime.Deck.PendingChoice.RequiredDiscardCount != Effect.Magnitude)
 						{
-							OutError = TEXT("Draw-then-discard created more required discards than the card declares.");
+							OutError = TEXT("Draw-then-discard choice does not match the card's declared discard count.");
 							return false;
 						}
 						InOutResult.bOpenedPendingChoice = true;
@@ -4006,7 +4558,7 @@ namespace
 							? EGameXXKCardDamageKind::GroupAttack
 							: EGameXXKCardDamageKind::SingleTargetAttack;
 						FGameXXKCardDamageResult DamageResult;
-						if (!GameXXKCardRules::ApplyCombatDirectDamage(InOutRuntime.Units, InOutRuntime.GuardLinks, Context, Target->UnitId, static_cast<int32>(RawDamage), DamageResult, &OutError))
+						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(InOutRuntime, Context, Target->UnitId, static_cast<int32>(RawDamage), DamageResult, &OutError))
 						{
 							return false;
 						}
@@ -4076,7 +4628,7 @@ namespace
 					}
 					const int64 MultiplierPercent = FMath::Max<int64>(0, 100 + static_cast<int64>(HealingBonusPercent));
 					const int64 FinalHealing = BaseHealing * MultiplierPercent / 100 + HealingFlatBonus;
-					Target->HP = static_cast<int32>(FMath::Min<int64>(Target->MaxHP, static_cast<int64>(Target->HP) + FMath::Max<int64>(0, FinalHealing)));
+					GameXXKCardRules::HealCombatUnit(*Target, static_cast<int32>(FMath::Clamp<int64>(FinalHealing, 0, MAX_int32)));
 					break;
 				}
 				case EGameXXKCardEffectType::AddArmor:
@@ -4092,7 +4644,11 @@ namespace
 					break;
 				}
 				case EGameXXKCardEffectType::ApplyStatus:
-					GameXXKCardRules::AddCombatStatus(*Target, Effect.Status, Effect.Magnitude);
+					if (GameXXKCardRules::AddCombatStatus(*Target, Effect.Status, Effect.Magnitude) > 0
+						&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(InOutRuntime, *Target, &OutError))
+					{
+						return false;
+					}
 					break;
 				case EGameXXKCardEffectType::RemoveStatus:
 					GameXXKCardRules::ConsumeCombatStatus(*Target, Effect.Status, Effect.Magnitude);
@@ -4148,7 +4704,7 @@ namespace
 						Context.SourceUnitId = Source.UnitId;
 						Context.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
 						FGameXXKCardDamageResult DamageResult;
-						if (!GameXXKCardRules::ApplyCombatDirectDamage(InOutRuntime.Units, InOutRuntime.GuardLinks, Context, EffectTargetId, static_cast<int32>(RawDamage), DamageResult, &OutError))
+						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(InOutRuntime, Context, EffectTargetId, static_cast<int32>(RawDamage), DamageResult, &OutError))
 						{
 							return false;
 						}
@@ -4267,6 +4823,130 @@ bool GameXXKCardRules::ValidateCardBattleRuntime(const FGameXXKCardBattleRuntime
 	return bValid;
 }
 
+bool GameXXKCardRules::ApplyPlayerCardDirectDamage(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	const FGameXXKCardDamageContext& Context,
+	const FName TargetUnitId,
+	const int32 RequestedDamage,
+	FGameXXKCardDamageResult& OutResult,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	if (!IsDirectAttackDamageKind(Context.Kind) || Context.SourceUnitId.IsNone())
+	{
+		return SetFailure(OutError, TEXT("Player card direct damage requires a concrete direct-attack context and source."));
+	}
+	FString ValidationError;
+	if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	const FGameXXKCardCombatUnit* Source = FindCombatUnitById(InOutRuntime.Units, Context.SourceUnitId);
+	if (!Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Party)
+	{
+		return SetFailure(OutError, TEXT("Player card direct damage requires one living party source."));
+	}
+
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	FGameXXKCardDamageResult NewResult;
+	if (!ApplyCombatDirectDamageInternal(
+		NewRuntime.Units,
+		NewRuntime.GuardLinks,
+		Context,
+		TargetUnitId,
+		RequestedDamage,
+		NewResult,
+		&NewRuntime,
+		&ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	InOutRuntime = MoveTemp(NewRuntime);
+	OutResult = MoveTemp(NewResult);
+	return true;
+}
+
+bool GameXXKCardRules::QueueNextPlayerHandEnergySurcharge(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	const int32 SurchargeAmount,
+	const FName SourceUnitId,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	FString ValidationError;
+	if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (InOutRuntime.Phase != EGameXXKCardBattlePhase::Enemy
+		|| SurchargeAmount != 1
+		|| SourceUnitId.IsNone())
+	{
+		return SetFailure(OutError, TEXT("A next-player-hand energy surcharge requires one positive point from a stable enemy during the enemy phase."));
+	}
+	const FGameXXKCardCombatUnit* Source = FindCombatUnitById(InOutRuntime.Units, SourceUnitId);
+	if (!Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Enemy)
+	{
+		return SetFailure(OutError, TEXT("A next-player-hand energy surcharge requires its living enemy source to remain valid."));
+	}
+	if (InOutRuntime.PendingNextPlayerHandEnergySurcharge != 0)
+	{
+		// Multiple catalog packets in one enemy phase deliberately collapse to the first saved effect.
+		return true;
+	}
+
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	NewRuntime.PendingNextPlayerHandEnergySurcharge = SurchargeAmount;
+	NewRuntime.PendingNextPlayerHandEnergySurchargeSourceUnitId = SourceUnitId;
+	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	InOutRuntime = MoveTemp(NewRuntime);
+	return true;
+}
+
+bool GameXXKCardRules::SubmitForcedDiscard(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	const TArray<FName>& DiscardedInstanceIds,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+
+	FString ValidationError;
+	if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	if (!GameXXKCardRules::SubmitForcedDiscard(NewRuntime.Deck, DiscardedInstanceIds, &ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	RemoveHandBoundEnergySurchargesOutsideCurrentHand(NewRuntime);
+	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+
+	InOutRuntime = MoveTemp(NewRuntime);
+	return true;
+}
+
 bool GameXXKCardRules::BuildCardPlayPreview(
 	const FGameXXKCardBattleRuntime& Runtime,
 	const FName CardInstanceId,
@@ -4283,10 +4963,21 @@ bool GameXXKCardRules::BuildCardPlayPreview(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
-	const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(NewPreview.CardId);
-	if (!Definition || !ValidateCurrentEffectPlan(*Definition, ValidationError))
+	EGameXXKCardZone Zone = EGameXXKCardZone::Invalid;
+	const FGameXXKCardInstance* Instance = FindInstance(Runtime.Deck, CardInstanceId, Zone);
+	const FGameXXKCardDefinition* BaseDefinition = Instance
+		? FGameXXKCardCatalog::FindCardDefinition(Instance->CardId)
+		: nullptr;
+	if (!Instance || Zone != EGameXXKCardZone::Hand || !BaseDefinition)
 	{
-		return SetFailure(OutError, Definition ? ValidationError : TEXT("The requested hand card has no catalog definition."));
+		return SetFailure(OutError, TEXT("The requested hand card has no catalog definition."));
+	}
+	const FGameXXKCardDefinition EffectiveDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
+		*BaseDefinition,
+		Instance->CurrentQuality);
+	if (!ValidateCurrentEffectPlan(EffectiveDefinition, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
 	}
 	OutPreview = MoveTemp(NewPreview);
 	return true;
@@ -4334,17 +5025,20 @@ bool GameXXKCardRules::ResolveCardPlay(
 
 	EGameXXKCardZone Zone = EGameXXKCardZone::Invalid;
 	const FGameXXKCardInstance* Instance = FindInstance(NewRuntime.Deck, CardInstanceId, Zone);
-	const FGameXXKCardDefinition* Definition = Instance ? FGameXXKCardCatalog::FindCardDefinition(Instance->CardId) : nullptr;
+	const FGameXXKCardDefinition* BaseDefinition = Instance ? FGameXXKCardCatalog::FindCardDefinition(Instance->CardId) : nullptr;
 	FGameXXKCardCombatUnit* Owner = Instance ? FindCombatUnitById(NewRuntime.Units, Instance->OwnerUnitId) : nullptr;
-	if (!Instance || Zone != EGameXXKCardZone::Hand || !Definition || !Owner || !Owner->bLiving)
+	if (!Instance || Zone != EGameXXKCardZone::Hand || !BaseDefinition || !Owner || !Owner->bLiving)
 	{
 		return SetFailure(OutError, TEXT("The card, catalog definition, or living owner changed before card play could commit."));
 	}
+	const FGameXXKCardDefinition QualityEffectiveDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
+		*BaseDefinition,
+		Instance->CurrentQuality);
 	TArray<FName> AppliedCostModifierIds;
 	TArray<FName> TerrainFreeStatusUnitIds;
 	TArray<FName> TerrainReductionStatusUnitIds;
-	int32 FreshEffectiveEnergyCost = Definition->EnergyCost;
-	if (!BuildEffectiveCardEnergyCost(NewRuntime, *Definition, *Instance, *Owner, FreshEffectiveEnergyCost, &AppliedCostModifierIds, &TerrainFreeStatusUnitIds, &TerrainReductionStatusUnitIds, ValidationError))
+	int32 FreshEffectiveEnergyCost = QualityEffectiveDefinition.EnergyCost;
+	if (!BuildEffectiveCardEnergyCost(NewRuntime, QualityEffectiveDefinition, *Instance, *Owner, FreshEffectiveEnergyCost, &AppliedCostModifierIds, &TerrainFreeStatusUnitIds, &TerrainReductionStatusUnitIds, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
@@ -4377,13 +5071,17 @@ bool GameXXKCardRules::ResolveCardPlay(
 	NewResult.CardId = CopiedInstance.CardId;
 	NewResult.OwnerUnitId = CopiedInstance.OwnerUnitId;
 	NewResult.TargetUnitIds = TargetIds;
-	FGameXXKCardDefinition EffectiveDefinition;
-	if (!BuildTerrainAmplifiedDefinition(NewRuntime, *Definition, CopiedInstance, EffectiveDefinition, ValidationError)
-		|| !ResolveCurrentCardEffects(NewRuntime, EffectiveDefinition, CopiedInstance, TargetIds, NewResult, ValidationError))
+	FGameXXKCardDefinition TerrainEffectiveDefinition;
+	if (!BuildTerrainAmplifiedDefinition(NewRuntime, QualityEffectiveDefinition, CopiedInstance, TerrainEffectiveDefinition, ValidationError)
+		|| !ResolveCurrentCardEffects(NewRuntime, TerrainEffectiveDefinition, CopiedInstance, TargetIds, NewResult, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
 	UpdateBattleTerminalPhase(NewRuntime);
+	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
@@ -4418,16 +5116,27 @@ bool GameXXKCardRules::EndPlayerCardPhase(
 
 	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
 	TArray<FGameXXKCardDamageResult> NewEndPhaseDamageResults;
-	if (!DiscardRemainingHand(NewRuntime.Deck, ValidationError)
-		|| !ApplyEndPhaseDotForSide(NewRuntime, EGameXXKCardTargetSide::Party, NewEndPhaseDamageResults, ValidationError))
+	if (!DiscardRemainingHand(NewRuntime.Deck, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	RemoveHandBoundEnergySurchargesOutsideCurrentHand(NewRuntime);
+	if (!ApplyEndPhaseDotForSide(NewRuntime, EGameXXKCardTargetSide::Party, NewEndPhaseDamageResults, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
 	UpdateBattleTerminalPhase(NewRuntime);
+	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Player)
 	{
 		// Enemies begin their own phase after player-side DoT resolves, so only their armor expires here.
-		ClearArmorAtSidePhaseStart(NewRuntime, EGameXXKCardTargetSide::Enemy);
+		if (!ClearArmorAtSidePhaseStart(NewRuntime, EGameXXKCardTargetSide::Enemy, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
 		NewRuntime.Phase = EGameXXKCardBattlePhase::Enemy;
 	}
 	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
@@ -4494,6 +5203,10 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 		return SetFailure(OutError, ValidationError);
 	}
 	UpdateBattleTerminalPhase(NewRuntime);
+	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
@@ -4537,6 +5250,10 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		return SetFailure(OutError, ValidationError);
 	}
 	UpdateBattleTerminalPhase(NewRuntime);
+	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Enemy)
 	{
 		// A full round ends only after enemy-side DoT. Evaluate this before clearing party armor.
@@ -4544,7 +5261,10 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		{
 			return SetFailure(OutError, ValidationError);
 		}
-		ClearArmorAtSidePhaseStart(NewRuntime, EGameXXKCardTargetSide::Party);
+		if (!ClearArmorAtSidePhaseStart(NewRuntime, EGameXXKCardTargetSide::Party, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
 		ExpireRoundBoundState(NewRuntime);
 		NewRuntime.RevealedEnemyIntentCount = FMath::Max(0, NewRuntime.RevealedEnemyIntentCount - 1);
 		if (NewRuntime.RoundNumber == MAX_int32)
@@ -4555,11 +5275,15 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		NewRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, 3 + NewRuntime.PendingNextRoundEnergyBonus);
 		NewRuntime.PendingNextRoundEnergyBonus = 0;
 		const int32 DrawCount = FMath::Max(0, NewRuntime.Deck.HandLimit - NewRuntime.Deck.Hand.Num());
-		if (!DrawCards(NewRuntime.Deck, DrawCount, false, &ValidationError))
+		if (!DrawCards(NewRuntime.Deck, DrawCount, 0, &ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);
 		}
 		NewRuntime.Phase = EGameXXKCardBattlePhase::Player;
+		if (!MaterializePendingNextPlayerHandEnergySurcharge(NewRuntime, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
 	}
 	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{

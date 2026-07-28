@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import argparse
+import os
 from pathlib import Path
 
 # === Config ===
@@ -135,7 +136,8 @@ def build_project() -> bool:
     cmd = [
         str(UE_BUILD_BAT),
         BUILD_TARGET, "Win64", BUILD_CONFIG,
-        f'-Project={UPROJECT.as_posix()}'
+        f'-Project={UPROJECT.as_posix()}',
+        "-NoHotReload",
     ]
     print(f"[BUILD] {' '.join(cmd)}")
     result = subprocess.run(cmd, cwd=str(UE_BUILD_BAT.parent.parent.parent))
@@ -148,18 +150,27 @@ def build_project() -> bool:
 
 
 def launch_editor(mcp_port: int = DEFAULT_PORT) -> subprocess.Popen | None:
-    """Launch UE editor in background. Returns the Popen handle."""
+    """Launch an unattended MCP editor without the UE SDK-probe child processes."""
     print(f"[LAUNCH] Starting editor...")
     try:
+        child_environment = os.environ.copy()
+        # TargetPlatformManager starts a UBT SDK probe when this is absent.
+        # This is deliberately scoped to the automation child process: normal
+        # interactive editor launches and packaging still validate SDKs.
+        child_environment["UE_SKIP_UBT_SDK_SETUP"] = "1"
         proc = subprocess.Popen(
             [
                 str(UE_EDITOR),
                 UPROJECT.as_posix(),
+                "-Unattended",
+                "-UnattendedInput",
                 "-ModelContextProtocolStartServer",
                 f"-ModelContextProtocolPort={int(mcp_port)}",
+                "-DDC-ForceMemoryCache",
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            env=child_environment,
         )
         print(f"[LAUNCH] Editor PID: {proc.pid}")
         return proc
@@ -251,7 +262,9 @@ def run_tdd_cycle(
     if client.is_in_pie():
         print("[TDD] PIE was already running, stopping first...")
         client.stop_pie()
-        time.sleep(2)
+        if not client.wait_for_pie_state(False):
+            result["error"] = "PIE did not stop before the TDD pipeline attempted a fresh start"
+            return result
 
     if not client.start_pie(warmup_seconds=1.0):
         result["error"] = "Failed to start PIE"
@@ -272,6 +285,9 @@ def run_tdd_cycle(
 
     # Phase 4.8: Stop PIE
     client.stop_pie()
+    if not client.wait_for_pie_state(False):
+        result["error"] = "PIE did not stop before the TDD pipeline returned"
+        return result
     print("[TDD] PIE stopped")
 
     # Additional wait for any post-PIE log flush

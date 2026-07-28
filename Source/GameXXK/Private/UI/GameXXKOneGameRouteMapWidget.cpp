@@ -13,11 +13,15 @@
 #include "Components/ScrollBoxSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Components/Widget.h"
 #include "Engine/Texture2D.h"
+#include "GameXXKRunDeckRules.h"
 #include "Input/Reply.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKMVPCommandRouter.h"
+#include "UI/GameXXKPartyDeckUiStyle.h"
 
 namespace
 {
@@ -231,6 +235,7 @@ FEventReply UGameXXKOneGameRouteMapWidget::HandleRouteDragSurfaceMouseMove(
 void UGameXXKOneGameRouteMapWidget::RefreshFromState()
 {
 	BuildProgrammaticLayout();
+	UpdateRouteSummary();
 	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
 	for (int32 LineIndex = 0; LineIndex < LineVisualWidgets.Num(); ++LineIndex)
 	{
@@ -243,10 +248,82 @@ void UGameXXKOneGameRouteMapWidget::RefreshFromState()
 	}
 
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	SetVisibility(Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::DungeonMap
+	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
+	const bool bKeepRouteVisibleUnderEncounter = ActiveScreen == EGameXXKScreen::RouteEvent
+		|| ActiveScreen == EGameXXKScreen::RouteMerchant;
+	SetVisibility(Subsystem && (ActiveScreen == EGameXXKScreen::DungeonMap || bKeepRouteVisibleUnderEncounter)
 		? ESlateVisibility::Visible
 		: ESlateVisibility::Collapsed);
 	ApplyInitialScrollOffset(Nodes);
+}
+
+FGameXXKRouteMapSummaryView UGameXXKOneGameRouteMapWidget::BuildRouteSummaryView() const
+{
+	FGameXXKRouteMapSummaryView Summary;
+	Summary.CapacityLimit = FGameXXKRunDeckRules::MaxRouteCardCapacity;
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return Summary;
+	}
+
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	Summary.RouteTravelMoney = State.CardRun.RouteTravelMoney;
+	for (const FGameXXKRouteMapNode& Node : State.RouteMapNodes)
+	{
+		if (Node.NodeKind == EGameXXKNodeKind::Start)
+		{
+			continue;
+		}
+		++Summary.TotalNodeCount;
+		if (State.VisitedRouteNodeIds.Contains(Node.NodeId))
+		{
+			++Summary.CompletedNodeCount;
+		}
+	}
+
+	Summary.bCapacityValid = FGameXXKRunDeckRules::GetCapacityUsed(
+		State.CardRun.RouteCardEntries,
+		Summary.CapacityUsed,
+		nullptr);
+	return Summary;
+}
+
+FGameXXKRouteMapSummaryView UGameXXKOneGameRouteMapWidget::GetRouteSummaryViewForTest() const
+{
+	return BuildRouteSummaryView();
+}
+
+FText UGameXXKOneGameRouteMapWidget::GetRouteMoneySummaryTextForTest() const
+{
+	return RouteMoneySummaryText ? RouteMoneySummaryText->GetText() : FText::GetEmpty();
+}
+
+void UGameXXKOneGameRouteMapWidget::UpdateRouteSummary()
+{
+	const FGameXXKRouteMapSummaryView Summary = BuildRouteSummaryView();
+	if (RouteMoneySummaryText)
+	{
+		RouteMoneySummaryText->SetText(FText::Format(
+			NSLOCTEXT("GameXXKRouteMap", "TravelMoneySummary", "行旅钱  {0}"),
+			FText::AsNumber(Summary.RouteTravelMoney)));
+	}
+	if (RouteProgressSummaryText)
+	{
+		RouteProgressSummaryText->SetText(FText::Format(
+			NSLOCTEXT("GameXXKRouteMap", "ProgressSummary", "路线进度  {0} / {1}"),
+			FText::AsNumber(Summary.CompletedNodeCount),
+			FText::AsNumber(Summary.TotalNodeCount)));
+	}
+	if (RouteCapacitySummaryText)
+	{
+		RouteCapacitySummaryText->SetText(Summary.bCapacityValid
+			? FText::Format(
+				NSLOCTEXT("GameXXKRouteMap", "CapacitySummary", "临时路线牌  {0} / {1}"),
+				FText::AsNumber(Summary.CapacityUsed),
+				FText::AsNumber(Summary.CapacityLimit))
+			: NSLOCTEXT("GameXXKRouteMap", "CapacitySummaryInvalid", "临时路线牌  -- / 12"));
+	}
 }
 
 TArray<FGameXXKOneGameRouteNode> UGameXXKOneGameRouteMapWidget::BuildAdapterNodes() const
@@ -623,7 +700,8 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		bRouteLayoutWasCreated = true;
 
 		RouteScrollBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("GameXXKOneGameRouteMapScroll"));
-		RouteScrollBox->SetScrollBarVisibility(ESlateVisibility::Collapsed);
+		RouteScrollBox->SetScrollBarVisibility(ESlateVisibility::Visible);
+		FGameXXKPartyDeckUiStyle::ApplyPaperInkScrollBar(RouteScrollBox);
 		if (UOverlaySlot* ScrollSlot = RootOverlay->AddChildToOverlay(RouteScrollBox))
 		{
 			ScrollSlot->SetHorizontalAlignment(HAlign_Fill);
@@ -634,6 +712,46 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("GameXXKOneGameRouteMapContent"));
 		RouteContentSizeBox->AddChild(RootCanvas);
 		RouteScrollBox->AddChild(RouteContentSizeBox);
+	}
+
+	if (RootOverlay && !RouteSummaryBorder)
+	{
+		RouteSummaryBorder = WidgetTree->ConstructWidget<UBorder>(
+			UBorder::StaticClass(),
+			TEXT("GameXXKRouteMapFixedSummary"));
+		RouteSummaryBorder->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		RouteSummaryBorder->SetPadding(FMargin(18.0f, 14.0f));
+		RouteSummaryBorder->SetBrushColor(FLinearColor(0.055f, 0.045f, 0.035f, 0.84f));
+		if (UOverlaySlot* SummarySlot = RootOverlay->AddChildToOverlay(RouteSummaryBorder))
+		{
+			SummarySlot->SetHorizontalAlignment(HAlign_Left);
+			SummarySlot->SetVerticalAlignment(VAlign_Top);
+			SummarySlot->SetPadding(FMargin(28.0f, 24.0f, 0.0f, 0.0f));
+		}
+
+		RouteSummaryStack = WidgetTree->ConstructWidget<UVerticalBox>(
+			UVerticalBox::StaticClass(),
+			TEXT("GameXXKRouteMapSummaryStack"));
+		RouteSummaryStack->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		RouteSummaryBorder->SetContent(RouteSummaryStack);
+
+		auto AddSummaryLine = [this](const FName Name, TObjectPtr<UTextBlock>& OutText)
+		{
+			OutText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
+			OutText->SetVisibility(ESlateVisibility::HitTestInvisible);
+			OutText->SetColorAndOpacity(FSlateColor(FLinearColor(0.94f, 0.86f, 0.68f, 1.0f)));
+			FSlateFontInfo Font = OutText->GetFont();
+			Font.Size = 20;
+			OutText->SetFont(Font);
+			if (UVerticalBoxSlot* LineSlot = RouteSummaryStack->AddChildToVerticalBox(OutText))
+			{
+				LineSlot->SetPadding(FMargin(0.0f, 2.0f));
+			}
+		};
+		AddSummaryLine(TEXT("GameXXKRouteMoneySummary"), RouteMoneySummaryText);
+		AddSummaryLine(TEXT("GameXXKRouteProgressSummary"), RouteProgressSummaryText);
+		AddSummaryLine(TEXT("GameXXKRouteCapacitySummary"), RouteCapacitySummaryText);
+		UpdateRouteSummary();
 	}
 
 	if (!RootCanvas || !RouteContentSizeBox)
@@ -1360,9 +1478,9 @@ void UGameXXKOneGameRouteMapWidget::SetRouteScrollOffset(float NewScrollOffset)
 	}
 }
 
-bool UGameXXKOneGameRouteMapWidget::IsRouteScrollBarHiddenForTest() const
+bool UGameXXKOneGameRouteMapWidget::IsRouteScrollBarVisibleForTest() const
 {
-	return RouteScrollBox && RouteScrollBox->GetScrollBarVisibility() == ESlateVisibility::Collapsed;
+	return RouteScrollBox && RouteScrollBox->GetScrollBarVisibility() == ESlateVisibility::Visible;
 }
 
 float UGameXXKOneGameRouteMapWidget::GetMaxScrollOffsetForTest() const

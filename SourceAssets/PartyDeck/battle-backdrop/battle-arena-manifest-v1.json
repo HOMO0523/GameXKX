@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "generation_mode": "built_in_imagegen_style_reference",
+  "asset_key": "BattleArena.Riverside.GeneratedV1",
+  "source_image": "battle_arena_riverside_source_v1.png",
+  "source_size": [
+    1672,
+    941
+  ],
+  "source_sha256": "ab8b882de676b74693cb2d3c279ca11f2126aaa4fdf382dedaa810b34ac1a3a8",
+  "source_alpha_policy": "opaque_background",
+  "style_reference": {
+    "path": "outputs/江湖行分层PSD/clean_assets_v2/000.png",
+    "role": "visual style reference only; no original artwork is overwritten"
+  },
+  "generation_prompt": "Create a text-free 16:9 battle arena background for a Chinese ink-wash wuxia game, matching the approved Jianghuxing PSD palette: pale rice-paper ground, warm yellow-beige stone fighting circle at center, subtle ink-brush borders, river, reeds, a small wooden bridge, layered misty green mountains, restrained vermilion accents, readable dark outer silhouette, no UI, no card frame, no logo, no people, no words, no watermark.",
+  "planned_unreal_asset": "/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Riverside_GeneratedV1",
+  "planned_material_asset": "/Game/GameXXK/UI/Battle/Materials/M_BattleArena_Riverside_GeneratedV1",
+  "created_utc": "2026-07-16T00:00:00Z"
+}

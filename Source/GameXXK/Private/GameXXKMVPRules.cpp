@@ -1,11 +1,29 @@
 #include "GameXXKMVPRules.h"
 
+#include "GameXXKCardBattleAdapter.h"
+#include "GameXXKCharacterStatRules.h"
+#include "GameXXKCompanionCatalog.h"
+#include "GameXXKCompanionRules.h"
+#include "GameXXKEncounterRules.h"
+#include "GameXXKEquipmentCatalog.h"
+#include "GameXXKEquipmentEconomyRules.h"
+#include "GameXXKEquipmentRules.h"
+#include "GameXXKRelicRules.h"
+#include "GameXXKRouteCardRecipe.h"
+#include "GameXXKRouteEconomyRules.h"
+#include "GameXXKRouteEncounterCatalog.h"
+#include "GameXXKRouteMerchantRules.h"
+#include "GameXXKRouteSettlementRules.h"
+#include "MVP/GameXXKSaveMigration.h"
+
 namespace GameXXKMVP
 {
 	static const FName RegionQingshanName(TEXT("Region.Qingshan"));
 	static const FName RegionHuangshanName(TEXT("Region.Huangshan"));
 	static const FName RegionTanjiangName(TEXT("Region.Tanjiang"));
 	static const FName ItemHealingPowderName(TEXT("Item.HealingPowder"));
+	static const FName ItemEnhancementStoneName(TEXT("Item.EnhancementStone"));
+	static const FName ItemQingshanRouteSealName(TEXT("Item.QingshanRouteSeal"));
 	static const FName ItemLingzhiPowderName(TEXT("Item.LingzhiPowder"));
 	static const FName ItemQingxinTeaName(TEXT("Item.QingxinTea"));
 	static const FName ItemCraneSachetName(TEXT("Item.CraneSachet"));
@@ -17,16 +35,29 @@ namespace GameXXKMVP
 	static const FName ItemStarterClothArmorName(TEXT("Item.StarterClothArmor"));
 	static const FName ItemClothTalismanName(TEXT("Item.ClothTalisman"));
 	static const FName TaskQingshanMainName(TEXT("Task.QingshanMain"));
+	static const FName QuestNpcTusiChiefName(TEXT("Npc.TusiChief"));
 	static const FName CodexGuideName(TEXT("Codex.Guide"));
-	static const FName CodexBanditName(TEXT("Codex.Bandit"));
-	static const FName CodexWolfName(TEXT("Codex.Wolf"));
-	static const FName CodexEliteBanditName(TEXT("Codex.EliteBandit"));
-	static const FName CodexBossName(TEXT("Codex.Boss"));
+	static const FName CodexMoneyRatName(TEXT("Codex.MoneyRat"));
+	static const FName CodexBlackBearName(TEXT("Codex.BlackBear"));
+	static const FName CodexTigerName(TEXT("Codex.Tiger"));
+	static const FName LegacyCodexBanditName(TEXT("Codex.Bandit"));
+	static const FName LegacyCodexWolfName(TEXT("Codex.Wolf"));
+	static const FName LegacyCodexEliteBanditName(TEXT("Codex.EliteBandit"));
+	static const FName LegacyCodexBossName(TEXT("Codex.Boss"));
 	static const FName BattleRuntimeBanditName(TEXT("Bandit"));
 	static const FName BattleRuntimeWolfName(TEXT("Wolf"));
 	static const FName BattleRuntimeEliteBanditName(TEXT("EliteBandit"));
 	static const FName BattleRuntimeBossName(TEXT("Boss"));
+	static const FName BattleRuntimeMoneyRatName(TEXT("MoneyRat"));
+	static const FName BattleRuntimeBlackBearName(TEXT("BlackBear"));
+	static const FName BattleRuntimeTigerName(TEXT("Tiger"));
+	static constexpr int32 CurrentSaveVersion = FGameXXKSaveMigration::CurrentSaveVersion;
+	static constexpr int32 GuideCodexIntroductionSaveVersion = 5;
+	static constexpr int32 CurrentEnemyCodexMigrationSaveVersion = 6;
 	static constexpr int32 MaxItemEnhancementLevel = 10;
+	static constexpr int32 NormalPermanentCompanionBattleExperience = 25;
+	static constexpr int32 ElitePermanentCompanionBattleExperience = 40;
+	static constexpr int32 BossPermanentCompanionBattleExperience = 60;
 
 	static FGameXXKItemDef MakeItem(FName Id, const TCHAR* DisplayName, EGameXXKItemKind Kind, int32 Buy, int32 Sell, int32 Heal, int32 MPHeal, int32 Attack, int32 Defense, int32 MaxHP, int32 MaxMP)
 	{
@@ -63,10 +94,9 @@ namespace GameXXKMVP
 	{
 		static const TArray<FGameXXKCodexEntryDef> EntryDefs = {
 			MakeCodexEntry(CodexGuideName, EGameXXKCodexCategory::Hero, TEXT("引路人"), TEXT("在青山镇相遇的同行者。")),
-			MakeCodexEntry(CodexBanditName, EGameXXKCodexCategory::Monster, TEXT("山匪"), TEXT("盘踞在青山道上的敌人。")),
-			MakeCodexEntry(CodexWolfName, EGameXXKCodexCategory::Beast, TEXT("野狼"), TEXT("出没于山道的凶兽。")),
-			MakeCodexEntry(CodexEliteBanditName, EGameXXKCodexCategory::Monster, TEXT("精英山匪"), TEXT("比普通山匪更难应对的精锐。")),
-			MakeCodexEntry(CodexBossName, EGameXXKCodexCategory::Monster, TEXT("虎王"), TEXT("守在青山尽头的首领。")),
+			MakeCodexEntry(CodexMoneyRatName, EGameXXKCodexCategory::Monster, TEXT("金钱鼠"), TEXT("潜伏在青山路旁、伺机窜逃的小兽。")),
+			MakeCodexEntry(CodexBlackBearName, EGameXXKCodexCategory::Monster, TEXT("黑熊"), TEXT("盘踞林洞、以重掌横扫来敌的凶兽。")),
+			MakeCodexEntry(CodexTigerName, EGameXXKCodexCategory::Monster, TEXT("虎王"), TEXT("守在青山尽头的首领。")),
 		};
 		return EntryDefs;
 	}
@@ -86,29 +116,72 @@ namespace GameXXKMVP
 
 	static FName GetCodexEntryIdForBattleRuntimeId(FName RuntimeEnemyId)
 	{
-		if (RuntimeEnemyId == BattleRuntimeBanditName)
+		if (RuntimeEnemyId == BattleRuntimeMoneyRatName
+			|| RuntimeEnemyId == BattleRuntimeBanditName
+			|| RuntimeEnemyId == BattleRuntimeWolfName)
 		{
-			return CodexBanditName;
+			return CodexMoneyRatName;
 		}
-		if (RuntimeEnemyId == BattleRuntimeWolfName)
+		if (RuntimeEnemyId == BattleRuntimeBlackBearName
+			|| RuntimeEnemyId == BattleRuntimeEliteBanditName)
 		{
-			return CodexWolfName;
+			return CodexBlackBearName;
 		}
-		if (RuntimeEnemyId == BattleRuntimeEliteBanditName)
+		if (RuntimeEnemyId == BattleRuntimeTigerName
+			|| RuntimeEnemyId == BattleRuntimeBossName)
 		{
-			return CodexEliteBanditName;
-		}
-		if (RuntimeEnemyId == BattleRuntimeBossName)
-		{
-			return CodexBossName;
+			return CodexTigerName;
 		}
 		return NAME_None;
+	}
+
+	static FName GetMigratedCurrentCodexEntryId(FName EntryId)
+	{
+		if (EntryId == LegacyCodexBanditName || EntryId == LegacyCodexWolfName)
+		{
+			return CodexMoneyRatName;
+		}
+		if (EntryId == LegacyCodexEliteBanditName)
+		{
+			return CodexBlackBearName;
+		}
+		if (EntryId == LegacyCodexBossName)
+		{
+			return CodexTigerName;
+		}
+		return NAME_None;
+	}
+
+	static void MigrateLegacyCodexEntryIds(TSet<FName>& EntryIds)
+	{
+		TArray<FName> LegacyEntryIds;
+		TArray<FName> CurrentEntryIds;
+		for (const FName EntryId : EntryIds)
+		{
+			const FName CurrentEntryId = GetMigratedCurrentCodexEntryId(EntryId);
+			if (!CurrentEntryId.IsNone())
+			{
+				LegacyEntryIds.Add(EntryId);
+				CurrentEntryIds.Add(CurrentEntryId);
+			}
+		}
+
+		for (const FName LegacyEntryId : LegacyEntryIds)
+		{
+			EntryIds.Remove(LegacyEntryId);
+		}
+		for (const FName CurrentEntryId : CurrentEntryIds)
+		{
+			EntryIds.Add(CurrentEntryId);
+		}
 	}
 
 	static TArray<FName> GetKnownItemIds()
 	{
 		return {
 			ItemHealingPowderName,
+			ItemEnhancementStoneName,
+			ItemQingshanRouteSealName,
 			ItemLingzhiPowderName,
 			ItemQingxinTeaName,
 			ItemCraneSachetName,
@@ -126,6 +199,7 @@ namespace GameXXKMVP
 	{
 		return {
 			ItemHealingPowderName,
+			ItemEnhancementStoneName,
 			ItemLingzhiPowderName,
 			ItemQingxinTeaName,
 			ItemCraneSachetName,
@@ -141,6 +215,16 @@ namespace GameXXKMVP
 		if (ItemId == ItemHealingPowderName)
 		{
 			OutDef = MakeItem(ItemId, TEXT("金疮药"), EGameXXKItemKind::Consumable, 10, 5, 30, 0, 0, 0, 0, 0);
+			return true;
+		}
+		if (ItemId == ItemEnhancementStoneName)
+		{
+			OutDef = MakeItem(ItemId, TEXT("强化石"), EGameXXKItemKind::Material, 20, 10, 0, 0, 0, 0, 0, 0);
+			return true;
+		}
+		if (ItemId == ItemQingshanRouteSealName)
+		{
+			OutDef = MakeItem(ItemId, TEXT("青山讨伐令"), EGameXXKItemKind::Task, 0, 0, 0, 0, 0, 0, 0, 0);
 			return true;
 		}
 		if (ItemId == ItemLingzhiPowderName)
@@ -196,29 +280,42 @@ namespace GameXXKMVP
 		return false;
 	}
 
-	static int32 GetBaseMaxHP(int32 Level)
+	static void SynchronizeEnhancementMaterial(FGameXXKRuntimeState& State)
 	{
-		return 100 + FMath::Max(0, Level - 1) * 15;
+		State.EnhancementMaterial = FMath::Max(0, State.Inventory.FindRef(ItemEnhancementStoneName));
 	}
 
-	static int32 GetBaseMaxMP(int32 Level)
+	static void MigrateInventoryCategoryItems(FGameXXKRuntimeState& State)
 	{
-		return 30 + FMath::Max(0, Level - 1) * 5;
+		if (!State.Inventory.Contains(ItemEnhancementStoneName) && State.EnhancementMaterial > 0)
+		{
+			State.Inventory.Add(ItemEnhancementStoneName, State.EnhancementMaterial);
+		}
+		SynchronizeEnhancementMaterial(State);
+
+		if (State.QuestState == EGameXXKQuestState::Accepted)
+		{
+			State.Inventory.FindOrAdd(ItemQingshanRouteSealName) = FMath::Max(1, State.Inventory.FindRef(ItemQingshanRouteSealName));
+		}
+		else
+		{
+			State.Inventory.Remove(ItemQingshanRouteSealName);
+		}
 	}
 
-	static int32 GetBaseAttack(int32 Level)
+	static void MigrateCodexState(FGameXXKRuntimeState& State, int32 SaveVersion)
 	{
-		return 15 + FMath::Max(0, Level - 1) * 3;
-	}
+		if (SaveVersion < GuideCodexIntroductionSaveVersion
+			&& (State.QuestState == EGameXXKQuestState::Accepted || State.QuestState == EGameXXKQuestState::Completed))
+		{
+			UGameXXKMVPRules::DiscoverCodexEntry(State, CodexGuideName);
+		}
 
-	static int32 GetBaseDefense(int32 Level)
-	{
-		return 8 + FMath::Max(0, Level - 1) * 2;
-	}
-
-	static int32 GetBaseSpeed(int32 Level)
-	{
-		return 10 + FMath::Max(0, Level - 1);
+		if (SaveVersion < CurrentEnemyCodexMigrationSaveVersion)
+		{
+			MigrateLegacyCodexEntryIds(State.DiscoveredCodexEntryIds);
+			MigrateLegacyCodexEntryIds(State.ReadCodexEntryIds);
+		}
 	}
 
 	static int32 GetClampedItemEnhancementLevel(const FGameXXKRuntimeState& State, FName ItemId)
@@ -259,47 +356,85 @@ namespace GameXXKMVP
 
 	static void RecalculatePlayerStats(FGameXXKRuntimeState& State, bool bPreserveMissingResources = true)
 	{
-		const int32 OldMaxHP = FMath::Max(1, State.PlayerMaxHP);
-		const int32 OldMaxMP = FMath::Max(1, State.PlayerMaxMP);
+		const int32 RouteMaxHP = FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxHealth);
+		const int32 RouteMaxMP = FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxMana);
+		const int32 OldMaxHP = FMath::Max(1, State.PlayerMaxHP + RouteMaxHP);
+		const int32 OldMaxMP = FMath::Max(1, State.PlayerMaxMP + RouteMaxMP);
 		const int32 MissingHP = bPreserveMissingResources ? FMath::Max(0, OldMaxHP - State.PlayerHP) : 0;
 		const int32 MissingMP = bPreserveMissingResources ? FMath::Max(0, OldMaxMP - State.PlayerMP) : 0;
 
-		State.PlayerMaxHP = GetBaseMaxHP(State.PlayerLevel);
-		State.PlayerMaxMP = GetBaseMaxMP(State.PlayerLevel);
-		State.PlayerAttack = GetBaseAttack(State.PlayerLevel);
-		State.PlayerDefense = GetBaseDefense(State.PlayerLevel);
-		State.PlayerSpeed = GetBaseSpeed(State.PlayerLevel);
-
-		if (State.Inventory.FindRef(State.EquippedWeapon) <= 0)
+		State.PlayerLevel = FMath::Clamp(State.PlayerLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
+		const FGameXXKCharacterStats BareStats = FGameXXKCharacterStatRules::GetBareHeroStats(State.PlayerLevel);
+		FGameXXKEquipmentLoadoutSnapshot Snapshot;
+		if (FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+			State.EquipmentCollection,
+			FGameXXKEquipmentRules::HeroCharacterId(),
+			BareStats,
+			Snapshot))
 		{
-			State.EquippedWeapon = NAME_None;
+			State.PlayerMaxHP = Snapshot.AttributesBeforeRoute.MaxHealth;
+			State.PlayerMaxMP = Snapshot.AttributesBeforeRoute.MaxMana;
+			State.PlayerAttack = Snapshot.AttributesBeforeRoute.Attack;
+			State.PlayerDefense = Snapshot.AttributesBeforeRoute.Defense;
+			State.PlayerSpeed = Snapshot.AttributesBeforeRoute.Speed;
 		}
-		if (State.Inventory.FindRef(State.EquippedArmor) <= 0)
+		else
 		{
-			State.EquippedArmor = NAME_None;
-		}
-		if (State.Inventory.FindRef(State.EquippedAccessory) <= 0)
-		{
-			State.EquippedAccessory = NAME_None;
+			State.PlayerMaxHP = BareStats.MaxHealth;
+			State.PlayerMaxMP = BareStats.MaxMana;
+			State.PlayerAttack = BareStats.Attack;
+			State.PlayerDefense = BareStats.Defense;
+			State.PlayerSpeed = BareStats.Speed;
 		}
 
-		AddEquipmentBonuses(State, State.EquippedWeapon, State.PlayerAttack, State.PlayerDefense, State.PlayerMaxHP, State.PlayerMaxMP, State.PlayerSpeed);
-		AddEquipmentBonuses(State, State.EquippedArmor, State.PlayerAttack, State.PlayerDefense, State.PlayerMaxHP, State.PlayerMaxMP, State.PlayerSpeed);
-		AddEquipmentBonuses(State, State.EquippedAccessory, State.PlayerAttack, State.PlayerDefense, State.PlayerMaxHP, State.PlayerMaxMP, State.PlayerSpeed);
+		const int32 NewEffectiveMaxHP = FMath::Max(1, State.PlayerMaxHP + RouteMaxHP);
+		const int32 NewEffectiveMaxMP = FMath::Max(1, State.PlayerMaxMP + RouteMaxMP);
+		State.PlayerHP = FMath::Clamp(NewEffectiveMaxHP - MissingHP, 0, NewEffectiveMaxHP);
+		State.PlayerMP = FMath::Clamp(NewEffectiveMaxMP - MissingMP, 0, NewEffectiveMaxMP);
+	}
 
-		State.PlayerHP = FMath::Clamp(State.PlayerMaxHP - MissingHP, 0, State.PlayerMaxHP);
-		State.PlayerMP = FMath::Clamp(State.PlayerMaxMP - MissingMP, 0, State.PlayerMaxMP);
+	static void NormalizeLoadedCharacterProgression(FGameXXKRuntimeState& State)
+	{
+		const int32 OriginalPlayerLevel = State.PlayerLevel;
+		State.PlayerLevel = FMath::Clamp(State.PlayerLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
+		State.PlayerXP = State.PlayerLevel == FGameXXKCharacterStatRules::MaxCharacterLevel
+			? 0
+			: FMath::Max(0, State.PlayerXP);
+		for (FGameXXKPermanentCompanion& Companion : State.CardRun.CompanionRoster.PermanentCompanions)
+		{
+			Companion.Level = FMath::Clamp(Companion.Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
+			Companion.Experience = Companion.Level == FGameXXKCharacterStatRules::MaxCharacterLevel
+				? 0
+				: FMath::Max(0, Companion.Experience);
+		}
+		if (State.PlayerLevel != OriginalPlayerLevel)
+		{
+			RecalculatePlayerStats(State, true);
+		}
 	}
 
 	static void ApplyXP(FGameXXKRuntimeState& State, int32 XP)
 	{
-		State.PlayerXP += FMath::Max(0, XP);
+		State.PlayerLevel = FMath::Clamp(State.PlayerLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
+		if (State.PlayerLevel == FGameXXKCharacterStatRules::MaxCharacterLevel)
+		{
+			State.PlayerXP = 0;
+			return;
+		}
+
+		const int64 AwardedXP = static_cast<int64>(FMath::Max(0, XP));
+		State.PlayerXP = static_cast<int32>(FMath::Min<int64>(MAX_int32, static_cast<int64>(FMath::Max(0, State.PlayerXP)) + AwardedXP));
 		bool bLeveled = false;
-		while (State.PlayerXP >= State.PlayerLevel * 100)
+		while (State.PlayerLevel < FGameXXKCharacterStatRules::MaxCharacterLevel
+			&& State.PlayerXP >= State.PlayerLevel * 100)
 		{
 			State.PlayerXP -= State.PlayerLevel * 100;
 			State.PlayerLevel += 1;
 			bLeveled = true;
+		}
+		if (State.PlayerLevel == FGameXXKCharacterStatRules::MaxCharacterLevel)
+		{
+			State.PlayerXP = 0;
 		}
 		if (bLeveled)
 		{
@@ -307,6 +442,36 @@ namespace GameXXKMVP
 			State.PlayerHP = State.PlayerMaxHP;
 			State.PlayerMP = State.PlayerMaxMP;
 		}
+	}
+
+	/** Only the persistent partner actually selected for this route receives combat progression.
+	 *  Task NPCs are deliberately excluded: they are temporary event support and must not acquire
+	 *  permanent levels, stars, or roster state. */
+	static void AwardActivePermanentCompanionBattleExperience(FGameXXKRuntimeState& State, const int32 ExperienceAmount)
+	{
+		if (ExperienceAmount <= 0)
+		{
+			return;
+		}
+
+		const FName ActiveInstanceId = State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+		if (ActiveInstanceId.IsNone())
+		{
+			return;
+		}
+
+		FGameXXKPermanentCompanion* ActiveCompanion = State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[ActiveInstanceId](const FGameXXKPermanentCompanion& Candidate)
+			{
+				return Candidate.InstanceId == ActiveInstanceId && Candidate.bIsActive;
+			});
+		if (!ActiveCompanion)
+		{
+			return;
+		}
+
+		FString IgnoredError;
+		FGameXXKCompanionRules::AwardExperience(*ActiveCompanion, ExperienceAmount, &IgnoredError);
 	}
 
 	static const FGameXXKRouteMapNode* FindRouteNode(const FGameXXKRuntimeState& State, int32 NodeId)
@@ -617,6 +782,128 @@ namespace GameXXKMVP
 		return true;
 	}
 
+	static int32 GetBaseRouteNodeTravelMoney(const EGameXXKNodeKind NodeKind)
+	{
+		switch (NodeKind)
+		{
+		case EGameXXKNodeKind::Battle: return 20;
+		case EGameXXKNodeKind::Elite: return 35;
+		case EGameXXKNodeKind::Boss: return 50;
+		default: return 0;
+		}
+	}
+
+	static bool HasRouteNodeReceipt(
+		const FGameXXKRuntimeState& State,
+		const int32 Chapter,
+		const int32 NodeId)
+	{
+		return State.CardRun.RewardedTravelMoneyNodes.ContainsByPredicate(
+			[Chapter, NodeId](const FGameXXKRouteTravelMoneyReceipt& Receipt)
+			{
+				return Receipt.Chapter == Chapter && Receipt.NodeId == NodeId;
+			});
+	}
+
+	static bool ApplyRouteNodeReceiptGate(
+		FGameXXKRuntimeState& StateWithOneTimeRewards,
+		const FGameXXKRuntimeState& StateBeforeOneTimeRewards,
+		const int32 Chapter,
+		const int32 NodeId,
+		const int32 BaseTravelMoney)
+	{
+		FGameXXKRuntimeState Candidate = StateWithOneTimeRewards;
+		int32 RelicTravelMoney = 0;
+		FString EconomyError;
+		if (!FGameXXKRelicRules::CalculateRouteNodeTravelMoneyBonus(Candidate, RelicTravelMoney, &EconomyError))
+		{
+			return false;
+		}
+
+		const int64 TotalTravelMoney = static_cast<int64>(BaseTravelMoney) + RelicTravelMoney;
+		if (BaseTravelMoney < 0 || TotalTravelMoney < 0 || TotalTravelMoney > MAX_int32)
+		{
+			return false;
+		}
+
+		bool bAwarded = false;
+		if (!FGameXXKRouteEconomyRules::AwardNodeOnce(
+			Candidate.CardRun,
+			Chapter,
+			NodeId,
+			static_cast<int32>(TotalTravelMoney),
+			bAwarded,
+			&EconomyError))
+		{
+			return false;
+		}
+
+		if (bAwarded)
+		{
+			FGameXXKRelicRules::ApplyRouteNodeCompletedNonCurrency(Candidate);
+		}
+		else
+		{
+			// The receipt is authoritative. Drop every staged reward side effect,
+			// while allowing the caller to finish structural node advancement.
+			Candidate = StateBeforeOneTimeRewards;
+		}
+
+		StateWithOneTimeRewards = MoveTemp(Candidate);
+		return true;
+	}
+
+	static bool SettleGeneratedRouteNode(
+		FGameXXKRuntimeState& StateWithOneTimeRewards,
+		const FGameXXKRuntimeState& StateBeforeOneTimeRewards,
+		const int32 NodeId,
+		const int32 BaseTravelMoney)
+	{
+		FGameXXKRuntimeState Candidate = StateWithOneTimeRewards;
+		const int32 Chapter = StateBeforeOneTimeRewards.CardRun.RouteProgress.CurrentChapter;
+		if (!ApplyRouteNodeReceiptGate(
+			Candidate,
+			StateBeforeOneTimeRewards,
+			Chapter,
+			NodeId,
+			BaseTravelMoney))
+		{
+			return false;
+		}
+
+		const FGameXXKRouteMapNode* CandidateNode = FindRouteNode(Candidate, NodeId);
+		if (!CandidateNode || !CompleteRouteNode(Candidate, *CandidateNode))
+		{
+			return false;
+		}
+		StateWithOneTimeRewards = MoveTemp(Candidate);
+		return true;
+	}
+
+	static bool SettleFixedRouteNode(
+		FGameXXKRuntimeState& StateWithOneTimeRewards,
+		const FGameXXKRuntimeState& StateBeforeOneTimeRewards,
+		const int32 BaseTravelMoney)
+	{
+		const int32 NodeId = StateBeforeOneTimeRewards.DungeonNodeIndex;
+		if (NodeId < 0 || NodeId == MAX_int32)
+		{
+			return false;
+		}
+
+		FGameXXKRuntimeState Candidate = StateWithOneTimeRewards;
+		if (!ApplyRouteNodeReceiptGate(Candidate, StateBeforeOneTimeRewards, 1, NodeId, BaseTravelMoney))
+		{
+			return false;
+		}
+		Candidate.DungeonNodeIndex = NodeId + 1;
+		Candidate.Screen = EGameXXKScreen::DungeonMap;
+		Candidate.CurrentMapId = TEXT("HuangshanRoute");
+		Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
+		StateWithOneTimeRewards = MoveTemp(Candidate);
+		return true;
+	}
+
 	static const FGameXXKRouteMapNode* FindFirstReachableRouteNodeOfKind(const FGameXXKRuntimeState& State, EGameXXKNodeKind NodeKind)
 	{
 		for (int32 NodeId : State.ReachableRouteNodeIds)
@@ -633,6 +920,39 @@ namespace GameXXKMVP
 	static const FGameXXKRouteMapNode* FindPendingRouteNode(const FGameXXKRuntimeState& State)
 	{
 		return FindRouteNode(State, State.PendingRouteNodeId);
+	}
+
+	static bool TryBuildRouteRewardChoiceSeed(
+		const int32 RouteRandomSeed,
+		const int32 SourceNodeId,
+		const int32 NextRewardOrdinal,
+		int32& OutChoiceSeed)
+	{
+		OutChoiceSeed = 0;
+		if (NextRewardOrdinal < 0 || NextRewardOrdinal == MAX_int32 || SourceNodeId < 0)
+		{
+			return false;
+		}
+
+		// The legacy seed contract combines the low 32 bits of both products. Build those
+		// products in int64, then mix as uint32 so wraparound is explicit and deterministic.
+		const uint32 MixedBits = static_cast<uint32>(RouteRandomSeed)
+			^ static_cast<uint32>(static_cast<int64>(SourceNodeId) * 1103515245LL)
+			^ static_cast<uint32>(static_cast<int64>(NextRewardOrdinal) * 12345LL);
+		if (MixedBits == 0)
+		{
+			OutChoiceSeed = 0x3C6EF35F;
+			return true;
+		}
+
+		// Convert the mixed bit pattern to int32 without relying on an out-of-range unsigned
+		// conversion. This preserves the established two's-complement seed sequence.
+		constexpr int64 Uint32Range = 0x100000000LL;
+		const int64 SignedSeed = MixedBits <= static_cast<uint32>(MAX_int32)
+			? static_cast<int64>(MixedBits)
+			: static_cast<int64>(MixedBits) - Uint32Range;
+		OutChoiceSeed = static_cast<int32>(SignedSeed);
+		return true;
 	}
 
 	static bool IsDungeonNode(const FGameXXKRuntimeState& State, EGameXXKNodeKind ExpectedNode)
@@ -687,6 +1007,119 @@ namespace GameXXKMVP
 		State.ActiveBattleNodeId = INDEX_NONE;
 		State.ActiveBattleEnemies.Reset();
 		State.ActiveBattleParty.Reset();
+		FGameXXKCardBattleAdapter::ClearActiveCardBattle(State);
+	}
+
+	static bool SettleTerminalRoute(FGameXXKRuntimeState& State, const EGameXXKRouteTerminalOutcome Outcome)
+	{
+		FGameXXKRuntimeState Candidate = State;
+		FGameXXKRouteSettlementReceipt Receipt;
+		FString SettlementError;
+		if (!FGameXXKRouteSettlementRules::Preview(Candidate, Outcome, Receipt, &SettlementError))
+		{
+			return false;
+		}
+		Candidate.CardRun.PendingSettlement = Receipt;
+		if (!FGameXXKRouteSettlementRules::Apply(Candidate, Receipt, &SettlementError))
+		{
+			return false;
+		}
+		State = MoveTemp(Candidate);
+		return true;
+	}
+
+	static bool ReturnTerminalRouteToTown(FGameXXKRuntimeState& State, const EGameXXKRouteTerminalOutcome Outcome)
+	{
+		if (!State.bDungeonActive)
+		{
+			return false;
+		}
+		FGameXXKRuntimeState Candidate = State;
+		if (!SettleTerminalRoute(Candidate, Outcome))
+		{
+			return false;
+		}
+		Candidate.Screen = EGameXXKScreen::Town;
+		Candidate.CurrentRegion = UGameXXKMVPRules::RegionQingshan();
+		Candidate.CurrentMapId = UGameXXKMVPRules::RegionQingshan();
+		Candidate.bDungeonActive = false;
+		Candidate.DungeonNodeIndex = 0;
+		Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
+		Candidate.PlayerHP = Candidate.PlayerMaxHP;
+		Candidate.PlayerMP = Candidate.PlayerMaxMP;
+		Candidate.bFollowerJoined = Candidate.QuestState == EGameXXKQuestState::Accepted;
+		ClearActiveBattle(Candidate);
+		State = MoveTemp(Candidate);
+		return true;
+	}
+
+	static void InitializeThreeChapterRouteProgress(FGameXXKRuntimeState& State)
+	{
+		FGameXXKRouteProgress& Progress = State.CardRun.RouteProgress;
+		Progress.SchemaVersion = 1;
+		Progress.RootSeed = State.RouteSeed;
+		Progress.ChapterSeeds = {
+			Progress.RootSeed,
+			NormalizeRouteSeed(FGameXXKEncounterRules::DeriveChapterSeed(Progress.RootSeed, 2)),
+			NormalizeRouteSeed(FGameXXKEncounterRules::DeriveChapterSeed(Progress.RootSeed, 3))};
+	Progress.CurrentChapter = 1;
+	Progress.RouteCombatLevel = FMath::Clamp(State.PlayerLevel, 1, 20);
+	Progress.ActualRouteCardAcquisitionCount = 0;
+	State.CardRun.PendingSettlement = FGameXXKRouteSettlementReceipt();
+}
+
+	static bool IsValidThreeChapterRouteProgress(const FGameXXKRouteProgress& Progress)
+	{
+		if (Progress.SchemaVersion != 1
+			|| Progress.RootSeed == 0
+			|| Progress.ChapterSeeds.Num() != 3
+			|| Progress.ChapterSeeds[0] != Progress.RootSeed
+			|| Progress.ChapterSeeds[1] != NormalizeRouteSeed(FGameXXKEncounterRules::DeriveChapterSeed(Progress.RootSeed, 2))
+			|| Progress.ChapterSeeds[2] != NormalizeRouteSeed(FGameXXKEncounterRules::DeriveChapterSeed(Progress.RootSeed, 3))
+			|| Progress.CurrentChapter < 1
+			|| Progress.CurrentChapter > 3
+			|| Progress.RouteCombatLevel < 1
+			|| Progress.RouteCombatLevel > 20)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	static bool AdvanceToNextRouteChapter(FGameXXKRuntimeState& State)
+	{
+		const FGameXXKRouteProgress& Progress = State.CardRun.RouteProgress;
+		if (!IsValidThreeChapterRouteProgress(Progress) || Progress.CurrentChapter >= 3)
+		{
+			return false;
+		}
+
+		FGameXXKRuntimeState Candidate = State;
+		FGameXXKRouteProgress& CandidateProgress = Candidate.CardRun.RouteProgress;
+		const int32 NextChapter = CandidateProgress.CurrentChapter + 1;
+		const int32 NextChapterSeed = CandidateProgress.ChapterSeeds[NextChapter - 1];
+		if (NextChapterSeed == 0)
+		{
+			return false;
+		}
+
+		// A cleared chapter restores the hero, but intentionally retains every route-local
+		// reward, relic, deck addition, and temporary task-NPC choice for the next map.
+		Candidate.PlayerHP = Candidate.PlayerMaxHP;
+		Candidate.PlayerMP = Candidate.PlayerMaxMP;
+		Candidate.Screen = EGameXXKScreen::DungeonMap;
+		Candidate.CurrentRegion = RegionHuangshanName;
+		Candidate.CurrentMapId = TEXT("HuangshanRoute");
+		Candidate.bDungeonActive = true;
+		Candidate.DungeonNodeIndex = 0;
+		Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
+		ClearActiveBattle(Candidate);
+		// Merchant identities are chapter-topology local; generated node IDs restart on the next map.
+		Candidate.CardRun.RouteMerchant = FGameXXKRouteMerchantState();
+		UGameXXKMVPRules::GenerateRouteMapForSeed(Candidate, NextChapterSeed);
+		CandidateProgress.CurrentChapter = NextChapter;
+		State = MoveTemp(Candidate);
+		return true;
 	}
 
 	static void BuildPartySnapshot(FGameXXKRuntimeState& State)
@@ -702,10 +1135,115 @@ namespace GameXXKMVP
 		}
 		State.PlayerMP = FMath::Clamp(State.PlayerMP, 0, State.PlayerMaxMP);
 		State.ActiveBattleParty.Add(MakeBattleRuntimeUnit(TEXT("Player"), TEXT("Hero"), State.PlayerHP, State.PlayerAttack, State.PlayerDefense, State.PlayerSpeed, 1, false, State.PlayerMP, State.PlayerMaxMP));
-		if (State.bFollowerJoined)
+	}
+
+	static EGameXXKCardTerrain ResolveCardBattleTerrain(const EGameXXKNodeKind NodeKind, const int32 NodeId)
+	{
+		if (NodeKind == EGameXXKNodeKind::Boss)
 		{
-			State.ActiveBattleParty.Add(MakeBattleRuntimeUnit(TEXT("Follower"), TEXT("Follower"), 80, 9, 4, 8, 1, false, 20, 20));
+			return EGameXXKCardTerrain::Cave;
 		}
+		if (NodeKind == EGameXXKNodeKind::Elite)
+		{
+			return EGameXXKCardTerrain::Forest;
+		}
+		static const EGameXXKCardTerrain RegularTerrains[] = {
+			EGameXXKCardTerrain::Plain,
+			EGameXXKCardTerrain::Cliff,
+			EGameXXKCardTerrain::WaterShore,
+			EGameXXKCardTerrain::Ferry,
+			EGameXXKCardTerrain::Village};
+		const int32 StableIndex = FMath::Abs(NodeId == INDEX_NONE ? 0 : NodeId) % UE_ARRAY_COUNT(RegularTerrains);
+		return RegularTerrains[StableIndex];
+	}
+
+	static int32 GetRouteEncounterChapter(const FGameXXKRuntimeState& State)
+	{
+		const FGameXXKRouteProgress& Progress = State.CardRun.RouteProgress;
+		return Progress.SchemaVersion == 1 && Progress.CurrentChapter >= 1 && Progress.CurrentChapter <= 3
+			? Progress.CurrentChapter
+			: 1;
+	}
+
+	static int32 GetRouteEncounterCombatLevel(const FGameXXKRuntimeState& State)
+	{
+		const FGameXXKRouteProgress& Progress = State.CardRun.RouteProgress;
+		return Progress.SchemaVersion == 1 && Progress.RouteCombatLevel >= 1 && Progress.RouteCombatLevel <= 20
+			? Progress.RouteCombatLevel
+			: FMath::Clamp(State.PlayerLevel, 1, 20);
+	}
+
+	static int32 GetRouteEncounterChapterSeed(const FGameXXKRuntimeState& State, const int32 Chapter)
+	{
+		const FGameXXKRouteProgress& Progress = State.CardRun.RouteProgress;
+		if (Progress.SchemaVersion == 1 && Progress.ChapterSeeds.IsValidIndex(Chapter - 1) && Progress.ChapterSeeds[Chapter - 1] != 0)
+		{
+			return Progress.ChapterSeeds[Chapter - 1];
+		}
+		const int32 RootSeed = Progress.SchemaVersion == 1 && Progress.RootSeed != 0
+			? Progress.RootSeed
+			: State.RouteSeed;
+		return NormalizeRouteSeed(FGameXXKEncounterRules::DeriveChapterSeed(RootSeed, Chapter));
+	}
+
+	static FName MakeEncounterRuntimeEnemyId(const FName DefinitionId, const int32 BattleSlotNumber)
+	{
+		FString Leaf = DefinitionId.ToString();
+		int32 SeparatorIndex = INDEX_NONE;
+		if (Leaf.FindLastChar(TEXT('.'), SeparatorIndex))
+		{
+			Leaf = Leaf.RightChop(SeparatorIndex + 1);
+		}
+		return FName(*FString::Printf(TEXT("Enemy.%s.P%d"), *Leaf, BattleSlotNumber));
+	}
+
+	static bool BuildEncounterEnemyProjection(
+		const FGameXXKRuntimeState& State,
+		const EGameXXKNodeKind NodeKind,
+		const int32 NodeId,
+		TArray<FGameXXKBattleRuntimeUnit>& OutEnemies)
+	{
+		const int32 Chapter = GetRouteEncounterChapter(State);
+		const int32 ChapterSeed = GetRouteEncounterChapterSeed(State, Chapter);
+		const int32 RouteCombatLevel = GetRouteEncounterCombatLevel(State);
+		TArray<FGameXXKEncounterSlot> Formation;
+		FString FormationError;
+		if (!FGameXXKEncounterRules::BuildFormation(Chapter, NodeKind, ChapterSeed, NodeId, RouteCombatLevel, Formation, &FormationError))
+		{
+			return false;
+		}
+		const FGameXXKEncounterStatScale Scale = FGameXXKEncounterRules::GetAuthoredStatScale(Chapter, NodeKind);
+
+		TArray<FGameXXKBattleRuntimeUnit> NewEnemies;
+		NewEnemies.Reserve(Formation.Num());
+		for (const FGameXXKEncounterSlot& EncounterSlot : Formation)
+		{
+			const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(EncounterSlot.EnemyDefinitionId);
+			if (!Definition)
+			{
+				return false;
+			}
+			const FGameXXKEnemyComputedStats Stats = FGameXXKEnemyCatalog::ComputeStats(Definition->Id, EncounterSlot.CombatLevel);
+			const int32 ScaledMaxHP = FGameXXKEncounterRules::ScaleStat(Stats.MaxHP, Scale.MaxHPPercent, 1);
+			const int32 ScaledAttack = FGameXXKEncounterRules::ScaleStat(Stats.Attack, Scale.AttackPercent, 1);
+			const int32 ScaledDefense = FGameXXKEncounterRules::ScaleStat(Stats.Defense, Scale.DefensePercent, 0);
+			FGameXXKBattleRuntimeUnit Enemy = MakeBattleRuntimeUnit(
+				MakeEncounterRuntimeEnemyId(Definition->Id, EncounterSlot.BattleSlotNumber),
+				*Definition->DisplayName.ToString(),
+				ScaledMaxHP,
+				ScaledAttack,
+				ScaledDefense,
+				Stats.Speed,
+				0,
+				true);
+			Enemy.EnemyDefinitionId = Definition->Id;
+			Enemy.BattleSlotNumber = EncounterSlot.BattleSlotNumber;
+			Enemy.CombatLevel = EncounterSlot.CombatLevel;
+			NewEnemies.Add(MoveTemp(Enemy));
+		}
+
+		OutEnemies = MoveTemp(NewEnemies);
+		return true;
 	}
 
 	static bool BeginBattle(FGameXXKRuntimeState& State, EGameXXKNodeKind NodeKind, int32 NodeId)
@@ -720,28 +1258,33 @@ namespace GameXXKMVP
 		State.ActiveBattleNodeId = NodeId;
 		BuildPartySnapshot(State);
 
-		if (NodeKind == EGameXXKNodeKind::Boss)
+		if (!BuildEncounterEnemyProjection(State, NodeKind, NodeId, State.ActiveBattleEnemies))
 		{
-			State.ActiveBattleEnemies.Add(MakeBattleRuntimeUnit(TEXT("Boss"), TEXT("Boss"), 180, 18, 8, 9, 3, true));
-		}
-		else if (NodeKind == EGameXXKNodeKind::Elite)
-		{
-			State.ActiveBattleEnemies.Add(MakeBattleRuntimeUnit(TEXT("EliteBandit"), TEXT("Elite Bandit"), 96, 15, 5, 9, 2, true));
-			State.ActiveBattleEnemies.Add(MakeBattleRuntimeUnit(TEXT("Wolf"), TEXT("Wolf"), 54, 10, 3, 12, 1, true));
-		}
-		else
-		{
-			State.ActiveBattleEnemies.Add(MakeBattleRuntimeUnit(TEXT("Bandit"), TEXT("Bandit"), 60, 10, 3, 7, 1, true));
-			State.ActiveBattleEnemies.Add(MakeBattleRuntimeUnit(TEXT("Wolf"), TEXT("Wolf"), 45, 8, 2, 12, 1, true));
+			ClearActiveBattle(State);
+			return false;
 		}
 
 		for (const FGameXXKBattleRuntimeUnit& Enemy : State.ActiveBattleEnemies)
 		{
-			const FName CodexEntryId = GetCodexEntryIdForBattleRuntimeId(Enemy.Id);
+			const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Enemy.EnemyDefinitionId);
+			const FName CodexEntryId = Definition ? Definition->CodexId : GetCodexEntryIdForBattleRuntimeId(Enemy.Id);
 			if (!CodexEntryId.IsNone())
 			{
 				UGameXXKMVPRules::DiscoverCodexEntry(State, CodexEntryId);
 			}
+		}
+
+		FString CardBattleError;
+		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &CardBattleError)
+			|| !FGameXXKCardBattleAdapter::BeginCardBattle(
+				State,
+				NodeKind,
+				ResolveCardBattleTerrain(NodeKind, NodeId),
+				State.RouteSeed ^ (NodeId == INDEX_NONE ? 0x51F15EED : NodeId * 486187739),
+				&CardBattleError))
+		{
+			ClearActiveBattle(State);
+			return false;
 		}
 
 		State.Screen = EGameXXKScreen::Battle;
@@ -776,13 +1319,19 @@ namespace GameXXKMVP
 
 	static bool FailBattleToTownWithRestoredHero(FGameXXKRuntimeState& State)
 	{
-		State.PlayerHP = State.PlayerMaxHP;
-		if (State.ActiveBattleParty.IsValidIndex(0))
+		FGameXXKRuntimeState Candidate = State;
+		Candidate.PlayerHP = Candidate.PlayerMaxHP;
+		if (Candidate.ActiveBattleParty.IsValidIndex(0))
 		{
-			State.ActiveBattleParty[0].HP = State.ActiveBattleParty[0].MaxHP;
-			State.ActiveBattleParty[0].bDefeated = false;
+			Candidate.ActiveBattleParty[0].HP = Candidate.ActiveBattleParty[0].MaxHP;
+			Candidate.ActiveBattleParty[0].bDefeated = false;
 		}
-		return UGameXXKMVPRules::FailDungeonToTown(State);
+		if (!UGameXXKMVPRules::FailDungeonToTown(Candidate))
+		{
+			return false;
+		}
+		State = MoveTemp(Candidate);
+		return true;
 	}
 
 	static void SyncPlayerFromBattle(FGameXXKRuntimeState& State)
@@ -924,6 +1473,16 @@ FName UGameXXKMVPRules::RegionTanjiang()
 FName UGameXXKMVPRules::ItemHealingPowder()
 {
 	return GameXXKMVP::ItemHealingPowderName;
+}
+
+FName UGameXXKMVPRules::ItemEnhancementStone()
+{
+	return GameXXKMVP::ItemEnhancementStoneName;
+}
+
+FName UGameXXKMVPRules::ItemQingshanRouteSeal()
+{
+	return GameXXKMVP::ItemQingshanRouteSealName;
 }
 
 FName UGameXXKMVPRules::ItemIronSword()
@@ -1083,14 +1642,24 @@ FGameXXKRuntimeState UGameXXKMVPRules::CreateNewGame()
 	State.Screen = EGameXXKScreen::MainMenu;
 	State.CurrentRegion = NAME_None;
 	State.CurrentMapId = TEXT("MainMenu");
-	State.EnhancementMaterial = 10;
+	State.EnhancementMaterial = 0;
+	State.EquipmentCollection = FGameXXKEquipmentCollectionState();
+	State.EquipmentCollection.EquipmentSchemaVersion = 1;
+	State.EquipmentCollection.CollectionSeed = 0x4758584B;
 	GameXXKMVP::RecalculatePlayerStats(State, false);
 	State.UnlockedRegions.Add(RegionQingshan());
+	AddItem(State, ItemEnhancementStone(), 10);
 	AddItem(State, ItemHealingPowder(), 1);
-	AddItem(State, ItemWoodenSword(), 1);
-	AddItem(State, ItemStarterClothArmor(), 1);
-	AddItem(State, ItemClothTalisman(), 1);
+	FGameXXKEquipmentTransactionResult EquipmentResult;
+	FGameXXKEquipmentEconomyRules::GrantLegacyEquipmentForCompatibility(State, ItemWoodenSword(), 1, EquipmentResult);
+	FGameXXKEquipmentEconomyRules::GrantLegacyEquipmentForCompatibility(State, ItemStarterClothArmor(), 1, EquipmentResult);
+	FGameXXKEquipmentEconomyRules::GrantLegacyEquipmentForCompatibility(State, ItemClothTalisman(), 1, EquipmentResult);
 	return State;
+}
+
+int32 UGameXXKMVPRules::GetCurrentSaveVersion()
+{
+	return GameXXKMVP::CurrentSaveVersion;
 }
 
 FName UGameXXKMVPRules::TaskQingshanMain()
@@ -1161,7 +1730,9 @@ bool UGameXXKMVPRules::OpenWorldMap(FGameXXKRuntimeState& State)
 
 bool UGameXXKMVPRules::EnterWorldRegion(FGameXXKRuntimeState& State, FName RegionId)
 {
-	if (!State.UnlockedRegions.Contains(RegionId))
+	// Qingshan is the only world-map region with a dedicated playable town level.
+	// Keep future-region unlocks in save data, but never route them into Qingshan by fallback.
+	if (RegionId != RegionQingshan() || !State.UnlockedRegions.Contains(RegionId))
 	{
 		return false;
 	}
@@ -1175,6 +1746,10 @@ bool UGameXXKMVPRules::EnterWorldRegion(FGameXXKRuntimeState& State, FName Regio
 bool UGameXXKMVPRules::AcceptTownQuest(FGameXXKRuntimeState& State)
 {
 	if (State.Screen != EGameXXKScreen::Town || State.QuestState != EGameXXKQuestState::NotAccepted)
+	{
+		return false;
+	}
+	if (!AddItem(State, ItemQingshanRouteSeal(), 1))
 	{
 		return false;
 	}
@@ -1235,13 +1810,55 @@ bool UGameXXKMVPRules::EnterDungeon(FGameXXKRuntimeState& State)
 	{
 		return false;
 	}
-	State.Screen = EGameXXKScreen::DungeonMap;
-	State.CurrentRegion = RegionHuangshan();
-	State.CurrentMapId = TEXT("HuangshanRoute");
-	State.bDungeonActive = true;
-	State.DungeonNodeIndex = 0;
-	State.TownPanelMode = EGameXXKTownPanelMode::None;
-	GameXXKMVP::GenerateRouteMap(State);
+	FGameXXKRuntimeState Candidate = State;
+	// A route is a self-contained card run.  Keep permanent hero/companion configuration,
+	// but never carry a prior route's temporary NPC, rewards, or pending event into it.
+	FString CardRunError;
+	if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(Candidate, &CardRunError))
+	{
+		return false;
+	}
+	FGameXXKCardBattleAdapter::ClearRouteLocalCardState(Candidate);
+	// InitializeRoute is intentionally idempotent, so a genuinely new route must
+	// first discard a prior valid balance and its chapter-scoped receipts.
+	FGameXXKRouteEconomyRules::ClearRouteEconomy(Candidate.CardRun);
+	// Task.QingshanMain is the one route-start support exception: accepting the
+	// Qingshan main quest with its follower active reserves the route-local NPC
+	// slot for Tusi Chief before the card loadout is locked.  This intentionally
+	// uses the existing temporary-NPC API, never the permanent companion roster.
+	if (Candidate.QuestState == EGameXXKQuestState::Accepted && Candidate.bFollowerJoined
+		&& !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, GameXXKMVP::QuestNpcTusiChiefName, {}, &CardRunError))
+	{
+		return false;
+	}
+	Candidate.CardRun.bLoadoutLockedForRoute = true;
+	Candidate.Screen = EGameXXKScreen::DungeonMap;
+	Candidate.CurrentRegion = RegionHuangshan();
+	Candidate.CurrentMapId = TEXT("HuangshanRoute");
+	Candidate.bDungeonActive = true;
+	Candidate.DungeonNodeIndex = 0;
+	Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
+	GameXXKMVP::GenerateRouteMap(Candidate);
+	GameXXKMVP::InitializeThreeChapterRouteProgress(Candidate);
+	if (!FGameXXKRouteEconomyRules::InitializeRoute(Candidate.CardRun, 60, &CardRunError))
+	{
+		return false;
+	}
+	TArray<FGameXXKRouteCardEntry> BaseRouteCardEntries;
+	const int32 RootSeed = Candidate.CardRun.RouteProgress.RootSeed;
+	if (!FGameXXKRouteCardRecipe::BuildBaseEntries(
+		Candidate,
+		RootSeed,
+		BaseRouteCardEntries,
+		&CardRunError))
+	{
+		return false;
+	}
+	Candidate.CardRun.RouteRandomSeed = RootSeed;
+	Candidate.CardRun.RouteCardEntries = MoveTemp(BaseRouteCardEntries);
+	Candidate.CardRun.NextRouteCardEntryOrdinal = FGameXXKRouteCardRecipe::BaseEntryCount;
+	Candidate.CardRun.RouteCardIds.Reset();
+	State = MoveTemp(Candidate);
 	return true;
 }
 
@@ -1256,15 +1873,26 @@ bool UGameXXKMVPRules::AdvanceDungeonNode(FGameXXKRuntimeState& State, EGameXXKN
 	{
 		return false;
 	}
+	FGameXXKRuntimeState Candidate = State;
 	if (ExpectedNode == EGameXXKNodeKind::Battle || ExpectedNode == EGameXXKNodeKind::Boss)
 	{
-		State.TownPanelMode = EGameXXKTownPanelMode::None;
-		return GameXXKMVP::BeginBattle(State, ExpectedNode, INDEX_NONE);
+		Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
+		if (!GameXXKMVP::BeginBattle(Candidate, ExpectedNode, INDEX_NONE))
+		{
+			return false;
+		}
+		State = MoveTemp(Candidate);
+		return true;
 	}
-	State.DungeonNodeIndex += 1;
-	State.Screen = EGameXXKScreen::DungeonMap;
-	State.CurrentMapId = TEXT("HuangshanRoute");
-	State.TownPanelMode = EGameXXKTownPanelMode::None;
+	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
+	if (!GameXXKMVP::SettleFixedRouteNode(
+		Candidate,
+		BeforeOneTimeRewards,
+		GameXXKMVP::GetBaseRouteNodeTravelMoney(ExpectedNode)))
+	{
+		return false;
+	}
+	State = MoveTemp(Candidate);
 	return true;
 }
 
@@ -1281,36 +1909,88 @@ bool UGameXXKMVPRules::SelectRouteNodeById(FGameXXKRuntimeState& State, int32 No
 		return false;
 	}
 
-	State.CurrentRouteNodeId = NodeId;
-	State.TownPanelMode = EGameXXKTownPanelMode::None;
+	const EGameXXKNodeKind NodeKind = Node->NodeKind;
+	FGameXXKRuntimeState Candidate = State;
+	Candidate.CurrentRouteNodeId = NodeId;
+	Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
 	if (Node->NodeKind == EGameXXKNodeKind::Battle || Node->NodeKind == EGameXXKNodeKind::Elite || Node->NodeKind == EGameXXKNodeKind::Boss)
 	{
-		State.PendingRouteNodeId = NodeId;
-		return GameXXKMVP::BeginBattle(State, Node->NodeKind, NodeId);
+		Candidate.PendingRouteNodeId = NodeId;
+		if (!GameXXKMVP::BeginBattle(Candidate, NodeKind, NodeId))
+		{
+			return false;
+		}
+		State = MoveTemp(Candidate);
+		return true;
 	}
 	if (Node->NodeKind == EGameXXKNodeKind::Event || Node->NodeKind == EGameXXKNodeKind::Chest)
 	{
-		State.PendingRouteNodeId = NodeId;
-		State.Screen = EGameXXKScreen::RouteEvent;
-		State.CurrentMapId = TEXT("RouteEvent");
+		Candidate.PendingRouteNodeId = NodeId;
+		if (Node->NodeKind == EGameXXKNodeKind::Event)
+		{
+			int32 EventChoiceSeed = Candidate.RouteSeed ^ NodeId ^ 0x5F3759DF;
+			if (EventChoiceSeed == 0)
+			{
+				EventChoiceSeed = 0x6D2B79F5;
+			}
+			FName IgnoredEventNpcId;
+			if (!FGameXXKCardBattleAdapter::CreateRouteEventOffer(Candidate, NodeId, EventChoiceSeed, IgnoredEventNpcId))
+			{
+				return false;
+			}
+		}
+		else
+		{
+			int32 RewardSeed = Candidate.RouteSeed ^ NodeId ^ 0x4A39B70D;
+			if (RewardSeed == 0) RewardSeed = 0x13572468;
+			const FGameXXKRouteEncounterDefinition* Encounter = FGameXXKRouteEncounterCatalog::ChooseDeterministic(EGameXXKRouteEncounterKind::Chest, RewardSeed);
+			TArray<FName> RelicIds;
+			if (!Encounter || !FGameXXKRelicRules::CreateRelicOffer(Candidate, NodeId, RewardSeed, RelicIds))
+			{
+				return false;
+			}
+			Candidate.CardRun.PendingEvent.SourceNodeId = NodeId;
+			Candidate.CardRun.PendingEvent.ChoiceSeed = RewardSeed;
+			Candidate.CardRun.PendingEvent.EncounterId = Encounter->Id;
+			Candidate.CardRun.PendingEvent.EventNpcId = NAME_None;
+		}
+		Candidate.Screen = EGameXXKScreen::RouteEvent;
+		Candidate.CurrentMapId = TEXT("RouteEvent");
+		State = MoveTemp(Candidate);
 		return true;
 	}
 	if (Node->NodeKind == EGameXXKNodeKind::Camp)
 	{
-		State.PendingRouteNodeId = NodeId;
-		State.Screen = EGameXXKScreen::RouteCamp;
-		State.CurrentMapId = TEXT("RouteCamp");
+		Candidate.PendingRouteNodeId = NodeId;
+		Candidate.Screen = EGameXXKScreen::RouteCamp;
+		Candidate.CurrentMapId = TEXT("RouteCamp");
+		State = MoveTemp(Candidate);
 		return true;
 	}
 	if (Node->NodeKind == EGameXXKNodeKind::Merchant)
 	{
-		State.PendingRouteNodeId = NodeId;
-		State.Screen = EGameXXKScreen::RouteMerchant;
-		State.CurrentMapId = TEXT("RouteMerchant");
+		Candidate.PendingRouteNodeId = NodeId;
+		Candidate.Screen = EGameXXKScreen::RouteMerchant;
+		Candidate.CurrentMapId = TEXT("RouteMerchant");
+		if (!FGameXXKRouteMerchantRules::EnsureStock(Candidate))
+		{
+			return false;
+		}
+		State = MoveTemp(Candidate);
 		return true;
 	}
 
-	return GameXXKMVP::CompleteRouteNode(State, *Node);
+	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
+	if (!GameXXKMVP::SettleGeneratedRouteNode(
+		Candidate,
+		BeforeOneTimeRewards,
+		NodeId,
+		GameXXKMVP::GetBaseRouteNodeTravelMoney(NodeKind)))
+	{
+		return false;
+	}
+	State = MoveTemp(Candidate);
+	return true;
 }
 
 bool UGameXXKMVPRules::ResolveBattleVictory(FGameXXKRuntimeState& State, bool bBossBattle)
@@ -1319,50 +1999,253 @@ bool UGameXXKMVPRules::ResolveBattleVictory(FGameXXKRuntimeState& State, bool bB
 	{
 		return false;
 	}
-	if (State.bHasGeneratedRouteMap)
+
+	FGameXXKRuntimeState Candidate = State;
+	if (!Candidate.CardRun.bHasActiveCardBattle
+		|| Candidate.CardRun.ActiveBattle.Phase != EGameXXKCardBattlePhase::Victory)
 	{
-		const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(State);
+		return false;
+	}
+	const FGameXXKRouteMapNode* RewardPendingNode = Candidate.bHasGeneratedRouteMap
+		? GameXXKMVP::FindPendingRouteNode(Candidate)
+		: nullptr;
+	const EGameXXKNodeKind RewardNodeKind = RewardPendingNode
+		? RewardPendingNode->NodeKind
+		: (bBossBattle ? EGameXXKNodeKind::Boss : EGameXXKNodeKind::Battle);
+	const int32 StableRewardSourceNodeId = RewardPendingNode
+		? RewardPendingNode->NodeId
+		: Candidate.DungeonNodeIndex;
+	if (!Candidate.CardRun.bActiveBattleRewardResolved)
+	{
+		int32 ChoiceSeed = Candidate.CardRun.PendingReward.ChoiceSeed;
+		if (Candidate.CardRun.PendingReward.CardIds.IsEmpty()
+			&& !GameXXKMVP::TryBuildRouteRewardChoiceSeed(
+				Candidate.CardRun.RouteRandomSeed,
+				StableRewardSourceNodeId,
+				Candidate.CardRun.NextRewardOrdinal,
+				ChoiceSeed))
+		{
+			return false;
+		}
+		TArray<FName> IgnoredRewardCardIds;
+		if (!FGameXXKCardBattleAdapter::CreateRouteRewardOffer(
+			Candidate,
+			RewardNodeKind,
+			StableRewardSourceNodeId,
+			ChoiceSeed,
+			IgnoredRewardCardIds))
+		{
+			return false;
+		}
+		State = MoveTemp(Candidate);
+		return true;
+	}
+	if (Candidate.bHasGeneratedRouteMap)
+	{
+		const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(Candidate);
 		if (!PendingNode || (PendingNode->NodeKind != EGameXXKNodeKind::Battle && PendingNode->NodeKind != EGameXXKNodeKind::Elite && PendingNode->NodeKind != EGameXXKNodeKind::Boss))
 		{
 			return false;
 		}
-		if (PendingNode->NodeKind == EGameXXKNodeKind::Boss)
+		const int32 NodeId = PendingNode->NodeId;
+		const EGameXXKNodeKind NodeKind = PendingNode->NodeKind;
+		const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
+		if (NodeKind == EGameXXKNodeKind::Boss)
 		{
-			GameXXKMVP::ApplyXP(State, 150);
-			State.PlayerGold += 35;
-			AddItem(State, ItemClothArmor(), 1);
-			GameXXKMVP::ClearActiveBattle(State);
-			return ResolveBossClear(State);
+			GameXXKMVP::ApplyXP(Candidate, 150);
+			GameXXKMVP::AwardActivePermanentCompanionBattleExperience(Candidate, GameXXKMVP::BossPermanentCompanionBattleExperience);
+			FGameXXKEquipmentTransactionResult EquipmentReward;
+			FGameXXKEquipmentEconomyRules::GrantLegacyEquipmentForCompatibility(Candidate, ItemClothArmor(), 1, EquipmentReward);
+			if (!GameXXKMVP::SettleGeneratedRouteNode(
+				Candidate,
+				BeforeOneTimeRewards,
+				NodeId,
+				GameXXKMVP::GetBaseRouteNodeTravelMoney(NodeKind)))
+			{
+				return false;
+			}
+			GameXXKMVP::ClearActiveBattle(Candidate);
+			if (!ResolveBossClear(Candidate))
+			{
+				return false;
+			}
+			State = MoveTemp(Candidate);
+			return true;
 		}
-		GameXXKMVP::ApplyXP(State, PendingNode->NodeKind == EGameXXKNodeKind::Elite ? 110 : 80);
-		State.PlayerGold += PendingNode->NodeKind == EGameXXKNodeKind::Elite ? 24 : 18;
-		AddItem(State, ItemHealingPowder(), 1);
-		GameXXKMVP::ClearActiveBattle(State);
-		return GameXXKMVP::CompleteRouteNode(State, *PendingNode);
-	}
-	if (bBossBattle)
-	{
-		if (!GameXXKMVP::IsDungeonNode(State, EGameXXKNodeKind::Boss))
+		GameXXKMVP::ApplyXP(Candidate, NodeKind == EGameXXKNodeKind::Elite ? 110 : 80);
+		GameXXKMVP::AwardActivePermanentCompanionBattleExperience(
+			Candidate,
+			NodeKind == EGameXXKNodeKind::Elite
+				? GameXXKMVP::ElitePermanentCompanionBattleExperience
+				: GameXXKMVP::NormalPermanentCompanionBattleExperience);
+		AddItem(Candidate, ItemHealingPowder(), 1);
+		if (!GameXXKMVP::SettleGeneratedRouteNode(
+			Candidate,
+			BeforeOneTimeRewards,
+			NodeId,
+			GameXXKMVP::GetBaseRouteNodeTravelMoney(NodeKind)))
 		{
 			return false;
 		}
-		GameXXKMVP::ApplyXP(State, 150);
-		State.PlayerGold += 35;
-		AddItem(State, ItemClothArmor(), 1);
-		GameXXKMVP::ClearActiveBattle(State);
-		return ResolveBossClear(State);
+		GameXXKMVP::ClearActiveBattle(Candidate);
+		State = MoveTemp(Candidate);
+		return true;
 	}
-	if (!GameXXKMVP::IsDungeonNode(State, EGameXXKNodeKind::Battle))
+	if (bBossBattle)
+	{
+		if (!GameXXKMVP::IsDungeonNode(Candidate, EGameXXKNodeKind::Boss))
+		{
+			return false;
+		}
+		const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
+		GameXXKMVP::ApplyXP(Candidate, 150);
+		GameXXKMVP::AwardActivePermanentCompanionBattleExperience(Candidate, GameXXKMVP::BossPermanentCompanionBattleExperience);
+		FGameXXKEquipmentTransactionResult EquipmentReward;
+		FGameXXKEquipmentEconomyRules::GrantLegacyEquipmentForCompatibility(Candidate, ItemClothArmor(), 1, EquipmentReward);
+		if (!GameXXKMVP::SettleFixedRouteNode(
+			Candidate,
+			BeforeOneTimeRewards,
+			GameXXKMVP::GetBaseRouteNodeTravelMoney(EGameXXKNodeKind::Boss)))
+		{
+			return false;
+		}
+		GameXXKMVP::ClearActiveBattle(Candidate);
+		if (!ResolveBossClear(Candidate))
+		{
+			return false;
+		}
+		State = MoveTemp(Candidate);
+		return true;
+	}
+	if (!GameXXKMVP::IsDungeonNode(Candidate, EGameXXKNodeKind::Battle))
 	{
 		return false;
 	}
-	GameXXKMVP::ApplyXP(State, 80);
-	State.PlayerGold += 18;
-	AddItem(State, ItemHealingPowder(), 1);
-	GameXXKMVP::ClearActiveBattle(State);
-	State.DungeonNodeIndex += 1;
-	State.Screen = EGameXXKScreen::DungeonMap;
-	State.CurrentMapId = TEXT("HuangshanRoute");
+	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
+	GameXXKMVP::ApplyXP(Candidate, 80);
+	GameXXKMVP::AwardActivePermanentCompanionBattleExperience(Candidate, GameXXKMVP::NormalPermanentCompanionBattleExperience);
+	AddItem(Candidate, ItemHealingPowder(), 1);
+	if (!GameXXKMVP::SettleFixedRouteNode(
+		Candidate,
+		BeforeOneTimeRewards,
+		GameXXKMVP::GetBaseRouteNodeTravelMoney(EGameXXKNodeKind::Battle)))
+	{
+		return false;
+	}
+	GameXXKMVP::ClearActiveBattle(Candidate);
+	State = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPRules::ResolvePendingRouteRewardChoiceAndFinish(
+	FGameXXKRuntimeState& State,
+	const FName RewardCardId,
+	const FName ReplacementEntryId,
+	FString* OutError)
+{
+	FGameXXKRuntimeState Candidate = State;
+	if (!FGameXXKCardBattleAdapter::ChoosePendingRouteReward(
+		Candidate,
+		RewardCardId,
+		ReplacementEntryId,
+		OutError))
+	{
+		return false;
+	}
+
+	bool bBossBattle = false;
+	if (Candidate.bHasGeneratedRouteMap)
+	{
+		const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(Candidate);
+		if (!PendingNode
+			|| (PendingNode->NodeKind != EGameXXKNodeKind::Battle
+				&& PendingNode->NodeKind != EGameXXKNodeKind::Elite
+				&& PendingNode->NodeKind != EGameXXKNodeKind::Boss))
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("Pending route reward has no resolvable battle node.");
+			}
+			return false;
+		}
+		bBossBattle = PendingNode->NodeKind == EGameXXKNodeKind::Boss;
+	}
+	else
+	{
+		bBossBattle = GameXXKMVP::IsDungeonNode(Candidate, EGameXXKNodeKind::Boss);
+		if (!bBossBattle && !GameXXKMVP::IsDungeonNode(Candidate, EGameXXKNodeKind::Battle))
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("Pending route reward has no resolvable fixed battle node.");
+			}
+			return false;
+		}
+	}
+
+	if (!ResolveBattleVictory(Candidate, bBossBattle))
+	{
+		if (OutError)
+		{
+			*OutError = TEXT("Reward choice succeeded but battle victory settlement failed.");
+		}
+		return false;
+	}
+
+	State = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPRules::SkipPendingRouteRewardAndFinish(
+	FGameXXKRuntimeState& State,
+	FString* OutError)
+{
+	FGameXXKRuntimeState Candidate = State;
+	if (!FGameXXKCardBattleAdapter::SkipPendingRouteReward(Candidate, OutError))
+	{
+		return false;
+	}
+
+	bool bBossBattle = false;
+	if (Candidate.bHasGeneratedRouteMap)
+	{
+		const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(Candidate);
+		if (!PendingNode
+			|| (PendingNode->NodeKind != EGameXXKNodeKind::Battle
+				&& PendingNode->NodeKind != EGameXXKNodeKind::Elite
+				&& PendingNode->NodeKind != EGameXXKNodeKind::Boss))
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("Pending route reward has no resolvable battle node.");
+			}
+			return false;
+		}
+		bBossBattle = PendingNode->NodeKind == EGameXXKNodeKind::Boss;
+	}
+	else
+	{
+		bBossBattle = GameXXKMVP::IsDungeonNode(Candidate, EGameXXKNodeKind::Boss);
+		if (!bBossBattle && !GameXXKMVP::IsDungeonNode(Candidate, EGameXXKNodeKind::Battle))
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("Pending route reward has no resolvable fixed battle node.");
+			}
+			return false;
+		}
+	}
+
+	if (!ResolveBattleVictory(Candidate, bBossBattle))
+	{
+		if (OutError)
+		{
+			*OutError = TEXT("Reward skip succeeded but battle victory settlement failed.");
+		}
+		return false;
+	}
+
+	State = MoveTemp(Candidate);
 	return true;
 }
 
@@ -1459,57 +2342,207 @@ bool UGameXXKMVPRules::ExecuteBattleHealingPowder(FGameXXKRuntimeState& State, i
 	return GameXXKMVP::FinishPlayerBattleAction(State);
 }
 
+bool UGameXXKMVPRules::ResolveRouteEncounterChoice(FGameXXKRuntimeState& State, const int32 ChoiceIndex)
+{
+	if (!State.bHasGeneratedRouteMap || State.Screen != EGameXXKScreen::RouteEvent || ChoiceIndex < 0)
+	{
+		return false;
+	}
+	FGameXXKRuntimeState Candidate = State;
+	const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(Candidate);
+	if (!PendingNode || (PendingNode->NodeKind != EGameXXKNodeKind::Event && PendingNode->NodeKind != EGameXXKNodeKind::Chest))
+	{
+		return false;
+	}
+	const int32 NodeId = PendingNode->NodeId;
+	const EGameXXKNodeKind NodeKind = PendingNode->NodeKind;
+	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
+	const int32 Chapter = Candidate.CardRun.RouteProgress.CurrentChapter;
+	if (GameXXKMVP::HasRouteNodeReceipt(Candidate, Chapter, NodeId))
+	{
+		if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
+		{
+			return false;
+		}
+		if (NodeKind == EGameXXKNodeKind::Chest)
+		{
+			Candidate.CardRun.PendingRelicOffer = FGameXXKPendingRelicOffer();
+		}
+		Candidate.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
+		State = MoveTemp(Candidate);
+		return true;
+	}
+	const FGameXXKRouteEncounterDefinition* Encounter = FGameXXKRouteEncounterCatalog::FindDefinition(Candidate.CardRun.PendingEvent.EncounterId);
+	if (!Encounter || Encounter->Choices.Num() <= ChoiceIndex)
+	{
+		return false;
+	}
+
+	if (NodeKind == EGameXXKNodeKind::Chest)
+	{
+		if (Encounter->Kind != EGameXXKRouteEncounterKind::Chest
+			|| !Candidate.CardRun.PendingRelicOffer.RelicIds.IsValidIndex(ChoiceIndex))
+		{
+			return false;
+		}
+		const FName ChosenRelicId = Candidate.CardRun.PendingRelicOffer.RelicIds[ChoiceIndex];
+		if (!FGameXXKRelicRules::ChoosePendingRelic(Candidate, ChosenRelicId)
+			|| !GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
+		{
+			return false;
+		}
+		Candidate.CardRun.PendingRelicOffer = FGameXXKPendingRelicOffer();
+		Candidate.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
+		State = MoveTemp(Candidate);
+		return true;
+	}
+
+	if (Encounter->Kind != EGameXXKRouteEncounterKind::Event)
+	{
+		return false;
+	}
+	const FGameXXKRouteEncounterChoiceDefinition& Choice = Encounter->Choices[ChoiceIndex];
+	if (Choice.RewardKind == EGameXXKRouteEncounterRewardKind::TemporaryNpcSupport)
+	{
+		if (!Candidate.CardRun.PartySelection.QuestNpc.NpcId.IsNone()
+			|| Choice.QuestNpcId.IsNone()
+			|| !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, Choice.QuestNpcId, {}))
+		{
+			return false;
+		}
+	}
+	else if (Choice.RewardKind != EGameXXKRouteEncounterRewardKind::RouteAttribute)
+	{
+		return false;
+	}
+
+	const int32 Magnitude = FMath::Max(0, Choice.Magnitude);
+	switch (Choice.AttributeKind)
+	{
+	case EGameXXKRouteAttributeKind::MaxHealth: Candidate.CardRun.RouteAttributeBonuses.MaxHealth += Magnitude; break;
+	case EGameXXKRouteAttributeKind::MaxMana: Candidate.CardRun.RouteAttributeBonuses.MaxMana += Magnitude; break;
+	case EGameXXKRouteAttributeKind::Attack: Candidate.CardRun.RouteAttributeBonuses.Attack += Magnitude; break;
+	case EGameXXKRouteAttributeKind::Defense: Candidate.CardRun.RouteAttributeBonuses.Defense += Magnitude; break;
+	case EGameXXKRouteAttributeKind::Speed: Candidate.CardRun.RouteAttributeBonuses.Speed += Magnitude; break;
+	default: return false;
+	}
+	if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
+	{
+		return false;
+	}
+	Candidate.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
+	State = MoveTemp(Candidate);
+	return true;
+}
+
 bool UGameXXKMVPRules::ResolveEventReward(FGameXXKRuntimeState& State, bool bTakeGold)
 {
 	if (State.bHasGeneratedRouteMap && State.Screen == EGameXXKScreen::RouteEvent)
 	{
 		const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(State);
-		if (!PendingNode || (PendingNode->NodeKind != EGameXXKNodeKind::Event && PendingNode->NodeKind != EGameXXKNodeKind::Chest))
+		// Chest nodes own a pending three-relic choice. They must only complete
+		// through ResolveRouteEncounterChoice; otherwise the unresolved offer can
+		// survive into a later chapter and block every subsequent chest.
+		if (!PendingNode || PendingNode->NodeKind != EGameXXKNodeKind::Event)
 		{
 			return false;
 		}
-		if (bTakeGold)
+		// A saved catalog encounter owns explicit choices and must resolve only
+		// through ResolveRouteEncounterChoice. This API is legacy compatibility
+		// for pending event states that predate the catalog encounter identity.
+		if (!State.CardRun.PendingEvent.EncounterId.IsNone())
 		{
-			State.PlayerGold += 12;
+			return false;
 		}
-		else
+		const int32 NodeId = PendingNode->NodeId;
+		FGameXXKRuntimeState Candidate = State;
+		const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
+		if (!bTakeGold)
 		{
-			AddItem(State, ItemHealingPowder(), 1);
+			AddItem(Candidate, ItemHealingPowder(), 1);
 		}
-		return GameXXKMVP::CompleteRouteNode(State, *PendingNode);
+		if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, bTakeGold ? 20 : 0))
+		{
+			return false;
+		}
+		if (Candidate.CardRun.PendingEvent.SourceNodeId == NodeId)
+		{
+			Candidate.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
+		}
+		State = MoveTemp(Candidate);
+		return true;
 	}
-	if (State.bHasGeneratedRouteMap && State.Screen == EGameXXKScreen::DungeonMap)
+	if (State.bHasGeneratedRouteMap)
 	{
-		const FGameXXKRouteMapNode* Node = GameXXKMVP::FindFirstReachableRouteNodeOfKind(State, EGameXXKNodeKind::Event);
-		if (!Node)
-		{
-			return false;
-		}
-		if (bTakeGold)
-		{
-			State.PlayerGold += 12;
-		}
-		else
-		{
-			AddItem(State, ItemHealingPowder(), 1);
-		}
-		return GameXXKMVP::CompleteRouteNode(State, *Node);
+		return false;
 	}
 	if (!GameXXKMVP::IsDungeonNode(State, EGameXXKNodeKind::Event))
 	{
 		return false;
 	}
-	if (bTakeGold)
+	FGameXXKRuntimeState Candidate = State;
+	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
+	if (!bTakeGold)
 	{
-		State.PlayerGold += 12;
+		AddItem(Candidate, ItemHealingPowder(), 1);
 	}
-	else
+	if (!GameXXKMVP::SettleFixedRouteNode(Candidate, BeforeOneTimeRewards, bTakeGold ? 20 : 0))
 	{
-		AddItem(State, ItemHealingPowder(), 1);
+		return false;
 	}
-	State.DungeonNodeIndex += 1;
-	State.Screen = EGameXXKScreen::DungeonMap;
-	State.CurrentMapId = TEXT("HuangshanRoute");
+	State = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPRules::AcceptRouteEventNpcSupport(FGameXXKRuntimeState& State)
+{
+	if (!State.bHasGeneratedRouteMap || State.Screen != EGameXXKScreen::RouteEvent)
+	{
+		return false;
+	}
+	const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(State);
+	if (!PendingNode || PendingNode->NodeKind != EGameXXKNodeKind::Event)
+	{
+		return false;
+	}
+	const int32 NodeId = PendingNode->NodeId;
+	if (GameXXKMVP::HasRouteNodeReceipt(State, State.CardRun.RouteProgress.CurrentChapter, NodeId))
+	{
+		FGameXXKRuntimeState Candidate = State;
+		const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
+		if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
+		{
+			return false;
+		}
+		Candidate.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
+		State = MoveTemp(Candidate);
+		return true;
+	}
+	const FGameXXKPendingRouteEvent PendingEvent = State.CardRun.PendingEvent;
+	if (PendingEvent.SourceNodeId != PendingNode->NodeId
+		|| PendingEvent.EventNpcId.IsNone()
+		|| !FGameXXKCompanionCatalog::FindQuestNpcDefinition(PendingEvent.EventNpcId))
+	{
+		return false;
+	}
+	// A route intentionally has one temporary support slot.  Never replace a
+	// previously accepted task NPC without a separate player-confirmed flow.
+	if (!State.CardRun.PartySelection.QuestNpc.NpcId.IsNone())
+	{
+		return false;
+	}
+	FGameXXKRuntimeState Candidate = State;
+	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
+	if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, PendingEvent.EventNpcId, {}))
+	{
+		return false;
+	}
+	if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
+	{
+		return false;
+	}
+	Candidate.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
+	State = MoveTemp(Candidate);
 	return true;
 }
 
@@ -1522,15 +2555,23 @@ bool UGameXXKMVPRules::ResolveCampReward(FGameXXKRuntimeState& State, bool bHeal
 		{
 			return false;
 		}
+		const int32 NodeId = PendingNode->NodeId;
+		FGameXXKRuntimeState Candidate = State;
+		const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
 		if (bHealNow)
 		{
-			State.PlayerHP = State.PlayerMaxHP;
+			Candidate.PlayerHP = Candidate.PlayerMaxHP;
 		}
 		else
 		{
-			AddItem(State, ItemHealingPowder(), 1);
+			AddItem(Candidate, ItemHealingPowder(), 1);
 		}
-		return GameXXKMVP::CompleteRouteNode(State, *PendingNode);
+		if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
+		{
+			return false;
+		}
+		State = MoveTemp(Candidate);
+		return true;
 	}
 	if (State.bHasGeneratedRouteMap && State.Screen == EGameXXKScreen::DungeonMap)
 	{
@@ -1539,32 +2580,91 @@ bool UGameXXKMVPRules::ResolveCampReward(FGameXXKRuntimeState& State, bool bHeal
 		{
 			return false;
 		}
+		const int32 NodeId = Node->NodeId;
+		FGameXXKRuntimeState Candidate = State;
+		const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
 		if (bHealNow)
 		{
-			State.PlayerHP = State.PlayerMaxHP;
+			Candidate.PlayerHP = Candidate.PlayerMaxHP;
 		}
 		else
 		{
-			AddItem(State, ItemHealingPowder(), 1);
+			AddItem(Candidate, ItemHealingPowder(), 1);
 		}
-		return GameXXKMVP::CompleteRouteNode(State, *Node);
+		if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
+		{
+			return false;
+		}
+		State = MoveTemp(Candidate);
+		return true;
 	}
 	if (!GameXXKMVP::IsDungeonNode(State, EGameXXKNodeKind::Camp))
 	{
 		return false;
 	}
+	FGameXXKRuntimeState Candidate = State;
+	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
 	if (bHealNow)
 	{
-		State.PlayerHP = State.PlayerMaxHP;
+		Candidate.PlayerHP = Candidate.PlayerMaxHP;
 	}
 	else
 	{
-		AddItem(State, ItemHealingPowder(), 1);
+		AddItem(Candidate, ItemHealingPowder(), 1);
 	}
-	State.DungeonNodeIndex += 1;
-	State.Screen = EGameXXKScreen::DungeonMap;
-	State.CurrentMapId = TEXT("HuangshanRoute");
+	if (!GameXXKMVP::SettleFixedRouteNode(Candidate, BeforeOneTimeRewards, 0))
+	{
+		return false;
+	}
+	State = MoveTemp(Candidate);
 	return true;
+}
+
+bool UGameXXKMVPRules::EnsureRouteMerchantStock(FGameXXKRuntimeState& State, FString* OutError)
+{
+	return FGameXXKRouteMerchantRules::EnsureStock(State, OutError);
+}
+
+bool UGameXXKMVPRules::GetRouteMerchantView(
+	const FGameXXKRuntimeState& State,
+	FGameXXKRouteMerchantView& OutView,
+	FString* OutError)
+{
+	return FGameXXKRouteMerchantRules::GetView(State, OutView, OutError);
+}
+
+bool UGameXXKMVPRules::RefreshRouteMerchant(FGameXXKRuntimeState& State, FString* OutError)
+{
+	return FGameXXKRouteMerchantRules::Refresh(State, OutError);
+}
+
+bool UGameXXKMVPRules::PreviewRouteMerchantPurchase(
+	const FGameXXKRuntimeState& State,
+	const FName OfferId,
+	const FName ReplacementEntryId,
+	FGameXXKRouteMerchantPurchasePreview& OutPreview,
+	FString* OutError)
+{
+	return FGameXXKRouteMerchantRules::PreviewPurchase(
+		State,
+		OfferId,
+		ReplacementEntryId,
+		OutPreview,
+		OutError);
+}
+
+bool UGameXXKMVPRules::PurchaseRouteMerchant(
+	FGameXXKRuntimeState& State,
+	const FName OfferId,
+	const FName ReplacementEntryId,
+	FGameXXKRouteMerchantPurchaseResult& OutResult)
+{
+	return FGameXXKRouteMerchantRules::Purchase(State, OfferId, ReplacementEntryId, OutResult);
+}
+
+bool UGameXXKMVPRules::CancelPendingRouteMerchantPurchase(FGameXXKRuntimeState& State, FString* OutError)
+{
+	return FGameXXKRouteMerchantRules::CancelPendingPurchase(State, OutError);
 }
 
 bool UGameXXKMVPRules::ResolveMerchantRouteNode(FGameXXKRuntimeState& State)
@@ -1576,29 +2676,32 @@ bool UGameXXKMVPRules::ResolveMerchantRouteNode(FGameXXKRuntimeState& State)
 		{
 			return false;
 		}
-		State.PlayerGold = FMath::Max(0, State.PlayerGold);
-		return GameXXKMVP::CompleteRouteNode(State, *PendingNode);
+		const int32 NodeId = PendingNode->NodeId;
+		FGameXXKRuntimeState Candidate = State;
+		if (Candidate.CardRun.RouteMerchant.PendingPurchase.bActive
+			&& !FGameXXKRouteMerchantRules::CancelPendingPurchase(Candidate))
+		{
+			return false;
+		}
+		const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
+		if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
+		{
+			return false;
+		}
+		State = MoveTemp(Candidate);
+		return true;
 	}
 	return false;
 }
 
 bool UGameXXKMVPRules::FailDungeonToTown(FGameXXKRuntimeState& State)
 {
-	if (!State.bDungeonActive)
-	{
-		return false;
-	}
-	State.Screen = EGameXXKScreen::Town;
-	State.CurrentRegion = RegionQingshan();
-	State.CurrentMapId = RegionQingshan();
-	State.bDungeonActive = false;
-	State.DungeonNodeIndex = 0;
-	State.TownPanelMode = EGameXXKTownPanelMode::None;
-	State.PlayerHP = State.PlayerMaxHP;
-	State.PlayerMP = State.PlayerMaxMP;
-	State.bFollowerJoined = State.QuestState == EGameXXKQuestState::Accepted;
-	GameXXKMVP::ClearActiveBattle(State);
-	return true;
+	return GameXXKMVP::ReturnTerminalRouteToTown(State, EGameXXKRouteTerminalOutcome::Defeated);
+}
+
+bool UGameXXKMVPRules::AbandonDungeonToTown(FGameXXKRuntimeState& State)
+{
+	return GameXXKMVP::ReturnTerminalRouteToTown(State, EGameXXKRouteTerminalOutcome::Abandoned);
 }
 
 bool UGameXXKMVPRules::ResolveBossClear(FGameXXKRuntimeState& State)
@@ -1607,16 +2710,38 @@ bool UGameXXKMVPRules::ResolveBossClear(FGameXXKRuntimeState& State)
 	{
 		return false;
 	}
-	State.QuestState = EGameXXKQuestState::Completed;
-	State.bFollowerJoined = false;
-	State.bDungeonActive = false;
-	State.DungeonNodeIndex = 0;
-	State.Screen = EGameXXKScreen::WorldMap;
-	State.CurrentRegion = NAME_None;
-	State.CurrentMapId = TEXT("WorldMap");
-	State.TownPanelMode = EGameXXKTownPanelMode::None;
-	State.UnlockedRegions.Add(RegionTanjiang());
-	GameXXKMVP::ClearActiveBattle(State);
+	if (State.CardRun.RouteProgress.SchemaVersion == 1)
+	{
+		if (!GameXXKMVP::IsValidThreeChapterRouteProgress(State.CardRun.RouteProgress))
+		{
+			return false;
+		}
+		if (State.CardRun.RouteProgress.CurrentChapter < 3)
+		{
+			return GameXXKMVP::AdvanceToNextRouteChapter(State);
+		}
+	}
+
+	FGameXXKRuntimeState Candidate = State;
+	if (!GameXXKMVP::SettleTerminalRoute(Candidate, EGameXXKRouteTerminalOutcome::Cleared))
+	{
+		return false;
+	}
+	Candidate.QuestState = EGameXXKQuestState::Completed;
+	Candidate.bFollowerJoined = false;
+	Candidate.bDungeonActive = false;
+	Candidate.DungeonNodeIndex = 0;
+	Candidate.Screen = EGameXXKScreen::WorldMap;
+	Candidate.CurrentRegion = NAME_None;
+	Candidate.CurrentMapId = TEXT("WorldMap");
+	Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
+	Candidate.UnlockedRegions.Add(RegionTanjiang());
+	if (GetItemCount(Candidate, ItemQingshanRouteSeal()) > 0)
+	{
+		RemoveItem(Candidate, ItemQingshanRouteSeal(), GetItemCount(Candidate, ItemQingshanRouteSeal()));
+	}
+	GameXXKMVP::ClearActiveBattle(Candidate);
+	State = MoveTemp(Candidate);
 	return true;
 }
 
@@ -1635,13 +2760,26 @@ bool UGameXXKMVPRules::AddItem(FGameXXKRuntimeState& State, FName ItemId, int32 
 	{
 		return false;
 	}
-	State.Inventory.FindOrAdd(ItemId) += Quantity;
+	if (FGameXXKEquipmentCatalog::FindDefinition(ItemId))
+	{
+		return false;
+	}
+	const int64 NewCount = static_cast<int64>(State.Inventory.FindRef(ItemId)) + Quantity;
+	if (NewCount > MAX_int32)
+	{
+		return false;
+	}
+	State.Inventory.FindOrAdd(ItemId) = static_cast<int32>(NewCount);
+	if (ItemId == ItemEnhancementStone())
+	{
+		GameXXKMVP::SynchronizeEnhancementMaterial(State);
+	}
 	return true;
 }
 
 bool UGameXXKMVPRules::RemoveItem(FGameXXKRuntimeState& State, FName ItemId, int32 Quantity)
 {
-	if (Quantity <= 0)
+	if (Quantity <= 0 || FGameXXKEquipmentCatalog::FindDefinition(ItemId))
 	{
 		return false;
 	}
@@ -1655,47 +2793,93 @@ bool UGameXXKMVPRules::RemoveItem(FGameXXKRuntimeState& State, FName ItemId, int
 	{
 		State.Inventory.Remove(ItemId);
 	}
+	if (ItemId == ItemEnhancementStone())
+	{
+		GameXXKMVP::SynchronizeEnhancementMaterial(State);
+	}
 	return true;
 }
 
 int32 UGameXXKMVPRules::GetItemCount(const FGameXXKRuntimeState& State, FName ItemId)
 {
+	if (const FGameXXKEquipmentDefinition* Definition = FGameXXKEquipmentCatalog::FindDefinition(ItemId))
+	{
+		return Definition->Set == EGameXXKEquipmentSet::Legacy
+			? FGameXXKEquipmentEconomyRules::CountLegacyEquipmentInstances(State, ItemId)
+			: 0;
+	}
 	return State.Inventory.FindRef(ItemId);
 }
 
 bool UGameXXKMVPRules::BuyItem(FGameXXKRuntimeState& State, FName ItemId, int32 Quantity)
 {
 	FGameXXKItemDef Def;
-	if (Quantity <= 0 || !GameXXKMVP::GetItemDef(ItemId, Def))
+	if (Quantity <= 0 || !GameXXKMVP::GetShopItemIds().Contains(ItemId) || !GameXXKMVP::GetItemDef(ItemId, Def))
 	{
 		return false;
 	}
-	const int32 Total = Def.BuyPrice * Quantity;
-	if (State.PlayerGold < Total)
+	const int64 Total = static_cast<int64>(Def.BuyPrice) * Quantity;
+	if (Total < 0 || Total > State.PlayerGold)
 	{
 		return false;
 	}
-	State.PlayerGold -= Total;
-	return AddItem(State, ItemId, Quantity);
+	if (FGameXXKEquipmentCatalog::FindDefinition(ItemId))
+	{
+		FGameXXKRuntimeState Candidate = State;
+		FGameXXKEquipmentTransactionResult Result;
+		for (int32 CopyIndex = 0; CopyIndex < Quantity; ++CopyIndex)
+		{
+			if (!FGameXXKEquipmentEconomyRules::PurchaseLegacyEquipmentForCompatibility(Candidate, ItemId, Result))
+			{
+				return false;
+			}
+		}
+		State = MoveTemp(Candidate);
+		return true;
+	}
+	FGameXXKRuntimeState Candidate = State;
+	Candidate.PlayerGold -= static_cast<int32>(Total);
+	if (!AddItem(Candidate, ItemId, Quantity))
+	{
+		return false;
+	}
+	State = MoveTemp(Candidate);
+	return true;
 }
 
 bool UGameXXKMVPRules::SellItem(FGameXXKRuntimeState& State, FName ItemId, int32 Quantity)
 {
 	FGameXXKItemDef Def;
-	if (Quantity <= 0 || !GameXXKMVP::GetItemDef(ItemId, Def) || !RemoveItem(State, ItemId, Quantity))
+	if (Quantity <= 0 || !CanSellItem(State, ItemId) || !GameXXKMVP::GetItemDef(ItemId, Def))
 	{
 		return false;
 	}
-	State.PlayerGold += Def.SellPrice * Quantity;
-	if (GetItemCount(State, ItemId) <= 0)
+	if (FGameXXKEquipmentCatalog::FindDefinition(ItemId))
 	{
-		State.ItemEnhancementLevels.Remove(ItemId);
+		FGameXXKEquipmentTransactionResult Result;
+		return FGameXXKEquipmentEconomyRules::SellLegacyEquipmentForCompatibility(State, ItemId, Quantity, Result);
 	}
-	if (State.EquippedWeapon == ItemId || State.EquippedArmor == ItemId || State.EquippedAccessory == ItemId)
+	const int64 GoldDelta = static_cast<int64>(Def.SellPrice) * Quantity;
+	if (GoldDelta < 0 || static_cast<int64>(State.PlayerGold) + GoldDelta > MAX_int32
+		|| !RemoveItem(State, ItemId, Quantity))
 	{
-		GameXXKMVP::RecalculatePlayerStats(State, true);
+		return false;
 	}
+	State.PlayerGold += static_cast<int32>(GoldDelta);
 	return true;
+}
+
+bool UGameXXKMVPRules::CanSellItem(const FGameXXKRuntimeState& State, FName ItemId)
+{
+	FGameXXKItemDef Def;
+	if (FGameXXKEquipmentCatalog::FindDefinition(ItemId))
+	{
+		return !FGameXXKEquipmentEconomyRules::FindLegacyInstanceForCompatibility(State, ItemId, false).IsNone();
+	}
+	return !ItemId.IsNone()
+		&& GetItemCount(State, ItemId) > 0
+		&& GameXXKMVP::GetItemDef(ItemId, Def)
+		&& Def.Kind != EGameXXKItemKind::Task;
 }
 
 int32 UGameXXKMVPRules::GetMaxItemEnhancementLevel()
@@ -1705,6 +2889,12 @@ int32 UGameXXKMVPRules::GetMaxItemEnhancementLevel()
 
 int32 UGameXXKMVPRules::GetItemEnhancementLevel(const FGameXXKRuntimeState& State, FName ItemId)
 {
+	if (FGameXXKEquipmentCatalog::FindDefinition(ItemId))
+	{
+		const FName InstanceId = FGameXXKEquipmentEconomyRules::FindLegacyInstanceForCompatibility(State, ItemId, true);
+		const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, InstanceId);
+		return Instance ? Instance->EnhancementLevel : 0;
+	}
 	return GameXXKMVP::GetClampedItemEnhancementLevel(State, ItemId);
 }
 
@@ -1712,8 +2902,7 @@ bool UGameXXKMVPRules::CanEnhanceItem(const FGameXXKRuntimeState& State, FName I
 {
 	FGameXXKItemDef Def;
 	if (ItemId.IsNone()
-		|| State.EnhancementMaterial <= 0
-		|| GetItemCount(State, ItemId) <= 0
+		|| GetItemCount(State, ItemEnhancementStone()) <= 0
 		|| !GameXXKMVP::GetItemDef(ItemId, Def))
 	{
 		return false;
@@ -1722,7 +2911,9 @@ bool UGameXXKMVPRules::CanEnhanceItem(const FGameXXKRuntimeState& State, FName I
 	const bool bIsEquipment = Def.Kind == EGameXXKItemKind::Weapon
 		|| Def.Kind == EGameXXKItemKind::Armor
 		|| Def.Kind == EGameXXKItemKind::Accessory;
-	return bIsEquipment && GetItemEnhancementLevel(State, ItemId) < GetMaxItemEnhancementLevel();
+	return bIsEquipment
+		&& !FGameXXKEquipmentEconomyRules::FindLegacyInstanceForCompatibility(State, ItemId, true).IsNone()
+		&& GetItemEnhancementLevel(State, ItemId) < GetMaxItemEnhancementLevel();
 }
 
 bool UGameXXKMVPRules::EnhanceItem(FGameXXKRuntimeState& State, FName ItemId)
@@ -1732,67 +2923,115 @@ bool UGameXXKMVPRules::EnhanceItem(FGameXXKRuntimeState& State, FName ItemId)
 		return false;
 	}
 
-	State.EnhancementMaterial -= 1;
-	State.ItemEnhancementLevels.Add(ItemId, GetItemEnhancementLevel(State, ItemId) + 1);
-	GameXXKMVP::RecalculatePlayerStats(State, true);
-	return true;
+	const FName InstanceId = FGameXXKEquipmentEconomyRules::FindLegacyInstanceForCompatibility(State, ItemId, true);
+	FGameXXKEquipmentTransactionResult Result;
+	return FGameXXKEquipmentEconomyRules::EnhanceInstance(State, InstanceId, Result);
+}
+
+bool UGameXXKMVPRules::CanDecomposeItem(const FGameXXKRuntimeState& State, FName ItemId)
+{
+	FGameXXKItemDef Def;
+	if (ItemId.IsNone() || !GameXXKMVP::GetItemDef(ItemId, Def))
+	{
+		return false;
+	}
+
+	return !FGameXXKEquipmentEconomyRules::FindLegacyInstanceForCompatibility(State, ItemId, true).IsNone()
+		&& (Def.Kind == EGameXXKItemKind::Weapon
+		|| Def.Kind == EGameXXKItemKind::Armor
+		|| Def.Kind == EGameXXKItemKind::Accessory);
+}
+
+bool UGameXXKMVPRules::DecomposeItem(FGameXXKRuntimeState& State, FName ItemId)
+{
+	if (!CanDecomposeItem(State, ItemId))
+	{
+		return false;
+	}
+	const FName InstanceId = FGameXXKEquipmentEconomyRules::FindLegacyInstanceForCompatibility(State, ItemId, true);
+	FGameXXKEquipmentTransactionResult Result;
+	return FGameXXKEquipmentEconomyRules::DismantleBatch(State, {InstanceId}, true, Result);
 }
 
 bool UGameXXKMVPRules::EquipItem(FGameXXKRuntimeState& State, FName ItemId)
 {
 	FGameXXKItemDef Def;
-	if (!GameXXKMVP::GetItemDef(ItemId, Def) || GetItemCount(State, ItemId) <= 0)
+	const FGameXXKEquipmentDefinition* EquipmentDefinition = FGameXXKEquipmentCatalog::FindDefinition(ItemId);
+	if (!GameXXKMVP::GetItemDef(ItemId, Def) || !EquipmentDefinition)
 	{
 		return false;
 	}
-	if (Def.Kind == EGameXXKItemKind::Weapon)
+
+	if (const FGameXXKEquipmentLoadout* HeroLoadout =
+		State.EquipmentCollection.CharacterLoadouts.Find(FGameXXKEquipmentRules::HeroCharacterId()))
 	{
-		State.EquippedWeapon = ItemId;
+		FName EquippedInstanceId = NAME_None;
+		switch (EquipmentDefinition->Slot)
+		{
+		case EGameXXKEquipmentSlot::Weapon: EquippedInstanceId = HeroLoadout->WeaponInstanceId; break;
+		case EGameXXKEquipmentSlot::Head: EquippedInstanceId = HeroLoadout->HeadInstanceId; break;
+		case EGameXXKEquipmentSlot::Armor: EquippedInstanceId = HeroLoadout->ArmorInstanceId; break;
+		case EGameXXKEquipmentSlot::Belt: EquippedInstanceId = HeroLoadout->BeltInstanceId; break;
+		case EGameXXKEquipmentSlot::Shoes: EquippedInstanceId = HeroLoadout->ShoesInstanceId; break;
+		case EGameXXKEquipmentSlot::Accessory: EquippedInstanceId = HeroLoadout->AccessoryInstanceId; break;
+		default: break;
+		}
+
+		const FGameXXKEquipmentInstance* EquippedInstance =
+			FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, EquippedInstanceId);
+		if (EquippedInstance && EquippedInstance->BaseEquipmentId == ItemId)
+		{
+			// The successful equip already synchronized every compatibility mirror.
+			// Repeating the same legacy facade request is a strict no-op, but it must
+			// still reject collection corruption that the core equip path would reject.
+			return FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(
+				State.EquipmentCollection,
+				State.CardRun.CompanionRoster);
+		}
 	}
-	else if (Def.Kind == EGameXXKItemKind::Armor)
-	{
-		State.EquippedArmor = ItemId;
-	}
-	else if (Def.Kind == EGameXXKItemKind::Accessory)
-	{
-		State.EquippedAccessory = ItemId;
-	}
-	else
+
+	const FName InstanceId = FGameXXKEquipmentEconomyRules::FindLegacyInstanceForCompatibility(State, ItemId, false);
+	if (InstanceId.IsNone())
 	{
 		return false;
 	}
-	GameXXKMVP::RecalculatePlayerStats(State, true);
-	return true;
+	FGameXXKEquipmentTransactionResult Result;
+	return FGameXXKEquipmentEconomyRules::Equip(
+		State,
+		FGameXXKEquipmentRules::HeroCharacterId(),
+		EquipmentDefinition->Slot,
+		InstanceId,
+		Result);
 }
 
 bool UGameXXKMVPRules::UnequipItem(FGameXXKRuntimeState& State, FName ItemId)
 {
-	if (ItemId.IsNone())
+	const FGameXXKEquipmentDefinition* Definition = FGameXXKEquipmentCatalog::FindDefinition(ItemId);
+	const FGameXXKEquipmentLoadout* HeroLoadout =
+		State.EquipmentCollection.CharacterLoadouts.Find(FGameXXKEquipmentRules::HeroCharacterId());
+	if (!Definition || !HeroLoadout)
 	{
 		return false;
 	}
-	bool bChanged = false;
-	if (State.EquippedWeapon == ItemId)
+	FName EquippedInstanceId = NAME_None;
+	switch (Definition->Slot)
 	{
-		State.EquippedWeapon = NAME_None;
-		bChanged = true;
+	case EGameXXKEquipmentSlot::Weapon: EquippedInstanceId = HeroLoadout->WeaponInstanceId; break;
+	case EGameXXKEquipmentSlot::Armor: EquippedInstanceId = HeroLoadout->ArmorInstanceId; break;
+	case EGameXXKEquipmentSlot::Accessory: EquippedInstanceId = HeroLoadout->AccessoryInstanceId; break;
+	default: return false;
 	}
-	else if (State.EquippedArmor == ItemId)
-	{
-		State.EquippedArmor = NAME_None;
-		bChanged = true;
-	}
-	else if (State.EquippedAccessory == ItemId)
-	{
-		State.EquippedAccessory = NAME_None;
-		bChanged = true;
-	}
-	if (!bChanged)
+	const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, EquippedInstanceId);
+	if (!Instance || Instance->BaseEquipmentId != ItemId)
 	{
 		return false;
 	}
-	GameXXKMVP::RecalculatePlayerStats(State, true);
-	return true;
+	FGameXXKEquipmentTransactionResult Result;
+	return FGameXXKEquipmentEconomyRules::Unequip(
+		State,
+		FGameXXKEquipmentRules::HeroCharacterId(),
+		Definition->Slot,
+		Result);
 }
 
 bool UGameXXKMVPRules::UseHealingItem(FGameXXKRuntimeState& State)
@@ -1840,7 +3079,7 @@ bool UGameXXKMVPRules::CloseTownPanel(FGameXXKRuntimeState& State)
 
 void UGameXXKMVPRules::RecalculatePlayerStatsFromEquipment(FGameXXKRuntimeState& State)
 {
-	GameXXKMVP::RecalculatePlayerStats(State, true);
+	FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(State);
 }
 
 TArray<FName> UGameXXKMVPRules::BuildTurnOrder(const FGameXXKRuntimeState& State, bool bBossBattle)
@@ -1905,7 +3144,7 @@ TArray<FName> UGameXXKMVPRules::BuildTurnOrder(const FGameXXKRuntimeState& State
 FGameXXKSaveState UGameXXKMVPRules::MakeSaveState(const FGameXXKRuntimeState& State)
 {
 	FGameXXKSaveState SaveState;
-	SaveState.SaveVersion = 3;
+	SaveState.SaveVersion = GameXXKMVP::CurrentSaveVersion;
 	SaveState.RuntimeState = State;
 	SaveState.bHasPlayerLocation = State.bHasPlayerLocation;
 	SaveState.PlayerLocation = State.PlayerLocation;
@@ -1922,46 +3161,9 @@ FGameXXKSaveState UGameXXKMVPRules::MakeSaveState(const FGameXXKRuntimeState& St
 
 FGameXXKRuntimeState UGameXXKMVPRules::RestoreFromSaveState(const FGameXXKSaveState& SaveState)
 {
-	if (SaveState.SaveVersion >= 3)
-	{
-		FGameXXKRuntimeState State = SaveState.RuntimeState;
-		if (SaveState.bHasPlayerLocation)
-		{
-			State.bHasPlayerLocation = true;
-			State.PlayerLocation = SaveState.PlayerLocation;
-		}
-		return State;
-	}
-	if (SaveState.SaveVersion == 2)
-	{
-		FGameXXKRuntimeState State = SaveState.RuntimeState;
-		State.EnhancementMaterial = 10;
-		State.ItemEnhancementLevels.Reset();
-		if (SaveState.bHasPlayerLocation)
-		{
-			State.bHasPlayerLocation = true;
-			State.PlayerLocation = SaveState.PlayerLocation;
-		}
-		return State;
-	}
-
-	FGameXXKRuntimeState State = CreateNewGame();
-	State.Screen = EGameXXKScreen::MainMenu;
-	State.QuestState = SaveState.QuestState;
-	State.PlayerLevel = SaveState.PlayerLevel;
-	State.PlayerXP = SaveState.PlayerXP;
-	State.PlayerGold = SaveState.PlayerGold;
-	State.UnlockedRegions = SaveState.UnlockedRegions;
-	State.Inventory.Reset();
-	State.ItemEnhancementLevels.Reset();
-	State.EquippedWeapon = NAME_None;
-	State.EquippedArmor = NAME_None;
-	State.EquippedAccessory = NAME_None;
-	State.TownPanelMode = EGameXXKTownPanelMode::None;
-	State.bHasPlayerLocation = SaveState.bHasPlayerLocation;
-	State.PlayerLocation = SaveState.PlayerLocation;
-	State.bFollowerJoined = SaveState.bFollowerJoined;
-	State.bHasQuestNpcLocation = SaveState.bHasQuestNpcLocation;
-	State.QuestNpcLocation = SaveState.QuestNpcLocation;
-	return State;
+	FGameXXKRuntimeState Restored;
+	FGameXXKSaveMigrationReport Report;
+	return FGameXXKSaveMigration::TryRestoreRuntimeState(SaveState, Restored, Report)
+		? Restored
+		: FGameXXKRuntimeState();
 }

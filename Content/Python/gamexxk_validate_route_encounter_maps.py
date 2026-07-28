@@ -28,7 +28,7 @@ ROUTE_ENCOUNTER_MAPS = [
 ]
 
 BATTLE_SCENE_MAP = {
-    "map": "/Game/GameXXK/Maps/L_BattleScene",
+    "map": "/Game/GameXXK/Maps/L_BattleTown",
     "label": "GameXXK_BattleScene_Presenter",
     "camera_label": "GameXXK_BattleScene_Camera",
 }
@@ -68,6 +68,17 @@ def _get_editor_world():
     if hasattr(unreal, "EditorLevelLibrary"):
         return unreal.EditorLevelLibrary.get_editor_world()
     return None
+
+
+def _current_editor_map_path() -> str:
+    world = _get_editor_world()
+    if not world:
+        return ""
+    try:
+        outermost = world.get_outermost()
+        return str(outermost.get_path_name()).split(".", 1)[0] if outermost else ""
+    except Exception:
+        return ""
 
 
 def _all_level_actors() -> list:
@@ -163,6 +174,7 @@ def _validate_battle_scene(spec: dict) -> dict:
     map_path = spec["map"]
     result = {
         "map": map_path,
+        "current_map": _current_editor_map_path(),
         "exists": bool(unreal.EditorAssetLibrary.does_asset_exist(map_path)),
         "loaded": False,
         "game_mode": "",
@@ -173,9 +185,10 @@ def _validate_battle_scene(spec: dict) -> dict:
     if not result["exists"]:
         result["error"] = "missing map asset"
         return result
-    if not unreal.EditorLoadingAndSavingUtils.load_map(map_path):
-        result["error"] = "load_map failed"
+    if result["current_map"] != map_path:
+        result["error"] = "battle map must already be open in the visible editor; refusing Landscape load_map"
         return result
+
     result["loaded"] = True
     world = _get_editor_world()
     if not world:
@@ -250,10 +263,12 @@ def _validate_enemy_visual_assets() -> dict:
 
 def main() -> dict:
     _scan_project_assets()
+    battle_scene = _validate_battle_scene(BATTLE_SCENE_MAP)
+    route_maps = [_validate_map(spec) for spec in ROUTE_ENCOUNTER_MAPS]
     report = {
         "ok": False,
-        "maps": [_validate_map(spec) for spec in ROUTE_ENCOUNTER_MAPS],
-        "battle_scene": _validate_battle_scene(BATTLE_SCENE_MAP),
+        "maps": route_maps,
+        "battle_scene": battle_scene,
         "enemy_visual_assets": _validate_enemy_visual_assets(),
     }
     report["ok"] = (

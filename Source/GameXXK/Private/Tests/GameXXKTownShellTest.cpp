@@ -164,6 +164,38 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("hero Right arrow is accepted movement input"), HeroCharacter->IsSupportedMovementKey(EKeys::Right));
 	TestFalse(TEXT("hero E key is not town interaction"), HeroCharacter->IsInteractionKey(EKeys::E));
 	TestTrue(TEXT("hero F key is town interaction"), HeroCharacter->IsInteractionKey(EKeys::F));
+	TestNotNull(TEXT("hero automation key seam is reflected"),
+		HeroCharacter->FindFunction(TEXT("SetTownAutomationKeyState")));
+	TestTrue(TEXT("hero automation D press is accepted"),
+		HeroCharacter->SetTownAutomationKeyState(EKeys::D.GetFName(), true));
+	TestTrue(TEXT("duplicate hero automation D press is accepted"),
+		HeroCharacter->SetTownAutomationKeyState(EKeys::D.GetFName(), true));
+	HeroCharacter->MoveHorizontal(0.0f);
+	TestTrue(TEXT("zero axis callback does not clear held automation D"), HeroCharacter->IsTownMoving());
+	TestEqual(TEXT("held automation D keeps right movement intent"),
+		HeroCharacter->GetTownMovementIntentVector(), FVector::RightVector);
+	TestTrue(TEXT("hero automation D release is accepted"),
+		HeroCharacter->SetTownAutomationKeyState(EKeys::D.GetFName(), false));
+	TestFalse(TEXT("one hero automation D release stops duplicate automation D press"), HeroCharacter->IsTownMoving());
+	HeroCharacter->MoveRightPressed();
+	TestTrue(TEXT("physical hero D press starts movement"), HeroCharacter->IsTownMoving());
+	TestTrue(TEXT("spurious hero automation D release is accepted"),
+		HeroCharacter->SetTownAutomationKeyState(EKeys::D.GetFName(), false));
+	TestTrue(TEXT("spurious automation release does not cancel physical hero D press"), HeroCharacter->IsTownMoving());
+	HeroCharacter->MoveRightReleased();
+	TestFalse(TEXT("physical hero D release stops movement after spurious automation release"), HeroCharacter->IsTownMoving());
+	TestTrue(TEXT("hero automation D press can be reset"),
+		HeroCharacter->SetTownAutomationKeyState(EKeys::D.GetFName(), true));
+	HeroCharacter->ResetTownMovementInput();
+	HeroCharacter->MoveRightPressed();
+	TestTrue(TEXT("physical hero D press starts movement after automation reset"), HeroCharacter->IsTownMoving());
+	TestTrue(TEXT("automation D release after reset is accepted"),
+		HeroCharacter->SetTownAutomationKeyState(EKeys::D.GetFName(), false));
+	TestTrue(TEXT("reset clears held automation D before a later physical press"), HeroCharacter->IsTownMoving());
+	HeroCharacter->MoveRightReleased();
+	TestFalse(TEXT("physical hero D release stops movement after automation reset"), HeroCharacter->IsTownMoving());
+	TestFalse(TEXT("unsupported hero automation key is rejected"),
+		HeroCharacter->SetTownAutomationKeyState(TEXT("F"), true));
 	TestTrue(TEXT("hero has Paper2D visual shell"), HeroCharacter->HasTownVisual());
 	const UPaperFlipbookComponent* HeroVisual = HeroCharacter->GetTownVisualComponent();
 	TestNotNull(TEXT("hero exposes Paper2D visual component"), HeroVisual);
@@ -349,6 +381,42 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	ExpectTownFacing(*this, HeroCharacter, TownFacingEast, TEXT("hero W then delayed D release uses last cardinal facing"));
 	TestEqual(TEXT("hero W then delayed D release applies East idle flipbook"), HeroCharacter->GetCurrentTownFlipbook(), HeroEastIdleFlipbook);
 	HeroCharacter->ResetTownMovementInput();
+
+	// The MCP automation path can deliver serial key events while PIE world time is not advancing.
+	// The diagonal release grace must therefore use monotonic input-event time rather than UWorld time.
+	UWorld* const NonTickingTownInputWorld = GWorld;
+	TestNotNull(TEXT("town input timing regression test has an editor world"), NonTickingTownInputWorld);
+	if (NonTickingTownInputWorld)
+	{
+		FActorSpawnParameters TimingHeroSpawnParameters;
+		TimingHeroSpawnParameters.ObjectFlags |= RF_Transient;
+		TimingHeroSpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		AGameXXKHeroCharacter* const TimingHero = NonTickingTownInputWorld->SpawnActor<AGameXXKHeroCharacter>(
+			AGameXXKHeroCharacter::StaticClass(),
+			FVector::ZeroVector,
+			FRotator::ZeroRotator,
+			TimingHeroSpawnParameters);
+		TestNotNull(TEXT("town input timing regression test spawns a hero with a world"), TimingHero);
+		if (TimingHero)
+		{
+			TimingHero->MoveForwardPressed();
+			TimingHero->MoveRightPressed();
+			ExpectTownFacing(*this, TimingHero, TownFacingNorthEast, TEXT("timing hero W+D pressed"));
+			TimingHero->MoveRightReleased();
+			ExpectTownFacing(*this, TimingHero, TownFacingNorth, TEXT("timing hero remains W-only after D release"));
+
+			const double WorldTimeBeforeHostWait = static_cast<double>(NonTickingTownInputWorld->GetTimeSeconds());
+			FPlatformProcess::Sleep(0.08f);
+			const double WorldTimeAfterHostWait = static_cast<double>(NonTickingTownInputWorld->GetTimeSeconds());
+			TestTrue(TEXT("serial host wait does not advance this synchronous editor-world simulation"),
+				FMath::IsNearlyEqual(WorldTimeAfterHostWait, WorldTimeBeforeHostWait));
+
+			TimingHero->MoveForwardReleased();
+			TestFalse(TEXT("timing hero is idle after W release"), TimingHero->IsTownMoving());
+			ExpectTownFacing(*this, TimingHero, TownFacingNorth, TEXT("delayed serial release uses North rather than stale diagonal"));
+			TimingHero->Destroy();
+		}
+	}
 
 	const FString HeroInteractionAutosaveSlot = UGameXXKMVPSubsystem::GetDefaultSaveSlotName();
 	UGameplayStatics::DeleteGameInSlot(HeroInteractionAutosaveSlot, 0);

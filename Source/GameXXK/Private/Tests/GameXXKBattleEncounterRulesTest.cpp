@@ -1,4 +1,8 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKCardBattleAdapter.h"
+#include "GameXXKEncounterRules.h"
+#include "GameXXKEnemyCatalog.h"
+#include "GameXXKRouteEconomyRules.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -22,7 +26,17 @@ namespace
 		State.RouteMapEdges.Add(FGameXXKRouteMapEdge{1, 2});
 		State.VisitedRouteNodeIds.Add(0);
 		State.ReachableRouteNodeIds.Add(1);
+		State.CardRun.RouteProgress.CurrentChapter = 1;
+		FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun);
 		return State;
+	}
+
+	static const FGameXXKBattleRuntimeUnit* FindEnemySlot(const FGameXXKRuntimeState& State, const int32 SlotNumber)
+	{
+		return State.ActiveBattleEnemies.FindByPredicate([SlotNumber](const FGameXXKBattleRuntimeUnit& Unit)
+		{
+			return Unit.BattleSlotNumber == SlotNumber;
+		});
 	}
 }
 
@@ -38,27 +52,74 @@ bool FGameXXKBattleEncounterRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("battle route node opens battle screen"), BattleState.Screen, EGameXXKScreen::Battle);
 	TestTrue(TEXT("battle route node creates active battle state"), BattleState.bHasActiveBattle);
 	TestEqual(TEXT("active battle remembers pending node"), BattleState.ActiveBattleNodeId, 1);
-	TestTrue(TEXT("normal battle creates one to three enemies"), BattleState.ActiveBattleEnemies.Num() >= 1 && BattleState.ActiveBattleEnemies.Num() <= 3);
-	TestEqual(TEXT("party snapshot includes hero and follower"), BattleState.ActiveBattleParty.Num(), 2);
+	TestEqual(TEXT("normal battle creates exactly two flanking enemies"), BattleState.ActiveBattleEnemies.Num(), 2);
+	TestNotNull(TEXT("normal battle reserves an enemy at 1P"), FindEnemySlot(BattleState, 1));
+	TestNull(TEXT("normal battle keeps central enemy 2P empty"), FindEnemySlot(BattleState, 2));
+	TestNotNull(TEXT("normal battle reserves an enemy at 3P"), FindEnemySlot(BattleState, 3));
+	for (const FGameXXKBattleRuntimeUnit& Enemy : BattleState.ActiveBattleEnemies)
+	{
+		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Enemy.EnemyDefinitionId);
+		TestNotNull(TEXT("normal battle preserves a catalog definition identity"), Definition);
+		TestTrue(TEXT("normal battle uses chapter one normal definitions"), Definition && Definition->Chapter == 1 && Definition->Tier == EGameXXKEnemyTier::Normal);
+		TestTrue(TEXT("normal battle runtime IDs retain explicit P slot names"), Enemy.Id.ToString().EndsWith(FString::Printf(TEXT(".P%d"), Enemy.BattleSlotNumber)));
+		if (Definition)
+		{
+			const FGameXXKEnemyComputedStats RawStats = FGameXXKEnemyCatalog::ComputeStats(Definition->Id, Enemy.CombatLevel);
+			const FGameXXKEncounterStatScale Scale = FGameXXKEncounterRules::GetAuthoredStatScale(1, EGameXXKNodeKind::Battle);
+			TestEqual(TEXT("formal battle projection applies the authored normal HP scale"), Enemy.MaxHP,
+				FGameXXKEncounterRules::ScaleStat(RawStats.MaxHP, Scale.MaxHPPercent, 1));
+			TestEqual(TEXT("formal battle projection applies the authored normal attack scale"), Enemy.Attack,
+				FGameXXKEncounterRules::ScaleStat(RawStats.Attack, Scale.AttackPercent, 1));
+			TestEqual(TEXT("formal battle projection applies the authored normal defense scale"), Enemy.Defense,
+				FGameXXKEncounterRules::ScaleStat(RawStats.Defense, Scale.DefensePercent, 0));
+		}
+	}
+	// bFollowerJoined is retained for the town quest narrative only.  It must not
+	// create the old implicit fourth/ghost combat unit; real combat support is
+	// supplied explicitly by the permanent-companion and task-NPC selections.
+	TestEqual(TEXT("party snapshot includes only the hero without an explicit combat companion"), BattleState.ActiveBattleParty.Num(), 1);
 	TestEqual(TEXT("hero snapshot is first party member"), BattleState.ActiveBattleParty[0].Id, FName(TEXT("Player")));
-	TestEqual(TEXT("follower snapshot is second party member"), BattleState.ActiveBattleParty[1].Id, FName(TEXT("Follower")));
+	TestFalse(TEXT("legacy narrative follower never becomes a ghost combat member"), BattleState.ActiveBattleParty.ContainsByPredicate([](const FGameXXKBattleRuntimeUnit& Unit)
+	{
+		return Unit.Id == FName(TEXT("Follower"));
+	}));
 
 	FGameXXKRuntimeState EliteState = BuildRouteBattleState(EGameXXKNodeKind::Elite);
 	TestTrue(TEXT("elite route node selection succeeds"), UGameXXKMVPRules::SelectRouteNodeById(EliteState, 1));
 	TestTrue(TEXT("elite creates active battle state"), EliteState.bHasActiveBattle);
-	TestTrue(TEXT("elite enemy is stronger than normal enemy"), EliteState.ActiveBattleEnemies[0].Attack > BattleState.ActiveBattleEnemies[0].Attack);
+	TestEqual(TEXT("elite battle creates two normals plus one central elite"), EliteState.ActiveBattleEnemies.Num(), 3);
+	const FGameXXKBattleRuntimeUnit* EliteCenter = FindEnemySlot(EliteState, 2);
+	const FGameXXKBattleRuntimeUnit* EliteOneP = FindEnemySlot(EliteState, 1);
+	const FGameXXKBattleRuntimeUnit* EliteThreeP = FindEnemySlot(EliteState, 3);
+	const FGameXXKEnemyDefinition* EliteCenterDefinition = EliteCenter ? FGameXXKEnemyCatalog::Find(EliteCenter->EnemyDefinitionId) : nullptr;
+	TestTrue(TEXT("elite central 2P is an elite definition"), EliteCenterDefinition && EliteCenterDefinition->Tier == EGameXXKEnemyTier::Elite);
+	TestTrue(TEXT("elite center carries more sustained health pressure than either normal flank"), EliteCenter
+		&& EliteOneP
+		&& EliteThreeP
+		&& EliteCenter->MaxHP > EliteOneP->MaxHP
+		&& EliteCenter->MaxHP > EliteThreeP->MaxHP);
 
 	FGameXXKRuntimeState BossState = BuildRouteBattleState(EGameXXKNodeKind::Boss);
 	TestTrue(TEXT("boss route node selection succeeds"), UGameXXKMVPRules::SelectRouteNodeById(BossState, 1));
 	TestTrue(TEXT("boss creates active battle state"), BossState.bHasActiveBattle);
-	TestEqual(TEXT("boss battle creates one enemy"), BossState.ActiveBattleEnemies.Num(), 1);
-	TestEqual(TEXT("boss enemy is named Boss"), BossState.ActiveBattleEnemies[0].Id, FName(TEXT("Boss")));
+	TestEqual(TEXT("boss battle creates two elite flanks and one central boss"), BossState.ActiveBattleEnemies.Num(), 3);
+	const FGameXXKBattleRuntimeUnit* BossCenter = FindEnemySlot(BossState, 2);
+	const FGameXXKEnemyDefinition* BossCenterDefinition = BossCenter ? FGameXXKEnemyCatalog::Find(BossCenter->EnemyDefinitionId) : nullptr;
+	TestTrue(TEXT("boss central 2P uses the chapter one Money Rat definition"), BossCenterDefinition && BossCenterDefinition->Id == FName(TEXT("Enemy.Ch1.MoneyRat")));
+	TestTrue(TEXT("boss central 2P is structurally stronger than both elite flanks"), BossCenter
+		&& BossCenter->Attack > FindEnemySlot(BossState, 1)->Attack
+		&& BossCenter->Attack > FindEnemySlot(BossState, 3)->Attack);
 
 	FGameXXKRuntimeState AttackState = BuildRouteBattleState(EGameXXKNodeKind::Battle);
 	TestTrue(TEXT("attack test selects battle node"), UGameXXKMVPRules::SelectRouteNodeById(AttackState, 1));
 	TestTrue(TEXT("battle state gives hero MP"), AttackState.PlayerMaxMP > 0);
 	TestEqual(TEXT("hero battle snapshot copies player MP"), AttackState.ActiveBattleParty[0].MP, AttackState.PlayerMP);
 	TestEqual(TEXT("hero battle snapshot copies max MP"), AttackState.ActiveBattleParty[0].MaxMP, AttackState.PlayerMaxMP);
+	for (FGameXXKBattleRuntimeUnit& Enemy : AttackState.ActiveBattleEnemies)
+	{
+		// This test isolates the basic-attack contract. Encounter pressure is covered above.
+		Enemy.Attack = 1;
+	}
 	const int32 EnemyHPBefore = AttackState.ActiveBattleEnemies[0].HP;
 	const int32 ExpectedDamage = FMath::Max(1, AttackState.ActiveBattleParty[0].Attack - AttackState.ActiveBattleEnemies[0].Defense);
 	TestTrue(TEXT("basic attack succeeds"), UGameXXKMVPRules::ExecuteBattleBasicAttack(AttackState, 0, 0));
@@ -83,6 +144,10 @@ bool FGameXXKBattleEncounterRulesTest::RunTest(const FString& Parameters)
 
 	FGameXXKRuntimeState HealState = BuildRouteBattleState(EGameXXKNodeKind::Battle);
 	TestTrue(TEXT("healing art test selects battle node"), UGameXXKMVPRules::SelectRouteNodeById(HealState, 1));
+	for (FGameXXKBattleRuntimeUnit& Enemy : HealState.ActiveBattleEnemies)
+	{
+		Enemy.Attack = 1;
+	}
 	HealState.ActiveBattleParty[0].HP = 40;
 	HealState.PlayerHP = 40;
 	const int32 HealMPBefore = HealState.PlayerMP;
@@ -105,6 +170,10 @@ bool FGameXXKBattleEncounterRulesTest::RunTest(const FString& Parameters)
 
 	FGameXXKRuntimeState PowderState = BuildRouteBattleState(EGameXXKNodeKind::Battle);
 	TestTrue(TEXT("powder test selects battle node"), UGameXXKMVPRules::SelectRouteNodeById(PowderState, 1));
+	for (FGameXXKBattleRuntimeUnit& Enemy : PowderState.ActiveBattleEnemies)
+	{
+		Enemy.Attack = 1;
+	}
 	PowderState.ActiveBattleParty[0].HP = 30;
 	PowderState.PlayerHP = 30;
 	const int32 PowderBefore = UGameXXKMVPRules::GetItemCount(PowderState, UGameXXKMVPRules::ItemHealingPowder());
@@ -131,7 +200,7 @@ bool FGameXXKBattleEncounterRulesTest::RunTest(const FString& Parameters)
 			Enemy.bDefeated = true;
 		}
 	}
-	TestTrue(TEXT("enemy AI defeats hero even while follower survives"), UGameXXKMVPRules::ExecuteBattleDefend(HeroDefeatState, 0));
+	TestTrue(TEXT("enemy AI defeats the hero when no explicit combat companion is selected"), UGameXXKMVPRules::ExecuteBattleDefend(HeroDefeatState, 0));
 	TestEqual(TEXT("hero defeat returns to town"), HeroDefeatState.Screen, EGameXXKScreen::Town);
 	TestFalse(TEXT("hero defeat clears active battle state"), HeroDefeatState.bHasActiveBattle);
 	TestEqual(TEXT("hero defeat restores full town HP"), HeroDefeatState.PlayerHP, HeroDefeatState.PlayerMaxHP);
@@ -155,16 +224,24 @@ bool FGameXXKBattleEncounterRulesTest::RunTest(const FString& Parameters)
 
 	FGameXXKRuntimeState VictoryState = BuildRouteBattleState(EGameXXKNodeKind::Battle);
 	TestTrue(TEXT("victory test selects battle node"), UGameXXKMVPRules::SelectRouteNodeById(VictoryState, 1));
-	for (int32 EnemyIndex = 1; EnemyIndex < VictoryState.ActiveBattleEnemies.Num(); ++EnemyIndex)
+	for (FGameXXKCardCombatUnit& Unit : VictoryState.CardRun.ActiveBattle.Units)
 	{
-		VictoryState.ActiveBattleEnemies[EnemyIndex].HP = 0;
-		VictoryState.ActiveBattleEnemies[EnemyIndex].bDefeated = true;
+		if (Unit.Side == EGameXXKCardTargetSide::Enemy)
+		{
+			Unit.HP = 0;
+			Unit.bLiving = false;
+		}
 	}
-	VictoryState.ActiveBattleEnemies[0].HP = 1;
-	VictoryState.ActiveBattleEnemies[0].bDefeated = false;
-	TestTrue(TEXT("final basic attack succeeds"), UGameXXKMVPRules::ExecuteBattleBasicAttack(VictoryState, 0, 0));
-	TestEqual(TEXT("battle victory returns to route map"), VictoryState.Screen, EGameXXKScreen::DungeonMap);
-	TestFalse(TEXT("battle victory clears active battle state"), VictoryState.bHasActiveBattle);
+	VictoryState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+	TestTrue(TEXT("card-runtime victory opens the saved three-card reward offer"), UGameXXKMVPRules::ResolveBattleVictory(VictoryState, false));
+	TestEqual(TEXT("battle victory remains on the board while card reward is pending"), VictoryState.Screen, EGameXXKScreen::Battle);
+	TestEqual(TEXT("battle victory exposes three route reward choices"), VictoryState.CardRun.PendingReward.CardIds.Num(), 3);
+	FString RewardError;
+	TestTrue(FString::Printf(TEXT("skipping the saved reward resolves the route victory gate: %s"), *RewardError),
+		FGameXXKCardBattleAdapter::SkipPendingRouteReward(VictoryState, &RewardError));
+	TestTrue(TEXT("resolved reward completes route battle victory"), UGameXXKMVPRules::ResolveBattleVictory(VictoryState, false));
+	TestEqual(TEXT("resolved battle victory returns to route map"), VictoryState.Screen, EGameXXKScreen::DungeonMap);
+	TestFalse(TEXT("resolved battle victory clears active battle state"), VictoryState.bHasActiveBattle);
 	TestTrue(TEXT("battle victory marks pending node visited"), VictoryState.VisitedRouteNodeIds.Contains(1));
 	TestEqual(TEXT("battle victory clears pending node"), VictoryState.PendingRouteNodeId, INDEX_NONE);
 

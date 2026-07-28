@@ -1,22 +1,19 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
 #include "Blueprint/WidgetTree.h"
+#include "Components/CanvasPanel.h"
 #include "Components/WidgetInteractionComponent.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKBattleUnitHudWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 namespace
 {
-	FName MakeRetiredBoardWidgetName(const TCHAR* Suffix)
-	{
-		return FName(*(FString(TEXT("Battle")) + TEXT("Status") + Suffix));
-	}
-
 	FGameXXKBattleRuntimeUnit MakeActorHudRetirementEnemy()
 	{
 		FGameXXKBattleRuntimeUnit Unit;
@@ -125,15 +122,22 @@ bool FGameXXKBattleActorHudRetirementTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("retirement board initializes its widget tree"), Board->Initialize());
 	Board->NativeConstruct();
 	Board->RefreshFromState();
-	TestNull(
-		TEXT("actor-owned HUD leaves no duplicate footer widget on the board"),
+	TestNull(TEXT("legacy footer widget is absent from the board"),
 		Board->WidgetTree ? Board->WidgetTree->FindWidget(TEXT("BattleUnitFooter_00")) : nullptr);
-	TestNull(
-		TEXT("actor-owned HUD leaves no board-level resource and status paper panel"),
-		Board->WidgetTree ? Board->WidgetTree->FindWidget(MakeRetiredBoardWidgetName(TEXT("PaperPanel"))) : nullptr);
-	TestNull(
-		TEXT("actor-owned HUD leaves no board-level resource and status text"),
-		Board->WidgetTree ? Board->WidgetTree->FindWidget(MakeRetiredBoardWidgetName(TEXT("Text"))) : nullptr);
+	TestNull(TEXT("legacy board resource and status paper panel is absent"),
+		Board->WidgetTree ? Board->WidgetTree->FindWidget(TEXT("BattleStatusPaperPanel")) : nullptr);
+	TestNull(TEXT("legacy board resource and status text is absent"),
+		Board->WidgetTree ? Board->WidgetTree->FindWidget(TEXT("BattleStatusText")) : nullptr);
+	UCanvasPanel* const ProjectedHudLayer = Board->GetBattleProjectedUnitHudLayerForTest();
+	TestNotNull(TEXT("retirement board owns a projected unit HUD layer"), ProjectedHudLayer);
+	TestEqual(TEXT("projected HUD layer remains input transparent"),
+		ProjectedHudLayer ? ProjectedHudLayer->GetVisibility() : ESlateVisibility::Visible,
+		ESlateVisibility::SelfHitTestInvisible);
+	UGameXXKBattleUnitHudWidget* const HeroHud = Board->GetProjectedUnitHudForTest(TEXT("Player"));
+	TestNotNull(TEXT("retirement board finds the hero HUD by stable UnitId"), HeroHud);
+	TestEqual(TEXT("projected hero HUD retains the input-transparent root contract"),
+		UGameXXKBattleUnitHudWidget::GetRootHitTestVisibilityForTest(),
+		ESlateVisibility::SelfHitTestInvisible);
 
 	const FVector2D OwnerProjection(786.0f, 406.0f);
 	const FVector2D PointerProjection(442.0f, 283.0f);
@@ -153,7 +157,7 @@ bool FGameXXKBattleActorHudRetirementTest::RunTest(const FString& Parameters)
 	{
 		TArray<UWidgetInteractionComponent*> HoverBridgeComponents;
 		Controller->GetComponents(HoverBridgeComponents);
-		TestEqual(TEXT("actor-owned screen HUD requires no world-widget interaction bridge"), HoverBridgeComponents.Num(), 0);
+		TestEqual(TEXT("board-owned projected screen HUD requires no world-widget interaction bridge"), HoverBridgeComponents.Num(), 0);
 	}
 
 	return true;

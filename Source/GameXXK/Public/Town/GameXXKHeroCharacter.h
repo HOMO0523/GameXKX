@@ -112,6 +112,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town")
 	void ResetTownMovementInput();
 
+	/** Test/automation-only key-state entry point that reuses the real town key handlers. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town|Automation")
+	bool SetTownAutomationKeyState(FName KeyName, bool bPressed);
+
 	void SetDefaultTownFlipbookForTest(UPaperFlipbook* InFlipbook);
 	void SetTownDirectionFlipbookForTest(EGameXXKTownFacingDirection Direction, UPaperFlipbook* InFlipbook);
 	void SetTownIdleDirectionFlipbookForTest(EGameXXKTownFacingDirection Direction, UPaperFlipbook* InFlipbook);
@@ -178,6 +182,7 @@ private:
 	void SynchronizeOcclusionRevealVisual();
 	void InitializeOcclusionRevealMaterial();
 	void RefreshTownMovementIntent();
+	void ReleaseHeldTownAutomationKeys();
 	bool IsTownMovementBlockedByModalWindow() const;
 	void UpdateTownFacingFromIntent(float Horizontal, float Vertical);
 	float GetKeyboardHorizontalIntent() const;
@@ -187,6 +192,10 @@ private:
 	int32 LeftInputPressCount = 0;
 	int32 ForwardInputPressCount = 0;
 	int32 BackwardInputPressCount = 0;
+	bool bTownAutomationRightHeld = false;
+	bool bTownAutomationLeftHeld = false;
+	bool bTownAutomationForwardHeld = false;
+	bool bTownAutomationBackwardHeld = false;
 	float AxisHorizontalIntent = 0.0f;
 	float AxisVerticalIntent = 0.0f;
 	float HorizontalIntent = 0.0f;

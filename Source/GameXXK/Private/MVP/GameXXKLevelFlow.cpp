@@ -12,10 +12,8 @@ namespace
 	const FName QingshanTownMap(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo"));
 	const FName LegacyQingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 	const FName RouteMap(TEXT("/Game/GameXXK/Maps/L_RouteMap"));
-	const FName RouteEventMap(TEXT("/Game/GameXXK/Maps/L_RouteEvent"));
 	const FName RouteCampMap(TEXT("/Game/GameXXK/Maps/L_RouteCamp"));
-	const FName RouteMerchantMap(TEXT("/Game/GameXXK/Maps/L_RouteMerchant"));
-	const FName BattleSceneMap(TEXT("/Game/GameXXK/Maps/L_BattleScene"));
+	const FName BattleSceneMap(TEXT("/Game/GameXXK/Maps/L_BattleTown"));
 
 	FString StripPIEPrefix(FString ShortMapName)
 	{
@@ -59,11 +57,16 @@ FName GameXXKLevelFlow::MapForScreen(EGameXXKScreen Screen)
 	case EGameXXKScreen::DungeonMap:
 		return RouteMap;
 	case EGameXXKScreen::RouteEvent:
-		return RouteEventMap;
+		// Events and chests are modal choices over the route map.  Travelling to
+		// L_RouteEvent left the player outside the route HUD and made a pending
+		// choice appear to be stuck.
+		return RouteMap;
 	case EGameXXKScreen::RouteCamp:
 		return RouteCampMap;
 	case EGameXXKScreen::RouteMerchant:
-		return RouteMerchantMap;
+		// The merchant is a modal HUD over the live route map, just like events
+		// and chests. Only combat nodes travel to a different gameplay map.
+		return RouteMap;
 	case EGameXXKScreen::Battle:
 		return BattleSceneMap;
 	case EGameXXKScreen::MainMenu:

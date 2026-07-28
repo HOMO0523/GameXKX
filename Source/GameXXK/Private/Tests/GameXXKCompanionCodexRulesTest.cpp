@@ -38,14 +38,17 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKCompanionCodexRulesTest::RunTest(const FString& Parameters)
 {
 	const FName GuideId(TEXT("Codex.Guide"));
-	const FName BanditId(TEXT("Codex.Bandit"));
-	const FName WolfId(TEXT("Codex.Wolf"));
-	const FName EliteBanditId(TEXT("Codex.EliteBandit"));
-	const FName BossId(TEXT("Codex.Boss"));
+	const FName MoneyRatId(TEXT("Codex.MoneyRat"));
+	const FName BlackBearId(TEXT("Codex.BlackBear"));
+	const FName TigerId(TEXT("Codex.Tiger"));
+	const FName LegacyBanditId(TEXT("Codex.Bandit"));
+	const FName LegacyWolfId(TEXT("Codex.Wolf"));
+	const FName LegacyEliteBanditId(TEXT("Codex.EliteBandit"));
+	const FName LegacyBossId(TEXT("Codex.Boss"));
 	const FName UnknownId(TEXT("Codex.Unknown"));
 
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
-	TestEqual(TEXT("new game has five static codex entries"), UGameXXKMVPRules::GetCodexEntryCount(EGameXXKCodexCategory::All), 5);
+	TestEqual(TEXT("new game has the Guide and three current encounter codex entries"), UGameXXKMVPRules::GetCodexEntryCount(EGameXXKCodexCategory::All), 4);
 	TestEqual(TEXT("new game has no spirit codex entries"), UGameXXKMVPRules::GetCodexEntryCount(EGameXXKCodexCategory::Spirit), 0);
 	TestEqual(TEXT("new game has no discovered codex entries"), UGameXXKMVPRules::GetDiscoveredCodexEntryCount(State, EGameXXKCodexCategory::All), 0);
 	TestFalse(TEXT("new game has no unread codex entries"), UGameXXKMVPRules::HasUnreadCodexEntries(State));
@@ -72,24 +75,26 @@ bool FGameXXKCompanionCodexRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("repeated guide discovery keeps the entry read"), State.ReadCodexEntryIds.Contains(GuideId));
 	TestFalse(TEXT("unknown codex discovery is rejected"), UGameXXKMVPRules::DiscoverCodexEntry(State, UnknownId));
 	TestFalse(TEXT("unknown codex read mark is rejected"), UGameXXKMVPRules::MarkCodexEntryRead(State, UnknownId));
+	TestFalse(TEXT("legacy Bandit codex entry is no longer visible"), UGameXXKMVPRules::DiscoverCodexEntry(State, LegacyBanditId));
+	TestFalse(TEXT("legacy Wolf codex entry is no longer visible"), UGameXXKMVPRules::DiscoverCodexEntry(State, LegacyWolfId));
+	TestFalse(TEXT("legacy EliteBandit codex entry is no longer visible"), UGameXXKMVPRules::DiscoverCodexEntry(State, LegacyEliteBanditId));
+	TestFalse(TEXT("legacy Boss codex entry is no longer visible"), UGameXXKMVPRules::DiscoverCodexEntry(State, LegacyBossId));
 
 	TestTrue(TEXT("accepted quest enters the dungeon"), UGameXXKMVPRules::EnterDungeon(State));
 	TestTrue(TEXT("route start node advances"), UGameXXKMVPRules::AdvanceDungeonNode(State, EGameXXKNodeKind::Start));
 	TestTrue(TEXT("route battle node begins"), UGameXXKMVPRules::AdvanceDungeonNode(State, EGameXXKNodeKind::Battle));
-	TestTrue(TEXT("normal battle discovers the bandit"), State.DiscoveredCodexEntryIds.Contains(BanditId));
-	TestTrue(TEXT("normal battle discovers the wolf"), State.DiscoveredCodexEntryIds.Contains(WolfId));
+	TestTrue(TEXT("normal Money Rat battle discovers the current encounter entry"), State.DiscoveredCodexEntryIds.Contains(MoneyRatId));
 	TestTrue(TEXT("battle discoveries are unread"), UGameXXKMVPRules::HasUnreadCodexEntries(State));
 
 	FGameXXKRuntimeState EliteState = BuildReachableCombatRouteState(EGameXXKNodeKind::Elite);
 	TestTrue(TEXT("elite route node selection begins battle"), UGameXXKMVPRules::SelectRouteNodeById(EliteState, 1));
 	TestEqual(TEXT("elite route node opens battle screen"), EliteState.Screen, EGameXXKScreen::Battle);
-	TestTrue(TEXT("elite battle discovers the elite bandit"), EliteState.DiscoveredCodexEntryIds.Contains(EliteBanditId));
-	TestTrue(TEXT("elite battle discovers the wolf"), EliteState.DiscoveredCodexEntryIds.Contains(WolfId));
+	TestTrue(TEXT("elite Black Bear battle discovers the current encounter entry"), EliteState.DiscoveredCodexEntryIds.Contains(BlackBearId));
 
 	FGameXXKRuntimeState BossState = BuildReachableCombatRouteState(EGameXXKNodeKind::Boss);
 	TestTrue(TEXT("boss route node selection begins battle"), UGameXXKMVPRules::SelectRouteNodeById(BossState, 1));
 	TestEqual(TEXT("boss route node opens battle screen"), BossState.Screen, EGameXXKScreen::Battle);
-	TestTrue(TEXT("boss battle discovers the boss"), BossState.DiscoveredCodexEntryIds.Contains(BossId));
+	TestTrue(TEXT("Tiger boss battle discovers the current encounter entry"), BossState.DiscoveredCodexEntryIds.Contains(TigerId));
 
 	return true;
 }

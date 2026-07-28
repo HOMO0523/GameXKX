@@ -10,6 +10,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "MVP/GameXXKSaveGame.h"
+#include "MVP/GameXXKSaveMigration.h"
 #include "UI/GameXXKMVPHUD.h"
 #include "UI/GameXXKMainMenuWidget.h"
 
@@ -21,7 +23,9 @@ namespace
 	{
 		for (int32 SlotIndex = 0; SlotIndex < UGameXXKMVPSubsystem::GetManualSaveSlotCount(); ++SlotIndex)
 		{
-			UGameplayStatics::DeleteGameInSlot(UGameXXKMVPSubsystem::GetManualSaveSlotName(SlotIndex), UserIndex);
+			const FString SlotName = UGameXXKMVPSubsystem::GetManualSaveSlotName(SlotIndex);
+			UGameplayStatics::DeleteGameInSlot(SlotName, UserIndex);
+			UGameplayStatics::DeleteGameInSlot(SlotName + TEXT(".PreV7Backup"), UserIndex);
 		}
 	}
 
@@ -56,6 +60,7 @@ namespace
 			{
 				const FString SlotName = UGameXXKMVPSubsystem::GetManualSaveSlotName(SlotIndex);
 				UGameplayStatics::DeleteGameInSlot(SlotName, UserIndex);
+				UGameplayStatics::DeleteGameInSlot(SlotName + TEXT(".PreV7Backup"), UserIndex);
 				if (Backups.IsValidIndex(SlotIndex) && Backups[SlotIndex])
 				{
 					UGameplayStatics::SaveGameToSlot(Backups[SlotIndex], SlotName, UserIndex);
@@ -76,6 +81,7 @@ namespace
 		RuntimeState.Screen = Screen;
 		RuntimeState.CurrentRegion = UGameXXKMVPRules::RegionQingshan();
 		RuntimeState.PlayerLevel = PlayerLevel;
+		UGameXXKMVPRules::RecalculatePlayerStatsFromEquipment(RuntimeState);
 		return Subsystem;
 	}
 
@@ -92,7 +98,7 @@ namespace
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKMainMenuPlayerFlowTest,
-	"GameXXK.MVP.UI.MainMenuPlayerFlow",
+	"GameXXK.MVP.UI.MainMenuPlayerFlow.SaveMigration",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKMainMenuPlayerFlowTest::RunTest(const FString& Parameters)
@@ -105,6 +111,16 @@ bool FGameXXKMainMenuPlayerFlowTest::RunTest(const FString& Parameters)
 	UGameXXKMVPSubsystem* Slot3Subsystem = CreateSeededSubsystem(TestGameInstance, EGameXXKScreen::DungeonMap, 3);
 	TestTrue(TEXT("seed player-facing slot 1 as Qingshan town level 2"), Slot1Subsystem->SaveCurrentGame(UGameXXKMVPSubsystem::GetManualSaveSlotName(0), UserIndex));
 	TestTrue(TEXT("seed player-facing slot 3 as Qingshan route map level 3"), Slot3Subsystem->SaveCurrentGame(UGameXXKMVPSubsystem::GetManualSaveSlotName(2), UserIndex));
+	UGameXXKSaveGame* LegacyPreviewSave = NewObject<UGameXXKSaveGame>();
+	LegacyPreviewSave->SaveState = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
+	LegacyPreviewSave->SaveState.SaveVersion = 6;
+	// A true pre-v7 preview owns equipment through legacy Inventory mirrors only.
+	LegacyPreviewSave->SaveState.RuntimeState.EquipmentCollection = FGameXXKEquipmentCollectionState();
+	TestTrue(TEXT("seed pre-v7 preview slot"), UGameplayStatics::SaveGameToSlot(LegacyPreviewSave, UGameXXKMVPSubsystem::GetManualSaveSlotName(3), UserIndex));
+	UGameXXKSaveGame* FuturePreviewSave = NewObject<UGameXXKSaveGame>();
+	FuturePreviewSave->SaveState = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
+	FuturePreviewSave->SaveState.SaveVersion = FGameXXKSaveMigration::CurrentSaveVersion + 1;
+	TestTrue(TEXT("seed incompatible future preview slot"), UGameplayStatics::SaveGameToSlot(FuturePreviewSave, UGameXXKMVPSubsystem::GetManualSaveSlotName(4), UserIndex));
 
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	UGameXXKMainMenuWidget* MainMenu = NewObject<UGameXXKMainMenuWidget>();
@@ -201,9 +217,32 @@ bool FGameXXKMainMenuPlayerFlowTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("slot 3 can load"), Rows[2].bCanLoad);
 		TestTrue(TEXT("slot 3 can delete"), Rows[2].bCanDelete);
 		TestTrue(TEXT("slot 3 mentions Route Map"), RowLabelContains(Rows[2], TEXT("Route Map")));
+
+		TestTrue(TEXT("pre-v7 preview remains occupied"), Rows[3].bOccupied);
+		TestTrue(TEXT("pre-v7 preview is loadable"), Rows[3].bCanLoad);
+		TestTrue(TEXT("pre-v7 preview is deletable"), Rows[3].bCanDelete);
+		TestFalse(TEXT("pure pre-v7 preview creates no backup"), UGameplayStatics::DoesSaveGameExist(UGameXXKMVPSubsystem::GetManualSaveSlotName(3) + TEXT(".PreV7Backup"), UserIndex));
+
+		TestTrue(TEXT("future preview remains occupied"), Rows[4].bOccupied);
+		TestFalse(TEXT("future preview is not loadable"), Rows[4].bCanLoad);
+		TestTrue(TEXT("future preview remains deletable"), Rows[4].bCanDelete);
+		TestTrue(TEXT("future preview has stable incompatible label"), RowLabelContains(Rows[4], TEXT("Incompatible Save")));
 	}
 
 	TestFalse(TEXT("continue rejects empty slot"), MainMenu->ContinueFromSlotIndex(1));
+	TestFalse(TEXT("direct continue rejects incompatible future slot"), MainMenu->ContinueGameFromSlot(UGameXXKMVPSubsystem::GetManualSaveSlotName(4), UserIndex));
+	UVerticalBox* ErrorModalBox = Cast<UVerticalBox>(MainMenu->GetWidgetFromName(TEXT("ModalBox")));
+	bool bFoundMigrationError = false;
+	if (ErrorModalBox)
+	{
+		for (UWidget* Child : ErrorModalBox->GetAllChildren())
+		{
+			const UTextBlock* ErrorText = Cast<UTextBlock>(Child);
+			bFoundMigrationError = bFoundMigrationError
+				|| (ErrorText && ErrorText->GetText().ToString() == TEXT("存档迁移失败，已保留原存档。"));
+		}
+	}
+	TestTrue(TEXT("failed continue displays approved migration error in modal"), bFoundMigrationError);
 	TestTrue(TEXT("continue loads populated slot 1"), MainMenu->ContinueFromSlotIndex(0));
 	TestEqual(TEXT("loaded slot restores town screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("loaded slot restores level 2"), Subsystem->GetRuntimeState().PlayerLevel, 2);
@@ -231,12 +270,11 @@ bool FGameXXKMainMenuPlayerFlowTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("quit opens unavailable modal"), MainMenu->OpenQuitUnavailableModal());
 	TestEqual(TEXT("quit unavailable modal is active"), MainMenu->GetMenuLayerForTest(), EGameXXKMainMenuLayer::QuitUnavailableModal);
 
-	TestTrue(TEXT("main menu start creates new game and opens Qingshan town"), MainMenu->StartGame());
-	TestEqual(TEXT("town screen after player-facing main menu start"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
-	TestEqual(TEXT("Qingshan selected after player-facing main menu start"), Subsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionQingshan());
-	TestEqual(TEXT("new game requests playable Qingshan town map"), MainMenu->GetLastRequestedTownMapForTest(), FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
-	TestEqual(TEXT("new game hides main menu after entering town"), MainMenu->GetVisibility(), ESlateVisibility::Collapsed);
-	TestFalse(TEXT("new game disables main menu after entering town"), MainMenu->GetIsEnabled());
+	TestTrue(TEXT("main menu start creates a new game and opens world map"), MainMenu->StartGame());
+	TestEqual(TEXT("world map screen after player-facing main menu start"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestEqual(TEXT("new game has no town selected before world-map click"), Subsystem->GetRuntimeState().CurrentRegion, NAME_None);
+	TestEqual(TEXT("new game hides main menu after entering world map"), MainMenu->GetVisibility(), ESlateVisibility::Collapsed);
+	TestFalse(TEXT("new game disables main menu after entering world map"), MainMenu->GetIsEnabled());
 
 	AGameXXKMVPHUD* HUD = NewObject<AGameXXKMVPHUD>();
 	HUD->SetMVPSubsystemForTest(Subsystem);

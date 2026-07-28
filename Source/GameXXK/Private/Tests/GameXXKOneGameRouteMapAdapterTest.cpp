@@ -1,4 +1,6 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKCardBattleAdapter.h"
+#include "GameXXKRouteEconomyRules.h"
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Blueprint/WidgetTree.h"
@@ -81,6 +83,10 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("auxiliary refresh makes route widget visible"), RefreshRouteWidget ? RefreshRouteWidget->GetVisibility() : ESlateVisibility::Collapsed, ESlateVisibility::Visible);
 	TestEqual(TEXT("late route widget refresh creates generated node visuals"), RefreshRouteWidget ? RefreshRouteWidget->GetCreatedNodeVisualWidgetCount() : 0, RefreshSubsystem->GetRuntimeState().RouteMapNodes.Num());
 	TestEqual(TEXT("late route widget refresh creates generated line visuals"), RefreshRouteWidget ? RefreshRouteWidget->GetCreatedLineVisualWidgetCount() : 0, RefreshSubsystem->GetRuntimeState().RouteMapEdges.Num());
+	RefreshSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::RouteEvent;
+	RefreshHUD->RefreshAuxiliaryWidgetsForTest();
+	TestEqual(TEXT("pending question or chest keeps the route map visible beneath its HUD modal"), RefreshRouteWidget ? RefreshRouteWidget->GetVisibility() : ESlateVisibility::Collapsed, ESlateVisibility::Visible);
+	TestEqual(TEXT("pending question or chest preserves route node visuals beneath its HUD modal"), RefreshRouteWidget ? RefreshRouteWidget->GetCreatedNodeVisualWidgetCount() : 0, RefreshSubsystem->GetRuntimeState().RouteMapNodes.Num());
 
 	TestTrue(TEXT("adapter initializes widget tree"), RouteWidget->Initialize());
 	RouteWidget->NativeConstruct();
@@ -126,7 +132,7 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("route content fills the full route viewport width"), RouteContentSize.X >= 1280.0f);
 	TestTrue(TEXT("route content keeps a tall scrollable route above the screen"), RouteContentSize.Y > 720.0f);
-	TestTrue(TEXT("route map hides its scroll bar for the player-facing view"), RouteWidget->IsRouteScrollBarHiddenForTest());
+	TestTrue(TEXT("route map shows the approved paper/ink scroll bar for the player-facing view"), RouteWidget->IsRouteScrollBarVisibleForTest());
 	TestTrue(TEXT("route map provides a blank-canvas drag surface"), RouteWidget->HasRouteDragSurfaceForTest());
 	TestEqual(TEXT("route map initially scrolls to the bottom of the route"), RouteWidget->GetLastAppliedScrollOffsetForTest(), RouteWidget->GetMaxScrollOffsetForTest());
 	const float BottomScrollOffset = RouteWidget->GetLastAppliedScrollOffsetForTest();
@@ -314,10 +320,25 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("adapter executes battle node"), RouteWidget->ExecuteRouteNode(1));
 	TestEqual(TEXT("battle node opens battle screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
 	TestEqual(
-		TEXT("battle node targets GameXXK-owned battle scene map"),
+		TEXT("battle node targets GameXXK-owned town-backdrop battle map"),
 		GameXXKLevelFlow::MapForRuntimeState(Subsystem->GetRuntimeState()),
-		FName(TEXT("/Game/GameXXK/Maps/L_BattleScene")));
-	TestTrue(TEXT("battle victory resolves through GameXXK rules"), Subsystem->ResolveBattleVictory(false));
+		FName(TEXT("/Game/GameXXK/Maps/L_BattleTown")));
+	for (FGameXXKCardCombatUnit& Unit : Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units)
+	{
+		if (Unit.Side == EGameXXKCardTargetSide::Enemy)
+		{
+			Unit.HP = 0;
+			Unit.bLiving = false;
+		}
+	}
+	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+	TestTrue(TEXT("battle victory opens the saved three-card route reward"), Subsystem->ResolveBattleVictory(false));
+	TestEqual(TEXT("battle victory keeps the battle screen active until the reward is resolved"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
+	TestEqual(TEXT("battle victory exposes exactly three saved route reward choices"), Subsystem->GetRuntimeState().CardRun.PendingReward.CardIds.Num(), 3);
+	FString RewardError;
+	TestTrue(FString::Printf(TEXT("skipping the saved route reward unlocks route progression: %s"), *RewardError),
+		FGameXXKCardBattleAdapter::SkipPendingRouteReward(Subsystem->GetMutableRuntimeState(), &RewardError));
+	TestTrue(TEXT("resolved reward completes the route battle victory"), Subsystem->ResolveBattleVictory(false));
 	TestEqual(TEXT("battle victory returns to route-map screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(
 		TEXT("battle victory targets GameXXK-owned route map"),
@@ -342,6 +363,8 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	SparseState.RouteMapNodes.Emplace(20, 1, 0, EGameXXKNodeKind::Battle, FVector2D(1.00f, 1.00f), TArray<int32>{});
 	SparseState.RouteMapEdges.Emplace(10, 20);
 	SparseState.ReachableRouteNodeIds.Add(10);
+	SparseState.CardRun.RouteProgress.CurrentChapter = 1;
+	TestTrue(TEXT("sparse route fixture initializes its route economy"), FGameXXKRouteEconomyRules::InitializeRoute(SparseState.CardRun));
 
 	UGameXXKOneGameRouteMapWidget* SparseRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
 	SparseRouteWidget->SetMVPSubsystem(SparseSubsystem);

@@ -1,50 +1,114 @@
 #include "UI/GameXXKBattleUnitResourceWidget.h"
 
 #include "Blueprint/WidgetTree.h"
-#include "Brushes/SlateColorBrush.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/Image.h"
 #include "Components/ProgressBar.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/Texture2D.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
 #include "Styling/SlateBrush.h"
+#include "Brushes/SlateColorBrush.h"
 
 namespace
 {
-	const FString HealthFrameTexturePath(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Character/T_TownPsd_CharacterHealthFrame.T_TownPsd_CharacterHealthFrame"));
-	const FString QiFrameTexturePath(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Character/T_TownPsd_CharacterManaFrame.T_TownPsd_CharacterManaFrame"));
-	const FLinearColor PaperFallbackColor(0.86f, 0.79f, 0.62f, 1.0f);
-	const FLinearColor HealthFillColor(0.62f, 0.25f, 0.22f, 1.0f);
-	const FLinearColor QiFillColor(0.24f, 0.43f, 0.56f, 1.0f);
+	const FString HealthTrackTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_HealthTrack.T_BattlePsd_HealthTrack"));
+	const FString HealthFullTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_HealthFull.T_BattlePsd_HealthFull"));
+	const FString ManaTrackTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_ManaTrack.T_BattlePsd_ManaTrack"));
+	const FString ManaFullTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_ManaFull.T_BattlePsd_ManaFull"));
+	const FString ResourceMaskMaterialPath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/M_BattlePsdResourceMask.M_BattlePsdResourceMask"));
+	const FName TrackTextureParameter(TEXT("TrackTexture"));
+	const FName FullTextureParameter(TEXT("FullTexture"));
+	const FName FillPercentParameter(TEXT("FillPercent"));
+	const FName FillLeftParameter(TEXT("FillLeft"));
+	const FName FillRightParameter(TEXT("FillRight"));
+	const FName FillTopParameter(TEXT("FillTop"));
+	const FName FillBottomParameter(TEXT("FillBottom"));
+	// Match the previously approved PSD bar span. The mask trims the fill inside
+	// this fixed footprint; it must not shrink the whole rail a second time.
+	const FVector2D ResourceBarLogicalSize(252.0f, 20.0f);
 
-	FSlateBrush MakeFrameBrush(const FString& TexturePath, const FVector2D& ImageSize)
+	FSlateBrush MakeResourceBrush(const FString& TexturePath)
 	{
-		if (UTexture2D* Texture = LoadObject<UTexture2D>(nullptr, *TexturePath))
+		FSlateBrush Brush;
+		Brush.DrawAs = ESlateBrushDrawType::Image;
+		Brush.ImageSize = ResourceBarLogicalSize;
+		Brush.TintColor = FSlateColor(FLinearColor::White);
+		if (UTexture2D* const Texture = LoadObject<UTexture2D>(nullptr, *TexturePath))
 		{
-			FSlateBrush Brush;
-			Brush.DrawAs = ESlateBrushDrawType::Image;
-			Brush.ImageSize = ImageSize;
-			Brush.TintColor = FSlateColor(FLinearColor::White);
 			Brush.SetResourceObject(Texture);
-			return Brush;
 		}
-
-		FSlateColorBrush PaperFallbackBrush(PaperFallbackColor);
-		PaperFallbackBrush.ImageSize = ImageSize;
-		return PaperFallbackBrush;
+		return Brush;
 	}
 
-	FProgressBarStyle MakeResourceBarStyle(const FString& FrameTexturePath, const FLinearColor& FillColor)
+	FProgressBarStyle MakeResourceBarStyle(const FString& TrackPath, const FString& FullPath)
 	{
-		const FVector2D BarSize(168.0f, 18.0f);
 		FProgressBarStyle Style;
-		Style.SetBackgroundImage(MakeFrameBrush(FrameTexturePath, BarSize));
-		FSlateColorBrush FillBrush(FillColor);
-		FillBrush.ImageSize = BarSize;
-		Style.SetFillImage(FillBrush);
+		Style.SetBackgroundImage(MakeResourceBrush(TrackPath));
+		Style.SetFillImage(MakeResourceBrush(FullPath));
+		Style.SetMarqueeImage(FSlateBrush());
 		return Style;
+	}
+
+	struct FResourceMaskChannel
+	{
+		float Left;
+		float Right;
+		float Top;
+		float Bottom;
+	};
+
+	const FResourceMaskChannel HealthChannel {
+		0.0f,
+		1.0f,
+		0.0f,
+		1.0f,
+	};
+	const FResourceMaskChannel ManaChannel {
+		0.0f,
+		1.0f,
+		0.0f,
+		1.0f,
+	};
+
+	UMaterialInstanceDynamic* CreateResourceMaskMaterial(UObject* Outer)
+	{
+		UMaterialInterface* const ParentMaterial = LoadObject<UMaterialInterface>(nullptr, *ResourceMaskMaterialPath);
+		return ParentMaterial ? UMaterialInstanceDynamic::Create(ParentMaterial, Outer) : nullptr;
+	}
+
+	void RefreshResourceMask(
+		UImage* const Image,
+		UMaterialInstanceDynamic* const Material,
+		UTexture2D* const TrackTexture,
+		UTexture2D* const FullTexture,
+		const float Percent,
+		const FResourceMaskChannel& Channel)
+	{
+		if (!Image)
+		{
+			return;
+		}
+
+		if (!Material || !TrackTexture || !FullTexture)
+		{
+			Image->SetBrushFromTexture(TrackTexture ? TrackTexture : FullTexture, false);
+			return;
+		}
+
+		Material->SetTextureParameterValue(TrackTextureParameter, TrackTexture);
+		Material->SetTextureParameterValue(FullTextureParameter, FullTexture);
+		Material->SetScalarParameterValue(FillPercentParameter, Percent);
+		Material->SetScalarParameterValue(FillLeftParameter, Channel.Left);
+		Material->SetScalarParameterValue(FillRightParameter, Channel.Right);
+		Material->SetScalarParameterValue(FillTopParameter, Channel.Top);
+		Material->SetScalarParameterValue(FillBottomParameter, Channel.Bottom);
+		Image->SetBrushFromMaterial(Material);
 	}
 
 	void ConfigureReadableText(UTextBlock* TextBlock, const int32 FontSize)
@@ -58,12 +122,18 @@ namespace
 		Font.Size = FontSize;
 		TextBlock->SetFont(Font);
 		TextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.18f, 0.12f, 0.07f, 1.0f)));
+		TextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 
 	float GetSafePercent(const int32 CurrentValue, const int32 MaximumValue)
 	{
+		if (MaximumValue <= 0)
+		{
+			return 0.0f;
+		}
+
 		return FMath::Clamp(
-			static_cast<float>(CurrentValue) / static_cast<float>(FMath::Max(1, MaximumValue)),
+			static_cast<float>(CurrentValue) / static_cast<float>(MaximumValue),
 			0.0f,
 			1.0f);
 	}
@@ -76,14 +146,14 @@ void UGameXXKBattleUnitResourceWidget::NativeConstruct()
 	RefreshDisplay();
 }
 
-void UGameXXKBattleUnitResourceWidget::SetUnitResources(
+void UGameXXKBattleUnitResourceWidget::SetUnitVitals(
 	const FString& InSlotLabel,
 	const FText& InDisplayName,
 	const int32 InCurrentHP,
 	const int32 InMaxHP,
 	const int32 InCurrentMana,
 	const int32 InMaxMana,
-	const bool bInShowQi)
+	const bool bInShowMana)
 {
 	SlotLabel = InSlotLabel;
 	DisplayName = InDisplayName;
@@ -91,7 +161,7 @@ void UGameXXKBattleUnitResourceWidget::SetUnitResources(
 	MaxHP = InMaxHP;
 	CurrentMana = InCurrentMana;
 	MaxMana = InMaxMana;
-	bShowQi = bInShowQi;
+	bShowMana = bInShowMana;
 	RefreshDisplay();
 }
 
@@ -113,24 +183,76 @@ FString UGameXXKBattleUnitResourceWidget::GetHealthDisplayTextForTest() const
 	return HealthText ? HealthText->GetText().ToString() : FString();
 }
 
-FString UGameXXKBattleUnitResourceWidget::GetQiDisplayTextForTest() const
+FString UGameXXKBattleUnitResourceWidget::GetManaDisplayTextForTest() const
 {
-	return QiText ? QiText->GetText().ToString() : FString();
+	return ManaText ? ManaText->GetText().ToString() : FString();
 }
 
 float UGameXXKBattleUnitResourceWidget::GetHealthPercentForTest() const
 {
-	return HealthBar ? HealthBar->GetPercent() : 0.0f;
+	return HealthPercent;
 }
 
-float UGameXXKBattleUnitResourceWidget::GetQiPercentForTest() const
+float UGameXXKBattleUnitResourceWidget::GetManaPercentForTest() const
 {
-	return QiBar ? QiBar->GetPercent() : 0.0f;
+	return ManaPercent;
 }
 
-bool UGameXXKBattleUnitResourceWidget::IsQiRowVisibleForTest() const
+bool UGameXXKBattleUnitResourceWidget::IsHealthFillLeftToRightForTest() const
 {
-	return QiRow && QiRow->GetVisibility() == ESlateVisibility::HitTestInvisible;
+	return HealthProgressBar && HealthProgressBar->GetBarFillType() == EProgressBarFillType::LeftToRight;
+}
+
+bool UGameXXKBattleUnitResourceWidget::IsManaFillLeftToRightForTest() const
+{
+	return ManaProgressBar && ManaProgressBar->GetBarFillType() == EProgressBarFillType::LeftToRight;
+}
+
+bool UGameXXKBattleUnitResourceWidget::UsesWholeFullBarMaskForTest()
+{
+	return HealthChannel.Left == 0.0f
+		&& HealthChannel.Right == 1.0f
+		&& HealthChannel.Top == 0.0f
+		&& HealthChannel.Bottom == 1.0f
+		&& ManaChannel.Left == 0.0f
+		&& ManaChannel.Right == 1.0f
+		&& ManaChannel.Top == 0.0f
+		&& ManaChannel.Bottom == 1.0f;
+}
+
+FString UGameXXKBattleUnitResourceWidget::GetHealthTrackResourcePathForTest() const
+{
+	return HealthTrackTexturePath;
+}
+
+FString UGameXXKBattleUnitResourceWidget::GetHealthFullResourcePathForTest() const
+{
+	return HealthFullTexturePath;
+}
+
+FString UGameXXKBattleUnitResourceWidget::GetManaTrackResourcePathForTest() const
+{
+	return ManaTrackTexturePath;
+}
+
+FString UGameXXKBattleUnitResourceWidget::GetManaFullResourcePathForTest() const
+{
+	return ManaFullTexturePath;
+}
+
+FString UGameXXKBattleUnitResourceWidget::GetResourceMaskMaterialPathForTest() const
+{
+	return ResourceMaskMaterialPath;
+}
+
+bool UGameXXKBattleUnitResourceWidget::IsManaRowVisibleForTest() const
+{
+	return ManaRow && ManaRow->GetVisibility() == ESlateVisibility::SelfHitTestInvisible;
+}
+
+ESlateVisibility UGameXXKBattleUnitResourceWidget::GetManaRowVisibilityForTest() const
+{
+	return ManaRow ? ManaRow->GetVisibility() : ESlateVisibility::Collapsed;
 }
 
 bool UGameXXKBattleUnitResourceWidget::AreContentWidgetsHitTestTransparentForTest() const
@@ -139,8 +261,8 @@ bool UGameXXKBattleUnitResourceWidget::AreContentWidgetsHitTestTransparentForTes
 		&& IdentityText->GetVisibility() == ESlateVisibility::HitTestInvisible
 		&& HealthRow
 		&& HealthRow->GetVisibility() == ESlateVisibility::HitTestInvisible
-		&& QiRow
-		&& (QiRow->GetVisibility() == ESlateVisibility::HitTestInvisible || QiRow->GetVisibility() == ESlateVisibility::Collapsed);
+		&& ManaRow
+		&& (ManaRow->GetVisibility() == ESlateVisibility::SelfHitTestInvisible || ManaRow->GetVisibility() == ESlateVisibility::Collapsed);
 }
 
 ESlateVisibility UGameXXKBattleUnitResourceWidget::GetRootHitTestVisibilityForTest()
@@ -162,45 +284,95 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	RootBox->SetVisibility(GetRootHitTestVisibilityForTest());
 
 	IdentityText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("IdentityText"));
-	ConfigureReadableText(IdentityText, 13);
+	ConfigureReadableText(IdentityText, 15);
 	IdentityText->SetJustification(ETextJustify::Center);
-	IdentityText->SetVisibility(ESlateVisibility::HitTestInvisible);
-	RootBox->AddChildToVerticalBox(IdentityText);
+	if (UVerticalBoxSlot* const IdentitySlot = RootBox->AddChildToVerticalBox(IdentityText))
+	{
+		IdentitySlot->SetHorizontalAlignment(HAlign_Center);
+		IdentitySlot->SetPadding(FMargin(2.0f, 0.0f, 2.0f, 1.0f));
+	}
 
 	HealthRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("HealthRow"));
 	HealthRow->SetVisibility(ESlateVisibility::HitTestInvisible);
+	UVerticalBox* const HealthContentBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("HealthContentBox"));
+	HealthContentBox->SetVisibility(ESlateVisibility::HitTestInvisible);
 	HealthText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("HealthText"));
-	ConfigureReadableText(HealthText, 12);
-	HealthRow->AddChildToHorizontalBox(HealthText);
-	HealthBar = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("HealthBar"));
-	HealthBar->SetWidgetStyle(MakeResourceBarStyle(HealthFrameTexturePath, HealthFillColor));
-	HealthBar->SetBarFillType(EProgressBarFillType::LeftToRight);
-	if (UHorizontalBoxSlot* HealthBarSlot = HealthRow->AddChildToHorizontalBox(HealthBar))
+	ConfigureReadableText(HealthText, 14);
+	HealthText->SetJustification(ETextJustify::Center);
+	if (UVerticalBoxSlot* const HealthTextSlot = HealthContentBox->AddChildToVerticalBox(HealthText))
 	{
-		HealthBarSlot->SetPadding(FMargin(6.0f, 0.0f, 0.0f, 0.0f));
-		HealthBarSlot->SetVerticalAlignment(VAlign_Center);
+		HealthTextSlot->SetHorizontalAlignment(HAlign_Center);
+		HealthTextSlot->SetPadding(FMargin(2.0f, 0.0f));
+	}
+	HealthBarSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("HealthBarSizeBox"));
+	HealthBarSizeBox->SetWidthOverride(ResourceBarLogicalSize.X);
+	HealthBarSizeBox->SetHeightOverride(ResourceBarLogicalSize.Y);
+	HealthProgressBar = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("HealthProgressBar"));
+	HealthProgressBar->SetWidgetStyle(MakeResourceBarStyle(HealthTrackTexturePath, HealthFullTexturePath));
+	HealthProgressBar->SetBarFillType(EProgressBarFillType::LeftToRight);
+	HealthProgressBar->SetPercent(HealthPercent);
+	HealthBar = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("HealthBarLegacy"));
+	HealthTrackTexture = LoadObject<UTexture2D>(nullptr, *HealthTrackTexturePath);
+	HealthFullTexture = LoadObject<UTexture2D>(nullptr, *HealthFullTexturePath);
+	HealthMaskMaterial = CreateResourceMaskMaterial(this);
+	// Render the PSD track/full pair through the authored UI mask.  A native
+	// UProgressBar scales the full texture itself and exposes its transparent
+	// source margins, which is why the fill appeared centered instead of being
+	// consumed from the left edge.  Keep the progress bar as a test seam, but
+	// use the mask image for the actual HUD.
+	HealthBarSizeBox->SetContent(HealthBar);
+	if (UVerticalBoxSlot* const HealthBarSlot = HealthContentBox->AddChildToVerticalBox(HealthBarSizeBox))
+	{
+		HealthBarSlot->SetHorizontalAlignment(HAlign_Center);
+	}
+	if (UHorizontalBoxSlot* const HealthContentSlot = HealthRow->AddChildToHorizontalBox(HealthContentBox))
+	{
+		HealthContentSlot->SetHorizontalAlignment(HAlign_Center);
+		HealthContentSlot->SetVerticalAlignment(VAlign_Center);
 	}
 	if (UVerticalBoxSlot* HealthRowSlot = RootBox->AddChildToVerticalBox(HealthRow))
 	{
-		HealthRowSlot->SetPadding(FMargin(4.0f, 1.0f));
+		HealthRowSlot->SetHorizontalAlignment(HAlign_Center);
+		HealthRowSlot->SetPadding(FMargin(2.0f, 0.0f, 2.0f, 1.0f));
 	}
 
-	QiRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("QiRow"));
-	QiRow->SetVisibility(ESlateVisibility::HitTestInvisible);
-	QiText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("QiText"));
-	ConfigureReadableText(QiText, 12);
-	QiRow->AddChildToHorizontalBox(QiText);
-	QiBar = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("QiBar"));
-	QiBar->SetWidgetStyle(MakeResourceBarStyle(QiFrameTexturePath, QiFillColor));
-	QiBar->SetBarFillType(EProgressBarFillType::LeftToRight);
-	if (UHorizontalBoxSlot* QiBarSlot = QiRow->AddChildToHorizontalBox(QiBar))
+	ManaRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("ManaRow"));
+	ManaRow->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	UVerticalBox* const ManaContentBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("ManaContentBox"));
+	ManaContentBox->SetVisibility(ESlateVisibility::HitTestInvisible);
+	ManaText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ManaText"));
+	ConfigureReadableText(ManaText, 14);
+	ManaText->SetJustification(ETextJustify::Center);
+	if (UVerticalBoxSlot* const ManaTextSlot = ManaContentBox->AddChildToVerticalBox(ManaText))
 	{
-		QiBarSlot->SetPadding(FMargin(6.0f, 0.0f, 0.0f, 0.0f));
-		QiBarSlot->SetVerticalAlignment(VAlign_Center);
+		ManaTextSlot->SetHorizontalAlignment(HAlign_Center);
+		ManaTextSlot->SetPadding(FMargin(2.0f, 0.0f));
 	}
-	if (UVerticalBoxSlot* QiRowSlot = RootBox->AddChildToVerticalBox(QiRow))
+	ManaBarSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("ManaBarSizeBox"));
+	ManaBarSizeBox->SetWidthOverride(ResourceBarLogicalSize.X);
+	ManaBarSizeBox->SetHeightOverride(ResourceBarLogicalSize.Y);
+	ManaProgressBar = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("ManaProgressBar"));
+	ManaProgressBar->SetWidgetStyle(MakeResourceBarStyle(ManaTrackTexturePath, ManaFullTexturePath));
+	ManaProgressBar->SetBarFillType(EProgressBarFillType::LeftToRight);
+	ManaProgressBar->SetPercent(ManaPercent);
+	ManaBar = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("ManaBarLegacy"));
+	ManaTrackTexture = LoadObject<UTexture2D>(nullptr, *ManaTrackTexturePath);
+	ManaFullTexture = LoadObject<UTexture2D>(nullptr, *ManaFullTexturePath);
+	ManaMaskMaterial = CreateResourceMaskMaterial(this);
+	ManaBarSizeBox->SetContent(ManaBar);
+	if (UVerticalBoxSlot* const ManaBarSlot = ManaContentBox->AddChildToVerticalBox(ManaBarSizeBox))
 	{
-		QiRowSlot->SetPadding(FMargin(4.0f, 1.0f));
+		ManaBarSlot->SetHorizontalAlignment(HAlign_Center);
+	}
+	if (UHorizontalBoxSlot* const ManaContentSlot = ManaRow->AddChildToHorizontalBox(ManaContentBox))
+	{
+		ManaContentSlot->SetHorizontalAlignment(HAlign_Center);
+		ManaContentSlot->SetVerticalAlignment(VAlign_Center);
+	}
+	if (UVerticalBoxSlot* ManaRowSlot = RootBox->AddChildToVerticalBox(ManaRow))
+	{
+		ManaRowSlot->SetHorizontalAlignment(HAlign_Center);
+		ManaRowSlot->SetPadding(FMargin(2.0f, 0.0f, 2.0f, 1.0f));
 	}
 }
 
@@ -220,20 +392,24 @@ void UGameXXKBattleUnitResourceWidget::RefreshDisplay()
 	{
 		HealthText->SetText(FText::FromString(FString::Printf(TEXT("气血 %d / %d"), CurrentHP, MaxHP)));
 	}
-	if (HealthBar)
+	HealthPercent = GetSafePercent(CurrentHP, MaxHP);
+	if (HealthProgressBar)
 	{
-		HealthBar->SetPercent(GetSafePercent(CurrentHP, MaxHP));
+		HealthProgressBar->SetPercent(HealthPercent);
 	}
-	if (QiText)
+	RefreshResourceMask(HealthBar, HealthMaskMaterial, HealthTrackTexture, HealthFullTexture, HealthPercent, HealthChannel);
+	if (ManaText)
 	{
-		QiText->SetText(FText::FromString(FString::Printf(TEXT("气力 %d / %d"), CurrentMana, MaxMana)));
+		ManaText->SetText(FText::FromString(FString::Printf(TEXT("内力 %d / %d"), CurrentMana, MaxMana)));
 	}
-	if (QiBar)
+	ManaPercent = GetSafePercent(CurrentMana, MaxMana);
+	if (ManaProgressBar)
 	{
-		QiBar->SetPercent(GetSafePercent(CurrentMana, MaxMana));
+		ManaProgressBar->SetPercent(ManaPercent);
 	}
-	if (QiRow)
+	RefreshResourceMask(ManaBar, ManaMaskMaterial, ManaTrackTexture, ManaFullTexture, ManaPercent, ManaChannel);
+	if (ManaRow)
 	{
-		QiRow->SetVisibility(bShowQi ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		ManaRow->SetVisibility(bShowMana ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }

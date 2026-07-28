@@ -276,6 +276,9 @@ private:
 	TObjectPtr<UButton> CloseButton;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UImage> BackpackHeaderImage;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> TitleTextBlock;
 
 	UPROPERTY(Transient)

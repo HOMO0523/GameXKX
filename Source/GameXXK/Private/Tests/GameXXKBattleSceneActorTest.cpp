@@ -1,12 +1,20 @@
+#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
+#include "Components/SceneComponent.h"
 #include "Components/TextRenderComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKBattleScenePresenter.h"
 #include "MVP/GameXXKBattleSceneUnitActor.h"
+#include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
+#include "UI/GameXXKBattleStatusIconStyle.h"
+#include "UI/GameXXKBattleStatusIconWidget.h"
+#include "UI/GameXXKBattleUnitResourceWidget.h"
+#include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -31,6 +39,104 @@ namespace
 		UGameXXKMVPRules::SelectRouteNodeById(State, 1);
 		return State;
 	}
+
+	FGameXXKBattleRuntimeUnit MakeSceneUnit(const FName UnitId, const TCHAR* DisplayName, const bool bEnemy)
+	{
+		FGameXXKBattleRuntimeUnit Unit;
+		Unit.Id = UnitId;
+		Unit.DisplayName = FText::FromString(DisplayName);
+		Unit.HP = 30;
+		Unit.MaxHP = 40;
+		Unit.bEnemy = bEnemy;
+		return Unit;
+	}
+
+	FGameXXKCardCombatUnit MakeCardSceneUnit(
+		const FName UnitId,
+		const EGameXXKCardTargetSide Side,
+		const EGameXXKCharacterRole Role,
+		const int32 StableSortOrder)
+	{
+		FGameXXKCardCombatUnit Unit;
+		Unit.UnitId = UnitId;
+		Unit.Side = Side;
+		Unit.Role = Role;
+		Unit.bLiving = true;
+		Unit.HP = 30;
+		Unit.MaxHP = 40;
+		Unit.StableSortOrder = StableSortOrder;
+		return Unit;
+	}
+
+	FGameXXKRuntimeState BuildFixedSlotSceneBattleState()
+	{
+		FGameXXKRuntimeState State = BuildSceneBattleState();
+		State.Screen = EGameXXKScreen::Battle;
+		State.bHasActiveBattle = true;
+		State.ActiveBattleParty = {
+			MakeSceneUnit(TEXT("Player"), TEXT("Hero"), false),
+			MakeSceneUnit(TEXT("CompanionInstance.Companion_Blade_Test"), TEXT("Blade"), false),
+			MakeSceneUnit(TEXT("Npc.YueBai"), TEXT("Yue Bai"), false)};
+		State.ActiveBattleEnemies = {
+			MakeSceneUnit(TEXT("Enemy.Outer"), TEXT("Outer"), true),
+			MakeSceneUnit(TEXT("Enemy.Middle"), TEXT("Middle"), true),
+			MakeSceneUnit(TEXT("Enemy.Inner"), TEXT("Inner"), true)};
+		State.CardRun.bHasActiveCardBattle = true;
+		State.CardRun.ActiveBattle.Units = {
+			MakeCardSceneUnit(TEXT("Player"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 0),
+			MakeCardSceneUnit(TEXT("CompanionInstance.Companion_Blade_Test"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Blade, 1),
+			MakeCardSceneUnit(TEXT("Npc.YueBai"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 2),
+			MakeCardSceneUnit(TEXT("Enemy.Outer"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 0),
+			MakeCardSceneUnit(TEXT("Enemy.Middle"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 1),
+			MakeCardSceneUnit(TEXT("Enemy.Inner"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 2)};
+
+		// Legacy projections deliberately disagree with the card runtime below.
+		// The actor's visible HUD must always prefer the active card battle values.
+		State.ActiveBattleParty[0].HP = 11;
+		State.ActiveBattleParty[0].MaxHP = 17;
+		State.ActiveBattleParty[0].MP = 2;
+		State.ActiveBattleParty[0].MaxMP = 5;
+		State.ActiveBattleParty[0].Shield = 1;
+		State.ActiveBattleParty[1].HP = 13;
+		State.ActiveBattleParty[1].MaxHP = 21;
+		State.ActiveBattleParty[1].MP = 3;
+		State.ActiveBattleParty[1].MaxMP = 6;
+		State.ActiveBattleParty[2].HP = 14;
+		State.ActiveBattleParty[2].MaxHP = 22;
+		State.ActiveBattleParty[2].MP = 4;
+		State.ActiveBattleParty[2].MaxMP = 7;
+		State.ActiveBattleEnemies[0].HP = 18;
+		State.ActiveBattleEnemies[0].MaxHP = 26;
+		State.ActiveBattleEnemies[0].MP = 5;
+		State.ActiveBattleEnemies[0].MaxMP = 8;
+
+		FGameXXKCardCombatUnit& Hero = State.CardRun.ActiveBattle.Units[0];
+		Hero.HP = 72;
+		Hero.MaxHP = 100;
+		Hero.Mana = 18;
+		Hero.MaxMana = 30;
+		Hero.Armor = 7;
+		Hero.Statuses = {FGameXXKCardStatusStack{EGameXXKCardStatus::Poison, 2}};
+
+	FGameXXKCardCombatUnit& Companion = State.CardRun.ActiveBattle.Units[1];
+	Companion.HP = 55;
+	Companion.MaxHP = 80;
+	Companion.Mana = 0;
+	Companion.MaxMana = 0;
+
+	FGameXXKCardCombatUnit& QuestNpc = State.CardRun.ActiveBattle.Units[2];
+	QuestNpc.HP = 31;
+	QuestNpc.MaxHP = 60;
+	QuestNpc.Mana = 0;
+	QuestNpc.MaxMana = 0;
+
+		FGameXXKCardCombatUnit& Enemy = State.CardRun.ActiveBattle.Units[3];
+		Enemy.HP = 240;
+		Enemy.MaxHP = 240;
+		Enemy.Mana = 99;
+		Enemy.MaxMana = 100;
+		return State;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -40,11 +146,286 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 {
+	// Status icon language is intentionally a pure projection so all runtime
+	// status values remain visible even before the generated texture assets are
+	// imported into the project.
+	const FGameXXKBattleStatusIconStyle ArmorStyle = FGameXXKBattleStatusIconStyle::ResolveArmorIconStyle();
+	TestEqual(TEXT("armor uses the explicit shield status icon"), ArmorStyle.IconId, FName(TEXT("ArmorShield")));
+	TestFalse(TEXT("armor icon has a future imported texture path"), ArmorStyle.TexturePath.IsNull());
+	TestTrue(TEXT("armor tooltip states it absorbs damage before health"), ArmorStyle.Tooltip.Contains(TEXT("先于生命")));
+	TestTrue(TEXT("armor tooltip states the owner-side phase-start expiry"), ArmorStyle.Tooltip.Contains(TEXT("所属阵营的阶段开始时清空")));
+	TestTrue(TEXT("armor keeps a native paper-ink fallback when its texture is absent"), ArmorStyle.bUsesPaperInkFallback);
+
+	const TArray<EGameXXKCardStatus> RequiredStatusIcons = {
+		EGameXXKCardStatus::Momentum,
+		EGameXXKCardStatus::Agility,
+		EGameXXKCardStatus::Vulnerability,
+		EGameXXKCardStatus::Bleed,
+		EGameXXKCardStatus::Poison,
+		EGameXXKCardStatus::Burn,
+		EGameXXKCardStatus::Mark,
+		EGameXXKCardStatus::Guard,
+		EGameXXKCardStatus::DamageOverTime,
+		EGameXXKCardStatus::CannotReceiveVulnerability,
+		EGameXXKCardStatus::NextAttackBonus,
+		EGameXXKCardStatus::NextAttackAppliesVulnerability,
+		EGameXXKCardStatus::NextHealingBonus,
+		EGameXXKCardStatus::TerrainBonusDouble,
+		EGameXXKCardStatus::NextTerrainCardFree,
+		EGameXXKCardStatus::NextTerrainCardEnergyReduction,
+		EGameXXKCardStatus::RedirectSingleTargetEnemyAttack,
+		EGameXXKCardStatus::TerrainBonusDoubleThisRound,
+		EGameXXKCardStatus::Medicine,
+		EGameXXKCardStatus::Weak,
+		EGameXXKCardStatus::Wealth,
+		EGameXXKCardStatus::Rage,
+		EGameXXKCardStatus::Prey,
+		EGameXXKCardStatus::Charge,
+		EGameXXKCardStatus::Counter};
+	for (const EGameXXKCardStatus Status : RequiredStatusIcons)
+	{
+		const FGameXXKBattleStatusIconStyle Style = FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(Status);
+		TestFalse(*FString::Printf(TEXT("status value %d resolves a visible icon id"), static_cast<int32>(Status)), Style.IconId.IsNone());
+		TestFalse(*FString::Printf(TEXT("status value %d has a real mechanics tooltip"), static_cast<int32>(Status)), Style.Tooltip.IsEmpty());
+		TestTrue(*FString::Printf(TEXT("status value %d has deterministic status priority"), static_cast<int32>(Status)), Style.Priority > 0);
+		TestTrue(*FString::Printf(TEXT("status value %d has a paper-ink fallback"), static_cast<int32>(Status)), Style.bUsesPaperInkFallback);
+		TestFalse(*FString::Printf(TEXT("status value %d fallback is never brushless"), static_cast<int32>(Status)), Style.FallbackGlyph.IsEmpty());
+		TestNotEqual(*FString::Printf(TEXT("status value %d has an explicit style instead of the unknown fallback"), static_cast<int32>(Status)), Style.IconId, FName(TEXT("UnknownStatus")));
+	}
+	const FGameXXKBattleStatusIconStyle WeakStyle = FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(EGameXXKCardStatus::Weak);
+	TestEqual(TEXT("serialized status 21 is localized as weak"), WeakStyle.DisplayName, FString(TEXT("虚弱")));
+	const FGameXXKBattleStatusIconStyle FallbackStyle = FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(static_cast<EGameXXKCardStatus>(255));
+	TestEqual(TEXT("unknown valid future statuses remain visibly represented"), FallbackStyle.IconId, FName(TEXT("UnknownStatus")));
+	TestTrue(TEXT("unknown status tooltip retains its enum name"), FallbackStyle.Tooltip.Contains(TEXT("255")));
+	TestTrue(TEXT("unknown status has a paper-ink fallback treatment"), FallbackStyle.bUsesPaperInkFallback);
+	TestEqual(TEXT("unknown status fallback is a visible centered question glyph"), FallbackStyle.FallbackGlyph, FString(TEXT("?")));
+	TestFalse(TEXT("armor fallback glyph is not a brushless empty icon"), ArmorStyle.FallbackGlyph.IsEmpty());
+	const FGameXXKBattleStatusIconStyle AgilityStyle = FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(EGameXXKCardStatus::Agility);
+	TestTrue(TEXT("agility tooltip correctly identifies both single-target and group direct attacks"), AgilityStyle.Timing.Contains(TEXT("单体与群体直接攻击")));
+	TestFalse(TEXT("agility tooltip never incorrectly excludes group attacks"), AgilityStyle.Timing.Contains(TEXT("群体攻击与环境伤害不触发")));
+	TestEqual(TEXT("badge stacks above ninety-nine display a capped seal"), UGameXXKBattleStatusIconWidget::FormatStackForTest(128), FString(TEXT("99+")));
+	TestEqual(TEXT("status tooltip factory remains hover-only"), UGameXXKBattleStatusIconWidget::GetTooltipVisibilityForTest(), ESlateVisibility::HitTestInvisible);
+
+	const TArray<FGameXXKBattleStatusBadgeModel> InitialBadgeModels = UGameXXKBattleUnitStatusEffectsWidget::BuildBadgeModels(
+		7,
+		{FGameXXKCardStatusStack{EGameXXKCardStatus::Poison, 2}, FGameXXKCardStatusStack{EGameXXKCardStatus::Momentum, 1}});
+	TestEqual(TEXT("armor plus each nonzero status creates a separate numeric badge"), InitialBadgeModels.Num(), 3);
+	if (InitialBadgeModels.Num() == 3)
+	{
+		TestEqual(TEXT("armor badge shows its current armor stack"), InitialBadgeModels[0].Stacks, 7);
+		TestEqual(TEXT("armor badge comes before lower priority combat statuses"), InitialBadgeModels[0].Style.IconId, FName(TEXT("ArmorShield")));
+		TestTrue(TEXT("badge tooltip contains the real current stack"), InitialBadgeModels[1].Tooltip.Contains(TEXT("2")) || InitialBadgeModels[2].Tooltip.Contains(TEXT("2")));
+		TestTrue(TEXT("every rendered badge model owns hover tooltip data"), InitialBadgeModels[0].Tooltip.Len() > 0 && InitialBadgeModels[1].Tooltip.Len() > 0 && InitialBadgeModels[2].Tooltip.Len() > 0);
+	}
+	const TArray<FGameXXKBattleStatusBadgeModel> ResetBadgeModels = UGameXXKBattleUnitStatusEffectsWidget::BuildBadgeModels(0, {});
+	TestEqual(TEXT("state reset discards old badge models and their hover tooltip data"), ResetBadgeModels.Num(), 0);
+
+	// The scene owns fixed presentation slots, not the mutable legacy-party array order.
+	const FGameXXKRuntimeState FixedSlotState = BuildFixedSlotSceneBattleState();
+	const TArray<FGameXXKBattleSceneUnitPlacement> FixedPlacements = AGameXXKBattleScenePresenter::BuildUnitPlacementsForState(FixedSlotState);
+	const FGameXXKBattleSceneUnitPlacement* HeroPlacement = FixedPlacements.FindByPredicate([](const FGameXXKBattleSceneUnitPlacement& Placement)
+	{
+		return !Placement.bEnemy && Placement.UnitId == TEXT("Player");
+	});
+	const FGameXXKBattleSceneUnitPlacement* BladePlacement = FixedPlacements.FindByPredicate([](const FGameXXKBattleSceneUnitPlacement& Placement)
+	{
+		return !Placement.bEnemy && Placement.UnitId == TEXT("CompanionInstance.Companion_Blade_Test");
+	});
+	const FGameXXKBattleSceneUnitPlacement* QuestNpcPlacement = FixedPlacements.FindByPredicate([](const FGameXXKBattleSceneUnitPlacement& Placement)
+	{
+		return !Placement.bEnemy && Placement.UnitId == TEXT("Npc.YueBai");
+	});
+	TestNotNull(TEXT("fixed formation includes Hero at a role-derived placement"), HeroPlacement);
+	TestNotNull(TEXT("fixed formation includes Blade at a role-derived placement"), BladePlacement);
+	TestNotNull(TEXT("fixed formation includes the task NPC at a role-derived placement"), QuestNpcPlacement);
+	if (HeroPlacement && BladePlacement && QuestNpcPlacement)
+	{
+		TestEqual(TEXT("Hero remains the central 我 2P"), HeroPlacement->SlotNumber, 2);
+		TestEqual(TEXT("permanent Blade remains 我 1P"), BladePlacement->SlotNumber, 1);
+		TestEqual(TEXT("temporary task NPC remains 我 3P"), QuestNpcPlacement->SlotNumber, 3);
+		TestEqual(TEXT("party 2P uses the approved outward middle coordinate"), HeroPlacement->Location, FVector(-20.0f, 225.0f, 90.0f));
+		TestEqual(TEXT("party 1P uses the approved outward outer coordinate"), BladePlacement->Location, FVector(-80.0f, 295.0f, 90.0f));
+		TestEqual(TEXT("party 3P uses the approved outward inner coordinate"), QuestNpcPlacement->Location, FVector(40.0f, 155.0f, 90.0f));
+		TestTrue(TEXT("party slots open toward the central hand space"), BladePlacement->Location.Y > HeroPlacement->Location.Y && HeroPlacement->Location.Y > QuestNpcPlacement->Location.Y);
+	}
+	const FVector TownBattleAnchor(20400.0f, 4580.0f, 1490.6024691f);
+	const TArray<FGameXXKBattleSceneUnitPlacement> AnchoredPlacements = AGameXXKBattleScenePresenter::BuildUnitPlacementsForStateAtAnchor(
+		FixedSlotState,
+		TownBattleAnchor);
+	const FGameXXKBattleSceneUnitPlacement* AnchoredHeroPlacement = AnchoredPlacements.FindByPredicate([](const FGameXXKBattleSceneUnitPlacement& Placement)
+	{
+		return !Placement.bEnemy && Placement.UnitId == TEXT("Player");
+	});
+	TestNotNull(TEXT("town-grounded battle formation includes the hero"), AnchoredHeroPlacement);
+	if (AnchoredHeroPlacement)
+	{
+		TestEqual(
+			TEXT("town-grounded hero keeps its fixed local central P2 lane above the retained Landscape"),
+			AnchoredHeroPlacement->Location,
+			TownBattleAnchor + FVector(-20.0f, 225.0f, 90.0f));
+	}
+	const FGameXXKBattleSceneUnitPlacement* EnemyOuterPlacement = FixedPlacements.FindByPredicate([](const FGameXXKBattleSceneUnitPlacement& Placement)
+	{
+		return Placement.bEnemy && Placement.UnitId == TEXT("Enemy.Outer");
+	});
+	const FGameXXKBattleSceneUnitPlacement* EnemyMiddlePlacement = FixedPlacements.FindByPredicate([](const FGameXXKBattleSceneUnitPlacement& Placement)
+	{
+		return Placement.bEnemy && Placement.UnitId == TEXT("Enemy.Middle");
+	});
+	const FGameXXKBattleSceneUnitPlacement* EnemyInnerPlacement = FixedPlacements.FindByPredicate([](const FGameXXKBattleSceneUnitPlacement& Placement)
+	{
+		return Placement.bEnemy && Placement.UnitId == TEXT("Enemy.Inner");
+	});
+	TestNotNull(TEXT("fixed formation includes enemy 1P"), EnemyOuterPlacement);
+	TestNotNull(TEXT("fixed formation includes enemy 2P"), EnemyMiddlePlacement);
+	TestNotNull(TEXT("fixed formation includes enemy 3P"), EnemyInnerPlacement);
+	if (EnemyOuterPlacement && EnemyMiddlePlacement && EnemyInnerPlacement)
+	{
+		TestEqual(TEXT("enemy outer unit remains 敌 1P"), EnemyOuterPlacement->SlotNumber, 1);
+		TestEqual(TEXT("enemy middle unit remains 敌 2P"), EnemyMiddlePlacement->SlotNumber, 2);
+		TestEqual(TEXT("enemy inner unit remains 敌 3P"), EnemyInnerPlacement->SlotNumber, 3);
+		TestEqual(TEXT("enemy 1P uses the approved outward outer coordinate"), EnemyOuterPlacement->Location, FVector(-80.0f, -295.0f, 90.0f));
+		TestEqual(TEXT("enemy 2P uses the approved outward middle coordinate"), EnemyMiddlePlacement->Location, FVector(-20.0f, -225.0f, 90.0f));
+		TestEqual(TEXT("enemy 3P uses the approved outward inner coordinate"), EnemyInnerPlacement->Location, FVector(40.0f, -155.0f, 90.0f));
+		TestTrue(TEXT("enemy slots open toward the central hand space"), EnemyOuterPlacement->Location.Y < EnemyInnerPlacement->Location.Y);
+	}
+	if (HeroPlacement && QuestNpcPlacement && EnemyOuterPlacement)
+	{
+		const TArray<FGameXXKBattleSceneUnitRefreshDecision> RefreshDecisions = AGameXXKBattleScenePresenter::BuildUnitRefreshDecisions(
+			{TEXT("Player"), TEXT("CompanionInstance.Companion_Blade_Test"), TEXT("Enemy.Outer")},
+			{*HeroPlacement, *QuestNpcPlacement, *EnemyOuterPlacement});
+		auto HasRefreshAction = [&RefreshDecisions](const FName UnitId, const EGameXXKBattleSceneRefreshAction Action)
+		{
+			return RefreshDecisions.ContainsByPredicate([UnitId, Action](const FGameXXKBattleSceneUnitRefreshDecision& Decision)
+			{
+				return Decision.UnitId == UnitId && Decision.Action == Action;
+			});
+		};
+		TestTrue(TEXT("unchanged hero UnitId is retained through a membership change"), HasRefreshAction(TEXT("Player"), EGameXXKBattleSceneRefreshAction::Retain));
+		TestTrue(TEXT("unchanged enemy UnitId is retained through a membership change"), HasRefreshAction(TEXT("Enemy.Outer"), EGameXXKBattleSceneRefreshAction::Retain));
+		TestTrue(TEXT("departed companion UnitId is removed without rebuilding retained actors"), HasRefreshAction(TEXT("CompanionInstance.Companion_Blade_Test"), EGameXXKBattleSceneRefreshAction::Remove));
+		TestTrue(TEXT("new quest NPC UnitId is spawned without replacing retained actors"), HasRefreshAction(TEXT("Npc.YueBai"), EGameXXKBattleSceneRefreshAction::Spawn));
+	}
+
+	AGameXXKBattleSceneUnitActor* HudHeroActor = NewObject<AGameXXKBattleSceneUnitActor>();
+	UPaperFlipbookComponent* HudHeroVisual = HudHeroActor->GetBattleVisualComponent();
+	TestNull(TEXT("battle scene actor retires every WidgetComponent"), HudHeroActor->FindComponentByClass<UWidgetComponent>());
+	TArray<UWidgetComponent*> HudWidgetComponents;
+	HudHeroActor->GetComponents<UWidgetComponent>(HudWidgetComponents);
+	TestEqual(TEXT("battle scene actor has no hidden WidgetComponent fallback"), HudWidgetComponents.Num(), 0);
+	TestNotNull(TEXT("battle scene actor keeps a battle visual for pure HUD projection"), HudHeroVisual);
+	if (!HudHeroVisual)
+	{
+		return false;
+	}
+	const FVector EmptyActorHudProjection = HudHeroActor->GetBattleHudProjectionWorldLocation();
+	TestFalse(TEXT("new-object pure HUD-foot projection remains finite"), EmptyActorHudProjection.ContainsNaN());
+	const FVector EmptyExpectedHudProjection = HudHeroVisual->Bounds.Origin - FVector(0.0f, 0.0f, HudHeroVisual->Bounds.BoxExtent.Z);
+	TestTrue(TEXT("new-object pure HUD-foot projection exactly follows visual bounds"), EmptyActorHudProjection.Equals(EmptyExpectedHudProjection, KINDA_SMALL_NUMBER));
+
+	UGameInstance* SnapshotGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* SnapshotSubsystem = NewObject<UGameXXKMVPSubsystem>(SnapshotGameInstance);
+	SnapshotSubsystem->GetMutableRuntimeState() = BuildFixedSlotSceneBattleState();
+	const FRotator PreservedVisualRotation = HudHeroVisual->GetRelativeRotation();
+	const FVector PreservedVisualLocation = HudHeroVisual->GetRelativeLocation();
+	const FVector PreservedVisualScale = HudHeroVisual->GetRelativeScale3D();
+	HudHeroActor->SetMVPSubsystemForTest(SnapshotSubsystem);
+	HudHeroActor->ConfigureFromRuntimeUnit(false, 0, SnapshotSubsystem->GetRuntimeState().ActiveBattleParty[0], 2);
+	TestEqual(TEXT("hero actor takes Card runtime HP instead of legacy projection"), HudHeroActor->GetCurrentHealthForTest(), 72);
+	TestEqual(TEXT("hero actor takes Card runtime maximum HP instead of legacy projection"), HudHeroActor->GetMaxHealthForTest(), 100);
+	TestEqual(TEXT("runtime refresh never changes the tuned battle visual rotation"), HudHeroVisual->GetRelativeRotation(), PreservedVisualRotation);
+	TestEqual(TEXT("runtime refresh never changes the tuned battle visual location"), HudHeroVisual->GetRelativeLocation(), PreservedVisualLocation);
+	TestEqual(TEXT("runtime refresh never changes the tuned battle visual scale"), HudHeroVisual->GetRelativeScale3D(), PreservedVisualScale);
+	const FVector ConfiguredHudProjection = HudHeroActor->GetBattleHudProjectionWorldLocation();
+	TestFalse(TEXT("configured pure HUD-foot projection remains finite"), ConfiguredHudProjection.ContainsNaN());
+	const FVector ConfiguredExpectedHudProjection = HudHeroVisual->Bounds.Origin - FVector(0.0f, 0.0f, HudHeroVisual->Bounds.BoxExtent.Z);
+	TestTrue(TEXT("configured pure HUD-foot projection exactly follows visual bounds"), ConfiguredHudProjection.Equals(ConfiguredExpectedHudProjection, KINDA_SMALL_NUMBER));
+
+	AGameXXKBattleSceneUnitActor* CompanionHudActor = NewObject<AGameXXKBattleSceneUnitActor>();
+	CompanionHudActor->SetMVPSubsystemForTest(SnapshotSubsystem);
+	CompanionHudActor->ConfigureFromRuntimeUnit(false, 1, SnapshotSubsystem->GetRuntimeState().ActiveBattleParty[1], 1);
+	TestEqual(TEXT("permanent companion retains the configured 1P slot"), CompanionHudActor->GetSlotNumberForTest(), 1);
+
+	AGameXXKBattleSceneUnitActor* QuestNpcHudActor = NewObject<AGameXXKBattleSceneUnitActor>();
+	QuestNpcHudActor->SetMVPSubsystemForTest(SnapshotSubsystem);
+	QuestNpcHudActor->ConfigureFromRuntimeUnit(false, 2, SnapshotSubsystem->GetRuntimeState().ActiveBattleParty[2], 3);
+	TestEqual(TEXT("temporary quest NPC retains the configured 3P slot"), QuestNpcHudActor->GetSlotNumberForTest(), 3);
+
+	AGameXXKBattleSceneUnitActor* EnemyHudActor = NewObject<AGameXXKBattleSceneUnitActor>();
+	EnemyHudActor->SetMVPSubsystemForTest(SnapshotSubsystem);
+	EnemyHudActor->ConfigureFromRuntimeUnit(true, 0, SnapshotSubsystem->GetRuntimeState().ActiveBattleEnemies[0], 1);
+	TestEqual(TEXT("enemy takes the Card runtime HP"), EnemyHudActor->GetCurrentHealthForTest(), 240);
+
+	FGameXXKCardCombatUnit* SnapshotHeroCardUnit = SnapshotSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("Player");
+	});
+	TestNotNull(TEXT("card-authoritative HUD fixture retains the hero combat unit"), SnapshotHeroCardUnit);
+	if (SnapshotHeroCardUnit)
+	{
+		SnapshotHeroCardUnit->HP = 63;
+		HudHeroActor->ConfigureFromRuntimeUnit(false, 0, SnapshotSubsystem->GetRuntimeState().ActiveBattleParty[0], 2);
+		TestEqual(TEXT("retained actor refresh takes Card runtime HP without a legacy sync"), HudHeroActor->GetCurrentHealthForTest(), 63);
+
+		SnapshotHeroCardUnit->HP = 55;
+		HudHeroActor->ConfigureFromRuntimeUnit(false, 0, SnapshotSubsystem->GetRuntimeState().ActiveBattleParty[0], 2);
+		TestEqual(TEXT("retained hero refresh keeps changed Card runtime HP"), HudHeroActor->GetCurrentHealthForTest(), 55);
+
+		SnapshotHeroCardUnit->bLiving = false;
+		HudHeroActor->ConfigureFromRuntimeUnit(false, 0, SnapshotSubsystem->GetRuntimeState().ActiveBattleParty[0], 2);
+		TestFalse(TEXT("defeated card hero cannot retain a target outline"), HudHeroActor->IsCardTargetOutlineEnabled());
+	}
+
+	FGameXXKCardDamageResult HeroHealthHit;
+	HeroHealthHit.ResolvedTargetUnitId = TEXT("Player");
+	HeroHealthHit.HealthDamage = 1;
+	TestTrue(TEXT("only real health damage to the party Hero P2 requests a camera shake"), AGameXXKMVPPlayerController::ShouldTriggerHeroHitCameraShake(FixedSlotState, HeroHealthHit));
+	FGameXXKCardDamageResult HeroArmorOnlyHit = HeroHealthHit;
+	HeroArmorOnlyHit.HealthDamage = 0;
+	TestFalse(TEXT("armor-only hero packets never request a camera shake"), AGameXXKMVPPlayerController::ShouldTriggerHeroHitCameraShake(FixedSlotState, HeroArmorOnlyHit));
+	FGameXXKCardDamageResult TaskNpcHealthHit = HeroHealthHit;
+	TaskNpcHealthHit.ResolvedTargetUnitId = TEXT("Npc.YueBai");
+	TestFalse(TEXT("task NPC health damage never requests the hero P2 camera shake"), AGameXXKMVPPlayerController::ShouldTriggerHeroHitCameraShake(FixedSlotState, TaskNpcHealthHit));
+
+	FGameXXKRuntimeState HeroAndNpcOnlyState = FixedSlotState;
+	HeroAndNpcOnlyState.ActiveBattleParty.RemoveAll([](const FGameXXKBattleRuntimeUnit& Unit)
+	{
+		return Unit.Id == TEXT("CompanionInstance.Companion_Blade_Test");
+	});
+	HeroAndNpcOnlyState.CardRun.ActiveBattle.Units.RemoveAll([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("CompanionInstance.Companion_Blade_Test");
+	});
+	const TArray<FGameXXKBattleSceneUnitPlacement> HeroAndNpcOnlyPlacements = AGameXXKBattleScenePresenter::BuildUnitPlacementsForState(HeroAndNpcOnlyState);
+	const FGameXXKBattleSceneUnitPlacement* LoneQuestNpcPlacement = HeroAndNpcOnlyPlacements.FindByPredicate([](const FGameXXKBattleSceneUnitPlacement& Placement)
+	{
+		return !Placement.bEnemy && Placement.UnitId == TEXT("Npc.YueBai");
+	});
+	TestNotNull(TEXT("quest NPC still has a scene placement without a permanent partner"), LoneQuestNpcPlacement);
+	if (LoneQuestNpcPlacement)
+	{
+		TestEqual(TEXT("missing companion never shifts the task NPC into 我 2P"), LoneQuestNpcPlacement->SlotNumber, 3);
+		TestEqual(TEXT("missing companion never shifts the task NPC coordinate"), LoneQuestNpcPlacement->Location, FVector(40.0f, 155.0f, 90.0f));
+	}
+
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	Subsystem->GetMutableRuntimeState() = BuildSceneBattleState();
 	Subsystem->GetMutableRuntimeState().ActiveBattleEnemies[0].HP = 50;
 	Subsystem->GetMutableRuntimeState().ActiveBattleEnemies[0].MaxHP = 50;
+	FGameXXKCardCombatUnit* CardHero = Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("Player");
+	});
+	TestNotNull(TEXT("scene status projection has the authoritative card hero"), CardHero);
+	if (CardHero)
+	{
+		CardHero->Armor = 7;
+		CardHero->Statuses = {FGameXXKCardStatusStack{EGameXXKCardStatus::Poison, 2}};
+		FString ProjectionError;
+		TestTrue(TEXT("card armor projection updates the legacy shield"), FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(Subsystem->GetMutableRuntimeState(), &ProjectionError));
+		TestEqual(TEXT("armor seven projects to legacy Shield seven"), Subsystem->GetRuntimeState().ActiveBattleParty[0].Shield, 7);
+	}
 
 	const TArray<FGameXXKBattleSceneUnitPlacement> Placements = AGameXXKBattleScenePresenter::BuildUnitPlacementsForState(Subsystem->GetRuntimeState());
 	TestTrue(TEXT("battle scene exposes at least one enemy placement"), Placements.ContainsByPredicate([](const FGameXXKBattleSceneUnitPlacement& Placement) { return Placement.bEnemy; }));
@@ -54,31 +435,32 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 	{
 		return Placement.bEnemy && Placement.UnitIndex == 0;
 	});
-	const FGameXXKBattleSceneUnitPlacement* FirstPartyPlacement = Placements.FindByPredicate([](const FGameXXKBattleSceneUnitPlacement& Placement)
+	const FGameXXKBattleSceneUnitPlacement* HeroPartyPlacement = Placements.FindByPredicate([](const FGameXXKBattleSceneUnitPlacement& Placement)
 	{
-		return !Placement.bEnemy && Placement.UnitIndex == 0;
+		return !Placement.bEnemy && Placement.UnitId == TEXT("Player");
 	});
 	TestTrue(TEXT("battle scene exposes the first enemy placement"), FirstEnemyPlacement != nullptr);
-	TestTrue(TEXT("battle scene exposes the first party placement"), FirstPartyPlacement != nullptr);
-	if (FirstEnemyPlacement && FirstPartyPlacement)
+	TestTrue(TEXT("battle scene exposes the central hero placement"), HeroPartyPlacement != nullptr);
+	if (FirstEnemyPlacement && HeroPartyPlacement)
 	{
-		TestTrue(TEXT("battle scene uses visible Y lanes for screen-space left/right under the fixed +X camera"), FirstEnemyPlacement->Location.Y >= -240.0f && FirstEnemyPlacement->Location.Y <= -200.0f && FirstPartyPlacement->Location.Y >= 240.0f && FirstPartyPlacement->Location.Y <= 300.0f);
-		TestTrue(TEXT("battle scene opposing lanes share comparable camera depth"), FMath::Abs(FirstEnemyPlacement->Location.X - FirstPartyPlacement->Location.X) <= 20.0f);
+		TestTrue(TEXT("battle scene enemy 1P stays in the fixed outer lane under the fixed camera"), FirstEnemyPlacement->Location.Y <= -190.0f);
+		TestEqual(TEXT("battle scene hero remains in the central fixed P2 lane"), HeroPartyPlacement->Location, FVector(-20.0f, 225.0f, 90.0f));
 		TestTrue(TEXT("battle scene enemy lane stays above the board"), FMath::Abs(FirstEnemyPlacement->Location.Z - 90.0) <= KINDA_SMALL_NUMBER);
-		TestTrue(TEXT("battle scene party lane stays above the board"), FMath::Abs(FirstPartyPlacement->Location.Z - 90.0) <= KINDA_SMALL_NUMBER);
+		TestTrue(TEXT("battle scene hero lane stays above the board"), FMath::Abs(HeroPartyPlacement->Location.Z - 90.0) <= KINDA_SMALL_NUMBER);
 	}
 
 	for (const FGameXXKBattleSceneUnitPlacement& Placement : Placements)
 	{
 		if (Placement.bEnemy)
 		{
-			TestTrue(TEXT("enemy placements use the visible screen-left negative Y lane"), Placement.Location.Y >= -240.0f && Placement.Location.Y <= -200.0f);
+			TestTrue(TEXT("enemy placements retain one of the fixed negative-Y P lanes"), Placement.Location.Y <= -190.0f && Placement.Location.Y >= -330.0f);
 		}
 		else
 		{
-			TestTrue(TEXT("party placements use the visible screen-right positive Y lane"), Placement.Location.Y >= 240.0f && Placement.Location.Y <= 300.0f);
+			TestTrue(TEXT("party placements retain one of the fixed positive-Y P lanes"), Placement.Location.Y >= 90.0f && Placement.Location.Y <= 330.0f);
 		}
-		TestTrue(TEXT("battle scene unit rows stay inside the lower fixed-camera depth band"), Placement.Location.X >= -220.0f && Placement.Location.X <= 60.0f);
+		TestTrue(TEXT("battle scene unit rows stay inside the fixed P-slot depth band"), Placement.Location.X >= -190.0f && Placement.Location.X <= 45.0f);
+		TestTrue(TEXT("every placement keeps a valid fixed P-slot number"), Placement.SlotNumber >= 1 && Placement.SlotNumber <= 3);
 	}
 
 	AGameXXKBattleSceneUnitActor* EnemyVisualActor = NewObject<AGameXXKBattleSceneUnitActor>();
@@ -89,7 +471,7 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("battle scene visual keeps HD2D town sprite rotation"), EnemyBattleVisual->GetRelativeRotation(), FRotator(0.0f, 90.0f, -30.0f));
 		TestEqual(TEXT("battle scene visual is lifted above the board for the fixed camera"), EnemyBattleVisual->GetRelativeLocation(), FVector::ZeroVector);
 		TestEqual(TEXT("battle scene visual keeps the town character plane scale"), EnemyBattleVisual->GetRelativeScale3D(), FVector(0.55f, 0.55f, 0.55f));
-		TestFalse(TEXT("battle scene debug label is hidden so it does not cover the sprite"), EnemyVisualActor->GetLabelTextComponent()->IsVisible());
+		TestNull(TEXT("battle scene actor owns no hidden health/status text renderer"), EnemyVisualActor->FindComponentByClass<UTextRenderComponent>());
 		EnemyVisualActor->ConfigureFromRuntimeUnit(true, 0, Subsystem->GetRuntimeState().ActiveBattleEnemies[0]);
 		TestNotNull(TEXT("battle scene enemy actor assigns a visible flipbook"), EnemyBattleVisual->GetFlipbook());
 		if (EnemyBattleVisual->GetFlipbook())
@@ -101,13 +483,60 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 
 		AGameXXKBattleSceneUnitActor* WolfVisualActor = NewObject<AGameXXKBattleSceneUnitActor>();
 		UPaperFlipbookComponent* WolfBattleVisual = WolfVisualActor->FindComponentByClass<UPaperFlipbookComponent>();
-		WolfVisualActor->ConfigureFromRuntimeUnit(true, 1, Subsystem->GetRuntimeState().ActiveBattleEnemies[1]);
+		// The canonical normal encounter now contains one MoneyRat.  Keep this
+		// compatibility assertion self-contained instead of relying on a second
+		// encounter member that is no longer part of the rules fixture.
+		FGameXXKBattleRuntimeUnit LegacyWolfUnit = Subsystem->GetRuntimeState().ActiveBattleEnemies[0];
+		LegacyWolfUnit.Id = TEXT("Wolf");
+		WolfVisualActor->ConfigureFromRuntimeUnit(true, 1, LegacyWolfUnit);
 		TestNotNull(TEXT("battle scene Wolf actor assigns a visible flipbook"), WolfBattleVisual ? WolfBattleVisual->GetFlipbook() : nullptr);
 		if (WolfBattleVisual && WolfBattleVisual->GetFlipbook())
 		{
 			TestTrue(
-				TEXT("battle scene Wolf actor uses the GameXXK niu huan visual"),
+				TEXT("legacy Wolf fallback uses the generic enemy visual instead of the event NPC visual"),
+				WolfBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_Default")));
+			TestFalse(
+				TEXT("legacy Wolf fallback never maps to the Niu Huan event NPC visual"),
 				WolfBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_NiuHuan")));
+		}
+
+		FGameXXKBattleRuntimeUnit MoneyRatUnit = Subsystem->GetRuntimeState().ActiveBattleEnemies[0];
+		MoneyRatUnit.Id = TEXT("MoneyRat");
+		AGameXXKBattleSceneUnitActor* MoneyRatVisualActor = NewObject<AGameXXKBattleSceneUnitActor>();
+		UPaperFlipbookComponent* MoneyRatBattleVisual = MoneyRatVisualActor->FindComponentByClass<UPaperFlipbookComponent>();
+		MoneyRatVisualActor->ConfigureFromRuntimeUnit(true, 0, MoneyRatUnit);
+		TestNotNull(TEXT("battle scene MoneyRat actor assigns a visible flipbook"), MoneyRatBattleVisual ? MoneyRatBattleVisual->GetFlipbook() : nullptr);
+		if (MoneyRatBattleVisual && MoneyRatBattleVisual->GetFlipbook())
+		{
+			TestTrue(
+				TEXT("battle scene MoneyRat actor uses the GameXXK money mouse visual"),
+				MoneyRatBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_MoneyMouse")));
+		}
+
+		FGameXXKBattleRuntimeUnit BlackBearUnit = Subsystem->GetRuntimeState().ActiveBattleEnemies[0];
+		BlackBearUnit.Id = TEXT("BlackBear");
+		AGameXXKBattleSceneUnitActor* BlackBearVisualActor = NewObject<AGameXXKBattleSceneUnitActor>();
+		UPaperFlipbookComponent* BlackBearBattleVisual = BlackBearVisualActor->FindComponentByClass<UPaperFlipbookComponent>();
+		BlackBearVisualActor->ConfigureFromRuntimeUnit(true, 0, BlackBearUnit);
+		TestNotNull(TEXT("battle scene BlackBear actor assigns a visible flipbook"), BlackBearBattleVisual ? BlackBearBattleVisual->GetFlipbook() : nullptr);
+		if (BlackBearBattleVisual && BlackBearBattleVisual->GetFlipbook())
+		{
+			TestTrue(
+				TEXT("battle scene BlackBear actor uses the GameXXK black bear visual"),
+				BlackBearBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_BlackBear")));
+		}
+
+		FGameXXKBattleRuntimeUnit TigerUnit = Subsystem->GetRuntimeState().ActiveBattleEnemies[0];
+		TigerUnit.Id = TEXT("Tiger");
+		AGameXXKBattleSceneUnitActor* TigerVisualActor = NewObject<AGameXXKBattleSceneUnitActor>();
+		UPaperFlipbookComponent* TigerBattleVisual = TigerVisualActor->FindComponentByClass<UPaperFlipbookComponent>();
+		TigerVisualActor->ConfigureFromRuntimeUnit(true, 0, TigerUnit);
+		TestNotNull(TEXT("battle scene Tiger actor assigns a visible flipbook"), TigerBattleVisual ? TigerBattleVisual->GetFlipbook() : nullptr);
+		if (TigerBattleVisual && TigerBattleVisual->GetFlipbook())
+		{
+			TestTrue(
+				TEXT("battle scene Tiger actor uses the GameXXK tiger boss visual"),
+				TigerBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Boss_Tiger")));
 		}
 
 		FGameXXKBattleRuntimeUnit EliteUnit = Subsystem->GetRuntimeState().ActiveBattleEnemies[0];
@@ -142,8 +571,26 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("battle scene party actor has a Paper2D scene visual like town characters"), PartyBattleVisual);
 	if (PartyBattleVisual)
 	{
-		PartyVisualActor->ConfigureFromRuntimeUnit(false, 0, Subsystem->GetRuntimeState().ActiveBattleParty[0]);
+		PartyVisualActor->SetMVPSubsystemForTest(Subsystem);
+		PartyVisualActor->ConfigureFromRuntimeUnit(false, 0, Subsystem->GetRuntimeState().ActiveBattleParty[0], 1);
 		TestNotNull(TEXT("battle scene hero actor assigns the hero battle flipbook"), PartyBattleVisual->GetFlipbook());
+		TestEqual(TEXT("status actor exposes the fixed role slot for test inspection"), PartyVisualActor->GetSlotNumberForTest(), 1);
+
+		if (CardHero)
+		{
+			CardHero->Armor = 0;
+			CardHero->Statuses.Reset();
+			FString ClearedProjectionError;
+			TestTrue(TEXT("cleared card status projects before retained actor refresh"), FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(Subsystem->GetMutableRuntimeState(), &ClearedProjectionError));
+			const FGameXXKBattleRuntimeUnit ClearedStatusParty = Subsystem->GetRuntimeState().ActiveBattleParty[0];
+			PartyVisualActor->ConfigureFromRuntimeUnit(false, 0, ClearedStatusParty, 1);
+		}
+
+		PartyVisualActor->PlayHitFeedback();
+		TestTrue(TEXT("hit feedback enables the actor tick for temporary visual motion"), PartyVisualActor->IsActorTickEnabled());
+		PartyVisualActor->Tick(1.0f);
+		TestFalse(TEXT("completed hit feedback restores the actor to a non-ticking idle state"), PartyVisualActor->IsActorTickEnabled());
+		TestEqual(TEXT("completed hit feedback restores the base scene scale"), PartyBattleVisual->GetRelativeScale3D(), FVector(0.55f, 0.55f, 0.55f));
 	}
 
 	AGameXXKBattleSceneUnitActor* EnemyActor = NewObject<AGameXXKBattleSceneUnitActor>();

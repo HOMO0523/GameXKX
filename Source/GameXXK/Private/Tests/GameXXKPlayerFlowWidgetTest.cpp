@@ -1,4 +1,6 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKCardBattleAdapter.h"
+#include "GameXXKBattlePresentation.h"
 #include "Blueprint/GameViewportSubsystem.h"
 #include "Components/InputComponent.h"
 #include "InputKeyEventArgs.h"
@@ -11,11 +13,70 @@
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
+#include "UI/GameXXKTownHudWidget.h"
 #include "UI/GameXXKTownOverlayWidget.h"
+#include "UI/GameXXKWorldMapWidget.h"
 #include "Town/GameXXKTownNpcActor.h"
 #include "Town/GameXXKTownPlayerPawn.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+namespace
+{
+	/**
+	 * Resolves a current-hand card through CardCheck rather than assuming a
+	 * legacy command-menu action exists.  The fixed route seed below makes this
+	 * deterministic, while the preview keeps the assertion coupled to the
+	 * actual legal-target contract.
+	 */
+	bool FindManualEnemyTargetCardInCurrentHand(
+		const FGameXXKRuntimeState& State,
+		const FName ExcludedCardInstanceId,
+		FName& OutCardInstanceId,
+		FName& OutEnemyUnitId,
+		FString& OutError)
+	{
+		OutCardInstanceId = NAME_None;
+		OutEnemyUnitId = NAME_None;
+		OutError.Reset();
+		if (!State.CardRun.bHasActiveCardBattle)
+		{
+			OutError = TEXT("The player-flow fixture did not enter a card battle.");
+			return false;
+		}
+
+		for (const FGameXXKCardInstance& CardInstance : State.CardRun.ActiveBattle.Deck.Hand)
+		{
+			if (CardInstance.InstanceId == ExcludedCardInstanceId)
+			{
+				continue;
+			}
+
+			FGameXXKCardPlayPreview Preview;
+			FString PreviewError;
+			if (!FGameXXKCardBattleAdapter::BuildCardPlayPreview(State, CardInstance.InstanceId, Preview, &PreviewError)
+				|| !Preview.bCanPlay
+				|| !Preview.TargetRequest.bRequiresManualSelection)
+			{
+				continue;
+			}
+
+			const FGameXXKCardTargetCandidateView* EnemyCandidate = Preview.TargetRequest.CandidateViews.FindByPredicate([](const FGameXXKCardTargetCandidateView& Candidate)
+			{
+				return Candidate.bCanSelect && Candidate.Side == EGameXXKCardTargetSide::Enemy && !Candidate.UnitId.IsNone();
+			});
+			if (EnemyCandidate)
+			{
+				OutCardInstanceId = CardInstance.InstanceId;
+				OutEnemyUnitId = EnemyCandidate->UnitId;
+				return true;
+			}
+		}
+
+		OutError = TEXT("No affordable manual enemy-target card was available in the current hand.");
+		return false;
+	}
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKPlayerControllerTownExitInventoryCleanupTest,
@@ -128,6 +189,7 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 
 	TestTrue(TEXT("player controller creates the full player-flow widget set"), PlayerController->EnsurePlayerFlowWidgetsForTest());
 	TestNotNull(TEXT("player controller owns main menu widget"), PlayerController->GetMainMenuWidgetForTest());
+	TestNotNull(TEXT("player controller owns world map widget"), PlayerController->GetWorldMapWidgetForTest());
 	TestNotNull(TEXT("player controller owns town overlay widget"), PlayerController->GetTownOverlayWidgetForTest());
 	TestNotNull(TEXT("player controller owns route map widget"), PlayerController->GetRouteMapWidgetForTest());
 	TestNotNull(TEXT("player controller owns battle board widget"), PlayerController->GetBattleBoardWidgetForTest());
@@ -165,11 +227,38 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestFalse(TEXT("town overlay hidden on initial main menu state"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
 
 	TestTrue(TEXT("start game opens world map for player controller flow"), Subsystem->StartGame());
-	TestTrue(TEXT("select Qingshan for player controller flow"), Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan()));
+	const FGameXXKCompanionRosterState& StarterRoster = Subsystem->GetRuntimeState().CardRun.CompanionRoster;
+	TestEqual(TEXT("StartNewGame grants exactly one permanent companion for the player flow"), StarterRoster.PermanentCompanions.Num(), 1);
+	FName StarterCompanionId = NAME_None;
+	if (StarterRoster.PermanentCompanions.Num() == 1)
+	{
+		const FGameXXKPermanentCompanion& StarterCompanion = StarterRoster.PermanentCompanions[0];
+		StarterCompanionId = StarterCompanion.InstanceId;
+		TestFalse(TEXT("StartNewGame gives the player flow companion a stable instance id"), StarterCompanionId.IsNone());
+		TestTrue(TEXT("StartNewGame activates the starter companion for the route"), StarterCompanion.bIsActive);
+		TestEqual(TEXT("StartNewGame synchronizes the active companion selection"),
+			Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
+			StarterCompanionId);
+	}
+	if (StarterCompanionId.IsNone())
+	{
+		return false;
+	}
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestTrue(TEXT("world map is visible after new game"), PlayerController->GetWorldMapWidgetForTest()->IsWorldMapVisibleForTest());
+	TestFalse(TEXT("town overlay stays hidden before a town is selected"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
+	TestTrue(TEXT("controller-routed Qingshan click enters town"), PlayerController->GetWorldMapWidgetForTest()->TrySelectRegion(UGameXXKMVPRules::RegionQingshan()));
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestEqual(TEXT("main menu hides after town state"), PlayerController->GetMainMenuWidgetForTest()->GetVisibility(), ESlateVisibility::Collapsed);
 	TestTrue(TEXT("town overlay appears after town state"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
 	TestFalse(TEXT("route map hidden before entering dungeon"), PlayerController->GetRouteMapWidgetForTest()->GetVisibility() == ESlateVisibility::Visible);
+	UGameXXKTownHudWidget* TownHud = PlayerController->GetTownHudWidgetForTest();
+	TestNotNull(TEXT("player controller owns town HUD for companion codex"), TownHud);
+	TestTrue(TEXT("town HUD opens companion codex for Escape test"), TownHud && TownHud->OpenCompanionCodexForTest());
+	TestTrue(TEXT("companion codex is visible before Escape"), TownHud && TownHud->IsCompanionCodexOpenForTest());
+	TestTrue(TEXT("Escape closes the open companion codex"), PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::Escape, IE_Pressed, 1.0f)));
+	TestFalse(TEXT("Escape hides companion codex without leaving town"), TownHud && TownHud->IsCompanionCodexOpenForTest());
+	TestEqual(TEXT("Escape leaves player in town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	AGameXXKTownNpcActor* QuestNpc = NewObject<AGameXXKTownNpcActor>();
 	AGameXXKTownPlayerPawn* QuestPawn = NewObject<AGameXXKTownPlayerPawn>();
 	QuestNpc->SetNpcRole(EGameXXKTownNpcRole::Quest);
@@ -202,9 +291,20 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("merchant trade close clears inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
 
 	TestEqual(TEXT("quest dialogue acceptance enables the in-world town route entrance"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
+	// Keep the generated route and its opening hand deterministic.  Seed 2 has
+	// two independently playable enemy-target cards after the explicit task NPC
+	// is selected, which lets this full flow cover both commit and cancellation.
+	Subsystem->GetMutableRuntimeState().RouteSeed = 2;
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestFalse(TEXT("player-facing town overlay does not expose a route map button"), PlayerController->GetTownOverlayWidgetForTest()->HasTownActionForTest(FName(TEXT("EnterDungeon")), false));
 	TestTrue(TEXT("town exit interaction opens route map"), Subsystem->OpenDungeonFromTownExit());
+	FString TaskNpcError;
+	TestTrue(FString::Printf(TEXT("an explicit task NPC joins the route before the player-flow battle test: %s"), *TaskNpcError),
+		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
+			Subsystem->GetMutableRuntimeState(),
+			TEXT("Npc.TusiChief"),
+			{},
+			&TaskNpcError));
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestEqual(TEXT("route map screen after town exit F interaction"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(TEXT("route map widget visible after entering dungeon"), PlayerController->GetRouteMapWidgetForTest()->GetVisibility(), ESlateVisibility::Visible);
@@ -215,42 +315,139 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestEqual(TEXT("battle screen after route node button"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
 	TestTrue(TEXT("battle board visible after route node button"), PlayerController->GetBattleBoardWidgetForTest()->IsBattleBoardVisible());
+	const FGameXXKRuntimeState& BattleState = Subsystem->GetRuntimeState();
+	const FGameXXKCardBattleRuntime& BattleRuntime = BattleState.CardRun.ActiveBattle;
+	TestEqual(TEXT("the Qingshan task battle keeps the fixed three-member party"), BattleState.ActiveBattleParty.Num(), 3);
+	const FGameXXKCardCombatUnit* StarterCompanionUnit = BattleRuntime.Units.FindByPredicate([StarterCompanionId](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == StarterCompanionId && Unit.Side == EGameXXKCardTargetSide::Party;
+	});
+	const FGameXXKCardCombatUnit* HeroUnit = BattleRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("Player") && Unit.Side == EGameXXKCardTargetSide::Party && Unit.Role == EGameXXKCharacterRole::Hero;
+	});
+	const FGameXXKCardCombatUnit* TaskNpcUnit = BattleRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("Npc.TusiChief") && Unit.Side == EGameXXKCardTargetSide::Party && Unit.Role == EGameXXKCharacterRole::QuestNpc;
+	});
+	TestTrue(TEXT("the Qingshan task battle includes the active permanent companion"), StarterCompanionUnit != nullptr);
+	TestTrue(TEXT("the Qingshan task battle includes the fixed hero"), HeroUnit != nullptr);
+	TestTrue(TEXT("the Qingshan task battle includes the route-local Tusi Chief"), TaskNpcUnit != nullptr);
+	if (!StarterCompanionUnit || !HeroUnit || !TaskNpcUnit)
+	{
+		return false;
+	}
+	TestEqual(TEXT("the active permanent companion is presented at 我 1P"), FGameXXKBattlePresentation::GetSlotNumber(BattleRuntime, StarterCompanionUnit->UnitId), 1);
+	TestEqual(TEXT("the hero is presented at the central 我 2P"), FGameXXKBattlePresentation::GetSlotNumber(BattleRuntime, HeroUnit->UnitId), 2);
+	TestEqual(TEXT("the task NPC is presented at 我 3P"), FGameXXKBattlePresentation::GetSlotNumber(BattleRuntime, TaskNpcUnit->UnitId), 3);
 
-	AGameXXKBattleSceneUnitActor* PartyActor = NewObject<AGameXXKBattleSceneUnitActor>();
-	PartyActor->SetMVPSubsystemForTest(Subsystem);
-	PartyActor->ConfigureFromRuntimeUnit(false, 0, Subsystem->GetRuntimeState().ActiveBattleParty[0]);
-	AGameXXKBattleSceneUnitActor* FollowerActor = NewObject<AGameXXKBattleSceneUnitActor>();
-	FollowerActor->SetMVPSubsystemForTest(Subsystem);
-	FollowerActor->ConfigureFromRuntimeUnit(false, 1, Subsystem->GetRuntimeState().ActiveBattleParty[1]);
+	const TArray<FGameXXKBattlePresentationSlot> PresentationSlots = FGameXXKBattlePresentation::BuildSlots(BattleRuntime);
+	TestTrue(TEXT("the presentation slot list carries the companion 1P identity"), PresentationSlots.ContainsByPredicate([StarterCompanionId](const FGameXXKBattlePresentationSlot& Slot)
+	{
+		return Slot.UnitId == StarterCompanionId && Slot.Side == EGameXXKCardTargetSide::Party && Slot.SlotNumber == 1;
+	}));
+	TestTrue(TEXT("the presentation slot list carries the hero 2P identity"), PresentationSlots.ContainsByPredicate([](const FGameXXKBattlePresentationSlot& Slot)
+	{
+		return Slot.UnitId == TEXT("Player") && Slot.Side == EGameXXKCardTargetSide::Party && Slot.SlotNumber == 2;
+	}));
+	TestTrue(TEXT("the presentation slot list carries the task NPC 3P identity"), PresentationSlots.ContainsByPredicate([](const FGameXXKBattlePresentationSlot& Slot)
+	{
+		return Slot.UnitId == TEXT("Npc.TusiChief") && Slot.Side == EGameXXKCardTargetSide::Party && Slot.SlotNumber == 3;
+	}));
+	TestTrue(TEXT("the battle exposes a current enemy intent for presentation"), !BattleState.CardRun.EnemyIntents.IsEmpty());
+	if (!BattleState.CardRun.EnemyIntents.IsEmpty())
+	{
+		const FGameXXKCardEnemyIntent& FirstIntent = BattleState.CardRun.EnemyIntents[0];
+		TestEqual(TEXT("the first enemy intent uses its source presentation slot"),
+			FirstIntent.SourceSlotNumber,
+			FGameXXKBattlePresentation::GetSlotNumber(BattleRuntime, FirstIntent.SourceUnitId));
+		TestEqual(TEXT("the first enemy intent uses its target presentation slot"),
+			FirstIntent.TargetSlotNumber,
+			FGameXXKBattlePresentation::GetSlotNumber(BattleRuntime, FirstIntent.SuggestedTargetUnitId));
+	}
+
+	FName EnemyCardInstanceId;
+	FName EnemyTargetUnitId;
+	FString CardFixtureError;
+	TestTrue(FString::Printf(TEXT("the full player flow exposes a current-hand enemy target card: %s"), *CardFixtureError),
+		FindManualEnemyTargetCardInCurrentHand(
+			Subsystem->GetRuntimeState(),
+			NAME_None,
+			EnemyCardInstanceId,
+			EnemyTargetUnitId,
+			CardFixtureError));
+	if (EnemyCardInstanceId.IsNone() || EnemyTargetUnitId.IsNone())
+	{
+		return false;
+	}
+
+	const FGameXXKCardInstance* EnemyCardInstance = Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.FindByPredicate([EnemyCardInstanceId](const FGameXXKCardInstance& Card)
+	{
+		return Card.InstanceId == EnemyCardInstanceId;
+	});
+	TestNotNull(TEXT("the selected card retains a stable owner unit id"), EnemyCardInstance);
+	if (!EnemyCardInstance || EnemyCardInstance->OwnerUnitId.IsNone())
+	{
+		return false;
+	}
+
+	const FGameXXKBattleRuntimeUnit* EnemyRuntimeUnit = Subsystem->GetRuntimeState().ActiveBattleEnemies.FindByPredicate([EnemyTargetUnitId](const FGameXXKBattleRuntimeUnit& Unit)
+	{
+		return Unit.Id == EnemyTargetUnitId;
+	});
+	TestNotNull(TEXT("the legal card target resolves to a stable battle enemy"), EnemyRuntimeUnit);
+	if (!EnemyRuntimeUnit)
+	{
+		return false;
+	}
+
 	AGameXXKBattleSceneUnitActor* EnemyActor = NewObject<AGameXXKBattleSceneUnitActor>();
 	EnemyActor->SetMVPSubsystemForTest(Subsystem);
-	EnemyActor->ConfigureFromRuntimeUnit(true, 0, Subsystem->GetRuntimeState().ActiveBattleEnemies[0]);
-	const int32 EnemyHPBeforeControllerInput = Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP;
-	const FVector2D EnemySideClickPosition(360.0f, 390.0f);
-	const FVector2D PartyActorScreenPosition(940.0f, 420.0f);
-	TestTrue(TEXT("controller toggles command menu for party actor"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, EnemySideClickPosition, PartyActorScreenPosition));
-	TestTrue(TEXT("battle board menu is visible after controller opens it"), PlayerController->GetBattleBoardWidgetForTest()->IsCommandMenuVisibleForTest());
-	TestEqual(TEXT("controller selects first party actor for commands"), PlayerController->GetBattleBoardWidgetForTest()->GetSelectedPartyIndexForTest(), 0);
-	const FVector2D ControllerCommandMenuAnchor = PlayerController->GetBattleBoardWidgetForTest()->GetCommandMenuAnchorForTest();
-	const FVector2D ControllerCommandMenuDefaultOffset(-500.0f, 0.0f);
-	TestEqual(TEXT("controller command menu uses the tuned X offset"), ControllerCommandMenuAnchor.X, PartyActorScreenPosition.X + ControllerCommandMenuDefaultOffset.X);
-	TestEqual(TEXT("controller command menu uses the tuned Y offset"), ControllerCommandMenuAnchor.Y, PartyActorScreenPosition.Y + ControllerCommandMenuDefaultOffset.Y);
-	TestTrue(TEXT("controller toggles the same party command menu closed"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, EnemySideClickPosition, PartyActorScreenPosition));
-	TestFalse(TEXT("same party toggle hides command menu"), PlayerController->GetBattleBoardWidgetForTest()->IsCommandMenuVisibleForTest());
-	TestTrue(TEXT("controller reopens command menu for party actor"), PlayerController->ToggleBattleCommandMenuForUnitForTest(PartyActor, FVector2D(260.0f, 640.0f), FVector2D(830.0f, 420.0f)));
-	TestTrue(TEXT("controller switches command menu to follower actor"), PlayerController->ToggleBattleCommandMenuForUnitForTest(FollowerActor, FVector2D(820.0f, 620.0f), FVector2D(910.0f, 500.0f)));
-	TestEqual(TEXT("controller selects follower actor for commands"), PlayerController->GetBattleBoardWidgetForTest()->GetSelectedPartyIndexForTest(), 1);
-	TestFalse(TEXT("controller refuses enemy actor as command source"), PlayerController->ToggleBattleCommandMenuForUnitForTest(EnemyActor, FVector2D(300.0f, 320.0f), FVector2D(300.0f, 320.0f)));
-	TestEqual(TEXT("right-click enemy path no longer damages enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP, EnemyHPBeforeControllerInput);
-	TestTrue(TEXT("attack command enters targeting through battle board"), PlayerController->GetBattleBoardWidgetForTest()->ExecuteBasicAttackAction());
-	TestTrue(TEXT("controller updates targeting pointer from mouse position"), PlayerController->UpdateBattleTargetingPointerForTest(FVector2D(640.0f, 360.0f)));
-	TestEqual(TEXT("targeting arrow end follows controller mouse position"), PlayerController->GetBattleBoardWidgetForTest()->GetTargetingPointerPositionForTest(), FVector2D(640.0f, 360.0f));
-	TestTrue(TEXT("controller confirms enemy target"), PlayerController->ConfirmBattleTargetForUnitForTest(EnemyActor));
-	TestTrue(TEXT("confirmed target takes damage"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP < EnemyHPBeforeControllerInput);
-	TestTrue(TEXT("controller opens command menu again for cancel flow"), PlayerController->OpenBattleCommandMenuForUnitForTest(PartyActor, FVector2D(900.0f, 520.0f), FVector2D(830.0f, 420.0f)));
-	TestTrue(TEXT("second attack command enters targeting"), PlayerController->GetBattleBoardWidgetForTest()->ExecuteBasicAttackAction());
+	EnemyActor->ConfigureFromRuntimeUnit(true, 0, *EnemyRuntimeUnit);
+	const int32 EnemyHPBeforeCardCommit = EnemyRuntimeUnit->HP;
+	UGameXXKBattleBoardWidget* BattleBoard = PlayerController->GetBattleBoardWidgetForTest();
+	TestNotNull(TEXT("player controller retains its battle board for card interaction"), BattleBoard);
+	if (!BattleBoard)
+	{
+		return false;
+	}
+	const FVector2D CardOwnerProjection(940.0f, 420.0f);
+	const FVector2D TargetingPointer(640.0f, 360.0f);
+	BattleBoard->RegisterBattleUnitScreenPosition(EnemyCardInstance->OwnerUnitId, CardOwnerProjection);
+	TestTrue(TEXT("clicking the current-hand card enters card targeting"), BattleBoard->ClickCardInHand(EnemyCardInstanceId));
+	TestTrue(TEXT("card targeting is active after a legal hand-card click"), BattleBoard->IsCardTargetingActive());
+	TestEqual(TEXT("card arrow starts at the owning battle unit projection"), BattleBoard->GetTargetingSourcePositionForTest(), CardOwnerProjection);
+	TestTrue(TEXT("the legal enemy receives the current card-target highlight"), BattleBoard->IsTargetUnitHighlighted(EnemyTargetUnitId));
+	TestFalse(TEXT("the card owner is not highlighted as an enemy target"), BattleBoard->IsTargetUnitHighlighted(EnemyCardInstance->OwnerUnitId));
+	TestTrue(TEXT("controller forwards mouse movement to the active card arrow"), PlayerController->UpdateBattleTargetingPointerForTest(TargetingPointer));
+	TestEqual(TEXT("active card arrow follows the controller pointer"), BattleBoard->GetTargetingPointerPositionForTest(), TargetingPointer);
+	TestTrue(TEXT("controller confirms the highlighted enemy through its stable UnitId"), PlayerController->ConfirmBattleTargetForUnitForTest(EnemyActor));
+	TestFalse(TEXT("committing a card target exits card targeting"), BattleBoard->IsCardTargetingActive());
+	const FGameXXKBattleRuntimeUnit* EnemyAfterCardCommit = Subsystem->GetRuntimeState().ActiveBattleEnemies.FindByPredicate([EnemyTargetUnitId](const FGameXXKBattleRuntimeUnit& Unit)
+	{
+		return Unit.Id == EnemyTargetUnitId;
+	});
+	TestTrue(TEXT("the confirmed enemy-target card updates the battle projection"), EnemyAfterCardCommit && EnemyAfterCardCommit->HP < EnemyHPBeforeCardCommit);
+
+	FName CancelCardInstanceId;
+	FName CancelTargetUnitId;
+	CardFixtureError.Reset();
+	TestTrue(FString::Printf(TEXT("a second current-hand enemy target card remains available for cancellation: %s"), *CardFixtureError),
+		FindManualEnemyTargetCardInCurrentHand(
+			Subsystem->GetRuntimeState(),
+			EnemyCardInstanceId,
+			CancelCardInstanceId,
+			CancelTargetUnitId,
+			CardFixtureError));
+	if (CancelCardInstanceId.IsNone() || CancelTargetUnitId.IsNone())
+	{
+		return false;
+	}
+	TestTrue(TEXT("a second current-hand card enters targeting for the cancel flow"), BattleBoard->ClickCardInHand(CancelCardInstanceId));
+	TestTrue(TEXT("the second card highlights its legal enemy before cancellation"), BattleBoard->IsTargetUnitHighlighted(CancelTargetUnitId));
 	TestTrue(TEXT("controller cancels battle targeting"), PlayerController->CancelBattleTargetingForTest());
-	TestFalse(TEXT("controller cancel exits targeting"), PlayerController->GetBattleBoardWidgetForTest()->IsTargetingBattleActionForTest());
+	TestFalse(TEXT("controller cancel exits card targeting"), BattleBoard->IsCardTargetingActive());
+	TestFalse(TEXT("controller cancel clears the current card target highlight"), BattleBoard->IsTargetUnitHighlighted(CancelTargetUnitId));
 
 	FGameXXKRuntimeState& EncounterState = Subsystem->GetMutableRuntimeState();
 	EncounterState = UGameXXKMVPRules::CreateNewGame();

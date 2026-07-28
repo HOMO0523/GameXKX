@@ -1,3 +1,4 @@
+#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
 #include "Components/Button.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -93,7 +94,40 @@ namespace
 		return nullptr;
 	}
 
-	static bool ExecuteRootRouteTowardKind(UGameXXKPlayableRootWidget* RootWidget, const UGameXXKMVPSubsystem* Subsystem, EGameXXKNodeKind TargetKind)
+	static bool ResolveRootBattleVictoryAndSkipRouteReward(UGameXXKPlayableRootWidget* RootWidget, UGameXXKMVPSubsystem* Subsystem)
+	{
+		if (!RootWidget || !Subsystem)
+		{
+			return false;
+		}
+
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		if (State.Screen != EGameXXKScreen::Battle || !State.CardRun.bHasActiveCardBattle)
+		{
+			return false;
+		}
+		for (FGameXXKCardCombatUnit& Unit : State.CardRun.ActiveBattle.Units)
+		{
+			if (Unit.Side == EGameXXKCardTargetSide::Enemy)
+			{
+				Unit.HP = 0;
+				Unit.bLiving = false;
+			}
+		}
+		State.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+		if (!RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveBattleVictory")))
+			|| State.Screen != EGameXXKScreen::Battle
+			|| State.CardRun.PendingReward.CardIds.Num() != 3)
+		{
+			return false;
+		}
+
+		FString RewardError;
+		return FGameXXKCardBattleAdapter::SkipPendingRouteReward(State, &RewardError)
+			&& RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveBattleVictory")));
+	}
+
+	static bool ExecuteRootRouteTowardKind(UGameXXKPlayableRootWidget* RootWidget, UGameXXKMVPSubsystem* Subsystem, EGameXXKNodeKind TargetKind)
 	{
 		if (!RootWidget || !Subsystem)
 		{
@@ -111,7 +145,7 @@ namespace
 			{
 				return false;
 			}
-			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle && !RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveBattleVictory"))))
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle && !ResolveRootBattleVictoryAndSkipRouteReward(RootWidget, Subsystem))
 			{
 				return false;
 			}
@@ -215,7 +249,8 @@ bool FGameXXKPlayableRootHUDIntegrationTest::RunTest(const FString& Parameters)
 	HUDRootWidget->NativeConstruct();
 	TestTrue(TEXT("HUD-created UMG root Continue button uses HUD slot override"), ClickProgrammaticRootCommand(HUDRootWidget, 1));
 	TestEqual(TEXT("HUD-created UMG root restores through seeded slot"), RoutedSubsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
-	TestTrue(TEXT("HUD-created UMG root restores Tanjiang unlock from seeded slot"), HUDRootWidget->HasVisibleCommand(FName(TEXT("SelectTanjiang")), true));
+	TestTrue(TEXT("HUD-created UMG root restores Tanjiang unlock from seeded slot"), RoutedSubsystem->GetRuntimeState().UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));
+	TestTrue(TEXT("HUD-created UMG root keeps unimplemented Tanjiang disabled"), HUDRootWidget->HasVisibleCommand(FName(TEXT("SelectTanjiang")), false));
 
 	UGameXXKMVPSubsystem* RefreshSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	AGameXXKMVPHUD* RefreshHUD = NewObject<AGameXXKMVPHUD>();
@@ -327,11 +362,11 @@ bool FGameXXKPlayableRootFullLoopTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("UMG root camp restores HP"), Subsystem->GetRuntimeState().PlayerHP, Subsystem->GetRuntimeState().PlayerMaxHP);
 	TestTrue(TEXT("UMG root follows generated route to boss and clears it"), ExecuteRootRouteTowardKind(RootWidget, Subsystem, EGameXXKNodeKind::Boss));
 	TestEqual(TEXT("UMG root returns to world map after boss"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
-	TestTrue(TEXT("UMG root enables Tanjiang after boss"), RootWidget->HasVisibleCommand(FName(TEXT("SelectTanjiang")), true));
+	TestTrue(TEXT("UMG root keeps unimplemented Tanjiang disabled after boss"), RootWidget->HasVisibleCommand(FName(TEXT("SelectTanjiang")), false));
 	TestFalse(TEXT("UMG root route clear waits for manual save"), UGameplayStatics::DoesSaveGameExist(PlayableRootTestSlot, PlayableRootUserIndex));
 	TestTrue(TEXT("UMG root manual save after route clear succeeds"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SaveGame"))));
-	TestTrue(TEXT("UMG root enters Tanjiang after unlock"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectTanjiang"))));
-	TestEqual(TEXT("UMG root opens next town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestFalse(TEXT("UMG root rejects unimplemented Tanjiang after unlock"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectTanjiang"))));
+	TestEqual(TEXT("UMG root remains on world map after unavailable Tanjiang"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 
 	UGameXXKMVPSubsystem* ReloadedSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	UGameXXKPlayableRootWidget* ReloadedRootWidget = NewObject<UGameXXKPlayableRootWidget>();
@@ -343,10 +378,10 @@ bool FGameXXKPlayableRootFullLoopTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("reloaded UMG root restores progress to world map"), ReloadedSubsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 	TestEqual(TEXT("reloaded UMG root keeps quest complete"), ReloadedSubsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Completed);
 	TestTrue(TEXT("reloaded UMG root keeps Tanjiang unlock"), ReloadedSubsystem->GetRuntimeState().UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));
-	TestTrue(TEXT("reloaded UMG root exposes restored Tanjiang command"), ReloadedRootWidget->HasVisibleCommand(FName(TEXT("SelectTanjiang")), true));
-	TestTrue(TEXT("reloaded UMG root enters restored Tanjiang town"), ReloadedRootWidget->ExecuteVisibleCommand(FName(TEXT("SelectTanjiang"))));
-	TestEqual(TEXT("reloaded UMG root opens restored next town"), ReloadedSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
-	TestEqual(TEXT("reloaded UMG root selects restored Tanjiang region"), ReloadedSubsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionTanjiang());
+	TestTrue(TEXT("reloaded UMG root keeps restored Tanjiang command disabled"), ReloadedRootWidget->HasVisibleCommand(FName(TEXT("SelectTanjiang")), false));
+	TestFalse(TEXT("reloaded UMG root rejects restored Tanjiang until its map exists"), ReloadedRootWidget->ExecuteVisibleCommand(FName(TEXT("SelectTanjiang"))));
+	TestEqual(TEXT("reloaded UMG root remains on world map after unavailable Tanjiang"), ReloadedSubsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestEqual(TEXT("reloaded UMG root keeps world-map selection clear after unavailable Tanjiang"), ReloadedSubsystem->GetRuntimeState().CurrentRegion, NAME_None);
 
 	UGameXXKMVPSubsystem* ManualSlotSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	UGameXXKPlayableRootWidget* ManualSlotRootWidget = NewObject<UGameXXKPlayableRootWidget>();
