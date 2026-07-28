@@ -8,6 +8,8 @@ This checkpoint preserves the project state before the current development machi
 
 - Canonical branch: `main`.
 - The previously accumulated 57 local commits, ending at `68577c3` (`docs: design fullscreen HUD battle visuals`), were pushed to `origin/main` on 2026-07-28.
+- Source, scripts, tests, prompts, ledgers, final source selections, 1600 safe frames, and this handoff were preserved in `e3ebf6a` (`chore: checkpoint project progress for machine transfer`).
+- The runnable UE Content checkpoint, including the 138 production animation atlases, was preserved in `630eabe` (`assets: checkpoint UE content for machine transfer`).
 - Unreal Editor was not running when this checkpoint was prepared. There were therefore no editor-memory-only dirty packages left to save; the current `.umap` and `.uasset` changes already exist on disk.
 - This is a preservation checkpoint, not a release claim. The large working tree contains ongoing gameplay, UI, route, equipment, party-deck, battle-animation, test, and content work that has not received one fresh end-to-end compile/PIE certification as a single combined state.
 
@@ -48,7 +50,7 @@ Key confirmed decisions:
 
 ## Large-file transfer boundary
 
-The runnable UE project assets, source code, scripts, manifests, prompts, tests, and documentation are the Git checkpoint priority. The following local production evidence is much larger and should be copied separately or moved to Git LFS/object storage if exact raw regeneration evidence is required:
+The runnable UE project assets, source code, scripts, manifests, prompts, tests, final selected portraits, 1600 safe frames, and documentation are present in the Git checkpoint. The following local production evidence is much larger and is intentionally not part of the normal Git checkpoint; copy it separately or move it to Git LFS/object storage if exact raw regeneration evidence is required:
 
 - `SourceAssets/AnimationProcessing/Production` — approximately 2.13 GB of extracted/processed PNG frames.
 - `SourceAssets/AnimationProduction/production_v1/raw` — approximately 1.06 GB of original generated MP4 files.
