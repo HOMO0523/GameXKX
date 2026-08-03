@@ -33,16 +33,24 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::RouteMerchant),
 		FName(TEXT("/Game/GameXXK/Maps/L_RouteMap")));
 	TestEqual(
-		TEXT("GameXXK town-backdrop battle map"),
+		TEXT("battle stays on route map"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::Battle),
-		FName(TEXT("/Game/GameXXK/Maps/L_BattleTown")));
+		FName(TEXT("/Game/GameXXK/Maps/L_RouteMap")));
 
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
-	State.Screen = EGameXXKScreen::Battle;
+	FGameXXKRuntimeState BattleState = UGameXXKMVPRules::CreateNewGame();
+	BattleState.Screen = EGameXXKScreen::Battle;
 	TestEqual(
-		TEXT("runtime battle state maps to GameXXK town-backdrop battle map"),
-		GameXXKLevelFlow::MapForRuntimeState(State),
-		FName(TEXT("/Game/GameXXK/Maps/L_BattleTown")));
+		TEXT("runtime battle state maps to route map"),
+		GameXXKLevelFlow::MapForRuntimeState(BattleState),
+		FName(TEXT("/Game/GameXXK/Maps/L_RouteMap")));
+	TestFalse(
+		TEXT("battle overlay does not request route-map reload"),
+		GameXXKLevelFlow::RequiresMapLoadForRuntimeState(
+			TEXT("/Game/GameXXK/Maps/L_RouteMap"), BattleState));
+	TestTrue(
+		TEXT("loading a battle save from town still opens route map"),
+		GameXXKLevelFlow::RequiresMapLoadForRuntimeState(
+			TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo"), BattleState));
 	TestTrue(
 		TEXT("PIE route map package matches route target"),
 		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap"), FName(TEXT("/Game/GameXXK/Maps/L_RouteMap"))));

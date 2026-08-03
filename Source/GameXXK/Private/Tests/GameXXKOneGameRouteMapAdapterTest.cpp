@@ -320,9 +320,9 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("adapter executes battle node"), RouteWidget->ExecuteRouteNode(1));
 	TestEqual(TEXT("battle node opens battle screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
 	TestEqual(
-		TEXT("battle node targets GameXXK-owned town-backdrop battle map"),
+		TEXT("battle node stays on GameXXK-owned route map"),
 		GameXXKLevelFlow::MapForRuntimeState(Subsystem->GetRuntimeState()),
-		FName(TEXT("/Game/GameXXK/Maps/L_BattleTown")));
+		FName(TEXT("/Game/GameXXK/Maps/L_RouteMap")));
 	for (FGameXXKCardCombatUnit& Unit : Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units)
 	{
 		if (Unit.Side == EGameXXKCardTargetSide::Enemy)

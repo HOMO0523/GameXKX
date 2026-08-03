@@ -13,7 +13,6 @@ namespace
 	const FName LegacyQingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 	const FName RouteMap(TEXT("/Game/GameXXK/Maps/L_RouteMap"));
 	const FName RouteCampMap(TEXT("/Game/GameXXK/Maps/L_RouteCamp"));
-	const FName BattleSceneMap(TEXT("/Game/GameXXK/Maps/L_BattleTown"));
 
 	FString StripPIEPrefix(FString ShortMapName)
 	{
@@ -36,16 +35,6 @@ namespace
 		return StripPIEPrefix(FPackageName::GetShortName(PackageName));
 	}
 
-	bool IsCurrentMap(const UWorld* World, FName TargetMap)
-	{
-		if (!World || TargetMap.IsNone())
-		{
-			return false;
-		}
-
-		const FString CurrentPackageName = World->GetOutermost() ? World->GetOutermost()->GetName() : FString();
-		return GameXXKLevelFlow::MapPackageMatches(CurrentPackageName, TargetMap);
-	}
 }
 
 FName GameXXKLevelFlow::MapForScreen(EGameXXKScreen Screen)
@@ -65,10 +54,10 @@ FName GameXXKLevelFlow::MapForScreen(EGameXXKScreen Screen)
 		return RouteCampMap;
 	case EGameXXKScreen::RouteMerchant:
 		// The merchant is a modal HUD over the live route map, just like events
-		// and chests. Only combat nodes travel to a different gameplay map.
+		// and chests.
 		return RouteMap;
 	case EGameXXKScreen::Battle:
-		return BattleSceneMap;
+		return RouteMap;
 	case EGameXXKScreen::MainMenu:
 	case EGameXXKScreen::WorldMap:
 	default:
@@ -79,6 +68,14 @@ FName GameXXKLevelFlow::MapForScreen(EGameXXKScreen Screen)
 FName GameXXKLevelFlow::MapForRuntimeState(const FGameXXKRuntimeState& State)
 {
 	return MapForScreen(State.Screen);
+}
+
+bool GameXXKLevelFlow::RequiresMapLoadForRuntimeState(
+	const FString& CurrentPackageName,
+	const FGameXXKRuntimeState& State)
+{
+	const FName TargetMap = MapForRuntimeState(State);
+	return !TargetMap.IsNone() && !MapPackageMatches(CurrentPackageName, TargetMap);
 }
 
 bool GameXXKLevelFlow::MapPackageMatches(const FString& CurrentPackageName, FName TargetMap)
@@ -107,12 +104,14 @@ bool GameXXKLevelFlow::OpenMapForRuntimeState(UGameXXKMVPSubsystem* Subsystem)
 		return false;
 	}
 
-	const FName TargetMap = MapForRuntimeState(Subsystem->GetRuntimeState());
-	if (TargetMap.IsNone() || IsCurrentMap(World, TargetMap))
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	const FString CurrentPackageName = World->GetOutermost() ? World->GetOutermost()->GetName() : FString();
+	if (!RequiresMapLoadForRuntimeState(CurrentPackageName, State))
 	{
 		return false;
 	}
 
+	const FName TargetMap = MapForRuntimeState(State);
 	UGameplayStatics::OpenLevel(World, TargetMap);
 	return true;
 }
