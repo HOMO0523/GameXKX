@@ -147,21 +147,21 @@ FSoftObjectPath FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(
 		*FlipbookName));
 }
 
-TArray<FGameXXKBattleAnimationCombatRequest> FGameXXKBattleAnimationPresentation::BuildCombatRequests(
+TArray<FGameXXKBattlePresentationEvent> FGameXXKBattleAnimationPresentation::BuildPresentationEvents(
 	const FGameXXKCardBattleRuntime& PostDamageBattle,
 	const FName FallbackAttackerUnitId,
 	const TArray<FGameXXKCardDamageResult>& DamageResults)
 {
-	TMap<FName, int32> LastPacketByTarget;
+	TMap<FName, int32> FinalLethalTransitionByTarget;
 	for (int32 Index = 0; Index < DamageResults.Num(); ++Index)
 	{
 		const FGameXXKCardDamageResult& Damage = DamageResults[Index];
 		const FName TargetUnitId = Damage.ResolvedTargetUnitId.IsNone()
 			? Damage.OriginalTargetUnitId
 			: Damage.ResolvedTargetUnitId;
-		if (!TargetUnitId.IsNone())
+		if (!TargetUnitId.IsNone() && Damage.TargetHealthBefore > 0 && Damage.TargetHealthAfter <= 0)
 		{
-			LastPacketByTarget.Add(TargetUnitId, Index);
+			FinalLethalTransitionByTarget.Add(TargetUnitId, Index);
 		}
 	}
 
@@ -173,8 +173,8 @@ TArray<FGameXXKBattleAnimationCombatRequest> FGameXXKBattleAnimationPresentation
 		});
 	};
 
-	TArray<FGameXXKBattleAnimationCombatRequest> Requests;
-	Requests.Reserve(DamageResults.Num());
+	TArray<FGameXXKBattlePresentationEvent> Events;
+	Events.Reserve(DamageResults.Num());
 	for (int32 Index = 0; Index < DamageResults.Num(); ++Index)
 	{
 		const FGameXXKCardDamageResult& Damage = DamageResults[Index];
@@ -186,19 +186,48 @@ TArray<FGameXXKBattleAnimationCombatRequest> FGameXXKBattleAnimationPresentation
 			continue;
 		}
 
-		FGameXXKBattleAnimationCombatRequest& Request = Requests.AddDefaulted_GetRef();
-		Request.AttackerUnitId = Damage.SourceUnitId.IsNone() ? FallbackAttackerUnitId : Damage.SourceUnitId;
-		Request.TargetUnitId = TargetUnitId;
-		if (const FGameXXKCardCombatUnit* Attacker = FindUnit(Request.AttackerUnitId))
+		FGameXXKBattlePresentationEvent& Event = Events.AddDefaulted_GetRef();
+		Event.EventId = static_cast<uint64>(Index) + 1;
+		Event.HitOrdinal = Index;
+		Event.AttackerUnitId = Damage.SourceUnitId.IsNone() ? FallbackAttackerUnitId : Damage.SourceUnitId;
+		Event.TargetUnitId = TargetUnitId;
+		if (const FGameXXKCardCombatUnit* Attacker = FindUnit(Event.AttackerUnitId))
 		{
-			Request.bAttackerEnemy = Attacker->Side == EGameXXKCardTargetSide::Enemy;
+			Event.bAttackerEnemy = Attacker->Side == EGameXXKCardTargetSide::Enemy;
 		}
 		if (const FGameXXKCardCombatUnit* Target = FindUnit(TargetUnitId))
 		{
-			Request.bTargetEnemy = Target->Side == EGameXXKCardTargetSide::Enemy;
-			Request.bTargetDefeated = LastPacketByTarget.FindRef(TargetUnitId) == Index
-				&& (!Target->bLiving || Target->HP <= 0);
+			Event.bTargetEnemy = Target->Side == EGameXXKCardTargetSide::Enemy;
 		}
+		Event.HealthDamage = Damage.HealthDamage;
+		Event.TargetHealthBefore = Damage.TargetHealthBefore;
+		Event.TargetHealthAfter = Damage.TargetHealthAfter;
+		Event.bAvoided = Damage.bAvoidedByAgility;
+		const int32* FinalLethalIndex = FinalLethalTransitionByTarget.Find(TargetUnitId);
+		Event.bTargetDefeated = FinalLethalIndex && *FinalLethalIndex == Index;
+	}
+	return Events;
+}
+
+TArray<FGameXXKBattleAnimationCombatRequest> FGameXXKBattleAnimationPresentation::BuildCombatRequests(
+	const FGameXXKCardBattleRuntime& PostDamageBattle,
+	const FName FallbackAttackerUnitId,
+	const TArray<FGameXXKCardDamageResult>& DamageResults)
+{
+	const TArray<FGameXXKBattlePresentationEvent> Events = BuildPresentationEvents(
+		PostDamageBattle,
+		FallbackAttackerUnitId,
+		DamageResults);
+	TArray<FGameXXKBattleAnimationCombatRequest> Requests;
+	Requests.Reserve(Events.Num());
+	for (const FGameXXKBattlePresentationEvent& Event : Events)
+	{
+		FGameXXKBattleAnimationCombatRequest& Request = Requests.AddDefaulted_GetRef();
+		Request.AttackerUnitId = Event.AttackerUnitId;
+		Request.TargetUnitId = Event.TargetUnitId;
+		Request.bAttackerEnemy = Event.bAttackerEnemy;
+		Request.bTargetEnemy = Event.bTargetEnemy;
+		Request.bTargetDefeated = Event.bTargetDefeated;
 	}
 	return Requests;
 }

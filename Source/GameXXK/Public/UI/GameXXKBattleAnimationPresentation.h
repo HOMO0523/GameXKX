@@ -31,6 +31,22 @@ struct GAMEXXK_API FGameXXKBattleAnimationClipDescriptor
 	}
 };
 
+/** Immutable presentation data captured from ordered combat results. */
+struct GAMEXXK_API FGameXXKBattlePresentationEvent
+{
+	uint64 EventId = 0;
+	int32 HitOrdinal = 0;
+	FName AttackerUnitId = NAME_None;
+	FName TargetUnitId = NAME_None;
+	bool bAttackerEnemy = false;
+	bool bTargetEnemy = false;
+	int32 HealthDamage = 0;
+	int32 TargetHealthBefore = 0;
+	int32 TargetHealthAfter = 0;
+	bool bAvoided = false;
+	bool bTargetDefeated = false;
+};
+
 struct GAMEXXK_API FGameXXKBattleAnimationCombatRequest
 {
 	FName AttackerUnitId = NAME_None;
@@ -50,6 +66,11 @@ public:
 		EGameXXKBattleAnimationAction Action);
 	static FGameXXKBattleAnimationClipDescriptor ResolveGenericClip(EGameXXKBattleAnimationAction Action);
 	static FSoftObjectPath ResolveIdleFlipbookPath(FName RuntimeUnitId, bool bEnemy);
+	static TArray<FGameXXKBattlePresentationEvent> BuildPresentationEvents(
+		const FGameXXKCardBattleRuntime& PostDamageBattle,
+		FName FallbackAttackerUnitId,
+		const TArray<FGameXXKCardDamageResult>& DamageResults);
+	/** @deprecated Compatibility wrapper for the current controller; migrate consumers to immutable presentation events. */
 	static TArray<FGameXXKBattleAnimationCombatRequest> BuildCombatRequests(
 		const FGameXXKCardBattleRuntime& PostDamageBattle,
 		FName FallbackAttackerUnitId,

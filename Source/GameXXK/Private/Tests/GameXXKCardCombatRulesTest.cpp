@@ -15,11 +15,13 @@ namespace
 		const EGameXXKCardTargetSide Side,
 		const int32 HP,
 		const int32 MaxHP,
-		const int32 StableSortOrder)
+		const int32 StableSortOrder,
+		const EGameXXKCharacterRole Role = EGameXXKCharacterRole::Invalid)
 	{
 		FGameXXKCardCombatUnit Unit;
 		Unit.UnitId = FName(UnitId);
 		Unit.Side = Side;
+		Unit.Role = Role;
 		Unit.bLiving = HP > 0;
 		Unit.HP = HP;
 		Unit.MaxHP = MaxHP;
@@ -37,6 +39,24 @@ namespace
 		{
 			return Unit.UnitId == UnitId;
 		});
+	}
+
+	TArray<FGameXXKCardInstance> MakeRuntimeInstances(
+		const TCHAR* CardId,
+		const int32 Count,
+		const TCHAR* OwnerUnitId)
+	{
+		TArray<FGameXXKCardInstance> Instances;
+		for (int32 Index = 0; Index < Count; ++Index)
+		{
+			FGameXXKCardInstance& Instance = Instances.AddDefaulted_GetRef();
+			Instance.InstanceId = FName(*FString::Printf(TEXT("Instance.%s.%d"), CardId, Index));
+			Instance.CardId = FName(CardId);
+			Instance.OwnerUnitId = FName(OwnerUnitId);
+			Instance.SourceEntryId = FName(*FString::Printf(TEXT("Source.%s.%d"), CardId, Index));
+			Instance.AcquisitionOrdinal = Index;
+		}
+		return Instances;
 	}
 }
 
@@ -64,7 +84,7 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 
 	TArray<FGameXXKCardCombatUnit> DirectDamageUnits;
 	DirectDamageUnits.Add(MakeCombatUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, 100, 100, 1));
-	DirectDamageUnits.Add(MakeCombatUnit(TEXT("Guard"), EGameXXKCardTargetSide::Party, 100, 100, 2));
+	DirectDamageUnits.Add(MakeCombatUnit(TEXT("Guard"), EGameXXKCardTargetSide::Party, 73, 100, 2));
 	DirectDamageUnits.Add(MakeCombatUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, 100, 100, 10));
 	FGameXXKCardDamageContext SingleTargetAttack;
 	SingleTargetAttack.SourceUnitId = TEXT("Enemy");
@@ -82,6 +102,8 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("direct hit reports its original stable target"), RedirectedHit.OriginalTargetUnitId, FName(TEXT("Hero")));
 	TestEqual(TEXT("direct hit reports the redirect guardian as the resolved target"), RedirectedHit.ResolvedTargetUnitId, FName(TEXT("Guard")));
 	TestEqual(TEXT("redirected armor fully absorbs the direct hit"), RedirectedHit.HealthDamage, 0);
+	TestEqual(TEXT("redirect snapshot captures the resolved guardian health before mitigation"), RedirectedHit.TargetHealthBefore, 73);
+	TestEqual(TEXT("redirect snapshot keeps the resolved guardian health after armor absorption"), RedirectedHit.TargetHealthAfter, 73);
 	TestEqual(TEXT("hero remains unharmed behind the guard link"), FindCombatUnit(DirectDamageUnits, TEXT("Hero"))->HP, 100);
 	TestEqual(TEXT("guardian armor is consumed once"), FindCombatUnit(DirectDamageUnits, TEXT("Guard"))->Armor, 0);
 	TestEqual(TEXT("one-stack guard binding is consumed once"), GuardLinks.Num(), 0);
@@ -102,6 +124,8 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestEqual(TEXT("two vulnerability stacks amplify ten direct damage to twelve"), VulnerableHit.HealthDamage, 12);
+	TestEqual(TEXT("ordinary hit snapshots target health before mutation"), VulnerableHit.TargetHealthBefore, 100);
+	TestEqual(TEXT("ordinary hit snapshots target health after mutation"), VulnerableHit.TargetHealthAfter, 88);
 	TestEqual(TEXT("direct damage consumes all vulnerability stacks"), GameXXKCardRules::GetCombatStatusStacks(*DirectHero, EGameXXKCardStatus::Vulnerability), 0);
 	TestEqual(TEXT("hero receives the amplified health loss"), DirectHero->HP, 88);
 	TestEqual(TEXT("agility setup adds exactly one layer"), GameXXKCardRules::AddCombatStatus(*DirectHero, EGameXXKCardStatus::Agility, 1), 1);
@@ -119,6 +143,8 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("agility reports that it avoided the direct hit"), AvoidedHit.bAvoidedByAgility);
 	TestEqual(TEXT("agility avoids all direct damage before armor"), AvoidedHit.HealthDamage, 0);
+	TestEqual(TEXT("agility snapshots health before the avoid"), AvoidedHit.TargetHealthBefore, 88);
+	TestEqual(TEXT("agility leaves the immutable after snapshot unchanged"), AvoidedHit.TargetHealthAfter, 88);
 	TestEqual(TEXT("agility is consumed exactly once"), GameXXKCardRules::GetCombatStatusStacks(*DirectHero, EGameXXKCardStatus::Agility), 0);
 	TestEqual(TEXT("agility preserves the hero health"), DirectHero->HP, 88);
 	TestEqual(TEXT("agility cancels attached direct-hit statuses"), GameXXKCardRules::GetCombatStatusStacks(*DirectHero, EGameXXKCardStatus::Vulnerability), 0);
@@ -195,6 +221,65 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("direct attack applies defense after flat ignore-defense"), ArmorPiercingHit.DamageAfterDefense, 16);
 	TestEqual(TEXT("defense result reaches health before armor"), ArmorPiercingHit.HealthDamage, 16);
 
+	TArray<FGameXXKCardCombatUnit> ArmorOnlyUnits;
+	ArmorOnlyUnits.Add(MakeCombatUnit(TEXT("ArmorTarget"), EGameXXKCardTargetSide::Party, 64, 100, 1));
+	ArmorOnlyUnits.Add(MakeCombatUnit(TEXT("ArmorEnemy"), EGameXXKCardTargetSide::Enemy, 100, 100, 10));
+	TestEqual(TEXT("standalone armor-only fixture gains six armor"), GameXXKCardRules::AddCombatArmor(ArmorOnlyUnits[0], 6), 6);
+	FGameXXKCardDamageContext ArmorOnlyContext;
+	ArmorOnlyContext.SourceUnitId = TEXT("ArmorEnemy");
+	ArmorOnlyContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+	TArray<FGameXXKCardGuardLinkRuntime> ArmorOnlyGuardLinks;
+	FGameXXKCardDamageResult ArmorOnlyHit;
+	TestTrue(TEXT("a standalone armor-only hit resolves"), GameXXKCardRules::ApplyCombatDirectDamage(
+		ArmorOnlyUnits, ArmorOnlyGuardLinks, ArmorOnlyContext, TEXT("ArmorTarget"), 5, ArmorOnlyHit));
+	TestEqual(TEXT("standalone armor absorbs the complete hit"), ArmorOnlyHit.ArmorAbsorbed, 5);
+	TestEqual(TEXT("standalone armor-only hit records no health damage"), ArmorOnlyHit.HealthDamage, 0);
+	TestEqual(TEXT("armor-only snapshot captures health before armor mutation"), ArmorOnlyHit.TargetHealthBefore, 64);
+	TestEqual(TEXT("armor-only snapshot preserves health after armor mutation"), ArmorOnlyHit.TargetHealthAfter, 64);
+
+	TArray<FGameXXKCardCombatUnit> LethalUnits;
+	LethalUnits.Add(MakeCombatUnit(TEXT("LethalTarget"), EGameXXKCardTargetSide::Enemy, 7, 100, 10));
+	LethalUnits.Add(MakeCombatUnit(TEXT("LethalAttacker"), EGameXXKCardTargetSide::Party, 100, 100, 1));
+	FGameXXKCardDamageContext LethalContext;
+	LethalContext.SourceUnitId = TEXT("LethalAttacker");
+	LethalContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+	TArray<FGameXXKCardGuardLinkRuntime> LethalGuardLinks;
+	FGameXXKCardDamageResult LethalHit;
+	TestTrue(TEXT("a lethal hit resolves through the direct-damage rules"), GameXXKCardRules::ApplyCombatDirectDamage(
+		LethalUnits, LethalGuardLinks, LethalContext, TEXT("LethalTarget"), 20, LethalHit));
+	TestEqual(TEXT("lethal damage is capped to remaining target health"), LethalHit.HealthDamage, 7);
+	TestEqual(TEXT("lethal snapshot records the last positive health"), LethalHit.TargetHealthBefore, 7);
+	TestEqual(TEXT("lethal snapshot records the zero-health transition"), LethalHit.TargetHealthAfter, 0);
+
+	TArray<FGameXXKCardCombatUnit> MultiHitUnits;
+	MultiHitUnits.Add(MakeCombatUnit(TEXT("MultiAttacker"), EGameXXKCardTargetSide::Party, 100, 100, 1));
+	MultiHitUnits.Add(MakeCombatUnit(TEXT("MultiTarget"), EGameXXKCardTargetSide::Enemy, 100, 100, 10));
+	TestEqual(TEXT("multi-hit target gains one agility layer"), GameXXKCardRules::AddCombatStatus(
+		MultiHitUnits[1], EGameXXKCardStatus::Agility, 1), 1);
+	FGameXXKCardDamageContext MultiHitContext;
+	MultiHitContext.SourceUnitId = TEXT("MultiAttacker");
+	MultiHitContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+	TArray<FGameXXKCardGuardLinkRuntime> MultiHitGuardLinks;
+	TArray<FGameXXKCardDamageResult> MultiHitResults;
+	for (int32 HitIndex = 0; HitIndex < 3; ++HitIndex)
+	{
+		FGameXXKCardDamageResult& HitResult = MultiHitResults.AddDefaulted_GetRef();
+		if (!TestTrue(
+			FString::Printf(TEXT("multi-hit packet %d resolves through real combat rules"), HitIndex),
+			GameXXKCardRules::ApplyCombatDirectDamage(
+				MultiHitUnits, MultiHitGuardLinks, MultiHitContext, TEXT("MultiTarget"), 14, HitResult)))
+		{
+			return false;
+		}
+	}
+	TestEqual(TEXT("first multi-hit packet snapshots health before agility"), MultiHitResults[0].TargetHealthBefore, 100);
+	TestEqual(TEXT("first multi-hit packet snapshots unchanged health after agility"), MultiHitResults[0].TargetHealthAfter, 100);
+	TestTrue(TEXT("first multi-hit packet is the avoided packet"), MultiHitResults[0].bAvoidedByAgility);
+	TestEqual(TEXT("second multi-hit packet begins from one hundred"), MultiHitResults[1].TargetHealthBefore, 100);
+	TestEqual(TEXT("second multi-hit packet ends at eighty-six"), MultiHitResults[1].TargetHealthAfter, 86);
+	TestEqual(TEXT("third multi-hit packet begins from eighty-six"), MultiHitResults[2].TargetHealthBefore, 86);
+	TestEqual(TEXT("third multi-hit packet ends at seventy-two"), MultiHitResults[2].TargetHealthAfter, 72);
+
 	TArray<FGameXXKCardCombatUnit> DotUnits;
 	DotUnits.Add(MakeCombatUnit(TEXT("DotTarget"), EGameXXKCardTargetSide::Enemy, 100, 100, 10));
 	TestEqual(TEXT("DoT target gets armor for the bypass test"), GameXXKCardRules::AddCombatArmor(DotUnits[0], 20), 20);
@@ -215,6 +300,35 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("DoT applies its bypass health damage"), DotTarget->HP, 87);
 	TestEqual(TEXT("DoT leaves armor untouched"), DotTarget->Armor, 20);
 	TestEqual(TEXT("DoT leaves agility untouched"), GameXXKCardRules::GetCombatStatusStacks(*DotTarget, EGameXXKCardStatus::Agility), 1);
+
+	TArray<FGameXXKCardCombatUnit> DotSnapshotUnits;
+	DotSnapshotUnits.Add(MakeCombatUnit(
+		TEXT("DotHero"), EGameXXKCardTargetSide::Party, 40, 100, 1, EGameXXKCharacterRole::Hero));
+	DotSnapshotUnits.Add(MakeCombatUnit(TEXT("DotEnemy"), EGameXXKCardTargetSide::Enemy, 100, 100, 10));
+	TestEqual(TEXT("end-phase snapshot fixture gains one burn"), GameXXKCardRules::AddCombatStatus(
+		DotSnapshotUnits[0], EGameXXKCardStatus::Burn, 1), 1);
+	FGameXXKCardBattleRuntime DotSnapshotRuntime;
+	if (!TestTrue(TEXT("end-phase snapshot runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
+		DotSnapshotRuntime,
+		MakeRuntimeInstances(TEXT("Hero.QingFengYiShi"), 6, TEXT("DotHero")),
+		DotSnapshotUnits,
+		EGameXXKCardTerrain::Plain,
+		8801)))
+	{
+		return false;
+	}
+	TArray<FGameXXKCardDamageResult> DotSnapshotResults;
+	if (!TestTrue(TEXT("player end phase resolves DoT audit results"), GameXXKCardRules::EndPlayerCardPhase(
+		DotSnapshotRuntime, DotSnapshotResults)))
+	{
+		return false;
+	}
+	TestEqual(TEXT("one burning party unit creates one DoT audit result"), DotSnapshotResults.Num(), 1);
+	if (DotSnapshotResults.Num() == 1)
+	{
+		TestEqual(TEXT("DoT audit snapshots health before damage"), DotSnapshotResults[0].TargetHealthBefore, 40);
+		TestEqual(TEXT("DoT audit snapshots health after damage"), DotSnapshotResults[0].TargetHealthAfter, 37);
+	}
 
 	TArray<FGameXXKCardCombatUnit> DotGuardDeathUnits;
 	DotGuardDeathUnits.Add(MakeCombatUnit(TEXT("DotProtected"), EGameXXKCardTargetSide::Party, 100, 100, 1));
@@ -245,10 +359,23 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 
 	const int32 DeadHeroHealthBefore = DirectHero->HP;
 	FGameXXKCardDamageResult InvalidHit;
+	InvalidHit.SourceUnitId = TEXT("PriorSource");
 	InvalidHit.OriginalTargetUnitId = TEXT("PriorResult");
+	InvalidHit.ResolvedTargetUnitId = TEXT("PriorResolvedTarget");
+	InvalidHit.RequestedDamage = 91;
+	InvalidHit.DamageAfterDefense = 82;
+	InvalidHit.DamageAfterVulnerability = 73;
+	InvalidHit.ArmorAbsorbed = 64;
+	InvalidHit.HealthDamage = 55;
+	InvalidHit.TargetHealthBefore = 731;
+	InvalidHit.TargetHealthAfter = 419;
+	InvalidHit.bRedirected = true;
+	InvalidHit.bAvoidedByAgility = true;
+	const FGameXXKCardDamageResult InvalidHitSentinel = InvalidHit;
 	TestFalse(TEXT("direct damage rejects an absent stable UnitId"), GameXXKCardRules::ApplyCombatDirectDamage(DirectDamageUnits, GuardLinks, SingleTargetAttack, TEXT("Absent"), 5, InvalidHit));
 	TestEqual(TEXT("rejected direct damage leaves battle unit health unchanged"), DirectHero->HP, DeadHeroHealthBefore);
-	TestEqual(TEXT("rejected direct damage preserves the caller result"), InvalidHit.OriginalTargetUnitId, FName(TEXT("PriorResult")));
+	TestTrue(TEXT("rejected direct damage preserves the entire caller result including snapshot sentinels"),
+		FGameXXKCardDamageResult::StaticStruct()->CompareScriptStruct(&InvalidHit, &InvalidHitSentinel, PPF_None));
 	TArray<FGameXXKCardCombatUnit> DuplicateStatusUnits = DirectDamageUnits;
 	FGameXXKCardStatusStack& FirstDuplicateMomentum = DuplicateStatusUnits[0].Statuses.AddDefaulted_GetRef();
 	FirstDuplicateMomentum.Status = EGameXXKCardStatus::Momentum;
@@ -258,9 +385,66 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	SecondDuplicateMomentum.Stacks = 1;
 	const int32 DuplicateStatusHeroHP = DuplicateStatusUnits[0].HP;
 	FGameXXKCardDamageResult DuplicateStatusHit;
+	DuplicateStatusHit.TargetHealthBefore = 902;
+	DuplicateStatusHit.TargetHealthAfter = 901;
+	const FGameXXKCardDamageResult DuplicateStatusHitSentinel = DuplicateStatusHit;
 	TestFalse(TEXT("corrupted duplicate status entries whose total exceeds a cap reject direct damage atomically"), GameXXKCardRules::ApplyCombatDirectDamage(DuplicateStatusUnits, GuardLinks, SingleTargetAttack, TEXT("Hero"), 5, DuplicateStatusHit));
 	TestEqual(TEXT("corrupted duplicate-status rejection leaves health unchanged"), DuplicateStatusUnits[0].HP, DuplicateStatusHeroHP);
-	TestEqual(TEXT("corrupted duplicate-status rejection leaves the damage result unchanged"), DuplicateStatusHit.OriginalTargetUnitId, NAME_None);
+	TestTrue(TEXT("corrupted duplicate-status rejection preserves the entire damage result"),
+		FGameXXKCardDamageResult::StaticStruct()->CompareScriptStruct(
+			&DuplicateStatusHit, &DuplicateStatusHitSentinel, PPF_None));
+
+	TArray<FGameXXKCardCombatUnit> ReflectUnits;
+	ReflectUnits.Add(MakeCombatUnit(
+		TEXT("ReflectGuard"), EGameXXKCardTargetSide::Party, 100, 100, 1, EGameXXKCharacterRole::Guard));
+	ReflectUnits.Add(MakeCombatUnit(TEXT("ReflectEnemy"), EGameXXKCardTargetSide::Enemy, 100, 100, 10));
+	FGameXXKCardBattleRuntime ReflectRuntime;
+	if (!TestTrue(TEXT("real reflection runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
+		ReflectRuntime,
+		MakeRuntimeInstances(TEXT("Profession.Guard.FanZhenJia"), 6, TEXT("ReflectGuard")),
+		ReflectUnits,
+		EGameXXKCardTerrain::Plain,
+		8802)))
+	{
+		return false;
+	}
+	FGameXXKCardPlayResult ReflectSetupResult;
+	if (!TestTrue(TEXT("real reflection card registers its reactive modifier"), GameXXKCardRules::ResolveCardPlay(
+		ReflectRuntime, ReflectRuntime.Deck.Hand[0].InstanceId, NAME_None, ReflectSetupResult)))
+	{
+		return false;
+	}
+	TArray<FGameXXKCardDamageResult> ReflectPlayerDotResults;
+	if (!TestTrue(TEXT("real reflection runtime enters the enemy phase"), GameXXKCardRules::EndPlayerCardPhase(
+		ReflectRuntime, ReflectPlayerDotResults)))
+	{
+		return false;
+	}
+	FGameXXKCardDamageContext ReflectIncomingContext;
+	ReflectIncomingContext.SourceUnitId = TEXT("ReflectEnemy");
+	ReflectIncomingContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+	FGameXXKCardDamageResult ReflectIncomingResult;
+	TArray<FGameXXKCardDamageResult> ReflectReactionResults;
+	if (!TestTrue(TEXT("real enemy hit triggers the card-driven reflection"), GameXXKCardRules::ResolveEnemyDirectAttack(
+		ReflectRuntime,
+		ReflectIncomingContext,
+		TEXT("ReflectGuard"),
+		10,
+		ReflectIncomingResult,
+		&ReflectReactionResults)))
+	{
+		return false;
+	}
+	TestEqual(TEXT("armored incoming reflection trigger snapshots health before"), ReflectIncomingResult.TargetHealthBefore, 100);
+	TestEqual(TEXT("armored incoming reflection trigger snapshots unchanged health after"), ReflectIncomingResult.TargetHealthAfter, 100);
+	TestEqual(TEXT("real reflection produces one separate damage result"), ReflectReactionResults.Num(), 1);
+	if (ReflectReactionResults.Num() == 1)
+	{
+		TestEqual(TEXT("real reflection source is the defending guard"), ReflectReactionResults[0].SourceUnitId, FName(TEXT("ReflectGuard")));
+		TestEqual(TEXT("real reflection resolves against the original attacker"), ReflectReactionResults[0].ResolvedTargetUnitId, FName(TEXT("ReflectEnemy")));
+		TestEqual(TEXT("real reflection snapshots attacker health before retaliation"), ReflectReactionResults[0].TargetHealthBefore, 100);
+		TestEqual(TEXT("real reflection snapshots attacker health after retaliation"), ReflectReactionResults[0].TargetHealthAfter, 88);
+	}
 
 	return true;
 }

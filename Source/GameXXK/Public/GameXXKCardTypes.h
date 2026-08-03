@@ -1006,6 +1006,14 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 HealthDamage = 0;
 
+	/** Resolved target health immediately before this successful damage attempt mutates combat state. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 TargetHealthBefore = 0;
+
+	/** Resolved target health at the common successful tail, including unchanged avoid/armor-only outcomes. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 TargetHealthAfter = 0;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bRedirected = false;
 

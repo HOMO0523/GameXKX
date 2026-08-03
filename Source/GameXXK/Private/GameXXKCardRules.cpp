@@ -904,6 +904,8 @@ namespace
 		OutError.Reset();
 		for (const FName UnitId : CollectLivingUnitIdsForSide(InOutRuntime, Side))
 		{
+			const FGameXXKCardCombatUnit* TargetBeforeDot = FindCombatUnitById(InOutRuntime.Units, UnitId);
+			const int32 TargetHealthBefore = TargetBeforeDot ? TargetBeforeDot->HP : 0;
 			int32 HealthDamage = 0;
 			if (!GameXXKCardRules::ApplyCombatEndPhaseDot(InOutRuntime.Units, InOutRuntime.GuardLinks, UnitId, HealthDamage, &OutError))
 			{
@@ -918,6 +920,12 @@ namespace
 				Result.DamageAfterDefense = HealthDamage;
 				Result.DamageAfterVulnerability = HealthDamage;
 				Result.HealthDamage = HealthDamage;
+				Result.TargetHealthBefore = TargetHealthBefore;
+				Result.TargetHealthAfter = FMath::Max(0, TargetHealthBefore - HealthDamage);
+				if (const FGameXXKCardCombatUnit* TargetAfterDot = FindCombatUnitById(InOutRuntime.Units, UnitId))
+				{
+					Result.TargetHealthAfter = TargetAfterDot->HP;
+				}
 			}
 		}
 		return true;
@@ -2392,6 +2400,7 @@ namespace
 		NewResult.bRedirected = true;
 		NewResult.ResolvedTargetUnitId = ResolvedTarget->UnitId;
 	}
+	NewResult.TargetHealthBefore = ResolvedTarget->HP;
 
 	if (IsDirectAttackDamageKind(Context.Kind) && GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Agility) > 0)
 	{
@@ -2479,6 +2488,7 @@ namespace
 			}
 		}
 	}
+	NewResult.TargetHealthAfter = ResolvedTarget->HP;
 
 	RemoveLinksForDefeatedUnits(NewGuardLinks, NewUnits);
 	InOutUnits = MoveTemp(NewUnits);
