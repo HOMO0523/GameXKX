@@ -56,6 +56,16 @@ namespace
 			return TexturesByPath.FindRef(Path);
 		}
 
+		int32 RequestCount(const FSoftObjectPath& Path) const
+		{
+			int32 Count = 0;
+			for (const FSoftObjectPath& RequestedPath : RequestedPaths)
+			{
+				Count += RequestedPath == Path ? 1 : 0;
+			}
+			return Count;
+		}
+
 		TArray<FSoftObjectPath> RequestedPaths;
 		TArray<TStrongObjectPtr<UTexture2D>> LoadedTextures;
 		TMap<FSoftObjectPath, UTexture2D*> TexturesByPath;
@@ -164,6 +174,59 @@ namespace
 		TArray<TStrongObjectPtr<UTexture2D>> LoadedTextures;
 		TMap<FSoftObjectPath, UTexture2D*> TexturesByPath;
 		TMap<FSoftObjectPath, FGameXXKAtlasLoaderCompletion> PendingImpactCompletions;
+	};
+
+	/** Holds Death requests while every Idle, Attack, Hit, and Impact atlas is available immediately. */
+	class FLateDeathPresentationAtlasLoader final : public IGameXXKBattleAtlasLoader
+	{
+	public:
+		virtual TSharedPtr<IGameXXKBattleAtlasLoadHandle> RequestAsyncLoad(
+			const FSoftObjectPath& Path,
+			FGameXXKAtlasLoaderCompletion Completion) override
+		{
+			RequestedPaths.Add(Path);
+			UTexture2D* const Texture = NewObject<UTexture2D>(GetTransientPackage());
+			LoadedTextures.Add(TStrongObjectPtr<UTexture2D>(Texture));
+			TexturesByPath.Add(Path, Texture);
+			if (Path.ToString().Contains(TEXT("_death_atlas")))
+			{
+				PendingDeathCompletions.Add(Path, MoveTemp(Completion));
+			}
+			else
+			{
+				Completion(Texture, 4);
+			}
+			return MakeShared<FPresentationAtlasLoadHandle>();
+		}
+
+		bool Requested(const FSoftObjectPath& Path) const
+		{
+			return RequestedPaths.Contains(Path);
+		}
+
+		UTexture2D* GetTexture(const FSoftObjectPath& Path) const
+		{
+			return TexturesByPath.FindRef(Path);
+		}
+
+		bool CompleteDeath(const FSoftObjectPath& Path)
+		{
+			FGameXXKAtlasLoaderCompletion* const Pending = PendingDeathCompletions.Find(Path);
+			UTexture2D* const Texture = TexturesByPath.FindRef(Path);
+			if (!Pending || !Texture)
+			{
+				return false;
+			}
+			FGameXXKAtlasLoaderCompletion Completion = MoveTemp(*Pending);
+			PendingDeathCompletions.Remove(Path);
+			Completion(Texture, 4);
+			return true;
+		}
+
+		TArray<FSoftObjectPath> RequestedPaths;
+		TArray<TStrongObjectPtr<UTexture2D>> LoadedTextures;
+		TMap<FSoftObjectPath, UTexture2D*> TexturesByPath;
+		TMap<FSoftObjectPath, FGameXXKAtlasLoaderCompletion> PendingDeathCompletions;
 	};
 
 	FGameXXKCardCombatUnit MakePresentationUnit(
@@ -524,6 +587,130 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the event behind Death starts only after Death removal"),
 		FApi::ActiveEventId(Board), AfterDeath.EventId);
 
+	UGameInstance* const ColdDeathGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const ColdDeathSubsystem = NewObject<UGameXXKMVPSubsystem>(ColdDeathGameInstance);
+	BuildPresentationFixture(ColdDeathSubsystem);
+	UGameXXKBattleBoardWidget* const ColdDeathBoard = NewObject<UGameXXKBattleBoardWidget>();
+	ColdDeathBoard->SetMVPSubsystem(ColdDeathSubsystem);
+	const TSharedRef<FLateDeathPresentationAtlasLoader> ColdDeathLoader =
+		MakeShared<FLateDeathPresentationAtlasLoader>();
+	ColdDeathBoard->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+		ColdDeathLoader,
+		[]() { return 80.0; }));
+	TestTrue(TEXT("cold-Death fixture initializes its real Board"), ColdDeathBoard->Initialize());
+	ColdDeathBoard->NativeConstruct();
+	TestTrue(TEXT("cold-Death fixture begins a visual session"),
+		ColdDeathBoard->BeginBattleVisualSession(1002));
+
+	const FGameXXKBattlePresentationEvent ColdDeathEvent = MakePresentationEvent(
+		6, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 70, 0, false, true);
+	const FGameXXKBattlePresentationEvent AfterColdDeathEvent = MakePresentationEvent(
+		7, TEXT("Enemy.BlackBear"), true, TEXT("Player"), false, 90, 81);
+	const FGameXXKBattleAnimationClipDescriptor ColdDeathClip =
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			ColdDeathEvent.TargetUnitId,
+			ColdDeathEvent.bTargetEnemy,
+			EGameXXKBattleAnimationAction::Death);
+	const FGameXXKBattleAnimationClipDescriptor ColdDeathIdleClip =
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			ColdDeathEvent.TargetUnitId,
+			ColdDeathEvent.bTargetEnemy,
+			EGameXXKBattleAnimationAction::Idle);
+	UGameXXKBattleUnitVisualWidget* const ColdDeathTarget =
+		ColdDeathBoard->GetUnitVisualForTest(ColdDeathEvent.TargetUnitId);
+	FApi::Queue(ColdDeathBoard, ColdDeathEvent);
+	FApi::Queue(ColdDeathBoard, AfterColdDeathEvent);
+	ColdDeathBoard->AdvanceVisualsAtRealTime(80.0);
+	TestFalse(TEXT("Death atlas is not prefetched before the lethal Attack/Hit completes"),
+		ColdDeathLoader->Requested(ColdDeathClip.TexturePath));
+	ColdDeathBoard->AdvanceVisualsAtRealTime(82.5);
+	TestTrue(TEXT("cold Death starts at the lethal Attack/Hit completion boundary"),
+		FApi::IsDeathActive(ColdDeathBoard));
+	TestTrue(TEXT("cold Death asynchronously requests its atlas only when enqueued"),
+		ColdDeathLoader->Requested(ColdDeathClip.TexturePath));
+	TestEqual(TEXT("pending cold Death keeps the persistent target on its Idle atlas"),
+		ColdDeathTarget ? ColdDeathTarget->GetAtlasForTest() : nullptr,
+		ColdDeathLoader->GetTexture(ColdDeathIdleClip.TexturePath));
+	ColdDeathBoard->AdvanceVisualsAtRealTime(84.0);
+	TestTrue(TEXT("cold Death request completes while that exact Death entry is active"),
+		ColdDeathLoader->CompleteDeath(ColdDeathClip.TexturePath));
+	TestEqual(TEXT("late Death completion reuses the exact persistent target visual"),
+		ColdDeathBoard->GetUnitVisualForTest(ColdDeathEvent.TargetUnitId),
+		ColdDeathTarget);
+	TestEqual(TEXT("late Death completion binds the actual Death atlas"),
+		ColdDeathTarget ? ColdDeathTarget->GetAtlasForTest() : nullptr,
+		ColdDeathLoader->GetTexture(ColdDeathClip.TexturePath));
+	TestTrue(TEXT("late Death remains visible at the 820 square cinematic placement with positive scale"),
+		ColdDeathTarget
+		&& ColdDeathTarget->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
+		&& ColdDeathTarget->GetUnitImageForTest()
+		&& ColdDeathTarget->GetUnitImageForTest()->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
+		&& ColdDeathTarget->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f)
+		&& ColdDeathTarget->GetRenderTransform().Scale.X > 0.0f);
+	TestEqual(TEXT("late Death catches up from its original start epoch rather than load time"),
+		ColdDeathTarget ? ColdDeathTarget->GetCurrentFrameForTest() : INDEX_NONE,
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(ColdDeathClip, 1.5f, false));
+	ColdDeathBoard->AdvanceVisualsAtRealTime(87.499);
+	TestEqual(TEXT("late Death remains non-looping and reaches its authored terminal frame"),
+		ColdDeathTarget ? ColdDeathTarget->GetCurrentFrameForTest() : INDEX_NONE,
+		ColdDeathClip.FrameCount - 1);
+	TestEqual(TEXT("late-loaded Death cannot remove its persistent target before completion"),
+		ColdDeathBoard->GetUnitVisualForTest(ColdDeathEvent.TargetUnitId),
+		ColdDeathTarget);
+	ColdDeathBoard->AdvanceVisualsAtRealTime(87.5);
+	TestNull(TEXT("late-loaded Death removes its persistent target only at completion"),
+		ColdDeathBoard->GetUnitVisualForTest(ColdDeathEvent.TargetUnitId));
+	TestEqual(TEXT("the event behind late-loaded Death starts only after removal"),
+		FApi::ActiveEventId(ColdDeathBoard),
+		AfterColdDeathEvent.EventId);
+
+	UGameInstance* const StaleDeathGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const StaleDeathSubsystem = NewObject<UGameXXKMVPSubsystem>(StaleDeathGameInstance);
+	BuildPresentationFixture(StaleDeathSubsystem);
+	UGameXXKBattleBoardWidget* const StaleDeathBoard = NewObject<UGameXXKBattleBoardWidget>();
+	StaleDeathBoard->SetMVPSubsystem(StaleDeathSubsystem);
+	const TSharedRef<FLateDeathPresentationAtlasLoader> StaleDeathLoader =
+		MakeShared<FLateDeathPresentationAtlasLoader>();
+	StaleDeathBoard->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+		StaleDeathLoader,
+		[]() { return 90.0; }));
+	TestTrue(TEXT("stale-Death fixture initializes its real Board"), StaleDeathBoard->Initialize());
+	StaleDeathBoard->NativeConstruct();
+	TestTrue(TEXT("stale-Death fixture begins a visual session"),
+		StaleDeathBoard->BeginBattleVisualSession(1003));
+	const FGameXXKBattlePresentationEvent StaleDeathEvent = MakePresentationEvent(
+		8, TEXT("Enemy.BlackBear"), true, TEXT("Player"), false, 90, 0, false, true);
+	const FGameXXKBattlePresentationEvent AfterStaleDeathEvent = MakePresentationEvent(
+		9, TEXT("Enemy.BlackBear"), true, TEXT("Enemy.Tiger"), true, 70, 61);
+	const FGameXXKBattleAnimationClipDescriptor StaleDeathClip =
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			StaleDeathEvent.TargetUnitId,
+			StaleDeathEvent.bTargetEnemy,
+			EGameXXKBattleAnimationAction::Death);
+	FApi::Queue(StaleDeathBoard, StaleDeathEvent);
+	FApi::Queue(StaleDeathBoard, AfterStaleDeathEvent);
+	StaleDeathBoard->AdvanceVisualsAtRealTime(90.0);
+	StaleDeathBoard->AdvanceVisualsAtRealTime(92.5);
+	TestTrue(TEXT("stale-Death fixture leaves its cold Death request pending"),
+		FApi::IsDeathActive(StaleDeathBoard)
+		&& StaleDeathLoader->Requested(StaleDeathClip.TexturePath));
+	StaleDeathBoard->AdvanceVisualsAtRealTime(97.5);
+	UGameXXKBattleUnitVisualWidget* const AfterStaleDeathTarget =
+		StaleDeathBoard->GetUnitVisualForTest(AfterStaleDeathEvent.TargetUnitId);
+	UTexture2D* const AfterStaleDeathAtlas =
+		AfterStaleDeathTarget ? AfterStaleDeathTarget->GetAtlasForTest() : nullptr;
+	TestEqual(TEXT("stale-Death fixture advances to the later queue entry"),
+		FApi::ActiveEventId(StaleDeathBoard),
+		AfterStaleDeathEvent.EventId);
+	TestTrue(TEXT("the completed Death request can still report late through the cache"),
+		StaleDeathLoader->CompleteDeath(StaleDeathClip.TexturePath));
+	TestEqual(TEXT("a stale Death callback cannot pollute the later event atlas"),
+		AfterStaleDeathTarget ? AfterStaleDeathTarget->GetAtlasForTest() : nullptr,
+		AfterStaleDeathAtlas);
+	TestEqual(TEXT("a stale Death callback cannot switch the later event identity"),
+		FApi::ActiveEventId(StaleDeathBoard),
+		AfterStaleDeathEvent.EventId);
+
 	UGameInstance* const LateIdleGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const LateIdleSubsystem = NewObject<UGameXXKMVPSubsystem>(LateIdleGameInstance);
 	BuildPresentationFixture(LateIdleSubsystem);
@@ -684,6 +871,92 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		SwitchedImpactLoader->GetTexture(GenericImpactClip.TexturePath));
 	TestEqual(TEXT("the current event owns exactly one later Impact marker"),
 		FApi::ImpactCount(SwitchedImpactBoard), 2);
+
+	UGameInstance* const ImpactLifetimeGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const ImpactLifetimeSubsystem = NewObject<UGameXXKMVPSubsystem>(ImpactLifetimeGameInstance);
+	BuildPresentationFixture(ImpactLifetimeSubsystem);
+	UGameXXKBattleBoardWidget* const ImpactLifetimeBoard = NewObject<UGameXXKBattleBoardWidget>();
+	ImpactLifetimeBoard->SetMVPSubsystem(ImpactLifetimeSubsystem);
+	const TSharedRef<FPresentationAtlasLoader> ImpactLifetimeLoader = MakeShared<FPresentationAtlasLoader>();
+	TUniquePtr<FGameXXKBattleAtlasCache> ImpactLifetimeCache = MakeUnique<FGameXXKBattleAtlasCache>(
+		ImpactLifetimeLoader,
+		[]() { return 100.0; },
+		24);
+	FGameXXKBattleAtlasCache* const ImpactLifetimeCachePtr = ImpactLifetimeCache.Get();
+	ImpactLifetimeBoard->SetAtlasCacheForTest(MoveTemp(ImpactLifetimeCache));
+	TestTrue(TEXT("Impact lifetime fixture initializes its real Board"), ImpactLifetimeBoard->Initialize());
+	ImpactLifetimeBoard->NativeConstruct();
+	TestTrue(TEXT("Impact lifetime fixture begins a visual session"),
+		ImpactLifetimeBoard->BeginBattleVisualSession(1009));
+	UGameXXKBattleUnitVisualWidget* const ImpactLifetimeVisual = ImpactLifetimeBoard->WidgetTree
+		? Cast<UGameXXKBattleUnitVisualWidget>(
+			ImpactLifetimeBoard->WidgetTree->FindWidget(TEXT("BattleCinematicImpact")))
+		: nullptr;
+	TestNotNull(TEXT("Impact lifetime fixture owns the persistent generic Impact widget"),
+		ImpactLifetimeVisual);
+	TestEqual(TEXT("three pinned Idle atlases establish the cache accounting baseline"),
+		ImpactLifetimeCachePtr->GetStats().ResidentBytes,
+		12ll);
+
+	const FGameXXKBattlePresentationEvent FirstImpactLifetimeEvent = MakePresentationEvent(
+		10, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 70, 52);
+	const FGameXXKBattleAnimationClipDescriptor ImpactLifetimeClip =
+		FGameXXKBattleAnimationPresentation::ResolveGenericClip(EGameXXKBattleAnimationAction::Impact);
+	FApi::Queue(ImpactLifetimeBoard, FirstImpactLifetimeEvent);
+	ImpactLifetimeBoard->AdvanceVisualsAtRealTime(100.0);
+	ImpactLifetimeBoard->AdvanceVisualsAtRealTime(101.101);
+	UTexture2D* const FirstImpactLifetimeAtlas =
+		ImpactLifetimeVisual ? ImpactLifetimeVisual->GetAtlasForTest() : nullptr;
+	TestNotNull(TEXT("the first Impact marker binds its cache-resident atlas"), FirstImpactLifetimeAtlas);
+	TestEqual(TEXT("Idle and presentation residents exactly fill the bounded cache"),
+		ImpactLifetimeCachePtr->GetStats().ResidentBytes,
+		24ll);
+	ImpactLifetimeBoard->AdvanceVisualsAtRealTime(102.5);
+	TestEqual(TEXT("presentation completion hides the persistent Impact widget"),
+		ImpactLifetimeVisual ? ImpactLifetimeVisual->GetVisibility() : ESlateVisibility::Visible,
+		ESlateVisibility::Hidden);
+	TestNull(TEXT("presentation completion releases the hidden Impact widget atlas"),
+		ImpactLifetimeVisual ? ImpactLifetimeVisual->GetAtlasForTest() : nullptr);
+
+	const TArray<FSoftObjectPath> PostImpactPaths = {
+		FSoftObjectPath(TEXT("/Game/Test/T_PostImpactA.T_PostImpactA")),
+		FSoftObjectPath(TEXT("/Game/Test/T_PostImpactB.T_PostImpactB")),
+		FSoftObjectPath(TEXT("/Game/Test/T_PostImpactC.T_PostImpactC"))};
+	for (const FSoftObjectPath& PostImpactPath : PostImpactPaths)
+	{
+		EGameXXKAtlasLoadResult LoadResult = EGameXXKAtlasLoadResult::Missing;
+		ImpactLifetimeCachePtr->Acquire(
+			PostImpactPath,
+			1009,
+			[&LoadResult](UTexture2D*, const EGameXXKAtlasLoadResult Result)
+			{
+				LoadResult = Result;
+			});
+		TestEqual(TEXT("completion unpins each presentation resident for bounded-cache eviction"),
+			LoadResult,
+			EGameXXKAtlasLoadResult::Loaded);
+	}
+	TestEqual(TEXT("post-completion evictions keep cache accounting at the exact budget"),
+		ImpactLifetimeCachePtr->GetStats().ResidentBytes,
+		24ll);
+
+	const FGameXXKBattlePresentationEvent SecondImpactLifetimeEvent = MakePresentationEvent(
+		11, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 52, 41);
+	FApi::Queue(ImpactLifetimeBoard, SecondImpactLifetimeEvent);
+	ImpactLifetimeBoard->AdvanceVisualsAtRealTime(110.0);
+	ImpactLifetimeBoard->AdvanceVisualsAtRealTime(111.101);
+	TestEqual(TEXT("the later event reloads the evicted generic Impact path"),
+		ImpactLifetimeLoader->RequestCount(ImpactLifetimeClip.TexturePath),
+		2);
+	TestNotEqual(TEXT("the later event binds a fresh Impact texture"),
+		ImpactLifetimeVisual ? ImpactLifetimeVisual->GetAtlasForTest() : nullptr,
+		FirstImpactLifetimeAtlas);
+	TestEqual(TEXT("the later event binds the freshly cache-admitted Impact texture"),
+		ImpactLifetimeVisual ? ImpactLifetimeVisual->GetAtlasForTest() : nullptr,
+		ImpactLifetimeLoader->GetTexture(ImpactLifetimeClip.TexturePath));
+	ImpactLifetimeBoard->AdvanceVisualsAtRealTime(112.5);
+	TestNull(TEXT("the later event also releases its Impact atlas on completion"),
+		ImpactLifetimeVisual ? ImpactLifetimeVisual->GetAtlasForTest() : nullptr);
 
 	UGameInstance* const IdleFailureGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const IdleFailureSubsystem = NewObject<UGameXXKMVPSubsystem>(IdleFailureGameInstance);

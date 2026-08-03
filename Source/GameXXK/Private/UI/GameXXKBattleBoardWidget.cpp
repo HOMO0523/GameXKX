@@ -683,10 +683,14 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
 	}
 	const uint64 RequestToken = ActiveBattleVisualSessionToken;
 	const TWeakObjectPtr<UGameXXKBattleBoardWidget> WeakBoard(this);
+	const TWeakObjectPtr<UGameXXKBattleUnitVisualWidget> RequestTargetVisual =
+		Role == EBattlePresentationAtlasRole::Target
+			? UnitVisuals.FindRef(Entry->Event.TargetUnitId)
+			: nullptr;
 	AtlasCache->Acquire(
 		TexturePath,
 		RequestToken,
-		[WeakBoard, RequestToken, QueueSerial, Role](
+		[WeakBoard, RequestToken, QueueSerial, Role, RequestTargetVisual](
 			UTexture2D* const Texture,
 			const EGameXXKAtlasLoadResult Result)
 		{
@@ -696,14 +700,47 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
 				return;
 			}
 			FBattlePresentationQueueEntry* const RequestEntry = Board->FindPresentationEntry(QueueSerial);
-			if (!RequestEntry || Result != EGameXXKAtlasLoadResult::Loaded || !Texture)
+			if (!RequestEntry
+				|| RequestEntry->bCompletionFired
+				|| Result != EGameXXKAtlasLoadResult::Loaded
+				|| !Texture)
 			{
 				return;
 			}
 			switch (Role)
 			{
 			case EBattlePresentationAtlasRole::Attacker: RequestEntry->AttackerAtlas = Texture; break;
-			case EBattlePresentationAtlasRole::Target: RequestEntry->TargetAtlas = Texture; break;
+			case EBattlePresentationAtlasRole::Target:
+				if (Board->GetActivePresentationEntry() == RequestEntry
+					&& RequestEntry->Kind == EBattlePresentationKind::Death)
+				{
+					UGameXXKBattleUnitVisualWidget* const TargetVisual =
+						Board->UnitVisuals.FindRef(RequestEntry->Event.TargetUnitId);
+					if (RequestEntry->bStarted
+						&& !RequestEntry->bCompletionFired
+						&& RequestEntry->TargetClip.IsValid()
+						&& TargetVisual
+						&& TargetVisual == RequestTargetVisual.Get())
+					{
+						RequestEntry->TargetAtlas = Texture;
+						RequestEntry->PresentedTargetClip = RequestEntry->TargetClip;
+						TargetVisual->SetAtlas(Texture);
+						TargetVisual->ShowCinematic(
+							RequestEntry->TargetClip,
+							RequestEntry->Event.bTargetEnemy ? CinematicEnemyAnchor : CinematicPartyAnchor);
+						if (UCanvasPanelSlot* const ParticipantSlot = Cast<UCanvasPanelSlot>(TargetVisual->Slot))
+						{
+							ParticipantSlot->SetZOrder(BattleCinematicParticipantZOrder);
+						}
+						TargetVisual->AdvanceAtRealTime(RequestEntry->StartSeconds);
+						TargetVisual->AdvanceAtRealTime(Board->LastSlateSeconds);
+					}
+				}
+				else
+				{
+					RequestEntry->TargetAtlas = Texture;
+				}
+				break;
 			case EBattlePresentationAtlasRole::Impact:
 				RequestEntry->ImpactAtlas = Texture;
 				if (Board->GetActivePresentationEntry() == RequestEntry
@@ -944,6 +981,7 @@ void UGameXXKBattleBoardWidget::CompletePresentationEntry(FBattlePresentationQue
 	if (BattleCinematicImpact)
 	{
 		BattleCinematicImpact->HideForCinematic();
+		BattleCinematicImpact->SetAtlas(nullptr);
 	}
 	if (BattleCinematicReadout)
 	{
