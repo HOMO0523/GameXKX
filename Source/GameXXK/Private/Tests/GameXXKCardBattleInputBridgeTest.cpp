@@ -5,14 +5,15 @@
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerState.h"
+#include "GameFramework/WorldSettings.h"
 #include "InputKeyEventArgs.h"
+#include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
-#include "MVP/GameXXKBattleSceneUnitActor.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
-#include "PaperFlipbookComponent.h"
 #include "UI/GameXXKBattleBoardWidget.h"
-#include "UI/GameXXKBattleUnitHudWidget.h"
+#include "UI/GameXXKOneGameRouteMapWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -92,59 +93,6 @@ namespace
 		return false;
 	}
 
-	AGameXXKBattleSceneUnitActor* MakeSceneActorForStableUnitId(
-		UGameXXKMVPSubsystem* Subsystem,
-		const FName UnitId,
-		const EGameXXKCardTargetSide Side,
-		const int32 DeliberatelyWrongIndex)
-	{
-		if (!Subsystem)
-		{
-			return nullptr;
-		}
-
-		const TArray<FGameXXKBattleRuntimeUnit>& Units = Side == EGameXXKCardTargetSide::Enemy
-			? Subsystem->GetRuntimeState().ActiveBattleEnemies
-			: Subsystem->GetRuntimeState().ActiveBattleParty;
-		const FGameXXKBattleRuntimeUnit* Unit = Units.FindByPredicate([UnitId](const FGameXXKBattleRuntimeUnit& Candidate)
-		{
-			return Candidate.Id == UnitId;
-		});
-		if (!Unit)
-		{
-			return nullptr;
-		}
-
-		AGameXXKBattleSceneUnitActor* Actor = NewObject<AGameXXKBattleSceneUnitActor>();
-		Actor->ConfigureFromRuntimeUnit(Side == EGameXXKCardTargetSide::Enemy, DeliberatelyWrongIndex, *Unit);
-		return Actor;
-	}
-
-	AGameXXKBattleSceneUnitActor* SpawnSceneActorForBridge(
-		UWorld* World,
-		const FGameXXKBattleRuntimeUnit& Unit,
-		const bool bEnemy,
-		const int32 UnitIndex)
-	{
-		if (!World)
-		{
-			return nullptr;
-		}
-
-		FActorSpawnParameters SpawnParameters;
-		SpawnParameters.ObjectFlags |= RF_Transient;
-		SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		AGameXXKBattleSceneUnitActor* Actor = World->SpawnActor<AGameXXKBattleSceneUnitActor>(
-			AGameXXKBattleSceneUnitActor::StaticClass(),
-			FVector::ZeroVector,
-			FRotator::ZeroRotator,
-			SpawnParameters);
-		if (Actor)
-		{
-			Actor->ConfigureFromRuntimeUnit(bEnemy, UnitIndex, Unit);
-		}
-		return Actor;
-	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -197,25 +145,12 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("a refreshed owner projection moves the active card arrow source"), Board->GetTargetingSourcePositionForTest(), MovedOwnerProjection);
 
 	const FName EnemyUnitId = Subsystem->GetRuntimeState().ActiveBattleEnemies[0].Id;
-	AGameXXKBattleSceneUnitActor* IllegalEnemyActor = MakeSceneActorForStableUnitId(
-		Subsystem,
-		EnemyUnitId,
-		EGameXXKCardTargetSide::Enemy,
-		73);
-	TestNotNull(TEXT("bridge test creates an illegal enemy scene actor"), IllegalEnemyActor);
-	TestFalse(TEXT("illegal scene actor target does not spend the selected friendly card"), Controller->ConfirmBattleTargetForUnitForTest(IllegalEnemyActor));
-	TestTrue(TEXT("illegal scene actor target keeps the card targeting state"), Board->IsCardTargetingActive());
-	TestFalse(TEXT("blank scene click does not cancel card targeting"), Controller->ConfirmBattleTargetForUnitForTest(nullptr));
+	TestFalse(TEXT("illegal enemy UnitId does not spend the selected friendly card"), Controller->ConfirmBattleTargetForUnitId(EnemyUnitId));
+	TestTrue(TEXT("illegal stable-ID target keeps the card targeting state"), Board->IsCardTargetingActive());
+	TestFalse(TEXT("empty stable UnitId does not cancel card targeting"), Controller->ConfirmBattleTargetForUnitId(NAME_None));
 	TestTrue(TEXT("blank scene click keeps the card targeting state"), Board->IsCardTargetingActive());
 
-	AGameXXKBattleSceneUnitActor* PartyTargetActor = MakeSceneActorForStableUnitId(
-		Subsystem,
-		PartyTargetUnitId,
-		EGameXXKCardTargetSide::Party,
-		77);
-	TestNotNull(TEXT("bridge test creates a friendly stable-ID scene actor"), PartyTargetActor);
-	TestEqual(TEXT("friendly actor carries the card runtime stable unit id"), PartyTargetActor ? PartyTargetActor->GetUnitId() : NAME_None, PartyTargetUnitId);
-	TestTrue(TEXT("controller commits a friendly card target by UnitId, not its scene index"), Controller->ConfirmBattleTargetForUnitForTest(PartyTargetActor));
+	TestTrue(TEXT("controller commits a friendly card target directly by stable UnitId"), Controller->ConfirmBattleTargetForUnitId(PartyTargetUnitId));
 	TestFalse(TEXT("a committed friendly target exits card targeting"), Board->IsCardTargetingActive());
 
 	FName EnemyCardInstanceId;
@@ -231,175 +166,209 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	Controller->RefreshPlayerFlowWidgetsForTest();
 	Board = Controller->GetBattleBoardWidgetForTest();
 	TestTrue(TEXT("enemy-target card enters card targeting"), Board && Board->ClickCardInHand(EnemyCardInstanceId));
-	AGameXXKBattleSceneUnitActor* EnemyTargetActor = MakeSceneActorForStableUnitId(
-		Subsystem,
-		EnemyTargetUnitId,
-		EGameXXKCardTargetSide::Enemy,
-		91);
-	TestNotNull(TEXT("bridge test creates an enemy stable-ID scene actor"), EnemyTargetActor);
-	TestEqual(TEXT("enemy actor carries the card runtime stable unit id"), EnemyTargetActor ? EnemyTargetActor->GetUnitId() : NAME_None, EnemyTargetUnitId);
-	TestTrue(TEXT("controller commits an enemy card target by UnitId, not its scene index"), Controller->ConfirmBattleTargetForUnitForTest(EnemyTargetActor));
+	TestTrue(TEXT("controller commits an enemy card target directly by stable UnitId"), Controller->ConfirmBattleTargetForUnitId(EnemyTargetUnitId));
 	TestFalse(TEXT("a committed enemy target exits card targeting"), Board && Board->IsCardTargetingActive());
 
-	UWorld* const SceneWorld = GWorld;
-	TestNotNull(TEXT("automation supplies a world for the scene-to-board bridge"), SceneWorld);
+	const FName SceneWorldName = MakeUniqueObjectName(
+		nullptr,
+		UWorld::StaticClass(),
+		TEXT("GameXXKCardBattleInputBridgeWorld"),
+		EUniqueObjectNameOptions::GloballyUnique);
+	FWorldContext& SceneWorldContext = GEngine->CreateNewWorldContext(EWorldType::Game);
+	UWorld* const SceneWorld = UWorld::CreateWorld(EWorldType::Game, false, SceneWorldName, GetTransientPackage());
+	TestNotNull(TEXT("input bridge creates an isolated game world"), SceneWorld);
 	if (!SceneWorld)
 	{
 		return false;
 	}
+	SceneWorld->AddToRoot();
+	SceneWorldContext.SetCurrentWorld(SceneWorld);
+	SceneWorld->InitializeActorsForPlay(FURL());
 
 	UGameInstance* const SceneGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const SceneSubsystem = NewObject<UGameXXKMVPSubsystem>(SceneGameInstance);
 	FName SceneCardInstanceId;
 	FName ScenePartyTargetUnitId;
 	FixtureError.Reset();
-	TestTrue(FString::Printf(TEXT("scene bridge fixture finds a friendly-target card: %s"), *FixtureError),
+	TestTrue(FString::Printf(TEXT("HUD bridge fixture finds a friendly-target card: %s"), *FixtureError),
 		BuildManualTargetFixture(SceneSubsystem, EGameXXKCardTargetSide::Party, SceneCardInstanceId, ScenePartyTargetUnitId, FixtureError));
 	if (SceneCardInstanceId.IsNone() || ScenePartyTargetUnitId.IsNone())
 	{
+		SceneWorld->DestroyWorld(false);
+		GEngine->DestroyWorldContext(SceneWorld);
+		SceneWorld->RemoveFromRoot();
 		return false;
 	}
+	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
 
-	FActorSpawnParameters ControllerSpawnParameters;
-	ControllerSpawnParameters.ObjectFlags |= RF_Transient;
-	ControllerSpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	FActorSpawnParameters TransientSpawnParameters;
+	TransientSpawnParameters.ObjectFlags |= RF_Transient;
+	TransientSpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	AGameXXKMVPPlayerController* const SceneController = SceneWorld->SpawnActor<AGameXXKMVPPlayerController>(
-		AGameXXKMVPPlayerController::StaticClass(),
-		FVector::ZeroVector,
-		FRotator::ZeroRotator,
-		ControllerSpawnParameters);
-	TestNotNull(TEXT("scene bridge test spawns a controller with a live world"), SceneController);
-	if (!SceneController)
+		AGameXXKMVPPlayerController::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, TransientSpawnParameters);
+	ACameraActor* const ExistingViewCamera = SceneWorld->SpawnActor<ACameraActor>(
+		ACameraActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, TransientSpawnParameters);
+	TestNotNull(TEXT("HUD bridge spawns a controller in the isolated game world"), SceneController);
+	TestNotNull(TEXT("HUD bridge spawns one pre-existing view camera"), ExistingViewCamera);
+	if (!SceneController || !ExistingViewCamera)
 	{
+		SceneWorld->DestroyWorld(false);
+		GEngine->DestroyWorldContext(SceneWorld);
+		SceneWorld->RemoveFromRoot();
 		return false;
 	}
 
-	TArray<AGameXXKBattleSceneUnitActor*> SpawnedSceneActors;
-	TMap<FName, AGameXXKBattleSceneUnitActor*> SceneActorsByUnitId;
-	for (int32 PartyIndex = 0; PartyIndex < SceneSubsystem->GetRuntimeState().ActiveBattleParty.Num(); ++PartyIndex)
+	ExistingViewCamera->SetActorLocation(FVector(1234.0f, -567.0f, 890.0f));
+	ExistingViewCamera->SetActorRotation(FRotator(-41.0f, 117.0f, 3.0f));
+	UCameraComponent* const ExistingViewCameraComponent = ExistingViewCamera->GetCameraComponent();
+	TestNotNull(TEXT("the pre-existing view camera has a camera component"), ExistingViewCameraComponent);
+	if (!ExistingViewCameraComponent)
 	{
-		AGameXXKBattleSceneUnitActor* Actor = SpawnSceneActorForBridge(
-			SceneWorld,
-			SceneSubsystem->GetRuntimeState().ActiveBattleParty[PartyIndex],
-			false,
-			PartyIndex + 77);
-		TestNotNull(TEXT("scene bridge spawns a party unit actor"), Actor);
-		if (Actor)
-		{
-			SpawnedSceneActors.Add(Actor);
-			SceneActorsByUnitId.Add(Actor->GetUnitId(), Actor);
-		}
+		SceneWorld->DestroyWorld(false);
+		GEngine->DestroyWorldContext(SceneWorld);
+		SceneWorld->RemoveFromRoot();
+		return false;
 	}
-	for (int32 EnemyIndex = 0; EnemyIndex < SceneSubsystem->GetRuntimeState().ActiveBattleEnemies.Num(); ++EnemyIndex)
-	{
-		AGameXXKBattleSceneUnitActor* Actor = SpawnSceneActorForBridge(
-			SceneWorld,
-			SceneSubsystem->GetRuntimeState().ActiveBattleEnemies[EnemyIndex],
-			true,
-			EnemyIndex);
-		TestNotNull(TEXT("scene bridge spawns an enemy unit actor"), Actor);
-		if (Actor)
-		{
-			SpawnedSceneActors.Add(Actor);
-			SceneActorsByUnitId.Add(Actor->GetUnitId(), Actor);
-		}
-	}
-
+	ExistingViewCameraComponent->FieldOfView = 47.5f;
+	ExistingViewCameraComponent->AspectRatio = 1.31f;
+	ExistingViewCameraComponent->bConstrainAspectRatio = false;
+	SceneController->SetViewTarget(ExistingViewCamera);
 	SceneController->SetMVPSubsystemForTest(SceneSubsystem);
-	TestTrue(TEXT("scene bridge controller creates a board"), SceneController->EnsurePlayerFlowWidgetsForTest());
-	FActorSpawnParameters CameraSpawnParameters;
-	CameraSpawnParameters.ObjectFlags |= RF_Transient;
-	CameraSpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	ACameraActor* const SceneBattleCamera = SceneWorld->SpawnActor<ACameraActor>(
-		ACameraActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, CameraSpawnParameters);
-	TestNotNull(TEXT("the bridge test creates a transient battle camera"), SceneBattleCamera);
-	if (UCameraComponent* const MutableSceneBattleCameraComponent = SceneBattleCamera ? SceneBattleCamera->GetCameraComponent() : nullptr)
-	{
-		SceneBattleCamera->SetActorLocation(FVector(1234.0f, -567.0f, 890.0f));
-		SceneBattleCamera->SetActorRotation(FRotator(-41.0f, 117.0f, 3.0f));
-		MutableSceneBattleCameraComponent->FieldOfView = 47.5f;
-		MutableSceneBattleCameraComponent->AspectRatio = 1.0f;
-		MutableSceneBattleCameraComponent->bConstrainAspectRatio = false;
-	}
-	const FVector OriginalCameraLocation = SceneBattleCamera ? SceneBattleCamera->GetActorLocation() : FVector::ZeroVector;
-	const FRotator OriginalCameraRotation = SceneBattleCamera ? SceneBattleCamera->GetActorRotation() : FRotator::ZeroRotator;
-	const float OriginalCameraFov = SceneBattleCamera && SceneBattleCamera->GetCameraComponent()
-		? SceneBattleCamera->GetCameraComponent()->FieldOfView
-		: 0.0f;
-	SceneController->ConfigureBattleSceneCameraForTest(SceneBattleCamera);
-	const UCameraComponent* const SceneBattleCameraComponent = SceneBattleCamera ? SceneBattleCamera->GetCameraComponent() : nullptr;
-	TestNotNull(TEXT("the battle scene camera exposes a camera component"), SceneBattleCameraComponent);
-	TestEqual(TEXT("configuring the HUD aspect never moves an existing battle camera"),
-		SceneBattleCamera ? SceneBattleCamera->GetActorLocation() : FVector::ZeroVector,
-		OriginalCameraLocation);
-	TestTrue(TEXT("configuring the HUD aspect never rotates an existing battle camera"),
-		SceneBattleCamera && SceneBattleCamera->GetActorRotation().Equals(OriginalCameraRotation, 0.001f));
-	TestTrue(TEXT("configuring the HUD aspect preserves an existing battle camera FOV"),
-		SceneBattleCameraComponent && FMath::IsNearlyEqual(SceneBattleCameraComponent->FieldOfView, OriginalCameraFov, 0.001f));
-	TestTrue(TEXT("the battle camera constrains its world composition to the fixed 16:9 HUD stage"),
-		SceneBattleCameraComponent && SceneBattleCameraComponent->bConstrainAspectRatio);
-	TestTrue(TEXT("the battle camera uses the same 16:9 aspect ratio as the fixed HUD stage"),
-		SceneBattleCameraComponent && FMath::IsNearlyEqual(SceneBattleCameraComponent->AspectRatio, 16.0f / 9.0f, 0.001f));
+	TestTrue(TEXT("HUD bridge controller creates its player-flow widgets"), SceneController->EnsurePlayerFlowWidgetsForTest());
 	UGameXXKBattleBoardWidget* const SceneBoard = SceneController->GetBattleBoardWidgetForTest();
-	TestNotNull(TEXT("scene bridge controller exposes the board"), SceneBoard);
-	const FName SceneEnemyUnitId = SceneSubsystem->GetRuntimeState().ActiveBattleEnemies[0].Id;
-	AGameXXKBattleSceneUnitActor* const ScenePartyTargetActor = SceneActorsByUnitId.FindRef(ScenePartyTargetUnitId);
-	AGameXXKBattleSceneUnitActor* const SceneEnemyActor = SceneActorsByUnitId.FindRef(SceneEnemyUnitId);
-	TestNotNull(TEXT("scene bridge finds the selected friendly target actor"), ScenePartyTargetActor);
-	TestNotNull(TEXT("scene bridge finds the illegal enemy actor"), SceneEnemyActor);
-	if (SceneBoard && ScenePartyTargetActor && SceneEnemyActor)
+	UGameXXKOneGameRouteMapWidget* const RouteWidgetBeforeBattle = SceneController->GetRouteMapWidgetForTest();
+	TestNotNull(TEXT("HUD bridge controller exposes the battle board"), SceneBoard);
+	TestNotNull(TEXT("HUD bridge controller exposes the route widget"), RouteWidgetBeforeBattle);
+	if (!SceneBoard || !RouteWidgetBeforeBattle)
 	{
-		SceneController->InitInputSystem();
-		SceneController->SetBattleWorldProjectionOverrideForTest(true);
-		SceneController->PlayerTick(0.0f);
-		const FVector CenterWorldPosition = ScenePartyTargetActor->GetBattleVisualComponent()->Bounds.Origin;
-		const FVector2D ExpectedCenterProjection(CenterWorldPosition.X + CenterWorldPosition.Z, CenterWorldPosition.Y);
-		TestTrue(TEXT("PlayerTick registers the actor visual-center arrow projection"), SceneBoard->HasBattleUnitScreenPositionForTest(ScenePartyTargetUnitId));
-		TestEqual(TEXT("PlayerTick arrow center follows the visual bounds origin"), SceneBoard->GetBattleUnitScreenPositionForTest(ScenePartyTargetUnitId), ExpectedCenterProjection);
-		TestFalse(TEXT("PlayerTick no longer registers actor-foot projections for fixed resource HUDs"), SceneBoard->HasProjectedUnitHudScreenPositionForTest(ScenePartyTargetUnitId));
-		UGameXXKBattleUnitHudWidget* const ScenePartyHud = SceneBoard->GetProjectedUnitHudForTest(ScenePartyTargetUnitId);
-		TestNotNull(TEXT("the fixed resource HUD exists without an actor-foot projection"), ScenePartyHud);
-		TestEqual(TEXT("the fixed resource HUD stays visible without an actor-foot projection"),
-			ScenePartyHud ? ScenePartyHud->GetVisibility() : ESlateVisibility::Collapsed,
-			ESlateVisibility::SelfHitTestInvisible);
-		SceneController->PlayerTick(0.0f);
-		TestTrue(TEXT("a following PlayerTick re-registers the center projection after Board clear"), SceneBoard->HasBattleUnitScreenPositionForTest(ScenePartyTargetUnitId));
-		TestFalse(TEXT("a following PlayerTick still leaves fixed HUD placement independent of actor feet"), SceneBoard->HasProjectedUnitHudScreenPositionForTest(ScenePartyTargetUnitId));
-
-		TestTrue(TEXT("scene bridge card enters manual targeting"), SceneBoard->ClickCardInHand(SceneCardInstanceId));
-		SceneController->SetBattleSceneCursorHitOverrideForTest(nullptr);
-		TestTrue(TEXT("simulated empty physical left-click is consumed by the controller"),
-			SceneController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::LeftMouseButton, IE_Released, 1.0f)));
-		TestTrue(TEXT("simulated empty physical left-click keeps card targeting active"), SceneBoard->IsCardTargetingActive());
-		SceneController->ClearBattleSceneCursorHitOverrideForTest();
-		const FVector2D PointerPosition(812.0f, 468.0f);
-		TestTrue(TEXT("controller forwards arrow pointer movement while card targeting is active"), SceneController->UpdateBattleTargetingPointerForTest(PointerPosition));
-		TestEqual(TEXT("card arrow pointer follows the controller cursor update"), SceneBoard->GetTargetingPointerPositionForTest(), PointerPosition);
-		SceneController->RefreshPlayerFlowWidgetsForTest();
-		TestTrue(TEXT("board exposes the selected friendly unit as a legal card target"), SceneBoard->IsTargetUnitHighlighted(ScenePartyTargetUnitId));
-		TestFalse(TEXT("board rejects the enemy for the friendly-target card"), SceneBoard->IsTargetUnitHighlighted(SceneEnemyUnitId));
-		TestTrue(TEXT("controller bridge applies legal-target outline to the scene actor"), ScenePartyTargetActor->IsCardTargetHighlighted());
-		TestFalse(TEXT("controller bridge clears the illegal-target outline from the scene actor"), SceneEnemyActor->IsCardTargetHighlighted());
-		TestEqual(TEXT("physical-click target keeps the stable UnitId despite a wrong scene index"), ScenePartyTargetActor->GetUnitId(), ScenePartyTargetUnitId);
-		SceneController->SetBattleSceneCursorHitOverrideForTest(ScenePartyTargetActor);
-		TestTrue(TEXT("simulated physical unit-click is consumed by the controller"),
-			SceneController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::LeftMouseButton, IE_Released, 1.0f)));
-		TestFalse(TEXT("simulated physical unit-click submits the friendly scene actor by stable UnitId"), SceneBoard->IsCardTargetingActive());
-		SceneController->ClearBattleSceneCursorHitOverrideForTest();
+		SceneWorld->DestroyWorld(false);
+		GEngine->DestroyWorldContext(SceneWorld);
+		SceneWorld->RemoveFromRoot();
+		return false;
 	}
 
-	for (AGameXXKBattleSceneUnitActor* Actor : SpawnedSceneActors)
+	// An off-screen town modal owns its own move-ignore increment. Battle entry
+	// must close that modal before taking the overlay snapshot, then acquire a
+	// fresh overlay increment which is released exactly once on ordinary exit.
+	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
+	SceneController->RefreshPlayerFlowWidgetsForTest();
+	TestTrue(TEXT("town companion modal opens before the synthetic battle transition"), SceneController->OpenCompanionRoster());
+	TestTrue(TEXT("town companion modal owns a move-ignore increment"), SceneController->IsMoveInputIgnored());
+	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
+	SceneController->RefreshPlayerFlowWidgetsForTest();
+	TestFalse(TEXT("battle entry closes the stale town companion modal"), SceneController->IsCompanionRosterOpenForTest());
+	TestTrue(TEXT("battle overlay remains move-ignored after stale modal cleanup"), SceneController->IsMoveInputIgnored());
+	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
+	SceneController->RefreshPlayerFlowWidgetsForTest();
+	TestFalse(TEXT("modal-to-battle fixture exits the overlay"), SceneController->IsBattleOverlayActive());
+	TestFalse(TEXT("modal-to-battle exit leaks no move-ignore increment"), SceneController->IsMoveInputIgnored());
+
+	AWorldSettings* const SceneWorldSettings = SceneWorld->GetWorldSettings();
+	APlayerState* const OriginalPauser = SceneWorldSettings ? SceneWorldSettings->GetPauserPlayerState() : nullptr;
+	APlayerState* const TestPauser = SceneWorld->SpawnActor<APlayerState>(
+		APlayerState::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, TransientSpawnParameters);
+	if (SceneWorldSettings)
 	{
-		if (Actor)
-		{
-			Actor->Destroy();
-		}
+		SceneWorldSettings->SetPauserPlayerState(TestPauser);
 	}
-	if (SceneBattleCamera)
+	UGameplayStatics::SetEnableWorldRendering(SceneWorld, false);
+	TestTrue(TEXT("non-default fixture begins paused"), UGameplayStatics::IsGamePaused(SceneWorld));
+	TestFalse(TEXT("non-default fixture begins with world rendering disabled"), UGameplayStatics::GetEnableWorldRendering(SceneWorld));
+	RouteWidgetBeforeBattle->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	RouteWidgetBeforeBattle->RestoreScrollOffset(123.0f);
+	const float RouteScrollBeforeBattle = RouteWidgetBeforeBattle->GetCurrentScrollOffset();
+	SceneController->bShowMouseCursor = false;
+	SceneController->bEnableClickEvents = false;
+	SceneController->bEnableMouseOverEvents = true;
+	SceneController->ResetIgnoreMoveInput();
+	SceneController->ResetIgnoreLookInput();
+	SceneController->SetIgnoreMoveInput(true);
+	SceneController->SetIgnoreLookInput(true);
+	SceneController->SetTrackedInputModeForTest(EGameXXKTrackedInputMode::GameOnly);
+
+	const FString WorldPackageBeforeBattle = SceneWorld->GetOutermost()->GetName();
+	AActor* const ViewTargetBeforeBattle = SceneController->GetViewTarget();
+	const FVector CameraLocationBeforeBattle = ExistingViewCamera->GetActorLocation();
+	const FRotator CameraRotationBeforeBattle = ExistingViewCamera->GetActorRotation();
+	const float CameraFovBeforeBattle = ExistingViewCameraComponent->FieldOfView;
+	const float CameraAspectBeforeBattle = ExistingViewCameraComponent->AspectRatio;
+	const bool bCameraConstrainedBeforeBattle = ExistingViewCameraComponent->bConstrainAspectRatio;
+
+	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
+	SceneController->RefreshPlayerFlowWidgetsForTest();
+	TestTrue(TEXT("battle overlay is active in the isolated game world"), SceneController->IsBattleOverlayActive());
+	TestTrue(TEXT("battle overlay retains the same route widget"), SceneController->GetRouteMapWidgetForTest() == RouteWidgetBeforeBattle);
+	TestEqual(TEXT("battle overlay keeps the same world package"), SceneWorld->GetOutermost()->GetName(), WorldPackageBeforeBattle);
+	TestTrue(TEXT("battle overlay keeps the active view target"), SceneController->GetViewTarget() == ViewTargetBeforeBattle);
+	TestEqual(TEXT("battle overlay keeps camera location"), ExistingViewCamera->GetActorLocation(), CameraLocationBeforeBattle);
+	TestTrue(TEXT("battle overlay keeps camera rotation"), ExistingViewCamera->GetActorRotation().Equals(CameraRotationBeforeBattle, 0.001f));
+	TestTrue(TEXT("battle overlay keeps camera FOV"), FMath::IsNearlyEqual(ExistingViewCameraComponent->FieldOfView, CameraFovBeforeBattle, 0.001f));
+	TestTrue(TEXT("battle overlay keeps camera aspect"), FMath::IsNearlyEqual(ExistingViewCameraComponent->AspectRatio, CameraAspectBeforeBattle, 0.001f));
+	TestEqual(TEXT("battle overlay keeps camera aspect constraint"), ExistingViewCameraComponent->bConstrainAspectRatio, bCameraConstrainedBeforeBattle);
+	TestTrue(TEXT("entry preserves an already-paused world"), UGameplayStatics::IsGamePaused(SceneWorld));
+	TestFalse(TEXT("entry keeps world rendering disabled"), UGameplayStatics::GetEnableWorldRendering(SceneWorld));
+	TestEqual(TEXT("entry tracks UI-only input"), SceneController->GetTrackedInputModeForTest(), EGameXXKTrackedInputMode::UIOnly);
+	TestFalse(TEXT("HUD bridge does not require a scene-actor projection"), SceneBoard->HasBattleUnitScreenPositionForTest(ScenePartyTargetUnitId));
+	TestTrue(TEXT("HUD bridge card enters manual targeting without a scene actor"), SceneBoard->ClickCardInHand(SceneCardInstanceId));
+	TestFalse(TEXT("HUD fallback provides a nonzero targeting origin"), SceneBoard->GetTargetingSourcePositionForTest().IsNearlyZero());
+	const FVector2D PointerPosition(812.0f, 468.0f);
+	TestTrue(TEXT("controller still forwards target-arrow pointer movement"), SceneController->UpdateBattleTargetingPointerForTest(PointerPosition));
+	TestEqual(TEXT("target arrow follows the controller pointer"), SceneBoard->GetTargetingPointerPositionForTest(), PointerPosition);
+	TestTrue(TEXT("stable UnitId bridge commits the HUD-selected target"), SceneController->ConfirmBattleTargetForUnitId(ScenePartyTargetUnitId));
+
+	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
+	SceneController->RefreshPlayerFlowWidgetsForTest();
+	TestFalse(TEXT("ordinary battle exit deactivates the overlay"), SceneController->IsBattleOverlayActive());
+	TestEqual(TEXT("dungeon-map refresh becomes authoritative after overlay restoration"), RouteWidgetBeforeBattle->GetVisibility(), ESlateVisibility::Visible);
+	TestEqual(TEXT("ordinary exit restores route scroll exactly"), RouteWidgetBeforeBattle->GetCurrentScrollOffset(), RouteScrollBeforeBattle);
+	TestFalse(TEXT("ordinary exit restores hidden cursor"), SceneController->bShowMouseCursor);
+	TestFalse(TEXT("ordinary exit restores disabled click events"), SceneController->bEnableClickEvents);
+	TestTrue(TEXT("ordinary exit restores enabled mouse-over events"), SceneController->bEnableMouseOverEvents);
+	TestEqual(TEXT("ordinary exit restores GameOnly input"), SceneController->GetTrackedInputModeForTest(), EGameXXKTrackedInputMode::GameOnly);
+	TestTrue(TEXT("ordinary exit preserves pre-existing move ignore"), SceneController->IsMoveInputIgnored());
+	TestTrue(TEXT("ordinary exit preserves pre-existing look ignore"), SceneController->IsLookInputIgnored());
+	SceneController->SetIgnoreMoveInput(false);
+	SceneController->SetIgnoreLookInput(false);
+	TestFalse(TEXT("overlay did not stack move ignore"), SceneController->IsMoveInputIgnored());
+	TestFalse(TEXT("overlay did not stack look ignore"), SceneController->IsLookInputIgnored());
+
+	RouteWidgetBeforeBattle->SetVisibility(ESlateVisibility::Hidden);
+	RouteWidgetBeforeBattle->RestoreScrollOffset(77.0f);
+	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
+	SceneController->RefreshPlayerFlowWidgetsForTest();
+	TestTrue(TEXT("pre-travel fixture re-enters the overlay"), SceneController->IsBattleOverlayActive());
+	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
+	TestTrue(TEXT("pre-travel seam recognizes a real package change"),
+		SceneController->PrepareForRuntimeStateMapTravelForTest(TEXT("/Game/GameXXK/Maps/L_RouteMap")));
+	TestFalse(TEXT("pre-travel cleanup exits the overlay"), SceneController->IsBattleOverlayActive());
+	TestEqual(TEXT("pre-travel cleanup restores route visibility"), RouteWidgetBeforeBattle->GetVisibility(), ESlateVisibility::Hidden);
+	TestEqual(TEXT("pre-travel cleanup restores route scroll"), RouteWidgetBeforeBattle->GetCurrentScrollOffset(), 77.0f);
+
+	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
+	SceneController->RefreshPlayerFlowWidgetsForTest();
+	RouteWidgetBeforeBattle->SetVisibility(ESlateVisibility::HitTestInvisible);
+	RouteWidgetBeforeBattle->RestoreScrollOffset(91.0f);
+	SceneController->bShowMouseCursor = false;
+	SceneController->SetTrackedInputModeForTest(EGameXXKTrackedInputMode::GameOnly);
+	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
+	SceneController->RefreshPlayerFlowWidgetsForTest();
+	TestTrue(TEXT("EndPlay fixture re-enters the overlay"), SceneController->IsBattleOverlayActive());
+	SceneController->EndPlay(EEndPlayReason::Destroyed);
+	TestFalse(TEXT("EndPlay cleanup exits the overlay"), SceneController->IsBattleOverlayActive());
+	TestEqual(TEXT("EndPlay cleanup restores route visibility"), RouteWidgetBeforeBattle->GetVisibility(), ESlateVisibility::HitTestInvisible);
+	TestEqual(TEXT("EndPlay cleanup restores route scroll"), RouteWidgetBeforeBattle->GetCurrentScrollOffset(), 91.0f);
+	TestFalse(TEXT("EndPlay cleanup restores cursor state"), SceneController->bShowMouseCursor);
+	TestEqual(TEXT("EndPlay cleanup restores tracked input"), SceneController->GetTrackedInputModeForTest(), EGameXXKTrackedInputMode::GameOnly);
+	TestTrue(TEXT("EndPlay cleanup preserves the initial paused state"), UGameplayStatics::IsGamePaused(SceneWorld));
+	TestFalse(TEXT("EndPlay cleanup preserves disabled world rendering"), UGameplayStatics::GetEnableWorldRendering(SceneWorld));
+
+	if (SceneWorldSettings)
 	{
-		SceneBattleCamera->Destroy();
+		SceneWorldSettings->SetPauserPlayerState(OriginalPauser);
 	}
-	SceneController->Destroy();
+	SceneWorld->DestroyWorld(false);
+	GEngine->DestroyWorldContext(SceneWorld);
+	SceneWorld->RemoveFromRoot();
 	return true;
 }
 

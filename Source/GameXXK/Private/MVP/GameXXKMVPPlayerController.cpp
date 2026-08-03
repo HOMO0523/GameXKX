@@ -12,10 +12,10 @@
 #include "EngineUtils.h"
 #include "InputKeyEventArgs.h"
 #include "Interaction/GameXXKInteractionComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKMVPRules.h"
-#include "MVP/GameXXKHeroHitCameraShake.h"
 #include "MVP/GameXXKBattleScenePresenter.h"
 #include "MVP/GameXXKBattleSceneUnitActor.h"
 #include "MVP/GameXXKLevelFlow.h"
@@ -28,6 +28,7 @@
 #include "Town/GameXXKTownPlayerPawn.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
+#include "UI/GameXXKBattleOverlayCoordinator.h"
 #include "UI/GameXXKCompanionRosterWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
@@ -161,12 +162,16 @@ void AGameXXKMVPPlayerController::BeginPlay()
 	bShowMouseCursor = true;
 	bEnableClickEvents = true;
 	bEnableMouseOverEvents = true;
-	FInputModeGameAndUI InputMode;
-	InputMode.SetHideCursorDuringCapture(false);
-	SetInputMode(InputMode);
+	SetTrackedInputMode(EGameXXKTrackedInputMode::GameAndUI);
 
 	EnsurePlayerFlowWidgets();
 	RefreshPlayerFlowWidgets();
+}
+
+void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	ExitBattleOverlay();
+	Super::EndPlay(EndPlayReason);
 }
 
 void AGameXXKMVPPlayerController::PlayerTick(float DeltaTime)
@@ -356,6 +361,131 @@ void AGameXXKMVPPlayerController::ConfigureBattleSceneCameraForTest(ACameraActor
 void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgetsFromState()
 {
 	RefreshPlayerFlowWidgets();
+}
+
+void AGameXXKMVPPlayerController::EnterBattleOverlay()
+{
+	if (!RouteMapWidget || !BattleBoardWidget)
+	{
+		return;
+	}
+	if (!BattleOverlayCoordinator)
+	{
+		BattleOverlayCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>(this);
+	}
+	if (BattleOverlayCoordinator && !BattleOverlayCoordinator->IsActive())
+	{
+		BattleOverlayCoordinator->Enter(*this, *RouteMapWidget, *BattleBoardWidget);
+	}
+}
+
+void AGameXXKMVPPlayerController::ExitBattleOverlay()
+{
+	if (BattleOverlayCoordinator)
+	{
+		BattleOverlayCoordinator->Exit(*this);
+	}
+}
+
+bool AGameXXKMVPPlayerController::IsBattleOverlayActive() const
+{
+	return BattleOverlayCoordinator && BattleOverlayCoordinator->IsActive();
+}
+
+FGameXXKBattleOverlaySnapshot AGameXXKMVPPlayerController::CaptureBattleOverlaySnapshot(
+	const UGameXXKOneGameRouteMapWidget& RouteWidget) const
+{
+	FGameXXKBattleOverlaySnapshot Snapshot;
+	if (GetWorld())
+	{
+		Snapshot.bGamePaused = UGameplayStatics::IsGamePaused(this);
+		Snapshot.bWorldRenderingEnabled = UGameplayStatics::GetEnableWorldRendering(this);
+	}
+	Snapshot.bShowMouseCursor = bShowMouseCursor;
+	Snapshot.bEnableClickEvents = bEnableClickEvents;
+	Snapshot.bEnableMouseOverEvents = bEnableMouseOverEvents;
+	Snapshot.bMoveInputIgnored = IsMoveInputIgnored();
+	Snapshot.bLookInputIgnored = IsLookInputIgnored();
+	Snapshot.InputMode = TrackedInputMode;
+	Snapshot.RouteVisibility = RouteWidget.GetVisibility();
+	Snapshot.RouteScrollOffset = RouteWidget.GetCurrentScrollOffset();
+	return Snapshot;
+}
+
+bool AGameXXKMVPPlayerController::ApplyBattleOverlayEntry(
+	UGameXXKOneGameRouteMapWidget& RouteWidget,
+	UGameXXKBattleBoardWidget& BattleWidget,
+	const uint64 SessionToken)
+{
+	if (!BattleOverlayCoordinator || !BattleOverlayCoordinator->IsCurrentSession(SessionToken))
+	{
+		return false;
+	}
+
+	FlushPressedKeys();
+	bBattleOverlayAcquiredMoveInputIgnore = !IsMoveInputIgnored();
+	if (bBattleOverlayAcquiredMoveInputIgnore)
+	{
+		SetIgnoreMoveInput(true);
+	}
+	bBattleOverlayAcquiredLookInputIgnore = !IsLookInputIgnored();
+	if (bBattleOverlayAcquiredLookInputIgnore)
+	{
+		SetIgnoreLookInput(true);
+	}
+	if (GetWorld())
+	{
+		UGameplayStatics::SetGamePaused(this, true);
+		UGameplayStatics::SetEnableWorldRendering(this, false);
+	}
+	RouteWidget.SetVisibility(ESlateVisibility::Collapsed);
+	BattleWidget.SetVisibility(ESlateVisibility::Visible);
+	BattleWidget.SetIsFocusable(true);
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
+	SetTrackedInputMode(EGameXXKTrackedInputMode::UIOnly, &BattleWidget);
+	return BattleOverlayCoordinator->IsCurrentSession(SessionToken);
+}
+
+void AGameXXKMVPPlayerController::CancelBattleVisualLoads(const uint64 ClosingSessionToken)
+{
+	(void)ClosingSessionToken;
+}
+
+void AGameXXKMVPPlayerController::RestoreBattleOverlaySnapshot(
+	const FGameXXKBattleOverlaySnapshot& Snapshot,
+	UGameXXKOneGameRouteMapWidget* RouteWidget,
+	UGameXXKBattleBoardWidget* BattleWidget)
+{
+	if (BattleWidget)
+	{
+		BattleWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (RouteWidget)
+	{
+		RouteWidget->SetVisibility(Snapshot.RouteVisibility);
+		RouteWidget->RestoreScrollOffset(Snapshot.RouteScrollOffset);
+	}
+	if (GetWorld())
+	{
+		UGameplayStatics::SetEnableWorldRendering(this, Snapshot.bWorldRenderingEnabled);
+		UGameplayStatics::SetGamePaused(this, Snapshot.bGamePaused);
+	}
+	if (bBattleOverlayAcquiredMoveInputIgnore)
+	{
+		SetIgnoreMoveInput(false);
+		bBattleOverlayAcquiredMoveInputIgnore = false;
+	}
+	if (bBattleOverlayAcquiredLookInputIgnore)
+	{
+		SetIgnoreLookInput(false);
+		bBattleOverlayAcquiredLookInputIgnore = false;
+	}
+	bShowMouseCursor = Snapshot.bShowMouseCursor;
+	bEnableClickEvents = Snapshot.bEnableClickEvents;
+	bEnableMouseOverEvents = Snapshot.bEnableMouseOverEvents;
+	SetTrackedInputMode(Snapshot.InputMode, RouteWidget);
 }
 
 UGameXXKMainMenuWidget* AGameXXKMVPPlayerController::GetMainMenuWidgetForTest() const
@@ -731,8 +861,9 @@ bool AGameXXKMVPPlayerController::OpenTaskPanel()
 
 bool AGameXXKMVPPlayerController::CloseTaskPanel()
 {
+	const bool bWasOpen = IsTaskPanelOpenForTest();
 	const bool bClosed = TaskPanelWidget && TaskPanelWidget->CloseTaskPanel();
-	if (bClosed)
+	if (bClosed && bWasOpen)
 	{
 		PendingQuestNpc.Reset();
 		PendingQuestInstigator.Reset();
@@ -907,6 +1038,11 @@ bool AGameXXKMVPPlayerController::ResolveRouteEncounterAction(const EGameXXKRout
 	{
 		EncounterActor->RecordExplicitChoiceResolved(GetPawn());
 	}
+	const UWorld* const World = GetWorld();
+	const FString CurrentPackageName = World && World->GetOutermost()
+		? World->GetOutermost()->GetName()
+		: FString();
+	PrepareForRuntimeStateMapTravel(CurrentPackageName);
 	GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
 	RefreshPlayerFlowWidgets();
 	return true;
@@ -933,6 +1069,22 @@ bool AGameXXKMVPPlayerController::ConfirmBattleTargetForUnitForTest(AGameXXKBatt
 	return ConfirmBattleTargetForSceneUnit(UnitActor);
 }
 
+bool AGameXXKMVPPlayerController::ConfirmBattleTargetForUnitId(const FName UnitId)
+{
+	if (UnitId.IsNone())
+	{
+		return false;
+	}
+	EnsurePlayerFlowWidgets();
+	if (!BattleBoardWidget || !BattleBoardWidget->IsCardTargetingActive())
+	{
+		return false;
+	}
+	const bool bCommitted = BattleBoardWidget->ConfirmTargetingUnit(UnitId);
+	RefreshBattleCardTargetingBridge();
+	return bCommitted;
+}
+
 bool AGameXXKMVPPlayerController::CancelBattleTargetingForTest()
 {
 	EnsurePlayerFlowWidgets();
@@ -951,6 +1103,16 @@ bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerForTest(FVector2D 
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
+void AGameXXKMVPPlayerController::SetTrackedInputModeForTest(const EGameXXKTrackedInputMode InputMode)
+{
+	SetTrackedInputMode(InputMode);
+}
+
+bool AGameXXKMVPPlayerController::PrepareForRuntimeStateMapTravelForTest(const FString& CurrentPackageName)
+{
+	return PrepareForRuntimeStateMapTravel(CurrentPackageName);
+}
+
 void AGameXXKMVPPlayerController::SetBattleSceneCursorHitOverrideForTest(AGameXXKBattleSceneUnitActor* InUnitActor)
 {
 	bUseBattleSceneCursorHitOverrideForTest = true;
@@ -1449,6 +1611,11 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
+	const bool bExitedBattleOverlay = ActiveScreen != EGameXXKScreen::Battle && IsBattleOverlayActive();
+	if (bExitedBattleOverlay)
+	{
+		ExitBattleOverlay();
+	}
 	if (InventoryWindowWidget
 		&& ActiveScreen != EGameXXKScreen::Town
 		&& (InventoryWindowWidget->IsWindowVisibleForTest()
@@ -1464,11 +1631,30 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 		// backpack cover the route, event, or card battle after a level transition.
 		CloseCompanionRoster();
 	}
+	if (QuestDialogWidget && ActiveScreen != EGameXXKScreen::Town && IsQuestDialogOpenForTest())
+	{
+		CloseQuestDialog();
+	}
+	if (TaskPanelWidget && ActiveScreen != EGameXXKScreen::Town && IsTaskPanelOpenForTest())
+	{
+		CloseTaskPanel();
+	}
 	if (RouteEncounterPanelWidget && !IsGenericRouteEncounterScreen(ActiveScreen) && IsRouteEncounterPanelOpenForTest())
 	{
 		// The modal belongs only to a pending route encounter. Explicit choices
 		// close it before state changes; this also covers external transitions.
 		CloseRouteEncounterPanel();
+	}
+	if (ActiveScreen != EGameXXKScreen::RouteMerchant && bRouteMerchantInputLocked)
+	{
+		SetIgnoreMoveInput(false);
+		bRouteMerchantInputLocked = false;
+	}
+	if (ActiveScreen == EGameXXKScreen::Battle)
+	{
+		// Close every off-screen owner of an input-ignore increment first, but
+		// still capture the route before its Battle-state refresh collapses it.
+		EnterBattleOverlay();
 	}
 	if (MainMenuWidget)
 	{
@@ -1584,10 +1770,12 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 		TaskPanelWidget->SetMVPSubsystem(Subsystem);
 		TaskPanelWidget->RefreshFromState();
 	}
-	EnsureBattleScenePresenter();
 	RefreshBattleCardTargetingBridge();
 
-	ApplyPlayerFlowInputMode();
+	if (!bExitedBattleOverlay)
+	{
+		ApplyPlayerFlowInputMode();
+	}
 }
 
 void AGameXXKMVPPlayerController::ConfigureRouteMapWidgetViewport(UGameXXKOneGameRouteMapWidget* RouteWidget) const
@@ -1605,7 +1793,7 @@ void AGameXXKMVPPlayerController::ConfigureRouteMapWidgetViewport(UGameXXKOneGam
 bool AGameXXKMVPPlayerController::CanAddPlayerWidgetsToViewport() const
 {
 	const UWorld* World = GetWorld();
-	return World && World->IsGameWorld();
+	return World && World->IsGameWorld() && IsLocalPlayerController() && Player;
 }
 
 void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
@@ -1618,49 +1806,53 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	bShowMouseCursor = true;
 	bEnableClickEvents = true;
 	bEnableMouseOverEvents = true;
+	if (IsBattleOverlayActive() && BattleBoardWidget)
+	{
+		SetTrackedInputMode(EGameXXKTrackedInputMode::UIOnly, BattleBoardWidget);
+		return;
+	}
 
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
 
-	FInputModeGameAndUI InputMode;
-	InputMode.SetHideCursorDuringCapture(false);
+	UWidget* WidgetToFocus = nullptr;
 	if (ActiveScreen == EGameXXKScreen::MainMenu && MainMenuWidget)
 	{
-		InputMode.SetWidgetToFocus(MainMenuWidget->TakeWidget());
+		WidgetToFocus = MainMenuWidget;
 	}
 	else if (ActiveScreen == EGameXXKScreen::WorldMap && WorldMapWidget)
 	{
-		InputMode.SetWidgetToFocus(WorldMapWidget->TakeWidget());
+		WidgetToFocus = WorldMapWidget;
 	}
 	else if (ActiveScreen == EGameXXKScreen::Town && QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
 	{
-		InputMode.SetWidgetToFocus(QuestDialogWidget->TakeWidget());
+		WidgetToFocus = QuestDialogWidget;
 	}
 	else if (ActiveScreen == EGameXXKScreen::Town && TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest())
 	{
-		InputMode.SetWidgetToFocus(TaskPanelWidget->TakeWidget());
+		WidgetToFocus = TaskPanelWidget;
 	}
 	else if (ActiveScreen == EGameXXKScreen::Town && IsCompanionRosterOpenForTest())
 	{
-		InputMode.SetWidgetToFocus(CompanionRosterWidget->TakeWidget());
+		WidgetToFocus = CompanionRosterWidget;
 	}
 	else if (ActiveScreen == EGameXXKScreen::RouteMerchant && IsRouteMerchantWidgetOpenForTest())
 	{
-		InputMode.SetWidgetToFocus(RouteMerchantWidget->TakeWidget());
+		WidgetToFocus = RouteMerchantWidget;
 	}
 	else if (IsGenericRouteEncounterScreen(ActiveScreen) && IsRouteEncounterPanelOpenForTest())
 	{
-		InputMode.SetWidgetToFocus(RouteEncounterPanelWidget->TakeWidget());
+		WidgetToFocus = RouteEncounterPanelWidget;
 	}
 	else if (ActiveScreen == EGameXXKScreen::DungeonMap && RouteMapWidget)
 	{
-		InputMode.SetWidgetToFocus(RouteMapWidget->TakeWidget());
+		WidgetToFocus = RouteMapWidget;
 	}
 	else if (ActiveScreen == EGameXXKScreen::Battle && BattleBoardWidget)
 	{
-		InputMode.SetWidgetToFocus(BattleBoardWidget->TakeWidget());
+		WidgetToFocus = BattleBoardWidget;
 	}
-	SetInputMode(InputMode);
+	SetTrackedInputMode(EGameXXKTrackedInputMode::GameAndUI, WidgetToFocus);
 
 	if (ActiveScreen == EGameXXKScreen::Town
 		&& (!QuestDialogWidget || !QuestDialogWidget->IsDialogOpen())
@@ -1683,6 +1875,61 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	{
 		FSlateApplication::Get().SetAllUserFocusToGameViewport(EFocusCause::SetDirectly);
 	}
+}
+
+void AGameXXKMVPPlayerController::SetTrackedInputMode(
+	const EGameXXKTrackedInputMode InputMode,
+	UWidget* WidgetToFocus)
+{
+	const UUserWidget* const UserWidgetToFocus = Cast<UUserWidget>(WidgetToFocus);
+	const bool bCanFocusWidget = WidgetToFocus
+		&& (!UserWidgetToFocus || UserWidgetToFocus->IsFocusable());
+	if (GetWorld())
+	{
+		switch (InputMode)
+		{
+		case EGameXXKTrackedInputMode::GameOnly:
+		{
+			FInputModeGameOnly Mode;
+			SetInputMode(Mode);
+			break;
+		}
+		case EGameXXKTrackedInputMode::UIOnly:
+		{
+			FInputModeUIOnly Mode;
+			if (bCanFocusWidget)
+			{
+				Mode.SetWidgetToFocus(WidgetToFocus->TakeWidget());
+			}
+			SetInputMode(Mode);
+			break;
+		}
+		case EGameXXKTrackedInputMode::GameAndUI:
+		default:
+		{
+			FInputModeGameAndUI Mode;
+			Mode.SetHideCursorDuringCapture(false);
+			if (bCanFocusWidget)
+			{
+				Mode.SetWidgetToFocus(WidgetToFocus->TakeWidget());
+			}
+			SetInputMode(Mode);
+			break;
+		}
+		}
+	}
+	TrackedInputMode = InputMode;
+}
+
+bool AGameXXKMVPPlayerController::PrepareForRuntimeStateMapTravel(const FString& CurrentPackageName)
+{
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !GameXXKLevelFlow::RequiresMapLoadForRuntimeState(CurrentPackageName, Subsystem->GetRuntimeState()))
+	{
+		return false;
+	}
+	ExitBattleOverlay();
+	return true;
 }
 
 void AGameXXKMVPPlayerController::HandleRouteMapPrimaryClick()
@@ -1877,54 +2124,6 @@ void AGameXXKMVPPlayerController::RefreshBattleSceneAfterCardMutation(
 				Request.bTargetDefeated);
 		}
 	}
-
-	if (!IsValid(BattleScenePresenter) || !BattleScenePresenter->RefreshBattleScene())
-	{
-		return;
-	}
-
-	const TArray<AGameXXKBattleSceneUnitActor*> SceneUnits = BattleScenePresenter->GetSpawnedUnitsForTest();
-	const auto FindSceneUnit = [&SceneUnits](const FName UnitId) -> AGameXXKBattleSceneUnitActor*
-	{
-		AGameXXKBattleSceneUnitActor* const* FoundUnit = SceneUnits.FindByPredicate([UnitId](const AGameXXKBattleSceneUnitActor* UnitActor)
-		{
-			return UnitActor && UnitActor->GetUnitId() == UnitId;
-		});
-		return FoundUnit ? *FoundUnit : nullptr;
-	};
-
-	if (AGameXXKBattleSceneUnitActor* Attacker = FindSceneUnit(AttackerUnitId))
-	{
-		Attacker->PlayIntentAttackFeedback();
-	}
-
-	bool bHeroReceivedHealthDamage = false;
-	TSet<FName> HitUnitIds;
-	for (const FGameXXKCardDamageResult& DamageResult : DamageResults)
-	{
-		bHeroReceivedHealthDamage |= RuntimeState && ShouldTriggerHeroHitCameraShake(*RuntimeState, DamageResult);
-		const FName HitUnitId = DamageResult.ResolvedTargetUnitId.IsNone()
-			? DamageResult.OriginalTargetUnitId
-			: DamageResult.ResolvedTargetUnitId;
-		if (!HitUnitId.IsNone() && !HitUnitIds.Contains(HitUnitId))
-		{
-			HitUnitIds.Add(HitUnitId);
-			if (AGameXXKBattleSceneUnitActor* HitUnit = FindSceneUnit(HitUnitId))
-			{
-				HitUnit->PlayHitFeedback();
-			}
-		}
-	}
-
-	if (bHeroReceivedHealthDamage && PlayerCameraManager)
-	{
-		// This is an additive, camera-manager-owned CameraLocal shake. It never
-		// mutates the placed or fallback battle camera actor's transform.
-		PlayerCameraManager->StartCameraShake(
-			UGameXXKHeroHitCameraShake::StaticClass(),
-			0.45f,
-			ECameraShakePlaySpace::CameraLocal);
-	}
 }
 
 bool AGameXXKMVPPlayerController::ShouldTriggerHeroHitCameraShake(
@@ -1960,7 +2159,6 @@ void AGameXXKMVPPlayerController::RefreshBattleCardTargetingBridge()
 		return;
 	}
 
-	BattleBoardWidget->ClearBattleUnitScreenPositions();
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	UWorld* World = GetWorld();
 	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle || !World)
@@ -1968,10 +2166,25 @@ void AGameXXKMVPPlayerController::RefreshBattleCardTargetingBridge()
 		return;
 	}
 
-	const bool bCardTargetingActive = BattleBoardWidget->IsCardTargetingActive();
+	TArray<AGameXXKBattleSceneUnitActor*> CompatibilitySceneUnits;
 	for (TActorIterator<AGameXXKBattleSceneUnitActor> It(World); It; ++It)
 	{
-		AGameXXKBattleSceneUnitActor* UnitActor = *It;
+		if (AGameXXKBattleSceneUnitActor* UnitActor = *It)
+		{
+			CompatibilitySceneUnits.Add(UnitActor);
+		}
+	}
+	if (CompatibilitySceneUnits.IsEmpty())
+	{
+		// The fullscreen HUD owns its fixed positions. Preserve any positions it
+		// registers and fall back to the board's stable slot policy when none exist.
+		return;
+	}
+
+	BattleBoardWidget->ClearBattleUnitScreenPositions();
+	const bool bCardTargetingActive = BattleBoardWidget->IsCardTargetingActive();
+	for (AGameXXKBattleSceneUnitActor* UnitActor : CompatibilitySceneUnits)
+	{
 		if (!UnitActor || UnitActor->GetUnitId().IsNone())
 		{
 			continue;
@@ -2194,9 +2407,7 @@ bool AGameXXKMVPPlayerController::ConfirmBattleTargetForSceneUnit(AGameXXKBattle
 
 	if (BattleBoardWidget->IsCardTargetingActive())
 	{
-		const bool bCommitted = BattleBoardWidget->ConfirmTargetingUnit(UnitActor->GetUnitId());
-		RefreshBattleCardTargetingBridge();
-		return bCommitted;
+		return ConfirmBattleTargetForUnitId(UnitActor->GetUnitId());
 	}
 
 	if (!UnitActor->CanReceiveTargetedBattleAction())

@@ -6,7 +6,6 @@
 #include "InputKeyEventArgs.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
-#include "MVP/GameXXKBattleSceneUnitActor.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
@@ -311,10 +310,40 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 
 	TestTrue(TEXT("route map start node button executes"), PlayerController->GetRouteMapWidgetForTest()->ExecuteRouteNode(0));
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	UGameXXKOneGameRouteMapWidget* const RouteWidgetBeforeBattle = PlayerController->GetRouteMapWidgetForTest();
+	TestNotNull(TEXT("player flow retains a route widget before battle entry"), RouteWidgetBeforeBattle);
+	if (!RouteWidgetBeforeBattle)
+	{
+		return false;
+	}
+	RouteWidgetBeforeBattle->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	RouteWidgetBeforeBattle->RestoreScrollOffset(123.0f);
+	const float RouteScrollBeforeBattle = RouteWidgetBeforeBattle->GetCurrentScrollOffset();
+	PlayerController->bShowMouseCursor = false;
+	PlayerController->bEnableClickEvents = false;
+	PlayerController->bEnableMouseOverEvents = true;
+	PlayerController->ResetIgnoreMoveInput();
+	PlayerController->ResetIgnoreLookInput();
+	PlayerController->SetIgnoreMoveInput(true);
+	PlayerController->SetIgnoreLookInput(true);
+	PlayerController->SetTrackedInputModeForTest(EGameXXKTrackedInputMode::GameOnly);
+	TestFalse(TEXT("quest dialog is closed before battle entry"), PlayerController->IsQuestDialogOpenForTest());
+	TestFalse(TEXT("companion roster is closed before battle entry"), PlayerController->IsCompanionRosterOpenForTest());
+	TestFalse(TEXT("task panel is closed before battle entry"), PlayerController->IsTaskPanelOpenForTest());
+	TestFalse(TEXT("route encounter panel is closed before battle entry"), PlayerController->IsRouteEncounterPanelOpenForTest());
+	TestFalse(TEXT("route merchant input lock is inactive before battle entry"), PlayerController->IsRouteMerchantInputLockedForTest());
+	TestTrue(TEXT("pre-existing move ignore is active before battle entry"), PlayerController->IsMoveInputIgnored());
+	TestTrue(TEXT("pre-existing look ignore is active before battle entry"), PlayerController->IsLookInputIgnored());
 	TestTrue(TEXT("route map battle node button executes"), PlayerController->GetRouteMapWidgetForTest()->ExecuteRouteNode(1));
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestEqual(TEXT("battle screen after route node button"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
 	TestTrue(TEXT("battle board visible after route node button"), PlayerController->GetBattleBoardWidgetForTest()->IsBattleBoardVisible());
+	TestTrue(TEXT("battle coordinator is active after route node entry"), PlayerController->IsBattleOverlayActive());
+	TestTrue(TEXT("battle entry retains the exact route widget object"), PlayerController->GetRouteMapWidgetForTest() == RouteWidgetBeforeBattle);
+	TestEqual(TEXT("battle entry collapses the retained route widget"), RouteWidgetBeforeBattle->GetVisibility(), ESlateVisibility::Collapsed);
+	TestEqual(TEXT("battle entry applies tracked UI-only input"), PlayerController->GetTrackedInputModeForTest(), EGameXXKTrackedInputMode::UIOnly);
+	TestTrue(TEXT("battle entry leaves a pre-existing move ignore active"), PlayerController->IsMoveInputIgnored());
+	TestTrue(TEXT("battle entry leaves a pre-existing look ignore active"), PlayerController->IsLookInputIgnored());
 	const FGameXXKRuntimeState& BattleState = Subsystem->GetRuntimeState();
 	const FGameXXKCardBattleRuntime& BattleRuntime = BattleState.CardRun.ActiveBattle;
 	TestEqual(TEXT("the Qingshan task battle keeps the fixed three-member party"), BattleState.ActiveBattleParty.Num(), 3);
@@ -401,9 +430,6 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 		return false;
 	}
 
-	AGameXXKBattleSceneUnitActor* EnemyActor = NewObject<AGameXXKBattleSceneUnitActor>();
-	EnemyActor->SetMVPSubsystemForTest(Subsystem);
-	EnemyActor->ConfigureFromRuntimeUnit(true, 0, *EnemyRuntimeUnit);
 	const int32 EnemyHPBeforeCardCommit = EnemyRuntimeUnit->HP;
 	UGameXXKBattleBoardWidget* BattleBoard = PlayerController->GetBattleBoardWidgetForTest();
 	TestNotNull(TEXT("player controller retains its battle board for card interaction"), BattleBoard);
@@ -421,7 +447,7 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestFalse(TEXT("the card owner is not highlighted as an enemy target"), BattleBoard->IsTargetUnitHighlighted(EnemyCardInstance->OwnerUnitId));
 	TestTrue(TEXT("controller forwards mouse movement to the active card arrow"), PlayerController->UpdateBattleTargetingPointerForTest(TargetingPointer));
 	TestEqual(TEXT("active card arrow follows the controller pointer"), BattleBoard->GetTargetingPointerPositionForTest(), TargetingPointer);
-	TestTrue(TEXT("controller confirms the highlighted enemy through its stable UnitId"), PlayerController->ConfirmBattleTargetForUnitForTest(EnemyActor));
+	TestTrue(TEXT("controller confirms the highlighted enemy by stable UnitId without a scene actor"), PlayerController->ConfirmBattleTargetForUnitId(EnemyTargetUnitId));
 	TestFalse(TEXT("committing a card target exits card targeting"), BattleBoard->IsCardTargetingActive());
 	const FGameXXKBattleRuntimeUnit* EnemyAfterCardCommit = Subsystem->GetRuntimeState().ActiveBattleEnemies.FindByPredicate([EnemyTargetUnitId](const FGameXXKBattleRuntimeUnit& Unit)
 	{
@@ -448,6 +474,25 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestTrue(TEXT("controller cancels battle targeting"), PlayerController->CancelBattleTargetingForTest());
 	TestFalse(TEXT("controller cancel exits card targeting"), BattleBoard->IsCardTargetingActive());
 	TestFalse(TEXT("controller cancel clears the current card target highlight"), BattleBoard->IsTargetUnitHighlighted(CancelTargetUnitId));
+	TestTrue(TEXT("battle interactions leave a pre-existing move ignore active"), PlayerController->IsMoveInputIgnored());
+	TestTrue(TEXT("battle interactions leave a pre-existing look ignore active"), PlayerController->IsLookInputIgnored());
+
+	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestFalse(TEXT("leaving battle deactivates the coordinator"), PlayerController->IsBattleOverlayActive());
+	TestTrue(TEXT("leaving battle restores the exact route widget object"), PlayerController->GetRouteMapWidgetForTest() == RouteWidgetBeforeBattle);
+	TestEqual(TEXT("dungeon-map refresh becomes authoritative after overlay restoration"), RouteWidgetBeforeBattle->GetVisibility(), ESlateVisibility::Visible);
+	TestEqual(TEXT("leaving battle restores exact route scroll"), RouteWidgetBeforeBattle->GetCurrentScrollOffset(), RouteScrollBeforeBattle);
+	TestFalse(TEXT("leaving battle restores the hidden cursor"), PlayerController->bShowMouseCursor);
+	TestFalse(TEXT("leaving battle restores disabled click events"), PlayerController->bEnableClickEvents);
+	TestTrue(TEXT("leaving battle restores enabled mouse-over events"), PlayerController->bEnableMouseOverEvents);
+	TestEqual(TEXT("leaving battle restores exact tracked input mode"), PlayerController->GetTrackedInputModeForTest(), EGameXXKTrackedInputMode::GameOnly);
+	TestTrue(TEXT("pre-existing move ignore remains after overlay exit"), PlayerController->IsMoveInputIgnored());
+	TestTrue(TEXT("pre-existing look ignore remains after overlay exit"), PlayerController->IsLookInputIgnored());
+	PlayerController->SetIgnoreMoveInput(false);
+	PlayerController->SetIgnoreLookInput(false);
+	TestFalse(TEXT("battle entry did not stack an extra move-input ignore"), PlayerController->IsMoveInputIgnored());
+	TestFalse(TEXT("battle entry did not stack an extra look-input ignore"), PlayerController->IsLookInputIgnored());
 
 	FGameXXKRuntimeState& EncounterState = Subsystem->GetMutableRuntimeState();
 	EncounterState = UGameXXKMVPRules::CreateNewGame();

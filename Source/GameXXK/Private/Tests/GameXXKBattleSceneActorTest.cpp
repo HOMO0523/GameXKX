@@ -11,10 +11,18 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
+#include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKBattleStatusIconStyle.h"
 #include "UI/GameXXKBattleStatusIconWidget.h"
 #include "UI/GameXXKBattleUnitResourceWidget.h"
 #include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
+#include "Camera/CameraModifier_CameraShake.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "EngineUtils.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -137,6 +145,67 @@ namespace
 		Enemy.MaxMana = 100;
 		return State;
 	}
+
+	FGameXXKBattleRuntimeUnit MakeRuntimeEnemy()
+	{
+		FGameXXKBattleRuntimeUnit Unit;
+		Unit.Id = TEXT("MoneyRat");
+		Unit.DisplayName = FText::FromString(TEXT("钱鼠"));
+		Unit.HP = 240;
+		Unit.MaxHP = 240;
+		Unit.Attack = 8;
+		Unit.Speed = 8;
+		Unit.bEnemy = true;
+		return Unit;
+	}
+
+	bool BuildRuntimeBattleState(UGameXXKMVPSubsystem& Subsystem, FString& OutError)
+	{
+		FGameXXKRuntimeState& State = Subsystem.GetMutableRuntimeState();
+		State = UGameXXKMVPRules::CreateNewGame();
+		State.Screen = EGameXXKScreen::Battle;
+		State.bHasActiveBattle = true;
+		State.ActiveBattleNodeId = 17;
+		State.ActiveBattleEnemies = {MakeRuntimeEnemy()};
+		return FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &OutError)
+			&& FGameXXKCardBattleAdapter::BeginCardBattle(
+				State,
+				EGameXXKNodeKind::Battle,
+				EGameXXKCardTerrain::Plain,
+				2,
+				&OutError);
+	}
+
+	template <typename TActorType>
+	int32 CountActors(UWorld* World)
+	{
+		int32 Count = 0;
+		if (World)
+		{
+			for (TActorIterator<TActorType> It(World); It; ++It)
+			{
+				++Count;
+			}
+		}
+		return Count;
+	}
+
+	int32 CountActiveCameraShakes(APlayerCameraManager* CameraManager)
+	{
+		if (!CameraManager)
+		{
+			return 0;
+		}
+		UCameraModifier_CameraShake* const ShakeModifier = Cast<UCameraModifier_CameraShake>(
+			CameraManager->FindCameraModifierByClass(UCameraModifier_CameraShake::StaticClass()));
+		if (!ShakeModifier)
+		{
+			return 0;
+		}
+		TArray<FActiveCameraShakeInfo> ActiveShakes;
+		ShakeModifier->GetActiveCameraShakes(ActiveShakes);
+		return ActiveShakes.Num();
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -146,6 +215,108 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 {
+	// The normal controller path leaves the legacy scene presentation dormant.
+	// The original assertions below remain isolated compatibility coverage only.
+	{
+		const FName TestWorldName = MakeUniqueObjectName(
+			nullptr,
+			UWorld::StaticClass(),
+			TEXT("GameXXKFullscreenHudBattleWorld"),
+			EUniqueObjectNameOptions::GloballyUnique);
+		FWorldContext& WorldContext = GEngine->CreateNewWorldContext(EWorldType::Game);
+		UWorld* const TestWorld = UWorld::CreateWorld(EWorldType::Game, false, TestWorldName, GetTransientPackage());
+		TestNotNull(TEXT("scene-retirement test creates an isolated game world"), TestWorld);
+		if (!TestWorld)
+		{
+			return false;
+		}
+		TestWorld->AddToRoot();
+		WorldContext.SetCurrentWorld(TestWorld);
+		TestWorld->InitializeActorsForPlay(FURL());
+
+		UGameInstance* const TestGameInstance = NewObject<UGameInstance>();
+		UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+		FString FixtureError;
+		TestTrue(FString::Printf(TEXT("scene-retirement fixture starts a real card battle: %s"), *FixtureError),
+			BuildRuntimeBattleState(*Subsystem, FixtureError));
+		if (!Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle)
+		{
+			TestWorld->DestroyWorld(false);
+			GEngine->DestroyWorldContext(TestWorld);
+			TestWorld->RemoveFromRoot();
+			return false;
+		}
+		Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
+
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.ObjectFlags |= RF_Transient;
+		SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		AGameXXKMVPPlayerController* const Controller = TestWorld->SpawnActor<AGameXXKMVPPlayerController>(
+			AGameXXKMVPPlayerController::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, SpawnParameters);
+		ACameraActor* const ExistingCamera = TestWorld->SpawnActor<ACameraActor>(
+			ACameraActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator, SpawnParameters);
+		TestNotNull(TEXT("scene-retirement test spawns the real MVP controller"), Controller);
+		TestNotNull(TEXT("scene-retirement test supplies one existing view camera"), ExistingCamera);
+		if (!Controller || !ExistingCamera || !ExistingCamera->GetCameraComponent())
+		{
+			TestWorld->DestroyWorld(false);
+			GEngine->DestroyWorldContext(TestWorld);
+			TestWorld->RemoveFromRoot();
+			return false;
+		}
+
+		ExistingCamera->SetActorLocation(FVector(401.0f, -222.0f, 733.0f));
+		ExistingCamera->SetActorRotation(FRotator(-19.0f, 71.0f, 2.0f));
+		ExistingCamera->GetCameraComponent()->FieldOfView = 53.0f;
+		ExistingCamera->GetCameraComponent()->AspectRatio = 1.42f;
+		ExistingCamera->GetCameraComponent()->bConstrainAspectRatio = false;
+		Controller->SetViewTarget(ExistingCamera);
+		Controller->SetMVPSubsystemForTest(Subsystem);
+		TestTrue(TEXT("scene-retirement controller creates its HUD widgets"), Controller->EnsurePlayerFlowWidgetsForTest());
+
+		TestEqual(TEXT("fixture starts with no battle presenter"), CountActors<AGameXXKBattleScenePresenter>(TestWorld), 0);
+		TestEqual(TEXT("fixture starts with no battle scene unit actor"), CountActors<AGameXXKBattleSceneUnitActor>(TestWorld), 0);
+		const int32 CameraActorCountBeforeBattle = CountActors<ACameraActor>(TestWorld);
+		AActor* const ViewTargetBeforeBattle = Controller->GetViewTarget();
+		const FVector CameraLocationBeforeBattle = ExistingCamera->GetActorLocation();
+		const FRotator CameraRotationBeforeBattle = ExistingCamera->GetActorRotation();
+		const float CameraFovBeforeBattle = ExistingCamera->GetCameraComponent()->FieldOfView;
+		const float CameraAspectBeforeBattle = ExistingCamera->GetCameraComponent()->AspectRatio;
+
+		Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
+		Controller->RefreshPlayerFlowWidgetsForTest();
+		TestTrue(TEXT("runtime battle uses the fullscreen HUD overlay"), Controller->IsBattleOverlayActive());
+		TestEqual(TEXT("player flow spawns no battle presenter"), CountActors<AGameXXKBattleScenePresenter>(TestWorld), 0);
+		TestEqual(TEXT("player flow spawns no battle scene unit actor"), CountActors<AGameXXKBattleSceneUnitActor>(TestWorld), 0);
+		TestEqual(TEXT("player flow spawns no battle camera"), CountActors<ACameraActor>(TestWorld), CameraActorCountBeforeBattle);
+		TestTrue(TEXT("player flow never replaces the active view target"), Controller->GetViewTarget() == ViewTargetBeforeBattle);
+		TestEqual(TEXT("player flow never moves the active camera"), ExistingCamera->GetActorLocation(), CameraLocationBeforeBattle);
+		TestTrue(TEXT("player flow never rotates the active camera"), ExistingCamera->GetActorRotation().Equals(CameraRotationBeforeBattle, 0.001f));
+		TestTrue(TEXT("player flow never changes active camera FOV"),
+			FMath::IsNearlyEqual(ExistingCamera->GetCameraComponent()->FieldOfView, CameraFovBeforeBattle, 0.001f));
+		TestTrue(TEXT("player flow never changes active camera aspect"),
+			FMath::IsNearlyEqual(ExistingCamera->GetCameraComponent()->AspectRatio, CameraAspectBeforeBattle, 0.001f));
+
+		TestNotNull(TEXT("runtime controller owns a camera manager for shake verification"), Controller->PlayerCameraManager.Get());
+		const int32 CameraShakeCountBeforeMutation = CountActiveCameraShakes(Controller->PlayerCameraManager);
+		FGameXXKCardDamageResult HeroHit;
+		HeroHit.OriginalTargetUnitId = TEXT("Player");
+		HeroHit.ResolvedTargetUnitId = TEXT("Player");
+		HeroHit.HealthDamage = 1;
+		Controller->RefreshBattleSceneAfterCardMutation(TEXT("MoneyRat"), {HeroHit});
+		TestEqual(TEXT("controller card-mutation refresh never starts a CameraManager shake"),
+			CountActiveCameraShakes(Controller->PlayerCameraManager),
+			CameraShakeCountBeforeMutation);
+		TestEqual(TEXT("controller card-mutation refresh never creates a presenter"), CountActors<AGameXXKBattleScenePresenter>(TestWorld), 0);
+		TestEqual(TEXT("controller card-mutation refresh never creates scene units"), CountActors<AGameXXKBattleSceneUnitActor>(TestWorld), 0);
+		TestEqual(TEXT("controller card-mutation refresh never creates a camera"), CountActors<ACameraActor>(TestWorld), CameraActorCountBeforeBattle);
+
+		Controller->EndPlay(EEndPlayReason::Destroyed);
+		TestWorld->DestroyWorld(false);
+		GEngine->DestroyWorldContext(TestWorld);
+		TestWorld->RemoveFromRoot();
+	}
+
 	// Status icon language is intentionally a pure projection so all runtime
 	// status values remain visible even before the generated texture assets are
 	// imported into the project.
@@ -453,7 +624,7 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 	{
 		if (Placement.bEnemy)
 		{
-			TestTrue(TEXT("enemy placements retain one of the fixed negative-Y P lanes"), Placement.Location.Y <= -190.0f && Placement.Location.Y >= -330.0f);
+			TestTrue(TEXT("enemy placements retain one of the fixed negative-Y P lanes"), Placement.Location.Y <= -150.0f && Placement.Location.Y >= -330.0f);
 		}
 		else
 		{
@@ -476,9 +647,12 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 		TestNotNull(TEXT("battle scene enemy actor assigns a visible flipbook"), EnemyBattleVisual->GetFlipbook());
 		if (EnemyBattleVisual->GetFlipbook())
 		{
-			TestTrue(
-				TEXT("battle scene Bandit actor uses the GameXXK money mouse visual"),
-				EnemyBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_MoneyMouse")));
+			TestEqual(
+				TEXT("battle scene actor prefers the canonical production idle flipbook"),
+				EnemyBattleVisual->GetFlipbook()->GetPathName(),
+				FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(
+					Subsystem->GetRuntimeState().ActiveBattleEnemies[0].Id,
+					true).ToString());
 		}
 
 		AGameXXKBattleSceneUnitActor* WolfVisualActor = NewObject<AGameXXKBattleSceneUnitActor>();
@@ -492,9 +666,10 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 		TestNotNull(TEXT("battle scene Wolf actor assigns a visible flipbook"), WolfBattleVisual ? WolfBattleVisual->GetFlipbook() : nullptr);
 		if (WolfBattleVisual && WolfBattleVisual->GetFlipbook())
 		{
-			TestTrue(
-				TEXT("legacy Wolf fallback uses the generic enemy visual instead of the event NPC visual"),
-				WolfBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_Default")));
+			TestEqual(
+				TEXT("legacy Wolf resolves through the canonical production idle fallback"),
+				WolfBattleVisual->GetFlipbook()->GetPathName(),
+				FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(LegacyWolfUnit.Id, true).ToString());
 			TestFalse(
 				TEXT("legacy Wolf fallback never maps to the Niu Huan event NPC visual"),
 				WolfBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_NiuHuan")));
@@ -508,9 +683,10 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 		TestNotNull(TEXT("battle scene MoneyRat actor assigns a visible flipbook"), MoneyRatBattleVisual ? MoneyRatBattleVisual->GetFlipbook() : nullptr);
 		if (MoneyRatBattleVisual && MoneyRatBattleVisual->GetFlipbook())
 		{
-			TestTrue(
-				TEXT("battle scene MoneyRat actor uses the GameXXK money mouse visual"),
-				MoneyRatBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_MoneyMouse")));
+			TestEqual(
+				TEXT("battle scene MoneyRat actor uses its canonical production idle"),
+				MoneyRatBattleVisual->GetFlipbook()->GetPathName(),
+				FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(MoneyRatUnit.Id, true).ToString());
 		}
 
 		FGameXXKBattleRuntimeUnit BlackBearUnit = Subsystem->GetRuntimeState().ActiveBattleEnemies[0];
@@ -521,9 +697,10 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 		TestNotNull(TEXT("battle scene BlackBear actor assigns a visible flipbook"), BlackBearBattleVisual ? BlackBearBattleVisual->GetFlipbook() : nullptr);
 		if (BlackBearBattleVisual && BlackBearBattleVisual->GetFlipbook())
 		{
-			TestTrue(
-				TEXT("battle scene BlackBear actor uses the GameXXK black bear visual"),
-				BlackBearBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_BlackBear")));
+			TestEqual(
+				TEXT("battle scene BlackBear actor uses its canonical production idle"),
+				BlackBearBattleVisual->GetFlipbook()->GetPathName(),
+				FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(BlackBearUnit.Id, true).ToString());
 		}
 
 		FGameXXKBattleRuntimeUnit TigerUnit = Subsystem->GetRuntimeState().ActiveBattleEnemies[0];
@@ -534,9 +711,10 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 		TestNotNull(TEXT("battle scene Tiger actor assigns a visible flipbook"), TigerBattleVisual ? TigerBattleVisual->GetFlipbook() : nullptr);
 		if (TigerBattleVisual && TigerBattleVisual->GetFlipbook())
 		{
-			TestTrue(
-				TEXT("battle scene Tiger actor uses the GameXXK tiger boss visual"),
-				TigerBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Boss_Tiger")));
+			TestEqual(
+				TEXT("battle scene Tiger actor uses its canonical production idle"),
+				TigerBattleVisual->GetFlipbook()->GetPathName(),
+				FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(TigerUnit.Id, true).ToString());
 		}
 
 		FGameXXKBattleRuntimeUnit EliteUnit = Subsystem->GetRuntimeState().ActiveBattleEnemies[0];
@@ -547,9 +725,10 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 		TestNotNull(TEXT("battle scene EliteBandit actor assigns a visible flipbook"), EliteBattleVisual ? EliteBattleVisual->GetFlipbook() : nullptr);
 		if (EliteBattleVisual && EliteBattleVisual->GetFlipbook())
 		{
-			TestTrue(
-				TEXT("battle scene EliteBandit actor uses the GameXXK black bear visual"),
-				EliteBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Enemy_BlackBear")));
+			TestEqual(
+				TEXT("battle scene EliteBandit actor uses the canonical production fallback"),
+				EliteBattleVisual->GetFlipbook()->GetPathName(),
+				FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(EliteUnit.Id, true).ToString());
 		}
 
 		FGameXXKBattleRuntimeUnit BossUnit = Subsystem->GetRuntimeState().ActiveBattleEnemies[0];
@@ -560,9 +739,10 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 		TestNotNull(TEXT("battle scene Boss actor assigns a visible flipbook"), BossBattleVisual ? BossBattleVisual->GetFlipbook() : nullptr);
 		if (BossBattleVisual && BossBattleVisual->GetFlipbook())
 		{
-			TestTrue(
-				TEXT("battle scene Boss actor uses the GameXXK tiger boss visual"),
-				BossBattleVisual->GetFlipbook()->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Enemies/Flipbooks/FB_Boss_Tiger")));
+			TestEqual(
+				TEXT("battle scene Boss actor uses the canonical production fallback"),
+				BossBattleVisual->GetFlipbook()->GetPathName(),
+				FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(BossUnit.Id, true).ToString());
 		}
 	}
 

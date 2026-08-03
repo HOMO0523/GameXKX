@@ -3,10 +3,12 @@
 #include "CoreMinimal.h"
 #include "GameXXKCardTypes.h"
 #include "GameFramework/PlayerController.h"
+#include "UI/GameXXKBattleOverlayCoordinator.h"
 #include "UI/GameXXKRouteEncounterPanelWidget.h"
 #include "GameXXKMVPPlayerController.generated.h"
 
 class UGameXXKBattleBoardWidget;
+class UGameXXKBattleOverlayCoordinator;
 class UGameXXKCompanionRosterWidget;
 class UGameXXKInventoryWindowWidget;
 class UGameXXKMainMenuWidget;
@@ -20,6 +22,7 @@ class UGameXXKTaskPanelWidget;
 class UGameXXKTownHudWidget;
 class UGameXXKTownOverlayWidget;
 class UGameXXKWorldMapWidget;
+class UWidget;
 class ACameraActor;
 class AGameXXKBattleScenePresenter;
 class AGameXXKBattleSceneUnitActor;
@@ -27,7 +30,7 @@ class AGameXXKRouteEncounterSceneActor;
 struct FGameXXKRuntimeState;
 
 UCLASS(Blueprintable)
-class GAMEXXK_API AGameXXKMVPPlayerController : public APlayerController
+class GAMEXXK_API AGameXXKMVPPlayerController : public APlayerController, public IGameXXKBattleOverlayHost
 {
 	GENERATED_BODY()
 
@@ -35,6 +38,7 @@ public:
 	AGameXXKMVPPlayerController();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PlayerTick(float DeltaTime) override;
 	virtual void SetupInputComponent() override;
 	virtual bool InputKey(const FInputKeyEventArgs& Params) override;
@@ -54,6 +58,22 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	void RefreshPlayerFlowWidgetsFromState();
+
+	void EnterBattleOverlay();
+	void ExitBattleOverlay();
+	bool IsBattleOverlayActive() const;
+
+	virtual FGameXXKBattleOverlaySnapshot CaptureBattleOverlaySnapshot(
+		const UGameXXKOneGameRouteMapWidget& RouteWidget) const override;
+	virtual bool ApplyBattleOverlayEntry(
+		UGameXXKOneGameRouteMapWidget& RouteWidget,
+		UGameXXKBattleBoardWidget& BattleWidget,
+		uint64 SessionToken) override;
+	virtual void CancelBattleVisualLoads(uint64 ClosingSessionToken) override;
+	virtual void RestoreBattleOverlaySnapshot(
+		const FGameXXKBattleOverlaySnapshot& Snapshot,
+		UGameXXKOneGameRouteMapWidget* RouteWidget,
+		UGameXXKBattleBoardWidget* BattleWidget) override;
 
 	/** Refreshes the existing battle actors and plays short sprite-only result feedback. */
 	void RefreshBattleSceneAfterCardMutation(FName AttackerUnitId, const TArray<FGameXXKCardDamageResult>& DamageResults);
@@ -217,6 +237,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
 	bool ConfirmBattleTargetForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor);
 
+	/** Stable HUD bridge. The fullscreen board can submit a canonical unit id without a scene actor. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool ConfirmBattleTargetForUnitId(FName UnitId);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
 	bool CancelBattleTargetingForTest();
 
@@ -224,6 +248,9 @@ public:
 	bool UpdateBattleTargetingPointerForTest(FVector2D CursorScreenPosition);
 
 #if WITH_DEV_AUTOMATION_TESTS
+	EGameXXKTrackedInputMode GetTrackedInputModeForTest() const { return TrackedInputMode; }
+	void SetTrackedInputModeForTest(EGameXXKTrackedInputMode InputMode);
+	bool PrepareForRuntimeStateMapTravelForTest(const FString& CurrentPackageName);
 	// Test-only seam for exercising InputKey -> TryHandleBattleSceneLeftClick
 	// without a Slate viewport-backed hardware cursor.
 	void SetBattleSceneCursorHitOverrideForTest(AGameXXKBattleSceneUnitActor* InUnitActor);
@@ -248,6 +275,8 @@ private:
 	void RefreshPlayerFlowWidgets();
 	void ConfigureRouteMapWidgetViewport(UGameXXKOneGameRouteMapWidget* RouteWidget) const;
 	void ApplyPlayerFlowInputMode();
+	void SetTrackedInputMode(EGameXXKTrackedInputMode InputMode, UWidget* WidgetToFocus = nullptr);
+	bool PrepareForRuntimeStateMapTravel(const FString& CurrentPackageName);
 	void HandleRouteMapPrimaryClick();
 	bool TryHandleRouteEncounterInteract();
 	AGameXXKRouteEncounterSceneActor* GetFocusedRouteEncounterActor() const;
@@ -324,6 +353,9 @@ private:
 	TObjectPtr<UGameXXKBattleBoardWidget> BattleBoardWidget;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKBattleOverlayCoordinator> BattleOverlayCoordinator;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKInventoryWindowWidget> InventoryWindowWidget;
 
 	UPROPERTY(Transient)
@@ -370,6 +402,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMVPSubsystem> OverrideSubsystem;
+
+	EGameXXKTrackedInputMode TrackedInputMode = EGameXXKTrackedInputMode::GameAndUI;
+	bool bBattleOverlayAcquiredMoveInputIgnore = false;
+	bool bBattleOverlayAcquiredLookInputIgnore = false;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	bool bUseBattleSceneCursorHitOverrideForTest = false;
