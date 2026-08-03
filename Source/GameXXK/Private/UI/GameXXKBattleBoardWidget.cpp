@@ -697,6 +697,7 @@ void UGameXXKBattleBoardWidget::CapturePresentationHudSnapshot(
 {
 	DisplayedHealthOverrides.Reset();
 	DisplayedUnitHudOverrides.Reset();
+	DisplayedSharedEnergyOverride = Runtime.Deck.SharedEnergy;
 	for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
 	{
 		if (Unit.UnitId.IsNone())
@@ -719,6 +720,7 @@ void UGameXXKBattleBoardWidget::DiscardPresentationHudSnapshot()
 {
 	DisplayedHealthOverrides.Reset();
 	DisplayedUnitHudOverrides.Reset();
+	DisplayedSharedEnergyOverride.Reset();
 }
 
 bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
@@ -1415,8 +1417,7 @@ void UGameXXKBattleBoardWidget::ResetBattlePresentation()
 		RemoveUnitVisual(UnitId);
 	}
 	DefeatedUnitVisualsPendingRemoval.Reset();
-	DisplayedHealthOverrides.Reset();
-	DisplayedUnitHudOverrides.Reset();
+	DiscardPresentationHudSnapshot();
 	BattlePresentationImpactCount = 0;
 	BattlePresentationCompletionCount = 0;
 	BattlePresentationHudShakeCount = 0;
@@ -4724,6 +4725,18 @@ void UGameXXKBattleBoardWidget::RefreshPartyQiWidget()
 	{
 		return;
 	}
+	const FVector2D CanvasSize = RootCanvas
+		? RootCanvas->GetCachedGeometry().GetLocalSize()
+		: FVector2D::ZeroVector;
+	RefreshPartyQiWidgetForCanvasSize(CanvasSize);
+}
+
+void UGameXXKBattleBoardWidget::RefreshPartyQiWidgetForCanvasSize(const FVector2D CanvasSize)
+{
+	if (!PartyQiWidget)
+	{
+		return;
+	}
 
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
@@ -4731,7 +4744,6 @@ void UGameXXKBattleBoardWidget::RefreshPartyQiWidget()
 		&& State->Screen == EGameXXKScreen::Battle
 		&& State->CardRun.bHasActiveCardBattle
 		&& !HasPendingRouteReward();
-	const FVector2D CanvasSize = RootCanvas ? RootCanvas->GetCachedGeometry().GetLocalSize() : FVector2D::ZeroVector;
 	LastPartyQiCanvasSize = CanvasSize;
 	if (!bShouldShowPartyQi)
 	{
@@ -4739,9 +4751,13 @@ void UGameXXKBattleBoardWidget::RefreshPartyQiWidget()
 		return;
 	}
 
-	// CardRun.ActiveBattle.Deck.SharedEnergy is the sole authority for the player team's
-	// current-turn Qi.  Do not project actor MP, a rules cache, or a save-game surrogate here.
-	PartyQiWidget->SetSharedQi(State->CardRun.ActiveBattle.Deck.SharedEnergy);
+	// The card runtime remains the sole authority. While an immutable presentation batch is
+	// pending, retain its captured pre-mutation value so responsive layout refreshes cannot
+	// reveal post-state Qi before the batch's full-drain reconciliation.
+	const int32 DisplayedSharedEnergy = DisplayedSharedEnergyOverride.IsSet()
+		? DisplayedSharedEnergyOverride.GetValue()
+		: State->CardRun.ActiveBattle.Deck.SharedEnergy;
+	PartyQiWidget->SetSharedQi(DisplayedSharedEnergy);
 	PartyQiWidget->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	if (UCanvasPanelSlot* PartyQiSlot = Cast<UCanvasPanelSlot>(PartyQiWidget->Slot))
 	{
@@ -4862,6 +4878,11 @@ FGameXXKBattlePartyQiLayout UGameXXKBattleBoardWidget::ResolvePartyQiLayout(cons
 FGameXXKBattlePartyQiLayout UGameXXKBattleBoardWidget::ResolvePartyQiLayoutForTest(const FVector2D CanvasSize) const
 {
 	return ResolvePartyQiLayout(CanvasSize);
+}
+
+void UGameXXKBattleBoardWidget::RefreshPartyQiForCanvasSizeForTest(const FVector2D CanvasSize)
+{
+	RefreshPartyQiWidgetForCanvasSize(CanvasSize);
 }
 #endif
 

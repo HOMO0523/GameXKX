@@ -455,6 +455,8 @@ public:
 #if WITH_DEV_AUTOMATION_TESTS
 	/** Pure layout seam: callers supply a canvas size to validate the right rail against expanded hand and end-turn bounds. */
 	FGameXXKBattlePartyQiLayout ResolvePartyQiLayoutForTest(FVector2D CanvasSize) const;
+	/** Runs the same responsive Party Qi refresh used when NativeTick observes settled or resized canvas geometry. */
+	void RefreshPartyQiForCanvasSizeForTest(FVector2D CanvasSize);
 #endif
 
 	/** Dynamic card subclasses forward pure hover transitions here; these never mutate card runtime state. */
@@ -566,6 +568,7 @@ private:
 	void RefreshActionButtons();
 	void RefreshHandCards();
 	void RefreshPartyQiWidget();
+	void RefreshPartyQiWidgetForCanvasSize(FVector2D CanvasSize);
 	FText ResolveProjectedUnitHudDisplayName(FName UnitId) const;
 	FBox2D ResolveExpandedHandRect(FVector2D CanvasSize) const;
 	FGameXXKBattlePartyQiLayout ResolvePartyQiLayout(FVector2D CanvasSize) const;
@@ -805,6 +808,8 @@ private:
 	TArray<FBattlePresentationQueueEntry> BattlePresentationQueue;
 	TMap<FName, int32> DisplayedHealthOverrides;
 	TMap<FName, FGameXXKBattleUnitHudView> DisplayedUnitHudOverrides;
+	/** Pre-mutation party Qi retained until the complete immutable presentation batch drains or is cancelled. */
+	TOptional<int32> DisplayedSharedEnergyOverride;
 	TSet<FName> DefeatedUnitVisualsPendingRemoval;
 	EBattlePresentationContinuation DeferredBattlePresentationContinuation = EBattlePresentationContinuation::None;
 	uint64 NextBattlePresentationQueueSerial = 1;

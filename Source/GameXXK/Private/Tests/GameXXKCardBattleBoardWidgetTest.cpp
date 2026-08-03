@@ -88,6 +88,35 @@ namespace
 		}
 	}
 
+	template <typename TBoard, typename = void>
+	struct THasPartyQiResponsiveRefresh : std::false_type
+	{
+	};
+
+	template <typename TBoard>
+	struct THasPartyQiResponsiveRefresh<TBoard, std::void_t<decltype(
+		std::declval<TBoard&>().RefreshPartyQiForCanvasSizeForTest(std::declval<FVector2D>()))>> : std::true_type
+	{
+	};
+
+	template <typename TBoard>
+	bool RefreshPartyQiForResponsiveLayoutTest(
+		FAutomationTestBase& Test,
+		TBoard* const Board,
+		const FVector2D CanvasSize)
+	{
+		if constexpr (!THasPartyQiResponsiveRefresh<TBoard>::value)
+		{
+			Test.AddError(TEXT("The Board-owned Party Qi responsive-refresh test seam has not been implemented."));
+			return false;
+		}
+		else
+		{
+			Board->RefreshPartyQiForCanvasSizeForTest(CanvasSize);
+			return true;
+		}
+	}
+
 	FGameXXKBattleRuntimeUnit MakeEnemy(const TCHAR* Id, const TCHAR* DisplayName)
 	{
 		FGameXXKBattleRuntimeUnit Unit;
@@ -620,9 +649,31 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 	TestTrue(TEXT("ordered-packet Board initializes"), OrderedBoard->Initialize());
 	OrderedBoard->NativeConstruct();
 	TestTrue(TEXT("ordered-packet Board begins a visual session"), OrderedBoard->BeginBattleVisualSession(8102));
+	UGameXXKBattlePartyQiWidget* const OrderedPartyQiWidget = OrderedBoard->GetPartyQiWidgetForTest();
+	TestNotNull(TEXT("ordered-packet Board owns the Party Qi projection"), OrderedPartyQiWidget);
+	const int32 OrderedQiBeforeCommit = OrderedSubsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.SharedEnergy;
 	TestTrue(TEXT("two-hit reflected card enters targeting"), OrderedBoard->ClickCardInHand(OrderedCardInstanceId));
 	TestTrue(TEXT("two-hit reflected card commits through the Board"), OrderedBoard->ConfirmTargetingUnit(TEXT("Enemy")));
+	const int32 OrderedQiAfterCommit = OrderedSubsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.SharedEnergy;
+	TestTrue(TEXT("the reflected presentation fixture spends positive authoritative Qi"),
+		OrderedQiAfterCommit < OrderedQiBeforeCommit);
 	TestTrue(TEXT("a successful Board mutation is locked until its presentation drains"), FGateApi::IsLocked(OrderedBoard));
+	TestEqual(TEXT("Party Qi starts the locked batch on its pre-mutation baseline"),
+		OrderedPartyQiWidget ? OrderedPartyQiWidget->GetSharedQiForTest() : INDEX_NONE,
+		OrderedQiBeforeCommit);
+	TestTrue(TEXT("the responsive Party Qi path accepts the first settled canvas geometry while locked"),
+		RefreshPartyQiForResponsiveLayoutTest(*this, OrderedBoard, FVector2D(1280.0f, 722.0f)));
+	const FGameXXKBattlePartyQiLayout LockedCompactQiLayout =
+		OrderedBoard->ResolvePartyQiLayoutForTest(FVector2D(1280.0f, 722.0f));
+	const UCanvasPanelSlot* const OrderedPartyQiSlot = OrderedPartyQiWidget
+		? Cast<UCanvasPanelSlot>(OrderedPartyQiWidget->Slot)
+		: nullptr;
+	TestTrue(TEXT("the locked responsive refresh still applies the settled canvas layout"),
+		OrderedPartyQiSlot
+		&& OrderedPartyQiSlot->GetOffsets() == LockedCompactQiLayout.SlotOffsets);
+	TestEqual(TEXT("a locked responsive-layout refresh cannot expose post-mutation Qi"),
+		OrderedPartyQiWidget ? OrderedPartyQiWidget->GetSharedQiForTest() : INDEX_NONE,
+		OrderedQiBeforeCommit);
 	TestEqual(TEXT("the Board enqueues the two primary packets and reflected packet before refresh"),
 		OrderedBoard->GetBattlePresentationQueueCountForTest(),
 		3);
@@ -648,6 +699,9 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 	TestFalse(TEXT("the ordered batch unlocks after all three packets"), FGateApi::IsLocked(OrderedBoard));
 	TestEqual(TEXT("ordered target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 70);
 	TestEqual(TEXT("reflected target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Blade")), 95);
+	TestEqual(TEXT("Party Qi reconciles to authoritative energy only after the complete batch drains"),
+		OrderedPartyQiWidget ? OrderedPartyQiWidget->GetSharedQiForTest() : INDEX_NONE,
+		OrderedQiAfterCommit);
 	TestEqual(TEXT("the card finalization continuation executes exactly once"), FGateApi::Continuations(OrderedBoard), 1);
 
 	UGameInstance* const LethalGameInstance = NewObject<UGameInstance>();
@@ -727,10 +781,23 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 	TestTrue(TEXT("cancellation Board initializes"), CancelBoard->Initialize());
 	CancelBoard->NativeConstruct();
 	TestTrue(TEXT("cancellation Board begins a visual session"), CancelBoard->BeginBattleVisualSession(8104));
+	UGameXXKBattlePartyQiWidget* const CancelPartyQiWidget = CancelBoard->GetPartyQiWidgetForTest();
+	TestNotNull(TEXT("cancellation Board owns the Party Qi projection"), CancelPartyQiWidget);
+	const int32 CancelQiBeforeCommit = CancelSubsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.SharedEnergy;
 	TestTrue(TEXT("cancellation route card enters targeting"), CancelBoard->ClickCardInHand(CancelCardInstanceId));
 	TestTrue(TEXT("cancellation route card commits"), CancelBoard->ConfirmTargetingUnit(CancelTargetUnitId));
+	const int32 CancelQiAfterCommit = CancelSubsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.SharedEnergy;
+	TestTrue(TEXT("cancellation fixture commits a positive Qi cost"), CancelQiAfterCommit < CancelQiBeforeCommit);
+	TestEqual(TEXT("cancellation fixture retains pre-mutation Qi while its continuation is pending"),
+		CancelPartyQiWidget ? CancelPartyQiWidget->GetSharedQiForTest() : INDEX_NONE,
+		CancelQiBeforeCommit);
 	TestTrue(TEXT("cancellation fixture owns a pending typed continuation"), FGateApi::IsLocked(CancelBoard));
 	CancelBoard->CancelBattleVisualSession(8104);
+	TestTrue(TEXT("responsive Party Qi can refresh after visual-session cancellation"),
+		RefreshPartyQiForResponsiveLayoutTest(*this, CancelBoard, FVector2D(1920.0f, 1080.0f)));
+	TestEqual(TEXT("visual-session cancellation discards the retained Qi snapshot"),
+		CancelPartyQiWidget ? CancelPartyQiWidget->GetSharedQiForTest() : INDEX_NONE,
+		CancelQiAfterCommit);
 	CancelBoard->AdvanceVisualsAtRealTime(100.0);
 	TestFalse(TEXT("session cancellation discards terminal continuation without generating a reward"), CancelBoard->HasPendingRouteReward());
 	TestEqual(TEXT("session cancellation never executes a discarded continuation"), FGateApi::Continuations(CancelBoard), 0);
