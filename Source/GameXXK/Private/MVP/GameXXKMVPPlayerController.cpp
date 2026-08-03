@@ -7,6 +7,7 @@
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/InputComponent.h"
+#include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Framework/Application/SlateApplication.h"
 #include "EngineUtils.h"
@@ -41,6 +42,7 @@
 #include "UI/GameXXKTownHudWidget.h"
 #include "UI/GameXXKTownOverlayWidget.h"
 #include "UI/GameXXKWorldMapWidget.h"
+#include "UObject/UObjectGlobals.h"
 
 namespace
 {
@@ -158,6 +160,12 @@ AGameXXKMVPPlayerController::AGameXXKMVPPlayerController()
 void AGameXXKMVPPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	if (!PreLoadMapWithContextDelegateHandle.IsValid())
+	{
+		PreLoadMapWithContextDelegateHandle = FCoreUObjectDelegates::PreLoadMapWithContext.AddUObject(
+			this,
+			&AGameXXKMVPPlayerController::HandlePreLoadMapWithContext);
+	}
 
 	bShowMouseCursor = true;
 	bEnableClickEvents = true;
@@ -170,6 +178,11 @@ void AGameXXKMVPPlayerController::BeginPlay()
 
 void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (PreLoadMapWithContextDelegateHandle.IsValid())
+	{
+		FCoreUObjectDelegates::PreLoadMapWithContext.Remove(PreLoadMapWithContextDelegateHandle);
+		PreLoadMapWithContextDelegateHandle.Reset();
+	}
 	ExitBattleOverlay();
 	Super::EndPlay(EndPlayReason);
 }
@@ -177,8 +190,6 @@ void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReas
 void AGameXXKMVPPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
-	RefreshBattleCardTargetingBridge();
-	UpdateBattleTargetingPointerFromMouse();
 }
 
 void AGameXXKMVPPlayerController::SetupInputComponent()
@@ -220,7 +231,6 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 		}
 		if (BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting())
 		{
-			RefreshBattleCardTargetingBridge();
 			return true;
 		}
 	}
@@ -297,10 +307,6 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 	}
 	if (Params.Key == EKeys::LeftMouseButton && Params.Event == IE_Released)
 	{
-		if (TryHandleBattleSceneLeftClick())
-		{
-			return true;
-		}
 		HandleRouteMapPrimaryClick();
 	}
 	if (Params.Key == EKeys::F && Params.Event == IE_Pressed)
@@ -315,10 +321,6 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 			// panel seam instead.
 			return bOpened || CanAddPlayerWidgetsToViewport();
 		}
-	}
-	if (Params.Key == EKeys::RightMouseButton && Params.Event == IE_Released && TryHandleBattleSceneRightClick())
-	{
-		return true;
 	}
 	return Super::InputKey(Params);
 }
@@ -1080,20 +1082,13 @@ bool AGameXXKMVPPlayerController::ConfirmBattleTargetForUnitId(const FName UnitI
 	{
 		return false;
 	}
-	const bool bCommitted = BattleBoardWidget->ConfirmTargetingUnit(UnitId);
-	RefreshBattleCardTargetingBridge();
-	return bCommitted;
+	return BattleBoardWidget->ConfirmTargetingUnit(UnitId);
 }
 
 bool AGameXXKMVPPlayerController::CancelBattleTargetingForTest()
 {
 	EnsurePlayerFlowWidgets();
-	const bool bCancelled = BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting();
-	if (bCancelled)
-	{
-		RefreshBattleCardTargetingBridge();
-	}
-	return bCancelled;
+	return BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting();
 }
 
 bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerForTest(FVector2D CursorScreenPosition)
@@ -1770,8 +1765,6 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 		TaskPanelWidget->SetMVPSubsystem(Subsystem);
 		TaskPanelWidget->RefreshFromState();
 	}
-	RefreshBattleCardTargetingBridge();
-
 	if (!bExitedBattleOverlay)
 	{
 		ApplyPlayerFlowInputMode();
@@ -1930,6 +1923,17 @@ bool AGameXXKMVPPlayerController::PrepareForRuntimeStateMapTravel(const FString&
 	}
 	ExitBattleOverlay();
 	return true;
+}
+
+void AGameXXKMVPPlayerController::HandlePreLoadMapWithContext(
+	const FWorldContext& WorldContext,
+	const FString& MapName)
+{
+	(void)MapName;
+	if (WorldContext.World() == GetWorld())
+	{
+		ExitBattleOverlay();
+	}
 }
 
 void AGameXXKMVPPlayerController::HandleRouteMapPrimaryClick()

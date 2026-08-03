@@ -6,7 +6,6 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
 #include "Engine/Texture2D.h"
-#include "MVP/GameXXKHeroHitCameraShake.h"
 #include "Styling/SlateBrush.h"
 
 namespace
@@ -261,14 +260,6 @@ void UGameXXKBattleAnimationLayerWidget::AdvancePresentation(const float DeltaSe
 		if (!bImpactStarted)
 		{
 			bImpactStarted = true;
-			if (APlayerController* PlayerController = GetOwningPlayer())
-			{
-				if (PlayerController->PlayerCameraManager)
-				{
-					PlayerController->PlayerCameraManager->StartCameraShake(
-						UGameXXKHeroHitCameraShake::StaticClass(), 0.65f, ECameraShakePlaySpace::CameraLocal);
-				}
-			}
 		}
 		ImpactFrame = FGameXXKBattleAnimationPresentation::CalculateFrameIndex(ImpactClip, ImpactElapsed, false);
 		UpdateImageFrame(ImpactImage, ImpactTexture, ImpactClip, ImpactFrame);

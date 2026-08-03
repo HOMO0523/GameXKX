@@ -28,6 +28,7 @@ class AGameXXKBattleScenePresenter;
 class AGameXXKBattleSceneUnitActor;
 class AGameXXKRouteEncounterSceneActor;
 struct FGameXXKRuntimeState;
+struct FWorldContext;
 
 UCLASS(Blueprintable)
 class GAMEXXK_API AGameXXKMVPPlayerController : public APlayerController, public IGameXXKBattleOverlayHost
@@ -75,7 +76,7 @@ public:
 		UGameXXKOneGameRouteMapWidget* RouteWidget,
 		UGameXXKBattleBoardWidget* BattleWidget) override;
 
-	/** Refreshes the existing battle actors and plays short sprite-only result feedback. */
+	/** Queues fullscreen HUD combat presentation after a card-state mutation. */
 	void RefreshBattleSceneAfterCardMutation(FName AttackerUnitId, const TArray<FGameXXKCardDamageResult>& DamageResults);
 
 	/** Pure policy: only a real HP hit on the runtime Party Hero requests the small camera shake. */
@@ -277,6 +278,7 @@ private:
 	void ApplyPlayerFlowInputMode();
 	void SetTrackedInputMode(EGameXXKTrackedInputMode InputMode, UWidget* WidgetToFocus = nullptr);
 	bool PrepareForRuntimeStateMapTravel(const FString& CurrentPackageName);
+	void HandlePreLoadMapWithContext(const FWorldContext& WorldContext, const FString& MapName);
 	void HandleRouteMapPrimaryClick();
 	bool TryHandleRouteEncounterInteract();
 	AGameXXKRouteEncounterSceneActor* GetFocusedRouteEncounterActor() const;
@@ -406,6 +408,7 @@ private:
 	EGameXXKTrackedInputMode TrackedInputMode = EGameXXKTrackedInputMode::GameAndUI;
 	bool bBattleOverlayAcquiredMoveInputIgnore = false;
 	bool bBattleOverlayAcquiredLookInputIgnore = false;
+	FDelegateHandle PreLoadMapWithContextDelegateHandle;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	bool bUseBattleSceneCursorHitOverrideForTest = false;
