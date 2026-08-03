@@ -49,6 +49,9 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("lethal target death starts after the paired attack-hit clip"), Layer->IsPresentationActiveForTest());
 	TestEqual(TEXT("death sequence drains the remaining queue when it starts"), Layer->GetQueuedSequenceCountForTest(), 0);
 	Layer->AdvanceAnimationForTest(2.5f);
+	TestTrue(TEXT("death presentation remains active halfway through its five-second runtime"),
+		Layer->IsPresentationActiveForTest());
+	Layer->AdvanceAnimationForTest(2.5f);
 	TestFalse(TEXT("completed death returns the cinematic layer to hidden idle"), Layer->IsPresentationActiveForTest());
 	TestEqual(TEXT("completed cinematic collapses above-HUD overlay"), Layer->GetVisibility(), ESlateVisibility::Collapsed);
 	TestNull(TEXT("completed cinematic releases the attack atlas from its Slate brush"),

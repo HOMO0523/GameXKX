@@ -26,8 +26,15 @@ struct GAMEXXK_API FGameXXKBattleAnimationClipDescriptor
 
 	bool IsValid() const
 	{
-		return !AssetId.IsEmpty() && !TexturePath.IsNull() && FrameCount > 0 && Columns > 0 && Rows > 0
-			&& SourceFramesPerSecond > 0.0f && PlaybackRate > 0.0f;
+		if (AssetId.IsEmpty() || TexturePath.IsNull() || FrameCount <= 0 || Columns <= 0 || Rows <= 0
+			|| !FMath::IsFinite(SourceFramesPerSecond) || SourceFramesPerSecond <= 0.0f
+			|| !FMath::IsFinite(PlaybackRate) || PlaybackRate <= 0.0f)
+		{
+			return false;
+		}
+
+		const int64 AtlasCapacity = static_cast<int64>(Columns) * static_cast<int64>(Rows);
+		return static_cast<int64>(FrameCount) <= AtlasCapacity;
 	}
 };
 

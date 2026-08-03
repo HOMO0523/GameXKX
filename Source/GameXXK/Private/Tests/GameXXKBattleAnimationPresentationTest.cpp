@@ -4,6 +4,8 @@
 #include "PaperFlipbook.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
 
+#include <limits>
+
 #if WITH_DEV_AUTOMATION_TESTS
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -62,10 +64,42 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("production clips retain sixty generated frames"), HeroAttack.FrameCount, 60);
 	TestEqual(TEXT("production atlases use an eight by eight grid"), HeroAttack.Columns, 8);
 	TestEqual(TEXT("production source playback is twelve fps"), HeroAttack.SourceFramesPerSecond, 12.0f);
-	TestEqual(TEXT("attack and hit actions play at two times speed"), HeroAttack.PlaybackRate, 2.0f);
+	TestEqual(TEXT("attack actions play at two times speed"), HeroAttack.PlaybackRate, 2.0f);
 	TestEqual(TEXT("a five-second source action occupies at most two-point-five runtime seconds"),
 		FGameXXKBattleAnimationPresentation::GetRuntimeDuration(HeroAttack), 2.5f);
-	TestEqual(TEXT("the source 2.2-second impact becomes runtime 1.1 seconds at two-times playback"),
+
+	const FGameXXKBattleAnimationClipDescriptor HeroIdle =
+		FGameXXKBattleAnimationPresentation::ResolveClip(TEXT("Player"), false, EGameXXKBattleAnimationAction::Idle);
+	const FGameXXKBattleAnimationClipDescriptor HeroHit =
+		FGameXXKBattleAnimationPresentation::ResolveClip(TEXT("Player"), false, EGameXXKBattleAnimationAction::Hit);
+	const FGameXXKBattleAnimationClipDescriptor HeroDeath =
+		FGameXXKBattleAnimationPresentation::ResolveClip(TEXT("Player"), false, EGameXXKBattleAnimationAction::Death);
+	TestEqual(TEXT("idle actions play at source speed"), HeroIdle.PlaybackRate, 1.0f);
+	TestEqual(TEXT("hit actions play at two times speed"), HeroHit.PlaybackRate, 2.0f);
+	TestEqual(TEXT("death actions play at source speed"), HeroDeath.PlaybackRate, 1.0f);
+	TestEqual(TEXT("death actions retain their full five-second runtime"),
+		FGameXXKBattleAnimationPresentation::GetRuntimeDuration(HeroDeath), 5.0f);
+
+	const FGameXXKBattleAnimationClipDescriptor GenericImpact =
+		FGameXXKBattleAnimationPresentation::ResolveGenericClip(EGameXXKBattleAnimationAction::Impact);
+	const FGameXXKBattleAnimationClipDescriptor GenericBuff =
+		FGameXXKBattleAnimationPresentation::ResolveGenericClip(EGameXXKBattleAnimationAction::Buff);
+	const FGameXXKBattleAnimationClipDescriptor GenericDebuff =
+		FGameXXKBattleAnimationPresentation::ResolveGenericClip(EGameXXKBattleAnimationAction::Debuff);
+	TestTrue(TEXT("generic impact descriptor is valid"), GenericImpact.IsValid());
+	TestTrue(TEXT("generic buff descriptor is valid"), GenericBuff.IsValid());
+	TestTrue(TEXT("generic debuff descriptor is valid"), GenericDebuff.IsValid());
+	TestEqual(TEXT("generic impact uses the exact approved atlas path"), GenericImpact.TexturePath.ToString(),
+		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_impact_ink_generic_atlas.T_impact_ink_generic_atlas")));
+	TestEqual(TEXT("generic buff uses the exact approved atlas path"), GenericBuff.TexturePath.ToString(),
+		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_status_buff_generic_atlas.T_status_buff_generic_atlas")));
+	TestEqual(TEXT("generic debuff uses the exact approved atlas path"), GenericDebuff.TexturePath.ToString(),
+		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_status_debuff_generic_atlas.T_status_debuff_generic_atlas")));
+	TestEqual(TEXT("generic impact plays at four times speed"), GenericImpact.PlaybackRate, 4.0f);
+	TestEqual(TEXT("generic buff plays at source speed"), GenericBuff.PlaybackRate, 1.0f);
+	TestEqual(TEXT("generic debuff plays at source speed"), GenericDebuff.PlaybackRate, 1.0f);
+
+	TestEqual(TEXT("the source 2.2-second marker lands at runtime 1.1 during two-times attack playback"),
 		FGameXXKBattleAnimationPresentation::GetImpactRuntimeSeconds(), 1.1f);
 	TestEqual(TEXT("runtime impact samples the synchronized source frame"),
 		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(HeroAttack, 1.1f, false), 26);
@@ -77,6 +111,47 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 		FString(TEXT("/Game/GameXXK/BattleAnimations/IdleFlipbooks/FB_enemy_01_rooster_idle.FB_enemy_01_rooster_idle")));
 	TestEqual(TEXT("non-looping playback holds the last generated frame"),
 		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(HeroAttack, 3.0f, false), 59);
+	TestEqual(TEXT("negative elapsed time samples the first frame"),
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(HeroAttack, -1.0f, true), 0);
+	TestEqual(TEXT("raw frame sixty wraps to frame zero"),
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(HeroAttack, 2.5f, true), 0);
+	TestEqual(TEXT("raw frame sixty clamps to frame fifty-nine"),
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(HeroAttack, 2.5f, false), 59);
+	TestEqual(TEXT("raw frame sixty-three wraps to frame three"),
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(HeroAttack, 2.625f, true), 3);
+	TestEqual(TEXT("raw frame sixty-three clamps to frame fifty-nine"),
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(HeroAttack, 2.625f, false), 59);
+	TestEqual(TEXT("huge finite looping elapsed time stays inside the generated frame range"),
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(HeroAttack, 1.0e9f, true), 0);
+	TestEqual(TEXT("huge finite non-looping elapsed time holds the last generated frame"),
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(HeroAttack, 1.0e9f, false), 59);
+	TestEqual(TEXT("NaN elapsed time samples the first frame"),
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(
+			HeroAttack, std::numeric_limits<float>::quiet_NaN(), true), 0);
+	TestEqual(TEXT("positive infinite elapsed time samples the first frame"),
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(
+			HeroAttack, std::numeric_limits<float>::infinity(), false), 0);
+
+	const FBox2f FrameZeroUv = FGameXXKBattleAnimationPresentation::CalculateUvRegion(HeroAttack, 0);
+	TestTrue(TEXT("frame zero begins at atlas column zero row zero"),
+		FrameZeroUv.Min.Equals(FVector2f(0.0f, 0.0f), KINDA_SMALL_NUMBER));
+	const FBox2f FrameSevenUv = FGameXXKBattleAnimationPresentation::CalculateUvRegion(HeroAttack, 7);
+	TestTrue(TEXT("frame seven begins at atlas column seven row zero"),
+		FrameSevenUv.Min.Equals(FVector2f(7.0f / 8.0f, 0.0f), KINDA_SMALL_NUMBER));
+	const FBox2f FrameEightUv = FGameXXKBattleAnimationPresentation::CalculateUvRegion(HeroAttack, 8);
+	TestTrue(TEXT("frame eight begins at atlas column zero row one"),
+		FrameEightUv.Min.Equals(FVector2f(0.0f, 1.0f / 8.0f), KINDA_SMALL_NUMBER));
+	const FBox2f FrameFiftyNineUv = FGameXXKBattleAnimationPresentation::CalculateUvRegion(HeroAttack, 59);
+	TestTrue(TEXT("frame fifty-nine begins at atlas column three row seven"),
+		FrameFiftyNineUv.Min.Equals(FVector2f(3.0f / 8.0f, 7.0f / 8.0f), KINDA_SMALL_NUMBER));
+	TestTrue(TEXT("frame fifty-nine ends at atlas column four and bottom edge"),
+		FrameFiftyNineUv.Max.Equals(FVector2f(4.0f / 8.0f, 1.0f), KINDA_SMALL_NUMBER));
+	const FBox2f FrameSixtyUv = FGameXXKBattleAnimationPresentation::CalculateUvRegion(HeroAttack, 60);
+	TestTrue(TEXT("direct frame sixty UV input clamps to generated frame fifty-nine"),
+		FrameSixtyUv.Min.Equals(FrameFiftyNineUv.Min, KINDA_SMALL_NUMBER));
+	const FBox2f FrameSixtyThreeUv = FGameXXKBattleAnimationPresentation::CalculateUvRegion(HeroAttack, 63);
+	TestTrue(TEXT("direct frame sixty-three UV input clamps to generated frame fifty-nine"),
+		FrameSixtyThreeUv.Min.Equals(FrameFiftyNineUv.Min, KINDA_SMALL_NUMBER));
 
 	const FBox2f FrameNineUv = FGameXXKBattleAnimationPresentation::CalculateUvRegion(HeroAttack, 9);
 	TestTrue(TEXT("frame nine begins at atlas column one row one"),
@@ -87,6 +162,63 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 	const FGameXXKBattleAnimationClipDescriptor MissingWolfAttack =
 		FGameXXKBattleAnimationPresentation::ResolveClip(TEXT("Enemy.Ch2.GrayWolf"), true, EGameXXKBattleAnimationAction::Attack);
 	TestFalse(TEXT("the one terminally failed gray-wolf attack is never presented as an imported clip"), MissingWolfAttack.IsValid());
+	TestTrue(TEXT("gray-wolf idle remains available"),
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			TEXT("Enemy.Ch2.GrayWolf"), true, EGameXXKBattleAnimationAction::Idle).IsValid());
+	TestTrue(TEXT("gray-wolf hit remains available"),
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			TEXT("Enemy.Ch2.GrayWolf"), true, EGameXXKBattleAnimationAction::Hit).IsValid());
+	TestTrue(TEXT("gray-wolf death remains available"),
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			TEXT("Enemy.Ch2.GrayWolf"), true, EGameXXKBattleAnimationAction::Death).IsValid());
+	TestEqual(TEXT("unknown Enemy_07 token intentionally uses the rooster fallback"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Enemy_07"), true),
+		FString(TEXT("enemy_01_rooster")));
+	TestTrue(TEXT("unknown Enemy_07 attack resolves through the rooster fallback"),
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			TEXT("Enemy_07"), true, EGameXXKBattleAnimationAction::Attack).IsValid());
+
+	FGameXXKBattleAnimationClipDescriptor InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.AssetId.Reset();
+	TestFalse(TEXT("empty asset ID invalidates a clip descriptor"), InvalidDescriptor.IsValid());
+	InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.TexturePath = FSoftObjectPath();
+	TestFalse(TEXT("empty texture path invalidates a clip descriptor"), InvalidDescriptor.IsValid());
+	InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.FrameCount = 0;
+	TestFalse(TEXT("zero frame count invalidates a clip descriptor"), InvalidDescriptor.IsValid());
+	InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.Columns = 0;
+	TestFalse(TEXT("zero columns invalidate a clip descriptor"), InvalidDescriptor.IsValid());
+	InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.Rows = 0;
+	TestFalse(TEXT("zero rows invalidate a clip descriptor"), InvalidDescriptor.IsValid());
+	InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.SourceFramesPerSecond = 0.0f;
+	TestFalse(TEXT("zero source FPS invalidates a clip descriptor"), InvalidDescriptor.IsValid());
+	InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.PlaybackRate = 0.0f;
+	TestFalse(TEXT("zero playback rate invalidates a clip descriptor"), InvalidDescriptor.IsValid());
+	InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.FrameCount = 65;
+	TestFalse(TEXT("frame counts exceeding atlas capacity invalidate a clip descriptor"), InvalidDescriptor.IsValid());
+	InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.SourceFramesPerSecond = std::numeric_limits<float>::infinity();
+	TestFalse(TEXT("infinite source FPS invalidates a clip descriptor"), InvalidDescriptor.IsValid());
+	InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.PlaybackRate = std::numeric_limits<float>::infinity();
+	TestFalse(TEXT("infinite playback rate invalidates a clip descriptor"), InvalidDescriptor.IsValid());
+	InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.SourceFramesPerSecond = std::numeric_limits<float>::quiet_NaN();
+	TestFalse(TEXT("NaN source FPS invalidates a clip descriptor"), InvalidDescriptor.IsValid());
+	InvalidDescriptor = HeroAttack;
+	InvalidDescriptor.PlaybackRate = std::numeric_limits<float>::quiet_NaN();
+	TestFalse(TEXT("NaN playback rate invalidates a clip descriptor"), InvalidDescriptor.IsValid());
+	FGameXXKBattleAnimationClipDescriptor HugeGridDescriptor = HeroAttack;
+	HugeGridDescriptor.FrameCount = MAX_int32;
+	HugeGridDescriptor.Columns = MAX_int32;
+	HugeGridDescriptor.Rows = MAX_int32;
+	TestTrue(TEXT("atlas capacity validation does not overflow int32 multiplication"), HugeGridDescriptor.IsValid());
 
 	TArray<FGameXXKCardCombatUnit> MultiHitUnits;
 	MultiHitUnits.Add(MakePresentationUnit(TEXT("Player"), EGameXXKCardTargetSide::Party, 100, 1));

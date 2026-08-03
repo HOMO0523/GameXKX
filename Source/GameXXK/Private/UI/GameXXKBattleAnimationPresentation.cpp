@@ -115,7 +115,10 @@ FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::Resol
 		return {};
 	}
 	const FString ClipAssetId = FString::Printf(TEXT("%s_%s"), *UnitAssetId, ActionSuffix);
-	const float PlaybackRate = Action == EGameXXKBattleAnimationAction::Idle ? 1.0f : 2.0f;
+	const float PlaybackRate = Action == EGameXXKBattleAnimationAction::Attack
+		|| Action == EGameXXKBattleAnimationAction::Hit
+		? 2.0f
+		: 1.0f;
 	return MakeClip(ClipAssetId, PlaybackRate);
 }
 
@@ -237,15 +240,26 @@ int32 FGameXXKBattleAnimationPresentation::CalculateFrameIndex(
 	const float RuntimeElapsedSeconds,
 	const bool bLooping)
 {
-	if (!Clip.IsValid())
+	if (!Clip.IsValid() || !FMath::IsFinite(RuntimeElapsedSeconds))
 	{
 		return 0;
 	}
-	const int32 UnboundedFrame = FMath::FloorToInt(
-		FMath::Max(0.0f, RuntimeElapsedSeconds) * Clip.PlaybackRate * Clip.SourceFramesPerSecond);
-	return bLooping
-		? UnboundedFrame % Clip.FrameCount
-		: FMath::Clamp(UnboundedFrame, 0, Clip.FrameCount - 1);
+
+	const double SafeElapsedSeconds = FMath::Max(0.0, static_cast<double>(RuntimeElapsedSeconds));
+	const double UnboundedFrame = FMath::FloorToDouble(
+		SafeElapsedSeconds
+		* static_cast<double>(Clip.PlaybackRate)
+		* static_cast<double>(Clip.SourceFramesPerSecond));
+	if (!FMath::IsFinite(UnboundedFrame))
+	{
+		return 0;
+	}
+
+	const double LastFrame = static_cast<double>(Clip.FrameCount - 1);
+	const double SafeFrame = bLooping
+		? FMath::Clamp(FMath::Fmod(UnboundedFrame, static_cast<double>(Clip.FrameCount)), 0.0, LastFrame)
+		: FMath::Clamp(UnboundedFrame, 0.0, LastFrame);
+	return static_cast<int32>(SafeFrame);
 }
 
 FBox2f FGameXXKBattleAnimationPresentation::CalculateUvRegion(
