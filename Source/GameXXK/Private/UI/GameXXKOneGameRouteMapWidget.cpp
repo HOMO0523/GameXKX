@@ -254,7 +254,16 @@ void UGameXXKOneGameRouteMapWidget::RefreshFromState()
 	SetVisibility(Subsystem && (ActiveScreen == EGameXXKScreen::DungeonMap || bKeepRouteVisibleUnderEncounter)
 		? ESlateVisibility::Visible
 		: ESlateVisibility::Collapsed);
-	ApplyInitialScrollOffset(Nodes);
+	if (!bHasAppliedInitialScrollOffset && RouteScrollBox && GetRenderedRouteNodeCount(Nodes) > 0)
+	{
+		ApplyInitialScrollOffset(Nodes);
+		bHasAppliedInitialScrollOffset = true;
+	}
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleRouteUserScrolled(float CurrentOffset)
+{
+	LastAppliedScrollOffset = FMath::Clamp(CurrentOffset, 0.0f, CalculateMaxScrollOffset());
 }
 
 FGameXXKRouteMapSummaryView UGameXXKOneGameRouteMapWidget::BuildRouteSummaryView() const
@@ -437,6 +446,20 @@ void UGameXXKOneGameRouteMapWidget::SetRouteMapViewportGeometry(FVector2D InView
 {
 	RouteMapViewportPosition = InViewportPosition;
 	RouteMapViewportSize = InViewportSize;
+	if (bHasAppliedInitialScrollOffset)
+	{
+		SetRouteScrollOffset(LastAppliedScrollOffset);
+	}
+}
+
+float UGameXXKOneGameRouteMapWidget::GetCurrentScrollOffset() const
+{
+	return LastAppliedScrollOffset;
+}
+
+void UGameXXKOneGameRouteMapWidget::RestoreScrollOffset(float InOffset)
+{
+	SetRouteScrollOffset(InOffset);
 }
 
 bool UGameXXKOneGameRouteMapWidget::IsOneGameRouteWidgetClassConfigured() const
@@ -701,6 +724,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 
 		RouteScrollBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("GameXXKOneGameRouteMapScroll"));
 		RouteScrollBox->SetScrollBarVisibility(ESlateVisibility::Visible);
+		RouteScrollBox->OnUserScrolled.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleRouteUserScrolled);
 		FGameXXKPartyDeckUiStyle::ApplyPaperInkScrollBar(RouteScrollBox);
 		if (UOverlaySlot* ScrollSlot = RootOverlay->AddChildToOverlay(RouteScrollBox))
 		{

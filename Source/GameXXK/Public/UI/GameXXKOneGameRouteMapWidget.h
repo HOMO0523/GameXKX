@@ -177,6 +177,8 @@ public:
 	FText GetRouteMoneySummaryTextForTest() const;
 
 	void SetRouteMapViewportGeometry(FVector2D InViewportPosition, FVector2D InViewportSize);
+	float GetCurrentScrollOffset() const;
+	void RestoreScrollOffset(float InOffset);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
 	bool IsOneGameRouteWidgetClassConfigured() const;
@@ -322,6 +324,9 @@ private:
 
 	UFUNCTION()
 	FEventReply HandleRouteDragSurfaceMouseMove(FGeometry MyGeometry, const FPointerEvent& MouseEvent);
+
+	UFUNCTION()
+	void HandleRouteUserScrolled(float CurrentOffset);
 
 	void BuildProgrammaticLayout();
 	FGameXXKRouteMapSummaryView BuildRouteSummaryView() const;
@@ -481,6 +486,9 @@ private:
 
 	UPROPERTY(Transient)
 	float LastAppliedScrollOffset = 0.0f;
+
+	UPROPERTY(Transient)
+	bool bHasAppliedInitialScrollOffset = false;
 
 	UPROPERTY(Transient)
 	bool bRouteMapDragActive = false;
