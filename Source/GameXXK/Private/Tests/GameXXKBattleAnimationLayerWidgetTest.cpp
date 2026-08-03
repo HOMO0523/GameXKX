@@ -609,6 +609,9 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		LateImpactVisual
 		&& (!LateImpactVisual->GetUnitImageForTest()
 			|| LateImpactVisual->GetUnitImageForTest()->GetVisibility() == ESlateVisibility::Hidden));
+	const double LateImpactMarkerAbsoluteSeconds = 41.1;
+	const double LateImpactLoadAbsoluteSeconds = 41.601;
+	LateImpactBoard->AdvanceVisualsAtRealTime(LateImpactLoadAbsoluteSeconds);
 	TestTrue(TEXT("the late generic Impact request completes while its event is active"),
 		LateImpactLoader->CompleteImpact(GenericImpactClip.TexturePath));
 	TestEqual(TEXT("late Impact completion binds its atlas to the still-active widget"),
@@ -619,18 +622,25 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 			? LateImpactVisual->GetUnitImageForTest()->GetVisibility()
 			: ESlateVisibility::Hidden,
 		ESlateVisibility::SelfHitTestInvisible);
-	TestEqual(TEXT("late Impact starts from frame zero at its own completion time"),
+	TestEqual(TEXT("late Impact immediately catches up from the original absolute marker epoch"),
 		LateImpactVisual ? LateImpactVisual->GetCurrentFrameForTest() : INDEX_NONE,
-		0);
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(
+			GenericImpactClip,
+			static_cast<float>(LateImpactLoadAbsoluteSeconds - LateImpactMarkerAbsoluteSeconds),
+			false));
 	TestEqual(TEXT("late Impact completion cannot refire health or marker bookkeeping"),
 		FApi::ImpactCount(LateImpactBoard), 1);
 	TestEqual(TEXT("late Impact completion cannot restart shake"), FApi::ShakeCount(LateImpactBoard), 1);
 	TestEqual(TEXT("late Impact completion preserves the original readout"),
 		FApi::Readout(LateImpactBoard), FString(TEXT("-19")));
-	LateImpactBoard->AdvanceVisualsAtRealTime(41.201);
-	TestEqual(TEXT("late Impact advances at four-times playback from completion time"),
+	const double LateImpactFollowUpAbsoluteSeconds = 41.801;
+	LateImpactBoard->AdvanceVisualsAtRealTime(LateImpactFollowUpAbsoluteSeconds);
+	TestEqual(TEXT("late Impact continues four-times playback from the unchanged marker epoch"),
 		LateImpactVisual ? LateImpactVisual->GetCurrentFrameForTest() : INDEX_NONE,
-		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(GenericImpactClip, 0.1f, false));
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(
+			GenericImpactClip,
+			static_cast<float>(LateImpactFollowUpAbsoluteSeconds - LateImpactMarkerAbsoluteSeconds),
+			false));
 
 	UGameInstance* const SwitchedImpactGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const SwitchedImpactSubsystem = NewObject<UGameXXKMVPSubsystem>(SwitchedImpactGameInstance);

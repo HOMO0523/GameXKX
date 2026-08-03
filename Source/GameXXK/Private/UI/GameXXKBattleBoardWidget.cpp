@@ -713,6 +713,8 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
 					&& Board->BattleCinematicImpact)
 				{
 					Board->BattleCinematicImpact->SetAtlas(Texture);
+					Board->BattleCinematicImpact->AdvanceAtRealTime(
+						RequestEntry->StartSeconds + BattleImpactMarkerSeconds);
 					Board->BattleCinematicImpact->AdvanceAtRealTime(Board->LastSlateSeconds);
 				}
 				break;
