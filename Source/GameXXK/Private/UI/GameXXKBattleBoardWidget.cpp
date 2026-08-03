@@ -71,6 +71,10 @@ namespace
 	static const FVector2D FixedUnitHudWidgetSize(272.0f, 142.0f);
 	static const FVector2D BattleHudSafeStageDesignSize(1920.0f, 1080.0f);
 	static const FVector2D FormationVisualSize(410.0f, 410.0f);
+	static const FVector2D CinematicImpactVisualSize(360.0f, 360.0f);
+	static const FVector2D CinematicEnemyAnchor(590.0f / 1920.0f, 0.5f);
+	static const FVector2D CinematicPartyAnchor(1330.0f / 1920.0f, 0.5f);
+	static const FVector2D CinematicImpactAnchor(0.5f, 0.5f);
 	static const TCHAR* BattleBackdropTexturePath =
 		TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Riverside_GeneratedV1.T_BattleArena_Riverside_GeneratedV1");
 	// Legacy test-only resolver constants. Production HUD placement no longer reads them.
@@ -82,6 +86,10 @@ namespace
 	static constexpr int32 BattleFormationZOrder = 10;
 	static constexpr int32 BattleTargetProxyBaseZOrder = 10;
 	static constexpr int32 BattleControlsZOrder = 20;
+	static constexpr int32 BattleCinematicDimmerZOrder = 30;
+	static constexpr int32 BattleCinematicParticipantZOrder = 40;
+	static constexpr int32 BattleCinematicImpactZOrder = 50;
+	static constexpr int32 BattleCinematicReadoutZOrder = 60;
 	static constexpr int32 BattleLegacyAnimationZOrder = 1000;
 	static constexpr int32 PartyQiWidgetZOrder = 35;
 	static constexpr float PartyQiHandSafetyGap = 12.0f;
@@ -98,6 +106,10 @@ namespace
 	static constexpr float EnemyIntentRevealDuration = 0.55f;
 	static constexpr float EnemyIntentResolveDuration = 0.18f;
 	static constexpr float EnemyIntentSettleDuration = 0.32f;
+	static constexpr double BattleImpactMarkerSeconds = 1.1;
+	static constexpr double BattleAttackHitDurationSeconds = 2.5;
+	static constexpr double BattleDeathDurationSeconds = 5.0;
+	static constexpr double BattleHudShakeDurationSeconds = 0.32;
 
 	struct FGameXXKFixedUnitHudLayout
 	{
@@ -593,6 +605,518 @@ void UGameXXKBattleBoardWidget::QueueCombatAnimation(
 	}
 }
 
+void UGameXXKBattleBoardWidget::QueuePresentation(const FGameXXKBattlePresentationEvent& Event)
+{
+	if (Event.AttackerUnitId.IsNone() || Event.TargetUnitId.IsNone())
+	{
+		return;
+	}
+
+	FBattlePresentationQueueEntry Entry;
+	Entry.Event = Event;
+	Entry.Kind = EBattlePresentationKind::AttackHit;
+	Entry.QueueSerial = NextBattlePresentationQueueSerial++;
+	if (NextBattlePresentationQueueSerial == 0)
+	{
+		NextBattlePresentationQueueSerial = 1;
+	}
+	Entry.AttackerClip = FGameXXKBattleAnimationPresentation::ResolveClip(
+		Event.AttackerUnitId,
+		Event.bAttackerEnemy,
+		EGameXXKBattleAnimationAction::Attack);
+	Entry.TargetClip = FGameXXKBattleAnimationPresentation::ResolveClip(
+		Event.TargetUnitId,
+		Event.bTargetEnemy,
+		EGameXXKBattleAnimationAction::Hit);
+	Entry.ImpactClip = FGameXXKBattleAnimationPresentation::ResolveGenericClip(
+		EGameXXKBattleAnimationAction::Impact);
+	const uint64 QueueSerial = Entry.QueueSerial;
+	BattlePresentationQueue.Add(MoveTemp(Entry));
+	PrefetchPresentationEntry(QueueSerial);
+}
+
+UGameXXKBattleBoardWidget::FBattlePresentationQueueEntry*
+UGameXXKBattleBoardWidget::FindPresentationEntry(const uint64 QueueSerial)
+{
+	return BattlePresentationQueue.FindByPredicate([QueueSerial](const FBattlePresentationQueueEntry& Entry)
+	{
+		return Entry.QueueSerial == QueueSerial;
+	});
+}
+
+const UGameXXKBattleBoardWidget::FBattlePresentationQueueEntry*
+UGameXXKBattleBoardWidget::GetActivePresentationEntry() const
+{
+	return !BattlePresentationQueue.IsEmpty() && BattlePresentationQueue[0].bStarted
+		? &BattlePresentationQueue[0]
+		: nullptr;
+}
+
+void UGameXXKBattleBoardWidget::PrefetchPresentationEntry(const uint64 QueueSerial)
+{
+	FBattlePresentationQueueEntry* const Entry = FindPresentationEntry(QueueSerial);
+	if (!Entry || !AtlasCache || ActiveBattleVisualSessionToken == 0)
+	{
+		return;
+	}
+
+	PrefetchPresentationAtlas(QueueSerial, Entry->AttackerClip.TexturePath, EBattlePresentationAtlasRole::Attacker);
+	PrefetchPresentationAtlas(QueueSerial, Entry->TargetClip.TexturePath, EBattlePresentationAtlasRole::Target);
+	PrefetchPresentationAtlas(QueueSerial, Entry->ImpactClip.TexturePath, EBattlePresentationAtlasRole::Impact);
+}
+
+void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
+	const uint64 QueueSerial,
+	const FSoftObjectPath& TexturePath,
+	const EBattlePresentationAtlasRole Role)
+{
+	FBattlePresentationQueueEntry* const Entry = FindPresentationEntry(QueueSerial);
+	if (!Entry || !AtlasCache || ActiveBattleVisualSessionToken == 0 || !TexturePath.IsValid())
+	{
+		return;
+	}
+
+	if (!Entry->PinnedAtlasPaths.Contains(TexturePath))
+	{
+		AtlasCache->Pin(TexturePath);
+		Entry->PinnedAtlasPaths.Add(TexturePath);
+	}
+	const uint64 RequestToken = ActiveBattleVisualSessionToken;
+	const TWeakObjectPtr<UGameXXKBattleBoardWidget> WeakBoard(this);
+	AtlasCache->Acquire(
+		TexturePath,
+		RequestToken,
+		[WeakBoard, RequestToken, QueueSerial, Role](
+			UTexture2D* const Texture,
+			const EGameXXKAtlasLoadResult Result)
+		{
+			UGameXXKBattleBoardWidget* const Board = WeakBoard.Get();
+			if (!Board || Board->ActiveBattleVisualSessionToken != RequestToken)
+			{
+				return;
+			}
+			FBattlePresentationQueueEntry* const RequestEntry = Board->FindPresentationEntry(QueueSerial);
+			if (!RequestEntry || Result != EGameXXKAtlasLoadResult::Loaded || !Texture)
+			{
+				return;
+			}
+			switch (Role)
+			{
+			case EBattlePresentationAtlasRole::Attacker: RequestEntry->AttackerAtlas = Texture; break;
+			case EBattlePresentationAtlasRole::Target: RequestEntry->TargetAtlas = Texture; break;
+			case EBattlePresentationAtlasRole::Impact: RequestEntry->ImpactAtlas = Texture; break;
+			default: break;
+			}
+		});
+}
+
+void UGameXXKBattleBoardWidget::AdvanceBattlePresentation(const double AbsoluteSeconds)
+{
+	if (!FMath::IsFinite(AbsoluteSeconds))
+	{
+		return;
+	}
+
+	double NextStartSeconds = AbsoluteSeconds;
+	int32 CompletedEntryGuard = 0;
+	while (!BattlePresentationQueue.IsEmpty() && CompletedEntryGuard++ < 256)
+	{
+		FBattlePresentationQueueEntry& Entry = BattlePresentationQueue[0];
+		if (!Entry.bStarted)
+		{
+			StartPresentationEntry(Entry, NextStartSeconds);
+		}
+
+		const double ElapsedSeconds = FMath::Max(0.0, AbsoluteSeconds - Entry.StartSeconds);
+		const double DurationSeconds = Entry.Kind == EBattlePresentationKind::Death
+			? BattleDeathDurationSeconds
+			: BattleAttackHitDurationSeconds;
+		if (Entry.Kind == EBattlePresentationKind::AttackHit
+			&& !Entry.bImpactFired
+			&& ElapsedSeconds >= BattleImpactMarkerSeconds)
+		{
+			FirePresentationImpact(Entry);
+		}
+		if (ElapsedSeconds < DurationSeconds)
+		{
+			break;
+		}
+
+		const double CompletionBoundarySeconds = Entry.StartSeconds + DurationSeconds;
+		CompletePresentationEntry(Entry);
+		BattlePresentationQueue.RemoveAt(0, 1, EAllowShrinking::No);
+		NextStartSeconds = CompletionBoundarySeconds;
+	}
+
+	UpdateBattlePresentationShake(AbsoluteSeconds);
+}
+
+void UGameXXKBattleBoardWidget::StartPresentationEntry(
+	FBattlePresentationQueueEntry& Entry,
+	const double StartSeconds)
+{
+	Entry.StartSeconds = StartSeconds;
+	Entry.bStarted = true;
+	Entry.bImpactFired = false;
+	Entry.bCompletionFired = false;
+	Entry.PresentedAttackerClip = FGameXXKBattleAnimationClipDescriptor();
+	Entry.PresentedTargetClip = FGameXXKBattleAnimationClipDescriptor();
+
+	HideFormationForPresentation();
+	SetTargetProxiesVisible(false);
+	if (BattleCinematicDimmer)
+	{
+		BattleCinematicDimmer->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
+	if (BattleCinematicImpact)
+	{
+		BattleCinematicImpact->HideForCinematic();
+	}
+	if (BattleCinematicReadout)
+	{
+		BattleCinematicReadout->SetText(FText::GetEmpty());
+		BattleCinematicReadout->SetVisibility(ESlateVisibility::Hidden);
+	}
+
+	if (Entry.Kind == EBattlePresentationKind::Death)
+	{
+		SetDisplayedHealthOverlay(Entry.Event.TargetUnitId, Entry.Event.TargetHealthAfter);
+		UGameXXKBattleUnitVisualWidget* const TargetVisual = UnitVisuals.FindRef(Entry.Event.TargetUnitId);
+		if (TargetVisual)
+		{
+			const FGameXXKBattleAnimationClipDescriptor IdleClip =
+				FGameXXKBattleAnimationPresentation::ResolveClip(
+					Entry.Event.TargetUnitId,
+					Entry.Event.bTargetEnemy,
+					EGameXXKBattleAnimationAction::Idle);
+			Entry.PresentedTargetClip = Entry.TargetClip.IsValid() && Entry.TargetAtlas.IsValid()
+				? Entry.TargetClip
+				: IdleClip;
+			if (Entry.TargetClip.IsValid() && Entry.TargetAtlas.IsValid())
+			{
+				TargetVisual->SetAtlas(Entry.TargetAtlas.Get());
+			}
+			else
+			{
+				RestoreUnitIdleAtlas(Entry.Event.TargetUnitId, TargetVisual);
+			}
+			TargetVisual->ShowCinematic(
+				Entry.PresentedTargetClip,
+				Entry.Event.bTargetEnemy ? CinematicEnemyAnchor : CinematicPartyAnchor);
+			if (UCanvasPanelSlot* const ParticipantSlot = Cast<UCanvasPanelSlot>(TargetVisual->Slot))
+			{
+				ParticipantSlot->SetZOrder(BattleCinematicParticipantZOrder);
+			}
+			TargetVisual->AdvanceAtRealTime(Entry.StartSeconds);
+		}
+		return;
+	}
+
+	SetDisplayedHealthOverlay(Entry.Event.TargetUnitId, Entry.Event.TargetHealthBefore);
+	UGameXXKBattleUnitVisualWidget* const AttackerVisual = UnitVisuals.FindRef(Entry.Event.AttackerUnitId);
+	if (AttackerVisual)
+	{
+		const FGameXXKBattleAnimationClipDescriptor IdleClip =
+			FGameXXKBattleAnimationPresentation::ResolveClip(
+				Entry.Event.AttackerUnitId,
+				Entry.Event.bAttackerEnemy,
+				EGameXXKBattleAnimationAction::Idle);
+		Entry.PresentedAttackerClip = Entry.AttackerClip.IsValid() && Entry.AttackerAtlas.IsValid()
+			? Entry.AttackerClip
+			: IdleClip;
+		if (Entry.AttackerClip.IsValid() && Entry.AttackerAtlas.IsValid())
+		{
+			AttackerVisual->SetAtlas(Entry.AttackerAtlas.Get());
+		}
+		else
+		{
+			RestoreUnitIdleAtlas(Entry.Event.AttackerUnitId, AttackerVisual);
+		}
+		AttackerVisual->ShowCinematic(
+			Entry.PresentedAttackerClip,
+			Entry.Event.bAttackerEnemy ? CinematicEnemyAnchor : CinematicPartyAnchor);
+		if (UCanvasPanelSlot* const ParticipantSlot = Cast<UCanvasPanelSlot>(AttackerVisual->Slot))
+		{
+			ParticipantSlot->SetZOrder(BattleCinematicParticipantZOrder);
+		}
+		AttackerVisual->AdvanceAtRealTime(Entry.StartSeconds);
+	}
+
+	UGameXXKBattleUnitVisualWidget* const TargetVisual = UnitVisuals.FindRef(Entry.Event.TargetUnitId);
+	if (TargetVisual)
+	{
+		const FGameXXKBattleAnimationClipDescriptor IdleClip =
+			FGameXXKBattleAnimationPresentation::ResolveClip(
+				Entry.Event.TargetUnitId,
+				Entry.Event.bTargetEnemy,
+				EGameXXKBattleAnimationAction::Idle);
+		Entry.PresentedTargetClip = Entry.TargetClip.IsValid() && Entry.TargetAtlas.IsValid()
+			? Entry.TargetClip
+			: IdleClip;
+		if (Entry.TargetClip.IsValid() && Entry.TargetAtlas.IsValid())
+		{
+			TargetVisual->SetAtlas(Entry.TargetAtlas.Get());
+		}
+		else
+		{
+			RestoreUnitIdleAtlas(Entry.Event.TargetUnitId, TargetVisual);
+		}
+		TargetVisual->ShowCinematic(
+			Entry.PresentedTargetClip,
+			Entry.Event.bTargetEnemy ? CinematicEnemyAnchor : CinematicPartyAnchor);
+		if (UCanvasPanelSlot* const ParticipantSlot = Cast<UCanvasPanelSlot>(TargetVisual->Slot))
+		{
+			ParticipantSlot->SetZOrder(BattleCinematicParticipantZOrder);
+		}
+		TargetVisual->AdvanceAtRealTime(Entry.StartSeconds);
+	}
+}
+
+void UGameXXKBattleBoardWidget::FirePresentationImpact(FBattlePresentationQueueEntry& Entry)
+{
+	if (Entry.bImpactFired || Entry.Kind != EBattlePresentationKind::AttackHit)
+	{
+		return;
+	}
+	Entry.bImpactFired = true;
+	++BattlePresentationImpactCount;
+	SetDisplayedHealthOverlay(Entry.Event.TargetUnitId, Entry.Event.TargetHealthAfter);
+
+	if (BattleCinematicImpact)
+	{
+		if (Entry.ImpactAtlas.IsValid())
+		{
+			BattleCinematicImpact->SetAtlas(Entry.ImpactAtlas.Get());
+		}
+		BattleCinematicImpact->ShowCinematic(Entry.ImpactClip, CinematicImpactAnchor);
+		if (UCanvasPanelSlot* const ImpactSlot = Cast<UCanvasPanelSlot>(BattleCinematicImpact->Slot))
+		{
+			ImpactSlot->SetAnchors(FAnchors(CinematicImpactAnchor.X, CinematicImpactAnchor.Y));
+			ImpactSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+			ImpactSlot->SetPosition(FVector2D::ZeroVector);
+			ImpactSlot->SetSize(CinematicImpactVisualSize);
+			ImpactSlot->SetZOrder(BattleCinematicImpactZOrder);
+		}
+		BattleCinematicImpact->AdvanceAtRealTime(Entry.StartSeconds + BattleImpactMarkerSeconds);
+	}
+
+	if (BattleCinematicReadout)
+	{
+		const FText Readout = Entry.Event.bAvoided
+			? NSLOCTEXT("GameXXK", "BattlePresentationAvoid", "闪避")
+			: FText::Format(
+				NSLOCTEXT("GameXXK", "BattlePresentationDamage", "-{0}"),
+				FText::AsNumber(Entry.Event.HealthDamage));
+		BattleCinematicReadout->SetText(Readout);
+		BattleCinematicReadout->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+
+	BattlePresentationShakeStartSeconds = Entry.StartSeconds + BattleImpactMarkerSeconds;
+	bBattlePresentationShakeActive = true;
+	++BattlePresentationHudShakeCount;
+}
+
+void UGameXXKBattleBoardWidget::CompletePresentationEntry(FBattlePresentationQueueEntry& Entry)
+{
+	if (Entry.bCompletionFired)
+	{
+		return;
+	}
+	Entry.bCompletionFired = true;
+	++BattlePresentationCompletionCount;
+	const FGameXXKBattlePresentationEvent CompletedEvent = Entry.Event;
+	const EBattlePresentationKind CompletedKind = Entry.Kind;
+	ReleasePresentationPins(Entry);
+
+	if (BattleCinematicImpact)
+	{
+		BattleCinematicImpact->HideForCinematic();
+	}
+	if (BattleCinematicReadout)
+	{
+		BattleCinematicReadout->SetText(FText::GetEmpty());
+		BattleCinematicReadout->SetVisibility(ESlateVisibility::Hidden);
+	}
+	bBattlePresentationShakeActive = false;
+	if (BattleDesignStage)
+	{
+		BattleDesignStage->SetRenderTranslation(FVector2D::ZeroVector);
+	}
+
+	if (CompletedKind == EBattlePresentationKind::Death)
+	{
+		ClearDisplayedHealthOverlay(CompletedEvent.TargetUnitId);
+		RemoveUnitVisual(CompletedEvent.TargetUnitId);
+		UnitIdleAtlasTextures.Remove(CompletedEvent.TargetUnitId);
+		RestoreFormationAfterPresentation(CompletedEvent.TargetUnitId);
+		return;
+	}
+
+	if (!CompletedEvent.bTargetDefeated)
+	{
+		ClearDisplayedHealthOverlay(CompletedEvent.TargetUnitId);
+	}
+	RestoreFormationAfterPresentation();
+	if (CompletedEvent.bTargetDefeated)
+	{
+		EnqueueDeathPresentationAfterActive(CompletedEvent);
+	}
+}
+
+void UGameXXKBattleBoardWidget::EnqueueDeathPresentationAfterActive(
+	const FGameXXKBattlePresentationEvent& Event)
+{
+	FBattlePresentationQueueEntry DeathEntry;
+	DeathEntry.Event = Event;
+	DeathEntry.Kind = EBattlePresentationKind::Death;
+	DeathEntry.QueueSerial = NextBattlePresentationQueueSerial++;
+	if (NextBattlePresentationQueueSerial == 0)
+	{
+		NextBattlePresentationQueueSerial = 1;
+	}
+	DeathEntry.TargetClip = FGameXXKBattleAnimationPresentation::ResolveClip(
+		Event.TargetUnitId,
+		Event.bTargetEnemy,
+		EGameXXKBattleAnimationAction::Death);
+	const uint64 QueueSerial = DeathEntry.QueueSerial;
+	BattlePresentationQueue.Insert(MoveTemp(DeathEntry), FMath::Min(1, BattlePresentationQueue.Num()));
+	PrefetchPresentationEntry(QueueSerial);
+}
+
+void UGameXXKBattleBoardWidget::ReleasePresentationPins(FBattlePresentationQueueEntry& Entry)
+{
+	if (AtlasCache)
+	{
+		for (const FSoftObjectPath& Path : Entry.PinnedAtlasPaths)
+		{
+			AtlasCache->Unpin(Path);
+		}
+	}
+	Entry.PinnedAtlasPaths.Reset();
+}
+
+void UGameXXKBattleBoardWidget::ResetBattlePresentation()
+{
+	for (FBattlePresentationQueueEntry& Entry : BattlePresentationQueue)
+	{
+		ReleasePresentationPins(Entry);
+	}
+	BattlePresentationQueue.Reset();
+	DisplayedHealthOverrides.Reset();
+	BattlePresentationImpactCount = 0;
+	BattlePresentationCompletionCount = 0;
+	BattlePresentationHudShakeCount = 0;
+	BattlePresentationShakeStartSeconds = 0.0;
+	bBattlePresentationShakeActive = false;
+	RestoreFormationAfterPresentation();
+	if (BattleCinematicImpact)
+	{
+		BattleCinematicImpact->HideForCinematic();
+		BattleCinematicImpact->SetAtlas(nullptr);
+	}
+	if (BattleCinematicReadout)
+	{
+		BattleCinematicReadout->SetText(FText::GetEmpty());
+		BattleCinematicReadout->SetVisibility(ESlateVisibility::Hidden);
+	}
+	if (BattleDesignStage)
+	{
+		BattleDesignStage->SetRenderTranslation(FVector2D::ZeroVector);
+	}
+}
+
+void UGameXXKBattleBoardWidget::HideFormationForPresentation()
+{
+	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitVisualWidget>>& Pair : UnitVisuals)
+	{
+		if (Pair.Value)
+		{
+			Pair.Value->HideForCinematic();
+		}
+	}
+}
+
+void UGameXXKBattleBoardWidget::RestoreFormationAfterPresentation(const FName RemovedUnitId)
+{
+	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitVisualWidget>>& Pair : UnitVisuals)
+	{
+		if (!Pair.Value || Pair.Key == RemovedUnitId)
+		{
+			continue;
+		}
+		RestoreUnitIdleAtlas(Pair.Key, Pair.Value);
+		Pair.Value->RestoreFormation();
+	}
+	SetTargetProxiesVisible(true);
+	if (BattleCinematicDimmer)
+	{
+		BattleCinematicDimmer->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+
+void UGameXXKBattleBoardWidget::RestoreUnitIdleAtlas(
+	const FName UnitId,
+	UGameXXKBattleUnitVisualWidget* const Visual)
+{
+	if (Visual)
+	{
+		Visual->SetAtlas(UnitIdleAtlasTextures.FindRef(UnitId));
+	}
+}
+
+void UGameXXKBattleBoardWidget::SetTargetProxiesVisible(const bool bVisible)
+{
+	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitTargetProxyButton>>& Pair : UnitTargetProxies)
+	{
+		if (Pair.Value)
+		{
+			Pair.Value->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+		}
+	}
+}
+
+void UGameXXKBattleBoardWidget::SetDisplayedHealthOverlay(const FName UnitId, const int32 Health)
+{
+	if (!UnitId.IsNone())
+	{
+		DisplayedHealthOverrides.Add(UnitId, FMath::Max(0, Health));
+		RefreshProjectedUnitHuds();
+	}
+}
+
+void UGameXXKBattleBoardWidget::ClearDisplayedHealthOverlay(const FName UnitId)
+{
+	if (DisplayedHealthOverrides.Remove(UnitId) > 0)
+	{
+		RefreshProjectedUnitHuds();
+	}
+}
+
+bool UGameXXKBattleBoardWidget::IsUnitRetainedByPresentation(const FName UnitId) const
+{
+	return DisplayedHealthOverrides.Contains(UnitId);
+}
+
+void UGameXXKBattleBoardWidget::UpdateBattlePresentationShake(const double AbsoluteSeconds)
+{
+	if (!BattleDesignStage || !bBattlePresentationShakeActive)
+	{
+		return;
+	}
+	const double ElapsedSeconds = AbsoluteSeconds - BattlePresentationShakeStartSeconds;
+	if (ElapsedSeconds < 0.0 || ElapsedSeconds >= BattleHudShakeDurationSeconds)
+	{
+		bBattlePresentationShakeActive = false;
+		BattleDesignStage->SetRenderTranslation(FVector2D::ZeroVector);
+		return;
+	}
+
+	const double Decay = 1.0 - (ElapsedSeconds / BattleHudShakeDurationSeconds);
+	const float X = static_cast<float>(FMath::Sin(ElapsedSeconds * 85.0) * 12.0 * Decay);
+	const float Y = static_cast<float>(FMath::Cos(ElapsedSeconds * 110.0) * 6.0 * Decay);
+	BattleDesignStage->SetRenderTranslation(FVector2D(X, Y));
+}
+
 UGameXXKBattleAnimationLayerWidget* UGameXXKBattleBoardWidget::GetBattleAnimationLayerForTest() const
 {
 	return BattleAnimationLayer;
@@ -626,6 +1150,10 @@ bool UGameXXKBattleBoardWidget::BeginBattleVisualSession(const uint64 SessionTok
 
 	ActiveBattleVisualSessionToken = SessionToken;
 	RefreshUnitVisuals();
+	for (const FBattlePresentationQueueEntry& Entry : BattlePresentationQueue)
+	{
+		PrefetchPresentationEntry(Entry.QueueSerial);
+	}
 	return ActiveBattleVisualSessionToken == SessionToken;
 }
 
@@ -635,6 +1163,7 @@ void UGameXXKBattleBoardWidget::CancelBattleVisualSession(const uint64 ClosingSe
 	{
 		return;
 	}
+	ResetBattlePresentation();
 
 	// Invalidate the Board first. CancelSession may synchronously deliver callbacks,
 	// and those callbacks must observe a stale Board token before touching widgets.
@@ -660,6 +1189,7 @@ void UGameXXKBattleBoardWidget::CancelBattleVisualSession(const uint64 ClosingSe
 	}
 	PinnedUnitAtlasPaths.Reset();
 	RequestedUnitAtlasPaths.Reset();
+	UnitIdleAtlasTextures.Reset();
 
 	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitVisualWidget>>& Pair : UnitVisuals)
 	{
@@ -692,12 +1222,17 @@ void UGameXXKBattleBoardWidget::AdvanceVisualsAtRealTime(const double AbsoluteSe
 	{
 		AtlasCache->AdvanceTimeouts(AbsoluteSeconds);
 	}
+	AdvanceBattlePresentation(AbsoluteSeconds);
 	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitVisualWidget>>& Pair : UnitVisuals)
 	{
 		if (Pair.Value)
 		{
 			Pair.Value->AdvanceAtRealTime(AbsoluteSeconds);
 		}
+	}
+	if (BattleCinematicImpact)
+	{
+		BattleCinematicImpact->AdvanceAtRealTime(AbsoluteSeconds);
 	}
 }
 
@@ -807,6 +1342,92 @@ uint64 UGameXXKBattleBoardWidget::GetActiveBattleVisualSessionTokenForTest() con
 int32 UGameXXKBattleBoardWidget::GetPinnedBattleAtlasCountForTest() const
 {
 	return PinnedUnitAtlasPaths.Num();
+}
+
+bool UGameXXKBattleBoardWidget::IsBattlePresentationActiveForTest() const
+{
+	return GetActivePresentationEntry() != nullptr;
+}
+
+bool UGameXXKBattleBoardWidget::IsBattleDeathPresentationActiveForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry && Entry->Kind == EBattlePresentationKind::Death;
+}
+
+int32 UGameXXKBattleBoardWidget::GetBattlePresentationQueueCountForTest() const
+{
+	return FMath::Max(0, BattlePresentationQueue.Num() - (GetActivePresentationEntry() ? 1 : 0));
+}
+
+uint64 UGameXXKBattleBoardWidget::GetActiveBattlePresentationEventIdForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry ? Entry->Event.EventId : 0;
+}
+
+double UGameXXKBattleBoardWidget::GetActiveBattlePresentationElapsedForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry ? FMath::Max(0.0, LastSlateSeconds - Entry->StartSeconds) : 0.0;
+}
+
+int32 UGameXXKBattleBoardWidget::GetBattlePresentationImpactCountForTest() const
+{
+	return BattlePresentationImpactCount;
+}
+
+int32 UGameXXKBattleBoardWidget::GetBattlePresentationCompletionCountForTest() const
+{
+	return BattlePresentationCompletionCount;
+}
+
+int32 UGameXXKBattleBoardWidget::GetBattlePresentationHudShakeCountForTest() const
+{
+	return BattlePresentationHudShakeCount;
+}
+
+int32 UGameXXKBattleBoardWidget::GetDisplayedHealthForTest(const FName UnitId) const
+{
+	if (const int32* const Override = DisplayedHealthOverrides.Find(UnitId))
+	{
+		return *Override;
+	}
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if (!State || !State->CardRun.bHasActiveCardBattle)
+	{
+		return 0;
+	}
+	const FGameXXKCardCombatUnit* const Unit = State->CardRun.ActiveBattle.Units.FindByPredicate(
+		[UnitId](const FGameXXKCardCombatUnit& Candidate)
+		{
+			return Candidate.UnitId == UnitId;
+		});
+	return Unit ? Unit->HP : 0;
+}
+
+float UGameXXKBattleBoardWidget::GetActiveAttackerPlaybackRateForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry ? Entry->PresentedAttackerClip.PlaybackRate : 0.0f;
+}
+
+float UGameXXKBattleBoardWidget::GetActiveTargetPlaybackRateForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry ? Entry->PresentedTargetClip.PlaybackRate : 0.0f;
+}
+
+float UGameXXKBattleBoardWidget::GetActiveImpactPlaybackRateForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry ? Entry->ImpactClip.PlaybackRate : 0.0f;
+}
+
+FString UGameXXKBattleBoardWidget::GetBattlePresentationReadoutForTest() const
+{
+	return BattleCinematicReadout ? BattleCinematicReadout->GetText().ToString() : FString();
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -942,6 +1563,7 @@ void UGameXXKBattleBoardWidget::RefreshFromState()
 	if (!bInBattle)
 	{
 		ClearCardTargetingState();
+		ResetBattlePresentation();
 		if (BattleAnimationLayer)
 		{
 			BattleAnimationLayer->ResetPresentation();
@@ -1557,7 +2179,8 @@ void UGameXXKBattleBoardWidget::RefreshProjectedUnitHuds()
 	{
 		for (const FGameXXKCardCombatUnit& Unit : State->CardRun.ActiveBattle.Units)
 		{
-			if (Unit.UnitId.IsNone() || !Unit.bLiving)
+			const bool bRetainedByPresentation = IsUnitRetainedByPresentation(Unit.UnitId);
+			if (Unit.UnitId.IsNone() || (!Unit.bLiving && !bRetainedByPresentation))
 			{
 				continue;
 			}
@@ -1570,6 +2193,13 @@ void UGameXXKBattleBoardWidget::RefreshProjectedUnitHuds()
 				View))
 			{
 				continue;
+			}
+			if (const int32* const DisplayedHealth = DisplayedHealthOverrides.Find(Unit.UnitId))
+			{
+				View.CurrentHP = *DisplayedHealth;
+				// A lethal target remains a visible presentation participant until its
+				// queued Death clip completes, even though authoritative state is already terminal.
+				View.bLiving = true;
 			}
 			FGameXXKFixedUnitHudLayout FixedLayout;
 			if (!TryResolveFixedUnitHudLayout(View, FixedLayout))
@@ -1654,7 +2284,7 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 	{
 		for (const FGameXXKCardCombatUnit& Unit : State->CardRun.ActiveBattle.Units)
 		{
-			if (Unit.UnitId.IsNone() || !Unit.bLiving)
+			if (Unit.UnitId.IsNone() || (!Unit.bLiving && !IsUnitRetainedByPresentation(Unit.UnitId)))
 			{
 				continue;
 			}
@@ -1831,7 +2461,30 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 					UGameXXKBattleUnitVisualWidget* const RequestVisual = Board->UnitVisuals.FindRef(RequestUnitId);
 					if (Result == EGameXXKAtlasLoadResult::Loaded && Texture && RequestVisual)
 					{
-						RequestVisual->SetAtlas(Texture);
+						Board->UnitIdleAtlasTextures.Add(RequestUnitId, Texture);
+						bool bApplyToCurrentVisual = true;
+						if (const FBattlePresentationQueueEntry* const ActiveEntry = Board->GetActivePresentationEntry())
+						{
+							if (ActiveEntry->Kind == EBattlePresentationKind::Death
+								&& ActiveEntry->Event.TargetUnitId == RequestUnitId)
+							{
+								bApplyToCurrentVisual = ActiveEntry->PresentedTargetClip.TexturePath == RequestPath;
+							}
+							else if (ActiveEntry->Kind == EBattlePresentationKind::AttackHit
+								&& ActiveEntry->Event.AttackerUnitId == RequestUnitId)
+							{
+								bApplyToCurrentVisual = ActiveEntry->PresentedAttackerClip.TexturePath == RequestPath;
+							}
+							else if (ActiveEntry->Kind == EBattlePresentationKind::AttackHit
+								&& ActiveEntry->Event.TargetUnitId == RequestUnitId)
+							{
+								bApplyToCurrentVisual = ActiveEntry->PresentedTargetClip.TexturePath == RequestPath;
+							}
+						}
+						if (bApplyToCurrentVisual)
+						{
+							RequestVisual->SetAtlas(Texture);
+						}
 						Board->SetUnitTargetPlaceholderVisible(RequestUnitId, false);
 						return;
 					}
@@ -1840,6 +2493,7 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 					{
 						RequestVisual->SetAtlas(nullptr);
 					}
+					Board->UnitIdleAtlasTextures.Remove(RequestUnitId);
 					Board->SetUnitTargetPlaceholderVisible(RequestUnitId, true);
 					if (Board->PinnedUnitAtlasPaths.FindRef(RequestUnitId) == RequestPath)
 					{
@@ -1877,6 +2531,7 @@ void UGameXXKBattleBoardWidget::RemoveUnitVisual(const FName UnitId)
 {
 	ReleasePinnedAtlasForUnit(UnitId);
 	RequestedUnitAtlasPaths.Remove(UnitId);
+	UnitIdleAtlasTextures.Remove(UnitId);
 	if (UGameXXKBattleUnitVisualWidget* const Visual = UnitVisuals.FindRef(UnitId))
 	{
 		Visual->SetAtlas(nullptr);
@@ -2726,6 +3381,72 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 			UnitHudLayerSlot->SetOffsets(FMargin(0.0f));
 			UnitHudLayerSlot->SetAlignment(FVector2D::ZeroVector);
 			UnitHudLayerSlot->SetZOrder(0);
+		}
+	}
+
+	BattleCinematicDimmer = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(),
+		TEXT("BattleCinematicDimmer"));
+	if (BattleCinematicDimmer && BattleDesignStage)
+	{
+		BattleCinematicDimmer->SetBrushColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.5f));
+		BattleCinematicDimmer->SetVisibility(ESlateVisibility::Hidden);
+		if (UCanvasPanelSlot* const DimmerSlot = BattleDesignStage->AddChildToCanvas(BattleCinematicDimmer))
+		{
+			DimmerSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
+			DimmerSlot->SetOffsets(FMargin(0.0f));
+			DimmerSlot->SetAlignment(FVector2D::ZeroVector);
+			DimmerSlot->SetZOrder(BattleCinematicDimmerZOrder);
+		}
+	}
+
+	BattleCinematicImpact = WidgetTree->ConstructWidget<UGameXXKBattleUnitVisualWidget>(
+		UGameXXKBattleUnitVisualWidget::StaticClass(),
+		TEXT("BattleCinematicImpact"));
+	if (BattleCinematicImpact && BattleDesignStage)
+	{
+		if (UCanvasPanelSlot* const ImpactSlot = BattleDesignStage->AddChildToCanvas(BattleCinematicImpact))
+		{
+			ImpactSlot->SetAnchors(FAnchors(CinematicImpactAnchor.X, CinematicImpactAnchor.Y));
+			ImpactSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+			ImpactSlot->SetPosition(FVector2D::ZeroVector);
+			ImpactSlot->SetSize(CinematicImpactVisualSize);
+			ImpactSlot->SetZOrder(BattleCinematicImpactZOrder);
+		}
+		const FGameXXKBattleAnimationClipDescriptor ImpactClip =
+			FGameXXKBattleAnimationPresentation::ResolveGenericClip(EGameXXKBattleAnimationAction::Impact);
+		BattleCinematicImpact->ConfigureUnit(TEXT("Battle.GenericImpact"), false, CinematicImpactAnchor, ImpactClip);
+		if (UCanvasPanelSlot* const ImpactSlot = Cast<UCanvasPanelSlot>(BattleCinematicImpact->Slot))
+		{
+			ImpactSlot->SetAnchors(FAnchors(CinematicImpactAnchor.X, CinematicImpactAnchor.Y));
+			ImpactSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+			ImpactSlot->SetPosition(FVector2D::ZeroVector);
+			ImpactSlot->SetSize(CinematicImpactVisualSize);
+			ImpactSlot->SetZOrder(BattleCinematicImpactZOrder);
+		}
+		BattleCinematicImpact->HideForCinematic();
+	}
+
+	BattleCinematicReadout = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(),
+		TEXT("BattleCinematicReadout"));
+	if (BattleCinematicReadout && BattleDesignStage)
+	{
+		FSlateFontInfo ReadoutFont = BattleCinematicReadout->GetFont();
+		ReadoutFont.Size = 64;
+		BattleCinematicReadout->SetFont(ReadoutFont);
+		BattleCinematicReadout->SetJustification(ETextJustify::Center);
+		BattleCinematicReadout->SetColorAndOpacity(FSlateColor(FLinearColor(0.95f, 0.82f, 0.42f, 1.0f)));
+		BattleCinematicReadout->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.9f));
+		BattleCinematicReadout->SetShadowOffset(FVector2D(3.0f, 3.0f));
+		BattleCinematicReadout->SetVisibility(ESlateVisibility::Hidden);
+		if (UCanvasPanelSlot* const ReadoutSlot = BattleDesignStage->AddChildToCanvas(BattleCinematicReadout))
+		{
+			ReadoutSlot->SetAnchors(FAnchors(0.5f, 0.5f));
+			ReadoutSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+			ReadoutSlot->SetPosition(FVector2D(0.0f, -260.0f));
+			ReadoutSlot->SetSize(FVector2D(420.0f, 120.0f));
+			ReadoutSlot->SetZOrder(BattleCinematicReadoutZOrder);
 		}
 	}
 

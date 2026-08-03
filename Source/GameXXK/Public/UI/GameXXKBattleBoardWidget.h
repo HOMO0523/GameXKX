@@ -4,6 +4,7 @@
 #include "Components/Button.h"
 #include "GameXXKCardTypes.h"
 #include "Math/Box2D.h"
+#include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKMVPWidgetBase.h"
 #include "Input/Reply.h"
@@ -194,6 +195,8 @@ public:
 		FName TargetUnitId,
 		bool bTargetEnemy,
 		bool bTargetDefeated);
+	/** Queues one immutable, already-resolved combat packet for marker-driven Board presentation. */
+	void QueuePresentation(const FGameXXKBattlePresentationEvent& Event);
 	UGameXXKBattleAnimationLayerWidget* GetBattleAnimationLayerForTest() const;
 	bool BeginBattleVisualSession(uint64 SessionToken);
 	void CancelBattleVisualSession(uint64 ClosingSessionToken);
@@ -213,6 +216,19 @@ public:
 	bool IsUnitTargetPlaceholderVisibleForTest(FName UnitId) const;
 	uint64 GetActiveBattleVisualSessionTokenForTest() const;
 	int32 GetPinnedBattleAtlasCountForTest() const;
+	bool IsBattlePresentationActiveForTest() const;
+	bool IsBattleDeathPresentationActiveForTest() const;
+	int32 GetBattlePresentationQueueCountForTest() const;
+	uint64 GetActiveBattlePresentationEventIdForTest() const;
+	double GetActiveBattlePresentationElapsedForTest() const;
+	int32 GetBattlePresentationImpactCountForTest() const;
+	int32 GetBattlePresentationCompletionCountForTest() const;
+	int32 GetBattlePresentationHudShakeCountForTest() const;
+	int32 GetDisplayedHealthForTest(FName UnitId) const;
+	float GetActiveAttackerPlaybackRateForTest() const;
+	float GetActiveTargetPlaybackRateForTest() const;
+	float GetActiveImpactPlaybackRateForTest() const;
+	FString GetBattlePresentationReadoutForTest() const;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	void SetAtlasCacheForTest(TUniquePtr<FGameXXKBattleAtlasCache> InAtlasCache);
@@ -442,7 +458,63 @@ public:
 #endif
 
 private:
+	enum class EBattlePresentationKind : uint8
+	{
+		AttackHit,
+		Death
+	};
+
+	enum class EBattlePresentationAtlasRole : uint8
+	{
+		Attacker,
+		Target,
+		Impact
+	};
+
+	/** One immutable event plus its absolute-time, exact-once presentation state. */
+	struct FBattlePresentationQueueEntry
+	{
+		FGameXXKBattlePresentationEvent Event;
+		EBattlePresentationKind Kind = EBattlePresentationKind::AttackHit;
+		uint64 QueueSerial = 0;
+		double StartSeconds = 0.0;
+		bool bStarted = false;
+		bool bImpactFired = false;
+		bool bCompletionFired = false;
+		FGameXXKBattleAnimationClipDescriptor AttackerClip;
+		FGameXXKBattleAnimationClipDescriptor TargetClip;
+		FGameXXKBattleAnimationClipDescriptor ImpactClip;
+		FGameXXKBattleAnimationClipDescriptor PresentedAttackerClip;
+		FGameXXKBattleAnimationClipDescriptor PresentedTargetClip;
+		TWeakObjectPtr<UTexture2D> AttackerAtlas;
+		TWeakObjectPtr<UTexture2D> TargetAtlas;
+		TWeakObjectPtr<UTexture2D> ImpactAtlas;
+		TArray<FSoftObjectPath> PinnedAtlasPaths;
+	};
+
 	void BuildProgrammaticLayout();
+	void PrefetchPresentationEntry(uint64 QueueSerial);
+	void PrefetchPresentationAtlas(
+		uint64 QueueSerial,
+		const FSoftObjectPath& TexturePath,
+		EBattlePresentationAtlasRole Role);
+	FBattlePresentationQueueEntry* FindPresentationEntry(uint64 QueueSerial);
+	const FBattlePresentationQueueEntry* GetActivePresentationEntry() const;
+	void AdvanceBattlePresentation(double AbsoluteSeconds);
+	void StartPresentationEntry(FBattlePresentationQueueEntry& Entry, double StartSeconds);
+	void FirePresentationImpact(FBattlePresentationQueueEntry& Entry);
+	void CompletePresentationEntry(FBattlePresentationQueueEntry& Entry);
+	void EnqueueDeathPresentationAfterActive(const FGameXXKBattlePresentationEvent& Event);
+	void ReleasePresentationPins(FBattlePresentationQueueEntry& Entry);
+	void ResetBattlePresentation();
+	void HideFormationForPresentation();
+	void RestoreFormationAfterPresentation(FName RemovedUnitId = NAME_None);
+	void RestoreUnitIdleAtlas(FName UnitId, UGameXXKBattleUnitVisualWidget* Visual);
+	void SetTargetProxiesVisible(bool bVisible);
+	void SetDisplayedHealthOverlay(FName UnitId, int32 Health);
+	void ClearDisplayedHealthOverlay(FName UnitId);
+	bool IsUnitRetainedByPresentation(FName UnitId) const;
+	void UpdateBattlePresentationShake(double AbsoluteSeconds);
 	void RefreshUnitVisuals();
 	void ReleasePinnedAtlasForUnit(FName UnitId);
 	void RemoveUnitVisual(FName UnitId);
@@ -654,6 +726,16 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKBattleAnimationLayerWidget> BattleAnimationLayer;
 
+	/** Marker-driven presentation elements live directly in the common design stage. */
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> BattleCinematicDimmer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKBattleUnitVisualWidget> BattleCinematicImpact;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> BattleCinematicReadout;
+
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<UGameXXKBattleUnitHudWidget>> ProjectedUnitHuds;
 
@@ -669,9 +751,19 @@ private:
 	TMap<FName, FSoftObjectPath> PinnedUnitAtlasPaths;
 	/** One idle request per unit and visual session, including terminal fallback results. */
 	TMap<FName, FSoftObjectPath> RequestedUnitAtlasPaths;
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<UTexture2D>> UnitIdleAtlasTextures;
 	TUniquePtr<FGameXXKBattleAtlasCache> AtlasCache;
 	uint64 ActiveBattleVisualSessionToken = 0;
 	double LastSlateSeconds = 0.0;
+	TArray<FBattlePresentationQueueEntry> BattlePresentationQueue;
+	TMap<FName, int32> DisplayedHealthOverrides;
+	uint64 NextBattlePresentationQueueSerial = 1;
+	int32 BattlePresentationImpactCount = 0;
+	int32 BattlePresentationCompletionCount = 0;
+	int32 BattlePresentationHudShakeCount = 0;
+	double BattlePresentationShakeStartSeconds = 0.0;
+	bool bBattlePresentationShakeActive = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> ActionBox;

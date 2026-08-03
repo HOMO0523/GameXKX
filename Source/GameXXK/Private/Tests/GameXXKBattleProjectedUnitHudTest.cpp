@@ -1,11 +1,13 @@
 #include "Misc/AutomationTest.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Components/Border.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/ScaleBox.h"
 #include "Components/ScaleBoxSlot.h"
 #include "Components/SizeBox.h"
+#include "Components/TextBlock.h"
 #include "Engine/GameInstance.h"
 #include "GameXXKMVPRules.h"
 #include "Layout/Geometry.h"
@@ -16,6 +18,10 @@
 #include "UI/GameXXKBattleUnitResourceWidget.h"
 #include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
+#include "UObject/StrongObjectPtr.h"
+
+#include <type_traits>
+#include <utility>
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -35,11 +41,53 @@ namespace
 			FGameXXKAtlasLoaderCompletion Completion) override
 		{
 			RequestedPaths.Add(Path);
-			(void)Completion;
+			const FString PathString = Path.ToString();
+			if (PathString.Contains(TEXT("_idle_atlas")) || PathString.Contains(TEXT("impact_ink_generic")))
+			{
+				UTexture2D* const Texture = NewObject<UTexture2D>(GetTransientPackage());
+				LoadedTextures.Add(TStrongObjectPtr<UTexture2D>(Texture));
+				Completion(Texture, 4);
+			}
 			return MakeShared<FFixedSlotAtlasLoadHandle>();
 		}
 
+		bool Requested(const FSoftObjectPath& Path) const
+		{
+			return RequestedPaths.Contains(Path);
+		}
+
 		TArray<FSoftObjectPath> RequestedPaths;
+		TArray<TStrongObjectPtr<UTexture2D>> LoadedTextures;
+	};
+
+	template <typename TBoard, typename = void>
+	struct TFixedSlotPresentationApi
+	{
+		static constexpr bool bAvailable = false;
+		static void Queue(TBoard*, const FGameXXKBattlePresentationEvent&) {}
+		static int32 DisplayedHealth(const TBoard*, FName) { return INDEX_NONE; }
+		static float AttackerRate(const TBoard*) { return 0.0f; }
+		static float TargetRate(const TBoard*) { return 0.0f; }
+		static float ImpactRate(const TBoard*) { return 0.0f; }
+		static FString Readout(const TBoard*) { return FString(); }
+	};
+
+	template <typename TBoard>
+	struct TFixedSlotPresentationApi<TBoard, std::void_t<
+		decltype(std::declval<TBoard&>().QueuePresentation(std::declval<const FGameXXKBattlePresentationEvent&>())),
+		decltype(std::declval<const TBoard&>().GetDisplayedHealthForTest(std::declval<FName>())),
+		decltype(std::declval<const TBoard&>().GetActiveAttackerPlaybackRateForTest()),
+		decltype(std::declval<const TBoard&>().GetActiveTargetPlaybackRateForTest()),
+		decltype(std::declval<const TBoard&>().GetActiveImpactPlaybackRateForTest()),
+		decltype(std::declval<const TBoard&>().GetBattlePresentationReadoutForTest())>>
+	{
+		static constexpr bool bAvailable = true;
+		static void Queue(TBoard* Board, const FGameXXKBattlePresentationEvent& Event) { Board->QueuePresentation(Event); }
+		static int32 DisplayedHealth(const TBoard* Board, const FName UnitId) { return Board->GetDisplayedHealthForTest(UnitId); }
+		static float AttackerRate(const TBoard* Board) { return Board->GetActiveAttackerPlaybackRateForTest(); }
+		static float TargetRate(const TBoard* Board) { return Board->GetActiveTargetPlaybackRateForTest(); }
+		static float ImpactRate(const TBoard* Board) { return Board->GetActiveImpactPlaybackRateForTest(); }
+		static FString Readout(const TBoard* Board) { return Board->GetBattlePresentationReadoutForTest(); }
 	};
 
 	const FVector2D FixedUnitHudSize(272.0f, 142.0f);
@@ -171,6 +219,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 {
+	using FPresentationApi = TFixedSlotPresentationApi<UGameXXKBattleBoardWidget>;
+	TestTrue(TEXT("fixed-slot Board exposes marker-driven presentation state"), FPresentationApi::bAvailable);
+	if (!FPresentationApi::bAvailable)
+	{
+		return false;
+	}
+
 	UGameInstance* const TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	BuildFixedSlotHudFixture(Subsystem);
@@ -268,6 +323,140 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		TestNotNull(FString::Printf(TEXT("%s retains a stable target proxy"), *UnitId.ToString()),
 			Board->GetUnitTargetProxyForTest(UnitId));
 	}
+
+	UGameXXKBattleUnitVisualWidget* const CinematicAttacker = Board->GetUnitVisualForTest(TEXT("Player"));
+	UGameXXKBattleUnitVisualWidget* const CinematicTarget = Board->GetUnitVisualForTest(TEXT("Enemy.Tiger"));
+	UTexture2D* const AttackerIdleAtlas = CinematicAttacker ? CinematicAttacker->GetAtlasForTest() : nullptr;
+	UTexture2D* const TargetIdleAtlas = CinematicTarget ? CinematicTarget->GetAtlasForTest() : nullptr;
+	UWidget* const AttackerOriginalParent = CinematicAttacker ? CinematicAttacker->GetParent() : nullptr;
+	UWidget* const TargetOriginalParent = CinematicTarget ? CinematicTarget->GetParent() : nullptr;
+	FGameXXKBattlePresentationEvent CinematicEvent;
+	CinematicEvent.EventId = 701;
+	CinematicEvent.AttackerUnitId = TEXT("Player");
+	CinematicEvent.TargetUnitId = TEXT("Enemy.Tiger");
+	CinematicEvent.bTargetEnemy = true;
+	CinematicEvent.HealthDamage = 18;
+	CinematicEvent.TargetHealthBefore = 170;
+	CinematicEvent.TargetHealthAfter = 152;
+	FPresentationApi::Queue(Board, CinematicEvent);
+	TestTrue(TEXT("the Board requests Attack asynchronously before the central action"),
+		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveClip(
+			TEXT("Player"), false, EGameXXKBattleAnimationAction::Attack).TexturePath));
+	TestTrue(TEXT("the Board requests Hit asynchronously before the central action"),
+		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveClip(
+			TEXT("Enemy.Tiger"), true, EGameXXKBattleAnimationAction::Hit).TexturePath));
+	TestTrue(TEXT("the Board requests generic Impact asynchronously before the central action"),
+		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveGenericClip(
+			EGameXXKBattleAnimationAction::Impact).TexturePath));
+
+	Board->AdvanceVisualsAtRealTime(0.0);
+	TestEqual(TEXT("central action reuses the exact persistent attacker object"),
+		Board->GetUnitVisualForTest(TEXT("Player")), CinematicAttacker);
+	TestEqual(TEXT("central action reuses the exact persistent target object"),
+		Board->GetUnitVisualForTest(TEXT("Enemy.Tiger")), CinematicTarget);
+	TestTrue(TEXT("central attacker remains a direct child of the same design stage"),
+		CinematicAttacker && CinematicAttacker->GetParent() == AttackerOriginalParent && AttackerOriginalParent == DesignStage);
+	TestTrue(TEXT("central target remains a direct child of the same design stage"),
+		CinematicTarget && CinematicTarget->GetParent() == TargetOriginalParent && TargetOriginalParent == DesignStage);
+	TestEqual(TEXT("an unavailable Attack atlas retains the already-loaded Idle atlas"),
+		CinematicAttacker ? CinematicAttacker->GetAtlasForTest() : nullptr, AttackerIdleAtlas);
+	TestEqual(TEXT("an unavailable Hit atlas retains the already-loaded Idle atlas"),
+		CinematicTarget ? CinematicTarget->GetAtlasForTest() : nullptr, TargetIdleAtlas);
+	TestEqual(TEXT("attacker Idle fallback plays at its authored rate"), FPresentationApi::AttackerRate(Board), 1.0f);
+	TestEqual(TEXT("target Idle fallback plays at its authored rate"), FPresentationApi::TargetRate(Board), 1.0f);
+	TestEqual(TEXT("generic Impact remains a four-times clip despite participant fallback"),
+		FPresentationApi::ImpactRate(Board), 4.0f);
+	TestTrue(TEXT("cinematic attacker size is exactly two times formation"),
+		CinematicAttacker && CinematicAttacker->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f));
+	TestTrue(TEXT("cinematic target size is exactly two times formation"),
+		CinematicTarget && CinematicTarget->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f));
+	TestTrue(TEXT("party cinematic participant uses the stable right-side X anchor"),
+		CinematicAttacker && FMath::IsNearlyEqual(CinematicAttacker->GetStageCenter().X, 1330.0f, 0.01f));
+	TestTrue(TEXT("enemy cinematic participant uses the stable left-side X anchor"),
+		CinematicTarget && FMath::IsNearlyEqual(CinematicTarget->GetStageCenter().X, 590.0f, 0.01f));
+	TestTrue(TEXT("party cinematic participant remains vertically centered for Task 10"),
+		CinematicAttacker && FMath::IsNearlyEqual(CinematicAttacker->GetStageCenter().Y, 540.0f, 0.01f));
+	TestTrue(TEXT("enemy cinematic participant remains vertically centered for Task 10"),
+		CinematicTarget && FMath::IsNearlyEqual(CinematicTarget->GetStageCenter().Y, 540.0f, 0.01f));
+	TestTrue(TEXT("party cinematic participant keeps positive X scale without mirroring"),
+		CinematicAttacker && CinematicAttacker->GetRenderTransform().Scale.X > 0.0f);
+	TestTrue(TEXT("enemy cinematic participant keeps positive X scale without mirroring"),
+		CinematicTarget && CinematicTarget->GetRenderTransform().Scale.X > 0.0f);
+	for (const FName UnitId : FormationUnitIds)
+	{
+		UGameXXKBattleUnitVisualWidget* const Visual = Board->GetUnitVisualForTest(UnitId);
+		const bool bParticipant = UnitId == CinematicEvent.AttackerUnitId || UnitId == CinematicEvent.TargetUnitId;
+		TestTrue(FString::Printf(TEXT("%s leaves no visible 410 by 410 formation visual during the central action"), *UnitId.ToString()),
+			Visual && (bParticipant
+				? Visual->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f)
+				: Visual->GetVisibility() == ESlateVisibility::Hidden));
+	}
+	const UCanvasPanelSlot* const AttackerCinematicSlot = CinematicAttacker ? Cast<UCanvasPanelSlot>(CinematicAttacker->Slot) : nullptr;
+	const UCanvasPanelSlot* const TargetCinematicSlot = CinematicTarget ? Cast<UCanvasPanelSlot>(CinematicTarget->Slot) : nullptr;
+	TestEqual(TEXT("central attacker renders at z forty"), AttackerCinematicSlot ? AttackerCinematicSlot->GetZOrder() : INDEX_NONE, 40);
+	TestEqual(TEXT("central target renders at z forty"), TargetCinematicSlot ? TargetCinematicSlot->GetZOrder() : INDEX_NONE, 40);
+
+	UBorder* const CinematicDimmer = Board->WidgetTree
+		? Cast<UBorder>(Board->WidgetTree->FindWidget(TEXT("BattleCinematicDimmer")))
+		: nullptr;
+	UGameXXKBattleUnitVisualWidget* const CinematicImpact = Board->WidgetTree
+		? Cast<UGameXXKBattleUnitVisualWidget>(Board->WidgetTree->FindWidget(TEXT("BattleCinematicImpact")))
+		: nullptr;
+	UTextBlock* const CinematicReadout = Board->WidgetTree
+		? Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleCinematicReadout")))
+		: nullptr;
+	TestNotNull(TEXT("the common stage owns a cinematic dimmer"), CinematicDimmer);
+	TestNotNull(TEXT("the common stage owns a generic impact visual"), CinematicImpact);
+	TestNotNull(TEXT("the common stage owns a damage or avoid readout"), CinematicReadout);
+	const UCanvasPanelSlot* const DimmerSlot = CinematicDimmer ? Cast<UCanvasPanelSlot>(CinematicDimmer->Slot) : nullptr;
+	const UCanvasPanelSlot* const ImpactSlot = CinematicImpact ? Cast<UCanvasPanelSlot>(CinematicImpact->Slot) : nullptr;
+	const UCanvasPanelSlot* const ReadoutSlot = CinematicReadout ? Cast<UCanvasPanelSlot>(CinematicReadout->Slot) : nullptr;
+	TestEqual(TEXT("fifty-percent black dimmer renders at z thirty"), DimmerSlot ? DimmerSlot->GetZOrder() : INDEX_NONE, 30);
+	TestTrue(TEXT("the dimmer is black with exactly fifty percent opacity"),
+		CinematicDimmer
+		&& CinematicDimmer->GetBrushColor().Equals(FLinearColor(0.0f, 0.0f, 0.0f, 0.5f), 0.001f));
+	TestEqual(TEXT("generic center impact renders at z fifty"), ImpactSlot ? ImpactSlot->GetZOrder() : INDEX_NONE, 50);
+	TestTrue(TEXT("generic impact remains at the exact 1920 by 1080 stage center"),
+		CinematicImpact && CinematicImpact->GetStageCenter().Equals(FVector2D(960.0f, 540.0f), 0.01f));
+	TestEqual(TEXT("damage or avoid readout renders at z sixty"), ReadoutSlot ? ReadoutSlot->GetZOrder() : INDEX_NONE, 60);
+	TestEqual(TEXT("pre-marker displayed-health overlay retains health before"),
+		FPresentationApi::DisplayedHealth(Board, CinematicEvent.TargetUnitId), CinematicEvent.TargetHealthBefore);
+	const UGameXXKBattleUnitHudWidget* const PreImpactTargetHud = Board->GetProjectedUnitHudForTest(CinematicEvent.TargetUnitId);
+	TestEqual(TEXT("pre-marker target HUD visibly retains health before"),
+		PreImpactTargetHud && PreImpactTargetHud->GetResourceWidgetForTest()
+			? PreImpactTargetHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest()
+			: FString(),
+		FString(TEXT("气血 170 / 180")));
+	TestEqual(TEXT("impact remains hidden before its marker"),
+		CinematicImpact ? CinematicImpact->GetVisibility() : ESlateVisibility::Visible,
+		ESlateVisibility::Hidden);
+
+	Board->AdvanceVisualsAtRealTime(1.101);
+	TestEqual(TEXT("crossing 1.1 updates the displayed-health overlay"),
+		FPresentationApi::DisplayedHealth(Board, CinematicEvent.TargetUnitId), CinematicEvent.TargetHealthAfter);
+	const UGameXXKBattleUnitHudWidget* const PostImpactTargetHud = Board->GetProjectedUnitHudForTest(CinematicEvent.TargetUnitId);
+	TestEqual(TEXT("crossing 1.1 redraws the real target HUD"),
+		PostImpactTargetHud && PostImpactTargetHud->GetResourceWidgetForTest()
+			? PostImpactTargetHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest()
+			: FString(),
+		FString(TEXT("气血 152 / 180")));
+	TestEqual(TEXT("crossing 1.1 emits the damage readout"),
+		FPresentationApi::Readout(Board), FString(TEXT("-18")));
+	TestEqual(TEXT("generic impact remains visible even while participants use Idle fallback"),
+		CinematicImpact ? CinematicImpact->GetVisibility() : ESlateVisibility::Hidden,
+		ESlateVisibility::SelfHitTestInvisible);
+	TestNotNull(TEXT("visible generic impact owns its asynchronously loaded atlas"),
+		CinematicImpact ? CinematicImpact->GetAtlasForTest() : nullptr);
+
+	Board->AdvanceVisualsAtRealTime(2.5);
+	TestTrue(TEXT("surviving attacker restores its formation size"),
+		CinematicAttacker && CinematicAttacker->GetPresentedSize().Equals(FVector2D(410.0f, 410.0f), 0.01f));
+	TestTrue(TEXT("surviving target restores its formation size"),
+		CinematicTarget && CinematicTarget->GetPresentedSize().Equals(FVector2D(410.0f, 410.0f), 0.01f));
+	TestEqual(TEXT("surviving attacker restores formation z ten"),
+		AttackerCinematicSlot ? AttackerCinematicSlot->GetZOrder() : INDEX_NONE, 10);
+	TestEqual(TEXT("surviving target restores formation z ten"),
+		TargetCinematicSlot ? TargetCinematicSlot->GetZOrder() : INDEX_NONE, 10);
 	AssertApprovedInnerLaneClearance(*this, Board);
 
 	UGameXXKBattleUnitHudWidget* const HeroHud = Board->GetProjectedUnitHudForTest(TEXT("Player"));
