@@ -12,7 +12,6 @@
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
-#include "UI/GameXXKBattleAnimationLayerWidget.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattleStatusIconStyle.h"
 #include "UI/GameXXKBattleStatusIconWidget.h"
@@ -20,10 +19,7 @@
 #include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
-#include "Camera/CameraModifier_CameraShake.h"
-#include "Camera/PlayerCameraManager.h"
 #include "Engine/Engine.h"
-#include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 
@@ -193,23 +189,6 @@ namespace
 		return Count;
 	}
 
-	int32 CountActiveCameraShakes(APlayerCameraManager* CameraManager)
-	{
-		if (!CameraManager)
-		{
-			return 0;
-		}
-		UCameraModifier_CameraShake* const ShakeModifier = Cast<UCameraModifier_CameraShake>(
-			CameraManager->FindCameraModifierByClass(UCameraModifier_CameraShake::StaticClass()));
-		if (!ShakeModifier)
-		{
-			return 0;
-		}
-		TArray<FActiveCameraShakeInfo> ActiveShakes;
-		ShakeModifier->GetActiveCameraShakes(ActiveShakes);
-		return ActiveShakes.Num();
-	}
-
 	bool MatchesCanonicalOrLegacyIdle(
 		const UPaperFlipbook* Flipbook,
 		const FName UnitId,
@@ -315,37 +294,22 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("player flow never changes active camera aspect"),
 			FMath::IsNearlyEqual(ExistingCamera->GetCameraComponent()->AspectRatio, CameraAspectBeforeBattle, 0.001f));
 
-		TestNotNull(TEXT("runtime controller owns a camera manager for shake verification"), Controller->PlayerCameraManager.Get());
-		const int32 CameraShakeCountBeforeMutation = CountActiveCameraShakes(Controller->PlayerCameraManager);
-		TestEqual(TEXT("shake fixture starts with no active CameraManager shakes"), CameraShakeCountBeforeMutation, 0);
-		FGameXXKCardDamageResult HeroHit;
-		HeroHit.OriginalTargetUnitId = TEXT("Player");
-		HeroHit.ResolvedTargetUnitId = TEXT("Player");
-		HeroHit.HealthDamage = 1;
-		Controller->RefreshBattleSceneAfterCardMutation(TEXT("MoneyRat"), {HeroHit});
 		UGameXXKBattleBoardWidget* const RuntimeBoard = Controller->GetBattleBoardWidgetForTest();
-		UGameXXKBattleAnimationLayerWidget* const AnimationLayer = RuntimeBoard
-			? RuntimeBoard->GetBattleAnimationLayerForTest()
-			: nullptr;
-		TestNotNull(TEXT("runtime battle exposes its fullscreen animation layer"), AnimationLayer);
-		if (AnimationLayer)
+		TestNotNull(TEXT("runtime battle keeps presentation in the board-owned HUD stage"), RuntimeBoard);
+		if (RuntimeBoard)
 		{
-			ULocalPlayer* const TestLocalPlayer = NewObject<ULocalPlayer>(GEngine);
-			Controller->SetPlayer(TestLocalPlayer);
-			AnimationLayer->SetOwningPlayer(Controller);
-			TestTrue(TEXT("animation fixture exposes the owning controller to impact callbacks"),
-				AnimationLayer->GetOwningPlayer() == Controller);
-			TestTrue(TEXT("card mutation queues an active fullscreen combat animation"), AnimationLayer->IsPresentationActiveForTest());
-			AnimationLayer->AdvanceAnimationForTest(
-				FGameXXKBattleAnimationPresentation::GetImpactRuntimeSeconds() + 0.01f);
-			TestTrue(TEXT("animation advances across the delayed impact moment"), AnimationLayer->IsImpactVisibleForTest());
+			TestNull(TEXT("runtime board does not construct the retired fullscreen animation layer"),
+				RuntimeBoard->GetWidgetFromName(TEXT("BattleAnimationLayer")));
+			TestEqual(TEXT("runtime board owns no duplicate participant images"),
+				RuntimeBoard->GetDuplicateParticipantImageCountForTest(),
+				0);
+			TestEqual(TEXT("runtime board presentation performs no synchronous animation texture loads"),
+				RuntimeBoard->GetAtlasCacheStatsForTest().SyncLoadCount,
+				0);
 		}
-		TestEqual(TEXT("fullscreen impact never starts a CameraManager shake"),
-			CountActiveCameraShakes(Controller->PlayerCameraManager),
-			CameraShakeCountBeforeMutation);
-		TestEqual(TEXT("controller card-mutation refresh never creates a presenter"), CountActors<AGameXXKBattleScenePresenter>(TestWorld), 0);
-		TestEqual(TEXT("controller card-mutation refresh never creates scene units"), CountActors<AGameXXKBattleSceneUnitActor>(TestWorld), 0);
-		TestEqual(TEXT("controller card-mutation refresh never creates a camera"), CountActors<ACameraActor>(TestWorld), CameraActorCountBeforeBattle);
+		TestEqual(TEXT("board-owned HUD presentation never creates a presenter"), CountActors<AGameXXKBattleScenePresenter>(TestWorld), 0);
+		TestEqual(TEXT("board-owned HUD presentation never creates scene units"), CountActors<AGameXXKBattleSceneUnitActor>(TestWorld), 0);
+		TestEqual(TEXT("board-owned HUD presentation never creates a camera"), CountActors<ACameraActor>(TestWorld), CameraActorCountBeforeBattle);
 
 		Controller->EndPlay(EEndPlayReason::Destroyed);
 		TestWorld->DestroyWorld(false);
@@ -582,17 +546,6 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 		HudHeroActor->ConfigureFromRuntimeUnit(false, 0, SnapshotSubsystem->GetRuntimeState().ActiveBattleParty[0], 2);
 		TestFalse(TEXT("defeated card hero cannot retain a target outline"), HudHeroActor->IsCardTargetOutlineEnabled());
 	}
-
-	FGameXXKCardDamageResult HeroHealthHit;
-	HeroHealthHit.ResolvedTargetUnitId = TEXT("Player");
-	HeroHealthHit.HealthDamage = 1;
-	TestTrue(TEXT("only real health damage to the party Hero P2 requests a camera shake"), AGameXXKMVPPlayerController::ShouldTriggerHeroHitCameraShake(FixedSlotState, HeroHealthHit));
-	FGameXXKCardDamageResult HeroArmorOnlyHit = HeroHealthHit;
-	HeroArmorOnlyHit.HealthDamage = 0;
-	TestFalse(TEXT("armor-only hero packets never request a camera shake"), AGameXXKMVPPlayerController::ShouldTriggerHeroHitCameraShake(FixedSlotState, HeroArmorOnlyHit));
-	FGameXXKCardDamageResult TaskNpcHealthHit = HeroHealthHit;
-	TaskNpcHealthHit.ResolvedTargetUnitId = TEXT("Npc.YueBai");
-	TestFalse(TEXT("task NPC health damage never requests the hero P2 camera shake"), AGameXXKMVPPlayerController::ShouldTriggerHeroHitCameraShake(FixedSlotState, TaskNpcHealthHit));
 
 	FGameXXKRuntimeState HeroAndNpcOnlyState = FixedSlotState;
 	HeroAndNpcOnlyState.ActiveBattleParty.RemoveAll([](const FGameXXKBattleRuntimeUnit& Unit)

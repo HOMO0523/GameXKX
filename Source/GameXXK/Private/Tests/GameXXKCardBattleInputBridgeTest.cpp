@@ -157,6 +157,13 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	double DirectPresentationClock = 0.0;
+	const auto DrainDirectBoardPresentation = [&Board, &DirectPresentationClock]()
+	{
+		Board->AdvanceVisualsAtRealTime(DirectPresentationClock);
+		DirectPresentationClock += 100.0;
+		Board->AdvanceVisualsAtRealTime(DirectPresentationClock);
+	};
 	const TSharedRef<FBridgeAtlasLoader> DirectAtlasLoader = MakeShared<FBridgeAtlasLoader>();
 	Board->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
 		DirectAtlasLoader,
@@ -197,6 +204,8 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("controller commits a friendly card target directly by stable UnitId"), Controller->ConfirmBattleTargetForUnitId(PartyTargetUnitId));
 	TestFalse(TEXT("a committed friendly target exits card targeting"), Board->IsCardTargetingActive());
+	DrainDirectBoardPresentation();
+	TestFalse(TEXT("the direct Board unlocks before the next stable-ID fixture"), Board->IsBattlePresentationLockedForTest());
 
 	FName EnemyCardInstanceId;
 	FName EnemyTargetUnitId;
@@ -213,6 +222,7 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("enemy-target card enters card targeting"), Board && Board->ClickCardInHand(EnemyCardInstanceId));
 	TestTrue(TEXT("controller commits an enemy card target directly by stable UnitId"), Controller->ConfirmBattleTargetForUnitId(EnemyTargetUnitId));
 	TestFalse(TEXT("a committed enemy target exits card targeting"), Board && Board->IsCardTargetingActive());
+	DrainDirectBoardPresentation();
 
 	const FName SceneWorldName = MakeUniqueObjectName(
 		nullptr,
@@ -295,6 +305,13 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	SceneBoard->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
 		SceneAtlasLoader,
 		[]() { return 25.0; }));
+	double ScenePresentationClock = 0.0;
+	const auto DrainSceneBoardPresentation = [SceneBoard, &ScenePresentationClock]()
+	{
+		SceneBoard->AdvanceVisualsAtRealTime(ScenePresentationClock);
+		ScenePresentationClock += 100.0;
+		SceneBoard->AdvanceVisualsAtRealTime(ScenePresentationClock);
+	};
 	if (!SceneController->HasActorBegunPlay())
 	{
 		SceneController->DispatchBeginPlay();
@@ -336,7 +353,6 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	LegacySceneUnit->SetMVPSubsystemForTest(SceneSubsystem);
-	SceneController->SetBattleWorldProjectionOverrideForTest(true);
 	const auto ResolveCardOwnerUnitId = [SceneSubsystem](const FName CardInstanceId) -> FName
 	{
 		const FGameXXKCardInstance* const Card = SceneSubsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.FindByPredicate(
@@ -468,6 +484,8 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("stable UnitId confirmation leaves HUD-owned positions untouched"),
 		SceneBoard->GetBattleUnitScreenPositionForTest(SceneCardOwnerUnitId), HudOwnedPosition);
 	TestTrue(TEXT("stable UnitId confirmation never mutates a legacy actor highlight"), LegacySceneUnit->IsCardTargetHighlighted());
+	DrainSceneBoardPresentation();
+	TestFalse(TEXT("the scene Board unlocks before dormant legacy-input fixtures"), SceneBoard->IsBattlePresentationLockedForTest());
 
 	FName PhysicalCardInstanceId;
 	FName PhysicalTargetUnitId;
@@ -482,10 +500,8 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	SceneController->RefreshPlayerFlowWidgetsForTest();
 	TestTrue(TEXT("physical-click fixture configures the legacy scene actor"), ConfigureLegacyPartyTarget(PhysicalTargetUnitId));
 	TestTrue(TEXT("physical-click fixture enters manual card targeting"), SceneBoard->ClickCardInHand(PhysicalCardInstanceId));
-	SceneController->SetBattleSceneCursorHitOverrideForTest(LegacySceneUnit);
 	SceneController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::LeftMouseButton, IE_Released, 1.0f));
 	TestTrue(TEXT("legacy scene-unit clicks never take card-targeting authority"), SceneBoard->IsCardTargetingActive());
-	SceneController->ClearBattleSceneCursorHitOverrideForTest();
 	SceneBoard->CancelBattleTargeting();
 
 	FName EscapeCardInstanceId;

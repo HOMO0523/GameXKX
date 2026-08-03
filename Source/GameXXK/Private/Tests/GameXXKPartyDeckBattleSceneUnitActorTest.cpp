@@ -1,7 +1,5 @@
-#include "GameXXKMVPRules.h"
 #include "Misc/AutomationTest.h"
-#include "MVP/GameXXKBattleSceneUnitActor.h"
-#include "PaperFlipbook.h"
+#include "Misc/PackageName.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -13,16 +11,6 @@ namespace
 		const TCHAR* ExpectedFlipbookPath;
 	};
 
-	FGameXXKBattleRuntimeUnit MakeLivingPartyUnit(const TCHAR* RuntimeId)
-	{
-		FGameXXKBattleRuntimeUnit Unit;
-		Unit.Id = FName(RuntimeId);
-		Unit.HP = 100;
-		Unit.MaxHP = 100;
-		Unit.bEnemy = false;
-		Unit.bDefeated = false;
-		return Unit;
-	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -49,39 +37,24 @@ bool FGameXXKPartyDeckBattleSceneUnitActorTest::RunTest(const FString& Parameter
 		{TEXT("CompanionInstance.Companion_FormationMaster_01.00001CA3"), TEXT("/Game/GameXXK/Characters/PartyDeckPartners/FormationMaster/Flipbooks/FB_PartyDeckPartner_FormationMaster_Idle_South")},
 	};
 
-	const auto VerifyPartyDeckMapping = [this](const FPartyDeckVisualExpectation& Expectation)
+	const auto VerifyPreservedPartyDeckPackage = [this](const FPartyDeckVisualExpectation& Expectation)
 	{
-		AGameXXKBattleSceneUnitActor* Actor = NewObject<AGameXXKBattleSceneUnitActor>();
-		Actor->ConfigureFromRuntimeUnit(false, 1, MakeLivingPartyUnit(Expectation.RuntimeId));
-		UPaperFlipbook* Flipbook = Actor->GetCurrentBattleFlipbook();
-		TestNotNull(FString::Printf(TEXT("PartyDeck unit %s resolves a visible South Idle flipbook"), Expectation.RuntimeId), Flipbook);
-		if (Flipbook)
-		{
-			TestTrue(
-				FString::Printf(TEXT("PartyDeck unit %s resolves its isolated visual"), Expectation.RuntimeId),
-				Flipbook->GetPathName().Contains(Expectation.ExpectedFlipbookPath));
-		}
+		TestTrue(
+			FString::Printf(TEXT("retirement preserves PartyDeck package for %s"), Expectation.RuntimeId),
+			FPackageName::DoesPackageExist(Expectation.ExpectedFlipbookPath));
 	};
 
 	for (const FPartyDeckVisualExpectation& Expectation : NamedNpcExpectations)
 	{
-		VerifyPartyDeckMapping(Expectation);
+		VerifyPreservedPartyDeckPackage(Expectation);
 	}
 	for (const FPartyDeckVisualExpectation& Expectation : PersistentCompanionExpectations)
 	{
-		VerifyPartyDeckMapping(Expectation);
+		VerifyPreservedPartyDeckPackage(Expectation);
 	}
 
-	AGameXXKBattleSceneUnitActor* HeroActor = NewObject<AGameXXKBattleSceneUnitActor>();
-	HeroActor->ConfigureFromRuntimeUnit(false, 0, MakeLivingPartyUnit(TEXT("Player")));
-	UPaperFlipbook* HeroFlipbook = HeroActor->GetCurrentBattleFlipbook();
-	TestNotNull(TEXT("the existing hero battle flipbook remains available"), HeroFlipbook);
-	if (HeroFlipbook)
-	{
-		TestTrue(
-			TEXT("PartyDeck mappings leave the hero visual unchanged"),
-			HeroFlipbook->GetPathName().Contains(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Idle_West")));
-	}
+	TestTrue(TEXT("retirement leaves the hero compatibility flipbook package available"),
+		FPackageName::DoesPackageExist(TEXT("/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Idle_West")));
 
 	return true;
 }

@@ -13,7 +13,6 @@
 
 class UCanvasPanel;
 class UScaleBox;
-class UGameXXKBattleAnimationLayerWidget;
 class UBorder;
 class UImage;
 class UTextBlock;
@@ -32,8 +31,7 @@ enum class EGameXXKBattleHudLayer : uint8
 	Backdrop,
 	Formation,
 	TargetProxy,
-	Controls,
-	LegacyAnimation
+	Controls
 };
 
 /** Pure Board layout result for the passive shared-Qi rail and its collision safety envelopes. */
@@ -191,15 +189,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
 	void RefreshFromState();
 
-	void QueueCombatAnimation(
-		FName AttackerUnitId,
-		bool bAttackerEnemy,
-		FName TargetUnitId,
-		bool bTargetEnemy,
-		bool bTargetDefeated);
 	/** Queues one immutable, already-resolved combat packet for marker-driven Board presentation. */
 	void QueuePresentation(const FGameXXKBattlePresentationEvent& Event);
-	UGameXXKBattleAnimationLayerWidget* GetBattleAnimationLayerForTest() const;
 	bool BeginBattleVisualSession(uint64 SessionToken);
 	void CancelBattleVisualSession(uint64 ClosingSessionToken);
 	void AdvanceVisualsAtRealTime(double AbsoluteSeconds);
@@ -218,6 +209,8 @@ public:
 	bool IsUnitTargetPlaceholderVisibleForTest(FName UnitId) const;
 	uint64 GetActiveBattleVisualSessionTokenForTest() const;
 	int32 GetPinnedBattleAtlasCountForTest() const;
+	int32 GetDuplicateParticipantImageCountForTest() const;
+	FGameXXKBattleAtlasCacheStats GetAtlasCacheStatsForTest() const;
 	bool IsBattlePresentationActiveForTest() const;
 	bool IsBattlePresentationLockedForTest() const;
 	bool IsBattleDeathPresentationActiveForTest() const;
@@ -424,6 +417,8 @@ public:
 	FVector2D GetTargetingPointerPositionForTest() const;
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	FVector2D GetTargetingSourcePositionForTest() const;
+	/** Direct probe for malformed/stale card-owner fallback placement. */
+	FVector2D ResolveCardTargetingSourcePositionForTest(FName OwnerUnitId) const;
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	FName GetPendingCardInstanceIdForTest() const;
 	int32 GetVisibleHandCardCountForTest() const;
@@ -768,9 +763,6 @@ private:
 	TObjectPtr<UCanvasPanel> BattleProjectedUnitHudLayer;
 
 	/** Battle-only full-screen action layer; it never replaces card or story portraits. */
-	UPROPERTY(Transient)
-	TObjectPtr<UGameXXKBattleAnimationLayerWidget> BattleAnimationLayer;
-
 	/** Marker-driven presentation elements live directly in the common design stage. */
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> BattleCinematicDimmer;

@@ -13,7 +13,6 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
-#include "UI/GameXXKBattleAnimationLayerWidget.h"
 #include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattlePartyQiWidget.h"
@@ -227,9 +226,12 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 		BattleWidget->WidgetTree && BattleWidget->WidgetTree->RootWidget == ViewportRoot);
 	TestTrue(TEXT("existing hand controls are owned by the controls layer"),
 		BattleWidget->GetHandCardBoxForTest() && BattleWidget->GetHandCardBoxForTest()->GetParent() == ControlsLayer);
-	TestTrue(TEXT("legacy animation layer remains in the common stage during migration"),
-		BattleWidget->GetBattleAnimationLayerForTest()
-		&& BattleWidget->GetBattleAnimationLayerForTest()->GetParent() == DesignStage);
+	TestNull(TEXT("the common stage constructs no retired duplicate animation layer"),
+		BattleWidget->WidgetTree ? BattleWidget->WidgetTree->FindWidget(TEXT("BattleAnimationLayer")) : nullptr);
+	TestEqual(TEXT("the common stage has zero duplicate participant images"),
+		BattleWidget->GetDuplicateParticipantImageCountForTest(), 0);
+	TestEqual(TEXT("the active atlas path performs zero synchronous animation loads"),
+		BattleWidget->GetAtlasCacheStatsForTest().SyncLoadCount, 0);
 
 	UScaleBox* const BackdropScale = BattleWidget->GetBattleBackdropScaleBoxForTest();
 	UImage* const BackdropImage = BattleWidget->GetBattleBackdropImageForTest();
@@ -300,6 +302,23 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 		const FName FirstUnitId = LivingDisplayUnitIds[0];
 		UGameXXKBattleUnitVisualWidget* const Visual = BattleWidget->GetUnitVisualForTest(FirstUnitId);
 		TestNotNull(TEXT("first active unit has a persistent visual"), Visual);
+		const FVector2D HudAnchor = BattleWidget->GetProjectedUnitHudAnchorPositionForTest(FirstUnitId);
+		const FVector2D VisualCenter = Visual ? Visual->GetStageCenter() : FVector2D::ZeroVector;
+		TestTrue(TEXT("formation visual preserves the fixed HUD X anchor"),
+			FMath::IsNearlyEqual(VisualCenter.X, HudAnchor.X * 1920.0f, 0.01f));
+		TestTrue(TEXT("formation visual is exactly 64 design-stage pixels above its unchanged HUD anchor"),
+			FMath::IsNearlyEqual(VisualCenter.Y, HudAnchor.Y * 1080.0f - 64.0f, 0.01f));
+		const UCanvasPanelSlot* const TargetProxySlot = Cast<UCanvasPanelSlot>(
+			BattleWidget->GetUnitTargetProxyForTest(FirstUnitId)
+				? BattleWidget->GetUnitTargetProxyForTest(FirstUnitId)->Slot
+				: nullptr);
+		TestTrue(TEXT("target proxy shares the exact 64-pixel formation lift"),
+			TargetProxySlot
+			&& FMath::IsNearlyEqual(TargetProxySlot->GetAnchors().Minimum.X, HudAnchor.X, 0.0001f)
+			&& FMath::IsNearlyEqual(
+				TargetProxySlot->GetAnchors().Minimum.Y,
+				HudAnchor.Y - 64.0f / 1080.0f,
+				0.0001f));
 		TestNotNull(TEXT("first active unit has a stable target proxy while its atlas is pending"),
 			BattleWidget->GetUnitTargetProxyForTest(FirstUnitId));
 		TestTrue(TEXT("pending idle shows a selectable placeholder"),
@@ -355,6 +374,9 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("battle board remains active as a battle input/status layer"), BattleWidget->IsBattleBoardVisible());
 	TestEqual(TEXT("battle board leaves enemies to scene actors instead of UMG cards"), BattleWidget->GetEnemySlotCount(), 0);
 	TestEqual(TEXT("battle board leaves party members to scene actors instead of UMG cards"), BattleWidget->GetPartySlotCount(), 0);
+	TestTrue(TEXT("malformed or stale card owners use the lifted common-stage fallback"),
+		BattleWidget->ResolveCardTargetingSourcePositionForTest(TEXT("Missing.Stale.Owner"))
+			.Equals(FVector2D(960.0f, 476.0f), 0.01f));
 	TestFalse(TEXT("battle board command menu starts hidden"), BattleWidget->IsCommandMenuVisibleForTest());
 	TestFalse(TEXT("battle board starts outside targeting mode"), BattleWidget->IsTargetingBattleActionForTest());
 	TestFalse(TEXT("active card battles do not reopen legacy action buttons from a party click"), BattleWidget->OpenCommandMenuForPartyUnit(0, FVector2D(1120.0f, 360.0f), FVector2D(1120.0f, 360.0f)));
@@ -400,9 +422,12 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	BattleWidget->RefreshFromState();
 	UGameXXKBattleUnitVisualWidget* const OwnerVisual = BattleWidget->GetUnitVisualForTest(OwnerUnitId);
 	TestNotNull(TEXT("card owner keeps its persistent formation visual"), OwnerVisual);
-	const FVector2D FixedOwnerStageCenter = OwnerVisual
-		? OwnerVisual->GetStageCenter()
-		: FVector2D(0.755f * 1920.0f, 0.52f * 1080.0f);
+	const FVector2D FixedOwnerHudAnchor = BattleWidget->GetProjectedUnitHudAnchorPositionForTest(OwnerUnitId);
+	const FVector2D FixedOwnerStageCenter(
+		FixedOwnerHudAnchor.X * 1920.0f,
+		FixedOwnerHudAnchor.Y * 1080.0f - 64.0f);
+	TestTrue(TEXT("card owner visual uses the exact 64-pixel formation lift"),
+		OwnerVisual && OwnerVisual->GetStageCenter().Equals(FixedOwnerStageCenter, 0.01f));
 	BattleWidget->CancelBattleVisualSession(7001);
 	TestNull(TEXT("card-targeting fallback fixture removes the persistent visual"),
 		BattleWidget->GetUnitVisualForTest(OwnerUnitId));
@@ -410,13 +435,11 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("clicking a hand card uses its CardCheck preview"), BattleWidget->ClickCardInHand(CardInstanceId));
 	TestTrue(TEXT("manual card enters target-selection mode"), BattleWidget->IsCardTargetingForTest());
 	TestEqual(TEXT("pending targeting retains the stable card instance id"), BattleWidget->GetPendingCardInstanceIdForTest(), CardInstanceId);
-	TestEqual(TEXT("card targeting without a visual begins at the fixed card-runtime stage center, never actor projection"),
-		BattleWidget->GetTargetingSourcePositionForTest(),
-		FixedOwnerStageCenter);
+	TestTrue(TEXT("card targeting without a visual begins at the lifted fixed card-runtime stage center, never actor projection"),
+		BattleWidget->GetTargetingSourcePositionForTest().Equals(FixedOwnerStageCenter, 0.01f));
 	BattleWidget->RegisterBattleUnitScreenPosition(OwnerUnitId, FVector2D(14.0f, 17.0f));
-	TestEqual(TEXT("legacy scene projection cannot overwrite active card targeting after its visual is removed"),
-		BattleWidget->GetTargetingSourcePositionForTest(),
-		FixedOwnerStageCenter);
+	TestTrue(TEXT("legacy scene projection cannot overwrite lifted card targeting after its visual is removed"),
+		BattleWidget->GetTargetingSourcePositionForTest().Equals(FixedOwnerStageCenter, 0.01f));
 	TestTrue(TEXT("only legal card candidate units are highlighted"), BattleWidget->IsTargetUnitHighlighted(TargetUnitId));
 	TestFalse(TEXT("the card owner is not spuriously highlighted as an enemy target"), BattleWidget->IsTargetUnitHighlighted(OwnerUnitId));
 	BattleWidget->UpdateTargetingPointer(FVector2D(520.0f, 360.0f));
@@ -436,24 +459,16 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("pending route rewards hide the shared Party Qi widget"), PartyQiWidget->GetVisibility(), ESlateVisibility::Collapsed);
 	}
-	BattleWidget->QueueCombatAnimation(TEXT("Player"), false, TargetUnitId, true, false);
-	TestTrue(TEXT("battle exit fixture owns an active transient animation"),
-		BattleWidget->GetBattleAnimationLayerForTest()
-		&& BattleWidget->GetBattleAnimationLayerForTest()->IsPresentationActiveForTest());
+	TestNull(TEXT("battle exit owns no retired transient animation layer"),
+		BattleWidget->WidgetTree ? BattleWidget->WidgetTree->FindWidget(TEXT("BattleAnimationLayer")) : nullptr);
 	TestTrue(TEXT("skipping the reward resolves the route victory gate"), BattleWidget->SkipPendingRouteReward());
 	TestEqual(TEXT("reward resolution returns to dungeon route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(TEXT("reward resolution advances route index"), Subsystem->GetRuntimeState().DungeonNodeIndex, 2);
 
 	BattleWidget->RefreshFromState();
 	TestFalse(TEXT("battle board hides outside battle screen"), BattleWidget->IsBattleBoardVisible());
-	TestFalse(TEXT("leaving battle resets the transient animation layer"),
-		BattleWidget->GetBattleAnimationLayerForTest()
-		&& BattleWidget->GetBattleAnimationLayerForTest()->IsPresentationActiveForTest());
-	TestEqual(TEXT("leaving battle discards queued transient cinematics"),
-		BattleWidget->GetBattleAnimationLayerForTest()
-			? BattleWidget->GetBattleAnimationLayerForTest()->GetQueuedSequenceCountForTest()
-			: -1,
-		0);
+	TestNull(TEXT("leaving battle cannot recreate the retired transient animation layer"),
+		BattleWidget->WidgetTree ? BattleWidget->WidgetTree->FindWidget(TEXT("BattleAnimationLayer")) : nullptr);
 	if (PartyQiWidget)
 	{
 		TestEqual(TEXT("leaving battle hides the shared Party Qi widget"), PartyQiWidget->GetVisibility(), ESlateVisibility::Collapsed);

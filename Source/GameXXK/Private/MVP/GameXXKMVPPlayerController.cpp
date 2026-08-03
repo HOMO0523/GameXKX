@@ -3,32 +3,23 @@
 #include "Blueprint/GameViewportSubsystem.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
-#include "Camera/CameraActor.h"
-#include "Camera/CameraComponent.h"
-#include "Camera/PlayerCameraManager.h"
 #include "Components/InputComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Framework/Application/SlateApplication.h"
-#include "EngineUtils.h"
 #include "InputKeyEventArgs.h"
 #include "Interaction/GameXXKInteractionComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameXXKCompanionCatalog.h"
-#include "GameXXKBattlePresentation.h"
 #include "GameXXKMVPRules.h"
-#include "MVP/GameXXKBattleScenePresenter.h"
-#include "MVP/GameXXKBattleSceneUnitActor.h"
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKRouteEncounterSceneActor.h"
 #include "MVP/GameXXKMVPSubsystem.h"
-#include "PaperFlipbookComponent.h"
 #include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKTownNpcActor.h"
 #include "Town/GameXXKTownNpcCharacter.h"
 #include "Town/GameXXKTownPlayerPawn.h"
 #include "UI/GameXXKBattleBoardWidget.h"
-#include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKBattleOverlayCoordinator.h"
 #include "UI/GameXXKCompanionRosterWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
@@ -47,12 +38,6 @@
 namespace
 {
 	const FVector2D DefaultRouteMapViewportSize(1280.0f, 720.0f);
-	const FName BattleSceneCameraTag(TEXT("GameXXK_BattleScene_Camera"));
-	const FVector BattleSceneCameraFallbackLocation(-420.0f, 0.0f, 720.0f);
-	const FRotator BattleSceneCameraFallbackRotation(-60.0f, 0.0f, 0.0f);
-	// Wider framing keeps the combat lanes, projected foot HUD, and the new
-	// grass edge treatment visible without moving a user-tuned camera actor.
-	constexpr float BattleSceneCameraFallbackFOV = 63.0f;
 
 	FVector2D ResolveRouteMapViewportSize(const APlayerController* PlayerController)
 	{
@@ -113,21 +98,6 @@ namespace
 		TaskSlot.Offsets = FMargin(0.0f);
 		TaskSlot.Alignment = FVector2D::ZeroVector;
 		ViewportSubsystem->SetWidgetSlot(TaskPanelWidget, TaskSlot);
-	}
-
-	void ConfigureBattleSceneCameraActor(ACameraActor* CameraActor)
-	{
-	if (!CameraActor)
-	{
-		return;
-	}
-
-	if (UCameraComponent* CameraComponent = CameraActor->GetCameraComponent())
-	{
-		CameraComponent->ProjectionMode = ECameraProjectionMode::Perspective;
-		CameraComponent->AspectRatio = 16.0f / 9.0f;
-		CameraComponent->bConstrainAspectRatio = true;
-	}
 	}
 
 	bool IsGenericRouteEncounterScreen(const EGameXXKScreen Screen)
@@ -354,11 +324,6 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgetsForTest()
 void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgetsForTest()
 {
 	RefreshPlayerFlowWidgetsFromState();
-}
-
-void AGameXXKMVPPlayerController::ConfigureBattleSceneCameraForTest(ACameraActor* CameraActor)
-{
-	ConfigureBattleSceneCameraActor(CameraActor);
 }
 
 void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgetsFromState()
@@ -1071,27 +1036,6 @@ bool AGameXXKMVPPlayerController::ResolveRouteEncounterAction(const EGameXXKRout
 	return true;
 }
 
-bool AGameXXKMVPPlayerController::OpenBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
-{
-	if (!UnitActor || !UnitActor->CanOpenPartyCommandMenu())
-	{
-		return false;
-	}
-	EnsurePlayerFlowWidgets();
-	return BattleBoardWidget && BattleBoardWidget->OpenCommandMenuForPartyUnit(UnitActor->GetUnitIndex(), MenuScreenPosition, UnitScreenPosition);
-}
-
-bool AGameXXKMVPPlayerController::ToggleBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
-{
-	EnsurePlayerFlowWidgets();
-	return ToggleBattleCommandMenuForUnit(UnitActor, MenuScreenPosition, UnitScreenPosition);
-}
-
-bool AGameXXKMVPPlayerController::ConfirmBattleTargetForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor)
-{
-	return ConfirmBattleTargetForSceneUnit(UnitActor);
-}
-
 bool AGameXXKMVPPlayerController::ConfirmBattleTargetForUnitId(const FName UnitId)
 {
 	if (UnitId.IsNone())
@@ -1127,23 +1071,6 @@ void AGameXXKMVPPlayerController::SetTrackedInputModeForTest(const EGameXXKTrack
 bool AGameXXKMVPPlayerController::PrepareForRuntimeStateMapTravelForTest(const FString& CurrentPackageName)
 {
 	return PrepareForRuntimeStateMapTravel(CurrentPackageName);
-}
-
-void AGameXXKMVPPlayerController::SetBattleSceneCursorHitOverrideForTest(AGameXXKBattleSceneUnitActor* InUnitActor)
-{
-	bUseBattleSceneCursorHitOverrideForTest = true;
-	BattleSceneCursorHitOverrideForTest = InUnitActor;
-}
-
-void AGameXXKMVPPlayerController::ClearBattleSceneCursorHitOverrideForTest()
-{
-	bUseBattleSceneCursorHitOverrideForTest = false;
-	BattleSceneCursorHitOverrideForTest.Reset();
-}
-
-void AGameXXKMVPPlayerController::SetBattleWorldProjectionOverrideForTest(const bool bEnabled)
-{
-	bUseBattleWorldProjectionOverrideForTest = bEnabled;
 }
 
 void AGameXXKMVPPlayerController::SetBattleMousePositionOverrideForTest(const FVector2D InMousePosition)
@@ -2105,376 +2032,6 @@ void AGameXXKMVPPlayerController::ClearRouteEncounterContext()
 	ActiveRouteEncounterNodeId = INDEX_NONE;
 }
 
-void AGameXXKMVPPlayerController::EnsureBattleScenePresenter()
-{
-	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const bool bNeedsBattleScene = Subsystem
-		&& Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle
-		&& Subsystem->GetRuntimeState().bHasActiveBattle;
-	UWorld* World = GetWorld();
-	if (!bNeedsBattleScene || !World || !World->IsGameWorld())
-	{
-		BattleScenePresenter = nullptr;
-		return;
-	}
-
-	if (!IsValid(BattleScenePresenter) || BattleScenePresenter->GetWorld() != World)
-	{
-		BattleScenePresenter = nullptr;
-		for (TActorIterator<AGameXXKBattleScenePresenter> It(World); It; ++It)
-		{
-			BattleScenePresenter = *It;
-			break;
-		}
-	}
-
-	if (!BattleScenePresenter)
-	{
-		FActorSpawnParameters SpawnParameters;
-		SpawnParameters.Owner = this;
-		BattleScenePresenter = World->SpawnActor<AGameXXKBattleScenePresenter>(
-			AGameXXKBattleScenePresenter::StaticClass(),
-			FVector::ZeroVector,
-			FRotator::ZeroRotator,
-			SpawnParameters);
-	}
-
-	if (BattleScenePresenter)
-	{
-		BattleScenePresenter->SetMVPSubsystemForTest(Subsystem);
-		// Normal card resolution must retain the same actors so targeting state and
-		// their short feedback animations are not destroyed every mutation.
-		BattleScenePresenter->RefreshBattleScene();
-	}
-	ApplyBattleSceneCamera();
-}
-
-void AGameXXKMVPPlayerController::RefreshBattleSceneAfterCardMutation(
-	const FName AttackerUnitId,
-	const TArray<FGameXXKCardDamageResult>& DamageResults)
-{
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
-	if (BattleBoardWidget && RuntimeState && RuntimeState->CardRun.bHasActiveCardBattle)
-	{
-		const TArray<FGameXXKBattleAnimationCombatRequest> Requests =
-			FGameXXKBattleAnimationPresentation::BuildCombatRequests(
-				RuntimeState->CardRun.ActiveBattle,
-				AttackerUnitId,
-				DamageResults);
-		for (const FGameXXKBattleAnimationCombatRequest& Request : Requests)
-		{
-			BattleBoardWidget->QueueCombatAnimation(
-				Request.AttackerUnitId,
-				Request.bAttackerEnemy,
-				Request.TargetUnitId,
-				Request.bTargetEnemy,
-				Request.bTargetDefeated);
-		}
-	}
-}
-
-bool AGameXXKMVPPlayerController::ShouldTriggerHeroHitCameraShake(
-	const FGameXXKRuntimeState& State,
-	const FGameXXKCardDamageResult& DamageResult)
-{
-	if (DamageResult.HealthDamage <= 0)
-	{
-		return false;
-	}
-
-	const FName TargetUnitId = DamageResult.ResolvedTargetUnitId.IsNone()
-		? DamageResult.OriginalTargetUnitId
-		: DamageResult.ResolvedTargetUnitId;
-	if (TargetUnitId.IsNone() || !State.CardRun.bHasActiveCardBattle)
-	{
-		return false;
-	}
-
-	const FGameXXKCardCombatUnit* Target = State.CardRun.ActiveBattle.Units.FindByPredicate([TargetUnitId](const FGameXXKCardCombatUnit& Unit)
-	{
-		return Unit.UnitId == TargetUnitId;
-	});
-	return Target
-		&& Target->Side == EGameXXKCardTargetSide::Party
-		&& Target->Role == EGameXXKCharacterRole::Hero;
-}
-
-void AGameXXKMVPPlayerController::RefreshBattleCardTargetingBridge()
-{
-	if (!BattleBoardWidget)
-	{
-		return;
-	}
-
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	UWorld* World = GetWorld();
-	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle || !World)
-	{
-		return;
-	}
-
-	TArray<AGameXXKBattleSceneUnitActor*> CompatibilitySceneUnits;
-	for (TActorIterator<AGameXXKBattleSceneUnitActor> It(World); It; ++It)
-	{
-		if (AGameXXKBattleSceneUnitActor* UnitActor = *It)
-		{
-			CompatibilitySceneUnits.Add(UnitActor);
-		}
-	}
-	if (CompatibilitySceneUnits.IsEmpty())
-	{
-		// The fullscreen HUD owns its fixed positions. Preserve any positions it
-		// registers and fall back to the board's stable slot policy when none exist.
-		return;
-	}
-
-	BattleBoardWidget->ClearBattleUnitScreenPositions();
-	const bool bCardTargetingActive = BattleBoardWidget->IsCardTargetingActive();
-	for (AGameXXKBattleSceneUnitActor* UnitActor : CompatibilitySceneUnits)
-	{
-		if (!UnitActor || UnitActor->GetUnitId().IsNone())
-		{
-			continue;
-		}
-
-		FVector UnitWorldPosition = UnitActor->GetActorLocation();
-		if (const UPaperFlipbookComponent* BattleVisual = UnitActor->GetBattleVisualComponent())
-		{
-			UnitWorldPosition = BattleVisual->Bounds.Origin;
-		}
-
-		FVector2D UnitLocalScreenPosition;
-		if (ProjectBattleWorldLocationToWidgetPosition(UnitWorldPosition, UnitLocalScreenPosition))
-		{
-			BattleBoardWidget->RegisterBattleUnitScreenPosition(UnitActor->GetUnitId(), UnitLocalScreenPosition);
-		}
-
-		UnitActor->SetCardTargetHighlight(
-			bCardTargetingActive && BattleBoardWidget->IsTargetUnitHighlighted(UnitActor->GetUnitId()));
-	}
-}
-
-bool AGameXXKMVPPlayerController::ProjectBattleWorldLocationToWidgetPosition(
-	const FVector WorldLocation,
-	FVector2D& OutScreenPosition) const
-{
-#if WITH_DEV_AUTOMATION_TESTS
-	if (bUseBattleWorldProjectionOverrideForTest)
-	{
-		OutScreenPosition = FVector2D(WorldLocation.X + WorldLocation.Z, WorldLocation.Y);
-		return true;
-	}
-#endif
-
-	return UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(this, WorldLocation, OutScreenPosition, true);
-}
-
-void AGameXXKMVPPlayerController::ApplyBattleSceneCamera()
-{
-	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
-	{
-		return;
-	}
-
-	UWorld* World = GetWorld();
-	if (!World || !World->IsGameWorld())
-	{
-		return;
-	}
-
-	AActor* CameraActor = FindBattleSceneCameraActor();
-	if (!CameraActor)
-	{
-		FActorSpawnParameters SpawnParameters;
-		SpawnParameters.Owner = this;
-		ACameraActor* SpawnedCamera = World->SpawnActor<ACameraActor>(
-			ACameraActor::StaticClass(),
-			BattleSceneCameraFallbackLocation,
-			BattleSceneCameraFallbackRotation,
-			SpawnParameters);
-		if (SpawnedCamera)
-		{
-			SpawnedCamera->Tags.AddUnique(BattleSceneCameraTag);
-			if (UCameraComponent* CameraComponent = SpawnedCamera->GetCameraComponent())
-			{
-				CameraComponent->FieldOfView = BattleSceneCameraFallbackFOV;
-			}
-			CameraActor = SpawnedCamera;
-		}
-	}
-
-	if (ACameraActor* BattleCameraActor = Cast<ACameraActor>(CameraActor))
-	{
-		ConfigureBattleSceneCameraActor(BattleCameraActor);
-	}
-
-	if (CameraActor && GetViewTarget() != CameraActor)
-	{
-		SetViewTarget(CameraActor);
-	}
-}
-
-bool AGameXXKMVPPlayerController::TryHandleBattleSceneRightClick()
-{
-	EnsurePlayerFlowWidgets();
-	if (BattleBoardWidget && BattleBoardWidget->IsCardTargetingActive())
-	{
-		const bool bCancelled = BattleBoardWidget->CancelBattleTargeting();
-		RefreshBattleCardTargetingBridge();
-		return bCancelled;
-	}
-
-	AGameXXKBattleSceneUnitActor* UnitActor = FindBattleSceneUnitUnderCursor(false);
-	if (!UnitActor || !UnitActor->CanOpenPartyCommandMenu())
-	{
-		return BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting();
-	}
-
-	float CursorX = 0.0f;
-	float CursorY = 0.0f;
-	if (!GetMousePosition(CursorX, CursorY))
-	{
-		return false;
-	}
-	FVector2D CursorWidgetPosition(CursorX, CursorY);
-	double ScaledCursorX = 0.0;
-	double ScaledCursorY = 0.0;
-	if (UWidgetLayoutLibrary::GetMousePositionScaledByDPI(this, ScaledCursorX, ScaledCursorY))
-	{
-		CursorWidgetPosition = FVector2D(ScaledCursorX, ScaledCursorY);
-	}
-	FVector2D UnitWidgetPosition = CursorWidgetPosition;
-	FVector UnitCommandWorldPosition = UnitActor->GetActorLocation();
-	if (const UPaperFlipbookComponent* BattleVisual = UnitActor->GetBattleVisualComponent())
-	{
-		UnitCommandWorldPosition = BattleVisual->Bounds.Origin;
-	}
-	UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(this, UnitCommandWorldPosition, UnitWidgetPosition, true);
-	return ToggleBattleCommandMenuForUnit(UnitActor, CursorWidgetPosition, UnitWidgetPosition);
-}
-
-bool AGameXXKMVPPlayerController::TryHandleBattleSceneLeftClick()
-{
-	EnsurePlayerFlowWidgets();
-	if (!BattleBoardWidget)
-	{
-		return false;
-	}
-
-	if (BattleBoardWidget->IsCardTargetingActive())
-	{
-		UpdateBattleTargetingPointerFromMouse();
-		if (AGameXXKBattleSceneUnitActor* UnitActor = FindAnyBattleSceneUnitUnderCursor())
-		{
-			// CardCheck owns legality.  Any clicked scene actor is submitted by its
-			// stable card-runtime ID, so ally targets never pass through enemy indices.
-			ConfirmBattleTargetForSceneUnit(UnitActor);
-		}
-		else
-		{
-			BattleBoardWidget->KeepTargetingAfterEmptyClickForTest();
-		}
-		RefreshBattleCardTargetingBridge();
-		return true;
-	}
-
-	if (!BattleBoardWidget->IsTargetingBattleActionForTest())
-	{
-		return false;
-	}
-
-	UpdateBattleTargetingPointerFromMouse();
-
-	AGameXXKBattleSceneUnitActor* UnitActor = FindBattleSceneUnitUnderCursor(true);
-	if (UnitActor && UnitActor->CanReceiveTargetedBattleAction())
-	{
-		return BattleBoardWidget->ConfirmTargetingEnemy(UnitActor->GetUnitIndex());
-	}
-	return BattleBoardWidget->KeepTargetingAfterEmptyClickForTest();
-}
-
-AGameXXKBattleSceneUnitActor* AGameXXKMVPPlayerController::FindBattleSceneUnitUnderCursor(bool bRequireEnemyTarget) const
-{
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
-	{
-		return nullptr;
-	}
-
-	FHitResult HitResult;
-	if (GetHitResultUnderCursor(ECC_Visibility, true, HitResult))
-	{
-		if (AGameXXKBattleSceneUnitActor* UnitActor = Cast<AGameXXKBattleSceneUnitActor>(HitResult.GetActor()))
-		{
-			if (bRequireEnemyTarget ? UnitActor->CanReceiveTargetedBattleAction() : UnitActor->CanOpenPartyCommandMenu())
-			{
-				return UnitActor;
-			}
-		}
-	}
-	return nullptr;
-}
-
-AGameXXKBattleSceneUnitActor* AGameXXKMVPPlayerController::FindAnyBattleSceneUnitUnderCursor() const
-{
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
-	{
-		return nullptr;
-	}
-
-#if WITH_DEV_AUTOMATION_TESTS
-	if (bUseBattleSceneCursorHitOverrideForTest)
-	{
-		return BattleSceneCursorHitOverrideForTest.Get();
-	}
-#endif
-
-	FHitResult HitResult;
-	if (!GetHitResultUnderCursor(ECC_Visibility, true, HitResult))
-	{
-		return nullptr;
-	}
-	return Cast<AGameXXKBattleSceneUnitActor>(HitResult.GetActor());
-}
-
-bool AGameXXKMVPPlayerController::ConfirmBattleTargetForSceneUnit(AGameXXKBattleSceneUnitActor* UnitActor)
-{
-	if (!UnitActor)
-	{
-		return false;
-	}
-
-	EnsurePlayerFlowWidgets();
-	if (!BattleBoardWidget)
-	{
-		return false;
-	}
-
-	if (BattleBoardWidget->IsCardTargetingActive())
-	{
-		return ConfirmBattleTargetForUnitId(UnitActor->GetUnitId());
-	}
-
-	if (!UnitActor->CanReceiveTargetedBattleAction())
-	{
-		return false;
-	}
-	return BattleBoardWidget->ConfirmTargetingEnemy(UnitActor->GetUnitIndex());
-}
-
-bool AGameXXKMVPPlayerController::ToggleBattleCommandMenuForUnit(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition)
-{
-	if (!UnitActor || !UnitActor->CanOpenPartyCommandMenu())
-	{
-		return false;
-	}
-	EnsurePlayerFlowWidgets();
-	return BattleBoardWidget && BattleBoardWidget->ToggleCommandMenuForPartyUnit(UnitActor->GetUnitIndex(), MenuScreenPosition, UnitScreenPosition);
-}
-
 bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointer(FVector2D CursorScreenPosition)
 {
 	if (!BattleBoardWidget
@@ -2519,38 +2076,4 @@ bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerFromMouse()
 		return UpdateBattleTargetingPointer(FVector2D(ScaledCursorX, ScaledCursorY));
 	}
 	return UpdateBattleTargetingPointer(FVector2D(CursorX, CursorY));
-}
-
-AActor* AGameXXKMVPPlayerController::FindBattleSceneCameraActor() const
-{
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return nullptr;
-	}
-
-	ACameraActor* FirstCamera = nullptr;
-	for (TActorIterator<ACameraActor> It(World); It; ++It)
-	{
-		ACameraActor* Candidate = *It;
-		if (!Candidate)
-		{
-			continue;
-		}
-		if (!FirstCamera)
-		{
-			FirstCamera = Candidate;
-		}
-		if (Candidate->ActorHasTag(BattleSceneCameraTag))
-		{
-			return Candidate;
-		}
-#if WITH_EDITOR
-		if (Candidate->GetActorLabel() == BattleSceneCameraTag.ToString())
-		{
-			return Candidate;
-		}
-#endif
-	}
-	return FirstCamera;
 }

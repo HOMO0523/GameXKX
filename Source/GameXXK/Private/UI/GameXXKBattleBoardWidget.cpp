@@ -1,5 +1,4 @@
 #include "UI/GameXXKBattleBoardWidget.h"
-#include "UI/GameXXKBattleAnimationLayerWidget.h"
 #include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
 
@@ -73,6 +72,8 @@ namespace
 	static const FVector2D FixedUnitHudWidgetSize(272.0f, 142.0f);
 	static const FVector2D BattleHudSafeStageDesignSize(1920.0f, 1080.0f);
 	static const FVector2D FormationVisualSize(410.0f, 410.0f);
+	static constexpr float FormationVisualVerticalOffsetPixels = -64.0f;
+	static constexpr float FormationVisualVerticalOffsetNormalized = FormationVisualVerticalOffsetPixels / 1080.0f;
 	static const FVector2D CinematicImpactVisualSize(360.0f, 360.0f);
 	static const FVector2D CinematicEnemyAnchor(590.0f / 1920.0f, 0.5f);
 	static const FVector2D CinematicPartyAnchor(1330.0f / 1920.0f, 0.5f);
@@ -93,7 +94,6 @@ namespace
 	static constexpr int32 BattleCinematicImpactZOrder = 50;
 	static constexpr int32 BattleCinematicStatusIconZOrder = 55;
 	static constexpr int32 BattleCinematicReadoutZOrder = 60;
-	static constexpr int32 BattleLegacyAnimationZOrder = 1000;
 	static constexpr int32 PartyQiWidgetZOrder = 35;
 	static constexpr float PartyQiHandSafetyGap = 12.0f;
 	static constexpr float PlayerHandSelectedScale = 1.20f;
@@ -587,24 +587,6 @@ void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float In
 		{
 			RefreshPartyQiWidget();
 		}
-	}
-}
-
-void UGameXXKBattleBoardWidget::QueueCombatAnimation(
-	const FName AttackerUnitId,
-	const bool bAttackerEnemy,
-	const FName TargetUnitId,
-	const bool bTargetEnemy,
-	const bool bTargetDefeated)
-{
-	if (BattleAnimationLayer)
-	{
-		BattleAnimationLayer->QueueCombatSequence(
-			AttackerUnitId,
-			bAttackerEnemy,
-			TargetUnitId,
-			bTargetEnemy,
-			bTargetDefeated);
 	}
 }
 
@@ -1574,11 +1556,6 @@ void UGameXXKBattleBoardWidget::UpdateBattlePresentationShake(const double Absol
 	BattleDesignStage->SetRenderTranslation(FVector2D(X, Y));
 }
 
-UGameXXKBattleAnimationLayerWidget* UGameXXKBattleBoardWidget::GetBattleAnimationLayerForTest() const
-{
-	return BattleAnimationLayer;
-}
-
 bool UGameXXKBattleBoardWidget::BeginBattleVisualSession(const uint64 SessionToken)
 {
 	if (SessionToken == 0)
@@ -1737,7 +1714,6 @@ int32 UGameXXKBattleBoardWidget::GetLayerZ(const EGameXXKBattleHudLayer Layer) c
 	case EGameXXKBattleHudLayer::Formation: return BattleFormationZOrder;
 	case EGameXXKBattleHudLayer::TargetProxy: return BattleTargetProxyBaseZOrder + 1;
 	case EGameXXKBattleHudLayer::Controls: return BattleControlsZOrder;
-	case EGameXXKBattleHudLayer::LegacyAnimation: return BattleLegacyAnimationZOrder;
 	default: return INDEX_NONE;
 	}
 }
@@ -1803,6 +1779,23 @@ uint64 UGameXXKBattleBoardWidget::GetActiveBattleVisualSessionTokenForTest() con
 int32 UGameXXKBattleBoardWidget::GetPinnedBattleAtlasCountForTest() const
 {
 	return PinnedUnitAtlasPaths.Num();
+}
+
+int32 UGameXXKBattleBoardWidget::GetDuplicateParticipantImageCountForTest() const
+{
+	if (!WidgetTree)
+	{
+		return 0;
+	}
+	int32 Count = 0;
+	Count += WidgetTree->FindWidget(TEXT("BattleAnimationLeftUnit")) ? 1 : 0;
+	Count += WidgetTree->FindWidget(TEXT("BattleAnimationRightUnit")) ? 1 : 0;
+	return Count;
+}
+
+FGameXXKBattleAtlasCacheStats UGameXXKBattleBoardWidget::GetAtlasCacheStatsForTest() const
+{
+	return AtlasCache ? AtlasCache->GetStats() : FGameXXKBattleAtlasCacheStats();
 }
 
 bool UGameXXKBattleBoardWidget::IsBattlePresentationActiveForTest() const
@@ -2111,10 +2104,6 @@ void UGameXXKBattleBoardWidget::RefreshFromState()
 	{
 		ClearCardTargetingState();
 		ResetBattlePresentation();
-		if (BattleAnimationLayer)
-		{
-			BattleAnimationLayer->ResetPresentation();
-		}
 		EnemyIntentPresentationState = EGameXXKEnemyIntentPresentationState::None;
 		EnemyIntentPresentationElapsed = 0.0f;
 		ActiveEnemyIntentPresentationIndex = INDEX_NONE;
@@ -2872,7 +2861,9 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 
 			ActiveUnitIds.Add(Unit.UnitId);
 			const bool bEnemy = View.Side == EGameXXKCardTargetSide::Enemy;
-			const FVector2D FormationAnchor(FixedLayout.Anchors.Minimum.X, FixedLayout.Anchors.Minimum.Y);
+			const FVector2D FormationAnchor(
+				FixedLayout.Anchors.Minimum.X,
+				FixedLayout.Anchors.Minimum.Y + FormationVisualVerticalOffsetNormalized);
 			const FGameXXKBattleAnimationClipDescriptor IdleClip =
 				FGameXXKBattleAnimationPresentation::ResolveClip(
 					Unit.UnitId,
@@ -3628,6 +3619,11 @@ FVector2D UGameXXKBattleBoardWidget::GetTargetingSourcePositionForTest() const
 	return TargetingSourcePosition;
 }
 
+FVector2D UGameXXKBattleBoardWidget::ResolveCardTargetingSourcePositionForTest(const FName OwnerUnitId) const
+{
+	return ResolveCardTargetingSourcePosition(OwnerUnitId);
+}
+
 FName UGameXXKBattleBoardWidget::GetPendingCardInstanceIdForTest() const
 {
 	return PendingCardPreview.CardInstanceId;
@@ -4035,23 +4031,6 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 			ReadoutSlot->SetPosition(FVector2D(0.0f, -260.0f));
 			ReadoutSlot->SetSize(FVector2D(420.0f, 120.0f));
 			ReadoutSlot->SetZOrder(BattleCinematicReadoutZOrder);
-		}
-	}
-
-	BattleAnimationLayer = WidgetTree->ConstructWidget<UGameXXKBattleAnimationLayerWidget>(
-		UGameXXKBattleAnimationLayerWidget::StaticClass(),
-		TEXT("BattleAnimationLayer"));
-	if (BattleAnimationLayer)
-	{
-		BattleAnimationLayer->SetVisibility(ESlateVisibility::Collapsed);
-		if (UCanvasPanelSlot* AnimationLayerSlot = BattleDesignStage
-			? BattleDesignStage->AddChildToCanvas(BattleAnimationLayer)
-			: nullptr)
-		{
-			AnimationLayerSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
-			AnimationLayerSlot->SetOffsets(FMargin(0.0f));
-			AnimationLayerSlot->SetAlignment(FVector2D::ZeroVector);
-			AnimationLayerSlot->SetZOrder(BattleLegacyAnimationZOrder);
 		}
 	}
 
@@ -6373,12 +6352,14 @@ FVector2D UGameXXKBattleBoardWidget::ResolveCardTargetingSourcePosition(FName Ow
 			{
 				return FVector2D(
 					FixedLayout.Anchors.Minimum.X * BattleHudSafeStageDesignSize.X,
-					FixedLayout.Anchors.Minimum.Y * BattleHudSafeStageDesignSize.Y);
+					FixedLayout.Anchors.Minimum.Y * BattleHudSafeStageDesignSize.Y
+						+ FormationVisualVerticalOffsetPixels);
 			}
 
-			// A malformed or stale CardRun owner still remains in common-stage
-			// coordinates; it must never fall through to legacy actor projection.
-			return BattleHudSafeStageDesignSize * 0.5f;
+			// A malformed or stale CardRun owner still uses the lifted common-stage
+			// fallback; it must never fall through to legacy actor projection.
+			return BattleHudSafeStageDesignSize * 0.5f
+				+ FVector2D(0.0f, FormationVisualVerticalOffsetPixels);
 		}
 
 		const int32 OwnerPartyIndex = State->ActiveBattleParty.IndexOfByPredicate([OwnerUnitId](const FGameXXKBattleRuntimeUnit& Unit)

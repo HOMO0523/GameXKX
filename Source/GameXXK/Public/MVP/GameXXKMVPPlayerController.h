@@ -1,7 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameXXKCardTypes.h"
 #include "GameFramework/PlayerController.h"
 #include "UI/GameXXKBattleOverlayCoordinator.h"
 #include "UI/GameXXKRouteEncounterPanelWidget.h"
@@ -23,11 +22,7 @@ class UGameXXKTownHudWidget;
 class UGameXXKTownOverlayWidget;
 class UGameXXKWorldMapWidget;
 class UWidget;
-class ACameraActor;
-class AGameXXKBattleScenePresenter;
-class AGameXXKBattleSceneUnitActor;
 class AGameXXKRouteEncounterSceneActor;
-struct FGameXXKRuntimeState;
 struct FWorldContext;
 
 UCLASS(Blueprintable)
@@ -54,9 +49,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
 	void RefreshPlayerFlowWidgetsForTest();
 
-	/** Direct development seam for the same battle-camera configuration used by live PIE. */
-	void ConfigureBattleSceneCameraForTest(ACameraActor* CameraActor);
-
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	void RefreshPlayerFlowWidgetsFromState();
 
@@ -75,12 +67,6 @@ public:
 		const FGameXXKBattleOverlaySnapshot& Snapshot,
 		UGameXXKOneGameRouteMapWidget* RouteWidget,
 		UGameXXKBattleBoardWidget* BattleWidget) override;
-
-	/** Queues fullscreen HUD combat presentation after a card-state mutation. */
-	void RefreshBattleSceneAfterCardMutation(FName AttackerUnitId, const TArray<FGameXXKCardDamageResult>& DamageResults);
-
-	/** Pure policy: only a real HP hit on the runtime Party Hero requests the small camera shake. */
-	static bool ShouldTriggerHeroHitCameraShake(const FGameXXKRuntimeState& State, const FGameXXKCardDamageResult& DamageResult);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
 	UGameXXKMainMenuWidget* GetMainMenuWidgetForTest() const;
@@ -229,15 +215,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool ResolveRouteEncounterAction(EGameXXKRouteEncounterAction Action);
 
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
-	bool OpenBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
-
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
-	bool ToggleBattleCommandMenuForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
-
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
-	bool ConfirmBattleTargetForUnitForTest(AGameXXKBattleSceneUnitActor* UnitActor);
-
 	/** Stable HUD bridge. The fullscreen board can submit a canonical unit id without a scene actor. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool ConfirmBattleTargetForUnitId(FName UnitId);
@@ -252,12 +229,6 @@ public:
 	EGameXXKTrackedInputMode GetTrackedInputModeForTest() const { return TrackedInputMode; }
 	void SetTrackedInputModeForTest(EGameXXKTrackedInputMode InputMode);
 	bool PrepareForRuntimeStateMapTravelForTest(const FString& CurrentPackageName);
-	// Test-only seam for exercising InputKey -> TryHandleBattleSceneLeftClick
-	// without a Slate viewport-backed hardware cursor.
-	void SetBattleSceneCursorHitOverrideForTest(AGameXXKBattleSceneUnitActor* InUnitActor);
-	void ClearBattleSceneCursorHitOverrideForTest();
-	/** Uses a deterministic projection only for headless controller-bridge automation. */
-	void SetBattleWorldProjectionOverrideForTest(bool bEnabled);
 	/** Supplies already-resolved BattleBoard-local pointer coordinates to the real PlayerTick path in headless automation. */
 	void SetBattleMousePositionOverrideForTest(FVector2D InMousePosition);
 	void ClearBattleMousePositionOverrideForTest();
@@ -289,19 +260,8 @@ private:
 	bool OpenRouteEncounterPanelInternal(AGameXXKRouteEncounterSceneActor* SourceActor);
 	bool HasValidRouteEncounterContext() const;
 	void ClearRouteEncounterContext();
-	void EnsureBattleScenePresenter();
-	void RefreshBattleCardTargetingBridge();
-	bool ProjectBattleWorldLocationToWidgetPosition(FVector WorldLocation, FVector2D& OutScreenPosition) const;
-	void ApplyBattleSceneCamera();
-	bool TryHandleBattleSceneRightClick();
-	bool TryHandleBattleSceneLeftClick();
-	bool ConfirmBattleTargetForSceneUnit(AGameXXKBattleSceneUnitActor* UnitActor);
-	bool ToggleBattleCommandMenuForUnit(AGameXXKBattleSceneUnitActor* UnitActor, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition);
 	bool UpdateBattleTargetingPointer(FVector2D CursorScreenPosition);
 	bool UpdateBattleTargetingPointerFromMouse();
-	AGameXXKBattleSceneUnitActor* FindBattleSceneUnitUnderCursor(bool bRequireEnemyTarget) const;
-	AGameXXKBattleSceneUnitActor* FindAnyBattleSceneUnitUnderCursor() const;
-	AActor* FindBattleSceneCameraActor() const;
 	bool CanAddPlayerWidgetsToViewport() const;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
@@ -404,9 +364,6 @@ private:
 	bool bRouteMerchantInputLocked = false;
 
 	UPROPERTY(Transient)
-	TObjectPtr<AGameXXKBattleScenePresenter> BattleScenePresenter;
-
-	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMVPSubsystem> OverrideSubsystem;
 
 	EGameXXKTrackedInputMode TrackedInputMode = EGameXXKTrackedInputMode::GameAndUI;
@@ -416,9 +373,6 @@ private:
 	FDelegateHandle PreLoadMapWithContextDelegateHandle;
 
 #if WITH_DEV_AUTOMATION_TESTS
-	bool bUseBattleSceneCursorHitOverrideForTest = false;
-	TWeakObjectPtr<AGameXXKBattleSceneUnitActor> BattleSceneCursorHitOverrideForTest;
-	bool bUseBattleWorldProjectionOverrideForTest = false;
 	bool bUseBattleMousePositionOverrideForTest = false;
 	FVector2D BattleMousePositionOverrideForTest = FVector2D::ZeroVector;
 #endif
