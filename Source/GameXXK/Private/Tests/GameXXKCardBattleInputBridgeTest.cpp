@@ -8,6 +8,7 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/WorldSettings.h"
+#include "Input/Events.h"
 #include "InputKeyEventArgs.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
@@ -17,6 +18,7 @@
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
 #include "UObject/UObjectGlobals.h"
+#include "Widgets/SWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -177,13 +179,13 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 		UWorld::StaticClass(),
 		TEXT("GameXXKCardBattleInputBridgeWorld"),
 		EUniqueObjectNameOptions::GloballyUnique);
-	FWorldContext& SceneWorldContext = GEngine->CreateNewWorldContext(EWorldType::Game);
 	UWorld* const SceneWorld = UWorld::CreateWorld(EWorldType::Game, false, SceneWorldName, GetTransientPackage());
 	TestNotNull(TEXT("input bridge creates an isolated game world"), SceneWorld);
 	if (!SceneWorld)
 	{
 		return false;
 	}
+	FWorldContext& SceneWorldContext = GEngine->CreateNewWorldContext(EWorldType::Game);
 	SceneWorld->AddToRoot();
 	SceneWorldContext.SetCurrentWorld(SceneWorld);
 	SceneWorld->InitializeActorsForPlay(FURL());
@@ -315,6 +317,7 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("dormant-bridge fixture resolves the current card owner"), SceneCardOwnerUnitId.IsNone());
 	TestTrue(TEXT("dormant-bridge fixture configures the legacy actor as the legal target"),
 		ConfigureLegacyPartyTarget(ScenePartyTargetUnitId));
+	const FVector LegacyActorLocation = LegacySceneUnit->GetActorLocation();
 	SceneBoard->RegisterBattleUnitScreenPosition(SceneCardOwnerUnitId, HudOwnedPosition);
 	LegacySceneUnit->SetCardTargetHighlight(true);
 
@@ -334,7 +337,8 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	const float RouteScrollBeforeBattle = RouteWidgetBeforeBattle->GetCurrentScrollOffset();
 	SceneController->bShowMouseCursor = false;
 	SceneController->bEnableClickEvents = false;
-	SceneController->bEnableMouseOverEvents = true;
+	SceneController->bEnableMouseOverEvents = false;
+	SceneController->SetShouldPerformFullTickWhenPausedForTest(false);
 	SceneController->ResetIgnoreMoveInput();
 	SceneController->ResetIgnoreLookInput();
 	SceneController->SetIgnoreMoveInput(true);
@@ -363,26 +367,41 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("entry preserves an already-paused world"), UGameplayStatics::IsGamePaused(SceneWorld));
 	TestFalse(TEXT("entry keeps world rendering disabled"), UGameplayStatics::GetEnableWorldRendering(SceneWorld));
 	TestEqual(TEXT("entry tracks UI-only input"), SceneController->GetTrackedInputModeForTest(), EGameXXKTrackedInputMode::UIOnly);
+	TestTrue(TEXT("entry enables the mouse cursor"), SceneController->bShowMouseCursor);
+	TestTrue(TEXT("entry enables click events"), SceneController->bEnableClickEvents);
+	TestTrue(TEXT("entry enables mouse-over events"), SceneController->bEnableMouseOverEvents);
+	TestTrue(TEXT("entry enables full controller ticks while the overlay is paused"), SceneController->ShouldPerformFullTickWhenPaused());
 	TestEqual(TEXT("overlay entry leaves HUD-owned unit positions untouched"),
 		SceneBoard->GetBattleUnitScreenPositionForTest(SceneCardOwnerUnitId), HudOwnedPosition);
 	TestTrue(TEXT("overlay entry leaves a pre-existing legacy highlight untouched"), LegacySceneUnit->IsCardTargetHighlighted());
 	SceneBoard->RegisterBattleUnitScreenPosition(SceneCardOwnerUnitId, HudOwnedPosition);
 	LegacySceneUnit->SetCardTargetHighlight(false);
+	const FVector2D IdlePointerBeforeTick = SceneBoard->GetTargetingPointerPositionForTest();
+	SceneController->SetBattleMousePositionOverrideForTest(FVector2D(711.0f, 333.0f));
+	SceneWorld->Tick(LEVELTICK_All, 1.0f / 60.0f);
+	TestEqual(TEXT("PlayerTick leaves the HUD pointer untouched outside targeting"),
+		SceneBoard->GetTargetingPointerPositionForTest(), IdlePointerBeforeTick);
+	TestEqual(TEXT("idle PlayerTick leaves the legacy actor location untouched"),
+		LegacySceneUnit->GetActorLocation(), LegacyActorLocation);
 	TestTrue(TEXT("HUD bridge card enters manual targeting without a scene actor"), SceneBoard->ClickCardInHand(SceneCardInstanceId));
 	TestFalse(TEXT("HUD fallback provides a nonzero targeting origin"), SceneBoard->GetTargetingSourcePositionForTest().IsNearlyZero());
-	SceneController->PlayerTick(0.0f);
+	const FVector2D PointerPosition(812.0f, 468.0f);
+	SceneController->SetBattleMousePositionOverrideForTest(PointerPosition);
+	SceneWorld->Tick(LEVELTICK_All, 1.0f / 60.0f);
+	TestEqual(TEXT("runtime PlayerTick follows the controlled mouse during card targeting"),
+		SceneBoard->GetTargetingPointerPositionForTest(), PointerPosition);
 	TestEqual(TEXT("PlayerTick leaves HUD-owned unit positions untouched"),
 		SceneBoard->GetBattleUnitScreenPositionForTest(SceneCardOwnerUnitId), HudOwnedPosition);
+	TestEqual(TEXT("card-targeting PlayerTick leaves the legacy actor location untouched"),
+		LegacySceneUnit->GetActorLocation(), LegacyActorLocation);
 	TestFalse(TEXT("PlayerTick never applies targeting highlight to a legacy actor"), LegacySceneUnit->IsCardTargetHighlighted());
+	SceneController->ClearBattleMousePositionOverrideForTest();
 	SceneBoard->RegisterBattleUnitScreenPosition(SceneCardOwnerUnitId, HudOwnedPosition);
 	LegacySceneUnit->SetCardTargetHighlight(false);
 	SceneController->RefreshPlayerFlowWidgetsForTest();
 	TestEqual(TEXT("player-flow refresh leaves HUD-owned unit positions untouched"),
 		SceneBoard->GetBattleUnitScreenPositionForTest(SceneCardOwnerUnitId), HudOwnedPosition);
 	TestFalse(TEXT("player-flow refresh never applies targeting highlight to a legacy actor"), LegacySceneUnit->IsCardTargetHighlighted());
-	const FVector2D PointerPosition(812.0f, 468.0f);
-	TestTrue(TEXT("controller still forwards target-arrow pointer movement"), SceneController->UpdateBattleTargetingPointerForTest(PointerPosition));
-	TestEqual(TEXT("target arrow follows the controller pointer"), SceneBoard->GetTargetingPointerPositionForTest(), PointerPosition);
 	SceneBoard->RegisterBattleUnitScreenPosition(SceneCardOwnerUnitId, HudOwnedPosition);
 	LegacySceneUnit->SetCardTargetHighlight(true);
 	TestTrue(TEXT("stable UnitId bridge commits the HUD-selected target"), SceneController->ConfirmBattleTargetForUnitId(ScenePartyTargetUnitId));
@@ -425,12 +444,43 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	SceneBoard->RegisterBattleUnitScreenPosition(EscapeCardOwnerUnitId, HudOwnedPosition);
 	TestTrue(TEXT("Escape fixture enters manual card targeting"), SceneBoard->ClickCardInHand(EscapeCardInstanceId));
 	LegacySceneUnit->SetCardTargetHighlight(true);
-	TestTrue(TEXT("Escape cancels card targeting through the fullscreen board"),
-		SceneController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::Escape, IE_Pressed, 1.0f)));
+	TestTrue(TEXT("UI-only overlay configures the fullscreen board as focusable"), SceneBoard->IsFocusable());
+	const FKeyEvent EscapeKeyEvent(EKeys::Escape, FModifierKeysState(), 0, false, 0, 0);
+	const FReply EscapeReply = SceneBoard->TakeWidget()->OnKeyDown(FGeometry(), EscapeKeyEvent);
+	TestTrue(TEXT("fullscreen board handles Escape through its Slate key path"), EscapeReply.IsEventHandled());
 	TestFalse(TEXT("Escape exits card targeting"), SceneBoard->IsCardTargetingActive());
 	TestEqual(TEXT("Escape cancellation leaves HUD-owned positions untouched"),
 		SceneBoard->GetBattleUnitScreenPositionForTest(EscapeCardOwnerUnitId), HudOwnedPosition);
 	TestTrue(TEXT("Escape cancellation never mutates a legacy actor highlight"), LegacySceneUnit->IsCardTargetHighlighted());
+
+	FGameXXKRuntimeState& LegacyActionState = SceneSubsystem->GetMutableRuntimeState();
+	LegacyActionState.CardRun.bHasActiveCardBattle = false;
+	SceneBoard->RefreshFromState();
+	TestTrue(TEXT("legacy action fixture opens a party command menu"),
+		SceneBoard->OpenCommandMenuForPartyUnit(0, FVector2D(960.0f, 360.0f), FVector2D(960.0f, 360.0f)));
+	TestTrue(TEXT("legacy action fixture enters basic-attack targeting"), SceneBoard->ExecuteBasicAttackAction());
+	TestTrue(TEXT("legacy action fixture is targeting an action"), SceneBoard->IsTargetingBattleActionForTest());
+	const FVector2D ActionPointerPosition(744.0f, 402.0f);
+	SceneController->SetBattleMousePositionOverrideForTest(ActionPointerPosition);
+	SceneWorld->Tick(LEVELTICK_All, 1.0f / 60.0f);
+	TestEqual(TEXT("runtime PlayerTick follows the controlled mouse during action targeting"),
+		SceneBoard->GetTargetingPointerPositionForTest(), ActionPointerPosition);
+	TestEqual(TEXT("action-targeting PlayerTick leaves the legacy actor location untouched"),
+		LegacySceneUnit->GetActorLocation(), LegacyActorLocation);
+	TestTrue(TEXT("action-targeting PlayerTick leaves the legacy actor highlight untouched"), LegacySceneUnit->IsCardTargetHighlighted());
+	TestTrue(TEXT("action cancellation returns to the command menu"), SceneBoard->CancelBattleTargeting());
+	TestTrue(TEXT("command-menu cancellation returns to idle"), SceneBoard->CancelBattleTargeting());
+	const FVector2D IdlePointerAfterAction = SceneBoard->GetTargetingPointerPositionForTest();
+	SceneController->SetBattleMousePositionOverrideForTest(FVector2D(601.0f, 287.0f));
+	SceneWorld->Tick(LEVELTICK_All, 1.0f / 60.0f);
+	TestEqual(TEXT("PlayerTick again leaves the HUD pointer untouched after action targeting"),
+		SceneBoard->GetTargetingPointerPositionForTest(), IdlePointerAfterAction);
+	TestEqual(TEXT("post-action idle PlayerTick leaves the legacy actor location untouched"),
+		LegacySceneUnit->GetActorLocation(), LegacyActorLocation);
+	TestTrue(TEXT("post-action idle PlayerTick leaves the legacy actor highlight untouched"), LegacySceneUnit->IsCardTargetHighlighted());
+	SceneController->ClearBattleMousePositionOverrideForTest();
+	LegacyActionState.CardRun.bHasActiveCardBattle = true;
+	SceneBoard->RefreshFromState();
 
 	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
 	SceneController->RefreshPlayerFlowWidgetsForTest();
@@ -439,7 +489,8 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("ordinary exit restores route scroll exactly"), RouteWidgetBeforeBattle->GetCurrentScrollOffset(), RouteScrollBeforeBattle);
 	TestFalse(TEXT("ordinary exit restores hidden cursor"), SceneController->bShowMouseCursor);
 	TestFalse(TEXT("ordinary exit restores disabled click events"), SceneController->bEnableClickEvents);
-	TestTrue(TEXT("ordinary exit restores enabled mouse-over events"), SceneController->bEnableMouseOverEvents);
+	TestFalse(TEXT("ordinary exit restores disabled mouse-over events"), SceneController->bEnableMouseOverEvents);
+	TestFalse(TEXT("ordinary exit releases the overlay-owned full paused tick"), SceneController->ShouldPerformFullTickWhenPaused());
 	TestEqual(TEXT("ordinary exit restores GameOnly input"), SceneController->GetTrackedInputModeForTest(), EGameXXKTrackedInputMode::GameOnly);
 	TestTrue(TEXT("ordinary exit preserves pre-existing move ignore"), SceneController->IsMoveInputIgnored());
 	TestTrue(TEXT("ordinary exit preserves pre-existing look ignore"), SceneController->IsLookInputIgnored());
@@ -453,16 +504,45 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
 	SceneController->RefreshPlayerFlowWidgetsForTest();
 	TestTrue(TEXT("pre-travel fixture re-enters the overlay"), SceneController->IsBattleOverlayActive());
+	TestTrue(TEXT("pre-travel entry reacquires full paused ticking"), SceneController->ShouldPerformFullTickWhenPaused());
 	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
-	FWorldContext PreLoadWorldContext;
-	PreLoadWorldContext.WorldType = EWorldType::PIE;
-	PreLoadWorldContext.PIEInstance = 1;
-	PreLoadWorldContext.SetCurrentWorld(nullptr);
-	FCoreUObjectDelegates::PreLoadMapWithContext.Broadcast(PreLoadWorldContext, TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
+	const FName ForeignWorldName = MakeUniqueObjectName(
+		nullptr,
+		UWorld::StaticClass(),
+		TEXT("GameXXKForeignPreLoadWorld"),
+		EUniqueObjectNameOptions::GloballyUnique);
+	UWorld* const ForeignWorld = UWorld::CreateWorld(EWorldType::PIE, false, ForeignWorldName, GetTransientPackage());
+	TestNotNull(TEXT("pre-load isolation creates a distinct foreign world"), ForeignWorld);
+	if (!ForeignWorld)
+	{
+		SceneController->EndPlay(EEndPlayReason::Destroyed);
+		if (SceneWorldSettings)
+		{
+			SceneWorldSettings->SetPauserPlayerState(OriginalPauser);
+		}
+		SceneWorld->DestroyWorld(false);
+		GEngine->DestroyWorldContext(SceneWorld);
+		SceneWorld->RemoveFromRoot();
+		return false;
+	}
+	TestTrue(TEXT("pre-load isolation uses a world distinct from the battle overlay"), ForeignWorld != SceneWorld);
+	ForeignWorld->AddToRoot();
+	FWorldContext& ForeignWorldContext = GEngine->CreateNewWorldContext(EWorldType::PIE);
+	ForeignWorldContext.PIEInstance = 1;
+	ForeignWorldContext.SetCurrentWorld(ForeignWorld);
+	TestTrue(TEXT("pre-load isolation uses the registered foreign world context"), ForeignWorldContext.World() == ForeignWorld);
+	FCoreUObjectDelegates::PreLoadMapWithContext.Broadcast(ForeignWorldContext, TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 	TestTrue(TEXT("pre-load broadcast for another world leaves this overlay active"), SceneController->IsBattleOverlayActive());
-	PreLoadWorldContext.SetCurrentWorld(SceneWorld);
-	FCoreUObjectDelegates::PreLoadMapWithContext.Broadcast(PreLoadWorldContext, TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
+	ForeignWorld->DestroyWorld(false);
+	GEngine->DestroyWorldContext(ForeignWorld);
+	ForeignWorld->RemoveFromRoot();
+	FWorldContext MatchingPreLoadWorldContext;
+	MatchingPreLoadWorldContext.WorldType = EWorldType::PIE;
+	MatchingPreLoadWorldContext.PIEInstance = 1;
+	MatchingPreLoadWorldContext.SetCurrentWorld(SceneWorld);
+	FCoreUObjectDelegates::PreLoadMapWithContext.Broadcast(MatchingPreLoadWorldContext, TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 	TestFalse(TEXT("matching real pre-load broadcast exits the overlay"), SceneController->IsBattleOverlayActive());
+	TestFalse(TEXT("matching real pre-load cleanup releases full paused ticking"), SceneController->ShouldPerformFullTickWhenPaused());
 	TestEqual(TEXT("real pre-load cleanup restores route visibility"), RouteWidgetBeforeBattle->GetVisibility(), ESlateVisibility::Hidden);
 	TestEqual(TEXT("real pre-load cleanup restores route scroll"), RouteWidgetBeforeBattle->GetCurrentScrollOffset(), 77.0f);
 
@@ -471,10 +551,12 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	RouteWidgetBeforeBattle->SetVisibility(ESlateVisibility::HitTestInvisible);
 	RouteWidgetBeforeBattle->RestoreScrollOffset(91.0f);
 	SceneController->bShowMouseCursor = false;
+	SceneController->SetShouldPerformFullTickWhenPausedForTest(true);
 	SceneController->SetTrackedInputModeForTest(EGameXXKTrackedInputMode::GameOnly);
 	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
 	SceneController->RefreshPlayerFlowWidgetsForTest();
 	TestTrue(TEXT("EndPlay fixture re-enters the overlay"), SceneController->IsBattleOverlayActive());
+	TestTrue(TEXT("overlay entry preserves a pre-existing full paused tick"), SceneController->ShouldPerformFullTickWhenPaused());
 	SceneController->EndPlay(EEndPlayReason::Destroyed);
 	TestFalse(TEXT("EndPlay removes the real pre-load map delegate"),
 		FCoreUObjectDelegates::PreLoadMapWithContext.IsBoundToObject(SceneController));
@@ -482,6 +564,7 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("EndPlay cleanup restores route visibility"), RouteWidgetBeforeBattle->GetVisibility(), ESlateVisibility::HitTestInvisible);
 	TestEqual(TEXT("EndPlay cleanup restores route scroll"), RouteWidgetBeforeBattle->GetCurrentScrollOffset(), 91.0f);
 	TestFalse(TEXT("EndPlay cleanup restores cursor state"), SceneController->bShowMouseCursor);
+	TestTrue(TEXT("EndPlay cleanup preserves a pre-existing full paused tick"), SceneController->ShouldPerformFullTickWhenPaused());
 	TestEqual(TEXT("EndPlay cleanup restores tracked input"), SceneController->GetTrackedInputModeForTest(), EGameXXKTrackedInputMode::GameOnly);
 	TestTrue(TEXT("EndPlay cleanup preserves the initial paused state"), UGameplayStatics::IsGamePaused(SceneWorld));
 	TestFalse(TEXT("EndPlay cleanup preserves disabled world rendering"), UGameplayStatics::GetEnableWorldRendering(SceneWorld));

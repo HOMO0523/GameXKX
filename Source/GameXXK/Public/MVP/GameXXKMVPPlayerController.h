@@ -258,6 +258,10 @@ public:
 	void ClearBattleSceneCursorHitOverrideForTest();
 	/** Uses a deterministic projection only for headless controller-bridge automation. */
 	void SetBattleWorldProjectionOverrideForTest(bool bEnabled);
+	/** Supplies already-resolved BattleBoard-local pointer coordinates to the real PlayerTick path in headless automation. */
+	void SetBattleMousePositionOverrideForTest(FVector2D InMousePosition);
+	void ClearBattleMousePositionOverrideForTest();
+	void SetShouldPerformFullTickWhenPausedForTest(bool bEnabled);
 #endif
 
 private:
@@ -406,6 +410,7 @@ private:
 	TObjectPtr<UGameXXKMVPSubsystem> OverrideSubsystem;
 
 	EGameXXKTrackedInputMode TrackedInputMode = EGameXXKTrackedInputMode::GameAndUI;
+	bool bBattleOverlayAcquiredFullTickWhenPaused = false;
 	bool bBattleOverlayAcquiredMoveInputIgnore = false;
 	bool bBattleOverlayAcquiredLookInputIgnore = false;
 	FDelegateHandle PreLoadMapWithContextDelegateHandle;
@@ -414,5 +419,7 @@ private:
 	bool bUseBattleSceneCursorHitOverrideForTest = false;
 	TWeakObjectPtr<AGameXXKBattleSceneUnitActor> BattleSceneCursorHitOverrideForTest;
 	bool bUseBattleWorldProjectionOverrideForTest = false;
+	bool bUseBattleMousePositionOverrideForTest = false;
+	FVector2D BattleMousePositionOverrideForTest = FVector2D::ZeroVector;
 #endif
 };

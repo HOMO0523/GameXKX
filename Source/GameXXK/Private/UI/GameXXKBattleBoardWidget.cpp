@@ -550,6 +550,15 @@ UGameXXKBattleAnimationLayerWidget* UGameXXKBattleBoardWidget::GetBattleAnimatio
 	return BattleAnimationLayer;
 }
 
+FReply UGameXXKBattleBoardWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::Escape && CancelBattleTargeting())
+	{
+		return FReply::Handled();
+	}
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+}
+
 FReply UGameXXKBattleBoardWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && CancelBattleTargeting())

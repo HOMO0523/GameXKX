@@ -190,6 +190,7 @@ void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReas
 void AGameXXKMVPPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
+	UpdateBattleTargetingPointerFromMouse();
 }
 
 void AGameXXKMVPPlayerController::SetupInputComponent()
@@ -425,6 +426,11 @@ bool AGameXXKMVPPlayerController::ApplyBattleOverlayEntry(
 	}
 
 	FlushPressedKeys();
+	bBattleOverlayAcquiredFullTickWhenPaused = !bShouldPerformFullTickWhenPaused;
+	if (bBattleOverlayAcquiredFullTickWhenPaused)
+	{
+		bShouldPerformFullTickWhenPaused = true;
+	}
 	bBattleOverlayAcquiredMoveInputIgnore = !IsMoveInputIgnored();
 	if (bBattleOverlayAcquiredMoveInputIgnore)
 	{
@@ -473,6 +479,11 @@ void AGameXXKMVPPlayerController::RestoreBattleOverlaySnapshot(
 	{
 		UGameplayStatics::SetEnableWorldRendering(this, Snapshot.bWorldRenderingEnabled);
 		UGameplayStatics::SetGamePaused(this, Snapshot.bGamePaused);
+	}
+	if (bBattleOverlayAcquiredFullTickWhenPaused)
+	{
+		bShouldPerformFullTickWhenPaused = false;
+		bBattleOverlayAcquiredFullTickWhenPaused = false;
 	}
 	if (bBattleOverlayAcquiredMoveInputIgnore)
 	{
@@ -1123,6 +1134,23 @@ void AGameXXKMVPPlayerController::ClearBattleSceneCursorHitOverrideForTest()
 void AGameXXKMVPPlayerController::SetBattleWorldProjectionOverrideForTest(const bool bEnabled)
 {
 	bUseBattleWorldProjectionOverrideForTest = bEnabled;
+}
+
+void AGameXXKMVPPlayerController::SetBattleMousePositionOverrideForTest(const FVector2D InMousePosition)
+{
+	bUseBattleMousePositionOverrideForTest = true;
+	BattleMousePositionOverrideForTest = InMousePosition;
+}
+
+void AGameXXKMVPPlayerController::ClearBattleMousePositionOverrideForTest()
+{
+	bUseBattleMousePositionOverrideForTest = false;
+	BattleMousePositionOverrideForTest = FVector2D::ZeroVector;
+}
+
+void AGameXXKMVPPlayerController::SetShouldPerformFullTickWhenPausedForTest(const bool bEnabled)
+{
+	bShouldPerformFullTickWhenPaused = bEnabled;
 }
 #endif
 
@@ -2449,6 +2477,13 @@ bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerFromMouse()
 	{
 		return false;
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	if (bUseBattleMousePositionOverrideForTest)
+	{
+		return UpdateBattleTargetingPointer(BattleMousePositionOverrideForTest);
+	}
+#endif
 
 	float CursorX = 0.0f;
 	float CursorY = 0.0f;
