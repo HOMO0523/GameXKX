@@ -704,7 +704,18 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
 			{
 			case EBattlePresentationAtlasRole::Attacker: RequestEntry->AttackerAtlas = Texture; break;
 			case EBattlePresentationAtlasRole::Target: RequestEntry->TargetAtlas = Texture; break;
-			case EBattlePresentationAtlasRole::Impact: RequestEntry->ImpactAtlas = Texture; break;
+			case EBattlePresentationAtlasRole::Impact:
+				RequestEntry->ImpactAtlas = Texture;
+				if (Board->GetActivePresentationEntry() == RequestEntry
+					&& RequestEntry->Kind == EBattlePresentationKind::AttackHit
+					&& RequestEntry->bImpactFired
+					&& !RequestEntry->bCompletionFired
+					&& Board->BattleCinematicImpact)
+				{
+					Board->BattleCinematicImpact->SetAtlas(Texture);
+					Board->BattleCinematicImpact->AdvanceAtRealTime(Board->LastSlateSeconds);
+				}
+				break;
 			default: break;
 			}
 		});
@@ -2459,28 +2470,28 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 					}
 
 					UGameXXKBattleUnitVisualWidget* const RequestVisual = Board->UnitVisuals.FindRef(RequestUnitId);
+					bool bApplyToCurrentVisual = true;
+					if (const FBattlePresentationQueueEntry* const ActiveEntry = Board->GetActivePresentationEntry())
+					{
+						if (ActiveEntry->Kind == EBattlePresentationKind::Death
+							&& ActiveEntry->Event.TargetUnitId == RequestUnitId)
+						{
+							bApplyToCurrentVisual = ActiveEntry->PresentedTargetClip.TexturePath == RequestPath;
+						}
+						else if (ActiveEntry->Kind == EBattlePresentationKind::AttackHit
+							&& ActiveEntry->Event.AttackerUnitId == RequestUnitId)
+						{
+							bApplyToCurrentVisual = ActiveEntry->PresentedAttackerClip.TexturePath == RequestPath;
+						}
+						else if (ActiveEntry->Kind == EBattlePresentationKind::AttackHit
+							&& ActiveEntry->Event.TargetUnitId == RequestUnitId)
+						{
+							bApplyToCurrentVisual = ActiveEntry->PresentedTargetClip.TexturePath == RequestPath;
+						}
+					}
 					if (Result == EGameXXKAtlasLoadResult::Loaded && Texture && RequestVisual)
 					{
 						Board->UnitIdleAtlasTextures.Add(RequestUnitId, Texture);
-						bool bApplyToCurrentVisual = true;
-						if (const FBattlePresentationQueueEntry* const ActiveEntry = Board->GetActivePresentationEntry())
-						{
-							if (ActiveEntry->Kind == EBattlePresentationKind::Death
-								&& ActiveEntry->Event.TargetUnitId == RequestUnitId)
-							{
-								bApplyToCurrentVisual = ActiveEntry->PresentedTargetClip.TexturePath == RequestPath;
-							}
-							else if (ActiveEntry->Kind == EBattlePresentationKind::AttackHit
-								&& ActiveEntry->Event.AttackerUnitId == RequestUnitId)
-							{
-								bApplyToCurrentVisual = ActiveEntry->PresentedAttackerClip.TexturePath == RequestPath;
-							}
-							else if (ActiveEntry->Kind == EBattlePresentationKind::AttackHit
-								&& ActiveEntry->Event.TargetUnitId == RequestUnitId)
-							{
-								bApplyToCurrentVisual = ActiveEntry->PresentedTargetClip.TexturePath == RequestPath;
-							}
-						}
 						if (bApplyToCurrentVisual)
 						{
 							RequestVisual->SetAtlas(Texture);
@@ -2489,7 +2500,7 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 						return;
 					}
 
-					if (RequestVisual)
+					if (RequestVisual && bApplyToCurrentVisual)
 					{
 						RequestVisual->SetAtlas(nullptr);
 					}

@@ -1,5 +1,10 @@
 #include "Misc/AutomationTest.h"
 
+#include "Blueprint/WidgetTree.h"
+#include "Components/Border.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/Image.h"
 #include "Engine/GameInstance.h"
 #include "Engine/Texture2D.h"
 #include "GameXXKMVPRules.h"
@@ -36,6 +41,7 @@ namespace
 			RequestedPaths.Add(Path);
 			UTexture2D* const Texture = NewObject<UTexture2D>(GetTransientPackage());
 			LoadedTextures.Add(TStrongObjectPtr<UTexture2D>(Texture));
+			TexturesByPath.Add(Path, Texture);
 			Completion(Texture, 4);
 			return MakeShared<FPresentationAtlasLoadHandle>();
 		}
@@ -45,8 +51,14 @@ namespace
 			return RequestedPaths.Contains(Path);
 		}
 
+		UTexture2D* GetTexture(const FSoftObjectPath& Path) const
+		{
+			return TexturesByPath.FindRef(Path);
+		}
+
 		TArray<FSoftObjectPath> RequestedPaths;
 		TArray<TStrongObjectPtr<UTexture2D>> LoadedTextures;
+		TMap<FSoftObjectPath, UTexture2D*> TexturesByPath;
 	};
 
 	/** Holds Idle completions while delivering action atlases immediately to reproduce a late-load race. */
@@ -90,9 +102,68 @@ namespace
 			return true;
 		}
 
+		bool CompleteIdleMissing(const FSoftObjectPath& Path)
+		{
+			FGameXXKAtlasLoaderCompletion* const Pending = PendingIdleCompletions.Find(Path);
+			if (!Pending)
+			{
+				return false;
+			}
+			FGameXXKAtlasLoaderCompletion Completion = MoveTemp(*Pending);
+			PendingIdleCompletions.Remove(Path);
+			Completion(nullptr, 0);
+			return true;
+		}
+
 		TArray<TStrongObjectPtr<UTexture2D>> LoadedTextures;
 		TMap<FSoftObjectPath, UTexture2D*> TexturesByPath;
 		TMap<FSoftObjectPath, FGameXXKAtlasLoaderCompletion> PendingIdleCompletions;
+	};
+
+	/** Holds the generic Impact request while every unit atlas is available immediately. */
+	class FLateImpactPresentationAtlasLoader final : public IGameXXKBattleAtlasLoader
+	{
+	public:
+		virtual TSharedPtr<IGameXXKBattleAtlasLoadHandle> RequestAsyncLoad(
+			const FSoftObjectPath& Path,
+			FGameXXKAtlasLoaderCompletion Completion) override
+		{
+			UTexture2D* const Texture = NewObject<UTexture2D>(GetTransientPackage());
+			LoadedTextures.Add(TStrongObjectPtr<UTexture2D>(Texture));
+			TexturesByPath.Add(Path, Texture);
+			if (Path.ToString().Contains(TEXT("impact_ink_generic")))
+			{
+				PendingImpactCompletions.Add(Path, MoveTemp(Completion));
+			}
+			else
+			{
+				Completion(Texture, 4);
+			}
+			return MakeShared<FPresentationAtlasLoadHandle>();
+		}
+
+		UTexture2D* GetTexture(const FSoftObjectPath& Path) const
+		{
+			return TexturesByPath.FindRef(Path);
+		}
+
+		bool CompleteImpact(const FSoftObjectPath& Path)
+		{
+			FGameXXKAtlasLoaderCompletion* const Pending = PendingImpactCompletions.Find(Path);
+			UTexture2D* const Texture = TexturesByPath.FindRef(Path);
+			if (!Pending || !Texture)
+			{
+				return false;
+			}
+			FGameXXKAtlasLoaderCompletion Completion = MoveTemp(*Pending);
+			PendingImpactCompletions.Remove(Path);
+			Completion(Texture, 4);
+			return true;
+		}
+
+		TArray<TStrongObjectPtr<UTexture2D>> LoadedTextures;
+		TMap<FSoftObjectPath, UTexture2D*> TexturesByPath;
+		TMap<FSoftObjectPath, FGameXXKAtlasLoaderCompletion> PendingImpactCompletions;
 	};
 
 	FGameXXKCardCombatUnit MakePresentationUnit(
@@ -255,13 +326,17 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 
 	const FGameXXKBattlePresentationEvent First = MakePresentationEvent(
 		1, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 100, 70);
+	const FGameXXKBattleAnimationClipDescriptor FirstAttackClip =
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			First.AttackerUnitId, First.bAttackerEnemy, EGameXXKBattleAnimationAction::Attack);
+	const FGameXXKBattleAnimationClipDescriptor FirstHitClip =
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			First.TargetUnitId, First.bTargetEnemy, EGameXXKBattleAnimationAction::Hit);
 	FApi::Queue(Board, First);
 	TestTrue(TEXT("queueing prefetches the attacker Attack atlas before presentation starts"),
-		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveClip(
-			First.AttackerUnitId, First.bAttackerEnemy, EGameXXKBattleAnimationAction::Attack).TexturePath));
+		AtlasLoader->Requested(FirstAttackClip.TexturePath));
 	TestTrue(TEXT("queueing prefetches the target Hit atlas before presentation starts"),
-		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveClip(
-			First.TargetUnitId, First.bTargetEnemy, EGameXXKBattleAnimationAction::Hit).TexturePath));
+		AtlasLoader->Requested(FirstHitClip.TexturePath));
 	TestTrue(TEXT("queueing prefetches the generic Impact atlas before presentation starts"),
 		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveGenericClip(
 			EGameXXKBattleAnimationAction::Impact).TexturePath));
@@ -272,12 +347,58 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Attack playback uses the authored two-times rate"), FApi::AttackerRate(Board), 2.0f);
 	TestEqual(TEXT("Hit playback uses the authored two-times rate"), FApi::TargetRate(Board), 2.0f);
 	TestEqual(TEXT("generic Impact playback uses the authored four-times rate"), FApi::ImpactRate(Board), 4.0f);
+	TestEqual(TEXT("the existing attacker visual binds the asynchronously loaded Attack atlas"),
+		AttackerVisual ? AttackerVisual->GetAtlasForTest() : nullptr,
+		AtlasLoader->GetTexture(FirstAttackClip.TexturePath));
+	TestEqual(TEXT("the existing target visual binds the asynchronously loaded Hit atlas"),
+		TargetVisual ? TargetVisual->GetAtlasForTest() : nullptr,
+		AtlasLoader->GetTexture(FirstHitClip.TexturePath));
+	TestTrue(TEXT("the real Attack visual is visible, enlarged, and positively scaled"),
+		AttackerVisual
+		&& AttackerVisual->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
+		&& AttackerVisual->GetUnitImageForTest()
+		&& AttackerVisual->GetUnitImageForTest()->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
+		&& AttackerVisual->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f)
+		&& AttackerVisual->GetRenderTransform().Scale.X > 0.0f);
+	TestTrue(TEXT("the real Hit visual is visible, enlarged, and positively scaled"),
+		TargetVisual
+		&& TargetVisual->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
+		&& TargetVisual->GetUnitImageForTest()
+		&& TargetVisual->GetUnitImageForTest()->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
+		&& TargetVisual->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f)
+		&& TargetVisual->GetRenderTransform().Scale.X > 0.0f);
+	UBorder* const TimelineDimmer = Board->WidgetTree
+		? Cast<UBorder>(Board->WidgetTree->FindWidget(TEXT("BattleCinematicDimmer")))
+		: nullptr;
+	const UCanvasPanelSlot* const TimelineDimmerSlot = TimelineDimmer
+		? Cast<UCanvasPanelSlot>(TimelineDimmer->Slot)
+		: nullptr;
+	TestTrue(TEXT("the real fifty-percent dimmer is visible throughout the action"),
+		TimelineDimmer
+		&& TimelineDimmer->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
+		&& TimelineDimmer->GetBrushColor().Equals(FLinearColor(0.0f, 0.0f, 0.0f, 0.5f), 0.001f));
+	TestEqual(TEXT("the real action dimmer renders at z thirty"),
+		TimelineDimmerSlot ? TimelineDimmerSlot->GetZOrder() : INDEX_NONE,
+		30);
 	TestEqual(TEXT("presentation overlays the pre-impact health immediately"),
 		FApi::DisplayedHealth(Board, First.TargetUnitId), First.TargetHealthBefore);
 	TestEqual(TEXT("the real fixed HUD renders the pre-impact health"),
 		GetRenderedHealth(Board, First.TargetUnitId), FString(TEXT("气血 100 / 120")));
 
 	Board->AdvanceVisualsAtRealTime(0.55);
+	const int32 ExpectedAttackFrameAtPartial =
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(FirstAttackClip, 0.55f, false);
+	const int32 ExpectedHitFrameAtPartial =
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(FirstHitClip, 0.55f, false);
+	TestEqual(TEXT("the real Attack visual advances at the authored absolute-time frame"),
+		AttackerVisual ? AttackerVisual->GetCurrentFrameForTest() : INDEX_NONE,
+		ExpectedAttackFrameAtPartial);
+	TestEqual(TEXT("the real Hit visual advances at the authored absolute-time frame"),
+		TargetVisual ? TargetVisual->GetCurrentFrameForTest() : INDEX_NONE,
+		ExpectedHitFrameAtPartial);
+	TestEqual(TEXT("paired Attack and Hit visuals remain frame-synchronized"),
+		AttackerVisual ? AttackerVisual->GetCurrentFrameForTest() : INDEX_NONE,
+		TargetVisual ? TargetVisual->GetCurrentFrameForTest() : INDEX_NONE);
 	TestEqual(TEXT("the first partial step retains pre-impact health"),
 		FApi::DisplayedHealth(Board, First.TargetUnitId), First.TargetHealthBefore);
 	Board->AdvanceVisualsAtRealTime(1.099);
@@ -294,6 +415,9 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("crossing 1.1 fires impact exactly once"), FApi::ImpactCount(Board), 1);
 	TestEqual(TEXT("crossing 1.1 fires the HUD-root shake exactly once"), FApi::ShakeCount(Board), 1);
 	TestEqual(TEXT("damage presentation emits its readout at the marker"), FApi::Readout(Board), FString(TEXT("-30")));
+	TestTrue(TEXT("crossing the marker moves the real common battle stage for HUD shake"),
+		Board->GetBattleDesignStageForTest()
+		&& !Board->GetBattleDesignStageForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
 	Board->AdvanceVisualsAtRealTime(1.8);
 	TestEqual(TEXT("later samples cannot refire the same impact"), FApi::ImpactCount(Board), 1);
 	TestEqual(TEXT("later samples cannot restart the same shake"), FApi::ShakeCount(Board), 1);
@@ -301,6 +425,12 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	Board->AdvanceVisualsAtRealTime(2.5);
 	TestFalse(TEXT("a nonlethal presentation completes at exactly 2.5 real seconds"), FApi::IsActive(Board));
 	TestEqual(TEXT("the paired Attack/Hit completion fires exactly once"), FApi::CompletionCount(Board), 1);
+	TestEqual(TEXT("completion hides the real cinematic dimmer"),
+		TimelineDimmer ? TimelineDimmer->GetVisibility() : ESlateVisibility::Visible,
+		ESlateVisibility::Hidden);
+	TestTrue(TEXT("completion restores the real common battle stage after shake"),
+		Board->GetBattleDesignStageForTest()
+		&& Board->GetBattleDesignStageForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
 	TestEqual(TEXT("the same attacker visual remains owned by the same design stage"),
 		Board->GetUnitVisualForTest(TEXT("Player")), AttackerVisual);
 	TestEqual(TEXT("the same target visual remains owned by the same design stage"),
@@ -347,6 +477,9 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 
 	const FGameXXKBattlePresentationEvent Lethal = MakePresentationEvent(
 		4, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 60, 0, false, true);
+	const FGameXXKBattleAnimationClipDescriptor DeathClip =
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			Lethal.TargetUnitId, Lethal.bTargetEnemy, EGameXXKBattleAnimationAction::Death);
 	const FGameXXKBattlePresentationEvent AfterDeath = MakePresentationEvent(
 		5, TEXT("Enemy.BlackBear"), true, TEXT("Player"), false, 90, 82);
 	FApi::Queue(Board, Lethal);
@@ -356,11 +489,33 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("lethal Attack/Hit completion starts Death before the next event"), FApi::IsDeathActive(Board));
 	TestEqual(TEXT("Death keeps the lethal immutable event active"), FApi::ActiveEventId(Board), Lethal.EventId);
 	TestEqual(TEXT("the event behind Death remains queued"), FApi::QueueCount(Board), 1);
+	TestTrue(TEXT("lethal completion asynchronously requests the actual Death atlas"),
+		AtlasLoader->Requested(DeathClip.TexturePath));
+	TestEqual(TEXT("the persistent lethal visual binds the actual Death atlas"),
+		TargetVisual ? TargetVisual->GetAtlasForTest() : nullptr,
+		AtlasLoader->GetTexture(DeathClip.TexturePath));
+	TestTrue(TEXT("the real Death visual remains visible, enlarged, and positively scaled"),
+		TargetVisual
+		&& TargetVisual->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
+		&& TargetVisual->GetUnitImageForTest()
+		&& TargetVisual->GetUnitImageForTest()->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
+		&& TargetVisual->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f)
+		&& TargetVisual->GetRenderTransform().Scale.X > 0.0f);
+	TestEqual(TEXT("the actual Death clip begins at frame zero"),
+		TargetVisual ? TargetVisual->GetCurrentFrameForTest() : INDEX_NONE,
+		0);
 	TestEqual(TEXT("the lethal visual is not removed before Death presentation"),
 		Board->GetUnitVisualForTest(Lethal.TargetUnitId), TargetVisual);
 	TestFalse(TEXT("the lethal visual is not marked removed before Death completes"),
 		TargetVisual ? TargetVisual->IsRemovedForTest() : true);
+	Board->AdvanceVisualsAtRealTime(23.0);
+	TestEqual(TEXT("the actual Death visual advances from its absolute start epoch"),
+		TargetVisual ? TargetVisual->GetCurrentFrameForTest() : INDEX_NONE,
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(DeathClip, 0.5f, false));
 	Board->AdvanceVisualsAtRealTime(27.499);
+	TestEqual(TEXT("the actual Death visual reaches its authored terminal frame before removal"),
+		TargetVisual ? TargetVisual->GetCurrentFrameForTest() : INDEX_NONE,
+		DeathClip.FrameCount - 1);
 	TestEqual(TEXT("the lethal visual remains until the five-second Death boundary"),
 		Board->GetUnitVisualForTest(Lethal.TargetUnitId), TargetVisual);
 	Board->AdvanceVisualsAtRealTime(27.5);
@@ -414,6 +569,225 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("a late Idle callback cannot replace the active participant clip"),
 		FApi::AttackerRate(LateIdleBoard),
 		2.0f);
+
+	UGameInstance* const LateImpactGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const LateImpactSubsystem = NewObject<UGameXXKMVPSubsystem>(LateImpactGameInstance);
+	BuildPresentationFixture(LateImpactSubsystem);
+	UGameXXKBattleBoardWidget* const LateImpactBoard = NewObject<UGameXXKBattleBoardWidget>();
+	LateImpactBoard->SetMVPSubsystem(LateImpactSubsystem);
+	const TSharedRef<FLateImpactPresentationAtlasLoader> LateImpactLoader =
+		MakeShared<FLateImpactPresentationAtlasLoader>();
+	LateImpactBoard->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+		LateImpactLoader,
+		[]() { return 40.0; }));
+	TestTrue(TEXT("late-impact fixture initializes its real Board"), LateImpactBoard->Initialize());
+	LateImpactBoard->NativeConstruct();
+	TestTrue(TEXT("late-impact fixture begins a visual session"),
+		LateImpactBoard->BeginBattleVisualSession(1003));
+	UGameXXKBattleUnitVisualWidget* const LateImpactVisual = LateImpactBoard->WidgetTree
+		? Cast<UGameXXKBattleUnitVisualWidget>(LateImpactBoard->WidgetTree->FindWidget(TEXT("BattleCinematicImpact")))
+		: nullptr;
+	TestNotNull(TEXT("late-impact fixture owns the real generic Impact widget"), LateImpactVisual);
+
+	const FGameXXKBattlePresentationEvent LateImpactEvent = MakePresentationEvent(
+		7, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 70, 51);
+	const FGameXXKBattleAnimationClipDescriptor GenericImpactClip =
+		FGameXXKBattleAnimationPresentation::ResolveGenericClip(EGameXXKBattleAnimationAction::Impact);
+	FApi::Queue(LateImpactBoard, LateImpactEvent);
+	LateImpactBoard->AdvanceVisualsAtRealTime(40.0);
+	LateImpactBoard->AdvanceVisualsAtRealTime(41.101);
+	TestEqual(TEXT("a pending Impact does not block the exact-once health marker"),
+		FApi::DisplayedHealth(LateImpactBoard, LateImpactEvent.TargetUnitId),
+		LateImpactEvent.TargetHealthAfter);
+	TestEqual(TEXT("a pending Impact still fires the marker exactly once"), FApi::ImpactCount(LateImpactBoard), 1);
+	TestEqual(TEXT("a pending Impact still fires shake exactly once"), FApi::ShakeCount(LateImpactBoard), 1);
+	TestEqual(TEXT("a pending Impact still publishes the damage readout"),
+		FApi::Readout(LateImpactBoard), FString(TEXT("-19")));
+	TestNull(TEXT("the generic Impact has no atlas before its delayed completion"),
+		LateImpactVisual ? LateImpactVisual->GetAtlasForTest() : nullptr);
+	TestTrue(TEXT("the generic Impact image is not visibly rendered while its atlas is pending"),
+		LateImpactVisual
+		&& (!LateImpactVisual->GetUnitImageForTest()
+			|| LateImpactVisual->GetUnitImageForTest()->GetVisibility() == ESlateVisibility::Hidden));
+	TestTrue(TEXT("the late generic Impact request completes while its event is active"),
+		LateImpactLoader->CompleteImpact(GenericImpactClip.TexturePath));
+	TestEqual(TEXT("late Impact completion binds its atlas to the still-active widget"),
+		LateImpactVisual ? LateImpactVisual->GetAtlasForTest() : nullptr,
+		LateImpactLoader->GetTexture(GenericImpactClip.TexturePath));
+	TestEqual(TEXT("late Impact completion makes the already-fired Impact image visible"),
+		LateImpactVisual && LateImpactVisual->GetUnitImageForTest()
+			? LateImpactVisual->GetUnitImageForTest()->GetVisibility()
+			: ESlateVisibility::Hidden,
+		ESlateVisibility::SelfHitTestInvisible);
+	TestEqual(TEXT("late Impact starts from frame zero at its own completion time"),
+		LateImpactVisual ? LateImpactVisual->GetCurrentFrameForTest() : INDEX_NONE,
+		0);
+	TestEqual(TEXT("late Impact completion cannot refire health or marker bookkeeping"),
+		FApi::ImpactCount(LateImpactBoard), 1);
+	TestEqual(TEXT("late Impact completion cannot restart shake"), FApi::ShakeCount(LateImpactBoard), 1);
+	TestEqual(TEXT("late Impact completion preserves the original readout"),
+		FApi::Readout(LateImpactBoard), FString(TEXT("-19")));
+	LateImpactBoard->AdvanceVisualsAtRealTime(41.201);
+	TestEqual(TEXT("late Impact advances at four-times playback from completion time"),
+		LateImpactVisual ? LateImpactVisual->GetCurrentFrameForTest() : INDEX_NONE,
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(GenericImpactClip, 0.1f, false));
+
+	UGameInstance* const SwitchedImpactGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const SwitchedImpactSubsystem = NewObject<UGameXXKMVPSubsystem>(SwitchedImpactGameInstance);
+	BuildPresentationFixture(SwitchedImpactSubsystem);
+	UGameXXKBattleBoardWidget* const SwitchedImpactBoard = NewObject<UGameXXKBattleBoardWidget>();
+	SwitchedImpactBoard->SetMVPSubsystem(SwitchedImpactSubsystem);
+	const TSharedRef<FLateImpactPresentationAtlasLoader> SwitchedImpactLoader =
+		MakeShared<FLateImpactPresentationAtlasLoader>();
+	SwitchedImpactBoard->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+		SwitchedImpactLoader,
+		[]() { return 50.0; }));
+	TestTrue(TEXT("switched-impact fixture initializes its real Board"), SwitchedImpactBoard->Initialize());
+	SwitchedImpactBoard->NativeConstruct();
+	TestTrue(TEXT("switched-impact fixture begins a visual session"),
+		SwitchedImpactBoard->BeginBattleVisualSession(1004));
+	UGameXXKBattleUnitVisualWidget* const SwitchedImpactVisual = SwitchedImpactBoard->WidgetTree
+		? Cast<UGameXXKBattleUnitVisualWidget>(SwitchedImpactBoard->WidgetTree->FindWidget(TEXT("BattleCinematicImpact")))
+		: nullptr;
+	const FGameXXKBattlePresentationEvent SupersededImpactEvent = MakePresentationEvent(
+		8, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 70, 60);
+	const FGameXXKBattlePresentationEvent CurrentImpactEvent = MakePresentationEvent(
+		9, TEXT("Enemy.BlackBear"), true, TEXT("Player"), false, 90, 81);
+	FApi::Queue(SwitchedImpactBoard, SupersededImpactEvent);
+	FApi::Queue(SwitchedImpactBoard, CurrentImpactEvent);
+	SwitchedImpactBoard->AdvanceVisualsAtRealTime(50.0);
+	SwitchedImpactBoard->AdvanceVisualsAtRealTime(52.5);
+	TestEqual(TEXT("large completion switches to the next event before the late Impact arrives"),
+		FApi::ActiveEventId(SwitchedImpactBoard), CurrentImpactEvent.EventId);
+	TestTrue(TEXT("the coalesced late Impact load completes after the event switch"),
+		SwitchedImpactLoader->CompleteImpact(GenericImpactClip.TexturePath));
+	TestNull(TEXT("a stale late Impact callback cannot bind into the pre-marker current event"),
+		SwitchedImpactVisual ? SwitchedImpactVisual->GetAtlasForTest() : nullptr);
+	TestEqual(TEXT("a stale late Impact callback cannot reveal the current event before its marker"),
+		SwitchedImpactVisual ? SwitchedImpactVisual->GetVisibility() : ESlateVisibility::Visible,
+		ESlateVisibility::Hidden);
+	TestEqual(TEXT("late completion after an event switch cannot refire the prior marker"),
+		FApi::ImpactCount(SwitchedImpactBoard), 1);
+	SwitchedImpactBoard->AdvanceVisualsAtRealTime(53.601);
+	TestEqual(TEXT("the current event may bind its legitimately prefetched Impact at its own marker"),
+		SwitchedImpactVisual ? SwitchedImpactVisual->GetAtlasForTest() : nullptr,
+		SwitchedImpactLoader->GetTexture(GenericImpactClip.TexturePath));
+	TestEqual(TEXT("the current event owns exactly one later Impact marker"),
+		FApi::ImpactCount(SwitchedImpactBoard), 2);
+
+	UGameInstance* const IdleFailureGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const IdleFailureSubsystem = NewObject<UGameXXKMVPSubsystem>(IdleFailureGameInstance);
+	BuildPresentationFixture(IdleFailureSubsystem);
+	UGameXXKBattleBoardWidget* const IdleFailureBoard = NewObject<UGameXXKBattleBoardWidget>();
+	IdleFailureBoard->SetMVPSubsystem(IdleFailureSubsystem);
+	const TSharedRef<FLateIdlePresentationAtlasLoader> IdleFailureLoader =
+		MakeShared<FLateIdlePresentationAtlasLoader>();
+	IdleFailureBoard->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+		IdleFailureLoader,
+		[]() { return 60.0; },
+		FGameXXKBattleAtlasCache::DefaultResidentBudgetBytes,
+		0.1));
+	TestTrue(TEXT("late-idle failure fixture initializes its real Board"), IdleFailureBoard->Initialize());
+	IdleFailureBoard->NativeConstruct();
+	TestTrue(TEXT("late-idle failure fixture begins a visual session"),
+		IdleFailureBoard->BeginBattleVisualSession(1005));
+	const FGameXXKBattlePresentationEvent IdleFailureEvent = MakePresentationEvent(
+		10, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 70, 54);
+	FApi::Queue(IdleFailureBoard, IdleFailureEvent);
+	IdleFailureBoard->AdvanceVisualsAtRealTime(60.0);
+	UGameXXKBattleUnitVisualWidget* const MissingIdleAttacker =
+		IdleFailureBoard->GetUnitVisualForTest(IdleFailureEvent.AttackerUnitId);
+	UGameXXKBattleUnitVisualWidget* const TimedOutIdleTarget =
+		IdleFailureBoard->GetUnitVisualForTest(IdleFailureEvent.TargetUnitId);
+	const FSoftObjectPath MissingIdlePath = FGameXXKBattleAnimationPresentation::ResolveClip(
+		IdleFailureEvent.AttackerUnitId,
+		IdleFailureEvent.bAttackerEnemy,
+		EGameXXKBattleAnimationAction::Idle).TexturePath;
+	const FSoftObjectPath TimedOutIdlePath = FGameXXKBattleAnimationPresentation::ResolveClip(
+		IdleFailureEvent.TargetUnitId,
+		IdleFailureEvent.bTargetEnemy,
+		EGameXXKBattleAnimationAction::Idle).TexturePath;
+	const FSoftObjectPath FailureAttackPath = FGameXXKBattleAnimationPresentation::ResolveClip(
+		IdleFailureEvent.AttackerUnitId,
+		IdleFailureEvent.bAttackerEnemy,
+		EGameXXKBattleAnimationAction::Attack).TexturePath;
+	const FSoftObjectPath FailureHitPath = FGameXXKBattleAnimationPresentation::ResolveClip(
+		IdleFailureEvent.TargetUnitId,
+		IdleFailureEvent.bTargetEnemy,
+		EGameXXKBattleAnimationAction::Hit).TexturePath;
+	UTexture2D* const FailureAttackAtlas = IdleFailureLoader->GetTexture(FailureAttackPath);
+	UTexture2D* const FailureHitAtlas = IdleFailureLoader->GetTexture(FailureHitPath);
+	TestEqual(TEXT("Missing fixture begins with the real Attack atlas"),
+		MissingIdleAttacker ? MissingIdleAttacker->GetAtlasForTest() : nullptr,
+		FailureAttackAtlas);
+	TestEqual(TEXT("TimedOut fixture begins with the real Hit atlas"),
+		TimedOutIdleTarget ? TimedOutIdleTarget->GetAtlasForTest() : nullptr,
+		FailureHitAtlas);
+	TestTrue(TEXT("the delayed attacker Idle completes as Missing during Attack"),
+		IdleFailureLoader->CompleteIdleMissing(MissingIdlePath));
+	TestEqual(TEXT("a late Missing Idle cannot clear the active Attack atlas"),
+		MissingIdleAttacker ? MissingIdleAttacker->GetAtlasForTest() : nullptr,
+		FailureAttackAtlas);
+	TestEqual(TEXT("a late Missing Idle cannot hide the active attacker widget"),
+		MissingIdleAttacker ? MissingIdleAttacker->GetVisibility() : ESlateVisibility::Hidden,
+		ESlateVisibility::SelfHitTestInvisible);
+	TestEqual(TEXT("a late Missing Idle cannot replace the active Attack clip"),
+		FApi::AttackerRate(IdleFailureBoard), 2.0f);
+	TestEqual(TEXT("a late Missing Idle preserves the active Attack frame"),
+		MissingIdleAttacker ? MissingIdleAttacker->GetCurrentFrameForTest() : INDEX_NONE,
+		0);
+	IdleFailureBoard->AdvanceVisualsAtRealTime(60.101);
+	TestEqual(TEXT("a late TimedOut Idle cannot clear the active Hit atlas"),
+		TimedOutIdleTarget ? TimedOutIdleTarget->GetAtlasForTest() : nullptr,
+		FailureHitAtlas);
+	TestEqual(TEXT("a late TimedOut Idle cannot hide the active target widget"),
+		TimedOutIdleTarget ? TimedOutIdleTarget->GetVisibility() : ESlateVisibility::Hidden,
+		ESlateVisibility::SelfHitTestInvisible);
+	TestEqual(TEXT("a late TimedOut Idle cannot replace the active Hit clip"),
+		FApi::TargetRate(IdleFailureBoard), 2.0f);
+	TestEqual(TEXT("a late TimedOut Idle keeps advancing the active Hit frames"),
+		TimedOutIdleTarget ? TimedOutIdleTarget->GetCurrentFrameForTest() : INDEX_NONE,
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(
+			FGameXXKBattleAnimationPresentation::ResolveClip(
+				IdleFailureEvent.TargetUnitId,
+				IdleFailureEvent.bTargetEnemy,
+				EGameXXKBattleAnimationAction::Hit),
+			0.101f,
+			false));
+
+	UGameInstance* const FormationFailureGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const FormationFailureSubsystem = NewObject<UGameXXKMVPSubsystem>(FormationFailureGameInstance);
+	BuildPresentationFixture(FormationFailureSubsystem);
+	UGameXXKBattleBoardWidget* const FormationFailureBoard = NewObject<UGameXXKBattleBoardWidget>();
+	FormationFailureBoard->SetMVPSubsystem(FormationFailureSubsystem);
+	const TSharedRef<FLateIdlePresentationAtlasLoader> FormationFailureLoader =
+		MakeShared<FLateIdlePresentationAtlasLoader>();
+	FormationFailureBoard->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+		FormationFailureLoader,
+		[]() { return 70.0; }));
+	TestTrue(TEXT("formation Idle failure fixture initializes its real Board"), FormationFailureBoard->Initialize());
+	FormationFailureBoard->NativeConstruct();
+	TestTrue(TEXT("formation Idle failure fixture begins a visual session"),
+		FormationFailureBoard->BeginBattleVisualSession(1006));
+	const FName FormationFailureUnitId(TEXT("Enemy.Tiger"));
+	const FSoftObjectPath FormationFailureIdlePath = FGameXXKBattleAnimationPresentation::ResolveClip(
+		FormationFailureUnitId,
+		true,
+		EGameXXKBattleAnimationAction::Idle).TexturePath;
+	UGameXXKBattleUnitVisualWidget* const FormationFailureVisual =
+		FormationFailureBoard->GetUnitVisualForTest(FormationFailureUnitId);
+	if (FormationFailureVisual)
+	{
+		FormationFailureVisual->SetAtlas(FormationFailureLoader->GetTexture(FormationFailureIdlePath));
+	}
+	TestNotNull(TEXT("formation fixture begins with an Idle atlas awaiting terminal result"),
+		FormationFailureVisual ? FormationFailureVisual->GetAtlasForTest() : nullptr);
+	TestTrue(TEXT("the formation Idle completes as Missing outside presentation"),
+		FormationFailureLoader->CompleteIdleMissing(FormationFailureIdlePath));
+	TestNull(TEXT("a Missing Idle still clears the ordinary formation atlas"),
+		FormationFailureVisual ? FormationFailureVisual->GetAtlasForTest() : nullptr);
+	TestTrue(TEXT("a Missing Idle still reveals the ordinary formation placeholder"),
+		FormationFailureBoard->IsUnitTargetPlaceholderVisibleForTest(FormationFailureUnitId));
 
 	return true;
 }
