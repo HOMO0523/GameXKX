@@ -57,6 +57,26 @@ namespace
 	const float RouteLineThickness = 24.0f;
 	const float RouteClickDragThresholdSq = 64.0f;
 
+	uint32 CalculateRouteTopologyHash(const FGameXXKRuntimeState& State)
+	{
+		uint32 Hash = GetTypeHash(State.RouteMapNodes.Num());
+		for (const FGameXXKRouteMapNode& Node : State.RouteMapNodes)
+		{
+			Hash = HashCombine(Hash, GetTypeHash(Node.NodeId));
+			Hash = HashCombine(Hash, GetTypeHash(Node.LayerIndex));
+			Hash = HashCombine(Hash, GetTypeHash(Node.ColumnIndex));
+			Hash = HashCombine(Hash, GetTypeHash(static_cast<uint8>(Node.NodeKind)));
+			Hash = HashCombine(Hash, GetTypeHash(Node.NormalizedPosition.X));
+			Hash = HashCombine(Hash, GetTypeHash(Node.NormalizedPosition.Y));
+			Hash = HashCombine(Hash, GetTypeHash(Node.OutgoingNodeIds.Num()));
+			for (const int32 OutgoingNodeId : Node.OutgoingNodeIds)
+			{
+				Hash = HashCombine(Hash, GetTypeHash(OutgoingNodeId));
+			}
+		}
+		return Hash;
+	}
+
 	FText RoomTypeLabel(EGameXXKOneGameRouteRoomType RoomType)
 	{
 		switch (RoomType)
@@ -248,7 +268,28 @@ void UGameXXKOneGameRouteMapWidget::RefreshFromState()
 	}
 
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
+	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if (!State || !State->bHasGeneratedRouteMap)
+	{
+		bHasRememberedRouteIdentity = false;
+		RememberedRouteSeed = 0;
+		RememberedRouteTopologyHash = 0;
+		bHasAppliedInitialScrollOffset = false;
+	}
+	else
+	{
+		const uint32 RouteTopologyHash = CalculateRouteTopologyHash(*State);
+		if (!bHasRememberedRouteIdentity
+			|| RememberedRouteSeed != State->RouteSeed
+			|| RememberedRouteTopologyHash != RouteTopologyHash)
+		{
+			bHasRememberedRouteIdentity = true;
+			RememberedRouteSeed = State->RouteSeed;
+			RememberedRouteTopologyHash = RouteTopologyHash;
+			bHasAppliedInitialScrollOffset = false;
+		}
+	}
+	const EGameXXKScreen ActiveScreen = State ? State->Screen : EGameXXKScreen::MainMenu;
 	const bool bKeepRouteVisibleUnderEncounter = ActiveScreen == EGameXXKScreen::RouteEvent
 		|| ActiveScreen == EGameXXKScreen::RouteMerchant;
 	SetVisibility(Subsystem && (ActiveScreen == EGameXXKScreen::DungeonMap || bKeepRouteVisibleUnderEncounter)
@@ -456,9 +497,9 @@ float UGameXXKOneGameRouteMapWidget::GetCurrentScrollOffset() const
 {
 	if (RouteScrollBox && RouteScrollBox->GetCachedWidget().IsValid())
 	{
-		return RouteScrollBox->GetScrollOffset();
+		return FMath::Clamp(RouteScrollBox->GetScrollOffset(), 0.0f, CalculateMaxScrollOffset());
 	}
-	return LastAppliedScrollOffset;
+	return FMath::Clamp(LastAppliedScrollOffset, 0.0f, CalculateMaxScrollOffset());
 }
 
 void UGameXXKOneGameRouteMapWidget::RestoreScrollOffset(float InOffset)
@@ -1500,6 +1541,12 @@ void UGameXXKOneGameRouteMapWidget::ApplyInitialScrollOffset(const TArray<FGameX
 
 float UGameXXKOneGameRouteMapWidget::CalculateMaxScrollOffset() const
 {
+	if (RouteScrollBox
+		&& RouteScrollBox->GetCachedWidget().IsValid()
+		&& RouteScrollBox->GetCachedGeometry().GetLocalSize().Y > 0.0f)
+	{
+		return FMath::Max(0.0f, RouteScrollBox->GetScrollOffsetOfEnd());
+	}
 	const float EffectiveViewportHeight = RouteMapViewportSize.Y > 0.0f ? RouteMapViewportSize.Y : DefaultRouteViewportHeight;
 	return FMath::Max(0.0f, RouteContentSize.Y - EffectiveViewportHeight);
 }

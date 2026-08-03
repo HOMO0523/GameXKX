@@ -62,6 +62,9 @@ public:
 	uint64 GetSessionToken() const;
 	bool IsCurrentSession(uint64 Candidate) const;
 	bool IsActive() const;
+#if WITH_DEV_AUTOMATION_TESTS
+	void SetLastIssuedSessionTokenForTest(uint64 SessionToken);
+#endif
 
 private:
 	uint64 LastIssuedSessionToken = 0;
@@ -69,8 +72,8 @@ private:
 	bool bSessionValid = false;
 	bool bActive = false;
 	bool bEnterInProgress = false;
+	bool bExitRequestedDuringEnter = false;
 	bool bExitInProgress = false;
-	bool bHasSnapshot = false;
 	FGameXXKBattleOverlaySnapshot SavedSnapshot;
 	TWeakObjectPtr<UGameXXKOneGameRouteMapWidget> SavedRouteWidget;
 	TWeakObjectPtr<UGameXXKBattleBoardWidget> SavedBattleWidget;

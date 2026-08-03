@@ -494,6 +494,15 @@ private:
 	bool bHasAppliedInitialScrollOffset = false;
 
 	UPROPERTY(Transient)
+	bool bHasRememberedRouteIdentity = false;
+
+	UPROPERTY(Transient)
+	int32 RememberedRouteSeed = 0;
+
+	UPROPERTY(Transient)
+	uint32 RememberedRouteTopologyHash = 0;
+
+	UPROPERTY(Transient)
 	bool bRouteMapDragActive = false;
 
 	UPROPERTY(Transient)

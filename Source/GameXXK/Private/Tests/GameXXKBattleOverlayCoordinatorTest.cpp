@@ -4,11 +4,14 @@
 
 #include "Components/ScrollBox.h"
 #include "Engine/GameInstance.h"
+#include "Framework/Application/SlateApplication.h"
+#include "HAL/IConsoleManager.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattleOverlayCoordinator.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
 #include "UObject/StrongObjectPtr.h"
+#include "Widgets/SWindow.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -20,7 +23,10 @@ namespace
 		FGameXXKBattleOverlaySnapshot SnapshotToCapture;
 		bool bApplySucceeds = true;
 		bool bReenterEnterDuringCapture = false;
+		bool bExitDuringCapture = false;
 		bool bExitDuringApply = false;
+		bool bMutateRouteAfterExitDuringApply = false;
+		bool bReenterEnterAfterExitDuringApply = false;
 		bool bReenterExitDuringCancel = false;
 		bool bReenterExitDuringRestore = false;
 		bool bReenterEnterDuringRestore = false;
@@ -30,6 +36,7 @@ namespace
 		mutable TArray<FString> Calls;
 		mutable int32 CaptureCount = 0;
 		mutable bool bCaptureReentrantEnterResult = true;
+		bool bApplyReentrantEnterResult = true;
 		int32 ApplyCount = 0;
 		int32 CancelCount = 0;
 		int32 RestoreCount = 0;
@@ -39,6 +46,7 @@ namespace
 		UGameXXKOneGameRouteMapWidget* RestoredRouteWidget = nullptr;
 		UGameXXKBattleBoardWidget* RestoredBattleWidget = nullptr;
 		uint64 AppliedSessionToken = 0;
+		uint64 SessionTokenObservedAfterApplyExit = MAX_uint64;
 		uint64 CancelledSessionToken = 0;
 		bool bClosingSessionWasCurrentDuringCancel = true;
 		uint64 SessionTokenObservedDuringCancel = MAX_uint64;
@@ -57,6 +65,11 @@ namespace
 				FRecordingBattleOverlayHost& MutableHost = const_cast<FRecordingBattleOverlayHost&>(*this);
 				UGameXXKOneGameRouteMapWidget& MutableRouteWidget = const_cast<UGameXXKOneGameRouteMapWidget&>(RouteWidget);
 				bCaptureReentrantEnterResult = Coordinator->Enter(MutableHost, MutableRouteWidget, *CaptureReentryBattleWidget);
+			}
+			if (bExitDuringCapture && CaptureCount == 1 && Coordinator)
+			{
+				FRecordingBattleOverlayHost& MutableHost = const_cast<FRecordingBattleOverlayHost&>(*this);
+				Coordinator->Exit(MutableHost);
 			}
 
 			FGameXXKBattleOverlaySnapshot Snapshot = SnapshotToCapture;
@@ -80,6 +93,16 @@ namespace
 			if (bExitDuringApply && Coordinator)
 			{
 				Coordinator->Exit(*this);
+				SessionTokenObservedAfterApplyExit = Coordinator->GetSessionToken();
+				if (bReenterEnterAfterExitDuringApply)
+				{
+					bApplyReentrantEnterResult = Coordinator->Enter(*this, RouteWidget, BattleWidget);
+				}
+				if (bMutateRouteAfterExitDuringApply)
+				{
+					RouteWidget.SetVisibility(ESlateVisibility::Hidden);
+					RouteWidget.RestoreScrollOffset(37.0f);
+				}
 			}
 			return bApplySucceeds;
 		}
@@ -273,6 +296,20 @@ bool FGameXXKBattleOverlayCoordinatorTest::RunTest(const FString& Parameters)
 	Host.SnapshotToCapture = Before;
 	Host.Coordinator = Coordinator;
 
+	UGameXXKBattleOverlayCoordinator* ExhaustedCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>();
+	UGameXXKOneGameRouteMapWidget* ExhaustedRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
+	UGameXXKBattleBoardWidget* ExhaustedBattleWidget = NewObject<UGameXXKBattleBoardWidget>();
+	ConfigureRouteForSnapshot(*ExhaustedRouteWidget, Before);
+	FRecordingBattleOverlayHost ExhaustedHost;
+	ExhaustedHost.SnapshotToCapture = Before;
+	ExhaustedHost.Coordinator = ExhaustedCoordinator;
+	ExhaustedCoordinator->SetLastIssuedSessionTokenForTest(MAX_uint64);
+	TestFalse(TEXT("token exhaustion fails entry closed"), ExhaustedCoordinator->Enter(ExhaustedHost, *ExhaustedRouteWidget, *ExhaustedBattleWidget));
+	TestEqual(TEXT("token exhaustion performs zero captures"), ExhaustedHost.CaptureCount, 0);
+	TestEqual(TEXT("token exhaustion performs zero applies"), ExhaustedHost.ApplyCount, 0);
+	TestFalse(TEXT("token exhaustion remains inactive"), ExhaustedCoordinator->IsActive());
+	TestEqual(TEXT("token exhaustion exposes no session token"), ExhaustedCoordinator->GetSessionToken(), uint64(0));
+
 	TestFalse(TEXT("coordinator starts inactive"), Coordinator->IsActive());
 	TestEqual(TEXT("coordinator starts without a session token"), Coordinator->GetSessionToken(), uint64(0));
 	TestTrue(TEXT("ordinary overlay entry succeeds"), Coordinator->Enter(Host, *RouteWidget, *BattleWidget));
@@ -374,6 +411,27 @@ bool FGameXXKBattleOverlayCoordinatorTest::RunTest(const FString& Parameters)
 	TestNull(TEXT("full expiry passes a null battle widget"), FullExpiryHost.RestoredBattleWidget);
 	TestSnapshotsEqual(*this, Before, FullExpiryHost.RestoredSnapshot);
 
+	UGameXXKBattleOverlayCoordinator* CaptureExitCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>();
+	UGameXXKOneGameRouteMapWidget* CaptureExitRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
+	UGameXXKBattleBoardWidget* CaptureExitBattleWidget = NewObject<UGameXXKBattleBoardWidget>();
+	ConfigureRouteForSnapshot(*CaptureExitRouteWidget, Before);
+	FRecordingBattleOverlayHost CaptureExitHost;
+	CaptureExitHost.SnapshotToCapture = Before;
+	CaptureExitHost.bExitDuringCapture = true;
+	CaptureExitHost.Coordinator = CaptureExitCoordinator;
+	TestFalse(TEXT("capture-time exit aborts outer entry"), CaptureExitCoordinator->Enter(CaptureExitHost, *CaptureExitRouteWidget, *CaptureExitBattleWidget));
+	TestCallOrder(*this, TEXT("capture-time exit aborts before Apply"), CaptureExitHost.Calls, {TEXT("Capture")});
+	TestEqual(TEXT("capture-time exit never applies overlay mutation"), CaptureExitHost.ApplyCount, 0);
+	TestEqual(TEXT("capture-time exit does not cancel an unstarted overlay"), CaptureExitHost.CancelCount, 0);
+	TestEqual(TEXT("capture-time exit does not restore an unmutated overlay"), CaptureExitHost.RestoreCount, 0);
+	TestFalse(TEXT("capture-time exit leaves the coordinator inactive"), CaptureExitCoordinator->IsActive());
+	TestEqual(TEXT("capture-time exit leaves no public session token"), CaptureExitCoordinator->GetSessionToken(), uint64(0));
+	CaptureExitHost.bExitDuringCapture = false;
+	CaptureExitHost.Calls.Reset();
+	TestTrue(TEXT("capture-time exit leaves a clean coordinator for retry"), CaptureExitCoordinator->Enter(CaptureExitHost, *CaptureExitRouteWidget, *CaptureExitBattleWidget));
+	TestCallOrder(*this, TEXT("retry after capture-time exit performs a fresh transaction"), CaptureExitHost.Calls, {TEXT("Capture"), TEXT("Apply")});
+	CaptureExitCoordinator->Exit(CaptureExitHost);
+
 	UGameXXKBattleOverlayCoordinator* ReentrantCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>();
 	UGameXXKOneGameRouteMapWidget* ReentrantRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
 	UGameXXKBattleBoardWidget* ReentrantBattleWidget = NewObject<UGameXXKBattleBoardWidget>();
@@ -416,11 +474,20 @@ bool FGameXXKBattleOverlayCoordinatorTest::RunTest(const FString& Parameters)
 	FRecordingBattleOverlayHost ApplyExitHost;
 	ApplyExitHost.SnapshotToCapture = Before;
 	ApplyExitHost.bExitDuringApply = true;
+	ApplyExitHost.bMutateRouteAfterExitDuringApply = true;
+	ApplyExitHost.bReenterEnterAfterExitDuringApply = true;
 	ApplyExitHost.Coordinator = ApplyExitCoordinator;
 	TestFalse(TEXT("entry reports failure when Apply synchronously exits"), ApplyExitCoordinator->Enter(ApplyExitHost, *ApplyExitRouteWidget, *ApplyExitBattleWidget));
+	TestCallOrder(*this, TEXT("Apply-triggered exit defers cancel and restore until Apply unwinds"), ApplyExitHost.Calls, {TEXT("Capture"), TEXT("Apply"), TEXT("Cancel"), TEXT("Restore")});
 	TestEqual(TEXT("Apply-triggered exit cancels once"), ApplyExitHost.CancelCount, 1);
 	TestEqual(TEXT("Apply-triggered exit restores once"), ApplyExitHost.RestoreCount, 1);
+	TestEqual(TEXT("Apply-triggered exit invalidates the token before Apply continues"), ApplyExitHost.SessionTokenObservedAfterApplyExit, uint64(0));
+	TestFalse(TEXT("Apply-triggered exit rejects a nested successor entry"), ApplyExitHost.bApplyReentrantEnterResult);
+	TestEqual(TEXT("Apply-triggered exit restores exact visibility after later Apply mutation"), ApplyExitRouteWidget->GetVisibility(), Before.RouteVisibility);
+	TestEqual(TEXT("Apply-triggered exit restores exact scroll after later Apply mutation"), ApplyExitRouteWidget->GetCurrentScrollOffset(), Before.RouteScrollOffset);
+	TestSnapshotsEqual(*this, Before, ApplyExitHost.RestoredSnapshot);
 	TestFalse(TEXT("Apply-triggered exit leaves the coordinator inactive"), ApplyExitCoordinator->IsActive());
+	TestEqual(TEXT("Apply-triggered exit creates no successor session"), ApplyExitCoordinator->GetSessionToken(), uint64(0));
 
 	UGameXXKBattleOverlayCoordinator* CaptureReentryCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>();
 	UGameXXKOneGameRouteMapWidget* CaptureReentryRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
@@ -473,10 +540,35 @@ bool FGameXXKBattleOverlayCoordinatorTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("scroll accessor falls back to the cached offset before construction"), ScrollRouteWidget->GetCurrentScrollOffset(), Before.RouteScrollOffset);
 	TestTrue(TEXT("scroll test widget initializes"), ScrollRouteWidget->Initialize());
 	TSharedRef<SWidget> RouteSlateWidget = ScrollRouteWidget->TakeWidget();
-	RouteSlateWidget->SlatePrepass();
 	ScrollRouteWidget->NativeConstruct();
+	TSharedRef<SWindow> RouteLayoutWindow = SNew(SWindow)
+		.ClientSize(FVector2D(1280.0f, 360.0f))
+		.ScreenPosition(FVector2D(-10000.0f, -10000.0f))
+		.AutoCenter(EAutoCenter::None)
+		.CreateTitleBar(false)
+		.SizingRule(ESizingRule::FixedSize)
+		.SupportsMaximize(false)
+		.SupportsMinimize(false)
+		.HasCloseButton(false)
+		[
+			RouteSlateWidget
+		];
+	FSlateApplication::Get().AddWindow(RouteLayoutWindow, true);
+	RouteLayoutWindow->SlatePrepass(1.0f);
+	IConsoleVariable* SkipHeadlessSlateDraw = IConsoleManager::Get().FindConsoleVariable(TEXT("Slate.SkipWidgetDrawingInHeadlessMode"));
+	const int32 PreviousSkipHeadlessSlateDraw = SkipHeadlessSlateDraw ? SkipHeadlessSlateDraw->GetInt() : 1;
+	if (SkipHeadlessSlateDraw)
+	{
+		SkipHeadlessSlateDraw->Set(0, ECVF_SetByCode);
+	}
+	FSlateApplication::Get().ForceRedrawWindow(RouteLayoutWindow);
+	if (SkipHeadlessSlateDraw)
+	{
+		SkipHeadlessSlateDraw->Set(PreviousSkipHeadlessSlateDraw, ECVF_SetByCode);
+	}
 	UScrollBox* LiveRouteScrollBox = ScrollRouteWidget->GetRouteScrollBoxForTest();
 	TestNotNull(TEXT("scroll test exposes the constructed live scroll box"), LiveRouteScrollBox);
+	TestTrue(TEXT("scroll test arranges nonzero live geometry"), LiveRouteScrollBox && LiveRouteScrollBox->GetCachedGeometry().GetLocalSize().Y > 0.0f);
 	TestTrue(TEXT("scroll test has enough clamped range"), ScrollRouteWidget->GetMaxScrollOffsetForTest() >= Before.RouteScrollOffset);
 	ScrollRouteWidget->RestoreScrollOffset(Before.RouteScrollOffset);
 	TestEqual(TEXT("scroll restore updates the live scroll box"), LiveRouteScrollBox ? LiveRouteScrollBox->GetScrollOffset() : -1.0f, Before.RouteScrollOffset);
@@ -484,7 +576,11 @@ bool FGameXXKBattleOverlayCoordinatorTest::RunTest(const FString& Parameters)
 	ScrollRouteWidget->RefreshFromState();
 	TestEqual(TEXT("refresh preserves the live scroll after initial initialization"), LiveRouteScrollBox ? LiveRouteScrollBox->GetScrollOffset() : -1.0f, Before.RouteScrollOffset);
 	ScrollRouteWidget->RestoreScrollOffset(100000.0f);
-	TestEqual(TEXT("upper clamping reaches the live scroll box"), LiveRouteScrollBox ? LiveRouteScrollBox->GetScrollOffset() : -1.0f, ScrollRouteWidget->GetMaxScrollOffsetForTest());
+	const float ArithmeticFallbackEnd = FMath::Max(0.0f, ScrollRouteWidget->GetRouteContentSizeForTest().Y - 100.0f);
+	const float ArrangedLiveEnd = LiveRouteScrollBox ? LiveRouteScrollBox->GetScrollOffsetOfEnd() : -1.0f;
+	TestTrue(TEXT("arranged live end differs from configured arithmetic fallback"), !FMath::IsNearlyEqual(ArrangedLiveEnd, ArithmeticFallbackEnd));
+	TestEqual(TEXT("upper clamping reaches the authoritative arranged live end"), LiveRouteScrollBox ? LiveRouteScrollBox->GetScrollOffset() : -1.0f, ArrangedLiveEnd);
+	TestEqual(TEXT("upper clamping synchronizes the cached offset to live end"), ScrollRouteWidget->GetLastAppliedScrollOffsetForTest(), ArrangedLiveEnd);
 	ScrollRouteWidget->RestoreScrollOffset(-100.0f);
 	TestEqual(TEXT("lower clamping reaches the live scroll box"), LiveRouteScrollBox ? LiveRouteScrollBox->GetScrollOffset() : -1.0f, 0.0f);
 	const float LiveOnlyScrollOffset = 257.0f;
@@ -502,6 +598,41 @@ bool FGameXXKBattleOverlayCoordinatorTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("scroll accessor observes user scrolling on the live box"), ScrollRouteWidget->GetCurrentScrollOffset(), UserScrollOffset);
 	TestEqual(TEXT("user-scroll delegate updates the cached fallback"), ScrollRouteWidget->GetLastAppliedScrollOffsetForTest(), UserScrollOffset);
+	FSlateApplication::Get().DestroyWindowImmediately(RouteLayoutWindow);
+
+	UGameXXKOneGameRouteMapWidget* IdentityRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
+	IdentityRouteWidget->SetMVPSubsystem(Subsystem);
+	IdentityRouteWidget->SetRouteMapViewportGeometry(FVector2D::ZeroVector, FVector2D(1280.0f, 100.0f));
+	IdentityRouteWidget->RefreshFromState();
+	const float InitialRouteEnd = IdentityRouteWidget->GetMaxScrollOffsetForTest();
+	TestEqual(TEXT("first generated route initializes at its end"), IdentityRouteWidget->GetCurrentScrollOffset(), InitialRouteEnd);
+	const float SameRouteUserOffset = 123.0f;
+	IdentityRouteWidget->RestoreScrollOffset(SameRouteUserOffset);
+	IdentityRouteWidget->RefreshFromState();
+	TestEqual(TEXT("ordinary refresh preserves same-route user scroll"), IdentityRouteWidget->GetCurrentScrollOffset(), SameRouteUserOffset);
+
+	FGameXXKRuntimeState& MutableRouteState = Subsystem->GetMutableRuntimeState();
+	const int32 ReplacementSeed = MutableRouteState.RouteSeed + 7919;
+	UGameXXKMVPRules::GenerateRouteMapForSeed(MutableRouteState, ReplacementSeed);
+	IdentityRouteWidget->RefreshFromState();
+	TestEqual(TEXT("changed route identity discards the old top offset"), IdentityRouteWidget->GetCurrentScrollOffset(), IdentityRouteWidget->GetMaxScrollOffsetForTest());
+
+	IdentityRouteWidget->RestoreScrollOffset(41.0f);
+	if (!MutableRouteState.RouteMapNodes.IsEmpty())
+	{
+		MutableRouteState.RouteMapNodes[0].ColumnIndex += 1;
+	}
+	IdentityRouteWidget->RefreshFromState();
+	TestEqual(TEXT("same-seed topology replacement reapplies initial scroll"), IdentityRouteWidget->GetCurrentScrollOffset(), IdentityRouteWidget->GetMaxScrollOffsetForTest());
+
+	MutableRouteState = UGameXXKMVPRules::CreateNewGame();
+	IdentityRouteWidget->RefreshFromState();
+	IdentityRouteWidget->RestoreScrollOffset(17.0f);
+	MutableRouteState.Screen = EGameXXKScreen::DungeonMap;
+	MutableRouteState.bDungeonActive = true;
+	UGameXXKMVPRules::GenerateRouteMapForSeed(MutableRouteState, ReplacementSeed + 104729);
+	IdentityRouteWidget->RefreshFromState();
+	TestEqual(TEXT("new run after no-generated state reapplies initial scroll"), IdentityRouteWidget->GetCurrentScrollOffset(), IdentityRouteWidget->GetMaxScrollOffsetForTest());
 
 	return true;
 }

@@ -8,44 +8,63 @@ bool UGameXXKBattleOverlayCoordinator::Enter(
 	UGameXXKOneGameRouteMapWidget& RouteWidget,
 	UGameXXKBattleBoardWidget& BattleWidget)
 {
-	if (bActive || bEnterInProgress || bExitInProgress)
+	if (bActive || bEnterInProgress || bExitInProgress || LastIssuedSessionToken == MAX_uint64)
 	{
 		return false;
 	}
 
 	bEnterInProgress = true;
+	bExitRequestedDuringEnter = false;
 	SavedSnapshot = Host.CaptureBattleOverlaySnapshot(RouteWidget);
-	bHasSnapshot = true;
+	if (bExitRequestedDuringEnter)
+	{
+		SavedRouteWidget.Reset();
+		SavedBattleWidget.Reset();
+		SavedSnapshot = FGameXXKBattleOverlaySnapshot();
+		CurrentSessionToken = 0;
+		bSessionValid = false;
+		bActive = false;
+		bExitRequestedDuringEnter = false;
+		bEnterInProgress = false;
+		return false;
+	}
 	SavedRouteWidget = &RouteWidget;
 	SavedBattleWidget = &BattleWidget;
 
 	++LastIssuedSessionToken;
-	if (LastIssuedSessionToken == 0)
-	{
-		++LastIssuedSessionToken;
-	}
 	CurrentSessionToken = LastIssuedSessionToken;
 	bSessionValid = true;
 	bActive = true;
 
 	const uint64 EnteredSessionToken = CurrentSessionToken;
 	const bool bApplied = Host.ApplyBattleOverlayEntry(RouteWidget, BattleWidget, EnteredSessionToken);
+	bEnterInProgress = false;
+	if (bExitRequestedDuringEnter)
+	{
+		bExitRequestedDuringEnter = false;
+		Exit(Host);
+		return false;
+	}
 	if (!bApplied || !IsCurrentSession(EnteredSessionToken))
 	{
 		if (bActive)
 		{
 			Exit(Host);
 		}
-		bEnterInProgress = false;
 		return false;
 	}
 
-	bEnterInProgress = false;
 	return true;
 }
 
 void UGameXXKBattleOverlayCoordinator::Exit(IGameXXKBattleOverlayHost& Host)
 {
+	if (bEnterInProgress)
+	{
+		bExitRequestedDuringEnter = true;
+		InvalidateSession();
+		return;
+	}
 	if (!bActive || bExitInProgress)
 	{
 		return;
@@ -63,9 +82,9 @@ void UGameXXKBattleOverlayCoordinator::Exit(IGameXXKBattleOverlayHost& Host)
 	SavedRouteWidget.Reset();
 	SavedBattleWidget.Reset();
 	SavedSnapshot = FGameXXKBattleOverlaySnapshot();
-	bHasSnapshot = false;
 	CurrentSessionToken = 0;
 	bActive = false;
+	bExitRequestedDuringEnter = false;
 	bExitInProgress = false;
 }
 
@@ -88,3 +107,13 @@ bool UGameXXKBattleOverlayCoordinator::IsActive() const
 {
 	return bActive;
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+void UGameXXKBattleOverlayCoordinator::SetLastIssuedSessionTokenForTest(uint64 SessionToken)
+{
+	if (!bActive && !bEnterInProgress && !bExitInProgress)
+	{
+		LastIssuedSessionToken = SessionToken;
+	}
+}
+#endif
