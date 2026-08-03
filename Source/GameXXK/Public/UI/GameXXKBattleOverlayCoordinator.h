@@ -43,8 +43,8 @@ public:
 	virtual void CancelBattleVisualLoads(uint64 ClosingSessionToken) = 0;
 	virtual void RestoreBattleOverlaySnapshot(
 		const FGameXXKBattleOverlaySnapshot& Snapshot,
-		UGameXXKOneGameRouteMapWidget& RouteWidget,
-		UGameXXKBattleBoardWidget& BattleWidget) = 0;
+		UGameXXKOneGameRouteMapWidget* RouteWidget,
+		UGameXXKBattleBoardWidget* BattleWidget) = 0;
 };
 
 UCLASS()

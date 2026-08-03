@@ -454,6 +454,10 @@ void UGameXXKOneGameRouteMapWidget::SetRouteMapViewportGeometry(FVector2D InView
 
 float UGameXXKOneGameRouteMapWidget::GetCurrentScrollOffset() const
 {
+	if (RouteScrollBox && RouteScrollBox->GetCachedWidget().IsValid())
+	{
+		return RouteScrollBox->GetScrollOffset();
+	}
 	return LastAppliedScrollOffset;
 }
 
@@ -578,6 +582,13 @@ bool UGameXXKOneGameRouteMapWidget::IsRouteNodeButtonBoundForTest(int32 ButtonIn
 	const UButton* Button = NodeButtons.IsValidIndex(ButtonIndex) ? NodeButtons[ButtonIndex].Get() : nullptr;
 	return Button && Button->OnClicked.IsBound();
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+UScrollBox* UGameXXKOneGameRouteMapWidget::GetRouteScrollBoxForTest() const
+{
+	return RouteScrollBox;
+}
+#endif
 
 void UGameXXKOneGameRouteMapWidget::HandleNodeButton0Clicked()
 {

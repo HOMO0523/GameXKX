@@ -239,6 +239,9 @@ public:
 	bool HasRouteDragSurfaceForTest() const;
 	bool ApplyRouteMapDragDeltaForTest(float PointerDeltaY);
 	bool IsRouteNodeButtonBoundForTest(int32 ButtonIndex) const;
+#if WITH_DEV_AUTOMATION_TESTS
+	UScrollBox* GetRouteScrollBoxForTest() const;
+#endif
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameXXK|RouteMap")
 	void OnRouteNodeExecuted(const FGameXXKOneGameRouteNode& Node);

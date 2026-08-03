@@ -2,11 +2,13 @@
 
 #include <initializer_list>
 
+#include "Components/ScrollBox.h"
 #include "Engine/GameInstance.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattleOverlayCoordinator.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
+#include "UObject/StrongObjectPtr.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -20,6 +22,8 @@ namespace
 		bool bReenterEnterDuringCapture = false;
 		bool bExitDuringApply = false;
 		bool bReenterExitDuringCancel = false;
+		bool bReenterExitDuringRestore = false;
+		bool bReenterEnterDuringRestore = false;
 		UGameXXKBattleOverlayCoordinator* Coordinator = nullptr;
 		UGameXXKBattleBoardWidget* CaptureReentryBattleWidget = nullptr;
 
@@ -38,6 +42,8 @@ namespace
 		uint64 CancelledSessionToken = 0;
 		bool bClosingSessionWasCurrentDuringCancel = true;
 		uint64 SessionTokenObservedDuringCancel = MAX_uint64;
+		uint64 SessionTokenObservedDuringRestore = MAX_uint64;
+		bool bRestoreReentrantEnterResult = true;
 		FGameXXKBattleOverlaySnapshot RestoredSnapshot;
 
 		virtual FGameXXKBattleOverlaySnapshot CaptureBattleOverlaySnapshot(
@@ -96,16 +102,31 @@ namespace
 
 		virtual void RestoreBattleOverlaySnapshot(
 			const FGameXXKBattleOverlaySnapshot& Snapshot,
-			UGameXXKOneGameRouteMapWidget& RouteWidget,
-			UGameXXKBattleBoardWidget& BattleWidget) override
+			UGameXXKOneGameRouteMapWidget* RouteWidget,
+			UGameXXKBattleBoardWidget* BattleWidget) override
 		{
 			Calls.Add(TEXT("Restore"));
 			++RestoreCount;
 			RestoredSnapshot = Snapshot;
-			RestoredRouteWidget = &RouteWidget;
-			RestoredBattleWidget = &BattleWidget;
-			RouteWidget.SetVisibility(Snapshot.RouteVisibility);
-			RouteWidget.RestoreScrollOffset(Snapshot.RouteScrollOffset);
+			RestoredRouteWidget = RouteWidget;
+			RestoredBattleWidget = BattleWidget;
+			if (RouteWidget)
+			{
+				RouteWidget->SetVisibility(Snapshot.RouteVisibility);
+				RouteWidget->RestoreScrollOffset(Snapshot.RouteScrollOffset);
+			}
+			if (Coordinator)
+			{
+				SessionTokenObservedDuringRestore = Coordinator->GetSessionToken();
+				if (bReenterExitDuringRestore && RestoreCount == 1)
+				{
+					Coordinator->Exit(*this);
+				}
+				if (bReenterEnterDuringRestore && RestoreCount == 1 && RouteWidget && BattleWidget)
+				{
+					bRestoreReentrantEnterResult = Coordinator->Enter(*this, *RouteWidget, *BattleWidget);
+				}
+			}
 		}
 	};
 
@@ -133,6 +154,65 @@ namespace
 		RouteWidget.SetVisibility(Snapshot.RouteVisibility);
 		RouteWidget.RestoreScrollOffset(Snapshot.RouteScrollOffset);
 	}
+
+	class FFakeBattleOverlayLifecycleOwner
+	{
+	public:
+		explicit FFakeBattleOverlayLifecycleOwner(const FGameXXKBattleOverlaySnapshot& Snapshot)
+			: Coordinator(NewObject<UGameXXKBattleOverlayCoordinator>())
+			, RouteWidget(NewObject<UGameXXKOneGameRouteMapWidget>())
+			, BattleWidget(NewObject<UGameXXKBattleBoardWidget>())
+		{
+			ConfigureRouteForSnapshot(*RouteWidget, Snapshot);
+			Host.SnapshotToCapture = Snapshot;
+			Host.Coordinator = Coordinator.Get();
+		}
+
+		bool Enter()
+		{
+			return Coordinator->Enter(Host, *RouteWidget, *BattleWidget);
+		}
+
+		void SimulateEndPlay()
+		{
+			ExitBeforeWidgetRelease(TEXT("ReleaseWidgets"));
+		}
+
+		void SimulatePreTravel()
+		{
+			ExitBeforeWidgetRelease(TEXT("BeginTravel"));
+		}
+
+		bool HasWidgetReferences() const
+		{
+			return RouteWidget.IsValid() || BattleWidget.IsValid();
+		}
+
+		UGameXXKOneGameRouteMapWidget* GetRouteWidget() const
+		{
+			return RouteWidget.Get();
+		}
+
+		UGameXXKBattleBoardWidget* GetBattleWidget() const
+		{
+			return BattleWidget.Get();
+		}
+
+		FRecordingBattleOverlayHost Host;
+
+	private:
+		void ExitBeforeWidgetRelease(const TCHAR* Marker)
+		{
+			Coordinator->Exit(Host);
+			Host.Calls.Add(Marker);
+			RouteWidget.Reset();
+			BattleWidget.Reset();
+		}
+
+		TStrongObjectPtr<UGameXXKBattleOverlayCoordinator> Coordinator;
+		TStrongObjectPtr<UGameXXKOneGameRouteMapWidget> RouteWidget;
+		TStrongObjectPtr<UGameXXKBattleBoardWidget> BattleWidget;
+	};
 
 	void TestSnapshotsEqual(
 		FAutomationTestBase& Test,
@@ -256,6 +336,44 @@ bool FGameXXKBattleOverlayCoordinatorTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("failed entry restores route scroll"), FailedRouteWidget->GetCurrentScrollOffset(), Before.RouteScrollOffset);
 	TestSnapshotsEqual(*this, Before, FailedHost.RestoredSnapshot);
 
+	UGameXXKBattleOverlayCoordinator* PartialExpiryCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>();
+	UGameXXKOneGameRouteMapWidget* PartialExpiryRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
+	UGameXXKBattleBoardWidget* PartialExpiryBattleWidget = NewObject<UGameXXKBattleBoardWidget>();
+	ConfigureRouteForSnapshot(*PartialExpiryRouteWidget, Before);
+	FRecordingBattleOverlayHost PartialExpiryHost;
+	PartialExpiryHost.SnapshotToCapture = Before;
+	PartialExpiryHost.Coordinator = PartialExpiryCoordinator;
+	TestTrue(TEXT("partial-expiry scenario enters"), PartialExpiryCoordinator->Enter(PartialExpiryHost, *PartialExpiryRouteWidget, *PartialExpiryBattleWidget));
+	PartialExpiryRouteWidget->MarkAsGarbage();
+	TestFalse(TEXT("partial-expiry route weak reference expires"), TWeakObjectPtr<UGameXXKOneGameRouteMapWidget>(PartialExpiryRouteWidget).IsValid());
+	PartialExpiryCoordinator->Exit(PartialExpiryHost);
+	TestCallOrder(*this, TEXT("partial expiry still cancels then restores"), PartialExpiryHost.Calls, {TEXT("Capture"), TEXT("Apply"), TEXT("Cancel"), TEXT("Restore")});
+	TestEqual(TEXT("partial expiry cancels once"), PartialExpiryHost.CancelCount, 1);
+	TestEqual(TEXT("partial expiry restores once"), PartialExpiryHost.RestoreCount, 1);
+	TestNull(TEXT("partial expiry passes a null route widget"), PartialExpiryHost.RestoredRouteWidget);
+	TestEqual(TEXT("partial expiry preserves the surviving battle widget"), PartialExpiryHost.RestoredBattleWidget, PartialExpiryBattleWidget);
+	TestSnapshotsEqual(*this, Before, PartialExpiryHost.RestoredSnapshot);
+
+	UGameXXKBattleOverlayCoordinator* FullExpiryCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>();
+	UGameXXKOneGameRouteMapWidget* FullExpiryRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
+	UGameXXKBattleBoardWidget* FullExpiryBattleWidget = NewObject<UGameXXKBattleBoardWidget>();
+	ConfigureRouteForSnapshot(*FullExpiryRouteWidget, Before);
+	FRecordingBattleOverlayHost FullExpiryHost;
+	FullExpiryHost.SnapshotToCapture = Before;
+	FullExpiryHost.Coordinator = FullExpiryCoordinator;
+	TestTrue(TEXT("full-expiry scenario enters"), FullExpiryCoordinator->Enter(FullExpiryHost, *FullExpiryRouteWidget, *FullExpiryBattleWidget));
+	FullExpiryRouteWidget->MarkAsGarbage();
+	FullExpiryBattleWidget->MarkAsGarbage();
+	TestFalse(TEXT("full-expiry route weak reference expires"), TWeakObjectPtr<UGameXXKOneGameRouteMapWidget>(FullExpiryRouteWidget).IsValid());
+	TestFalse(TEXT("full-expiry battle weak reference expires"), TWeakObjectPtr<UGameXXKBattleBoardWidget>(FullExpiryBattleWidget).IsValid());
+	FullExpiryCoordinator->Exit(FullExpiryHost);
+	TestCallOrder(*this, TEXT("full expiry still cancels then restores"), FullExpiryHost.Calls, {TEXT("Capture"), TEXT("Apply"), TEXT("Cancel"), TEXT("Restore")});
+	TestEqual(TEXT("full expiry cancels once"), FullExpiryHost.CancelCount, 1);
+	TestEqual(TEXT("full expiry restores once"), FullExpiryHost.RestoreCount, 1);
+	TestNull(TEXT("full expiry passes a null route widget"), FullExpiryHost.RestoredRouteWidget);
+	TestNull(TEXT("full expiry passes a null battle widget"), FullExpiryHost.RestoredBattleWidget);
+	TestSnapshotsEqual(*this, Before, FullExpiryHost.RestoredSnapshot);
+
 	UGameXXKBattleOverlayCoordinator* ReentrantCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>();
 	UGameXXKOneGameRouteMapWidget* ReentrantRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
 	UGameXXKBattleBoardWidget* ReentrantBattleWidget = NewObject<UGameXXKBattleBoardWidget>();
@@ -269,6 +387,27 @@ bool FGameXXKBattleOverlayCoordinatorTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("reentrant exit cancels only once"), ReentrantHost.CancelCount, 1);
 	TestEqual(TEXT("reentrant exit restores only once"), ReentrantHost.RestoreCount, 1);
 	TestFalse(TEXT("reentrant exit ends inactive"), ReentrantCoordinator->IsActive());
+
+	UGameXXKBattleOverlayCoordinator* RestoreReentryCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>();
+	UGameXXKOneGameRouteMapWidget* RestoreReentryRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
+	UGameXXKBattleBoardWidget* RestoreReentryBattleWidget = NewObject<UGameXXKBattleBoardWidget>();
+	ConfigureRouteForSnapshot(*RestoreReentryRouteWidget, Before);
+	FRecordingBattleOverlayHost RestoreReentryHost;
+	RestoreReentryHost.SnapshotToCapture = Before;
+	RestoreReentryHost.bReenterExitDuringRestore = true;
+	RestoreReentryHost.bReenterEnterDuringRestore = true;
+	RestoreReentryHost.Coordinator = RestoreReentryCoordinator;
+	TestTrue(TEXT("restore-reentry scenario enters"), RestoreReentryCoordinator->Enter(RestoreReentryHost, *RestoreReentryRouteWidget, *RestoreReentryBattleWidget));
+	const uint64 RestoreReentrySession = RestoreReentryCoordinator->GetSessionToken();
+	RestoreReentryCoordinator->Exit(RestoreReentryHost);
+	TestCallOrder(*this, TEXT("restore reentry preserves cancel-then-restore ordering"), RestoreReentryHost.Calls, {TEXT("Capture"), TEXT("Apply"), TEXT("Cancel"), TEXT("Restore")});
+	TestEqual(TEXT("restore reentry cancels only once"), RestoreReentryHost.CancelCount, 1);
+	TestEqual(TEXT("restore reentry restores only once"), RestoreReentryHost.RestoreCount, 1);
+	TestFalse(TEXT("restore reentry cannot start a successor session"), RestoreReentryHost.bRestoreReentrantEnterResult);
+	TestEqual(TEXT("restore observes an invalidated token"), RestoreReentryHost.SessionTokenObservedDuringRestore, uint64(0));
+	TestFalse(TEXT("restore reentry ends inactive"), RestoreReentryCoordinator->IsActive());
+	TestEqual(TEXT("restore reentry ends without a public token"), RestoreReentryCoordinator->GetSessionToken(), uint64(0));
+	TestFalse(TEXT("restore reentry leaves its closing token stale"), RestoreReentryCoordinator->IsCurrentSession(RestoreReentrySession));
 
 	UGameXXKBattleOverlayCoordinator* ApplyExitCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>();
 	UGameXXKOneGameRouteMapWidget* ApplyExitRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
@@ -298,29 +437,27 @@ bool FGameXXKBattleOverlayCoordinatorTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("recursive capture does not double-apply"), CaptureReentryHost.ApplyCount, 1);
 	CaptureReentryCoordinator->Exit(CaptureReentryHost);
 
-	UGameXXKBattleOverlayCoordinator* TeardownCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>();
-	UGameXXKOneGameRouteMapWidget* TeardownRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
-	UGameXXKBattleBoardWidget* TeardownBattleWidget = NewObject<UGameXXKBattleBoardWidget>();
-	ConfigureRouteForSnapshot(*TeardownRouteWidget, Before);
-	FRecordingBattleOverlayHost TeardownHost;
-	TeardownHost.SnapshotToCapture = Before;
-	TeardownHost.Coordinator = TeardownCoordinator;
-	TestTrue(TEXT("teardown scenario enters"), TeardownCoordinator->Enter(TeardownHost, *TeardownRouteWidget, *TeardownBattleWidget));
-	TeardownCoordinator->Exit(TeardownHost);
-	TestEqual(TEXT("explicit teardown cleanup restores once"), TeardownHost.RestoreCount, 1);
-	TestEqual(TEXT("explicit teardown cleanup restores scroll"), TeardownRouteWidget->GetCurrentScrollOffset(), Before.RouteScrollOffset);
+	FFakeBattleOverlayLifecycleOwner TeardownOwner(Before);
+	UGameXXKOneGameRouteMapWidget* TeardownRouteWidget = TeardownOwner.GetRouteWidget();
+	UGameXXKBattleBoardWidget* TeardownBattleWidget = TeardownOwner.GetBattleWidget();
+	TestTrue(TEXT("teardown owner enters"), TeardownOwner.Enter());
+	TeardownOwner.SimulateEndPlay();
+	TestCallOrder(*this, TEXT("EndPlay restores before releasing widgets"), TeardownOwner.Host.Calls, {TEXT("Capture"), TEXT("Apply"), TEXT("Cancel"), TEXT("Restore"), TEXT("ReleaseWidgets")});
+	TestEqual(TEXT("EndPlay restores once"), TeardownOwner.Host.RestoreCount, 1);
+	TestEqual(TEXT("EndPlay restores the route before release"), TeardownOwner.Host.RestoredRouteWidget, TeardownRouteWidget);
+	TestEqual(TEXT("EndPlay restores the battle widget before release"), TeardownOwner.Host.RestoredBattleWidget, TeardownBattleWidget);
+	TestFalse(TEXT("EndPlay clears the owner's widget references after restore"), TeardownOwner.HasWidgetReferences());
 
-	UGameXXKBattleOverlayCoordinator* TravelCoordinator = NewObject<UGameXXKBattleOverlayCoordinator>();
-	UGameXXKOneGameRouteMapWidget* TravelRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
-	UGameXXKBattleBoardWidget* TravelBattleWidget = NewObject<UGameXXKBattleBoardWidget>();
-	ConfigureRouteForSnapshot(*TravelRouteWidget, Before);
-	FRecordingBattleOverlayHost TravelHost;
-	TravelHost.SnapshotToCapture = Before;
-	TravelHost.Coordinator = TravelCoordinator;
-	TestTrue(TEXT("pre-travel scenario enters"), TravelCoordinator->Enter(TravelHost, *TravelRouteWidget, *TravelBattleWidget));
-	TravelCoordinator->Exit(TravelHost);
-	TestEqual(TEXT("explicit pre-travel cleanup restores once"), TravelHost.RestoreCount, 1);
-	TestEqual(TEXT("explicit pre-travel cleanup restores scroll"), TravelRouteWidget->GetCurrentScrollOffset(), Before.RouteScrollOffset);
+	FFakeBattleOverlayLifecycleOwner TravelOwner(Before);
+	UGameXXKOneGameRouteMapWidget* TravelRouteWidget = TravelOwner.GetRouteWidget();
+	UGameXXKBattleBoardWidget* TravelBattleWidget = TravelOwner.GetBattleWidget();
+	TestTrue(TEXT("pre-travel owner enters"), TravelOwner.Enter());
+	TravelOwner.SimulatePreTravel();
+	TestCallOrder(*this, TEXT("pre-travel cleanup restores before travel begins"), TravelOwner.Host.Calls, {TEXT("Capture"), TEXT("Apply"), TEXT("Cancel"), TEXT("Restore"), TEXT("BeginTravel")});
+	TestEqual(TEXT("pre-travel cleanup restores once"), TravelOwner.Host.RestoreCount, 1);
+	TestEqual(TEXT("pre-travel cleanup restores the route before travel"), TravelOwner.Host.RestoredRouteWidget, TravelRouteWidget);
+	TestEqual(TEXT("pre-travel cleanup restores the battle widget before travel"), TravelOwner.Host.RestoredBattleWidget, TravelBattleWidget);
+	TestFalse(TEXT("pre-travel cleanup clears widget references after restore"), TravelOwner.HasWidgetReferences());
 
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
@@ -331,17 +468,40 @@ bool FGameXXKBattleOverlayCoordinatorTest::RunTest(const FString& Parameters)
 	UGameXXKOneGameRouteMapWidget* ScrollRouteWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
 	ScrollRouteWidget->SetMVPSubsystem(Subsystem);
 	ScrollRouteWidget->SetRouteMapViewportGeometry(FVector2D::ZeroVector, FVector2D(1280.0f, 100.0f));
+	ScrollRouteWidget->RestoreScrollOffset(Before.RouteScrollOffset);
+	TestNull(TEXT("scroll box is absent before Slate construction"), ScrollRouteWidget->GetRouteScrollBoxForTest());
+	TestEqual(TEXT("scroll accessor falls back to the cached offset before construction"), ScrollRouteWidget->GetCurrentScrollOffset(), Before.RouteScrollOffset);
 	TestTrue(TEXT("scroll test widget initializes"), ScrollRouteWidget->Initialize());
+	TSharedRef<SWidget> RouteSlateWidget = ScrollRouteWidget->TakeWidget();
+	RouteSlateWidget->SlatePrepass();
 	ScrollRouteWidget->NativeConstruct();
+	UScrollBox* LiveRouteScrollBox = ScrollRouteWidget->GetRouteScrollBoxForTest();
+	TestNotNull(TEXT("scroll test exposes the constructed live scroll box"), LiveRouteScrollBox);
 	TestTrue(TEXT("scroll test has enough clamped range"), ScrollRouteWidget->GetMaxScrollOffsetForTest() >= Before.RouteScrollOffset);
 	ScrollRouteWidget->RestoreScrollOffset(Before.RouteScrollOffset);
-	TestEqual(TEXT("scroll accessor returns the exact restored offset"), ScrollRouteWidget->GetCurrentScrollOffset(), Before.RouteScrollOffset);
+	TestEqual(TEXT("scroll restore updates the live scroll box"), LiveRouteScrollBox ? LiveRouteScrollBox->GetScrollOffset() : -1.0f, Before.RouteScrollOffset);
+	TestEqual(TEXT("scroll accessor returns the live restored offset"), ScrollRouteWidget->GetCurrentScrollOffset(), Before.RouteScrollOffset);
 	ScrollRouteWidget->RefreshFromState();
-	TestEqual(TEXT("refresh preserves scroll after initial initialization"), ScrollRouteWidget->GetCurrentScrollOffset(), Before.RouteScrollOffset);
+	TestEqual(TEXT("refresh preserves the live scroll after initial initialization"), LiveRouteScrollBox ? LiveRouteScrollBox->GetScrollOffset() : -1.0f, Before.RouteScrollOffset);
 	ScrollRouteWidget->RestoreScrollOffset(100000.0f);
-	TestEqual(TEXT("scroll restoration preserves upper clamping"), ScrollRouteWidget->GetCurrentScrollOffset(), ScrollRouteWidget->GetMaxScrollOffsetForTest());
+	TestEqual(TEXT("upper clamping reaches the live scroll box"), LiveRouteScrollBox ? LiveRouteScrollBox->GetScrollOffset() : -1.0f, ScrollRouteWidget->GetMaxScrollOffsetForTest());
 	ScrollRouteWidget->RestoreScrollOffset(-100.0f);
-	TestEqual(TEXT("scroll restoration preserves lower clamping"), ScrollRouteWidget->GetCurrentScrollOffset(), 0.0f);
+	TestEqual(TEXT("lower clamping reaches the live scroll box"), LiveRouteScrollBox ? LiveRouteScrollBox->GetScrollOffset() : -1.0f, 0.0f);
+	const float LiveOnlyScrollOffset = 257.0f;
+	if (LiveRouteScrollBox)
+	{
+		LiveRouteScrollBox->SetScrollOffset(LiveOnlyScrollOffset);
+	}
+	TestEqual(TEXT("scroll accessor reads the live box instead of the stale cache"), ScrollRouteWidget->GetCurrentScrollOffset(), LiveOnlyScrollOffset);
+	TestEqual(TEXT("setting the live box alone does not rewrite the fallback cache"), ScrollRouteWidget->GetLastAppliedScrollOffsetForTest(), 0.0f);
+	const float UserScrollOffset = 321.0f;
+	if (LiveRouteScrollBox)
+	{
+		LiveRouteScrollBox->SetScrollOffset(UserScrollOffset);
+		LiveRouteScrollBox->OnUserScrolled.Broadcast(UserScrollOffset);
+	}
+	TestEqual(TEXT("scroll accessor observes user scrolling on the live box"), ScrollRouteWidget->GetCurrentScrollOffset(), UserScrollOffset);
+	TestEqual(TEXT("user-scroll delegate updates the cached fallback"), ScrollRouteWidget->GetLastAppliedScrollOffsetForTest(), UserScrollOffset);
 
 	return true;
 }

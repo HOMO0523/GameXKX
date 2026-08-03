@@ -58,10 +58,7 @@ void UGameXXKBattleOverlayCoordinator::Exit(IGameXXKBattleOverlayHost& Host)
 
 	UGameXXKOneGameRouteMapWidget* RouteWidget = SavedRouteWidget.Get();
 	UGameXXKBattleBoardWidget* BattleWidget = SavedBattleWidget.Get();
-	if (bHasSnapshot && RouteWidget && BattleWidget)
-	{
-		Host.RestoreBattleOverlaySnapshot(SavedSnapshot, *RouteWidget, *BattleWidget);
-	}
+	Host.RestoreBattleOverlaySnapshot(SavedSnapshot, RouteWidget, BattleWidget);
 
 	SavedRouteWidget.Reset();
 	SavedBattleWidget.Reset();
