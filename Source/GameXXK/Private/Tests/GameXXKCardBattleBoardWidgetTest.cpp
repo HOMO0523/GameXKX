@@ -20,6 +20,7 @@
 #include "PaperFlipbookComponent.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattlePartyQiWidget.h"
+#include "UI/GameXXKBattleUnitVisualWidget.h"
 
 #include <type_traits>
 #include <utility>
@@ -177,7 +178,8 @@ namespace
 		FName& OutCardInstanceId,
 		FName& OutTargetUnitId,
 		FName& OutOwnerUnitId,
-		FString& OutError)
+		FString& OutError,
+		const bool bRequirePureDamageCard = false)
 	{
 		OutCardInstanceId = NAME_None;
 		OutTargetUnitId = NAME_None;
@@ -202,8 +204,51 @@ namespace
 			OutError = TEXT("The selected route node did not create an active card battle.");
 			return false;
 		}
+		FGameXXKCardCombatUnit* const Hero = State.CardRun.ActiveBattle.Units.FindByPredicate(
+			[](const FGameXXKCardCombatUnit& Unit)
+			{
+				return Unit.Side == EGameXXKCardTargetSide::Party
+					&& Unit.Role == EGameXXKCharacterRole::Hero
+					&& Unit.bLiving;
+			});
+		if (!Hero || State.CardRun.ActiveBattle.Deck.Hand.IsEmpty())
+		{
+			OutError = TEXT("The route fixture has no living hero or hand card.");
+			return false;
+		}
+		// Route generation shuffles the opening hand. Pin one affordable manual
+		// enemy-target card so reward and lethal-presentation fixtures never flake.
+		FGameXXKCardInstance& FixtureCard = State.CardRun.ActiveBattle.Deck.Hand[0];
+		FixtureCard.CardId = TEXT("Hero.QingFengYiShi");
+		FixtureCard.OwnerUnitId = Hero->UnitId;
+		State.CardRun.ActiveBattle.Deck.SharedEnergy = FMath::Max(
+			State.CardRun.ActiveBattle.Deck.SharedEnergy,
+			1);
 		for (const FGameXXKCardInstance& CardInstance : State.CardRun.ActiveBattle.Deck.Hand)
 		{
+			if (bRequirePureDamageCard)
+			{
+				const FGameXXKCardDefinition* const Definition =
+					FGameXXKCardCatalog::FindCardDefinition(CardInstance.CardId);
+				const bool bHasDamage = Definition && Definition->Effects.ContainsByPredicate(
+					[](const FGameXXKCardEffect& Effect)
+					{
+						return Effect.Type == EGameXXKCardEffectType::DamagePercentAttack
+							|| Effect.Type == EGameXXKCardEffectType::DamageFlat
+							|| Effect.Type == EGameXXKCardEffectType::LoseHealth;
+					});
+				const bool bHasStatusMutation = Definition && Definition->Effects.ContainsByPredicate(
+					[](const FGameXXKCardEffect& Effect)
+					{
+						return Effect.Type == EGameXXKCardEffectType::ApplyStatus
+							|| Effect.Type == EGameXXKCardEffectType::RemoveStatus
+							|| Effect.Type == EGameXXKCardEffectType::RemoveAnyDamageOverTime;
+					});
+				if (!bHasDamage || bHasStatusMutation)
+				{
+					continue;
+				}
+			}
 			FGameXXKCardPlayPreview Preview;
 			if (!FGameXXKCardBattleAdapter::BuildCardPlayPreview(State, CardInstance.InstanceId, Preview, &Error)
 				|| !Preview.bCanPlay
@@ -228,6 +273,18 @@ namespace
 				continue;
 			}
 			Enemy->HP = 1;
+			if (bRequirePureDamageCard)
+			{
+				for (FGameXXKCardCombatUnit& OtherUnit : State.CardRun.ActiveBattle.Units)
+				{
+					if (OtherUnit.Side == EGameXXKCardTargetSide::Enemy
+						&& OtherUnit.UnitId != Enemy->UnitId)
+					{
+						OtherUnit.HP = 0;
+						OtherUnit.bLiving = false;
+					}
+				}
+			}
 			if (!FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(State, &Error))
 			{
 				OutError = Error;
@@ -330,6 +387,354 @@ namespace
 	{
 		return FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&Left, &Right, PPF_None);
 	}
+
+	FGameXXKCardCombatUnit MakeBoardPresentationUnit(
+		const TCHAR* UnitId,
+		const EGameXXKCardTargetSide Side,
+		const EGameXXKCharacterRole Role,
+		const int32 Attack,
+		const int32 StableSortOrder)
+	{
+		FGameXXKCardCombatUnit Unit;
+		Unit.UnitId = FName(UnitId);
+		Unit.Side = Side;
+		Unit.Role = Role;
+		Unit.bLiving = true;
+		Unit.HP = 100;
+		Unit.MaxHP = 100;
+		Unit.Mana = 20;
+		Unit.MaxMana = 20;
+		Unit.Attack = Attack;
+		Unit.Speed = 8;
+		Unit.StableSortOrder = StableSortOrder;
+		return Unit;
+	}
+
+	FGameXXKBattleRuntimeUnit MakeBoardPresentationLegacyUnit(
+		const TCHAR* UnitId,
+		const TCHAR* DisplayName,
+		const bool bEnemy,
+		const int32 Attack)
+	{
+		FGameXXKBattleRuntimeUnit Unit;
+		Unit.Id = FName(UnitId);
+		Unit.DisplayName = FText::FromString(DisplayName);
+		Unit.HP = 100;
+		Unit.MaxHP = 100;
+		Unit.MP = 20;
+		Unit.MaxMP = 20;
+		Unit.Attack = Attack;
+		Unit.Speed = 8;
+		Unit.Shield = 0;
+		Unit.bEnemy = bEnemy;
+		return Unit;
+	}
+
+	TArray<FGameXXKCardInstance> MakeBoardPresentationCards(
+		const FName CardId,
+		const FName OwnerUnitId)
+	{
+		TArray<FGameXXKCardInstance> Cards;
+		for (int32 Index = 0; Index < 6; ++Index)
+		{
+			FGameXXKCardInstance& Card = Cards.AddDefaulted_GetRef();
+			Card.InstanceId = FName(*FString::Printf(TEXT("Board.Presentation.Card.%d"), Index));
+			Card.CardId = CardId;
+			Card.OwnerUnitId = OwnerUnitId;
+			Card.SourceEntryId = FName(*FString::Printf(TEXT("Board.Presentation.Source.%d"), Index));
+			Card.AcquisitionOrdinal = Index;
+		}
+		return Cards;
+	}
+
+	bool BuildBoardPresentationGateFixture(
+		UGameXXKMVPSubsystem* const Subsystem,
+		FName& OutCardInstanceId,
+		FString& OutError)
+	{
+		OutCardInstanceId = NAME_None;
+		OutError.Reset();
+		if (!Subsystem)
+		{
+			OutError = TEXT("The Board presentation subsystem is missing.");
+			return false;
+		}
+
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		State = UGameXXKMVPRules::CreateNewGame();
+		State.Screen = EGameXXKScreen::Battle;
+		State.bHasActiveBattle = true;
+		State.ActiveBattleNodeId = 73;
+		State.ActiveBattleParty = {
+			MakeBoardPresentationLegacyUnit(TEXT("Blade"), TEXT("刀客"), false, 20)};
+		State.ActiveBattleEnemies = {
+			MakeBoardPresentationLegacyUnit(TEXT("Enemy"), TEXT("反击敌人"), true, 10)};
+
+		TArray<FGameXXKCardCombatUnit> Units = {
+			MakeBoardPresentationUnit(TEXT("Blade"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Blade, 20, 0),
+			MakeBoardPresentationUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 10, 0)};
+		FGameXXKCardBattleRuntime Runtime;
+		if (!GameXXKCardRules::InitializeCardBattleRuntime(
+			Runtime,
+			MakeBoardPresentationCards(TEXT("Profession.Blade.JiYuLianZhan"), TEXT("Blade")),
+			Units,
+			EGameXXKCardTerrain::Plain,
+			8801,
+			&OutError))
+		{
+			return false;
+		}
+
+		FGameXXKCardBattleModifierRuntime& Reflect = Runtime.Modifiers.AddDefaulted_GetRef();
+		Reflect.ModifierId = TEXT("Board.Presentation.Reflect");
+		Reflect.SourceCardInstanceId = Runtime.Deck.ActiveInstanceIds[0];
+		Reflect.SourceUnitId = TEXT("Enemy");
+		Reflect.RecipientUnitIds = {TEXT("Enemy")};
+		Reflect.Definition.Trigger = EGameXXKCardBattleModifierTrigger::FirstDirectDamageReceivedThisRound;
+		Reflect.Definition.EffectType = EGameXXKCardEffectType::DamagePercentAttack;
+		Reflect.Definition.Target = EGameXXKCardEffectTarget::Attacker;
+		Reflect.Definition.Magnitude = 50;
+		Reflect.Definition.RemainingTriggers = 1;
+		Reflect.Definition.Expiry = EGameXXKCardModifierExpiry::AfterTriggerCount;
+		Reflect.Definition.RecipientScope = EGameXXKCardModifierRecipientScope::CardOwner;
+		Reflect.Definition.RecipientTarget = EGameXXKCardEffectTarget::CardOwner;
+
+		State.CardRun.bHasActiveCardBattle = true;
+		State.CardRun.ActiveBattleSourceNodeId = State.ActiveBattleNodeId;
+		State.CardRun.ActiveBattle = MoveTemp(Runtime);
+		if (!FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(State, &OutError))
+		{
+			return false;
+		}
+		if (State.CardRun.ActiveBattle.Deck.Hand.IsEmpty())
+		{
+			OutError = TEXT("The Board presentation fixture did not draw a hand card.");
+			return false;
+		}
+		OutCardInstanceId = State.CardRun.ActiveBattle.Deck.Hand[0].InstanceId;
+		return true;
+	}
+
+	template <typename TBoard, typename = void>
+	struct TBoardPresentationGateApi
+	{
+		static constexpr bool bAvailable = false;
+		static bool IsLocked(const TBoard*) { return false; }
+		static FName Attacker(const TBoard*) { return NAME_None; }
+		static FName Target(const TBoard*) { return NAME_None; }
+		static int32 Continuations(const TBoard*) { return INDEX_NONE; }
+	};
+
+	template <typename TBoard>
+	struct TBoardPresentationGateApi<TBoard, std::void_t<
+		decltype(std::declval<const TBoard&>().IsBattlePresentationLockedForTest()),
+		decltype(std::declval<const TBoard&>().GetActiveBattlePresentationAttackerUnitIdForTest()),
+		decltype(std::declval<const TBoard&>().GetActiveBattlePresentationTargetUnitIdForTest()),
+		decltype(std::declval<const TBoard&>().GetExecutedBattlePresentationContinuationCountForTest())>>
+	{
+		static constexpr bool bAvailable = true;
+		static bool IsLocked(const TBoard* Board) { return Board->IsBattlePresentationLockedForTest(); }
+		static FName Attacker(const TBoard* Board) { return Board->GetActiveBattlePresentationAttackerUnitIdForTest(); }
+		static FName Target(const TBoard* Board) { return Board->GetActiveBattlePresentationTargetUnitIdForTest(); }
+		static int32 Continuations(const TBoard* Board) { return Board->GetExecutedBattlePresentationContinuationCountForTest(); }
+	};
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardPresentationGateTest,
+	"GameXXK.Integration.CardBattle.BoardPresentationGate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Parameters)
+{
+	using FGateApi = TBoardPresentationGateApi<UGameXXKBattleBoardWidget>;
+	TestTrue(TEXT("Board exposes an occupancy-based presentation lock and typed-continuation diagnostics"), FGateApi::bAvailable);
+	if (!FGateApi::bAvailable)
+	{
+		return false;
+	}
+
+	UGameInstance* const GateGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const GateSubsystem = NewObject<UGameXXKMVPSubsystem>(GateGameInstance);
+	FName GateCardInstanceId;
+	FString Error;
+	if (!TestTrue(TEXT("presentation-lock fixture builds a real reflected card battle"),
+		BuildBoardPresentationGateFixture(GateSubsystem, GateCardInstanceId, Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	UGameXXKBattleBoardWidget* const GateBoard = NewObject<UGameXXKBattleBoardWidget>();
+	GateBoard->SetMVPSubsystem(GateSubsystem);
+	TestTrue(TEXT("presentation-lock Board initializes"), GateBoard->Initialize());
+	GateBoard->NativeConstruct();
+	TestTrue(TEXT("presentation-lock Board begins a visual session"), GateBoard->BeginBattleVisualSession(8101));
+	TestTrue(TEXT("the real hand card enters manual targeting before the lock"), GateBoard->ClickCardInHand(GateCardInstanceId));
+
+	FGameXXKBattlePresentationEvent BlockingEvent;
+	BlockingEvent.EventId = 9001;
+	BlockingEvent.AttackerUnitId = TEXT("Blade");
+	BlockingEvent.TargetUnitId = TEXT("Enemy");
+	BlockingEvent.TargetHealthBefore = 100;
+	BlockingEvent.TargetHealthAfter = 90;
+	BlockingEvent.HealthDamage = 10;
+	BlockingEvent.bTargetEnemy = true;
+	GateBoard->QueuePresentation(BlockingEvent);
+	const FGameXXKRuntimeState GateStateBeforeRejectedInput = GateSubsystem->GetRuntimeState();
+	TestTrue(TEXT("queue occupancy locks input before the first timeline sample"), FGateApi::IsLocked(GateBoard));
+	TestFalse(TEXT("a queued presentation rejects a second card click"), GateBoard->ClickCardInHand(GateCardInstanceId));
+	TestFalse(TEXT("a queued presentation rejects a valid target confirmation"), GateBoard->ConfirmTargetingUnit(TEXT("Enemy")));
+	GateBoard->HandleUnitTargetProxyClicked(TEXT("Enemy"));
+	TestFalse(TEXT("a queued presentation rejects end turn"), GateBoard->EndCardPlayerPhase());
+	TestTrue(TEXT("every locked card/target/proxy/end-turn path preserves runtime state"),
+		RuntimeStatesEqual(GateSubsystem->GetRuntimeState(), GateStateBeforeRejectedInput));
+	UButton* const LockedHandCard = GateBoard->WidgetTree
+		? Cast<UButton>(GateBoard->WidgetTree->FindWidget(TEXT("BattleHandCard_00")))
+		: nullptr;
+	UButton* const LockedEndTurn = GateBoard->GetEndTurnButtonForTest();
+	UButton* const LockedTargetProxy = GateBoard->GetUnitTargetProxyForTest(TEXT("Enemy"));
+	TestFalse(TEXT("the visible hand control is disabled for the whole pending queue"), LockedHandCard && LockedHandCard->GetIsEnabled());
+	TestFalse(TEXT("the visible end-turn control is disabled for the whole pending queue"), LockedEndTurn && LockedEndTurn->GetIsEnabled());
+	TestTrue(TEXT("the target proxy is hidden or disabled for the whole pending queue"),
+		LockedTargetProxy
+		&& (!LockedTargetProxy->GetIsEnabled() || LockedTargetProxy->GetVisibility() != ESlateVisibility::Visible));
+	GateBoard->AdvanceVisualsAtRealTime(0.0);
+	GateBoard->AdvanceVisualsAtRealTime(1.1);
+	TestEqual(TEXT("the marker exposes the packet-local intermediate health"), GateBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 90);
+	GateBoard->AdvanceVisualsAtRealTime(2.5);
+	TestFalse(TEXT("input unlocks only after the full presentation queue drains"), FGateApi::IsLocked(GateBoard));
+	TestEqual(TEXT("full-drain reconciliation restores authoritative target health"), GateBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 100);
+	TestTrue(TEXT("the target confirmation can mutate again after full drain"), GateBoard->ConfirmTargetingUnit(TEXT("Enemy")));
+
+	UGameInstance* const OrderedGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const OrderedSubsystem = NewObject<UGameXXKMVPSubsystem>(OrderedGameInstance);
+	FName OrderedCardInstanceId;
+	if (!TestTrue(TEXT("ordered-packet fixture builds a real reflected card battle"),
+		BuildBoardPresentationGateFixture(OrderedSubsystem, OrderedCardInstanceId, Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	UGameXXKBattleBoardWidget* const OrderedBoard = NewObject<UGameXXKBattleBoardWidget>();
+	OrderedBoard->SetMVPSubsystem(OrderedSubsystem);
+	TestTrue(TEXT("ordered-packet Board initializes"), OrderedBoard->Initialize());
+	OrderedBoard->NativeConstruct();
+	TestTrue(TEXT("ordered-packet Board begins a visual session"), OrderedBoard->BeginBattleVisualSession(8102));
+	TestTrue(TEXT("two-hit reflected card enters targeting"), OrderedBoard->ClickCardInHand(OrderedCardInstanceId));
+	TestTrue(TEXT("two-hit reflected card commits through the Board"), OrderedBoard->ConfirmTargetingUnit(TEXT("Enemy")));
+	TestTrue(TEXT("a successful Board mutation is locked until its presentation drains"), FGateApi::IsLocked(OrderedBoard));
+	TestEqual(TEXT("the Board enqueues the two primary packets and reflected packet before refresh"),
+		OrderedBoard->GetBattlePresentationQueueCountForTest(),
+		3);
+	OrderedBoard->AdvanceVisualsAtRealTime(0.0);
+	TestEqual(TEXT("packet one retains the primary attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Blade")));
+	TestEqual(TEXT("packet one retains the primary target"), FGateApi::Target(OrderedBoard), FName(TEXT("Enemy")));
+	TestEqual(TEXT("the first target baseline is seeded from packet one"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 100);
+	OrderedBoard->AdvanceVisualsAtRealTime(1.1);
+	TestEqual(TEXT("packet one marker applies only packet one's health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 85);
+	OrderedBoard->AdvanceVisualsAtRealTime(2.5);
+	TestEqual(TEXT("packet two reverses the reflected source"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Enemy")));
+	TestEqual(TEXT("packet two reverses the reflected target"), FGateApi::Target(OrderedBoard), FName(TEXT("Blade")));
+	TestEqual(TEXT("packet one's target override survives the reflected intermediate entry"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 85);
+	OrderedBoard->AdvanceVisualsAtRealTime(3.6);
+	TestEqual(TEXT("the reflection marker applies its own target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Blade")), 95);
+	OrderedBoard->AdvanceVisualsAtRealTime(5.0);
+	TestEqual(TEXT("packet three returns to the primary attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Blade")));
+	TestEqual(TEXT("packet three returns to the primary target"), FGateApi::Target(OrderedBoard), FName(TEXT("Enemy")));
+	TestEqual(TEXT("packet three begins at packet one's committed target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 85);
+	OrderedBoard->AdvanceVisualsAtRealTime(6.1);
+	TestEqual(TEXT("packet three marker reaches the final target health without early reconciliation"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 70);
+	OrderedBoard->AdvanceVisualsAtRealTime(7.5);
+	TestFalse(TEXT("the ordered batch unlocks after all three packets"), FGateApi::IsLocked(OrderedBoard));
+	TestEqual(TEXT("ordered target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 70);
+	TestEqual(TEXT("reflected target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Blade")), 95);
+	TestEqual(TEXT("the card finalization continuation executes exactly once"), FGateApi::Continuations(OrderedBoard), 1);
+
+	UGameInstance* const LethalGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const LethalSubsystem = NewObject<UGameXXKMVPSubsystem>(LethalGameInstance);
+	FName LethalCardInstanceId;
+	FName LethalTargetUnitId;
+	FName LethalOwnerUnitId;
+	if (!TestTrue(TEXT("lethal route fixture enters a one-health reward battle"),
+		BuildRouteRewardFixture(LethalSubsystem, LethalCardInstanceId, LethalTargetUnitId, LethalOwnerUnitId, Error, true)))
+	{
+		AddError(Error);
+		return false;
+	}
+	FGameXXKCardCombatUnit* const LethalTarget =
+		LethalSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units.FindByPredicate(
+			[LethalTargetUnitId](const FGameXXKCardCombatUnit& Unit)
+			{
+				return Unit.UnitId == LethalTargetUnitId;
+			});
+	TestNotNull(TEXT("lethal status-order fixture keeps the target unit"), LethalTarget);
+	TestTrue(TEXT("lethal status-order fixture adds one consumable vulnerability stack"),
+		LethalTarget
+		&& GameXXKCardRules::AddCombatStatus(
+			*LethalTarget,
+			EGameXXKCardStatus::Vulnerability,
+			1) == 1);
+	UGameXXKBattleBoardWidget* const LethalBoard = NewObject<UGameXXKBattleBoardWidget>();
+	LethalBoard->SetMVPSubsystem(LethalSubsystem);
+	TestTrue(TEXT("lethal Board initializes"), LethalBoard->Initialize());
+	LethalBoard->NativeConstruct();
+	TestTrue(TEXT("lethal Board begins a visual session"), LethalBoard->BeginBattleVisualSession(8103));
+	TestTrue(TEXT("lethal route card enters targeting"), LethalBoard->ClickCardInHand(LethalCardInstanceId));
+	TestTrue(TEXT("lethal route card commits"), LethalBoard->ConfirmTargetingUnit(LethalTargetUnitId));
+	TestEqual(TEXT("the adapter commits terminal phase before presentation"),
+		LethalSubsystem->GetRuntimeState().CardRun.ActiveBattle.Phase,
+		EGameXXKCardBattlePhase::Victory);
+	TestFalse(TEXT("terminal reward handling is deferred until after Death"), LethalBoard->HasPendingRouteReward());
+	LethalBoard->AdvanceVisualsAtRealTime(0.0);
+	LethalBoard->AdvanceVisualsAtRealTime(2.5);
+	TestTrue(TEXT("lethal Hit transitions to Death before removal"), LethalBoard->IsBattleDeathPresentationActiveForTest());
+	TestFalse(TEXT("reward remains deferred throughout Death"), LethalBoard->HasPendingRouteReward());
+	LethalBoard->AdvanceVisualsAtRealTime(7.5);
+	TestTrue(TEXT("the consumed status delta begins only after lethal Hit and Death"),
+		LethalBoard->IsBattleStatusPresentationActiveForTest());
+	TestEqual(TEXT("post-Death status presentation retains the defeated affected unit"),
+		FGateApi::Target(LethalBoard), LethalTargetUnitId);
+	TestNotNull(TEXT("post-Death status presentation retains the affected unit visual"),
+		LethalBoard->GetUnitVisualForTest(LethalTargetUnitId));
+	TestEqual(TEXT("consumed vulnerability uses a signed negative status readout"),
+		LethalBoard->GetActiveBattleStatusDeltaForTest(), -1);
+	TestFalse(TEXT("reward remains deferred throughout the post-Death status delta"),
+		LethalBoard->HasPendingRouteReward());
+	LethalBoard->AdvanceVisualsAtRealTime(100.0);
+	TestTrue(TEXT("the reward gate opens only after Hit, Death, and status all drain"),
+		LethalBoard->HasPendingRouteReward());
+	const TArray<FName> RewardIdsAfterDrain = LethalBoard->GetPendingRouteRewardCardIds();
+	TestEqual(TEXT("lethal finalization continuation executes exactly once"), FGateApi::Continuations(LethalBoard), 1);
+	LethalBoard->AdvanceVisualsAtRealTime(200.0);
+	TestEqual(TEXT("a large later delta never repeats terminal reward generation"),
+		LethalBoard->GetPendingRouteRewardCardIds(),
+		RewardIdsAfterDrain);
+	TestEqual(TEXT("a large later delta never re-enters the lethal continuation"), FGateApi::Continuations(LethalBoard), 1);
+
+	UGameInstance* const CancelGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const CancelSubsystem = NewObject<UGameXXKMVPSubsystem>(CancelGameInstance);
+	FName CancelCardInstanceId;
+	FName CancelTargetUnitId;
+	FName CancelOwnerUnitId;
+	if (!TestTrue(TEXT("cancellation fixture enters a one-health reward battle"),
+		BuildRouteRewardFixture(CancelSubsystem, CancelCardInstanceId, CancelTargetUnitId, CancelOwnerUnitId, Error, true)))
+	{
+		AddError(Error);
+		return false;
+	}
+	UGameXXKBattleBoardWidget* const CancelBoard = NewObject<UGameXXKBattleBoardWidget>();
+	CancelBoard->SetMVPSubsystem(CancelSubsystem);
+	TestTrue(TEXT("cancellation Board initializes"), CancelBoard->Initialize());
+	CancelBoard->NativeConstruct();
+	TestTrue(TEXT("cancellation Board begins a visual session"), CancelBoard->BeginBattleVisualSession(8104));
+	TestTrue(TEXT("cancellation route card enters targeting"), CancelBoard->ClickCardInHand(CancelCardInstanceId));
+	TestTrue(TEXT("cancellation route card commits"), CancelBoard->ConfirmTargetingUnit(CancelTargetUnitId));
+	TestTrue(TEXT("cancellation fixture owns a pending typed continuation"), FGateApi::IsLocked(CancelBoard));
+	CancelBoard->CancelBattleVisualSession(8104);
+	CancelBoard->AdvanceVisualsAtRealTime(100.0);
+	TestFalse(TEXT("session cancellation discards terminal continuation without generating a reward"), CancelBoard->HasPendingRouteReward());
+	TestEqual(TEXT("session cancellation never executes a discarded continuation"), FGateApi::Continuations(CancelBoard), 0);
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -358,6 +763,15 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("card battle board initializes its widget tree"), Board->Initialize());
 	Board->NativeConstruct();
 	Board->RefreshFromState();
+	TestTrue(TEXT("card-targeting fixture begins the Board-owned visual session"),
+		Board->BeginBattleVisualSession(8201));
+	double PresentationClock = 0.0;
+	const auto DrainBoardPresentation = [&Board, &PresentationClock]()
+	{
+		Board->AdvanceVisualsAtRealTime(PresentationClock);
+		PresentationClock += 100.0;
+		Board->AdvanceVisualsAtRealTime(PresentationClock);
+	};
 	UGameXXKBattlePartyQiWidget* PartyQiWidget = Board->WidgetTree
 		? Cast<UGameXXKBattlePartyQiWidget>(Board->WidgetTree->FindWidget(TEXT("BattlePartyQiWidget")))
 		: nullptr;
@@ -435,7 +849,11 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("clicking a playable hand card performs a non-mutating card preview"), Board->ClickCardInHand(CardInstanceId));
 	TestTrue(TEXT("a manual card enters card-targeting mode"), Board->IsCardTargetingForTest());
 	TestEqual(TEXT("the pending card keeps the stable instance id"), Board->GetPendingCardInstanceIdForTest(), CardInstanceId);
-	TestEqual(TEXT("the arrow begins at the registered card owner position"), Board->GetTargetingSourcePositionForTest(), OwnerScreenPosition);
+	const UGameXXKBattleUnitVisualWidget* const OwnerVisual = Board->GetUnitVisualForTest(OwnerUnitId);
+	TestNotNull(TEXT("the card owner keeps its persistent fixed-slot visual"), OwnerVisual);
+	TestEqual(TEXT("the arrow begins at the owner's fixed stage center, never legacy actor projection"),
+		Board->GetTargetingSourcePositionForTest(),
+		OwnerVisual ? OwnerVisual->GetStageCenter() : FVector2D::ZeroVector);
 	TestTrue(TEXT("the preview marks its stable legal enemy target for highlight"), Board->IsTargetUnitHighlighted(TargetUnitId));
 	TestFalse(TEXT("the preview does not make the owner a legal enemy-card target"), Board->IsTargetUnitHighlighted(OwnerUnitId));
 	TestEqual(TEXT("previewing a card does not deal damage"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP, EnemyHealthBeforePreview);
@@ -455,8 +873,21 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("clicking a highlighted stable target commits through the card adapter"), Board->ConfirmTargetingUnit(TargetUnitId));
 	const int32 SharedQiAfterCommit = Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.SharedEnergy;
 	TestEqual(TEXT("a successful card play subtracts exactly its authoritative effective shared-energy cost once"), SharedQiAfterCommit, SharedQiBeforeCommit - CardPreview.EffectiveEnergyCost);
-	TestEqual(TEXT("Party Qi immediately projects the post-commit authoritative shared energy"), PartyQiWidget->GetSharedQiForTest(), SharedQiAfterCommit);
-	TestEqual(TEXT("Party Qi immediately overlays the post-commit authoritative shared energy number"), PartyQiWidget->GetDisplayTextForTest(), FString::FromInt(SharedQiAfterCommit));
+	TestTrue(TEXT("the committed card locks later mutations until its presentation drains"),
+		Board->IsBattlePresentationLockedForTest());
+	TestEqual(TEXT("Party Qi retains its pre-commit baseline throughout the presentation"),
+		PartyQiWidget->GetSharedQiForTest(), SharedQiBeforeCommit);
+	TestEqual(TEXT("Party Qi retains its pre-commit number throughout the presentation"),
+		PartyQiWidget->GetDisplayTextForTest(), FString::FromInt(SharedQiBeforeCommit));
+	TestFalse(TEXT("end turn is rejected while the committed card presentation is locked"),
+		Board->EndCardPlayerPhase());
+	DrainBoardPresentation();
+	TestFalse(TEXT("the committed card unlocks only after the full presentation drains"),
+		Board->IsBattlePresentationLockedForTest());
+	TestEqual(TEXT("Party Qi reconciles to authoritative shared energy after full drain"),
+		PartyQiWidget->GetSharedQiForTest(), SharedQiAfterCommit);
+	TestEqual(TEXT("Party Qi overlays authoritative shared energy after full drain"),
+		PartyQiWidget->GetDisplayTextForTest(), FString::FromInt(SharedQiAfterCommit));
 	TestFalse(TEXT("a committed card exits targeting state"), Board->IsCardTargetingForTest());
 	TestFalse(TEXT("a committed card leaves the hand zone"), Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.ContainsByPredicate([CardInstanceId](const FGameXXKCardInstance& Card)
 	{
@@ -465,6 +896,10 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("a committed enemy-target card updates the scene-facing health projection"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP < EnemyHealthBeforePreview);
 	const int32 RoundBeforeEndTurn = Subsystem->GetRuntimeState().CardRun.ActiveBattle.RoundNumber;
 	TestTrue(TEXT("end turn only starts the saved enemy-intent presentation"), Board->EndCardPlayerPhase());
+	if (Board->IsBattlePresentationLockedForTest())
+	{
+		DrainBoardPresentation();
+	}
 	TestEqual(TEXT("end turn leaves control in the enemy phase until its presentation finishes"), Subsystem->GetRuntimeState().CardRun.ActiveBattle.Phase, EGameXXKCardBattlePhase::Enemy);
 	TestEqual(TEXT("Party Qi remains visible during the enemy intent phase"), PartyQiWidget->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
 	TestEqual(TEXT("Party Qi continues to read the runtime shared energy during the enemy intent phase"), PartyQiWidget->GetSharedQiForTest(), Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.SharedEnergy);
@@ -493,7 +928,14 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	Board->AdvanceEnemyIntentPresentationForTest(0.55f);
 	Board->AdvanceEnemyIntentPresentationForTest(0.18f);
 	TestEqual(TEXT("the only displayed intent resolves exactly once"), Subsystem->GetRuntimeState().CardRun.NextEnemyIntentIndex, 1);
+	TestTrue(TEXT("enemy intent damage locks its settle transition until presentation drain"),
+		Board->IsBattlePresentationLockedForTest());
+	DrainBoardPresentation();
 	Board->AdvanceEnemyIntentPresentationForTest(0.32f);
+	if (Board->IsBattlePresentationLockedForTest())
+	{
+		DrainBoardPresentation();
+	}
 	TestEqual(TEXT("enemy presentation starts the next player phase only after settling"), Subsystem->GetRuntimeState().CardRun.ActiveBattle.Phase, EGameXXKCardBattlePhase::Player);
 	const int32 SharedQiAtNextPlayerPhase = Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.SharedEnergy;
 	TestTrue(TEXT("the new player phase resets the shared current-turn energy in the authoritative runtime"), SharedQiAtNextPlayerPhase > SharedQiAfterCommit);
@@ -510,6 +952,7 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("highlighted scene unit enables its visible outline channel"), SceneUnit->IsCardTargetOutlineEnabled());
 	SceneUnit->SetCardTargetHighlight(false);
 	TestFalse(TEXT("clearing a legal target disables the scene highlight"), SceneUnit->IsCardTargetHighlighted());
+	Board->CancelBattleVisualSession(8201);
 
 	return true;
 }

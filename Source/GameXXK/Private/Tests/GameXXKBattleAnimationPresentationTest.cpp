@@ -373,11 +373,19 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("event ID remains tied to the original result index"), FallbackEvents[0].EventId, static_cast<uint64>(2));
 		TestEqual(TEXT("hit ordinal remains tied to the original result index"), FallbackEvents[0].HitOrdinal, 1);
-		TestEqual(TEXT("empty damage source uses the explicit fallback attacker"), FallbackEvents[0].AttackerUnitId, FName(TEXT("FallbackAttacker")));
+		TestEqual(TEXT("empty damage source remains target-only despite a legacy fallback"), FallbackEvents[0].AttackerUnitId, NAME_None);
 		TestEqual(TEXT("empty resolved target uses the original target"), FallbackEvents[0].TargetUnitId, FName(TEXT("OriginalOnlyTarget")));
-		TestFalse(TEXT("fallback attacker side resolves from final stable identity"), FallbackEvents[0].bAttackerEnemy);
+		TestFalse(TEXT("target-only canonical event never invents an attacker side"), FallbackEvents[0].bAttackerEnemy);
 		TestTrue(TEXT("original-only target side resolves from final stable identity"), FallbackEvents[0].bTargetEnemy);
 	}
+	const TArray<FGameXXKBattleAnimationCombatRequest> LegacyFallbackRequests =
+		FGameXXKBattleAnimationPresentation::BuildCombatRequests(
+			FallbackPostState,
+			TEXT("FallbackAttacker"),
+			{MissingTargetResult, OriginalOnlyResult});
+	TestEqual(TEXT("the dormant legacy wrapper still adapts source-less damage to its explicit fallback"),
+		LegacyFallbackRequests.Num() == 1 ? LegacyFallbackRequests[0].AttackerUnitId : NAME_None,
+		FName(TEXT("FallbackAttacker")));
 
 	FGameXXKBattleRuntimeUnit HeroUnit;
 	HeroUnit.Id = TEXT("Player");

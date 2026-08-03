@@ -39,6 +39,8 @@
 #include "Styling/SlateTypes.h"
 #include "UI/GameXXKMVPCommandRouter.h"
 #include "UI/GameXXKBattlePartyQiWidget.h"
+#include "UI/GameXXKBattleStatusIconWidget.h"
+#include "UI/GameXXKBattleStatusIconStyle.h"
 #include "UI/GameXXKBattleUnitHudWidget.h"
 #include "UI/GameXXKPartyDeckUiStyle.h"
 
@@ -89,6 +91,7 @@ namespace
 	static constexpr int32 BattleCinematicDimmerZOrder = 30;
 	static constexpr int32 BattleCinematicParticipantZOrder = 40;
 	static constexpr int32 BattleCinematicImpactZOrder = 50;
+	static constexpr int32 BattleCinematicStatusIconZOrder = 55;
 	static constexpr int32 BattleCinematicReadoutZOrder = 60;
 	static constexpr int32 BattleLegacyAnimationZOrder = 1000;
 	static constexpr int32 PartyQiWidgetZOrder = 35;
@@ -607,7 +610,14 @@ void UGameXXKBattleBoardWidget::QueueCombatAnimation(
 
 void UGameXXKBattleBoardWidget::QueuePresentation(const FGameXXKBattlePresentationEvent& Event)
 {
-	if (Event.AttackerUnitId.IsNone() || Event.TargetUnitId.IsNone())
+	QueuePresentationInternal(Event, true);
+}
+
+void UGameXXKBattleBoardWidget::QueuePresentationInternal(
+	const FGameXXKBattlePresentationEvent& Event,
+	const bool bRefreshBaseline)
+{
+	if (Event.TargetUnitId.IsNone())
 	{
 		return;
 	}
@@ -620,10 +630,13 @@ void UGameXXKBattleBoardWidget::QueuePresentation(const FGameXXKBattlePresentati
 	{
 		NextBattlePresentationQueueSerial = 1;
 	}
-	Entry.AttackerClip = FGameXXKBattleAnimationPresentation::ResolveClip(
-		Event.AttackerUnitId,
-		Event.bAttackerEnemy,
-		EGameXXKBattleAnimationAction::Attack);
+	if (!Event.AttackerUnitId.IsNone())
+	{
+		Entry.AttackerClip = FGameXXKBattleAnimationPresentation::ResolveClip(
+			Event.AttackerUnitId,
+			Event.bAttackerEnemy,
+			EGameXXKBattleAnimationAction::Attack);
+	}
 	Entry.TargetClip = FGameXXKBattleAnimationPresentation::ResolveClip(
 		Event.TargetUnitId,
 		Event.bTargetEnemy,
@@ -632,7 +645,242 @@ void UGameXXKBattleBoardWidget::QueuePresentation(const FGameXXKBattlePresentati
 		EGameXXKBattleAnimationAction::Impact);
 	const uint64 QueueSerial = Entry.QueueSerial;
 	BattlePresentationQueue.Add(MoveTemp(Entry));
+	if (!DisplayedHealthOverrides.Contains(Event.TargetUnitId))
+	{
+		if (bRefreshBaseline)
+		{
+			SetDisplayedHealthOverlay(Event.TargetUnitId, Event.TargetHealthBefore);
+		}
+		else
+		{
+			const int32 BaselineHealth = FMath::Max(0, Event.TargetHealthBefore);
+			DisplayedHealthOverrides.Add(Event.TargetUnitId, BaselineHealth);
+			if (FGameXXKBattleUnitHudView* const View = DisplayedUnitHudOverrides.Find(Event.TargetUnitId))
+			{
+				View->CurrentHP = BaselineHealth;
+				View->bLiving = true;
+			}
+		}
+	}
+	ApplyBattlePresentationInteractionLock();
 	PrefetchPresentationEntry(QueueSerial);
+}
+
+void UGameXXKBattleBoardWidget::QueueStatusPresentation(
+	const FGameXXKBattleStatusPresentationEvent& Event)
+{
+	if (Event.UnitId.IsNone()
+		|| Event.StackDelta == 0
+		|| (Event.AnimationAction != EGameXXKBattleAnimationAction::Buff
+			&& Event.AnimationAction != EGameXXKBattleAnimationAction::Debuff))
+	{
+		return;
+	}
+
+	FBattlePresentationQueueEntry Entry;
+	Entry.StatusEvent = Event;
+	Entry.Kind = EBattlePresentationKind::Status;
+	Entry.QueueSerial = NextBattlePresentationQueueSerial++;
+	if (NextBattlePresentationQueueSerial == 0)
+	{
+		NextBattlePresentationQueueSerial = 1;
+	}
+	Entry.StatusClip = FGameXXKBattleAnimationPresentation::ResolveGenericClip(Event.AnimationAction);
+	const uint64 QueueSerial = Entry.QueueSerial;
+	BattlePresentationQueue.Add(MoveTemp(Entry));
+	ApplyBattlePresentationInteractionLock();
+	PrefetchPresentationEntry(QueueSerial);
+}
+
+void UGameXXKBattleBoardWidget::CapturePresentationHudSnapshot(
+	const FGameXXKCardBattleRuntime& Runtime)
+{
+	DisplayedHealthOverrides.Reset();
+	DisplayedUnitHudOverrides.Reset();
+	for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+	{
+		if (Unit.UnitId.IsNone())
+		{
+			continue;
+		}
+		FGameXXKBattleUnitHudView View;
+		if (FGameXXKBattlePresentation::BuildUnitHudView(
+			Runtime,
+			Unit.UnitId,
+			ResolveProjectedUnitHudDisplayName(Unit.UnitId),
+			View))
+		{
+			DisplayedUnitHudOverrides.Add(Unit.UnitId, MoveTemp(View));
+		}
+	}
+}
+
+void UGameXXKBattleBoardWidget::DiscardPresentationHudSnapshot()
+{
+	DisplayedHealthOverrides.Reset();
+	DisplayedUnitHudOverrides.Reset();
+}
+
+bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
+	const FGameXXKCardBattleRuntime& Before,
+	const TArray<FGameXXKCardDamageResult>& DamageResults,
+	const EBattlePresentationContinuation Continuation)
+{
+	UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle)
+	{
+		DiscardPresentationHudSnapshot();
+		return ExecuteBattlePresentationContinuation(Continuation);
+	}
+
+	DeferredBattlePresentationContinuation = Continuation;
+	const FGameXXKCardBattleRuntime& After = Subsystem->GetRuntimeState().CardRun.ActiveBattle;
+	const TArray<FGameXXKBattlePresentationEvent> DamageEvents =
+		FGameXXKBattleAnimationPresentation::BuildPresentationEvents(After, NAME_None, DamageResults);
+	const TArray<FGameXXKBattleStatusPresentationEvent> StatusEvents =
+		FGameXXKBattleAnimationPresentation::BuildStatusPresentationEvents(Before, After);
+	for (const FGameXXKBattlePresentationEvent& Event : DamageEvents)
+	{
+		QueuePresentationInternal(Event, false);
+	}
+	for (const FGameXXKBattleStatusPresentationEvent& Event : StatusEvents)
+	{
+		QueueStatusPresentation(Event);
+	}
+
+	if (!BattlePresentationQueue.IsEmpty())
+	{
+		// Paint the captured pre-mutation baseline only after the complete immutable
+		// damage-plus-status batch exists. No partial batch may leak through a HUD refresh.
+		RefreshProjectedUnitHuds();
+		ApplyBattlePresentationInteractionLock();
+		return true;
+	}
+
+	const EBattlePresentationContinuation ImmediateContinuation = DeferredBattlePresentationContinuation;
+	DeferredBattlePresentationContinuation = EBattlePresentationContinuation::None;
+	DiscardPresentationHudSnapshot();
+	if (ImmediateContinuation != EBattlePresentationContinuation::None)
+	{
+		++ExecutedBattlePresentationContinuationCount;
+	}
+	return ExecuteBattlePresentationContinuation(ImmediateContinuation);
+}
+
+bool UGameXXKBattleBoardWidget::IsBattlePresentationPending() const
+{
+	return !BattlePresentationQueue.IsEmpty()
+		|| DeferredBattlePresentationContinuation != EBattlePresentationContinuation::None;
+}
+
+bool UGameXXKBattleBoardWidget::RejectBattlePresentationMutation()
+{
+	if (!IsBattlePresentationPending())
+	{
+		return false;
+	}
+	LastCardInteractionError = TEXT("战斗演出正在结算，请等待演出完成。");
+	ApplyBattlePresentationInteractionLock();
+	return true;
+}
+
+void UGameXXKBattleBoardWidget::ApplyBattlePresentationInteractionLock()
+{
+	if (ActionBox)
+	{
+		ActionBox->SetIsEnabled(false);
+	}
+	for (UButton* Button : HandCardButtons)
+	{
+		if (Button) Button->SetIsEnabled(false);
+	}
+	for (UButton* Button : PendingChoiceCardButtons)
+	{
+		if (Button) Button->SetIsEnabled(false);
+	}
+	for (UButton* Button : RewardCardButtons)
+	{
+		if (Button) Button->SetIsEnabled(false);
+	}
+	for (UButton* Button : RouteRewardReplacementButtons)
+	{
+		if (Button) Button->SetIsEnabled(false);
+	}
+	if (EndTurnButton) EndTurnButton->SetIsEnabled(false);
+	if (PendingChoiceCancelButton) PendingChoiceCancelButton->SetIsEnabled(false);
+	if (EnemyIntentRecoveryButton) EnemyIntentRecoveryButton->SetIsEnabled(false);
+	if (SkipRewardButton) SkipRewardButton->SetIsEnabled(false);
+	SetTargetProxiesVisible(false);
+}
+
+bool UGameXXKBattleBoardWidget::ExecuteBattlePresentationContinuation(
+	const EBattlePresentationContinuation Continuation)
+{
+	switch (Continuation)
+	{
+	case EBattlePresentationContinuation::None:
+		return true;
+	case EBattlePresentationContinuation::FinalizeCardMutation:
+		return ResolveAndRefreshCardBattleAfterMutation();
+	case EBattlePresentationContinuation::BeginEnemyIntentAfterPlayerPhase:
+		BeginEnemyIntentPresentation();
+		return ResolveAndRefreshCardBattleAfterMutation();
+	case EBattlePresentationContinuation::ResumeEnemyIntentAfterMutation:
+		EnemyIntentPresentationState = EGameXXKEnemyIntentPresentationState::Settle;
+		EnemyIntentPresentationElapsed = 0.0f;
+		return ResolveAndRefreshCardBattleAfterMutation();
+	case EBattlePresentationContinuation::FinalizeEnemyPhase:
+		ResetEnemyIntentPresentationState();
+		return ResolveAndRefreshCardBattleAfterMutation();
+	default:
+		return false;
+	}
+}
+
+void UGameXXKBattleBoardWidget::HandleBattlePresentationQueueDrained()
+{
+	if (!BattlePresentationQueue.IsEmpty())
+	{
+		return;
+	}
+
+	const EBattlePresentationContinuation Continuation = DeferredBattlePresentationContinuation;
+	DeferredBattlePresentationContinuation = EBattlePresentationContinuation::None;
+	for (const FName UnitId : DefeatedUnitVisualsPendingRemoval)
+	{
+		RemoveUnitVisual(UnitId);
+	}
+	DefeatedUnitVisualsPendingRemoval.Reset();
+	DiscardPresentationHudSnapshot();
+	bBattlePresentationShakeActive = false;
+	if (BattleDesignStage)
+	{
+		BattleDesignStage->SetRenderTranslation(FVector2D::ZeroVector);
+	}
+	if (BattleCinematicImpact)
+	{
+		BattleCinematicImpact->HideForCinematic();
+		BattleCinematicImpact->SetAtlas(nullptr);
+	}
+	if (BattleCinematicStatusIcon)
+	{
+		BattleCinematicStatusIcon->SetVisibility(ESlateVisibility::Hidden);
+	}
+	if (BattleCinematicReadout)
+	{
+		BattleCinematicReadout->SetText(FText::GetEmpty());
+		BattleCinematicReadout->SetVisibility(ESlateVisibility::Hidden);
+	}
+	RestoreFormationAfterPresentation();
+
+	if (Continuation != EBattlePresentationContinuation::None)
+	{
+		++ExecutedBattlePresentationContinuationCount;
+		ExecuteBattlePresentationContinuation(Continuation);
+		return;
+	}
+	RefreshProjectedUnitHuds();
+	RefreshProgrammaticLayout();
 }
 
 UGameXXKBattleBoardWidget::FBattlePresentationQueueEntry*
@@ -663,6 +911,7 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationEntry(const uint64 QueueSeri
 	PrefetchPresentationAtlas(QueueSerial, Entry->AttackerClip.TexturePath, EBattlePresentationAtlasRole::Attacker);
 	PrefetchPresentationAtlas(QueueSerial, Entry->TargetClip.TexturePath, EBattlePresentationAtlasRole::Target);
 	PrefetchPresentationAtlas(QueueSerial, Entry->ImpactClip.TexturePath, EBattlePresentationAtlasRole::Impact);
+	PrefetchPresentationAtlas(QueueSerial, Entry->StatusClip.TexturePath, EBattlePresentationAtlasRole::Status);
 }
 
 void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
@@ -686,6 +935,8 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
 	const TWeakObjectPtr<UGameXXKBattleUnitVisualWidget> RequestTargetVisual =
 		Role == EBattlePresentationAtlasRole::Target
 			? UnitVisuals.FindRef(Entry->Event.TargetUnitId)
+			: Role == EBattlePresentationAtlasRole::Status
+				? UnitVisuals.FindRef(Entry->StatusEvent.UnitId)
 			: nullptr;
 	AtlasCache->Acquire(
 		TexturePath,
@@ -755,6 +1006,19 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
 					Board->BattleCinematicImpact->AdvanceAtRealTime(Board->LastSlateSeconds);
 				}
 				break;
+			case EBattlePresentationAtlasRole::Status:
+				RequestEntry->StatusAtlas = Texture;
+				if (Board->GetActivePresentationEntry() == RequestEntry
+					&& RequestEntry->Kind == EBattlePresentationKind::Status
+					&& RequestEntry->bStarted
+					&& !RequestEntry->bCompletionFired
+					&& Board->BattleCinematicImpact)
+				{
+					Board->BattleCinematicImpact->SetAtlas(Texture);
+					Board->BattleCinematicImpact->AdvanceAtRealTime(RequestEntry->StartSeconds);
+					Board->BattleCinematicImpact->AdvanceAtRealTime(Board->LastSlateSeconds);
+				}
+				break;
 			default: break;
 			}
 		});
@@ -769,6 +1033,7 @@ void UGameXXKBattleBoardWidget::AdvanceBattlePresentation(const double AbsoluteS
 
 	double NextStartSeconds = AbsoluteSeconds;
 	int32 CompletedEntryGuard = 0;
+	bool bQueueDrained = false;
 	while (!BattlePresentationQueue.IsEmpty() && CompletedEntryGuard++ < 256)
 	{
 		FBattlePresentationQueueEntry& Entry = BattlePresentationQueue[0];
@@ -778,12 +1043,18 @@ void UGameXXKBattleBoardWidget::AdvanceBattlePresentation(const double AbsoluteS
 		}
 
 		const double ElapsedSeconds = FMath::Max(0.0, AbsoluteSeconds - Entry.StartSeconds);
-		const double DurationSeconds = Entry.Kind == EBattlePresentationKind::Death
-			? BattleDeathDurationSeconds
-			: BattleAttackHitDurationSeconds;
+		double DurationSeconds = BattleAttackHitDurationSeconds;
+		if (Entry.Kind == EBattlePresentationKind::Death)
+		{
+			DurationSeconds = BattleDeathDurationSeconds;
+		}
+		else if (Entry.Kind == EBattlePresentationKind::Status)
+		{
+			DurationSeconds = FGameXXKBattleAnimationPresentation::GetRuntimeDuration(Entry.StatusClip);
+		}
 		if (Entry.Kind == EBattlePresentationKind::AttackHit
 			&& !Entry.bImpactFired
-			&& ElapsedSeconds >= BattleImpactMarkerSeconds)
+			&& ElapsedSeconds + static_cast<double>(KINDA_SMALL_NUMBER) >= BattleImpactMarkerSeconds)
 		{
 			FirePresentationImpact(Entry);
 		}
@@ -795,10 +1066,19 @@ void UGameXXKBattleBoardWidget::AdvanceBattlePresentation(const double AbsoluteS
 		const double CompletionBoundarySeconds = Entry.StartSeconds + DurationSeconds;
 		CompletePresentationEntry(Entry);
 		BattlePresentationQueue.RemoveAt(0, 1, EAllowShrinking::No);
+		if (BattlePresentationQueue.IsEmpty())
+		{
+			bQueueDrained = true;
+			break;
+		}
 		NextStartSeconds = CompletionBoundarySeconds;
 	}
 
 	UpdateBattlePresentationShake(AbsoluteSeconds);
+	if (bQueueDrained)
+	{
+		HandleBattlePresentationQueueDrained();
+	}
 }
 
 void UGameXXKBattleBoardWidget::StartPresentationEntry(
@@ -822,10 +1102,74 @@ void UGameXXKBattleBoardWidget::StartPresentationEntry(
 	{
 		BattleCinematicImpact->HideForCinematic();
 	}
+	if (BattleCinematicStatusIcon)
+	{
+		BattleCinematicStatusIcon->SetVisibility(ESlateVisibility::Hidden);
+	}
 	if (BattleCinematicReadout)
 	{
 		BattleCinematicReadout->SetText(FText::GetEmpty());
 		BattleCinematicReadout->SetVisibility(ESlateVisibility::Hidden);
+	}
+
+	if (Entry.Kind == EBattlePresentationKind::Status)
+	{
+		ApplyDisplayedStatusDelta(Entry.StatusEvent);
+		UGameXXKBattleUnitVisualWidget* const UnitVisual = UnitVisuals.FindRef(Entry.StatusEvent.UnitId);
+		if (UnitVisual)
+		{
+			const FGameXXKBattleAnimationClipDescriptor IdleClip =
+				FGameXXKBattleAnimationPresentation::ResolveClip(
+					Entry.StatusEvent.UnitId,
+					Entry.StatusEvent.bUnitEnemy,
+					EGameXXKBattleAnimationAction::Idle);
+			RestoreUnitIdleAtlas(Entry.StatusEvent.UnitId, UnitVisual);
+			UnitVisual->ShowCinematic(
+				IdleClip,
+				Entry.StatusEvent.bUnitEnemy ? CinematicEnemyAnchor : CinematicPartyAnchor);
+			if (UCanvasPanelSlot* const ParticipantSlot = Cast<UCanvasPanelSlot>(UnitVisual->Slot))
+			{
+				ParticipantSlot->SetZOrder(BattleCinematicParticipantZOrder);
+			}
+			UnitVisual->AdvanceAtRealTime(Entry.StartSeconds);
+		}
+		if (BattleCinematicImpact)
+		{
+			if (Entry.StatusAtlas.IsValid())
+			{
+				BattleCinematicImpact->SetAtlas(Entry.StatusAtlas.Get());
+			}
+			BattleCinematicImpact->ShowCinematic(Entry.StatusClip, CinematicImpactAnchor);
+			if (UCanvasPanelSlot* const ImpactSlot = Cast<UCanvasPanelSlot>(BattleCinematicImpact->Slot))
+			{
+				ImpactSlot->SetAnchors(FAnchors(CinematicImpactAnchor.X, CinematicImpactAnchor.Y));
+				ImpactSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+				ImpactSlot->SetPosition(FVector2D::ZeroVector);
+				ImpactSlot->SetSize(CinematicImpactVisualSize);
+				ImpactSlot->SetZOrder(BattleCinematicImpactZOrder);
+			}
+			BattleCinematicImpact->AdvanceAtRealTime(Entry.StartSeconds);
+		}
+		if (BattleCinematicStatusIcon)
+		{
+			FGameXXKBattleStatusBadgeModel Badge;
+			Badge.Style = FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(Entry.StatusEvent.Status);
+			Badge.Stacks = FMath::Max(1, Entry.StatusEvent.StackAfter > 0
+				? Entry.StatusEvent.StackAfter
+				: Entry.StatusEvent.StackBefore);
+			Badge.Tooltip = FGameXXKBattleStatusIconStyle::DescribeStatusTooltip(Badge.Style, Badge.Stacks);
+			BattleCinematicStatusIcon->SetBadgeModel(Badge);
+			BattleCinematicStatusIcon->SetRenderScale(FVector2D(2.5f, 2.5f));
+			BattleCinematicStatusIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+		}
+		if (BattleCinematicReadout)
+		{
+			BattleCinematicReadout->SetText(FText::FromString(FString::Printf(
+				TEXT("%+d"),
+				Entry.StatusEvent.StackDelta)));
+			BattleCinematicReadout->SetVisibility(ESlateVisibility::HitTestInvisible);
+		}
+		return;
 	}
 
 	if (Entry.Kind == EBattlePresentationKind::Death)
@@ -988,6 +1332,10 @@ void UGameXXKBattleBoardWidget::CompletePresentationEntry(FBattlePresentationQue
 		BattleCinematicReadout->SetText(FText::GetEmpty());
 		BattleCinematicReadout->SetVisibility(ESlateVisibility::Hidden);
 	}
+	if (BattleCinematicStatusIcon)
+	{
+		BattleCinematicStatusIcon->SetVisibility(ESlateVisibility::Hidden);
+	}
 	bBattlePresentationShakeActive = false;
 	if (BattleDesignStage)
 	{
@@ -996,19 +1344,27 @@ void UGameXXKBattleBoardWidget::CompletePresentationEntry(FBattlePresentationQue
 
 	if (CompletedKind == EBattlePresentationKind::Death)
 	{
-		ClearDisplayedHealthOverlay(CompletedEvent.TargetUnitId);
+		const bool bNeedsLaterStatusPresentation = BattlePresentationQueue.ContainsByPredicate(
+			[&CompletedEvent](const FBattlePresentationQueueEntry& QueuedEntry)
+			{
+				return QueuedEntry.Kind == EBattlePresentationKind::Status
+					&& QueuedEntry.StatusEvent.UnitId == CompletedEvent.TargetUnitId;
+			});
+		if (bNeedsLaterStatusPresentation)
+		{
+			// Death stays immediately after the lethal Hit, but a status delta from the
+			// same rule packet still needs the affected unit as its central participant.
+			DefeatedUnitVisualsPendingRemoval.Add(CompletedEvent.TargetUnitId);
+			RestoreFormationAfterPresentation();
+			return;
+		}
 		RemoveUnitVisual(CompletedEvent.TargetUnitId);
-		UnitIdleAtlasTextures.Remove(CompletedEvent.TargetUnitId);
 		RestoreFormationAfterPresentation(CompletedEvent.TargetUnitId);
 		return;
 	}
 
-	if (!CompletedEvent.bTargetDefeated)
-	{
-		ClearDisplayedHealthOverlay(CompletedEvent.TargetUnitId);
-	}
 	RestoreFormationAfterPresentation();
-	if (CompletedEvent.bTargetDefeated)
+	if (CompletedKind == EBattlePresentationKind::AttackHit && CompletedEvent.bTargetDefeated)
 	{
 		EnqueueDeathPresentationAfterActive(CompletedEvent);
 	}
@@ -1048,15 +1404,23 @@ void UGameXXKBattleBoardWidget::ReleasePresentationPins(FBattlePresentationQueue
 
 void UGameXXKBattleBoardWidget::ResetBattlePresentation()
 {
+	DeferredBattlePresentationContinuation = EBattlePresentationContinuation::None;
 	for (FBattlePresentationQueueEntry& Entry : BattlePresentationQueue)
 	{
 		ReleasePresentationPins(Entry);
 	}
 	BattlePresentationQueue.Reset();
+	for (const FName UnitId : DefeatedUnitVisualsPendingRemoval)
+	{
+		RemoveUnitVisual(UnitId);
+	}
+	DefeatedUnitVisualsPendingRemoval.Reset();
 	DisplayedHealthOverrides.Reset();
+	DisplayedUnitHudOverrides.Reset();
 	BattlePresentationImpactCount = 0;
 	BattlePresentationCompletionCount = 0;
 	BattlePresentationHudShakeCount = 0;
+	ExecutedBattlePresentationContinuationCount = 0;
 	BattlePresentationShakeStartSeconds = 0.0;
 	bBattlePresentationShakeActive = false;
 	RestoreFormationAfterPresentation();
@@ -1069,6 +1433,10 @@ void UGameXXKBattleBoardWidget::ResetBattlePresentation()
 	{
 		BattleCinematicReadout->SetText(FText::GetEmpty());
 		BattleCinematicReadout->SetVisibility(ESlateVisibility::Hidden);
+	}
+	if (BattleCinematicStatusIcon)
+	{
+		BattleCinematicStatusIcon->SetVisibility(ESlateVisibility::Hidden);
 	}
 	if (BattleDesignStage)
 	{
@@ -1089,6 +1457,11 @@ void UGameXXKBattleBoardWidget::HideFormationForPresentation()
 
 void UGameXXKBattleBoardWidget::RestoreFormationAfterPresentation(const FName RemovedUnitId)
 {
+	if (IsBattlePresentationPending())
+	{
+		SetTargetProxiesVisible(false);
+		return;
+	}
 	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitVisualWidget>>& Pair : UnitVisuals)
 	{
 		if (!Pair.Value || Pair.Key == RemovedUnitId)
@@ -1117,11 +1490,13 @@ void UGameXXKBattleBoardWidget::RestoreUnitIdleAtlas(
 
 void UGameXXKBattleBoardWidget::SetTargetProxiesVisible(const bool bVisible)
 {
+	const bool bActuallyVisible = bVisible && !IsBattlePresentationPending();
 	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitTargetProxyButton>>& Pair : UnitTargetProxies)
 	{
 		if (Pair.Value)
 		{
-			Pair.Value->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+			Pair.Value->SetIsEnabled(bActuallyVisible);
+			Pair.Value->SetVisibility(bActuallyVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
 		}
 	}
 }
@@ -1131,6 +1506,11 @@ void UGameXXKBattleBoardWidget::SetDisplayedHealthOverlay(const FName UnitId, co
 	if (!UnitId.IsNone())
 	{
 		DisplayedHealthOverrides.Add(UnitId, FMath::Max(0, Health));
+		if (FGameXXKBattleUnitHudView* const View = DisplayedUnitHudOverrides.Find(UnitId))
+		{
+			View->CurrentHP = FMath::Max(0, Health);
+			View->bLiving = true;
+		}
 		RefreshProjectedUnitHuds();
 	}
 }
@@ -1145,7 +1525,32 @@ void UGameXXKBattleBoardWidget::ClearDisplayedHealthOverlay(const FName UnitId)
 
 bool UGameXXKBattleBoardWidget::IsUnitRetainedByPresentation(const FName UnitId) const
 {
-	return DisplayedHealthOverrides.Contains(UnitId);
+	return DisplayedHealthOverrides.Contains(UnitId) || DisplayedUnitHudOverrides.Contains(UnitId);
+}
+
+void UGameXXKBattleBoardWidget::ApplyDisplayedStatusDelta(
+	const FGameXXKBattleStatusPresentationEvent& Event)
+{
+	FGameXXKBattleUnitHudView* const View = DisplayedUnitHudOverrides.Find(Event.UnitId);
+	if (!View)
+	{
+		return;
+	}
+	View->Statuses.RemoveAll([&Event](const FGameXXKCardStatusStack& Stack)
+	{
+		return Stack.Status == Event.Status;
+	});
+	if (Event.StackAfter > 0)
+	{
+		FGameXXKCardStatusStack& Stack = View->Statuses.AddDefaulted_GetRef();
+		Stack.Status = Event.Status;
+		Stack.Stacks = Event.StackAfter;
+	}
+	View->Statuses.Sort([](const FGameXXKCardStatusStack& Left, const FGameXXKCardStatusStack& Right)
+	{
+		return static_cast<uint8>(Left.Status) < static_cast<uint8>(Right.Status);
+	});
+	RefreshProjectedUnitHuds();
 }
 
 void UGameXXKBattleBoardWidget::UpdateBattlePresentationShake(const double AbsoluteSeconds)
@@ -1293,6 +1698,10 @@ void UGameXXKBattleBoardWidget::HandleUnitTargetProxyClicked(const FName UnitId)
 	{
 		return;
 	}
+	if (RejectBattlePresentationMutation())
+	{
+		return;
+	}
 	if (IsCardTargetingActive())
 	{
 		ConfirmTargetingUnit(UnitId);
@@ -1400,10 +1809,21 @@ bool UGameXXKBattleBoardWidget::IsBattlePresentationActiveForTest() const
 	return GetActivePresentationEntry() != nullptr;
 }
 
+bool UGameXXKBattleBoardWidget::IsBattlePresentationLockedForTest() const
+{
+	return IsBattlePresentationPending();
+}
+
 bool UGameXXKBattleBoardWidget::IsBattleDeathPresentationActiveForTest() const
 {
 	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
 	return Entry && Entry->Kind == EBattlePresentationKind::Death;
+}
+
+bool UGameXXKBattleBoardWidget::IsBattleStatusPresentationActiveForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry && Entry->Kind == EBattlePresentationKind::Status;
 }
 
 int32 UGameXXKBattleBoardWidget::GetBattlePresentationQueueCountForTest() const
@@ -1414,13 +1834,53 @@ int32 UGameXXKBattleBoardWidget::GetBattlePresentationQueueCountForTest() const
 uint64 UGameXXKBattleBoardWidget::GetActiveBattlePresentationEventIdForTest() const
 {
 	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
-	return Entry ? Entry->Event.EventId : 0;
+	return Entry
+		? Entry->Kind == EBattlePresentationKind::Status
+			? Entry->StatusEvent.EventId
+			: Entry->Event.EventId
+		: 0;
+}
+
+FName UGameXXKBattleBoardWidget::GetActiveBattlePresentationAttackerUnitIdForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry && Entry->Kind != EBattlePresentationKind::Status
+		? Entry->Event.AttackerUnitId
+		: NAME_None;
+}
+
+FName UGameXXKBattleBoardWidget::GetActiveBattlePresentationTargetUnitIdForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry
+		? Entry->Kind == EBattlePresentationKind::Status
+			? Entry->StatusEvent.UnitId
+			: Entry->Event.TargetUnitId
+		: NAME_None;
 }
 
 double UGameXXKBattleBoardWidget::GetActiveBattlePresentationElapsedForTest() const
 {
 	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
 	return Entry ? FMath::Max(0.0, LastSlateSeconds - Entry->StartSeconds) : 0.0;
+}
+
+double UGameXXKBattleBoardWidget::GetActiveBattlePresentationDurationForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	if (!Entry)
+	{
+		return 0.0;
+	}
+	if (Entry->Kind == EBattlePresentationKind::Death)
+	{
+		return BattleDeathDurationSeconds;
+	}
+	if (Entry->Kind == EBattlePresentationKind::Status)
+	{
+		return static_cast<double>(FGameXXKBattleAnimationPresentation::GetRuntimeDuration(Entry->StatusClip));
+	}
+	return BattleAttackHitDurationSeconds;
 }
 
 int32 UGameXXKBattleBoardWidget::GetBattlePresentationImpactCountForTest() const
@@ -1436,6 +1896,35 @@ int32 UGameXXKBattleBoardWidget::GetBattlePresentationCompletionCountForTest() c
 int32 UGameXXKBattleBoardWidget::GetBattlePresentationHudShakeCountForTest() const
 {
 	return BattlePresentationHudShakeCount;
+}
+
+int32 UGameXXKBattleBoardWidget::GetExecutedBattlePresentationContinuationCountForTest() const
+{
+	return ExecutedBattlePresentationContinuationCount;
+}
+
+FString UGameXXKBattleBoardWidget::GetActiveBattleStatusAnimationAssetIdForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry && Entry->Kind == EBattlePresentationKind::Status
+		? Entry->StatusClip.AssetId
+		: FString();
+}
+
+int32 UGameXXKBattleBoardWidget::GetActiveBattleStatusDeltaForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry && Entry->Kind == EBattlePresentationKind::Status
+		? Entry->StatusEvent.StackDelta
+		: 0;
+}
+
+FName UGameXXKBattleBoardWidget::GetActiveBattleStatusIconIdForTest() const
+{
+	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
+	return Entry && Entry->Kind == EBattlePresentationKind::Status
+		? FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(Entry->StatusEvent.Status).IconId
+		: NAME_None;
 }
 
 int32 UGameXXKBattleBoardWidget::GetDisplayedHealthForTest(const FName UnitId) const
@@ -1604,6 +2093,12 @@ void UGameXXKBattleBoardWidget::RefreshFromState()
 {
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const bool bInBattle = Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle;
+	if (bInBattle && IsBattlePresentationPending())
+	{
+		SetVisibility(ESlateVisibility::Visible);
+		ApplyBattlePresentationInteractionLock();
+		return;
+	}
 	const bool bFixtureReadOnly = Subsystem && Subsystem->IsBattleHudFixtureActiveForTest();
 	const bool bHasActiveCardControls = bInBattle
 		&& Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle;
@@ -1765,6 +2260,10 @@ bool UGameXXKBattleBoardWidget::OpenCommandMenuForPartyUnit(int32 PartyIndex, FV
 	{
 		return false;
 	}
+	if (RejectBattlePresentationMutation())
+	{
+		return false;
+	}
 
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
@@ -1831,6 +2330,10 @@ void UGameXXKBattleBoardWidget::UpdateTargetingPointerFromSlateAbsolutePosition(
 bool UGameXXKBattleBoardWidget::ConfirmTargetingEnemy(int32 EnemyIndex)
 {
 	if (RejectBattleHudFixtureMutation())
+	{
+		return false;
+	}
+	if (RejectBattlePresentationMutation())
 	{
 		return false;
 	}
@@ -1902,6 +2405,10 @@ bool UGameXXKBattleBoardWidget::ClickCardInHand(FName CardInstanceId)
 	{
 		return false;
 	}
+	if (RejectBattlePresentationMutation())
+	{
+		return false;
+	}
 
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle || !Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle)
@@ -1959,6 +2466,10 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 	{
 		return false;
 	}
+	if (RejectBattlePresentationMutation())
+	{
+		return false;
+	}
 
 	if (!IsCardTargetingActive() || UnitId.IsNone() || !LegalCardTargetUnitIds.Contains(UnitId))
 	{
@@ -1975,6 +2486,8 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 		return false;
 	}
 
+	const FGameXXKCardBattleRuntime Before = Subsystem->GetRuntimeState().CardRun.ActiveBattle;
+	CapturePresentationHudSnapshot(Before);
 	FGameXXKCardPlayResult Result;
 	FString Error;
 	if (!FGameXXKCardBattleAdapter::ResolveCardPlay(
@@ -1984,6 +2497,7 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 		Result,
 		&Error))
 	{
+		DiscardPresentationHudSnapshot();
 		LastCardInteractionError = Error;
 		RefreshPendingCardTargetingPreview();
 		RefreshProgrammaticLayout();
@@ -1991,20 +2505,20 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 	}
 
 	ClearCardTargetingState();
-	const bool bRefreshed = ResolveAndRefreshCardBattleAfterMutation();
-	if (bRefreshed)
-	{
-		if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
-		{
-			PlayerController->RefreshBattleSceneAfterCardMutation(Result.OwnerUnitId, Result.DamageResults);
-		}
-	}
-	return bRefreshed;
+	LastCardInteractionError.Reset();
+	return QueueMutationPresentation(
+		Before,
+		Result.DamageResults,
+		EBattlePresentationContinuation::FinalizeCardMutation);
 }
 
 bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
 {
 	if (RejectBattleHudFixtureMutation())
+	{
+		return false;
+	}
+	if (RejectBattlePresentationMutation())
 	{
 		return false;
 	}
@@ -2024,42 +2538,30 @@ bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
 	TArray<FGameXXKCardDamageResult> DamageResults;
 	FString Error;
 	FGameXXKRuntimeState& MutableState = Subsystem->GetMutableRuntimeState();
+	const FGameXXKCardBattleRuntime Before = MutableState.CardRun.ActiveBattle;
+	CapturePresentationHudSnapshot(Before);
 	if (!FGameXXKCardBattleAdapter::EndPlayerCardPhase(MutableState, DamageResults, &Error))
 	{
+		DiscardPresentationHudSnapshot();
 		LastCardInteractionError = Error;
 		RefreshProgrammaticLayout();
 		return false;
 	}
 	LastCardInteractionError.Reset();
-	if (MutableState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Enemy)
-	{
-		BeginEnemyIntentPresentation();
-	}
-	const bool bRefreshed = ResolveAndRefreshCardBattleAfterMutation();
-	if (bRefreshed && MutableState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Enemy)
-	{
-		// The enemy intent Reveal/Resolve/Settle presentation starts immediately
-		// after ending the player turn.  Lock the already-visible controls here as
-		// well as in RefreshHandCards so a deferred player-flow refresh can never
-		// leave a one-frame window where the old hand remains clickable.
-		for (UButton* CardButton : HandCardButtons)
-		{
-			if (CardButton)
-			{
-				CardButton->SetIsEnabled(false);
-			}
-		}
-		if (EndTurnButton)
-		{
-			EndTurnButton->SetIsEnabled(false);
-		}
-	}
-	return bRefreshed;
+	const EBattlePresentationContinuation Continuation =
+		MutableState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Enemy
+			? EBattlePresentationContinuation::BeginEnemyIntentAfterPlayerPhase
+			: EBattlePresentationContinuation::FinalizeCardMutation;
+	return QueueMutationPresentation(Before, DamageResults, Continuation);
 }
 
 bool UGameXXKBattleBoardWidget::SubmitPendingInsightChoice(FName PickedInstanceId)
 {
 	if (RejectBattleHudFixtureMutation())
+	{
+		return false;
+	}
+	if (RejectBattlePresentationMutation())
 	{
 		return false;
 	}
@@ -2114,6 +2616,10 @@ bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscard(FName DiscardedInstan
 	{
 		return false;
 	}
+	if (RejectBattlePresentationMutation())
+	{
+		return false;
+	}
 
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle || !Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle)
@@ -2156,6 +2662,10 @@ bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscard(FName DiscardedInstan
 bool UGameXXKBattleBoardWidget::CancelPendingInsightChoice()
 {
 	if (RejectBattleHudFixtureMutation())
+	{
+		return false;
+	}
+	if (RejectBattlePresentationMutation())
 	{
 		return false;
 	}
@@ -2244,6 +2754,10 @@ void UGameXXKBattleBoardWidget::RefreshProjectedUnitHuds()
 				View))
 			{
 				continue;
+			}
+			if (const FGameXXKBattleUnitHudView* const Snapshot = DisplayedUnitHudOverrides.Find(Unit.UnitId))
+			{
+				View = *Snapshot;
 			}
 			if (const int32* const DisplayedHealth = DisplayedHealthOverrides.Find(Unit.UnitId))
 			{
@@ -2432,7 +2946,10 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 						.SetPressed(InvisibleBrush)
 						.SetDisabled(InvisibleBrush);
 					Proxy->SetStyle(InvisibleStyle);
-					Proxy->SetIsEnabled(true);
+					Proxy->SetIsEnabled(!IsBattlePresentationPending());
+					Proxy->SetVisibility(IsBattlePresentationPending()
+						? ESlateVisibility::Hidden
+						: ESlateVisibility::Visible);
 					Proxy->Configure(this, Unit.UnitId);
 
 					UTextBlock* const Placeholder = WidgetTree->ConstructWidget<UTextBlock>(
@@ -3478,6 +3995,25 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		BattleCinematicImpact->HideForCinematic();
 	}
 
+	BattleCinematicStatusIcon = WidgetTree->ConstructWidget<UGameXXKBattleStatusIconWidget>(
+		UGameXXKBattleStatusIconWidget::StaticClass(),
+		TEXT("BattleCinematicStatusIcon"));
+	if (BattleCinematicStatusIcon && BattleDesignStage
+		&& BattleCinematicStatusIcon->PrepareForScreenSpaceEmbedding())
+	{
+		BattleCinematicStatusIcon->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+		BattleCinematicStatusIcon->SetRenderScale(FVector2D(2.5f, 2.5f));
+		BattleCinematicStatusIcon->SetVisibility(ESlateVisibility::Hidden);
+		if (UCanvasPanelSlot* const StatusIconSlot = BattleDesignStage->AddChildToCanvas(BattleCinematicStatusIcon))
+		{
+			StatusIconSlot->SetAnchors(FAnchors(0.5f, 0.5f));
+			StatusIconSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+			StatusIconSlot->SetPosition(FVector2D(0.0f, -145.0f));
+			StatusIconSlot->SetSize(FVector2D(44.0f, 44.0f));
+			StatusIconSlot->SetZOrder(BattleCinematicStatusIconZOrder);
+		}
+	}
+
 	BattleCinematicReadout = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(),
 		TEXT("BattleCinematicReadout"));
@@ -4048,7 +4584,9 @@ void UGameXXKBattleBoardWidget::RefreshActionButtons()
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	const bool bFixtureReadOnly = Subsystem && Subsystem->IsBattleHudFixtureActiveForTest();
 	const bool bShowMenu = IsCommandMenuVisibleForTest();
-	const bool bCanUseMenu = !bFixtureReadOnly && InteractionMode == EGameXXKBattleInteractionMode::CommandMenuOpen;
+	const bool bCanUseMenu = !bFixtureReadOnly
+		&& !IsBattlePresentationPending()
+		&& InteractionMode == EGameXXKBattleInteractionMode::CommandMenuOpen;
 	if (ActionBox)
 	{
 		ActionBox->SetVisibility(bShowMenu ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -4119,6 +4657,7 @@ void UGameXXKBattleBoardWidget::RefreshHandCards()
 	// the runtime phase is Enemy.
 	const bool bCanEndTurn = bCardBattleVisible
 		&& !bFixtureReadOnly
+		&& !IsBattlePresentationPending()
 		&& !IsCardTargetingActive()
 		&& !bHasBlockingCardChoice
 		&& State->CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Player;
@@ -4137,6 +4676,7 @@ void UGameXXKBattleBoardWidget::RefreshHandCards()
 		const bool bHasCard = bCardBattleVisible && HandCardInstanceIds.IsValidIndex(SlotIndex);
 		const bool bCanReceiveHandInput = bHasCard
 			&& !bFixtureReadOnly
+			&& !IsBattlePresentationPending()
 			&& State->CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Player;
 		if (CardButton)
 		{
@@ -4563,7 +5103,8 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentShowcase()
 void UGameXXKBattleBoardWidget::RefreshEnemyIntentRecoveryControl()
 {
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const bool bCanRetry = bEnemyIntentCompletionRecoveryPending
+	const bool bCanRetry = !IsBattlePresentationPending()
+		&& bEnemyIntentCompletionRecoveryPending
 		&& Subsystem
 		&& Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle
 		&& Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle
@@ -4654,6 +5195,10 @@ bool UGameXXKBattleBoardWidget::ResolveCurrentEnemyIntentPresentation()
 	{
 		return false;
 	}
+	if (RejectBattlePresentationMutation())
+	{
+		return false;
+	}
 
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || !Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle)
@@ -4663,6 +5208,8 @@ bool UGameXXKBattleBoardWidget::ResolveCurrentEnemyIntentPresentation()
 	}
 
 	FGameXXKRuntimeState& MutableState = Subsystem->GetMutableRuntimeState();
+	const FGameXXKCardBattleRuntime Before = MutableState.CardRun.ActiveBattle;
+	CapturePresentationHudSnapshot(Before);
 	const int32 IntentIndexBeforeResolve = MutableState.CardRun.NextEnemyIntentIndex;
 	FGameXXKCardEnemyIntent ResolvedIntent;
 	TArray<FGameXXKCardDamageResult> DamageResults;
@@ -4689,28 +5236,38 @@ bool UGameXXKBattleBoardWidget::ResolveCurrentEnemyIntentPresentation()
 			}
 			// ResolveNextEnemyIntent can apply the direct attack and consume the saved
 			// intent before legacy projection sync reports failure. Never skip again.
-			return true;
+			return QueueMutationPresentation(
+				Before,
+				DamageResults,
+				EBattlePresentationContinuation::ResumeEnemyIntentAfterMutation);
 		}
 		FString SkipError;
 		if (!FGameXXKCardBattleAdapter::SkipCurrentEnemyIntent(MutableState, &SkipError))
 		{
+			DiscardPresentationHudSnapshot();
 			LastCardInteractionError += FString::Printf(TEXT("\n敌方意图恢复失败：%s"), *SkipError);
 			return false;
 		}
 		LastCardInteractionError += TEXT("\n已跳过该异常敌方意图，继续结算。");
-		return true;
+		return QueueMutationPresentation(
+			Before,
+			DamageResults,
+			EBattlePresentationContinuation::ResumeEnemyIntentAfterMutation);
 	}
 	LastCardInteractionError.Reset();
-	if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
-	{
-		PlayerController->RefreshBattleSceneAfterCardMutation(ResolvedIntent.SourceUnitId, DamageResults);
-	}
-	return true;
+	return QueueMutationPresentation(
+		Before,
+		DamageResults,
+		EBattlePresentationContinuation::ResumeEnemyIntentAfterMutation);
 }
 
 bool UGameXXKBattleBoardWidget::CompleteEnemyIntentPresentation()
 {
 	if (RejectBattleHudFixtureMutation())
+	{
+		return false;
+	}
+	if (RejectBattlePresentationMutation())
 	{
 		return false;
 	}
@@ -4722,28 +5279,34 @@ bool UGameXXKBattleBoardWidget::CompleteEnemyIntentPresentation()
 		return false;
 	}
 
+	const FGameXXKCardBattleRuntime Before = Subsystem->GetRuntimeState().CardRun.ActiveBattle;
+	CapturePresentationHudSnapshot(Before);
 	TArray<FGameXXKCardDamageResult> DamageResults;
 	FString Error;
 	if (!FGameXXKCardBattleAdapter::CompleteEnemyCardPhase(Subsystem->GetMutableRuntimeState(), DamageResults, &Error))
 	{
+		DiscardPresentationHudSnapshot();
 		LastCardInteractionError = Error;
 		bEnemyIntentCompletionRecoveryPending = true;
 		EnemyIntentPresentationState = EGameXXKEnemyIntentPresentationState::Settle;
 		EnemyIntentPresentationElapsed = 0.0f;
 		return false;
 	}
-	EnemyIntentPresentationState = EGameXXKEnemyIntentPresentationState::None;
-	EnemyIntentPresentationElapsed = 0.0f;
-	ActiveEnemyIntentPresentationIndex = INDEX_NONE;
-	HoveredEnemyIntentSlot = INDEX_NONE;
 	bEnemyIntentCompletionRecoveryPending = false;
 	LastCardInteractionError.Reset();
-	return ResolveAndRefreshCardBattleAfterMutation();
+	return QueueMutationPresentation(
+		Before,
+		DamageResults,
+		EBattlePresentationContinuation::FinalizeEnemyPhase);
 }
 
 bool UGameXXKBattleBoardWidget::RetryEnemyIntentCompletion()
 {
 	if (RejectBattleHudFixtureMutation())
+	{
+		return false;
+	}
+	if (RejectBattlePresentationMutation())
 	{
 		return false;
 	}
@@ -4763,6 +5326,11 @@ bool UGameXXKBattleBoardWidget::RetryEnemyIntentCompletion()
 
 void UGameXXKBattleBoardWidget::AdvanceEnemyIntentPresentation(float InDeltaTime)
 {
+	if (IsBattlePresentationPending())
+	{
+		ApplyBattlePresentationInteractionLock();
+		return;
+	}
 	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	const bool bCanAdvanceRawEnemyPresentation = Subsystem
@@ -4820,6 +5388,11 @@ void UGameXXKBattleBoardWidget::AdvanceEnemyIntentPresentation(float InDeltaTime
 				EnemyIntentPresentationState = EGameXXKEnemyIntentPresentationState::Reveal;
 				EnemyIntentPresentationElapsed = 0.0f;
 				RefreshProgrammaticLayout();
+				return;
+			}
+			if (IsBattlePresentationPending())
+			{
+				ApplyBattlePresentationInteractionLock();
 				return;
 			}
 			EnemyIntentPresentationState = EGameXXKEnemyIntentPresentationState::Settle;
@@ -4990,7 +5563,8 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 	{
 		const bool bCanCancelInsight = bShowInsight && PendingChoice->bCanCancel;
 		PendingChoiceCancelButton->SetVisibility(bCanCancelInsight ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-		PendingChoiceCancelButton->SetIsEnabled(bCanCancelInsight && !bFixtureReadOnly);
+		PendingChoiceCancelButton->SetIsEnabled(
+			bCanCancelInsight && !bFixtureReadOnly && !IsBattlePresentationPending());
 	}
 	if (PendingChoicePromptText && bShowPendingChoice)
 	{
@@ -5024,7 +5598,8 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 		if (CardButton)
 		{
 			CardButton->SetVisibility(bHasCandidate ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-			CardButton->SetIsEnabled(bHasCandidate && !bFixtureReadOnly);
+			CardButton->SetIsEnabled(
+				bHasCandidate && !bFixtureReadOnly && !IsBattlePresentationPending());
 		}
 		if (!bHasCandidate)
 		{
@@ -5066,7 +5641,8 @@ void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 	if (SkipRewardButton)
 	{
 		SkipRewardButton->SetVisibility(bShowRewards ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-		SkipRewardButton->SetIsEnabled(bShowRewards && !bFixtureReadOnly);
+		SkipRewardButton->SetIsEnabled(
+			bShowRewards && !bFixtureReadOnly && !IsBattlePresentationPending());
 	}
 
 	for (int32 SlotIndex = 0; SlotIndex < RewardCardButtons.Num(); ++SlotIndex)
@@ -5079,7 +5655,8 @@ void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 		if (RewardButton)
 		{
 			RewardButton->SetVisibility(bHasReward ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-			RewardButton->SetIsEnabled(bHasReward && !bFixtureReadOnly);
+			RewardButton->SetIsEnabled(
+				bHasReward && !bFixtureReadOnly && !IsBattlePresentationPending());
 		}
 		if (!bHasReward)
 		{
@@ -5102,7 +5679,8 @@ void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 				|| Preview.Decision == EGameXXKRouteCardAcquisitionDecision::RequiresReplacement);
 		if (RewardButton)
 		{
-			RewardButton->SetIsEnabled(bPreviewValid && !bFixtureReadOnly);
+			RewardButton->SetIsEnabled(
+				bPreviewValid && !bFixtureReadOnly && !IsBattlePresentationPending());
 		}
 		ApplyCardPresentation(RewardButton, RewardLabel, RewardPortrait, RewardInfoStrip, Definition);
 		if (RewardLabel)
@@ -5171,7 +5749,7 @@ void UGameXXKBattleBoardWidget::RefreshRouteRewardReplacementChoices()
 			*FString::Printf(TEXT("BattleRouteReplaceCard_%02d"), CardIndex));
 		CardButton->Configure(this, EntryId);
 		StyleCardButton(CardButton, RewardCardSize);
-		CardButton->SetIsEnabled(!bFixtureReadOnly);
+		CardButton->SetIsEnabled(!bFixtureReadOnly && !IsBattlePresentationPending());
 		UTextBlock* Label = nullptr;
 		UImage* Portrait = nullptr;
 		UBorder* InfoStrip = nullptr;
@@ -5585,6 +6163,10 @@ bool UGameXXKBattleBoardWidget::BeginCardTargeting(const FGameXXKCardPlayPreview
 	{
 		return false;
 	}
+	if (RejectBattlePresentationMutation())
+	{
+		return false;
+	}
 
 	if (!Preview.bCanPlay || !Preview.TargetRequest.bRequiresManualSelection || Preview.CardInstanceId.IsNone() || Preview.OwnerUnitId.IsNone())
 	{
@@ -5625,6 +6207,10 @@ bool UGameXXKBattleBoardWidget::ResolveAutomaticCardPlay(FName CardInstanceId)
 	{
 		return false;
 	}
+	if (RejectBattlePresentationMutation())
+	{
+		return false;
+	}
 
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem)
@@ -5633,24 +6219,22 @@ bool UGameXXKBattleBoardWidget::ResolveAutomaticCardPlay(FName CardInstanceId)
 		return false;
 	}
 
+	const FGameXXKCardBattleRuntime Before = Subsystem->GetRuntimeState().CardRun.ActiveBattle;
+	CapturePresentationHudSnapshot(Before);
 	FGameXXKCardPlayResult Result;
 	FString Error;
 	if (!FGameXXKCardBattleAdapter::ResolveCardPlay(Subsystem->GetMutableRuntimeState(), CardInstanceId, NAME_None, Result, &Error))
 	{
+		DiscardPresentationHudSnapshot();
 		LastCardInteractionError = Error;
 		RefreshProgrammaticLayout();
 		return false;
 	}
 	LastCardInteractionError.Reset();
-	const bool bRefreshed = ResolveAndRefreshCardBattleAfterMutation();
-	if (bRefreshed)
-	{
-		if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
-		{
-			PlayerController->RefreshBattleSceneAfterCardMutation(Result.OwnerUnitId, Result.DamageResults);
-		}
-	}
-	return bRefreshed;
+	return QueueMutationPresentation(
+		Before,
+		Result.DamageResults,
+		EBattlePresentationContinuation::FinalizeCardMutation);
 }
 
 bool UGameXXKBattleBoardWidget::RefreshPendingCardTargetingPreview()

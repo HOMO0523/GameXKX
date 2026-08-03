@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/Button.h"
 #include "GameXXKCardTypes.h"
+#include "GameXXKBattlePresentation.h"
 #include "Math/Box2D.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKBattleAtlasCache.h"
@@ -21,6 +22,7 @@ class UVerticalBox;
 class UHorizontalBox;
 class UScrollBox;
 class UGameXXKBattlePartyQiWidget;
+class UGameXXKBattleStatusIconWidget;
 class UGameXXKBattleUnitHudWidget;
 class UGameXXKBattleUnitVisualWidget;
 class UGameXXKBattleBoardWidget;
@@ -217,13 +219,22 @@ public:
 	uint64 GetActiveBattleVisualSessionTokenForTest() const;
 	int32 GetPinnedBattleAtlasCountForTest() const;
 	bool IsBattlePresentationActiveForTest() const;
+	bool IsBattlePresentationLockedForTest() const;
 	bool IsBattleDeathPresentationActiveForTest() const;
+	bool IsBattleStatusPresentationActiveForTest() const;
 	int32 GetBattlePresentationQueueCountForTest() const;
 	uint64 GetActiveBattlePresentationEventIdForTest() const;
+	FName GetActiveBattlePresentationAttackerUnitIdForTest() const;
+	FName GetActiveBattlePresentationTargetUnitIdForTest() const;
 	double GetActiveBattlePresentationElapsedForTest() const;
+	double GetActiveBattlePresentationDurationForTest() const;
 	int32 GetBattlePresentationImpactCountForTest() const;
 	int32 GetBattlePresentationCompletionCountForTest() const;
 	int32 GetBattlePresentationHudShakeCountForTest() const;
+	int32 GetExecutedBattlePresentationContinuationCountForTest() const;
+	FString GetActiveBattleStatusAnimationAssetIdForTest() const;
+	int32 GetActiveBattleStatusDeltaForTest() const;
+	FName GetActiveBattleStatusIconIdForTest() const;
 	int32 GetDisplayedHealthForTest(FName UnitId) const;
 	float GetActiveAttackerPlaybackRateForTest() const;
 	float GetActiveTargetPlaybackRateForTest() const;
@@ -461,20 +472,33 @@ private:
 	enum class EBattlePresentationKind : uint8
 	{
 		AttackHit,
-		Death
+		Death,
+		Status
 	};
 
 	enum class EBattlePresentationAtlasRole : uint8
 	{
 		Attacker,
 		Target,
-		Impact
+		Impact,
+		Status
+	};
+
+	/** Typed Board-owned resumptions can be discarded safely when a visual session is cancelled. */
+	enum class EBattlePresentationContinuation : uint8
+	{
+		None,
+		FinalizeCardMutation,
+		BeginEnemyIntentAfterPlayerPhase,
+		ResumeEnemyIntentAfterMutation,
+		FinalizeEnemyPhase
 	};
 
 	/** One immutable event plus its absolute-time, exact-once presentation state. */
 	struct FBattlePresentationQueueEntry
 	{
 		FGameXXKBattlePresentationEvent Event;
+		FGameXXKBattleStatusPresentationEvent StatusEvent;
 		EBattlePresentationKind Kind = EBattlePresentationKind::AttackHit;
 		uint64 QueueSerial = 0;
 		double StartSeconds = 0.0;
@@ -484,15 +508,33 @@ private:
 		FGameXXKBattleAnimationClipDescriptor AttackerClip;
 		FGameXXKBattleAnimationClipDescriptor TargetClip;
 		FGameXXKBattleAnimationClipDescriptor ImpactClip;
+		FGameXXKBattleAnimationClipDescriptor StatusClip;
 		FGameXXKBattleAnimationClipDescriptor PresentedAttackerClip;
 		FGameXXKBattleAnimationClipDescriptor PresentedTargetClip;
 		TWeakObjectPtr<UTexture2D> AttackerAtlas;
 		TWeakObjectPtr<UTexture2D> TargetAtlas;
 		TWeakObjectPtr<UTexture2D> ImpactAtlas;
+		TWeakObjectPtr<UTexture2D> StatusAtlas;
 		TArray<FSoftObjectPath> PinnedAtlasPaths;
 	};
 
 	void BuildProgrammaticLayout();
+	void QueuePresentationInternal(
+		const FGameXXKBattlePresentationEvent& Event,
+		bool bRefreshBaseline);
+	void QueueStatusPresentation(const FGameXXKBattleStatusPresentationEvent& Event);
+	bool QueueMutationPresentation(
+		const FGameXXKCardBattleRuntime& Before,
+		const TArray<FGameXXKCardDamageResult>& DamageResults,
+		EBattlePresentationContinuation Continuation);
+	void CapturePresentationHudSnapshot(const FGameXXKCardBattleRuntime& Runtime);
+	void DiscardPresentationHudSnapshot();
+	void ApplyDisplayedStatusDelta(const FGameXXKBattleStatusPresentationEvent& Event);
+	bool IsBattlePresentationPending() const;
+	bool RejectBattlePresentationMutation();
+	void ApplyBattlePresentationInteractionLock();
+	bool ExecuteBattlePresentationContinuation(EBattlePresentationContinuation Continuation);
+	void HandleBattlePresentationQueueDrained();
 	void PrefetchPresentationEntry(uint64 QueueSerial);
 	void PrefetchPresentationAtlas(
 		uint64 QueueSerial,
@@ -733,6 +775,10 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKBattleUnitVisualWidget> BattleCinematicImpact;
 
+	/** Existing status badge, enlarged only for the active central status presentation. */
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKBattleStatusIconWidget> BattleCinematicStatusIcon;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> BattleCinematicReadout;
 
@@ -758,10 +804,14 @@ private:
 	double LastSlateSeconds = 0.0;
 	TArray<FBattlePresentationQueueEntry> BattlePresentationQueue;
 	TMap<FName, int32> DisplayedHealthOverrides;
+	TMap<FName, FGameXXKBattleUnitHudView> DisplayedUnitHudOverrides;
+	TSet<FName> DefeatedUnitVisualsPendingRemoval;
+	EBattlePresentationContinuation DeferredBattlePresentationContinuation = EBattlePresentationContinuation::None;
 	uint64 NextBattlePresentationQueueSerial = 1;
 	int32 BattlePresentationImpactCount = 0;
 	int32 BattlePresentationCompletionCount = 0;
 	int32 BattlePresentationHudShakeCount = 0;
+	int32 ExecutedBattlePresentationContinuationCount = 0;
 	double BattlePresentationShakeStartSeconds = 0.0;
 	bool bBattlePresentationShakeActive = false;
 

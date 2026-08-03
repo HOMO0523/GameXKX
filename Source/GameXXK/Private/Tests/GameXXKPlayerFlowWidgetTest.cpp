@@ -9,6 +9,7 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKBattleUnitVisualWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
@@ -440,9 +441,15 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	const FVector2D CardOwnerProjection(940.0f, 420.0f);
 	const FVector2D TargetingPointer(640.0f, 360.0f);
 	BattleBoard->RegisterBattleUnitScreenPosition(EnemyCardInstance->OwnerUnitId, CardOwnerProjection);
+	const UGameXXKBattleUnitVisualWidget* const CardOwnerVisual =
+		BattleBoard->GetUnitVisualForTest(EnemyCardInstance->OwnerUnitId);
+	TestNotNull(TEXT("the controller-owned battle session keeps the card owner's fixed-slot visual"),
+		CardOwnerVisual);
 	TestTrue(TEXT("clicking the current-hand card enters card targeting"), BattleBoard->ClickCardInHand(EnemyCardInstanceId));
 	TestTrue(TEXT("card targeting is active after a legal hand-card click"), BattleBoard->IsCardTargetingActive());
-	TestEqual(TEXT("card arrow starts at the owning battle unit projection"), BattleBoard->GetTargetingSourcePositionForTest(), CardOwnerProjection);
+	TestEqual(TEXT("card arrow starts at the owner's fixed stage center, never legacy actor projection"),
+		BattleBoard->GetTargetingSourcePositionForTest(),
+		CardOwnerVisual ? CardOwnerVisual->GetStageCenter() : FVector2D::ZeroVector);
 	TestTrue(TEXT("the legal enemy receives the current card-target highlight"), BattleBoard->IsTargetUnitHighlighted(EnemyTargetUnitId));
 	TestFalse(TEXT("the card owner is not highlighted as an enemy target"), BattleBoard->IsTargetUnitHighlighted(EnemyCardInstance->OwnerUnitId));
 	TestTrue(TEXT("controller forwards mouse movement to the active card arrow"), PlayerController->UpdateBattleTargetingPointerForTest(TargetingPointer));
@@ -454,6 +461,14 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 		return Unit.Id == EnemyTargetUnitId;
 	});
 	TestTrue(TEXT("the confirmed enemy-target card updates the battle projection"), EnemyAfterCardCommit && EnemyAfterCardCommit->HP < EnemyHPBeforeCardCommit);
+	TestTrue(TEXT("controller-confirmed damage locks later card input until presentation drain"),
+		BattleBoard->IsBattlePresentationLockedForTest());
+	TestFalse(TEXT("the locked Board rejects another hand-card click before presentation drain"),
+		BattleBoard->ClickCardInHand(EnemyCardInstanceId));
+	BattleBoard->AdvanceVisualsAtRealTime(0.0);
+	BattleBoard->AdvanceVisualsAtRealTime(100.0);
+	TestFalse(TEXT("the controller-owned Board unlocks after its complete presentation drains"),
+		BattleBoard->IsBattlePresentationLockedForTest());
 
 	FName CancelCardInstanceId;
 	FName CancelTargetUnitId;

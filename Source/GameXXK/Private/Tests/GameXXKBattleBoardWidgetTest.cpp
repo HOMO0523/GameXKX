@@ -422,6 +422,12 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	BattleWidget->UpdateTargetingPointer(FVector2D(520.0f, 360.0f));
 	TestEqual(TEXT("the card targeting arrow endpoint follows the cursor"), BattleWidget->GetTargetingPointerPositionForTest(), FVector2D(520.0f, 360.0f));
 	TestTrue(TEXT("committing a legal stable target resolves through the card adapter"), BattleWidget->ConfirmTargetingUnit(TargetUnitId));
+	TestTrue(TEXT("terminal reward handling waits for the Board-owned presentation queue"),
+		BattleWidget->IsBattlePresentationLockedForTest());
+	BattleWidget->AdvanceVisualsAtRealTime(0.0);
+	BattleWidget->AdvanceVisualsAtRealTime(100.0);
+	TestFalse(TEXT("the terminal presentation queue drains before reward interaction"),
+		BattleWidget->IsBattlePresentationLockedForTest());
 	TestEqual(TEXT("victory waits on the battle screen for a reward decision"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
 	TestTrue(TEXT("victory exposes the saved route reward offer"), BattleWidget->HasPendingRouteReward());
 	TestEqual(TEXT("victory exposes exactly three reward cards"), BattleWidget->GetPendingRouteRewardCardIds().Num(), 3);

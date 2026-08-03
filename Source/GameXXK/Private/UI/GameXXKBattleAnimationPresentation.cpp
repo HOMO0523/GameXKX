@@ -72,6 +72,58 @@ namespace
 			*TextureName));
 		return Clip;
 	}
+
+	struct FStatusPresentationUnitSnapshot
+	{
+		FName UnitId = NAME_None;
+		EGameXXKCardTargetSide Side = EGameXXKCardTargetSide::Invalid;
+		int32 StableSortOrder = INDEX_NONE;
+		bool bHasMetadata = false;
+		TMap<EGameXXKCardStatus, int64> BeforeStacks;
+		TMap<EGameXXKCardStatus, int64> AfterStacks;
+	};
+
+	void CaptureStatusSnapshot(
+		const FGameXXKCardBattleRuntime& Battle,
+		const bool bAfter,
+		TMap<FName, FStatusPresentationUnitSnapshot>& InOutSnapshots)
+	{
+		for (const FGameXXKCardCombatUnit& Unit : Battle.Units)
+		{
+			if (Unit.UnitId.IsNone())
+			{
+				continue;
+			}
+
+			FStatusPresentationUnitSnapshot& Snapshot = InOutSnapshots.FindOrAdd(Unit.UnitId);
+			Snapshot.UnitId = Unit.UnitId;
+			// Prefer the post-mutation identity metadata when both snapshots contain the unit.
+			if (bAfter || !Snapshot.bHasMetadata)
+			{
+				Snapshot.Side = Unit.Side;
+				Snapshot.StableSortOrder = Unit.StableSortOrder;
+				Snapshot.bHasMetadata = true;
+			}
+
+			TMap<EGameXXKCardStatus, int64>& CapturedStacks = bAfter
+				? Snapshot.AfterStacks
+				: Snapshot.BeforeStacks;
+			for (const FGameXXKCardStatusStack& Stack : Unit.Statuses)
+			{
+				if (Stack.Status == EGameXXKCardStatus::Invalid
+					|| Stack.Status == EGameXXKCardStatus::None)
+				{
+					continue;
+				}
+				CapturedStacks.FindOrAdd(Stack.Status) += static_cast<int64>(Stack.Stacks);
+			}
+		}
+	}
+
+	int32 ClampStatusStackValue(const int64 Value)
+	{
+		return static_cast<int32>(FMath::Clamp<int64>(Value, MIN_int32, MAX_int32));
+	}
 }
 
 FString FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(const FName RuntimeUnitId, const bool bEnemy)
@@ -152,9 +204,10 @@ FSoftObjectPath FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(
 
 TArray<FGameXXKBattlePresentationEvent> FGameXXKBattleAnimationPresentation::BuildPresentationEvents(
 	const FGameXXKCardBattleRuntime& PostDamageBattle,
-	const FName FallbackAttackerUnitId,
+	const FName IgnoredFallbackAttackerUnitId,
 	const TArray<FGameXXKCardDamageResult>& DamageResults)
 {
+	(void)IgnoredFallbackAttackerUnitId;
 	TMap<FName, int32> FinalLethalTransitionByTarget;
 	for (int32 Index = 0; Index < DamageResults.Num(); ++Index)
 	{
@@ -192,7 +245,7 @@ TArray<FGameXXKBattlePresentationEvent> FGameXXKBattleAnimationPresentation::Bui
 		FGameXXKBattlePresentationEvent& Event = Events.AddDefaulted_GetRef();
 		Event.EventId = static_cast<uint64>(Index) + 1;
 		Event.HitOrdinal = Index;
-		Event.AttackerUnitId = Damage.SourceUnitId.IsNone() ? FallbackAttackerUnitId : Damage.SourceUnitId;
+		Event.AttackerUnitId = Damage.SourceUnitId;
 		Event.TargetUnitId = TargetUnitId;
 		if (const FGameXXKCardCombatUnit* Attacker = FindUnit(Event.AttackerUnitId))
 		{
@@ -212,6 +265,69 @@ TArray<FGameXXKBattlePresentationEvent> FGameXXKBattleAnimationPresentation::Bui
 	return Events;
 }
 
+TArray<FGameXXKBattleStatusPresentationEvent> FGameXXKBattleAnimationPresentation::BuildStatusPresentationEvents(
+	const FGameXXKCardBattleRuntime& BeforeBattle,
+	const FGameXXKCardBattleRuntime& AfterBattle)
+{
+	TMap<FName, FStatusPresentationUnitSnapshot> SnapshotByUnitId;
+	CaptureStatusSnapshot(BeforeBattle, false, SnapshotByUnitId);
+	CaptureStatusSnapshot(AfterBattle, true, SnapshotByUnitId);
+
+	TArray<FStatusPresentationUnitSnapshot> OrderedSnapshots;
+	SnapshotByUnitId.GenerateValueArray(OrderedSnapshots);
+	OrderedSnapshots.Sort([](
+		const FStatusPresentationUnitSnapshot& Left,
+		const FStatusPresentationUnitSnapshot& Right)
+	{
+		const int32 LeftOrder = Left.StableSortOrder == INDEX_NONE ? MAX_int32 : Left.StableSortOrder;
+		const int32 RightOrder = Right.StableSortOrder == INDEX_NONE ? MAX_int32 : Right.StableSortOrder;
+		if (LeftOrder != RightOrder)
+		{
+			return LeftOrder < RightOrder;
+		}
+		return Left.UnitId.LexicalLess(Right.UnitId);
+	});
+
+	TArray<FGameXXKBattleStatusPresentationEvent> Events;
+	for (const FStatusPresentationUnitSnapshot& Snapshot : OrderedSnapshots)
+	{
+		TArray<EGameXXKCardStatus> OrderedStatuses;
+		Snapshot.BeforeStacks.GenerateKeyArray(OrderedStatuses);
+		for (const TPair<EGameXXKCardStatus, int64>& Pair : Snapshot.AfterStacks)
+		{
+			OrderedStatuses.AddUnique(Pair.Key);
+		}
+		OrderedStatuses.Sort([](const EGameXXKCardStatus Left, const EGameXXKCardStatus Right)
+		{
+			return static_cast<uint8>(Left) < static_cast<uint8>(Right);
+		});
+
+		for (const EGameXXKCardStatus Status : OrderedStatuses)
+		{
+			const int64 BeforeStacks = Snapshot.BeforeStacks.FindRef(Status);
+			const int64 AfterStacks = Snapshot.AfterStacks.FindRef(Status);
+			const int64 StackDelta = AfterStacks - BeforeStacks;
+			if (StackDelta == 0)
+			{
+				continue;
+			}
+
+			FGameXXKBattleStatusPresentationEvent& Event = Events.AddDefaulted_GetRef();
+			Event.EventId = static_cast<uint64>(Events.Num());
+			Event.UnitId = Snapshot.UnitId;
+			Event.bUnitEnemy = Snapshot.Side == EGameXXKCardTargetSide::Enemy;
+			Event.Status = Status;
+			Event.StackBefore = ClampStatusStackValue(BeforeStacks);
+			Event.StackAfter = ClampStatusStackValue(AfterStacks);
+			Event.StackDelta = ClampStatusStackValue(StackDelta);
+			Event.AnimationAction = StackDelta > 0
+				? EGameXXKBattleAnimationAction::Buff
+				: EGameXXKBattleAnimationAction::Debuff;
+		}
+	}
+	return Events;
+}
+
 TArray<FGameXXKBattleAnimationCombatRequest> FGameXXKBattleAnimationPresentation::BuildCombatRequests(
 	const FGameXXKCardBattleRuntime& PostDamageBattle,
 	const FName FallbackAttackerUnitId,
@@ -226,9 +342,22 @@ TArray<FGameXXKBattleAnimationCombatRequest> FGameXXKBattleAnimationPresentation
 	for (const FGameXXKBattlePresentationEvent& Event : Events)
 	{
 		FGameXXKBattleAnimationCombatRequest& Request = Requests.AddDefaulted_GetRef();
-		Request.AttackerUnitId = Event.AttackerUnitId;
+		Request.AttackerUnitId = Event.AttackerUnitId.IsNone()
+			? FallbackAttackerUnitId
+			: Event.AttackerUnitId;
 		Request.TargetUnitId = Event.TargetUnitId;
 		Request.bAttackerEnemy = Event.bAttackerEnemy;
+		if (Event.AttackerUnitId.IsNone() && !FallbackAttackerUnitId.IsNone())
+		{
+			if (const FGameXXKCardCombatUnit* const LegacyAttacker =
+				PostDamageBattle.Units.FindByPredicate([FallbackAttackerUnitId](const FGameXXKCardCombatUnit& Unit)
+				{
+					return Unit.UnitId == FallbackAttackerUnitId;
+				}))
+			{
+				Request.bAttackerEnemy = LegacyAttacker->Side == EGameXXKCardTargetSide::Enemy;
+			}
+		}
 		Request.bTargetEnemy = Event.bTargetEnemy;
 		Request.bTargetDefeated = Event.bTargetDefeated;
 	}

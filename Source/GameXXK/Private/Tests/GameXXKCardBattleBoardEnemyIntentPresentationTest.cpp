@@ -1,4 +1,5 @@
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKCardRules.h"
 #include "GameXXKMVPRules.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
@@ -7,6 +8,9 @@
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+
+#include <type_traits>
+#include <utility>
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -53,6 +57,27 @@ namespace
 				401,
 				&OutError);
 	}
+
+	template <typename TBoard, typename = void>
+	struct TEnemyIntentBoardPresentationApi
+	{
+		static constexpr bool bAvailable = false;
+		static bool IsLocked(const TBoard*) { return false; }
+		static FName Attacker(const TBoard*) { return NAME_None; }
+		static FName Target(const TBoard*) { return NAME_None; }
+	};
+
+	template <typename TBoard>
+	struct TEnemyIntentBoardPresentationApi<TBoard, std::void_t<
+		decltype(std::declval<const TBoard&>().IsBattlePresentationLockedForTest()),
+		decltype(std::declval<const TBoard&>().GetActiveBattlePresentationAttackerUnitIdForTest()),
+		decltype(std::declval<const TBoard&>().GetActiveBattlePresentationTargetUnitIdForTest())>>
+	{
+		static constexpr bool bAvailable = true;
+		static bool IsLocked(const TBoard* Board) { return Board->IsBattlePresentationLockedForTest(); }
+		static FName Attacker(const TBoard* Board) { return Board->GetActiveBattlePresentationAttackerUnitIdForTest(); }
+		static FName Target(const TBoard* Board) { return Board->GetActiveBattlePresentationTargetUnitIdForTest(); }
+	};
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -62,6 +87,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& Parameters)
 {
+	using FPresentationApi = TEnemyIntentBoardPresentationApi<UGameXXKBattleBoardWidget>;
+	TestTrue(TEXT("enemy-intent Board exposes the shared presentation gate"), FPresentationApi::bAvailable);
+	if (!FPresentationApi::bAvailable)
+	{
+		return false;
+	}
+
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	FString Error;
@@ -203,6 +235,7 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	TestFalse(TEXT("the player hand is disabled while enemy intents display"), FirstHandCard && FirstHandCard->GetIsEnabled());
 	TestFalse(TEXT("the end-turn control is disabled while enemy intents display"), EndTurnButton && EndTurnButton->GetIsEnabled());
 
+	double PresentationClock = 1000.0;
 	for (int32 IntentIndex = 0; IntentIndex < 3; ++IntentIndex)
 	{
 		Board->AdvanceEnemyIntentPresentationForTest(0.55f);
@@ -213,6 +246,32 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 		TestEqual(FString::Printf(TEXT("intent %d resolves exactly once"), IntentIndex + 1),
 			Subsystem->GetRuntimeState().CardRun.NextEnemyIntentIndex,
 			IntentIndex + 1);
+		TestTrue(FString::Printf(TEXT("intent %d locks its Board-owned damage/status presentation"), IntentIndex + 1),
+			FPresentationApi::IsLocked(Board));
+		const int32 IndexAfterMutation = Subsystem->GetRuntimeState().CardRun.NextEnemyIntentIndex;
+		Board->AdvanceEnemyIntentPresentationForTest(999.0f);
+		TestEqual(FString::Printf(TEXT("intent %d cannot advance again under a large delta while presentation is pending"), IntentIndex + 1),
+			Subsystem->GetRuntimeState().CardRun.NextEnemyIntentIndex,
+			IndexAfterMutation);
+		Board->AdvanceVisualsAtRealTime(PresentationClock);
+		Board->AdvanceVisualsAtRealTime(PresentationClock + 100.0);
+		PresentationClock += 100.0;
+		TestFalse(FString::Printf(TEXT("intent %d unlocks only after its whole Board timeline drains"), IntentIndex + 1),
+			FPresentationApi::IsLocked(Board));
+		if (IntentIndex == 2)
+		{
+			FGameXXKCardCombatUnit* const DotEnemy = State.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+			{
+				return Unit.UnitId == TEXT("IntentEnemy.Three");
+			});
+			TestNotNull(TEXT("phase-completion DOT target remains in the persistent enemy formation"), DotEnemy);
+			if (DotEnemy)
+			{
+				TestEqual(TEXT("phase-completion fixture adds two persistent bleed stacks"),
+					GameXXKCardRules::AddCombatStatus(*DotEnemy, EGameXXKCardStatus::Bleed, 2),
+					2);
+			}
+		}
 		Board->AdvanceEnemyIntentPresentationForTest(0.32f);
 		if (IntentIndex < 2)
 		{
@@ -221,6 +280,24 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 				IntentIndex + 1);
 		}
 	}
+
+	TestTrue(TEXT("enemy-phase completion DOT owns the same presentation gate"), FPresentationApi::IsLocked(Board));
+	const FGameXXKCardCombatUnit* const DotTargetBeforeMarker = State.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("IntentEnemy.Three");
+	});
+	const int32 DotHealthAfter = DotTargetBeforeMarker ? DotTargetBeforeMarker->HP : 0;
+	Board->AdvanceVisualsAtRealTime(PresentationClock);
+	TestEqual(TEXT("phase-completion DOT omits the attacker visual identity"), FPresentationApi::Attacker(Board), NAME_None);
+	TestEqual(TEXT("phase-completion DOT retains its target identity"), FPresentationApi::Target(Board), FName(TEXT("IntentEnemy.Three")));
+	TestEqual(TEXT("target-only DOT seeds its packet-local pre-damage HUD"), Board->GetDisplayedHealthForTest(TEXT("IntentEnemy.Three")), DotHealthAfter + 6);
+	Board->AdvanceEnemyIntentPresentationForTest(999.0f);
+	TestTrue(TEXT("large enemy-intent deltas remain blocked throughout target-only DOT"), FPresentationApi::IsLocked(Board));
+	Board->AdvanceVisualsAtRealTime(PresentationClock + 1.1);
+	TestEqual(TEXT("target-only DOT marker applies its post-packet health"), Board->GetDisplayedHealthForTest(TEXT("IntentEnemy.Three")), DotHealthAfter);
+	Board->AdvanceVisualsAtRealTime(PresentationClock + 100.0);
+	PresentationClock += 100.0;
+	TestFalse(TEXT("phase-completion DOT drains and resumes finalization once"), FPresentationApi::IsLocked(Board));
 
 	TestEqual(TEXT("the presentation completes into a stable next player phase"),
 		State.CardRun.ActiveBattle.Phase,
@@ -415,6 +492,12 @@ bool FGameXXKCardBattleBoardEnemyIntentProjectionSyncRecoveryTest::RunTest(const
 	TestEqual(TEXT("repairing the projection lets the same saved intent resolve exactly once"),
 		State.CardRun.NextEnemyIntentIndex,
 		1);
+	TestTrue(TEXT("the repaired intent keeps its settle transition locked behind damage presentation"),
+		Board->IsBattlePresentationLockedForTest());
+	Board->AdvanceVisualsAtRealTime(0.0);
+	Board->AdvanceVisualsAtRealTime(100.0);
+	TestFalse(TEXT("the repaired intent unlocks after its damage presentation drains"),
+		Board->IsBattlePresentationLockedForTest());
 	Board->AdvanceEnemyIntentPresentationForTest(0.32f);
 	TestEqual(TEXT("the retried intent settles into the next pending presentation without stalling"),
 		Board->GetActiveEnemyIntentPresentationIndexForTest(),

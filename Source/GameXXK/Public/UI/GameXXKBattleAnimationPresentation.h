@@ -54,6 +54,19 @@ struct GAMEXXK_API FGameXXKBattlePresentationEvent
 	bool bTargetDefeated = false;
 };
 
+/** Immutable presentation data captured from one unit's net status-stack change. */
+struct GAMEXXK_API FGameXXKBattleStatusPresentationEvent
+{
+	uint64 EventId = 0;
+	FName UnitId = NAME_None;
+	bool bUnitEnemy = false;
+	EGameXXKCardStatus Status = EGameXXKCardStatus::Invalid;
+	int32 StackBefore = 0;
+	int32 StackAfter = 0;
+	int32 StackDelta = 0;
+	EGameXXKBattleAnimationAction AnimationAction = EGameXXKBattleAnimationAction::Idle;
+};
+
 struct GAMEXXK_API FGameXXKBattleAnimationCombatRequest
 {
 	FName AttackerUnitId = NAME_None;
@@ -73,10 +86,14 @@ public:
 		EGameXXKBattleAnimationAction Action);
 	static FGameXXKBattleAnimationClipDescriptor ResolveGenericClip(EGameXXKBattleAnimationAction Action);
 	static FSoftObjectPath ResolveIdleFlipbookPath(FName RuntimeUnitId, bool bEnemy);
+	/** Source-less damage stays target-only; the legacy fallback parameter is intentionally ignored here. */
 	static TArray<FGameXXKBattlePresentationEvent> BuildPresentationEvents(
 		const FGameXXKCardBattleRuntime& PostDamageBattle,
-		FName FallbackAttackerUnitId,
+		FName IgnoredFallbackAttackerUnitId,
 		const TArray<FGameXXKCardDamageResult>& DamageResults);
+	static TArray<FGameXXKBattleStatusPresentationEvent> BuildStatusPresentationEvents(
+		const FGameXXKCardBattleRuntime& BeforeBattle,
+		const FGameXXKCardBattleRuntime& AfterBattle);
 	/** @deprecated Compatibility wrapper for the current controller; migrate consumers to immutable presentation events. */
 	static TArray<FGameXXKBattleAnimationCombatRequest> BuildCombatRequests(
 		const FGameXXKCardBattleRuntime& PostDamageBattle,
