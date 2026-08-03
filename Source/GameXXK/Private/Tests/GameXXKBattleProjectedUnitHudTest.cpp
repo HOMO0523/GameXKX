@@ -10,15 +10,38 @@
 #include "GameXXKMVPRules.h"
 #include "Layout/Geometry.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattleUnitHudWidget.h"
 #include "UI/GameXXKBattleUnitResourceWidget.h"
 #include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
+#include "UI/GameXXKBattleUnitVisualWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 namespace
 {
+	class FFixedSlotAtlasLoadHandle final : public IGameXXKBattleAtlasLoadHandle
+	{
+	public:
+		virtual void Cancel() override {}
+	};
+
+	class FFixedSlotAtlasLoader final : public IGameXXKBattleAtlasLoader
+	{
+	public:
+		virtual TSharedPtr<IGameXXKBattleAtlasLoadHandle> RequestAsyncLoad(
+			const FSoftObjectPath& Path,
+			FGameXXKAtlasLoaderCompletion Completion) override
+		{
+			RequestedPaths.Add(Path);
+			(void)Completion;
+			return MakeShared<FFixedSlotAtlasLoadHandle>();
+		}
+
+		TArray<FSoftObjectPath> RequestedPaths;
+	};
+
 	const FVector2D FixedUnitHudSize(272.0f, 142.0f);
 
 	FGameXXKCardStatusStack MakeStatus(const EGameXXKCardStatus Status, const int32 Stacks)
@@ -154,9 +177,14 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 
 	UGameXXKBattleBoardWidget* const Board = NewObject<UGameXXKBattleBoardWidget>();
 	Board->SetMVPSubsystem(Subsystem);
+	const TSharedRef<FFixedSlotAtlasLoader> AtlasLoader = MakeShared<FFixedSlotAtlasLoader>();
+	Board->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+		AtlasLoader,
+		[]() { return 10.0; }));
 	TestTrue(TEXT("fixed-slot HUD board initializes"), Board->Initialize());
 	Board->NativeConstruct();
 	Board->RefreshFromState();
+	TestTrue(TEXT("fixed-slot fixture begins a common-stage visual session"), Board->BeginBattleVisualSession(901));
 
 	UCanvasPanel* const Layer = Board->GetBattleProjectedUnitHudLayerForTest();
 	TestNotNull(TEXT("board owns the unit HUD canvas layer"), Layer);
@@ -166,8 +194,11 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	USizeBox* const SafeStageSize = Board->WidgetTree
 		? Cast<USizeBox>(Board->WidgetTree->FindWidget(TEXT("BattleHudSafeStageSize")))
 		: nullptr;
+	UCanvasPanel* const DesignStage = Board->GetBattleDesignStageForTest();
+	UCanvasPanel* const ControlsLayer = Board->GetBattleControlsLayerForTest();
 	TestNotNull(TEXT("board embeds the unit HUD in a centered 16:9 safe stage"), SafeStage);
 	TestNotNull(TEXT("the safe stage has a fixed 1920 by 1080 design canvas"), SafeStageSize);
+	TestNotNull(TEXT("the fixed stage owns one design canvas for every battle element"), DesignStage);
 	TestEqual(TEXT("the safe stage scales to fit without stretching the battle composition"),
 		SafeStage ? SafeStage->GetStretch() : EStretch::None,
 		EStretch::ScaleToFit);
@@ -176,8 +207,10 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		EStretchDirection::Both);
 	TestEqual(TEXT("the safe stage keeps a 1920 design width"), SafeStageSize ? SafeStageSize->GetWidthOverride() : 0.0f, 1920.0f);
 	TestEqual(TEXT("the safe stage keeps a 1080 design height"), SafeStageSize ? SafeStageSize->GetHeightOverride() : 0.0f, 1080.0f);
-	TestTrue(TEXT("the fixed HUD layer belongs to the 16:9 stage rather than the full root canvas"),
-		Layer && SafeStageSize && Layer->GetParent() == SafeStageSize);
+	TestTrue(TEXT("the design canvas is the sole content of the fixed 1920 by 1080 size box"),
+		DesignStage && SafeStageSize && DesignStage->GetParent() == SafeStageSize);
+	TestTrue(TEXT("the fixed HUD layer belongs to the controls container inside the common stage"),
+		Layer && ControlsLayer && Layer->GetParent() == ControlsLayer);
 	const UScaleBoxSlot* const SafeStageContentSlot = SafeStageSize ? Cast<UScaleBoxSlot>(SafeStageSize->Slot) : nullptr;
 	TestTrue(TEXT("the safe-stage content centers in both axes when a viewport letterboxes or pillarboxes"),
 		SafeStageContentSlot
@@ -187,8 +220,11 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		Layer ? Layer->GetVisibility() : ESlateVisibility::Visible,
 		ESlateVisibility::SelfHitTestInvisible);
 	const UCanvasPanelSlot* const SafeStageSlot = SafeStage ? Cast<UCanvasPanelSlot>(SafeStage->Slot) : nullptr;
-	TestTrue(TEXT("unit HUD safe stage remains behind card and intent tooltips"),
-		SafeStageSlot && SafeStageSlot->GetZOrder() < 0);
+	TestEqual(TEXT("the common stage occupies the viewport root above the full-screen backdrop"),
+		SafeStageSlot ? SafeStageSlot->GetZOrder() : INDEX_NONE, 1);
+	const UCanvasPanelSlot* const ControlsSlot = ControlsLayer ? Cast<UCanvasPanelSlot>(ControlsLayer->Slot) : nullptr;
+	TestEqual(TEXT("unit HUD and card controls share canonical controls z twenty"),
+		ControlsSlot ? ControlsSlot->GetZOrder() : INDEX_NONE, 20);
 	const FGameXXKBattleHudSafeStageLayout NativeStage = Board->ResolveBattleHudSafeStageLayoutForTest(FVector2D(1920.0f, 1080.0f));
 	TestTrue(TEXT("a native 16:9 viewport fills the fixed HUD safe stage"),
 		NativeStage.Offset.Equals(FVector2D::ZeroVector, 0.01f)
@@ -206,14 +242,32 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		&& FMath::IsNearlyEqual(NarrowStage.Scale, 2.0f / 3.0f, 0.001f));
 	TestEqual(TEXT("only six valid living P-slots create HUD plates"), Board->GetProjectedUnitHudCountForTest(), 6);
 	TestEqual(TEXT("the unit HUD layer owns one child for every valid living P-slot"), Layer ? Layer->GetChildrenCount() : INDEX_NONE, 6);
+	TestEqual(TEXT("the common stage owns one persistent image visual for every valid living P-slot"),
+		Board->GetUnitVisualCountForTest(), 6);
 	TestNull(TEXT("a living unit without a valid P-slot has no HUD plate"), Board->GetProjectedUnitHudForTest(TEXT("Party.InvalidSlot")));
+	TestNull(TEXT("a living unit without a valid P-slot has no formation visual"), Board->GetUnitVisualForTest(TEXT("Party.InvalidSlot")));
 
-	AssertFixedHudSlot(*this, Board, TEXT("Partner.Blade"), EGameXXKCardTargetSide::Party, 1, FVector2D(0.89f, 0.60f));
-	AssertFixedHudSlot(*this, Board, TEXT("Player"), EGameXXKCardTargetSide::Party, 2, FVector2D(0.74f, 0.52f));
-	AssertFixedHudSlot(*this, Board, TEXT("Npc.TusiChief"), EGameXXKCardTargetSide::Party, 3, FVector2D(0.59f, 0.44f));
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.MoneyRat"), EGameXXKCardTargetSide::Enemy, 1, FVector2D(0.11f, 0.60f));
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.BlackBear"), EGameXXKCardTargetSide::Enemy, 2, FVector2D(0.26f, 0.52f));
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.41f, 0.44f));
+	AssertFixedHudSlot(*this, Board, TEXT("Partner.Blade"), EGameXXKCardTargetSide::Party, 1, FVector2D(0.905f, 0.60f));
+	AssertFixedHudSlot(*this, Board, TEXT("Player"), EGameXXKCardTargetSide::Party, 2, FVector2D(0.755f, 0.52f));
+	AssertFixedHudSlot(*this, Board, TEXT("Npc.TusiChief"), EGameXXKCardTargetSide::Party, 3, FVector2D(0.605f, 0.44f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.MoneyRat"), EGameXXKCardTargetSide::Enemy, 1, FVector2D(0.095f, 0.60f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.BlackBear"), EGameXXKCardTargetSide::Enemy, 2, FVector2D(0.245f, 0.52f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.395f, 0.44f));
+	const FName FormationUnitIds[] = {
+		TEXT("Partner.Blade"), TEXT("Player"), TEXT("Npc.TusiChief"),
+		TEXT("Enemy.MoneyRat"), TEXT("Enemy.BlackBear"), TEXT("Enemy.Tiger")};
+	for (const FName UnitId : FormationUnitIds)
+	{
+		UGameXXKBattleUnitVisualWidget* const Visual = Board->GetUnitVisualForTest(UnitId);
+		TestNotNull(FString::Printf(TEXT("%s has a persistent formation visual"), *UnitId.ToString()), Visual);
+		TestTrue(FString::Printf(TEXT("%s visual is a direct design-stage child"), *UnitId.ToString()),
+			Visual && Visual->GetParent() == DesignStage);
+		const UCanvasPanelSlot* const VisualSlot = Visual ? Cast<UCanvasPanelSlot>(Visual->Slot) : nullptr;
+		TestEqual(FString::Printf(TEXT("%s visual remains at formation z ten"), *UnitId.ToString()),
+			VisualSlot ? VisualSlot->GetZOrder() : INDEX_NONE, 10);
+		TestNotNull(FString::Printf(TEXT("%s retains a stable target proxy"), *UnitId.ToString()),
+			Board->GetUnitTargetProxyForTest(UnitId));
+	}
 	AssertApprovedInnerLaneClearance(*this, Board);
 
 	UGameXXKBattleUnitHudWidget* const HeroHud = Board->GetProjectedUnitHudForTest(TEXT("Player"));
@@ -259,17 +313,18 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	Board->RegisterBattleUnitHudScreenPosition(TEXT("Player"), FVector2D(12.0f, 1060.0f));
 	Board->RegisterBattleUnitHudScreenPosition(TEXT("Enemy.Tiger"), FVector2D(1910.0f, 8.0f));
 	Board->NativeTick(WideGeometry, 0.0f);
-	AssertFixedHudSlot(*this, Board, TEXT("Player"), EGameXXKCardTargetSide::Party, 2, FVector2D(0.74f, 0.52f));
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.41f, 0.44f));
+	AssertFixedHudSlot(*this, Board, TEXT("Player"), EGameXXKCardTargetSide::Party, 2, FVector2D(0.755f, 0.52f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.395f, 0.44f));
 
 	const FGeometry NarrowGeometry = FGeometry::MakeRoot(FVector2D(1280.0f, 1024.0f), FSlateLayoutTransform());
 	Board->NativeTick(NarrowGeometry, 0.0f);
-	AssertFixedHudSlot(*this, Board, TEXT("Partner.Blade"), EGameXXKCardTargetSide::Party, 1, FVector2D(0.89f, 0.60f));
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.MoneyRat"), EGameXXKCardTargetSide::Enemy, 1, FVector2D(0.11f, 0.60f));
+	AssertFixedHudSlot(*this, Board, TEXT("Partner.Blade"), EGameXXKCardTargetSide::Party, 1, FVector2D(0.905f, 0.60f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.MoneyRat"), EGameXXKCardTargetSide::Enemy, 1, FVector2D(0.095f, 0.60f));
 
 	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units[5].bLiving = false;
 	Board->RefreshFromState();
 	TestNull(TEXT("dead fixed-slot units are removed from the board HUD map"), Board->GetProjectedUnitHudForTest(TEXT("Enemy.Tiger")));
+	TestNull(TEXT("dead fixed-slot units are removed from the persistent visual registry"), Board->GetUnitVisualForTest(TEXT("Enemy.Tiger")));
 	TestEqual(TEXT("dead fixed-slot units reduce the board HUD count"), Board->GetProjectedUnitHudCountForTest(), 5);
 	FGameXXKCardCombatUnit& TigerRuntimeUnit = Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units[5];
 	TigerRuntimeUnit.bLiving = true;
@@ -278,7 +333,7 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	Board->RefreshFromState();
 	UGameXXKBattleUnitHudWidget* const RevivedTigerHud = Board->GetProjectedUnitHudForTest(TEXT("Enemy.Tiger"));
 	TestNotNull(TEXT("a revived valid P-slot reconstructs its fixed HUD"), RevivedTigerHud);
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.41f, 0.44f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.395f, 0.44f));
 	TestEqual(TEXT("a revived fixed-slot HUD redraws current HP"),
 		RevivedTigerHud && RevivedTigerHud->GetResourceWidgetForTest()
 			? RevivedTigerHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest()

@@ -74,7 +74,6 @@ namespace
 TSharedRef<SWidget> UGameXXKBattleUnitVisualWidget::RebuildWidget()
 {
 	BuildProgrammaticLayout();
-	ApplyCanvasLayout();
 	RefreshImageVisibility();
 	return Super::RebuildWidget();
 }

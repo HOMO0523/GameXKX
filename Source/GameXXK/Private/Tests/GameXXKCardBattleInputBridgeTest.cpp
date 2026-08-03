@@ -15,7 +15,9 @@
 #include "MVP/GameXXKBattleSceneUnitActor.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKBattleUnitVisualWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
 #include "UObject/UObjectGlobals.h"
 #include "Widgets/SWidget.h"
@@ -24,6 +26,32 @@
 
 namespace
 {
+	class FBridgeAtlasLoadHandle final : public IGameXXKBattleAtlasLoadHandle
+	{
+	public:
+		virtual void Cancel() override { bCancelled = true; }
+		bool bCancelled = false;
+	};
+
+	class FBridgeAtlasLoader final : public IGameXXKBattleAtlasLoader
+	{
+	public:
+		virtual TSharedPtr<IGameXXKBattleAtlasLoadHandle> RequestAsyncLoad(
+			const FSoftObjectPath& Path,
+			FGameXXKAtlasLoaderCompletion Completion) override
+		{
+			(void)Path;
+			(void)Completion;
+			++RequestCount;
+			TSharedRef<FBridgeAtlasLoadHandle> Handle = MakeShared<FBridgeAtlasLoadHandle>();
+			Handles.Add(Handle);
+			return Handle;
+		}
+
+		int32 RequestCount = 0;
+		TArray<TSharedRef<FBridgeAtlasLoadHandle>> Handles;
+	};
+
 	FGameXXKBattleRuntimeUnit MakeBridgeEnemy()
 	{
 		FGameXXKBattleRuntimeUnit Unit;
@@ -123,13 +151,19 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	Controller->RefreshPlayerFlowWidgetsForTest();
 	UGameXXKBattleBoardWidget* Board = Controller->GetBattleBoardWidgetForTest();
 	TestNotNull(TEXT("controller exposes its battle board"), Board);
 	if (!Board)
 	{
 		return false;
 	}
+	const TSharedRef<FBridgeAtlasLoader> DirectAtlasLoader = MakeShared<FBridgeAtlasLoader>();
+	Board->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+		DirectAtlasLoader,
+		[]() { return 15.0; }));
+	Controller->RefreshPlayerFlowWidgetsForTest();
+	TestTrue(TEXT("controller forwards its nonzero overlay token into the board visual session"),
+		Board->GetActiveBattleVisualSessionTokenForTest() != 0);
 	const FGameXXKCardInstance* PartyCardInstance = Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.FindByPredicate([PartyCardInstanceId](const FGameXXKCardInstance& Candidate)
 	{
 		return Candidate.InstanceId == PartyCardInstanceId;
@@ -142,12 +176,18 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 
 	const FVector2D InitialOwnerProjection(486.0f, 338.0f);
 	const FVector2D MovedOwnerProjection(672.0f, 414.0f);
+	UGameXXKBattleUnitVisualWidget* const DirectOwnerVisual = Board->GetUnitVisualForTest(PartyCardInstance->OwnerUnitId);
+	TestNotNull(TEXT("friendly card owner is represented by one persistent UMG visual"), DirectOwnerVisual);
 	Board->RegisterBattleUnitScreenPosition(PartyCardInstance->OwnerUnitId, InitialOwnerProjection);
 	TestTrue(TEXT("friendly-target card enters card targeting"), Board->ClickCardInHand(PartyCardInstanceId));
 	TestTrue(TEXT("friendly-target card stays in card targeting mode"), Board->IsCardTargetingActive());
-	TestEqual(TEXT("card arrow starts at the owner projection registered before selection"), Board->GetTargetingSourcePositionForTest(), InitialOwnerProjection);
+	TestEqual(TEXT("card arrow starts at the owner unit widget center"),
+		Board->GetTargetingSourcePositionForTest(),
+		DirectOwnerVisual ? DirectOwnerVisual->GetStageCenter() : FVector2D::ZeroVector);
 	Board->RegisterBattleUnitScreenPosition(PartyCardInstance->OwnerUnitId, MovedOwnerProjection);
-	TestEqual(TEXT("a refreshed owner projection moves the active card arrow source"), Board->GetTargetingSourcePositionForTest(), MovedOwnerProjection);
+	TestEqual(TEXT("a refreshed legacy projection cannot move the active UMG arrow source"),
+		Board->GetTargetingSourcePositionForTest(),
+		DirectOwnerVisual ? DirectOwnerVisual->GetStageCenter() : FVector2D::ZeroVector);
 
 	const FName EnemyUnitId = Subsystem->GetRuntimeState().ActiveBattleEnemies[0].Id;
 	TestFalse(TEXT("illegal enemy UnitId does not spend the selected friendly card"), Controller->ConfirmBattleTargetForUnitId(EnemyUnitId));
@@ -251,6 +291,10 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 		SceneWorld->RemoveFromRoot();
 		return false;
 	}
+	const TSharedRef<FBridgeAtlasLoader> SceneAtlasLoader = MakeShared<FBridgeAtlasLoader>();
+	SceneBoard->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+		SceneAtlasLoader,
+		[]() { return 25.0; }));
 	if (!SceneController->HasActorBegunPlay())
 	{
 		SceneController->DispatchBeginPlay();
@@ -271,9 +315,13 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	SceneController->RefreshPlayerFlowWidgetsForTest();
 	TestFalse(TEXT("battle entry closes the stale town companion modal"), SceneController->IsCompanionRosterOpenForTest());
 	TestTrue(TEXT("battle overlay remains move-ignored after stale modal cleanup"), SceneController->IsMoveInputIgnored());
+	const uint64 ModalVisualSessionToken = SceneBoard->GetActiveBattleVisualSessionTokenForTest();
+	TestTrue(TEXT("modal-to-battle entry forwards a fresh nonzero Board session token"), ModalVisualSessionToken != 0);
 	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
 	SceneController->RefreshPlayerFlowWidgetsForTest();
 	TestFalse(TEXT("modal-to-battle fixture exits the overlay"), SceneController->IsBattleOverlayActive());
+	TestEqual(TEXT("modal-to-battle exit cancels its Board session token"),
+		SceneBoard->GetActiveBattleVisualSessionTokenForTest(), uint64(0));
 	TestFalse(TEXT("modal-to-battle exit leaks no move-ignore increment"), SceneController->IsMoveInputIgnored());
 
 	AGameXXKBattleSceneUnitActor* const LegacySceneUnit = SceneWorld->SpawnActor<AGameXXKBattleSceneUnitActor>(
@@ -356,6 +404,9 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
 	SceneController->RefreshPlayerFlowWidgetsForTest();
 	TestTrue(TEXT("battle overlay is active in the isolated game world"), SceneController->IsBattleOverlayActive());
+	const uint64 ActiveVisualSessionToken = SceneBoard->GetActiveBattleVisualSessionTokenForTest();
+	TestTrue(TEXT("overlay entry begins exactly one nonzero board visual session"), ActiveVisualSessionToken != 0);
+	TestTrue(TEXT("a later overlay entry never reuses the cancelled modal session"), ActiveVisualSessionToken != ModalVisualSessionToken);
 	TestTrue(TEXT("battle overlay retains the same route widget"), SceneController->GetRouteMapWidgetForTest() == RouteWidgetBeforeBattle);
 	TestEqual(TEXT("battle overlay keeps the same world package"), SceneWorld->GetOutermost()->GetName(), WorldPackageBeforeBattle);
 	TestTrue(TEXT("battle overlay keeps the active view target"), SceneController->GetViewTarget() == ViewTargetBeforeBattle);
@@ -383,8 +434,14 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 		SceneBoard->GetTargetingPointerPositionForTest(), IdlePointerBeforeTick);
 	TestEqual(TEXT("idle PlayerTick leaves the legacy actor location untouched"),
 		LegacySceneUnit->GetActorLocation(), LegacyActorLocation);
+	TestTrue(TEXT("owner-projection fixture points the legacy actor at the card owner"),
+		ConfigureLegacyPartyTarget(SceneCardOwnerUnitId));
 	TestTrue(TEXT("HUD bridge card enters manual targeting without a scene actor"), SceneBoard->ClickCardInHand(SceneCardInstanceId));
-	TestFalse(TEXT("HUD fallback provides a nonzero targeting origin"), SceneBoard->GetTargetingSourcePositionForTest().IsNearlyZero());
+	UGameXXKBattleUnitVisualWidget* const SceneOwnerVisual = SceneBoard->GetUnitVisualForTest(SceneCardOwnerUnitId);
+	TestNotNull(TEXT("HUD bridge card owner has one persistent stage visual"), SceneOwnerVisual);
+	TestEqual(TEXT("HUD targeting source is the persistent unit visual center"),
+		SceneBoard->GetTargetingSourcePositionForTest(),
+		SceneOwnerVisual ? SceneOwnerVisual->GetStageCenter() : FVector2D::ZeroVector);
 	const FVector2D PointerPosition(812.0f, 468.0f);
 	SceneController->SetBattleMousePositionOverrideForTest(PointerPosition);
 	SceneWorld->Tick(LEVELTICK_All, 1.0f / 60.0f);
@@ -392,6 +449,9 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 		SceneBoard->GetTargetingPointerPositionForTest(), PointerPosition);
 	TestEqual(TEXT("PlayerTick leaves HUD-owned unit positions untouched"),
 		SceneBoard->GetBattleUnitScreenPositionForTest(SceneCardOwnerUnitId), HudOwnedPosition);
+	TestEqual(TEXT("owner actor projection cannot overwrite the persistent UMG targeting source"),
+		SceneBoard->GetTargetingSourcePositionForTest(),
+		SceneOwnerVisual ? SceneOwnerVisual->GetStageCenter() : FVector2D::ZeroVector);
 	TestEqual(TEXT("card-targeting PlayerTick leaves the legacy actor location untouched"),
 		LegacySceneUnit->GetActorLocation(), LegacyActorLocation);
 	TestFalse(TEXT("PlayerTick never applies targeting highlight to a legacy actor"), LegacySceneUnit->IsCardTargetHighlighted());
@@ -485,6 +545,12 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
 	SceneController->RefreshPlayerFlowWidgetsForTest();
 	TestFalse(TEXT("ordinary battle exit deactivates the overlay"), SceneController->IsBattleOverlayActive());
+	TestEqual(TEXT("ordinary overlay exit cancels the exact Board visual session token"),
+		SceneBoard->GetActiveBattleVisualSessionTokenForTest(), uint64(0));
+	TestEqual(TEXT("ordinary overlay exit drops all Board-held atlas pins"),
+		SceneBoard->GetPinnedBattleAtlasCountForTest(), 0);
+	TestEqual(TEXT("ordinary overlay exit clears the persistent visual registry"),
+		SceneBoard->GetUnitVisualCountForTest(), 0);
 	TestEqual(TEXT("dungeon-map refresh becomes authoritative after overlay restoration"), RouteWidgetBeforeBattle->GetVisibility(), ESlateVisibility::Visible);
 	TestEqual(TEXT("ordinary exit restores route scroll exactly"), RouteWidgetBeforeBattle->GetCurrentScrollOffset(), RouteScrollBeforeBattle);
 	TestFalse(TEXT("ordinary exit restores hidden cursor"), SceneController->bShowMouseCursor);
@@ -504,6 +570,9 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
 	SceneController->RefreshPlayerFlowWidgetsForTest();
 	TestTrue(TEXT("pre-travel fixture re-enters the overlay"), SceneController->IsBattleOverlayActive());
+	const uint64 PreTravelVisualSessionToken = SceneBoard->GetActiveBattleVisualSessionTokenForTest();
+	TestTrue(TEXT("pre-travel re-entry starts another nonzero Board session"), PreTravelVisualSessionToken != 0);
+	TestTrue(TEXT("pre-travel re-entry never reuses the ordinary-exit session"), PreTravelVisualSessionToken != ActiveVisualSessionToken);
 	TestTrue(TEXT("pre-travel entry reacquires full paused ticking"), SceneController->ShouldPerformFullTickWhenPaused());
 	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
 	const FName ForeignWorldName = MakeUniqueObjectName(
@@ -533,6 +602,8 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("pre-load isolation uses the registered foreign world context"), ForeignWorldContext.World() == ForeignWorld);
 	FCoreUObjectDelegates::PreLoadMapWithContext.Broadcast(ForeignWorldContext, TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 	TestTrue(TEXT("pre-load broadcast for another world leaves this overlay active"), SceneController->IsBattleOverlayActive());
+	TestEqual(TEXT("foreign pre-load preserves the active Board visual session"),
+		SceneBoard->GetActiveBattleVisualSessionTokenForTest(), PreTravelVisualSessionToken);
 	ForeignWorld->DestroyWorld(false);
 	GEngine->DestroyWorldContext(ForeignWorld);
 	ForeignWorld->RemoveFromRoot();
@@ -542,6 +613,8 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	MatchingPreLoadWorldContext.SetCurrentWorld(SceneWorld);
 	FCoreUObjectDelegates::PreLoadMapWithContext.Broadcast(MatchingPreLoadWorldContext, TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 	TestFalse(TEXT("matching real pre-load broadcast exits the overlay"), SceneController->IsBattleOverlayActive());
+	TestEqual(TEXT("matching real pre-load cancels the Board visual session"),
+		SceneBoard->GetActiveBattleVisualSessionTokenForTest(), uint64(0));
 	TestFalse(TEXT("matching real pre-load cleanup releases full paused ticking"), SceneController->ShouldPerformFullTickWhenPaused());
 	TestEqual(TEXT("real pre-load cleanup restores route visibility"), RouteWidgetBeforeBattle->GetVisibility(), ESlateVisibility::Hidden);
 	TestEqual(TEXT("real pre-load cleanup restores route scroll"), RouteWidgetBeforeBattle->GetCurrentScrollOffset(), 77.0f);
@@ -556,11 +629,16 @@ bool FGameXXKCardBattleInputBridgeTest::RunTest(const FString& Parameters)
 	SceneSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
 	SceneController->RefreshPlayerFlowWidgetsForTest();
 	TestTrue(TEXT("EndPlay fixture re-enters the overlay"), SceneController->IsBattleOverlayActive());
+	const uint64 EndPlayVisualSessionToken = SceneBoard->GetActiveBattleVisualSessionTokenForTest();
+	TestTrue(TEXT("EndPlay fixture owns a fresh nonzero Board session"), EndPlayVisualSessionToken != 0);
+	TestTrue(TEXT("EndPlay fixture does not reuse the pre-travel session"), EndPlayVisualSessionToken != PreTravelVisualSessionToken);
 	TestTrue(TEXT("overlay entry preserves a pre-existing full paused tick"), SceneController->ShouldPerformFullTickWhenPaused());
 	SceneController->EndPlay(EEndPlayReason::Destroyed);
 	TestFalse(TEXT("EndPlay removes the real pre-load map delegate"),
 		FCoreUObjectDelegates::PreLoadMapWithContext.IsBoundToObject(SceneController));
 	TestFalse(TEXT("EndPlay cleanup exits the overlay"), SceneController->IsBattleOverlayActive());
+	TestEqual(TEXT("EndPlay cleanup cancels the Board visual session"),
+		SceneBoard->GetActiveBattleVisualSessionTokenForTest(), uint64(0));
 	TestEqual(TEXT("EndPlay cleanup restores route visibility"), RouteWidgetBeforeBattle->GetVisibility(), ESlateVisibility::HitTestInvisible);
 	TestEqual(TEXT("EndPlay cleanup restores route scroll"), RouteWidgetBeforeBattle->GetCurrentScrollOffset(), 91.0f);
 	TestFalse(TEXT("EndPlay cleanup restores cursor state"), SceneController->bShowMouseCursor);

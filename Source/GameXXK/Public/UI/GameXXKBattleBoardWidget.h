@@ -4,11 +4,13 @@
 #include "Components/Button.h"
 #include "GameXXKCardTypes.h"
 #include "Math/Box2D.h"
+#include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKMVPWidgetBase.h"
 #include "Input/Reply.h"
 #include "GameXXKBattleBoardWidget.generated.h"
 
 class UCanvasPanel;
+class UScaleBox;
 class UGameXXKBattleAnimationLayerWidget;
 class UBorder;
 class UImage;
@@ -19,6 +21,17 @@ class UHorizontalBox;
 class UScrollBox;
 class UGameXXKBattlePartyQiWidget;
 class UGameXXKBattleUnitHudWidget;
+class UGameXXKBattleUnitVisualWidget;
+class UGameXXKBattleBoardWidget;
+
+enum class EGameXXKBattleHudLayer : uint8
+{
+	Backdrop,
+	Formation,
+	TargetProxy,
+	Controls,
+	LegacyAnimation
+};
 
 /** Pure Board layout result for the passive shared-Qi rail and its collision safety envelopes. */
 struct FGameXXKBattlePartyQiLayout
@@ -131,6 +144,26 @@ private:
 	EGameXXKCardPendingChoiceKind ChoiceKind = EGameXXKCardPendingChoiceKind::Invalid;
 };
 
+/** Stable, transparent click proxy for one authoritative battle UnitId. */
+UCLASS()
+class GAMEXXK_API UGameXXKBattleUnitTargetProxyButton : public UButton
+{
+	GENERATED_BODY()
+
+public:
+	void Configure(UGameXXKBattleBoardWidget* InOwner, FName InUnitId);
+
+private:
+	UFUNCTION()
+	void HandleClicked();
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKBattleBoardWidget> Owner;
+
+	UPROPERTY(Transient)
+	FName UnitId;
+};
+
 UCLASS(Blueprintable)
 class GAMEXXK_API UGameXXKBattleBoardWidget : public UGameXXKMVPWidgetBase
 {
@@ -139,6 +172,7 @@ class GAMEXXK_API UGameXXKBattleBoardWidget : public UGameXXKMVPWidgetBase
 public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -161,6 +195,28 @@ public:
 		bool bTargetEnemy,
 		bool bTargetDefeated);
 	UGameXXKBattleAnimationLayerWidget* GetBattleAnimationLayerForTest() const;
+	bool BeginBattleVisualSession(uint64 SessionToken);
+	void CancelBattleVisualSession(uint64 ClosingSessionToken);
+	void AdvanceVisualsAtRealTime(double AbsoluteSeconds);
+	void HandleUnitTargetProxyClicked(FName UnitId);
+	int32 GetLayerZ(EGameXXKBattleHudLayer Layer) const;
+
+	UCanvasPanel* GetBattleViewportRootForTest() const;
+	UCanvasPanel* GetBattleDesignStageForTest() const;
+	UCanvasPanel* GetBattleControlsLayerForTest() const;
+	UScaleBox* GetBattleBackdropScaleBoxForTest() const;
+	UImage* GetBattleBackdropImageForTest() const;
+	FString GetBattleBackdropResourcePathForTest() const;
+	UGameXXKBattleUnitVisualWidget* GetUnitVisualForTest(FName UnitId) const;
+	UButton* GetUnitTargetProxyForTest(FName UnitId) const;
+	int32 GetUnitVisualCountForTest() const;
+	bool IsUnitTargetPlaceholderVisibleForTest(FName UnitId) const;
+	uint64 GetActiveBattleVisualSessionTokenForTest() const;
+	int32 GetPinnedBattleAtlasCountForTest() const;
+
+#if WITH_DEV_AUTOMATION_TESTS
+	void SetAtlasCacheForTest(TUniquePtr<FGameXXKBattleAtlasCache> InAtlasCache);
+#endif
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
 	bool ExecutePrimaryEnemyAction();
@@ -387,6 +443,10 @@ public:
 
 private:
 	void BuildProgrammaticLayout();
+	void RefreshUnitVisuals();
+	void ReleasePinnedAtlasForUnit(FName UnitId);
+	void RemoveUnitVisual(FName UnitId);
+	void SetUnitTargetPlaceholderVisible(FName UnitId, bool bVisible);
 	UButton* AddBattleActionButton(const FText& Label, FName ButtonName, FName ActionName);
 	void RefreshProgrammaticLayout();
 	void RefreshActionButtons();
@@ -567,7 +627,24 @@ private:
 	void HandleRouteRewardReplacementClicked(FName EntryId);
 
 	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> ViewportRootCanvas;
+
+	/** Canonical 1920x1080 canvas under the centered ScaleToFit viewport stage. */
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> BattleDesignStage;
+
+	/** Existing card/status controls now share one z=20 container in the design stage. */
+	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UScaleBox> BattleBackdropScaleBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> BattleBackdropImage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> BattleBackdropTexture;
 
 	/** One ordinary input-transparent Canvas inside the centered 16:9 battle safe stage. */
 	UPROPERTY(Transient)
@@ -579,6 +656,22 @@ private:
 
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<UGameXXKBattleUnitHudWidget>> ProjectedUnitHuds;
+
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<UGameXXKBattleUnitVisualWidget>> UnitVisuals;
+
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<UGameXXKBattleUnitTargetProxyButton>> UnitTargetProxies;
+
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<UTextBlock>> UnitTargetPlaceholders;
+
+	TMap<FName, FSoftObjectPath> PinnedUnitAtlasPaths;
+	/** One idle request per unit and visual session, including terminal fallback results. */
+	TMap<FName, FSoftObjectPath> RequestedUnitAtlasPaths;
+	TUniquePtr<FGameXXKBattleAtlasCache> AtlasCache;
+	uint64 ActiveBattleVisualSessionToken = 0;
+	double LastSlateSeconds = 0.0;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> ActionBox;

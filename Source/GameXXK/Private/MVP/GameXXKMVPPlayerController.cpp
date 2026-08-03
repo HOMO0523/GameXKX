@@ -453,12 +453,22 @@ bool AGameXXKMVPPlayerController::ApplyBattleOverlayEntry(
 	bEnableClickEvents = true;
 	bEnableMouseOverEvents = true;
 	SetTrackedInputMode(EGameXXKTrackedInputMode::UIOnly, &BattleWidget);
+	// Focus acquisition calls TakeWidget() and may perform the first Slate rebuild.
+	// Start the visual session only after that rebuild so formation children are
+	// added to a live design-stage canvas, never to a half-built constraint slot.
+	if (!BattleWidget.BeginBattleVisualSession(SessionToken))
+	{
+		return false;
+	}
 	return BattleOverlayCoordinator->IsCurrentSession(SessionToken);
 }
 
 void AGameXXKMVPPlayerController::CancelBattleVisualLoads(const uint64 ClosingSessionToken)
 {
-	(void)ClosingSessionToken;
+	if (BattleBoardWidget)
+	{
+		BattleBoardWidget->CancelBattleVisualSession(ClosingSessionToken);
+	}
 }
 
 void AGameXXKMVPPlayerController::RestoreBattleOverlaySnapshot(
@@ -1829,7 +1839,13 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	bEnableMouseOverEvents = true;
 	if (IsBattleOverlayActive() && BattleBoardWidget)
 	{
-		SetTrackedInputMode(EGameXXKTrackedInputMode::UIOnly, BattleBoardWidget);
+		// ApplyBattleOverlayEntry already focused the board before starting its
+		// visual session. Re-taking the same widget here is redundant and can
+		// tear down a headless Slate resource between refreshes.
+		if (TrackedInputMode != EGameXXKTrackedInputMode::UIOnly)
+		{
+			SetTrackedInputMode(EGameXXKTrackedInputMode::UIOnly, BattleBoardWidget);
+		}
 		return;
 	}
 
