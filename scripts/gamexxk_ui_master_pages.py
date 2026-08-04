@@ -1,0 +1,580 @@
+"""Functional grayscale page previews for the GameXXK UI Master Phase A."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+import re
+
+from PIL import Image, ImageDraw, ImageFont
+
+from scripts.gamexxk_ui_master_assets import build_component_assets
+from scripts.gamexxk_ui_master_contract import load_contract
+
+
+ROOT = Path(__file__).resolve().parents[1]
+PACKAGE = ROOT / "SourceArt/UI/PSD/gamexxk-v4/ui-master"
+PAGE_SIZE = (1920, 1080)
+INK = (43, 40, 34, 255)
+MUTED = (93, 85, 72, 220)
+PAPER = (232, 215, 179, 255)
+HERO = ROOT / "SourceAssets/AnimationProcessing/Production/character_00_hero_idle/frames/frame_0000.png"
+PARTNER = ROOT / "SourceAssets/AnimationProcessing/Production/character_01_blade_idle/frames/frame_0000.png"
+MONSTER = ROOT / "SourceAssets/AnimationProcessing/Production/enemy_01_rooster_idle/frames/frame_0000.png"
+
+
+@dataclass(frozen=True)
+class CanvasPlacement:
+    scale_x: float
+    scale_y: float
+    content_width: float
+    content_height: float
+
+
+def contain_canvas(
+    source_size: tuple[int, int],
+    target_size: tuple[int, int],
+    alpha_bbox: tuple[int, int, int, int],
+) -> CanvasPlacement:
+    source_width, source_height = source_size
+    target_width, target_height = target_size
+    if min(source_width, source_height, target_width, target_height) <= 0:
+        raise ValueError("source and target sizes must be positive")
+    alpha_left, alpha_top, alpha_right, alpha_bottom = alpha_bbox
+    if alpha_right < alpha_left or alpha_bottom < alpha_top:
+        raise ValueError("alpha bounding box is invalid")
+    scale = min(target_width / source_width, target_height / source_height)
+    return CanvasPlacement(
+        scale_x=scale,
+        scale_y=scale,
+        content_width=(alpha_right - alpha_left) * scale,
+        content_height=(alpha_bottom - alpha_top) * scale,
+    )
+
+
+def _font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    candidates = (
+        Path("C:/Windows/Fonts/msyhbd.ttc") if bold else Path("C:/Windows/Fonts/msyh.ttc"),
+        Path("C:/Windows/Fonts/simhei.ttf"),
+        Path("C:/Windows/Fonts/simkai.ttf"),
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return ImageFont.truetype(str(candidate), size)
+    return ImageFont.load_default()
+
+
+def _safe_name(value: str) -> str:
+    return re.sub(r"[\\/:*?\"<>|]", "_", value)
+
+
+def _world_asset(path: Path) -> None:
+    if path.is_file():
+        return
+    image = Image.new("RGBA", PAGE_SIZE, (116, 123, 118, 255))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, 1920, 500), fill=(102, 113, 112, 255))
+    draw.polygon(((0, 390), (520, 170), (1030, 370), (1530, 140), (1920, 330), (1920, 0), (0, 0)), fill=(77, 87, 88, 255))
+    for x, y, width in ((60, 250, 520), (610, 215, 560), (1220, 245, 620)):
+        draw.rectangle((x, y, x + width, y + 310), fill=(91, 91, 86, 255))
+        draw.polygon(((x - 50, y + 35), (x + width // 2, y - 95), (x + width + 55, y + 35)), fill=(60, 65, 66, 255))
+        for window_x in range(x + 70, x + width - 40, 130):
+            draw.rectangle((window_x, y + 100, window_x + 64, y + 188), fill=(151, 143, 123, 255))
+    draw.polygon(((0, 760), (710, 570), (1350, 600), (1920, 520), (1920, 1080), (0, 1080)), fill=(133, 128, 113, 255))
+    for index in range(18):
+        x = (index * 137) % 1920
+        y = 620 + (index * 53) % 330
+        draw.ellipse((x - 90, y - 60, x + 110, y + 90), fill=(82, 101, 82, 210))
+    image.save(path)
+
+
+class PageBuilder:
+    def __init__(
+        self,
+        group: str,
+        asset_root: Path,
+        component_records: dict[str, dict],
+        package_root: Path,
+    ) -> None:
+        self.group = group
+        self.asset_root = asset_root
+        self.package_root = package_root
+        self.components = component_records
+        self.canvas = Image.new("RGBA", PAGE_SIZE, (0, 0, 0, 0))
+        self.image_layers: list[dict] = []
+        self.text_layers: list[dict] = []
+        self._layer_index = 0
+        self._text_index = 0
+
+    def _manifest_path(self, path: Path) -> str:
+        resolved = path.resolve()
+        try:
+            return resolved.relative_to(self.package_root.resolve()).as_posix()
+        except ValueError:
+            return resolved.as_posix()
+
+    def add_image(
+        self,
+        name: str,
+        path: Path,
+        box: tuple[int, int, int, int],
+        subgroup: str,
+        *,
+        fit_mode: str = "stretch",
+        opacity: int = 255,
+    ) -> None:
+        x, y, width, height = box
+        with Image.open(path) as opened:
+            source = opened.convert("RGBA")
+        if fit_mode == "contain_canvas":
+            scale = min(width / source.width, height / source.height)
+            rendered_size = (
+                max(1, round(source.width * scale)),
+                max(1, round(source.height * scale)),
+            )
+            rendered = source.resize(rendered_size, Image.Resampling.LANCZOS)
+            paste_x = x + (width - rendered.width) // 2
+            paste_y = y + (height - rendered.height) // 2
+        elif fit_mode == "stretch":
+            rendered = source.resize((width, height), Image.Resampling.LANCZOS)
+            paste_x, paste_y = x, y
+        else:
+            rendered = source
+            paste_x, paste_y = x, y
+        if opacity < 255:
+            alpha = rendered.getchannel("A").point(lambda value: value * opacity // 255)
+            rendered.putalpha(alpha)
+        self.canvas.alpha_composite(rendered, (paste_x, paste_y))
+        self._layer_index += 1
+        self.image_layers.append(
+            {
+                "name": f"{self._layer_index:03d}_{name}",
+                "path": self._manifest_path(path),
+                "x": x,
+                "y": y,
+                "width": width,
+                "height": height,
+                "fitMode": fit_mode,
+                "group": f"{self.group}/{subgroup}",
+                "visible": True,
+            }
+        )
+
+    def add_component(
+        self,
+        key: str,
+        box: tuple[int, int, int, int],
+        subgroup: str,
+        *,
+        name: str | None = None,
+    ) -> None:
+        record = self.components[key]
+        self.add_image(
+            name or key,
+            self.asset_root / record["file"],
+            box,
+            subgroup,
+            fit_mode="stretch",
+        )
+
+    def add_text(
+        self,
+        text: str,
+        position: tuple[int, int],
+        size: int,
+        subgroup: str = "70_RuntimeText",
+        *,
+        bold: bool = False,
+        color: tuple[int, int, int, int] = INK,
+        name: str | None = None,
+    ) -> None:
+        x, y = position
+        self.canvas.alpha_composite(Image.new("RGBA", PAGE_SIZE, (0, 0, 0, 0)))
+        draw = ImageDraw.Draw(self.canvas)
+        draw.text((x, y), text, font=_font(size, bold=bold), fill=color)
+        self._text_index += 1
+        self.text_layers.append(
+            {
+                "name": name or f"text_{self._text_index:03d}",
+                "text": text,
+                "x": x,
+                "y": y,
+                "fontSize": size,
+                "font": "MicrosoftYaHei",
+                "color": "#2B2822",
+                "bold": bold,
+                "group": f"{self.group}/{subgroup}",
+            }
+        )
+
+    def add_overlay(self, name: str, image: Image.Image, subgroup: str) -> None:
+        overlay_root = self.asset_root / "LayoutAssets"
+        overlay_root.mkdir(parents=True, exist_ok=True)
+        path = overlay_root / f"{_safe_name(self.group)}_{_safe_name(name)}.png"
+        image.save(path)
+        self.add_image(name, path, (0, 0, 1920, 1080), subgroup, fit_mode="stretch")
+
+    def save(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.canvas.convert("RGB").save(path, quality=94)
+
+
+def _add_world(builder: PageBuilder, world_path: Path, *, dim: bool = False) -> None:
+    builder.add_image("town_world", world_path, (0, 0, 1920, 1080), "10_World")
+    if dim:
+        overlay = Image.new("RGBA", PAGE_SIZE, (27, 27, 25, 108))
+        builder.add_overlay("world_dim", overlay, "11_WorldOverlay")
+
+
+def _add_town_hud(builder: PageBuilder) -> None:
+    builder.add_component("panel_small", (24, 20, 445, 142), "20_Shell", name="hero_status_panel")
+    builder.add_text("主角  Lv. 1", (132, 42), 28, bold=True)
+    builder.add_text("经验  0 / 100     战力 33", (132, 91), 20)
+    builder.add_component("nav_normal", (34, 205, 96, 96), "20_Shell", name="nav_backpack_disc")
+    builder.add_component("nav_backpack", (46, 217, 72, 72), "21_Navigation")
+    for index, kind in enumerate(("companion", "codex", "task", "route"), start=1):
+        y = 205 + index * 118
+        builder.add_component("nav_normal", (34, y, 96, 96), "20_Shell", name=f"nav_{kind}_disc")
+        builder.add_component(f"nav_{kind}", (46, y + 12, 72, 72), "21_Navigation")
+    builder.add_component("resource_strip", (1215, 20, 675, 82), "20_Shell")
+    builder.add_text("铜钱 10,000      青玉 2,000      金锭 500", (1290, 42), 23)
+
+
+def _add_panel_title(builder: PageBuilder, title: str, subtitle: str = "") -> None:
+    builder.add_text(title, (332, 186), 42, bold=True)
+    if subtitle:
+        builder.add_text(subtitle, (332, 242), 20, color=MUTED)
+
+
+def _add_main_panel(builder: PageBuilder) -> None:
+    builder.add_component("panel_large", (278, 150, 1390, 850), "20_Shell", name="main_panel")
+
+
+def _add_tabs(builder: PageBuilder, selected: int = 0) -> None:
+    labels = ("属性", "装备", "技能", "天赋", "称号")
+    for index, label in enumerate(labels):
+        x = 510 + index * 170
+        key = "tab_selected" if index == selected else "tab_normal"
+        builder.add_component(key, (x, 184, 150, 54), "22_Tabs", name=f"tab_{index}")
+        builder.add_text(label, (x + 45, 195), 21)
+
+
+def _add_item_grid(builder: PageBuilder, origin: tuple[int, int], columns: int, rows: int) -> None:
+    ox, oy = origin
+    for row in range(rows):
+        for column in range(columns):
+            key = "item_slot_hover" if row == 0 and column == 0 else "item_slot_empty"
+            builder.add_component(key, (ox + column * 112, oy + row * 112, 100, 100), "35_Grid")
+
+
+def _draw_route_overlay(selected: bool = False) -> Image.Image:
+    image = Image.new("RGBA", PAGE_SIZE, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    points = ((520, 790), (700, 640), (890, 735), (1060, 540), (1230, 625), (1420, 400))
+    draw.line(tuple(value for point in points for value in point), fill=(43, 40, 34, 190), width=10)
+    for index, (x, y) in enumerate(points):
+        radius = 34 if selected and index == 3 else 26
+        fill = (232, 215, 179, 255)
+        draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=fill, outline=INK, width=7)
+        if selected and index == 3:
+            draw.ellipse((x - 48, y - 48, x + 48, y + 48), outline=(161, 79, 54, 255), width=6)
+    return image
+
+
+def _page_common(builder: PageBuilder, world: Path) -> None:
+    _add_world(builder, world, dim=True)
+    builder.add_component("panel_large", (90, 82, 1740, 920), "20_Shell")
+    builder.add_text("00  公共组件 / 纸墨通用控件", (135, 112), 38, bold=True)
+    button_states = ("normal", "hover", "pressed", "primary", "danger", "disabled")
+    for index, state in enumerate(button_states):
+        x = 140 + index * 270
+        builder.add_component(f"button_{state}", (x, 190, 220, 72), "30_Buttons")
+        builder.add_text(state, (x + 48, 278), 17)
+    tab_states = ("normal", "hover", "pressed", "selected", "disabled")
+    for index, state in enumerate(tab_states):
+        x = 140 + index * 210
+        builder.add_component(f"tab_{state}", (x, 340, 160, 58), "31_Tabs")
+        builder.add_text(state, (x + 28, 412), 16)
+    nav_kinds = ("backpack", "companion", "codex", "task", "route")
+    for index, kind in enumerate(nav_kinds):
+        x = 132 + index * 170
+        builder.add_component("nav_normal", (x, 480, 112, 112), "32_Navigation")
+        builder.add_component(f"nav_{kind}", (x + 20, 500, 72, 72), "32_Navigation")
+    for index, family in enumerate(("role", "monster", "general", "terrain", "rare", "boss")):
+        builder.add_component(f"card_frame_{family}", (1045 + index * 117, 460, 104, 146), "33_CardFrames")
+    for index, key in enumerate(("item_slot_empty", "item_slot_hover", "item_slot_selected", "item_slot_locked")):
+        builder.add_component(key, (140 + index * 128, 675, 104, 104), "34_Slots")
+    builder.add_component("equipment_slot_selected", (700, 660, 124, 130), "34_Slots")
+    builder.add_component("progress_track", (140, 850, 420, 24), "35_Progress")
+    builder.add_component("progress_fill", (150, 857, 280, 10), "35_Progress")
+    builder.add_component("tooltip_panel", (920, 690, 520, 240), "36_Tooltip")
+    builder.add_text("按钮仅用纸底与墨线区分；危险态只使用小朱砂印。", (965, 750), 20)
+    builder.add_text("动态文字始终保持独立图层", (965, 800), 24, bold=True)
+
+
+def _page_main_menu(builder: PageBuilder, world: Path) -> None:
+    _add_world(builder, world, dim=True)
+    builder.add_component("panel_medium", (580, 130, 760, 820), "20_Shell")
+    builder.add_text("行旅异闻", (785, 235), 76, bold=True)
+    builder.add_text("山川入墨，众生入局", (795, 330), 25)
+    for index, label in enumerate(("继续旅程", "新的旅程", "设置", "退出")):
+        key = "button_primary" if index == 0 else "button_normal"
+        builder.add_component(key, (820, 440 + index * 100, 280, 76), "30_Menu")
+        builder.add_text(label, (888, 458 + index * 100), 26)
+
+
+def _page_town_hud(builder: PageBuilder, world: Path) -> None:
+    _add_world(builder, world)
+    _add_town_hud(builder)
+    builder.add_component("tooltip_panel", (150, 720, 520, 220), "30_Context")
+    builder.add_text("青山镇 · 客栈前街", (190, 755), 28, bold=True)
+    builder.add_text("F  与掌柜交谈     城镇按钮进入路线图", (190, 815), 21)
+
+
+def _page_backpack(builder: PageBuilder, world: Path, *, selected: bool = False) -> None:
+    _add_world(builder, world, dim=True)
+    _add_town_hud(builder)
+    _add_main_panel(builder)
+    _add_panel_title(builder, "主角", "当前最终 Idle · 保持 512×512 透明画布比例")
+    _add_tabs(builder, selected=1)
+    builder.add_image("hero_idle", HERO, (420, 300, 540, 540), "30_Character", fit_mode="contain_canvas")
+    equipment = ((340, 340), (340, 500), (340, 660), (890, 340), (890, 500), (890, 660))
+    for index, (x, y) in enumerate(equipment):
+        key = "equipment_slot_selected" if selected and index == 1 else "equipment_slot_empty"
+        builder.add_component(key, (x, y, 112, 118), "31_Equipment")
+    _add_item_grid(builder, (1080, 340), 4, 4)
+    builder.add_text("背包  5 / 80", (1080, 285), 26, bold=True)
+    builder.add_text("Lv. 1       攻击 33       气血 120       防御 18", (430, 872), 22)
+    builder.add_component("button_primary", (1290, 860, 210, 70), "40_Actions")
+    builder.add_text("使用", (1365, 878), 25)
+    if selected:
+        builder.add_component("tooltip_panel", (1050, 650, 520, 200), "45_Selection")
+        builder.add_text("小布袋", (1090, 680), 26, bold=True)
+        builder.add_text("普通布袋，能装下一些小物件。", (1090, 730), 18)
+        builder.add_component("button_danger", (1330, 760, 190, 62), "45_Selection")
+        builder.add_text("分解", (1395, 775), 22)
+
+
+def _page_party(builder: PageBuilder, world: Path, *, selected: bool = False) -> None:
+    _add_world(builder, world, dim=True)
+    _add_town_hud(builder)
+    _add_main_panel(builder)
+    _add_panel_title(builder, "伙伴编队", "拖动卡片调整前后排；主角入口不再与伙伴混淆")
+    portraits = ((HERO, "主角", 410), (PARTNER, "剑客", 760))
+    for index, (path, label, x) in enumerate(portraits):
+        family = "card_frame_role"
+        builder.add_component(family, (x, 320, 290, 405), "30_Cards")
+        builder.add_image(f"party_{index}", path, (x + 15, 350, 260, 260), "31_Portraits", fit_mode="contain_canvas")
+        builder.add_text(label, (x + 100, 650), 24, bold=True)
+    for index in range(3):
+        key = "card_frame_rare" if selected and index == 0 else "card_frame_general"
+        builder.add_component(key, (1110 + index * 150, 350, 130, 182), "32_FormationSlots")
+    builder.add_text("前排", (1140, 560), 20)
+    builder.add_text("后排", (1375, 560), 20)
+    builder.add_component("button_primary", (1260, 820, 240, 72), "40_Actions")
+    builder.add_text("保存编队", (1322, 838), 24)
+
+
+def _page_codex(builder: PageBuilder, world: Path, *, selected: bool = False) -> None:
+    _add_world(builder, world, dim=True)
+    _add_town_hud(builder)
+    _add_main_panel(builder)
+    _add_panel_title(builder, "图鉴", "怪物卡片、掉落与已发现状态")
+    for index in range(6):
+        x = 360 + index * 205
+        key = "card_frame_monster" if index < 3 else "card_frame_general"
+        builder.add_component(key, (x, 340, 170, 238), "30_MonsterCards")
+        if index == 0:
+            builder.add_image("rooster_idle", MONSTER, (x + 10, 360, 150, 150), "31_Portraits", fit_mode="contain_canvas")
+            builder.add_text("山野公鸡", (x + 28, 525), 18, bold=True)
+        else:
+            builder.add_text("未发现" if index > 2 else f"怪物 {index + 1}", (x + 45, 525), 17)
+    if selected:
+        builder.add_component("panel_medium", (900, 610, 620, 300), "40_Detail")
+        builder.add_image("rooster_detail", MONSTER, (930, 645, 230, 230), "41_DetailPortrait", fit_mode="contain_canvas")
+        builder.add_text("山野公鸡", (1180, 660), 28, bold=True)
+        builder.add_text("普通怪物 · 啄击 · 易怒", (1180, 715), 19)
+        builder.add_text("可能掉落：羽毛、铜钱", (1180, 770), 18)
+
+
+def _page_quest(builder: PageBuilder, world: Path) -> None:
+    _add_world(builder, world, dim=True)
+    _add_town_hud(builder)
+    _add_main_panel(builder)
+    _add_panel_title(builder, "任务日志", "当前、可接取、已完成")
+    for index, label in enumerate(("掌柜的请求", "青山镇来客", "山路异响", "已完成任务")):
+        key = "button_primary" if index == 0 else "button_normal"
+        builder.add_component(key, (350, 320 + index * 105, 420, 74), "30_QuestList")
+        builder.add_text(label, (405, 337 + index * 105), 23)
+    builder.add_component("panel_medium", (835, 305, 700, 520), "31_QuestDetail")
+    builder.add_text("掌柜的请求", (900, 360), 30, bold=True)
+    builder.add_text("前往镇外山路，调查最近出现的怪物。", (900, 430), 21)
+    builder.add_text("目标：进入路线图并完成一次战斗", (900, 500), 20)
+    builder.add_text("奖励：铜钱 200 · 青玉 10", (900, 565), 20)
+    builder.add_component("button_primary", (1230, 710, 230, 70), "40_Actions")
+    builder.add_text("追踪任务", (1290, 728), 23)
+
+
+def _page_shop(builder: PageBuilder, world: Path) -> None:
+    _add_world(builder, world, dim=True)
+    _add_town_hud(builder)
+    _add_main_panel(builder)
+    _add_panel_title(builder, "商店交易", "货架与背包并排，价格和数量独立显示")
+    _add_item_grid(builder, (360, 340), 5, 4)
+    _add_item_grid(builder, (1030, 340), 4, 4)
+    builder.add_text("货架", (360, 290), 26, bold=True)
+    builder.add_text("我的背包", (1030, 290), 26, bold=True)
+    builder.add_component("tooltip_panel", (690, 725, 520, 190), "40_TradeDetail")
+    builder.add_text("草药包   单价 80", (740, 760), 23, bold=True)
+    builder.add_component("button_primary", (970, 820, 190, 62), "40_TradeDetail")
+    builder.add_text("购买", (1035, 835), 22)
+
+
+def _page_route(builder: PageBuilder, world: Path, *, selected: bool = False) -> None:
+    _add_world(builder, world, dim=True)
+    builder.add_component("panel_large", (220, 100, 1480, 900), "20_Shell")
+    builder.add_text("山路路线", (290, 145), 42, bold=True)
+    builder.add_text("选择下一个节点：战斗、事件、商店或休整", (290, 205), 21)
+    builder.add_overlay("route_nodes", _draw_route_overlay(selected), "30_Route")
+    if selected:
+        builder.add_component("tooltip_panel", (1050, 280, 500, 210), "40_Selection")
+        builder.add_text("怪物战斗", (1100, 320), 27, bold=True)
+        builder.add_text("遭遇 2–3 只普通怪物", (1100, 375), 19)
+        builder.add_component("button_primary", (1280, 410, 210, 62), "40_Selection")
+        builder.add_text("进入节点", (1335, 425), 21)
+
+
+def _page_event(builder: PageBuilder, world: Path) -> None:
+    _add_world(builder, world, dim=True)
+    builder.add_component("panel_large", (270, 120, 1380, 840), "20_Shell")
+    builder.add_text("山泉旁的旅人", (360, 185), 39, bold=True)
+    builder.add_component("panel_medium", (360, 270, 620, 540), "30_Illustration")
+    builder.add_text("一名旅人守着清泉，似乎在等待同行者。", (1030, 320), 22)
+    for index, label in enumerate(("分享干粮", "询问山路", "悄悄离开")):
+        key = "button_primary" if index == 0 else "button_normal"
+        builder.add_component(key, (1060, 430 + index * 105, 380, 72), "40_Choices")
+        builder.add_text(label, (1150, 447 + index * 105), 24)
+
+
+def _page_battle(builder: PageBuilder, world: Path, *, target_selected: bool = False) -> None:
+    _add_world(builder, world, dim=False)
+    builder.add_image("hero_battle_idle", HERO, (130, 220, 540, 540), "30_Characters", fit_mode="contain_canvas")
+    builder.add_image("rooster_battle_idle", MONSTER, (1250, 220, 540, 540), "30_Characters", fit_mode="contain_canvas")
+    builder.add_component("progress_track", (210, 760, 360, 22), "31_FootBars")
+    builder.add_component("progress_fill", (220, 766, 240, 10), "31_FootBars")
+    builder.add_component("progress_track", (1340, 760, 360, 22), "31_FootBars")
+    builder.add_component("progress_fill", (1350, 766, 190, 10), "31_FootBars")
+    builder.add_text("主角 120 / 120", (300, 790), 20)
+    builder.add_text("山野公鸡 68 / 68", (1430, 790), 20)
+    for index, family in enumerate(("general", "role", "terrain", "rare")):
+        x = 560 + index * 205
+        key = f"card_frame_{family}"
+        width, height = (190, 266) if target_selected and index == 1 else (160, 224)
+        y = 790 if target_selected and index == 1 else 825
+        builder.add_component(key, (x, y, width, height), "40_HandCards")
+    builder.add_text("回合 1", (40, 30), 28, bold=True)
+    builder.add_text("能量 3 / 3", (1600, 35), 24, bold=True)
+    if target_selected:
+        overlay = Image.new("RGBA", PAGE_SIZE, (20, 20, 18, 78))
+        draw = ImageDraw.Draw(overlay)
+        draw.ellipse((1270, 225, 1770, 725), outline=(232, 215, 179, 245), width=10)
+        builder.add_overlay("target_focus", overlay, "50_Targeting")
+        builder.add_text("选择目标", (890, 730), 30, bold=True)
+
+
+def _page_rewards(builder: PageBuilder, world: Path) -> None:
+    _add_world(builder, world, dim=True)
+    builder.add_component("panel_large", (330, 130, 1260, 820), "20_Shell")
+    builder.add_text("战斗胜利", (790, 200), 54, bold=True)
+    builder.add_text("选择一项奖励", (850, 280), 24)
+    for index, family in enumerate(("general", "rare", "role")):
+        x = 540 + index * 310
+        builder.add_component(f"card_frame_{family}", (x, 350, 250, 350), "30_Rewards")
+        builder.add_text(("铜钱 120", "新卡牌", "伙伴经验")[index], (x + 70, 730), 22, bold=True)
+    builder.add_component("button_primary", (840, 820, 240, 72), "40_Actions")
+    builder.add_text("确认奖励", (902, 838), 24)
+
+
+def _page_system(builder: PageBuilder, world: Path) -> None:
+    _add_world(builder, world, dim=True)
+    builder.add_component("panel_medium", (580, 130, 760, 820), "20_Shell")
+    builder.add_text("系统菜单", (820, 220), 45, bold=True)
+    labels = ("继续游戏", "音量与显示", "操作设置", "返回主菜单")
+    for index, label in enumerate(labels):
+        key = "button_primary" if index == 0 else ("button_danger" if index == 3 else "button_normal")
+        builder.add_component(key, (770, 345 + index * 112, 380, 76), "30_Menu")
+        builder.add_text(label, (870, 363 + index * 112), 25)
+
+
+def _build_page(builder: PageBuilder, index: int, world: Path) -> None:
+    if index == 0:
+        _page_common(builder, world)
+    elif index == 1:
+        _page_main_menu(builder, world)
+    elif index == 2:
+        _page_town_hud(builder, world)
+    elif index == 3:
+        _page_backpack(builder, world)
+    elif index == 4:
+        _page_party(builder, world)
+    elif index == 5:
+        _page_codex(builder, world)
+    elif index == 6:
+        _page_quest(builder, world)
+    elif index == 7:
+        _page_shop(builder, world)
+    elif index == 8:
+        _page_route(builder, world)
+    elif index == 9:
+        _page_event(builder, world)
+    elif index == 10:
+        _page_battle(builder, world)
+    elif index == 11:
+        _page_rewards(builder, world)
+    elif index == 12:
+        _page_system(builder, world)
+    elif index == 13:
+        _page_backpack(builder, world, selected=True)
+    elif index == 14:
+        _page_party(builder, world, selected=True)
+    elif index == 15:
+        _page_codex(builder, world, selected=True)
+    elif index == 16:
+        _page_route(builder, world, selected=True)
+    elif index == 17:
+        _page_battle(builder, world, target_selected=True)
+    else:
+        raise ValueError(f"unsupported page index: {index}")
+
+
+def build_page_previews(
+    output_root: Path,
+    *,
+    asset_root: Path | None = None,
+    package_root: Path | None = None,
+) -> list[dict]:
+    output_root.mkdir(parents=True, exist_ok=True)
+    package_root = package_root or output_root
+    asset_root = asset_root or output_root / "_assets"
+    component_records = build_component_assets(asset_root)
+    world_path = asset_root / "UIV4_world_town_gray.png"
+    _world_asset(world_path)
+    contract = load_contract(PACKAGE / "ui-master-spec.json")
+    records: list[dict] = []
+    for index, page in enumerate(contract.pages):
+        builder = PageBuilder(page.name, asset_root, component_records, package_root)
+        _build_page(builder, index, world_path)
+        filename = f"{page.name}.png"
+        builder.save(output_root / filename)
+        records.append(
+            {
+                "index": index,
+                "group": page.name,
+                "file": filename,
+                "size": [1920, 1080],
+                "status": "pending_visual_review",
+                "imageLayers": builder.image_layers,
+                "textLayers": builder.text_layers,
+            }
+        )
+    return records
