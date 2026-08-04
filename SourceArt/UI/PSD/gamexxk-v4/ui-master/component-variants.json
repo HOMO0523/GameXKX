@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "seed": 240804,
+  "palette": {
+    "paper": "#E8D7B3",
+    "ink": "#2B2822",
+    "secondaryInk": "#5D5548",
+    "cinnabar": "#A14F36"
+  },
+  "rules": {
+    "textBaked": false,
+    "buttonColorFill": "paper_and_ink_only",
+    "dangerAccentMaxOpaqueCoverage": 0.06
+  },
+  "components": {
+    "button": {
+      "states": ["normal", "hover", "pressed", "primary", "danger", "disabled"],
+      "size": [220, 72],
+      "nineSlice": [18, 18, 18, 18],
+      "textBaked": false
+    },
+    "tab": {
+      "states": ["normal", "hover", "pressed", "selected", "disabled"],
+      "size": [160, 58],
+      "nineSlice": [16, 14, 16, 14],
+      "textBaked": false
+    },
+    "navDisc": {
+      "states": ["normal", "hover", "selected", "reminder", "locked"],
+      "size": [112, 112],
+      "nineSlice": [24, 24, 24, 24],
+      "textBaked": false
+    },
+    "navIcon": {
+      "variants": ["backpack", "companion", "codex", "task", "route"],
+      "size": [72, 72],
+      "nineSlice": [0, 0, 0, 0],
+      "textBaked": false
+    },
+    "itemSlot": {
+      "states": ["empty", "hover", "selected", "locked"],
+      "size": [104, 104],
+      "nineSlice": [18, 18, 18, 18],
+      "textBaked": false
+    },
+    "equipmentSlot": {
+      "states": ["empty", "hover", "selected"],
+      "size": [124, 130],
+      "nineSlice": [20, 20, 20, 20],
+      "textBaked": false
+    },
+    "cardFrame": {
+      "variants": ["role", "monster", "general", "terrain", "rare", "boss"],
+      "size": [300, 420],
+      "nineSlice": [28, 34, 28, 34],
+      "textBaked": false
+    },
+    "panels": {
+      "variants": {
+        "large": [1440, 780],
+        "medium": [760, 520],
+        "small": [420, 260],
+        "resourceStrip": [680, 92],
+        "tooltip": [520, 240]
+      },
+      "nineSlice": [32, 32, 32, 32],
+      "textBaked": false
+    },
+    "progress": {
+      "trackSize": [420, 24],
+      "fillSize": [280, 10],
+      "nineSlice": [8, 8, 8, 8],
+      "textBaked": false
+    }
+  }
+}
