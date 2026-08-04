@@ -254,6 +254,8 @@ class TownPsdPackageTest(unittest.TestCase):
             write_package(root)
             manifest_path = root / "manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["document"]["overviewScale"] = 0.25
+            manifest["pages"] = [{"group": "03_主角背包"}]
             manifest["imageLayers"][0].update(
                 {
                     "name": "transparent_character",
@@ -266,13 +268,22 @@ class TownPsdPackageTest(unittest.TestCase):
                     "visible": False,
                 }
             )
-            manifest_path.write_text(
+            master_manifest_path = root / "master-manifest.json"
+            master_manifest_path.write_text(
                 json.dumps(manifest, ensure_ascii=False),
                 encoding="utf-8",
             )
+            manifest_path.unlink()
 
             result = subprocess.run(
-                ["node", str(PSD_COMPOSER_SCRIPT), "--root", str(root)],
+                [
+                    "node",
+                    str(PSD_COMPOSER_SCRIPT),
+                    "--root",
+                    str(root),
+                    "--manifest",
+                    "master-manifest.json",
+                ],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -293,6 +304,11 @@ class TownPsdPackageTest(unittest.TestCase):
                 compose,
             )
             self.assertIn("ensureGroupPath(doc, item.group)", compose)
+            self.assertIn("function ensureGroupPath", compose)
+            self.assertIn("topLevelGroups.push", compose)
+            self.assertIn("actualTopLevelGroups", compose)
+            self.assertIn("previewDoc.resizeImage", compose)
+            self.assertIn("spec.overviewScale", compose)
             self.assertIn("doc.activeLayer = duplicated", compose)
             self.assertNotIn("resizeLayerTo(duplicated, item.width, item.height)", compose)
             self.assertIn("Failed to resize layer", compose)
@@ -302,6 +318,23 @@ class TownPsdPackageTest(unittest.TestCase):
                 compose.index("duplicated.visible = item.visible !== false"),
             )
             self.assertIn("walkLayers(reopened, actualTexts)", compose)
+            rejected = subprocess.run(
+                [
+                    "node",
+                    str(PSD_COMPOSER_SCRIPT),
+                    "--root",
+                    str(root),
+                    "--manifest",
+                    "../manifest.json",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(0, rejected.returncode)
+            self.assertIn(
+                "manifest filename must stay inside package root", rejected.stderr
+            )
 
     def test_photoshop_runner_exposes_a_safe_package_check(self) -> None:
         runner = PSD_PHOTOSHOP_RUNNER.read_text(encoding="utf-8")

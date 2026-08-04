@@ -13,8 +13,30 @@ function readPackageRoot(argumentsList) {
   return path.resolve(rootValue);
 }
 
-const root = readPackageRoot(process.argv.slice(2));
-const manifestPath = path.join(root, 'manifest.json');
+function readManifestName(argumentsList) {
+  const manifestIndex = argumentsList.indexOf('--manifest');
+  if (manifestIndex === -1) {
+    return 'manifest.json';
+  }
+  const manifestValue = argumentsList[manifestIndex + 1];
+  if (!manifestValue || manifestValue.startsWith('--')) {
+    throw new Error('--manifest requires a filename');
+  }
+  if (
+    path.isAbsolute(manifestValue) ||
+    path.basename(manifestValue) !== manifestValue ||
+    manifestValue === '.' ||
+    manifestValue === '..'
+  ) {
+    throw new Error('manifest filename must stay inside package root');
+  }
+  return manifestValue;
+}
+
+const argumentsList = process.argv.slice(2);
+const root = readPackageRoot(argumentsList);
+const manifestName = readManifestName(argumentsList);
+const manifestPath = path.join(root, manifestName);
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 const svgDir = path.join(root, 'svg_text');
 fs.mkdirSync(svgDir, { recursive: true });
@@ -60,8 +82,12 @@ const resolvedImageLayers = manifest.imageLayers.map((layer) => ({
 }));
 const imageLayers = JSON.stringify(resolvedImageLayers);
 const textLayers = JSON.stringify(manifest.textLayers);
+const pages = JSON.stringify(manifest.pages || []);
 const document = JSON.stringify(manifest.document);
-const previewPath = path.join(root, 'final_preview.png').replace(/\\/g, '/');
+const previewFilename = manifest.document.overviewScale > 0 && manifest.document.overviewScale < 1
+  ? 'master-overview.png'
+  : 'final_preview.png';
+const previewPath = path.join(root, previewFilename).replace(/\\/g, '/');
 
 const jsx = `#target photoshop
 app.bringToFront();
@@ -72,6 +98,7 @@ app.bringToFront();
   app.displayDialogs = DialogModes.NO;
   var imageLayers = ${imageLayers};
   var textLayers = ${textLayers};
+  var pages = ${pages};
   var spec = ${document};
 
   function colorFromHex(hex) {
@@ -184,6 +211,23 @@ app.bringToFront();
     BitsPerChannelType.EIGHT
   );
 
+  var topLevelGroups = [];
+  for (var pageNameIndex = 0; pageNameIndex < pages.length; pageNameIndex++) {
+    var topLevelName = pages[pageNameIndex].group || pages[pageNameIndex].name;
+    if (!topLevelName) continue;
+    var alreadyExpected = false;
+    for (var expectedIndex = 0; expectedIndex < topLevelGroups.length; expectedIndex++) {
+      if (topLevelGroups[expectedIndex] == topLevelName) {
+        alreadyExpected = true;
+        break;
+      }
+    }
+    if (!alreadyExpected) topLevelGroups.push(topLevelName);
+  }
+  for (var pageGroupIndex = topLevelGroups.length - 1; pageGroupIndex >= 0; pageGroupIndex--) {
+    ensureGroupPath(doc, topLevelGroups[pageGroupIndex]);
+  }
+
   for (var i = 0; i < imageLayers.length; i++) {
     importImage(doc, imageLayers[i]);
   }
@@ -224,6 +268,14 @@ app.bringToFront();
 
   var previewDoc = doc.duplicate('preview_temp', true);
   previewDoc.flatten();
+  if (spec.overviewScale > 0 && spec.overviewScale < 1) {
+    previewDoc.resizeImage(
+      UnitValue(Math.max(1, Math.round(spec.width * spec.overviewScale)), 'px'),
+      UnitValue(Math.max(1, Math.round(spec.height * spec.overviewScale)), 'px'),
+      null,
+      ResampleMethod.BICUBICSHARPER
+    );
+  }
   var pngOptions = new PNGSaveOptions();
   pngOptions.interlaced = false;
   previewDoc.saveAs(new File(${jsxString(previewPath)}), pngOptions, true, Extension.LOWERCASE);
@@ -233,6 +285,10 @@ app.bringToFront();
   var reopened = app.open(outputFile);
   var textCount = 0;
   var actualTexts = [];
+  var actualTopLevelGroups = [];
+  for (var reopenedGroupIndex = 0; reopenedGroupIndex < reopened.layerSets.length; reopenedGroupIndex++) {
+    actualTopLevelGroups.push(reopened.layerSets[reopenedGroupIndex].name);
+  }
   var walkedArtLayerCount = 0;
   function walkLayers(container, actualTexts) {
     for (var artIndex = 0; artIndex < container.artLayers.length; artIndex++) {
@@ -253,6 +309,8 @@ app.bringToFront();
     height: reopened.height.as('px'),
     artLayerCount: walkedArtLayerCount,
     expectedImageLayers: imageLayers.length,
+    expectedTopLevelGroups: topLevelGroups.length,
+    actualTopLevelGroups: actualTopLevelGroups,
     expectedTextLayers: textLayers.length,
     actualTextLayers: textCount,
     textRoundTripMatch: actualTexts.length == createdText.length,
@@ -270,18 +328,7 @@ app.bringToFront();
     }
   }
   validation.textRoundTripMatch = roundTripMatch;
-  var q = String.fromCharCode(34);
-  var nl = String.fromCharCode(10);
-  var validationJson = '{' + nl +
-    '  ' + q + 'width' + q + ': ' + validation.width + ',' + nl +
-    '  ' + q + 'height' + q + ': ' + validation.height + ',' + nl +
-    '  ' + q + 'artLayerCount' + q + ': ' + validation.artLayerCount + ',' + nl +
-    '  ' + q + 'expectedImageLayers' + q + ': ' + validation.expectedImageLayers + ',' + nl +
-    '  ' + q + 'expectedTextLayers' + q + ': ' + validation.expectedTextLayers + ',' + nl +
-    '  ' + q + 'actualTextLayers' + q + ': ' + validation.actualTextLayers + ',' + nl +
-    '  ' + q + 'textRoundTripMatch' + q + ': ' + (validation.textRoundTripMatch ? 'true' : 'false') + ',' + nl +
-    '  ' + q + 'outputPsd' + q + ': ' + q + spec.outputPsd + q + nl +
-    '}';
+  var validationJson = JSON.stringify(validation, null, 2);
   var validationPath = String(spec.outputPsd).replace(/\\.psd$/i, '.validation.json');
   var validationFile = new File(validationPath);
   if (!validationFile.parent.exists) validationFile.parent.create();
