@@ -8,6 +8,11 @@
 - Do not use UnrealBridge for this project. Use UE 5.8 MCP, UBT, command-line scripts, Visual Studio tooling, or focused editor Python through MCP.
 - Do not revert or overwrite user-tuned assets, especially character sprites, PaperZD assets, placed levels, camera transforms, and manually adjusted HD2D plane values.
 
+### Art Workflow
+- Pure art work does not use TDD. This includes image generation, chroma-key removal, cutting or splitting assets, compositing, layout, PSD assembly, and visual calibration.
+- Verify art work after implementation with deterministic asset checks such as dimensions, alpha edges, hashes, manifests, build reports, and visual review.
+- Runtime code or gameplay behavior changes remain subject to the project's normal code verification rules.
+
 ### UE MCP Automation
 - Project UE automation should use `scripts/ue_mcp_client.py`, `scripts/ue_mcp_smoke.py`, `scripts/ue_tdd_pipeline.py`, and project scripts under `Content/Python`.
 - If the editor is running, save dirty packages through UE MCP before closing or restarting it.

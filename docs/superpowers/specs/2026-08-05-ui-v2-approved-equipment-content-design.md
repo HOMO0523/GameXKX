@@ -107,7 +107,7 @@ The build fails without replacing the canonical report when:
 
 ## Verification
 
-Tests will first be updated to express the approved 45-asset contract and observed failing behavior from the old composite-crop pipeline. Implementation then proceeds through the existing red/green cycle.
+Implementation will update the approved 45-asset pipeline directly. Verification runs after the implementation; this work does not use a test-first red/green cycle, per the user's instruction.
 
 Required automated checks:
 
