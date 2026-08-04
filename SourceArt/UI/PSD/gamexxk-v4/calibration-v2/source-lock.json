@@ -1,0 +1,18 @@
+{
+  "approvedReference": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/Reference/approved_town_hero_backpack.png",
+    "sha256": "28bf8962b4dd1d27eef061600060f2fb998ffdb17dde0e4c95fd4f237b902af2",
+    "dimensions": [
+      1672,
+      941
+    ]
+  },
+  "heroIdle": {
+    "path": "SourceAssets/AnimationProcessing/Production/character_00_hero_idle/frames/frame_0000.png",
+    "sha256": "d6e1bcc2acbce962c5b872ac628c5a86dbcc99466a56d6a6a48ab8bef6a8cc58",
+    "dimensions": [
+      512,
+      512
+    ]
+  }
+}
