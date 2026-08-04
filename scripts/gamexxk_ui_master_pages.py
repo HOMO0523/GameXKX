@@ -146,8 +146,7 @@ class PageBuilder:
             rendered.putalpha(alpha)
         self.canvas.alpha_composite(rendered, (paste_x, paste_y))
         self._layer_index += 1
-        self.image_layers.append(
-            {
+        layer_record = {
                 "name": f"{self._layer_index:03d}_{name}",
                 "path": self._manifest_path(path),
                 "x": x,
@@ -158,7 +157,10 @@ class PageBuilder:
                 "group": f"{self.group}/{subgroup}",
                 "visible": True,
             }
-        )
+        if fit_mode == "contain_canvas":
+            layer_record["scaleX"] = scale
+            layer_record["scaleY"] = scale
+        self.image_layers.append(layer_record)
 
     def add_component(
         self,

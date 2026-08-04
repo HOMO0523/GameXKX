@@ -141,6 +141,15 @@ def build_package(output_root: Path) -> dict:
     source_report = validate_source_lock(PACKAGE / "source-lock.json", ROOT)
     if not source_report["ok"]:
         raise RuntimeError(f"source lock validation failed: {source_report['errors']}")
+    for contract_name in (
+        "ui-master-spec.json",
+        "source-lock.json",
+        "component-variants.json",
+    ):
+        source = PACKAGE / contract_name
+        destination = output_root / contract_name
+        if source.resolve() != destination.resolve():
+            shutil.copy2(source, destination)
 
     previews_root = output_root / "Previews"
     assets_root = output_root / "Assets"
