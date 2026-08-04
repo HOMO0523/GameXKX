@@ -1,0 +1,842 @@
+{
+  "sourceCanvas": [
+    1672,
+    941
+  ],
+  "approvedCategoryCounts": {
+    "set_equipment": 36,
+    "starter_equipment": 6,
+    "core_item": 3
+  },
+  "content": [
+    {
+      "name": "nav_scroll",
+      "role": "navigation",
+      "file": "Content/nav_scroll.png",
+      "source": "generatedNavIcons",
+      "sourceBox": [
+        60,
+        302,
+        360,
+        642
+      ],
+      "sourcePlacement": [
+        47,
+        198,
+        143,
+        294
+      ],
+      "size": [
+        256,
+        256
+      ],
+      "displaySize": [
+        96,
+        96
+      ]
+    },
+    {
+      "name": "nav_backpack",
+      "role": "navigation",
+      "file": "Content/nav_backpack.png",
+      "source": "generatedNavIcons",
+      "sourceBox": [
+        340,
+        310,
+        650,
+        635
+      ],
+      "sourcePlacement": [
+        47,
+        326,
+        143,
+        422
+      ],
+      "size": [
+        256,
+        256
+      ],
+      "displaySize": [
+        96,
+        96
+      ]
+    },
+    {
+      "name": "nav_codex",
+      "role": "navigation",
+      "file": "Content/nav_codex.png",
+      "source": "generatedNavIcons",
+      "sourceBox": [
+        650,
+        334,
+        990,
+        608
+      ],
+      "sourcePlacement": [
+        47,
+        449,
+        143,
+        545
+      ],
+      "size": [
+        256,
+        256
+      ],
+      "displaySize": [
+        96,
+        96
+      ]
+    },
+    {
+      "name": "nav_companion",
+      "role": "navigation",
+      "file": "Content/nav_companion.png",
+      "source": "generatedNavIcons",
+      "sourceBox": [
+        987,
+        342,
+        1338,
+        566
+      ],
+      "sourcePlacement": [
+        47,
+        576,
+        143,
+        672
+      ],
+      "size": [
+        256,
+        256
+      ],
+      "displaySize": [
+        96,
+        96
+      ]
+    },
+    {
+      "name": "nav_route",
+      "role": "navigation",
+      "file": "Content/nav_route.png",
+      "source": "generatedNavIcons",
+      "sourceBox": [
+        1338,
+        317,
+        1650,
+        608
+      ],
+      "sourcePlacement": [
+        47,
+        704,
+        143,
+        800
+      ],
+      "size": [
+        256,
+        256
+      ],
+      "displaySize": [
+        96,
+        96
+      ]
+    },
+    {
+      "name": "resource_coin",
+      "role": "resource",
+      "file": "Content/resource_coin.png",
+      "source": "generatedBase",
+      "sourceBox": [
+        1035,
+        31,
+        1100,
+        96
+      ],
+      "sourcePlacement": [
+        1036,
+        35,
+        1094,
+        99
+      ],
+      "size": [
+        58,
+        64
+      ],
+      "displaySize": [
+        58,
+        64
+      ]
+    },
+    {
+      "name": "resource_jade",
+      "role": "resource",
+      "file": "Content/resource_jade.png",
+      "source": "generatedBase",
+      "sourceBox": [
+        1244,
+        30,
+        1314,
+        96
+      ],
+      "sourcePlacement": [
+        1251,
+        36,
+        1314,
+        91
+      ],
+      "size": [
+        63,
+        55
+      ],
+      "displaySize": [
+        63,
+        55
+      ]
+    },
+    {
+      "name": "resource_gold",
+      "role": "resource",
+      "file": "Content/resource_gold.png",
+      "source": "generatedBase",
+      "sourceBox": [
+        1463,
+        33,
+        1539,
+        96
+      ],
+      "sourcePlacement": [
+        1460,
+        33,
+        1530,
+        99
+      ],
+      "size": [
+        70,
+        66
+      ],
+      "displaySize": [
+        70,
+        66
+      ]
+    },
+    {
+      "name": "stat_attack",
+      "role": "stat_icon",
+      "file": "Content/stat_attack.png",
+      "source": "generatedBase",
+      "sourceBox": [
+        406,
+        797,
+        458,
+        852
+      ],
+      "sourcePlacement": [
+        405,
+        805,
+        451,
+        855
+      ],
+      "size": [
+        46,
+        50
+      ],
+      "displaySize": [
+        46,
+        50
+      ]
+    },
+    {
+      "name": "stat_health",
+      "role": "stat_icon",
+      "file": "Content/stat_health.png",
+      "source": "generatedBase",
+      "sourceBox": [
+        573,
+        797,
+        626,
+        852
+      ],
+      "sourcePlacement": [
+        583,
+        809,
+        619,
+        842
+      ],
+      "size": [
+        36,
+        33
+      ],
+      "displaySize": [
+        36,
+        33
+      ]
+    },
+    {
+      "name": "stat_defense",
+      "role": "stat_icon",
+      "file": "Content/stat_defense.png",
+      "source": "generatedBase",
+      "sourceBox": [
+        726,
+        797,
+        779,
+        852
+      ],
+      "sourcePlacement": [
+        735,
+        806,
+        769,
+        843
+      ],
+      "size": [
+        34,
+        37
+      ],
+      "displaySize": [
+        34,
+        37
+      ]
+    },
+    {
+      "name": "category_selected_ink",
+      "role": "selection",
+      "file": "Content/category_selected_ink.png",
+      "source": "generatedBase",
+      "sourceBox": [
+        1027,
+        191,
+        1131,
+        253
+      ],
+      "sourcePlacement": [
+        1027,
+        197,
+        1131,
+        251
+      ],
+      "size": [
+        104,
+        54
+      ],
+      "displaySize": [
+        104,
+        54
+      ]
+    },
+    {
+      "name": "hero_portrait",
+      "role": "portrait",
+      "file": "Content/hero_portrait.png",
+      "source": "heroIdle",
+      "sourceBox": [
+        166,
+        42,
+        361,
+        237
+      ],
+      "sourcePlacement": [
+        27,
+        22,
+        151,
+        150
+      ],
+      "size": [
+        195,
+        195
+      ]
+    },
+    {
+      "name": "pojun_weapon",
+      "category": "set_equipment",
+      "sourceLock": "sixSetWeapon",
+      "cellIndex": 0,
+      "file": "Content/Equipment/pojun_weapon.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "xuanjia_weapon",
+      "category": "set_equipment",
+      "sourceLock": "sixSetWeapon",
+      "cellIndex": 1,
+      "file": "Content/Equipment/xuanjia_weapon.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "qingnang_weapon",
+      "category": "set_equipment",
+      "sourceLock": "sixSetWeapon",
+      "cellIndex": 2,
+      "file": "Content/Equipment/qingnang_weapon.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "zhuifeng_weapon",
+      "category": "set_equipment",
+      "sourceLock": "sixSetWeapon",
+      "cellIndex": 3,
+      "file": "Content/Equipment/zhuifeng_weapon.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shigu_weapon",
+      "category": "set_equipment",
+      "sourceLock": "sixSetWeapon",
+      "cellIndex": 4,
+      "file": "Content/Equipment/shigu_weapon.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shanhe_weapon",
+      "category": "set_equipment",
+      "sourceLock": "sixSetWeapon",
+      "cellIndex": 5,
+      "file": "Content/Equipment/shanhe_weapon.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "pojun_head",
+      "category": "set_equipment",
+      "sourceLock": "sixSetHead",
+      "cellIndex": 0,
+      "file": "Content/Equipment/pojun_head.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "xuanjia_head",
+      "category": "set_equipment",
+      "sourceLock": "sixSetHead",
+      "cellIndex": 1,
+      "file": "Content/Equipment/xuanjia_head.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "qingnang_head",
+      "category": "set_equipment",
+      "sourceLock": "sixSetHead",
+      "cellIndex": 2,
+      "file": "Content/Equipment/qingnang_head.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "zhuifeng_head",
+      "category": "set_equipment",
+      "sourceLock": "sixSetHead",
+      "cellIndex": 3,
+      "file": "Content/Equipment/zhuifeng_head.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shigu_head",
+      "category": "set_equipment",
+      "sourceLock": "sixSetHead",
+      "cellIndex": 4,
+      "file": "Content/Equipment/shigu_head.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shanhe_head",
+      "category": "set_equipment",
+      "sourceLock": "sixSetHead",
+      "cellIndex": 5,
+      "file": "Content/Equipment/shanhe_head.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "pojun_armor",
+      "category": "set_equipment",
+      "sourceLock": "sixSetArmor",
+      "cellIndex": 0,
+      "file": "Content/Equipment/pojun_armor.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "xuanjia_armor",
+      "category": "set_equipment",
+      "sourceLock": "sixSetArmor",
+      "cellIndex": 1,
+      "file": "Content/Equipment/xuanjia_armor.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "qingnang_armor",
+      "category": "set_equipment",
+      "sourceLock": "sixSetArmor",
+      "cellIndex": 2,
+      "file": "Content/Equipment/qingnang_armor.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "zhuifeng_armor",
+      "category": "set_equipment",
+      "sourceLock": "sixSetArmor",
+      "cellIndex": 3,
+      "file": "Content/Equipment/zhuifeng_armor.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shigu_armor",
+      "category": "set_equipment",
+      "sourceLock": "sixSetArmor",
+      "cellIndex": 4,
+      "file": "Content/Equipment/shigu_armor.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shanhe_armor",
+      "category": "set_equipment",
+      "sourceLock": "sixSetArmor",
+      "cellIndex": 5,
+      "file": "Content/Equipment/shanhe_armor.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "pojun_belt",
+      "category": "set_equipment",
+      "sourceLock": "sixSetBelt",
+      "cellIndex": 0,
+      "file": "Content/Equipment/pojun_belt.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "xuanjia_belt",
+      "category": "set_equipment",
+      "sourceLock": "sixSetBelt",
+      "cellIndex": 1,
+      "file": "Content/Equipment/xuanjia_belt.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "qingnang_belt",
+      "category": "set_equipment",
+      "sourceLock": "sixSetBelt",
+      "cellIndex": 2,
+      "file": "Content/Equipment/qingnang_belt.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "zhuifeng_belt",
+      "category": "set_equipment",
+      "sourceLock": "sixSetBelt",
+      "cellIndex": 3,
+      "file": "Content/Equipment/zhuifeng_belt.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shigu_belt",
+      "category": "set_equipment",
+      "sourceLock": "sixSetBelt",
+      "cellIndex": 4,
+      "file": "Content/Equipment/shigu_belt.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shanhe_belt",
+      "category": "set_equipment",
+      "sourceLock": "sixSetBelt",
+      "cellIndex": 5,
+      "file": "Content/Equipment/shanhe_belt.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "pojun_shoes",
+      "category": "set_equipment",
+      "sourceLock": "sixSetShoes",
+      "cellIndex": 0,
+      "file": "Content/Equipment/pojun_shoes.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "xuanjia_shoes",
+      "category": "set_equipment",
+      "sourceLock": "sixSetShoes",
+      "cellIndex": 1,
+      "file": "Content/Equipment/xuanjia_shoes.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "qingnang_shoes",
+      "category": "set_equipment",
+      "sourceLock": "sixSetShoes",
+      "cellIndex": 2,
+      "file": "Content/Equipment/qingnang_shoes.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "zhuifeng_shoes",
+      "category": "set_equipment",
+      "sourceLock": "sixSetShoes",
+      "cellIndex": 3,
+      "file": "Content/Equipment/zhuifeng_shoes.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shigu_shoes",
+      "category": "set_equipment",
+      "sourceLock": "sixSetShoes",
+      "cellIndex": 4,
+      "file": "Content/Equipment/shigu_shoes.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shanhe_shoes",
+      "category": "set_equipment",
+      "sourceLock": "sixSetShoes",
+      "cellIndex": 5,
+      "file": "Content/Equipment/shanhe_shoes.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "pojun_accessory",
+      "category": "set_equipment",
+      "sourceLock": "sixSetAccessory",
+      "cellIndex": 0,
+      "file": "Content/Equipment/pojun_accessory.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "xuanjia_accessory",
+      "category": "set_equipment",
+      "sourceLock": "sixSetAccessory",
+      "cellIndex": 1,
+      "file": "Content/Equipment/xuanjia_accessory.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "qingnang_accessory",
+      "category": "set_equipment",
+      "sourceLock": "sixSetAccessory",
+      "cellIndex": 2,
+      "file": "Content/Equipment/qingnang_accessory.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "zhuifeng_accessory",
+      "category": "set_equipment",
+      "sourceLock": "sixSetAccessory",
+      "cellIndex": 3,
+      "file": "Content/Equipment/zhuifeng_accessory.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shigu_accessory",
+      "category": "set_equipment",
+      "sourceLock": "sixSetAccessory",
+      "cellIndex": 4,
+      "file": "Content/Equipment/shigu_accessory.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "shanhe_accessory",
+      "category": "set_equipment",
+      "sourceLock": "sixSetAccessory",
+      "cellIndex": 5,
+      "file": "Content/Equipment/shanhe_accessory.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "starter_weapon",
+      "category": "starter_equipment",
+      "sourceLock": "starterEquipment",
+      "cellIndex": 0,
+      "file": "Content/StarterEquipment/starter_weapon.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "starter_head",
+      "category": "starter_equipment",
+      "sourceLock": "starterEquipment",
+      "cellIndex": 1,
+      "file": "Content/StarterEquipment/starter_head.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "starter_armor",
+      "category": "starter_equipment",
+      "sourceLock": "starterEquipment",
+      "cellIndex": 2,
+      "file": "Content/StarterEquipment/starter_armor.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "starter_belt",
+      "category": "starter_equipment",
+      "sourceLock": "starterEquipment",
+      "cellIndex": 3,
+      "file": "Content/StarterEquipment/starter_belt.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "starter_shoes",
+      "category": "starter_equipment",
+      "sourceLock": "starterEquipment",
+      "cellIndex": 4,
+      "file": "Content/StarterEquipment/starter_shoes.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "starter_accessory",
+      "category": "starter_equipment",
+      "sourceLock": "starterEquipment",
+      "cellIndex": 5,
+      "file": "Content/StarterEquipment/starter_accessory.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "strengthening_stone",
+      "category": "core_item",
+      "sourceLock": "coreItems",
+      "cellIndex": 0,
+      "file": "Content/Items/strengthening_stone.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "refinement_sand",
+      "category": "core_item",
+      "sourceLock": "coreItems",
+      "cellIndex": 1,
+      "file": "Content/Items/refinement_sand.png",
+      "size": [
+        512,
+        512
+      ]
+    },
+    {
+      "name": "qingshan_suppression_token",
+      "category": "core_item",
+      "sourceLock": "coreItems",
+      "cellIndex": 2,
+      "file": "Content/Items/qingshan_suppression_token.png",
+      "size": [
+        512,
+        512
+      ]
+    }
+  ]
+}

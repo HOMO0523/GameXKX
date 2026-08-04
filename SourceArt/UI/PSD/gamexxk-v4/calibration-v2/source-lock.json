@@ -14,5 +14,53 @@
       512,
       512
     ]
+  },
+  "generatedNavIcons": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/nav_icons_simplified_approved_alpha.png",
+    "sha256": "731d21ae0602ca5d9ff929a783a63a7be5ac059171bf6a11d3de5652a753725a",
+    "dimensions": [
+      1672,
+      941
+    ]
+  },
+  "sixSetWeapon": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/equipment/sixset_weapon_calibration_v1.png",
+    "sha256": "a08de46777b587e8ea4ca79c673fb30417320186df75181d6d68c053c110e574",
+    "dimensions": [1672, 941]
+  },
+  "sixSetHead": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/equipment/sixset_head_calibration_v1.png",
+    "sha256": "2dbbe44bbfc800986b3f241c161007cec68a5a3cd5fdbf3cfbdbe43a50fc68df",
+    "dimensions": [1672, 941]
+  },
+  "sixSetArmor": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/equipment/sixset_armor_calibration_v1.png",
+    "sha256": "a08590835284d8510407df5c04b16ad2fee721979ff1ac11f1d8b9a40174475f",
+    "dimensions": [1846, 852]
+  },
+  "sixSetBelt": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/equipment/sixset_belt_calibration_v5_approved.png",
+    "sha256": "cb6c64a2457a7eef4f09e4bcd83cafd712ef65e37a95f903f6f2fb4d0bebe459",
+    "dimensions": [1935, 813]
+  },
+  "sixSetShoes": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/equipment/sixset_shoes_calibration_v1.png",
+    "sha256": "df44c11974f2171a1eab45193a9423fc8f9d2cef0481e2ec81b8ede2bff4255a",
+    "dimensions": [1844, 853]
+  },
+  "sixSetAccessory": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/equipment/sixset_accessory_calibration_v1.png",
+    "sha256": "bca1ef4ac6cf2b38495085d879e1d56b65f29a3ffd4a0edf87efe465f032ac96",
+    "dimensions": [1820, 864]
+  },
+  "starterEquipment": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/items/starter_sixslot_equipment_calibration_v1_approved.png",
+    "sha256": "3bf74ae54ff2465e03b06337bb4b0da219ceb1d5f3425342e3186b3f618d858b",
+    "dimensions": [1983, 793]
+  },
+  "coreItems": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/items/core_resources_calibration_v2_approved.png",
+    "sha256": "5f8ce0cc7024e94fb29a962ac25158e6e741efb2ef37b4dd13fae155e49d5395",
+    "dimensions": [1920, 819]
   }
 }

@@ -1,0 +1,764 @@
+{
+  "sourceCanvas": [
+    1672,
+    941
+  ],
+  "components": [
+    {
+      "name": "tab_01_attribute",
+      "role": "tab",
+      "file": "Components/tab_01_attribute.png",
+      "sourceBox": [
+        493,
+        190,
+        580,
+        256
+      ],
+      "trimBox": [
+        2,
+        4,
+        87,
+        60
+      ],
+      "sourcePlacement": [
+        495,
+        194,
+        580,
+        250
+      ],
+      "size": [
+        85,
+        56
+      ]
+    },
+    {
+      "name": "tab_02_equipment_selected",
+      "role": "tab",
+      "file": "Components/tab_02_equipment_selected.png",
+      "sourceBox": [
+        584,
+        188,
+        704,
+        258
+      ],
+      "trimBox": [
+        0,
+        0,
+        120,
+        70
+      ],
+      "sourcePlacement": [
+        584,
+        188,
+        704,
+        258
+      ],
+      "size": [
+        120,
+        70
+      ]
+    },
+    {
+      "name": "tab_03_skill",
+      "role": "tab",
+      "file": "Components/tab_03_skill.png",
+      "sourceBox": [
+        704,
+        190,
+        799,
+        256
+      ],
+      "trimBox": [
+        2,
+        4,
+        93,
+        60
+      ],
+      "sourcePlacement": [
+        706,
+        194,
+        797,
+        250
+      ],
+      "size": [
+        91,
+        56
+      ]
+    },
+    {
+      "name": "tab_04_talent",
+      "role": "tab",
+      "file": "Components/tab_04_talent.png",
+      "sourceBox": [
+        799,
+        190,
+        893,
+        256
+      ],
+      "trimBox": [
+        1,
+        4,
+        92,
+        60
+      ],
+      "sourcePlacement": [
+        800,
+        194,
+        891,
+        250
+      ],
+      "size": [
+        91,
+        56
+      ]
+    },
+    {
+      "name": "tab_05_title",
+      "role": "tab",
+      "file": "Components/tab_05_title.png",
+      "sourceBox": [
+        893,
+        190,
+        989,
+        256
+      ],
+      "trimBox": [
+        1,
+        4,
+        93,
+        60
+      ],
+      "sourcePlacement": [
+        894,
+        194,
+        986,
+        250
+      ],
+      "size": [
+        92,
+        56
+      ]
+    },
+    {
+      "name": "equipment_slot_left_01",
+      "role": "equipment_slot",
+      "file": "Components/equipment_slot_left_01.png",
+      "sourceBox": [
+        350,
+        296,
+        470,
+        412
+      ],
+      "trimBox": [
+        18,
+        4,
+        120,
+        112
+      ],
+      "sourcePlacement": [
+        368,
+        300,
+        470,
+        408
+      ],
+      "size": [
+        102,
+        108
+      ]
+    },
+    {
+      "name": "equipment_slot_left_02",
+      "role": "equipment_slot",
+      "file": "Components/equipment_slot_left_02.png",
+      "sourceBox": [
+        350,
+        445,
+        470,
+        558
+      ],
+      "trimBox": [
+        3,
+        3,
+        107,
+        109
+      ],
+      "sourcePlacement": [
+        353,
+        448,
+        457,
+        554
+      ],
+      "size": [
+        104,
+        106
+      ]
+    },
+    {
+      "name": "equipment_slot_left_03",
+      "role": "equipment_slot",
+      "file": "Components/equipment_slot_left_03.png",
+      "sourceBox": [
+        350,
+        588,
+        470,
+        704
+      ],
+      "trimBox": [
+        3,
+        2,
+        108,
+        112
+      ],
+      "sourcePlacement": [
+        353,
+        590,
+        458,
+        700
+      ],
+      "size": [
+        105,
+        110
+      ]
+    },
+    {
+      "name": "equipment_slot_right_01",
+      "role": "equipment_slot",
+      "file": "Components/equipment_slot_right_01.png",
+      "sourceBox": [
+        806,
+        296,
+        925,
+        412
+      ],
+      "trimBox": [
+        5,
+        4,
+        110,
+        112
+      ],
+      "sourcePlacement": [
+        811,
+        300,
+        916,
+        408
+      ],
+      "size": [
+        105,
+        108
+      ]
+    },
+    {
+      "name": "equipment_slot_right_02",
+      "role": "equipment_slot",
+      "file": "Components/equipment_slot_right_02.png",
+      "sourceBox": [
+        806,
+        445,
+        925,
+        558
+      ],
+      "trimBox": [
+        14,
+        3,
+        117,
+        109
+      ],
+      "sourcePlacement": [
+        820,
+        448,
+        923,
+        554
+      ],
+      "size": [
+        103,
+        106
+      ]
+    },
+    {
+      "name": "equipment_slot_right_03",
+      "role": "equipment_slot",
+      "file": "Components/equipment_slot_right_03.png",
+      "sourceBox": [
+        806,
+        588,
+        925,
+        704
+      ],
+      "trimBox": [
+        3,
+        2,
+        110,
+        112
+      ],
+      "sourcePlacement": [
+        809,
+        590,
+        916,
+        700
+      ],
+      "size": [
+        107,
+        110
+      ]
+    },
+    {
+      "name": "inventory_slot_r1_c1",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r1_c1.png",
+      "sourceBox": [
+        1028,
+        252,
+        1140,
+        360
+      ],
+      "trimBox": [
+        6,
+        5,
+        106,
+        106
+      ],
+      "sourcePlacement": [
+        1034,
+        257,
+        1134,
+        358
+      ],
+      "size": [
+        100,
+        101
+      ]
+    },
+    {
+      "name": "inventory_slot_r1_c2",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r1_c2.png",
+      "sourceBox": [
+        1137,
+        252,
+        1249,
+        360
+      ],
+      "trimBox": [
+        4,
+        5,
+        107,
+        106
+      ],
+      "sourcePlacement": [
+        1141,
+        257,
+        1244,
+        358
+      ],
+      "size": [
+        103,
+        101
+      ]
+    },
+    {
+      "name": "inventory_slot_r1_c3",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r1_c3.png",
+      "sourceBox": [
+        1247,
+        252,
+        1358,
+        360
+      ],
+      "trimBox": [
+        3,
+        5,
+        104,
+        106
+      ],
+      "sourcePlacement": [
+        1250,
+        257,
+        1351,
+        358
+      ],
+      "size": [
+        101,
+        101
+      ]
+    },
+    {
+      "name": "inventory_slot_r1_c4",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r1_c4.png",
+      "sourceBox": [
+        1357,
+        252,
+        1468,
+        360
+      ],
+      "trimBox": [
+        1,
+        5,
+        103,
+        106
+      ],
+      "sourcePlacement": [
+        1358,
+        257,
+        1460,
+        358
+      ],
+      "size": [
+        102,
+        101
+      ]
+    },
+    {
+      "name": "inventory_slot_r2_c1",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r2_c1.png",
+      "sourceBox": [
+        1028,
+        361,
+        1140,
+        466
+      ],
+      "trimBox": [
+        7,
+        2,
+        106,
+        104
+      ],
+      "sourcePlacement": [
+        1035,
+        363,
+        1134,
+        465
+      ],
+      "size": [
+        99,
+        102
+      ]
+    },
+    {
+      "name": "inventory_slot_r2_c2",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r2_c2.png",
+      "sourceBox": [
+        1137,
+        361,
+        1249,
+        466
+      ],
+      "trimBox": [
+        4,
+        2,
+        107,
+        104
+      ],
+      "sourcePlacement": [
+        1141,
+        363,
+        1244,
+        465
+      ],
+      "size": [
+        103,
+        102
+      ]
+    },
+    {
+      "name": "inventory_slot_r2_c3",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r2_c3.png",
+      "sourceBox": [
+        1247,
+        361,
+        1358,
+        466
+      ],
+      "trimBox": [
+        3,
+        2,
+        104,
+        104
+      ],
+      "sourcePlacement": [
+        1250,
+        363,
+        1351,
+        465
+      ],
+      "size": [
+        101,
+        102
+      ]
+    },
+    {
+      "name": "inventory_slot_r2_c4",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r2_c4.png",
+      "sourceBox": [
+        1357,
+        361,
+        1468,
+        466
+      ],
+      "trimBox": [
+        1,
+        2,
+        103,
+        104
+      ],
+      "sourcePlacement": [
+        1358,
+        363,
+        1460,
+        465
+      ],
+      "size": [
+        102,
+        102
+      ]
+    },
+    {
+      "name": "inventory_slot_r3_c1",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r3_c1.png",
+      "sourceBox": [
+        1028,
+        468,
+        1140,
+        575
+      ],
+      "trimBox": [
+        7,
+        1,
+        106,
+        103
+      ],
+      "sourcePlacement": [
+        1035,
+        469,
+        1134,
+        571
+      ],
+      "size": [
+        99,
+        102
+      ]
+    },
+    {
+      "name": "inventory_slot_r3_c2",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r3_c2.png",
+      "sourceBox": [
+        1137,
+        468,
+        1249,
+        575
+      ],
+      "trimBox": [
+        4,
+        1,
+        107,
+        103
+      ],
+      "sourcePlacement": [
+        1141,
+        469,
+        1244,
+        571
+      ],
+      "size": [
+        103,
+        102
+      ]
+    },
+    {
+      "name": "inventory_slot_r3_c3",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r3_c3.png",
+      "sourceBox": [
+        1247,
+        468,
+        1358,
+        575
+      ],
+      "trimBox": [
+        3,
+        1,
+        104,
+        104
+      ],
+      "sourcePlacement": [
+        1250,
+        469,
+        1351,
+        572
+      ],
+      "size": [
+        101,
+        103
+      ]
+    },
+    {
+      "name": "inventory_slot_r3_c4",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r3_c4.png",
+      "sourceBox": [
+        1357,
+        468,
+        1468,
+        575
+      ],
+      "trimBox": [
+        1,
+        1,
+        103,
+        103
+      ],
+      "sourcePlacement": [
+        1358,
+        469,
+        1460,
+        571
+      ],
+      "size": [
+        102,
+        102
+      ]
+    },
+    {
+      "name": "inventory_slot_r4_c1",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r4_c1.png",
+      "sourceBox": [
+        1028,
+        575,
+        1140,
+        682
+      ],
+      "trimBox": [
+        6,
+        1,
+        106,
+        103
+      ],
+      "sourcePlacement": [
+        1034,
+        576,
+        1134,
+        678
+      ],
+      "size": [
+        100,
+        102
+      ]
+    },
+    {
+      "name": "inventory_slot_r4_c2",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r4_c2.png",
+      "sourceBox": [
+        1137,
+        575,
+        1249,
+        682
+      ],
+      "trimBox": [
+        4,
+        1,
+        107,
+        103
+      ],
+      "sourcePlacement": [
+        1141,
+        576,
+        1244,
+        678
+      ],
+      "size": [
+        103,
+        102
+      ]
+    },
+    {
+      "name": "inventory_slot_r4_c3",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r4_c3.png",
+      "sourceBox": [
+        1247,
+        575,
+        1358,
+        682
+      ],
+      "trimBox": [
+        3,
+        1,
+        105,
+        103
+      ],
+      "sourcePlacement": [
+        1250,
+        576,
+        1352,
+        678
+      ],
+      "size": [
+        102,
+        102
+      ]
+    },
+    {
+      "name": "inventory_slot_r4_c4",
+      "role": "inventory_slot",
+      "file": "Components/inventory_slot_r4_c4.png",
+      "sourceBox": [
+        1357,
+        575,
+        1468,
+        682
+      ],
+      "trimBox": [
+        1,
+        2,
+        103,
+        103
+      ],
+      "sourcePlacement": [
+        1358,
+        577,
+        1460,
+        678
+      ],
+      "size": [
+        102,
+        101
+      ]
+    },
+    {
+      "name": "detail_item_slot",
+      "role": "detail_slot",
+      "file": "Components/detail_item_slot.png",
+      "sourceBox": [
+        1022,
+        707,
+        1145,
+        847
+      ],
+      "trimBox": [
+        5,
+        3,
+        120,
+        135
+      ],
+      "sourcePlacement": [
+        1027,
+        710,
+        1142,
+        842
+      ],
+      "size": [
+        115,
+        132
+      ]
+    }
+  ]
+}
