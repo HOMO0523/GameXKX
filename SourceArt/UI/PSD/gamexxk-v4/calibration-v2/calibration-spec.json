@@ -4,14 +4,16 @@
     "width": 1920,
     "height": 1080
   },
-  "generatedBase": "Generated/hero_backpack_textless_base.png",
+  "generatedBase": "Generated/hero_backpack_textless_base_clean.png",
+  "uiShellNoIcons": "Generated/hero_backpack_ui_shell_no_icons.png",
+  "townBackgroundCleanNoUi": "Generated/town_background_clean_no_ui.png",
   "preview": "Previews/GameXXK_HeroBackpack_V2.png",
   "comparison": "Review/GameXXK_HeroBackpack_V2_compare.png",
   "heroPlacement": {
-    "x": 430,
-    "y": 265,
-    "width": 510,
-    "height": 510,
+    "x": 403,
+    "y": 216,
+    "width": 612,
+    "height": 612,
     "fitMode": "contain_canvas"
   },
   "forbiddenVisualSources": [

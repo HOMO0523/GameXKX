@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "candidateName": "GameXXK_HeroBackpack_V2",
+  "canvas": [
+    1920,
+    1080
+  ],
+  "heroSourceCanvas": [
+    512,
+    512
+  ],
+  "heroScale": 1.1953125,
+  "heroScaleRatioXToY": 1.0,
+  "heroPlacement": {
+    "x": 403,
+    "y": 216,
+    "width": 612,
+    "height": 612
+  },
+  "consumedSources": [
+    "SourceArt/UI/PSD/gamexxk-v4/ui-master/Reference/approved_town_hero_backpack.png",
+    "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/hero_backpack_textless_base_clean.png",
+    "SourceAssets/AnimationProcessing/Production/character_00_hero_idle/frames/frame_0000.png"
+  ],
+  "preview": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\calibration-v2\\Previews\\GameXXK_HeroBackpack_V2.png",
+  "comparison": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\calibration-v2\\Review\\GameXXK_HeroBackpack_V2_compare.png"
+}
