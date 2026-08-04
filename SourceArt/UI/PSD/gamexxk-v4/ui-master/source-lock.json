@@ -1,0 +1,29 @@
+{
+  "approvedReference": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/Reference/approved_town_hero_backpack.png",
+    "sha256": "28bf8962b4dd1d27eef061600060f2fb998ffdb17dde0e4c95fd4f237b902af2",
+    "width": 1672,
+    "height": 941
+  },
+  "heroIdle": {
+    "path": "SourceAssets/AnimationProcessing/Production/character_00_hero_idle/frames/frame_0000.png",
+    "sha256": "d6e1bcc2acbce962c5b872ac628c5a86dbcc99466a56d6a6a48ab8bef6a8cc58",
+    "width": 512,
+    "height": 512
+  },
+  "partnerIdle": {
+    "path": "SourceAssets/AnimationProcessing/Production/character_01_blade_idle/frames/frame_0000.png",
+    "sha256": "e0035c4c48be57c9d5229c542c1f6ac3dc29c94d8948dee1f1d3196c8bb45140",
+    "width": 512,
+    "height": 512
+  },
+  "monsterIdle": {
+    "path": "SourceAssets/AnimationProcessing/Production/enemy_01_rooster_idle/frames/frame_0000.png",
+    "sha256": "29d7b94d5faf6aa131f90fa10180d78c04a3be6c6b29d433684b56ebe3cf5b6d",
+    "width": 512,
+    "height": 512
+  },
+  "retiredSourceRoots": [
+    "SourceAssets/PartyDeck/card-portraits/generated"
+  ]
+}

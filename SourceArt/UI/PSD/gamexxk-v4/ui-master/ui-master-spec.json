@@ -1,0 +1,35 @@
+{
+  "phase": "A",
+  "masterCanvas": {
+    "width": 10080,
+    "height": 4680
+  },
+  "page": {
+    "width": 1920,
+    "height": 1080,
+    "columns": 5,
+    "gap": 120
+  },
+  "overviewScale": 0.25,
+  "outputPsd": "D:/UE5 demo/GameXXK/outputs/UI_PSD/Candidates/GameXXK_UI_Master_V1.psd",
+  "pages": [
+    { "name": "00_公共组件" },
+    { "name": "01_主菜单" },
+    { "name": "02_城镇HUD" },
+    { "name": "03_主角背包" },
+    { "name": "04_伙伴编队" },
+    { "name": "05_图鉴" },
+    { "name": "06_任务日志" },
+    { "name": "07_商店交易" },
+    { "name": "08_路线图" },
+    { "name": "09_路线事件" },
+    { "name": "10_战斗HUD" },
+    { "name": "11_战斗奖励结算" },
+    { "name": "12_系统菜单" },
+    { "name": "13_主角背包_物品选中" },
+    { "name": "14_伙伴编队_角色选中" },
+    { "name": "15_图鉴_怪物选中" },
+    { "name": "16_路线图_节点选中" },
+    { "name": "17_战斗HUD_卡牌选中目标" }
+  ]
+}
