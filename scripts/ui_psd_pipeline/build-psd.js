@@ -54,7 +54,11 @@ function jsxString(value) {
   return JSON.stringify(String(value));
 }
 
-const imageLayers = JSON.stringify(manifest.imageLayers);
+const resolvedImageLayers = manifest.imageLayers.map((layer) => ({
+  ...layer,
+  path: (path.isAbsolute(layer.path) ? layer.path : path.resolve(root, layer.path)).replace(/\\/g, '/'),
+}));
+const imageLayers = JSON.stringify(resolvedImageLayers);
 const textLayers = JSON.stringify(manifest.textLayers);
 const document = JSON.stringify(manifest.document);
 const previewPath = path.join(root, 'final_preview.png').replace(/\\/g, '/');
@@ -89,19 +93,76 @@ app.bringToFront();
     return '';
   }
 
+  function ensureGroupPath(doc, groupPath) {
+    var parts = String(groupPath || '').split('/');
+    var container = doc;
+    for (var partIndex = 0; partIndex < parts.length; partIndex++) {
+      var part = parts[partIndex];
+      if (!part) continue;
+      var group = null;
+      for (var groupIndex = 0; groupIndex < container.layerSets.length; groupIndex++) {
+        if (container.layerSets[groupIndex].name == part) {
+          group = container.layerSets[groupIndex];
+          break;
+        }
+      }
+      if (!group) {
+        group = container.layerSets.add();
+        group.name = part;
+      }
+      container = group;
+    }
+    return container;
+  }
+
+  function resizeLayerTo(layer, width, height) {
+    if (!(width > 0) || !(height > 0)) return;
+    var bounds = layer.bounds;
+    var currentWidth = bounds[2].as('px') - bounds[0].as('px');
+    var currentHeight = bounds[3].as('px') - bounds[1].as('px');
+    if (!(currentWidth > 0) || !(currentHeight > 0)) return;
+    layer.resize(width / currentWidth * 100, height / currentHeight * 100, AnchorPosition.TOPLEFT);
+  }
+
   function importImage(doc, item) {
     var sourceFile = new File(item.path);
     if (!sourceFile.exists) throw new Error('Missing image: ' + item.path);
     var source = app.open(sourceFile);
     var sourceLayer = source.activeLayer;
+    var sourceCanvasWidth = source.width.as('px');
+    var sourceCanvasHeight = source.height.as('px');
+    var sourceBounds = sourceLayer.bounds;
+    var sourceLeft = sourceBounds[0].as('px');
+    var sourceTop = sourceBounds[1].as('px');
     var duplicated = sourceLayer.duplicate(doc, ElementPlacement.PLACEATBEGINNING);
     source.close(SaveOptions.DONOTSAVECHANGES);
     app.activeDocument = doc;
+    doc.activeLayer = duplicated;
     duplicated.name = item.name;
+    var itemX = Number(item.x || 0);
+    var itemY = Number(item.y || 0);
+    var desiredLeft = itemX;
+    var desiredTop = itemY;
+    try {
+      if (item.fitMode == 'contain_canvas' && item.width > 0 && item.height > 0) {
+        var canvasScale = Math.min(item.width / sourceCanvasWidth, item.height / sourceCanvasHeight);
+        duplicated.resize(canvasScale * 100, canvasScale * 100, AnchorPosition.TOPLEFT);
+        var targetCanvasLeft = itemX + (item.width - sourceCanvasWidth * canvasScale) / 2;
+        var targetCanvasTop = itemY + (item.height - sourceCanvasHeight * canvasScale) / 2;
+        desiredLeft = targetCanvasLeft + sourceLeft * canvasScale;
+        desiredTop = targetCanvasTop + sourceTop * canvasScale;
+      } else if (item.fitMode == 'stretch' && item.width > 0 && item.height > 0) {
+        resizeLayerTo(duplicated, Number(item.width), Number(item.height));
+      }
+    } catch (resizeError) {
+      throw new Error('Failed to resize layer ' + item.name + ': ' + resizeError.message);
+    }
     var bounds = duplicated.bounds;
     var currentLeft = bounds[0].as('px');
     var currentTop = bounds[1].as('px');
-    duplicated.translate(UnitValue(item.x - currentLeft, 'px'), UnitValue(item.y - currentTop, 'px'));
+    duplicated.translate(UnitValue(desiredLeft - currentLeft, 'px'), UnitValue(desiredTop - currentTop, 'px'));
+    if (item.group) duplicated.move(ensureGroupPath(doc, item.group), ElementPlacement.INSIDE);
+    duplicated.visible = item.visible !== false;
     return duplicated;
   }
 
@@ -147,6 +208,7 @@ app.bringToFront();
     setFont(textItem, item.font);
     try { textItem.fauxBold = !!item.bold; } catch (e) {}
     try { textItem.tracking = item.tracking || 0; } catch (e) {}
+    if (item.group) layer.move(ensureGroupPath(doc, item.group), ElementPlacement.INSIDE);
     createdText.push(textItem.contents);
   }
 
@@ -171,17 +233,25 @@ app.bringToFront();
   var reopened = app.open(outputFile);
   var textCount = 0;
   var actualTexts = [];
-  for (var k = 0; k < reopened.artLayers.length; k++) {
-    var art = reopened.artLayers[k];
-    if (art.kind == LayerKind.TEXT) {
-      textCount++;
-      actualTexts.push(art.textItem.contents);
+  var walkedArtLayerCount = 0;
+  function walkLayers(container, actualTexts) {
+    for (var artIndex = 0; artIndex < container.artLayers.length; artIndex++) {
+      var art = container.artLayers[artIndex];
+      walkedArtLayerCount++;
+      if (art.kind == LayerKind.TEXT) {
+        textCount++;
+        actualTexts.push(art.textItem.contents);
+      }
+    }
+    for (var setIndex = 0; setIndex < container.layerSets.length; setIndex++) {
+      walkLayers(container.layerSets[setIndex], actualTexts);
     }
   }
+  walkLayers(reopened, actualTexts);
   var validation = {
     width: reopened.width.as('px'),
     height: reopened.height.as('px'),
-    artLayerCount: reopened.artLayers.length,
+    artLayerCount: walkedArtLayerCount,
     expectedImageLayers: imageLayers.length,
     expectedTextLayers: textLayers.length,
     actualTextLayers: textCount,

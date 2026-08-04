@@ -248,6 +248,61 @@ class TownPsdPackageTest(unittest.TestCase):
             self.assertIn("var validationFile = new File(validationPath);", compose)
             self.assertNotIn(output_psd.with_suffix(".validation.json").as_posix(), compose)
 
+    def test_composer_supports_grouped_scaled_layers(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            write_package(root)
+            manifest_path = root / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["imageLayers"][0].update(
+                {
+                    "name": "transparent_character",
+                    "group": "03_主角背包/30_角色",
+                    "x": 100,
+                    "y": 80,
+                    "width": 490,
+                    "height": 490,
+                    "fitMode": "contain_canvas",
+                    "visible": False,
+                }
+            )
+            manifest_path.write_text(
+                json.dumps(manifest, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                ["node", str(PSD_COMPOSER_SCRIPT), "--root", str(root)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(0, result.returncode, result.stderr)
+            compose = (root / "compose.jsx").read_text(encoding="utf-8-sig")
+            self.assertIn((root / "clean_assets" / "asset.png").as_posix(), compose)
+            self.assertIn("sourceCanvasWidth", compose)
+            self.assertIn("sourceCanvasHeight", compose)
+            self.assertIn("item.fitMode == 'contain_canvas'", compose)
+            self.assertIn(
+                "Math.min(item.width / sourceCanvasWidth, item.height / sourceCanvasHeight)",
+                compose,
+            )
+            self.assertIn(
+                "duplicated.resize(canvasScale * 100, canvasScale * 100",
+                compose,
+            )
+            self.assertIn("ensureGroupPath(doc, item.group)", compose)
+            self.assertIn("doc.activeLayer = duplicated", compose)
+            self.assertNotIn("resizeLayerTo(duplicated, item.width, item.height)", compose)
+            self.assertIn("Failed to resize layer", compose)
+            self.assertIn("duplicated.visible = item.visible !== false", compose)
+            self.assertLess(
+                compose.index("duplicated.resize(canvasScale * 100, canvasScale * 100"),
+                compose.index("duplicated.visible = item.visible !== false"),
+            )
+            self.assertIn("walkLayers(reopened, actualTexts)", compose)
+
     def test_photoshop_runner_exposes_a_safe_package_check(self) -> None:
         runner = PSD_PHOTOSHOP_RUNNER.read_text(encoding="utf-8")
         self.assertIn("[string]$Root", runner)
