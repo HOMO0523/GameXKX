@@ -10,6 +10,54 @@
 
 ---
 
+## Execution order override: Master UI first
+
+Per the user's 2026-08-05 direction, complete Task 0 and obtain a reviewable Master UI result before starting Task 1. Task 0 is pure visual/master-art work: do not use TDD; validate only after generation with manifest, dimensions, alpha/source checks, hashes, and visual review. Tasks 1–10 remain the later code/integration phase and keep their normal TDD requirements.
+
+## Task 0: Iterate the Master UI before code integration
+
+**Files:**
+
+- Modify: `scripts/gamexxk_ui_master_pages.py`
+- Modify: `scripts/build_gamexxk_ui_master.py`
+- Modify: `SourceArt/UI/PSD/gamexxk-v4/ui-master/ui-master-spec.json`
+- Generate: `SourceArt/UI/PSD/gamexxk-v4/ui-master/Previews/00_公共组件.png`
+- Generate: `SourceArt/UI/PSD/gamexxk-v4/ui-master/Previews/03_主角背包.png`
+- Generate: `SourceArt/UI/PSD/gamexxk-v4/ui-master/Previews/07_商店交易.png`
+- Generate: `SourceArt/UI/PSD/gamexxk-v4/ui-master/GameXXK_UI_Master_ContactSheet.png`
+- Generate: `SourceArt/UI/PSD/gamexxk-v4/ui-master/master-manifest.json`
+- Modify: `docs/production/2026-08-04-gamexxk-ui-calibration-v2-progress.md`
+
+- [ ] **Step 1: Route the three priority pages to approved V2 sources**
+
+Use `calibration-v2/Generated/hero_backpack_large_panel_clean.png`, the 28 approved controls, the final Hero Idle, the 45 approved equipment/item icons, and editable text. Do not read rejected procedural V1 art, the rejected seven-item sheet, Legacy compatibility sheet, or belt drafts.
+
+- [ ] **Step 2: Replace page 07 with the new seven-product meta shop**
+
+Render six equipment-pack cards in set order using the six approved weapon icons, plus one companion-pack card using `Content/nav_companion.png`. Show fixed prices 100/500, permanent gold, a selected product detail area, `普通 70% / 稀有 25% / 珍稀 5%`, confirmation affordance, and no medicine shelf, selling control, or legacy three-slot equipment.
+
+- [ ] **Step 3: Rebuild canonical Master outputs**
+
+Run: `python scripts/build_gamexxk_ui_master.py`
+
+Expected: `ok: true`, 18 pages at 1920×1080, priority pages marked `v2_master`, and the contact sheet regenerated.
+
+- [ ] **Step 4: Run post-generation checks**
+
+Run `python -m py_compile scripts/gamexxk_ui_master_pages.py scripts/build_gamexxk_ui_master.py`, validate every manifest path, verify the three priority previews are 1920×1080, verify page 07 contains seven product image layers and no legacy product names, and run `git diff --check`.
+
+- [ ] **Step 5: Visually review at original resolution**
+
+Inspect the three priority pages and contact sheet for paper/ink consistency, readable hierarchy, icon fill, no crop seams, no stretched controls, and exact 6+1 product presentation. Record hashes and review status in the production note.
+
+- [ ] **Step 6: Commit the Master UI milestone**
+
+Stage only the Master builder/page changes, canonical manifests/previews/contact sheet, and production record. Keep UE import and C++ untouched until the visual milestone is accepted.
+
+```powershell
+git commit -m "feat: iterate Master UI for new meta shop"
+```
+
 ## File map
 
 **New rule and data units**
