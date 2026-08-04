@@ -107,6 +107,7 @@ def _build_master_manifest(
                 "size": page["size"],
                 "preview": f"Previews/{page['file']}",
                 "status": page["status"],
+                "sourceFamily": page.get("sourceFamily", "phase_a_draft"),
                 "imageLayerCount": len(page["imageLayers"]),
                 "textLayerCount": len(page["textLayers"]),
             }
@@ -173,6 +174,7 @@ def build_package(output_root: Path) -> dict:
         "imageLayers": len(manifest["imageLayers"]),
         "textLayers": len(manifest["textLayers"]),
         "runtimeAssets": len(runtime_manifest["assets"]),
+        "v2MasterPages": [page["group"] for page in pages if page.get("status") == "v2_master"],
     }
 
 

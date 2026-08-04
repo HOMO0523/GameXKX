@@ -21,6 +21,23 @@ PAPER = (232, 215, 179, 255)
 HERO = ROOT / "SourceAssets/AnimationProcessing/Production/character_00_hero_idle/frames/frame_0000.png"
 PARTNER = ROOT / "SourceAssets/AnimationProcessing/Production/character_01_blade_idle/frames/frame_0000.png"
 MONSTER = ROOT / "SourceAssets/AnimationProcessing/Production/enemy_01_rooster_idle/frames/frame_0000.png"
+CALIBRATION_V2 = ROOT / "SourceArt/UI/PSD/gamexxk-v4/calibration-v2"
+V2_COMPONENT_REVIEW = CALIBRATION_V2 / "Review/GameXXK_HeroBackpack_V2_components.png"
+V2_BACKPACK_PREVIEW = CALIBRATION_V2 / "Previews/GameXXK_HeroBackpack_V2.png"
+V2_LARGE_PANEL = CALIBRATION_V2 / "Generated/hero_backpack_large_panel_clean.png"
+V2_COMPONENTS = CALIBRATION_V2 / "Components"
+V2_CONTENT = CALIBRATION_V2 / "Content"
+V2_MASTER_PAGE_INDICES = frozenset({0, 3, 7})
+
+META_SHOP_PRODUCTS = (
+    ("破军装备包", "Equipment/pojun_weapon.png", "100"),
+    ("玄甲装备包", "Equipment/xuanjia_weapon.png", "100"),
+    ("青囊装备包", "Equipment/qingnang_weapon.png", "100"),
+    ("追风装备包", "Equipment/zhuifeng_weapon.png", "100"),
+    ("蚀骨装备包", "Equipment/shigu_weapon.png", "100"),
+    ("山河装备包", "Equipment/shanhe_weapon.png", "100"),
+    ("伙伴包", "nav_companion.png", "500"),
+)
 
 
 @dataclass(frozen=True)
@@ -283,6 +300,19 @@ def _draw_route_overlay(selected: bool = False) -> Image.Image:
     return image
 
 
+def _draw_backpack_scrollbar_overlay() -> Image.Image:
+    image = Image.new("RGBA", PAGE_SIZE, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((1642, 332, 1660, 930), radius=9, fill=(77, 69, 57, 82), outline=(43, 40, 34, 150), width=2)
+    draw.rounded_rectangle((1640, 350, 1662, 520), radius=10, fill=(226, 205, 164, 255), outline=(43, 40, 34, 220), width=3)
+    draw.line((1647, 377, 1655, 377), fill=(94, 82, 65, 210), width=2)
+    draw.line((1647, 405, 1655, 405), fill=(94, 82, 65, 210), width=2)
+    draw.line((1647, 433, 1655, 433), fill=(94, 82, 65, 210), width=2)
+    draw.line((1647, 461, 1655, 461), fill=(94, 82, 65, 210), width=2)
+    draw.line((1647, 489, 1655, 489), fill=(94, 82, 65, 210), width=2)
+    return image
+
+
 def _page_common(builder: PageBuilder, world: Path) -> None:
     _add_world(builder, world, dim=True)
     builder.add_component("panel_large", (90, 82, 1740, 920), "20_Shell")
@@ -312,6 +342,15 @@ def _page_common(builder: PageBuilder, world: Path) -> None:
     builder.add_component("tooltip_panel", (920, 690, 520, 240), "36_Tooltip")
     builder.add_text("按钮仅用纸底与墨线区分；危险态只使用小朱砂印。", (965, 750), 20)
     builder.add_text("动态文字始终保持独立图层", (965, 800), 24, bold=True)
+
+
+def _page_common_v2(builder: PageBuilder) -> None:
+    builder.add_image(
+        "approved_v2_component_review",
+        V2_COMPONENT_REVIEW,
+        (0, 0, 1920, 1080),
+        "10_ApprovedV2Reference",
+    )
 
 
 def _page_main_menu(builder: PageBuilder, world: Path) -> None:
@@ -355,6 +394,91 @@ def _page_backpack(builder: PageBuilder, world: Path, *, selected: bool = False)
         builder.add_text("普通布袋，能装下一些小物件。", (1090, 730), 18)
         builder.add_component("button_danger", (1330, 760, 190, 62), "45_Selection")
         builder.add_text("分解", (1395, 775), 22)
+
+
+def _page_backpack_v2(builder: PageBuilder) -> None:
+    builder.add_image("approved_v2_backpack_shell", V2_LARGE_PANEL, (0, 0, 1920, 1080), "10_ApprovedV2Shell")
+    builder.add_image("hero_portrait", V2_CONTENT / "hero_portrait.png", (48, 32, 132, 132), "15_HudContent", fit_mode="contain_canvas")
+    builder.add_text("Lv. 1", (205, 56), 28, bold=True)
+    builder.add_text("0 / 100", (310, 98), 18)
+    builder.add_text("33", (248, 140), 24, color=(156, 69, 45, 255))
+    builder.add_text("10,000", (1268, 53), 25)
+    builder.add_text("2,000", (1508, 53), 25)
+    builder.add_text("500", (1782, 53), 25)
+    builder.add_text("主角", (395, 213), 42, bold=True)
+
+    tab_labels = ("属性", "装备", "技能", "天赋", "称号")
+    tab_files = (
+        "tab_01_attribute.png",
+        "tab_02_equipment_selected.png",
+        "tab_03_skill.png",
+        "tab_04_talent.png",
+        "tab_05_title.png",
+    )
+    for index, (label, filename) in enumerate(zip(tab_labels, tab_files)):
+        x = 570 + index * 115
+        builder.add_image(f"tab_{index + 1}", V2_COMPONENTS / filename, (x, 220, 105, 62), "20_Tabs")
+        builder.add_text(label, (x + 28, 232), 20, bold=index == 1)
+
+    builder.add_image("hero_idle", HERO, (490, 305, 510, 510), "30_Character", fit_mode="contain_canvas")
+    equipment_frames = (
+        ("equipment_slot_left_01.png", 420, 340, "starter_weapon.png"),
+        ("equipment_slot_left_02.png", 410, 515, "starter_head.png"),
+        ("equipment_slot_left_03.png", 420, 690, "starter_armor.png"),
+        ("equipment_slot_right_01.png", 930, 340, "starter_belt.png"),
+        ("equipment_slot_right_02.png", 940, 515, "starter_shoes.png"),
+        ("equipment_slot_right_03.png", 930, 690, "starter_accessory.png"),
+    )
+    for index, (frame_name, x, y, icon_name) in enumerate(equipment_frames):
+        builder.add_image(f"equipment_frame_{index + 1}", V2_COMPONENTS / frame_name, (x, y, 118, 124), "31_EquipmentFrames")
+        builder.add_image(
+            f"equipment_icon_{index + 1}",
+            V2_CONTENT / "StarterEquipment" / icon_name,
+            (x + 15, y + 15, 88, 88),
+            "32_EquipmentIcons",
+            fit_mode="contain_canvas",
+        )
+
+    builder.add_text("全部", (1135, 250), 21, bold=True)
+    builder.add_text("装备", (1215, 250), 19)
+    builder.add_text("材料", (1300, 250), 19)
+    builder.add_text("任务", (1385, 250), 19)
+    builder.add_text("其他", (1440, 250), 19)
+    builder.add_text("背包  3 / 200", (1525, 250), 18, bold=True)
+
+    slot_files = sorted(V2_COMPONENTS.glob("inventory_slot_*.png"))
+    if len(slot_files) < 16:
+        raise FileNotFoundError(f"expected 16 V2 inventory slot components in {V2_COMPONENTS}")
+    item_icons = (
+        V2_CONTENT / "Items/strengthening_stone.png",
+        V2_CONTENT / "Items/refinement_sand.png",
+        V2_CONTENT / "Items/qingshan_suppression_token.png",
+    )
+    slot_index = 0
+    for row in range(5):
+        for column in range(4):
+            x = 1135 + column * 122
+            y = 300 + row * 130
+            builder.add_image(
+                f"inventory_slot_{row + 1}_{column + 1}",
+                slot_files[slot_index % len(slot_files)],
+                (x, y, 110, 116),
+                "40_InventorySlots",
+            )
+            if slot_index < len(item_icons):
+                builder.add_image(
+                    f"inventory_item_{slot_index + 1}",
+                    item_icons[slot_index],
+                    (x + 14, y + 12, 82, 82),
+                    "41_InventoryItems",
+                    fit_mode="contain_canvas",
+                )
+            slot_index += 1
+    builder.add_overlay("inventory_scrollbar_right", _draw_backpack_scrollbar_overlay(), "42_InventoryScrollbar")
+    builder.add_text("Lv. 1", (480, 900), 20)
+    builder.add_text("攻击 33", (585, 900), 20)
+    builder.add_text("气血 120", (720, 900), 20)
+    builder.add_text("防御 18", (870, 900), 20)
 
 
 def _page_party(builder: PageBuilder, world: Path, *, selected: bool = False) -> None:
@@ -430,6 +554,83 @@ def _page_shop(builder: PageBuilder, world: Path) -> None:
     builder.add_text("草药包   单价 80", (740, 760), 23, bold=True)
     builder.add_component("button_primary", (970, 820, 190, 62), "40_TradeDetail")
     builder.add_text("购买", (1035, 835), 22)
+
+
+def _page_meta_shop_v2(builder: PageBuilder) -> None:
+    builder.add_image(
+        "approved_v2_shop_shell",
+        V2_LARGE_PANEL,
+        (0, 0, 1920, 1080),
+        "10_ApprovedV2Shell",
+    )
+    builder.add_text("新商店", (390, 205), 42, bold=True)
+    builder.add_text("套装装备包与伙伴包", (565, 221), 22, color=MUTED)
+    builder.add_text("永久金币  500", (1510, 54), 26, bold=True)
+
+    card_positions = (
+        (410, 300),
+        (630, 300),
+        (850, 300),
+        (1070, 300),
+        (520, 610),
+        (740, 610),
+        (960, 610),
+    )
+    frame_paths = tuple(V2_COMPONENTS.glob("inventory_slot_*.png"))
+    if not frame_paths:
+        raise FileNotFoundError(f"missing V2 inventory slot components in {V2_COMPONENTS}")
+    frame_path = sorted(frame_paths)[0]
+    for index, ((label, relative_icon, price), (x, y)) in enumerate(zip(META_SHOP_PRODUCTS, card_positions)):
+        if index == 0:
+            builder.add_image(
+                "selected_product_ink",
+                V2_CONTENT / "category_selected_ink.png",
+                (x - 12, y - 24, 194, 66),
+                "20_ProductSelection",
+            )
+        builder.add_image(
+            f"product_card_{index + 1}",
+            frame_path,
+            (x, y, 170, 170),
+            "21_ProductCards",
+        )
+        builder.add_image(
+            f"product_icon_{index + 1}",
+            V2_CONTENT / relative_icon,
+            (x + 20, y + 18, 130, 130),
+            "22_ProductIcons",
+            fit_mode="contain_canvas",
+        )
+        builder.add_text(label, (x + 12, y + 184), 20, bold=index == 0)
+        builder.add_text(f"{price} 金", (x + 47, y + 222), 18, color=MUTED)
+
+    builder.add_image(
+        "selected_product_detail_slot",
+        V2_COMPONENTS / "detail_item_slot.png",
+        (1370, 330, 220, 220),
+        "30_ProductDetail",
+    )
+    builder.add_image(
+        "selected_product_detail_icon",
+        V2_CONTENT / "Equipment/pojun_weapon.png",
+        (1405, 365, 150, 150),
+        "31_ProductDetailIcon",
+        fit_mode="contain_canvas",
+    )
+    builder.add_text("破军装备包", (1340, 585), 30, bold=True)
+    builder.add_text("随机获得破军套装的一个部位", (1305, 640), 19)
+    builder.add_text("装备等级：当前主角等级", (1305, 680), 19)
+    builder.add_text("普通 70%  ·  稀有 25%  ·  珍稀 5%", (1305, 720), 17)
+    builder.add_text("可能部位：武器 / 头部 / 衣甲", (1305, 770), 17)
+    builder.add_text("腰带 / 鞋 / 饰品", (1395, 804), 17)
+    builder.add_image(
+        "purchase_button",
+        V2_COMPONENTS / "tab_02_equipment_selected.png",
+        (1380, 870, 210, 72),
+        "40_PurchaseAction",
+    )
+    builder.add_text("购买  100", (1422, 888), 23, bold=True)
+    builder.add_text("点击后再次确认", (1412, 955), 16, color=MUTED)
 
 
 def _page_route(builder: PageBuilder, world: Path, *, selected: bool = False) -> None:
@@ -510,13 +711,13 @@ def _page_system(builder: PageBuilder, world: Path) -> None:
 
 def _build_page(builder: PageBuilder, index: int, world: Path) -> None:
     if index == 0:
-        _page_common(builder, world)
+        _page_common_v2(builder)
     elif index == 1:
         _page_main_menu(builder, world)
     elif index == 2:
         _page_town_hud(builder, world)
     elif index == 3:
-        _page_backpack(builder, world)
+        _page_backpack_v2(builder)
     elif index == 4:
         _page_party(builder, world)
     elif index == 5:
@@ -524,7 +725,7 @@ def _build_page(builder: PageBuilder, index: int, world: Path) -> None:
     elif index == 6:
         _page_quest(builder, world)
     elif index == 7:
-        _page_shop(builder, world)
+        _page_meta_shop_v2(builder)
     elif index == 8:
         _page_route(builder, world)
     elif index == 9:
@@ -574,7 +775,8 @@ def build_page_previews(
                 "group": page.name,
                 "file": filename,
                 "size": [1920, 1080],
-                "status": "pending_visual_review",
+                "status": "v2_master" if index in V2_MASTER_PAGE_INDICES else "pending_visual_review",
+                "sourceFamily": "approved_v2" if index in V2_MASTER_PAGE_INDICES else "phase_a_draft",
                 "imageLayers": builder.image_layers,
                 "textLayers": builder.text_layers,
             }

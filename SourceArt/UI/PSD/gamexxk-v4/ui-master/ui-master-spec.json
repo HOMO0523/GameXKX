@@ -12,6 +12,18 @@
   },
   "overviewScale": 0.25,
   "outputPsd": "D:/UE5 demo/GameXXK/outputs/UI_PSD/Candidates/GameXXK_UI_Master_V1.psd",
+  "v2MasterPages": [
+    "00_公共组件",
+    "03_主角背包",
+    "07_商店交易"
+  ],
+  "metaShop": {
+    "equipmentPackPrice": 100,
+    "companionPackPrice": 500,
+    "equipmentQualityWeights": [70, 25, 5],
+    "productCount": 7,
+    "legacyTownShopVisible": false
+  },
   "pages": [
     { "name": "00_公共组件" },
     { "name": "01_主菜单" },

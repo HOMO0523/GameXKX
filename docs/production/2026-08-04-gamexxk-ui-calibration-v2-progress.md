@@ -52,3 +52,29 @@ python scripts/build_gamexxk_ui_calibration_v2.py
 结果：12/12 项成品后检查通过；构建报告 `ok: true`；批准内容数 `45`（36/6/3）；画布 `1920 × 1080`；Hero 源画布 `512 × 512`；Hero 横纵缩放比 `1.0`；独立控件数 `28`。正式预览与 45 件总览已完成视觉复核。
 
 纯美术任务按用户要求不采用 TDD；本轮检查均在资产生成后执行。运行时逻辑与 UE 接线仍需后续在编辑器中验证。
+
+## Master UI V2 迭代里程碑
+
+2026-08-05 已将 `00_公共组件`、`03_主角背包`、`07_商店交易` 三张重点页面切换为批准的 V2 来源，并重建 18 张 `1920 × 1080` Master 预览及联系表。
+
+- 背包视窗扩为 `4 × 5`、共 20 个可见格；总容量显示为 200；竖向滑条位于格子区域右侧。
+- 背包只展示强化石、洗炼砂、青山讨伐令三件核心道具，并使用 6 件普通初始装备。
+- 新商店固定展示 6 个套装装备包与 1 个伙伴包，价格为 100/500 永久金币；品质文案为普通 70%、稀有 25%、珍稀 5%。
+- 旧草药货架、出售入口及旧三槽商店装备没有进入新商店页面。
+
+生成命令：
+
+```powershell
+python -m py_compile scripts/gamexxk_ui_master_pages.py scripts/build_gamexxk_ui_master.py
+python scripts/build_gamexxk_ui_master.py
+```
+
+结果：`ok: true`，18 页，3 张 `v2_master`，背包格 20，右侧滑条 1，新商店产品图层 7；清单资源路径、重点预览尺寸及旧商店文字排除检查全部通过。原分辨率视觉复核确认纸张/墨线风格一致、图标无裁切，背包和商店层级可读。
+
+| Master 输出 | SHA-256 |
+|---|---|
+| `Previews/00_公共组件.png` | `f80c6e663dc1c2c702680526d0dc8400eb85b52650922f3fc4b6cf6845a51e06` |
+| `Previews/03_主角背包.png` | `580d1a886711d278e273436dd39e0b63de1b0a69d81b98858fdd6a7ab8250983` |
+| `Previews/07_商店交易.png` | `0898b8e57c7dc8fdc45da4e042335b77c4103f74d87d581a5f0a38e2e27a1719` |
+| `GameXXK_UI_Master_ContactSheet.png` | `98cb2e4fca182811d89a589b0869a4b9c3f824ba97cd7da4e235f5eb0cb34f55` |
+| `master-manifest.json` | `f00aaa3b9eae19ae46bf74d71f66e5b39623e7b60d4c9ceb7c518de624cbbbaf` |
