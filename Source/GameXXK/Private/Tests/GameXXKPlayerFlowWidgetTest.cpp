@@ -12,6 +12,7 @@
 #include "UI/GameXXKBattleUnitVisualWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
+#include "UI/GameXXKMetaShopWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
 #include "UI/GameXXKTownHudWidget.h"
 #include "UI/GameXXKTownOverlayWidget.h"
@@ -96,14 +97,16 @@ bool FGameXXKPlayerControllerTownExitInventoryCleanupTest::RunTest(const FString
 	TestTrue(TEXT("town-exit cleanup accepts the prerequisite quest"), Subsystem->AcceptQuest());
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 
-	TestTrue(TEXT("merchant inventory is open before the town exit"), PlayerController->OpenMerchantTradeWindow());
-	TestTrue(TEXT("merchant inventory owns modal input before the town exit"), PlayerController->IsInventoryWindowModalInputLockedForTest());
+	TestTrue(TEXT("meta shop is open before the town exit"), PlayerController->OpenMetaShopWindow());
+	TestTrue(TEXT("meta shop owns modal input before the town exit"), PlayerController->IsMetaShopInputLockedForTest());
 	TestTrue(TEXT("town exit transitions to the route map"), Subsystem->OpenDungeonFromTownExit());
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 
 	TestEqual(TEXT("town exit clears the inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
 	TestFalse(TEXT("town exit releases the inventory modal input lock"), PlayerController->IsInventoryWindowModalInputLockedForTest());
 	TestFalse(TEXT("town exit hides the inventory window"), PlayerController->GetInventoryWindowWidgetForTest()->IsWindowVisibleForTest());
+	TestFalse(TEXT("town exit closes the meta shop"), PlayerController->IsMetaShopOpenForTest());
+	TestFalse(TEXT("town exit releases the meta shop modal input lock"), PlayerController->IsMetaShopInputLockedForTest());
 	return true;
 }
 
@@ -194,6 +197,7 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestNotNull(TEXT("player controller owns route map widget"), PlayerController->GetRouteMapWidgetForTest());
 	TestNotNull(TEXT("player controller owns battle board widget"), PlayerController->GetBattleBoardWidgetForTest());
 	TestNotNull(TEXT("player controller owns independent inventory window"), PlayerController->GetInventoryWindowWidgetForTest());
+	TestNotNull(TEXT("player controller owns the new meta shop window"), PlayerController->GetMetaShopWidgetForTest());
 	TestNotNull(TEXT("player controller owns quest dialogue widget"), PlayerController->GetQuestDialogWidgetForTest());
 	TestFalse(TEXT("quest dialogue starts closed"), PlayerController->IsQuestDialogOpenForTest());
 	TestTrue(TEXT("controller can open an empty preview quest dialogue for visual test"), PlayerController->OpenQuestDialogPreviewForTest());
@@ -252,6 +256,10 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("main menu hides after town state"), PlayerController->GetMainMenuWidgetForTest()->GetVisibility(), ESlateVisibility::Collapsed);
 	TestTrue(TEXT("town overlay appears after town state"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
 	TestFalse(TEXT("route map hidden before entering dungeon"), PlayerController->GetRouteMapWidgetForTest()->GetVisibility() == ESlateVisibility::Visible);
+	TestTrue(TEXT("legacy save fixture can carry the retired trade panel mode"), Subsystem->OpenTownPanel(EGameXXKTownPanelMode::Trade));
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestEqual(TEXT("player flow normalizes the retired trade panel mode"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::None);
+	TestEqual(TEXT("player flow never renders the retired trade panel during normalization"), PlayerController->GetTownOverlayWidgetForTest()->GetActiveTownPanelForTest(), EGameXXKTownPanelMode::None);
 	UGameXXKTownHudWidget* TownHud = PlayerController->GetTownHudWidgetForTest();
 	TestNotNull(TEXT("player controller owns town HUD for companion codex"), TownHud);
 	TestTrue(TEXT("town HUD opens companion codex for Escape test"), TownHud && TownHud->OpenCompanionCodexForTest());
@@ -275,20 +283,18 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("I key does not open the legacy town inventory panel"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::None);
 	TestTrue(TEXT("I key closes the independent free inventory window"), PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::I, IE_Pressed, 1.0f)));
 	TestEqual(TEXT("I key clears independent inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
-	TestTrue(TEXT("merchant path opens independent trade inventory window"), PlayerController->OpenMerchantTradeWindow());
-	TestEqual(TEXT("merchant path records trade inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::MerchantTrade);
-	TestTrue(TEXT("merchant trade inventory window locks movement input"), PlayerController->IsInventoryWindowModalInputLockedForTest());
-	TestTrue(TEXT("merchant trade inventory window exposes its own close button"), PlayerController->GetInventoryWindowWidgetForTest()->HasCloseButtonForTest());
-	PlayerController->GetInventoryWindowWidgetForTest()->SetVisibility(ESlateVisibility::Collapsed);
-	TestTrue(TEXT("merchant F reopens a stale hidden trade window instead of closing it"), PlayerController->OpenMerchantTradeWindow());
-	TestEqual(TEXT("stale hidden merchant reopen keeps trade mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::MerchantTrade);
-	TestNotEqual(TEXT("stale hidden merchant reopen makes the window visible"), PlayerController->GetInventoryWindowWidgetForTest()->GetVisibility(), ESlateVisibility::Collapsed);
-	TestTrue(TEXT("repeated merchant interaction closes trade inventory window"), PlayerController->OpenMerchantTradeWindow());
-	TestEqual(TEXT("repeated merchant interaction clears trade inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
-	TestFalse(TEXT("repeated merchant interaction restores movement input"), PlayerController->IsInventoryWindowModalInputLockedForTest());
-	TestTrue(TEXT("merchant path can reopen trade inventory window after toggle close"), PlayerController->OpenMerchantTradeWindow());
-	TestTrue(TEXT("merchant trade inventory window closes independently"), PlayerController->CloseInventoryWindow());
-	TestEqual(TEXT("merchant trade close clears inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
+	TestFalse(TEXT("legacy merchant trade entry is retired"), PlayerController->OpenMerchantTradeWindow());
+	TestEqual(TEXT("legacy merchant entry never switches inventory into trade mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
+	TestTrue(TEXT("merchant path opens the new meta shop"), PlayerController->OpenMetaShopWindow());
+	TestTrue(TEXT("new meta shop reports open"), PlayerController->IsMetaShopOpenForTest());
+	TestTrue(TEXT("new meta shop locks movement input"), PlayerController->IsMetaShopInputLockedForTest());
+	TestEqual(TEXT("new meta shop exposes all seven catalog cards"), PlayerController->GetMetaShopWidgetForTest()->GetProductCardCountForTest(), 7);
+	TestTrue(TEXT("repeated merchant interaction closes the new meta shop"), PlayerController->OpenMetaShopWindow());
+	TestFalse(TEXT("repeated merchant interaction hides the new meta shop"), PlayerController->IsMetaShopOpenForTest());
+	TestFalse(TEXT("repeated merchant interaction restores movement input"), PlayerController->IsMetaShopInputLockedForTest());
+	TestTrue(TEXT("merchant path can reopen the new meta shop after toggle close"), PlayerController->OpenMetaShopWindow());
+	TestTrue(TEXT("new meta shop closes independently"), PlayerController->CloseMetaShopWindow());
+	TestFalse(TEXT("new meta shop independent close restores movement input"), PlayerController->IsMetaShopInputLockedForTest());
 
 	TestEqual(TEXT("quest dialogue acceptance enables the in-world town route entrance"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
 	// Keep the generated route and its opening hand deterministic.  Seed 2 has

@@ -229,12 +229,12 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("test flow marks the route quest accepted after the NPC interaction path"), Subsystem->AcceptQuest());
 	TestTrue(TEXT("follower joins after NPC quest acceptance"), Subsystem->GetRuntimeState().bFollowerJoined);
 
-	const int32 GoldBeforeTrade = Subsystem->GetRuntimeState().PlayerGold;
-	TestTrue(TEXT("town HUD buys healing powder"), HUD->HandleDemoCommand(FName(TEXT("BuyHealingPowder"))));
-	TestEqual(TEXT("buy spends gold"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeTrade - 10);
-	TestTrue(TEXT("town HUD sells healing powder"), HUD->HandleDemoCommand(FName(TEXT("SellHealingPowder"))));
-	TestEqual(TEXT("sell refunds gold"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeTrade - 5);
-	TestFalse(TEXT("town trade commands do not autosave playable slot"), UGameplayStatics::DoesSaveGameExist(TestSlotName, 0));
+	const int32 GoldBeforeRetiredTradeCommands = Subsystem->GetRuntimeState().PlayerGold;
+	TestFalse(TEXT("town HUD no longer exposes direct legacy buying"), HasCommand(HUD->BuildVisibleCommands(), FName(TEXT("BuyHealingPowder"))));
+	TestFalse(TEXT("town HUD rejects direct legacy buying"), HUD->HandleDemoCommand(FName(TEXT("BuyHealingPowder"))));
+	TestFalse(TEXT("town HUD no longer exposes direct legacy selling"), HasCommand(HUD->BuildVisibleCommands(), FName(TEXT("SellHealingPowder"))));
+	TestFalse(TEXT("town HUD rejects direct legacy selling"), HUD->HandleDemoCommand(FName(TEXT("SellHealingPowder"))));
+	TestEqual(TEXT("retired direct trade commands keep gold unchanged"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeRetiredTradeCommands);
 	bool bUseHealingEnabled = true;
 	const int32 HealingBeforeDisabledUse = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
 	TestTrue(TEXT("town HUD shows healing command at full HP"), HasCommand(HUD->BuildVisibleCommands(), FName(TEXT("UseHealingPowder")), &bUseHealingEnabled));

@@ -45,6 +45,9 @@ public:
 	void RefreshFromState();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MetaShop")
+	bool OpenMetaShop();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MetaShop")
 	bool SelectProduct(EGameXXKMetaShopProductId ProductId);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MetaShop")

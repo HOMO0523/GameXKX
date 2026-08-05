@@ -24,6 +24,7 @@
 #include "UI/GameXXKCompanionRosterWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
+#include "UI/GameXXKMetaShopWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
 #include "UI/GameXXKQuestDialogWidget.h"
 #include "UI/GameXXKRouteEncounterPanelWidget.h"
@@ -118,6 +119,7 @@ AGameXXKMVPPlayerController::AGameXXKMVPPlayerController()
 	RouteMapWidgetClass = UGameXXKOneGameRouteMapWidget::StaticClass();
 	BattleBoardWidgetClass = UGameXXKBattleBoardWidget::StaticClass();
 	InventoryWindowWidgetClass = UGameXXKInventoryWindowWidget::StaticClass();
+	MetaShopWidgetClass = UGameXXKMetaShopWidget::StaticClass();
 	CompanionRosterWidgetClass = UGameXXKCompanionRosterWidget::StaticClass();
 	QuestDialogWidgetClass = UGameXXKQuestDialogWidget::StaticClass();
 	RouteEncounterPanelWidgetClass = UGameXXKRouteEncounterPanelWidget::StaticClass();
@@ -187,6 +189,10 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 		if (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest())
 		{
 			return CloseTaskPanel();
+		}
+		if (IsMetaShopOpenForTest())
+		{
+			return CloseMetaShopWindow();
 		}
 		if (InventoryWindowWidget && InventoryWindowWidget->IsWindowVisibleForTest())
 		{
@@ -506,6 +512,11 @@ UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::GetInventoryWindowWi
 	return InventoryWindowWidget;
 }
 
+UGameXXKMetaShopWidget* AGameXXKMVPPlayerController::GetMetaShopWidgetForTest() const
+{
+	return MetaShopWidget;
+}
+
 UGameXXKCompanionRosterWidget* AGameXXKMVPPlayerController::GetCompanionRosterWidgetForTest() const
 {
 	return CompanionRosterWidget;
@@ -578,6 +589,16 @@ bool AGameXXKMVPPlayerController::IsInventoryWindowModalInputLockedForTest() con
 	return IsInventoryWindowModalInputLocked();
 }
 
+bool AGameXXKMVPPlayerController::IsMetaShopOpenForTest() const
+{
+	return MetaShopWidget && MetaShopWidget->GetVisibility() != ESlateVisibility::Collapsed;
+}
+
+bool AGameXXKMVPPlayerController::IsMetaShopInputLockedForTest() const
+{
+	return bMetaShopInputLocked;
+}
+
 bool AGameXXKMVPPlayerController::IsInventoryWindowModalInputLocked() const
 {
 	return InventoryWindowWidget && InventoryWindowWidget->IsModalInputLockActiveForTest();
@@ -628,6 +649,7 @@ bool AGameXXKMVPPlayerController::OpenQuestDialogForNpc(AActor* QuestNpc, APawn*
 	{
 		return false;
 	}
+	CloseMetaShopWindow();
 
 	PendingQuestNpc = QuestNpc;
 	PendingQuestInstigator = InstigatorPawn;
@@ -649,6 +671,7 @@ bool AGameXXKMVPPlayerController::OpenTaskOfferPanelForNpc(AActor* QuestNpc, APa
 		return false;
 	}
 
+	CloseMetaShopWindow();
 	CloseInventoryWindow();
 	UGameXXKTaskPanelWidget* TaskPanel = EnsureTaskPanelWidget();
 	if (!TaskPanel || !TaskPanel->OpenTaskOfferPanel())
@@ -728,6 +751,7 @@ bool AGameXXKMVPPlayerController::CloseQuestDialog()
 
 bool AGameXXKMVPPlayerController::OpenFreeInventoryWindow()
 {
+	CloseMetaShopWindow();
 	CloseCompanionRoster();
 	CloseTaskPanel();
 	UGameXXKInventoryWindowWidget* InventoryWindow = EnsureInventoryWindowWidget();
@@ -741,26 +765,79 @@ bool AGameXXKMVPPlayerController::OpenFreeInventoryWindow()
 
 bool AGameXXKMVPPlayerController::OpenMerchantTradeWindow()
 {
-	if (InventoryWindowWidget
-		&& InventoryWindowWidget->GetWindowModeForTest() == EGameXXKInventoryWindowMode::MerchantTrade
-		&& InventoryWindowWidget->IsWindowVisibleForTest())
+	return false;
+}
+
+bool AGameXXKMVPPlayerController::OpenMetaShopWindow()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Town)
 	{
-		return CloseInventoryWindow();
+		return false;
+	}
+	if (IsMetaShopOpenForTest())
+	{
+		return CloseMetaShopWindow();
+	}
+	if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
+	{
+		return false;
 	}
 
+	CloseInventoryWindow();
 	CloseCompanionRoster();
 	CloseTaskPanel();
-	UGameXXKInventoryWindowWidget* InventoryWindow = EnsureInventoryWindowWidget();
-	const bool bOpened = InventoryWindow && InventoryWindow->OpenMerchantTrade();
-	if (bOpened)
+	UGameXXKMetaShopWidget* Shop = EnsureMetaShopWidget();
+	if (!Shop)
 	{
-		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
-		{
-			Subsystem->CloseTownPanel();
-		}
-		ApplyPlayerFlowInputMode();
+		return false;
 	}
-	return bOpened;
+	Subsystem->CloseTownPanel();
+	Shop->SetMVPSubsystem(Subsystem);
+	if (!Shop->OpenMetaShop())
+	{
+		return false;
+	}
+
+	FlushPressedKeys();
+	SetIgnoreMoveInput(true);
+	bMetaShopInputLocked = true;
+	ApplyPlayerFlowInputMode();
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::CloseMetaShopWindow()
+{
+	const bool bWasOpen = IsMetaShopOpenForTest();
+	if (!bWasOpen && !bMetaShopInputLocked)
+	{
+		return false;
+	}
+	if (bWasOpen)
+	{
+		MetaShopWidget->CloseMetaShop();
+	}
+	else
+	{
+		HandleMetaShopClosed();
+	}
+	return true;
+}
+
+void AGameXXKMVPPlayerController::HandleMetaShopClosed()
+{
+	if (bMetaShopInputLocked)
+	{
+		SetIgnoreMoveInput(false);
+		bMetaShopInputLocked = false;
+	}
+	ApplyPlayerFlowInputMode();
+}
+
+void AGameXXKMVPPlayerController::HandleMetaShopCompanionReplacementRequested()
+{
+	CloseMetaShopWindow();
+	OpenCompanionRoster();
 }
 
 bool AGameXXKMVPPlayerController::CloseInventoryWindow()
@@ -794,6 +871,7 @@ bool AGameXXKMVPPlayerController::OpenCompanionRoster()
 		return false;
 	}
 
+	CloseMetaShopWindow();
 	CloseInventoryWindow();
 	CloseTaskPanel();
 	if (TownHudWidget)
@@ -832,6 +910,7 @@ bool AGameXXKMVPPlayerController::OpenTaskPanel()
 	{
 		return false;
 	}
+	CloseMetaShopWindow();
 	CloseCompanionRoster();
 	CloseInventoryWindow();
 	PendingQuestNpc.Reset();
@@ -1210,6 +1289,10 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
 	{
 		EnsureInventoryWindowWidget();
 	}
+	if (!MetaShopWidget)
+	{
+		EnsureMetaShopWidget();
+	}
 
 	if (!CompanionRosterWidget)
 	{
@@ -1239,7 +1322,7 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
 	}
 
 	RefreshPlayerFlowWidgets();
-	return MainMenuWidget && WorldMapWidget && TownOverlayWidget && TownHudWidget && RouteMapWidget && BattleBoardWidget && InventoryWindowWidget && CompanionRosterWidget && QuestDialogWidget && RouteEncounterPanelWidget && RouteMerchantWidget && RelicBarWidget && TaskPanelWidget;
+	return MainMenuWidget && WorldMapWidget && TownOverlayWidget && TownHudWidget && RouteMapWidget && BattleBoardWidget && InventoryWindowWidget && MetaShopWidget && CompanionRosterWidget && QuestDialogWidget && RouteEncounterPanelWidget && RouteMerchantWidget && RelicBarWidget && TaskPanelWidget;
 }
 
 UGameXXKWorldMapWidget* AGameXXKMVPPlayerController::EnsureWorldMapWidget()
@@ -1306,6 +1389,45 @@ UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::EnsureInventoryWindo
 		}
 	}
 	return InventoryWindowWidget;
+}
+
+UGameXXKMetaShopWidget* AGameXXKMVPPlayerController::EnsureMetaShopWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	bool bCreatedShop = false;
+	if (!MetaShopWidget)
+	{
+		TSubclassOf<UGameXXKMetaShopWidget> WidgetClass = MetaShopWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKMetaShopWidget::StaticClass();
+		}
+		MetaShopWidget = bCanAddToViewport ? CreateWidget<UGameXXKMetaShopWidget>(this, WidgetClass) : nullptr;
+		if (!MetaShopWidget)
+		{
+			MetaShopWidget = NewObject<UGameXXKMetaShopWidget>(this, WidgetClass);
+		}
+		bCreatedShop = MetaShopWidget != nullptr;
+	}
+	if (MetaShopWidget)
+	{
+		MetaShopWidget->SetMVPSubsystem(Subsystem);
+		MetaShopWidget->SetCloseRequestedDelegate(FSimpleDelegate::CreateUObject(this, &AGameXXKMVPPlayerController::HandleMetaShopClosed));
+		MetaShopWidget->SetCompanionReplacementRequestedDelegate(FSimpleDelegate::CreateUObject(this, &AGameXXKMVPPlayerController::HandleMetaShopCompanionReplacementRequested));
+		if (bCreatedShop)
+		{
+			MetaShopWidget->TakeWidget();
+			MetaShopWidget->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		ConfigureFullscreenInventoryWindowSlot(MetaShopWidget);
+		if (bCanAddToViewport && !MetaShopWidget->IsInViewport())
+		{
+			MetaShopWidget->AddToViewport(155);
+			ConfigureFullscreenInventoryWindowSlot(MetaShopWidget);
+		}
+	}
+	return MetaShopWidget;
 }
 
 UGameXXKCompanionRosterWidget* AGameXXKMVPPlayerController::EnsureCompanionRosterWidget()
@@ -1585,6 +1707,11 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 		// the controller close path so it clears trade state and restores focus.
 		CloseInventoryWindow();
 	}
+	if (MetaShopWidget && ActiveScreen != EGameXXKScreen::Town
+		&& (IsMetaShopOpenForTest() || bMetaShopInputLocked))
+	{
+		CloseMetaShopWindow();
+	}
 	if (CompanionRosterWidget && ActiveScreen != EGameXXKScreen::Town && IsCompanionRosterOpenForTest())
 	{
 		// Permanent roster configuration is town-only. Do not let a full-screen
@@ -1659,11 +1786,21 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 				InventoryWindowWidget->OpenFreeInventory();
 				break;
 			case EGameXXKTownPanelMode::Trade:
-				InventoryWindowWidget->OpenMerchantTrade();
+				// A migrated save may still carry the retired legacy panel mode.
+				// Clear it without ever presenting the old buy/sell inventory UI.
+				Subsystem->CloseTownPanel();
 				break;
 			default:
 				break;
 			}
+		}
+	}
+	if (MetaShopWidget)
+	{
+		MetaShopWidget->SetMVPSubsystem(Subsystem);
+		if (IsMetaShopOpenForTest())
+		{
+			MetaShopWidget->RefreshFromState();
 		}
 	}
 	if (CompanionRosterWidget)
@@ -1796,6 +1933,10 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	{
 		WidgetToFocus = TaskPanelWidget;
 	}
+	else if (ActiveScreen == EGameXXKScreen::Town && IsMetaShopOpenForTest())
+	{
+		WidgetToFocus = MetaShopWidget;
+	}
 	else if (ActiveScreen == EGameXXKScreen::Town && IsCompanionRosterOpenForTest())
 	{
 		WidgetToFocus = CompanionRosterWidget;
@@ -1821,6 +1962,7 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	if (ActiveScreen == EGameXXKScreen::Town
 		&& (!QuestDialogWidget || !QuestDialogWidget->IsDialogOpen())
 		&& (!TaskPanelWidget || !TaskPanelWidget->IsTaskPanelOpenForTest())
+		&& !IsMetaShopOpenForTest()
 		&& !IsCompanionRosterOpenForTest()
 		&& FSlateApplication::IsInitialized())
 	{

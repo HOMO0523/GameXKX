@@ -11,6 +11,7 @@ class UGameXXKBattleOverlayCoordinator;
 class UGameXXKCompanionRosterWidget;
 class UGameXXKInventoryWindowWidget;
 class UGameXXKMainMenuWidget;
+class UGameXXKMetaShopWidget;
 class UGameXXKMVPSubsystem;
 class UGameXXKOneGameRouteMapWidget;
 class UGameXXKQuestDialogWidget;
@@ -87,6 +88,9 @@ public:
 	UGameXXKInventoryWindowWidget* GetInventoryWindowWidgetForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	UGameXXKMetaShopWidget* GetMetaShopWidgetForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
 	UGameXXKCompanionRosterWidget* GetCompanionRosterWidgetForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
@@ -135,6 +139,12 @@ public:
 	bool IsInventoryWindowModalInputLocked() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	bool IsMetaShopOpenForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	bool IsMetaShopInputLockedForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
 	bool IsQuestDialogOpenForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
@@ -166,8 +176,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool OpenFreeInventoryWindow();
 
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	// Kept only for serialized Blueprint compatibility. Town merchants now use
+	// the seven-card meta shop and this legacy inventory-trade entry never opens.
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow", meta = (DeprecatedFunction, DeprecationMessage = "Use OpenMetaShopWindow."))
 	bool OpenMerchantTradeWindow();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool OpenMetaShopWindow();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool CloseMetaShopWindow();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool CloseInventoryWindow();
@@ -239,6 +257,7 @@ private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
 	bool EnsurePlayerFlowWidgets();
 	UGameXXKInventoryWindowWidget* EnsureInventoryWindowWidget();
+	UGameXXKMetaShopWidget* EnsureMetaShopWidget();
 	UGameXXKCompanionRosterWidget* EnsureCompanionRosterWidget();
 	UGameXXKQuestDialogWidget* EnsureQuestDialogWidget();
 	UGameXXKRouteEncounterPanelWidget* EnsureRouteEncounterPanelWidget();
@@ -263,6 +282,8 @@ private:
 	bool UpdateBattleTargetingPointer(FVector2D CursorScreenPosition);
 	bool UpdateBattleTargetingPointerFromMouse();
 	bool CanAddPlayerWidgetsToViewport() const;
+	void HandleMetaShopClosed();
+	void HandleMetaShopCompanionReplacementRequested();
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
 	TSubclassOf<UGameXXKMainMenuWidget> MainMenuWidgetClass;
@@ -281,6 +302,9 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
 	TSubclassOf<UGameXXKInventoryWindowWidget> InventoryWindowWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
+	TSubclassOf<UGameXXKMetaShopWidget> MetaShopWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
 	TSubclassOf<UGameXXKCompanionRosterWidget> CompanionRosterWidgetClass;
@@ -325,6 +349,9 @@ private:
 	TObjectPtr<UGameXXKInventoryWindowWidget> InventoryWindowWidget;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKMetaShopWidget> MetaShopWidget;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKCompanionRosterWidget> CompanionRosterWidget;
 
 	UPROPERTY(Transient)
@@ -362,6 +389,9 @@ private:
 
 	UPROPERTY(Transient)
 	bool bRouteMerchantInputLocked = false;
+
+	UPROPERTY(Transient)
+	bool bMetaShopInputLocked = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMVPSubsystem> OverrideSubsystem;

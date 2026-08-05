@@ -613,7 +613,7 @@ git commit -m "feat: add UI V2 meta shop window"
 - Modify: `Source/GameXXK/Private/Tests/GameXXKMVPPlayableShellTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKPlayableRootWidgetTest.cpp`
 
-- [ ] **Step 1: Change player-flow tests to the new contract before implementation**
+- [x] **Step 1: Change player-flow tests to the new contract before implementation**
 
 Require controller ownership of `UGameXXKMetaShopWidget`, merchant interaction opening it, repeated interaction closing it, modal movement lock, town exit closing it, and this hard legacy assertion:
 
@@ -625,13 +625,13 @@ TestFalse(TEXT("legacy inventory trade mode remains hidden"),
 
 Remove old assertions that buy/sell healing powder through the merchant. Retain free inventory, equipment, consumable, and route merchant tests.
 
-- [ ] **Step 2: Run tests and verify the old flow fails**
+- [x] **Step 2: Run tests and verify the old flow fails**
 
 Run cold compile and the updated `GameXXK.MVP.UI`/player-flow tests.
 
 Expected: failures show the merchant still opens `MerchantTrade` and no meta-shop widget is owned.
 
-- [ ] **Step 3: Add controller ownership and opening methods**
+- [x] **Step 3: Add controller ownership and opening methods**
 
 Add:
 
@@ -645,7 +645,7 @@ bool OpenMerchantTradeWindow();
 
 `OpenMerchantTradeWindow` returns `false` without creating or showing legacy trade mode. `OpenMetaShopWindow` ensures the widget, sets the subsystem, closes conflicting modal windows, toggles visibility, and applies the same modal input lock contract used by inventory/companion windows.
 
-- [ ] **Step 4: Switch both merchant actor implementations**
+- [x] **Step 4: Switch both merchant actor implementations**
 
 Replace only the merchant branch call:
 
@@ -655,17 +655,17 @@ bLastInteractionSuccessful = PlayerController->OpenMetaShopWindow();
 
 Do not change NPC transforms, sprite assets, collision, proximity range, quest paths, or follower behavior.
 
-- [ ] **Step 5: Remove legacy commands from visible player routing**
+- [x] **Step 5: Remove legacy commands from visible player routing**
 
 Stop exposing `BuyHealingPowder`, sell, and `MerchantTrade` commands in town command construction. Keep `UGameXXKMVPRules::BuyItem/SellItem` and `FGameXXKEquipmentEconomyRules::PurchaseLegacyEquipmentForCompatibility` compiled solely for migration/compatibility tests.
 
-- [ ] **Step 6: Run focused and MVP regressions**
+- [x] **Step 6: Run focused and MVP regressions**
 
 Run cold pipeline, then `GameXXK.MetaShop`, `GameXXK.MVP.UI`, `GameXXK.MVP.PlayerFlow`, `GameXXK.MVP.FullFlow`, and `GameXXK.Route.Merchant` prefixes.
 
 Expected: merchant `F` opens only the new shop; old trade mode cannot open; route merchant remains green.
 
-- [ ] **Step 7: Commit player-flow replacement**
+- [x] **Step 7: Commit player-flow replacement**
 
 Stage only the controller, two NPC source files, command routing files actually changed, and corresponding tests.
 

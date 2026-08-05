@@ -645,8 +645,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	Player->Interact();
 	TestEqual(TEXT("F on merchant opens shop without spending gold"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeMerchantF);
 	TestEqual(TEXT("F on merchant opens shop without changing inventory"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeMerchantF);
-	TestEqual(TEXT("F on merchant opens trade panel"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::Trade);
-	TestTrue(TEXT("merchant NPC records successful shop open"), MerchantNpc->WasLastInteractionSuccessful());
+	TestEqual(TEXT("merchant never falls back to the retired trade panel"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::None);
+	TestFalse(TEXT("merchant without a player controller refuses the retired fallback"), MerchantNpc->WasLastInteractionSuccessful());
 	UGameXXKMVPSubsystem* ReloadedAfterMerchantF = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestFalse(TEXT("F merchant interaction waits for manual save"), ReloadedAfterMerchantF->LoadGameFromSlot(NpcAutosaveSlot, 0));
 	TestTrue(TEXT("manual save after merchant writes default slot"), Subsystem->SaveCurrentGame(TEXT(""), 0));
@@ -659,7 +659,7 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	Player->Interact();
 	TestEqual(TEXT("merchant no-gold path keeps gold"), Subsystem->GetRuntimeState().PlayerGold, 0);
 	TestEqual(TEXT("merchant no-gold path keeps inventory"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeFailedMerchantF);
-	TestTrue(TEXT("merchant no-gold path still opens shop"), MerchantNpc->WasLastInteractionSuccessful());
+	TestFalse(TEXT("merchant no-gold path still refuses the retired fallback"), MerchantNpc->WasLastInteractionSuccessful());
 	MerchantNpc->NotifyActorEndOverlap(Player);
 	TestNull(TEXT("merchant NPC end overlap clears focus"), Player->GetInteractionComponent()->GetFocusedActor());
 
@@ -676,8 +676,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 			Subsystem->CloseTownPanel();
 			TestNull(TEXT("proximity fallback starts without focused actor"), NearbyPlayer->GetInteractionComponent()->GetFocusedActor());
 			NearbyPlayer->Interact();
-			TestEqual(TEXT("F near merchant opens trade without exact overlap focus"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::Trade);
-			TestTrue(TEXT("nearby merchant records proximity interaction"), NearbyMerchantNpc->WasLastInteractionSuccessful());
+			TestEqual(TEXT("proximity fallback never opens the retired trade panel"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::None);
+			TestFalse(TEXT("nearby merchant without a controller refuses the retired fallback"), NearbyMerchantNpc->WasLastInteractionSuccessful());
 		}
 		if (NearbyMerchantNpc)
 		{

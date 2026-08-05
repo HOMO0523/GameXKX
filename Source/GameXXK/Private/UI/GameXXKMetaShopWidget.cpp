@@ -392,14 +392,17 @@ void UGameXXKMetaShopWidget::HandleConfirmClicked() { ConfirmPurchase(); }
 void UGameXXKMetaShopWidget::HandleCancelClicked() { CancelPurchase(); }
 void UGameXXKMetaShopWidget::HandleCloseClicked() { CloseMetaShop(); }
 
-bool UGameXXKMetaShopWidget::OpenMetaShopForTest()
+bool UGameXXKMetaShopWidget::OpenMetaShop()
 {
+	BuildProgrammaticLayout();
 	ConfirmOverlay->SetVisibility(ESlateVisibility::Collapsed);
 	ResultPanel->SetVisibility(ESlateVisibility::Collapsed);
 	LastPurchaseResult = FGameXXKMetaShopPurchaseResult();
 	RefreshFromState();
 	return GetVisibility() != ESlateVisibility::Collapsed && CurrentProducts.Num() == 7;
 }
+
+bool UGameXXKMetaShopWidget::OpenMetaShopForTest() { return OpenMetaShop(); }
 
 bool UGameXXKMetaShopWidget::SelectProductForTest(const EGameXXKMetaShopProductId ProductId) { return SelectProduct(ProductId); }
 bool UGameXXKMetaShopWidget::RequestPurchaseForTest() { return RequestPurchase(); }

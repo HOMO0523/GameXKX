@@ -275,12 +275,14 @@ bool AGameXXKTownNpcActor::ApplyDefaultInteraction(APawn* InstigatorPawn)
 		{
 			if (AGameXXKMVPPlayerController* PlayerController = Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()))
 			{
-				bLastInteractionSuccessful = PlayerController->OpenMerchantTradeWindow();
+				bLastInteractionSuccessful = PlayerController->OpenMetaShopWindow();
 				return bLastInteractionSuccessful;
 			}
 		}
-		bLastInteractionSuccessful = Subsystem->OpenTownPanel(EGameXXKTownPanelMode::Trade);
-		return bLastInteractionSuccessful;
+		// The retired subsystem trade panel is intentionally not a fallback. A
+		// player controller is required because it owns the new modal shop widget.
+		bLastInteractionSuccessful = false;
+		return false;
 	}
 	bLastInteractionSuccessful = false;
 	return false;

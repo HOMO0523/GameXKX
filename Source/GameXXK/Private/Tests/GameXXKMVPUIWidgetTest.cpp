@@ -155,34 +155,7 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("character equipment panel exposes weapon slot"), TownOverlay->WidgetTree ? Cast<USizeBox>(TownOverlay->WidgetTree->FindWidget(TEXT("TownEquipmentSlot_Weapon"))) : nullptr);
 	TestNotNull(TEXT("character equipment panel exposes armor slot"), TownOverlay->WidgetTree ? Cast<USizeBox>(TownOverlay->WidgetTree->FindWidget(TEXT("TownEquipmentSlot_Armor"))) : nullptr);
 	TestNotNull(TEXT("character equipment panel exposes accessory slot"), TownOverlay->WidgetTree ? Cast<USizeBox>(TownOverlay->WidgetTree->FindWidget(TEXT("TownEquipmentSlot_Accessory"))) : nullptr);
-	TestTrue(TEXT("town overlay opens trade panel"), TownOverlay->ExecuteTownCommandForTest(FName(TEXT("OpenTrade"))));
-	TestEqual(TEXT("town overlay records trade panel"), TownOverlay->GetActiveTownPanelForTest(), EGameXXKTownPanelMode::Trade);
-	UWidget* SharedBackpackGrid = TownOverlay->WidgetTree ? TownOverlay->WidgetTree->FindWidget(TEXT("TownSharedInventoryGrid")) : nullptr;
-	TestNotNull(TEXT("trade panel reuses the shared player backpack grid"), SharedBackpackGrid);
-	TestTrue(TEXT("shared backpack grid stays visible while trading"), SharedBackpackGrid && SharedBackpackGrid->GetVisibility() != ESlateVisibility::Collapsed);
-	TestNotNull(TEXT("trade panel has a shop stock panel beside the same backpack"), TownOverlay->WidgetTree ? TownOverlay->WidgetTree->FindWidget(TEXT("TownShopStockPanel")) : nullptr);
-	TestEqual(TEXT("trade panel renders every merchant stock item as a slot"), TownOverlay->GetShopStockSlotCountForTest(), UGameXXKMVPRules::GetShopItemIds().Num());
-	TestTrue(TEXT("shop stock slots use the shared ink slot texture"), TownOverlay->GetShopStockSlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Inventory/Textures/T_InkBackpackSlot")));
-	USizeBox* FirstShopSlot = TownOverlay->WidgetTree ? Cast<USizeBox>(TownOverlay->WidgetTree->FindWidget(TEXT("TownShopStockSlotSize_00"))) : nullptr;
-	TestNotNull(TEXT("trade panel wraps the first shop stock item in a fixed size slot"), FirstShopSlot);
-	if (FirstShopSlot)
-	{
-		TestEqual(TEXT("shop stock slot width matches backpack slot width"), FirstShopSlot->GetWidthOverride(), 72.0f);
-		TestEqual(TEXT("shop stock slot height matches backpack slot height"), FirstShopSlot->GetHeightOverride(), 72.0f);
-	}
-	TestEqual(TEXT("first shop slot is driven by the shop stock view model"), TownOverlay->GetShopStockSlotItemIdForTest(0), UGameXXKMVPRules::GetShopItemIds()[0]);
-	TestEqual(TEXT("first backpack slot is driven by the player inventory view model"), TownOverlay->GetPlayerBackpackSlotItemIdForTest(0), UGameXXKMVPRules::ItemHealingPowder());
-	TestTrue(TEXT("healing powder has a loaded item icon path"), TownOverlay->GetItemIconResourcePathForTest(UGameXXKMVPRules::ItemHealingPowder()).Contains(TEXT("T_ItemHealingPowder")));
-	TestTrue(TEXT("Qingxin tea has a loaded item icon path"), TownOverlay->GetItemIconResourcePathForTest(FName(TEXT("Item.QingxinTea"))).Contains(TEXT("T_ItemQingxinTea")));
-	TestTrue(TEXT("starter wooden sword has a loaded item icon path"), TownOverlay->GetItemIconResourcePathForTest(UGameXXKMVPRules::ItemWoodenSword()).Contains(TEXT("T_ItemWoodenSword")));
-	const int32 GoldBeforeSlotPurchase = Subsystem->GetRuntimeState().PlayerGold;
-	const int32 PowderBeforeSlotPurchase = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
-	TestTrue(TEXT("clicking shop stock slot selects it for purchase"), TownOverlay->SelectShopStockSlotForTest(0));
-	TestTrue(TEXT("shop slot selection opens purchase confirmation"), TownOverlay->IsPurchaseConfirmationVisibleForTest());
-	TestEqual(TEXT("purchase confirmation records pending shop item"), TownOverlay->GetPendingPurchaseItemIdForTest(), UGameXXKMVPRules::ItemHealingPowder());
-	TestTrue(TEXT("confirming pending shop purchase buys one item"), TownOverlay->ConfirmPendingPurchaseForTest());
-	TestEqual(TEXT("slot purchase spends item buy price"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeSlotPurchase - 10);
-	TestEqual(TEXT("slot purchase refreshes player backpack inventory"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeSlotPurchase + 1);
+	TestFalse(TEXT("town overlay no longer exposes the retired trade command"), TownOverlay->HasTownActionForTest(FName(TEXT("OpenTrade")), true));
 
 	TestTrue(TEXT("independent free inventory window opens"), InventoryWindow->OpenFreeInventoryForTest());
 	TestEqual(TEXT("free inventory window records free mode"), InventoryWindow->GetWindowModeForTest(), EGameXXKInventoryWindowMode::FreeInventory);
@@ -196,29 +169,7 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("free inventory equipment slots use the PSD backpack slot frame"), InventoryWindow->GetEquipmentSlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backpack/T_TownPsd_BackpackSlot")));
 	TestTrue(TEXT("first backpack slot loads its item icon"), InventoryWindow->GetBackpackSlotIconResourcePathForTest(0).Contains(TEXT("/Game/GameXXK/UI/Inventory/Textures/T_ItemHealingPowder")));
 	TestFalse(TEXT("free inventory window does not lock movement input"), InventoryWindow->IsModalInputLockActiveForTest());
-	TestTrue(TEXT("independent merchant trade window opens"), InventoryWindow->OpenMerchantTradeForTest());
-	TestEqual(TEXT("merchant inventory window records trade mode"), InventoryWindow->GetWindowModeForTest(), EGameXXKInventoryWindowMode::MerchantTrade);
-	TestTrue(TEXT("merchant trade window has one coherent frame"), InventoryWindow->HasWindowFrameForTest());
-	TestTrue(TEXT("merchant trade window has its own top-right close button"), InventoryWindow->HasCloseButtonForTest());
-	TestEqual(TEXT("merchant trade window shows every shop stock item as a slot"), InventoryWindow->GetMerchantStockSlotCountForTest(), UGameXXKMVPRules::GetShopItemIds().Num());
-	TestTrue(TEXT("merchant stock slots share the PSD backpack slot frame"), InventoryWindow->GetMerchantStockSlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backpack/T_TownPsd_BackpackSlot")));
-	TestTrue(TEXT("merchant trade window locks movement input"), InventoryWindow->IsModalInputLockActiveForTest());
-	TestTrue(TEXT("merchant stock selection picks first shop item"), InventoryWindow->SelectMerchantStockSlotForTest(0));
-	TestEqual(TEXT("merchant stock selection exposes buy action"), InventoryWindow->GetSelectedPrimaryActionTextForTest().ToString(), FString(TEXT("购买")));
-	const int32 GoldBeforeDialogCancel = Subsystem->GetRuntimeState().PlayerGold;
-	const int32 PowderBeforeDialogCancel = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
-	TestTrue(TEXT("buy action opens independent confirmation dialog"), InventoryWindow->RequestSelectedBuyForTest());
-	TestTrue(TEXT("confirmation dialog is visible"), InventoryWindow->IsConfirmationDialogVisibleForTest());
-	TestTrue(TEXT("confirmation dialog has confirm button"), InventoryWindow->HasConfirmationConfirmButtonForTest());
-	TestTrue(TEXT("confirmation dialog has cancel button"), InventoryWindow->HasConfirmationCancelButtonForTest());
-	TestTrue(TEXT("canceling confirmation dialog succeeds"), InventoryWindow->CancelDialogForTest());
-	TestEqual(TEXT("canceling buy dialog leaves gold unchanged"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeDialogCancel);
-	TestEqual(TEXT("canceling buy dialog leaves quantity unchanged"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeDialogCancel);
-	TestTrue(TEXT("buy action can reopen independent confirmation dialog"), InventoryWindow->RequestSelectedBuyForTest());
-	TestTrue(TEXT("confirming buy dialog succeeds"), InventoryWindow->ConfirmDialogForTest());
-	TestEqual(TEXT("confirming buy dialog spends gold"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeDialogCancel - 10);
-	TestEqual(TEXT("confirming buy dialog adds backpack item"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderBeforeDialogCancel + 1);
-	TestTrue(TEXT("inventory window opens free mode after buying equipment"), InventoryWindow->OpenFreeInventoryForTest());
+	TestTrue(TEXT("inventory window remains available only in free mode"), InventoryWindow->OpenFreeInventoryForTest());
 	TestTrue(TEXT("trade widget buys armor for independent inventory equipment UI"), Trade->BuyItemById(UGameXXKMVPRules::ItemClothArmor(), 1));
 	const int32 DefenseBeforeIndependentEquip = Subsystem->GetRuntimeState().PlayerDefense;
 	TestTrue(TEXT("independent inventory selects bought armor"), InventoryWindow->SelectPlayerBackpackItemForTest(UGameXXKMVPRules::ItemClothArmor()));

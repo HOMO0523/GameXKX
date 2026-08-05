@@ -248,11 +248,6 @@ void UGameXXKTownOverlayWidget::BuildProgrammaticLayout()
 	{
 		CharacterButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleCharacterClicked);
 	}
-	TradeButton = AddCommandButton(PanelBox, NSLOCTEXT("GameXXKTownOverlay", "OpenTrade", "商店"));
-	if (TradeButton)
-	{
-		TradeButton->OnClicked.AddDynamic(this, &UGameXXKTownOverlayWidget::HandleTradeClicked);
-	}
 	ClosePanelButton = AddCommandButton(PanelBox, NSLOCTEXT("GameXXKTownOverlay", "ClosePanel", "关闭面板"));
 	if (ClosePanelButton)
 	{

@@ -363,13 +363,10 @@ TArray<FGameXXKMVPCommandDescriptor> GameXXKMVPCommandRouter::BuildVisibleComman
 		AddCommand(Commands, OpenWorldMap, TEXT("World Map"), true);
 		AddCommand(Commands, OpenInventory, TEXT("背包"), true);
 		AddCommand(Commands, OpenCharacterPanel, TEXT("角色"), true);
-		AddCommand(Commands, OpenTrade, TEXT("商店"), true);
 		if (State.TownPanelMode != EGameXXKTownPanelMode::None)
 		{
 			AddCommand(Commands, CloseTownPanel, TEXT("关闭"), true);
 		}
-		AddCommand(Commands, BuyHealingPowder, TEXT("Buy Healing Powder"), State.PlayerGold >= 10);
-		AddCommand(Commands, SellHealingPowder, TEXT("Sell Healing Powder"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0);
 		AddCommand(Commands, UseHealingPowder, TEXT("Use Healing Powder"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0 && State.PlayerHP < State.PlayerMaxHP);
 		AddCommand(Commands, EnterDungeon, TEXT("Enter Route Map"), Subsystem->CanEnterDungeon());
 		AddCommand(Commands, SaveGame, TEXT("Save Game"), true);
