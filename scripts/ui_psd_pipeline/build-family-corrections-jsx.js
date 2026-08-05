@@ -207,6 +207,25 @@ app.bringToFront();
     }
   }
 
+  function copyShopGlobalLayers(shopGlobal, correctionGroup, pageRecord) {
+    if (shopGlobal.layerSets.length != 0) {
+      throw new Error('Shop global-content group unexpectedly contains child groups.');
+    }
+    var targetGroup = correctionGroup.layerSets.add();
+    targetGroup.name = '20_GlobalShell_V2';
+    var deltaX = Number(pageRecord.origin[0]) - Number(shopReference.origin[0]);
+    var deltaY = Number(pageRecord.origin[1]) - Number(shopReference.origin[1]);
+    for (var artIndex = shopGlobal.artLayers.length - 1; artIndex >= 0; artIndex--) {
+      var copied = shopGlobal.artLayers[artIndex].duplicate();
+      copied.move(targetGroup, ElementPlacement.INSIDE);
+      copied.translate(UnitValue(deltaX, 'px'), UnitValue(deltaY, 'px'));
+    }
+    if (targetGroup.artLayers.length != shopGlobal.artLayers.length) {
+      throw new Error('Shop global-content layer count changed during copy.');
+    }
+    return targetGroup;
+  }
+
   function preflightPage(pageRecord, pageGroup) {
     if (findDirectLayerSet(pageGroup, '00_FamilyCorrection')) {
       throw new Error('00_FamilyCorrection already exists in ' + pageRecord.name);
@@ -331,12 +350,7 @@ app.bringToFront();
       }
 
       if (pageRecord.duplicateShopGlobal) {
-        var duplicatedGlobal = shopGlobal.duplicate(correctionGroup, ElementPlacement.PLACEATBEGINNING);
-        duplicatedGlobal.name = '20_GlobalShell_V2';
-        duplicatedGlobal.translate(
-          UnitValue(Number(pageRecord.origin[0]) - Number(shopReference.origin[0]), 'px'),
-          UnitValue(Number(pageRecord.origin[1]) - Number(shopReference.origin[1]), 'px')
-        );
+        copyShopGlobalLayers(shopGlobal, correctionGroup, pageRecord);
       }
 
       var hiddenLegacyNames = [];
