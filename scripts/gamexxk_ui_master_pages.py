@@ -139,6 +139,7 @@ class PageBuilder:
         *,
         fit_mode: str = "stretch",
         opacity: int = 255,
+        visible: bool = True,
     ) -> None:
         x, y, width, height = box
         with Image.open(path) as opened:
@@ -161,7 +162,8 @@ class PageBuilder:
         if opacity < 255:
             alpha = rendered.getchannel("A").point(lambda value: value * opacity // 255)
             rendered.putalpha(alpha)
-        self.canvas.alpha_composite(rendered, (paste_x, paste_y))
+        if visible:
+            self.canvas.alpha_composite(rendered, (paste_x, paste_y))
         self._layer_index += 1
         layer_record = {
                 "name": f"{self._layer_index:03d}_{name}",
@@ -172,7 +174,7 @@ class PageBuilder:
                 "height": height,
                 "fitMode": fit_mode,
                 "group": f"{self.group}/{subgroup}",
-                "visible": True,
+                "visible": visible,
             }
         if fit_mode == "contain_canvas":
             layer_record["scaleX"] = scale
@@ -186,6 +188,7 @@ class PageBuilder:
         subgroup: str,
         *,
         name: str | None = None,
+        visible: bool = True,
     ) -> None:
         record = self.components[key]
         self.add_image(
@@ -194,6 +197,7 @@ class PageBuilder:
             box,
             subgroup,
             fit_mode="stretch",
+            visible=visible,
         )
 
     def add_text(
@@ -206,11 +210,13 @@ class PageBuilder:
         bold: bool = False,
         color: tuple[int, int, int, int] = INK,
         name: str | None = None,
+        visible: bool = True,
     ) -> None:
         x, y = position
-        self.canvas.alpha_composite(Image.new("RGBA", PAGE_SIZE, (0, 0, 0, 0)))
-        draw = ImageDraw.Draw(self.canvas)
-        draw.text((x, y), text, font=_font(size, bold=bold), fill=color)
+        if visible:
+            self.canvas.alpha_composite(Image.new("RGBA", PAGE_SIZE, (0, 0, 0, 0)))
+            draw = ImageDraw.Draw(self.canvas)
+            draw.text((x, y), text, font=_font(size, bold=bold), fill=color)
         self._text_index += 1
         self.text_layers.append(
             {
@@ -223,6 +229,7 @@ class PageBuilder:
                 "color": "#2B2822",
                 "bold": bold,
                 "group": f"{self.group}/{subgroup}",
+                "visible": visible,
             }
         )
 
@@ -236,6 +243,7 @@ class PageBuilder:
         bold: bool = False,
         color: tuple[int, int, int, int] = INK,
         name: str | None = None,
+        visible: bool = True,
     ) -> None:
         x, y, width, height = box
         font = _font(size, bold=bold)
@@ -244,7 +252,16 @@ class PageBuilder:
         text_height = bounds[3] - bounds[1]
         draw_x = round(x + (width - text_width) / 2 - bounds[0])
         draw_y = round(y + (height - text_height) / 2 - bounds[1])
-        self.add_text(text, (draw_x, draw_y), size, subgroup, bold=bold, color=color, name=name)
+        self.add_text(
+            text,
+            (draw_x, draw_y),
+            size,
+            subgroup,
+            bold=bold,
+            color=color,
+            name=name,
+            visible=visible,
+        )
 
     def add_overlay(self, name: str, image: Image.Image, subgroup: str) -> None:
         overlay_root = self.asset_root / "LayoutAssets"

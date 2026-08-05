@@ -253,6 +253,7 @@ app.bringToFront();
     try { textItem.fauxBold = !!item.bold; } catch (e) {}
     try { textItem.tracking = item.tracking || 0; } catch (e) {}
     if (item.group) layer.move(ensureGroupPath(doc, item.group), ElementPlacement.INSIDE);
+    layer.visible = item.visible !== false;
     createdText.push(textItem.contents);
   }
 
