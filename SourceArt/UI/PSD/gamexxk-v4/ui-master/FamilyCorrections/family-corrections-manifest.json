@@ -1,0 +1,2122 @@
+{
+  "version": 1,
+  "sourceMasterManifest": "D:\\UE5 demo\\GameXXK\\tmp\\meta-shop-psd-review\\master-manifest.json",
+  "sourceShellManifest": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\shell-components-manifest.json",
+  "shopReference": {
+    "name": "07_商店交易",
+    "origin": [
+      4080,
+      1200
+    ],
+    "globalGroup": "20_GlobalShell"
+  },
+  "targetCanvas": [
+    1920,
+    1080
+  ],
+  "families": {
+    "character": [
+      "03_主角背包",
+      "04_伙伴编队",
+      "05_图鉴",
+      "06_任务日志",
+      "13_主角背包_物品选中",
+      "14_伙伴编队_角色选中",
+      "15_图鉴_怪物选中"
+    ],
+    "route": [
+      "08_路线图",
+      "09_路线事件",
+      "16_路线图_节点选中"
+    ],
+    "battle": [
+      "10_战斗HUD",
+      "11_战斗奖励结算",
+      "17_战斗HUD_卡牌选中目标"
+    ],
+    "menu_hud": [
+      "01_主菜单",
+      "02_城镇HUD",
+      "12_系统菜单"
+    ]
+  },
+  "statePairs": [
+    [
+      "03_主角背包",
+      "13_主角背包_物品选中"
+    ],
+    [
+      "04_伙伴编队",
+      "14_伙伴编队_角色选中"
+    ],
+    [
+      "05_图鉴",
+      "15_图鉴_怪物选中"
+    ],
+    [
+      "08_路线图",
+      "16_路线图_节点选中"
+    ],
+    [
+      "10_战斗HUD",
+      "17_战斗HUD_卡牌选中目标"
+    ]
+  ],
+  "pages": [
+    {
+      "name": "01_主菜单",
+      "hiddenTextContents": [],
+      "textRules": [
+        {
+          "content": "行旅异闻",
+          "mode": "center",
+          "target": [
+            960,
+            255
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "山川入墨，众生入局",
+          "mode": "center",
+          "target": [
+            960,
+            320
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "继续旅程",
+          "mode": "center",
+          "target": [
+            960,
+            465
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "新的旅程",
+          "mode": "center",
+          "target": [
+            960,
+            565
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "设置",
+          "mode": "center",
+          "target": [
+            960,
+            665
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "退出",
+          "mode": "center",
+          "target": [
+            960,
+            765
+          ],
+          "justification": "center"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_Menu",
+          "members": [
+            "30_Menu"
+          ],
+          "targetCenter": [
+            960,
+            620
+          ]
+        }
+      ],
+      "family": "menu_hud",
+      "preset": "main_menu",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell"
+      ],
+      "preserveGroups": [
+        "30_Menu",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": false,
+      "origin": [
+        2040,
+        0
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            580,
+            130,
+            760,
+            820
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02_城镇HUD",
+      "hiddenTextContents": [
+        "主角  Lv. 1",
+        "经验  0 / 100     战力 33",
+        "铜钱 10,000      青玉 2,000      金锭 500"
+      ],
+      "textRules": [
+        {
+          "content": "青山镇 · 客栈前街",
+          "mode": "topLeft",
+          "target": [
+            260,
+            790
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "F  与掌柜交谈     城镇按钮进入路线图",
+          "mode": "topLeft",
+          "target": [
+            260,
+            835
+          ],
+          "justification": "left"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_Context",
+          "members": [
+            "30_Context"
+          ],
+          "targetCenter": [
+            560,
+            875
+          ]
+        }
+      ],
+      "family": "menu_hud",
+      "preset": "town_hud",
+      "hideGroups": [
+        "10_World",
+        "20_Shell",
+        "21_Navigation"
+      ],
+      "preserveGroups": [
+        "30_Context",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": true,
+      "origin": [
+        4080,
+        0
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "01_主角身份条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\identity_panel.png",
+          "box": [
+            24,
+            14,
+            541,
+            185
+          ]
+        },
+        {
+          "name": "02_顶部铜钱条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\currency_panel.png",
+          "box": [
+            1138,
+            14,
+            776,
+            118
+          ]
+        },
+        {
+          "name": "03_导航圆底_背包",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_backpack.png",
+          "box": [
+            27,
+            210,
+            153,
+            154
+          ]
+        },
+        {
+          "name": "04_导航圆底_伙伴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_companion.png",
+          "box": [
+            29,
+            359,
+            149,
+            152
+          ]
+        },
+        {
+          "name": "05_导航圆底_图鉴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_codex.png",
+          "box": [
+            30,
+            504,
+            149,
+            162
+          ]
+        },
+        {
+          "name": "06_导航圆底_任务",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_task.png",
+          "box": [
+            23,
+            651,
+            164,
+            165
+          ]
+        },
+        {
+          "name": "07_导航圆底_路线",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_route.png",
+          "box": [
+            28,
+            800,
+            155,
+            157
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03_主角背包",
+      "hiddenTextContents": [
+        "Lv. 1",
+        "0 / 100",
+        "33",
+        "10,000",
+        "2,000",
+        "500"
+      ],
+      "textRules": [
+        {
+          "content": "主角",
+          "mode": "topLeft",
+          "target": [
+            390,
+            215
+          ],
+          "justification": "left"
+        }
+      ],
+      "clusterRules": [],
+      "family": "character",
+      "preset": "town_full",
+      "hideGroups": [
+        "10_ApprovedV2Shell",
+        "15_HudContent"
+      ],
+      "preserveGroups": [
+        "20_Tabs",
+        "30_Character",
+        "31_EquipmentFrames",
+        "32_EquipmentIcons",
+        "40_InventorySlots",
+        "41_InventoryItems",
+        "42_InventoryScrollbar",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": true,
+      "origin": [
+        6120,
+        0
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "01_主角身份条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\identity_panel.png",
+          "box": [
+            24,
+            14,
+            541,
+            185
+          ]
+        },
+        {
+          "name": "02_顶部铜钱条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\currency_panel.png",
+          "box": [
+            1138,
+            14,
+            776,
+            118
+          ]
+        },
+        {
+          "name": "03_导航圆底_背包",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_backpack.png",
+          "box": [
+            27,
+            210,
+            153,
+            154
+          ]
+        },
+        {
+          "name": "04_导航圆底_伙伴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_companion.png",
+          "box": [
+            29,
+            359,
+            149,
+            152
+          ]
+        },
+        {
+          "name": "05_导航圆底_图鉴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_codex.png",
+          "box": [
+            30,
+            504,
+            149,
+            162
+          ]
+        },
+        {
+          "name": "06_导航圆底_任务",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_task.png",
+          "box": [
+            23,
+            651,
+            164,
+            165
+          ]
+        },
+        {
+          "name": "07_导航圆底_路线",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_route.png",
+          "box": [
+            28,
+            800,
+            155,
+            157
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            310,
+            171,
+            1453,
+            851
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04_伙伴编队",
+      "hiddenTextContents": [
+        "主角  Lv. 1",
+        "经验  0 / 100     战力 33",
+        "铜钱 10,000      青玉 2,000      金锭 500"
+      ],
+      "textRules": [
+        {
+          "content": "伙伴编队",
+          "mode": "topLeft",
+          "target": [
+            390,
+            215
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "拖动卡片调整前后排；主角入口不再与伙伴混淆",
+          "mode": "topLeft",
+          "target": [
+            565,
+            225
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "保存编队",
+          "mode": "center",
+          "target": [
+            1460,
+            880
+          ],
+          "justification": "center"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_Cards",
+          "members": [
+            "30_Cards",
+            "31_Portraits",
+            "32_FormationSlots"
+          ],
+          "targetCenter": [
+            960,
+            535
+          ]
+        },
+        {
+          "anchorGroup": "40_Actions",
+          "members": [
+            "40_Actions"
+          ],
+          "targetCenter": [
+            1460,
+            880
+          ]
+        }
+      ],
+      "family": "character",
+      "preset": "town_full",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell",
+        "21_Navigation"
+      ],
+      "preserveGroups": [
+        "30_Cards",
+        "31_Portraits",
+        "32_FormationSlots",
+        "40_Actions",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": true,
+      "origin": [
+        8160,
+        0
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "01_主角身份条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\identity_panel.png",
+          "box": [
+            24,
+            14,
+            541,
+            185
+          ]
+        },
+        {
+          "name": "02_顶部铜钱条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\currency_panel.png",
+          "box": [
+            1138,
+            14,
+            776,
+            118
+          ]
+        },
+        {
+          "name": "03_导航圆底_背包",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_backpack.png",
+          "box": [
+            27,
+            210,
+            153,
+            154
+          ]
+        },
+        {
+          "name": "04_导航圆底_伙伴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_companion.png",
+          "box": [
+            29,
+            359,
+            149,
+            152
+          ]
+        },
+        {
+          "name": "05_导航圆底_图鉴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_codex.png",
+          "box": [
+            30,
+            504,
+            149,
+            162
+          ]
+        },
+        {
+          "name": "06_导航圆底_任务",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_task.png",
+          "box": [
+            23,
+            651,
+            164,
+            165
+          ]
+        },
+        {
+          "name": "07_导航圆底_路线",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_route.png",
+          "box": [
+            28,
+            800,
+            155,
+            157
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            310,
+            171,
+            1453,
+            851
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05_图鉴",
+      "hiddenTextContents": [
+        "主角  Lv. 1",
+        "经验  0 / 100     战力 33",
+        "铜钱 10,000      青玉 2,000      金锭 500"
+      ],
+      "textRules": [
+        {
+          "content": "图鉴",
+          "mode": "topLeft",
+          "target": [
+            390,
+            215
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "怪物卡片、掉落与已发现状态",
+          "mode": "topLeft",
+          "target": [
+            520,
+            225
+          ],
+          "justification": "left"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_MonsterCards",
+          "members": [
+            "30_MonsterCards",
+            "31_Portraits"
+          ],
+          "targetCenter": [
+            850,
+            510
+          ]
+        }
+      ],
+      "family": "character",
+      "preset": "town_full",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell",
+        "21_Navigation"
+      ],
+      "preserveGroups": [
+        "30_MonsterCards",
+        "31_Portraits",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": true,
+      "origin": [
+        0,
+        1200
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "01_主角身份条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\identity_panel.png",
+          "box": [
+            24,
+            14,
+            541,
+            185
+          ]
+        },
+        {
+          "name": "02_顶部铜钱条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\currency_panel.png",
+          "box": [
+            1138,
+            14,
+            776,
+            118
+          ]
+        },
+        {
+          "name": "03_导航圆底_背包",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_backpack.png",
+          "box": [
+            27,
+            210,
+            153,
+            154
+          ]
+        },
+        {
+          "name": "04_导航圆底_伙伴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_companion.png",
+          "box": [
+            29,
+            359,
+            149,
+            152
+          ]
+        },
+        {
+          "name": "05_导航圆底_图鉴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_codex.png",
+          "box": [
+            30,
+            504,
+            149,
+            162
+          ]
+        },
+        {
+          "name": "06_导航圆底_任务",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_task.png",
+          "box": [
+            23,
+            651,
+            164,
+            165
+          ]
+        },
+        {
+          "name": "07_导航圆底_路线",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_route.png",
+          "box": [
+            28,
+            800,
+            155,
+            157
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            310,
+            171,
+            1453,
+            851
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06_任务日志",
+      "hiddenTextContents": [
+        "主角  Lv. 1",
+        "经验  0 / 100     战力 33",
+        "铜钱 10,000      青玉 2,000      金锭 500"
+      ],
+      "textRules": [
+        {
+          "content": "任务日志",
+          "mode": "topLeft",
+          "target": [
+            390,
+            215
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "当前、可接取、已完成",
+          "mode": "topLeft",
+          "target": [
+            565,
+            225
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "追踪任务",
+          "mode": "center",
+          "target": [
+            1460,
+            880
+          ],
+          "justification": "center"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_QuestList",
+          "members": [
+            "30_QuestList"
+          ],
+          "targetCenter": [
+            650,
+            560
+          ]
+        },
+        {
+          "anchorGroup": "31_QuestDetail",
+          "members": [
+            "31_QuestDetail",
+            "40_Actions"
+          ],
+          "targetCenter": [
+            1220,
+            560
+          ]
+        }
+      ],
+      "family": "character",
+      "preset": "town_full",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell",
+        "21_Navigation"
+      ],
+      "preserveGroups": [
+        "30_QuestList",
+        "31_QuestDetail",
+        "40_Actions",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": true,
+      "origin": [
+        2040,
+        1200
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "01_主角身份条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\identity_panel.png",
+          "box": [
+            24,
+            14,
+            541,
+            185
+          ]
+        },
+        {
+          "name": "02_顶部铜钱条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\currency_panel.png",
+          "box": [
+            1138,
+            14,
+            776,
+            118
+          ]
+        },
+        {
+          "name": "03_导航圆底_背包",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_backpack.png",
+          "box": [
+            27,
+            210,
+            153,
+            154
+          ]
+        },
+        {
+          "name": "04_导航圆底_伙伴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_companion.png",
+          "box": [
+            29,
+            359,
+            149,
+            152
+          ]
+        },
+        {
+          "name": "05_导航圆底_图鉴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_codex.png",
+          "box": [
+            30,
+            504,
+            149,
+            162
+          ]
+        },
+        {
+          "name": "06_导航圆底_任务",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_task.png",
+          "box": [
+            23,
+            651,
+            164,
+            165
+          ]
+        },
+        {
+          "name": "07_导航圆底_路线",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_route.png",
+          "box": [
+            28,
+            800,
+            155,
+            157
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            310,
+            171,
+            1453,
+            851
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08_路线图",
+      "hiddenTextContents": [],
+      "textRules": [
+        {
+          "content": "山路路线",
+          "mode": "topLeft",
+          "target": [
+            330,
+            190
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "选择下一个节点：战斗、事件、商店或休整",
+          "mode": "topLeft",
+          "target": [
+            520,
+            205
+          ],
+          "justification": "left"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_Route",
+          "members": [
+            "30_Route"
+          ],
+          "targetCenter": [
+            960,
+            580
+          ]
+        }
+      ],
+      "family": "route",
+      "preset": "route_full",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell"
+      ],
+      "preserveGroups": [
+        "30_Route",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": false,
+      "origin": [
+        6120,
+        1200
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            230,
+            150,
+            1460,
+            800
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09_路线事件",
+      "hiddenTextContents": [],
+      "textRules": [
+        {
+          "content": "山泉旁的旅人",
+          "mode": "topLeft",
+          "target": [
+            330,
+            190
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "一名旅人守着清泉，似乎在等待同行者。",
+          "mode": "topLeft",
+          "target": [
+            330,
+            255
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "分享干粮",
+          "mode": "center",
+          "target": [
+            960,
+            640
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "询问山路",
+          "mode": "center",
+          "target": [
+            960,
+            735
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "悄悄离开",
+          "mode": "center",
+          "target": [
+            960,
+            830
+          ],
+          "justification": "center"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_Illustration",
+          "members": [
+            "30_Illustration"
+          ],
+          "targetCenter": [
+            960,
+            430
+          ]
+        },
+        {
+          "anchorGroup": "40_Choices",
+          "members": [
+            "40_Choices"
+          ],
+          "targetCenter": [
+            960,
+            735
+          ]
+        }
+      ],
+      "family": "route",
+      "preset": "route_full",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell"
+      ],
+      "preserveGroups": [
+        "30_Illustration",
+        "40_Choices",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": false,
+      "origin": [
+        8160,
+        1200
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            230,
+            150,
+            1460,
+            800
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10_战斗HUD",
+      "hiddenTextContents": [],
+      "textRules": [
+        {
+          "content": "回合 1",
+          "mode": "topLeft",
+          "target": [
+            70,
+            55
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "能量 3 / 3",
+          "mode": "topRight",
+          "target": [
+            1850,
+            55
+          ],
+          "justification": "right"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_Characters",
+          "members": [
+            "30_Characters",
+            "31_FootBars"
+          ],
+          "targetCenter": [
+            960,
+            560
+          ]
+        },
+        {
+          "anchorGroup": "40_HandCards",
+          "members": [
+            "40_HandCards"
+          ],
+          "targetCenter": [
+            960,
+            900
+          ]
+        }
+      ],
+      "family": "battle",
+      "preset": "battle",
+      "hideGroups": [
+        "10_World"
+      ],
+      "preserveGroups": [
+        "30_Characters",
+        "31_FootBars",
+        "40_HandCards",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": false,
+      "origin": [
+        0,
+        2400
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11_战斗奖励结算",
+      "hiddenTextContents": [],
+      "textRules": [
+        {
+          "content": "战斗胜利",
+          "mode": "center",
+          "target": [
+            960,
+            235
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "选择一项奖励",
+          "mode": "center",
+          "target": [
+            960,
+            300
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "确认奖励",
+          "mode": "center",
+          "target": [
+            960,
+            850
+          ],
+          "justification": "center"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_Rewards",
+          "members": [
+            "30_Rewards"
+          ],
+          "targetCenter": [
+            960,
+            530
+          ]
+        },
+        {
+          "anchorGroup": "40_Actions",
+          "members": [
+            "40_Actions"
+          ],
+          "targetCenter": [
+            960,
+            850
+          ]
+        }
+      ],
+      "family": "battle",
+      "preset": "reward",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell"
+      ],
+      "preserveGroups": [
+        "30_Rewards",
+        "40_Actions",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": false,
+      "origin": [
+        2040,
+        2400
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            480,
+            140,
+            960,
+            820
+          ]
+        }
+      ]
+    },
+    {
+      "name": "12_系统菜单",
+      "hiddenTextContents": [],
+      "textRules": [
+        {
+          "content": "系统菜单",
+          "mode": "center",
+          "target": [
+            960,
+            270
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "继续游戏",
+          "mode": "center",
+          "target": [
+            960,
+            465
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "音量与显示",
+          "mode": "center",
+          "target": [
+            960,
+            565
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "操作设置",
+          "mode": "center",
+          "target": [
+            960,
+            665
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "返回主菜单",
+          "mode": "center",
+          "target": [
+            960,
+            765
+          ],
+          "justification": "center"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_Menu",
+          "members": [
+            "30_Menu"
+          ],
+          "targetCenter": [
+            960,
+            620
+          ]
+        }
+      ],
+      "family": "menu_hud",
+      "preset": "system_menu",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell"
+      ],
+      "preserveGroups": [
+        "30_Menu",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": false,
+      "origin": [
+        4080,
+        2400
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            660,
+            170,
+            600,
+            740
+          ]
+        }
+      ]
+    },
+    {
+      "name": "13_主角背包_物品选中",
+      "hiddenTextContents": [
+        "主角  Lv. 1",
+        "经验  0 / 100     战力 33",
+        "铜钱 10,000      青玉 2,000      金锭 500"
+      ],
+      "textRules": [
+        {
+          "content": "主角",
+          "mode": "topLeft",
+          "target": [
+            390,
+            215
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "当前最终 Idle · 保持 512×512 透明画布比例",
+          "mode": "topLeft",
+          "target": [
+            520,
+            225
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "使用",
+          "mode": "center",
+          "target": [
+            1460,
+            880
+          ],
+          "justification": "center"
+        },
+        {
+          "content": "分解",
+          "mode": "center",
+          "target": [
+            1515,
+            775
+          ],
+          "justification": "center"
+        }
+      ],
+      "clusterRules": [],
+      "family": "character",
+      "preset": "town_full",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell",
+        "21_Navigation"
+      ],
+      "preserveGroups": [
+        "22_Tabs",
+        "30_Character",
+        "31_Equipment",
+        "35_Grid",
+        "40_Actions",
+        "45_Selection",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": true,
+      "origin": [
+        6120,
+        2400
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "01_主角身份条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\identity_panel.png",
+          "box": [
+            24,
+            14,
+            541,
+            185
+          ]
+        },
+        {
+          "name": "02_顶部铜钱条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\currency_panel.png",
+          "box": [
+            1138,
+            14,
+            776,
+            118
+          ]
+        },
+        {
+          "name": "03_导航圆底_背包",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_backpack.png",
+          "box": [
+            27,
+            210,
+            153,
+            154
+          ]
+        },
+        {
+          "name": "04_导航圆底_伙伴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_companion.png",
+          "box": [
+            29,
+            359,
+            149,
+            152
+          ]
+        },
+        {
+          "name": "05_导航圆底_图鉴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_codex.png",
+          "box": [
+            30,
+            504,
+            149,
+            162
+          ]
+        },
+        {
+          "name": "06_导航圆底_任务",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_task.png",
+          "box": [
+            23,
+            651,
+            164,
+            165
+          ]
+        },
+        {
+          "name": "07_导航圆底_路线",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_route.png",
+          "box": [
+            28,
+            800,
+            155,
+            157
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            310,
+            171,
+            1453,
+            851
+          ]
+        }
+      ]
+    },
+    {
+      "name": "14_伙伴编队_角色选中",
+      "hiddenTextContents": [
+        "主角  Lv. 1",
+        "经验  0 / 100     战力 33",
+        "铜钱 10,000      青玉 2,000      金锭 500"
+      ],
+      "textRules": [
+        {
+          "content": "伙伴编队",
+          "mode": "topLeft",
+          "target": [
+            390,
+            215
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "拖动卡片调整前后排；主角入口不再与伙伴混淆",
+          "mode": "topLeft",
+          "target": [
+            565,
+            225
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "保存编队",
+          "mode": "center",
+          "target": [
+            1460,
+            880
+          ],
+          "justification": "center"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_Cards",
+          "members": [
+            "30_Cards",
+            "31_Portraits",
+            "32_FormationSlots"
+          ],
+          "targetCenter": [
+            960,
+            535
+          ]
+        },
+        {
+          "anchorGroup": "40_Actions",
+          "members": [
+            "40_Actions"
+          ],
+          "targetCenter": [
+            1460,
+            880
+          ]
+        }
+      ],
+      "family": "character",
+      "preset": "town_full",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell",
+        "21_Navigation"
+      ],
+      "preserveGroups": [
+        "30_Cards",
+        "31_Portraits",
+        "32_FormationSlots",
+        "40_Actions",
+        "70_RuntimeText"
+      ],
+      "duplicateShopGlobal": true,
+      "origin": [
+        8160,
+        2400
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "01_主角身份条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\identity_panel.png",
+          "box": [
+            24,
+            14,
+            541,
+            185
+          ]
+        },
+        {
+          "name": "02_顶部铜钱条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\currency_panel.png",
+          "box": [
+            1138,
+            14,
+            776,
+            118
+          ]
+        },
+        {
+          "name": "03_导航圆底_背包",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_backpack.png",
+          "box": [
+            27,
+            210,
+            153,
+            154
+          ]
+        },
+        {
+          "name": "04_导航圆底_伙伴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_companion.png",
+          "box": [
+            29,
+            359,
+            149,
+            152
+          ]
+        },
+        {
+          "name": "05_导航圆底_图鉴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_codex.png",
+          "box": [
+            30,
+            504,
+            149,
+            162
+          ]
+        },
+        {
+          "name": "06_导航圆底_任务",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_task.png",
+          "box": [
+            23,
+            651,
+            164,
+            165
+          ]
+        },
+        {
+          "name": "07_导航圆底_路线",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_route.png",
+          "box": [
+            28,
+            800,
+            155,
+            157
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            310,
+            171,
+            1453,
+            851
+          ]
+        }
+      ]
+    },
+    {
+      "name": "15_图鉴_怪物选中",
+      "hiddenTextContents": [
+        "主角  Lv. 1",
+        "经验  0 / 100     战力 33",
+        "铜钱 10,000      青玉 2,000      金锭 500"
+      ],
+      "textRules": [
+        {
+          "content": "图鉴",
+          "mode": "topLeft",
+          "target": [
+            390,
+            215
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "怪物卡片、掉落与已发现状态",
+          "mode": "topLeft",
+          "target": [
+            520,
+            225
+          ],
+          "justification": "left"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_MonsterCards",
+          "members": [
+            "30_MonsterCards",
+            "31_Portraits"
+          ],
+          "targetCenter": [
+            850,
+            510
+          ]
+        }
+      ],
+      "family": "character",
+      "preset": "town_full",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell",
+        "21_Navigation"
+      ],
+      "preserveGroups": [
+        "30_MonsterCards",
+        "31_Portraits",
+        "70_RuntimeText",
+        "40_Detail",
+        "41_DetailPortrait"
+      ],
+      "duplicateShopGlobal": true,
+      "origin": [
+        0,
+        3600
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "01_主角身份条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\identity_panel.png",
+          "box": [
+            24,
+            14,
+            541,
+            185
+          ]
+        },
+        {
+          "name": "02_顶部铜钱条",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\currency_panel.png",
+          "box": [
+            1138,
+            14,
+            776,
+            118
+          ]
+        },
+        {
+          "name": "03_导航圆底_背包",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_backpack.png",
+          "box": [
+            27,
+            210,
+            153,
+            154
+          ]
+        },
+        {
+          "name": "04_导航圆底_伙伴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_companion.png",
+          "box": [
+            29,
+            359,
+            149,
+            152
+          ]
+        },
+        {
+          "name": "05_导航圆底_图鉴",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_codex.png",
+          "box": [
+            30,
+            504,
+            149,
+            162
+          ]
+        },
+        {
+          "name": "06_导航圆底_任务",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_task.png",
+          "box": [
+            23,
+            651,
+            164,
+            165
+          ]
+        },
+        {
+          "name": "07_导航圆底_路线",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\nav_disc_route.png",
+          "box": [
+            28,
+            800,
+            155,
+            157
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            310,
+            171,
+            1453,
+            851
+          ]
+        }
+      ]
+    },
+    {
+      "name": "16_路线图_节点选中",
+      "hiddenTextContents": [],
+      "textRules": [
+        {
+          "content": "山路路线",
+          "mode": "topLeft",
+          "target": [
+            330,
+            190
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "选择下一个节点：战斗、事件、商店或休整",
+          "mode": "topLeft",
+          "target": [
+            520,
+            205
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "进入节点",
+          "mode": "center",
+          "target": [
+            1450,
+            420
+          ],
+          "justification": "center"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_Route",
+          "members": [
+            "30_Route"
+          ],
+          "targetCenter": [
+            960,
+            580
+          ]
+        }
+      ],
+      "family": "route",
+      "preset": "route_full",
+      "hideGroups": [
+        "10_World",
+        "11_WorldOverlay",
+        "20_Shell"
+      ],
+      "preserveGroups": [
+        "30_Route",
+        "70_RuntimeText",
+        "40_Selection"
+      ],
+      "duplicateShopGlobal": false,
+      "origin": [
+        2040,
+        3600
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        },
+        {
+          "name": "08_中央商店窗口",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\main_shop_panel.png",
+          "box": [
+            230,
+            150,
+            1460,
+            800
+          ]
+        }
+      ]
+    },
+    {
+      "name": "17_战斗HUD_卡牌选中目标",
+      "hiddenTextContents": [],
+      "textRules": [
+        {
+          "content": "回合 1",
+          "mode": "topLeft",
+          "target": [
+            70,
+            55
+          ],
+          "justification": "left"
+        },
+        {
+          "content": "能量 3 / 3",
+          "mode": "topRight",
+          "target": [
+            1850,
+            55
+          ],
+          "justification": "right"
+        },
+        {
+          "content": "选择目标",
+          "mode": "center",
+          "target": [
+            960,
+            760
+          ],
+          "justification": "center"
+        }
+      ],
+      "clusterRules": [
+        {
+          "anchorGroup": "30_Characters",
+          "members": [
+            "30_Characters",
+            "31_FootBars"
+          ],
+          "targetCenter": [
+            960,
+            560
+          ]
+        },
+        {
+          "anchorGroup": "40_HandCards",
+          "members": [
+            "40_HandCards"
+          ],
+          "targetCenter": [
+            960,
+            900
+          ]
+        }
+      ],
+      "family": "battle",
+      "preset": "battle",
+      "hideGroups": [
+        "10_World"
+      ],
+      "preserveGroups": [
+        "30_Characters",
+        "31_FootBars",
+        "40_HandCards",
+        "70_RuntimeText",
+        "50_Targeting"
+      ],
+      "duplicateShopGlobal": false,
+      "origin": [
+        4080,
+        3600
+      ],
+      "size": [
+        1920,
+        1080
+      ],
+      "assets": [
+        {
+          "name": "00_城镇背景",
+          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\ShellComponents\\town_background_dimmed.png",
+          "box": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        }
+      ]
+    }
+  ]
+}
