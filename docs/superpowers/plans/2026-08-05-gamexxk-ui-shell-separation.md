@@ -30,7 +30,7 @@
 ```python
 COMPONENTS = (
     {"name": "01_主角身份条", "file": "identity_panel.png", "box": (0, 0, 500, 180), "seed": (100, 90)},
-    {"name": "02_顶部铜钱条", "file": "currency_panel.png", "box": (990, 0, 1672, 130), "seed": (1320, 60)},
+    {"name": "02_顶部铜钱条", "file": "currency_panel.png", "box": (975, 0, 1672, 130), "seed": (1320, 60)},
     {"name": "03_导航圆底_背包", "file": "nav_disc_backpack.png", "box": (10, 170, 180, 330), "seed": (85, 245)},
     {"name": "04_导航圆底_伙伴", "file": "nav_disc_companion.png", "box": (10, 300, 180, 455), "seed": (85, 375)},
     {"name": "05_导航圆底_图鉴", "file": "nav_disc_codex.png", "box": (10, 425, 180, 585), "seed": (85, 505)},
@@ -134,13 +134,20 @@ Require safe-region mean absolute error ≤ 9 and p95 ≤ 20. Stop before export
 
 - [ ] **Step 3: 实现纸张主体与阴影蒙版**
 
-Inside each component box, create a core with `(R > 135) & (G > 110) & (B > 85) & (R - B > 18)`. Keep the four-connected component containing the local seed, close three-pixel gaps with `MaxFilter(5)` then `MinFilter(5)`, and expand eligible edge support with `MaxFilter(19)`.
+Inside each component box, create a core with `(R > 135) & (G > 110) & (B > 85) & (R - B > 18)`. Keep the four-connected component containing the local seed, close three-pixel gaps with `MaxFilter(5)` then `MinFilter(5)`, and expand eligible edge support with `MaxFilter(19)`. Outside the opaque paper core, retain only genuine luminance darkening and reconstruct it as a neutral ink-coloured shadow; absolute RGB residuals from the fitted background must not become alpha because uncompositing them produces cyan/magenta fringes.
 
 ```python
-difference = np.max(np.abs(shell.astype(np.int16) - matched.astype(np.int16)), axis=2)
-difference_alpha = np.clip((difference.astype(np.float32) - 4.0) * (255.0 / 20.0), 0, 255).astype(np.uint8)
-alpha = np.maximum(np.asarray(core_closed), difference_alpha * (np.asarray(support) > 0))
-alpha = np.asarray(Image.fromarray(alpha, "L").filter(ImageFilter.GaussianBlur(0.65)))
+luma_shell = shell_crop.astype(np.float32) @ np.array([0.2126, 0.7152, 0.0722])
+luma_background = background_crop.astype(np.float32) @ np.array([0.2126, 0.7152, 0.0722])
+shadow_alpha = np.clip(
+    (luma_background - luma_shell - 2.0) / np.maximum(luma_background - 18.0, 1.0) * 255.0,
+    0,
+    255,
+).astype(np.uint8)
+shadow_alpha[~support | core] = 0
+alpha = np.where(core, 255, shadow_alpha)
+foreground[core] = shell_crop[core]
+foreground[~core] = np.array([22, 18, 14], dtype=np.uint8)
 ```
 
 Reject a mask when alpha touches its source crop boundary; adjust only the offending component box.

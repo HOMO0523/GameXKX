@@ -1,0 +1,272 @@
+{
+  "version": 1,
+  "sourceCanvas": [
+    1672,
+    941
+  ],
+  "targetCanvas": [
+    1920,
+    1080
+  ],
+  "sourceShell": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\calibration-v2\\Generated\\hero_backpack_large_panel_clean.png",
+  "sourceBackground": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\calibration-v2\\Generated\\town_background_clean_no_ui.png",
+  "backgroundFit": {
+    "parameters": [
+      {
+        "slope": 0.7136212227354728,
+        "intercept": 9.030632757002309
+      },
+      {
+        "slope": 0.6395997912713679,
+        "intercept": 14.457152383537101
+      },
+      {
+        "slope": 0.7428301491673284,
+        "intercept": 4.820615243201011
+      }
+    ],
+    "meanAbsoluteError": 7.012770180568435,
+    "p95AbsoluteError": 17.0,
+    "p99AbsoluteError": 26.0
+  },
+  "background": {
+    "name": "00_城镇背景",
+    "file": "town_background_dimmed.png",
+    "box": [
+      0,
+      0,
+      1920,
+      1080
+    ]
+  },
+  "components": [
+    {
+      "name": "01_主角身份条",
+      "file": "identity_panel.png",
+      "sourceBox": [
+        0,
+        0,
+        500,
+        180
+      ],
+      "seed": [
+        100,
+        90
+      ],
+      "box": [
+        24,
+        14,
+        541,
+        185
+      ],
+      "alphaBounds": [
+        26,
+        16,
+        563,
+        197
+      ],
+      "opaquePixelCount": 69084,
+      "visiblePixelCount": 80618
+    },
+    {
+      "name": "02_顶部铜钱条",
+      "file": "currency_panel.png",
+      "sourceBox": [
+        975,
+        0,
+        1672,
+        130
+      ],
+      "seed": [
+        1320,
+        60
+      ],
+      "box": [
+        1138,
+        14,
+        776,
+        118
+      ],
+      "alphaBounds": [
+        1140,
+        16,
+        1912,
+        130
+      ],
+      "opaquePixelCount": 61970,
+      "visiblePixelCount": 73981
+    },
+    {
+      "name": "03_导航圆底_背包",
+      "file": "nav_disc_backpack.png",
+      "sourceBox": [
+        10,
+        170,
+        180,
+        330
+      ],
+      "seed": [
+        85,
+        245
+      ],
+      "box": [
+        27,
+        210,
+        153,
+        154
+      ],
+      "alphaBounds": [
+        29,
+        212,
+        178,
+        362
+      ],
+      "opaquePixelCount": 12256,
+      "visiblePixelCount": 15480
+    },
+    {
+      "name": "04_导航圆底_伙伴",
+      "file": "nav_disc_companion.png",
+      "sourceBox": [
+        10,
+        300,
+        180,
+        455
+      ],
+      "seed": [
+        85,
+        375
+      ],
+      "box": [
+        29,
+        359,
+        149,
+        152
+      ],
+      "alphaBounds": [
+        31,
+        361,
+        176,
+        509
+      ],
+      "opaquePixelCount": 11461,
+      "visiblePixelCount": 15401
+    },
+    {
+      "name": "05_导航圆底_图鉴",
+      "file": "nav_disc_codex.png",
+      "sourceBox": [
+        10,
+        425,
+        180,
+        585
+      ],
+      "seed": [
+        85,
+        505
+      ],
+      "box": [
+        30,
+        504,
+        149,
+        162
+      ],
+      "alphaBounds": [
+        32,
+        506,
+        177,
+        664
+      ],
+      "opaquePixelCount": 12665,
+      "visiblePixelCount": 17862
+    },
+    {
+      "name": "06_导航圆底_任务",
+      "file": "nav_disc_task.png",
+      "sourceBox": [
+        10,
+        550,
+        180,
+        715
+      ],
+      "seed": [
+        85,
+        635
+      ],
+      "box": [
+        23,
+        651,
+        164,
+        165
+      ],
+      "alphaBounds": [
+        25,
+        653,
+        185,
+        814
+      ],
+      "opaquePixelCount": 13530,
+      "visiblePixelCount": 18317
+    },
+    {
+      "name": "07_导航圆底_路线",
+      "file": "nav_disc_route.png",
+      "sourceBox": [
+        10,
+        680,
+        180,
+        845
+      ],
+      "seed": [
+        85,
+        765
+      ],
+      "box": [
+        28,
+        800,
+        155,
+        157
+      ],
+      "alphaBounds": [
+        30,
+        802,
+        181,
+        955
+      ],
+      "opaquePixelCount": 12649,
+      "visiblePixelCount": 17082
+    },
+    {
+      "name": "08_中央商店窗口",
+      "file": "main_shop_panel.png",
+      "sourceBox": [
+        260,
+        140,
+        1545,
+        900
+      ],
+      "seed": [
+        800,
+        500
+      ],
+      "box": [
+        310,
+        171,
+        1453,
+        851
+      ],
+      "alphaBounds": [
+        312,
+        173,
+        1761,
+        1020
+      ],
+      "opaquePixelCount": 1149148,
+      "visiblePixelCount": 1178563
+    }
+  ],
+  "review": {
+    "recomposed": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\Review\\MetaShop\\07_商店交易_壳体拆分复合.png",
+    "difference": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\Review\\MetaShop\\07_商店交易_壳体拆分差异.png"
+  }
+}
