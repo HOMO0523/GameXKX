@@ -78,3 +78,18 @@ python scripts/build_gamexxk_ui_master.py
 | `Previews/07_商店交易.png` | `0898b8e57c7dc8fdc45da4e042335b77c4103f74d87d581a5f0a38e2e27a1719` |
 | `GameXXK_UI_Master_ContactSheet.png` | `98cb2e4fca182811d89a589b0869a4b9c3f824ba97cd7da4e235f5eb0cb34f55` |
 | `master-manifest.json` | `f00aaa3b9eae19ae46bf74d71f66e5b39623e7b60d4c9ceb7c518de624cbbbaf` |
+
+### Master UI 对齐微调
+
+2026-08-05 后续对齐轮次将 `03_主角背包` 的六个装备槽规范为两列三行：左列 `x=420`、右列 `x=930`，三行 `y=340/515/690`；全部框体保持 `118 × 124`，图标保持 `88 × 88` 和 15 像素内缩。
+
+两张重点页的控件型短文本改为按 Microsoft YaHei 实际字形边界居中：背包页 5 个页签、5 个分类和 4 个属性；商店页 7 个商品名、7 个价格、详情标题与购买按钮。页面标题、说明、概率、永久金币和容量文字继续左对齐。
+
+后生成结构检查结果：装备框 6、装备图标 6、居中短文本 30、背包格 20、右侧滑条 alpha 范围 `(1640, 332, 1663, 931)`、商店商品 7；两张重点预览均为 `1920 × 1080`。原分辨率复核确认两列共线、三行等距、短文本无碰撞，说明文本层级未改变。
+
+| 对齐后输出 | SHA-256 |
+|---|---|
+| `Previews/03_主角背包.png` | `ea2d5aa285ea895337e1ba6a20a2785d5a127c9ec4db637964bc30bea451d4b8` |
+| `Previews/07_商店交易.png` | `a220e6b900bc567f134e026cf505af12b639eda87c60d55867e2c1d8e9f6a911` |
+| `GameXXK_UI_Master_ContactSheet.png` | `9204b9cab9c11b3df5f92ca56e76df881807e3b8d72dee601499641f5d14f612` |
+| `master-manifest.json` | `23ffd661b94901b5fe9422e3b10ad2b9b7b4cc21f8961d5a87eb74cc93dc1b29` |

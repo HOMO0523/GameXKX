@@ -23,7 +23,7 @@
 
 This is pure Master UI visual work. Per the user's standing direction, do not use TDD; validate only after generation.
 
-- [ ] **Step 1: Add measured centered-text placement**
+- [x] **Step 1: Add measured centered-text placement**
 
 Add a `PageBuilder.add_centered_text` method beside `add_text`. Measure the exact font with `ImageDraw.textbbox`, compute the drawing origin that centers the glyph bounds inside the supplied rectangle, then delegate to `add_text` so the manifest continues to contain editable text:
 
@@ -49,7 +49,7 @@ Add a `PageBuilder.add_centered_text` method beside `add_text`. Measure the exac
         self.add_text(text, (draw_x, draw_y), size, subgroup, bold=bold, color=color, name=name)
 ```
 
-- [ ] **Step 2: Normalize the six backpack equipment slots**
+- [x] **Step 2: Normalize the six backpack equipment slots**
 
 Replace only the four drifting x-coordinates so both columns share exact origins:
 
@@ -66,15 +66,15 @@ Replace only the four drifting x-coordinates so both columns share exact origins
 
 Keep frames `118 × 124` and icons `88 × 88` at `x + 15, y + 15`.
 
-- [ ] **Step 3: Center the approved backpack-page labels**
+- [x] **Step 3: Center the approved backpack-page labels**
 
 Use `add_centered_text` for each tab label within `(x, 220, 105, 62)`. Give the five inventory categories explicit short regions starting at x positions `1128, 1208, 1288, 1368, 1448`, each `70 × 44`, without moving `背包  3 / 200`. Center the four bottom stats in four `130 × 44` regions starting at x `445, 575, 705, 835`.
 
-- [ ] **Step 4: Center the approved shop-page labels**
+- [x] **Step 4: Center the approved shop-page labels**
 
 For each product card, center the product name in `(x - 10, y + 178, 190, 34)` and the price in `(x, y + 216, 170, 32)`. Center `破军装备包` in the detail column rectangle `(1305, 575, 350, 44)` and center `购买  100` within the button rectangle `(1380, 870, 210, 72)`. Leave page titles, subtitles, product descriptions, probability copy, permanent gold, and confirmation hint left-aligned.
 
-- [ ] **Step 5: Rebuild the Master outputs**
+- [x] **Step 5: Rebuild the Master outputs**
 
 Run:
 
@@ -85,7 +85,7 @@ python scripts/build_gamexxk_ui_master.py
 
 Expected: syntax exit code `0`; build returns `ok: true`, 18 pages, and V2 pages `00_公共组件`, `03_主角背包`, `07_商店交易`.
 
-- [ ] **Step 6: Run post-generation structural checks**
+- [x] **Step 6: Run post-generation structural checks**
 
 Read `master-manifest.json` and assert:
 
@@ -97,11 +97,11 @@ Read `master-manifest.json` and assert:
 - the shop still has exactly seven product icons and no legacy `草药包` or `出售` text;
 - `git diff --check` exits `0`.
 
-- [ ] **Step 7: Review and record the visual result**
+- [x] **Step 7: Review and record the visual result**
 
 Inspect `03_主角背包.png`, `07_商店交易.png`, and the contact sheet at original resolution. Confirm two exact equipment columns, three equal rows, centered control labels, no overlap, and unchanged titles/descriptive alignment. Append the two preview hashes and review result to `docs/production/2026-08-04-gamexxk-ui-calibration-v2-progress.md`.
 
-- [ ] **Step 8: Commit the visual adjustment**
+- [x] **Step 8: Commit the visual adjustment**
 
 Stage only the page generator, the two priority previews, regenerated contact sheet/manifest, this plan, and the production note:
 

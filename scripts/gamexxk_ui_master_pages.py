@@ -226,6 +226,26 @@ class PageBuilder:
             }
         )
 
+    def add_centered_text(
+        self,
+        text: str,
+        box: tuple[int, int, int, int],
+        size: int,
+        subgroup: str = "70_RuntimeText",
+        *,
+        bold: bool = False,
+        color: tuple[int, int, int, int] = INK,
+        name: str | None = None,
+    ) -> None:
+        x, y, width, height = box
+        font = _font(size, bold=bold)
+        bounds = ImageDraw.Draw(Image.new("RGBA", (1, 1))).textbbox((0, 0), text, font=font)
+        text_width = bounds[2] - bounds[0]
+        text_height = bounds[3] - bounds[1]
+        draw_x = round(x + (width - text_width) / 2 - bounds[0])
+        draw_y = round(y + (height - text_height) / 2 - bounds[1])
+        self.add_text(text, (draw_x, draw_y), size, subgroup, bold=bold, color=color, name=name)
+
     def add_overlay(self, name: str, image: Image.Image, subgroup: str) -> None:
         overlay_root = self.asset_root / "LayoutAssets"
         overlay_root.mkdir(parents=True, exist_ok=True)
@@ -418,15 +438,15 @@ def _page_backpack_v2(builder: PageBuilder) -> None:
     for index, (label, filename) in enumerate(zip(tab_labels, tab_files)):
         x = 570 + index * 115
         builder.add_image(f"tab_{index + 1}", V2_COMPONENTS / filename, (x, 220, 105, 62), "20_Tabs")
-        builder.add_text(label, (x + 28, 232), 20, bold=index == 1)
+        builder.add_centered_text(label, (x, 220, 105, 62), 20, bold=index == 1)
 
     builder.add_image("hero_idle", HERO, (490, 305, 510, 510), "30_Character", fit_mode="contain_canvas")
     equipment_frames = (
         ("equipment_slot_left_01.png", 420, 340, "starter_weapon.png"),
-        ("equipment_slot_left_02.png", 410, 515, "starter_head.png"),
+        ("equipment_slot_left_02.png", 420, 515, "starter_head.png"),
         ("equipment_slot_left_03.png", 420, 690, "starter_armor.png"),
         ("equipment_slot_right_01.png", 930, 340, "starter_belt.png"),
-        ("equipment_slot_right_02.png", 940, 515, "starter_shoes.png"),
+        ("equipment_slot_right_02.png", 930, 515, "starter_shoes.png"),
         ("equipment_slot_right_03.png", 930, 690, "starter_accessory.png"),
     )
     for index, (frame_name, x, y, icon_name) in enumerate(equipment_frames):
@@ -439,11 +459,9 @@ def _page_backpack_v2(builder: PageBuilder) -> None:
             fit_mode="contain_canvas",
         )
 
-    builder.add_text("全部", (1135, 250), 21, bold=True)
-    builder.add_text("装备", (1215, 250), 19)
-    builder.add_text("材料", (1300, 250), 19)
-    builder.add_text("任务", (1385, 250), 19)
-    builder.add_text("其他", (1440, 250), 19)
+    category_labels = ("全部", "装备", "材料", "任务", "其他")
+    for index, label in enumerate(category_labels):
+        builder.add_centered_text(label, (1128 + index * 80, 232, 70, 50), 21 if index == 0 else 19, bold=index == 0)
     builder.add_text("背包  3 / 200", (1525, 250), 18, bold=True)
 
     slot_files = sorted(V2_COMPONENTS.glob("inventory_slot_*.png"))
@@ -475,10 +493,8 @@ def _page_backpack_v2(builder: PageBuilder) -> None:
                 )
             slot_index += 1
     builder.add_overlay("inventory_scrollbar_right", _draw_backpack_scrollbar_overlay(), "42_InventoryScrollbar")
-    builder.add_text("Lv. 1", (480, 900), 20)
-    builder.add_text("攻击 33", (585, 900), 20)
-    builder.add_text("气血 120", (720, 900), 20)
-    builder.add_text("防御 18", (870, 900), 20)
+    for index, label in enumerate(("Lv. 1", "攻击 33", "气血 120", "防御 18")):
+        builder.add_centered_text(label, (445 + index * 130, 884, 130, 44), 20)
 
 
 def _page_party(builder: PageBuilder, world: Path, *, selected: bool = False) -> None:
@@ -601,8 +617,8 @@ def _page_meta_shop_v2(builder: PageBuilder) -> None:
             "22_ProductIcons",
             fit_mode="contain_canvas",
         )
-        builder.add_text(label, (x + 12, y + 184), 20, bold=index == 0)
-        builder.add_text(f"{price} 金", (x + 47, y + 222), 18, color=MUTED)
+        builder.add_centered_text(label, (x - 10, y + 178, 190, 34), 20, bold=index == 0)
+        builder.add_centered_text(f"{price} 金", (x, y + 216, 170, 32), 18, color=MUTED)
 
     builder.add_image(
         "selected_product_detail_slot",
@@ -617,7 +633,7 @@ def _page_meta_shop_v2(builder: PageBuilder) -> None:
         "31_ProductDetailIcon",
         fit_mode="contain_canvas",
     )
-    builder.add_text("破军装备包", (1340, 585), 30, bold=True)
+    builder.add_centered_text("破军装备包", (1305, 575, 350, 44), 30, bold=True)
     builder.add_text("随机获得破军套装的一个部位", (1305, 640), 19)
     builder.add_text("装备等级：当前主角等级", (1305, 680), 19)
     builder.add_text("普通 70%  ·  稀有 25%  ·  珍稀 5%", (1305, 720), 17)
@@ -629,7 +645,7 @@ def _page_meta_shop_v2(builder: PageBuilder) -> None:
         (1380, 870, 210, 72),
         "40_PurchaseAction",
     )
-    builder.add_text("购买  100", (1422, 888), 23, bold=True)
+    builder.add_centered_text("购买  100", (1380, 870, 210, 72), 23, bold=True)
     builder.add_text("点击后再次确认", (1412, 955), 16, color=MUTED)
 
 
