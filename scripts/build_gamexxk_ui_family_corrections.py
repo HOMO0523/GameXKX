@@ -70,6 +70,14 @@ def text_center(content: str, x: int, y: int) -> dict[str, object]:
     return {"content": content, "mode": "center", "target": [x, y], "justification": "center"}
 
 
+def layer_text_top_left(layer: str, x: int, y: int) -> dict[str, object]:
+    return {"layer": layer, "mode": "topLeft", "target": [x, y], "justification": "left"}
+
+
+def layer_text_center(layer: str, x: int, y: int) -> dict[str, object]:
+    return {"layer": layer, "mode": "center", "target": [x, y], "justification": "center"}
+
+
 def cluster(anchor: str, members: list[str], x: int, y: int) -> dict[str, object]:
     return {"anchorGroup": anchor, "members": members, "targetCenter": [x, y]}
 
@@ -79,6 +87,8 @@ def page_configuration(name: str) -> dict[str, object]:
         "name": name,
         "hiddenTextContents": [],
         "textRules": [],
+        "layerTextRules": [],
+        "lightTextLayers": [],
         "clusterRules": [],
     }
     if name == "01_主菜单":
@@ -108,8 +118,8 @@ def page_configuration(name: str) -> dict[str, object]:
             hiddenTextContents=LEGACY_GLOBAL_TEXT,
             clusterRules=[cluster("30_Context", ["30_Context"], 560, 875)],
             textRules=[
-                text_top_left("青山镇 · 客栈前街", 260, 790),
-                text_top_left("F  与掌柜交谈     城镇按钮进入路线图", 260, 835),
+                text_top_left("青山镇 · 客栈前街", 330, 800),
+                text_top_left("F  与掌柜交谈     城镇按钮进入路线图", 330, 845),
             ],
         )
     elif name == "03_主角背包":
@@ -148,6 +158,12 @@ def page_configuration(name: str) -> dict[str, object]:
                 text_top_left("拖动卡片调整前后排；主角入口不再与伙伴混淆", 565, 225),
                 text_center("保存编队", 1460, 880),
             ],
+            layerTextRules=[
+                layer_text_center("text_006", 785, 666),
+                layer_text_center("text_007", 1135, 666),
+                layer_text_center("text_008", 1405, 574),
+                layer_text_center("text_009", 1630, 574),
+            ],
         )
     elif name in ("05_图鉴", "15_图鉴_怪物选中"):
         preserved = ["30_MonsterCards", "31_Portraits", "70_RuntimeText"]
@@ -165,6 +181,14 @@ def page_configuration(name: str) -> dict[str, object]:
                 text_top_left("图鉴", 390, 215),
                 text_top_left("怪物卡片、掉落与已发现状态", 520, 225),
             ],
+            layerTextRules=[
+                layer_text_center("text_006", 338, 585),
+                layer_text_center("text_007", 543, 585),
+                layer_text_center("text_008", 748, 585),
+                layer_text_center("text_009", 953, 585),
+                layer_text_center("text_010", 1157, 585),
+                layer_text_center("text_011", 1362, 585),
+            ],
         )
     elif name == "06_任务日志":
         common.update(
@@ -181,7 +205,13 @@ def page_configuration(name: str) -> dict[str, object]:
             textRules=[
                 text_top_left("任务日志", 390, 215),
                 text_top_left("当前、可接取、已完成", 565, 225),
-                text_center("追踪任务", 1460, 880),
+                text_center("追踪任务", 1380, 740),
+            ],
+            layerTextRules=[
+                layer_text_center("text_006", 650, 403),
+                layer_text_center("text_007", 650, 508),
+                layer_text_center("text_008", 650, 613),
+                layer_text_center("text_009", 650, 718),
             ],
         )
     elif name in ("08_路线图", "16_路线图_节点选中"):
@@ -198,7 +228,7 @@ def page_configuration(name: str) -> dict[str, object]:
             textRules=[
                 text_top_left("山路路线", 330, 190),
                 text_top_left("选择下一个节点：战斗、事件、商店或休整", 520, 205),
-            ] + ([text_center("进入节点", 1450, 420)] if name == "16_路线图_节点选中" else []),
+            ] + ([text_center("进入节点", 1385, 441)] if name == "16_路线图_节点选中" else []),
         )
     elif name == "09_路线事件":
         common.update(
@@ -237,6 +267,7 @@ def page_configuration(name: str) -> dict[str, object]:
                 text_top_left("回合 1", 70, 55),
                 {"content": "能量 3 / 3", "mode": "topRight", "target": [1850, 55], "justification": "right"},
             ] + ([text_center("选择目标", 960, 760)] if name == "17_战斗HUD_卡牌选中目标" else []),
+            lightTextLayers=["text_003", "text_004"] + (["text_005"] if name == "17_战斗HUD_卡牌选中目标" else []),
         )
     elif name == "11_战斗奖励结算":
         common.update(
@@ -289,9 +320,9 @@ def page_configuration(name: str) -> dict[str, object]:
             hiddenTextContents=LEGACY_GLOBAL_TEXT,
             textRules=[
                 text_top_left("主角", 390, 215),
-                text_top_left("当前最终 Idle · 保持 512×512 透明画布比例", 520, 225),
-                text_center("使用", 1460, 880),
-                text_center("分解", 1515, 775),
+                text_top_left("当前最终 Idle · 保持 512×512 透明画布比例", 390, 270),
+                text_center("使用", 1395, 895),
+                text_center("分解", 1425, 791),
             ],
         )
     else:
@@ -308,12 +339,23 @@ def build_manifest(master_path: Path, shell_path: Path, output_path: Path) -> di
 
     shell_root = shell_path.resolve().parent
     component_by_name = {record["name"]: record for record in shell["components"]}
+    scrollbar_source = next(
+        record for record in master["imageLayers"] if record["name"] == "044_inventory_scrollbar_right"
+    )
+    scrollbar_path = Path(str(scrollbar_source["path"]))
+    if not scrollbar_path.is_absolute():
+        scrollbar_path = master_path.resolve().parent / scrollbar_path
     asset_records = {
         "background": {
             "name": "00_城镇背景",
             "path": str((shell_root / shell["background"]["file"]).resolve()),
             "box": [0, 0, 1920, 1080],
-        }
+        },
+        "inventory_scrollbar": {
+            "name": "09_背包滚动条",
+            "path": str(scrollbar_path.resolve()),
+            "box": [0, 0, 1920, 1080],
+        },
     }
     component_keys = {
         "identity": "01_主角身份条",
@@ -386,7 +428,9 @@ def build_manifest(master_path: Path, shell_path: Path, output_path: Path) -> di
             raise ValueError(f"unexpected page geometry for {name}: {page}")
         config["origin"] = origin
         config["size"] = [1920, 1080]
-        config["assets"] = presets[str(config["preset"])]
+        config["assets"] = [{**asset} for asset in presets[str(config["preset"])]]
+        if name in ("03_主角背包", "13_主角背包_物品选中"):
+            config["assets"].append({**asset_records["inventory_scrollbar"]})
         for asset in config["assets"]:
             left, top, width, height = (int(value) for value in asset["box"])
             if left < 0 or top < 0 or width <= 0 or height <= 0 or left + width > 1920 or top + height > 1080:

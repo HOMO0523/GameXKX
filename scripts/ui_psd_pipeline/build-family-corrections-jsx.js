@@ -121,10 +121,19 @@ app.bringToFront();
     return [px(bounds[0]), px(bounds[1]), px(bounds[2]), px(bounds[3])];
   }
 
-  function moveGroupToBottom(group, parent) {
-    if (parent.layers.length < 2) return;
-    var bottom = parent.layers[parent.layers.length - 1];
-    if (bottom != group) group.move(bottom, ElementPlacement.PLACEAFTER);
+  function findDirectArtLayer(container, name) {
+    for (var index = 0; index < container.artLayers.length; index++) {
+      if (container.artLayers[index].name == name) return container.artLayers[index];
+    }
+    return null;
+  }
+
+  function setLightText(layer) {
+    var color = new SolidColor();
+    color.rgb.red = 240;
+    color.rgb.green = 222;
+    color.rgb.blue = 182;
+    layer.textItem.color = color;
   }
 
   function collectTextLayers(container, content, result) {
@@ -262,6 +271,19 @@ app.bringToFront();
         throw new Error('Expected one text match for "' + pageRecord.textRules[ruleIndex].content + '" in ' + pageRecord.name + ', got ' + matches.length);
       }
     }
+    for (var layerRuleIndex = 0; layerRuleIndex < pageRecord.layerTextRules.length; layerRuleIndex++) {
+      var layerRule = pageRecord.layerTextRules[layerRuleIndex];
+      var layerMatch = findDirectArtLayer(runtimeText, layerRule.layer);
+      if (!layerMatch || layerMatch.kind != LayerKind.TEXT) {
+        throw new Error('Missing named text layer "' + layerRule.layer + '" in ' + pageRecord.name);
+      }
+    }
+    for (var lightIndex = 0; lightIndex < pageRecord.lightTextLayers.length; lightIndex++) {
+      var lightMatch = findDirectArtLayer(runtimeText, pageRecord.lightTextLayers[lightIndex]);
+      if (!lightMatch || lightMatch.kind != LayerKind.TEXT) {
+        throw new Error('Missing light text layer "' + pageRecord.lightTextLayers[lightIndex] + '" in ' + pageRecord.name);
+      }
+    }
   }
 
   function jsonQuote(value) {
@@ -338,9 +360,12 @@ app.bringToFront();
     for (var pageIndex = 0; pageIndex < pageRecords.length; pageIndex++) {
       var pageRecord = pageRecords[pageIndex];
       var pageGroup = pageGroups[pageIndex];
+      var originalPageLayers = [];
+      for (var originalLayerIndex = 0; originalLayerIndex < pageGroup.layers.length; originalLayerIndex++) {
+        originalPageLayers.push(pageGroup.layers[originalLayerIndex]);
+      }
       var correctionGroup = pageGroup.layerSets.add();
       correctionGroup.name = '00_FamilyCorrection';
-      moveGroupToBottom(correctionGroup, pageGroup);
       var shellGroup = correctionGroup.layerSets.add();
       shellGroup.name = '00_ShellComponents';
       var importedNames = [];
@@ -387,6 +412,22 @@ app.bringToFront();
         var textMatches = [];
         collectTextLayers(runtimeText, pageRecord.textRules[textRuleIndex].content, textMatches);
         alignText(textMatches[0], pageRecord.textRules[textRuleIndex], pageRecord.origin);
+      }
+
+      for (var layerTextIndex = 0; layerTextIndex < pageRecord.layerTextRules.length; layerTextIndex++) {
+        var namedRule = pageRecord.layerTextRules[layerTextIndex];
+        alignText(findDirectArtLayer(runtimeText, namedRule.layer), namedRule, pageRecord.origin);
+      }
+
+      for (var lightTextIndex = 0; lightTextIndex < pageRecord.lightTextLayers.length; lightTextIndex++) {
+        setLightText(findDirectArtLayer(runtimeText, pageRecord.lightTextLayers[lightTextIndex]));
+      }
+
+      for (var reorderIndex = 0; reorderIndex < originalPageLayers.length; reorderIndex++) {
+        originalPageLayers[reorderIndex].move(correctionGroup, ElementPlacement.PLACEBEFORE);
+      }
+      if (pageGroup.layers[pageGroup.layers.length - 1].name != '00_FamilyCorrection') {
+        throw new Error('Correction group is not bottom-most in ' + pageRecord.name);
       }
 
       for (var preserveIndex = 0; preserveIndex < pageRecord.preserveGroups.length; preserveIndex++) {
