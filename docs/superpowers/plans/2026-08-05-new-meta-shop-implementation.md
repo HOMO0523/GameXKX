@@ -547,7 +547,7 @@ git commit -m "feat: import meta shop UI V2 icons"
 - Create: `Source/GameXXK/Private/UI/GameXXKMetaShopWidget.cpp`
 - Create: `Source/GameXXK/Private/Tests/GameXXKMetaShopWidgetTest.cpp`
 
-- [ ] **Step 1: Add failing widget contract tests**
+- [x] **Step 1: Add failing widget contract tests**
 
 Create `GameXXK.MetaShop.Widget` and require: full-screen paper frame, seven product cards, gold text, product detail, confirm/cancel dialog, disabled reason, purchase result panel, six correct weapon textures, companion texture, and no widget named `MerchantStockGrid` or `SellButton`.
 
@@ -564,11 +564,11 @@ FText GetDisabledReasonForTest() const;
 FGameXXKMetaShopPurchaseResult GetLastPurchaseResultForTest() const;
 ```
 
-- [ ] **Step 2: Run cold compile and verify red**
+- [x] **Step 2: Run cold compile and verify red**
 
 Expected: widget class and test seams are missing.
 
-- [ ] **Step 3: Implement the programmatic UMG tree**
+- [x] **Step 3: Implement the programmatic UMG tree**
 
 Follow `UGameXXKInventoryWindowWidget` ownership conventions but keep the class focused. Build:
 
@@ -582,17 +582,17 @@ Follow `UGameXXKInventoryWindowWidget` ownership conventions but keep the class 
 
 Every refresh calls `GetMetaShopProducts` and `PreviewMetaShopPurchase`. Confirm calls `PurchaseMetaShopProduct`; a full-roster companion result invokes a delegate that the controller binds to `OpenCompanionRoster`.
 
-- [ ] **Step 4: Bind exact UI behavior**
+- [x] **Step 4: Bind exact UI behavior**
 
 Use 4 cards on row one and 3 on row two. Equipment descriptions list six possible slots and `普通 70% / 稀有 25% / 珍稀 5%`. Companion description states the 12-person capacity and non-refundable cancellation. On success, equipment result resolves `GetEquipmentTooltipSnapshot`; companion result displays the returned candidate/outcome.
 
-- [ ] **Step 5: Run widget and facade tests**
+- [x] **Step 5: Run widget and facade tests**
 
 Run `GameXXK.MetaShop.Widget` and `GameXXK.MetaShop.Facade` after cold compile.
 
 Expected: all UI contract assertions pass without loading legacy merchant stock.
 
-- [ ] **Step 6: Commit the widget**
+- [x] **Step 6: Commit the widget**
 
 ```powershell
 git add -- Source/GameXXK/Public/UI/GameXXKMetaShopWidget.h Source/GameXXK/Private/UI/GameXXKMetaShopWidget.cpp Source/GameXXK/Private/Tests/GameXXKMetaShopWidgetTest.cpp
