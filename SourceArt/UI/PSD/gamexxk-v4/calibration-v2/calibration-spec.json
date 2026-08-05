@@ -59,6 +59,11 @@
   "coreItemOrder": ["strengthening_stone", "refinement_sand", "qingshan_suppression_token"],
   "approvedContentCanvas": [512, 512],
   "approvedContentSubjectFill": 0.88,
+  "approvedContentCropOverrides": {
+    "sixSetWeapon": {
+      "xuanjia_weapon": [300, 250, 585, 680]
+    }
+  },
   "approvedContentReview": "Review/GameXXK_UI_V2_ApprovedContent_45.png",
   "contentCrops": [
     {"name": "nav_scroll", "role": "navigation", "source": "generatedNavIcons", "box": [60, 302, 360, 642], "placement": [47, 198], "displaySize": [96, 96], "outputSize": [256, 256], "subjectSize": [220, 220]},

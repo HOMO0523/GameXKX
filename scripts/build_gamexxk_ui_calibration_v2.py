@@ -76,6 +76,7 @@ def split_transparent_icon_sheet(
     canvas_size: tuple[int, int] = (512, 512),
     subject_fill: float = 0.90,
     keep_largest_component: bool = True,
+    source_boxes: dict[str, tuple[int, int, int, int]] | None = None,
 ) -> list[Path]:
     """Split an evenly spaced transparent icon sheet into normalized square assets."""
     if not icon_names:
@@ -90,9 +91,15 @@ def split_transparent_icon_sheet(
     target_extent = max(1, round(min(canvas_size) * subject_fill))
     output_paths: list[Path] = []
     for index, icon_name in enumerate(icon_names):
-        cell_left = round(index * sheet.width / len(icon_names))
-        cell_right = round((index + 1) * sheet.width / len(icon_names))
-        cell = sheet.crop((cell_left, 0, cell_right, sheet.height))
+        source_box = source_boxes.get(icon_name) if source_boxes else None
+        if source_box is None:
+            cell_left = round(index * sheet.width / len(icon_names))
+            cell_right = round((index + 1) * sheet.width / len(icon_names))
+            source_box = (cell_left, 0, cell_right, sheet.height)
+        left, top, right, bottom = source_box
+        if not (0 <= left < right <= sheet.width and 0 <= top < bottom <= sheet.height):
+            raise ValueError(f"invalid source box for {icon_name}: {source_box}")
+        cell = sheet.crop(source_box)
         if keep_largest_component:
             cell = keep_largest_alpha_component(cell)
         bounds = cell.getchannel("A").getbbox()
@@ -571,6 +578,13 @@ def export_approved_content(
     slot_order = [str(value) for value in spec["equipmentSlotOrder"]]
     core_item_order = [str(value) for value in spec["coreItemOrder"]]
     sheet_locks = {str(key): str(value) for key, value in spec["equipmentSheetLocks"].items()}
+    crop_overrides = {
+        str(lock_name): {
+            str(icon_name): tuple(int(value) for value in box)
+            for icon_name, box in lock_overrides.items()
+        }
+        for lock_name, lock_overrides in spec.get("approvedContentCropOverrides", {}).items()
+    }
 
     derived_root = output_root / "Derived" / "ApprovedContentSheets"
     equipment_root = output_root / "Content" / "Equipment"
@@ -596,6 +610,7 @@ def export_approved_content(
             canvas_size=canvas_size,
             subject_fill=subject_fill,
             keep_largest_component=True,
+            source_boxes=crop_overrides.get(lock_name),
         )
         if len(exported) != len(names):
             raise ValueError(f"approved content split count mismatch for {lock_name}")

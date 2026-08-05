@@ -624,7 +624,7 @@ def _add_meta_shop_global_shell(builder: PageBuilder) -> None:
     builder.add_image(
         "hero_portrait",
         V2_CONTENT / "hero_portrait.png",
-        (36, 38, 132, 132),
+        (41, 37, 132, 132),
         "20_GlobalShell",
         fit_mode="contain_canvas",
     )
