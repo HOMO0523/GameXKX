@@ -13,7 +13,7 @@
     "heroPortrait": {
       "source": "../calibration-v2/Content/hero_portrait.png",
       "usage": "contain_canvas",
-      "box": [48, 32, 132, 132]
+      "box": [36, 38, 132, 132]
     },
     "navigation": {
       "sources": [
@@ -24,12 +24,12 @@
         "../calibration-v2/Content/nav_route.png"
       ],
       "usage": "contain_canvas_on_existing_shell_discs",
-      "boxes": [[52, 218, 86, 86], [52, 368, 86, 86], [52, 518, 86, 86], [52, 668, 86, 86], [52, 818, 86, 86]]
+      "boxes": [[62, 244, 86, 86], [62, 392, 86, 86], [62, 542, 86, 86], [62, 691, 86, 86], [62, 841, 86, 86]]
     },
     "currency": {
       "source": "../calibration-v2/Content/resource_coin.png",
       "usage": "contain_canvas",
-      "topBarBox": [1500, 46, 42, 42],
+      "topBarGroupBox": [1370, 36, 310, 60],
       "cardIconSize": [22, 22],
       "purchaseIconSize": [28, 28]
     },
@@ -49,7 +49,7 @@
     "purchaseButton": {
       "source": "../calibration-v2/Components/tab_02_equipment_selected.png",
       "usage": "nine_slice_candidate",
-      "box": [1380, 870, 210, 72]
+      "box": [1375, 870, 210, 72]
     }
   }
 }

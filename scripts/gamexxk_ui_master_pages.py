@@ -47,11 +47,11 @@ META_SHOP_REVIEW_STATES = (
 )
 
 META_SHOP_NAVIGATION = (
-    ("nav_backpack", "nav_backpack.png", (52, 218, 86, 86)),
-    ("nav_companion", "nav_companion.png", (52, 368, 86, 86)),
-    ("nav_codex", "nav_codex.png", (52, 518, 86, 86)),
-    ("nav_task", "nav_scroll.png", (52, 668, 86, 86)),
-    ("nav_route", "nav_route.png", (52, 818, 86, 86)),
+    ("nav_backpack", "nav_backpack.png", (62, 244, 86, 86)),
+    ("nav_companion", "nav_companion.png", (62, 392, 86, 86)),
+    ("nav_codex", "nav_codex.png", (62, 542, 86, 86)),
+    ("nav_task", "nav_scroll.png", (62, 691, 86, 86)),
+    ("nav_route", "nav_route.png", (62, 841, 86, 86)),
 )
 
 META_SHOP_CARD_POSITIONS = (
@@ -624,7 +624,7 @@ def _add_meta_shop_global_shell(builder: PageBuilder) -> None:
     builder.add_image(
         "hero_portrait",
         V2_CONTENT / "hero_portrait.png",
-        (48, 32, 132, 132),
+        (36, 38, 132, 132),
         "20_GlobalShell",
         fit_mode="contain_canvas",
     )
@@ -639,38 +639,68 @@ def _add_meta_shop_global_shell(builder: PageBuilder) -> None:
             "20_GlobalShell",
             fit_mode="contain_canvas",
         )
-    builder.add_image(
-        "top_currency_coin",
-        V2_CONTENT / "resource_coin.png",
-        (1500, 46, 42, 42),
+    _add_coin_price(
+        builder,
+        "500",
+        (1370, 36, 310, 60),
         "20_GlobalShell",
-        fit_mode="contain_canvas",
+        text_size=27,
+        icon_size=42,
+        gap=12,
+        bold=True,
     )
-    builder.add_text("500", (1555, 51), 27, "20_GlobalShell", bold=True)
 
 
 def _add_coin_price(
     builder: PageBuilder,
     value: str,
-    icon_box: tuple[int, int, int, int],
-    text_position: tuple[int, int],
+    box: tuple[int, int, int, int],
     subgroup: str,
     *,
     text_size: int,
+    icon_size: int,
+    gap: int = 6,
+    prefix: str = "",
     bold: bool = False,
     visible: bool = True,
 ) -> None:
+    x, y, width, height = box
+    font = _font(text_size, bold=bold)
+    measure = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    value_bounds = measure.textbbox((0, 0), value, font=font)
+    value_width = value_bounds[2] - value_bounds[0]
+    value_height = value_bounds[3] - value_bounds[1]
+    prefix_bounds = measure.textbbox((0, 0), prefix, font=font) if prefix else (0, 0, 0, 0)
+    prefix_width = prefix_bounds[2] - prefix_bounds[0]
+    prefix_height = prefix_bounds[3] - prefix_bounds[1]
+    prefix_gap = gap if prefix else 0
+    content_width = prefix_width + prefix_gap + icon_size + gap + value_width
+    cursor_x = round(x + (width - content_width) / 2)
+    if prefix:
+        prefix_y = round(y + (height - prefix_height) / 2 - prefix_bounds[1])
+        builder.add_text(
+            prefix,
+            (cursor_x, prefix_y),
+            text_size,
+            subgroup,
+            bold=bold,
+            visible=visible,
+        )
+        cursor_x += prefix_width + prefix_gap
+    icon_y = round(y + (height - icon_size) / 2)
     builder.add_image(
         f"coin_{subgroup.replace('/', '_')}_{value}",
         V2_CONTENT / "resource_coin.png",
-        icon_box,
+        (cursor_x, icon_y, icon_size, icon_size),
         subgroup,
         fit_mode="contain_canvas",
         visible=visible,
     )
+    cursor_x += icon_size + gap
+    value_y = round(y + (height - value_height) / 2 - value_bounds[1])
     builder.add_text(
         value,
-        text_position,
+        (cursor_x, value_y),
         text_size,
         subgroup,
         bold=bold,
@@ -698,18 +728,19 @@ def _add_meta_shop_state(builder: PageBuilder, state: str, *, visible: bool) -> 
         builder.add_image(
             "purchase_button",
             V2_COMPONENTS / "tab_02_equipment_selected.png",
-            (1380, 870, 210, 72),
+            (1375, 870, 210, 72),
             subgroup,
             visible=visible,
         )
-        builder.add_text("购买", (1418, 889), 23, subgroup, bold=True, visible=visible)
         _add_coin_price(
             builder,
             "100",
-            (1475, 890, 28, 28),
-            (1510, 887),
+            (1375, 870, 210, 72),
             subgroup,
             text_size=23,
+            icon_size=28,
+            gap=8,
+            prefix="购买",
             bold=True,
             visible=visible,
         )
@@ -717,19 +748,20 @@ def _add_meta_shop_state(builder: PageBuilder, state: str, *, visible: bool) -> 
     elif state == "insufficient_funds":
         builder.add_component(
             "button_disabled",
-            (1380, 870, 210, 72),
+            (1375, 870, 210, 72),
             subgroup,
             name="purchase_disabled",
             visible=visible,
         )
-        builder.add_text("购买", (1418, 889), 23, subgroup, bold=True, visible=visible)
         _add_coin_price(
             builder,
             "100",
-            (1475, 890, 28, 28),
-            (1510, 887),
+            (1375, 870, 210, 72),
             subgroup,
             text_size=23,
+            icon_size=28,
+            gap=8,
+            prefix="购买",
             bold=True,
             visible=visible,
         )
@@ -744,7 +776,7 @@ def _add_meta_shop_state(builder: PageBuilder, state: str, *, visible: bool) -> 
     elif state == "confirmation":
         builder.add_component(
             "tooltip_panel",
-            (1285, 725, 400, 245),
+            (1280, 725, 400, 245),
             subgroup,
             name="confirmation_panel",
             visible=visible,
@@ -757,27 +789,28 @@ def _add_meta_shop_state(builder: PageBuilder, state: str, *, visible: bool) -> 
             bold=True,
             visible=visible,
         )
-        builder.add_text("将消耗", (1350, 806), 19, subgroup, visible=visible)
         _add_coin_price(
             builder,
             "100",
-            (1435, 806, 24, 24),
-            (1465, 803),
+            (1310, 792, 340, 54),
             subgroup,
-            text_size=20,
+            text_size=19,
+            icon_size=24,
+            gap=7,
+            prefix="将消耗",
             bold=True,
             visible=visible,
         )
         builder.add_component(
             "button_primary",
-            (1320, 868, 150, 58),
+            (1315, 868, 150, 58),
             subgroup,
             name="confirm_purchase",
             visible=visible,
         )
         builder.add_centered_text(
             "确认购买",
-            (1320, 868, 150, 58),
+            (1315, 868, 150, 58),
             19,
             subgroup,
             bold=True,
@@ -785,16 +818,16 @@ def _add_meta_shop_state(builder: PageBuilder, state: str, *, visible: bool) -> 
         )
         builder.add_component(
             "button_normal",
-            (1490, 868, 150, 58),
+            (1495, 868, 150, 58),
             subgroup,
             name="cancel_purchase",
             visible=visible,
         )
-        builder.add_centered_text("取消", (1490, 868, 150, 58), 19, subgroup, visible=visible)
+        builder.add_centered_text("取消", (1495, 868, 150, 58), 19, subgroup, visible=visible)
     elif state == "result":
         builder.add_component(
             "tooltip_panel",
-            (1285, 725, 400, 245),
+            (1280, 725, 400, 245),
             subgroup,
             name="result_panel",
             visible=visible,
@@ -816,14 +849,14 @@ def _add_meta_shop_state(builder: PageBuilder, state: str, *, visible: bool) -> 
         )
         builder.add_component(
             "button_primary",
-            (1405, 875, 160, 58),
+            (1400, 875, 160, 58),
             subgroup,
             name="accept_result",
             visible=visible,
         )
         builder.add_centered_text(
             "收下",
-            (1405, 875, 160, 58),
+            (1400, 875, 160, 58),
             19,
             subgroup,
             bold=True,
@@ -874,10 +907,10 @@ def _page_meta_shop_v2(
         _add_coin_price(
             builder,
             price,
-            (x + 55, y + 218, 22, 22),
-            (x + 82, y + 217),
+            (x, y + 210, 170, 38),
             "40_ProductGrid",
             text_size=18,
+            icon_size=22,
         )
 
     builder.add_image(
@@ -904,7 +937,7 @@ def _page_meta_shop_v2(
     builder.add_text("装备等级：当前主角等级", (1305, 680), 19, "50_ProductDetail")
     builder.add_text("普通 70%  ·  稀有 25%  ·  珍稀 5%", (1305, 720), 17, "50_ProductDetail")
     builder.add_text("可能部位：武器 / 头部 / 衣甲", (1305, 770), 17, "50_ProductDetail")
-    builder.add_text("腰带 / 鞋 / 饰品", (1395, 804), 17, "50_ProductDetail")
+    builder.add_text("腰带 / 鞋 / 饰品", (1305, 804), 17, "50_ProductDetail")
 
     states = META_SHOP_REVIEW_STATES if include_hidden_states else (review_state,)
     for state in states:
