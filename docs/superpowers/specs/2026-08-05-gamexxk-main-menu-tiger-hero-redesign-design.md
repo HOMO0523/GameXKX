@@ -7,7 +7,8 @@
 ## 锁定素材
 
 - 构图参考：`C:/Users/shxuw/AppData/Local/Temp/codex-clipboard-3487416d-6f44-4b91-bcc6-35aaac3243b0.png`
-- 当前虎王：`Content/GameXXK/Sprites/Generated/enemy_tiger_boss.png`
+- 终版虎王身份源：`SourceAssets/AnimationProduction/safe_frame_1600/enemies/21_tiger_boss.png`
+- 终版虎王动作核对：`SourceAssets/AnimationProcessing/Production/enemy_21_tiger_boss_idle/contact_sheet.png`
 - 当前主角：`SourceArt/UI/PSD/gamexxk-v3/hero-backpack/Assets/hero_runtime_idle_frame_0000.png`
 - 目标 PSD：`outputs/UI_PSD/Candidates/GameXXK_UI_Master_V1.psd`
 
