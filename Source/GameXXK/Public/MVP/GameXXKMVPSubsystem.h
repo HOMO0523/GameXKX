@@ -73,6 +73,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	FText GetLastSaveLoadError() const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MetaShop")
+	TArray<FGameXXKMetaShopProductDefinition> GetMetaShopProducts() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MetaShop")
+	bool PreviewMetaShopPurchase(
+		EGameXXKMetaShopProductId ProductId,
+		FGameXXKMetaShopPurchasePreview& OutPreview) const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MetaShop")
+	bool PurchaseMetaShopProduct(
+		EGameXXKMetaShopProductId ProductId,
+		FGameXXKMetaShopPurchaseResult& OutResult);
+
 	/** UI read model: returns the save-authoritative warehouse order without mutating runtime state. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Equipment")
 	bool GetEquipmentWarehouseSnapshot(TArray<FName>& OutOrderedInstanceIds) const;

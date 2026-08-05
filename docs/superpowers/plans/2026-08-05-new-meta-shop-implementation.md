@@ -442,17 +442,17 @@ git commit -m "feat: purchase deterministic companion packs"
 - Modify: `Source/GameXXK/Private/MVP/GameXXKMVPSubsystem.cpp:700-920`
 - Create: `Source/GameXXK/Private/Tests/GameXXKMetaShopFacadeTest.cpp`
 
-- [ ] **Step 1: Add failing facade tests**
+- [x] **Step 1: Add failing facade tests**
 
 Create `GameXXK.MetaShop.Facade` to assert the subsystem returns seven views, previews without mutation, purchases only in town, commits successful results, and rejects route/battle screens without changing state.
 
-- [ ] **Step 2: Run the compile and verify missing facade symbols**
+- [x] **Step 2: Run the compile and verify missing facade symbols**
 
 Run the cold pipeline.
 
 Expected: link failure for the new facade signatures.
 
-- [ ] **Step 3: Add Blueprint-callable facade methods**
+- [x] **Step 3: Add Blueprint-callable facade methods**
 
 Add exact methods:
 
@@ -469,13 +469,13 @@ bool PurchaseMetaShopProduct(EGameXXKMetaShopProductId ProductId, FGameXXKMetaSh
 
 `PurchaseMetaShopProduct` first requires `RuntimeState.Screen == EGameXXKScreen::Town`, then delegates to the pure rule. It must not call legacy `BuyItem` or `SellItem`.
 
-- [ ] **Step 4: Run facade and rule automation**
+- [x] **Step 4: Run facade and rule automation**
 
 Run `GameXXK.MetaShop` after cold compile.
 
 Expected: catalog, save, equipment, companion, and facade tests all pass.
 
-- [ ] **Step 5: Commit the facade**
+- [x] **Step 5: Commit the facade**
 
 ```powershell
 git add -- Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h Source/GameXXK/Private/MVP/GameXXKMVPSubsystem.cpp Source/GameXXK/Private/Tests/GameXXKMetaShopFacadeTest.cpp

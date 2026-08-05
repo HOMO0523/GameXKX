@@ -6,6 +6,7 @@
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKMetaShopRules.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "Engine/World.h"
@@ -306,6 +307,25 @@ FGameXXKRuntimeState& UGameXXKMVPSubsystem::GetMutableRuntimeState()
 FGameXXKRuntimeState UGameXXKMVPSubsystem::GetRuntimeStateCopy() const
 {
 	return GetRuntimeState();
+}
+
+TArray<FGameXXKMetaShopProductDefinition> UGameXXKMVPSubsystem::GetMetaShopProducts() const
+{
+	return FGameXXKMetaShopRules::GetProducts();
+}
+
+bool UGameXXKMVPSubsystem::PreviewMetaShopPurchase(
+	const EGameXXKMetaShopProductId ProductId,
+	FGameXXKMetaShopPurchasePreview& OutPreview) const
+{
+	return FGameXXKMetaShopRules::PreviewPurchase(RuntimeState, ProductId, OutPreview);
+}
+
+bool UGameXXKMVPSubsystem::PurchaseMetaShopProduct(
+	const EGameXXKMetaShopProductId ProductId,
+	FGameXXKMetaShopPurchaseResult& OutResult)
+{
+	return FGameXXKMetaShopRules::Purchase(RuntimeState, ProductId, OutResult);
 }
 
 bool UGameXXKMVPSubsystem::ApplyBattleHudFixtureForTest(FString& OutError)
