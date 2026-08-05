@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "page": "07_商店交易",
+  "canvas": [1920, 1080],
+  "reference": "codex-clipboard-80d2c217-6fe9-444d-aeac-4e5ff568bec1.png",
+  "runtimeMigrationApproved": false,
+  "components": {
+    "fullShell": {
+      "source": "../calibration-v2/Generated/hero_backpack_large_panel_clean.png",
+      "usage": "direct_full_canvas",
+      "box": [0, 0, 1920, 1080]
+    },
+    "heroPortrait": {
+      "source": "../calibration-v2/Content/hero_portrait.png",
+      "usage": "contain_canvas",
+      "box": [48, 32, 132, 132]
+    },
+    "navigation": {
+      "sources": [
+        "../calibration-v2/Content/nav_backpack.png",
+        "../calibration-v2/Content/nav_companion.png",
+        "../calibration-v2/Content/nav_codex.png",
+        "../calibration-v2/Content/nav_scroll.png",
+        "../calibration-v2/Content/nav_route.png"
+      ],
+      "usage": "contain_canvas_on_existing_shell_discs",
+      "boxes": [[52, 218, 86, 86], [52, 368, 86, 86], [52, 518, 86, 86], [52, 668, 86, 86], [52, 818, 86, 86]]
+    },
+    "currency": {
+      "source": "../calibration-v2/Content/resource_coin.png",
+      "usage": "contain_canvas",
+      "topBarBox": [1500, 46, 42, 42],
+      "cardIconSize": [22, 22],
+      "purchaseIconSize": [28, 28]
+    },
+    "productSlot": {
+      "source": "../calibration-v2/Components/inventory_slot_r1_c1.png",
+      "usage": "scaled_component"
+    },
+    "detailSlot": {
+      "source": "../calibration-v2/Components/detail_item_slot.png",
+      "usage": "scaled_component",
+      "box": [1370, 330, 220, 220]
+    },
+    "selectionInk": {
+      "source": "../calibration-v2/Content/category_selected_ink.png",
+      "usage": "scaled_component"
+    },
+    "purchaseButton": {
+      "source": "../calibration-v2/Components/tab_02_equipment_selected.png",
+      "usage": "nine_slice_candidate",
+      "box": [1380, 870, 210, 72]
+    }
+  }
+}
