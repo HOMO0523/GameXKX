@@ -1,11 +1,53 @@
 #include "Misc/AutomationTest.h"
 
+#include "GameXXKCompanionCatalog.h"
+#include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKMVPRules.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+namespace
+{
+	int32 BuildCompanionPackOrderSeed(const FGameXXKRuntimeState& State)
+	{
+		const uint32 Mixed = HashCombine(
+			HashCombine(GetTypeHash(State.MetaShop.Seed), GetTypeHash(State.MetaShop.NextPurchaseOrdinal)),
+			GetTypeHash(static_cast<uint8>(EGameXXKMetaShopProductId::CompanionPack)));
+		return FMath::Max(1, static_cast<int32>(Mixed & 0x7fffffffU));
+	}
+
+	bool FillRosterWithoutTemplate(
+		FAutomationTestBase& Test,
+		FGameXXKCompanionRosterState& Roster,
+		const FName ExcludedTemplateId)
+	{
+		for (const FGameXXKCompanionTemplateDefinition& Template : FGameXXKCompanionCatalog::GetRecruitTemplates())
+		{
+			if (Template.TemplateId == ExcludedTemplateId
+				|| Roster.PermanentCompanions.Num() >= FGameXXKCompanionRules::MaxPermanentCompanions)
+			{
+				continue;
+			}
+			FGameXXKCompanionRecruitResult Result;
+			if (!FGameXXKCompanionRules::RecruitPermanentCompanion(
+				Roster,
+				Template.TemplateId,
+				100000 + Roster.PermanentCompanions.Num(),
+				Result))
+			{
+				Test.AddError(TEXT("failed to fill a valid companion roster fixture"));
+				return false;
+			}
+		}
+		return Test.TestEqual(
+			TEXT("full-roster fixture reaches twelve companions"),
+			Roster.PermanentCompanions.Num(),
+			FGameXXKCompanionRules::MaxPermanentCompanions);
+	}
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKMetaShopCatalogTest,
@@ -203,6 +245,116 @@ bool FGameXXKMetaShopEquipmentPurchaseTest::RunTest(const FString& Parameters)
 	InvalidProduct.Screen = EGameXXKScreen::Town;
 	InvalidProduct.PlayerGold = 1000;
 	TestAtomicFailure(InvalidProduct, EGameXXKMetaShopProductId::Invalid, EGameXXKMetaShopError::InvalidProduct, TEXT("invalid product"));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKMetaShopCompanionPurchaseTest,
+	"GameXXK.MetaShop.CompanionPurchase",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKMetaShopCompanionPurchaseTest::RunTest(const FString& Parameters)
+{
+	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	State.Screen = EGameXXKScreen::Town;
+	State.PlayerGold = FGameXXKMetaShopRules::CompanionPackPrice;
+
+	FGameXXKCompanionRosterState OrderProbe = State.CardRun.CompanionRoster;
+	FGameXXKCompanionRecruitOrder ExpectedOrder;
+	TestTrue(TEXT("the explicit companion-pack order seed resolves"), FGameXXKCompanionRules::CreateRecruitOrder(
+		OrderProbe,
+		BuildCompanionPackOrderSeed(State),
+		ExpectedOrder));
+
+	FGameXXKMetaShopPurchasePreview Preview;
+	TestTrue(TEXT("companion pack previews in town"), FGameXXKMetaShopRules::PreviewPurchase(
+		State,
+		EGameXXKMetaShopProductId::CompanionPack,
+		Preview));
+	TestEqual(TEXT("companion preview costs 500"), Preview.Price, FGameXXKMetaShopRules::CompanionPackPrice);
+
+	const FGameXXKRuntimeState ReplaySource = State;
+	FGameXXKMetaShopPurchaseResult Result;
+	TestTrue(TEXT("companion pack succeeds below roster capacity"), FGameXXKMetaShopRules::Purchase(
+		State,
+		EGameXXKMetaShopProductId::CompanionPack,
+		Result));
+	TestTrue(TEXT("companion result reports purchase"), Result.bPurchased);
+	TestEqual(TEXT("companion pack spends exactly 500"), State.PlayerGold, 0);
+	TestEqual(TEXT("companion result reports gold delta"), Result.GoldDelta, -FGameXXKMetaShopRules::CompanionPackPrice);
+	TestEqual(TEXT("companion pack advances meta-shop ordinal"), State.MetaShop.NextPurchaseOrdinal, 1);
+	TestEqual(TEXT("direct companion pack recruits one permanent companion"), State.CardRun.CompanionRoster.PermanentCompanions.Num(), 1);
+	TestEqual(TEXT("direct companion pack reports recruited"), Result.CompanionResult.Outcome, EGameXXKCompanionRecruitOutcome::Recruited);
+	TestEqual(TEXT("explicit saved order chooses the purchased template"), Result.CompanionResult.Companion.RecruitTemplateId, ExpectedOrder.ResolvedTemplateId);
+	TestFalse(TEXT("direct recruit consumes its pending order"), State.CardRun.CompanionRoster.PendingRecruitOrder.bHasPendingOrder);
+
+	FGameXXKRuntimeState Replay = ReplaySource;
+	FGameXXKMetaShopPurchaseResult ReplayResult;
+	TestTrue(TEXT("identical companion purchase replays"), FGameXXKMetaShopRules::Purchase(
+		Replay,
+		EGameXXKMetaShopProductId::CompanionPack,
+		ReplayResult));
+	TestTrue(TEXT("identical companion purchase produces byte-identical runtime"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&Replay, &State, PPF_None));
+	TestEqual(TEXT("identical companion purchase produces the same candidate"),
+		ReplayResult.CompanionResult.Companion.InstanceId,
+		Result.CompanionResult.Companion.InstanceId);
+
+	FGameXXKRuntimeState Full = UGameXXKMVPRules::CreateNewGame();
+	Full.Screen = EGameXXKScreen::Town;
+	Full.PlayerGold = FGameXXKMetaShopRules::CompanionPackPrice;
+	FGameXXKCompanionRosterState FullOrderProbe = Full.CardRun.CompanionRoster;
+	FGameXXKCompanionRecruitOrder FullExpectedOrder;
+	TestTrue(TEXT("full-roster explicit order resolves"), FGameXXKCompanionRules::CreateRecruitOrder(
+		FullOrderProbe,
+		BuildCompanionPackOrderSeed(Full),
+		FullExpectedOrder));
+	if (!FillRosterWithoutTemplate(*this, Full.CardRun.CompanionRoster, FullExpectedOrder.ResolvedTemplateId))
+	{
+		return false;
+	}
+
+	FGameXXKMetaShopPurchaseResult FullResult;
+	TestTrue(TEXT("full roster buys one fixed replacement candidate"), FGameXXKMetaShopRules::Purchase(
+		Full,
+		EGameXXKMetaShopProductId::CompanionPack,
+		FullResult));
+	TestEqual(TEXT("full roster purchase reports pending replacement"), FullResult.CompanionResult.Outcome, EGameXXKCompanionRecruitOutcome::PendingReplacement);
+	TestEqual(TEXT("full roster persists the explicit candidate"), Full.CardRun.CompanionRoster.PendingRecruitment.Candidate.RecruitTemplateId, FullExpectedOrder.ResolvedTemplateId);
+	TestTrue(TEXT("full roster retains the no-reroll order"), Full.CardRun.CompanionRoster.PendingRecruitOrder.bHasPendingOrder);
+	TestEqual(TEXT("full roster purchase spends its 500 gold"), Full.PlayerGold, 0);
+	TestEqual(TEXT("full roster purchase advances meta-shop ordinal"), Full.MetaShop.NextPurchaseOrdinal, 1);
+
+	FGameXXKRuntimeState PendingBlocked = Full;
+	PendingBlocked.PlayerGold = FGameXXKMetaShopRules::CompanionPackPrice;
+	const FGameXXKRuntimeState PendingBlockedBefore = PendingBlocked;
+	FGameXXKMetaShopPurchaseResult PendingBlockedResult;
+	TestFalse(TEXT("a pending companion rejects another pack"), FGameXXKMetaShopRules::Purchase(
+		PendingBlocked,
+		EGameXXKMetaShopProductId::CompanionPack,
+		PendingBlockedResult));
+	TestEqual(TEXT("pending companion returns typed error"), PendingBlockedResult.Error, EGameXXKMetaShopError::PendingCompanionExists);
+	TestTrue(TEXT("pending companion rejection is atomic"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&PendingBlocked, &PendingBlockedBefore, PPF_None));
+
+	TestTrue(TEXT("the paid full-roster candidate can be discarded"), FGameXXKCompanionRules::DiscardPendingRecruitment(
+		Full.CardRun.CompanionRoster));
+	TestEqual(TEXT("discard never refunds the meta-shop purchase"), Full.PlayerGold, 0);
+	TestEqual(TEXT("discard never rewinds the meta-shop ordinal"), Full.MetaShop.NextPurchaseOrdinal, 1);
+
+	FGameXXKRuntimeState Corrupt = UGameXXKMVPRules::CreateNewGame();
+	Corrupt.Screen = EGameXXKScreen::Town;
+	Corrupt.PlayerGold = FGameXXKMetaShopRules::CompanionPackPrice;
+	Corrupt.CardRun.CompanionRoster.SigilCount = -1;
+	const FGameXXKRuntimeState CorruptBefore = Corrupt;
+	FGameXXKMetaShopPurchaseResult CorruptResult;
+	TestFalse(TEXT("invalid roster rejects companion purchase"), FGameXXKMetaShopRules::Purchase(
+		Corrupt,
+		EGameXXKMetaShopProductId::CompanionPack,
+		CorruptResult));
+	TestEqual(TEXT("invalid roster reports runtime-state error"), CorruptResult.Error, EGameXXKMetaShopError::InvalidRuntimeState);
+	TestTrue(TEXT("invalid roster rejection is atomic"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&Corrupt, &CorruptBefore, PPF_None));
 	return true;
 }
 

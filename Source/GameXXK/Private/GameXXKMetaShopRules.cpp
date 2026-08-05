@@ -1,5 +1,6 @@
 #include "GameXXKMetaShopRules.h"
 
+#include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
@@ -62,10 +63,14 @@ namespace
 			return NSLOCTEXT("GameXXKMetaShop", "InsufficientGold", "永久金币不足。");
 		case EGameXXKMetaShopError::WarehouseFull:
 			return NSLOCTEXT("GameXXKMetaShop", "WarehouseFull", "装备仓库已满。");
+		case EGameXXKMetaShopError::PendingCompanionExists:
+			return NSLOCTEXT("GameXXKMetaShop", "PendingCompanionExists", "请先处理待替换的伙伴。");
 		case EGameXXKMetaShopError::PurchaseOrdinalExhausted:
 			return NSLOCTEXT("GameXXKMetaShop", "PurchaseOrdinalExhausted", "商店购买序列已耗尽。");
 		case EGameXXKMetaShopError::EquipmentCreationFailed:
 			return NSLOCTEXT("GameXXKMetaShop", "EquipmentCreationFailed", "装备生成失败。");
+		case EGameXXKMetaShopError::CompanionCreationFailed:
+			return NSLOCTEXT("GameXXKMetaShop", "CompanionCreationFailed", "伙伴生成失败。");
 		case EGameXXKMetaShopError::InvalidRuntimeState:
 			return NSLOCTEXT("GameXXKMetaShop", "InvalidRuntimeState", "当前存档状态无效。");
 		default:
@@ -131,7 +136,7 @@ bool FGameXXKMetaShopRules::PreviewPurchase(
 {
 	OutPreview = FGameXXKMetaShopPurchasePreview();
 	const FGameXXKMetaShopProductDefinition* Product = FindProduct(ProductId);
-	if (!Product || Product->Kind != EGameXXKMetaShopProductKind::EquipmentPack)
+	if (!Product)
 	{
 		FailPreview(OutPreview, EGameXXKMetaShopError::InvalidProduct);
 		return false;
@@ -166,9 +171,17 @@ bool FGameXXKMetaShopRules::PreviewPurchase(
 		FailPreview(OutPreview, EGameXXKMetaShopError::InsufficientGold);
 		return false;
 	}
-	if (!FGameXXKEquipmentRules::HasWarehouseCapacity(State.EquipmentCollection))
+	if (Product->Kind == EGameXXKMetaShopProductKind::EquipmentPack
+		&& !FGameXXKEquipmentRules::HasWarehouseCapacity(State.EquipmentCollection))
 	{
 		FailPreview(OutPreview, EGameXXKMetaShopError::WarehouseFull);
+		return false;
+	}
+	if (Product->Kind == EGameXXKMetaShopProductKind::CompanionPack
+		&& (State.CardRun.CompanionRoster.PendingRecruitment.bHasPendingRecruitment
+			|| State.CardRun.CompanionRoster.PendingRecruitOrder.bHasPendingOrder))
+	{
+		FailPreview(OutPreview, EGameXXKMetaShopError::PendingCompanionExists);
 		return false;
 	}
 
@@ -198,23 +211,44 @@ bool FGameXXKMetaShopRules::Purchase(
 	const uint32 StreamSeed = HashCombine(
 		HashCombine(GetTypeHash(Candidate.MetaShop.Seed), GetTypeHash(Candidate.MetaShop.NextPurchaseOrdinal)),
 		GetTypeHash(static_cast<uint8>(ProductId)));
-	FRandomStream Stream(static_cast<int32>(StreamSeed & 0x7fffffffU));
-
-	FGameXXKEquipmentCreateRequest Request;
-	Request.Set = Preview.EquipmentSet;
-	Request.Quality = QualityFromRoll(Stream.RandRange(1, 100));
-	Request.ItemLevel = FMath::Clamp(Candidate.PlayerLevel, 1, FGameXXKEquipmentRules::MaxItemLevel);
-	Request.bForceSlot = true;
-	Request.ForcedSlot = static_cast<EGameXXKEquipmentSlot>(Stream.RandRange(1, 6));
-
 	FName GeneratedEquipmentId;
-	if (!FGameXXKEquipmentRules::CreateRolledInstance(
-		Candidate.EquipmentCollection,
-		Request,
-		GeneratedEquipmentId))
+	FGameXXKCompanionRecruitResult CompanionResult;
+	if (Preview.Kind == EGameXXKMetaShopProductKind::EquipmentPack)
 	{
-		FailResult(OutResult, EGameXXKMetaShopError::EquipmentCreationFailed);
-		return false;
+		FRandomStream Stream(static_cast<int32>(StreamSeed & 0x7fffffffU));
+		FGameXXKEquipmentCreateRequest Request;
+		Request.Set = Preview.EquipmentSet;
+		Request.Quality = QualityFromRoll(Stream.RandRange(1, 100));
+		Request.ItemLevel = FMath::Clamp(Candidate.PlayerLevel, 1, FGameXXKEquipmentRules::MaxItemLevel);
+		Request.bForceSlot = true;
+		Request.ForcedSlot = static_cast<EGameXXKEquipmentSlot>(Stream.RandRange(1, 6));
+		if (!FGameXXKEquipmentRules::CreateRolledInstance(
+			Candidate.EquipmentCollection,
+			Request,
+			GeneratedEquipmentId))
+		{
+			FailResult(OutResult, EGameXXKMetaShopError::EquipmentCreationFailed);
+			return false;
+		}
+	}
+	else
+	{
+		const int32 OrderSeed = FMath::Max(1, static_cast<int32>(StreamSeed & 0x7fffffffU));
+		FGameXXKCompanionRecruitOrder Order;
+		FString CompanionError;
+		if (!FGameXXKCompanionRules::CreateRecruitOrder(
+			Candidate.CardRun.CompanionRoster,
+			OrderSeed,
+			Order,
+			&CompanionError)
+			|| !FGameXXKCompanionRules::ResolvePendingRecruitOrder(
+				Candidate.CardRun.CompanionRoster,
+				CompanionResult,
+				&CompanionError))
+		{
+			FailResult(OutResult, EGameXXKMetaShopError::CompanionCreationFailed);
+			return false;
+		}
 	}
 
 	Candidate.PlayerGold -= Preview.Price;
@@ -235,6 +269,7 @@ bool FGameXXKMetaShopRules::Purchase(
 	OutResult.Price = Preview.Price;
 	OutResult.GoldDelta = -Preview.Price;
 	OutResult.GeneratedEquipmentId = GeneratedEquipmentId;
+	OutResult.CompanionResult = CompanionResult;
 	return true;
 }
 

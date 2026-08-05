@@ -385,7 +385,7 @@ git commit -m "feat: purchase deterministic equipment packs"
 - Modify: `Source/GameXXK/Private/Tests/GameXXKMetaShopRulesTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKCompanionRecruitmentFlowTest.cpp`
 
-- [ ] **Step 1: Add failing companion purchase tests**
+- [x] **Step 1: Add failing companion purchase tests**
 
 Add `GameXXK.MetaShop.CompanionPurchase` for: 500-gold debit, deterministic explicit recruit order, direct recruit below capacity, persisted candidate at capacity 12, rejection while a candidate exists, cancel without refund, same pre-purchase state producing the same candidate, and atomic failure on invalid roster.
 
@@ -400,13 +400,13 @@ TestEqual(TEXT("spends 500"), State.PlayerGold, GoldBefore - 500);
 TestEqual(TEXT("ordinal advances"), State.MetaShop.NextPurchaseOrdinal, 1);
 ```
 
-- [ ] **Step 2: Run and verify red behavior**
+- [x] **Step 2: Run and verify red behavior**
 
 Run cold compile and the new test prefix.
 
 Expected: equipment products pass while companion product reports an unimplemented/typed failure.
 
-- [ ] **Step 3: Implement companion purchase through existing roster rules**
+- [x] **Step 3: Implement companion purchase through existing roster rules**
 
 On a full runtime-state copy, derive a saved order seed from the meta-shop seed and ordinal, then call:
 
@@ -421,13 +421,13 @@ if (!FGameXXKCompanionRules::CreateRecruitOrder(Candidate.CardRun.CompanionRoste
 
 Reject before ordering if `PendingRecruitment.bHasPendingRecruitment` or `PendingRecruitOrder.bHasPendingOrder` is already true. Debit 500 and advance meta-shop ordinal in the same candidate transaction. Do not alter `DiscardPendingRecruitment`; its existing behavior already advances the recruitment sequence and does not touch gold.
 
-- [ ] **Step 4: Run companion and replacement regressions**
+- [x] **Step 4: Run companion and replacement regressions**
 
 Run `GameXXK.MetaShop.CompanionPurchase`, `GameXXK.Companion.Recruitment`, and `GameXXK.Equipment.CompanionReplacement` after a cold build.
 
 Expected: direct, duplicate/protection, full-roster pending, replacement, and discard paths pass.
 
-- [ ] **Step 5: Commit companion-pack transactions**
+- [x] **Step 5: Commit companion-pack transactions**
 
 ```powershell
 git add -- Source/GameXXK/Private/GameXXKMetaShopRules.cpp Source/GameXXK/Private/Tests/GameXXKMetaShopRulesTest.cpp Source/GameXXK/Private/Tests/GameXXKCompanionRecruitmentFlowTest.cpp
