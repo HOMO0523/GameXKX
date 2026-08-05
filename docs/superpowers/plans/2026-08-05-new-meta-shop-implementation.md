@@ -314,7 +314,7 @@ git commit -m "feat: persist meta shop sequence"
 - Modify: `Source/GameXXK/Private/GameXXKMetaShopRules.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKMetaShopRulesTest.cpp`
 
-- [ ] **Step 1: Add failing equipment purchase tests**
+- [x] **Step 1: Add failing equipment purchase tests**
 
 Add `GameXXK.MetaShop.EquipmentPurchase` covering all six products, forced product set, slot range, player level clamp, exact 100-gold debit, warehouse insertion, ordinal advance, deterministic replay, 70/25/5 threshold mapping, insufficient gold, warehouse full, ordinal exhaustion, and corrupt-state byte equality after failure.
 
@@ -327,13 +327,13 @@ TestEqual(TEXT("95 is rare"), FGameXXKMetaShopRules::QualityFromRoll(95), EGameX
 TestEqual(TEXT("96 is epic"), FGameXXKMetaShopRules::QualityFromRoll(96), EGameXXKEquipmentQuality::Epic);
 ```
 
-- [ ] **Step 2: Run the test and verify red**
+- [x] **Step 2: Run the test and verify red**
 
 Run the cold pipeline.
 
 Expected: compile/link fails because `PreviewPurchase`, `Purchase`, and `QualityFromRoll` are missing.
 
-- [ ] **Step 3: Add the purchase interface**
+- [x] **Step 3: Add the purchase interface**
 
 Add:
 
@@ -349,7 +349,7 @@ static bool Purchase(
     FGameXXKMetaShopPurchaseResult& OutResult);
 ```
 
-- [ ] **Step 4: Implement equipment purchase on a state copy**
+- [x] **Step 4: Implement equipment purchase on a state copy**
 
 Mix `MetaShop.Seed`, `NextPurchaseOrdinal`, and product ID into a local `FRandomStream`. Draw slot `0..5`, draw quality `1..100`, and create:
 
@@ -364,13 +364,13 @@ Request.ForcedSlot = static_cast<EGameXXKEquipmentSlot>(SlotIndex + 1);
 
 Perform `CreateRolledInstance`, subtract exactly 100 gold, increment the ordinal only after all checks, synchronize runtime mirrors, validate the complete candidate, then move the candidate into `InOutState`. On failure reset `OutResult` to a typed failure and leave input bytes unchanged.
 
-- [ ] **Step 5: Run equipment purchase automation**
+- [x] **Step 5: Run equipment purchase automation**
 
 Run cold compile and `Automation RunTests GameXXK.MetaShop.EquipmentPurchase`.
 
 Expected: all assertions pass; `GameXXK.Equipment` regressions remain green.
 
-- [ ] **Step 6: Commit equipment-pack transactions**
+- [x] **Step 6: Commit equipment-pack transactions**
 
 ```powershell
 git add -- Source/GameXXK/Public/GameXXKMetaShopRules.h Source/GameXXK/Private/GameXXKMetaShopRules.cpp Source/GameXXK/Private/Tests/GameXXKMetaShopRulesTest.cpp

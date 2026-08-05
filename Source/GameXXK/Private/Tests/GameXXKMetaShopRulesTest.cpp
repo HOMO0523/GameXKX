@@ -1,6 +1,9 @@
 #include "Misc/AutomationTest.h"
 
+#include "GameXXKEquipmentCatalog.h"
+#include "GameXXKEquipmentRules.h"
 #include "GameXXKMetaShopRules.h"
+#include "GameXXKMVPRules.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -61,6 +64,145 @@ bool FGameXXKMetaShopCatalogTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("all product ids are unique"), UniqueIds.Num(), 7);
 	TestTrue(TEXT("companion can be found by id"), FGameXXKMetaShopRules::FindProduct(EGameXXKMetaShopProductId::CompanionPack) == &Companion);
 	TestTrue(TEXT("invalid product id is not found"), FGameXXKMetaShopRules::FindProduct(EGameXXKMetaShopProductId::Invalid) == nullptr);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKMetaShopEquipmentPurchaseTest,
+	"GameXXK.MetaShop.EquipmentPurchase",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKMetaShopEquipmentPurchaseTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("roll 1 is common"), FGameXXKMetaShopRules::QualityFromRoll(1), EGameXXKEquipmentQuality::Common);
+	TestEqual(TEXT("roll 70 is common"), FGameXXKMetaShopRules::QualityFromRoll(70), EGameXXKEquipmentQuality::Common);
+	TestEqual(TEXT("roll 71 is rare"), FGameXXKMetaShopRules::QualityFromRoll(71), EGameXXKEquipmentQuality::Rare);
+	TestEqual(TEXT("roll 95 is rare"), FGameXXKMetaShopRules::QualityFromRoll(95), EGameXXKEquipmentQuality::Rare);
+	TestEqual(TEXT("roll 96 is epic"), FGameXXKMetaShopRules::QualityFromRoll(96), EGameXXKEquipmentQuality::Epic);
+	TestEqual(TEXT("roll 100 is epic"), FGameXXKMetaShopRules::QualityFromRoll(100), EGameXXKEquipmentQuality::Epic);
+	TestEqual(TEXT("roll zero is invalid"), FGameXXKMetaShopRules::QualityFromRoll(0), EGameXXKEquipmentQuality::Invalid);
+	TestEqual(TEXT("roll above 100 is invalid"), FGameXXKMetaShopRules::QualityFromRoll(101), EGameXXKEquipmentQuality::Invalid);
+
+	const EGameXXKMetaShopProductId ProductIds[] = {
+		EGameXXKMetaShopProductId::PoJunPack,
+		EGameXXKMetaShopProductId::XuanJiaPack,
+		EGameXXKMetaShopProductId::QingNangPack,
+		EGameXXKMetaShopProductId::ZhuiFengPack,
+		EGameXXKMetaShopProductId::ShiGuPack,
+		EGameXXKMetaShopProductId::ShanHePack,
+	};
+	const EGameXXKEquipmentSet ExpectedSets[] = {
+		EGameXXKEquipmentSet::PoJun,
+		EGameXXKEquipmentSet::XuanJia,
+		EGameXXKEquipmentSet::QingNang,
+		EGameXXKEquipmentSet::ZhuiFeng,
+		EGameXXKEquipmentSet::ShiGu,
+		EGameXXKEquipmentSet::ShanHe,
+	};
+
+	for (int32 Index = 0; Index < 6; ++Index)
+	{
+		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		State.Screen = EGameXXKScreen::Town;
+		State.PlayerGold = 1000;
+		State.PlayerLevel = Index + 1;
+		UGameXXKMVPRules::RecalculatePlayerStatsFromEquipment(State);
+		const FGameXXKRuntimeState BeforePreview = State;
+		FGameXXKMetaShopPurchasePreview Preview;
+		TestTrue(FString::Printf(TEXT("equipment product %d previews"), Index), FGameXXKMetaShopRules::PreviewPurchase(State, ProductIds[Index], Preview));
+		TestTrue(FString::Printf(TEXT("equipment product %d preview is enabled"), Index), Preview.bAvailable);
+		TestEqual(FString::Printf(TEXT("equipment product %d preview price"), Index), Preview.Price, 100);
+		TestTrue(
+			FString::Printf(TEXT("equipment product %d preview is pure"), Index),
+			FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&State, &BeforePreview, PPF_None));
+
+		const int32 WarehouseBefore = State.EquipmentCollection.WarehouseInstanceIds.Num();
+		const int32 OrdinalBefore = State.MetaShop.NextPurchaseOrdinal;
+		FGameXXKMetaShopPurchaseResult Result;
+		TestTrue(FString::Printf(TEXT("equipment product %d purchases"), Index), FGameXXKMetaShopRules::Purchase(State, ProductIds[Index], Result));
+		TestTrue(FString::Printf(TEXT("equipment product %d reports success"), Index), Result.bPurchased);
+		TestEqual(FString::Printf(TEXT("equipment product %d spends exactly 100"), Index), State.PlayerGold, 900);
+		TestEqual(FString::Printf(TEXT("equipment product %d reports gold delta"), Index), Result.GoldDelta, -100);
+		TestEqual(FString::Printf(TEXT("equipment product %d adds one warehouse item"), Index), State.EquipmentCollection.WarehouseInstanceIds.Num(), WarehouseBefore + 1);
+		TestEqual(FString::Printf(TEXT("equipment product %d advances the shop ordinal"), Index), State.MetaShop.NextPurchaseOrdinal, OrdinalBefore + 1);
+		const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, Result.GeneratedEquipmentId);
+		TestNotNull(FString::Printf(TEXT("equipment product %d resolves its generated instance"), Index), Instance);
+		if (Instance)
+		{
+			const FGameXXKEquipmentDefinition* Definition = FGameXXKEquipmentCatalog::FindDefinition(Instance->BaseEquipmentId);
+			TestNotNull(FString::Printf(TEXT("equipment product %d resolves its definition"), Index), Definition);
+			if (Definition)
+			{
+				TestEqual(FString::Printf(TEXT("equipment product %d forces its set"), Index), Definition->Set, ExpectedSets[Index]);
+				TestTrue(FString::Printf(TEXT("equipment product %d rolls a legal slot"), Index), Definition->Slot >= EGameXXKEquipmentSlot::Weapon && Definition->Slot <= EGameXXKEquipmentSlot::Accessory);
+			}
+			TestEqual(FString::Printf(TEXT("equipment product %d matches player level"), Index), Instance->ItemLevel, Index + 1);
+			TestTrue(FString::Printf(TEXT("equipment product %d rolls a legal quality"), Index), Instance->Quality >= EGameXXKEquipmentQuality::Common && Instance->Quality <= EGameXXKEquipmentQuality::Epic);
+		}
+	}
+
+	FGameXXKRuntimeState ReplayA = UGameXXKMVPRules::CreateNewGame();
+	ReplayA.Screen = EGameXXKScreen::Town;
+	ReplayA.PlayerGold = 1000;
+	FGameXXKRuntimeState ReplayB = ReplayA;
+	FGameXXKMetaShopPurchaseResult ReplayResultA;
+	FGameXXKMetaShopPurchaseResult ReplayResultB;
+	TestTrue(TEXT("first deterministic replay purchases"), FGameXXKMetaShopRules::Purchase(ReplayA, EGameXXKMetaShopProductId::PoJunPack, ReplayResultA));
+	TestTrue(TEXT("second deterministic replay purchases"), FGameXXKMetaShopRules::Purchase(ReplayB, EGameXXKMetaShopProductId::PoJunPack, ReplayResultB));
+	TestTrue(TEXT("same pre-purchase state produces byte-identical runtime"), FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&ReplayA, &ReplayB, PPF_None));
+	TestEqual(TEXT("same pre-purchase state produces the same instance id"), ReplayResultA.GeneratedEquipmentId, ReplayResultB.GeneratedEquipmentId);
+
+	auto TestAtomicFailure = [this](FGameXXKRuntimeState State, const EGameXXKMetaShopProductId ProductId, const EGameXXKMetaShopError ExpectedError, const TCHAR* Label)
+	{
+		const FGameXXKRuntimeState Before = State;
+		FGameXXKMetaShopPurchaseResult Result;
+		TestFalse(Label, FGameXXKMetaShopRules::Purchase(State, ProductId, Result));
+		TestEqual(FString::Printf(TEXT("%s returns typed error"), Label), Result.Error, ExpectedError);
+		TestTrue(FString::Printf(TEXT("%s leaves runtime unchanged"), Label), FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&State, &Before, PPF_None));
+	};
+
+	FGameXXKRuntimeState Insufficient = UGameXXKMVPRules::CreateNewGame();
+	Insufficient.Screen = EGameXXKScreen::Town;
+	Insufficient.PlayerGold = 99;
+	TestAtomicFailure(Insufficient, EGameXXKMetaShopProductId::PoJunPack, EGameXXKMetaShopError::InsufficientGold, TEXT("insufficient gold"));
+
+	FGameXXKRuntimeState Full = UGameXXKMVPRules::CreateNewGame();
+	Full.Screen = EGameXXKScreen::Town;
+	Full.PlayerGold = 1000;
+	while (FGameXXKEquipmentRules::HasWarehouseCapacity(Full.EquipmentCollection))
+	{
+		FGameXXKEquipmentCreateRequest Request;
+		Request.Set = EGameXXKEquipmentSet::PoJun;
+		Request.Quality = EGameXXKEquipmentQuality::Common;
+		Request.ItemLevel = 1;
+		Request.bForceSlot = true;
+		Request.ForcedSlot = EGameXXKEquipmentSlot::Weapon;
+		FName InstanceId;
+		if (!FGameXXKEquipmentRules::CreateRolledInstance(Full.EquipmentCollection, Request, InstanceId))
+		{
+			AddError(TEXT("warehouse fixture failed before reaching capacity"));
+			return false;
+		}
+	}
+	TestEqual(TEXT("warehouse fixture reaches 200"), Full.EquipmentCollection.WarehouseInstanceIds.Num(), FGameXXKEquipmentRules::WarehouseCapacity);
+	TestAtomicFailure(Full, EGameXXKMetaShopProductId::PoJunPack, EGameXXKMetaShopError::WarehouseFull, TEXT("full warehouse"));
+
+	FGameXXKRuntimeState Exhausted = UGameXXKMVPRules::CreateNewGame();
+	Exhausted.Screen = EGameXXKScreen::Town;
+	Exhausted.PlayerGold = 1000;
+	Exhausted.MetaShop.NextPurchaseOrdinal = MAX_int32;
+	TestAtomicFailure(Exhausted, EGameXXKMetaShopProductId::PoJunPack, EGameXXKMetaShopError::PurchaseOrdinalExhausted, TEXT("exhausted purchase ordinal"));
+
+	FGameXXKRuntimeState Corrupt = UGameXXKMVPRules::CreateNewGame();
+	Corrupt.Screen = EGameXXKScreen::Town;
+	Corrupt.PlayerGold = 1000;
+	Corrupt.EquipmentCollection.CollectionSeed = 0;
+	TestAtomicFailure(Corrupt, EGameXXKMetaShopProductId::PoJunPack, EGameXXKMetaShopError::InvalidRuntimeState, TEXT("corrupt runtime"));
+
+	FGameXXKRuntimeState InvalidProduct = UGameXXKMVPRules::CreateNewGame();
+	InvalidProduct.Screen = EGameXXKScreen::Town;
+	InvalidProduct.PlayerGold = 1000;
+	TestAtomicFailure(InvalidProduct, EGameXXKMetaShopProductId::Invalid, EGameXXKMetaShopError::InvalidProduct, TEXT("invalid product"));
 	return true;
 }
 

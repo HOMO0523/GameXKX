@@ -1,6 +1,9 @@
 #include "GameXXKMetaShopRules.h"
 
+#include "GameXXKEquipmentEconomyRules.h"
+#include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
+#include "MVP/GameXXKSaveMigration.h"
 
 namespace
 {
@@ -46,6 +49,43 @@ namespace
 			MakeCompanionPack(),
 		};
 	}
+
+	FText ErrorMessage(const EGameXXKMetaShopError Error)
+	{
+		switch (Error)
+		{
+		case EGameXXKMetaShopError::InvalidProduct:
+			return NSLOCTEXT("GameXXKMetaShop", "InvalidProduct", "商品无效。");
+		case EGameXXKMetaShopError::NotInTown:
+			return NSLOCTEXT("GameXXKMetaShop", "NotInTown", "只能在城镇商店购买。");
+		case EGameXXKMetaShopError::InsufficientGold:
+			return NSLOCTEXT("GameXXKMetaShop", "InsufficientGold", "永久金币不足。");
+		case EGameXXKMetaShopError::WarehouseFull:
+			return NSLOCTEXT("GameXXKMetaShop", "WarehouseFull", "装备仓库已满。");
+		case EGameXXKMetaShopError::PurchaseOrdinalExhausted:
+			return NSLOCTEXT("GameXXKMetaShop", "PurchaseOrdinalExhausted", "商店购买序列已耗尽。");
+		case EGameXXKMetaShopError::EquipmentCreationFailed:
+			return NSLOCTEXT("GameXXKMetaShop", "EquipmentCreationFailed", "装备生成失败。");
+		case EGameXXKMetaShopError::InvalidRuntimeState:
+			return NSLOCTEXT("GameXXKMetaShop", "InvalidRuntimeState", "当前存档状态无效。");
+		default:
+			return FText::GetEmpty();
+		}
+	}
+
+	void FailPreview(FGameXXKMetaShopPurchasePreview& OutPreview, const EGameXXKMetaShopError Error)
+	{
+		OutPreview.bAvailable = false;
+		OutPreview.Error = Error;
+		OutPreview.Message = ErrorMessage(Error);
+	}
+
+	void FailResult(FGameXXKMetaShopPurchaseResult& OutResult, const EGameXXKMetaShopError Error)
+	{
+		OutResult.bPurchased = false;
+		OutResult.Error = Error;
+		OutResult.Message = ErrorMessage(Error);
+	}
 }
 
 const TArray<FGameXXKMetaShopProductDefinition>& FGameXXKMetaShopRules::GetProducts()
@@ -65,6 +105,137 @@ const FGameXXKMetaShopProductDefinition* FGameXXKMetaShopRules::FindProduct(cons
 		{
 			return Product.ProductId == ProductId;
 		});
+}
+
+EGameXXKEquipmentQuality FGameXXKMetaShopRules::QualityFromRoll(const int32 RollOneToHundred)
+{
+	if (RollOneToHundred < 1 || RollOneToHundred > 100)
+	{
+		return EGameXXKEquipmentQuality::Invalid;
+	}
+	if (RollOneToHundred <= 70)
+	{
+		return EGameXXKEquipmentQuality::Common;
+	}
+	if (RollOneToHundred <= 95)
+	{
+		return EGameXXKEquipmentQuality::Rare;
+	}
+	return EGameXXKEquipmentQuality::Epic;
+}
+
+bool FGameXXKMetaShopRules::PreviewPurchase(
+	const FGameXXKRuntimeState& State,
+	const EGameXXKMetaShopProductId ProductId,
+	FGameXXKMetaShopPurchasePreview& OutPreview)
+{
+	OutPreview = FGameXXKMetaShopPurchasePreview();
+	const FGameXXKMetaShopProductDefinition* Product = FindProduct(ProductId);
+	if (!Product || Product->Kind != EGameXXKMetaShopProductKind::EquipmentPack)
+	{
+		FailPreview(OutPreview, EGameXXKMetaShopError::InvalidProduct);
+		return false;
+	}
+
+	OutPreview.ProductId = Product->ProductId;
+	OutPreview.Kind = Product->Kind;
+	OutPreview.EquipmentSet = Product->EquipmentSet;
+	OutPreview.Price = Product->Price;
+	OutPreview.GoldBefore = State.PlayerGold;
+	OutPreview.GoldAfter = State.PlayerGold;
+
+	if (State.Screen != EGameXXKScreen::Town)
+	{
+		FailPreview(OutPreview, EGameXXKMetaShopError::NotInTown);
+		return false;
+	}
+	if (State.MetaShop.NextPurchaseOrdinal == MAX_int32)
+	{
+		FailPreview(OutPreview, EGameXXKMetaShopError::PurchaseOrdinalExhausted);
+		return false;
+	}
+
+	FString ValidationError;
+	if (!FGameXXKSaveMigration::ValidateRuntimeState(State, ValidationError))
+	{
+		FailPreview(OutPreview, EGameXXKMetaShopError::InvalidRuntimeState);
+		return false;
+	}
+	if (State.PlayerGold < Product->Price)
+	{
+		FailPreview(OutPreview, EGameXXKMetaShopError::InsufficientGold);
+		return false;
+	}
+	if (!FGameXXKEquipmentRules::HasWarehouseCapacity(State.EquipmentCollection))
+	{
+		FailPreview(OutPreview, EGameXXKMetaShopError::WarehouseFull);
+		return false;
+	}
+
+	OutPreview.GoldAfter = State.PlayerGold - Product->Price;
+	OutPreview.bAvailable = true;
+	return true;
+}
+
+bool FGameXXKMetaShopRules::Purchase(
+	FGameXXKRuntimeState& InOutState,
+	const EGameXXKMetaShopProductId ProductId,
+	FGameXXKMetaShopPurchaseResult& OutResult)
+{
+	OutResult = FGameXXKMetaShopPurchaseResult();
+	FGameXXKMetaShopPurchasePreview Preview;
+	if (!PreviewPurchase(InOutState, ProductId, Preview))
+	{
+		OutResult.ProductId = Preview.ProductId;
+		OutResult.Kind = Preview.Kind;
+		OutResult.EquipmentSet = Preview.EquipmentSet;
+		OutResult.Price = Preview.Price;
+		FailResult(OutResult, Preview.Error);
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = InOutState;
+	const uint32 StreamSeed = HashCombine(
+		HashCombine(GetTypeHash(Candidate.MetaShop.Seed), GetTypeHash(Candidate.MetaShop.NextPurchaseOrdinal)),
+		GetTypeHash(static_cast<uint8>(ProductId)));
+	FRandomStream Stream(static_cast<int32>(StreamSeed & 0x7fffffffU));
+
+	FGameXXKEquipmentCreateRequest Request;
+	Request.Set = Preview.EquipmentSet;
+	Request.Quality = QualityFromRoll(Stream.RandRange(1, 100));
+	Request.ItemLevel = FMath::Clamp(Candidate.PlayerLevel, 1, FGameXXKEquipmentRules::MaxItemLevel);
+	Request.bForceSlot = true;
+	Request.ForcedSlot = static_cast<EGameXXKEquipmentSlot>(Stream.RandRange(1, 6));
+
+	FName GeneratedEquipmentId;
+	if (!FGameXXKEquipmentRules::CreateRolledInstance(
+		Candidate.EquipmentCollection,
+		Request,
+		GeneratedEquipmentId))
+	{
+		FailResult(OutResult, EGameXXKMetaShopError::EquipmentCreationFailed);
+		return false;
+	}
+
+	Candidate.PlayerGold -= Preview.Price;
+	Candidate.MetaShop.NextPurchaseOrdinal += 1;
+	FString ValidationError;
+	if (!FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(Candidate)
+		|| !FGameXXKSaveMigration::ValidateRuntimeState(Candidate, ValidationError))
+	{
+		FailResult(OutResult, EGameXXKMetaShopError::InvalidRuntimeState);
+		return false;
+	}
+
+	InOutState = MoveTemp(Candidate);
+	OutResult.bPurchased = true;
+	OutResult.ProductId = Preview.ProductId;
+	OutResult.Kind = Preview.Kind;
+	OutResult.EquipmentSet = Preview.EquipmentSet;
+	OutResult.Price = Preview.Price;
+	OutResult.GoldDelta = -Preview.Price;
+	OutResult.GeneratedEquipmentId = GeneratedEquipmentId;
+	return true;
 }
 
 int32 FGameXXKMetaShopRules::DeriveSeed(const FGameXXKRuntimeState& State)

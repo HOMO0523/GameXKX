@@ -13,6 +13,15 @@ public:
 
 	static const TArray<FGameXXKMetaShopProductDefinition>& GetProducts();
 	static const FGameXXKMetaShopProductDefinition* FindProduct(EGameXXKMetaShopProductId ProductId);
+	static EGameXXKEquipmentQuality QualityFromRoll(int32 RollOneToHundred);
+	static bool PreviewPurchase(
+		const FGameXXKRuntimeState& State,
+		EGameXXKMetaShopProductId ProductId,
+		FGameXXKMetaShopPurchasePreview& OutPreview);
+	static bool Purchase(
+		FGameXXKRuntimeState& InOutState,
+		EGameXXKMetaShopProductId ProductId,
+		FGameXXKMetaShopPurchaseResult& OutResult);
 	static int32 DeriveSeed(const FGameXXKRuntimeState& State);
 	static bool ValidateState(const FGameXXKRuntimeState& State, FString* OutError = nullptr);
 };
