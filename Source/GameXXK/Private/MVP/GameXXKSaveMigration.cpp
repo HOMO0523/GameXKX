@@ -9,6 +9,7 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKMetaShopRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRouteCardRecipe.h"
 #include "GameXXKRouteEconomyRules.h"
@@ -795,6 +796,11 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 
 	FGameXXKSaveState Candidate = Source;
 	Candidate.RuntimeState = RestoreOldChain(Source);
+	if (Source.SaveVersion < MetaShopIntroducedSaveVersion)
+	{
+		Candidate.RuntimeState.MetaShop.Seed = FGameXXKMetaShopRules::DeriveSeed(Candidate.RuntimeState);
+		Candidate.RuntimeState.MetaShop.NextPurchaseOrdinal = 0;
+	}
 	if (Source.SaveVersion < RouteMerchantStockSchemaIntroducedSaveVersion)
 	{
 		// Pre-v10 snapshots did not carry the canonical six-slot identities and ownership contract.
@@ -882,6 +888,10 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		State.EquipmentCollection,
 		State.CardRun.CompanionRoster,
 		&OutError))
+	{
+		return false;
+	}
+	if (!FGameXXKMetaShopRules::ValidateState(State, &OutError))
 	{
 		return false;
 	}

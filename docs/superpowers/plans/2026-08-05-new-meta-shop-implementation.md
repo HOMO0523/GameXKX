@@ -234,7 +234,7 @@ git commit -m "feat: define meta shop catalog"
 - Modify: `Source/GameXXK/Private/GameXXKMVPRules.cpp:1600-1670,3130-3200`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKEquipmentSaveMigrationTest.cpp`
 
-- [ ] **Step 1: Add failing v10→v11 migration tests**
+- [x] **Step 1: Add failing v10→v11 migration tests**
 
 Add `GameXXK.MetaShop.SaveMigration` assertions that a valid v10 save receives a positive deterministic seed and ordinal zero, current v11 round-trips byte-stably, negative ordinals are rejected, and future versions remain rejected:
 
@@ -251,13 +251,13 @@ TestTrue(TEXT("seed initialized"), Migrated.RuntimeState.MetaShop.Seed > 0);
 TestEqual(TEXT("ordinal starts at zero"), Migrated.RuntimeState.MetaShop.NextPurchaseOrdinal, 0);
 ```
 
-- [ ] **Step 2: Run the target compile and verify red**
+- [x] **Step 2: Run the target compile and verify red**
 
 Run: `python scripts/ue_tdd_pipeline.py --pie-duration 0 --log-lines 120`
 
 Expected: compile fails because `FGameXXKRuntimeState::MetaShop` and save version 11 do not exist.
 
-- [ ] **Step 3: Embed the state and bump the schema**
+- [x] **Step 3: Embed the state and bump the schema**
 
 Add to `FGameXXKRuntimeState`:
 
@@ -273,7 +273,7 @@ static constexpr int32 MetaShopIntroducedSaveVersion = 11;
 static constexpr int32 CurrentSaveVersion = 11;
 ```
 
-- [ ] **Step 4: Implement deterministic initialization and validation**
+- [x] **Step 4: Implement deterministic initialization and validation**
 
 Use one shared derivation function rather than wall-clock randomness:
 
@@ -289,7 +289,7 @@ int32 FGameXXKMetaShopRules::DeriveSeed(const FGameXXKRuntimeState& State)
 
 For saves below version 11, set `Seed = DeriveSeed(Candidate.RuntimeState)` and `NextPurchaseOrdinal = 0`. Current-version validation requires `Seed > 0` and `0 <= NextPurchaseOrdinal < MAX_int32`. New-game creation initializes the same fields after equipment and companion seeds exist.
 
-- [ ] **Step 5: Run migration and equipment regression automation**
+- [x] **Step 5: Run migration and equipment regression automation**
 
 Run cold compile, then:
 
@@ -299,7 +299,7 @@ Run cold compile, then:
 
 Expected: both prefixes report zero failures.
 
-- [ ] **Step 6: Commit the save slice**
+- [x] **Step 6: Commit the save slice**
 
 ```powershell
 git add -- Source/GameXXK/Public/GameXXKMVPRules.h Source/GameXXK/Public/MVP/GameXXKSaveMigration.h Source/GameXXK/Private/MVP/GameXXKSaveMigration.cpp Source/GameXXK/Private/GameXXKMVPRules.cpp Source/GameXXK/Private/Tests/GameXXKEquipmentSaveMigrationTest.cpp

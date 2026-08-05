@@ -26,7 +26,8 @@ public:
 	static constexpr int32 RouteCardEntriesIntroducedSaveVersion = 9;
 	static constexpr int32 RouteEconomyIntroducedSaveVersion = 9;
 	static constexpr int32 RouteMerchantStockSchemaIntroducedSaveVersion = 10;
-	static constexpr int32 CurrentSaveVersion = 10;
+	static constexpr int32 MetaShopIntroducedSaveVersion = 11;
+	static constexpr int32 CurrentSaveVersion = 11;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

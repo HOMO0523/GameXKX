@@ -8,6 +8,7 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKMetaShopRules.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRouteCardRecipe.h"
 #include "GameXXKRouteEconomyRules.h"
@@ -1646,6 +1647,8 @@ FGameXXKRuntimeState UGameXXKMVPRules::CreateNewGame()
 	State.EquipmentCollection = FGameXXKEquipmentCollectionState();
 	State.EquipmentCollection.EquipmentSchemaVersion = 1;
 	State.EquipmentCollection.CollectionSeed = 0x4758584B;
+	State.MetaShop.Seed = FGameXXKMetaShopRules::DeriveSeed(State);
+	State.MetaShop.NextPurchaseOrdinal = 0;
 	GameXXKMVP::RecalculatePlayerStats(State, false);
 	State.UnlockedRegions.Add(RegionQingshan());
 	AddItem(State, ItemEnhancementStone(), 10);

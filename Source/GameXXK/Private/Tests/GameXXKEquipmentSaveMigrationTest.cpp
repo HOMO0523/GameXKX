@@ -5,8 +5,10 @@
 #include "GameXXKEncounterRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKMetaShopTypes.h"
 #include "GameXXKRouteCardRecipe.h"
 #include "GameXXKRouteEconomyRules.h"
+#include "GameXXKRouteMerchantRules.h"
 #include "GameXXKRunDeckRules.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKSaveGame.h"
@@ -280,29 +282,30 @@ namespace
 	FGameXXKSaveState MakeCurrentMerchantFixture()
 	{
 		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		State.Screen = EGameXXKScreen::RouteMerchant;
 		State.bDungeonActive = true;
-		FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun, 60);
 		State.bHasGeneratedRouteMap = true;
-		State.RouteMapNodes.Add(FGameXXKRouteMapNode{
-			10, 1, 0, EGameXXKNodeKind::Merchant, FVector2D(0.5f, 0.5f), TArray<int32>{}});
-		State.CurrentRouteNodeId = 10;
+		State.RouteSeed = 0x6137;
+		State.RouteMapNodes = {
+			FGameXXKRouteMapNode{9, 1, 0, EGameXXKNodeKind::Start, FVector2D(0.25f, 0.5f), TArray<int32>{10}},
+			FGameXXKRouteMapNode{10, 2, 1, EGameXXKNodeKind::Merchant, FVector2D(0.55f, 0.5f), TArray<int32>{}}};
+		State.RouteMapEdges = {FGameXXKRouteMapEdge{9, 10}};
+		State.VisitedRouteNodeIds = {9};
+		State.ReachableRouteNodeIds = {10};
+		State.CurrentRouteNodeId = 9;
 		State.PendingRouteNodeId = 10;
-
-		FGameXXKRouteMerchantState& Merchant = State.CardRun.RouteMerchant;
-		Merchant.SourceNodeId = 10;
-		Merchant.OfferSeed = 0x7351;
-		FGameXXKRouteMerchantOffer CardOffer;
-		CardOffer.OfferId = TEXT("Merchant.10.Card.0");
-		CardOffer.Kind = EGameXXKRouteMerchantOfferKind::Card;
-		CardOffer.ContentId = TEXT("Route.General.PoJiaTuCi");
-		CardOffer.Price = 15;
-		Merchant.Offers.Add(CardOffer);
-		FGameXXKRouteMerchantOffer RelicOffer;
-		RelicOffer.OfferId = TEXT("Merchant.10.Relic.0");
-		RelicOffer.Kind = EGameXXKRouteMerchantOfferKind::Relic;
-		RelicOffer.ContentId = TEXT("Relic.AncientCoin");
-		RelicOffer.Price = 45;
-		Merchant.Offers.Add(RelicOffer);
+		State.CardRun.RouteProgress.SchemaVersion = 1;
+		State.CardRun.RouteProgress.RootSeed = State.RouteSeed;
+		State.CardRun.RouteProgress.ChapterSeeds = {
+			State.RouteSeed,
+			FMath::Abs(FGameXXKEncounterRules::DeriveChapterSeed(State.RouteSeed, 2)),
+			FMath::Abs(FGameXXKEncounterRules::DeriveChapterSeed(State.RouteSeed, 3))};
+		State.CardRun.RouteProgress.CurrentChapter = 1;
+		State.CardRun.RouteProgress.RouteCombatLevel = State.PlayerLevel;
+		State.CardRun.bLoadoutLockedForRoute = true;
+		FString Error;
+		FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun, 60, &Error);
+		FGameXXKRouteMerchantRules::EnsureStock(State, &Error);
 		return UGameXXKMVPRules::MakeSaveState(State);
 	}
 }
@@ -413,6 +416,62 @@ bool FGameXXKEquipmentSaveMigrationVersionContractTest::RunTest(const FString& P
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKMetaShopSaveMigrationTest,
+	"GameXXK.MetaShop.SaveMigration",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("meta shop schema is save version eleven"), FGameXXKSaveMigration::CurrentSaveVersion, 11);
+	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
+
+	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
+	TestTrue(TEXT("new game receives a positive meta shop seed"), NewGame.RuntimeState.MetaShop.Seed > 0);
+	TestEqual(TEXT("new game starts at purchase ordinal zero"), NewGame.RuntimeState.MetaShop.NextPurchaseOrdinal, 0);
+
+	FGameXXKSaveState VersionTen = NewGame;
+	VersionTen.SaveVersion = 10;
+	VersionTen.RuntimeState.MetaShop = FGameXXKMetaShopState();
+	FGameXXKSaveState Migrated;
+	FGameXXKSaveMigrationReport Report;
+	TestTrue(TEXT("v10 migrates"), FGameXXKSaveMigration::MigrateToCurrent(VersionTen, Migrated, Report));
+	TestEqual(TEXT("v10 targets v11"), Migrated.SaveVersion, 11);
+	TestTrue(TEXT("v10 migration initializes a positive seed"), Migrated.RuntimeState.MetaShop.Seed > 0);
+	TestEqual(TEXT("v10 migration starts at ordinal zero"), Migrated.RuntimeState.MetaShop.NextPurchaseOrdinal, 0);
+
+	FGameXXKSaveState MigratedAgain;
+	FGameXXKSaveMigrationReport SecondReport;
+	TestTrue(TEXT("the same v10 source migrates twice"), FGameXXKSaveMigration::MigrateToCurrent(VersionTen, MigratedAgain, SecondReport));
+	TestEqual(TEXT("v10 seed derivation is deterministic"), MigratedAgain.RuntimeState.MetaShop.Seed, Migrated.RuntimeState.MetaShop.Seed);
+
+	FGameXXKSaveState CurrentRoundTrip;
+	FGameXXKSaveMigrationReport CurrentReport;
+	TestTrue(TEXT("valid v11 save roundtrips"), FGameXXKSaveMigration::MigrateToCurrent(Migrated, CurrentRoundTrip, CurrentReport));
+	TestTrue(
+		TEXT("v11 meta shop payload roundtrips exactly"),
+		FGameXXKMetaShopState::StaticStruct()->CompareScriptStruct(
+			&CurrentRoundTrip.RuntimeState.MetaShop,
+			&Migrated.RuntimeState.MetaShop,
+			PPF_None));
+
+	FGameXXKSaveState NegativeOrdinal = Migrated;
+	NegativeOrdinal.RuntimeState.MetaShop.NextPurchaseOrdinal = -1;
+	TestFalse(TEXT("negative purchase ordinal is rejected"), FGameXXKSaveMigration::MigrateToCurrent(NegativeOrdinal, CurrentRoundTrip, CurrentReport));
+	TestTrue(TEXT("negative ordinal reports meta shop contract"), CurrentReport.Error.Contains(TEXT("meta shop")));
+
+	FGameXXKSaveState ExhaustedOrdinal = Migrated;
+	ExhaustedOrdinal.RuntimeState.MetaShop.NextPurchaseOrdinal = MAX_int32;
+	TestFalse(TEXT("exhausted purchase ordinal is rejected"), FGameXXKSaveMigration::MigrateToCurrent(ExhaustedOrdinal, CurrentRoundTrip, CurrentReport));
+	TestTrue(TEXT("exhausted ordinal reports meta shop contract"), CurrentReport.Error.Contains(TEXT("meta shop")));
+
+	FGameXXKSaveState ZeroSeed = Migrated;
+	ZeroSeed.RuntimeState.MetaShop.Seed = 0;
+	TestFalse(TEXT("current save with zero meta shop seed is rejected"), FGameXXKSaveMigration::MigrateToCurrent(ZeroSeed, CurrentRoundTrip, CurrentReport));
+	TestTrue(TEXT("zero seed reports meta shop contract"), CurrentReport.Error.Contains(TEXT("meta shop")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKRouteMerchantSaveMigrationRoundTripTest,
 	"GameXXK.Equipment.SaveMigration.RouteMerchantRoundTrip",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -422,7 +481,12 @@ bool FGameXXKRouteMerchantSaveMigrationRoundTripTest::RunTest(const FString& Par
 	const FGameXXKSaveState Source = MakeCurrentMerchantFixture();
 	FGameXXKSaveState Migrated;
 	FGameXXKSaveMigrationReport Report;
-	TestTrue(TEXT("a valid populated merchant snapshot passes through migration"), FGameXXKSaveMigration::MigrateToCurrent(Source, Migrated, Report));
+	const bool bMigrated = FGameXXKSaveMigration::MigrateToCurrent(Source, Migrated, Report);
+	TestTrue(TEXT("a valid populated merchant snapshot passes through migration"), bMigrated);
+	if (!bMigrated)
+	{
+		AddError(FString::Printf(TEXT("route merchant fixture migration error: %s"), *Report.Error));
+	}
 	TestTrue(TEXT("merchant pass-through reports success"), Report.bSucceeded);
 	TestTrue(
 		TEXT("merchant snapshot roundtrips every persisted property exactly"),
@@ -457,7 +521,7 @@ bool FGameXXKRouteMerchantSaveMigrationRoundTripTest::RunTest(const FString& Par
 	TestTrue(TEXT("unknown merchant source reports its contract"), Report.Error.Contains(TEXT("merchant")));
 
 	FGameXXKSaveState NonMerchantSource = Source;
-	NonMerchantSource.RuntimeState.RouteMapNodes[0].NodeKind = EGameXXKNodeKind::Battle;
+	NonMerchantSource.RuntimeState.RouteMapNodes[1].NodeKind = EGameXXKNodeKind::Battle;
 	TestFalse(TEXT("a merchant snapshot cannot reference a non-merchant route node"), FGameXXKSaveMigration::MigrateToCurrent(NonMerchantSource, Migrated, Report));
 	TestTrue(TEXT("non-merchant source reports its contract"), Report.Error.Contains(TEXT("merchant")));
 	return true;

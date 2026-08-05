@@ -152,7 +152,7 @@ bool FGameXXKRouteCardEntriesV9VersionContractTest::RunTest(const FString& Param
 		TEXT("stable route-card entries are introduced by save version nine"),
 		TRouteCardEntriesVersionValue<FGameXXKSaveMigration>::Value,
 		9);
-	TestEqual(TEXT("the merchant stock schema advances the current save version to ten"), FGameXXKSaveMigration::CurrentSaveVersion, 10);
+	TestEqual(TEXT("the meta shop schema advances the current save version to eleven"), FGameXXKSaveMigration::CurrentSaveVersion, 11);
 	return true;
 }
 

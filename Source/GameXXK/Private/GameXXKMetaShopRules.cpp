@@ -1,5 +1,7 @@
 #include "GameXXKMetaShopRules.h"
 
+#include "GameXXKMVPRules.h"
+
 namespace
 {
 	FGameXXKMetaShopProductDefinition MakeEquipmentPack(
@@ -63,4 +65,27 @@ const FGameXXKMetaShopProductDefinition* FGameXXKMetaShopRules::FindProduct(cons
 		{
 			return Product.ProductId == ProductId;
 		});
+}
+
+int32 FGameXXKMetaShopRules::DeriveSeed(const FGameXXKRuntimeState& State)
+{
+	const uint32 Mixed = HashCombine(
+		GetTypeHash(State.EquipmentCollection.CollectionSeed),
+		GetTypeHash(State.CardRun.CompanionRoster.RecruitSequenceSeed));
+	return FMath::Max(1, static_cast<int32>(Mixed & 0x7fffffffU));
+}
+
+bool FGameXXKMetaShopRules::ValidateState(const FGameXXKRuntimeState& State, FString* OutError)
+{
+	if (State.MetaShop.Seed <= 0
+		|| State.MetaShop.NextPurchaseOrdinal < 0
+		|| State.MetaShop.NextPurchaseOrdinal == MAX_int32)
+	{
+		if (OutError)
+		{
+			*OutError = TEXT("Saved meta shop state has an invalid seed or purchase ordinal.");
+		}
+		return false;
+	}
+	return true;
 }

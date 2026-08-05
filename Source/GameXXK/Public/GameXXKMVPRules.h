@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameXXKCardRunTypes.h"
 #include "GameXXKEquipmentTypes.h"
+#include "GameXXKMetaShopTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GameXXKMVPRules.generated.h"
 
@@ -485,6 +486,10 @@ struct FGameXXKRuntimeState
 	/** Save-authoritative equipment instances, warehouse order, and six-slot character loadouts. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKEquipmentCollectionState EquipmentCollection;
+
+	/** Save-authoritative deterministic sequence for the permanent town meta shop. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKMetaShopState MetaShop;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TSet<FName> DiscoveredCodexEntryIds;

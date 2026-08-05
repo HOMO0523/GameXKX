@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameXXKMetaShopTypes.h"
 
+struct FGameXXKRuntimeState;
+
 class GAMEXXK_API FGameXXKMetaShopRules final
 {
 public:
@@ -11,4 +13,6 @@ public:
 
 	static const TArray<FGameXXKMetaShopProductDefinition>& GetProducts();
 	static const FGameXXKMetaShopProductDefinition* FindProduct(EGameXXKMetaShopProductId ProductId);
+	static int32 DeriveSeed(const FGameXXKRuntimeState& State);
+	static bool ValidateState(const FGameXXKRuntimeState& State, FString* OutError = nullptr);
 };

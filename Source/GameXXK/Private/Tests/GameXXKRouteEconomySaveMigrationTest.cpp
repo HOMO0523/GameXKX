@@ -27,8 +27,8 @@ static_assert(
 	FGameXXKSaveMigration::RouteMerchantStockSchemaIntroducedSaveVersion == 10,
 	"Canonical route-merchant stock persistence requires save version 10.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 10,
-	"Canonical route-merchant stock persistence requires save version 10.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 11,
+	"The permanent meta shop advances the current save version to 11.");
 
 namespace
 {
@@ -216,7 +216,7 @@ bool FGameXXKRouteEconomySaveVersionContractTest::RunTest(const FString& Paramet
 		TEXT("canonical merchant stock schema is version ten"),
 		FGameXXKSaveMigration::RouteMerchantStockSchemaIntroducedSaveVersion,
 		10);
-	TestEqual(TEXT("current save version is ten"), FGameXXKSaveMigration::CurrentSaveVersion, 10);
+	TestEqual(TEXT("current save version is eleven"), FGameXXKSaveMigration::CurrentSaveVersion, 11);
 	return true;
 }
 
