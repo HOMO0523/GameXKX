@@ -99,14 +99,18 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 	}
 
 	FGameXXKRuntimeState HeroCapState = UGameXXKMVPRules::CreateNewGame();
-	HeroCapState.Screen = EGameXXKScreen::DungeonMap;
-	HeroCapState.bDungeonActive = true;
-	HeroCapState.DungeonNodeIndex = 1;
-	HeroCapState.CardRun.RouteProgress.CurrentChapter = 1;
-	TestTrue(TEXT("legacy fixed-route cap fixture initializes its route economy"),
-		FGameXXKRouteEconomyRules::InitializeRoute(HeroCapState.CardRun));
+	TestTrue(TEXT("the fixed-route cap fixture opens the world map"), UGameXXKMVPRules::OpenWorldMap(HeroCapState));
+	TestTrue(TEXT("the fixed-route cap fixture enters Qingshan"), UGameXXKMVPRules::EnterWorldRegion(HeroCapState, UGameXXKMVPRules::RegionQingshan()));
+	TestTrue(TEXT("the fixed-route cap fixture accepts the town quest"), UGameXXKMVPRules::AcceptTownQuest(HeroCapState));
 	HeroCapState.PlayerLevel = 20;
 	HeroCapState.PlayerXP = 1999;
+	UGameXXKMVPRules::RecalculatePlayerStatsFromEquipment(HeroCapState);
+	TestTrue(TEXT("the fixed-route cap fixture enters a real route"), UGameXXKMVPRules::EnterDungeon(HeroCapState));
+	HeroCapState.bHasGeneratedRouteMap = false;
+	HeroCapState.RouteMapNodes.Reset();
+	HeroCapState.RouteMapEdges.Reset();
+	HeroCapState.ReachableRouteNodeIds.Reset();
+	HeroCapState.DungeonNodeIndex = 1;
 	TestTrue(TEXT("the fixed-route cap fixture begins a real card battle"),
 		UGameXXKMVPRules::AdvanceDungeonNode(HeroCapState, EGameXXKNodeKind::Battle));
 	for (FGameXXKCardCombatUnit& Unit : HeroCapState.CardRun.ActiveBattle.Units)
