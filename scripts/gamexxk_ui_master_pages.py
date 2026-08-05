@@ -39,6 +39,31 @@ META_SHOP_PRODUCTS = (
     ("伙伴包", "nav_companion.png", "500"),
 )
 
+META_SHOP_REVIEW_STATES = (
+    "selected",
+    "insufficient_funds",
+    "confirmation",
+    "result",
+)
+
+META_SHOP_NAVIGATION = (
+    ("nav_backpack", "nav_backpack.png", (52, 218, 86, 86)),
+    ("nav_companion", "nav_companion.png", (52, 368, 86, 86)),
+    ("nav_codex", "nav_codex.png", (52, 518, 86, 86)),
+    ("nav_task", "nav_scroll.png", (52, 668, 86, 86)),
+    ("nav_route", "nav_route.png", (52, 818, 86, 86)),
+)
+
+META_SHOP_CARD_POSITIONS = (
+    (410, 300),
+    (630, 300),
+    (850, 300),
+    (1070, 300),
+    (520, 610),
+    (740, 610),
+    (960, 610),
+)
+
 
 @dataclass(frozen=True)
 class CanvasPlacement:
@@ -589,81 +614,301 @@ def _page_shop(builder: PageBuilder, world: Path) -> None:
     builder.add_text("购买", (1035, 835), 22)
 
 
-def _page_meta_shop_v2(builder: PageBuilder) -> None:
+def _add_meta_shop_global_shell(builder: PageBuilder) -> None:
     builder.add_image(
         "approved_v2_shop_shell",
         V2_LARGE_PANEL,
         (0, 0, 1920, 1080),
-        "10_ApprovedV2Shell",
+        "10_Background",
     )
-    builder.add_text("新商店", (390, 205), 42, bold=True)
-    builder.add_text("套装装备包与伙伴包", (565, 221), 22, color=MUTED)
-    builder.add_text("永久金币  500", (1510, 54), 26, bold=True)
+    builder.add_image(
+        "hero_portrait",
+        V2_CONTENT / "hero_portrait.png",
+        (48, 32, 132, 132),
+        "20_GlobalShell",
+        fit_mode="contain_canvas",
+    )
+    builder.add_text("主角  Lv. 1", (198, 50), 26, "20_GlobalShell", bold=True)
+    builder.add_text("行旅者", (198, 88), 19, "20_GlobalShell", color=MUTED)
+    builder.add_text("战力 33", (198, 122), 20, "20_GlobalShell", bold=True)
+    for name, filename, box in META_SHOP_NAVIGATION:
+        builder.add_image(
+            name,
+            V2_CONTENT / filename,
+            box,
+            "20_GlobalShell",
+            fit_mode="contain_canvas",
+        )
+    builder.add_image(
+        "top_currency_coin",
+        V2_CONTENT / "resource_coin.png",
+        (1500, 46, 42, 42),
+        "20_GlobalShell",
+        fit_mode="contain_canvas",
+    )
+    builder.add_text("500", (1555, 51), 27, "20_GlobalShell", bold=True)
 
-    card_positions = (
-        (410, 300),
-        (630, 300),
-        (850, 300),
-        (1070, 300),
-        (520, 610),
-        (740, 610),
-        (960, 610),
+
+def _add_coin_price(
+    builder: PageBuilder,
+    value: str,
+    icon_box: tuple[int, int, int, int],
+    text_position: tuple[int, int],
+    subgroup: str,
+    *,
+    text_size: int,
+    bold: bool = False,
+    visible: bool = True,
+) -> None:
+    builder.add_image(
+        f"coin_{subgroup.replace('/', '_')}_{value}",
+        V2_CONTENT / "resource_coin.png",
+        icon_box,
+        subgroup,
+        fit_mode="contain_canvas",
+        visible=visible,
     )
+    builder.add_text(
+        value,
+        text_position,
+        text_size,
+        subgroup,
+        bold=bold,
+        color=MUTED if not bold else INK,
+        visible=visible,
+    )
+
+
+def _add_meta_shop_state(builder: PageBuilder, state: str, *, visible: bool) -> None:
+    groups = {
+        "selected": "71_State_Selected",
+        "insufficient_funds": "72_State_InsufficientFunds",
+        "confirmation": "73_State_Confirmation",
+        "result": "74_State_Result",
+    }
+    subgroup = groups[state]
+    builder.add_image(
+        f"{state}_selection_ink",
+        V2_CONTENT / "category_selected_ink.png",
+        (398, 276, 194, 66),
+        subgroup,
+        visible=visible,
+    )
+    if state == "selected":
+        builder.add_image(
+            "purchase_button",
+            V2_COMPONENTS / "tab_02_equipment_selected.png",
+            (1380, 870, 210, 72),
+            subgroup,
+            visible=visible,
+        )
+        builder.add_text("购买", (1418, 889), 23, subgroup, bold=True, visible=visible)
+        _add_coin_price(
+            builder,
+            "100",
+            (1475, 890, 28, 28),
+            (1510, 887),
+            subgroup,
+            text_size=23,
+            bold=True,
+            visible=visible,
+        )
+        builder.add_text("点击后再次确认", (1412, 955), 16, subgroup, color=MUTED, visible=visible)
+    elif state == "insufficient_funds":
+        builder.add_component(
+            "button_disabled",
+            (1380, 870, 210, 72),
+            subgroup,
+            name="purchase_disabled",
+            visible=visible,
+        )
+        builder.add_text("购买", (1418, 889), 23, subgroup, bold=True, visible=visible)
+        _add_coin_price(
+            builder,
+            "100",
+            (1475, 890, 28, 28),
+            (1510, 887),
+            subgroup,
+            text_size=23,
+            bold=True,
+            visible=visible,
+        )
+        builder.add_centered_text(
+            "铜钱不足，还需 50",
+            (1330, 952, 310, 28),
+            16,
+            subgroup,
+            color=(156, 69, 45, 255),
+            visible=visible,
+        )
+    elif state == "confirmation":
+        builder.add_component(
+            "tooltip_panel",
+            (1285, 725, 400, 245),
+            subgroup,
+            name="confirmation_panel",
+            visible=visible,
+        )
+        builder.add_centered_text(
+            "确认购买破军装备包？",
+            (1310, 752, 350, 36),
+            23,
+            subgroup,
+            bold=True,
+            visible=visible,
+        )
+        builder.add_text("将消耗", (1350, 806), 19, subgroup, visible=visible)
+        _add_coin_price(
+            builder,
+            "100",
+            (1435, 806, 24, 24),
+            (1465, 803),
+            subgroup,
+            text_size=20,
+            bold=True,
+            visible=visible,
+        )
+        builder.add_component(
+            "button_primary",
+            (1320, 868, 150, 58),
+            subgroup,
+            name="confirm_purchase",
+            visible=visible,
+        )
+        builder.add_centered_text(
+            "确认购买",
+            (1320, 868, 150, 58),
+            19,
+            subgroup,
+            bold=True,
+            visible=visible,
+        )
+        builder.add_component(
+            "button_normal",
+            (1490, 868, 150, 58),
+            subgroup,
+            name="cancel_purchase",
+            visible=visible,
+        )
+        builder.add_centered_text("取消", (1490, 868, 150, 58), 19, subgroup, visible=visible)
+    elif state == "result":
+        builder.add_component(
+            "tooltip_panel",
+            (1285, 725, 400, 245),
+            subgroup,
+            name="result_panel",
+            visible=visible,
+        )
+        builder.add_centered_text(
+            "购买成功",
+            (1310, 752, 350, 38),
+            25,
+            subgroup,
+            bold=True,
+            visible=visible,
+        )
+        builder.add_centered_text(
+            "获得：破军·武器（普通）",
+            (1310, 812, 350, 32),
+            19,
+            subgroup,
+            visible=visible,
+        )
+        builder.add_component(
+            "button_primary",
+            (1405, 875, 160, 58),
+            subgroup,
+            name="accept_result",
+            visible=visible,
+        )
+        builder.add_centered_text(
+            "收下",
+            (1405, 875, 160, 58),
+            19,
+            subgroup,
+            bold=True,
+            visible=visible,
+        )
+
+
+def _page_meta_shop_v2(
+    builder: PageBuilder,
+    *,
+    review_state: str = "selected",
+    include_hidden_states: bool = True,
+) -> None:
+    if review_state not in META_SHOP_REVIEW_STATES:
+        raise ValueError(f"unsupported meta-shop review state: {review_state}")
+
+    _add_meta_shop_global_shell(builder)
+    builder.add_text("新商店", (390, 205), 42, "30_ShopPaper", bold=True)
+    builder.add_text("套装装备包与伙伴包", (565, 221), 22, "30_ShopPaper", color=MUTED)
+
     frame_paths = tuple(V2_COMPONENTS.glob("inventory_slot_*.png"))
     if not frame_paths:
         raise FileNotFoundError(f"missing V2 inventory slot components in {V2_COMPONENTS}")
     frame_path = sorted(frame_paths)[0]
-    for index, ((label, relative_icon, price), (x, y)) in enumerate(zip(META_SHOP_PRODUCTS, card_positions)):
-        if index == 0:
-            builder.add_image(
-                "selected_product_ink",
-                V2_CONTENT / "category_selected_ink.png",
-                (x - 12, y - 24, 194, 66),
-                "20_ProductSelection",
-            )
+    for index, ((label, relative_icon, price), (x, y)) in enumerate(
+        zip(META_SHOP_PRODUCTS, META_SHOP_CARD_POSITIONS)
+    ):
         builder.add_image(
             f"product_card_{index + 1}",
             frame_path,
             (x, y, 170, 170),
-            "21_ProductCards",
+            "40_ProductGrid",
         )
         builder.add_image(
             f"product_icon_{index + 1}",
             V2_CONTENT / relative_icon,
             (x + 20, y + 18, 130, 130),
-            "22_ProductIcons",
+            "40_ProductGrid",
             fit_mode="contain_canvas",
         )
-        builder.add_centered_text(label, (x - 10, y + 178, 190, 34), 20, bold=index == 0)
-        builder.add_centered_text(f"{price} 金", (x, y + 216, 170, 32), 18, color=MUTED)
+        builder.add_centered_text(
+            label,
+            (x - 10, y + 178, 190, 34),
+            20,
+            "40_ProductGrid",
+            bold=index == 0,
+        )
+        _add_coin_price(
+            builder,
+            price,
+            (x + 55, y + 218, 22, 22),
+            (x + 82, y + 217),
+            "40_ProductGrid",
+            text_size=18,
+        )
 
     builder.add_image(
         "selected_product_detail_slot",
         V2_COMPONENTS / "detail_item_slot.png",
         (1370, 330, 220, 220),
-        "30_ProductDetail",
+        "50_ProductDetail",
     )
     builder.add_image(
         "selected_product_detail_icon",
         V2_CONTENT / "Equipment/pojun_weapon.png",
         (1405, 365, 150, 150),
-        "31_ProductDetailIcon",
+        "50_ProductDetail",
         fit_mode="contain_canvas",
     )
-    builder.add_centered_text("破军装备包", (1305, 575, 350, 44), 30, bold=True)
-    builder.add_text("随机获得破军套装的一个部位", (1305, 640), 19)
-    builder.add_text("装备等级：当前主角等级", (1305, 680), 19)
-    builder.add_text("普通 70%  ·  稀有 25%  ·  珍稀 5%", (1305, 720), 17)
-    builder.add_text("可能部位：武器 / 头部 / 衣甲", (1305, 770), 17)
-    builder.add_text("腰带 / 鞋 / 饰品", (1395, 804), 17)
-    builder.add_image(
-        "purchase_button",
-        V2_COMPONENTS / "tab_02_equipment_selected.png",
-        (1380, 870, 210, 72),
-        "40_PurchaseAction",
+    builder.add_centered_text(
+        "破军装备包",
+        (1305, 575, 350, 44),
+        30,
+        "50_ProductDetail",
+        bold=True,
     )
-    builder.add_centered_text("购买  100", (1380, 870, 210, 72), 23, bold=True)
-    builder.add_text("点击后再次确认", (1412, 955), 16, color=MUTED)
+    builder.add_text("随机获得破军套装的一个部位", (1305, 640), 19, "50_ProductDetail")
+    builder.add_text("装备等级：当前主角等级", (1305, 680), 19, "50_ProductDetail")
+    builder.add_text("普通 70%  ·  稀有 25%  ·  珍稀 5%", (1305, 720), 17, "50_ProductDetail")
+    builder.add_text("可能部位：武器 / 头部 / 衣甲", (1305, 770), 17, "50_ProductDetail")
+    builder.add_text("腰带 / 鞋 / 饰品", (1395, 804), 17, "50_ProductDetail")
+
+    states = META_SHOP_REVIEW_STATES if include_hidden_states else (review_state,)
+    for state in states:
+        _add_meta_shop_state(builder, state, visible=state == review_state)
 
 
 def _page_route(builder: PageBuilder, world: Path, *, selected: bool = False) -> None:
