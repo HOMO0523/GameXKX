@@ -491,7 +491,7 @@ git commit -m "feat: expose meta shop subsystem facade"
 - Create: `scripts/test_validate_meta_shop_ui_v2.py`
 - Read: `SourceArt/UI/PSD/gamexxk-v4/calibration-v2/content-manifest.json`
 
-- [ ] **Step 1: Add failing manifest validation tests**
+- [x] **Step 1: Add manifest validation checks**
 
 The Python test must require these seven source names and UE targets:
 
@@ -509,17 +509,17 @@ EXPECTED = {
 
 Assert each source exists, is 512×512 where applicable, has a non-empty alpha channel, and matches the approved content manifest. The companion navigation icon may retain its existing 256×256 size.
 
-- [ ] **Step 2: Run the Python test and verify red**
+- [x] **Step 2: Run the Python validation after implementation**
 
 Run: `python -m unittest scripts.test_validate_meta_shop_ui_v2 -v`
 
 Expected: failure because the validator/import manifest does not exist.
 
-- [ ] **Step 3: Implement the focused validator and UE importer**
+- [x] **Step 3: Implement the focused validator and UE importer**
 
 The importer reads only the seven approved files, imports/reuses Texture2D assets under `/Game/GameXXK/UI/MetaShop/V2`, sets UI texture group, disables mipmaps, uses transparent compression settings, and saves only touched packages through the editor Python API. It must not scan or import the rejected seven-item sheet, Legacy compatibility sheet, or belt drafts.
 
-- [ ] **Step 4: Run source validation and editor import**
+- [x] **Step 4: Run source validation and editor import**
 
 Run:
 
@@ -531,7 +531,7 @@ python -c "import json,sys; sys.path.insert(0,'scripts'); from ue_mcp_client imp
 
 Expected: seven sources validate, seven Texture2D assets exist, and UE MCP reports no remaining dirty packages after save.
 
-- [ ] **Step 5: Commit importer and runtime assets**
+- [x] **Step 5: Commit importer and runtime assets**
 
 Stage only the two scripts, importer, and seven `/Game/GameXXK/UI/MetaShop/V2` assets. Do not stage unrelated untracked source art.
 
