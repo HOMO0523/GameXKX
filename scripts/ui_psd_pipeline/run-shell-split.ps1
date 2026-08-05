@@ -92,7 +92,7 @@ $app.DoJavaScriptFile($jsxPath)
 if (-not (Test-Path -LiteralPath $receiptPath -PathType Leaf)) {
     throw "Photoshop did not write the shell-split receipt: $receiptPath"
 }
-$receiptData = Get-Content -Raw -LiteralPath $receiptPath | ConvertFrom-Json
+$receiptData = Get-Content -Raw -Encoding UTF8 -LiteralPath $receiptPath | ConvertFrom-Json
 if ($receiptData.page -ne '07_商店交易') {
     throw "Unexpected receipt page: $($receiptData.page)"
 }
