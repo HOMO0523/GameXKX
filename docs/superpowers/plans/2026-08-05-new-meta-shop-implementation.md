@@ -102,7 +102,7 @@ git commit -m "feat: iterate Master UI for new meta shop"
 - Create: `Source/GameXXK/Private/GameXXKMetaShopRules.cpp`
 - Create: `Source/GameXXK/Private/Tests/GameXXKMetaShopRulesTest.cpp`
 
-- [ ] **Step 1: Add a failing catalog automation test**
+- [x] **Step 1: Add a failing catalog automation test**
 
 Create a test named `GameXXK.MetaShop.Catalog` that asserts seven products, stable order, six equipment packs priced at 100, one companion pack priced at 500, unique IDs, and the exact set mapping:
 
@@ -125,13 +125,13 @@ bool FGameXXKMetaShopCatalogTest::RunTest(const FString& Parameters)
 }
 ```
 
-- [ ] **Step 2: Run a cold compile and verify the red failure**
+- [x] **Step 2: Run a cold compile and verify the red failure**
 
 Run: `python scripts/ue_tdd_pipeline.py --pie-duration 0 --log-lines 120`
 
 Expected: compile fails because `GameXXKMetaShopRules.h` and its catalog types do not exist.
 
-- [ ] **Step 3: Define the complete public types**
+- [x] **Step 3: Define the complete public types**
 
 Define stable enums and save payloads in `GameXXKMetaShopTypes.h`:
 
@@ -186,7 +186,7 @@ struct GAMEXXK_API FGameXXKMetaShopState
 
 Also define `FGameXXKMetaShopProductDefinition`, `FGameXXKMetaShopPurchasePreview`, and `FGameXXKMetaShopPurchaseResult` with Blueprint-readable product ID, kind, equipment set, price, availability, error/message, gold delta, generated equipment ID, and companion result.
 
-- [ ] **Step 4: Implement the immutable catalog**
+- [x] **Step 4: Implement the immutable catalog**
 
 Expose this focused interface in `GameXXKMetaShopRules.h`:
 
@@ -207,7 +207,7 @@ public:
 
 Build products in the exact approved order and use icon soft paths under `/Game/GameXXK/UI/MetaShop/V2/`.
 
-- [ ] **Step 5: Run catalog automation and verify green**
+- [x] **Step 5: Run catalog automation and verify green**
 
 Run the cold pipeline, then run:
 
@@ -217,7 +217,7 @@ Run the cold pipeline, then run:
 
 Expected: UBT succeeds and `GameXXK.MetaShop.Catalog` reports Success.
 
-- [ ] **Step 6: Commit the catalog slice**
+- [x] **Step 6: Commit the catalog slice**
 
 ```powershell
 git add -- Source/GameXXK/Public/GameXXKMetaShopTypes.h Source/GameXXK/Public/GameXXKMetaShopRules.h Source/GameXXK/Private/GameXXKMetaShopRules.cpp Source/GameXXK/Private/Tests/GameXXKMetaShopRulesTest.cpp
