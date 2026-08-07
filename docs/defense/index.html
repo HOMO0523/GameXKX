@@ -1,410 +1,466 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>《霞客行》毕设项目记录</title>
-  <style>
-    :root {
-      color-scheme: light;
-      --ink: #202225;
-      --muted: #6c625a;
-      --paper: #f5efe6;
-      --panel: #fffaf2;
-      --line: #d8c9b6;
-      --red: #b94335;
-      --green: #357a55;
-      --blue: #2c5f7c;
-      --gold: #a66a1f;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>《青山行 · 卡牌志》答辩演示文档</title>
+<style>
+  :root {
+    --ink: #e8dcc0;
+    --ink-dim: #b8ab8d;
+    --ink-faint: #8a7f66;
+    --paper: #17130c;
+    --paper-2: #1e1810;
+    --paper-3: #282013;
+    --gold: #d8a94e;
+    --gold-bright: #f0c36a;
+    --jade: #6fa887;
+    --jade-bright: #8fc4a3;
+    --red: #c96a5a;
+    --line: #4a3d28;
+    --line-soft: #33291a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 50% -100px, #2c2112 0%, transparent 60%),
+      var(--paper);
+    color: var(--ink);
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    line-height: 1.75;
+    padding-bottom: 80px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
 
-    * {
-      box-sizing: border-box;
-    }
+  /* ---------- hero ---------- */
+  header.hero {
+    text-align: center;
+    padding: 72px 24px 40px;
+    border-bottom: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(216,169,78,.08), transparent 55%),
+      var(--paper-2);
+  }
+  header.hero .game-en { letter-spacing: .5em; color: var(--ink-faint); font-size: 13px; text-transform: uppercase; }
+  header.hero h1 { font-size: 46px; margin: 10px 0 6px; color: var(--gold-bright); text-shadow: 0 2px 18px rgba(240,195,106,.25); }
+  header.hero .sub { color: var(--ink-dim); font-size: 17px; }
+  header.hero .chips { margin-top: 22px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  header.hero .chip {
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 16px;
+    font-size: 13px; color: var(--ink-dim); background: var(--paper-3);
+  }
+  header.hero .chip b { color: var(--gold); font-weight: 600; }
 
-    body {
-      margin: 0;
-      background: var(--paper);
-      color: var(--ink);
-      font-family: "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif;
-      line-height: 1.65;
-    }
+  /* ---------- sections ---------- */
+  section { margin-top: 56px; }
+  h2 {
+    font-size: 26px; color: var(--gold-bright);
+    padding-left: 14px; border-left: 3px solid var(--gold);
+    margin-bottom: 18px;
+  }
+  h3 { font-size: 18px; color: var(--gold); margin: 26px 0 10px; }
+  p { color: var(--ink-dim); margin-bottom: 12px; }
+  p b, li b { color: var(--ink); }
+  .lead { font-size: 16px; }
 
-    header {
-      padding: 42px 28px 28px;
-      background: #2b2825;
-      color: #fff7ea;
-      border-bottom: 6px solid var(--gold);
-    }
+  /* ---------- flow diagram ---------- */
+  .flow {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    justify-content: center; margin: 22px 0;
+  }
+  .flow .node {
+    border: 1px solid var(--line); border-radius: 10px; background: var(--paper-3);
+    padding: 10px 18px; text-align: center; min-width: 110px;
+  }
+  .flow .node b { display: block; color: var(--ink); font-size: 15px; }
+  .flow .node span { font-size: 12px; color: var(--ink-faint); }
+  .flow .node.main { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(216,169,78,.2), 0 6px 24px rgba(0,0,0,.35); }
+  .flow .node.main b { color: var(--gold-bright); }
+  .flow .arrow { color: var(--gold); font-size: 18px; }
+  .flow .loop {
+    width: 100%; text-align: center; margin-top: 6px;
+    font-size: 13px; color: var(--jade-bright);
+    letter-spacing: .1em;
+  }
 
-    header .eyebrow {
-      margin: 0 0 8px;
-      color: #e6c995;
-      font-size: 14px;
-      letter-spacing: 0;
-    }
+  /* ---------- cards ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin: 18px 0; }
+  .card {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--paper-2);
+    padding: 18px 20px;
+  }
+  .card h4 { color: var(--gold); font-size: 16px; margin-bottom: 8px; }
+  .card p, .card li { font-size: 14px; color: var(--ink-dim); }
+  .card ul { padding-left: 18px; }
 
-    h1, h2, h3 {
-      margin: 0;
-      line-height: 1.22;
-      letter-spacing: 0;
-    }
+  /* ---------- tables ---------- */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th {
+    text-align: left; color: var(--gold-bright); font-weight: 600;
+    border-bottom: 2px solid var(--gold); padding: 8px 12px; background: var(--paper-3);
+  }
+  td { border-bottom: 1px solid var(--line-soft); padding: 8px 12px; color: var(--ink-dim); }
+  tr:hover td { background: rgba(216,169,78,.04); }
 
-    h1 {
-      max-width: 980px;
-      font-size: 42px;
-    }
+  /* ---------- screenshots ---------- */
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
+  .shot { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--paper-2); }
+  .shot img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover; background: #0c0a06; }
+  .shot figcaption { padding: 8px 14px; font-size: 13px; color: var(--ink-faint); border-top: 1px solid var(--line-soft); }
 
-    header p {
-      max-width: 920px;
-      margin: 16px 0 0;
-      color: #eadfcd;
-      font-size: 17px;
-    }
+  /* ---------- stat strip ---------- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 20px 0; }
+  .stat { border: 1px solid var(--line); border-radius: 12px; background: var(--paper-3); padding: 16px; text-align: center; }
+  .stat .num { font-size: 30px; color: var(--gold-bright); font-weight: 700; }
+  .stat .lbl { font-size: 13px; color: var(--ink-faint); margin-top: 2px; }
 
-    main {
-      width: min(1120px, calc(100% - 32px));
-      margin: 26px auto 56px;
-    }
-
-    section {
-      margin: 18px 0;
-      padding: 22px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-    }
-
-    section h2 {
-      margin-bottom: 12px;
-      font-size: 24px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-    }
-
-    .tile {
-      min-height: 126px;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      background: #fffdf8;
-    }
-
-    .tile strong {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 17px;
-    }
-
-    .tile p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .tag {
-      display: inline-block;
-      margin: 4px 6px 4px 0;
-      padding: 3px 9px;
-      border-radius: 999px;
-      background: #eee0ca;
-      color: #4e4137;
-      font-size: 13px;
-    }
-
-    .tag.green { background: #dcebdd; color: var(--green); }
-    .tag.blue { background: #dce8ef; color: var(--blue); }
-    .tag.red { background: #f0dedb; color: var(--red); }
-
-    .timeline {
-      display: grid;
-      gap: 12px;
-    }
-
-    .entry {
-      padding-left: 16px;
-      border-left: 4px solid var(--gold);
-    }
-
-    .entry time {
-      display: block;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .entry h3 {
-      margin: 2px 0 4px;
-      font-size: 18px;
-    }
-
-    .entry p {
-      margin: 0;
-      color: var(--muted);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      overflow: hidden;
-      border-radius: 6px;
-      background: #fffdf8;
-    }
-
-    th, td {
-      padding: 12px 10px;
-      border: 1px solid var(--line);
-      text-align: left;
-      vertical-align: top;
-      font-size: 14px;
-    }
-
-    th {
-      background: #eadcc8;
-      color: #352d25;
-    }
-
-    code {
-      padding: 2px 5px;
-      border-radius: 4px;
-      background: #efe5d6;
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 13px;
-    }
-
-    footer {
-      width: min(1120px, calc(100% - 32px));
-      margin: 0 auto 36px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    @media (max-width: 820px) {
-      h1 { font-size: 32px; }
-      .grid { grid-template-columns: 1fr; }
-      section { padding: 18px; }
-    }
-  </style>
+  .tag { display: inline-block; font-size: 12px; color: var(--jade-bright); border: 1px solid var(--jade); border-radius: 6px; padding: 1px 8px; margin-right: 6px; }
+  footer { margin-top: 70px; text-align: center; color: var(--ink-faint); font-size: 13px; border-top: 1px solid var(--line); padding-top: 24px; }
+</style>
 </head>
 <body>
-  <header>
-    <p class="eyebrow">毕业设计项目过程记录</p>
-    <h1>《霞客行》游戏 Demo 开发记录</h1>
-    <p>
-      本页用于答辩时展示项目从策划收束、MVP 锁定、插件环境搭建到功能实现的过程证据。
-      后续每完成一个系统切片，都在这里补充改动、截图、验证命令和演示入口。
-    </p>
-  </header>
 
-  <main>
-    <section>
-      <h2>项目定位</h2>
-      <div class="grid">
-        <div class="tile">
-          <strong>核心体验</strong>
-          <p>城镇接任务，小地图闯关，回合制战斗，通关后点亮大地图新区。</p>
-        </div>
-        <div class="tile">
-          <strong>Demo 范围</strong>
-          <p>先做一条完整闭环：青山驿站 → 黄山险径 → Boss → 解锁潭江渡口。</p>
-        </div>
-        <div class="tile">
-          <strong>技术路线</strong>
-          <p>UE 5.8、Paper2D/PaperZD 角色表现、UE MCP 自动化、C++/UMG 优先。</p>
-        </div>
-      </div>
-      <p>
-        <span class="tag green">MVP 已锁定</span>
-        <span class="tag blue">节点小地图</span>
-        <span class="tag blue">回合制战斗</span>
-        <span class="tag">背包交易</span>
-        <span class="tag">NPC 任务</span>
-      </p>
-    </section>
+<header class="hero">
+  <div class="game-en">GAME XXK · CARD RPG DEMO</div>
+  <h1>《青山行 · 卡牌志》</h1>
+  <div class="sub">一座青山镇 · 六位江湖客 · 一套卡牌构筑回合制战斗系统</div>
+  <div class="chips">
+    <span class="chip">UE <b>5.8</b> 程序化 UMG</span>
+    <span class="chip">Master V1 PSD <b>像素级还原</b></span>
+    <span class="chip">局外成长 × 局内卡牌</span>
+    <span class="chip">伙伴养成系统</span>
+    <span class="chip">自动化测试 <b>40+</b> 用例</span>
+  </div>
+</header>
 
-    <section>
-      <h2>当前改动记录</h2>
-      <div class="timeline">
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>读取策划案并锁定可玩 MVP</h3>
-          <p>从《霞客行》31 页工作版策划案和讨论记录中，收束为“城镇 Hub + 任务入口 + 杀戮尖塔式小地图 + 回合制战斗 + 大地图解锁”的单关闭环。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>迁移 TestMap 小地图原型参考资源</h3>
-          <p>将 TestMap UE 5.4 的 <code>Content/1Game</code> 原型内容保留原包路径迁入本项目，作为杀戮尖塔式小地图 UI 与图标参考；项目默认地图、GameMode 与 MVP 规则仍由新写系统负责，不把该原型蓝图作为运行时权威数据来源。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>装配 GameXXK 内容目录和基础地图</h3>
-          <p>通过 UE MCP 项目脚本创建 <code>/Game/GameXXK</code> 下的 UI、Maps、Characters、Data、Sprites 目录，生成 <code>L_Main</code> 与 <code>L_QingshanInn</code> 两张基础地图，并将默认启动地图指向 <code>L_Main</code>。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-02</time>
-          <h3>角色源 Sprite Sheet 入库</h3>
-          <p>将已选的深蓝高马尾主角、蓝衣随从和青绿商人 8 方向行走 sheet 复制到 <code>Content/GameXXK/Sprites/Generated</code>，并通过 UE MCP 导入为 <code>Texture2D</code> 资产，避免运行时依赖聊天软件缓存路径。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-02</time>
-          <h3>主角 8 向 Paper2D/PaperZD 行走资产</h3>
-          <p>分析深蓝高马尾 1024 行走图后，按 6 列 5 行切分，并用确定性水平镜像展开为 8 向 sheet；通过 UE MCP 创建 48 个 <code>PaperSprite</code>、8 个 <code>PaperFlipbook</code>、<code>AS_Hero_Flipbook</code>、<code>ABP_Hero_PaperZD</code> 和 <code>PZD_Hero_Walk_8Dir</code> directional 序列，城镇可编辑 <code>BP_HeroCharacter</code> 默认加载 <code>FB_Hero_Walk_South</code>，确保 Play 模式进入城镇时主角有可见 Paper2D 表现，并给后续 PaperZD 方向动画接入留下资产链路。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-02</time>
-          <h3>城镇主角 8 向行走表现切换</h3>
-          <p>为可编辑 <code>BP_HeroCharacter</code> 保留 8 向朝向状态和方向 Flipbook 表，WASD/方向键/轴输入按下、组合与释放时会切换到对应 <code>FB_Hero_Walk_North</code>、<code>East</code>、<code>SouthWest</code> 等资源；停止移动后保留最后朝向，混用 WASD 与方向键时单个按键释放不会丢失仍按住的方向，自动化覆盖按键组合、轴输入和资源路径。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-02</time>
-          <h3>青山驿站基础地形与光照</h3>
-          <p>参考 Ocean 项目的场景自动化方式，但不引入 Water 或地图生成；新增 <code>GameXXKEditor</code> 固定 Landscape 自动化，在 <code>L_QingshanInn</code> 中生成 16 组件基础地形，并放置道路、边界、地牢入口标记、<code>PlayerStart</code>、Directional Light、SkyLight、SkyAtmosphere 和雾效，写入地图 GameMode override。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-02</time>
-          <h3>城镇出口 F 交互</h3>
-          <p>新增 <code>AGameXXKTownExitActor</code>，放入青山驿站地牢门位置；玩家走近后按 <code>F</code>，未接任务时保持城镇状态并提示先接任务，接任务后进入固定小地图流程。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-02</time>
-          <h3>真实 UMG 主菜单与大地图入口</h3>
-          <p>新增 <code>UGameXXKPlayableRootWidget</code>，由 <code>AGameXXKMVPHUD</code> 在 Play 模式创建并加入视口；根控件提供 Start/Continue、青山驿站和潭江渡口按钮，直接调用 MVP Subsystem 而不是 Canvas HUD 命令。自动化 <code>GameXXK.MVP.PIE.MainMenuContinueWorldMap</code> 覆盖真实 UMG 入口、未解锁区域禁用、Start 进入大地图和点击青山进入城镇。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-02</time>
-          <h3>UMG 根控件跑完整 MVP 循环</h3>
-          <p>新增 <code>GameXXK.MVP.PIE.PlayableRootCommandsDriveFullLoop</code>，把真实 UMG 根控件从主菜单/大地图扩展到城镇接任务、补给交易、小地图节点、战斗失败回城、补给重试、事件、营地、Boss 通关、潭江解锁和存档恢复；同时抽出 <code>GameXXKMVPCommandRouter</code>，让 Canvas HUD 与 UMG 共享同一套可见命令和执行逻辑，减少演示入口分叉。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-02</time>
-          <h3>试玩脚本补齐失败后补给证据</h3>
-          <p>新增 <code>GameXXK.MVP.PIE.PlayableRootPostFailureResupplyRetry</code>，专门验证失败回城后真实执行买药、受伤用药、检查金币/库存/HP，再重试小地图并通关 Boss；<code>scripts/gamexxk_mvp_playtest.py</code> 新增 <code>flow_evidence</code> 和 <code>flow_coverage</code>，会解析 Unreal Automation 成功测试并在报告中标明每个关键流程由哪些自动化用例证明。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>补齐 Play 模式原生可试玩入口</h3>
-          <p>新增 MVP GameMode、PlayerController 与可点击 HUD，把主菜单、大地图选城镇、城镇任务/交易/补给、小地图节点、战斗胜负和 Boss 解锁串成编辑器 Play 模式可操作闭环；试玩脚本新增 PlayableShell 自动化覆盖。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>Playable HUD 自动存档</h3>
-          <p>将 Play 模式 HUD 的 Start、选城镇、接任务、交易、小地图节点、战斗胜负等可演示命令接入 SaveGame 写入；Boss 通关后重新读取同一 slot 可恢复任务完成状态和潭江区域解锁。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>打通城镇 NPC 的 F 键交互</h3>
-          <p>为城镇 NPC 增加交互范围：玩家进入范围后自动聚焦，按 F 可接任务并激活跟随，商人 NPC 可执行 MVP 一键购买补给；对应自动化覆盖 overlap 聚焦、离开清焦点和规则状态变化。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>城镇 F 交互自动存档</h3>
-          <p>任务 NPC 和商人 NPC 的真实 F 交互成功后写入默认 SaveGame slot；自动化验证接任务后可重载出 Accepted 状态与跟随状态，买药后可重载出已扣除金币。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>接入插件底座</h3>
-          <p>启用 Paper2D、PaperZD、ModelContextProtocol、MCPClientToolset、AllToolsets、EditorScriptingUtilities。PaperZD 使用 UE 5.8 已安装的 Marketplace 插件；编辑器自动化统一改走 UE 5.8 内置 MCP。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>建立自动化与答辩记录</h3>
-          <p>加入 GameXXK 专用 <code>scripts/ue_mcp_client.py</code>、<code>scripts/ue_mcp_smoke.py</code>、<code>scripts/ue_tdd_pipeline.py</code> 和项目 MCP Toolset，本页作为后续答辩记录主页。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>首次插件编译验证</h3>
-          <p><code>GameXXKEditor</code> 冷编译通过，Paper2D、PaperZD 和 UE MCP 插件可由 UBT/UHT 正常加载。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>MVP 逻辑闭环与试玩脚本</h3>
-          <p>新增 <code>UGameXXKMVPRules</code> 和 <code>GameXXK.MVP.FullFlow</code> 自动化测试，覆盖主菜单、大地图、城镇任务、跟随、交易、小地图节点、速度排序战斗、失败回城、补给重试、Boss 解锁和存档恢复；<code>scripts/gamexxk_mvp_playtest.py</code> 可一键运行该流程。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>UE MCP 自动化护栏收紧</h3>
-          <p><code>ue_mcp_smoke.py</code> 将项目自定义 <code>GameXXKTDDToolset</code> 纳入必检；<code>ue_tdd_pipeline.py --no-launch</code> 改为连接已运行的 MCP 编辑器，避免空跑误判。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>城镇交互 Shell</h3>
-          <p>新增并验证可编辑 <code>BP_HeroCharacter</code>、<code>UGameXXKInteractionComponent</code>、<code>AGameXXKTownNpcActor</code>，覆盖 WASD/方向键自由移动、<code>F</code> 交互、任务 NPC、商人 NPC 和跟随 NPC 的 C++ 行为边界。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>UMG 连接层</h3>
-          <p>新增 <code>UGameXXKMVPSubsystem</code> 与主菜单、大地图、任务弹窗、背包、交易、角色面板、小地图、战斗等 C++ Widget Base，验证 UI 按钮可驱动现有 MVP 规则 API。</p>
-        </article>
-        <article class="entry">
-          <time>2026-07-01</time>
-          <h3>MVP SaveGame 持久化</h3>
-          <p>新增 <code>UGameXXKSaveGame</code> 与 Subsystem 存读接口，使用真实 SaveGame slot 持久化解锁区域、任务状态、等级、当前 XP 和金币；<code>GameXXK.MVP.SaveGame.SlotRoundTrip</code> 覆盖写入、读取、load-or-create 和背包/装备不持久化边界。</p>
-        </article>
-      </div>
-    </section>
+<div class="wrap">
 
-    <section>
-      <h2>MVP 验收标准</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>模块</th>
-            <th>最低可演示标准</th>
-            <th>当前状态</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>大地图</td>
-            <td>3 个区域，未解锁区域置暗，通关后新区变亮。</td>
-            <td><span class="tag blue">真实 UMG 入口已测，后续补美术布局</span></td>
-          </tr>
-          <tr>
-            <td>城镇</td>
-            <td>青山驿站可走动，NPC 可对话，商人可交易。</td>
-            <td><span class="tag blue">地形与角色已装配，真实 UMG 命令链已测</span></td>
-          </tr>
-          <tr>
-            <td>小地图</td>
-            <td>固定 seed 节点图，包含普通战斗、营地、事件、Boss。</td>
-            <td><span class="tag blue">真实 UMG 命令链已测，表现布局待美化</span></td>
-          </tr>
-          <tr>
-            <td>战斗</td>
-            <td>速度排序、普攻、技能、防御、道具、胜败结算。</td>
-            <td><span class="tag blue">真实 UMG 命令链已测，战斗表现待美化</span></td>
-          </tr>
-          <tr>
-            <td>插件环境</td>
-            <td>项目可加载 PaperZD 和 UE MCP 三件套，编辑器可由 MCP 脚本连接。</td>
-            <td><span class="tag green">已编译并通过 MCP smoke</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+<!-- ================= 一、项目概述 ================= -->
+<section>
+  <h2>一、项目概述</h2>
+  <p class="lead">
+    《青山行·卡牌志》是一款基于 <b>Unreal Engine 5.8</b> 开发的<b>卡牌构筑 + 回合制战斗 + 城镇探索</b>的单人演示游戏。
+    玩家扮演初入青山镇的旅行者，在古镇中与六位江湖人物结交，招募伙伴、配置装备、构筑卡组，
+    沿路线地图挑战事件与强敌，在一次次战斗中验证并深化自己的构筑，形成完整的
+    <b>「战斗赚取 → 商店消费 → 装备强化 → 伙伴养成 → 再战更强」</b>成长闭环。
+  </p>
+  <div class="stats">
+    <div class="stat"><div class="num">1</div><div class="lbl">主城 · 青山镇</div></div>
+    <div class="stat"><div class="num">6</div><div class="lbl">可招募伙伴</div></div>
+    <div class="stat"><div class="num">18</div><div class="lbl">装备套装效果</div></div>
+    <div class="stat"><div class="num">200</div><div class="lbl">背包格位</div></div>
+    <div class="stat"><div class="num">8</div><div class="lbl">方向纸片动画</div></div>
+    <div class="stat"><div class="num">10000</div><div class="lbl">初始金币</div></div>
+  </div>
+</section>
 
-    <section>
-      <h2>验证记录</h2>
-      <p>每次提交前补充最新验证命令和结果。当前建议验证入口：</p>
+<!-- ================= 二、游戏流程 ================= -->
+<section>
+  <h2>二、游戏流程</h2>
+  <p>游戏的全部内容围绕「城镇 — 路线 — 战斗」三大空间展开，主菜单点击「开始游戏」后<b>直接进入青山镇</b>，无需二次跳转：</p>
+  <div class="flow">
+    <div class="node main"><b>主菜单</b><span>开始游戏 / 读取</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>青山镇</b><span>任务 · 商店 · 招募</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>路线地图</b><span>选择事件/商人/战斗</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>卡牌战斗</b><span>意图预判 · 地形运用</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>结算</b><span>奖励 · 装备 · 金币</span></div>
+    <div class="arrow">→</div>
+    <div class="node main"><b>返回城镇</b><span>强化循环</span></div>
+    <div class="loop">↺ 成长循环：战斗赚取 → 商店消费 → 装备/伙伴强化 → 再战更强</div>
+  </div>
+
+  <h3>各空间职责</h3>
+  <table>
+    <tr><th>空间</th><th>玩法内容</th></tr>
+    <tr><td><b>主菜单（L_Main）</b></td><td>老虎主题插画背景；开始游戏 / 读取存档；点击即开局</td></tr>
+    <tr><td><b>青山镇（L_Qingshan_AsianVillage_Demo）</b></td><td>自由行走探索；六位 NPC 各自拥有独立的 idle 立绘第一帧渲染；与 NPC 对话可接受任务、打开商店、招募伙伴</td></tr>
+    <tr><td><b>路线地图（L_RouteMap）</b></td><td>选择前进路线；事件、宝箱、商人、营地均为路线图上的<b>模态界面</b>，选择后直接进入战斗或结算</td></tr>
+    <tr><td><b>卡牌战斗（路线图内触发）</b></td><td>回合制卡牌战斗：能量管理、意图预判、地形加成、状态效果</td></tr>
+    <tr><td><b>营地（L_RouteCamp）</b></td><td>冒险途中休整点，调整卡组与装备</td></tr>
+  </table>
+
+  <h3>与 NPC 的三种互动</h3>
+  <div class="grid">
+    <div class="card">
+      <h4>🏮 任务（土司首领）</h4>
+      <p>接受主线任务推进冒险进程，解锁路线地图与后续内容。</p>
+    </div>
+    <div class="card">
+      <h4>💰 商店（宋金宝）</h4>
+      <p>开放商店窗口：<b>装备包</b>（按套装批量开出装备，含武器图标）、<b>伙伴包</b>（招募新伙伴）。购买结果以「背包格子 + 中文说明 + 可悬停查看属性」的窗口呈现，确认按钮关闭。</p>
+    </div>
+    <div class="card">
+      <h4>🤝 招募（其余四位）</h4>
+      <p>与可加入的伙伴对话将其<b>收入队伍</b>，成为卡牌战斗中的可出战单位，进入伙伴养成体系。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 三、功能清单 ================= -->
+<section>
+  <h2>三、功能清单</h2>
+  <table>
+    <tr><th>模块</th><th>功能点</th></tr>
+    <tr><td rowspan="3">主菜单</td><td>老虎主题插画背景（00_TigerHero_MainMenu_Illustration 实装）</td></tr>
+    <tr><td>开始游戏直达青山镇（去除二次地图跳转）</td></tr>
+    <tr><td>初始金币 10000，初始伙伴 2 名，开局直接可切换</td></tr>
+    <tr><td rowspan="5">主角背包</td><td>5 页签（装备 / 道具 / 卡组 / 伙伴 / 设置）</td></tr>
+    <tr><td>200 格仓库，4×5 网格排布 + 滚动条</td></tr>
+    <tr><td>装备与道具混仓展示，选中格高亮 + 选择墨迹样式</td></tr>
+    <tr><td>套装 2/4/6 件效果展示，达成后标注「（已激活）」</td></tr>
+    <tr><td>背包装备与装备槽对比：上升属性红色、下降属性绿色</td></tr>
+    <tr><td rowspan="4">伙伴背包</td><td>与主角背包一致的卡片布局与选中风格（003_tab_1 页签、纸片 tooltip）</td></tr>
+    <tr><td>属性 / 装备 / 卡组 三页签；伙伴卡牌 tooltip 与主角同风格</td></tr>
+    <tr><td>装备槽随伙伴选择跟随切换</td></tr>
+    <tr><td>遣散：自动卸下装备回背包；伙伴满员时伙伴包置灰；<b>最后一个伙伴不可遣散</b></td></tr>
+    <tr><td rowspan="4">商店</td><td>Master V1 页 07 布局还原，商品 4+3 排布</td></tr>
+    <tr><td>装备包图标使用对应套装 <b>&lt;set&gt;_weapon</b> 命名武器图</td></tr>
+    <tr><td>购买结果窗口：中文文案 + 卡片插画/装备格子 + 悬停 tooltip + 居中确认按钮</td></tr>
+    <tr><td>满员 / 仓库满时对应包自动置灰</td></tr>
+    <tr><td rowspan="3">战斗</td><td>卡面与局外统一：T_MasterV2_CardFrame 卡底、名字顶部粗体、肖像不越界</td></tr>
+    <tr><td>手牌 1.5× 放大（137×190 → 206×285），移除底部信息条</td></tr>
+    <tr><td>敌方意图揭示、地形加成、状态系统</td></tr>
+    <tr><td>美术</td><td>城内六名 NPC 各用独立 idle 切图第一帧（512×512，按角色高度等比保持屏幕尺寸）</td></tr>
+  </table>
+</section>
+
+<!-- ================= 四、可玩性 ================= -->
+<section>
+  <h2>四、可玩性分析</h2>
+  <p class="lead">
+    演示版以「<b>一条可完整循环的成长链路</b>」为目标：从点击开始游戏到打一场完整的卡牌战斗，
+    再到回城强化，每一步都有实时的界面与数值反馈，玩家能清晰感知「为什么变强了」。
+  </p>
+  <div class="grid">
+    <div class="card">
+      <h4>完整性：全流程可玩</h4>
       <ul>
-        <li><code>python scripts/gamexxk_mvp_playtest.py</code>：编译并运行 <code>GameXXK.MVP</code> 自动化试玩流程。</li>
-        <li><code>python scripts/gamexxk_content_assembly_check.py</code>：通过 UE MCP 验证 <code>/Game/GameXXK</code> 内容目录、基础地图和默认地图配置。</li>
-        <li><code>python scripts/gamexxk_town_scene_check.py</code>：通过 UE MCP 验证青山驿站固定 Landscape 地形、边界、入口交互 Actor、<code>PlayerStart</code>、基础光照、无 Water Actor 和地图 GameMode。</li>
-        <li><code>python scripts/gamexxk_sprite_source_check.py</code>：通过 UE MCP 验证角色源 sheet PNG 和导入的 <code>Texture2D</code> 资产。</li>
-        <li><code>python scripts/gamexxk_character_visual_check.py</code>：通过 UE MCP 验证主角 8 向 walk <code>PaperSprite</code>、<code>PaperFlipbook</code>、source UV、帧顺序和默认城镇 flipbook。</li>
-        <li><code>python scripts/gamexxk_paperzd_character_check.py</code>：通过 UE MCP 验证主角 PaperZD <code>AnimationSource_Flipbook</code>、<code>AnimBP</code> 和 8 向 directional walk sequence。</li>
-        <li><code>python scripts/ue_tdd_pipeline.py --pie-duration 5</code>：启动编辑器、等待 UE MCP、运行 PIE 并收集 <code>[TDD]</code> 日志。</li>
-        <li><code>python scripts/ue_mcp_smoke.py</code>：连接正在运行的 UE MCP server，验证 meta tools、Toolsets、项目 <code>GameXXKTDDToolset</code> 和 GameFeatureData 配置。</li>
-        <li><code>git diff --check</code>：提交前检查空白和补丁格式。</li>
+        <li>主菜单 → 城镇 → 互动 → 路线 → 战斗 → 结算 → 回城，<b>无断点</b></li>
+        <li>所有关键交互都有明确反馈：购买成功弹结果窗、满员置灰、遣散自动卸装</li>
+        <li>40+ 自动化测试用例守护流程，核心玩法套件全绿</li>
       </ul>
-    </section>
-  </main>
+    </div>
+    <div class="card">
+      <h4>信息密度：贴近设计稿</h4>
+      <ul>
+        <li>UI 按 Master V1 PSD <b>页面级坐标还原</b>（页 02/03/07/18）</li>
+        <li>tooltip 纸片、选择墨迹、关闭墨迹等视觉语言全局统一</li>
+        <li>数值对比用「红升绿降」双色块即时呈现差异</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>操作手感：一致性与细节</h4>
+      <ul>
+        <li>局内局外卡面统一，选中风格一致，学习成本低</li>
+        <li>伙伴切换、装备跟随、标签页互斥，状态不串扰</li>
+        <li>手牌放大 1.5× 保证可读性，肖像裁切不越界</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>数值循环：有深度的构筑空间</h4>
+      <ul>
+        <li>18 个装备套装 × 2/4/6 件激活阈值，构成装备构筑目标</li>
+        <li>六名伙伴各具定位（统御·护阵 / 谋略·情报 / 术法·灼印 / 医术·地志 / 市井·策应 / 山野·灵引）</li>
+        <li>遣散释放成本 → 鼓励尝试不同伙伴组合</li>
+      </ul>
+    </div>
+  </div>
+</section>
 
-  <footer>
-    《霞客行》GameXXK 项目记录页。此文件随项目提交，用于答辩过程展示和后续开发追踪。
-  </footer>
+<!-- ================= 五、局内成长 ================= -->
+<section>
+  <h2>五、局内成长系统（卡牌战斗）</h2>
+  <p>战斗是「<b>把构筑兑现为操作</b>」的舞台。玩家与至多三名出站角色共享一张卡组，围绕四个核心机制展开攻防：</p>
+  <div class="grid">
+    <div class="card">
+      <h4>⚡ 资源双轨：共享能量 + 个人法力</h4>
+      <ul>
+        <li>卡牌费用分为<b>共享能量</b>与<b>角色法力</b>两类，限制单回合动作数量</li>
+        <li>「充能」「回蓝」类卡牌与效果形成资源运营层</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>🎯 意图预判</h4>
+      <ul>
+        <li>敌人回合前<b>揭示行动意图</b>，玩家据其分配护甲、嘲讽与击杀优先级</li>
+        <li>「耳目密报」等卡牌可额外洞悉多回合意图，信息差即收益</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>🌲 地形加成</h4>
+      <ul>
+        <li>战场存在 <b>断崖 / 村落 / 森林 / 洞穴</b>等地形</li>
+        <li>部分卡牌在特定地形获得额外效果（如「石门守势」在断崖村落额外护甲）</li>
+        <li>「地志摹图」可把地形优势翻倍，考验卡组与战场匹配度</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>🔥 状态系统</h4>
+      <ul>
+        <li>增益：动量 / 敏捷 / 地形加成翻倍等</li>
+        <li>减益：灼烧 / 中毒 / 脆弱 / 标记</li>
+        <li>净化：解毒 / 驱散持续伤害，治疗与护甲构成防御端选择</li>
+      </ul>
+    </div>
+  </div>
+  <h3>角色定位示例（伙伴初始卡池）</h3>
+  <table>
+    <tr><th>伙伴</th><th>定位</th><th>代表卡牌</th></tr>
+    <tr><td>土司首领</td><td>统御 · 护阵</td><td>寨主号令（群体动量+护甲）、石门守势（地形护甲）、盟寨誓约（群体护甲回蓝）</td></tr>
+    <tr><td>宋金宝</td><td>谋略 · 情报</td><td>耳目密报（揭示意图+标记+抽卡）、一诺千金（全卡组减费）</td></tr>
+    <tr><td>月白</td><td>术法 · 灼印</td><td>青焰点灯（灼烧+标记）、月白照夜（标记后爆发）、山河残图（群体护甲回蓝+意图）</td></tr>
+    <tr><td>周光祖</td><td>医术 · 地志</td><td>黄山敷治（地形大额治疗）、岩粉封脉（脆弱+毒）、地志摹图（地形翻倍）</td></tr>
+    <tr><td>金贵</td><td>市井 · 策应</td><td>市井耳目（群体标记+抽卡）、巧言周旋（脆弱+群体护甲）、杂役筹备（过牌回蓝）</td></tr>
+    <tr><td>琼么儿</td><td>山野 · 灵引</td><td>藤桥飞渡（地形护甲）、蛊雾迷踪（叠毒+标记）、山歌唤灵（群体治疗+敏捷）</td></tr>
+  </table>
+</section>
+
+<!-- ================= 六、局外成长 ================= -->
+<section>
+  <h2>六、局外成长系统（背包 · 装备 · 经济）</h2>
+  <p>局外成长把战斗收益转化为<b>可持有的资产</b>，是驱动玩家持续游玩的引擎：</p>
+  <div class="grid">
+    <div class="card">
+      <h4>💰 经济循环</h4>
+      <ul>
+        <li>初始金币 <b>10000</b>，战斗与事件产出金币</li>
+        <li>商店以<b>装备包 / 伙伴包</b>两种商品回收金币</li>
+        <li>装备包按套装开出，<b>装备包图标直接使用套装武器图</b>，所见即所得</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>🎒 背包管理</h4>
+      <ul>
+        <li>200 格大仓库，装备/道具混仓，4×5 网格 + 滚动条</li>
+        <li>选中格高亮 + 墨迹选中样式，纸片 tooltip 悬停即看属性</li>
+        <li>仓库满时商店对应商品置灰，杜绝「买了放不下」</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>⚔️ 套装构筑</h4>
+      <ul>
+        <li>18 个装备套装，集齐 <b>2 / 4 / 6</b> 件逐级激活更强效果</li>
+        <li>背包与装备槽均展示套装进度，达成自动标注「（已激活）」</li>
+        <li>背包装备与已穿戴对比：<b>升红降绿</b>直观呈现收益</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>🛡️ 装备槽联动</h4>
+      <ul>
+        <li>主角与伙伴拥有各自的装备槽，伙伴装备槽<b>随伙伴切换跟随</b></li>
+        <li>遣散伙伴时装备<b>自动卸下回背包</b>，资产不流失</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 七、伙伴养成 ================= -->
+<section>
+  <h2>七、伙伴养成系统</h2>
+  <p class="lead">
+    伙伴养成是局外成长的核心分支：<b>招募 → 定位认知 → 装备武装 → 组队出战 → 遣散换血</b>，
+    与主角背包共用同一套视觉与交互语言，学习成本为零。
+  </p>
+  <div class="grid">
+    <div class="card">
+      <h4>🪪 招募与命名</h4>
+      <ul>
+        <li>城内与可加入 NPC 对话即招募入队</li>
+        <li>新游戏自带 <b>2 名起始伙伴</b>，开局即可体验切换</li>
+        <li>伙伴拥有<b>确定性生成的中文名</b>与独立定位描述</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>📋 三页签养成界面</h4>
+      <ul>
+        <li><b>属性</b>：立绘头顶显示姓名，属性页签展示数值</li>
+        <li><b>装备</b>：装备槽跟随选中伙伴，与背包 1:1 对照</li>
+        <li><b>卡组</b>：查看/管理伙伴初始卡池与构筑</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>🃏 卡牌联动</h4>
+      <ul>
+        <li>伙伴卡牌 tooltip 与主角<b>同款纸片底图 + 完整效果描述</b></li>
+        <li>局内卡面与局外统一：同一 CardFrame、同一肖像裁切规范</li>
+        <li>伙伴初始卡池决定其在战斗中的定位与玩法</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>⚖️ 解散规则</h4>
+      <ul>
+        <li>遣散不设人数上限，随时可遣散</li>
+        <li>遣散<b>自动卸装</b>，装备回归背包</li>
+        <li>保留至少 1 名伙伴：<b>最后一个伙伴不可遣散</b>，保证队伍永远可用</li>
+        <li>满员时商店伙伴包置灰，避免无效消费</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 八、技术实现 ================= -->
+<section>
+  <h2>八、技术实现亮点</h2>
+  <div class="grid">
+    <div class="card">
+      <h4>🧩 程序化 UMG</h4>
+      <ul>
+        <li>所有主界面（主菜单 / 城镇 HUD / 背包 / 伙伴背包 / 商店 / 战斗面板）均由 <b>C++ 构建程序化布局</b></li>
+        <li>FrameCanvas 与 RootCanvas 同级定位（0,0）1920×1080，内容使用<b>绝对屏幕坐标</b>直接映射 PSD 设计稿</li>
+        <li>坐标系与 PSD JSON 页坐标对齐，改布局 = 改坐标常量，可回归测试</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>🎨 PSD 驱动工作流</h4>
+      <ul>
+        <li>从 Master V1 PSD 导出页级 JSON 坐标（页 02/03/07/18）作为唯一布局真相</li>
+        <li>批准纹理（PanelLarge / tab / ItemSlot 纸片 / CardFrame / SelectionInk 等）统一入库</li>
+        <li>脚本化导入管线：<code>gamexxk_import_*.py</code> 通过 MCP 在编辑器内执行</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>🤖 MCP 自动化</h4>
+      <ul>
+        <li>编辑器内嵌 MCP 服务（端口 18765），脚本可导入资产、探查运行时、批量修改资产</li>
+        <li>本轮通过 MCP 完成了主菜单背景、6 张 NPC 第一帧的导入与精灵/动画书重定向</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>🧪 测试体系</h4>
+      <ul>
+        <li>8 个自动化测试套件、40+ 用例：伙伴招募、商店规则、MVP 流程、UI 布局、卡牌战斗</li>
+        <li>通过 UnrealEditor-Cmd <code>Automation RunTests</code> 无头执行，回归守护</li>
+        <li>本轮新增：NPC 精灵/动画书链路验证脚本，资产级校验</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 九、实机截图 ================= -->
+<section>
+  <h2>九、实机截图</h2>
+  <div class="shots">
+    <figure class="shot">
+      <img src="../../outputs/UI_PSD/Candidates/00_TigerHero_MainMenu_Illustration.png" alt="主菜单背景">
+      <figcaption>主菜单背景：00_TigerHero_MainMenu_Illustration（实装 T_MainMenuCover）</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="../../outputs/NpcCheck/QiongMeiEr.png" alt="城镇 NPC 渲染">
+      <figcaption>青山镇 NPC 实机渲染（新 idle 第一帧）</figcaption>
+    </figure>
+  </div>
+  <p style="font-size:13px; color:var(--ink-faint);">注：演示现场可启动游戏实机展示主菜单、城镇、背包、商店与战斗界面。</p>
+</section>
+
+</div>
+
+<footer>
+  《青山行 · 卡牌志》答辩演示文档 · Unreal Engine 5.8 · GameXXK 项目 · 2026-08-07
+</footer>
+
 </body>
 </html>
