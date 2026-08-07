@@ -174,6 +174,18 @@ FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::Resol
 	return MakeClip(ClipAssetId, PlaybackRate);
 }
 
+FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
+	const FName RuntimeUnitId,
+	const FName EnemyDefinitionId,
+	const bool bEnemy,
+	const EGameXXKBattleAnimationAction Action)
+{
+	const FName AuthoritativeUnitId = bEnemy && !EnemyDefinitionId.IsNone()
+		? EnemyDefinitionId
+		: RuntimeUnitId;
+	return ResolveClip(AuthoritativeUnitId, bEnemy, Action);
+}
+
 FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::ResolveGenericClip(
 	const EGameXXKBattleAnimationAction Action)
 {

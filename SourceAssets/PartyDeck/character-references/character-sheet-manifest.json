@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "purpose": "Read-only production contract for the twelve new PartyDeck eight-direction character packages. It records source provenance and destination isolation only; it neither generates art nor imports Unreal assets.",
+  "approved_party_rule": "Hero + one permanent companion + one temporary task NPC at most. The hero package is retained read-only; this manifest therefore has twelve production targets (six permanent-role archetypes plus six named task NPCs).",
+  "source_presentation": {
+    "pptx_path": "D:/360Downloads/B4_01 (1).pptx",
+    "pptx_sha256": "7be0449668c8bd68bafd9b0879031c5c605cf9f0cc58d7139d23ee39d65bc122",
+    "note": "PPT media members are identity references only. Do not edit the PPTX, and preserve the named-NPC face and costume silhouette rather than regenerating a different identity."
+  },
+  "atlas_contract": {
+    "cell_pixels": [171, 205],
+    "idle_atlas_pixels": [171, 1640],
+    "walk_atlas_pixels": [1026, 1640],
+    "walk_frames_per_direction": 6,
+    "walk_fps": 8,
+    "idle_fps": 1,
+    "row_order": ["S", "SW", "W", "NW", "N", "NE", "E", "SE"],
+    "engine_row_order": ["South", "SouthWest", "West", "NorthWest", "North", "NorthEast", "East", "SouthEast"],
+    "pivot": "bottom-center",
+    "pixels_per_unreal_unit": 1,
+    "texture_settings": {
+      "filter": "nearest",
+      "mipmaps": "none"
+    },
+    "direct_diagonal_art_required": true,
+    "forbidden_shortcuts": [
+      "Do not mirror cardinal rows to manufacture NE, SE, NW, or SW.",
+      "Do not use one walk frame as an idle atlas.",
+      "Do not put labels, card frames, logos, names, or UI glyphs into any atlas cell.",
+      "Do not write to Hero, Follower, Merchant, enemy, placed-level, or camera packages."
+    ]
+  },
+  "read_only_templates": [
+    {
+      "id": "Hero.Player",
+      "display_name": "主角",
+      "status": "existing_reusable_read_only",
+      "idle_atlas": "Content/GameXXK/Sprites/Generated/hero_deepblue_high_ponytail_idle_8dir.png",
+      "idle_atlas_sha256": "ce93b82239f1846f45144cffbd48605f26faf6cf99310627766b374ae1e3d92a",
+      "walk_atlas": "Content/GameXXK/Sprites/Generated/hero_deepblue_high_ponytail_walk_8dir_expanded.png",
+      "walk_atlas_sha256": "e90a5629778bd2b8c482293065bd00123906c3da256a48f31cdcc1d9975a7467",
+      "reference_sources": [
+        {
+          "kind": "ppt_embedded_media",
+          "member": "ppt/media/image31.jpeg",
+          "slide": 5,
+          "sha256": "c3e22004c2902552a32303c0455380a9f8ff61e6d3e8c1c81b7b2e7b1c6de871",
+          "pixels": [483, 758]
+        },
+        {
+          "kind": "psd_clean_cutout",
+          "path": "C:/Users/shxuw/Downloads/nw-studio-nwueball-https-github-com/nw-studio-nwueball-https-github-com/work/psd_rebuild/clean_assets_v2/001.png",
+          "sha256": "e0efe919f19fbc8f5bcbe2c3075d168557899c5182804bf772c219d9301970e7",
+          "pixels": [704, 1408]
+        }
+      ],
+      "usage": "Pose, baseline, scale, and style reference only. Never overwrite this package or regenerate the hero identity."
+    },
+    {
+      "id": "Legacy.Follower.BlueScholar",
+      "status": "existing_reusable_read_only_template_only",
+      "idle_atlas": "Content/GameXXK/Sprites/Generated/follower_blue_scholar_idle_8dir.png",
+      "walk_atlas": "Content/GameXXK/Sprites/Generated/follower_blue_scholar_walk_8dir_expanded.png",
+      "usage": "Legacy town NPC pose/pivot template only; it is not any new permanent companion role."
+    },
+    {
+      "id": "Legacy.Merchant.TealRobed",
+      "status": "existing_reusable_read_only_template_only",
+      "idle_atlas": "Content/GameXXK/Sprites/Generated/merchant_teal_robed_idle_8dir.png",
+      "walk_atlas": "Content/GameXXK/Sprites/Generated/merchant_teal_robed_walk_8dir_expanded.png",
+      "usage": "Legacy town NPC pose/pivot template only; it is not a named task NPC."
+    }
+  ],
+  "production_targets": [
+    {
+      "id": "Npc.TusiChief",
+      "display_name": "土司首领",
+      "kind": "task_npc",
+      "identity_policy": "locked_existing_identity",
+      "production_state": "reviewed_ready_for_import",
+      "reference_sources": [
+        {
+          "kind": "ppt_embedded_media",
+          "member": "ppt/media/image38.jpeg",
+          "slide": 7,
+          "sha256": "ddaa1e5d9e5ba6c6edfad2937e477fe53909a37c8d14d5d78ae1c86f0a219e17",
+          "pixels": [881, 565]
+        },
+        {
+          "kind": "psd_clean_cutout",
+          "path": "C:/Users/shxuw/Downloads/nw-studio-nwueball-https-github-com/nw-studio-nwueball-https-github-com/work/psd_rebuild/clean_assets_v2/065.png",
+          "sha256": "29af3b326d171b67f5621249faa4c3eeb148a6fbcc81041d336f550dbb79a8ce",
+          "pixels": [320, 304],
+          "identity_note": "This cutout is 土司首领. Do not retain an obsolete 司青娘 label."
+        }
+      ],
+      "output": {
+        "idle_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_tusi_chief_idle_8dir.png",
+        "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_tusi_chief_walk_8dir.png",
+        "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck",
+        "character_root": "/Game/GameXXK/Characters/PartyDeckNPC/TusiChief"
+      }
+    },
+    {
+      "id": "Npc.SongJinBao",
+      "display_name": "宋金宝",
+      "kind": "task_npc",
+      "identity_policy": "locked_existing_identity",
+      "production_state": "reviewed_ready_for_import",
+      "reference_sources": [
+        {
+          "kind": "ppt_embedded_media",
+          "member": "ppt/media/image37.jpeg",
+          "slide": 7,
+          "sha256": "64206e9b8909c46d4aef209ab8abf0b8d2302f5470351bb2ec1e66a9a1d53cbd",
+          "pixels": [954, 611]
+        }
+      ],
+      "output": {
+        "idle_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_song_jin_bao_idle_8dir.png",
+        "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_song_jin_bao_walk_8dir.png",
+        "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck",
+        "character_root": "/Game/GameXXK/Characters/PartyDeckNPC/SongJinBao"
+      }
+    },
+    {
+      "id": "Npc.YueBai",
+      "display_name": "月白",
+      "kind": "task_npc",
+      "identity_policy": "locked_existing_identity",
+      "production_state": "reviewed_ready_for_import",
+      "reference_sources": [
+        {
+          "kind": "ppt_embedded_media",
+          "member": "ppt/media/image35.jpeg",
+          "slide": 6,
+          "sha256": "eac69e6e4dcd1e93b194738dae9f3be9792ed49436621cc76deec5d547bf1cb9",
+          "pixels": [1032, 720]
+        },
+        {
+          "kind": "psd_clean_cutout",
+          "path": "C:/Users/shxuw/Downloads/nw-studio-nwueball-https-github-com/nw-studio-nwueball-https-github-com/work/psd_rebuild/clean_assets_v2/064.png",
+          "sha256": "5bdc7c284ae1f0469418eafab6a6d8a3714cc0ca75a7964f73474c772a956ddb",
+          "pixels": [257, 304]
+        }
+      ],
+      "output": {
+        "idle_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_yue_bai_idle_8dir.png",
+        "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_yue_bai_walk_8dir.png",
+        "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck",
+        "character_root": "/Game/GameXXK/Characters/PartyDeckNPC/YueBai"
+      }
+    },
+    {
+      "id": "Npc.ZhouGuangZu",
+      "display_name": "周光祖",
+      "kind": "task_npc",
+      "identity_policy": "locked_existing_identity",
+      "production_state": "reviewed_ready_for_import",
+      "reference_sources": [
+        {
+          "kind": "ppt_embedded_media",
+          "member": "ppt/media/image32.jpeg",
+          "slide": 5,
+          "sha256": "41d661961a954fd1c497ee6dc90190b4b0b2c5511addc3c7243d586655b0d3b5",
+          "pixels": [833, 730]
+        },
+        {
+          "kind": "psd_clean_cutout",
+          "path": "C:/Users/shxuw/Downloads/nw-studio-nwueball-https-github-com/nw-studio-nwueball-https-github-com/work/psd_rebuild/clean_assets_v2/063.png",
+          "sha256": "237bfe3fa5198edc786fcae24a3b9b16615acc6c6abffb614ed9a2b62b2c2540",
+          "pixels": [292, 304]
+        }
+      ],
+      "output": {
+        "idle_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_zhou_guang_zu_idle_8dir.png",
+        "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_zhou_guang_zu_walk_8dir.png",
+        "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck",
+        "character_root": "/Game/GameXXK/Characters/PartyDeckNPC/ZhouGuangZu"
+      }
+    },
+    {
+      "id": "Npc.JinGui",
+      "display_name": "金贵",
+      "kind": "task_npc",
+      "identity_policy": "locked_existing_identity",
+      "production_state": "reviewed_ready_for_import",
+      "reference_sources": [
+        {
+          "kind": "ppt_embedded_media",
+          "member": "ppt/media/image33.jpeg",
+          "slide": 6,
+          "sha256": "941a2a56e62e09a7b5749e34d2b07e407a12e2894a51cc62599a4808a2568caf",
+          "pixels": [886, 844]
+        }
+      ],
+      "output": {
+        "idle_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_jin_gui_idle_8dir.png",
+        "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_jin_gui_walk_8dir.png",
+        "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck",
+        "character_root": "/Game/GameXXK/Characters/PartyDeckNPC/JinGui"
+      }
+    },
+    {
+      "id": "Npc.QiongMeiEr",
+      "display_name": "琼么儿",
+      "kind": "task_npc",
+      "identity_policy": "locked_existing_identity",
+      "production_state": "reviewed_ready_for_import",
+      "reference_sources": [
+        {
+          "kind": "ppt_embedded_media",
+          "member": "ppt/media/image34.jpeg",
+          "slide": 6,
+          "sha256": "c6b72f3e50b78f37cbb0a6d77b71485a1bba4d9a742cfc803f48116fb198b529",
+          "pixels": [775, 692]
+        }
+      ],
+      "output": {
+        "idle_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_qiong_mei_er_idle_8dir.png",
+        "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/npc_qiong_mei_er_walk_8dir.png",
+        "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck",
+        "character_root": "/Game/GameXXK/Characters/PartyDeckNPC/QiongMeiEr"
+      }
+    },
+    {
+      "id": "PartnerRole.Blade",
+      "display_name": "刀客",
+      "kind": "permanent_partner_role",
+      "recruit_template_prefix": "Companion.Blade.*",
+      "card_owner_prefix": "Profession.Blade.*",
+      "identity_policy": "one_generated_archetype_shared_by_four_recruit_templates",
+      "production_state": "reviewed_ready_for_import",
+      "role_palette": {"name": "cinnabar", "hex": "#B6483F"},
+      "generation_constraints": ["Use the approved ink-and-pixel style and 171x205 atlas contract.", "No existing named NPC, hero, follower, merchant, or enemy face/costume may be reused."],
+      "output": {"idle_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_blade_idle_8dir.png", "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_blade_walk_8dir.png", "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck", "character_root": "/Game/GameXXK/Characters/PartyDeckPartners/Blade"}
+    },
+    {
+      "id": "PartnerRole.Guard",
+      "display_name": "护卫",
+      "kind": "permanent_partner_role",
+      "recruit_template_prefix": "Companion.Guard.*",
+      "card_owner_prefix": "Profession.Guard.*",
+      "identity_policy": "one_generated_archetype_shared_by_four_recruit_templates",
+      "production_state": "reviewed_ready_for_import",
+      "role_palette": {"name": "ink teal", "hex": "#254D4D"},
+      "generation_constraints": ["Use the approved ink-and-pixel style and 171x205 atlas contract.", "No existing named NPC, hero, follower, merchant, or enemy face/costume may be reused."],
+      "output": {"idle_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_guard_idle_8dir.png", "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_guard_walk_8dir.png", "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck", "character_root": "/Game/GameXXK/Characters/PartyDeckPartners/Guard"}
+    },
+    {
+      "id": "PartnerRole.Healer",
+      "display_name": "医者",
+      "kind": "permanent_partner_role",
+      "recruit_template_prefix": "Companion.Healer.*",
+      "card_owner_prefix": "Profession.Healer.*",
+      "identity_policy": "one_generated_archetype_shared_by_four_recruit_templates",
+      "production_state": "reviewed_ready_for_import",
+      "role_palette": {"name": "jade", "hex": "#5A936D"},
+      "generation_constraints": ["Use the approved ink-and-pixel style and 171x205 atlas contract.", "No existing named NPC, hero, follower, merchant, or enemy face/costume may be reused."],
+      "output": {"idle_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_healer_idle_8dir.png", "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_healer_walk_8dir.png", "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck", "character_root": "/Game/GameXXK/Characters/PartyDeckPartners/Healer"}
+    },
+    {
+      "id": "PartnerRole.Hunter",
+      "display_name": "猎手",
+      "kind": "permanent_partner_role",
+      "recruit_template_prefix": "Companion.Hunter.*",
+      "card_owner_prefix": "Profession.Hunter.*",
+      "identity_policy": "one_generated_archetype_shared_by_four_recruit_templates",
+      "production_state": "reviewed_ready_for_import",
+      "role_palette": {"name": "ochre", "hex": "#9A6833"},
+      "generation_constraints": ["Use the approved ink-and-pixel style and 171x205 atlas contract.", "No existing named NPC, hero, follower, merchant, or enemy face/costume may be reused."],
+      "output": {"idle_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_hunter_idle_8dir.png", "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_hunter_walk_8dir.png", "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck", "character_root": "/Game/GameXXK/Characters/PartyDeckPartners/Hunter"}
+    },
+    {
+      "id": "PartnerRole.Sorcerer",
+      "display_name": "术士",
+      "kind": "permanent_partner_role",
+      "recruit_template_prefix": "Companion.Sorcerer.*",
+      "card_owner_prefix": "Profession.Sorcerer.*",
+      "identity_policy": "one_generated_archetype_shared_by_four_recruit_templates",
+      "production_state": "reviewed_ready_for_import",
+      "role_palette": {"name": "indigo", "hex": "#40518D"},
+      "generation_constraints": ["Use the approved ink-and-pixel style and 171x205 atlas contract.", "No existing named NPC, hero, follower, merchant, or enemy face/costume may be reused."],
+      "output": {"idle_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_sorcerer_idle_8dir.png", "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_sorcerer_walk_8dir.png", "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck", "character_root": "/Game/GameXXK/Characters/PartyDeckPartners/Sorcerer"}
+    },
+    {
+      "id": "PartnerRole.FormationMaster",
+      "display_name": "阵师",
+      "kind": "permanent_partner_role",
+      "recruit_template_prefix": "Companion.FormationMaster.*",
+      "card_owner_prefix": "Profession.FormationMaster.*",
+      "identity_policy": "one_generated_archetype_shared_by_four_recruit_templates",
+      "production_state": "reviewed_ready_for_import",
+      "role_palette": {"name": "lotus gray-violet", "hex": "#806279"},
+      "generation_constraints": ["Use the approved ink-and-pixel style and 171x205 atlas contract.", "No existing named NPC, hero, follower, merchant, or enemy face/costume may be reused."],
+      "output": {"idle_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_formation_master_idle_8dir.png", "walk_atlas": "SourceAssets/PartyDeck/character-references/packed/partner_formation_master_walk_8dir.png", "texture_root": "/Game/GameXXK/Sprites/Generated/PartyDeck", "character_root": "/Game/GameXXK/Characters/PartyDeckPartners/FormationMaster"}
+    }
+  ],
+  "excluded_identities": [
+    {"id": "Npc.SiQingNiang", "reason": "Not an approved character. The previously mislabelled PSD 065 cutout is 土司首领 / Npc.TusiChief."},
+    {"id": "Npc.NiuHuan", "reason": "Event NPC only; not a temporary combat task NPC, permanent partner, or monster substitute."},
+    {"id": "Enemy.BlackBear", "reason": "Elite enemy. Preserve existing enemy assets; it is not a party-character atlas target."},
+    {"id": "Enemy.Tiger", "reason": "Boss enemy. Preserve existing enemy assets; it is not a party-character atlas target."},
+    {"id": "Enemy.MoneyRat", "reason": "Normal enemy. Preserve existing enemy assets; it is not a party-character atlas target."},
+    {"id": "Npc.VillageChief", "reason": "PPT media image36 is an unrelated village-chief reference, not one of the approved six task NPCs."},
+    {"id": "Unknown.PSD068", "reason": "Unidentified black silhouette; no runtime identity mapping or generation use is approved."}
+  ]
+}

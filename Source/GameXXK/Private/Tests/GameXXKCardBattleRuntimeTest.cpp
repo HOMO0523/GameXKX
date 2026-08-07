@@ -8,6 +8,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	"GameXXK.Data.CardBattleRuntime",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleRoundManaRecoveryTest,
+	"GameXXK.Data.CardBattleRuntime.RoundManaRecovery",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
 namespace
 {
 	FGameXXKCardCombatUnit MakeRuntimeUnit(
@@ -126,6 +131,28 @@ namespace
 		Modifier.Definition.RemainingTriggers = 1;
 		Modifier.Definition.bPersistent = true;
 	}
+}
+
+bool FGameXXKCardBattleRoundManaRecoveryTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKCardCombatUnit> Units;
+	Units.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 5, 10, 1));
+	Units.Add(MakeRuntimeUnit(TEXT("Npc.TusiChief"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 100, 100, 20, 9, 10, 2));
+	Units.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	FGameXXKCardBattleRuntime Runtime;
+	TestTrue(TEXT("round mana recovery runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
+		Runtime,
+		MakeRuntimeInstances(TEXT("Hero.QingFengYiShi"), 6),
+		Units,
+		EGameXXKCardTerrain::Plain,
+		790));
+	TArray<FGameXXKCardDamageResult> PlayerDots;
+	TArray<FGameXXKCardDamageResult> EnemyDots;
+	TestTrue(TEXT("round mana recovery fixture enters the enemy phase"), GameXXKCardRules::EndPlayerCardPhase(Runtime, PlayerDots));
+	TestTrue(TEXT("round mana recovery fixture begins the next party round"), GameXXKCardRules::BeginNextPlayerCardRound(Runtime, EnemyDots));
+	TestEqual(TEXT("the hero recovers exactly two mana at the next party round start"), FindRuntimeUnit(Runtime.Units, TEXT("Hero"))->Mana, 7);
+	TestEqual(TEXT("an NPC recovers mana through the same rule and clamps to its own maximum"), FindRuntimeUnit(Runtime.Units, TEXT("Npc.TusiChief"))->Mana, 10);
+	return true;
 }
 
 bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)

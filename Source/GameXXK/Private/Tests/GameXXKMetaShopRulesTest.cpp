@@ -314,19 +314,25 @@ bool FGameXXKMetaShopCompanionPurchaseTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
+	const FGameXXKRuntimeState FullBefore = Full;
 	FGameXXKMetaShopPurchaseResult FullResult;
-	TestTrue(TEXT("full roster buys one fixed replacement candidate"), FGameXXKMetaShopRules::Purchase(
+	TestFalse(TEXT("a full roster cannot buy the companion pack"), FGameXXKMetaShopRules::Purchase(
 		Full,
 		EGameXXKMetaShopProductId::CompanionPack,
 		FullResult));
-	TestEqual(TEXT("full roster purchase reports pending replacement"), FullResult.CompanionResult.Outcome, EGameXXKCompanionRecruitOutcome::PendingReplacement);
-	TestEqual(TEXT("full roster persists the explicit candidate"), Full.CardRun.CompanionRoster.PendingRecruitment.Candidate.RecruitTemplateId, FullExpectedOrder.ResolvedTemplateId);
-	TestTrue(TEXT("full roster retains the no-reroll order"), Full.CardRun.CompanionRoster.PendingRecruitOrder.bHasPendingOrder);
-	TestEqual(TEXT("full roster purchase spends its 500 gold"), Full.PlayerGold, 0);
-	TestEqual(TEXT("full roster purchase advances meta-shop ordinal"), Full.MetaShop.NextPurchaseOrdinal, 1);
+	TestEqual(TEXT("a full-roster pack reports the roster-full error"), FullResult.Error, EGameXXKMetaShopError::RosterFull);
+	TestTrue(TEXT("a rejected full-roster pack is atomic"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&Full, &FullBefore, PPF_None));
 
-	FGameXXKRuntimeState PendingBlocked = Full;
+	// A pending candidate (without a full roster) still rejects another pack.
+	FGameXXKRuntimeState PendingBlocked = UGameXXKMVPRules::CreateNewGame();
+	PendingBlocked.Screen = EGameXXKScreen::Town;
 	PendingBlocked.PlayerGold = FGameXXKMetaShopRules::CompanionPackPrice;
+	FGameXXKCompanionRecruitOrder PendingOrder;
+	FString PendingOrderError;
+	TestTrue(TEXT("the pending fixture persists a valid saved recruit order"),
+		FGameXXKCompanionRules::CreateRecruitOrder(PendingBlocked.CardRun.CompanionRoster, 4242, PendingOrder, &PendingOrderError));
+	PendingBlocked.CardRun.CompanionRoster.PendingRecruitOrder = PendingOrder;
 	const FGameXXKRuntimeState PendingBlockedBefore = PendingBlocked;
 	FGameXXKMetaShopPurchaseResult PendingBlockedResult;
 	TestFalse(TEXT("a pending companion rejects another pack"), FGameXXKMetaShopRules::Purchase(
@@ -336,11 +342,6 @@ bool FGameXXKMetaShopCompanionPurchaseTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("pending companion returns typed error"), PendingBlockedResult.Error, EGameXXKMetaShopError::PendingCompanionExists);
 	TestTrue(TEXT("pending companion rejection is atomic"),
 		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&PendingBlocked, &PendingBlockedBefore, PPF_None));
-
-	TestTrue(TEXT("the paid full-roster candidate can be discarded"), FGameXXKCompanionRules::DiscardPendingRecruitment(
-		Full.CardRun.CompanionRoster));
-	TestEqual(TEXT("discard never refunds the meta-shop purchase"), Full.PlayerGold, 0);
-	TestEqual(TEXT("discard never rewinds the meta-shop ordinal"), Full.MetaShop.NextPurchaseOrdinal, 1);
 
 	FGameXXKRuntimeState Corrupt = UGameXXKMVPRules::CreateNewGame();
 	Corrupt.Screen = EGameXXKScreen::Town;

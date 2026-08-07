@@ -35,6 +35,7 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Styling/SlateBrush.h"
+#include "Styling/CoreStyle.h"
 #include "Styling/SlateTypes.h"
 #include "UI/GameXXKMVPCommandRouter.h"
 #include "UI/GameXXKBattlePartyQiWidget.h"
@@ -42,6 +43,8 @@
 #include "UI/GameXXKBattleStatusIconStyle.h"
 #include "UI/GameXXKBattleUnitHudWidget.h"
 #include "UI/GameXXKPartyDeckUiStyle.h"
+
+int32 UGameXXKBattleBoardWidget::GAliveBattleBoardInstances = 0;
 
 namespace
 {
@@ -66,8 +69,9 @@ namespace
 	// The viewport's UMG scale is about 0.64 at the supported 1288x770 PIE size.
 	// Keep player hand cards readable after that scale without inflating compact
 	// enemy-intent and reward cards that share the same PSD frame asset.
-	static const FVector2D PlayerHandCardSize(225.0f, 257.0f);
-	static const FVector2D PlayerHandRowSize(1170.0f, 259.0f);
+	// Page-18 card size (137x190) shared with the out-of-battle deck pages.
+	static const FVector2D PlayerHandCardSize(206.0f, 285.0f);
+	static const FVector2D PlayerHandRowSize(1170.0f, 287.0f);
 	static const FVector2D PartyQiWidgetSize(104.0f, 104.0f);
 	static const FVector2D FixedUnitHudWidgetSize(272.0f, 142.0f);
 	static const FVector2D BattleHudSafeStageDesignSize(1920.0f, 1080.0f);
@@ -86,6 +90,7 @@ namespace
 	static constexpr int32 ProjectedUnitHudLayerZOrder = -1;
 	static constexpr int32 BattleBackdropZOrder = 0;
 	static constexpr int32 BattleSafeStageRootZOrder = 1;
+	static constexpr int32 BattleCinematicViewportCoverZOrder = 2;
 	static constexpr int32 BattleFormationZOrder = 10;
 	static constexpr int32 BattleTargetProxyBaseZOrder = 10;
 	static constexpr int32 BattleControlsZOrder = 20;
@@ -100,7 +105,7 @@ namespace
 	static constexpr float PlayerHandSelectedLift = -32.0f;
 	static const FVector2D EnemyIntentCardSize(150.0f, 171.0f);
 	static const FVector2D EnemyIntentShowcaseCardSize(256.0f, 292.0f);
-	static const FVector2D RewardCardSize(113.0f, 129.0f);
+	static const FVector2D RewardCardSize(206.0f, 285.0f);
 	static const FVector2D EnemyIntentRailSize(600.0f, 171.0f);
 	static const FVector2D EnemyIntentTooltipSize(460.0f, 256.0f);
 	static const FVector2D HandCardDetailPanelSize(420.0f, 252.0f);
@@ -221,7 +226,8 @@ namespace
 	}
 	static constexpr const TCHAR* InkButtonTexturePath = TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_InkButtonBase.T_InkButtonBase");
 	static constexpr const TCHAR* BattleStatusWindowFrameTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/T_TownBackpack_WindowFrame.T_TownBackpack_WindowFrame");
-	static constexpr const TCHAR* CardFrameTexturePath = TEXT("/Game/GameXXK/UI/Cards/Textures/T_CardFrame_PSD057.T_CardFrame_PSD057");
+	// Master V1 approved card frame, matching the out-of-battle deck pages.
+	static constexpr const TCHAR* CardFrameTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardFrame.T_MasterV2_CardFrame");
 	static constexpr const TCHAR* HeroCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero");
 	static constexpr const TCHAR* TusiChiefCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_TusiChief.T_CardPortrait_Npc_TusiChief");
 	static constexpr const TCHAR* SongJinBaoCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_SongJinBao.T_CardPortrait_Npc_SongJinBao");
@@ -238,8 +244,33 @@ namespace
 	static constexpr const TCHAR* RouteGeneralCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_General.T_CardPortrait_Route_General");
 	static constexpr const TCHAR* RouteTerrainCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Terrain.T_CardPortrait_Route_Terrain");
 	static constexpr const TCHAR* RouteRareCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Rare.T_CardPortrait_Route_Rare");
-	static constexpr const TCHAR* RouteBossCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Boss.T_CardPortrait_Route_Boss");
 	static constexpr const TCHAR* TargetingArrowHeadTexturePath = TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleTargetArrowHead.T_BattleTargetArrowHead");
+
+	FString ResolveEnemyPortraitPathByDefinitionId(const FName EnemyDefinitionId)
+	{
+		if (EnemyDefinitionId == TEXT("Enemy.Ch1.Rooster")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_Rooster.T_CardPortrait_Enemy_Ch1_Rooster");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch1.Goat")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_Goat.T_CardPortrait_Enemy_Ch1_Goat");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch1.Weasel")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_Weasel.T_CardPortrait_Enemy_Ch1_Weasel");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch1.Civet")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_Civet.T_CardPortrait_Enemy_Ch1_Civet");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch1.IronfeatherRooster")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_IronfeatherRooster.T_CardPortrait_Enemy_Ch1_IronfeatherRooster");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch1.BluehornGoatKing")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_BluehornGoatKing.T_CardPortrait_Enemy_Ch1_BluehornGoatKing");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch1.MoneyRat")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_MoneyRatBoss.T_CardPortrait_Enemy_Ch1_MoneyRatBoss");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch2.GrayWolf")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_GrayWolf.T_CardPortrait_Enemy_Ch2_GrayWolf");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch2.Boar")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_Boar.T_CardPortrait_Enemy_Ch2_Boar");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch2.Macaque")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_Macaque.T_CardPortrait_Enemy_Ch2_Macaque");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch2.Porcupine")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_Porcupine.T_CardPortrait_Enemy_Ch2_Porcupine");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch2.GraymaneWolfKing")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_GraymaneWolfKing.T_CardPortrait_Enemy_Ch2_GraymaneWolfKing");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch2.RedtuskBoarKing")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_RedtuskBoarKing.T_CardPortrait_Enemy_Ch2_RedtuskBoarKing");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch2.BlackBear")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_BlackBearBoss.T_CardPortrait_Enemy_Ch2_BlackBearBoss");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch3.VenomSnake")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_VenomSnake.T_CardPortrait_Enemy_Ch3_VenomSnake");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch3.Wildcat")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_Wildcat.T_CardPortrait_Enemy_Ch3_Wildcat");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch3.Vulture")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_Vulture.T_CardPortrait_Enemy_Ch3_Vulture");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch3.GiantToad")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_GiantToad.T_CardPortrait_Enemy_Ch3_GiantToad");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch3.WhiteApe")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_WhiteApe.T_CardPortrait_Enemy_Ch3_WhiteApe");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch3.SpiralHornDeer")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_SpiralHornDeer.T_CardPortrait_Enemy_Ch3_SpiralHornDeer");
+		if (EnemyDefinitionId == TEXT("Enemy.Ch3.Tiger")) return TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_TigerBoss.T_CardPortrait_Enemy_Ch3_TigerBoss");
+		return FString();
+	}
 
 	static FString BuildCardTargetHint(const FGameXXKCardPlayPreview& Preview)
 	{
@@ -553,12 +584,16 @@ TSharedRef<SWidget> UGameXXKBattleBoardWidget::RebuildWidget()
 void UGameXXKBattleBoardWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	++GAliveBattleBoardInstances;
+	UE_LOG(LogTemp, Warning, TEXT("[Board] constructed name=%s alive=%d"), *GetName(), GAliveBattleBoardInstances);
 	BuildProgrammaticLayout();
 	RefreshFromState();
 }
 
 void UGameXXKBattleBoardWidget::NativeDestruct()
 {
+	--GAliveBattleBoardInstances;
+	UE_LOG(LogTemp, Warning, TEXT("[Board] destructed name=%s alive=%d"), *GetName(), GAliveBattleBoardInstances);
 	if (ActiveBattleVisualSessionToken != 0)
 	{
 		CancelBattleVisualSession(ActiveBattleVisualSessionToken);
@@ -574,9 +609,24 @@ void UGameXXKBattleBoardWidget::NativeDestruct()
 void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	RefreshCinematicViewportCoverLayout(MyGeometry.GetLocalSize());
 	if (ActiveBattleVisualSessionToken != 0 && FSlateApplicationBase::IsInitialized())
 	{
 		AdvanceVisualsAtRealTime(FSlateApplicationBase::Get().GetCurrentTime());
+	}
+	else if (IsBattlePresentationPending())
+	{
+		// A pending presentation can never advance without a visual session, so
+		// the HP overrides/snapshot would stay frozen forever.  The mutation is
+		// already committed to runtime; release the presentation and run the
+		// deferred continuation so the HUD refreshes from live state.
+		const EBattlePresentationContinuation StuckContinuation = DeferredBattlePresentationContinuation;
+		ResetBattlePresentation();
+		if (StuckContinuation != EBattlePresentationContinuation::None)
+		{
+			++ExecutedBattlePresentationContinuationCount;
+			ExecuteBattlePresentationContinuation(StuckContinuation);
+		}
 	}
 	AdvanceHandCardHoverMotion(InDeltaTime);
 	AdvanceEnemyIntentPresentation(InDeltaTime);
@@ -614,17 +664,15 @@ void UGameXXKBattleBoardWidget::QueuePresentationInternal(
 	}
 	if (!Event.AttackerUnitId.IsNone())
 	{
-		Entry.AttackerClip = FGameXXKBattleAnimationPresentation::ResolveClip(
+		Entry.AttackerClip = ResolveUnitAnimationClip(
 			Event.AttackerUnitId,
 			Event.bAttackerEnemy,
 			EGameXXKBattleAnimationAction::Attack);
 	}
-	Entry.TargetClip = FGameXXKBattleAnimationPresentation::ResolveClip(
+	Entry.TargetClip = ResolveUnitAnimationClip(
 		Event.TargetUnitId,
 		Event.bTargetEnemy,
 		EGameXXKBattleAnimationAction::Hit);
-	Entry.ImpactClip = FGameXXKBattleAnimationPresentation::ResolveGenericClip(
-		EGameXXKBattleAnimationAction::Impact);
 	const uint64 QueueSerial = Entry.QueueSerial;
 	BattlePresentationQueue.Add(MoveTemp(Entry));
 	if (!DisplayedHealthOverrides.Contains(Event.TargetUnitId))
@@ -700,6 +748,7 @@ void UGameXXKBattleBoardWidget::CapturePresentationHudSnapshot(
 
 void UGameXXKBattleBoardWidget::DiscardPresentationHudSnapshot()
 {
+	UE_LOG(LogTemp, Verbose, TEXT("[HPDiscard] Discarding presentation HUD snapshot (health overrides=%d, unit views=%d)"), DisplayedHealthOverrides.Num(), DisplayedUnitHudOverrides.Num());
 	DisplayedHealthOverrides.Reset();
 	DisplayedUnitHudOverrides.Reset();
 	DisplayedSharedEnergyOverride.Reset();
@@ -729,7 +778,9 @@ bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
 	}
 	for (const FGameXXKBattleStatusPresentationEvent& Event : StatusEvents)
 	{
-		QueueStatusPresentation(Event);
+		// Buff/debuff state belongs to the fixed actor HUD. It updates with the
+		// mutation but never consumes a full-screen presentation entry.
+		ApplyDisplayedStatusDelta(Event);
 	}
 
 	if (!BattlePresentationQueue.IsEmpty())
@@ -744,6 +795,9 @@ bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
 	const EBattlePresentationContinuation ImmediateContinuation = DeferredBattlePresentationContinuation;
 	DeferredBattlePresentationContinuation = EBattlePresentationContinuation::None;
 	DiscardPresentationHudSnapshot();
+	// Immediate refresh from live runtime so that healing-only / status-only /
+	// relic-only HP mutations are visible before the deferred continuation runs.
+	RefreshProjectedUnitHuds();
 	if (ImmediateContinuation != EBattlePresentationContinuation::None)
 	{
 		++ExecutedBattlePresentationContinuationCount;
@@ -837,9 +891,9 @@ void UGameXXKBattleBoardWidget::HandleBattlePresentationQueueDrained()
 	DefeatedUnitVisualsPendingRemoval.Reset();
 	DiscardPresentationHudSnapshot();
 	bBattlePresentationShakeActive = false;
-	if (BattleDesignStage)
+	if (ViewportRootCanvas)
 	{
-		BattleDesignStage->SetRenderTranslation(FVector2D::ZeroVector);
+		ViewportRootCanvas->SetRenderTranslation(FVector2D::ZeroVector);
 	}
 	if (BattleCinematicImpact)
 	{
@@ -894,8 +948,6 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationEntry(const uint64 QueueSeri
 
 	PrefetchPresentationAtlas(QueueSerial, Entry->AttackerClip.TexturePath, EBattlePresentationAtlasRole::Attacker);
 	PrefetchPresentationAtlas(QueueSerial, Entry->TargetClip.TexturePath, EBattlePresentationAtlasRole::Target);
-	PrefetchPresentationAtlas(QueueSerial, Entry->ImpactClip.TexturePath, EBattlePresentationAtlasRole::Impact);
-	PrefetchPresentationAtlas(QueueSerial, Entry->StatusClip.TexturePath, EBattlePresentationAtlasRole::Status);
 }
 
 void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
@@ -942,9 +994,60 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
 			{
 				return;
 			}
+			const auto UpgradeActiveAttackCinematic =
+				[Board, RequestEntry, Texture](
+					const FName UnitId,
+					const bool bEnemy,
+					const FGameXXKBattleAnimationClipDescriptor& Clip,
+					const EBattlePresentationAtlasRole AtlasRole)
+			{
+				// The cinematic starts the moment the queue advances, before the
+				// async atlas has necessarily finished streaming; if it began on
+				// the idle fallback, swap the live visual to the real clip now.
+				UGameXXKBattleUnitVisualWidget* const Visual = Board->UnitVisuals.FindRef(UnitId);
+				if (!RequestEntry->bStarted
+					|| RequestEntry->bCompletionFired
+					|| !Clip.IsValid()
+					|| !Visual)
+				{
+					return;
+				}
+				if (AtlasRole == EBattlePresentationAtlasRole::Attacker)
+				{
+					RequestEntry->AttackerAtlas = Texture;
+					RequestEntry->PresentedAttackerClip = Clip;
+				}
+				else
+				{
+					RequestEntry->TargetAtlas = Texture;
+					RequestEntry->PresentedTargetClip = Clip;
+				}
+				Visual->SetAtlas(Texture);
+				Visual->ShowCinematic(
+					Clip,
+					bEnemy ? CinematicEnemyAnchor : CinematicPartyAnchor);
+				if (UCanvasPanelSlot* const ParticipantSlot = Cast<UCanvasPanelSlot>(Visual->Slot))
+				{
+					ParticipantSlot->SetZOrder(BattleCinematicParticipantZOrder);
+				}
+				Visual->AdvanceAtRealTime(RequestEntry->StartSeconds);
+				Visual->AdvanceAtRealTime(Board->LastSlateSeconds);
+			};
+
 			switch (Role)
 			{
-			case EBattlePresentationAtlasRole::Attacker: RequestEntry->AttackerAtlas = Texture; break;
+			case EBattlePresentationAtlasRole::Attacker:
+				RequestEntry->AttackerAtlas = Texture;
+				if (Board->GetActivePresentationEntry() == RequestEntry
+					&& RequestEntry->Kind == EBattlePresentationKind::AttackHit)
+				{
+					UpgradeActiveAttackCinematic(
+						RequestEntry->Event.AttackerUnitId,
+						RequestEntry->Event.bAttackerEnemy,
+						RequestEntry->AttackerClip,
+						Role);
+				}
+				break;
 			case EBattlePresentationAtlasRole::Target:
 				if (Board->GetActivePresentationEntry() == RequestEntry
 					&& RequestEntry->Kind == EBattlePresentationKind::Death)
@@ -974,6 +1077,15 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
 				else
 				{
 					RequestEntry->TargetAtlas = Texture;
+					if (Board->GetActivePresentationEntry() == RequestEntry
+						&& RequestEntry->Kind == EBattlePresentationKind::AttackHit)
+					{
+						UpgradeActiveAttackCinematic(
+							RequestEntry->Event.TargetUnitId,
+							RequestEntry->Event.bTargetEnemy,
+							RequestEntry->TargetClip,
+							Role);
+					}
 				}
 				break;
 			case EBattlePresentationAtlasRole::Impact:
@@ -1082,6 +1194,10 @@ void UGameXXKBattleBoardWidget::StartPresentationEntry(
 	{
 		BattleCinematicDimmer->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	}
+	if (BattleCinematicViewportCover)
+	{
+		BattleCinematicViewportCover->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
 	if (BattleCinematicImpact)
 	{
 		BattleCinematicImpact->HideForCinematic();
@@ -1103,7 +1219,7 @@ void UGameXXKBattleBoardWidget::StartPresentationEntry(
 		if (UnitVisual)
 		{
 			const FGameXXKBattleAnimationClipDescriptor IdleClip =
-				FGameXXKBattleAnimationPresentation::ResolveClip(
+				ResolveUnitAnimationClip(
 					Entry.StatusEvent.UnitId,
 					Entry.StatusEvent.bUnitEnemy,
 					EGameXXKBattleAnimationAction::Idle);
@@ -1163,7 +1279,7 @@ void UGameXXKBattleBoardWidget::StartPresentationEntry(
 		if (TargetVisual)
 		{
 			const FGameXXKBattleAnimationClipDescriptor IdleClip =
-				FGameXXKBattleAnimationPresentation::ResolveClip(
+				ResolveUnitAnimationClip(
 					Entry.Event.TargetUnitId,
 					Entry.Event.bTargetEnemy,
 					EGameXXKBattleAnimationAction::Idle);
@@ -1195,7 +1311,7 @@ void UGameXXKBattleBoardWidget::StartPresentationEntry(
 	if (AttackerVisual)
 	{
 		const FGameXXKBattleAnimationClipDescriptor IdleClip =
-			FGameXXKBattleAnimationPresentation::ResolveClip(
+			ResolveUnitAnimationClip(
 				Entry.Event.AttackerUnitId,
 				Entry.Event.bAttackerEnemy,
 				EGameXXKBattleAnimationAction::Idle);
@@ -1224,7 +1340,7 @@ void UGameXXKBattleBoardWidget::StartPresentationEntry(
 	if (TargetVisual)
 	{
 		const FGameXXKBattleAnimationClipDescriptor IdleClip =
-			FGameXXKBattleAnimationPresentation::ResolveClip(
+			ResolveUnitAnimationClip(
 				Entry.Event.TargetUnitId,
 				Entry.Event.bTargetEnemy,
 				EGameXXKBattleAnimationAction::Idle);
@@ -1259,24 +1375,6 @@ void UGameXXKBattleBoardWidget::FirePresentationImpact(FBattlePresentationQueueE
 	Entry.bImpactFired = true;
 	++BattlePresentationImpactCount;
 	SetDisplayedHealthOverlay(Entry.Event.TargetUnitId, Entry.Event.TargetHealthAfter);
-
-	if (BattleCinematicImpact)
-	{
-		if (Entry.ImpactAtlas.IsValid())
-		{
-			BattleCinematicImpact->SetAtlas(Entry.ImpactAtlas.Get());
-		}
-		BattleCinematicImpact->ShowCinematic(Entry.ImpactClip, CinematicImpactAnchor);
-		if (UCanvasPanelSlot* const ImpactSlot = Cast<UCanvasPanelSlot>(BattleCinematicImpact->Slot))
-		{
-			ImpactSlot->SetAnchors(FAnchors(CinematicImpactAnchor.X, CinematicImpactAnchor.Y));
-			ImpactSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-			ImpactSlot->SetPosition(FVector2D::ZeroVector);
-			ImpactSlot->SetSize(CinematicImpactVisualSize);
-			ImpactSlot->SetZOrder(BattleCinematicImpactZOrder);
-		}
-		BattleCinematicImpact->AdvanceAtRealTime(Entry.StartSeconds + BattleImpactMarkerSeconds);
-	}
 
 	if (BattleCinematicReadout)
 	{
@@ -1321,9 +1419,9 @@ void UGameXXKBattleBoardWidget::CompletePresentationEntry(FBattlePresentationQue
 		BattleCinematicStatusIcon->SetVisibility(ESlateVisibility::Hidden);
 	}
 	bBattlePresentationShakeActive = false;
-	if (BattleDesignStage)
+	if (ViewportRootCanvas)
 	{
-		BattleDesignStage->SetRenderTranslation(FVector2D::ZeroVector);
+		ViewportRootCanvas->SetRenderTranslation(FVector2D::ZeroVector);
 	}
 
 	if (CompletedKind == EBattlePresentationKind::Death)
@@ -1365,7 +1463,7 @@ void UGameXXKBattleBoardWidget::EnqueueDeathPresentationAfterActive(
 	{
 		NextBattlePresentationQueueSerial = 1;
 	}
-	DeathEntry.TargetClip = FGameXXKBattleAnimationPresentation::ResolveClip(
+	DeathEntry.TargetClip = ResolveUnitAnimationClip(
 		Event.TargetUnitId,
 		Event.bTargetEnemy,
 		EGameXXKBattleAnimationAction::Death);
@@ -1421,9 +1519,9 @@ void UGameXXKBattleBoardWidget::ResetBattlePresentation()
 	{
 		BattleCinematicStatusIcon->SetVisibility(ESlateVisibility::Hidden);
 	}
-	if (BattleDesignStage)
+	if (ViewportRootCanvas)
 	{
-		BattleDesignStage->SetRenderTranslation(FVector2D::ZeroVector);
+		ViewportRootCanvas->SetRenderTranslation(FVector2D::ZeroVector);
 	}
 }
 
@@ -1459,6 +1557,10 @@ void UGameXXKBattleBoardWidget::RestoreFormationAfterPresentation(const FName Re
 	{
 		BattleCinematicDimmer->SetVisibility(ESlateVisibility::Hidden);
 	}
+	if (BattleCinematicViewportCover)
+	{
+		BattleCinematicViewportCover->SetVisibility(ESlateVisibility::Hidden);
+	}
 }
 
 void UGameXXKBattleBoardWidget::RestoreUnitIdleAtlas(
@@ -1469,6 +1571,36 @@ void UGameXXKBattleBoardWidget::RestoreUnitIdleAtlas(
 	{
 		Visual->SetAtlas(UnitIdleAtlasTextures.FindRef(UnitId));
 	}
+}
+
+FGameXXKBattleAnimationClipDescriptor UGameXXKBattleBoardWidget::ResolveUnitAnimationClip(
+	const FName UnitId,
+	const bool bEnemy,
+	const EGameXXKBattleAnimationAction Action) const
+{
+	FName EnemyDefinitionId = NAME_None;
+	if (bEnemy)
+	{
+		const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+		const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+		if (State && State->CardRun.bHasActiveCardBattle)
+		{
+			if (const FGameXXKCardCombatUnit* const Unit = State->CardRun.ActiveBattle.Units.FindByPredicate(
+				[UnitId](const FGameXXKCardCombatUnit& Candidate)
+				{
+					return Candidate.UnitId == UnitId;
+				}))
+			{
+				EnemyDefinitionId = Unit->EnemyDefinitionId;
+			}
+		}
+	}
+
+	return FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
+		UnitId,
+		EnemyDefinitionId,
+		bEnemy,
+		Action);
 }
 
 void UGameXXKBattleBoardWidget::SetTargetProxiesVisible(const bool bVisible)
@@ -1488,6 +1620,7 @@ void UGameXXKBattleBoardWidget::SetDisplayedHealthOverlay(const FName UnitId, co
 {
 	if (!UnitId.IsNone())
 	{
+		UE_LOG(LogTemp, Verbose, TEXT("[HPOverlay] unit=%s health=%d"), *UnitId.ToString(), Health);
 		DisplayedHealthOverrides.Add(UnitId, FMath::Max(0, Health));
 		if (FGameXXKBattleUnitHudView* const View = DisplayedUnitHudOverrides.Find(UnitId))
 		{
@@ -1538,7 +1671,10 @@ void UGameXXKBattleBoardWidget::ApplyDisplayedStatusDelta(
 
 void UGameXXKBattleBoardWidget::UpdateBattlePresentationShake(const double AbsoluteSeconds)
 {
-	if (!BattleDesignStage || !bBattlePresentationShakeActive)
+	// Shake the full board root (backdrop + safe stage + cinematic cover) so the
+	// impact reads as a whole-screen shake instead of only the letterboxed
+	// design stage sliding against a static backdrop.
+	if (!ViewportRootCanvas || !bBattlePresentationShakeActive)
 	{
 		return;
 	}
@@ -1546,14 +1682,14 @@ void UGameXXKBattleBoardWidget::UpdateBattlePresentationShake(const double Absol
 	if (ElapsedSeconds < 0.0 || ElapsedSeconds >= BattleHudShakeDurationSeconds)
 	{
 		bBattlePresentationShakeActive = false;
-		BattleDesignStage->SetRenderTranslation(FVector2D::ZeroVector);
+		ViewportRootCanvas->SetRenderTranslation(FVector2D::ZeroVector);
 		return;
 	}
 
 	const double Decay = 1.0 - (ElapsedSeconds / BattleHudShakeDurationSeconds);
 	const float X = static_cast<float>(FMath::Sin(ElapsedSeconds * 85.0) * 12.0 * Decay);
 	const float Y = static_cast<float>(FMath::Cos(ElapsedSeconds * 110.0) * 6.0 * Decay);
-	BattleDesignStage->SetRenderTranslation(FVector2D(X, Y));
+	ViewportRootCanvas->SetRenderTranslation(FVector2D(X, Y));
 }
 
 bool UGameXXKBattleBoardWidget::BeginBattleVisualSession(const uint64 SessionToken)
@@ -1956,7 +2092,7 @@ float UGameXXKBattleBoardWidget::GetActiveTargetPlaybackRateForTest() const
 float UGameXXKBattleBoardWidget::GetActiveImpactPlaybackRateForTest() const
 {
 	const FBattlePresentationQueueEntry* const Entry = GetActivePresentationEntry();
-	return Entry ? Entry->ImpactClip.PlaybackRate : 0.0f;
+	return Entry && Entry->ImpactClip.IsValid() ? Entry->ImpactClip.PlaybackRate : 0.0f;
 }
 
 FString UGameXXKBattleBoardWidget::GetBattlePresentationReadoutForTest() const
@@ -2085,12 +2221,39 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 
 void UGameXXKBattleBoardWidget::RefreshFromState()
 {
+	if (GAliveBattleBoardInstances > 1)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Board] refresh name=%s inViewport=%d"), *GetName(), IsInViewport());
+	}
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const bool bInBattle = Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle;
 	if (bInBattle && IsBattlePresentationPending())
 	{
 		SetVisibility(ESlateVisibility::Visible);
-		ApplyBattlePresentationInteractionLock();
+		if (ActiveBattleVisualSessionToken == 0)
+		{
+			// The visual session is gone, so NativeTick can never advance the
+			// presentation queue and the HP overrides would stay frozen forever.
+			// Release the whole presentation, then run the deferred continuation
+			// so terminal victory/defeat resolution and HUD refresh still happen.
+			const EBattlePresentationContinuation StuckContinuation = DeferredBattlePresentationContinuation;
+			ResetBattlePresentation();
+			if (StuckContinuation != EBattlePresentationContinuation::None)
+			{
+				++ExecutedBattlePresentationContinuationCount;
+				ExecuteBattlePresentationContinuation(StuckContinuation);
+				return;
+			}
+			RefreshProjectedUnitHuds();
+		}
+		else
+		{
+			ApplyBattlePresentationInteractionLock();
+			// Push current overrides (or live runtime if overrides were discarded) to
+			// widgets so HP text never freezes even when the presentation queue is alive.
+			// Non-participants still show live state thanks to the participant gating.
+			RefreshProjectedUnitHuds();
+		}
 		return;
 	}
 	const bool bFixtureReadOnly = Subsystem && Subsystem->IsBattleHudFixtureActiveForTest();
@@ -2745,17 +2908,33 @@ void UGameXXKBattleBoardWidget::RefreshProjectedUnitHuds()
 			{
 				continue;
 			}
-			if (const FGameXXKBattleUnitHudView* const Snapshot = DisplayedUnitHudOverrides.Find(Unit.UnitId))
+			if (DisplayedHealthOverrides.Contains(Unit.UnitId))
 			{
-				View = *Snapshot;
+				// Only presentation participants (units with an animated HP override)
+				// freeze to the pre-mutation snapshot and follow the HP override.
+				// Non-participants (healed, armored, mana/status-changed units) must
+				// always show live runtime state, otherwise healing and other side
+				// effects are hidden behind the snapshot until the queue drains and
+				// look permanently stuck.
+				if (const FGameXXKBattleUnitHudView* const Snapshot = DisplayedUnitHudOverrides.Find(Unit.UnitId))
+				{
+					View = *Snapshot;
+				}
+				if (const int32* const DisplayedHealth = DisplayedHealthOverrides.Find(Unit.UnitId))
+				{
+					View.CurrentHP = *DisplayedHealth;
+					// A lethal target remains a visible presentation participant until its
+					// queued Death clip completes, even though authoritative state is already terminal.
+					View.bLiving = true;
+				}
 			}
-			if (const int32* const DisplayedHealth = DisplayedHealthOverrides.Find(Unit.UnitId))
-			{
-				View.CurrentHP = *DisplayedHealth;
-				// A lethal target remains a visible presentation participant until its
-				// queued Death clip completes, even though authoritative state is already terminal.
-				View.bLiving = true;
-			}
+			UE_LOG(LogTemp, Warning, TEXT("[HPSnap] unit=%s view=%d runtime=%d snap=%d snapHP=%d healthOverride=%d"),
+				*Unit.UnitId.ToString(),
+				View.CurrentHP,
+				Unit.HP,
+				DisplayedUnitHudOverrides.Contains(Unit.UnitId),
+				DisplayedUnitHudOverrides.FindRef(Unit.UnitId).CurrentHP,
+				DisplayedHealthOverrides.Contains(Unit.UnitId));
 			FGameXXKFixedUnitHudLayout FixedLayout;
 			if (!TryResolveFixedUnitHudLayout(View, FixedLayout))
 			{
@@ -2797,6 +2976,11 @@ void UGameXXKBattleBoardWidget::RefreshProjectedUnitHuds()
 				HudSlot->SetZOrder(0);
 				ProjectedUnitHuds.Add(Unit.UnitId, Hud);
 			}
+			UE_LOG(LogTemp, Warning, TEXT("[HudSet] unit=%s hud=%s viewHP=%d layerChildren=%d"),
+				*Unit.UnitId.ToString(),
+				*Hud->GetPathName(),
+				View.CurrentHP,
+				BattleProjectedUnitHudLayer->GetChildrenCount());
 			Hud->SetUnitView(View);
 			if (UCanvasPanelSlot* const HudSlot = Cast<UCanvasPanelSlot>(Hud->Slot))
 			{
@@ -2865,7 +3049,7 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 				FixedLayout.Anchors.Minimum.X,
 				FixedLayout.Anchors.Minimum.Y + FormationVisualVerticalOffsetNormalized);
 			const FGameXXKBattleAnimationClipDescriptor IdleClip =
-				FGameXXKBattleAnimationPresentation::ResolveClip(
+				ResolveUnitAnimationClip(
 					Unit.UnitId,
 					bEnemy,
 					EGameXXKBattleAnimationAction::Idle);
@@ -3070,6 +3254,21 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 		if (!ActiveUnitIds.Contains(UnitId))
 		{
 			RemoveUnitVisual(UnitId);
+		}
+	}
+	RefreshUnitTargetingPresentation();
+}
+
+void UGameXXKBattleBoardWidget::RefreshUnitTargetingPresentation()
+{
+	const bool bTargeting = IsCardTargetingActive();
+	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitVisualWidget>>& Pair : UnitVisuals)
+	{
+		if (Pair.Value)
+		{
+			Pair.Value->SetCardTargetingAvailability(
+				bTargeting,
+				LegalCardTargetUnitIds.Contains(Pair.Key));
 		}
 	}
 }
@@ -3500,6 +3699,50 @@ FGameXXKBattleHudSafeStageLayout UGameXXKBattleBoardWidget::ResolveBattleHudSafe
 	return Result;
 }
 
+void UGameXXKBattleBoardWidget::RefreshCinematicViewportCoverLayout(const FVector2D ViewportSize)
+{
+	if (!BattleCinematicViewportCover || BattleCinematicViewportCoverStrips.Num() != 4
+		|| ViewportSize.X <= 0.0f || ViewportSize.Y <= 0.0f)
+	{
+		return;
+	}
+
+	const FGameXXKBattleHudSafeStageLayout SafeStage = ResolveBattleHudSafeStageLayoutForTest(ViewportSize);
+	const float SafeRight = SafeStage.Offset.X + SafeStage.Size.X;
+	const float SafeBottom = SafeStage.Offset.Y + SafeStage.Size.Y;
+	const FVector2D Positions[] =
+	{
+		FVector2D::ZeroVector,
+		FVector2D(0.0f, SafeBottom),
+		FVector2D(0.0f, SafeStage.Offset.Y),
+		FVector2D(SafeRight, SafeStage.Offset.Y)
+	};
+	const FVector2D Sizes[] =
+	{
+		FVector2D(ViewportSize.X, FMath::Max(0.0f, SafeStage.Offset.Y)),
+		FVector2D(ViewportSize.X, FMath::Max(0.0f, ViewportSize.Y - SafeBottom)),
+		FVector2D(FMath::Max(0.0f, SafeStage.Offset.X), SafeStage.Size.Y),
+		FVector2D(FMath::Max(0.0f, ViewportSize.X - SafeRight), SafeStage.Size.Y)
+	};
+
+	for (int32 StripIndex = 0; StripIndex < BattleCinematicViewportCoverStrips.Num(); ++StripIndex)
+	{
+		UBorder* const Strip = BattleCinematicViewportCoverStrips[StripIndex];
+		UCanvasPanelSlot* const StripSlot = Strip ? Cast<UCanvasPanelSlot>(Strip->Slot) : nullptr;
+		if (!Strip || !StripSlot)
+		{
+			continue;
+		}
+		StripSlot->SetAnchors(FAnchors(0.0f, 0.0f));
+		StripSlot->SetAlignment(FVector2D::ZeroVector);
+		StripSlot->SetPosition(Positions[StripIndex]);
+		StripSlot->SetSize(Sizes[StripIndex]);
+		Strip->SetVisibility(Sizes[StripIndex].X > KINDA_SMALL_NUMBER && Sizes[StripIndex].Y > KINDA_SMALL_NUMBER
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Hidden);
+	}
+}
+
 FGameXXKBattleProjectedUnitHudLayout UGameXXKBattleBoardWidget::ResolveProjectedUnitHudLayoutForTest(
 	const FVector2D Anchor,
 	const FVector2D WidgetSize,
@@ -3786,6 +4029,37 @@ FString UGameXXKBattleBoardWidget::GetEnemyIntentTooltipForTest(const int32 Visi
 	return BuildEnemyIntentTooltip(Subsystem->GetRuntimeState(), Run.EnemyIntents[PersistentIntentIndex]);
 }
 
+FString UGameXXKBattleBoardWidget::GetEnemyIntentPortraitResourcePathForTest(const int32 VisibleSlotIndex) const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const int32 PersistentIntentIndex = GetEnemyIntentPersistentIndexForVisibleSlot(VisibleSlotIndex);
+	if (!Subsystem
+		|| !Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle
+		|| !Subsystem->GetRuntimeState().CardRun.EnemyIntents.IsValidIndex(PersistentIntentIndex))
+	{
+		return FString();
+	}
+
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	const FGameXXKCardEnemyIntent& Intent = State.CardRun.EnemyIntents[PersistentIntentIndex];
+	const FGameXXKBattleRuntimeUnit* SourceEnemy = State.ActiveBattleEnemies.FindByPredicate([&Intent](const FGameXXKBattleRuntimeUnit& Unit)
+	{
+		return Unit.Id == Intent.SourceUnitId;
+	});
+	return SourceEnemy ? ResolveEnemyIntentPortraitResourcePath(SourceEnemy->EnemyDefinitionId) : FString();
+}
+
+FString UGameXXKBattleBoardWidget::ResolveEnemyIntentPortraitResourcePath(const FName EnemyDefinitionId) const
+{
+	return ResolveEnemyPortraitPathByDefinitionId(EnemyDefinitionId);
+}
+
+UTexture2D* UGameXXKBattleBoardWidget::ResolveEnemyIntentPortraitTexture(const FName EnemyDefinitionId) const
+{
+	const FString ResourcePath = ResolveEnemyIntentPortraitResourcePath(EnemyDefinitionId);
+	return ResourcePath.IsEmpty() ? nullptr : LoadObject<UTexture2D>(nullptr, *ResourcePath);
+}
+
 FString UGameXXKBattleBoardWidget::GetCardTooltipTextForTest() const
 {
 	return HandCardDetailBody ? HandCardDetailBody->GetText().ToString() : FString();
@@ -3949,6 +4223,45 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		}
 	}
 
+	BattleCinematicViewportCover = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(),
+		TEXT("BattleCinematicViewportCover"));
+	if (BattleCinematicViewportCover && ViewportRootCanvas)
+	{
+		BattleCinematicViewportCover->SetVisibility(ESlateVisibility::Hidden);
+		if (UCanvasPanelSlot* const CoverSlot = ViewportRootCanvas->AddChildToCanvas(BattleCinematicViewportCover))
+		{
+			CoverSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
+			CoverSlot->SetOffsets(FMargin(0.0f));
+			CoverSlot->SetAlignment(FVector2D::ZeroVector);
+			CoverSlot->SetZOrder(BattleCinematicViewportCoverZOrder);
+		}
+
+		static const TCHAR* const StripNames[] =
+		{
+			TEXT("BattleCinematicViewportCoverTop"),
+			TEXT("BattleCinematicViewportCoverBottom"),
+			TEXT("BattleCinematicViewportCoverLeft"),
+			TEXT("BattleCinematicViewportCoverRight")
+		};
+		BattleCinematicViewportCoverStrips.Reset();
+		for (const TCHAR* const StripName : StripNames)
+		{
+			UBorder* const Strip = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), StripName);
+			if (!Strip)
+			{
+				continue;
+			}
+			Strip->SetBrushColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.5f));
+			Strip->SetVisibility(ESlateVisibility::Hidden);
+			if (BattleCinematicViewportCover->AddChildToCanvas(Strip))
+			{
+				BattleCinematicViewportCoverStrips.Add(Strip);
+			}
+		}
+		RefreshCinematicViewportCoverLayout(BattleHudSafeStageDesignSize);
+	}
+
 	BattleCinematicDimmer = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(),
 		TEXT("BattleCinematicDimmer"));
@@ -4045,6 +4358,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	EnemyIntentCardButtons.Reserve(MaximumVisibleEnemyIntentCards);
 	EnemyIntentSlotLabels.Reserve(MaximumVisibleEnemyIntentCards);
 	EnemyIntentCardBodies.Reserve(MaximumVisibleEnemyIntentCards);
+	EnemyIntentCardPortraits.Reserve(MaximumVisibleEnemyIntentCards);
 	for (int32 SlotIndex = 0; SlotIndex < MaximumVisibleEnemyIntentCards; ++SlotIndex)
 	{
 		UHorizontalBox* IntentSlotBox = WidgetTree->ConstructWidget<UHorizontalBox>(
@@ -4082,10 +4396,12 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		StyleCardButton(IntentCardButton, EnemyIntentCardSize);
 		IntentCardButton->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
 		UTextBlock* IntentCardBody = nullptr;
+		UImage* IntentCardPortrait = nullptr;
 		BuildEnemyIntentCardFace(
 			IntentCardButton,
 			FString::Printf(TEXT("BattleEnemyIntentCard_%02d"), SlotIndex),
-			IntentCardBody);
+			IntentCardBody,
+			IntentCardPortrait);
 		IntentCardSizeBox->AddChild(IntentCardButton);
 		if (UHorizontalBoxSlot* IntentCardSlot = IntentSlotBox->AddChildToHorizontalBox(IntentCardSizeBox))
 		{
@@ -4100,6 +4416,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		EnemyIntentCardButtons.Add(IntentCardButton);
 		EnemyIntentSlotLabels.Add(SideLabel);
 		EnemyIntentCardBodies.Add(IntentCardBody);
+		EnemyIntentCardPortraits.Add(IntentCardPortrait);
 		switch (SlotIndex)
 		{
 		case 0:
@@ -4188,7 +4505,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	if (UCanvasPanelSlot* HandSlot = RootCanvas->AddChildToCanvas(HandCardBox))
 	{
 		HandSlot->SetAnchors(FAnchors(0.5f, 1.0f, 0.5f, 1.0f));
-		HandSlot->SetOffsets(FMargin(-PlayerHandRowSize.X * 0.5f, -277.0f, PlayerHandRowSize.X, PlayerHandRowSize.Y));
+		HandSlot->SetOffsets(FMargin(-PlayerHandRowSize.X * 0.5f, -305.0f, PlayerHandRowSize.X, PlayerHandRowSize.Y));
 		HandSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
 	HandCardButtons.Reserve(MaximumVisibleHandCards);
@@ -4782,7 +5099,7 @@ FBox2D UGameXXKBattleBoardWidget::ResolveExpandedHandRect(const FVector2D Canvas
 	const FAnchors HandAnchors = HandSlot ? HandSlot->GetAnchors() : FAnchors(0.5f, 1.0f, 0.5f, 1.0f);
 	const FMargin HandOffsets = HandSlot
 		? HandSlot->GetOffsets()
-		: FMargin(-PlayerHandRowSize.X * 0.5f, -277.0f, PlayerHandRowSize.X, PlayerHandRowSize.Y);
+		: FMargin(-PlayerHandRowSize.X * 0.5f, -305.0f, PlayerHandRowSize.X, PlayerHandRowSize.Y);
 	const FVector2D HandAlignment = HandSlot ? HandSlot->GetAlignment() : FVector2D::ZeroVector;
 	FBox2D ExpandedHandRect = ResolveCanvasSlotRect(HandAnchors, HandOffsets, HandAlignment, CanvasSize);
 	if (ExpandedHandRect.bIsValid)
@@ -4802,7 +5119,7 @@ FGameXXKBattlePartyQiLayout UGameXXKBattleBoardWidget::ResolvePartyQiLayout(cons
 	const UCanvasPanelSlot* EndTurnSlot = EndTurnButton ? Cast<UCanvasPanelSlot>(EndTurnButton->Slot) : nullptr;
 	const FMargin HandOffsets = HandSlot
 		? HandSlot->GetOffsets()
-		: FMargin(-PlayerHandRowSize.X * 0.5f, -277.0f, PlayerHandRowSize.X, PlayerHandRowSize.Y);
+		: FMargin(-PlayerHandRowSize.X * 0.5f, -305.0f, PlayerHandRowSize.X, PlayerHandRowSize.Y);
 	const FAnchors EndTurnAnchors = EndTurnSlot ? EndTurnSlot->GetAnchors() : FAnchors(1.0f, 1.0f, 1.0f, 1.0f);
 	const FMargin EndTurnOffsets = EndTurnSlot
 		? EndTurnSlot->GetOffsets()
@@ -5040,6 +5357,7 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentCards()
 		UButton* IntentCardButton = EnemyIntentCardButtons[VisibleSlotIndex];
 		UTextBlock* SideLabel = EnemyIntentSlotLabels.IsValidIndex(VisibleSlotIndex) ? EnemyIntentSlotLabels[VisibleSlotIndex] : nullptr;
 		UTextBlock* CardBody = EnemyIntentCardBodies.IsValidIndex(VisibleSlotIndex) ? EnemyIntentCardBodies[VisibleSlotIndex] : nullptr;
+		UImage* CardPortrait = EnemyIntentCardPortraits.IsValidIndex(VisibleSlotIndex) ? EnemyIntentCardPortraits[VisibleSlotIndex] : nullptr;
 		const int32 PersistentIntentIndex = GetEnemyIntentPersistentIndexForVisibleSlot(VisibleSlotIndex);
 		const bool bHasIntent = Run && Run->EnemyIntents.IsValidIndex(PersistentIntentIndex);
 		if (IntentCardButton)
@@ -5050,6 +5368,10 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentCards()
 		}
 		if (!bHasIntent)
 		{
+			if (CardPortrait)
+			{
+				CardPortrait->SetVisibility(ESlateVisibility::Collapsed);
+			}
 			continue;
 		}
 
@@ -5064,6 +5386,26 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentCards()
 		if (CardBody)
 		{
 			CardBody->SetText(FText::FromString(BuildEnemyIntentCardBody(*State, Intent)));
+		}
+		if (CardPortrait)
+		{
+			const FGameXXKBattleRuntimeUnit* SourceEnemy = State->ActiveBattleEnemies.FindByPredicate([&Intent](const FGameXXKBattleRuntimeUnit& Unit)
+			{
+				return Unit.Id == Intent.SourceUnitId;
+			});
+			UTexture2D* PortraitTexture = SourceEnemy
+				? ResolveEnemyIntentPortraitTexture(SourceEnemy->EnemyDefinitionId)
+				: nullptr;
+			if (PortraitTexture)
+			{
+				CardPortrait->SetBrushFromTexture(PortraitTexture, true);
+				CardPortrait->SetColorAndOpacity(FLinearColor::White);
+				CardPortrait->SetVisibility(ESlateVisibility::HitTestInvisible);
+			}
+			else
+			{
+				CardPortrait->SetVisibility(ESlateVisibility::Collapsed);
+			}
 		}
 		if (IntentCardButton)
 		{
@@ -5886,32 +6228,8 @@ void UGameXXKBattleBoardWidget::BuildCardFace(
 		*FString::Printf(TEXT("%sFace"), *NamePrefix));
 	CardButton->AddChild(FaceCanvas);
 
-	UImage* Portrait = WidgetTree->ConstructWidget<UImage>(
-		UImage::StaticClass(),
-		*FString::Printf(TEXT("%sPortrait"), *NamePrefix));
-	Portrait->SetVisibility(ESlateVisibility::Collapsed);
-	if (UCanvasPanelSlot* PortraitSlot = FaceCanvas->AddChildToCanvas(Portrait))
-	{
-		PortraitSlot->SetOffsets(bUsePlayerHandSize
-			? FMargin(30.0f, 27.0f, 162.0f, 135.0f)
-			: FMargin(16.0f, 14.0f, 81.0f, 68.0f));
-		PortraitSlot->SetAlignment(FVector2D::ZeroVector);
-	}
-
-	UBorder* InfoStrip = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(),
-		*FString::Printf(TEXT("%sInfoStrip"), *NamePrefix));
-	InfoStrip->SetPadding(FMargin(2.0f, 1.0f, 2.0f, 1.0f));
-	InfoStrip->SetHorizontalAlignment(HAlign_Center);
-	InfoStrip->SetVerticalAlignment(VAlign_Center);
-	if (UCanvasPanelSlot* InfoStripSlot = FaceCanvas->AddChildToCanvas(InfoStrip))
-	{
-		InfoStripSlot->SetOffsets(bUsePlayerHandSize
-			? FMargin(24.0f, 174.0f, 177.0f, 54.0f)
-			: FMargin(12.0f, 87.0f, 89.0f, 27.0f));
-		InfoStripSlot->SetAlignment(FVector2D::ZeroVector);
-	}
-
+	// Page-18 card face layout shared with the out-of-battle deck pages:
+	// bold name band on top, 127x152 portrait below it, no bottom strip.
 	UTextBlock* Label = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(),
 		*FString::Printf(TEXT("%sLabel"), *NamePrefix));
@@ -5919,22 +6237,39 @@ void UGameXXKBattleBoardWidget::BuildCardFace(
 	Label->SetAutoWrapText(false);
 	Label->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.36f));
 	Label->SetShadowOffset(FVector2D(0.5f, 0.5f));
-	FSlateFontInfo CardFont = Label->GetFont();
-	CardFont.Size = bUsePlayerHandSize ? 18 : 10;
-	Label->SetFont(CardFont);
-	InfoStrip->SetContent(Label);
+	Label->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 20));
+	Label->SetColorAndOpacity(FSlateColor(FLinearColor(0.95f, 0.90f, 0.82f, 1.0f)));
+	if (UCanvasPanelSlot* LabelSlot = FaceCanvas->AddChildToCanvas(Label))
+	{
+		LabelSlot->SetOffsets(FMargin(0.0f, 12.0f, 206.0f, 33.0f));
+		LabelSlot->SetAlignment(FVector2D::ZeroVector);
+	}
 
+	UImage* Portrait = WidgetTree->ConstructWidget<UImage>(
+		UImage::StaticClass(),
+		*FString::Printf(TEXT("%sPortrait"), *NamePrefix));
+	Portrait->SetVisibility(ESlateVisibility::Collapsed);
+	if (UCanvasPanelSlot* PortraitSlot = FaceCanvas->AddChildToCanvas(Portrait))
+	{
+		// Page-18 portrait cut: 127x152 upright, never squeezed.
+		PortraitSlot->SetOffsets(FMargin(8.0f, 48.0f, 190.0f, 228.0f));
+		PortraitSlot->SetAlignment(FVector2D::ZeroVector);
+	}
+
+	// No bottom color strip: the page-18 card face is frame + portrait + name only.
 	OutLabel = Label;
 	OutPortrait = Portrait;
-	OutInfoStrip = InfoStrip;
+	OutInfoStrip = nullptr;
 }
 
 void UGameXXKBattleBoardWidget::BuildEnemyIntentCardFace(
 	UButton* CardButton,
 	const FString& NamePrefix,
-	UTextBlock*& OutBody)
+	UTextBlock*& OutBody,
+	UImage*& OutPortrait)
 {
 	OutBody = nullptr;
+	OutPortrait = nullptr;
 	if (!CardButton || !WidgetTree)
 	{
 		return;
@@ -5945,6 +6280,16 @@ void UGameXXKBattleBoardWidget::BuildEnemyIntentCardFace(
 		*FString::Printf(TEXT("%sFace"), *NamePrefix));
 	CardButton->AddChild(FaceCanvas);
 
+	UImage* Portrait = WidgetTree->ConstructWidget<UImage>(
+		UImage::StaticClass(),
+		*FString::Printf(TEXT("%sPortrait"), *NamePrefix));
+	Portrait->SetVisibility(ESlateVisibility::Collapsed);
+	if (UCanvasPanelSlot* PortraitSlot = FaceCanvas->AddChildToCanvas(Portrait))
+	{
+		PortraitSlot->SetOffsets(FMargin(0.0f, 0.0f, EnemyIntentCardSize.X, EnemyIntentCardSize.Y));
+		PortraitSlot->SetAlignment(FVector2D::ZeroVector);
+	}
+
 	UTextBlock* Body = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(),
 		*FString::Printf(TEXT("%sBody"), *NamePrefix));
@@ -5953,16 +6298,14 @@ void UGameXXKBattleBoardWidget::BuildEnemyIntentCardFace(
 	Body->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
 	Body->SetShadowColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 0.34f));
 	Body->SetShadowOffset(FVector2D(0.5f, 0.5f));
-	FSlateFontInfo BodyFont = Body->GetFont();
-	BodyFont.Size = 11;
-	BodyFont.TypefaceFontName = TEXT("Bold");
-	Body->SetFont(BodyFont);
+	Body->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 11));
 	if (UCanvasPanelSlot* BodySlot = FaceCanvas->AddChildToCanvas(Body))
 	{
 		BodySlot->SetOffsets(FMargin(16.0f, 16.0f, 118.0f, 138.0f));
 		BodySlot->SetAlignment(FVector2D::ZeroVector);
 	}
 	OutBody = Body;
+	OutPortrait = Portrait;
 }
 
 void UGameXXKBattleBoardWidget::ApplyCardPresentation(
@@ -6038,7 +6381,8 @@ FString UGameXXKBattleBoardWidget::ResolveCardPortraitResourcePath(const FGameXX
 		if (AcquisitionKey == TEXT("Route.General")) return RouteGeneralCardPortraitTexturePath;
 		if (AcquisitionKey == TEXT("Route.Terrain")) return RouteTerrainCardPortraitTexturePath;
 		if (AcquisitionKey == TEXT("Route.Rare")) return RouteRareCardPortraitTexturePath;
-		if (AcquisitionKey.StartsWith(TEXT("Route.Boss."))) return RouteBossCardPortraitTexturePath;
+		if (AcquisitionKey == TEXT("Route.Boss.BlackBear")) return ResolveEnemyPortraitPathByDefinitionId(TEXT("Enemy.Ch2.BlackBear"));
+		if (AcquisitionKey == TEXT("Route.Boss.Tiger")) return ResolveEnemyPortraitPathByDefinitionId(TEXT("Enemy.Ch3.Tiger"));
 	}
 	return FString();
 }
@@ -6196,6 +6540,7 @@ bool UGameXXKBattleBoardWidget::BeginCardTargeting(const FGameXXKCardPlayPreview
 	TargetingPointerPosition = TargetingSourcePosition;
 	InteractionMode = EGameXXKBattleInteractionMode::TargetingCard;
 	LastCardInteractionError.Reset();
+	RefreshUnitTargetingPresentation();
 	RefreshProgrammaticLayout();
 	InvalidateLayoutAndVolatility();
 	return true;
@@ -6277,6 +6622,7 @@ bool UGameXXKBattleBoardWidget::RefreshPendingCardTargetingPreview()
 	PendingCardPreview = NewPreview;
 	LegalCardTargetUnitIds = MoveTemp(NewLegalTargets);
 	TargetingSourcePosition = ResolveCardTargetingSourcePosition(NewPreview.OwnerUnitId);
+	RefreshUnitTargetingPresentation();
 	return true;
 }
 
@@ -6293,6 +6639,7 @@ void UGameXXKBattleBoardWidget::ClearCardTargetingState()
 		TargetingActionName = NAME_None;
 	}
 	TargetingSourcePosition = FVector2D::ZeroVector;
+	RefreshUnitTargetingPresentation();
 }
 
 bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalState()
@@ -6385,6 +6732,7 @@ bool UGameXXKBattleBoardWidget::ResolveAndRefreshCardBattleAfterMutation()
 	if (!ResolveCardBattleTerminalState())
 	{
 		RefreshProgrammaticLayout();
+		RefreshProjectedUnitHuds();
 		return false;
 	}
 

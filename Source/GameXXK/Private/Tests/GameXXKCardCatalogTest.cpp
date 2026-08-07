@@ -98,6 +98,19 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("effect condition none remains serialized as zero"), static_cast<uint8>(EGameXXKCardEffectConditionType::None), static_cast<uint8>(0));
 	TestEqual(TEXT("effect condition terminal value remains stable"), static_cast<uint8>(EGameXXKCardEffectConditionType::OwnerHasDamageOverTime), static_cast<uint8>(8));
 	TestEqual(TEXT("modifier trigger invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardBattleModifierTrigger::Invalid), static_cast<uint8>(0));
+	int32 StrongNpcCardCount = 0;
+	for (const FGameXXKCardDefinition& Definition : Definitions)
+	{
+		if (Definition.Owner != EGameXXKCardOwner::QuestNpc || Definition.EnergyCost < 2)
+		{
+			continue;
+		}
+		++StrongNpcCardCount;
+		TestTrue(
+			FString::Printf(TEXT("strong NPC card %s spends owner mana instead of remaining free"), *Definition.Id.ToString()),
+			Definition.ManaCost >= 6);
+	}
+	TestTrue(TEXT("the NPC catalog contains strong cards covered by the mana-cost rule"), StrongNpcCardCount > 0);
 	TestEqual(TEXT("guard redirect policy invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardGuardRedirectPolicy::Invalid), static_cast<uint8>(0));
 	TestEqual(TEXT("modifier recipient scope invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardModifierRecipientScope::Invalid), static_cast<uint8>(0));
 	TestEqual(TEXT("modifier expiry invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardModifierExpiry::Invalid), static_cast<uint8>(0));

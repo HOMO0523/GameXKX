@@ -104,8 +104,34 @@ namespace
 				Definition.Slot = Slot.Slot;
 				Definition.ScalingRule = EGameXXKEquipmentScalingRule::ModernPercentBase;
 				Definition.BaseStatCoefficients = MakeSlotCoefficients(Slot.Slot);
+				// UI V2 approved set icons: /Game/GameXXK/UI/Equipment/<set>_<slot>.
+				const FString SetSegment = FString(Set.IdSegment).ToLower();
+				const FString SlotSegment = FString(Slot.IdSegment).ToLower();
+				Definition.IconSoftPath = FSoftObjectPath(*FString::Printf(
+					TEXT("/Game/GameXXK/UI/Equipment/%s_%s.%s_%s"),
+					*SetSegment, *SlotSegment, *SetSegment, *SlotSegment));
 				Definitions.Add(MoveTemp(Definition));
 			}
+		}
+
+		// Starter set: the UI V2 approved six-slot ordinary starter equipment.
+		// No set bonuses; plain modern curves so they grow like any modern gear.
+		for (const FSlotPresentation& Slot : Slots)
+		{
+			FGameXXKEquipmentDefinition Definition;
+			Definition.Id = FName(*FString::Printf(TEXT("Equipment.Starter.%s"), Slot.IdSegment));
+			Definition.DisplayName = FText::Format(
+				NSLOCTEXT("GameXXKEquipment", "StarterEquipmentNameFormat", "基础{0}"),
+				Slot.DisplayName);
+			Definition.Set = EGameXXKEquipmentSet::Starter;
+			Definition.Slot = Slot.Slot;
+			Definition.ScalingRule = EGameXXKEquipmentScalingRule::ModernPercentBase;
+			Definition.BaseStatCoefficients = MakeSlotCoefficients(Slot.Slot);
+			const FString SlotSegment = FString(Slot.IdSegment).ToLower();
+			Definition.IconSoftPath = FSoftObjectPath(*FString::Printf(
+				TEXT("/Game/GameXXK/UI/StarterEquipment/starter_%s.starter_%s"),
+				*SlotSegment, *SlotSegment));
+			Definitions.Add(MoveTemp(Definition));
 		}
 		return Definitions;
 	}
@@ -228,8 +254,9 @@ bool FGameXXKEquipmentCatalog::ValidateDefinition(const FGameXXKEquipmentDefinit
 		return false;
 	}
 
-	const bool bModern = Definition.Set >= EGameXXKEquipmentSet::PoJun
-		&& Definition.Set <= EGameXXKEquipmentSet::ShanHe;
+	const bool bModern = Definition.Set == EGameXXKEquipmentSet::Starter
+		|| (Definition.Set >= EGameXXKEquipmentSet::PoJun
+			&& Definition.Set <= EGameXXKEquipmentSet::ShanHe);
 	if (bModern)
 	{
 		if (Definition.ScalingRule != EGameXXKEquipmentScalingRule::ModernPercentBase
@@ -262,13 +289,8 @@ int32 FGameXXKEquipmentCatalog::GetEnhancementStoneCost(const int32 CurrentEnhan
 
 int32 FGameXXKEquipmentCatalog::GetReforgeSandCost(const EGameXXKEquipmentQuality Quality)
 {
-	switch (Quality)
-	{
-	case EGameXXKEquipmentQuality::Common: return 10;
-	case EGameXXKEquipmentQuality::Rare: return 30;
-	case EGameXXKEquipmentQuality::Epic: return 90;
-	default: return 0;
-	}
+	// One refinement sand per wash, regardless of quality.
+	return 1;
 }
 
 int32 FGameXXKEquipmentCatalog::GetDismantleSandYield(const EGameXXKEquipmentQuality Quality)

@@ -870,7 +870,8 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("general route cards resolve their shared ink-command crest"), Board->GetCardPortraitResourcePathForTest(TEXT("Route.General.PoJiaTuCi")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_General.T_CardPortrait_Route_General")));
 	TestEqual(TEXT("terrain route cards resolve their shared landscape crest"), Board->GetCardPortraitResourcePathForTest(TEXT("Route.Terrain.DuanYaLuoShi")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Terrain.T_CardPortrait_Route_Terrain")));
 	TestEqual(TEXT("rare route cards resolve their shared relic crest"), Board->GetCardPortraitResourcePathForTest(TEXT("Route.Rare.TieYiYiJue")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Rare.T_CardPortrait_Route_Rare")));
-	TestEqual(TEXT("boss route cards resolve their shared battle-gong crest"), Board->GetCardPortraitResourcePathForTest(TEXT("Route.Boss.FuHuDuanJiang")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Boss.T_CardPortrait_Route_Boss")));
+	TestEqual(TEXT("tiger boss route cards resolve the real final-idle tiger boss portrait"), Board->GetCardPortraitResourcePathForTest(TEXT("Route.Boss.FuHuDuanJiang")), FString(TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_TigerBoss.T_CardPortrait_Enemy_Ch3_TigerBoss")));
+	TestEqual(TEXT("black-bear boss route cards resolve the real final-idle black-bear portrait"), Board->GetCardPortraitResourcePathForTest(TEXT("Route.Boss.XiongPiPiJia")), FString(TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_BlackBearBoss.T_CardPortrait_Enemy_Ch2_BlackBearBoss")));
 	int32 RouteDefinitionCount = 0;
 	for (const FGameXXKCardDefinition& Definition : FGameXXKCardCatalog::GetAllCardDefinitions())
 	{
@@ -881,7 +882,13 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 		++RouteDefinitionCount;
 		const FString RoutePortraitPath = Board->GetCardPortraitResourcePathForTest(Definition.Id);
 		TestFalse(FString::Printf(TEXT("route card %s has category portrait art"), *Definition.Id.ToString()), RoutePortraitPath.IsEmpty());
-		TestTrue(FString::Printf(TEXT("route card %s remains in the approved PartyDeck card-art root"), *Definition.Id.ToString()), RoutePortraitPath.StartsWith(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_")));
+		const bool bBossRoute = Definition.AcquisitionKey == TEXT("Route.Boss.BlackBear")
+			|| Definition.AcquisitionKey == TEXT("Route.Boss.Tiger");
+		TestTrue(
+			FString::Printf(TEXT("route card %s uses its approved category or real boss portrait root"), *Definition.Id.ToString()),
+			bBossRoute
+				? RoutePortraitPath.StartsWith(TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_"))
+				: RoutePortraitPath.StartsWith(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_")));
 	}
 	TestEqual(TEXT("all thirty route-card definitions resolve a non-empty category portrait"), RouteDefinitionCount, 30);
 	TestEqual(TEXT("hero lower information strip uses pale parchment"), Board->GetCardInfoStripTintForTest(TEXT("Hero.QingFengYiShi")), FLinearColor(0.945f, 0.894f, 0.800f, 1.0f));
@@ -923,6 +930,11 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 		OwnerVisual ? OwnerVisual->GetStageCenter() : FVector2D::ZeroVector);
 	TestTrue(TEXT("the preview marks its stable legal enemy target for highlight"), Board->IsTargetUnitHighlighted(TargetUnitId));
 	TestFalse(TEXT("the preview does not make the owner a legal enemy-card target"), Board->IsTargetUnitHighlighted(OwnerUnitId));
+	const UGameXXKBattleUnitVisualWidget* const LegalTargetVisual = Board->GetUnitVisualForTest(TargetUnitId);
+	TestTrue(TEXT("card targeting keeps every legal target at full color"),
+		LegalTargetVisual && !LegalTargetVisual->IsDimmedForCardTargetingForTest());
+	TestTrue(TEXT("card targeting greys every living unit that cannot receive the selected card"),
+		OwnerVisual && OwnerVisual->IsDimmedForCardTargetingForTest());
 	TestEqual(TEXT("previewing a card does not deal damage"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP, EnemyHealthBeforePreview);
 
 	Board->UpdateTargetingPointer(FVector2D(520.0f, 360.0f));
@@ -931,6 +943,8 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("an invalid target keeps the card selection active"), Board->IsCardTargetingForTest());
 	TestTrue(TEXT("right-click or Escape cancellation clears card-targeting state"), Board->CancelBattleTargeting());
 	TestFalse(TEXT("cancel removes the card target highlights"), Board->IsTargetUnitHighlighted(TargetUnitId));
+	TestTrue(TEXT("cancel restores the formerly invalid unit to full color"),
+		OwnerVisual && !OwnerVisual->IsDimmedForCardTargetingForTest());
 	TestTrue(TEXT("cancelling preserves the selected hand card"), Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.ContainsByPredicate([CardInstanceId](const FGameXXKCardInstance& Card)
 	{
 		return Card.InstanceId == CardInstanceId;

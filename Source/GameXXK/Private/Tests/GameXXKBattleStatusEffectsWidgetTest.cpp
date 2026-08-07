@@ -14,6 +14,7 @@
 #include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattleStatusIconWidget.h"
+#include "UI/GameXXKBattleUnitHudWidget.h"
 #include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
 
 #include <type_traits>
@@ -475,31 +476,26 @@ bool FGameXXKBattleStatusEffectsWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("positive-status Board begins a visual session"), StatusBoard->BeginBattleVisualSession(8201));
 	TestTrue(TEXT("positive-status card enters manual targeting"), StatusBoard->ClickCardInHand(StatusCardInstanceId));
 	TestTrue(TEXT("positive-status card commits through the Board"), StatusBoard->ConfirmTargetingUnit(TEXT("Enemy.Status")));
-	TestEqual(TEXT("Poison and Mark queue as two separate deterministic status entries"),
+	TestEqual(TEXT("buff and debuff deltas never enter the cinematic queue"),
 		StatusBoard->GetBattlePresentationQueueCountForTest(),
-		2);
+		0);
 	StatusBoard->AdvanceVisualsAtRealTime(0.0);
-	TestTrue(TEXT("the first status entry is presented centrally"), FBoardApi::IsStatus(StatusBoard));
-	TestEqual(TEXT("positive status requests only the generic Buff atlas"),
-		FBoardApi::AssetId(StatusBoard),
-		FString(TEXT("status_buff_generic")));
-	TestEqual(TEXT("positive status presentation retains its signed stack readout"), FBoardApi::Delta(StatusBoard), 4);
-	TestEqual(TEXT("the enlarged existing status style uses the affected Poison icon"),
-		FBoardApi::IconId(StatusBoard),
-		FName(TEXT("PoisonVial")));
-	TestTrue(TEXT("the central status readout is explicitly signed"), StatusBoard->GetBattlePresentationReadoutForTest().StartsWith(TEXT("+")));
-	TestEqual(TEXT("status entries use the actual generic clip runtime"),
-		FBoardApi::Duration(StatusBoard),
-		static_cast<double>(FGameXXKBattleAnimationPresentation::GetRuntimeDuration(
-			FGameXXKBattleAnimationPresentation::ResolveGenericClip(EGameXXKBattleAnimationAction::Buff))));
+	TestFalse(TEXT("status-only card resolution never starts a central close-up"), FBoardApi::IsStatus(StatusBoard));
+	TestTrue(TEXT("status-only card resolution immediately completes its continuation"),
+		!StatusBoard->IsBattlePresentationLockedForTest());
 	UGameXXKBattleStatusIconWidget* const CentralStatusIcon = StatusBoard->WidgetTree
 		? Cast<UGameXXKBattleStatusIconWidget>(StatusBoard->WidgetTree->FindWidget(TEXT("BattleCinematicStatusIcon")))
 		: nullptr;
 	TestNotNull(TEXT("central status presentation reuses the existing status icon widget"), CentralStatusIcon);
-	TestTrue(TEXT("central status presentation enlarges the existing badge style"),
-		CentralStatusIcon
-		&& CentralStatusIcon->GetRenderTransform().Scale.X > 1.0f
-		&& CentralStatusIcon->GetRenderTransform().Scale.Y > 1.0f);
+	TestEqual(TEXT("the retired central status badge stays hidden"),
+		CentralStatusIcon ? CentralStatusIcon->GetVisibility() : ESlateVisibility::Visible,
+		ESlateVisibility::Hidden);
+	UGameXXKBattleUnitHudWidget* const UpdatedStatusHud = StatusBoard->GetProjectedUnitHudForTest(TEXT("Enemy.Status"));
+	UGameXXKBattleUnitStatusEffectsWidget* const UpdatedStatusEffects = UpdatedStatusHud
+		? UpdatedStatusHud->GetStatusEffectsWidgetForTest()
+		: nullptr;
+	TestTrue(TEXT("status changes still update the ordinary unit HUD without a close-up"),
+		UpdatedStatusEffects && UpdatedStatusEffects->GetIconCountForTest() > 0);
 
 	return true;
 }

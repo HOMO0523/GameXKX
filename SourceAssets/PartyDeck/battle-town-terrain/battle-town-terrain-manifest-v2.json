@@ -1,0 +1,38 @@
+{
+  "schema": 2,
+  "status": "audited",
+  "source_map": "/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo",
+  "target_map": "/Game/GameXXK/Maps/L_BattleScene",
+  "source_landscape": "Landscape_0",
+  "source_material": "/Game/Asian_Village/materials/landscape_materials/MI_landscape_material_Inst",
+  "slice_center_cm": {
+    "x": 0.0,
+    "y": 0.0
+  },
+  "slice_world_bounds_cm": {
+    "min": {
+      "x": -1200.0,
+      "y": -700.0
+    },
+    "max": {
+      "x": 1200.0,
+      "y": 700.0
+    }
+  },
+  "max_height_delta_cm": 159.38651579309953,
+  "source_hashes": {
+    "town_package_sha256": "cb97898626b3291ae4c38b1f1d5996975481475b223c58ea51110084a79e576b",
+    "battle_package_sha256": "0056e4a93ff7cc9d89ba1103c3615fec8b4ac76b0258e7bb295a97855fc94493"
+  },
+  "output_assets": [],
+  "rollback_asset_contract": [
+    "/Game/GameXXK/Environment/Battle/TownTerrain/SM_Battle_QingshanGround_01",
+    "/Game/GameXXK/Environment/Battle/TownTerrain/M_Battle_QingshanGround_01",
+    "/Game/GameXXK/Environment/Battle/TownTerrain/T_Battle_QingshanGround_Albedo_01"
+  ],
+  "validation": {
+    "before_snapshot": "Saved/HarnessReports/battle-town-postprobe-clean-20260718-1657.json",
+    "v1_failure_evidence": "Saved/Codex/townterrain_albedo_probe.png was uniform RGB(173), the UE invalid render-capture fallback.",
+    "v2_gate": "Explicit local render-capture cameras plus cleanup_tolerance=0.0; Saved PNG statistics must reject the RGB(173) fallback before any asset is written."
+  }
+}

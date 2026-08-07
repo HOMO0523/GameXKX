@@ -31,6 +31,7 @@ SCENE_TOOLSET = "editor_toolset.toolsets.scene.SceneTools"
 PROBE_SCRIPT = "Content/Python/gamexxk_probe_real_play_flow.py"
 BATTLE_HUD_FIXTURE_SCRIPT = "Content/Python/gamexxk_apply_battle_hud_fixture.py"
 ACTIVE_WIDGETS_PROBE_SCRIPT = "Content/Python/gamexxk_probe_active_widgets.py"
+META_SHOP_PROBE_SCRIPT = "Content/Python/gamexxk_probe_meta_shop_window.py"
 MAIN_MAP = "/Game/GameXXK/Maps/L_Main"
 QINGSHAN_MAP_TOKEN = "L_Qingshan_AsianVillage_Demo"
 ROUTE_MAP_TOKEN = "L_RouteMap"
@@ -1654,6 +1655,24 @@ class RealFlowHarness:
         self.event("probe", screen=_runtime_screen(parsed), map=_map_name(parsed))
         return parsed
 
+    def probe_meta_shop(self) -> tuple[dict[str, Any], Path]:
+        payload = _load_json_from_probe(self.client.run_project_python_file(META_SHOP_PROBE_SCRIPT, []))
+        evidence = payload.get("meta_shop", {})
+        if not isinstance(evidence, dict):
+            evidence = {}
+        self.event("meta_shop_probe", detail=evidence)
+        if not evidence.get("ok"):
+            raise RuntimeError(f"New meta-shop live acceptance failed: {evidence}")
+        screenshot_path, _ = self.screenshot("real_flow_meta_shop.png")
+        close_payload = _load_json_from_probe(
+            self.client.run_project_python_file(META_SHOP_PROBE_SCRIPT, ["--close"])
+        )
+        close_result = close_payload.get("meta_shop_close", {})
+        if not isinstance(close_result, dict) or not close_result.get("ok"):
+            raise RuntimeError(f"New meta-shop did not close after capture: {close_result}")
+        self.event("meta_shop_close", detail=close_result)
+        return evidence, screenshot_path
+
     def screenshot_context_for(self, screenshot_path: Path) -> dict[str, Any]:
         return dict(getattr(self, "_screenshot_contexts", {}).get(str(screenshot_path), {}))
 
@@ -2357,6 +2376,8 @@ class RealFlowHarness:
         if not task_offer_close_probe["ok"]:
             raise RuntimeError(f"Accepted task offer did not close before movement verification: {task_offer_close_probe}")
 
+        meta_shop_probe, meta_shop_path = self.probe_meta_shop()
+
         quest_after_interact = _quest_npc(after_interact)
         quest_location_after_interact = quest_after_interact.get("location") if isinstance(quest_after_interact.get("location"), dict) else {}
         if not quest_location_after_interact:
@@ -2620,6 +2641,7 @@ class RealFlowHarness:
                 "before_start": str(before_start_path),
                 "after_qingshan": str(after_qingshan_path),
                 "quest_dialog": str(quest_offer_path),
+                "meta_shop": str(meta_shop_path),
                 "after_route_map": str(after_route_map_path),
                 "after_battle": str(after_battle_path),
                 "battle_hud": battle_hud_capture,
@@ -2635,6 +2657,7 @@ class RealFlowHarness:
             "final_probe": after_battle,
             "events": self.events,
         }
+        result["meta_shop"] = meta_shop_probe
         return result
 
     def close(self) -> None:

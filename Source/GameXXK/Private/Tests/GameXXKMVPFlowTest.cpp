@@ -166,11 +166,11 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the player-facing StartNewGame path initializes the full-flow runtime"), Subsystem->StartNewGame());
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 
-	TestEqual(TEXT("player-facing StartNewGame opens the world map"), State.Screen, EGameXXKScreen::WorldMap);
-	TestEqual(TEXT("new game starts with enough gold to buy starter equipment"), State.PlayerGold, 50);
-	TestEqual(TEXT("player-facing StartNewGame grants one permanent companion"), State.CardRun.CompanionRoster.PermanentCompanions.Num(), 1);
+	TestEqual(TEXT("player-facing StartNewGame lands directly in Qingshan town"), State.Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("new game starts with ten thousand gold"), State.PlayerGold, 10000);
+	TestEqual(TEXT("player-facing StartNewGame grants two permanent companions"), State.CardRun.CompanionRoster.PermanentCompanions.Num(), 2);
 	FName StarterCompanionId = NAME_None;
-	if (State.CardRun.CompanionRoster.PermanentCompanions.Num() == 1)
+	if (State.CardRun.CompanionRoster.PermanentCompanions.Num() == 2)
 	{
 		const FGameXXKPermanentCompanion& StarterCompanion = State.CardRun.CompanionRoster.PermanentCompanions[0];
 		StarterCompanionId = StarterCompanion.InstanceId;

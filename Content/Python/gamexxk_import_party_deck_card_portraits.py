@@ -1,16 +1,14 @@
-"""Prepare and import the seventeen approved PartyDeck card portraits.
+"""Prepare and import final-idle card portraits for PartyDeck and battle UI.
 
-The cards reuse character identity art instead of generating one illustration for
-each card: the hero and named task NPCs use their approved original art, while
-the six recruitable roles use the reviewed south-facing cell of their generated
-eight-direction atlas.  The four route categories use reviewed, non-text
-watercolor crests generated on a chroma-key source and recorded in a provenance
-manifest.  This keeps every one of the cards visually tied to its owner or route
-category without duplicating UI frames or recolouring the approved PSD frame.
+The pipeline owns three visually distinct groups:
 
-By default this module only verifies its source contract.  ``--prepare`` writes
-derived 171 x 205 portrait PNGs under ``SourceAssets/PartyDeck``.  Only
-``--execute-import`` may write the thirteen isolated UE Texture2D assets.
+* thirteen player/NPC/partner busts, head-calibrated and anchored lower-right;
+* three newly generated route emblems (normal, terrain, rare);
+* twenty-one enemy portraits, including three real boss cards, anchored lower-left.
+
+Every character and enemy source is the current production ``idle/frame_0000``.
+No text is baked into the PNGs.  UE renders card names and enemy intent text with
+its composite font so Chinese remains localisable and cannot become raster noise.
 """
 
 from __future__ import annotations
@@ -18,7 +16,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import shutil
 import struct
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,30 +23,36 @@ from typing import Any
 
 try:
     import unreal
-except ImportError:  # Lets the immutable source contract run outside UE.
+except ImportError:  # The deterministic preparation stage runs outside UE.
     unreal = None
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-PSD_ROOT = (
-    Path(r"C:\Users\shxuw\Downloads\nw-studio-nwueball-https-github-com")
-    / "nw-studio-nwueball-https-github-com"
-    / "work"
-    / "psd_rebuild"
-    / "clean_assets_v2"
-)
-PPT_EXTRACT_ROOT = PROJECT_ROOT / "SourceAssets" / "PartyDeck" / "character-references" / "ppt-extract"
-PACKED_ROOT = PROJECT_ROOT / "SourceAssets" / "PartyDeck" / "character-references" / "packed"
+PRODUCTION_ROOT = PROJECT_ROOT / "SourceAssets" / "AnimationProcessing" / "Production"
 CARD_PORTRAIT_ROOT = PROJECT_ROOT / "SourceAssets" / "PartyDeck" / "card-portraits"
-ROUTE_SOURCE_ROOT = CARD_PORTRAIT_ROOT / "route-source"
-ROUTE_ALPHA_ROOT = CARD_PORTRAIT_ROOT / "route-alpha"
-ROUTE_ART_MANIFEST_PATH = CARD_PORTRAIT_ROOT / "route-card-art-manifest.json"
-DERIVED_ROOT = CARD_PORTRAIT_ROOT / "generated"
-DESTINATION_ROOT = "/Game/GameXXK/UI/PartyDeck/CardArt"
+PARTY_DERIVED_ROOT = CARD_PORTRAIT_ROOT / "generated"
+ENEMY_DERIVED_ROOT = PROJECT_ROOT / "SourceAssets" / "Battle" / "EnemyCardArt" / "generated"
+ROUTE_CHROMA_SHEET = CARD_PORTRAIT_ROOT / "route-source" / "route_icons_v2_chroma.png"
+
+PARTY_DESTINATION_ROOT = "/Game/GameXXK/UI/PartyDeck/CardArt"
+ENEMY_DESTINATION_ROOT = "/Game/GameXXK/UI/Battle/EnemyCardArt"
+
 PORTRAIT_SIZE = (171, 205)
-ROLE_IDLE_ATLAS_SIZE = (171, 1640)
-ROUTE_SOURCE_SIZE = (1024, 1536)
+FINAL_IDLE_FRAME_SIZE = (512, 512)
+ROUTE_SHEET_SIZE = (1254, 1254)
+NAME_SAFE_HEIGHT = 34
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+@dataclass(frozen=True)
+class Placement:
+    mode: str
+    anchor: str
+    head_box: tuple[int, int, int, int] | None = None
+    target_head_center: tuple[int, int] | None = None
+    target_head_height: int = 70
+    max_size: tuple[int, int] = (165, 166)
+    source_region: tuple[int, int, int, int] | None = None
 
 
 @dataclass(frozen=True)
@@ -60,53 +63,117 @@ class PortraitRecord:
     source_sha256: str
     source_mode: str
     derived_name: str
+    derived_root: Path
+    destination_root: str
+    placement: Placement
 
     @property
     def derived_path(self) -> Path:
-        return DERIVED_ROOT / self.derived_name
+        return self.derived_root / self.derived_name
 
     @property
     def asset_path(self) -> str:
-        return f"{DESTINATION_ROOT}/{self.asset_name}"
+        return f"{self.destination_root}/{self.asset_name}"
 
 
-def _psd(name: str) -> Path:
-    return PSD_ROOT / name
+def _production_idle(name: str) -> Path:
+    return PRODUCTION_ROOT / name / "frames" / "frame_0000.png"
 
 
-def _ppt(name: str) -> Path:
-    return PPT_EXTRACT_ROOT / name
+def _right_head(
+    head_box: tuple[int, int, int, int],
+    *,
+    center_y: int = 88,
+    target_height: int = 70,
+) -> Placement:
+    return Placement(
+        "head_anchor",
+        "right",
+        head_box=head_box,
+        target_head_center=(126, center_y),
+        target_head_height=target_height,
+    )
 
 
-def _role(name: str) -> Path:
-    return PACKED_ROOT / name
+def _left_fit(*, max_size: tuple[int, int] = (165, 166)) -> Placement:
+    return Placement("transparent_fit", "left", max_size=max_size)
 
 
-def _route_alpha(name: str) -> Path:
-    return ROUTE_ALPHA_ROOT / name
+def _route(region: tuple[int, int, int, int]) -> Placement:
+    return Placement("chroma_region_fit", "right", max_size=(158, 166), source_region=region)
 
 
-# Source hashes intentionally duplicate the locked identity ledger.  Keeping them
-# beside the UI importer makes an accidental source swap fail before an asset write.
-PORTRAITS: tuple[PortraitRecord, ...] = (
-    PortraitRecord("Hero", "T_CardPortrait_Hero", _psd("001.png"), "e0efe919f19fbc8f5bcbe2c3075d168557899c5182804bf772c219d9301970e7", "original_alpha", "hero.png"),
-    PortraitRecord("Npc.TusiChief", "T_CardPortrait_Npc_TusiChief", _psd("065.png"), "29af3b326d171b67f5621249faa4c3eeb148a6fbcc81041d336f550dbb79a8ce", "original_alpha", "npc_tusi_chief.png"),
-    PortraitRecord("Npc.SongJinBao", "T_CardPortrait_Npc_SongJinBao", _ppt("npc_songjinbao_image37.jpeg"), "64206e9b8909c46d4aef209ab8abf0b8d2302f5470351bb2ec1e66a9a1d53cbd", "original_opaque", "npc_song_jin_bao.png"),
-    PortraitRecord("Npc.YueBai", "T_CardPortrait_Npc_YueBai", _psd("064.png"), "5bdc7c284ae1f0469418eafab6a6d8a3714cc0ca75a7964f73474c772a956ddb", "original_alpha", "npc_yue_bai.png"),
-    PortraitRecord("Npc.ZhouGuangZu", "T_CardPortrait_Npc_ZhouGuangZu", _psd("063.png"), "237bfe3fa5198edc786fcae24a3b9b16615acc6c6abffb614ed9a2b62b2c2540", "original_alpha", "npc_zhou_guang_zu.png"),
-    PortraitRecord("Npc.JinGui", "T_CardPortrait_Npc_JinGui", _ppt("npc_jingui_image33.jpeg"), "941a2a56e62e09a7b5749e34d2b07e407a12e2894a51cc62599a4808a2568caf", "original_opaque", "npc_jin_gui.png"),
-    PortraitRecord("Npc.QiongMeiEr", "T_CardPortrait_Npc_QiongMeiEr", _ppt("npc_qiongmeier_image34.jpeg"), "c6b72f3e50b78f37cbb0a6d77b71485a1bba4d9a742cfc803f48116fb198b529", "original_opaque", "npc_qiong_mei_er.png"),
-    PortraitRecord("Role.Blade", "T_CardPortrait_Role_Blade", _role("partner_blade_idle_8dir.png"), "aad0eca86bffaea68c22091f37e8c6c80759ac19c43be1f23aed98a03e9b7034", "role_south_cell", "role_blade.png"),
-    PortraitRecord("Role.Guard", "T_CardPortrait_Role_Guard", _role("partner_guard_idle_8dir.png"), "0d7c087403b85c24ae24594a713e9df6b055d8cc71df415909fa2fb48e060233", "role_south_cell", "role_guard.png"),
-    PortraitRecord("Role.Healer", "T_CardPortrait_Role_Healer", _role("partner_healer_idle_8dir.png"), "50a52cc60e39dd00603c24de5c650744d736fb513b804674e535c748f73602f9", "role_south_cell", "role_healer.png"),
-    PortraitRecord("Role.Hunter", "T_CardPortrait_Role_Hunter", _role("partner_hunter_idle_8dir.png"), "29de830ab49a89871338ea2464c9b6b4d56d677270bb0e2c9070b14c60cbeae3", "role_south_cell", "role_hunter.png"),
-    PortraitRecord("Role.Sorcerer", "T_CardPortrait_Role_Sorcerer", _role("partner_sorcerer_idle_8dir.png"), "ba1a959b76432c8df58c3ff5b18454c9bf5b1e55bf8ff95d479b2e9a0bd3379d", "role_south_cell", "role_sorcerer.png"),
-    PortraitRecord("Role.FormationMaster", "T_CardPortrait_Role_FormationMaster", _role("partner_formation_master_idle_8dir.png"), "a5646af2e2730e1e1b459fb9bdcc0c0fba77a0240ada9000d65c7e74f4ee0a9a", "role_south_cell", "role_formation_master.png"),
-    PortraitRecord("Route.General", "T_CardPortrait_Route_General", _route_alpha("route_general_alpha_v1.png"), "f5b149e4685769dd1e15676ed22341f3d5f8e1d6c9671bb97ba3c2b7ed38f35b", "generated_alpha", "route_general.png"),
-    PortraitRecord("Route.Terrain", "T_CardPortrait_Route_Terrain", _route_alpha("route_terrain_alpha_v1.png"), "af5287ea0b7f1f1dfd9cd89687517c890f8cc7ed5bd0aea5f72095cc5e5af130", "generated_alpha", "route_terrain.png"),
-    PortraitRecord("Route.Rare", "T_CardPortrait_Route_Rare", _route_alpha("route_rare_alpha_v1.png"), "629a778b35a9803baa25e7e06d877278b1bbe211a2d40fc18d8cc207ae2603fc", "generated_alpha", "route_rare.png"),
-    PortraitRecord("Route.Boss", "T_CardPortrait_Route_Boss", _route_alpha("route_boss_alpha_v1.png"), "4e9de62c549c4e2d63df0e5f5391f1ec5d2d78ad3a79e402b2d8de8abf2cdfd4", "generated_alpha", "route_boss.png"),
+PARTY_PORTRAITS: tuple[PortraitRecord, ...] = (
+    PortraitRecord("Hero", "T_CardPortrait_Hero", _production_idle("character_00_hero_idle"), "d6e1bcc2acbce962c5b872ac628c5a86dbcc99466a56d6a6a48ab8bef6a8cc58", "final_idle", "hero.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((190, 62, 289, 177))),
+    PortraitRecord("Npc.TusiChief", "T_CardPortrait_Npc_TusiChief", _production_idle("character_07_tusi_chief_idle"), "b7ff042ca3b6c6289ae117b898a607d53223e6aea4cc01dced5fd553f01aa00f", "final_idle", "npc_tusi_chief.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((240, 140, 326, 240), center_y=92)),
+    PortraitRecord("Npc.SongJinBao", "T_CardPortrait_Npc_SongJinBao", _production_idle("character_08_song_jin_bao_idle"), "2d4ae4aaab749a064d862ef6f27519b3109d3b80282977190d7e866304976f64", "final_idle", "npc_song_jin_bao.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((244, 68, 326, 177), center_y=92)),
+    PortraitRecord("Npc.YueBai", "T_CardPortrait_Npc_YueBai", _production_idle("character_09_yue_bai_idle"), "08c2836b7a7bb39c1a0a24ac2a3cc2bf2c93a0134c0f3539eb9c277d4ec6902b", "final_idle", "npc_yue_bai.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, Placement("transparent_fit", "right", max_size=(164, 168))),
+    PortraitRecord("Npc.ZhouGuangZu", "T_CardPortrait_Npc_ZhouGuangZu", _production_idle("character_10_zhou_guang_zu_idle"), "7d2638d3dda907ebe917da5565e601429dcabe0944420c11fc89b1c7570a7564", "final_idle", "npc_zhou_guang_zu.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((244, 106, 330, 213), center_y=94)),
+    PortraitRecord("Npc.JinGui", "T_CardPortrait_Npc_JinGui", _production_idle("character_11_jin_gui_idle"), "9e54550dee618b3e8e06181f12270502bb4977586c2088a985865b614b05235d", "final_idle", "npc_jin_gui.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((232, 154, 310, 246), center_y=94)),
+    PortraitRecord("Npc.QiongMeiEr", "T_CardPortrait_Npc_QiongMeiEr", _production_idle("character_12_qiong_mei_er_idle"), "5138259d34e5074179f8c4a201295dfe815f177495c49984fc19b1e3b9da4b60", "final_idle", "npc_qiong_mei_er.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((171, 66, 257, 184), center_y=91)),
+    PortraitRecord("Role.Blade", "T_CardPortrait_Role_Blade", _production_idle("character_01_blade_idle"), "e0035c4c48be57c9d5229c542c1f6ac3dc29c94d8948dee1f1d3196c8bb45140", "final_idle", "role_blade.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((257, 84, 345, 193))),
+    PortraitRecord("Role.Guard", "T_CardPortrait_Role_Guard", _production_idle("character_02_guard_idle"), "4b1519c16e3e67dab5256536ea092545af43fab3a23cc62f17b0b8942f280752", "final_idle", "role_guard.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((252, 107, 327, 194))),
+    PortraitRecord("Role.Healer", "T_CardPortrait_Role_Healer", _production_idle("character_03_healer_idle"), "8788ba16ce4f1aaed7ffe72e6bdf32b5b7f2123ebf4b9a70485550f2d6aef26c", "final_idle", "role_healer.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((205, 78, 289, 185))),
+    PortraitRecord("Role.Hunter", "T_CardPortrait_Role_Hunter", _production_idle("character_04_hunter_idle"), "52c14d20ec28d552406a722a7ace13abb33c26a93c29b5e4f39bb5e4a36a142c", "final_idle", "role_hunter.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((176, 137, 253, 231))),
+    PortraitRecord("Role.Sorcerer", "T_CardPortrait_Role_Sorcerer", _production_idle("character_05_sorcerer_idle"), "0978508ba1ef076673a06825dc86af691c98912beb94a5ab31b726f828ff9acc", "final_idle", "role_sorcerer.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((204, 100, 286, 208))),
+    PortraitRecord("Role.FormationMaster", "T_CardPortrait_Role_FormationMaster", _production_idle("character_06_formation_master_idle"), "826db093a1593c5153bc984009b500096196eca2371192c128601db060483bb0", "final_idle", "role_formation_master.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _right_head((228, 108, 318, 218))),
 )
+
+
+ROUTE_PORTRAITS: tuple[PortraitRecord, ...] = (
+    PortraitRecord("Route.General", "T_CardPortrait_Route_General", ROUTE_CHROMA_SHEET, "4b4d0c694e76befb961c9a61ea8dc890c49c267cf71b9502e3f107c3b1d4d02b", "route_chroma_sheet", "route_general.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _route((0, 0, 627, 627))),
+    PortraitRecord("Route.Terrain", "T_CardPortrait_Route_Terrain", ROUTE_CHROMA_SHEET, "4b4d0c694e76befb961c9a61ea8dc890c49c267cf71b9502e3f107c3b1d4d02b", "route_chroma_sheet", "route_terrain.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _route((627, 0, 1254, 627))),
+    PortraitRecord("Route.Rare", "T_CardPortrait_Route_Rare", ROUTE_CHROMA_SHEET, "4b4d0c694e76befb961c9a61ea8dc890c49c267cf71b9502e3f107c3b1d4d02b", "route_chroma_sheet", "route_rare.png", PARTY_DERIVED_ROOT, PARTY_DESTINATION_ROOT, _route((0, 627, 627, 1254))),
+)
+
+
+def _enemy(
+    key: str,
+    asset_suffix: str,
+    production_name: str,
+    source_hash: str,
+    *,
+    boss: bool = False,
+) -> PortraitRecord:
+    return PortraitRecord(
+        key,
+        f"T_CardPortrait_Enemy_{asset_suffix}",
+        _production_idle(production_name),
+        source_hash,
+        "final_idle",
+        f"{production_name.removesuffix('_idle')}.png",
+        ENEMY_DERIVED_ROOT,
+        ENEMY_DESTINATION_ROOT,
+        _left_fit(max_size=(168, 174) if boss else (165, 166)),
+    )
+
+
+ENEMY_PORTRAITS: tuple[PortraitRecord, ...] = (
+    _enemy("Enemy.Ch1.Rooster", "Ch1_Rooster", "enemy_01_rooster_idle", "29d7b94d5faf6aa131f90fa10180d78c04a3be6c6b29d433684b56ebe3cf5b6d"),
+    _enemy("Enemy.Ch1.Goat", "Ch1_Goat", "enemy_02_goat_idle", "12480e47540971c299dd3800774c58046815c646d54efcb13a4a4eadedc01cdc"),
+    _enemy("Enemy.Ch1.Weasel", "Ch1_Weasel", "enemy_03_weasel_idle", "5745290471ea990fc5d864835176029be4f22fb85f9c145097dc9c52a18e9d44"),
+    _enemy("Enemy.Ch1.Civet", "Ch1_Civet", "enemy_04_civet_idle", "ae1e7689b240f5c225b6370f4a647ec529d04ca89cf6aecca89199a27caedbc1"),
+    _enemy("Enemy.Ch1.IronfeatherRooster", "Ch1_IronfeatherRooster", "enemy_05_ironfeather_idle", "09b73dc103794190f46ede150a80db7149edc64472250ccf87c15593918bf2d7"),
+    _enemy("Enemy.Ch1.BluehornGoatKing", "Ch1_BluehornGoatKing", "enemy_06_bluehorn_idle", "ea6fa6f1a4682451d9b7425bf86bd6cee76c51724d800b192e524655a0764e0b"),
+    _enemy("Enemy.Ch1.MoneyRat", "Ch1_MoneyRatBoss", "enemy_19_moneyrat_boss_idle", "ef8f1c9c013b4771158a638928e63862676071307f4c167e3cd02df1aa79e32e", boss=True),
+    _enemy("Enemy.Ch2.GrayWolf", "Ch2_GrayWolf", "enemy_07_graywolf_idle", "e5694e980efd9897d41f198c8c3bfa800f83c159a15d1498720e45fcb82d6698"),
+    _enemy("Enemy.Ch2.Boar", "Ch2_Boar", "enemy_08_boar_idle", "4252880ad0ae8a17b8657e7e46b0e15689bdd7861d8cedc00e488562f97aa190"),
+    _enemy("Enemy.Ch2.Macaque", "Ch2_Macaque", "enemy_09_macaque_idle", "7dcbc9e517b8fb0c9b7fe79b2e380bd823a59f0788a9b1310584bc79192388dd"),
+    _enemy("Enemy.Ch2.Porcupine", "Ch2_Porcupine", "enemy_10_porcupine_idle", "1d50138538e15e73de344bee7c34f7b53eaf8003babd4b80d74ecef8a24f7c33"),
+    _enemy("Enemy.Ch2.GraymaneWolfKing", "Ch2_GraymaneWolfKing", "enemy_11_graymane_idle", "ce4fb472207d94dd33b9e6e9780e312f627288063e49adb953be37c4f21bfaf3"),
+    _enemy("Enemy.Ch2.RedtuskBoarKing", "Ch2_RedtuskBoarKing", "enemy_12_redtusk_idle", "ea96ac0297cf4573b61d94273fd7208bd6b19f3ee1e1ea7e479e2baba8d2d164"),
+    _enemy("Enemy.Ch2.BlackBear", "Ch2_BlackBearBoss", "enemy_20_blackbear_boss_idle", "59fe67739b88f4b14f73659e967550dfc5af339a55d89e3cdbcbefd8323060b2", boss=True),
+    _enemy("Enemy.Ch3.VenomSnake", "Ch3_VenomSnake", "enemy_13_snake_idle", "973fa46442246325d2d63c595005dd13a1d22ea18e4f31d50f757b29f06e835b"),
+    _enemy("Enemy.Ch3.Wildcat", "Ch3_Wildcat", "enemy_14_wildcat_idle", "2316f3ec1c9baaec0f32e663ecabd0a0c3702e6f0ae8bffcd875c8f9860d3ff0"),
+    _enemy("Enemy.Ch3.Vulture", "Ch3_Vulture", "enemy_15_vulture_idle", "88267ef3154e66fb74405e3e24d3d9f3b360f0c1f06b2cee7f529c430aab02b0"),
+    _enemy("Enemy.Ch3.GiantToad", "Ch3_GiantToad", "enemy_16_toad_idle", "979b7b414f31e93c5604b849c73d99e7dc2d0695678fdf81bf4f91f9f12f80db"),
+    _enemy("Enemy.Ch3.WhiteApe", "Ch3_WhiteApe", "enemy_17_whiteape_idle", "955d49afd81d54041907958c6b3f1b6de156162686579e843463f1d80cc40b66"),
+    _enemy("Enemy.Ch3.SpiralHornDeer", "Ch3_SpiralHornDeer", "enemy_18_deer_idle", "fe895d9a7db61de3b4d9ad1ec14832580260a1ff97ffbc3dad1e07ea5ee44338"),
+    _enemy("Enemy.Ch3.Tiger", "Ch3_TigerBoss", "enemy_21_tiger_boss_idle", "40b744e4ba34c793123b06326cbd12e1282a4dd5d414e42bb0c17f9f41a49c80", boss=True),
+)
+
+
+PORTRAITS = PARTY_PORTRAITS + ROUTE_PORTRAITS + ENEMY_PORTRAITS
 
 
 def _sha256(path: Path) -> str:
@@ -130,81 +197,35 @@ def _png_has_alpha(path: Path) -> bool:
         header = stream.read(26)
     if len(header) != 26 or header[:8] != PNG_SIGNATURE or header[12:16] != b"IHDR":
         raise ValueError(f"not a PNG with an IHDR header: {path}")
-    # PNG color type 4 is gray+alpha and 6 is RGBA.
     return header[25] in {4, 6}
-
-
-def _manifest_path(relative_path: str, field_name: str) -> Path:
-    candidate = (CARD_PORTRAIT_ROOT / relative_path).resolve()
-    try:
-        candidate.relative_to(CARD_PORTRAIT_ROOT.resolve())
-    except ValueError as error:
-        raise ValueError(f"route-card manifest {field_name} escapes the card-portrait root: {relative_path}") from error
-    return candidate
-
-
-def _validate_route_art_manifest(route_records: tuple[PortraitRecord, ...]) -> None:
-    if not ROUTE_ART_MANIFEST_PATH.is_file():
-        raise FileNotFoundError(f"PartyDeck route-card art manifest is missing: {ROUTE_ART_MANIFEST_PATH}")
-    manifest = json.loads(ROUTE_ART_MANIFEST_PATH.read_text(encoding="utf-8"))
-    if manifest.get("schema_version") != 1 or manifest.get("generation_mode") != "built_in_imagegen_chroma_key":
-        raise ValueError("PartyDeck route-card art manifest has an unsupported schema or generation mode")
-    records = manifest.get("records")
-    if not isinstance(records, list) or len(records) != 4:
-        raise ValueError("PartyDeck route-card art manifest must contain exactly four category records")
-    by_key = {record.get("key"): record for record in records if isinstance(record, dict)}
-    expected_keys = {record.key for record in route_records}
-    if set(by_key) != expected_keys:
-        raise ValueError(f"PartyDeck route-card art manifest keys changed: {set(by_key)}")
-    for route_record in route_records:
-        manifest_record = by_key[route_record.key]
-        if manifest_record.get("asset_name") != route_record.asset_name:
-            raise ValueError(f"route-card manifest asset mismatch for {route_record.key}")
-        alpha_source = _manifest_path(str(manifest_record.get("alpha_source", "")), "alpha_source")
-        raw_source = _manifest_path(str(manifest_record.get("raw_chroma_source", "")), "raw_chroma_source")
-        if alpha_source != route_record.source.resolve() or alpha_source.parent != ROUTE_ALPHA_ROOT.resolve():
-            raise ValueError(f"route-card manifest alpha source mismatch for {route_record.key}")
-        if raw_source.parent != ROUTE_SOURCE_ROOT.resolve():
-            raise ValueError(f"route-card manifest chroma source is outside route-source for {route_record.key}")
-        if tuple(manifest_record.get("source_size", ())) != ROUTE_SOURCE_SIZE:
-            raise ValueError(f"route-card manifest raw source dimensions changed for {route_record.key}")
-        if tuple(manifest_record.get("alpha_source_size", ())) != ROUTE_SOURCE_SIZE:
-            raise ValueError(f"route-card manifest alpha source dimensions changed for {route_record.key}")
-        if _sha256(raw_source) != manifest_record.get("raw_chroma_sha256"):
-            raise ValueError(f"route-card chroma source hash changed for {route_record.key}")
-        if _sha256(alpha_source) != manifest_record.get("alpha_sha256"):
-            raise ValueError(f"route-card alpha source hash changed for {route_record.key}")
 
 
 def _verify_record(record: PortraitRecord) -> None:
     if not record.source.is_file():
-        raise FileNotFoundError(f"PartyDeck card portrait source is missing: {record.source}")
+        raise FileNotFoundError(f"card portrait source is missing: {record.source}")
     actual_hash = _sha256(record.source)
     if actual_hash != record.source_sha256:
-        raise ValueError(f"PartyDeck card portrait source hash changed for {record.key}: {actual_hash}")
-    if record.source_mode == "role_south_cell":
-        if _png_size(record.source) != ROLE_IDLE_ATLAS_SIZE:
-            raise ValueError(f"PartyDeck role idle atlas dimensions changed for {record.key}")
-    elif record.source_mode == "generated_alpha":
-        if _png_size(record.source) != ROUTE_SOURCE_SIZE or not _png_has_alpha(record.source):
-            raise ValueError(f"PartyDeck generated route alpha source is invalid for {record.key}")
-    elif record.source_mode not in {"original_alpha", "original_opaque"}:
-        raise ValueError(f"unknown PartyDeck card portrait source mode: {record.source_mode}")
+        raise ValueError(f"card portrait source hash changed for {record.key}: {actual_hash}")
+    if record.source_mode == "final_idle":
+        if _png_size(record.source) != FINAL_IDLE_FRAME_SIZE or not _png_has_alpha(record.source):
+            raise ValueError(f"final idle frame is invalid for {record.key}")
+    elif record.source_mode == "route_chroma_sheet":
+        if _png_size(record.source) != ROUTE_SHEET_SIZE:
+            raise ValueError(f"route icon sheet is invalid for {record.key}")
+    else:
+        raise ValueError(f"unknown card portrait source mode: {record.source_mode}")
 
 
 def validate_portrait_plan() -> dict[str, Any]:
-    """Read-only verification for the exact seventeen owner/category portraits."""
-    if len(PORTRAITS) != 17:
-        raise RuntimeError(f"PartyDeck card portrait plan must contain exactly 17 records, got {len(PORTRAITS)}")
-    route_records = tuple(record for record in PORTRAITS if record.key.startswith("Route."))
-    _validate_route_art_manifest(route_records)
+    if len(PARTY_PORTRAITS) != 13 or len(ROUTE_PORTRAITS) != 3 or len(ENEMY_PORTRAITS) != 21:
+        raise RuntimeError("card portrait plan must contain 13 party, 3 route and 21 enemy records")
     keys: set[str] = set()
     assets: set[str] = set()
     records: list[dict[str, Any]] = []
     for record in PORTRAITS:
         _verify_record(record)
         if record.key in keys or record.asset_path in assets:
-            raise RuntimeError(f"duplicate PartyDeck card portrait record: {record.key}")
+            raise RuntimeError(f"duplicate card portrait record: {record.key}")
         keys.add(record.key)
         assets.add(record.asset_path)
         records.append({
@@ -215,83 +236,158 @@ def validate_portrait_plan() -> dict[str, Any]:
             "source_mode": record.source_mode,
             "derived_path": record.derived_path,
             "portrait_size": PORTRAIT_SIZE,
+            "placement": record.placement,
         })
     return {
         "ok": True,
-        "portrait_count": len(records),
-        "destination_root": DESTINATION_ROOT,
-        "derived_root": DERIVED_ROOT,
+        "party_count": len(PARTY_PORTRAITS),
+        "route_count": len(ROUTE_PORTRAITS),
+        "enemy_count": len(ENEMY_PORTRAITS),
+        "boss_count": 3,
+        "portrait_count": len(PORTRAITS),
         "records": records,
     }
 
 
-def _transparent_fit(source: Any) -> Any:
-    # UE's embedded Python deliberately has no Pillow.  This import remains local
-    # to source preparation so the commandlet can import already-reviewed PNGs.
+def _remove_chroma_green(image: Any) -> Any:
+    from PIL import Image
+
+    rgba = image.convert("RGBA")
+    pixels = []
+    for red, green, blue, _alpha in rgba.getdata():
+        distance = ((red - 0) ** 2 + (green - 255) ** 2 + (blue - 0) ** 2) ** 0.5
+        alpha = max(0, min(255, round((distance - 28.0) * 255.0 / 96.0)))
+        if alpha < 224 and green > max(red, blue):
+            green = min(green, round(max(red, blue) * 1.18))
+        pixels.append((red, green, blue, alpha))
+    output = Image.new("RGBA", rgba.size)
+    output.putdata(pixels)
+    return output
+
+
+def _fit_transparent(source: Any, placement: Placement) -> Any:
     from PIL import Image
 
     rgba = source.convert("RGBA")
     bbox = rgba.getchannel("A").getbbox()
-    if bbox:
-        rgba = rgba.crop(bbox)
-    rgba.thumbnail((151, 181), Image.Resampling.LANCZOS)
+    if not bbox:
+        raise ValueError("transparent card source is empty")
+    subject = rgba.crop(bbox)
+    subject.thumbnail(placement.max_size, Image.Resampling.LANCZOS)
     output = Image.new("RGBA", PORTRAIT_SIZE, (0, 0, 0, 0))
-    output.alpha_composite(rgba, ((PORTRAIT_SIZE[0] - rgba.width) // 2, PORTRAIT_SIZE[1] - rgba.height - 8))
+    if placement.anchor == "left":
+        x = 3
+    elif placement.anchor == "right":
+        x = PORTRAIT_SIZE[0] - subject.width - 3
+    else:
+        x = (PORTRAIT_SIZE[0] - subject.width) // 2
+    output.alpha_composite(subject, (x, PORTRAIT_SIZE[1] - subject.height - 3))
+    return output
+
+
+def _head_calibrated_bust(source: Any, placement: Placement) -> Any:
+    from PIL import Image
+
+    if placement.head_box is None or placement.target_head_center is None:
+        raise ValueError("head-calibrated portrait has no head calibration")
+    rgba = source.convert("RGBA")
+    left, top, right, bottom = placement.head_box
+    head_height = max(1, bottom - top)
+    scale = placement.target_head_height / float(head_height)
+    resized = rgba.resize(
+        (max(1, round(rgba.width * scale)), max(1, round(rgba.height * scale))),
+        Image.Resampling.LANCZOS,
+    )
+    head_center_x = (left + right) * 0.5
+    head_center_y = (top + bottom) * 0.5
+    target_x, target_y = placement.target_head_center
+    paste_x = round(target_x - head_center_x * scale)
+    paste_y = round(target_y - head_center_y * scale)
+    output = Image.new("RGBA", PORTRAIT_SIZE, (0, 0, 0, 0))
+    output.alpha_composite(resized, (paste_x, paste_y))
+    # Names are dynamic UE text.  Keep a deterministic clear strip above the art.
+    output.paste((0, 0, 0, 0), (0, 0, PORTRAIT_SIZE[0], NAME_SAFE_HEIGHT))
     return output
 
 
 def _build_one_portrait(record: PortraitRecord) -> Any:
-    from PIL import Image, ImageOps
+    from PIL import Image
 
     with Image.open(record.source) as raw:
-        if record.source_mode == "role_south_cell":
-            return raw.convert("RGBA").crop((0, 0, PORTRAIT_SIZE[0], PORTRAIT_SIZE[1]))
-        if record.source_mode in {"original_alpha", "generated_alpha"}:
-            return _transparent_fit(raw)
-        # Preserve an opaque original illustration, centered to a card-facing crop.
-        return ImageOps.fit(raw.convert("RGB"), PORTRAIT_SIZE, method=Image.Resampling.LANCZOS).convert("RGBA")
+        if record.placement.mode == "head_anchor":
+            return _head_calibrated_bust(raw, record.placement)
+        if record.placement.mode == "transparent_fit":
+            return _fit_transparent(raw, record.placement)
+        if record.placement.mode == "chroma_region_fit":
+            if record.placement.source_region is None:
+                raise ValueError(f"route card has no source region: {record.key}")
+            region = raw.crop(record.placement.source_region)
+            return _fit_transparent(_remove_chroma_green(region), record.placement)
+    raise ValueError(f"unsupported card placement mode: {record.placement.mode}")
 
 
-def prepare_portrait_sources(destination_root: Path = DERIVED_ROOT) -> dict[str, Any]:
-    """Write deterministic card portrait derivatives without changing any source art."""
+def _write_contact_sheet(records: tuple[PortraitRecord, ...], destination: Path, columns: int = 4) -> None:
+    from PIL import Image, ImageDraw
+
+    cell_width, cell_height = PORTRAIT_SIZE[0] + 24, PORTRAIT_SIZE[1] + 38
+    rows = (len(records) + columns - 1) // columns
+    sheet = Image.new("RGBA", (columns * cell_width, rows * cell_height), (225, 214, 192, 255))
+    draw = ImageDraw.Draw(sheet)
+    for index, record in enumerate(records):
+        with Image.open(record.derived_path) as portrait:
+            x = (index % columns) * cell_width + 12
+            y = (index // columns) * cell_height + 22
+            sheet.alpha_composite(portrait.convert("RGBA"), (x, y))
+            draw.rectangle((x, y, x + PORTRAIT_SIZE[0] - 1, y + PORTRAIT_SIZE[1] - 1), outline=(62, 52, 43, 255), width=1)
+            draw.text((x, 4 + (index // columns) * cell_height), record.key, fill=(34, 29, 24, 255))
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(destination, format="PNG", optimize=True)
+
+
+def prepare_portrait_sources() -> dict[str, Any]:
     plan = validate_portrait_plan()
-    destination_root = Path(destination_root)
-    destination_root.mkdir(parents=True, exist_ok=True)
+    PARTY_DERIVED_ROOT.mkdir(parents=True, exist_ok=True)
+    ENEMY_DERIVED_ROOT.mkdir(parents=True, exist_ok=True)
     written: list[str] = []
     for record in PORTRAITS:
-        output = destination_root / record.derived_name
         image = _build_one_portrait(record)
         if image.size != PORTRAIT_SIZE:
-            raise RuntimeError(f"PartyDeck derived portrait has wrong dimensions for {record.key}: {image.size}")
-        image.save(output, format="PNG", optimize=True)
-        if _png_size(output) != PORTRAIT_SIZE:
-            raise RuntimeError(f"PartyDeck derived portrait could not be verified: {output}")
-        written.append(str(output))
-    return {**plan, "prepared_count": len(written), "prepared": written, "derived_root": destination_root}
+            raise RuntimeError(f"derived portrait has wrong dimensions for {record.key}: {image.size}")
+        image.save(record.derived_path, format="PNG", optimize=True)
+        if _png_size(record.derived_path) != PORTRAIT_SIZE or not _png_has_alpha(record.derived_path):
+            raise RuntimeError(f"derived portrait could not be verified: {record.derived_path}")
+        written.append(str(record.derived_path))
+    party_sheet = PARTY_DERIVED_ROOT / "final-idle-bust-contact-sheet.png"
+    enemy_sheet = ENEMY_DERIVED_ROOT / "enemy-idle-card-contact-sheet.png"
+    _write_contact_sheet(PARTY_PORTRAITS + ROUTE_PORTRAITS, party_sheet)
+    _write_contact_sheet(ENEMY_PORTRAITS, enemy_sheet)
+    report_path = PARTY_DERIVED_ROOT / "card-portrait-layout-report.json"
+    report_path.write_text(json.dumps(_jsonable(plan), ensure_ascii=False, indent=2), encoding="utf-8")
+    return {
+        **plan,
+        "prepared_count": len(written),
+        "prepared": written,
+        "party_contact_sheet": str(party_sheet),
+        "enemy_contact_sheet": str(enemy_sheet),
+        "layout_report": str(report_path),
+    }
 
 
 def validate_prepared_portrait_sources() -> dict[str, Any]:
-    """Verify the PNG derivatives without requiring Pillow in Unreal Python."""
     plan = validate_portrait_plan()
     prepared: list[str] = []
     for record in PORTRAITS:
-        derived = record.derived_path
-        if not derived.is_file():
-            raise RuntimeError(
-                f"PartyDeck portrait derivative is missing: {derived}. "
-                "Run this pipeline with --prepare in the workspace Python first."
-            )
-        if _png_size(derived) != PORTRAIT_SIZE:
-            raise RuntimeError(f"PartyDeck portrait derivative dimensions are invalid: {derived}")
-        if record.source_mode == "generated_alpha" and not _png_has_alpha(derived):
-            raise RuntimeError(f"PartyDeck route portrait derivative lost alpha: {derived}")
-        prepared.append(str(derived))
+        if not record.derived_path.is_file():
+            raise RuntimeError(f"card portrait derivative is missing: {record.derived_path}")
+        if _png_size(record.derived_path) != PORTRAIT_SIZE or not _png_has_alpha(record.derived_path):
+            raise RuntimeError(f"card portrait derivative is invalid: {record.derived_path}")
+        prepared.append(str(record.derived_path))
     return {**plan, "prepared_count": len(prepared), "prepared": prepared}
 
 
 def _require_unreal() -> None:
     if unreal is None:
-        raise RuntimeError("UE Python is required to import PartyDeck card portrait textures")
+        raise RuntimeError("UE Python is required to import card portrait textures")
 
 
 def _configure_ui_texture(texture: object) -> None:
@@ -304,79 +400,70 @@ def _configure_ui_texture(texture: object) -> None:
     texture.set_editor_property("never_stream", True)
 
 
-def _validate_imported_texture(texture: object, record: PortraitRecord, source: Path) -> None:
+def _validate_imported_texture(texture: object, record: PortraitRecord) -> None:
     if not isinstance(texture, unreal.Texture2D):
-        raise RuntimeError(f"PartyDeck portrait is not a Texture2D: {record.asset_path}")
-    if str(texture.get_path_name()) not in {record.asset_path, f"{record.asset_path}.{record.asset_name}"}:
-        raise RuntimeError(f"PartyDeck portrait resolved outside its approved asset path: {texture.get_path_name()}")
-    width = int(texture.blueprint_get_size_x())
-    height = int(texture.blueprint_get_size_y())
-    if (width, height) != PORTRAIT_SIZE:
-        raise RuntimeError(f"PartyDeck portrait has wrong imported dimensions at {record.asset_path}: {(width, height)}")
+        raise RuntimeError(f"card portrait is not a Texture2D: {record.asset_path}")
+    if (int(texture.blueprint_get_size_x()), int(texture.blueprint_get_size_y())) != PORTRAIT_SIZE:
+        raise RuntimeError(f"card portrait has wrong imported dimensions: {record.asset_path}")
     import_data = texture.get_editor_property("asset_import_data")
     imported_filename = str(import_data.get_first_filename()) if import_data else ""
-    if not imported_filename or Path(imported_filename).resolve() != source.resolve():
-        raise RuntimeError(f"PartyDeck portrait import source mismatch at {record.asset_path}")
+    if not imported_filename or Path(imported_filename).resolve() != record.derived_path.resolve():
+        raise RuntimeError(f"card portrait import source mismatch: {record.asset_path}")
 
 
 def import_verified_portraits() -> dict[str, Any]:
-    """Import only missing card portrait textures into their isolated UI root."""
     _require_unreal()
     prepared = validate_prepared_portrait_sources()
-    if not unreal.EditorAssetLibrary.does_directory_exist(DESTINATION_ROOT):
-        if not unreal.EditorAssetLibrary.make_directory(DESTINATION_ROOT):
-            raise RuntimeError(f"failed to create PartyDeck card portrait directory: {DESTINATION_ROOT}")
+    for destination_root in {record.destination_root for record in PORTRAITS}:
+        if not unreal.EditorAssetLibrary.does_directory_exist(destination_root):
+            if not unreal.EditorAssetLibrary.make_directory(destination_root):
+                raise RuntimeError(f"failed to create card portrait directory: {destination_root}")
     imported: list[str] = []
-    validated_existing: list[str] = []
+    reimported: list[str] = []
     for record in PORTRAITS:
-        source = DERIVED_ROOT / record.derived_name
-        if unreal.EditorAssetLibrary.does_asset_exist(record.asset_path):
-            texture = unreal.EditorAssetLibrary.load_asset(record.asset_path)
-            _validate_imported_texture(texture, record, source)
-            validated_existing.append(record.asset_path)
-            continue
+        existed = unreal.EditorAssetLibrary.does_asset_exist(record.asset_path)
         task = unreal.AssetImportTask()
-        task.filename = str(source)
-        task.destination_path = DESTINATION_ROOT
+        task.filename = str(record.derived_path)
+        task.destination_path = record.destination_root
         task.destination_name = record.asset_name
         task.automated = True
         task.save = False
-        task.replace_existing = False
+        task.replace_existing = existed
         task.replace_existing_settings = False
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
         texture = unreal.EditorAssetLibrary.load_asset(record.asset_path)
         if texture is None:
-            raise RuntimeError(f"failed to import PartyDeck card portrait: {record.asset_path}")
+            raise RuntimeError(f"failed to import card portrait: {record.asset_path}")
         _configure_ui_texture(texture)
         if not unreal.EditorAssetLibrary.save_loaded_asset(texture):
-            raise RuntimeError(f"failed to save PartyDeck card portrait: {record.asset_path}")
-        _validate_imported_texture(texture, record, source)
-        imported.append(record.asset_path)
+            raise RuntimeError(f"failed to save card portrait: {record.asset_path}")
+        _validate_imported_texture(texture, record)
+        (reimported if existed else imported).append(record.asset_path)
     return {
         **prepared,
         "imported_count": len(imported),
-        "validated_existing_count": len(validated_existing),
+        "reimported_count": len(reimported),
         "imported": imported,
-        "validated_existing": validated_existing,
+        "reimported": reimported,
     }
 
 
 def _jsonable(value: Any) -> Any:
     if isinstance(value, Path):
         return str(value)
+    if hasattr(value, "__dataclass_fields__"):
+        return {field: _jsonable(getattr(value, field)) for field in value.__dataclass_fields__}
     if isinstance(value, dict):
         return {key: _jsonable(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_jsonable(item) for item in value]
-    if isinstance(value, tuple):
+    if isinstance(value, (list, tuple)):
         return [_jsonable(item) for item in value]
     return value
 
 
 def main(argv: list[str] | None = None) -> dict[str, Any]:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--prepare", action="store_true", help="Create only deterministic local portrait PNG derivatives.")
-    parser.add_argument("--execute-import", action="store_true", help="Import only previously prepared isolated UI Texture2D assets.")
+    parser.add_argument("--prepare", action="store_true", help="Create deterministic local PNG derivatives.")
+    parser.add_argument("--execute-import", action="store_true", help="Import previously prepared UE Texture2D assets.")
     args = parser.parse_args(argv)
     if args.execute_import:
         result = import_verified_portraits()

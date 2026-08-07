@@ -204,14 +204,20 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	{
 		return Unit.UnitId == TEXT("Npc.TusiChief");
 	});
-	FGameXXKCompanionAttributes ExpectedSnapshotNpcAttributes;
-	TestTrue(TEXT("expected NPC attributes resolve from the saved route level"),
-		FGameXXKCompanionRules::GetQuestNpcAttributes(TEXT("Npc.TusiChief"), 4, ExpectedSnapshotNpcAttributes, &Error));
-	TestNotNull(TEXT("task NPC joins the card runtime during the snapshot fixture"), SnapshotNpc);
-	if (SnapshotNpc)
+	const FGameXXKCardCombatUnit* SnapshotHero = QuestNpcSnapshotState.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
 	{
-		TestEqual(TEXT("task NPC health uses the saved route combat snapshot rather than current player level"), SnapshotNpc->MaxHP, ExpectedSnapshotNpcAttributes.Health);
-		TestEqual(TEXT("task NPC attack uses the saved route combat snapshot rather than current player level"), SnapshotNpc->Attack, ExpectedSnapshotNpcAttributes.Attack);
+		return Unit.Role == EGameXXKCharacterRole::Hero;
+	});
+	TestNotNull(TEXT("task NPC joins the card runtime during the snapshot fixture"), SnapshotNpc);
+	TestNotNull(TEXT("hero joins the card runtime during the snapshot fixture"), SnapshotHero);
+	if (SnapshotNpc && SnapshotHero)
+	{
+		TestEqual(TEXT("task NPC level exactly mirrors the current hero"), SnapshotNpc->CombatLevel, SnapshotHero->CombatLevel);
+		TestEqual(TEXT("task NPC health exactly mirrors the current hero"), SnapshotNpc->MaxHP, SnapshotHero->MaxHP);
+		TestEqual(TEXT("task NPC mana exactly mirrors the current hero"), SnapshotNpc->MaxMana, SnapshotHero->MaxMana);
+		TestEqual(TEXT("task NPC attack exactly mirrors the current hero"), SnapshotNpc->Attack, SnapshotHero->Attack);
+		TestEqual(TEXT("task NPC defense exactly mirrors the current hero"), SnapshotNpc->Defense, SnapshotHero->Defense);
+		TestEqual(TEXT("task NPC speed exactly mirrors the current hero"), SnapshotNpc->Speed, SnapshotHero->Speed);
 	}
 
 	FGameXXKRuntimeState RewardState = UGameXXKMVPRules::CreateNewGame();

@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "asset_id": "Npc.YueBai.EightDirectionSource.V2",
+  "display_name": "月白",
+  "asset_stage": "initial_draft",
+  "production_state": "qc_passed_not_approved_not_imported",
+  "purpose": "Initial eight-direction source art for the temporary task NPC 月白. This is a source sheet only, not a final runtime atlas or Unreal asset.",
+  "generator": {
+    "provider": "built-in image_gen",
+    "prompt_version": "npc-yue-bai-eight-direction-v2",
+    "normalized_prompt": "A single loose 4-by-2 source sheet with eight distinct directional poses of 月白, a floating bodiless blue-violet spirit flame entity. Preserve the supplied original-art identity: compact ghost-fire silhouette, pale lavender flame crown, cool blue lower flame, expressive face, no human torso, arms, legs, robes, weapons, or other body. Restrained simplified Q-cartoon wuxia game art with hand-painted ink-and-watercolor texture, transparent-ready isolated background, no text, frame, logo, or UI.",
+    "prompt_record_note": "The normalized prompt records the approved identity and generation constraints for this initial asset; it is retained for a future user-reviewed iteration rather than treated as an editable gameplay asset."
+  },
+  "original_art_reference": {
+    "kind": "ppt_extracted_media",
+    "path": "SourceAssets/PartyDeck/character-references/ppt-extract/npc_yuebai_image35.jpeg",
+    "ppt_member": "ppt/media/image35.jpeg",
+    "slide": 6,
+    "pixels": [1032, 720],
+    "bytes": 35365,
+    "sha256": "eac69e6e4dcd1e93b194738dae9f3be9792ed49436621cc76deec5d547bf1cb9",
+    "identity_policy": "locked_existing_identity",
+    "identity_constraints": [
+      "月白 is a flame entity, not a humanoid character.",
+      "Preserve the original blue-purple ghost-fire palette and face-led silhouette.",
+      "Do not add a torso, limbs, robe, weapon, or another character body."
+    ]
+  },
+  "source_files": {
+    "chroma_source": {
+      "path": "SourceAssets/PartyDeck/character-references/generated/draft/v2/npc_yue_bai_8dir_source_v2_chroma.png",
+      "pixels": [1501, 1048],
+      "bytes": 1436320,
+      "sha256": "9e6ee3439b967e9f782df61b5b7edfbdafb35b81729bf5d67f580ba31eac3e14",
+      "background": "uniform chroma green",
+      "role": "unmodified image-generation output"
+    },
+    "alpha_source": {
+      "path": "SourceAssets/PartyDeck/character-references/generated/draft/v2/npc_yue_bai_8dir_source_v2_alpha.png",
+      "pixels": [1501, 1048],
+      "bytes": 754389,
+      "sha256": "c9afd38555920fb1c566ffd4eb193ecbb550c47a110f0972f300825365e53b74",
+      "pixel_format": "Format32bppArgb",
+      "role": "transparent source for future manual direction slicing; no Unreal import has occurred"
+    }
+  },
+  "qc": {
+    "performed_utc": "2026-07-23T11:34:24Z",
+    "method": "PowerShell System.Drawing LockBits read-only alpha scan; resolved filesystem paths are passed as strings via Resolve-Path.Path.",
+    "result": "pass",
+    "checks": {
+      "decode": "pass: 1501x1048 Format32bppArgb",
+      "alpha_counts": {
+        "zero": 1247649,
+        "partial": 11104,
+        "opaque": 314295
+      },
+      "transparent_corners_alpha": {
+        "top_left": 0,
+        "top_right": 0,
+        "bottom_left": 0,
+        "bottom_right": 0
+      },
+      "subject_bounds_alpha_gt_0": [90, 103, 1324, 789],
+      "subject_bounds_alpha_gt_16": [90, 104, 1323, 786],
+      "residual_chroma_green_pixels_alpha_gt_16": 0,
+      "visual_scope_check": "pass: eight loose flame-only directional illustrations are present; no humanoid body is present. This is a technical/QC pass, not final art approval."
+    }
+  },
+  "planned_use": {
+    "runtime_status": "not imported",
+    "unreal_destination": null,
+    "slicing_status": "not sliced into final atlas cells or pivots",
+    "future_output_contract": "A later approved iteration may derive eight direction-specific sprite sources under the existing PartyDeck character-sheet atlas contract."
+  },
+  "safety": {
+    "do_not_overwrite": [
+      "existing 月白 original art",
+      "existing card portraits",
+      "existing Unreal textures, PaperZD assets, placed levels, or camera transforms"
+    ],
+    "next_iteration_policy": "Any visual change after this initial draft requires the user's per-image review before another image is generated or replaced."
+  }
+}

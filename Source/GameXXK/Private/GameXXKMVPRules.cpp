@@ -24,6 +24,7 @@ namespace GameXXKMVP
 	static const FName RegionTanjiangName(TEXT("Region.Tanjiang"));
 	static const FName ItemHealingPowderName(TEXT("Item.HealingPowder"));
 	static const FName ItemEnhancementStoneName(TEXT("Item.EnhancementStone"));
+	static const FName ItemRefinementSandName(TEXT("Item.RefinementSand"));
 	static const FName ItemQingshanRouteSealName(TEXT("Item.QingshanRouteSeal"));
 	static const FName ItemLingzhiPowderName(TEXT("Item.LingzhiPowder"));
 	static const FName ItemQingxinTeaName(TEXT("Item.QingxinTea"));
@@ -221,6 +222,11 @@ namespace GameXXKMVP
 		if (ItemId == ItemEnhancementStoneName)
 		{
 			OutDef = MakeItem(ItemId, TEXT("强化石"), EGameXXKItemKind::Material, 20, 10, 0, 0, 0, 0, 0, 0);
+			return true;
+		}
+		if (ItemId == ItemRefinementSandName)
+		{
+			OutDef = MakeItem(ItemId, TEXT("洗炼砂"), EGameXXKItemKind::Material, 20, 10, 0, 0, 0, 0, 0, 0);
 			return true;
 		}
 		if (ItemId == ItemQingshanRouteSealName)
@@ -1048,7 +1054,9 @@ namespace GameXXKMVP
 		Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
 		Candidate.PlayerHP = Candidate.PlayerMaxHP;
 		Candidate.PlayerMP = Candidate.PlayerMaxMP;
-		Candidate.bFollowerJoined = Candidate.QuestState == EGameXXKQuestState::Accepted;
+		Candidate.bFollowerJoined = false;
+		Candidate.bHasQuestNpcLocation = false;
+		Candidate.QuestNpcLocation = FVector::ZeroVector;
 		ClearActiveBattle(Candidate);
 		State = MoveTemp(Candidate);
 		return true;
@@ -1481,6 +1489,11 @@ FName UGameXXKMVPRules::ItemEnhancementStone()
 	return GameXXKMVP::ItemEnhancementStoneName;
 }
 
+FName UGameXXKMVPRules::ItemRefinementSand()
+{
+	return GameXXKMVP::ItemRefinementSandName;
+}
+
 FName UGameXXKMVPRules::ItemQingshanRouteSeal()
 {
 	return GameXXKMVP::ItemQingshanRouteSealName;
@@ -1652,11 +1665,23 @@ FGameXXKRuntimeState UGameXXKMVPRules::CreateNewGame()
 	GameXXKMVP::RecalculatePlayerStats(State, false);
 	State.UnlockedRegions.Add(RegionQingshan());
 	AddItem(State, ItemEnhancementStone(), 10);
-	AddItem(State, ItemHealingPowder(), 1);
-	FGameXXKEquipmentTransactionResult EquipmentResult;
-	FGameXXKEquipmentEconomyRules::GrantLegacyEquipmentForCompatibility(State, ItemWoodenSword(), 1, EquipmentResult);
-	FGameXXKEquipmentEconomyRules::GrantLegacyEquipmentForCompatibility(State, ItemStarterClothArmor(), 1, EquipmentResult);
-	FGameXXKEquipmentEconomyRules::GrantLegacyEquipmentForCompatibility(State, ItemClothTalisman(), 1, EquipmentResult);
+	// UI V2 starter set: six ordinary starter equipment pieces (no legacy items).
+	static const EGameXXKEquipmentSlot StarterSlots[] = {
+		EGameXXKEquipmentSlot::Weapon, EGameXXKEquipmentSlot::Head,
+		EGameXXKEquipmentSlot::Armor, EGameXXKEquipmentSlot::Belt,
+		EGameXXKEquipmentSlot::Shoes, EGameXXKEquipmentSlot::Accessory};
+	for (const EGameXXKEquipmentSlot Slot : StarterSlots)
+	{
+		FGameXXKEquipmentCreateRequest Request;
+		Request.Set = EGameXXKEquipmentSet::Starter;
+		Request.Quality = EGameXXKEquipmentQuality::Common;
+		Request.ItemLevel = 1;
+		Request.bForceSlot = true;
+		Request.ForcedSlot = Slot;
+		FName InstanceId;
+		FString Error;
+		FGameXXKEquipmentRules::CreateRolledInstance(State.EquipmentCollection, Request, InstanceId, &Error);
+	}
 	return State;
 }
 
@@ -1757,7 +1782,9 @@ bool UGameXXKMVPRules::AcceptTownQuest(FGameXXKRuntimeState& State)
 		return false;
 	}
 	State.QuestState = EGameXXKQuestState::Accepted;
-	State.bFollowerJoined = true;
+	State.bFollowerJoined = false;
+	State.bHasQuestNpcLocation = false;
+	State.QuestNpcLocation = FVector::ZeroVector;
 	State.TrackedTaskId = NAME_None;
 	DiscoverCodexEntry(State, GameXXKMVP::CodexGuideName);
 	return true;
@@ -1814,23 +1841,20 @@ bool UGameXXKMVPRules::EnterDungeon(FGameXXKRuntimeState& State)
 		return false;
 	}
 	FGameXXKRuntimeState Candidate = State;
-	// A route is a self-contained card run.  Keep permanent hero/companion configuration,
-	// but never carry a prior route's temporary NPC, rewards, or pending event into it.
+	// A route is a self-contained card run. Keep the explicit town NPC party choice,
+	// while clearing prior route rewards, battles, and pending events.
 	FString CardRunError;
 	if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(Candidate, &CardRunError))
 	{
 		return false;
 	}
+	const FName SelectedTownNpcId = Candidate.CardRun.ActiveTemporaryQuestNpcId;
 	FGameXXKCardBattleAdapter::ClearRouteLocalCardState(Candidate);
 	// InitializeRoute is intentionally idempotent, so a genuinely new route must
 	// first discard a prior valid balance and its chapter-scoped receipts.
 	FGameXXKRouteEconomyRules::ClearRouteEconomy(Candidate.CardRun);
-	// Task.QingshanMain is the one route-start support exception: accepting the
-	// Qingshan main quest with its follower active reserves the route-local NPC
-	// slot for Tusi Chief before the card loadout is locked.  This intentionally
-	// uses the existing temporary-NPC API, never the permanent companion roster.
-	if (Candidate.QuestState == EGameXXKQuestState::Accepted && Candidate.bFollowerJoined
-		&& !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, GameXXKMVP::QuestNpcTusiChiefName, {}, &CardRunError))
+	if (!SelectedTownNpcId.IsNone()
+		&& !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, SelectedTownNpcId, {}, &CardRunError))
 	{
 		return false;
 	}
@@ -3113,9 +3137,16 @@ TArray<FName> UGameXXKMVPRules::BuildTurnOrder(const FGameXXKRuntimeState& State
 
 	TArray<FGameXXKBattleUnit> Units;
 	Units.Add(GameXXKMVP::MakeBattleUnit(TEXT("Player"), State.PlayerHP, State.PlayerAttack, State.PlayerDefense, State.PlayerSpeed, TEXT("Sword"), 1));
-	if (State.bFollowerJoined)
+	if (!State.CardRun.ActiveTemporaryQuestNpcId.IsNone())
 	{
-		Units.Add(GameXXKMVP::MakeBattleUnit(TEXT("Follower"), 80, 9, 4, 8, TEXT("Sword"), 1));
+		Units.Add(GameXXKMVP::MakeBattleUnit(
+			State.CardRun.ActiveTemporaryQuestNpcId,
+			State.PlayerHP,
+			State.PlayerAttack,
+			State.PlayerDefense,
+			State.PlayerSpeed,
+			TEXT("Sword"),
+			1));
 	}
 	if (bBossBattle)
 	{

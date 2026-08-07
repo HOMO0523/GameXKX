@@ -505,15 +505,22 @@ bool UGameXXKMVPSubsystem::StartNewGame()
 	FGameXXKCompanionRosterState& StarterRoster = RuntimeState.CardRun.CompanionRoster;
 	StarterRoster.RecruitSequenceSeed = MakeStarterRecruitSequenceSeed();
 	FGameXXKCompanionRecruitResult StarterRecruit;
+	FGameXXKCompanionRecruitResult SecondStarterRecruit;
+	// Two deterministic starters let the player switch partners from the first
+	// town visit; the sequence yields two different roles before duplicates.
 	if (!FGameXXKCompanionRules::CreateAndResolveNextRecruitment(StarterRoster, StarterRecruit, &Error)
 		|| StarterRecruit.Outcome != EGameXXKCompanionRecruitOutcome::Recruited
 		|| !FGameXXKCompanionRules::SetActivePermanentCompanion(StarterRoster, StarterRecruit.Companion.InstanceId, &Error)
+		|| !FGameXXKCompanionRules::CreateAndResolveNextRecruitment(StarterRoster, SecondStarterRecruit, &Error)
+		|| SecondStarterRecruit.Outcome != EGameXXKCompanionRecruitOutcome::Recruited
 		|| !FGameXXKCardBattleAdapter::EnsureCardRunInitialized(RuntimeState, &Error))
 	{
 		return false;
 	}
 
-	return UGameXXKMVPRules::OpenWorldMap(RuntimeState);
+	// The player lands directly in the Qingshan town map; the world map stays
+	// one click away from the town HUD instead of blocking the first arrival.
+	return UGameXXKMVPRules::EnterWorldRegion(RuntimeState, UGameXXKMVPRules::RegionQingshan());
 }
 
 bool UGameXXKMVPSubsystem::StartGameFromSlot(FString SlotName, int32 UserIndex)
@@ -1477,6 +1484,55 @@ bool UGameXXKMVPSubsystem::ResolvePendingPermanentCompanionReplacement(
 	return OutResult.bSucceeded;
 }
 
+bool UGameXXKMVPSubsystem::DismissPermanentCompanion(const FName InstanceId)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	const FGameXXKPermanentCompanion* Companion = FindPermanentCompanion(Candidate, InstanceId);
+	if (!Companion)
+	{
+		return false;
+	}
+	// The player must always keep at least one permanent companion.
+	if (Candidate.CardRun.CompanionRoster.PermanentCompanions.Num() <= 1)
+	{
+		return false;
+	}
+
+	FGameXXKEquipmentTransactionResult EquipmentResult = FGameXXKEquipmentRules::ReturnAllEquipmentToWarehouse(
+		Candidate.EquipmentCollection,
+		InstanceId);
+	if (!EquipmentResult.bSucceeded)
+	{
+		return false;
+	}
+
+	if (Candidate.CardRun.PartySelection.ActivePermanentCompanionInstanceId == InstanceId)
+	{
+		Candidate.CardRun.PartySelection.ActivePermanentCompanionInstanceId = NAME_None;
+	}
+	Candidate.CardRun.CompanionRoster.PermanentCompanions.RemoveAll([InstanceId](const FGameXXKPermanentCompanion& Entry)
+	{
+		return Entry.InstanceId == InstanceId;
+	});
+
+	FString Error;
+	if (!EnsureCompanionCardRun(Candidate)
+		|| !FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(Candidate)
+		|| !FGameXXKSaveMigration::ValidateRuntimeState(Candidate, Error))
+	{
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
 bool UGameXXKMVPSubsystem::DiscardPendingPermanentCompanionRecruitment()
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView);
@@ -1542,6 +1598,28 @@ bool UGameXXKMVPSubsystem::SetHeroCardLoadout(const TArray<FName>& SelectedCardI
 	}
 	FString Error;
 	return FGameXXKCardBattleAdapter::SetHeroSelectedCards(RuntimeState, SelectedCardIds, &Error);
+}
+
+bool UGameXXKMVPSubsystem::SelectTownQuestNpcForParty(const FName QuestNpcId)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || QuestNpcId.IsNone())
+	{
+		return false;
+	}
+
+	FString Error;
+	if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(RuntimeState, QuestNpcId, {}, &Error))
+	{
+		return false;
+	}
+
+	// These fields remain serialized only for old-save compatibility. A town
+	// party choice no longer creates a moving scene follower.
+	RuntimeState.bFollowerJoined = false;
+	RuntimeState.bHasQuestNpcLocation = false;
+	RuntimeState.QuestNpcLocation = FVector::ZeroVector;
+	return true;
 }
 
 bool UGameXXKMVPSubsystem::SetTemporaryQuestNpcCardLoadout(const FName QuestNpcId, const TArray<FName>& SelectedCardIds)

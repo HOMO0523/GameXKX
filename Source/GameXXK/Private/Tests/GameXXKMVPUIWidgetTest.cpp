@@ -6,6 +6,7 @@
 #include "Components/Button.h"
 #include "Components/ProgressBar.h"
 #include "Components/SizeBox.h"
+#include "Components/TextBlock.h"
 #include "Components/Widget.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleWidget.h"
@@ -83,11 +84,11 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 
 	TestFalse(TEXT("main menu continue rejects missing slot"), MainMenu->ContinueGameFromSlot(UiTestSlot, UserIndex));
 	TestTrue(TEXT("main menu start creates a new game"), MainMenu->StartGame());
-	TestEqual(TEXT("main menu start remains on world map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestEqual(TEXT("main menu start lands directly in Qingshan town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	const FGameXXKCompanionRosterState& StarterRoster = Subsystem->GetRuntimeState().CardRun.CompanionRoster;
-	TestEqual(TEXT("main menu StartNewGame grants exactly one permanent companion"), StarterRoster.PermanentCompanions.Num(), 1);
+	TestEqual(TEXT("main menu StartNewGame grants two permanent companions"), StarterRoster.PermanentCompanions.Num(), 2);
 	FName StarterCompanionId = NAME_None;
-	if (StarterRoster.PermanentCompanions.Num() == 1)
+	if (StarterRoster.PermanentCompanions.Num() == 2)
 	{
 		const FGameXXKPermanentCompanion& StarterCompanion = StarterRoster.PermanentCompanions[0];
 		StarterCompanionId = StarterCompanion.InstanceId;
@@ -160,14 +161,21 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("independent free inventory window opens"), InventoryWindow->OpenFreeInventoryForTest());
 	TestEqual(TEXT("free inventory window records free mode"), InventoryWindow->GetWindowModeForTest(), EGameXXKInventoryWindowMode::FreeInventory);
 	TestTrue(TEXT("free inventory window has one coherent frame"), InventoryWindow->HasWindowFrameForTest());
-	TestTrue(TEXT("free inventory window frame uses the separated PSD backpack background"), InventoryWindow->GetWindowFrameResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backgrounds/T_TownPsd_Background_Backpack")));
+	TestTrue(TEXT("free inventory window frame uses the approved MasterV2 large panel"), InventoryWindow->GetWindowFrameResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge")));
 	TestTrue(TEXT("free inventory window has its own top-right close button"), InventoryWindow->HasCloseButtonForTest());
-	TestTrue(TEXT("free inventory close button uses Tencent backpack back arrow"), InventoryWindow->GetCloseButtonResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/T_TownBackpack_BackArrow")));
-	TestEqual(TEXT("free inventory window owns twenty fixed backpack slots"), InventoryWindow->GetBackpackSlotCountForTest(), 20);
-	TestTrue(TEXT("free inventory backpack slots use the PSD backpack slot frame"), InventoryWindow->GetBackpackSlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backpack/T_TownPsd_BackpackSlot")));
-	TestEqual(TEXT("free inventory window owns weapon armor accessory slots"), InventoryWindow->GetEquipmentSlotCountForTest(), 3);
-	TestTrue(TEXT("free inventory equipment slots use the PSD backpack slot frame"), InventoryWindow->GetEquipmentSlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backpack/T_TownPsd_BackpackSlot")));
-	TestTrue(TEXT("first backpack slot loads its item icon"), InventoryWindow->GetBackpackSlotIconResourcePathForTest(0).Contains(TEXT("/Game/GameXXK/UI/Inventory/Textures/T_ItemHealingPowder")));
+	TestTrue(TEXT("free inventory close button uses the approved shared ink X"), InventoryWindow->GetCloseButtonResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk")));
+	TestEqual(TEXT("free inventory window exposes a twenty-cell backpack viewport"), InventoryWindow->GetBackpackSlotCountForTest(), 20);
+	TestTrue(TEXT("free inventory backpack slots use the approved MasterV2 item slot"), InventoryWindow->GetBackpackSlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot")));
+	TestEqual(TEXT("free inventory window owns all six authoritative equipment slots"), InventoryWindow->GetEquipmentSlotCountForTest(), 6);
+	TestTrue(TEXT("free inventory equipment slots use the approved MasterV2 equipment slot"), InventoryWindow->GetEquipmentSlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_EquipmentSlot")));
+	// A new game grants the six-piece Starter gear set (no legacy healing powder).
+	const TArray<FName> StarterWarehouseEntries = InventoryWindow->GetVisibleBackpackEquipmentInstanceIdsForTest();
+	TestTrue(TEXT("starter gear remains visible after instance equipment is merged into the backpack"), StarterWarehouseEntries.Num() > 0);
+	if (StarterWarehouseEntries.Num() > 0)
+	{
+		const int32 StarterGearSlot = InventoryWindow->FindBackpackEquipmentInstanceSlotForTest(StarterWarehouseEntries[0]);
+		TestTrue(TEXT("starter gear backpack cell loads its equipment icon"), StarterGearSlot >= 0 && !InventoryWindow->GetBackpackSlotIconResourcePathForTest(StarterGearSlot).IsEmpty());
+	}
 	TestFalse(TEXT("free inventory window does not lock movement input"), InventoryWindow->IsModalInputLockActiveForTest());
 	TestTrue(TEXT("inventory window remains available only in free mode"), InventoryWindow->OpenFreeInventoryForTest());
 	TestTrue(TEXT("trade widget buys armor for independent inventory equipment UI"), Trade->BuyItemById(UGameXXKMVPRules::ItemClothArmor(), 1));
@@ -189,14 +197,19 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	Subsystem->GetMutableRuntimeState().PlayerXP = 75;
 	Subsystem->GetMutableRuntimeState().PlayerLevel = 1;
 	TownHud->RefreshFromState();
-	UProgressBar* HealthBar = Cast<UProgressBar>(TownHud->GetWidgetFromName(TEXT("TownHudHealthBar")));
-	UProgressBar* ExperienceBar = Cast<UProgressBar>(TownHud->GetWidgetFromName(TEXT("TownHudExperienceBar")));
-	TestNotNull(TEXT("town HUD builds a named health progress bar"), HealthBar);
-	TestNotNull(TEXT("town HUD builds a named experience progress bar"), ExperienceBar);
-	if (HealthBar && ExperienceBar)
+	UTextBlock* HeroLevel = Cast<UTextBlock>(TownHud->GetWidgetFromName(TEXT("TownHudHeroLevel")));
+	UTextBlock* HeroName = Cast<UTextBlock>(TownHud->GetWidgetFromName(TEXT("TownHudHeroName")));
+	UTextBlock* IngotValue = Cast<UTextBlock>(TownHud->GetWidgetFromName(TEXT("TownHudIngotValue")));
+	TestNotNull(TEXT("town HUD builds a named hero level text"), HeroLevel);
+	TestNotNull(TEXT("town HUD builds a named hero name text"), HeroName);
+	TestNotNull(TEXT("town HUD builds a named ingot value text"), IngotValue);
+	if (HeroLevel)
 	{
-		TestEqual(TEXT("town HUD health fill follows PlayerHP"), HealthBar->GetPercent(), 0.25f);
-		TestEqual(TEXT("town HUD experience fill follows current-level XP"), ExperienceBar->GetPercent(), 0.75f);
+		TestEqual(TEXT("town HUD level text follows PlayerLevel"), HeroLevel->GetText().ToString(), FString(TEXT("Lv.1")));
+	}
+	if (IngotValue)
+	{
+		TestEqual(TEXT("town HUD ingot value follows PlayerGold"), IngotValue->GetText().ToString(), FString::FromInt(Subsystem->GetRuntimeState().PlayerGold));
 	}
 
 	TestTrue(TEXT("quest dialog accepts quest"), QuestDialog->AcceptQuest());

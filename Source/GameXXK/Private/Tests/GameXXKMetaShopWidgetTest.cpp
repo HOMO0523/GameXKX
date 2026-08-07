@@ -32,23 +32,25 @@ bool FGameXXKMetaShopWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("meta shop opens in town"), Widget->OpenMetaShopForTest());
 	TestEqual(TEXT("meta shop renders seven product cards"), Widget->GetProductCardCountForTest(), 7);
 
-	TestNotNull(TEXT("meta shop has a full-screen backdrop"), Widget->WidgetTree->FindWidget(TEXT("MetaShopBackdrop")));
 	TestNotNull(TEXT("meta shop has a paper frame"), Cast<UBorder>(Widget->WidgetTree->FindWidget(TEXT("MetaShopPaperFrame"))));
-	TestNotNull(TEXT("meta shop has permanent gold text"), Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("MetaShopGoldText"))));
-	TestNotNull(TEXT("meta shop has a seven-card grid"), Cast<UUniformGridPanel>(Widget->WidgetTree->FindWidget(TEXT("MetaShopProductGrid"))));
-	TestNotNull(TEXT("meta shop has product detail"), Widget->WidgetTree->FindWidget(TEXT("MetaShopDetailPanel")));
+	TestNull(TEXT("meta shop has no dimming backdrop"), Widget->WidgetTree->FindWidget(TEXT("MetaShopBackdrop")));
+	TestNotNull(TEXT("meta shop places absolute page-07 product cards"), Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("MetaShopProductCard_0")))
+		: nullptr);
+	TestNotNull(TEXT("meta shop has the page-07 detail slot"), Widget->WidgetTree->FindWidget(TEXT("MetaShopDetailSlot")));
+	TestNotNull(TEXT("meta shop has the page-07 detail icon"), Widget->WidgetTree->FindWidget(TEXT("MetaShopDetailIcon")));
 	TestNotNull(TEXT("meta shop has confirmation overlay"), Widget->WidgetTree->FindWidget(TEXT("MetaShopConfirmOverlay")));
 	TestNotNull(TEXT("meta shop has result panel"), Widget->WidgetTree->FindWidget(TEXT("MetaShopResultPanel")));
 	TestNull(TEXT("meta shop never creates legacy stock grid"), Widget->WidgetTree->FindWidget(TEXT("MerchantStockGrid")));
 	TestNull(TEXT("meta shop never creates selling controls"), Widget->WidgetTree->FindWidget(TEXT("SellButton")));
 
 	const TCHAR* ExpectedTexturePaths[] = {
-		TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_PoJunPack.T_MetaShop_PoJunPack"),
-		TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_XuanJiaPack.T_MetaShop_XuanJiaPack"),
-		TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_QingNangPack.T_MetaShop_QingNangPack"),
-		TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_ZhuiFengPack.T_MetaShop_ZhuiFengPack"),
-		TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_ShiGuPack.T_MetaShop_ShiGuPack"),
-		TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_ShanHePack.T_MetaShop_ShanHePack"),
+		TEXT("/Game/GameXXK/UI/Equipment/pojun_weapon.pojun_weapon"),
+		TEXT("/Game/GameXXK/UI/Equipment/xuanjia_weapon.xuanjia_weapon"),
+		TEXT("/Game/GameXXK/UI/Equipment/qingnang_weapon.qingnang_weapon"),
+		TEXT("/Game/GameXXK/UI/Equipment/zhuifeng_weapon.zhuifeng_weapon"),
+		TEXT("/Game/GameXXK/UI/Equipment/shigu_weapon.shigu_weapon"),
+		TEXT("/Game/GameXXK/UI/Equipment/shanhe_weapon.shanhe_weapon"),
 		TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_CompanionPack.T_MetaShop_CompanionPack"),
 	};
 	for (int32 Index = 0; Index < 7; ++Index)

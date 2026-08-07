@@ -211,6 +211,26 @@ bool FGameXXKCompanionRulesTest::RunTest(const FString& Parameters)
 
 	FGameXXKCompanionAttributes HighLevelNpcAttributes;
 	TestTrue(TEXT("task NPC attributes continue to follow a hero beyond the permanent-companion level cap"), FGameXXKCompanionRules::GetQuestNpcAttributes(TEXT("Npc.TusiChief"), 21, HighLevelNpcAttributes, nullptr));
+
+	// Deterministic companion display names derived from role + recruit seed.
+	{
+		TestTrue(TEXT("an invalid role yields no companion display name"), FGameXXKCompanionRules::GetCompanionDisplayName(EGameXXKCharacterRole::Invalid, 7331).IsEmpty());
+		for (const EGameXXKCharacterRole Role : PermanentRoles)
+		{
+			const FString RoleName = FGameXXKCompanionRules::GetCompanionDisplayName(Role, 7331);
+			TestTrue(FString::Printf(TEXT("every permanent role yields a non-empty display name (%d)"), static_cast<int32>(Role)), !RoleName.IsEmpty());
+			TestEqual(FString::Printf(TEXT("the same role and recruit seed repeat the same display name (%d)"), static_cast<int32>(Role)),
+				FGameXXKCompanionRules::GetCompanionDisplayName(Role, 7331), RoleName);
+			TestTrue(FString::Printf(TEXT("a different recruit seed yields a different display name (%d)"), static_cast<int32>(Role)),
+				FGameXXKCompanionRules::GetCompanionDisplayName(Role, 7332) != RoleName);
+		}
+		TSet<FString> SameSeedNames;
+		for (const EGameXXKCharacterRole Role : PermanentRoles)
+		{
+			SameSeedNames.Add(FGameXXKCompanionRules::GetCompanionDisplayName(Role, 7331));
+		}
+		TestEqual(TEXT("different roles with the same recruit seed never share a display name"), SameSeedNames.Num(), PermanentRoles.Num());
+	}
 	return true;
 }
 

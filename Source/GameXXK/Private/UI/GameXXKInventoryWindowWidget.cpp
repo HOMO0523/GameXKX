@@ -1,8 +1,13 @@
 #include "UI/GameXXKInventoryWindowWidget.h"
 
+#include "GameXXKAffixCatalog.h"
+#include "GameXXKCardText.h"
+#include "GameXXKEquipmentSetCatalog.h"
+
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/ButtonSlot.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
@@ -10,6 +15,7 @@
 #include "Components/Image.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
+#include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/UniformGridPanel.h"
@@ -17,47 +23,165 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/Texture2D.h"
+#include "GameXXKCardCatalog.h"
+#include "GameXXKEquipmentCatalog.h"
 #include "GameXXKMVPRules.h"
+#include "InputCoreTypes.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "Styling/CoreStyle.h"
+#include "Widgets/Input/SButton.h"
 
 namespace
 {
-	const FVector2D InventoryWindowSize(1024.0f, 809.0f);
-	const FVector2D CloseButtonSize(32.0f, 24.0f);
-	const FVector2D BackpackSlotSize(64.0f, 64.0f);
-	const FVector2D BackpackIconSize(46.0f, 46.0f);
-	const FVector2D EquipmentSlotSize(220.0f, 86.0f);
+	class SGameXXKInventorySlotButton final : public SButton
+	{
+	public:
+		using FArguments = SButton::FArguments;
+
+		void Construct(const FArguments& InArgs, UGameXXKInventorySlotButton* InOwner)
+		{
+			Owner = InOwner;
+			SButton::Construct(InArgs);
+		}
+
+		virtual FReply OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+		{
+			if (MouseEvent.GetEffectingButton() == EKeys::RightMouseButton
+				&& Owner.IsValid()
+				&& Owner->HandleRightMouseButtonDown())
+			{
+				return FReply::Handled();
+			}
+			return SButton::OnMouseButtonDown(MyGeometry, MouseEvent);
+		}
+
+	private:
+		TWeakObjectPtr<UGameXXKInventorySlotButton> Owner;
+	};
+
+	// Master V1 page 03/18 WindowControls: 74x74 ink close glyph at (1652,201).
+	const FVector2D CloseButtonSize(74.0f, 74.0f);
+	const FVector2D BackpackSlotSize(110.0f, 116.0f);
+	const FVector2D BackpackIconSize(64.0f, 64.0f);
+	const FVector2D EquipmentSlotSize(118.0f, 124.0f);
 	const FVector2D ActionButtonSize(206.0f, 64.0f);
-	const int32 BackpackSlotCount = 20;
-	const int32 BackpackColumns = 5;
+	const FVector2D CharacterTabSize(105.0f, 62.0f);
+	// Page 18 hero deck cards are 137x190 in a 3-column grid.
+	const FVector2D HeroDeckCardSize(137.0f, 190.0f);
+	const int32 BackpackViewportSlotCount = 20;
+	const int32 BackpackStorageCapacity = FGameXXKEquipmentRules::WarehouseCapacity;
+	const int32 BackpackColumns = 4;
+
+	// Master V1 page 03 absolute geometry (origin 6120,0). The protagonist
+	// backpack paper window sits over the town shell; the 20 visible cells
+	// are a 4x5 window into the 200-slot warehouse.
+	const FVector2D InventoryPaperPos(311.0f, 173.0f);
+	const FVector2D InventoryPaperSize(1450.0f, 849.0f);
+	const FVector2D BackpackViewportPos(1135.0f, 300.0f);
+	const FVector2D BackpackViewportSize(488.0f, 650.0f);      // 4 cols x 5 rows
+	const FVector2D BackpackSlotPitch(122.0f, 130.0f);          // page 03 grid pitch
+	const FMargin BackpackSlotPadding(6.0f, 7.0f);
+	const FVector2D BackpackContentOffset(-6.0f, -7.0f);        // keeps slot 1 at (1135,300)
+	const FVector2D BackpackGridSize(488.0f, 6500.0f);          // 50 rows x pitch 130
+	const FVector2D InventoryScrollbarPos(1642.0f, 303.0f);
+	const FVector2D InventoryScrollbarSize(30.0f, 633.0f);
+	const FVector2D InventoryScrollbarTrackPos(1647.0f, 303.0f);
+	const FVector2D InventoryScrollbarTrackSize(19.0f, 633.0f);
+	const FVector2D InventoryScrollbarThumbTop(1642.0f, 323.0f);
+	const FVector2D InventoryScrollbarThumbSize(30.0f, 126.0f);
+	const FVector2D BackpackSelectionInkPos(1128.0f, 284.0f);
+	const FVector2D BackpackSelectionInkSize(126.0f, 42.0f);
+	const FVector2D BackpackFilterRowPos(1142.0f, 240.0f);
+	const float BackpackFilterRowPitch = 80.0f;
+	const FVector2D BackpackFilterRowSize(80.0f, 26.0f);
+	const FVector2D DecomposeButtonSize(105.0f, 62.0f);
+	const FVector2D EquipmentFramePositions[6] = {
+		FVector2D(420.0f, 340.0f), FVector2D(420.0f, 515.0f), FVector2D(420.0f, 690.0f),
+		FVector2D(930.0f, 340.0f), FVector2D(930.0f, 515.0f), FVector2D(930.0f, 690.0f)};
 	const FName WeaponSlotId(TEXT("Weapon"));
+	const FName HeadSlotId(TEXT("Head"));
 	const FName ArmorSlotId(TEXT("Armor"));
+	const FName BeltSlotId(TEXT("Belt"));
+	const FName ShoesSlotId(TEXT("Shoes"));
 	const FName AccessorySlotId(TEXT("Accessory"));
 
 	const FString TextureRoot(TEXT("/Game/GameXXK/UI/Inventory/Textures/"));
-	const FString SlotStatesTexturePath(TextureRoot + TEXT("T_InventorySlotStates.T_InventorySlotStates"));
-	const FString PsdTextureRoot(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/"));
-	const FString LegacyBackpackTextureRoot(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/"));
-	const FString WindowFrameTexturePath(PsdTextureRoot + TEXT("Backgrounds/T_TownPsd_Background_Backpack.T_TownPsd_Background_Backpack"));
-	const FString PanelFrameTexturePath(LegacyBackpackTextureRoot + TEXT("T_TownBackpack_WindowFrame.T_TownBackpack_WindowFrame"));
+	const FString ApprovedTextureRoot(TEXT("/Game/GameXXK/UI/MasterV2/Approved/"));
+	const FString SelectionInkTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_SelectionInk.T_MasterV2_SelectionInk"));
+	const FString WindowFrameTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_PanelLarge.T_MasterV2_PanelLarge"));
+	const FString PanelFrameTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_PanelLarge.T_MasterV2_PanelLarge"));
 	const FString ConfirmationDialogTexturePath(PanelFrameTexturePath);
-	const FString CloseButtonTexturePath(LegacyBackpackTextureRoot + TEXT("T_TownBackpack_BackArrow.T_TownBackpack_BackArrow"));
-	const FString BackpackSlotTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackSlot.T_TownPsd_BackpackSlot"));
-	const FString EquipmentSlotTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackSlot.T_TownPsd_BackpackSlot"));
-	const FString ActionButtonTexturePath(PsdTextureRoot + TEXT("Controls/T_TownPsd_ButtonNeutral.T_TownPsd_ButtonNeutral"));
-	const FString BackpackHeaderTexturePath(LegacyBackpackTextureRoot + TEXT("T_TownBackpack_Header.T_TownBackpack_Header"));
-	const FString BackpackTabAllTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackTabAll.T_TownPsd_BackpackTabAll"));
-	const FString BackpackTabEquipmentTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackTabEquipment.T_TownPsd_BackpackTabEquipment"));
-	const FString BackpackTabPropTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackTabProp.T_TownPsd_BackpackTabProp"));
-	const FString BackpackTabMaterialTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackTabMaterial.T_TownPsd_BackpackTabMaterial"));
-	const FString BackpackTabTaskTexturePath(PsdTextureRoot + TEXT("Backpack/T_TownPsd_BackpackTabTask.T_TownPsd_BackpackTabTask"));
-	const FString BackpackSortTexturePath(PsdTextureRoot + TEXT("Controls/T_TownPsd_ButtonSort.T_TownPsd_ButtonSort"));
-	const FString BackpackDisassembleTexturePath(PsdTextureRoot + TEXT("Controls/T_TownPsd_ButtonDestructive.T_TownPsd_ButtonDestructive"));
-	const FVector2D BackpackTabSize(74.0f, 32.0f);
-	const FVector2D BackpackUtilityButtonSize(82.0f, 34.8f);
+	const FString CloseButtonTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CloseInk.T_MasterV2_CloseInk"));
+	const FString BackpackScrollbarTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_BackpackScrollbarRight.T_MasterV2_BackpackScrollbarRight"));
+	// Backpack slot paper for tooltips per user request.
+	const FString TooltipPaperTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_ItemSlot.T_MasterV2_ItemSlot"));
+	const FString BackpackSlotTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_ItemSlot.T_MasterV2_ItemSlot"));
+	const FString EquipmentSlotTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_EquipmentSlot.T_MasterV2_EquipmentSlot"));
+	const FString HeroFullBodyTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"));
+	const FString ScrollbarThumbTexturePath(ApprovedTextureRoot + TEXT("inventory_scrollbar_Button.inventory_scrollbar_Button"));
+	const FString ActionButtonTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_ButtonNeutral.T_MasterV2_ButtonNeutral"));
+	const FString BackpackTabAllTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
+	const FString BackpackTabEquipmentTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
+	const FString BackpackTabPropTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
+	const FString BackpackTabMaterialTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
+	const FString BackpackTabTaskTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
+	const FString BackpackSortTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_ButtonNeutral.T_MasterV2_ButtonNeutral"));
+	// Master V1 page 03 approved decompose glyph (user-exported 01_DecomposeButton).
+	const FString BackpackDisassembleTexturePath(ApprovedTextureRoot + TEXT("01_DecomposeButton.01_DecomposeButton"));
+	const FString CharacterTabNormalTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
+	const FString CharacterTabSelectedTexturePath(ApprovedTextureRoot + TEXT("004_tab_2.004_tab_2"));
+	const FString HeroCardFrameTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CardFrame.T_MasterV2_CardFrame"));
+	const FString HeroLockedCardIconTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CardLockedIcon.T_MasterV2_CardLockedIcon"));
+	// Page 18 hero identity card face (card frame + hero bust).
+	const FString HeroCardPortraitTexturePath(TEXT("/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_07.T_Page18CardFinal_07"));
+	const FString ApprovedPanelTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_PanelLarge.T_MasterV2_PanelLarge"));
 	const FMargin SlotFrameMargin(5.0f / 61.0f, 5.0f / 56.0f, 5.0f / 61.0f, 5.0f / 56.0f);
 	const FMargin ActionFrameMargin(0.05f, 0.11f, 0.05f, 0.11f);
+
+	struct FBackpackRuntimeEntry
+	{
+		FName ItemId = NAME_None;
+		FName EquipmentInstanceId = NAME_None;
+		int32 Quantity = 0;
+		FString IconPath;
+		FText DisplayName;
+		FText DetailText;
+
+		bool IsEquipmentInstance() const
+		{
+			return !EquipmentInstanceId.IsNone();
+		}
+	};
+
+	EGameXXKEquipmentSlot EquipmentSlotFromId(const FName SlotId)
+	{
+		if (SlotId == WeaponSlotId)
+		{
+			return EGameXXKEquipmentSlot::Weapon;
+		}
+		if (SlotId == HeadSlotId)
+		{
+			return EGameXXKEquipmentSlot::Head;
+		}
+		if (SlotId == ArmorSlotId)
+		{
+			return EGameXXKEquipmentSlot::Armor;
+		}
+		if (SlotId == BeltSlotId)
+		{
+			return EGameXXKEquipmentSlot::Belt;
+		}
+		if (SlotId == ShoesSlotId)
+		{
+			return EGameXXKEquipmentSlot::Shoes;
+		}
+		if (SlotId == AccessorySlotId)
+		{
+			return EGameXXKEquipmentSlot::Accessory;
+		}
+		return EGameXXKEquipmentSlot::Invalid;
+	}
 
 	UTexture2D* LoadTexture(const FString& Path)
 	{
@@ -117,7 +241,8 @@ namespace
 
 	FButtonStyle MakeInvisibleButtonStyle()
 	{
-		const FSlateBrush EmptyBrush;
+		FSlateBrush EmptyBrush;
+		EmptyBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
 		FButtonStyle Style;
 		Style.SetNormal(EmptyBrush);
 		Style.SetHovered(EmptyBrush);
@@ -135,10 +260,9 @@ namespace
 		UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 		TextBlock->SetText(Text);
 		TextBlock->SetColorAndOpacity(FSlateColor(Color));
-		TextBlock->SetAutoWrapText(true);
-		FSlateFontInfo Font = TextBlock->GetFont();
-		Font.Size = FontSize;
-		TextBlock->SetFont(Font);
+		// Button labels (分解/页签等) must never wrap into vertical stacked glyphs.
+		TextBlock->SetAutoWrapText(false);
+		TextBlock->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), FontSize));
 		return TextBlock;
 	}
 
@@ -183,11 +307,18 @@ namespace
 		}
 		if (ItemId == UGameXXKMVPRules::ItemEnhancementStone())
 		{
-			return TEXT("/Game/GameXXK/UI/Town/Textures/HUD/T_TownHUD_ResourceGreen.T_TownHUD_ResourceGreen");
+			// UI V2 approved core-item icon.
+			return TEXT("/Game/GameXXK/UI/Items/strengthening_stone.strengthening_stone");
+		}
+		if (ItemId == UGameXXKMVPRules::ItemRefinementSand())
+		{
+			// UI V2 approved core-item icon.
+			return TEXT("/Game/GameXXK/UI/Items/refinement_sand.refinement_sand");
 		}
 		if (ItemId == UGameXXKMVPRules::ItemQingshanRouteSeal())
 		{
-			return TEXT("/Game/GameXXK/UI/Tasks/Textures/T_RewardToken.T_RewardToken");
+			// UI V2 approved core-item icon.
+			return TEXT("/Game/GameXXK/UI/Items/qingshan_suppression_token.qingshan_suppression_token");
 		}
 		if (ItemId == FName(TEXT("Item.LingzhiPowder")))
 		{
@@ -349,6 +480,103 @@ namespace
 		return FString::Join(Lines, TEXT("\n"));
 	}
 
+	FText EquipmentQualityText(const EGameXXKEquipmentQuality Quality)
+	{
+		switch (Quality)
+		{
+		case EGameXXKEquipmentQuality::Common:
+			return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentQualityCommon", "普通");
+		case EGameXXKEquipmentQuality::Rare:
+			return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentQualityRare", "稀有");
+		case EGameXXKEquipmentQuality::Epic:
+			return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentQualityEpic", "珍稀");
+		default:
+			return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentQualityUnknown", "未知");
+		}
+	}
+
+	FText EquipmentSlotText(const EGameXXKEquipmentSlot Slot)
+	{
+		switch (Slot)
+		{
+		case EGameXXKEquipmentSlot::Weapon: return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentSlotWeapon", "武器");
+		case EGameXXKEquipmentSlot::Head: return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentSlotHead", "头部");
+		case EGameXXKEquipmentSlot::Armor: return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentSlotArmor", "衣甲");
+		case EGameXXKEquipmentSlot::Belt: return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentSlotBelt", "腰带");
+		case EGameXXKEquipmentSlot::Shoes: return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentSlotShoes", "鞋");
+		case EGameXXKEquipmentSlot::Accessory: return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentSlotAccessory", "饰品");
+		default: return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentSlotUnknown", "未知部位");
+		}
+	}
+
+	FText BuildEquipmentInstanceDetail(
+		const UGameXXKMVPSubsystem* Subsystem,
+		const FGameXXKEquipmentInstance& Instance,
+		const FGameXXKEquipmentDefinition& Definition)
+	{
+		TArray<FString> Lines;
+		Lines.Add(FString::Printf(TEXT("部位：%s"), *EquipmentSlotText(Definition.Slot).ToString()));
+		Lines.Add(FString::Printf(TEXT("装备等级 %d"), Instance.ItemLevel));
+		Lines.Add(FString::Printf(TEXT("品质：%s"), *EquipmentQualityText(Instance.Quality).ToString()));
+		Lines.Add(FString::Printf(TEXT("强化 +%d"), Instance.EnhancementLevel));
+		for (const FGameXXKEquipmentAffixRoll& Roll : Instance.RolledAffixes)
+		{
+			const FGameXXKAffixDefinition* Affix = FGameXXKAffixCatalog::FindDefinition(Roll.AffixId);
+			if (Affix)
+			{
+				if (Roll.Unit == EGameXXKEquipmentMagnitudeUnit::BasisPoints)
+				{
+					// 万分比词缀显示为百分比（312 → +3.12%）
+					Lines.Add(FString::Printf(TEXT("%s +%.2f%%"), *Affix->DisplayName.ToString(), Roll.Magnitude / 100.0));
+				}
+				else
+				{
+					Lines.Add(FString::Printf(TEXT("%s +%d"), *Affix->DisplayName.ToString(), Roll.Magnitude));
+				}
+			}
+		}
+
+		FGameXXKEquipmentTooltipSnapshot Snapshot;
+		const bool bHasSnapshot = Subsystem
+			&& Subsystem->GetEquipmentTooltipSnapshot(
+				Instance.InstanceId,
+				FGameXXKEquipmentRules::HeroCharacterId(),
+				Snapshot);
+
+		// The 2/4/6-piece set bonus block marks each tier the character has reached.
+		if (Definition.Set != EGameXXKEquipmentSet::Invalid && Definition.Set != EGameXXKEquipmentSet::Legacy)
+		{
+			const FText SetName = FGameXXKEquipmentSetCatalog::GetSetDisplayName(Definition.Set);
+			if (!SetName.IsEmpty())
+			{
+				Lines.Add(FString::Printf(TEXT("套装：%s"), *SetName.ToString()));
+				const int32 CurrentPieceCount = bHasSnapshot ? Snapshot.CurrentSetPieceCounts.FindRef(Definition.Set) : 0;
+				for (const FGameXXKEquipmentSetBonusDefinition& Bonus : FGameXXKEquipmentSetCatalog::GetDefinitions())
+				{
+					if (Bonus.Set != Definition.Set)
+					{
+						continue;
+					}
+					FString BonusLine = FString::Printf(TEXT("%d件：%s"), Bonus.RequiredPieces, *Bonus.Description.ToString());
+					if (CurrentPieceCount >= Bonus.RequiredPieces)
+					{
+						BonusLine += TEXT("（已激活）");
+					}
+					Lines.Add(MoveTemp(BonusLine));
+				}
+			}
+		}
+		if (bHasSnapshot)
+		{
+			if (Snapshot.ItemCurrentStats.Attack != 0) { Lines.Add(FString::Printf(TEXT("攻击 %+d"), Snapshot.ItemCurrentStats.Attack)); }
+			if (Snapshot.ItemCurrentStats.Defense != 0) { Lines.Add(FString::Printf(TEXT("防御 %+d"), Snapshot.ItemCurrentStats.Defense)); }
+			if (Snapshot.ItemCurrentStats.MaxHealth != 0) { Lines.Add(FString::Printf(TEXT("气血 %+d"), Snapshot.ItemCurrentStats.MaxHealth)); }
+			if (Snapshot.ItemCurrentStats.MaxMana != 0) { Lines.Add(FString::Printf(TEXT("真气 %+d"), Snapshot.ItemCurrentStats.MaxMana)); }
+			if (Snapshot.ItemCurrentStats.Speed != 0) { Lines.Add(FString::Printf(TEXT("身法 %+d"), Snapshot.ItemCurrentStats.Speed)); }
+		}
+		return FText::FromString(FString::Join(Lines, TEXT("\n")));
+	}
+
 	FName SlotForItemKind(EGameXXKItemKind Kind)
 	{
 		if (Kind == EGameXXKItemKind::Weapon)
@@ -385,6 +613,42 @@ void UGameXXKInventorySlotButton::HandleClicked()
 	}
 }
 
+bool UGameXXKInventorySlotButton::HandleRightMouseButtonDown()
+{
+	return Owner && Owner->HandleConfiguredSlotRightClicked(Source, SlotIndex, EquipmentSlotId);
+}
+
+TSharedRef<SWidget> UGameXXKInventorySlotButton::RebuildWidget()
+{
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
+	MyButton = SNew(SGameXXKInventorySlotButton, this)
+		.OnClicked(BIND_UOBJECT_DELEGATE(FOnClicked, SlateHandleClicked))
+		.OnPressed(BIND_UOBJECT_DELEGATE(FSimpleDelegate, SlateHandlePressed))
+		.OnReleased(BIND_UOBJECT_DELEGATE(FSimpleDelegate, SlateHandleReleased))
+		.OnHovered_UObject(this, &ThisClass::SlateHandleHovered)
+		.OnUnhovered_UObject(this, &ThisClass::SlateHandleUnhovered)
+		.OnReceivedFocus_UObject(this, &ThisClass::SlateHandleOnReceivedFocus)
+		.OnLostFocus_UObject(this, &ThisClass::SlateHandleOnLostFocus)
+		.OnSlateButtonDragDetected(BIND_UOBJECT_DELEGATE(FOnDragDetected, SlateHandleDragDetected))
+		.OnSlateButtonDragEnter(BIND_UOBJECT_DELEGATE(FOnDragEnter, SlateHandleDragEnter))
+		.OnSlateButtonDragLeave(BIND_UOBJECT_DELEGATE(FOnDragLeave, SlateHandleDragLeave))
+		.OnSlateButtonDragOver(BIND_UOBJECT_DELEGATE(FOnDragOver, SlateHandleDragOver))
+		.OnSlateButtonDrop(BIND_UOBJECT_DELEGATE(FOnDrop, SlateHandleDrop))
+		.ButtonStyle(&WidgetStyle)
+		.ClickMethod(ClickMethod)
+		.TouchMethod(TouchMethod)
+		.PressMethod(PressMethod)
+		.IsFocusable(IsFocusable)
+		.AllowDragDrop(bAllowDragDrop);
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+
+	if (GetChildrenCount() > 0)
+	{
+		Cast<UButtonSlot>(GetContentSlot())->BuildSlot(MyButton.ToSharedRef());
+	}
+	return MyButton.ToSharedRef();
+}
+
 void UGameXXKInventoryFilterButton::Configure(UGameXXKInventoryWindowWidget* InOwner, EGameXXKInventoryFilter InFilter)
 {
 	Owner = InOwner;
@@ -398,6 +662,40 @@ void UGameXXKInventoryFilterButton::HandleClicked()
 	if (Owner)
 	{
 		Owner->HandleInventoryFilterClicked(Filter);
+	}
+}
+
+void UGameXXKCharacterBackpackTabButton::Configure(
+	UGameXXKInventoryWindowWidget* InOwner,
+	const EGameXXKCharacterBackpackTab InTab)
+{
+	Owner = InOwner;
+	Tab = InTab;
+	OnClicked.Clear();
+	OnClicked.AddDynamic(this, &UGameXXKCharacterBackpackTabButton::HandleClicked);
+}
+
+void UGameXXKCharacterBackpackTabButton::HandleClicked()
+{
+	if (Owner)
+	{
+		Owner->HandleCharacterBackpackTabClicked(Tab);
+	}
+}
+
+void UGameXXKHeroDeckCardButton::Configure(UGameXXKInventoryWindowWidget* InOwner, const FName InCardId)
+{
+	Owner = InOwner;
+	CardId = InCardId;
+	OnClicked.Clear();
+	OnClicked.AddDynamic(this, &UGameXXKHeroDeckCardButton::HandleClicked);
+}
+
+void UGameXXKHeroDeckCardButton::HandleClicked()
+{
+	if (Owner && !CardId.IsNone())
+	{
+		Owner->HandleHeroDeckCardClicked(CardId);
 	}
 }
 
@@ -417,6 +715,7 @@ bool UGameXXKInventoryWindowWidget::CloseInventoryWindow()
 	WindowMode = EGameXXKInventoryWindowMode::None;
 	SelectedSlotSource = EGameXXKInventorySlotSource::None;
 	SelectedItemId = NAME_None;
+	SelectedEquipmentInstanceId = NAME_None;
 	SelectedSlotIndex = INDEX_NONE;
 	SelectedEquipmentSlotId = NAME_None;
 	RefreshProgrammaticLayout();
@@ -470,7 +769,7 @@ FString UGameXXKInventoryWindowWidget::GetCloseButtonResourcePathForTest() const
 
 int32 UGameXXKInventoryWindowWidget::GetBackpackSlotCountForTest() const
 {
-	return BackpackSlotButtons.Num();
+	return BackpackViewportSlotCount;
 }
 
 FString UGameXXKInventoryWindowWidget::GetBackpackSlotResourcePathForTest() const
@@ -486,6 +785,36 @@ FString UGameXXKInventoryWindowWidget::GetBackpackSlotIconResourcePathForTest(in
 int32 UGameXXKInventoryWindowWidget::GetEquipmentSlotCountForTest() const
 {
 	return EquipmentSlotButtons.Num();
+}
+
+int32 UGameXXKInventoryWindowWidget::GetBackpackColumnCountForTest() const
+{
+	return BackpackColumns;
+}
+
+int32 UGameXXKInventoryWindowWidget::GetBackpackStorageCapacityForTest() const
+{
+	return BackpackStorageCapacity;
+}
+
+bool UGameXXKInventoryWindowWidget::HasBackpackScrollBoxForTest() const
+{
+	return BackpackScrollBox != nullptr;
+}
+
+FString UGameXXKInventoryWindowWidget::GetScrollbarResourcePathForTest() const
+{
+	return BackpackScrollbarTexturePath;
+}
+
+FString UGameXXKInventoryWindowWidget::GetSelectionInkResourcePathForTest() const
+{
+	return SelectionInkTexturePath;
+}
+
+FString UGameXXKInventoryWindowWidget::GetTooltipResourcePathForTest() const
+{
+	return TooltipPaperTexturePath;
 }
 
 FString UGameXXKInventoryWindowWidget::GetEquipmentSlotResourcePathForTest() const
@@ -515,6 +844,19 @@ bool UGameXXKInventoryWindowWidget::SelectPlayerBackpackItemForTest(FName ItemId
 
 bool UGameXXKInventoryWindowWidget::ExecuteSelectedPrimaryActionForTest()
 {
+	if (!SelectedEquipmentInstanceId.IsNone())
+	{
+		if (SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack)
+		{
+			return QuickEquipBackpackInstanceForTest(SelectedEquipmentInstanceId);
+		}
+		if (SelectedSlotSource == EGameXXKInventorySlotSource::Equipment)
+		{
+			const EGameXXKEquipmentSlot EquipmentSlot = EquipmentSlotFromId(SelectedEquipmentSlotId);
+			return EquipmentSlot != EGameXXKEquipmentSlot::Invalid && QuickUnequipSlotForTest(EquipmentSlot);
+		}
+		return false;
+	}
 	if (SelectedItemId.IsNone())
 	{
 		return false;
@@ -579,6 +921,50 @@ FName UGameXXKInventoryWindowWidget::GetEquippedItemForSlotForTest(FName SlotId)
 	return NAME_None;
 }
 
+bool UGameXXKInventoryWindowWidget::QuickEquipBackpackInstanceForTest(const FName InstanceId)
+{
+	CharacterBackpackModel.Bind(ResolveMVPSubsystem(), FGameXXKEquipmentRules::HeroCharacterId());
+	FGameXXKEquipmentTransactionResult Result;
+	const bool bSucceeded = CharacterBackpackModel.QuickEquip(InstanceId, Result);
+	if (bSucceeded)
+	{
+		RefreshProgrammaticLayout();
+	}
+	else if (SelectedDetailTextBlock && !Result.Message.IsEmpty())
+	{
+		SelectedDetailTextBlock->SetText(Result.Message);
+	}
+	return bSucceeded;
+}
+
+bool UGameXXKInventoryWindowWidget::QuickUnequipSlotForTest(const EGameXXKEquipmentSlot EquipmentSlot)
+{
+	CharacterBackpackModel.Bind(ResolveMVPSubsystem(), FGameXXKEquipmentRules::HeroCharacterId());
+	FGameXXKEquipmentTransactionResult Result;
+	const bool bSucceeded = CharacterBackpackModel.QuickUnequip(EquipmentSlot, Result);
+	if (bSucceeded)
+	{
+		RefreshProgrammaticLayout();
+	}
+	else if (SelectedDetailTextBlock && !Result.Message.IsEmpty())
+	{
+		SelectedDetailTextBlock->SetText(Result.Message);
+	}
+	return bSucceeded;
+}
+
+FName UGameXXKInventoryWindowWidget::GetEquippedInstanceForSlotForTest(const EGameXXKEquipmentSlot EquipmentSlot) const
+{
+	FGameXXKCharacterBackpackModel Model;
+	Model.Bind(const_cast<UGameXXKMVPSubsystem*>(ResolveMVPSubsystem()), FGameXXKEquipmentRules::HeroCharacterId());
+	const TArray<FGameXXKCharacterBackpackSlotView> Slots = Model.GetSixSlotSnapshot();
+	const FGameXXKCharacterBackpackSlotView* View = Slots.FindByPredicate([EquipmentSlot](const FGameXXKCharacterBackpackSlotView& Candidate)
+	{
+		return Candidate.Slot == EquipmentSlot;
+	});
+	return View ? View->EquippedInstanceId : NAME_None;
+}
+
 bool UGameXXKInventoryWindowWidget::SelectMerchantStockSlotForTest(int32 SlotIndex)
 {
 	return SelectMerchantStockSlot(SlotIndex);
@@ -637,9 +1023,40 @@ TArray<FName> UGameXXKInventoryWindowWidget::GetVisibleBackpackItemIdsForTest() 
 	return VisibleItemIds;
 }
 
+TArray<FName> UGameXXKInventoryWindowWidget::GetVisibleBackpackEquipmentInstanceIdsForTest() const
+{
+	TArray<FName> VisibleInstanceIds;
+	for (const FName InstanceId : CurrentBackpackSlotEquipmentInstanceIds)
+	{
+		if (!InstanceId.IsNone())
+		{
+			VisibleInstanceIds.Add(InstanceId);
+		}
+	}
+	return VisibleInstanceIds;
+}
+
+int32 UGameXXKInventoryWindowWidget::FindBackpackEquipmentInstanceSlotForTest(const FName InstanceId) const
+{
+	return CurrentBackpackSlotEquipmentInstanceIds.IndexOfByKey(InstanceId);
+}
+
+int32 UGameXXKInventoryWindowWidget::FindBackpackItemSlotForTest(const FName ItemId) const
+{
+	return CurrentBackpackSlotItemIds.IndexOfByKey(ItemId);
+}
+
 int32 UGameXXKInventoryWindowWidget::GetSelectedBackpackSlotIndexForTest() const
 {
-	return SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack ? SelectedSlotIndex : INDEX_NONE;
+	if (SelectedSlotSource != EGameXXKInventorySlotSource::PlayerBackpack)
+	{
+		return INDEX_NONE;
+	}
+	if (!SelectedEquipmentInstanceId.IsNone())
+	{
+		return CurrentBackpackSlotEquipmentInstanceIds.IndexOfByKey(SelectedEquipmentInstanceId);
+	}
+	return GetVisibleBackpackItemIdsForTest().IndexOfByKey(SelectedItemId);
 }
 
 bool UGameXXKInventoryWindowWidget::SortInventoryForTest()
@@ -665,6 +1082,114 @@ FText UGameXXKInventoryWindowWidget::GetSelectedDetailTextForTest() const
 FString UGameXXKInventoryWindowWidget::GetInventoryFilterTexturePathForTest(EGameXXKInventoryFilter Filter) const
 {
 	return ResolveInventoryFilterTexturePath(Filter);
+}
+
+int32 UGameXXKInventoryWindowWidget::GetCharacterTabButtonCountForTest() const
+{
+	return CharacterTabButtons.Num();
+}
+
+EGameXXKCharacterBackpackTab UGameXXKInventoryWindowWidget::GetActiveCharacterBackpackTabForTest() const
+{
+	return ActiveCharacterTab;
+}
+
+bool UGameXXKInventoryWindowWidget::OpenCharacterBackpackTabForTest(const EGameXXKCharacterBackpackTab Tab)
+{
+	if (WindowMode != EGameXXKInventoryWindowMode::FreeInventory)
+	{
+		return false;
+	}
+	const EGameXXKCharacterBackpackTab PreviousTab = ActiveCharacterTab;
+	ActiveCharacterTab = Tab;
+	if (Tab == EGameXXKCharacterBackpackTab::Deck)
+	{
+		if (PreviousTab != EGameXXKCharacterBackpackTab::Deck)
+		{
+			if (const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
+			{
+				PendingHeroDeckIds = Subsystem->GetHeroCardLoadout();
+			}
+		}
+		RefreshHeroDeckCards();
+	}
+	RefreshCharacterTabs();
+	// Full refresh so backpack-only controls (filters, decompose/enhance/reforge)
+	// hide on non-equipment tabs.
+	RefreshProgrammaticLayout();
+	return true;
+}
+
+FText UGameXXKInventoryWindowWidget::GetCharacterTabBodyTextForTest() const
+{
+	return CharacterTabBodyText ? CharacterTabBodyText->GetText() : FText::GetEmpty();
+}
+
+TArray<FName> UGameXXKInventoryWindowWidget::GetHeroCardBackpackIdsForTest() const
+{
+	return HeroCardBackpackIds;
+}
+
+TArray<FName> UGameXXKInventoryWindowWidget::GetPendingHeroDeckIdsForTest() const
+{
+	return PendingHeroDeckIds;
+}
+
+bool UGameXXKInventoryWindowWidget::ToggleHeroDeckCardForTest(const FName CardId)
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem
+		|| Subsystem->IsCompanionLoadoutMutationLocked()
+		|| CardId.IsNone()
+		|| !UnlockedHeroCardIds.Contains(CardId))
+	{
+		return false;
+	}
+	if (PendingHeroDeckIds.Contains(CardId))
+	{
+		PendingHeroDeckIds.RemoveSingle(CardId);
+	}
+	else
+	{
+		if (PendingHeroDeckIds.Num() >= 8)
+		{
+			return false;
+		}
+		PendingHeroDeckIds.Add(CardId);
+	}
+	RefreshHeroDeckCards();
+	return true;
+}
+
+bool UGameXXKInventoryWindowWidget::ApplyHeroDeckForTest()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || PendingHeroDeckIds.Num() != 8 || !Subsystem->SetHeroCardLoadout(PendingHeroDeckIds))
+	{
+		return false;
+	}
+	RefreshHeroDeckCards();
+	return true;
+}
+
+FString UGameXXKInventoryWindowWidget::GetHeroCardFrameResourcePathForTest() const
+{
+	return HeroCardFrameTexturePath;
+}
+
+FString UGameXXKInventoryWindowWidget::GetHeroLockedCardIconResourcePathForTest() const
+{
+	return HeroLockedCardIconTexturePath;
+}
+
+void UGameXXKInventoryWindowWidget::HandleCharacterBackpackTabClicked(const EGameXXKCharacterBackpackTab Tab)
+{
+	OpenCharacterBackpackTabForTest(Tab);
+}
+
+void UGameXXKInventoryWindowWidget::HandleHeroDeckCardClicked(const FName CardId)
+{
+	ToggleHeroDeckCardForTest(CardId);
 }
 
 void UGameXXKInventoryWindowWidget::HandleConfiguredSlotClicked(EGameXXKInventorySlotSource Source, int32 SlotIndex, FName EquipmentSlotId)
@@ -696,6 +1221,49 @@ void UGameXXKInventoryWindowWidget::HandleConfiguredSlotClicked(EGameXXKInventor
 	}
 }
 
+bool UGameXXKInventoryWindowWidget::HandleConfiguredSlotRightClicked(
+	const EGameXXKInventorySlotSource Source,
+	const int32 SlotIndex,
+	const FName EquipmentSlotId)
+{
+	if (PendingConfirmationAction != EConfirmationAction::None)
+	{
+		return false;
+	}
+
+	if (Source == EGameXXKInventorySlotSource::Equipment)
+	{
+		const EGameXXKEquipmentSlot ResolvedEquipmentSlot = EquipmentSlotFromId(EquipmentSlotId);
+		if (ResolvedEquipmentSlot != EGameXXKEquipmentSlot::Invalid && !GetEquippedInstanceForSlotForTest(ResolvedEquipmentSlot).IsNone())
+		{
+			return QuickUnequipSlotForTest(ResolvedEquipmentSlot);
+		}
+
+		// A pre-migration save may still be represented by the legacy item mirror.
+		return SelectEquipmentSlot(EquipmentSlotId) && ExecuteSelectedPrimaryActionForTest();
+	}
+
+	if (Source == EGameXXKInventorySlotSource::PlayerBackpack
+		&& CurrentBackpackSlotItemIds.IsValidIndex(SlotIndex)
+		&& CurrentBackpackSlotEquipmentInstanceIds.IsValidIndex(SlotIndex))
+	{
+		const FName EquipmentInstanceId = CurrentBackpackSlotEquipmentInstanceIds[SlotIndex];
+		if (!EquipmentInstanceId.IsNone())
+		{
+			return QuickEquipBackpackInstanceForTest(EquipmentInstanceId);
+		}
+		const FName ItemId = CurrentBackpackSlotItemIds[SlotIndex];
+		bool bFound = false;
+		const FGameXXKItemDef Definition = UGameXXKMVPRules::GetItemDef(ItemId, bFound);
+		const bool bLegacyEquipment = bFound
+			&& (Definition.Kind == EGameXXKItemKind::Weapon
+				|| Definition.Kind == EGameXXKItemKind::Armor
+				|| Definition.Kind == EGameXXKItemKind::Accessory);
+		return bLegacyEquipment && SelectPlayerBackpackSlot(SlotIndex) && ExecuteSelectedPrimaryActionForTest();
+	}
+	return false;
+}
+
 void UGameXXKInventoryWindowWidget::HandleInventoryFilterClicked(EGameXXKInventoryFilter Filter)
 {
 	if (PendingConfirmationAction == EConfirmationAction::None)
@@ -723,58 +1291,94 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	AddCanvasChild(RootCanvas, ModalBackdrop, FVector2D::ZeroVector, FVector2D::ZeroVector, FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
 
 	WindowFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryWindowFrame"));
-	WindowFrame->SetBrush(MakeBoxTextureBrush(WindowFrameTexturePath, InventoryWindowSize));
+	WindowFrame->SetBrush(MakeBoxTextureBrush(WindowFrameTexturePath, InventoryPaperSize));
 	WindowFrame->SetBrushColor(FLinearColor::White);
-	WindowFrame->SetPadding(FMargin(42.0f, 38.0f, 42.0f, 38.0f));
-	AddCanvasChild(RootCanvas, WindowFrame, FVector2D::ZeroVector, InventoryWindowSize, FAnchors(0.5f, 0.5f), FVector2D(0.5f, 0.5f));
+	WindowFrame->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 0.0f));
+	AddCanvasChild(RootCanvas, WindowFrame, InventoryPaperPos, InventoryPaperSize);
 
+	// Content is placed at Master V1 screen coordinates, so the content canvas
+	// must live on the root at (0,0) — a sibling of the paper window, not a child.
 	FrameCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("InventoryWindowFrameCanvas"));
-	WindowFrame->AddChild(FrameCanvas);
+	AddCanvasChild(RootCanvas, FrameCanvas, FVector2D::ZeroVector, FVector2D(1920.0f, 1080.0f));
 
-	BackpackHeaderImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryBackpackHeader"));
-	if (BackpackHeaderImage)
+	TitleTextBlock = MakeText(WidgetTree, FText::GetEmpty(), 28, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
+	AddCanvasChild(FrameCanvas, TitleTextBlock, FVector2D(383.0f, 230.0f), FVector2D(84.0f, 42.0f));
+
+	// The town HUD already renders the ingot currency strip on this screen;
+	// drawing it here would duplicate the display over the town shell.
+
+	const EGameXXKCharacterBackpackTab CharacterTabs[] = {
+		EGameXXKCharacterBackpackTab::Attributes,
+		EGameXXKCharacterBackpackTab::Equipment,
+		EGameXXKCharacterBackpackTab::Deck,
+		EGameXXKCharacterBackpackTab::Talents,
+		EGameXXKCharacterBackpackTab::Titles};
+	const FText CharacterTabLabels[] = {
+		NSLOCTEXT("GameXXKInventoryWindow", "CharacterTabAttributes", "属性"),
+		NSLOCTEXT("GameXXKInventoryWindow", "CharacterTabEquipment", "装备"),
+		NSLOCTEXT("GameXXKInventoryWindow", "CharacterTabDeck", "卡组"),
+		NSLOCTEXT("GameXXKInventoryWindow", "CharacterTabTalents", "天赋"),
+		NSLOCTEXT("GameXXKInventoryWindow", "CharacterTabTitles", "称号")};
+	const FVector2D CharacterTabPositions[UE_ARRAY_COUNT(CharacterTabs)] = {
+		FVector2D(514.0f, 220.0f), FVector2D(639.0f, 219.0f), FVector2D(764.0f, 220.0f), FVector2D(889.0f, 220.0f), FVector2D(1019.0f, 221.0f)};
+	for (int32 TabIndex = 0; TabIndex < UE_ARRAY_COUNT(CharacterTabs); ++TabIndex)
 	{
-		BackpackHeaderImage->SetBrush(MakeTextureBrush(BackpackHeaderTexturePath, FVector2D(120.0f, 36.0f)));
-		AddCanvasChild(FrameCanvas, BackpackHeaderImage, FVector2D::ZeroVector, FVector2D(120.0f, 36.0f));
+		UGameXXKCharacterBackpackTabButton* TabButton = WidgetTree->ConstructWidget<UGameXXKCharacterBackpackTabButton>(
+			UGameXXKCharacterBackpackTabButton::StaticClass(),
+			*FString::Printf(TEXT("InventoryCharacterTab_%d"), TabIndex));
+		TabButton->Configure(this, CharacterTabs[TabIndex]);
+		TabButton->SetStyle(MakeBoxTextureButtonStyle(CharacterTabNormalTexturePath, CharacterTabSize, FMargin(0.08f)));
+		UTextBlock* TabText = MakeText(WidgetTree, CharacterTabLabels[TabIndex], 14);
+		TabText->SetJustification(ETextJustify::Center);
+		TabButton->AddChild(TabText);
+		AddCanvasChild(FrameCanvas, TabButton, CharacterTabPositions[TabIndex], CharacterTabSize);
+		CharacterTabButtons.Add(TabButton);
 	}
-	TitleTextBlock = MakeText(WidgetTree, FText::GetEmpty(), 26, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
-	AddCanvasChild(FrameCanvas, TitleTextBlock, FVector2D(130.0f, 0.0f), FVector2D(180.0f, 52.0f));
-
-	GoldTextBlock = MakeText(WidgetTree, FText::GetEmpty(), 16);
-	AddCanvasChild(FrameCanvas, GoldTextBlock, FVector2D(320.0f, 8.0f), FVector2D(190.0f, 34.0f));
 
 	CloseButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("InventoryCloseButton"));
-	CloseButton->SetStyle(MakeInvisibleButtonStyle());
+	CloseButton->SetStyle(MakeTextureButtonStyle(CloseButtonTexturePath, CloseButtonSize));
+	CloseButton->SetBackgroundColor(FLinearColor::White);
 	CloseButton->OnClicked.AddDynamic(this, &UGameXXKInventoryWindowWidget::HandleCloseClicked);
-	AddCanvasChild(FrameCanvas, CloseButton, FVector2D(8.0f, 11.0f), CloseButtonSize);
+	AddCanvasChild(FrameCanvas, CloseButton, FVector2D(1652.0f, 201.0f), CloseButtonSize);
 
 	LeftRailFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryLeftRailFrame"));
 	LeftRailFrame->SetBrush(MakeBoxTextureBrush(PanelFrameTexturePath, FVector2D(220.0f, 470.0f)));
 	LeftRailFrame->SetBrushColor(FLinearColor::White);
 	LeftRailFrame->SetPadding(FMargin(12.0f));
-	AddCanvasChild(FrameCanvas, LeftRailFrame, FVector2D(0.0f, 78.0f), FVector2D(220.0f, 470.0f));
+	AddCanvasChild(FrameCanvas, LeftRailFrame, FVector2D(420.0f, 340.0f), FVector2D(220.0f, 470.0f));
 
 	UOverlay* LeftRailOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("InventoryLeftRailOverlay"));
 	LeftRailFrame->AddChild(LeftRailOverlay);
 
-	EquipmentPanelBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("InventoryEquipmentPanel"));
+	EquipmentPanelBox = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("InventoryEquipmentPanel"));
 	LeftRailOverlay->AddChildToOverlay(EquipmentPanelBox);
 
 	MerchantStockGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("InventoryMerchantStockGrid"));
 	LeftRailOverlay->AddChildToOverlay(MerchantStockGrid);
 
-	UBorder* BackpackFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryBackpackFrame"));
-	BackpackFrame->SetBrush(MakeBoxTextureBrush(PanelFrameTexturePath, FVector2D(430.0f, 470.0f)));
-	BackpackFrame->SetBrushColor(FLinearColor::White);
-	BackpackFrame->SetPadding(FMargin(14.0f, 16.0f));
-	AddCanvasChild(FrameCanvas, BackpackFrame, FVector2D(242.0f, 78.0f), FVector2D(430.0f, 470.0f));
+	// Page 03: central hero idle wrapped by 3 equipment slots per side.
+	// Source frame is 512x512; keep 1:1 aspect and show at 2x scale.
+	CentralHeroIdleImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryCentralHeroIdle"));
+	CentralHeroIdleImage->SetBrush(MakeTextureBrush(HeroFullBodyTexturePath, FVector2D(518.0f, 518.0f)));
+	AddCanvasChild(FrameCanvas, CentralHeroIdleImage, FVector2D(478.0f, 304.0f), FVector2D(518.0f, 518.0f));
 
-	UCanvasPanel* BackpackCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("InventoryBackpackCanvas"));
-	BackpackFrame->AddChild(BackpackCanvas);
+	// Page 03 backpack: a 4x5 viewport into the scrollable warehouse, no panel
+	// behind the cells — they sit directly on the paper window.
+	BackpackScrollBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("InventoryBackpackScrollBox"));
+	BackpackScrollBox->SetOrientation(EOrientation::Orient_Vertical);
+	BackpackScrollBox->SetAlwaysShowScrollbar(false);
+	BackpackScrollBox->SetScrollBarVisibility(ESlateVisibility::Collapsed);
+	BackpackScrollBox->OnUserScrolled.AddDynamic(this, &UGameXXKInventoryWindowWidget::HandleBackpackScrolled);
+	AddCanvasChild(FrameCanvas, BackpackScrollBox, BackpackViewportPos, BackpackViewportSize);
+
+	UCanvasPanel* BackpackContentCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("InventoryBackpackContentCanvas"));
+	BackpackScrollBox->AddChild(BackpackContentCanvas);
 
 	BackpackGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("InventoryBackpackGrid"));
-	AddCanvasChild(BackpackCanvas, BackpackGrid, FVector2D(0.0f, 48.0f), FVector2D(374.0f, 300.0f));
+	BackpackGrid->SetSlotPadding(BackpackSlotPadding);
+	AddCanvasChild(BackpackContentCanvas, BackpackGrid, BackpackContentOffset, BackpackGridSize);
 
+	// Page 03 filter row: text labels above the backpack grid.
 	const EGameXXKInventoryFilter InventoryFilters[] = {
 		EGameXXKInventoryFilter::All,
 		EGameXXKInventoryFilter::Equipment,
@@ -782,40 +1386,84 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		EGameXXKInventoryFilter::Materials,
 		EGameXXKInventoryFilter::Tasks,
 	};
+	const FText InventoryFilterLabels[] = {
+		NSLOCTEXT("GameXXKInventoryWindow", "FilterAll", "全部"),
+		NSLOCTEXT("GameXXKInventoryWindow", "FilterEquipment", "装备"),
+		NSLOCTEXT("GameXXKInventoryWindow", "FilterProps", "道具"),
+		NSLOCTEXT("GameXXKInventoryWindow", "FilterMaterials", "材料"),
+		NSLOCTEXT("GameXXKInventoryWindow", "FilterTasks", "任务")};
 	for (int32 FilterIndex = 0; FilterIndex < UE_ARRAY_COUNT(InventoryFilters); ++FilterIndex)
 	{
 		const EGameXXKInventoryFilter Filter = InventoryFilters[FilterIndex];
 		UGameXXKInventoryFilterButton* FilterButton = WidgetTree->ConstructWidget<UGameXXKInventoryFilterButton>(UGameXXKInventoryFilterButton::StaticClass(), *FString::Printf(TEXT("InventoryFilter_%d"), FilterIndex));
 		FilterButton->Configure(this, Filter);
-		FilterButton->SetStyle(MakeTextureButtonStyle(ResolveInventoryFilterTexturePath(Filter), BackpackTabSize));
-		FilterButton->SetBackgroundColor(FLinearColor::White);
-		AddCanvasChild(BackpackCanvas, FilterButton, FVector2D(FilterIndex * 78.0f, 0.0f), BackpackTabSize);
+		FilterButton->SetStyle(MakeInvisibleButtonStyle());
+		FilterButton->SetBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.0f));
+		UTextBlock* FilterText = MakeText(WidgetTree, InventoryFilterLabels[FilterIndex], 18, FLinearColor(0.20f, 0.14f, 0.09f, 1.0f));
+		FilterText->SetJustification(ETextJustify::Center);
+		FilterButton->AddChild(FilterText);
+		AddCanvasChild(FrameCanvas, FilterButton, BackpackFilterRowPos + FVector2D(FilterIndex * BackpackFilterRowPitch, 0.0f), BackpackFilterRowSize);
 		InventoryFilterButtons.Add(FilterButton);
+		InventoryFilterTextBlocks.Add(FilterText);
 	}
 
-	SortButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("InventorySortButton"));
-	SortButton->SetStyle(MakeTextureButtonStyle(BackpackSortTexturePath, BackpackUtilityButtonSize));
-	SortButton->SetBackgroundColor(FLinearColor::White);
-	SortButton->OnClicked.AddDynamic(this, &UGameXXKInventoryWindowWidget::HandleSortClicked);
-	AddCanvasChild(BackpackCanvas, SortButton, FVector2D(92.0f, 392.0f), BackpackUtilityButtonSize);
+	// Page 03 right-side scrollbar: PSD track + thumb; the thumb follows scroll.
+	if (UImage* ScrollbarTrack = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryScrollbarTrack")))
+	{
+		ScrollbarTrack->SetBrush(MakeTextureBrush(BackpackScrollbarTexturePath, InventoryScrollbarTrackSize));
+		AddCanvasChild(FrameCanvas, ScrollbarTrack, InventoryScrollbarTrackPos, InventoryScrollbarTrackSize);
+	}
+	InventoryScrollbarThumb = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryScrollbarThumb"));
+	InventoryScrollbarThumb->SetBrush(MakeTextureBrush(ScrollbarThumbTexturePath, InventoryScrollbarThumbSize));
+	AddCanvasChild(FrameCanvas, InventoryScrollbarThumb, InventoryScrollbarThumbTop, InventoryScrollbarThumbSize);
+
+	// Page 03 selection ink: one bracket above the selected backpack column.
+	BackpackSelectionInk = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryBackpackSelectionInk"));
+	BackpackSelectionInk->SetBrush(MakeTextureBrush(SelectionInkTexturePath, BackpackSelectionInkSize));
+	BackpackSelectionInk->SetVisibility(ESlateVisibility::Collapsed);
+	AddCanvasChild(FrameCanvas, BackpackSelectionInk, BackpackSelectionInkPos, BackpackSelectionInkSize);
 
 	DecomposeButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("InventoryDecomposeButton"));
-	DecomposeButton->SetStyle(MakeTextureButtonStyle(BackpackDisassembleTexturePath, BackpackUtilityButtonSize));
+	DecomposeButton->SetStyle(MakeBoxTextureButtonStyle(BackpackDisassembleTexturePath, DecomposeButtonSize, FMargin(0.08f)));
 	DecomposeButton->SetBackgroundColor(FLinearColor::White);
+	UTextBlock* DecomposeText = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "Decompose", "分解"), 16, FLinearColor(0.95f, 0.90f, 0.80f, 1.0f));
+	DecomposeText->SetJustification(ETextJustify::Center);
+	DecomposeButton->AddChild(DecomposeText);
 	DecomposeButton->OnClicked.AddDynamic(this, &UGameXXKInventoryWindowWidget::HandleDecomposeClicked);
-	AddCanvasChild(BackpackCanvas, DecomposeButton, FVector2D(202.0f, 392.0f), BackpackUtilityButtonSize);
+	AddCanvasChild(FrameCanvas, DecomposeButton, FVector2D(935.0f, 878.0f), DecomposeButtonSize);
+
+	// Enhancement / Reforge action buttons (tab styling) left of Decompose:
+	// 强化 (725,878), 洗炼 (830,878), 分解 (935,878).
+	EnhanceMainButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("InventoryEnhanceMainButton"));
+	EnhanceMainButton->SetStyle(MakeBoxTextureButtonStyle(CharacterTabNormalTexturePath, DecomposeButtonSize, FMargin(0.08f)));
+	EnhanceMainButton->SetBackgroundColor(FLinearColor::White);
+	UTextBlock* EnhanceText = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "EnhanceMain", "强化"), 16, FLinearColor(0.10f, 0.08f, 0.05f, 1.0f));
+	EnhanceText->SetJustification(ETextJustify::Center);
+	EnhanceMainButton->AddChild(EnhanceText);
+	EnhanceMainButton->OnClicked.AddDynamic(this, &UGameXXKInventoryWindowWidget::HandleEnhanceMainClicked);
+	AddCanvasChild(FrameCanvas, EnhanceMainButton, FVector2D(725.0f, 878.0f), DecomposeButtonSize);
+
+	ReforgeMainButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("InventoryReforgeMainButton"));
+	ReforgeMainButton->SetStyle(MakeBoxTextureButtonStyle(CharacterTabNormalTexturePath, DecomposeButtonSize, FMargin(0.08f)));
+	ReforgeMainButton->SetBackgroundColor(FLinearColor::White);
+	UTextBlock* ReforgeText = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "ReforgeMain", "洗炼"), 16, FLinearColor(0.10f, 0.08f, 0.05f, 1.0f));
+	ReforgeText->SetJustification(ETextJustify::Center);
+	ReforgeMainButton->AddChild(ReforgeText);
+	ReforgeMainButton->OnClicked.AddDynamic(this, &UGameXXKInventoryWindowWidget::HandleReforgeMainClicked);
+	AddCanvasChild(FrameCanvas, ReforgeMainButton, FVector2D(830.0f, 878.0f), DecomposeButtonSize);
 
 	DetailPanelFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryDetailPanel"));
 	DetailPanelFrame->SetBrush(MakeBoxTextureBrush(PanelFrameTexturePath, FVector2D(246.0f, 470.0f)));
 	DetailPanelFrame->SetBrushColor(FLinearColor::White);
 	DetailPanelFrame->SetPadding(FMargin(14.0f));
-	AddCanvasChild(FrameCanvas, DetailPanelFrame, FVector2D(694.0f, 78.0f), FVector2D(246.0f, 470.0f));
+	AddCanvasChild(FrameCanvas, DetailPanelFrame, FVector2D(1305.0f, 340.0f), FVector2D(246.0f, 470.0f));
 
 	UVerticalBox* DetailBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("InventoryDetailBox"));
 	DetailPanelFrame->AddChild(DetailBox);
 	SelectedNameTextBlock = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "NoSelectionTitle", "选择物品"), 20, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
 	DetailBox->AddChildToVerticalBox(SelectedNameTextBlock);
 	SelectedDetailTextBlock = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "NoSelectionDetail", "从背包、商店或装备槽中选择。"), 15);
+	SelectedDetailTextBlock->SetAutoWrapText(true);
 	if (UVerticalBoxSlot* DetailTextSlot = DetailBox->AddChildToVerticalBox(SelectedDetailTextBlock))
 	{
 		DetailTextSlot->SetPadding(FMargin(0.0f, 12.0f, 0.0f, 12.0f));
@@ -845,7 +1493,149 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		EnhanceSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
 	}
 
-	for (int32 SlotIndex = 0; SlotIndex < BackpackSlotCount; ++SlotIndex)
+	// Attribute/Talent/Title body occupies the backpack grid area without a paper back.
+	CharacterTabBodyPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryCharacterTabBodyPanel"));
+	{
+		FSlateBrush Transparent;
+		Transparent.DrawAs = ESlateBrushDrawType::NoDrawType;
+		CharacterTabBodyPanel->SetBrush(Transparent);
+	}
+	CharacterTabBodyPanel->SetPadding(FMargin(24.0f, 20.0f));
+	CharacterTabBodyText = MakeText(WidgetTree, FText::GetEmpty(), 20, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+	CharacterTabBodyPanel->SetContent(CharacterTabBodyText);
+	AddCanvasChild(FrameCanvas, CharacterTabBodyPanel, FVector2D(1135.0f, 300.0f), FVector2D(488.0f, 650.0f));
+
+	// Deck body occupies the backpack grid area without a paper back.
+	HeroDeckPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryHeroDeckPanel"));
+	{
+		FSlateBrush Transparent;
+		Transparent.DrawAs = ESlateBrushDrawType::NoDrawType;
+		HeroDeckPanel->SetBrush(Transparent);
+	}
+	HeroDeckPanel->SetPadding(FMargin(24.0f, 20.0f));
+	AddCanvasChild(FrameCanvas, HeroDeckPanel, FVector2D(1135.0f, 300.0f), FVector2D(488.0f, 650.0f));
+	UCanvasPanel* HeroDeckCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("InventoryHeroDeckCanvas"));
+	HeroDeckPanel->SetContent(HeroDeckCanvas);
+	UTextBlock* HeroDeckCaption = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "HeroDeckCaption", "卡组背包 12 张 · 角色卡组 8 张"), 17);
+	AddCanvasChild(HeroDeckCanvas, HeroDeckCaption, FVector2D::ZeroVector, FVector2D(470.0f, 28.0f));
+	HeroDeckGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("InventoryHeroDeckGrid"));
+	HeroDeckGrid->SetSlotPadding(FMargin(5.0f));
+	// 3 columns x up to 4 rows of 137x190 cards inside a draggable scroll box.
+	HeroDeckScrollBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("InventoryHeroDeckScrollBox"));
+	HeroDeckScrollBox->SetOrientation(EOrientation::Orient_Vertical);
+	HeroDeckScrollBox->SetAlwaysShowScrollbar(false);
+	HeroDeckScrollBox->SetScrollBarVisibility(ESlateVisibility::Collapsed);
+	HeroDeckScrollBox->AddChild(HeroDeckGrid);
+	AddCanvasChild(HeroDeckCanvas, HeroDeckScrollBox, FVector2D(0.0f, 34.0f), FVector2D(470.0f, 500.0f));
+	// Apply button centered below the deck grid, with a (x/8) pick counter.
+	ApplyHeroDeckButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("InventoryApplyHeroDeckButton"));
+	ApplyHeroDeckButton->SetStyle(MakeTextureButtonStyle(BackpackDisassembleTexturePath, FVector2D(120.0f, 42.0f)));
+	ApplyHeroDeckButton->OnClicked.AddDynamic(this, &UGameXXKInventoryWindowWidget::HandleApplyHeroDeckClicked);
+	UTextBlock* ApplyHeroDeckText = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "ApplyHeroDeck", "应用卡组"), 14);
+	ApplyHeroDeckText->SetJustification(ETextJustify::Center);
+	ApplyHeroDeckButton->AddChild(ApplyHeroDeckText);
+	AddCanvasChild(HeroDeckCanvas, ApplyHeroDeckButton, FVector2D(175.0f, 550.0f), FVector2D(120.0f, 42.0f));
+	HeroDeckCountText = MakeText(WidgetTree, FText::GetEmpty(), 14, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+	HeroDeckCountText->SetJustification(ETextJustify::Center);
+	AddCanvasChild(HeroDeckCanvas, HeroDeckCountText, FVector2D(175.0f, 596.0f), FVector2D(120.0f, 22.0f));
+	for (int32 CardIndex = 0; CardIndex < 12; ++CardIndex)
+	{
+		UGameXXKHeroDeckCardButton* CardButton = WidgetTree->ConstructWidget<UGameXXKHeroDeckCardButton>(
+			UGameXXKHeroDeckCardButton::StaticClass(),
+			*FString::Printf(TEXT("InventoryHeroDeckCard_%02d"), CardIndex));
+		// The card face texture already includes the card frame; keep the button
+		// style invisible so it does not stack a second frame.
+		CardButton->SetStyle(MakeInvisibleButtonStyle());
+		UOverlay* CardOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
+		UImage* CardPortrait = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("InventoryHeroDeckPortrait_%02d"), CardIndex));
+		CardPortrait->SetBrush(MakeTextureBrush(HeroCardPortraitTexturePath, HeroDeckCardSize));
+		if (UOverlaySlot* PortraitSlot = CardOverlay->AddChildToOverlay(CardPortrait))
+		{
+			PortraitSlot->SetHorizontalAlignment(HAlign_Fill);
+			PortraitSlot->SetVerticalAlignment(VAlign_Fill);
+			PortraitSlot->SetPadding(FMargin(0.0f));
+		}
+		// Selection ink sits under the name so the selected card name stays visible.
+		UImage* SelectedInk = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("InventoryHeroDeckSelectedInk_%02d"), CardIndex));
+		SelectedInk->SetBrush(MakeTextureBrush(SelectionInkTexturePath, BackpackSelectionInkSize));
+		SelectedInk->SetVisibility(ESlateVisibility::Collapsed);
+		if (UOverlaySlot* InkSlot = CardOverlay->AddChildToOverlay(SelectedInk))
+		{
+			InkSlot->SetHorizontalAlignment(HAlign_Center);
+			InkSlot->SetVerticalAlignment(VAlign_Top);
+		}
+		UTextBlock* CardLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+		CardLabel->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 13));
+		CardLabel->SetJustification(ETextJustify::Center);
+		if (UOverlaySlot* LabelSlot = CardOverlay->AddChildToOverlay(CardLabel))
+		{
+			LabelSlot->SetHorizontalAlignment(HAlign_Fill);
+			LabelSlot->SetVerticalAlignment(VAlign_Top);
+			LabelSlot->SetPadding(FMargin(5.0f, 15.0f, 5.0f, 0.0f));
+		}
+		// Cost summary: second line "x气", third line "x内", left-aligned.
+		UTextBlock* CostQiLabel = MakeText(WidgetTree, FText::GetEmpty(), 10, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+		CostQiLabel->SetJustification(ETextJustify::Left);
+		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostQiLabel))
+		{
+			CostSlot->SetHorizontalAlignment(HAlign_Left);
+			CostSlot->SetVerticalAlignment(VAlign_Top);
+			CostSlot->SetPadding(FMargin(5.0f, 50.0f, 0.0f, 0.0f));
+		}
+		UTextBlock* CostManaLabel = MakeText(WidgetTree, FText::GetEmpty(), 10, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+		CostManaLabel->SetJustification(ETextJustify::Left);
+		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostManaLabel))
+		{
+			CostSlot->SetHorizontalAlignment(HAlign_Left);
+			CostSlot->SetVerticalAlignment(VAlign_Top);
+			CostSlot->SetPadding(FMargin(5.0f, 68.0f, 0.0f, 0.0f));
+		}
+		// Hover tooltip: card name + effect description.
+		UBorder* CardTooltipFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("InventoryHeroDeckTooltip_%02d"), CardIndex));
+		CardTooltipFrame->SetBrush(MakeBoxTextureBrush(TooltipPaperTexturePath, FVector2D(260.0f, 120.0f)));
+		CardTooltipFrame->SetBrushColor(FLinearColor::White);
+		CardTooltipFrame->SetPadding(FMargin(16.0f, 12.0f));
+		UVerticalBox* CardTooltipBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+		CardTooltipFrame->AddChild(CardTooltipBox);
+		UTextBlock* TooltipName = MakeText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
+		CardTooltipBox->AddChildToVerticalBox(TooltipName);
+		UTextBlock* TooltipDetail = MakeText(WidgetTree, FText::GetEmpty(), 13, FLinearColor(0.14f, 0.11f, 0.08f, 1.0f));
+		TooltipDetail->SetAutoWrapText(true);
+		if (UVerticalBoxSlot* TooltipDetailSlot = CardTooltipBox->AddChildToVerticalBox(TooltipDetail))
+		{
+			TooltipDetailSlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
+		}
+		CardButton->SetToolTip(CardTooltipFrame);
+		HeroDeckTooltipNameBlocks.Add(TooltipName);
+		HeroDeckTooltipDetailBlocks.Add(TooltipDetail);
+		UImage* LockedIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("InventoryHeroDeckLockedIcon_%02d"), CardIndex));
+		LockedIcon->SetBrush(MakeTextureBrush(HeroLockedCardIconTexturePath, FVector2D(34.0f, 34.0f)));
+		LockedIcon->SetVisibility(ESlateVisibility::Collapsed);
+		if (UOverlaySlot* LockSlot = CardOverlay->AddChildToOverlay(LockedIcon))
+		{
+			LockSlot->SetHorizontalAlignment(HAlign_Center);
+			LockSlot->SetVerticalAlignment(VAlign_Center);
+		}
+		CardButton->AddChild(CardOverlay);
+		USizeBox* CardSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		CardSize->SetWidthOverride(HeroDeckCardSize.X);
+		CardSize->SetHeightOverride(HeroDeckCardSize.Y);
+		CardSize->AddChild(CardButton);
+		if (UUniformGridSlot* CardSlot = HeroDeckGrid->AddChildToUniformGrid(CardSize, CardIndex / 3, CardIndex % 3))
+		{
+			CardSlot->SetHorizontalAlignment(HAlign_Center);
+			CardSlot->SetVerticalAlignment(VAlign_Center);
+		}
+		HeroDeckCardButtons.Add(CardButton);
+		HeroDeckCardPortraits.Add(CardPortrait);
+		HeroDeckCardLabels.Add(CardLabel);
+		HeroDeckCostLabels.Add(CostQiLabel);
+		HeroDeckManaCostLabels.Add(CostManaLabel);
+		HeroDeckLockedIcons.Add(LockedIcon);
+		HeroDeckSelectedInks.Add(SelectedInk);
+	}
+
+	for (int32 SlotIndex = 0; SlotIndex < BackpackStorageCapacity; ++SlotIndex)
 	{
 		UGameXXKInventorySlotButton* SlotButton = WidgetTree->ConstructWidget<UGameXXKInventorySlotButton>(UGameXXKInventorySlotButton::StaticClass(), *FString::Printf(TEXT("InventoryBackpackSlot_%02d"), SlotIndex));
 		SlotButton->Configure(this, EGameXXKInventorySlotSource::PlayerBackpack, SlotIndex);
@@ -866,10 +1656,31 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 			LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 5.0f, 4.0f));
 		}
 
-		UImage* SelectedOverlay = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
-		SelectedOverlay->SetBrush(MakeTextureBrush(SlotStatesTexturePath, BackpackSlotSize, FLinearColor(1.0f, 0.94f, 0.65f, 0.72f)));
-		SelectedOverlay->SetVisibility(ESlateVisibility::Collapsed);
-		SlotOverlay->AddChildToOverlay(SelectedOverlay);
+		UBorder* TooltipFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("InventoryBackpackTooltip_%02d"), SlotIndex));
+		TooltipFrame->SetBrush(MakeBoxTextureBrush(TooltipPaperTexturePath, FVector2D(260.0f, 120.0f)));
+		TooltipFrame->SetBrushColor(FLinearColor::White);
+		TooltipFrame->SetPadding(FMargin(16.0f, 12.0f));
+		UVerticalBox* TooltipBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+		TooltipFrame->AddChild(TooltipBox);
+		UTextBlock* TooltipName = MakeText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
+		TooltipBox->AddChildToVerticalBox(TooltipName);
+		UTextBlock* TooltipDetail = MakeText(WidgetTree, FText::GetEmpty(), 13, FLinearColor(0.14f, 0.11f, 0.08f, 1.0f));
+		if (UVerticalBoxSlot* TooltipDetailSlot = TooltipBox->AddChildToVerticalBox(TooltipDetail))
+		{
+			TooltipDetailSlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
+		}
+		// Replaced-slot comparison rows (red gain / green loss) appear on hover
+		// when the warehouse item would replace an occupied equipment slot.
+		TArray<TObjectPtr<UTextBlock>> CompareRows;
+		for (int32 CompareIndex = 0; CompareIndex < 5; ++CompareIndex)
+		{
+			UTextBlock* CompareRow = MakeText(WidgetTree, FText::GetEmpty(), 11, FLinearColor::White);
+			CompareRow->SetVisibility(ESlateVisibility::Collapsed);
+			TooltipBox->AddChildToVerticalBox(CompareRow);
+			CompareRows.Add(CompareRow);
+		}
+		BackpackCompareTextBlocks.Add(MoveTemp(CompareRows));
+		SlotButton->SetToolTip(TooltipFrame);
 
 		SlotButton->AddChild(SlotOverlay);
 		USizeBox* SlotSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
@@ -884,7 +1695,9 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		BackpackSlotButtons.Add(SlotButton);
 		BackpackSlotIcons.Add(SlotIcon);
 		BackpackSlotLabels.Add(SlotLabel);
-		BackpackSelectedOverlays.Add(SelectedOverlay);
+		BackpackTooltipFrames.Add(TooltipFrame);
+		BackpackTooltipNameTextBlocks.Add(TooltipName);
+		BackpackTooltipDetailTextBlocks.Add(TooltipDetail);
 	}
 
 	const TArray<FName> ShopItems = UGameXXKMVPRules::GetShopItemIds();
@@ -907,7 +1720,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 			LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 4.0f, 4.0f));
 		}
 		UImage* SelectedOverlay = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
-		SelectedOverlay->SetBrush(MakeTextureBrush(SlotStatesTexturePath, BackpackSlotSize, FLinearColor(1.0f, 0.94f, 0.65f, 0.72f)));
+		SelectedOverlay->SetBrush(MakeTextureBrush(SelectionInkTexturePath, BackpackSlotSize, FLinearColor::White));
 		SelectedOverlay->SetVisibility(ESlateVisibility::Collapsed);
 		SlotOverlay->AddChildToOverlay(SelectedOverlay);
 		SlotButton->AddChild(SlotOverlay);
@@ -929,7 +1742,10 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 
 	const TArray<TPair<FName, FText>> EquipmentSlots = {
 		TPair<FName, FText>(WeaponSlotId, NSLOCTEXT("GameXXKInventoryWindow", "WeaponSlot", "武器")),
-		TPair<FName, FText>(ArmorSlotId, NSLOCTEXT("GameXXKInventoryWindow", "ArmorSlot", "防具")),
+		TPair<FName, FText>(HeadSlotId, NSLOCTEXT("GameXXKInventoryWindow", "HeadSlot", "头部")),
+		TPair<FName, FText>(ArmorSlotId, NSLOCTEXT("GameXXKInventoryWindow", "ArmorSlot", "衣甲")),
+		TPair<FName, FText>(BeltSlotId, NSLOCTEXT("GameXXKInventoryWindow", "BeltSlot", "腰带")),
+		TPair<FName, FText>(ShoesSlotId, NSLOCTEXT("GameXXKInventoryWindow", "ShoesSlot", "鞋")),
 		TPair<FName, FText>(AccessorySlotId, NSLOCTEXT("GameXXKInventoryWindow", "AccessorySlot", "饰品")),
 	};
 	for (int32 SlotIndex = 0; SlotIndex < EquipmentSlots.Num(); ++SlotIndex)
@@ -945,37 +1761,51 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		SlotIcon->SetVisibility(ESlateVisibility::Collapsed);
 		if (UOverlaySlot* IconSlot = SlotOverlay->AddChildToOverlay(SlotIcon))
 		{
-			IconSlot->SetHorizontalAlignment(HAlign_Left);
+			IconSlot->SetHorizontalAlignment(HAlign_Center);
 			IconSlot->SetVerticalAlignment(VAlign_Center);
-			IconSlot->SetPadding(FMargin(12.0f, 0.0f, 0.0f, 0.0f));
 		}
-		UTextBlock* SlotLabel = MakeText(WidgetTree, SlotDef.Value, 14, FLinearColor(0.10f, 0.08f, 0.05f, 1.0f));
+		UTextBlock* SlotLabel = MakeText(WidgetTree, SlotDef.Value, 12, FLinearColor(0.10f, 0.08f, 0.05f, 1.0f));
 		if (UOverlaySlot* LabelSlot = SlotOverlay->AddChildToOverlay(SlotLabel))
 		{
-			LabelSlot->SetHorizontalAlignment(HAlign_Fill);
-			LabelSlot->SetVerticalAlignment(VAlign_Center);
-			LabelSlot->SetPadding(FMargin(68.0f, 0.0f, 10.0f, 0.0f));
+			LabelSlot->SetHorizontalAlignment(HAlign_Center);
+			LabelSlot->SetVerticalAlignment(VAlign_Bottom);
+			LabelSlot->SetPadding(FMargin(2.0f, 0.0f, 2.0f, 4.0f));
 		}
-		UImage* SelectedOverlay = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
-		SelectedOverlay->SetBrush(MakeTextureBrush(SlotStatesTexturePath, EquipmentSlotSize, FLinearColor(1.0f, 0.94f, 0.65f, 0.72f)));
-		SelectedOverlay->SetVisibility(ESlateVisibility::Collapsed);
-		SlotOverlay->AddChildToOverlay(SelectedOverlay);
 		SlotButton->AddChild(SlotOverlay);
 
-		USizeBox* SlotSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		SlotSizeBox->SetWidthOverride(EquipmentSlotSize.X);
-		SlotSizeBox->SetHeightOverride(EquipmentSlotSize.Y);
-		SlotSizeBox->AddChild(SlotButton);
-		if (UVerticalBoxSlot* EquipmentSlot = EquipmentPanelBox->AddChildToVerticalBox(SlotSizeBox))
+		// Hover tooltip paper for the equipped item (hidden while the slot is empty).
+		UBorder* TooltipFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("InventoryEquipmentTooltip_%s"), *SlotDef.Key.ToString()));
+		TooltipFrame->SetBrush(MakeBoxTextureBrush(TooltipPaperTexturePath, FVector2D(260.0f, 120.0f)));
+		TooltipFrame->SetBrushColor(FLinearColor::White);
+		TooltipFrame->SetPadding(FMargin(16.0f, 12.0f));
+		TooltipFrame->SetVisibility(ESlateVisibility::Collapsed);
+		UVerticalBox* TooltipBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+		TooltipFrame->AddChild(TooltipBox);
+		UTextBlock* TooltipName = MakeText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
+		TooltipBox->AddChildToVerticalBox(TooltipName);
+		UTextBlock* TooltipDetail = MakeText(WidgetTree, FText::GetEmpty(), 13, FLinearColor(0.14f, 0.11f, 0.08f, 1.0f));
+		if (UVerticalBoxSlot* TooltipDetailSlot = TooltipBox->AddChildToVerticalBox(TooltipDetail))
 		{
-			EquipmentSlot->SetPadding(FMargin(0.0f, SlotIndex == 0 ? 0.0f : 12.0f, 0.0f, 0.0f));
-			EquipmentSlot->SetHorizontalAlignment(HAlign_Center);
+			TooltipDetailSlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
 		}
+		SlotButton->SetToolTip(TooltipFrame);
+
+		// Page 03 wraps the central hero with 3 equipment frames per side at fixed coordinates.
+		AddCanvasChild(FrameCanvas, SlotButton, EquipmentFramePositions[SlotIndex], EquipmentSlotSize);
 		EquipmentSlotButtons.Add(SlotButton);
 		EquipmentSlotIcons.Add(SlotIcon);
 		EquipmentSlotLabels.Add(SlotLabel);
-		EquipmentSelectedOverlays.Add(SelectedOverlay);
+		EquipmentTooltipFrames.Add(TooltipFrame);
+		EquipmentTooltipNameTextBlocks.Add(TooltipName);
+		EquipmentTooltipDetailTextBlocks.Add(TooltipDetail);
 	}
+
+	// Selection ink hovering above the selected equipment slot (like the
+	// backpack column ink): a small bracket asset, never a full-slot fill.
+	EquipmentSelectionInk = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryEquipmentSelectionInk"));
+	EquipmentSelectionInk->SetBrush(MakeTextureBrush(SelectionInkTexturePath, BackpackSelectionInkSize));
+	EquipmentSelectionInk->SetVisibility(ESlateVisibility::Collapsed);
+	AddCanvasChild(FrameCanvas, EquipmentSelectionInk, BackpackSelectionInkPos, BackpackSelectionInkSize);
 
 	ConfirmationDialogFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryConfirmationDialogFrame"));
 	ConfirmationDialogFrame->SetBrush(MakeBoxTextureBrush(ConfirmationDialogTexturePath, FVector2D(520.0f, 260.0f)));
@@ -1017,6 +1847,9 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 {
 	BuildProgrammaticLayout();
 	const bool bWindowVisible = WindowMode != EGameXXKInventoryWindowMode::None;
+	const bool bEquipmentBackpackVisible = WindowMode == EGameXXKInventoryWindowMode::MerchantTrade
+		|| (WindowMode == EGameXXKInventoryWindowMode::FreeInventory
+			&& ActiveCharacterTab == EGameXXKCharacterBackpackTab::Equipment);
 	SetVisibility(bWindowVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	if (ModalBackdrop)
 	{
@@ -1035,34 +1868,20 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 		const bool bMerchantTitle = WindowMode == EGameXXKInventoryWindowMode::MerchantTrade;
 		TitleTextBlock->SetText(bMerchantTitle
 			? NSLOCTEXT("GameXXKInventoryWindow", "TitleTrade", "商铺")
-			: FText::GetEmpty());
-		TitleTextBlock->SetVisibility(bMerchantTitle ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		if (UCanvasPanelSlot* TitleSlot = Cast<UCanvasPanelSlot>(TitleTextBlock->Slot))
-		{
-			TitleSlot->SetPosition(bMerchantTitle ? FVector2D(48.0f, 0.0f) : FVector2D(130.0f, 0.0f));
-		}
-		if (BackpackHeaderImage)
-		{
-			BackpackHeaderImage->SetVisibility(bMerchantTitle ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
-		}
+			: NSLOCTEXT("GameXXKInventoryWindow", "TitleHero", "小侠客"));
+		TitleTextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
 		if (CloseButton)
 		{
-			CloseButton->SetStyle(bMerchantTitle
-				? MakeTextureButtonStyle(CloseButtonTexturePath, CloseButtonSize)
-				: MakeInvisibleButtonStyle());
+			CloseButton->SetStyle(MakeTextureButtonStyle(CloseButtonTexturePath, CloseButtonSize));
 		}
 	}
-	if (GoldTextBlock)
-	{
-		const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-		GoldTextBlock->SetText(FText::FromString(Subsystem
-			? FString::Printf(TEXT("金 %d"), Subsystem->GetRuntimeState().PlayerGold)
-			: TEXT("金 0")));
-	}
-
 	if (EquipmentPanelBox)
 	{
 		EquipmentPanelBox->SetVisibility(WindowMode == EGameXXKInventoryWindowMode::MerchantTrade ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	}
+	if (CentralHeroIdleImage)
+	{
+		CentralHeroIdleImage->SetVisibility(WindowMode == EGameXXKInventoryWindowMode::MerchantTrade ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	}
 	if (MerchantStockGrid)
 	{
@@ -1073,23 +1892,33 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 		if (UGameXXKInventoryFilterButton* FilterButton = InventoryFilterButtons[FilterIndex])
 		{
 			const bool bSelected = static_cast<int32>(ActiveInventoryFilter) == FilterIndex;
-			FilterButton->SetVisibility(bWindowVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-			FilterButton->SetBackgroundColor(bSelected ? FLinearColor(1.0f, 0.90f, 0.62f, 1.0f) : FLinearColor::White);
+			FilterButton->SetVisibility(bEquipmentBackpackVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		}
-	}
-	if (SortButton)
-	{
-		SortButton->SetVisibility(bWindowVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		if (UTextBlock* FilterText = InventoryFilterTextBlocks.IsValidIndex(FilterIndex) ? InventoryFilterTextBlocks[FilterIndex].Get() : nullptr)
+		{
+			const bool bSelected = static_cast<int32>(ActiveInventoryFilter) == FilterIndex;
+			FilterText->SetColorAndOpacity(FSlateColor(bSelected
+				? FLinearColor(0.80f, 0.45f, 0.12f, 1.0f)
+				: FLinearColor(0.20f, 0.14f, 0.09f, 1.0f)));
+		}
 	}
 	if (DecomposeButton)
 	{
 		const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 		const bool bCanDecompose = Subsystem
 			&& (SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack || SelectedSlotSource == EGameXXKInventorySlotSource::Equipment)
-			&& !SelectedItemId.IsNone()
-			&& Subsystem->CanDecomposeItem(SelectedItemId);
-		DecomposeButton->SetVisibility(bWindowVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			&& (!SelectedItemId.IsNone() || !SelectedEquipmentInstanceId.IsNone());
+		DecomposeButton->SetVisibility(bEquipmentBackpackVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		DecomposeButton->SetIsEnabled(bCanDecompose);
+	}
+	// Enhance/Reforge actions only exist on the equipment backpack tab.
+	if (EnhanceMainButton)
+	{
+		EnhanceMainButton->SetVisibility(bEquipmentBackpackVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (ReforgeMainButton)
+	{
+		ReforgeMainButton->SetVisibility(bEquipmentBackpackVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 
 	RefreshBackpackSlots();
@@ -1097,12 +1926,248 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 	RefreshEquipmentSlots();
 	RefreshDetailPanel();
 	RefreshConfirmationDialog();
+	if (ActiveCharacterTab == EGameXXKCharacterBackpackTab::Deck)
+	{
+		RefreshHeroDeckCards();
+	}
+	RefreshCharacterTabs();
+	UpdateBackpackScrollbarThumb();
+}
+
+void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
+{
+	const bool bFreeInventory = WindowMode == EGameXXKInventoryWindowMode::FreeInventory;
+	const bool bMerchant = WindowMode == EGameXXKInventoryWindowMode::MerchantTrade;
+	const bool bEquipmentTab = bFreeInventory && ActiveCharacterTab == EGameXXKCharacterBackpackTab::Equipment;
+	const bool bShowEquipmentBackpack = bMerchant || bEquipmentTab;
+
+	const EGameXXKCharacterBackpackTab Tabs[] = {
+		EGameXXKCharacterBackpackTab::Attributes,
+		EGameXXKCharacterBackpackTab::Equipment,
+		EGameXXKCharacterBackpackTab::Deck,
+		EGameXXKCharacterBackpackTab::Talents,
+		EGameXXKCharacterBackpackTab::Titles};
+	for (int32 Index = 0; Index < CharacterTabButtons.Num(); ++Index)
+	{
+		if (UGameXXKCharacterBackpackTabButton* Button = CharacterTabButtons[Index])
+		{
+			const bool bSelected = bFreeInventory && UE_ARRAY_COUNT(Tabs) > Index && Tabs[Index] == ActiveCharacterTab;
+			Button->SetVisibility(bFreeInventory ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			Button->SetStyle(MakeBoxTextureButtonStyle(
+				bSelected ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
+				CharacterTabSize,
+				FMargin(0.08f)));
+		}
+	}
+
+	if (LeftRailFrame)
+	{
+		LeftRailFrame->SetVisibility(bMerchant ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (EquipmentPanelBox)
+	{
+		EquipmentPanelBox->SetVisibility(bFreeInventory ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (CentralHeroIdleImage)
+	{
+		CentralHeroIdleImage->SetVisibility(bFreeInventory ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (MerchantStockGrid)
+	{
+		MerchantStockGrid->SetVisibility(bMerchant ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (BackpackScrollBox)
+	{
+		BackpackScrollBox->SetVisibility(bShowEquipmentBackpack ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (DetailPanelFrame)
+	{
+		// Page 03 has no separate detail column; item info shows on selection.
+		DetailPanelFrame->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	const bool bShowDeck = bFreeInventory && ActiveCharacterTab == EGameXXKCharacterBackpackTab::Deck;
+	const bool bShowBody = bFreeInventory
+		&& ActiveCharacterTab != EGameXXKCharacterBackpackTab::Equipment
+		&& ActiveCharacterTab != EGameXXKCharacterBackpackTab::Deck;
+	if (HeroDeckPanel)
+	{
+		HeroDeckPanel->SetVisibility(bShowDeck ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (CharacterTabBodyPanel)
+	{
+		CharacterTabBodyPanel->SetVisibility(bShowBody ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (CharacterTabBodyText && bShowBody)
+	{
+		if (ActiveCharacterTab == EGameXXKCharacterBackpackTab::Attributes)
+		{
+			if (const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
+			{
+				const auto& State = Subsystem->GetRuntimeState();
+				CharacterTabBodyText->SetText(FText::FromString(FString::Printf(
+					TEXT("主角属性\n\n等级  %d\n生命  %d / %d\n气血上限  %d\n内力  %d / %d\n攻击  %d\n防御  %d\n速度  %d"),
+					State.PlayerLevel,
+					State.PlayerHP,
+					State.PlayerMaxHP,
+					State.PlayerMaxHP,
+					State.PlayerMP,
+					State.PlayerMaxMP,
+					State.PlayerAttack,
+					State.PlayerDefense,
+					State.PlayerSpeed)));
+			}
+			else
+			{
+				CharacterTabBodyText->SetText(NSLOCTEXT("GameXXKInventoryWindow", "AttributesUnavailable", "主角属性\n\n暂无运行时数据"));
+			}
+		}
+		else if (ActiveCharacterTab == EGameXXKCharacterBackpackTab::Talents)
+		{
+			CharacterTabBodyText->SetText(NSLOCTEXT("GameXXKInventoryWindow", "TalentsUnavailable", "天赋\n\n尚未开放"));
+		}
+		else
+		{
+			CharacterTabBodyText->SetText(NSLOCTEXT("GameXXKInventoryWindow", "TitlesUnavailable", "称号\n\n尚未开放"));
+		}
+	}
+}
+
+void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	HeroCardBackpackIds.Reset();
+	UnlockedHeroCardIds.Reset();
+	for (const FGameXXKCardDefinition& Definition : FGameXXKCardCatalog::GetAllCardDefinitions())
+	{
+		if (Definition.Owner == EGameXXKCardOwner::Hero)
+		{
+			HeroCardBackpackIds.Add(Definition.Id);
+		}
+	}
+	if (Subsystem)
+	{
+		UnlockedHeroCardIds = Subsystem->GetRuntimeState().CardRun.HeroUnlockedCardIds;
+		if (PendingHeroDeckIds.IsEmpty())
+		{
+			PendingHeroDeckIds = Subsystem->GetHeroCardLoadout();
+		}
+	}
+
+	const bool bMutationLocked = !Subsystem || Subsystem->IsCompanionLoadoutMutationLocked();
+	for (int32 Index = 0; Index < HeroDeckCardButtons.Num(); ++Index)
+	{
+		const FName CardId = HeroCardBackpackIds.IsValidIndex(Index) ? HeroCardBackpackIds[Index] : NAME_None;
+		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+		const bool bUnlocked = !CardId.IsNone() && UnlockedHeroCardIds.Contains(CardId);
+		const bool bSelected = PendingHeroDeckIds.Contains(CardId);
+		if (UGameXXKHeroDeckCardButton* Button = HeroDeckCardButtons[Index])
+		{
+			Button->Configure(this, CardId);
+			Button->SetVisibility(CardId.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+			Button->SetIsEnabled(bUnlocked && !bMutationLocked);
+			// Transparent button; selection is drawn with the ink overlay.
+			Button->SetBackgroundColor(FLinearColor::Transparent);
+		}
+		if (UImage* SelectedInk = HeroDeckSelectedInks.IsValidIndex(Index) ? HeroDeckSelectedInks[Index].Get() : nullptr)
+		{
+			SelectedInk->SetVisibility(bSelected ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		}
+		if (UTextBlock* Label = HeroDeckCardLabels.IsValidIndex(Index) ? HeroDeckCardLabels[Index].Get() : nullptr)
+		{
+			const FText CardName = Definition ? Definition->DisplayName : FText::FromName(CardId);
+			Label->SetText(CardName);
+			// Selected card name turns white and renders above the selection ink.
+			Label->SetColorAndOpacity(FSlateColor(bSelected
+				? FLinearColor::White
+				: FLinearColor(0.10f, 0.07f, 0.04f, 1.0f)));
+		}
+		if (UTextBlock* CostLabel = HeroDeckCostLabels.IsValidIndex(Index) ? HeroDeckCostLabels[Index].Get() : nullptr)
+		{
+			CostLabel->SetText(CardId.IsNone() || !Definition
+				? FText::GetEmpty()
+				: FText::FromString(FString::Printf(TEXT("%d气"), Definition->EnergyCost)));
+		}
+		if (UTextBlock* ManaCostLabel = HeroDeckManaCostLabels.IsValidIndex(Index) ? HeroDeckManaCostLabels[Index].Get() : nullptr)
+		{
+			ManaCostLabel->SetText(CardId.IsNone() || !Definition
+				? FText::GetEmpty()
+				: FText::FromString(FString::Printf(TEXT("%d内"), Definition->ManaCost)));
+		}
+		if (UTextBlock* TooltipName = HeroDeckTooltipNameBlocks.IsValidIndex(Index) ? HeroDeckTooltipNameBlocks[Index].Get() : nullptr)
+		{
+			TooltipName->SetText(CardId.IsNone() || !Definition
+				? FText::GetEmpty()
+				: Definition->DisplayName);
+		}
+		if (UTextBlock* TooltipDetail = HeroDeckTooltipDetailBlocks.IsValidIndex(Index) ? HeroDeckTooltipDetailBlocks[Index].Get() : nullptr)
+		{
+			TooltipDetail->SetText(CardId.IsNone() || !Definition
+				? FText::GetEmpty()
+				: FText::FromString(GameXXKCardText::DescribeTooltip(
+					*Definition,
+					Definition->BaseQuality,
+					nullptr,
+					FGameXXKCardTooltipContext())));
+		}
+		if (UImage* Portrait = HeroDeckCardPortraits.IsValidIndex(Index) ? HeroDeckCardPortraits[Index].Get() : nullptr)
+		{
+			Portrait->SetVisibility(CardId.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+			Portrait->SetColorAndOpacity(bUnlocked
+				? FLinearColor::White
+				: FLinearColor(0.30f, 0.29f, 0.27f, 0.62f));
+		}
+		if (UImage* LockedIcon = HeroDeckLockedIcons.IsValidIndex(Index) ? HeroDeckLockedIcons[Index].Get() : nullptr)
+		{
+			LockedIcon->SetVisibility(!bUnlocked && !CardId.IsNone() ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		}
+	}
+	if (ApplyHeroDeckButton)
+	{
+		ApplyHeroDeckButton->SetIsEnabled(Subsystem && !bMutationLocked && PendingHeroDeckIds.Num() == 8);
+	}
+	if (HeroDeckCountText)
+	{
+		HeroDeckCountText->SetText(FText::FromString(FString::Printf(TEXT("(%d / 8)"), PendingHeroDeckIds.Num())));
+	}
 }
 
 void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 {
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	TArray<TPair<FName, int32>> InventoryEntries;
+	// Six-slot snapshot drives the replaced-slot comparison rows inside the
+	// warehouse tooltips, so bind it before the backpack window fills.
+	CharacterBackpackModel.Bind(const_cast<UGameXXKMVPSubsystem*>(Subsystem), FGameXXKEquipmentRules::HeroCharacterId());
+	const TArray<FGameXXKCharacterBackpackSlotView> EquippedSlots = CharacterBackpackModel.GetSixSlotSnapshot();
+	TArray<FBackpackRuntimeEntry> BackpackEntries;
+
+	if (Subsystem && (ActiveInventoryFilter == EGameXXKInventoryFilter::All || ActiveInventoryFilter == EGameXXKInventoryFilter::Equipment))
+	{
+		TArray<FName> WarehouseInstanceIds;
+		Subsystem->GetEquipmentWarehouseSnapshot(WarehouseInstanceIds);
+		for (const FName InstanceId : WarehouseInstanceIds)
+		{
+			const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(
+				Subsystem->GetRuntimeState().EquipmentCollection,
+				InstanceId);
+			const FGameXXKEquipmentDefinition* Definition = Instance
+				? FGameXXKEquipmentCatalog::FindDefinition(Instance->BaseEquipmentId)
+				: nullptr;
+			if (!Instance || !Definition)
+			{
+				continue;
+			}
+
+			FBackpackRuntimeEntry Entry;
+			Entry.EquipmentInstanceId = InstanceId;
+			Entry.IconPath = Definition->IconSoftPath.ToString();
+			Entry.DisplayName = Definition->DisplayName;
+			Entry.DetailText = BuildEquipmentInstanceDetail(Subsystem, *Instance, *Definition);
+			BackpackEntries.Add(MoveTemp(Entry));
+		}
+	}
+
+	TArray<TPair<FName, int32>> LegacyInventoryEntries;
 	if (Subsystem)
 	{
 		for (const TPair<FName, int32>& Entry : Subsystem->GetRuntimeState().Inventory)
@@ -1111,73 +2176,93 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 			const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(Entry.Key, bFound);
 			if (Entry.Value > 0 && bFound && MatchesInventoryFilter(Def.Kind, ActiveInventoryFilter))
 			{
-				InventoryEntries.Add(Entry);
+				LegacyInventoryEntries.Add(Entry);
 			}
 		}
 	}
-	if (bBackpackSorted)
-	{
-		InventoryEntries.StableSort([](const TPair<FName, int32>& A, const TPair<FName, int32>& B)
-		{
-			bool bAFound = false;
-			bool bBFound = false;
-			const FGameXXKItemDef ADef = UGameXXKMVPRules::GetItemDef(A.Key, bAFound);
-			const FGameXXKItemDef BDef = UGameXXKMVPRules::GetItemDef(B.Key, bBFound);
-			const int32 ARank = bAFound ? InventorySortRank(ADef.Kind) : 3;
-			const int32 BRank = bBFound ? InventorySortRank(BDef.Kind) : 3;
-			if (ARank != BRank)
-			{
-				return ARank < BRank;
-			}
-			const FString AName = bAFound ? ADef.DisplayName.ToString() : A.Key.ToString();
-			const FString BName = bBFound ? BDef.DisplayName.ToString() : B.Key.ToString();
-			if (AName != BName)
-			{
-				return AName < BName;
-			}
-			return A.Key.LexicalLess(B.Key);
-		});
-	}
-	else
+	if (!bBackpackSorted)
 	{
 		const TArray<FName> KnownItemIds = UGameXXKMVPRules::GetKnownItemIds();
-		InventoryEntries.Sort([&KnownItemIds](const TPair<FName, int32>& A, const TPair<FName, int32>& B)
+		LegacyInventoryEntries.Sort([&KnownItemIds](const TPair<FName, int32>& A, const TPair<FName, int32>& B)
 		{
 			const int32 AIndex = KnownItemIds.IndexOfByKey(A.Key);
 			const int32 BIndex = KnownItemIds.IndexOfByKey(B.Key);
 			if (AIndex != INDEX_NONE || BIndex != INDEX_NONE)
 			{
-				if (AIndex == INDEX_NONE)
-				{
-					return false;
-				}
-				if (BIndex == INDEX_NONE)
-				{
-					return true;
-				}
+				if (AIndex == INDEX_NONE) { return false; }
+				if (BIndex == INDEX_NONE) { return true; }
 				return AIndex < BIndex;
 			}
 			return A.Key.ToString() < B.Key.ToString();
 		});
 	}
 
+	for (const TPair<FName, int32>& LegacyEntry : LegacyInventoryEntries)
+	{
+		bool bFound = false;
+		const FGameXXKItemDef Definition = UGameXXKMVPRules::GetItemDef(LegacyEntry.Key, bFound);
+		if (!bFound)
+		{
+			continue;
+		}
+		FBackpackRuntimeEntry Entry;
+		Entry.ItemId = LegacyEntry.Key;
+		Entry.Quantity = LegacyEntry.Value;
+		Entry.IconPath = ResolveItemIconTexturePath(LegacyEntry.Key);
+		Entry.DisplayName = Definition.DisplayName;
+		Entry.DetailText = FText::FromString(ItemStatsText(Definition, Subsystem ? Subsystem->GetItemEnhancementLevel(LegacyEntry.Key) : 0));
+		BackpackEntries.Add(MoveTemp(Entry));
+	}
+
+	if (bBackpackSorted)
+	{
+		BackpackEntries.StableSort([](const FBackpackRuntimeEntry& A, const FBackpackRuntimeEntry& B)
+		{
+			const int32 ARank = A.IsEquipmentInstance() ? 0 : [&A]()
+			{
+				bool bFound = false;
+				const FGameXXKItemDef Definition = UGameXXKMVPRules::GetItemDef(A.ItemId, bFound);
+				return bFound ? InventorySortRank(Definition.Kind) : 4;
+			}();
+			const int32 BRank = B.IsEquipmentInstance() ? 0 : [&B]()
+			{
+				bool bFound = false;
+				const FGameXXKItemDef Definition = UGameXXKMVPRules::GetItemDef(B.ItemId, bFound);
+				return bFound ? InventorySortRank(Definition.Kind) : 4;
+			}();
+			if (ARank != BRank) { return ARank < BRank; }
+			const FString AName = A.DisplayName.ToString();
+			const FString BName = B.DisplayName.ToString();
+			if (AName != BName) { return AName < BName; }
+			const FName AId = A.IsEquipmentInstance() ? A.EquipmentInstanceId : A.ItemId;
+			const FName BId = B.IsEquipmentInstance() ? B.EquipmentInstanceId : B.ItemId;
+			return AId.LexicalLess(BId);
+		});
+	}
+
 	CurrentBackpackSlotItemIds.Reset();
+	CurrentBackpackSlotEquipmentInstanceIds.Reset();
+	CurrentBackpackSlotQuantities.Reset();
 	CurrentBackpackSlotIconPaths.Reset();
 	for (int32 SlotIndex = 0; SlotIndex < BackpackSlotButtons.Num(); ++SlotIndex)
 	{
-		const bool bHasItem = InventoryEntries.IsValidIndex(SlotIndex);
-		const FName ItemId = bHasItem ? InventoryEntries[SlotIndex].Key : NAME_None;
-		CurrentBackpackSlotItemIds.Add(ItemId);
-		CurrentBackpackSlotIconPaths.Add(ResolveItemIconTexturePath(ItemId));
+		const FBackpackRuntimeEntry* Entry = BackpackEntries.IsValidIndex(SlotIndex) ? &BackpackEntries[SlotIndex] : nullptr;
+		CurrentBackpackSlotItemIds.Add(Entry ? Entry->ItemId : NAME_None);
+		CurrentBackpackSlotEquipmentInstanceIds.Add(Entry ? Entry->EquipmentInstanceId : NAME_None);
+		CurrentBackpackSlotQuantities.Add(Entry ? Entry->Quantity : 0);
+		CurrentBackpackSlotIconPaths.Add(Entry ? Entry->IconPath : FString());
 	}
 
 	if (SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack)
 	{
-		const int32 ReboundSlotIndex = CurrentBackpackSlotItemIds.IndexOfByKey(SelectedItemId);
+		const int32 ReboundSlotIndex = !SelectedEquipmentInstanceId.IsNone()
+			? CurrentBackpackSlotEquipmentInstanceIds.IndexOfByKey(SelectedEquipmentInstanceId)
+			: CurrentBackpackSlotItemIds.IndexOfByKey(SelectedItemId);
 		if (ReboundSlotIndex == INDEX_NONE)
 		{
 			SelectedSlotSource = EGameXXKInventorySlotSource::None;
 			SelectedItemId = NAME_None;
+			SelectedEquipmentInstanceId = NAME_None;
 			SelectedSlotIndex = INDEX_NONE;
 			SelectedEquipmentSlotId = NAME_None;
 		}
@@ -1190,17 +2275,24 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 	for (int32 SlotIndex = 0; SlotIndex < BackpackSlotButtons.Num(); ++SlotIndex)
 	{
 		const FName ItemId = CurrentBackpackSlotItemIds[SlotIndex];
-		const bool bHasItem = !ItemId.IsNone();
-		const int32 Quantity = InventoryEntries.IsValidIndex(SlotIndex) ? InventoryEntries[SlotIndex].Value : 0;
+		const FName EquipmentInstanceId = CurrentBackpackSlotEquipmentInstanceIds[SlotIndex];
+		const bool bHasItem = !ItemId.IsNone() || !EquipmentInstanceId.IsNone();
+		const int32 Quantity = CurrentBackpackSlotQuantities[SlotIndex];
 		const FString& IconPath = CurrentBackpackSlotIconPaths[SlotIndex];
+		const FBackpackRuntimeEntry* Entry = BackpackEntries.IsValidIndex(SlotIndex) ? &BackpackEntries[SlotIndex] : nullptr;
 
 		if (UGameXXKInventorySlotButton* SlotButton = BackpackSlotButtons[SlotIndex])
 		{
 			SlotButton->SetIsEnabled(bHasItem);
 		}
+		if (UBorder* Tooltip = BackpackTooltipFrames.IsValidIndex(SlotIndex) ? BackpackTooltipFrames[SlotIndex].Get() : nullptr)
+		{
+			// Empty slots must not show a tiny blank tooltip paper on hover.
+			Tooltip->SetVisibility(bHasItem ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		}
 		if (UTextBlock* Label = BackpackSlotLabels.IsValidIndex(SlotIndex) ? BackpackSlotLabels[SlotIndex].Get() : nullptr)
 		{
-			Label->SetText(bHasItem ? FText::FromString(FString::Printf(TEXT("x%d"), Quantity)) : FText::GetEmpty());
+			Label->SetText(bHasItem && Quantity > 1 ? FText::FromString(FString::Printf(TEXT("x%d"), Quantity)) : FText::GetEmpty());
 		}
 		if (UImage* Icon = BackpackSlotIcons.IsValidIndex(SlotIndex) ? BackpackSlotIcons[SlotIndex].Get() : nullptr)
 		{
@@ -1217,10 +2309,106 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 				Icon->SetVisibility(ESlateVisibility::Collapsed);
 			}
 		}
-		if (UImage* SelectedOverlay = BackpackSelectedOverlays.IsValidIndex(SlotIndex) ? BackpackSelectedOverlays[SlotIndex].Get() : nullptr)
+		if (UTextBlock* TooltipName = BackpackTooltipNameTextBlocks.IsValidIndex(SlotIndex) ? BackpackTooltipNameTextBlocks[SlotIndex].Get() : nullptr)
 		{
-			SelectedOverlay->SetVisibility(SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack && SelectedSlotIndex == SlotIndex ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+			TooltipName->SetText(Entry ? Entry->DisplayName : FText::GetEmpty());
 		}
+		if (UTextBlock* TooltipDetail = BackpackTooltipDetailTextBlocks.IsValidIndex(SlotIndex) ? BackpackTooltipDetailTextBlocks[SlotIndex].Get() : nullptr)
+		{
+			TooltipDetail->SetText(Entry ? Entry->DetailText : FText::GetEmpty());
+		}
+		// Comparison rows: only when this warehouse item would replace an
+		// occupied slot do we show the red-gain / green-loss stat deltas.
+		if (TArray<TObjectPtr<UTextBlock>>* CompareRows = BackpackCompareTextBlocks.IsValidIndex(SlotIndex) ? &BackpackCompareTextBlocks[SlotIndex] : nullptr)
+		{
+			int32 CompareRowIndex = 0;
+			auto ShowCompareRow = [&CompareRows, &CompareRowIndex](const FString& Label, const int32 Delta)
+			{
+				if (CompareRowIndex >= CompareRows->Num() || Delta == 0)
+				{
+					return;
+				}
+				if (UTextBlock* Row = (*CompareRows)[CompareRowIndex])
+				{
+					Row->SetText(FText::FromString(FString::Printf(TEXT("%s %+d"), *Label, Delta)));
+					Row->SetColorAndOpacity(FSlateColor(Delta > 0
+						? FLinearColor(0.85f, 0.15f, 0.15f, 1.0f)
+						: FLinearColor(0.10f, 0.65f, 0.25f, 1.0f)));
+					Row->SetVisibility(ESlateVisibility::HitTestInvisible);
+				}
+				++CompareRowIndex;
+			};
+			const FGameXXKEquipmentInstance* Instance = Subsystem && Entry && Entry->IsEquipmentInstance()
+				? FGameXXKEquipmentRules::FindInstance(Subsystem->GetRuntimeState().EquipmentCollection, Entry->EquipmentInstanceId)
+				: nullptr;
+			const FGameXXKEquipmentDefinition* Definition = Instance
+				? FGameXXKEquipmentCatalog::FindDefinition(Instance->BaseEquipmentId)
+				: nullptr;
+			const bool bSlotOccupied = Definition
+				&& EquippedSlots.ContainsByPredicate([Definition](const FGameXXKCharacterBackpackSlotView& SlotView)
+				{
+					return SlotView.Slot == Definition->Slot && !SlotView.EquippedInstanceId.IsNone();
+				});
+			if (bSlotOccupied && Subsystem)
+			{
+				FGameXXKEquipmentTooltipSnapshot CompareSnapshot;
+				if (Subsystem->GetEquipmentTooltipSnapshot(Entry->EquipmentInstanceId, FGameXXKEquipmentRules::HeroCharacterId(), CompareSnapshot))
+				{
+					ShowCompareRow(TEXT("攻击"), CompareSnapshot.CharacterStatDeltas.Attack);
+					ShowCompareRow(TEXT("防御"), CompareSnapshot.CharacterStatDeltas.Defense);
+					ShowCompareRow(TEXT("气血"), CompareSnapshot.CharacterStatDeltas.MaxHealth);
+					ShowCompareRow(TEXT("真气"), CompareSnapshot.CharacterStatDeltas.MaxMana);
+					ShowCompareRow(TEXT("身法"), CompareSnapshot.CharacterStatDeltas.Speed);
+				}
+			}
+			for (; CompareRowIndex < CompareRows->Num(); ++CompareRowIndex)
+			{
+				if (UTextBlock* Row = (*CompareRows)[CompareRowIndex])
+				{
+					Row->SetVisibility(ESlateVisibility::Collapsed);
+				}
+			}
+		}
+	}
+
+	// Page 03 selection ink: a single bracket above the selected backpack column.
+	if (BackpackSelectionInk)
+	{
+		const bool bBackpackSelection = SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack && SelectedSlotIndex >= 0;
+		BackpackSelectionInk->SetVisibility(bBackpackSelection ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (bBackpackSelection)
+		{
+			const int32 Column = SelectedSlotIndex % BackpackColumns;
+			const int32 Row = SelectedSlotIndex / BackpackColumns;
+			const FVector2D InkPosition = BackpackSelectionInkPos
+				+ FVector2D(Column * BackpackSlotPitch.X, Row * BackpackSlotPitch.Y);
+			if (UCanvasPanelSlot* InkSlot = Cast<UCanvasPanelSlot>(BackpackSelectionInk->Slot))
+			{
+				InkSlot->SetPosition(InkPosition);
+			}
+		}
+	}
+}
+
+void UGameXXKInventoryWindowWidget::HandleBackpackScrolled(float CurrentOffset)
+{
+	UpdateBackpackScrollbarThumb();
+}
+
+void UGameXXKInventoryWindowWidget::UpdateBackpackScrollbarThumb()
+{
+	if (!InventoryScrollbarThumb || !BackpackScrollBox)
+	{
+		return;
+	}
+	const float MaxOffset = BackpackScrollBox->GetScrollOffsetOfEnd();
+	const float Offset = BackpackScrollBox->GetScrollOffset();
+	const float ThumbTravel = InventoryScrollbarSize.Y - InventoryScrollbarThumbSize.Y;
+	const float Ratio = MaxOffset > 0.0f ? FMath::Clamp(Offset / MaxOffset, 0.0f, 1.0f) : 0.0f;
+	const FVector2D ThumbPosition = InventoryScrollbarThumbTop + FVector2D(0.0f, Ratio * ThumbTravel);
+	if (UCanvasPanelSlot* ThumbSlot = Cast<UCanvasPanelSlot>(InventoryScrollbarThumb->Slot))
+	{
+		ThumbSlot->SetPosition(ThumbPosition);
 	}
 }
 
@@ -1266,36 +2454,53 @@ void UGameXXKInventoryWindowWidget::RefreshMerchantStockSlots()
 
 void UGameXXKInventoryWindowWidget::RefreshEquipmentSlots()
 {
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	CharacterBackpackModel.Bind(Subsystem, FGameXXKEquipmentRules::HeroCharacterId());
 	CurrentEquipmentSlotItemIds.Reset();
-	const FName EquippedIds[3] = {
-		Subsystem ? Subsystem->GetRuntimeState().EquippedWeapon : NAME_None,
-		Subsystem ? Subsystem->GetRuntimeState().EquippedArmor : NAME_None,
-		Subsystem ? Subsystem->GetRuntimeState().EquippedAccessory : NAME_None,
-	};
-	const FName SlotIds[3] = { WeaponSlotId, ArmorSlotId, AccessorySlotId };
-	const FText EmptyLabels[3] = {
-		NSLOCTEXT("GameXXKInventoryWindow", "WeaponEmpty", "武器\n空"),
-		NSLOCTEXT("GameXXKInventoryWindow", "ArmorEmpty", "防具\n空"),
-		NSLOCTEXT("GameXXKInventoryWindow", "AccessoryEmpty", "饰品\n空"),
+	const TArray<FGameXXKCharacterBackpackSlotView> SlotViews = CharacterBackpackModel.GetSixSlotSnapshot();
+	const FName SlotIds[] = {WeaponSlotId, HeadSlotId, ArmorSlotId, BeltSlotId, ShoesSlotId, AccessorySlotId};
+	const FText EmptyLabels[] = {
+		NSLOCTEXT("GameXXKInventoryWindow", "WeaponEmpty", "武器"),
+		NSLOCTEXT("GameXXKInventoryWindow", "HeadEmpty", "头部"),
+		NSLOCTEXT("GameXXKInventoryWindow", "ArmorEmpty", "衣甲"),
+		NSLOCTEXT("GameXXKInventoryWindow", "BeltEmpty", "腰带"),
+		NSLOCTEXT("GameXXKInventoryWindow", "ShoesEmpty", "鞋"),
+		NSLOCTEXT("GameXXKInventoryWindow", "AccessoryEmpty", "饰品"),
 	};
 	for (int32 SlotIndex = 0; SlotIndex < EquipmentSlotButtons.Num(); ++SlotIndex)
 	{
-		const FName ItemId = EquippedIds[SlotIndex];
-		CurrentEquipmentSlotItemIds.Add(ItemId);
-		bool bFound = false;
-		const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(ItemId, bFound);
+		const FName InstanceId = SlotViews.IsValidIndex(SlotIndex) ? SlotViews[SlotIndex].EquippedInstanceId : NAME_None;
+		const FGameXXKEquipmentInstance* Instance = Subsystem && !InstanceId.IsNone()
+			? FGameXXKEquipmentRules::FindInstance(Subsystem->GetRuntimeState().EquipmentCollection, InstanceId)
+			: nullptr;
+		const FGameXXKEquipmentDefinition* EquipmentDefinition = Instance
+			? FGameXXKEquipmentCatalog::FindDefinition(Instance->BaseEquipmentId)
+			: nullptr;
+
+		// Keep pre-instance save projections usable while the final UI migrates to the six-slot model.
+		const FName LegacyItemId = InstanceId.IsNone() && UE_ARRAY_COUNT(SlotIds) > SlotIndex
+			? GetEquippedItemForSlotForTest(SlotIds[SlotIndex])
+			: NAME_None;
+		bool bLegacyFound = false;
+		const FGameXXKItemDef LegacyDefinition = UGameXXKMVPRules::GetItemDef(LegacyItemId, bLegacyFound);
+		CurrentEquipmentSlotItemIds.Add(!InstanceId.IsNone() ? InstanceId : LegacyItemId);
+		// No name label once an item is equipped; empty slots show the part name.
 		if (UTextBlock* Label = EquipmentSlotLabels.IsValidIndex(SlotIndex) ? EquipmentSlotLabels[SlotIndex].Get() : nullptr)
 		{
-			Label->SetText(bFound ? FText::Format(NSLOCTEXT("GameXXKInventoryWindow", "EquipmentFilled", "{0}\n{1}"), EmptyLabels[SlotIndex].ToString().StartsWith(TEXT("武器")) ? FText::FromString(TEXT("武器")) : EmptyLabels[SlotIndex].ToString().StartsWith(TEXT("防具")) ? FText::FromString(TEXT("防具")) : FText::FromString(TEXT("饰品")), Def.DisplayName) : EmptyLabels[SlotIndex]);
+			Label->SetText(!InstanceId.IsNone()
+				? FText::GetEmpty()
+				: bLegacyFound ? LegacyDefinition.DisplayName : EmptyLabels[SlotIndex]);
 		}
 		if (UImage* Icon = EquipmentSlotIcons.IsValidIndex(SlotIndex) ? EquipmentSlotIcons[SlotIndex].Get() : nullptr)
 		{
-			if (UTexture2D* Texture = LoadTexture(ResolveItemIconTexturePath(ItemId)))
+			const FString IconPath = EquipmentDefinition
+				? EquipmentDefinition->IconSoftPath.ToString()
+				: ResolveItemIconTexturePath(LegacyItemId);
+			if (UTexture2D* Texture = LoadTexture(IconPath))
 			{
 				Icon->SetBrushFromTexture(Texture, true);
 				FSlateBrush Brush = Icon->GetBrush();
-				Brush.ImageSize = FVector2D(42.0f, 42.0f);
+				Brush.ImageSize = FVector2D(72.0f, 72.0f);
 				Icon->SetBrush(Brush);
 				Icon->SetVisibility(ESlateVisibility::HitTestInvisible);
 			}
@@ -1304,9 +2509,47 @@ void UGameXXKInventoryWindowWidget::RefreshEquipmentSlots()
 				Icon->SetVisibility(ESlateVisibility::Collapsed);
 			}
 		}
-		if (UImage* SelectedOverlay = EquipmentSelectedOverlays.IsValidIndex(SlotIndex) ? EquipmentSelectedOverlays[SlotIndex].Get() : nullptr)
+		if (UBorder* TooltipFrame = EquipmentTooltipFrames.IsValidIndex(SlotIndex) ? EquipmentTooltipFrames[SlotIndex].Get() : nullptr)
 		{
-			SelectedOverlay->SetVisibility(SelectedSlotSource == EGameXXKInventorySlotSource::Equipment && SelectedEquipmentSlotId == SlotIds[SlotIndex] ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+			const bool bHasItem = Instance != nullptr;
+			TooltipFrame->SetVisibility(bHasItem ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			if (bHasItem && EquipmentDefinition)
+			{
+				if (UTextBlock* TooltipName = EquipmentTooltipNameTextBlocks.IsValidIndex(SlotIndex) ? EquipmentTooltipNameTextBlocks[SlotIndex].Get() : nullptr)
+				{
+					TooltipName->SetText(EquipmentDefinition->DisplayName);
+				}
+				if (UTextBlock* TooltipDetail = EquipmentTooltipDetailTextBlocks.IsValidIndex(SlotIndex) ? EquipmentTooltipDetailTextBlocks[SlotIndex].Get() : nullptr)
+				{
+					TooltipDetail->SetText(BuildEquipmentInstanceDetail(Subsystem, *Instance, *EquipmentDefinition));
+				}
+			}
+		}
+	}
+
+	// Selection ink hovers above the selected equipment slot as a small bracket.
+	if (EquipmentSelectionInk)
+	{
+		int32 SelectedEquipmentIndex = INDEX_NONE;
+		for (int32 SlotIndex = 0; SlotIndex < UE_ARRAY_COUNT(SlotIds); ++SlotIndex)
+		{
+			if (SelectedEquipmentSlotId == SlotIds[SlotIndex])
+			{
+				SelectedEquipmentIndex = SlotIndex;
+				break;
+			}
+		}
+		const bool bSelected = SelectedSlotSource == EGameXXKInventorySlotSource::Equipment
+			&& SelectedEquipmentIndex != INDEX_NONE;
+		EquipmentSelectionInk->SetVisibility(
+			bSelected ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (bSelected)
+		{
+			if (UCanvasPanelSlot* InkSlot = Cast<UCanvasPanelSlot>(EquipmentSelectionInk->Slot))
+			{
+				// Same small bracket offset as the backpack column ink above its slot.
+				InkSlot->SetPosition(EquipmentFramePositions[SelectedEquipmentIndex] + FVector2D(-7.0f, -16.0f));
+			}
 		}
 	}
 }
@@ -1315,6 +2558,45 @@ void UGameXXKInventoryWindowWidget::RefreshDetailPanel()
 {
 	CurrentPrimaryActionText = FText::GetEmpty();
 	CurrentSecondaryActionText = FText::GetEmpty();
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+
+	if (!SelectedEquipmentInstanceId.IsNone() && Subsystem)
+	{
+		const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(
+			Subsystem->GetRuntimeState().EquipmentCollection,
+			SelectedEquipmentInstanceId);
+		const FGameXXKEquipmentDefinition* Definition = Instance
+			? FGameXXKEquipmentCatalog::FindDefinition(Instance->BaseEquipmentId)
+			: nullptr;
+		if (Instance && Definition)
+		{
+			if (SelectedNameTextBlock)
+			{
+				SelectedNameTextBlock->SetText(Definition->DisplayName);
+			}
+			if (SelectedDetailTextBlock)
+			{
+				SelectedDetailTextBlock->SetText(BuildEquipmentInstanceDetail(Subsystem, *Instance, *Definition));
+			}
+			CurrentPrimaryActionText = SelectedSlotSource == EGameXXKInventorySlotSource::Equipment
+				? NSLOCTEXT("GameXXKInventoryWindow", "UnequipInstanceAction", "卸下")
+				: NSLOCTEXT("GameXXKInventoryWindow", "EquipInstanceAction", "装备");
+			if (PrimaryActionButton && PrimaryActionTextBlock)
+			{
+				PrimaryActionTextBlock->SetText(CurrentPrimaryActionText);
+				PrimaryActionButton->SetVisibility(ESlateVisibility::Visible);
+			}
+			if (SecondaryActionButton)
+			{
+				SecondaryActionButton->SetVisibility(ESlateVisibility::Collapsed);
+			}
+			if (EnhanceButton)
+			{
+				EnhanceButton->SetVisibility(ESlateVisibility::Collapsed);
+			}
+			return;
+		}
+	}
 
 	bool bFound = false;
 	const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(SelectedItemId, bFound);
@@ -1343,7 +2625,6 @@ void UGameXXKInventoryWindowWidget::RefreshDetailPanel()
 		return;
 	}
 
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const bool bIsEquipment = Def.Kind == EGameXXKItemKind::Weapon
 		|| Def.Kind == EGameXXKItemKind::Armor
 		|| Def.Kind == EGameXXKItemKind::Accessory;
@@ -1413,16 +2694,35 @@ void UGameXXKInventoryWindowWidget::RefreshConfirmationDialog()
 	{
 		return;
 	}
-	const bool bVisible = PendingConfirmationAction != EConfirmationAction::None && !PendingConfirmationItemId.IsNone();
+	const bool bHasPendingItem = !PendingConfirmationItemId.IsNone()
+		|| !PendingConfirmationEquipmentInstanceId.IsNone();
+	const bool bVisible = PendingConfirmationAction != EConfirmationAction::None && bHasPendingItem;
 	ConfirmationDialogFrame->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	if (!bVisible)
 	{
 		return;
 	}
 
-	bool bFound = false;
-	const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(PendingConfirmationItemId, bFound);
-	const FText ItemName = bFound ? Def.DisplayName : FText::FromName(PendingConfirmationItemId);
+	FText ItemName;
+	if (!PendingConfirmationEquipmentInstanceId.IsNone())
+	{
+		const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+		const FGameXXKEquipmentInstance* Instance = Subsystem
+			? FGameXXKEquipmentRules::FindInstance(Subsystem->GetRuntimeState().EquipmentCollection, PendingConfirmationEquipmentInstanceId)
+			: nullptr;
+		const FGameXXKEquipmentDefinition* EquipmentDefinition = Instance
+			? FGameXXKEquipmentCatalog::FindDefinition(Instance->BaseEquipmentId)
+			: nullptr;
+		ItemName = EquipmentDefinition
+			? EquipmentDefinition->DisplayName
+			: FText::FromName(PendingConfirmationEquipmentInstanceId);
+	}
+	else
+	{
+		bool bFound = false;
+		const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(PendingConfirmationItemId, bFound);
+		ItemName = bFound ? Def.DisplayName : FText::FromName(PendingConfirmationItemId);
+	}
 	if (ConfirmationPromptTextBlock)
 	{
 		switch (PendingConfirmationAction)
@@ -1448,7 +2748,8 @@ void UGameXXKInventoryWindowWidget::RefreshConfirmationDialog()
 	{
 		if (PendingConfirmationAction == EConfirmationAction::Decompose)
 		{
-			ConfirmationSummaryTextBlock->SetText(FText::FromString(FString::Printf(TEXT("分解 x%d / +强化石 %d"), FMath::Max(1, PendingConfirmationQuantity), PendingConfirmationPrice)));
+			ConfirmationSummaryTextBlock->SetText(
+				NSLOCTEXT("GameXXKInventoryWindow", "DecomposeRewardSummary", "分解奖励：金币 10、强化石 x1、洗炼砂 x1"));
 		}
 		else if (PendingConfirmationAction == EConfirmationAction::Enhance)
 		{
@@ -1474,6 +2775,15 @@ bool UGameXXKInventoryWindowWidget::OpenInventoryWindow(EGameXXKInventoryWindowM
 	PendingConfirmationItemId = NAME_None;
 	PendingConfirmationQuantity = 0;
 	PendingConfirmationPrice = 0;
+	if (InMode == EGameXXKInventoryWindowMode::FreeInventory)
+	{
+		ActiveCharacterTab = EGameXXKCharacterBackpackTab::Equipment;
+		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
+		{
+			Subsystem->PrepareCompanionRosterForTown();
+			PendingHeroDeckIds = Subsystem->GetHeroCardLoadout();
+		}
+	}
 	BuildProgrammaticLayout();
 	RefreshProgrammaticLayout();
 	return true;
@@ -1488,6 +2798,7 @@ bool UGameXXKInventoryWindowWidget::SelectPlayerBackpackItem(FName ItemId)
 	}
 	SelectedSlotSource = EGameXXKInventorySlotSource::PlayerBackpack;
 	SelectedItemId = ItemId;
+	SelectedEquipmentInstanceId = NAME_None;
 	SelectedSlotIndex = CurrentBackpackSlotItemIds.IndexOfByKey(ItemId);
 	SelectedEquipmentSlotId = NAME_None;
 	RefreshDetailPanel();
@@ -1496,12 +2807,15 @@ bool UGameXXKInventoryWindowWidget::SelectPlayerBackpackItem(FName ItemId)
 
 bool UGameXXKInventoryWindowWidget::SelectPlayerBackpackSlot(int32 SlotIndex)
 {
-	if (!CurrentBackpackSlotItemIds.IsValidIndex(SlotIndex) || CurrentBackpackSlotItemIds[SlotIndex].IsNone())
+	if (!CurrentBackpackSlotItemIds.IsValidIndex(SlotIndex)
+		|| !CurrentBackpackSlotEquipmentInstanceIds.IsValidIndex(SlotIndex)
+		|| (CurrentBackpackSlotItemIds[SlotIndex].IsNone() && CurrentBackpackSlotEquipmentInstanceIds[SlotIndex].IsNone()))
 	{
 		return false;
 	}
 	SelectedSlotSource = EGameXXKInventorySlotSource::PlayerBackpack;
 	SelectedItemId = CurrentBackpackSlotItemIds[SlotIndex];
+	SelectedEquipmentInstanceId = CurrentBackpackSlotEquipmentInstanceIds[SlotIndex];
 	SelectedSlotIndex = SlotIndex;
 	SelectedEquipmentSlotId = NAME_None;
 	return true;
@@ -1516,6 +2830,7 @@ bool UGameXXKInventoryWindowWidget::SelectMerchantStockSlot(int32 SlotIndex)
 	}
 	SelectedSlotSource = EGameXXKInventorySlotSource::MerchantStock;
 	SelectedItemId = ShopItems[SlotIndex];
+	SelectedEquipmentInstanceId = NAME_None;
 	SelectedSlotIndex = SlotIndex;
 	SelectedEquipmentSlotId = NAME_None;
 	RefreshDetailPanel();
@@ -1524,13 +2839,18 @@ bool UGameXXKInventoryWindowWidget::SelectMerchantStockSlot(int32 SlotIndex)
 
 bool UGameXXKInventoryWindowWidget::SelectEquipmentSlot(FName SlotId)
 {
+	const EGameXXKEquipmentSlot EquipmentSlot = EquipmentSlotFromId(SlotId);
+	const FName EquipmentInstanceId = EquipmentSlot != EGameXXKEquipmentSlot::Invalid
+		? GetEquippedInstanceForSlotForTest(EquipmentSlot)
+		: NAME_None;
 	const FName ItemId = GetEquippedItemForSlotForTest(SlotId);
-	if (ItemId.IsNone())
+	if (EquipmentInstanceId.IsNone() && ItemId.IsNone())
 	{
 		return false;
 	}
 	SelectedSlotSource = EGameXXKInventorySlotSource::Equipment;
 	SelectedItemId = ItemId;
+	SelectedEquipmentInstanceId = EquipmentInstanceId;
 	SelectedSlotIndex = INDEX_NONE;
 	SelectedEquipmentSlotId = SlotId;
 	return true;
@@ -1541,12 +2861,23 @@ bool UGameXXKInventoryWindowWidget::SelectInventoryFilter(EGameXXKInventoryFilte
 	ActiveInventoryFilter = Filter;
 	if (SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack)
 	{
-		bool bFound = false;
-		const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(SelectedItemId, bFound);
-		if (!bFound || !MatchesInventoryFilter(Def.Kind, ActiveInventoryFilter))
+		bool bSelectionMatches = false;
+		if (!SelectedEquipmentInstanceId.IsNone())
+		{
+			bSelectionMatches = ActiveInventoryFilter == EGameXXKInventoryFilter::All
+				|| ActiveInventoryFilter == EGameXXKInventoryFilter::Equipment;
+		}
+		else
+		{
+			bool bFound = false;
+			const FGameXXKItemDef Def = UGameXXKMVPRules::GetItemDef(SelectedItemId, bFound);
+			bSelectionMatches = bFound && MatchesInventoryFilter(Def.Kind, ActiveInventoryFilter);
+		}
+		if (!bSelectionMatches)
 		{
 			SelectedSlotSource = EGameXXKInventorySlotSource::None;
 			SelectedItemId = NAME_None;
+			SelectedEquipmentInstanceId = NAME_None;
 			SelectedSlotIndex = INDEX_NONE;
 			SelectedEquipmentSlotId = NAME_None;
 		}
@@ -1616,9 +2947,29 @@ bool UGameXXKInventoryWindowWidget::RequestDecomposeForSelectedItem()
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (WindowMode == EGameXXKInventoryWindowMode::None
 		|| (SelectedSlotSource != EGameXXKInventorySlotSource::PlayerBackpack && SelectedSlotSource != EGameXXKInventorySlotSource::Equipment)
-		|| SelectedItemId.IsNone()
-		|| !Subsystem
-		|| !Subsystem->CanDecomposeItem(SelectedItemId))
+		|| !Subsystem)
+	{
+		return false;
+	}
+
+	// Equipment instance (modern set gear) uses the equipment dismantle path.
+	if (!SelectedEquipmentInstanceId.IsNone())
+	{
+		const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(
+			Subsystem->GetRuntimeState().EquipmentCollection, SelectedEquipmentInstanceId);
+		if (!Instance)
+		{
+			return false;
+		}
+		PendingConfirmationAction = EConfirmationAction::Decompose;
+		PendingConfirmationEquipmentInstanceId = SelectedEquipmentInstanceId;
+		PendingConfirmationQuantity = 1;
+		PendingConfirmationPrice = 1;
+		RefreshProgrammaticLayout();
+		return true;
+	}
+
+	if (SelectedItemId.IsNone() || !Subsystem->CanDecomposeItem(SelectedItemId))
 	{
 		return false;
 	}
@@ -1653,7 +3004,8 @@ bool UGameXXKInventoryWindowWidget::RequestEnhanceForSelectedItem()
 
 bool UGameXXKInventoryWindowWidget::ConfirmDialog()
 {
-	if (PendingConfirmationAction == EConfirmationAction::None || PendingConfirmationItemId.IsNone())
+	if (PendingConfirmationAction == EConfirmationAction::None
+		|| (PendingConfirmationItemId.IsNone() && PendingConfirmationEquipmentInstanceId.IsNone()))
 	{
 		return false;
 	}
@@ -1675,7 +3027,16 @@ bool UGameXXKInventoryWindowWidget::ConfirmDialog()
 	}
 	else if (PendingConfirmationAction == EConfirmationAction::Decompose)
 	{
-		bExecuted = Subsystem->DecomposeItem(PendingConfirmationItemId);
+		if (!PendingConfirmationEquipmentInstanceId.IsNone())
+		{
+			FGameXXKEquipmentTransactionResult DismantleResult;
+			bExecuted = Subsystem->DismantleEquipmentInstances(
+				{PendingConfirmationEquipmentInstanceId}, true, DismantleResult);
+		}
+		else
+		{
+			bExecuted = Subsystem->DecomposeItem(PendingConfirmationItemId);
+		}
 	}
 	else if (PendingConfirmationAction == EConfirmationAction::Enhance)
 	{
@@ -1689,11 +3050,14 @@ bool UGameXXKInventoryWindowWidget::ConfirmDialog()
 		{
 			SelectedSlotSource = EGameXXKInventorySlotSource::None;
 			SelectedItemId = NAME_None;
+			SelectedEquipmentInstanceId = NAME_None;
 			SelectedSlotIndex = INDEX_NONE;
 			SelectedEquipmentSlotId = NAME_None;
 		}
 		CancelDialog();
 		RefreshProgrammaticLayout();
+		// Refresh the town HUD gold strip after money-changing actions.
+		NotifyPlayerFlowStateChanged();
 	}
 	return bExecuted;
 }
@@ -1702,6 +3066,7 @@ bool UGameXXKInventoryWindowWidget::CancelDialog()
 {
 	PendingConfirmationAction = EConfirmationAction::None;
 	PendingConfirmationItemId = NAME_None;
+	PendingConfirmationEquipmentInstanceId = NAME_None;
 	PendingConfirmationQuantity = 0;
 	PendingConfirmationPrice = 0;
 	if (ConfirmationDialogFrame)
@@ -1751,6 +3116,59 @@ void UGameXXKInventoryWindowWidget::HandleEnhanceClicked()
 	RequestEnhanceForSelectedItem();
 }
 
+void UGameXXKInventoryWindowWidget::HandleEnhanceMainClicked()
+{
+	// Directly enhance the currently selected equipment instance.
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || SelectedEquipmentInstanceId.IsNone())
+	{
+		ShowActionErrorText(FText::FromString(TEXT("请先选中一件装备。")));
+		return;
+	}
+	FGameXXKEquipmentTransactionResult Result;
+	if (Subsystem->EnhanceEquipmentInstance(SelectedEquipmentInstanceId, Result))
+	{
+		ShowActionErrorText(FText::GetEmpty());
+		RefreshProgrammaticLayout();
+	}
+	else
+	{
+		ShowActionErrorText(Result.Message.IsEmpty() ? NSLOCTEXT("GameXXKInventoryWindow", "EnhanceFailed", "强化失败。") : Result.Message);
+	}
+}
+
+void UGameXXKInventoryWindowWidget::HandleReforgeMainClicked()
+{
+	// Directly reforge (wash) the first affix of the selected equipment instance.
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || SelectedEquipmentInstanceId.IsNone())
+	{
+		ShowActionErrorText(FText::FromString(TEXT("请先选中一件装备。")));
+		return;
+	}
+	FGameXXKEquipmentTransactionResult Result;
+	if (Subsystem->BeginEquipmentReforge(SelectedEquipmentInstanceId, 0, Result))
+	{
+		// Auto-accept the generated candidate for the direct-action flow.
+		FGameXXKEquipmentTransactionResult ResolveResult;
+		Subsystem->ResolveEquipmentReforge(true, ResolveResult);
+		ShowActionErrorText(FText::GetEmpty());
+		RefreshProgrammaticLayout();
+	}
+	else
+	{
+		ShowActionErrorText(Result.Message.IsEmpty() ? NSLOCTEXT("GameXXKInventoryWindow", "ReforgeFailed", "洗炼失败。") : Result.Message);
+	}
+}
+
+void UGameXXKInventoryWindowWidget::ShowActionErrorText(const FText& Message)
+{
+	if (SelectedDetailTextBlock)
+	{
+		SelectedDetailTextBlock->SetText(Message);
+	}
+}
+
 void UGameXXKInventoryWindowWidget::HandleConfirmClicked()
 {
 	ConfirmDialog();
@@ -1759,4 +3177,9 @@ void UGameXXKInventoryWindowWidget::HandleConfirmClicked()
 void UGameXXKInventoryWindowWidget::HandleCancelClicked()
 {
 	CancelDialog();
+}
+
+void UGameXXKInventoryWindowWidget::HandleApplyHeroDeckClicked()
+{
+	ApplyHeroDeckForTest();
 }

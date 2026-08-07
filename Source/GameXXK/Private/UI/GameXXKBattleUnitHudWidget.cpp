@@ -15,6 +15,7 @@ void UGameXXKBattleUnitHudWidget::NativeConstruct()
 
 void UGameXXKBattleUnitHudWidget::SetUnitView(const FGameXXKBattleUnitHudView& InView)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[HudView] unit=%s setHP=%d hud=%s"), *InView.UnitId.ToString(), InView.CurrentHP, *GetPathName());
 	CachedView = InView;
 	bHasUnitView = true;
 	PrepareForBoardEmbedding();

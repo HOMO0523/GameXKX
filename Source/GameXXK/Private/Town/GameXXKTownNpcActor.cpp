@@ -2,6 +2,7 @@
 
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
+#include "GameXXKCompanionCatalog.h"
 #include "GameXXKMVPRules.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -47,30 +48,8 @@ void AGameXXKTownNpcActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void AGameXXKTownNpcActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-
-	AActor* Target = FollowTarget.Get();
-	if (!bFollowerActive || !Target)
-	{
-		return;
-	}
-
-	const FVector CurrentLocation = GetActorLocation();
-	const FVector TargetLocation = Target->GetActorLocation();
-	FVector ToTarget = TargetLocation - CurrentLocation;
-	ToTarget.Z = 0.0f;
-	const float DistanceToTarget = ToTarget.Size();
-	if (DistanceToTarget <= FollowDistance || DistanceToTarget <= KINDA_SMALL_NUMBER)
-	{
-		return;
-	}
-
-	FVector DesiredLocation = TargetLocation - ToTarget.GetSafeNormal() * FollowDistance;
-	DesiredLocation.Z = CurrentLocation.Z;
-	const FVector NewLocation = FMath::VInterpConstantTo(CurrentLocation, DesiredLocation, DeltaSeconds, FollowSpeed);
-	if (!NewLocation.Equals(CurrentLocation))
-	{
-		SetActorLocation(NewLocation);
-	}
+	// Town NPCs are fixed interaction anchors. Party selection is data-only and
+	// never turns a placed NPC into a follower.
 }
 
 void AGameXXKTownNpcActor::NotifyActorBeginOverlap(AActor* OtherActor)
@@ -99,7 +78,32 @@ void AGameXXKTownNpcActor::NotifyActorEndOverlap(AActor* OtherActor)
 
 void AGameXXKTownNpcActor::SetNpcRole(EGameXXKTownNpcRole NewRole)
 {
+	if (NpcId == TEXT("Npc.TusiChief"))
+	{
+		NpcRole = EGameXXKTownNpcRole::Quest;
+		return;
+	}
+	if (NpcId == TEXT("Npc.SongJinBao"))
+	{
+		NpcRole = EGameXXKTownNpcRole::Merchant;
+		return;
+	}
 	NpcRole = NewRole;
+}
+
+void AGameXXKTownNpcActor::SetNpcId(const FName NewNpcId)
+{
+	NpcId = NewNpcId;
+	NpcRole = NpcId == TEXT("Npc.TusiChief")
+		? EGameXXKTownNpcRole::Quest
+		: NpcId == TEXT("Npc.SongJinBao")
+			? EGameXXKTownNpcRole::Merchant
+			: EGameXXKTownNpcRole::Generic;
+}
+
+FName AGameXXKTownNpcActor::GetNpcId() const
+{
+	return NpcId;
 }
 
 EGameXXKTownNpcRole AGameXXKTownNpcActor::GetNpcRole() const
@@ -117,11 +121,21 @@ bool AGameXXKTownNpcActor::CanTrade() const
 	return NpcRole == EGameXXKTownNpcRole::Merchant;
 }
 
+bool AGameXXKTownNpcActor::HasPrimaryInteractionAction() const
+{
+	return CanOfferQuest() || CanTrade();
+}
+
+bool AGameXXKTownNpcActor::CanJoinParty() const
+{
+	return FGameXXKCompanionCatalog::FindQuestNpcDefinition(NpcId) != nullptr;
+}
+
 void AGameXXKTownNpcActor::ActivateFollower(AActor* Target, float Distance)
 {
-	FollowTarget = Target;
-	FollowDistance = FMath::Max(0.0f, Distance);
-	bFollowerActive = Target != nullptr;
+	(void)Target;
+	(void)Distance;
+	DismissFollower();
 }
 
 void AGameXXKTownNpcActor::DismissFollower()
@@ -132,12 +146,12 @@ void AGameXXKTownNpcActor::DismissFollower()
 
 bool AGameXXKTownNpcActor::IsFollowerActive() const
 {
-	return bFollowerActive;
+	return false;
 }
 
 AActor* AGameXXKTownNpcActor::GetFollowTarget() const
 {
-	return FollowTarget.Get();
+	return nullptr;
 }
 
 float AGameXXKTownNpcActor::GetFollowDistance() const
@@ -199,17 +213,14 @@ FText AGameXXKTownNpcActor::GetInteractionPrompt_Implementation() const
 
 void AGameXXKTownNpcActor::Interact_Implementation(APawn* InstigatorPawn)
 {
-	if (CanOfferQuest())
+	if (AGameXXKMVPPlayerController* PlayerController = InstigatorPawn ? Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()) : nullptr)
 	{
-		if (AGameXXKMVPPlayerController* PlayerController = InstigatorPawn ? Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()) : nullptr)
-		{
-			bLastInteractionSuccessful = PlayerController->OpenTaskOfferPanelForNpc(this, InstigatorPawn);
-			return;
-		}
-		ConfirmQuestDialogInteraction(InstigatorPawn);
+		bLastInteractionSuccessful = PlayerController->OpenTownNpcInteractionForNpc(this, InstigatorPawn);
 		return;
 	}
 
+	// Headless compatibility path. A real player controller always opens the
+	// contextual choice menu first.
 	bLastInteractionSuccessful = ApplyDefaultInteraction(InstigatorPawn);
 	if (CanTrade())
 	{
@@ -258,16 +269,13 @@ bool AGameXXKTownNpcActor::ApplyDefaultInteraction(APawn* InstigatorPawn)
 	if (CanOfferQuest())
 	{
 		const bool bAccepted = Subsystem->AcceptQuest();
-		if (bAccepted && InstigatorPawn)
-		{
-			ActivateFollower(InstigatorPawn, FollowDistance);
-		}
-		if (bAccepted)
-		{
-			Subsystem->RecordQuestNpcLocation(GetActorLocation());
-		}
 		bLastInteractionSuccessful = bAccepted;
 		return bAccepted;
+	}
+	if (!HasPrimaryInteractionAction() && CanJoinParty())
+	{
+		bLastInteractionSuccessful = Subsystem->SelectTownQuestNpcForParty(NpcId);
+		return bLastInteractionSuccessful;
 	}
 	if (CanTrade())
 	{

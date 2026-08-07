@@ -430,8 +430,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	HeroCharacter->GetInteractionComponent()->SetFocusedActorForTest(HeroQuestNpc);
 	HeroCharacter->Interact();
 	TestEqual(TEXT("hero F on quest NPC accepts quest"), HeroInteractionSubsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
-	TestTrue(TEXT("hero F on quest NPC starts follower"), HeroQuestNpc->IsFollowerActive());
-	TestTrue(TEXT("hero F quest follower targets hero character"), HeroQuestNpc->GetFollowTarget() == HeroCharacter);
+	TestFalse(TEXT("hero F on quest NPC never starts retired following"), HeroQuestNpc->IsFollowerActive());
+	TestNull(TEXT("hero F quest interaction stores no follow target"), HeroQuestNpc->GetFollowTarget());
 	TestTrue(TEXT("hero F quest NPC records successful interaction"), HeroQuestNpc->WasLastInteractionSuccessful());
 	UGameXXKMVPSubsystem* ReloadedHeroQuestF = NewObject<UGameXXKMVPSubsystem>(HeroInteractionGameInstance);
 	TestFalse(TEXT("hero F quest interaction does not autosave default slot"), ReloadedHeroQuestF->LoadGameFromSlot(HeroInteractionAutosaveSlot, 0));
@@ -613,8 +613,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("ending merchant overlap restores quest focus"), Player->GetInteractionComponent()->GetFocusedActor() == QuestNpc);
 	Player->Interact();
 	TestEqual(TEXT("F on quest NPC accepts quest"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
-	TestTrue(TEXT("F on quest NPC starts follower"), QuestNpc->IsFollowerActive());
-	TestTrue(TEXT("quest follower targets player"), QuestNpc->GetFollowTarget() == Player);
+	TestFalse(TEXT("F on quest NPC never starts retired following"), QuestNpc->IsFollowerActive());
+	TestNull(TEXT("quest NPC stores no follow target"), QuestNpc->GetFollowTarget());
 	TestTrue(TEXT("quest NPC records successful interaction"), QuestNpc->WasLastInteractionSuccessful());
 	UGameXXKMVPSubsystem* ReloadedAfterQuestF = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestFalse(TEXT("F quest interaction waits for manual save"), ReloadedAfterQuestF->LoadGameFromSlot(NpcAutosaveSlot, 0));
@@ -622,7 +622,7 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	UGameXXKMVPSubsystem* ReloadedAfterQuestManualSave = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestTrue(TEXT("manual quest save loads default slot"), ReloadedAfterQuestManualSave->LoadGameFromSlot(NpcAutosaveSlot, 0));
 	TestEqual(TEXT("manual quest save persists accepted quest"), ReloadedAfterQuestManualSave->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
-	TestTrue(TEXT("manual quest save restores follower join state"), ReloadedAfterQuestManualSave->GetRuntimeState().bFollowerJoined);
+	TestFalse(TEXT("manual quest save keeps retired follower state disabled"), ReloadedAfterQuestManualSave->GetRuntimeState().bFollowerJoined);
 	QuestNpc->NotifyActorEndOverlap(Player);
 	TestNull(TEXT("quest NPC end overlap clears focus"), Player->GetInteractionComponent()->GetFocusedActor());
 
@@ -711,14 +711,10 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 			GatePriorityFollower->ActivateFollower(GatePriorityPlayer, 96.0f);
 			GatePriorityExit->SetMVPSubsystemForTest(Subsystem);
 			GatePriorityPlayer->GetInteractionComponent()->SetFocusedActorForTest(GatePriorityFollower);
-			TestTrue(TEXT("following quest NPC initially owns F focus"),
+			TestTrue(TEXT("fixed quest NPC can still own normal F focus"),
 				GatePriorityPlayer->GetInteractionComponent()->GetFocusedActor() == GatePriorityFollower);
-			GatePriorityPlayer->Interact();
-			TestTrue(TEXT("F at town exit bypasses following quest NPC"), GatePriorityExit->WasLastInteractionSuccessful());
-			TestEqual(TEXT("F at town exit opens route when follower is nearby"),
-				Subsystem->GetRuntimeState().Screen,
-				EGameXXKScreen::DungeonMap);
-			Subsystem->FailDungeonToTown();
+			TestFalse(TEXT("retired activation cannot turn the fixed NPC into a follower"), GatePriorityFollower->IsFollowerActive());
+			TestNull(TEXT("fixed NPC has no hidden follow target near the gate"), GatePriorityFollower->GetFollowTarget());
 		}
 		if (GatePriorityExit)
 		{
@@ -737,8 +733,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	AGameXXKTownNpcActor* FollowerNpc = NewObject<AGameXXKTownNpcActor>();
 	FollowerNpc->SetNpcRole(EGameXXKTownNpcRole::Follower);
 	FollowerNpc->ActivateFollower(Player, 96.0f);
-	TestTrue(TEXT("follower becomes active"), FollowerNpc->IsFollowerActive());
-	TestTrue(TEXT("follower target stored"), FollowerNpc->GetFollowTarget() == Player);
+	TestFalse(TEXT("retired follower activation stays disabled"), FollowerNpc->IsFollowerActive());
+	TestNull(TEXT("retired follower stores no target"), FollowerNpc->GetFollowTarget());
 	TestEqual(TEXT("follower distance stored"), FollowerNpc->GetFollowDistance(), 96.0f);
 	FollowerNpc->DismissFollower();
 	TestFalse(TEXT("follower dismisses after route clear"), FollowerNpc->IsFollowerActive());
@@ -762,8 +758,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 			InputFollowerNpc->ActivateFollower(MovingHero, 96.0f);
 			TestEqual(TEXT("hero exposes right movement intent for quest follower"), MovingHero->GetTownMovementIntentVector(), FVector::RightVector);
 			TestTrue(TEXT("moving hero exposes positive town movement speed"), MovingHero->GetCharacterMovement() && MovingHero->GetCharacterMovement()->MaxWalkSpeed > 1.0f);
-			TestTrue(TEXT("input follower is active before movement input tick"), InputFollowerNpc->IsFollowerActive());
-			TestTrue(TEXT("input follower targets moving hero before movement input tick"), InputFollowerNpc->GetFollowTarget() == MovingHero);
+			TestFalse(TEXT("input NPC never activates retired follower state"), InputFollowerNpc->IsFollowerActive());
+			TestNull(TEXT("input NPC stores no moving hero target"), InputFollowerNpc->GetFollowTarget());
 			const FVector FollowerBeforeInputMove = InputFollowerNpc->GetActorLocation();
 			InputFollowerNpc->Tick(0.25f);
 			TestTrue(TEXT("quest follower stays idle while hero remains inside follow distance"), InputFollowerNpc->GetActorLocation().Equals(FollowerBeforeInputMove, 1.0f));
@@ -771,7 +767,7 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 			MovingHero->SetActorLocation(FVector(0.0f, 240.0f, 0.0f));
 			const FVector FollowerBeforeRangeChase = InputFollowerNpc->GetActorLocation();
 			InputFollowerNpc->Tick(0.25f);
-			TestTrue(TEXT("quest follower starts chasing only after hero leaves follow distance"), InputFollowerNpc->GetActorLocation().Y > FollowerBeforeRangeChase.Y + 1.0f);
+			TestTrue(TEXT("fixed NPC does not chase after hero leaves interaction range"), InputFollowerNpc->GetActorLocation().Equals(FollowerBeforeRangeChase, 1.0f));
 		}
 		AGameXXKMVPGameMode* DirectNpcGameMode = NewObject<AGameXXKMVPGameMode>();
 		UClass* DirectNpcClass = DirectNpcGameMode ? DirectNpcGameMode->GetPersonTownNpcCharacterClass().Get() : nullptr;
@@ -803,22 +799,20 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 			MovingHero->MoveHorizontal(1.0f);
 			const FVector DirectFollowerBeforeInputMove = DirectFollowerNpc->GetActorLocation();
 			DirectFollowerNpc->ActivateFollower(MovingHero, 96.0f);
-			TestTrue(TEXT("direct follower NPC Character activates follower behavior"), DirectFollowerNpc->IsFollowerActive());
-			TestTrue(TEXT("direct follower NPC Character stores the hero follow target"), DirectFollowerNpc->GetFollowTarget() == MovingHero);
+			TestFalse(TEXT("direct NPC Character keeps retired follower behavior disabled"), DirectFollowerNpc->IsFollowerActive());
+			TestNull(TEXT("direct NPC Character stores no hero follow target"), DirectFollowerNpc->GetFollowTarget());
 			DirectFollowerNpc->Tick(0.25f);
 			TestTrue(TEXT("direct follower NPC Character stays idle while hero remains inside follow distance"), DirectFollowerNpc->GetActorLocation().Equals(DirectFollowerBeforeInputMove, 1.0f));
 			TestFalse(TEXT("direct follower NPC Character keeps idle visual state while hero remains inside follow distance"), DirectFollowerNpc->IsTownMoving());
 			MovingHero->SetActorLocation(DirectFollowerGroundedStart + FVector(0.0f, 240.0f, 0.0f));
 			const FVector DirectFollowerBeforeRangeChase = DirectFollowerNpc->GetActorLocation();
 			DirectFollowerNpc->Tick(0.25f);
-			TestTrue(TEXT("direct follower NPC Character moves after hero leaves follow distance"), DirectFollowerNpc->GetActorLocation().Y > DirectFollowerBeforeRangeChase.Y + 1.0f);
-			TestTrue(TEXT("direct follower NPC Character enters walk visual state while chasing"), DirectFollowerNpc->IsTownMoving());
-			TestEqual(TEXT("direct follower NPC Character uses East walk flipbook while chasing"), DirectFollowerNpc->GetCurrentTownFlipbook(), NpcEastWalkFlipbook);
+			TestTrue(TEXT("direct NPC Character remains fixed after hero leaves interaction range"), DirectFollowerNpc->GetActorLocation().Equals(DirectFollowerBeforeRangeChase, 1.0f));
+			TestFalse(TEXT("direct NPC Character keeps its idle visual state"), DirectFollowerNpc->IsTownMoving());
 			MovingHero->ResetTownMovementInput();
 			MovingHero->SetActorLocation(DirectFollowerNpc->GetActorLocation() + FVector(0.0f, 48.0f, 0.0f));
 			DirectFollowerNpc->Tick(0.25f);
 			TestFalse(TEXT("direct follower NPC Character returns to idle visual state when back inside follow distance"), DirectFollowerNpc->IsTownMoving());
-			TestEqual(TEXT("direct follower NPC Character preserves East facing idle after follow input stops"), DirectFollowerNpc->GetCurrentTownFlipbook(), NpcEastIdleFlipbook);
 		}
 		AGameXXKTownNpcCharacter* RecordingQuestNpc = TestWorld->SpawnActor<AGameXXKTownNpcCharacter>(
 			AGameXXKTownNpcCharacter::StaticClass(),
@@ -837,36 +831,20 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 			MovingHero->SetActorLocation(RecordingQuestNpc->GetActorLocation());
 			TestTrue(TEXT("direct quest NPC accepts quest for save-state recording"), RecordingQuestNpc->ApplyDefaultInteraction(MovingHero));
 			const FVector RecordedQuestNpcAcceptLocation = RecordingQuestNpc->GetActorLocation();
-			TestTrue(TEXT("quest NPC accept records a task NPC location flag"), RecordingSubsystem->GetRuntimeState().bHasQuestNpcLocation);
-			TestTrue(TEXT("quest NPC accept records the task NPC location"),
-				RecordingSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
+			TestFalse(TEXT("quest NPC accept never records a moving task NPC location"), RecordingSubsystem->GetRuntimeState().bHasQuestNpcLocation);
+			TestFalse(TEXT("quest NPC accept never enables retired following"), RecordingSubsystem->GetRuntimeState().bFollowerJoined);
 			UGameXXKMVPSubsystem* ReloadedRecordingSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 			TestFalse(TEXT("quest NPC accept waits for manual save"), ReloadedRecordingSubsystem->LoadGameFromSlot(NpcAutosaveSlot, 0));
 			TestTrue(TEXT("manual save after quest NPC accept writes task NPC state"), RecordingSubsystem->SaveCurrentGame(TEXT(""), 0));
 			UGameXXKMVPSubsystem* ReloadedRecordingManualSaveSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 			TestTrue(TEXT("quest NPC manual save can be loaded for task NPC state"), ReloadedRecordingManualSaveSubsystem->LoadGameFromSlot(NpcAutosaveSlot, 0));
-			TestTrue(TEXT("quest NPC manual save persists task NPC location flag"), ReloadedRecordingManualSaveSubsystem->GetRuntimeState().bHasQuestNpcLocation);
-			TestTrue(TEXT("quest NPC manual save persists task NPC location"),
-				ReloadedRecordingManualSaveSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
-			ReloadedRecordingSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-			TestTrue(TEXT("quest NPC saved location still loads before follower moves"), ReloadedRecordingSubsystem->LoadGameFromSlot(NpcAutosaveSlot, 0));
-			TestTrue(TEXT("quest NPC saved location matches accept location before follower moves"),
-				ReloadedRecordingSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
+			TestFalse(TEXT("quest NPC manual save keeps moving-location state retired"), ReloadedRecordingManualSaveSubsystem->GetRuntimeState().bHasQuestNpcLocation);
+			TestFalse(TEXT("quest NPC manual save keeps follower state retired"), ReloadedRecordingManualSaveSubsystem->GetRuntimeState().bFollowerJoined);
 			MovingHero->SetActorLocation(RecordedQuestNpcAcceptLocation + FVector(0.0f, 260.0f, 0.0f));
 			RecordingQuestNpc->Tick(0.25f);
-			TestTrue(TEXT("quest NPC follower movement updates runtime task NPC location"),
-				RecordingSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordingQuestNpc->GetActorLocation(), 0.1f));
-			TestFalse(TEXT("quest NPC follower movement records a changed task NPC location"),
-				RecordingSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
-			UGameXXKMVPSubsystem* ReloadedAfterMoveSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-			TestTrue(TEXT("quest NPC follower movement keeps prior manual save loadable"), ReloadedAfterMoveSubsystem->LoadGameFromSlot(NpcAutosaveSlot, 0));
-			TestTrue(TEXT("quest NPC follower movement does not overwrite saved accept location before manual save"),
-				ReloadedAfterMoveSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
-			TestTrue(TEXT("manual save after quest NPC movement writes moved task NPC state"), RecordingSubsystem->SaveCurrentGame(TEXT(""), 0));
-			UGameXXKMVPSubsystem* ReloadedAfterMoveManualSaveSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-			TestTrue(TEXT("quest NPC movement manual save loads task NPC state"), ReloadedAfterMoveManualSaveSubsystem->LoadGameFromSlot(NpcAutosaveSlot, 0));
-			TestTrue(TEXT("quest NPC movement manual save persists the moved task NPC location"),
-				ReloadedAfterMoveManualSaveSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordingQuestNpc->GetActorLocation(), 0.1f));
+			TestTrue(TEXT("quest NPC remains at its authored map placement when hero moves away"),
+				RecordingQuestNpc->GetActorLocation().Equals(RecordedQuestNpcAcceptLocation, 0.1f));
+			TestFalse(TEXT("fixed quest NPC tick never creates a location record"), RecordingSubsystem->GetRuntimeState().bHasQuestNpcLocation);
 		}
 		if (RecordingQuestNpc)
 		{

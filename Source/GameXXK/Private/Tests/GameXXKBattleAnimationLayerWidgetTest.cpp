@@ -400,7 +400,7 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		AtlasLoader->Requested(FirstAttackClip.TexturePath));
 	TestTrue(TEXT("queueing prefetches the target Hit atlas before presentation starts"),
 		AtlasLoader->Requested(FirstHitClip.TexturePath));
-	TestTrue(TEXT("queueing prefetches the generic Impact atlas before presentation starts"),
+	TestFalse(TEXT("queueing never prefetches the retired generic Impact atlas"),
 		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveGenericClip(
 			EGameXXKBattleAnimationAction::Impact).TexturePath));
 
@@ -409,7 +409,7 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the immutable event id survives queue activation"), FApi::ActiveEventId(Board), First.EventId);
 	TestEqual(TEXT("Attack playback uses the authored two-times rate"), FApi::AttackerRate(Board), 2.0f);
 	TestEqual(TEXT("Hit playback uses the authored two-times rate"), FApi::TargetRate(Board), 2.0f);
-	TestEqual(TEXT("generic Impact playback uses the authored four-times rate"), FApi::ImpactRate(Board), 4.0f);
+	TestEqual(TEXT("the retired generic Impact has no active playback"), FApi::ImpactRate(Board), 0.0f);
 	TestEqual(TEXT("the existing attacker visual binds the asynchronously loaded Attack atlas"),
 		AttackerVisual ? AttackerVisual->GetAtlasForTest() : nullptr,
 		AtlasLoader->GetTexture(FirstAttackClip.TexturePath));
@@ -443,6 +443,13 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the real action dimmer renders at z thirty"),
 		TimelineDimmerSlot ? TimelineDimmerSlot->GetZOrder() : INDEX_NONE,
 		30);
+	UCanvasPanel* const ViewportCinematicCover = Board->WidgetTree
+		? Cast<UCanvasPanel>(Board->WidgetTree->FindWidget(TEXT("BattleCinematicViewportCover")))
+		: nullptr;
+	TestTrue(TEXT("the close-up owns a full-viewport cover for aspect-ratio margins"),
+		ViewportCinematicCover
+		&& ViewportCinematicCover->GetParent() == Board->GetRootWidget()
+		&& ViewportCinematicCover->GetVisibility() == ESlateVisibility::SelfHitTestInvisible);
 	TestEqual(TEXT("presentation overlays the pre-impact health immediately"),
 		FApi::DisplayedHealth(Board, First.TargetUnitId), First.TargetHealthBefore);
 	TestEqual(TEXT("the real fixed HUD renders the pre-impact health"),
@@ -478,9 +485,9 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("crossing 1.1 fires impact exactly once"), FApi::ImpactCount(Board), 1);
 	TestEqual(TEXT("crossing 1.1 fires the HUD-root shake exactly once"), FApi::ShakeCount(Board), 1);
 	TestEqual(TEXT("damage presentation emits its readout at the marker"), FApi::Readout(Board), FString(TEXT("-30")));
-	TestTrue(TEXT("crossing the marker moves the real common battle stage for HUD shake"),
-		Board->GetBattleDesignStageForTest()
-		&& !Board->GetBattleDesignStageForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
+	TestTrue(TEXT("crossing the marker moves the full viewport root for HUD shake"),
+		Board->GetBattleViewportRootForTest()
+		&& !Board->GetBattleViewportRootForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
 	Board->AdvanceVisualsAtRealTime(1.8);
 	TestEqual(TEXT("later samples cannot refire the same impact"), FApi::ImpactCount(Board), 1);
 	TestEqual(TEXT("later samples cannot restart the same shake"), FApi::ShakeCount(Board), 1);
@@ -491,9 +498,12 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("completion hides the real cinematic dimmer"),
 		TimelineDimmer ? TimelineDimmer->GetVisibility() : ESlateVisibility::Visible,
 		ESlateVisibility::Hidden);
-	TestTrue(TEXT("completion restores the real common battle stage after shake"),
-		Board->GetBattleDesignStageForTest()
-		&& Board->GetBattleDesignStageForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
+	TestEqual(TEXT("completion also hides the full-viewport margin cover"),
+		ViewportCinematicCover ? ViewportCinematicCover->GetVisibility() : ESlateVisibility::Visible,
+		ESlateVisibility::Hidden);
+	TestTrue(TEXT("completion restores the full viewport root after shake"),
+		Board->GetBattleViewportRootForTest()
+		&& Board->GetBattleViewportRootForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
 	TestEqual(TEXT("the same attacker visual remains owned by the same design stage"),
 		Board->GetUnitVisualForTest(TEXT("Player")), AttackerVisual);
 	TestEqual(TEXT("the same target visual remains owned by the same design stage"),
@@ -757,6 +767,7 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		FApi::AttackerRate(LateIdleBoard),
 		2.0f);
 
+#if 0 // The generic Impact visual and all of its delayed-load/lifetime behavior were intentionally retired.
 	UGameInstance* const LateImpactGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const LateImpactSubsystem = NewObject<UGameXXKMVPSubsystem>(LateImpactGameInstance);
 	BuildPresentationFixture(LateImpactSubsystem);
@@ -957,6 +968,8 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	ImpactLifetimeBoard->AdvanceVisualsAtRealTime(112.5);
 	TestNull(TEXT("the later event also releases its Impact atlas on completion"),
 		ImpactLifetimeVisual ? ImpactLifetimeVisual->GetAtlasForTest() : nullptr);
+
+#endif
 
 	UGameInstance* const IdleFailureGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const IdleFailureSubsystem = NewObject<UGameXXKMVPSubsystem>(IdleFailureGameInstance);

@@ -166,7 +166,7 @@ def render_normal(spec: RoleSpec) -> Image.Image:
     return defringe_magenta(resized)
 
 
-def render_locked(normal: Image.Image) -> Image.Image:
+def render_inactive(normal: Image.Image) -> Image.Image:
     data = np.asarray(normal.convert("RGBA")).astype(np.float32)
     rgb = data[..., :3]
     alpha = data[..., 3]
@@ -178,9 +178,9 @@ def render_locked(normal: Image.Image) -> Image.Image:
     desaturated = luma + (rgb - luma) * 0.10
     darkened = desaturated * 0.64
     neutral_ink = np.array([78.0, 75.0, 69.0], dtype=np.float32)
-    locked = darkened * 0.75 + neutral_ink * 0.25
-    locked[alpha == 0] = 0
-    data[..., :3] = np.clip(locked, 0, 255)
+    inactive = darkened * 0.75 + neutral_ink * 0.25
+    inactive[alpha == 0] = 0
+    data[..., :3] = np.clip(inactive, 0, 255)
     return Image.fromarray(data.astype(np.uint8))
 
 
@@ -267,9 +267,9 @@ def main() -> None:
     records: list[dict[str, object]] = []
     for spec in ROLE_SPECS:
         normal = render_normal(spec)
-        locked = render_locked(normal)
-        for state, portrait in (("normal", normal), ("locked", locked)):
-            suffix = "" if state == "normal" else "_locked"
+        inactive = render_inactive(normal)
+        for state, portrait in (("normal", normal), ("inactive", inactive)):
+            suffix = "" if state == "normal" else "_inactive"
             output_path = OUTPUT_ROOT / f"partner_portrait_{spec.role}{suffix}.png"
             portrait.save(output_path, optimize=True)
             record = validate_portrait(output_path)
@@ -291,8 +291,8 @@ def main() -> None:
             rendered.append((spec.role, state, portrait))
 
     normal_first = [entry for entry in rendered if entry[1] == "normal"]
-    locked_second = [entry for entry in rendered if entry[1] == "locked"]
-    contact_sheet = make_contact_sheet(normal_first + locked_second)
+    inactive_second = [entry for entry in rendered if entry[1] == "inactive"]
+    contact_sheet = make_contact_sheet(normal_first + inactive_second)
     manifest = {
         "status": "PASS",
         "targetSize": list(TARGET_SIZE),

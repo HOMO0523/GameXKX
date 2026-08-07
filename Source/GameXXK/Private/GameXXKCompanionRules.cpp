@@ -936,3 +936,32 @@ bool FGameXXKCompanionRules::ValidatePartySelection(
 
 	return ValidateQuestNpcCardSelection(Selection.QuestNpc.NpcId, Selection.QuestNpc.SelectedCardIds, OutError);
 }
+
+FString FGameXXKCompanionRules::GetCompanionDisplayName(const EGameXXKCharacterRole Role, const int32 NameSeed)
+{
+	static const TCHAR* Surnames[] = {
+		TEXT("白"), TEXT("柳"), TEXT("沈"), TEXT("顾"), TEXT("秦"), TEXT("苏"), TEXT("叶"), TEXT("陆"),
+		TEXT("温"), TEXT("韩"), TEXT("姜"), TEXT("甄"), TEXT("萧"), TEXT("裴"), TEXT("霍"), TEXT("燕")};
+	static const TCHAR* GivenNames[] = {
+		TEXT("一刀"), TEXT("无咎"), TEXT("惊鸿"), TEXT("流云"), TEXT("破军"), TEXT("听风"), TEXT("望舒"), TEXT("斩星"),
+		TEXT("沐雪"), TEXT("临渊"), TEXT("承影"), TEXT("逍遥"), TEXT("孤鸿"), TEXT("长歌"), TEXT("归雁"), TEXT("啸月"),
+		TEXT("观澜"), TEXT("拂尘"), TEXT("踏雪"), TEXT("问剑"), TEXT("扶摇"), TEXT("停云"), TEXT("衔月"), TEXT("疏影"),
+		TEXT("孤舟"), TEXT("明夷"), TEXT("太阿"), TEXT("赤霄"), TEXT("龙渊"), TEXT("湛卢"), TEXT("鱼肠"), TEXT("纯钧")};
+	constexpr int32 SurnameCount = UE_ARRAY_COUNT(Surnames);
+	constexpr int32 GivenCount = UE_ARRAY_COUNT(GivenNames);
+
+	const int32 RoleIndex = static_cast<int32>(Role);
+	if (RoleIndex <= static_cast<int32>(EGameXXKCharacterRole::Invalid))
+	{
+		return FString();
+	}
+
+	// Deterministic mixing: role + seed must both move the final name so that a
+	// same-seed different-role pair can never collide.
+	uint32 Mixed = static_cast<uint32>(NameSeed) * 2654435761u;
+	Mixed ^= static_cast<uint32>(RoleIndex) * 40503u;
+	Mixed ^= Mixed >> 16;
+	const int32 SurnameIndex = Mixed % SurnameCount;
+	const int32 GivenIndex = (Mixed / SurnameCount) % GivenCount;
+	return FString::Printf(TEXT("%s%s"), Surnames[SurnameIndex], GivenNames[GivenIndex]);
+}

@@ -345,7 +345,7 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the Board requests Hit asynchronously before the central action"),
 		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveClip(
 			TEXT("Enemy.Tiger"), true, EGameXXKBattleAnimationAction::Hit).TexturePath));
-	TestTrue(TEXT("the Board requests generic Impact asynchronously before the central action"),
+	TestFalse(TEXT("the Board never requests the retired generic Impact atlas"),
 		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveGenericClip(
 			EGameXXKBattleAnimationAction::Impact).TexturePath));
 
@@ -364,8 +364,8 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		CinematicTarget ? CinematicTarget->GetAtlasForTest() : nullptr, TargetIdleAtlas);
 	TestEqual(TEXT("attacker Idle fallback plays at its authored rate"), FPresentationApi::AttackerRate(Board), 1.0f);
 	TestEqual(TEXT("target Idle fallback plays at its authored rate"), FPresentationApi::TargetRate(Board), 1.0f);
-	TestEqual(TEXT("generic Impact remains a four-times clip despite participant fallback"),
-		FPresentationApi::ImpactRate(Board), 4.0f);
+	TestEqual(TEXT("the retired generic Impact has no active playback despite participant fallback"),
+		FPresentationApi::ImpactRate(Board), 0.0f);
 	TestTrue(TEXT("cinematic attacker size is exactly two times formation"),
 		CinematicAttacker && CinematicAttacker->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f));
 	TestTrue(TEXT("cinematic target size is exactly two times formation"),
@@ -406,7 +406,7 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		? Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleCinematicReadout")))
 		: nullptr;
 	TestNotNull(TEXT("the common stage owns a cinematic dimmer"), CinematicDimmer);
-	TestNotNull(TEXT("the common stage owns a generic impact visual"), CinematicImpact);
+	TestNotNull(TEXT("the common stage retains only a hidden compatibility impact widget"), CinematicImpact);
 	TestNotNull(TEXT("the common stage owns a damage or avoid readout"), CinematicReadout);
 	const UCanvasPanelSlot* const DimmerSlot = CinematicDimmer ? Cast<UCanvasPanelSlot>(CinematicDimmer->Slot) : nullptr;
 	const UCanvasPanelSlot* const ImpactSlot = CinematicImpact ? Cast<UCanvasPanelSlot>(CinematicImpact->Slot) : nullptr;
@@ -415,9 +415,7 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the dimmer is black with exactly fifty percent opacity"),
 		CinematicDimmer
 		&& CinematicDimmer->GetBrushColor().Equals(FLinearColor(0.0f, 0.0f, 0.0f, 0.5f), 0.001f));
-	TestEqual(TEXT("generic center impact renders at z fifty"), ImpactSlot ? ImpactSlot->GetZOrder() : INDEX_NONE, 50);
-	TestTrue(TEXT("generic impact remains at the exact 1920 by 1080 stage center"),
-		CinematicImpact && CinematicImpact->GetStageCenter().Equals(FVector2D(960.0f, 540.0f), 0.01f));
+	TestEqual(TEXT("the hidden compatibility impact slot retains its harmless legacy z-order"), ImpactSlot ? ImpactSlot->GetZOrder() : INDEX_NONE, 50);
 	TestEqual(TEXT("damage or avoid readout renders at z sixty"), ReadoutSlot ? ReadoutSlot->GetZOrder() : INDEX_NONE, 60);
 	TestEqual(TEXT("pre-marker displayed-health overlay retains health before"),
 		FPresentationApi::DisplayedHealth(Board, CinematicEvent.TargetUnitId), CinematicEvent.TargetHealthBefore);
@@ -442,10 +440,10 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		FString(TEXT("气血 152 / 180")));
 	TestEqual(TEXT("crossing 1.1 emits the damage readout"),
 		FPresentationApi::Readout(Board), FString(TEXT("-18")));
-	TestEqual(TEXT("generic impact remains visible even while participants use Idle fallback"),
+	TestEqual(TEXT("the retired generic impact stays hidden at the damage marker"),
 		CinematicImpact ? CinematicImpact->GetVisibility() : ESlateVisibility::Hidden,
-		ESlateVisibility::SelfHitTestInvisible);
-	TestNotNull(TEXT("visible generic impact owns its asynchronously loaded atlas"),
+		ESlateVisibility::Hidden);
+	TestNull(TEXT("the retired generic impact never binds an atlas"),
 		CinematicImpact ? CinematicImpact->GetAtlasForTest() : nullptr);
 
 	Board->AdvanceVisualsAtRealTime(2.5);

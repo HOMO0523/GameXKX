@@ -390,6 +390,7 @@ void UGameXXKBattleUnitResourceWidget::RefreshDisplay()
 	}
 	if (HealthText)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[HpText] outer=%s setHP=%d healthText=%s"), *GetPathName(), CurrentHP, *HealthText->GetPathName());
 		HealthText->SetText(FText::FromString(FString::Printf(TEXT("气血 %d / %d"), CurrentHP, MaxHP)));
 	}
 	HealthPercent = GetSafePercent(CurrentHP, MaxHP);

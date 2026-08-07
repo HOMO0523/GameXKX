@@ -20,12 +20,13 @@ enum class EGameXXKEquipmentSet : uint8
 {
 	Invalid = 0 UMETA(Hidden),
 	Legacy = 1,
-	PoJun = 2,
-	XuanJia = 3,
-	QingNang = 4,
-	ZhuiFeng = 5,
-	ShiGu = 6,
-	ShanHe = 7
+	Starter = 2,
+	PoJun = 3,
+	XuanJia = 4,
+	QingNang = 5,
+	ZhuiFeng = 6,
+	ShiGu = 7,
+	ShanHe = 8
 };
 
 UENUM(BlueprintType)

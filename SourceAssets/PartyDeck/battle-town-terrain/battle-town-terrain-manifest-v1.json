@@ -1,0 +1,86 @@
+{
+  "bake": {
+    "encounter_floor": {
+      "actor_label": "GameXXK_Encounter_Floor",
+      "material": "/Game/GameXXK/Environment/Battle/TownTerrain/M_Battle_QingshanGround_01",
+      "mesh": "/Game/GameXXK/Environment/Battle/TownTerrain/SM_Battle_QingshanGround_01",
+      "transform": {
+        "rotation": {
+          "w": 1.0,
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "scale": {
+          "x": 24.0,
+          "y": 14.0,
+          "z": 1.0
+        },
+        "translation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      }
+    },
+    "engine_version": "5.8.0-55116800+++UE5+Release-5.8",
+    "geometry": {
+      "center_x": 0.0,
+      "center_y": 0.0,
+      "max_height": 1558.5795281147439,
+      "min_height": 1397.644054703589,
+      "reference_height": 1478.1225680933858,
+      "vertex_count": 1421.0
+    },
+    "slice_world_bounds_cm": {
+      "max": {
+        "x": 1200.0,
+        "y": 700.0
+      },
+      "min": {
+        "x": -1200.0,
+        "y": -700.0
+      }
+    },
+    "source_landscape": "Landscape_0"
+  },
+  "max_height_delta_cm": 159.38651579309953,
+  "output_assets": [
+    "/Game/GameXXK/Environment/Battle/TownTerrain/SM_Battle_QingshanGround_01",
+    "/Game/GameXXK/Environment/Battle/TownTerrain/M_Battle_QingshanGround_01",
+    "/Game/GameXXK/Environment/Battle/TownTerrain/T_Battle_QingshanGround_Albedo_01"
+  ],
+  "output_hashes": {
+    "/Game/GameXXK/Environment/Battle/TownTerrain/M_Battle_QingshanGround_01": "2e250f127a5a624ca22d1f0db6dbcfa2002bdc2c7b582d59ec8447b2913e5952",
+    "/Game/GameXXK/Environment/Battle/TownTerrain/SM_Battle_QingshanGround_01": "54efb05b54148f759816651819dd93af3f329a4305373e36bc8d0d8870886b39",
+    "/Game/GameXXK/Environment/Battle/TownTerrain/T_Battle_QingshanGround_Albedo_01": "79bb7b986f261d6d84389d2e1a70a34ca00844aa505969fcf26c0e052e7ea392"
+  },
+  "schema": 1,
+  "slice_center_cm": {
+    "x": 0.0,
+    "y": 0.0
+  },
+  "slice_world_bounds_cm": {
+    "max": {
+      "x": 1200.0,
+      "y": 700.0
+    },
+    "min": {
+      "x": -1200.0,
+      "y": -700.0
+    }
+  },
+  "source_hashes": {
+    "battle_package_sha256": "d6e8b90544bdf4389801472e334609de757f67d0dc1015c88b00bc0dd783f7a7",
+    "town_package_sha256": "cb97898626b3291ae4c38b1f1d5996975481475b223c58ea51110084a79e576b"
+  },
+  "source_landscape": "Landscape_0",
+  "source_map": "/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo",
+  "source_material": "/Game/Asian_Village/materials/landscape_materials/MI_landscape_material_Inst",
+  "status": "baked",
+  "target_map": "/Game/GameXXK/Maps/L_BattleScene",
+  "validation": {
+    "before_snapshot": "Saved/HarnessReports/battle-town-before-20260717-0352.json",
+    "slice_probe": "Landscape_0 24m x 14m local slice; no actor overlap; 159.3865cm maximum sampled height delta"
+  }
+}

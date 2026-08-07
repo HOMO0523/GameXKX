@@ -16,6 +16,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROBE_PATH = PROJECT_ROOT / "Content" / "Python" / "gamexxk_probe_real_play_flow.py"
 FIXTURE_ENTRYPOINT_PATH = PROJECT_ROOT / "Content" / "Python" / "gamexxk_apply_battle_hud_fixture.py"
+META_SHOP_PROBE_PATH = PROJECT_ROOT / "Content" / "Python" / "gamexxk_probe_meta_shop_window.py"
+REAL_FLOW_HARNESS_PATH = PROJECT_ROOT / "scripts" / "gamexxk_real_play_flow_mcp.py"
 
 
 def _load_probe_module():
@@ -72,6 +74,27 @@ class _WidgetWithThrowingGeometryRead:
 
 
 class RealPlayFlowProbeTest(unittest.TestCase):
+    def test_real_flow_wires_the_new_meta_shop_acceptance_contract(self) -> None:
+        self.assertTrue(META_SHOP_PROBE_PATH.is_file(), "focused meta-shop PIE probe must exist")
+        probe_source = META_SHOP_PROBE_PATH.read_text(encoding="utf-8")
+        harness_source = REAL_FLOW_HARNESS_PATH.read_text(encoding="utf-8")
+
+        for field in (
+            "merchant_interaction_opened_meta_shop",
+            "product_count",
+            "legacy_trade_visible",
+            "equipment_purchase_gold_delta",
+            "equipment_instance_delta",
+            "acceptance_funding_delta",
+            "old_buy_item_command_visible",
+        ):
+            self.assertIn(field, probe_source)
+        self.assertNotIn("raise SystemExit", probe_source)
+        self.assertIn("_get_mvp_subsystem_from_player_controller", probe_source)
+        self.assertIn("META_SHOP_PROBE_SCRIPT", harness_source)
+        self.assertIn('result["meta_shop"]', harness_source)
+        self.assertIn("probe_meta_shop", harness_source)
+
     def test_battle_side_name_normalizes_ue_enum_spellings_to_the_locked_payload_values(self) -> None:
         module = _load_probe_module()
 

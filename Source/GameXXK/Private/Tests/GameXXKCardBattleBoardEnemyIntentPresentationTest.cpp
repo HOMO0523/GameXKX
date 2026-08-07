@@ -3,6 +3,7 @@
 #include "GameXXKMVPRules.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
+#include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
@@ -16,11 +17,15 @@
 
 namespace
 {
-	FGameXXKBattleRuntimeUnit MakeEnemyIntentTestEnemy(const TCHAR* Id, const TCHAR* DisplayName)
+	FGameXXKBattleRuntimeUnit MakeEnemyIntentTestEnemy(
+		const TCHAR* Id,
+		const TCHAR* DisplayName,
+		const TCHAR* EnemyDefinitionId)
 	{
 		FGameXXKBattleRuntimeUnit Unit;
 		Unit.Id = FName(Id);
 		Unit.DisplayName = FText::FromString(DisplayName);
+		Unit.EnemyDefinitionId = FName(EnemyDefinitionId);
 		Unit.HP = 240;
 		Unit.MaxHP = 240;
 		Unit.Attack = 8;
@@ -45,9 +50,9 @@ namespace
 		State.bHasActiveBattle = true;
 		State.ActiveBattleNodeId = 41;
 		State.ActiveBattleEnemies = {
-			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.One"), TEXT("意图敌一")),
-			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.Two"), TEXT("意图敌二")),
-			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.Three"), TEXT("意图敌三"))};
+			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.One"), TEXT("意图敌一"), TEXT("Enemy.Ch1.Rooster")),
+			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.Two"), TEXT("意图敌二"), TEXT("Enemy.Ch2.BlackBear")),
+			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.Three"), TEXT("意图敌三"), TEXT("Enemy.Ch3.Tiger"))};
 
 		return FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &OutError)
 			&& FGameXXKCardBattleAdapter::BeginCardBattle(
@@ -115,6 +120,20 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	TestEqual(TEXT("player-phase intent cards retain the fixed source order"), Board->GetEnemyIntentSlotLabelForTest(0), FString(TEXT("敌 1P")));
 	TestEqual(TEXT("player-phase intent cards retain the fixed source order"), Board->GetEnemyIntentSlotLabelForTest(1), FString(TEXT("敌 2P")));
 	TestEqual(TEXT("player-phase intent cards retain the fixed source order"), Board->GetEnemyIntentSlotLabelForTest(2), FString(TEXT("敌 3P")));
+	TestEqual(TEXT("normal enemy intents use the matching left-anchored card portrait"),
+		Board->GetEnemyIntentPortraitResourcePathForTest(0),
+		FString(TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_Rooster.T_CardPortrait_Enemy_Ch1_Rooster")));
+	TestEqual(TEXT("chapter boss intents use the matching real boss card portrait"),
+		Board->GetEnemyIntentPortraitResourcePathForTest(1),
+		FString(TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_BlackBearBoss.T_CardPortrait_Enemy_Ch2_BlackBearBoss")));
+	TestEqual(TEXT("the final tiger boss intent uses the approved final-idle tiger portrait"),
+		Board->GetEnemyIntentPortraitResourcePathForTest(2),
+		FString(TEXT("/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_TigerBoss.T_CardPortrait_Enemy_Ch3_TigerBoss")));
+	UImage* FirstIntentPortrait = Board->WidgetTree
+		? Cast<UImage>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCard_00Portrait")))
+		: nullptr;
+	TestTrue(TEXT("enemy intent card builds a dedicated portrait image layer"),
+		FirstIntentPortrait && FirstIntentPortrait->GetVisibility() == ESlateVisibility::HitTestInvisible);
 	TestEqual(TEXT("the player-phase forecast has no active enemy showcase"), Board->GetActiveEnemyIntentPresentationIndexForTest(), INDEX_NONE);
 	if (State.CardRun.EnemyIntents.Num() != 3)
 	{
@@ -246,20 +265,25 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 		TestEqual(FString::Printf(TEXT("intent %d resolves exactly once"), IntentIndex + 1),
 			Subsystem->GetRuntimeState().CardRun.NextEnemyIntentIndex,
 			IntentIndex + 1);
-		TestTrue(FString::Printf(TEXT("intent %d locks its Board-owned damage/status presentation"), IntentIndex + 1),
-			FPresentationApi::IsLocked(Board));
-		const int32 IndexAfterMutation = Subsystem->GetRuntimeState().CardRun.NextEnemyIntentIndex;
-		Board->AdvanceEnemyIntentPresentationForTest(999.0f);
-		TestEqual(FString::Printf(TEXT("intent %d cannot advance again under a large delta while presentation is pending"), IntentIndex + 1),
-			Subsystem->GetRuntimeState().CardRun.NextEnemyIntentIndex,
-			IndexAfterMutation);
-		Board->AdvanceVisualsAtRealTime(PresentationClock);
-		Board->AdvanceVisualsAtRealTime(PresentationClock + 100.0);
-		PresentationClock += 100.0;
-		TestFalse(FString::Printf(TEXT("intent %d unlocks only after its whole Board timeline drains"), IntentIndex + 1),
-			FPresentationApi::IsLocked(Board));
-		if (IntentIndex == 2)
+		if (IntentIndex < 2)
 		{
+			TestTrue(FString::Printf(TEXT("damaging intent %d locks its Board-owned Attack/Hit presentation"), IntentIndex + 1),
+				FPresentationApi::IsLocked(Board));
+			const int32 IndexAfterMutation = Subsystem->GetRuntimeState().CardRun.NextEnemyIntentIndex;
+			Board->AdvanceEnemyIntentPresentationForTest(999.0f);
+			TestEqual(FString::Printf(TEXT("damaging intent %d cannot advance again under a large delta while presentation is pending"), IntentIndex + 1),
+				Subsystem->GetRuntimeState().CardRun.NextEnemyIntentIndex,
+				IndexAfterMutation);
+			Board->AdvanceVisualsAtRealTime(PresentationClock);
+			Board->AdvanceVisualsAtRealTime(PresentationClock + 100.0);
+			PresentationClock += 100.0;
+			TestFalse(FString::Printf(TEXT("damaging intent %d unlocks only after its Attack/Hit timeline drains"), IntentIndex + 1),
+				FPresentationApi::IsLocked(Board));
+		}
+		else
+		{
+			TestFalse(TEXT("the third non-damaging mutation updates state without a status close-up"),
+				FPresentationApi::IsLocked(Board));
 			FGameXXKCardCombatUnit* const DotEnemy = State.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
 			{
 				return Unit.UnitId == TEXT("IntentEnemy.Three");

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "purpose": "PartyDeck right-side paper-and-ink scrollbar; generated because the approved PSD manifest has no scroll track or thumb layer.",
+  "phase1": {
+    "generator": "built-in image_gen",
+    "source": "scrollbar_track_thumb_source_v1.png",
+    "sha256": "2a0c4954df1707e5566caac8ddaf67deafb911cf4edebc80eb83594e2fe000ef",
+    "pixels": [1254, 1254],
+    "background": "#00ff00",
+    "promptVersion": "paper-ink-scrollbar-v1",
+    "prompt": "Two separate non-text vertical game UI assets: a parchment scroll track and a dark ink-and-stone thumb with a muted vermilion seal, in restrained hand-painted Chinese wuxia parchment/ink style; isolated on uniform chroma green."
+  },
+  "phase2": {
+    "alphaSource": "scrollbar_track_thumb_alpha_v1.png",
+    "sha256": "b68c31047ada0a2d7a42906f7ecdd8894ed3b48265b618e9a3059d9f80140c29",
+    "pixels": [1254, 1254],
+    "components": [
+      {
+        "id": "paper_track",
+        "region": [0, 0, 627, 1254],
+        "padding": 6,
+        "derivedSource": "derived/scroll_paper_track_generated_v1.png",
+        "pixels": [148, 1102],
+        "sha256": "ebbbccc470be545764d1ebaaad30b81be7b1c3488216f4565428c7a67462c0cc",
+        "assetName": "T_PartyDeck_ScrollPaperTrack_GeneratedV1"
+      },
+      {
+        "id": "ink_thumb",
+        "region": [627, 0, 1254, 1254],
+        "padding": 6,
+        "derivedSource": "derived/scroll_ink_thumb_generated_v1.png",
+        "pixels": [163, 441],
+        "sha256": "78c843bf2e765840cd2221af0d68d46ac2d410314ac2d1cda4748c796be7fea2",
+        "assetName": "T_PartyDeck_ScrollInkThumb_GeneratedV1"
+      }
+    ]
+  }
+}

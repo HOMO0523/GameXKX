@@ -684,7 +684,8 @@ bool FGameXXKEquipmentEconomyRules::BeginReforge(
 		return false;
 	}
 	const int32 Cost = FGameXXKEquipmentCatalog::GetReforgeSandCost(Existing->Quality);
-	if (Cost <= 0 || InOutState.EquipmentCollection.RefinementSand < Cost)
+	const FName SandItemId = UGameXXKMVPRules::ItemRefinementSand();
+	if (Cost <= 0 || InOutState.Inventory.FindRef(SandItemId) < Cost)
 	{
 		OutResult = MakeFailure(EGameXXKEquipmentTransactionError::InsufficientRefinementSand);
 		return false;
@@ -710,7 +711,10 @@ bool FGameXXKEquipmentEconomyRules::BeginReforge(
 	Pending.CandidateAffix = CandidateAffix;
 	Pending.PaidRefinementSand = Cost;
 	Pending.ConsumedReforgeOrdinal = Candidate.EquipmentCollection.NextReforgeOrdinal;
-	Candidate.EquipmentCollection.RefinementSand -= Cost;
+	// Consume refinement sand from the backpack material item and keep the
+	// legacy resource field in sync.
+	Candidate.Inventory.FindOrAdd(SandItemId) = FMath::Max(0, Candidate.Inventory.FindOrAdd(SandItemId) - Cost);
+	Candidate.EquipmentCollection.RefinementSand = FMath::Max(0, Candidate.EquipmentCollection.RefinementSand - Cost);
 	Candidate.EquipmentCollection.NextReforgeOrdinal += 1;
 	if (!SynchronizeAndValidate(Candidate))
 	{
@@ -783,6 +787,7 @@ bool FGameXXKEquipmentEconomyRules::DismantleBatch(
 	TSet<FName> UniqueIds;
 	int64 SandYieldWide = 0;
 	int64 StoneRefundWide = 0;
+	int64 GoldRewardWide = 0;
 	bool bProtected = false;
 	for (const FName InstanceId : InstanceIds)
 	{
@@ -805,8 +810,10 @@ bool FGameXXKEquipmentEconomyRules::DismantleBatch(
 			OutResult = MakeFailure(EGameXXKEquipmentTransactionError::PendingReforgeExists);
 			return false;
 		}
-		SandYieldWide += FGameXXKEquipmentCatalog::GetDismantleSandYield(Instance->Quality);
-		StoneRefundWide += (CalculateSpentEnhancementStones(*Instance) * 80) / 100;
+		// Fixed dismantle reward per piece: 10 gold, 1 enhancement stone, 1 refinement sand.
+		SandYieldWide += 1;
+		StoneRefundWide += 1;
+		GoldRewardWide += 10;
 		bProtected = bProtected
 			|| Instance->Quality != EGameXXKEquipmentQuality::Common
 			|| Instance->EnhancementLevel > 0
@@ -815,14 +822,16 @@ bool FGameXXKEquipmentEconomyRules::DismantleBatch(
 	const FName StoneId = UGameXXKMVPRules::ItemEnhancementStone();
 	const int64 SandAfterDismantle = static_cast<int64>(InOutState.EquipmentCollection.RefinementSand) + SandYieldWide;
 	const int64 StonesAfterDismantle = static_cast<int64>(InOutState.Inventory.FindRef(StoneId)) + StoneRefundWide;
-	if (SandYieldWide > MAX_int32 || StoneRefundWide > MAX_int32
-		|| SandAfterDismantle > MAX_int32 || StonesAfterDismantle > MAX_int32)
+	const int64 GoldAfterDismantle = static_cast<int64>(InOutState.PlayerGold) + GoldRewardWide;
+	if (SandYieldWide > MAX_int32 || StoneRefundWide > MAX_int32 || GoldRewardWide > MAX_int32
+		|| SandAfterDismantle > MAX_int32 || StonesAfterDismantle > MAX_int32 || GoldAfterDismantle > MAX_int32)
 	{
 		OutResult = MakeFailure(EGameXXKEquipmentTransactionError::InvalidRequest);
 		return false;
 	}
 	const int32 SandYield = static_cast<int32>(SandYieldWide);
 	const int32 StoneRefund = static_cast<int32>(StoneRefundWide);
+	const int32 GoldReward = static_cast<int32>(GoldRewardWide);
 	if (bProtected && !bConfirmedProtected)
 	{
 		OutResult = MakeFailure(
@@ -872,6 +881,9 @@ bool FGameXXKEquipmentEconomyRules::DismantleBatch(
 	}
 	Candidate.EquipmentCollection.RefinementSand += SandYield;
 	Candidate.Inventory.FindOrAdd(StoneId) += StoneRefund;
+	// Refinement sand also lands in the backpack as a material item.
+	Candidate.Inventory.FindOrAdd(UGameXXKMVPRules::ItemRefinementSand()) += SandYield;
+	Candidate.PlayerGold += GoldReward;
 	if (!SynchronizeAndValidate(Candidate))
 	{
 		OutResult = MakeFailure(EGameXXKEquipmentTransactionError::CollectionInvalid);

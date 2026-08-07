@@ -332,6 +332,14 @@ public:
 		FName ActivePermanentCompanionInstanceIdAfterReplacement,
 		FGameXXKEquipmentTransactionResult& OutResult);
 
+	/**
+	 * Dismisses one permanent companion without a replacement (the 遣散 action).
+	 * Equipment returns to the warehouse, the active party slot clears, and the
+	 * roster must keep at least one companion.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
+	bool DismissPermanentCompanion(FName InstanceId);
+
 	/** Explicitly abandons the saved full-roster candidate without consuming a new ticket. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
 	bool DiscardPendingPermanentCompanionRecruitment();
@@ -354,6 +362,10 @@ public:
 	/** Persists exactly eight unlocked hero cards. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
 	bool SetHeroCardLoadout(const TArray<FName>& SelectedCardIds);
+
+	/** Town F-interaction action: replaces the optional temporary named NPC and uses its fixed default cards. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
+	bool SelectTownQuestNpcForParty(FName QuestNpcId);
 
 	/** Compatibility-only public entry point. Task NPC cards are route-owned, fixed, and read-only; always rejects edits. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")

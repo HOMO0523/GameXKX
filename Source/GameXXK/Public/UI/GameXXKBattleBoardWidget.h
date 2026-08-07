@@ -171,6 +171,9 @@ class GAMEXXK_API UGameXXKBattleBoardWidget : public UGameXXKMVPWidgetBase
 	GENERATED_BODY()
 
 public:
+	/** Transient diagnostics: how many battle-board widgets currently exist. */
+	static int32 GAliveBattleBoardInstances;
+
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
@@ -442,6 +445,7 @@ public:
 	int32 GetActiveEnemyIntentPresentationIndexForTest() const;
 	FString GetEnemyIntentSlotLabelForTest(int32 VisibleSlotIndex) const;
 	FString GetEnemyIntentTooltipForTest(int32 VisibleSlotIndex) const;
+	FString GetEnemyIntentPortraitResourcePathForTest(int32 VisibleSlotIndex) const;
 	bool IsHandCardSlotEnabledForTest(int32 SlotIndex) const;
 	FString GetCardTooltipTextForTest() const;
 	bool IsCardTooltipVisibleForTest() const;
@@ -549,12 +553,18 @@ private:
 	void HideFormationForPresentation();
 	void RestoreFormationAfterPresentation(FName RemovedUnitId = NAME_None);
 	void RestoreUnitIdleAtlas(FName UnitId, UGameXXKBattleUnitVisualWidget* Visual);
+	FGameXXKBattleAnimationClipDescriptor ResolveUnitAnimationClip(
+		FName UnitId,
+		bool bEnemy,
+		EGameXXKBattleAnimationAction Action) const;
 	void SetTargetProxiesVisible(bool bVisible);
 	void SetDisplayedHealthOverlay(FName UnitId, int32 Health);
 	void ClearDisplayedHealthOverlay(FName UnitId);
 	bool IsUnitRetainedByPresentation(FName UnitId) const;
 	void UpdateBattlePresentationShake(double AbsoluteSeconds);
 	void RefreshUnitVisuals();
+	void RefreshUnitTargetingPresentation();
+	void RefreshCinematicViewportCoverLayout(FVector2D ViewportSize);
 	void ReleasePinnedAtlasForUnit(FName UnitId);
 	void RemoveUnitVisual(FName UnitId);
 	void SetUnitTargetPlaceholderVisible(FName UnitId, bool bVisible);
@@ -596,7 +606,9 @@ private:
 	void StyleBattleActionButton(UButton* Button, FName ActionName);
 	void StyleCardButton(UButton* Button, const FVector2D& CardImageSize);
 	void BuildCardFace(UButton* CardButton, const FString& NamePrefix, UTextBlock*& OutLabel, UImage*& OutPortrait, UBorder*& OutInfoStrip, bool bUsePlayerHandSize = false);
-	void BuildEnemyIntentCardFace(UButton* CardButton, const FString& NamePrefix, UTextBlock*& OutBody);
+	void BuildEnemyIntentCardFace(UButton* CardButton, const FString& NamePrefix, UTextBlock*& OutBody, UImage*& OutPortrait);
+	FString ResolveEnemyIntentPortraitResourcePath(FName EnemyDefinitionId) const;
+	UTexture2D* ResolveEnemyIntentPortraitTexture(FName EnemyDefinitionId) const;
 	void ApplyCardPresentation(UButton* CardButton, UTextBlock* CardLabel, UImage* PortraitImage, UBorder* InfoStrip, const FGameXXKCardDefinition* Definition);
 	UTexture2D* ResolveCardPortraitTexture(const FGameXXKCardDefinition& Definition);
 	FString ResolveCardPortraitResourcePath(const FGameXXKCardDefinition& Definition) const;
@@ -767,6 +779,13 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> BattleCinematicDimmer;
 
+	/** Four margin-only ink strips cover the viewport outside the centered 16:9 safe stage. */
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> BattleCinematicViewportCover;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> BattleCinematicViewportCoverStrips;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKBattleUnitVisualWidget> BattleCinematicImpact;
 
@@ -908,6 +927,9 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> EnemyIntentCardBodies;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> EnemyIntentCardPortraits;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UButton>> RewardCardButtons;

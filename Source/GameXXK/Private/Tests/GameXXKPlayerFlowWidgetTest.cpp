@@ -97,6 +97,9 @@ bool FGameXXKPlayerControllerTownExitInventoryCleanupTest::RunTest(const FString
 	TestTrue(TEXT("town-exit cleanup accepts the prerequisite quest"), Subsystem->AcceptQuest());
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 
+	TestFalse(TEXT("entering town does not auto-open the meta shop"), PlayerController->IsMetaShopOpenForTest());
+	TestFalse(TEXT("entering town does not lock meta shop input"), PlayerController->IsMetaShopInputLockedForTest());
+
 	TestTrue(TEXT("meta shop is open before the town exit"), PlayerController->OpenMetaShopWindow());
 	TestTrue(TEXT("meta shop owns modal input before the town exit"), PlayerController->IsMetaShopInputLockedForTest());
 	TestTrue(TEXT("town exit transitions to the route map"), Subsystem->OpenDungeonFromTownExit());
@@ -232,9 +235,9 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 
 	TestTrue(TEXT("start game opens world map for player controller flow"), Subsystem->StartGame());
 	const FGameXXKCompanionRosterState& StarterRoster = Subsystem->GetRuntimeState().CardRun.CompanionRoster;
-	TestEqual(TEXT("StartNewGame grants exactly one permanent companion for the player flow"), StarterRoster.PermanentCompanions.Num(), 1);
+	TestEqual(TEXT("StartNewGame grants two permanent companions for the player flow"), StarterRoster.PermanentCompanions.Num(), 2);
 	FName StarterCompanionId = NAME_None;
-	if (StarterRoster.PermanentCompanions.Num() == 1)
+	if (StarterRoster.PermanentCompanions.Num() == 2)
 	{
 		const FGameXXKPermanentCompanion& StarterCompanion = StarterRoster.PermanentCompanions[0];
 		StarterCompanionId = StarterCompanion.InstanceId;
@@ -256,6 +259,10 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("main menu hides after town state"), PlayerController->GetMainMenuWidgetForTest()->GetVisibility(), ESlateVisibility::Collapsed);
 	TestTrue(TEXT("town overlay appears after town state"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
 	TestFalse(TEXT("route map hidden before entering dungeon"), PlayerController->GetRouteMapWidgetForTest()->GetVisibility() == ESlateVisibility::Visible);
+	TestTrue(TEXT("legacy save fixture can carry the retired inventory panel mode"), Subsystem->OpenTownPanel(EGameXXKTownPanelMode::Inventory));
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestEqual(TEXT("player flow normalizes the retired inventory panel mode"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::None);
+	TestEqual(TEXT("player flow never auto-opens free inventory from a persisted town panel"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::None);
 	TestTrue(TEXT("legacy save fixture can carry the retired trade panel mode"), Subsystem->OpenTownPanel(EGameXXKTownPanelMode::Trade));
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestEqual(TEXT("player flow normalizes the retired trade panel mode"), Subsystem->GetRuntimeState().TownPanelMode, EGameXXKTownPanelMode::None);

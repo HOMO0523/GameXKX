@@ -35,6 +35,7 @@ public:
 	void RestoreFormation();
 	void RemoveAfterDeath();
 	void AdvanceAtRealTime(double AbsoluteSeconds);
+	void SetCardTargetingAvailability(bool bTargeting, bool bLegalTarget);
 
 	FVector2D GetPresentedSize() const;
 	FVector2D GetStageCenter() const;
@@ -45,6 +46,7 @@ public:
 	int32 GetCurrentFrameForTest() const;
 	int32 GetFrameParameterWriteCountForTest() const;
 	bool IsRemovedForTest() const;
+	bool IsDimmedForCardTargetingForTest() const;
 
 private:
 	void BuildProgrammaticLayout();
@@ -80,4 +82,5 @@ private:
 	bool bConfigured = false;
 	bool bRemoved = false;
 	bool bMaterialLoadAttempted = false;
+	bool bDimmedForCardTargeting = false;
 };

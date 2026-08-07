@@ -177,6 +177,18 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("unknown Enemy_07 attack resolves through the rooster fallback"),
 		FGameXXKBattleAnimationPresentation::ResolveClip(
 			TEXT("Enemy_07"), true, EGameXXKBattleAnimationAction::Attack).IsValid());
+	const FGameXXKBattleAnimationClipDescriptor AuthoritativeTigerAttack =
+		FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
+			TEXT("OpaqueEnemy.P3"),
+			TEXT("Enemy.Ch3.Tiger"),
+			true,
+			EGameXXKBattleAnimationAction::Attack);
+	TestEqual(TEXT("enemy attacks prefer the authoritative definition instead of the legacy runtime-id fallback"),
+		AuthoritativeTigerAttack.AssetId,
+		FString(TEXT("enemy_21_tiger_boss_attack")));
+	TestEqual(TEXT("the authoritative enemy attack resolves the production tiger close-up atlas"),
+		AuthoritativeTigerAttack.TexturePath.ToString(),
+		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_enemy_21_tiger_boss_attack_atlas.T_enemy_21_tiger_boss_attack_atlas")));
 
 	FGameXXKBattleAnimationClipDescriptor InvalidDescriptor = HeroAttack;
 	InvalidDescriptor.AssetId.Reset();

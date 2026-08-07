@@ -270,11 +270,11 @@ bool FGameXXKMainMenuPlayerFlowTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("quit opens unavailable modal"), MainMenu->OpenQuitUnavailableModal());
 	TestEqual(TEXT("quit unavailable modal is active"), MainMenu->GetMenuLayerForTest(), EGameXXKMainMenuLayer::QuitUnavailableModal);
 
-	TestTrue(TEXT("main menu start creates a new game and opens world map"), MainMenu->StartGame());
-	TestEqual(TEXT("world map screen after player-facing main menu start"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
-	TestEqual(TEXT("new game has no town selected before world-map click"), Subsystem->GetRuntimeState().CurrentRegion, NAME_None);
-	TestEqual(TEXT("new game hides main menu after entering world map"), MainMenu->GetVisibility(), ESlateVisibility::Collapsed);
-	TestFalse(TEXT("new game disables main menu after entering world map"), MainMenu->GetIsEnabled());
+	TestTrue(TEXT("main menu start creates a new game and lands in Qingshan town"), MainMenu->StartGame());
+	TestEqual(TEXT("town screen after player-facing main menu start"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("new game selects Qingshan town directly"), Subsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionQingshan());
+	TestEqual(TEXT("new game hides main menu after entering town"), MainMenu->GetVisibility(), ESlateVisibility::Collapsed);
+	TestFalse(TEXT("new game disables main menu after entering town"), MainMenu->GetIsEnabled());
 
 	AGameXXKMVPHUD* HUD = NewObject<AGameXXKMVPHUD>();
 	HUD->SetMVPSubsystemForTest(Subsystem);

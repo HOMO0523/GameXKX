@@ -294,6 +294,7 @@ namespace
 	Hero.Attack = FMath::Max(0, HeroSnapshot.AttributesBeforeRoute.Attack + FMath::Max(0, RouteBonus.Attack));
 	Hero.Defense = FMath::Max(0, HeroSnapshot.AttributesBeforeRoute.Defense + FMath::Max(0, RouteBonus.Defense));
 	Hero.Speed = FMath::Max(1, HeroSnapshot.AttributesBeforeRoute.Speed + FMath::Max(0, RouteBonus.Speed));
+	Hero.CombatLevel = FMath::Max(1, InOutState.PlayerLevel);
 	NewParty.Add(Hero);
 		if (const FGameXXKPermanentCompanion* Companion = FindActiveCompanion(Run.CompanionRoster))
 		{
@@ -315,11 +316,13 @@ namespace
 			Attributes.Attack = CompanionSnapshot.AttributesBeforeRoute.Attack;
 			Attributes.Defense = CompanionSnapshot.AttributesBeforeRoute.Defense;
 			Attributes.Speed = CompanionSnapshot.AttributesBeforeRoute.Speed;
-			NewParty.Add(MakeLegacyProjectionUnit(
+			FGameXXKBattleRuntimeUnit CompanionUnit = MakeLegacyProjectionUnit(
 				Companion->InstanceId,
 				FText::FromString(TEXT("伙伴")),
 				Attributes,
-				false));
+				false);
+			CompanionUnit.CombatLevel = FMath::Max(1, Companion->Level);
+			NewParty.Add(MoveTemp(CompanionUnit));
 		}
 
 		if (Run.ActiveTemporaryQuestNpcId != NAME_None)
@@ -328,22 +331,15 @@ namespace
 			{
 				return SetFailure(OutError, TEXT("The route-local task NPC provenance does not match the configured NPC cards."));
 			}
-			FGameXXKCompanionAttributes Attributes;
-			const FGameXXKRouteProgress& RouteProgress = Run.RouteProgress;
-			const int32 TaskNpcProjectionLevel = RouteProgress.SchemaVersion == 1
-				&& RouteProgress.RouteCombatLevel >= 1
-				&& RouteProgress.RouteCombatLevel <= 20
-				? RouteProgress.RouteCombatLevel
-				: FMath::Max(1, InOutState.PlayerLevel);
-			if (!FGameXXKCompanionRules::GetQuestNpcAttributes(Run.ActiveTemporaryQuestNpcId, TaskNpcProjectionLevel, Attributes, OutError))
-			{
-				return false;
-			}
-			NewParty.Add(MakeLegacyProjectionUnit(
-				Run.ActiveTemporaryQuestNpcId,
-				FText::FromString(TEXT("任务同伴")),
-				Attributes,
-				false));
+			FGameXXKBattleRuntimeUnit TaskNpc = Hero;
+			TaskNpc.Id = Run.ActiveTemporaryQuestNpcId;
+			TaskNpc.DisplayName = FText::FromString(TEXT("任务同伴"));
+			TaskNpc.BattleSlotNumber = INDEX_NONE;
+			TaskNpc.EnemyDefinitionId = NAME_None;
+			TaskNpc.bDefending = false;
+			TaskNpc.bEnemy = false;
+			TaskNpc.bDefeated = false;
+			NewParty.Add(MoveTemp(TaskNpc));
 		}
 
 		if (NewParty.Num() > 3)

@@ -383,7 +383,7 @@ struct FGameXXKRuntimeState
 	int32 PlayerXP = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	int32 PlayerGold = 50;
+	int32 PlayerGold = 10000;
 
 	// Legacy HUD mirror of Item.EnhancementStone. Rules keep this synchronized for saved games and existing UI.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -564,6 +564,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FName ItemEnhancementStone();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FName ItemRefinementSand();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FName ItemQingshanRouteSeal();

@@ -1207,6 +1207,40 @@ bool GameXXKCardRules::DrawCards(
 	return true;
 }
 
+void GameXXKCardRules::RemoveDefeatedPartyOwnerCards(
+	FGameXXKBattleDeckState& InOutDeck,
+	const TArray<FGameXXKCardCombatUnit>& Units)
+{
+	TSet<FName> LivingPartyOwnerIds;
+	for (const FGameXXKCardCombatUnit& Unit : Units)
+	{
+		if (Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Party)
+		{
+			LivingPartyOwnerIds.Add(Unit.UnitId);
+		}
+	}
+
+	const auto IsDefeatedOwner = [&LivingPartyOwnerIds](const FGameXXKCardInstance& Instance)
+	{
+		return !LivingPartyOwnerIds.Contains(Instance.OwnerUnitId);
+	};
+	InOutDeck.DrawPile.RemoveAll(IsDefeatedOwner);
+	InOutDeck.DiscardPile.RemoveAll(IsDefeatedOwner);
+	InOutDeck.Hand.RemoveAll(IsDefeatedOwner);
+
+	InOutDeck.ActiveInstanceIds.Reset();
+	const auto RebuildLedger = [&InOutDeck](const TArray<FGameXXKCardInstance>& Zone)
+	{
+		for (const FGameXXKCardInstance& Instance : Zone)
+		{
+			InOutDeck.ActiveInstanceIds.Add(Instance.InstanceId);
+		}
+	};
+	RebuildLedger(InOutDeck.DrawPile);
+	RebuildLedger(InOutDeck.DiscardPile);
+	RebuildLedger(InOutDeck.Hand);
+}
+
 bool GameXXKCardRules::MoveHandCardToDiscard(
 	FGameXXKBattleDeckState& InOutDeck,
 	const FName InstanceId,
@@ -1983,9 +2017,13 @@ namespace
 				}
 				SeenExplicitEnemySlots.Add(Unit.BattleSlotNumber);
 			}
-			else if (Unit.Side != EGameXXKCardTargetSide::Enemy && (Unit.BattleSlotNumber != INDEX_NONE || !Unit.EnemyDefinitionId.IsNone() || Unit.CombatLevel != 0))
+			else if (Unit.Side != EGameXXKCardTargetSide::Enemy
+				&& (Unit.BattleSlotNumber != INDEX_NONE
+					|| !Unit.EnemyDefinitionId.IsNone()
+					|| Unit.CombatLevel < 0
+					|| Unit.CombatLevel > 20))
 			{
-				OutError = TEXT("Only enemy combat units may persist an enemy definition, combat level, or presentation slot.");
+				OutError = TEXT("Party combat units may persist a valid character level, but never an enemy definition or presentation slot.");
 				return false;
 			}
 			for (const FGameXXKCardStatusStack& Stack : Unit.Statuses)
@@ -4459,6 +4497,8 @@ namespace
 							break;
 						}
 					}
+					// A dead party character's cards never re-enter the hand through a draw effect.
+					GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
 					if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, Effect.Magnitude, DeclaredDiscardCount, &OutError))
 					{
 						return false;
@@ -5207,6 +5247,14 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 	}
 	NewResult.OriginalTargetUnitId = SelectedPartyTargetUnitId;
 	NewResult.bRedirected |= bRedirectedByCard;
+	UE_LOG(LogTemp, Warning, TEXT("[EnemyAtk] source=%s requested=%d target=%s redirected=%d before=%d dmg=%d after=%d"),
+		*Context.SourceUnitId.ToString(),
+		RequestedDamage,
+		*AppliedTargetUnitId.ToString(),
+		bRedirectedByCard,
+		NewResult.TargetHealthBefore,
+		NewResult.HealthDamage,
+		NewResult.TargetHealthAfter);
 	TArray<FGameXXKCardDamageResult> NewReactiveDamageResults;
 	if (!ResolveFirstDirectDamageReactiveModifiers(NewRuntime, Context, NewResult, &NewReactiveDamageResults, ValidationError))
 	{
@@ -5275,6 +5323,17 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		{
 			return SetFailure(OutError, ValidationError);
 		}
+		// The party shares one player-card phase, so that boundary is each living
+		// character's turn start. Restore two points independently and never carry
+		// overflow across a character's own maximum-mana cap.
+		for (FGameXXKCardCombatUnit& Unit : NewRuntime.Units)
+		{
+			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Party)
+			{
+				continue;
+			}
+			Unit.Mana += FMath::Min(2, FMath::Max(0, Unit.MaxMana - Unit.Mana));
+		}
 		ExpireRoundBoundState(NewRuntime);
 		NewRuntime.RevealedEnemyIntentCount = FMath::Max(0, NewRuntime.RevealedEnemyIntentCount - 1);
 		if (NewRuntime.RoundNumber == MAX_int32)
@@ -5285,6 +5344,8 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		NewRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, 3 + NewRuntime.PendingNextRoundEnergyBonus);
 		NewRuntime.PendingNextRoundEnergyBonus = 0;
 		const int32 DrawCount = FMath::Max(0, NewRuntime.Deck.HandLimit - NewRuntime.Deck.Hand.Num());
+		// A party unit defeated last round must not contribute cards to this round's hand.
+		RemoveDefeatedPartyOwnerCards(NewRuntime.Deck, NewRuntime.Units);
 		if (!DrawCards(NewRuntime.Deck, DrawCount, 0, &ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);

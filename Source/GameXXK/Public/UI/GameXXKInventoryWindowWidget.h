@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/Button.h"
+#include "UI/GameXXKCharacterBackpackModel.h"
 #include "UI/GameXXKMVPWidgetBase.h"
 #include "GameXXKInventoryWindowWidget.generated.h"
 
@@ -10,6 +11,7 @@ class UCanvasPanel;
 class UHorizontalBox;
 class UImage;
 class UOverlay;
+class UScrollBox;
 class USizeBox;
 class UTextBlock;
 class UUniformGridPanel;
@@ -33,6 +35,16 @@ enum class EGameXXKInventoryFilter : uint8
 	Tasks
 };
 
+UENUM(BlueprintType)
+enum class EGameXXKCharacterBackpackTab : uint8
+{
+	Attributes,
+	Equipment,
+	Deck,
+	Talents,
+	Titles
+};
+
 enum class EGameXXKInventorySlotSource : uint8
 {
 	None,
@@ -51,6 +63,11 @@ public:
 
 	UFUNCTION()
 	void HandleClicked();
+
+	bool HandleRightMouseButtonDown();
+
+protected:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 private:
 	UPROPERTY(Transient)
@@ -77,6 +94,42 @@ private:
 	TObjectPtr<class UGameXXKInventoryWindowWidget> Owner;
 
 	EGameXXKInventoryFilter Filter = EGameXXKInventoryFilter::All;
+};
+
+UCLASS()
+class GAMEXXK_API UGameXXKCharacterBackpackTabButton : public UButton
+{
+	GENERATED_BODY()
+
+public:
+	void Configure(class UGameXXKInventoryWindowWidget* InOwner, EGameXXKCharacterBackpackTab InTab);
+
+	UFUNCTION()
+	void HandleClicked();
+
+private:
+	UPROPERTY(Transient)
+	TObjectPtr<class UGameXXKInventoryWindowWidget> Owner;
+
+	EGameXXKCharacterBackpackTab Tab = EGameXXKCharacterBackpackTab::Equipment;
+};
+
+UCLASS()
+class GAMEXXK_API UGameXXKHeroDeckCardButton : public UButton
+{
+	GENERATED_BODY()
+
+public:
+	void Configure(class UGameXXKInventoryWindowWidget* InOwner, FName InCardId);
+
+	UFUNCTION()
+	void HandleClicked();
+
+private:
+	UPROPERTY(Transient)
+	TObjectPtr<class UGameXXKInventoryWindowWidget> Owner;
+
+	FName CardId = NAME_None;
 };
 
 UCLASS(Blueprintable)
@@ -134,6 +187,24 @@ public:
 	int32 GetEquipmentSlotCountForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	int32 GetBackpackColumnCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	int32 GetBackpackStorageCapacityForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	bool HasBackpackScrollBoxForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	FString GetScrollbarResourcePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	FString GetSelectionInkResourcePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	FString GetTooltipResourcePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	FString GetEquipmentSlotResourcePathForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
@@ -153,6 +224,15 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	FName GetEquippedItemForSlotForTest(FName SlotId) const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow|Test")
+	bool QuickEquipBackpackInstanceForTest(FName InstanceId);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow|Test")
+	bool QuickUnequipSlotForTest(EGameXXKEquipmentSlot EquipmentSlot);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	FName GetEquippedInstanceForSlotForTest(EGameXXKEquipmentSlot EquipmentSlot) const;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow|Test")
 	bool SelectMerchantStockSlotForTest(int32 SlotIndex);
@@ -185,6 +265,15 @@ public:
 	TArray<FName> GetVisibleBackpackItemIdsForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	TArray<FName> GetVisibleBackpackEquipmentInstanceIdsForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	int32 FindBackpackEquipmentInstanceSlotForTest(FName InstanceId) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	int32 FindBackpackItemSlotForTest(FName ItemId) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	int32 GetSelectedBackpackSlotIndexForTest() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow|Test")
@@ -201,9 +290,22 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	FString GetInventoryFilterTexturePathForTest(EGameXXKInventoryFilter Filter) const;
+	int32 GetCharacterTabButtonCountForTest() const;
+	EGameXXKCharacterBackpackTab GetActiveCharacterBackpackTabForTest() const;
+	bool OpenCharacterBackpackTabForTest(EGameXXKCharacterBackpackTab Tab);
+	FText GetCharacterTabBodyTextForTest() const;
+	TArray<FName> GetHeroCardBackpackIdsForTest() const;
+	TArray<FName> GetPendingHeroDeckIdsForTest() const;
+	bool ToggleHeroDeckCardForTest(FName CardId);
+	bool ApplyHeroDeckForTest();
+	FString GetHeroCardFrameResourcePathForTest() const;
+	FString GetHeroLockedCardIconResourcePathForTest() const;
 
 	void HandleConfiguredSlotClicked(EGameXXKInventorySlotSource Source, int32 SlotIndex, FName EquipmentSlotId);
+	bool HandleConfiguredSlotRightClicked(EGameXXKInventorySlotSource Source, int32 SlotIndex, FName EquipmentSlotId);
 	void HandleInventoryFilterClicked(EGameXXKInventoryFilter Filter);
+	void HandleCharacterBackpackTabClicked(EGameXXKCharacterBackpackTab Tab);
+	void HandleHeroDeckCardClicked(FName CardId);
 
 private:
 	enum class EConfirmationAction : uint8
@@ -222,6 +324,8 @@ private:
 	void RefreshEquipmentSlots();
 	void RefreshDetailPanel();
 	void RefreshConfirmationDialog();
+	void RefreshCharacterTabs();
+	void RefreshHeroDeckCards();
 	bool OpenInventoryWindow(EGameXXKInventoryWindowMode InMode);
 	bool SelectPlayerBackpackItem(FName ItemId);
 	bool SelectPlayerBackpackSlot(int32 SlotIndex);
@@ -249,7 +353,20 @@ private:
 	void HandleSortClicked();
 
 	UFUNCTION()
+	void HandleBackpackScrolled(float CurrentOffset);
+
+	void UpdateBackpackScrollbarThumb();
+
+	UFUNCTION()
 	void HandleDecomposeClicked();
+
+	UFUNCTION()
+	void HandleEnhanceMainClicked();
+
+	UFUNCTION()
+	void HandleReforgeMainClicked();
+
+	void ShowActionErrorText(const FText& Message);
 
 	UFUNCTION()
 	void HandleEnhanceClicked();
@@ -259,6 +376,9 @@ private:
 
 	UFUNCTION()
 	void HandleCancelClicked();
+
+	UFUNCTION()
+	void HandleApplyHeroDeckClicked();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
@@ -273,22 +393,70 @@ private:
 	TObjectPtr<UCanvasPanel> FrameCanvas;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UButton> CloseButton;
+	TArray<TObjectPtr<UGameXXKCharacterBackpackTabButton>> CharacterTabButtons;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UImage> BackpackHeaderImage;
+	TObjectPtr<UBorder> CharacterTabBodyPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> CharacterTabBodyText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> HeroDeckPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUniformGridPanel> HeroDeckGrid;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UScrollBox> HeroDeckScrollBox;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UGameXXKHeroDeckCardButton>> HeroDeckCardButtons;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> HeroDeckCardPortraits;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> HeroDeckCardLabels;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> HeroDeckLockedIcons;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> HeroDeckSelectedInks;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> HeroDeckCostLabels;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> HeroDeckManaCostLabels;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> HeroDeckTooltipNameBlocks;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> HeroDeckTooltipDetailBlocks;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ApplyHeroDeckButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> HeroDeckCountText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> CloseButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> TitleTextBlock;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> GoldTextBlock;
-
-	UPROPERTY(Transient)
 	TObjectPtr<UBorder> LeftRailFrame;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UVerticalBox> EquipmentPanelBox;
+	TObjectPtr<UUniformGridPanel> EquipmentPanelBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> CentralHeroIdleImage;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UUniformGridPanel> MerchantStockGrid;
@@ -297,13 +465,32 @@ private:
 	TObjectPtr<UUniformGridPanel> BackpackGrid;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UScrollBox> BackpackScrollBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> InventoryScrollbarThumb;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> BackpackSelectionInk;
+
+	/** Frame-canvas selection ink that hovers above the selected equipment slot. */
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> EquipmentSelectionInk;
+
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UGameXXKInventoryFilterButton>> InventoryFilterButtons;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UButton> SortButton;
+	TArray<TObjectPtr<UTextBlock>> InventoryFilterTextBlocks;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> DecomposeButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> EnhanceMainButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ReforgeMainButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> DetailPanelFrame;
@@ -357,7 +544,16 @@ private:
 	TArray<TObjectPtr<UTextBlock>> BackpackSlotLabels;
 
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<UImage>> BackpackSelectedOverlays;
+	TArray<TObjectPtr<UBorder>> BackpackTooltipFrames;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> BackpackTooltipNameTextBlocks;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> BackpackTooltipDetailTextBlocks;
+
+	/** Replaced-slot comparison rows (red gain / green loss) inside each backpack tooltip. */
+	TArray<TArray<TObjectPtr<UTextBlock>>> BackpackCompareTextBlocks;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UGameXXKInventorySlotButton>> MerchantStockSlotButtons;
@@ -383,21 +579,39 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UImage>> EquipmentSelectedOverlays;
 
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> EquipmentTooltipFrames;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> EquipmentTooltipNameTextBlocks;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> EquipmentTooltipDetailTextBlocks;
+
 	EGameXXKInventoryWindowMode WindowMode = EGameXXKInventoryWindowMode::None;
 	EGameXXKInventorySlotSource SelectedSlotSource = EGameXXKInventorySlotSource::None;
 	EConfirmationAction PendingConfirmationAction = EConfirmationAction::None;
 	FName SelectedItemId;
+	FName SelectedEquipmentInstanceId;
 	int32 SelectedSlotIndex = INDEX_NONE;
 	FName SelectedEquipmentSlotId;
 	FName PendingConfirmationItemId;
+	FName PendingConfirmationEquipmentInstanceId;
 	int32 PendingConfirmationQuantity = 0;
 	int32 PendingConfirmationPrice = 0;
 	FText CurrentPrimaryActionText;
 	FText CurrentSecondaryActionText;
 	EGameXXKInventoryFilter ActiveInventoryFilter = EGameXXKInventoryFilter::All;
+	EGameXXKCharacterBackpackTab ActiveCharacterTab = EGameXXKCharacterBackpackTab::Equipment;
 	bool bBackpackSorted = false;
 	TArray<FName> CurrentBackpackSlotItemIds;
+	TArray<FName> CurrentBackpackSlotEquipmentInstanceIds;
+	TArray<int32> CurrentBackpackSlotQuantities;
 	TArray<FString> CurrentBackpackSlotIconPaths;
 	TArray<FName> CurrentMerchantStockSlotItemIds;
 	TArray<FName> CurrentEquipmentSlotItemIds;
+	TArray<FName> HeroCardBackpackIds;
+	TArray<FName> UnlockedHeroCardIds;
+	TArray<FName> PendingHeroDeckIds;
+	FGameXXKCharacterBackpackModel CharacterBackpackModel;
 };

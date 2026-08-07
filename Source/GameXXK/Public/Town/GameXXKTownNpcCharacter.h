@@ -26,6 +26,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town")
 	void SetNpcRole(EGameXXKTownNpcRole NewRole);
 
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town")
+	void SetNpcId(FName NewNpcId);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
+	FName GetNpcId() const;
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	EGameXXKTownNpcRole GetNpcRole() const;
 
@@ -34,6 +40,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	bool CanTrade() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
+	bool HasPrimaryInteractionAction() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
+	bool CanJoinParty() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town")
 	void ActivateFollower(AActor* Target, float Distance = 96.0f);
@@ -83,6 +95,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameXXK|Town")
 	EGameXXKTownNpcRole NpcRole = EGameXXKTownNpcRole::Generic;
 
+	/** Stable catalog identity. Tusi Chief and Song Jinbao force their fixed story/shop roles. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameXXK|Town")
+	FName NpcId = NAME_None;
+
 	UPROPERTY(BlueprintReadOnly, Category = "GameXXK|Town")
 	bool bFollowerActive = false;
 
@@ -96,6 +112,7 @@ protected:
 	float FollowSpeed = 240.0f;
 
 private:
+	void ConfigureStaticIdleVisual();
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem(APawn* InstigatorPawn) const;
 	void RecordQuestNpcMovedLocation(UGameXXKMVPSubsystem* Subsystem, const FVector& Location);
 	float GetGroundedRootZ() const;

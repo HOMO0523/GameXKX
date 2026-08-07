@@ -106,61 +106,34 @@ private:
 	void HandleInventoryClicked();
 
 	UFUNCTION()
-	void HandleCharacterClicked();
-
-	UFUNCTION()
 	void HandleMapClicked();
 
 	UFUNCTION()
 	void HandleCompanionClicked();
 
 	UFUNCTION()
-	void HandleCompanionRosterClicked();
+	void HandleCodexDiscClicked();
 
 	UFUNCTION()
 	void HandleCodexCloseClicked();
-
-	UFUNCTION()
-	void HandleResourcePlusClicked();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> LevelText;
+	TObjectPtr<UTextBlock> HeroNameText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> ExperienceText;
+	TObjectPtr<UTextBlock> HeroLevelText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UProgressBar> HealthBar;
+	TObjectPtr<UTextBlock> HeroTitleText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UProgressBar> ExperienceBar;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> PowerText;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> GoldText;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> EnhancementMaterialText;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> MaterialText;
+	TObjectPtr<UTextBlock> IngotValueText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> NoticeText;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UBorder> CharacterPanel;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> CharacterStatsText;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UImage> CharacterHeroDetailPortrait;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> CodexOverlay;
@@ -208,16 +181,10 @@ private:
 	TObjectPtr<UTextBlock> CompanionUnreadBadge;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UImage> CharacterLabel;
-
-	UPROPERTY(Transient)
 	TObjectPtr<UButton> TaskButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> InventoryButton;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UButton> CharacterButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> MapButton;
@@ -226,16 +193,7 @@ private:
 	TObjectPtr<UButton> CompanionButton;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UButton> CompanionRosterButton;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UButton> CoinResourcePlusButton;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UButton> EnhancementMaterialPlusButton;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UButton> InventoryStackPlusButton;
+	TObjectPtr<UButton> CodexDiscButton;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UGameXXKCompanionCodexFilterButton>> CodexFilterButtons;

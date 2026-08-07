@@ -108,6 +108,36 @@ void UGameXXKQuestDialogWidget::OpenDialog()
 	SetVisibility(ESlateVisibility::Visible);
 }
 
+void UGameXXKQuestDialogWidget::ConfigureTownNpcInteraction(
+	const FName NpcId,
+	const FText& DisplayName,
+	const FText& PrimaryActionLabel)
+{
+	BuildProgrammaticLayout();
+	bTownNpcInteractionMode = true;
+	TownNpcId = NpcId;
+	if (SpeakerTextBlock)
+	{
+		SpeakerTextBlock->SetText(DisplayName);
+	}
+	if (DialogTextBlock)
+	{
+		DialogTextBlock->SetText(NSLOCTEXT("GameXXKTownNpcDialog", "ChooseAction", "请选择要进行的互动。"));
+	}
+	if (RecruitActionTextBlock)
+	{
+		RecruitActionTextBlock->SetText(NSLOCTEXT("GameXXKTownNpcDialog", "JoinParty", "入队"));
+	}
+	if (PrimaryActionTextBlock)
+	{
+		PrimaryActionTextBlock->SetText(PrimaryActionLabel);
+	}
+	if (AcceptButton)
+	{
+		AcceptButton->SetVisibility(PrimaryActionLabel.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	}
+}
+
 bool UGameXXKQuestDialogWidget::CloseDialog()
 {
 	if (GetVisibility() == ESlateVisibility::Collapsed)
@@ -116,6 +146,8 @@ bool UGameXXKQuestDialogWidget::CloseDialog()
 	}
 
 	SetVisibility(ESlateVisibility::Collapsed);
+	bTownNpcInteractionMode = false;
+	TownNpcId = NAME_None;
 	return true;
 }
 
@@ -137,6 +169,16 @@ FString UGameXXKQuestDialogWidget::GetAcceptButtonResourcePathForTest() const
 FString UGameXXKQuestDialogWidget::GetLeaveButtonResourcePathForTest() const
 {
 	return QuestDialogLeaveTexturePath;
+}
+
+FText UGameXXKQuestDialogWidget::GetPrimaryActionLabelForTest() const
+{
+	return PrimaryActionTextBlock ? PrimaryActionTextBlock->GetText() : FText::GetEmpty();
+}
+
+FText UGameXXKQuestDialogWidget::GetRecruitActionLabelForTest() const
+{
+	return RecruitActionTextBlock ? RecruitActionTextBlock->GetText() : FText::GetEmpty();
 }
 
 bool UGameXXKQuestDialogWidget::AcceptQuest()
@@ -209,8 +251,8 @@ void UGameXXKQuestDialogWidget::BuildProgrammaticLayout()
 	LeaveButton->SetStyle(MakeInkButtonStyle(QuestDialogLeaveTexturePath, FLinearColor(0.45f, 0.38f, 0.27f, 1.0f)));
 	LeaveButton->SetBackgroundColor(FLinearColor::White);
 	LeaveButton->OnClicked.AddDynamic(this, &UGameXXKQuestDialogWidget::HandleLeaveClicked);
-	UTextBlock* LeaveText = MakeDialogText(WidgetTree, NSLOCTEXT("GameXXKQuestDialog", "Leave", "暂且离开"), 18, FLinearColor::White, ETextJustify::Center);
-	LeaveButton->AddChild(LeaveText);
+	RecruitActionTextBlock = MakeDialogText(WidgetTree, NSLOCTEXT("GameXXKQuestDialog", "Leave", "暂且离开"), 18, FLinearColor::White, ETextJustify::Center);
+	LeaveButton->AddChild(RecruitActionTextBlock);
 	if (UHorizontalBoxSlot* LeaveSlot = ButtonBox->AddChildToHorizontalBox(LeaveButton))
 	{
 		LeaveSlot->SetPadding(FMargin(0.0f, 0.0f, 14.0f, 0.0f));
@@ -221,8 +263,8 @@ void UGameXXKQuestDialogWidget::BuildProgrammaticLayout()
 	AcceptButton->SetStyle(MakeInkButtonStyle(QuestDialogAcceptTexturePath, FLinearColor(0.10f, 0.34f, 0.28f, 1.0f)));
 	AcceptButton->SetBackgroundColor(FLinearColor::White);
 	AcceptButton->OnClicked.AddDynamic(this, &UGameXXKQuestDialogWidget::HandleAcceptClicked);
-	UTextBlock* AcceptText = MakeDialogText(WidgetTree, NSLOCTEXT("GameXXKQuestDialog", "Accept", "接取委托"), 18, FLinearColor::White, ETextJustify::Center);
-	AcceptButton->AddChild(AcceptText);
+	PrimaryActionTextBlock = MakeDialogText(WidgetTree, NSLOCTEXT("GameXXKQuestDialog", "Accept", "接取委托"), 18, FLinearColor::White, ETextJustify::Center);
+	AcceptButton->AddChild(PrimaryActionTextBlock);
 	ButtonBox->AddChildToHorizontalBox(AcceptButton);
 
 	SetVisibility(ESlateVisibility::Collapsed);
@@ -232,6 +274,11 @@ void UGameXXKQuestDialogWidget::HandleAcceptClicked()
 {
 	if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
 	{
+		if (bTownNpcInteractionMode)
+		{
+			PlayerController->ExecutePendingTownNpcPrimaryAction();
+			return;
+		}
 		PlayerController->AcceptQuestDialog();
 		return;
 	}
@@ -246,6 +293,11 @@ void UGameXXKQuestDialogWidget::HandleLeaveClicked()
 {
 	if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
 	{
+		if (bTownNpcInteractionMode)
+		{
+			PlayerController->RecruitPendingTownNpc();
+			return;
+		}
 		PlayerController->CloseQuestDialog();
 		return;
 	}

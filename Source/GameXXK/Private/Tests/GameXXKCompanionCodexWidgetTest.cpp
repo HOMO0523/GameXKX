@@ -53,7 +53,8 @@ bool FGameXXKCompanionCodexWidgetTest::RunTest(const FString& Parameters)
 		CompanionButton->OnClicked.Broadcast();
 	}
 
-	TestTrue(TEXT("companion navigation opens the local codex overlay"), TownHud->IsCompanionCodexOpenForTest());
+	TestFalse(TEXT("page-02 companion navigation keeps the codex overlay closed"), TownHud->IsCompanionCodexOpenForTest());
+	TestTrue(TEXT("test helper opens the local codex overlay"), TownHud->OpenCompanionCodexForTest());
 	TownHud->RefreshFromState();
 	TestTrue(TEXT("refreshing while the runtime state remains in Town preserves the open codex overlay"), TownHud->IsCompanionCodexOpenForTest());
 	TestNotNull(TEXT("codex uses a real named scroll box"), TownHud->WidgetTree ? Cast<UScrollBox>(TownHud->WidgetTree->FindWidget(TEXT("TownHudCodexScroll"))) : nullptr);
@@ -137,26 +138,15 @@ bool FGameXXKCompanionCodexWidgetTest::RunTest(const FString& Parameters)
 	{
 		CompanionButton->OnClicked.Broadcast();
 	}
-	TestTrue(TEXT("companion navigation reopens the codex"), TownHud->IsCompanionCodexOpenForTest());
-	if (CompanionButton)
-	{
-		CompanionButton->OnClicked.Broadcast();
-	}
-	TestFalse(TEXT("companion navigation toggles the codex closed"), TownHud->IsCompanionCodexOpenForTest());
+	TestFalse(TEXT("companion navigation does not reopen the codex on the page-02 shell"), TownHud->IsCompanionCodexOpenForTest());
 	TestTrue(TEXT("test helper reopens the codex"), TownHud->OpenCompanionCodexForTest());
-	UButton* CharacterButton = TownHud->WidgetTree ? Cast<UButton>(TownHud->WidgetTree->FindWidget(TEXT("TownHudCharacter"))) : nullptr;
-	TestNotNull(TEXT("town HUD exposes the character navigation button"), CharacterButton);
-	if (CharacterButton)
+	UButton* CodexDiscButton = TownHud->WidgetTree ? Cast<UButton>(TownHud->WidgetTree->FindWidget(TEXT("TownHudCodex"))) : nullptr;
+	TestNotNull(TEXT("town HUD exposes the codex navigation disc"), CodexDiscButton);
+	if (CodexDiscButton)
 	{
-		CharacterButton->OnClicked.Broadcast();
+		CodexDiscButton->OnClicked.Broadcast();
 	}
-	TestFalse(TEXT("opening Character closes the codex"), TownHud->IsCompanionCodexOpenForTest());
-	UBorder* CharacterPanel = TownHud->WidgetTree ? Cast<UBorder>(TownHud->WidgetTree->FindWidget(TEXT("TownHudCharacterPanel"))) : nullptr;
-	TestTrue(TEXT("character detail uses the separated PSD character background"),
-		GetBorderResourcePath(CharacterPanel).Contains(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backgrounds/T_TownPsd_Background_Character")));
-	TestEqual(TEXT("character detail uses the local PSD hero portrait path"),
-		TownHud->GetHeroDetailPortraitResourcePathForTest(),
-		FString(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Character/T_TownPsd_CharacterHeroDetail.T_TownPsd_CharacterHeroDetail")));
+	TestFalse(TEXT("the codex disc shows the unavailable notice and keeps the overlay closed"), TownHud->IsCompanionCodexOpenForTest());
 	TestTrue(TEXT("test helper reopens the codex before task navigation"), TownHud->OpenCompanionCodexForTest());
 	UButton* TaskButton = TownHud->WidgetTree ? Cast<UButton>(TownHud->WidgetTree->FindWidget(TEXT("TownHudTask"))) : nullptr;
 	TestNotNull(TEXT("town HUD exposes the task navigation button"), TaskButton);

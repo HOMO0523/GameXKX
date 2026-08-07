@@ -57,6 +57,9 @@ public:
 	void ExitBattleOverlay();
 	bool IsBattleOverlayActive() const;
 
+	/** Single canonical battle-board instance shared by the flow and route bridge. */
+	UGameXXKBattleBoardWidget* GetOrCreateBattleBoardWidget();
+
 	virtual FGameXXKBattleOverlaySnapshot CaptureBattleOverlaySnapshot(
 		const UGameXXKOneGameRouteMapWidget& RouteWidget) const override;
 	virtual bool ApplyBattleOverlayEntry(
@@ -155,6 +158,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool OpenQuestDialogForNpc(AActor* QuestNpc, APawn* InstigatorPawn);
+
+	/** Opens the contextual town NPC menu. Every named NPC offers Join; Tusi/Song also offer Story/Shop. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool OpenTownNpcInteractionForNpc(AActor* TownNpc, APawn* InstigatorPawn);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool ExecutePendingTownNpcPrimaryAction();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool RecruitPendingTownNpc();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool OpenTaskOfferPanelForNpc(AActor* QuestNpc, APawn* InstigatorPawn);

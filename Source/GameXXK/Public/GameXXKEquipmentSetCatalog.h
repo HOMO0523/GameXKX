@@ -97,4 +97,7 @@ class GAMEXXK_API FGameXXKEquipmentSetCatalog final
 public:
 	static const TArray<FGameXXKEquipmentSetBonusDefinition>& GetDefinitions();
 	static const FGameXXKEquipmentSetBonusDefinition* FindDefinition(FName BonusId);
+
+	/** Approved Chinese display name for a gear set (破军/玄甲/青囊/追风/蚀骨/山河). */
+	static FText GetSetDisplayName(EGameXXKEquipmentSet Set);
 };

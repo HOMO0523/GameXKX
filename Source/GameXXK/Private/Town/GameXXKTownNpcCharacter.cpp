@@ -2,6 +2,7 @@
 
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
+#include "GameXXKCompanionCatalog.h"
 #include "GameXXKMVPRules.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -9,6 +10,22 @@
 #include "Interaction/GameXXKInteractionComponent.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "PaperFlipbook.h"
+#include "PaperFlipbookComponent.h"
+
+namespace
+{
+	FString TownNpcAssetStem(const FName NpcId)
+	{
+		if (NpcId == TEXT("Npc.TusiChief")) return TEXT("TusiChief");
+		if (NpcId == TEXT("Npc.SongJinBao")) return TEXT("SongJinBao");
+		if (NpcId == TEXT("Npc.YueBai")) return TEXT("YueBai");
+		if (NpcId == TEXT("Npc.ZhouGuangZu")) return TEXT("ZhouGuangZu");
+		if (NpcId == TEXT("Npc.JinGui")) return TEXT("JinGui");
+		if (NpcId == TEXT("Npc.QiongMeiEr")) return TEXT("QiongMeiEr");
+		return FString();
+	}
+}
 
 AGameXXKTownNpcCharacter::AGameXXKTownNpcCharacter()
 {
@@ -31,6 +48,7 @@ AGameXXKTownNpcCharacter::AGameXXKTownNpcCharacter()
 void AGameXXKTownNpcCharacter::BeginPlay()
 {
 	ConfigureGroundedPlaneConstraint();
+	ConfigureStaticIdleVisual();
 	Super::BeginPlay();
 	RaiseRootToGroundedHeightIfNeeded();
 }
@@ -46,47 +64,7 @@ void AGameXXKTownNpcCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	RaiseRootToGroundedHeightIfNeeded();
-
-	AActor* Target = FollowTarget.Get();
-	if (!bFollowerActive || !Target)
-	{
-		UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
-		return;
-	}
-
-	const FVector CurrentLocation = GetActorLocation();
-	const FVector TargetLocation = Target->GetActorLocation();
-	FVector ToTarget = TargetLocation - CurrentLocation;
-	ToTarget.Z = 0.0f;
-	const float DistanceToTarget = ToTarget.Size();
-	if (DistanceToTarget <= FollowDistance || DistanceToTarget <= KINDA_SMALL_NUMBER)
-	{
-		UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
-		return;
-	}
-
-	FVector DesiredLocation = TargetLocation - ToTarget.GetSafeNormal() * FollowDistance;
-	DesiredLocation.Z = CurrentLocation.Z;
-	const FVector NewLocation = FMath::VInterpConstantTo(CurrentLocation, DesiredLocation, DeltaSeconds, FollowSpeed);
-	FVector MovementDelta = NewLocation - CurrentLocation;
-	MovementDelta.Z = 0.0f;
-	if (!NewLocation.Equals(CurrentLocation))
-	{
-		SetActorLocation(NewLocation);
-		if (CanOfferQuest())
-		{
-			RecordQuestNpcMovedLocation(ResolveMVPSubsystem(Cast<APawn>(Target)), NewLocation);
-		}
-	}
-	if (!MovementDelta.IsNearlyZero())
-	{
-		const FVector MoveDirection = MovementDelta.GetSafeNormal();
-		UpdateTownVisualFromMovementIntent(FVector::DotProduct(MoveDirection, FVector::RightVector), FVector::DotProduct(MoveDirection, FVector::ForwardVector));
-	}
-	else
-	{
-		UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
-	}
+	UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
 }
 
 void AGameXXKTownNpcCharacter::NotifyActorBeginOverlap(AActor* OtherActor)
@@ -115,7 +93,58 @@ void AGameXXKTownNpcCharacter::NotifyActorEndOverlap(AActor* OtherActor)
 
 void AGameXXKTownNpcCharacter::SetNpcRole(EGameXXKTownNpcRole NewRole)
 {
+	if (NpcId == TEXT("Npc.TusiChief"))
+	{
+		NpcRole = EGameXXKTownNpcRole::Quest;
+		return;
+	}
+	if (NpcId == TEXT("Npc.SongJinBao"))
+	{
+		NpcRole = EGameXXKTownNpcRole::Merchant;
+		return;
+	}
 	NpcRole = NewRole;
+}
+
+void AGameXXKTownNpcCharacter::SetNpcId(const FName NewNpcId)
+{
+	NpcId = NewNpcId;
+	NpcRole = NpcId == TEXT("Npc.TusiChief")
+		? EGameXXKTownNpcRole::Quest
+		: NpcId == TEXT("Npc.SongJinBao")
+			? EGameXXKTownNpcRole::Merchant
+			: EGameXXKTownNpcRole::Generic;
+	ConfigureStaticIdleVisual();
+}
+
+void AGameXXKTownNpcCharacter::ConfigureStaticIdleVisual()
+{
+	const FString AssetStem = TownNpcAssetStem(NpcId);
+	if (AssetStem.IsEmpty())
+	{
+		return;
+	}
+
+	const FString AssetPath = FString::Printf(
+		TEXT("/Game/GameXXK/Characters/PartyDeckNPC/%s/Flipbooks/FB_PartyDeckNPC_%s_Idle_South.FB_PartyDeckNPC_%s_Idle_South"),
+		*AssetStem,
+		*AssetStem,
+		*AssetStem);
+	DefaultTownFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(AssetPath));
+	TownDirectionFlipbookAssets.Reset();
+	TownIdleDirectionFlipbookAssets.Reset();
+	TownIdleDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::South, DefaultTownFlipbookAsset);
+	CurrentTownFacingDirection = EGameXXKTownFacingDirection::South;
+
+	if (Visual)
+	{
+		Visual->SetFlipbook(DefaultTownFlipbookAsset.LoadSynchronous());
+	}
+}
+
+FName AGameXXKTownNpcCharacter::GetNpcId() const
+{
+	return NpcId;
 }
 
 EGameXXKTownNpcRole AGameXXKTownNpcCharacter::GetNpcRole() const
@@ -133,11 +162,21 @@ bool AGameXXKTownNpcCharacter::CanTrade() const
 	return NpcRole == EGameXXKTownNpcRole::Merchant;
 }
 
+bool AGameXXKTownNpcCharacter::HasPrimaryInteractionAction() const
+{
+	return CanOfferQuest() || CanTrade();
+}
+
+bool AGameXXKTownNpcCharacter::CanJoinParty() const
+{
+	return FGameXXKCompanionCatalog::FindQuestNpcDefinition(NpcId) != nullptr;
+}
+
 void AGameXXKTownNpcCharacter::ActivateFollower(AActor* Target, float Distance)
 {
-	FollowTarget = Target;
-	FollowDistance = FMath::Max(0.0f, Distance);
-	bFollowerActive = Target != nullptr;
+	(void)Target;
+	(void)Distance;
+	DismissFollower();
 }
 
 void AGameXXKTownNpcCharacter::DismissFollower()
@@ -149,12 +188,12 @@ void AGameXXKTownNpcCharacter::DismissFollower()
 
 bool AGameXXKTownNpcCharacter::IsFollowerActive() const
 {
-	return bFollowerActive;
+	return false;
 }
 
 AActor* AGameXXKTownNpcCharacter::GetFollowTarget() const
 {
-	return FollowTarget.Get();
+	return nullptr;
 }
 
 float AGameXXKTownNpcCharacter::GetFollowDistance() const
@@ -192,17 +231,14 @@ FText AGameXXKTownNpcCharacter::GetInteractionPrompt_Implementation() const
 
 void AGameXXKTownNpcCharacter::Interact_Implementation(APawn* InstigatorPawn)
 {
-	if (CanOfferQuest())
+	if (AGameXXKMVPPlayerController* PlayerController = InstigatorPawn ? Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()) : nullptr)
 	{
-		if (AGameXXKMVPPlayerController* PlayerController = InstigatorPawn ? Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()) : nullptr)
-		{
-			bLastInteractionSuccessful = PlayerController->OpenTaskOfferPanelForNpc(this, InstigatorPawn);
-			return;
-		}
-		ConfirmQuestDialogInteraction(InstigatorPawn);
+		bLastInteractionSuccessful = PlayerController->OpenTownNpcInteractionForNpc(this, InstigatorPawn);
 		return;
 	}
 
+	// Headless compatibility path. A real player controller always opens the
+	// contextual choice menu first.
 	bLastInteractionSuccessful = ApplyDefaultInteraction(InstigatorPawn);
 	if (CanTrade())
 	{
@@ -251,16 +287,13 @@ bool AGameXXKTownNpcCharacter::ApplyDefaultInteraction(APawn* InstigatorPawn)
 	if (CanOfferQuest())
 	{
 		const bool bAccepted = Subsystem->AcceptQuest();
-		if (bAccepted && InstigatorPawn)
-		{
-			ActivateFollower(InstigatorPawn, FollowDistance);
-		}
-		if (bAccepted)
-		{
-			Subsystem->RecordQuestNpcLocation(GetActorLocation());
-		}
 		bLastInteractionSuccessful = bAccepted;
 		return bAccepted;
+	}
+	if (!HasPrimaryInteractionAction() && CanJoinParty())
+	{
+		bLastInteractionSuccessful = Subsystem->SelectTownQuestNpcForParty(NpcId);
+		return bLastInteractionSuccessful;
 	}
 	if (CanTrade())
 	{

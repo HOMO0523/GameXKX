@@ -26,6 +26,15 @@ namespace GameXXKCardRules
 		int32 RequiredDiscardCount,
 		FString* OutError = nullptr);
 
+	/**
+	 * Removes every card owned by a defeated party unit from the draw pile,
+	 * discard pile, and hand, then rebuilds the instance ledger so a dead
+	 * character's cards can never be drawn after their death.
+	 */
+	GAMEXXK_API void RemoveDefeatedPartyOwnerCards(
+		FGameXXKBattleDeckState& InOutDeck,
+		const TArray<FGameXXKCardCombatUnit>& Units);
+
 	/** Moves exactly one existing hand instance to the end of the discard pile. */
 	GAMEXXK_API bool MoveHandCardToDiscard(
 		FGameXXKBattleDeckState& InOutDeck,

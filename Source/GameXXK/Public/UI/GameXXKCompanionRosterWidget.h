@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/Button.h"
 #include "GameXXKCompanionTypes.h"
+#include "UI/GameXXKCharacterBackpackModel.h"
 #include "UI/GameXXKMVPWidgetBase.h"
 #include "GameXXKCompanionRosterWidget.generated.h"
 
@@ -47,6 +48,41 @@ struct GAMEXXK_API FGameXXKCompanionRosterProfileView
 
 class UGameXXKCompanionRosterWidget;
 
+/** Page 03-style text filter above the partner warehouse window. */
+UCLASS()
+class GAMEXXK_API UGameXXKCompanionFilterButton : public UButton
+{
+	GENERATED_BODY()
+
+public:
+	void Configure(UGameXXKCompanionRosterWidget* InOwner, int32 InFilterIndex);
+
+	UFUNCTION()
+	void HandleClicked();
+
+private:
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKCompanionRosterWidget> Owner;
+
+	int32 FilterIndex = INDEX_NONE;
+};
+
+UENUM(BlueprintType)
+enum class EGameXXKCompanionBackpackTab : uint8
+{
+	Attributes,
+	Equipment,
+	Cards,
+	Talents,
+	Titles
+};
+
+enum class EGameXXKCompanionEquipmentSlotSource : uint8
+{
+	Warehouse,
+	Equipped
+};
+
 UCLASS()
 class GAMEXXK_API UGameXXKCompanionRosterSlotButton : public UButton
 {
@@ -88,6 +124,35 @@ private:
 
 	FName CardId = NAME_None;
 	bool bHeroDeckCard = false;
+};
+
+UCLASS()
+class GAMEXXK_API UGameXXKCompanionEquipmentSlotButton : public UButton
+{
+	GENERATED_BODY()
+
+public:
+	void Configure(
+		UGameXXKCompanionRosterWidget* InOwner,
+		EGameXXKCompanionEquipmentSlotSource InSource,
+		int32 InWarehouseIndex,
+		EGameXXKEquipmentSlot InEquipmentSlot = EGameXXKEquipmentSlot::Invalid);
+
+	UFUNCTION()
+	void HandleClicked();
+
+	bool HandleRightMouseButtonDown();
+
+protected:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+
+private:
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKCompanionRosterWidget> Owner;
+
+	EGameXXKCompanionEquipmentSlotSource Source = EGameXXKCompanionEquipmentSlotSource::Warehouse;
+	int32 WarehouseIndex = INDEX_NONE;
+	EGameXXKEquipmentSlot EquipmentSlot = EGameXXKEquipmentSlot::Invalid;
 };
 
 /**
@@ -177,6 +242,10 @@ public:
 	void HandleConfiguredHeroCardClicked(FName CardId);
 	/** Card-button hover forwarding; it changes only tooltip presentation, never deck staging. */
 	void HandleConfiguredCardHoverChanged(FName CardId, bool bInHeroDeck, bool bHovered);
+	void HandleConfiguredEquipmentSlotClicked(EGameXXKCompanionEquipmentSlotSource Source, int32 WarehouseIndex, EGameXXKEquipmentSlot EquipmentSlot);
+	bool HandleConfiguredEquipmentSlotRightClicked(EGameXXKCompanionEquipmentSlotSource Source, int32 WarehouseIndex, EGameXXKEquipmentSlot EquipmentSlot);
+	/** Page 03 filter-row selection; called by UGameXXKCompanionFilterButton. */
+	void HandleBackpackFilterClicked(int32 FilterIndex);
 
 	// Focused automation read seams: these describe public presentation contracts without exposing mutable widget state.
 	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
@@ -184,6 +253,39 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
 	int32 GetRosterColumnCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
+	int32 GetRosterPageSizeForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
+	int32 GetRosterPageCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
+	int32 GetCurrentRosterPageForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
+	int32 GetVisibleRosterButtonCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
+	TArray<FName> GetVisibleRosterSlotInstanceIdsForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|CompanionRoster|Test")
+	bool GoToNextRosterPageForTest();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|CompanionRoster|Test")
+	bool GoToPreviousRosterPageForTest();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
+	FString GetRosterPageLeftResourcePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
+	FString GetRosterPageRightResourcePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
+	FString GetRosterPortraitResourcePathForTest(int32 VisibleSlotIndex) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
+	bool HasSeparateSetActiveButtonForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
 	FString GetWindowFrameResourcePathForTest() const;
@@ -223,6 +325,21 @@ public:
 	FString GetCardTooltipTextForTest() const;
 	bool IsCardTooltipVisibleForTest() const;
 	bool IsCardTooltipHitTestInvisibleForTest() const;
+	FText GetTitleTextForTest() const;
+	int32 GetEquipmentSlotCountForTest() const;
+	int32 GetEquipmentBackpackViewportSlotCountForTest() const;
+	int32 GetEquipmentBackpackStorageCapacityForTest() const;
+	bool HasEquipmentBackpackScrollBoxForTest() const;
+	bool IsEquipmentBackpackTabOpenForTest() const;
+	bool IsCardBackpackTabOpenForTest() const;
+	bool OpenEquipmentBackpackTabForTest();
+	bool OpenCardBackpackTabForTest();
+	TArray<FName> GetVisibleEquipmentInstanceIdsForTest() const;
+	bool QuickEquipSelectedCompanionInstanceForTest(FName InstanceId);
+	bool QuickUnequipSelectedCompanionSlotForTest(EGameXXKEquipmentSlot EquipmentSlot);
+	FName GetSelectedCompanionEquippedInstanceForTest(EGameXXKEquipmentSlot EquipmentSlot) const;
+	FString GetLockedCardIconResourcePathForTest() const;
+	FString GetCloseButtonResourcePathForTest() const;
 
 private:
 	void BuildProgrammaticLayout();
@@ -230,14 +347,43 @@ private:
 	void RefreshSelectedCompanionData();
 	void RefreshHeroCardData();
 	void RefreshRosterSlots();
+	void RefreshVisibleRosterPage();
 	void RefreshProfilePanel();
 	void RefreshRecruitmentPanel();
 	void RefreshPersonalCards();
 	void RefreshDeckSummaries();
 	void RefreshDeckEditorControls();
 	void RefreshCardTooltip();
+	void RefreshEquipmentBackpack();
+	void RefreshBackpackTabVisibility();
+	void RefreshCenterCompanionPresentation();
+	void UpdateEquipmentScrollbarThumb();
+	void UpdatePersonalCardScrollbarThumb();
 	void ClearCardTooltipHoverState();
 	bool IsCurrentSelectedCompanion(const FName InstanceId) const;
+	bool ChangeRosterPage(int32 Direction);
+	void SetActiveBackpackTab(EGameXXKCompanionBackpackTab Tab);
+
+	UFUNCTION()
+	void HandleRosterPageLeftClicked();
+
+	UFUNCTION()
+	void HandleRosterPageRightClicked();
+
+	UFUNCTION()
+	void HandleAttributesTabClicked();
+
+	UFUNCTION()
+	void HandleTalentsTabClicked();
+
+	UFUNCTION()
+	void HandleTitlesTabClicked();
+
+	UFUNCTION()
+	void HandleEquipmentBackpackScrolled(float CurrentOffset);
+
+	UFUNCTION()
+	void HandlePersonalCardScrolled(float CurrentOffset);
 
 	UFUNCTION()
 	void HandleApplyLoadoutClicked();
@@ -266,6 +412,15 @@ private:
 	UFUNCTION()
 	void HandlePromoteStarClicked();
 
+	UFUNCTION()
+	void HandleEquipmentBackpackTabClicked();
+
+	UFUNCTION()
+	void HandleCardBackpackTabClicked();
+
+	UFUNCTION()
+	void HandleCloseClicked();
+
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
 
@@ -276,7 +431,67 @@ private:
 	TObjectPtr<UCanvasPanel> FrameCanvas;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TitleText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> AttributesTabButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> EquipmentBackpackTabButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> CardBackpackTabButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> TalentsTabButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> TitlesTabButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> CloseButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> EquipmentBackpackPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UScrollBox> EquipmentBackpackScrollBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUniformGridPanel> EquipmentBackpackGrid;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UGameXXKCompanionEquipmentSlotButton>> EquipmentWarehouseSlotButtons;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> EquipmentWarehouseSlotIcons;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UGameXXKCompanionEquipmentSlotButton>> CompanionEquipmentSlotButtons;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> CompanionEquipmentSlotIcons;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> CompanionEquipmentTooltipFrames;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> CompanionEquipmentTooltipNameBlocks;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> CompanionEquipmentTooltipDetailBlocks;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> PersonalDeckPanel;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UUniformGridPanel> RosterGrid;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> RosterPageLeftButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> RosterPageRightButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> RosterCountText;
@@ -294,10 +509,94 @@ private:
 	TObjectPtr<UButton> DiscardPendingButton;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> AttributesBodyPanel;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ProfileTitleText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ProfileDetailText;
+
+	/** Page 18 center: the selected companion's idle full body plus its random display name. */
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> CenterCompanionPortraitImage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> CenterCompanionNameText;
+
+	/** Page 03-style selection inks: one bracket above the warehouse column, one above the equipped slot. */
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> ScrollbarTrackImage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> InventoryScrollbarThumb;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> BackpackSelectionInk;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> EquipmentSelectionInk;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UGameXXKCompanionFilterButton>> BackpackFilterButtons;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> BackpackFilterTextBlocks;
+
+	/** Page 03 filter selection (0=全部, 1=装备, 2=道具, 3=材料, 4=任务). */
+	int32 ActiveBackpackFilter = 0;
+
+	int32 SelectedWarehouseSlotIndex = INDEX_NONE;
+	int32 SelectedEquippedSlotIndex = INDEX_NONE;
+
+	// Page 03-style warehouse presentation (mirrors the hero backpack content source).
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> BackpackTooltipFrames;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> BackpackTooltipNameTextBlocks;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> BackpackTooltipDetailTextBlocks;
+
+	/** Replaced-slot comparison rows (red gain / green loss) inside each warehouse tooltip. */
+	TArray<TArray<TObjectPtr<UTextBlock>>> BackpackCompareTextBlocks;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> BackpackSlotLabels;
+
+	TArray<FName> CurrentBackpackSlotItemIds;
+	TArray<FName> CurrentBackpackSlotEquipmentInstanceIds;
+	TArray<int32> CurrentBackpackSlotQuantities;
+	TArray<FString> CurrentBackpackSlotIconPaths;
+
+	// Hero-style personal deck cards (name band, costs, selection ink, lock).
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> PersonalCardSelectedInks;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> PersonalCardNameLabels;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> PersonalCardCostLabels;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> PersonalCardManaCostLabels;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> PersonalCardLockedIcons;
+
+	// Hero-style paper tooltips (name + full effect description) on every card.
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> PersonalCardTooltipFrames;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> PersonalCardTooltipNameBlocks;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> PersonalCardTooltipDetailBlocks;
+
+	TArray<FString> PersonalCardTooltipTexts;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> HeroDeckSummaryText;
@@ -370,14 +669,23 @@ private:
 	TArray<TObjectPtr<UTextBlock>> RosterSlotLabels;
 
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> RosterSlotPortraits;
+
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UBorder>> RosterSlotSelectionBorders;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UGameXXKCompanionRosterCardButton>> PersonalCardButtons;
 
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> PersonalCardPortraits;
+
 	TArray<FGameXXKPermanentCompanion> CachedRoster;
 	TArray<FName> VisibleRosterSlotInstanceIds;
+	TArray<FString> CurrentRosterPortraitResourcePaths;
 	int32 RosterCapacity = 12;
+	int32 CurrentRosterPage = 0;
+	bool bRosterPageInitialized = false;
 	FName SelectedCompanionId = NAME_None;
 	FGameXXKCompanionRosterProfileView SelectedCompanionProfile;
 	TArray<FName> VisiblePersonalCardIds;
@@ -387,6 +695,7 @@ private:
 	TArray<FName> UnlockedHeroCardIds;
 	TArray<FName> PendingHeroCardIds;
 	TArray<FName> HeroCardSummary;
+	TArray<FName> VisibleEquipmentWarehouseInstanceIds;
 	FGameXXKQuestNpcCardSelection TaskNpcCardSummary;
 	FName HoveredCardTooltipId = NAME_None;
 	bool bHoveredCardTooltipIsHeroDeck = false;
@@ -396,4 +705,6 @@ private:
 	bool bLoadoutReadOnly = true;
 	bool bRecruitmentActionsReadOnly = true;
 	bool bEditingHeroDeck = false;
+	EGameXXKCompanionBackpackTab ActiveBackpackTab = EGameXXKCompanionBackpackTab::Equipment;
+	FGameXXKCharacterBackpackModel CharacterBackpackModel;
 };

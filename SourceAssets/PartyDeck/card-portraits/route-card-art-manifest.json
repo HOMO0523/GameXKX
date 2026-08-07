@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "generation_mode": "built_in_imagegen_chroma_key",
+  "chroma_key": "#ff00ff",
+  "alpha_extraction": {
+    "tool": "imagegen/remove_chroma_key.py",
+    "arguments": [
+      "--auto-key",
+      "border",
+      "--soft-matte",
+      "--transparent-threshold",
+      "12",
+      "--opaque-threshold",
+      "220",
+      "--despill"
+    ]
+  },
+  "records": [
+    {
+      "key": "Route.General",
+      "acquisition_key": "Route.General",
+      "frame_key": "Style.Route.General",
+      "asset_name": "T_CardPortrait_Route_General",
+      "raw_chroma_source": "route-source/route_general_chroma_v1.png",
+      "raw_chroma_sha256": "036c2e7d313d1e4ef321dd70b73c0b975b5d65cb0106d31b0349069173786dbe",
+      "alpha_source": "route-alpha/route_general_alpha_v1.png",
+      "alpha_sha256": "f5b149e4685769dd1e15676ed22341f3d5f8e1d6c9671bb97ba3c2b7ed38f35b",
+      "source_size": [1024, 1536],
+      "alpha_source_size": [1024, 1536],
+      "constraints": ["no text", "no logo", "no character portrait", "no card frame"]
+    },
+    {
+      "key": "Route.Terrain",
+      "acquisition_key": "Route.Terrain",
+      "frame_key": "Style.Route.Terrain",
+      "asset_name": "T_CardPortrait_Route_Terrain",
+      "raw_chroma_source": "route-source/route_terrain_chroma_v1.png",
+      "raw_chroma_sha256": "ebe5b01406246ab9cf408d775bafe627da6acf11b971f78578c4d8a4e1f5ef11",
+      "alpha_source": "route-alpha/route_terrain_alpha_v1.png",
+      "alpha_sha256": "af5287ea0b7f1f1dfd9cd89687517c890f8cc7ed5bd0aea5f72095cc5e5af130",
+      "source_size": [1024, 1536],
+      "alpha_source_size": [1024, 1536],
+      "constraints": ["no text", "no logo", "no character portrait", "no card frame"]
+    },
+    {
+      "key": "Route.Rare",
+      "acquisition_key": "Route.Rare",
+      "frame_key": "Style.Route.Rare",
+      "asset_name": "T_CardPortrait_Route_Rare",
+      "raw_chroma_source": "route-source/route_rare_chroma_v1.png",
+      "raw_chroma_sha256": "e865c4b4461c8b65390c9e0b997bfd9f9841336e604d56b5090b3125a6efee54",
+      "alpha_source": "route-alpha/route_rare_alpha_v1.png",
+      "alpha_sha256": "629a778b35a9803baa25e7e06d877278b1bbe211a2d40fc18d8cc207ae2603fc",
+      "source_size": [1024, 1536],
+      "alpha_source_size": [1024, 1536],
+      "constraints": ["no text", "no logo", "no character portrait", "no card frame"]
+    },
+    {
+      "key": "Route.Boss",
+      "acquisition_key": "Route.Boss.*",
+      "frame_key": "Style.Route.Boss",
+      "asset_name": "T_CardPortrait_Route_Boss",
+      "raw_chroma_source": "route-source/route_boss_chroma_v1.png",
+      "raw_chroma_sha256": "787571e03d0ea2fc6fd5ad1c58d8f4714587387a4826a1dba1a4d73ac22c0022",
+      "alpha_source": "route-alpha/route_boss_alpha_v1.png",
+      "alpha_sha256": "4e9de62c549c4e2d63df0e5f5391f1ec5d2d78ad3a79e402b2d8de8abf2cdfd4",
+      "source_size": [1024, 1536],
+      "alpha_source_size": [1024, 1536],
+      "constraints": ["no text", "no logo", "no character portrait", "no card frame"]
+    }
+  ]
+}

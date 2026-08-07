@@ -28,7 +28,7 @@
 **Files:**
 - Create: `scripts/ui_psd_pipeline/run-town-hud-redesign.ps1`
 
-- [ ] **Step 1: Declare exact sources and destinations**
+- [x] **Step 1: Declare exact sources and destinations**
 
 Use these defaults and construct Chinese page/output names from character codes so the runner remains ASCII-only under Windows PowerShell 5.1:
 
@@ -50,7 +50,7 @@ $afterExport = Join-Path $reviewRoot ('After/' + $townHudName + '.png')
 $derivedStrip = 'SourceArt/UI/PSD/gamexxk-v4/ui-master/Generated/town-hud/components/currency_strip_320.png'
 ```
 
-- [ ] **Step 2: Add non-destructive preflight and backup checks**
+- [x] **Step 2: Add non-destructive preflight and backup checks**
 
 Resolve every source with `Resolve-Path`, reject missing inputs and pre-existing report/export destinations, attach to Photoshop through COM, and refuse to proceed when the target PSD is open and unsaved. If the backup does not exist, create its parent and copy the current PSD once; if it exists, require its SHA-256 to equal the current pre-mutation PSD hash.
 
@@ -64,7 +64,7 @@ $backupHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $backupPath).Hash.ToL
 if ($backupHash -ne $beforeHash) { throw 'Town-HUD backup does not match the current PSD' }
 ```
 
-- [ ] **Step 3: Derive the 320 x 86 strip from the existing kit paper**
+- [x] **Step 3: Derive the 320 x 86 strip from the existing kit paper**
 
 Use System.Drawing to copy 54 px left/right caps from `currency_panel.png` and stretch only the center section into a transparent 320 x 86 PNG. Validate the finished dimensions before launching Photoshop.
 
@@ -85,7 +85,7 @@ try {
 }
 ```
 
-- [ ] **Step 4: Generate/run JSX and validate the result**
+- [x] **Step 4: Generate/run JSX and validate the result**
 
 Invoke `build-town-hud-redesign-jsx.js` with the PSD, clean background, shell-component directory, derived strip, ingot icon, both review exports, and report path. After Photoshop completes, require: report status `PASS`, page `02_城镇HUD`, 18 top-level pages, unchanged non-target signature, unchanged shop peer signature, 320 px strip width, five navigation icons, no visible persistent prompt, and both exports at 1920 x 1080. Write the validation JSON with before/backup/after SHA-256 values and every verified boolean.
 
@@ -103,7 +103,7 @@ Expected: both commands exit successfully and the runner file contains no byte g
 **Files:**
 - Create: `scripts/ui_psd_pipeline/build-town-hud-redesign-jsx.js`
 
-- [ ] **Step 1: Parse arguments and lock the page contract**
+- [x] **Step 1: Parse arguments and lock the page contract**
 
 Require these flags: `--psd`, `--background`, `--shell-components`, `--currency-strip`, `--ingot`, `--output`, `--report`, `--before-export`, and `--after-export`. Require every input file plus the shell-component directory, require `identity_panel.png` and the five `nav_disc_*.png` files inside that directory, create destination parents, and reject an existing report or export.
 
@@ -117,7 +117,7 @@ const pageWidth = 1920;
 const pageHeight = 1080;
 ```
 
-- [ ] **Step 2: Add reusable JSX helpers**
+- [x] **Step 2: Add reusable JSX helpers**
 
 Carry forward the proven helpers from `build-main-menu-tiger-hero-jsx.js`: direct-group lookup, document lookup, layer bounds, raster import, editable text creation, UTF-8 report writing, page export by duplicate/crop, and recursive non-target signatures. Add helpers to find direct art layers by name and text layers by exact contents.
 
@@ -131,7 +131,7 @@ function findTextByContents(container, contents) {
 }
 ```
 
-- [ ] **Step 3: Export the before state and create hidden legacy groups**
+- [x] **Step 3: Export the before state and create hidden legacy groups**
 
 Before mutation, export the visible `02_城镇HUD` crop to the before path. Record the 18-page count plus non-target and `07_商店交易` signatures. Rename and hide the current direct groups as follows; refuse to overwrite an existing legacy destination:
 
@@ -141,7 +141,7 @@ Before mutation, export the visible `02_城镇HUD` crop to the before path. Reco
 70_RuntimeText -> 99_Legacy_70_RuntimeText_PreTownHUDV2
 ```
 
-- [ ] **Step 4: Build the clean scene and approved paper shell**
+- [x] **Step 4: Build the clean scene and approved paper shell**
 
 Create these direct groups under `02_城镇HUD`:
 
@@ -155,7 +155,7 @@ Create these direct groups under `02_城镇HUD`:
 
 Import the clean town background at page-local `[0,0,1920,1080]`. Import the approved identity paper at `[24,14,541,185]`, the five existing shell discs at their family-manifest boxes, and the derived currency strip at `[1570,28,320,86]`. Do not create a world-dim layer or central/context paper.
 
-- [ ] **Step 5: Reuse the calibrated shop identity/navigation content**
+- [x] **Step 5: Reuse the calibrated shop identity/navigation content**
 
 Find `07_商店交易/20_GlobalShell`, duplicate its direct layers into `21_HeroAndNavigation`, and translate them by the page-origin delta `(0,-1200)`. Keep only the approved hero portrait, the three identity text layers, and these five real kit icon layers:
 
@@ -170,11 +170,11 @@ nav_route
 
 Exclude the old `coin_20_GlobalShell_500` layer and the shop currency text layer whose exact contents are `500`. Preserve the approved hero identity positions and the navigation icon positions without additional translation.
 
-- [ ] **Step 6: Add the editable out-of-run currency pair**
+- [x] **Step 6: Add the editable out-of-run currency pair**
 
 Import `resource_gold.png` into `30_OutOfRunCurrency` as `01_IngotIcon` at `[1672,50,42,42]`. Add an editable `02_IngotValue` layer to `70_RuntimeText` with contents `500`, 27 pt Microsoft YaHei bold, ink color `#2B2822`, left anchor `[1728,82]`. Do not bake `元宝` into the paper.
 
-- [ ] **Step 7: Verify isolation, export, save, and report**
+- [x] **Step 7: Verify isolation, export, save, and report**
 
 Before saving, require:
 
@@ -199,7 +199,7 @@ Export the after state, save the PSD, and write a UTF-8 report containing status
 - Create: `outputs/UI_PSD/Candidates/GameXXK_UI_Master_V1.town-hud.validation.json`
 - Create: `outputs/UI_PSD/Candidates/Backups/GameXXK_UI_Master_V1.before-town-hud-v2.psd`
 
-- [ ] **Step 1: Run the guarded Photoshop pass**
+- [x] **Step 1: Run the guarded Photoshop pass**
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ui_psd_pipeline/run-town-hud-redesign.ps1
@@ -207,7 +207,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ui_psd_pipeline/run-
 
 Expected: `Town-HUD PSD update PASS`, distinct before/after PSD hashes, matching backup/before hashes, and valid report/validation paths.
 
-- [ ] **Step 2: Inspect the final 1920 x 1080 export at original resolution**
+- [x] **Step 2: Inspect the final 1920 x 1080 export at original resolution**
 
 Confirm visually:
 
@@ -219,7 +219,7 @@ Confirm visually:
 - the ingot icon and `500` read as one centered unit;
 - no copper-coin icon or currency label is visible.
 
-- [ ] **Step 3: Run final structural verification**
+- [x] **Step 3: Run final structural verification**
 
 ```powershell
 node --check scripts/ui_psd_pipeline/build-town-hud-redesign-jsx.js
@@ -228,7 +228,7 @@ git diff --check -- docs/superpowers/plans/2026-08-05-gamexxk-town-hud-redesign.
 
 Parse both JSON receipts with explicit UTF-8 and require every boolean to be true, the current PSD SHA-256 to equal `afterSha256`, both review PNGs to be 1920 x 1080, and the compact strip to be 320 x 86.
 
-- [ ] **Step 4: Stop at the page-review gate**
+- [x] **Step 4: Stop at the page-review gate**
 
 Show `SourceArt/UI/PSD/gamexxk-v4/ui-master/Review/TownHUD/After/02_城镇HUD.png` to the user. Do not modify `03_主角背包`, RuntimeAssets, or Unreal Engine until the user approves this page.
 

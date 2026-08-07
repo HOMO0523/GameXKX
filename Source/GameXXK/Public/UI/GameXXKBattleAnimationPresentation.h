@@ -84,6 +84,12 @@ public:
 		FName RuntimeUnitId,
 		bool bEnemy,
 		EGameXXKBattleAnimationAction Action);
+	/** Enemy close-ups prefer the catalog definition so opaque runtime IDs cannot fall back to legacy placeholder art. */
+	static FGameXXKBattleAnimationClipDescriptor ResolveClipForDefinition(
+		FName RuntimeUnitId,
+		FName EnemyDefinitionId,
+		bool bEnemy,
+		EGameXXKBattleAnimationAction Action);
 	static FGameXXKBattleAnimationClipDescriptor ResolveGenericClip(EGameXXKBattleAnimationAction Action);
 	static FSoftObjectPath ResolveIdleFlipbookPath(FName RuntimeUnitId, bool bEnemy);
 	/** Source-less damage stays target-only; the legacy fallback parameter is intentionally ignored here. */

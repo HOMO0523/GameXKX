@@ -38,8 +38,8 @@ bool FGameXXKCompanionRosterPlayerFlowTest::RunTest(const FString& Parameters)
 	UGameXXKTownHudWidget* TownHud = PlayerController->GetTownHudWidgetForTest();
 	TestNotNull(TEXT("the independent codex HUD remains available"), TownHud);
 	TestTrue(TEXT("the existing task-NPC codex can open before roster routing"), TownHud && TownHud->OpenCompanionCodexForTest());
-	UButton* RosterEntryButton = TownHud ? Cast<UButton>(TownHud->GetWidgetFromName(TEXT("TownHudCompanionRoster"))) : nullptr;
-	TestNotNull(TEXT("town HUD adds a distinct PSD-backed permanent-companion backpack entry"), RosterEntryButton);
+	UButton* RosterEntryButton = TownHud ? Cast<UButton>(TownHud->GetWidgetFromName(TEXT("TownHudCompanion"))) : nullptr;
+	TestNotNull(TEXT("town HUD companion disc opens the permanent-companion backpack entry"), RosterEntryButton);
 	if (RosterEntryButton)
 	{
 		RosterEntryButton->OnClicked.Broadcast();

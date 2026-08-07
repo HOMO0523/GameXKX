@@ -33,7 +33,7 @@ namespace
 		Product.EquipmentSet = EGameXXKEquipmentSet::Invalid;
 		Product.Price = FGameXXKMetaShopRules::CompanionPackPrice;
 		Product.DisplayName = NSLOCTEXT("GameXXKMetaShop", "CompanionPackName", "伙伴包");
-		Product.Description = NSLOCTEXT("GameXXKMetaShop", "CompanionPackDescription", "获得一名永久伙伴；满员时进入替换流程");
+		Product.Description = NSLOCTEXT("GameXXKMetaShop", "CompanionPackDescription", "获得一名永久伙伴；名册满员（12 人）时不可购买");
 		Product.IconSoftPath = FSoftObjectPath(TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_CompanionPack.T_MetaShop_CompanionPack"));
 		return Product;
 	}
@@ -41,12 +41,12 @@ namespace
 	TArray<FGameXXKMetaShopProductDefinition> BuildProducts()
 	{
 		return {
-			MakeEquipmentPack(EGameXXKMetaShopProductId::PoJunPack, EGameXXKEquipmentSet::PoJun, NSLOCTEXT("GameXXKMetaShop", "PoJunPackName", "破军装备包"), TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_PoJunPack.T_MetaShop_PoJunPack")),
-			MakeEquipmentPack(EGameXXKMetaShopProductId::XuanJiaPack, EGameXXKEquipmentSet::XuanJia, NSLOCTEXT("GameXXKMetaShop", "XuanJiaPackName", "玄甲装备包"), TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_XuanJiaPack.T_MetaShop_XuanJiaPack")),
-			MakeEquipmentPack(EGameXXKMetaShopProductId::QingNangPack, EGameXXKEquipmentSet::QingNang, NSLOCTEXT("GameXXKMetaShop", "QingNangPackName", "青囊装备包"), TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_QingNangPack.T_MetaShop_QingNangPack")),
-			MakeEquipmentPack(EGameXXKMetaShopProductId::ZhuiFengPack, EGameXXKEquipmentSet::ZhuiFeng, NSLOCTEXT("GameXXKMetaShop", "ZhuiFengPackName", "追风装备包"), TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_ZhuiFengPack.T_MetaShop_ZhuiFengPack")),
-			MakeEquipmentPack(EGameXXKMetaShopProductId::ShiGuPack, EGameXXKEquipmentSet::ShiGu, NSLOCTEXT("GameXXKMetaShop", "ShiGuPackName", "蚀骨装备包"), TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_ShiGuPack.T_MetaShop_ShiGuPack")),
-			MakeEquipmentPack(EGameXXKMetaShopProductId::ShanHePack, EGameXXKEquipmentSet::ShanHe, NSLOCTEXT("GameXXKMetaShop", "ShanHePackName", "山河装备包"), TEXT("/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_ShanHePack.T_MetaShop_ShanHePack")),
+			MakeEquipmentPack(EGameXXKMetaShopProductId::PoJunPack, EGameXXKEquipmentSet::PoJun, NSLOCTEXT("GameXXKMetaShop", "PoJunPackName", "破军装备包"), TEXT("/Game/GameXXK/UI/Equipment/pojun_weapon.pojun_weapon")),
+			MakeEquipmentPack(EGameXXKMetaShopProductId::XuanJiaPack, EGameXXKEquipmentSet::XuanJia, NSLOCTEXT("GameXXKMetaShop", "XuanJiaPackName", "玄甲装备包"), TEXT("/Game/GameXXK/UI/Equipment/xuanjia_weapon.xuanjia_weapon")),
+			MakeEquipmentPack(EGameXXKMetaShopProductId::QingNangPack, EGameXXKEquipmentSet::QingNang, NSLOCTEXT("GameXXKMetaShop", "QingNangPackName", "青囊装备包"), TEXT("/Game/GameXXK/UI/Equipment/qingnang_weapon.qingnang_weapon")),
+			MakeEquipmentPack(EGameXXKMetaShopProductId::ZhuiFengPack, EGameXXKEquipmentSet::ZhuiFeng, NSLOCTEXT("GameXXKMetaShop", "ZhuiFengPackName", "追风装备包"), TEXT("/Game/GameXXK/UI/Equipment/zhuifeng_weapon.zhuifeng_weapon")),
+			MakeEquipmentPack(EGameXXKMetaShopProductId::ShiGuPack, EGameXXKEquipmentSet::ShiGu, NSLOCTEXT("GameXXKMetaShop", "ShiGuPackName", "蚀骨装备包"), TEXT("/Game/GameXXK/UI/Equipment/shigu_weapon.shigu_weapon")),
+			MakeEquipmentPack(EGameXXKMetaShopProductId::ShanHePack, EGameXXKEquipmentSet::ShanHe, NSLOCTEXT("GameXXKMetaShop", "ShanHePackName", "山河装备包"), TEXT("/Game/GameXXK/UI/Equipment/shanhe_weapon.shanhe_weapon")),
 			MakeCompanionPack(),
 		};
 	}
@@ -60,9 +60,11 @@ namespace
 		case EGameXXKMetaShopError::NotInTown:
 			return NSLOCTEXT("GameXXKMetaShop", "NotInTown", "只能在城镇商店购买。");
 		case EGameXXKMetaShopError::InsufficientGold:
-			return NSLOCTEXT("GameXXKMetaShop", "InsufficientGold", "永久金币不足。");
+			return NSLOCTEXT("GameXXKMetaShop", "InsufficientGold", "元宝不足。");
 		case EGameXXKMetaShopError::WarehouseFull:
 			return NSLOCTEXT("GameXXKMetaShop", "WarehouseFull", "装备仓库已满。");
+		case EGameXXKMetaShopError::RosterFull:
+			return NSLOCTEXT("GameXXKMetaShop", "RosterFull", "名册已满（12 人），无法招募更多伙伴。");
 		case EGameXXKMetaShopError::PendingCompanionExists:
 			return NSLOCTEXT("GameXXKMetaShop", "PendingCompanionExists", "请先处理待替换的伙伴。");
 		case EGameXXKMetaShopError::PurchaseOrdinalExhausted:
@@ -175,6 +177,13 @@ bool FGameXXKMetaShopRules::PreviewPurchase(
 		&& !FGameXXKEquipmentRules::HasWarehouseCapacity(State.EquipmentCollection))
 	{
 		FailPreview(OutPreview, EGameXXKMetaShopError::WarehouseFull);
+		return false;
+	}
+	if (Product->Kind == EGameXXKMetaShopProductKind::CompanionPack
+		&& State.CardRun.CompanionRoster.PermanentCompanions.Num() >= FGameXXKCompanionRules::MaxPermanentCompanions)
+	{
+		// A full roster cannot buy the companion pack at all; the player must dismiss first.
+		FailPreview(OutPreview, EGameXXKMetaShopError::RosterFull);
 		return false;
 	}
 	if (Product->Kind == EGameXXKMetaShopProductKind::CompanionPack

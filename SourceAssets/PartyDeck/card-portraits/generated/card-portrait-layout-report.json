@@ -1,0 +1,1009 @@
+{
+  "ok": true,
+  "party_count": 13,
+  "route_count": 3,
+  "enemy_count": 21,
+  "boss_count": 3,
+  "portrait_count": 37,
+  "records": [
+    {
+      "key": "Hero",
+      "asset_name": "T_CardPortrait_Hero",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_00_hero_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\hero.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          190,
+          62,
+          289,
+          177
+        ],
+        "target_head_center": [
+          126,
+          88
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Npc.TusiChief",
+      "asset_name": "T_CardPortrait_Npc_TusiChief",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_TusiChief",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_07_tusi_chief_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\npc_tusi_chief.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          240,
+          140,
+          326,
+          240
+        ],
+        "target_head_center": [
+          126,
+          92
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Npc.SongJinBao",
+      "asset_name": "T_CardPortrait_Npc_SongJinBao",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_SongJinBao",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_08_song_jin_bao_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\npc_song_jin_bao.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          244,
+          68,
+          326,
+          177
+        ],
+        "target_head_center": [
+          126,
+          92
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Npc.YueBai",
+      "asset_name": "T_CardPortrait_Npc_YueBai",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_YueBai",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_09_yue_bai_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\npc_yue_bai.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "right",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          164,
+          168
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Npc.ZhouGuangZu",
+      "asset_name": "T_CardPortrait_Npc_ZhouGuangZu",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_ZhouGuangZu",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_10_zhou_guang_zu_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\npc_zhou_guang_zu.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          244,
+          106,
+          330,
+          213
+        ],
+        "target_head_center": [
+          126,
+          94
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Npc.JinGui",
+      "asset_name": "T_CardPortrait_Npc_JinGui",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_JinGui",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_11_jin_gui_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\npc_jin_gui.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          232,
+          154,
+          310,
+          246
+        ],
+        "target_head_center": [
+          126,
+          94
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Npc.QiongMeiEr",
+      "asset_name": "T_CardPortrait_Npc_QiongMeiEr",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_QiongMeiEr",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_12_qiong_mei_er_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\npc_qiong_mei_er.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          171,
+          66,
+          257,
+          184
+        ],
+        "target_head_center": [
+          126,
+          91
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Role.Blade",
+      "asset_name": "T_CardPortrait_Role_Blade",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Role_Blade",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_01_blade_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\role_blade.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          257,
+          84,
+          345,
+          193
+        ],
+        "target_head_center": [
+          126,
+          88
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Role.Guard",
+      "asset_name": "T_CardPortrait_Role_Guard",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Role_Guard",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_02_guard_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\role_guard.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          252,
+          107,
+          327,
+          194
+        ],
+        "target_head_center": [
+          126,
+          88
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Role.Healer",
+      "asset_name": "T_CardPortrait_Role_Healer",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Role_Healer",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_03_healer_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\role_healer.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          205,
+          78,
+          289,
+          185
+        ],
+        "target_head_center": [
+          126,
+          88
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Role.Hunter",
+      "asset_name": "T_CardPortrait_Role_Hunter",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Role_Hunter",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_04_hunter_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\role_hunter.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          176,
+          137,
+          253,
+          231
+        ],
+        "target_head_center": [
+          126,
+          88
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Role.Sorcerer",
+      "asset_name": "T_CardPortrait_Role_Sorcerer",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Role_Sorcerer",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_05_sorcerer_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\role_sorcerer.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          204,
+          100,
+          286,
+          208
+        ],
+        "target_head_center": [
+          126,
+          88
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Role.FormationMaster",
+      "asset_name": "T_CardPortrait_Role_FormationMaster",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Role_FormationMaster",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_06_formation_master_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\role_formation_master.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "head_anchor",
+        "anchor": "right",
+        "head_box": [
+          228,
+          108,
+          318,
+          218
+        ],
+        "target_head_center": [
+          126,
+          88
+        ],
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Route.General",
+      "asset_name": "T_CardPortrait_Route_General",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_General",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\route-source\\route_icons_v2_chroma.png",
+      "source_mode": "route_chroma_sheet",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\route_general.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "chroma_region_fit",
+        "anchor": "right",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          158,
+          166
+        ],
+        "source_region": [
+          0,
+          0,
+          627,
+          627
+        ]
+      }
+    },
+    {
+      "key": "Route.Terrain",
+      "asset_name": "T_CardPortrait_Route_Terrain",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Terrain",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\route-source\\route_icons_v2_chroma.png",
+      "source_mode": "route_chroma_sheet",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\route_terrain.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "chroma_region_fit",
+        "anchor": "right",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          158,
+          166
+        ],
+        "source_region": [
+          627,
+          0,
+          1254,
+          627
+        ]
+      }
+    },
+    {
+      "key": "Route.Rare",
+      "asset_name": "T_CardPortrait_Route_Rare",
+      "asset_path": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Rare",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\route-source\\route_icons_v2_chroma.png",
+      "source_mode": "route_chroma_sheet",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\PartyDeck\\card-portraits\\generated\\route_rare.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "chroma_region_fit",
+        "anchor": "right",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          158,
+          166
+        ],
+        "source_region": [
+          0,
+          627,
+          627,
+          1254
+        ]
+      }
+    },
+    {
+      "key": "Enemy.Ch1.Rooster",
+      "asset_name": "T_CardPortrait_Enemy_Ch1_Rooster",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_Rooster",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_01_rooster_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_01_rooster.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch1.Goat",
+      "asset_name": "T_CardPortrait_Enemy_Ch1_Goat",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_Goat",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_02_goat_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_02_goat.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch1.Weasel",
+      "asset_name": "T_CardPortrait_Enemy_Ch1_Weasel",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_Weasel",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_03_weasel_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_03_weasel.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch1.Civet",
+      "asset_name": "T_CardPortrait_Enemy_Ch1_Civet",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_Civet",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_04_civet_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_04_civet.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch1.IronfeatherRooster",
+      "asset_name": "T_CardPortrait_Enemy_Ch1_IronfeatherRooster",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_IronfeatherRooster",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_05_ironfeather_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_05_ironfeather.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch1.BluehornGoatKing",
+      "asset_name": "T_CardPortrait_Enemy_Ch1_BluehornGoatKing",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_BluehornGoatKing",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_06_bluehorn_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_06_bluehorn.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch1.MoneyRat",
+      "asset_name": "T_CardPortrait_Enemy_Ch1_MoneyRatBoss",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch1_MoneyRatBoss",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_19_moneyrat_boss_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_19_moneyrat_boss.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          168,
+          174
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch2.GrayWolf",
+      "asset_name": "T_CardPortrait_Enemy_Ch2_GrayWolf",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_GrayWolf",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_07_graywolf_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_07_graywolf.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch2.Boar",
+      "asset_name": "T_CardPortrait_Enemy_Ch2_Boar",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_Boar",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_08_boar_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_08_boar.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch2.Macaque",
+      "asset_name": "T_CardPortrait_Enemy_Ch2_Macaque",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_Macaque",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_09_macaque_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_09_macaque.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch2.Porcupine",
+      "asset_name": "T_CardPortrait_Enemy_Ch2_Porcupine",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_Porcupine",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_10_porcupine_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_10_porcupine.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch2.GraymaneWolfKing",
+      "asset_name": "T_CardPortrait_Enemy_Ch2_GraymaneWolfKing",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_GraymaneWolfKing",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_11_graymane_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_11_graymane.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch2.RedtuskBoarKing",
+      "asset_name": "T_CardPortrait_Enemy_Ch2_RedtuskBoarKing",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_RedtuskBoarKing",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_12_redtusk_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_12_redtusk.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch2.BlackBear",
+      "asset_name": "T_CardPortrait_Enemy_Ch2_BlackBearBoss",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_BlackBearBoss",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_20_blackbear_boss_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_20_blackbear_boss.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          168,
+          174
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch3.VenomSnake",
+      "asset_name": "T_CardPortrait_Enemy_Ch3_VenomSnake",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_VenomSnake",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_13_snake_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_13_snake.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch3.Wildcat",
+      "asset_name": "T_CardPortrait_Enemy_Ch3_Wildcat",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_Wildcat",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_14_wildcat_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_14_wildcat.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch3.Vulture",
+      "asset_name": "T_CardPortrait_Enemy_Ch3_Vulture",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_Vulture",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_15_vulture_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_15_vulture.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch3.GiantToad",
+      "asset_name": "T_CardPortrait_Enemy_Ch3_GiantToad",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_GiantToad",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_16_toad_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_16_toad.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch3.WhiteApe",
+      "asset_name": "T_CardPortrait_Enemy_Ch3_WhiteApe",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_WhiteApe",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_17_whiteape_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_17_whiteape.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch3.SpiralHornDeer",
+      "asset_name": "T_CardPortrait_Enemy_Ch3_SpiralHornDeer",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_SpiralHornDeer",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_18_deer_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_18_deer.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          165,
+          166
+        ],
+        "source_region": null
+      }
+    },
+    {
+      "key": "Enemy.Ch3.Tiger",
+      "asset_name": "T_CardPortrait_Enemy_Ch3_TigerBoss",
+      "asset_path": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_TigerBoss",
+      "source_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\enemy_21_tiger_boss_idle\\frames\\frame_0000.png",
+      "source_mode": "final_idle",
+      "derived_path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\Battle\\EnemyCardArt\\generated\\enemy_21_tiger_boss.png",
+      "portrait_size": [
+        171,
+        205
+      ],
+      "placement": {
+        "mode": "transparent_fit",
+        "anchor": "left",
+        "head_box": null,
+        "target_head_center": null,
+        "target_head_height": 70,
+        "max_size": [
+          168,
+          174
+        ],
+        "source_region": null
+      }
+    }
+  ]
+}

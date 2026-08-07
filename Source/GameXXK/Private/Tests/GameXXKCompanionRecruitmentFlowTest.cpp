@@ -336,43 +336,33 @@ bool FGameXXKCompanionRecruitmentRosterInteractionTest::RunTest(const FString& P
 
 	UGameXXKCompanionRosterWidget* Widget = BuildRosterWidget(Subsystem);
 	TestNotNull(TEXT("the recruitment backpack builds"), Widget);
-	UButton* RecruitButton = Widget && Widget->WidgetTree
-		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterRecruitAction")))
-		: nullptr;
-	TestNotNull(TEXT("the PSD backpack exposes a real random recruitment action"), RecruitButton);
-	if (!Widget || !RecruitButton)
+	if (!Widget)
 	{
 		return false;
 	}
-	RecruitButton->OnClicked.Broadcast();
-	TestTrue(TEXT("the backpack renders a full-roster candidate after its real action click"), Widget->HasPendingRecruitmentForTest());
+	// Page 18 removes the standalone 招贤 button (recruitment lives in the shop);
+	// the canonical facade action remains the same.
+	TestTrue(TEXT("the backpack action starts the saved full-roster candidate"), Widget->BeginRandomRecruitment());
+	TestTrue(TEXT("the backpack renders a full-roster candidate after its action"), Widget->HasPendingRecruitmentForTest());
 	TestEqual(TEXT("the backpack shows the saved candidate rather than constructing a local copy"), Widget->GetPendingRecruitmentCandidateIdForTest(), ExpectedFirstCandidate.InstanceId);
 
 	Widget->SelectCompanion(FullRoster.PermanentCompanions[0].InstanceId);
-	UButton* ReplaceButton = Widget->WidgetTree
+	UButton* DismissButton = Widget->WidgetTree
 		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterReplacePendingAction")))
 		: nullptr;
-	TestNotNull(TEXT("a pending candidate exposes a real explicit replacement action"), ReplaceButton);
-	if (!ReplaceButton)
+	TestNotNull(TEXT("a pending candidate exposes the real 遣散 action"), DismissButton);
+	if (!DismissButton)
 	{
 		return false;
 	}
-	ReplaceButton->OnClicked.Broadcast();
-	TestFalse(TEXT("the replacement action clears the fixed candidate"), Widget->HasPendingRecruitmentForTest());
+	DismissButton->OnClicked.Broadcast();
+	TestFalse(TEXT("the 遣散 action clears the fixed candidate"), Widget->HasPendingRecruitmentForTest());
 	TestEqual(TEXT("the backpack remains capped at twelve permanent partners after replacement"), Subsystem->GetPermanentCompanionViews().Num(), FGameXXKCompanionRules::MaxPermanentCompanions);
 
-	RecruitButton->OnClicked.Broadcast();
-	TestTrue(TEXT("the next action shows the next saved full-roster candidate"), Widget->HasPendingRecruitmentForTest());
+	TestTrue(TEXT("the next action shows the next saved full-roster candidate"), Widget->BeginRandomRecruitment());
+	TestTrue(TEXT("the next action leaves the next candidate pending"), Widget->HasPendingRecruitmentForTest());
 	TestEqual(TEXT("the next candidate follows sequence order after the resolved replacement"), Widget->GetPendingRecruitmentCandidateIdForTest(), ExpectedSecondCandidate.InstanceId);
-	UButton* DiscardButton = Widget->WidgetTree
-		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterDiscardPendingAction")))
-		: nullptr;
-	TestNotNull(TEXT("a pending candidate exposes an explicit discard action"), DiscardButton);
-	if (!DiscardButton)
-	{
-		return false;
-	}
-	DiscardButton->OnClicked.Broadcast();
+	TestTrue(TEXT("the retained discard capability clears only the candidate"), Widget->DiscardPendingRecruitment());
 	TestFalse(TEXT("the discard action clears only the candidate"), Widget->HasPendingRecruitmentForTest());
 
 	const FName PromotionTargetId = Subsystem->GetPermanentCompanionViews()[0].InstanceId;
@@ -381,15 +371,7 @@ bool FGameXXKCompanionRecruitmentRosterInteractionTest::RunTest(const FString& P
 	TestTrue(TEXT("the promotion target is readable"), Subsystem->TryGetPermanentCompanionView(PromotionTargetId, BeforePromotion));
 	Subsystem->GetMutableRuntimeState().CardRun.CompanionRoster.SigilCount = 1;
 	Widget->RefreshFromState();
-	UButton* PromoteButton = Widget->WidgetTree
-		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterPromoteStarAction")))
-		: nullptr;
-	TestNotNull(TEXT("the backpack exposes the existing real sigil promotion action"), PromoteButton);
-	if (!PromoteButton)
-	{
-		return false;
-	}
-	PromoteButton->OnClicked.Broadcast();
+	TestTrue(TEXT("the retained promotion capability consumes the sigil"), Widget->PromoteSelectedCompanionStar());
 	FGameXXKPermanentCompanion AfterPromotion;
 	TestTrue(TEXT("the promoted roster entry remains readable"), Subsystem->TryGetPermanentCompanionView(PromotionTargetId, AfterPromotion));
 	TestEqual(TEXT("the UI action uses the canonical sigil rule rather than granting experience"), AfterPromotion.Star, BeforePromotion.Star + 1);

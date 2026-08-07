@@ -35,6 +35,7 @@ enum class EGameXXKMetaShopError : uint8
 	NotInTown,
 	InsufficientGold,
 	WarehouseFull,
+	RosterFull,
 	PendingCompanionExists,
 	PurchaseOrdinalExhausted,
 	EquipmentCreationFailed,

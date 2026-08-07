@@ -122,4 +122,10 @@ public:
 		const FGameXXKCompanionRosterState& Roster,
 		const FGameXXKCompanionPartySelection& Selection,
 		FString* OutError = nullptr);
+
+	/**
+	 * Deterministic per-companion display name derived from role and the persisted recruit seed.
+	 * The same role + seed always yields the same name; different roles or seeds yield different names.
+	 */
+	static FString GetCompanionDisplayName(EGameXXKCharacterRole Role, int32 NameSeed);
 };

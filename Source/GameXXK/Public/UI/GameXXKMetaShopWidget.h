@@ -93,10 +93,17 @@ private:
 	void HandleCancelClicked();
 
 	UFUNCTION()
+	void HandleResultConfirmClicked();
+
+	UFUNCTION()
 	void HandleCloseClicked();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
+
+	/** Page 07 content canvas at (0,0); sibling of the paper window, never a child. */
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> FrameCanvas;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> GoldText;
@@ -104,14 +111,19 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UUniformGridPanel> ProductGrid;
 
+	/** Page 07 selection ink above the chosen product card. */
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> ProductSelectionInk;
+
+	/** Page 07 detail icon inside the selected-product slot. */
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> DetailIconImage;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> DetailNameText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> DetailDescriptionText;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> DetailPriceText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> DisabledReasonText;
@@ -126,7 +138,16 @@ private:
 	TObjectPtr<UBorder> ResultPanel;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> ResultSlotFrame;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> ResultImage;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ResultText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ResultConfirmButton;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UGameXXKMetaShopProductButton>> ProductButtons;
@@ -142,6 +163,7 @@ private:
 
 	TArray<FGameXXKMetaShopProductDefinition> CurrentProducts;
 	EGameXXKMetaShopProductId SelectedProductId = EGameXXKMetaShopProductId::Invalid;
+	bool bIsOpen = false;
 	FGameXXKMetaShopPurchasePreview SelectedPreview;
 	FGameXXKMetaShopPurchaseResult LastPurchaseResult;
 	FText DisabledReason;

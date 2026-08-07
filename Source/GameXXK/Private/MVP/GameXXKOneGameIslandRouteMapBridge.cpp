@@ -9,6 +9,7 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "GameXXKMVPRules.h"
+#include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "TimerManager.h"
 #include "UI/GameXXKBattleBoardWidget.h"
@@ -348,6 +349,12 @@ bool AGameXXKOneGameIslandRouteMapBridge::OpenBattleLayoutFromOriginalRoute(UUse
 	if (!WidgetClass)
 	{
 		WidgetClass = UGameXXKBattleBoardWidget::StaticClass();
+	}
+	// Reuse the player controller's canonical battle-board instance so the route
+	// bridge and the flow never stack a second board with stale projected HUDs.
+	if (AGameXXKMVPPlayerController* const MVPController = Cast<AGameXXKMVPPlayerController>(PlayerController))
+	{
+		BattleBoardWidget = MVPController->GetOrCreateBattleBoardWidget();
 	}
 	if (!BattleBoardWidget)
 	{

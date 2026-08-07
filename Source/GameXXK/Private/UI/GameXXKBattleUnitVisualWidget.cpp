@@ -20,6 +20,8 @@ namespace
 	const FVector2D FormationVisualSize(410.0f, 410.0f);
 	const FVector2D CinematicVisualSize(820.0f, 820.0f);
 	const FVector2D DesignStageSize(1920.0f, 1080.0f);
+	const FLinearColor FullColorTint = FLinearColor::White;
+	const FLinearColor InvalidCardTargetTint(0.30f, 0.30f, 0.30f, 0.58f);
 	constexpr int32 FormationZOrder = 10;
 	constexpr int32 CinematicZOrder = 40;
 
@@ -251,6 +253,22 @@ void UGameXXKBattleUnitVisualWidget::AdvanceAtRealTime(const double AbsoluteSeco
 	}
 }
 
+void UGameXXKBattleUnitVisualWidget::SetCardTargetingAvailability(
+	const bool bTargeting,
+	const bool bLegalTarget)
+{
+	const bool bShouldDim = bTargeting && !bLegalTarget && !bRemoved;
+	if (bDimmedForCardTargeting == bShouldDim)
+	{
+		return;
+	}
+	bDimmedForCardTargeting = bShouldDim;
+	if (UnitImage)
+	{
+		UnitImage->SetColorAndOpacity(bDimmedForCardTargeting ? InvalidCardTargetTint : FullColorTint);
+	}
+}
+
 FVector2D UGameXXKBattleUnitVisualWidget::GetPresentedSize() const
 {
 	return PresentedSize;
@@ -289,6 +307,11 @@ int32 UGameXXKBattleUnitVisualWidget::GetFrameParameterWriteCountForTest() const
 bool UGameXXKBattleUnitVisualWidget::IsRemovedForTest() const
 {
 	return bRemoved;
+}
+
+bool UGameXXKBattleUnitVisualWidget::IsDimmedForCardTargetingForTest() const
+{
+	return bDimmedForCardTargeting;
 }
 
 void UGameXXKBattleUnitVisualWidget::BuildProgrammaticLayout()
@@ -336,6 +359,7 @@ void UGameXXKBattleUnitVisualWidget::BuildProgrammaticLayout()
 		}
 	}
 	UnitImage->SetVisibility(ESlateVisibility::Hidden);
+	UnitImage->SetColorAndOpacity(bDimmedForCardTargeting ? InvalidCardTargetTint : FullColorTint);
 	SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
 	SetRenderScale(FVector2D(1.0f, 1.0f));
 }

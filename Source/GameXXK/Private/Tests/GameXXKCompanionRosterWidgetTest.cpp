@@ -66,6 +66,65 @@ namespace
 		}
 		return Result;
 	}
+
+	bool RecruitUntilCount(
+		FAutomationTestBase& Test,
+		UGameXXKMVPSubsystem* Subsystem,
+		const int32 DesiredCount)
+	{
+		if (!Subsystem || !Subsystem->EnsureQingshanTownRuntimeForDirectMap())
+		{
+			return false;
+		}
+		for (int32 Seed = 43000; Seed < 43200 && Subsystem->GetPermanentCompanionViews().Num() < DesiredCount; ++Seed)
+		{
+			FGameXXKCompanionRecruitResult Result;
+			Subsystem->RecruitPermanentCompanionFromSeed(Seed, Result);
+		}
+		return Test.TestEqual(
+			TEXT("the paged companion fixture recruits the requested unique roster size"),
+			Subsystem->GetPermanentCompanionViews().Num(),
+			DesiredCount);
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKFinalCompanionBackpackPagingTest,
+	"GameXXK.UI.CompanionRoster.FinalBackpackPagingAndActiveSelection",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKFinalCompanionBackpackPagingTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!RecruitUntilCount(*this, Subsystem, 4))
+	{
+		return false;
+	}
+	UGameXXKCompanionRosterWidget* Widget = BuildWidget(Subsystem);
+	TestEqual(TEXT("the final companion strip keeps the twelve-person capacity"), Widget->GetRosterSlotCountForTest(), 12);
+	TestEqual(TEXT("the final companion strip exposes three portraits per page"), Widget->GetRosterPageSizeForTest(), 3);
+	TestEqual(TEXT("the final companion strip exposes four pages"), Widget->GetRosterPageCountForTest(), 4);
+	TestEqual(TEXT("the final companion strip initially opens on page zero"), Widget->GetCurrentRosterPageForTest(), 0);
+	TestEqual(TEXT("only three companion portrait controls render at once"), Widget->GetVisibleRosterButtonCountForTest(), 3);
+	TestTrue(TEXT("the left page control uses the approved ink arrow"), Widget->GetRosterPageLeftResourcePathForTest().Contains(TEXT("T_MasterV2_CompanionPageLeft")));
+	TestTrue(TEXT("the right page control uses the approved ink arrow"), Widget->GetRosterPageRightResourcePathForTest().Contains(TEXT("T_MasterV2_CompanionPageRight")));
+	TestFalse(TEXT("the final companion backpack has no separate deploy button"), Widget->HasSeparateSetActiveButtonForTest());
+
+	const TArray<FName> FirstPage = Widget->GetVisibleRosterSlotInstanceIdsForTest();
+	TestEqual(TEXT("the first companion page exposes three occupied slots"), FirstPage.Num(), 3);
+	TestTrue(TEXT("inactive companions use a gray approved portrait"), Widget->GetRosterPortraitResourcePathForTest(0).Contains(TEXT("Inactive")));
+	TestTrue(TEXT("the right arrow advances to the second companion page"), Widget->GoToNextRosterPageForTest());
+	TestEqual(TEXT("the second companion page becomes current"), Widget->GetCurrentRosterPageForTest(), 1);
+	const TArray<FName> SecondPage = Widget->GetVisibleRosterSlotInstanceIdsForTest();
+	TestEqual(TEXT("the second page contains the fourth recruited companion only"), SecondPage.Num(), 1);
+	Widget->HandleConfiguredRosterSlotClicked(0);
+	TestEqual(TEXT("clicking a portrait immediately selects the companion"), Widget->GetSelectedCompanionIdForTest(), SecondPage[0]);
+	TestEqual(
+		TEXT("clicking a portrait immediately makes that companion the active route partner"),
+		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
+		SecondPage[0]);
+	TestFalse(TEXT("the active companion portrait switches from gray to bright"), Widget->GetRosterPortraitResourcePathForTest(0).Contains(TEXT("Inactive")));
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -92,22 +151,22 @@ bool FGameXXKCompanionRosterWidgetLayoutTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("companion roster builds a widget instance"), Widget);
 	TestNotNull(TEXT("companion roster reserves a named personal-card scroll box"),
 		Widget && Widget->WidgetTree ? Cast<UScrollBox>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterPersonalCardScroll"))) : nullptr);
-	TestNotNull(TEXT("companion roster builds a named three-column roster grid"),
-		Widget && Widget->WidgetTree ? Cast<UUniformGridPanel>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterGrid"))) : nullptr);
+	TestNotNull(TEXT("companion roster builds a named page-18 avatar slot"),
+		Widget && Widget->WidgetTree ? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterSlot_00"))) : nullptr);
 	TestEqual(TEXT("the companion backpack always reserves twelve roster slots"), Widget->GetRosterSlotCountForTest(), 12);
 	TestEqual(TEXT("the companion backpack fixes the roster at three columns"), Widget->GetRosterColumnCountForTest(), 3);
-	TestTrue(TEXT("the window uses the separated PSD companion background"),
-		Widget->GetWindowFrameResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backgrounds/T_TownPsd_Background_Companion")));
-	TestTrue(TEXT("the roster slots use the PSD companion card grammar"),
-		Widget->GetRosterSlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Companion/T_TownPsd_CompanionCardFrame")));
-	TestTrue(TEXT("personal cards use the un-tinted PSD057 card frame"),
-		Widget->GetPersonalCardFrameResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Cards/Textures/T_CardFrame_PSD057")));
-	TestTrue(TEXT("the card list exposes a scroll-box reservation for the future PSD scroll bar"),
+	TestTrue(TEXT("the window uses the approved final large paper panel"),
+		Widget->GetWindowFrameResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge")));
+	TestTrue(TEXT("the avatar slots use the approved page-18 tab paper base"),
+		Widget->GetRosterSlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/003_tab_1")));
+	TestTrue(TEXT("personal cards use the approved final card frame"),
+		Widget->GetPersonalCardFrameResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardFrame")));
+	TestTrue(TEXT("the card list exposes a scroll-box reservation for the PSD scroll bar"),
 		Widget->HasPersonalCardScrollBoxForTest());
-	TestTrue(TEXT("the card list applies the shared PSD paper scroll track"),
-		Widget->GetPersonalCardScrollTrackResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/PartyDeck/Scrollbars/T_PartyDeck_ScrollPaperTrack")));
-	TestTrue(TEXT("the card list applies the shared PSD ink scroll thumb"),
-		Widget->GetPersonalCardScrollThumbResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/PartyDeck/Scrollbars/T_PartyDeck_ScrollInkThumb")));
+	TestTrue(TEXT("the card list shares the page-03 PSD scrollbar track"),
+		Widget->GetPersonalCardScrollTrackResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_BackpackScrollbarRight")));
+	TestTrue(TEXT("the card list shares the page-03 PSD scrollbar thumb"),
+		Widget->GetPersonalCardScrollThumbResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/inventory_scrollbar_Button")));
 	TestEqual(TEXT("the first recruited companion is selected for its profile"), Widget->GetSelectedCompanionIdForTest(), Companion.InstanceId);
 	UUniformGridPanel* PersonalCardGrid = Widget->WidgetTree ? Cast<UUniformGridPanel>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterPersonalCardGrid"))) : nullptr;
 	USizeBox* FirstPersonalCardSize = PersonalCardGrid ? Cast<USizeBox>(PersonalCardGrid->GetChildAt(0)) : nullptr;
@@ -230,9 +289,10 @@ bool FGameXXKCompanionRosterWidgetPersonalDeckTest::RunTest(const FString& Param
 		TestFalse(TEXT("the UI refuses a sixth personal loadout card before mutating the facade"), Widget->ToggleSelectedCompanionCard(*SixthCardId));
 	}
 
-	const FName* LockedPersonalCardId = VisibleCards.FindByPredicate([Widget](const FName CardId)
+	const FName* LockedPersonalCardId = VisibleCards.FindByPredicate([Widget, &SavedCompanion](const FName CardId)
 	{
-		return !Widget->GetPendingPersonalCardIds().Contains(CardId);
+		return !Widget->GetPendingPersonalCardIds().Contains(CardId)
+			&& SavedCompanion.UnlockedPersonalCardIds.Contains(CardId);
 	});
 	FGameXXKPermanentCompanion* MutableCompanion = Subsystem->GetMutableRuntimeState().CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([&Companion](const FGameXXKPermanentCompanion& Candidate)
 	{
@@ -242,6 +302,7 @@ bool FGameXXKCompanionRosterWidgetPersonalDeckTest::RunTest(const FString& Param
 	TestNotNull(TEXT("the personal deck fixture has an excluded card to mark unavailable"), LockedPersonalCardId);
 	if (MutableCompanion && LockedPersonalCardId)
 	{
+		const int32 OriginalUnlockedIndex = MutableCompanion->UnlockedPersonalCardIds.IndexOfByKey(*LockedPersonalCardId);
 		MutableCompanion->UnlockedPersonalCardIds.RemoveSingle(*LockedPersonalCardId);
 		Widget->RefreshFromState();
 		Widget->HandleConfiguredCardHoverChanged(*LockedPersonalCardId, false, true);
@@ -250,13 +311,22 @@ bool FGameXXKCompanionRosterWidgetPersonalDeckTest::RunTest(const FString& Param
 		TestFalse(TEXT("an unavailable personal card never advertises a click interaction"),
 			Widget->GetCardTooltipTextForTest().Contains(TEXT("点击后编入/移出")));
 		Widget->HandleConfiguredCardHoverChanged(*LockedPersonalCardId, false, false);
+		// The locked-card presentation above intentionally creates a state the runtime never saves.
+		// Restore the canonical unlocked pool before probing the real town-only active-partner action.
+		MutableCompanion->UnlockedPersonalCardIds.Insert(*LockedPersonalCardId, OriginalUnlockedIndex);
+		Widget->RefreshFromState();
 	}
 
-	UButton* SetActiveButton = Widget->WidgetTree ? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterSetActive"))) : nullptr;
-	TestNotNull(TEXT("the selected companion exposes a real active-partner button"), SetActiveButton);
-	if (SetActiveButton)
+	UButton* FirstRosterSlot = Widget->WidgetTree ? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterSlot_00"))) : nullptr;
+	TestNotNull(TEXT("the selected companion exposes a real portrait selection control"), FirstRosterSlot);
+	TestEqual(TEXT("the active-partner fixture remains in town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestFalse(TEXT("the active-partner fixture remains editable"), Widget->IsLoadoutReadOnlyForTest());
+	TestEqual(TEXT("the first visible portrait keeps the recruited stable id"), Widget->GetVisibleRosterSlotInstanceIdsForTest()[0], Companion.InstanceId);
+	TestTrue(TEXT("the selected companion is directly eligible for active-partner assignment"), Widget->SetSelectedCompanionAsActive());
+	TestTrue(TEXT("the assigned partner can be cleared before the button-path assertion"), Widget->ClearActivePermanentCompanion());
+	if (FirstRosterSlot)
 	{
-		SetActiveButton->OnClicked.Broadcast();
+		FirstRosterSlot->OnClicked.Broadcast();
 	}
 	TestEqual(TEXT("the facade routes the active permanent partner by stable id"),
 		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId, Companion.InstanceId);
@@ -300,16 +370,7 @@ bool FGameXXKCompanionRosterWidgetHeroDeckEditorTest::RunTest(const FString& Par
 	RuntimeState.CardRun.HeroSelectedCardIds = FirstCards(HeroPool, 8);
 	UGameXXKCompanionRosterWidget* Widget = BuildWidget(Subsystem);
 	TestFalse(TEXT("the companion backpack initially shows the selected partner deck"), Widget->IsHeroDeckEditorOpenForTest());
-	UButton* HeroDeckToggleButton = Widget->WidgetTree ? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterHeroDeckToggle"))) : nullptr;
-	TestNotNull(TEXT("the companion backpack exposes a real hero-deck toggle"), HeroDeckToggleButton);
-	if (!HeroDeckToggleButton)
-	{
-		return false;
-	}
-	HeroDeckToggleButton->OnClicked.Broadcast();
-	TestTrue(TEXT("the real hero-deck toggle opens the player-editable hero deck"), Widget->IsHeroDeckEditorOpenForTest());
-	HeroDeckToggleButton->OnClicked.Broadcast();
-	TestFalse(TEXT("the same toggle returns to the selected partner deck"), Widget->IsHeroDeckEditorOpenForTest());
+	// Page 18 removes the standalone hero-deck toggle; the editor opens through the retained API.
 	TestTrue(TEXT("the companion backpack opens a dedicated player-editable hero deck"), Widget->OpenHeroDeckEditor());
 	TestTrue(TEXT("the hero deck editor is active after opening"), Widget->IsHeroDeckEditorOpenForTest());
 	TestEqual(TEXT("the hero editor renders all twelve available hero cards"), Widget->GetVisibleHeroCardIds().Num(), 12);
@@ -356,7 +417,8 @@ bool FGameXXKCompanionRosterWidgetHeroDeckEditorTest::RunTest(const FString& Par
 
 	TestTrue(TEXT("an excluded hero card can restore an eight-card staged selection"), Widget->ToggleHeroCard(ReplacementCard));
 	TestEqual(TEXT("the staged replacement restores exactly eight hero cards"), Widget->GetPendingHeroCardIds().Num(), 8);
-	const FName* NinthCardId = Widget->GetVisibleHeroCardIds().FindByPredicate([Widget](const FName CardId)
+	const TArray<FName> VisibleHeroCardsAfterStaging = Widget->GetVisibleHeroCardIds();
+	const FName* NinthCardId = VisibleHeroCardsAfterStaging.FindByPredicate([Widget](const FName CardId)
 	{
 		return !Widget->GetPendingHeroCardIds().Contains(CardId);
 	});
@@ -377,15 +439,10 @@ bool FGameXXKCompanionRosterWidgetHeroDeckEditorTest::RunTest(const FString& Par
 		TestFalse(TEXT("the hero editor refuses a ninth staged card before mutating the facade"), Widget->ToggleHeroCard(*NinthCardId));
 	}
 
-	UButton* ApplyHeroButton = Widget->WidgetTree ? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterApplyHeroLoadout"))) : nullptr;
-	TestNotNull(TEXT("the hero deck editor exposes a real apply button"), ApplyHeroButton);
-	if (!ApplyHeroButton)
-	{
-		return false;
-	}
 	const TArray<FName> StagedHeroCardsBeforeApply = Widget->GetPendingHeroCardIds();
-	ApplyHeroButton->OnClicked.Broadcast();
-	TestEqual(TEXT("the real apply button persists the player-selected hero cards in order"),
+	TestTrue(TEXT("the hero deck editor persists the staged eight-card selection through its API"),
+		Widget->ApplyHeroCardLoadout());
+	TestEqual(TEXT("the persisted hero-card loadout preserves the staged order"),
 		Subsystem->GetHeroCardLoadout(), StagedHeroCardsBeforeApply);
 	TestEqual(TEXT("the refreshed editor keeps the persisted hero-card order after applying"),
 		Widget->GetPendingHeroCardIds(), StagedHeroCardsBeforeApply);
@@ -479,21 +536,12 @@ bool FGameXXKCompanionRosterWidgetTaskNpcFixedDeckReadOnlyTest::RunTest(const FS
 	}
 
 	UGameXXKCompanionRosterWidget* Widget = BuildWidget(Subsystem);
-	UTextBlock* TaskNpcSummary = Widget && Widget->WidgetTree
-		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterTaskNpcDeckSummary")))
-		: nullptr;
-	TestNotNull(TEXT("the companion backpack renders a dedicated task-NPC deck summary"), TaskNpcSummary);
-	if (!TaskNpcSummary)
-	{
-		return false;
-	}
-
-	const FString SummaryText = TaskNpcSummary->GetText().ToString();
-	TestTrue(TEXT("the task-NPC summary identifies its fixed support deck"), SummaryText.Contains(TEXT("固定支援牌组")));
-	TestTrue(TEXT("the task-NPC summary visibly states that the deck is read-only"), SummaryText.Contains(TEXT("只读")));
-	TestTrue(TEXT("the task-NPC summary retains the active temporary NPC identity"), SummaryText.Contains(TusiChief->NpcId.ToString()));
+	// Page 18 removes the dedicated task-NPC summary panel; the canonical
+	// three-card selection remains facade-backed and read-only.
 	TestEqual(TEXT("the task-NPC summary remains the canonical fixed three-card selection"),
 		Widget->GetTaskNpcCardSummary().SelectedCardIds.Num(), 3);
+	TestEqual(TEXT("the task-NPC summary retains the active temporary NPC identity"),
+		Widget->GetTaskNpcCardSummary().NpcId, TusiChief->NpcId);
 	TestNull(TEXT("the companion backpack does not expose a task-NPC loadout save action"),
 		Widget->WidgetTree->FindWidget(TEXT("CompanionRosterApplyTaskNpcLoadout")));
 	return true;
@@ -532,15 +580,17 @@ bool FGameXXKCompanionRosterWidgetFreshTownInitializationTest::RunTest(const FSt
 		Subsystem->GetRuntimeState().CardRun.HeroSelectedCardIds.Num(), 8);
 	TestEqual(TEXT("the backpack stages the initialized eight-card hero loadout"), Widget->GetPendingHeroCardIds().Num(), 8);
 
+	const TArray<FGameXXKPermanentCompanion> StarterRoster = Subsystem->GetPermanentCompanionViews();
+	TestEqual(TEXT("a fresh game exposes its two deterministic starter companions"), StarterRoster.Num(), 2);
 	TestTrue(TEXT("the real random-recruit action succeeds from the initialized town backpack"), Widget->BeginRandomRecruitment());
 	const TArray<FGameXXKPermanentCompanion> RecruitedRoster = Subsystem->GetPermanentCompanionViews();
-	TestEqual(TEXT("the first successful recruit enters the permanent roster"), RecruitedRoster.Num(), 1);
-	if (RecruitedRoster.Num() != 1)
+	TestEqual(TEXT("the first successful recruit is added after the deterministic starter"), RecruitedRoster.Num(), StarterRoster.Num() + 1);
+	if (RecruitedRoster.Num() != StarterRoster.Num() + 1)
 	{
 		return false;
 	}
 	TestEqual(TEXT("a successful random recruit is immediately selected for display"),
-		Widget->GetSelectedCompanionIdForTest(), RecruitedRoster[0].InstanceId);
+		Widget->GetSelectedCompanionIdForTest(), RecruitedRoster.Last().InstanceId);
 	return true;
 }
 
@@ -574,15 +624,8 @@ bool FGameXXKCompanionRosterWidgetProfileAndTownActionTest::RunTest(const FStrin
 		FGameXXKCompanionRules::GetExperienceRequiredForNextLevel(Profile.Level));
 
 	TestTrue(TEXT("the selected partner can be assigned before clearing"), Widget->SetSelectedCompanionAsActive());
-	UButton* ClearActiveButton = Widget->WidgetTree
-		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterClearActive")))
-		: nullptr;
-	TestNotNull(TEXT("the companion backpack exposes the town-only 暂不编入 action"), ClearActiveButton);
-	if (!ClearActiveButton)
-	{
-		return false;
-	}
-	ClearActiveButton->OnClicked.Broadcast();
+	// Page 18 removes the standalone 暂不编入 button; the town-only capability stays reachable.
+	TestTrue(TEXT("the town clear action succeeds through the retained capability"), Widget->ClearActivePermanentCompanion());
 	TestTrue(TEXT("the town clear action removes the active permanent partner"),
 		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId.IsNone());
 

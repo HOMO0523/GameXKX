@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "sourceFileName": "dcb705c6-4f80-48de-a17c-d3e7c6e88ad9_video_1.mp4",
+  "orientation": "preserve",
+  "matting": {
+    "mode": "chroma",
+    "backgroundSamples": [
+      {
+        "r": 255,
+        "g": 39,
+        "b": 239
+      },
+      {
+        "r": 255,
+        "g": 37,
+        "b": 239
+      },
+      {
+        "r": 255,
+        "g": 37,
+        "b": 243
+      },
+      {
+        "r": 255,
+        "g": 37,
+        "b": 243
+      }
+    ],
+    "tolerance": 50,
+    "feather": 15,
+    "spillSuppress": true,
+    "spillStrength": 60,
+    "colorSpace": "rgb",
+    "alphaBlur": 2,
+    "alphaContrast": 0.3
+  },
+  "output": {
+    "fps": 12,
+    "durationSeconds": 5,
+    "frameCount": 60,
+    "canvasSize": 512,
+    "anchor": "bottom_center",
+    "paddingRatio": 0.08,
+    "temporalAlphaWindow": 3
+  }
+}

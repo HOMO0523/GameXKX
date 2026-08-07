@@ -72,3 +72,18 @@ const FGameXXKEquipmentSetBonusDefinition* FGameXXKEquipmentSetCatalog::FindDefi
 	return GetDefinitions().FindByPredicate(
 		[BonusId](const FGameXXKEquipmentSetBonusDefinition& Definition) { return Definition.Id == BonusId; });
 }
+
+FText FGameXXKEquipmentSetCatalog::GetSetDisplayName(const EGameXXKEquipmentSet Set)
+{
+	switch (Set)
+	{
+	case EGameXXKEquipmentSet::PoJun: return NSLOCTEXT("GameXXKEquipmentSet", "SetPoJun", "破军");
+	case EGameXXKEquipmentSet::XuanJia: return NSLOCTEXT("GameXXKEquipmentSet", "SetXuanJia", "玄甲");
+	case EGameXXKEquipmentSet::QingNang: return NSLOCTEXT("GameXXKEquipmentSet", "SetQingNang", "青囊");
+	case EGameXXKEquipmentSet::ZhuiFeng: return NSLOCTEXT("GameXXKEquipmentSet", "SetZhuiFeng", "追风");
+	case EGameXXKEquipmentSet::ShiGu: return NSLOCTEXT("GameXXKEquipmentSet", "SetShiGu", "蚀骨");
+	case EGameXXKEquipmentSet::ShanHe: return NSLOCTEXT("GameXXKEquipmentSet", "SetShanHe", "山河");
+	case EGameXXKEquipmentSet::Starter: return NSLOCTEXT("GameXXKEquipmentSet", "SetStarter", "基础");
+	default: return FText::GetEmpty();
+	}
+}

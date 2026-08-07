@@ -32,7 +32,8 @@ namespace
 
 	bool IsModernSet(const EGameXXKEquipmentSet Set)
 	{
-		return Set >= EGameXXKEquipmentSet::PoJun && Set <= EGameXXKEquipmentSet::ShanHe;
+		return Set == EGameXXKEquipmentSet::Starter
+			|| (Set >= EGameXXKEquipmentSet::PoJun && Set <= EGameXXKEquipmentSet::ShanHe);
 	}
 
 	bool IsValidQuality(const EGameXXKEquipmentQuality Quality)
@@ -332,6 +333,14 @@ namespace
 			Result.Attack = ScaleFloor(Result.Attack, Factor);
 			Result.Defense = ScaleFloor(Result.Defense, Factor);
 			Result.Speed = ScaleFloor(Result.Speed, Factor);
+			// Flat enhancement growth so low-level gear still visibly gains
+			// stats each enhancement (percent-only growth floors away on
+			// single-digit base values).
+			Result.MaxHealth = AddClamped(Result.MaxHealth, 2 * Instance.EnhancementLevel);
+			Result.MaxMana = AddClamped(Result.MaxMana, 1 * Instance.EnhancementLevel);
+			Result.Attack = AddClamped(Result.Attack, 1 * Instance.EnhancementLevel);
+			Result.Defense = AddClamped(Result.Defense, 1 * Instance.EnhancementLevel);
+			Result.Speed = AddClamped(Result.Speed, 1 * Instance.EnhancementLevel);
 		}
 		else
 		{

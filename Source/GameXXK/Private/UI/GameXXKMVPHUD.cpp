@@ -3,6 +3,7 @@
 #include "Blueprint/GameViewportSubsystem.h"
 #include "Engine/Canvas.h"
 #include "Engine/GameInstance.h"
+#include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
@@ -297,9 +298,18 @@ UGameXXKBattleBoardWidget* AGameXXKMVPHUD::CreateBattleBoardWidget()
 	{
 		WidgetClass = UGameXXKBattleBoardWidget::StaticClass();
 	}
-	if (APlayerController* PlayerController = GetOwningPlayerController())
+	// Reuse the player controller's canonical battle board so the HUD and the
+	// route bridge never stack a second board with stale projected HUDs.
+	if (AGameXXKMVPPlayerController* const MVPController = Cast<AGameXXKMVPPlayerController>(GetOwningPlayerController()))
 	{
-		BattleBoardWidget = CreateWidget<UGameXXKBattleBoardWidget>(PlayerController, WidgetClass);
+		BattleBoardWidget = MVPController->GetOrCreateBattleBoardWidget();
+	}
+	if (!BattleBoardWidget)
+	{
+		if (APlayerController* PlayerController = GetOwningPlayerController())
+		{
+			BattleBoardWidget = CreateWidget<UGameXXKBattleBoardWidget>(PlayerController, WidgetClass);
+		}
 	}
 	if (!BattleBoardWidget)
 	{

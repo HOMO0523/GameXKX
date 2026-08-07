@@ -40,6 +40,53 @@ namespace
 {
 	const FVector2D DefaultRouteMapViewportSize(1280.0f, 720.0f);
 
+	FName ResolveTownNpcId(const AActor* TownNpc)
+	{
+		if (const AGameXXKTownNpcCharacter* CharacterNpc = Cast<AGameXXKTownNpcCharacter>(TownNpc))
+		{
+			if (!CharacterNpc->GetNpcId().IsNone())
+			{
+				return CharacterNpc->GetNpcId();
+			}
+			if (CharacterNpc->CanOfferQuest()) return TEXT("Npc.TusiChief");
+			if (CharacterNpc->CanTrade()) return TEXT("Npc.SongJinBao");
+		}
+		if (const AGameXXKTownNpcActor* ActorNpc = Cast<AGameXXKTownNpcActor>(TownNpc))
+		{
+			if (!ActorNpc->GetNpcId().IsNone())
+			{
+				return ActorNpc->GetNpcId();
+			}
+			if (ActorNpc->CanOfferQuest()) return TEXT("Npc.TusiChief");
+			if (ActorNpc->CanTrade()) return TEXT("Npc.SongJinBao");
+		}
+		return NAME_None;
+	}
+
+	EGameXXKTownNpcRole ResolveTownNpcRole(const AActor* TownNpc)
+	{
+		if (const AGameXXKTownNpcCharacter* CharacterNpc = Cast<AGameXXKTownNpcCharacter>(TownNpc))
+		{
+			return CharacterNpc->GetNpcRole();
+		}
+		if (const AGameXXKTownNpcActor* ActorNpc = Cast<AGameXXKTownNpcActor>(TownNpc))
+		{
+			return ActorNpc->GetNpcRole();
+		}
+		return EGameXXKTownNpcRole::Generic;
+	}
+
+	FText TownNpcDisplayName(const FName NpcId)
+	{
+		if (NpcId == TEXT("Npc.TusiChief")) return NSLOCTEXT("GameXXKTownNpc", "TusiChief", "土司首领");
+		if (NpcId == TEXT("Npc.SongJinBao")) return NSLOCTEXT("GameXXKTownNpc", "SongJinBao", "宋金宝");
+		if (NpcId == TEXT("Npc.YueBai")) return NSLOCTEXT("GameXXKTownNpc", "YueBai", "月白");
+		if (NpcId == TEXT("Npc.ZhouGuangZu")) return NSLOCTEXT("GameXXKTownNpc", "ZhouGuangZu", "周光祖");
+		if (NpcId == TEXT("Npc.JinGui")) return NSLOCTEXT("GameXXKTownNpc", "JinGui", "金贵");
+		if (NpcId == TEXT("Npc.QiongMeiEr")) return NSLOCTEXT("GameXXKTownNpc", "QiongMeiEr", "琼么儿");
+		return NSLOCTEXT("GameXXKTownNpc", "Unknown", "旅人");
+	}
+
 	FVector2D ResolveRouteMapViewportSize(const APlayerController* PlayerController)
 	{
 		int32 ViewportWidth = 0;
@@ -507,6 +554,24 @@ UGameXXKBattleBoardWidget* AGameXXKMVPPlayerController::GetBattleBoardWidgetForT
 	return BattleBoardWidget;
 }
 
+UGameXXKBattleBoardWidget* AGameXXKMVPPlayerController::GetOrCreateBattleBoardWidget()
+{
+	if (!BattleBoardWidget)
+	{
+		TSubclassOf<UGameXXKBattleBoardWidget> WidgetClass = BattleBoardWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKBattleBoardWidget::StaticClass();
+		}
+		BattleBoardWidget = CreateWidget<UGameXXKBattleBoardWidget>(this, WidgetClass);
+		if (!BattleBoardWidget)
+		{
+			BattleBoardWidget = NewObject<UGameXXKBattleBoardWidget>(this, WidgetClass);
+		}
+	}
+	return BattleBoardWidget;
+}
+
 UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::GetInventoryWindowWidgetForTest() const
 {
 	return InventoryWindowWidget;
@@ -657,6 +722,92 @@ bool AGameXXKMVPPlayerController::OpenQuestDialogForNpc(AActor* QuestNpc, APawn*
 	FlushPressedKeys();
 	SetIgnoreMoveInput(true);
 	ApplyPlayerFlowInputMode();
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::OpenTownNpcInteractionForNpc(AActor* TownNpc, APawn* InstigatorPawn)
+{
+	if (!TownNpc || !InstigatorPawn
+		|| (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
+		|| (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest()))
+	{
+		return false;
+	}
+
+	const FName NpcId = ResolveTownNpcId(TownNpc);
+	if (!FGameXXKCompanionCatalog::FindQuestNpcDefinition(NpcId))
+	{
+		return false;
+	}
+
+	UGameXXKQuestDialogWidget* Dialog = EnsureQuestDialogWidget();
+	if (!Dialog)
+	{
+		return false;
+	}
+
+	CloseMetaShopWindow();
+	CloseInventoryWindow();
+	CloseCompanionRoster();
+	PendingQuestNpc = TownNpc;
+	PendingQuestInstigator = InstigatorPawn;
+
+	FText PrimaryActionLabel;
+	switch (ResolveTownNpcRole(TownNpc))
+	{
+	case EGameXXKTownNpcRole::Quest:
+		PrimaryActionLabel = NSLOCTEXT("GameXXKTownNpc", "StoryAction", "剧情");
+		break;
+	case EGameXXKTownNpcRole::Merchant:
+		PrimaryActionLabel = NSLOCTEXT("GameXXKTownNpc", "ShopAction", "商店");
+		break;
+	default:
+		break;
+	}
+
+	Dialog->ConfigureTownNpcInteraction(NpcId, TownNpcDisplayName(NpcId), PrimaryActionLabel);
+	Dialog->OpenDialog();
+	FlushPressedKeys();
+	SetIgnoreMoveInput(true);
+	ApplyPlayerFlowInputMode();
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::ExecutePendingTownNpcPrimaryAction()
+{
+	AActor* TownNpc = PendingQuestNpc.Get();
+	APawn* InstigatorPawn = PendingQuestInstigator.Get();
+	if (!TownNpc || !InstigatorPawn || !QuestDialogWidget || !QuestDialogWidget->IsDialogOpen())
+	{
+		return false;
+	}
+
+	const EGameXXKTownNpcRole TownNpcRole = ResolveTownNpcRole(TownNpc);
+	CloseQuestDialog();
+	if (TownNpcRole == EGameXXKTownNpcRole::Quest)
+	{
+		return OpenTaskOfferPanelForNpc(TownNpc, InstigatorPawn);
+	}
+	if (TownNpcRole == EGameXXKTownNpcRole::Merchant)
+	{
+		return OpenMetaShopWindow();
+	}
+	return false;
+}
+
+bool AGameXXKMVPPlayerController::RecruitPendingTownNpc()
+{
+	AActor* TownNpc = PendingQuestNpc.Get();
+	const FName NpcId = ResolveTownNpcId(TownNpc);
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!TownNpc || !Subsystem || !QuestDialogWidget || !QuestDialogWidget->IsDialogOpen()
+		|| !Subsystem->SelectTownQuestNpcForParty(NpcId))
+	{
+		return false;
+	}
+
+	CloseQuestDialog();
+	RefreshPlayerFlowWidgets();
 	return true;
 }
 
@@ -1693,6 +1844,14 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
+	if (Subsystem
+		&& ActiveScreen == EGameXXKScreen::Town
+		&& Subsystem->GetRuntimeState().TownPanelMode != EGameXXKTownPanelMode::None)
+	{
+		// Inventory and Trade were legacy town-overlay panels. Persisted values
+		// must not reopen either retired panel when a town save is restored.
+		Subsystem->CloseTownPanel();
+	}
 	const bool bExitedBattleOverlay = ActiveScreen != EGameXXKScreen::Battle && IsBattleOverlayActive();
 	if (bExitedBattleOverlay)
 	{
@@ -1778,22 +1937,6 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	if (InventoryWindowWidget)
 	{
 		InventoryWindowWidget->SetMVPSubsystem(Subsystem);
-		if (Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town && !InventoryWindowWidget->IsWindowVisibleForTest())
-		{
-			switch (Subsystem->GetRuntimeState().TownPanelMode)
-			{
-			case EGameXXKTownPanelMode::Inventory:
-				InventoryWindowWidget->OpenFreeInventory();
-				break;
-			case EGameXXKTownPanelMode::Trade:
-				// A migrated save may still carry the retired legacy panel mode.
-				// Clear it without ever presenting the old buy/sell inventory UI.
-				Subsystem->CloseTownPanel();
-				break;
-			default:
-				break;
-			}
-		}
 	}
 	if (MetaShopWidget)
 	{
