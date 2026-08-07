@@ -41,7 +41,7 @@
       }
     },
     {
-      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_blade_locked.png",
+      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_blade_inactive.png",
       "sha256": "dfbdf58065e89d289e692d62bfa4e967809dfdce14cd497d72bd385cf1495a02",
       "width": 105,
       "height": 62,
@@ -58,7 +58,7 @@
       ],
       "magentaBoundaryPixels": 0,
       "role": "blade",
-      "state": "locked",
+      "state": "inactive",
       "source": "SourceAssets/AnimationProcessing/Production/character_01_blade_idle/frames/frame_0000.png",
       "sourceSha256": "e0035c4c48be57c9d5229c542c1f6ac3dc29c94d8948dee1f1d3196c8bb45140",
       "crop": [
@@ -107,7 +107,7 @@
       }
     },
     {
-      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_guard_locked.png",
+      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_guard_inactive.png",
       "sha256": "b3b050e44f923705f264b2231a0fbf243559b8fd9c77b75074ef37834e098571",
       "width": 105,
       "height": 62,
@@ -124,7 +124,7 @@
       ],
       "magentaBoundaryPixels": 0,
       "role": "guard",
-      "state": "locked",
+      "state": "inactive",
       "source": "SourceAssets/AnimationProcessing/Production/character_02_guard_idle/frames/frame_0000.png",
       "sourceSha256": "4b1519c16e3e67dab5256536ea092545af43fab3a23cc62f17b0b8942f280752",
       "crop": [
@@ -173,7 +173,7 @@
       }
     },
     {
-      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_healer_locked.png",
+      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_healer_inactive.png",
       "sha256": "16ada75c01e869ae364c8a554e891476966a2d0e919e368c1578e28f385a813d",
       "width": 105,
       "height": 62,
@@ -190,7 +190,7 @@
       ],
       "magentaBoundaryPixels": 0,
       "role": "healer",
-      "state": "locked",
+      "state": "inactive",
       "source": "SourceAssets/AnimationProcessing/Production/character_03_healer_idle/frames/frame_0000.png",
       "sourceSha256": "8788ba16ce4f1aaed7ffe72e6bdf32b5b7f2123ebf4b9a70485550f2d6aef26c",
       "crop": [
@@ -239,7 +239,7 @@
       }
     },
     {
-      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_hunter_locked.png",
+      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_hunter_inactive.png",
       "sha256": "0fd1335afeadac1de250d8ac56d0f4a98666431425924c3f94d059cb9bb11542",
       "width": 105,
       "height": 62,
@@ -256,7 +256,7 @@
       ],
       "magentaBoundaryPixels": 0,
       "role": "hunter",
-      "state": "locked",
+      "state": "inactive",
       "source": "SourceAssets/AnimationProcessing/Production/character_04_hunter_idle/frames/frame_0000.png",
       "sourceSha256": "52c14d20ec28d552406a722a7ace13abb33c26a93c29b5e4f39bb5e4a36a142c",
       "crop": [
@@ -305,7 +305,7 @@
       }
     },
     {
-      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_sorcerer_locked.png",
+      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_sorcerer_inactive.png",
       "sha256": "ad1597ea5ed0b0f5a650b5ad10c4a0ab1e9e32ae4217ee8197f6cca70af5179b",
       "width": 105,
       "height": 62,
@@ -322,7 +322,7 @@
       ],
       "magentaBoundaryPixels": 0,
       "role": "sorcerer",
-      "state": "locked",
+      "state": "inactive",
       "source": "SourceAssets/AnimationProcessing/Production/character_05_sorcerer_idle/frames/frame_0000.png",
       "sourceSha256": "0978508ba1ef076673a06825dc86af691c98912beb94a5ab31b726f828ff9acc",
       "crop": [
@@ -371,7 +371,7 @@
       }
     },
     {
-      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_formation_master_locked.png",
+      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_portrait_formation_master_inactive.png",
       "sha256": "9590e58c5745370185729455d7c09fd8b13ef5c8a5e068f5b4bb6e058db7ec02",
       "width": 105,
       "height": 62,
@@ -388,7 +388,7 @@
       ],
       "magentaBoundaryPixels": 0,
       "role": "formation_master",
-      "state": "locked",
+      "state": "inactive",
       "source": "SourceAssets/AnimationProcessing/Production/character_06_formation_master_idle/frames/frame_0000.png",
       "sourceSha256": "826db093a1593c5153bc984009b500096196eca2371192c128601db060483bb0",
       "crop": [
@@ -406,7 +406,7 @@
   ],
   "contactSheet": {
     "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchPortraits/partner_switch_portraits_contact_sheet.png",
-    "sha256": "c743c7555a83de8b0582ca1ff36d4a15fde6f77e1402e3844e451c69e45b8bbc",
+    "sha256": "d9169dad467ba9a4a2db1ef1a83a6c79db3552c9740b917a995082123a9f4a09",
     "width": 1260,
     "height": 1096
   }

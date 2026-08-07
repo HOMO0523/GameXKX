@@ -1,0 +1,5093 @@
+{
+  "status": "PASS",
+  "psdPath": "D:/UE5 demo/GameXXK/outputs/UI_PSD/Candidates/GameXXK_UI_Master_V1.psd",
+  "documentSaved": true,
+  "width": 10080,
+  "height": 4680,
+  "topLevelLayers": [
+    {
+      "name": "图层 1",
+      "path": "图层 1",
+      "kind": "art",
+      "visible": true,
+      "bounds": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "00_公共组件",
+      "path": "00_公共组件",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        0,
+        0,
+        7846,
+        1080
+      ]
+    },
+    {
+      "name": "01_主菜单",
+      "path": "01_主菜单",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        2040,
+        0,
+        3960,
+        1080
+      ]
+    },
+    {
+      "name": "02_城镇HUD",
+      "path": "02_城镇HUD",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        4080,
+        0,
+        6000,
+        1080
+      ]
+    },
+    {
+      "name": "03_主角背包",
+      "path": "03_主角背包",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        6120,
+        0,
+        8040,
+        1080
+      ]
+    },
+    {
+      "name": "06_任务日志",
+      "path": "06_任务日志",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        2040,
+        1200,
+        3960,
+        2280
+      ]
+    },
+    {
+      "name": "07_商店交易",
+      "path": "07_商店交易",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        4080,
+        1200,
+        6000,
+        2280
+      ]
+    },
+    {
+      "name": "10_战斗HUD",
+      "path": "10_战斗HUD",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        0,
+        2400,
+        1920,
+        3480
+      ]
+    },
+    {
+      "name": "11_战斗奖励结算",
+      "path": "11_战斗奖励结算",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        2040,
+        2400,
+        3960,
+        3480
+      ]
+    },
+    {
+      "name": "12_系统菜单",
+      "path": "12_系统菜单",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        4080,
+        2400,
+        6000,
+        3480
+      ]
+    },
+    {
+      "name": "13_主角背包_物品选中",
+      "path": "13_主角背包_物品选中",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        6120,
+        2400,
+        8040,
+        3480
+      ]
+    },
+    {
+      "name": "17_战斗HUD_卡牌选中目标",
+      "path": "17_战斗HUD_卡牌选中目标",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        4080,
+        3600,
+        6000,
+        4680
+      ]
+    },
+    {
+      "name": "18_主角背包_卡组页",
+      "path": "18_主角背包_卡组页",
+      "kind": "group",
+      "visible": true,
+      "bounds": [
+        6120,
+        3600,
+        8040,
+        4680
+      ]
+    }
+  ],
+  "relevantPageLayers": {
+    "02_城镇HUD": [
+      {
+        "name": "02_城镇HUD",
+        "path": "02_城镇HUD",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4080,
+          0,
+          6000,
+          1080
+        ]
+      },
+      {
+        "name": "70_RuntimeText",
+        "path": "02_城镇HUD/70_RuntimeText",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          5810,
+          61,
+          5856,
+          83
+        ]
+      },
+      {
+        "name": "02_IngotValue",
+        "path": "02_城镇HUD/70_RuntimeText/02_IngotValue",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5810,
+          61,
+          5856,
+          83
+        ]
+      },
+      {
+        "name": "30_OutOfRunCurrency",
+        "path": "02_城镇HUD/30_OutOfRunCurrency",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          5752,
+          50,
+          5792,
+          90
+        ]
+      },
+      {
+        "name": "01_IngotIcon",
+        "path": "02_城镇HUD/30_OutOfRunCurrency/01_IngotIcon",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5752,
+          50,
+          5792,
+          90
+        ]
+      },
+      {
+        "name": "21_HeroAndNavigation",
+        "path": "02_城镇HUD/21_HeroAndNavigation",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4132,
+          51,
+          4400,
+          918
+        ]
+      },
+      {
+        "name": "text_003 拷贝",
+        "path": "02_城镇HUD/21_HeroAndNavigation/text_003 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4278,
+          126,
+          4349,
+          145
+        ]
+      },
+      {
+        "name": "text_002 拷贝",
+        "path": "02_城镇HUD/21_HeroAndNavigation/text_002 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4278,
+          91,
+          4335,
+          109
+        ]
+      },
+      {
+        "name": "text_001 拷贝",
+        "path": "02_城镇HUD/21_HeroAndNavigation/text_001 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4278,
+          54,
+          4400,
+          81
+        ]
+      },
+      {
+        "name": "007_nav_route 拷贝",
+        "path": "02_城镇HUD/21_HeroAndNavigation/007_nav_route 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4148,
+          850,
+          4222,
+          918
+        ]
+      },
+      {
+        "name": "006_nav_task 拷贝",
+        "path": "02_城镇HUD/21_HeroAndNavigation/006_nav_task 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4153,
+          697,
+          4216,
+          771
+        ]
+      },
+      {
+        "name": "005_nav_codex 拷贝",
+        "path": "02_城镇HUD/21_HeroAndNavigation/005_nav_codex 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4148,
+          556,
+          4222,
+          613
+        ]
+      },
+      {
+        "name": "004_nav_companion 拷贝",
+        "path": "02_城镇HUD/21_HeroAndNavigation/004_nav_companion 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4148,
+          412,
+          4222,
+          457
+        ]
+      },
+      {
+        "name": "003_nav_backpack 拷贝",
+        "path": "02_城镇HUD/21_HeroAndNavigation/003_nav_backpack 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4150,
+          250,
+          4220,
+          324
+        ]
+      },
+      {
+        "name": "002_hero_portrait 拷贝",
+        "path": "02_城镇HUD/21_HeroAndNavigation/002_hero_portrait 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4132,
+          51,
+          4250,
+          178
+        ]
+      },
+      {
+        "name": "20_ShellPaper",
+        "path": "02_城镇HUD/20_ShellPaper",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4103,
+          14,
+          5966,
+          954
+        ]
+      },
+      {
+        "name": "07_CompactCurrencyPaper_320",
+        "path": "02_城镇HUD/20_ShellPaper/07_CompactCurrencyPaper_320",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5650,
+          28,
+          5966,
+          112
+        ]
+      },
+      {
+        "name": "06_NavDisc_Route",
+        "path": "02_城镇HUD/20_ShellPaper/06_NavDisc_Route",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4108,
+          800,
+          4263,
+          954
+        ]
+      },
+      {
+        "name": "05_NavDisc_Quest",
+        "path": "02_城镇HUD/20_ShellPaper/05_NavDisc_Quest",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4103,
+          651,
+          4263,
+          812
+        ]
+      },
+      {
+        "name": "04_NavDisc_Codex",
+        "path": "02_城镇HUD/20_ShellPaper/04_NavDisc_Codex",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4110,
+          504,
+          4257,
+          663
+        ]
+      },
+      {
+        "name": "03_NavDisc_Companion",
+        "path": "02_城镇HUD/20_ShellPaper/03_NavDisc_Companion",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4109,
+          359,
+          4257,
+          509
+        ]
+      },
+      {
+        "name": "02_NavDisc_Backpack",
+        "path": "02_城镇HUD/20_ShellPaper/02_NavDisc_Backpack",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4107,
+          210,
+          4259,
+          364
+        ]
+      },
+      {
+        "name": "01_HeroIdentityPaper",
+        "path": "02_城镇HUD/20_ShellPaper/01_HeroIdentityPaper",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4104,
+          14,
+          4645,
+          196
+        ]
+      },
+      {
+        "name": "10_TownScene",
+        "path": "02_城镇HUD/10_TownScene",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4080,
+          0,
+          6000,
+          1080
+        ]
+      },
+      {
+        "name": "00_CleanTownGameplayView",
+        "path": "02_城镇HUD/10_TownScene/00_CleanTownGameplayView",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4080,
+          0,
+          6000,
+          1080
+        ]
+      },
+      {
+        "name": "99_Legacy_70_RuntimeText_PreTownHUDV2",
+        "path": "02_城镇HUD/99_Legacy_70_RuntimeText_PreTownHUDV2",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          4212,
+          45,
+          5782,
+          866
+        ]
+      },
+      {
+        "name": "text_005",
+        "path": "02_城镇HUD/99_Legacy_70_RuntimeText_PreTownHUDV2/text_005",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4410,
+          845,
+          4756,
+          866
+        ]
+      },
+      {
+        "name": "text_004",
+        "path": "02_城镇HUD/99_Legacy_70_RuntimeText_PreTownHUDV2/text_004",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4410,
+          800,
+          4637,
+          829
+        ]
+      },
+      {
+        "name": "text_003",
+        "path": "02_城镇HUD/99_Legacy_70_RuntimeText_PreTownHUDV2/text_003",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5370,
+          45,
+          5782,
+          68
+        ]
+      },
+      {
+        "name": "text_002",
+        "path": "02_城镇HUD/99_Legacy_70_RuntimeText_PreTownHUDV2/text_002",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4212,
+          95,
+          4429,
+          114
+        ]
+      },
+      {
+        "name": "text_001",
+        "path": "02_城镇HUD/99_Legacy_70_RuntimeText_PreTownHUDV2/text_001",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4212,
+          46,
+          4343,
+          75
+        ]
+      },
+      {
+        "name": "99_Legacy_30_Context_PreTownHUDV2",
+        "path": "02_城镇HUD/99_Legacy_30_Context_PreTownHUDV2",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          4380,
+          765,
+          4900,
+          985
+        ]
+      },
+      {
+        "name": "014_tooltip_panel",
+        "path": "02_城镇HUD/99_Legacy_30_Context_PreTownHUDV2/014_tooltip_panel",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4380,
+          765,
+          4900,
+          985
+        ]
+      },
+      {
+        "name": "99_Legacy_21_Navigation",
+        "path": "02_城镇HUD/99_Legacy_21_Navigation",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          4126,
+          217,
+          4198,
+          761
+        ]
+      },
+      {
+        "name": "012_nav_route",
+        "path": "02_城镇HUD/99_Legacy_21_Navigation/012_nav_route",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4126,
+          689,
+          4198,
+          761
+        ]
+      },
+      {
+        "name": "010_nav_task",
+        "path": "02_城镇HUD/99_Legacy_21_Navigation/010_nav_task",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4126,
+          571,
+          4198,
+          643
+        ]
+      },
+      {
+        "name": "008_nav_codex",
+        "path": "02_城镇HUD/99_Legacy_21_Navigation/008_nav_codex",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4126,
+          453,
+          4198,
+          525
+        ]
+      },
+      {
+        "name": "006_nav_companion",
+        "path": "02_城镇HUD/99_Legacy_21_Navigation/006_nav_companion",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4126,
+          335,
+          4198,
+          407
+        ]
+      },
+      {
+        "name": "004_nav_backpack",
+        "path": "02_城镇HUD/99_Legacy_21_Navigation/004_nav_backpack",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4126,
+          217,
+          4198,
+          289
+        ]
+      },
+      {
+        "name": "99_Legacy_20_Shell",
+        "path": "02_城镇HUD/99_Legacy_20_Shell",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          4104,
+          20,
+          5970,
+          773
+        ]
+      },
+      {
+        "name": "013_resource_strip",
+        "path": "02_城镇HUD/99_Legacy_20_Shell/013_resource_strip",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5295,
+          20,
+          5970,
+          102
+        ]
+      },
+      {
+        "name": "011_nav_route_disc",
+        "path": "02_城镇HUD/99_Legacy_20_Shell/011_nav_route_disc",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4114,
+          677,
+          4210,
+          773
+        ]
+      },
+      {
+        "name": "009_nav_task_disc",
+        "path": "02_城镇HUD/99_Legacy_20_Shell/009_nav_task_disc",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4114,
+          559,
+          4210,
+          655
+        ]
+      },
+      {
+        "name": "007_nav_codex_disc",
+        "path": "02_城镇HUD/99_Legacy_20_Shell/007_nav_codex_disc",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4114,
+          441,
+          4210,
+          537
+        ]
+      },
+      {
+        "name": "005_nav_companion_disc",
+        "path": "02_城镇HUD/99_Legacy_20_Shell/005_nav_companion_disc",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4114,
+          323,
+          4210,
+          419
+        ]
+      },
+      {
+        "name": "003_nav_backpack_disc",
+        "path": "02_城镇HUD/99_Legacy_20_Shell/003_nav_backpack_disc",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4114,
+          205,
+          4210,
+          301
+        ]
+      },
+      {
+        "name": "002_hero_status_panel",
+        "path": "02_城镇HUD/99_Legacy_20_Shell/002_hero_status_panel",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4104,
+          20,
+          4549,
+          162
+        ]
+      },
+      {
+        "name": "99_Legacy_10_World",
+        "path": "02_城镇HUD/99_Legacy_10_World",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          4080,
+          0,
+          6000,
+          1080
+        ]
+      },
+      {
+        "name": "001_town_world",
+        "path": "02_城镇HUD/99_Legacy_10_World/001_town_world",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4080,
+          0,
+          6000,
+          1080
+        ]
+      },
+      {
+        "name": "99_Legacy_00_FamilyCorrection_PreTownHUDV2",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          4080,
+          0,
+          6000,
+          1080
+        ]
+      },
+      {
+        "name": "20_GlobalShell_V2",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4132,
+          47,
+          5655,
+          918
+        ]
+      },
+      {
+        "name": "text_004 拷贝 9",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2/text_004 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5608,
+          54,
+          5655,
+          75
+        ]
+      },
+      {
+        "name": "text_003 拷贝 9",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2/text_003 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4278,
+          126,
+          4349,
+          145
+        ]
+      },
+      {
+        "name": "text_002 拷贝 9",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2/text_002 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4278,
+          91,
+          4335,
+          109
+        ]
+      },
+      {
+        "name": "text_001 拷贝 9",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2/text_001 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4278,
+          54,
+          4400,
+          81
+        ]
+      },
+      {
+        "name": "008_coin_20_GlobalShell_500 拷贝 9",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2/008_coin_20_GlobalShell_500 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5556,
+          47,
+          5590,
+          85
+        ]
+      },
+      {
+        "name": "007_nav_route 拷贝 9",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2/007_nav_route 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4148,
+          850,
+          4222,
+          918
+        ]
+      },
+      {
+        "name": "006_nav_task 拷贝 9",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2/006_nav_task 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4153,
+          697,
+          4216,
+          771
+        ]
+      },
+      {
+        "name": "005_nav_codex 拷贝 9",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2/005_nav_codex 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4148,
+          556,
+          4222,
+          613
+        ]
+      },
+      {
+        "name": "004_nav_companion 拷贝 9",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2/004_nav_companion 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4148,
+          412,
+          4222,
+          457
+        ]
+      },
+      {
+        "name": "003_nav_backpack 拷贝 9",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2/003_nav_backpack 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4150,
+          250,
+          4220,
+          324
+        ]
+      },
+      {
+        "name": "002_hero_portrait 拷贝 9",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/20_GlobalShell_V2/002_hero_portrait 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4132,
+          51,
+          4250,
+          178
+        ]
+      },
+      {
+        "name": "00_ShellComponents",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/00_ShellComponents",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4080,
+          0,
+          6000,
+          1080
+        ]
+      },
+      {
+        "name": "07_导航圆底_路线 拷贝",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/00_ShellComponents/07_导航圆底_路线 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4108,
+          801,
+          4263,
+          955
+        ]
+      },
+      {
+        "name": "06_导航圆底_任务 拷贝",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/00_ShellComponents/06_导航圆底_任务 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4105,
+          653,
+          4265,
+          814
+        ]
+      },
+      {
+        "name": "05_导航圆底_图鉴 拷贝",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/00_ShellComponents/05_导航圆底_图鉴 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4111,
+          505,
+          4258,
+          664
+        ]
+      },
+      {
+        "name": "04_导航圆底_伙伴 拷贝",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/00_ShellComponents/04_导航圆底_伙伴 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4110,
+          359,
+          4258,
+          509
+        ]
+      },
+      {
+        "name": "03_导航圆底_背包 拷贝",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/00_ShellComponents/03_导航圆底_背包 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4107,
+          210,
+          4259,
+          364
+        ]
+      },
+      {
+        "name": "02_顶部铜钱条 拷贝",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/00_ShellComponents/02_顶部铜钱条 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5220,
+          14,
+          5992,
+          130
+        ]
+      },
+      {
+        "name": "01_主角身份条 拷贝",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/00_ShellComponents/01_主角身份条 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4104,
+          16,
+          4645,
+          198
+        ]
+      },
+      {
+        "name": "00_城镇背景 拷贝 2",
+        "path": "02_城镇HUD/99_Legacy_00_FamilyCorrection_PreTownHUDV2/00_ShellComponents/00_城镇背景 拷贝 2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4080,
+          0,
+          6000,
+          1080
+        ]
+      }
+    ],
+    "03_主角背包": [
+      {
+        "name": "03_主角背包",
+        "path": "03_主角背包",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6120,
+          0,
+          8040,
+          1080
+        ]
+      },
+      {
+        "name": "43_InventoryActions",
+        "path": "03_主角背包/43_InventoryActions",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          7055,
+          878,
+          7160,
+          940
+        ]
+      },
+      {
+        "name": "02_DecomposeLabel",
+        "path": "03_主角背包/43_InventoryActions/02_DecomposeLabel",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7085,
+          898,
+          7130,
+          920
+        ]
+      },
+      {
+        "name": "01_DecomposeButton",
+        "path": "03_主角背包/43_InventoryActions/01_DecomposeButton",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7055,
+          878,
+          7160,
+          940
+        ]
+      },
+      {
+        "name": "01_CompactOutOfRunCurrency",
+        "path": "03_主角背包/01_CompactOutOfRunCurrency",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          7690,
+          28,
+          8006,
+          112
+        ]
+      },
+      {
+        "name": "03_IngotValue",
+        "path": "03_主角背包/01_CompactOutOfRunCurrency/03_IngotValue",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7850,
+          61,
+          7896,
+          83
+        ]
+      },
+      {
+        "name": "02_IngotIcon",
+        "path": "03_主角背包/01_CompactOutOfRunCurrency/02_IngotIcon",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7792,
+          50,
+          7832,
+          90
+        ]
+      },
+      {
+        "name": "01_CompactCurrencyPaper_320",
+        "path": "03_主角背包/01_CompactOutOfRunCurrency/01_CompactCurrencyPaper_320",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7690,
+          28,
+          8006,
+          112
+        ]
+      },
+      {
+        "name": "70_RuntimeText",
+        "path": "03_主角背包/70_RuntimeText",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6327,
+          59,
+          7945,
+          915
+        ]
+      },
+      {
+        "name": "text_022",
+        "path": "03_主角背包/70_RuntimeText/text_022",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6921,
+          895,
+          6989,
+          913
+        ]
+      },
+      {
+        "name": "text_021",
+        "path": "03_主角背包/70_RuntimeText/text_021",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6805,
+          894,
+          6886,
+          914
+        ]
+      },
+      {
+        "name": "text_020",
+        "path": "03_主角背包/70_RuntimeText/text_020",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6685,
+          897,
+          6754,
+          915
+        ]
+      },
+      {
+        "name": "text_019",
+        "path": "03_主角背包/70_RuntimeText/text_019",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6609,
+          897,
+          6645,
+          912
+        ]
+      },
+      {
+        "name": "text_018",
+        "path": "03_主角背包/70_RuntimeText/text_018",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7645,
+          253,
+          7757,
+          271
+        ]
+      },
+      {
+        "name": "text_017",
+        "path": "03_主角背包/70_RuntimeText/text_017",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7584,
+          246,
+          7622,
+          264
+        ]
+      },
+      {
+        "name": "text_016",
+        "path": "03_主角背包/70_RuntimeText/text_016",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7504,
+          245,
+          7542,
+          263
+        ]
+      },
+      {
+        "name": "text_015",
+        "path": "03_主角背包/70_RuntimeText/text_015",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7424,
+          246,
+          7462,
+          265
+        ]
+      },
+      {
+        "name": "text_014",
+        "path": "03_主角背包/70_RuntimeText/text_014",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7344,
+          245,
+          7382,
+          264
+        ]
+      },
+      {
+        "name": "text_013",
+        "path": "03_主角背包/70_RuntimeText/text_013",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7262,
+          246,
+          7305,
+          267
+        ]
+      },
+      {
+        "name": "text_012",
+        "path": "03_主角背包/70_RuntimeText/text_012",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7172,
+          240,
+          7212,
+          259
+        ]
+      },
+      {
+        "name": "text_011",
+        "path": "03_主角背包/70_RuntimeText/text_011",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7047,
+          241,
+          7087,
+          259
+        ]
+      },
+      {
+        "name": "text_010",
+        "path": "03_主角背包/70_RuntimeText/text_010",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6919,
+          242,
+          6959,
+          260
+        ]
+      },
+      {
+        "name": "text_009",
+        "path": "03_主角背包/70_RuntimeText/text_009",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6794,
+          241,
+          6836,
+          262
+        ]
+      },
+      {
+        "name": "text_008",
+        "path": "03_主角背包/70_RuntimeText/text_008",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6665,
+          243,
+          6705,
+          262
+        ]
+      },
+      {
+        "name": "text_007",
+        "path": "03_主角背包/70_RuntimeText/text_007",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6503,
+          230,
+          6587,
+          272
+        ]
+      },
+      {
+        "name": "text_006",
+        "path": "03_主角背包/70_RuntimeText/text_006",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7904,
+          59,
+          7945,
+          78
+        ]
+      },
+      {
+        "name": "text_005",
+        "path": "03_主角背包/70_RuntimeText/text_005",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7629,
+          59,
+          7692,
+          81
+        ]
+      },
+      {
+        "name": "text_004",
+        "path": "03_主角背包/70_RuntimeText/text_004",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7390,
+          59,
+          7466,
+          81
+        ]
+      },
+      {
+        "name": "text_003",
+        "path": "03_主角背包/70_RuntimeText/text_003",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6369,
+          146,
+          6395,
+          164
+        ]
+      },
+      {
+        "name": "text_002",
+        "path": "03_主角背包/70_RuntimeText/text_002",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6430,
+          102,
+          6490,
+          118
+        ]
+      },
+      {
+        "name": "text_001",
+        "path": "03_主角背包/70_RuntimeText/text_001",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6327,
+          63,
+          6380,
+          85
+        ]
+      },
+      {
+        "name": "42_InventoryScrollbar",
+        "path": "03_主角背包/42_InventoryScrollbar",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          7762,
+          303,
+          7792,
+          936
+        ]
+      },
+      {
+        "name": "inventory_scrollbar_Button",
+        "path": "03_主角背包/42_InventoryScrollbar/inventory_scrollbar_Button",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7762,
+          323,
+          7792,
+          449
+        ]
+      },
+      {
+        "name": "inventory_scrollbar_right",
+        "path": "03_主角背包/42_InventoryScrollbar/inventory_scrollbar_right",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7767,
+          303,
+          7786,
+          936
+        ]
+      },
+      {
+        "name": "41_InventoryItems",
+        "path": "03_主角背包/41_InventoryItems",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          7277,
+          317,
+          7590,
+          389
+        ]
+      },
+      {
+        "name": "026_inventory_item_3",
+        "path": "03_主角背包/41_InventoryItems/026_inventory_item_3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7518,
+          318,
+          7590,
+          388
+        ]
+      },
+      {
+        "name": "024_inventory_item_2",
+        "path": "03_主角背包/41_InventoryItems/024_inventory_item_2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7396,
+          324,
+          7468,
+          382
+        ]
+      },
+      {
+        "name": "022_inventory_item_1",
+        "path": "03_主角背包/41_InventoryItems/022_inventory_item_1",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7277,
+          317,
+          7344,
+          389
+        ]
+      },
+      {
+        "name": "40_InventorySlots",
+        "path": "03_主角背包/40_InventorySlots",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          7255,
+          300,
+          7731,
+          936
+        ]
+      },
+      {
+        "name": "043_inventory_slot_5_4",
+        "path": "03_主角背包/40_InventorySlots/043_inventory_slot_5_4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7621,
+          820,
+          7731,
+          936
+        ]
+      },
+      {
+        "name": "042_inventory_slot_5_3",
+        "path": "03_主角背包/40_InventorySlots/042_inventory_slot_5_3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7499,
+          820,
+          7609,
+          936
+        ]
+      },
+      {
+        "name": "041_inventory_slot_5_2",
+        "path": "03_主角背包/40_InventorySlots/041_inventory_slot_5_2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7377,
+          820,
+          7487,
+          936
+        ]
+      },
+      {
+        "name": "040_inventory_slot_5_1",
+        "path": "03_主角背包/40_InventorySlots/040_inventory_slot_5_1",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7255,
+          820,
+          7365,
+          936
+        ]
+      },
+      {
+        "name": "039_inventory_slot_4_4",
+        "path": "03_主角背包/40_InventorySlots/039_inventory_slot_4_4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7621,
+          690,
+          7731,
+          806
+        ]
+      },
+      {
+        "name": "038_inventory_slot_4_3",
+        "path": "03_主角背包/40_InventorySlots/038_inventory_slot_4_3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7499,
+          690,
+          7609,
+          806
+        ]
+      },
+      {
+        "name": "037_inventory_slot_4_2",
+        "path": "03_主角背包/40_InventorySlots/037_inventory_slot_4_2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7377,
+          690,
+          7487,
+          806
+        ]
+      },
+      {
+        "name": "036_inventory_slot_4_1",
+        "path": "03_主角背包/40_InventorySlots/036_inventory_slot_4_1",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7255,
+          690,
+          7365,
+          806
+        ]
+      },
+      {
+        "name": "035_inventory_slot_3_4",
+        "path": "03_主角背包/40_InventorySlots/035_inventory_slot_3_4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7621,
+          560,
+          7731,
+          676
+        ]
+      },
+      {
+        "name": "034_inventory_slot_3_3",
+        "path": "03_主角背包/40_InventorySlots/034_inventory_slot_3_3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7499,
+          560,
+          7609,
+          676
+        ]
+      },
+      {
+        "name": "033_inventory_slot_3_2",
+        "path": "03_主角背包/40_InventorySlots/033_inventory_slot_3_2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7377,
+          560,
+          7487,
+          676
+        ]
+      },
+      {
+        "name": "032_inventory_slot_3_1",
+        "path": "03_主角背包/40_InventorySlots/032_inventory_slot_3_1",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7255,
+          560,
+          7365,
+          676
+        ]
+      },
+      {
+        "name": "031_inventory_slot_2_4",
+        "path": "03_主角背包/40_InventorySlots/031_inventory_slot_2_4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7621,
+          430,
+          7731,
+          546
+        ]
+      },
+      {
+        "name": "030_inventory_slot_2_3",
+        "path": "03_主角背包/40_InventorySlots/030_inventory_slot_2_3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7499,
+          430,
+          7609,
+          546
+        ]
+      },
+      {
+        "name": "029_inventory_slot_2_2",
+        "path": "03_主角背包/40_InventorySlots/029_inventory_slot_2_2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7377,
+          430,
+          7487,
+          546
+        ]
+      },
+      {
+        "name": "028_inventory_slot_2_1",
+        "path": "03_主角背包/40_InventorySlots/028_inventory_slot_2_1",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7255,
+          430,
+          7365,
+          546
+        ]
+      },
+      {
+        "name": "027_inventory_slot_1_4",
+        "path": "03_主角背包/40_InventorySlots/027_inventory_slot_1_4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7621,
+          300,
+          7731,
+          416
+        ]
+      },
+      {
+        "name": "025_inventory_slot_1_3",
+        "path": "03_主角背包/40_InventorySlots/025_inventory_slot_1_3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7499,
+          300,
+          7609,
+          416
+        ]
+      },
+      {
+        "name": "023_inventory_slot_1_2",
+        "path": "03_主角背包/40_InventorySlots/023_inventory_slot_1_2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7377,
+          300,
+          7487,
+          416
+        ]
+      },
+      {
+        "name": "021_inventory_slot_1_1",
+        "path": "03_主角背包/40_InventorySlots/021_inventory_slot_1_1",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7255,
+          300,
+          7365,
+          416
+        ]
+      },
+      {
+        "name": "39_SelectedSlotInk",
+        "path": "03_主角背包/39_SelectedSlotInk",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          7248,
+          284,
+          7374,
+          326
+        ]
+      },
+      {
+        "name": "01_SharedShopSelectionInk",
+        "path": "03_主角背包/39_SelectedSlotInk/01_SharedShopSelectionInk",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7248,
+          284,
+          7374,
+          326
+        ]
+      },
+      {
+        "name": "32_EquipmentIcons",
+        "path": "03_主角背包/32_EquipmentIcons",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6563,
+          360,
+          7148,
+          788
+        ]
+      },
+      {
+        "name": "020_equipment_icon_6",
+        "path": "03_主角背包/32_EquipmentIcons/020_equipment_icon_6",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7088,
+          710,
+          7129,
+          788
+        ]
+      },
+      {
+        "name": "018_equipment_icon_5",
+        "path": "03_主角背包/32_EquipmentIcons/018_equipment_icon_5",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7070,
+          536,
+          7148,
+          611
+        ]
+      },
+      {
+        "name": "016_equipment_icon_4",
+        "path": "03_主角背包/32_EquipmentIcons/016_equipment_icon_4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7070,
+          363,
+          7148,
+          434
+        ]
+      },
+      {
+        "name": "014_equipment_icon_3",
+        "path": "03_主角背包/32_EquipmentIcons/014_equipment_icon_3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6569,
+          710,
+          6628,
+          788
+        ]
+      },
+      {
+        "name": "012_equipment_icon_2",
+        "path": "03_主角背包/32_EquipmentIcons/012_equipment_icon_2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6563,
+          535,
+          6634,
+          613
+        ]
+      },
+      {
+        "name": "010_equipment_icon_1",
+        "path": "03_主角背包/32_EquipmentIcons/010_equipment_icon_1",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6570,
+          360,
+          6629,
+          438
+        ]
+      },
+      {
+        "name": "31_EquipmentFrames",
+        "path": "03_主角背包/31_EquipmentFrames",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6540,
+          340,
+          7168,
+          814
+        ]
+      },
+      {
+        "name": "019_equipment_frame_6",
+        "path": "03_主角背包/31_EquipmentFrames/019_equipment_frame_6",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7050,
+          690,
+          7168,
+          814
+        ]
+      },
+      {
+        "name": "017_equipment_frame_5",
+        "path": "03_主角背包/31_EquipmentFrames/017_equipment_frame_5",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7050,
+          515,
+          7168,
+          639
+        ]
+      },
+      {
+        "name": "015_equipment_frame_4",
+        "path": "03_主角背包/31_EquipmentFrames/015_equipment_frame_4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7050,
+          340,
+          7168,
+          464
+        ]
+      },
+      {
+        "name": "013_equipment_frame_3",
+        "path": "03_主角背包/31_EquipmentFrames/013_equipment_frame_3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6540,
+          690,
+          6658,
+          814
+        ]
+      },
+      {
+        "name": "011_equipment_frame_2",
+        "path": "03_主角背包/31_EquipmentFrames/011_equipment_frame_2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6540,
+          515,
+          6658,
+          639
+        ]
+      },
+      {
+        "name": "009_equipment_frame_1",
+        "path": "03_主角背包/31_EquipmentFrames/009_equipment_frame_1",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6540,
+          340,
+          6658,
+          464
+        ]
+      },
+      {
+        "name": "30_Character",
+        "path": "03_主角背包/30_Character",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6728,
+          353,
+          6987,
+          774
+        ]
+      },
+      {
+        "name": "008_hero_idle",
+        "path": "03_主角背包/30_Character/008_hero_idle",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6728,
+          353,
+          6987,
+          774
+        ]
+      },
+      {
+        "name": "20_Tabs",
+        "path": "03_主角背包/20_Tabs",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6634,
+          219,
+          7244,
+          283
+        ]
+      },
+      {
+        "name": "007_tab_5",
+        "path": "03_主角背包/20_Tabs/007_tab_5",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7139,
+          221,
+          7244,
+          283
+        ]
+      },
+      {
+        "name": "006_tab_4",
+        "path": "03_主角背包/20_Tabs/006_tab_4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7015,
+          220,
+          7120,
+          282
+        ]
+      },
+      {
+        "name": "005_tab_3",
+        "path": "03_主角背包/20_Tabs/005_tab_3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6884,
+          220,
+          6989,
+          282
+        ]
+      },
+      {
+        "name": "004_tab_2",
+        "path": "03_主角背包/20_Tabs/004_tab_2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6759,
+          219,
+          6864,
+          281
+        ]
+      },
+      {
+        "name": "003_tab_1",
+        "path": "03_主角背包/20_Tabs/003_tab_1",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6634,
+          220,
+          6739,
+          282
+        ]
+      },
+      {
+        "name": "99_Legacy_15_HudContent",
+        "path": "03_主角背包/99_Legacy_15_HudContent",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          6180,
+          36,
+          6298,
+          163
+        ]
+      },
+      {
+        "name": "002_hero_portrait",
+        "path": "03_主角背包/99_Legacy_15_HudContent/002_hero_portrait",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6180,
+          36,
+          6298,
+          163
+        ]
+      },
+      {
+        "name": "99_Legacy_10_ApprovedV2Shell",
+        "path": "03_主角背包/99_Legacy_10_ApprovedV2Shell",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          6120,
+          0,
+          8040,
+          1080
+        ]
+      },
+      {
+        "name": "001_approved_v2_backpack_shell",
+        "path": "03_主角背包/99_Legacy_10_ApprovedV2Shell/001_approved_v2_backpack_shell",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6120,
+          0,
+          8040,
+          1080
+        ]
+      },
+      {
+        "name": "00_FamilyCorrection",
+        "path": "03_主角背包/00_FamilyCorrection",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6120,
+          0,
+          8040,
+          1080
+        ]
+      },
+      {
+        "name": "20_GlobalShell_V2",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6172,
+          47,
+          7695,
+          918
+        ]
+      },
+      {
+        "name": "99_Legacy_TopBalanceValue",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2/99_Legacy_TopBalanceValue",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7648,
+          54,
+          7695,
+          75
+        ]
+      },
+      {
+        "name": "text_003 拷贝 10",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2/text_003 拷贝 10",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6318,
+          126,
+          6389,
+          145
+        ]
+      },
+      {
+        "name": "text_002 拷贝 10",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2/text_002 拷贝 10",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6318,
+          91,
+          6375,
+          109
+        ]
+      },
+      {
+        "name": "text_001 拷贝 10",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2/text_001 拷贝 10",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6318,
+          54,
+          6440,
+          81
+        ]
+      },
+      {
+        "name": "99_Legacy_TopBalanceCopperIcon",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2/99_Legacy_TopBalanceCopperIcon",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7596,
+          47,
+          7630,
+          85
+        ]
+      },
+      {
+        "name": "007_nav_route 拷贝 10",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2/007_nav_route 拷贝 10",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6188,
+          850,
+          6262,
+          918
+        ]
+      },
+      {
+        "name": "006_nav_task 拷贝 10",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2/006_nav_task 拷贝 10",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6193,
+          697,
+          6256,
+          771
+        ]
+      },
+      {
+        "name": "005_nav_codex 拷贝 10",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2/005_nav_codex 拷贝 10",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6188,
+          556,
+          6262,
+          613
+        ]
+      },
+      {
+        "name": "004_nav_companion 拷贝 10",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2/004_nav_companion 拷贝 10",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6188,
+          412,
+          6262,
+          457
+        ]
+      },
+      {
+        "name": "003_nav_backpack 拷贝 10",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2/003_nav_backpack 拷贝 10",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6190,
+          250,
+          6260,
+          324
+        ]
+      },
+      {
+        "name": "002_hero_portrait 拷贝 10",
+        "path": "03_主角背包/00_FamilyCorrection/20_GlobalShell_V2/002_hero_portrait 拷贝 10",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6172,
+          51,
+          6290,
+          178
+        ]
+      },
+      {
+        "name": "00_ShellComponents",
+        "path": "03_主角背包/00_FamilyCorrection/00_ShellComponents",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6120,
+          0,
+          8040,
+          1080
+        ]
+      },
+      {
+        "name": "08_中央商店窗口 拷贝 2",
+        "path": "03_主角背包/00_FamilyCorrection/00_ShellComponents/08_中央商店窗口 拷贝 2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6431,
+          173,
+          7881,
+          1022
+        ]
+      },
+      {
+        "name": "07_导航圆底_路线 拷贝 2",
+        "path": "03_主角背包/00_FamilyCorrection/00_ShellComponents/07_导航圆底_路线 拷贝 2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6148,
+          801,
+          6303,
+          955
+        ]
+      },
+      {
+        "name": "06_导航圆底_任务 拷贝 2",
+        "path": "03_主角背包/00_FamilyCorrection/00_ShellComponents/06_导航圆底_任务 拷贝 2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6145,
+          653,
+          6305,
+          814
+        ]
+      },
+      {
+        "name": "05_导航圆底_图鉴 拷贝 2",
+        "path": "03_主角背包/00_FamilyCorrection/00_ShellComponents/05_导航圆底_图鉴 拷贝 2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6151,
+          505,
+          6298,
+          664
+        ]
+      },
+      {
+        "name": "04_导航圆底_伙伴 拷贝 2",
+        "path": "03_主角背包/00_FamilyCorrection/00_ShellComponents/04_导航圆底_伙伴 拷贝 2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6150,
+          359,
+          6298,
+          509
+        ]
+      },
+      {
+        "name": "03_导航圆底_背包 拷贝 2",
+        "path": "03_主角背包/00_FamilyCorrection/00_ShellComponents/03_导航圆底_背包 拷贝 2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6147,
+          210,
+          6299,
+          364
+        ]
+      },
+      {
+        "name": "99_Legacy_LongCurrencyPaper",
+        "path": "03_主角背包/00_FamilyCorrection/00_ShellComponents/99_Legacy_LongCurrencyPaper",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7260,
+          14,
+          8032,
+          130
+        ]
+      },
+      {
+        "name": "01_主角身份条 拷贝 2",
+        "path": "03_主角背包/00_FamilyCorrection/00_ShellComponents/01_主角身份条 拷贝 2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6144,
+          16,
+          6685,
+          198
+        ]
+      },
+      {
+        "name": "00_城镇背景 拷贝 3",
+        "path": "03_主角背包/00_FamilyCorrection/00_ShellComponents/00_城镇背景 拷贝 3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6120,
+          0,
+          8040,
+          1080
+        ]
+      }
+    ],
+    "07_商店交易": [
+      {
+        "name": "07_商店交易",
+        "path": "07_商店交易",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4080,
+          1200,
+          6000,
+          2280
+        ]
+      },
+      {
+        "name": "01_CompactOutOfRunCurrency",
+        "path": "07_商店交易/01_CompactOutOfRunCurrency",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          5650,
+          1228,
+          5966,
+          1312
+        ]
+      },
+      {
+        "name": "03_IngotValue",
+        "path": "07_商店交易/01_CompactOutOfRunCurrency/03_IngotValue",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5810,
+          1261,
+          5856,
+          1283
+        ]
+      },
+      {
+        "name": "02_IngotIcon",
+        "path": "07_商店交易/01_CompactOutOfRunCurrency/02_IngotIcon",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5752,
+          1250,
+          5792,
+          1290
+        ]
+      },
+      {
+        "name": "01_CompactCurrencyPaper_320",
+        "path": "07_商店交易/01_CompactOutOfRunCurrency/01_CompactCurrencyPaper_320",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5650,
+          1228,
+          5966,
+          1312
+        ]
+      },
+      {
+        "name": "30_ShopPaper",
+        "path": "07_商店交易/30_ShopPaper",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4470,
+          1411,
+          4843,
+          1454
+        ]
+      },
+      {
+        "name": "text_006",
+        "path": "07_商店交易/30_ShopPaper/text_006",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4645,
+          1424,
+          4843,
+          1447
+        ]
+      },
+      {
+        "name": "text_005",
+        "path": "07_商店交易/30_ShopPaper/text_005",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4470,
+          1411,
+          4556,
+          1454
+        ]
+      },
+      {
+        "name": "74_State_Result",
+        "path": "07_商店交易/74_State_Result",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4478,
+          1476,
+          5760,
+          2170
+        ]
+      },
+      {
+        "name": "text_040",
+        "path": "07_商店交易/74_State_Result/text_040",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5541,
+          2093,
+          5580,
+          2112
+        ]
+      },
+      {
+        "name": "text_039",
+        "path": "07_商店交易/74_State_Result/text_039",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5458,
+          2016,
+          5669,
+          2037
+        ]
+      },
+      {
+        "name": "text_038",
+        "path": "07_商店交易/74_State_Result/text_038",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5515,
+          1957,
+          5616,
+          1981
+        ]
+      },
+      {
+        "name": "045_accept_result",
+        "path": "07_商店交易/74_State_Result/045_accept_result",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5480,
+          2075,
+          5640,
+          2133
+        ]
+      },
+      {
+        "name": "044_result_panel",
+        "path": "07_商店交易/74_State_Result/044_result_panel",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5360,
+          1925,
+          5760,
+          2170
+        ]
+      },
+      {
+        "name": "043_result_selection_ink",
+        "path": "07_商店交易/74_State_Result/043_result_selection_ink",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4478,
+          1476,
+          4672,
+          1542
+        ]
+      },
+      {
+        "name": "73_State_Confirmation",
+        "path": "07_商店交易/73_State_Confirmation",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4478,
+          1476,
+          5760,
+          2170
+        ]
+      },
+      {
+        "name": "IngotPrice_01",
+        "path": "07_商店交易/73_State_Confirmation/IngotPrice_01",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5560,
+          2008,
+          5580,
+          2028
+        ]
+      },
+      {
+        "name": "text_037",
+        "path": "07_商店交易/73_State_Confirmation/text_037",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5631,
+          2085,
+          5668,
+          2103
+        ]
+      },
+      {
+        "name": "text_036",
+        "path": "07_商店交易/73_State_Confirmation/text_036",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5432,
+          2084,
+          5510,
+          2105
+        ]
+      },
+      {
+        "name": "text_035",
+        "path": "07_商店交易/73_State_Confirmation/text_035",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5590,
+          2010,
+          5624,
+          2025
+        ]
+      },
+      {
+        "name": "text_034",
+        "path": "07_商店交易/73_State_Confirmation/text_034",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5494,
+          2007,
+          5553,
+          2026
+        ]
+      },
+      {
+        "name": "text_033",
+        "path": "07_商店交易/73_State_Confirmation/text_033",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5450,
+          1956,
+          5674,
+          1980
+        ]
+      },
+      {
+        "name": "042_cancel_purchase",
+        "path": "07_商店交易/73_State_Confirmation/042_cancel_purchase",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5575,
+          2068,
+          5725,
+          2126
+        ]
+      },
+      {
+        "name": "041_confirm_purchase",
+        "path": "07_商店交易/73_State_Confirmation/041_confirm_purchase",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5395,
+          2068,
+          5545,
+          2126
+        ]
+      },
+      {
+        "name": "99_Legacy_CopperPrice_01",
+        "path": "07_商店交易/73_State_Confirmation/99_Legacy_CopperPrice_01",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5560,
+          2008,
+          5580,
+          2030
+        ]
+      },
+      {
+        "name": "039_confirmation_panel",
+        "path": "07_商店交易/73_State_Confirmation/039_confirmation_panel",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5360,
+          1925,
+          5760,
+          2170
+        ]
+      },
+      {
+        "name": "038_confirmation_selection_ink",
+        "path": "07_商店交易/73_State_Confirmation/038_confirmation_selection_ink",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4478,
+          1476,
+          4672,
+          1542
+        ]
+      },
+      {
+        "name": "72_State_InsufficientFunds",
+        "path": "07_商店交易/72_State_InsufficientFunds",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4478,
+          1476,
+          5665,
+          2173
+        ]
+      },
+      {
+        "name": "IngotPrice_02",
+        "path": "07_商店交易/72_State_InsufficientFunds/IngotPrice_02",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5551,
+          2093,
+          5574,
+          2116
+        ]
+      },
+      {
+        "name": "text_032",
+        "path": "07_商店交易/72_State_InsufficientFunds/text_032",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5498,
+          2156,
+          5633,
+          2173
+        ]
+      },
+      {
+        "name": "text_031",
+        "path": "07_商店交易/72_State_InsufficientFunds/text_031",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5586,
+          2096,
+          5626,
+          2114
+        ]
+      },
+      {
+        "name": "text_030",
+        "path": "07_商店交易/72_State_InsufficientFunds/text_030",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5494,
+          2093,
+          5541,
+          2116
+        ]
+      },
+      {
+        "name": "99_Legacy_CopperPrice_02",
+        "path": "07_商店交易/72_State_InsufficientFunds/99_Legacy_CopperPrice_02",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5551,
+          2093,
+          5574,
+          2118
+        ]
+      },
+      {
+        "name": "036_purchase_disabled",
+        "path": "07_商店交易/72_State_InsufficientFunds/036_purchase_disabled",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5455,
+          2070,
+          5665,
+          2142
+        ]
+      },
+      {
+        "name": "035_insufficient_funds_selection_ink",
+        "path": "07_商店交易/72_State_InsufficientFunds/035_insufficient_funds_selection_ink",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4478,
+          1476,
+          4672,
+          1542
+        ]
+      },
+      {
+        "name": "71_State_Selected",
+        "path": "07_商店交易/71_State_Selected",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          5455,
+          2070,
+          5665,
+          2173
+        ]
+      },
+      {
+        "name": "IngotPrice_03",
+        "path": "07_商店交易/71_State_Selected/IngotPrice_03",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5551,
+          2093,
+          5574,
+          2116
+        ]
+      },
+      {
+        "name": "text_029",
+        "path": "07_商店交易/71_State_Selected/text_029",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5492,
+          2158,
+          5604,
+          2173
+        ]
+      },
+      {
+        "name": "text_028",
+        "path": "07_商店交易/71_State_Selected/text_028",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5586,
+          2096,
+          5626,
+          2114
+        ]
+      },
+      {
+        "name": "text_027",
+        "path": "07_商店交易/71_State_Selected/text_027",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5494,
+          2093,
+          5541,
+          2116
+        ]
+      },
+      {
+        "name": "99_Legacy_CopperPrice_03",
+        "path": "07_商店交易/71_State_Selected/99_Legacy_CopperPrice_03",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5551,
+          2093,
+          5574,
+          2118
+        ]
+      },
+      {
+        "name": "033_purchase_button",
+        "path": "07_商店交易/71_State_Selected/033_purchase_button",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5455,
+          2070,
+          5665,
+          2142
+        ]
+      },
+      {
+        "name": "50_ProductDetail",
+        "path": "07_商店交易/50_ProductDetail",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          5385,
+          1530,
+          5670,
+          2024
+        ]
+      },
+      {
+        "name": "text_026",
+        "path": "07_商店交易/50_ProductDetail/text_026",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5385,
+          2007,
+          5504,
+          2024
+        ]
+      },
+      {
+        "name": "text_025",
+        "path": "07_商店交易/50_ProductDetail/text_025",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5385,
+          1973,
+          5605,
+          1990
+        ]
+      },
+      {
+        "name": "text_024",
+        "path": "07_商店交易/50_ProductDetail/text_024",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5385,
+          1922,
+          5645,
+          1940
+        ]
+      },
+      {
+        "name": "text_023",
+        "path": "07_商店交易/50_ProductDetail/text_023",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5385,
+          1882,
+          5594,
+          1902
+        ]
+      },
+      {
+        "name": "text_022",
+        "path": "07_商店交易/50_ProductDetail/text_022",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5386,
+          1842,
+          5632,
+          1862
+        ]
+      },
+      {
+        "name": "text_021",
+        "path": "07_商店交易/50_ProductDetail/text_021",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5485,
+          1779,
+          5639,
+          1811
+        ]
+      },
+      {
+        "name": "031_selected_product_detail_icon",
+        "path": "07_商店交易/50_ProductDetail/031_selected_product_detail_icon",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5524,
+          1574,
+          5596,
+          1706
+        ]
+      },
+      {
+        "name": "030_selected_product_detail_slot",
+        "path": "07_商店交易/50_ProductDetail/030_selected_product_detail_slot",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5450,
+          1530,
+          5670,
+          1750
+        ]
+      },
+      {
+        "name": "40_ProductGrid",
+        "path": "07_商店交易/40_ProductGrid",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4478,
+          1476,
+          5320,
+          2049
+        ]
+      },
+      {
+        "name": "IngotPrice_10",
+        "path": "07_商店交易/40_ProductGrid/IngotPrice_10",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4546,
+          1719,
+          4564,
+          1739
+        ]
+      },
+      {
+        "name": "IngotPrice_09",
+        "path": "07_商店交易/40_ProductGrid/IngotPrice_09",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4766,
+          1719,
+          4784,
+          1739
+        ]
+      },
+      {
+        "name": "IngotPrice_08",
+        "path": "07_商店交易/40_ProductGrid/IngotPrice_08",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4986,
+          1719,
+          5004,
+          1739
+        ]
+      },
+      {
+        "name": "IngotPrice_07",
+        "path": "07_商店交易/40_ProductGrid/IngotPrice_07",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5206,
+          1719,
+          5224,
+          1739
+        ]
+      },
+      {
+        "name": "IngotPrice_06",
+        "path": "07_商店交易/40_ProductGrid/IngotPrice_06",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4656,
+          2029,
+          4674,
+          2049
+        ]
+      },
+      {
+        "name": "IngotPrice_05",
+        "path": "07_商店交易/40_ProductGrid/IngotPrice_05",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4876,
+          2029,
+          4894,
+          2049
+        ]
+      },
+      {
+        "name": "IngotPrice_04",
+        "path": "07_商店交易/40_ProductGrid/IngotPrice_04",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5096,
+          2029,
+          5114,
+          2049
+        ]
+      },
+      {
+        "name": "text_020",
+        "path": "07_商店交易/40_ProductGrid/text_020",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5123,
+          2030,
+          5153,
+          2044
+        ]
+      },
+      {
+        "name": "text_019",
+        "path": "07_商店交易/40_ProductGrid/text_019",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5095,
+          1994,
+          5155,
+          2013
+        ]
+      },
+      {
+        "name": "text_018",
+        "path": "07_商店交易/40_ProductGrid/text_018",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4903,
+          2030,
+          4933,
+          2044
+        ]
+      },
+      {
+        "name": "text_017",
+        "path": "07_商店交易/40_ProductGrid/text_017",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4856,
+          1993,
+          4955,
+          2013
+        ]
+      },
+      {
+        "name": "text_016",
+        "path": "07_商店交易/40_ProductGrid/text_016",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4683,
+          2030,
+          4713,
+          2044
+        ]
+      },
+      {
+        "name": "text_015",
+        "path": "07_商店交易/40_ProductGrid/text_015",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4635,
+          1993,
+          4735,
+          2013
+        ]
+      },
+      {
+        "name": "text_014",
+        "path": "07_商店交易/40_ProductGrid/text_014",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5233,
+          1720,
+          5263,
+          1734
+        ]
+      },
+      {
+        "name": "text_013",
+        "path": "07_商店交易/40_ProductGrid/text_013",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5185,
+          1683,
+          5285,
+          1703
+        ]
+      },
+      {
+        "name": "text_012",
+        "path": "07_商店交易/40_ProductGrid/text_012",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5013,
+          1720,
+          5043,
+          1734
+        ]
+      },
+      {
+        "name": "text_011",
+        "path": "07_商店交易/40_ProductGrid/text_011",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4965,
+          1683,
+          5065,
+          1703
+        ]
+      },
+      {
+        "name": "text_010",
+        "path": "07_商店交易/40_ProductGrid/text_010",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4793,
+          1720,
+          4823,
+          1734
+        ]
+      },
+      {
+        "name": "text_009",
+        "path": "07_商店交易/40_ProductGrid/text_009",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4745,
+          1683,
+          4845,
+          1703
+        ]
+      },
+      {
+        "name": "text_008",
+        "path": "07_商店交易/40_ProductGrid/text_008",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4573,
+          1720,
+          4603,
+          1734
+        ]
+      },
+      {
+        "name": "text_007",
+        "path": "07_商店交易/40_ProductGrid/text_007",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4524,
+          1683,
+          4628,
+          1704
+        ]
+      },
+      {
+        "name": "99_Legacy_CopperPrice_04",
+        "path": "07_商店交易/40_ProductGrid/99_Legacy_CopperPrice_04",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5096,
+          2029,
+          5114,
+          2049
+        ]
+      },
+      {
+        "name": "028_product_icon_7",
+        "path": "07_商店交易/40_ProductGrid/028_product_icon_7",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5069,
+          1859,
+          5181,
+          1927
+        ]
+      },
+      {
+        "name": "027_product_card_7",
+        "path": "07_商店交易/40_ProductGrid/027_product_card_7",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5040,
+          1810,
+          5210,
+          1980
+        ]
+      },
+      {
+        "name": "99_Legacy_CopperPrice_05",
+        "path": "07_商店交易/40_ProductGrid/99_Legacy_CopperPrice_05",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4876,
+          2029,
+          4894,
+          2049
+        ]
+      },
+      {
+        "name": "025_product_icon_6",
+        "path": "07_商店交易/40_ProductGrid/025_product_icon_6",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4874,
+          1836,
+          4936,
+          1951
+        ]
+      },
+      {
+        "name": "024_product_card_6",
+        "path": "07_商店交易/40_ProductGrid/024_product_card_6",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4820,
+          1810,
+          4990,
+          1980
+        ]
+      },
+      {
+        "name": "99_Legacy_CopperPrice_06",
+        "path": "07_商店交易/40_ProductGrid/99_Legacy_CopperPrice_06",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4656,
+          2029,
+          4674,
+          2049
+        ]
+      },
+      {
+        "name": "022_product_icon_5",
+        "path": "07_商店交易/40_ProductGrid/022_product_icon_5",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4647,
+          1836,
+          4724,
+          1951
+        ]
+      },
+      {
+        "name": "021_product_card_5",
+        "path": "07_商店交易/40_ProductGrid/021_product_card_5",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4600,
+          1810,
+          4770,
+          1980
+        ]
+      },
+      {
+        "name": "99_Legacy_CopperPrice_07",
+        "path": "07_商店交易/40_ProductGrid/99_Legacy_CopperPrice_07",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5206,
+          1719,
+          5224,
+          1739
+        ]
+      },
+      {
+        "name": "019_product_icon_4",
+        "path": "07_商店交易/40_ProductGrid/019_product_icon_4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5203,
+          1526,
+          5267,
+          1641
+        ]
+      },
+      {
+        "name": "018_product_card_4",
+        "path": "07_商店交易/40_ProductGrid/018_product_card_4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          5150,
+          1500,
+          5320,
+          1670
+        ]
+      },
+      {
+        "name": "99_Legacy_CopperPrice_08",
+        "path": "07_商店交易/40_ProductGrid/99_Legacy_CopperPrice_08",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4986,
+          1719,
+          5004,
+          1739
+        ]
+      },
+      {
+        "name": "016_product_icon_3",
+        "path": "07_商店交易/40_ProductGrid/016_product_icon_3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4978,
+          1526,
+          5053,
+          1641
+        ]
+      },
+      {
+        "name": "015_product_card_3",
+        "path": "07_商店交易/40_ProductGrid/015_product_card_3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4930,
+          1500,
+          5100,
+          1670
+        ]
+      },
+      {
+        "name": "99_Legacy_CopperPrice_09",
+        "path": "07_商店交易/40_ProductGrid/99_Legacy_CopperPrice_09",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4766,
+          1719,
+          4784,
+          1739
+        ]
+      },
+      {
+        "name": "013_product_icon_2",
+        "path": "07_商店交易/40_ProductGrid/013_product_icon_2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4750,
+          1526,
+          4839,
+          1641
+        ]
+      },
+      {
+        "name": "012_product_card_2",
+        "path": "07_商店交易/40_ProductGrid/012_product_card_2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4710,
+          1500,
+          4880,
+          1670
+        ]
+      },
+      {
+        "name": "99_Legacy_CopperPrice_10",
+        "path": "07_商店交易/40_ProductGrid/99_Legacy_CopperPrice_10",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4546,
+          1719,
+          4564,
+          1739
+        ]
+      },
+      {
+        "name": "010_product_icon_1",
+        "path": "07_商店交易/40_ProductGrid/010_product_icon_1",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4544,
+          1526,
+          4606,
+          1641
+        ]
+      },
+      {
+        "name": "009_product_card_1",
+        "path": "07_商店交易/40_ProductGrid/009_product_card_1",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4490,
+          1500,
+          4660,
+          1670
+        ]
+      },
+      {
+        "name": "032_selected_selection_ink",
+        "path": "07_商店交易/40_ProductGrid/032_selected_selection_ink",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4478,
+          1476,
+          4672,
+          1542
+        ]
+      },
+      {
+        "name": "20_GlobalShell",
+        "path": "07_商店交易/20_GlobalShell",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4132,
+          1247,
+          5655,
+          2118
+        ]
+      },
+      {
+        "name": "99_Legacy_TopBalanceValue",
+        "path": "07_商店交易/20_GlobalShell/99_Legacy_TopBalanceValue",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5608,
+          1254,
+          5655,
+          1275
+        ]
+      },
+      {
+        "name": "text_003",
+        "path": "07_商店交易/20_GlobalShell/text_003",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4278,
+          1326,
+          4349,
+          1345
+        ]
+      },
+      {
+        "name": "text_002",
+        "path": "07_商店交易/20_GlobalShell/text_002",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4278,
+          1291,
+          4335,
+          1309
+        ]
+      },
+      {
+        "name": "text_001",
+        "path": "07_商店交易/20_GlobalShell/text_001",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4278,
+          1254,
+          4400,
+          1281
+        ]
+      },
+      {
+        "name": "99_Legacy_TopBalanceCopperIcon",
+        "path": "07_商店交易/20_GlobalShell/99_Legacy_TopBalanceCopperIcon",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5556,
+          1247,
+          5590,
+          1285
+        ]
+      },
+      {
+        "name": "007_nav_route",
+        "path": "07_商店交易/20_GlobalShell/007_nav_route",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4148,
+          2050,
+          4222,
+          2118
+        ]
+      },
+      {
+        "name": "006_nav_task",
+        "path": "07_商店交易/20_GlobalShell/006_nav_task",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4153,
+          1897,
+          4216,
+          1971
+        ]
+      },
+      {
+        "name": "005_nav_codex",
+        "path": "07_商店交易/20_GlobalShell/005_nav_codex",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4148,
+          1756,
+          4222,
+          1813
+        ]
+      },
+      {
+        "name": "004_nav_companion",
+        "path": "07_商店交易/20_GlobalShell/004_nav_companion",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4148,
+          1612,
+          4222,
+          1657
+        ]
+      },
+      {
+        "name": "003_nav_backpack",
+        "path": "07_商店交易/20_GlobalShell/003_nav_backpack",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4150,
+          1450,
+          4220,
+          1524
+        ]
+      },
+      {
+        "name": "002_hero_portrait",
+        "path": "07_商店交易/20_GlobalShell/002_hero_portrait",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4132,
+          1251,
+          4250,
+          1378
+        ]
+      },
+      {
+        "name": "10_Background",
+        "path": "07_商店交易/10_Background",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4080,
+          1200,
+          6000,
+          2280
+        ]
+      },
+      {
+        "name": "99_原始合成壳体_备份",
+        "path": "07_商店交易/10_Background/99_原始合成壳体_备份",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          4080,
+          1200,
+          6000,
+          2280
+        ]
+      },
+      {
+        "name": "00_ShellComponents",
+        "path": "07_商店交易/10_Background/00_ShellComponents",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          4080,
+          1200,
+          6000,
+          2280
+        ]
+      },
+      {
+        "name": "08_中央商店窗口",
+        "path": "07_商店交易/10_Background/00_ShellComponents/08_中央商店窗口",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4391,
+          1373,
+          5841,
+          2222
+        ]
+      },
+      {
+        "name": "07_导航圆底_路线",
+        "path": "07_商店交易/10_Background/00_ShellComponents/07_导航圆底_路线",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4108,
+          2001,
+          4263,
+          2155
+        ]
+      },
+      {
+        "name": "06_导航圆底_任务",
+        "path": "07_商店交易/10_Background/00_ShellComponents/06_导航圆底_任务",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4105,
+          1853,
+          4265,
+          2014
+        ]
+      },
+      {
+        "name": "05_导航圆底_图鉴",
+        "path": "07_商店交易/10_Background/00_ShellComponents/05_导航圆底_图鉴",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4111,
+          1705,
+          4258,
+          1864
+        ]
+      },
+      {
+        "name": "04_导航圆底_伙伴",
+        "path": "07_商店交易/10_Background/00_ShellComponents/04_导航圆底_伙伴",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4110,
+          1559,
+          4258,
+          1709
+        ]
+      },
+      {
+        "name": "03_导航圆底_背包",
+        "path": "07_商店交易/10_Background/00_ShellComponents/03_导航圆底_背包",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4107,
+          1410,
+          4259,
+          1564
+        ]
+      },
+      {
+        "name": "99_Legacy_LongCurrencyPaper",
+        "path": "07_商店交易/10_Background/00_ShellComponents/99_Legacy_LongCurrencyPaper",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          5220,
+          1214,
+          5992,
+          1330
+        ]
+      },
+      {
+        "name": "01_主角身份条",
+        "path": "07_商店交易/10_Background/00_ShellComponents/01_主角身份条",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4104,
+          1216,
+          4645,
+          1398
+        ]
+      },
+      {
+        "name": "00_城镇背景",
+        "path": "07_商店交易/10_Background/00_ShellComponents/00_城镇背景",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          4080,
+          1200,
+          6000,
+          2280
+        ]
+      }
+    ],
+    "18_主角背包_卡组页": [
+      {
+        "name": "18_主角背包_卡组页",
+        "path": "18_主角背包_卡组页",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6120,
+          3600,
+          8040,
+          4680
+        ]
+      },
+      {
+        "name": "card_state_locked_icon_full",
+        "path": "18_主角背包_卡组页/card_state_locked_icon_full",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7619,
+          4393,
+          7679,
+          4470
+        ]
+      },
+      {
+        "name": "card_frame_base_PSD057 拷贝 8",
+        "path": "18_主角背包_卡组页/card_frame_base_PSD057 拷贝 8",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7580,
+          4338,
+          7717,
+          4527
+        ]
+      },
+      {
+        "name": "card_frame_base_PSD057 拷贝 7",
+        "path": "18_主角背包_卡组页/card_frame_base_PSD057 拷贝 7",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7416,
+          4338,
+          7553,
+          4527
+        ]
+      },
+      {
+        "name": "card_frame_base_PSD057 拷贝 6",
+        "path": "18_主角背包_卡组页/card_frame_base_PSD057 拷贝 6",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7253,
+          4337,
+          7390,
+          4527
+        ]
+      },
+      {
+        "name": "card_frame_base_PSD057 拷贝 5",
+        "path": "18_主角背包_卡组页/card_frame_base_PSD057 拷贝 5",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7580,
+          4124,
+          7717,
+          4313
+        ]
+      },
+      {
+        "name": "card_frame_base_PSD057 拷贝 4",
+        "path": "18_主角背包_卡组页/card_frame_base_PSD057 拷贝 4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7416,
+          4124,
+          7553,
+          4313
+        ]
+      },
+      {
+        "name": "card_frame_base_PSD057 拷贝 3",
+        "path": "18_主角背包_卡组页/card_frame_base_PSD057 拷贝 3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7253,
+          4123,
+          7390,
+          4313
+        ]
+      },
+      {
+        "name": "card_frame_base_PSD057 拷贝 2",
+        "path": "18_主角背包_卡组页/card_frame_base_PSD057 拷贝 2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7580,
+          3912,
+          7717,
+          4101
+        ]
+      },
+      {
+        "name": "card_frame_base_PSD057 拷贝",
+        "path": "18_主角背包_卡组页/card_frame_base_PSD057 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7416,
+          3912,
+          7553,
+          4101
+        ]
+      },
+      {
+        "name": "card_frame_base_PSD057",
+        "path": "18_主角背包_卡组页/card_frame_base_PSD057",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7253,
+          3911,
+          7390,
+          4101
+        ]
+      },
+      {
+        "name": "02_WindowControls",
+        "path": "18_主角背包_卡组页/02_WindowControls",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          7772,
+          3801,
+          7846,
+          3875
+        ]
+      },
+      {
+        "name": "01_CloseButton",
+        "path": "18_主角背包_卡组页/02_WindowControls/01_CloseButton",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7772,
+          3801,
+          7846,
+          3875
+        ]
+      },
+      {
+        "name": "43_InventoryActions 拷贝",
+        "path": "18_主角背包_卡组页/43_InventoryActions 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          7055,
+          4478,
+          7160,
+          4540
+        ]
+      },
+      {
+        "name": "02_DecomposeLabel 拷贝",
+        "path": "18_主角背包_卡组页/43_InventoryActions 拷贝/02_DecomposeLabel 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7085,
+          4498,
+          7130,
+          4520
+        ]
+      },
+      {
+        "name": "01_DecomposeButton 拷贝",
+        "path": "18_主角背包_卡组页/43_InventoryActions 拷贝/01_DecomposeButton 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7055,
+          4478,
+          7160,
+          4540
+        ]
+      },
+      {
+        "name": "01_CompactOutOfRunCurrency 拷贝",
+        "path": "18_主角背包_卡组页/01_CompactOutOfRunCurrency 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          7690,
+          3628,
+          8006,
+          3712
+        ]
+      },
+      {
+        "name": "03_IngotValue 拷贝",
+        "path": "18_主角背包_卡组页/01_CompactOutOfRunCurrency 拷贝/03_IngotValue 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7850,
+          3661,
+          7896,
+          3683
+        ]
+      },
+      {
+        "name": "02_IngotIcon 拷贝",
+        "path": "18_主角背包_卡组页/01_CompactOutOfRunCurrency 拷贝/02_IngotIcon 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7792,
+          3650,
+          7832,
+          3690
+        ]
+      },
+      {
+        "name": "01_CompactCurrencyPaper_320 拷贝",
+        "path": "18_主角背包_卡组页/01_CompactOutOfRunCurrency 拷贝/01_CompactCurrencyPaper_320 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7690,
+          3628,
+          8006,
+          3712
+        ]
+      },
+      {
+        "name": "70_RuntimeText 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6327,
+          3659,
+          7945,
+          4515
+        ]
+      },
+      {
+        "name": "text_022 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_022 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6921,
+          4495,
+          6989,
+          4513
+        ]
+      },
+      {
+        "name": "text_021 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_021 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6805,
+          4494,
+          6886,
+          4514
+        ]
+      },
+      {
+        "name": "text_020 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_020 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6685,
+          4497,
+          6754,
+          4515
+        ]
+      },
+      {
+        "name": "text_019 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_019 拷贝",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6609,
+          4497,
+          6645,
+          4512
+        ]
+      },
+      {
+        "name": "text_018 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_018 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7645,
+          3853,
+          7757,
+          3871
+        ]
+      },
+      {
+        "name": "text_017 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_017 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7584,
+          3846,
+          7622,
+          3864
+        ]
+      },
+      {
+        "name": "text_016 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_016 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7504,
+          3845,
+          7542,
+          3863
+        ]
+      },
+      {
+        "name": "text_015 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_015 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7424,
+          3846,
+          7462,
+          3865
+        ]
+      },
+      {
+        "name": "text_014 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_014 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7344,
+          3845,
+          7382,
+          3864
+        ]
+      },
+      {
+        "name": "text_013 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_013 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7262,
+          3846,
+          7305,
+          3867
+        ]
+      },
+      {
+        "name": "text_012 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_012 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7172,
+          3840,
+          7212,
+          3859
+        ]
+      },
+      {
+        "name": "text_011 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_011 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7047,
+          3841,
+          7087,
+          3859
+        ]
+      },
+      {
+        "name": "图层 1111",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/图层 1111",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "text_010 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_010 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6919,
+          3842,
+          6959,
+          3860
+        ]
+      },
+      {
+        "name": "text_009 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_009 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6794,
+          3841,
+          6836,
+          3862
+        ]
+      },
+      {
+        "name": "text_008 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_008 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6665,
+          3843,
+          6705,
+          3862
+        ]
+      },
+      {
+        "name": "text_007 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_007 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6503,
+          3829,
+          6590,
+          3871
+        ]
+      },
+      {
+        "name": "text_006 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_006 拷贝",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7904,
+          3659,
+          7945,
+          3678
+        ]
+      },
+      {
+        "name": "text_005 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_005 拷贝",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7629,
+          3659,
+          7692,
+          3681
+        ]
+      },
+      {
+        "name": "text_004 拷贝",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_004 拷贝",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7390,
+          3659,
+          7466,
+          3681
+        ]
+      },
+      {
+        "name": "text_003 拷贝 2",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_003 拷贝 2",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6369,
+          3746,
+          6395,
+          3764
+        ]
+      },
+      {
+        "name": "text_002 拷贝 2",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_002 拷贝 2",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6430,
+          3702,
+          6490,
+          3718
+        ]
+      },
+      {
+        "name": "text_001 拷贝 2",
+        "path": "18_主角背包_卡组页/70_RuntimeText 拷贝/text_001 拷贝 2",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6327,
+          3663,
+          6380,
+          3685
+        ]
+      },
+      {
+        "name": "42_InventoryScrollbar 拷贝",
+        "path": "18_主角背包_卡组页/42_InventoryScrollbar 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          7762,
+          3903,
+          7792,
+          4536
+        ]
+      },
+      {
+        "name": "inventory_scrollbar_Button 拷贝",
+        "path": "18_主角背包_卡组页/42_InventoryScrollbar 拷贝/inventory_scrollbar_Button 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7762,
+          3923,
+          7792,
+          4049
+        ]
+      },
+      {
+        "name": "inventory_scrollbar_right 拷贝",
+        "path": "18_主角背包_卡组页/42_InventoryScrollbar 拷贝/inventory_scrollbar_right 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7767,
+          3903,
+          7786,
+          4536
+        ]
+      },
+      {
+        "name": "41_InventoryItems 拷贝",
+        "path": "18_主角背包_卡组页/41_InventoryItems 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "40_InventorySlots 拷贝",
+        "path": "18_主角背包_卡组页/40_InventorySlots 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "39_SelectedSlotInk 拷贝",
+        "path": "18_主角背包_卡组页/39_SelectedSlotInk 拷贝",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          7248,
+          3884,
+          7374,
+          3926
+        ]
+      },
+      {
+        "name": "01_SharedShopSelectionInk 拷贝",
+        "path": "18_主角背包_卡组页/39_SelectedSlotInk 拷贝/01_SharedShopSelectionInk 拷贝",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7248,
+          3884,
+          7374,
+          3926
+        ]
+      },
+      {
+        "name": "32_EquipmentIcons 拷贝",
+        "path": "18_主角背包_卡组页/32_EquipmentIcons 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6563,
+          3960,
+          7148,
+          4388
+        ]
+      },
+      {
+        "name": "020_equipment_icon_6 拷贝",
+        "path": "18_主角背包_卡组页/32_EquipmentIcons 拷贝/020_equipment_icon_6 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7088,
+          4310,
+          7129,
+          4388
+        ]
+      },
+      {
+        "name": "018_equipment_icon_5 拷贝",
+        "path": "18_主角背包_卡组页/32_EquipmentIcons 拷贝/018_equipment_icon_5 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7070,
+          4136,
+          7148,
+          4211
+        ]
+      },
+      {
+        "name": "016_equipment_icon_4 拷贝",
+        "path": "18_主角背包_卡组页/32_EquipmentIcons 拷贝/016_equipment_icon_4 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7070,
+          3963,
+          7148,
+          4034
+        ]
+      },
+      {
+        "name": "014_equipment_icon_3 拷贝",
+        "path": "18_主角背包_卡组页/32_EquipmentIcons 拷贝/014_equipment_icon_3 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6569,
+          4310,
+          6628,
+          4388
+        ]
+      },
+      {
+        "name": "012_equipment_icon_2 拷贝",
+        "path": "18_主角背包_卡组页/32_EquipmentIcons 拷贝/012_equipment_icon_2 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6563,
+          4135,
+          6634,
+          4213
+        ]
+      },
+      {
+        "name": "010_equipment_icon_1 拷贝",
+        "path": "18_主角背包_卡组页/32_EquipmentIcons 拷贝/010_equipment_icon_1 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6570,
+          3960,
+          6629,
+          4038
+        ]
+      },
+      {
+        "name": "31_EquipmentFrames 拷贝",
+        "path": "18_主角背包_卡组页/31_EquipmentFrames 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6540,
+          3940,
+          7168,
+          4414
+        ]
+      },
+      {
+        "name": "019_equipment_frame_6 拷贝",
+        "path": "18_主角背包_卡组页/31_EquipmentFrames 拷贝/019_equipment_frame_6 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7050,
+          4290,
+          7168,
+          4414
+        ]
+      },
+      {
+        "name": "017_equipment_frame_5 拷贝",
+        "path": "18_主角背包_卡组页/31_EquipmentFrames 拷贝/017_equipment_frame_5 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7050,
+          4115,
+          7168,
+          4239
+        ]
+      },
+      {
+        "name": "015_equipment_frame_4 拷贝",
+        "path": "18_主角背包_卡组页/31_EquipmentFrames 拷贝/015_equipment_frame_4 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7050,
+          3940,
+          7168,
+          4064
+        ]
+      },
+      {
+        "name": "013_equipment_frame_3 拷贝",
+        "path": "18_主角背包_卡组页/31_EquipmentFrames 拷贝/013_equipment_frame_3 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6540,
+          4290,
+          6658,
+          4414
+        ]
+      },
+      {
+        "name": "011_equipment_frame_2 拷贝",
+        "path": "18_主角背包_卡组页/31_EquipmentFrames 拷贝/011_equipment_frame_2 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6540,
+          4115,
+          6658,
+          4239
+        ]
+      },
+      {
+        "name": "009_equipment_frame_1 拷贝",
+        "path": "18_主角背包_卡组页/31_EquipmentFrames 拷贝/009_equipment_frame_1 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6540,
+          3940,
+          6658,
+          4064
+        ]
+      },
+      {
+        "name": "30_Character 拷贝",
+        "path": "18_主角背包_卡组页/30_Character 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6728,
+          3953,
+          6987,
+          4374
+        ]
+      },
+      {
+        "name": "008_hero_idle 拷贝",
+        "path": "18_主角背包_卡组页/30_Character 拷贝/008_hero_idle 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6728,
+          3953,
+          6987,
+          4374
+        ]
+      },
+      {
+        "name": "20_Tabs 拷贝",
+        "path": "18_主角背包_卡组页/20_Tabs 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6634,
+          3819,
+          7244,
+          4455
+        ]
+      },
+      {
+        "name": "007_tab_5 拷贝",
+        "path": "18_主角背包_卡组页/20_Tabs 拷贝/007_tab_5 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7139,
+          3821,
+          7244,
+          3883
+        ]
+      },
+      {
+        "name": "006_tab_4 拷贝",
+        "path": "18_主角背包_卡组页/20_Tabs 拷贝/006_tab_4 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7015,
+          3820,
+          7120,
+          3882
+        ]
+      },
+      {
+        "name": "005_tab_3 拷贝 4",
+        "path": "18_主角背包_卡组页/20_Tabs 拷贝/005_tab_3 拷贝 4",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6899,
+          4393,
+          7004,
+          4455
+        ]
+      },
+      {
+        "name": "005_tab_3 拷贝 3",
+        "path": "18_主角背包_卡组页/20_Tabs 拷贝/005_tab_3 拷贝 3",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6797,
+          4393,
+          6902,
+          4455
+        ]
+      },
+      {
+        "name": "companion_page_right_Button",
+        "path": "18_主角背包_卡组页/20_Tabs 拷贝/companion_page_right_Button",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          7009,
+          4402,
+          7033,
+          4446
+        ]
+      },
+      {
+        "name": "companion_page_left_Button",
+        "path": "18_主角背包_卡组页/20_Tabs 拷贝/companion_page_left_Button",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6666,
+          4403,
+          6690,
+          4447
+        ]
+      },
+      {
+        "name": "005_tab_3 拷贝 2",
+        "path": "18_主角背包_卡组页/20_Tabs 拷贝/005_tab_3 拷贝 2",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6695,
+          4393,
+          6800,
+          4455
+        ]
+      },
+      {
+        "name": "005_tab_3 拷贝",
+        "path": "18_主角背包_卡组页/20_Tabs 拷贝/005_tab_3 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6884,
+          3820,
+          6989,
+          3882
+        ]
+      },
+      {
+        "name": "004_tab_2 拷贝",
+        "path": "18_主角背包_卡组页/20_Tabs 拷贝/004_tab_2 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6759,
+          3819,
+          6864,
+          3881
+        ]
+      },
+      {
+        "name": "003_tab_1 拷贝",
+        "path": "18_主角背包_卡组页/20_Tabs 拷贝/003_tab_1 拷贝",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6634,
+          3820,
+          6739,
+          3882
+        ]
+      },
+      {
+        "name": "99_Legacy_15_HudContent 拷贝",
+        "path": "18_主角背包_卡组页/99_Legacy_15_HudContent 拷贝",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          6180,
+          3636,
+          6298,
+          3763
+        ]
+      },
+      {
+        "name": "002_hero_portrait 拷贝 2",
+        "path": "18_主角背包_卡组页/99_Legacy_15_HudContent 拷贝/002_hero_portrait 拷贝 2",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6180,
+          3636,
+          6298,
+          3763
+        ]
+      },
+      {
+        "name": "99_Legacy_10_ApprovedV2Shell 拷贝",
+        "path": "18_主角背包_卡组页/99_Legacy_10_ApprovedV2Shell 拷贝",
+        "kind": "group",
+        "visible": false,
+        "bounds": [
+          6120,
+          3600,
+          8040,
+          4680
+        ]
+      },
+      {
+        "name": "001_approved_v2_backpack_shell 拷贝",
+        "path": "18_主角背包_卡组页/99_Legacy_10_ApprovedV2Shell 拷贝/001_approved_v2_backpack_shell 拷贝",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          6120,
+          3600,
+          8040,
+          4680
+        ]
+      },
+      {
+        "name": "00_FamilyCorrection 拷贝",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6120,
+          3600,
+          8040,
+          4680
+        ]
+      },
+      {
+        "name": "20_GlobalShell_V2 拷贝",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6172,
+          3647,
+          7695,
+          4518
+        ]
+      },
+      {
+        "name": "99_Legacy_TopBalanceValue 拷贝",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝/99_Legacy_TopBalanceValue 拷贝",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7648,
+          3654,
+          7695,
+          3675
+        ]
+      },
+      {
+        "name": "text_003 拷贝 17",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝/text_003 拷贝 17",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6318,
+          3726,
+          6389,
+          3745
+        ]
+      },
+      {
+        "name": "text_002 拷贝 17",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝/text_002 拷贝 17",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6318,
+          3691,
+          6375,
+          3709
+        ]
+      },
+      {
+        "name": "text_001 拷贝 17",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝/text_001 拷贝 17",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6318,
+          3654,
+          6440,
+          3681
+        ]
+      },
+      {
+        "name": "99_Legacy_TopBalanceCopperIcon 拷贝",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝/99_Legacy_TopBalanceCopperIcon 拷贝",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7596,
+          3647,
+          7630,
+          3685
+        ]
+      },
+      {
+        "name": "007_nav_route 拷贝 17",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝/007_nav_route 拷贝 17",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6188,
+          4450,
+          6262,
+          4518
+        ]
+      },
+      {
+        "name": "006_nav_task 拷贝 17",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝/006_nav_task 拷贝 17",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6193,
+          4297,
+          6256,
+          4371
+        ]
+      },
+      {
+        "name": "005_nav_codex 拷贝 17",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝/005_nav_codex 拷贝 17",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6188,
+          4156,
+          6262,
+          4213
+        ]
+      },
+      {
+        "name": "004_nav_companion 拷贝 17",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝/004_nav_companion 拷贝 17",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6188,
+          4012,
+          6262,
+          4057
+        ]
+      },
+      {
+        "name": "003_nav_backpack 拷贝 17",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝/003_nav_backpack 拷贝 17",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6190,
+          3850,
+          6260,
+          3924
+        ]
+      },
+      {
+        "name": "002_hero_portrait 拷贝 17",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/20_GlobalShell_V2 拷贝/002_hero_portrait 拷贝 17",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6172,
+          3651,
+          6290,
+          3778
+        ]
+      },
+      {
+        "name": "00_ShellComponents 拷贝",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/00_ShellComponents 拷贝",
+        "kind": "group",
+        "visible": true,
+        "bounds": [
+          6120,
+          3600,
+          8040,
+          4680
+        ]
+      },
+      {
+        "name": "08_中央商店窗口 拷贝 14",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/00_ShellComponents 拷贝/08_中央商店窗口 拷贝 14",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6431,
+          3773,
+          7881,
+          4622
+        ]
+      },
+      {
+        "name": "07_导航圆底_路线 拷贝 9",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/00_ShellComponents 拷贝/07_导航圆底_路线 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6148,
+          4401,
+          6303,
+          4555
+        ]
+      },
+      {
+        "name": "06_导航圆底_任务 拷贝 9",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/00_ShellComponents 拷贝/06_导航圆底_任务 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6145,
+          4253,
+          6305,
+          4414
+        ]
+      },
+      {
+        "name": "05_导航圆底_图鉴 拷贝 9",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/00_ShellComponents 拷贝/05_导航圆底_图鉴 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6151,
+          4105,
+          6298,
+          4264
+        ]
+      },
+      {
+        "name": "04_导航圆底_伙伴 拷贝 9",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/00_ShellComponents 拷贝/04_导航圆底_伙伴 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6150,
+          3959,
+          6298,
+          4109
+        ]
+      },
+      {
+        "name": "03_导航圆底_背包 拷贝 9",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/00_ShellComponents 拷贝/03_导航圆底_背包 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6147,
+          3810,
+          6299,
+          3964
+        ]
+      },
+      {
+        "name": "99_Legacy_LongCurrencyPaper 拷贝",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/00_ShellComponents 拷贝/99_Legacy_LongCurrencyPaper 拷贝",
+        "kind": "art",
+        "visible": false,
+        "bounds": [
+          7260,
+          3614,
+          8032,
+          3730
+        ]
+      },
+      {
+        "name": "01_主角身份条 拷贝 9",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/00_ShellComponents 拷贝/01_主角身份条 拷贝 9",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6144,
+          3616,
+          6685,
+          3798
+        ]
+      },
+      {
+        "name": "00_城镇背景 拷贝 17",
+        "path": "18_主角背包_卡组页/00_FamilyCorrection 拷贝/00_ShellComponents 拷贝/00_城镇背景 拷贝 17",
+        "kind": "art",
+        "visible": true,
+        "bounds": [
+          6120,
+          3600,
+          8040,
+          4680
+        ]
+      }
+    ]
+  },
+  "exports": [
+    {
+      "name": "02_城镇HUD",
+      "file": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\Review\\CurrentMasterV1\\20260807-015444\\02_城镇hud.png",
+      "origin": [
+        4080,
+        0
+      ],
+      "width": 1920,
+      "height": 1080,
+      "sha256": "5d0ce6c6cfa42a5810fcdff3c0b1e3b870d41fea8b2f60f0c3f4c3a8914ed8c5"
+    },
+    {
+      "name": "03_主角背包",
+      "file": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\Review\\CurrentMasterV1\\20260807-015444\\03_主角背包.png",
+      "origin": [
+        6120,
+        0
+      ],
+      "width": 1920,
+      "height": 1080,
+      "sha256": "c8b6ea35ffb8ac911529f68dc8aa5e4cdde6435718fdb9244c06842e72340b51"
+    },
+    {
+      "name": "04_伙伴编队",
+      "file": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\Review\\CurrentMasterV1\\20260807-015444\\04_伙伴编队.png",
+      "origin": [
+        8160,
+        0
+      ],
+      "width": 1920,
+      "height": 1080,
+      "sha256": "c3b22e6499b1233704f98c7ca7a194b419ec61008f788536e02dee12a8e77839"
+    },
+    {
+      "name": "07_商店交易",
+      "file": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\Review\\CurrentMasterV1\\20260807-015444\\07_商店交易.png",
+      "origin": [
+        4080,
+        1200
+      ],
+      "width": 1920,
+      "height": 1080,
+      "sha256": "609a09729d9df499d032bcf6d26fc321f064e86a1787cecf500655708970361b"
+    },
+    {
+      "name": "18_主角背包_卡组页",
+      "file": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\Review\\CurrentMasterV1\\20260807-015444\\18_主角背包_卡组页.png",
+      "origin": [
+        6120,
+        3600
+      ],
+      "width": 1920,
+      "height": 1080,
+      "sha256": "751ed06a2b43944db6a5771e836ac87910e2d2ff4c01f75fbd17d9a3eb0b51ca"
+    }
+  ],
+  "psdSha256": "7c0ceefde6ae59ea4dbcea03a9796f5c8556beb72cf0ddec39f59a7e8918339f"
+}

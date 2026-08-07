@@ -1,0 +1,417 @@
+{
+  "version": 1,
+  "phase": "A",
+  "textBaked": false,
+  "assets": {
+    "button_danger": {
+      "file": "RuntimeAssets/UIV4_button_danger.png",
+      "source": "Assets/UIV4_button_danger.png",
+      "size": [
+        220,
+        72
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "button_disabled": {
+      "file": "RuntimeAssets/UIV4_button_disabled.png",
+      "source": "Assets/UIV4_button_disabled.png",
+      "size": [
+        220,
+        72
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "button_hover": {
+      "file": "RuntimeAssets/UIV4_button_hover.png",
+      "source": "Assets/UIV4_button_hover.png",
+      "size": [
+        220,
+        72
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "button_normal": {
+      "file": "RuntimeAssets/UIV4_button_normal.png",
+      "source": "Assets/UIV4_button_normal.png",
+      "size": [
+        220,
+        72
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "button_pressed": {
+      "file": "RuntimeAssets/UIV4_button_pressed.png",
+      "source": "Assets/UIV4_button_pressed.png",
+      "size": [
+        220,
+        72
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "button_primary": {
+      "file": "RuntimeAssets/UIV4_button_primary.png",
+      "source": "Assets/UIV4_button_primary.png",
+      "size": [
+        220,
+        72
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "card_frame_boss": {
+      "file": "RuntimeAssets/UIV4_card_frame_boss.png",
+      "source": "Assets/UIV4_card_frame_boss.png",
+      "size": [
+        300,
+        420
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "card_frame_general": {
+      "file": "RuntimeAssets/UIV4_card_frame_general.png",
+      "source": "Assets/UIV4_card_frame_general.png",
+      "size": [
+        300,
+        420
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "card_frame_monster": {
+      "file": "RuntimeAssets/UIV4_card_frame_monster.png",
+      "source": "Assets/UIV4_card_frame_monster.png",
+      "size": [
+        300,
+        420
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "card_frame_rare": {
+      "file": "RuntimeAssets/UIV4_card_frame_rare.png",
+      "source": "Assets/UIV4_card_frame_rare.png",
+      "size": [
+        300,
+        420
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "card_frame_role": {
+      "file": "RuntimeAssets/UIV4_card_frame_role.png",
+      "source": "Assets/UIV4_card_frame_role.png",
+      "size": [
+        300,
+        420
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "card_frame_terrain": {
+      "file": "RuntimeAssets/UIV4_card_frame_terrain.png",
+      "source": "Assets/UIV4_card_frame_terrain.png",
+      "size": [
+        300,
+        420
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "equipment_slot_empty": {
+      "file": "RuntimeAssets/UIV4_equipment_slot_empty.png",
+      "source": "Assets/UIV4_equipment_slot_empty.png",
+      "size": [
+        124,
+        130
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "equipment_slot_hover": {
+      "file": "RuntimeAssets/UIV4_equipment_slot_hover.png",
+      "source": "Assets/UIV4_equipment_slot_hover.png",
+      "size": [
+        124,
+        130
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "equipment_slot_selected": {
+      "file": "RuntimeAssets/UIV4_equipment_slot_selected.png",
+      "source": "Assets/UIV4_equipment_slot_selected.png",
+      "size": [
+        124,
+        130
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "item_slot_empty": {
+      "file": "RuntimeAssets/UIV4_item_slot_empty.png",
+      "source": "Assets/UIV4_item_slot_empty.png",
+      "size": [
+        104,
+        104
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "item_slot_hover": {
+      "file": "RuntimeAssets/UIV4_item_slot_hover.png",
+      "source": "Assets/UIV4_item_slot_hover.png",
+      "size": [
+        104,
+        104
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "item_slot_locked": {
+      "file": "RuntimeAssets/UIV4_item_slot_locked.png",
+      "source": "Assets/UIV4_item_slot_locked.png",
+      "size": [
+        104,
+        104
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "item_slot_selected": {
+      "file": "RuntimeAssets/UIV4_item_slot_selected.png",
+      "source": "Assets/UIV4_item_slot_selected.png",
+      "size": [
+        104,
+        104
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "nav_backpack": {
+      "file": "RuntimeAssets/UIV4_nav_backpack.png",
+      "source": "Assets/UIV4_nav_backpack.png",
+      "size": [
+        72,
+        72
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "nav_codex": {
+      "file": "RuntimeAssets/UIV4_nav_codex.png",
+      "source": "Assets/UIV4_nav_codex.png",
+      "size": [
+        72,
+        72
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "nav_companion": {
+      "file": "RuntimeAssets/UIV4_nav_companion.png",
+      "source": "Assets/UIV4_nav_companion.png",
+      "size": [
+        72,
+        72
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "nav_hover": {
+      "file": "RuntimeAssets/UIV4_nav_hover.png",
+      "source": "Assets/UIV4_nav_hover.png",
+      "size": [
+        112,
+        112
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "nav_locked": {
+      "file": "RuntimeAssets/UIV4_nav_locked.png",
+      "source": "Assets/UIV4_nav_locked.png",
+      "size": [
+        112,
+        112
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "nav_normal": {
+      "file": "RuntimeAssets/UIV4_nav_normal.png",
+      "source": "Assets/UIV4_nav_normal.png",
+      "size": [
+        112,
+        112
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "nav_reminder": {
+      "file": "RuntimeAssets/UIV4_nav_reminder.png",
+      "source": "Assets/UIV4_nav_reminder.png",
+      "size": [
+        112,
+        112
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "nav_route": {
+      "file": "RuntimeAssets/UIV4_nav_route.png",
+      "source": "Assets/UIV4_nav_route.png",
+      "size": [
+        72,
+        72
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "nav_selected": {
+      "file": "RuntimeAssets/UIV4_nav_selected.png",
+      "source": "Assets/UIV4_nav_selected.png",
+      "size": [
+        112,
+        112
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "nav_task": {
+      "file": "RuntimeAssets/UIV4_nav_task.png",
+      "source": "Assets/UIV4_nav_task.png",
+      "size": [
+        72,
+        72
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "panel_large": {
+      "file": "RuntimeAssets/UIV4_panel_large.png",
+      "source": "Assets/UIV4_panel_large.png",
+      "size": [
+        1440,
+        780
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "panel_medium": {
+      "file": "RuntimeAssets/UIV4_panel_medium.png",
+      "source": "Assets/UIV4_panel_medium.png",
+      "size": [
+        760,
+        520
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "panel_small": {
+      "file": "RuntimeAssets/UIV4_panel_small.png",
+      "source": "Assets/UIV4_panel_small.png",
+      "size": [
+        420,
+        260
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "progress_fill": {
+      "file": "RuntimeAssets/UIV4_progress_fill.png",
+      "source": "Assets/UIV4_progress_fill.png",
+      "size": [
+        280,
+        10
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "progress_track": {
+      "file": "RuntimeAssets/UIV4_progress_track.png",
+      "source": "Assets/UIV4_progress_track.png",
+      "size": [
+        420,
+        24
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "resource_strip": {
+      "file": "RuntimeAssets/UIV4_resource_strip.png",
+      "source": "Assets/UIV4_resource_strip.png",
+      "size": [
+        680,
+        92
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "tab_disabled": {
+      "file": "RuntimeAssets/UIV4_tab_disabled.png",
+      "source": "Assets/UIV4_tab_disabled.png",
+      "size": [
+        160,
+        58
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "tab_hover": {
+      "file": "RuntimeAssets/UIV4_tab_hover.png",
+      "source": "Assets/UIV4_tab_hover.png",
+      "size": [
+        160,
+        58
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "tab_normal": {
+      "file": "RuntimeAssets/UIV4_tab_normal.png",
+      "source": "Assets/UIV4_tab_normal.png",
+      "size": [
+        160,
+        58
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "tab_pressed": {
+      "file": "RuntimeAssets/UIV4_tab_pressed.png",
+      "source": "Assets/UIV4_tab_pressed.png",
+      "size": [
+        160,
+        58
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "tab_selected": {
+      "file": "RuntimeAssets/UIV4_tab_selected.png",
+      "source": "Assets/UIV4_tab_selected.png",
+      "size": [
+        160,
+        58
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    },
+    "tooltip_panel": {
+      "file": "RuntimeAssets/UIV4_tooltip_panel.png",
+      "source": "Assets/UIV4_tooltip_panel.png",
+      "size": [
+        520,
+        240
+      ],
+      "textBaked": false,
+      "status": "draft_not_imported"
+    }
+  }
+}

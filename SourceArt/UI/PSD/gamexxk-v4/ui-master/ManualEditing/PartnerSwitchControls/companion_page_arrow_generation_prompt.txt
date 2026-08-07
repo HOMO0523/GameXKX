@@ -1,0 +1,10 @@
+Use case: stylized-concept
+Asset type: GameXXK UI page-switch icon source
+Primary request: Generate ONE left-facing Chinese ink brush chevron shaped exactly like “<”.
+Input image: style reference only for heavy Chinese ink, visible bristle texture, dry-brush feathering, natural thick-to-thin pressure, and strong handmade character. Do not copy its circular background or X composition.
+Scene/backdrop: perfectly flat solid #00FF00 chroma-key background for later removal; uniform color, no texture, shadow, gradient, glow, floor, vignette, or lighting variation.
+Subject: a single deep-black ink chevron made from exactly TWO continuous diagonal brush strokes meeting at the left-facing point. Upper stroke slopes down-left; lower stroke slopes up-left. The silhouette must read clearly as “<”.
+Composition/framing: centered, upright, generous padding on every side, roughly 35% canvas width and 65% canvas height. Symmetrical overall but naturally hand-painted.
+Style/medium: bold traditional Chinese calligraphy ink, chunky confident strokes, slightly rough bristle ends, subtle dry-brush gaps inside the ink, clean recognizable silhouette.
+Color palette: black and very dark warm ink only; background pure #00FF00.
+Constraints: exactly two diagonal strokes; NO horizontal shaft or middle bar; NO third stroke; NO triangle; NO filled wedge; NO circle; NO square; NO paper frame; NO button plate; NO text; NO symbols besides the single “<”; no cast shadow; no watermark. Do not use green anywhere in the ink subject.

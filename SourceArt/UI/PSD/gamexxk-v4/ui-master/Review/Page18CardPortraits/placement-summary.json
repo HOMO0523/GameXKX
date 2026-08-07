@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "frameCount": 9,
+  "placed": [
+    "青锋一式 -> layer=card_portrait at (7258,3917) size=127x152",
+    "鹤羽斩 -> layer=card_portrait_2 at (7421,3918) size=127x152",
+    "风身步 -> layer=card_portrait_3 at (7585,3918) size=127x152",
+    "碎岩击 -> layer=card_portrait_4 at (7258,4129) size=127x152",
+    "归元术 -> layer=card_portrait_5 at (7421,4130) size=127x152",
+    "横剑守势 -> layer=card_portrait_6 at (7585,4130) size=127x152",
+    "凝神吐纳 -> layer=card_portrait_7 at (7258,4343) size=127x152",
+    "观隙 -> layer=card_portrait_8 at (7421,4344) size=127x152",
+    "破云一闪 -> layer=card_portrait_9 at (7585,4344) size=127x152"
+  ],
+  "psdBefore": "7c0ceefde6ae59ea4dbcea03a9796f5c8556beb72cf0ddec39f59a7e8918339f",
+  "psdAfter": "68efff2d4f089497392646eee4443b47cae6bd0248688d299db021de174285d9",
+  "backup": "D:\\UE5 demo\\GameXXK\\outputs\\UI_PSD\\Candidates\\Backups\\GameXXK_UI_Master_V1.before-page18-card-portraits.psd",
+  "export": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\Review\\Page18CardPortraits\\18_主角背包_卡组页.png",
+  "exportSha256": "b18e886e8157d0bb3fc725b179895049cbf1edd445dd3ca396fa2ab6273de4c1"
+}

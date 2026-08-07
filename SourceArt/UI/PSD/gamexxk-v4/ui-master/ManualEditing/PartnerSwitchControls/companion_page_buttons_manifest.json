@@ -1,0 +1,82 @@
+{
+  "status": "PASS",
+  "generationMode": "built-in imagegen with chroma-key removal",
+  "constructionVersion": "imagegen_two_stroke_chevron_no_horizontal_stem_v2",
+  "targetSize": [
+    36,
+    62
+  ],
+  "maxInkSize": [
+    24,
+    44
+  ],
+  "geometryRule": "pure < / >; exactly two diagonal brush strokes; no horizontal stem",
+  "reference": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/Assets/Controls/close_button_ink_v2.png",
+    "usage": "ink character only; circle and X geometry excluded",
+    "sha256": "1eaf509fb4415c1c13e7d1e274603e77484d7d05512a9d65c9d463e16f66ba75"
+  },
+  "generatedSource": {
+    "chromaPath": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchControls/companion_page_left_source_chroma.png",
+    "chromaSha256": "62dcc56b08dc21ad5c9de140b31303f53ad58bee192ef56c6d9478bffbfc1db3",
+    "cutoutPath": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchControls/companion_page_left_source_cutout.png",
+    "cutoutSha256": "bdd5b51146b1131cba758a61a08d2242de018d30c558efe9a6aa747bd5db926e",
+    "promptPath": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchControls/companion_page_arrow_generation_prompt.txt",
+    "promptSha256": "30922d45119d9b106d19122f6f38427332b37093e7b50449dfbf47864670235c"
+  },
+  "strictHorizontalMirror": true,
+  "records": [
+    {
+      "alphaBounds": [
+        6,
+        9,
+        30,
+        53
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "visiblePixelsAtAlpha28": 366,
+      "centerBandVisibleSpan": 11,
+      "upperStrokePixels": 159,
+      "lowerStrokePixels": 146,
+      "geometry": "two generated diagonal brush strokes; no horizontal stem",
+      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchControls/companion_page_left_Button.png",
+      "sha256": "7674a1e16f16860db13bf1d7d8f4825f3208998d5574957589e33272620588f5",
+      "width": 36,
+      "height": 62,
+      "mode": "RGBA",
+      "direction": "left"
+    },
+    {
+      "alphaBounds": [
+        6,
+        9,
+        30,
+        53
+      ],
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "visiblePixelsAtAlpha28": 366,
+      "centerBandVisibleSpan": 11,
+      "upperStrokePixels": 159,
+      "lowerStrokePixels": 146,
+      "geometry": "two generated diagonal brush strokes; no horizontal stem",
+      "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchControls/companion_page_right_Button.png",
+      "sha256": "b9471458eace724b2fac6eddfae132f1c7408071116be200fc50877f4082db55",
+      "width": 36,
+      "height": 62,
+      "mode": "RGBA",
+      "direction": "right"
+    }
+  ],
+  "contactSheet": {
+    "path": "SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/PartnerSwitchControls/companion_page_buttons_contact_sheet.png",
+    "sha256": "28f9f62e88983a727ff988a4756359f9119f19ff7cc3b309844229ec36624ad7",
+    "width": 680,
+    "height": 450
+  }
+}
