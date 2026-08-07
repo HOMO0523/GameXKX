@@ -22,7 +22,7 @@ foreach ($Suite in $Suites) {
         "`"$Project`"",
         "-unattended", "-nopause", "-nosplash", "-nullrhi", "-NoLogTimes",
         "-ExecCmds=`"$Cmd`"",
-        "-log=`"$OutFile`""
+        "-AbsLog=`"$OutFile`""
     ) -PassThru -NoNewWindow -ErrorAction SilentlyContinue
     if (-not $Proc.WaitForExit($TimeoutSeconds * 1000)) {
         $Proc.Kill()
@@ -30,8 +30,8 @@ foreach ($Suite in $Suites) {
     }
     $Elapsed = ((Get-Date) - $Start).TotalSeconds
     $Text = if (Test-Path $OutFile) { Get-Content $OutFile -Raw } else { "" }
-    $Passed = ([regex]::Matches($Text, "Test Completed\. Result = Passed")).Count
-    $Failed = ([regex]::Matches($Text, "Test Completed\. Result = Failed")).Count
+    $Passed = ([regex]::Matches($Text, "Result=\{Success\}")).Count
+    $Failed = ([regex]::Matches($Text, "Result=\{Failed\}")).Count
     $State = if ($Failed -eq 0 -and $Passed -gt 0) { "PASS" } elseif ($Failed -eq 0 -and $Passed -eq 0) { "NO-RUN" } else { "FAIL" }
     Write-Host ("{0}: {1} passed, {2} failed ({3:N0}s)" -f $Suite, $Passed, $Failed, $Elapsed) -ForegroundColor $(if ($State -eq "PASS") { "Green" } else { "Red" })
     $Results += [PSCustomObject]@{ Suite = $Suite; State = $State; Passed = $Passed; Failed = $Failed; Seconds = [math]::Round($Elapsed) }
