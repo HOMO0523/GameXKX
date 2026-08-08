@@ -13,6 +13,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	"GameXXK.Data.CombatStatusRedesign.TerminalPrecedence",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCombatStatusDirectAttackOrderTest,
+	"GameXXK.Data.CombatStatusRedesign.DirectAttackOrder",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
 namespace
 {
 	FGameXXKCardCombatUnit MakeStatusCapacityUnit()
@@ -116,6 +121,69 @@ bool FGameXXKCombatStatusTerminalPrecedenceTest::RunTest(const FString& Paramete
 	GameXXKCardRules::RefreshCombatTerminalPhase(EnemyOnlyDefeat);
 	TestEqual(TEXT("enemy elimination with a living party remains victory"),
 		EnemyOnlyDefeat.Phase, EGameXXKCardBattlePhase::Victory);
+	return true;
+}
+
+bool FGameXXKCombatStatusDirectAttackOrderTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKCardCombatUnit> Units = {
+		MakeTerminalUnit(TEXT("Attacker"), EGameXXKCardTargetSide::Party, true, 1),
+		MakeTerminalUnit(TEXT("Target"), EGameXXKCardTargetSide::Enemy, true, 10)};
+	Units[0].Attack = 20;
+	Units[1].HP = 200;
+	Units[1].MaxHP = 200;
+	Units[1].Defense = 5;
+	Units[1].Armor = 7;
+	TestEqual(TEXT("the attacker receives six Momentum"),
+		GameXXKCardRules::AddCombatStatus(Units[0], EGameXXKCardStatus::Momentum, 6), 6);
+	TestEqual(TEXT("the attacker receives two Weak duration stacks"),
+		GameXXKCardRules::AddCombatStatus(Units[0], EGameXXKCardStatus::Weak, 2), 2);
+	TestEqual(TEXT("the target receives two Vulnerability stacks"),
+		GameXXKCardRules::AddCombatStatus(Units[1], EGameXXKCardStatus::Vulnerability, 2), 2);
+	TestEqual(TEXT("the target receives one Mark stack"),
+		GameXXKCardRules::AddCombatStatus(Units[1], EGameXXKCardStatus::Mark, 1), 1);
+
+	FGameXXKCardDamageContext Context;
+	Context.SourceUnitId = TEXT("Attacker");
+	Context.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+	TArray<FGameXXKCardGuardLinkRuntime> GuardLinks;
+	FGameXXKCardDamageResult Result;
+	TestTrue(TEXT("the ordered direct hit resolves"), GameXXKCardRules::ApplyCombatDirectDamage(
+		Units, GuardLinks, Context, TEXT("Target"), 34, Result));
+	TestEqual(TEXT("Momentum is added to base requested damage before Weak"), Result.RequestedDamage, 40);
+	TestEqual(TEXT("the direct-hit audit retains the pre-Momentum base damage"), Result.BaseRequestedDamage, 34);
+	TestEqual(TEXT("the direct-hit audit records the six-point Momentum contribution"), Result.MomentumDamageBonus, 6);
+	TestEqual(TEXT("the direct-hit audit records damage after Weak and before defense"), Result.DamageAfterWeak, 20);
+	TestEqual(TEXT("the direct-hit audit records the twenty damage prevented by Weak"), Result.WeakDamageReduction, 20);
+	TestEqual(TEXT("Weak halves the Momentum-inclusive damage before defense"), Result.DamageAfterDefense, 15);
+	TestEqual(TEXT("Vulnerability and Mark amplify after defense with deterministic flooring"),
+		Result.DamageAfterVulnerability, 20);
+	TestEqual(TEXT("armor absorbs after all direct-hit amplification"), Result.ArmorAbsorbed, 7);
+	TestEqual(TEXT("the remaining thirteen damage reaches health"), Result.HealthDamage, 13);
+	TestEqual(TEXT("the target ends at the expected health"), Units[1].HP, 187);
+	TestEqual(TEXT("a normal attack does not consume Momentum"),
+		GameXXKCardRules::GetCombatStatusStacks(Units[0], EGameXXKCardStatus::Momentum), 6);
+	TestEqual(TEXT("an attack does not consume Weak duration"),
+		GameXXKCardRules::GetCombatStatusStacks(Units[0], EGameXXKCardStatus::Weak), 2);
+	TestEqual(TEXT("the direct hit consumes its one Mark"),
+		GameXXKCardRules::GetCombatStatusStacks(Units[1], EGameXXKCardStatus::Mark), 0);
+	TestEqual(TEXT("the direct hit clears all Vulnerability"),
+		GameXXKCardRules::GetCombatStatusStacks(Units[1], EGameXXKCardStatus::Vulnerability), 0);
+
+	TArray<FGameXXKCardCombatUnit> SnapshotUnits = {
+		MakeTerminalUnit(TEXT("SnapshotAttacker"), EGameXXKCardTargetSide::Party, true, 1),
+		MakeTerminalUnit(TEXT("SnapshotTarget"), EGameXXKCardTargetSide::Enemy, true, 10)};
+	FGameXXKCardDamageContext SnapshotContext;
+	SnapshotContext.SourceUnitId = TEXT("SnapshotAttacker");
+	SnapshotContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+	SnapshotContext.MomentumStacksOverride = 4;
+	FGameXXKCardDamageResult SnapshotResult;
+	TestTrue(TEXT("an explicit packet-start Momentum snapshot resolves"),
+		GameXXKCardRules::ApplyCombatDirectDamage(
+			SnapshotUnits, GuardLinks, SnapshotContext, TEXT("SnapshotTarget"), 20, SnapshotResult));
+	TestEqual(TEXT("the packet-start snapshot supplies Momentum after a card has consumed live stacks"),
+		SnapshotResult.RequestedDamage, 24);
+	TestEqual(TEXT("the packet-start snapshot is visible in the audit"), SnapshotResult.MomentumDamageBonus, 4);
 	return true;
 }
 

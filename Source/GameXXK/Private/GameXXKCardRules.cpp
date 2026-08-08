@@ -2146,6 +2146,11 @@ namespace
 			OutError = TEXT("Damage context cannot ignore a negative amount of defense.");
 			return false;
 		}
+		if (Context.MomentumStacksOverride < INDEX_NONE)
+		{
+			OutError = TEXT("Damage context has an invalid Momentum snapshot.");
+			return false;
+		}
 
 		if (IsDirectAttackDamageKind(Context.Kind))
 		{
@@ -2162,7 +2167,8 @@ namespace
 		{
 			const FGameXXKCardCombatUnit* SourceUnit = FindCombatUnitById(Units, Context.SourceUnitId);
 			if (!SourceUnit || !SourceUnit->bLiving || SourceUnit->UnitId != OriginalTarget.UnitId
-				|| Context.IgnoredDefense != 0 || !Context.OnHitStatuses.IsEmpty())
+				|| Context.IgnoredDefense != 0 || Context.MomentumStacksOverride != INDEX_NONE
+				|| !Context.OnHitStatuses.IsEmpty())
 			{
 				OutError = TEXT("Self health loss must target its own living stable source and cannot carry defense bypass or hit statuses.");
 				return false;
@@ -2172,7 +2178,8 @@ namespace
 
 		if (Context.Kind == EGameXXKCardDamageKind::EnvironmentalHealthLoss)
 		{
-			if (!Context.SourceUnitId.IsNone() || Context.IgnoredDefense != 0 || !Context.OnHitStatuses.IsEmpty())
+			if (!Context.SourceUnitId.IsNone() || Context.IgnoredDefense != 0
+				|| Context.MomentumStacksOverride != INDEX_NONE || !Context.OnHitStatuses.IsEmpty())
 			{
 				OutError = TEXT("Environmental health loss cannot carry a source unit, defense bypass, or hit statuses.");
 				return false;
@@ -2489,9 +2496,32 @@ namespace
 	else
 	{
 		const bool bDirectAttack = IsDirectAttackDamageKind(Context.Kind);
-		NewResult.DamageAfterDefense = bDirectAttack
-			? ComputeDamageAfterDefense(RequestedDamage, *ResolvedTarget, Context.IgnoredDefense)
+		const FGameXXKCardCombatUnit* SourceUnit = bDirectAttack
+			? FindCombatUnitById(NewUnits, Context.SourceUnitId)
+			: nullptr;
+		const int32 MomentumStacks = Context.MomentumStacksOverride != INDEX_NONE
+			? Context.MomentumStacksOverride
+			: (SourceUnit ? GetCombatStatusStacksInternal(*SourceUnit, EGameXXKCardStatus::Momentum) : 0);
+		const int32 DamageWithMomentum = bDirectAttack
+			? static_cast<int32>(FMath::Min<int64>(
+				MAX_int32,
+				static_cast<int64>(RequestedDamage) + MomentumStacks))
 			: RequestedDamage;
+		const int32 DamageAfterWeak = SourceUnit
+			&& GetCombatStatusStacksInternal(*SourceUnit, EGameXXKCardStatus::Weak) > 0
+			? FMath::Max(1, DamageWithMomentum / 2)
+			: DamageWithMomentum;
+		if (bDirectAttack)
+		{
+			NewResult.BaseRequestedDamage = RequestedDamage;
+			NewResult.MomentumDamageBonus = MomentumStacks;
+			NewResult.DamageAfterWeak = DamageAfterWeak;
+			NewResult.WeakDamageReduction = DamageWithMomentum - DamageAfterWeak;
+		}
+		NewResult.RequestedDamage = DamageWithMomentum;
+		NewResult.DamageAfterDefense = bDirectAttack
+			? ComputeDamageAfterDefense(DamageAfterWeak, *ResolvedTarget, Context.IgnoredDefense)
+			: DamageAfterWeak;
 		const int32 VulnerabilityStacks = bDirectAttack
 			? GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Vulnerability)
 			: 0;
@@ -4153,6 +4183,10 @@ namespace
 		{
 			return false;
 		}
+		const FGameXXKCardCombatUnit* PacketOwner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+		const int32 MomentumAtPacketStart = PacketOwner
+			? GameXXKCardRules::GetCombatStatusStacks(*PacketOwner, EGameXXKCardStatus::Momentum)
+			: 0;
 		bool bPreparedTriggeredAttack = false;
 		int32 TriggeredAttackBonusPercent = 0;
 		bool bApplyNextAttackVulnerability = false;
@@ -4310,6 +4344,7 @@ namespace
 					? EGameXXKCardDamageKind::GroupAttack
 					: EGameXXKCardDamageKind::SingleTargetAttack;
 				Context.IgnoredDefense = IgnoredDefense;
+				Context.MomentumStacksOverride = MomentumAtPacketStart;
 				for (const FGameXXKCardEffect* OnHitEffect : OnHitStatusEffects)
 				{
 					if (OnHitEffect->HitCount == Attack.HitCount || HitIndex < OnHitEffect->HitCount)

@@ -951,6 +951,10 @@ struct GAMEXXK_API FGameXXKCardDamageContext
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 IgnoredDefense = 0;
 
+	/** Optional packet-start Momentum snapshot used when this card packet consumes live Momentum before damage. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MomentumStacksOverride = INDEX_NONE;
+
 	/** Statuses that belong to this direct hit and therefore are cancelled when agility avoids it. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<FGameXXKCardStatusStack> OnHitStatuses;
@@ -993,6 +997,22 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 RequestedDamage = 0;
+
+	/** Requested direct damage before Momentum is added. Zero for non-direct packets. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 BaseRequestedDamage = 0;
+
+	/** Flat direct-damage contribution from the packet's Momentum snapshot. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MomentumDamageBonus = 0;
+
+	/** Direct damage after Weak and before defense. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 DamageAfterWeak = 0;
+
+	/** Amount removed by Weak from the Momentum-inclusive direct damage. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 WeakDamageReduction = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 DamageAfterDefense = 0;

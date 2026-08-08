@@ -363,6 +363,10 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	InvalidHit.OriginalTargetUnitId = TEXT("PriorResult");
 	InvalidHit.ResolvedTargetUnitId = TEXT("PriorResolvedTarget");
 	InvalidHit.RequestedDamage = 91;
+	InvalidHit.BaseRequestedDamage = 90;
+	InvalidHit.MomentumDamageBonus = 1;
+	InvalidHit.DamageAfterWeak = 45;
+	InvalidHit.WeakDamageReduction = 46;
 	InvalidHit.DamageAfterDefense = 82;
 	InvalidHit.DamageAfterVulnerability = 73;
 	InvalidHit.MarkStacksBeforeHit = 5;
