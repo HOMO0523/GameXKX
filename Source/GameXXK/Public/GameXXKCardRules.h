@@ -6,6 +6,9 @@
 /** Pure, deterministic card-zone rules. This layer deliberately does not resolve card effects or turns. */
 namespace GameXXKCardRules
 {
+	/** Fixed additive direct-hit bonus while the resolved target has at least one Mark stack. */
+	inline constexpr int32 MarkDirectDamageBonusPercent = 15;
+
 	/** Validates unique materialized IDs, deterministically shuffles, and draws up to the normal hand limit. */
 	GAMEXXK_API bool InitializeBattleDeck(
 		FGameXXKBattleDeckState& InOutDeck,

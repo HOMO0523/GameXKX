@@ -2447,17 +2447,30 @@ namespace
 	}
 	else
 	{
-		NewResult.DamageAfterDefense = IsDirectAttackDamageKind(Context.Kind)
+		const bool bDirectAttack = IsDirectAttackDamageKind(Context.Kind);
+		NewResult.DamageAfterDefense = bDirectAttack
 			? ComputeDamageAfterDefense(RequestedDamage, *ResolvedTarget, Context.IgnoredDefense)
 			: RequestedDamage;
-		const int32 VulnerabilityStacks = IsDirectAttackDamageKind(Context.Kind)
+		const int32 VulnerabilityStacks = bDirectAttack
 			? GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Vulnerability)
 			: 0;
-		const int64 AmplifiedDamage = static_cast<int64>(NewResult.DamageAfterDefense) * static_cast<int64>(100 + 10 * VulnerabilityStacks) / 100;
+		const int32 MarkStacks = bDirectAttack
+			? GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Mark)
+			: 0;
+		const int32 MarkBonusPercent = MarkStacks > 0
+			? GameXXKCardRules::MarkDirectDamageBonusPercent
+			: 0;
+		const int64 AmplifiedDamage = static_cast<int64>(NewResult.DamageAfterDefense)
+			* static_cast<int64>(100 + 10 * VulnerabilityStacks + MarkBonusPercent)
+			/ 100;
 		NewResult.DamageAfterVulnerability = static_cast<int32>(FMath::Min<int64>(MAX_int32, AmplifiedDamage));
 		if (VulnerabilityStacks > 0)
 		{
 			GameXXKCardRules::ConsumeCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Vulnerability, MAX_int32);
+		}
+		if (MarkStacks > 0)
+		{
+			GameXXKCardRules::ConsumeCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Mark, 1);
 		}
 		NewResult.ArmorAbsorbed = IsDirectAttackDamageKind(Context.Kind)
 			? FMath::Min(ResolvedTarget->Armor, NewResult.DamageAfterVulnerability)
