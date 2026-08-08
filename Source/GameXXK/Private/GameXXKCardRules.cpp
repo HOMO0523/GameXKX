@@ -11,6 +11,39 @@ namespace
 	constexpr int32 BattleHandCapacity = 20;
 	constexpr int32 MaxSupportedHandLimit = BattleHandCapacity;
 
+	struct FGameXXKCardPlayConditionSnapshot
+	{
+		TMap<FName, int32> MarkStacksByUnitId;
+	};
+
+	FGameXXKCardPlayConditionSnapshot CaptureCardPlayConditionSnapshot(const FGameXXKCardBattleRuntime& Runtime)
+	{
+		FGameXXKCardPlayConditionSnapshot Snapshot;
+		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		{
+			Snapshot.MarkStacksByUnitId.Add(
+				Unit.UnitId,
+				GameXXKCardRules::GetCombatStatusStacks(Unit, EGameXXKCardStatus::Mark));
+		}
+		return Snapshot;
+	}
+
+	int32 GetConditionStatusStacks(
+		const FGameXXKCardCombatUnit* Target,
+		const EGameXXKCardStatus Status,
+		const FGameXXKCardPlayConditionSnapshot* Snapshot)
+	{
+		if (!Target)
+		{
+			return 0;
+		}
+		if (Status == EGameXXKCardStatus::Mark && Snapshot)
+		{
+			return Snapshot->MarkStacksByUnitId.FindRef(Target->UnitId);
+		}
+		return GameXXKCardRules::GetCombatStatusStacks(*Target, Status);
+	}
+
 	bool IsActiveChoice(const EGameXXKCardPendingChoiceKind Kind)
 	{
 		return Kind == EGameXXKCardPendingChoiceKind::ForcedDiscard
@@ -731,6 +764,7 @@ namespace
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		FGameXXKCardCombatUnit& InOutOwner,
 		FGameXXKCardCombatUnit* Target,
+		const FGameXXKCardPlayConditionSnapshot* Snapshot,
 		bool& OutSatisfied,
 		int32& OutConsumed,
 		FString& OutError);
@@ -1000,7 +1034,7 @@ namespace
 				}
 				bool bConditionSatisfied = false;
 				int32 IgnoredConsumed = 0;
-				if (!TryApplyEffectConditionAndConsumption(Definition.Condition, InOutRuntime, *Recipient, ConditionTarget, bConditionSatisfied, IgnoredConsumed, OutError))
+				if (!TryApplyEffectConditionAndConsumption(Definition.Condition, InOutRuntime, *Recipient, ConditionTarget, nullptr, bConditionSatisfied, IgnoredConsumed, OutError))
 				{
 					return false;
 				}
@@ -2769,6 +2803,7 @@ namespace
 		const FGameXXKCardBattleRuntime& Runtime,
 		const FGameXXKCardCombatUnit& Owner,
 		const FGameXXKCardCombatUnit* Target,
+		const FGameXXKCardPlayConditionSnapshot* Snapshot,
 		bool& OutSatisfied,
 		FString& OutError);
 
@@ -2881,6 +2916,7 @@ namespace
 		const FGameXXKCardBattleRuntime& Runtime,
 		const FGameXXKCardCombatUnit& Owner,
 		const FGameXXKCardCombatUnit* Target,
+		const FGameXXKCardPlayConditionSnapshot* Snapshot,
 		bool& OutSatisfied,
 		FString& OutError)
 	{
@@ -2892,7 +2928,7 @@ namespace
 			bConditionValue = true;
 			break;
 		case EGameXXKCardEffectConditionType::TargetHasStatus:
-			bConditionValue = Target && GetCombatStatusStacksInternal(*Target, Condition.Status) >= Condition.MinimumStatusStacks;
+			bConditionValue = GetConditionStatusStacks(Target, Condition.Status, Snapshot) >= Condition.MinimumStatusStacks;
 			break;
 		case EGameXXKCardEffectConditionType::TargetHasAnyDamageOverTime:
 			bConditionValue = Target && (GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Bleed) > 0
@@ -2977,7 +3013,7 @@ namespace
 			return false;
 		}
 		bool bConditionSatisfied = false;
-		if (!IsConditionSatisfied(ModifierDefinition.Condition, Runtime, PlayedOwner, nullptr, bConditionSatisfied, OutError))
+		if (!IsConditionSatisfied(ModifierDefinition.Condition, Runtime, PlayedOwner, nullptr, nullptr, bConditionSatisfied, OutError))
 		{
 			return false;
 		}
@@ -3564,13 +3600,15 @@ namespace
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		FGameXXKCardCombatUnit& InOutOwner,
 		FGameXXKCardCombatUnit* Target,
+		const FGameXXKCardPlayConditionSnapshot* Snapshot,
 		bool& OutSatisfied,
 		int32& OutConsumed,
 		FString& OutError)
 	{
 		OutSatisfied = false;
 		OutConsumed = 0;
-		if (!IsConditionSatisfied(Condition, InOutRuntime, InOutOwner, Target, OutSatisfied, OutError) || !OutSatisfied)
+		const FGameXXKCardPlayConditionSnapshot* EvaluationSnapshot = Condition.bConsumeStatus ? nullptr : Snapshot;
+		if (!IsConditionSatisfied(Condition, InOutRuntime, InOutOwner, Target, EvaluationSnapshot, OutSatisfied, OutError) || !OutSatisfied)
 		{
 			return OutError.IsEmpty();
 		}
@@ -3696,7 +3734,7 @@ namespace
 			}
 			bool bConditionSatisfied = false;
 			int32 IgnoredConsumed = 0;
-			if (!TryApplyEffectConditionAndConsumption(Modifier.Definition.Condition, InOutRuntime, InOutOwner, ConditionTarget, bConditionSatisfied, IgnoredConsumed, OutError))
+			if (!TryApplyEffectConditionAndConsumption(Modifier.Definition.Condition, InOutRuntime, InOutOwner, ConditionTarget, nullptr, bConditionSatisfied, IgnoredConsumed, OutError))
 			{
 				return false;
 			}
@@ -3848,7 +3886,7 @@ namespace
 			}
 			bool bConditionSatisfied = false;
 			int32 IgnoredConsumed = 0;
-			if (!TryApplyEffectConditionAndConsumption(Modifier.Definition.Condition, InOutRuntime, InOutOwner, ConditionTarget, bConditionSatisfied, IgnoredConsumed, OutError))
+			if (!TryApplyEffectConditionAndConsumption(Modifier.Definition.Condition, InOutRuntime, InOutOwner, ConditionTarget, nullptr, bConditionSatisfied, IgnoredConsumed, OutError))
 			{
 				return false;
 			}
@@ -4033,7 +4071,7 @@ namespace
 			}
 			bool bConditionSatisfied = false;
 			int32 IgnoredConsumed = 0;
-			if (!TryApplyEffectConditionAndConsumption(ModifierDefinition.Condition, InOutRuntime, *Recipient, Attacker, bConditionSatisfied, IgnoredConsumed, OutError))
+			if (!TryApplyEffectConditionAndConsumption(ModifierDefinition.Condition, InOutRuntime, *Recipient, Attacker, nullptr, bConditionSatisfied, IgnoredConsumed, OutError))
 			{
 				return false;
 			}
@@ -4085,6 +4123,7 @@ namespace
 		const FGameXXKCardDefinition& Definition,
 		const FGameXXKCardInstance& Instance,
 		const TArray<FName>& CardTargetIds,
+		const FGameXXKCardPlayConditionSnapshot& ConditionSnapshot,
 		const int32 AttackIndex,
 		TSet<int32>& OutAttachedEffectIndices,
 		TMap<FName, int32>& InOutConsumptionResults,
@@ -4126,7 +4165,7 @@ namespace
 			FGameXXKCardCombatUnit* ConditionTarget = CardTargetIds.Num() == 1 ? FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0]) : Target;
 			bool bBaseSatisfied = false;
 			int32 BaseConsumed = 0;
-			if (!TryApplyEffectConditionAndConsumption(Attack.Condition, InOutRuntime, *Owner, ConditionTarget, bBaseSatisfied, BaseConsumed, OutError))
+			if (!TryApplyEffectConditionAndConsumption(Attack.Condition, InOutRuntime, *Owner, ConditionTarget, &ConditionSnapshot, bBaseSatisfied, BaseConsumed, OutError))
 			{
 				return false;
 			}
@@ -4158,7 +4197,7 @@ namespace
 				}
 				bool bAttachmentSatisfied = false;
 				int32 AttachmentConsumed = 0;
-				if (!TryApplyEffectConditionAndConsumption(Attachment.Condition, InOutRuntime, *Owner, ConditionTarget, bAttachmentSatisfied, AttachmentConsumed, OutError))
+				if (!TryApplyEffectConditionAndConsumption(Attachment.Condition, InOutRuntime, *Owner, ConditionTarget, &ConditionSnapshot, bAttachmentSatisfied, AttachmentConsumed, OutError))
 				{
 					return false;
 				}
@@ -4186,7 +4225,7 @@ namespace
 							OutError = TEXT("A per-status attack bonus requires a concrete target-status condition.");
 							return false;
 						}
-						const int32 StatusStacks = GameXXKCardRules::GetCombatStatusStacks(*ConditionTarget, Attachment.Condition.Status);
+						const int32 StatusStacks = GetConditionStatusStacks(ConditionTarget, Attachment.Condition.Status, &ConditionSnapshot);
 						Percent += static_cast<int64>(Attachment.Magnitude) * FMath::Min(StatusStacks, Attachment.SecondaryMagnitude);
 					}
 					else
@@ -4404,6 +4443,7 @@ namespace
 		FGameXXKCardPlayResult& InOutResult,
 		FString& OutError)
 	{
+		const FGameXXKCardPlayConditionSnapshot ConditionSnapshot = CaptureCardPlayConditionSnapshot(InOutRuntime);
 		TSet<int32> AttachedEffectIndices;
 		TMap<FName, int32> ConsumptionResults;
 		bool bPreparedHealingAction = false;
@@ -4418,7 +4458,7 @@ namespace
 			const FGameXXKCardEffect& Effect = Definition.Effects[EffectIndex];
 			if (Effect.Type == EGameXXKCardEffectType::DamagePercentAttack)
 			{
-				if (!ResolveAttackPacket(InOutRuntime, Definition, Instance, CardTargetIds, EffectIndex, AttachedEffectIndices, ConsumptionResults, InOutResult, OutError))
+				if (!ResolveAttackPacket(InOutRuntime, Definition, Instance, CardTargetIds, ConditionSnapshot, EffectIndex, AttachedEffectIndices, ConsumptionResults, InOutResult, OutError))
 				{
 					return false;
 				}
@@ -4450,7 +4490,7 @@ namespace
 					: nullptr;
 				bool bConditionSatisfied = false;
 				int32 Consumed = 0;
-				if (!TryApplyEffectConditionAndConsumption(Effect.Condition, InOutRuntime, *ModifierOwner, ModifierConditionTarget, bConditionSatisfied, Consumed, OutError))
+				if (!TryApplyEffectConditionAndConsumption(Effect.Condition, InOutRuntime, *ModifierOwner, ModifierConditionTarget, &ConditionSnapshot, bConditionSatisfied, Consumed, OutError))
 				{
 					return false;
 				}
@@ -4495,7 +4535,7 @@ namespace
 			{
 				bool bConditionSatisfied = false;
 				int32 Consumed = 0;
-				if (!TryApplyEffectConditionAndConsumption(Effect.Condition, InOutRuntime, *Owner, ConditionTarget, bConditionSatisfied, Consumed, OutError))
+				if (!TryApplyEffectConditionAndConsumption(Effect.Condition, InOutRuntime, *Owner, ConditionTarget, &ConditionSnapshot, bConditionSatisfied, Consumed, OutError))
 				{
 					return false;
 				}
@@ -4598,7 +4638,7 @@ namespace
 				FGameXXKCardCombatUnit* PerTargetCondition = ConditionTarget ? ConditionTarget : Target;
 				bool bConditionSatisfied = false;
 				int32 Consumed = 0;
-				if (!TryApplyEffectConditionAndConsumption(Effect.Condition, InOutRuntime, *Owner, PerTargetCondition, bConditionSatisfied, Consumed, OutError))
+				if (!TryApplyEffectConditionAndConsumption(Effect.Condition, InOutRuntime, *Owner, PerTargetCondition, &ConditionSnapshot, bConditionSatisfied, Consumed, OutError))
 				{
 					return false;
 				}
