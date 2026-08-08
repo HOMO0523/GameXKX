@@ -934,6 +934,24 @@ enum class EGameXXKCardDamageKind : uint8
 	DamageOverTime = 5
 };
 
+/** Identifies why a damage packet exists without changing its mitigation policy. */
+UENUM(BlueprintType)
+enum class EGameXXKCardDamageCause : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	DirectAttack = 1,
+	Counter = 2,
+	Bleed = 3,
+	Poison = 4,
+	Burn = 5,
+	Rot = 6,
+	ToxicExplosionBleed = 7,
+	ToxicExplosionPoison = 8,
+	ToxicExplosionBurn = 9,
+	SelfLoss = 10,
+	Environment = 11
+};
+
 /** Source and policy metadata for one atomic damage packet. It is never inferred from a UI widget. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKCardDamageContext
@@ -1052,6 +1070,22 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bAvoidedByAgility = false;
+
+	/** Semantic source of this packet, independent of the mitigation path used to resolve it. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardDamageCause Cause = EGameXXKCardDamageCause::Invalid;
+
+	/** Matching DoT stacks captured before this status packet was queued. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 StatusStacksBefore = 0;
+
+	/** Flat Rot contribution added to this real Bleed, Poison, or Burn packet. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 RotDamageBonus = 0;
+
+	/** Matching DoT stacks consumed after this packet; zero for a preserved explosion. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 StatusStacksConsumed = 0;
 };
 
 /** Explicit serializable phase for the card-driven battle runtime. */

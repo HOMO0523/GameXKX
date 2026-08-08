@@ -939,6 +939,12 @@ namespace
 		{
 			const FGameXXKCardCombatUnit* TargetBeforeDot = FindCombatUnitById(InOutRuntime.Units, UnitId);
 			const int32 TargetHealthBefore = TargetBeforeDot ? TargetBeforeDot->HP : 0;
+			const int32 PoisonStacksBefore = TargetBeforeDot
+				? GameXXKCardRules::GetCombatStatusStacks(*TargetBeforeDot, EGameXXKCardStatus::Poison)
+				: 0;
+			const int32 RotStacksBefore = TargetBeforeDot
+				? GameXXKCardRules::GetCombatStatusStacks(*TargetBeforeDot, EGameXXKCardStatus::DamageOverTime)
+				: 0;
 			int32 HealthDamage = 0;
 			if (!GameXXKCardRules::ApplyCombatEndPhaseDot(InOutRuntime.Units, InOutRuntime.GuardLinks, UnitId, HealthDamage, &OutError))
 			{
@@ -949,9 +955,15 @@ namespace
 				FGameXXKCardDamageResult& Result = OutResults.AddDefaulted_GetRef();
 				Result.OriginalTargetUnitId = UnitId;
 				Result.ResolvedTargetUnitId = UnitId;
-				Result.RequestedDamage = HealthDamage;
-				Result.DamageAfterDefense = HealthDamage;
-				Result.DamageAfterVulnerability = HealthDamage;
+				Result.Cause = EGameXXKCardDamageCause::Poison;
+				Result.StatusStacksBefore = PoisonStacksBefore;
+				Result.RotDamageBonus = RotStacksBefore;
+				Result.StatusStacksConsumed = PoisonStacksBefore > 0 ? 1 : 0;
+				Result.RequestedDamage = static_cast<int32>(FMath::Min<int64>(
+					MAX_int32,
+					static_cast<int64>(PoisonStacksBefore) + RotStacksBefore));
+				Result.DamageAfterDefense = Result.RequestedDamage;
+				Result.DamageAfterVulnerability = Result.RequestedDamage;
 				Result.HealthDamage = HealthDamage;
 				Result.TargetHealthBefore = TargetHealthBefore;
 				Result.TargetHealthAfter = FMath::Max(0, TargetHealthBefore - HealthDamage);
@@ -2372,6 +2384,53 @@ void GameXXKCardRules::BeginCombatUnitPhase(FGameXXKCardCombatUnit& InOutUnit)
 	}
 }
 
+namespace
+{
+	bool ApplyStatusHealthLoss(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName TargetUnitId,
+		const EGameXXKCardDamageCause Cause,
+		const int32 BaseStacks,
+		const bool bApplyRot,
+		FGameXXKCardDamageResult& OutResult,
+		FString& OutError)
+	{
+		if (TargetUnitId.IsNone() || Cause == EGameXXKCardDamageCause::Invalid || BaseStacks <= 0)
+		{
+			OutError = TEXT("Status health loss requires a stable target, explicit cause, and positive stack snapshot.");
+			return false;
+		}
+		FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, TargetUnitId);
+		if (!Target)
+		{
+			OutError = TEXT("Status health loss target is absent from the battle runtime.");
+			return false;
+		}
+
+		FGameXXKCardDamageResult NewResult;
+		NewResult.OriginalTargetUnitId = TargetUnitId;
+		NewResult.ResolvedTargetUnitId = TargetUnitId;
+		NewResult.Cause = Cause;
+		NewResult.StatusStacksBefore = BaseStacks;
+		NewResult.RotDamageBonus = bApplyRot
+			? GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::DamageOverTime)
+			: 0;
+		NewResult.RequestedDamage = static_cast<int32>(FMath::Min<int64>(
+			MAX_int32,
+			static_cast<int64>(BaseStacks) + NewResult.RotDamageBonus));
+		NewResult.DamageAfterDefense = NewResult.RequestedDamage;
+		NewResult.DamageAfterVulnerability = NewResult.RequestedDamage;
+		NewResult.TargetHealthBefore = Target->HP;
+		NewResult.HealthDamage = FMath::Min(Target->HP, NewResult.RequestedDamage);
+		Target->HP -= NewResult.HealthDamage;
+		Target->bLiving = Target->HP > 0;
+		NewResult.TargetHealthAfter = Target->HP;
+		RemoveLinksForDefeatedUnits(InOutRuntime.GuardLinks, InOutRuntime.Units);
+		OutResult = MoveTemp(NewResult);
+		return true;
+	}
+}
+
 bool GameXXKCardRules::ApplyCombatEndPhaseDot(
 	TArray<FGameXXKCardCombatUnit>& InOutUnits,
 	TArray<FGameXXKCardGuardLinkRuntime>& InOutGuardLinks,
@@ -2424,6 +2483,100 @@ bool GameXXKCardRules::ApplyCombatEndPhaseDot(
 	return true;
 }
 
+bool GameXXKCardRules::ResolveToxicExplosion(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	const FName SourceUnitId,
+	const FName TargetUnitId,
+	const bool bPreserveDamageOverTimeStacks,
+	TArray<FGameXXKCardDamageResult>& OutResults,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	if (SourceUnitId.IsNone() || TargetUnitId.IsNone())
+	{
+		return SetFailure(OutError, TEXT("Toxic explosion requires stable source and target IDs."));
+	}
+
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	FString ValidationError;
+	if (!ValidateCombatUnits(NewRuntime.Units, ValidationError)
+		|| !ValidateGuardLinks(NewRuntime.Units, NewRuntime.GuardLinks, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	const FGameXXKCardCombatUnit* Source = FindCombatUnitById(NewRuntime.Units, SourceUnitId);
+	FGameXXKCardCombatUnit* Target = FindCombatUnitById(NewRuntime.Units, TargetUnitId);
+	if (!Source || !Source->bLiving || !Target || !Target->bLiving || Source->Side == Target->Side)
+	{
+		return SetFailure(OutError, TEXT("Toxic explosion requires a living source and opposing living target."));
+	}
+
+	struct FExplosionPacketSpec
+	{
+		EGameXXKCardStatus Status;
+		EGameXXKCardDamageCause Cause;
+		int32 StacksBefore = 0;
+		int32 ResultIndex = INDEX_NONE;
+	};
+	TArray<FExplosionPacketSpec> PacketSpecs = {
+		{EGameXXKCardStatus::Bleed, EGameXXKCardDamageCause::ToxicExplosionBleed},
+		{EGameXXKCardStatus::Poison, EGameXXKCardDamageCause::ToxicExplosionPoison},
+		{EGameXXKCardStatus::Burn, EGameXXKCardDamageCause::ToxicExplosionBurn}};
+	for (FExplosionPacketSpec& PacketSpec : PacketSpecs)
+	{
+		PacketSpec.StacksBefore = GetCombatStatusStacksInternal(*Target, PacketSpec.Status);
+	}
+
+	TArray<FGameXXKCardDamageResult> NewResults;
+	NewResults.Reserve(3);
+	for (FExplosionPacketSpec& PacketSpec : PacketSpecs)
+	{
+		if (PacketSpec.StacksBefore <= 0)
+		{
+			continue;
+		}
+		FGameXXKCardDamageResult PacketResult;
+		if (!ApplyStatusHealthLoss(
+			NewRuntime,
+			TargetUnitId,
+			PacketSpec.Cause,
+			PacketSpec.StacksBefore,
+			true,
+			PacketResult,
+			ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		PacketResult.SourceUnitId = SourceUnitId;
+		PacketSpec.ResultIndex = NewResults.Add(MoveTemp(PacketResult));
+	}
+
+	Target = FindCombatUnitById(NewRuntime.Units, TargetUnitId);
+	if (!Target)
+	{
+		return SetFailure(OutError, TEXT("Toxic explosion target disappeared before status consumption."));
+	}
+	if (!bPreserveDamageOverTimeStacks)
+	{
+		for (const FExplosionPacketSpec& PacketSpec : PacketSpecs)
+		{
+			if (PacketSpec.ResultIndex == INDEX_NONE)
+			{
+				continue;
+			}
+			NewResults[PacketSpec.ResultIndex].StatusStacksConsumed =
+				GameXXKCardRules::ConsumeCombatStatus(*Target, PacketSpec.Status, 1);
+		}
+	}
+	UpdateBattleTerminalPhase(NewRuntime);
+	InOutRuntime = MoveTemp(NewRuntime);
+	OutResults = MoveTemp(NewResults);
+	return true;
+}
+
 namespace
 {
 	bool ApplyCombatDirectDamageInternal(
@@ -2464,6 +2617,11 @@ namespace
 
 	FGameXXKCardDamageResult NewResult;
 	NewResult.SourceUnitId = Context.SourceUnitId;
+	NewResult.Cause = IsDirectAttackDamageKind(Context.Kind)
+		? EGameXXKCardDamageCause::DirectAttack
+		: Context.Kind == EGameXXKCardDamageKind::SelfHealthLoss
+			? EGameXXKCardDamageCause::SelfLoss
+			: EGameXXKCardDamageCause::Environment;
 	NewResult.OriginalTargetUnitId = TargetUnitId;
 	NewResult.ResolvedTargetUnitId = TargetUnitId;
 	NewResult.RequestedDamage = RequestedDamage;
@@ -4140,6 +4298,7 @@ namespace
 				{
 					return false;
 				}
+				CounterResult.Cause = EGameXXKCardDamageCause::Counter;
 				if (OutAdditionalDamageResults)
 				{
 					OutAdditionalDamageResults->Add(MoveTemp(CounterResult));

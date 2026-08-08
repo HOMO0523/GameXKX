@@ -234,14 +234,26 @@ namespace GameXXKCardRules
 	GAMEXXK_API void BeginCombatUnitPhase(FGameXXKCardCombatUnit& InOutUnit);
 
 	/**
-	 * Applies bleed/poison/burn end-phase damage to one stable unit without consulting armor or agility.
-	 * The atomic snapshot also removes guard links made stale when this DoT defeats a unit.
+	 * Applies owner-end Poison damage, then decays Poison, Burn, Rot, and Weak by their approved rules.
+	 * Bleed is unchanged. The atomic snapshot removes guard links made stale by Poison damage.
 	 */
 	GAMEXXK_API bool ApplyCombatEndPhaseDot(
 		TArray<FGameXXKCardCombatUnit>& InOutUnits,
 		TArray<FGameXXKCardGuardLinkRuntime>& InOutGuardLinks,
 		FName TargetUnitId,
 		int32& OutHealthDamage,
+		FString* OutError = nullptr);
+
+	/**
+	 * Snapshots Bleed, Poison, and Burn in that order, deals each stack value plus current Rot as
+	 * health-only damage, then consumes one matching stack unless preservation is active.
+	 */
+	GAMEXXK_API bool ResolveToxicExplosion(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FName SourceUnitId,
+		FName TargetUnitId,
+		bool bPreserveDamageOverTimeStacks,
+		TArray<FGameXXKCardDamageResult>& OutResults,
 		FString* OutError = nullptr);
 
 	/**

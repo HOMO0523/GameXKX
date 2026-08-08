@@ -599,7 +599,11 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	if (LifestealReflectResult.DamageResults.Num() == 2)
 	{
 		TestEqual(TEXT("the first audit packet belongs to the played blade card"), LifestealReflectResult.DamageResults[0].SourceUnitId, FName(TEXT("Blade")));
+		TestEqual(TEXT("the played-card packet is audited as direct attack damage"),
+			LifestealReflectResult.DamageResults[0].Cause, EGameXXKCardDamageCause::DirectAttack);
 		TestEqual(TEXT("the second audit packet belongs to the enemy reflection"), LifestealReflectResult.DamageResults[1].SourceUnitId, FName(TEXT("Enemy")));
+		TestEqual(TEXT("the reflected packet is audited as counter damage"),
+			LifestealReflectResult.DamageResults[1].Cause, EGameXXKCardDamageCause::Counter);
 		TestEqual(TEXT("the enemy reflection applies the global Mark bonus"),
 			LifestealReflectResult.DamageResults[1].MarkDamageBonusPercent, 15);
 		TestEqual(TEXT("the enemy reflection consumes exactly one Mark"),

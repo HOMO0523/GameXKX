@@ -23,6 +23,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	"GameXXK.Data.CombatStatusRedesign.EndPhaseStatuses",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCombatStatusToxicExplosionTest,
+	"GameXXK.Data.CombatStatusRedesign.ToxicExplosion",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
 namespace
 {
 	FGameXXKCardCombatUnit MakeStatusCapacityUnit()
@@ -231,6 +236,99 @@ bool FGameXXKCombatStatusEndPhaseRulesTest::RunTest(const FString& Parameters)
 		GameXXKCardRules::GetCombatStatusStacks(Units[0], EGameXXKCardStatus::Weak), 1);
 	TestEqual(TEXT("Bleed neither triggers nor decays at owner-side end"),
 		GameXXKCardRules::GetCombatStatusStacks(Units[0], EGameXXKCardStatus::Bleed), 4);
+	return true;
+}
+
+bool FGameXXKCombatStatusToxicExplosionTest::RunTest(const FString& Parameters)
+{
+	auto MakeExplosionRuntime = []()
+	{
+		FGameXXKCardBattleRuntime Runtime;
+		Runtime.Phase = EGameXXKCardBattlePhase::Player;
+		Runtime.Units = {
+			MakeTerminalUnit(TEXT("ExplosionSource"), EGameXXKCardTargetSide::Party, true, 1),
+			MakeTerminalUnit(TEXT("ExplosionTarget"), EGameXXKCardTargetSide::Enemy, true, 10)};
+		Runtime.Units[1].Defense = 50;
+		Runtime.Units[1].Armor = 99;
+		GameXXKCardRules::AddCombatStatus(Runtime.Units[1], EGameXXKCardStatus::Agility, 2);
+		GameXXKCardRules::AddCombatStatus(Runtime.Units[1], EGameXXKCardStatus::Bleed, 4);
+		GameXXKCardRules::AddCombatStatus(Runtime.Units[1], EGameXXKCardStatus::Poison, 3);
+		GameXXKCardRules::AddCombatStatus(Runtime.Units[1], EGameXXKCardStatus::Burn, 2);
+		GameXXKCardRules::AddCombatStatus(Runtime.Units[1], EGameXXKCardStatus::DamageOverTime, 2);
+		return Runtime;
+	};
+
+	FGameXXKCardBattleRuntime Runtime = MakeExplosionRuntime();
+	TArray<FGameXXKCardDamageResult> Results;
+	TestTrue(TEXT("toxic explosion resolves all three snapshot packets"),
+		GameXXKCardRules::ResolveToxicExplosion(
+			Runtime, TEXT("ExplosionSource"), TEXT("ExplosionTarget"), false, Results));
+	TestEqual(TEXT("toxic explosion emits Bleed, Poison, then Burn"), Results.Num(), 3);
+	if (Results.Num() != 3)
+	{
+		return false;
+	}
+	const TArray<EGameXXKCardDamageCause> ExpectedCauses = {
+		EGameXXKCardDamageCause::ToxicExplosionBleed,
+		EGameXXKCardDamageCause::ToxicExplosionPoison,
+		EGameXXKCardDamageCause::ToxicExplosionBurn};
+	const TArray<int32> ExpectedStacks = {4, 3, 2};
+	const TArray<int32> ExpectedHealthDamage = {6, 5, 4};
+	for (int32 Index = 0; Index < Results.Num(); ++Index)
+	{
+		TestEqual(TEXT("toxic explosion records the fixed packet cause"), Results[Index].Cause, ExpectedCauses[Index]);
+		TestEqual(TEXT("toxic explosion records the pre-explosion status snapshot"), Results[Index].StatusStacksBefore, ExpectedStacks[Index]);
+		TestEqual(TEXT("Rot adds its full current value to every present DoT packet"), Results[Index].RotDamageBonus, 2);
+		TestEqual(TEXT("each non-preserved packet consumes exactly one matching status stack"), Results[Index].StatusStacksConsumed, 1);
+		TestEqual(TEXT("each toxic explosion packet bypasses mitigation"), Results[Index].HealthDamage, ExpectedHealthDamage[Index]);
+	}
+	TestEqual(TEXT("B4 P3 Burn2 Rot2 toxic explosion deals fifteen total health damage"), Runtime.Units[1].HP, 85);
+	TestEqual(TEXT("toxic explosion leaves Bleed at three"),
+		GameXXKCardRules::GetCombatStatusStacks(Runtime.Units[1], EGameXXKCardStatus::Bleed), 3);
+	TestEqual(TEXT("toxic explosion leaves Poison at two"),
+		GameXXKCardRules::GetCombatStatusStacks(Runtime.Units[1], EGameXXKCardStatus::Poison), 2);
+	TestEqual(TEXT("toxic explosion leaves Burn at one"),
+		GameXXKCardRules::GetCombatStatusStacks(Runtime.Units[1], EGameXXKCardStatus::Burn), 1);
+	TestEqual(TEXT("toxic explosion never directly consumes Rot"),
+		GameXXKCardRules::GetCombatStatusStacks(Runtime.Units[1], EGameXXKCardStatus::DamageOverTime), 2);
+	TestEqual(TEXT("status health loss leaves armor untouched"), Runtime.Units[1].Armor, 99);
+	TestEqual(TEXT("status health loss leaves agility untouched"),
+		GameXXKCardRules::GetCombatStatusStacks(Runtime.Units[1], EGameXXKCardStatus::Agility), 2);
+
+	FGameXXKCardBattleRuntime PreservedRuntime = MakeExplosionRuntime();
+	TArray<FGameXXKCardDamageResult> PreservedResults;
+	TestTrue(TEXT("six-piece preservation resolves the same toxic explosion"),
+		GameXXKCardRules::ResolveToxicExplosion(
+			PreservedRuntime, TEXT("ExplosionSource"), TEXT("ExplosionTarget"), true, PreservedResults));
+	TestEqual(TEXT("preserved toxic explosion still deals fifteen"), PreservedRuntime.Units[1].HP, 85);
+	TestEqual(TEXT("preserved toxic explosion keeps Bleed four"),
+		GameXXKCardRules::GetCombatStatusStacks(PreservedRuntime.Units[1], EGameXXKCardStatus::Bleed), 4);
+	TestEqual(TEXT("preserved toxic explosion keeps Poison three"),
+		GameXXKCardRules::GetCombatStatusStacks(PreservedRuntime.Units[1], EGameXXKCardStatus::Poison), 3);
+	TestEqual(TEXT("preserved toxic explosion keeps Burn two"),
+		GameXXKCardRules::GetCombatStatusStacks(PreservedRuntime.Units[1], EGameXXKCardStatus::Burn), 2);
+	TestEqual(TEXT("preserved toxic explosion keeps Rot two"),
+		GameXXKCardRules::GetCombatStatusStacks(PreservedRuntime.Units[1], EGameXXKCardStatus::DamageOverTime), 2);
+	for (const FGameXXKCardDamageResult& Result : PreservedResults)
+	{
+		TestEqual(TEXT("preserved toxic explosion reports no consumed status stack"), Result.StatusStacksConsumed, 0);
+	}
+
+	FGameXXKCardBattleRuntime LethalRuntime = MakeExplosionRuntime();
+	LethalRuntime.Units[1].HP = 1;
+	TArray<FGameXXKCardDamageResult> LethalResults;
+	TestTrue(TEXT("toxic explosion completes its atomic snapshot after lethal first packet"),
+		GameXXKCardRules::ResolveToxicExplosion(
+			LethalRuntime, TEXT("ExplosionSource"), TEXT("ExplosionTarget"), false, LethalResults));
+	TestEqual(TEXT("lethal toxic explosion still emits all three snapshot packets"), LethalResults.Num(), 3);
+	TestEqual(TEXT("lethal toxic explosion consumes one Bleed"),
+		GameXXKCardRules::GetCombatStatusStacks(LethalRuntime.Units[1], EGameXXKCardStatus::Bleed), 3);
+	TestEqual(TEXT("lethal toxic explosion consumes one Poison"),
+		GameXXKCardRules::GetCombatStatusStacks(LethalRuntime.Units[1], EGameXXKCardStatus::Poison), 2);
+	TestEqual(TEXT("lethal toxic explosion consumes one Burn"),
+		GameXXKCardRules::GetCombatStatusStacks(LethalRuntime.Units[1], EGameXXKCardStatus::Burn), 1);
+	TestEqual(TEXT("lethal toxic explosion keeps Rot"),
+		GameXXKCardRules::GetCombatStatusStacks(LethalRuntime.Units[1], EGameXXKCardStatus::DamageOverTime), 2);
 	return true;
 }
 
