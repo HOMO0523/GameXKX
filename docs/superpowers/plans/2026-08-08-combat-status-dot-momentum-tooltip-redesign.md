@@ -95,7 +95,7 @@ GameXXK.Data.CardCombatRules
 GameXXK.Data.CardBattleRuntime
 GameXXK.Battle.EnemyIntentRules
 GameXXK.UI.Battle.StatusEffectsWidget
-GameXXK.Data.EquipmentSetCatalog
+GameXXK.Equipment.SetCatalog
 GameXXK.Data.MarkRules
 ```
 
@@ -766,9 +766,9 @@ GameXXK.Data.MarkRules
 GameXXK.Integration.MarkCardCompatibility
 GameXXK.Battle.EnemyIntentRules
 GameXXK.Battle.EnemyMechanics
-GameXXK.Data.EquipmentSetCatalog
+GameXXK.Equipment.SetCatalog
 GameXXK.UI.Battle.StatusEffectsWidget
-GameXXK.UI.Battle.ProjectedUnitHud
+GameXXK.UI.Battle.FixedSlotUnitHud
 ```
 
 Expected: every intended concrete test runs; zero failed/not-run tests; existing warnings are itemized rather than hidden.
