@@ -1674,7 +1674,6 @@ bool FGameXXKGraymaneMarkedHuntCatalogPassiveTest::RunTest(const FString& Parame
 		return false;
 	}
 	FGameXXKBattleRuntimeUnit Hero = MakeEnemyIntentFixtureHero();
-	Hero.Defense = 0;
 	State.ActiveBattleParty = {Hero};
 	State.ActiveBattleEnemies = {
 		MakeEnemyIntentFixtureUnit(TEXT("Enemy.Graymane.P2"), TEXT("Enemy.Ch2.GraymaneWolfKing"), 2, 158, 20)};
@@ -1685,6 +1684,15 @@ bool FGameXXKGraymaneMarkedHuntCatalogPassiveTest::RunTest(const FString& Parame
 	{
 		return false;
 	}
+	FGameXXKCardCombatUnit* HeroBeforeOpeningAttack = State.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("Player");
+	});
+	if (!TestNotNull(TEXT("the Graymane fixture has its runtime hero before enemy damage"), HeroBeforeOpeningAttack))
+	{
+		return false;
+	}
+	HeroBeforeOpeningAttack->Defense = 0;
 	if (!TestTrue(TEXT("Graymane's opening catalog forecast exists"), State.CardRun.EnemyIntents.IsValidIndex(0)))
 	{
 		return false;
@@ -1751,11 +1759,27 @@ bool FGameXXKGraymaneMarkedHuntCatalogPassiveTest::RunTest(const FString& Parame
 	{
 		return false;
 	}
+	TestEqual(TEXT("the first continuous-hunt hit consumes Mark for the fixed bonus"), IntentResults[0].MarkDamageBonusPercent, 15);
+	TestEqual(TEXT("the second continuous-hunt hit consumes Mark for the fixed bonus"), IntentResults[1].MarkDamageBonusPercent, 15);
+	TestEqual(TEXT("the third continuous-hunt hit has no Mark bonus after both stacks are consumed"), IntentResults[2].MarkDamageBonusPercent, 0);
+	TestEqual(TEXT("the first continuous-hunt hit floor-amplifies sixteen damage to eighteen"), IntentResults[0].DamageAfterVulnerability, 18);
+	TestEqual(TEXT("the second continuous-hunt hit floor-amplifies sixteen damage to eighteen"), IntentResults[1].DamageAfterVulnerability, 18);
+	TestEqual(TEXT("the third continuous-hunt hit remains at sixteen after Mark is exhausted"), IntentResults[2].DamageAfterVulnerability, 16);
 	for (const FGameXXKCardDamageResult& DamageResult : IntentResults)
 	{
 		TestEqual(TEXT("each marked continuous-hunt hit keeps the Graymane source"), DamageResult.SourceUnitId, FName(TEXT("Enemy.Graymane.P2")));
 		TestEqual(TEXT("each marked continuous-hunt hit executes the forecasted amplified requested damage"), DamageResult.RequestedDamage, 16);
 	}
+	FGameXXKCardCombatUnit* HeroAfterContinuousHunt = State.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("Player");
+	});
+	if (!TestNotNull(TEXT("the Graymane fixture keeps its hero after continuous hunt"), HeroAfterContinuousHunt))
+	{
+		return false;
+	}
+	TestEqual(TEXT("continuous hunt consumes both starting Mark stacks"),
+		GameXXKCardRules::GetCombatStatusStacks(*HeroAfterContinuousHunt, EGameXXKCardStatus::Mark), 0);
 
 	FGameXXKCardDamageContext GenericContext;
 	GenericContext.SourceUnitId = TEXT("Enemy.Graymane.P2");
@@ -1774,6 +1798,7 @@ bool FGameXXKGraymaneMarkedHuntCatalogPassiveTest::RunTest(const FString& Parame
 		return false;
 	}
 	TestEqual(TEXT("a generic direct-damage call does not inherit the catalog-only Graymane multiplier"), GenericDamageResult.RequestedDamage, 10);
+	TestEqual(TEXT("a generic direct-damage call audits no Mark bonus"), GenericDamageResult.MarkDamageBonusPercent, 0);
 
 	FGameXXKRuntimeState OtherEnemyState = UGameXXKMVPRules::CreateNewGame();
 	if (!TestTrue(TEXT("the non-Graymane fixture initializes the route deck"),
