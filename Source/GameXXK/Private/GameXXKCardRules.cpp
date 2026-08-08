@@ -1939,16 +1939,16 @@ namespace
 		switch (Status)
 		{
 		case EGameXXKCardStatus::Momentum:
-			return 3;
+		case EGameXXKCardStatus::Bleed:
+		case EGameXXKCardStatus::Poison:
+		case EGameXXKCardStatus::Burn:
+		case EGameXXKCardStatus::DamageOverTime:
+			return MAX_int32;
 		case EGameXXKCardStatus::Agility:
 			return 2;
 		case EGameXXKCardStatus::Vulnerability:
 		case EGameXXKCardStatus::Mark:
 			return 5;
-		case EGameXXKCardStatus::Bleed:
-		case EGameXXKCardStatus::Poison:
-		case EGameXXKCardStatus::Burn:
-		case EGameXXKCardStatus::DamageOverTime:
 		case EGameXXKCardStatus::Medicine:
 		case EGameXXKCardStatus::Wealth:
 		case EGameXXKCardStatus::Counter:
@@ -2210,7 +2210,10 @@ int32 GameXXKCardRules::AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, const
 		return 0;
 	}
 	const int32 CurrentStacks = GetCombatStatusStacksInternal(InOutUnit, Status);
-	const int32 AppliedStacks = FMath::Max(0, FMath::Min(GetCombatStatusCap(Status) - CurrentStacks, Amount));
+	const int64 AvailableStacks = FMath::Max<int64>(
+		0,
+		static_cast<int64>(GetCombatStatusCap(Status)) - CurrentStacks);
+	const int32 AppliedStacks = static_cast<int32>(FMath::Min<int64>(AvailableStacks, Amount));
 	if (AppliedStacks <= 0)
 	{
 		return 0;

@@ -63,23 +63,23 @@ namespace
 bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 {
 	FGameXXKCardCombatUnit Hero = MakeCombatUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, 100, 100, 1);
-	TestEqual(TEXT("momentum has a three-stack cap"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Momentum, 9), 3);
-	TestEqual(TEXT("momentum stores only its cap"), GameXXKCardRules::GetCombatStatusStacks(Hero, EGameXXKCardStatus::Momentum), 3);
+	TestEqual(TEXT("momentum accepts the full declared stack amount"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Momentum, 9), 9);
+	TestEqual(TEXT("momentum stores its exact uncapped stack amount"), GameXXKCardRules::GetCombatStatusStacks(Hero, EGameXXKCardStatus::Momentum), 9);
 	TestEqual(TEXT("agility has a two-stack cap"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Agility, 8), 2);
 	TestEqual(TEXT("vulnerability has a five-stack cap"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Vulnerability, 8), 5);
 	TestEqual(TEXT("mark has a five-stack cap"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Mark, 8), 5);
-	TestEqual(TEXT("bleed has an eight-stack cap"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Bleed, 12), 8);
+	TestEqual(TEXT("bleed accepts the full declared stack amount"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Bleed, 12), 12);
 	TestEqual(TEXT("bare guard status is rejected because guard must carry a unit binding"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Guard, 1), 0);
 	TestEqual(TEXT("armor add clamps at ninety-nine"), GameXXKCardRules::AddCombatArmor(Hero, 120), 99);
 	TestEqual(TEXT("armor stores the approved cap"), Hero.Armor, 99);
 	GameXXKCardRules::BeginCombatUnitPhase(Hero);
 	TestEqual(TEXT("armor clears at the owner phase start"), Hero.Armor, 0);
-	TestEqual(TEXT("phase start does not erase persistent momentum"), GameXXKCardRules::GetCombatStatusStacks(Hero, EGameXXKCardStatus::Momentum), 3);
+	TestEqual(TEXT("phase start does not erase persistent momentum"), GameXXKCardRules::GetCombatStatusStacks(Hero, EGameXXKCardStatus::Momentum), 9);
 	TestEqual(TEXT("immunity fixture clears the earlier vulnerability-cap probe"), GameXXKCardRules::ConsumeCombatStatus(Hero, EGameXXKCardStatus::Vulnerability, 0), 5);
 	TestEqual(TEXT("vulnerability-immunity status is applied"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::CannotReceiveVulnerability, 1), 1);
 	TestEqual(TEXT("vulnerability immunity prevents a later vulnerability application"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Vulnerability, 3), 0);
 	TestEqual(TEXT("vulnerability immunity leaves no vulnerability stacks behind"), GameXXKCardRules::GetCombatStatusStacks(Hero, EGameXXKCardStatus::Vulnerability), 0);
-	TestEqual(TEXT("zero maximum consumes every available status stack by catalog convention"), GameXXKCardRules::ConsumeCombatStatus(Hero, EGameXXKCardStatus::Momentum, 0), 3);
+	TestEqual(TEXT("zero maximum consumes every available status stack by catalog convention"), GameXXKCardRules::ConsumeCombatStatus(Hero, EGameXXKCardStatus::Momentum, 0), 9);
 	TestEqual(TEXT("zero maximum leaves no consumed momentum behind"), GameXXKCardRules::GetCombatStatusStacks(Hero, EGameXXKCardStatus::Momentum), 0);
 
 	TArray<FGameXXKCardCombatUnit> DirectDamageUnits;
@@ -388,14 +388,10 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	SecondDuplicateMomentum.Stacks = 1;
 	const int32 DuplicateStatusHeroHP = DuplicateStatusUnits[0].HP;
 	FGameXXKCardDamageResult DuplicateStatusHit;
-	DuplicateStatusHit.TargetHealthBefore = 902;
-	DuplicateStatusHit.TargetHealthAfter = 901;
-	const FGameXXKCardDamageResult DuplicateStatusHitSentinel = DuplicateStatusHit;
-	TestFalse(TEXT("corrupted duplicate status entries whose total exceeds a cap reject direct damage atomically"), GameXXKCardRules::ApplyCombatDirectDamage(DuplicateStatusUnits, GuardLinks, SingleTargetAttack, TEXT("Hero"), 5, DuplicateStatusHit));
-	TestEqual(TEXT("corrupted duplicate-status rejection leaves health unchanged"), DuplicateStatusUnits[0].HP, DuplicateStatusHeroHP);
-	TestTrue(TEXT("corrupted duplicate-status rejection preserves the entire damage result"),
-		FGameXXKCardDamageResult::StaticStruct()->CompareScriptStruct(
-			&DuplicateStatusHit, &DuplicateStatusHitSentinel, PPF_None));
+	TestTrue(TEXT("duplicate uncapped momentum entries remain a valid persisted combat state"), GameXXKCardRules::ApplyCombatDirectDamage(DuplicateStatusUnits, GuardLinks, SingleTargetAttack, TEXT("Hero"), 5, DuplicateStatusHit));
+	TestEqual(TEXT("a valid duplicate-status fixture resolves the declared direct damage"), DuplicateStatusUnits[0].HP, DuplicateStatusHeroHP - 5);
+	TestEqual(TEXT("valid duplicate momentum entries preserve their exact combined stacks"),
+		GameXXKCardRules::GetCombatStatusStacks(DuplicateStatusUnits[0], EGameXXKCardStatus::Momentum), 4);
 
 	TArray<FGameXXKCardCombatUnit> ReflectUnits;
 	ReflectUnits.Add(MakeCombatUnit(
