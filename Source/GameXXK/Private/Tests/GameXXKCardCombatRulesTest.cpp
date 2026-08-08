@@ -290,23 +290,26 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	TArray<FGameXXKCardGuardLinkRuntime> DotGuardLinks;
 	int32 DotHealthDamage = 0;
 	TestTrue(TEXT("DoT resolves against a stable battle unit"), GameXXKCardRules::ApplyCombatEndPhaseDot(DotUnits, DotGuardLinks, TEXT("DotTarget"), DotHealthDamage));
-	TestEqual(TEXT("bleed, poison, and burn bypass armor, agility, and guard"), DotHealthDamage, 13);
+	TestEqual(TEXT("only poison deals owner-end health damage"), DotHealthDamage, 2);
 	FGameXXKCardCombatUnit* DotTarget = FindCombatUnit(DotUnits, TEXT("DotTarget"));
 	TestNotNull(TEXT("DoT retains its stable target"), DotTarget);
 	if (!DotTarget)
 	{
 		return false;
 	}
-	TestEqual(TEXT("DoT applies its bypass health damage"), DotTarget->HP, 87);
+	TestEqual(TEXT("poison applies its bypass health damage"), DotTarget->HP, 98);
 	TestEqual(TEXT("DoT leaves armor untouched"), DotTarget->Armor, 20);
 	TestEqual(TEXT("DoT leaves agility untouched"), GameXXKCardRules::GetCombatStatusStacks(*DotTarget, EGameXXKCardStatus::Agility), 1);
+	TestEqual(TEXT("bleed does not decay at owner end"), GameXXKCardRules::GetCombatStatusStacks(*DotTarget, EGameXXKCardStatus::Bleed), 2);
+	TestEqual(TEXT("poison loses one stack after owner-end damage"), GameXXKCardRules::GetCombatStatusStacks(*DotTarget, EGameXXKCardStatus::Poison), 1);
+	TestEqual(TEXT("burn loses one stack without owner-end damage"), GameXXKCardRules::GetCombatStatusStacks(*DotTarget, EGameXXKCardStatus::Burn), 0);
 
 	TArray<FGameXXKCardCombatUnit> DotSnapshotUnits;
 	DotSnapshotUnits.Add(MakeCombatUnit(
 		TEXT("DotHero"), EGameXXKCardTargetSide::Party, 40, 100, 1, EGameXXKCharacterRole::Hero));
 	DotSnapshotUnits.Add(MakeCombatUnit(TEXT("DotEnemy"), EGameXXKCardTargetSide::Enemy, 100, 100, 10));
-	TestEqual(TEXT("end-phase snapshot fixture gains one burn"), GameXXKCardRules::AddCombatStatus(
-		DotSnapshotUnits[0], EGameXXKCardStatus::Burn, 1), 1);
+	TestEqual(TEXT("end-phase snapshot fixture gains three poison"), GameXXKCardRules::AddCombatStatus(
+		DotSnapshotUnits[0], EGameXXKCardStatus::Poison, 3), 3);
 	FGameXXKCardBattleRuntime DotSnapshotRuntime;
 	if (!TestTrue(TEXT("end-phase snapshot runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		DotSnapshotRuntime,
@@ -323,7 +326,7 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("one burning party unit creates one DoT audit result"), DotSnapshotResults.Num(), 1);
+	TestEqual(TEXT("one poisoned party unit creates one DoT audit result"), DotSnapshotResults.Num(), 1);
 	if (DotSnapshotResults.Num() == 1)
 	{
 		TestEqual(TEXT("DoT audit snapshots health before damage"), DotSnapshotResults[0].TargetHealthBefore, 40);
@@ -333,7 +336,7 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	TArray<FGameXXKCardCombatUnit> DotGuardDeathUnits;
 	DotGuardDeathUnits.Add(MakeCombatUnit(TEXT("DotProtected"), EGameXXKCardTargetSide::Party, 100, 100, 1));
 	DotGuardDeathUnits.Add(MakeCombatUnit(TEXT("DotGuardian"), EGameXXKCardTargetSide::Party, 2, 100, 2));
-	TestEqual(TEXT("doomed guardian gains burn"), GameXXKCardRules::AddCombatStatus(DotGuardDeathUnits[1], EGameXXKCardStatus::Burn, 1), 1);
+	TestEqual(TEXT("doomed guardian gains poison"), GameXXKCardRules::AddCombatStatus(DotGuardDeathUnits[1], EGameXXKCardStatus::Poison, 2), 2);
 	FGameXXKCardGuardLinkRuntime DotDeathGuardLink;
 	DotDeathGuardLink.GuardianUnitId = TEXT("DotGuardian");
 	DotDeathGuardLink.ProtectedUnitId = TEXT("DotProtected");

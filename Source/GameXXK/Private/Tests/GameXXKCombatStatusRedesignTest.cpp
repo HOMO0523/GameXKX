@@ -18,6 +18,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	"GameXXK.Data.CombatStatusRedesign.DirectAttackOrder",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCombatStatusEndPhaseRulesTest,
+	"GameXXK.Data.CombatStatusRedesign.EndPhaseStatuses",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
 namespace
 {
 	FGameXXKCardCombatUnit MakeStatusCapacityUnit()
@@ -184,6 +189,48 @@ bool FGameXXKCombatStatusDirectAttackOrderTest::RunTest(const FString& Parameter
 	TestEqual(TEXT("the packet-start snapshot supplies Momentum after a card has consumed live stacks"),
 		SnapshotResult.RequestedDamage, 24);
 	TestEqual(TEXT("the packet-start snapshot is visible in the audit"), SnapshotResult.MomentumDamageBonus, 4);
+	return true;
+}
+
+bool FGameXXKCombatStatusEndPhaseRulesTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKCardCombatUnit> Units = {
+		MakeTerminalUnit(TEXT("DotTarget"), EGameXXKCardTargetSide::Party, true, 1)};
+	Units[0].HP = 100;
+	Units[0].MaxHP = 100;
+	Units[0].Defense = 50;
+	Units[0].Armor = 99;
+	GameXXKCardRules::AddCombatStatus(Units[0], EGameXXKCardStatus::Agility, 1);
+	GameXXKCardRules::AddCombatStatus(Units[0], EGameXXKCardStatus::Mark, 1);
+	GameXXKCardRules::AddCombatStatus(Units[0], EGameXXKCardStatus::Bleed, 4);
+	GameXXKCardRules::AddCombatStatus(Units[0], EGameXXKCardStatus::Poison, 3);
+	GameXXKCardRules::AddCombatStatus(Units[0], EGameXXKCardStatus::Burn, 2);
+	GameXXKCardRules::AddCombatStatus(Units[0], EGameXXKCardStatus::DamageOverTime, 2);
+	GameXXKCardRules::AddCombatStatus(Units[0], EGameXXKCardStatus::Weak, 2);
+
+	TArray<FGameXXKCardGuardLinkRuntime> GuardLinks;
+	int32 HealthDamage = INDEX_NONE;
+	TestTrue(TEXT("the differentiated owner-side end phase resolves"),
+		GameXXKCardRules::ApplyCombatEndPhaseDot(
+			Units, GuardLinks, TEXT("DotTarget"), HealthDamage));
+	TestEqual(TEXT("only Poison plus one Rot amplification packet deals end-phase health damage"),
+		HealthDamage, 5);
+	TestEqual(TEXT("Poison plus Rot bypass defense and armor"), Units[0].HP, 95);
+	TestEqual(TEXT("end-phase status damage does not consume armor"), Units[0].Armor, 99);
+	TestEqual(TEXT("end-phase status damage does not consume Agility"),
+		GameXXKCardRules::GetCombatStatusStacks(Units[0], EGameXXKCardStatus::Agility), 1);
+	TestEqual(TEXT("end-phase status damage does not consume Mark"),
+		GameXXKCardRules::GetCombatStatusStacks(Units[0], EGameXXKCardStatus::Mark), 1);
+	TestEqual(TEXT("Poison deals damage and then loses one stack"),
+		GameXXKCardRules::GetCombatStatusStacks(Units[0], EGameXXKCardStatus::Poison), 2);
+	TestEqual(TEXT("Burn loses one stack at owner-side end without dealing damage"),
+		GameXXKCardRules::GetCombatStatusStacks(Units[0], EGameXXKCardStatus::Burn), 1);
+	TestEqual(TEXT("Rot loses one stack at owner-side end after amplifying Poison"),
+		GameXXKCardRules::GetCombatStatusStacks(Units[0], EGameXXKCardStatus::DamageOverTime), 1);
+	TestEqual(TEXT("Weak duration loses one stack at owner-side end"),
+		GameXXKCardRules::GetCombatStatusStacks(Units[0], EGameXXKCardStatus::Weak), 1);
+	TestEqual(TEXT("Bleed neither triggers nor decays at owner-side end"),
+		GameXXKCardRules::GetCombatStatusStacks(Units[0], EGameXXKCardStatus::Bleed), 4);
 	return true;
 }
 

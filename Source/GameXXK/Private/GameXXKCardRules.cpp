@@ -2401,13 +2401,21 @@ bool GameXXKCardRules::ApplyCombatEndPhaseDot(
 		return SetFailure(OutError, TEXT("End-phase DoT target is absent or defeated."));
 	}
 
-	const int64 RawDamage = static_cast<int64>(GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Bleed)) * 3
-		+ static_cast<int64>(GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Poison)) * 2
-		+ static_cast<int64>(GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Burn)) * 3
-		+ static_cast<int64>(GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::DamageOverTime)) * 3;
+	const int32 PoisonStacks = GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Poison);
+	const int32 RotStacks = GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::DamageOverTime);
+	const int64 RawDamage = PoisonStacks > 0
+		? static_cast<int64>(PoisonStacks) + RotStacks
+		: 0;
 	const int32 NewHealthDamage = static_cast<int32>(FMath::Min<int64>(Target->HP, RawDamage));
 	Target->HP -= NewHealthDamage;
 	Target->bLiving = Target->HP > 0;
+	if (PoisonStacks > 0)
+	{
+		GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Poison, 1);
+	}
+	GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Burn, 1);
+	GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::DamageOverTime, 1);
+	GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Weak, 1);
 	RemoveLinksForDefeatedUnits(NewGuardLinks, NewUnits);
 
 	InOutUnits = MoveTemp(NewUnits);

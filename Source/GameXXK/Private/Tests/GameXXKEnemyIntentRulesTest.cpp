@@ -540,8 +540,8 @@ bool FGameXXKBluehornDotDefeatDoesNotForecastTest::RunTest(const FString& Parame
 	Bluehorn->HP = 2;
 	Bluehorn->MaxHP = 138;
 	Bluehorn->Armor = 9;
-	TestEqual(TEXT("the DOT-defeat fixture applies one poison stack"),
-		GameXXKCardRules::AddCombatStatus(*Bluehorn, EGameXXKCardStatus::Poison, 1), 1);
+	TestEqual(TEXT("the DOT-defeat fixture applies two lethal poison stacks"),
+		GameXXKCardRules::AddCombatStatus(*Bluehorn, EGameXXKCardStatus::Poison, 2), 2);
 	TestTrue(TEXT("the DOT-defeat fixture skips the only pending intent before end-phase DOT"),
 		FGameXXKCardBattleAdapter::SkipCurrentEnemyIntent(State, &Error));
 	TestTrue(TEXT("enemy-side DOT can complete the phase into a terminal defeat for Bluehorn"),
@@ -593,8 +593,8 @@ bool FGameXXKEnemyEndDotTerminalPrecedesPhaseMaintenanceTest::RunTest(const FStr
 	BluehornState->TemporaryAttackModifier = 3;
 	BluehornState->PendingChargedIntentId = TEXT("RageCharge");
 	BluehornState->ChargeRoundsRemaining = 2;
-	TestEqual(TEXT("the terminal-order fixture applies one lethal enemy-end poison stack"),
-		GameXXKCardRules::AddCombatStatus(*Bluehorn, EGameXXKCardStatus::Poison, 1), 1);
+	TestEqual(TEXT("the terminal-order fixture applies two lethal enemy-end poison stacks"),
+		GameXXKCardRules::AddCombatStatus(*Bluehorn, EGameXXKCardStatus::Poison, 2), 2);
 	TestTrue(TEXT("the terminal-order fixture consumes the current forecast before enemy-end DOT"),
 		FGameXXKCardBattleAdapter::SkipCurrentEnemyIntent(State, &Error));
 	TestTrue(TEXT("enemy-end DOT completes a terminal Bluehorn phase"),
@@ -956,8 +956,8 @@ bool FGameXXKEnemyIntentRemovePositiveStatusTest::RunTest(const FString& Paramet
 		GameXXKCardRules::AddCombatStatus(*Hero, EGameXXKCardStatus::Momentum, 1), 1);
 	TestEqual(TEXT("the fixture adds a second positive status"),
 		GameXXKCardRules::AddCombatStatus(*Hero, EGameXXKCardStatus::Medicine, 1), 1);
-	TestEqual(TEXT("the fixture adds a negative poison status that snatch must not remove"),
-		GameXXKCardRules::AddCombatStatus(*Hero, EGameXXKCardStatus::Poison, 2), 2);
+	TestEqual(TEXT("the fixture adds poison that survives two owner-end ticks before snatch"),
+		GameXXKCardRules::AddCombatStatus(*Hero, EGameXXKCardStatus::Poison, 4), 4);
 
 	TArray<FGameXXKCardDamageResult> PhaseResults;
 	FGameXXKCardEnemyIntent ResolvedIntent;
@@ -3387,8 +3387,8 @@ bool FGameXXKBossPhaseEndRoundDotTransitionTest::RunTest(const FString& Paramete
 			continue;
 		}
 		Boss->HP = 52;
-		TestEqual(FString::Printf(TEXT("%s receives one poison stack for the end-round threshold crossing"), Spec.Label),
-			GameXXKCardRules::AddCombatStatus(*Boss, EGameXXKCardStatus::Poison, 1), 1);
+		TestEqual(FString::Printf(TEXT("%s receives two poison stacks for the end-round threshold crossing"), Spec.Label),
+			GameXXKCardRules::AddCombatStatus(*Boss, EGameXXKCardStatus::Poison, 2), 2);
 
 		TArray<FGameXXKCardDamageResult> PhaseResults;
 		if (!TestTrue(FString::Printf(TEXT("%s enters the enemy phase before enemy-side DoT: %s"), Spec.Label, *Error),
