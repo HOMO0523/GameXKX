@@ -997,8 +997,21 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 DamageAfterDefense = 0;
 
+	/** Compatibility field containing all direct-hit status amplification, including Mark. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 DamageAfterVulnerability = 0;
+
+	/** Mark stacks on the final resolved receiver immediately before this hit. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MarkStacksBeforeHit = 0;
+
+	/** Fixed additive Mark percentage applied to this hit, or zero. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MarkDamageBonusPercent = 0;
+
+	/** Mark stacks removed by this hit; currently zero or one. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MarkStacksConsumed = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 ArmorAbsorbed = 0;

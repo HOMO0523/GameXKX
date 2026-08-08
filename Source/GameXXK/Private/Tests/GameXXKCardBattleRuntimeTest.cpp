@@ -5,7 +5,7 @@
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKCardBattleRuntimeTest,
-	"GameXXK.Data.CardBattleRuntime",
+	"GameXXK.Data.CardBattleRuntime.Core",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -584,6 +584,12 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	LifestealReflectUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
 	FGameXXKCardBattleRuntime LifestealReflectRuntime;
 	TestTrue(TEXT("lifesteal reflection runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(LifestealReflectRuntime, MakeRuntimeInstances(TEXT("Profession.Blade.YinXueDao"), 6, TEXT("Blade")), LifestealReflectUnits, EGameXXKCardTerrain::Plain, 794));
+	TestEqual(TEXT("the reactive-damage fixture marks the reflected target"),
+		GameXXKCardRules::AddCombatStatus(
+			*FindRuntimeUnit(LifestealReflectRuntime.Units, TEXT("Blade")),
+			EGameXXKCardStatus::Mark,
+			1),
+		1);
 	AddOneShotReflectModifier(LifestealReflectRuntime, TEXT("Enemy"), 50, TEXT("Modifier.LifestealReflect"));
 	FGameXXKCardPlayResult LifestealReflectResult;
 	TestTrue(TEXT("lifesteal resolves through an enemy reflection without rolling back its hit"), GameXXKCardRules::ResolveCardPlay(LifestealReflectRuntime, LifestealReflectRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), LifestealReflectResult));
@@ -594,7 +600,16 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("the first audit packet belongs to the played blade card"), LifestealReflectResult.DamageResults[0].SourceUnitId, FName(TEXT("Blade")));
 		TestEqual(TEXT("the second audit packet belongs to the enemy reflection"), LifestealReflectResult.DamageResults[1].SourceUnitId, FName(TEXT("Enemy")));
+		TestEqual(TEXT("the enemy reflection applies the global Mark bonus"),
+			LifestealReflectResult.DamageResults[1].MarkDamageBonusPercent, 15);
+		TestEqual(TEXT("the enemy reflection consumes exactly one Mark"),
+			LifestealReflectResult.DamageResults[1].MarkStacksConsumed, 1);
 	}
+	TestEqual(TEXT("the enemy reflection removes Blade's Mark"),
+		GameXXKCardRules::GetCombatStatusStacks(
+			*FindRuntimeUnit(LifestealReflectRuntime.Units, TEXT("Blade")),
+			EGameXXKCardStatus::Mark),
+		0);
 
 	TArray<FGameXXKCardCombatUnit> DefeatDuringCardUnits;
 	DefeatDuringCardUnits.Add(MakeRuntimeUnit(TEXT("Blade"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Blade, 5, 100, 20, 8, 8, 1));

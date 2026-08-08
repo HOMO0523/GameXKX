@@ -2460,6 +2460,11 @@ namespace
 		const int32 MarkBonusPercent = MarkStacks > 0
 			? GameXXKCardRules::MarkDirectDamageBonusPercent
 			: 0;
+		if (bDirectAttack)
+		{
+			NewResult.MarkStacksBeforeHit = MarkStacks;
+			NewResult.MarkDamageBonusPercent = MarkBonusPercent;
+		}
 		const int64 AmplifiedDamage = static_cast<int64>(NewResult.DamageAfterDefense)
 			* static_cast<int64>(100 + 10 * VulnerabilityStacks + MarkBonusPercent)
 			/ 100;
@@ -2470,7 +2475,10 @@ namespace
 		}
 		if (MarkStacks > 0)
 		{
-			GameXXKCardRules::ConsumeCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Mark, 1);
+			NewResult.MarkStacksConsumed = GameXXKCardRules::ConsumeCombatStatus(
+				*ResolvedTarget,
+				EGameXXKCardStatus::Mark,
+				1);
 		}
 		NewResult.ArmorAbsorbed = IsDirectAttackDamageKind(Context.Kind)
 			? FMath::Min(ResolvedTarget->Armor, NewResult.DamageAfterVulnerability)

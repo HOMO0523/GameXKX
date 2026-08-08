@@ -365,6 +365,9 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	InvalidHit.RequestedDamage = 91;
 	InvalidHit.DamageAfterDefense = 82;
 	InvalidHit.DamageAfterVulnerability = 73;
+	InvalidHit.MarkStacksBeforeHit = 5;
+	InvalidHit.MarkDamageBonusPercent = 15;
+	InvalidHit.MarkStacksConsumed = 1;
 	InvalidHit.ArmorAbsorbed = 64;
 	InvalidHit.HealthDamage = 55;
 	InvalidHit.TargetHealthBefore = 731;
