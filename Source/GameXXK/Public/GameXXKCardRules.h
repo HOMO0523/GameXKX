@@ -195,6 +195,9 @@ namespace GameXXKCardRules
 		TArray<FGameXXKCardDamageResult>& OutEndPhaseDamageResults,
 		FString* OutError = nullptr);
 
+	/** Refreshes the terminal phase after one complete combat event queue; simultaneous elimination is a player victory. */
+	GAMEXXK_API void RefreshCombatTerminalPhase(FGameXXKCardBattleRuntime& InOutRuntime);
+
 	/** Returns the total number of stored stacks for one combat status, saturating malformed duplicate entries safely. */
 	GAMEXXK_API int32 GetCombatStatusStacks(const FGameXXKCardCombatUnit& Unit, EGameXXKCardStatus Status);
 

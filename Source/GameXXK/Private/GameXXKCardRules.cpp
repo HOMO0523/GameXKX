@@ -780,10 +780,9 @@ namespace
 		}
 		if (!bHasLivingParty || !bHasLivingEnemy)
 		{
-			// A simultaneous final hit is a loss because the fixed hero is part of the party.
-			InOutRuntime.Phase = !bHasLivingParty
-				? EGameXXKCardBattlePhase::Defeat
-				: EGameXXKCardBattlePhase::Victory;
+			InOutRuntime.Phase = !bHasLivingEnemy
+				? EGameXXKCardBattlePhase::Victory
+				: EGameXXKCardBattlePhase::Defeat;
 			// A next-player-hand effect has no legal recipient after a terminal transition.
 			InOutRuntime.PendingNextPlayerHandEnergySurcharge = 0;
 			InOutRuntime.PendingNextPlayerHandEnergySurchargeSourceUnitId = NAME_None;
@@ -2191,6 +2190,11 @@ namespace
 		const int64 MitigatedDamage = static_cast<int64>(RequestedDamage) - EffectiveDefense;
 		return static_cast<int32>(FMath::Clamp<int64>(MitigatedDamage, 1, MAX_int32));
 	}
+}
+
+void GameXXKCardRules::RefreshCombatTerminalPhase(FGameXXKCardBattleRuntime& InOutRuntime)
+{
+	UpdateBattleTerminalPhase(InOutRuntime);
 }
 
 int32 GameXXKCardRules::GetCombatStatusStacks(const FGameXXKCardCombatUnit& Unit, const EGameXXKCardStatus Status)
@@ -5191,7 +5195,7 @@ bool GameXXKCardRules::ResolveCardPlay(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
-	UpdateBattleTerminalPhase(NewRuntime);
+	GameXXKCardRules::RefreshCombatTerminalPhase(NewRuntime);
 	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
@@ -5239,7 +5243,7 @@ bool GameXXKCardRules::EndPlayerCardPhase(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
-	UpdateBattleTerminalPhase(NewRuntime);
+	GameXXKCardRules::RefreshCombatTerminalPhase(NewRuntime);
 	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
@@ -5324,7 +5328,7 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
-	UpdateBattleTerminalPhase(NewRuntime);
+	GameXXKCardRules::RefreshCombatTerminalPhase(NewRuntime);
 	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
@@ -5371,7 +5375,7 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
-	UpdateBattleTerminalPhase(NewRuntime);
+	GameXXKCardRules::RefreshCombatTerminalPhase(NewRuntime);
 	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
