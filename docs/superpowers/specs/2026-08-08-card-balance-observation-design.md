@@ -64,6 +64,19 @@ The runner never edits tracked files. Runtime evidence lives under `Saved/Balanc
 
 The existing `Skilled` policy is known to undervalue statuses, draw, resource generation, and future intent. Therefore observed win rates describe the current policy, not human-player difficulty. The analysis may compare cohorts and identify systematic blind spots, but it must not present these rates as final tuning targets.
 
+## Formation-Master Targeting Addendum
+
+The observation pass also diagnoses the reported formation-master cards that appear unable to target or remain stuck in hand. This remains test-only:
+
+- enumerate all 18 formation-master definitions across all seven concrete terrains;
+- build a real preview and resolve each of the 126 card/terrain pairs with living self, ally, and enemy candidates;
+- validate `SingleAlly`/`SingleEnemy` sides, terrain overrides to `AllAllies`, exact hand removal after successful commits, and atomic hand preservation after rejected commits;
+- exercise the Board target-proxy click for a friendly target and the automatic water-terrain override;
+- prove that `GuanShi` and `BaMenLunZhuan` intentionally block later cards only while their insight/forced-discard choice is pending, then unblock after submission;
+- statically report same-pool cards that have identical quality, mana, target, and effects but a strictly worse energy cost.
+
+The pass does not repair any confirmed targeting or presentation defect. A rule-layer failure, Board/proxy failure, and an interaction-clarity problem are reported separately so a later implementation can use a focused failing test.
+
 ## Acceptance
 
 - No tracked gameplay or asset file changes.
@@ -72,4 +85,3 @@ The existing `Skilled` policy is known to undervalue statuses, draw, resource ge
 - One smoke run produces exactly 2,400 unique case rows.
 - At least one repeated run completes before or across the 17:30 deadline.
 - The final summary contains deterministic hashes, per-bucket outcomes, round distributions, status utilization, and recurring stalemate cases.
-

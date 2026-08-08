@@ -251,7 +251,8 @@ Expected: exit 0, every accepted run has 2,400 unique cases, and final JSON/Mark
 Run:
 
 ```powershell
-python -B -m unittest scripts.test_card_balance_observation scripts.test_route_balance_matrix -v
+python -B -m unittest scripts.test_card_balance_observation -v
+python -B scripts/test_route_balance_matrix.py -v
 ```
 
 Expected: all tests pass.
@@ -259,3 +260,39 @@ Expected: all tests pass.
 - [ ] **Step 4: Review and report**
 
 Compare repeated hashes, recurring stalemate identities, resolved win rates, round distributions, cohort spread, status production/consumption, and static catalog risks. Explicitly label all win rates as current-policy observations rather than human difficulty targets.
+
+### Task 5: Diagnose formation-master targeting without changing gameplay
+
+**Files:**
+- Create: `Source/GameXXK/Private/Tests/GameXXKFormationMasterTargetingDiagnosticTest.cpp`
+- Modify: `scripts/test_card_balance_observation.py`
+- Modify: `scripts/run_card_balance_observation.py`
+
+- [x] **Step 1: Cover the complete targeting matrix**
+
+Enumerate all 18 definitions owned by `Profession.FormationMaster`. For each of the seven concrete terrains, initialize a real card runtime with a formation-master owner, two allies, and an enemy. Assert a playable preview, correct legal side for manual targets, successful resolution, and removal of the committed instance from hand. Expected coverage: `18 × 7 = 126` card/terrain pairs.
+
+Observed: all 126 build previews; 122 resolve and remove the committed instance. Four terrain-override pairs are atomically rejected with the same selected-target/group-target mismatch and are retained as explicit diagnostic warnings.
+
+- [x] **Step 2: Cover the Board ally-click path and terrain override**
+
+For `YinShuiHuiYuan`, assert that Plain enters manual targeting, highlights both self and another ally, exposes an enabled ally proxy, and commits when that proxy clicks. In WaterShore, assert that the same immutable card resolves as `AllAllies` without opening a stale arrow.
+
+Observed: the Plain proxy path passes. WaterShore does not open a stale arrow but rejects resolution and preserves the card atomically, confirming the rule-layer defect through the Board path.
+
+- [x] **Step 3: Audit dominated formation-master choices**
+
+Add a same-pool, same-quality, same-mana, same-target, same-effect audit that differs only by energy cost. Lock the current finding that `LinFengFuZhen` costs 0 while otherwise strictly dominating `LinYingMiZong` at cost 1.
+
+- [x] **Step 4: Cold-build and run focused diagnostics**
+
+Run UBT with `-NoHotReload`, then execute:
+
+```text
+GameXXK.Diagnostics.FormationMasterTargeting
+GameXXK.Diagnostics.FormationMasterBoardTargeting
+```
+
+Report rule-layer failures separately from Board/proxy failures. Do not change the formal catalog or UI in this observation pass.
+
+Observed: UBT cold build succeeds; both diagnostics finish with known-defect warnings and zero unexpected failures. Dedicated `GuanShi` and `BaMenLunZhuan` pending-choice completion checks also pass.
