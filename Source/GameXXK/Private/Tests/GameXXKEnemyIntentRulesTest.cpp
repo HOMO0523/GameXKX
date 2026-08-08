@@ -1785,7 +1785,7 @@ bool FGameXXKGraymaneMarkedHuntCatalogPassiveTest::RunTest(const FString& Parame
 	GenericContext.SourceUnitId = TEXT("Enemy.Graymane.P2");
 	GenericContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
 	FGameXXKCardDamageResult GenericDamageResult;
-	if (!TestTrue(TEXT("a non-catalog direct-damage call can still target the marked hero"),
+	if (!TestTrue(TEXT("a post-hunt generic direct-damage packet can target the unmarked hero"),
 		GameXXKCardRules::ResolveEnemyDirectAttack(
 			State.CardRun.ActiveBattle,
 			GenericContext,
@@ -1797,8 +1797,49 @@ bool FGameXXKGraymaneMarkedHuntCatalogPassiveTest::RunTest(const FString& Parame
 	{
 		return false;
 	}
-	TestEqual(TEXT("a generic direct-damage call does not inherit the catalog-only Graymane multiplier"), GenericDamageResult.RequestedDamage, 10);
-	TestEqual(TEXT("a generic direct-damage call audits no Mark bonus"), GenericDamageResult.MarkDamageBonusPercent, 0);
+	TestEqual(TEXT("the post-hunt generic packet preserves its requested damage"), GenericDamageResult.RequestedDamage, 10);
+	TestEqual(TEXT("the post-hunt generic packet keeps ten damage after zero defense"), GenericDamageResult.DamageAfterDefense, 10);
+	TestEqual(TEXT("the post-hunt unmarked generic packet audits no Mark bonus"), GenericDamageResult.MarkDamageBonusPercent, 0);
+	TestEqual(TEXT("the post-hunt unmarked generic packet remains at ten after status amplification"), GenericDamageResult.DamageAfterVulnerability, 10);
+
+	FGameXXKCardCombatUnit* HeroBeforeRemarkedGenericHit = State.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("Player");
+	});
+	if (!TestNotNull(TEXT("the post-hunt generic packet keeps its hero target"), HeroBeforeRemarkedGenericHit))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the generic damage fixture can reapply one Mark stack"),
+		GameXXKCardRules::AddCombatStatus(*HeroBeforeRemarkedGenericHit, EGameXXKCardStatus::Mark, 1), 1);
+	FGameXXKCardDamageResult RemarkedGenericDamageResult;
+	if (!TestTrue(TEXT("an independent generic packet can hit the re-marked hero"),
+		GameXXKCardRules::ResolveEnemyDirectAttack(
+			State.CardRun.ActiveBattle,
+			GenericContext,
+			TEXT("Player"),
+			10,
+			RemarkedGenericDamageResult,
+			nullptr,
+			&Error)))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the re-marked generic packet preserves its requested damage"), RemarkedGenericDamageResult.RequestedDamage, 10);
+	TestEqual(TEXT("the re-marked generic packet keeps ten damage after zero defense"), RemarkedGenericDamageResult.DamageAfterDefense, 10);
+	TestEqual(TEXT("the re-marked generic packet uses only the global fifteen-percent Mark bonus"), RemarkedGenericDamageResult.MarkDamageBonusPercent, 15);
+	TestEqual(TEXT("the re-marked generic packet floor-amplifies ten damage to eleven"), RemarkedGenericDamageResult.DamageAfterVulnerability, 11);
+	TestEqual(TEXT("the re-marked generic packet consumes exactly one Mark stack"), RemarkedGenericDamageResult.MarkStacksConsumed, 1);
+	FGameXXKCardCombatUnit* HeroAfterRemarkedGenericHit = State.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("Player");
+	});
+	if (!TestNotNull(TEXT("the re-marked generic packet keeps its hero after damage"), HeroAfterRemarkedGenericHit))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the re-marked generic packet consumes the reapplied Mark"),
+		GameXXKCardRules::GetCombatStatusStacks(*HeroAfterRemarkedGenericHit, EGameXXKCardStatus::Mark), 0);
 
 	FGameXXKRuntimeState OtherEnemyState = UGameXXKMVPRules::CreateNewGame();
 	if (!TestTrue(TEXT("the non-Graymane fixture initializes the route deck"),
