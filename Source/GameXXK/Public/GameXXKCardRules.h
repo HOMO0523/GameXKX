@@ -211,6 +211,21 @@ namespace GameXXKCardRules
 		bool bDeferTerminalPhase = false);
 
 	/**
+	 * Resolves independently registered Counter and Block sources once after one complete enemy
+	 * card. Only a real single-target attack is eligible; group cards merely clean up reaction
+	 * records owned by defeated recipients. Damage is queued without recursively opening another
+	 * reaction boundary, and a defeated recipient may still emit the reaction already queued by
+	 * the completed enemy card.
+	 */
+	GAMEXXK_API bool ResolvePartyReactionsAfterEnemyCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FName EnemySourceUnitId,
+		EGameXXKCardDamageKind CompletedCardKind,
+		FName FinalRecipientUnitId,
+		TArray<FGameXXKCardDamageResult>& OutReactionDamageResults,
+		FString* OutError = nullptr);
+
+	/**
 	 * Completes the enemy phase, applies enemy-side DoT, expires round-bound modifiers, then starts a
 	 * fresh player phase by resetting shared energy and drawing back to the normal hand limit.
 	 */

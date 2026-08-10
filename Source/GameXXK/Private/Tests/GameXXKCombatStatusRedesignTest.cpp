@@ -92,8 +92,8 @@ bool FGameXXKCombatStatusUnlimitedCapacityTest::RunTest(const FString& Parameter
 		GameXXKCardRules::AddCombatStatus(CappedUnit, EGameXXKCardStatus::Mark, 250), 5);
 	TestEqual(TEXT("Weak retains its existing five-stack cap"),
 		GameXXKCardRules::AddCombatStatus(CappedUnit, EGameXXKCardStatus::Weak, 250), 5);
-	TestEqual(TEXT("Agility retains its existing two-stack cap"),
-		GameXXKCardRules::AddCombatStatus(CappedUnit, EGameXXKCardStatus::Agility, 250), 2);
+	TestEqual(TEXT("Agility retains every requested layer without the obsolete two-stack cap"),
+		GameXXKCardRules::AddCombatStatus(CappedUnit, EGameXXKCardStatus::Agility, 250), 250);
 	return true;
 }
 

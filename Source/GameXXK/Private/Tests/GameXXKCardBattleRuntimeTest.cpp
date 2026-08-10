@@ -250,6 +250,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("on-hit fixture gives its enemy one agility layer"), GameXXKCardRules::AddCombatStatus(OnHitUnits[1], EGameXXKCardStatus::Agility, 1), 1);
 	FGameXXKCardBattleRuntime OnHitRuntime;
 	TestTrue(TEXT("on-hit attack runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(OnHitRuntime, MakeRuntimeInstances(TEXT("Hero.Generic.SuiYanJi"), 6), OnHitUnits, EGameXXKCardTerrain::Plain, 775));
+	OnHitRuntime.CombatRandomState = 3; // The next LCG roll is 10: deterministic perfect dodge.
 	FGameXXKCardPlayResult OnHitResult;
 	TestTrue(TEXT("attack-linked status card resolves against an agile target"), GameXXKCardRules::ResolveCardPlay(OnHitRuntime, OnHitRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), OnHitResult));
 	TestEqual(TEXT("agility avoids the whole combined attack packet"), FindRuntimeUnit(OnHitRuntime.Units, TEXT("Enemy"))->HP, 100);
@@ -284,6 +285,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("multi-hit fixture gives its enemy one agility layer"), GameXXKCardRules::AddCombatStatus(MultiHitUnits[1], EGameXXKCardStatus::Agility, 1), 1);
 	FGameXXKCardBattleRuntime MultiHitRuntime;
 	TestTrue(TEXT("multi-hit runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(MultiHitRuntime, MakeRuntimeInstances(TEXT("Profession.Blade.CanYueSanDie"), 6, TEXT("Blade")), MultiHitUnits, EGameXXKCardTerrain::Plain, 777));
+	MultiHitRuntime.CombatRandomState = 3; // The first packet rolls 10 and consumes the sole Agility layer.
 	FGameXXKCardPlayResult MultiHitResult;
 	FString MultiHitError;
 	const bool bResolvedMultiHit = GameXXKCardRules::ResolveCardPlay(MultiHitRuntime, MultiHitRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), MultiHitResult, &MultiHitError);

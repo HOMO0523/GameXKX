@@ -1033,7 +1033,10 @@ namespace
 		return static_cast<int32>(FMath::Clamp<int64>(Value, 0, MAX_int32));
 	}
 
-	int32 RemovePositiveCombatStatusStacks(FGameXXKCardCombatUnit& InOutUnit, const int32 Maximum)
+	int32 RemovePositiveCombatStatusStacks(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKCardCombatUnit& InOutUnit,
+		const int32 Maximum)
 	{
 		if (Maximum <= 0 || !InOutUnit.bLiving)
 		{
@@ -1059,12 +1062,30 @@ namespace
 			EGameXXKCardStatus::Wealth,
 			EGameXXKCardStatus::Rage,
 			EGameXXKCardStatus::Charge,
-			EGameXXKCardStatus::Counter};
+			EGameXXKCardStatus::Counter,
+			EGameXXKCardStatus::Block};
 
 		int32 Removed = 0;
 		for (const EGameXXKCardStatus Status : PositiveStatusPriority)
 		{
-			Removed += GameXXKCardRules::ConsumeCombatStatus(InOutUnit, Status, Maximum - Removed);
+			const int32 RemovedHere = GameXXKCardRules::ConsumeCombatStatus(InOutUnit, Status, Maximum - Removed);
+			if (RemovedHere > 0 && InOutUnit.Side == EGameXXKCardTargetSide::Party
+				&& (Status == EGameXXKCardStatus::Counter || Status == EGameXXKCardStatus::Block))
+			{
+				int32 RecordsToRemove = RemovedHere;
+				for (int32 ReactionIndex = 0; ReactionIndex < InOutRuntime.Reactions.Num() && RecordsToRemove > 0;)
+				{
+					const FGameXXKReactionRuntime& Reaction = InOutRuntime.Reactions[ReactionIndex];
+					if (Reaction.RecipientUnitId == InOutUnit.UnitId && Reaction.Status == Status)
+					{
+						InOutRuntime.Reactions.RemoveAt(ReactionIndex, 1, EAllowShrinking::No);
+						--RecordsToRemove;
+						continue;
+					}
+					++ReactionIndex;
+				}
+			}
+			Removed += RemovedHere;
 			if (Removed >= Maximum)
 			{
 				break;
@@ -1620,7 +1641,7 @@ namespace
 					{
 						continue;
 					}
-					RemovePositiveCombatStatusStacks(*Target, Effect.Magnitude);
+					RemovePositiveCombatStatusStacks(InOutRuntime, *Target, Effect.Magnitude);
 				}
 				continue;
 			}
@@ -2787,6 +2808,31 @@ static bool ResolveNextEnemyIntentImpl(
 	{
 		// A defeated or invalid persisted source cannot execute its saved action, so deliberately skip it.
 		bIntentConsumed = true;
+	}
+	if (bIntentConsumed && !Intent.bCharging)
+	{
+		FName FinalRecipientUnitId = NAME_None;
+		for (const FGameXXKCardDamageResult& DamageResult : OutDamageResults)
+		{
+			if (DamageResult.Cause == EGameXXKCardDamageCause::DirectAttack
+				&& DamageResult.SourceUnitId == Intent.SourceUnitId)
+			{
+				FinalRecipientUnitId = DamageResult.ResolvedTargetUnitId;
+				break;
+			}
+		}
+		TArray<FGameXXKCardDamageResult> ReactionDamageResults;
+		if (!GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
+			Run.ActiveBattle,
+			Intent.SourceUnitId,
+			Intent.Kind,
+			FinalRecipientUnitId,
+			ReactionDamageResults,
+			OutError))
+		{
+			return false;
+		}
+		OutDamageResults.Append(MoveTemp(ReactionDamageResults));
 	}
 	if (bIntentConsumed)
 	{

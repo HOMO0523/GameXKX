@@ -65,7 +65,7 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	FGameXXKCardCombatUnit Hero = MakeCombatUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, 100, 100, 1);
 	TestEqual(TEXT("momentum accepts the full declared stack amount"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Momentum, 9), 9);
 	TestEqual(TEXT("momentum stores its exact uncapped stack amount"), GameXXKCardRules::GetCombatStatusStacks(Hero, EGameXXKCardStatus::Momentum), 9);
-	TestEqual(TEXT("agility has a two-stack cap"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Agility, 8), 2);
+	TestEqual(TEXT("agility retains all requested layers without the obsolete two-stack cap"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Agility, 8), 8);
 	TestEqual(TEXT("vulnerability has a five-stack cap"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Vulnerability, 8), 5);
 	TestEqual(TEXT("mark has a five-stack cap"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Mark, 8), 5);
 	TestEqual(TEXT("bleed accepts the full declared stack amount"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Bleed, 12), 12);

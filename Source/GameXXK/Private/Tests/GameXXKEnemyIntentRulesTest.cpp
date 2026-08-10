@@ -3481,7 +3481,7 @@ bool FGameXXKBossPhaseSaveReloadOneTimeTest::RunTest(const FString& Parameters)
 		{
 			const FGameXXKCardBattleModifier& ReloadedDiscount = ReloadedState.CardRun.ActiveBattle.Modifiers[0].Definition;
 			TestEqual(FString::Printf(TEXT("%s reload keeps the discount trigger"), Spec.Label),
-				ReloadedDiscount.Trigger, EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard);
+				ReloadedDiscount.Trigger, EGameXXKCardBattleModifierTrigger::OnCardPlayed);
 			TestEqual(FString::Printf(TEXT("%s reload keeps the discount effect"), Spec.Label),
 				ReloadedDiscount.EffectType, EGameXXKCardEffectType::ModifyEnergyCost);
 			TestEqual(FString::Printf(TEXT("%s reload keeps the played-card modifier target"), Spec.Label),

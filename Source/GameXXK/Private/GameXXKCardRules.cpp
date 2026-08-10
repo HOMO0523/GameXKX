@@ -1945,6 +1945,9 @@ namespace
 {
 	constexpr int32 MaxCombatArmor = 99;
 	constexpr int32 WhiteApeStatusGuardArmor = 8;
+	constexpr uint32 CombatRandomMultiplier = 196314165u;
+	constexpr uint32 CombatRandomIncrement = 907633515u;
+	constexpr uint32 CombatRandomSalt = 0xA341316Cu;
 
 	const FGameXXKEnemyDefinition* FindWhiteApeStatusGuardDefinition(const FGameXXKCardCombatUnit& Unit)
 	{
@@ -1974,9 +1977,8 @@ namespace
 		case EGameXXKCardStatus::Poison:
 		case EGameXXKCardStatus::Burn:
 		case EGameXXKCardStatus::DamageOverTime:
-			return MAX_int32;
 		case EGameXXKCardStatus::Agility:
-			return 2;
+			return MAX_int32;
 		case EGameXXKCardStatus::Vulnerability:
 		case EGameXXKCardStatus::Mark:
 			return 5;
@@ -2049,6 +2051,177 @@ namespace
 		{
 			return Unit.UnitId == UnitId;
 		});
+	}
+
+	bool IsPartyReactionStatus(const EGameXXKCardStatus Status)
+	{
+		return Status == EGameXXKCardStatus::Counter || Status == EGameXXKCardStatus::Block;
+	}
+
+	int32 AdvanceCombatRandomRoll(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		const uint32 NextState = static_cast<uint32>(InOutRuntime.CombatRandomState)
+			* CombatRandomMultiplier + CombatRandomIncrement;
+		InOutRuntime.CombatRandomState = static_cast<int32>(NextState);
+		return static_cast<int32>(NextState % 100u);
+	}
+
+	int32 CountReactionUses(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName RecipientUnitId,
+		const EGameXXKCardStatus Status)
+	{
+		int64 Total = 0;
+		for (const FGameXXKReactionRuntime& Reaction : Runtime.Reactions)
+		{
+			if (Reaction.RecipientUnitId == RecipientUnitId && Reaction.Status == Status && Reaction.RemainingTriggers > 0)
+			{
+				Total = FMath::Min<int64>(MAX_int32, Total + Reaction.RemainingTriggers);
+			}
+		}
+		return static_cast<int32>(Total);
+	}
+
+	void SetCombatStatusStacksInternal(
+		FGameXXKCardCombatUnit& InOutUnit,
+		const EGameXXKCardStatus Status,
+		const int32 Stacks)
+	{
+		GameXXKCardRules::ConsumeCombatStatus(InOutUnit, Status, MAX_int32);
+		if (Stacks > 0)
+		{
+			FGameXXKCardStatusStack& NewStack = InOutUnit.Statuses.AddDefaulted_GetRef();
+			NewStack.Status = Status;
+			NewStack.Stacks = Stacks;
+		}
+	}
+
+	void SyncPartyReactionStatuses(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		for (FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+		{
+			if (Unit.Side != EGameXXKCardTargetSide::Party)
+			{
+				continue;
+			}
+			SetCombatStatusStacksInternal(
+				Unit,
+				EGameXXKCardStatus::Counter,
+				CountReactionUses(InOutRuntime, Unit.UnitId, EGameXXKCardStatus::Counter));
+			SetCombatStatusStacksInternal(
+				Unit,
+				EGameXXKCardStatus::Block,
+				CountReactionUses(InOutRuntime, Unit.UnitId, EGameXXKCardStatus::Block));
+		}
+	}
+
+	void RemoveDefeatedPartyReactions(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		InOutRuntime.Reactions.RemoveAll([&InOutRuntime](const FGameXXKReactionRuntime& Reaction)
+		{
+			const FGameXXKCardCombatUnit* Recipient = FindCombatUnitById(InOutRuntime.Units, Reaction.RecipientUnitId);
+			return !Recipient || Recipient->Side != EGameXXKCardTargetSide::Party || !Recipient->bLiving;
+		});
+		SyncPartyReactionStatuses(InOutRuntime);
+	}
+
+	void ExpirePartyReactionsForPlayerRound(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		InOutRuntime.Reactions.RemoveAll([&InOutRuntime](const FGameXXKReactionRuntime& Reaction)
+		{
+			return Reaction.RemainingTriggers <= 0
+				|| Reaction.ExpireBeforePlayerRound <= InOutRuntime.RoundNumber;
+		});
+		RemoveDefeatedPartyReactions(InOutRuntime);
+	}
+
+	bool ValidatePartyReactions(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
+	{
+		TSet<FName> ReactionIds;
+		TMap<FString, int32> ExpectedStatusStacks;
+		for (const FGameXXKReactionRuntime& Reaction : Runtime.Reactions)
+		{
+			const FGameXXKCardCombatUnit* Recipient = FindCombatUnitById(Runtime.Units, Reaction.RecipientUnitId);
+			const FGameXXKCardCombatUnit* Grantor = FindCombatUnitById(Runtime.Units, Reaction.GrantedByUnitId);
+			if (Reaction.ReactionId.IsNone() || ReactionIds.Contains(Reaction.ReactionId)
+				|| !IsPartyReactionStatus(Reaction.Status)
+				|| !Recipient || Recipient->Side != EGameXXKCardTargetSide::Party
+				|| !Grantor || Grantor->Side != EGameXXKCardTargetSide::Party
+				|| Reaction.SourceCardInstanceId.IsNone()
+				|| Reaction.RemainingTriggers != 1
+				|| Reaction.ExpireBeforePlayerRound <= Runtime.RoundNumber)
+			{
+				OutError = TEXT("Card battle runtime contains an invalid independently consumable party reaction.");
+				return false;
+			}
+			ReactionIds.Add(Reaction.ReactionId);
+			const FString Key = Reaction.RecipientUnitId.ToString() + TEXT("|") + FString::FromInt(static_cast<int32>(Reaction.Status));
+			const int32 NewCount = ExpectedStatusStacks.FindRef(Key) + 1;
+			if (NewCount > GetCombatStatusCap(Reaction.Status))
+			{
+				OutError = TEXT("Party reaction records exceed the visible combat-status capacity.");
+				return false;
+			}
+			ExpectedStatusStacks.Add(Key, NewCount);
+		}
+
+		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		{
+			if (Unit.Side != EGameXXKCardTargetSide::Party)
+			{
+				continue;
+			}
+			for (const EGameXXKCardStatus Status : {EGameXXKCardStatus::Counter, EGameXXKCardStatus::Block})
+			{
+				const FString Key = Unit.UnitId.ToString() + TEXT("|") + FString::FromInt(static_cast<int32>(Status));
+				if (GetCombatStatusStacksInternal(Unit, Status) != ExpectedStatusStacks.FindRef(Key))
+				{
+					OutError = TEXT("Visible party Counter and Block stacks must exactly mirror reaction records.");
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	bool RegisterPartyReactionUses(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardInstance& Instance,
+		const FName RecipientUnitId,
+		const EGameXXKCardStatus Status,
+		const int32 Uses,
+		FString& OutError)
+	{
+		FGameXXKCardCombatUnit* Recipient = FindCombatUnitById(InOutRuntime.Units, RecipientUnitId);
+		const FGameXXKCardCombatUnit* Grantor = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+		if (!Recipient || !Recipient->bLiving || Recipient->Side != EGameXXKCardTargetSide::Party
+			|| !Grantor || !Grantor->bLiving || Grantor->Side != EGameXXKCardTargetSide::Party
+			|| Instance.InstanceId.IsNone() || !IsPartyReactionStatus(Status) || Uses <= 0
+			|| Uses > GetCombatStatusCap(Status) - CountReactionUses(InOutRuntime, RecipientUnitId, Status))
+		{
+			OutError = TEXT("A party reaction requires living party records, a stable source card, and available reaction capacity.");
+			return false;
+		}
+		if (InOutRuntime.RoundNumber == MAX_int32 || InOutRuntime.NextReactionOrdinal > MAX_int32 - Uses)
+		{
+			OutError = TEXT("Party reaction identity or expiry counters have exhausted their supported range.");
+			return false;
+		}
+
+		for (int32 UseIndex = 0; UseIndex < Uses; ++UseIndex)
+		{
+			const int32 Ordinal = InOutRuntime.NextReactionOrdinal++;
+			FGameXXKReactionRuntime& Reaction = InOutRuntime.Reactions.AddDefaulted_GetRef();
+			Reaction.ReactionId = FName(*FString::Printf(TEXT("Reaction.%d"), Ordinal));
+			Reaction.Status = Status;
+			Reaction.RecipientUnitId = RecipientUnitId;
+			Reaction.GrantedByUnitId = Instance.OwnerUnitId;
+			Reaction.SourceCardInstanceId = Instance.InstanceId;
+			Reaction.RemainingTriggers = 1;
+			Reaction.ExpireBeforePlayerRound = InOutRuntime.RoundNumber + 1;
+		}
+		SyncPartyReactionStatuses(InOutRuntime);
+		return true;
 	}
 
 	bool ValidateCombatUnits(const TArray<FGameXXKCardCombatUnit>& Units, FString& OutError)
@@ -2172,6 +2345,7 @@ namespace
 		const FGameXXKCardDamageContext& Context,
 		const TArray<FGameXXKCardCombatUnit>& Units,
 		const FGameXXKCardCombatUnit& OriginalTarget,
+		const bool bAllowDefeatedDirectSource,
 		FString& OutError)
 	{
 		if (Context.IgnoredDefense < 0)
@@ -2188,9 +2362,11 @@ namespace
 		if (IsDirectAttackDamageKind(Context.Kind))
 		{
 			const FGameXXKCardCombatUnit* SourceUnit = FindCombatUnitById(Units, Context.SourceUnitId);
-			if (!SourceUnit || !SourceUnit->bLiving || SourceUnit->Side == OriginalTarget.Side)
+			if (!SourceUnit || (!SourceUnit->bLiving && !bAllowDefeatedDirectSource)
+				|| SourceUnit->Side == OriginalTarget.Side
+				|| Context.AgilityRollPercent < 0 || Context.AgilityRollPercent > 99)
 			{
-				OutError = TEXT("A direct attack requires one living attacker on the opposing side.");
+				OutError = TEXT("A direct attack requires an eligible opposing attacker and a deterministic 0..99 Agility roll.");
 				return false;
 			}
 			return ValidateOnHitStatuses(Context.OnHitStatuses, OutError);
@@ -2608,6 +2784,7 @@ namespace
 	const int32 RequestedDamage,
 	FGameXXKCardDamageResult& OutResult,
 	FGameXXKCardBattleRuntime* PlayerCardRuntime,
+	const bool bAllowDefeatedDirectSource,
 	FString* OutError)
 {
 	if (OutError)
@@ -2631,7 +2808,7 @@ namespace
 	{
 		return SetFailure(OutError, TEXT("Direct damage target is absent or defeated."));
 	}
-	if (!ValidateDamageContext(Context, NewUnits, *OriginalTarget, ValidationError))
+	if (!ValidateDamageContext(Context, NewUnits, *OriginalTarget, bAllowDefeatedDirectSource, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
@@ -2676,14 +2853,33 @@ namespace
 	}
 	NewResult.TargetHealthBefore = ResolvedTarget->HP;
 
-	if (IsDirectAttackDamageKind(Context.Kind) && GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Agility) > 0)
+	const bool bDirectAttack = IsDirectAttackDamageKind(Context.Kind);
+	if (bDirectAttack)
 	{
-		GameXXKCardRules::ConsumeCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Agility, 1);
+		NewResult.AgilityRollPercent = Context.AgilityRollPercent;
+	}
+	const int32 AgilityStacks = bDirectAttack
+		? GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Agility)
+		: 0;
+	if (AgilityStacks > 0 && Context.AgilityRollPercent < 25)
+	{
+		NewResult.AgilityStacksConsumed = GameXXKCardRules::ConsumeCombatStatus(
+			*ResolvedTarget,
+			EGameXXKCardStatus::Agility,
+			1);
+		NewResult.bAvoidedByAgility = true;
+		NewResult.bPerfectAgilityDodge = true;
+	}
+	else if (AgilityStacks >= 2)
+	{
+		NewResult.AgilityStacksConsumed = GameXXKCardRules::ConsumeCombatStatus(
+			*ResolvedTarget,
+			EGameXXKCardStatus::Agility,
+			2);
 		NewResult.bAvoidedByAgility = true;
 	}
 	else
 	{
-		const bool bDirectAttack = IsDirectAttackDamageKind(Context.Kind);
 		const FGameXXKCardCombatUnit* SourceUnit = bDirectAttack
 			? FindCombatUnitById(NewUnits, Context.SourceUnitId)
 			: nullptr;
@@ -2825,7 +3021,16 @@ bool GameXXKCardRules::ApplyCombatDirectDamage(
 	FGameXXKCardDamageResult& OutResult,
 	FString* OutError)
 {
-	return ApplyCombatDirectDamageInternal(InOutUnits, InOutGuardLinks, Context, TargetUnitId, RequestedDamage, OutResult, nullptr, OutError);
+	return ApplyCombatDirectDamageInternal(
+		InOutUnits,
+		InOutGuardLinks,
+		Context,
+		TargetUnitId,
+		RequestedDamage,
+		OutResult,
+		nullptr,
+		false,
+		OutError);
 }
 
 namespace
@@ -3053,6 +3258,10 @@ namespace
 				return false;
 			}
 			ModifierIds.Add(Modifier.ModifierId);
+		}
+		if (!ValidatePartyReactions(Runtime, OutError))
+		{
+			return false;
 		}
 		if (Runtime.PendingNextPlayerHandEnergySurcharge > 0)
 		{
@@ -5318,7 +5527,16 @@ namespace
 						OutError = TEXT("A registered reaction requires positive Counter or Block uses.");
 						return false;
 					}
-					GameXXKCardRules::AddCombatStatus(*Target, Effect.Status, Effect.Magnitude);
+					if (!RegisterPartyReactionUses(
+						InOutRuntime,
+						Instance,
+						Target->UnitId,
+						Effect.Status,
+						Effect.Magnitude,
+						OutError))
+					{
+						return false;
+					}
 					break;
 				case EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget:
 				{
@@ -5561,6 +5779,12 @@ bool GameXXKCardRules::InitializeCardBattleRuntime(
 	{
 		return false;
 	}
+	uint32 CombatSeed = static_cast<uint32>(NewRuntime.Deck.CurrentRandomState) ^ CombatRandomSalt;
+	if (CombatSeed == 0)
+	{
+		CombatSeed = CombatRandomSalt;
+	}
+	NewRuntime.CombatRandomState = static_cast<int32>(CombatSeed);
 	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
@@ -5608,15 +5832,18 @@ bool GameXXKCardRules::ApplyPlayerCardDirectDamage(
 	}
 
 	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	FGameXXKCardDamageContext ResolvedContext = Context;
+	ResolvedContext.AgilityRollPercent = AdvanceCombatRandomRoll(NewRuntime);
 	FGameXXKCardDamageResult NewResult;
 	if (!ApplyCombatDirectDamageInternal(
 		NewRuntime.Units,
 		NewRuntime.GuardLinks,
-		Context,
+		ResolvedContext,
 		TargetUnitId,
 		RequestedDamage,
 		NewResult,
 		&NewRuntime,
+		false,
 		&ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
@@ -6094,21 +6321,23 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 	}
 
 	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	FGameXXKCardDamageContext ResolvedContext = Context;
+	ResolvedContext.AgilityRollPercent = AdvanceCombatRandomRoll(NewRuntime);
 	FName AppliedTargetUnitId = SelectedPartyTargetUnitId;
 	bool bRedirectedByCard = false;
-	if (!ApplySingleTargetEnemyRedirect(NewRuntime, Context, SelectedPartyTargetUnitId, AppliedTargetUnitId, bRedirectedByCard, ValidationError))
+	if (!ApplySingleTargetEnemyRedirect(NewRuntime, ResolvedContext, SelectedPartyTargetUnitId, AppliedTargetUnitId, bRedirectedByCard, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
 	FGameXXKCardDamageResult NewResult;
-	if (!ApplyCombatDirectDamage(NewRuntime.Units, NewRuntime.GuardLinks, Context, AppliedTargetUnitId, RequestedDamage, NewResult, &ValidationError))
+	if (!ApplyCombatDirectDamage(NewRuntime.Units, NewRuntime.GuardLinks, ResolvedContext, AppliedTargetUnitId, RequestedDamage, NewResult, &ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
 	NewResult.OriginalTargetUnitId = SelectedPartyTargetUnitId;
 	NewResult.bRedirected |= bRedirectedByCard;
 	UE_LOG(LogTemp, Warning, TEXT("[EnemyAtk] source=%s requested=%d target=%s redirected=%d before=%d dmg=%d after=%d"),
-		*Context.SourceUnitId.ToString(),
+		*ResolvedContext.SourceUnitId.ToString(),
 		RequestedDamage,
 		*AppliedTargetUnitId.ToString(),
 		bRedirectedByCard,
@@ -6116,7 +6345,7 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 		NewResult.HealthDamage,
 		NewResult.TargetHealthAfter);
 	TArray<FGameXXKCardDamageResult> NewReactiveDamageResults;
-	if (!ResolveFirstDirectDamageReactiveModifiers(NewRuntime, Context, NewResult, &NewReactiveDamageResults, ValidationError))
+	if (!ResolveFirstDirectDamageReactiveModifiers(NewRuntime, ResolvedContext, NewResult, &NewReactiveDamageResults, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
@@ -6138,6 +6367,106 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 	{
 		*OutReactiveDamageResults = MoveTemp(NewReactiveDamageResults);
 	}
+	return true;
+}
+
+bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	const FName EnemySourceUnitId,
+	const EGameXXKCardDamageKind CompletedCardKind,
+	const FName FinalRecipientUnitId,
+	TArray<FGameXXKCardDamageResult>& OutReactionDamageResults,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	OutReactionDamageResults.Reset();
+	FString ValidationError;
+	if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (InOutRuntime.Phase != EGameXXKCardBattlePhase::Enemy)
+	{
+		return SetFailure(OutError, TEXT("Party reactions can only resolve at an enemy-card boundary."));
+	}
+
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	TArray<FGameXXKCardDamageResult> NewResults;
+	if (CompletedCardKind == EGameXXKCardDamageKind::SingleTargetAttack
+		&& !EnemySourceUnitId.IsNone() && !FinalRecipientUnitId.IsNone())
+	{
+		const FGameXXKCardCombatUnit* Recipient = FindCombatUnitById(NewRuntime.Units, FinalRecipientUnitId);
+		if (!Recipient || Recipient->Side != EGameXXKCardTargetSide::Party)
+		{
+			return SetFailure(OutError, TEXT("A single-target party reaction boundary requires its final party recipient."));
+		}
+
+		TArray<FGameXXKReactionRuntime> TriggeredReactions;
+		for (const FGameXXKReactionRuntime& Reaction : NewRuntime.Reactions)
+		{
+			if (Reaction.RecipientUnitId == FinalRecipientUnitId && Reaction.RemainingTriggers > 0)
+			{
+				TriggeredReactions.Add(Reaction);
+			}
+		}
+		NewRuntime.Reactions.RemoveAll([FinalRecipientUnitId](const FGameXXKReactionRuntime& Reaction)
+		{
+			return Reaction.RecipientUnitId == FinalRecipientUnitId && Reaction.RemainingTriggers > 0;
+		});
+		SyncPartyReactionStatuses(NewRuntime);
+
+		for (const FGameXXKReactionRuntime& Reaction : TriggeredReactions)
+		{
+			const FGameXXKCardCombatUnit* ReactionSource = FindCombatUnitById(NewRuntime.Units, Reaction.RecipientUnitId);
+			const FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(NewRuntime.Units, EnemySourceUnitId);
+			if (!ReactionSource || ReactionSource->Side != EGameXXKCardTargetSide::Party
+				|| !Enemy || !Enemy->bLiving || Enemy->Side != EGameXXKCardTargetSide::Enemy)
+			{
+				continue;
+			}
+			const int64 RequestedDamage = Reaction.Status == EGameXXKCardStatus::Block
+				? static_cast<int64>(ReactionSource->Attack) + ReactionSource->Armor
+				: static_cast<int64>(ReactionSource->Attack);
+			if (RequestedDamage <= 0 || RequestedDamage > MAX_int32)
+			{
+				return SetFailure(OutError, TEXT("A queued Counter or Block source produced an unsupported damage amount."));
+			}
+
+			FGameXXKCardDamageContext ReactionContext;
+			ReactionContext.SourceUnitId = ReactionSource->UnitId;
+			ReactionContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+			ReactionContext.ResolutionOrigin = EGameXXKCardResolutionOrigin::Reaction;
+			FGameXXKCardDamageResult ReactionResult;
+			if (!ApplyCombatDirectDamageInternal(
+				NewRuntime.Units,
+				NewRuntime.GuardLinks,
+				ReactionContext,
+				EnemySourceUnitId,
+				static_cast<int32>(RequestedDamage),
+				ReactionResult,
+				nullptr,
+				true,
+				&ValidationError))
+			{
+				return SetFailure(OutError, ValidationError);
+			}
+			ReactionResult.Cause = Reaction.Status == EGameXXKCardStatus::Block
+				? EGameXXKCardDamageCause::Block
+				: EGameXXKCardDamageCause::Counter;
+			NewResults.Add(MoveTemp(ReactionResult));
+		}
+	}
+	RemoveDefeatedPartyReactions(NewRuntime);
+	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError)
+		|| !ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	InOutRuntime = MoveTemp(NewRuntime);
+	OutReactionDamageResults = MoveTemp(NewResults);
 	return true;
 }
 
@@ -6204,6 +6533,7 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 			return SetFailure(OutError, TEXT("Card battle round counter has exhausted the supported range."));
 		}
 		++NewRuntime.RoundNumber;
+		ExpirePartyReactionsForPlayerRound(NewRuntime);
 		NewRuntime.ActiveCardsPlayedThisRound = 0;
 		NewRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, 3 + NewRuntime.PendingNextRoundEnergyBonus);
 		NewRuntime.PendingNextRoundEnergyBonus = 0;
