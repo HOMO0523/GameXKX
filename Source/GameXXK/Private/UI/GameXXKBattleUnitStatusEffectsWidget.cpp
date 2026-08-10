@@ -3,6 +3,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "GameXXKCardText.h"
 #include "UI/GameXXKBattleStatusIconWidget.h"
 
 namespace
@@ -11,29 +12,7 @@ namespace
 
 	FString ResolveStatusAbbreviation(const EGameXXKCardStatus Status)
 	{
-		switch (Status)
-		{
-		case EGameXXKCardStatus::Poison:
-			return TEXT("毒");
-		case EGameXXKCardStatus::Bleed:
-			return TEXT("流");
-		case EGameXXKCardStatus::Burn:
-			return TEXT("灼");
-		case EGameXXKCardStatus::DamageOverTime:
-			return TEXT("蚀");
-		case EGameXXKCardStatus::Vulnerability:
-			return TEXT("易伤");
-		case EGameXXKCardStatus::Agility:
-			return TEXT("闪");
-		case EGameXXKCardStatus::Guard:
-			return TEXT("护");
-		default:
-			if (const UEnum* const StatusEnum = StaticEnum<EGameXXKCardStatus>())
-			{
-				return StatusEnum->GetNameStringByValue(static_cast<int64>(Status));
-			}
-			return TEXT("Unknown");
-		}
+		return GameXXKCardText::DescribeStatusName(Status);
 	}
 
 	bool AreBadgeModelsEqual(

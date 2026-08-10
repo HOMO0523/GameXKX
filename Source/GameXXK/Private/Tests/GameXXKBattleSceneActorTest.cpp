@@ -323,8 +323,10 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 	const FGameXXKBattleStatusIconStyle ArmorStyle = FGameXXKBattleStatusIconStyle::ResolveArmorIconStyle();
 	TestEqual(TEXT("armor uses the explicit shield status icon"), ArmorStyle.IconId, FName(TEXT("ArmorShield")));
 	TestFalse(TEXT("armor icon has a future imported texture path"), ArmorStyle.TexturePath.IsNull());
-	TestTrue(TEXT("armor tooltip states it absorbs damage before health"), ArmorStyle.Tooltip.Contains(TEXT("先于生命")));
-	TestTrue(TEXT("armor tooltip states the owner-side phase-start expiry"), ArmorStyle.Tooltip.Contains(TEXT("所属阵营的阶段开始时清空")));
+	TestEqual(
+		TEXT("armor tooltip uses the one approved concise rule"),
+		ArmorStyle.Tooltip,
+		FString(TEXT("优先抵挡直接攻击伤害；所属阵营回合开始时清空。")));
 	TestTrue(TEXT("armor keeps a native paper-ink fallback when its texture is absent"), ArmorStyle.bUsesPaperInkFallback);
 
 	const TArray<EGameXXKCardStatus> RequiredStatusIcons = {
@@ -352,7 +354,8 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 		EGameXXKCardStatus::Rage,
 		EGameXXKCardStatus::Prey,
 		EGameXXKCardStatus::Charge,
-		EGameXXKCardStatus::Counter};
+		EGameXXKCardStatus::Counter,
+		EGameXXKCardStatus::Block};
 	for (const EGameXXKCardStatus Status : RequiredStatusIcons)
 	{
 		const FGameXXKBattleStatusIconStyle Style = FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(Status);
@@ -372,8 +375,14 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("unknown status fallback is a visible centered question glyph"), FallbackStyle.FallbackGlyph, FString(TEXT("?")));
 	TestFalse(TEXT("armor fallback glyph is not a brushless empty icon"), ArmorStyle.FallbackGlyph.IsEmpty());
 	const FGameXXKBattleStatusIconStyle AgilityStyle = FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(EGameXXKCardStatus::Agility);
-	TestTrue(TEXT("agility tooltip correctly identifies both single-target and group direct attacks"), AgilityStyle.Timing.Contains(TEXT("单体与群体直接攻击")));
-	TestFalse(TEXT("agility tooltip never incorrectly excludes group attacks"), AgilityStyle.Timing.Contains(TEXT("群体攻击与环境伤害不触发")));
+	TestEqual(TEXT("agility uses the approved player-facing name"), AgilityStyle.DisplayName, FString(TEXT("灵动")));
+	TestEqual(
+		TEXT("agility uses the approved perfect-dodge and fallback-dodge rule"),
+		AgilityStyle.Tooltip,
+		FString(TEXT("25%概率消耗1层完美闪避；失败时可消耗2层闪避。")));
+	const FGameXXKBattleStatusIconStyle BlockStyle = FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(EGameXXKCardStatus::Block);
+	TestEqual(TEXT("block has its own explicit shield icon"), BlockStyle.IconId, FName(TEXT("BlockShield")));
+	TestEqual(TEXT("block is not mislabeled as counter"), BlockStyle.DisplayName, FString(TEXT("格挡")));
 	TestEqual(TEXT("badge stacks above ninety-nine display a capped seal"), UGameXXKBattleStatusIconWidget::FormatStackForTest(128), FString(TEXT("99+")));
 	TestEqual(TEXT("status tooltip factory remains hover-only"), UGameXXKBattleStatusIconWidget::GetTooltipVisibilityForTest(), ESlateVisibility::HitTestInvisible);
 

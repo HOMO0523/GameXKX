@@ -386,28 +386,7 @@ namespace
 
 	FString DescribeEnemyIntentStatus(const EGameXXKCardStatus Status)
 	{
-		switch (Status)
-		{
-		case EGameXXKCardStatus::Momentum: return TEXT("势");
-		case EGameXXKCardStatus::Agility: return TEXT("灵动");
-		case EGameXXKCardStatus::Vulnerability: return TEXT("破绽");
-		case EGameXXKCardStatus::Bleed: return TEXT("流血");
-		case EGameXXKCardStatus::Poison: return TEXT("中毒");
-		case EGameXXKCardStatus::Burn: return TEXT("灼烧");
-		case EGameXXKCardStatus::Mark: return TEXT("标记");
-		case EGameXXKCardStatus::Guard: return TEXT("守护");
-		case EGameXXKCardStatus::DamageOverTime: return TEXT("持续伤害");
-		case EGameXXKCardStatus::CannotReceiveVulnerability: return TEXT("免疫破绽");
-		case EGameXXKCardStatus::NextAttackBonus: return TEXT("下次攻击强化");
-		case EGameXXKCardStatus::NextAttackAppliesVulnerability: return TEXT("下次攻击附加破绽");
-		case EGameXXKCardStatus::NextHealingBonus: return TEXT("下次治疗强化");
-		case EGameXXKCardStatus::TerrainBonusDouble: return TEXT("地形加成翻倍");
-		case EGameXXKCardStatus::NextTerrainCardFree: return TEXT("下一张地形牌免费");
-		case EGameXXKCardStatus::NextTerrainCardEnergyReduction: return TEXT("下一张地形牌减气");
-		case EGameXXKCardStatus::RedirectSingleTargetEnemyAttack: return TEXT("转移单体敌袭");
-		case EGameXXKCardStatus::TerrainBonusDoubleThisRound: return TEXT("本回合地形加成翻倍");
-		default: return TEXT("无效状态");
-		}
+		return GameXXKCardText::DescribeStatusName(Status);
 	}
 
 	FString BuildEnemyIntentStatusSummary(const FGameXXKCardEnemyIntent& Intent)

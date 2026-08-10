@@ -13,6 +13,7 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKBattleStatusIconStyle.h"
 #include "UI/GameXXKBattleStatusIconWidget.h"
 #include "UI/GameXXKBattleUnitHudWidget.h"
 #include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
@@ -225,6 +226,80 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKBattleStatusTooltipsTest,
+	"GameXXK.UI.Battle.StatusTooltips",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKBattleStatusTooltipsTest::RunTest(const FString& Parameters)
+{
+	struct FExpectedStatusTooltip
+	{
+		EGameXXKCardStatus Status;
+		const TCHAR* DisplayName;
+		const TCHAR* Rule;
+		const TCHAR* IconId;
+	};
+
+	const TArray<FExpectedStatusTooltip> ExpectedStatuses = {
+		{EGameXXKCardStatus::Momentum, TEXT("气势"), TEXT("每层使每段攻击伤害+1；仅指定牌与驱散会消耗。"), TEXT("MomentumSeal")},
+		{EGameXXKCardStatus::Agility, TEXT("灵动"), TEXT("25%概率消耗1层完美闪避；失败时可消耗2层闪避。"), TEXT("AgilityWing")},
+		{EGameXXKCardStatus::Vulnerability, TEXT("破绽"), TEXT("每层使下一段直接攻击伤害提高10%；结算后清空。"), TEXT("VulnerabilityMask")},
+		{EGameXXKCardStatus::Bleed, TEXT("流血"), TEXT("受到直接攻击后，失去等同层数的生命并减少1层；回合结束不衰减。"), TEXT("BleedDrop")},
+		{EGameXXKCardStatus::Poison, TEXT("中毒"), TEXT("回合结束时，失去等同层数的生命并减少1层。"), TEXT("PoisonVial")},
+		{EGameXXKCardStatus::Burn, TEXT("灼烧"), TEXT("打出牌或执行意图后，失去等同层数的生命并减少1层；回合结束再减少1层。"), TEXT("BurnFlame")},
+		{EGameXXKCardStatus::Mark, TEXT("标记"), TEXT("直接攻击伤害提高15%；每段有效命中后减少1层。"), TEXT("MarkTarget")},
+		{EGameXXKCardStatus::Guard, TEXT("守护"), TEXT("下一次针对本单位的单体攻击由守护者承受；触发后减少1层。"), TEXT("GuardShield")},
+		{EGameXXKCardStatus::DamageOverTime, TEXT("蚀伤"), TEXT("流血、中毒或灼烧造成伤害时，额外失去等同层数的生命；回合结束减少1层。"), TEXT("RotSpiral")},
+		{EGameXXKCardStatus::CannotReceiveVulnerability, TEXT("破绽免疫"), TEXT("无法获得新的破绽；不会自行消耗。"), TEXT("ImmunityTalisman")},
+		{EGameXXKCardStatus::NextAttackBonus, TEXT("追击标记"), TEXT("下一次攻击的首段命中施加1层标记；出手后减少1层。"), TEXT("TacticSeal")},
+		{EGameXXKCardStatus::NextAttackAppliesVulnerability, TEXT("破绽追击"), TEXT("下一次攻击的首段命中施加1层破绽；出手后减少1层。"), TEXT("TacticSeal")},
+		{EGameXXKCardStatus::NextHealingBonus, TEXT("疗愈增幅"), TEXT("下一次治疗中，每个目标的治疗量增加等同层数的数值；结算后清空。"), TEXT("TacticSeal")},
+		{EGameXXKCardStatus::TerrainBonusDouble, TEXT("地形双效"), TEXT("队伍下一张地形牌的地形条件效果额外结算1次；使用后减少1层。"), TEXT("TerrainAndRedirect")},
+		{EGameXXKCardStatus::NextTerrainCardFree, TEXT("地形免耗"), TEXT("队伍下一张地形牌的气力消耗变为0；使用后减少1层。"), TEXT("TerrainAndRedirect")},
+		{EGameXXKCardStatus::NextTerrainCardEnergyReduction, TEXT("地形减耗"), TEXT("队伍下一张地形牌的气力消耗-1；使用后减少1层。"), TEXT("TerrainAndRedirect")},
+		{EGameXXKCardStatus::RedirectSingleTargetEnemyAttack, TEXT("代挡"), TEXT("替队友承受下一次敌方单体攻击；触发后减少1层。"), TEXT("TerrainAndRedirect")},
+		{EGameXXKCardStatus::TerrainBonusDoubleThisRound, TEXT("本回合地形双效"), TEXT("本回合队伍下一张地形牌的地形条件效果额外结算1次；使用或回合结束时清除。"), TEXT("TerrainAndRedirect")},
+		{EGameXXKCardStatus::Medicine, TEXT("药效"), TEXT("下一次治疗或治疗反转每层+1；结算时全部消耗。"), TEXT("MedicineHerbs")},
+		{EGameXXKCardStatus::Weak, TEXT("虚弱"), TEXT("直接攻击伤害降低50%；回合结束减少1层。"), TEXT("WeakBrokenBlade")},
+		{EGameXXKCardStatus::Wealth, TEXT("财富"), TEXT("钱潮冲击每层伤害+15；散财疗伤最多消耗3层，每层回复6%最大生命。"), TEXT("WealthCoin")},
+		{EGameXXKCardStatus::Rage, TEXT("狂怒"), TEXT("受到玩家牌的生命伤害时增加1层；怒獠每层伤害+20。"), TEXT("RageFlame")},
+		{EGameXXKCardStatus::Prey, TEXT("猎物"), TEXT("老虎锁定的目标；虎扑将攻击该单位。"), TEXT("PreyTargetEye")},
+		{EGameXXKCardStatus::Charge, TEXT("蓄力"), TEXT("层数表示剩余蓄力回合；归零后执行已准备的意图。"), TEXT("ChargeSpiralHorn")},
+		{EGameXXKCardStatus::Counter, TEXT("反击"), TEXT("敌方单体攻击牌结算后，造成100%攻击并消耗1次。"), TEXT("CounterHookBlade")},
+		{EGameXXKCardStatus::Block, TEXT("格挡"), TEXT("敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。"), TEXT("BlockShield")},
+	};
+
+	const FGameXXKBattleStatusIconStyle ArmorStyle = FGameXXKBattleStatusIconStyle::ResolveArmorIconStyle();
+	TestEqual(TEXT("armor uses the approved display name"), ArmorStyle.DisplayName, FString(TEXT("护甲")));
+	TestEqual(TEXT("armor uses one concise rule"), ArmorStyle.Tooltip, FString(TEXT("优先抵挡直接攻击伤害；所属阵营回合开始时清空。")));
+	TestEqual(
+		TEXT("armor tooltip keeps the full real value and exactly one rule line"),
+		FGameXXKBattleStatusIconStyle::DescribeStatusTooltip(ArmorStyle, 128),
+		FString(TEXT("护甲\n层数：128\n优先抵挡直接攻击伤害；所属阵营回合开始时清空。")));
+
+	for (const FExpectedStatusTooltip& Expected : ExpectedStatuses)
+	{
+		const FString Label = FString::Printf(TEXT("%s (%d)"), Expected.DisplayName, static_cast<int32>(Expected.Status));
+		const FGameXXKBattleStatusIconStyle Style = FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(Expected.Status);
+		TestEqual(*FString::Printf(TEXT("%s has the approved display name"), *Label), Style.DisplayName, FString(Expected.DisplayName));
+		TestEqual(*FString::Printf(TEXT("%s has the approved concise rule"), *Label), Style.Tooltip, FString(Expected.Rule));
+		TestEqual(*FString::Printf(TEXT("%s has an explicit icon mapping"), *Label), Style.IconId, FName(Expected.IconId));
+		TestFalse(*FString::Printf(TEXT("%s does not use the unknown fallback"), *Label), Style.bFallback);
+
+		const FString Tooltip = FGameXXKBattleStatusIconStyle::DescribeStatusTooltip(Style, 128);
+		TArray<FString> Lines;
+		Tooltip.ParseIntoArrayLines(Lines, false);
+		TestEqual(*FString::Printf(TEXT("%s tooltip is title, real layer, and one rule"), *Label), Lines.Num(), 3);
+		TestTrue(*FString::Printf(TEXT("%s tooltip retains the uncapped real layer"), *Label), Tooltip.Contains(TEXT("层数：128")));
+		TestFalse(*FString::Printf(TEXT("%s tooltip has no retired effect prefix"), *Label), Tooltip.Contains(TEXT("效果：")));
+		TestFalse(*FString::Printf(TEXT("%s tooltip has no retired timing prefix"), *Label), Tooltip.Contains(TEXT("时机：")));
+	}
+
+	TestEqual(TEXT("only the icon caps values above ninety-nine"), UGameXXKBattleStatusIconWidget::FormatStackForTest(128), FString(TEXT("99+")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKBattleStatusEffectsWidgetTest,
 	"GameXXK.UI.Battle.StatusEffectsWidget",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -279,14 +354,16 @@ bool FGameXXKBattleStatusEffectsWidgetTest::RunTest(const FString& Parameters)
 	if (BleedIcon)
 	{
 		const FString BleedTooltip = GetStatusIconTooltipText(BleedIcon);
-		TestTrue(TEXT("bleed tooltip preserves its turn-end per-stack three-damage rule"),
-			BleedTooltip.Contains(TEXT("回合结束")) && BleedTooltip.Contains(TEXT("每层")) && BleedTooltip.Contains(TEXT("3 点生命伤害")));
+		TestEqual(TEXT("bleed tooltip uses the approved on-hit rule"),
+			BleedTooltip,
+			FString(TEXT("流血\n层数：3\n受到直接攻击后，失去等同层数的生命并减少1层；回合结束不衰减。")));
 	}
 	if (PoisonIcon)
 	{
 		const FString PoisonTooltip = GetStatusIconTooltipText(PoisonIcon);
-		TestTrue(TEXT("poison tooltip preserves its turn-end per-stack two-damage rule"),
-			PoisonTooltip.Contains(TEXT("回合结束")) && PoisonTooltip.Contains(TEXT("每层")) && PoisonTooltip.Contains(TEXT("2 点生命伤害")));
+		TestEqual(TEXT("poison tooltip uses the approved owner-end rule"),
+			PoisonTooltip,
+			FString(TEXT("中毒\n层数：2\n回合结束时，失去等同层数的生命并减少1层。")));
 	}
 	UHorizontalBox* StatusIconRow = Cast<UHorizontalBox>(EffectsWidget->GetWidgetFromName(TEXT("BattleUnitStatusEffectsRow")));
 	TestNotNull(TEXT("effects widget exposes its live status icon row"), StatusIconRow);

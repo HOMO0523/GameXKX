@@ -2,43 +2,11 @@
 
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKCardRunTypes.h"
+#include "GameXXKCardText.h"
 #include "GameXXKMVPRules.h"
 
 namespace
 {
-	FString DescribeStatus(const EGameXXKCardStatus Status)
-	{
-		switch (Status)
-		{
-		case EGameXXKCardStatus::Momentum: return TEXT("气势");
-		case EGameXXKCardStatus::Agility: return TEXT("敏捷");
-		case EGameXXKCardStatus::Vulnerability: return TEXT("易伤");
-		case EGameXXKCardStatus::Bleed: return TEXT("流血");
-		case EGameXXKCardStatus::Poison: return TEXT("中毒");
-		case EGameXXKCardStatus::Burn: return TEXT("灼烧");
-		case EGameXXKCardStatus::Mark: return TEXT("标记");
-		case EGameXXKCardStatus::Guard: return TEXT("守护");
-		case EGameXXKCardStatus::DamageOverTime: return TEXT("蚀伤");
-		case EGameXXKCardStatus::CannotReceiveVulnerability: return TEXT("易伤免疫");
-		case EGameXXKCardStatus::NextAttackBonus: return TEXT("追击标记");
-		case EGameXXKCardStatus::NextAttackAppliesVulnerability: return TEXT("破绽追击");
-		case EGameXXKCardStatus::NextHealingBonus: return TEXT("疗愈增幅");
-		case EGameXXKCardStatus::TerrainBonusDouble: return TEXT("地形双效");
-		case EGameXXKCardStatus::NextTerrainCardFree: return TEXT("地形免耗");
-		case EGameXXKCardStatus::NextTerrainCardEnergyReduction: return TEXT("地形减耗");
-		case EGameXXKCardStatus::RedirectSingleTargetEnemyAttack: return TEXT("代挡");
-		case EGameXXKCardStatus::TerrainBonusDoubleThisRound: return TEXT("本回合地形双效");
-		case EGameXXKCardStatus::Medicine: return TEXT("药材");
-		case EGameXXKCardStatus::Weak: return TEXT("虚弱");
-		case EGameXXKCardStatus::Wealth: return TEXT("财富");
-		case EGameXXKCardStatus::Rage: return TEXT("狂怒");
-		case EGameXXKCardStatus::Prey: return TEXT("猎物");
-		case EGameXXKCardStatus::Charge: return TEXT("蓄力");
-		case EGameXXKCardStatus::Counter: return TEXT("反击");
-		default: return TEXT("未知状态");
-		}
-	}
-
 	FString SourceName(const FGameXXKRuntimeState& State, const FGameXXKCardEnemyIntent& Intent)
 	{
 		const FGameXXKBattleRuntimeUnit* Source = State.ActiveBattleEnemies.FindByPredicate([&Intent](const FGameXXKBattleRuntimeUnit& Unit)
@@ -84,7 +52,7 @@ namespace
 		case EGameXXKEnemyIntentEffectType::Heal:
 			return FString::Printf(TEXT("%s：恢复 %d%% 最大生命"), *Target, Effect.Magnitude);
 		case EGameXXKEnemyIntentEffectType::ApplyStatus:
-			return FString::Printf(TEXT("%s：%s %d层"), *Target, *DescribeStatus(Effect.Status), Effect.StatusStacks);
+			return FString::Printf(TEXT("%s：%s %d层"), *Target, *GameXXKCardText::DescribeStatusName(Effect.Status), Effect.StatusStacks);
 		case EGameXXKEnemyIntentEffectType::ConsumeSharedQi:
 			return FString::Printf(TEXT("我方共享内力 %s"), *Signed(-FMath::Abs(Effect.Magnitude)));
 		case EGameXXKEnemyIntentEffectType::ModifyAttack:
@@ -119,7 +87,7 @@ namespace
 		}
 		for (const FGameXXKCardStatusStack& Status : Intent.OnHitStatuses)
 		{
-			Lines.Add(FString::Printf(TEXT("命中附加：%s %d层"), *DescribeStatus(Status.Status), Status.Stacks));
+			Lines.Add(FString::Printf(TEXT("命中附加：%s %d层"), *GameXXKCardText::DescribeStatusName(Status.Status), Status.Stacks));
 		}
 		return Lines;
 	}

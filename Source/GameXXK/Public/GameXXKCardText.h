@@ -16,6 +16,8 @@ struct GAMEXXK_API FGameXXKCardTooltipContext
  */
 namespace GameXXKCardText
 {
+	/** One authoritative player-facing name for every serialized battle status. */
+	GAMEXXK_API FString DescribeStatusName(EGameXXKCardStatus Status);
 	GAMEXXK_API FString DescribeTarget(const FGameXXKCardTargetSpec& TargetSpec);
 	/** Source-compatible catalog path: resolves Definition.BaseQuality, with Invalid falling back to Common. */
 	GAMEXXK_API FString DescribeEffects(const FGameXXKCardDefinition& Definition);

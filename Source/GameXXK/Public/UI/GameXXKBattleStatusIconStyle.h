@@ -14,8 +14,7 @@ struct GAMEXXK_API FGameXXKBattleStatusIconStyle
 	FName IconId = NAME_None;
 	FSoftObjectPath TexturePath;
 	FString DisplayName;
-	FString Effect;
-	FString Timing;
+	/** One concise player-facing rule line. The title and live layer count are added by DescribeStatusTooltip. */
 	FString Tooltip;
 	FLinearColor Tint = FLinearColor::White;
 	int32 Priority = 0;
