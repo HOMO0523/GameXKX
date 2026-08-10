@@ -146,12 +146,14 @@ bool FGameXXKCardBattleRoundManaRecoveryTest::RunTest(const FString& Parameters)
 		Units,
 		EGameXXKCardTerrain::Plain,
 		790));
+	Runtime.ActiveCardsPlayedThisRound = 3;
 	TArray<FGameXXKCardDamageResult> PlayerDots;
 	TArray<FGameXXKCardDamageResult> EnemyDots;
 	TestTrue(TEXT("round mana recovery fixture enters the enemy phase"), GameXXKCardRules::EndPlayerCardPhase(Runtime, PlayerDots));
 	TestTrue(TEXT("round mana recovery fixture begins the next party round"), GameXXKCardRules::BeginNextPlayerCardRound(Runtime, EnemyDots));
 	TestEqual(TEXT("the hero recovers exactly two mana at the next party round start"), FindRuntimeUnit(Runtime.Units, TEXT("Hero"))->Mana, 7);
 	TestEqual(TEXT("an NPC recovers mana through the same rule and clamps to its own maximum"), FindRuntimeUnit(Runtime.Units, TEXT("Npc.TusiChief"))->Mana, 10);
+	TestEqual(TEXT("a fresh player round resets the active-card counter"), Runtime.ActiveCardsPlayedThisRound, 0);
 	return true;
 }
 

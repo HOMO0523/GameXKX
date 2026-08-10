@@ -54,18 +54,21 @@ public:
 		FGameXXKRuntimeState& InOutState,
 		FName PickedInstanceId,
 		const TArray<FName>& ReorderedRemainingInstanceIds,
-		FString* OutError = nullptr);
+		FString* OutError = nullptr,
+		TArray<FGameXXKCardPlayResult>* OutResumedResults = nullptr);
 
 	/** Resolves the active forced-discard choice by stable runtime-card IDs. */
 	static bool SubmitForcedDiscard(
 		FGameXXKRuntimeState& InOutState,
 		const TArray<FName>& DiscardedInstanceIds,
-		FString* OutError = nullptr);
+		FString* OutError = nullptr,
+		TArray<FGameXXKCardPlayResult>* OutResumedResults = nullptr);
 
 	/** Cancels the active insight without changing the inspected draw-pile top. */
 	static bool CancelInsight(
 		FGameXXKRuntimeState& InOutState,
-		FString* OutError = nullptr);
+		FString* OutError = nullptr,
+		TArray<FGameXXKCardPlayResult>* OutResumedResults = nullptr);
 
 	/** Ends the player phase, records deterministic enemy intents, and leaves the card runtime in Enemy or terminal phase. */
 	static bool EndPlayerCardPhase(

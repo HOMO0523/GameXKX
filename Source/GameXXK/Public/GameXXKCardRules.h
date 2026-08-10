@@ -31,7 +31,7 @@ namespace GameXXKCardRules
 
 	/**
 	 * Removes every card owned by a defeated party unit from the draw pile,
-	 * discard pile, and hand, then rebuilds the instance ledger so a dead
+	 * discard pile, hand, and exhaust pile, then rebuilds the instance ledger so a dead
 	 * character's cards can never be drawn after their death.
 	 */
 	GAMEXXK_API void RemoveDefeatedPartyOwnerCards(
@@ -69,7 +69,7 @@ namespace GameXXKCardRules
 	/** Clears only an active insight choice. It never revives a card already moved to discard. */
 	GAMEXXK_API bool CancelInsight(FGameXXKBattleDeckState& InOutDeck, FString* OutError = nullptr);
 
-	/** Checks all initialization ledger IDs occur exactly once across DrawPile, Hand, and DiscardPile. */
+	/** Checks all initialization ledger IDs occur exactly once across DrawPile, Hand, DiscardPile, and ExhaustPile. */
 	GAMEXXK_API bool ValidateDeckState(const FGameXXKBattleDeckState& Deck, FString* OutError = nullptr);
 
 	/** Returns a non-owning pointer to the requested live instance, if it exists in a logical zone. */
@@ -138,6 +138,27 @@ namespace GameXXKCardRules
 	GAMEXXK_API bool SubmitForcedDiscard(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const TArray<FName>& DiscardedInstanceIds,
+		FString* OutError = nullptr,
+		TArray<FGameXXKCardPlayResult>* OutResumedResults = nullptr);
+
+	/** Resolves a runtime insight choice, then resumes every remaining automatic card in order. */
+	GAMEXXK_API bool SubmitInsightChoice(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FName PickedInstanceId,
+		const TArray<FName>& ReorderedRemainingInstanceIds,
+		FString* OutError = nullptr,
+		TArray<FGameXXKCardPlayResult>* OutResumedResults = nullptr);
+
+	/** Cancels a runtime insight choice, then resumes every remaining automatic card in order. */
+	GAMEXXK_API bool CancelInsight(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FString* OutError = nullptr,
+		TArray<FGameXXKCardPlayResult>* OutResumedResults = nullptr);
+
+	/** Resolves the saved automatic-card continuation until it completes or opens a card choice. */
+	GAMEXXK_API bool ResumeAutomaticResolutionQueue(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		TArray<FGameXXKCardPlayResult>& OutResults,
 		FString* OutError = nullptr);
 
 	/**
@@ -152,7 +173,7 @@ namespace GameXXKCardRules
 
 	/**
 	 * Rebuilds card legality immediately before commit, validates the selected stable UnitId when needed,
-	 * then pays resources, moves the exact hand card to discard, resolves its data-only effects, and commits atomically.
+	 * then pays resources, moves the exact hand card to discard or exhaust, resolves its data-only effects, and commits atomically.
 	 */
 	GAMEXXK_API bool ResolveCardPlay(
 		FGameXXKCardBattleRuntime& InOutRuntime,
@@ -175,7 +196,9 @@ namespace GameXXKCardRules
 	 * Resolves one declared enemy direct-damage packet during the enemy phase. The context carries
 	 * on-hit statuses and defense bypass so agility can cancel the entire packet. For a single-target
 	 * packet, card-driven redirects are applied before normal guard handling; group packets bypass
-	 * that redirect but still use the same explicit mitigation rules.
+	 * that redirect but still use the same explicit mitigation rules. Top-level enemy-intent
+	 * orchestration may defer terminal-phase evaluation until every effect and reaction in that
+	 * saved intent has completed.
 	 */
 	GAMEXXK_API bool ResolveEnemyDirectAttack(
 		FGameXXKCardBattleRuntime& InOutRuntime,
@@ -184,7 +207,8 @@ namespace GameXXKCardRules
 		int32 RequestedDamage,
 		FGameXXKCardDamageResult& OutResult,
 		TArray<FGameXXKCardDamageResult>* OutReactiveDamageResults = nullptr,
-		FString* OutError = nullptr);
+		FString* OutError = nullptr,
+		bool bDeferTerminalPhase = false);
 
 	/**
 	 * Completes the enemy phase, applies enemy-side DoT, expires round-bound modifiers, then starts a

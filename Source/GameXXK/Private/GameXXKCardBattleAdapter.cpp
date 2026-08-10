@@ -1655,7 +1655,8 @@ namespace
 						Effect.Magnitude,
 						DamageResult,
 						&ReactiveResults,
-						OutError))
+						OutError,
+						true))
 					{
 						return false;
 					}
@@ -2555,55 +2556,93 @@ bool FGameXXKCardBattleAdapter::SubmitInsightChoice(
 	FGameXXKRuntimeState& InOutState,
 	const FName PickedInstanceId,
 	const TArray<FName>& ReorderedRemainingInstanceIds,
-	FString* OutError)
+	FString* OutError,
+	TArray<FGameXXKCardPlayResult>* OutResumedResults)
 {
 	if (!InOutState.CardRun.bHasActiveCardBattle)
 	{
 		return SetFailure(OutError, TEXT("There is no active card battle session."));
 	}
+	FGameXXKRuntimeState NewState = InOutState;
+	TArray<FGameXXKCardPlayResult> ResumedResults;
 	if (!GameXXKCardRules::SubmitInsightChoice(
-		InOutState.CardRun.ActiveBattle.Deck,
+		NewState.CardRun.ActiveBattle,
 		PickedInstanceId,
 		ReorderedRemainingInstanceIds,
-		OutError))
+		OutError,
+		&ResumedResults))
 	{
 		return false;
 	}
-	return SyncCardBattleToLegacyProjection(InOutState, OutError);
+	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	{
+		return false;
+	}
+	InOutState = MoveTemp(NewState);
+	if (OutResumedResults)
+	{
+		*OutResumedResults = MoveTemp(ResumedResults);
+	}
+	return true;
 }
 
 bool FGameXXKCardBattleAdapter::SubmitForcedDiscard(
 	FGameXXKRuntimeState& InOutState,
 	const TArray<FName>& DiscardedInstanceIds,
-	FString* OutError)
+	FString* OutError,
+	TArray<FGameXXKCardPlayResult>* OutResumedResults)
 {
 	if (!InOutState.CardRun.bHasActiveCardBattle)
 	{
 		return SetFailure(OutError, TEXT("There is no active card battle session."));
 	}
+	FGameXXKRuntimeState NewState = InOutState;
+	TArray<FGameXXKCardPlayResult> ResumedResults;
 	if (!GameXXKCardRules::SubmitForcedDiscard(
-		InOutState.CardRun.ActiveBattle,
+		NewState.CardRun.ActiveBattle,
 		DiscardedInstanceIds,
-		OutError))
+		OutError,
+		&ResumedResults))
 	{
 		return false;
 	}
-	return SyncCardBattleToLegacyProjection(InOutState, OutError);
+	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	{
+		return false;
+	}
+	InOutState = MoveTemp(NewState);
+	if (OutResumedResults)
+	{
+		*OutResumedResults = MoveTemp(ResumedResults);
+	}
+	return true;
 }
 
 bool FGameXXKCardBattleAdapter::CancelInsight(
 	FGameXXKRuntimeState& InOutState,
-	FString* OutError)
+	FString* OutError,
+	TArray<FGameXXKCardPlayResult>* OutResumedResults)
 {
 	if (!InOutState.CardRun.bHasActiveCardBattle)
 	{
 		return SetFailure(OutError, TEXT("There is no active card battle session."));
 	}
-	if (!GameXXKCardRules::CancelInsight(InOutState.CardRun.ActiveBattle.Deck, OutError))
+	FGameXXKRuntimeState NewState = InOutState;
+	TArray<FGameXXKCardPlayResult> ResumedResults;
+	if (!GameXXKCardRules::CancelInsight(NewState.CardRun.ActiveBattle, OutError, &ResumedResults))
 	{
 		return false;
 	}
-	return SyncCardBattleToLegacyProjection(InOutState, OutError);
+	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	{
+		return false;
+	}
+	InOutState = MoveTemp(NewState);
+	if (OutResumedResults)
+	{
+		*OutResumedResults = MoveTemp(ResumedResults);
+	}
+	return true;
 }
 
 bool FGameXXKCardBattleAdapter::EndPlayerCardPhase(
@@ -2725,7 +2764,15 @@ static bool ResolveNextEnemyIntentImpl(
 				Context.OnHitStatuses = Intent.OnHitStatuses;
 				FGameXXKCardDamageResult DamageResult;
 				TArray<FGameXXKCardDamageResult> ReactiveResults;
-				if (!GameXXKCardRules::ResolveEnemyDirectAttack(Run.ActiveBattle, Context, Target->UnitId, Intent.Damage, DamageResult, &ReactiveResults, OutError))
+				if (!GameXXKCardRules::ResolveEnemyDirectAttack(
+					Run.ActiveBattle,
+					Context,
+					Target->UnitId,
+					Intent.Damage,
+					DamageResult,
+					&ReactiveResults,
+					OutError,
+					true))
 				{
 					return false;
 				}
@@ -2773,6 +2820,7 @@ static bool ResolveNextEnemyIntentImpl(
 		++Run.NextEnemyIntentIndex;
 	}
 	FGameXXKRelicRules::ApplyDamageTaken(InOutState, OutDamageResults);
+	GameXXKCardRules::RefreshCombatTerminalPhase(Run.ActiveBattle);
 
 	bOutIntentsFinished = Run.NextEnemyIntentIndex >= Run.EnemyIntents.Num();
 	return FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(InOutState, OutError);
