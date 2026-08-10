@@ -1979,6 +1979,7 @@ namespace
 		case EGameXXKCardStatus::DamageOverTime:
 		case EGameXXKCardStatus::Agility:
 		case EGameXXKCardStatus::Medicine:
+		case EGameXXKCardStatus::Charge:
 			return MAX_int32;
 		case EGameXXKCardStatus::Vulnerability:
 		case EGameXXKCardStatus::Mark:
@@ -1999,7 +2000,6 @@ namespace
 		case EGameXXKCardStatus::NextTerrainCardFree:
 		case EGameXXKCardStatus::NextTerrainCardEnergyReduction:
 		case EGameXXKCardStatus::Prey:
-		case EGameXXKCardStatus::Charge:
 			return 1;
 		case EGameXXKCardStatus::RedirectSingleTargetEnemyAttack:
 			return 8;
@@ -6092,11 +6092,17 @@ namespace
 		const FGameXXKResolvedCardSnapshot& Snapshot,
 		const EGameXXKCardResolutionOrigin Origin,
 		FGameXXKCardPlayResult& InOutResult,
-		FString& OutError)
+		FString& OutError,
+		const int32 PrimaryAttackBonusPercent = 0)
 	{
 		if (Origin == EGameXXKCardResolutionOrigin::Invalid)
 		{
 			OutError = TEXT("Card effect resolution requires an explicit origin.");
+			return false;
+		}
+		if (PrimaryAttackBonusPercent < 0)
+		{
+			OutError = TEXT("A primary-attack bonus cannot be negative.");
 			return false;
 		}
 		const FGameXXKCardDefinition* BaseDefinition = FGameXXKCardCatalog::FindCardDefinition(Snapshot.CardId);
@@ -6166,6 +6172,21 @@ namespace
 		{
 			return false;
 		}
+		if (PrimaryAttackBonusPercent > 0)
+		{
+			FGameXXKCardEffect* PrimaryAttack = ResolutionDefinition.Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
+			{
+				return Effect.Type == EGameXXKCardEffectType::DamagePercentAttack;
+			});
+			if (!PrimaryAttack
+				|| PrimaryAttack->Magnitude <= 0
+				|| PrimaryAttackBonusPercent > MAX_int32 - PrimaryAttack->Magnitude)
+			{
+				OutError = TEXT("A Heavy Arrow primary bonus requires one supported positive attack packet.");
+				return false;
+			}
+			PrimaryAttack->Magnitude += PrimaryAttackBonusPercent;
+		}
 		const bool bSkipMissingSelectedTargetEffects = Origin != EGameXXKCardResolutionOrigin::ActivePlay
 			&& TargetIds.IsEmpty();
 		return ResolveDefinitionEffects(
@@ -6177,6 +6198,169 @@ namespace
 			bSkipMissingSelectedTargetEffects,
 			InOutResult,
 			OutError);
+	}
+
+	bool LockHeavyArrowCharge(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName OwnerUnitId,
+		FGameXXKCardPlayResult& InOutResult,
+		int32& OutLockedCharge,
+		FString& OutError)
+	{
+		OutLockedCharge = 0;
+		FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+		if (!Owner || !Owner->bLiving)
+		{
+			return true;
+		}
+		OutLockedCharge = GameXXKCardRules::GetCombatStatusStacks(*Owner, EGameXXKCardStatus::Charge);
+		if (OutLockedCharge <= 0)
+		{
+			return true;
+		}
+		const int32 ConsumedCharge = GameXXKCardRules::ConsumeCombatStatus(
+			*Owner,
+			EGameXXKCardStatus::Charge,
+			OutLockedCharge);
+		if (ConsumedCharge != OutLockedCharge)
+		{
+			OutError = TEXT("Heavy Arrow Charge changed before its locked action could commit.");
+			return false;
+		}
+		InOutResult.HeavyArrowChargeConsumed = ConsumedCharge;
+		return true;
+	}
+
+	bool ResolveHeavyArrowPostLockEffects(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKHeavyArrowRule& Rule,
+		const FName OwnerUnitId,
+		const TArray<FName>& CardTargetIds,
+		const int32 LockedCharge,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError)
+	{
+		if (LockedCharge <= 0 || Rule.Kind == EGameXXKHeavyArrowKind::None)
+		{
+			return true;
+		}
+
+		switch (Rule.Kind)
+		{
+		case EGameXXKHeavyArrowKind::ExtraAttackPerCharge:
+		{
+			if (CardTargetIds.Num() != 1)
+			{
+				OutError = TEXT("A Heavy Arrow extra attack requires one stable original target.");
+				return false;
+			}
+			for (int32 ChargeIndex = 0; ChargeIndex < LockedCharge; ++ChargeIndex)
+			{
+				const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+				const FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0]);
+				if (!Owner || !Owner->bLiving || !Target || !Target->bLiving)
+				{
+					break;
+				}
+				const int64 RequestedDamage = static_cast<int64>(Owner->Attack) * Rule.MagnitudePerCharge / 100;
+				if (RequestedDamage <= 0 || RequestedDamage > MAX_int32)
+				{
+					OutError = TEXT("A Heavy Arrow extra attack produced an unsupported damage amount.");
+					return false;
+				}
+				FGameXXKCardDamageContext Context;
+				Context.SourceUnitId = OwnerUnitId;
+				Context.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+				Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::HeavyArrow;
+				FGameXXKCardDamageResult DamageResult;
+				if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
+					InOutRuntime,
+					Context,
+					CardTargetIds[0],
+					static_cast<int32>(RequestedDamage),
+					DamageResult,
+					&OutError))
+				{
+					return false;
+				}
+				InOutResult.DamageResults.Add(DamageResult);
+				++InOutResult.HeavyArrowExtraAttackCount;
+				if (!ResolveFirstDirectDamageReactiveModifiers(
+					InOutRuntime,
+					Context,
+					DamageResult,
+					&InOutResult.DamageResults,
+					OutError))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+		case EGameXXKHeavyArrowKind::ToxicExplosionPerCharge:
+		{
+			if (CardTargetIds.Num() != 1)
+			{
+				OutError = TEXT("A Heavy Arrow Toxic Explosion requires one stable original target.");
+				return false;
+			}
+			for (int32 ChargeIndex = 0; ChargeIndex < LockedCharge; ++ChargeIndex)
+			{
+				const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+				const FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0]);
+				if (!Owner || !Owner->bLiving || !Target || !Target->bLiving)
+				{
+					break;
+				}
+				TArray<FGameXXKCardDamageResult> ExplosionResults;
+				if (!GameXXKCardRules::ResolveToxicExplosion(
+					InOutRuntime,
+					OwnerUnitId,
+					CardTargetIds[0],
+					false,
+					ExplosionResults,
+					&OutError))
+				{
+					return false;
+				}
+				for (FGameXXKCardDamageResult& ExplosionResult : ExplosionResults)
+				{
+					ExplosionResult.ResolutionOrigin = EGameXXKCardResolutionOrigin::HeavyArrow;
+					InOutResult.DamageResults.Add(MoveTemp(ExplosionResult));
+				}
+				++InOutResult.HeavyArrowToxicExplosionCount;
+			}
+			return true;
+		}
+		case EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge:
+		{
+			const int64 DrawCount = static_cast<int64>(Rule.DrawPerCharge) * LockedCharge;
+			if (DrawCount < 0 || DrawCount > MAX_int32)
+			{
+				OutError = TEXT("A Heavy Arrow draw count exceeds the supported range.");
+				return false;
+			}
+			if (DrawCount > 0)
+			{
+				GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+				if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, static_cast<int32>(DrawCount), 0, &OutError))
+				{
+					return false;
+				}
+			}
+			if (Rule.MinimumChargeForEnergy > 0 && LockedCharge >= Rule.MinimumChargeForEnergy)
+			{
+				InOutRuntime.Deck.SharedEnergy = FMath::Min(
+					MaxCardBattleEnergy,
+					InOutRuntime.Deck.SharedEnergy + Rule.EnergyGain);
+			}
+			return true;
+		}
+		case EGameXXKHeavyArrowKind::None:
+		default:
+			OutError = TEXT("A Heavy Arrow action has an unsupported rule kind.");
+			return false;
+		}
 	}
 
 	bool HasActiveAttackEffect(const FGameXXKCardDefinition& Definition)
@@ -7177,10 +7361,55 @@ bool GameXXKCardRules::ResolveCardPlay(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	int32 LockedHeavyArrowCharge = 0;
+	int32 HeavyArrowPrimaryBonusPercent = 0;
+	if (QualityEffectiveDefinition.HeavyArrow.Kind == EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge)
+	{
+		if (!LockHeavyArrowCharge(
+			NewRuntime,
+			CopiedInstance.OwnerUnitId,
+			NewResult,
+			LockedHeavyArrowCharge,
+			ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		const int64 PrimaryBonus = static_cast<int64>(QualityEffectiveDefinition.HeavyArrow.MagnitudePerCharge)
+			* LockedHeavyArrowCharge;
+		if (PrimaryBonus < 0 || PrimaryBonus > MAX_int32)
+		{
+			return SetFailure(OutError, TEXT("A Heavy Arrow primary bonus exceeds the supported range."));
+		}
+		HeavyArrowPrimaryBonusPercent = static_cast<int32>(PrimaryBonus);
+		NewResult.HeavyArrowPrimaryBonusPercent = HeavyArrowPrimaryBonusPercent;
+	}
 	if (!ResolveCardEffectsFromSnapshot(
 		NewRuntime,
 		ActiveSnapshot,
 		EGameXXKCardResolutionOrigin::ActivePlay,
+		NewResult,
+		ValidationError,
+		HeavyArrowPrimaryBonusPercent))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (QualityEffectiveDefinition.HeavyArrow.Kind != EGameXXKHeavyArrowKind::None
+		&& QualityEffectiveDefinition.HeavyArrow.Kind != EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge
+		&& !LockHeavyArrowCharge(
+			NewRuntime,
+			CopiedInstance.OwnerUnitId,
+			NewResult,
+			LockedHeavyArrowCharge,
+			ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (!ResolveHeavyArrowPostLockEffects(
+		NewRuntime,
+		QualityEffectiveDefinition.HeavyArrow,
+		CopiedInstance.OwnerUnitId,
+		TargetIds,
+		LockedHeavyArrowCharge,
 		NewResult,
 		ValidationError))
 	{

@@ -1585,6 +1585,22 @@ struct GAMEXXK_API FGameXXKCardPlayResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKCardDamageResult> DamageResults;
 
+	/** Charge locked and consumed by this Heavy Arrow action. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 HeavyArrowChargeConsumed = 0;
+
+	/** Extra direct-attack packets appended by the Heavy Arrow rule. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 HeavyArrowExtraAttackCount = 0;
+
+	/** Extra Toxic Explosion resolutions appended by the Heavy Arrow rule. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 HeavyArrowToxicExplosionCount = 0;
+
+	/** Percentage points merged into the Heavy Arrow's primary attack. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 HeavyArrowPrimaryBonusPercent = 0;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bOpenedPendingChoice = false;
 };
