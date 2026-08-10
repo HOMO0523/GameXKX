@@ -14,6 +14,7 @@ namespace
 	struct FGameXXKCardPlayConditionSnapshot
 	{
 		TMap<FName, int32> MarkStacksByUnitId;
+		TMap<FName, int32> MomentumStacksByUnitId;
 	};
 
 	FGameXXKCardPlayConditionSnapshot CaptureCardPlayConditionSnapshot(const FGameXXKCardBattleRuntime& Runtime)
@@ -24,6 +25,9 @@ namespace
 			Snapshot.MarkStacksByUnitId.Add(
 				Unit.UnitId,
 				GameXXKCardRules::GetCombatStatusStacks(Unit, EGameXXKCardStatus::Mark));
+			Snapshot.MomentumStacksByUnitId.Add(
+				Unit.UnitId,
+				GameXXKCardRules::GetCombatStatusStacks(Unit, EGameXXKCardStatus::Momentum));
 		}
 		return Snapshot;
 	}
@@ -1979,6 +1983,7 @@ namespace
 		case EGameXXKCardStatus::Medicine:
 		case EGameXXKCardStatus::Wealth:
 		case EGameXXKCardStatus::Counter:
+		case EGameXXKCardStatus::Block:
 			return 8;
 		case EGameXXKCardStatus::Rage:
 			return 5;
@@ -3298,6 +3303,11 @@ namespace
 		{
 			return true;
 		}
+		if (ModifierDefinition.bExcludeSourceUnit
+			&& Modifier.SourceUnitId == PlayedInstance.OwnerUnitId)
+		{
+			return true;
+		}
 		if (ModifierDefinition.RecipientScope != EGameXXKCardModifierRecipientScope::SharedDeck
 			&& !Modifier.RecipientUnitIds.Contains(PlayedInstance.OwnerUnitId))
 		{
@@ -3841,6 +3851,9 @@ namespace
 		case EGameXXKCardEffectType::RevealEnemyIntent:
 		case EGameXXKCardEffectType::DoubleTerrainBonus:
 		case EGameXXKCardEffectType::RedirectSingleTargetEnemyAttacks:
+		case EGameXXKCardEffectType::RegisterReaction:
+		case EGameXXKCardEffectType::Cleanse:
+		case EGameXXKCardEffectType::TriggerHighestDamageOverTime:
 			return true;
 		default:
 			OutError = TEXT("This card effect is not yet supported by the runtime effect planner.");
@@ -3939,7 +3952,19 @@ namespace
 				OutError = TEXT("The requested status consumption does not have a concrete source unit.");
 				return false;
 			}
-			const int32 Maximum = Condition.MaxConsumedStatusStacks;
+			int32 Maximum = Condition.MaxConsumedStatusStacks;
+			if (Maximum == 0 && Condition.Status == EGameXXKCardStatus::Momentum && Snapshot)
+			{
+				// "Consume all" for a card packet means all Momentum captured when that
+				// card began resolving. Momentum created by an intervening reaction belongs
+				// to the later state and must survive this consumption.
+				Maximum = Snapshot->MomentumStacksByUnitId.FindRef(ConsumedUnit->UnitId);
+				if (Maximum <= 0)
+				{
+					OutSatisfied = false;
+					return true;
+				}
+			}
 			if (Condition.Type == EGameXXKCardEffectConditionType::TargetHasAnyDamageOverTime || Condition.Type == EGameXXKCardEffectConditionType::OwnerHasDamageOverTime)
 			{
 				OutConsumed = RemoveAnyDamageOverTime(*ConsumedUnit, Maximum == 0 ? MAX_int32 : Maximum);
@@ -5062,7 +5087,13 @@ namespace
 				}
 				else if (Effect.Type == EGameXXKCardEffectType::GainEnergy)
 				{
-					InOutRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, InOutRuntime.Deck.SharedEnergy + FMath::Max(0, Effect.Magnitude));
+					const int32 ReferencedConsumption = Effect.ConsumedStackResultRef.IsNone()
+						? 0
+						: ConsumptionResults.FindRef(Effect.ConsumedStackResultRef);
+					if (Effect.SecondaryMagnitude <= 0 || ReferencedConsumption >= Effect.SecondaryMagnitude)
+					{
+						InOutRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, InOutRuntime.Deck.SharedEnergy + FMath::Max(0, Effect.Magnitude));
+					}
 				}
 				else if (Effect.Type == EGameXXKCardEffectType::RevealEnemyIntent)
 				{
@@ -5227,6 +5258,67 @@ namespace
 					break;
 				case EGameXXKCardEffectType::RemoveAnyDamageOverTime:
 					RemoveAnyDamageOverTime(*Target, Effect.Magnitude);
+					break;
+				case EGameXXKCardEffectType::Cleanse:
+					GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Bleed, MAX_int32);
+					GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Poison, MAX_int32);
+					GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Burn, MAX_int32);
+					break;
+				case EGameXXKCardEffectType::TriggerHighestDamageOverTime:
+				{
+					EGameXXKCardStatus TriggeredStatus = EGameXXKCardStatus::None;
+					EGameXXKCardDamageCause TriggeredCause = EGameXXKCardDamageCause::Invalid;
+					int32 TriggeredStacks = 0;
+					for (const TPair<EGameXXKCardStatus, EGameXXKCardDamageCause>& Candidate : {
+						TPair<EGameXXKCardStatus, EGameXXKCardDamageCause>(EGameXXKCardStatus::Bleed, EGameXXKCardDamageCause::Bleed),
+						TPair<EGameXXKCardStatus, EGameXXKCardDamageCause>(EGameXXKCardStatus::Poison, EGameXXKCardDamageCause::Poison),
+						TPair<EGameXXKCardStatus, EGameXXKCardDamageCause>(EGameXXKCardStatus::Burn, EGameXXKCardDamageCause::Burn)})
+					{
+						const int32 CandidateStacks = GameXXKCardRules::GetCombatStatusStacks(*Target, Candidate.Key);
+						if (CandidateStacks > TriggeredStacks)
+						{
+							TriggeredStatus = Candidate.Key;
+							TriggeredCause = Candidate.Value;
+							TriggeredStacks = CandidateStacks;
+						}
+					}
+					if (TriggeredStacks <= 0)
+					{
+						break;
+					}
+					const FName TriggerSourceUnitId = Owner->UnitId;
+					const FName TriggerTargetUnitId = Target->UnitId;
+					FGameXXKCardDamageResult TriggerResult;
+					if (!ApplyStatusHealthLoss(
+						InOutRuntime,
+						TriggerTargetUnitId,
+						TriggeredCause,
+						TriggeredStacks,
+						true,
+						TriggerResult,
+						OutError))
+					{
+						return false;
+					}
+					Target = FindCombatUnitById(InOutRuntime.Units, TriggerTargetUnitId);
+					if (!Target)
+					{
+						OutError = TEXT("Triggered status target disappeared before its stack could decay.");
+						return false;
+					}
+					TriggerResult.SourceUnitId = TriggerSourceUnitId;
+					TriggerResult.StatusStacksConsumed = GameXXKCardRules::ConsumeCombatStatus(*Target, TriggeredStatus, 1);
+					InOutResult.DamageResults.Add(MoveTemp(TriggerResult));
+					break;
+				}
+				case EGameXXKCardEffectType::RegisterReaction:
+					if ((Effect.Status != EGameXXKCardStatus::Counter && Effect.Status != EGameXXKCardStatus::Block)
+						|| Effect.Magnitude <= 0)
+					{
+						OutError = TEXT("A registered reaction requires positive Counter or Block uses.");
+						return false;
+					}
+					GameXXKCardRules::AddCombatStatus(*Target, Effect.Status, Effect.Magnitude);
 					break;
 				case EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget:
 				{

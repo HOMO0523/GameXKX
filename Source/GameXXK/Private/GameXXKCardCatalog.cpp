@@ -612,7 +612,7 @@ namespace
 		};
 
 		FGameXXKCardEffect QingFengDiscount = Modifier(
-			EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard,
+			EGameXXKCardBattleModifierTrigger::OnCardPlayed,
 			EGameXXKCardEffectType::ModifyEnergyCost,
 			EGameXXKCardEffectTarget::PlayedCard,
 			-1,
@@ -634,7 +634,7 @@ namespace
 			{Attack(150, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Mark)}, EGameXXKCharacterRole::Invalid, 1);
 
 		FGameXXKCardEffect GuiYuanDiscount = Modifier(
-			EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard,
+			EGameXXKCardBattleModifierTrigger::OnCardPlayed,
 			EGameXXKCardEffectType::ModifyEnergyCost,
 			EGameXXKCardEffectTarget::PlayedCard,
 			-1,
