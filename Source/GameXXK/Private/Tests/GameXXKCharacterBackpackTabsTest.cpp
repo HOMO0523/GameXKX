@@ -1,8 +1,11 @@
 #include "Misc/AutomationTest.h"
 
 #include "Engine/GameInstance.h"
+#include "GameXXKCardCatalog.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/UniformGridPanel.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -32,7 +35,13 @@ bool FGameXXKCharacterBackpackTabsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the attribute tab renders the live hero snapshot"), Inventory->GetCharacterTabBodyTextForTest().ToString().Contains(TEXT("攻击")));
 
 	TestTrue(TEXT("the card tab replaces the equipment backpack"), Inventory->OpenCharacterBackpackTabForTest(EGameXXKCharacterBackpackTab::Deck));
-	TestEqual(TEXT("the card backpack exposes all twelve hero cards"), Inventory->GetHeroCardBackpackIdsForTest().Num(), 12);
+	TestEqual(TEXT("the card backpack exposes all thirty-six hero cards"), Inventory->GetHeroCardBackpackIdsForTest().Num(), 36);
+	UUniformGridPanel* HeroDeckGrid = Inventory->WidgetTree
+		? Cast<UUniformGridPanel>(Inventory->WidgetTree->FindWidget(TEXT("InventoryHeroDeckGrid")))
+		: nullptr;
+	TestNotNull(TEXT("the card backpack keeps the existing scroll-grid layout"), HeroDeckGrid);
+	TestEqual(TEXT("the scroll grid materializes a selectable slot for every hero card"),
+		HeroDeckGrid ? HeroDeckGrid->GetChildrenCount() : 0, 36);
 	TestEqual(TEXT("the character deck starts with eight cards"), Inventory->GetPendingHeroDeckIdsForTest().Num(), 8);
 	TestTrue(TEXT("the card backpack uses the approved final frame"), Inventory->GetHeroCardFrameResourcePathForTest().Contains(TEXT("T_MasterV2_CardFrame")));
 	TestTrue(TEXT("locked cards use the approved simplified ink lock"), Inventory->GetHeroLockedCardIconResourcePathForTest().Contains(TEXT("T_MasterV2_CardLockedIcon")));
@@ -42,9 +51,12 @@ bool FGameXXKCharacterBackpackTabsTest::RunTest(const FString& Parameters)
 	const TArray<FName> HeroCardBackpack = Inventory->GetHeroCardBackpackIdsForTest();
 	const FName* ReplacementCard = HeroCardBackpack.FindByPredicate([&OriginalDeck](const FName CardId)
 	{
-		return !OriginalDeck.Contains(CardId);
+		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+		return !OriginalDeck.Contains(CardId)
+			&& Definition
+			&& Definition->LinkedRole != EGameXXKCharacterRole::Invalid;
 	});
-	TestNotNull(TEXT("the twelve-card backpack has a replacement candidate"), ReplacementCard);
+	TestNotNull(TEXT("an initially unlocked profession-linked card is a selectable replacement"), ReplacementCard);
 	if (!ReplacementCard)
 	{
 		return false;

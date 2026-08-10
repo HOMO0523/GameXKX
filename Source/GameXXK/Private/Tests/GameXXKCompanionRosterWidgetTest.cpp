@@ -358,9 +358,9 @@ bool FGameXXKCompanionRosterWidgetHeroDeckEditorTest::RunTest(const FString& Par
 	{
 		return Definition.Owner != EGameXXKCardOwner::Hero;
 	});
-	TestEqual(TEXT("the hero editor fixture owns the complete twelve-card hero pool"), HeroPool.Num(), 12);
+	TestEqual(TEXT("the hero editor fixture owns the complete thirty-six-card hero pool"), HeroPool.Num(), 36);
 	TestNotNull(TEXT("the hero editor fixture can probe a non-hero card id"), NonHeroDefinition);
-	if (HeroPool.Num() != 12 || !NonHeroDefinition)
+	if (HeroPool.Num() != 36 || !NonHeroDefinition)
 	{
 		return false;
 	}
@@ -373,9 +373,11 @@ bool FGameXXKCompanionRosterWidgetHeroDeckEditorTest::RunTest(const FString& Par
 	// Page 18 removes the standalone hero-deck toggle; the editor opens through the retained API.
 	TestTrue(TEXT("the companion backpack opens a dedicated player-editable hero deck"), Widget->OpenHeroDeckEditor());
 	TestTrue(TEXT("the hero deck editor is active after opening"), Widget->IsHeroDeckEditorOpenForTest());
-	TestEqual(TEXT("the hero editor renders all twelve available hero cards"), Widget->GetVisibleHeroCardIds().Num(), 12);
+	TestEqual(TEXT("the hero editor renders all thirty-six available hero cards"), Widget->GetVisibleHeroCardIds().Num(), 36);
 	TestEqual(TEXT("the hero editor stages the saved eight-card hero selection"), Widget->GetPendingHeroCardIds().Num(), 8);
 	UUniformGridPanel* HeroCardGrid = Widget->WidgetTree ? Cast<UUniformGridPanel>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterPersonalCardGrid"))) : nullptr;
+	TestEqual(TEXT("the retained scroll grid materializes one selectable slot per hero card"),
+		HeroCardGrid ? HeroCardGrid->GetChildrenCount() : 0, 36);
 	USizeBox* FirstHeroCardSize = HeroCardGrid ? Cast<USizeBox>(HeroCardGrid->GetChildAt(0)) : nullptr;
 	UGameXXKCompanionRosterCardButton* FirstHeroCard = FirstHeroCardSize ? Cast<UGameXXKCompanionRosterCardButton>(FirstHeroCardSize->GetChildAt(0)) : nullptr;
 	TestNotNull(TEXT("the hero deck grid exposes a real hoverable card"), FirstHeroCard);
@@ -401,9 +403,12 @@ bool FGameXXKCompanionRosterWidgetHeroDeckEditorTest::RunTest(const FString& Par
 	const TArray<FName> VisibleHeroCards = Widget->GetVisibleHeroCardIds();
 	const FName* ReplacementCardId = VisibleHeroCards.FindByPredicate([&PendingHeroCards](const FName CardId)
 	{
-		return !PendingHeroCards.Contains(CardId);
+		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+		return !PendingHeroCards.Contains(CardId)
+			&& Definition
+			&& Definition->LinkedRole != EGameXXKCharacterRole::Invalid;
 	});
-	TestNotNull(TEXT("the twelve-card hero pool has an excluded replacement card"), ReplacementCardId);
+	TestNotNull(TEXT("an initially unlocked profession-linked card is an excluded replacement card"), ReplacementCardId);
 	if (!ReplacementCardId)
 	{
 		return false;
@@ -574,8 +579,8 @@ bool FGameXXKCompanionRosterWidgetFreshTownInitializationTest::RunTest(const FSt
 	{
 		return false;
 	}
-	TestEqual(TEXT("opening the backpack initializes all twelve permanent hero cards"),
-		Subsystem->GetRuntimeState().CardRun.HeroUnlockedCardIds.Num(), 12);
+	TestEqual(TEXT("opening the backpack initializes eight generic and all twenty-four profession-linked hero cards"),
+		Subsystem->GetRuntimeState().CardRun.HeroUnlockedCardIds.Num(), 32);
 	TestEqual(TEXT("opening the backpack initializes eight selected hero cards"),
 		Subsystem->GetRuntimeState().CardRun.HeroSelectedCardIds.Num(), 8);
 	TestEqual(TEXT("the backpack stages the initialized eight-card hero loadout"), Widget->GetPendingHeroCardIds().Num(), 8);

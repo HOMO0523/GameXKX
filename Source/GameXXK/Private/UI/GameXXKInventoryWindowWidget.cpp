@@ -1516,11 +1516,12 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	AddCanvasChild(FrameCanvas, HeroDeckPanel, FVector2D(1135.0f, 300.0f), FVector2D(488.0f, 650.0f));
 	UCanvasPanel* HeroDeckCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("InventoryHeroDeckCanvas"));
 	HeroDeckPanel->SetContent(HeroDeckCanvas);
-	UTextBlock* HeroDeckCaption = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "HeroDeckCaption", "卡组背包 12 张 · 角色卡组 8 张"), 17);
+	UTextBlock* HeroDeckCaption = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "HeroDeckCaption", "卡组背包 36 张 · 角色卡组 8 张"), 17);
 	AddCanvasChild(HeroDeckCanvas, HeroDeckCaption, FVector2D::ZeroVector, FVector2D(470.0f, 28.0f));
 	HeroDeckGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("InventoryHeroDeckGrid"));
 	HeroDeckGrid->SetSlotPadding(FMargin(5.0f));
-	// 3 columns x up to 4 rows of 137x190 cards inside a draggable scroll box.
+	// Keep the approved three-column viewport; all thirty-six cards are reached
+	// through the existing vertical scroll box without moving surrounding UI.
 	HeroDeckScrollBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("InventoryHeroDeckScrollBox"));
 	HeroDeckScrollBox->SetOrientation(EOrientation::Orient_Vertical);
 	HeroDeckScrollBox->SetAlwaysShowScrollbar(false);
@@ -1538,7 +1539,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	HeroDeckCountText = MakeText(WidgetTree, FText::GetEmpty(), 14, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
 	HeroDeckCountText->SetJustification(ETextJustify::Center);
 	AddCanvasChild(HeroDeckCanvas, HeroDeckCountText, FVector2D(175.0f, 596.0f), FVector2D(120.0f, 22.0f));
-	for (int32 CardIndex = 0; CardIndex < 12; ++CardIndex)
+	for (int32 CardIndex = 0; CardIndex < 36; ++CardIndex)
 	{
 		UGameXXKHeroDeckCardButton* CardButton = WidgetTree->ConstructWidget<UGameXXKHeroDeckCardButton>(
 			UGameXXKHeroDeckCardButton::StaticClass(),

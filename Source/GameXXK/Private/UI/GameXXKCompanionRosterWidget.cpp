@@ -1755,9 +1755,10 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 	PersonalCardGrid->SetSlotPadding(CompanionCardSlotPadding);
 	PersonalCardScroll->AddChild(PersonalCardGrid);
 
-	// Twelve fixed hero-style cards: frame paper + portrait + name band + costs
-	// + top selection ink + centered lock; refreshed in place per companion.
-	for (int32 CardIndex = 0; CardIndex < 12; ++CardIndex)
+	// Reuse the approved three-column scrolling layout for both six-card partners
+	// and the complete thirty-six-card protagonist pool. Unused partner slots are
+	// collapsed during refresh, so no surrounding layout geometry changes.
+	for (int32 CardIndex = 0; CardIndex < 36; ++CardIndex)
 	{
 		UGameXXKCompanionRosterCardButton* CardButton = WidgetTree->ConstructWidget<UGameXXKCompanionRosterCardButton>(
 			UGameXXKCompanionRosterCardButton::StaticClass(),
@@ -2900,7 +2901,7 @@ void UGameXXKCompanionRosterWidget::RefreshDeckEditorControls()
 	if (DeckCaptionText)
 	{
 		DeckCaptionText->SetText(bEditingHeroDeck
-			? NSLOCTEXT("GameXXKCompanionRoster", "HeroDeckCaption", "主角牌组（12 张，编入 8 张）")
+			? NSLOCTEXT("GameXXKCompanionRoster", "HeroDeckCaption", "主角牌组（36 张，编入 8 张）")
 			: NSLOCTEXT("GameXXKCompanionRoster", "PersonalDeckCaption", "个人牌组（12 张，编入 5 张）"));
 	}
 	if (HeroDeckToggleButtonText)
