@@ -92,12 +92,26 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("card state invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardState::Invalid), static_cast<uint8>(0));
 	TestEqual(TEXT("unit state invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardUnitState::Invalid), static_cast<uint8>(0));
 	TestEqual(TEXT("card status invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardStatus::Invalid), static_cast<uint8>(0));
+	TestEqual(TEXT("card status Counter remains serialized as twenty six"), static_cast<uint8>(EGameXXKCardStatus::Counter), static_cast<uint8>(26));
+	TestEqual(TEXT("card status Block appends as twenty seven"), static_cast<uint8>(EGameXXKCardStatus::Block), static_cast<uint8>(27));
 	TestEqual(TEXT("card terrain invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardTerrain::Invalid), static_cast<uint8>(0));
 	TestEqual(TEXT("effect target invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardEffectTarget::Invalid), static_cast<uint8>(0));
+	TestEqual(TEXT("effect target PlayedCard remains serialized as ten"), static_cast<uint8>(EGameXXKCardEffectTarget::PlayedCard), static_cast<uint8>(10));
+	TestEqual(TEXT("effect target HighestArmorAlly appends as eleven"), static_cast<uint8>(EGameXXKCardEffectTarget::HighestArmorAlly), static_cast<uint8>(11));
 	TestEqual(TEXT("effect type invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardEffectType::Invalid), static_cast<uint8>(0));
+	TestEqual(TEXT("effect type redirect remains serialized as twenty eight"), static_cast<uint8>(EGameXXKCardEffectType::RedirectSingleTargetEnemyAttacks), static_cast<uint8>(28));
+	TestEqual(TEXT("effect type source replay appends as forty five"), static_cast<uint8>(EGameXXKCardEffectType::ReplaySourceCardBase), static_cast<uint8>(45));
 	TestEqual(TEXT("effect condition none remains serialized as zero"), static_cast<uint8>(EGameXXKCardEffectConditionType::None), static_cast<uint8>(0));
 	TestEqual(TEXT("effect condition terminal value remains stable"), static_cast<uint8>(EGameXXKCardEffectConditionType::OwnerHasDamageOverTime), static_cast<uint8>(8));
 	TestEqual(TEXT("modifier trigger invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardBattleModifierTrigger::Invalid), static_cast<uint8>(0));
+	TestEqual(TEXT("modifier trigger enemy attack remains serialized as six"), static_cast<uint8>(EGameXXKCardBattleModifierTrigger::OnSingleTargetEnemyAttack), static_cast<uint8>(6));
+	TestEqual(TEXT("modifier trigger after each active appends as thirteen"), static_cast<uint8>(EGameXXKCardBattleModifierTrigger::AfterEachActiveCard), static_cast<uint8>(13));
+	TestEqual(TEXT("pending Insight choice remains serialized as three"), static_cast<uint8>(EGameXXKCardPendingChoiceKind::InsightChooseToHand), static_cast<uint8>(3));
+	TestEqual(TEXT("pending hero search choice appends as four"), static_cast<uint8>(EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand), static_cast<uint8>(4));
+	TestEqual(TEXT("discard zone remains serialized as three"), static_cast<uint8>(EGameXXKCardZone::DiscardPile), static_cast<uint8>(3));
+	TestEqual(TEXT("exhaust zone appends as four"), static_cast<uint8>(EGameXXKCardZone::ExhaustPile), static_cast<uint8>(4));
+	TestEqual(TEXT("environment damage cause remains serialized as eleven"), static_cast<uint8>(EGameXXKCardDamageCause::Environment), static_cast<uint8>(11));
+	TestEqual(TEXT("Block damage cause appends as twelve"), static_cast<uint8>(EGameXXKCardDamageCause::Block), static_cast<uint8>(12));
 	int32 StrongNpcCardCount = 0;
 	for (const FGameXXKCardDefinition& Definition : Definitions)
 	{

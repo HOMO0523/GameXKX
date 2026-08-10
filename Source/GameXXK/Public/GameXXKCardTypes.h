@@ -83,6 +83,41 @@ enum class EGameXXKCharacterRole : uint8
 	Route = 9
 };
 
+/** Why a card definition is being resolved. Only ActivePlay owns hand/payment/listener side effects. */
+UENUM(BlueprintType)
+enum class EGameXXKCardResolutionOrigin : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	ActivePlay = 1,
+	AutomaticReplay = 2,
+	MageTaskReplay = 3,
+	HeavyArrow = 4,
+	Reaction = 5,
+	TerrainListener = 6,
+	TaskReward = 7
+};
+
+/** Declarative post-base behavior for protagonist Hunter cards. */
+UENUM(BlueprintType)
+enum class EGameXXKHeavyArrowKind : uint8
+{
+	None = 0,
+	ExtraAttackPerCharge = 1,
+	ToxicExplosionPerCharge = 2,
+	AddPrimaryAttackPercentPerCharge = 3
+};
+
+/** Reward executed after the complete eight-card protagonist spell task replay. */
+UENUM(BlueprintType)
+enum class EGameXXKHeroSpellTaskReward : uint8
+{
+	None = 0,
+	Fire = 1,
+	Ice = 2,
+	Lightning = 3,
+	Universal = 4
+};
+
 /** Lifecycle state reserved for deck, hand, discard, and battle integrations. */
 UENUM(BlueprintType)
 enum class EGameXXKCardState : uint8
@@ -135,7 +170,8 @@ enum class EGameXXKCardStatus : uint8
 	Rage = 23,
 	Prey = 24,
 	Charge = 25,
-	Counter = 26
+	Counter = 26,
+	Block = 27
 };
 
 UENUM(BlueprintType)
@@ -165,7 +201,18 @@ enum class EGameXXKCardEffectTarget : uint8
 	LowestHealthAlly = 7,
 	LowestHealthOtherAlly = 8,
 	Attacker = 9,
-	PlayedCard = 10
+	PlayedCard = 10,
+	HighestArmorAlly = 11
+};
+
+/** Unit whose attributes supply an effect's requested amount. */
+UENUM(BlueprintType)
+enum class EGameXXKCardEffectSource : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	CardOwner = 1,
+	SelectedTarget = 2,
+	HighestArmorAlly = 3
 };
 
 /** Declarative effect operations. No operation is selected by CardId at runtime. */
@@ -200,7 +247,24 @@ enum class EGameXXKCardEffectType : uint8
 	ModifyEnergyCost = 25,
 	RevealEnemyIntent = 26,
 	DoubleTerrainBonus = 27,
-	RedirectSingleTargetEnemyAttacks = 28
+	RedirectSingleTargetEnemyAttacks = 28,
+	RegisterReaction = 29,
+	LoseHealthNonlethal = 30,
+	Cleanse = 31,
+	TriggerHighestDamageOverTime = 32,
+	ResolveToxicExplosion = 33,
+	HealOrReverseWithMedicine = 34,
+	GainMedicineFromPartyHealthLoss = 35,
+	DamagePercentAttackPlusArmor = 36,
+	DamageAllPercentAttackPerConsumedArmor = 37,
+	TriggerTerrainBenefit = 38,
+	GainArmorFromCurrentManaPercent = 39,
+	GainManaOverflowToArmor = 40,
+	SearchUnfinishedHeroTaskCard = 41,
+	TriggerStatus = 42,
+	LightningPerTargetStatusSnapshot = 43,
+	ReplayTriggeredCardBase = 44,
+	ReplaySourceCardBase = 45
 };
 
 /** Optional, soft gate for an effect. It may also describe status consumption. */
@@ -227,7 +291,14 @@ enum class EGameXXKCardBattleModifierTrigger : uint8
 	OnNextAttack = 3,
 	OnNextHealing = 4,
 	EndOfRound = 5,
-	OnSingleTargetEnemyAttack = 6
+	OnSingleTargetEnemyAttack = 6,
+	BeforeNextActiveCard = 7,
+	AfterNextActiveCard = 8,
+	NextPlayerRoundStart = 9,
+	BeforeFirstActiveCardNextPlayerRound = 10,
+	AfterFirstActiveCardNextPlayerRound = 11,
+	FirstActiveAttackAgainstStatusNextPlayerRound = 12,
+	AfterEachActiveCard = 13
 };
 
 /** How a guard link redirects a qualifying attack. */
@@ -278,6 +349,28 @@ enum class EGameXXKCardTargetModeOverrideConditionType : uint8
 	TerrainIsAny = 1,
 	OwnerHasStatus = 2,
 	TargetHasStatus = 3
+};
+
+/** Data-only Heavy Arrow payload; runtime behavior is selected by Kind rather than CardId. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKHeavyArrowRule
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKHeavyArrowKind Kind = EGameXXKHeavyArrowKind::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MagnitudePerCharge = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 DrawPerCharge = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MinimumChargeForEnergy = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 EnergyGain = 0;
 };
 
 /** Declarative target-mode switch used by terrain- and status-sensitive cards. */
@@ -446,6 +539,15 @@ struct GAMEXXK_API FGameXXKCardBattleModifier
 	bool bPersistent = false;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bActivePlayOnly = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bExcludeSourceUnit = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bPreserveTriggeredStatus = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FGameXXKCardEffectCondition Condition;
 };
 
@@ -481,6 +583,9 @@ struct GAMEXXK_API FGameXXKCardEffect
 	EGameXXKCardEffectTarget Target = EGameXXKCardEffectTarget::Invalid;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardEffectSource Source = EGameXXKCardEffectSource::CardOwner;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 Magnitude = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -497,6 +602,17 @@ struct GAMEXXK_API FGameXXKCardEffect
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FGameXXKCardBattleModifier Modifier;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardTerrain TerrainOverride = EGameXXKCardTerrain::Invalid;
+
+	/** Names an integer result produced by this effect for later effects in the same resolution. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName ResultGroupId = NAME_None;
+
+	/** References a prior integer result without relying on effect-array position. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName ResultRef = NAME_None;
 
 	/** Names the stack-consumption result produced by this effect. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -566,6 +682,27 @@ struct GAMEXXK_API FGameXXKCardDefinition
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bIdentityLocked = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCharacterRole LinkedRole = EGameXXKCharacterRole::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 HeroUnlockLevel = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bExhaustOnPlay = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FGameXXKCardEffect> ChargeEffects;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FGameXXKCardEffect> FinishEffects;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FGameXXKHeavyArrowRule HeavyArrow;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKHeroSpellTaskReward SpellTaskReward = EGameXXKHeroSpellTaskReward::None;
 };
 
 /** Visual recipe only. Keys are stable semantic names, not asset paths or UI text. */
@@ -606,7 +743,8 @@ enum class EGameXXKCardPendingChoiceKind : uint8
 	Invalid = 0 UMETA(Hidden),
 	None = 1,
 	ForcedDiscard = 2,
-	InsightChooseToHand = 3
+	InsightChooseToHand = 3,
+	HeroTaskSearchChooseToHand = 4
 };
 
 /** A logical card zone. Pending-choice candidates are references/views, not a second owning zone. */
@@ -616,7 +754,8 @@ enum class EGameXXKCardZone : uint8
 	Invalid = 0 UMETA(Hidden),
 	DrawPile = 1,
 	Hand = 2,
-	DiscardPile = 3
+	DiscardPile = 3,
+	ExhaustPile = 4
 };
 
 /** One materialized battle card. InstanceId, rather than CardId, is the unique runtime identity. */
@@ -713,6 +852,9 @@ struct GAMEXXK_API FGameXXKBattleDeckState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKCardInstance> DiscardPile;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardInstance> ExhaustPile;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKPendingCardChoice PendingChoice;
@@ -949,7 +1091,8 @@ enum class EGameXXKCardDamageCause : uint8
 	ToxicExplosionPoison = 8,
 	ToxicExplosionBurn = 9,
 	SelfLoss = 10,
-	Environment = 11
+	Environment = 11,
+	Block = 12
 };
 
 /** Source and policy metadata for one atomic damage packet. It is never inferred from a UI widget. */
@@ -964,6 +1107,13 @@ struct GAMEXXK_API FGameXXKCardDamageContext
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKCardDamageKind Kind = EGameXXKCardDamageKind::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardResolutionOrigin ResolutionOrigin = EGameXXKCardResolutionOrigin::Invalid;
+
+	/** Deterministic 0..99 roll supplied by runtime direct-attack entrypoints. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 AgilityRollPercent = 0;
 
 	/** Fixed defense points ignored after the resolved target (including a guardian) is known. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -1071,9 +1221,21 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bAvoidedByAgility = false;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 AgilityRollPercent = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 AgilityStacksConsumed = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bPerfectAgilityDodge = false;
+
 	/** Semantic source of this packet, independent of the mitigation path used to resolve it. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKCardDamageCause Cause = EGameXXKCardDamageCause::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardResolutionOrigin ResolutionOrigin = EGameXXKCardResolutionOrigin::Invalid;
 
 	/** Matching DoT stacks captured before this status packet was queued. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -1097,6 +1259,25 @@ enum class EGameXXKCardBattlePhase : uint8
 	Enemy = 2,
 	Victory = 3,
 	Defeat = 4
+};
+
+/** Stable card/owner/target data sufficient to replay base effects after the live instance moves. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKResolvedCardSnapshot
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName CardId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardQuality Quality = EGameXXKCardQuality::Common;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName OwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> OriginalTargetUnitIds;
 };
 
 /** One persisted delayed-effect instance. Recipient IDs are resolved when the source card is played. */
@@ -1126,6 +1307,9 @@ struct GAMEXXK_API FGameXXKCardBattleModifierRuntime
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKCardBattleModifier Definition;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKResolvedCardSnapshot SourceCardSnapshot;
 };
 
 /** Declarative permanent-character equipment effect. Battle runtime materializes these at combat start. */
@@ -1184,6 +1368,84 @@ struct GAMEXXK_API FGameXXKEquipmentBattleEffectRuntime
 	int32 LastTriggerRound = 0;
 };
 
+/** One independently consumable Counter or Block source registered for an enemy-card boundary. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKReactionRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName ReactionId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardStatus Status = EGameXXKCardStatus::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName RecipientUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName GrantedByUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceCardInstanceId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RemainingTriggers = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 ExpireBeforePlayerRound = 0;
+};
+
+/** Serializable continuation for automatic base-card replays interrupted by an existing card choice. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKAutomaticResolutionQueue
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bActive = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardResolutionOrigin Origin = EGameXXKCardResolutionOrigin::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKResolvedCardSnapshot> PendingCards;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 NextCardIndex = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKHeroSpellTaskReward PendingReward = EGameXXKHeroSpellTaskReward::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName RewardOwnerUnitId = NAME_None;
+};
+
+/** Persisted progress and first-play ordering for the protagonist eight-card spell task. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKHeroSpellTaskRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bActive = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> LockedHeroCardIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> CompletedHeroCardIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKResolvedCardSnapshot> FirstPlayOrder;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKHeroSpellTaskReward StarterReward = EGameXXKHeroSpellTaskReward::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName StarterOwnerUnitId = NAME_None;
+};
+
 /** Complete pure state of an in-progress card battle. It is deliberately independent from widget and scene indexes. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKCardBattleRuntime
@@ -1199,6 +1461,23 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 RoundNumber = 0;
 
+	/** Exact protagonist eight-card equipment snapshot; never inferred from the materialized battle deck. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> EquippedHeroCardIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 ActiveCardsPlayedThisRound = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKResolvedCardSnapshot LastActiveCard;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bTerrainChangedThisRound = false;
+
+	/** Independent deterministic stream for combat rolls such as Agility. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 CombatRandomState = 0;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKBattleDeckState Deck;
 
@@ -1213,6 +1492,18 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKCardBattleModifierRuntime> Modifiers;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKReactionRuntime> Reactions;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 NextReactionOrdinal = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKAutomaticResolutionQueue AutomaticResolutionQueue;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKHeroSpellTaskRuntime HeroSpellTask;
 
 	/** Equipment snapshots are materialized at battle start; card rules must never recalculate loadouts. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
@@ -1284,6 +1575,9 @@ struct GAMEXXK_API FGameXXKCardPlayResult
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName OwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardResolutionOrigin ResolutionOrigin = EGameXXKCardResolutionOrigin::Invalid;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FName> TargetUnitIds;
