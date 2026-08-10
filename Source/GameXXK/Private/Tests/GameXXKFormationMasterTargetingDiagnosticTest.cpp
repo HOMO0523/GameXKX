@@ -50,17 +50,6 @@ namespace
 		return Instances;
 	}
 
-	bool IsKnownFormationTerrainTargetMismatch(
-		const FName CardId,
-		const EGameXXKCardTerrain Terrain)
-	{
-		return (CardId == TEXT("Profession.FormationMaster.YinShuiHuiYuan")
-				&& (Terrain == EGameXXKCardTerrain::WaterShore || Terrain == EGameXXKCardTerrain::Ferry))
-			|| ((CardId == TEXT("Profession.FormationMaster.LinYingMiZong")
-					|| CardId == TEXT("Profession.FormationMaster.LinFengFuZhen"))
-				&& Terrain == EGameXXKCardTerrain::Forest);
-	}
-
 	bool IsCandidateLegal(const FGameXXKCardTargetRequest& Request, const FName UnitId)
 	{
 		const FGameXXKCardTargetCandidateView* Candidate = Request.CandidateViews.FindByPredicate([UnitId](const FGameXXKCardTargetCandidateView& View)
@@ -159,7 +148,6 @@ bool FGameXXKFormationMasterTargetingDiagnosticTest::RunTest(const FString& Para
 		EGameXXKCardTerrain::Cave};
 	int32 PreviewCount = 0;
 	int32 ResolveCount = 0;
-	int32 KnownTerrainTargetMismatchCount = 0;
 
 	for (const FGameXXKCardDefinition& Definition : Definitions)
 	{
@@ -226,24 +214,6 @@ bool FGameXXKFormationMasterTargetingDiagnosticTest::RunTest(const FString& Para
 
 			FGameXXKCardPlayResult Result;
 			const bool bResolved = GameXXKCardRules::ResolveCardPlay(Runtime, Card.InstanceId, SelectedTarget, Result, &Error);
-			if (!bResolved && IsKnownFormationTerrainTargetMismatch(Definition.Id, Terrain))
-			{
-				++KnownTerrainTargetMismatchCount;
-				AddWarning(FString::Printf(
-					TEXT("Known formation terrain-target mismatch: %s previewed as an automatic group card but rejected atomically: %s"),
-					*Context,
-					*Error));
-				TestTrue(
-					FString::Printf(TEXT("%s reports the selected-target/group-target mismatch"), *Context),
-					Error.Contains(TEXT("Selected-target effect has no current living stable target")));
-				TestTrue(
-					FString::Printf(TEXT("%s rejection is atomic and leaves the card in hand"), *Context),
-					Runtime.Deck.Hand.ContainsByPredicate([Card](const FGameXXKCardInstance& Candidate)
-					{
-						return Candidate.InstanceId == Card.InstanceId;
-					}));
-				continue;
-			}
 			if (!bResolved)
 			{
 				AddError(FString::Printf(TEXT("%s previewed but could not resolve: %s"), *Context, *Error));
@@ -260,13 +230,7 @@ bool FGameXXKFormationMasterTargetingDiagnosticTest::RunTest(const FString& Para
 	}
 
 	TestEqual(TEXT("all formation-master card/terrain pairs build previews"), PreviewCount, 18 * 7);
-	TestEqual(
-		TEXT("every formation-master card/terrain pair either resolves or matches the isolated known defect"),
-		ResolveCount + KnownTerrainTargetMismatchCount,
-		18 * 7);
-	TestTrue(
-		TEXT("the known terrain-target mismatch set never grows beyond the four isolated pairs"),
-		KnownTerrainTargetMismatchCount <= 4);
+	TestEqual(TEXT("all formation-master card/terrain pairs resolve"), ResolveCount, 18 * 7);
 
 	TArray<FGameXXKCardCombatUnit> InsightUnits;
 	InsightUnits.Add(MakeFormationTargetingUnit(TEXT("FormationOwner"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::FormationMaster, 1));
@@ -408,6 +372,67 @@ bool FGameXXKFormationMasterTargetingDiagnosticTest::RunTest(const FString& Para
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKQuestNpcTerrainTargetingDiagnosticTest,
+	"GameXXK.Diagnostics.DynamicTerrainTargeting.QuestNpcTengQiao",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKQuestNpcTerrainTargetingDiagnosticTest::RunTest(const FString& Parameters)
+{
+	for (const EGameXXKCardTerrain Terrain : {EGameXXKCardTerrain::Cliff, EGameXXKCardTerrain::Forest})
+	{
+		TArray<FGameXXKCardCombatUnit> Units;
+		Units.Add(MakeFormationTargetingUnit(TEXT("FormationOwner"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 1));
+		Units.Add(MakeFormationTargetingUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 2));
+		Units.Add(MakeFormationTargetingUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 10));
+		FGameXXKCardBattleRuntime Runtime;
+		FString Error;
+		const FString Context = FString::Printf(TEXT("TengQiao terrain=%d"), static_cast<int32>(Terrain));
+		const bool bInitialized = GameXXKCardRules::InitializeCardBattleRuntime(
+			Runtime,
+			MakeFormationTargetingInstances(TEXT("Npc.QiongMeiEr.TengQiaoFeiDu")),
+			Units,
+			Terrain,
+			17400 + static_cast<int32>(Terrain),
+			&Error);
+		TestTrue(FString::Printf(TEXT("%s initializes: %s"), *Context, *Error), bInitialized);
+		if (!bInitialized || Runtime.Deck.Hand.IsEmpty())
+		{
+			continue;
+		}
+		for (FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		{
+			if (Unit.Side == EGameXXKCardTargetSide::Party)
+			{
+				Unit.Mana = 20;
+			}
+		}
+		FGameXXKCardPlayPreview Preview;
+		TestTrue(
+			FString::Printf(TEXT("%s previews: %s"), *Context, *Error),
+			GameXXKCardRules::BuildCardPlayPreview(Runtime, Runtime.Deck.Hand[0].InstanceId, Preview, &Error));
+		TestFalse(FString::Printf(TEXT("%s is automatic"), *Context), Preview.TargetRequest.bRequiresManualSelection);
+		TestEqual(FString::Printf(TEXT("%s targets all allies"), *Context), Preview.TargetRequest.EffectiveMode, EGameXXKCardTargetMode::AllAllies);
+		FGameXXKCardPlayResult Result;
+		Error.Reset();
+		const bool bResolved = GameXXKCardRules::ResolveCardPlay(Runtime, Runtime.Deck.Hand[0].InstanceId, NAME_None, Result, &Error);
+		TestTrue(FString::Printf(TEXT("%s resolves without a stale selected target: %s"), *Context, *Error), bResolved);
+		if (!bResolved)
+		{
+			continue;
+		}
+		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		{
+			if (Unit.Side == EGameXXKCardTargetSide::Party)
+			{
+				TestEqual(FString::Printf(TEXT("%s grants Agility1 to %s"), *Context, *Unit.UnitId.ToString()), GameXXKCardRules::GetCombatStatusStacks(Unit, EGameXXKCardStatus::Agility), 1);
+				TestEqual(FString::Printf(TEXT("%s grants Mana3 to %s"), *Context, *Unit.UnitId.ToString()), Unit.Mana, 23);
+			}
+		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKFormationMasterBoardTargetingDiagnosticTest,
 	"GameXXK.Diagnostics.FormationMasterBoardTargeting",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -470,20 +495,14 @@ bool FGameXXKFormationMasterBoardTargetingDiagnosticTest::RunTest(const FString&
 	WaterBoard->RefreshFromState();
 	TestTrue(TEXT("water-terrain formation Board begins a visual session"), WaterBoard->BeginBattleVisualSession(17102));
 	const bool bWaterTerrainResolved = WaterBoard->ClickCardInHand(WaterCardInstanceId);
-	if (!bWaterTerrainResolved)
-	{
-		AddWarning(TEXT("Known formation terrain-target mismatch: water-terrain 引水回元 previews as all allies but its selected-target effect rejects resolution."));
-	}
+	TestTrue(TEXT("water-terrain 引水回元 commits through its automatic all-allies override"), bWaterTerrainResolved);
 	TestFalse(TEXT("water-terrain target override never opens a stale arrow"), WaterBoard->IsCardTargetingForTest());
 	const bool bWaterCardRemainsInHand = WaterSubsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.ContainsByPredicate(
 		[WaterCardInstanceId](const FGameXXKCardInstance& Candidate)
 		{
 			return Candidate.InstanceId == WaterCardInstanceId;
 		});
-	TestEqual(
-		TEXT("water-terrain 引水回元 either commits or atomically remains in hand"),
-		bWaterCardRemainsInHand,
-		!bWaterTerrainResolved);
+	TestFalse(TEXT("water-terrain 引水回元 leaves the hand after its automatic group effect"), bWaterCardRemainsInHand);
 	return true;
 }
 

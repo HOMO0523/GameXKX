@@ -3677,6 +3677,19 @@ namespace
 		return true;
 	}
 
+	bool IsTerrainConditionDefinitelyFalse(
+		const FGameXXKCardEffectCondition& Condition,
+		const EGameXXKCardTerrain CurrentTerrain)
+	{
+		if (Condition.Type != EGameXXKCardEffectConditionType::TerrainIsAny)
+		{
+			return false;
+		}
+		const bool bMatches = CurrentTerrain == Condition.Terrain
+			|| CurrentTerrain == Condition.AlternateTerrain;
+		return Condition.bNegate ? bMatches : !bMatches;
+	}
+
 	bool DoesOnCardPlayedModifierApply(
 		const FGameXXKCardBattleModifierRuntime& Modifier,
 		const FGameXXKCardBattleRuntime& Runtime,
@@ -4363,6 +4376,7 @@ namespace
 		case EGameXXKCardEffectType::GainMedicineFromPartyHealthLoss:
 		case EGameXXKCardEffectType::DamagePercentAttackPlusArmor:
 		case EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor:
+		case EGameXXKCardEffectType::TriggerTerrainBenefit:
 		case EGameXXKCardEffectType::GainArmorFromCurrentManaPercent:
 		case EGameXXKCardEffectType::GainManaOverflowToArmor:
 		case EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard:
@@ -4993,6 +5007,10 @@ namespace
 				OutAttachedEffectIndices.Add(Index);
 			}
 		}
+		if (IsTerrainConditionDefinitelyFalse(Attack.Condition, InOutRuntime.Terrain))
+		{
+			return true;
+		}
 		if (bSkipMissingSelectedTargetEffects
 			&& CardTargetIds.IsEmpty()
 			&& Attack.Target == EGameXXKCardEffectTarget::SelectedTarget)
@@ -5482,6 +5500,174 @@ namespace
 		return true;
 	}
 
+	FGameXXKCardCombatUnit* FindLivingTerrainEnemyAnchor(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName OwnerUnitId,
+		const FName PreferredTargetUnitId)
+	{
+		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+		if (!Owner || !Owner->bLiving)
+		{
+			return nullptr;
+		}
+		FGameXXKCardCombatUnit* Preferred = PreferredTargetUnitId.IsNone()
+			? nullptr
+			: FindCombatUnitById(InOutRuntime.Units, PreferredTargetUnitId);
+		if (Preferred && Preferred->bLiving && Preferred->Side != Owner->Side)
+		{
+			return Preferred;
+		}
+
+		FGameXXKCardCombatUnit* Fallback = nullptr;
+		for (FGameXXKCardCombatUnit& Candidate : InOutRuntime.Units)
+		{
+			if (!Candidate.bLiving || Candidate.Side == Owner->Side)
+			{
+				continue;
+			}
+			if (!Fallback || IsStableUnitOrderBefore(Candidate, *Fallback))
+			{
+				Fallback = &Candidate;
+			}
+		}
+		return Fallback;
+	}
+
+	bool ResolveTerrainBenefit(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardInstance& SourceInstance,
+		const FName PreferredEnemyTargetUnitId,
+		const EGameXXKCardTerrain Terrain,
+		const int32 Repetitions,
+		FString& OutError)
+	{
+		if (!IsConcreteTerrain(Terrain) || Repetitions <= 0)
+		{
+			OutError = TEXT("A terrain benefit requires a concrete terrain and positive repetition count.");
+			return false;
+		}
+		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, SourceInstance.OwnerUnitId);
+		if (!Owner || !Owner->bLiving)
+		{
+			return true;
+		}
+
+		for (int32 Repetition = 0; Repetition < Repetitions; ++Repetition)
+		{
+			Owner = FindCombatUnitById(InOutRuntime.Units, SourceInstance.OwnerUnitId);
+			if (!Owner || !Owner->bLiving)
+			{
+				return true;
+			}
+			switch (Terrain)
+			{
+			case EGameXXKCardTerrain::Plain:
+			{
+				FGameXXKCardCombatUnit* Target = FindLivingTerrainEnemyAnchor(
+					InOutRuntime,
+					SourceInstance.OwnerUnitId,
+					PreferredEnemyTargetUnitId);
+				if (Target && !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Burn, 2, OutError))
+				{
+					return false;
+				}
+				break;
+			}
+			case EGameXXKCardTerrain::Cliff:
+			{
+				FGameXXKCardCombatUnit* Target = FindLivingTerrainEnemyAnchor(
+					InOutRuntime,
+					SourceInstance.OwnerUnitId,
+					PreferredEnemyTargetUnitId);
+				if (Target
+					&& (!GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Vulnerability, 2, OutError)
+						|| !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Mark, 1, OutError)))
+				{
+					return false;
+				}
+				break;
+			}
+			case EGameXXKCardTerrain::Forest:
+				for (FGameXXKCardCombatUnit& Candidate : InOutRuntime.Units)
+				{
+					if (Candidate.bLiving && Candidate.Side == Owner->Side)
+					{
+						GameXXKCardRules::HealCombatUnit(Candidate, 4);
+					}
+				}
+				break;
+			case EGameXXKCardTerrain::WaterShore:
+			case EGameXXKCardTerrain::Ferry:
+				for (FGameXXKCardCombatUnit& Candidate : InOutRuntime.Units)
+				{
+					if (Candidate.bLiving && Candidate.Side == Owner->Side)
+					{
+						Candidate.Mana = static_cast<int32>(FMath::Min<int64>(
+							Candidate.MaxMana,
+							static_cast<int64>(Candidate.Mana) + 3));
+					}
+				}
+				break;
+			case EGameXXKCardTerrain::Village:
+				GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+				if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, 1, 0, &OutError))
+				{
+					return false;
+				}
+				for (FGameXXKCardCombatUnit& Candidate : InOutRuntime.Units)
+				{
+					if (Candidate.bLiving && Candidate.Side == Owner->Side)
+					{
+						GameXXKCardRules::AddCombatArmor(Candidate, 4);
+					}
+				}
+				break;
+			case EGameXXKCardTerrain::Cave:
+			{
+				TArray<FName> AllyUnitIds;
+				for (const FGameXXKCardCombatUnit& Candidate : InOutRuntime.Units)
+				{
+					if (Candidate.bLiving && Candidate.Side == Owner->Side)
+					{
+						AllyUnitIds.Add(Candidate.UnitId);
+					}
+				}
+				AllyUnitIds.Sort([&InOutRuntime](const FName LeftId, const FName RightId)
+				{
+					const FGameXXKCardCombatUnit* Left = FindCombatUnitById(InOutRuntime.Units, LeftId);
+					const FGameXXKCardCombatUnit* Right = FindCombatUnitById(InOutRuntime.Units, RightId);
+					return Left && Right && IsStableUnitOrderBefore(*Left, *Right);
+				});
+				for (const FName AllyUnitId : AllyUnitIds)
+				{
+					FGameXXKCardCombatUnit* Ally = FindCombatUnitById(InOutRuntime.Units, AllyUnitId);
+					if (!Ally || !Ally->bLiving)
+					{
+						continue;
+					}
+					GameXXKCardRules::AddCombatArmor(*Ally, 8);
+					if (!RegisterPartyReactionUses(
+						InOutRuntime,
+						SourceInstance,
+						AllyUnitId,
+						EGameXXKCardStatus::Block,
+						1,
+						OutError))
+					{
+						return false;
+					}
+				}
+				break;
+			}
+			case EGameXXKCardTerrain::Invalid:
+			default:
+				OutError = TEXT("A terrain benefit reached an unsupported terrain.");
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool ResolveDefinitionEffects(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FGameXXKCardDefinition& Definition,
@@ -5496,6 +5682,7 @@ namespace
 		const int32 InitialDamageResultCount = InOutResult.DamageResults.Num();
 		TSet<int32> AttachedEffectIndices;
 		TMap<FName, int32> ConsumptionResults;
+		TMap<FName, int32> EffectResults;
 		bool bPreparedHealingAction = false;
 		int32 HealingBonusPercent = 0;
 		int32 HealingFlatBonus = 0;
@@ -5509,6 +5696,11 @@ namespace
 				continue;
 			}
 			const FGameXXKCardEffect& Effect = Definition.Effects[EffectIndex];
+			if (Effect.Type != EGameXXKCardEffectType::DamagePercentAttack
+				&& IsTerrainConditionDefinitelyFalse(Effect.Condition, InOutRuntime.Terrain))
+			{
+				continue;
+			}
 			if (bSkipMissingSelectedTargetEffects
 				&& Effect.Type != EGameXXKCardEffectType::DamagePercentAttack
 				&& EffectRequiresOriginalSelectedTarget(Effect))
@@ -5534,6 +5726,66 @@ namespace
 			}
 			if (!HasSuccessfulConsumptionReference(Effect, ConsumptionResults))
 			{
+				continue;
+			}
+			if (!Effect.ResultRef.IsNone() && EffectResults.FindRef(Effect.ResultRef) <= 0)
+			{
+				continue;
+			}
+			if (Effect.Type == EGameXXKCardEffectType::TriggerTerrainBenefit)
+			{
+				FGameXXKCardCombatUnit* TerrainOwner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+				if (!TerrainOwner || !TerrainOwner->bLiving)
+				{
+					return true;
+				}
+				FGameXXKCardCombatUnit* TerrainConditionTarget = CardTargetIds.Num() == 1
+					? FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0])
+					: nullptr;
+				bool bConditionSatisfied = false;
+				int32 Consumed = 0;
+				if (!TryApplyEffectConditionAndConsumption(
+					Effect.Condition,
+					InOutRuntime,
+					*TerrainOwner,
+					TerrainConditionTarget,
+					&ConditionSnapshot,
+					bConditionSatisfied,
+					Consumed,
+					OutError))
+				{
+					return false;
+				}
+				if (!bConditionSatisfied)
+				{
+					continue;
+				}
+				if (!Effect.ConsumptionGroupId.IsNone())
+				{
+					ConsumptionResults.FindOrAdd(Effect.ConsumptionGroupId) += Consumed;
+				}
+				const bool bUsesChangedTerrainBranch = InOutRuntime.bTerrainChangedThisRound
+					&& Effect.SecondaryMagnitude > 0;
+				const int32 Repetitions = bUsesChangedTerrainBranch
+					? Effect.SecondaryMagnitude
+					: Effect.Magnitude;
+				const EGameXXKCardTerrain BenefitTerrain = Effect.TerrainOverride == EGameXXKCardTerrain::Invalid
+					? InOutRuntime.Terrain
+					: Effect.TerrainOverride;
+				if (!ResolveTerrainBenefit(
+					InOutRuntime,
+					Instance,
+					CardTargetIds.Num() == 1 ? CardTargetIds[0] : NAME_None,
+					BenefitTerrain,
+					Repetitions,
+					OutError))
+				{
+					return false;
+				}
+				if (!Effect.ResultGroupId.IsNone())
+				{
+					EffectResults.FindOrAdd(Effect.ResultGroupId) = bUsesChangedTerrainBranch ? 1 : 0;
+				}
 				continue;
 			}
 			if (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier)
@@ -6997,6 +7249,19 @@ namespace
 		FString& OutError)
 	{
 		const FGameXXKCardBattleModifier& Definition = Modifier.Definition;
+		if (Definition.EffectType == EGameXXKCardEffectType::TriggerTerrainBenefit)
+		{
+			const FGameXXKCardInstance SourceInstance = MakeSnapshotInstance(
+				Modifier.SourceCardSnapshot,
+				Modifier.SourceCardInstanceId);
+			return ResolveTerrainBenefit(
+				InOutRuntime,
+				SourceInstance,
+				Modifier.OriginalSelectedTargetUnitId,
+				InOutRuntime.Terrain,
+				Definition.Magnitude,
+				OutError);
+		}
 		TArray<FName> RecipientUnitIds;
 		switch (Definition.Target)
 		{
@@ -8157,7 +8422,8 @@ bool GameXXKCardRules::ResolveCardPlay(
 	for (const EGameXXKCardBattleModifierTrigger Trigger : {
 		EGameXXKCardBattleModifierTrigger::OnNextAttack,
 		EGameXXKCardBattleModifierTrigger::FirstActiveAttackAgainstStatusNextPlayerRound,
-		EGameXXKCardBattleModifierTrigger::AfterNextActiveCard})
+		EGameXXKCardBattleModifierTrigger::AfterNextActiveCard,
+		EGameXXKCardBattleModifierTrigger::AfterEachActiveCard})
 	{
 		if (!ResolveActiveCardTimingModifiers(
 			NewRuntime,
@@ -8236,6 +8502,40 @@ bool GameXXKCardRules::ResolveCardPlay(
 	}
 	InOutRuntime = MoveTemp(NewRuntime);
 	OutResult = MoveTemp(NewResult);
+	return true;
+}
+
+bool GameXXKCardRules::NotifyTerrainChanged(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	const EGameXXKCardTerrain NewTerrain,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	FString ValidationError;
+	if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (!IsConcreteTerrain(NewTerrain))
+	{
+		return SetFailure(OutError, TEXT("A terrain change requires a concrete destination terrain."));
+	}
+	if (InOutRuntime.Terrain == NewTerrain)
+	{
+		return SetFailure(OutError, TEXT("A terrain change must select a different terrain."));
+	}
+
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	NewRuntime.Terrain = NewTerrain;
+	NewRuntime.bTerrainChangedThisRound = true;
+	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	InOutRuntime = MoveTemp(NewRuntime);
 	return true;
 }
 
@@ -8581,6 +8881,7 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		}
 		++NewRuntime.RoundNumber;
 		ExpirePartyReactionsForPlayerRound(NewRuntime);
+		NewRuntime.bTerrainChangedThisRound = false;
 		if (!ResolveNextPlayerRoundStartModifiers(NewRuntime, ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);

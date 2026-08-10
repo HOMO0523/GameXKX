@@ -189,6 +189,12 @@ namespace GameXXKCardRules
 		FGameXXKCardPlayResult& OutResult,
 		FString* OutError = nullptr);
 
+	/** Commits a concrete terrain switch and records that this player round contained a real change. */
+	GAMEXXK_API bool NotifyTerrainChanged(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		EGameXXKCardTerrain NewTerrain,
+		FString* OutError = nullptr);
+
 	/**
 	 * Ends the player card phase: rejects unresolved choices, discards unused hand cards, resolves
 	 * player-side end-phase DoT, and enters the enemy phase without allowing enemy actions to
