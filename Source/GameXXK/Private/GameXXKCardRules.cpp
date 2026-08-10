@@ -1978,11 +1978,11 @@ namespace
 		case EGameXXKCardStatus::Burn:
 		case EGameXXKCardStatus::DamageOverTime:
 		case EGameXXKCardStatus::Agility:
+		case EGameXXKCardStatus::Medicine:
 			return MAX_int32;
 		case EGameXXKCardStatus::Vulnerability:
 		case EGameXXKCardStatus::Mark:
 			return 5;
-		case EGameXXKCardStatus::Medicine:
 		case EGameXXKCardStatus::Wealth:
 		case EGameXXKCardStatus::Counter:
 		case EGameXXKCardStatus::Block:
@@ -3942,6 +3942,28 @@ namespace
 			}
 			break;
 		}
+		case EGameXXKCardEffectTarget::HighestArmorAlly:
+		{
+			const FGameXXKCardCombatUnit* HighestArmor = nullptr;
+			for (const FGameXXKCardCombatUnit* Candidate : Candidates)
+			{
+				if (Candidate->Side != Owner->Side)
+				{
+					continue;
+				}
+				if (!HighestArmor
+					|| Candidate->Armor > HighestArmor->Armor
+					|| (Candidate->Armor == HighestArmor->Armor && IsStableUnitOrderBefore(*Candidate, *HighestArmor)))
+				{
+					HighestArmor = Candidate;
+				}
+			}
+			if (HighestArmor)
+			{
+				NewTargetIds.Add(HighestArmor->UnitId);
+			}
+			break;
+		}
 		case EGameXXKCardEffectTarget::Attacker:
 		case EGameXXKCardEffectTarget::PlayedCard:
 		case EGameXXKCardEffectTarget::Invalid:
@@ -4035,6 +4057,80 @@ namespace
 		return true;
 	}
 
+	bool ResolveEffectSourceUnitId(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName OwnerUnitId,
+		const TArray<FName>& CardTargetIds,
+		const EGameXXKCardEffectSource Source,
+		FName& OutSourceUnitId,
+		FString& OutError)
+	{
+		OutSourceUnitId = NAME_None;
+		switch (Source)
+		{
+		case EGameXXKCardEffectSource::CardOwner:
+			OutSourceUnitId = OwnerUnitId;
+			break;
+		case EGameXXKCardEffectSource::SelectedTarget:
+			if (CardTargetIds.Num() == 1)
+			{
+				OutSourceUnitId = CardTargetIds[0];
+			}
+			break;
+		case EGameXXKCardEffectSource::HighestArmorAlly:
+		{
+			TArray<FName> SourceIds;
+			if (!ResolveEffectTargetIds(
+				Runtime,
+				OwnerUnitId,
+				CardTargetIds,
+				EGameXXKCardEffectTarget::HighestArmorAlly,
+				SourceIds,
+				OutError))
+			{
+				return false;
+			}
+			if (SourceIds.Num() == 1)
+			{
+				OutSourceUnitId = SourceIds[0];
+			}
+			break;
+		}
+		case EGameXXKCardEffectSource::Invalid:
+		default:
+			break;
+		}
+
+		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(Runtime.Units, OwnerUnitId);
+		const FGameXXKCardCombatUnit* SourceUnit = FindCombatUnitById(Runtime.Units, OutSourceUnitId);
+		if (!Owner || !SourceUnit || !SourceUnit->bLiving || SourceUnit->Side != Owner->Side)
+		{
+			OutError = TEXT("A sourced card effect requires one living ally of the card owner.");
+			return false;
+		}
+		return true;
+	}
+
+	bool GrantStatusFromCardEffect(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKCardCombatUnit& InOutTarget,
+		const EGameXXKCardStatus Status,
+		const int32 Magnitude,
+		FString& OutError)
+	{
+		const int32 Applied = GameXXKCardRules::AddCombatStatus(InOutTarget, Status, Magnitude);
+		if (Applied > 0
+			&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(InOutRuntime, InOutTarget, &OutError))
+		{
+			return false;
+		}
+		if (Status == EGameXXKCardStatus::Medicine && Applied >= 6)
+		{
+			GameXXKCardRules::AddCombatStatus(InOutTarget, EGameXXKCardStatus::Momentum, 1);
+		}
+		return true;
+	}
+
 	bool IsCurrentlySupportedEffect(const FGameXXKCardEffect& Effect, FString& OutError)
 	{
 		OutError.Reset();
@@ -4067,8 +4163,14 @@ namespace
 		case EGameXXKCardEffectType::DoubleTerrainBonus:
 		case EGameXXKCardEffectType::RedirectSingleTargetEnemyAttacks:
 		case EGameXXKCardEffectType::RegisterReaction:
+		case EGameXXKCardEffectType::LoseHealthNonlethal:
 		case EGameXXKCardEffectType::Cleanse:
 		case EGameXXKCardEffectType::TriggerHighestDamageOverTime:
+		case EGameXXKCardEffectType::ResolveToxicExplosion:
+		case EGameXXKCardEffectType::HealOrReverseWithMedicine:
+		case EGameXXKCardEffectType::GainMedicineFromPartyHealthLoss:
+		case EGameXXKCardEffectType::DamagePercentAttackPlusArmor:
+		case EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor:
 			return true;
 		default:
 			OutError = TEXT("This card effect is not yet supported by the runtime effect planner.");
@@ -4655,8 +4757,12 @@ namespace
 					OutError = TEXT("A first-direct-damage status reaction is missing concrete positive status data.");
 					return false;
 				}
-				if (GameXXKCardRules::AddCombatStatus(*Attacker, ModifierDefinition.Status, ModifierDefinition.Magnitude) > 0
-					&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(InOutRuntime, *Attacker, &OutError))
+				if (!GrantStatusFromCardEffect(
+					InOutRuntime,
+					*Attacker,
+					ModifierDefinition.Status,
+					ModifierDefinition.Magnitude,
+					OutError))
 				{
 					return false;
 				}
@@ -4915,6 +5021,7 @@ namespace
 			|| Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetHasAnyDamageOverTime
 			|| Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetHealthBelowPercent;
 		return Effect.Target == EGameXXKCardEffectTarget::SelectedTarget
+			|| Effect.Source == EGameXXKCardEffectSource::SelectedTarget
 			|| Effect.Type == EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget
 			|| bTargetCondition
 			|| (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier
@@ -5135,11 +5242,15 @@ namespace
 		FString& OutError)
 	{
 		const FGameXXKCardPlayConditionSnapshot ConditionSnapshot = CaptureCardPlayConditionSnapshot(InOutRuntime);
+		const int32 InitialDamageResultCount = InOutResult.DamageResults.Num();
 		TSet<int32> AttachedEffectIndices;
 		TMap<FName, int32> ConsumptionResults;
 		bool bPreparedHealingAction = false;
 		int32 HealingBonusPercent = 0;
 		int32 HealingFlatBonus = 0;
+		bool bPreparedMedicineAction = false;
+		int32 MedicineSnapshot = 0;
+		FName LockedHighestArmorAllyId = NAME_None;
 		for (int32 EffectIndex = 0; EffectIndex < Definition.Effects.Num(); ++EffectIndex)
 		{
 			if (AttachedEffectIndices.Contains(EffectIndex))
@@ -5205,8 +5316,163 @@ namespace
 				}
 				continue;
 			}
+			if (Effect.Type == EGameXXKCardEffectType::DamagePercentAttackPlusArmor
+				|| Effect.Type == EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor)
+			{
+				FGameXXKCardCombatUnit* GuardEffectOwner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+				if (!GuardEffectOwner || !GuardEffectOwner->bLiving)
+				{
+					return true;
+				}
+				FGameXXKCardCombatUnit* GuardConditionTarget = CardTargetIds.Num() == 1
+					? FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0])
+					: nullptr;
+				bool bConditionSatisfied = false;
+				int32 Consumed = 0;
+				if (!TryApplyEffectConditionAndConsumption(
+					Effect.Condition,
+					InOutRuntime,
+					*GuardEffectOwner,
+					GuardConditionTarget,
+					&ConditionSnapshot,
+					bConditionSatisfied,
+					Consumed,
+					OutError))
+				{
+					return false;
+				}
+				if (!bConditionSatisfied)
+				{
+					continue;
+				}
+				if (!Effect.ConsumptionGroupId.IsNone())
+				{
+					ConsumptionResults.FindOrAdd(Effect.ConsumptionGroupId) += Consumed;
+				}
+
+				TArray<FName> GuardTargetIds;
+				if (!ResolveEffectTargetIds(
+					InOutRuntime,
+					Instance.OwnerUnitId,
+					CardTargetIds,
+					Effect.Target,
+					GuardTargetIds,
+					OutError))
+				{
+					return false;
+				}
+				FName SourceUnitId = NAME_None;
+				if (!ResolveEffectSourceUnitId(
+					InOutRuntime,
+					Instance.OwnerUnitId,
+					CardTargetIds,
+					Effect.Source,
+					SourceUnitId,
+					OutError))
+				{
+					return false;
+				}
+				if (Effect.Source == EGameXXKCardEffectSource::HighestArmorAlly)
+				{
+					LockedHighestArmorAllyId = SourceUnitId;
+				}
+				FGameXXKCardCombatUnit* SourceUnit = FindCombatUnitById(InOutRuntime.Units, SourceUnitId);
+				if (!SourceUnit || Effect.Magnitude <= 0 || Effect.SecondaryMagnitude < 0)
+				{
+					OutError = TEXT("An armor-conversion attack has invalid source or percentage data.");
+					return false;
+				}
+				const int32 SourceAttack = SourceUnit->Attack;
+				const int32 ArmorSnapshot = SourceUnit->Armor;
+				int64 Percent = Effect.Magnitude;
+				if (Effect.Type == EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor)
+				{
+					Percent += static_cast<int64>(Effect.SecondaryMagnitude) * ArmorSnapshot;
+				}
+				if (Percent <= 0 || (SourceAttack > 0 && Percent > MAX_int64 / SourceAttack))
+				{
+					OutError = TEXT("An armor-conversion attack percentage exceeds the supported range.");
+					return false;
+				}
+				int64 RawDamage = static_cast<int64>(SourceAttack) * Percent / 100;
+				if (Effect.Type == EGameXXKCardEffectType::DamagePercentAttackPlusArmor)
+				{
+					RawDamage += ArmorSnapshot;
+				}
+				else
+				{
+					SourceUnit->Armor = 0;
+				}
+				if (RawDamage <= 0 || RawDamage > MAX_int32)
+				{
+					OutError = TEXT("An armor-conversion attack produced an unsupported damage amount.");
+					return false;
+				}
+
+				for (const FName GuardTargetId : GuardTargetIds)
+				{
+					const FGameXXKCardCombatUnit* CurrentSource = FindCombatUnitById(InOutRuntime.Units, SourceUnitId);
+					const FGameXXKCardCombatUnit* CurrentTarget = FindCombatUnitById(InOutRuntime.Units, GuardTargetId);
+					if (!CurrentSource || !CurrentSource->bLiving)
+					{
+						break;
+					}
+					if (!CurrentTarget || !CurrentTarget->bLiving)
+					{
+						continue;
+					}
+					FGameXXKCardDamageContext Context;
+					Context.SourceUnitId = SourceUnitId;
+					Context.Kind = Effect.Type == EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor
+						? EGameXXKCardDamageKind::GroupAttack
+						: EGameXXKCardDamageKind::SingleTargetAttack;
+					Context.ResolutionOrigin = Origin;
+					FGameXXKCardDamageResult DamageResult;
+					if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
+						InOutRuntime,
+						Context,
+						GuardTargetId,
+						static_cast<int32>(RawDamage),
+						DamageResult,
+						&OutError))
+					{
+						return false;
+					}
+					InOutResult.DamageResults.Add(DamageResult);
+					if (!ResolveFirstDirectDamageReactiveModifiers(
+						InOutRuntime,
+						Context,
+						DamageResult,
+						&InOutResult.DamageResults,
+						OutError))
+					{
+						return false;
+					}
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKCardEffectType::Cleanse
+				&& Effect.Target == EGameXXKCardEffectTarget::SelectedTarget
+				&& CardTargetIds.Num() == 1)
+			{
+				const FGameXXKCardCombatUnit* CleanseOwner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+				const FGameXXKCardCombatUnit* CleanseTarget = FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0]);
+				if (CleanseOwner && CleanseTarget && CleanseTarget->Side != CleanseOwner->Side)
+				{
+					continue;
+				}
+			}
 			TArray<FName> EffectTargetIds;
-			if (!ResolveEffectTargetIds(InOutRuntime, Instance.OwnerUnitId, CardTargetIds, Effect.Target, EffectTargetIds, OutError))
+			if (Effect.Target == EGameXXKCardEffectTarget::HighestArmorAlly
+				&& !LockedHighestArmorAllyId.IsNone())
+			{
+				const FGameXXKCardCombatUnit* LockedAlly = FindCombatUnitById(InOutRuntime.Units, LockedHighestArmorAllyId);
+				if (LockedAlly && LockedAlly->bLiving)
+				{
+					EffectTargetIds.Add(LockedHighestArmorAllyId);
+				}
+			}
+			else if (!ResolveEffectTargetIds(InOutRuntime, Instance.OwnerUnitId, CardTargetIds, Effect.Target, EffectTargetIds, OutError))
 			{
 				return false;
 			}
@@ -5333,7 +5599,12 @@ namespace
 
 			for (const FName EffectTargetId : EffectTargetIds)
 			{
+				Owner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
 				FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, EffectTargetId);
+				if (!Owner || !Owner->bLiving)
+				{
+					return true;
+				}
 				if (!Target || !Target->bLiving)
 				{
 					continue;
@@ -5403,6 +5674,38 @@ namespace
 					InOutResult.DamageResults.Add(MoveTemp(DamageResult));
 					break;
 				}
+				case EGameXXKCardEffectType::LoseHealthNonlethal:
+				{
+					if (Target->Side != Owner->Side || Effect.Magnitude <= 0)
+					{
+						OutError = TEXT("Nonlethal health loss requires a living ally and a positive amount.");
+						return false;
+					}
+					const int32 ActualLoss = FMath::Min(Effect.Magnitude, FMath::Max(0, Target->HP - 1));
+					if (ActualLoss <= 0)
+					{
+						break;
+					}
+					const FName SelfUnitId = Target->UnitId;
+					FGameXXKCardDamageContext Context;
+					Context.SourceUnitId = SelfUnitId;
+					Context.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
+					Context.ResolutionOrigin = Origin;
+					FGameXXKCardDamageResult DamageResult;
+					if (!GameXXKCardRules::ApplyCombatDirectDamage(
+						InOutRuntime.Units,
+						InOutRuntime.GuardLinks,
+						Context,
+						SelfUnitId,
+						ActualLoss,
+						DamageResult,
+						&OutError))
+					{
+						return false;
+					}
+					InOutResult.DamageResults.Add(MoveTemp(DamageResult));
+					break;
+				}
 				case EGameXXKCardEffectType::Heal:
 				{
 					int64 BaseHealing = FMath::Max(0, Effect.Magnitude);
@@ -5449,6 +5752,59 @@ namespace
 					GameXXKCardRules::HealCombatUnit(*Target, static_cast<int32>(FMath::Clamp<int64>(FinalHealing, 0, MAX_int32)));
 					break;
 				}
+				case EGameXXKCardEffectType::HealOrReverseWithMedicine:
+				{
+					if (Effect.Magnitude <= 0)
+					{
+						OutError = TEXT("Medicine healing or reversal requires a positive base amount.");
+						return false;
+					}
+					if (!bPreparedMedicineAction)
+					{
+						MedicineSnapshot = GameXXKCardRules::GetCombatStatusStacks(*Owner, EGameXXKCardStatus::Medicine);
+						if (MedicineSnapshot > 0)
+						{
+							GameXXKCardRules::ConsumeCombatStatus(*Owner, EGameXXKCardStatus::Medicine, MedicineSnapshot);
+						}
+						bPreparedMedicineAction = true;
+					}
+					const int64 RawAmount = static_cast<int64>(Effect.Magnitude) + MedicineSnapshot;
+					if (RawAmount <= 0 || RawAmount > MAX_int32)
+					{
+						OutError = TEXT("Medicine healing or reversal produced an unsupported amount.");
+						return false;
+					}
+					if (Target->Side == Owner->Side)
+					{
+						GameXXKCardRules::HealCombatUnit(*Target, static_cast<int32>(RawAmount));
+						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Bleed, MAX_int32);
+						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Poison, MAX_int32);
+						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Burn, MAX_int32);
+					}
+					else
+					{
+						const FName MedicineOwnerUnitId = Owner->UnitId;
+						const FName ReverseTargetUnitId = Target->UnitId;
+						FGameXXKCardDamageContext Context;
+						Context.Kind = EGameXXKCardDamageKind::EnvironmentalHealthLoss;
+						Context.ResolutionOrigin = Origin;
+						FGameXXKCardDamageResult DamageResult;
+						if (!GameXXKCardRules::ApplyCombatDirectDamage(
+							InOutRuntime.Units,
+							InOutRuntime.GuardLinks,
+							Context,
+							ReverseTargetUnitId,
+							static_cast<int32>(RawAmount),
+							DamageResult,
+							&OutError))
+						{
+							return false;
+						}
+						DamageResult.SourceUnitId = MedicineOwnerUnitId;
+						InOutResult.DamageResults.Add(MoveTemp(DamageResult));
+					}
+					break;
+				}
 				case EGameXXKCardEffectType::AddArmor:
 					GameXXKCardRules::AddCombatArmor(*Target, Effect.Magnitude);
 					break;
@@ -5461,9 +5817,53 @@ namespace
 					Target->Mana = static_cast<int32>(FMath::Min<int64>(Target->MaxMana, static_cast<int64>(Target->Mana) + ManaGain));
 					break;
 				}
+				case EGameXXKCardEffectType::GainMedicineFromPartyHealthLoss:
+				{
+					if (Target->UnitId != Owner->UnitId || Effect.Magnitude <= 0)
+					{
+						OutError = TEXT("Medicine from party health loss requires the card owner and a positive per-ally amount.");
+						return false;
+					}
+					TSet<FName> AffectedAllies;
+					for (int32 ResultIndex = InitialDamageResultCount; ResultIndex < InOutResult.DamageResults.Num(); ++ResultIndex)
+					{
+						const FGameXXKCardDamageResult& DamageResult = InOutResult.DamageResults[ResultIndex];
+						const FGameXXKCardCombatUnit* DamagedUnit = FindCombatUnitById(
+							InOutRuntime.Units,
+							DamageResult.ResolvedTargetUnitId);
+						if (DamageResult.Cause == EGameXXKCardDamageCause::SelfLoss
+							&& DamageResult.HealthDamage > 0
+							&& DamagedUnit
+							&& DamagedUnit->Side == Owner->Side)
+						{
+							AffectedAllies.Add(DamageResult.ResolvedTargetUnitId);
+						}
+					}
+					const int64 RawMedicine = static_cast<int64>(AffectedAllies.Num()) * Effect.Magnitude;
+					if (RawMedicine > MAX_int32)
+					{
+						OutError = TEXT("Party health loss produced an unsupported Medicine award.");
+						return false;
+					}
+					if (RawMedicine > 0
+						&& !GrantStatusFromCardEffect(
+							InOutRuntime,
+							*Target,
+							EGameXXKCardStatus::Medicine,
+							static_cast<int32>(RawMedicine),
+							OutError))
+					{
+						return false;
+					}
+					break;
+				}
 				case EGameXXKCardEffectType::ApplyStatus:
-					if (GameXXKCardRules::AddCombatStatus(*Target, Effect.Status, Effect.Magnitude) > 0
-						&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(InOutRuntime, *Target, &OutError))
+					if (!GrantStatusFromCardEffect(
+						InOutRuntime,
+						*Target,
+						Effect.Status,
+						Effect.Magnitude,
+						OutError))
 					{
 						return false;
 					}
@@ -5475,9 +5875,12 @@ namespace
 					RemoveAnyDamageOverTime(*Target, Effect.Magnitude);
 					break;
 				case EGameXXKCardEffectType::Cleanse:
-					GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Bleed, MAX_int32);
-					GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Poison, MAX_int32);
-					GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Burn, MAX_int32);
+					if (Target->Side == Owner->Side)
+					{
+						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Bleed, MAX_int32);
+						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Poison, MAX_int32);
+						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Burn, MAX_int32);
+					}
 					break;
 				case EGameXXKCardEffectType::TriggerHighestDamageOverTime:
 				{
@@ -5524,6 +5927,28 @@ namespace
 					TriggerResult.SourceUnitId = TriggerSourceUnitId;
 					TriggerResult.StatusStacksConsumed = GameXXKCardRules::ConsumeCombatStatus(*Target, TriggeredStatus, 1);
 					InOutResult.DamageResults.Add(MoveTemp(TriggerResult));
+					break;
+				}
+				case EGameXXKCardEffectType::ResolveToxicExplosion:
+				{
+					const FName ExplosionSourceUnitId = Owner->UnitId;
+					const FName ExplosionTargetUnitId = Target->UnitId;
+					TArray<FGameXXKCardDamageResult> ExplosionResults;
+					if (!GameXXKCardRules::ResolveToxicExplosion(
+						InOutRuntime,
+						ExplosionSourceUnitId,
+						ExplosionTargetUnitId,
+						false,
+						ExplosionResults,
+						&OutError))
+					{
+						return false;
+					}
+					for (FGameXXKCardDamageResult& ExplosionResult : ExplosionResults)
+					{
+						ExplosionResult.ResolutionOrigin = Origin;
+						InOutResult.DamageResults.Add(MoveTemp(ExplosionResult));
+					}
 					break;
 				}
 				case EGameXXKCardEffectType::RegisterReaction:
@@ -5997,7 +6422,15 @@ namespace
 				FGameXXKCardCombatUnit* Recipient = FindCombatUnitById(InOutRuntime.Units, RecipientUnitId);
 				if (Recipient && Recipient->bLiving)
 				{
-					GameXXKCardRules::AddCombatStatus(*Recipient, Definition.Status, Definition.Magnitude);
+					if (!GrantStatusFromCardEffect(
+						InOutRuntime,
+						*Recipient,
+						Definition.Status,
+						Definition.Magnitude,
+						OutError))
+					{
+						return false;
+					}
 				}
 			}
 			return true;
