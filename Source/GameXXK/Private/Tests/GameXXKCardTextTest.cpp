@@ -12,7 +12,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 {
 	const TArray<FGameXXKCardDefinition>& Definitions = FGameXXKCardCatalog::GetAllCardDefinitions();
-	TestEqual(TEXT("the card catalogue remains complete while its player text is generated"), Definitions.Num(), 174);
+	TestEqual(TEXT("the card catalogue remains complete while its player text is generated"), Definitions.Num(), 198);
 	for (const FGameXXKCardDefinition& Definition : Definitions)
 	{
 		const FString Detail = GameXXKCardText::DescribeDetail(Definition, nullptr);
@@ -20,8 +20,8 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 		TestFalse(FString::Printf(TEXT("%s has no unresolved player-facing formatter fallback"), *Definition.Id.ToString()), Detail.Contains(TEXT("未知")));
 	}
 
-	const FGameXXKCardDefinition* QingFeng = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.QingFengYiShi"));
-	const FGameXXKCardDefinition* GuiYuan = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.GuiYuanShu"));
+	const FGameXXKCardDefinition* QingFeng = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Generic.QingFengYiShi"));
+	const FGameXXKCardDefinition* GuiYuan = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Generic.GuiYuanShu"));
 	const FGameXXKCardDefinition* TerrainOverride = FGameXXKCardCatalog::FindCardDefinition(TEXT("Npc.QiongMeiEr.TengQiaoFeiDu"));
 	const FGameXXKCardDefinition* Consumption = FGameXXKCardCatalog::FindCardDefinition(TEXT("Route.Boss.FuHuDuanJiang"));
 	const FGameXXKCardDefinition* DelayedModifier = FGameXXKCardCatalog::FindCardDefinition(TEXT("Route.Rare.TieYiYiJue"));

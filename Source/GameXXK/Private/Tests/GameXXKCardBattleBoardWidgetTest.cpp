@@ -72,7 +72,7 @@ namespace
 			Test.TestTrue(TEXT("compact Party Qi layout moves above the expanded hand safety envelope"), CompactLayout.bUsesHandSafeFallback);
 			Test.TestFalse(TEXT("compact Party Qi never overlaps the five-card expanded hand envelope"), RectanglesOverlap(CompactLayout.QiRect, CompactLayout.ExpandedHandRect));
 			Test.TestFalse(TEXT("compact Party Qi never overlaps end turn"), RectanglesOverlap(CompactLayout.QiRect, CompactLayout.EndTurnRect));
-			Test.TestTrue(TEXT("compact Party Qi keeps the required 12-unit clearance above the expanded hand envelope"), CompactLayout.ExpandedHandRect.Min.Y - CompactLayout.QiRect.Max.Y >= 12.0f);
+			Test.TestTrue(TEXT("compact Party Qi keeps the required 12-unit clearance above the expanded hand envelope within float tolerance"), CompactLayout.ExpandedHandRect.Min.Y - CompactLayout.QiRect.Max.Y >= 11.99f);
 
 			const auto WideLayout = Board->ResolvePartyQiLayoutForTest(FVector2D(1920.0f, 1080.0f));
 			Test.TestTrue(TEXT("wide Party Qi layout has a valid Qi rectangle"), WideLayout.QiRect.bIsValid);
@@ -166,10 +166,14 @@ namespace
 				OutError = Error;
 				return false;
 			}
+			if (!State.CardRun.ActiveBattle.Deck.Hand.IsEmpty())
+			{
+				State.CardRun.ActiveBattle.Deck.Hand[0].CardId = TEXT("Route.General.PoJiaTuCi");
+			}
 
 			for (const FGameXXKCardInstance& CardInstance : State.CardRun.ActiveBattle.Deck.Hand)
 			{
-				if (CardInstance.CardId != FName(TEXT("Hero.QingFengYiShi")))
+				if (CardInstance.CardId != FName(TEXT("Route.General.PoJiaTuCi")))
 				{
 					continue;
 				}
@@ -248,11 +252,11 @@ namespace
 		// Route generation shuffles the opening hand. Pin one affordable manual
 		// enemy-target card so reward and lethal-presentation fixtures never flake.
 		FGameXXKCardInstance& FixtureCard = State.CardRun.ActiveBattle.Deck.Hand[0];
-		FixtureCard.CardId = TEXT("Hero.QingFengYiShi");
+		FixtureCard.CardId = TEXT("Route.Boss.DuKouLieFeng");
 		FixtureCard.OwnerUnitId = Hero->UnitId;
 		State.CardRun.ActiveBattle.Deck.SharedEnergy = FMath::Max(
 			State.CardRun.ActiveBattle.Deck.SharedEnergy,
-			1);
+			2);
 		for (const FGameXXKCardInstance& CardInstance : State.CardRun.ActiveBattle.Deck.Hand)
 		{
 			if (bRequirePureDamageCard)
@@ -738,24 +742,35 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("the adapter commits terminal phase before presentation"),
 		LethalSubsystem->GetRuntimeState().CardRun.ActiveBattle.Phase,
 		EGameXXKCardBattlePhase::Victory);
+	const FGameXXKCardCombatUnit* const LethalTargetAfterCommit =
+		LethalSubsystem->GetRuntimeState().CardRun.ActiveBattle.Units.FindByPredicate(
+			[LethalTargetUnitId](const FGameXXKCardCombatUnit& Unit)
+			{
+				return Unit.UnitId == LethalTargetUnitId;
+			});
+	TestTrue(TEXT("lethal direct damage consumes the target vulnerability in authoritative state"),
+		LethalTargetAfterCommit
+		&& GameXXKCardRules::GetCombatStatusStacks(
+			*LethalTargetAfterCommit,
+			EGameXXKCardStatus::Vulnerability) == 0);
 	TestFalse(TEXT("terminal reward handling is deferred until after Death"), LethalBoard->HasPendingRouteReward());
 	LethalBoard->AdvanceVisualsAtRealTime(0.0);
 	LethalBoard->AdvanceVisualsAtRealTime(2.5);
 	TestTrue(TEXT("lethal Hit transitions to Death before removal"), LethalBoard->IsBattleDeathPresentationActiveForTest());
 	TestFalse(TEXT("reward remains deferred throughout Death"), LethalBoard->HasPendingRouteReward());
 	LethalBoard->AdvanceVisualsAtRealTime(7.5);
-	TestTrue(TEXT("the consumed status delta begins only after lethal Hit and Death"),
+	TestFalse(TEXT("fixed-HUD status reconciliation does not open a separate full-screen status presentation"),
 		LethalBoard->IsBattleStatusPresentationActiveForTest());
-	TestEqual(TEXT("post-Death status presentation retains the defeated affected unit"),
-		FGateApi::Target(LethalBoard), LethalTargetUnitId);
-	TestNotNull(TEXT("post-Death status presentation retains the affected unit visual"),
+	TestEqual(TEXT("the presentation gate releases the defeated target after Death"),
+		FGateApi::Target(LethalBoard), NAME_None);
+	TestNull(TEXT("the defeated target visual is removed after Death when no later full-screen event needs it"),
 		LethalBoard->GetUnitVisualForTest(LethalTargetUnitId));
-	TestEqual(TEXT("consumed vulnerability uses a signed negative status readout"),
-		LethalBoard->GetActiveBattleStatusDeltaForTest(), -1);
-	TestFalse(TEXT("reward remains deferred throughout the post-Death status delta"),
+	TestEqual(TEXT("fixed-HUD status reconciliation exposes no full-screen signed status readout"),
+		LethalBoard->GetActiveBattleStatusDeltaForTest(), 0);
+	TestTrue(TEXT("the reward gate opens after Hit and Death while status state stays on the fixed HUD"),
 		LethalBoard->HasPendingRouteReward());
 	LethalBoard->AdvanceVisualsAtRealTime(100.0);
-	TestTrue(TEXT("the reward gate opens only after Hit, Death, and status all drain"),
+	TestTrue(TEXT("the reward gate remains open after later visual time advances"),
 		LethalBoard->HasPendingRouteReward());
 	const TArray<FName> RewardIdsAfterDrain = LethalBoard->GetPendingRouteRewardCardIds();
 	TestEqual(TEXT("lethal finalization continuation executes exactly once"), FGateApi::Continuations(LethalBoard), 1);
@@ -862,9 +877,9 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Party Qi keeps a right/bottom anchor maximum"), PartyQiAnchors.Maximum, FVector2D(1.0f, 1.0f));
 		TestEqual(TEXT("Party Qi renders above the Board action rail"), PartyQiCanvasSlot->GetZOrder(), 35);
 	}
-	TestEqual(TEXT("player hand cards retain a readable 1.5x PSD frame at runtime"), Board->GetCardFrameRuntimeSizeForTest(), FVector2D(225.0f, 257.0f));
+	TestEqual(TEXT("player hand cards preserve the approved current PSD frame at runtime"), Board->GetCardFrameRuntimeSizeForTest(), FVector2D(206.0f, 285.0f));
 	TestEqual(TEXT("approved PSD card frame remains un-tinted"), Board->GetCardFrameTintForTest(), FLinearColor::White);
-	TestEqual(TEXT("hero cards resolve the original hero card portrait"), Board->GetCardPortraitResourcePathForTest(TEXT("Hero.QingFengYiShi")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero")));
+	TestEqual(TEXT("hero cards resolve the original hero card portrait"), Board->GetCardPortraitResourcePathForTest(TEXT("Hero.Generic.QingFengYiShi")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero")));
 	TestEqual(TEXT("task NPC cards resolve their locked named-NPC portrait"), Board->GetCardPortraitResourcePathForTest(TEXT("Npc.TusiChief.ZhaiZhuHaoLing")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_TusiChief.T_CardPortrait_Npc_TusiChief")));
 	TestEqual(TEXT("profession cards resolve the shared role portrait"), Board->GetCardPortraitResourcePathForTest(TEXT("Profession.Blade.LieFengZhan")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Role_Blade.T_CardPortrait_Role_Blade")));
 	TestEqual(TEXT("general route cards resolve their shared ink-command crest"), Board->GetCardPortraitResourcePathForTest(TEXT("Route.General.PoJiaTuCi")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_General.T_CardPortrait_Route_General")));
@@ -891,7 +906,7 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 				: RoutePortraitPath.StartsWith(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_")));
 	}
 	TestEqual(TEXT("all thirty route-card definitions resolve a non-empty category portrait"), RouteDefinitionCount, 30);
-	TestEqual(TEXT("hero lower information strip uses pale parchment"), Board->GetCardInfoStripTintForTest(TEXT("Hero.QingFengYiShi")), FLinearColor(0.945f, 0.894f, 0.800f, 1.0f));
+	TestEqual(TEXT("hero lower information strip uses pale parchment"), Board->GetCardInfoStripTintForTest(TEXT("Hero.Generic.QingFengYiShi")), FLinearColor(0.945f, 0.894f, 0.800f, 1.0f));
 	TestEqual(TEXT("blade lower information strip uses cinnabar only"), Board->GetCardInfoStripTintForTest(TEXT("Profession.Blade.LieFengZhan")), FLinearColor(0.714f, 0.282f, 0.247f, 1.0f));
 	TestEqual(TEXT("task NPC lower information strip uses near-black"), Board->GetCardInfoStripTintForTest(TEXT("Npc.TusiChief.ZhaiZhuHaoLing")), FLinearColor(0.145f, 0.137f, 0.129f, 1.0f));
 	TestTrue(TEXT("card battle board exposes the active five-card hand"), Board->GetVisibleHandCardCountForTest() > 0);
@@ -899,8 +914,8 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	USizeBox* FirstIntentCardSize = Board->WidgetTree ? Cast<USizeBox>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCardSize_00"))) : nullptr;
 	TestNotNull(TEXT("player hand keeps a named PSD card-size box"), FirstHandCardSize);
 	TestNotNull(TEXT("enemy intent keeps its independent compact card-size box"), FirstIntentCardSize);
-	TestEqual(TEXT("player hand width is large enough after runtime DPI scaling"), FirstHandCardSize ? FirstHandCardSize->GetWidthOverride() : 0.0f, 225.0f);
-	TestEqual(TEXT("player hand height preserves the PSD card ratio"), FirstHandCardSize ? FirstHandCardSize->GetHeightOverride() : 0.0f, 257.0f);
+	TestEqual(TEXT("player hand width preserves the approved current layout"), FirstHandCardSize ? FirstHandCardSize->GetWidthOverride() : 0.0f, 206.0f);
+	TestEqual(TEXT("player hand height preserves the approved current layout"), FirstHandCardSize ? FirstHandCardSize->GetHeightOverride() : 0.0f, 285.0f);
 	TestEqual(TEXT("enemy intent width remains compact instead of inheriting the player hand size"), FirstIntentCardSize ? FirstIntentCardSize->GetWidthOverride() : 0.0f, 150.0f);
 	TestEqual(TEXT("enemy intent height remains compact instead of inheriting the player hand size"), FirstIntentCardSize ? FirstIntentCardSize->GetHeightOverride() : 0.0f, 171.0f);
 
@@ -916,7 +931,7 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 
 	const FVector2D OwnerScreenPosition(940.0f, 420.0f);
 	Board->RegisterBattleUnitScreenPosition(OwnerUnitId, OwnerScreenPosition);
-	TestEqual(TEXT("shared-energy fixture uses the stable one-Qi manual hero card"), CardPreview.CardId, FName(TEXT("Hero.QingFengYiShi")));
+	TestEqual(TEXT("shared-energy fixture uses the stable one-Qi manual route card"), CardPreview.CardId, FName(TEXT("Route.General.PoJiaTuCi")));
 	TestTrue(TEXT("shared-energy fixture records a positive authoritative effective energy cost"), CardPreview.EffectiveEnergyCost > 0);
 	const int32 SharedQiBeforeCommit = Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.SharedEnergy;
 	const int32 EnemyHealthBeforePreview = Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP;

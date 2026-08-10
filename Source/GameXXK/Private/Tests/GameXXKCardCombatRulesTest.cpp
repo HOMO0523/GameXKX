@@ -313,7 +313,7 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	FGameXXKCardBattleRuntime DotSnapshotRuntime;
 	if (!TestTrue(TEXT("end-phase snapshot runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		DotSnapshotRuntime,
-		MakeRuntimeInstances(TEXT("Hero.QingFengYiShi"), 6, TEXT("DotHero")),
+		MakeRuntimeInstances(TEXT("Hero.Generic.QingFengYiShi"), 6, TEXT("DotHero")),
 		DotSnapshotUnits,
 		EGameXXKCardTerrain::Plain,
 		8801)))

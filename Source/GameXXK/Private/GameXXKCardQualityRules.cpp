@@ -18,7 +18,6 @@ namespace
 	const TArray<FName>& GetEpicCardIds()
 	{
 		static const TArray<FName> Ids = MakeIdList({
-			TEXT("Hero.JianYiGuanHong"), TEXT("Hero.GuiYuanFanZhao"),
 			TEXT("Npc.TusiChief.MengZhaiShiYue"), TEXT("Npc.SongJinBao.YiNuoQianJin"),
 			TEXT("Npc.YueBai.ShanHeCanTu"), TEXT("Npc.ZhouGuangZu.YanFenFengMai"),
 			TEXT("Npc.JinGui.HouXiangTuoShen"), TEXT("Npc.QiongMeiEr.ShanGeHuanLing"),
@@ -38,7 +37,6 @@ namespace
 	const TArray<FName>& GetRareCardIds()
 	{
 		static const TArray<FName> Ids = MakeIdList({
-			TEXT("Hero.SuiYanJi"), TEXT("Hero.GuanXi"), TEXT("Hero.PoYunYiShan"), TEXT("Hero.HuiFengZhuiJian"),
 			TEXT("Npc.TusiChief.ZhaiZhuHaoLing"), TEXT("Npc.SongJinBao.ErMuMiBao"),
 			TEXT("Npc.YueBai.CanJuanPiZhu"), TEXT("Npc.ZhouGuangZu.DiZhiMoTu"),
 			TEXT("Npc.JinGui.ShiJingErMu"), TEXT("Npc.QiongMeiEr.TengQiaoFeiDu"),
@@ -400,12 +398,12 @@ bool FGameXXKCardQualityRules::ValidateCardCatalog(
 	return ValidateCatalog(
 		TEXT("Card"),
 		Definitions,
-		174,
-		92,
+		198,
+		122,
 		GetRareCardIds(),
-		51,
+		47,
 		GetEpicCardIds(),
-		31,
+		29,
 		[](const FName Id) { return FGameXXKCardQualityRules::GetCardBaseQuality(Id); },
 		OutError);
 }

@@ -16,18 +16,42 @@ namespace
 	const TArray<FExpectedQuality>& GetExpectedCardQualities()
 	{
 		static const TArray<FExpectedQuality> Expected = {
-			{ TEXT("Hero.QingFengYiShi"), EGameXXKCardQuality::Common },
-			{ TEXT("Hero.HeYuZhan"), EGameXXKCardQuality::Common },
-			{ TEXT("Hero.FengShenBu"), EGameXXKCardQuality::Common },
-			{ TEXT("Hero.SuiYanJi"), EGameXXKCardQuality::Rare },
-			{ TEXT("Hero.GuiYuanShu"), EGameXXKCardQuality::Common },
-			{ TEXT("Hero.HengJianShouShi"), EGameXXKCardQuality::Common },
-			{ TEXT("Hero.NingShenTuNa"), EGameXXKCardQuality::Common },
-			{ TEXT("Hero.GuanXi"), EGameXXKCardQuality::Rare },
-			{ TEXT("Hero.PoYunYiShan"), EGameXXKCardQuality::Rare },
-			{ TEXT("Hero.HuiFengZhuiJian"), EGameXXKCardQuality::Rare },
-			{ TEXT("Hero.JianYiGuanHong"), EGameXXKCardQuality::Epic },
-			{ TEXT("Hero.GuiYuanFanZhao"), EGameXXKCardQuality::Epic },
+			{ TEXT("Hero.Generic.QingFengYiShi"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Generic.HeYuZhan"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Generic.FengShenBu"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Generic.SuiYanJi"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Generic.GuiYuanShu"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Generic.HengJianShouShi"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Generic.NingShenTuNa"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Generic.GuanXi"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Generic.PoYunYiShan"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Generic.XingQiHuiHuan"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Generic.JianYiGuanHong"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Generic.GuiYuanFanZhao"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Blade.TongFengYinShi"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Blade.XueLuXiangCheng"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Blade.YingFengHuanBu"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Blade.TongPaoJuShi"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Guard.TieBiTongShou"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Guard.JieJiaHuanFeng"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Guard.LieZhenChengFeng"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Guard.XuanJiaZhenYue"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Healer.YiXueCuiFang"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Healer.HuiChunNiMai"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Healer.DuHuoTongLu"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Healer.BaiCaoJiZhen"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Hunter.FengYanDingXian"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Hunter.LieYuLianShi"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Hunter.CuiDuChuanXin"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Hunter.HuiFengGuanRi"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Mage.YanXuLiaoYuan"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Mage.HanXuNingChuan"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Mage.LeiXuYinTing"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Mage.GuiXuTongXuan"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Formation.GuanShiLuoZi"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Formation.YiZhenHuiXiang"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Formation.LianYingBuShi"), EGameXXKCardQuality::Common },
+			{ TEXT("Hero.Formation.LiuHeGuiYi"), EGameXXKCardQuality::Common },
 			{ TEXT("Npc.TusiChief.ZhaiZhuHaoLing"), EGameXXKCardQuality::Rare },
 			{ TEXT("Npc.TusiChief.ShiMenShouShi"), EGameXXKCardQuality::Common },
 			{ TEXT("Npc.TusiChief.TuSiJunLing"), EGameXXKCardQuality::Common },
@@ -338,7 +362,7 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 	}
 
 	const TArray<FExpectedQuality>& ExpectedCardEntries = GetExpectedCardQualities();
-	TestEqual(TEXT("independent card authority contains exactly 174 entries"), ExpectedCardEntries.Num(), 174);
+	TestEqual(TEXT("independent card authority contains exactly 198 entries"), ExpectedCardEntries.Num(), 198);
 	TMap<FName, EGameXXKCardQuality> ExpectedCards;
 	int32 ExpectedCommonCards = 0;
 	int32 ExpectedRareCards = 0;
@@ -359,12 +383,12 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 		default: AddError(FString::Printf(TEXT("independent card authority has invalid quality: %s"), Entry.Id)); break;
 		}
 	}
-	TestEqual(TEXT("independent Common card count"), ExpectedCommonCards, 92);
-	TestEqual(TEXT("independent Rare card count"), ExpectedRareCards, 51);
-	TestEqual(TEXT("independent Epic card count"), ExpectedEpicCards, 31);
+	TestEqual(TEXT("independent Common card count"), ExpectedCommonCards, 122);
+	TestEqual(TEXT("independent Rare card count"), ExpectedRareCards, 47);
+	TestEqual(TEXT("independent Epic card count"), ExpectedEpicCards, 29);
 
 	const TArray<FGameXXKCardDefinition>& CardDefinitions = FGameXXKCardCatalog::GetAllCardDefinitions();
-	TestEqual(TEXT("card catalog contains exactly 174 definitions"), CardDefinitions.Num(), 174);
+	TestEqual(TEXT("card catalog contains exactly 198 definitions"), CardDefinitions.Num(), 198);
 	TSet<FName> ActualCardIds;
 	int32 ActualCommonCards = 0;
 	int32 ActualRareCards = 0;
@@ -395,9 +419,9 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("independent card authority ID is present in actual catalog: %s"), *Expected.Key.ToString()), ActualCardIds.Contains(Expected.Key));
 	}
 	TestEqual(TEXT("actual card catalog has no missing or extra unique IDs"), ActualCardIds.Num(), ExpectedCards.Num());
-	TestEqual(TEXT("Common card count"), ActualCommonCards, 92);
-	TestEqual(TEXT("Rare card count"), ActualRareCards, 51);
-	TestEqual(TEXT("Epic card count"), ActualEpicCards, 31);
+	TestEqual(TEXT("Common card count"), ActualCommonCards, 122);
+	TestEqual(TEXT("Rare card count"), ActualRareCards, 47);
+	TestEqual(TEXT("Epic card count"), ActualEpicCards, 29);
 
 	FString CardValidationError;
 	TestTrue(TEXT("production card quality invariants accept the real catalog"),
@@ -406,7 +430,7 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 	TArray<FGameXXKCardDefinition> ReplacedCardCatalog = CardDefinitions;
 	const int32 EpicCardIndex = ReplacedCardCatalog.IndexOfByPredicate([](const FGameXXKCardDefinition& Definition)
 	{
-		return Definition.Id == TEXT("Hero.JianYiGuanHong");
+		return Definition.Id == TEXT("Npc.TusiChief.MengZhaiShiYue");
 	});
 	TestTrue(TEXT("tampered card fixture finds an explicitly classified card"), EpicCardIndex != INDEX_NONE);
 	if (EpicCardIndex != INDEX_NONE)

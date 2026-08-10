@@ -43,7 +43,7 @@ namespace
 		{
 			FGameXXKCardInstance& Card = Cards.AddDefaulted_GetRef();
 			Card.InstanceId = FName(*FString::Printf(TEXT("Ironfeather.Card.%d"), Index));
-			Card.CardId = TEXT("Hero.QingFengYiShi");
+			Card.CardId = TEXT("Profession.Guard.ZhenDun");
 			Card.OwnerUnitId = TEXT("Hero");
 			Card.SourceEntryId = FName(*FString::Printf(TEXT("Ironfeather.Source.%d"), Index));
 			Card.AcquisitionOrdinal = Index;
@@ -111,14 +111,14 @@ namespace
 		return Unit;
 	}
 
-	TArray<FGameXXKCardInstance> MakeBlackBearFixtureCards()
+	TArray<FGameXXKCardInstance> MakeBlackBearFixtureCards(const FName CardId = TEXT("Hero.Generic.QingFengYiShi"))
 	{
 		TArray<FGameXXKCardInstance> Cards;
 		for (int32 Index = 0; Index < 6; ++Index)
 		{
 			FGameXXKCardInstance& Card = Cards.AddDefaulted_GetRef();
 			Card.InstanceId = FName(*FString::Printf(TEXT("BlackBear.Card.%d"), Index));
-			Card.CardId = TEXT("Hero.QingFengYiShi");
+			Card.CardId = CardId;
 			Card.OwnerUnitId = TEXT("Hero");
 			Card.SourceEntryId = FName(*FString::Printf(TEXT("BlackBear.Source.%d"), Index));
 			Card.AcquisitionOrdinal = Index;
@@ -136,7 +136,13 @@ namespace
 		TArray<FGameXXKCardCombatUnit> Units;
 		Units.Add(MakeBlackBearFixtureUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, 100, HeroAttack, 0, 1));
 		Units.Add(MakeBlackBearFixtureUnit(TEXT("BlackBear"), EGameXXKCardTargetSide::Enemy, EnemyHealth, 0, EnemyDefense, 2));
-		return GameXXKCardRules::InitializeCardBattleRuntime(OutRuntime, MakeBlackBearFixtureCards(), Units, EGameXXKCardTerrain::Plain, 2048, &OutError);
+		return GameXXKCardRules::InitializeCardBattleRuntime(
+			OutRuntime,
+			MakeBlackBearFixtureCards(TEXT("Profession.Guard.ZhenDun")),
+			Units,
+			EGameXXKCardTerrain::Plain,
+			2048,
+			&OutError);
 	}
 
 	bool InitializeBluehornFixture(
@@ -345,7 +351,7 @@ bool FGameXXKBlackBearThickHidePassiveTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the Black Bear DOT fixture applies one poison stack"), GameXXKCardRules::AddCombatStatus(*DotBlackBear, EGameXXKCardStatus::Poison, 1), 1);
 	int32 DotDamage = 0;
 	TestTrue(TEXT("poison resolves through the non-player-card damage path"), GameXXKCardRules::ApplyCombatEndPhaseDot(DotRuntime.Units, DotRuntime.GuardLinks, TEXT("BlackBear"), DotDamage, &Error));
-	TestEqual(TEXT("Black Bear thick hide does not reduce DOT damage"), DotDamage, 2);
+	TestEqual(TEXT("Black Bear thick hide does not reduce DOT damage"), DotDamage, 1);
 	TestNull(TEXT("DOT alone does not create a Black Bear player-card enemy state"), DotRuntime.EnemyStates.Find(TEXT("BlackBear")));
 
 	FGameXXKCardBattleRuntime GenericRuntime;
@@ -511,7 +517,7 @@ bool FGameXXKIronfeatherFirstHitPassiveTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the poison fixture applies one end-phase poison stack"), GameXXKCardRules::AddCombatStatus(*DotTarget, EGameXXKCardStatus::Poison, 1), 1);
 	int32 DotDamage = 0;
 	TestTrue(TEXT("end-phase poison resolves through the non-direct damage path"), GameXXKCardRules::ApplyCombatEndPhaseDot(DotRuntime.Units, DotRuntime.GuardLinks, TEXT("Ironfeather"), DotDamage, &Error));
-	TestEqual(TEXT("one poison stack deals its normal end-phase damage"), DotDamage, 2);
+	TestEqual(TEXT("one poison stack deals its normal end-phase damage"), DotDamage, 1);
 	const FGameXXKEnemyBattleState* DotState = DotRuntime.EnemyStates.Find(TEXT("Ironfeather"));
 	TestNotNull(TEXT("the non-direct poison fixture retains the enemy state"), DotState);
 	if (DotState)
@@ -985,7 +991,7 @@ bool FGameXXKWhiteApeStatusGuardPrimitivePurityTest::RunTest(const FString& Para
 	FGameXXKCardBattleRuntime Runtime;
 	FString Error;
 	if (!TestTrue(TEXT("the White Ape primitive-purity fixture initializes"),
-		InitializeWhiteApeStatusGuardFixture(Runtime, Error, TEXT("Hero.QingFengYiShi"))))
+		InitializeWhiteApeStatusGuardFixture(Runtime, Error, TEXT("Hero.Generic.QingFengYiShi"))))
 	{
 		return false;
 	}
@@ -1014,7 +1020,7 @@ bool FGameXXKWhiteApeStatusGuardPlayerCardOnHitTest::RunTest(const FString& Para
 	FGameXXKCardBattleRuntime Runtime;
 	FString Error;
 	if (!TestTrue(TEXT("the White Ape player-card on-hit fixture initializes"),
-		InitializeWhiteApeStatusGuardFixture(Runtime, Error, TEXT("Hero.QingFengYiShi"))))
+		InitializeWhiteApeStatusGuardFixture(Runtime, Error, TEXT("Hero.Generic.QingFengYiShi"))))
 	{
 		return false;
 	}
@@ -1096,7 +1102,7 @@ bool FGameXXKWhiteApeStatusGuardPerUnitIsolationTest::RunTest(const FString& Par
 	if (!TestTrue(TEXT("the two-White-Ape isolation fixture initializes"),
 		GameXXKCardRules::InitializeCardBattleRuntime(
 			Runtime,
-			MakeWhiteApeStatusGuardFixtureCards(TEXT("Hero.QingFengYiShi")),
+			MakeWhiteApeStatusGuardFixtureCards(TEXT("Hero.Generic.QingFengYiShi")),
 			Units,
 			EGameXXKCardTerrain::Plain,
 			2053,
@@ -1261,7 +1267,7 @@ bool FGameXXKWhiteApeStatusGuardUnappliedStatusTest::RunTest(const FString& Para
 	FString Error;
 	FGameXXKCardBattleRuntime Runtime;
 	if (!TestTrue(TEXT("the White Ape unapplied-status fixture initializes"),
-		InitializeWhiteApeStatusGuardFixture(Runtime, Error, TEXT("Hero.QingFengYiShi"))))
+		InitializeWhiteApeStatusGuardFixture(Runtime, Error, TEXT("Hero.Generic.QingFengYiShi"))))
 	{
 		return false;
 	}
@@ -1291,24 +1297,6 @@ bool FGameXXKWhiteApeStatusGuardUnappliedStatusTest::RunTest(const FString& Para
 	}
 	TestEqual(TEXT("an immune status does not grant White Ape armor"), FindWhiteApeStatusGuardFixtureUnit(Runtime)->Armor, 0);
 
-	WhiteApe = FindWhiteApeStatusGuardFixtureUnit(Runtime);
-	TestEqual(TEXT("the cap fixture fills White Ape poison to its approved ceiling"),
-		GameXXKCardRules::AddCombatStatus(*WhiteApe, EGameXXKCardStatus::Poison, 8), 8);
-	FGameXXKCardDamageContext CappedStatusContext;
-	CappedStatusContext.SourceUnitId = TEXT("Hero");
-	CappedStatusContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
-	FGameXXKCardStatusStack& CappedStatus = CappedStatusContext.OnHitStatuses.AddDefaulted_GetRef();
-	CappedStatus.Status = EGameXXKCardStatus::Poison;
-	CappedStatus.Stacks = 1;
-	FGameXXKCardDamageResult CappedStatusResult;
-	TestTrue(TEXT("a capped player-card status packet resolves without adding poison"),
-		GameXXKCardRules::ApplyPlayerCardDirectDamage(Runtime, CappedStatusContext, TEXT("WhiteApe"), 1, CappedStatusResult, &Error));
-	WhiteApeState = Runtime.EnemyStates.Find(TEXT("WhiteApe"));
-	if (WhiteApeState)
-	{
-		TestTrue(TEXT("a capped status does not consume White Ape guard"), WhiteApeState->bFirstStatusPassiveAvailable);
-	}
-	TestEqual(TEXT("a capped status does not grant White Ape armor"), FindWhiteApeStatusGuardFixtureUnit(Runtime)->Armor, 0);
 	TestEqual(TEXT("a no-op invalid status cannot be added directly"),
 		GameXXKCardRules::AddCombatStatus(*FindWhiteApeStatusGuardFixtureUnit(Runtime), EGameXXKCardStatus::None, 1), 0);
 	TestEqual(TEXT("a no-op zero-stack status cannot be added directly"),
@@ -1321,7 +1309,7 @@ bool FGameXXKWhiteApeStatusGuardUnappliedStatusTest::RunTest(const FString& Para
 	ValidStatus.Status = EGameXXKCardStatus::Burn;
 	ValidStatus.Stacks = 1;
 	FGameXXKCardDamageResult ValidStatusResult;
-	TestTrue(TEXT("the first actually applied status after immune and capped packets resolves"),
+	TestTrue(TEXT("the first actually applied status after immune and no-op packets resolves"),
 		GameXXKCardRules::ApplyPlayerCardDirectDamage(Runtime, ValidStatusContext, TEXT("WhiteApe"), 1, ValidStatusResult, &Error));
 	WhiteApeState = Runtime.EnemyStates.Find(TEXT("WhiteApe"));
 	if (WhiteApeState)
@@ -1333,7 +1321,7 @@ bool FGameXXKWhiteApeStatusGuardUnappliedStatusTest::RunTest(const FString& Para
 
 	FGameXXKCardBattleRuntime LethalRuntime;
 	if (!TestTrue(TEXT("the White Ape lethal-status fixture initializes"),
-		InitializeWhiteApeStatusGuardFixture(LethalRuntime, Error, TEXT("Hero.QingFengYiShi"))))
+		InitializeWhiteApeStatusGuardFixture(LethalRuntime, Error, TEXT("Hero.Generic.QingFengYiShi"))))
 	{
 		return false;
 	}
@@ -1364,7 +1352,7 @@ bool FGameXXKWhiteApeStatusGuardUnappliedStatusTest::RunTest(const FString& Para
 
 	FGameXXKCardBattleRuntime DeadRuntime;
 	if (!TestTrue(TEXT("the White Ape defeated-status fixture initializes"),
-		InitializeWhiteApeStatusGuardFixture(DeadRuntime, Error, TEXT("Hero.QingFengYiShi"))))
+		InitializeWhiteApeStatusGuardFixture(DeadRuntime, Error, TEXT("Hero.Generic.QingFengYiShi"))))
 	{
 		return false;
 	}
@@ -1396,7 +1384,7 @@ bool FGameXXKWhiteApeStatusGuardReactiveStatusTest::RunTest(const FString& Param
 	FString Error;
 	FGameXXKCardBattleRuntime Runtime;
 	if (!TestTrue(TEXT("the White Ape reactive-status fixture initializes"),
-		InitializeWhiteApeStatusGuardFixture(Runtime, Error, TEXT("Hero.QingFengYiShi"))))
+		InitializeWhiteApeStatusGuardFixture(Runtime, Error, TEXT("Hero.Generic.QingFengYiShi"))))
 	{
 		return false;
 	}

@@ -56,7 +56,7 @@ bool FGameXXKRouteMapFixedSummaryWidgetTest::RunTest(const FString& Parameters)
 
 	FGameXXKRouteCardEntry TemporaryFreeEntry;
 	TemporaryFreeEntry.EntryId = TEXT("Route.Entry.TemporaryFree");
-	TemporaryFreeEntry.CardId = TEXT("Hero.QingFengYiShi");
+	TemporaryFreeEntry.CardId = TEXT("Hero.Generic.QingFengYiShi");
 	TemporaryFreeEntry.CurrentQuality = EGameXXKCardQuality::Common;
 	TemporaryFreeEntry.SourceKind = EGameXXKRouteCardSourceKind::HeroBase;
 	TemporaryFreeEntry.OwnerUnitId = TEXT("Hero.XuXian");

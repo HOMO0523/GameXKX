@@ -27,8 +27,8 @@ static_assert(
 	FGameXXKSaveMigration::RouteMerchantStockSchemaIntroducedSaveVersion == 10,
 	"Canonical route-merchant stock persistence requires save version 10.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 11,
-	"The permanent meta shop advances the current save version to 11.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 12,
+	"The protagonist card pool advances the current save version to 12.");
 
 namespace
 {
@@ -216,7 +216,7 @@ bool FGameXXKRouteEconomySaveVersionContractTest::RunTest(const FString& Paramet
 		TEXT("canonical merchant stock schema is version ten"),
 		FGameXXKSaveMigration::RouteMerchantStockSchemaIntroducedSaveVersion,
 		10);
-	TestEqual(TEXT("current save version is eleven"), FGameXXKSaveMigration::CurrentSaveVersion, 11);
+	TestEqual(TEXT("current save version is twelve"), FGameXXKSaveMigration::CurrentSaveVersion, 12);
 	return true;
 }
 
@@ -240,7 +240,6 @@ bool FGameXXKRouteEconomyV9MigrationTest::RunTest(const FString& Parameters)
 		State.CardRun.LastAppliedRouteSettlementId = FGuid(0x8A010001, 0x8A010002, 0x8A010003, Chapter);
 
 		const FGameXXKRouteProgress ExpectedProgress = State.CardRun.RouteProgress;
-		const FGameXXKRouteMerchantState ExpectedMerchant = State.CardRun.RouteMerchant;
 		const FGameXXKRouteSettlementReceipt ExpectedPending = State.CardRun.PendingSettlement;
 		const FGuid ExpectedLastApplied = State.CardRun.LastAppliedRouteSettlementId;
 		const TArray<FGameXXKRouteMapNode> ExpectedNodes = State.RouteMapNodes;
@@ -255,6 +254,7 @@ bool FGameXXKRouteEconomyV9MigrationTest::RunTest(const FString& Parameters)
 		ExpectedRuntime.CardRun.RouteTravelMoney = SourceBalance;
 		ExpectedRuntime.CardRun.bRouteEconomyInitialized = true;
 		ExpectedRuntime.CardRun.RewardedTravelMoneyNodes.Reset();
+		ExpectedRuntime.CardRun.RouteMerchant = FGameXXKRouteMerchantState();
 
 		const FGameXXKSaveState Source = MakeVersionedSave(
 			MoveTemp(State),
@@ -274,7 +274,9 @@ bool FGameXXKRouteEconomyV9MigrationTest::RunTest(const FString& Parameters)
 				&Migrated.RuntimeState.CardRun.RouteProgress,
 				&ExpectedProgress,
 				PPF_None));
-		TestTrue(TEXT("v8 merchant snapshot is preserved"), MerchantStatesMatch(Migrated.RuntimeState.CardRun.RouteMerchant, ExpectedMerchant));
+		TestTrue(
+			TEXT("v8 merchant snapshot is discarded by the canonical v10 stock migration"),
+			MerchantStatesMatch(Migrated.RuntimeState.CardRun.RouteMerchant, FGameXXKRouteMerchantState()));
 		TestTrue(TEXT("v8 pending settlement is preserved"), PendingSettlementsMatch(Migrated.RuntimeState.CardRun.PendingSettlement, ExpectedPending));
 		TestEqual(TEXT("v8 last-applied settlement is preserved"), Migrated.RuntimeState.CardRun.LastAppliedRouteSettlementId, ExpectedLastApplied);
 		TestTrue(TEXT("v8 legacy route-card IDs are cleared"), Migrated.RuntimeState.CardRun.RouteCardIds.IsEmpty());
@@ -425,6 +427,7 @@ bool FGameXXKRouteEconomyV9RuntimeValidationTest::RunTest(const FString& Paramet
 			Report));
 
 	FGameXXKRuntimeState ValidReceipts = MakeActiveRouteState(3);
+	ValidReceipts.CardRun.RouteMerchant = FGameXXKRouteMerchantState();
 	TestTrue(TEXT("receipt fixture initializes"), FGameXXKRouteEconomyRules::InitializeRoute(ValidReceipts.CardRun, 70));
 	ValidReceipts.CardRun.RewardedTravelMoneyNodes = {FGameXXKRouteTravelMoneyReceipt{1, 999, 20}};
 	ValidReceipts.CardRun.LastAppliedRouteSettlementId = FGuid(0x9A010001, 0x9A010002, 0x9A010003, 0x9A010004);
@@ -453,6 +456,7 @@ bool FGameXXKRouteEconomyV9RuntimeValidationTest::RunTest(const FString& Paramet
 	TestFalse(TEXT("duplicate chapter-node receipt is rejected"), FGameXXKSaveMigration::MigrateToCurrent(InvalidReceipt, Migrated, Report));
 
 	FGameXXKRuntimeState MatchingPending = MakeActiveRouteState(2);
+	MatchingPending.CardRun.RouteMerchant = FGameXXKRouteMerchantState();
 	TestTrue(TEXT("pending-settlement fixture initializes"), FGameXXKRouteEconomyRules::InitializeRoute(MatchingPending.CardRun, 71));
 	MatchingPending.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 6;
 	MatchingPending.CardRun.PendingSettlement = MakeSettlementReceipt(71, 6);

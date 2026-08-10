@@ -291,8 +291,8 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 			TestNotNull(TEXT("phase-completion DOT target remains in the persistent enemy formation"), DotEnemy);
 			if (DotEnemy)
 			{
-				TestEqual(TEXT("phase-completion fixture adds two persistent bleed stacks"),
-					GameXXKCardRules::AddCombatStatus(*DotEnemy, EGameXXKCardStatus::Bleed, 2),
+				TestEqual(TEXT("phase-completion fixture adds two persistent poison stacks"),
+					GameXXKCardRules::AddCombatStatus(*DotEnemy, EGameXXKCardStatus::Poison, 2),
 					2);
 			}
 		}
@@ -314,7 +314,7 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	Board->AdvanceVisualsAtRealTime(PresentationClock);
 	TestEqual(TEXT("phase-completion DOT omits the attacker visual identity"), FPresentationApi::Attacker(Board), NAME_None);
 	TestEqual(TEXT("phase-completion DOT retains its target identity"), FPresentationApi::Target(Board), FName(TEXT("IntentEnemy.Three")));
-	TestEqual(TEXT("target-only DOT seeds its packet-local pre-damage HUD"), Board->GetDisplayedHealthForTest(TEXT("IntentEnemy.Three")), DotHealthAfter + 6);
+	TestEqual(TEXT("target-only DOT seeds its packet-local pre-damage HUD"), Board->GetDisplayedHealthForTest(TEXT("IntentEnemy.Three")), DotHealthAfter + 2);
 	Board->AdvanceEnemyIntentPresentationForTest(999.0f);
 	TestTrue(TEXT("large enemy-intent deltas remain blocked throughout target-only DOT"), FPresentationApi::IsLocked(Board));
 	Board->AdvanceVisualsAtRealTime(PresentationClock + 1.1);
@@ -412,10 +412,19 @@ bool FGameXXKCardBattleBoardEnemyIntentRecoveryTest::RunTest(const FString& Para
 	Board->RefreshFromState();
 	TestTrue(TEXT("recovery fixture prepares saved enemy intents"), Board->EndCardPlayerPhase());
 
-	FGameXXKCardStatusStack InvalidStatus;
-	InvalidStatus.Status = EGameXXKCardStatus::Invalid;
-	InvalidStatus.Stacks = 0;
-	Subsystem->GetMutableRuntimeState().CardRun.EnemyIntents[0].OnHitStatuses = {InvalidStatus};
+	FGameXXKResolvedEnemyIntentEffect* MalformedDamageEffect =
+		Subsystem->GetMutableRuntimeState().CardRun.EnemyIntents[0].Effects.FindByPredicate(
+			[](const FGameXXKResolvedEnemyIntentEffect& Effect)
+			{
+				return Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage;
+			});
+	TestNotNull(TEXT("malformed-intent fixture retains a catalog direct-damage effect"), MalformedDamageEffect);
+	if (!MalformedDamageEffect)
+	{
+		return false;
+	}
+	MalformedDamageEffect->Status = EGameXXKCardStatus::Invalid;
+	MalformedDamageEffect->StatusStacks = 1;
 	FGameXXKCardEnemyIntent DirectResolvedIntent;
 	TArray<FGameXXKCardDamageResult> DirectDamageResults;
 	bool bDirectIntentsFinished = false;

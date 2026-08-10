@@ -313,6 +313,54 @@ namespace
 		return Result;
 	}
 
+	FGameXXKCardEffect WithResultProducer(FGameXXKCardEffect Result, const TCHAR* ResultGroupId)
+	{
+		Result.ResultGroupId = FName(ResultGroupId);
+		return Result;
+	}
+
+	FGameXXKCardEffect WithResultReference(FGameXXKCardEffect Result, const TCHAR* ResultGroupId)
+	{
+		Result.ResultRef = FName(ResultGroupId);
+		return Result;
+	}
+
+	FGameXXKCardEffect WithSource(FGameXXKCardEffect Result, const EGameXXKCardEffectSource Source)
+	{
+		Result.Source = Source;
+		return Result;
+	}
+
+	FGameXXKCardEffect WithTerrain(FGameXXKCardEffect Result, const EGameXXKCardTerrain Terrain)
+	{
+		Result.TerrainOverride = Terrain;
+		return Result;
+	}
+
+	FGameXXKCardEffect Reaction(
+		const EGameXXKCardEffectTarget Target,
+		const EGameXXKCardStatus Status,
+		const int32 Stacks)
+	{
+		return Effect(EGameXXKCardEffectType::RegisterReaction, Target, Stacks, Status);
+	}
+
+	FGameXXKHeavyArrowRule HeavyArrow(
+		const EGameXXKHeavyArrowKind Kind,
+		const int32 MagnitudePerCharge,
+		const int32 DrawPerCharge = 0,
+		const int32 MinimumChargeForEnergy = 0,
+		const int32 EnergyGain = 0)
+	{
+		FGameXXKHeavyArrowRule Rule;
+		Rule.Kind = Kind;
+		Rule.MagnitudePerCharge = MagnitudePerCharge;
+		Rule.DrawPerCharge = DrawPerCharge;
+		Rule.MinimumChargeForEnergy = MinimumChargeForEnergy;
+		Rule.EnergyGain = EnergyGain;
+		return Rule;
+	}
+
 	FGameXXKCardEffect GuardLink(
 		const EGameXXKCardEffectTarget Guardian,
 		const EGameXXKCardEffectTarget ProtectedUnit,
@@ -367,6 +415,18 @@ namespace
 		Result.Modifier.MinimumResult = MinimumResult;
 		Result.Modifier.bPersistent = true;
 		Result.Modifier.Condition = Condition;
+		return Result;
+	}
+
+	FGameXXKCardEffect WithModifierPolicy(
+		FGameXXKCardEffect Result,
+		const bool bActivePlayOnly,
+		const bool bExcludeSourceUnit = false,
+		const bool bPreserveTriggeredStatus = false)
+	{
+		Result.Modifier.bActivePlayOnly = bActivePlayOnly;
+		Result.Modifier.bExcludeSourceUnit = bExcludeSourceUnit;
+		Result.Modifier.bPreserveTriggeredStatus = bPreserveTriggeredStatus;
 		return Result;
 	}
 
@@ -464,7 +524,14 @@ namespace
 		const TCHAR* AcquisitionKey,
 		const bool bCoreProfessionCard = false,
 		const bool bIdentityLocked = false,
-		TArray<FGameXXKCardTargetModeOverride> TargetModeOverrides = {})
+		TArray<FGameXXKCardTargetModeOverride> TargetModeOverrides = {},
+		const EGameXXKCharacterRole LinkedRole = EGameXXKCharacterRole::Invalid,
+		const int32 HeroUnlockLevel = 0,
+		const bool bExhaustOnPlay = false,
+		TArray<FGameXXKCardEffect> ChargeEffects = {},
+		TArray<FGameXXKCardEffect> FinishEffects = {},
+		FGameXXKHeavyArrowRule HeavyArrowRule = {},
+		const EGameXXKHeroSpellTaskReward SpellTaskReward = EGameXXKHeroSpellTaskReward::None)
 	{
 		FGameXXKCardDefinition Definition;
 		Definition.Id = FName(CardId);
@@ -485,6 +552,13 @@ namespace
 		Definition.AcquisitionKey = FName(AcquisitionKey);
 		Definition.bCoreProfessionCard = bCoreProfessionCard;
 		Definition.bIdentityLocked = bIdentityLocked;
+		Definition.LinkedRole = LinkedRole;
+		Definition.HeroUnlockLevel = HeroUnlockLevel;
+		Definition.bExhaustOnPlay = bExhaustOnPlay;
+		Definition.ChargeEffects = MoveTemp(ChargeEffects);
+		Definition.FinishEffects = MoveTemp(FinishEffects);
+		Definition.HeavyArrow = MoveTemp(HeavyArrowRule);
+		Definition.SpellTaskReward = SpellTaskReward;
 		Cards.Add(MoveTemp(Definition));
 	}
 
@@ -492,42 +566,214 @@ namespace
 	{
 		constexpr const TCHAR* OwnerId = TEXT("Hero");
 		constexpr const TCHAR* Frame = TEXT("Style.Hero");
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.QingFengYiShi"), TEXT("青锋一式"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(100, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 2) }, Frame, TEXT("Unlock.Initial"), false, true);
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.HeYuZhan"), TEXT("鹤羽斩"), 2, 8, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(160, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::DamageFlat, EGameXXKCardEffectTarget::SelectedTarget, 6) }, Frame, TEXT("Unlock.Initial"), false, true);
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.FengShenBu"), TEXT("风身步"), 1, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::Agility), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, TEXT("Unlock.Initial"), false, true);
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.SuiYanJi"), TEXT("碎岩击"), 2, 6, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(120, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::DamageFlat, EGameXXKCardEffectTarget::SelectedTarget, 4), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Vulnerability) }, Frame, TEXT("Unlock.Initial"), false, true);
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.GuiYuanShu"), TEXT("归元术"), 2, 10, EGameXXKCardTargetMode::SingleAlly,
-			{ Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::SelectedTarget, 36), Effect(EGameXXKCardEffectType::RemoveAnyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 1) }, Frame, TEXT("Unlock.Initial"), false, true);
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.HengJianShouShi"), TEXT("横剑守势"), 1, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 8), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 4) }, Frame, TEXT("Unlock.Initial"), false, true);
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.NingShenTuNa"), TEXT("凝神吐纳"), 0, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::Momentum), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 2) }, Frame, TEXT("Unlock.Initial"), false, true);
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.GuanXi"), TEXT("观隙"), 0, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::Insight, EGameXXKCardEffectTarget::CardOwner, 2), Effect(EGameXXKCardEffectType::ReorderCards, EGameXXKCardEffectTarget::CardOwner, 2), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::NextAttackAppliesVulnerability) }, Frame, TEXT("Unlock.Initial"), false, true);
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.PoYunYiShan"), TEXT("破云一闪"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(110, EGameXXKCardEffectTarget::SelectedTarget), WithConsumptionProducer(Effect(EGameXXKCardEffectType::BonusDamagePercent, EGameXXKCardEffectTarget::SelectedTarget, 50, EGameXXKCardStatus::None, 1, ConsumeOwnerStatus(EGameXXKCardStatus::Agility, 1)), TEXT("Consumption.PoYunYiShan.Agility")), WithConsumedStackResult(Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1), TEXT("Consumption.PoYunYiShan.Agility")) }, Frame, TEXT("Unlock.FirstQuest"), false, true);
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.HuiFengZhuiJian"), TEXT("回风追剑"), 2, 6, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(120, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus, EGameXXKCardEffectTarget::SelectedTarget, 50, EGameXXKCardStatus::None, 1, ConsumeTargetStatus(EGameXXKCardStatus::Vulnerability, 2)) }, Frame, TEXT("Unlock.FirstBattleWin"), false, true);
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.JianYiGuanHong"), TEXT("剑意贯虹"), 3, 12, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(200, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::GainManaPerConsumedStatus, EGameXXKCardEffectTarget::CardOwner, 4, EGameXXKCardStatus::None, 1, ConsumeOwnerStatus(EGameXXKCardStatus::Momentum, 0)) }, Frame, TEXT("Unlock.FirstBlackBearWin"), false, true);
-		AddCard(Cards, EGameXXKCardOwner::Hero, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hero, OwnerId, nullptr,
-			TEXT("Hero.GuiYuanFanZhao"), TEXT("归元返照"), 3, 14, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::AllAllies, 18), Effect(EGameXXKCardEffectType::RemoveAnyDamageOverTime, EGameXXKCardEffectTarget::AllAllies, 1), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6) }, Frame, TEXT("Unlock.FirstTigerWin"), false, true);
+		const auto AddHero = [&](
+			const TCHAR* CardId,
+			const TCHAR* DisplayName,
+			const int32 EnergyCost,
+			const int32 ManaCost,
+			const EGameXXKCardTargetMode TargetMode,
+			TArray<FGameXXKCardEffect> Effects,
+			const EGameXXKCharacterRole LinkedRole,
+			const int32 UnlockLevel,
+			const bool bExhaustOnPlay = false,
+			TArray<FGameXXKCardEffect> ChargeEffects = {},
+			TArray<FGameXXKCardEffect> FinishEffects = {},
+			FGameXXKHeavyArrowRule HeavyArrowRule = {},
+			const EGameXXKHeroSpellTaskReward SpellTaskReward = EGameXXKHeroSpellTaskReward::None)
+		{
+			const FString AcquisitionKey = UnlockLevel == 1
+				? TEXT("Unlock.Initial")
+				: FString::Printf(TEXT("Unlock.Level.%02d"), UnlockLevel);
+			AddCard(
+				Cards,
+				EGameXXKCardOwner::Hero,
+				EGameXXKCardRarity::Permanent,
+				EGameXXKCharacterRole::Hero,
+				OwnerId,
+				nullptr,
+				CardId,
+				DisplayName,
+				EnergyCost,
+				ManaCost,
+				TargetMode,
+				MoveTemp(Effects),
+				Frame,
+				*AcquisitionKey,
+				false,
+				true,
+				{},
+				LinkedRole,
+				UnlockLevel,
+				bExhaustOnPlay,
+				MoveTemp(ChargeEffects),
+				MoveTemp(FinishEffects),
+				MoveTemp(HeavyArrowRule),
+				SpellTaskReward);
+		};
+
+		FGameXXKCardEffect QingFengDiscount = Modifier(
+			EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard,
+			EGameXXKCardEffectType::ModifyEnergyCost,
+			EGameXXKCardEffectTarget::PlayedCard,
+			-1,
+			1,
+			0,
+			{},
+			EGameXXKCardStatus::None,
+			EGameXXKCardModifierRecipientScope::SharedDeck,
+			EGameXXKCardEffectTarget::PlayedCard);
+		QingFengDiscount = WithModifierPolicy(MoveTemp(QingFengDiscount), true, true);
+		AddHero(TEXT("Hero.Generic.QingFengYiShi"), TEXT("青锋一式"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(140, EGameXXKCardEffectTarget::SelectedTarget), MoveTemp(QingFengDiscount)}, EGameXXKCharacterRole::Invalid, 1);
+
+		AddHero(TEXT("Hero.Generic.HeYuZhan"), TEXT("鹤羽斩"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(160, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::TriggerHighestDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget)}, EGameXXKCharacterRole::Invalid, 1);
+		AddHero(TEXT("Hero.Generic.FengShenBu"), TEXT("风身步"), 0, 0, EGameXXKCardTargetMode::SingleAlly,
+			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Agility), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2), Effect(EGameXXKCardEffectType::DiscardCards, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Invalid, 1, true);
+		AddHero(TEXT("Hero.Generic.SuiYanJi"), TEXT("碎岩击"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(150, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Mark)}, EGameXXKCharacterRole::Invalid, 1);
+
+		FGameXXKCardEffect GuiYuanDiscount = Modifier(
+			EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard,
+			EGameXXKCardEffectType::ModifyEnergyCost,
+			EGameXXKCardEffectTarget::PlayedCard,
+			-1,
+			1,
+			0,
+			{},
+			EGameXXKCardStatus::None,
+			EGameXXKCardModifierRecipientScope::SelectedTarget,
+			EGameXXKCardEffectTarget::SelectedTarget);
+		GuiYuanDiscount = WithModifierPolicy(MoveTemp(GuiYuanDiscount), true);
+		AddHero(TEXT("Hero.Generic.GuiYuanShu"), TEXT("归元术"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
+			{Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::SelectedTarget, 12), Effect(EGameXXKCardEffectType::Cleanse, EGameXXKCardEffectTarget::SelectedTarget), MoveTemp(GuiYuanDiscount)}, EGameXXKCharacterRole::Invalid, 1);
+		AddHero(TEXT("Hero.Generic.HengJianShouShi"), TEXT("横剑守势"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
+			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 16), Reaction(EGameXXKCardEffectTarget::SelectedTarget, EGameXXKCardStatus::Block, 1)}, EGameXXKCharacterRole::Invalid, 1);
+		AddHero(TEXT("Hero.Generic.NingShenTuNa"), TEXT("凝神吐纳"), 0, 0, EGameXXKCardTargetMode::Self,
+			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::Momentum), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 10)}, EGameXXKCharacterRole::Invalid, 1, true);
+		AddHero(TEXT("Hero.Generic.GuanXi"), TEXT("观隙"), 0, 0, EGameXXKCardTargetMode::None,
+			{Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3), Effect(EGameXXKCardEffectType::DiscardCards, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Invalid, 1, true);
+
+		constexpr const TCHAR* PoYunAgility = TEXT("Result.PoYun.Agility");
+		AddHero(TEXT("Hero.Generic.PoYunYiShan"), TEXT("破云一闪"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(160, EGameXXKCardEffectTarget::SelectedTarget), WithConsumptionProducer(Attack(100, EGameXXKCardEffectTarget::SelectedTarget, 1, ConsumeOwnerStatus(EGameXXKCardStatus::Agility, 1)), PoYunAgility), WithConsumedStackResult(Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1), PoYunAgility)}, EGameXXKCharacterRole::Invalid, 5);
+		AddHero(TEXT("Hero.Generic.XingQiHuiHuan"), TEXT("行气回环"), 0, 0, EGameXXKCardTargetMode::None,
+			{Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2), Effect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Invalid, 10, true);
+
+		constexpr const TCHAR* JianYiMomentum = TEXT("Result.JianYi.Momentum");
+		FGameXXKCardEffect JianYiEnergy = WithConsumedStackResult(Effect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1), JianYiMomentum);
+		JianYiEnergy.SecondaryMagnitude = 3;
+		AddHero(TEXT("Hero.Generic.JianYiGuanHong"), TEXT("剑意贯虹"), 2, 6, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(260, EGameXXKCardEffectTarget::SelectedTarget), WithConsumptionProducer(Effect(EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus, EGameXXKCardEffectTarget::SelectedTarget, 20, EGameXXKCardStatus::None, 1, ConsumeOwnerStatus(EGameXXKCardStatus::Momentum, 0)), JianYiMomentum), MoveTemp(JianYiEnergy)}, EGameXXKCharacterRole::Invalid, 15);
+		AddHero(TEXT("Hero.Generic.GuiYuanFanZhao"), TEXT("归元返照"), 2, 6, EGameXXKCardTargetMode::AllAllies,
+			{Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::AllAllies, 6), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 12), Effect(EGameXXKCardEffectType::Cleanse, EGameXXKCardEffectTarget::AllAllies), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2)}, EGameXXKCharacterRole::Invalid, 20);
+
+		FGameXXKCardEffect ReplayNext = WithModifierPolicy(Modifier(
+			EGameXXKCardBattleModifierTrigger::AfterNextActiveCard,
+			EGameXXKCardEffectType::ReplayTriggeredCardBase,
+			EGameXXKCardEffectTarget::PlayedCard,
+			1,
+			1,
+			0,
+			{},
+			EGameXXKCardStatus::None,
+			EGameXXKCardModifierRecipientScope::SharedDeck), true);
+		FGameXXKCardEffect ReplaySourceNextRound = WithModifierPolicy(Modifier(
+			EGameXXKCardBattleModifierTrigger::AfterFirstActiveCardNextPlayerRound,
+			EGameXXKCardEffectType::ReplaySourceCardBase,
+			EGameXXKCardEffectTarget::CardOwner,
+			1,
+			1), true);
+		AddHero(TEXT("Hero.Blade.TongFengYinShi"), TEXT("同锋引式"), 0, 0, EGameXXKCardTargetMode::SingleAlly,
+			{Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Momentum)}, EGameXXKCharacterRole::Blade, 1, false, {MoveTemp(ReplayNext)}, {MoveTemp(ReplaySourceNextRound)});
+
+		FGameXXKCardEffect TriggerBleed = WithModifierPolicy(Modifier(
+			EGameXXKCardBattleModifierTrigger::OnNextAttack,
+			EGameXXKCardEffectType::TriggerStatus,
+			EGameXXKCardEffectTarget::SelectedTarget,
+			1,
+			1,
+			0,
+			TargetHasStatus(EGameXXKCardStatus::Bleed),
+			EGameXXKCardStatus::Bleed), true, false, true);
+		FGameXXKCardEffect FinishBleedDraw = WithModifierPolicy(Modifier(
+			EGameXXKCardBattleModifierTrigger::FirstActiveAttackAgainstStatusNextPlayerRound,
+			EGameXXKCardEffectType::DrawCards,
+			EGameXXKCardEffectTarget::CardOwner,
+			2,
+			1,
+			0,
+			TargetHasStatus(EGameXXKCardStatus::Bleed)), true);
+		FGameXXKCardEffect FinishBleedEnergy = WithModifierPolicy(Modifier(
+			EGameXXKCardBattleModifierTrigger::FirstActiveAttackAgainstStatusNextPlayerRound,
+			EGameXXKCardEffectType::GainEnergy,
+			EGameXXKCardEffectTarget::CardOwner,
+			1,
+			1,
+			0,
+			TargetHasStatus(EGameXXKCardStatus::Bleed)), true);
+		AddHero(TEXT("Hero.Blade.XueLuXiangCheng"), TEXT("血路相承"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(150, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 8, EGameXXKCardStatus::Bleed)}, EGameXXKCharacterRole::Blade, 1, false, {MoveTemp(TriggerBleed)}, {MoveTemp(FinishBleedDraw), MoveTemp(FinishBleedEnergy)});
+
+		FGameXXKCardEffect ChargeAgility = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::AfterNextActiveCard, EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::PlayedCard, 2, 1, 0, {}, EGameXXKCardStatus::Agility, EGameXXKCardModifierRecipientScope::SharedDeck), true);
+		FGameXXKCardEffect ChargeCounter = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::AfterNextActiveCard, EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::PlayedCard, 1, 1, 0, {}, EGameXXKCardStatus::Counter, EGameXXKCardModifierRecipientScope::SharedDeck), true);
+		FGameXXKCardEffect FinishMark = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::NextPlayerRoundStart, EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, 1, 0, {}, EGameXXKCardStatus::Mark), false);
+		FGameXXKCardEffect FinishCounter = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::NextPlayerRoundStart, EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::CardOwner, 2, 1, 0, {}, EGameXXKCardStatus::Counter), false);
+		AddHero(TEXT("Hero.Blade.YingFengHuanBu"), TEXT("迎锋换步"), 1, 0, EGameXXKCardTargetMode::Self,
+			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 3, EGameXXKCardStatus::Agility), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Counter, 2)}, EGameXXKCharacterRole::Blade, 1, false, {MoveTemp(ChargeAgility), MoveTemp(ChargeCounter)}, {MoveTemp(FinishMark), MoveTemp(FinishCounter)});
+
+		FGameXXKCardEffect MomentumAttack = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::OnNextAttack, EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus, EGameXXKCardEffectTarget::SelectedTarget, 10, 1, 0, OwnerHasStatus(EGameXXKCardStatus::Momentum), EGameXXKCardStatus::Momentum), true, false, true);
+		FGameXXKCardEffect ChargeMomentum = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::AfterNextActiveCard, EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::PlayedCard, 3, 1, 0, {}, EGameXXKCardStatus::Momentum, EGameXXKCardModifierRecipientScope::SharedDeck), true);
+		FGameXXKCardEffect FinishFree = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::BeforeFirstActiveCardNextPlayerRound, EGameXXKCardEffectType::ModifyEnergyCost, EGameXXKCardEffectTarget::PlayedCard, -99, 1, 0, {}, EGameXXKCardStatus::None, EGameXXKCardModifierRecipientScope::SelectedTarget, EGameXXKCardEffectTarget::SelectedTarget), true);
+		AddHero(TEXT("Hero.Blade.TongPaoJuShi"), TEXT("同袍聚势"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
+			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Momentum), MoveTemp(MomentumAttack)}, EGameXXKCharacterRole::Blade, 1, false, {MoveTemp(ChargeMomentum)}, {MoveTemp(FinishFree)});
+
+		AddHero(TEXT("Hero.Guard.TieBiTongShou"), TEXT("铁壁同守"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 18), Reaction(EGameXXKCardEffectTarget::SelectedTarget, EGameXXKCardStatus::Block, 2)}, EGameXXKCharacterRole::Guard, 1);
+		AddHero(TEXT("Hero.Guard.JieJiaHuanFeng"), TEXT("借甲还锋"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{WithSource(Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), EGameXXKCardEffectSource::HighestArmorAlly), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestArmorAlly, 10), Reaction(EGameXXKCardEffectTarget::HighestArmorAlly, EGameXXKCardStatus::Block, 1)}, EGameXXKCharacterRole::Guard, 1);
+		AddHero(TEXT("Hero.Guard.LieZhenChengFeng"), TEXT("列阵承锋"), 2, 0, EGameXXKCardTargetMode::AllAllies,
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8), Reaction(EGameXXKCardEffectTarget::AllAllies, EGameXXKCardStatus::Block, 1)}, EGameXXKCharacterRole::Guard, 1);
+		AddHero(TEXT("Hero.Guard.XuanJiaZhenYue"), TEXT("玄甲镇岳"), 2, 6, EGameXXKCardTargetMode::SingleAlly,
+			{WithSource(EffectWithSecondary(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 100, 20), EGameXXKCardEffectSource::SelectedTarget)}, EGameXXKCharacterRole::Guard, 1);
+
+		AddHero(TEXT("Hero.Healer.YiXueCuiFang"), TEXT("以血催方"), 0, 0, EGameXXKCardTargetMode::None,
+			{Effect(EGameXXKCardEffectType::LoseHealthNonlethal, EGameXXKCardEffectTarget::AllAllies, 1), EffectWithSecondary(EGameXXKCardEffectType::GainMedicineFromPartyHealthLoss, EGameXXKCardEffectTarget::CardOwner, 2, 6), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Healer, 1);
+		AddHero(TEXT("Hero.Healer.HuiChunNiMai"), TEXT("回春逆脉"), 1, 3, EGameXXKCardTargetMode::AnyLivingUnit,
+			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 10), Effect(EGameXXKCardEffectType::Cleanse, EGameXXKCardEffectTarget::SelectedTarget)}, EGameXXKCharacterRole::Healer, 1);
+		AddHero(TEXT("Hero.Healer.DuHuoTongLu"), TEXT("毒火同炉"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(130, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::Poison), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Burn), Effect(EGameXXKCardEffectType::ResolveToxicExplosion, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::Medicine)}, EGameXXKCharacterRole::Healer, 1);
+		AddHero(TEXT("Hero.Healer.BaiCaoJiZhen"), TEXT("百草济阵"), 2, 6, EGameXXKCardTargetMode::None,
+			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 6), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Poison), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Burn)}, EGameXXKCharacterRole::Healer, 1);
+
+		AddHero(TEXT("Hero.Hunter.FengYanDingXian"), TEXT("风眼定弦"), 0, 3, EGameXXKCardTargetMode::None,
+			{Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2), Effect(EGameXXKCardEffectType::DiscardCards, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::Agility), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 3, EGameXXKCardStatus::Charge)}, EGameXXKCharacterRole::Hunter, 1);
+		AddHero(TEXT("Hero.Hunter.LieYuLianShi"), TEXT("裂羽连矢"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(140, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 8, EGameXXKCardStatus::Bleed)}, EGameXXKCharacterRole::Hunter, 1, false, {}, {}, HeavyArrow(EGameXXKHeavyArrowKind::ExtraAttackPerCharge, 50));
+		AddHero(TEXT("Hero.Hunter.CuiDuChuanXin"), TEXT("淬毒穿心"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(130, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::Poison), Effect(EGameXXKCardEffectType::ResolveToxicExplosion, EGameXXKCardEffectTarget::SelectedTarget)}, EGameXXKCharacterRole::Hunter, 1, false, {}, {}, HeavyArrow(EGameXXKHeavyArrowKind::ToxicExplosionPerCharge, 1));
+		AddHero(TEXT("Hero.Hunter.HuiFengGuanRi"), TEXT("回风贯日"), 1, 6, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(150, EGameXXKCardEffectTarget::SelectedTarget)}, EGameXXKCharacterRole::Hunter, 1, false, {}, {}, HeavyArrow(EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 40, 1, 3, 1));
+
+		AddHero(TEXT("Hero.Mage.YanXuLiaoYuan"), TEXT("炎序燎原"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(100, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 4, EGameXXKCardStatus::Burn), Effect(EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Sorcerer, 1, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::Fire);
+		AddHero(TEXT("Hero.Mage.HanXuNingChuan"), TEXT("寒序凝川"), 0, 0, EGameXXKCardTargetMode::Self,
+			{Effect(EGameXXKCardEffectType::GainArmorFromCurrentManaPercent, EGameXXKCardEffectTarget::CardOwner, 25), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 6), Effect(EGameXXKCardEffectType::GainManaOverflowToArmor, EGameXXKCardEffectTarget::CardOwner, 100)}, EGameXXKCharacterRole::Sorcerer, 1, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::Ice);
+		AddHero(TEXT("Hero.Mage.LeiXuYinTing"), TEXT("雷序引霆"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(100, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Sorcerer, 1, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::Lightning);
+		AddHero(TEXT("Hero.Mage.GuiXuTongXuan"), TEXT("归序通玄"), 0, 0, EGameXXKCardTargetMode::None,
+			{Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2), Effect(EGameXXKCardEffectType::DiscardCards, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Sorcerer, 1, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::Universal);
+
+		AddHero(TEXT("Hero.Formation.GuanShiLuoZi"), TEXT("观势落子"), 0, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{Attack(80, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::FormationMaster, 1);
+		FGameXXKCardEffect TerrainBenefit = WithResultProducer(EffectWithSecondary(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 2, 3), TEXT("Result.TerrainChanged"));
+		AddHero(TEXT("Hero.Formation.YiZhenHuiXiang"), TEXT("移阵回响"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+			{MoveTemp(TerrainBenefit), WithResultReference(Effect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1), TEXT("Result.TerrainChanged"))}, EGameXXKCharacterRole::FormationMaster, 1);
+		FGameXXKCardEffect TerrainListener = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::AfterEachActiveCard, EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1, 3, 0, {}, EGameXXKCardStatus::None, EGameXXKCardModifierRecipientScope::SelectedTarget, EGameXXKCardEffectTarget::SelectedTarget), true);
+		AddHero(TEXT("Hero.Formation.LianYingBuShi"), TEXT("连营布势"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
+			{MoveTemp(TerrainListener)}, EGameXXKCharacterRole::FormationMaster, 1);
+		AddHero(TEXT("Hero.Formation.LiuHeGuiYi"), TEXT("六合归一"), 2, 6, EGameXXKCardTargetMode::SingleEnemy,
+			{WithTerrain(Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1), EGameXXKCardTerrain::Plain), WithTerrain(Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1), EGameXXKCardTerrain::Cliff), WithTerrain(Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1), EGameXXKCardTerrain::Forest), WithTerrain(Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1), EGameXXKCardTerrain::WaterShore), WithTerrain(Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1), EGameXXKCardTerrain::Village), WithTerrain(Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1), EGameXXKCardTerrain::Cave), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1)}, EGameXXKCharacterRole::FormationMaster, 1);
 	}
 
 	void AddQuestNpcCards(TArray<FGameXXKCardDefinition>& Cards)
@@ -1146,6 +1392,25 @@ TArray<FGameXXKCardDefinition> FGameXXKCardCatalog::GetCardDefinitionsForOwner(c
 	return Result;
 }
 
+TArray<FName> FGameXXKCardCatalog::GetHeroCardIdsUnlockedAtLevel(const int32 HeroLevel)
+{
+	const int32 ClampedLevel = FMath::Clamp(HeroLevel, 1, 20);
+	TArray<FName> Result;
+	TSet<FName> Seen;
+	for (const FGameXXKCardDefinition& Definition : GetAllCardDefinitions())
+	{
+		if (Definition.Owner != EGameXXKCardOwner::Hero
+			|| Definition.HeroUnlockLevel > ClampedLevel
+			|| Seen.Contains(Definition.Id))
+		{
+			continue;
+		}
+		Seen.Add(Definition.Id);
+		Result.Add(Definition.Id);
+	}
+	return Result;
+}
+
 const TArray<FGameXXKCardVisualDefinition>& FGameXXKCardCatalog::GetCardVisualDefinitions()
 {
 	static const TArray<FGameXXKCardVisualDefinition> Visuals = []
@@ -1304,7 +1569,24 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 	switch (Definition.Owner)
 	{
 	case EGameXXKCardOwner::Hero:
-		if (Definition.Role != EGameXXKCharacterRole::Hero || Definition.Rarity != EGameXXKCardRarity::Permanent || Definition.OwnerId != FName(TEXT("Hero")) || !AcquisitionText.StartsWith(TEXT("Unlock.")))
+		if (Definition.Role != EGameXXKCharacterRole::Hero
+			|| Definition.Rarity != EGameXXKCardRarity::Permanent
+			|| Definition.OwnerId != FName(TEXT("Hero"))
+			|| (Definition.HeroUnlockLevel != 1
+				&& Definition.HeroUnlockLevel != 5
+				&& Definition.HeroUnlockLevel != 10
+				&& Definition.HeroUnlockLevel != 15
+				&& Definition.HeroUnlockLevel != 20)
+			|| (Definition.LinkedRole != EGameXXKCharacterRole::Invalid
+				&& Definition.LinkedRole != EGameXXKCharacterRole::Blade
+				&& Definition.LinkedRole != EGameXXKCharacterRole::Guard
+				&& Definition.LinkedRole != EGameXXKCharacterRole::Healer
+				&& Definition.LinkedRole != EGameXXKCharacterRole::Hunter
+				&& Definition.LinkedRole != EGameXXKCharacterRole::Sorcerer
+				&& Definition.LinkedRole != EGameXXKCharacterRole::FormationMaster)
+			|| AcquisitionText != (Definition.HeroUnlockLevel == 1
+				? TEXT("Unlock.Initial")
+				: FString::Printf(TEXT("Unlock.Level.%02d"), Definition.HeroUnlockLevel)))
 		{
 			OutError = FString::Printf(TEXT("Hero metadata is invalid: %s."), *Definition.Id.ToString());
 			return false;
@@ -1336,10 +1618,59 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 		return false;
 	}
 
+	if (Definition.Owner != EGameXXKCardOwner::Hero
+		&& (Definition.HeroUnlockLevel != 0
+			|| Definition.LinkedRole != EGameXXKCharacterRole::Invalid
+			|| Definition.bExhaustOnPlay
+			|| !Definition.ChargeEffects.IsEmpty()
+			|| !Definition.FinishEffects.IsEmpty()
+			|| Definition.HeavyArrow.Kind != EGameXXKHeavyArrowKind::None
+			|| Definition.SpellTaskReward != EGameXXKHeroSpellTaskReward::None))
+	{
+		OutError = FString::Printf(TEXT("Non-hero card carries protagonist-only metadata: %s."), *Definition.Id.ToString());
+		return false;
+	}
+
+	const FGameXXKHeavyArrowRule& HeavyArrowRule = Definition.HeavyArrow;
+	if (HeavyArrowRule.Kind == EGameXXKHeavyArrowKind::None)
+	{
+		if (HeavyArrowRule.MagnitudePerCharge != 0
+			|| HeavyArrowRule.DrawPerCharge != 0
+			|| HeavyArrowRule.MinimumChargeForEnergy != 0
+			|| HeavyArrowRule.EnergyGain != 0)
+		{
+			OutError = FString::Printf(TEXT("Disabled Heavy Arrow metadata is not empty: %s."), *Definition.Id.ToString());
+			return false;
+		}
+	}
+	else if (Definition.Owner != EGameXXKCardOwner::Hero
+		|| Definition.LinkedRole != EGameXXKCharacterRole::Hunter
+		|| HeavyArrowRule.MagnitudePerCharge <= 0
+		|| HeavyArrowRule.DrawPerCharge < 0
+		|| HeavyArrowRule.MinimumChargeForEnergy < 0
+		|| HeavyArrowRule.EnergyGain < 0
+		|| ((HeavyArrowRule.MinimumChargeForEnergy == 0) != (HeavyArrowRule.EnergyGain == 0))
+		|| ((HeavyArrowRule.Kind == EGameXXKHeavyArrowKind::ExtraAttackPerCharge
+				|| HeavyArrowRule.Kind == EGameXXKHeavyArrowKind::ToxicExplosionPerCharge)
+			&& (HeavyArrowRule.DrawPerCharge != 0 || HeavyArrowRule.MinimumChargeForEnergy != 0 || HeavyArrowRule.EnergyGain != 0)))
+	{
+		OutError = FString::Printf(TEXT("Heavy Arrow metadata is incomplete: %s."), *Definition.Id.ToString());
+		return false;
+	}
+	if (Definition.SpellTaskReward != EGameXXKHeroSpellTaskReward::None
+		&& (Definition.Owner != EGameXXKCardOwner::Hero || Definition.LinkedRole != EGameXXKCharacterRole::Sorcerer))
+	{
+		OutError = FString::Printf(TEXT("Spell-task reward belongs to a non-Sorcerer protagonist card: %s."), *Definition.Id.ToString());
+		return false;
+	}
+
 	TSet<FName> ConsumptionGroups;
+	TSet<FName> ResultGroups;
 	for (const FGameXXKCardEffect& CardEffect : Definition.Effects)
 	{
-		if (CardEffect.Type == EGameXXKCardEffectType::Invalid || CardEffect.Target == EGameXXKCardEffectTarget::Invalid)
+		if (CardEffect.Type == EGameXXKCardEffectType::Invalid
+			|| CardEffect.Target == EGameXXKCardEffectTarget::Invalid
+			|| CardEffect.Source == EGameXXKCardEffectSource::Invalid)
 		{
 			OutError = FString::Printf(TEXT("Card has an invalid effect: %s."), *Definition.Id.ToString());
 			return false;
@@ -1349,7 +1680,10 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 			OutError = FString::Printf(TEXT("Card effect hit count must be positive: %s."), *Definition.Id.ToString());
 			return false;
 		}
-		if ((CardEffect.Type == EGameXXKCardEffectType::ApplyStatus || CardEffect.Type == EGameXXKCardEffectType::RemoveStatus) && !IsConcreteStatus(CardEffect.Status))
+		if ((CardEffect.Type == EGameXXKCardEffectType::ApplyStatus
+				|| CardEffect.Type == EGameXXKCardEffectType::RemoveStatus
+				|| CardEffect.Type == EGameXXKCardEffectType::RegisterReaction)
+			&& !IsConcreteStatus(CardEffect.Status))
 		{
 			OutError = FString::Printf(TEXT("Status effect has no status payload: %s."), *Definition.Id.ToString());
 			return false;
@@ -1369,6 +1703,20 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 		if (!ValidateEffectCondition(CardEffect.Condition, Definition.Id, TEXT("Effect"), OutError))
 		{
 			return false;
+		}
+		if (!CardEffect.ResultRef.IsNone() && !ResultGroups.Contains(CardEffect.ResultRef))
+		{
+			OutError = FString::Printf(TEXT("Effect result must reference an earlier producer: %s."), *Definition.Id.ToString());
+			return false;
+		}
+		if (!CardEffect.ResultGroupId.IsNone())
+		{
+			if (ResultGroups.Contains(CardEffect.ResultGroupId))
+			{
+				OutError = FString::Printf(TEXT("Effect result producer is duplicated: %s."), *Definition.Id.ToString());
+				return false;
+			}
+			ResultGroups.Add(CardEffect.ResultGroupId);
 		}
 		if (!CardEffect.ConsumedStackResultRef.IsNone() && !ConsumptionGroups.Contains(CardEffect.ConsumedStackResultRef))
 		{
@@ -1401,7 +1749,11 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 				OutError = FString::Printf(TEXT("Modifier role binding is incomplete: %s."), *Definition.Id.ToString());
 				return false;
 			}
-			if ((CardEffect.Modifier.EffectType == EGameXXKCardEffectType::ApplyStatus || CardEffect.Modifier.EffectType == EGameXXKCardEffectType::RemoveStatus) && !IsConcreteStatus(CardEffect.Modifier.Status))
+			if ((CardEffect.Modifier.EffectType == EGameXXKCardEffectType::ApplyStatus
+					|| CardEffect.Modifier.EffectType == EGameXXKCardEffectType::RemoveStatus
+					|| CardEffect.Modifier.EffectType == EGameXXKCardEffectType::RegisterReaction
+					|| CardEffect.Modifier.EffectType == EGameXXKCardEffectType::TriggerStatus)
+				&& !IsConcreteStatus(CardEffect.Modifier.Status))
 			{
 				OutError = FString::Printf(TEXT("Status modifier has no status payload: %s."), *Definition.Id.ToString());
 				return false;
@@ -1411,6 +1763,33 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 				return false;
 			}
 		}
+	}
+	const auto ValidateSupplementalEffects = [&Definition, &OutError](
+		const TArray<FGameXXKCardEffect>& Effects,
+		const TCHAR* Label)
+	{
+		if (Effects.IsEmpty())
+		{
+			return true;
+		}
+		FGameXXKCardDefinition Supplemental = Definition;
+		Supplemental.Effects = Effects;
+		Supplemental.ChargeEffects.Reset();
+		Supplemental.FinishEffects.Reset();
+		Supplemental.HeavyArrow = FGameXXKHeavyArrowRule();
+		Supplemental.SpellTaskReward = EGameXXKHeroSpellTaskReward::None;
+		FString SupplementalError;
+		if (!FGameXXKCardCatalog::ValidateCardDefinition(Supplemental, SupplementalError))
+		{
+			OutError = FString::Printf(TEXT("%s effects are invalid for %s: %s"), Label, *Definition.Id.ToString(), *SupplementalError);
+			return false;
+		}
+		return true;
+	};
+	if (!ValidateSupplementalEffects(Definition.ChargeEffects, TEXT("Charge"))
+		|| !ValidateSupplementalEffects(Definition.FinishEffects, TEXT("Finish")))
+	{
+		return false;
 	}
 	for (const FGameXXKCardTargetModeOverride& Override : Definition.TargetSpec.ModeOverrides)
 	{
@@ -1434,9 +1813,9 @@ bool FGameXXKCardCatalog::ValidateCardDefinitions(FString& OutError)
 {
 	OutError.Reset();
 	const TArray<FGameXXKCardDefinition>& Definitions = GetAllCardDefinitions();
-	if (Definitions.Num() != 174)
+	if (Definitions.Num() != 198)
 	{
-		OutError = FString::Printf(TEXT("Expected 174 card definitions but found %d."), Definitions.Num());
+		OutError = FString::Printf(TEXT("Expected 198 card definitions but found %d."), Definitions.Num());
 		return false;
 	}
 

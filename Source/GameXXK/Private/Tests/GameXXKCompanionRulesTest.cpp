@@ -66,7 +66,7 @@ bool FGameXXKCompanionRulesTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("the default five-card selection is valid against its unlocked personal pool"), FGameXXKCompanionRules::ValidateSelectedPersonalCards(Companion, Companion.SelectedCardIds, nullptr));
 		TestTrue(TEXT("a freshly recruited companion passes complete immutable-profile validation"), FGameXXKCompanionRules::ValidatePermanentCompanionProfile(Companion, nullptr));
 		FGameXXKPermanentCompanion TamperedCompanion = Companion;
-		TamperedCompanion.PersonalCardIds[0] = TEXT("Hero.QingFengYiShi");
+		TamperedCompanion.PersonalCardIds[0] = TEXT("Hero.Generic.QingFengYiShi");
 		TestFalse(TEXT("a tampered companion pool cannot enter a partner slot"), FGameXXKCompanionRules::ValidatePermanentCompanionProfile(TamperedCompanion, nullptr));
 	}
 

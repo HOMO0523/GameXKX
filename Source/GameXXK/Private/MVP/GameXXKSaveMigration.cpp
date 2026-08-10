@@ -32,7 +32,163 @@ namespace
 	constexpr int32 EnemyCodexVersion = 6;
 	constexpr int32 StableMigrationCollectionSeed = 0x4758584B;
 	constexpr int32 RouteEntrySeedFallback = 0x13579BDF;
+	constexpr uint32 HeroCombatRandomSalt = 0xA341316CU;
 	const FName RouteEntryOwnerUnitId(TEXT("Player"));
+
+	const TArray<TPair<FName, FName>>& LegacyHeroCardPairs()
+	{
+		static const TArray<TPair<FName, FName>> Pairs = {
+			{TEXT("Hero.QingFengYiShi"), TEXT("Hero.Generic.QingFengYiShi")},
+			{TEXT("Hero.HeYuZhan"), TEXT("Hero.Generic.HeYuZhan")},
+			{TEXT("Hero.FengShenBu"), TEXT("Hero.Generic.FengShenBu")},
+			{TEXT("Hero.SuiYanJi"), TEXT("Hero.Generic.SuiYanJi")},
+			{TEXT("Hero.GuiYuanShu"), TEXT("Hero.Generic.GuiYuanShu")},
+			{TEXT("Hero.HengJianShouShi"), TEXT("Hero.Generic.HengJianShouShi")},
+			{TEXT("Hero.NingShenTuNa"), TEXT("Hero.Generic.NingShenTuNa")},
+			{TEXT("Hero.GuanXi"), TEXT("Hero.Generic.GuanXi")},
+			{TEXT("Hero.PoYunYiShan"), TEXT("Hero.Generic.PoYunYiShan")},
+			{TEXT("Hero.HuiFengZhuiJian"), TEXT("Hero.Generic.XingQiHuiHuan")},
+			{TEXT("Hero.JianYiGuanHong"), TEXT("Hero.Generic.JianYiGuanHong")},
+			{TEXT("Hero.GuiYuanFanZhao"), TEXT("Hero.Generic.GuiYuanFanZhao")}
+		};
+		return Pairs;
+	}
+
+	bool MigrateHeroCardId(FName& InOutCardId)
+	{
+		for (const TPair<FName, FName>& Pair : LegacyHeroCardPairs())
+		{
+			if (InOutCardId == Pair.Key)
+			{
+				InOutCardId = Pair.Value;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void MigrateHeroCardIds(TArray<FName>& InOutCardIds)
+	{
+		for (FName& CardId : InOutCardIds)
+		{
+			MigrateHeroCardId(CardId);
+		}
+	}
+
+	void MigrateHeroCardInstance(FGameXXKCardInstance& InOutInstance)
+	{
+		if (MigrateHeroCardId(InOutInstance.CardId))
+		{
+			InOutInstance.CurrentQuality = EGameXXKCardQuality::Common;
+		}
+	}
+
+	void MigrateHeroCardInstances(TArray<FGameXXKCardInstance>& InOutInstances)
+	{
+		for (FGameXXKCardInstance& Instance : InOutInstances)
+		{
+			MigrateHeroCardInstance(Instance);
+		}
+	}
+
+	void MigrateHeroCardSnapshot(FGameXXKResolvedCardSnapshot& InOutSnapshot)
+	{
+		if (MigrateHeroCardId(InOutSnapshot.CardId))
+		{
+			InOutSnapshot.Quality = EGameXXKCardQuality::Common;
+		}
+	}
+
+	void ConvertLegacyMedicine(FGameXXKCardBattleRuntime& InOutBattle)
+	{
+		for (FGameXXKCardCombatUnit& Unit : InOutBattle.Units)
+		{
+			int64 LegacyMedicine = 0;
+			int64 ExistingHealingBonus = 0;
+			for (const FGameXXKCardStatusStack& Stack : Unit.Statuses)
+			{
+				if (Stack.Status == EGameXXKCardStatus::Medicine && Stack.Stacks > 0)
+				{
+					LegacyMedicine = FMath::Min<int64>(MAX_int32, LegacyMedicine + Stack.Stacks);
+				}
+				else if (Stack.Status == EGameXXKCardStatus::NextHealingBonus && Stack.Stacks > 0)
+				{
+					ExistingHealingBonus = FMath::Min<int64>(99, ExistingHealingBonus + Stack.Stacks);
+				}
+			}
+			Unit.Statuses.RemoveAll([](const FGameXXKCardStatusStack& Stack)
+			{
+				return Stack.Status == EGameXXKCardStatus::Medicine
+					|| Stack.Status == EGameXXKCardStatus::NextHealingBonus;
+			});
+			const int32 MigratedHealingBonus = static_cast<int32>(FMath::Min<int64>(
+				99,
+				ExistingHealingBonus + LegacyMedicine * 6));
+			if (MigratedHealingBonus > 0)
+			{
+				FGameXXKCardStatusStack& Stack = Unit.Statuses.AddDefaulted_GetRef();
+				Stack.Status = EGameXXKCardStatus::NextHealingBonus;
+				Stack.Stacks = MigratedHealingBonus;
+			}
+		}
+	}
+
+	void MigrateHeroCardBattle(FGameXXKCardBattleRuntime& InOutBattle, const bool bConvertLegacyMedicine)
+	{
+		MigrateHeroCardIds(InOutBattle.EquippedHeroCardIds);
+		MigrateHeroCardInstances(InOutBattle.Deck.DrawPile);
+		MigrateHeroCardInstances(InOutBattle.Deck.Hand);
+		MigrateHeroCardInstances(InOutBattle.Deck.DiscardPile);
+		MigrateHeroCardInstances(InOutBattle.Deck.ExhaustPile);
+		MigrateHeroCardInstances(InOutBattle.Deck.PendingChoice.Candidates);
+		MigrateHeroCardSnapshot(InOutBattle.LastActiveCard);
+		for (FGameXXKCardBattleModifierRuntime& Modifier : InOutBattle.Modifiers)
+		{
+			MigrateHeroCardSnapshot(Modifier.SourceCardSnapshot);
+		}
+		for (FGameXXKResolvedCardSnapshot& Snapshot : InOutBattle.AutomaticResolutionQueue.PendingCards)
+		{
+			MigrateHeroCardSnapshot(Snapshot);
+		}
+		MigrateHeroCardIds(InOutBattle.HeroSpellTask.LockedHeroCardIds);
+		MigrateHeroCardIds(InOutBattle.HeroSpellTask.CompletedHeroCardIds);
+		for (FGameXXKResolvedCardSnapshot& Snapshot : InOutBattle.HeroSpellTask.FirstPlayOrder)
+		{
+			MigrateHeroCardSnapshot(Snapshot);
+		}
+		if (bConvertLegacyMedicine)
+		{
+			ConvertLegacyMedicine(InOutBattle);
+			uint32 CombatSeed = static_cast<uint32>(InOutBattle.Deck.CurrentRandomState) ^ HeroCombatRandomSalt;
+			if (CombatSeed == 0)
+			{
+				CombatSeed = HeroCombatRandomSalt;
+			}
+			InOutBattle.CombatRandomState = static_cast<int32>(CombatSeed);
+		}
+	}
+
+	bool MigrateHeroCardPool(FGameXXKRuntimeState& InOutState, FString& OutError)
+	{
+		FGameXXKCardRunState& Run = InOutState.CardRun;
+		MigrateHeroCardIds(Run.HeroUnlockedCardIds);
+		MigrateHeroCardIds(Run.HeroSelectedCardIds);
+		MigrateHeroCardIds(Run.RouteCardIds);
+		MigrateHeroCardIds(Run.PendingReward.CardIds);
+		for (FGameXXKRouteCardEntry& Entry : Run.RouteCardEntries)
+		{
+			if (MigrateHeroCardId(Entry.CardId))
+			{
+				Entry.CurrentQuality = EGameXXKCardQuality::Common;
+			}
+		}
+		for (FGameXXKCardEnemyIntent& Intent : Run.EnemyIntents)
+		{
+			MigrateHeroCardId(Intent.CardId);
+		}
+		MigrateHeroCardBattle(Run.ActiveBattle, Run.bHasActiveCardBattle);
+		return FGameXXKCardBattleAdapter::EnsureCardRunInitialized(InOutState, &OutError);
+	}
 
 	void Fail(FGameXXKSaveMigrationReport& Report, const FString& Error)
 	{
@@ -796,6 +952,13 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 
 	FGameXXKSaveState Candidate = Source;
 	Candidate.RuntimeState = RestoreOldChain(Source);
+	FString MigrationError;
+	if (Source.SaveVersion < HeroCardPoolIntroducedSaveVersion
+		&& !MigrateHeroCardPool(Candidate.RuntimeState, MigrationError))
+	{
+		Fail(OutReport, MigrationError);
+		return false;
+	}
 	if (Source.SaveVersion < MetaShopIntroducedSaveVersion)
 	{
 		Candidate.RuntimeState.MetaShop.Seed = FGameXXKMetaShopRules::DeriveSeed(Candidate.RuntimeState);
@@ -812,7 +975,6 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		MigrateThreeChapterRouteProgress(Candidate.RuntimeState);
 		MigrateLegacyEnemyDamageIntents(Candidate.RuntimeState);
 	}
-	FString MigrationError;
 	if (!ConvertLegacyEquipment(Candidate.RuntimeState, OutReport, MigrationError))
 	{
 		Fail(OutReport, MigrationError);

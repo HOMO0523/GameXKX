@@ -450,43 +450,43 @@ struct GAMEXXK_API FGameXXKCardEffectCondition
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardEffectConditionType Type = EGameXXKCardEffectConditionType::None;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardStatus Status = EGameXXKCardStatus::None;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 MinimumStatusStacks = 0;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 MinimumArmor = 0;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	float HealthPercentThreshold = 0.0f;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardTerrain Terrain = EGameXXKCardTerrain::Invalid;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardTerrain AlternateTerrain = EGameXXKCardTerrain::Invalid;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bConsumeStatus = false;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 MaxConsumedStatusStacks = 0;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bScaleMagnitudeByConsumedStacks = false;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bConsumeOwnerArmor = false;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 MaxConsumedArmor = 0;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bNegate = false;
 };
 
@@ -496,58 +496,58 @@ struct GAMEXXK_API FGameXXKCardBattleModifier
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardBattleModifierTrigger Trigger = EGameXXKCardBattleModifierTrigger::Invalid;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardEffectType EffectType = EGameXXKCardEffectType::Invalid;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardEffectTarget Target = EGameXXKCardEffectTarget::Invalid;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardModifierRecipientScope RecipientScope = EGameXXKCardModifierRecipientScope::Invalid;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardEffectTarget RecipientTarget = EGameXXKCardEffectTarget::Invalid;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCharacterRole RequiredTriggeredRole = EGameXXKCharacterRole::Invalid;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName RequiredTriggeredOwnerId = NAME_None;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardModifierExpiry Expiry = EGameXXKCardModifierExpiry::Invalid;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardTriggeredAttackTargetScope TriggeredAttackTargetScope = EGameXXKCardTriggeredAttackTargetScope::Invalid;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardStatus Status = EGameXXKCardStatus::None;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 Magnitude = 0;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 RemainingTriggers = 0;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 MinimumResult = 0;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bPersistent = false;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bActivePlayOnly = false;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bExcludeSourceUnit = false;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bPreserveTriggeredStatus = false;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKCardEffectCondition Condition;
 };
 

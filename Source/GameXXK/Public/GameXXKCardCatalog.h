@@ -17,6 +17,8 @@ public:
 	static bool ValidateCardDefinition(const FGameXXKCardDefinition& Definition, FString& OutError);
 	static bool ValidateCardDefinitions(FString& OutError);
 	static TArray<FGameXXKCardDefinition> GetCardDefinitionsForOwner(FName OwnerId);
+	/** Returns the canonical protagonist pool available at the clamped hero level, in catalog order. */
+	static TArray<FName> GetHeroCardIdsUnlockedAtLevel(int32 HeroLevel);
 
 	static const TArray<FGameXXKCardVisualDefinition>& GetCardVisualDefinitions();
 	static const FGameXXKCardVisualDefinition* FindCardVisualDefinition(FName CardId);

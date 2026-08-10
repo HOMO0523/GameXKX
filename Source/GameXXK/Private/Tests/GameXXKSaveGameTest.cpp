@@ -1,5 +1,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKEquipmentEconomyRules.h"
+#include "GameXXKEquipmentRules.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveGame.h"
@@ -127,10 +129,6 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	SourceState.PlayerXP = 42;
 	SourceState.PlayerGold = 123;
 	SourceState.PlayerHP = 37;
-	SourceState.PlayerMaxHP = 140;
-	SourceState.PlayerAttack = 33;
-	SourceState.PlayerDefense = 17;
-	SourceState.PlayerSpeed = 14;
 	SourceState.bFollowerJoined = true;
 	SourceState.bDungeonActive = true;
 	SourceState.DungeonNodeIndex = 2;
@@ -166,7 +164,26 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	SourceState.PlayerLocation = FVector(120.0f, -34.0f, 88.0f);
 	SourceState.UnlockedRegions.Add(UGameXXKMVPRules::RegionTanjiang());
 	SourceState.Inventory.Add(UGameXXKMVPRules::ItemHealingPowder(), 2);
-	TestTrue(TEXT("round-trip fixture equips the authoritative starter weapon"), UGameXXKMVPRules::EquipItem(SourceState, UGameXXKMVPRules::ItemWoodenSword()));
+	const FGameXXKEquipmentInstance* StarterWeapon = SourceState.EquipmentCollection.EquipmentInstances.FindByPredicate(
+		[](const FGameXXKEquipmentInstance& Instance)
+		{
+			return Instance.BaseEquipmentId == TEXT("Equipment.Starter.Weapon");
+		});
+	if (!TestNotNull(TEXT("round-trip fixture exposes the modern starter weapon"), StarterWeapon))
+	{
+		return false;
+	}
+	const FName ExpectedStarterWeaponInstanceId = StarterWeapon->InstanceId;
+	const FName ExpectedStarterWeaponBaseId = StarterWeapon->BaseEquipmentId;
+	FGameXXKEquipmentTransactionResult EquipResult;
+	TestTrue(
+		TEXT("round-trip fixture equips the modern starter weapon"),
+		FGameXXKEquipmentEconomyRules::Equip(
+			SourceState,
+			FGameXXKEquipmentRules::HeroCharacterId(),
+			EGameXXKEquipmentSlot::Weapon,
+			ExpectedStarterWeaponInstanceId,
+			EquipResult));
 	const int32 ExpectedPlayerHP = SourceState.PlayerHP;
 	const int32 ExpectedPlayerMaxHP = SourceState.PlayerMaxHP;
 	const int32 ExpectedPlayerAttack = SourceState.PlayerAttack;
@@ -174,9 +191,18 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	const int32 ExpectedPlayerSpeed = SourceState.PlayerSpeed;
 
 	const FGameXXKSaveState DirectSaveState = UGameXXKMVPRules::MakeSaveState(SourceState);
-	TestEqual(TEXT("current save state is version nine"), DirectSaveState.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
+	TestEqual(TEXT("save state writes the current version"), DirectSaveState.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
 	TestTrue(TEXT("save state mirrors player location flag for slot previews and probes"), DirectSaveState.bHasPlayerLocation);
 	TestEqual(TEXT("save state mirrors player location for slot previews and probes"), DirectSaveState.PlayerLocation, FVector(120.0f, -34.0f, 88.0f));
+	FGameXXKSaveState DirectValidatedState;
+	FGameXXKSaveMigrationReport DirectValidationReport;
+	const bool bDirectStateValid = FGameXXKSaveMigration::MigrateToCurrent(
+		DirectSaveState,
+		DirectValidatedState,
+		DirectValidationReport);
+	TestTrue(
+		FString::Printf(TEXT("the direct current-version save validates before slot I/O: %s"), *DirectValidationReport.Error),
+		bDirectStateValid);
 
 	TestEqual(TEXT("manual save slot count is five"), UGameXXKMVPSubsystem::GetManualSaveSlotCount(), 5);
 	TestEqual(TEXT("manual save slot 0 name"), UGameXXKMVPSubsystem::GetManualSaveSlotName(0), FString(TEXT("GameXXK_MVP_SaveSlot_1")));
@@ -184,7 +210,7 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("custom slot save succeeds"), SourceSubsystem->SaveCurrentGame(RoundTripSlot, UserIndex));
 	TestTrue(TEXT("custom slot exists after save"), UGameplayStatics::DoesSaveGameExist(RoundTripSlot, UserIndex));
-	TestFalse(TEXT("current v9 save creates no migration backup"), UGameplayStatics::DoesSaveGameExist(BackupSlotFor(RoundTripSlot), UserIndex));
+	TestFalse(TEXT("current-version save creates no migration backup"), UGameplayStatics::DoesSaveGameExist(BackupSlotFor(RoundTripSlot), UserIndex));
 
 	UGameInstance* LoadedGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* LoadedSubsystem = NewObject<UGameXXKMVPSubsystem>(LoadedGameInstance);
@@ -217,9 +243,21 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("player location flag persists"), LoadedState.bHasPlayerLocation);
 	TestEqual(TEXT("player location persists"), LoadedState.PlayerLocation, FVector(120.0f, -34.0f, 88.0f));
 	TestTrue(TEXT("Tanjiang unlock persists"), LoadedState.UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));
-	TestEqual(TEXT("derived starter weapon count persists"), LoadedState.Inventory.FindRef(UGameXXKMVPRules::ItemWoodenSword()), 1);
+	TestEqual(TEXT("modern starter equipment creates no legacy wooden-sword inventory count"), LoadedState.Inventory.FindRef(UGameXXKMVPRules::ItemWoodenSword()), 0);
 	TestEqual(TEXT("inventory consumable count persists"), LoadedState.Inventory.FindRef(UGameXXKMVPRules::ItemHealingPowder()), 2);
-	TestEqual(TEXT("equipment persists"), LoadedState.EquippedWeapon, UGameXXKMVPRules::ItemWoodenSword());
+	TestEqual(TEXT("equipment compatibility mirror persists"), LoadedState.EquippedWeapon, ExpectedStarterWeaponBaseId);
+	const FGameXXKEquipmentLoadout* LoadedHeroLoadout = LoadedState.EquipmentCollection.CharacterLoadouts.Find(
+		FGameXXKEquipmentRules::HeroCharacterId());
+	if (TestNotNull(TEXT("loaded state keeps the hero equipment loadout"), LoadedHeroLoadout))
+	{
+		TestEqual(TEXT("modern starter weapon instance persists"), LoadedHeroLoadout->WeaponInstanceId, ExpectedStarterWeaponInstanceId);
+	}
+	TestTrue(
+		TEXT("the complete modern equipment collection persists"),
+		FGameXXKEquipmentCollectionState::StaticStruct()->CompareScriptStruct(
+			&LoadedState.EquipmentCollection,
+			&SourceState.EquipmentCollection,
+			PPF_None));
 	TestEqual(TEXT("route travel-money balance persists"), LoadedState.CardRun.RouteTravelMoney, 95);
 	TestTrue(TEXT("route-economy initialization persists"), LoadedState.CardRun.bRouteEconomyInitialized);
 	TestEqual(TEXT("route travel-money receipt count persists"), LoadedState.CardRun.RewardedTravelMoneyNodes.Num(), 1);
@@ -288,7 +326,7 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	UGameInstance* StartGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* StartGameSubsystem = NewObject<UGameXXKMVPSubsystem>(StartGameInstance);
 	TestTrue(TEXT("StartGame starts a fresh new game"), StartGameSubsystem->StartGame());
-	TestEqual(TEXT("StartGame opens world map for new game"), StartGameSubsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestEqual(TEXT("StartGame enters Qingshan town for new game"), StartGameSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestFalse(TEXT("StartGame does not continue saved Tanjiang unlock"), StartGameSubsystem->IsRegionUnlocked(UGameXXKMVPRules::RegionTanjiang()));
 
 	UGameInstance* ContinueGameInstance = NewObject<UGameInstance>();
@@ -301,7 +339,7 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	UGameXXKMVPSubsystem* NewGameSubsystem = NewObject<UGameXXKMVPSubsystem>(NewGameInstance);
 	TestFalse(TEXT("Continue missing slot fails"), NewGameSubsystem->ContinueGameFromSlot(NewGameSlot, UserIndex));
 	TestTrue(TEXT("explicit new game starts missing slot state"), NewGameSubsystem->StartGame());
-	TestEqual(TEXT("new game opens world map"), NewGameSubsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestEqual(TEXT("new game enters Qingshan town"), NewGameSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestTrue(TEXT("new game unlocks Qingshan"), NewGameSubsystem->IsRegionUnlocked(UGameXXKMVPRules::RegionQingshan()));
 	TestFalse(TEXT("new game keeps Tanjiang locked"), NewGameSubsystem->IsRegionUnlocked(UGameXXKMVPRules::RegionTanjiang()));
 

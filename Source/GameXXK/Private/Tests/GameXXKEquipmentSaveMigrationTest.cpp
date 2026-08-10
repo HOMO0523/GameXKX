@@ -422,7 +422,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("meta shop schema is save version eleven"), FGameXXKSaveMigration::CurrentSaveVersion, 11);
+	TestEqual(TEXT("current save schema is version twelve"), FGameXXKSaveMigration::CurrentSaveVersion, 12);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
@@ -435,7 +435,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 	FGameXXKSaveState Migrated;
 	FGameXXKSaveMigrationReport Report;
 	TestTrue(TEXT("v10 migrates"), FGameXXKSaveMigration::MigrateToCurrent(VersionTen, Migrated, Report));
-	TestEqual(TEXT("v10 targets v11"), Migrated.SaveVersion, 11);
+	TestEqual(TEXT("v10 targets v12"), Migrated.SaveVersion, 12);
 	TestTrue(TEXT("v10 migration initializes a positive seed"), Migrated.RuntimeState.MetaShop.Seed > 0);
 	TestEqual(TEXT("v10 migration starts at ordinal zero"), Migrated.RuntimeState.MetaShop.NextPurchaseOrdinal, 0);
 
@@ -446,9 +446,9 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 
 	FGameXXKSaveState CurrentRoundTrip;
 	FGameXXKSaveMigrationReport CurrentReport;
-	TestTrue(TEXT("valid v11 save roundtrips"), FGameXXKSaveMigration::MigrateToCurrent(Migrated, CurrentRoundTrip, CurrentReport));
+	TestTrue(TEXT("valid v12 save roundtrips"), FGameXXKSaveMigration::MigrateToCurrent(Migrated, CurrentRoundTrip, CurrentReport));
 	TestTrue(
-		TEXT("v11 meta shop payload roundtrips exactly"),
+		TEXT("v12 meta shop payload roundtrips exactly"),
 		FGameXXKMetaShopState::StaticStruct()->CompareScriptStruct(
 			&CurrentRoundTrip.RuntimeState.MetaShop,
 			&Migrated.RuntimeState.MetaShop,

@@ -135,19 +135,6 @@ namespace
 		return true;
 	}
 
-	TArray<FName> GetOrderedHeroCatalogIds()
-	{
-		TArray<FName> Result;
-		for (const FGameXXKCardDefinition& Definition : FGameXXKCardCatalog::GetAllCardDefinitions())
-		{
-			if (Definition.Owner == EGameXXKCardOwner::Hero)
-			{
-				Result.Add(Definition.Id);
-			}
-		}
-		return Result;
-	}
-
 	bool ValidateHeroLoadout(const FGameXXKCardRunState& Run, FString* OutError)
 	{
 		if (Run.HeroUnlockedCardIds.Num() < HeroSelectedCardCount || Run.HeroSelectedCardIds.Num() != HeroSelectedCardCount
@@ -2176,39 +2163,44 @@ bool FGameXXKCardBattleAdapter::EnsureCardRunInitialized(FGameXXKRuntimeState& I
 		OutError->Reset();
 	}
 	FGameXXKCardRunState& Run = InOutState.CardRun;
-	const TArray<FName> HeroCatalogIds = GetOrderedHeroCatalogIds();
-	if (HeroCatalogIds.Num() != 12)
+	const TArray<FName> AllowedHeroCardIds = FGameXXKCardCatalog::GetHeroCardIdsUnlockedAtLevel(InOutState.PlayerLevel);
+	if (AllowedHeroCardIds.Num() < HeroSelectedCardCount)
 	{
-		return SetFailure(OutError, TEXT("The card catalog must expose exactly twelve fixed hero cards."));
+		return SetFailure(OutError, TEXT("The protagonist card catalog does not expose eight cards at the current level."));
 	}
-	if (Run.HeroUnlockedCardIds.IsEmpty())
+
+	// Unlock authority is derived only from hero level and canonical catalog order. This also
+	// removes unknown, duplicated, or now-level-gated IDs from older and manually edited saves.
+	Run.HeroUnlockedCardIds = AllowedHeroCardIds;
+	TArray<FName> RepairedSelection;
+	RepairedSelection.Reserve(HeroSelectedCardCount);
+	for (const FName SavedCardId : Run.HeroSelectedCardIds)
 	{
-		// The fixed hero owns all twelve permanent cards; the player equips eight of
-		// them in town.  This is deliberately separate from the selected eight-card
-		// combat loadout so the backpack editor has a real four-card swap frontier.
-		Run.HeroUnlockedCardIds = HeroCatalogIds;
-	}
-	else
-	{
-		// Early card-run saves persisted only the first eight defaults.  The hero
-		// has no progressive card unlock currency, so safely backfill every missing
-		// approved hero card while preserving the saved order and selected loadout.
-		for (const FName HeroCardId : HeroCatalogIds)
+		if (AllowedHeroCardIds.Contains(SavedCardId) && !RepairedSelection.Contains(SavedCardId))
 		{
-			if (!Run.HeroUnlockedCardIds.Contains(HeroCardId))
+			RepairedSelection.Add(SavedCardId);
+			if (RepairedSelection.Num() == HeroSelectedCardCount)
 			{
-				Run.HeroUnlockedCardIds.Add(HeroCardId);
+				break;
 			}
 		}
 	}
-	if (Run.HeroSelectedCardIds.IsEmpty())
+	for (const FName AllowedCardId : AllowedHeroCardIds)
 	{
-		if (Run.HeroUnlockedCardIds.Num() < HeroSelectedCardCount)
+		if (RepairedSelection.Num() == HeroSelectedCardCount)
 		{
-			return SetFailure(OutError, TEXT("A migrated hero does not have enough unlocked cards for the default eight-slot loadout."));
+			break;
 		}
-		Run.HeroSelectedCardIds.Append(Run.HeroUnlockedCardIds.GetData(), HeroSelectedCardCount);
+		if (!RepairedSelection.Contains(AllowedCardId))
+		{
+			RepairedSelection.Add(AllowedCardId);
+		}
 	}
+	if (RepairedSelection.Num() != HeroSelectedCardCount)
+	{
+		return SetFailure(OutError, TEXT("The protagonist card selection could not be repaired to eight unique unlocked cards."));
+	}
+	Run.HeroSelectedCardIds = MoveTemp(RepairedSelection);
 	if (Run.RouteRandomSeed == 0)
 	{
 		Run.RouteRandomSeed = InOutState.RouteSeed != 0 ? InOutState.RouteSeed : 0x13579BDF;
@@ -2424,6 +2416,7 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	{
 		return false;
 	}
+	NewRuntime.EquippedHeroCardIds = Run.HeroSelectedCardIds;
 	if (!MaterializeEquipmentBattleEffects(NewState, NewRuntime, OutError))
 	{
 		return false;

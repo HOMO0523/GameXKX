@@ -4,6 +4,7 @@
 #include "Serialization/ObjectAndNameAsStringProxyArchive.h"
 
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKCardCatalog.h"
 #include "GameXXKCardRules.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEnemyCatalog.h"
@@ -1257,17 +1258,25 @@ bool FGameXXKWhiteApeDisturbIntentTest::RunTest(const FString& Parameters)
 		FGameXXKCardBattleAdapter::BeginCardBattle(State, EGameXXKNodeKind::Battle, EGameXXKCardTerrain::Plain, 912, &Error));
 
 	const TArray<FGameXXKCardInstance> FillerCards = {
-		MakeEnemyIntentFixtureCard(TEXT("Disturb.Filler.1"), TEXT("Hero.QingFengYiShi"), 1),
-		MakeEnemyIntentFixtureCard(TEXT("Disturb.Filler.2"), TEXT("Hero.QingFengYiShi"), 2),
-		MakeEnemyIntentFixtureCard(TEXT("Disturb.Filler.3"), TEXT("Hero.QingFengYiShi"), 3),
-		MakeEnemyIntentFixtureCard(TEXT("Disturb.Filler.4"), TEXT("Hero.QingFengYiShi"), 4),
-		MakeEnemyIntentFixtureCard(TEXT("Disturb.Filler.5"), TEXT("Hero.QingFengYiShi"), 5)};
+		MakeEnemyIntentFixtureCard(TEXT("Disturb.Filler.1"), TEXT("Hero.Generic.QingFengYiShi"), 1),
+		MakeEnemyIntentFixtureCard(TEXT("Disturb.Filler.2"), TEXT("Hero.Generic.QingFengYiShi"), 2),
+		MakeEnemyIntentFixtureCard(TEXT("Disturb.Filler.3"), TEXT("Hero.Generic.QingFengYiShi"), 3),
+		MakeEnemyIntentFixtureCard(TEXT("Disturb.Filler.4"), TEXT("Hero.Generic.QingFengYiShi"), 4),
+		MakeEnemyIntentFixtureCard(TEXT("Disturb.Filler.5"), TEXT("Hero.Generic.QingFengYiShi"), 5)};
 	const TArray<FGameXXKCardInstance> NextHandCards = {
-		MakeEnemyIntentFixtureCard(TEXT("Disturb.HighLater"), TEXT("Hero.JianYiGuanHong"), 40),
-		MakeEnemyIntentFixtureCard(TEXT("Disturb.HighHigherOrdinal"), TEXT("Hero.JianYiGuanHong"), 41),
-		MakeEnemyIntentFixtureCard(TEXT("Disturb.Low"), TEXT("Hero.QingFengYiShi"), 43),
-		MakeEnemyIntentFixtureCard(TEXT("Disturb.HighEarlier"), TEXT("Hero.JianYiGuanHong"), 40),
-		MakeEnemyIntentFixtureCard(TEXT("Disturb.LowLater"), TEXT("Hero.QingFengYiShi"), 44)};
+		MakeEnemyIntentFixtureCard(TEXT("Disturb.HighLater"), TEXT("Hero.Generic.JianYiGuanHong"), 40),
+		MakeEnemyIntentFixtureCard(TEXT("Disturb.HighHigherOrdinal"), TEXT("Hero.Generic.JianYiGuanHong"), 41),
+		MakeEnemyIntentFixtureCard(TEXT("Disturb.Low"), TEXT("Hero.Generic.QingFengYiShi"), 43),
+		MakeEnemyIntentFixtureCard(TEXT("Disturb.HighEarlier"), TEXT("Hero.Generic.JianYiGuanHong"), 40),
+		MakeEnemyIntentFixtureCard(TEXT("Disturb.LowLater"), TEXT("Hero.Generic.QingFengYiShi"), 44)};
+	const FGameXXKCardDefinition* HighCostDefinition = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Generic.JianYiGuanHong"));
+	TestNotNull(TEXT("the disturbance high-cost fixture keeps its catalog definition"), HighCostDefinition);
+	if (!HighCostDefinition)
+	{
+		return false;
+	}
+	const int32 HighBaseEnergyCost = HighCostDefinition->EnergyCost;
+	const int32 SurchargedHighEnergyCost = HighBaseEnergyCost + 1;
 	TArray<FGameXXKCardInstance> AllFixtureCards = FillerCards;
 	AllFixtureCards.Append(NextHandCards);
 	TestTrue(TEXT("the deterministic disturbance fixture initializes its card ledger"),
@@ -1393,27 +1402,27 @@ bool FGameXXKWhiteApeDisturbIntentTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the disturbance enemy phase completes into a refreshed player hand"),
 		FGameXXKCardBattleAdapter::CompleteEnemyCardPhase(State, PhaseResults, &Error));
 
-	State.CardRun.ActiveBattle.Deck.SharedEnergy = 4;
+	State.CardRun.ActiveBattle.Deck.SharedEnergy = SurchargedHighEnergyCost;
 	FGameXXKCardPlayPreview EarlierHighPreview;
 	FGameXXKCardPlayPreview LaterHighPreview;
 	FGameXXKCardPlayPreview HigherOrdinalHighPreview;
 	TestTrue(TEXT("equal-cost and equal-acquisition candidates select the lexical instance ID for the White Ape surcharge"),
 		GameXXKCardRules::BuildCardPlayPreview(State.CardRun.ActiveBattle, TEXT("Disturb.HighEarlier"), EarlierHighPreview, &Error));
-	TestEqual(TEXT("the exact selected high-cost card pays one additional shared energy"), EarlierHighPreview.EffectiveEnergyCost, 4);
+	TestEqual(TEXT("the exact selected high-cost card pays one additional shared energy"), EarlierHighPreview.EffectiveEnergyCost, SurchargedHighEnergyCost);
 	TestTrue(TEXT("the competing high-cost card remains normally priced"),
 		GameXXKCardRules::BuildCardPlayPreview(State.CardRun.ActiveBattle, TEXT("Disturb.HighLater"), LaterHighPreview, &Error));
-	TestEqual(TEXT("the lexically later equal-acquisition instance remains normally priced"), LaterHighPreview.EffectiveEnergyCost, 3);
+	TestEqual(TEXT("the lexically later equal-acquisition instance remains normally priced"), LaterHighPreview.EffectiveEnergyCost, HighBaseEnergyCost);
 	TestTrue(TEXT("a higher-acquisition high-cost card remains normally priced"),
 		GameXXKCardRules::BuildCardPlayPreview(State.CardRun.ActiveBattle, TEXT("Disturb.HighHigherOrdinal"), HigherOrdinalHighPreview, &Error));
-	TestEqual(TEXT("acquisition order wins before lexical order when selecting the exact surcharge target"), HigherOrdinalHighPreview.EffectiveEnergyCost, 3);
+	TestEqual(TEXT("acquisition order wins before lexical order when selecting the exact surcharge target"), HigherOrdinalHighPreview.EffectiveEnergyCost, HighBaseEnergyCost);
 
-	State.CardRun.ActiveBattle.Deck.SharedEnergy = 3;
+	State.CardRun.ActiveBattle.Deck.SharedEnergy = SurchargedHighEnergyCost - 1;
 	FGameXXKCardPlayPreview RejectedPreview;
 	TestFalse(TEXT("insufficient shared energy rejects the surcharged card without consuming its one-shot effect"),
 		GameXXKCardRules::BuildCardPlayPreview(State.CardRun.ActiveBattle, TEXT("Disturb.HighEarlier"), RejectedPreview, &Error));
 	TestEqual(TEXT("a failed preview retains the pending one-shot cost modifier"), State.CardRun.ActiveBattle.Modifiers.Num(), 1);
 
-	State.CardRun.ActiveBattle.Deck.SharedEnergy = 4;
+	State.CardRun.ActiveBattle.Deck.SharedEnergy = SurchargedHighEnergyCost;
 	FGameXXKCardPlayResult SuccessfulPlay;
 	TestTrue(TEXT("the selected card commits at the same surcharged cost shown by preview"),
 		GameXXKCardRules::ResolveCardPlay(State.CardRun.ActiveBattle, TEXT("Disturb.HighEarlier"), TEXT("Enemy.WhiteApe.P1"), SuccessfulPlay, &Error));
@@ -1650,12 +1659,12 @@ bool FGameXXKWhiteApeDisturbIntentTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the discarded marked instance can re-enter hand before the player phase ends"),
 		GameXXKCardRules::DrawCards(DeckAfterForcedDiscard, 1, 0, &Error));
 
-	State.CardRun.ActiveBattle.Deck.SharedEnergy = 4;
+	State.CardRun.ActiveBattle.Deck.SharedEnergy = HighBaseEnergyCost;
 	FGameXXKCardPlayPreview RedrawnTargetPreview;
 	TestTrue(TEXT("the re-drawn instance remains playable after its forced-discard cleanup"),
 		GameXXKCardRules::BuildCardPlayPreview(State.CardRun.ActiveBattle, ForcedDiscardTargetId, RedrawnTargetPreview, &Error));
 	TestEqual(TEXT("a same-phase re-draw never revives the discarded instance's old White Ape surcharge"),
-		RedrawnTargetPreview.EffectiveEnergyCost, 3);
+		RedrawnTargetPreview.EffectiveEnergyCost, HighBaseEnergyCost);
 	return true;
 }
 
@@ -2961,7 +2970,7 @@ namespace
 		{
 			Cards.Add(MakeEnemyIntentFixtureCard(
 				FName(*FString::Printf(TEXT("BossPhase.%s.Card.%d"), *Spec.UnitId.ToString(), Index)),
-				TEXT("Hero.QingFengYiShi"),
+				TEXT("Hero.Generic.QingFengYiShi"),
 				Index + 1));
 		}
 		if (!GameXXKCardRules::InitializeBattleDeck(OutState.CardRun.ActiveBattle.Deck, Cards, NodeId, &OutError))
@@ -3466,6 +3475,27 @@ bool FGameXXKBossPhaseSaveReloadOneTimeTest::RunTest(const FString& Parameters)
 		}
 		TestTrue(FString::Printf(TEXT("%s keeps phase two after save/reload"), Spec.Label),
 			FindBossPhaseState(ReloadedState, Spec.UnitId) && FindBossPhaseState(ReloadedState, Spec.UnitId)->bPhaseTwo);
+		TestEqual(FString::Printf(TEXT("%s reload keeps the pending Qing Feng discount"), Spec.Label),
+			ReloadedState.CardRun.ActiveBattle.Modifiers.Num(), 1);
+		if (ReloadedState.CardRun.ActiveBattle.Modifiers.Num() == 1)
+		{
+			const FGameXXKCardBattleModifier& ReloadedDiscount = ReloadedState.CardRun.ActiveBattle.Modifiers[0].Definition;
+			TestEqual(FString::Printf(TEXT("%s reload keeps the discount trigger"), Spec.Label),
+				ReloadedDiscount.Trigger, EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard);
+			TestEqual(FString::Printf(TEXT("%s reload keeps the discount effect"), Spec.Label),
+				ReloadedDiscount.EffectType, EGameXXKCardEffectType::ModifyEnergyCost);
+			TestEqual(FString::Printf(TEXT("%s reload keeps the played-card modifier target"), Spec.Label),
+				ReloadedDiscount.Target, EGameXXKCardEffectTarget::PlayedCard);
+			TestEqual(FString::Printf(TEXT("%s reload keeps the shared-deck recipient scope"), Spec.Label),
+				ReloadedDiscount.RecipientScope, EGameXXKCardModifierRecipientScope::SharedDeck);
+			TestEqual(FString::Printf(TEXT("%s reload keeps the played-card recipient target"), Spec.Label),
+				ReloadedDiscount.RecipientTarget, EGameXXKCardEffectTarget::PlayedCard);
+			TestEqual(FString::Printf(TEXT("%s reload keeps the discount magnitude"), Spec.Label), ReloadedDiscount.Magnitude, -1);
+			TestEqual(FString::Printf(TEXT("%s reload keeps the one-shot count"), Spec.Label), ReloadedDiscount.RemainingTriggers, 1);
+			TestTrue(FString::Printf(TEXT("%s reload keeps the persistent flag"), Spec.Label), ReloadedDiscount.bPersistent);
+			TestTrue(FString::Printf(TEXT("%s reload keeps the active-play-only policy"), Spec.Label), ReloadedDiscount.bActivePlayOnly);
+			TestTrue(FString::Printf(TEXT("%s reload keeps the source-exclusion policy"), Spec.Label), ReloadedDiscount.bExcludeSourceUnit);
+		}
 
 		FGameXXKCardCombatUnit* ReloadedBoss = FindBossPhaseUnit(ReloadedState, Spec.UnitId);
 		if (!TestNotNull(FString::Printf(TEXT("%s remains addressable after reload"), Spec.Label), ReloadedBoss))

@@ -152,7 +152,7 @@ bool FGameXXKRouteCardEntriesV9VersionContractTest::RunTest(const FString& Param
 		TEXT("stable route-card entries are introduced by save version nine"),
 		TRouteCardEntriesVersionValue<FGameXXKSaveMigration>::Value,
 		9);
-	TestEqual(TEXT("the meta shop schema advances the current save version to eleven"), FGameXXKSaveMigration::CurrentSaveVersion, 11);
+	TestEqual(TEXT("the protagonist card pool advances the current save version to twelve"), FGameXXKSaveMigration::CurrentSaveVersion, 12);
 	return true;
 }
 
@@ -313,7 +313,7 @@ bool FGameXXKRouteCardEntriesV9MigrationTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	HoleState.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 9;
-	SetLegacyRouteCards(HoleState, {NAME_None, TEXT("Route.Unknown.Missing"), TEXT("Hero.QingFengYiShi"), RareCardId});
+	SetLegacyRouteCards(HoleState, {NAME_None, TEXT("Route.Unknown.Missing"), TEXT("Hero.Generic.QingFengYiShi"), RareCardId});
 	const FGameXXKSaveState HoleSource = MakeVersionedSave(HoleState, LegacyVersion);
 	FGameXXKSaveState HoleMigratedA;
 	FGameXXKSaveState HoleMigratedB;
@@ -421,8 +421,8 @@ bool FGameXXKRouteCardEntriesV9MigrationTest::RunTest(const FString& Parameters)
 			MakeVersionedSave(OrderingState, LegacyVersion),
 			OrderingRejected,
 			OrderingReport));
-	TestTrue(TEXT("route-entry migration reports the hero-loadout failure first"),
-		OrderingReport.Error.Contains(TEXT("hero")));
+	TestTrue(TEXT("v12 repairs the hero loadout before reporting the invalid route economy"),
+		OrderingReport.Error.Contains(TEXT("negative route travel-money")));
 	TestEqual(TEXT("ordered migration failure exposes no partial output"), OrderingRejected.SaveVersion, 0);
 	return true;
 }
@@ -560,7 +560,14 @@ bool FGameXXKRouteCardEntriesV9ActiveBattlePreservationTest::RunTest(const FStri
 	}
 
 	SetLegacyRouteCards(State, {RareCardId});
-	const FGameXXKCardBattleRuntime ExpectedBattle = State.CardRun.ActiveBattle;
+	FGameXXKCardBattleRuntime ExpectedBattle = State.CardRun.ActiveBattle;
+	constexpr uint32 CombatRandomSalt = 0xA341316CU;
+	uint32 ExpectedCombatSeed = static_cast<uint32>(ExpectedBattle.Deck.CurrentRandomState) ^ CombatRandomSalt;
+	if (ExpectedCombatSeed == 0)
+	{
+		ExpectedCombatSeed = CombatRandomSalt;
+	}
+	ExpectedBattle.CombatRandomState = static_cast<int32>(ExpectedCombatSeed);
 	const TArray<FGameXXKCardEnemyIntent> ExpectedIntents = State.CardRun.EnemyIntents;
 	const int32 ExpectedNextIntent = State.CardRun.NextEnemyIntentIndex;
 	const FGameXXKSaveState Source = MakeVersionedSave(

@@ -88,7 +88,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	FGameXXKCardBattleRuntime RareDamageRuntime;
 	if (!TestTrue(TEXT("Rare damage runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		RareDamageRuntime,
-		MakeQualityTestInstances(TEXT("Hero.QingFengYiShi"), 6, EGameXXKCardQuality::Rare),
+		MakeQualityTestInstances(TEXT("Route.General.PoJiaTuCi"), 6, EGameXXKCardQuality::Rare),
 		MakeHeroAndEnemyQualityUnits(),
 		EGameXXKCardTerrain::Plain,
 		9101)))
@@ -114,7 +114,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	FGameXXKCardBattleRuntime EpicArmorRuntime;
 	if (!TestTrue(TEXT("Epic armor runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		EpicArmorRuntime,
-		MakeQualityTestInstances(TEXT("Hero.HengJianShouShi"), 6, EGameXXKCardQuality::Epic),
+		MakeQualityTestInstances(TEXT("Route.General.ShouShiHuiYuan"), 6, EGameXXKCardQuality::Epic),
 		MakeHeroAndEnemyQualityUnits(),
 		EGameXXKCardTerrain::Plain,
 		9102)))
@@ -132,7 +132,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	if (EpicArmorHero)
 	{
 		TestEqual(TEXT("Epic quadruples eight armor to thirty-two"), EpicArmorHero->Armor, 32);
-		TestEqual(TEXT("Epic adds four quality mana to the base four"), EpicArmorHero->Mana, 8);
+		TestEqual(TEXT("Epic adds four quality mana to the base three"), EpicArmorHero->Mana, 7);
 	}
 	TestEqual(TEXT("Epic armor still spends the catalog's one energy"), EpicArmorRuntime.Deck.SharedEnergy, 2);
 
@@ -147,7 +147,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	FGameXXKCardBattleRuntime HealingRuntime;
 	if (!TestTrue(TEXT("Rare healing runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		HealingRuntime,
-		MakeQualityTestInstances(TEXT("Hero.GuiYuanShu"), 6, EGameXXKCardQuality::Rare),
+		MakeQualityTestInstances(TEXT("Route.General.ZhiXueSan"), 6, EGameXXKCardQuality::Rare),
 		HealingUnits,
 		EGameXXKCardTerrain::Plain,
 		9103)))
@@ -168,7 +168,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("Rare effective healing doubles thirty-six to seventy-two"), HealingEffectiveDefinition.Effects[0].Magnitude, 72);
+	TestEqual(TEXT("Rare effective healing doubles twelve to twenty-four"), HealingEffectiveDefinition.Effects[0].Magnitude, 24);
 	TestEqual(TEXT("Rare effective cleansing increases one stack to two"), HealingEffectiveDefinition.Effects[1].Magnitude, 2);
 	TestEqual(TEXT("quality does not change effective energy cost"), HealingEffectiveDefinition.EnergyCost, HealingBaseDefinition->EnergyCost);
 	TestEqual(TEXT("quality does not change effective mana cost"), HealingEffectiveDefinition.ManaCost, HealingBaseDefinition->ManaCost);
@@ -185,9 +185,9 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 		*HealingBaseDefinition,
 		HealingInstance.CurrentQuality,
 		&HealingPreview);
-	TestTrue(TEXT("quality-aware text shows the same seventy-two healing"), HealingText.Contains(TEXT("72点生命")));
-	TestTrue(TEXT("quality-aware text shows the same two-stack cleanse"), HealingText.Contains(TEXT("2层持续伤害")));
-	TestTrue(TEXT("quality-aware text preserves the catalog costs"), HealingText.Contains(TEXT("费用：2 气 / 10 内")));
+	TestTrue(TEXT("quality-aware text shows the same twenty-four healing"), HealingText.Contains(TEXT("24点生命")));
+	TestTrue(TEXT("quality-aware text shows the same two-stack bleed removal"), HealingText.Contains(TEXT("2层流血")));
+	TestTrue(TEXT("quality-aware text preserves the catalog costs"), HealingText.Contains(TEXT("费用：1 气 / 0 内")));
 
 	FGameXXKCardPlayResult HealingResult;
 	TestTrue(TEXT("Rare healing resolves through the real play transaction"), GameXXKCardRules::ResolveCardPlay(
@@ -201,23 +201,23 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Rare healing keeps the owner fixture addressable"), HealingHero);
 	if (HealedAlly)
 	{
-		TestEqual(TEXT("real resolution heals the same seventy-two shown in text"), HealedAlly->HP, 92);
+		TestEqual(TEXT("real resolution heals the same twenty-four shown in text"), HealedAlly->HP, 44);
 		TestEqual(TEXT("real resolution removes the same two stacks shown in text"),
 			GameXXKCardRules::GetCombatStatusStacks(*HealedAlly, EGameXXKCardStatus::Bleed),
 			0);
 	}
 	if (HealingHero)
 	{
-		TestEqual(TEXT("real resolution spends the unchanged ten mana"), HealingHero->Mana, 10);
+		TestEqual(TEXT("real resolution preserves mana for a zero-mana card"), HealingHero->Mana, 20);
 	}
-	TestEqual(TEXT("real resolution spends the unchanged two energy"), HealingRuntime.Deck.SharedEnergy, 1);
+	TestEqual(TEXT("real resolution spends the unchanged one energy"), HealingRuntime.Deck.SharedEnergy, 2);
 
 	// Rare draw increases one draw to two. The five-card value is only the round-refill target;
 	// card effects may grow the hand up to the twenty-card battle capacity without forcing discard.
 	FGameXXKCardBattleRuntime RareDrawRuntime;
 	if (!TestTrue(TEXT("Rare draw runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		RareDrawRuntime,
-		MakeQualityTestInstances(TEXT("Hero.FengShenBu"), 8, EGameXXKCardQuality::Rare),
+		MakeQualityTestInstances(TEXT("Npc.ZhouGuangZu.DiZhiMoTu"), 8, EGameXXKCardQuality::Rare),
 		MakeHeroAndEnemyQualityUnits(),
 		EGameXXKCardTerrain::Plain,
 		9104)))
@@ -243,7 +243,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	FGameXXKCardBattleRuntime EpicManaRuntime;
 	if (!TestTrue(TEXT("Epic mana runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		EpicManaRuntime,
-		MakeQualityTestInstances(TEXT("Hero.NingShenTuNa"), 6, EGameXXKCardQuality::Epic),
+		MakeQualityTestInstances(TEXT("Route.General.TuNaJue"), 6, EGameXXKCardQuality::Epic),
 		MakeHeroAndEnemyQualityUnits(),
 		EGameXXKCardTerrain::Plain,
 		9105)))
@@ -260,7 +260,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Epic mana keeps the hero fixture addressable"), EpicManaHero);
 	if (EpicManaHero)
 	{
-		TestEqual(TEXT("Epic adds four mana to the base two"), EpicManaHero->Mana, 6);
+		TestEqual(TEXT("Epic adds four mana to the base five"), EpicManaHero->Mana, 9);
 	}
 	TestEqual(TEXT("Epic mana preserves the catalog's zero energy cost"), EpicManaRuntime.Deck.SharedEnergy, 3);
 
@@ -268,7 +268,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	FGameXXKCardBattleRuntime EpicStatusRuntime;
 	if (!TestTrue(TEXT("Epic status runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		EpicStatusRuntime,
-		MakeQualityTestInstances(TEXT("Hero.SuiYanJi"), 6, EGameXXKCardQuality::Epic),
+		MakeQualityTestInstances(TEXT("Npc.ZhouGuangZu.YanFenFengMai"), 6, EGameXXKCardQuality::Epic),
 		MakeHeroAndEnemyQualityUnits(10, 20, 20, 1000),
 		EGameXXKCardTerrain::Plain,
 		9106)))
@@ -376,7 +376,7 @@ bool FGameXXKCardInstanceQualityValidationTest::RunTest(const FString& Parameter
 	FString InvalidQualityError;
 	TestFalse(TEXT("deck initialization rejects Invalid CurrentQuality"), GameXXKCardRules::InitializeBattleDeck(
 		PreservedDeck,
-		MakeQualityTestInstances(TEXT("Hero.QingFengYiShi"), 6, EGameXXKCardQuality::Invalid),
+		MakeQualityTestInstances(TEXT("Hero.Generic.QingFengYiShi"), 6, EGameXXKCardQuality::Invalid),
 		9201,
 		&InvalidQualityError));
 	TestFalse(TEXT("invalid quality rejection explains the failure"), InvalidQualityError.IsEmpty());
@@ -385,13 +385,13 @@ bool FGameXXKCardInstanceQualityValidationTest::RunTest(const FString& Parameter
 	FGameXXKBattleDeckState UnsupportedQualityDeck;
 	TestFalse(TEXT("deck initialization rejects unsupported serialized CurrentQuality"), GameXXKCardRules::InitializeBattleDeck(
 		UnsupportedQualityDeck,
-		MakeQualityTestInstances(TEXT("Hero.QingFengYiShi"), 6, static_cast<EGameXXKCardQuality>(255)),
+		MakeQualityTestInstances(TEXT("Hero.Generic.QingFengYiShi"), 6, static_cast<EGameXXKCardQuality>(255)),
 		9202));
 
 	FGameXXKBattleDeckState CandidateDeck;
 	if (!TestTrue(TEXT("candidate-copy quality fixture initializes"), GameXXKCardRules::InitializeBattleDeck(
 		CandidateDeck,
-		MakeQualityTestInstances(TEXT("Hero.FengShenBu"), 8, EGameXXKCardQuality::Rare),
+		MakeQualityTestInstances(TEXT("Hero.Generic.FengShenBu"), 8, EGameXXKCardQuality::Rare),
 		9203)))
 	{
 		return false;
@@ -411,7 +411,7 @@ bool FGameXXKCardInstanceQualityValidationTest::RunTest(const FString& Parameter
 	FGameXXKCardBattleRuntime InvalidPlayRuntime;
 	if (!TestTrue(TEXT("invalid-play atomicity fixture initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		InvalidPlayRuntime,
-		MakeQualityTestInstances(TEXT("Hero.QingFengYiShi"), 6, EGameXXKCardQuality::Common),
+		MakeQualityTestInstances(TEXT("Hero.Generic.QingFengYiShi"), 6, EGameXXKCardQuality::Common),
 		MakeHeroAndEnemyQualityUnits(),
 		EGameXXKCardTerrain::Plain,
 		9204)))

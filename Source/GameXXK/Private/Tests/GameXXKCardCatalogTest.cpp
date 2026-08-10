@@ -81,7 +81,7 @@ namespace
 bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 {
 	const TArray<FGameXXKCardDefinition>& Definitions = FGameXXKCardCatalog::GetAllCardDefinitions();
-	TestEqual(TEXT("catalog contains the approved 174 card definitions"), Definitions.Num(), 174);
+	TestEqual(TEXT("catalog contains the approved 198 card definitions"), Definitions.Num(), 198);
 	TestEqual(TEXT("target mode invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardTargetMode::Invalid), static_cast<uint8>(0));
 	TestEqual(TEXT("target mode terminal value remains stable"), static_cast<uint8>(EGameXXKCardTargetMode::AnyLivingUnit), static_cast<uint8>(12));
 	TestEqual(TEXT("target presentation invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardTargetPresentation::Invalid), static_cast<uint8>(0));
@@ -181,20 +181,20 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	TestEqual(TEXT("hero card count"), HeroCount, 12);
+	TestEqual(TEXT("hero card count"), HeroCount, 36);
 	TestEqual(TEXT("profession card count"), ProfessionCount, 108);
 	TestEqual(TEXT("quest NPC card count"), QuestNpcCount, 24);
 	TestEqual(TEXT("route reward card count"), RouteCount, 30);
-	TestEqual(TEXT("hero and NPC identity locks"), IdentityLockedCount, 36);
+	TestEqual(TEXT("hero and NPC identity locks"), IdentityLockedCount, 60);
 	TestEqual(TEXT("all card ids are unique"), UniqueIds.Num(), Definitions.Num());
-	TestEqual(TEXT("hero owner query preserves the hero deck size"), FGameXXKCardCatalog::GetCardDefinitionsForOwner(FName(TEXT("Hero"))).Num(), 12);
+	TestEqual(TEXT("hero owner query preserves the hero pool size"), FGameXXKCardCatalog::GetCardDefinitionsForOwner(FName(TEXT("Hero"))).Num(), 36);
 
 	FGameXXKCardDefinition MissingCard;
 	TestFalse(TEXT("missing card lookup returns false"), FGameXXKCardCatalog::FindCardDefinition(FName(TEXT("Missing.Card")), MissingCard));
 	TestNull(TEXT("pointer lookup returns null for a missing card"), FGameXXKCardCatalog::FindCardDefinition(FName(TEXT("Missing.Card"))));
 
 	const TArray<FGameXXKCardVisualDefinition>& Visuals = FGameXXKCardCatalog::GetCardVisualDefinitions();
-	TestEqual(TEXT("each card has one visual recipe"), Visuals.Num(), 174);
+	TestEqual(TEXT("each card has one visual recipe"), Visuals.Num(), 198);
 	for (const FGameXXKCardDefinition& Definition : Definitions)
 	{
 		const FGameXXKCardVisualDefinition* Visual = FGameXXKCardCatalog::FindCardVisualDefinition(Definition.Id);
@@ -218,7 +218,7 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the approved card catalog validates"), FGameXXKCardCatalog::ValidateCardDefinitions(ValidationError));
 	TestTrue(TEXT("successful validation has no error text"), ValidationError.IsEmpty());
 
-	if (const FGameXXKCardDefinition* QingFengYiShi = RequireCard(*this, TEXT("Hero.QingFengYiShi")))
+	if (const FGameXXKCardDefinition* QingFengYiShi = RequireCard(*this, TEXT("Hero.Generic.QingFengYiShi")))
 	{
 		FGameXXKCardDefinition InvalidHitCount = *QingFengYiShi;
 		InvalidHitCount.Effects[0].HitCount = 0;
@@ -263,7 +263,7 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 		TestDefinitionIsRejected(*this, TEXT("public validator rejects an active SelectedTarget effect under an all-allies override"), GroupOverrideForSelectedTarget);
 	}
 
-	if (const FGameXXKCardDefinition* FengShenBu = RequireCard(*this, TEXT("Hero.FengShenBu")))
+	if (const FGameXXKCardDefinition* FengShenBu = RequireCard(*this, TEXT("Hero.Generic.FengShenBu")))
 	{
 		FGameXXKCardDefinition MissingAppliedStatus = *FengShenBu;
 		MissingAppliedStatus.Effects[0].Status = EGameXXKCardStatus::None;
@@ -277,7 +277,7 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 		TestDefinitionIsRejected(*this, TEXT("public validator rejects TerrainIsAny without a terrain"), InvalidTerrainCondition);
 	}
 
-	if (const FGameXXKCardDefinition* PoYunYiShan = RequireCard(*this, TEXT("Hero.PoYunYiShan")))
+	if (const FGameXXKCardDefinition* PoYunYiShan = RequireCard(*this, TEXT("Hero.Generic.PoYunYiShan")))
 	{
 		FGameXXKCardDefinition InapplicableStatusConsumption = *PoYunYiShan;
 		InapplicableStatusConsumption.Effects[1].Condition.Type = EGameXXKCardEffectConditionType::TerrainIsAny;
@@ -607,7 +607,7 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 		}
 	};
 	TestConsumptionResult(TEXT("Profession.Sorcerer.XingHuoHuiShou"), EGameXXKCardEffectType::GainManaPerConsumedStatus, EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus);
-	TestConsumptionResult(TEXT("Hero.PoYunYiShan"), EGameXXKCardEffectType::BonusDamagePercent, EGameXXKCardEffectType::DrawCards);
+	TestConsumptionResult(TEXT("Hero.Generic.PoYunYiShan"), EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectType::DrawCards);
 	TestConsumptionResult(TEXT("Profession.Blade.DaoYiShouShu"), EGameXXKCardEffectType::GainManaPerConsumedStatus, EGameXXKCardEffectType::DrawCards);
 
 	const auto TestTerrainTargetOverride = [this](const TCHAR* CardId, const EGameXXKCardTerrain Terrain, const EGameXXKCardTerrain AlternateTerrain)

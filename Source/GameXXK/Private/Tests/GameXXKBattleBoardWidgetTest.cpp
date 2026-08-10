@@ -116,12 +116,16 @@ namespace
 				OutError = Error;
 				return false;
 			}
+			if (!State.CardRun.ActiveBattle.Deck.Hand.IsEmpty())
+			{
+				State.CardRun.ActiveBattle.Deck.Hand[0].CardId = TEXT("Route.General.PoJiaTuCi");
+			}
 
 			for (const FGameXXKCardInstance& CardInstance : State.CardRun.ActiveBattle.Deck.Hand)
 			{
 				// Use a known damaging, one-Qi, manually targeted attack. Selecting any
 				// manual enemy card can pick a status-only action and is not a victory fixture.
-				if (CardInstance.CardId != FName(TEXT("Hero.QingFengYiShi")))
+				if (CardInstance.CardId != FName(TEXT("Route.General.PoJiaTuCi")))
 				{
 					continue;
 				}
@@ -401,9 +405,9 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("battle board converts scaled Slate absolute cursor to widget-local targeting coordinates"), ScaledLocalCursorPosition, FVector2D(400.0f, 200.0f));
 	TestTrue(TEXT("battle targeting arrow head asset is loaded"), BattleWidget->GetTargetingArrowHeadResourcePathForTest().Contains(TEXT("T_BattleTargetArrowHead")));
 	TestEqual(TEXT("battle targeting uses all generated ink dab pieces"), BattleWidget->GetTargetingInkDabTextureCountForTest(), 12);
-	TestEqual(TEXT("the active battle hand uses the readable enlarged PSD card size"), BattleWidget->GetCardFrameRuntimeSizeForTest(), FVector2D(225.0f, 257.0f));
+	TestEqual(TEXT("the active battle hand preserves the approved current PSD card size"), BattleWidget->GetCardFrameRuntimeSizeForTest(), FVector2D(206.0f, 285.0f));
 	TestEqual(TEXT("PSD card frame stays un-tinted while ownership is carried by its strip"), BattleWidget->GetCardFrameTintForTest(), FLinearColor::White);
-	TestEqual(TEXT("hero cards use the locked original-hero portrait asset"), BattleWidget->GetCardPortraitResourcePathForTest(TEXT("Hero.QingFengYiShi")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero")));
+	TestEqual(TEXT("hero cards use the locked original-hero portrait asset"), BattleWidget->GetCardPortraitResourcePathForTest(TEXT("Hero.Generic.QingFengYiShi")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero")));
 	TestEqual(TEXT("NPC cards use their named original-art portrait asset"), BattleWidget->GetCardPortraitResourcePathForTest(TEXT("Npc.TusiChief.ZhaiZhuHaoLing")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_TusiChief.T_CardPortrait_Npc_TusiChief")));
 	TestTrue(TEXT("card UI exposes at least one card from the active hand"), BattleWidget->GetVisibleHandCardCountForTest() > 0);
 

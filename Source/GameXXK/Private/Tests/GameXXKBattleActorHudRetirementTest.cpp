@@ -118,7 +118,7 @@ namespace
 			// Pin one known, affordable manual attack instead of depending on the
 			// shuffled opening hand chosen by the fixture seed.
 			FGameXXKCardInstance& FixtureCard = State.CardRun.ActiveBattle.Deck.Hand[0];
-			FixtureCard.CardId = TEXT("Hero.QingFengYiShi");
+			FixtureCard.CardId = TEXT("Hero.Generic.QingFengYiShi");
 			FixtureCard.OwnerUnitId = Hero->UnitId;
 			State.CardRun.ActiveBattle.Deck.SharedEnergy = FMath::Max(
 				State.CardRun.ActiveBattle.Deck.SharedEnergy,
