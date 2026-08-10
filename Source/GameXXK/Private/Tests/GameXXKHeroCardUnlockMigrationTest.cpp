@@ -262,7 +262,9 @@ namespace GameXXKHeroCardUnlockMigrationTest
 		Runtime.HeroSpellTask.bActive = true;
 		Runtime.HeroSpellTask.LockedHeroCardIds = OutState.CardRun.HeroSelectedCardIds;
 		Runtime.HeroSpellTask.CompletedHeroCardIds = {TEXT("Hero.FengShenBu")};
-		Runtime.HeroSpellTask.FirstPlayOrder.Add(MakeSnapshot(TEXT("Hero.SuiYanJi"), TEXT("Player"), {TEXT("Enemy")}));
+		Runtime.HeroSpellTask.FirstPlayOrder.Add(MakeSnapshot(TEXT("Hero.FengShenBu"), TEXT("Player"), {TEXT("Player")}));
+		Runtime.HeroSpellTask.StarterReward = EGameXXKHeroSpellTaskReward::Fire;
+		Runtime.HeroSpellTask.StarterOwnerUnitId = TEXT("Player");
 		Runtime.CombatRandomState = 0;
 		OutState.CardRun.bLoadoutLockedForRoute = true;
 		OutState.CardRun.bHasActiveCardBattle = true;
@@ -380,7 +382,9 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("automatic replay snapshot migrates"), AfterBattle.AutomaticResolutionQueue.PendingCards[0].CardId, TEXT("Hero.Generic.HeYuZhan"));
 	TestEqual(TEXT("spell-task locked IDs migrate"), AfterBattle.HeroSpellTask.LockedHeroCardIds[0], MapLegacyId(BeforeBattle.HeroSpellTask.LockedHeroCardIds[0]));
 	TestEqual(TEXT("spell-task completed IDs migrate"), AfterBattle.HeroSpellTask.CompletedHeroCardIds[0], TEXT("Hero.Generic.FengShenBu"));
-	TestEqual(TEXT("spell-task first-play snapshot migrates"), AfterBattle.HeroSpellTask.FirstPlayOrder[0].CardId, TEXT("Hero.Generic.SuiYanJi"));
+	TestEqual(TEXT("spell-task first-play snapshot migrates"), AfterBattle.HeroSpellTask.FirstPlayOrder[0].CardId, TEXT("Hero.Generic.FengShenBu"));
+	TestEqual(TEXT("spell-task starter reward survives migration"), AfterBattle.HeroSpellTask.StarterReward, EGameXXKHeroSpellTaskReward::Fire);
+	TestEqual(TEXT("spell-task starter owner survives migration"), AfterBattle.HeroSpellTask.StarterOwnerUnitId, TEXT("Player"));
 	TestEqual(TEXT("retired hidden Medicine is cleared"), StatusStacks(AfterBattle, EGameXXKCardStatus::Medicine), 0);
 	TestEqual(TEXT("five legacy Medicine converts to thirty healing bonus and clamps with existing eighty"), StatusStacks(AfterBattle, EGameXXKCardStatus::NextHealingBonus), 99);
 	TestNotEqual(TEXT("a pre-v12 battle receives a non-zero independent combat seed"), AfterBattle.CombatRandomState, 0);
@@ -434,7 +438,8 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("inactive pending candidate migrates"), RouteMigrated.RuntimeState.CardRun.ActiveBattle.Deck.PendingChoice.Candidates[0].CardId, TEXT("Hero.Generic.PoYunYiShan"));
 	TestEqual(TEXT("inactive last-card snapshot migrates"), RouteMigrated.RuntimeState.CardRun.ActiveBattle.LastActiveCard.CardId, TEXT("Hero.Generic.GuiYuanFanZhao"));
 	TestEqual(TEXT("inactive replay snapshot migrates"), RouteMigrated.RuntimeState.CardRun.ActiveBattle.AutomaticResolutionQueue.PendingCards[0].CardId, TEXT("Hero.Generic.JianYiGuanHong"));
-	TestEqual(TEXT("inactive task IDs migrate"), RouteMigrated.RuntimeState.CardRun.ActiveBattle.HeroSpellTask.LockedHeroCardIds[0], TEXT("Hero.Generic.QingFengYiShi"));
+	TestTrue(TEXT("pre-v12 inactive stale task progress is cleared"),
+		RouteMigrated.RuntimeState.CardRun.ActiveBattle.HeroSpellTask.LockedHeroCardIds.IsEmpty());
 
 	return true;
 }

@@ -80,7 +80,19 @@ namespace
 		const int32 Rounds = Metrics ? Metrics->Rounds : (Outcome == TEXT("Stalemate") ? 100 : 0);
 		const int32 RemainingPartyHealth = Metrics ? Metrics->RemainingPartyHealth : 0;
 		const int32 FirstRoundDeaths = Metrics ? Metrics->FirstRoundDeaths : 0;
+		const int64 ActiveCards = Metrics ? Metrics->ActivelyPlayedCards : 0;
+		const int64 AutomaticResolutions = Metrics ? Metrics->AutomaticResolutionCount : 0;
+		const int64 EnergySpent = Metrics ? Metrics->EnergySpent : 0;
+		const int64 EnergyGained = Metrics ? Metrics->EnergyGained : 0;
+		const int64 ManaSpent = Metrics ? Metrics->ManaSpent : 0;
+		const int64 ManaGained = Metrics ? Metrics->ManaGained : 0;
+		const int64 HealingGenerated = Metrics ? Metrics->HealingGenerated : 0;
+		const int64 ArmorGenerated = Metrics ? Metrics->ArmorGenerated : 0;
+		const int64 StrandedTargetFailures = Metrics ? Metrics->StrandedTargetFailures : 0;
+		const int32 MaximumQueueDepth = Metrics ? Metrics->MaximumAutomaticQueueDepth : 0;
+		const int32 MaximumHandSize = Metrics ? Metrics->MaximumHandSize : 0;
 		const TMap<FName, int64>& Damage = Metrics ? Metrics->DamageBySource : EmptyMetrics;
+		const TMap<FName, int64>& DamageOrigins = Metrics ? Metrics->DamageByOrigin : EmptyMetrics;
 		const TMap<FName, int64>& Healing = Metrics ? Metrics->HealingBySource : EmptyMetrics;
 		const TMap<FName, int64>& Armor = Metrics ? Metrics->ArmorBySource : EmptyMetrics;
 		const TMap<FName, int64>& Produced = Metrics ? Metrics->StatusProduced : EmptyMetrics;
@@ -89,27 +101,44 @@ namespace
 			? Metrics->FailureReason.ToString()
 			: Error;
 
-		return FString::Printf(
-			TEXT("%s,%s,%s,%s,%d,%d,%s,%d,%d,%s,%d,%d,%d,%s,%s,%s,%s,%s,%s\n"),
-			*EscapeCsv(Case.CohortId.ToString()),
-			*EscapeCsv(Case.QuestNpcId.ToString()),
-			*EscapeCsv(Case.EquipmentSetId.ToString()),
-			*EscapeCsv(Case.EquipmentQualityId.ToString()),
-			Case.EnhancementLevel,
-			Case.Chapter,
-			*EscapeCsv(NodeKindLabel(Case.NodeKind)),
-			Case.SeedOrdinal,
-			Case.Seed,
-			*EscapeCsv(Outcome),
-			Rounds,
-			RemainingPartyHealth,
-			FirstRoundDeaths,
-			*EscapeCsv(SerializeMetricMap(Damage)),
-			*EscapeCsv(SerializeMetricMap(Healing)),
-			*EscapeCsv(SerializeMetricMap(Armor)),
-			*EscapeCsv(SerializeMetricMap(Produced)),
-			*EscapeCsv(SerializeMetricMap(Consumed)),
-			*EscapeCsv(Failure));
+		const auto Integer = [](const int64 Value)
+		{
+			return FString::Printf(TEXT("%lld"), Value);
+		};
+		TArray<FString> Columns = {
+			TEXT("2"),
+			EscapeCsv(Case.CohortId.ToString()),
+			EscapeCsv(Case.QuestNpcId.ToString()),
+			EscapeCsv(Case.EquipmentSetId.ToString()),
+			EscapeCsv(Case.EquipmentQualityId.ToString()),
+			Integer(Case.EnhancementLevel),
+			Integer(Case.Chapter),
+			EscapeCsv(NodeKindLabel(Case.NodeKind)),
+			Integer(Case.SeedOrdinal),
+			Integer(Case.Seed),
+			EscapeCsv(Outcome),
+			Integer(Rounds),
+			Integer(RemainingPartyHealth),
+			Integer(FirstRoundDeaths),
+			Integer(ActiveCards),
+			Integer(AutomaticResolutions),
+			Integer(EnergySpent),
+			Integer(EnergyGained),
+			Integer(ManaSpent),
+			Integer(ManaGained),
+			Integer(HealingGenerated),
+			Integer(ArmorGenerated),
+			Integer(StrandedTargetFailures),
+			Integer(MaximumQueueDepth),
+			Integer(MaximumHandSize),
+			EscapeCsv(SerializeMetricMap(Damage)),
+			EscapeCsv(SerializeMetricMap(DamageOrigins)),
+			EscapeCsv(SerializeMetricMap(Healing)),
+			EscapeCsv(SerializeMetricMap(Armor)),
+			EscapeCsv(SerializeMetricMap(Produced)),
+			EscapeCsv(SerializeMetricMap(Consumed)),
+			EscapeCsv(Failure)};
+		return FString::Join(Columns, TEXT(",")) + TEXT("\n");
 	}
 }
 
@@ -142,7 +171,7 @@ bool FGameXXKCardBalanceObservationTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	FString Csv = TEXT("cohort,quest_npc,equipment_set,equipment_quality,enhancement,chapter,node,seed_ordinal,seed,outcome,rounds,remaining_party_health,first_round_deaths,damage_by_source,healing_by_source,armor_by_source,status_produced,status_consumed,error\n");
+	FString Csv = TEXT("schema_version,cohort,quest_npc,equipment_set,equipment_quality,enhancement,chapter,node,seed_ordinal,seed,outcome,rounds,remaining_party_health,first_round_deaths,active_cards,automatic_resolutions,energy_spent,energy_gained,mana_spent,mana_gained,healing_generated,armor_generated,stranded_target_failures,maximum_queue_depth,maximum_hand_size,damage_by_source,damage_by_origin,healing_by_source,armor_by_source,status_produced,status_consumed,error\n");
 	int32 VictoryCount = 0;
 	int32 DefeatCount = 0;
 	int32 StalemateCount = 0;

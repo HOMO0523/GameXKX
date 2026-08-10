@@ -1601,6 +1601,14 @@ struct GAMEXXK_API FGameXXKCardPlayResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 HeavyArrowPrimaryBonusPercent = 0;
 
+	/** Number of automatic card snapshots/rewards completed as part of this active-card transaction. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 AutomaticResolutionCount = 0;
+
+	/** Largest saved automatic queue observed before this active-card transaction resumed it. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 MaximumAutomaticQueueDepth = 0;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bOpenedPendingChoice = false;
 };

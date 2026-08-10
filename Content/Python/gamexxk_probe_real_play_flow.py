@@ -1036,7 +1036,7 @@ def _widget_screen_summary(world, widget, diagnostic_stage_prefix="widget"):
 
 
 def _battle_scene_unit_ids(world):
-    """Use live scene units only as stable Board-HUD lookup keys."""
+    """Legacy scene-actor lookup retained only for compatibility diagnostics."""
     unit_ids = []
     for actor in _all_actors(world):
         try:
@@ -1047,6 +1047,33 @@ def _battle_scene_unit_ids(world):
             continue
         if unit_id and unit_id not in unit_ids:
             unit_ids.append(unit_id)
+    return unit_ids
+
+
+def _active_battle_unit_ids(subsystem):
+    """Read stable Board-HUD keys from the authoritative actor-free battle state."""
+    if not subsystem:
+        return []
+    try:
+        state = subsystem.get_runtime_state_copy()
+    except Exception:
+        return []
+    card_run = _struct_get(state, "card_run", "CardRun")
+    active_battle = _struct_get(card_run, "active_battle", "ActiveBattle")
+    units = _struct_get(active_battle, "units", "Units")
+    if units is None:
+        return []
+    unit_ids = []
+    try:
+        entries = list(units)
+    except Exception:
+        return []
+    for unit in entries:
+        unit_id = str(_struct_get(unit, "unit_id", "UnitId") or "")
+        living = _struct_get(unit, "b_living", "living", "bLiving", "Living")
+        if not unit_id or living is False or unit_id in unit_ids:
+            continue
+        unit_ids.append(unit_id)
     return unit_ids
 
 
@@ -1344,6 +1371,7 @@ def _battle_board_summary(world, player_controller, subsystem):
         "hand_card_box": None,
         "end_turn_button": None,
         "unit_hud_layer": None,
+        "unit_ids": [],
         "unit_huds": {},
         "projection": {
             "canvas": {"cached": None, "local_size": None, "size": None, "absolute_position": None, "absolute_size": None, "screen_rect": None, "errors": []},
@@ -1448,7 +1476,8 @@ def _battle_board_summary(world, player_controller, subsystem):
     result["projection"]["layer_geometry"] = _projection_geometry_summary(result["unit_hud_layer"])
     result["projection"]["layer_z_order"] = layer_slot["z_order"]
     result["projection"]["canvas"] = _projection_canvas_summary(result["unit_hud_layer"])
-    for unit_id in _battle_scene_unit_ids(world):
+    result["unit_ids"] = _active_battle_unit_ids(subsystem)
+    for unit_id in result["unit_ids"]:
         result["unit_huds"][unit_id] = _board_unit_hud_summary(world, board, unit_id)
     return result
 

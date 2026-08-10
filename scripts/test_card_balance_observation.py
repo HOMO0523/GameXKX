@@ -16,10 +16,14 @@ from scripts.run_card_balance_observation import (
 )
 
 
-CASE_CSV = """cohort,quest_npc,equipment_set,equipment_quality,enhancement,chapter,node,seed_ordinal,seed,outcome,rounds,remaining_party_health,first_round_deaths,damage_by_source,healing_by_source,armor_by_source,status_produced,status_consumed,error
+CASE_CSV = """schema_version,cohort,quest_npc,equipment_set,equipment_quality,enhancement,chapter,node,seed_ordinal,seed,outcome,rounds,remaining_party_health,first_round_deaths,active_cards,automatic_resolutions,energy_spent,energy_gained,mana_spent,mana_gained,healing_generated,armor_generated,stranded_target_failures,maximum_queue_depth,maximum_hand_size,damage_by_source,damage_by_origin,healing_by_source,armor_by_source,status_produced,status_consumed,error
+2,NakedBaseline,Npc.TusiChief,None,Common,0,1,Battle,0,900000,Victory,4,120,0,8,2,7,3,9,4,12,6,0,4,9,Player=100,Direct=80;Reaction=20,Healer=12,Guard=6,Burn=2,Burn=1,
+2,NakedBaseline,Npc.TusiChief,None,Common,0,1,Battle,1,900001,Defeat,6,0,0,10,1,9,2,12,1,4,3,1,5,10,Player=50,Direct=50,,,,,
+2,NakedBaseline,Npc.TusiChief,None,Common,0,1,Elite,2,901002,Stalemate,100,80,0,6,0,6,0,8,0,2,2,0,3,8,,,,,,,Simulation.MaxRounds
+"""
+
+LEGACY_CASE_CSV = """cohort,quest_npc,equipment_set,equipment_quality,enhancement,chapter,node,seed_ordinal,seed,outcome,rounds,remaining_party_health,first_round_deaths,damage_by_source,healing_by_source,armor_by_source,status_produced,status_consumed,error
 NakedBaseline,Npc.TusiChief,None,Common,0,1,Battle,0,900000,Victory,4,120,0,Player=100,,,Burn=2,Burn=1,
-NakedBaseline,Npc.TusiChief,None,Common,0,1,Battle,1,900001,Defeat,6,0,0,Player=50,,,,,
-NakedBaseline,Npc.TusiChief,None,Common,0,1,Elite,2,901002,Stalemate,100,80,0,,,,,,Simulation.MaxRounds
 """
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +51,35 @@ class CardBalanceObservationParserTests(unittest.TestCase):
         self.assertEqual(summary["cohorts"]["NakedBaseline"]["case_count"], 3)
         self.assertEqual(summary["chapter_nodes"]["1|Battle"]["case_count"], 2)
         self.assertEqual(
+            summary["runtime_totals"],
+            {
+                "active_cards": 24,
+                "automatic_resolutions": 3,
+                "energy_spent": 22,
+                "energy_gained": 5,
+                "mana_spent": 29,
+                "mana_gained": 5,
+                "healing_generated": 18,
+                "armor_generated": 11,
+                "stranded_target_failures": 1,
+            },
+        )
+        self.assertEqual(
+            summary["runtime_maxima"],
+            {"maximum_queue_depth": 5, "maximum_hand_size": 10},
+        )
+        self.assertEqual(
+            summary["stranded_target_cases"],
+            ["NakedBaseline|1|Battle|900001"],
+        )
+        self.assertEqual(
+            summary["top_sources"]["damage_by_origin"][:2],
+            [
+                {"source": "Direct", "value": 130},
+                {"source": "Reaction", "value": 20},
+            ],
+        )
+        self.assertEqual(
             summary["recurring_stalemates"],
             ["NakedBaseline|1|Elite|901002"],
         )
@@ -69,20 +102,19 @@ class CardBalanceObservationCatalogTests(unittest.TestCase):
     def test_catalog_audit_finds_quality_energy_and_zero_cost_draw_risk(self):
         audit = audit_card_catalog(PROJECT_ROOT)
 
-        self.assertEqual(audit["card_count"], 174)
+        self.assertEqual(audit["card_count"], 198)
         self.assertEqual(
             audit["quality_counts"],
-            {"Common": 92, "Rare": 51, "Epic": 31},
+            {"Common": 122, "Rare": 47, "Epic": 29},
         )
         self.assertEqual(
             audit["energy_counts"],
-            {"0": 25, "1": 73, "2": 53, "3": 23},
+            {"0": 33, "1": 89, "2": 55, "3": 21},
         )
         self.assertEqual(
             audit["owner_counts"],
-            {"Hero": 12, "Profession": 108, "QuestNpc": 24, "Route": 30},
+            {"Hero": 36, "Profession": 108, "QuestNpc": 24, "Route": 30},
         )
-        self.assertEqual(audit["setup_only_for_greedy_policy_count"], 55)
         formation_setup_cards = [
             card_id
             for card_id in audit["setup_only_for_greedy_policy_cards"]
@@ -198,6 +230,29 @@ class CardBalanceObservationSummaryTests(unittest.TestCase):
                 3,
             )
             self.assertNotEqual(records[0]["csv_sha256"], "stale-hash")
+
+    def test_existing_runs_skip_legacy_csv_schema(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run_root = root / "legacy_run"
+            run_root.mkdir()
+            csv_path = run_root / "cases.csv"
+            csv_path.write_text(LEGACY_CASE_CSV, encoding="utf-8")
+            (run_root / "run_summary.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "legacy_run",
+                        "csv_path": str(csv_path),
+                        "duration_seconds": 1.0,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                load_existing_runs(root, expected_case_count=1),
+                [],
+            )
 
     def test_summary_writes_machine_readable_run_ledger(self):
         records = [

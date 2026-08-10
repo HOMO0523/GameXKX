@@ -6,6 +6,8 @@ import sys
 
 import unreal
 
+from gamexxk_meta_shop_probe_utils import warehouse_ids_from_snapshot
+
 from gamexxk_probe_real_play_flow import (
     _all_actors,
     _enum_name,
@@ -37,12 +39,7 @@ def _warehouse_ids(subsystem) -> list[str]:
         value = subsystem.get_equipment_warehouse_snapshot()
     except Exception:
         return []
-    if isinstance(value, tuple):
-        candidates = [entry for entry in value if isinstance(entry, (list, tuple))]
-        value = candidates[-1] if candidates else []
-    if not isinstance(value, (list, tuple)):
-        return []
-    return [str(entry) for entry in value]
+    return warehouse_ids_from_snapshot(value)
 
 
 def _player_gold(subsystem) -> int:

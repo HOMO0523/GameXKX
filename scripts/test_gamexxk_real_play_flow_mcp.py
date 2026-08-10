@@ -16,6 +16,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = PROJECT_ROOT / "scripts"
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
+CONTENT_PYTHON_ROOT = PROJECT_ROOT / "Content" / "Python"
+if str(CONTENT_PYTHON_ROOT) not in sys.path:
+    sys.path.insert(0, str(CONTENT_PYTHON_ROOT))
 
 import gamexxk_real_play_flow_mcp as flow
 
@@ -27,8 +30,191 @@ _ONE_PIXEL_PNG = base64.b64decode(
 
 
 class SlateScreenshotFallbackTest(unittest.TestCase):
-    def test_real_flow_targets_the_verified_battle_town_map(self) -> None:
-        self.assertEqual("L_BattleTown", flow.BATTLE_MAP_TOKEN)
+    def test_meta_shop_probe_accepts_unreal_style_iterable_arrays(self) -> None:
+        from gamexxk_meta_shop_probe_utils import warehouse_ids_from_snapshot
+
+        class UnrealStyleArray:
+            def __iter__(self):
+                return iter(("Equipment.A", "Equipment.B"))
+
+        self.assertEqual(
+            ["Equipment.A", "Equipment.B"],
+            warehouse_ids_from_snapshot(UnrealStyleArray()),
+        )
+
+    def test_real_flow_targets_the_current_route_map_battle_overlay(self) -> None:
+        self.assertEqual("L_RouteMap", flow.BATTLE_MAP_TOKEN)
+
+    def test_current_battle_is_a_board_owned_overlay_without_scene_actors(self) -> None:
+        probe = {
+            "probe": {
+                "map_name": "L_RouteMap",
+                "runtime_state": {"screen": "BATTLE"},
+                "actors": [],
+                "battle_board": {
+                    "visible": True,
+                    "unit_ids": ["Player", "Enemy.Outer"],
+                    "unit_huds": {
+                        "Player": {"unit_id": "Player", "side": "Party"},
+                        "Enemy.Outer": {"unit_id": "Enemy.Outer", "side": "Enemy"},
+                    },
+                },
+            }
+        }
+        active_player_controller = {"class_name": "GameXXKMVPPlayerController"}
+
+        overlay = flow._battle_overlay_state(probe, active_player_controller)
+
+        self.assertTrue(overlay["ok"])
+        self.assertEqual(2, len(flow._battle_hud_units(probe)))
+        self.assertEqual(0, overlay["scene_counts"]["units"])
+
+    def test_new_game_destination_is_the_current_direct_qingshan_town_flow(self) -> None:
+        town_probe = {
+            "probe": {
+                "map_name": "L_Qingshan_AsianVillage_Demo",
+                "runtime_state": {"screen": "TOWN"},
+            }
+        }
+        world_map_probe = {
+            "probe": {
+                "map_name": "L_Main",
+                "runtime_state": {"screen": "WORLD_MAP"},
+            }
+        }
+
+        self.assertTrue(flow._is_qingshan_town(town_probe))
+        self.assertFalse(flow._is_qingshan_town(world_map_probe))
+
+    def test_town_npc_visual_verdict_accepts_the_current_party_deck_identities(self) -> None:
+        def actor(role: str, identity: str) -> dict[str, object]:
+            flipbook = (
+                f"/Game/GameXXK/Characters/PartyDeckNPC/{identity}/Flipbooks/"
+                f"FB_PartyDeckNPC_{identity}_Idle_South.FB_PartyDeckNPC_{identity}_Idle_South"
+            )
+            return {
+                "class": "GameXXKTownNpcCharacter",
+                "name": f"{identity}_TownNpc",
+                "get_npc_role": role,
+                "body_character": {
+                    "class": "/Script/GameXXK.GameXXKTownNpcCharacter",
+                    "path": f"/Game/Test.{identity}_TownNpc",
+                    "current_flipbook": flipbook,
+                    "get_default_town_flipbook_path_string": flipbook,
+                    "has_assigned_town_flipbook": True,
+                    "is_town_moving": False,
+                    "location": {"z": 1569.0},
+                    "visual": {"flipbook": flipbook},
+                },
+            }
+
+        probe = {
+            "probe": {
+                "actors": [
+                    actor("QUEST", "TusiChief"),
+                    actor("MERCHANT", "SongJinBao"),
+                ]
+            }
+        }
+
+        self.assertTrue(flow._npc_visual_state(probe)["ok"])
+
+    def test_town_npc_context_dialog_is_distinct_from_the_task_offer(self) -> None:
+        probe = {
+            "probe": {
+                "player_controller": {
+                    "flow_widgets": {
+                        "quest_dialog": {
+                            "is_in_viewport": True,
+                            "is_dialog_open": True,
+                            "visibility": "VISIBLE",
+                        },
+                        "task_panel": {
+                            "is_in_viewport": True,
+                            "is_task_panel_open_for_test": False,
+                            "is_showing_task_offers_for_test": False,
+                            "visibility": "COLLAPSED",
+                        },
+                    }
+                }
+            }
+        }
+
+        self.assertTrue(flow._town_npc_context_dialog_open(probe))
+        self.assertFalse(flow._task_offer_open(probe))
+
+    def test_quest_acceptance_uses_runtime_state_not_retired_follower_state(self) -> None:
+        probe = {
+            "probe": {
+                "runtime_state": {"quest_state": "ACCEPTED"},
+                "actors": [
+                    {
+                        "get_npc_role": "QUEST",
+                        "was_last_interaction_successful": True,
+                        "is_follower_active": False,
+                    }
+                ],
+            }
+        }
+
+        self.assertTrue(flow._quest_accepted(probe))
+        probe["probe"]["runtime_state"]["quest_state"] = "NOT_ACCEPTED"
+        self.assertFalse(flow._quest_accepted(probe))
+
+    def test_fixed_quest_npc_verdict_requires_idle_stationary_npc_without_autosave(self) -> None:
+        before = {
+            "probe": {
+                "actors": [
+                    {
+                        "get_npc_role": "QUEST",
+                        "location": {"x": 20.0, "y": 40.0, "z": 60.0},
+                    }
+                ]
+            }
+        }
+        after = {
+            "probe": {
+                "save_state": {"exists": False},
+                "actors": [
+                    {
+                        "get_npc_role": "QUEST",
+                        "location": {"x": 20.0, "y": 40.0, "z": 60.0},
+                        "is_follower_active": False,
+                        "body_character": {
+                            "is_town_moving": False,
+                            "current_flipbook": "/Game/Test/FB_TusiChief_Idle_East.FB_TusiChief_Idle_East",
+                        },
+                    }
+                ],
+            }
+        }
+
+        verdict = flow._fixed_quest_npc_verdict(before, after)
+
+        self.assertTrue(verdict["ok"])
+        self.assertEqual(0.0, verdict["distance"])
+
+    def test_fixed_quest_npc_manual_save_persists_quest_and_player_only(self) -> None:
+        probe = {
+            "probe": {
+                "runtime_state": {"quest_state": "ACCEPTED"},
+                "pawn": {"location": {"x": 100.0, "y": 200.0, "z": 300.0}},
+                "save_state": {
+                    "exists": True,
+                    "quest_state": "ACCEPTED",
+                    "b_has_player_location": True,
+                    "player_location": {"x": 101.0, "y": 200.0, "z": 300.0},
+                    "b_follower_joined": False,
+                    "b_has_quest_npc_location": False,
+                    "quest_npc_location": {"x": 0.0, "y": 0.0, "z": 0.0},
+                },
+            }
+        }
+
+        verdict = flow._fixed_quest_npc_manual_save_verdict(probe)
+
+        self.assertTrue(verdict["ok"])
+        self.assertEqual(1.0, verdict["saved_player_location_distance"])
 
     def test_preview_ref_is_selected_from_the_slate_window_snapshot(self) -> None:
         snapshot = (
@@ -731,6 +917,29 @@ class BattleHudVerdictTest(unittest.TestCase):
         self.assertIn("fixture_enemy_poison_badge_missing", verdict["errors"]["Enemy.Outer"])
         self.assertIn("fixture_enemy_bleed_badge_missing", verdict["errors"]["Enemy.Outer"])
 
+    def test_read_only_live_battle_verdict_does_not_require_fixture_specific_vitals_or_dots(self) -> None:
+        probe = self._valid_probe()
+        player = probe["probe"]["battle_board"]["unit_huds"]["Player"]
+        enemy = probe["probe"]["battle_board"]["unit_huds"]["Enemy.Outer"]
+        player["resource"]["rendered"] = {
+            "health_text": "气血 100 / 100",
+            "mana_text": "内力 30 / 30",
+            "health_percent": 1.0,
+            "mana_percent": 1.0,
+        }
+        player["status"]["rendered"] = {"icon_count": 0, "badges": []}
+        enemy["status"]["rendered"] = {"icon_count": 0, "badges": []}
+
+        fixture_verdict = flow._battle_hud_verdict(probe, self.viewport)
+        live_verdict = flow._battle_hud_verdict(
+            probe,
+            self.viewport,
+            require_fixture_values=False,
+        )
+
+        self.assertFalse(fixture_verdict["ok"])
+        self.assertTrue(live_verdict["ok"])
+
     def test_battle_hud_verdict_requires_reduced_fixture_party_health_and_mana(self) -> None:
         probe = self._valid_probe()
         player = probe["probe"]["battle_board"]["unit_huds"]["Player"]
@@ -885,12 +1094,15 @@ class BattleHudVerdictTest(unittest.TestCase):
         self.assertFalse(verdict["ok"])
         self.assertEqual("battle_units_missing", verdict["reason"])
 
-    def test_harness_gates_actor_hud_verdict_on_real_battle_preconditions(self) -> None:
+    def test_harness_gates_board_hud_verdict_on_actor_free_battle_preconditions(self) -> None:
         harness_source = Path(flow.__file__).read_text(encoding="utf-8")
-        start = harness_source.index("        battle_scene_counts = _battle_scene_counts(after_battle)")
+        start = harness_source.index(
+            "        battle_overlay = _battle_overlay_state(after_battle, active_player_controller)"
+        )
         end = harness_source.index("        result = {", start)
         battle_section = harness_source[start:end]
 
+        self.assertIn('battle_preconditions_ok = bool(battle_overlay.get("ok"))', battle_section)
         self.assertIn("battle_preconditions_ok", battle_section)
         self.assertIn("if battle_preconditions_ok:", battle_section)
         self.assertIn("apply_battle_hud_fixture", battle_section)

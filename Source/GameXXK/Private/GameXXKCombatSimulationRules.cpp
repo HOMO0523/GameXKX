@@ -77,6 +77,30 @@ namespace
 		return Total;
 	}
 
+	static int32 AutomaticQueueDepth(const FGameXXKCardBattleRuntime& Runtime)
+	{
+		if (!Runtime.AutomaticResolutionQueue.bActive)
+		{
+			return 0;
+		}
+		return FMath::Max(
+			0,
+			Runtime.AutomaticResolutionQueue.PendingCards.Num()
+				- Runtime.AutomaticResolutionQueue.NextCardIndex
+				+ (Runtime.AutomaticResolutionQueue.PendingReward != EGameXXKHeroSpellTaskReward::None ? 1 : 0));
+	}
+
+	static void RecordRuntimeHighWaterMarks(
+		const FGameXXKCardBattleRuntime& Runtime,
+		FGameXXKSimulationMetrics& InOutMetrics,
+		const int32 AdditionalQueueDepth = 0)
+	{
+		InOutMetrics.MaximumHandSize = FMath::Max(InOutMetrics.MaximumHandSize, Runtime.Deck.Hand.Num());
+		InOutMetrics.MaximumAutomaticQueueDepth = FMath::Max(
+			InOutMetrics.MaximumAutomaticQueueDepth,
+			FMath::Max(AutomaticQueueDepth(Runtime), AdditionalQueueDepth));
+	}
+
 	static int32 SumLivingEnemyHealth(const FGameXXKCardBattleRuntime& Runtime)
 	{
 		int32 Total = 0;
@@ -113,6 +137,45 @@ namespace
 		}
 	}
 
+	static FName DamageOriginMetricKey(const FGameXXKCardDamageResult& Damage)
+	{
+		if (Damage.ResolutionOrigin == EGameXXKCardResolutionOrigin::Reaction)
+		{
+			return TEXT("Reaction");
+		}
+		if (Damage.ResolutionOrigin == EGameXXKCardResolutionOrigin::TaskReward)
+		{
+			return TEXT("TaskReward");
+		}
+		if (Damage.ResolutionOrigin == EGameXXKCardResolutionOrigin::TerrainListener)
+		{
+			return TEXT("TerrainListener");
+		}
+		if (Damage.ResolutionOrigin == EGameXXKCardResolutionOrigin::HeavyArrow)
+		{
+			return TEXT("HeavyArrow");
+		}
+		if (Damage.Cause == EGameXXKCardDamageCause::Bleed
+			|| Damage.Cause == EGameXXKCardDamageCause::Poison
+			|| Damage.Cause == EGameXXKCardDamageCause::Burn
+			|| Damage.Cause == EGameXXKCardDamageCause::Rot
+			|| Damage.Cause == EGameXXKCardDamageCause::ToxicExplosionBleed
+			|| Damage.Cause == EGameXXKCardDamageCause::ToxicExplosionPoison
+			|| Damage.Cause == EGameXXKCardDamageCause::ToxicExplosionBurn)
+		{
+			return TEXT("DamageOverTime");
+		}
+		if (Damage.ResolutionOrigin == EGameXXKCardResolutionOrigin::MageTaskReplay)
+		{
+			return TEXT("MageReplay");
+		}
+		if (Damage.ResolutionOrigin == EGameXXKCardResolutionOrigin::AutomaticReplay)
+		{
+			return TEXT("AutomaticReplay");
+		}
+		return TEXT("Direct");
+	}
+
 	static void RecordStatusDeltas(
 		const FGameXXKCardBattleRuntime& Before,
 		const FGameXXKCardBattleRuntime& After,
@@ -142,6 +205,7 @@ namespace
 		for (const FGameXXKCardDamageResult& Damage : DamageResults)
 		{
 			AddMetric(InOutMetrics.DamageBySource, Damage.SourceUnitId, Damage.HealthDamage);
+			AddMetric(InOutMetrics.DamageByOrigin, DamageOriginMetricKey(Damage), Damage.HealthDamage);
 		}
 	}
 
@@ -154,22 +218,38 @@ namespace
 		const FName TargetUnitId,
 		const TArray<FGameXXKCardDamageResult>& DamageResults,
 		FGameXXKSimulationMetrics& InOutMetrics,
-		TArray<FGameXXKSimulationTraceEntry>& OutTrace)
+		TArray<FGameXXKSimulationTraceEntry>& OutTrace,
+		const int32 ExplicitEnergySpent = 0,
+		const int32 ExplicitManaSpent = 0,
+		const int32 AutomaticResolutionCount = 0,
+		const int32 AdditionalQueueDepth = 0)
 	{
 		const int32 PartyHealthDelta = SumPartyHealth(After) - SumPartyHealth(Before);
 		const int32 TotalHealthDelta = SumAllHealth(After) - SumAllHealth(Before);
 		const int32 ManaDelta = SumMana(After) - SumMana(Before);
 		const int32 ArmorDelta = SumArmor(After) - SumArmor(Before);
+		const int32 EnergyDelta = After.Deck.SharedEnergy - Before.Deck.SharedEnergy;
 		if (PartyHealthDelta > 0)
 		{
 			AddMetric(InOutMetrics.HealingBySource, SourceUnitId, PartyHealthDelta);
+			InOutMetrics.HealingGenerated += PartyHealthDelta;
 		}
 		if (ArmorDelta > 0)
 		{
 			AddMetric(InOutMetrics.ArmorBySource, SourceUnitId, ArmorDelta);
+			InOutMetrics.ArmorGenerated += ArmorDelta;
 		}
+		const int32 ResidualEnergyDelta = EnergyDelta + ExplicitEnergySpent;
+		const int32 ResidualManaDelta = ManaDelta + ExplicitManaSpent;
+		InOutMetrics.EnergySpent += ExplicitEnergySpent + FMath::Max(0, -ResidualEnergyDelta);
+		InOutMetrics.EnergyGained += FMath::Max(0, ResidualEnergyDelta);
+		InOutMetrics.ManaSpent += ExplicitManaSpent + FMath::Max(0, -ResidualManaDelta);
+		InOutMetrics.ManaGained += FMath::Max(0, ResidualManaDelta);
+		InOutMetrics.AutomaticResolutionCount += FMath::Max(0, AutomaticResolutionCount);
 		RecordDamageMetrics(DamageResults, InOutMetrics);
 		RecordStatusDeltas(Before, After, InOutMetrics);
+		RecordRuntimeHighWaterMarks(Before, InOutMetrics, AdditionalQueueDepth);
+		RecordRuntimeHighWaterMarks(After, InOutMetrics, AdditionalQueueDepth);
 
 		FGameXXKSimulationTraceEntry Trace;
 		Trace.Round = After.RoundNumber;
@@ -263,6 +343,39 @@ namespace
 		return Score - Preview.EffectiveEnergyCost * 4 - Preview.EffectiveManaCost * 2;
 	}
 
+	static int32 CountStrandedTargetFailures(const FGameXXKRuntimeState& State)
+	{
+		const FGameXXKCardBattleRuntime& Runtime = State.CardRun.ActiveBattle;
+		int32 Count = 0;
+		for (const FGameXXKCardInstance& Card : Runtime.Deck.Hand)
+		{
+			FGameXXKCardPlayPreview Preview;
+			FString PreviewError;
+			if (!FGameXXKCardBattleAdapter::BuildCardPlayPreview(State, Card.InstanceId, Preview, &PreviewError))
+			{
+				Count += PreviewError == TEXT("No legal target is available for this card.") ? 1 : 0;
+				continue;
+			}
+			if (Preview.bCanPlay
+				|| !Preview.TargetRequest.bRequiresManualSelection
+				|| Preview.EffectiveEnergyCost > Runtime.Deck.SharedEnergy)
+			{
+				continue;
+			}
+			const FGameXXKCardCombatUnit* Owner = FindUnit(Runtime.Units, Preview.OwnerUnitId);
+			if (!Owner || Preview.EffectiveManaCost > Owner->Mana)
+			{
+				continue;
+			}
+			const bool bHasLegalTarget = Preview.TargetRequest.CandidateViews.ContainsByPredicate([](const FGameXXKCardTargetCandidateView& Candidate)
+			{
+				return Candidate.bCanSelect;
+			});
+			Count += bHasLegalTarget ? 0 : 1;
+		}
+		return Count;
+	}
+
 	static bool ChooseSkilledDecision(
 		const FGameXXKRuntimeState& State,
 		FGameXXKSimulationDecision& OutDecision,
@@ -351,6 +464,16 @@ namespace
 	{
 		const FGameXXKPendingCardChoice& Pending = InOutState.CardRun.ActiveBattle.Deck.PendingChoice;
 		const FGameXXKCardBattleRuntime Before = InOutState.CardRun.ActiveBattle;
+		const int32 QueueDepthBefore = AutomaticQueueDepth(Before);
+		const auto FlattenDamageResults = [](const TArray<FGameXXKCardPlayResult>& Results)
+		{
+			TArray<FGameXXKCardDamageResult> DamageResults;
+			for (const FGameXXKCardPlayResult& Result : Results)
+			{
+				DamageResults.Append(Result.DamageResults);
+			}
+			return DamageResults;
+		};
 		if (Pending.Kind == EGameXXKCardPendingChoiceKind::ForcedDiscard)
 		{
 			TArray<FGameXXKCardInstance> Hand = Before.Deck.Hand;
@@ -365,12 +488,26 @@ namespace
 			{
 				Discarded.Add(Hand[Index].InstanceId);
 			}
+			TArray<FGameXXKCardPlayResult> ResumedResults;
 			if (Discarded.Num() != Pending.RequiredDiscardCount
-				|| !FGameXXKCardBattleAdapter::SubmitForcedDiscard(InOutState, Discarded, OutError))
+				|| !FGameXXKCardBattleAdapter::SubmitForcedDiscard(InOutState, Discarded, OutError, &ResumedResults))
 			{
 				return false;
 			}
-			RecordAction(Before, InOutState.CardRun.ActiveBattle, TEXT("ForcedDiscard"), NAME_None, NAME_None, NAME_None, {}, InOutMetrics, OutTrace);
+			RecordAction(
+				Before,
+				InOutState.CardRun.ActiveBattle,
+				TEXT("ForcedDiscard"),
+				NAME_None,
+				NAME_None,
+				NAME_None,
+				FlattenDamageResults(ResumedResults),
+				InOutMetrics,
+				OutTrace,
+				0,
+				0,
+				ResumedResults.Num(),
+				QueueDepthBefore);
 			return true;
 		}
 		if (Pending.Kind == EGameXXKCardPendingChoiceKind::InsightChooseToHand)
@@ -386,11 +523,64 @@ namespace
 			const FName PickedId = Pending.InsightTopOrder[0];
 			TArray<FName> Remaining = Pending.InsightTopOrder;
 			Remaining.RemoveAt(0);
-			if (!FGameXXKCardBattleAdapter::SubmitInsightChoice(InOutState, PickedId, Remaining, OutError))
+			TArray<FGameXXKCardPlayResult> ResumedResults;
+			if (!FGameXXKCardBattleAdapter::SubmitInsightChoice(InOutState, PickedId, Remaining, OutError, &ResumedResults))
 			{
 				return false;
 			}
-			RecordAction(Before, InOutState.CardRun.ActiveBattle, TEXT("InsightChoice"), NAME_None, PickedId, NAME_None, {}, InOutMetrics, OutTrace);
+			RecordAction(
+				Before,
+				InOutState.CardRun.ActiveBattle,
+				TEXT("InsightChoice"),
+				NAME_None,
+				PickedId,
+				NAME_None,
+				FlattenDamageResults(ResumedResults),
+				InOutMetrics,
+				OutTrace,
+				0,
+				0,
+				ResumedResults.Num(),
+				QueueDepthBefore);
+			return true;
+		}
+		if (Pending.Kind == EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand)
+		{
+			if (Pending.Candidates.IsEmpty())
+			{
+				if (OutError)
+				{
+					*OutError = TEXT("Hero task search had no stable candidates.");
+				}
+				return false;
+			}
+			TArray<FGameXXKCardInstance> Candidates = Pending.Candidates;
+			Candidates.Sort([](const FGameXXKCardInstance& Left, const FGameXXKCardInstance& Right)
+			{
+				return Left.AcquisitionOrdinal != Right.AcquisitionOrdinal
+					? Left.AcquisitionOrdinal < Right.AcquisitionOrdinal
+					: Left.InstanceId.LexicalLess(Right.InstanceId);
+			});
+			const FName PickedId = Candidates[0].InstanceId;
+			TArray<FGameXXKCardPlayResult> ResumedResults;
+			if (!FGameXXKCardBattleAdapter::SubmitHeroTaskSearchChoice(InOutState, PickedId, ResumedResults, OutError))
+			{
+				return false;
+			}
+			RecordAction(
+				Before,
+				InOutState.CardRun.ActiveBattle,
+				TEXT("HeroTaskSearchChoice"),
+				NAME_None,
+				PickedId,
+				NAME_None,
+				FlattenDamageResults(ResumedResults),
+				InOutMetrics,
+				OutTrace,
+				0,
+				0,
+				ResumedResults.Num(),
+				QueueDepthBefore);
 			return true;
 		}
 		if (OutError)
@@ -436,6 +626,7 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 	{
 		return SetFailure(OutMetrics, OutError, TEXT("Simulation.InvalidInitialRuntime"), AdapterError);
 	}
+	RecordRuntimeHighWaterMarks(State.CardRun.ActiveBattle, OutMetrics);
 
 	int32 DecisionCount = 0;
 	TSet<FName> FirstRoundDefeats;
@@ -473,6 +664,7 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 				const FGameXXKCardBattleRuntime Before = CurrentRuntime;
 				if (Decision.bEndPlayerPhase)
 				{
+					OutMetrics.StrandedTargetFailures += CountStrandedTargetFailures(State);
 					TArray<FGameXXKCardDamageResult> DamageResults;
 					if (!FGameXXKCardBattleAdapter::EndPlayerCardPhase(State, DamageResults, &AdapterError))
 					{
@@ -482,6 +674,16 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 				}
 				else
 				{
+					FGameXXKCardPlayPreview CommittedPreview;
+					if (!FGameXXKCardBattleAdapter::BuildCardPlayPreview(
+						State,
+						Decision.CardInstanceId,
+						CommittedPreview,
+						&AdapterError)
+						|| !CommittedPreview.bCanPlay)
+					{
+						return SetFailure(OutMetrics, OutError, TEXT("Simulation.PreviewCommitMismatch"), AdapterError);
+					}
 					FGameXXKCardPlayResult PlayResult;
 					if (!FGameXXKCardBattleAdapter::ResolveCardPlay(
 						State,
@@ -501,7 +703,12 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 						Decision.TargetUnitId,
 						PlayResult.DamageResults,
 						OutMetrics,
-						OutTrace);
+						OutTrace,
+						CommittedPreview.EffectiveEnergyCost,
+						CommittedPreview.EffectiveManaCost,
+						PlayResult.AutomaticResolutionCount,
+						PlayResult.MaximumAutomaticQueueDepth);
+					++OutMetrics.ActivelyPlayedCards;
 				}
 				RecordFirstRoundDefeats(Before, State.CardRun.ActiveBattle, FirstRoundDefeats, OutMetrics);
 				++DecisionCount;

@@ -150,11 +150,20 @@ namespace
 		{
 			MigrateHeroCardSnapshot(Snapshot);
 		}
-		MigrateHeroCardIds(InOutBattle.HeroSpellTask.LockedHeroCardIds);
-		MigrateHeroCardIds(InOutBattle.HeroSpellTask.CompletedHeroCardIds);
-		for (FGameXXKResolvedCardSnapshot& Snapshot : InOutBattle.HeroSpellTask.FirstPlayOrder)
+		if (InOutBattle.HeroSpellTask.bActive)
 		{
-			MigrateHeroCardSnapshot(Snapshot);
+			MigrateHeroCardIds(InOutBattle.HeroSpellTask.LockedHeroCardIds);
+			MigrateHeroCardIds(InOutBattle.HeroSpellTask.CompletedHeroCardIds);
+			for (FGameXXKResolvedCardSnapshot& Snapshot : InOutBattle.HeroSpellTask.FirstPlayOrder)
+			{
+				MigrateHeroCardSnapshot(Snapshot);
+			}
+		}
+		else
+		{
+			// Spell-task progress did not exist before v12. Discard any inactive stale
+			// payload instead of turning it into an invalid current-version runtime.
+			InOutBattle.HeroSpellTask = FGameXXKHeroSpellTaskRuntime{};
 		}
 		if (bConvertLegacyMedicine)
 		{

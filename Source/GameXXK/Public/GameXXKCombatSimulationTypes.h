@@ -107,7 +107,45 @@ struct GAMEXXK_API FGameXXKSimulationMetrics
 	int32 FirstRoundDeaths = 0;
 
 	UPROPERTY(SaveGame)
+	int32 ActivelyPlayedCards = 0;
+
+	/** Automatic card snapshots and task rewards, not individual damage packets. */
+	UPROPERTY(SaveGame)
+	int32 AutomaticResolutionCount = 0;
+
+	UPROPERTY(SaveGame)
+	int64 EnergySpent = 0;
+
+	UPROPERTY(SaveGame)
+	int64 EnergyGained = 0;
+
+	UPROPERTY(SaveGame)
+	int64 ManaSpent = 0;
+
+	UPROPERTY(SaveGame)
+	int64 ManaGained = 0;
+
+	UPROPERTY(SaveGame)
+	int64 HealingGenerated = 0;
+
+	UPROPERTY(SaveGame)
+	int64 ArmorGenerated = 0;
+
+	/** Hand cards with affordable costs but no legal selectable target when the phase ends. */
+	UPROPERTY(SaveGame)
+	int32 StrandedTargetFailures = 0;
+
+	UPROPERTY(SaveGame)
+	int32 MaximumAutomaticQueueDepth = 0;
+
+	UPROPERTY(SaveGame)
+	int32 MaximumHandSize = 0;
+
+	UPROPERTY(SaveGame)
 	TMap<FName, int64> DamageBySource;
+
+	UPROPERTY(SaveGame)
+	TMap<FName, int64> DamageByOrigin;
 
 	UPROPERTY(SaveGame)
 	TMap<FName, int64> HealingBySource;

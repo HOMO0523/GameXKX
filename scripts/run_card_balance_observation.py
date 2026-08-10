@@ -22,9 +22,11 @@ from typing import Iterable, TextIO
 
 AUTOMATION_TEST = "GameXXK.Diagnostics.CardBalanceObservation"
 EXPECTED_CASE_COUNT = 2400
+OBSERVATION_SCHEMA_VERSION = 2
 SAFE_RUN_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 
 INTEGER_FIELDS = (
+    "schema_version",
     "enhancement",
     "chapter",
     "seed_ordinal",
@@ -32,14 +34,50 @@ INTEGER_FIELDS = (
     "rounds",
     "remaining_party_health",
     "first_round_deaths",
+    "active_cards",
+    "automatic_resolutions",
+    "energy_spent",
+    "energy_gained",
+    "mana_spent",
+    "mana_gained",
+    "healing_generated",
+    "armor_generated",
+    "stranded_target_failures",
+    "maximum_queue_depth",
+    "maximum_hand_size",
 )
 
 METRIC_FIELDS = (
     "damage_by_source",
+    "damage_by_origin",
     "healing_by_source",
     "armor_by_source",
     "status_produced",
     "status_consumed",
+)
+
+SOURCE_METRIC_FIELDS = (
+    "damage_by_source",
+    "damage_by_origin",
+    "healing_by_source",
+    "armor_by_source",
+)
+
+RUNTIME_TOTAL_FIELDS = (
+    "active_cards",
+    "automatic_resolutions",
+    "energy_spent",
+    "energy_gained",
+    "mana_spent",
+    "mana_gained",
+    "healing_generated",
+    "armor_generated",
+    "stranded_target_failures",
+)
+
+RUNTIME_MAX_FIELDS = (
+    "maximum_queue_depth",
+    "maximum_hand_size",
 )
 
 
@@ -81,6 +119,10 @@ def read_case_rows(source: TextIO) -> list[dict[str, object]]:
         try:
             for key in INTEGER_FIELDS:
                 parsed[key] = int(row[key])
+            if parsed["schema_version"] != OBSERVATION_SCHEMA_VERSION:
+                raise ValueError(
+                    f"unsupported case CSV schema: {parsed['schema_version']}"
+                )
             for key in METRIC_FIELDS:
                 parsed[key] = parse_metric_map(row[key])
         except (KeyError, TypeError, ValueError) as error:
@@ -140,7 +182,7 @@ def aggregate_case_rows(
     produced: Counter[str] = Counter()
     consumed: Counter[str] = Counter()
     source_totals: dict[str, Counter[str]] = {
-        field: Counter() for field in METRIC_FIELDS[:3]
+        field: Counter() for field in SOURCE_METRIC_FIELDS
     }
     buckets: dict[tuple[str, int, str], list[dict[str, object]]] = defaultdict(list)
     cohort_buckets: dict[str, list[dict[str, object]]] = defaultdict(list)
@@ -188,6 +230,19 @@ def aggregate_case_rows(
         for row in rows
         if row["outcome"] == "Stalemate"
     )
+    runtime_totals = {
+        field: sum(int(row[field]) for row in rows)
+        for field in RUNTIME_TOTAL_FIELDS
+    }
+    runtime_maxima = {
+        field: max((int(row[field]) for row in rows), default=0)
+        for field in RUNTIME_MAX_FIELDS
+    }
+    stranded_target_cases = sorted(
+        f"{row['cohort']}|{row['chapter']}|{row['node']}|{row['seed']}"
+        for row in rows
+        if int(row["stranded_target_failures"]) > 0
+    )
 
     overall = _outcome_summary(rows)
     return {
@@ -197,27 +252,34 @@ def aggregate_case_rows(
         "buckets": bucket_summaries,
         "cohorts": cohort_summaries,
         "chapter_nodes": chapter_node_summaries,
+        "runtime_totals": runtime_totals,
+        "runtime_maxima": runtime_maxima,
+        "stranded_target_cases": stranded_target_cases,
         "recurring_stalemates": stalemates,
     }
 
 
-def _extract_add_card_blocks(source: str) -> list[str]:
+def _extract_call_blocks(
+    source: str,
+    function_name: str,
+    required_prefix: str,
+) -> list[str]:
     blocks: list[str] = []
-    marker = "AddCard("
+    marker = f"{function_name}("
     cursor = 0
     while True:
         start = source.find(marker, cursor)
         if start < 0:
             break
-        # Ignore the helper function declaration; calls start with Cards.
-        if not source.startswith("Cards", start + len(marker)):
+        # Ignore helper declarations; catalog calls start with a stable argument prefix.
+        if not source.startswith(required_prefix, start + len(marker)):
             cursor = start + len(marker)
             continue
         depth = 0
         quote = False
         escaped = False
         end = None
-        for index in range(start + len("AddCard"), len(source)):
+        for index in range(start + len(function_name), len(source)):
             character = source[index]
             if quote:
                 if escaped:
@@ -237,10 +299,18 @@ def _extract_add_card_blocks(source: str) -> list[str]:
                     end = index + 1
                     break
         if end is None:
-            raise ValueError("unterminated AddCard call")
+            raise ValueError(f"unterminated {function_name} call")
         blocks.append(source[start:end])
         cursor = end
     return blocks
+
+
+def _extract_add_card_blocks(source: str) -> list[str]:
+    return _extract_call_blocks(source, "AddCard", "Cards")
+
+
+def _extract_add_hero_blocks(source: str) -> list[str]:
+    return _extract_call_blocks(source, "AddHero", 'TEXT("')
 
 
 def _quality_ids(source: str, function: str, next_function: str) -> set[str]:
@@ -263,13 +333,18 @@ def audit_card_catalog(project_root: Path) -> dict[str, object]:
         re.DOTALL,
     )
     cards: list[dict[str, object]] = []
-    for block in _extract_add_card_blocks(catalog_source):
+    parsed_blocks = [
+        (block, None) for block in _extract_add_card_blocks(catalog_source)
+    ] + [
+        (block, "Hero") for block in _extract_add_hero_blocks(catalog_source)
+    ]
+    for block, forced_owner in parsed_blocks:
         match = metadata_pattern.search(block)
         if not match:
             raise ValueError("could not parse AddCard metadata")
         card_id, display_name, energy, mana, target_mode = match.groups()
         owner_match = re.search(r"EGameXXKCardOwner::(\w+)", block)
-        if not owner_match:
+        if forced_owner is None and not owner_match:
             raise ValueError(f"could not parse owner for {card_id}")
         effect_start = block.find("{", match.end())
         if effect_start < 0:
@@ -294,7 +369,7 @@ def audit_card_catalog(project_root: Path) -> dict[str, object]:
                 "energy": int(energy),
                 "mana": int(mana),
                 "target_mode": target_mode,
-                "owner": owner_match.group(1),
+                "owner": forced_owner or owner_match.group(1),
                 "quality": "Epic"
                 if card_id in epic_ids
                 else "Rare"
@@ -487,6 +562,7 @@ def run_observation_once(config: ObservationConfig, run_id: str) -> dict[str, ob
         rows = read_case_rows(source)
     summary = aggregate_case_rows(rows)
     record: dict[str, object] = {
+        "schema_version": OBSERVATION_SCHEMA_VERSION,
         "run_id": run_id,
         "started_at": started.isoformat(),
         "completed_at": datetime.now().astimezone().isoformat(),
@@ -518,7 +594,9 @@ def load_existing_runs(
         except (OSError, json.JSONDecodeError, TypeError, ValueError):
             continue
         csv_path = Path(str(record.get("csv_path", "")))
-        if csv_path.is_file():
+        if not csv_path.is_file():
+            continue
+        try:
             with csv_path.open("r", encoding="utf-8-sig", newline="") as source:
                 rows = read_case_rows(source)
             record["summary"] = aggregate_case_rows(
@@ -526,6 +604,11 @@ def load_existing_runs(
                 expected_case_count=expected_case_count,
             )
             record["csv_sha256"] = _sha256(csv_path)
+            record["schema_version"] = OBSERVATION_SCHEMA_VERSION
+        except (OSError, TypeError, ValueError):
+            # Historical observation CSVs use a different column contract and
+            # must not participate in current-schema determinism checks.
+            continue
         records.append(record)
     return records
 
@@ -553,6 +636,7 @@ def write_final_summary(
             stalls.update(summary.get("recurring_stalemates", []))
     representative = records[-1]["summary"] if records else None
     result: dict[str, object] = {
+        "schema_version": OBSERVATION_SCHEMA_VERSION,
         "generated_at": datetime.now().astimezone().isoformat(),
         "run_count": len(records),
         "run_ids": [record["run_id"] for record in records],
@@ -577,11 +661,18 @@ def write_final_summary(
     ]
     if isinstance(representative, dict):
         rounds = representative.get("resolved_rounds") or {}
+        runtime_totals = representative.get("runtime_totals") or {}
+        runtime_maxima = representative.get("runtime_maxima") or {}
         lines.extend(
             [
                 f"- Representative outcomes: {representative.get('outcomes')}",
                 f"- Resolved win rate: {representative.get('win_rate_resolved')}",
                 f"- Resolved round median / p90: {rounds.get('median')} / {rounds.get('p90')}",
+                f"- Active / automatic resolutions: {runtime_totals.get('active_cards')} / {runtime_totals.get('automatic_resolutions')}",
+                f"- Energy spent / gained: {runtime_totals.get('energy_spent')} / {runtime_totals.get('energy_gained')}",
+                f"- Mana spent / gained: {runtime_totals.get('mana_spent')} / {runtime_totals.get('mana_gained')}",
+                f"- Max hand / automatic queue: {runtime_maxima.get('maximum_hand_size')} / {runtime_maxima.get('maximum_queue_depth')}",
+                f"- Stranded target cases: {len(representative.get('stranded_target_cases') or [])}",
             ]
         )
     lines.extend(

@@ -35,7 +35,7 @@ META_SHOP_PROBE_SCRIPT = "Content/Python/gamexxk_probe_meta_shop_window.py"
 MAIN_MAP = "/Game/GameXXK/Maps/L_Main"
 QINGSHAN_MAP_TOKEN = "L_Qingshan_AsianVillage_Demo"
 ROUTE_MAP_TOKEN = "L_RouteMap"
-BATTLE_MAP_TOKEN = "L_BattleTown"
+BATTLE_MAP_TOKEN = "L_RouteMap"
 BATTLE_PC_TOKEN = "GameXXKMVPPlayerController"
 # After D releases, PIE must process and expose the remaining W-only motion
 # before W releases.  A probe after this settle is intentional: a wall-clock
@@ -172,6 +172,10 @@ def _map_name(probe: dict[str, Any]) -> str:
     return str(payload.get("map_name", "")) if isinstance(payload, dict) else ""
 
 
+def _is_qingshan_town(probe: dict[str, Any]) -> bool:
+    return QINGSHAN_MAP_TOKEN in _map_name(probe) and _screen_contains(probe, "Town")
+
+
 def _pawn_location(probe: dict[str, Any]) -> dict[str, float]:
     location = probe.get("probe", {}).get("pawn", {}).get("location", {})
     return location if isinstance(location, dict) else {}
@@ -244,16 +248,23 @@ def _battle_scene_counts(probe: dict[str, Any]) -> dict[str, int]:
 
 
 def _battle_hud_units(probe: dict[str, Any]) -> list[dict[str, Any]]:
-    """Join scene identity to Board-owned HUD evidence by stable UnitId."""
+    """Join active-battle identity to Board-owned HUD evidence by stable UnitId."""
     payload = probe.get("probe", {}) if isinstance(probe, dict) else {}
     board = payload.get("battle_board") if isinstance(payload, dict) else {}
     unit_huds = board.get("unit_huds") if isinstance(board, dict) else {}
     unit_huds = unit_huds if isinstance(unit_huds, dict) else {}
+    unit_ids = board.get("unit_ids") if isinstance(board, dict) else None
+    if not isinstance(unit_ids, list):
+        unit_ids = [
+            str(actor.get("unit_id", "") or "")
+            for actor in _actors(probe)
+            if isinstance(actor, dict) and "BattleSceneUnitActor" in str(actor.get("class", ""))
+        ]
     units: list[dict[str, Any]] = []
-    for actor in _actors(probe):
-        if not isinstance(actor, dict) or "BattleSceneUnitActor" not in str(actor.get("class", "")):
+    for value in unit_ids:
+        unit_id = str(value or "")
+        if not unit_id:
             continue
-        unit_id = str(actor.get("unit_id", "") or "")
         units.append(
             {
                 "unit_id": unit_id,
@@ -261,6 +272,40 @@ def _battle_hud_units(probe: dict[str, Any]) -> list[dict[str, Any]]:
             }
         )
     return units
+
+
+def _battle_overlay_state(
+    probe: dict[str, Any],
+    active_player_controller: dict[str, Any],
+) -> dict[str, Any]:
+    payload = probe.get("probe", {}) if isinstance(probe, dict) else {}
+    board = payload.get("battle_board") if isinstance(payload, dict) else {}
+    board = board if isinstance(board, dict) else {}
+    units = _battle_hud_units(probe)
+    sides = [_unit_hud_side(unit.get("unit_hud")) for unit in units]
+    scene_counts = _battle_scene_counts(probe)
+    retired_scene_clean = all(
+        scene_counts[key] == 0
+        for key in ("presenters", "units", "enemies", "party", "visual_units")
+    )
+    return {
+        "ok": bool(
+            BATTLE_MAP_TOKEN in _map_name(probe)
+            and _screen_contains(probe, "Battle")
+            and BATTLE_PC_TOKEN in str(active_player_controller.get("class_name", ""))
+            and board.get("visible") is True
+            and len(units) >= 2
+            and "Party" in sides
+            and "Enemy" in sides
+            and retired_scene_clean
+        ),
+        "unit_count": len(units),
+        "unit_ids": [unit.get("unit_id") for unit in units],
+        "sides": sides,
+        "scene_counts": scene_counts,
+        "retired_scene_clean": retired_scene_clean,
+        "board_visible": board.get("visible"),
+    }
 
 
 def _finite_float(value: Any) -> float | None:
@@ -594,7 +639,12 @@ def _fixture_enemy_rendered_errors(unit: dict[str, Any]) -> list[str]:
     return errors
 
 
-def _battle_hud_verdict(probe: dict[str, Any], viewport: Any) -> dict[str, Any]:
+def _battle_hud_verdict(
+    probe: dict[str, Any],
+    viewport: Any,
+    *,
+    require_fixture_values: bool = True,
+) -> dict[str, Any]:
     """Validate observed actor and Board HUDs only; this function never mutates the probe or PIE."""
     if not isinstance(probe, dict) or not isinstance(probe.get("probe"), dict):
         return {
@@ -756,8 +806,10 @@ def _battle_hud_verdict(probe: dict[str, Any], viewport: Any) -> dict[str, Any]:
     party_units = [unit for unit in units if _unit_hud_side(unit.get("unit_hud")) == "Party"]
     enemy_units = [unit for unit in units if _unit_hud_side(unit.get("unit_hud")) == "Enemy"]
     if not party_units:
-        errors.setdefault("__fixture__", []).append("fixture_party_missing")
-    else:
+        bucket = "__fixture__" if require_fixture_values else "__battle__"
+        error = "fixture_party_missing" if require_fixture_values else "battle_party_missing"
+        errors.setdefault(bucket, []).append(error)
+    elif require_fixture_values:
         primary_party = next(
             (
                 unit
@@ -771,8 +823,10 @@ def _battle_hud_verdict(probe: dict[str, Any], viewport: Any) -> dict[str, Any]:
         if party_errors:
             errors.setdefault(primary_party_id, []).extend(party_errors)
     if not enemy_units:
-        errors.setdefault("__fixture__", []).append("fixture_enemy_missing")
-    else:
+        bucket = "__fixture__" if require_fixture_values else "__battle__"
+        error = "fixture_enemy_missing" if require_fixture_values else "battle_enemy_missing"
+        errors.setdefault(bucket, []).append(error)
+    elif require_fixture_values:
         primary_enemy = enemy_units[0]
         primary_enemy_id = str(primary_enemy.get("unit_id", "") or "__fixture_enemy__")
         enemy_errors = _fixture_enemy_rendered_errors(primary_enemy)
@@ -792,11 +846,16 @@ def _battle_hud_verdict(probe: dict[str, Any], viewport: Any) -> dict[str, Any]:
         "reason": "" if not errors else "battle_hud_invalid",
         "unit_count": len(units),
         "errors": errors,
+        "validation_profile": "fixture" if require_fixture_values else "live_structure",
         "geometry_validation_mode": "fixed_slot_fallback" if use_fixed_slot_geometry_fallback else "screen_rect",
     }
 
 
-def _battle_hud_observation(probe: dict[str, Any]) -> dict[str, Any]:
+def _battle_hud_observation(
+    probe: dict[str, Any],
+    *,
+    require_fixture_values: bool = True,
+) -> dict[str, Any]:
     """Persist a non-mutating verdict from the same probe that supplied the PIE viewport."""
     payload = probe.get("probe", {}) if isinstance(probe, dict) else {}
     observed_viewport = payload.get("pie_viewport") if isinstance(payload, dict) else None
@@ -811,7 +870,11 @@ def _battle_hud_observation(probe: dict[str, Any]) -> dict[str, Any]:
                 "height": viewport_size[1],
             }
 
-    verdict = _battle_hud_verdict(probe, viewport)
+    verdict = _battle_hud_verdict(
+        probe,
+        viewport,
+        require_fixture_values=require_fixture_values,
+    )
     board = payload.get("battle_board") if isinstance(payload, dict) else {}
     unit_huds = board.get("unit_huds") if isinstance(board, dict) else {}
 
@@ -1173,8 +1236,16 @@ def _expect_npc_visual(actor: dict[str, Any], class_token: str, flipbook_token: 
 
 def _npc_visual_state(probe: dict[str, Any]) -> dict[str, Any]:
     checks = [
-        _expect_npc_visual(_npc_by_role(probe, "QUEST"), "BP_NpcCharacter_C", "FB_Npc_Idle_South"),
-        _expect_npc_visual(_npc_by_role(probe, "MERCHANT"), "BP_MerchantCharacter_C", "FB_Merchant_Idle_South"),
+        _expect_npc_visual(
+            _npc_by_role(probe, "QUEST"),
+            "GameXXKTownNpcCharacter",
+            "PartyDeckNPC_TusiChief_Idle_South",
+        ),
+        _expect_npc_visual(
+            _npc_by_role(probe, "MERCHANT"),
+            "GameXXKTownNpcCharacter",
+            "PartyDeckNPC_SongJinBao_Idle_South",
+        ),
     ]
     return {
         "ok": all(bool(check.get("ok")) for check in checks),
@@ -1182,9 +1253,92 @@ def _npc_visual_state(probe: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _quest_interacted(probe: dict[str, Any]) -> bool:
-    npc = _quest_npc(probe)
-    return bool(npc.get("was_last_interaction_successful") and npc.get("is_follower_active"))
+def _quest_state_is_accepted(value: Any) -> bool:
+    token = str(value).upper().replace("_", "").split("::")[-1]
+    return token == "ACCEPTED"
+
+
+def _quest_accepted(probe: dict[str, Any]) -> bool:
+    return _quest_state_is_accepted(_runtime_state(probe).get("quest_state", ""))
+
+
+def _fixed_quest_npc_verdict(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
+    before_npc = _quest_npc(before)
+    after_npc = _quest_npc(after)
+    before_location = before_npc.get("location", {})
+    after_location = after_npc.get("location", {})
+    if not isinstance(before_location, dict):
+        before_location = {}
+    if not isinstance(after_location, dict):
+        after_location = {}
+    body = after_npc.get("body_character", {})
+    if not isinstance(body, dict):
+        body = {}
+    flipbook = str(body.get("current_flipbook", ""))
+    distance = _distance(before_location, after_location)
+    save = _save_state(after)
+    return {
+        "ok": bool(
+            before_location
+            and after_location
+            and distance <= 1.0
+            and not bool(after_npc.get("is_follower_active"))
+            and not bool(body.get("is_town_moving"))
+            and "IDLE" in flipbook.upper()
+            and not bool(save.get("exists"))
+        ),
+        "distance": distance,
+        "before": before_location,
+        "after": after_location,
+        "is_follower_active": after_npc.get("is_follower_active"),
+        "body_is_town_moving": body.get("is_town_moving"),
+        "body_current_flipbook": flipbook,
+        "save_exists_before_manual_save": save.get("exists"),
+    }
+
+
+def _fixed_quest_npc_manual_save_verdict(probe: dict[str, Any]) -> dict[str, Any]:
+    runtime = _runtime_state(probe)
+    save = _save_state(probe)
+    player_location = _pawn_location(probe)
+    saved_player_location = save.get("player_location", {})
+    if not isinstance(saved_player_location, dict):
+        saved_player_location = {}
+    saved_player_distance = _distance(saved_player_location, player_location)
+    return {
+        "ok": bool(
+            _quest_accepted(probe)
+            and _quest_state_is_accepted(save.get("quest_state", ""))
+            and bool(save.get("exists"))
+            and bool(save.get("b_has_player_location"))
+            and player_location
+            and saved_player_location
+            and saved_player_distance <= 5.0
+            and not bool(runtime.get("b_follower_joined"))
+            and not bool(runtime.get("b_has_quest_npc_location"))
+            and not bool(save.get("b_follower_joined"))
+            and not bool(save.get("b_has_quest_npc_location"))
+        ),
+        "runtime_quest_state": runtime.get("quest_state"),
+        "saved_quest_state": save.get("quest_state"),
+        "saved_has_player_location": save.get("b_has_player_location"),
+        "saved_player_location": saved_player_location,
+        "player_location": player_location,
+        "saved_player_location_distance": saved_player_distance,
+        "runtime_follower_joined": runtime.get("b_follower_joined"),
+        "runtime_has_quest_npc_location": runtime.get("b_has_quest_npc_location"),
+        "saved_follower_joined": save.get("b_follower_joined"),
+        "saved_has_quest_npc_location": save.get("b_has_quest_npc_location"),
+    }
+
+
+def _town_npc_context_dialog_open(probe: dict[str, Any]) -> bool:
+    dialog = _flow_widgets(probe).get("quest_dialog", {})
+    return bool(
+        isinstance(dialog, dict)
+        and dialog.get("is_dialog_open")
+        and _widget_visible(probe, "quest_dialog")
+    )
 
 
 def _task_offer_open(probe: dict[str, Any]) -> bool:
@@ -1707,7 +1861,10 @@ class RealFlowHarness:
         self.connect()
         if not self.client.is_in_pie():
             raise RuntimeError("Battle actor HUD observation requires an active PIE session")
-        observation = _battle_hud_observation(self.probe())
+        observation = _battle_hud_observation(
+            self.probe(),
+            require_fixture_values=False,
+        )
         observation["mcp_endpoint"] = self.client.endpoint
         observation["pie_running"] = True
         self.event(
@@ -2034,6 +2191,21 @@ class RealFlowHarness:
             raise RuntimeError(f"Slate click failed for the world-map Qingshan town marker: {button}")
         time.sleep(0.45)
 
+    def click_town_npc_primary_action(self) -> None:
+        """Open the task offer through the quest NPC's current contextual story action."""
+        label = "剧情"
+        button = self.slate_button_for_visible_text(label)
+        click_ok = bool(self.client.call_tool(
+            "Click",
+            {"ref": button["ref"], "button": "left", "doubleClick": False},
+            toolset_name=SLATE_TOOLSET,
+            timeout=self.client.timeout,
+        ))
+        self.event("town_npc_primary_slate_click", click_ok=click_ok, button=button, label=label)
+        if not click_ok:
+            raise RuntimeError(f"Slate click failed for the quest NPC story action: {button}")
+        time.sleep(0.45)
+
     def click_route_node(self, probe: dict[str, Any], node_id: int) -> dict[str, Any]:
         node_state = _route_node_visual_state(probe, node_id)
         if not node_state:
@@ -2216,34 +2388,14 @@ class RealFlowHarness:
 
         before_start_path, _ = self.screenshot("real_flow_before_start.png")
         self.click_main_menu_start()
-        after_world_map = self.wait_for(
-            "StartGame opens the world map",
-            lambda probe: _map_name(probe) == "L_Main" and _screen_contains(probe, "WorldMap"),
-            timeout=10.0,
-            interval=0.5,
-        )
-        if bool(_save_state(after_world_map).get("exists")):
-            raise RuntimeError(f"Start click should not create a save before manual Save; probe={json.dumps(after_world_map, ensure_ascii=False)}")
-        world_map_probe = {
-            "ok": (
-                _screen_contains(after_world_map, "WorldMap")
-                and _has_visible_command(after_world_map, "SelectQingshan", True)
-                and not _widget_visible(after_world_map, "main_menu")
-            ),
-            "widgets": _flow_widgets(after_world_map),
-            "visible_commands": _visible_commands(after_world_map),
-        }
-        self.event("world_map_widget_probe", **world_map_probe)
-        if not world_map_probe["ok"]:
-            raise RuntimeError(f"Start/New Game did not expose the playable Qingshan marker on the world map: {world_map_probe}")
-
-        self.click_world_map_qingshan()
         after_qingshan = self.wait_for(
-            "Qingshan world-map marker opens the town map",
-            lambda probe: QINGSHAN_MAP_TOKEN in _map_name(probe) and _screen_contains(probe, "Town"),
+            "StartGame opens the Qingshan town map",
+            _is_qingshan_town,
             timeout=10.0,
             interval=0.5,
         )
+        if bool(_save_state(after_qingshan).get("exists")):
+            raise RuntimeError(f"Start click should not create a save before manual Save; probe={json.dumps(after_qingshan, ensure_ascii=False)}")
         town_widget_probe = {
             "ok": _widget_visible(after_qingshan, "town_overlay") and not _widget_visible(after_qingshan, "main_menu"),
             "widgets": _flow_widgets(after_qingshan),
@@ -2317,7 +2469,7 @@ class RealFlowHarness:
         if not quest_location:
             raise RuntimeError("Quest NPC was not found in the playable town map")
         near_quest = self.walk_to_world_location(after_move, quest_location)
-        offer_probe: dict[str, Any] = {}
+        context_probe: dict[str, Any] = {}
         interact_probe: dict[str, Any] = near_quest
         for attempt in range(3):
             self.town_interact()
@@ -2325,17 +2477,25 @@ class RealFlowHarness:
             deadline = time.monotonic() + 2.0
             while time.monotonic() < deadline:
                 interact_probe = self.probe()
-                if _task_offer_open(interact_probe) and not _quest_interacted(interact_probe):
-                    offer_probe = interact_probe
-                    self.event("wait_ok", label="Town interact opens the new task offer without accepting the quest", attempt=attempt + 1, offer_kind="task_offer")
+                if _town_npc_context_dialog_open(interact_probe) and not _quest_accepted(interact_probe):
+                    context_probe = interact_probe
+                    self.event("wait_ok", label="Town interact opens the NPC context dialog", attempt=attempt + 1, offer_kind="town_npc_context")
                     break
                 time.sleep(0.35)
-            if offer_probe:
+            if context_probe:
                 break
-        if not offer_probe:
-            raise RuntimeError(f"Timed out waiting for town interact to open the new task offer without accepting; last probe={json.dumps(interact_probe, ensure_ascii=False)}")
+        if not context_probe:
+            raise RuntimeError(f"Timed out waiting for town interact to open the NPC context dialog; last probe={json.dumps(interact_probe, ensure_ascii=False)}")
+
+        self.click_town_npc_primary_action()
+        offer_probe = self.wait_for(
+            "quest NPC story action opens the task offer without accepting",
+            lambda probe: _task_offer_open(probe) and not _quest_accepted(probe),
+            timeout=5.0,
+            interval=0.35,
+        )
         quest_offer_probe = {
-            "ok": _task_offer_open(offer_probe) and not _quest_interacted(offer_probe),
+            "ok": _task_offer_open(offer_probe) and not _quest_accepted(offer_probe),
             "kind": "task_offer",
             "widgets": _flow_widgets(offer_probe),
             "quest_npc": _quest_npc(offer_probe),
@@ -2347,8 +2507,8 @@ class RealFlowHarness:
 
         after_interact = self.click_quest_offer_accept()
         after_interact = self.wait_for(
-            "quest offer accept button confirms quest and activates follower",
-            lambda probe: _quest_interacted(probe) and _task_offer_open(probe),
+            "quest offer accept button confirms the quest",
+            lambda probe: _quest_accepted(probe) and _task_offer_open(probe),
             timeout=5.0,
             interval=0.35,
         )
@@ -2359,13 +2519,13 @@ class RealFlowHarness:
         after_interact = self.click_task_panel_back()
         after_interact = self.wait_for(
             "task-panel back button closes the accepted offer and releases movement",
-            lambda probe: _quest_interacted(probe) and not _task_offer_open(probe) and not _move_input_is_ignored(probe),
+            lambda probe: _quest_accepted(probe) and not _task_offer_open(probe) and not _move_input_is_ignored(probe),
             timeout=5.0,
             interval=0.35,
         )
         task_offer_close_probe = {
             "ok": (
-                _quest_interacted(after_interact)
+                _quest_accepted(after_interact)
                 and not _task_offer_open(after_interact)
                 and not _move_input_is_ignored(after_interact)
             ),
@@ -2384,38 +2544,14 @@ class RealFlowHarness:
             raise RuntimeError("Quest NPC location missing after accepting quest")
         with self.hold_town_keys("D"):
             time.sleep(0.75)
-            after_follower_input_move = self.probe()
+            after_fixed_npc_input_move = self.probe()
         time.sleep(0.15)
-        quest_after_follower_input_move = _quest_npc(after_follower_input_move)
-        quest_location_after_follower_input_move = (
-            quest_after_follower_input_move.get("location")
-            if isinstance(quest_after_follower_input_move.get("location"), dict)
-            else {}
-        )
-        quest_body_after_follower_input_move = quest_after_follower_input_move.get("body_character", {})
-        if not isinstance(quest_body_after_follower_input_move, dict):
-            quest_body_after_follower_input_move = {}
-        quest_body_flipbook = str(quest_body_after_follower_input_move.get("current_flipbook", ""))
-        quest_body_moving = bool(quest_body_after_follower_input_move.get("is_town_moving"))
-        save_after_follower_input_move = _save_state(after_follower_input_move)
-        quest_follower_input_distance = _distance(quest_location_after_interact, quest_location_after_follower_input_move)
-        quest_follower_input_probe = {
-            "ok": (
-                quest_follower_input_distance >= 10.0
-                and quest_body_moving
-                and "/FB_Npc_Walk_East." in quest_body_flipbook
-                and not bool(save_after_follower_input_move.get("exists"))
-            ),
-            "distance": quest_follower_input_distance,
-            "before": quest_location_after_interact,
-            "after": quest_location_after_follower_input_move,
-            "body_is_town_moving": quest_body_moving,
-            "body_current_flipbook": quest_body_flipbook,
-            "save_exists_before_manual_save": save_after_follower_input_move.get("exists"),
-        }
-        self.event("quest_follower_range_chase_probe", **quest_follower_input_probe)
-        if not quest_follower_input_probe["ok"]:
-            raise RuntimeError(f"Quest follower did not chase with walk animation or saved before manual save: {quest_follower_input_probe}")
+        fixed_quest_npc_probe = _fixed_quest_npc_verdict(after_interact, after_fixed_npc_input_move)
+        self.event("fixed_quest_npc_after_player_move_probe", **fixed_quest_npc_probe)
+        if not fixed_quest_npc_probe["ok"]:
+            raise RuntimeError(
+                f"Accepted quest NPC did not remain fixed and idle before manual save: {fixed_quest_npc_probe}"
+            )
 
         after_manual_save = self.town_command("SaveSlot1")
         quest_after_manual_save = _quest_npc(after_manual_save)
@@ -2424,38 +2560,20 @@ class RealFlowHarness:
             if isinstance(quest_after_manual_save.get("location"), dict)
             else {}
         )
-        save_after_manual = _save_state(after_manual_save)
-        manual_saved_location = save_after_manual.get("quest_npc_location", {})
-        if not isinstance(manual_saved_location, dict):
-            manual_saved_location = {}
-        manual_saved_distance = _distance(manual_saved_location, quest_location_after_manual_save)
-        player_location_after_manual_save = _pawn_location(after_manual_save)
-        manual_saved_player_location = save_after_manual.get("player_location", {})
-        if not isinstance(manual_saved_player_location, dict):
-            manual_saved_player_location = {}
-        manual_saved_player_distance = _distance(manual_saved_player_location, player_location_after_manual_save)
-        manual_save_probe = {
-            "ok": (
-                bool(save_after_manual.get("exists"))
-                and bool(save_after_manual.get("b_has_player_location"))
-                and bool(save_after_manual.get("b_follower_joined"))
-                and bool(save_after_manual.get("b_has_quest_npc_location"))
-                and manual_saved_player_distance <= 5.0
-                and manual_saved_distance <= 5.0
-            ),
-            "saved_has_player_location": save_after_manual.get("b_has_player_location"),
-            "saved_player_location": manual_saved_player_location,
-            "player_location": player_location_after_manual_save,
-            "saved_player_location_distance": manual_saved_player_distance,
-            "saved_follower_joined": save_after_manual.get("b_follower_joined"),
-            "saved_has_quest_npc_location": save_after_manual.get("b_has_quest_npc_location"),
-            "saved_quest_npc_location": manual_saved_location,
-            "quest_npc_location": quest_location_after_manual_save,
-            "saved_quest_npc_location_distance": manual_saved_distance,
-        }
+        manual_save_probe = _fixed_quest_npc_manual_save_verdict(after_manual_save)
+        manual_save_probe["quest_npc_location"] = quest_location_after_manual_save
+        manual_save_probe["fixed_quest_npc_distance"] = _distance(
+            quest_location_after_interact,
+            quest_location_after_manual_save,
+        )
+        manual_save_probe["ok"] = bool(
+            manual_save_probe["ok"] and manual_save_probe["fixed_quest_npc_distance"] <= 1.0
+        )
         self.event("manual_save_probe", **manual_save_probe)
         if not manual_save_probe["ok"]:
-            raise RuntimeError(f"Manual SaveGame did not persist player, follower state, and moved NPC location: {manual_save_probe}")
+            raise RuntimeError(
+                f"Manual SaveGame did not persist the accepted quest/player position while keeping the task NPC fixed: {manual_save_probe}"
+            )
 
         town_exit = _town_exit(after_manual_save)
         town_exit_location = town_exit.get("location") if isinstance(town_exit.get("location"), dict) else {}
@@ -2527,8 +2645,12 @@ class RealFlowHarness:
         battle_click_probe = self.click_route_node(after_start_node, 1)
         after_battle: dict[str, Any] = battle_click_probe
         for attempt in range(8):
-            if BATTLE_MAP_TOKEN in _map_name(after_battle):
-                self.event("wait_ok", label="Battle route node opens GameXXK battle scene", attempt=attempt + 1)
+            if (
+                BATTLE_MAP_TOKEN in _map_name(after_battle)
+                and _screen_contains(after_battle, "Battle")
+                and _widget_visible(after_battle, "battle_board")
+            ):
+                self.event("wait_ok", label="Battle route node opens the Board battle overlay", attempt=attempt + 1)
                 break
             time.sleep(0.35)
             after_battle = self.probe()
@@ -2537,17 +2659,10 @@ class RealFlowHarness:
         active_player_controller = active_widgets_probe.get("player_controller", {})
         if not isinstance(active_player_controller, dict):
             active_player_controller = {}
-        battle_scene_counts = _battle_scene_counts(after_battle)
+        battle_overlay = _battle_overlay_state(after_battle, active_player_controller)
+        battle_scene_counts = battle_overlay["scene_counts"]
         battle_camera = _battle_camera_state(after_battle)
-        battle_preconditions_ok = (
-            BATTLE_MAP_TOKEN in _map_name(after_battle)
-            and _screen_contains(after_battle, "Battle")
-            and BATTLE_PC_TOKEN in str(active_player_controller.get("class_name", ""))
-            and battle_scene_counts["enemies"] >= 1
-            and battle_scene_counts["party"] >= 1
-            and battle_scene_counts["visual_units"] == battle_scene_counts["units"]
-            and bool(battle_camera.get("ok"))
-        )
+        battle_preconditions_ok = bool(battle_overlay.get("ok"))
         battle_viewport: dict[str, float] = {}
         battle_hud = {
             "ok": False,
@@ -2566,6 +2681,7 @@ class RealFlowHarness:
                 after_battle = self.probe()
                 battle_runtime = _runtime_state(after_battle)
                 battle_scene_counts = _battle_scene_counts(after_battle)
+                battle_overlay = _battle_overlay_state(after_battle, active_player_controller)
                 battle_camera = _battle_camera_state(after_battle)
                 battle_observation = _battle_hud_observation(after_battle)
                 observed_viewport = battle_observation.get("viewport")
@@ -2621,6 +2737,7 @@ class RealFlowHarness:
             "map": _map_name(after_battle),
             "screen": battle_runtime.get("screen"),
             "battle_scene_counts": battle_scene_counts,
+            "battle_overlay": battle_overlay,
             "battle_camera": battle_camera,
             "battle_hud": battle_hud,
             "battle_viewport": battle_viewport,
@@ -2650,7 +2767,7 @@ class RealFlowHarness:
             "npc_visuals": npc_visual_state,
             "movement_distance_cm": movement_distance,
             "quest_distance_cm": _distance(_pawn_location(near_quest), quest_location),
-            "quest_follower_input_distance_cm": quest_follower_input_distance,
+            "quest_fixed_npc_input_distance_cm": fixed_quest_npc_probe["distance"],
             "manual_save": manual_save_probe,
             "route_map": route_map_probe,
             "battle": battle_probe,

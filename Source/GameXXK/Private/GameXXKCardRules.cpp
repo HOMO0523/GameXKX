@@ -3192,6 +3192,7 @@ namespace
 		if (!IsAutomaticResolutionOrigin(Queue.Origin)
 			|| Queue.NextCardIndex < 0
 			|| Queue.NextCardIndex > Queue.PendingCards.Num()
+			|| Queue.PendingCards.Num() > 64
 			|| (Queue.PendingCards.IsEmpty() && Queue.PendingReward == EGameXXKHeroSpellTaskReward::None)
 			|| ((Queue.PendingReward == EGameXXKHeroSpellTaskReward::None) != Queue.RewardOwnerUnitId.IsNone()))
 		{
@@ -8476,6 +8477,11 @@ bool GameXXKCardRules::ResolveCardPlay(
 	}
 	if (NewRuntime.AutomaticResolutionQueue.bActive)
 	{
+		NewResult.MaximumAutomaticQueueDepth = FMath::Max(
+			NewResult.MaximumAutomaticQueueDepth,
+			NewRuntime.AutomaticResolutionQueue.PendingCards.Num()
+				- NewRuntime.AutomaticResolutionQueue.NextCardIndex
+				+ (NewRuntime.AutomaticResolutionQueue.PendingReward != EGameXXKHeroSpellTaskReward::None ? 1 : 0));
 		TArray<FGameXXKCardPlayResult> AutomaticResults;
 		if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(NewRuntime, AutomaticResults, &ValidationError))
 		{
@@ -8486,6 +8492,7 @@ bool GameXXKCardRules::ResolveCardPlay(
 			NewResult.DamageResults.Append(MoveTemp(AutomaticResult.DamageResults));
 			NewResult.bOpenedPendingChoice |= AutomaticResult.bOpenedPendingChoice;
 		}
+		NewResult.AutomaticResolutionCount += AutomaticResults.Num();
 	}
 	if (!IsActiveChoice(NewRuntime.Deck.PendingChoice.Kind)
 		&& !NewRuntime.AutomaticResolutionQueue.bActive)
