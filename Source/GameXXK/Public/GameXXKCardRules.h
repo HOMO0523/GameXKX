@@ -155,6 +155,13 @@ namespace GameXXKCardRules
 		FString* OutError = nullptr,
 		TArray<FGameXXKCardPlayResult>* OutResumedResults = nullptr);
 
+	/** Moves one unfinished equipped Hero card from Draw/Discard to Hand, then resumes any saved queue. */
+	GAMEXXK_API bool SubmitHeroTaskSearchChoice(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FName PickedInstanceId,
+		TArray<FGameXXKCardPlayResult>& OutResumedResults,
+		FString* OutError = nullptr);
+
 	/** Resolves the saved automatic-card continuation until it completes or opens a card choice. */
 	GAMEXXK_API bool ResumeAutomaticResolutionQueue(
 		FGameXXKCardBattleRuntime& InOutRuntime,

@@ -294,6 +294,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Cards")
 	bool SubmitPendingInsightChoice(FName PickedInstanceId);
 
+	/** Resolves the visible protagonist spell-task search through the shared pending-choice panel. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Cards")
+	bool SubmitPendingHeroTaskSearchChoice(FName PickedInstanceId);
+
 	/** Resolves the currently visible one-card forced-discard choice by stable runtime-card ID. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Cards")
 	bool SubmitPendingForcedDiscard(FName DiscardedInstanceId);

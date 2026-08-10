@@ -57,6 +57,13 @@ public:
 		FString* OutError = nullptr,
 		TArray<FGameXXKCardPlayResult>* OutResumedResults = nullptr);
 
+	/** Moves one real unfinished protagonist task card from draw/discard to hand and resumes any paused replay. */
+	static bool SubmitHeroTaskSearchChoice(
+		FGameXXKRuntimeState& InOutState,
+		FName PickedInstanceId,
+		TArray<FGameXXKCardPlayResult>& OutResumedResults,
+		FString* OutError = nullptr);
+
 	/** Resolves the active forced-discard choice by stable runtime-card IDs. */
 	static bool SubmitForcedDiscard(
 		FGameXXKRuntimeState& InOutState,

@@ -1174,6 +1174,139 @@ bool FGameXXKCardBattleBoardPendingInsightCancelTest::RunTest(const FString& Par
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardPendingHeroTaskSearchTest,
+	"GameXXK.Integration.CardBattle.BoardPendingHeroTaskSearch",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardPendingHeroTaskSearchTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State = UGameXXKMVPRules::CreateNewGame();
+	State.Screen = EGameXXKScreen::Battle;
+	State.bHasActiveBattle = true;
+	State.ActiveBattleNodeId = 28;
+	State.ActiveBattleEnemies = {MakeEnemy(TEXT("MoneyRat"), TEXT("钱鼠"))};
+
+	FString Error;
+	TestTrue(FString::Printf(TEXT("Mage-search fixture initializes card run: %s"), *Error),
+		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
+	TestTrue(FString::Printf(TEXT("Mage-search fixture begins card battle: %s"), *Error),
+		FGameXXKCardBattleAdapter::BeginCardBattle(State, EGameXXKNodeKind::Battle, EGameXXKCardTerrain::Plain, 329, &Error));
+	FGameXXKCardBattleRuntime& Runtime = State.CardRun.ActiveBattle;
+	FGameXXKBattleDeckState& Deck = Runtime.Deck;
+	if (Deck.Hand.Num() >= Deck.HandLimit)
+	{
+		TestTrue(TEXT("Mage-search fixture frees one hand slot"),
+			GameXXKCardRules::MoveHandCardToDiscard(Deck, Deck.Hand.Last().InstanceId, &Error));
+	}
+	TestTrue(FString::Printf(TEXT("Mage-search fixture first opens the canonical insight panel: %s"), *Error),
+		GameXXKCardRules::BeginInsight(Deck, 2, &Error));
+
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("Mage-search board initializes its widget tree"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+
+	UWidget* InsightPanel = Board->WidgetTree ? Board->WidgetTree->FindWidget(TEXT("BattlePendingChoicePanel")) : nullptr;
+	UCanvasPanelSlot* InsightPanelSlot = InsightPanel ? Cast<UCanvasPanelSlot>(InsightPanel->Slot) : nullptr;
+	USizeBox* InsightCardSize = Board->WidgetTree ? Cast<USizeBox>(Board->WidgetTree->FindWidget(TEXT("BattlePendingChoiceCardSize_00"))) : nullptr;
+	TestNotNull(TEXT("canonical insight panel exists"), InsightPanel);
+	TestNotNull(TEXT("canonical insight panel keeps its canvas slot"), InsightPanelSlot);
+	TestNotNull(TEXT("canonical insight candidate keeps its size box"), InsightCardSize);
+	if (!InsightPanel || !InsightPanelSlot || !InsightCardSize)
+	{
+		return false;
+	}
+	const FAnchors InsightAnchors = InsightPanelSlot->GetAnchors();
+	const FMargin InsightOffsets = InsightPanelSlot->GetOffsets();
+	const float InsightCardWidth = InsightCardSize->GetWidthOverride();
+	const float InsightCardHeight = InsightCardSize->GetHeightOverride();
+
+	TestTrue(FString::Printf(TEXT("canonical insight cancels before installing the Mage search fixture: %s"), *Error),
+		GameXXKCardRules::CancelInsight(Deck, &Error));
+	const FGameXXKCardInstance* SearchCandidate = Runtime.Deck.DrawPile.FindByPredicate([&Runtime](const FGameXXKCardInstance& Card)
+	{
+		return Runtime.EquippedHeroCardIds.Contains(Card.CardId);
+	});
+	if (!SearchCandidate)
+	{
+		SearchCandidate = Runtime.Deck.DiscardPile.FindByPredicate([&Runtime](const FGameXXKCardInstance& Card)
+		{
+			return Runtime.EquippedHeroCardIds.Contains(Card.CardId);
+		});
+	}
+	TestNotNull(TEXT("Mage-search fixture finds a real equipped protagonist card in draw or discard"), SearchCandidate);
+	if (!SearchCandidate)
+	{
+		return false;
+	}
+	const FGameXXKCardInstance OfferedCandidate = *SearchCandidate;
+	Runtime.HeroSpellTask = FGameXXKHeroSpellTaskRuntime();
+	Runtime.HeroSpellTask.bActive = true;
+	Runtime.HeroSpellTask.LockedHeroCardIds = Runtime.EquippedHeroCardIds;
+	Runtime.HeroSpellTask.StarterReward = EGameXXKHeroSpellTaskReward::Universal;
+	Runtime.HeroSpellTask.StarterOwnerUnitId = OfferedCandidate.OwnerUnitId;
+	Deck.PendingChoice = FGameXXKPendingCardChoice();
+	Deck.PendingChoice.Kind = EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand;
+	Deck.PendingChoice.Candidates = {OfferedCandidate};
+	Deck.PendingChoice.RequiredCount = 1;
+	Deck.PendingChoice.RequiredHandPickCount = 1;
+	Deck.PendingChoice.bCanCancel = false;
+	TestTrue(FString::Printf(TEXT("Mage-search fixture is a valid saved runtime: %s"), *Error),
+		GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &Error));
+
+	Board->RefreshFromState();
+	UWidget* SearchPanel = Board->WidgetTree ? Board->WidgetTree->FindWidget(TEXT("BattlePendingChoicePanel")) : nullptr;
+	UCanvasPanelSlot* SearchPanelSlot = SearchPanel ? Cast<UCanvasPanelSlot>(SearchPanel->Slot) : nullptr;
+	USizeBox* SearchCardSize = Board->WidgetTree ? Cast<USizeBox>(Board->WidgetTree->FindWidget(TEXT("BattlePendingChoiceCardSize_00"))) : nullptr;
+	UTextBlock* SearchPrompt = Board->WidgetTree ? Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattlePendingChoicePrompt"))) : nullptr;
+	TestTrue(TEXT("Mage search reuses the exact existing pending-choice panel instance"), SearchPanel == InsightPanel);
+	TestTrue(TEXT("Mage search makes the shared panel visible"), SearchPanel && SearchPanel->GetVisibility() == ESlateVisibility::Visible);
+	TestNotNull(TEXT("Mage search retains the existing panel canvas slot"), SearchPanelSlot);
+	TestNotNull(TEXT("Mage search retains the existing candidate size box"), SearchCardSize);
+	TestNotNull(TEXT("Mage search exposes the existing prompt text block"), SearchPrompt);
+	if (SearchPanelSlot)
+	{
+		TestEqual(TEXT("Mage search keeps the insight panel minimum anchor"), SearchPanelSlot->GetAnchors().Minimum, InsightAnchors.Minimum);
+		TestEqual(TEXT("Mage search keeps the insight panel maximum anchor"), SearchPanelSlot->GetAnchors().Maximum, InsightAnchors.Maximum);
+		const FMargin SearchOffsets = SearchPanelSlot->GetOffsets();
+		TestEqual(TEXT("Mage search keeps the insight panel left offset"), SearchOffsets.Left, InsightOffsets.Left);
+		TestEqual(TEXT("Mage search keeps the insight panel top offset"), SearchOffsets.Top, InsightOffsets.Top);
+		TestEqual(TEXT("Mage search keeps the insight panel width"), SearchOffsets.Right, InsightOffsets.Right);
+		TestEqual(TEXT("Mage search keeps the insight panel height"), SearchOffsets.Bottom, InsightOffsets.Bottom);
+	}
+	if (SearchCardSize)
+	{
+		TestEqual(TEXT("Mage search keeps the insight candidate width"), SearchCardSize->GetWidthOverride(), InsightCardWidth);
+		TestEqual(TEXT("Mage search keeps the insight candidate height"), SearchCardSize->GetHeightOverride(), InsightCardHeight);
+	}
+	TestEqual(TEXT("Mage search uses the approved concise prompt"), SearchPrompt ? SearchPrompt->GetText().ToString() : FString(), FString(TEXT("选择一张尚未完成任务的主角牌")));
+
+	UButton* FirstChoiceButton = Board->WidgetTree ? Cast<UButton>(Board->WidgetTree->FindWidget(TEXT("BattlePendingChoiceCard_00"))) : nullptr;
+	TestNotNull(TEXT("Mage search presents its real candidate through the existing card button"), FirstChoiceButton);
+	if (!FirstChoiceButton)
+	{
+		return false;
+	}
+	FirstChoiceButton->OnHovered.Broadcast();
+	TestTrue(TEXT("Mage-search hover describes the real add-to-hand action"), Board->GetCardTooltipTextForTest().Contains(TEXT("点击后加入手牌。")));
+	FirstChoiceButton->OnUnhovered.Broadcast();
+	FirstChoiceButton->OnClicked.Broadcast();
+	TestEqual(TEXT("clicking the Mage candidate clears the blocking search"),
+		State.CardRun.ActiveBattle.Deck.PendingChoice.Kind,
+		EGameXXKCardPendingChoiceKind::None);
+	TestTrue(TEXT("clicking the Mage candidate moves the same real instance into hand"),
+		State.CardRun.ActiveBattle.Deck.Hand.ContainsByPredicate([OfferedCandidate](const FGameXXKCardInstance& Card)
+		{
+			return Card.InstanceId == OfferedCandidate.InstanceId;
+		}));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKCardBattleBoardPendingForcedDiscardTest,
 	"GameXXK.Integration.CardBattle.BoardPendingForcedDiscard",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

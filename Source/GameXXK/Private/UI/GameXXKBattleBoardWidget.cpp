@@ -113,6 +113,17 @@ namespace
 	static constexpr float BattleStatusFrameMarginRatio = 5.0f / 368.0f;
 	static constexpr float EnemyIntentRevealDuration = 0.55f;
 	static constexpr float EnemyIntentResolveDuration = 0.18f;
+
+	TArray<FGameXXKCardDamageResult> FlattenResumedCardDamageResults(
+		const TArray<FGameXXKCardPlayResult>& ResumedResults)
+	{
+		TArray<FGameXXKCardDamageResult> DamageResults;
+		for (const FGameXXKCardPlayResult& Result : ResumedResults)
+		{
+			DamageResults.Append(Result.DamageResults);
+		}
+		return DamageResults;
+	}
 	static constexpr float EnemyIntentSettleDuration = 0.32f;
 	static constexpr double BattleImpactMarkerSeconds = 1.1;
 	static constexpr double BattleAttackHitDurationSeconds = 2.5;
@@ -533,6 +544,10 @@ void UGameXXKPendingChoiceCardButton::HandleClicked()
 		if (ChoiceKind == EGameXXKCardPendingChoiceKind::InsightChooseToHand)
 		{
 			Owner->SubmitPendingInsightChoice(CandidateInstanceId);
+		}
+		else if (ChoiceKind == EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand)
+		{
+			Owner->SubmitPendingHeroTaskSearchChoice(CandidateInstanceId);
 		}
 		else if (ChoiceKind == EGameXXKCardPendingChoiceKind::ForcedDiscard)
 		{
@@ -2751,16 +2766,88 @@ bool UGameXXKBattleBoardWidget::SubmitPendingInsightChoice(FName PickedInstanceI
 		}
 	}
 
+	const FGameXXKCardBattleRuntime Before = MutableState.CardRun.ActiveBattle;
+	CapturePresentationHudSnapshot(Before);
+	TArray<FGameXXKCardPlayResult> ResumedResults;
 	FString Error;
-	if (!FGameXXKCardBattleAdapter::SubmitInsightChoice(MutableState, PickedInstanceId, RemainingTopOrder, &Error))
+	if (!FGameXXKCardBattleAdapter::SubmitInsightChoice(
+		MutableState,
+		PickedInstanceId,
+		RemainingTopOrder,
+		&Error,
+		&ResumedResults))
 	{
+		DiscardPresentationHudSnapshot();
 		LastCardInteractionError = Error;
 		RefreshProgrammaticLayout();
 		return false;
 	}
 
 	LastCardInteractionError.Reset();
-	return ResolveAndRefreshCardBattleAfterMutation();
+	return QueueMutationPresentation(
+		Before,
+		FlattenResumedCardDamageResults(ResumedResults),
+		EBattlePresentationContinuation::FinalizeCardMutation);
+}
+
+bool UGameXXKBattleBoardWidget::SubmitPendingHeroTaskSearchChoice(FName PickedInstanceId)
+{
+	if (RejectBattleHudFixtureMutation())
+	{
+		return false;
+	}
+	if (RejectBattlePresentationMutation())
+	{
+		return false;
+	}
+
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle || !Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle)
+	{
+		LastCardInteractionError = TEXT("当前没有可检索的任务牌。");
+		return false;
+	}
+
+	FGameXXKRuntimeState& MutableState = Subsystem->GetMutableRuntimeState();
+	const FGameXXKPendingCardChoice& PendingChoice = MutableState.CardRun.ActiveBattle.Deck.PendingChoice;
+	if (PendingChoice.Kind != EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand)
+	{
+		LastCardInteractionError = TEXT("当前没有可检索的任务牌。");
+		RefreshProgrammaticLayout();
+		return false;
+	}
+	const bool bIsCandidate = PendingChoice.Candidates.ContainsByPredicate([PickedInstanceId](const FGameXXKCardInstance& Candidate)
+	{
+		return Candidate.InstanceId == PickedInstanceId;
+	});
+	if (PickedInstanceId.IsNone() || !bIsCandidate)
+	{
+		LastCardInteractionError = TEXT("所选卡牌不在当前任务检索列表中。");
+		RefreshProgrammaticLayout();
+		return false;
+	}
+
+	const FGameXXKCardBattleRuntime Before = MutableState.CardRun.ActiveBattle;
+	CapturePresentationHudSnapshot(Before);
+	TArray<FGameXXKCardPlayResult> ResumedResults;
+	FString Error;
+	if (!FGameXXKCardBattleAdapter::SubmitHeroTaskSearchChoice(
+		MutableState,
+		PickedInstanceId,
+		ResumedResults,
+		&Error))
+	{
+		DiscardPresentationHudSnapshot();
+		LastCardInteractionError = Error;
+		RefreshProgrammaticLayout();
+		return false;
+	}
+
+	LastCardInteractionError.Reset();
+	return QueueMutationPresentation(
+		Before,
+		FlattenResumedCardDamageResults(ResumedResults),
+		EBattlePresentationContinuation::FinalizeCardMutation);
 }
 
 bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscard(FName DiscardedInstanceId)
@@ -2800,16 +2887,27 @@ bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscard(FName DiscardedInstan
 		return false;
 	}
 
+	const FGameXXKCardBattleRuntime Before = MutableState.CardRun.ActiveBattle;
+	CapturePresentationHudSnapshot(Before);
+	TArray<FGameXXKCardPlayResult> ResumedResults;
 	FString Error;
-	if (!FGameXXKCardBattleAdapter::SubmitForcedDiscard(MutableState, {DiscardedInstanceId}, &Error))
+	if (!FGameXXKCardBattleAdapter::SubmitForcedDiscard(
+		MutableState,
+		{DiscardedInstanceId},
+		&Error,
+		&ResumedResults))
 	{
+		DiscardPresentationHudSnapshot();
 		LastCardInteractionError = Error;
 		RefreshProgrammaticLayout();
 		return false;
 	}
 
 	LastCardInteractionError.Reset();
-	return ResolveAndRefreshCardBattleAfterMutation();
+	return QueueMutationPresentation(
+		Before,
+		FlattenResumedCardDamageResults(ResumedResults),
+		EBattlePresentationContinuation::FinalizeCardMutation);
 }
 
 bool UGameXXKBattleBoardWidget::CancelPendingInsightChoice()
@@ -2839,16 +2937,23 @@ bool UGameXXKBattleBoardWidget::CancelPendingInsightChoice()
 		return false;
 	}
 
+	const FGameXXKCardBattleRuntime Before = MutableState.CardRun.ActiveBattle;
+	CapturePresentationHudSnapshot(Before);
+	TArray<FGameXXKCardPlayResult> ResumedResults;
 	FString Error;
-	if (!FGameXXKCardBattleAdapter::CancelInsight(MutableState, &Error))
+	if (!FGameXXKCardBattleAdapter::CancelInsight(MutableState, &Error, &ResumedResults))
 	{
+		DiscardPresentationHudSnapshot();
 		LastCardInteractionError = Error;
 		RefreshProgrammaticLayout();
 		return false;
 	}
 
 	LastCardInteractionError.Reset();
-	return ResolveAndRefreshCardBattleAfterMutation();
+	return QueueMutationPresentation(
+		Before,
+		FlattenResumedCardDamageResults(ResumedResults),
+		EBattlePresentationContinuation::FinalizeCardMutation);
 }
 
 void UGameXXKBattleBoardWidget::RegisterBattleUnitScreenPosition(FName UnitId, FVector2D ScreenPosition)
@@ -5242,7 +5347,9 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		TooltipQuality = Candidate ? Candidate->CurrentQuality : EGameXXKCardQuality::Invalid;
 		if (Definition)
 		{
-			Context.InteractionResult = HoveredPendingChoiceKind == EGameXXKCardPendingChoiceKind::InsightChooseToHand
+			const bool bAddsToHand = HoveredPendingChoiceKind == EGameXXKCardPendingChoiceKind::InsightChooseToHand
+				|| HoveredPendingChoiceKind == EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand;
+			Context.InteractionResult = bAddsToHand
 				? TEXT("点击后加入手牌。")
 				: TEXT("点击后弃置此牌。");
 		}
@@ -5895,8 +6002,9 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 		? &State->CardRun.ActiveBattle.Deck.PendingChoice
 		: nullptr;
 	const bool bShowInsight = PendingChoice && PendingChoice->Kind == EGameXXKCardPendingChoiceKind::InsightChooseToHand;
+	const bool bShowHeroTaskSearch = PendingChoice && PendingChoice->Kind == EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand;
 	const bool bShowForcedDiscard = PendingChoice && PendingChoice->Kind == EGameXXKCardPendingChoiceKind::ForcedDiscard;
-	const bool bShowPendingChoice = bShowInsight || bShowForcedDiscard;
+	const bool bShowPendingChoice = bShowInsight || bShowHeroTaskSearch || bShowForcedDiscard;
 	if (PendingChoicePanel)
 	{
 		PendingChoicePanel->SetVisibility(bShowPendingChoice ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -5913,9 +6021,11 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 		const int32 RequiredDiscardCount = PendingChoice->RequiredDiscardCount > 0
 			? PendingChoice->RequiredDiscardCount
 			: PendingChoice->RequiredCount;
-		const FString Prompt = bShowInsight
-			? TEXT("洞察：选择一张加入手牌")
-			: FString::Printf(TEXT("此牌要求弃置 %d 张手牌"), FMath::Max(1, RequiredDiscardCount));
+		const FString Prompt = bShowHeroTaskSearch
+			? TEXT("选择一张尚未完成任务的主角牌")
+			: bShowInsight
+				? TEXT("洞察：选择一张加入手牌")
+				: FString::Printf(TEXT("此牌要求弃置 %d 张手牌"), FMath::Max(1, RequiredDiscardCount));
 		PendingChoicePromptText->SetText(FText::FromString(Prompt));
 	}
 	if (PendingChoiceCardBox)
@@ -5961,7 +6071,7 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 			CardLabel->SetText(FText::FromString(FString::Printf(
 				TEXT("%s\n%s"),
 				*DisplayName,
-				bShowInsight ? TEXT("加入手牌") : TEXT("点击弃置"))));
+				(bShowInsight || bShowHeroTaskSearch) ? TEXT("加入手牌") : TEXT("点击弃置"))));
 		}
 	}
 }

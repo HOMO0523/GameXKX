@@ -758,12 +758,12 @@ namespace
 		AddHero(TEXT("Hero.Hunter.HuiFengGuanRi"), TEXT("回风贯日"), 1, 6, EGameXXKCardTargetMode::SingleEnemy,
 			{Attack(150, EGameXXKCardEffectTarget::SelectedTarget)}, EGameXXKCharacterRole::Hunter, 1, false, {}, {}, HeavyArrow(EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 40, 1, 3, 1));
 
-		AddHero(TEXT("Hero.Mage.YanXuLiaoYuan"), TEXT("炎序燎原"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
-			{Attack(100, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 4, EGameXXKCardStatus::Burn), Effect(EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Sorcerer, 1, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::Fire);
+		AddHero(TEXT("Hero.Mage.YanXuLiaoYuan"), TEXT("炎序燎原"), 1, 3, EGameXXKCardTargetMode::AllEnemies,
+			{Attack(100, EGameXXKCardEffectTarget::AllEnemies), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 4, EGameXXKCardStatus::Burn), Effect(EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Sorcerer, 1, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::Fire);
 		AddHero(TEXT("Hero.Mage.HanXuNingChuan"), TEXT("寒序凝川"), 0, 0, EGameXXKCardTargetMode::Self,
-			{Effect(EGameXXKCardEffectType::GainArmorFromCurrentManaPercent, EGameXXKCardEffectTarget::CardOwner, 25), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 6), Effect(EGameXXKCardEffectType::GainManaOverflowToArmor, EGameXXKCardEffectTarget::CardOwner, 100)}, EGameXXKCharacterRole::Sorcerer, 1, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::Ice);
-		AddHero(TEXT("Hero.Mage.LeiXuYinTing"), TEXT("雷序引霆"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
-			{Attack(100, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Sorcerer, 1, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::Lightning);
+			{Effect(EGameXXKCardEffectType::GainArmorFromCurrentManaPercent, EGameXXKCardEffectTarget::CardOwner, 25), EffectWithSecondary(EGameXXKCardEffectType::GainManaOverflowToArmor, EGameXXKCardEffectTarget::CardOwner, 100, 6)}, EGameXXKCharacterRole::Sorcerer, 1, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::Ice);
+		AddHero(TEXT("Hero.Mage.LeiXuYinTing"), TEXT("雷序引霆"), 1, 3, EGameXXKCardTargetMode::AllEnemies,
+			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 3, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 30, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Sorcerer, 1, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::Lightning);
 		AddHero(TEXT("Hero.Mage.GuiXuTongXuan"), TEXT("归序通玄"), 0, 0, EGameXXKCardTargetMode::None,
 			{Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2), Effect(EGameXXKCardEffectType::DiscardCards, EGameXXKCardEffectTarget::CardOwner, 1)}, EGameXXKCharacterRole::Sorcerer, 1, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::Universal);
 
@@ -1685,10 +1685,51 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 		}
 		if ((CardEffect.Type == EGameXXKCardEffectType::ApplyStatus
 				|| CardEffect.Type == EGameXXKCardEffectType::RemoveStatus
-				|| CardEffect.Type == EGameXXKCardEffectType::RegisterReaction)
+				|| CardEffect.Type == EGameXXKCardEffectType::RegisterReaction
+				|| CardEffect.Type == EGameXXKCardEffectType::TriggerStatus
+				|| CardEffect.Type == EGameXXKCardEffectType::LightningPerTargetStatusSnapshot)
 			&& !IsConcreteStatus(CardEffect.Status))
 		{
 			OutError = FString::Printf(TEXT("Status effect has no status payload: %s."), *Definition.Id.ToString());
+			return false;
+		}
+		if (CardEffect.Type == EGameXXKCardEffectType::GainArmorFromCurrentManaPercent
+			&& (CardEffect.Target != EGameXXKCardEffectTarget::CardOwner
+				|| CardEffect.Magnitude <= 0
+				|| CardEffect.SecondaryMagnitude != 0))
+		{
+			OutError = FString::Printf(TEXT("Current-Mana armor conversion is malformed: %s."), *Definition.Id.ToString());
+			return false;
+		}
+		if (CardEffect.Type == EGameXXKCardEffectType::GainManaOverflowToArmor
+			&& (CardEffect.Target != EGameXXKCardEffectTarget::CardOwner
+				|| CardEffect.Magnitude <= 0
+				|| CardEffect.SecondaryMagnitude <= 0))
+		{
+			OutError = FString::Printf(TEXT("Mana-overflow armor conversion is malformed: %s."), *Definition.Id.ToString());
+			return false;
+		}
+		if (CardEffect.Type == EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard
+			&& (CardEffect.Target != EGameXXKCardEffectTarget::CardOwner
+				|| CardEffect.Magnitude != 1
+				|| CardEffect.SecondaryMagnitude != 0))
+		{
+			OutError = FString::Printf(TEXT("Hero spell-task search is malformed: %s."), *Definition.Id.ToString());
+			return false;
+		}
+		if (CardEffect.Type == EGameXXKCardEffectType::TriggerStatus
+			&& (CardEffect.Magnitude <= 0
+				|| (CardEffect.Status != EGameXXKCardStatus::Bleed
+					&& CardEffect.Status != EGameXXKCardStatus::Poison
+					&& CardEffect.Status != EGameXXKCardStatus::Burn)))
+		{
+			OutError = FString::Printf(TEXT("Triggered DoT effect is malformed: %s."), *Definition.Id.ToString());
+			return false;
+		}
+		if (CardEffect.Type == EGameXXKCardEffectType::LightningPerTargetStatusSnapshot
+			&& (CardEffect.Status != EGameXXKCardStatus::Mark || CardEffect.Magnitude <= 0))
+		{
+			OutError = FString::Printf(TEXT("Lightning Mark snapshot effect is malformed: %s."), *Definition.Id.ToString());
 			return false;
 		}
 		const bool bAppliesBareGuardStatus = (CardEffect.Type == EGameXXKCardEffectType::ApplyStatus && CardEffect.Status == EGameXXKCardStatus::Guard)

@@ -2607,6 +2607,36 @@ bool FGameXXKCardBattleAdapter::SubmitInsightChoice(
 	return true;
 }
 
+bool FGameXXKCardBattleAdapter::SubmitHeroTaskSearchChoice(
+	FGameXXKRuntimeState& InOutState,
+	const FName PickedInstanceId,
+	TArray<FGameXXKCardPlayResult>& OutResumedResults,
+	FString* OutError)
+{
+	OutResumedResults.Reset();
+	if (!InOutState.CardRun.bHasActiveCardBattle)
+	{
+		return SetFailure(OutError, TEXT("There is no active card battle session."));
+	}
+	FGameXXKRuntimeState NewState = InOutState;
+	TArray<FGameXXKCardPlayResult> ResumedResults;
+	if (!GameXXKCardRules::SubmitHeroTaskSearchChoice(
+		NewState.CardRun.ActiveBattle,
+		PickedInstanceId,
+		ResumedResults,
+		OutError))
+	{
+		return false;
+	}
+	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	{
+		return false;
+	}
+	InOutState = MoveTemp(NewState);
+	OutResumedResults = MoveTemp(ResumedResults);
+	return true;
+}
+
 bool FGameXXKCardBattleAdapter::SubmitForcedDiscard(
 	FGameXXKRuntimeState& InOutState,
 	const TArray<FName>& DiscardedInstanceIds,
