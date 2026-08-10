@@ -677,7 +677,8 @@ namespace
 			0,
 			{},
 			EGameXXKCardStatus::None,
-			EGameXXKCardModifierRecipientScope::SharedDeck), true);
+			EGameXXKCardModifierRecipientScope::SharedDeck,
+			EGameXXKCardEffectTarget::PlayedCard), true);
 		FGameXXKCardEffect ReplaySourceNextRound = WithModifierPolicy(Modifier(
 			EGameXXKCardBattleModifierTrigger::AfterFirstActiveCardNextPlayerRound,
 			EGameXXKCardEffectType::ReplaySourceCardBase,
@@ -695,7 +696,9 @@ namespace
 			1,
 			0,
 			TargetHasStatus(EGameXXKCardStatus::Bleed),
-			EGameXXKCardStatus::Bleed), true, false, true);
+			EGameXXKCardStatus::Bleed,
+			EGameXXKCardModifierRecipientScope::SharedDeck,
+			EGameXXKCardEffectTarget::PlayedCard), true, false, true);
 		FGameXXKCardEffect FinishBleedDraw = WithModifierPolicy(Modifier(
 			EGameXXKCardBattleModifierTrigger::FirstActiveAttackAgainstStatusNextPlayerRound,
 			EGameXXKCardEffectType::DrawCards,
@@ -715,15 +718,15 @@ namespace
 		AddHero(TEXT("Hero.Blade.XueLuXiangCheng"), TEXT("血路相承"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
 			{Attack(150, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 8, EGameXXKCardStatus::Bleed)}, EGameXXKCharacterRole::Blade, 1, false, {MoveTemp(TriggerBleed)}, {MoveTemp(FinishBleedDraw), MoveTemp(FinishBleedEnergy)});
 
-		FGameXXKCardEffect ChargeAgility = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::AfterNextActiveCard, EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::PlayedCard, 2, 1, 0, {}, EGameXXKCardStatus::Agility, EGameXXKCardModifierRecipientScope::SharedDeck), true);
-		FGameXXKCardEffect ChargeCounter = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::AfterNextActiveCard, EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::PlayedCard, 1, 1, 0, {}, EGameXXKCardStatus::Counter, EGameXXKCardModifierRecipientScope::SharedDeck), true);
+		FGameXXKCardEffect ChargeAgility = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard, EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::PlayedCard, 2, 1, 0, {}, EGameXXKCardStatus::Agility, EGameXXKCardModifierRecipientScope::SharedDeck, EGameXXKCardEffectTarget::PlayedCard), true);
+		FGameXXKCardEffect ChargeCounter = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard, EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::PlayedCard, 1, 1, 0, {}, EGameXXKCardStatus::Counter, EGameXXKCardModifierRecipientScope::SharedDeck, EGameXXKCardEffectTarget::PlayedCard), true);
 		FGameXXKCardEffect FinishMark = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::NextPlayerRoundStart, EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, 1, 0, {}, EGameXXKCardStatus::Mark), false);
 		FGameXXKCardEffect FinishCounter = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::NextPlayerRoundStart, EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::CardOwner, 2, 1, 0, {}, EGameXXKCardStatus::Counter), false);
 		AddHero(TEXT("Hero.Blade.YingFengHuanBu"), TEXT("迎锋换步"), 1, 0, EGameXXKCardTargetMode::Self,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 3, EGameXXKCardStatus::Agility), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Counter, 2)}, EGameXXKCharacterRole::Blade, 1, false, {MoveTemp(ChargeAgility), MoveTemp(ChargeCounter)}, {MoveTemp(FinishMark), MoveTemp(FinishCounter)});
 
 		FGameXXKCardEffect MomentumAttack = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::OnNextAttack, EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus, EGameXXKCardEffectTarget::SelectedTarget, 10, 1, 0, OwnerHasStatus(EGameXXKCardStatus::Momentum), EGameXXKCardStatus::Momentum), true, false, true);
-		FGameXXKCardEffect ChargeMomentum = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::AfterNextActiveCard, EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::PlayedCard, 3, 1, 0, {}, EGameXXKCardStatus::Momentum, EGameXXKCardModifierRecipientScope::SharedDeck), true);
+		FGameXXKCardEffect ChargeMomentum = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard, EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::PlayedCard, 3, 1, 0, {}, EGameXXKCardStatus::Momentum, EGameXXKCardModifierRecipientScope::SharedDeck, EGameXXKCardEffectTarget::PlayedCard), true);
 		FGameXXKCardEffect FinishFree = WithModifierPolicy(Modifier(EGameXXKCardBattleModifierTrigger::BeforeFirstActiveCardNextPlayerRound, EGameXXKCardEffectType::ModifyEnergyCost, EGameXXKCardEffectTarget::PlayedCard, -99, 1, 0, {}, EGameXXKCardStatus::None, EGameXXKCardModifierRecipientScope::SelectedTarget, EGameXXKCardEffectTarget::SelectedTarget), true);
 		AddHero(TEXT("Hero.Blade.TongPaoJuShi"), TEXT("同袍聚势"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Momentum), MoveTemp(MomentumAttack)}, EGameXXKCharacterRole::Blade, 1, false, {MoveTemp(ChargeMomentum)}, {MoveTemp(FinishFree)});
