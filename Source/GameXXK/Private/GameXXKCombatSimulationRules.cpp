@@ -12,6 +12,40 @@ namespace
 		int32 AcquisitionOrdinal = MAX_int32;
 	};
 
+	/**
+	 * One deterministic policy shared by every simulated profession. These are evaluator weights,
+	 * not combat numbers: keeping them together makes benchmark changes reviewable and prevents
+	 * individual CardId branches from teaching the bot one hard-coded combo at a time.
+	 */
+	struct FGameXXKSimulationPolicyWeights
+	{
+		int64 EnemyHealthDamage = 100;
+		int64 EnemyDefeat = 25000;
+		int64 PartyHealing = 45;
+		int64 PartyHealthLoss = 120;
+		int64 PartyDefeat = 50000;
+		int64 PartyArmor = 20;
+		int64 PartyArmorInDanger = 90;
+		int64 SharedEnergy = 400;
+		int64 PartyMana = 40;
+		int64 NewHandCard = 350;
+		int64 TerrainChange = 450;
+		int64 FormulaOpened = 2200;
+		int64 ReactionTrigger = 500;
+		int64 ModifierTrigger = 180;
+		int64 GuardLink = 150;
+		int64 TaskActivation = 300;
+		int64 TaskCardProgress = 180;
+		int64 AutomaticQueueEntry = 180;
+		int64 PendingDraw = 250;
+		int64 RetainedArmorWindow = 250;
+		int64 PendingRoundEnergy = 350;
+		int64 RevealedIntent = 80;
+		int64 Victory = 1000000;
+	};
+
+	const FGameXXKSimulationPolicyWeights SimulationPolicy;
+
 	static bool SetFailure(
 		FGameXXKSimulationMetrics& OutMetrics,
 		FString* OutError,
@@ -122,6 +156,125 @@ namespace
 			Total += GameXXKCardRules::GetCombatStatusStacks(Unit, Status);
 		}
 		return Total;
+	}
+
+	static int32 SumPartyMana(const FGameXXKCardBattleRuntime& Runtime)
+	{
+		int32 Total = 0;
+		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		{
+			if (Unit.Side == EGameXXKCardTargetSide::Party)
+			{
+				Total += Unit.Mana;
+			}
+		}
+		return Total;
+	}
+
+	static int32 CountNewHandCards(
+		const FGameXXKCardBattleRuntime& Before,
+		const FGameXXKCardBattleRuntime& After)
+	{
+		TSet<FName> ExistingInstanceIds;
+		for (const FGameXXKCardInstance& Card : Before.Deck.Hand)
+		{
+			ExistingInstanceIds.Add(Card.InstanceId);
+		}
+
+		int32 Count = 0;
+		for (const FGameXXKCardInstance& Card : After.Deck.Hand)
+		{
+			Count += ExistingInstanceIds.Contains(Card.InstanceId) ? 0 : 1;
+		}
+		return Count;
+	}
+
+	static int32 SumRemainingReactionTriggers(const FGameXXKCardBattleRuntime& Runtime)
+	{
+		int32 Total = 0;
+		for (const FGameXXKReactionRuntime& Reaction : Runtime.Reactions)
+		{
+			Total += FMath::Max(0, Reaction.RemainingTriggers);
+		}
+		return Total;
+	}
+
+	static int32 SumRemainingModifierTriggers(const FGameXXKCardBattleRuntime& Runtime)
+	{
+		int32 Total = 0;
+		for (const FGameXXKCardBattleModifierRuntime& Modifier : Runtime.Modifiers)
+		{
+			Total += Modifier.Definition.bPersistent
+				? 1
+				: FMath::Max(0, Modifier.Definition.RemainingTriggers);
+		}
+		return Total;
+	}
+
+	static int32 CountActiveTasks(const FGameXXKCardBattleRuntime& Runtime)
+	{
+		int32 Count = Runtime.HeroSpellTask.bActive ? 1 : 0;
+		for (const FGameXXKSorcererPartnerTaskRuntime& Task : Runtime.SorcererPartnerTasks)
+		{
+			Count += Task.bActive ? 1 : 0;
+		}
+		for (const FGameXXKTaskNpcSpellTaskRuntime& Task : Runtime.TaskNpcSpellTasks)
+		{
+			Count += Task.bActive ? 1 : 0;
+		}
+		return Count;
+	}
+
+	static int32 CountCompletedTaskCards(const FGameXXKCardBattleRuntime& Runtime)
+	{
+		int32 Count = Runtime.HeroSpellTask.CompletedHeroCardIds.Num();
+		for (const FGameXXKSorcererPartnerTaskRuntime& Task : Runtime.SorcererPartnerTasks)
+		{
+			Count += Task.CompletedCardIds.Num();
+		}
+		for (const FGameXXKTaskNpcSpellTaskRuntime& Task : Runtime.TaskNpcSpellTasks)
+		{
+			Count += Task.CompletedCardIds.Num();
+		}
+		return Count;
+	}
+
+	static int32 StatusStackScore(
+		const EGameXXKCardStatus Status,
+		const EGameXXKCardTargetSide Side)
+	{
+		int32 Magnitude = 0;
+		bool bHarmful = false;
+		switch (Status)
+		{
+		case EGameXXKCardStatus::Momentum: Magnitude = 140; break;
+		case EGameXXKCardStatus::Agility: Magnitude = 250; break;
+		case EGameXXKCardStatus::Vulnerability: Magnitude = 140; bHarmful = true; break;
+		case EGameXXKCardStatus::Bleed: Magnitude = 50; bHarmful = true; break;
+		case EGameXXKCardStatus::Poison: Magnitude = 60; bHarmful = true; break;
+		case EGameXXKCardStatus::Burn: Magnitude = 65; bHarmful = true; break;
+		case EGameXXKCardStatus::Mark: Magnitude = 90; bHarmful = true; break;
+		case EGameXXKCardStatus::Guard: Magnitude = 100; break;
+		case EGameXXKCardStatus::DamageOverTime: Magnitude = 55; bHarmful = true; break;
+		case EGameXXKCardStatus::CannotReceiveVulnerability: Magnitude = 160; break;
+		case EGameXXKCardStatus::NextAttackBonus: Magnitude = 140; break;
+		case EGameXXKCardStatus::NextAttackAppliesVulnerability: Magnitude = 120; break;
+		case EGameXXKCardStatus::NextHealingBonus: Magnitude = 100; break;
+		case EGameXXKCardStatus::TerrainBonusDouble: Magnitude = 140; break;
+		case EGameXXKCardStatus::NextTerrainCardFree: Magnitude = 180; break;
+		case EGameXXKCardStatus::NextTerrainCardEnergyReduction: Magnitude = 160; break;
+		case EGameXXKCardStatus::RedirectSingleTargetEnemyAttack: Magnitude = 160; break;
+		case EGameXXKCardStatus::TerrainBonusDoubleThisRound: Magnitude = 140; break;
+		case EGameXXKCardStatus::Medicine: Magnitude = 90; break;
+		case EGameXXKCardStatus::Weak: Magnitude = 120; bHarmful = true; break;
+		case EGameXXKCardStatus::Charge: Magnitude = 180; break;
+		case EGameXXKCardStatus::Counter: Magnitude = 260; break;
+		case EGameXXKCardStatus::Block: Magnitude = 300; break;
+		default: return 0;
+		}
+
+		const bool bParty = Side == EGameXXKCardTargetSide::Party;
+		return (bParty != bHarmful) ? Magnitude : -Magnitude;
 	}
 
 	static FName MakeStatusMetricKey(const EGameXXKCardStatus Status)
@@ -307,8 +460,7 @@ namespace
 
 	static int64 ScoreCandidateResolution(
 		const FGameXXKCardBattleRuntime& Before,
-		const FGameXXKCardBattleRuntime& After,
-		const FGameXXKCardPlayPreview& Preview)
+		const FGameXXKCardBattleRuntime& After)
 	{
 		int64 Score = 0;
 		for (const FGameXXKCardCombatUnit& BeforeUnit : Before.Units)
@@ -320,27 +472,74 @@ namespace
 			}
 			if (BeforeUnit.Side == EGameXXKCardTargetSide::Enemy)
 			{
-				Score += static_cast<int64>(FMath::Max(0, BeforeUnit.HP - AfterUnit->HP)) * 100;
+				Score += static_cast<int64>(BeforeUnit.HP - AfterUnit->HP)
+					* SimulationPolicy.EnemyHealthDamage;
 				if (BeforeUnit.bLiving && !AfterUnit->bLiving)
 				{
-					Score += 25000;
+					Score += SimulationPolicy.EnemyDefeat;
 				}
 			}
 			else
 			{
-				Score += static_cast<int64>(FMath::Max(0, AfterUnit->HP - BeforeUnit.HP)) * 35;
-				Score += static_cast<int64>(FMath::Max(0, AfterUnit->Armor - BeforeUnit.Armor)) * 8;
+				const int32 HealthDelta = AfterUnit->HP - BeforeUnit.HP;
+				Score += static_cast<int64>(FMath::Max(0, HealthDelta)) * SimulationPolicy.PartyHealing;
+				Score -= static_cast<int64>(FMath::Max(0, -HealthDelta)) * SimulationPolicy.PartyHealthLoss;
+				const bool bInDanger = BeforeUnit.MaxHP > 0 && BeforeUnit.HP * 4 <= BeforeUnit.MaxHP;
+				Score += static_cast<int64>(AfterUnit->Armor - BeforeUnit.Armor)
+					* (bInDanger ? SimulationPolicy.PartyArmorInDanger : SimulationPolicy.PartyArmor);
 				if (BeforeUnit.bLiving && !AfterUnit->bLiving)
 				{
-					Score -= 50000;
+					Score -= SimulationPolicy.PartyDefeat;
 				}
 			}
+
+			for (int32 RawStatus = static_cast<int32>(EGameXXKCardStatus::Momentum);
+				RawStatus <= static_cast<int32>(EGameXXKCardStatus::Block);
+				++RawStatus)
+			{
+				const EGameXXKCardStatus Status = static_cast<EGameXXKCardStatus>(RawStatus);
+				const int32 StackDelta = GameXXKCardRules::GetCombatStatusStacks(*AfterUnit, Status)
+					- GameXXKCardRules::GetCombatStatusStacks(BeforeUnit, Status);
+				Score += static_cast<int64>(StackDelta) * StatusStackScore(Status, BeforeUnit.Side);
+			}
+		}
+
+		Score += static_cast<int64>(After.Deck.SharedEnergy - Before.Deck.SharedEnergy)
+			* SimulationPolicy.SharedEnergy;
+		Score += static_cast<int64>(SumPartyMana(After) - SumPartyMana(Before))
+			* SimulationPolicy.PartyMana;
+		Score += static_cast<int64>(CountNewHandCards(Before, After)) * SimulationPolicy.NewHandCard;
+		Score += static_cast<int64>(After.HealerFormulas.Num() - Before.HealerFormulas.Num())
+			* SimulationPolicy.FormulaOpened;
+		Score += static_cast<int64>(SumRemainingReactionTriggers(After) - SumRemainingReactionTriggers(Before))
+			* SimulationPolicy.ReactionTrigger;
+		Score += static_cast<int64>(SumRemainingModifierTriggers(After) - SumRemainingModifierTriggers(Before))
+			* SimulationPolicy.ModifierTrigger;
+		Score += static_cast<int64>(After.GuardLinks.Num() - Before.GuardLinks.Num())
+			* SimulationPolicy.GuardLink;
+		Score += static_cast<int64>(CountActiveTasks(After) - CountActiveTasks(Before))
+			* SimulationPolicy.TaskActivation;
+		Score += static_cast<int64>(CountCompletedTaskCards(After) - CountCompletedTaskCards(Before))
+			* SimulationPolicy.TaskCardProgress;
+		Score += static_cast<int64>(AutomaticQueueDepth(After) - AutomaticQueueDepth(Before))
+			* SimulationPolicy.AutomaticQueueEntry;
+		Score += static_cast<int64>(After.PendingTriggeredDrawCount - Before.PendingTriggeredDrawCount)
+			* SimulationPolicy.PendingDraw;
+		Score += static_cast<int64>(After.RetainArmorAtNextPartyPhaseUnitIds.Num()
+			- Before.RetainArmorAtNextPartyPhaseUnitIds.Num()) * SimulationPolicy.RetainedArmorWindow;
+		Score += static_cast<int64>(After.PendingNextRoundEnergyBonus - Before.PendingNextRoundEnergyBonus)
+			* SimulationPolicy.PendingRoundEnergy;
+		Score += static_cast<int64>(After.RevealedEnemyIntentCount - Before.RevealedEnemyIntentCount)
+			* SimulationPolicy.RevealedIntent;
+		if (After.Terrain != Before.Terrain)
+		{
+			Score += SimulationPolicy.TerrainChange;
 		}
 		if (SumLivingEnemyHealth(After) == 0)
 		{
-			Score += 1000000;
+			Score += SimulationPolicy.Victory;
 		}
-		return Score - Preview.EffectiveEnergyCost * 4 - Preview.EffectiveManaCost * 2;
+		return Score;
 	}
 
 	static int32 CountStrandedTargetFailures(const FGameXXKRuntimeState& State)
@@ -428,7 +627,7 @@ namespace
 				{
 					continue;
 				}
-				const int64 Score = ScoreCandidateResolution(Runtime, CandidateState.CardRun.ActiveBattle, Preview);
+				const int64 Score = ScoreCandidateResolution(Runtime, CandidateState.CardRun.ActiveBattle);
 				if (Score <= 0)
 				{
 					continue;
@@ -590,6 +789,16 @@ namespace
 		return false;
 	}
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+bool FGameXXKCombatSimulationRules::ChooseSkilledDecisionForTest(
+	const FGameXXKRuntimeState& State,
+	FGameXXKSimulationDecision& OutDecision,
+	FString* OutError)
+{
+	return ChooseSkilledDecision(State, OutDecision, OutError);
+}
+#endif
 
 bool FGameXXKCombatSimulationRules::RunScenario(
 	const FGameXXKSimulationScenario& Scenario,

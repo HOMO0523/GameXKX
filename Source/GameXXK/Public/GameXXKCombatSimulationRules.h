@@ -12,4 +12,12 @@ public:
 		FGameXXKSimulationMetrics& OutMetrics,
 		TArray<FGameXXKSimulationTraceEntry>& OutTrace,
 		FString* OutError = nullptr);
+
+#if WITH_DEV_AUTOMATION_TESTS
+	/** Deterministic read-only policy seam; production simulation uses the same private chooser. */
+	static bool ChooseSkilledDecisionForTest(
+		const FGameXXKRuntimeState& State,
+		FGameXXKSimulationDecision& OutDecision,
+		FString* OutError = nullptr);
+#endif
 };
