@@ -26,16 +26,16 @@ class BalanceTuningMathTests(unittest.TestCase):
         self.assertEqual(zero_lower, 0.0)
         self.assertAlmostEqual(zero_upper, 0.2775, places=4)
 
-    def test_growth_tier_targets_follow_the_approved_specification(self):
-        self.assertEqual(get_target_interval("Early", "Battle"), (0.70, 0.85))
-        self.assertEqual(get_target_interval("Early", "Elite"), (0.35, 0.55))
-        self.assertEqual(get_target_interval("Early", "Boss"), (0.15, 0.35))
-        self.assertEqual(get_target_interval("Mid", "Battle"), (0.80, 0.92))
-        self.assertEqual(get_target_interval("Mid", "Elite"), (0.55, 0.70))
-        self.assertEqual(get_target_interval("Mid", "Boss"), (0.35, 0.55))
+    def test_growth_tier_targets_are_isolated_encounter_survival_rates(self):
+        self.assertEqual(get_target_interval("Early", "Battle"), (0.95, 1.00))
+        self.assertEqual(get_target_interval("Early", "Elite"), (0.75, 0.88))
+        self.assertEqual(get_target_interval("Early", "Boss"), (0.55, 0.75))
+        self.assertEqual(get_target_interval("Mid", "Battle"), (0.95, 1.00))
+        self.assertEqual(get_target_interval("Mid", "Elite"), (0.80, 0.92))
+        self.assertEqual(get_target_interval("Mid", "Boss"), (0.60, 0.80))
         self.assertEqual(get_target_interval("Late", "Battle"), (0.95, 1.0))
-        self.assertEqual(get_target_interval("Late", "Elite"), (0.80, 0.95))
-        self.assertEqual(get_target_interval("Late", "Boss"), (0.60, 0.80))
+        self.assertEqual(get_target_interval("Late", "Elite"), (0.82, 0.95))
+        self.assertEqual(get_target_interval("Late", "Boss"), (0.65, 0.82))
         with self.assertRaisesRegex(ValueError, "unknown growth target"):
             get_target_interval("Early", "Camp")
 
@@ -147,7 +147,11 @@ class BalanceTuningClassificationTests(unittest.TestCase):
 
         proposal = build_proposal(first, second, rows)
 
+        self.assertEqual(proposal["schema_version"], 2)
         self.assertEqual(proposal["write_authority"], "none")
+        self.assertEqual(
+            proposal["target_policy"]["kind"], "isolated_encounter_survival"
+        )
         self.assertNotIn("production_patch", proposal)
         self.assertTrue(proposal["candidates"])
         self.assertTrue(all("forbidden_parallel_changes" in item for item in proposal["candidates"]))
@@ -157,6 +161,37 @@ class BalanceTuningClassificationTests(unittest.TestCase):
             write_proposal(proposal, output)
             self.assertTrue((output / "proposal.json").is_file())
             self.assertTrue((output / "proposal.md").is_file())
+
+    def test_mid_boss_twenty_two_of_thirty_does_not_propose_a_nerf(self):
+        first = {
+            "schema_version": 3,
+            "matrix": "orthogonal",
+            "csv_sha256": "stable",
+            "summary": {
+                "case_count": 30,
+                "card_usage": {},
+                "runtime_totals": {},
+                "recurring_stalemates": [],
+                "stranded_target_cases": [],
+            },
+        }
+        second = json.loads(json.dumps(first))
+        rows = [
+            {
+                "dimension": "EquipmentSet",
+                "variant": "MixedNoBonus",
+                "node": "Boss",
+                "seed": index,
+                "outcome": "Victory" if index < 22 else "Defeat",
+                "rounds": 12,
+                "remaining_party_health": 100 if index < 22 else 0,
+            }
+            for index in range(30)
+        ]
+
+        proposal = build_proposal(first, second, rows)
+
+        self.assertFalse(proposal["candidates"])
 
 
 if __name__ == "__main__":

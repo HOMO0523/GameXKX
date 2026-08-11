@@ -22,19 +22,19 @@ from scripts.run_card_balance_observation import read_case_rows
 
 TARGET_INTERVALS = {
     "Early": {
-        "Battle": (0.70, 0.85),
-        "Elite": (0.35, 0.55),
-        "Boss": (0.15, 0.35),
+        "Battle": (0.95, 1.00),
+        "Elite": (0.75, 0.88),
+        "Boss": (0.55, 0.75),
     },
     "Mid": {
-        "Battle": (0.80, 0.92),
-        "Elite": (0.55, 0.70),
-        "Boss": (0.35, 0.55),
+        "Battle": (0.95, 1.00),
+        "Elite": (0.80, 0.92),
+        "Boss": (0.60, 0.80),
     },
     "Late": {
         "Battle": (0.95, 1.00),
-        "Elite": (0.80, 0.95),
-        "Boss": (0.60, 0.80),
+        "Elite": (0.82, 0.95),
+        "Boss": (0.65, 0.82),
     },
 }
 
@@ -263,13 +263,19 @@ def build_proposal(
     if not isinstance(first_summary, dict):
         raise ValueError("observation pair has no aggregate summary")
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_observation_schema": 3,
         "matrix": first.get("matrix"),
         "source_csv_sha256": first.get("csv_sha256"),
         "source_run_ids": [first.get("run_id"), second.get("run_id")],
         "write_authority": "none",
         "policy": "read-only proposals; production changes require a fixed-seed RED and one attribution cluster per commit",
+        "target_policy": {
+            "version": 2,
+            "kind": "isolated_encounter_survival",
+            "description": "fresh-state encounter survival targets; never interpret as complete-run win rates",
+            "intervals": TARGET_INTERVALS,
+        },
         "slices": slices,
         "card_classification": classify_card_usage(
             first_summary.get("card_usage", {})
@@ -292,6 +298,7 @@ def write_proposal(proposal: dict[str, object], output_directory: Path) -> None:
         "",
         f"- Source SHA: `{proposal.get('source_csv_sha256')}`",
         f"- Matrix: `{proposal.get('matrix')}`",
+        f"- Target policy: `{proposal.get('target_policy', {}).get('kind')}`",
         f"- Write authority: **{proposal.get('write_authority')}**",
         f"- Candidate count: {len(proposal.get('candidates', []))}",
         "",
