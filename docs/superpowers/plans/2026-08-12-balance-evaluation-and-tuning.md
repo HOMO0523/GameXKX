@@ -364,4 +364,3 @@ git push origin backup/pre-balance-iteration-<n>-20260812
 - `docs/production/2026-08-12-balance-tuning-ledger.md`
 
 不满足的区间必须标为未决，不得用总胜率或目录名伪装完成。
-
