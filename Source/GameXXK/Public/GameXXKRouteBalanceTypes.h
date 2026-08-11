@@ -17,10 +17,20 @@ struct GAMEXXK_API FGameXXKRouteBalanceCohort
 /** One fixed-seed battle request expanded from the locked full matrix. */
 struct GAMEXXK_API FGameXXKRouteBalanceCase
 {
+	/** Optional diagnostic grouping. Locked production-balance cases leave both names empty. */
+	FName DimensionId = NAME_None;
+	FName VariantId = NAME_None;
+
 	FName CohortId = NAME_None;
 	FName QuestNpcId = NAME_None;
 	FName EquipmentSetId = NAME_None;
 	FName EquipmentQualityId = NAME_None;
+
+	/** Optional explicit permanent companion identity for orthogonal diagnostics. */
+	FName CompanionTemplateId = NAME_None;
+	int32 CompanionCardSeed = INDEX_NONE;
+	EGameXXKCardTerrain Terrain = EGameXXKCardTerrain::Invalid;
+
 	EGameXXKNodeKind NodeKind = EGameXXKNodeKind::Battle;
 	int32 EnhancementLevel = 0;
 	int32 Chapter = 0;

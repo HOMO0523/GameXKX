@@ -150,6 +150,106 @@ namespace
 		return FGameXXKCardBattleAdapter::EnsureCardRunInitialized(InOutState, OutError);
 	}
 
+	bool AddRequestedStarterCompanion(
+		FGameXXKRuntimeState& InOutState,
+		const FGameXXKRouteBalanceCase& Case,
+		FString* OutError)
+	{
+		if (Case.CompanionTemplateId.IsNone())
+		{
+			if (Case.CompanionCardSeed != INDEX_NONE)
+			{
+				return SetError(OutError, TEXT("A diagnostic companion card seed requires an explicit template."));
+			}
+			return AddDeterministicStarterCompanion(InOutState, Case, OutError);
+		}
+		if (Case.CompanionCardSeed <= 0)
+		{
+			return SetError(OutError, TEXT("An explicit diagnostic companion requires a positive card seed."));
+		}
+
+		FGameXXKCompanionRosterState& Roster = InOutState.CardRun.CompanionRoster;
+		FGameXXKCompanionRecruitResult Recruit;
+		if (!FGameXXKCompanionRules::RecruitPermanentCompanion(
+			Roster,
+			Case.CompanionTemplateId,
+			Case.CompanionCardSeed,
+			Recruit,
+			OutError)
+			|| Recruit.Outcome != EGameXXKCompanionRecruitOutcome::Recruited
+			|| !FGameXXKCompanionRules::SetActivePermanentCompanion(Roster, Recruit.Companion.InstanceId, OutError))
+		{
+			return false;
+		}
+
+		FGameXXKPermanentCompanion* Companion = Roster.PermanentCompanions.FindByPredicate(
+			[&Recruit](const FGameXXKPermanentCompanion& Candidate)
+			{
+				return Candidate.InstanceId == Recruit.Companion.InstanceId;
+			});
+		if (!Companion)
+		{
+			return SetError(OutError, TEXT("The explicit diagnostic companion was not retained in the roster."));
+		}
+		Companion->Level = Case.RouteLevel;
+		if (!FGameXXKCompanionRules::RefreshUnlockedPersonalCards(*Companion, OutError))
+		{
+			return false;
+		}
+		return FGameXXKCardBattleAdapter::EnsureCardRunInitialized(InOutState, OutError);
+	}
+
+	bool IsConcreteBalanceTerrain(const EGameXXKCardTerrain Terrain)
+	{
+		return Terrain == EGameXXKCardTerrain::Plain
+			|| Terrain == EGameXXKCardTerrain::Cliff
+			|| Terrain == EGameXXKCardTerrain::Forest
+			|| Terrain == EGameXXKCardTerrain::WaterShore
+			|| Terrain == EGameXXKCardTerrain::Ferry
+			|| Terrain == EGameXXKCardTerrain::Village
+			|| Terrain == EGameXXKCardTerrain::Cave;
+	}
+
+	void AppendOrthogonalDimension(
+		TArray<FGameXXKRouteBalanceCase>& OutCases,
+		const FName DimensionId,
+		const TArray<FName>& VariantIds,
+		const int32 SeedBase,
+		TFunctionRef<void(FName, FGameXXKRouteBalanceCase&)> ConfigureVariant)
+	{
+		const EGameXXKNodeKind NodeKinds[] = {
+			EGameXXKNodeKind::Battle,
+			EGameXXKNodeKind::Elite,
+			EGameXXKNodeKind::Boss};
+		for (int32 NodeIndex = 0; NodeIndex < UE_ARRAY_COUNT(NodeKinds); ++NodeIndex)
+		{
+			for (int32 SeedOrdinal = 0; SeedOrdinal < 30; ++SeedOrdinal)
+			{
+				const int32 Seed = SeedBase + NodeIndex * 100 + SeedOrdinal;
+				for (const FName VariantId : VariantIds)
+				{
+					FGameXXKRouteBalanceCase& Case = OutCases.Emplace_GetRef();
+					Case.DimensionId = DimensionId;
+					Case.VariantId = VariantId;
+					Case.CohortId = FName(*FString::Printf(TEXT("Orthogonal.%s"), *DimensionId.ToString()));
+					Case.QuestNpcId = TEXT("Npc.TusiChief");
+					Case.EquipmentSetId = TEXT("None");
+					Case.EquipmentQualityId = TEXT("Rare");
+					Case.CompanionTemplateId = TEXT("Companion.Blade.01");
+					Case.CompanionCardSeed = Seed ^ 0x13579B;
+					Case.Terrain = EGameXXKCardTerrain::Plain;
+					Case.NodeKind = NodeKinds[NodeIndex];
+					Case.EnhancementLevel = 0;
+					Case.Chapter = 2;
+					Case.RouteLevel = 10;
+					Case.SeedOrdinal = SeedOrdinal;
+					Case.Seed = Seed;
+					ConfigureVariant(VariantId, Case);
+				}
+			}
+		}
+	}
+
 	FName MakeRuntimeEnemyId(const FName DefinitionId, const int32 Slot)
 	{
 		return FName(*FString::Printf(TEXT("Balance.%s.P%d"), *DefinitionId.ToString(), Slot));
@@ -257,7 +357,7 @@ namespace
 			FGameXXKEncounterRules::DeriveChapterSeed(Case.Seed, 2),
 			FGameXXKEncounterRules::DeriveChapterSeed(Case.Seed, 3)};
 		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, OutError)
-			|| !AddDeterministicStarterCompanion(State, Case, OutError)
+			|| !AddRequestedStarterCompanion(State, Case, OutError)
 			|| !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, Case.QuestNpcId, {}, OutError)
 			|| !ApplyHeroEquipmentFixture(State, Case, OutError)
 			|| !FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(State)
@@ -269,7 +369,13 @@ namespace
 		OutScenario.Seed = Case.Seed;
 		OutScenario.InitialRuntimeState = MoveTemp(State);
 		OutScenario.NodeKind = Case.NodeKind;
-		OutScenario.Terrain = EGameXXKCardTerrain::Plain;
+		OutScenario.Terrain = Case.Terrain == EGameXXKCardTerrain::Invalid
+			? EGameXXKCardTerrain::Plain
+			: Case.Terrain;
+		if (!IsConcreteBalanceTerrain(OutScenario.Terrain))
+		{
+			return SetError(OutError, TEXT("A balance case requests an invalid starting terrain."));
+		}
 		OutScenario.Policy = EGameXXKSimulationPolicy::Skilled;
 		OutScenario.MaxRounds = 100;
 		OutScenario.MaxDecisions = 2000;
@@ -325,6 +431,86 @@ FGameXXKRouteBalanceMatrix FGameXXKRouteBalanceRules::MakeLockedFullMatrix()
 		MakeCohort(TEXT("ShanHeTusi"), TEXT("Npc.TusiChief"), TEXT("ShanHe"), TEXT("Epic"), 5),
 		MakeCohort(TEXT("MixedMaxRegression"), TEXT("Npc.SongJinBao"), TEXT("PoJun"), TEXT("Epic"), 10)};
 	return Matrix;
+}
+
+bool FGameXXKRouteBalanceRules::MakeOrthogonalCases(
+	TArray<FGameXXKRouteBalanceCase>& OutCases,
+	FString* OutError)
+{
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	Cases.Reserve(2520);
+
+	AppendOrthogonalDimension(
+		Cases,
+		TEXT("Profession"),
+		{TEXT("Blade"), TEXT("Guard"), TEXT("Healer"), TEXT("Hunter"), TEXT("Sorcerer"), TEXT("FormationMaster")},
+		1100000,
+		[](const FName VariantId, FGameXXKRouteBalanceCase& Case)
+		{
+			Case.CompanionTemplateId = FName(*FString::Printf(TEXT("Companion.%s.01"), *VariantId.ToString()));
+		});
+
+	AppendOrthogonalDimension(
+		Cases,
+		TEXT("EquipmentSet"),
+		{TEXT("NoSet"), TEXT("PoJun"), TEXT("XuanJia"), TEXT("QingNang"), TEXT("ZhuiFeng"), TEXT("ShiGu"), TEXT("ShanHe")},
+		1200000,
+		[](const FName VariantId, FGameXXKRouteBalanceCase& Case)
+		{
+			Case.EquipmentSetId = VariantId == TEXT("NoSet") ? FName(TEXT("None")) : VariantId;
+		});
+
+	AppendOrthogonalDimension(
+		Cases,
+		TEXT("QuestNpc"),
+		{TEXT("TusiChief"), TEXT("SongJinBao"), TEXT("YueBai"), TEXT("ZhouGuangZu"), TEXT("JinGui"), TEXT("QiongMeiEr")},
+		1300000,
+		[](const FName VariantId, FGameXXKRouteBalanceCase& Case)
+		{
+			Case.QuestNpcId = FName(*FString::Printf(TEXT("Npc.%s"), *VariantId.ToString()));
+		});
+
+	AppendOrthogonalDimension(
+		Cases,
+		TEXT("Terrain"),
+		{TEXT("Plain"), TEXT("Cliff"), TEXT("Forest"), TEXT("WaterShore"), TEXT("Village"), TEXT("Cave")},
+		1400000,
+		[](const FName VariantId, FGameXXKRouteBalanceCase& Case)
+		{
+			Case.CompanionTemplateId = TEXT("Companion.FormationMaster.01");
+			if (VariantId == TEXT("Plain")) { Case.Terrain = EGameXXKCardTerrain::Plain; }
+			else if (VariantId == TEXT("Cliff")) { Case.Terrain = EGameXXKCardTerrain::Cliff; }
+			else if (VariantId == TEXT("Forest")) { Case.Terrain = EGameXXKCardTerrain::Forest; }
+			else if (VariantId == TEXT("WaterShore")) { Case.Terrain = EGameXXKCardTerrain::WaterShore; }
+			else if (VariantId == TEXT("Village")) { Case.Terrain = EGameXXKCardTerrain::Village; }
+			else if (VariantId == TEXT("Cave")) { Case.Terrain = EGameXXKCardTerrain::Cave; }
+		});
+
+	AppendOrthogonalDimension(
+		Cases,
+		TEXT("Progression"),
+		{TEXT("Early"), TEXT("Mid"), TEXT("Late")},
+		1500000,
+		[](const FName VariantId, FGameXXKRouteBalanceCase& Case)
+		{
+			if (VariantId == TEXT("Early"))
+			{
+				Case.Chapter = 1;
+				Case.RouteLevel = 5;
+			}
+			else if (VariantId == TEXT("Late"))
+			{
+				Case.Chapter = 3;
+				Case.RouteLevel = 15;
+			}
+		});
+
+	if (Cases.Num() != 2520)
+	{
+		return SetError(OutError, TEXT("The orthogonal balance matrix did not produce exactly 2,520 cases."));
+	}
+	OutCases = MoveTemp(Cases);
+	return true;
 }
 
 bool FGameXXKRouteBalanceRules::ExpandCases(

@@ -9,6 +9,7 @@ from pathlib import Path
 from scripts.run_card_balance_observation import (
     aggregate_case_rows,
     audit_card_catalog,
+    get_observation_matrix_config,
     load_existing_runs,
     parse_metric_map,
     read_case_rows,
@@ -68,12 +69,12 @@ CASE_FIELDS = (
 )
 
 
-def make_case_csv(rows):
+def make_case_csv(rows, fields=CASE_FIELDS):
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=CASE_FIELDS, lineterminator="\n")
+    writer = csv.DictWriter(output, fieldnames=fields, lineterminator="\n")
     writer.writeheader()
     for row in rows:
-        complete = {field: "" for field in CASE_FIELDS}
+        complete = {field: "" for field in fields}
         complete.update(row)
         writer.writerow(complete)
     return output.getvalue()
@@ -221,6 +222,20 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class CardBalanceObservationParserTests(unittest.TestCase):
+    def test_matrix_configuration_keeps_locked_and_orthogonal_contracts_separate(self):
+        locked = get_observation_matrix_config("locked")
+        orthogonal = get_observation_matrix_config("orthogonal")
+
+        self.assertEqual(locked.expected_case_count, 2400)
+        self.assertEqual(locked.automation_test, "GameXXK.Diagnostics.CardBalanceObservation")
+        self.assertEqual(orthogonal.expected_case_count, 2520)
+        self.assertEqual(
+            orthogonal.automation_test,
+            "GameXXK.Diagnostics.OrthogonalBalanceObservation",
+        )
+        with self.assertRaisesRegex(ValueError, "unknown observation matrix"):
+            get_observation_matrix_config("mixed")
+
     def test_metric_map_rejects_malformed_items(self):
         with self.assertRaisesRegex(ValueError, "invalid metric item"):
             parse_metric_map("Burn=2;missing-value")
@@ -356,6 +371,26 @@ class CardBalanceObservationParserTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "case identities are not unique"):
             aggregate_case_rows(rows, expected_case_count=4)
+
+    def test_orthogonal_variants_share_control_seed_without_duplicate_identity(self):
+        fields = ("schema_version", "dimension", "variant") + CASE_FIELDS[1:]
+        rows = [
+            dict(CASE_ROWS[0], dimension="Profession", variant="Blade"),
+            dict(CASE_ROWS[0], dimension="Profession", variant="Guard"),
+        ]
+
+        parsed = read_case_rows(io.StringIO(make_case_csv(rows, fields)))
+        summary = aggregate_case_rows(parsed, expected_case_count=2)
+
+        self.assertEqual(summary["dimensions"]["Profession"]["Blade"]["case_count"], 1)
+        self.assertEqual(summary["dimensions"]["Profession"]["Guard"]["case_count"], 1)
+
+    def test_orthogonal_identity_requires_dimension_and_variant_together(self):
+        fields = ("schema_version", "dimension", "variant") + CASE_FIELDS[1:]
+        row = dict(CASE_ROWS[0], dimension="Profession", variant="")
+
+        with self.assertRaisesRegex(ValueError, "case CSV row 2 is malformed"):
+            read_case_rows(io.StringIO(make_case_csv([row], fields)))
 
     def test_aggregate_rejects_wrong_case_count(self):
         rows = read_case_rows(io.StringIO(CASE_CSV))
@@ -536,6 +571,25 @@ class CardBalanceObservationSummaryTests(unittest.TestCase):
                 json.loads(ledger.read_text(encoding="utf-8").strip())["run_id"],
                 "run_a",
             )
+
+    def test_orthogonal_summary_uses_separate_artifact_names(self):
+        records = [
+            {
+                "run_id": "orthogonal_a",
+                "csv_sha256": "orthogonal-hash",
+                "duration_seconds": 2.0,
+                "summary": {"recurring_stalemates": []},
+            }
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            write_final_summary(records, {}, root, artifact_prefix="orthogonal_")
+
+            self.assertTrue((root / "orthogonal_observation_runs.jsonl").is_file())
+            self.assertTrue((root / "orthogonal_final_summary.json").is_file())
+            self.assertTrue((root / "orthogonal_final_summary.md").is_file())
+            self.assertFalse((root / "final_summary.json").exists())
 
 
 if __name__ == "__main__":

@@ -8,6 +8,10 @@ class GAMEXXK_API FGameXXKRouteBalanceRules final
 {
 public:
 	static FGameXXKRouteBalanceMatrix MakeLockedFullMatrix();
+	/** Builds five deterministic, single-variable diagnostic dimensions (2,520 total cases). */
+	static bool MakeOrthogonalCases(
+		TArray<FGameXXKRouteBalanceCase>& OutCases,
+		FString* OutError = nullptr);
 	static bool ExpandCases(
 		const FGameXXKRouteBalanceMatrix& Matrix,
 		TArray<FGameXXKRouteBalanceCase>& OutCases,

@@ -22,6 +22,8 @@ from typing import Iterable, TextIO
 
 AUTOMATION_TEST = "GameXXK.Diagnostics.CardBalanceObservation"
 EXPECTED_CASE_COUNT = 2400
+ORTHOGONAL_AUTOMATION_TEST = "GameXXK.Diagnostics.OrthogonalBalanceObservation"
+ORTHOGONAL_EXPECTED_CASE_COUNT = 2520
 OBSERVATION_SCHEMA_VERSION = 3
 SAFE_RUN_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 
@@ -121,6 +123,30 @@ class ObservationConfig:
         return self.project_root / "Saved" / "BalanceObservation"
 
 
+@dataclass(frozen=True)
+class ObservationMatrixConfig:
+    matrix_id: str
+    automation_test: str
+    expected_case_count: int
+
+
+def get_observation_matrix_config(matrix_id: str) -> ObservationMatrixConfig:
+    configurations = {
+        "locked": ObservationMatrixConfig(
+            "locked", AUTOMATION_TEST, EXPECTED_CASE_COUNT
+        ),
+        "orthogonal": ObservationMatrixConfig(
+            "orthogonal",
+            ORTHOGONAL_AUTOMATION_TEST,
+            ORTHOGONAL_EXPECTED_CASE_COUNT,
+        ),
+    }
+    try:
+        return configurations[matrix_id]
+    except KeyError as error:
+        raise ValueError(f"unknown observation matrix: {matrix_id!r}") from error
+
+
 def parse_metric_map(value: str) -> dict[str, int]:
     result: dict[str, int] = {}
     for item in filter(None, (part.strip() for part in value.split(";"))):
@@ -160,6 +186,12 @@ def read_case_rows(source: TextIO) -> list[dict[str, object]]:
             for key in IDENTITY_FIELDS:
                 if not row[key].strip():
                     raise ValueError(f"missing required identity field: {key}")
+            dimension = (row.get("dimension") or "").strip()
+            variant = (row.get("variant") or "").strip()
+            if bool(dimension) != bool(variant):
+                raise ValueError("orthogonal rows require dimension and variant together")
+            parsed["dimension"] = dimension
+            parsed["variant"] = variant
             for key in NAME_LIST_FIELDS:
                 parsed[key] = parse_name_list(row[key])
             for key in METRIC_FIELDS:
@@ -214,7 +246,14 @@ def aggregate_case_rows(
             f"expected {expected_case_count} cases, found {len(rows)}"
         )
     identities = {
-        (row["cohort"], row["chapter"], row["node"], row["seed"])
+        (
+            row["dimension"],
+            row["variant"],
+            row["node"],
+            row["seed"],
+        )
+        if row.get("dimension")
+        else (row["cohort"], row["chapter"], row["node"], row["seed"])
         for row in rows
     }
     if len(identities) != len(rows):
@@ -242,6 +281,9 @@ def aggregate_case_rows(
     companion_role_buckets: dict[str, list[dict[str, object]]] = defaultdict(list)
     companion_archetype_buckets: dict[str, list[dict[str, object]]] = defaultdict(list)
     terrain_buckets: dict[str, list[dict[str, object]]] = defaultdict(list)
+    dimension_buckets: dict[
+        str, dict[str, list[dict[str, object]]]
+    ] = defaultdict(lambda: defaultdict(list))
     for row in rows:
         produced.update(row["status_produced"])
         consumed.update(row["status_consumed"])
@@ -256,6 +298,8 @@ def aggregate_case_rows(
         companion_role_buckets[str(row["companion_role"])].append(row)
         companion_archetype_buckets[str(row["companion_primary_archetype"])].append(row)
         terrain_buckets[str(row["terrain"])].append(row)
+        if row.get("dimension"):
+            dimension_buckets[str(row["dimension"])][str(row["variant"])].append(row)
 
     status_utilization = {
         key: {
@@ -346,6 +390,13 @@ def aggregate_case_rows(
         "terrains": {
             key: _outcome_summary(bucket_rows)
             for key, bucket_rows in sorted(terrain_buckets.items())
+        },
+        "dimensions": {
+            dimension: {
+                variant: _outcome_summary(bucket_rows)
+                for variant, bucket_rows in sorted(variants.items())
+            }
+            for dimension, variants in sorted(dimension_buckets.items())
         },
         "card_usage": card_usage,
         "runtime_totals": runtime_totals,
@@ -623,9 +674,14 @@ def _write_json(path: Path, value: object) -> None:
     )
 
 
-def run_observation_once(config: ObservationConfig, run_id: str) -> dict[str, object]:
+def run_observation_once(
+    config: ObservationConfig,
+    run_id: str,
+    matrix: str = "locked",
+) -> dict[str, object]:
     if not SAFE_RUN_ID.fullmatch(run_id):
         raise ValueError(f"unsafe observation run id: {run_id!r}")
+    matrix_config = get_observation_matrix_config(matrix)
     if not config.ue_editor.is_file():
         raise FileNotFoundError(config.ue_editor)
     if not config.project_file.is_file():
@@ -634,7 +690,7 @@ def run_observation_once(config: ObservationConfig, run_id: str) -> dict[str, ob
     evidence_dir = config.evidence_root / run_id
     report_dir = (
         config.project_root
-        / "Saved/Automation/CardBalanceObservation"
+        / f"Saved/Automation/CardBalanceObservation-{matrix_config.matrix_id}"
         / run_id
     )
     log_path = config.project_root / "Saved/Logs" / f"CardBalanceObservation-{run_id}.log"
@@ -655,7 +711,7 @@ def run_observation_once(config: ObservationConfig, run_id: str) -> dict[str, ob
         f"-AbsLog={log_path}",
         f"-ReportOutputPath={report_dir}",
         "-LogCmds=LogTemp Error",
-        f"-ExecCmds=Automation RunTests {AUTOMATION_TEST}; Quit",
+        f"-ExecCmds=Automation RunTests {matrix_config.automation_test}; Quit",
     ]
     monotonic_start = time.monotonic()
     process = subprocess.run(
@@ -679,9 +735,13 @@ def run_observation_once(config: ObservationConfig, run_id: str) -> dict[str, ob
         raise RuntimeError(f"diagnostic CSV was not written: {csv_path}")
     with csv_path.open("r", encoding="utf-8-sig", newline="") as source:
         rows = read_case_rows(source)
-    summary = aggregate_case_rows(rows)
+    summary = aggregate_case_rows(
+        rows,
+        expected_case_count=matrix_config.expected_case_count,
+    )
     record: dict[str, object] = {
         "schema_version": OBSERVATION_SCHEMA_VERSION,
+        "matrix": matrix_config.matrix_id,
         "run_id": run_id,
         "started_at": started.isoformat(),
         "completed_at": datetime.now().astimezone().isoformat(),
@@ -736,9 +796,10 @@ def write_final_summary(
     records: list[dict[str, object]],
     catalog_audit: dict[str, object],
     evidence_root: Path,
+    artifact_prefix: str = "",
 ) -> dict[str, object]:
     evidence_root.mkdir(parents=True, exist_ok=True)
-    (evidence_root / "observation_runs.jsonl").write_text(
+    (evidence_root / f"{artifact_prefix}observation_runs.jsonl").write_text(
         "".join(
             json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n"
             for record in records
@@ -769,7 +830,7 @@ def write_final_summary(
         "catalog_audit": catalog_audit,
         "representative_run": representative,
     }
-    _write_json(evidence_root / "final_summary.json", result)
+    _write_json(evidence_root / f"{artifact_prefix}final_summary.json", result)
 
     lines = [
         "# Card balance observation summary",
@@ -816,7 +877,7 @@ def write_final_summary(
         lines.extend(f"- {identity}: {count}/{len(records)} runs" for identity, count in stalls.most_common())
     else:
         lines.append("- None")
-    (evidence_root / "final_summary.md").write_text(
+    (evidence_root / f"{artifact_prefix}final_summary.md").write_text(
         "\n".join(lines) + "\n", encoding="utf-8"
     )
     return result
@@ -844,6 +905,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--summarize-existing", action="store_true")
     parser.add_argument(
+        "--matrix",
+        choices=("locked", "orthogonal"),
+        default="locked",
+    )
+    parser.add_argument(
         "--ue-editor",
         type=Path,
         default=Path("D:/UE_5.8/Engine/Binaries/Win64/UnrealEditor-Cmd.exe"),
@@ -862,7 +928,7 @@ def main(argv: list[str] | None = None) -> int:
             run_id = _new_run_id(sequence)
             print(f"[{datetime.now().astimezone().isoformat()}] starting {run_id}", flush=True)
             try:
-                record = run_observation_once(config, run_id)
+                record = run_observation_once(config, run_id, matrix=args.matrix)
             except Exception as error:
                 print(f"{run_id} failed: {error}", file=sys.stderr, flush=True)
                 return 1
@@ -875,11 +941,20 @@ def main(argv: list[str] | None = None) -> int:
             if args.once:
                 break
 
-    records = load_existing_runs(config.evidence_root)
+    matrix_config = get_observation_matrix_config(args.matrix)
+    records = [
+        record
+        for record in load_existing_runs(
+            config.evidence_root,
+            expected_case_count=matrix_config.expected_case_count,
+        )
+        if str(record.get("matrix", "locked")) == args.matrix
+    ]
     result = write_final_summary(
         records,
         audit_card_catalog(project_root),
         config.evidence_root,
+        artifact_prefix="orthogonal_" if args.matrix == "orthogonal" else "",
     )
     print(
         f"summary: {result['run_count']} runs, deterministic={result['deterministic']}",
