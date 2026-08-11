@@ -25,9 +25,37 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 		TestFalse(FString::Printf(TEXT("%s never exposes the retired medicine name"), *Definition.Id.ToString()), Detail.Contains(TEXT("药材")));
 	}
 
+	struct FVisibleCardTextCase
+	{
+		FName CardId;
+		const TCHAR* ExpectedText;
+		const TCHAR* ForbiddenToken;
+	};
+	const TArray<FVisibleCardTextCase> VisibleCardTextCases = {
+		{TEXT("Hero.Formation.LianYingBuShi"), TEXT("触发当前地势收益1次"), TEXT("TriggerTerrainBenefit")},
+		{TEXT("Profession.Guard.TieBiRuShan"), TEXT("破绽免疫"), TEXT("CannotReceiveVulnerability")},
+		{TEXT("Profession.FormationMaster.WanXiangGuiZhen"), TEXT("地形免耗"), TEXT("NextTerrainCardFree")},
+		{TEXT("Route.Terrain.XingJunBuZhen"), TEXT("地形减耗"), TEXT("NextTerrainCardEnergyReduction")}};
+	for (const FVisibleCardTextCase& TextCase : VisibleCardTextCases)
+	{
+		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(TextCase.CardId);
+		TestNotNull(*FString::Printf(TEXT("%s text fixture exists"), *TextCase.CardId.ToString()), Definition);
+		if (!Definition)
+		{
+			continue;
+		}
+		const FString Detail = GameXXKCardText::DescribeDetail(*Definition, nullptr);
+		TestTrue(
+			*FString::Printf(TEXT("%s uses concise Chinese player text"), *TextCase.CardId.ToString()),
+			Detail.Contains(TextCase.ExpectedText));
+		TestFalse(
+			*FString::Printf(TEXT("%s does not expose an internal enum token"), *TextCase.CardId.ToString()),
+			Detail.Contains(TextCase.ForbiddenToken));
+	}
+
 	const FGameXXKCardDefinition* QingFeng = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Generic.QingFengYiShi"));
 	const FGameXXKCardDefinition* GuiYuan = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Generic.GuiYuanShu"));
-	const FGameXXKCardDefinition* TerrainOverride = FGameXXKCardCatalog::FindCardDefinition(TEXT("Npc.QiongMeiEr.TengQiaoFeiDu"));
+	const FGameXXKCardDefinition* TerrainSwitch = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.FormationMaster.YinShuiHuiYuan"));
 	const FGameXXKCardDefinition* Consumption = FGameXXKCardCatalog::FindCardDefinition(TEXT("Route.Boss.FuHuDuanJiang"));
 	const FGameXXKCardDefinition* DelayedModifier = FGameXXKCardCatalog::FindCardDefinition(TEXT("Route.Rare.TieYiYiJue"));
 	const FGameXXKCardDefinition* Momentum = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Generic.NingShenTuNa"));
@@ -38,7 +66,7 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	const FGameXXKCardDefinition* TerrainBenefit = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Formation.GuanShiLuoZi"));
 	TestNotNull(TEXT("the manual enemy target fixture exists"), QingFeng);
 	TestNotNull(TEXT("the manual ally target fixture exists"), GuiYuan);
-	TestNotNull(TEXT("the terrain target-mode override fixture exists"), TerrainOverride);
+	TestNotNull(TEXT("the fixed-target terrain-switch fixture exists"), TerrainSwitch);
 	TestNotNull(TEXT("the consumed-status fixture exists"), Consumption);
 	TestNotNull(TEXT("the delayed modifier fixture exists"), DelayedModifier);
 	TestNotNull(TEXT("the momentum naming fixture exists"), Momentum);
@@ -47,7 +75,7 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("the Heavy Arrow keyword fixture exists"), HeavyArrow);
 	TestNotNull(TEXT("the spell-task keyword fixture exists"), SpellTask);
 	TestNotNull(TEXT("the terrain-benefit keyword fixture exists"), TerrainBenefit);
-	if (!QingFeng || !GuiYuan || !TerrainOverride || !Consumption || !DelayedModifier
+	if (!QingFeng || !GuiYuan || !TerrainSwitch || !Consumption || !DelayedModifier
 		|| !Momentum || !Blade || !Medicine || !HeavyArrow || !SpellTask || !TerrainBenefit)
 	{
 		return false;
@@ -55,13 +83,14 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 
 	const FString QingFengText = GameXXKCardText::DescribeDetail(*QingFeng, nullptr);
 	const FString GuiYuanText = GameXXKCardText::DescribeDetail(*GuiYuan, nullptr);
-	const FString TerrainOverrideText = GameXXKCardText::DescribeDetail(*TerrainOverride, nullptr);
+	const FString TerrainSwitchText = GameXXKCardText::DescribeDetail(*TerrainSwitch, nullptr);
 	const FString ConsumptionText = GameXXKCardText::DescribeDetail(*Consumption, nullptr);
 	const FString DelayedModifierText = GameXXKCardText::DescribeDetail(*DelayedModifier, nullptr);
 	TestTrue(TEXT("manual enemy target text explains the player selection"), QingFengText.Contains(TEXT("单体敌方")) && QingFengText.Contains(TEXT("选择目标")));
 	TestTrue(TEXT("manual enemy target text explains attack damage"), QingFengText.Contains(TEXT("攻击伤害")));
 	TestTrue(TEXT("manual ally target text explains the player selection"), GuiYuanText.Contains(TEXT("单体友方")) && GuiYuanText.Contains(TEXT("选择目标")));
-	TestTrue(TEXT("terrain override text explains the condition and alternate targeting"), TerrainOverrideText.Contains(TEXT("地形")) && TerrainOverrideText.Contains(TEXT("改为")));
+	TestTrue(TEXT("terrain-switch text names its fixed destination and immediate benefit"),
+		TerrainSwitchText.Contains(TEXT("切换至水岸")) && TerrainSwitchText.Contains(TEXT("触发当前地势收益1次")));
 	TestTrue(TEXT("consumed-status text explains the consumption"), ConsumptionText.Contains(TEXT("消耗")));
 	TestTrue(TEXT("delayed modifier text explains the deferred trigger"), DelayedModifierText.Contains(TEXT("触发")));
 
@@ -114,6 +143,65 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("card tooltips retain the formatted card effect"), TooltipText.Contains(TEXT("攻击伤害")));
 	TestTrue(TEXT("card tooltips append the actual interaction result"), TooltipText.Contains(TEXT("点击后加入手牌。")));
 	TestTrue(TEXT("card tooltips append the actual unavailable reason"), TooltipText.Contains(TEXT("手牌已满。")));
+
+	FGameXXKCardDefinition FormatterCoverage;
+	FormatterCoverage.Id = TEXT("Test.CardText.CurrentEnums");
+	FormatterCoverage.DisplayName = FText::FromString(TEXT("现行枚举文案覆盖"));
+	FormatterCoverage.Owner = EGameXXKCardOwner::Route;
+	FormatterCoverage.Rarity = EGameXXKCardRarity::Common;
+	FormatterCoverage.BaseQuality = EGameXXKCardQuality::Common;
+	FormatterCoverage.TargetSpec.Mode = EGameXXKCardTargetMode::AnyLivingUnit;
+	const auto AddCoverageEffect = [&FormatterCoverage](
+		const EGameXXKCardEffectType Type,
+		const EGameXXKCardEffectTarget Target,
+		const int32 Magnitude = 1)
+	{
+		FGameXXKCardEffect& Effect = FormatterCoverage.Effects.AddDefaulted_GetRef();
+		Effect.Type = Type;
+		Effect.Target = Target;
+		Effect.Source = EGameXXKCardEffectSource::CardOwner;
+		Effect.Magnitude = Magnitude;
+		return &Effect;
+	};
+	AddCoverageEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestAttackAlly, 6);
+	AddCoverageEffect(EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::PriorityEnemy, 100);
+	AddCoverageEffect(EGameXXKCardEffectType::HealOrReverseFlat, EGameXXKCardEffectTarget::SelectedTargetSide, 2);
+	FGameXXKCardEffect* HighestAttackSource = AddCoverageEffect(
+		EGameXXKCardEffectType::DamagePercentAttackPlusArmor,
+		EGameXXKCardEffectTarget::SelectedTarget,
+		100);
+	HighestAttackSource->Source = EGameXXKCardEffectSource::HighestAttackAlly;
+	AddCoverageEffect(EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1);
+	AddCoverageEffect(EGameXXKCardEffectType::ModifyManaCost, EGameXXKCardEffectTarget::PlayedCard, -1);
+	AddCoverageEffect(EGameXXKCardEffectType::WidenNextActiveSingleTarget, EGameXXKCardEffectTarget::PlayedCard, 1);
+	AddCoverageEffect(EGameXXKCardEffectType::PreserveNextReactionUse, EGameXXKCardEffectTarget::AllAllies, 1);
+	AddCoverageEffect(EGameXXKCardEffectType::RetainArmorNextRound, EGameXXKCardEffectTarget::AllAllies, 1);
+	AddCoverageEffect(EGameXXKCardEffectType::CleanseFriendlyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 1);
+	FGameXXKCardEffect* AllyCondition = AddCoverageEffect(
+		EGameXXKCardEffectType::AddArmor,
+		EGameXXKCardEffectTarget::SelectedTarget,
+		4);
+	AllyCondition->Condition.Type = EGameXXKCardEffectConditionType::TargetIsAlly;
+	FGameXXKCardEffect* EnemyCondition = AddCoverageEffect(
+		EGameXXKCardEffectType::ApplyStatus,
+		EGameXXKCardEffectTarget::SelectedTarget,
+		2);
+	EnemyCondition->Status = EGameXXKCardStatus::Poison;
+	EnemyCondition->Condition.Type = EGameXXKCardEffectConditionType::TargetIsEnemy;
+
+	const FString FormatterCoverageText = GameXXKCardText::DescribeEffects(FormatterCoverage);
+	TestTrue(TEXT("current formatter names the highest-Attack ally target and source"), FormatterCoverageText.Contains(TEXT("攻击最高友方")));
+	TestTrue(TEXT("current formatter explains deterministic priority-enemy selection"), FormatterCoverageText.Contains(TEXT("标记最高")) && FormatterCoverageText.Contains(TEXT("生命比例最低")));
+	TestTrue(TEXT("current formatter names the selected unit's whole side"), FormatterCoverageText.Contains(TEXT("所选目标同阵营全体")));
+	TestTrue(TEXT("current formatter explains named task-NPC search"), FormatterCoverageText.Contains(TEXT("任务 NPC")) && FormatterCoverageText.Contains(TEXT("检索")));
+	TestTrue(TEXT("current formatter explains Mana-cost changes"), FormatterCoverageText.Contains(TEXT("内力消耗-1")));
+	TestTrue(TEXT("current formatter explains single-target widening"), FormatterCoverageText.Contains(TEXT("扩展为目标所在阵营全体")));
+	TestTrue(TEXT("current formatter explains preserved reaction use"), FormatterCoverageText.Contains(TEXT("反击或格挡")) && FormatterCoverageText.Contains(TEXT("不消耗次数")));
+	TestTrue(TEXT("current formatter explains next-round Armor retention"), FormatterCoverageText.Contains(TEXT("下回合保留当前护甲")));
+	TestTrue(TEXT("current formatter explains ally-only damage-over-time cleansing"), FormatterCoverageText.Contains(TEXT("若所选目标为友方")) && FormatterCoverageText.Contains(TEXT("清除其全部流血、中毒和灼烧")));
+	TestTrue(TEXT("current formatter explains flat healing reversal"), FormatterCoverageText.Contains(TEXT("恢复2点生命")) && FormatterCoverageText.Contains(TEXT("失去2点生命")));
+	TestTrue(TEXT("current formatter explains ally and enemy gates"), FormatterCoverageText.Contains(TEXT("当所选目标是友方")) && FormatterCoverageText.Contains(TEXT("当所选目标是敌方")));
+	TestFalse(TEXT("current enum coverage has no unresolved fallback"), FormatterCoverageText.Contains(TEXT("未知")) || FormatterCoverageText.Contains(TEXT("无效")));
 
 	FGameXXKCardDefinition QualityFixture;
 	QualityFixture.Id = TEXT("Test.CardText.Quality");

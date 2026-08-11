@@ -128,6 +128,7 @@ bool FGameXXKEquipmentFacadeMutationTest::RunTest(const FString& Parameters)
 	State = UGameXXKMVPRules::CreateNewGame();
 	State.Screen = EGameXXKScreen::Town;
 	State.Inventory.FindOrAdd(UGameXXKMVPRules::ItemEnhancementStone()) = 10;
+	State.Inventory.FindOrAdd(UGameXXKMVPRules::ItemRefinementSand()) = 30;
 	State.EnhancementMaterial = 10;
 	State.EquipmentCollection.RefinementSand = 30;
 	const FName WeaponId = CreateWarehouseWeapon(*this, State);

@@ -90,6 +90,9 @@ namespace
 		case EGameXXKCardEffectTarget::Attacker: return TEXT("攻击者");
 		case EGameXXKCardEffectTarget::PlayedCard: return TEXT("本次打出的牌");
 		case EGameXXKCardEffectTarget::HighestArmorAlly: return TEXT("护甲最高友方");
+		case EGameXXKCardEffectTarget::HighestAttackAlly: return TEXT("攻击最高友方");
+		case EGameXXKCardEffectTarget::PriorityEnemy: return TEXT("标记最高敌方（同层优先生命比例最低）");
+		case EGameXXKCardEffectTarget::SelectedTargetSide: return TEXT("所选目标同阵营全体");
 		default: return TEXT("无效对象");
 		}
 	}
@@ -137,6 +140,8 @@ namespace
 				: FString::Printf(TEXT("地形为%s或%s"), *DescribeTerrain(Condition.Terrain), *DescribeTerrain(Condition.AlternateTerrain));
 			break;
 		case EGameXXKCardEffectConditionType::OwnerHasDamageOverTime: Gate = TEXT("出牌者具有流血、中毒、灼烧或蚀伤"); break;
+		case EGameXXKCardEffectConditionType::TargetIsAlly: Gate = TEXT("所选目标是友方"); break;
+		case EGameXXKCardEffectConditionType::TargetIsEnemy: Gate = TEXT("所选目标是敌方"); break;
 		default: Gate = TEXT("无效条件"); break;
 		}
 		if (!Gate.IsEmpty())
@@ -201,6 +206,7 @@ namespace
 		case EGameXXKCardEffectSource::CardOwner: return TEXT("出牌者");
 		case EGameXXKCardEffectSource::SelectedTarget: return TEXT("所选目标");
 		case EGameXXKCardEffectSource::HighestArmorAlly: return TEXT("护甲最高友方");
+		case EGameXXKCardEffectSource::HighestAttackAlly: return TEXT("攻击最高友方");
 		case EGameXXKCardEffectSource::Invalid:
 		default: return TEXT("未知来源");
 		}
@@ -267,10 +273,28 @@ namespace
 		case EGameXXKCardEffectType::GainArmorFromCurrentManaPercent: return FString::Printf(TEXT("%s获得等于当前内力%d%%的护甲"), *Target, Magnitude);
 		case EGameXXKCardEffectType::GainManaOverflowToArmor: return FString::Printf(TEXT("%s回复%d点内力；溢出内力按%d%%转为护甲"), *Target, SecondaryMagnitude, Magnitude);
 		case EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard: return FString::Printf(TEXT("从抽牌堆或弃牌堆检索%d张尚未完成的主角法术任务牌加入手牌"), Magnitude);
+		case EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard: return FString::Printf(TEXT("从抽牌堆或弃牌堆检索%d张该任务 NPC 尚未完成的任务牌加入手牌"), Magnitude);
 		case EGameXXKCardEffectType::TriggerStatus: return FString::Printf(TEXT("触发%s的%s%d次；每次按当前层数造成生命伤害并减少1层"), *Target, *DescribeStatus(Status), Magnitude);
 		case EGameXXKCardEffectType::LightningPerTargetStatusSnapshot: return FString::Printf(TEXT("按%s当前%s层数，逐层造成%d%%攻击伤害"), *Target, *DescribeStatus(Status), Magnitude);
 		case EGameXXKCardEffectType::ReplayTriggeredCardBase: return TEXT("重放本次触发牌的基础效果");
 		case EGameXXKCardEffectType::ReplaySourceCardBase: return TEXT("重放本牌的基础效果");
+		case EGameXXKCardEffectType::ModifyManaCost: return FString::Printf(TEXT("%s内力消耗%+d"), *Target, Magnitude);
+		case EGameXXKCardEffectType::WidenNextActiveSingleTarget: return FString::Printf(TEXT("%s的单体效果扩展为目标所在阵营全体"), *Target);
+		case EGameXXKCardEffectType::PreserveNextReactionUse: return TEXT("全队下一次反击或格挡不消耗次数");
+		case EGameXXKCardEffectType::RetainArmorNextRound: return FString::Printf(TEXT("%s下回合保留当前护甲"), *Target);
+		case EGameXXKCardEffectType::CleanseFriendlyDamageOverTime: return FString::Printf(TEXT("若%s为友方，清除其全部流血、中毒和灼烧"), *Target);
+		case EGameXXKCardEffectType::HealOrReverseFlat: return FString::Printf(TEXT("若%s为友方，恢复%d点生命；若为敌方，失去%d点生命"), *Target, Magnitude, Magnitude);
+		case EGameXXKCardEffectType::ChangeTerrain: return TEXT("切换地势");
+		case EGameXXKCardEffectType::DamagePercentAttackPerTargetStatus:
+			return FString::Printf(
+				TEXT("%s造成（%d%%+每层%s%d个百分点）攻击伤害，不消耗%s"),
+				*Target,
+				Magnitude,
+				*DescribeStatus(Status),
+				SecondaryMagnitude,
+				*DescribeStatus(Status));
+		case EGameXXKCardEffectType::IncreaseMaxMana:
+			return FString::Printf(TEXT("%s内力上限+%d，当前内力不变"), *Target, Magnitude);
 		case EGameXXKCardEffectType::Invalid:
 		default: return TEXT("未知效果");
 		}
@@ -408,6 +432,10 @@ namespace
 		{
 			Line = DescribeGuardLink(Effect.GuardLink);
 		}
+		else if (Effect.Type == EGameXXKCardEffectType::ChangeTerrain)
+		{
+			Line = FString::Printf(TEXT("切换至%s"), *DescribeTerrain(Effect.TerrainOverride));
+		}
 		else if (Effect.Type == EGameXXKCardEffectType::TriggerTerrainBenefit)
 		{
 			const FString Terrain = Effect.TerrainOverride == EGameXXKCardTerrain::Invalid
@@ -518,8 +546,230 @@ namespace
 		}
 	}
 
+	const FGameXXKCardEffect* FindSorcererEffect(
+		const FGameXXKCardDefinition& Definition,
+		const EGameXXKCardEffectType Type,
+		const EGameXXKCardStatus Status = EGameXXKCardStatus::None)
+	{
+		return Definition.Effects.FindByPredicate([Type, Status](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Type == Type && (Status == EGameXXKCardStatus::None || Effect.Status == Status);
+		});
+	}
+
+	int32 SorcererMagnitude(
+		const FGameXXKCardDefinition& Definition,
+		const EGameXXKCardEffectType Type,
+		const int32 Fallback,
+		const EGameXXKCardStatus Status = EGameXXKCardStatus::None)
+	{
+		const FGameXXKCardEffect* Effect = FindSorcererEffect(Definition, Type, Status);
+		return Effect ? Effect->Magnitude : Fallback;
+	}
+
+	bool IsPermanentSorcererCard(const FGameXXKCardDefinition& Definition)
+	{
+		return Definition.Owner == EGameXXKCardOwner::Profession
+			&& Definition.OwnerId == FName(TEXT("Profession.Sorcerer"))
+			&& Definition.Role == EGameXXKCharacterRole::Sorcerer
+			&& Definition.SorcererRule.Family != EGameXXKSorcererCardFamily::None
+			&& Definition.SorcererRule.SequenceRule != EGameXXKSorcererSequenceRule::None
+			&& Definition.SorcererRule.RewardRule != EGameXXKSorcererRewardRule::None;
+	}
+
+	void AppendSorcererRewardText(
+		const EGameXXKSorcererRewardRule Reward,
+		TArray<FString>& OutLines)
+	{
+		switch (Reward)
+		{
+		case EGameXXKSorcererRewardRule::CoreSearch:
+			OutLines.Add(TEXT("首牌奖励：回复1点气力、8点内力，抽2张牌。"));
+			break;
+		case EGameXXKSorcererRewardRule::CoreManaEcho:
+			OutLines.Add(TEXT("首牌奖励：我方全体回复8点内力，抽2张牌。"));
+			break;
+		case EGameXXKSorcererRewardRule::FireLamp:
+			OutLines.Add(TEXT("首牌奖励：敌方全体当前灼烧翻倍。"));
+			break;
+		case EGameXXKSorcererRewardRule::FireSpread:
+			OutLines.Add(TEXT("首牌奖励：按场上最高灼烧补齐敌方全体，再各获得3层灼烧。"));
+			break;
+		case EGameXXKSorcererRewardRule::FireBurst:
+			OutLines.Add(TEXT("首牌奖励：敌方全体结算2次当前灼烧伤害，均不减层。"));
+			break;
+		case EGameXXKSorcererRewardRule::FireSearch:
+			OutLines.Add(TEXT("首牌奖励：敌方全体获得6层灼烧；回复1点气力，抽2张牌。"));
+			break;
+		case EGameXXKSorcererRewardRule::IceCurrentManaRestore:
+			OutLines.Add(TEXT("首牌奖励：执行标准寒冰伤害；回复1点气力，抽1张牌。"));
+			break;
+		case EGameXXKSorcererRewardRule::IceMaxMana:
+			OutLines.Add(TEXT("首牌奖励：执行标准寒冰伤害；自身内力上限再+8并补满内力。"));
+			break;
+		case EGameXXKSorcererRewardRule::IceArmorDouble:
+			OutLines.Add(TEXT("首牌奖励：执行标准寒冰伤害；我方全体获得6点护甲。"));
+			break;
+		case EGameXXKSorcererRewardRule::IceSearch:
+			OutLines.Add(TEXT("首牌奖励：执行标准寒冰伤害；敌方全体获得2层虚弱。"));
+			break;
+		case EGameXXKSorcererRewardRule::LightningMark:
+			OutLines.Add(TEXT("首牌奖励：敌方全体获得5层标记；回复1点气力，抽2张牌。"));
+			break;
+		case EGameXXKSorcererRewardRule::LightningSearch:
+			OutLines.Add(TEXT("首牌奖励：敌方全体获得3层标记；回复1点气力，抽2张牌。"));
+			break;
+		case EGameXXKSorcererRewardRule::LightningMarkHits:
+			OutLines.Add(TEXT("首牌奖励：敌方全体先获得5层标记，再各触发5次70%落雷。"));
+			break;
+		case EGameXXKSorcererRewardRule::LightningStorm:
+			OutLines.Add(TEXT("首牌奖励：敌方全体先获得3层标记，再各触发3次60%落雷。"));
+			break;
+		case EGameXXKSorcererRewardRule::UniversalScalingAttack:
+			OutLines.Add(TEXT("首牌奖励·普通：敌方全体造成300%攻击伤害。"));
+			OutLines.Add(TEXT("首牌奖励·炎法：敌方全体获得3层灼烧，再结算1次灼烧且不减层。"));
+			OutLines.Add(TEXT("首牌奖励·寒冰：消耗自身全部护甲，对敌方全体造成（120%+每点护甲25个百分点）攻击伤害。"));
+			OutLines.Add(TEXT("首牌奖励·雷法：敌方全体获得3层标记，再按各自标记逐层触发60%落雷。"));
+			break;
+		case EGameXXKSorcererRewardRule::UniversalDraw:
+			OutLines.Add(TEXT("首牌奖励·普通：回复2点气力，抽3张牌；我方全体回复6点内力。"));
+			OutLines.Add(TEXT("首牌奖励·炎法：敌方全体获得4层灼烧；回复1点气力，抽3张牌。"));
+			OutLines.Add(TEXT("首牌奖励·寒冰：执行标准寒冰伤害，返还25%所耗护甲；回复1点气力，抽2张牌。"));
+			OutLines.Add(TEXT("首牌奖励·雷法：敌方全体获得2层标记并逐层触发40%落雷；回复1点气力，抽2张牌。"));
+			break;
+		case EGameXXKSorcererRewardRule::UniversalPartyArmor:
+			OutLines.Add(TEXT("首牌奖励·普通：我方全体获得12点护甲；敌方全体获得2层虚弱。"));
+			OutLines.Add(TEXT("首牌奖励·炎法：我方全体获得8点护甲；敌方全体获得4层灼烧、1层虚弱。"));
+			OutLines.Add(TEXT("首牌奖励·寒冰：执行标准寒冰伤害；我方全体获得6+所耗护甲25%的护甲。"));
+			OutLines.Add(TEXT("首牌奖励·雷法：敌方全体获得2层标记并逐层触发30%落雷；我方全体获得6点护甲。"));
+			break;
+		case EGameXXKSorcererRewardRule::UniversalSearch:
+			OutLines.Add(TEXT("首牌奖励·普通：额外重放第5张记录牌，抽1张牌。"));
+			OutLines.Add(TEXT("首牌奖励·炎法：额外重放最后一张炎牌，其施加灼烧翻倍；敌方全体再获得2层灼烧。"));
+			OutLines.Add(TEXT("首牌奖励·寒冰：额外重放最后一张冰牌，再执行标准寒冰伤害，抽1张牌。"));
+			OutLines.Add(TEXT("首牌奖励·雷法：敌方全体获得2层标记，额外重放最后一张雷牌；再逐层触发40%落雷，抽1张牌。"));
+			break;
+		case EGameXXKSorcererRewardRule::None:
+		default:
+			break;
+		}
+	}
+
+	FString DescribeSorcererEffects(const FGameXXKCardDefinition& Definition)
+	{
+		TArray<FString> Lines;
+		const int32 Attack = SorcererMagnitude(Definition, EGameXXKCardEffectType::DamagePercentAttack, 0);
+		const int32 Burn = SorcererMagnitude(
+			Definition,
+			EGameXXKCardEffectType::ApplyStatus,
+			0,
+			EGameXXKCardStatus::Burn);
+		const int32 Mark = SorcererMagnitude(
+			Definition,
+			EGameXXKCardEffectType::ApplyStatus,
+			0,
+			EGameXXKCardStatus::Mark);
+		const int32 Lightning = SorcererMagnitude(Definition, EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, 0);
+		const int32 Armor = SorcererMagnitude(Definition, EGameXXKCardEffectType::AddArmor, 0);
+		const int32 Draw = SorcererMagnitude(Definition, EGameXXKCardEffectType::DrawCards, 0);
+
+		switch (Definition.SorcererRule.SequenceRule)
+		{
+		case EGameXXKSorcererSequenceRule::CoreSearch:
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
+			Lines.Add(TEXT("编序：第1～2位时，检索牌本回合内力消耗-3。"));
+			break;
+		case EGameXXKSorcererSequenceRule::CoreManaEcho:
+			Lines.Add(FString::Printf(TEXT("基础：自身回复%d点内力。"), SorcererMagnitude(Definition, EGameXXKCardEffectType::GainMana, 3)));
+			Lines.Add(TEXT("编序：再回复此前记录牌实际支付内力总和的50%，向下取整。"));
+			break;
+		case EGameXXKSorcererSequenceRule::FireLamp:
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害并获得%d层灼烧。"), Attack, Burn));
+			Lines.Add(TEXT("编序：第1～2位时，灼烧改为4层。"));
+			break;
+		case EGameXXKSorcererSequenceRule::FireSpread:
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体获得%d层灼烧。"), Burn));
+			Lines.Add(TEXT("编序：前一张记录牌为炎牌时，灼烧改为3层。"));
+			break;
+		case EGameXXKSorcererSequenceRule::FireBurst:
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害。"), Attack));
+			Lines.Add(TEXT("编序：第3～5位时，每层灼烧使倍率+10个百分点，不消耗灼烧。"));
+			break;
+		case EGameXXKSorcererSequenceRule::FireSearch:
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
+			Lines.Add(TEXT("编序：第4～5位时，每段改为70%攻击伤害。"));
+			break;
+		case EGameXXKSorcererSequenceRule::IceCurrentManaRestore:
+			Lines.Add(TEXT("基础：自身回复当前内力25%的内力，向下取整；溢出内力100%转为护甲。"));
+			break;
+		case EGameXXKSorcererSequenceRule::IceMaxMana:
+			Lines.Add(TEXT("基础：自身内力上限+4并获得4点护甲，当前内力不变。"));
+			break;
+		case EGameXXKSorcererSequenceRule::IceArmorDouble:
+			Lines.Add(TEXT("基础：自身护甲为0时获得4点护甲，否则当前护甲翻倍，最高99。"));
+			break;
+		case EGameXXKSorcererSequenceRule::IceSearch:
+			Lines.Add(TEXT("基础：自身获得当前内力25%的护甲；检索1张尚未完成的携带法师牌；无合法牌时再获得一次等量护甲。"));
+			break;
+		case EGameXXKSorcererSequenceRule::LightningMark:
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害，伤害后获得%d层标记。"), Attack, Mark));
+			Lines.Add(TEXT("编序：第1～2位时，标记改为3层。"));
+			break;
+		case EGameXXKSorcererSequenceRule::LightningSearch:
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害；检索1张尚未完成的携带法师牌，随后获得%d层标记；无合法牌时再结算一次同等伤害。"), Attack, Mark));
+			Lines.Add(TEXT("编序：第1～2位时，标记改为3层。"));
+			break;
+		case EGameXXKSorcererSequenceRule::LightningMarkHits:
+			Lines.Add(FString::Printf(TEXT("基础：按敌方各自标记快照逐层落雷，每次造成%d%%攻击伤害。"), Lightning));
+			Lines.Add(TEXT("编序：第4～5位时，每次改为65%攻击伤害。"));
+			break;
+		case EGameXXKSorcererSequenceRule::LightningStorm:
+			Lines.Add(FString::Printf(TEXT("基础：按敌方各自标记快照逐层落雷，每次造成%d%%攻击伤害。"), Lightning));
+			Lines.Add(TEXT("编序：第4～5位时，每次改为45%攻击伤害。"));
+			break;
+		case EGameXXKSorcererSequenceRule::UniversalScalingAttack:
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害。"), Attack));
+			Lines.Add(TEXT("编序：此前每记录1张牌，倍率+25个百分点；第1～5位依次为60/85/110/135/160%。"));
+			break;
+		case EGameXXKSorcererSequenceRule::UniversalDraw:
+			Lines.Add(FString::Printf(TEXT("基础：自身抽%d张牌。"), Draw));
+			Lines.Add(TEXT("编序：第3～5位时，额外回复5点内力。"));
+			break;
+		case EGameXXKSorcererSequenceRule::UniversalPartyArmor:
+			Lines.Add(FString::Printf(TEXT("基础：我方全体获得%d点护甲。"), Armor));
+			Lines.Add(TEXT("编序：前一张记录牌不含直接伤害时，改为6点护甲。"));
+			break;
+		case EGameXXKSorcererSequenceRule::UniversalSearch:
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
+			Lines.Add(TEXT("编序：第4～5位时，每段改为90%攻击伤害。"));
+			break;
+		case EGameXXKSorcererSequenceRule::None:
+		default:
+			return TEXT("未知法师牌规则");
+		}
+
+		if (Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Ice
+			|| Definition.SorcererRule.RewardRule == EGameXXKSorcererRewardRule::UniversalDraw
+			|| Definition.SorcererRule.RewardRule == EGameXXKSorcererRewardRule::UniversalPartyArmor
+			|| Definition.SorcererRule.RewardRule == EGameXXKSorcererRewardRule::UniversalSearch)
+		{
+			Lines.Add(TEXT("标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。"));
+		}
+		if (Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Universal)
+		{
+			Lines.Add(TEXT("任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。"));
+		}
+		AppendSorcererRewardText(Definition.SorcererRule.RewardRule, Lines);
+		Lines.Add(TEXT("五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。"));
+		return FString::Join(Lines, TEXT("\n"));
+	}
+
 	FString DescribeEffectsResolved(const FGameXXKCardDefinition& EffectiveDefinition)
 	{
+		if (IsPermanentSorcererCard(EffectiveDefinition))
+		{
+			return DescribeSorcererEffects(EffectiveDefinition);
+		}
 		TArray<FString> Lines;
 		for (const FGameXXKCardEffect& Effect : EffectiveDefinition.Effects)
 		{

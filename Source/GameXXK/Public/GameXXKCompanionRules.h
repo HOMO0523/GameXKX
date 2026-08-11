@@ -11,12 +11,13 @@ public:
 	static constexpr int32 MaxPermanentCompanions = 12;
 	static constexpr int32 MaxCompanionLevel = FGameXXKCharacterStatRules::MaxCharacterLevel;
 
-	/** Builds the immutable twelve-card pool: four role cores plus eight seeded, distinct choices. */
+	/** Builds the immutable six-card birth pool: two role cores plus four seeded choices, or formation's two switches plus four benefits. */
 	static bool BuildPersonalCardPool(
 		EGameXXKCharacterRole Role,
 		int32 CardSeed,
 		TArray<FName>& OutCardIds,
-		FString* OutError = nullptr);
+		FString* OutError = nullptr,
+		FName* OutPrimaryArchetypeId = nullptr);
 
 	/** Validates immutable identity, deterministic pool, unlock frontier, and selected five-card configuration. */
 	static bool ValidatePermanentCompanionProfile(
@@ -54,7 +55,7 @@ public:
 		FGameXXKCompanionRecruitResult& OutResult,
 		FString* OutError = nullptr);
 
-	/** Rebuilds the six-to-twelve deterministic unlock frontier from level and star. */
+	/** Rebuilds the fixed six-card unlock set; level and star never add personal cards. */
 	static bool RefreshUnlockedPersonalCards(FGameXXKPermanentCompanion& InOutCompanion, FString* OutError = nullptr);
 
 	/** A route configuration must contain exactly five distinct cards from this companion's unlocked pool. */
@@ -67,7 +68,14 @@ public:
 		const TArray<FName>& SelectedCardIds,
 		FString* OutError = nullptr);
 
-	/** A task NPC always exposes four fixed cards and the player configures exactly three. */
+	/** Deterministically omits one of a task NPC's four fixed cards for this route seed. */
+	static bool BuildQuestNpcRouteCardSelection(
+		FName QuestNpcId,
+		int32 RouteSeed,
+		TArray<FName>& OutSelectedCardIds,
+		FString* OutError = nullptr);
+
+	/** A task NPC always exposes four fixed cards and a route persists exactly three. */
 	static bool ValidateQuestNpcCardSelection(
 		FName QuestNpcId,
 		const TArray<FName>& SelectedCardIds,

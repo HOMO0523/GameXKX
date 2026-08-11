@@ -430,26 +430,44 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	ReflectIncomingContext.SourceUnitId = TEXT("ReflectEnemy");
 	ReflectIncomingContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
 	FGameXXKCardDamageResult ReflectIncomingResult;
-	TArray<FGameXXKCardDamageResult> ReflectReactionResults;
 	if (!TestTrue(TEXT("real enemy hit triggers the card-driven reflection"), GameXXKCardRules::ResolveEnemyDirectAttack(
 		ReflectRuntime,
 		ReflectIncomingContext,
 		TEXT("ReflectGuard"),
 		10,
 		ReflectIncomingResult,
-		&ReflectReactionResults)))
+		nullptr,
+		nullptr,
+		true)))
 	{
 		return false;
 	}
 	TestEqual(TEXT("armored incoming reflection trigger snapshots health before"), ReflectIncomingResult.TargetHealthBefore, 100);
 	TestEqual(TEXT("armored incoming reflection trigger snapshots unchanged health after"), ReflectIncomingResult.TargetHealthAfter, 100);
+	FGameXXKCardCombatUnit* ReflectGuardAfterIncoming = FindCombatUnit(ReflectRuntime.Units, TEXT("ReflectGuard"));
+	if (!TestNotNull(TEXT("the reflecting guard remains present after the incoming hit"), ReflectGuardAfterIncoming))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the incoming hit spends armor before Block snapshots its damage"), ReflectGuardAfterIncoming->Armor, 2);
+	TArray<FGameXXKCardDamageResult> ReflectReactionResults;
+	if (!TestTrue(TEXT("the completed enemy card opens the reflection boundary"), GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
+		ReflectRuntime,
+		TEXT("ReflectEnemy"),
+		EGameXXKCardDamageKind::SingleTargetAttack,
+		TEXT("ReflectGuard"),
+		ReflectReactionResults)))
+	{
+		return false;
+	}
 	TestEqual(TEXT("real reflection produces one separate damage result"), ReflectReactionResults.Num(), 1);
 	if (ReflectReactionResults.Num() == 1)
 	{
 		TestEqual(TEXT("real reflection source is the defending guard"), ReflectReactionResults[0].SourceUnitId, FName(TEXT("ReflectGuard")));
 		TestEqual(TEXT("real reflection resolves against the original attacker"), ReflectReactionResults[0].ResolvedTargetUnitId, FName(TEXT("ReflectEnemy")));
+		TestEqual(TEXT("Block deals one hundred percent current Attack plus post-hit Armor"), ReflectReactionResults[0].BaseRequestedDamage, 22);
 		TestEqual(TEXT("real reflection snapshots attacker health before retaliation"), ReflectReactionResults[0].TargetHealthBefore, 100);
-		TestEqual(TEXT("real reflection snapshots attacker health after retaliation"), ReflectReactionResults[0].TargetHealthAfter, 88);
+		TestEqual(TEXT("real reflection snapshots attacker health after retaliation"), ReflectReactionResults[0].TargetHealthAfter, 78);
 	}
 
 	return true;

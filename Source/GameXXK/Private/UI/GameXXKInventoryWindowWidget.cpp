@@ -1074,6 +1074,28 @@ bool UGameXXKInventoryWindowWidget::RequestSelectedEnhanceForTest()
 	return RequestEnhanceForSelectedItem();
 }
 
+bool UGameXXKInventoryWindowWidget::EnhanceSelectedEquipmentInstanceForTest()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || SelectedEquipmentInstanceId.IsNone())
+	{
+		return false;
+	}
+	const FGameXXKEquipmentInstance* Before = FGameXXKEquipmentRules::FindInstance(
+		Subsystem->GetRuntimeState().EquipmentCollection,
+		SelectedEquipmentInstanceId);
+	if (!Before)
+	{
+		return false;
+	}
+	const int32 EnhancementLevelBefore = Before->EnhancementLevel;
+	HandleEnhanceMainClicked();
+	const FGameXXKEquipmentInstance* After = FGameXXKEquipmentRules::FindInstance(
+		Subsystem->GetRuntimeState().EquipmentCollection,
+		SelectedEquipmentInstanceId);
+	return After && After->EnhancementLevel == EnhancementLevelBefore + 1;
+}
+
 FText UGameXXKInventoryWindowWidget::GetSelectedDetailTextForTest() const
 {
 	return SelectedDetailTextBlock ? SelectedDetailTextBlock->GetText() : FText::GetEmpty();

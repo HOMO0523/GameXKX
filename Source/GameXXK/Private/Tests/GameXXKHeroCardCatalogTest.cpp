@@ -98,7 +98,8 @@ bool FGameXXKHeroCardCatalogSchemaTest::RunTest(const FString& Parameters)
 		{EGameXXKCardEffectType::TriggerStatus, 42},
 		{EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, 43},
 		{EGameXXKCardEffectType::ReplayTriggeredCardBase, 44},
-		{EGameXXKCardEffectType::ReplaySourceCardBase, 45}
+		{EGameXXKCardEffectType::ReplaySourceCardBase, 45},
+		{EGameXXKCardEffectType::ChangeTerrain, 53}
 	};
 	for (const TPair<EGameXXKCardEffectType, uint8>& Expected : ExpectedEffectValues)
 	{

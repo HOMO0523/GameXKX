@@ -212,13 +212,13 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("real resolution spends the unchanged one energy"), HealingRuntime.Deck.SharedEnergy, 2);
 
-	// Rare draw increases one draw to two. The five-card value is only the round-refill target;
+	// Rare draw increases the redesigned card's two draws to three. The five-card value is only the round-refill target;
 	// card effects may grow the hand up to the twenty-card battle capacity without forcing discard.
 	FGameXXKCardBattleRuntime RareDrawRuntime;
 	if (!TestTrue(TEXT("Rare draw runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		RareDrawRuntime,
 		MakeQualityTestInstances(TEXT("Npc.ZhouGuangZu.DiZhiMoTu"), 8, EGameXXKCardQuality::Rare),
-		MakeHeroAndEnemyQualityUnits(),
+		MakeHeroAndEnemyQualityUnits(20, 3),
 		EGameXXKCardTerrain::Plain,
 		9104)))
 	{
@@ -229,12 +229,12 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Rare draw card resolves through the real play transaction"), GameXXKCardRules::ResolveCardPlay(
 		RareDrawRuntime,
 		RareDrawRuntime.Deck.Hand[0].InstanceId,
-		NAME_None,
+		TEXT("Enemy"),
 		RareDrawResult));
-	TestEqual(TEXT("Rare draw grows the hand from four to six"), RareDrawRuntime.Deck.Hand.Num(), 6);
-	TestEqual(TEXT("Rare draws two concrete cards from the draw pile"),
+	TestEqual(TEXT("Rare draw grows the hand from four to seven"), RareDrawRuntime.Deck.Hand.Num(), 7);
+	TestEqual(TEXT("Rare draws three concrete cards from the draw pile"),
 		RareDrawRuntime.Deck.DrawPile.Num(),
-		RareDrawPileBeforePlay - 2);
+		RareDrawPileBeforePlay - 3);
 	TestEqual(TEXT("draw without a declared discard opens no pending choice below capacity"),
 		RareDrawRuntime.Deck.PendingChoice.Kind,
 		EGameXXKCardPendingChoiceKind::None);
@@ -264,7 +264,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("Epic mana preserves the catalog's zero energy cost"), EpicManaRuntime.Deck.SharedEnergy, 3);
 
-	// Epic status increases two vulnerability stacks to four after its attack packet lands.
+	// Epic status increases the redesigned card's three vulnerability stacks to five.
 	FGameXXKCardBattleRuntime EpicStatusRuntime;
 	if (!TestTrue(TEXT("Epic status runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		EpicStatusRuntime,
@@ -285,9 +285,9 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Epic status keeps the enemy fixture addressable"), EpicStatusEnemy);
 	if (EpicStatusEnemy)
 	{
-		TestEqual(TEXT("Epic adds two stacks to the base two vulnerability"),
+		TestEqual(TEXT("Epic adds two stacks to the base three vulnerability"),
 			GameXXKCardRules::GetCombatStatusStacks(*EpicStatusEnemy, EGameXXKCardStatus::Vulnerability),
-			4);
+			5);
 	}
 
 	return true;

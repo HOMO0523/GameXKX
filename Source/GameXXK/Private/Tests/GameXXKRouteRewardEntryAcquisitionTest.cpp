@@ -826,9 +826,9 @@ bool FGameXXKRouteRewardEntryOfferTest::RunTest(const FString& Parameters)
 	ExpectOfferFailure(TEXT("offer outside the victory gate"), InvalidGate, EGameXXKNodeKind::Battle, GetRewardSourceNodeId(InvalidGate), ChoiceSeed);
 
 	FGameXXKRuntimeState InitializationLeak = FreshFailureBase;
-	InitializationLeak.CardRun.HeroUnlockedCardIds.Reset();
-	InitializationLeak.CardRun.HeroSelectedCardIds = {TEXT("Hero.Invalid")};
-	ExpectOfferFailure(TEXT("failed card-run initialization"), InitializationLeak, EGameXXKNodeKind::Battle, GetRewardSourceNodeId(InitializationLeak), ChoiceSeed);
+	InitializationLeak.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.TusiChief");
+	InitializationLeak.CardRun.PartySelection.QuestNpc.NpcId = TEXT("Npc.YueBai");
+	ExpectOfferFailure(TEXT("mismatched task-NPC provenance fails card-run initialization"), InitializationLeak, EGameXXKNodeKind::Battle, GetRewardSourceNodeId(InitializationLeak), ChoiceSeed);
 
 	FGameXXKRuntimeState RecomputedSeedPending = ProbeState;
 	const FString BeforeRecomputedSeed = ExportState(RecomputedSeedPending);

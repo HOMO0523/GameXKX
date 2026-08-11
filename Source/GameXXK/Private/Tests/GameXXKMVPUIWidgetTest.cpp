@@ -103,6 +103,8 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestFalse(TEXT("main menu start does not autosave"), MainMenu->DoesSaveGameExist(UiTestSlot, UserIndex));
+	TestTrue(TEXT("town explicitly opens the world map for map-widget coverage"), Subsystem->OpenWorldMap());
+	WorldMap->RefreshFromState();
 	WorldMap->TakeWidget();
 	TestTrue(TEXT("Qingshan is initially selectable"), WorldMap->IsRegionEnabledForTest(UGameXXKMVPRules::RegionQingshan()));
 	TestFalse(TEXT("Tanjiang is not a playable town target yet"), WorldMap->IsRegionEnabledForTest(UGameXXKMVPRules::RegionTanjiang()));
@@ -215,6 +217,8 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("quest dialog accepts quest"), QuestDialog->AcceptQuest());
 	TestEqual(TEXT("quest accepted in subsystem state"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
 	TestTrue(TEXT("follower joins after quest dialog"), Subsystem->GetRuntimeState().bFollowerJoined);
+	TestTrue(TEXT("town party selector explicitly adds Tusi Chief to this route"),
+		Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.TusiChief")));
 
 	const int32 GoldBeforeBuy = Subsystem->GetRuntimeState().PlayerGold;
 	const int32 PowderBeforeTradeWidgetBuy = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());

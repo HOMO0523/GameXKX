@@ -21,15 +21,17 @@
 namespace
 {
 	const FName GuideId(TEXT("Codex.Guide"));
-	const FName MoneyRatId(TEXT("Codex.MoneyRat"));
-	const FName BlackBearId(TEXT("Codex.BlackBear"));
-	const FName TigerId(TEXT("Codex.Tiger"));
+	const FName MoneyRatId(TEXT("Codex.Enemy.Ch1.MoneyRat"));
+	const FName BlackBearId(TEXT("Codex.Enemy.Ch2.BlackBear"));
+	const FName TigerId(TEXT("Codex.Enemy.Ch3.Tiger"));
+	const FName PreviousMoneyRatId(TEXT("Codex.MoneyRat"));
+	const FName PreviousBlackBearId(TEXT("Codex.BlackBear"));
+	const FName PreviousTigerId(TEXT("Codex.Tiger"));
 	const FName LegacyBanditId(TEXT("Codex.Bandit"));
 	const FName LegacyWolfId(TEXT("Codex.Wolf"));
 	const FName LegacyEliteBanditId(TEXT("Codex.EliteBandit"));
 	const FName LegacyBossId(TEXT("Codex.Boss"));
 	constexpr int32 GuideIntroductionVersion = 5;
-	constexpr int32 EnemyCodexVersion = 6;
 	constexpr int32 StableMigrationCollectionSeed = 0x4758584B;
 	constexpr int32 RouteEntrySeedFallback = 0x13579BDF;
 	constexpr uint32 HeroCombatRandomSalt = 0xA341316CU;
@@ -50,6 +52,17 @@ namespace
 			{TEXT("Hero.HuiFengZhuiJian"), TEXT("Hero.Generic.XingQiHuiHuan")},
 			{TEXT("Hero.JianYiGuanHong"), TEXT("Hero.Generic.JianYiGuanHong")},
 			{TEXT("Hero.GuiYuanFanZhao"), TEXT("Hero.Generic.GuiYuanFanZhao")}
+		};
+		return Pairs;
+	}
+
+	const TArray<TPair<FName, FName>>& LegacyBladePartnerCardPairs()
+	{
+		static const TArray<TPair<FName, FName>> Pairs = {
+			{TEXT("Profession.Blade.YiShangHuanShi"), TEXT("Profession.Blade.JingHongChuQiao")},
+			{TEXT("Profession.Blade.DaoYiShouShu"), TEXT("Profession.Blade.HengYunKaiFeng")},
+			{TEXT("Profession.Blade.XiaoJiaLianJi"), TEXT("Profession.Blade.LianXiGuiQiao")},
+			{TEXT("Profession.Blade.CanYueSanDie"), TEXT("Profession.Blade.BaoDaoShouYe")}
 		};
 		return Pairs;
 	}
@@ -96,6 +109,118 @@ namespace
 		if (MigrateHeroCardId(InOutSnapshot.CardId))
 		{
 			InOutSnapshot.Quality = EGameXXKCardQuality::Common;
+		}
+	}
+
+	bool MigrateBladePartnerCardId(FName& InOutCardId)
+	{
+		for (const TPair<FName, FName>& Pair : LegacyBladePartnerCardPairs())
+		{
+			if (InOutCardId == Pair.Key)
+			{
+				InOutCardId = Pair.Value;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void MigrateBladePartnerCardIds(TArray<FName>& InOutCardIds, int32& InOutMigratedReferenceCount)
+	{
+		for (FName& CardId : InOutCardIds)
+		{
+			InOutMigratedReferenceCount += MigrateBladePartnerCardId(CardId) ? 1 : 0;
+		}
+	}
+
+	void MigrateBladePartnerCardInstances(
+		TArray<FGameXXKCardInstance>& InOutInstances,
+		int32& InOutMigratedReferenceCount)
+	{
+		for (FGameXXKCardInstance& Instance : InOutInstances)
+		{
+			InOutMigratedReferenceCount += MigrateBladePartnerCardId(Instance.CardId) ? 1 : 0;
+		}
+	}
+
+	void MigrateBladePartnerCardSnapshot(
+		FGameXXKResolvedCardSnapshot& InOutSnapshot,
+		int32& InOutMigratedReferenceCount)
+	{
+		InOutMigratedReferenceCount += MigrateBladePartnerCardId(InOutSnapshot.CardId) ? 1 : 0;
+	}
+
+	void MigrateBladePartnerProfile(
+		FGameXXKPermanentCompanion& InOutProfile,
+		int32& InOutMigratedReferenceCount)
+	{
+		MigrateBladePartnerCardIds(InOutProfile.PersonalCardIds, InOutMigratedReferenceCount);
+		MigrateBladePartnerCardIds(InOutProfile.UnlockedPersonalCardIds, InOutMigratedReferenceCount);
+		MigrateBladePartnerCardIds(InOutProfile.SelectedCardIds, InOutMigratedReferenceCount);
+	}
+
+	void MigrateBladePartnerBattle(
+		FGameXXKCardBattleRuntime& InOutBattle,
+		int32& InOutMigratedReferenceCount)
+	{
+		MigrateBladePartnerCardInstances(InOutBattle.Deck.DrawPile, InOutMigratedReferenceCount);
+		MigrateBladePartnerCardInstances(InOutBattle.Deck.Hand, InOutMigratedReferenceCount);
+		MigrateBladePartnerCardInstances(InOutBattle.Deck.DiscardPile, InOutMigratedReferenceCount);
+		MigrateBladePartnerCardInstances(InOutBattle.Deck.ExhaustPile, InOutMigratedReferenceCount);
+		MigrateBladePartnerCardInstances(InOutBattle.Deck.PendingChoice.Candidates, InOutMigratedReferenceCount);
+		MigrateBladePartnerCardSnapshot(InOutBattle.LastActiveCard, InOutMigratedReferenceCount);
+		for (FGameXXKCardBattleModifierRuntime& Modifier : InOutBattle.Modifiers)
+		{
+			MigrateBladePartnerCardSnapshot(Modifier.SourceCardSnapshot, InOutMigratedReferenceCount);
+		}
+		for (FGameXXKResolvedCardSnapshot& Snapshot : InOutBattle.AutomaticResolutionQueue.PendingCards)
+		{
+			MigrateBladePartnerCardSnapshot(Snapshot, InOutMigratedReferenceCount);
+		}
+	}
+
+	void MigrateBladePartnerCards(
+		FGameXXKRuntimeState& InOutState,
+		FGameXXKSaveMigrationReport& Report)
+	{
+		int32 MigratedReferenceCount = 0;
+		FGameXXKCardRunState& Run = InOutState.CardRun;
+		for (FGameXXKPermanentCompanion& Companion : Run.CompanionRoster.PermanentCompanions)
+		{
+			MigrateBladePartnerProfile(Companion, MigratedReferenceCount);
+		}
+		if (Run.CompanionRoster.PendingRecruitment.bHasPendingRecruitment)
+		{
+			MigrateBladePartnerProfile(Run.CompanionRoster.PendingRecruitment.Candidate, MigratedReferenceCount);
+		}
+		MigrateBladePartnerCardIds(Run.RouteCardIds, MigratedReferenceCount);
+		MigrateBladePartnerCardIds(Run.PendingReward.CardIds, MigratedReferenceCount);
+		for (FGameXXKRouteCardEntry& Entry : Run.RouteCardEntries)
+		{
+			MigratedReferenceCount += MigrateBladePartnerCardId(Entry.CardId) ? 1 : 0;
+		}
+		for (FGameXXKCardEnemyIntent& Intent : Run.EnemyIntents)
+		{
+			MigratedReferenceCount += MigrateBladePartnerCardId(Intent.CardId) ? 1 : 0;
+		}
+		for (FGameXXKRouteMerchantOffer& Offer : Run.RouteMerchant.Offers)
+		{
+			if (Offer.Kind == EGameXXKRouteMerchantOfferKind::Card)
+			{
+				MigratedReferenceCount += MigrateBladePartnerCardId(Offer.ContentId) ? 1 : 0;
+			}
+		}
+		if (Run.RouteMerchant.PendingPurchase.bActive)
+		{
+			MigratedReferenceCount += MigrateBladePartnerCardId(Run.RouteMerchant.PendingPurchase.CardId) ? 1 : 0;
+		}
+		MigrateBladePartnerBattle(Run.ActiveBattle, MigratedReferenceCount);
+
+		if (MigratedReferenceCount > 0)
+		{
+			Report.Warnings.Add(FString::Printf(
+				TEXT("Migrated %d retired Blade partner card references to their replacement IDs."),
+				MigratedReferenceCount));
 		}
 	}
 
@@ -199,6 +324,147 @@ namespace
 		return FGameXXKCardBattleAdapter::EnsureCardRunInitialized(InOutState, &OutError);
 	}
 
+	bool ValidateLegacyCompanionCardState(
+		const FGameXXKPermanentCompanion& Companion,
+		FString& OutError)
+	{
+		if (Companion.PersonalCardIds.Num() != 6 && Companion.PersonalCardIds.Num() != 12)
+		{
+			OutError = TEXT("A pre-v13 companion must retain either its six-card transitional pool or legacy twelve-card pool.");
+			return false;
+		}
+
+		TSet<FName> SeenPersonalCardIds;
+		for (const FName CardId : Companion.PersonalCardIds)
+		{
+			const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+			if (CardId.IsNone()
+				|| SeenPersonalCardIds.Contains(CardId)
+				|| !Definition
+				|| Definition->Owner != EGameXXKCardOwner::Profession
+				|| Definition->Role != Companion.Role)
+			{
+				OutError = TEXT("A pre-v13 companion personal pool contains an unknown, duplicate, or wrong-role card.");
+				return false;
+			}
+			SeenPersonalCardIds.Add(CardId);
+		}
+
+		if (Companion.UnlockedPersonalCardIds.Num() < 5
+			|| Companion.UnlockedPersonalCardIds.Num() > Companion.PersonalCardIds.Num())
+		{
+			OutError = TEXT("A pre-v13 companion unlock frontier has an invalid size.");
+			return false;
+		}
+		TSet<FName> SeenUnlockedCardIds;
+		for (const FName CardId : Companion.UnlockedPersonalCardIds)
+		{
+			if (!SeenPersonalCardIds.Contains(CardId) || SeenUnlockedCardIds.Contains(CardId))
+			{
+				OutError = TEXT("A pre-v13 companion unlock frontier is not a unique subset of its personal pool.");
+				return false;
+			}
+			SeenUnlockedCardIds.Add(CardId);
+		}
+
+		if (Companion.SelectedCardIds.Num() != 5)
+		{
+			OutError = TEXT("A pre-v13 companion must retain exactly five selected cards.");
+			return false;
+		}
+		TSet<FName> SeenSelectedCardIds;
+		for (const FName CardId : Companion.SelectedCardIds)
+		{
+			if (!SeenUnlockedCardIds.Contains(CardId) || SeenSelectedCardIds.Contains(CardId))
+			{
+				OutError = TEXT("A pre-v13 companion selection is not a unique subset of its unlocked cards.");
+				return false;
+			}
+			SeenSelectedCardIds.Add(CardId);
+		}
+		return true;
+	}
+
+	bool MigrateCompanionBirthPoolProfile(
+		FGameXXKPermanentCompanion& InOutCompanion,
+		FGameXXKSaveMigrationReport& Report,
+		FString& OutError)
+	{
+		if (!ValidateLegacyCompanionCardState(InOutCompanion, OutError))
+		{
+			return false;
+		}
+
+		TArray<FName> NewBirthPool;
+		if (!FGameXXKCompanionRules::BuildPersonalCardPool(
+			InOutCompanion.Role,
+			InOutCompanion.CardSeed,
+			NewBirthPool,
+			&OutError))
+		{
+			return false;
+		}
+
+		TArray<FName> NewSelection;
+		for (const FName CardId : InOutCompanion.SelectedCardIds)
+		{
+			if (NewBirthPool.Contains(CardId) && !NewSelection.Contains(CardId))
+			{
+				NewSelection.Add(CardId);
+			}
+		}
+		for (const FName CardId : NewBirthPool)
+		{
+			if (NewSelection.Num() >= 5)
+			{
+				break;
+			}
+			if (!NewSelection.Contains(CardId))
+			{
+				NewSelection.Add(CardId);
+			}
+		}
+
+		const bool bChanged = InOutCompanion.PersonalCardIds != NewBirthPool
+			|| InOutCompanion.UnlockedPersonalCardIds != NewBirthPool
+			|| InOutCompanion.SelectedCardIds != NewSelection;
+		InOutCompanion.PersonalCardIds = NewBirthPool;
+		InOutCompanion.UnlockedPersonalCardIds = NewBirthPool;
+		InOutCompanion.SelectedCardIds = MoveTemp(NewSelection);
+		if (!FGameXXKCompanionRules::ValidatePermanentCompanionProfile(InOutCompanion, &OutError))
+		{
+			return false;
+		}
+		if (bChanged)
+		{
+			Report.Warnings.Add(FString::Printf(
+				TEXT("Companion %s was migrated to its deterministic six-card birth pool."),
+				*InOutCompanion.InstanceId.ToString()));
+		}
+		return true;
+	}
+
+	bool MigrateCompanionBirthPools(
+		FGameXXKRuntimeState& InOutState,
+		FGameXXKSaveMigrationReport& Report,
+		FString& OutError)
+	{
+		FGameXXKCompanionRosterState& Roster = InOutState.CardRun.CompanionRoster;
+		for (FGameXXKPermanentCompanion& Companion : Roster.PermanentCompanions)
+		{
+			if (!MigrateCompanionBirthPoolProfile(Companion, Report, OutError))
+			{
+				return false;
+			}
+		}
+		if (Roster.PendingRecruitment.bHasPendingRecruitment
+			&& !MigrateCompanionBirthPoolProfile(Roster.PendingRecruitment.Candidate, Report, OutError))
+		{
+			return false;
+		}
+		return true;
+	}
+
 	void Fail(FGameXXKSaveMigrationReport& Report, const FString& Error)
 	{
 		Report.bSucceeded = false;
@@ -207,22 +473,37 @@ namespace
 
 	void MigrateLegacyCodexIds(TSet<FName>& EntryIds)
 	{
-		if (EntryIds.Contains(LegacyBanditId) || EntryIds.Contains(LegacyWolfId))
+		if (EntryIds.Contains(PreviousMoneyRatId)
+			|| EntryIds.Contains(LegacyBanditId)
+			|| EntryIds.Contains(LegacyWolfId))
 		{
 			EntryIds.Add(MoneyRatId);
 		}
-		if (EntryIds.Contains(LegacyEliteBanditId))
+		if (EntryIds.Contains(PreviousBlackBearId) || EntryIds.Contains(LegacyEliteBanditId))
 		{
 			EntryIds.Add(BlackBearId);
 		}
-		if (EntryIds.Contains(LegacyBossId))
+		if (EntryIds.Contains(PreviousTigerId) || EntryIds.Contains(LegacyBossId))
 		{
 			EntryIds.Add(TigerId);
 		}
+		EntryIds.Remove(PreviousMoneyRatId);
+		EntryIds.Remove(PreviousBlackBearId);
+		EntryIds.Remove(PreviousTigerId);
 		EntryIds.Remove(LegacyBanditId);
 		EntryIds.Remove(LegacyWolfId);
 		EntryIds.Remove(LegacyEliteBanditId);
 		EntryIds.Remove(LegacyBossId);
+	}
+
+	void MigrateRefinementSandMirror(FGameXXKRuntimeState& State)
+	{
+		const FName SandId = UGameXXKMVPRules::ItemRefinementSand();
+		if (!State.Inventory.Contains(SandId) && State.EquipmentCollection.RefinementSand > 0)
+		{
+			State.Inventory.Add(SandId, State.EquipmentCollection.RefinementSand);
+		}
+		State.EquipmentCollection.RefinementSand = FMath::Max(0, State.Inventory.FindRef(SandId));
 	}
 
 	void MigrateInventoryCategories(FGameXXKRuntimeState& State)
@@ -233,6 +514,7 @@ namespace
 			State.Inventory.Add(StoneId, State.EnhancementMaterial);
 		}
 		State.EnhancementMaterial = FMath::Max(0, State.Inventory.FindRef(StoneId));
+		MigrateRefinementSandMirror(State);
 		const FName SealId = UGameXXKMVPRules::ItemQingshanRouteSeal();
 		if (State.QuestState == EGameXXKQuestState::Accepted)
 		{
@@ -251,10 +533,19 @@ namespace
 		{
 			State.DiscoveredCodexEntryIds.Add(GuideId);
 		}
-		if (SourceVersion < EnemyCodexVersion)
+		if (SourceVersion < FGameXXKSaveMigration::QuestFollowerAndCurrentEnemyCodexIntroducedSaveVersion)
 		{
 			MigrateLegacyCodexIds(State.DiscoveredCodexEntryIds);
 			MigrateLegacyCodexIds(State.ReadCodexEntryIds);
+		}
+	}
+
+	void MigrateQuestFollowerContract(FGameXXKRuntimeState& State, const int32 SourceVersion)
+	{
+		if (SourceVersion < FGameXXKSaveMigration::QuestFollowerAndCurrentEnemyCodexIntroducedSaveVersion
+			&& State.QuestState == EGameXXKQuestState::Accepted)
+		{
+			State.bFollowerJoined = true;
 		}
 	}
 
@@ -927,6 +1218,7 @@ namespace
 		}
 		MigrateInventoryCategories(State);
 		MigrateCodex(State, Source.SaveVersion);
+		MigrateQuestFollowerContract(State, Source.SaveVersion);
 		NormalizeProgression(State);
 		return State;
 	}
@@ -948,13 +1240,15 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	}
 	if (Source.SaveVersion == CurrentSaveVersion)
 	{
+		FGameXXKSaveState Candidate = Source;
+		MigrateRefinementSandMirror(Candidate.RuntimeState);
 		FString ValidationError;
-		if (!ValidateRuntimeState(Source.RuntimeState, ValidationError))
+		if (!ValidateRuntimeState(Candidate.RuntimeState, ValidationError))
 		{
 			Fail(OutReport, ValidationError);
 			return false;
 		}
-		OutMigrated = Source;
+		OutMigrated = MoveTemp(Candidate);
 		OutReport.bSucceeded = true;
 		return true;
 	}
@@ -962,8 +1256,20 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	FGameXXKSaveState Candidate = Source;
 	Candidate.RuntimeState = RestoreOldChain(Source);
 	FString MigrationError;
+	if (Source.SaveVersion < BladePartnerCardsIntroducedSaveVersion)
+	{
+		// Map retired Blade IDs before the v13 birth-pool migration validates any
+		// legacy six- or twelve-card companion profile against the live catalog.
+		MigrateBladePartnerCards(Candidate.RuntimeState, OutReport);
+	}
 	if (Source.SaveVersion < HeroCardPoolIntroducedSaveVersion
 		&& !MigrateHeroCardPool(Candidate.RuntimeState, MigrationError))
+	{
+		Fail(OutReport, MigrationError);
+		return false;
+	}
+	if (Source.SaveVersion < CompanionBirthPoolIntroducedSaveVersion
+		&& !MigrateCompanionBirthPools(Candidate.RuntimeState, OutReport, MigrationError))
 	{
 		Fail(OutReport, MigrationError);
 		return false;
@@ -1030,6 +1336,11 @@ bool FGameXXKSaveMigration::TryRestoreRuntimeState(
 bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& State, FString& OutError)
 {
 	OutError.Reset();
+	if (State.QuestState == EGameXXKQuestState::Accepted && !State.bFollowerJoined)
+	{
+		OutError = TEXT("An accepted quest is missing its required task-NPC follower.");
+		return false;
+	}
 	const int32 EffectiveMaxHP = FMath::Max(
 		1,
 		State.PlayerMaxHP + FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxHealth));
@@ -1042,7 +1353,9 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		|| State.PlayerHP < 0 || State.PlayerHP > EffectiveMaxHP
 		|| State.PlayerMP < 0 || State.PlayerMP > EffectiveMaxMP
 		|| State.Inventory.FindRef(UGameXXKMVPRules::ItemEnhancementStone()) < 0
-		|| State.EnhancementMaterial != FMath::Max(0, State.Inventory.FindRef(UGameXXKMVPRules::ItemEnhancementStone())))
+		|| State.Inventory.FindRef(UGameXXKMVPRules::ItemRefinementSand()) < 0
+		|| State.EnhancementMaterial != FMath::Max(0, State.Inventory.FindRef(UGameXXKMVPRules::ItemEnhancementStone()))
+		|| State.EquipmentCollection.RefinementSand != FMath::Max(0, State.Inventory.FindRef(UGameXXKMVPRules::ItemRefinementSand())))
 	{
 		OutError = TEXT("Persistent player resources are invalid.");
 		return false;

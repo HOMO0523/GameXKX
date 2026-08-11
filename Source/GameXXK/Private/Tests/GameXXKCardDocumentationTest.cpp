@@ -1,5 +1,6 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
+#include "GameXXKCardText.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"
@@ -74,8 +75,11 @@ namespace GameXXKCardDocumentationTest
 		case EGameXXKCardStatus::Charge: return TEXT("蓄力");
 		case EGameXXKCardStatus::Vulnerability: return TEXT("破绽");
 		case EGameXXKCardStatus::Mark: return TEXT("标记");
+		case EGameXXKCardStatus::CannotReceiveVulnerability: return TEXT("破绽免疫");
 		case EGameXXKCardStatus::Counter: return TEXT("反击");
 		case EGameXXKCardStatus::Block: return TEXT("格挡");
+		case EGameXXKCardStatus::NextTerrainCardFree: return TEXT("地形免耗");
+		case EGameXXKCardStatus::NextTerrainCardEnergyReduction: return TEXT("地形减耗");
 		case EGameXXKCardStatus::Weak: return TEXT("虚弱");
 		case EGameXXKCardStatus::Rage: return TEXT("怒气");
 		case EGameXXKCardStatus::None:
@@ -308,6 +312,9 @@ namespace GameXXKCardDocumentationTest
 		case EGameXXKCardEffectTarget::Attacker: return TEXT("攻击者");
 		case EGameXXKCardEffectTarget::PlayedCard: return TEXT("本次打出的牌");
 		case EGameXXKCardEffectTarget::HighestArmorAlly: return TEXT("护甲最高友方");
+		case EGameXXKCardEffectTarget::HighestAttackAlly: return TEXT("攻击最高友方");
+		case EGameXXKCardEffectTarget::PriorityEnemy: return TEXT("标记最高敌方（同层优先生命比例最低）");
+		case EGameXXKCardEffectTarget::SelectedTargetSide: return TEXT("所选目标同阵营全体");
 		case EGameXXKCardEffectTarget::Invalid:
 		default: return EnumToken(Target);
 		}
@@ -320,6 +327,7 @@ namespace GameXXKCardDocumentationTest
 		case EGameXXKCardEffectSource::CardOwner: return TEXT("出牌者");
 		case EGameXXKCardEffectSource::SelectedTarget: return TEXT("所选目标");
 		case EGameXXKCardEffectSource::HighestArmorAlly: return TEXT("护甲最高友方");
+		case EGameXXKCardEffectSource::HighestAttackAlly: return TEXT("攻击最高友方");
 		case EGameXXKCardEffectSource::Invalid:
 		default: return EnumToken(Source);
 		}
@@ -459,6 +467,12 @@ namespace GameXXKCardDocumentationTest
 		case EGameXXKCardEffectConditionType::OwnerHasDamageOverTime:
 			Gate = TEXT("出牌者具有流血、中毒、灼烧或蚀伤");
 			break;
+		case EGameXXKCardEffectConditionType::TargetIsAlly:
+			Gate = TEXT("所选目标是友方");
+			break;
+		case EGameXXKCardEffectConditionType::TargetIsEnemy:
+			Gate = TEXT("所选目标是敌方");
+			break;
 		default:
 			Gate = EnumToken(Condition.Type);
 			break;
@@ -575,11 +589,19 @@ namespace GameXXKCardDocumentationTest
 		case EGameXXKCardEffectType::GainArmorFromCurrentManaPercent: return FString::Printf(TEXT("%s获得等于当前内力%d%%的护甲"), *Target, Magnitude);
 		case EGameXXKCardEffectType::GainManaOverflowToArmor: return FString::Printf(TEXT("%s回复%d点内力；溢出内力按%d%%转为护甲"), *Target, SecondaryMagnitude, Magnitude);
 		case EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard: return FString::Printf(TEXT("从抽牌堆或弃牌堆检索%d张尚未完成的主角法术任务牌加入手牌"), Magnitude);
+		case EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard: return FString::Printf(TEXT("从抽牌堆或弃牌堆检索%d张该任务 NPC 尚未完成的任务牌加入手牌"), Magnitude);
 		case EGameXXKCardEffectType::TriggerStatus: return FString::Printf(TEXT("触发%s的%s%d次；每次按当前层数造成生命伤害并减少1层"), *Target, *DescribeStatus(Status), Magnitude);
 		case EGameXXKCardEffectType::LightningPerTargetStatusSnapshot: return FString::Printf(TEXT("按%s当前%s层数，逐层造成%d%%攻击伤害"), *Target, *DescribeStatus(Status), Magnitude);
 		case EGameXXKCardEffectType::ReplayTriggeredCardBase: return TEXT("重放本次触发牌的基础效果");
 		case EGameXXKCardEffectType::ReplaySourceCardBase: return TEXT("重放本牌的基础效果");
-		case EGameXXKCardEffectType::TriggerTerrainBenefit:
+		case EGameXXKCardEffectType::ModifyManaCost: return FString::Printf(TEXT("%s内力消耗%+d"), *Target, Magnitude);
+		case EGameXXKCardEffectType::WidenNextActiveSingleTarget: return FString::Printf(TEXT("%s的单体效果扩展为目标所在阵营全体"), *Target);
+		case EGameXXKCardEffectType::PreserveNextReactionUse: return TEXT("全队下一次反击或格挡不消耗次数");
+		case EGameXXKCardEffectType::RetainArmorNextRound: return FString::Printf(TEXT("%s下回合保留当前护甲"), *Target);
+		case EGameXXKCardEffectType::CleanseFriendlyDamageOverTime: return FString::Printf(TEXT("若%s为友方，清除其全部流血、中毒和灼烧"), *Target);
+		case EGameXXKCardEffectType::HealOrReverseFlat: return FString::Printf(TEXT("若%s为友方，恢复%d点生命；若为敌方，失去%d点生命"), *Target, Magnitude, Magnitude);
+		case EGameXXKCardEffectType::ChangeTerrain: return TEXT("切换地势");
+		case EGameXXKCardEffectType::TriggerTerrainBenefit: return FString::Printf(TEXT("触发当前地势收益%d次"), Magnitude);
 		case EGameXXKCardEffectType::ApplyGuardLink:
 		case EGameXXKCardEffectType::ApplyBattleModifier:
 		case EGameXXKCardEffectType::Invalid:
@@ -620,6 +642,10 @@ namespace GameXXKCardDocumentationTest
 				*DescribeEffectTarget(Effect.GuardLink.Guardian),
 				*DescribeEffectTarget(Effect.GuardLink.ProtectedUnit),
 				Effect.GuardLink.Stacks);
+		}
+		else if (Effect.Type == EGameXXKCardEffectType::ChangeTerrain)
+		{
+			Text = FString::Printf(TEXT("切换至%s"), *DescribeTerrain(Effect.TerrainOverride));
 		}
 		else if (Effect.Type == EGameXXKCardEffectType::TriggerTerrainBenefit)
 		{
@@ -672,6 +698,11 @@ namespace GameXXKCardDocumentationTest
 		const FGameXXKCardDefinition EffectiveDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
 			Definition,
 			Definition.BaseQuality);
+		if (EffectiveDefinition.SorcererRule.Family != EGameXXKSorcererCardFamily::None)
+		{
+			return GameXXKCardText::DescribeEffects(Definition, Definition.BaseQuality);
+		}
+
 		TArray<FString> Lines;
 		Lines.Add(FString::Printf(TEXT("基础：%s"), *NormalizeLineBreaks(DescribeEffectArray(EffectiveDefinition, EffectiveDefinition.Effects), TEXT("；"))));
 		if (!EffectiveDefinition.ChargeEffects.IsEmpty())
@@ -723,6 +754,14 @@ namespace GameXXKCardDocumentationTest
 				Definition.HeavyArrow.EnergyGain));
 		}
 		if (Definition.SpellTaskReward != EGameXXKHeroSpellTaskReward::None) Parts.Add(FString::Printf(TEXT("SpellReward=%s"), *EnumToken(Definition.SpellTaskReward)));
+		if (Definition.SorcererRule.Family != EGameXXKSorcererCardFamily::None)
+		{
+			Parts.Add(FString::Printf(
+				TEXT("Sorcerer{Family=%s,Sequence=%s,Reward=%s}"),
+				*EnumToken(Definition.SorcererRule.Family),
+				*EnumToken(Definition.SorcererRule.SequenceRule),
+				*EnumToken(Definition.SorcererRule.RewardRule)));
+		}
 		if (Definition.bExhaustOnPlay) Parts.Add(TEXT("Exhaust=true"));
 		return FString::Join(Parts, TEXT(" | "));
 	}
@@ -748,7 +787,7 @@ namespace GameXXKCardDocumentationTest
 			"# GameXXK 全卡牌目录（2026-08-11 当前实现基线）\n\n"
 			"> 数据源：`FGameXXKCardCatalog::GetAllCardDefinitions()` 与当前品质解析、卡牌文本格式器。本文档列出当前代码实际登记的全部卡牌，并保留实现签名用于核对。\n\n"
 			"> 数值口径：“完整效果”按卡牌当前基础品质换算为局内实际数值（普通 ×1、稀有伤害/治疗/护甲 ×2、珍稀 ×4；层数类按品质阶数递增）。“实现签名”保留目录中的未缩放底值，供程序核对；两列数值不同不是冲突。\n\n"
-			"> 验收边界：卡牌目录数据与特殊卡牌规则已写入；流血、中毒、灼烧、蚀伤等全局状态的触发时点正在逐条代码/测试审计，因此本文件不复述尚未验收的旧 Tooltip 规则。\n\n"
+			"> 验收边界：卡牌目录、特殊卡牌规则及流血、中毒、灼烧、蚀伤等全局状态触发时点均以当前代码与自动化测试为准；实现签名只用于程序核对，不作为局内 Tooltip 展示。\n\n"
 			"## 核对结论\n\n"
 			"- 当前目录总数：198 张。\n"
 			"- 主角：36 张；永久伙伴：108 张；任务 NPC：24 张；路线临时卡：30 张。\n"
@@ -770,7 +809,7 @@ namespace GameXXKCardDocumentationTest
 			"============================================================\n"
 			"数据源：FGameXXKCardCatalog::GetAllCardDefinitions() 与当前品质解析、卡牌文本格式器。\n"
 			"数值口径：完整效果按基础品质换算为局内实际值；实现签名保留未缩放底值。伤害/治疗/护甲为普通×1、稀有×2、珍稀×4，层数类按品质阶数递增。\n"
-			"验收边界：全局状态触发时点仍在逐条审计，本文件不复述尚未验收的旧 Tooltip 规则。\n\n"
+			"验收边界：卡牌目录、特殊规则与全局状态触发时点均以当前代码和自动化测试为准；实现签名不作为局内 Tooltip 展示。\n\n"
 			"核对结论\n"
 			"- 总数 198：主角 36 / 永久伙伴 108 / 任务 NPC 24 / 路线临时卡 30。\n"
 			"- 当前代码没有独立的“剑意”状态。剑意贯虹消耗全部气势，每层攻击倍率 +20 个百分点，并保留每层气势 +1 固定伤害；消耗至少 3 层时回复 1 点气力一次。\n"
@@ -860,6 +899,60 @@ bool FGameXXKCardDocumentationTest::RunTest(const FString& Parameters)
 	}
 
 	const FDocumentBundle Expected = BuildDocuments(Definitions);
+	struct FVisibleCardTextCase
+	{
+		FName CardId;
+		const TCHAR* ExpectedText;
+		const TCHAR* ForbiddenToken;
+	};
+	const TArray<FVisibleCardTextCase> VisibleCardTextCases = {
+		{TEXT("Hero.Formation.LianYingBuShi"), TEXT("触发当前地势收益1次"), TEXT("TriggerTerrainBenefit")},
+		{TEXT("Profession.Guard.TieBiRuShan"), TEXT("破绽免疫"), TEXT("CannotReceiveVulnerability")},
+		{TEXT("Profession.FormationMaster.WanXiangGuiZhen"), TEXT("地形免耗"), TEXT("NextTerrainCardFree")},
+		{TEXT("Route.Terrain.XingJunBuZhen"), TEXT("地形减耗"), TEXT("NextTerrainCardEnergyReduction")}};
+	for (const FVisibleCardTextCase& TextCase : VisibleCardTextCases)
+	{
+		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(TextCase.CardId);
+		TestNotNull(*FString::Printf(TEXT("%s documentation fixture exists"), *TextCase.CardId.ToString()), Definition);
+		if (!Definition)
+		{
+			continue;
+		}
+		const FString Effects = DescribeCompleteEffects(*Definition);
+		TestTrue(
+			*FString::Printf(TEXT("%s documentation uses concise Chinese visible text"), *TextCase.CardId.ToString()),
+			Effects.Contains(TextCase.ExpectedText));
+		TestFalse(
+			*FString::Printf(TEXT("%s documentation does not expose an internal enum token"), *TextCase.CardId.ToString()),
+			Effects.Contains(TextCase.ForbiddenToken));
+	}
+	const TArray<FString> FinalSorcererNames = {
+		TEXT("灵枢引法"), TEXT("周天归元"), TEXT("灵火点灯"), TEXT("流焰传薪"),
+		TEXT("焚脉爆炎"), TEXT("燎原寻诀"), TEXT("寒息回流"), TEXT("玄冰拓脉"),
+		TEXT("霜镜叠甲"), TEXT("冰鉴索法"), TEXT("引雷定标"), TEXT("雷符索敌"),
+		TEXT("连霆穿云"), TEXT("雷走八方"), TEXT("万法归一"), TEXT("照见五蕴"),
+		TEXT("六合护法"), TEXT("斗转星移")};
+	for (const FString& Name : FinalSorcererNames)
+	{
+		TestTrue(
+			FString::Printf(TEXT("Markdown exports final Sorcerer card %s"), *Name),
+			Expected.Markdown.Contains(FString::Printf(TEXT("| %s |"), *Name)));
+		TestTrue(
+			FString::Printf(TEXT("plain text exports final Sorcerer card %s"), *Name),
+			Expected.PlainText.Contains(FString::Printf(TEXT("] %s\n"), *Name)));
+	}
+	TestTrue(
+		TEXT("documentation exposes Sorcerer family, sequence, and reward metadata"),
+		Expected.Markdown.Contains(TEXT("Sorcerer{Family=Core,Sequence=CoreSearch,Reward=CoreSearch}")));
+	TestTrue(
+		TEXT("documentation describes the five-card completion rule"),
+		Expected.Markdown.Contains(TEXT("携带的5张法师牌各主动打出一次")));
+	TestFalse(
+		TEXT("Markdown does not claim the verified global status rules remain under audit"),
+		Expected.Markdown.Contains(TEXT("正在逐条代码/测试审计")));
+	TestFalse(
+		TEXT("plain text does not claim the verified global status rules remain under audit"),
+		Expected.PlainText.Contains(TEXT("仍在逐条审计")));
 	const FString MarkdownPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir(), MarkdownRelativePath);
 	const FString TextPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir(), TextRelativePath);
 	if (FParse::Param(FCommandLine::Get(), TEXT("GameXXKUpdateCardDocs")))

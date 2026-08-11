@@ -26,6 +26,10 @@ from ue_mcp_client import EDITOR_TOOLSET, UnrealMCPClient
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPORT_DIR = PROJECT_ROOT / "Saved" / "HarnessReports"
 SCREENSHOT_DIR = PROJECT_ROOT / "Saved" / "Codex"
+DEFAULT_SAVE_FILE = PROJECT_ROOT / "Saved" / "SaveGames" / "GameXXK_MVP_SaveSlot_1.sav"
+DEFAULT_SAVE_BACKUP_FILE = DEFAULT_SAVE_FILE.with_name(
+    f"{DEFAULT_SAVE_FILE.name}.codex-real-flow-backup"
+)
 SLATE_TOOLSET = "SlateInspectorToolset.SlateInspectorToolset"
 SCENE_TOOLSET = "editor_toolset.toolsets.scene.SceneTools"
 PROBE_SCRIPT = "Content/Python/gamexxk_probe_real_play_flow.py"
@@ -45,6 +49,53 @@ SLATE_WINDOW_PATTERN = re.compile(r'window "([^"]*GameXXK Preview[^"]*)"[^\n]*\[
 SLATE_BUTTON_PATTERN = re.compile(
     r'button(?: "(?P<label>[^"]*)")?(?P<disabled> \[disabled\])? \[pos=(?P<x>-?\d+),(?P<y>-?\d+) size=(?P<w>\d+),(?P<h>\d+)\] \[ref=(?P<ref>[^\]]+)\]'
 )
+
+
+_SAVE_BACKUP_MAGIC = b"GameXXKRealFlowSaveBackupV1\x00"
+
+
+def _atomic_write_bytes(path: Path, contents: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = path.with_name(f"{path.name}.{time.time_ns()}.tmp")
+    try:
+        temporary_path.write_bytes(contents)
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+def _restore_file_preservation(path: Path, backup_path: Path) -> dict[str, Any]:
+    payload = backup_path.read_bytes()
+    marker_index = len(_SAVE_BACKUP_MAGIC)
+    if not payload.startswith(_SAVE_BACKUP_MAGIC) or len(payload) <= marker_index:
+        raise RuntimeError(f"Invalid real-flow save backup: {backup_path}")
+    existed_marker = payload[marker_index]
+    if existed_marker not in (0, 1):
+        raise RuntimeError(f"Invalid real-flow save backup marker: {backup_path}")
+    contents = payload[marker_index + 1 :]
+    existed = existed_marker == 1
+    if existed:
+        _atomic_write_bytes(path, contents)
+    else:
+        path.unlink(missing_ok=True)
+    backup_path.unlink()
+    return {"existed": existed, "size": len(contents)}
+
+
+def _begin_file_preservation(path: Path, backup_path: Path) -> dict[str, Any]:
+    recovered_previous_run = False
+    if backup_path.is_file():
+        _restore_file_preservation(path, backup_path)
+        recovered_previous_run = True
+    existed = path.is_file()
+    contents = path.read_bytes() if existed else b""
+    payload = _SAVE_BACKUP_MAGIC + (b"\x01" if existed else b"\x00") + contents
+    _atomic_write_bytes(backup_path, payload)
+    return {
+        "existed": existed,
+        "size": len(contents),
+        "recovered_previous_run": recovered_previous_run,
+    }
 
 
 def _png_size(data: bytes) -> tuple[int, int]:
@@ -1262,7 +1313,7 @@ def _quest_accepted(probe: dict[str, Any]) -> bool:
     return _quest_state_is_accepted(_runtime_state(probe).get("quest_state", ""))
 
 
-def _fixed_quest_npc_verdict(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
+def _quest_npc_follower_verdict(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
     before_npc = _quest_npc(before)
     after_npc = _quest_npc(after)
     before_location = before_npc.get("location", {})
@@ -1271,23 +1322,33 @@ def _fixed_quest_npc_verdict(before: dict[str, Any], after: dict[str, Any]) -> d
         before_location = {}
     if not isinstance(after_location, dict):
         after_location = {}
+    runtime = _runtime_state(after)
+    runtime_location = runtime.get("quest_npc_location", {})
+    if not isinstance(runtime_location, dict):
+        runtime_location = {}
     body = after_npc.get("body_character", {})
     if not isinstance(body, dict):
         body = {}
     flipbook = str(body.get("current_flipbook", ""))
     distance = _distance(before_location, after_location)
+    runtime_location_distance = _distance(runtime_location, after_location)
     save = _save_state(after)
     return {
         "ok": bool(
-            before_location
+            _quest_accepted(after)
+            and before_location
             and after_location
-            and distance <= 1.0
-            and not bool(after_npc.get("is_follower_active"))
-            and not bool(body.get("is_town_moving"))
-            and "IDLE" in flipbook.upper()
+            and distance > 1.0
+            and bool(after_npc.get("is_follower_active"))
+            and bool(runtime.get("b_follower_joined"))
+            and bool(runtime.get("b_has_quest_npc_location"))
+            and runtime_location
+            and runtime_location_distance <= 5.0
             and not bool(save.get("exists"))
         ),
         "distance": distance,
+        "runtime_location": runtime_location,
+        "runtime_location_distance": runtime_location_distance,
         "before": before_location,
         "after": after_location,
         "is_follower_active": after_npc.get("is_follower_active"),
@@ -1297,14 +1358,26 @@ def _fixed_quest_npc_verdict(before: dict[str, Any], after: dict[str, Any]) -> d
     }
 
 
-def _fixed_quest_npc_manual_save_verdict(probe: dict[str, Any]) -> dict[str, Any]:
+def _quest_npc_manual_save_verdict(probe: dict[str, Any]) -> dict[str, Any]:
     runtime = _runtime_state(probe)
     save = _save_state(probe)
     player_location = _pawn_location(probe)
+    quest_npc = _quest_npc(probe)
+    quest_npc_location = quest_npc.get("location", {})
+    if not isinstance(quest_npc_location, dict):
+        quest_npc_location = {}
+    runtime_quest_npc_location = runtime.get("quest_npc_location", {})
+    if not isinstance(runtime_quest_npc_location, dict):
+        runtime_quest_npc_location = {}
+    saved_quest_npc_location = save.get("quest_npc_location", {})
+    if not isinstance(saved_quest_npc_location, dict):
+        saved_quest_npc_location = {}
     saved_player_location = save.get("player_location", {})
     if not isinstance(saved_player_location, dict):
         saved_player_location = {}
     saved_player_distance = _distance(saved_player_location, player_location)
+    runtime_quest_npc_distance = _distance(runtime_quest_npc_location, quest_npc_location)
+    saved_quest_npc_distance = _distance(saved_quest_npc_location, quest_npc_location)
     return {
         "ok": bool(
             _quest_accepted(probe)
@@ -1314,10 +1387,16 @@ def _fixed_quest_npc_manual_save_verdict(probe: dict[str, Any]) -> dict[str, Any
             and player_location
             and saved_player_location
             and saved_player_distance <= 5.0
-            and not bool(runtime.get("b_follower_joined"))
-            and not bool(runtime.get("b_has_quest_npc_location"))
-            and not bool(save.get("b_follower_joined"))
-            and not bool(save.get("b_has_quest_npc_location"))
+            and bool(quest_npc.get("is_follower_active"))
+            and bool(runtime.get("b_follower_joined"))
+            and bool(runtime.get("b_has_quest_npc_location"))
+            and bool(save.get("b_follower_joined"))
+            and bool(save.get("b_has_quest_npc_location"))
+            and quest_npc_location
+            and runtime_quest_npc_location
+            and saved_quest_npc_location
+            and runtime_quest_npc_distance <= 5.0
+            and saved_quest_npc_distance <= 5.0
         ),
         "runtime_quest_state": runtime.get("quest_state"),
         "saved_quest_state": save.get("quest_state"),
@@ -1325,6 +1404,12 @@ def _fixed_quest_npc_manual_save_verdict(probe: dict[str, Any]) -> dict[str, Any
         "saved_player_location": saved_player_location,
         "player_location": player_location,
         "saved_player_location_distance": saved_player_distance,
+        "quest_npc_location": quest_npc_location,
+        "runtime_quest_npc_location": runtime_quest_npc_location,
+        "saved_quest_npc_location": saved_quest_npc_location,
+        "runtime_quest_npc_location_distance": runtime_quest_npc_distance,
+        "saved_quest_npc_location_distance": saved_quest_npc_distance,
+        "quest_npc_follower_active": quest_npc.get("is_follower_active"),
         "runtime_follower_joined": runtime.get("b_follower_joined"),
         "runtime_has_quest_npc_location": runtime.get("b_has_quest_npc_location"),
         "saved_follower_joined": save.get("b_follower_joined"),
@@ -1475,6 +1560,14 @@ def _battle_camera_state(probe: dict[str, Any]) -> dict[str, Any]:
 
 def _distance(a: dict[str, float], b: dict[str, float]) -> float:
     return math.sqrt(sum((float(a.get(axis, 0.0)) - float(b.get(axis, 0.0))) ** 2 for axis in ("x", "y", "z")))
+
+
+def _cardinal_key_away_from(position: dict[str, float], origin: dict[str, float]) -> str:
+    delta_x = float(position.get("x", 0.0)) - float(origin.get("x", 0.0))
+    delta_y = float(position.get("y", 0.0)) - float(origin.get("y", 0.0))
+    if abs(delta_x) >= abs(delta_y):
+        return "W" if delta_x >= 0.0 else "S"
+    return "D" if delta_y >= 0.0 else "A"
 
 
 class PreviewInput:
@@ -1792,6 +1885,7 @@ class RealFlowHarness:
         self.events: list[dict[str, Any]] = []
         self.battle_hud_fixture_may_be_applied = False
         self._screenshot_contexts: dict[str, dict[str, Any]] = {}
+        self._default_save_backup_active = False
 
     def event(self, name: str, **payload: Any) -> None:
         item = {"name": name, **payload}
@@ -1802,6 +1896,31 @@ class RealFlowHarness:
         if not self.client.connect():
             raise RuntimeError(f"Cannot connect to UE MCP at {self.client.endpoint}")
         self.event("mcp_connected", endpoint=self.client.endpoint)
+
+    def preserve_default_save(self) -> None:
+        if self._default_save_backup_active:
+            return
+        snapshot = _begin_file_preservation(DEFAULT_SAVE_FILE, DEFAULT_SAVE_BACKUP_FILE)
+        self._default_save_backup_active = True
+        self.event(
+            "captured_default_save_before_real_flow",
+            existed=bool(snapshot.get("existed")),
+            size=int(snapshot.get("size", 0)),
+            recovered_previous_run=bool(snapshot.get("recovered_previous_run")),
+            backup=str(DEFAULT_SAVE_BACKUP_FILE),
+        )
+
+    def restore_default_save(self) -> None:
+        if not self._default_save_backup_active:
+            return
+        restored = _restore_file_preservation(DEFAULT_SAVE_FILE, DEFAULT_SAVE_BACKUP_FILE)
+        self._default_save_backup_active = False
+        self.event(
+            "restored_default_save_after_real_flow",
+            existed=bool(restored.get("existed")),
+            size=int(restored.get("size", 0)),
+            backup_removed=not DEFAULT_SAVE_BACKUP_FILE.exists(),
+        )
 
     def probe(self, *args: str) -> dict[str, Any]:
         result = self.client.run_project_python_file(PROBE_SCRIPT, list(args))
@@ -2358,6 +2477,7 @@ class RealFlowHarness:
         return after_probe
 
     def run(self) -> dict[str, Any]:
+        self.preserve_default_save()
         self.connect()
         if self.client.is_in_pie():
             self.client.stop_pie()
@@ -2542,37 +2662,39 @@ class RealFlowHarness:
         quest_location_after_interact = quest_after_interact.get("location") if isinstance(quest_after_interact.get("location"), dict) else {}
         if not quest_location_after_interact:
             raise RuntimeError("Quest NPC location missing after accepting quest")
-        with self.hold_town_keys("D"):
-            time.sleep(0.75)
-            after_fixed_npc_input_move = self.probe()
+        follower_separation_key = _cardinal_key_away_from(
+            _pawn_location(after_interact),
+            quest_location_after_interact,
+        )
+        with self.hold_town_keys(follower_separation_key):
+            time.sleep(1.25)
+            after_follower_input_move = self.probe()
         time.sleep(0.15)
-        fixed_quest_npc_probe = _fixed_quest_npc_verdict(after_interact, after_fixed_npc_input_move)
-        self.event("fixed_quest_npc_after_player_move_probe", **fixed_quest_npc_probe)
-        if not fixed_quest_npc_probe["ok"]:
+        self.event(
+            "quest_follower_separation_move",
+            key=follower_separation_key,
+            player_distance_cm=_distance(
+                _pawn_location(after_interact),
+                _pawn_location(after_follower_input_move),
+            ),
+            distance_from_initial_npc_cm=_distance(
+                _pawn_location(after_follower_input_move),
+                quest_location_after_interact,
+            ),
+        )
+        quest_npc_follower_probe = _quest_npc_follower_verdict(after_interact, after_follower_input_move)
+        self.event("quest_npc_follower_after_player_move_probe", **quest_npc_follower_probe)
+        if not quest_npc_follower_probe["ok"]:
             raise RuntimeError(
-                f"Accepted quest NPC did not remain fixed and idle before manual save: {fixed_quest_npc_probe}"
+                f"Accepted quest NPC did not activate, follow, and record its live position before manual save: {quest_npc_follower_probe}"
             )
 
         after_manual_save = self.town_command("SaveSlot1")
-        quest_after_manual_save = _quest_npc(after_manual_save)
-        quest_location_after_manual_save = (
-            quest_after_manual_save.get("location")
-            if isinstance(quest_after_manual_save.get("location"), dict)
-            else {}
-        )
-        manual_save_probe = _fixed_quest_npc_manual_save_verdict(after_manual_save)
-        manual_save_probe["quest_npc_location"] = quest_location_after_manual_save
-        manual_save_probe["fixed_quest_npc_distance"] = _distance(
-            quest_location_after_interact,
-            quest_location_after_manual_save,
-        )
-        manual_save_probe["ok"] = bool(
-            manual_save_probe["ok"] and manual_save_probe["fixed_quest_npc_distance"] <= 1.0
-        )
+        manual_save_probe = _quest_npc_manual_save_verdict(after_manual_save)
         self.event("manual_save_probe", **manual_save_probe)
         if not manual_save_probe["ok"]:
             raise RuntimeError(
-                f"Manual SaveGame did not persist the accepted quest/player position while keeping the task NPC fixed: {manual_save_probe}"
+                f"Manual SaveGame did not persist the accepted quest, active follower, player position, and live task-NPC position: {manual_save_probe}"
             )
 
         town_exit = _town_exit(after_manual_save)
@@ -2767,7 +2889,8 @@ class RealFlowHarness:
             "npc_visuals": npc_visual_state,
             "movement_distance_cm": movement_distance,
             "quest_distance_cm": _distance(_pawn_location(near_quest), quest_location),
-            "quest_fixed_npc_input_distance_cm": fixed_quest_npc_probe["distance"],
+            "quest_follower_npc_input_distance_cm": quest_npc_follower_probe["distance"],
+            "quest_follower_runtime_location_distance_cm": quest_npc_follower_probe["runtime_location_distance"],
             "manual_save": manual_save_probe,
             "route_map": route_map_probe,
             "battle": battle_probe,
@@ -2777,28 +2900,57 @@ class RealFlowHarness:
         result["meta_shop"] = meta_shop_probe
         return result
 
-    def close(self) -> None:
-        if getattr(self, "battle_hud_fixture_may_be_applied", False):
+    def close(self) -> dict[str, Any]:
+        errors: list[str] = []
+        try:
+            if getattr(self, "battle_hud_fixture_may_be_applied", False):
+                try:
+                    if self.client.session_id and self.client.is_in_pie():
+                        self.clear_battle_hud_fixture()
+                except Exception as exc:
+                    errors.append("battle_hud_fixture_cleanup")
+                    self.event("battle_hud_fixture_cleanup_failed", error=str(exc))
+            if not self.keep_pie:
+                try:
+                    if self.client.session_id and self.client.is_in_pie():
+                        self.client.stop_pie()
+                        if self.client.wait_for_pie_state(False):
+                            self.event("stopped_pie")
+                        else:
+                            errors.append("wait_for_pie_stop_after_real_flow")
+                            self.event("wait_for_pie_stop_after_real_flow_failed")
+                except Exception as exc:
+                    errors.append("stop_pie_after_real_flow")
+                    self.event("stop_pie_failed", error=str(exc))
+                try:
+                    if self.client.session_id:
+                        cleanup_result = self.client.run_project_python_file(PROBE_SCRIPT, ["--delete-default-save"])
+                        cleanup_payload = _load_json_from_probe(cleanup_result)
+                        delete_succeeded = bool(cleanup_payload.get("delete_default_save"))
+                        self.event("deleted_default_save_after_real_flow", result=delete_succeeded)
+                        if not delete_succeeded:
+                            errors.append("delete_default_save_after_real_flow")
+                except Exception as exc:
+                    errors.append("delete_default_save_after_real_flow")
+                    self.event("delete_default_save_after_real_flow_failed", error=str(exc))
+        finally:
             try:
-                if self.client.session_id and self.client.is_in_pie():
-                    self.clear_battle_hud_fixture()
+                self.restore_default_save()
             except Exception as exc:
-                self.event("battle_hud_fixture_cleanup_failed", error=str(exc))
-        if self.keep_pie:
-            return
-        try:
-            if self.client.session_id and self.client.is_in_pie():
-                self.client.stop_pie()
-                self.event("stopped_pie")
-        except Exception as exc:
-            self.event("stop_pie_failed", error=str(exc))
-        try:
-            if self.client.session_id:
-                cleanup_result = self.client.run_project_python_file(PROBE_SCRIPT, ["--delete-default-save"])
-                cleanup_payload = _load_json_from_probe(cleanup_result)
-                self.event("deleted_default_save_after_real_flow", result=cleanup_payload.get("delete_default_save"))
-        except Exception as exc:
-            self.event("delete_default_save_after_real_flow_failed", error=str(exc))
+                errors.append("restore_default_save_after_real_flow")
+                self.event(
+                    "restore_default_save_after_real_flow_failed",
+                    error=str(exc),
+                    recoverable_backup=str(DEFAULT_SAVE_BACKUP_FILE),
+                    backup_exists=DEFAULT_SAVE_BACKUP_FILE.exists(),
+                )
+        verdict = {
+            "ok": not errors,
+            "kept_pie": self.keep_pie,
+            "errors": errors,
+        }
+        self.event("real_flow_cleanup_verdict", **verdict)
+        return verdict
 
 
 def main(argv: list[str]) -> int:
@@ -2819,12 +2971,24 @@ def main(argv: list[str]) -> int:
             return_code = 0
     except Exception as exc:
         result = {"ok": False, "error": str(exc), "events": harness.events}
-        print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
         return_code = 1
-    else:
-        print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
     finally:
-        harness.close()
+        try:
+            cleanup = harness.close()
+        except Exception as exc:
+            cleanup = {
+                "ok": False,
+                "kept_pie": bool(args.keep_pie or args.battle_hud_observation),
+                "errors": ["unhandled_real_flow_cleanup_exception"],
+                "error": str(exc),
+            }
+
+    result["cleanup"] = cleanup
+    if not bool(cleanup.get("ok")):
+        result["ok"] = False
+        result["cleanup_error"] = "Real-flow environment cleanup was not clean"
+        return_code = 1
+    print(json.dumps(result, ensure_ascii=False, indent=2), flush=True)
 
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     report_path = args.report or REPORT_DIR / f"gamexxk-real-play-flow-{time.strftime('%Y%m%d-%H%M%S')}.json"

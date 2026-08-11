@@ -64,12 +64,20 @@ namespace
 
 	bool IsValidInstance(const FGameXXKCardInstance& Instance)
 	{
+		const bool bValidTemporaryState = Instance.bTemporary
+			? Instance.EnergyCostOverride >= 0
+				&& Instance.ManaCostOverride >= 0
+				&& Instance.ExpireAfterPlayerRound > 0
+			: Instance.EnergyCostOverride == INDEX_NONE
+				&& Instance.ManaCostOverride == INDEX_NONE
+				&& Instance.ExpireAfterPlayerRound == 0;
 		return !Instance.InstanceId.IsNone()
 			&& !Instance.CardId.IsNone()
 			&& IsConcreteCardQuality(Instance.CurrentQuality)
 			&& !Instance.OwnerUnitId.IsNone()
 			&& !Instance.SourceEntryId.IsNone()
-			&& Instance.AcquisitionOrdinal != INDEX_NONE;
+			&& Instance.AcquisitionOrdinal != INDEX_NONE
+			&& bValidTemporaryState;
 	}
 
 	/** Pending-choice candidates are serialized UI views, so compare every stable field before trusting them. */
@@ -80,7 +88,11 @@ namespace
 			&& Left.CurrentQuality == Right.CurrentQuality
 			&& Left.OwnerUnitId == Right.OwnerUnitId
 			&& Left.SourceEntryId == Right.SourceEntryId
-			&& Left.AcquisitionOrdinal == Right.AcquisitionOrdinal;
+			&& Left.AcquisitionOrdinal == Right.AcquisitionOrdinal
+			&& Left.bTemporary == Right.bTemporary
+			&& Left.EnergyCostOverride == Right.EnergyCostOverride
+			&& Left.ManaCostOverride == Right.ManaCostOverride
+			&& Left.ExpireAfterPlayerRound == Right.ExpireAfterPlayerRound;
 	}
 
 	bool SetFailure(FString* OutError, const FString& Error)
@@ -131,6 +143,85 @@ namespace
 
 		InOutDeck.DrawPile = MoveTemp(InOutDeck.DiscardPile);
 		ShufflePile(InOutDeck.DrawPile, InOutDeck.CurrentRandomState);
+		return true;
+	}
+
+	bool IsAutomaticHandOrderBefore(
+		const FGameXXKCardInstance& Left,
+		const FGameXXKCardInstance& Right)
+	{
+		return Left.AcquisitionOrdinal != Right.AcquisitionOrdinal
+			? Left.AcquisitionOrdinal < Right.AcquisitionOrdinal
+			: Left.InstanceId.LexicalLess(Right.InstanceId);
+	}
+
+	bool MaterializePendingAutomaticHandCards(
+		FGameXXKBattleDeckState& InOutDeck,
+		FString& OutError)
+	{
+		OutError.Reset();
+		while (InOutDeck.Hand.Num() < BattleHandCapacity
+			&& !InOutDeck.PendingAutomaticHandCards.IsEmpty())
+		{
+			InOutDeck.Hand.Add(MoveTemp(InOutDeck.PendingAutomaticHandCards[0]));
+			InOutDeck.PendingAutomaticHandCards.RemoveAt(0, 1, EAllowShrinking::No);
+		}
+		return true;
+	}
+
+	bool QueueInstanceForAutomaticHand(
+		FGameXXKBattleDeckState& InOutDeck,
+		const FName InstanceId,
+		FString& OutError)
+	{
+		OutError.Reset();
+		const auto ContainsInstanceId = [InstanceId](const TArray<FGameXXKCardInstance>& Zone)
+		{
+			return Zone.ContainsByPredicate([InstanceId](const FGameXXKCardInstance& Instance)
+			{
+				return Instance.InstanceId == InstanceId;
+			});
+		};
+		if (InstanceId.IsNone()
+			|| ContainsInstanceId(InOutDeck.Hand)
+			|| ContainsInstanceId(InOutDeck.PendingAutomaticHandCards))
+		{
+			OutError = TEXT("An automatic hand request must reference one unqueued draw or discard instance.");
+			return false;
+		}
+
+		TArray<FGameXXKCardInstance>* SourceZone = nullptr;
+		int32 SourceIndex = InOutDeck.DrawPile.IndexOfByPredicate([InstanceId](const FGameXXKCardInstance& Instance)
+		{
+			return Instance.InstanceId == InstanceId;
+		});
+		if (SourceIndex != INDEX_NONE)
+		{
+			SourceZone = &InOutDeck.DrawPile;
+		}
+		else
+		{
+			SourceIndex = InOutDeck.DiscardPile.IndexOfByPredicate([InstanceId](const FGameXXKCardInstance& Instance)
+			{
+				return Instance.InstanceId == InstanceId;
+			});
+			if (SourceIndex != INDEX_NONE)
+			{
+				SourceZone = &InOutDeck.DiscardPile;
+			}
+		}
+		if (!SourceZone)
+		{
+			OutError = TEXT("An automatic hand request no longer exists in draw or discard.");
+			return false;
+		}
+
+		InOutDeck.PendingAutomaticHandCards.Add(MoveTemp((*SourceZone)[SourceIndex]));
+		SourceZone->RemoveAt(SourceIndex, 1, EAllowShrinking::No);
+		InOutDeck.PendingAutomaticHandCards.Sort([](const FGameXXKCardInstance& Left, const FGameXXKCardInstance& Right)
+		{
+			return IsAutomaticHandOrderBefore(Left, Right);
+		});
 		return true;
 	}
 
@@ -196,7 +287,8 @@ namespace
 		if (!ValidateZone(Deck.DrawPile, TEXT("DrawPile"))
 			|| !ValidateZone(Deck.Hand, TEXT("Hand"))
 			|| !ValidateZone(Deck.DiscardPile, TEXT("DiscardPile"))
-			|| !ValidateZone(Deck.ExhaustPile, TEXT("ExhaustPile")))
+			|| !ValidateZone(Deck.ExhaustPile, TEXT("ExhaustPile"))
+			|| !ValidateZone(Deck.PendingAutomaticHandCards, TEXT("PendingAutomaticHand")))
 		{
 			return false;
 		}
@@ -209,6 +301,21 @@ namespace
 		{
 			OutError = TEXT("Hand exceeds the twenty-card battle capacity.");
 			return false;
+		}
+		if (!Deck.PendingAutomaticHandCards.IsEmpty() && Deck.Hand.Num() < BattleHandCapacity)
+		{
+			OutError = TEXT("Automatic hand overflow remained queued despite an available hand slot.");
+			return false;
+		}
+		for (int32 Index = 1; Index < Deck.PendingAutomaticHandCards.Num(); ++Index)
+		{
+			if (IsAutomaticHandOrderBefore(
+				Deck.PendingAutomaticHandCards[Index],
+				Deck.PendingAutomaticHandCards[Index - 1]))
+			{
+				OutError = TEXT("Automatic hand overflow is not in stable acquisition order.");
+				return false;
+			}
 		}
 
 		switch (Deck.PendingChoice.Kind)
@@ -380,6 +487,10 @@ namespace
 		TArray<FGameXXKCardInstance>& Destination = bExhaust ? NewDeck.ExhaustPile : NewDeck.DiscardPile;
 		Destination.Add(MoveTemp(NewDeck.Hand[HandIndex]));
 		NewDeck.Hand.RemoveAt(HandIndex, 1, EAllowShrinking::No);
+		if (!MaterializePendingAutomaticHandCards(NewDeck, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
 		if (!ValidateDeckStateInternal(NewDeck, ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);
@@ -874,19 +985,46 @@ namespace
 	{
 		bool bHasLivingParty = false;
 		bool bHasLivingEnemy = false;
+		bool bHasHero = false;
+		bool bHasLivingHero = false;
 		for (const FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
 		{
 			bHasLivingParty |= Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Party;
 			bHasLivingEnemy |= Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Enemy;
+			if (Unit.Side == EGameXXKCardTargetSide::Party && Unit.Role == EGameXXKCharacterRole::Hero)
+			{
+				bHasHero = true;
+				bHasLivingHero |= Unit.bLiving;
+			}
 		}
-		if (!bHasLivingParty || !bHasLivingEnemy)
+		if (!bHasLivingParty || !bHasLivingEnemy || (bHasHero && !bHasLivingHero))
 		{
+			// Enemy elimination wins even when the same resolution also defeats the hero.
+			// Otherwise the battle contract ends immediately when its fixed hero falls;
+			// surviving companions do not continue an ownerless battle.
 			InOutRuntime.Phase = !bHasLivingEnemy
 				? EGameXXKCardBattlePhase::Victory
 				: EGameXXKCardBattlePhase::Defeat;
 			// A next-player-hand effect has no legal recipient after a terminal transition.
 			InOutRuntime.PendingNextPlayerHandEnergySurcharge = 0;
 			InOutRuntime.PendingNextPlayerHandEnergySurchargeSourceUnitId = NAME_None;
+			// A terminal battle has no later player/enemy boundary at which Blade or PoJun
+			// payloads could resolve. Clear them at the single terminal transition point so
+			// kills from reactions and adapter-level intent batches obey the same invariant
+			// as kills produced directly by an active card.
+			InOutRuntime.PendingBladeCharge = FGameXXKBladeChargeRuntime();
+			InOutRuntime.PendingBladeDelayedCard = FGameXXKBladeDelayedCardRuntime();
+			InOutRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+			InOutRuntime.PendingBladeNativeStyle = FGameXXKBladeStyleRuntime();
+			InOutRuntime.PendingBladeResidualStyle = FGameXXKBladeStyleRuntime();
+			InOutRuntime.BladeRetainedHandCardInstanceIds.Reset();
+			for (FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : InOutRuntime.EquipmentEffects)
+			{
+				EffectRuntime.PendingPoJunStyle = FGameXXKPoJunStoredStyleRuntime();
+				EffectRuntime.PoJunChargeProgressRound = 0;
+				EffectRuntime.bPoJunChargeConsumedThisRound = false;
+				EffectRuntime.PendingPoJunReplayPlayerRound = 0;
+			}
 		}
 	}
 
@@ -1021,12 +1159,89 @@ namespace
 			NewDeck.DiscardPile.Add(MoveTemp(Instance));
 		}
 		NewDeck.Hand.Reset();
+		if (!MaterializePendingAutomaticHandCards(NewDeck, OutError))
+		{
+			return false;
+		}
 		if (!ValidateDeckStateInternal(NewDeck, OutError))
 		{
 			return false;
 		}
 		InOutDeck = MoveTemp(NewDeck);
 		return true;
+	}
+
+	bool DiscardRemainingHandExcept(
+		FGameXXKBattleDeckState& InOutDeck,
+		const TArray<FName>& RetainedInstanceIds,
+		FString& OutError)
+	{
+		OutError.Reset();
+		if (!ValidateDeckStateInternal(InOutDeck, OutError) || !RequireNoPendingChoice(InOutDeck, &OutError))
+		{
+			return false;
+		}
+		TSet<FName> RetainedIds;
+		RetainedIds.Reserve(RetainedInstanceIds.Num());
+		for (const FName InstanceId : RetainedInstanceIds)
+		{
+			RetainedIds.Add(InstanceId);
+		}
+		FGameXXKBattleDeckState NewDeck = InOutDeck;
+		TArray<FGameXXKCardInstance> RetainedHand;
+		RetainedHand.Reserve(NewDeck.Hand.Num());
+		for (FGameXXKCardInstance& Instance : NewDeck.Hand)
+		{
+			if (RetainedIds.Contains(Instance.InstanceId) && !Instance.bTemporary)
+			{
+				RetainedHand.Add(MoveTemp(Instance));
+			}
+			else
+			{
+				NewDeck.DiscardPile.Add(MoveTemp(Instance));
+			}
+		}
+		NewDeck.Hand = MoveTemp(RetainedHand);
+		if (!MaterializePendingAutomaticHandCards(NewDeck, OutError))
+		{
+			return false;
+		}
+		if (!ValidateDeckStateInternal(NewDeck, OutError))
+		{
+			return false;
+		}
+		InOutDeck = MoveTemp(NewDeck);
+		return true;
+	}
+
+	void ExpireTemporaryCardsAtPlayerRoundEnd(
+		FGameXXKBattleDeckState& InOutDeck,
+		const int32 PlayerRound)
+	{
+		TSet<FName> ExpiredIds;
+		const auto ExpireZone = [PlayerRound, &ExpiredIds](TArray<FGameXXKCardInstance>& Zone)
+		{
+			for (int32 Index = Zone.Num() - 1; Index >= 0; --Index)
+			{
+				if (!Zone[Index].bTemporary || Zone[Index].ExpireAfterPlayerRound > PlayerRound)
+				{
+					continue;
+				}
+				ExpiredIds.Add(Zone[Index].InstanceId);
+				Zone.RemoveAt(Index, 1, EAllowShrinking::No);
+			}
+		};
+		ExpireZone(InOutDeck.DrawPile);
+		ExpireZone(InOutDeck.Hand);
+		ExpireZone(InOutDeck.DiscardPile);
+		ExpireZone(InOutDeck.ExhaustPile);
+		ExpireZone(InOutDeck.PendingAutomaticHandCards);
+		InOutDeck.ActiveInstanceIds.RemoveAll([&ExpiredIds](const FName InstanceId)
+		{
+			return ExpiredIds.Contains(InstanceId);
+		});
+		FString IgnoredError;
+		MaterializePendingAutomaticHandCards(InOutDeck, IgnoredError);
 	}
 
 	bool ApplyEndPhaseDotForSide(
@@ -1082,9 +1297,21 @@ namespace
 		const EGameXXKCardTargetSide Side,
 		FString& OutError)
 	{
+		TSet<FName> RetainedPartyArmorUnitIds;
+		if (Side == EGameXXKCardTargetSide::Party)
+		{
+			for (const FName UnitId : InOutRuntime.RetainArmorAtNextPartyPhaseUnitIds)
+			{
+				RetainedPartyArmorUnitIds.Add(UnitId);
+			}
+		}
 		for (FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
 		{
 			if (!Unit.bLiving || Unit.Side != Side)
+			{
+				continue;
+			}
+			if (Side == EGameXXKCardTargetSide::Party && RetainedPartyArmorUnitIds.Contains(Unit.UnitId))
 			{
 				continue;
 			}
@@ -1110,6 +1337,10 @@ namespace
 			}
 
 			GameXXKCardRules::BeginCombatUnitPhase(Unit);
+		}
+		if (Side == EGameXXKCardTargetSide::Party)
+		{
+			InOutRuntime.RetainArmorAtNextPartyPhaseUnitIds.Reset();
 		}
 		return true;
 	}
@@ -1374,6 +1605,9 @@ void GameXXKCardRules::RemoveDefeatedPartyOwnerCards(
 	InOutDeck.DiscardPile.RemoveAll(IsDefeatedOwner);
 	InOutDeck.Hand.RemoveAll(IsDefeatedOwner);
 	InOutDeck.ExhaustPile.RemoveAll(IsDefeatedOwner);
+	InOutDeck.PendingAutomaticHandCards.RemoveAll(IsDefeatedOwner);
+	FString IgnoredError;
+	MaterializePendingAutomaticHandCards(InOutDeck, IgnoredError);
 
 	InOutDeck.ActiveInstanceIds.Reset();
 	const auto RebuildLedger = [&InOutDeck](const TArray<FGameXXKCardInstance>& Zone)
@@ -1387,6 +1621,7 @@ void GameXXKCardRules::RemoveDefeatedPartyOwnerCards(
 	RebuildLedger(InOutDeck.DiscardPile);
 	RebuildLedger(InOutDeck.Hand);
 	RebuildLedger(InOutDeck.ExhaustPile);
+	RebuildLedger(InOutDeck.PendingAutomaticHandCards);
 }
 
 bool GameXXKCardRules::MoveHandCardToDiscard(
@@ -1443,6 +1678,10 @@ bool GameXXKCardRules::SubmitForcedDiscard(
 		NewDeck.Hand.RemoveAt(HandIndex, 1, EAllowShrinking::No);
 	}
 	ClearPendingChoice(NewDeck.PendingChoice);
+	if (!MaterializePendingAutomaticHandCards(NewDeck, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 
 	if (!ValidateDeckStateInternal(NewDeck, ValidationError))
 	{
@@ -1665,6 +1904,11 @@ const FGameXXKCardInstance* GameXXKCardRules::FindInstance(
 	if (const FGameXXKCardInstance* Instance = FindInZone(Deck.ExhaustPile, InstanceId))
 	{
 		OutZone = EGameXXKCardZone::ExhaustPile;
+		return Instance;
+	}
+	if (const FGameXXKCardInstance* Instance = FindInZone(Deck.PendingAutomaticHandCards, InstanceId))
+	{
+		OutZone = EGameXXKCardZone::PendingAutomaticHand;
 		return Instance;
 	}
 	return nullptr;
@@ -2110,6 +2354,22 @@ namespace
 		return Status == EGameXXKCardStatus::Counter || Status == EGameXXKCardStatus::Block;
 	}
 
+	FString BuildPartyReactionTriggerGroupKey(const FGameXXKReactionRuntime& Reaction)
+	{
+		if (Reaction.RegistrationBatchOrdinal != INDEX_NONE)
+		{
+			return FString::Printf(TEXT("Batch|%d"), Reaction.RegistrationBatchOrdinal);
+		}
+		// Additive save compatibility: reaction records saved before registration batches
+		// existed are grouped by their complete logical source instead of being rejected.
+		return FString::Printf(
+			TEXT("Legacy|%s|%d|%s|%s"),
+			*Reaction.RecipientUnitId.ToString(),
+			static_cast<int32>(Reaction.Status),
+			*Reaction.GrantedByUnitId.ToString(),
+			*Reaction.SourceCardInstanceId.ToString());
+	}
+
 	int32 AdvanceCombatRandomRoll(FGameXXKCardBattleRuntime& InOutRuntime)
 	{
 		const uint32 NextState = static_cast<uint32>(InOutRuntime.CombatRandomState)
@@ -2191,6 +2451,7 @@ namespace
 	{
 		TSet<FName> ReactionIds;
 		TMap<FString, int32> ExpectedStatusStacks;
+		TMap<int32, FString> RegistrationBatchSignatures;
 		for (const FGameXXKReactionRuntime& Reaction : Runtime.Reactions)
 		{
 			const FGameXXKCardCombatUnit* Recipient = FindCombatUnitById(Runtime.Units, Reaction.RecipientUnitId);
@@ -2200,6 +2461,8 @@ namespace
 				|| !Recipient || Recipient->Side != EGameXXKCardTargetSide::Party
 				|| !Grantor || Grantor->Side != EGameXXKCardTargetSide::Party
 				|| Reaction.SourceCardInstanceId.IsNone()
+				|| Reaction.RegistrationBatchOrdinal < INDEX_NONE
+				|| Reaction.RegistrationBatchOrdinal >= Runtime.NextReactionOrdinal
 				|| Reaction.RemainingTriggers != 1
 				|| Reaction.ExpireBeforePlayerRound <= Runtime.RoundNumber)
 			{
@@ -2207,6 +2470,23 @@ namespace
 				return false;
 			}
 			ReactionIds.Add(Reaction.ReactionId);
+			if (Reaction.RegistrationBatchOrdinal != INDEX_NONE)
+			{
+				const FString BatchSignature = FString::Printf(
+					TEXT("%s|%d|%s|%s|%d"),
+					*Reaction.RecipientUnitId.ToString(),
+					static_cast<int32>(Reaction.Status),
+					*Reaction.GrantedByUnitId.ToString(),
+					*Reaction.SourceCardInstanceId.ToString(),
+					Reaction.ExpireBeforePlayerRound);
+				const FString* ExistingSignature = RegistrationBatchSignatures.Find(Reaction.RegistrationBatchOrdinal);
+				if (ExistingSignature && *ExistingSignature != BatchSignature)
+				{
+					OutError = TEXT("One party-reaction registration batch contains mismatched source records.");
+					return false;
+				}
+				RegistrationBatchSignatures.FindOrAdd(Reaction.RegistrationBatchOrdinal) = BatchSignature;
+			}
 			const FString Key = Reaction.RecipientUnitId.ToString() + TEXT("|") + FString::FromInt(static_cast<int32>(Reaction.Status));
 			const int32 NewCount = ExpectedStatusStacks.FindRef(Key) + 1;
 			if (NewCount > GetCombatStatusCap(Reaction.Status))
@@ -2260,6 +2540,7 @@ namespace
 			return false;
 		}
 
+		const int32 RegistrationBatchOrdinal = InOutRuntime.NextReactionOrdinal;
 		for (int32 UseIndex = 0; UseIndex < Uses; ++UseIndex)
 		{
 			const int32 Ordinal = InOutRuntime.NextReactionOrdinal++;
@@ -2269,6 +2550,7 @@ namespace
 			Reaction.RecipientUnitId = RecipientUnitId;
 			Reaction.GrantedByUnitId = Instance.OwnerUnitId;
 			Reaction.SourceCardInstanceId = Instance.InstanceId;
+			Reaction.RegistrationBatchOrdinal = RegistrationBatchOrdinal;
 			Reaction.RemainingTriggers = 1;
 			Reaction.ExpireBeforePlayerRound = InOutRuntime.RoundNumber + 1;
 		}
@@ -2410,6 +2692,11 @@ namespace
 			OutError = TEXT("Damage context has an invalid Momentum snapshot.");
 			return false;
 		}
+		if (Context.VulnerabilityStacksToConsumeOverride < INDEX_NONE)
+		{
+			OutError = TEXT("Damage context has an invalid Vulnerability consumption override.");
+			return false;
+		}
 
 		if (IsDirectAttackDamageKind(Context.Kind))
 		{
@@ -2429,6 +2716,7 @@ namespace
 			const FGameXXKCardCombatUnit* SourceUnit = FindCombatUnitById(Units, Context.SourceUnitId);
 			if (!SourceUnit || !SourceUnit->bLiving || SourceUnit->UnitId != OriginalTarget.UnitId
 				|| Context.IgnoredDefense != 0 || Context.MomentumStacksOverride != INDEX_NONE
+				|| Context.VulnerabilityStacksToConsumeOverride != INDEX_NONE
 				|| !Context.OnHitStatuses.IsEmpty())
 			{
 				OutError = TEXT("Self health loss must target its own living stable source and cannot carry defense bypass or hit statuses.");
@@ -2440,7 +2728,9 @@ namespace
 		if (Context.Kind == EGameXXKCardDamageKind::EnvironmentalHealthLoss)
 		{
 			if (!Context.SourceUnitId.IsNone() || Context.IgnoredDefense != 0
-				|| Context.MomentumStacksOverride != INDEX_NONE || !Context.OnHitStatuses.IsEmpty())
+				|| Context.MomentumStacksOverride != INDEX_NONE
+				|| Context.VulnerabilityStacksToConsumeOverride != INDEX_NONE
+				|| !Context.OnHitStatuses.IsEmpty())
 			{
 				OutError = TEXT("Environmental health loss cannot carry a source unit, defense bypass, or hit statuses.");
 				return false;
@@ -2778,6 +3068,32 @@ bool GameXXKCardRules::ResolveToxicExplosion(
 	{
 		PacketSpec.StacksBefore = GetCombatStatusStacksInternal(*Target, PacketSpec.Status);
 	}
+	int32 ShiGuSixPieceIndex = INDEX_NONE;
+	for (int32 EffectIndex = 0; EffectIndex < NewRuntime.EquipmentEffects.Num(); ++EffectIndex)
+	{
+		const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime = NewRuntime.EquipmentEffects[EffectIndex];
+		const FGameXXKEquipmentActiveEffect& Effect = EffectRuntime.ActiveEffect;
+		const int32 TriggerCountThisRound = EffectRuntime.LastTriggerRound == NewRuntime.RoundNumber
+			? EffectRuntime.CurrentRoundTriggerCount
+			: 0;
+		if (Effect.Set == EGameXXKEquipmentSet::ShiGu
+			&& Effect.RequiredPieces == 6
+			&& Effect.Scope == EGameXXKEquipmentSetBonusScope::Owner
+			&& Effect.Hook == EGameXXKEquipmentSetBonusHook::ShiGuToxicExplosion
+			&& EffectRuntime.SourceCharacterId == SourceUnitId
+			&& TriggerCountThisRound < Effect.MaxTriggersPerRound)
+		{
+			ShiGuSixPieceIndex = EffectIndex;
+			break;
+		}
+	}
+	const bool bShiGuPreservesThisExplosion = ShiGuSixPieceIndex != INDEX_NONE
+		&& PacketSpecs.ContainsByPredicate([](const FExplosionPacketSpec& PacketSpec)
+		{
+			return PacketSpec.StacksBefore > 0;
+		});
+	const bool bEffectivePreserveDamageOverTimeStacks = bPreserveDamageOverTimeStacks
+		|| bShiGuPreservesThisExplosion;
 
 	TArray<FGameXXKCardDamageResult> NewResults;
 	NewResults.Reserve(3);
@@ -2808,7 +3124,7 @@ bool GameXXKCardRules::ResolveToxicExplosion(
 	{
 		return SetFailure(OutError, TEXT("Toxic explosion target disappeared before status consumption."));
 	}
-	if (!bPreserveDamageOverTimeStacks)
+	if (!bEffectivePreserveDamageOverTimeStacks)
 	{
 		for (const FExplosionPacketSpec& PacketSpec : PacketSpecs)
 		{
@@ -2819,6 +3135,12 @@ bool GameXXKCardRules::ResolveToxicExplosion(
 			NewResults[PacketSpec.ResultIndex].StatusStacksConsumed =
 				GameXXKCardRules::ConsumeCombatStatus(*Target, PacketSpec.Status, 1);
 		}
+	}
+	if (bShiGuPreservesThisExplosion && NewResults.Num() > 0)
+	{
+		FGameXXKEquipmentBattleEffectRuntime& ShiGuSixPiece = NewRuntime.EquipmentEffects[ShiGuSixPieceIndex];
+		ShiGuSixPiece.LastTriggerRound = NewRuntime.RoundNumber;
+		ShiGuSixPiece.CurrentRoundTriggerCount = 1;
 	}
 	UpdateBattleTerminalPhase(NewRuntime);
 	InOutRuntime = MoveTemp(NewRuntime);
@@ -2969,6 +3291,7 @@ namespace
 			: 0;
 		if (bDirectAttack)
 		{
+			NewResult.VulnerabilityStacksBeforeHit = VulnerabilityStacks;
 			NewResult.MarkStacksBeforeHit = MarkStacks;
 			NewResult.MarkDamageBonusPercent = MarkBonusPercent;
 		}
@@ -2978,7 +3301,16 @@ namespace
 		NewResult.DamageAfterVulnerability = static_cast<int32>(FMath::Min<int64>(MAX_int32, AmplifiedDamage));
 		if (VulnerabilityStacks > 0)
 		{
-			GameXXKCardRules::ConsumeCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Vulnerability, MAX_int32);
+			const int32 VulnerabilityConsumptionLimit = Context.VulnerabilityStacksToConsumeOverride == INDEX_NONE
+				? MAX_int32
+				: Context.VulnerabilityStacksToConsumeOverride;
+			if (VulnerabilityConsumptionLimit > 0)
+			{
+				NewResult.VulnerabilityStacksConsumed = GameXXKCardRules::ConsumeCombatStatus(
+					*ResolvedTarget,
+					EGameXXKCardStatus::Vulnerability,
+					VulnerabilityConsumptionLimit);
+			}
 		}
 		if (MarkStacks > 0)
 		{
@@ -3136,6 +3468,8 @@ namespace
 	{
 		return Origin == EGameXXKCardResolutionOrigin::AutomaticReplay
 			|| Origin == EGameXXKCardResolutionOrigin::MageTaskReplay
+			|| Origin == EGameXXKCardResolutionOrigin::TaskNpcTaskReplay
+			|| Origin == EGameXXKCardResolutionOrigin::PartnerSorcererTaskReplay
 			|| Origin == EGameXXKCardResolutionOrigin::HeavyArrow
 			|| Origin == EGameXXKCardResolutionOrigin::Reaction
 			|| Origin == EGameXXKCardResolutionOrigin::TerrainListener
@@ -3147,13 +3481,36 @@ namespace
 		const TArray<FGameXXKCardCombatUnit>& Units,
 		FString& OutError)
 	{
+		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(Snapshot.CardId);
 		if (Snapshot.CardId.IsNone()
-			|| !FGameXXKCardCatalog::FindCardDefinition(Snapshot.CardId)
+			|| !Definition
 			|| !IsConcreteCardQuality(Snapshot.Quality)
 			|| Snapshot.OwnerUnitId.IsNone()
-			|| !FindCombatUnitById(Units, Snapshot.OwnerUnitId))
+			|| !FindCombatUnitById(Units, Snapshot.OwnerUnitId)
+			|| Snapshot.PaidManaCost < 0
+			|| Snapshot.SorcererSequencePosition < 0
+			|| Snapshot.SorcererSequencePosition > 5)
 		{
-			OutError = TEXT("An automatic card snapshot has no catalog card, concrete quality, or stable owner record.");
+			OutError = TEXT("An automatic card snapshot has no catalog card, concrete quality, stable owner, or supported Sorcerer audit values.");
+			return false;
+		}
+		if (Snapshot.SorcererSequencePosition == 0)
+		{
+			if (Snapshot.PaidManaCost != 0
+				|| Snapshot.PreviousSorcererFamily != EGameXXKSorcererCardFamily::None
+				|| Snapshot.SorcererTaskBranch != EGameXXKSorcererTaskBranch::None)
+			{
+				OutError = TEXT("A non-Sorcerer-task snapshot contains stale Sorcerer sequence audit data.");
+				return false;
+			}
+		}
+		else if (Definition->Owner != EGameXXKCardOwner::Profession
+			|| Definition->Role != EGameXXKCharacterRole::Sorcerer
+			|| Definition->SorcererRule.Family == EGameXXKSorcererCardFamily::None
+			|| Definition->SorcererRule.SequenceRule == EGameXXKSorcererSequenceRule::None
+			|| Definition->SorcererRule.RewardRule == EGameXXKSorcererRewardRule::None)
+		{
+			OutError = TEXT("Sorcerer sequence audit data belongs to a non-Sorcerer card snapshot.");
 			return false;
 		}
 		TSet<FName> SeenTargetIds;
@@ -3171,17 +3528,529 @@ namespace
 		return true;
 	}
 
+	bool IsImplementedSheathedStyleRule(const EGameXXKBladeChargeRule Rule)
+	{
+		return Rule == EGameXXKBladeChargeRule::LightLoad
+			|| Rule == EGameXXKBladeChargeRule::DrawTwoAfterNextActive
+			|| Rule == EGameXXKBladeChargeRule::DrawSameOwnerAfterNextActive
+			|| Rule == EGameXXKBladeChargeRule::DrawOtherOwnerAfterNextActive;
+	}
+
+	bool IsImplementedPartnerBladeChargeRule(const EGameXXKBladeChargeRule Rule)
+	{
+		switch (Rule)
+		{
+		case EGameXXKBladeChargeRule::ReplayNextActiveBase:
+		case EGameXXKBladeChargeRule::CopyNextActiveToHand:
+		case EGameXXKBladeChargeRule::ReturnNextActiveToHandOnce:
+		case EGameXXKBladeChargeRule::ReplayNextActiveNextRound:
+		case EGameXXKBladeChargeRule::RestoreNextActiveOwnerState:
+		case EGameXXKBladeChargeRule::DuplicateNextSingleTargetOrDraw:
+		case EGameXXKBladeChargeRule::MakeNextActiveEnergyFree:
+		case EGameXXKBladeChargeRule::MakeNextActiveManaFree:
+		case EGameXXKBladeChargeRule::RefundNextActiveCosts:
+		case EGameXXKBladeChargeRule::CountNextActiveTwice:
+		case EGameXXKBladeChargeRule::CopyNextActiveNextRound:
+		case EGameXXKBladeChargeRule::RetainNextActiveNextRound:
+		case EGameXXKBladeChargeRule::PreserveFinishCandidate:
+		case EGameXXKBladeChargeRule::RetainRemainingHand:
+		case EGameXXKBladeChargeRule::LightLoad:
+		case EGameXXKBladeChargeRule::DrawTwoAfterNextActive:
+		case EGameXXKBladeChargeRule::DrawSameOwnerAfterNextActive:
+		case EGameXXKBladeChargeRule::DrawOtherOwnerAfterNextActive:
+			return true;
+		case EGameXXKBladeChargeRule::None:
+		default:
+			return false;
+		}
+	}
+
+	bool ValidateBladeChargeRuntime(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
+	{
+		const FGameXXKBladeChargeRuntime& Charge = Runtime.PendingBladeCharge;
+		if (Charge.Rule == EGameXXKBladeChargeRule::None)
+		{
+			if (!Charge.SourceCardId.IsNone()
+				|| !Charge.SourceOwnerUnitId.IsNone()
+				|| Charge.CreatedRound != 0)
+			{
+				OutError = TEXT("An inactive Blade Charge contains stale source metadata.");
+				return false;
+			}
+			return true;
+		}
+		if (!IsImplementedPartnerBladeChargeRule(Charge.Rule)
+			|| Runtime.Phase != EGameXXKCardBattlePhase::Player
+			|| Charge.CreatedRound != Runtime.RoundNumber
+			|| Charge.SourceCardId.IsNone()
+			|| Charge.SourceOwnerUnitId.IsNone()
+			|| !IsConcreteCardQuality(Charge.SourceQuality))
+		{
+			OutError = TEXT("An active Blade Charge has an unsupported rule, phase, round, or source identity.");
+			return false;
+		}
+		const FGameXXKCardDefinition* SourceDefinition = FGameXXKCardCatalog::FindCardDefinition(Charge.SourceCardId);
+		const FGameXXKCardCombatUnit* SourceOwner = FindCombatUnitById(Runtime.Units, Charge.SourceOwnerUnitId);
+		if (!SourceDefinition
+			|| SourceDefinition->Owner != EGameXXKCardOwner::Profession
+			|| SourceDefinition->Role != EGameXXKCharacterRole::Blade
+			|| SourceDefinition->BladeSequence.ChargeRule != Charge.Rule
+			|| !SourceOwner
+			|| SourceOwner->Side != EGameXXKCardTargetSide::Party)
+		{
+			OutError = TEXT("An active Blade Charge no longer matches its declarative card or party owner.");
+			return false;
+		}
+		return true;
+	}
+
+	bool ValidateBladeStyleRuntime(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKBladeStyleRuntime& Style,
+		const bool bExpectedResidual,
+		FString& OutError)
+	{
+		if (Style.Rule == EGameXXKBladeChargeRule::None)
+		{
+			if (!Style.SourceCardId.IsNone()
+				|| !Style.SourceOwnerUnitId.IsNone()
+				|| Style.TriggerPlayerRound != 0
+				|| Style.bResidual)
+			{
+				OutError = TEXT("An inactive Blade style contains stale source or residual metadata.");
+				return false;
+			}
+			return true;
+		}
+		const bool bExpectedRound = bExpectedResidual
+			? Runtime.Phase == EGameXXKCardBattlePhase::Player
+				&& Style.TriggerPlayerRound == Runtime.RoundNumber
+			: (Runtime.Phase == EGameXXKCardBattlePhase::Enemy
+					&& Style.TriggerPlayerRound == Runtime.RoundNumber + 1)
+				|| (Runtime.Phase == EGameXXKCardBattlePhase::Player
+					&& Style.TriggerPlayerRound == Runtime.RoundNumber);
+		const bool bSupportedStyleRule = bExpectedResidual
+			? IsImplementedPartnerBladeChargeRule(Style.Rule)
+			: IsImplementedSheathedStyleRule(Style.Rule);
+		if (!bSupportedStyleRule
+			|| Style.bResidual != bExpectedResidual
+			|| !bExpectedRound
+			|| Style.SourceCardId.IsNone()
+			|| Style.SourceOwnerUnitId.IsNone()
+			|| !IsConcreteCardQuality(Style.SourceQuality))
+		{
+			OutError = TEXT("An active Blade style has an unsupported rule, phase, round, or source identity.");
+			return false;
+		}
+		const FGameXXKCardDefinition* SourceDefinition = FGameXXKCardCatalog::FindCardDefinition(Style.SourceCardId);
+		const FGameXXKCardCombatUnit* SourceOwner = FindCombatUnitById(Runtime.Units, Style.SourceOwnerUnitId);
+		if (!SourceDefinition
+			|| SourceDefinition->Owner != EGameXXKCardOwner::Profession
+			|| SourceDefinition->Role != EGameXXKCharacterRole::Blade
+			|| SourceDefinition->BladeSequence.ChargeRule != Style.Rule
+			|| (!bExpectedResidual
+				&& SourceDefinition->BladeSequence.FinishRule != EGameXXKBladeFinishRule::StoreChargeAsNativeStyle)
+			|| !SourceOwner
+			|| SourceOwner->Side != EGameXXKCardTargetSide::Party)
+		{
+			OutError = TEXT("An active Blade style no longer matches its declarative Sheathed source or party owner.");
+			return false;
+		}
+		return true;
+	}
+
+	bool ValidatePoJunEquipmentRuntime(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime,
+		FString& OutError)
+	{
+		const FGameXXKEquipmentActiveEffect& Effect = EffectRuntime.ActiveEffect;
+		const bool bPoJunTwoPiece = Effect.Set == EGameXXKEquipmentSet::PoJun
+			&& Effect.Hook == EGameXXKEquipmentSetBonusHook::PoJunChargeConsumed;
+		const bool bPoJunFourPiece = Effect.Set == EGameXXKEquipmentSet::PoJun
+			&& Effect.Hook == EGameXXKEquipmentSetBonusHook::PoJunBladeFinish;
+		const bool bPoJunSixPiece = Effect.Set == EGameXXKEquipmentSet::PoJun
+			&& Effect.Hook == EGameXXKEquipmentSetBonusHook::PoJunFirstActiveNextRound;
+		const FGameXXKPoJunStoredStyleRuntime& Style = EffectRuntime.PendingPoJunStyle;
+		const bool bInactiveStyle = Style.Rule == EGameXXKBladeChargeRule::None
+			&& Style.SourceCardId.IsNone()
+			&& Style.SourceOwnerUnitId.IsNone()
+			&& Style.TriggerPlayerRound == 0;
+		if (Effect.Set != EGameXXKEquipmentSet::PoJun)
+		{
+			if (!bInactiveStyle
+				|| EffectRuntime.PoJunChargeProgressRound != 0
+				|| EffectRuntime.bPoJunChargeConsumedThisRound
+				|| EffectRuntime.PendingPoJunReplayPlayerRound != 0)
+			{
+				OutError = TEXT("A non-PoJun equipment descriptor contains PoJun-only runtime state.");
+				return false;
+			}
+			return true;
+		}
+		if (!bPoJunFourPiece && !bInactiveStyle)
+		{
+			OutError = TEXT("Only a PoJun four-piece descriptor may retain a stored Charge style.");
+			return false;
+		}
+		if (bPoJunFourPiece && Style.Rule == EGameXXKBladeChargeRule::None && !bInactiveStyle)
+		{
+			OutError = TEXT("An inactive PoJun stored style contains stale source metadata.");
+			return false;
+		}
+		if (bPoJunFourPiece && Style.Rule != EGameXXKBladeChargeRule::None)
+		{
+			const bool bExpectedRound = (Runtime.Phase == EGameXXKCardBattlePhase::Enemy
+					&& Style.TriggerPlayerRound == Runtime.RoundNumber + 1)
+				|| (Runtime.Phase == EGameXXKCardBattlePhase::Player
+					&& Style.TriggerPlayerRound == Runtime.RoundNumber);
+			const FGameXXKCardDefinition* SourceDefinition = FGameXXKCardCatalog::FindCardDefinition(Style.SourceCardId);
+			if (!IsImplementedPartnerBladeChargeRule(Style.Rule)
+				|| !bExpectedRound
+				|| Style.SourceOwnerUnitId != EffectRuntime.SourceCharacterId
+				|| !IsConcreteCardQuality(Style.SourceQuality)
+				|| !SourceDefinition
+				|| SourceDefinition->Owner != EGameXXKCardOwner::Profession
+				|| SourceDefinition->Role != EGameXXKCharacterRole::Blade
+				|| SourceDefinition->BladeSequence.ChargeRule != Style.Rule
+				|| SourceDefinition->BladeSequence.FinishRule == EGameXXKBladeFinishRule::None)
+			{
+				OutError = TEXT("An active PoJun stored style has an invalid round, wearer, or Blade source.");
+				return false;
+			}
+		}
+
+		if (bPoJunTwoPiece)
+		{
+			if (EffectRuntime.CurrentRoundTriggerCount > Effect.MaxTriggersPerRound
+				|| (EffectRuntime.CurrentRoundTriggerCount > 0 && EffectRuntime.LastTriggerRound == 0))
+			{
+				OutError = TEXT("PoJun two-piece draw progress exceeds its per-wearer round budget.");
+				return false;
+			}
+		}
+		else if (EffectRuntime.CurrentRoundTriggerCount != 0 || EffectRuntime.LastTriggerRound != 0)
+		{
+			OutError = TEXT("Only PoJun two-piece may use the generic equipment trigger counter.");
+			return false;
+		}
+
+		if (!bPoJunSixPiece)
+		{
+			if (EffectRuntime.PoJunChargeProgressRound != 0
+				|| EffectRuntime.bPoJunChargeConsumedThisRound
+				|| EffectRuntime.PendingPoJunReplayPlayerRound != 0)
+			{
+				OutError = TEXT("Only PoJun six-piece may retain opening/finisher loop progress.");
+				return false;
+			}
+			return true;
+		}
+
+		const bool bProgressInactive = EffectRuntime.PoJunChargeProgressRound == 0
+			&& !EffectRuntime.bPoJunChargeConsumedThisRound;
+		const bool bProgressActive = Runtime.Phase == EGameXXKCardBattlePhase::Player
+			&& EffectRuntime.PoJunChargeProgressRound == Runtime.RoundNumber
+			&& EffectRuntime.bPoJunChargeConsumedThisRound;
+		if (!bProgressInactive && !bProgressActive)
+		{
+			OutError = TEXT("PoJun six-piece Charge progress is stale or outside its player round.");
+			return false;
+		}
+		if (EffectRuntime.PendingPoJunReplayPlayerRound != 0)
+		{
+			const bool bExpectedReplayRound = (Runtime.Phase == EGameXXKCardBattlePhase::Enemy
+					&& EffectRuntime.PendingPoJunReplayPlayerRound == Runtime.RoundNumber + 1)
+				|| (Runtime.Phase == EGameXXKCardBattlePhase::Player
+					&& EffectRuntime.PendingPoJunReplayPlayerRound == Runtime.RoundNumber);
+			if (!bExpectedReplayRound || bProgressActive)
+			{
+				OutError = TEXT("PoJun six-piece replay is stale, conflicting, or outside its trigger round.");
+				return false;
+			}
+		}
+		return true;
+	}
+
+	int32 CountEligibleBladeStyleRules(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const EGameXXKBladeChargeRule Rule)
+	{
+		int32 Count = 0;
+		if (Runtime.PendingBladeNativeStyle.Rule == Rule
+			&& Runtime.PendingBladeNativeStyle.TriggerPlayerRound == Runtime.RoundNumber
+			&& Runtime.ActiveCardsPlayedThisRound == 0)
+		{
+			++Count;
+		}
+		if (Runtime.PendingBladeResidualStyle.Rule == Rule
+			&& Runtime.PendingBladeResidualStyle.TriggerPlayerRound == Runtime.RoundNumber)
+		{
+			++Count;
+		}
+		if (Runtime.ActiveCardsPlayedThisRound == 0)
+		{
+			for (const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : Runtime.EquipmentEffects)
+			{
+				const FGameXXKCardCombatUnit* Wearer = FindCombatUnitById(Runtime.Units, EffectRuntime.SourceCharacterId);
+				if (EffectRuntime.ActiveEffect.Set == EGameXXKEquipmentSet::PoJun
+					&& EffectRuntime.ActiveEffect.Hook == EGameXXKEquipmentSetBonusHook::PoJunBladeFinish
+					&& EffectRuntime.PendingPoJunStyle.Rule == Rule
+					&& EffectRuntime.PendingPoJunStyle.TriggerPlayerRound == Runtime.RoundNumber
+					&& Wearer
+					&& Wearer->bLiving)
+				{
+					++Count;
+				}
+			}
+		}
+		return Count;
+	}
+
+	bool ValidateBladeDelayedCardRuntime(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
+	{
+		const FGameXXKBladeDelayedCardRuntime& Delayed = Runtime.PendingBladeDelayedCard;
+		if (Delayed.Rule == EGameXXKBladeChargeRule::None)
+		{
+			if (!Delayed.SourceCardId.IsNone()
+				|| !Delayed.SourceOwnerUnitId.IsNone()
+				|| !Delayed.RecordedCard.CardId.IsNone()
+				|| !Delayed.RecordedCard.OwnerUnitId.IsNone()
+				|| !Delayed.RecordedCard.OriginalTargetUnitIds.IsEmpty()
+				|| !IsSameInstance(Delayed.RecordedInstance, FGameXXKCardInstance())
+				|| Delayed.TriggerPlayerRound != 0)
+			{
+				OutError = TEXT("An inactive delayed Blade card contains stale source or recorded-card metadata.");
+				return false;
+			}
+			return true;
+		}
+		const bool bSupportedDelayedRule = Delayed.Rule == EGameXXKBladeChargeRule::ReplayNextActiveNextRound
+			|| Delayed.Rule == EGameXXKBladeChargeRule::CopyNextActiveNextRound
+			|| Delayed.Rule == EGameXXKBladeChargeRule::RetainNextActiveNextRound;
+		if (!bSupportedDelayedRule
+			|| (Runtime.Phase != EGameXXKCardBattlePhase::Player && Runtime.Phase != EGameXXKCardBattlePhase::Enemy)
+			|| Delayed.TriggerPlayerRound != Runtime.RoundNumber + 1
+			|| Delayed.SourceCardId.IsNone()
+			|| Delayed.SourceOwnerUnitId.IsNone()
+			|| !IsConcreteCardQuality(Delayed.SourceQuality)
+			|| !ValidateResolvedCardSnapshot(Delayed.RecordedCard, Runtime.Units, OutError)
+			|| !IsValidInstance(Delayed.RecordedInstance)
+			|| Delayed.RecordedInstance.CardId != Delayed.RecordedCard.CardId
+			|| Delayed.RecordedInstance.CurrentQuality != Delayed.RecordedCard.Quality
+			|| Delayed.RecordedInstance.OwnerUnitId != Delayed.RecordedCard.OwnerUnitId)
+		{
+			if (OutError.IsEmpty())
+			{
+				OutError = TEXT("A delayed Blade card has an unsupported rule, phase, trigger round, source, or snapshot.");
+			}
+			return false;
+		}
+		const FGameXXKCardDefinition* SourceDefinition = FGameXXKCardCatalog::FindCardDefinition(Delayed.SourceCardId);
+		const FGameXXKCardCombatUnit* SourceOwner = FindCombatUnitById(Runtime.Units, Delayed.SourceOwnerUnitId);
+		if (!SourceDefinition
+			|| SourceDefinition->Owner != EGameXXKCardOwner::Profession
+			|| SourceDefinition->Role != EGameXXKCharacterRole::Blade
+			|| SourceDefinition->BladeSequence.ChargeRule != Delayed.Rule
+			|| !SourceOwner
+			|| SourceOwner->Side != EGameXXKCardTargetSide::Party)
+		{
+			OutError = TEXT("A delayed Blade card no longer matches its declarative Charge source or party owner.");
+			return false;
+		}
+		return true;
+	}
+
+	bool ValidateBladeFinishRuntime(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
+	{
+		const FGameXXKBladeFinishRuntime& Finish = Runtime.PendingBladeFinish;
+		if (Finish.Rule == EGameXXKBladeFinishRule::None)
+		{
+			if (!Finish.SourceCardId.IsNone()
+				|| !Finish.SourceOwnerUnitId.IsNone()
+				|| Finish.TriggerPlayerRound != 0
+				|| Finish.RemainingTriggers != 0
+				|| !Finish.ProtectedTargetUnitId.IsNone()
+				|| Finish.ProtectedStatusStacks != 0
+				|| Finish.bTriggeredForCurrentEnemyCard)
+			{
+				OutError = TEXT("An inactive Blade Finish contains stale source metadata.");
+				return false;
+			}
+			return true;
+		}
+		const bool bExpectedRound = (Runtime.Phase == EGameXXKCardBattlePhase::Enemy
+			&& Finish.TriggerPlayerRound == Runtime.RoundNumber + 1)
+			|| (Runtime.Phase == EGameXXKCardBattlePhase::Player
+				&& Finish.TriggerPlayerRound == Runtime.RoundNumber);
+		const bool bNoProtectedStatus = Finish.ProtectedTargetUnitId.IsNone()
+			&& Finish.ProtectedStatusStacks == 0;
+		const bool bReturnRule = Finish.Rule == EGameXXKBladeFinishRule::ReturnFirstActiveNextRound
+			&& Finish.RemainingTriggers == 0
+			&& bNoProtectedStatus
+			&& !Finish.bTriggeredForCurrentEnemyCard;
+		const bool bBleedingTargetReturnRule = Finish.Rule == EGameXXKBladeFinishRule::ReturnFirstActiveAgainstBleeding
+			&& Finish.RemainingTriggers == 0
+			&& bNoProtectedStatus
+			&& !Finish.bTriggeredForCurrentEnemyCard;
+		const bool bEnemyPreparationRule = Finish.Rule == EGameXXKBladeFinishRule::MarkAndPrepareTwoCounters
+			&& Runtime.Phase == EGameXXKCardBattlePhase::Enemy
+			&& Finish.RemainingTriggers >= 1
+			&& Finish.RemainingTriggers <= 2
+			&& bNoProtectedStatus;
+		const bool bBleedPreservationRule = Finish.Rule == EGameXXKBladeFinishRule::PreserveFirstTwoBleedTriggers
+			&& Finish.RemainingTriggers >= 1
+			&& Finish.RemainingTriggers <= 2
+			&& bNoProtectedStatus
+			&& !Finish.bTriggeredForCurrentEnemyCard;
+		const bool bBleedDrawRule = Finish.Rule == EGameXXKBladeFinishRule::DrawOnFirstThreeBleedTriggers
+			&& Finish.RemainingTriggers >= 1
+			&& Finish.RemainingTriggers <= 3
+			&& bNoProtectedStatus
+			&& !Finish.bTriggeredForCurrentEnemyCard;
+		const bool bBleedHealingRule = Finish.Rule == EGameXXKBladeFinishRule::HealBladeBleedCapTwelve
+			&& Finish.RemainingTriggers >= 1
+			&& Finish.RemainingTriggers <= 12
+			&& bNoProtectedStatus
+			&& !Finish.bTriggeredForCurrentEnemyCard;
+		const FGameXXKCardCombatUnit* ProtectedTarget = FindCombatUnitById(Runtime.Units, Finish.ProtectedTargetUnitId);
+		const bool bVulnerabilityFreezeRule = Finish.Rule == EGameXXKBladeFinishRule::FreezeVulnerabilityAndReplay
+			&& Finish.RemainingTriggers == 0
+			&& !Finish.bTriggeredForCurrentEnemyCard
+			&& ((bNoProtectedStatus)
+				|| (!Finish.ProtectedTargetUnitId.IsNone()
+					&& Finish.ProtectedStatusStacks > 0
+					&& Finish.ProtectedStatusStacks <= GetCombatStatusCap(EGameXXKCardStatus::Vulnerability)
+					&& ProtectedTarget
+					&& ProtectedTarget->Side == EGameXXKCardTargetSide::Enemy));
+		const bool bSingleActiveRule = (Finish.Rule == EGameXXKBladeFinishRule::CopyFirstStatusConsumer
+				|| Finish.Rule == EGameXXKBladeFinishRule::RefundFirstHighCostAndDrawTwo
+				|| Finish.Rule == EGameXXKBladeFinishRule::CopyFirstKill)
+			&& Finish.RemainingTriggers == 0
+			&& bNoProtectedStatus
+			&& !Finish.bTriggeredForCurrentEnemyCard;
+		const bool bCounterReregisterRule = Finish.Rule == EGameXXKBladeFinishRule::MarkAndReregisterCounterVolley
+			&& Runtime.Phase == EGameXXKCardBattlePhase::Enemy
+			&& Finish.RemainingTriggers == 1
+			&& bNoProtectedStatus
+			&& !Finish.bTriggeredForCurrentEnemyCard;
+		const bool bFreeDodgeRule = Finish.Rule == EGameXXKBladeFinishRule::FirstTwoDodgesFree
+			&& Runtime.Phase == EGameXXKCardBattlePhase::Enemy
+			&& Finish.RemainingTriggers >= 1
+			&& Finish.RemainingTriggers <= 2
+			&& bNoProtectedStatus
+			&& !Finish.bTriggeredForCurrentEnemyCard;
+		const bool bMarkTransferRule = Finish.Rule == EGameXXKBladeFinishRule::TransferMarkBeforeCounter
+			&& Runtime.Phase == EGameXXKCardBattlePhase::Enemy
+			&& Finish.RemainingTriggers == 0
+			&& bNoProtectedStatus
+			&& !Finish.bTriggeredForCurrentEnemyCard;
+		const bool bGroupCounterRule = Finish.Rule == EGameXXKBladeFinishRule::FirstCounterVolleyHitsAll
+			&& Runtime.Phase == EGameXXKCardBattlePhase::Enemy
+			&& Finish.RemainingTriggers == 1
+			&& bNoProtectedStatus
+			&& !Finish.bTriggeredForCurrentEnemyCard;
+		if ((!bReturnRule && !bBleedingTargetReturnRule && !bEnemyPreparationRule && !bBleedPreservationRule && !bBleedDrawRule && !bBleedHealingRule
+				&& !bVulnerabilityFreezeRule && !bSingleActiveRule && !bCounterReregisterRule && !bFreeDodgeRule
+				&& !bMarkTransferRule && !bGroupCounterRule)
+			|| !bExpectedRound
+			|| Finish.SourceCardId.IsNone()
+			|| Finish.SourceOwnerUnitId.IsNone()
+			|| !IsConcreteCardQuality(Finish.SourceQuality))
+		{
+			OutError = FString::Printf(
+				TEXT("An active Blade Finish has an unsupported rule, phase, round, or source identity. "
+					"rule=%d phase=%d round=%d trigger_round=%d remaining=%d source_card=%s source_owner=%s quality=%d protected_target=%s protected_stacks=%d enemy_card_triggered=%d expected_round=%d"),
+				static_cast<int32>(Finish.Rule),
+				static_cast<int32>(Runtime.Phase),
+				Runtime.RoundNumber,
+				Finish.TriggerPlayerRound,
+				Finish.RemainingTriggers,
+				*Finish.SourceCardId.ToString(),
+				*Finish.SourceOwnerUnitId.ToString(),
+				static_cast<int32>(Finish.SourceQuality),
+				*Finish.ProtectedTargetUnitId.ToString(),
+				Finish.ProtectedStatusStacks,
+				Finish.bTriggeredForCurrentEnemyCard ? 1 : 0,
+				bExpectedRound ? 1 : 0);
+			return false;
+		}
+		const FGameXXKCardDefinition* SourceDefinition = FGameXXKCardCatalog::FindCardDefinition(Finish.SourceCardId);
+		const FGameXXKCardCombatUnit* SourceOwner = FindCombatUnitById(Runtime.Units, Finish.SourceOwnerUnitId);
+		if (!SourceDefinition
+			|| SourceDefinition->Owner != EGameXXKCardOwner::Profession
+			|| SourceDefinition->Role != EGameXXKCharacterRole::Blade
+			|| SourceDefinition->BladeSequence.FinishRule != Finish.Rule
+			|| !SourceOwner
+			|| SourceOwner->Side != EGameXXKCardTargetSide::Party)
+		{
+			OutError = TEXT("An active Blade Finish no longer matches its declarative card or party owner.");
+			return false;
+		}
+		return true;
+	}
+
+	bool ValidateBladeRetainedHandRuntime(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
+	{
+		if (Runtime.BladeRetainedHandCardInstanceIds.IsEmpty())
+		{
+			return true;
+		}
+		if (Runtime.Phase != EGameXXKCardBattlePhase::Player)
+		{
+			OutError = TEXT("Blade retained-hand identities may only persist during their player phase.");
+			return false;
+		}
+		TSet<FName> SeenIds;
+		for (const FName InstanceId : Runtime.BladeRetainedHandCardInstanceIds)
+		{
+			if (InstanceId.IsNone() || SeenIds.Contains(InstanceId))
+			{
+				OutError = TEXT("Blade retained-hand identities must be stable and unique.");
+				return false;
+			}
+			SeenIds.Add(InstanceId);
+		}
+		return true;
+	}
+
+	bool ValidateTemporaryCardRuntime(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
+	{
+		const auto ValidateZone = [&Runtime, &OutError](const TArray<FGameXXKCardInstance>& Zone)
+		{
+			for (const FGameXXKCardInstance& Card : Zone)
+			{
+				if (Card.bTemporary
+					&& (Runtime.Phase == EGameXXKCardBattlePhase::Enemy
+						|| Card.ExpireAfterPlayerRound != Runtime.RoundNumber))
+				{
+					OutError = TEXT("A temporary card survived beyond its owning player-round boundary.");
+					return false;
+				}
+			}
+			return true;
+		};
+		return ValidateZone(Runtime.Deck.DrawPile)
+			&& ValidateZone(Runtime.Deck.Hand)
+			&& ValidateZone(Runtime.Deck.DiscardPile)
+			&& ValidateZone(Runtime.Deck.ExhaustPile)
+			&& ValidateZone(Runtime.Deck.PendingAutomaticHandCards);
+	}
+
 	bool ValidateAutomaticResolutionQueue(
 		const FGameXXKCardBattleRuntime& Runtime,
 		FString& OutError)
 	{
 		const FGameXXKAutomaticResolutionQueue& Queue = Runtime.AutomaticResolutionQueue;
+		const bool bHasHeroReward = Queue.PendingReward != EGameXXKHeroSpellTaskReward::None;
+		const bool bHasSorcererReward = Queue.PendingSorcererReward != EGameXXKSorcererRewardRule::None;
+		const bool bHasAnyReward = bHasHeroReward || bHasSorcererReward;
 		if (!Queue.bActive)
 		{
 			if (Queue.Origin != EGameXXKCardResolutionOrigin::Invalid
 				|| !Queue.PendingCards.IsEmpty()
 				|| Queue.NextCardIndex != 0
-				|| Queue.PendingReward != EGameXXKHeroSpellTaskReward::None
+				|| bHasAnyReward
 				|| !Queue.RewardOwnerUnitId.IsNone())
 			{
 				OutError = TEXT("An inactive automatic card queue contains stale continuation data.");
@@ -3193,8 +4062,11 @@ namespace
 			|| Queue.NextCardIndex < 0
 			|| Queue.NextCardIndex > Queue.PendingCards.Num()
 			|| Queue.PendingCards.Num() > 64
-			|| (Queue.PendingCards.IsEmpty() && Queue.PendingReward == EGameXXKHeroSpellTaskReward::None)
-			|| ((Queue.PendingReward == EGameXXKHeroSpellTaskReward::None) != Queue.RewardOwnerUnitId.IsNone()))
+			|| (Queue.PendingCards.IsEmpty() && !bHasAnyReward)
+			|| (bHasHeroReward && bHasSorcererReward)
+			|| (bHasAnyReward == Queue.RewardOwnerUnitId.IsNone())
+			|| (Queue.Origin == EGameXXKCardResolutionOrigin::MageTaskReplay) != bHasHeroReward
+			|| (Queue.Origin == EGameXXKCardResolutionOrigin::PartnerSorcererTaskReplay) != bHasSorcererReward)
 		{
 			OutError = TEXT("An active automatic card queue has an invalid origin, cursor, or pending reward.");
 			return false;
@@ -3249,7 +4121,11 @@ namespace
 		return Left.CardId == Right.CardId
 			&& Left.Quality == Right.Quality
 			&& Left.OwnerUnitId == Right.OwnerUnitId
-			&& Left.OriginalTargetUnitIds == Right.OriginalTargetUnitIds;
+			&& Left.OriginalTargetUnitIds == Right.OriginalTargetUnitIds
+			&& Left.PaidManaCost == Right.PaidManaCost
+			&& Left.SorcererSequencePosition == Right.SorcererSequencePosition
+			&& Left.PreviousSorcererFamily == Right.PreviousSorcererFamily
+			&& Left.SorcererTaskBranch == Right.SorcererTaskBranch;
 	}
 
 	bool ValidateHeroSpellTaskRuntime(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
@@ -3353,12 +4229,311 @@ namespace
 		return true;
 	}
 
+	bool IsNamedTaskNpcSpellOwnerId(const FName OwnerId)
+	{
+		return OwnerId == FName(TEXT("Npc.SongJinBao"))
+			|| OwnerId == FName(TEXT("Npc.YueBai"));
+	}
+
+	bool ValidateTaskNpcSpellTaskRuntime(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
+	{
+		TSet<FName> SeenOwnerUnitIds;
+		for (const FGameXXKTaskNpcSpellTaskRuntime& Task : Runtime.TaskNpcSpellTasks)
+		{
+			const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(Runtime.Units, Task.OwnerUnitId);
+			if (!Task.bActive
+				|| Task.OwnerUnitId.IsNone()
+				|| SeenOwnerUnitIds.Contains(Task.OwnerUnitId)
+				|| !Owner
+				|| Owner->Side != EGameXXKCardTargetSide::Party
+				|| Task.LockedCardIds.Num() != 3
+				|| Task.CompletedCardIds.Num() != Task.FirstPlayOrder.Num()
+				|| Task.CompletedCardIds.Num() > Task.LockedCardIds.Num())
+			{
+				OutError = TEXT("A named task-NPC spell task has invalid owner, locked-card, or progress state.");
+				return false;
+			}
+			SeenOwnerUnitIds.Add(Task.OwnerUnitId);
+
+			FName CatalogOwnerId = NAME_None;
+			TSet<FName> SeenLockedCardIds;
+			for (const FName CardId : Task.LockedCardIds)
+			{
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+				if (CardId.IsNone()
+					|| SeenLockedCardIds.Contains(CardId)
+					|| !Definition
+					|| Definition->Owner != EGameXXKCardOwner::QuestNpc
+					|| !IsNamedTaskNpcSpellOwnerId(Definition->OwnerId)
+					|| (!CatalogOwnerId.IsNone() && Definition->OwnerId != CatalogOwnerId))
+				{
+					OutError = TEXT("A named task-NPC spell task must lock three unique cards from one supported NPC catalog owner.");
+					return false;
+				}
+				CatalogOwnerId = Definition->OwnerId;
+				SeenLockedCardIds.Add(CardId);
+			}
+
+			TSet<FName> SeenCompletedCardIds;
+			for (int32 Index = 0; Index < Task.CompletedCardIds.Num(); ++Index)
+			{
+				const FName CardId = Task.CompletedCardIds[Index];
+				const FGameXXKResolvedCardSnapshot& Snapshot = Task.FirstPlayOrder[Index];
+				if (CardId.IsNone()
+					|| SeenCompletedCardIds.Contains(CardId)
+					|| !Task.LockedCardIds.Contains(CardId)
+					|| Snapshot.CardId != CardId
+					|| Snapshot.OwnerUnitId != Task.OwnerUnitId
+					|| !ValidateResolvedCardSnapshot(Snapshot, Runtime.Units, OutError))
+				{
+					if (OutError.IsEmpty())
+					{
+						OutError = TEXT("A named task-NPC spell task contains duplicate, unlocked, or mismatched first-play progress.");
+					}
+					return false;
+				}
+				SeenCompletedCardIds.Add(CardId);
+			}
+		}
+		return true;
+	}
+
+	EGameXXKSorcererTaskBranch SorcererBranchForFamily(const EGameXXKSorcererCardFamily Family)
+	{
+		switch (Family)
+		{
+		case EGameXXKSorcererCardFamily::Fire:
+			return EGameXXKSorcererTaskBranch::Fire;
+		case EGameXXKSorcererCardFamily::Ice:
+			return EGameXXKSorcererTaskBranch::Ice;
+		case EGameXXKSorcererCardFamily::Lightning:
+			return EGameXXKSorcererTaskBranch::Lightning;
+		case EGameXXKSorcererCardFamily::Core:
+		case EGameXXKSorcererCardFamily::Universal:
+			return EGameXXKSorcererTaskBranch::Normal;
+		case EGameXXKSorcererCardFamily::None:
+		default:
+			return EGameXXKSorcererTaskBranch::None;
+		}
+	}
+
+	bool ValidateSorcererPartnerTaskRuntimes(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
+	{
+		TSet<FName> SeenOwnerUnitIds;
+		bool bMatchedCompletedReplayQueue = false;
+		for (const FGameXXKSorcererPartnerTaskRuntime& Task : Runtime.SorcererPartnerTasks)
+		{
+			const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(Runtime.Units, Task.OwnerUnitId);
+			if (Task.OwnerUnitId.IsNone()
+				|| SeenOwnerUnitIds.Contains(Task.OwnerUnitId)
+				|| !Owner
+				|| Owner->Side != EGameXXKCardTargetSide::Party
+				|| Owner->Role != EGameXXKCharacterRole::Sorcerer)
+			{
+				OutError = TEXT("A Sorcerer partner task has an invalid, duplicate, or non-Sorcerer party owner.");
+				return false;
+			}
+			SeenOwnerUnitIds.Add(Task.OwnerUnitId);
+
+			const auto FindOwnedPermanentCard = [&Runtime, &Task](const FName CardId) -> const FGameXXKCardInstance*
+			{
+				for (const TArray<FGameXXKCardInstance>* Zone : {
+					&Runtime.Deck.DrawPile,
+					&Runtime.Deck.Hand,
+					&Runtime.Deck.DiscardPile,
+					&Runtime.Deck.ExhaustPile,
+					&Runtime.Deck.PendingAutomaticHandCards})
+				{
+					if (const FGameXXKCardInstance* Instance = Zone->FindByPredicate([CardId, &Task](const FGameXXKCardInstance& Candidate)
+					{
+						return Candidate.CardId == CardId
+							&& Candidate.OwnerUnitId == Task.OwnerUnitId
+							&& !Candidate.bTemporary;
+					}))
+					{
+						return Instance;
+					}
+				}
+				return nullptr;
+			};
+
+			TSet<FName> SeenAutoHandedCardIds;
+			for (const FName CardId : Task.AutoHandedUniversalCardIds)
+			{
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+				if (CardId.IsNone()
+					|| SeenAutoHandedCardIds.Contains(CardId)
+					|| !Definition
+					|| Definition->Owner != EGameXXKCardOwner::Profession
+					|| Definition->Role != EGameXXKCharacterRole::Sorcerer
+					|| Definition->SorcererRule.Family != EGameXXKSorcererCardFamily::Universal
+					|| !FindOwnedPermanentCard(CardId))
+				{
+					OutError = TEXT("A Sorcerer task has invalid or duplicate per-battle Universal auto-hand history.");
+					return false;
+				}
+				SeenAutoHandedCardIds.Add(CardId);
+			}
+
+			if (!Task.bActive)
+			{
+				if (!Task.LockedCardIds.IsEmpty()
+					|| !Task.CompletedCardIds.IsEmpty()
+					|| !Task.FirstPlayOrder.IsEmpty()
+					|| Task.StarterReward != EGameXXKSorcererRewardRule::None
+					|| Task.LockedBranch != EGameXXKSorcererTaskBranch::None)
+				{
+					OutError = TEXT("An inactive Sorcerer partner task contains stale five-card progress.");
+					return false;
+				}
+				continue;
+			}
+
+			if (Task.LockedCardIds.Num() != 5
+				|| Task.CompletedCardIds.IsEmpty()
+				|| Task.CompletedCardIds.Num() != Task.FirstPlayOrder.Num()
+				|| Task.CompletedCardIds.Num() > Task.LockedCardIds.Num()
+				|| Task.StarterReward == EGameXXKSorcererRewardRule::None)
+			{
+				OutError = TEXT("An active Sorcerer partner task has invalid five-card locks, progress, or starter metadata.");
+				return false;
+			}
+
+			TSet<FName> SeenLockedCardIds;
+			for (const FName CardId : Task.LockedCardIds)
+			{
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+				if (CardId.IsNone()
+					|| SeenLockedCardIds.Contains(CardId)
+					|| !Definition
+					|| Definition->Owner != EGameXXKCardOwner::Profession
+					|| Definition->Role != EGameXXKCharacterRole::Sorcerer
+					|| Definition->OwnerId != FName(TEXT("Profession.Sorcerer"))
+					|| Definition->SorcererRule.Family == EGameXXKSorcererCardFamily::None
+					|| Definition->SorcererRule.SequenceRule == EGameXXKSorcererSequenceRule::None
+					|| Definition->SorcererRule.RewardRule == EGameXXKSorcererRewardRule::None
+					|| !FindOwnedPermanentCard(CardId))
+				{
+					OutError = TEXT("A Sorcerer partner task must lock five unique permanent cards owned by that Sorcerer.");
+					return false;
+				}
+				SeenLockedCardIds.Add(CardId);
+			}
+			for (const FName CardId : Task.AutoHandedUniversalCardIds)
+			{
+				if (!Task.LockedCardIds.Contains(CardId))
+				{
+					OutError = TEXT("An active Sorcerer task contains Universal auto-hand history outside its locked loadout.");
+					return false;
+				}
+			}
+
+			TSet<FName> SeenCompletedCardIds;
+			for (int32 Index = 0; Index < Task.CompletedCardIds.Num(); ++Index)
+			{
+				const FName CardId = Task.CompletedCardIds[Index];
+				const FGameXXKResolvedCardSnapshot& Snapshot = Task.FirstPlayOrder[Index];
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+				const EGameXXKSorcererCardFamily ExpectedPreviousFamily = Index == 0
+					? EGameXXKSorcererCardFamily::None
+					: FGameXXKCardCatalog::FindCardDefinition(Task.CompletedCardIds[Index - 1])->SorcererRule.Family;
+				if (CardId.IsNone()
+					|| SeenCompletedCardIds.Contains(CardId)
+					|| !Task.LockedCardIds.Contains(CardId)
+					|| !Definition
+					|| Snapshot.CardId != CardId
+					|| Snapshot.OwnerUnitId != Task.OwnerUnitId
+					|| Snapshot.SorcererSequencePosition != Index + 1
+					|| Snapshot.PreviousSorcererFamily != ExpectedPreviousFamily
+					|| !ValidateResolvedCardSnapshot(Snapshot, Runtime.Units, OutError))
+				{
+					if (OutError.IsEmpty())
+					{
+						OutError = TEXT("A Sorcerer partner task contains duplicate, unlocked, or mismatched first-play progress.");
+					}
+					return false;
+				}
+				SeenCompletedCardIds.Add(CardId);
+			}
+
+			const FGameXXKCardDefinition* StarterDefinition = FGameXXKCardCatalog::FindCardDefinition(Task.FirstPlayOrder[0].CardId);
+			if (!StarterDefinition || StarterDefinition->SorcererRule.RewardRule != Task.StarterReward)
+			{
+				OutError = TEXT("A Sorcerer partner task starter no longer matches its saved reward rule.");
+				return false;
+			}
+
+			EGameXXKSorcererTaskBranch ExpectedBranch = EGameXXKSorcererTaskBranch::None;
+			if (StarterDefinition->SorcererRule.Family == EGameXXKSorcererCardFamily::Universal)
+			{
+				if (Task.FirstPlayOrder.Num() >= 2)
+				{
+					const FGameXXKCardDefinition* SecondDefinition = FGameXXKCardCatalog::FindCardDefinition(Task.FirstPlayOrder[1].CardId);
+					ExpectedBranch = SecondDefinition
+						? SorcererBranchForFamily(SecondDefinition->SorcererRule.Family)
+						: EGameXXKSorcererTaskBranch::None;
+				}
+			}
+			else
+			{
+				ExpectedBranch = SorcererBranchForFamily(StarterDefinition->SorcererRule.Family);
+			}
+			if (ExpectedBranch != Task.LockedBranch)
+			{
+				OutError = TEXT("A Sorcerer partner task branch does not match its starter and second-card families.");
+				return false;
+			}
+			for (const FGameXXKResolvedCardSnapshot& Snapshot : Task.FirstPlayOrder)
+			{
+				if (Snapshot.SorcererTaskBranch != Task.LockedBranch)
+				{
+					OutError = TEXT("A Sorcerer first-play snapshot does not carry the task's locked branch.");
+					return false;
+				}
+			}
+
+			if (Task.CompletedCardIds.Num() == 5)
+			{
+				const FGameXXKAutomaticResolutionQueue& Queue = Runtime.AutomaticResolutionQueue;
+				if (!Queue.bActive
+					|| Queue.Origin != EGameXXKCardResolutionOrigin::PartnerSorcererTaskReplay
+					|| Queue.PendingCards.Num() != Task.FirstPlayOrder.Num()
+					|| Queue.PendingSorcererReward != Task.StarterReward
+					|| Queue.RewardOwnerUnitId != Task.OwnerUnitId)
+				{
+					OutError = TEXT("A completed Sorcerer partner task must be owned by its matching automatic replay queue.");
+					return false;
+				}
+				for (int32 Index = 0; Index < Queue.PendingCards.Num(); ++Index)
+				{
+					if (!AreSameResolvedCardSnapshots(Queue.PendingCards[Index], Task.FirstPlayOrder[Index]))
+					{
+						OutError = TEXT("A Sorcerer partner replay queue changed its first-play snapshot order.");
+						return false;
+					}
+				}
+				bMatchedCompletedReplayQueue = true;
+			}
+		}
+		if (Runtime.AutomaticResolutionQueue.bActive
+			&& Runtime.AutomaticResolutionQueue.Origin == EGameXXKCardResolutionOrigin::PartnerSorcererTaskReplay
+			&& !bMatchedCompletedReplayQueue)
+		{
+			OutError = TEXT("A Sorcerer partner replay queue has no matching completed owner task.");
+			return false;
+		}
+		return true;
+	}
+
 	bool ValidateCardBattleRuntimeInternal(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
 	{
 		OutError.Reset();
 		if (!IsSupportedCardBattlePhase(Runtime.Phase) || !IsConcreteTerrain(Runtime.Terrain) || Runtime.RoundNumber < 1
-			|| Runtime.ActiveCardsPlayedThisRound < 0 || Runtime.NextReactionOrdinal < 0 || Runtime.NextModifierOrdinal < 0
+			|| Runtime.ActiveCardsPlayedThisRound < 0 || Runtime.NextReactionOrdinal < 0
+			|| Runtime.NextGeneratedCardOrdinal < 0 || Runtime.NextModifierOrdinal < 0
+			|| Runtime.PendingTriggeredDrawCount < 0
 			|| Runtime.RevealedEnemyIntentCount < 0 || Runtime.RevealedEnemyIntentCount > MaxCardBattleEnergy
+			|| Runtime.PendingPreservedPartyReactionUses < 0 || Runtime.PendingPreservedPartyReactionUses > 1
 			|| Runtime.PendingNextRoundEnergyBonus < 0 || Runtime.PendingNextRoundEnergyBonus > MaxCardBattleEnergy
 			|| Runtime.PendingNextPlayerHandEnergySurcharge < 0 || Runtime.PendingNextPlayerHandEnergySurcharge > 1
 			|| (Runtime.PendingNextPlayerHandEnergySurcharge == 0) != Runtime.PendingNextPlayerHandEnergySurchargeSourceUnitId.IsNone())
@@ -3366,7 +4541,14 @@ namespace
 			OutError = TEXT("Card battle runtime has an invalid phase, terrain, round, modifier counter, or deferred card state.");
 			return false;
 		}
-		if (!ValidateDeckStateInternal(Runtime.Deck, OutError))
+		if (!ValidateDeckStateInternal(Runtime.Deck, OutError)
+			|| !ValidateBladeChargeRuntime(Runtime, OutError)
+			|| !ValidateBladeDelayedCardRuntime(Runtime, OutError)
+			|| !ValidateBladeFinishRuntime(Runtime, OutError)
+			|| !ValidateBladeStyleRuntime(Runtime, Runtime.PendingBladeNativeStyle, false, OutError)
+			|| !ValidateBladeStyleRuntime(Runtime, Runtime.PendingBladeResidualStyle, true, OutError)
+			|| !ValidateBladeRetainedHandRuntime(Runtime, OutError)
+			|| !ValidateTemporaryCardRuntime(Runtime, OutError))
 		{
 			return false;
 		}
@@ -3388,10 +4570,84 @@ namespace
 		bool bHasEnemy = false;
 		TSet<FName> ModifierIds;
 		int32 HandBoundEnergySurchargeCount = 0;
+		TSet<FName> HandBoundSorcererManaDiscountInstanceIds;
 		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
 		{
 			bHasParty |= Unit.Side == EGameXXKCardTargetSide::Party;
 			bHasEnemy |= Unit.Side == EGameXXKCardTargetSide::Enemy;
+		}
+		for (const TMap<FName, int32>* PendingHunterMap : {
+			&Runtime.PendingHunterHeavyArrowIgnoreDefense,
+			&Runtime.PendingHunterPerfectDodgeCharge})
+		{
+			for (const TPair<FName, int32>& Pending : *PendingHunterMap)
+			{
+				const FGameXXKCardCombatUnit* PendingOwner = FindCombatUnitById(Runtime.Units, Pending.Key);
+				if (Pending.Key.IsNone() || Pending.Value <= 0 || !PendingOwner
+					|| PendingOwner->Side != EGameXXKCardTargetSide::Party)
+				{
+					OutError = TEXT("A pending Hunter one-shot payload has no valid party owner or positive magnitude.");
+					return false;
+				}
+			}
+		}
+		TSet<FString> HealerFormulaKeys;
+		for (const FGameXXKHealerFormulaRuntime& Formula : Runtime.HealerFormulas)
+		{
+			const FGameXXKCardCombatUnit* FormulaOwner = FindCombatUnitById(Runtime.Units, Formula.OwnerUnitId);
+			const FGameXXKCardDefinition* FormulaCard = FGameXXKCardCatalog::FindCardDefinition(Formula.SourceCardId);
+			const FString FormulaKey = Formula.OwnerUnitId.ToString() + TEXT("|") + Formula.SourceCardId.ToString();
+			TSet<FName> FormulaTriggeredUnits;
+			bool bTriggeredUnitsValid = true;
+			for (const FName TriggeredUnitId : Formula.TriggeredUnitIdsThisRound)
+			{
+				const FGameXXKCardCombatUnit* TriggeredUnit = FindCombatUnitById(Runtime.Units, TriggeredUnitId);
+				if (TriggeredUnitId.IsNone() || FormulaTriggeredUnits.Contains(TriggeredUnitId)
+					|| !TriggeredUnit || TriggeredUnit->Side != EGameXXKCardTargetSide::Enemy)
+				{
+					bTriggeredUnitsValid = false;
+					break;
+				}
+				FormulaTriggeredUnits.Add(TriggeredUnitId);
+			}
+			if (Formula.OwnerUnitId.IsNone()
+				|| Formula.SourceCardId.IsNone()
+				|| Formula.Kind == EGameXXKHealerFormulaKind::None
+				|| !FormulaOwner
+				|| FormulaOwner->Side != EGameXXKCardTargetSide::Party
+				|| !FormulaCard
+				|| FormulaCard->Owner != EGameXXKCardOwner::Profession
+				|| FormulaCard->Role != EGameXXKCharacterRole::Healer
+				|| FormulaCard->HealerRule.FormulaKind != Formula.Kind
+				|| Formula.Progress < 0
+				|| Formula.PhaseProgress < 0
+				|| Formula.LastTriggeredRound < 0
+				|| Formula.SecondaryLastTriggeredRound < 0
+				|| Formula.UnitBudgetRound < 0
+				|| Formula.LastTriggeredRound > Runtime.RoundNumber
+				|| Formula.SecondaryLastTriggeredRound > Runtime.RoundNumber
+				|| Formula.UnitBudgetRound > Runtime.RoundNumber
+				|| !bTriggeredUnitsValid
+				|| (Formula.Kind != EGameXXKHealerFormulaKind::BleedPoisonMark && !Formula.TriggeredUnitIdsThisRound.IsEmpty())
+				|| HealerFormulaKeys.Contains(FormulaKey))
+			{
+				OutError = TEXT("A Healer formula has invalid owner, catalog identity, progress, or duplicate state.");
+				return false;
+			}
+			HealerFormulaKeys.Add(FormulaKey);
+		}
+		for (const TPair<FName, int32>& MedicineProgress : Runtime.MedicineGainRemainderByOwner)
+		{
+			const FGameXXKCardCombatUnit* MedicineOwner = FindCombatUnitById(Runtime.Units, MedicineProgress.Key);
+			if (MedicineProgress.Key.IsNone()
+				|| MedicineProgress.Value < 0
+				|| MedicineProgress.Value >= 6
+				|| !MedicineOwner
+				|| MedicineOwner->Side != EGameXXKCardTargetSide::Party)
+			{
+				OutError = TEXT("A Medicine gain remainder has no valid party owner or is outside zero through five.");
+				return false;
+			}
 		}
 		for (const FGameXXKCardBattleModifierRuntime& Modifier : Runtime.Modifiers)
 		{
@@ -3406,13 +4662,19 @@ namespace
 				OutError = TEXT("Card battle runtime contains an invalid persistent modifier.");
 				return false;
 			}
-			if (!Modifier.RequiredPlayedCardInstanceId.IsNone()
-				&& (Modifier.SourceCardInstanceId != Modifier.RequiredPlayedCardInstanceId
+			if (!Modifier.RequiredPlayedCardInstanceId.IsNone())
+			{
+				const bool bEnergySurcharge = ModifierSource->Side == EGameXXKCardTargetSide::Enemy
+					&& Modifier.Definition.EffectType == EGameXXKCardEffectType::ModifyEnergyCost
+					&& Modifier.Definition.Magnitude == 1;
+				const bool bSorcererManaDiscount = ModifierSource->Side == EGameXXKCardTargetSide::Party
+					&& ModifierSource->Role == EGameXXKCharacterRole::Sorcerer
+					&& Modifier.Definition.EffectType == EGameXXKCardEffectType::ModifyManaCost
+					&& Modifier.Definition.Magnitude == -3;
+				const bool bMalformedCommonState = Modifier.SourceCardInstanceId != Modifier.RequiredPlayedCardInstanceId
 					|| !IsCurrentHandInstance(Runtime.Deck, Modifier.RequiredPlayedCardInstanceId)
-					|| ModifierSource->Side != EGameXXKCardTargetSide::Enemy
 					|| (Runtime.Phase != EGameXXKCardBattlePhase::Player && Runtime.Phase != EGameXXKCardBattlePhase::Victory)
 					|| Modifier.Definition.Trigger != EGameXXKCardBattleModifierTrigger::OnCardPlayed
-					|| Modifier.Definition.EffectType != EGameXXKCardEffectType::ModifyEnergyCost
 					|| Modifier.Definition.Target != EGameXXKCardEffectTarget::PlayedCard
 					|| Modifier.Definition.RecipientScope != EGameXXKCardModifierRecipientScope::SharedDeck
 					|| Modifier.Definition.RecipientTarget != EGameXXKCardEffectTarget::PlayedCard
@@ -3421,7 +4683,6 @@ namespace
 					|| Modifier.Definition.Expiry != EGameXXKCardModifierExpiry::AfterTriggerCount
 					|| Modifier.Definition.TriggeredAttackTargetScope != EGameXXKCardTriggeredAttackTargetScope::Invalid
 					|| Modifier.Definition.Status != EGameXXKCardStatus::None
-					|| Modifier.Definition.Magnitude != 1
 					|| Modifier.Definition.RemainingTriggers != 1
 					|| Modifier.Definition.MinimumResult != 0
 					|| !Modifier.Definition.bPersistent
@@ -3439,21 +4700,47 @@ namespace
 					|| ModifierCondition.bScaleMagnitudeByConsumedStacks
 					|| ModifierCondition.bConsumeOwnerArmor
 					|| ModifierCondition.MaxConsumedArmor != 0
-					|| ModifierCondition.bNegate))
-			{
-				OutError = TEXT("A hand-bound energy surcharge modifier is malformed or no longer bound to its exact current hand instance.");
-				return false;
-			}
-			if (!Modifier.RequiredPlayedCardInstanceId.IsNone() && ++HandBoundEnergySurchargeCount > 1)
-			{
-				OutError = TEXT("Card battle runtime cannot stack multiple hand-bound energy surcharge modifiers.");
-				return false;
+					|| ModifierCondition.bNegate;
+				if (bMalformedCommonState || (!bEnergySurcharge && !bSorcererManaDiscount))
+				{
+					OutError = TEXT("A hand-bound card-cost modifier is malformed or no longer bound to its exact current hand instance.");
+					return false;
+				}
+				if (bEnergySurcharge && ++HandBoundEnergySurchargeCount > 1)
+				{
+					OutError = TEXT("Card battle runtime cannot stack multiple hand-bound energy surcharge modifiers.");
+					return false;
+				}
+				if (bSorcererManaDiscount
+					&& HandBoundSorcererManaDiscountInstanceIds.Contains(Modifier.RequiredPlayedCardInstanceId))
+				{
+					OutError = TEXT("Card battle runtime cannot stack multiple Sorcerer Mana discounts on the same hand instance.");
+					return false;
+				}
+				if (bSorcererManaDiscount)
+				{
+					HandBoundSorcererManaDiscountInstanceIds.Add(Modifier.RequiredPlayedCardInstanceId);
+				}
 			}
 			ModifierIds.Add(Modifier.ModifierId);
 		}
 		if (!ValidatePartyReactions(Runtime, OutError))
 		{
 			return false;
+		}
+		TSet<FName> ArmorRetentionUnitIds;
+		for (const FName UnitId : Runtime.RetainArmorAtNextPartyPhaseUnitIds)
+		{
+			const FGameXXKCardCombatUnit* Unit = FindCombatUnitById(Runtime.Units, UnitId);
+			if (UnitId.IsNone()
+				|| ArmorRetentionUnitIds.Contains(UnitId)
+				|| !Unit
+				|| Unit->Side != EGameXXKCardTargetSide::Party)
+			{
+				OutError = TEXT("Next-round armor retention contains an invalid, duplicate, or non-party unit.");
+				return false;
+			}
+			ArmorRetentionUnitIds.Add(UnitId);
 		}
 		if (Runtime.PendingNextPlayerHandEnergySurcharge > 0)
 		{
@@ -3496,6 +4783,10 @@ namespace
 				OutError = TEXT("Card battle runtime contains an invalid equipment effect descriptor.");
 				return false;
 			}
+			if (!ValidatePoJunEquipmentRuntime(Runtime, EffectRuntime, OutError))
+			{
+				return false;
+			}
 			EquipmentEffectKeys.Add(Key);
 		}
 		if (!bHasParty || !bHasEnemy)
@@ -3504,6 +4795,8 @@ namespace
 			return false;
 		}
 		if (!ValidateHeroSpellTaskRuntime(Runtime, OutError)
+			|| !ValidateSorcererPartnerTaskRuntimes(Runtime, OutError)
+			|| !ValidateTaskNpcSpellTaskRuntime(Runtime, OutError)
 			|| !ValidateAutomaticResolutionQueue(Runtime, OutError))
 		{
 			return false;
@@ -3531,10 +4824,130 @@ namespace
 		TArray<FName>* OutTerrainReductionUnitIds,
 		FString& OutError);
 
+	bool IsHealerFormulaOpen(
+		const FGameXXKCardBattleRuntime& Runtime,
+		FName OwnerUnitId,
+		FName CardId);
+
+	bool BuildEffectiveCardManaCost(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardInstance& Instance,
+		const FGameXXKCardCombatUnit& Owner,
+		int32& OutManaCost,
+		TArray<FName>* OutAppliedModifierIds,
+		FString& OutError);
+
 	bool ConsumeOnCardPlayedModifiers(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const TArray<FName>& ModifierIds,
 		FString& OutError);
+
+	bool BuildWidenedActiveCardDefinition(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardInstance& Instance,
+		const FGameXXKCardCombatUnit& Owner,
+		FGameXXKCardDefinition& OutDefinition,
+		TArray<FName>* OutAppliedModifierIds,
+		FString& OutError)
+	{
+		OutError.Reset();
+		OutDefinition = Definition;
+		if (OutAppliedModifierIds)
+		{
+			OutAppliedModifierIds->Reset();
+		}
+
+		EGameXXKCardTargetMode WidenedMode = EGameXXKCardTargetMode::Invalid;
+		EGameXXKCardEffectTarget WidenedEffectTarget = EGameXXKCardEffectTarget::Invalid;
+		switch (Definition.TargetSpec.Mode)
+		{
+		case EGameXXKCardTargetMode::SingleEnemy:
+			WidenedMode = EGameXXKCardTargetMode::AllEnemies;
+			WidenedEffectTarget = EGameXXKCardEffectTarget::AllEnemies;
+			break;
+		case EGameXXKCardTargetMode::SingleAlly:
+			WidenedMode = EGameXXKCardTargetMode::AllAllies;
+			WidenedEffectTarget = EGameXXKCardEffectTarget::AllAllies;
+			break;
+		case EGameXXKCardTargetMode::OtherAlly:
+			WidenedMode = EGameXXKCardTargetMode::AllOtherAllies;
+			WidenedEffectTarget = EGameXXKCardEffectTarget::AllOtherAllies;
+			break;
+		default:
+			return true;
+		}
+
+		TArray<FName> AppliedModifierIds;
+		for (const FGameXXKCardBattleModifierRuntime& Modifier : Runtime.Modifiers)
+		{
+			const FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
+			if (ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard
+				|| ModifierDefinition.EffectType != EGameXXKCardEffectType::WidenNextActiveSingleTarget)
+			{
+				continue;
+			}
+			if (ModifierDefinition.Target != EGameXXKCardEffectTarget::PlayedCard
+				|| ModifierDefinition.Magnitude != 1
+				|| ModifierDefinition.RemainingTriggers <= 0
+				|| ModifierDefinition.bExcludeSourceUnit && Modifier.SourceUnitId == Instance.OwnerUnitId
+				|| ModifierDefinition.RecipientScope != EGameXXKCardModifierRecipientScope::SharedDeck
+					&& !Modifier.RecipientUnitIds.Contains(Instance.OwnerUnitId)
+				|| ModifierDefinition.RequiredTriggeredRole != EGameXXKCharacterRole::Invalid
+					&& ModifierDefinition.RequiredTriggeredRole != Owner.Role
+				|| !ModifierDefinition.RequiredTriggeredOwnerId.IsNone()
+					&& ModifierDefinition.RequiredTriggeredOwnerId != Definition.OwnerId)
+			{
+				continue;
+			}
+			if (ModifierDefinition.Condition.bConsumeStatus || ModifierDefinition.Condition.bConsumeOwnerArmor)
+			{
+				OutError = TEXT("A target-widening modifier cannot consume combat state during preview.");
+				return false;
+			}
+			bool bConditionSatisfied = false;
+			if (!IsConditionSatisfied(ModifierDefinition.Condition, Runtime, Owner, nullptr, nullptr, bConditionSatisfied, OutError))
+			{
+				return false;
+			}
+			if (bConditionSatisfied)
+			{
+				AppliedModifierIds.Add(Modifier.ModifierId);
+			}
+		}
+		if (AppliedModifierIds.IsEmpty())
+		{
+			return true;
+		}
+
+		OutDefinition.TargetSpec.Mode = WidenedMode;
+		OutDefinition.TargetSpec.Presentation = PresentationForTargetMode(WidenedMode);
+		OutDefinition.TargetSpec.bRequireDifferentFromOwner = TargetModeRequiresDifferentFromOwner(WidenedMode);
+		OutDefinition.TargetSpec.ModeOverrides.Reset();
+		for (FGameXXKCardEffect& Effect : OutDefinition.Effects)
+		{
+			if (Effect.Target == EGameXXKCardEffectTarget::SelectedTarget)
+			{
+				Effect.Target = WidenedEffectTarget;
+			}
+			if (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier
+				&& Effect.Modifier.RecipientTarget == EGameXXKCardEffectTarget::SelectedTarget)
+			{
+				Effect.Modifier.RecipientTarget = WidenedEffectTarget;
+			}
+			if (Effect.Type == EGameXXKCardEffectType::ApplyGuardLink
+				&& Effect.GuardLink.Guardian == EGameXXKCardEffectTarget::SelectedTarget)
+			{
+				Effect.GuardLink.Guardian = WidenedEffectTarget;
+			}
+		}
+		if (OutAppliedModifierIds)
+		{
+			*OutAppliedModifierIds = MoveTemp(AppliedModifierIds);
+		}
+		return true;
+	}
 
 	bool BuildCardPlayPreviewInternal(
 		const FGameXXKCardBattleRuntime& Runtime,
@@ -3576,7 +4989,7 @@ namespace
 			OutError = TEXT("The requested hand card has no catalog definition.");
 			return false;
 		}
-		const FGameXXKCardDefinition EffectiveDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
+		const FGameXXKCardDefinition QualityEffectiveDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
 			*BaseDefinition,
 			Instance->CurrentQuality);
 		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(Runtime.Units, Instance->OwnerUnitId);
@@ -3585,9 +4998,19 @@ namespace
 			OutError = TEXT("The card owner is absent or defeated.");
 			return false;
 		}
+		FGameXXKCardDefinition EffectiveDefinition;
+		if (!BuildWidenedActiveCardDefinition(Runtime, QualityEffectiveDefinition, *Instance, *Owner, EffectiveDefinition, nullptr, OutError))
+		{
+			return false;
+		}
 		if (EffectiveDefinition.EnergyCost < 0 || EffectiveDefinition.ManaCost < 0)
 		{
 			OutError = TEXT("The requested hand card has invalid resource costs.");
+			return false;
+		}
+		int32 EffectiveManaCost = EffectiveDefinition.ManaCost;
+		if (!BuildEffectiveCardManaCost(Runtime, EffectiveDefinition, *Instance, *Owner, EffectiveManaCost, nullptr, OutError))
+		{
 			return false;
 		}
 		int32 EffectiveEnergyCost = EffectiveDefinition.EnergyCost;
@@ -3595,7 +5018,7 @@ namespace
 		{
 			return false;
 		}
-		if (Runtime.Deck.SharedEnergy < EffectiveEnergyCost || Owner->Mana < EffectiveDefinition.ManaCost)
+		if (Runtime.Deck.SharedEnergy < EffectiveEnergyCost || Owner->Mana < EffectiveManaCost)
 		{
 			OutError = TEXT("The card owner does not have enough shared energy or mana.");
 			return false;
@@ -3606,7 +5029,7 @@ namespace
 		NewPreview.CardId = Instance->CardId;
 		NewPreview.OwnerUnitId = Instance->OwnerUnitId;
 		NewPreview.EffectiveEnergyCost = EffectiveEnergyCost;
-		NewPreview.EffectiveManaCost = EffectiveDefinition.ManaCost;
+		NewPreview.EffectiveManaCost = EffectiveManaCost;
 		if (!GameXXKCardRules::BuildTargetRequest(EffectiveDefinition, *Instance, Runtime.Terrain, BuildTargetUnitView(Runtime.Units), NewPreview.TargetRequest, &OutError))
 		{
 			return false;
@@ -3670,6 +5093,12 @@ namespace
 				|| GetCombatStatusStacksInternal(Owner, EGameXXKCardStatus::Burn) > 0
 				|| GetCombatStatusStacksInternal(Owner, EGameXXKCardStatus::DamageOverTime) > 0;
 			break;
+		case EGameXXKCardEffectConditionType::TargetIsAlly:
+			bConditionValue = Target && Target->Side == Owner.Side;
+			break;
+		case EGameXXKCardEffectConditionType::TargetIsEnemy:
+			bConditionValue = Target && Target->Side != Owner.Side;
+			break;
 		default:
 			OutError = TEXT("Card effect has an invalid condition type.");
 			return false;
@@ -3703,9 +5132,12 @@ namespace
 		OutApplies = false;
 		OutError.Reset();
 		const FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
-		if ((ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::OnCardPlayed
-			&& ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::BeforeFirstActiveCardNextPlayerRound)
-			|| ModifierDefinition.EffectType != EGameXXKCardEffectType::ModifyEnergyCost)
+		const bool bCostTrigger = ModifierDefinition.Trigger == EGameXXKCardBattleModifierTrigger::OnCardPlayed
+			|| ModifierDefinition.Trigger == EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard
+			|| ModifierDefinition.Trigger == EGameXXKCardBattleModifierTrigger::BeforeFirstActiveCardNextPlayerRound;
+		const bool bCostEffect = ModifierDefinition.EffectType == EGameXXKCardEffectType::ModifyEnergyCost
+			|| ModifierDefinition.EffectType == EGameXXKCardEffectType::ModifyManaCost;
+		if (!bCostTrigger || !bCostEffect)
 		{
 			return true;
 		}
@@ -3867,9 +5299,20 @@ namespace
 		{
 			*OutTerrainReductionUnitIds = TerrainReductionUnitIds;
 		}
-		int64 EffectiveCost = Definition.EnergyCost;
+		int64 EffectiveCost = Instance.EnergyCostOverride == INDEX_NONE
+			? Definition.EnergyCost
+			: Instance.EnergyCostOverride;
+		if (Definition.HealerRule.FormulaKind != EGameXXKHealerFormulaKind::None
+			&& !IsHealerFormulaOpen(Runtime, Owner.UnitId, Definition.Id))
+		{
+			EffectiveCost += Definition.HealerRule.UnopenedFormulaEnergySurcharge;
+		}
 		for (const FGameXXKCardBattleModifierRuntime& Modifier : Runtime.Modifiers)
 		{
+			if (Modifier.Definition.EffectType != EGameXXKCardEffectType::ModifyEnergyCost)
+			{
+				continue;
+			}
 			bool bApplies = false;
 			if (!DoesOnCardPlayedModifierApply(Modifier, Runtime, Definition, Instance, Owner, bApplies, OutError))
 			{
@@ -3886,11 +5329,70 @@ namespace
 			}
 		}
 		EffectiveCost -= TerrainReductionUnitIds.Num();
-		OutEnergyCost = !TerrainFreeUnitIds.IsEmpty() || EffectiveCost <= 0
+		EffectiveCost -= Runtime.PendingBladeCharge.Rule == EGameXXKBladeChargeRule::LightLoad ? 1 : 0;
+		EffectiveCost -= CountEligibleBladeStyleRules(Runtime, EGameXXKBladeChargeRule::LightLoad);
+		OutEnergyCost = Runtime.PendingBladeCharge.Rule == EGameXXKBladeChargeRule::MakeNextActiveEnergyFree
+			|| CountEligibleBladeStyleRules(Runtime, EGameXXKBladeChargeRule::MakeNextActiveEnergyFree) > 0
+			? 0
+			: !TerrainFreeUnitIds.IsEmpty() || EffectiveCost <= 0
 			? 0
 			: EffectiveCost > MAX_int32
 				? MAX_int32
 				: static_cast<int32>(EffectiveCost);
+		return true;
+	}
+
+	bool BuildEffectiveCardManaCost(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardInstance& Instance,
+		const FGameXXKCardCombatUnit& Owner,
+		int32& OutManaCost,
+		TArray<FName>* OutAppliedModifierIds,
+		FString& OutError)
+	{
+		OutError.Reset();
+		if (Definition.ManaCost < 0)
+		{
+			OutError = TEXT("Card mana cost cannot be negative.");
+			return false;
+		}
+		if (OutAppliedModifierIds)
+		{
+			OutAppliedModifierIds->Reset();
+		}
+		int64 EffectiveCost = Instance.ManaCostOverride == INDEX_NONE
+			? Definition.ManaCost
+			: Instance.ManaCostOverride;
+		for (const FGameXXKCardBattleModifierRuntime& Modifier : Runtime.Modifiers)
+		{
+			if (Modifier.Definition.EffectType != EGameXXKCardEffectType::ModifyManaCost)
+			{
+				continue;
+			}
+			bool bApplies = false;
+			if (!DoesOnCardPlayedModifierApply(Modifier, Runtime, Definition, Instance, Owner, bApplies, OutError))
+			{
+				return false;
+			}
+			if (!bApplies)
+			{
+				continue;
+			}
+			EffectiveCost += Modifier.Definition.Magnitude;
+			if (OutAppliedModifierIds)
+			{
+				OutAppliedModifierIds->Add(Modifier.ModifierId);
+			}
+		}
+		OutManaCost = Runtime.PendingBladeCharge.Rule == EGameXXKBladeChargeRule::MakeNextActiveManaFree
+			|| CountEligibleBladeStyleRules(Runtime, EGameXXKBladeChargeRule::MakeNextActiveManaFree) > 0
+			? 0
+			: EffectiveCost <= 0
+				? 0
+				: EffectiveCost > MAX_int32
+					? MAX_int32
+					: static_cast<int32>(EffectiveCost);
 		return true;
 	}
 
@@ -3918,9 +5420,12 @@ namespace
 				continue;
 			}
 			FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
-			if ((ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::OnCardPlayed
-				&& ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::BeforeFirstActiveCardNextPlayerRound)
-				|| ModifierDefinition.EffectType != EGameXXKCardEffectType::ModifyEnergyCost)
+			const bool bCostTrigger = ModifierDefinition.Trigger == EGameXXKCardBattleModifierTrigger::OnCardPlayed
+				|| ModifierDefinition.Trigger == EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard
+				|| ModifierDefinition.Trigger == EGameXXKCardBattleModifierTrigger::BeforeFirstActiveCardNextPlayerRound;
+			const bool bCostEffect = ModifierDefinition.EffectType == EGameXXKCardEffectType::ModifyEnergyCost
+				|| ModifierDefinition.EffectType == EGameXXKCardEffectType::ModifyManaCost;
+			if (!bCostTrigger || !bCostEffect)
 			{
 				OutError = TEXT("A non-cost modifier was selected for card-play consumption.");
 				return false;
@@ -4098,6 +5603,25 @@ namespace
 			NewTargetIds.Add(CardTargetIds[0]);
 			break;
 		}
+		case EGameXXKCardEffectTarget::SelectedTargetSide:
+		{
+			const FGameXXKCardCombatUnit* SelectedTarget = CardTargetIds.Num() == 1
+				? FindCombatUnitById(Runtime.Units, CardTargetIds[0])
+				: nullptr;
+			if (!SelectedTarget)
+			{
+				OutError = TEXT("Selected-side effect has no stable target anchor.");
+				return false;
+			}
+			for (const FGameXXKCardCombatUnit* Candidate : Candidates)
+			{
+				if (Candidate->Side == SelectedTarget->Side)
+				{
+					NewTargetIds.Add(Candidate->UnitId);
+				}
+			}
+			break;
+		}
 		case EGameXXKCardEffectTarget::AllEnemies:
 			for (const FGameXXKCardCombatUnit* Candidate : Candidates)
 			{
@@ -4167,6 +5691,61 @@ namespace
 			if (HighestArmor)
 			{
 				NewTargetIds.Add(HighestArmor->UnitId);
+			}
+			break;
+		}
+		case EGameXXKCardEffectTarget::HighestAttackAlly:
+		{
+			const FGameXXKCardCombatUnit* HighestAttack = nullptr;
+			for (const FGameXXKCardCombatUnit* Candidate : Candidates)
+			{
+				if (Candidate->Side != Owner->Side)
+				{
+					continue;
+				}
+				if (!HighestAttack
+					|| Candidate->Attack > HighestAttack->Attack
+					|| (Candidate->Attack == HighestAttack->Attack && IsStableUnitOrderBefore(*Candidate, *HighestAttack)))
+				{
+					HighestAttack = Candidate;
+				}
+			}
+			if (HighestAttack)
+			{
+				NewTargetIds.Add(HighestAttack->UnitId);
+			}
+			break;
+		}
+		case EGameXXKCardEffectTarget::PriorityEnemy:
+		{
+			const FGameXXKCardCombatUnit* PriorityEnemy = nullptr;
+			for (const FGameXXKCardCombatUnit* Candidate : Candidates)
+			{
+				if (Candidate->Side == Owner->Side)
+				{
+					continue;
+				}
+				const int32 CandidateMark = GameXXKCardRules::GetCombatStatusStacks(*Candidate, EGameXXKCardStatus::Mark);
+				const int32 PriorityMark = PriorityEnemy
+					? GameXXKCardRules::GetCombatStatusStacks(*PriorityEnemy, EGameXXKCardStatus::Mark)
+					: INDEX_NONE;
+				const bool bLowerHealthRatio = PriorityEnemy
+					&& static_cast<int64>(Candidate->HP) * PriorityEnemy->MaxHP
+						< static_cast<int64>(PriorityEnemy->HP) * Candidate->MaxHP;
+				const bool bSameHealthRatio = PriorityEnemy
+					&& static_cast<int64>(Candidate->HP) * PriorityEnemy->MaxHP
+						== static_cast<int64>(PriorityEnemy->HP) * Candidate->MaxHP;
+				if (!PriorityEnemy
+					|| CandidateMark > PriorityMark
+					|| (CandidateMark == PriorityMark && bLowerHealthRatio)
+					|| (CandidateMark == PriorityMark && bSameHealthRatio && IsStableUnitOrderBefore(*Candidate, *PriorityEnemy)))
+				{
+					PriorityEnemy = Candidate;
+				}
+			}
+			if (PriorityEnemy)
+			{
+				NewTargetIds.Add(PriorityEnemy->UnitId);
 			}
 			break;
 		}
@@ -4302,6 +5881,25 @@ namespace
 			}
 			break;
 		}
+		case EGameXXKCardEffectSource::HighestAttackAlly:
+		{
+			TArray<FName> SourceIds;
+			if (!ResolveEffectTargetIds(
+				Runtime,
+				OwnerUnitId,
+				CardTargetIds,
+				EGameXXKCardEffectTarget::HighestAttackAlly,
+				SourceIds,
+				OutError))
+			{
+				return false;
+			}
+			if (SourceIds.Num() == 1)
+			{
+				OutSourceUnitId = SourceIds[0];
+			}
+			break;
+		}
 		case EGameXXKCardEffectSource::Invalid:
 		default:
 			break;
@@ -4330,10 +5928,1032 @@ namespace
 		{
 			return false;
 		}
-		if (Status == EGameXXKCardStatus::Medicine && Applied >= 6)
+		if (Status == EGameXXKCardStatus::Medicine && Applied > 0)
 		{
-			GameXXKCardRules::AddCombatStatus(InOutTarget, EGameXXKCardStatus::Momentum, 1);
+			int32& Remainder = InOutRuntime.MedicineGainRemainderByOwner.FindOrAdd(InOutTarget.UnitId);
+			const int64 TotalProgress = static_cast<int64>(Remainder) + Applied;
+			const int32 CompletedSixes = static_cast<int32>(TotalProgress / 6);
+			Remainder = static_cast<int32>(TotalProgress % 6);
+			if (CompletedSixes > 0)
+			{
+				GameXXKCardRules::AddCombatStatus(InOutTarget, EGameXXKCardStatus::Momentum, CompletedSixes);
+			}
+
+			for (FGameXXKHealerFormulaRuntime& Formula : InOutRuntime.HealerFormulas)
+			{
+				if (Formula.OwnerUnitId != InOutTarget.UnitId
+					|| Formula.Kind != EGameXXKHealerFormulaKind::HighEnergyAndSixMedicine)
+				{
+					continue;
+				}
+				const bool bEnemyPhase = InOutRuntime.Phase == EGameXXKCardBattlePhase::Enemy;
+				if (Formula.bProgressFromEnemyPhase != bEnemyPhase)
+				{
+					Formula.bProgressFromEnemyPhase = bEnemyPhase;
+					Formula.PhaseProgress = 0;
+				}
+				Formula.PhaseProgress = FMath::Min(MAX_int32, Formula.PhaseProgress + Applied);
+				if (Formula.PhaseProgress < 6)
+				{
+					continue;
+				}
+				if (!bEnemyPhase && Formula.SecondaryLastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.SecondaryLastTriggeredRound = InOutRuntime.RoundNumber;
+					InOutRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, InOutRuntime.Deck.SharedEnergy + 1);
+				}
+				else if (bEnemyPhase && Formula.UnitBudgetRound != InOutRuntime.RoundNumber)
+				{
+					Formula.UnitBudgetRound = InOutRuntime.RoundNumber;
+					InOutRuntime.PendingNextRoundEnergyBonus = FMath::Min(MaxDeferredPhaseEnergy, InOutRuntime.PendingNextRoundEnergyBonus + 1);
+				}
+			}
 		}
+		return true;
+	}
+
+	bool IsHealerFormulaOpen(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName OwnerUnitId,
+		const FName CardId)
+	{
+		return Runtime.HealerFormulas.ContainsByPredicate([OwnerUnitId, CardId](const FGameXXKHealerFormulaRuntime& Formula)
+		{
+			return Formula.OwnerUnitId == OwnerUnitId && Formula.SourceCardId == CardId;
+		});
+	}
+
+	bool IsShiGuThreeDotStatus(const EGameXXKCardStatus Status)
+	{
+		return Status == EGameXXKCardStatus::Bleed
+			|| Status == EGameXXKCardStatus::Poison
+			|| Status == EGameXXKCardStatus::Burn;
+	}
+
+	int32 CountShiGuDotTypes(const FGameXXKCardCombatUnit& Unit)
+	{
+		int32 Count = 0;
+		for (const EGameXXKCardStatus Status : {
+			EGameXXKCardStatus::Bleed,
+			EGameXXKCardStatus::Poison,
+			EGameXXKCardStatus::Burn})
+		{
+			Count += GameXXKCardRules::GetCombatStatusStacks(Unit, Status) > 0 ? 1 : 0;
+		}
+		return Count;
+	}
+
+	bool ResolveShiGuAfterActiveDotApplication(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FGameXXKCardCombatUnit>& UnitsBeforeActiveCard,
+		const FName CardOwnerUnitId,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError)
+	{
+		int32 TwoPieceIndex = INDEX_NONE;
+		int32 FourPieceIndex = INDEX_NONE;
+		for (int32 EffectIndex = 0; EffectIndex < InOutRuntime.EquipmentEffects.Num(); ++EffectIndex)
+		{
+			const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime = InOutRuntime.EquipmentEffects[EffectIndex];
+			const FGameXXKEquipmentActiveEffect& Effect = EffectRuntime.ActiveEffect;
+			if (Effect.Set != EGameXXKEquipmentSet::ShiGu
+				|| Effect.Scope != EGameXXKEquipmentSetBonusScope::Owner
+				|| EffectRuntime.SourceCharacterId != CardOwnerUnitId)
+			{
+				continue;
+			}
+			if (Effect.RequiredPieces == 2 && Effect.Hook == EGameXXKEquipmentSetBonusHook::ShiGuDotApplied)
+			{
+				TwoPieceIndex = EffectIndex;
+			}
+			else if (Effect.RequiredPieces == 4 && Effect.Hook == EGameXXKEquipmentSetBonusHook::ShiGuDualDotEstablished)
+			{
+				FourPieceIndex = EffectIndex;
+			}
+		}
+		if (TwoPieceIndex == INDEX_NONE && FourPieceIndex == INDEX_NONE)
+		{
+			return true;
+		}
+
+		TSet<FName> CandidateTargetSet;
+		for (const FGameXXKCardStatusChangeResult& Change : InOutResult.StatusChanges)
+		{
+			if (Change.AppliedStacks > 0 && IsShiGuThreeDotStatus(Change.Status))
+			{
+				CandidateTargetSet.Add(Change.TargetUnitId);
+			}
+		}
+		for (const FGameXXKCardCombatUnit& Before : UnitsBeforeActiveCard)
+		{
+			const FGameXXKCardCombatUnit* After = FindCombatUnitById(InOutRuntime.Units, Before.UnitId);
+			if (!After)
+			{
+				continue;
+			}
+			for (const EGameXXKCardStatus Status : {
+				EGameXXKCardStatus::Bleed,
+				EGameXXKCardStatus::Poison,
+				EGameXXKCardStatus::Burn})
+			{
+				if (GameXXKCardRules::GetCombatStatusStacks(*After, Status)
+					> GameXXKCardRules::GetCombatStatusStacks(Before, Status))
+				{
+					CandidateTargetSet.Add(Before.UnitId);
+					break;
+				}
+			}
+		}
+		TArray<FName> CandidateTargetIds = CandidateTargetSet.Array();
+		CandidateTargetIds.Sort([&InOutRuntime](const FName LeftId, const FName RightId)
+		{
+			const FGameXXKCardCombatUnit* Left = FindCombatUnitById(InOutRuntime.Units, LeftId);
+			const FGameXXKCardCombatUnit* Right = FindCombatUnitById(InOutRuntime.Units, RightId);
+			if (Left && Right && Left->StableSortOrder != Right->StableSortOrder)
+			{
+				return Left->StableSortOrder < Right->StableSortOrder;
+			}
+			return LeftId.LexicalLess(RightId);
+		});
+
+		if (TwoPieceIndex != INDEX_NONE)
+		{
+			const int32 RotStacks = InOutRuntime.EquipmentEffects[TwoPieceIndex].ActiveEffect.Magnitude;
+			for (const FName TargetId : CandidateTargetIds)
+			{
+				FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, TargetId);
+				const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, CardOwnerUnitId);
+				if (!Target || !Target->bLiving || !Owner || Target->Side == Owner->Side)
+				{
+					continue;
+				}
+				const int32 Applied = GameXXKCardRules::AddCombatStatus(
+					*Target,
+					EGameXXKCardStatus::DamageOverTime,
+					RotStacks);
+				if (Applied > 0)
+				{
+					FGameXXKCardStatusChangeResult& Change = InOutResult.StatusChanges.AddDefaulted_GetRef();
+					Change.TargetUnitId = TargetId;
+					Change.Status = EGameXXKCardStatus::DamageOverTime;
+					Change.AppliedStacks = Applied;
+				}
+			}
+		}
+
+		if (FourPieceIndex == INDEX_NONE)
+		{
+			return true;
+		}
+		const FGameXXKEquipmentBattleEffectRuntime& FourPieceBefore = InOutRuntime.EquipmentEffects[FourPieceIndex];
+		const int32 TriggerCountThisRound = FourPieceBefore.LastTriggerRound == InOutRuntime.RoundNumber
+			? FourPieceBefore.CurrentRoundTriggerCount
+			: 0;
+		if (TriggerCountThisRound >= FourPieceBefore.ActiveEffect.MaxTriggersPerRound)
+		{
+			return true;
+		}
+		for (const FName TargetId : CandidateTargetIds)
+		{
+			const FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, TargetId);
+			if (!Target || !Target->bLiving || CountShiGuDotTypes(*Target) < 2)
+			{
+				continue;
+			}
+			TArray<FGameXXKCardDamageResult> ExplosionResults;
+			if (!GameXXKCardRules::ResolveToxicExplosion(
+				InOutRuntime,
+				CardOwnerUnitId,
+				TargetId,
+				false,
+				ExplosionResults,
+				&OutError))
+			{
+				return false;
+			}
+			TSet<EGameXXKCardDamageCause> DistinctCauses;
+			for (FGameXXKCardDamageResult& DamageResult : ExplosionResults)
+			{
+				DistinctCauses.Add(DamageResult.Cause);
+				DamageResult.ResolutionOrigin = InOutResult.ResolutionOrigin;
+				InOutResult.DamageResults.Add(MoveTemp(DamageResult));
+			}
+			InOutResult.ToxicExplosionDistinctDotTypeCounts.Add(DistinctCauses.Num());
+			FGameXXKEquipmentBattleEffectRuntime& FourPieceAfter = InOutRuntime.EquipmentEffects[FourPieceIndex];
+			FourPieceAfter.LastTriggerRound = InOutRuntime.RoundNumber;
+			FourPieceAfter.CurrentRoundTriggerCount = 1;
+			break;
+		}
+		return true;
+	}
+
+	bool DrawOrDeferTriggeredCards(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const int32 Count,
+		FString& OutError)
+	{
+		if (Count <= 0)
+		{
+			OutError = TEXT("A triggered draw count must be positive.");
+			return false;
+		}
+		if (IsActiveChoice(InOutRuntime.Deck.PendingChoice.Kind)
+			|| InOutRuntime.AutomaticResolutionQueue.bActive)
+		{
+			if (InOutRuntime.PendingTriggeredDrawCount > MAX_int32 - Count)
+			{
+				OutError = TEXT("Deferred triggered draws exceed the supported range.");
+				return false;
+			}
+			InOutRuntime.PendingTriggeredDrawCount += Count;
+			return true;
+		}
+		GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+		return GameXXKCardRules::DrawCards(InOutRuntime.Deck, Count, 0, &OutError);
+	}
+
+	bool MaterializePendingTriggeredDraws(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FString& OutError)
+	{
+		if (InOutRuntime.PendingTriggeredDrawCount <= 0
+			|| IsActiveChoice(InOutRuntime.Deck.PendingChoice.Kind)
+			|| InOutRuntime.AutomaticResolutionQueue.bActive)
+		{
+			return true;
+		}
+		const int32 Count = InOutRuntime.PendingTriggeredDrawCount;
+		GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+		if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, Count, 0, &OutError))
+		{
+			return false;
+		}
+		InOutRuntime.PendingTriggeredDrawCount = 0;
+		return true;
+	}
+
+	bool ResolveZhuiFengAfterActiveCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const int32 ActiveCardCountIncrement,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError)
+	{
+		if (ActiveCardCountIncrement <= 0)
+		{
+			OutError = TEXT("A ZhuiFeng active-card count increment must be positive.");
+			return false;
+		}
+		FGameXXKEquipmentBattleEffectRuntime* ChosenEffect = nullptr;
+		for (FGameXXKEquipmentBattleEffectRuntime& Candidate : InOutRuntime.EquipmentEffects)
+		{
+			const FGameXXKEquipmentActiveEffect& Effect = Candidate.ActiveEffect;
+			if (Effect.Set != EGameXXKEquipmentSet::ZhuiFeng
+				|| Effect.Hook != EGameXXKEquipmentSetBonusHook::ZhuiFengActiveCardCount
+				|| Effect.Scope != EGameXXKEquipmentSetBonusScope::Team)
+			{
+				continue;
+			}
+			if (!ChosenEffect
+				|| Effect.RequiredPieces > ChosenEffect->ActiveEffect.RequiredPieces
+				|| (Effect.RequiredPieces == ChosenEffect->ActiveEffect.RequiredPieces
+					&& Candidate.SourceCharacterId.ToString() < ChosenEffect->SourceCharacterId.ToString()))
+			{
+				ChosenEffect = &Candidate;
+			}
+		}
+		if (!ChosenEffect)
+		{
+			return true;
+		}
+
+		if (ChosenEffect->LastTriggerRound != InOutRuntime.RoundNumber)
+		{
+			ChosenEffect->CurrentRoundTriggerCount = 0;
+		}
+		const int32 PreviousCount = ChosenEffect->CurrentRoundTriggerCount;
+		if (PreviousCount > MAX_int32 - ActiveCardCountIncrement)
+		{
+			OutError = TEXT("The ZhuiFeng active-card counter has exhausted the supported range.");
+			return false;
+		}
+		const int32 CurrentCount = PreviousCount + ActiveCardCountIncrement;
+		ChosenEffect->CurrentRoundTriggerCount = CurrentCount;
+		ChosenEffect->LastTriggerRound = InOutRuntime.RoundNumber;
+		const FGameXXKEquipmentActiveEffect& Effect = ChosenEffect->ActiveEffect;
+		const int32 PairRewards = CurrentCount / 2 - PreviousCount / 2;
+		if (PairRewards > 0)
+		{
+			const int64 DrawCount = static_cast<int64>(PairRewards) * Effect.Magnitude;
+			if (DrawCount > MAX_int32)
+			{
+				OutError = TEXT("The ZhuiFeng pair-draw reward exceeds the supported range.");
+				return false;
+			}
+			if (!DrawOrDeferTriggeredCards(InOutRuntime, static_cast<int32>(DrawCount), OutError))
+			{
+				return false;
+			}
+		}
+		if (Effect.RequiredPieces >= 4 && PreviousCount < 2 && CurrentCount >= 2)
+		{
+			InOutRuntime.Deck.SharedEnergy = FMath::Min(
+				MaxCardBattleEnergy,
+				InOutRuntime.Deck.SharedEnergy + Effect.Magnitude);
+		}
+		if (Effect.RequiredPieces >= 6 && PreviousCount < 4 && CurrentCount >= 4)
+		{
+			InOutRuntime.Deck.SharedEnergy = FMath::Min(
+				MaxCardBattleEnergy,
+				InOutRuntime.Deck.SharedEnergy + Effect.Magnitude);
+			for (FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+			{
+				if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Party)
+				{
+					continue;
+				}
+				const int32 AppliedStacks = GameXXKCardRules::AddCombatStatus(
+					Unit,
+					EGameXXKCardStatus::Charge,
+					Effect.Magnitude);
+				if (AppliedStacks > 0)
+				{
+					FGameXXKCardStatusChangeResult& Change = InOutResult.StatusChanges.AddDefaulted_GetRef();
+					Change.TargetUnitId = Unit.UnitId;
+					Change.Status = EGameXXKCardStatus::Charge;
+					Change.AppliedStacks = AppliedStacks;
+				}
+			}
+			if (!DrawOrDeferTriggeredCards(InOutRuntime, Effect.Magnitude, OutError))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool ResolveQingNangAfterPaidHighCostActive(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const int32 PaidEnergyCost,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError)
+	{
+		if (PaidEnergyCost < 2)
+		{
+			return true;
+		}
+		FGameXXKEquipmentBattleEffectRuntime* ChosenEffect = nullptr;
+		for (FGameXXKEquipmentBattleEffectRuntime& Candidate : InOutRuntime.EquipmentEffects)
+		{
+			const FGameXXKEquipmentActiveEffect& Effect = Candidate.ActiveEffect;
+			if (Effect.Set != EGameXXKEquipmentSet::QingNang
+				|| Effect.Hook != EGameXXKEquipmentSetBonusHook::QingNangHighCostActive
+				|| Effect.Scope != EGameXXKEquipmentSetBonusScope::Team)
+			{
+				continue;
+			}
+			if (!ChosenEffect
+				|| Effect.RequiredPieces > ChosenEffect->ActiveEffect.RequiredPieces
+				|| (Effect.RequiredPieces == ChosenEffect->ActiveEffect.RequiredPieces
+					&& Candidate.SourceCharacterId.ToString() < ChosenEffect->SourceCharacterId.ToString()))
+			{
+				ChosenEffect = &Candidate;
+			}
+		}
+		if (!ChosenEffect)
+		{
+			return true;
+		}
+		const FGameXXKEquipmentActiveEffect& Effect = ChosenEffect->ActiveEffect;
+		if (ChosenEffect->LastTriggerRound != InOutRuntime.RoundNumber)
+		{
+			ChosenEffect->CurrentRoundTriggerCount = 0;
+		}
+		if (ChosenEffect->CurrentRoundTriggerCount >= Effect.MaxTriggersPerRound)
+		{
+			return true;
+		}
+
+		if (!DrawOrDeferTriggeredCards(InOutRuntime, Effect.Magnitude, OutError))
+		{
+			return false;
+		}
+		if (Effect.RequiredPieces >= 4)
+		{
+			TArray<FName> AllyUnitIds;
+			for (const FGameXXKCardCombatUnit& Ally : InOutRuntime.Units)
+			{
+				if (Ally.bLiving && Ally.Side == EGameXXKCardTargetSide::Party)
+				{
+					AllyUnitIds.Add(Ally.UnitId);
+				}
+			}
+			for (const FName AllyUnitId : AllyUnitIds)
+			{
+				FGameXXKCardCombatUnit* Ally = FindCombatUnitById(InOutRuntime.Units, AllyUnitId);
+				if (!Ally || !Ally->bLiving)
+				{
+					continue;
+				}
+				const int32 ActualLoss = FMath::Min(1, FMath::Max(0, Ally->HP - 1));
+				if (ActualLoss > 0)
+				{
+					FGameXXKCardDamageContext Context;
+					Context.SourceUnitId = AllyUnitId;
+					Context.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
+					Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::TaskReward;
+					FGameXXKCardDamageResult DamageResult;
+					if (!GameXXKCardRules::ApplyCombatDirectDamage(
+						InOutRuntime.Units,
+						InOutRuntime.GuardLinks,
+						Context,
+						AllyUnitId,
+						ActualLoss,
+						DamageResult,
+						&OutError))
+					{
+						return false;
+					}
+					InOutResult.DamageResults.Add(MoveTemp(DamageResult));
+				}
+				FGameXXKCardCombatUnit* CurrentAlly = FindCombatUnitById(InOutRuntime.Units, AllyUnitId);
+				if (CurrentAlly && CurrentAlly->bLiving)
+				{
+					FGameXXKCardHealingResult& HealingResult = InOutResult.HealingResults.AddDefaulted_GetRef();
+					HealingResult.SourceUnitId = Effect.SourceCharacterId;
+					HealingResult.TargetUnitId = AllyUnitId;
+					HealingResult.RequestedHealing = 2;
+					HealingResult.EffectiveHealing = GameXXKCardRules::HealCombatUnit(*CurrentAlly, 2);
+				}
+			}
+		}
+		if (Effect.RequiredPieces >= 6)
+		{
+			InOutRuntime.Deck.SharedEnergy = FMath::Min(
+				MaxCardBattleEnergy,
+				InOutRuntime.Deck.SharedEnergy + Effect.Magnitude);
+		}
+		ChosenEffect->LastTriggerRound = InOutRuntime.RoundNumber;
+		++ChosenEffect->CurrentRoundTriggerCount;
+		return true;
+	}
+
+	bool ResolveOpenedHealerFormulasAfterActiveCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FGameXXKCardCombatUnit>& UnitsBeforeActiveCard,
+		const int32 PreexistingFormulaCount,
+		const int32 PaidEnergyCost,
+		const FGameXXKResolvedCardSnapshot& PlayedSnapshot,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError)
+	{
+		const int32 FormulaCount = FMath::Min(PreexistingFormulaCount, InOutRuntime.HealerFormulas.Num());
+		const auto FindBeforeUnit = [&UnitsBeforeActiveCard](const FName UnitId) -> const FGameXXKCardCombatUnit*
+		{
+			return UnitsBeforeActiveCard.FindByPredicate([UnitId](const FGameXXKCardCombatUnit& Unit)
+			{
+				return Unit.UnitId == UnitId;
+			});
+		};
+		const auto DrawFormulaCards = [&InOutRuntime, &OutError](const int32 Count) -> bool
+		{
+			if (Count <= 0)
+			{
+				return true;
+			}
+			GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+			return GameXXKCardRules::DrawCards(InOutRuntime.Deck, Count, 0, &OutError);
+		};
+		int32 HealthChangeCount = 0;
+		TSet<FName> HealthChangedUnitIds;
+		for (const FGameXXKCardDamageResult& DamageResult : InOutResult.DamageResults)
+		{
+			if (DamageResult.HealthDamage > 0)
+			{
+				++HealthChangeCount;
+				HealthChangedUnitIds.Add(DamageResult.ResolvedTargetUnitId);
+			}
+		}
+		for (const FGameXXKCardHealingResult& HealingResult : InOutResult.HealingResults)
+		{
+			if (HealingResult.EffectiveHealing > 0)
+			{
+				++HealthChangeCount;
+				HealthChangedUnitIds.Add(HealingResult.TargetUnitId);
+			}
+		}
+		int32 CleansedPartyDotLayers = 0;
+		for (const FGameXXKCardCombatUnit& Before : UnitsBeforeActiveCard)
+		{
+			const FGameXXKCardCombatUnit* After = FindCombatUnitById(InOutRuntime.Units, Before.UnitId);
+			if (!After || Before.Side != EGameXXKCardTargetSide::Party)
+			{
+				continue;
+			}
+			for (const EGameXXKCardStatus DotStatus : {
+				EGameXXKCardStatus::Bleed,
+				EGameXXKCardStatus::Poison,
+				EGameXXKCardStatus::Burn})
+			{
+				CleansedPartyDotLayers += FMath::Max(0,
+					GameXXKCardRules::GetCombatStatusStacks(Before, DotStatus)
+					- GameXXKCardRules::GetCombatStatusStacks(*After, DotStatus));
+			}
+		}
+		TSet<FName> PoisonedEnemyIds;
+		TSet<FName> DebuffedEnemyIds;
+		TSet<FName> VulnerabilityGainedEnemyIds;
+		for (const FGameXXKCardStatusChangeResult& StatusChange : InOutResult.StatusChanges)
+		{
+			const FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, StatusChange.TargetUnitId);
+			if (!Target || Target->Side != EGameXXKCardTargetSide::Enemy || StatusChange.AppliedStacks <= 0)
+			{
+				continue;
+			}
+			DebuffedEnemyIds.Add(StatusChange.TargetUnitId);
+			if (StatusChange.Status == EGameXXKCardStatus::Poison)
+			{
+				PoisonedEnemyIds.Add(StatusChange.TargetUnitId);
+			}
+			if (StatusChange.Status == EGameXXKCardStatus::Vulnerability)
+			{
+				VulnerabilityGainedEnemyIds.Add(StatusChange.TargetUnitId);
+			}
+		}
+		// Attack-packet attachments are committed by the shared damage resolver and
+		// therefore do not pass through the standalone ApplyStatus audit above.  A
+		// formula reacts to the actual before/after debuff gain, regardless of which
+		// supported effect path applied it.
+		for (const FGameXXKCardCombatUnit& Before : UnitsBeforeActiveCard)
+		{
+			const FGameXXKCardCombatUnit* After = FindCombatUnitById(InOutRuntime.Units, Before.UnitId);
+			if (!After || Before.Side != EGameXXKCardTargetSide::Enemy)
+			{
+				continue;
+			}
+			for (const EGameXXKCardStatus DebuffStatus : {
+				EGameXXKCardStatus::Bleed,
+				EGameXXKCardStatus::Poison,
+				EGameXXKCardStatus::Burn,
+				EGameXXKCardStatus::Vulnerability,
+				EGameXXKCardStatus::Mark,
+				EGameXXKCardStatus::Weak})
+			{
+				if (GameXXKCardRules::GetCombatStatusStacks(*After, DebuffStatus)
+					> GameXXKCardRules::GetCombatStatusStacks(Before, DebuffStatus))
+				{
+					DebuffedEnemyIds.Add(Before.UnitId);
+					break;
+				}
+			}
+		}
+		TSet<FName> DirectlyDamagedEnemyIds;
+		int32 PoisonPacketCount = 0;
+		int32 BleedPacketCount = 0;
+		for (const FGameXXKCardDamageResult& DamageResult : InOutResult.DamageResults)
+		{
+			const FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, DamageResult.ResolvedTargetUnitId);
+			if (DamageResult.Cause == EGameXXKCardDamageCause::DirectAttack
+				&& Target
+				&& Target->Side == EGameXXKCardTargetSide::Enemy
+				&& !DamageResult.bAvoidedByAgility
+				&& (DamageResult.HealthDamage > 0 || DamageResult.ArmorAbsorbed > 0))
+			{
+				DirectlyDamagedEnemyIds.Add(DamageResult.ResolvedTargetUnitId);
+			}
+			PoisonPacketCount += DamageResult.HealthDamage > 0
+				&& (DamageResult.Cause == EGameXXKCardDamageCause::Poison
+					|| DamageResult.Cause == EGameXXKCardDamageCause::ToxicExplosionPoison) ? 1 : 0;
+			BleedPacketCount += DamageResult.HealthDamage > 0
+				&& (DamageResult.Cause == EGameXXKCardDamageCause::Bleed
+					|| DamageResult.Cause == EGameXXKCardDamageCause::ToxicExplosionBleed) ? 1 : 0;
+		}
+		for (int32 FormulaIndex = 0; FormulaIndex < FormulaCount; ++FormulaIndex)
+		{
+			FGameXXKHealerFormulaRuntime& Formula = InOutRuntime.HealerFormulas[FormulaIndex];
+			FGameXXKCardCombatUnit* FormulaOwner = FindCombatUnitById(InOutRuntime.Units, Formula.OwnerUnitId);
+			if (!FormulaOwner || !FormulaOwner->bLiving)
+			{
+				continue;
+			}
+			switch (Formula.Kind)
+			{
+			case EGameXXKHealerFormulaKind::AnyHealthChangeMedicine:
+			{
+				if (HealthChangeCount > 0
+					&& !GrantStatusFromCardEffect(
+						InOutRuntime,
+						*FormulaOwner,
+						EGameXXKCardStatus::Medicine,
+						HealthChangeCount,
+						OutError))
+				{
+					return false;
+				}
+				break;
+			}
+			case EGameXXKHealerFormulaKind::HighEnergyAndSixMedicine:
+				if (PaidEnergyCost >= 2 && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					TArray<FName> AllyUnitIds;
+					for (const FGameXXKCardCombatUnit& Ally : InOutRuntime.Units)
+					{
+						if (Ally.bLiving && Ally.Side == FormulaOwner->Side)
+						{
+							AllyUnitIds.Add(Ally.UnitId);
+						}
+					}
+					for (const FName AllyUnitId : AllyUnitIds)
+					{
+						FGameXXKCardCombatUnit* Ally = FindCombatUnitById(InOutRuntime.Units, AllyUnitId);
+						if (!Ally || !Ally->bLiving)
+						{
+							continue;
+						}
+						const int32 ActualLoss = FMath::Min(1, FMath::Max(0, Ally->HP - 1));
+						if (ActualLoss > 0)
+						{
+							FGameXXKCardDamageContext Context;
+							Context.SourceUnitId = AllyUnitId;
+							Context.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
+							Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::TaskReward;
+							FGameXXKCardDamageResult DamageResult;
+							if (!GameXXKCardRules::ApplyCombatDirectDamage(
+								InOutRuntime.Units,
+								InOutRuntime.GuardLinks,
+								Context,
+								AllyUnitId,
+								ActualLoss,
+								DamageResult,
+								&OutError))
+							{
+								return false;
+							}
+							InOutResult.DamageResults.Add(MoveTemp(DamageResult));
+						}
+						FGameXXKCardCombatUnit* CurrentAlly = FindCombatUnitById(InOutRuntime.Units, AllyUnitId);
+						if (CurrentAlly && CurrentAlly->bLiving)
+						{
+							GameXXKCardRules::HealCombatUnit(*CurrentAlly, 2);
+						}
+					}
+				}
+				break;
+			case EGameXXKHealerFormulaKind::FirstHealingMedicine:
+			{
+				const bool bResolvedHealing = InOutResult.HealingResults.ContainsByPredicate([](const FGameXXKCardHealingResult& Result)
+				{
+					return Result.EffectiveHealing > 0;
+				}) || InOutResult.DamageResults.ContainsByPredicate([&PlayedSnapshot](const FGameXXKCardDamageResult& Result)
+				{
+					return Result.SourceUnitId == PlayedSnapshot.OwnerUnitId
+						&& Result.Cause == EGameXXKCardDamageCause::Environment
+						&& Result.HealthDamage > 0;
+				});
+				if (bResolvedHealing && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 2, OutError)) return false;
+				}
+				break;
+			}
+			case EGameXXKHealerFormulaKind::ThreeCleansedDotMedicine:
+			{
+				const int64 Total = static_cast<int64>(Formula.Progress) + CleansedPartyDotLayers;
+				const int32 Rewards = static_cast<int32>(Total / 3);
+				Formula.Progress = static_cast<int32>(Total % 3);
+				if (Rewards > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, Rewards, OutError)) return false;
+				break;
+			}
+			case EGameXXKHealerFormulaKind::LowHealthCrossMedicine:
+			case EGameXXKHealerFormulaKind::LowHealthCrossAgility:
+			{
+				const int32 Threshold = Formula.Kind == EGameXXKHealerFormulaKind::LowHealthCrossMedicine ? 35 : 30;
+				FName CrossedUnitId = NAME_None;
+				for (const FGameXXKCardCombatUnit& Before : UnitsBeforeActiveCard)
+				{
+					const FGameXXKCardCombatUnit* After = FindCombatUnitById(InOutRuntime.Units, Before.UnitId);
+					if (Before.Side == EGameXXKCardTargetSide::Party
+						&& After
+						&& static_cast<int64>(Before.HP) * 100 >= static_cast<int64>(Before.MaxHP) * Threshold
+						&& static_cast<int64>(After->HP) * 100 < static_cast<int64>(After->MaxHP) * Threshold)
+					{
+						CrossedUnitId = Before.UnitId;
+						break;
+					}
+				}
+				if (!CrossedUnitId.IsNone() && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					if (Formula.Kind == EGameXXKHealerFormulaKind::LowHealthCrossMedicine)
+					{
+						if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 3, OutError)) return false;
+					}
+					else if (FGameXXKCardCombatUnit* CrossedUnit = FindCombatUnitById(InOutRuntime.Units, CrossedUnitId))
+					{
+						if (!GrantStatusFromCardEffect(InOutRuntime, *CrossedUnit, EGameXXKCardStatus::Agility, 2, OutError)) return false;
+					}
+				}
+				break;
+			}
+			case EGameXXKHealerFormulaKind::ThreeEffectiveHealsDraw:
+			{
+				if (Formula.UnitBudgetRound != InOutRuntime.RoundNumber)
+				{
+					Formula.UnitBudgetRound = InOutRuntime.RoundNumber;
+					Formula.PhaseProgress = 0;
+					Formula.Progress = 0;
+				}
+				int32 EffectivePartyHeals = 0;
+				for (const FGameXXKCardHealingResult& Result : InOutResult.HealingResults)
+				{
+					const FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, Result.TargetUnitId);
+					EffectivePartyHeals += Result.EffectiveHealing > 0 && Target && Target->Side == EGameXXKCardTargetSide::Party ? 1 : 0;
+				}
+				Formula.PhaseProgress = FMath::Min(MAX_int32, Formula.PhaseProgress + EffectivePartyHeals);
+				while (Formula.PhaseProgress >= 3 && Formula.Progress < 2)
+				{
+					Formula.PhaseProgress -= 3;
+					++Formula.Progress;
+					if (!DrawFormulaCards(1)) return false;
+				}
+				break;
+			}
+			case EGameXXKHealerFormulaKind::BleedRemovedPartyArmor:
+				if (CleansedPartyDotLayers > 0 && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					const bool bBleedRemoved = InOutResult.StatusChanges.ContainsByPredicate([&InOutRuntime](const FGameXXKCardStatusChangeResult& Change)
+					{
+						const FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, Change.TargetUnitId);
+						return Change.Status == EGameXXKCardStatus::Bleed && Change.RemovedStacks > 0 && Target && Target->Side == EGameXXKCardTargetSide::Party;
+					});
+					if (bBleedRemoved)
+					{
+						Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+						for (FGameXXKCardCombatUnit& Ally : InOutRuntime.Units) if (Ally.bLiving && Ally.Side == EGameXXKCardTargetSide::Party) GameXXKCardRules::AddCombatArmor(Ally, 2);
+					}
+				}
+				break;
+			case EGameXXKHealerFormulaKind::LargeHealingArmorOrVulnerability:
+			{
+				FName QualifiedTargetId = NAME_None;
+				for (const FGameXXKCardHealingResult& Healing : InOutResult.HealingResults)
+				{
+					if (Healing.RequestedHealing >= 10 && Healing.EffectiveHealing > 0) { QualifiedTargetId = Healing.TargetUnitId; break; }
+				}
+				if (QualifiedTargetId.IsNone())
+				{
+					for (const FGameXXKCardDamageResult& Damage : InOutResult.DamageResults)
+					{
+						if (Damage.SourceUnitId == PlayedSnapshot.OwnerUnitId && Damage.Cause == EGameXXKCardDamageCause::Environment && Damage.RequestedDamage >= 10 && Damage.HealthDamage > 0) { QualifiedTargetId = Damage.ResolvedTargetUnitId; break; }
+					}
+				}
+				if (!QualifiedTargetId.IsNone() && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					if (FGameXXKCardCombatUnit* QualifiedTarget = FindCombatUnitById(InOutRuntime.Units, QualifiedTargetId))
+					{
+						if (QualifiedTarget->Side == EGameXXKCardTargetSide::Party) GameXXKCardRules::AddCombatArmor(*QualifiedTarget, 4);
+						else if (!GrantStatusFromCardEffect(InOutRuntime, *QualifiedTarget, EGameXXKCardStatus::Vulnerability, 1, OutError)) return false;
+					}
+				}
+				break;
+			}
+			case EGameXXKHealerFormulaKind::ThreeUnitHealthChangeDrawMana:
+				if (HealthChangedUnitIds.Num() >= 3 && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					if (!DrawFormulaCards(1)) return false;
+					for (FGameXXKCardCombatUnit& Ally : InOutRuntime.Units)
+					{
+						if (Ally.bLiving && Ally.Side == EGameXXKCardTargetSide::Party) Ally.Mana = FMath::Min(Ally.MaxMana, Ally.Mana + 2);
+					}
+				}
+				break;
+			case EGameXXKHealerFormulaKind::PoisonDamageMedicine:
+				if (PoisonPacketCount > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, PoisonPacketCount, OutError)) return false;
+				break;
+			case EGameXXKHealerFormulaKind::BleedPoisonMark:
+			{
+				if (Formula.UnitBudgetRound != InOutRuntime.RoundNumber)
+				{
+					Formula.UnitBudgetRound = InOutRuntime.RoundNumber;
+					Formula.TriggeredUnitIdsThisRound.Reset();
+				}
+				for (const FName EnemyId : DebuffedEnemyIds)
+				{
+					FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(InOutRuntime.Units, EnemyId);
+					if (Enemy && !Formula.TriggeredUnitIdsThisRound.Contains(EnemyId)
+						&& GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed) > 0
+						&& GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Poison) > 0)
+					{
+						if (!GrantStatusFromCardEffect(InOutRuntime, *Enemy, EGameXXKCardStatus::Mark, 1, OutError)) return false;
+						Formula.TriggeredUnitIdsThisRound.Add(EnemyId);
+					}
+				}
+				break;
+			}
+			case EGameXXKHealerFormulaKind::GroupPoisonMedicineDraw:
+				if (PoisonedEnemyIds.Num() >= 2 && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 2, OutError) || !DrawFormulaCards(1)) return false;
+				}
+				break;
+			case EGameXXKHealerFormulaKind::DualDotExplosionMedicine:
+			{
+				int32 QualifiedExplosions = 0;
+				for (const int32 DistinctDotTypeCount : InOutResult.ToxicExplosionDistinctDotTypeCounts)
+				{
+					QualifiedExplosions += DistinctDotTypeCount >= 2 ? 1 : 0;
+				}
+				if (QualifiedExplosions > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, QualifiedExplosions * 2, OutError)) return false;
+				break;
+			}
+			case EGameXXKHealerFormulaKind::TwoBleedPacketsMedicine:
+			{
+				const int64 Total = static_cast<int64>(Formula.Progress) + BleedPacketCount;
+				const int32 Rewards = static_cast<int32>(Total / 2);
+				Formula.Progress = static_cast<int32>(Total % 2);
+				if (Rewards > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, Rewards, OutError)) return false;
+				break;
+			}
+			case EGameXXKHealerFormulaKind::GroupDirectDamageEnergy:
+				if (DirectlyDamagedEnemyIds.Num() >= 2 && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					InOutRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, InOutRuntime.Deck.SharedEnergy + 1);
+				}
+				break;
+			case EGameXXKHealerFormulaKind::PoisonedVulnerabilityMedicineDraw:
+			{
+				bool bQualified = false;
+				for (const FName EnemyId : VulnerabilityGainedEnemyIds)
+				{
+					const FGameXXKCardCombatUnit* Before = FindBeforeUnit(EnemyId);
+					if (Before && GameXXKCardRules::GetCombatStatusStacks(*Before, EGameXXKCardStatus::Poison) > 0)
+					{
+						bQualified = true;
+						break;
+					}
+				}
+				if (bQualified && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 1, OutError) || !DrawFormulaCards(1)) return false;
+				}
+				break;
+			}
+			case EGameXXKHealerFormulaKind::TripleDotExplosionMomentumDraw:
+				if (InOutResult.ToxicExplosionDistinctDotTypeCounts.ContainsByPredicate([](const int32 Count) { return Count >= 3; })
+					&& Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Momentum, 1, OutError) || !DrawFormulaCards(1)) return false;
+				}
+				break;
+			default:
+				break;
+			}
+		}
+		return true;
+	}
+
+	bool ResolveOpenedHealerFormulasAfterDamageEvents(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FGameXXKCardCombatUnit>& UnitsBeforeDamage,
+		const TArray<FGameXXKCardDamageResult>& DamageResults,
+		const int32 FirstDamageResultIndex,
+		FString& OutError)
+	{
+		if (FirstDamageResultIndex < 0 || FirstDamageResultIndex > DamageResults.Num())
+		{
+			OutError = TEXT("A Healer damage-event formula received an invalid result range.");
+			return false;
+		}
+		int32 HealthChangeCount = 0;
+		int32 PoisonPacketCount = 0;
+		int32 BleedPacketCount = 0;
+		for (int32 ResultIndex = FirstDamageResultIndex; ResultIndex < DamageResults.Num(); ++ResultIndex)
+		{
+			const FGameXXKCardDamageResult& DamageResult = DamageResults[ResultIndex];
+			if (DamageResult.HealthDamage <= 0)
+			{
+				continue;
+			}
+			++HealthChangeCount;
+			PoisonPacketCount += DamageResult.Cause == EGameXXKCardDamageCause::Poison
+				|| DamageResult.Cause == EGameXXKCardDamageCause::ToxicExplosionPoison ? 1 : 0;
+			BleedPacketCount += DamageResult.Cause == EGameXXKCardDamageCause::Bleed
+				|| DamageResult.Cause == EGameXXKCardDamageCause::ToxicExplosionBleed ? 1 : 0;
+		}
+
+		for (FGameXXKHealerFormulaRuntime& Formula : InOutRuntime.HealerFormulas)
+		{
+			FGameXXKCardCombatUnit* FormulaOwner = FindCombatUnitById(InOutRuntime.Units, Formula.OwnerUnitId);
+			if (!FormulaOwner || !FormulaOwner->bLiving)
+			{
+				continue;
+			}
+			switch (Formula.Kind)
+			{
+			case EGameXXKHealerFormulaKind::AnyHealthChangeMedicine:
+				if (HealthChangeCount > 0
+					&& !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, HealthChangeCount, OutError))
+				{
+					return false;
+				}
+				break;
+			case EGameXXKHealerFormulaKind::LowHealthCrossMedicine:
+			case EGameXXKHealerFormulaKind::LowHealthCrossAgility:
+			{
+				const int32 Threshold = Formula.Kind == EGameXXKHealerFormulaKind::LowHealthCrossMedicine ? 35 : 30;
+				FName CrossedUnitId = NAME_None;
+				for (const FGameXXKCardCombatUnit& Before : UnitsBeforeDamage)
+				{
+					const FGameXXKCardCombatUnit* After = FindCombatUnitById(InOutRuntime.Units, Before.UnitId);
+					if (Before.Side == EGameXXKCardTargetSide::Party
+						&& After
+						&& static_cast<int64>(Before.HP) * 100 >= static_cast<int64>(Before.MaxHP) * Threshold
+						&& static_cast<int64>(After->HP) * 100 < static_cast<int64>(After->MaxHP) * Threshold)
+					{
+						CrossedUnitId = Before.UnitId;
+						break;
+					}
+				}
+				if (!CrossedUnitId.IsNone() && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					if (Formula.Kind == EGameXXKHealerFormulaKind::LowHealthCrossMedicine)
+					{
+						if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 3, OutError))
+						{
+							return false;
+						}
+					}
+					else
+					{
+						FGameXXKCardCombatUnit* CrossedUnit = FindCombatUnitById(InOutRuntime.Units, CrossedUnitId);
+						if (CrossedUnit && CrossedUnit->bLiving
+							&& !GrantStatusFromCardEffect(InOutRuntime, *CrossedUnit, EGameXXKCardStatus::Agility, 2, OutError))
+						{
+							return false;
+						}
+					}
+				}
+				break;
+			}
+			case EGameXXKHealerFormulaKind::PoisonDamageMedicine:
+				if (PoisonPacketCount > 0
+					&& !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, PoisonPacketCount, OutError))
+				{
+					return false;
+				}
+				break;
+			case EGameXXKHealerFormulaKind::TwoBleedPacketsMedicine:
+			{
+				const int64 Total = static_cast<int64>(Formula.Progress) + BleedPacketCount;
+				const int32 Rewards = static_cast<int32>(Total / 2);
+				Formula.Progress = static_cast<int32>(Total % 2);
+				if (Rewards > 0
+					&& !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, Rewards, OutError))
+				{
+					return false;
+				}
+				break;
+			}
+			default:
+				break;
+			}
+		}
+		return true;
+	}
+
+	bool InstallHealerFormulaAfterActivePlay(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& Definition,
+		const FName OwnerUnitId,
+		FString& OutError)
+	{
+		const FGameXXKHealerCardRule& Rule = Definition.HealerRule;
+		if (Rule.FormulaKind == EGameXXKHealerFormulaKind::None
+			|| IsHealerFormulaOpen(InOutRuntime, OwnerUnitId, Definition.Id))
+		{
+			return true;
+		}
+		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+		if (!Owner || !Owner->bLiving || Owner->Side != EGameXXKCardTargetSide::Party
+			|| Definition.Owner != EGameXXKCardOwner::Profession
+			|| Definition.Role != EGameXXKCharacterRole::Healer
+			|| Rule.UnopenedFormulaEnergySurcharge <= 0)
+		{
+			OutError = TEXT("A permanent Healer formula could not be installed for its living party owner.");
+			return false;
+		}
+		FGameXXKHealerFormulaRuntime& Formula = InOutRuntime.HealerFormulas.AddDefaulted_GetRef();
+		Formula.OwnerUnitId = OwnerUnitId;
+		Formula.SourceCardId = Definition.Id;
+		Formula.Kind = Rule.FormulaKind;
 		return true;
 	}
 
@@ -4354,6 +6974,7 @@ namespace
 		case EGameXXKCardEffectType::ApplyStatus:
 		case EGameXXKCardEffectType::RemoveStatus:
 		case EGameXXKCardEffectType::RemoveAnyDamageOverTime:
+		case EGameXXKCardEffectType::CleanseFriendlyDamageOverTime:
 		case EGameXXKCardEffectType::Insight:
 		case EGameXXKCardEffectType::DiscoverCards:
 		case EGameXXKCardEffectType::ReorderCards:
@@ -4374,6 +6995,7 @@ namespace
 		case EGameXXKCardEffectType::TriggerHighestDamageOverTime:
 		case EGameXXKCardEffectType::ResolveToxicExplosion:
 		case EGameXXKCardEffectType::HealOrReverseWithMedicine:
+		case EGameXXKCardEffectType::HealOrReverseFlat:
 		case EGameXXKCardEffectType::GainMedicineFromPartyHealthLoss:
 		case EGameXXKCardEffectType::DamagePercentAttackPlusArmor:
 		case EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor:
@@ -4381,8 +7003,14 @@ namespace
 		case EGameXXKCardEffectType::GainArmorFromCurrentManaPercent:
 		case EGameXXKCardEffectType::GainManaOverflowToArmor:
 		case EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard:
+		case EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard:
+		case EGameXXKCardEffectType::PreserveNextReactionUse:
+		case EGameXXKCardEffectType::RetainArmorNextRound:
 		case EGameXXKCardEffectType::TriggerStatus:
 		case EGameXXKCardEffectType::LightningPerTargetStatusSnapshot:
+		case EGameXXKCardEffectType::DamagePercentAttackPerTargetStatus:
+		case EGameXXKCardEffectType::IncreaseMaxMana:
+		case EGameXXKCardEffectType::ChangeTerrain:
 			return true;
 		default:
 			OutError = TEXT("This card effect is not yet supported by the runtime effect planner.");
@@ -4984,6 +7612,139 @@ namespace
 		return ConsumeFirstDirectDamageModifiers(InOutRuntime, TriggeredModifierIds, OutError);
 	}
 
+	bool ResolveTriggeredStatusLayerConsumption(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKCardCombatUnit& Target,
+		const EGameXXKCardStatus Status,
+		const int32 DefaultConsumption,
+		const FName TriggerSourceUnitId,
+		const int32 TriggeredHealthDamage,
+		int32& OutConsumedStacks,
+		FString& OutError)
+	{
+		OutConsumedStacks = 0;
+		if (DefaultConsumption < 0)
+		{
+			OutError = TEXT("Triggered status layer consumption cannot be negative.");
+			return false;
+		}
+		FGameXXKBladeFinishRuntime& Finish = InOutRuntime.PendingBladeFinish;
+		const bool bInsideFinishWindow = (InOutRuntime.Phase == EGameXXKCardBattlePhase::Enemy
+				&& Finish.TriggerPlayerRound == InOutRuntime.RoundNumber + 1)
+			|| (InOutRuntime.Phase == EGameXXKCardBattlePhase::Player
+				&& Finish.TriggerPlayerRound == InOutRuntime.RoundNumber);
+		if (Status == EGameXXKCardStatus::Bleed
+			&& bInsideFinishWindow
+			&& Finish.Rule == EGameXXKBladeFinishRule::PreserveFirstTwoBleedTriggers
+			&& Finish.RemainingTriggers > 0)
+		{
+			if (--Finish.RemainingTriggers == 0)
+			{
+				Finish = FGameXXKBladeFinishRuntime();
+			}
+			return true;
+		}
+		if (Status == EGameXXKCardStatus::Bleed
+			&& bInsideFinishWindow
+			&& Finish.Rule == EGameXXKBladeFinishRule::DrawOnFirstThreeBleedTriggers
+			&& Finish.RemainingTriggers > 0)
+		{
+			GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+			if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, 1, 0, &OutError))
+			{
+				return false;
+			}
+			if (--Finish.RemainingTriggers == 0)
+			{
+				Finish = FGameXXKBladeFinishRuntime();
+			}
+		}
+		if (Status == EGameXXKCardStatus::Bleed
+			&& bInsideFinishWindow
+			&& Finish.Rule == EGameXXKBladeFinishRule::HealBladeBleedCapTwelve
+			&& Finish.RemainingTriggers > 0
+			&& TriggerSourceUnitId == Finish.SourceOwnerUnitId
+			&& TriggeredHealthDamage > 0)
+		{
+			FGameXXKCardCombatUnit* Blade = FindCombatUnitById(InOutRuntime.Units, Finish.SourceOwnerUnitId);
+			if (!Blade || !Blade->bLiving)
+			{
+				OutError = TEXT("A Bleed-healing Blade Finish lost its living owner.");
+				return false;
+			}
+			const int32 AppliedHealing = GameXXKCardRules::HealCombatUnit(
+				*Blade,
+				FMath::Min(TriggeredHealthDamage, Finish.RemainingTriggers));
+			Finish.RemainingTriggers -= AppliedHealing;
+			if (Finish.RemainingTriggers == 0)
+			{
+				Finish = FGameXXKBladeFinishRuntime();
+			}
+		}
+		if (DefaultConsumption > 0)
+		{
+			OutConsumedStacks = GameXXKCardRules::ConsumeCombatStatus(Target, Status, DefaultConsumption);
+		}
+		return true;
+	}
+
+	bool ResolveBleedAfterUnavoidedDirectHit(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName TargetUnitId,
+		const FName SourceUnitId,
+		const EGameXXKCardResolutionOrigin Origin,
+		const int32 DefaultConsumption,
+		FGameXXKCardPlayResult& InOutResult,
+		int32& OutTriggeredHealthDamage,
+		FString& OutError)
+	{
+		OutTriggeredHealthDamage = 0;
+		FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, TargetUnitId);
+		const int32 TriggeredBleedStacks = Target && Target->bLiving
+			? GameXXKCardRules::GetCombatStatusStacks(*Target, EGameXXKCardStatus::Bleed)
+			: 0;
+		if (TriggeredBleedStacks <= 0)
+		{
+			return true;
+		}
+
+		FGameXXKCardDamageResult BleedResult;
+		if (!ApplyStatusHealthLoss(
+			InOutRuntime,
+			TargetUnitId,
+			EGameXXKCardDamageCause::Bleed,
+			TriggeredBleedStacks,
+			true,
+			BleedResult,
+			OutError))
+		{
+			return false;
+		}
+		Target = FindCombatUnitById(InOutRuntime.Units, TargetUnitId);
+		if (!Target)
+		{
+			OutError = TEXT("A direct hit lost its target before Bleed decay.");
+			return false;
+		}
+		BleedResult.SourceUnitId = SourceUnitId;
+		BleedResult.ResolutionOrigin = Origin;
+		if (!ResolveTriggeredStatusLayerConsumption(
+			InOutRuntime,
+			*Target,
+			EGameXXKCardStatus::Bleed,
+			DefaultConsumption,
+			SourceUnitId,
+			BleedResult.HealthDamage,
+			BleedResult.StatusStacksConsumed,
+			OutError))
+		{
+			return false;
+		}
+		OutTriggeredHealthDamage = BleedResult.HealthDamage;
+		InOutResult.DamageResults.Add(MoveTemp(BleedResult));
+		return true;
+	}
+
 	bool ResolveAttackPacket(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FGameXXKCardDefinition& Definition,
@@ -4999,9 +7760,23 @@ namespace
 		FString& OutError)
 	{
 		const FGameXXKCardEffect& Attack = Definition.Effects[AttackIndex];
+		const bool bBloodEdgeAttack = Definition.Owner == EGameXXKCardOwner::Profession
+			&& Definition.Role == EGameXXKCharacterRole::Blade
+			&& Definition.ProfessionArchetypeIds.Contains(TEXT("Archetype.Blade.BloodEdge"));
+		const bool bMomentumBreakAttack = Definition.Owner == EGameXXKCardOwner::Profession
+			&& Definition.Role == EGameXXKCharacterRole::Blade
+			&& Definition.ProfessionArchetypeIds.Contains(TEXT("Archetype.Blade.MomentumBreak"));
+		const bool bPoJunVulnerabilityRule = Definition.BladeSequence.BaseRule
+			== EGameXXKBladeBaseRule::ConsumeVulnerabilityForExtraAttacks;
 		TArray<int32> AttachmentIndices;
 		for (int32 Index = AttackIndex + 1; Index < Definition.Effects.Num() && Definition.Effects[Index].Type != EGameXXKCardEffectType::DamagePercentAttack; ++Index)
 		{
+			if (bBloodEdgeAttack
+				&& Definition.Effects[Index].Type == EGameXXKCardEffectType::ApplyStatus
+				&& Definition.Effects[Index].Status == EGameXXKCardStatus::Bleed)
+			{
+				continue;
+			}
 			if (IsAttackPacketAttachment(Definition.Effects[Index], Attack))
 			{
 				AttachmentIndices.Add(Index);
@@ -5024,9 +7799,20 @@ namespace
 		{
 			return false;
 		}
-		const FGameXXKCardCombatUnit* PacketOwner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
-		const int32 MomentumAtPacketStart = PacketOwner
-			? GameXXKCardRules::GetCombatStatusStacks(*PacketOwner, EGameXXKCardStatus::Momentum)
+		FName AttackSourceUnitId = NAME_None;
+		if (!ResolveEffectSourceUnitId(
+			InOutRuntime,
+			Instance.OwnerUnitId,
+			CardTargetIds,
+			Attack.Source,
+			AttackSourceUnitId,
+			OutError))
+		{
+			return false;
+		}
+		const FGameXXKCardCombatUnit* PacketSource = FindCombatUnitById(InOutRuntime.Units, AttackSourceUnitId);
+		const int32 MomentumAtPacketStart = PacketSource
+			? GameXXKCardRules::GetCombatStatusStacks(*PacketSource, EGameXXKCardStatus::Momentum)
 			: 0;
 		bool bPreparedTriggeredAttack = false;
 		int32 TriggeredAttackBonusPercent = 0;
@@ -5044,6 +7830,10 @@ namespace
 			{
 				continue;
 			}
+			const int32 LockedPoJunExtraHits = bPoJunVulnerabilityRule
+				? FMath::Min(3, GameXXKCardRules::GetCombatStatusStacks(*Target, EGameXXKCardStatus::Vulnerability))
+				: 0;
+			int32 PoJunVulnerabilityConsumed = 0;
 			FGameXXKCardCombatUnit* ConditionTarget = CardTargetIds.Num() == 1 ? FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0]) : Target;
 			bool bBaseSatisfied = false;
 			int32 BaseConsumed = 0;
@@ -5137,8 +7927,9 @@ namespace
 			}
 
 			Owner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+			FGameXXKCardCombatUnit* AttackSource = FindCombatUnitById(InOutRuntime.Units, AttackSourceUnitId);
 			Target = FindCombatUnitById(InOutRuntime.Units, TargetId);
-			if (!Owner || !Owner->bLiving || !Target || !Target->bLiving)
+			if (!Owner || !Owner->bLiving || !AttackSource || !AttackSource->bLiving || !Target || !Target->bLiving)
 			{
 				continue;
 			}
@@ -5147,7 +7938,7 @@ namespace
 				if (Origin == EGameXXKCardResolutionOrigin::ActivePlay)
 				{
 					TArray<FName> TriggeredModifierIds;
-					if (!CollectOnNextAttackBonuses(InOutRuntime, Definition, Instance, *Owner, ConditionTarget, TriggeredAttackBonusPercent, TriggeredModifierIds, OutError))
+					if (!CollectOnNextAttackBonuses(InOutRuntime, Definition, Instance, *AttackSource, ConditionTarget, TriggeredAttackBonusPercent, TriggeredModifierIds, OutError))
 					{
 						return false;
 					}
@@ -5155,41 +7946,55 @@ namespace
 					{
 						return false;
 					}
-					bApplyNextAttackVulnerability = GameXXKCardRules::GetCombatStatusStacks(*Owner, EGameXXKCardStatus::NextAttackAppliesVulnerability) > 0;
-					bApplyNextAttackMark = GameXXKCardRules::GetCombatStatusStacks(*Owner, EGameXXKCardStatus::NextAttackBonus) > 0;
+					bApplyNextAttackVulnerability = GameXXKCardRules::GetCombatStatusStacks(*AttackSource, EGameXXKCardStatus::NextAttackAppliesVulnerability) > 0;
+					bApplyNextAttackMark = GameXXKCardRules::GetCombatStatusStacks(*AttackSource, EGameXXKCardStatus::NextAttackBonus) > 0;
 					if (bApplyNextAttackVulnerability)
 					{
-						GameXXKCardRules::ConsumeCombatStatus(*Owner, EGameXXKCardStatus::NextAttackAppliesVulnerability, 1);
+						GameXXKCardRules::ConsumeCombatStatus(*AttackSource, EGameXXKCardStatus::NextAttackAppliesVulnerability, 1);
 					}
 					if (bApplyNextAttackMark)
 					{
-						GameXXKCardRules::ConsumeCombatStatus(*Owner, EGameXXKCardStatus::NextAttackBonus, 1);
+						GameXXKCardRules::ConsumeCombatStatus(*AttackSource, EGameXXKCardStatus::NextAttackBonus, 1);
 					}
 				}
 				bPreparedTriggeredAttack = true;
 			}
 			Percent += TriggeredAttackBonusPercent;
-			const int64 RawDamage = static_cast<int64>(Owner->Attack) * Percent / 100 + FlatDamage;
-			if (RawDamage <= 0 || RawDamage > MAX_int32 || IgnoredDefense < 0 || IgnoredDefense > MAX_int32)
-			{
-				OutError = TEXT("Attack packet produced unsupported damage or defense-ignore values.");
-				return false;
-			}
 			for (int32 HitIndex = 0; HitIndex < Attack.HitCount; ++HitIndex)
 			{
-				const FGameXXKCardCombatUnit* HitOwner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
-				if (!HitOwner || !HitOwner->bLiving)
+				const FGameXXKCardCombatUnit* HitOwner = FindCombatUnitById(InOutRuntime.Units, AttackSourceUnitId);
+				const FGameXXKCardCombatUnit* HitTarget = FindCombatUnitById(InOutRuntime.Units, TargetId);
+				if (!HitOwner || !HitOwner->bLiving || !HitTarget || !HitTarget->bLiving)
 				{
 					break;
 				}
+				const FName HitSourceUnitId = HitOwner->UnitId;
+				const int32 LiveBleedStacks = bBloodEdgeAttack
+					? GameXXKCardRules::GetCombatStatusStacks(*HitTarget, EGameXXKCardStatus::Bleed)
+					: 0;
+				const int64 HitPercent = FMath::Min<int64>(
+					MAX_int32,
+					Percent
+						+ static_cast<int64>(LiveBleedStacks) * 10
+						+ (bMomentumBreakAttack ? static_cast<int64>(MomentumAtPacketStart) * 10 : 0));
+				const int64 RawDamage = static_cast<int64>(HitOwner->Attack) * HitPercent / 100 + FlatDamage;
+				if (RawDamage <= 0 || RawDamage > MAX_int32 || IgnoredDefense < 0 || IgnoredDefense > MAX_int32)
+				{
+					OutError = TEXT("Attack packet produced unsupported damage or defense-ignore values.");
+					return false;
+				}
 				FGameXXKCardDamageContext Context;
-				Context.SourceUnitId = HitOwner->UnitId;
+				Context.SourceUnitId = HitSourceUnitId;
 				Context.ResolutionOrigin = Origin;
 				Context.Kind = Attack.Target == EGameXXKCardEffectTarget::AllEnemies
 					? EGameXXKCardDamageKind::GroupAttack
 					: EGameXXKCardDamageKind::SingleTargetAttack;
 				Context.IgnoredDefense = IgnoredDefense;
 				Context.MomentumStacksOverride = MomentumAtPacketStart;
+				if (bPoJunVulnerabilityRule)
+				{
+					Context.VulnerabilityStacksToConsumeOverride = HitIndex == 0 ? LockedPoJunExtraHits : 0;
+				}
 				for (const FGameXXKCardEffect* OnHitEffect : OnHitStatusEffects)
 				{
 					if (OnHitEffect->HitCount == Attack.HitCount || HitIndex < OnHitEffect->HitCount)
@@ -5217,6 +8022,31 @@ namespace
 					return false;
 				}
 				InOutResult.DamageResults.Add(DamageResult);
+				PoJunVulnerabilityConsumed += DamageResult.VulnerabilityStacksConsumed;
+				if (!DamageResult.bAvoidedByAgility)
+				{
+					int32 TriggeredBleedDamage = 0;
+					if (!ResolveBleedAfterUnavoidedDirectHit(
+						InOutRuntime,
+						TargetId,
+						HitSourceUnitId,
+						Origin,
+						Definition.BladeSequence.BaseRule == EGameXXKBladeBaseRule::PreserveTriggeredBleed ? 0 : 1,
+						InOutResult,
+						TriggeredBleedDamage,
+						OutError))
+					{
+						return false;
+					}
+					if (Definition.BladeSequence.BaseRule == EGameXXKBladeBaseRule::HealFromTriggeredBleed
+						&& TriggeredBleedDamage > 0)
+					{
+						if (FGameXXKCardCombatUnit* BleedHealer = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId))
+						{
+							GameXXKCardRules::HealCombatUnit(*BleedHealer, TriggeredBleedDamage);
+						}
+					}
+				}
 				if (!ResolveFirstDirectDamageReactiveModifiers(InOutRuntime, Context, DamageResult, &InOutResult.DamageResults, OutError))
 				{
 					return false;
@@ -5227,16 +8057,77 @@ namespace
 					break;
 				}
 			}
+			if (LockedPoJunExtraHits > PoJunVulnerabilityConsumed)
+			{
+				if (FGameXXKCardCombatUnit* VulnerabilityTarget = FindCombatUnitById(InOutRuntime.Units, TargetId))
+				{
+					PoJunVulnerabilityConsumed += GameXXKCardRules::ConsumeCombatStatus(
+						*VulnerabilityTarget,
+						EGameXXKCardStatus::Vulnerability,
+						LockedPoJunExtraHits - PoJunVulnerabilityConsumed);
+				}
+			}
+			for (int32 ExtraHitIndex = 0; ExtraHitIndex < LockedPoJunExtraHits; ++ExtraHitIndex)
+			{
+				const FGameXXKCardCombatUnit* ExtraHitOwner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+				const FGameXXKCardCombatUnit* ExtraHitTarget = FindCombatUnitById(InOutRuntime.Units, TargetId);
+				if (!ExtraHitOwner || !ExtraHitOwner->bLiving || !ExtraHitTarget || !ExtraHitTarget->bLiving)
+				{
+					break;
+				}
+				const int64 ExtraHitPercent = static_cast<int64>(50)
+					+ (bMomentumBreakAttack ? static_cast<int64>(MomentumAtPacketStart) * 10 : 0)
+					+ TriggeredAttackBonusPercent;
+				const int64 ExtraRawDamage = static_cast<int64>(ExtraHitOwner->Attack) * ExtraHitPercent / 100 + FlatDamage;
+				if (ExtraRawDamage <= 0 || ExtraRawDamage > MAX_int32)
+				{
+					OutError = TEXT("A Po Jun extra attack produced unsupported damage.");
+					return false;
+				}
+				FGameXXKCardDamageContext ExtraContext;
+				ExtraContext.SourceUnitId = ExtraHitOwner->UnitId;
+				ExtraContext.ResolutionOrigin = Origin;
+				ExtraContext.Kind = Attack.Target == EGameXXKCardEffectTarget::AllEnemies
+					? EGameXXKCardDamageKind::GroupAttack
+					: EGameXXKCardDamageKind::SingleTargetAttack;
+				ExtraContext.IgnoredDefense = IgnoredDefense;
+				ExtraContext.MomentumStacksOverride = MomentumAtPacketStart;
+				ExtraContext.VulnerabilityStacksToConsumeOverride = 0;
+				FGameXXKCardDamageResult ExtraResult;
+				if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
+					InOutRuntime,
+					ExtraContext,
+					TargetId,
+					static_cast<int32>(ExtraRawDamage),
+					ExtraResult,
+					&OutError))
+				{
+					return false;
+				}
+				InOutResult.DamageResults.Add(ExtraResult);
+				if (!ResolveFirstDirectDamageReactiveModifiers(
+					InOutRuntime,
+					ExtraContext,
+					ExtraResult,
+					&InOutResult.DamageResults,
+					OutError))
+				{
+					return false;
+				}
+			}
 		}
 		return true;
 	}
 
-	bool EffectRequiresOriginalSelectedTarget(const FGameXXKCardEffect& Effect)
+	bool EffectReferencesOriginalSelectedTarget(const FGameXXKCardEffect& Effect)
 	{
 		const bool bTargetCondition = Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetHasStatus
 			|| Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetHasAnyDamageOverTime
-			|| Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetHealthBelowPercent;
+			|| Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetHealthBelowPercent
+			|| Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetIsAlly
+			|| Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetIsEnemy;
 		return Effect.Target == EGameXXKCardEffectTarget::SelectedTarget
+			|| Effect.Target == EGameXXKCardEffectTarget::SelectedTargetSide
 			|| Effect.Source == EGameXXKCardEffectSource::SelectedTarget
 			|| Effect.Type == EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget
 			|| bTargetCondition
@@ -5244,6 +8135,18 @@ namespace
 				&& Effect.Modifier.RecipientTarget == EGameXXKCardEffectTarget::SelectedTarget)
 			|| (Effect.Type == EGameXXKCardEffectType::ApplyGuardLink
 				&& Effect.GuardLink.Guardian == EGameXXKCardEffectTarget::SelectedTarget);
+	}
+
+	bool EffectRequiresLivingOriginalSelectedTarget(const FGameXXKCardEffect& Effect)
+	{
+		return Effect.Target == EGameXXKCardEffectTarget::SelectedTarget
+			|| Effect.Source == EGameXXKCardEffectSource::SelectedTarget
+			|| Effect.Type == EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget
+			|| (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier
+				&& Effect.Modifier.RecipientTarget == EGameXXKCardEffectTarget::SelectedTarget)
+			|| (Effect.Type == EGameXXKCardEffectType::ApplyGuardLink
+				&& (Effect.GuardLink.Guardian == EGameXXKCardEffectTarget::SelectedTarget
+					|| Effect.GuardLink.ProtectedUnit == EGameXXKCardEffectTarget::SelectedTarget));
 	}
 
 	bool ResolveSnapshotTargetIds(
@@ -5501,6 +8404,622 @@ namespace
 		return true;
 	}
 
+	bool OpenTaskNpcSpellTaskSearchChoice(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName OwnerUnitId,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError)
+	{
+		const FGameXXKTaskNpcSpellTaskRuntime* Task = InOutRuntime.TaskNpcSpellTasks.FindByPredicate(
+			[OwnerUnitId](const FGameXXKTaskNpcSpellTaskRuntime& Candidate)
+			{
+				return Candidate.bActive && Candidate.OwnerUnitId == OwnerUnitId;
+			});
+		if (!Task || InOutRuntime.Deck.Hand.Num() >= BattleHandCapacity)
+		{
+			return true;
+		}
+		if (IsActiveChoice(InOutRuntime.Deck.PendingChoice.Kind))
+		{
+			OutError = TEXT("A task-NPC spell-task search cannot replace an active card choice.");
+			return false;
+		}
+
+		TArray<FGameXXKCardInstance> Candidates;
+		const auto CollectZone = [Task, &Candidates](const TArray<FGameXXKCardInstance>& Zone)
+		{
+			for (const FGameXXKCardInstance& Instance : Zone)
+			{
+				if (Instance.OwnerUnitId == Task->OwnerUnitId
+					&& Task->LockedCardIds.Contains(Instance.CardId)
+					&& !Task->CompletedCardIds.Contains(Instance.CardId))
+				{
+					Candidates.Add(Instance);
+				}
+			}
+		};
+		CollectZone(InOutRuntime.Deck.DrawPile);
+		CollectZone(InOutRuntime.Deck.DiscardPile);
+		Candidates.Sort([](const FGameXXKCardInstance& Left, const FGameXXKCardInstance& Right)
+		{
+			return Left.AcquisitionOrdinal != Right.AcquisitionOrdinal
+				? Left.AcquisitionOrdinal < Right.AcquisitionOrdinal
+				: Left.InstanceId.LexicalLess(Right.InstanceId);
+		});
+		if (Candidates.IsEmpty())
+		{
+			return true;
+		}
+
+		ClearPendingChoice(InOutRuntime.Deck.PendingChoice);
+		InOutRuntime.Deck.PendingChoice.Kind = EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand;
+		InOutRuntime.Deck.PendingChoice.Candidates = MoveTemp(Candidates);
+		InOutRuntime.Deck.PendingChoice.RequiredCount = 1;
+		InOutRuntime.Deck.PendingChoice.RequiredHandPickCount = 1;
+		InOutRuntime.Deck.PendingChoice.bCanCancel = false;
+		InOutRuntime.Deck.PendingChoice.bCancelPreservesDrawTop = true;
+		InOutResult.bOpenedPendingChoice = true;
+		return true;
+	}
+
+	TArray<FGameXXKCardInstance> CollectSorcererPartnerTaskSearchCandidates(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName OwnerUnitId)
+	{
+		TArray<FGameXXKCardInstance> Candidates;
+		const FGameXXKSorcererPartnerTaskRuntime* Task = Runtime.SorcererPartnerTasks.FindByPredicate(
+			[OwnerUnitId](const FGameXXKSorcererPartnerTaskRuntime& Candidate)
+			{
+				return Candidate.bActive && Candidate.OwnerUnitId == OwnerUnitId;
+			});
+		if (!Task || Runtime.Deck.Hand.Num() >= BattleHandCapacity)
+		{
+			return Candidates;
+		}
+
+		const auto CollectZone = [Task, &Candidates](const TArray<FGameXXKCardInstance>& Zone)
+		{
+			for (const FGameXXKCardInstance& Instance : Zone)
+			{
+				if (!Instance.bTemporary
+					&& Instance.OwnerUnitId == Task->OwnerUnitId
+					&& Task->LockedCardIds.Contains(Instance.CardId)
+					&& !Task->CompletedCardIds.Contains(Instance.CardId))
+				{
+					Candidates.Add(Instance);
+				}
+			}
+		};
+		CollectZone(Runtime.Deck.DrawPile);
+		CollectZone(Runtime.Deck.DiscardPile);
+		Candidates.Sort([](const FGameXXKCardInstance& Left, const FGameXXKCardInstance& Right)
+		{
+			return IsAutomaticHandOrderBefore(Left, Right);
+		});
+		return Candidates;
+	}
+
+	bool OpenSorcererPartnerTaskSearchChoice(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName OwnerUnitId,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError)
+	{
+		const FGameXXKSorcererPartnerTaskRuntime* Task = InOutRuntime.SorcererPartnerTasks.FindByPredicate(
+			[OwnerUnitId](const FGameXXKSorcererPartnerTaskRuntime& Candidate)
+			{
+				return Candidate.bActive && Candidate.OwnerUnitId == OwnerUnitId;
+			});
+		if (!Task || InOutRuntime.Deck.Hand.Num() >= BattleHandCapacity)
+		{
+			return true;
+		}
+		if (IsActiveChoice(InOutRuntime.Deck.PendingChoice.Kind))
+		{
+			OutError = TEXT("A Sorcerer partner task search cannot replace an active card choice.");
+			return false;
+		}
+
+		TArray<FGameXXKCardInstance> Candidates = CollectSorcererPartnerTaskSearchCandidates(
+			InOutRuntime,
+			OwnerUnitId);
+		if (Candidates.IsEmpty())
+		{
+			return true;
+		}
+
+		ClearPendingChoice(InOutRuntime.Deck.PendingChoice);
+		InOutRuntime.Deck.PendingChoice.Kind = EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand;
+		InOutRuntime.Deck.PendingChoice.Candidates = MoveTemp(Candidates);
+		InOutRuntime.Deck.PendingChoice.RequiredCount = 1;
+		InOutRuntime.Deck.PendingChoice.RequiredHandPickCount = 1;
+		InOutRuntime.Deck.PendingChoice.bCanCancel = false;
+		InOutRuntime.Deck.PendingChoice.bCancelPreservesDrawTop = true;
+		InOutResult.bOpenedPendingChoice = true;
+		return true;
+	}
+
+	bool SorcererDefinitionHasDirectDamage(const FGameXXKCardDefinition& Definition)
+	{
+		return Definition.Effects.ContainsByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			switch (Effect.Type)
+			{
+			case EGameXXKCardEffectType::DamagePercentAttack:
+			case EGameXXKCardEffectType::DamagePercentAttackPerTargetStatus:
+			case EGameXXKCardEffectType::DamagePercentAttackPlusArmor:
+			case EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor:
+			case EGameXXKCardEffectType::LightningPerTargetStatusSnapshot:
+			case EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget:
+				return true;
+			default:
+				return false;
+			}
+		});
+	}
+
+	const FGameXXKResolvedCardSnapshot* FindPreviousSorcererTaskSnapshot(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKResolvedCardSnapshot& Snapshot)
+	{
+		if (Snapshot.SorcererSequencePosition <= 1)
+		{
+			return nullptr;
+		}
+		const FGameXXKSorcererPartnerTaskRuntime* Task = Runtime.SorcererPartnerTasks.FindByPredicate(
+			[&Snapshot](const FGameXXKSorcererPartnerTaskRuntime& Candidate)
+			{
+				return Candidate.bActive && Candidate.OwnerUnitId == Snapshot.OwnerUnitId;
+			});
+		const int32 PreviousIndex = Snapshot.SorcererSequencePosition - 2;
+		return Task && Task->FirstPlayOrder.IsValidIndex(PreviousIndex)
+			? &Task->FirstPlayOrder[PreviousIndex]
+			: nullptr;
+	}
+
+	bool ApplySorcererSequenceDefinition(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKResolvedCardSnapshot& Snapshot,
+		FGameXXKCardDefinition& InOutDefinition,
+		FString& OutError)
+	{
+		OutError.Reset();
+		if (InOutDefinition.Owner != EGameXXKCardOwner::Profession
+			|| InOutDefinition.OwnerId != FName(TEXT("Profession.Sorcerer"))
+			|| InOutDefinition.Role != EGameXXKCharacterRole::Sorcerer
+			|| Snapshot.SorcererSequencePosition == 0)
+		{
+			return true;
+		}
+		if (InOutDefinition.SorcererRule.SequenceRule == EGameXXKSorcererSequenceRule::None)
+		{
+			OutError = TEXT("A sequenced Sorcerer card has no declarative sequence rule.");
+			return false;
+		}
+
+		const auto FindEffect = [&InOutDefinition](const EGameXXKCardEffectType Type) -> FGameXXKCardEffect*
+		{
+			return InOutDefinition.Effects.FindByPredicate([Type](const FGameXXKCardEffect& Effect)
+			{
+				return Effect.Type == Type;
+			});
+		};
+		const auto FindStatusEffect = [&InOutDefinition](
+			const EGameXXKCardEffectType Type,
+			const EGameXXKCardStatus Status) -> FGameXXKCardEffect*
+		{
+			return InOutDefinition.Effects.FindByPredicate([Type, Status](const FGameXXKCardEffect& Effect)
+			{
+				return Effect.Type == Type && Effect.Status == Status;
+			});
+		};
+		const auto RequireEffect = [&OutError](FGameXXKCardEffect* Effect, const TCHAR* Context) -> bool
+		{
+			if (Effect)
+			{
+				return true;
+			}
+			OutError = FString::Printf(TEXT("A Sorcerer sequence rule lost its %s base effect."), Context);
+			return false;
+		};
+
+		const int32 Position = Snapshot.SorcererSequencePosition;
+		switch (InOutDefinition.SorcererRule.SequenceRule)
+		{
+		case EGameXXKSorcererSequenceRule::CoreSearch:
+			return true;
+		case EGameXXKSorcererSequenceRule::CoreManaEcho:
+		{
+			FGameXXKCardEffect* Mana = FindEffect(EGameXXKCardEffectType::GainMana);
+			if (!RequireEffect(Mana, TEXT("Mana")))
+			{
+				return false;
+			}
+			int32 PreviousPaidMana = 0;
+			if (Position > 1)
+			{
+				const FGameXXKResolvedCardSnapshot* Previous = FindPreviousSorcererTaskSnapshot(Runtime, Snapshot);
+				if (!Previous || Previous->SorcererSequencePosition != Position - 1)
+				{
+					OutError = TEXT("A Sorcerer Mana echo cannot find its preceding first-play snapshot.");
+					return false;
+				}
+				PreviousPaidMana = Previous->PaidManaCost;
+			}
+			Mana->Magnitude = 3 + PreviousPaidMana / 2;
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::FireLamp:
+		{
+			FGameXXKCardEffect* Burn = FindStatusEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardStatus::Burn);
+			if (!RequireEffect(Burn, TEXT("Burn")))
+			{
+				return false;
+			}
+			if (Position <= 2)
+			{
+				Burn->Magnitude = 4;
+			}
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::FireSpread:
+		{
+			FGameXXKCardEffect* Burn = FindStatusEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardStatus::Burn);
+			if (!RequireEffect(Burn, TEXT("Burn")))
+			{
+				return false;
+			}
+			if (Snapshot.PreviousSorcererFamily == EGameXXKSorcererCardFamily::Fire)
+			{
+				Burn->Magnitude = 3;
+			}
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::FireBurst:
+		{
+			FGameXXKCardEffect* Attack = FindEffect(EGameXXKCardEffectType::DamagePercentAttack);
+			if (!RequireEffect(Attack, TEXT("attack")))
+			{
+				return false;
+			}
+			if (Position >= 3)
+			{
+				Attack->Type = EGameXXKCardEffectType::DamagePercentAttackPerTargetStatus;
+				Attack->Status = EGameXXKCardStatus::Burn;
+				Attack->SecondaryMagnitude = 10;
+			}
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::FireSearch:
+		{
+			FGameXXKCardEffect* Attack = FindEffect(EGameXXKCardEffectType::DamagePercentAttack);
+			if (!RequireEffect(Attack, TEXT("attack")))
+			{
+				return false;
+			}
+			if (Position >= 4)
+			{
+				Attack->Magnitude = 70;
+			}
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::IceCurrentManaRestore:
+		{
+			FGameXXKCardEffect* Mana = FindEffect(EGameXXKCardEffectType::GainMana);
+			const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(Runtime.Units, Snapshot.OwnerUnitId);
+			if (!RequireEffect(Mana, TEXT("Mana")) || !Owner)
+			{
+				if (OutError.IsEmpty())
+				{
+					OutError = TEXT("An Ice Mana sequence has no living runtime owner.");
+				}
+				return false;
+			}
+			const int32 ManaGain = static_cast<int32>(static_cast<int64>(Owner->Mana) * 25 / 100);
+			if (ManaGain > 0)
+			{
+				Mana->Type = EGameXXKCardEffectType::GainManaOverflowToArmor;
+				Mana->Magnitude = 100;
+				Mana->SecondaryMagnitude = ManaGain;
+			}
+			else
+			{
+				Mana->Magnitude = ManaGain;
+			}
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::IceMaxMana:
+		{
+			FGameXXKCardEffect* Armor = FindEffect(EGameXXKCardEffectType::AddArmor);
+			if (!RequireEffect(Armor, TEXT("maximum-Mana")))
+			{
+				return false;
+			}
+			Armor->Type = EGameXXKCardEffectType::IncreaseMaxMana;
+			Armor->Magnitude = 4;
+			FGameXXKCardEffect BonusArmor;
+			BonusArmor.Type = EGameXXKCardEffectType::AddArmor;
+			BonusArmor.Target = Armor->Target;
+			BonusArmor.Source = Armor->Source;
+			BonusArmor.Magnitude = 4;
+			InOutDefinition.Effects.Add(MoveTemp(BonusArmor));
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::IceArmorDouble:
+		{
+			FGameXXKCardEffect* Armor = FindEffect(EGameXXKCardEffectType::AddArmor);
+			const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(Runtime.Units, Snapshot.OwnerUnitId);
+			if (!RequireEffect(Armor, TEXT("armor")) || !Owner)
+			{
+				if (OutError.IsEmpty())
+				{
+					OutError = TEXT("An Ice armor sequence has no living runtime owner.");
+				}
+				return false;
+			}
+			Armor->Magnitude = Owner->Armor == 0 ? 4 : Owner->Armor;
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::IceSearch:
+			return true;
+		case EGameXXKSorcererSequenceRule::LightningMark:
+		case EGameXXKSorcererSequenceRule::LightningSearch:
+		{
+			FGameXXKCardEffect* Mark = FindStatusEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardStatus::Mark);
+			if (!RequireEffect(Mark, TEXT("Mark")))
+			{
+				return false;
+			}
+			if (Position <= 2)
+			{
+				Mark->Magnitude = 3;
+			}
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::LightningMarkHits:
+		case EGameXXKSorcererSequenceRule::LightningStorm:
+		{
+			FGameXXKCardEffect* Lightning = FindEffect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot);
+			if (!RequireEffect(Lightning, TEXT("lightning")))
+			{
+				return false;
+			}
+			if (Position >= 4)
+			{
+				Lightning->Magnitude = InOutDefinition.SorcererRule.SequenceRule == EGameXXKSorcererSequenceRule::LightningMarkHits
+					? 65
+					: 45;
+			}
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::UniversalScalingAttack:
+		{
+			FGameXXKCardEffect* Attack = FindEffect(EGameXXKCardEffectType::DamagePercentAttack);
+			if (!RequireEffect(Attack, TEXT("attack")))
+			{
+				return false;
+			}
+			Attack->Magnitude = 60 + 25 * (Position - 1);
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::UniversalDraw:
+		{
+			if (Position >= 3)
+			{
+				FGameXXKCardEffect Mana;
+				Mana.Type = EGameXXKCardEffectType::GainMana;
+				Mana.Target = EGameXXKCardEffectTarget::CardOwner;
+				Mana.Source = EGameXXKCardEffectSource::CardOwner;
+				Mana.Magnitude = 5;
+				InOutDefinition.Effects.Add(MoveTemp(Mana));
+			}
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::UniversalPartyArmor:
+		{
+			FGameXXKCardEffect* Armor = FindEffect(EGameXXKCardEffectType::AddArmor);
+			if (!RequireEffect(Armor, TEXT("armor")))
+			{
+				return false;
+			}
+			if (Position > 1)
+			{
+				const FGameXXKResolvedCardSnapshot* Previous = FindPreviousSorcererTaskSnapshot(Runtime, Snapshot);
+				const FGameXXKCardDefinition* PreviousDefinition = Previous
+					? FGameXXKCardCatalog::FindCardDefinition(Previous->CardId)
+					: nullptr;
+				if (!PreviousDefinition)
+				{
+					OutError = TEXT("A Sorcerer party-armor sequence cannot find its preceding card definition.");
+					return false;
+				}
+				Armor->Magnitude = SorcererDefinitionHasDirectDamage(*PreviousDefinition) ? 3 : 6;
+			}
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::UniversalSearch:
+		{
+			FGameXXKCardEffect* Attack = FindEffect(EGameXXKCardEffectType::DamagePercentAttack);
+			if (!RequireEffect(Attack, TEXT("attack")))
+			{
+				return false;
+			}
+			if (Position >= 4)
+			{
+				Attack->Magnitude = 90;
+			}
+			return true;
+		}
+		case EGameXXKSorcererSequenceRule::None:
+		default:
+			OutError = TEXT("A Sorcerer card reached an unsupported sequence rule.");
+			return false;
+		}
+	}
+
+	void ApplySorcererIceBranchManaOverflow(
+		const FGameXXKResolvedCardSnapshot& Snapshot,
+		FGameXXKCardDefinition& InOutDefinition)
+	{
+		if (Snapshot.SorcererSequencePosition == 0
+			|| Snapshot.SorcererTaskBranch != EGameXXKSorcererTaskBranch::Ice)
+		{
+			return;
+		}
+		for (FGameXXKCardEffect& Effect : InOutDefinition.Effects)
+		{
+			if (Effect.Type != EGameXXKCardEffectType::GainMana || Effect.Magnitude <= 0)
+			{
+				continue;
+			}
+			Effect.Type = EGameXXKCardEffectType::GainManaOverflowToArmor;
+			Effect.SecondaryMagnitude = Effect.Magnitude;
+			Effect.Magnitude = 100;
+		}
+	}
+
+	bool ShouldApplySorcererCoreSearchDiscount(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName OwnerUnitId,
+		bool& OutShouldApply,
+		FString& OutError)
+	{
+		OutShouldApply = false;
+		OutError.Reset();
+		const FGameXXKResolvedCardSnapshot* SearchSnapshot = nullptr;
+		const FGameXXKAutomaticResolutionQueue& Queue = Runtime.AutomaticResolutionQueue;
+		if (Queue.bActive
+			&& Queue.Origin == EGameXXKCardResolutionOrigin::PartnerSorcererTaskReplay
+			&& Queue.NextCardIndex > 0
+			&& Queue.PendingCards.IsValidIndex(Queue.NextCardIndex - 1))
+		{
+			SearchSnapshot = &Queue.PendingCards[Queue.NextCardIndex - 1];
+		}
+		else
+		{
+			const FGameXXKSorcererPartnerTaskRuntime* Task = Runtime.SorcererPartnerTasks.FindByPredicate(
+				[OwnerUnitId](const FGameXXKSorcererPartnerTaskRuntime& Candidate)
+				{
+					return Candidate.bActive && Candidate.OwnerUnitId == OwnerUnitId;
+				});
+			if (Task && !Task->FirstPlayOrder.IsEmpty())
+			{
+				SearchSnapshot = &Task->FirstPlayOrder.Last();
+			}
+		}
+		if (!SearchSnapshot || SearchSnapshot->OwnerUnitId != OwnerUnitId)
+		{
+			OutError = TEXT("A Sorcerer task search choice lost the snapshot that opened it.");
+			return false;
+		}
+		const FGameXXKCardDefinition* SearchDefinition = FGameXXKCardCatalog::FindCardDefinition(SearchSnapshot->CardId);
+		if (!SearchDefinition)
+		{
+			OutError = TEXT("A Sorcerer task search choice lost its catalog source.");
+			return false;
+		}
+		OutShouldApply = SearchDefinition->SorcererRule.SequenceRule == EGameXXKSorcererSequenceRule::CoreSearch
+			&& SearchSnapshot->SorcererSequencePosition > 0
+			&& SearchSnapshot->SorcererSequencePosition <= 2;
+		return true;
+	}
+
+	bool AddHandBoundSorcererManaDiscount(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardInstance& SelectedInstance,
+		const FName SorcererUnitId,
+		FString& OutError)
+	{
+		OutError.Reset();
+		const FGameXXKCardCombatUnit* Sorcerer = FindCombatUnitById(InOutRuntime.Units, SorcererUnitId);
+		if (!Sorcerer
+			|| !Sorcerer->bLiving
+			|| Sorcerer->Side != EGameXXKCardTargetSide::Party
+			|| Sorcerer->Role != EGameXXKCharacterRole::Sorcerer
+			|| SelectedInstance.InstanceId.IsNone()
+			|| !IsCurrentHandInstance(InOutRuntime.Deck, SelectedInstance.InstanceId))
+		{
+			OutError = TEXT("A Sorcerer search discount requires its living Sorcerer and exact searched hand instance.");
+			return false;
+		}
+
+		TSet<FName> ExistingModifierIds;
+		for (const FGameXXKCardBattleModifierRuntime& ExistingModifier : InOutRuntime.Modifiers)
+		{
+			ExistingModifierIds.Add(ExistingModifier.ModifierId);
+		}
+		FName ModifierId = NAME_None;
+		while (ModifierId.IsNone() || ExistingModifierIds.Contains(ModifierId))
+		{
+			if (InOutRuntime.NextModifierOrdinal == MAX_int32)
+			{
+				OutError = TEXT("Battle modifier ordinal has exhausted the supported range.");
+				return false;
+			}
+			ModifierId = FName(*FString::Printf(TEXT("Modifier.%d"), InOutRuntime.NextModifierOrdinal++));
+		}
+
+		FGameXXKCardBattleModifierRuntime& NewModifier = InOutRuntime.Modifiers.AddDefaulted_GetRef();
+		NewModifier.ModifierId = ModifierId;
+		NewModifier.RequiredPlayedCardInstanceId = SelectedInstance.InstanceId;
+		NewModifier.SourceCardInstanceId = SelectedInstance.InstanceId;
+		NewModifier.SourceUnitId = SorcererUnitId;
+		NewModifier.Definition.Trigger = EGameXXKCardBattleModifierTrigger::OnCardPlayed;
+		NewModifier.Definition.EffectType = EGameXXKCardEffectType::ModifyManaCost;
+		NewModifier.Definition.Target = EGameXXKCardEffectTarget::PlayedCard;
+		NewModifier.Definition.RecipientScope = EGameXXKCardModifierRecipientScope::SharedDeck;
+		NewModifier.Definition.RecipientTarget = EGameXXKCardEffectTarget::PlayedCard;
+		NewModifier.Definition.Expiry = EGameXXKCardModifierExpiry::AfterTriggerCount;
+		NewModifier.Definition.Magnitude = -3;
+		NewModifier.Definition.RemainingTriggers = 1;
+		NewModifier.Definition.bPersistent = true;
+		return true;
+	}
+
+	bool AddSorcererSearchFallbackWhenUnavailable(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName OwnerUnitId,
+		FGameXXKCardDefinition& InOutDefinition,
+		FString& OutError)
+	{
+		if (InOutDefinition.Owner != EGameXXKCardOwner::Profession
+			|| InOutDefinition.OwnerId != FName(TEXT("Profession.Sorcerer"))
+			|| InOutDefinition.Role != EGameXXKCharacterRole::Sorcerer
+			|| !InOutDefinition.Effects.ContainsByPredicate([](const FGameXXKCardEffect& Effect)
+			{
+				return Effect.Type == EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard;
+			})
+			|| !CollectSorcererPartnerTaskSearchCandidates(Runtime, OwnerUnitId).IsEmpty())
+		{
+			return true;
+		}
+
+		const int32 SearchIndex = InOutDefinition.Effects.IndexOfByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Type == EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard;
+		});
+		const EGameXXKCardEffectType FallbackType = InOutDefinition.SorcererRule.SequenceRule == EGameXXKSorcererSequenceRule::IceSearch
+			? EGameXXKCardEffectType::GainArmorFromCurrentManaPercent
+			: EGameXXKCardEffectType::DamagePercentAttack;
+		int32 FallbackIndex = INDEX_NONE;
+		for (int32 Index = SearchIndex - 1; Index >= 0; --Index)
+		{
+			if (InOutDefinition.Effects[Index].Type == FallbackType)
+			{
+				FallbackIndex = Index;
+				break;
+			}
+		}
+		if (SearchIndex == INDEX_NONE || FallbackIndex == INDEX_NONE)
+		{
+			OutError = TEXT("A Sorcerer task search fallback requires its preceding repeatable base effect.");
+			return false;
+		}
+		const FGameXXKCardEffect FallbackEffect = InOutDefinition.Effects[FallbackIndex];
+		InOutDefinition.Effects.Insert(FallbackEffect, SearchIndex + 1);
+		return true;
+	}
+
 	FGameXXKCardCombatUnit* FindLivingTerrainEnemyAnchor(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FName OwnerUnitId,
@@ -5684,6 +9203,7 @@ namespace
 		TSet<int32> AttachedEffectIndices;
 		TMap<FName, int32> ConsumptionResults;
 		TMap<FName, int32> EffectResults;
+		int32 DeferredForcedDiscardCount = 0;
 		bool bPreparedHealingAction = false;
 		int32 HealingBonusPercent = 0;
 		int32 HealingFlatBonus = 0;
@@ -5702,11 +9222,17 @@ namespace
 			{
 				continue;
 			}
-			if (bSkipMissingSelectedTargetEffects
-				&& Effect.Type != EGameXXKCardEffectType::DamagePercentAttack
-				&& EffectRequiresOriginalSelectedTarget(Effect))
+			if (EffectReferencesOriginalSelectedTarget(Effect))
 			{
-				continue;
+				const FGameXXKCardCombatUnit* CurrentSelectedTarget = CardTargetIds.Num() == 1
+					? FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0])
+					: nullptr;
+				if (bSkipMissingSelectedTargetEffects
+					|| !CurrentSelectedTarget
+					|| (EffectRequiresLivingOriginalSelectedTarget(Effect) && !CurrentSelectedTarget->bLiving))
+				{
+					continue;
+				}
 			}
 			if (Effect.Type == EGameXXKCardEffectType::DamagePercentAttack)
 			{
@@ -5731,6 +9257,25 @@ namespace
 			}
 			if (!Effect.ResultRef.IsNone() && EffectResults.FindRef(Effect.ResultRef) <= 0)
 			{
+				continue;
+			}
+			if (Effect.Type == EGameXXKCardEffectType::ChangeTerrain)
+			{
+				if (!IsConcreteTerrain(Effect.TerrainOverride))
+				{
+					OutError = TEXT("A terrain-switch card requires a concrete destination terrain.");
+					return false;
+				}
+				const bool bChanged = InOutRuntime.Terrain != Effect.TerrainOverride;
+				if (bChanged)
+				{
+					InOutRuntime.Terrain = Effect.TerrainOverride;
+					InOutRuntime.bTerrainChangedThisRound = true;
+				}
+				if (!Effect.ResultGroupId.IsNone())
+				{
+					EffectResults.FindOrAdd(Effect.ResultGroupId) = bChanged ? 1 : 0;
+				}
 				continue;
 			}
 			if (Effect.Type == EGameXXKCardEffectType::TriggerTerrainBenefit)
@@ -6013,6 +9558,8 @@ namespace
 				|| Effect.Type == EGameXXKCardEffectType::GainEnergy
 				|| Effect.Type == EGameXXKCardEffectType::RevealEnemyIntent
 				|| Effect.Type == EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard
+				|| Effect.Type == EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard
+				|| Effect.Type == EGameXXKCardEffectType::PreserveNextReactionUse
 				|| Effect.Type == EGameXXKCardEffectType::DoubleTerrainBonus)
 			{
 				bool bConditionSatisfied = false;
@@ -6042,11 +9589,19 @@ namespace
 					}
 					// A dead party character's cards never re-enter the hand through a draw effect.
 					GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
-					if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, Effect.Magnitude, DeclaredDiscardCount, &OutError))
+					if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, Effect.Magnitude, 0, &OutError))
 					{
 						return false;
 					}
-					InOutResult.bOpenedPendingChoice |= InOutRuntime.Deck.PendingChoice.Kind == EGameXXKCardPendingChoiceKind::ForcedDiscard;
+					if (DeclaredDiscardCount > 0)
+					{
+						if (DeferredForcedDiscardCount > 0 && DeferredForcedDiscardCount != DeclaredDiscardCount)
+						{
+							OutError = TEXT("A card cannot defer conflicting forced-discard counts.");
+							return false;
+						}
+						DeferredForcedDiscardCount = DeclaredDiscardCount;
+					}
 				}
 				else if (Effect.Type == EGameXXKCardEffectType::Insight)
 				{
@@ -6075,14 +9630,13 @@ namespace
 				}
 				else if (Effect.Type == EGameXXKCardEffectType::DiscardCards)
 				{
-					if (InOutRuntime.Deck.PendingChoice.Kind == EGameXXKCardPendingChoiceKind::ForcedDiscard)
+					if (DeferredForcedDiscardCount > 0)
 					{
-						if (InOutRuntime.Deck.PendingChoice.RequiredDiscardCount != Effect.Magnitude)
+						if (DeferredForcedDiscardCount != Effect.Magnitude)
 						{
 							OutError = TEXT("Draw-then-discard choice does not match the card's declared discard count.");
 							return false;
 						}
-						InOutResult.bOpenedPendingChoice = true;
 					}
 				}
 				else if (Effect.Type == EGameXXKCardEffectType::GainEnergy)
@@ -6101,8 +9655,13 @@ namespace
 				}
 				else if (Effect.Type == EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard)
 				{
-					if (Effect.Magnitude != 1
-						|| !OpenHeroSpellTaskSearchChoice(InOutRuntime, InOutResult, OutError))
+					const bool bSorcererPartnerSearch = Definition.Owner == EGameXXKCardOwner::Profession
+						&& Definition.OwnerId == FName(TEXT("Profession.Sorcerer"))
+						&& Definition.Role == EGameXXKCharacterRole::Sorcerer;
+					const bool bOpened = bSorcererPartnerSearch
+						? OpenSorcererPartnerTaskSearchChoice(InOutRuntime, Instance.OwnerUnitId, InOutResult, OutError)
+						: OpenHeroSpellTaskSearchChoice(InOutRuntime, InOutResult, OutError);
+					if (Effect.Magnitude != 1 || !bOpened)
 					{
 						if (OutError.IsEmpty())
 						{
@@ -6110,6 +9669,27 @@ namespace
 						}
 						return false;
 					}
+				}
+				else if (Effect.Type == EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard)
+				{
+					if (Effect.Magnitude != 1
+						|| !OpenTaskNpcSpellTaskSearchChoice(InOutRuntime, Instance.OwnerUnitId, InOutResult, OutError))
+					{
+						if (OutError.IsEmpty())
+						{
+							OutError = TEXT("A task-NPC spell-task search must request exactly one carried unfinished card.");
+						}
+						return false;
+					}
+				}
+				else if (Effect.Type == EGameXXKCardEffectType::PreserveNextReactionUse)
+				{
+					if (Effect.Target != EGameXXKCardEffectTarget::AllAllies || Effect.Magnitude != 1)
+					{
+						OutError = TEXT("Reaction-use preservation requires one team-wide use.");
+						return false;
+					}
+					InOutRuntime.PendingPreservedPartyReactionUses = 1;
 				}
 				else
 				{
@@ -6182,6 +9762,65 @@ namespace
 						if (!FindCombatUnitById(InOutRuntime.Units, Target->UnitId)->bLiving)
 						{
 							break;
+						}
+					}
+					break;
+				}
+				case EGameXXKCardEffectType::DamagePercentAttackPerTargetStatus:
+				{
+					if (Effect.Status != EGameXXKCardStatus::Burn
+						|| Effect.Magnitude <= 0
+						|| Effect.SecondaryMagnitude < 0
+						|| Effect.HitCount <= 0)
+					{
+						OutError = TEXT("Status-scaled Sorcerer damage requires Burn, a positive base percentage, and positive hit count.");
+						return false;
+					}
+					const int32 StatusStacks = GameXXKCardRules::GetCombatStatusStacks(*Target, Effect.Status);
+					const int64 Percent = static_cast<int64>(Effect.Magnitude)
+						+ static_cast<int64>(Effect.SecondaryMagnitude) * StatusStacks;
+					const int64 RawDamage = static_cast<int64>(Owner->Attack) * Percent / 100;
+					if (RawDamage <= 0 || RawDamage > MAX_int32)
+					{
+						OutError = TEXT("Status-scaled Sorcerer damage exceeds the supported range.");
+						return false;
+					}
+					const FName DamageOwnerId = Owner->UnitId;
+					const FName DamageTargetId = Target->UnitId;
+					for (int32 HitIndex = 0; HitIndex < Effect.HitCount; ++HitIndex)
+					{
+						Owner = FindCombatUnitById(InOutRuntime.Units, DamageOwnerId);
+						Target = FindCombatUnitById(InOutRuntime.Units, DamageTargetId);
+						if (!Owner || !Owner->bLiving || !Target || !Target->bLiving)
+						{
+							break;
+						}
+						FGameXXKCardDamageContext Context;
+						Context.SourceUnitId = DamageOwnerId;
+						Context.Kind = Effect.Target == EGameXXKCardEffectTarget::AllEnemies
+							? EGameXXKCardDamageKind::GroupAttack
+							: EGameXXKCardDamageKind::SingleTargetAttack;
+						Context.ResolutionOrigin = Origin;
+						FGameXXKCardDamageResult DamageResult;
+						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
+							InOutRuntime,
+							Context,
+							DamageTargetId,
+							static_cast<int32>(RawDamage),
+							DamageResult,
+							&OutError))
+						{
+							return false;
+						}
+						InOutResult.DamageResults.Add(DamageResult);
+						if (!ResolveFirstDirectDamageReactiveModifiers(
+							InOutRuntime,
+							Context,
+							DamageResult,
+							&InOutResult.DamageResults,
+							OutError))
+						{
+							return false;
 						}
 					}
 					break;
@@ -6280,7 +9919,16 @@ namespace
 					}
 					const int64 MultiplierPercent = FMath::Max<int64>(0, 100 + static_cast<int64>(HealingBonusPercent));
 					const int64 FinalHealing = BaseHealing * MultiplierPercent / 100 + HealingFlatBonus;
-					GameXXKCardRules::HealCombatUnit(*Target, static_cast<int32>(FMath::Clamp<int64>(FinalHealing, 0, MAX_int32)));
+					const int32 RequestedHealing = static_cast<int32>(FMath::Clamp<int64>(FinalHealing, 0, MAX_int32));
+					const int32 EffectiveHealing = GameXXKCardRules::HealCombatUnit(*Target, RequestedHealing);
+					if (EffectiveHealing > 0)
+					{
+						FGameXXKCardHealingResult& HealingResult = InOutResult.HealingResults.AddDefaulted_GetRef();
+						HealingResult.SourceUnitId = Owner->UnitId;
+						HealingResult.TargetUnitId = Target->UnitId;
+						HealingResult.RequestedHealing = RequestedHealing;
+						HealingResult.EffectiveHealing = EffectiveHealing;
+					}
 					break;
 				}
 				case EGameXXKCardEffectType::HealOrReverseWithMedicine:
@@ -6307,10 +9955,15 @@ namespace
 					}
 					if (Target->Side == Owner->Side)
 					{
-						GameXXKCardRules::HealCombatUnit(*Target, static_cast<int32>(RawAmount));
-						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Bleed, MAX_int32);
-						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Poison, MAX_int32);
-						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Burn, MAX_int32);
+						const int32 EffectiveHealing = GameXXKCardRules::HealCombatUnit(*Target, static_cast<int32>(RawAmount));
+						if (EffectiveHealing > 0)
+						{
+							FGameXXKCardHealingResult& HealingResult = InOutResult.HealingResults.AddDefaulted_GetRef();
+							HealingResult.SourceUnitId = Owner->UnitId;
+							HealingResult.TargetUnitId = Target->UnitId;
+							HealingResult.RequestedHealing = static_cast<int32>(RawAmount);
+							HealingResult.EffectiveHealing = EffectiveHealing;
+						}
 					}
 					else
 					{
@@ -6336,8 +9989,62 @@ namespace
 					}
 					break;
 				}
+				case EGameXXKCardEffectType::HealOrReverseFlat:
+				{
+					if (Effect.Magnitude <= 0)
+					{
+						OutError = TEXT("Flat healing or reversal requires a positive amount.");
+						return false;
+					}
+					if (Target->Side == Owner->Side)
+					{
+						const int32 EffectiveHealing = GameXXKCardRules::HealCombatUnit(*Target, Effect.Magnitude);
+						if (EffectiveHealing > 0)
+						{
+							FGameXXKCardHealingResult& HealingResult = InOutResult.HealingResults.AddDefaulted_GetRef();
+							HealingResult.SourceUnitId = Owner->UnitId;
+							HealingResult.TargetUnitId = Target->UnitId;
+							HealingResult.RequestedHealing = Effect.Magnitude;
+							HealingResult.EffectiveHealing = EffectiveHealing;
+						}
+					}
+					else
+					{
+						const FName EffectOwnerUnitId = Owner->UnitId;
+						const FName ReverseTargetUnitId = Target->UnitId;
+						FGameXXKCardDamageContext Context;
+						Context.Kind = EGameXXKCardDamageKind::EnvironmentalHealthLoss;
+						Context.ResolutionOrigin = Origin;
+						FGameXXKCardDamageResult DamageResult;
+						if (!GameXXKCardRules::ApplyCombatDirectDamage(
+							InOutRuntime.Units,
+							InOutRuntime.GuardLinks,
+							Context,
+							ReverseTargetUnitId,
+							Effect.Magnitude,
+							DamageResult,
+							&OutError))
+						{
+							return false;
+						}
+						DamageResult.SourceUnitId = EffectOwnerUnitId;
+						InOutResult.DamageResults.Add(MoveTemp(DamageResult));
+					}
+					break;
+				}
 				case EGameXXKCardEffectType::AddArmor:
 					GameXXKCardRules::AddCombatArmor(*Target, Effect.Magnitude);
+					break;
+				case EGameXXKCardEffectType::RetainArmorNextRound:
+					if ((Effect.Target != EGameXXKCardEffectTarget::AllAllies
+							&& Effect.Target != EGameXXKCardEffectTarget::CardOwner)
+						|| Effect.Magnitude != 1
+						|| Target->Side != Owner->Side)
+					{
+						OutError = TEXT("Next-round armor retention requires one living ally or the allied team.");
+						return false;
+					}
+					InOutRuntime.RetainArmorAtNextPartyPhaseUnitIds.AddUnique(Target->UnitId);
 					break;
 				case EGameXXKCardEffectType::GainArmorFromCurrentManaPercent:
 				{
@@ -6357,6 +10064,16 @@ namespace
 				}
 				case EGameXXKCardEffectType::GainMana:
 					Target->Mana = static_cast<int32>(FMath::Min<int64>(Target->MaxMana, static_cast<int64>(Target->Mana) + FMath::Max(0, Effect.Magnitude)));
+					break;
+				case EGameXXKCardEffectType::IncreaseMaxMana:
+					if (Target->UnitId != Owner->UnitId
+						|| Effect.Magnitude <= 0
+						|| Target->MaxMana > MAX_int32 - Effect.Magnitude)
+					{
+						OutError = TEXT("Maximum-Mana growth requires the card owner and a positive supported amount.");
+						return false;
+					}
+					Target->MaxMana += Effect.Magnitude;
 					break;
 				case EGameXXKCardEffectType::GainManaOverflowToArmor:
 				{
@@ -6424,6 +10141,8 @@ namespace
 					break;
 				}
 				case EGameXXKCardEffectType::ApplyStatus:
+				{
+					const int32 StatusBefore = GameXXKCardRules::GetCombatStatusStacks(*Target, Effect.Status);
 					if (!GrantStatusFromCardEffect(
 						InOutRuntime,
 						*Target,
@@ -6433,12 +10152,43 @@ namespace
 					{
 						return false;
 					}
+					const int32 AppliedStacks = GameXXKCardRules::GetCombatStatusStacks(*Target, Effect.Status) - StatusBefore;
+					if (AppliedStacks > 0)
+					{
+						FGameXXKCardStatusChangeResult& StatusChange = InOutResult.StatusChanges.AddDefaulted_GetRef();
+						StatusChange.TargetUnitId = Target->UnitId;
+						StatusChange.Status = Effect.Status;
+						StatusChange.AppliedStacks = AppliedStacks;
+					}
 					break;
+				}
 				case EGameXXKCardEffectType::RemoveStatus:
-					GameXXKCardRules::ConsumeCombatStatus(*Target, Effect.Status, Effect.Magnitude);
+				{
+					const int32 RemovedStacks = GameXXKCardRules::ConsumeCombatStatus(*Target, Effect.Status, Effect.Magnitude);
+					if (RemovedStacks > 0)
+					{
+						FGameXXKCardStatusChangeResult& StatusChange = InOutResult.StatusChanges.AddDefaulted_GetRef();
+						StatusChange.TargetUnitId = Target->UnitId;
+						StatusChange.Status = Effect.Status;
+						StatusChange.RemovedStacks = RemovedStacks;
+					}
 					break;
+				}
 				case EGameXXKCardEffectType::RemoveAnyDamageOverTime:
 					RemoveAnyDamageOverTime(*Target, Effect.Magnitude);
+					break;
+				case EGameXXKCardEffectType::CleanseFriendlyDamageOverTime:
+					if (Effect.Magnitude <= 0)
+					{
+						OutError = TEXT("A friendly damage-over-time cleanse requires a positive operation count.");
+						return false;
+					}
+					if (Target->Side == Owner->Side)
+					{
+						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Bleed, MAX_int32);
+						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Poison, MAX_int32);
+						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Burn, MAX_int32);
+					}
 					break;
 				case EGameXXKCardEffectType::Cleanse:
 					if (Target->Side == Owner->Side)
@@ -6491,7 +10241,18 @@ namespace
 						return false;
 					}
 					TriggerResult.SourceUnitId = TriggerSourceUnitId;
-					TriggerResult.StatusStacksConsumed = GameXXKCardRules::ConsumeCombatStatus(*Target, TriggeredStatus, 1);
+					if (!ResolveTriggeredStatusLayerConsumption(
+						InOutRuntime,
+						*Target,
+						TriggeredStatus,
+						1,
+						TriggerSourceUnitId,
+						TriggerResult.HealthDamage,
+						TriggerResult.StatusStacksConsumed,
+						OutError))
+					{
+						return false;
+					}
 					InOutResult.DamageResults.Add(MoveTemp(TriggerResult));
 					break;
 				}
@@ -6550,7 +10311,18 @@ namespace
 						}
 						TriggerResult.SourceUnitId = TriggerOwnerId;
 						TriggerResult.ResolutionOrigin = Origin;
-						TriggerResult.StatusStacksConsumed = GameXXKCardRules::ConsumeCombatStatus(*Target, Effect.Status, 1);
+						if (!ResolveTriggeredStatusLayerConsumption(
+							InOutRuntime,
+							*Target,
+							Effect.Status,
+							1,
+							TriggerOwnerId,
+							TriggerResult.HealthDamage,
+							TriggerResult.StatusStacksConsumed,
+							OutError))
+						{
+							return false;
+						}
 						InOutResult.DamageResults.Add(MoveTemp(TriggerResult));
 					}
 					break;
@@ -6624,6 +10396,12 @@ namespace
 					{
 						return false;
 					}
+					TSet<EGameXXKCardDamageCause> DistinctDotCauses;
+					for (const FGameXXKCardDamageResult& ExplosionResult : ExplosionResults)
+					{
+						DistinctDotCauses.Add(ExplosionResult.Cause);
+					}
+					InOutResult.ToxicExplosionDistinctDotTypeCounts.Add(DistinctDotCauses.Num());
 					for (FGameXXKCardDamageResult& ExplosionResult : ExplosionResults)
 					{
 						ExplosionResult.ResolutionOrigin = Origin;
@@ -6726,8 +10504,7 @@ namespace
 					{
 						if (GuardianUnitId == EffectTargetId)
 						{
-							OutError = TEXT("A guard link cannot protect its own guardian.");
-							return false;
+							continue;
 						}
 						FGameXXKCardGuardLinkRuntime* ExistingLink = InOutRuntime.GuardLinks.FindByPredicate([GuardianUnitId, EffectTargetId, &Effect](const FGameXXKCardGuardLinkRuntime& Link)
 						{
@@ -6764,6 +10541,15 @@ namespace
 				}
 			}
 		}
+		if (DeferredForcedDiscardCount > 0)
+		{
+			GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+			if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, 0, DeferredForcedDiscardCount, &OutError))
+			{
+				return false;
+			}
+			InOutResult.bOpenedPendingChoice = true;
+		}
 		return true;
 	}
 
@@ -6773,7 +10559,8 @@ namespace
 		const EGameXXKCardResolutionOrigin Origin,
 		FGameXXKCardPlayResult& InOutResult,
 		FString& OutError,
-		const int32 PrimaryAttackBonusPercent = 0)
+		const int32 PrimaryAttackBonusPercent = 0,
+		const FGameXXKCardDefinition* EffectiveDefinitionOverride = nullptr)
 	{
 		if (Origin == EGameXXKCardResolutionOrigin::Invalid)
 		{
@@ -6807,10 +10594,29 @@ namespace
 			return true;
 		}
 
-		const FGameXXKCardDefinition QualityEffectiveDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
-			*BaseDefinition,
-			Snapshot.Quality);
-		if (!ValidateCurrentEffectPlan(QualityEffectiveDefinition, OutError))
+		FGameXXKCardDefinition QualityEffectiveDefinition = EffectiveDefinitionOverride
+			? *EffectiveDefinitionOverride
+			: FGameXXKCardQualityRules::BuildEffectiveDefinition(*BaseDefinition, Snapshot.Quality);
+		if (QualityEffectiveDefinition.Id != Snapshot.CardId)
+		{
+			OutError = TEXT("An active-card definition override does not match its stable snapshot CardId.");
+			return false;
+		}
+		if (!ApplySorcererSequenceDefinition(
+			InOutRuntime,
+			Snapshot,
+			QualityEffectiveDefinition,
+			OutError))
+		{
+			return false;
+		}
+		ApplySorcererIceBranchManaOverflow(Snapshot, QualityEffectiveDefinition);
+		if (!AddSorcererSearchFallbackWhenUnavailable(
+			InOutRuntime,
+			Snapshot.OwnerUnitId,
+			QualityEffectiveDefinition,
+			OutError)
+			|| !ValidateCurrentEffectPlan(QualityEffectiveDefinition, OutError))
 		{
 			return false;
 		}
@@ -6883,23 +10689,54 @@ namespace
 	bool LockHeavyArrowCharge(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FName OwnerUnitId,
+		const EGameXXKHeavyArrowChargeSource ChargeSource,
 		FGameXXKCardPlayResult& InOutResult,
 		int32& OutLockedCharge,
+		FName& OutChargeOwnerUnitId,
 		FString& OutError)
 	{
 		OutLockedCharge = 0;
-		FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
-		if (!Owner || !Owner->bLiving)
+		OutChargeOwnerUnitId = NAME_None;
+		switch (ChargeSource)
+		{
+		case EGameXXKHeavyArrowChargeSource::CardOwner:
+			OutChargeOwnerUnitId = OwnerUnitId;
+			break;
+		case EGameXXKHeavyArrowChargeSource::HighestAttackAlly:
+		{
+			TArray<FName> ChargeOwnerIds;
+			if (!ResolveEffectTargetIds(
+				InOutRuntime,
+				OwnerUnitId,
+				{},
+				EGameXXKCardEffectTarget::HighestAttackAlly,
+				ChargeOwnerIds,
+				OutError))
+			{
+				return false;
+			}
+			if (ChargeOwnerIds.Num() == 1)
+			{
+				OutChargeOwnerUnitId = ChargeOwnerIds[0];
+			}
+			break;
+		}
+		default:
+			OutError = TEXT("Heavy Arrow has an unsupported Charge source.");
+			return false;
+		}
+		FGameXXKCardCombatUnit* ChargeOwner = FindCombatUnitById(InOutRuntime.Units, OutChargeOwnerUnitId);
+		if (!ChargeOwner || !ChargeOwner->bLiving)
 		{
 			return true;
 		}
-		OutLockedCharge = GameXXKCardRules::GetCombatStatusStacks(*Owner, EGameXXKCardStatus::Charge);
+		OutLockedCharge = GameXXKCardRules::GetCombatStatusStacks(*ChargeOwner, EGameXXKCardStatus::Charge);
 		if (OutLockedCharge <= 0)
 		{
 			return true;
 		}
 		const int32 ConsumedCharge = GameXXKCardRules::ConsumeCombatStatus(
-			*Owner,
+			*ChargeOwner,
 			EGameXXKCardStatus::Charge,
 			OutLockedCharge);
 		if (ConsumedCharge != OutLockedCharge)
@@ -6914,7 +10751,7 @@ namespace
 	bool ResolveHeavyArrowPostLockEffects(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FGameXXKHeavyArrowRule& Rule,
-		const FName OwnerUnitId,
+		const FName ChargeOwnerUnitId,
 		const TArray<FName>& CardTargetIds,
 		const int32 LockedCharge,
 		FGameXXKCardPlayResult& InOutResult,
@@ -6923,6 +10760,36 @@ namespace
 		if (LockedCharge <= 0 || Rule.Kind == EGameXXKHeavyArrowKind::None)
 		{
 			return true;
+		}
+		FGameXXKCardCombatUnit* ChargeOwner = FindCombatUnitById(InOutRuntime.Units, ChargeOwnerUnitId);
+		if (!ChargeOwner || !ChargeOwner->bLiving || Rule.ManaPerCharge < 0)
+		{
+			OutError = TEXT("Heavy Arrow has no living Charge owner or has invalid Mana restoration.");
+			return false;
+		}
+		const int64 ManaGain = static_cast<int64>(Rule.ManaPerCharge) * LockedCharge;
+		ChargeOwner->Mana = static_cast<int32>(FMath::Min<int64>(
+			ChargeOwner->MaxMana,
+			static_cast<int64>(ChargeOwner->Mana) + ManaGain));
+		const int64 DrawCount = static_cast<int64>(Rule.DrawPerCharge) * LockedCharge;
+		if (DrawCount < 0 || DrawCount > MAX_int32)
+		{
+			OutError = TEXT("A Heavy Arrow draw count exceeds the supported range.");
+			return false;
+		}
+		if (DrawCount > 0)
+		{
+			GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+			if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, static_cast<int32>(DrawCount), 0, &OutError))
+			{
+				return false;
+			}
+		}
+		if (Rule.MinimumChargeForEnergy > 0 && LockedCharge >= Rule.MinimumChargeForEnergy)
+		{
+			InOutRuntime.Deck.SharedEnergy = FMath::Min(
+				MaxCardBattleEnergy,
+				InOutRuntime.Deck.SharedEnergy + Rule.EnergyGain);
 		}
 
 		switch (Rule.Kind)
@@ -6936,7 +10803,7 @@ namespace
 			}
 			for (int32 ChargeIndex = 0; ChargeIndex < LockedCharge; ++ChargeIndex)
 			{
-				const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+				const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, ChargeOwnerUnitId);
 				const FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0]);
 				if (!Owner || !Owner->bLiving || !Target || !Target->bLiving)
 				{
@@ -6949,7 +10816,7 @@ namespace
 					return false;
 				}
 				FGameXXKCardDamageContext Context;
-				Context.SourceUnitId = OwnerUnitId;
+				Context.SourceUnitId = ChargeOwnerUnitId;
 				Context.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
 				Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::HeavyArrow;
 				FGameXXKCardDamageResult DamageResult;
@@ -6965,6 +10832,22 @@ namespace
 				}
 				InOutResult.DamageResults.Add(DamageResult);
 				++InOutResult.HeavyArrowExtraAttackCount;
+				if (!DamageResult.bAvoidedByAgility)
+				{
+					int32 TriggeredBleedDamage = 0;
+					if (!ResolveBleedAfterUnavoidedDirectHit(
+						InOutRuntime,
+						CardTargetIds[0],
+						ChargeOwnerUnitId,
+						EGameXXKCardResolutionOrigin::HeavyArrow,
+						1,
+						InOutResult,
+						TriggeredBleedDamage,
+						OutError))
+					{
+						return false;
+					}
+				}
 				if (!ResolveFirstDirectDamageReactiveModifiers(
 					InOutRuntime,
 					Context,
@@ -6975,7 +10858,7 @@ namespace
 					return false;
 				}
 			}
-			return true;
+			break;
 		}
 		case EGameXXKHeavyArrowKind::ToxicExplosionPerCharge:
 		{
@@ -6986,7 +10869,7 @@ namespace
 			}
 			for (int32 ChargeIndex = 0; ChargeIndex < LockedCharge; ++ChargeIndex)
 			{
-				const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+				const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, ChargeOwnerUnitId);
 				const FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, CardTargetIds[0]);
 				if (!Owner || !Owner->bLiving || !Target || !Target->bLiving)
 				{
@@ -6995,7 +10878,7 @@ namespace
 				TArray<FGameXXKCardDamageResult> ExplosionResults;
 				if (!GameXXKCardRules::ResolveToxicExplosion(
 					InOutRuntime,
-					OwnerUnitId,
+					ChargeOwnerUnitId,
 					CardTargetIds[0],
 					false,
 					ExplosionResults,
@@ -7003,6 +10886,12 @@ namespace
 				{
 					return false;
 				}
+				TSet<EGameXXKCardDamageCause> DistinctDotCauses;
+				for (const FGameXXKCardDamageResult& ExplosionResult : ExplosionResults)
+				{
+					DistinctDotCauses.Add(ExplosionResult.Cause);
+				}
+				InOutResult.ToxicExplosionDistinctDotTypeCounts.Add(DistinctDotCauses.Num());
 				for (FGameXXKCardDamageResult& ExplosionResult : ExplosionResults)
 				{
 					ExplosionResult.ResolutionOrigin = EGameXXKCardResolutionOrigin::HeavyArrow;
@@ -7010,37 +10899,83 @@ namespace
 				}
 				++InOutResult.HeavyArrowToxicExplosionCount;
 			}
-			return true;
+			break;
 		}
 		case EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge:
-		{
-			const int64 DrawCount = static_cast<int64>(Rule.DrawPerCharge) * LockedCharge;
-			if (DrawCount < 0 || DrawCount > MAX_int32)
-			{
-				OutError = TEXT("A Heavy Arrow draw count exceeds the supported range.");
-				return false;
-			}
-			if (DrawCount > 0)
-			{
-				GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
-				if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, static_cast<int32>(DrawCount), 0, &OutError))
-				{
-					return false;
-				}
-			}
-			if (Rule.MinimumChargeForEnergy > 0 && LockedCharge >= Rule.MinimumChargeForEnergy)
-			{
-				InOutRuntime.Deck.SharedEnergy = FMath::Min(
-					MaxCardBattleEnergy,
-					InOutRuntime.Deck.SharedEnergy + Rule.EnergyGain);
-			}
-			return true;
-		}
+			break;
 		case EGameXXKHeavyArrowKind::None:
 		default:
 			OutError = TEXT("A Heavy Arrow action has an unsupported rule kind.");
 			return false;
 		}
+
+		const int64 BleedTriggerCount = static_cast<int64>(Rule.TriggeredBleedResolutionsPerCharge) * LockedCharge;
+		if (BleedTriggerCount > MAX_int32)
+		{
+			OutError = TEXT("A Heavy Arrow Bleed-trigger count exceeds the supported range.");
+			return false;
+		}
+		if (BleedTriggerCount > 0)
+		{
+			if (CardTargetIds.Num() != 1)
+			{
+				OutError = TEXT("A Heavy Arrow Bleed trigger requires one stable original target.");
+				return false;
+			}
+			for (int32 TriggerIndex = 0; TriggerIndex < static_cast<int32>(BleedTriggerCount); ++TriggerIndex)
+			{
+				int32 TriggeredBleedDamage = 0;
+				if (!ResolveBleedAfterUnavoidedDirectHit(
+					InOutRuntime,
+					CardTargetIds[0],
+					ChargeOwnerUnitId,
+					EGameXXKCardResolutionOrigin::HeavyArrow,
+					1,
+					InOutResult,
+					TriggeredBleedDamage,
+					OutError))
+				{
+					return false;
+				}
+			}
+		}
+
+		const int64 BonusStatusStacks = static_cast<int64>(Rule.BonusStatusStacksPerCharge) * LockedCharge;
+		if (BonusStatusStacks > MAX_int32)
+		{
+			OutError = TEXT("A Heavy Arrow status payload exceeds the supported range.");
+			return false;
+		}
+		if (BonusStatusStacks > 0)
+		{
+			FName StatusTargetUnitId = NAME_None;
+			switch (Rule.BonusStatusTarget)
+			{
+			case EGameXXKCardEffectTarget::CardOwner:
+				StatusTargetUnitId = ChargeOwnerUnitId;
+				break;
+			case EGameXXKCardEffectTarget::SelectedTarget:
+				if (CardTargetIds.Num() != 1)
+				{
+					OutError = TEXT("A Heavy Arrow target status requires one stable original target.");
+					return false;
+				}
+				StatusTargetUnitId = CardTargetIds[0];
+				break;
+			default:
+				OutError = TEXT("A Heavy Arrow status payload has an unsupported target.");
+				return false;
+			}
+			FGameXXKCardCombatUnit* StatusTarget = FindCombatUnitById(InOutRuntime.Units, StatusTargetUnitId);
+			if (StatusTarget && StatusTarget->bLiving
+				&& GameXXKCardRules::AddCombatStatus(*StatusTarget, Rule.BonusStatus, static_cast<int32>(BonusStatusStacks)) > 0
+				&& StatusTarget->Side == EGameXXKCardTargetSide::Enemy
+				&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(InOutRuntime, *StatusTarget, &OutError))
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	bool HasActiveAttackEffect(const FGameXXKCardDefinition& Definition)
@@ -7130,12 +11065,1063 @@ namespace
 			Queue.NextCardIndex = 0;
 		}
 		else if (Queue.Origin != EGameXXKCardResolutionOrigin::AutomaticReplay
-			|| Queue.PendingReward != EGameXXKHeroSpellTaskReward::None)
+			|| Queue.PendingReward != EGameXXKHeroSpellTaskReward::None
+			|| Queue.PendingSorcererReward != EGameXXKSorcererRewardRule::None)
 		{
 			OutError = TEXT("A Blade replay cannot join a different automatic-resolution operation.");
 			return false;
 		}
 		Queue.PendingCards.Add(Snapshot);
+		return true;
+	}
+
+	bool CreateZeroCostTemporaryCopy(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardInstance& PlayedInstance,
+		FString& OutError);
+
+	bool ResolveBladeDelayedCardAtPlayerRoundStart(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		TArray<FGameXXKCardDamageResult>& InOutBoundaryDamageResults,
+		FString& OutError)
+	{
+		if (InOutRuntime.PendingBladeDelayedCard.Rule == EGameXXKBladeChargeRule::None)
+		{
+			return true;
+		}
+		if (InOutRuntime.PendingBladeDelayedCard.TriggerPlayerRound != InOutRuntime.RoundNumber)
+		{
+			OutError = TEXT("A delayed Blade card reached the wrong player-round boundary.");
+			return false;
+		}
+		const FGameXXKBladeDelayedCardRuntime Delayed = InOutRuntime.PendingBladeDelayedCard;
+		InOutRuntime.PendingBladeDelayedCard = FGameXXKBladeDelayedCardRuntime();
+		switch (Delayed.Rule)
+		{
+		case EGameXXKBladeChargeRule::ReplayNextActiveNextRound:
+			if (!QueueAutomaticCardReplay(InOutRuntime, Delayed.RecordedCard, OutError))
+			{
+				return false;
+			}
+			break;
+		case EGameXXKBladeChargeRule::CopyNextActiveNextRound:
+			if (!CreateZeroCostTemporaryCopy(InOutRuntime, Delayed.RecordedInstance, OutError))
+			{
+				return false;
+			}
+			break;
+		case EGameXXKBladeChargeRule::RetainNextActiveNextRound:
+		{
+			const int32 ExhaustIndex = InOutRuntime.Deck.ExhaustPile.IndexOfByPredicate([&Delayed](const FGameXXKCardInstance& Card)
+			{
+				return Card.InstanceId == Delayed.RecordedInstance.InstanceId;
+			});
+			if (ExhaustIndex == INDEX_NONE
+				|| !IsSameInstance(InOutRuntime.Deck.ExhaustPile[ExhaustIndex], Delayed.RecordedInstance))
+			{
+				OutError = TEXT("A delayed retained Blade card lost its isolated exact instance.");
+				return false;
+			}
+			if (InOutRuntime.Deck.Hand.Num() >= BattleHandCapacity)
+			{
+				OutError = TEXT("A delayed retained Blade card has no available hand slot.");
+				return false;
+			}
+			InOutRuntime.Deck.Hand.Add(MoveTemp(InOutRuntime.Deck.ExhaustPile[ExhaustIndex]));
+			InOutRuntime.Deck.ExhaustPile.RemoveAt(ExhaustIndex, 1, EAllowShrinking::No);
+			break;
+		}
+		case EGameXXKBladeChargeRule::None:
+		default:
+			OutError = TEXT("A delayed Blade card reached an unsupported player-round action.");
+			return false;
+		}
+
+		TArray<FGameXXKCardPlayResult> AutomaticResults;
+		if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(InOutRuntime, AutomaticResults, &OutError))
+		{
+			return false;
+		}
+		for (FGameXXKCardPlayResult& Result : AutomaticResults)
+		{
+			InOutBoundaryDamageResults.Append(MoveTemp(Result.DamageResults));
+		}
+		return true;
+	}
+
+	void ArmImplementedPartnerBladeCharge(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardInstance& Instance)
+	{
+		if (Definition.Owner != EGameXXKCardOwner::Profession
+			|| Definition.Role != EGameXXKCharacterRole::Blade
+			|| !IsImplementedPartnerBladeChargeRule(Definition.BladeSequence.ChargeRule))
+		{
+			return;
+		}
+		FGameXXKBladeChargeRuntime& Charge = InOutRuntime.PendingBladeCharge;
+		Charge.Rule = Definition.BladeSequence.ChargeRule;
+		Charge.SourceCardId = Definition.Id;
+		Charge.SourceQuality = Instance.CurrentQuality;
+		Charge.SourceOwnerUnitId = Instance.OwnerUnitId;
+		Charge.CreatedRound = InOutRuntime.RoundNumber;
+	}
+
+	bool RecordBladeCardForNextRound(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKBladeChargeRuntime& Charge,
+		const FGameXXKResolvedCardSnapshot& PlayedSnapshot,
+		const FGameXXKCardInstance& PlayedInstance,
+		FString& OutError)
+	{
+		if (InOutRuntime.PendingBladeDelayedCard.Rule != EGameXXKBladeChargeRule::None)
+		{
+			OutError = TEXT("A Blade Charge cannot replace an unresolved delayed card.");
+			return false;
+		}
+		FGameXXKBladeDelayedCardRuntime& Delayed = InOutRuntime.PendingBladeDelayedCard;
+		Delayed.Rule = Charge.Rule;
+		Delayed.SourceCardId = Charge.SourceCardId;
+		Delayed.SourceQuality = Charge.SourceQuality;
+		Delayed.SourceOwnerUnitId = Charge.SourceOwnerUnitId;
+		Delayed.RecordedCard = PlayedSnapshot;
+		Delayed.RecordedInstance = PlayedInstance;
+		Delayed.TriggerPlayerRound = InOutRuntime.RoundNumber + 1;
+		return true;
+	}
+
+	bool IsolateBladeCardForNextRound(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKBladeChargeRuntime& Charge,
+		const FGameXXKResolvedCardSnapshot& PlayedSnapshot,
+		const FGameXXKCardInstance& PlayedInstance,
+		FString& OutError)
+	{
+		if (InOutRuntime.PendingBladeDelayedCard.Rule != EGameXXKBladeChargeRule::None)
+		{
+			OutError = TEXT("A Blade Charge cannot replace an unresolved delayed card.");
+			return false;
+		}
+		int32 ExhaustIndex = InOutRuntime.Deck.ExhaustPile.IndexOfByPredicate([&PlayedInstance](const FGameXXKCardInstance& Card)
+		{
+			return Card.InstanceId == PlayedInstance.InstanceId;
+		});
+		if (ExhaustIndex == INDEX_NONE)
+		{
+			const int32 DiscardIndex = InOutRuntime.Deck.DiscardPile.IndexOfByPredicate([&PlayedInstance](const FGameXXKCardInstance& Card)
+			{
+				return Card.InstanceId == PlayedInstance.InstanceId;
+			});
+			if (DiscardIndex == INDEX_NONE)
+			{
+				OutError = TEXT("The active card selected for delayed retention is not in discard or exhaust after resolving.");
+				return false;
+			}
+			InOutRuntime.Deck.ExhaustPile.Add(MoveTemp(InOutRuntime.Deck.DiscardPile[DiscardIndex]));
+			InOutRuntime.Deck.DiscardPile.RemoveAt(DiscardIndex, 1, EAllowShrinking::No);
+			ExhaustIndex = InOutRuntime.Deck.ExhaustPile.Num() - 1;
+		}
+		if (!IsSameInstance(InOutRuntime.Deck.ExhaustPile[ExhaustIndex], PlayedInstance))
+		{
+			OutError = TEXT("The active card selected for delayed retention changed identity after resolving.");
+			return false;
+		}
+		return RecordBladeCardForNextRound(InOutRuntime, Charge, PlayedSnapshot, PlayedInstance, OutError);
+	}
+
+	bool CreateZeroCostTemporaryCopy(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardInstance& PlayedInstance,
+		FString& OutError)
+	{
+		if (PlayedInstance.bTemporary || InOutRuntime.Deck.Hand.Num() >= BattleHandCapacity)
+		{
+			return true;
+		}
+		if (InOutRuntime.NextGeneratedCardOrdinal == MAX_int32)
+		{
+			OutError = TEXT("Generated-card identities have exhausted the supported range.");
+			return false;
+		}
+		const int32 GeneratedOrdinal = InOutRuntime.NextGeneratedCardOrdinal++;
+		const FName GeneratedInstanceId(*FString::Printf(
+			TEXT("Generated.Blade.%d.%d"),
+			InOutRuntime.RoundNumber,
+			GeneratedOrdinal));
+		if (InOutRuntime.Deck.ActiveInstanceIds.Contains(GeneratedInstanceId))
+		{
+			OutError = TEXT("A generated Blade copy collided with an existing stable card identity.");
+			return false;
+		}
+
+		FGameXXKCardInstance Copy = PlayedInstance;
+		Copy.InstanceId = GeneratedInstanceId;
+		Copy.SourceEntryId = GeneratedInstanceId;
+		Copy.AcquisitionOrdinal = GeneratedOrdinal;
+		Copy.bTemporary = true;
+		Copy.EnergyCostOverride = 0;
+		Copy.ManaCostOverride = 0;
+		Copy.ExpireAfterPlayerRound = InOutRuntime.RoundNumber;
+		InOutRuntime.Deck.ActiveInstanceIds.Add(GeneratedInstanceId);
+		InOutRuntime.Deck.Hand.Add(MoveTemp(Copy));
+		return true;
+	}
+
+	bool RestoreConsumedStatusesAndArmor(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const TArray<FGameXXKCardCombatUnit>* UnitsBeforeActiveCard,
+		FString& OutError)
+	{
+		if (!UnitsBeforeActiveCard)
+		{
+			OutError = TEXT("A restore-consumption Blade Charge has no pre-resolution unit snapshot.");
+			return false;
+		}
+		for (const FGameXXKCardCombatUnit& Before : *UnitsBeforeActiveCard)
+		{
+			FGameXXKCardCombatUnit* Current = FindCombatUnitById(InOutRuntime.Units, Before.UnitId);
+			if (!Current || !Current->bLiving)
+			{
+				continue;
+			}
+			const int32 ArmorToRestore = FMath::Max(0, Before.Armor - Current->Armor);
+			if (ArmorToRestore > 0
+				&& GameXXKCardRules::AddCombatArmor(*Current, ArmorToRestore) != ArmorToRestore)
+			{
+				OutError = TEXT("A restore-consumption Blade Charge could not restore the consumed Armor amount.");
+				return false;
+			}
+			for (const FGameXXKCardStatusStack& BeforeStatus : Before.Statuses)
+			{
+				const int32 CurrentStacks = GameXXKCardRules::GetCombatStatusStacks(*Current, BeforeStatus.Status);
+				const int32 StacksToRestore = FMath::Max(0, BeforeStatus.Stacks - CurrentStacks);
+				if (StacksToRestore > 0
+					&& GameXXKCardRules::AddCombatStatus(*Current, BeforeStatus.Status, StacksToRestore) != StacksToRestore)
+				{
+					OutError = TEXT("A restore-consumption Blade Charge could not restore a consumed status amount.");
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	bool IsSingleUnitTargetMode(const EGameXXKCardTargetMode Mode)
+	{
+		switch (Mode)
+		{
+		case EGameXXKCardTargetMode::Self:
+		case EGameXXKCardTargetMode::SingleEnemy:
+		case EGameXXKCardTargetMode::SingleAlly:
+		case EGameXXKCardTargetMode::OtherAlly:
+		case EGameXXKCardTargetMode::RandomEnemy:
+		case EGameXXKCardTargetMode::LowestHealthAlly:
+		case EGameXXKCardTargetMode::LowestHealthOtherAlly:
+		case EGameXXKCardTargetMode::AnyLivingUnit:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	bool DuplicateSingleTargetOrDrawTwo(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKResolvedCardSnapshot& PlayedSnapshot,
+		const FGameXXKCardInstance& PlayedInstance,
+		FString& OutError)
+	{
+		const FGameXXKCardDefinition* BaseDefinition = FGameXXKCardCatalog::FindCardDefinition(PlayedSnapshot.CardId);
+		if (!BaseDefinition)
+		{
+			OutError = TEXT("A branch-by-target-mode Blade Charge lost the triggered card definition.");
+			return false;
+		}
+		const FGameXXKCardDefinition Definition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
+			*BaseDefinition,
+			PlayedSnapshot.Quality);
+		FGameXXKCardTargetRequest Request;
+		if (!GameXXKCardRules::BuildTargetRequest(
+			Definition,
+			PlayedInstance,
+			InOutRuntime.Terrain,
+			BuildTargetUnitView(InOutRuntime.Units),
+			Request,
+			&OutError))
+		{
+			return false;
+		}
+		if (!IsSingleUnitTargetMode(Request.EffectiveMode))
+		{
+			GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+			return GameXXKCardRules::DrawCards(InOutRuntime.Deck, 2, 0, &OutError);
+		}
+		if (PlayedSnapshot.OriginalTargetUnitIds.Num() != 1)
+		{
+			OutError = TEXT("A single-target Blade Charge requires one resolved original target.");
+			return false;
+		}
+		const FName OriginalTargetId = PlayedSnapshot.OriginalTargetUnitIds[0];
+		const FGameXXKCardCombatUnit* OriginalTarget = FindCombatUnitById(InOutRuntime.Units, OriginalTargetId);
+		if (!OriginalTarget)
+		{
+			OutError = TEXT("A single-target Blade Charge lost its original target record.");
+			return false;
+		}
+		for (const FGameXXKCardTargetCandidateView& Candidate : Request.CandidateViews)
+		{
+			const FGameXXKCardCombatUnit* CandidateUnit = FindCombatUnitById(InOutRuntime.Units, Candidate.UnitId);
+			if (!Candidate.bCanSelect
+				|| !CandidateUnit
+				|| Candidate.UnitId == OriginalTargetId
+				|| CandidateUnit->Side != OriginalTarget->Side)
+			{
+				continue;
+			}
+			FGameXXKResolvedCardSnapshot DuplicatedSnapshot = PlayedSnapshot;
+			DuplicatedSnapshot.OriginalTargetUnitIds = {Candidate.UnitId};
+			return QueueAutomaticCardReplay(InOutRuntime, DuplicatedSnapshot, OutError);
+		}
+		return true;
+	}
+
+	bool DrawBladeOwnerFilteredCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardInstance& TriggeredInstance,
+		const bool bSameOwner,
+		FString& OutError)
+	{
+		GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+		if (InOutRuntime.Deck.Hand.Num() >= BattleHandCapacity
+			|| !EnsureDrawPileHasCard(InOutRuntime.Deck))
+		{
+			return true;
+		}
+		TArray<int32> EligibleIndices;
+		for (int32 Index = 0; Index < InOutRuntime.Deck.DrawPile.Num(); ++Index)
+		{
+			const bool bOwnerMatches = InOutRuntime.Deck.DrawPile[Index].OwnerUnitId == TriggeredInstance.OwnerUnitId;
+			if (bOwnerMatches == bSameOwner)
+			{
+				EligibleIndices.Add(Index);
+			}
+		}
+		if (EligibleIndices.IsEmpty())
+		{
+			return GameXXKCardRules::DrawCards(InOutRuntime.Deck, 1, 0, &OutError);
+		}
+		const int32 PickedDrawIndex = EligibleIndices[NextRandomIndex(
+			InOutRuntime.Deck.CurrentRandomState,
+			EligibleIndices.Num())];
+		InOutRuntime.Deck.Hand.Add(MoveTemp(InOutRuntime.Deck.DrawPile[PickedDrawIndex]));
+		InOutRuntime.Deck.DrawPile.RemoveAt(PickedDrawIndex, 1, EAllowShrinking::No);
+		return true;
+	}
+
+	bool ResolveImplementedSheathedChargeAfterActiveCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const EGameXXKBladeChargeRule Rule,
+		const FGameXXKCardInstance& PlayedInstance,
+		FString& OutError)
+	{
+		switch (Rule)
+		{
+		case EGameXXKBladeChargeRule::LightLoad:
+			GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+			return GameXXKCardRules::DrawCards(InOutRuntime.Deck, 1, 0, &OutError);
+		case EGameXXKBladeChargeRule::DrawTwoAfterNextActive:
+			GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+			return GameXXKCardRules::DrawCards(InOutRuntime.Deck, 2, 0, &OutError);
+		case EGameXXKBladeChargeRule::DrawSameOwnerAfterNextActive:
+			return DrawBladeOwnerFilteredCard(InOutRuntime, PlayedInstance, true, OutError);
+		case EGameXXKBladeChargeRule::DrawOtherOwnerAfterNextActive:
+			return DrawBladeOwnerFilteredCard(InOutRuntime, PlayedInstance, false, OutError);
+		case EGameXXKBladeChargeRule::None:
+		default:
+			OutError = TEXT("A Sheathed Charge reached an unsupported after-active action.");
+			return false;
+		}
+	}
+
+	bool ConsumeImplementedPartnerBladeCharge(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKResolvedCardSnapshot& PlayedSnapshot,
+		const FGameXXKCardInstance& PlayedInstance,
+		const TArray<FGameXXKCardCombatUnit>* UnitsBeforeActiveCard,
+		const int32 PaidEnergy,
+		const int32 PaidMana,
+		int32& OutAdditionalActiveCardCount,
+		bool& OutPreserveFinishCandidate,
+		FString& OutError)
+	{
+		OutAdditionalActiveCardCount = 0;
+		OutPreserveFinishCandidate = false;
+		if (InOutRuntime.PendingBladeCharge.Rule == EGameXXKBladeChargeRule::None)
+		{
+			return true;
+		}
+		const FGameXXKBladeChargeRuntime Charge = InOutRuntime.PendingBladeCharge;
+		const EGameXXKBladeChargeRule Rule = Charge.Rule;
+		InOutRuntime.PendingBladeCharge = FGameXXKBladeChargeRuntime();
+		if (PlayedInstance.bTemporary
+			&& Rule != EGameXXKBladeChargeRule::MakeNextActiveEnergyFree
+			&& Rule != EGameXXKBladeChargeRule::MakeNextActiveManaFree
+			&& Rule != EGameXXKBladeChargeRule::RefundNextActiveCosts
+			&& Rule != EGameXXKBladeChargeRule::CountNextActiveTwice
+			&& Rule != EGameXXKBladeChargeRule::PreserveFinishCandidate
+			&& Rule != EGameXXKBladeChargeRule::RetainRemainingHand
+			&& !IsImplementedSheathedStyleRule(Rule))
+		{
+			return true;
+		}
+		switch (Rule)
+		{
+		case EGameXXKBladeChargeRule::ReplayNextActiveBase:
+			return QueueAutomaticCardReplay(InOutRuntime, PlayedSnapshot, OutError);
+		case EGameXXKBladeChargeRule::CopyNextActiveToHand:
+			return CreateZeroCostTemporaryCopy(InOutRuntime, PlayedInstance, OutError);
+		case EGameXXKBladeChargeRule::ReturnNextActiveToHandOnce:
+		{
+			const int32 DiscardIndex = InOutRuntime.Deck.DiscardPile.IndexOfByPredicate([&PlayedInstance](const FGameXXKCardInstance& Card)
+			{
+				return Card.InstanceId == PlayedInstance.InstanceId;
+			});
+			if (DiscardIndex == INDEX_NONE)
+			{
+				OutError = TEXT("The active card selected by Blade Charge is not in the discard pile after resolving.");
+				return false;
+			}
+			if (InOutRuntime.Deck.Hand.Num() < BattleHandCapacity)
+			{
+				InOutRuntime.Deck.Hand.Add(MoveTemp(InOutRuntime.Deck.DiscardPile[DiscardIndex]));
+				InOutRuntime.Deck.DiscardPile.RemoveAt(DiscardIndex, 1, EAllowShrinking::No);
+			}
+			return true;
+		}
+		case EGameXXKBladeChargeRule::ReplayNextActiveNextRound:
+		case EGameXXKBladeChargeRule::CopyNextActiveNextRound:
+			return RecordBladeCardForNextRound(InOutRuntime, Charge, PlayedSnapshot, PlayedInstance, OutError);
+		case EGameXXKBladeChargeRule::RetainNextActiveNextRound:
+			return IsolateBladeCardForNextRound(InOutRuntime, Charge, PlayedSnapshot, PlayedInstance, OutError);
+		case EGameXXKBladeChargeRule::RestoreNextActiveOwnerState:
+			return RestoreConsumedStatusesAndArmor(InOutRuntime, UnitsBeforeActiveCard, OutError);
+		case EGameXXKBladeChargeRule::DuplicateNextSingleTargetOrDraw:
+			return DuplicateSingleTargetOrDrawTwo(InOutRuntime, PlayedSnapshot, PlayedInstance, OutError);
+		case EGameXXKBladeChargeRule::MakeNextActiveEnergyFree:
+		case EGameXXKBladeChargeRule::MakeNextActiveManaFree:
+			return true;
+		case EGameXXKBladeChargeRule::RefundNextActiveCosts:
+		{
+			if (PaidEnergy < 0 || PaidMana < 0)
+			{
+				OutError = TEXT("Blade Charge cannot refund negative paid costs.");
+				return false;
+			}
+			FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, PlayedInstance.OwnerUnitId);
+			if (!Owner)
+			{
+				OutError = TEXT("Blade Charge lost the next active card owner before refunding costs.");
+				return false;
+			}
+			InOutRuntime.Deck.SharedEnergy = FMath::Min(
+				MaxCardBattleEnergy,
+				InOutRuntime.Deck.SharedEnergy + PaidEnergy);
+			Owner->Mana = static_cast<int32>(FMath::Min<int64>(
+				Owner->MaxMana,
+				static_cast<int64>(Owner->Mana) + PaidMana));
+			return true;
+		}
+		case EGameXXKBladeChargeRule::CountNextActiveTwice:
+			OutAdditionalActiveCardCount = 1;
+			return true;
+		case EGameXXKBladeChargeRule::PreserveFinishCandidate:
+			OutPreserveFinishCandidate = true;
+			return true;
+		case EGameXXKBladeChargeRule::RetainRemainingHand:
+			InOutRuntime.BladeRetainedHandCardInstanceIds.Reset();
+			for (const FGameXXKCardInstance& Card : InOutRuntime.Deck.Hand)
+			{
+				if (!Card.bTemporary)
+				{
+					InOutRuntime.BladeRetainedHandCardInstanceIds.Add(Card.InstanceId);
+				}
+			}
+			return true;
+		case EGameXXKBladeChargeRule::LightLoad:
+		case EGameXXKBladeChargeRule::DrawTwoAfterNextActive:
+		case EGameXXKBladeChargeRule::DrawSameOwnerAfterNextActive:
+		case EGameXXKBladeChargeRule::DrawOtherOwnerAfterNextActive:
+			return ResolveImplementedSheathedChargeAfterActiveCard(InOutRuntime, Rule, PlayedInstance, OutError);
+		case EGameXXKBladeChargeRule::None:
+		default:
+			OutError = TEXT("A pending partner Blade Charge reached an unsupported runtime rule.");
+			return false;
+		}
+	}
+
+	bool ConsumeExplicitBladeChargePayload(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const EGameXXKBladeChargeRule Rule,
+		const FName SourceCardId,
+		const EGameXXKCardQuality SourceQuality,
+		const FName SourceOwnerUnitId,
+		const FGameXXKResolvedCardSnapshot& PlayedSnapshot,
+		const FGameXXKCardInstance& PlayedInstance,
+		const TArray<FGameXXKCardCombatUnit>* UnitsBeforeActiveCard,
+		const int32 PaidEnergy,
+		const int32 PaidMana,
+		int32& OutAdditionalActiveCardCount,
+		bool& OutPreserveFinishCandidate,
+		FString& OutError)
+	{
+		if (!IsImplementedPartnerBladeChargeRule(Rule))
+		{
+			OutError = TEXT("An explicit Blade style reached an unsupported Charge rule.");
+			return false;
+		}
+		const FGameXXKBladeChargeRuntime SavedOrdinaryCharge = InOutRuntime.PendingBladeCharge;
+		FGameXXKBladeChargeRuntime& ExplicitCharge = InOutRuntime.PendingBladeCharge;
+		ExplicitCharge.Rule = Rule;
+		ExplicitCharge.SourceCardId = SourceCardId;
+		ExplicitCharge.SourceQuality = SourceQuality;
+		ExplicitCharge.SourceOwnerUnitId = SourceOwnerUnitId;
+		ExplicitCharge.CreatedRound = InOutRuntime.RoundNumber;
+		const bool bResolved = ConsumeImplementedPartnerBladeCharge(
+			InOutRuntime,
+			PlayedSnapshot,
+			PlayedInstance,
+			UnitsBeforeActiveCard,
+			PaidEnergy,
+			PaidMana,
+			OutAdditionalActiveCardCount,
+			OutPreserveFinishCandidate,
+			OutError);
+		if (InOutRuntime.PendingBladeCharge.Rule != EGameXXKBladeChargeRule::None)
+		{
+			OutError = TEXT("An explicit Blade style did not consume its temporary Charge slot.");
+			InOutRuntime.PendingBladeCharge = SavedOrdinaryCharge;
+			return false;
+		}
+		InOutRuntime.PendingBladeCharge = SavedOrdinaryCharge;
+		return bResolved;
+	}
+
+	bool ResolvePoJunAfterOrdinaryChargeConsumed(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKBladeChargeRuntime& ConsumedCharge,
+		FString& OutError)
+	{
+		if (ConsumedCharge.Rule == EGameXXKBladeChargeRule::None)
+		{
+			return true;
+		}
+		for (FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : InOutRuntime.EquipmentEffects)
+		{
+			const FGameXXKEquipmentActiveEffect& Effect = EffectRuntime.ActiveEffect;
+			if (Effect.Set != EGameXXKEquipmentSet::PoJun
+				|| EffectRuntime.SourceCharacterId != ConsumedCharge.SourceOwnerUnitId)
+			{
+				continue;
+			}
+			if (Effect.Hook == EGameXXKEquipmentSetBonusHook::PoJunChargeConsumed)
+			{
+				if (EffectRuntime.LastTriggerRound != InOutRuntime.RoundNumber)
+				{
+					EffectRuntime.CurrentRoundTriggerCount = 0;
+				}
+				if (EffectRuntime.CurrentRoundTriggerCount >= Effect.MaxTriggersPerRound)
+				{
+					continue;
+				}
+				GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+				if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, Effect.Magnitude, 0, &OutError))
+				{
+					return false;
+				}
+				EffectRuntime.LastTriggerRound = InOutRuntime.RoundNumber;
+				++EffectRuntime.CurrentRoundTriggerCount;
+			}
+			else if (Effect.Hook == EGameXXKEquipmentSetBonusHook::PoJunFirstActiveNextRound)
+			{
+				EffectRuntime.PoJunChargeProgressRound = InOutRuntime.RoundNumber;
+				EffectRuntime.bPoJunChargeConsumedThisRound = true;
+			}
+		}
+		return true;
+	}
+
+	void ExpirePoJunNextRoundStateAtPlayerPhaseEnd(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		for (FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : InOutRuntime.EquipmentEffects)
+		{
+			if (EffectRuntime.PendingPoJunStyle.Rule != EGameXXKBladeChargeRule::None
+				&& EffectRuntime.PendingPoJunStyle.TriggerPlayerRound <= InOutRuntime.RoundNumber)
+			{
+				EffectRuntime.PendingPoJunStyle = FGameXXKPoJunStoredStyleRuntime();
+			}
+			if (EffectRuntime.PendingPoJunReplayPlayerRound > 0
+				&& EffectRuntime.PendingPoJunReplayPlayerRound <= InOutRuntime.RoundNumber)
+			{
+				EffectRuntime.PendingPoJunReplayPlayerRound = 0;
+			}
+		}
+	}
+
+	bool ResolvePoJunAfterSuccessfulBladeFinish(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKResolvedCardSnapshot& SourceSnapshot,
+		FString& OutError)
+	{
+		if (Definition.Owner != EGameXXKCardOwner::Profession
+			|| Definition.Role != EGameXXKCharacterRole::Blade
+			|| !IsImplementedPartnerBladeChargeRule(Definition.BladeSequence.ChargeRule)
+			|| Definition.BladeSequence.FinishRule == EGameXXKBladeFinishRule::None)
+		{
+			return true;
+		}
+		for (FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : InOutRuntime.EquipmentEffects)
+		{
+			const FGameXXKEquipmentActiveEffect& Effect = EffectRuntime.ActiveEffect;
+			if (Effect.Set != EGameXXKEquipmentSet::PoJun
+				|| EffectRuntime.SourceCharacterId != SourceSnapshot.OwnerUnitId)
+			{
+				continue;
+			}
+			if (Effect.Hook == EGameXXKEquipmentSetBonusHook::PoJunBladeFinish)
+			{
+				FGameXXKPoJunStoredStyleRuntime& Style = EffectRuntime.PendingPoJunStyle;
+				Style.Rule = Definition.BladeSequence.ChargeRule;
+				Style.SourceCardId = Definition.Id;
+				Style.SourceQuality = SourceSnapshot.Quality;
+				Style.SourceOwnerUnitId = SourceSnapshot.OwnerUnitId;
+				Style.TriggerPlayerRound = InOutRuntime.RoundNumber + 1;
+			}
+			else if (Effect.Hook == EGameXXKEquipmentSetBonusHook::PoJunFirstActiveNextRound
+				&& EffectRuntime.bPoJunChargeConsumedThisRound
+				&& EffectRuntime.PoJunChargeProgressRound == InOutRuntime.RoundNumber)
+			{
+				if (InOutRuntime.RoundNumber == MAX_int32)
+				{
+					OutError = TEXT("PoJun six-piece cannot schedule a replay beyond the supported round range.");
+					return false;
+				}
+				EffectRuntime.PendingPoJunReplayPlayerRound = InOutRuntime.RoundNumber + 1;
+			}
+		}
+		return true;
+	}
+
+	void ResetPoJunCurrentRoundProgress(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		for (FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : InOutRuntime.EquipmentEffects)
+		{
+			EffectRuntime.PoJunChargeProgressRound = 0;
+			EffectRuntime.bPoJunChargeConsumedThisRound = false;
+		}
+	}
+
+	void ClearPoJunBattleState(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		for (FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : InOutRuntime.EquipmentEffects)
+		{
+			EffectRuntime.PendingPoJunStyle = FGameXXKPoJunStoredStyleRuntime();
+			EffectRuntime.PoJunChargeProgressRound = 0;
+			EffectRuntime.bPoJunChargeConsumedThisRound = false;
+			EffectRuntime.PendingPoJunReplayPlayerRound = 0;
+		}
+	}
+
+	bool QueuePoJunOpeningReplaysAfterActiveCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const bool bFirstActiveThisRound,
+		const FGameXXKResolvedCardSnapshot& PlayedSnapshot,
+		FString& OutError)
+	{
+		if (!bFirstActiveThisRound)
+		{
+			return true;
+		}
+		for (FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : InOutRuntime.EquipmentEffects)
+		{
+			if (EffectRuntime.ActiveEffect.Set != EGameXXKEquipmentSet::PoJun
+				|| EffectRuntime.ActiveEffect.Hook != EGameXXKEquipmentSetBonusHook::PoJunFirstActiveNextRound
+				|| EffectRuntime.PendingPoJunReplayPlayerRound != InOutRuntime.RoundNumber)
+			{
+				continue;
+			}
+			EffectRuntime.PendingPoJunReplayPlayerRound = 0;
+			const FGameXXKCardCombatUnit* Wearer = FindCombatUnitById(InOutRuntime.Units, EffectRuntime.SourceCharacterId);
+			if (Wearer && Wearer->bLiving
+				&& !QueueAutomaticCardReplay(InOutRuntime, PlayedSnapshot, OutError))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool ResolveImplementedPartnerBladeBaseAfterActiveCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardInstance& Instance,
+		const int32 PaidEnergy,
+		const int32 PaidMana,
+		const FGameXXKCardPlayResult& Result,
+		FString& OutError)
+	{
+		if (Definition.BladeSequence.BaseRule != EGameXXKBladeBaseRule::RefundCostsAndDrawOnKill)
+		{
+			return true;
+		}
+		const bool bCompletedKill = Result.DamageResults.ContainsByPredicate([&Instance](const FGameXXKCardDamageResult& Damage)
+		{
+			return Damage.SourceUnitId == Instance.OwnerUnitId
+				&& Damage.TargetHealthBefore > 0
+				&& Damage.TargetHealthAfter == 0;
+		});
+		if (!bCompletedKill)
+		{
+			return true;
+		}
+		if (PaidEnergy < 0 || PaidMana < 0
+			|| static_cast<int64>(InOutRuntime.Deck.SharedEnergy) + PaidEnergy > MAX_int32)
+		{
+			OutError = TEXT("A killing Blade card cannot refund unsupported paid costs.");
+			return false;
+		}
+		FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+		if (!Owner || !Owner->bLiving)
+		{
+			OutError = TEXT("A killing Blade card lost its living owner before refunding costs.");
+			return false;
+		}
+		InOutRuntime.Deck.SharedEnergy += PaidEnergy;
+		Owner->Mana = static_cast<int32>(FMath::Min<int64>(
+			Owner->MaxMana,
+			static_cast<int64>(Owner->Mana) + PaidMana));
+		GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+		return GameXXKCardRules::DrawCards(InOutRuntime.Deck, 1, 0, &OutError);
+	}
+
+	void ArmImplementedPartnerBladeFinish(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKResolvedCardSnapshot& SourceSnapshot)
+	{
+		if (Definition.Owner != EGameXXKCardOwner::Profession
+			|| Definition.Role != EGameXXKCharacterRole::Blade
+			|| (Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::ReturnFirstActiveNextRound
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::MarkAndPrepareTwoCounters
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::PreserveFirstTwoBleedTriggers
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::DrawOnFirstThreeBleedTriggers
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::HealBladeBleedCapTwelve
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::ReturnFirstActiveAgainstBleeding
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::FreezeVulnerabilityAndReplay
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::CopyFirstStatusConsumer
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::RefundFirstHighCostAndDrawTwo
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::CopyFirstKill
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::MarkAndReregisterCounterVolley
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::FirstTwoDodgesFree
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::TransferMarkBeforeCounter
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::FirstCounterVolleyHitsAll
+				&& Definition.BladeSequence.FinishRule != EGameXXKBladeFinishRule::StoreChargeAsNativeStyle))
+		{
+			return;
+		}
+		if (Definition.BladeSequence.FinishRule == EGameXXKBladeFinishRule::StoreChargeAsNativeStyle)
+		{
+			if (!IsImplementedSheathedStyleRule(Definition.BladeSequence.ChargeRule))
+			{
+				return;
+			}
+			FGameXXKBladeStyleRuntime& Style = InOutRuntime.PendingBladeNativeStyle;
+			Style.Rule = Definition.BladeSequence.ChargeRule;
+			Style.SourceCardId = Definition.Id;
+			Style.SourceQuality = SourceSnapshot.Quality;
+			Style.SourceOwnerUnitId = SourceSnapshot.OwnerUnitId;
+			Style.TriggerPlayerRound = InOutRuntime.RoundNumber + 1;
+			Style.bResidual = false;
+			return;
+		}
+		FGameXXKBladeFinishRuntime& Finish = InOutRuntime.PendingBladeFinish;
+		Finish.Rule = Definition.BladeSequence.FinishRule;
+		Finish.SourceCardId = Definition.Id;
+		Finish.SourceQuality = SourceSnapshot.Quality;
+		Finish.SourceOwnerUnitId = SourceSnapshot.OwnerUnitId;
+		Finish.TriggerPlayerRound = InOutRuntime.RoundNumber + 1;
+		if (Finish.Rule == EGameXXKBladeFinishRule::FreezeVulnerabilityAndReplay
+			&& SourceSnapshot.OriginalTargetUnitIds.Num() == 1)
+		{
+			const FName ProtectedTargetUnitId = SourceSnapshot.OriginalTargetUnitIds[0];
+			const FGameXXKCardCombatUnit* ProtectedTarget = FindCombatUnitById(InOutRuntime.Units, ProtectedTargetUnitId);
+			const int32 ProtectedStacks = ProtectedTarget
+				? GameXXKCardRules::GetCombatStatusStacks(*ProtectedTarget, EGameXXKCardStatus::Vulnerability)
+				: 0;
+			if (ProtectedTarget
+				&& ProtectedTarget->Side == EGameXXKCardTargetSide::Enemy
+				&& ProtectedStacks > 0)
+			{
+				Finish.ProtectedTargetUnitId = ProtectedTargetUnitId;
+				Finish.ProtectedStatusStacks = ProtectedStacks;
+			}
+		}
+		if (Finish.Rule == EGameXXKBladeFinishRule::MarkAndPrepareTwoCounters
+			|| Finish.Rule == EGameXXKBladeFinishRule::PreserveFirstTwoBleedTriggers)
+		{
+			Finish.RemainingTriggers = 2;
+			if (Finish.Rule == EGameXXKBladeFinishRule::MarkAndPrepareTwoCounters)
+			{
+				if (FGameXXKCardCombatUnit* SourceOwner = FindCombatUnitById(InOutRuntime.Units, SourceSnapshot.OwnerUnitId))
+				{
+					GameXXKCardRules::AddCombatStatus(*SourceOwner, EGameXXKCardStatus::Mark, 2);
+				}
+			}
+		}
+		else if (Finish.Rule == EGameXXKBladeFinishRule::DrawOnFirstThreeBleedTriggers)
+		{
+			Finish.RemainingTriggers = 3;
+		}
+		else if (Finish.Rule == EGameXXKBladeFinishRule::HealBladeBleedCapTwelve)
+		{
+			Finish.RemainingTriggers = 12;
+		}
+		else if (Finish.Rule == EGameXXKBladeFinishRule::MarkAndReregisterCounterVolley)
+		{
+			Finish.RemainingTriggers = 1;
+			if (FGameXXKCardCombatUnit* SourceOwner = FindCombatUnitById(InOutRuntime.Units, SourceSnapshot.OwnerUnitId))
+			{
+				GameXXKCardRules::AddCombatStatus(*SourceOwner, EGameXXKCardStatus::Mark, 2);
+			}
+		}
+		else if (Finish.Rule == EGameXXKBladeFinishRule::FirstTwoDodgesFree)
+		{
+			Finish.RemainingTriggers = 2;
+		}
+		else if (Finish.Rule == EGameXXKBladeFinishRule::FirstCounterVolleyHitsAll)
+		{
+			Finish.RemainingTriggers = 1;
+		}
+	}
+
+	bool RestoreDuanYueProtectedVulnerability(FGameXXKCardBattleRuntime& InOutRuntime, FString& OutError)
+	{
+		const FGameXXKBladeFinishRuntime& Finish = InOutRuntime.PendingBladeFinish;
+		if (Finish.Rule != EGameXXKBladeFinishRule::FreezeVulnerabilityAndReplay
+			|| Finish.TriggerPlayerRound != InOutRuntime.RoundNumber
+			|| Finish.ProtectedStatusStacks <= 0)
+		{
+			return true;
+		}
+		FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, Finish.ProtectedTargetUnitId);
+		if (!Target || !Target->bLiving || Target->Side != EGameXXKCardTargetSide::Enemy)
+		{
+			return true;
+		}
+		const int32 CurrentStacks = GameXXKCardRules::GetCombatStatusStacks(*Target, EGameXXKCardStatus::Vulnerability);
+		if (CurrentStacks >= Finish.ProtectedStatusStacks)
+		{
+			return true;
+		}
+		FGameXXKCardStatusStack* ExistingStack = Target->Statuses.FindByPredicate([](const FGameXXKCardStatusStack& Stack)
+		{
+			return Stack.Status == EGameXXKCardStatus::Vulnerability;
+		});
+		if (ExistingStack)
+		{
+			ExistingStack->Stacks = Finish.ProtectedStatusStacks;
+		}
+		else
+		{
+			FGameXXKCardStatusStack& RestoredStack = Target->Statuses.AddDefaulted_GetRef();
+			RestoredStack.Status = EGameXXKCardStatus::Vulnerability;
+			RestoredStack.Stacks = Finish.ProtectedStatusStacks;
+		}
+		if (GameXXKCardRules::GetCombatStatusStacks(*Target, EGameXXKCardStatus::Vulnerability) != Finish.ProtectedStatusStacks)
+		{
+			OutError = TEXT("Duan Yue Finish could not restore its protected Vulnerability snapshot.");
+			return false;
+		}
+		return true;
+	}
+
+	bool DidActiveCardConsumeEnemyStatus(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardPlayResult& Result)
+	{
+		return Result.DamageResults.ContainsByPredicate([&Runtime](const FGameXXKCardDamageResult& Damage)
+		{
+			const FGameXXKCardCombatUnit* Target = FindCombatUnitById(Runtime.Units, Damage.ResolvedTargetUnitId);
+			return Damage.ResolutionOrigin == EGameXXKCardResolutionOrigin::ActivePlay
+				&& Target
+				&& Target->Side == EGameXXKCardTargetSide::Enemy
+				&& (Damage.StatusStacksConsumed > 0
+					|| Damage.MarkStacksConsumed > 0
+					|| Damage.VulnerabilityStacksConsumed > 0);
+		});
+	}
+
+	bool DidActiveCardCompleteKill(const FGameXXKCardPlayResult& Result)
+	{
+		return Result.DamageResults.ContainsByPredicate([](const FGameXXKCardDamageResult& Damage)
+		{
+			return Damage.ResolutionOrigin == EGameXXKCardResolutionOrigin::ActivePlay
+				&& Damage.TargetHealthBefore > 0
+				&& Damage.TargetHealthAfter == 0;
+		});
+	}
+
+	bool TryResolveImplementedPartnerBladeFinish(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& PlayedDefinition,
+		const FGameXXKCardInstance& PlayedInstance,
+		const FGameXXKResolvedCardSnapshot& PlayedSnapshot,
+		const bool bTargetedBleedingEnemyAtPlay,
+		const bool bTargetedVulnerableEnemyAtPlay,
+		const int32 PaidEnergy,
+		const FGameXXKCardPlayResult& Result,
+		FString& OutError)
+	{
+		if (InOutRuntime.PendingBladeFinish.Rule == EGameXXKBladeFinishRule::None
+			|| InOutRuntime.PendingBladeFinish.TriggerPlayerRound != InOutRuntime.RoundNumber)
+		{
+			return true;
+		}
+		const EGameXXKBladeFinishRule Rule = InOutRuntime.PendingBladeFinish.Rule;
+		if ((Rule == EGameXXKBladeFinishRule::ReturnFirstActiveNextRound
+				|| Rule == EGameXXKBladeFinishRule::ReturnFirstActiveAgainstBleeding)
+			&& (PlayedDefinition.bExhaustOnPlay || PlayedInstance.bTemporary))
+		{
+			return true;
+		}
+		if (Rule == EGameXXKBladeFinishRule::ReturnFirstActiveAgainstBleeding
+			&& !bTargetedBleedingEnemyAtPlay)
+		{
+			return true;
+		}
+		if (Rule == EGameXXKBladeFinishRule::FreezeVulnerabilityAndReplay)
+		{
+			if (!bTargetedVulnerableEnemyAtPlay)
+			{
+				return true;
+			}
+			InOutRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+			return PlayedInstance.bTemporary
+				? true
+				: QueueAutomaticCardReplay(InOutRuntime, PlayedSnapshot, OutError);
+		}
+		if (Rule == EGameXXKBladeFinishRule::CopyFirstStatusConsumer)
+		{
+			if (!DidActiveCardConsumeEnemyStatus(InOutRuntime, Result))
+			{
+				return true;
+			}
+			InOutRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+			return CreateZeroCostTemporaryCopy(InOutRuntime, PlayedInstance, OutError);
+		}
+		if (Rule == EGameXXKBladeFinishRule::RefundFirstHighCostAndDrawTwo)
+		{
+			if (PlayedDefinition.EnergyCost < 2)
+			{
+				return true;
+			}
+			if (PaidEnergy < 0)
+			{
+				OutError = TEXT("Zhan Yi Finish cannot refund a negative paid Energy cost.");
+				return false;
+			}
+			InOutRuntime.Deck.SharedEnergy = FMath::Min(
+				MaxCardBattleEnergy,
+				InOutRuntime.Deck.SharedEnergy + PaidEnergy);
+			GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
+			if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, 2, 0, &OutError))
+			{
+				return false;
+			}
+			InOutRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+			return true;
+		}
+		if (Rule == EGameXXKBladeFinishRule::CopyFirstKill)
+		{
+			if (!DidActiveCardCompleteKill(Result))
+			{
+				return true;
+			}
+			InOutRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+			return CreateZeroCostTemporaryCopy(InOutRuntime, PlayedInstance, OutError);
+		}
+		if (Rule != EGameXXKBladeFinishRule::ReturnFirstActiveNextRound
+			&& Rule != EGameXXKBladeFinishRule::ReturnFirstActiveAgainstBleeding)
+		{
+			OutError = TEXT("A pending partner Blade Finish reached an unsupported runtime rule.");
+			return false;
+		}
+		const int32 DiscardIndex = InOutRuntime.Deck.DiscardPile.IndexOfByPredicate([&PlayedInstance](const FGameXXKCardInstance& Card)
+		{
+			return Card.InstanceId == PlayedInstance.InstanceId;
+		});
+		if (DiscardIndex == INDEX_NONE)
+		{
+			OutError = TEXT("The card selected by Blade Finish is not in the discard pile after resolving.");
+			return false;
+		}
+		if (InOutRuntime.Deck.Hand.Num() < BattleHandCapacity)
+		{
+			InOutRuntime.Deck.Hand.Add(MoveTemp(InOutRuntime.Deck.DiscardPile[DiscardIndex]));
+			InOutRuntime.Deck.DiscardPile.RemoveAt(DiscardIndex, 1, EAllowShrinking::No);
+		}
+		InOutRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+		return true;
+	}
+
+	bool PrepareImplementedBladeFinishForEnemyCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDamageContext& Context,
+		const FName AppliedTargetUnitId,
+		FString& OutError)
+	{
+		FGameXXKBladeFinishRuntime& Finish = InOutRuntime.PendingBladeFinish;
+		if (Finish.Rule != EGameXXKBladeFinishRule::MarkAndPrepareTwoCounters
+			|| Finish.RemainingTriggers <= 0
+			|| Finish.bTriggeredForCurrentEnemyCard
+			|| Context.Kind != EGameXXKCardDamageKind::SingleTargetAttack
+			|| AppliedTargetUnitId != Finish.SourceOwnerUnitId)
+		{
+			return true;
+		}
+		FGameXXKCardCombatUnit* Recipient = FindCombatUnitById(InOutRuntime.Units, AppliedTargetUnitId);
+		if (!Recipient || !Recipient->bLiving || Recipient->Side != EGameXXKCardTargetSide::Party)
+		{
+			OutError = TEXT("A Blade enemy-card Finish lost its living party recipient.");
+			return false;
+		}
+		GameXXKCardRules::AddCombatStatus(*Recipient, EGameXXKCardStatus::Agility, 2);
+
+		FGameXXKResolvedCardSnapshot SourceSnapshot;
+		SourceSnapshot.CardId = Finish.SourceCardId;
+		SourceSnapshot.Quality = Finish.SourceQuality;
+		SourceSnapshot.OwnerUnitId = Finish.SourceOwnerUnitId;
+		const FName SourceInstanceId(*FString::Printf(
+			TEXT("BladeFinish.%d.%s.%d"),
+			InOutRuntime.RoundNumber,
+			*Finish.SourceOwnerUnitId.ToString(),
+			Finish.RemainingTriggers));
+		const FGameXXKCardInstance SourceInstance = MakeSnapshotInstance(SourceSnapshot, SourceInstanceId);
+		if (!RegisterPartyReactionUses(
+			InOutRuntime,
+			SourceInstance,
+			AppliedTargetUnitId,
+			EGameXXKCardStatus::Counter,
+			1,
+			OutError))
+		{
+			return false;
+		}
+		Finish.bTriggeredForCurrentEnemyCard = true;
+		if (--Finish.RemainingTriggers == 0)
+		{
+			Finish = FGameXXKBladeFinishRuntime();
+		}
 		return true;
 	}
 
@@ -7396,13 +12382,25 @@ namespace
 				OutError = TEXT("Triggered status target disappeared before its layer update.");
 				return false;
 			}
-			DamageResult.StatusStacksConsumed = GameXXKCardRules::ConsumeCombatStatus(*Target, Definition.Status, 1);
-			if (DamageResult.StatusStacksConsumed != 1)
+			if (!ResolveTriggeredStatusLayerConsumption(
+				InOutRuntime,
+				*Target,
+				Definition.Status,
+				1,
+				Modifier.SourceUnitId,
+				DamageResult.HealthDamage,
+				DamageResult.StatusStacksConsumed,
+				OutError))
 			{
-				OutError = TEXT("Triggered status damage failed to consume its declared layer.");
+				return false;
+			}
+			if (DamageResult.StatusStacksConsumed != 0 && DamageResult.StatusStacksConsumed != 1)
+			{
+				OutError = TEXT("Triggered status damage produced an unsupported layer-consumption result.");
 				return false;
 			}
 			if (Definition.bPreserveTriggeredStatus
+				&& DamageResult.StatusStacksConsumed > 0
 				&& GameXXKCardRules::AddCombatStatus(*Target, Definition.Status, DamageResult.StatusStacksConsumed) != DamageResult.StatusStacksConsumed)
 			{
 				OutError = TEXT("A preserving status trigger failed to restore its consumed layer.");
@@ -7504,6 +12502,49 @@ namespace
 		}
 		FGameXXKCardDefinition SupplementalDefinition = EffectiveDefinition;
 		SupplementalDefinition.Effects = SupplementalEffects;
+		// WidenNextActiveSingleTarget rewrites the base definition at active-play time,
+		// while Charge/Finish payloads can resolve later from the catalog definition.
+		// Multiple resolved targets on an originally single-target card are the stable
+		// snapshot of that rewrite, so carry the same target expansion into supplemental
+		// clauses instead of trying to recover one nonexistent clicked target.
+		EGameXXKCardEffectTarget WidenedEffectTarget = EGameXXKCardEffectTarget::Invalid;
+		if (TargetUnitIds.Num() > 1)
+		{
+			switch (EffectiveDefinition.TargetSpec.Mode)
+			{
+			case EGameXXKCardTargetMode::SingleEnemy:
+				WidenedEffectTarget = EGameXXKCardEffectTarget::AllEnemies;
+				break;
+			case EGameXXKCardTargetMode::SingleAlly:
+				WidenedEffectTarget = EGameXXKCardEffectTarget::AllAllies;
+				break;
+			case EGameXXKCardTargetMode::OtherAlly:
+				WidenedEffectTarget = EGameXXKCardEffectTarget::AllOtherAllies;
+				break;
+			default:
+				break;
+			}
+		}
+		if (WidenedEffectTarget != EGameXXKCardEffectTarget::Invalid)
+		{
+			for (FGameXXKCardEffect& Effect : SupplementalDefinition.Effects)
+			{
+				if (Effect.Target == EGameXXKCardEffectTarget::SelectedTarget)
+				{
+					Effect.Target = WidenedEffectTarget;
+				}
+				if (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier
+					&& Effect.Modifier.RecipientTarget == EGameXXKCardEffectTarget::SelectedTarget)
+				{
+					Effect.Modifier.RecipientTarget = WidenedEffectTarget;
+				}
+				if (Effect.Type == EGameXXKCardEffectType::ApplyGuardLink
+					&& Effect.GuardLink.Guardian == EGameXXKCardEffectTarget::SelectedTarget)
+				{
+					Effect.GuardLink.Guardian = WidenedEffectTarget;
+				}
+			}
+		}
 		SupplementalDefinition.ChargeEffects.Reset();
 		SupplementalDefinition.FinishEffects.Reset();
 		return ResolveDefinitionEffects(
@@ -7515,6 +12556,172 @@ namespace
 			false,
 			InOutResult,
 			OutError);
+	}
+
+	bool ResolveImplementedBladeStylesAfterActiveCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& EffectiveDefinition,
+		const FGameXXKCardInstance& PlayedInstance,
+		const FGameXXKResolvedCardSnapshot& PlayedSnapshot,
+		const TArray<FName>& TargetUnitIds,
+		const TArray<FGameXXKCardCombatUnit>* UnitsBeforeActiveCard,
+		const int32 PaidEnergy,
+		const int32 PaidMana,
+		FGameXXKCardPlayResult& InOutResult,
+		int32& OutAdditionalActiveCardCount,
+		bool& OutPreserveFinishCandidate,
+		FString& OutError)
+	{
+		OutAdditionalActiveCardCount = 0;
+		OutPreserveFinishCandidate = false;
+		const bool bConsumeNative = InOutRuntime.PendingBladeNativeStyle.Rule != EGameXXKBladeChargeRule::None
+			&& InOutRuntime.PendingBladeNativeStyle.TriggerPlayerRound == InOutRuntime.RoundNumber
+			&& InOutRuntime.ActiveCardsPlayedThisRound == 0;
+		const bool bConsumeResidual = InOutRuntime.PendingBladeResidualStyle.Rule != EGameXXKBladeChargeRule::None
+			&& InOutRuntime.PendingBladeResidualStyle.TriggerPlayerRound == InOutRuntime.RoundNumber;
+		const FGameXXKBladeStyleRuntime NativeStyle = bConsumeNative
+			? InOutRuntime.PendingBladeNativeStyle
+			: FGameXXKBladeStyleRuntime();
+		const FGameXXKBladeStyleRuntime ResidualStyle = bConsumeResidual
+			? InOutRuntime.PendingBladeResidualStyle
+			: FGameXXKBladeStyleRuntime();
+		TArray<FGameXXKPoJunStoredStyleRuntime> PoJunStyles;
+		if (InOutRuntime.ActiveCardsPlayedThisRound == 0)
+		{
+			for (FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : InOutRuntime.EquipmentEffects)
+			{
+				const FGameXXKCardCombatUnit* Wearer = FindCombatUnitById(InOutRuntime.Units, EffectRuntime.SourceCharacterId);
+				if (EffectRuntime.ActiveEffect.Set != EGameXXKEquipmentSet::PoJun
+					|| EffectRuntime.ActiveEffect.Hook != EGameXXKEquipmentSetBonusHook::PoJunBladeFinish
+					|| EffectRuntime.PendingPoJunStyle.Rule == EGameXXKBladeChargeRule::None
+					|| EffectRuntime.PendingPoJunStyle.TriggerPlayerRound != InOutRuntime.RoundNumber
+					|| !Wearer
+					|| !Wearer->bLiving)
+				{
+					continue;
+				}
+				PoJunStyles.Add(EffectRuntime.PendingPoJunStyle);
+				EffectRuntime.PendingPoJunStyle = FGameXXKPoJunStoredStyleRuntime();
+			}
+		}
+		if (!bConsumeNative && !bConsumeResidual && PoJunStyles.IsEmpty())
+		{
+			return true;
+		}
+		if (bConsumeNative)
+		{
+			InOutRuntime.PendingBladeNativeStyle = FGameXXKBladeStyleRuntime();
+		}
+		if (bConsumeResidual)
+		{
+			InOutRuntime.PendingBladeResidualStyle = FGameXXKBladeStyleRuntime();
+		}
+
+		if (EffectiveDefinition.BladeSequence.BaseRule == EGameXXKBladeBaseRule::OpenBladeExtraAttack)
+		{
+			FGameXXKCardEffect OpenAttack;
+			OpenAttack.Type = EGameXXKCardEffectType::DamagePercentAttack;
+			OpenAttack.Target = EGameXXKCardEffectTarget::SelectedTarget;
+			OpenAttack.Source = EGameXXKCardEffectSource::CardOwner;
+			OpenAttack.Magnitude = 90;
+			OpenAttack.HitCount = 1;
+			if (!ResolveBladeSupplementalEffects(
+				InOutRuntime,
+				EffectiveDefinition,
+				PlayedInstance,
+				TargetUnitIds,
+				{OpenAttack},
+				InOutResult,
+				OutError))
+			{
+				return false;
+			}
+		}
+		else if (EffectiveDefinition.BladeSequence.BaseRule == EGameXXKBladeBaseRule::OpenBladeResidualStyle
+			&& (bConsumeNative || !PoJunStyles.IsEmpty()))
+		{
+			FGameXXKBladeStyleRuntime& NewResidual = InOutRuntime.PendingBladeResidualStyle;
+			if (bConsumeNative)
+			{
+				NewResidual = NativeStyle;
+			}
+			else
+			{
+				const FGameXXKPoJunStoredStyleRuntime& PoJunStyle = PoJunStyles[0];
+				NewResidual.Rule = PoJunStyle.Rule;
+				NewResidual.SourceCardId = PoJunStyle.SourceCardId;
+				NewResidual.SourceQuality = PoJunStyle.SourceQuality;
+				NewResidual.SourceOwnerUnitId = PoJunStyle.SourceOwnerUnitId;
+			}
+			NewResidual.TriggerPlayerRound = InOutRuntime.RoundNumber;
+			NewResidual.bResidual = true;
+		}
+
+		const auto ConsumeStyle = [&](
+			const EGameXXKBladeChargeRule Rule,
+			const FName SourceCardId,
+			const EGameXXKCardQuality SourceQuality,
+			const FName SourceOwnerUnitId)
+		{
+			int32 AdditionalActiveCardCount = 0;
+			bool bPreserveFinishCandidate = false;
+			if (!ConsumeExplicitBladeChargePayload(
+				InOutRuntime,
+				Rule,
+				SourceCardId,
+				SourceQuality,
+				SourceOwnerUnitId,
+				PlayedSnapshot,
+				PlayedInstance,
+				UnitsBeforeActiveCard,
+				PaidEnergy,
+				PaidMana,
+				AdditionalActiveCardCount,
+				bPreserveFinishCandidate,
+				OutError))
+			{
+				return false;
+			}
+			if (AdditionalActiveCardCount < 0
+				|| OutAdditionalActiveCardCount > MAX_int32 - AdditionalActiveCardCount)
+			{
+				OutError = TEXT("Blade style active-card counting exceeds the supported range.");
+				return false;
+			}
+			OutAdditionalActiveCardCount += AdditionalActiveCardCount;
+			OutPreserveFinishCandidate |= bPreserveFinishCandidate;
+			return true;
+		};
+		if (bConsumeNative
+			&& !ConsumeStyle(
+				NativeStyle.Rule,
+				NativeStyle.SourceCardId,
+				NativeStyle.SourceQuality,
+				NativeStyle.SourceOwnerUnitId))
+		{
+			return false;
+		}
+		if (bConsumeResidual
+			&& !ConsumeStyle(
+				ResidualStyle.Rule,
+				ResidualStyle.SourceCardId,
+				ResidualStyle.SourceQuality,
+				ResidualStyle.SourceOwnerUnitId))
+		{
+			return false;
+		}
+		for (const FGameXXKPoJunStoredStyleRuntime& PoJunStyle : PoJunStyles)
+		{
+			if (!ConsumeStyle(
+				PoJunStyle.Rule,
+				PoJunStyle.SourceCardId,
+				PoJunStyle.SourceQuality,
+				PoJunStyle.SourceOwnerUnitId))
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	bool RecordHeroSpellTaskActivePlay(
@@ -7562,6 +12769,414 @@ namespace
 		}
 		Task.CompletedHeroCardIds.Add(Definition.Id);
 		Task.FirstPlayOrder.Add(MoveTemp(RecordedSnapshot));
+		return true;
+	}
+
+	bool CollectNamedTaskNpcCarriedCardIds(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName OwnerUnitId,
+		const FName CatalogOwnerId,
+		TArray<FName>& OutCardIds,
+		FString& OutError)
+	{
+		TArray<FGameXXKCardInstance> CarriedInstances;
+		const auto CollectZone = [&CarriedInstances, OwnerUnitId, CatalogOwnerId](const TArray<FGameXXKCardInstance>& Zone)
+		{
+			for (const FGameXXKCardInstance& Instance : Zone)
+			{
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(Instance.CardId);
+				if (!Instance.bTemporary
+					&& Instance.OwnerUnitId == OwnerUnitId
+					&& Definition
+					&& Definition->Owner == EGameXXKCardOwner::QuestNpc
+					&& Definition->OwnerId == CatalogOwnerId)
+				{
+					CarriedInstances.Add(Instance);
+				}
+			}
+		};
+		CollectZone(Runtime.Deck.DrawPile);
+		CollectZone(Runtime.Deck.Hand);
+		CollectZone(Runtime.Deck.DiscardPile);
+		CollectZone(Runtime.Deck.ExhaustPile);
+		CollectZone(Runtime.Deck.PendingAutomaticHandCards);
+		CarriedInstances.Sort([](const FGameXXKCardInstance& Left, const FGameXXKCardInstance& Right)
+		{
+			return Left.AcquisitionOrdinal != Right.AcquisitionOrdinal
+				? Left.AcquisitionOrdinal < Right.AcquisitionOrdinal
+				: Left.InstanceId.LexicalLess(Right.InstanceId);
+		});
+
+		OutCardIds.Reset();
+		for (const FGameXXKCardInstance& Instance : CarriedInstances)
+		{
+			if (!OutCardIds.Contains(Instance.CardId))
+			{
+				OutCardIds.Add(Instance.CardId);
+			}
+		}
+		if (CarriedInstances.Num() != 3 || OutCardIds.Num() != 3)
+		{
+			OutError = TEXT("A named task-NPC spell task requires exactly three unique carried non-temporary cards.");
+			return false;
+		}
+		return true;
+	}
+
+	bool RecordTaskNpcSpellTaskActivePlay(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKResolvedCardSnapshot& Snapshot,
+		FString& OutError)
+	{
+		OutError.Reset();
+		if (Definition.Owner != EGameXXKCardOwner::QuestNpc
+			|| !IsNamedTaskNpcSpellOwnerId(Definition.OwnerId))
+		{
+			return true;
+		}
+
+		FGameXXKTaskNpcSpellTaskRuntime* Task = InOutRuntime.TaskNpcSpellTasks.FindByPredicate(
+			[&Snapshot](const FGameXXKTaskNpcSpellTaskRuntime& Candidate)
+			{
+				return Candidate.bActive && Candidate.OwnerUnitId == Snapshot.OwnerUnitId;
+			});
+		if (!Task)
+		{
+			TArray<FName> LockedCardIds;
+			if (!CollectNamedTaskNpcCarriedCardIds(
+				InOutRuntime,
+				Snapshot.OwnerUnitId,
+				Definition.OwnerId,
+				LockedCardIds,
+				OutError))
+			{
+				return false;
+			}
+			if (!LockedCardIds.Contains(Definition.Id))
+			{
+				OutError = TEXT("The active named task-NPC card is not one of that NPC's three carried cards.");
+				return false;
+			}
+			FGameXXKTaskNpcSpellTaskRuntime& NewTask = InOutRuntime.TaskNpcSpellTasks.AddDefaulted_GetRef();
+			NewTask.bActive = true;
+			NewTask.OwnerUnitId = Snapshot.OwnerUnitId;
+			NewTask.LockedCardIds = MoveTemp(LockedCardIds);
+			Task = &NewTask;
+		}
+
+		if (!Task->LockedCardIds.Contains(Definition.Id)
+			|| Task->CompletedCardIds.Contains(Definition.Id))
+		{
+			return true;
+		}
+		FGameXXKResolvedCardSnapshot RecordedSnapshot = Snapshot;
+		if (Definition.TargetSpec.Presentation != EGameXXKCardTargetPresentation::PlayerSelectsUnit)
+		{
+			RecordedSnapshot.OriginalTargetUnitIds.Reset();
+		}
+		Task->CompletedCardIds.Add(Definition.Id);
+		Task->FirstPlayOrder.Add(MoveTemp(RecordedSnapshot));
+		return true;
+	}
+
+	bool CollectSorcererPartnerCarriedCardIds(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName OwnerUnitId,
+		TArray<FName>& OutCardIds,
+		FString& OutError)
+	{
+		TArray<FGameXXKCardInstance> CarriedInstances;
+		const auto CollectZone = [&CarriedInstances, OwnerUnitId](const TArray<FGameXXKCardInstance>& Zone)
+		{
+			for (const FGameXXKCardInstance& Instance : Zone)
+			{
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(Instance.CardId);
+				if (!Instance.bTemporary
+					&& Instance.OwnerUnitId == OwnerUnitId
+					&& Definition
+					&& Definition->Owner == EGameXXKCardOwner::Profession
+					&& Definition->OwnerId == FName(TEXT("Profession.Sorcerer"))
+					&& Definition->Role == EGameXXKCharacterRole::Sorcerer
+					&& Definition->SorcererRule.Family != EGameXXKSorcererCardFamily::None)
+				{
+					CarriedInstances.Add(Instance);
+				}
+			}
+		};
+		CollectZone(Runtime.Deck.DrawPile);
+		CollectZone(Runtime.Deck.Hand);
+		CollectZone(Runtime.Deck.DiscardPile);
+		CollectZone(Runtime.Deck.ExhaustPile);
+		CollectZone(Runtime.Deck.PendingAutomaticHandCards);
+		CarriedInstances.Sort([](const FGameXXKCardInstance& Left, const FGameXXKCardInstance& Right)
+		{
+			return Left.AcquisitionOrdinal != Right.AcquisitionOrdinal
+				? Left.AcquisitionOrdinal < Right.AcquisitionOrdinal
+				: Left.InstanceId.LexicalLess(Right.InstanceId);
+		});
+
+		OutCardIds.Reset();
+		for (const FGameXXKCardInstance& Instance : CarriedInstances)
+		{
+			if (!OutCardIds.Contains(Instance.CardId))
+			{
+				OutCardIds.Add(Instance.CardId);
+			}
+		}
+		if (CarriedInstances.Num() != 5 || OutCardIds.Num() != 5)
+		{
+			OutError = TEXT("A permanent Sorcerer partner task requires exactly five unique carried non-temporary cards.");
+			return false;
+		}
+		return true;
+	}
+
+	bool RecordSorcererPartnerTaskActivePlay(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardInstance& PlayedInstance,
+		FGameXXKResolvedCardSnapshot& InOutSnapshot,
+		const int32 EffectivePaidMana,
+		FString& OutError)
+	{
+		OutError.Reset();
+		if (PlayedInstance.bTemporary
+			|| Definition.Owner != EGameXXKCardOwner::Profession
+			|| Definition.OwnerId != FName(TEXT("Profession.Sorcerer"))
+			|| Definition.Role != EGameXXKCharacterRole::Sorcerer
+			|| Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::None
+			|| Definition.SorcererRule.SequenceRule == EGameXXKSorcererSequenceRule::None
+			|| Definition.SorcererRule.RewardRule == EGameXXKSorcererRewardRule::None)
+		{
+			return true;
+		}
+		if (EffectivePaidMana < 0
+			|| PlayedInstance.CardId != Definition.Id
+			|| PlayedInstance.OwnerUnitId != InOutSnapshot.OwnerUnitId)
+		{
+			OutError = TEXT("A Sorcerer partner active play has invalid owner, card, or paid-Mana audit data.");
+			return false;
+		}
+
+		FGameXXKSorcererPartnerTaskRuntime* Task = InOutRuntime.SorcererPartnerTasks.FindByPredicate(
+			[&InOutSnapshot](const FGameXXKSorcererPartnerTaskRuntime& Candidate)
+			{
+				return Candidate.OwnerUnitId == InOutSnapshot.OwnerUnitId;
+			});
+		if (!Task)
+		{
+			FGameXXKSorcererPartnerTaskRuntime& NewTask = InOutRuntime.SorcererPartnerTasks.AddDefaulted_GetRef();
+			NewTask.OwnerUnitId = InOutSnapshot.OwnerUnitId;
+			Task = &NewTask;
+		}
+		if (!Task->bActive)
+		{
+			TArray<FName> LockedCardIds;
+			if (!CollectSorcererPartnerCarriedCardIds(
+				InOutRuntime,
+				InOutSnapshot.OwnerUnitId,
+				LockedCardIds,
+				OutError))
+			{
+				return false;
+			}
+			if (!LockedCardIds.Contains(Definition.Id))
+			{
+				OutError = TEXT("The active Sorcerer partner card is not one of that partner's five carried cards.");
+				return false;
+			}
+			Task->bActive = true;
+			Task->LockedCardIds = MoveTemp(LockedCardIds);
+			Task->StarterReward = Definition.SorcererRule.RewardRule;
+			Task->LockedBranch = Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Universal
+				? EGameXXKSorcererTaskBranch::None
+				: SorcererBranchForFamily(Definition.SorcererRule.Family);
+		}
+
+		if (!Task->LockedCardIds.Contains(Definition.Id))
+		{
+			OutError = TEXT("A Sorcerer partner active play falls outside its locked five-card task.");
+			return false;
+		}
+		if (Task->CompletedCardIds.Contains(Definition.Id))
+		{
+			return true;
+		}
+
+		FGameXXKResolvedCardSnapshot RecordedSnapshot = InOutSnapshot;
+		RecordedSnapshot.PaidManaCost = EffectivePaidMana;
+		RecordedSnapshot.SorcererSequencePosition = Task->FirstPlayOrder.Num() + 1;
+		RecordedSnapshot.PreviousSorcererFamily = EGameXXKSorcererCardFamily::None;
+		if (!Task->FirstPlayOrder.IsEmpty())
+		{
+			const FGameXXKCardDefinition* PreviousDefinition = FGameXXKCardCatalog::FindCardDefinition(Task->FirstPlayOrder.Last().CardId);
+			if (!PreviousDefinition || PreviousDefinition->SorcererRule.Family == EGameXXKSorcererCardFamily::None)
+			{
+				OutError = TEXT("A Sorcerer partner task lost the family of its previous recorded card.");
+				return false;
+			}
+			RecordedSnapshot.PreviousSorcererFamily = PreviousDefinition->SorcererRule.Family;
+		}
+
+		if (Task->FirstPlayOrder.Num() == 1 && Task->LockedBranch == EGameXXKSorcererTaskBranch::None)
+		{
+			Task->LockedBranch = SorcererBranchForFamily(Definition.SorcererRule.Family);
+			if (Task->LockedBranch == EGameXXKSorcererTaskBranch::None)
+			{
+				OutError = TEXT("A Universal-started Sorcerer task could not lock a branch from its second card.");
+				return false;
+			}
+			for (FGameXXKResolvedCardSnapshot& ExistingSnapshot : Task->FirstPlayOrder)
+			{
+				ExistingSnapshot.SorcererTaskBranch = Task->LockedBranch;
+			}
+		}
+		RecordedSnapshot.SorcererTaskBranch = Task->LockedBranch;
+		Task->CompletedCardIds.Add(Definition.Id);
+		Task->FirstPlayOrder.Add(RecordedSnapshot);
+		InOutSnapshot = MoveTemp(RecordedSnapshot);
+		return true;
+	}
+
+	bool ResolveSorcererPartnerStarterAutomaticHand(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName OwnerUnitId,
+		FString& OutError)
+	{
+		OutError.Reset();
+		FGameXXKSorcererPartnerTaskRuntime* Task = InOutRuntime.SorcererPartnerTasks.FindByPredicate(
+			[OwnerUnitId](const FGameXXKSorcererPartnerTaskRuntime& Candidate)
+			{
+				return Candidate.bActive && Candidate.OwnerUnitId == OwnerUnitId;
+			});
+		if (!Task || Task->FirstPlayOrder.IsEmpty() || IsActiveChoice(InOutRuntime.Deck.PendingChoice.Kind))
+		{
+			return true;
+		}
+		const FGameXXKResolvedCardSnapshot& StarterSnapshot = Task->FirstPlayOrder[0];
+		const FGameXXKCardDefinition* StarterDefinition = FGameXXKCardCatalog::FindCardDefinition(StarterSnapshot.CardId);
+		if (!StarterDefinition
+			|| StarterSnapshot.OwnerUnitId != OwnerUnitId
+			|| StarterSnapshot.SorcererSequencePosition != 1)
+		{
+			OutError = TEXT("A Sorcerer partner task cannot resolve automatic hand movement without its starter snapshot.");
+			return false;
+		}
+
+		const auto FindMovableInstanceId = [&InOutRuntime, OwnerUnitId](const FName CardId) -> FName
+		{
+			for (const TArray<FGameXXKCardInstance>* Zone : {&InOutRuntime.Deck.DrawPile, &InOutRuntime.Deck.DiscardPile})
+			{
+				if (const FGameXXKCardInstance* Instance = Zone->FindByPredicate([OwnerUnitId, CardId](const FGameXXKCardInstance& Candidate)
+				{
+					return !Candidate.bTemporary
+						&& Candidate.OwnerUnitId == OwnerUnitId
+						&& Candidate.CardId == CardId;
+				}))
+				{
+					return Instance->InstanceId;
+				}
+			}
+			return NAME_None;
+		};
+
+		if (StarterDefinition->SorcererRule.Family == EGameXXKSorcererCardFamily::Universal)
+		{
+			if (Task->AutoHandedUniversalCardIds.Contains(StarterDefinition->Id))
+			{
+				return true;
+			}
+			for (const FName CardId : Task->LockedCardIds)
+			{
+				if (Task->CompletedCardIds.Contains(CardId))
+				{
+					continue;
+				}
+				const FName InstanceId = FindMovableInstanceId(CardId);
+				if (!InstanceId.IsNone()
+					&& !QueueInstanceForAutomaticHand(InOutRuntime.Deck, InstanceId, OutError))
+				{
+					return false;
+				}
+			}
+			Task->AutoHandedUniversalCardIds.Add(StarterDefinition->Id);
+		}
+		else
+		{
+			for (const FName CardId : Task->LockedCardIds)
+			{
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+				if (!Definition
+					|| Definition->SorcererRule.Family != EGameXXKSorcererCardFamily::Universal
+					|| Task->CompletedCardIds.Contains(CardId)
+					|| Task->AutoHandedUniversalCardIds.Contains(CardId))
+				{
+					continue;
+				}
+				const FName InstanceId = FindMovableInstanceId(CardId);
+				if (!InstanceId.IsNone())
+				{
+					if (!QueueInstanceForAutomaticHand(InOutRuntime.Deck, InstanceId, OutError))
+					{
+						return false;
+					}
+					Task->AutoHandedUniversalCardIds.Add(CardId);
+				}
+			}
+		}
+		return MaterializePendingAutomaticHandCards(InOutRuntime.Deck, OutError);
+	}
+
+	bool TryStartCompletedSorcererPartnerTaskQueue(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FString& OutError)
+	{
+		OutError.Reset();
+		FGameXXKSorcererPartnerTaskRuntime* CompletedTask = InOutRuntime.SorcererPartnerTasks.FindByPredicate(
+			[](const FGameXXKSorcererPartnerTaskRuntime& Task)
+			{
+				return Task.bActive
+					&& Task.CompletedCardIds.Num() == 5
+					&& Task.FirstPlayOrder.Num() == 5;
+			});
+		if (!CompletedTask)
+		{
+			return true;
+		}
+		if (InOutRuntime.AutomaticResolutionQueue.bActive)
+		{
+			const FGameXXKAutomaticResolutionQueue& ExistingQueue = InOutRuntime.AutomaticResolutionQueue;
+			if (ExistingQueue.Origin == EGameXXKCardResolutionOrigin::PartnerSorcererTaskReplay
+				&& ExistingQueue.RewardOwnerUnitId == CompletedTask->OwnerUnitId
+				&& ExistingQueue.PendingSorcererReward == CompletedTask->StarterReward
+				&& ExistingQueue.PendingCards.Num() == CompletedTask->FirstPlayOrder.Num())
+			{
+				return true;
+			}
+			OutError = TEXT("A completed Sorcerer partner task cannot replace another automatic operation.");
+			return false;
+		}
+		if (IsActiveChoice(InOutRuntime.Deck.PendingChoice.Kind))
+		{
+			OutError = TEXT("A completed Sorcerer partner task cannot start while another card choice is active.");
+			return false;
+		}
+		if (CompletedTask->LockedCardIds.Num() != 5
+			|| CompletedTask->StarterReward == EGameXXKSorcererRewardRule::None
+			|| CompletedTask->OwnerUnitId.IsNone())
+		{
+			OutError = TEXT("A completed Sorcerer partner task has invalid replay or reward metadata.");
+			return false;
+		}
+
+		FGameXXKAutomaticResolutionQueue& Queue = InOutRuntime.AutomaticResolutionQueue;
+		Queue.bActive = true;
+		Queue.Origin = EGameXXKCardResolutionOrigin::PartnerSorcererTaskReplay;
+		Queue.PendingCards = CompletedTask->FirstPlayOrder;
+		Queue.NextCardIndex = 0;
+		Queue.PendingSorcererReward = CompletedTask->StarterReward;
+		Queue.RewardOwnerUnitId = CompletedTask->OwnerUnitId;
 		return true;
 	}
 
@@ -7717,12 +13332,741 @@ namespace
 			OutError);
 	}
 
+	void AppendNestedSorcererRewardResult(
+		FGameXXKCardPlayResult& InOutRewardResult,
+		FGameXXKCardPlayResult&& NestedResult)
+	{
+		for (const FName TargetUnitId : NestedResult.TargetUnitIds)
+		{
+			InOutRewardResult.TargetUnitIds.AddUnique(TargetUnitId);
+		}
+		InOutRewardResult.DamageResults.Append(MoveTemp(NestedResult.DamageResults));
+		InOutRewardResult.StatusChanges.Append(MoveTemp(NestedResult.StatusChanges));
+		InOutRewardResult.HealingResults.Append(MoveTemp(NestedResult.HealingResults));
+		InOutRewardResult.ToxicExplosionDistinctDotTypeCounts.Append(MoveTemp(NestedResult.ToxicExplosionDistinctDotTypeCounts));
+		InOutRewardResult.HeavyArrowChargeConsumed += NestedResult.HeavyArrowChargeConsumed;
+		InOutRewardResult.HeavyArrowExtraAttackCount += NestedResult.HeavyArrowExtraAttackCount;
+		InOutRewardResult.HeavyArrowToxicExplosionCount += NestedResult.HeavyArrowToxicExplosionCount;
+		InOutRewardResult.HeavyArrowPrimaryBonusPercent += NestedResult.HeavyArrowPrimaryBonusPercent;
+		InOutRewardResult.AutomaticResolutionCount += 1 + NestedResult.AutomaticResolutionCount;
+		InOutRewardResult.MaximumAutomaticQueueDepth = FMath::Max(
+			InOutRewardResult.MaximumAutomaticQueueDepth,
+			NestedResult.MaximumAutomaticQueueDepth);
+		InOutRewardResult.bOpenedPendingChoice |= NestedResult.bOpenedPendingChoice;
+	}
+
+	bool GrantSorcererRewardStatus(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName TargetUnitId,
+		const EGameXXKCardStatus Status,
+		const int32 Stacks,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError)
+	{
+		if (Stacks <= 0)
+		{
+			return true;
+		}
+		FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, TargetUnitId);
+		if (!Target || !Target->bLiving)
+		{
+			return true;
+		}
+		const int32 Before = GameXXKCardRules::GetCombatStatusStacks(*Target, Status);
+		if (!GrantStatusFromCardEffect(InOutRuntime, *Target, Status, Stacks, OutError))
+		{
+			return false;
+		}
+		Target = FindCombatUnitById(InOutRuntime.Units, TargetUnitId);
+		const int32 Applied = Target
+			? GameXXKCardRules::GetCombatStatusStacks(*Target, Status) - Before
+			: 0;
+		if (Applied > 0)
+		{
+			FGameXXKCardStatusChangeResult& Change = InOutResult.StatusChanges.AddDefaulted_GetRef();
+			Change.TargetUnitId = TargetUnitId;
+			Change.Status = Status;
+			Change.AppliedStacks = Applied;
+		}
+		return true;
+	}
+
+	bool TriggerSorcererRewardBurnWithoutDecay(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName OwnerUnitId,
+		const int32 TriggerCount,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError)
+	{
+		if (TriggerCount <= 0)
+		{
+			OutError = TEXT("A Sorcerer reward Burn trigger requires a positive count.");
+			return false;
+		}
+		for (const FName EnemyUnitId : CollectLivingUnitIdsForSide(InOutRuntime, EGameXXKCardTargetSide::Enemy))
+		{
+			for (int32 TriggerIndex = 0; TriggerIndex < TriggerCount; ++TriggerIndex)
+			{
+				const FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(InOutRuntime.Units, EnemyUnitId);
+				const int32 BurnStacks = Enemy && Enemy->bLiving
+					? GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn)
+					: 0;
+				if (BurnStacks <= 0)
+				{
+					break;
+				}
+				FGameXXKCardDamageResult TriggerResult;
+				if (!ApplyStatusHealthLoss(
+					InOutRuntime,
+					EnemyUnitId,
+					EGameXXKCardDamageCause::Burn,
+					BurnStacks,
+					true,
+					TriggerResult,
+					OutError))
+				{
+					return false;
+				}
+				TriggerResult.SourceUnitId = OwnerUnitId;
+				TriggerResult.ResolutionOrigin = EGameXXKCardResolutionOrigin::TaskReward;
+				TriggerResult.StatusStacksConsumed = 0;
+				InOutResult.DamageResults.Add(MoveTemp(TriggerResult));
+			}
+		}
+		return true;
+	}
+
+	bool ResolveSorcererRewardIceDamage(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName OwnerUnitId,
+		const int32 BasePercent,
+		const int32 PercentPerArmor,
+		FGameXXKCardPlayResult& InOutResult,
+		int32& OutConsumedArmor,
+		FString& OutError)
+	{
+		OutConsumedArmor = 0;
+		FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+		if (!Owner || !Owner->bLiving || BasePercent <= 0 || PercentPerArmor < 0)
+		{
+			OutError = TEXT("A Sorcerer Ice reward requires its living owner and a supported armor formula.");
+			return false;
+		}
+		OutConsumedArmor = FMath::Max(0, Owner->Armor);
+		const int32 OwnerAttack = Owner->Attack;
+		Owner->Armor = 0;
+		const int64 Percent = static_cast<int64>(BasePercent)
+			+ static_cast<int64>(PercentPerArmor) * OutConsumedArmor;
+		const int64 RawDamage = static_cast<int64>(OwnerAttack) * Percent / 100;
+		if (RawDamage <= 0 || RawDamage > MAX_int32)
+		{
+			OutError = TEXT("A Sorcerer Ice reward produced unsupported group damage.");
+			return false;
+		}
+		for (const FName EnemyUnitId : CollectLivingUnitIdsForSide(InOutRuntime, EGameXXKCardTargetSide::Enemy))
+		{
+			const FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(InOutRuntime.Units, EnemyUnitId);
+			if (!Enemy || !Enemy->bLiving)
+			{
+				continue;
+			}
+			FGameXXKCardDamageContext Context;
+			Context.SourceUnitId = OwnerUnitId;
+			Context.Kind = EGameXXKCardDamageKind::GroupAttack;
+			Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::TaskReward;
+			FGameXXKCardDamageResult DamageResult;
+			if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
+				InOutRuntime,
+				Context,
+				EnemyUnitId,
+				static_cast<int32>(RawDamage),
+				DamageResult,
+				&OutError))
+			{
+				return false;
+			}
+			InOutResult.DamageResults.Add(DamageResult);
+			if (!ResolveFirstDirectDamageReactiveModifiers(
+				InOutRuntime,
+				Context,
+				DamageResult,
+				&InOutResult.DamageResults,
+				OutError))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool ResolveSorcererRewardReplay(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKSorcererPartnerTaskRuntime& Task,
+		const EGameXXKSorcererCardFamily RequestedFamily,
+		FGameXXKCardPlayResult& OutReplayResult,
+		FString& OutError)
+	{
+		const FGameXXKResolvedCardSnapshot* ReplaySnapshot = nullptr;
+		if (RequestedFamily == EGameXXKSorcererCardFamily::None)
+		{
+			ReplaySnapshot = Task.FirstPlayOrder.IsEmpty() ? nullptr : &Task.FirstPlayOrder.Last();
+		}
+		else
+		{
+			for (int32 Index = Task.FirstPlayOrder.Num() - 1; Index >= 0; --Index)
+			{
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(Task.FirstPlayOrder[Index].CardId);
+				if (Definition && Definition->SorcererRule.Family == RequestedFamily)
+				{
+					ReplaySnapshot = &Task.FirstPlayOrder[Index];
+					break;
+				}
+			}
+		}
+		if (!ReplaySnapshot)
+		{
+			OutError = TEXT("A Sorcerer Universal reward cannot find its requested recorded replay card.");
+			return false;
+		}
+		if (!ResolveCardEffectsFromSnapshot(
+			InOutRuntime,
+			*ReplaySnapshot,
+			EGameXXKCardResolutionOrigin::PartnerSorcererTaskReplay,
+			OutReplayResult,
+			OutError))
+		{
+			return false;
+		}
+		if (IsActiveChoice(InOutRuntime.Deck.PendingChoice.Kind))
+		{
+			OutError = TEXT("A completed Sorcerer reward replay unexpectedly opened an unfinished-card choice.");
+			return false;
+		}
+		return true;
+	}
+
+	bool ResolveSorcererPartnerTaskReward(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const EGameXXKSorcererRewardRule Reward,
+		const FName OwnerUnitId,
+		FGameXXKCardPlayResult& OutResult,
+		FString& OutError)
+	{
+		OutError.Reset();
+		OutResult = FGameXXKCardPlayResult();
+		const FGameXXKSorcererPartnerTaskRuntime* Task = InOutRuntime.SorcererPartnerTasks.FindByPredicate(
+			[OwnerUnitId](const FGameXXKSorcererPartnerTaskRuntime& Candidate)
+			{
+				return Candidate.bActive && Candidate.OwnerUnitId == OwnerUnitId;
+			});
+		if (!Task
+			|| Task->FirstPlayOrder.Num() != 5
+			|| Task->StarterReward != Reward
+			|| Reward == EGameXXKSorcererRewardRule::None)
+		{
+			OutError = TEXT("A Sorcerer partner task queue has no matching completed starter reward.");
+			return false;
+		}
+
+		const FGameXXKSorcererPartnerTaskRuntime CompletedTask = *Task;
+		OutResult.CardId = CompletedTask.FirstPlayOrder[0].CardId;
+		OutResult.OwnerUnitId = OwnerUnitId;
+		OutResult.ResolutionOrigin = EGameXXKCardResolutionOrigin::TaskReward;
+		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+		if (!Owner)
+		{
+			OutError = TEXT("A Sorcerer partner task reward references an absent owner.");
+			return false;
+		}
+		if (!Owner->bLiving)
+		{
+			return true;
+		}
+
+		FGameXXKCardDefinition RewardDefinition;
+		RewardDefinition.Id = OutResult.CardId;
+		RewardDefinition.Owner = EGameXXKCardOwner::Profession;
+		RewardDefinition.OwnerId = TEXT("Profession.Sorcerer");
+		RewardDefinition.Role = EGameXXKCharacterRole::Sorcerer;
+		FGameXXKCardInstance RewardInstance;
+		RewardInstance.InstanceId = FName(*FString::Printf(TEXT("SorcererTaskReward.%d.%s"), InOutRuntime.RoundNumber, *OwnerUnitId.ToString()));
+		RewardInstance.CardId = OutResult.CardId;
+		RewardInstance.CurrentQuality = EGameXXKCardQuality::Common;
+		RewardInstance.OwnerUnitId = OwnerUnitId;
+		RewardInstance.SourceEntryId = RewardInstance.InstanceId;
+		RewardInstance.AcquisitionOrdinal = 0;
+		const auto ResolveEffects = [&](TArray<FGameXXKCardEffect> Effects) -> bool
+		{
+			RewardDefinition.Effects = MoveTemp(Effects);
+			return ResolveDefinitionEffects(
+				InOutRuntime,
+				RewardDefinition,
+				RewardInstance,
+				{},
+				EGameXXKCardResolutionOrigin::TaskReward,
+				false,
+				OutResult,
+				OutError);
+		};
+		const auto ResolveLightning = [&](const int32 MarkStacks, const int32 Percent, const int32 Energy, const int32 Draw) -> bool
+		{
+			TArray<FGameXXKCardEffect> Effects = {
+				MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, MarkStacks, EGameXXKCardStatus::Mark)};
+			if (Percent > 0)
+			{
+				Effects.Add(MakeTaskRewardEffect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, Percent, EGameXXKCardStatus::Mark));
+			}
+			if (Energy > 0)
+			{
+				Effects.Add(MakeTaskRewardEffect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, Energy));
+			}
+			if (Draw > 0)
+			{
+				Effects.Add(MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, Draw));
+			}
+			return ResolveEffects(MoveTemp(Effects));
+		};
+
+		switch (Reward)
+		{
+		case EGameXXKSorcererRewardRule::CoreSearch:
+			return ResolveEffects({
+				MakeTaskRewardEffect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1),
+				MakeTaskRewardEffect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 8),
+				MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2)});
+		case EGameXXKSorcererRewardRule::CoreManaEcho:
+			return ResolveEffects({
+				MakeTaskRewardEffect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 8),
+				MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2)});
+		case EGameXXKSorcererRewardRule::FireLamp:
+		{
+			for (const FName EnemyUnitId : CollectLivingUnitIdsForSide(InOutRuntime, EGameXXKCardTargetSide::Enemy))
+			{
+				const FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(InOutRuntime.Units, EnemyUnitId);
+				const int32 ExistingBurn = Enemy
+					? GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn)
+					: 0;
+				if (!GrantSorcererRewardStatus(InOutRuntime, EnemyUnitId, EGameXXKCardStatus::Burn, ExistingBurn, OutResult, OutError))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+		case EGameXXKSorcererRewardRule::FireSpread:
+		{
+			int32 HighestBurn = 0;
+			for (const FName EnemyUnitId : CollectLivingUnitIdsForSide(InOutRuntime, EGameXXKCardTargetSide::Enemy))
+			{
+				const FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(InOutRuntime.Units, EnemyUnitId);
+				HighestBurn = FMath::Max(HighestBurn, Enemy
+					? GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn)
+					: 0);
+			}
+			for (const FName EnemyUnitId : CollectLivingUnitIdsForSide(InOutRuntime, EGameXXKCardTargetSide::Enemy))
+			{
+				const FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(InOutRuntime.Units, EnemyUnitId);
+				const int32 ExistingBurn = Enemy
+					? GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn)
+					: 0;
+				if (!GrantSorcererRewardStatus(InOutRuntime, EnemyUnitId, EGameXXKCardStatus::Burn, HighestBurn - ExistingBurn + 3, OutResult, OutError))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+		case EGameXXKSorcererRewardRule::FireBurst:
+			return TriggerSorcererRewardBurnWithoutDecay(InOutRuntime, OwnerUnitId, 2, OutResult, OutError);
+		case EGameXXKSorcererRewardRule::FireSearch:
+			return ResolveEffects({
+				MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 6, EGameXXKCardStatus::Burn),
+				MakeTaskRewardEffect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1),
+				MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2)});
+		case EGameXXKSorcererRewardRule::IceCurrentManaRestore:
+		case EGameXXKSorcererRewardRule::IceMaxMana:
+		case EGameXXKSorcererRewardRule::IceArmorDouble:
+		case EGameXXKSorcererRewardRule::IceSearch:
+		{
+			int32 ConsumedArmor = 0;
+			if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, 100, 20, OutResult, ConsumedArmor, OutError))
+			{
+				return false;
+			}
+			switch (Reward)
+			{
+			case EGameXXKSorcererRewardRule::IceCurrentManaRestore:
+				return ResolveEffects({
+					MakeTaskRewardEffect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1),
+					MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1)});
+			case EGameXXKSorcererRewardRule::IceMaxMana:
+			{
+				FGameXXKCardCombatUnit* CurrentOwner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+				if (!CurrentOwner || CurrentOwner->MaxMana > MAX_int32 - 8)
+				{
+					OutError = TEXT("The Ice maximum-Mana reward exceeds the supported range.");
+					return false;
+				}
+				CurrentOwner->MaxMana += 8;
+				CurrentOwner->Mana = CurrentOwner->MaxMana;
+				return true;
+			}
+			case EGameXXKSorcererRewardRule::IceArmorDouble:
+				return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6)});
+			case EGameXXKSorcererRewardRule::IceSearch:
+				return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Weak)});
+			default:
+				return false;
+			}
+		}
+		case EGameXXKSorcererRewardRule::LightningMark:
+			return ResolveLightning(5, 0, 1, 2);
+		case EGameXXKSorcererRewardRule::LightningSearch:
+			return ResolveLightning(3, 0, 1, 2);
+		case EGameXXKSorcererRewardRule::LightningMarkHits:
+			return ResolveLightning(5, 70, 0, 0);
+		case EGameXXKSorcererRewardRule::LightningStorm:
+			return ResolveLightning(3, 60, 0, 0);
+		case EGameXXKSorcererRewardRule::UniversalScalingAttack:
+		{
+			switch (CompletedTask.LockedBranch)
+			{
+			case EGameXXKSorcererTaskBranch::Normal:
+				return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::AllEnemies, 300)});
+			case EGameXXKSorcererTaskBranch::Fire:
+				if (!ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 3, EGameXXKCardStatus::Burn)}))
+				{
+					return false;
+				}
+				return TriggerSorcererRewardBurnWithoutDecay(InOutRuntime, OwnerUnitId, 1, OutResult, OutError);
+			case EGameXXKSorcererTaskBranch::Ice:
+			{
+				int32 ConsumedArmor = 0;
+				return ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, 120, 25, OutResult, ConsumedArmor, OutError);
+			}
+			case EGameXXKSorcererTaskBranch::Lightning:
+				return ResolveLightning(3, 60, 0, 0);
+			case EGameXXKSorcererTaskBranch::None:
+			default:
+				OutError = TEXT("A Universal Sorcerer reward has no locked task branch.");
+				return false;
+			}
+		}
+		case EGameXXKSorcererRewardRule::UniversalDraw:
+		{
+			switch (CompletedTask.LockedBranch)
+			{
+			case EGameXXKSorcererTaskBranch::Normal:
+				return ResolveEffects({
+					MakeTaskRewardEffect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 2),
+					MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3),
+					MakeTaskRewardEffect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 6)});
+			case EGameXXKSorcererTaskBranch::Fire:
+				return ResolveEffects({
+					MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 4, EGameXXKCardStatus::Burn),
+					MakeTaskRewardEffect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1),
+					MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3)});
+			case EGameXXKSorcererTaskBranch::Ice:
+			{
+				int32 ConsumedArmor = 0;
+				if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, 100, 20, OutResult, ConsumedArmor, OutError))
+				{
+					return false;
+				}
+				FGameXXKCardCombatUnit* CurrentOwner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+				if (!CurrentOwner)
+				{
+					OutError = TEXT("The Universal Ice reward lost its owner before its armor refund.");
+					return false;
+				}
+				GameXXKCardRules::AddCombatArmor(*CurrentOwner, ConsumedArmor / 4);
+				return ResolveEffects({
+					MakeTaskRewardEffect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1),
+					MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2)});
+			}
+			case EGameXXKSorcererTaskBranch::Lightning:
+				return ResolveLightning(2, 40, 1, 2);
+			case EGameXXKSorcererTaskBranch::None:
+			default:
+				OutError = TEXT("A Universal Sorcerer reward has no locked task branch.");
+				return false;
+			}
+		}
+		case EGameXXKSorcererRewardRule::UniversalPartyArmor:
+		{
+			switch (CompletedTask.LockedBranch)
+			{
+			case EGameXXKSorcererTaskBranch::Normal:
+				return ResolveEffects({
+					MakeTaskRewardEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 12),
+					MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Weak)});
+			case EGameXXKSorcererTaskBranch::Fire:
+				return ResolveEffects({
+					MakeTaskRewardEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8),
+					MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 4, EGameXXKCardStatus::Burn),
+					MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Weak)});
+			case EGameXXKSorcererTaskBranch::Ice:
+			{
+				int32 ConsumedArmor = 0;
+				if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, 100, 20, OutResult, ConsumedArmor, OutError))
+				{
+					return false;
+				}
+				return ResolveEffects({MakeTaskRewardEffect(
+					EGameXXKCardEffectType::AddArmor,
+					EGameXXKCardEffectTarget::AllAllies,
+					6 + ConsumedArmor / 4)});
+			}
+			case EGameXXKSorcererTaskBranch::Lightning:
+				if (!ResolveLightning(2, 30, 0, 0))
+				{
+					return false;
+				}
+				return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6)});
+			case EGameXXKSorcererTaskBranch::None:
+			default:
+				OutError = TEXT("A Universal Sorcerer reward has no locked task branch.");
+				return false;
+			}
+		}
+		case EGameXXKSorcererRewardRule::UniversalSearch:
+		{
+			FGameXXKCardPlayResult ReplayResult;
+			switch (CompletedTask.LockedBranch)
+			{
+			case EGameXXKSorcererTaskBranch::Normal:
+				if (!ResolveSorcererRewardReplay(InOutRuntime, CompletedTask, EGameXXKSorcererCardFamily::None, ReplayResult, OutError))
+				{
+					return false;
+				}
+				AppendNestedSorcererRewardResult(OutResult, MoveTemp(ReplayResult));
+				return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1)});
+			case EGameXXKSorcererTaskBranch::Fire:
+			{
+				const TArray<FName> StableEnemyUnitIds = CollectLivingUnitIdsForSide(
+					InOutRuntime,
+					EGameXXKCardTargetSide::Enemy);
+				TMap<FName, int32> BurnBefore;
+				for (const FName EnemyUnitId : StableEnemyUnitIds)
+				{
+					const FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(InOutRuntime.Units, EnemyUnitId);
+					BurnBefore.Add(EnemyUnitId, Enemy
+						? GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn)
+						: 0);
+				}
+				if (!ResolveSorcererRewardReplay(InOutRuntime, CompletedTask, EGameXXKSorcererCardFamily::Fire, ReplayResult, OutError))
+				{
+					return false;
+				}
+				AppendNestedSorcererRewardResult(OutResult, MoveTemp(ReplayResult));
+				for (const FName EnemyUnitId : StableEnemyUnitIds)
+				{
+					const FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(InOutRuntime.Units, EnemyUnitId);
+					const int32 AppliedByReplay = Enemy
+						? FMath::Max(0, GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn) - BurnBefore.FindRef(EnemyUnitId))
+						: 0;
+					if (!GrantSorcererRewardStatus(InOutRuntime, EnemyUnitId, EGameXXKCardStatus::Burn, AppliedByReplay, OutResult, OutError))
+					{
+						return false;
+					}
+				}
+				return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Burn)});
+			}
+			case EGameXXKSorcererTaskBranch::Ice:
+			{
+				if (!ResolveSorcererRewardReplay(InOutRuntime, CompletedTask, EGameXXKSorcererCardFamily::Ice, ReplayResult, OutError))
+				{
+					return false;
+				}
+				AppendNestedSorcererRewardResult(OutResult, MoveTemp(ReplayResult));
+				int32 ConsumedArmor = 0;
+				if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, 100, 20, OutResult, ConsumedArmor, OutError))
+				{
+					return false;
+				}
+				return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1)});
+			}
+			case EGameXXKSorcererTaskBranch::Lightning:
+				if (!ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Mark)}))
+				{
+					return false;
+				}
+				if (!ResolveSorcererRewardReplay(InOutRuntime, CompletedTask, EGameXXKSorcererCardFamily::Lightning, ReplayResult, OutError))
+				{
+					return false;
+				}
+				AppendNestedSorcererRewardResult(OutResult, MoveTemp(ReplayResult));
+				return ResolveEffects({
+					MakeTaskRewardEffect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 40, EGameXXKCardStatus::Mark),
+					MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1)});
+			case EGameXXKSorcererTaskBranch::None:
+			default:
+				OutError = TEXT("A Universal Sorcerer reward has no locked task branch.");
+				return false;
+			}
+		}
+		case EGameXXKSorcererRewardRule::None:
+		default:
+			OutError = TEXT("A Sorcerer partner task queue has no supported starter reward.");
+			return false;
+		}
+	}
+
+	bool ResolveTaskNpcSpellTaskReward(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKTaskNpcSpellTaskRuntime& Task,
+		FGameXXKCardPlayResult& OutResult,
+		FString& OutError)
+	{
+		OutError.Reset();
+		OutResult = FGameXXKCardPlayResult();
+		if (Task.FirstPlayOrder.Num() != 3)
+		{
+			OutError = TEXT("A completed named task-NPC spell task has no exact three-card replay order.");
+			return false;
+		}
+
+		const FGameXXKResolvedCardSnapshot& StarterSnapshot = Task.FirstPlayOrder[0];
+		const FGameXXKCardDefinition* BaseDefinition = FGameXXKCardCatalog::FindCardDefinition(StarterSnapshot.CardId);
+		if (!BaseDefinition
+			|| BaseDefinition->Owner != EGameXXKCardOwner::QuestNpc
+			|| BaseDefinition->TaskNpcRewardEffects.IsEmpty()
+			|| !IsConcreteCardQuality(StarterSnapshot.Quality))
+		{
+			OutError = TEXT("A completed named task-NPC spell task has no valid starter reward definition.");
+			return false;
+		}
+
+		OutResult.CardId = StarterSnapshot.CardId;
+		OutResult.OwnerUnitId = StarterSnapshot.OwnerUnitId;
+		OutResult.ResolutionOrigin = EGameXXKCardResolutionOrigin::TaskReward;
+		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, StarterSnapshot.OwnerUnitId);
+		if (!Owner)
+		{
+			OutError = TEXT("A named task-NPC spell-task reward references an absent owner.");
+			return false;
+		}
+		if (!Owner->bLiving)
+		{
+			return true;
+		}
+
+		FGameXXKCardDefinition RewardDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
+			*BaseDefinition,
+			StarterSnapshot.Quality);
+		RewardDefinition.Effects = RewardDefinition.TaskNpcRewardEffects;
+		if (!ValidateCurrentEffectPlan(RewardDefinition, OutError))
+		{
+			return false;
+		}
+
+		FGameXXKCardInstance RewardInstance;
+		RewardInstance.InstanceId = FName(*FString::Printf(
+			TEXT("TaskNpcReward.%d.%s"),
+			InOutRuntime.RoundNumber,
+			*StarterSnapshot.OwnerUnitId.ToString()));
+		RewardInstance.CardId = StarterSnapshot.CardId;
+		RewardInstance.CurrentQuality = StarterSnapshot.Quality;
+		RewardInstance.OwnerUnitId = StarterSnapshot.OwnerUnitId;
+		RewardInstance.SourceEntryId = RewardInstance.InstanceId;
+		RewardInstance.AcquisitionOrdinal = 0;
+
+		TArray<FName> TargetIds;
+		if (!ResolveSnapshotTargetIds(
+			InOutRuntime,
+			RewardDefinition,
+			StarterSnapshot,
+			RewardInstance,
+			TargetIds,
+			OutError))
+		{
+			return false;
+		}
+		OutResult.TargetUnitIds = TargetIds;
+		return ResolveDefinitionEffects(
+			InOutRuntime,
+			RewardDefinition,
+			RewardInstance,
+			TargetIds,
+			EGameXXKCardResolutionOrigin::TaskReward,
+			TargetIds.IsEmpty(),
+			OutResult,
+			OutError);
+	}
+
+	bool TryResolveCompletedTaskNpcSpellTasks(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKCardPlayResult& InOutActiveResult,
+		FString& OutError)
+	{
+		OutError.Reset();
+		for (int32 TaskIndex = 0; TaskIndex < InOutRuntime.TaskNpcSpellTasks.Num();)
+		{
+			const FGameXXKTaskNpcSpellTaskRuntime Task = InOutRuntime.TaskNpcSpellTasks[TaskIndex];
+			if (Task.CompletedCardIds.Num() != 3 || Task.FirstPlayOrder.Num() != 3)
+			{
+				++TaskIndex;
+				continue;
+			}
+			if (IsActiveChoice(InOutRuntime.Deck.PendingChoice.Kind))
+			{
+				OutError = TEXT("A named task-NPC spell task cannot complete while another card choice is active.");
+				return false;
+			}
+			if (InOutActiveResult.AutomaticResolutionCount > MAX_int32 - 4)
+			{
+				OutError = TEXT("Named task-NPC automatic resolution count exceeds the supported range.");
+				return false;
+			}
+
+			InOutActiveResult.MaximumAutomaticQueueDepth = FMath::Max(
+				InOutActiveResult.MaximumAutomaticQueueDepth,
+				4);
+			for (const FGameXXKResolvedCardSnapshot& Snapshot : Task.FirstPlayOrder)
+			{
+				FGameXXKCardPlayResult ReplayResult;
+				if (!ResolveCardEffectsFromSnapshot(
+					InOutRuntime,
+					Snapshot,
+					EGameXXKCardResolutionOrigin::TaskNpcTaskReplay,
+					ReplayResult,
+					OutError))
+				{
+					return false;
+				}
+				if (ReplayResult.bOpenedPendingChoice)
+				{
+					OutError = TEXT("A named task-NPC base replay unexpectedly opened an unresolved card choice.");
+					return false;
+				}
+				InOutActiveResult.DamageResults.Append(MoveTemp(ReplayResult.DamageResults));
+			}
+
+			FGameXXKCardPlayResult RewardResult;
+			if (!ResolveTaskNpcSpellTaskReward(InOutRuntime, Task, RewardResult, OutError))
+			{
+				return false;
+			}
+			if (RewardResult.bOpenedPendingChoice)
+			{
+				OutError = TEXT("A named task-NPC reward unexpectedly opened an unresolved card choice.");
+				return false;
+			}
+			InOutActiveResult.DamageResults.Append(MoveTemp(RewardResult.DamageResults));
+			InOutActiveResult.AutomaticResolutionCount += 4;
+			InOutRuntime.TaskNpcSpellTasks.RemoveAt(TaskIndex, 1, EAllowShrinking::No);
+		}
+		return true;
+	}
+
 	void ExpireUntriggeredNextPlayerRoundModifiers(FGameXXKCardBattleRuntime& InOutRuntime)
 	{
 		InOutRuntime.Modifiers.RemoveAll([](const FGameXXKCardBattleModifierRuntime& Modifier)
 		{
 			switch (Modifier.Definition.Trigger)
 			{
+			case EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard:
+			case EGameXXKCardBattleModifierTrigger::AfterNextActiveCard:
 			case EGameXXKCardBattleModifierTrigger::NextPlayerRoundStart:
 			case EGameXXKCardBattleModifierTrigger::BeforeFirstActiveCardNextPlayerRound:
 			case EGameXXKCardBattleModifierTrigger::AfterFirstActiveCardNextPlayerRound:
@@ -7967,7 +14311,8 @@ bool GameXXKCardRules::ResumeAutomaticResolutionQueue(
 
 	while (true)
 	{
-		if (!TryStartCompletedHeroSpellTaskQueue(NewRuntime, ValidationError))
+		if (!TryStartCompletedSorcererPartnerTaskQueue(NewRuntime, ValidationError)
+			|| !TryStartCompletedHeroSpellTaskQueue(NewRuntime, ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);
 		}
@@ -8010,15 +14355,56 @@ bool GameXXKCardRules::ResumeAutomaticResolutionQueue(
 			}
 			NewResults.Add(MoveTemp(RewardResult));
 		}
+		if (Queue.PendingSorcererReward != EGameXXKSorcererRewardRule::None)
+		{
+			const EGameXXKSorcererRewardRule Reward = Queue.PendingSorcererReward;
+			const FName RewardOwnerUnitId = Queue.RewardOwnerUnitId;
+			FGameXXKCardPlayResult RewardResult;
+			if (!ResolveSorcererPartnerTaskReward(NewRuntime, Reward, RewardOwnerUnitId, RewardResult, ValidationError))
+			{
+				return SetFailure(OutError, ValidationError);
+			}
+			NewResults.Add(MoveTemp(RewardResult));
+		}
 
 		const bool bCompletedMageTask = Queue.Origin == EGameXXKCardResolutionOrigin::MageTaskReplay;
+		const bool bCompletedSorcererPartnerTask = Queue.Origin == EGameXXKCardResolutionOrigin::PartnerSorcererTaskReplay;
+		const FName CompletedRewardOwnerUnitId = Queue.RewardOwnerUnitId;
 		Queue = FGameXXKAutomaticResolutionQueue();
 		if (bCompletedMageTask)
 		{
 			NewRuntime.HeroSpellTask = FGameXXKHeroSpellTaskRuntime();
 		}
+		if (bCompletedSorcererPartnerTask)
+		{
+			FGameXXKSorcererPartnerTaskRuntime* CompletedTask = NewRuntime.SorcererPartnerTasks.FindByPredicate(
+				[CompletedRewardOwnerUnitId](const FGameXXKSorcererPartnerTaskRuntime& Candidate)
+				{
+					return Candidate.OwnerUnitId == CompletedRewardOwnerUnitId;
+				});
+			if (!CompletedTask)
+			{
+				return SetFailure(OutError, TEXT("A completed Sorcerer partner queue lost its owner task before reset."));
+			}
+			CompletedTask->bActive = false;
+			CompletedTask->LockedCardIds.Reset();
+			CompletedTask->CompletedCardIds.Reset();
+			CompletedTask->FirstPlayOrder.Reset();
+			CompletedTask->StarterReward = EGameXXKSorcererRewardRule::None;
+			CompletedTask->LockedBranch = EGameXXKSorcererTaskBranch::None;
+		}
 	}
 	GameXXKCardRules::RefreshCombatTerminalPhase(NewRuntime);
+	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Victory
+		|| NewRuntime.Phase == EGameXXKCardBattlePhase::Defeat)
+	{
+		NewRuntime.PendingBladeCharge = FGameXXKBladeChargeRuntime();
+		NewRuntime.PendingBladeDelayedCard = FGameXXKBladeDelayedCardRuntime();
+		NewRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+		NewRuntime.PendingBladeNativeStyle = FGameXXKBladeStyleRuntime();
+		NewRuntime.PendingBladeResidualStyle = FGameXXKBladeStyleRuntime();
+		ClearPoJunBattleState(NewRuntime);
+	}
 	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError)
 		|| !ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{
@@ -8052,6 +14438,11 @@ bool GameXXKCardRules::SubmitForcedDiscard(
 	RemoveHandBoundEnergySurchargesOutsideCurrentHand(NewRuntime);
 	TArray<FGameXXKCardPlayResult> ResumedResults;
 	if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(NewRuntime, ResumedResults, &ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (!MaterializePendingTriggeredDraws(NewRuntime, ValidationError)
+		|| !ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
@@ -8093,6 +14484,11 @@ bool GameXXKCardRules::SubmitInsightChoice(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	if (!MaterializePendingTriggeredDraws(NewRuntime, ValidationError)
+		|| !ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	InOutRuntime = MoveTemp(NewRuntime);
 	if (OutResumedResults)
 	{
@@ -8125,6 +14521,11 @@ bool GameXXKCardRules::CancelInsight(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	if (!MaterializePendingTriggeredDraws(NewRuntime, ValidationError)
+		|| !ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	InOutRuntime = MoveTemp(NewRuntime);
 	if (OutResumedResults)
 	{
@@ -8152,7 +14553,7 @@ bool GameXXKCardRules::SubmitHeroTaskSearchChoice(
 	if (InOutRuntime.Deck.PendingChoice.Kind != EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand
 		|| PickedInstanceId.IsNone())
 	{
-		return SetFailure(OutError, TEXT("There is no valid Hero spell-task search choice to submit."));
+		return SetFailure(OutError, TEXT("There is no valid spell-task search choice to submit."));
 	}
 	const FGameXXKCardInstance* Offered = InOutRuntime.Deck.PendingChoice.Candidates.FindByPredicate(
 		[PickedInstanceId](const FGameXXKCardInstance& Candidate)
@@ -8161,15 +14562,44 @@ bool GameXXKCardRules::SubmitHeroTaskSearchChoice(
 		});
 	if (!Offered)
 	{
-		return SetFailure(OutError, TEXT("The selected Hero spell-task card is not part of the current offer."));
+		return SetFailure(OutError, TEXT("The selected spell-task card is not part of the current offer."));
 	}
-	const FGameXXKHeroSpellTaskRuntime& Task = InOutRuntime.HeroSpellTask;
-	if (!Task.bActive
-		|| Offered->OwnerUnitId != Task.StarterOwnerUnitId
-		|| !Task.LockedHeroCardIds.Contains(Offered->CardId)
-		|| Task.CompletedHeroCardIds.Contains(Offered->CardId))
+	const FGameXXKHeroSpellTaskRuntime& HeroTask = InOutRuntime.HeroSpellTask;
+	const bool bValidHeroTaskCandidate = HeroTask.bActive
+		&& Offered->OwnerUnitId == HeroTask.StarterOwnerUnitId
+		&& HeroTask.LockedHeroCardIds.Contains(Offered->CardId)
+		&& !HeroTask.CompletedHeroCardIds.Contains(Offered->CardId);
+	const FGameXXKTaskNpcSpellTaskRuntime* TaskNpcTask = InOutRuntime.TaskNpcSpellTasks.FindByPredicate(
+		[Offered](const FGameXXKTaskNpcSpellTaskRuntime& Candidate)
+		{
+			return Candidate.bActive
+				&& Offered->OwnerUnitId == Candidate.OwnerUnitId
+				&& Candidate.LockedCardIds.Contains(Offered->CardId)
+				&& !Candidate.CompletedCardIds.Contains(Offered->CardId);
+		});
+	const FGameXXKSorcererPartnerTaskRuntime* SorcererTask = InOutRuntime.SorcererPartnerTasks.FindByPredicate(
+		[Offered](const FGameXXKSorcererPartnerTaskRuntime& Candidate)
+		{
+			return Candidate.bActive
+				&& !Offered->bTemporary
+				&& Offered->OwnerUnitId == Candidate.OwnerUnitId
+				&& Candidate.LockedCardIds.Contains(Offered->CardId)
+				&& !Candidate.CompletedCardIds.Contains(Offered->CardId);
+		});
+	if (!bValidHeroTaskCandidate && !TaskNpcTask && !SorcererTask)
 	{
-		return SetFailure(OutError, TEXT("The selected card no longer belongs to the active protagonist spell task."));
+		return SetFailure(OutError, TEXT("The selected card no longer belongs to an active unfinished spell task."));
+	}
+	bool bApplySorcererManaDiscount = false;
+	const FName SorcererSearchOwnerUnitId = SorcererTask ? SorcererTask->OwnerUnitId : NAME_None;
+	if (SorcererTask
+		&& !ShouldApplySorcererCoreSearchDiscount(
+			InOutRuntime,
+			SorcererSearchOwnerUnitId,
+			bApplySorcererManaDiscount,
+			ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
 	}
 
 	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
@@ -8197,14 +14627,28 @@ bool GameXXKCardRules::SubmitHeroTaskSearchChoice(
 		|| NewRuntime.Deck.Hand.Num() >= BattleHandCapacity
 		|| !IsSameInstance((*SourceZone)[SourceIndex], *Offered))
 	{
-		return SetFailure(OutError, TEXT("The selected Hero spell-task card is stale or the hand is full."));
+		return SetFailure(OutError, TEXT("The selected spell-task card is stale or the hand is full."));
 	}
 
 	NewRuntime.Deck.Hand.Add(MoveTemp((*SourceZone)[SourceIndex]));
 	SourceZone->RemoveAt(SourceIndex, 1, EAllowShrinking::No);
+	if (bApplySorcererManaDiscount
+		&& !AddHandBoundSorcererManaDiscount(
+			NewRuntime,
+			NewRuntime.Deck.Hand.Last(),
+			SorcererSearchOwnerUnitId,
+			ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	ClearPendingChoice(NewRuntime.Deck.PendingChoice);
 	TArray<FGameXXKCardPlayResult> ResumedResults;
-	if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(NewRuntime, ResumedResults, &ValidationError)
+	if (!ResolveSorcererPartnerStarterAutomaticHand(
+			NewRuntime,
+			Offered->OwnerUnitId,
+			ValidationError)
+		|| !GameXXKCardRules::ResumeAutomaticResolutionQueue(NewRuntime, ResumedResults, &ValidationError)
+		|| !MaterializePendingTriggeredDraws(NewRuntime, ValidationError)
 		|| !ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
@@ -8301,15 +14745,35 @@ bool GameXXKCardRules::ResolveCardPlay(
 	const FGameXXKCardDefinition QualityEffectiveDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
 		*BaseDefinition,
 		Instance->CurrentQuality);
-	TArray<FName> AppliedCostModifierIds;
-	TArray<FName> TerrainFreeStatusUnitIds;
-	TArray<FName> TerrainReductionStatusUnitIds;
-	int32 FreshEffectiveEnergyCost = QualityEffectiveDefinition.EnergyCost;
-	if (!BuildEffectiveCardEnergyCost(NewRuntime, QualityEffectiveDefinition, *Instance, *Owner, FreshEffectiveEnergyCost, &AppliedCostModifierIds, &TerrainFreeStatusUnitIds, &TerrainReductionStatusUnitIds, ValidationError))
+	FGameXXKCardDefinition ActiveEffectiveDefinition;
+	TArray<FName> AppliedTargetWideningModifierIds;
+	if (!BuildWidenedActiveCardDefinition(
+		NewRuntime,
+		QualityEffectiveDefinition,
+		*Instance,
+		*Owner,
+		ActiveEffectiveDefinition,
+		&AppliedTargetWideningModifierIds,
+		ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
-	if (FreshEffectiveEnergyCost != Preview.EffectiveEnergyCost)
+	TArray<FName> AppliedEnergyCostModifierIds;
+	TArray<FName> AppliedManaCostModifierIds;
+	TArray<FName> TerrainFreeStatusUnitIds;
+	TArray<FName> TerrainReductionStatusUnitIds;
+	int32 FreshEffectiveEnergyCost = ActiveEffectiveDefinition.EnergyCost;
+	if (!BuildEffectiveCardEnergyCost(NewRuntime, ActiveEffectiveDefinition, *Instance, *Owner, FreshEffectiveEnergyCost, &AppliedEnergyCostModifierIds, &TerrainFreeStatusUnitIds, &TerrainReductionStatusUnitIds, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	int32 FreshEffectiveManaCost = ActiveEffectiveDefinition.ManaCost;
+	if (!BuildEffectiveCardManaCost(NewRuntime, ActiveEffectiveDefinition, *Instance, *Owner, FreshEffectiveManaCost, &AppliedManaCostModifierIds, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (FreshEffectiveEnergyCost != Preview.EffectiveEnergyCost
+		|| FreshEffectiveManaCost != Preview.EffectiveManaCost)
 	{
 		return SetFailure(OutError, TEXT("A card-play modifier changed after the preview was built."));
 	}
@@ -8324,9 +14788,18 @@ bool GameXXKCardRules::ResolveCardPlay(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	TArray<FName> AppliedCostModifierIds = MoveTemp(AppliedEnergyCostModifierIds);
+	AppliedCostModifierIds.Append(MoveTemp(AppliedManaCostModifierIds));
 	if (!ConsumeOnCardPlayedModifiers(NewRuntime, AppliedCostModifierIds, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
+	}
+	for (const FName ModifierId : AppliedTargetWideningModifierIds)
+	{
+		if (!ConsumeTriggeredModifierUse(NewRuntime, ModifierId, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
 	}
 	if (!ConsumeTerrainCardCostStatuses(NewRuntime, TerrainFreeStatusUnitIds, TerrainReductionStatusUnitIds, ValidationError))
 	{
@@ -8340,11 +14813,54 @@ bool GameXXKCardRules::ResolveCardPlay(
 	ActiveSnapshot.Quality = CopiedInstance.CurrentQuality;
 	ActiveSnapshot.OwnerUnitId = CopiedInstance.OwnerUnitId;
 	ActiveSnapshot.OriginalTargetUnitIds = TargetIds;
+	const TArray<FGameXXKCardCombatUnit> HealerFormulaUnitsBeforeActiveCard = NewRuntime.Units;
+	const int32 PreexistingHealerFormulaCount = NewRuntime.HealerFormulas.Num();
+	const bool bTargetedBleedingEnemyAtPlay = TargetIds.ContainsByPredicate([&NewRuntime](const FName TargetId)
+	{
+		const FGameXXKCardCombatUnit* Target = FindCombatUnitById(NewRuntime.Units, TargetId);
+		return Target
+			&& Target->bLiving
+			&& Target->Side == EGameXXKCardTargetSide::Enemy
+			&& GameXXKCardRules::GetCombatStatusStacks(*Target, EGameXXKCardStatus::Bleed) > 0;
+	});
+	const bool bTargetedVulnerableEnemyAtPlay = TargetIds.ContainsByPredicate([&NewRuntime](const FName TargetId)
+	{
+		const FGameXXKCardCombatUnit* Target = FindCombatUnitById(NewRuntime.Units, TargetId);
+		return Target
+			&& Target->bLiving
+			&& Target->Side == EGameXXKCardTargetSide::Enemy
+			&& GameXXKCardRules::GetCombatStatusStacks(*Target, EGameXXKCardStatus::Vulnerability) > 0;
+	});
+	TArray<FGameXXKCardCombatUnit> BladeChargeUnitsBeforeActiveCard;
+	if (NewRuntime.PendingBladeCharge.Rule == EGameXXKBladeChargeRule::RestoreNextActiveOwnerState
+		|| CountEligibleBladeStyleRules(NewRuntime, EGameXXKBladeChargeRule::RestoreNextActiveOwnerState) > 0)
+	{
+		BladeChargeUnitsBeforeActiveCard = NewRuntime.Units;
+	}
 	if (!RecordHeroSpellTaskActivePlay(
 		NewRuntime,
 		QualityEffectiveDefinition,
 		ActiveSnapshot,
 		ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (!RecordTaskNpcSpellTaskActivePlay(
+		NewRuntime,
+		QualityEffectiveDefinition,
+		ActiveSnapshot,
+		ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (!RecordSorcererPartnerTaskActivePlay(
+		NewRuntime,
+		QualityEffectiveDefinition,
+		CopiedInstance,
+		ActiveSnapshot,
+		Preview.EffectiveManaCost,
+		ValidationError)
+		|| !TryStartCompletedSorcererPartnerTaskQueue(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
@@ -8367,20 +14883,44 @@ bool GameXXKCardRules::ResolveCardPlay(
 		return SetFailure(OutError, ValidationError);
 	}
 	int32 LockedHeavyArrowCharge = 0;
+	FName LockedHeavyArrowChargeOwnerUnitId = CopiedInstance.OwnerUnitId;
 	int32 HeavyArrowPrimaryBonusPercent = 0;
-	if (QualityEffectiveDefinition.HeavyArrow.Kind == EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge)
+	if (QualityEffectiveDefinition.HeavyArrow.Kind != EGameXXKHeavyArrowKind::None
+		&& QualityEffectiveDefinition.HeavyArrow.LockTiming == EGameXXKHeavyArrowLockTiming::BeforeBaseEffects)
 	{
 		if (!LockHeavyArrowCharge(
 			NewRuntime,
 			CopiedInstance.OwnerUnitId,
+			QualityEffectiveDefinition.HeavyArrow.ChargeSource,
 			NewResult,
 			LockedHeavyArrowCharge,
+			LockedHeavyArrowChargeOwnerUnitId,
 			ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);
 		}
-		const int64 PrimaryBonus = static_cast<int64>(QualityEffectiveDefinition.HeavyArrow.MagnitudePerCharge)
-			* LockedHeavyArrowCharge;
+	}
+	const FGameXXKHeavyArrowRule& ActiveHeavyArrow = QualityEffectiveDefinition.HeavyArrow;
+	const FGameXXKHunterCardRule& ActiveHunterRule = QualityEffectiveDefinition.HunterRule;
+	int32 PendingHunterHeavyArrowIgnoreDefense = 0;
+	if (ActiveHeavyArrow.Kind != EGameXXKHeavyArrowKind::None)
+	{
+		if (const int32* PendingIgnore = NewRuntime.PendingHunterHeavyArrowIgnoreDefense.Find(CopiedInstance.OwnerUnitId))
+		{
+			PendingHunterHeavyArrowIgnoreDefense = *PendingIgnore;
+			NewRuntime.PendingHunterHeavyArrowIgnoreDefense.Remove(CopiedInstance.OwnerUnitId);
+		}
+	}
+	const int64 HeavyArrowPrimaryPercentPerCharge =
+		(ActiveHeavyArrow.Kind == EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge
+			? ActiveHeavyArrow.MagnitudePerCharge
+			: 0)
+		+ static_cast<int64>(ActiveHeavyArrow.AdditionalPrimaryAttackPercentPerCharge);
+	const int64 PrimaryBonus = HeavyArrowPrimaryPercentPerCharge * LockedHeavyArrowCharge
+		+ static_cast<int64>(ActiveHunterRule.PrimaryAttackPercentPerPriorActiveCard)
+			* NewRuntime.ActiveCardsPlayedThisRound;
+	if (PrimaryBonus > 0)
+	{
 		if (PrimaryBonus < 0 || PrimaryBonus > MAX_int32)
 		{
 			return SetFailure(OutError, TEXT("A Heavy Arrow primary bonus exceeds the supported range."));
@@ -8388,23 +14928,61 @@ bool GameXXKCardRules::ResolveCardPlay(
 		HeavyArrowPrimaryBonusPercent = static_cast<int32>(PrimaryBonus);
 		NewResult.HeavyArrowPrimaryBonusPercent = HeavyArrowPrimaryBonusPercent;
 	}
+	const int64 TotalHunterIgnoredDefense = static_cast<int64>(ActiveHeavyArrow.IgnoreDefensePerCharge)
+		* LockedHeavyArrowCharge + PendingHunterHeavyArrowIgnoreDefense;
+	if (TotalHunterIgnoredDefense > 0)
+	{
+		FGameXXKCardEffect* PrimaryAttack = ActiveEffectiveDefinition.Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Type == EGameXXKCardEffectType::DamagePercentAttack;
+		});
+		if (!PrimaryAttack || TotalHunterIgnoredDefense > MAX_int32)
+		{
+			return SetFailure(OutError, TEXT("A Heavy Arrow Defense-ignore payload requires one supported primary attack."));
+		}
+		FGameXXKCardEffect DefenseIgnore;
+		DefenseIgnore.Type = EGameXXKCardEffectType::IgnoreDefense;
+		DefenseIgnore.Target = PrimaryAttack->Target;
+		DefenseIgnore.Source = PrimaryAttack->Source;
+		DefenseIgnore.Magnitude = static_cast<int32>(TotalHunterIgnoredDefense);
+		DefenseIgnore.HitCount = PrimaryAttack->HitCount;
+		ActiveEffectiveDefinition.Effects.Add(MoveTemp(DefenseIgnore));
+	}
+	if (LockedHeavyArrowCharge > 0 && ActiveHeavyArrow.HealthThresholdPointsPerCharge > 0)
+	{
+		FGameXXKCardEffect* ThresholdAttachment = ActiveEffectiveDefinition.Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Type == EGameXXKCardEffectType::BonusDamagePercent
+				&& Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetHealthBelowPercent;
+		});
+		if (!ThresholdAttachment)
+		{
+			return SetFailure(OutError, TEXT("A Heavy Arrow threshold payload requires one health-threshold attack attachment."));
+		}
+		const int64 WidenedThreshold = static_cast<int64>(ThresholdAttachment->Condition.HealthPercentThreshold)
+			+ static_cast<int64>(ActiveHeavyArrow.HealthThresholdPointsPerCharge) * LockedHeavyArrowCharge;
+		ThresholdAttachment->Condition.HealthPercentThreshold = static_cast<float>(FMath::Min<int64>(100, WidenedThreshold));
+	}
 	if (!ResolveCardEffectsFromSnapshot(
 		NewRuntime,
 		ActiveSnapshot,
 		EGameXXKCardResolutionOrigin::ActivePlay,
 		NewResult,
 		ValidationError,
-		HeavyArrowPrimaryBonusPercent))
+		HeavyArrowPrimaryBonusPercent,
+		&ActiveEffectiveDefinition))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
 	if (QualityEffectiveDefinition.HeavyArrow.Kind != EGameXXKHeavyArrowKind::None
-		&& QualityEffectiveDefinition.HeavyArrow.Kind != EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge
+		&& QualityEffectiveDefinition.HeavyArrow.LockTiming == EGameXXKHeavyArrowLockTiming::AfterBaseEffects
 		&& !LockHeavyArrowCharge(
 			NewRuntime,
 			CopiedInstance.OwnerUnitId,
+			QualityEffectiveDefinition.HeavyArrow.ChargeSource,
 			NewResult,
 			LockedHeavyArrowCharge,
+			LockedHeavyArrowChargeOwnerUnitId,
 			ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
@@ -8412,13 +14990,88 @@ bool GameXXKCardRules::ResolveCardPlay(
 	if (!ResolveHeavyArrowPostLockEffects(
 		NewRuntime,
 		QualityEffectiveDefinition.HeavyArrow,
-		CopiedInstance.OwnerUnitId,
+		LockedHeavyArrowChargeOwnerUnitId,
 		TargetIds,
 		LockedHeavyArrowCharge,
 		NewResult,
 		ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
+	}
+	if (!ResolveShiGuAfterActiveDotApplication(
+		NewRuntime,
+		HealerFormulaUnitsBeforeActiveCard,
+		CopiedInstance.OwnerUnitId,
+		NewResult,
+		ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (!ResolveSorcererPartnerStarterAutomaticHand(
+		NewRuntime,
+		CopiedInstance.OwnerUnitId,
+		ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	const auto AccumulateHunterOneShot = [&](TMap<FName, int32>& PendingByOwner, const int32 Added, const TCHAR* Context) -> bool
+	{
+		if (Added <= 0)
+		{
+			return true;
+		}
+		const int32 Existing = PendingByOwner.FindRef(CopiedInstance.OwnerUnitId);
+		if (Existing > MAX_int32 - Added)
+		{
+			ValidationError = FString::Printf(TEXT("%s exceeds the supported range."), Context);
+			return false;
+		}
+		PendingByOwner.Add(CopiedInstance.OwnerUnitId, Existing + Added);
+		return true;
+	};
+	if (!AccumulateHunterOneShot(
+			NewRuntime.PendingHunterHeavyArrowIgnoreDefense,
+			ActiveHunterRule.NextHeavyArrowIgnoreDefense,
+			TEXT("A pending Hunter Heavy Arrow Defense-ignore payload"))
+		|| !AccumulateHunterOneShot(
+			NewRuntime.PendingHunterPerfectDodgeCharge,
+			ActiveHunterRule.ChargeOnNextPerfectDodge,
+			TEXT("A pending Hunter perfect-dodge Charge payload")))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (ActiveHunterRule.PriorActiveCardInterval > 0)
+	{
+		const int32 CompletedIntervals = NewRuntime.ActiveCardsPlayedThisRound
+			/ ActiveHunterRule.PriorActiveCardInterval;
+		const int64 IntervalDrawCount = static_cast<int64>(CompletedIntervals)
+			* ActiveHunterRule.DrawPerCompletedInterval;
+		const int64 IntervalStatusStacks = static_cast<int64>(CompletedIntervals)
+			* ActiveHunterRule.StatusStacksPerCompletedInterval;
+		if (IntervalDrawCount > MAX_int32 || IntervalStatusStacks > MAX_int32)
+		{
+			return SetFailure(OutError, TEXT("A Hunter prior-card interval reward exceeds the supported range."));
+		}
+		if (IntervalDrawCount > 0)
+		{
+			GameXXKCardRules::RemoveDefeatedPartyOwnerCards(NewRuntime.Deck, NewRuntime.Units);
+			if (!GameXXKCardRules::DrawCards(NewRuntime.Deck, static_cast<int32>(IntervalDrawCount), 0, &ValidationError))
+			{
+				return SetFailure(OutError, ValidationError);
+			}
+		}
+		if (IntervalStatusStacks > 0)
+		{
+			FGameXXKCardCombatUnit* HunterOwner = FindCombatUnitById(NewRuntime.Units, CopiedInstance.OwnerUnitId);
+			if (!HunterOwner || !HunterOwner->bLiving
+				|| GameXXKCardRules::AddCombatStatus(
+					*HunterOwner,
+					ActiveHunterRule.StatusPerCompletedInterval,
+					static_cast<int32>(IntervalStatusStacks)) != IntervalStatusStacks)
+			{
+				return SetFailure(OutError, TEXT("A Hunter prior-card interval status could not be granted exactly."));
+			}
+		}
 	}
 	for (const EGameXXKCardBattleModifierTrigger Trigger : {
 		EGameXXKCardBattleModifierTrigger::OnNextAttack,
@@ -8439,6 +15092,39 @@ bool GameXXKCardRules::ResolveCardPlay(
 			return SetFailure(OutError, ValidationError);
 		}
 	}
+	if (!ResolveImplementedPartnerBladeBaseAfterActiveCard(
+		NewRuntime,
+		QualityEffectiveDefinition,
+		CopiedInstance,
+		Preview.EffectiveEnergyCost,
+		Preview.EffectiveManaCost,
+		NewResult,
+		ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	int32 AdditionalActiveCardCount = 0;
+	bool bPreserveFinishCandidate = false;
+	int32 StyleAdditionalActiveCardCount = 0;
+	bool bStylePreservesFinishCandidate = false;
+	if (!ResolveImplementedBladeStylesAfterActiveCard(
+		NewRuntime,
+		QualityEffectiveDefinition,
+		CopiedInstance,
+		ActiveSnapshot,
+		TargetIds,
+		BladeChargeUnitsBeforeActiveCard.IsEmpty() ? nullptr : &BladeChargeUnitsBeforeActiveCard,
+		Preview.EffectiveEnergyCost,
+		Preview.EffectiveManaCost,
+		NewResult,
+		StyleAdditionalActiveCardCount,
+		bStylePreservesFinishCandidate,
+		ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	AdditionalActiveCardCount += StyleAdditionalActiveCardCount;
+	bPreserveFinishCandidate |= bStylePreservesFinishCandidate;
 	if (bFirstActiveThisRound
 		&& !ResolveActiveCardTimingModifiers(
 			NewRuntime,
@@ -8465,12 +15151,52 @@ bool GameXXKCardRules::ResolveCardPlay(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
-	if (NewRuntime.ActiveCardsPlayedThisRound == MAX_int32)
+	const FGameXXKBladeChargeRuntime OrdinaryChargeAtConsumption = NewRuntime.PendingBladeCharge;
+	int32 OrdinaryAdditionalActiveCardCount = 0;
+	bool bOrdinaryPreservesFinishCandidate = false;
+	if (!ConsumeImplementedPartnerBladeCharge(
+			NewRuntime,
+			ActiveSnapshot,
+			CopiedInstance,
+			BladeChargeUnitsBeforeActiveCard.IsEmpty() ? nullptr : &BladeChargeUnitsBeforeActiveCard,
+			Preview.EffectiveEnergyCost,
+			Preview.EffectiveManaCost,
+			OrdinaryAdditionalActiveCardCount,
+			bOrdinaryPreservesFinishCandidate,
+			ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (OrdinaryAdditionalActiveCardCount < 0
+		|| AdditionalActiveCardCount > MAX_int32 - OrdinaryAdditionalActiveCardCount)
+	{
+		return SetFailure(OutError, TEXT("The combined Blade Charge count exceeds the supported range."));
+	}
+	AdditionalActiveCardCount += OrdinaryAdditionalActiveCardCount;
+	bPreserveFinishCandidate |= bOrdinaryPreservesFinishCandidate;
+	if (!ResolvePoJunAfterOrdinaryChargeConsumed(NewRuntime, OrdinaryChargeAtConsumption, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (bFirstActiveThisRound)
+	{
+		ArmImplementedPartnerBladeCharge(NewRuntime, QualityEffectiveDefinition, CopiedInstance);
+	}
+	const int32 ActiveCardCountIncrement = 1 + AdditionalActiveCardCount;
+	if (AdditionalActiveCardCount < 0
+		|| NewRuntime.ActiveCardsPlayedThisRound > MAX_int32 - ActiveCardCountIncrement)
 	{
 		return SetFailure(OutError, TEXT("The active-card counter has exhausted the supported range."));
 	}
-	++NewRuntime.ActiveCardsPlayedThisRound;
-	NewRuntime.LastActiveCard = ActiveSnapshot;
+	NewRuntime.ActiveCardsPlayedThisRound += ActiveCardCountIncrement;
+	if (!bPreserveFinishCandidate)
+	{
+		NewRuntime.LastActiveCard = ActiveSnapshot;
+	}
+	if (!TryResolveCompletedTaskNpcSpellTasks(NewRuntime, NewResult, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	if (!TryStartCompletedHeroSpellTaskQueue(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
@@ -8481,7 +15207,8 @@ bool GameXXKCardRules::ResolveCardPlay(
 			NewResult.MaximumAutomaticQueueDepth,
 			NewRuntime.AutomaticResolutionQueue.PendingCards.Num()
 				- NewRuntime.AutomaticResolutionQueue.NextCardIndex
-				+ (NewRuntime.AutomaticResolutionQueue.PendingReward != EGameXXKHeroSpellTaskReward::None ? 1 : 0));
+				+ (NewRuntime.AutomaticResolutionQueue.PendingReward != EGameXXKHeroSpellTaskReward::None ? 1 : 0)
+				+ (NewRuntime.AutomaticResolutionQueue.PendingSorcererReward != EGameXXKSorcererRewardRule::None ? 1 : 0));
 		TArray<FGameXXKCardPlayResult> AutomaticResults;
 		if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(NewRuntime, AutomaticResults, &ValidationError))
 		{
@@ -8490,14 +15217,124 @@ bool GameXXKCardRules::ResolveCardPlay(
 		for (FGameXXKCardPlayResult& AutomaticResult : AutomaticResults)
 		{
 			NewResult.DamageResults.Append(MoveTemp(AutomaticResult.DamageResults));
+			NewResult.StatusChanges.Append(MoveTemp(AutomaticResult.StatusChanges));
+			NewResult.HealingResults.Append(MoveTemp(AutomaticResult.HealingResults));
+			NewResult.ToxicExplosionDistinctDotTypeCounts.Append(MoveTemp(AutomaticResult.ToxicExplosionDistinctDotTypeCounts));
 			NewResult.bOpenedPendingChoice |= AutomaticResult.bOpenedPendingChoice;
+			NewResult.AutomaticResolutionCount += AutomaticResult.AutomaticResolutionCount;
 		}
 		NewResult.AutomaticResolutionCount += AutomaticResults.Num();
+	}
+	if (!TryResolveImplementedPartnerBladeFinish(
+		NewRuntime,
+		QualityEffectiveDefinition,
+		CopiedInstance,
+		ActiveSnapshot,
+		bTargetedBleedingEnemyAtPlay,
+		bTargetedVulnerableEnemyAtPlay,
+		Preview.EffectiveEnergyCost,
+		NewResult,
+		ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (NewRuntime.AutomaticResolutionQueue.bActive)
+	{
+		NewResult.MaximumAutomaticQueueDepth = FMath::Max(
+			NewResult.MaximumAutomaticQueueDepth,
+			NewRuntime.AutomaticResolutionQueue.PendingCards.Num()
+				- NewRuntime.AutomaticResolutionQueue.NextCardIndex
+				+ (NewRuntime.AutomaticResolutionQueue.PendingReward != EGameXXKHeroSpellTaskReward::None ? 1 : 0)
+				+ (NewRuntime.AutomaticResolutionQueue.PendingSorcererReward != EGameXXKSorcererRewardRule::None ? 1 : 0));
+		TArray<FGameXXKCardPlayResult> AutomaticResults;
+		if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(NewRuntime, AutomaticResults, &ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		for (FGameXXKCardPlayResult& AutomaticResult : AutomaticResults)
+		{
+			NewResult.DamageResults.Append(MoveTemp(AutomaticResult.DamageResults));
+			NewResult.StatusChanges.Append(MoveTemp(AutomaticResult.StatusChanges));
+			NewResult.HealingResults.Append(MoveTemp(AutomaticResult.HealingResults));
+			NewResult.ToxicExplosionDistinctDotTypeCounts.Append(MoveTemp(AutomaticResult.ToxicExplosionDistinctDotTypeCounts));
+			NewResult.bOpenedPendingChoice |= AutomaticResult.bOpenedPendingChoice;
+			NewResult.AutomaticResolutionCount += AutomaticResult.AutomaticResolutionCount;
+		}
+		NewResult.AutomaticResolutionCount += AutomaticResults.Num();
+	}
+	if (!QueuePoJunOpeningReplaysAfterActiveCard(
+		NewRuntime,
+		bFirstActiveThisRound,
+		ActiveSnapshot,
+		ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (NewRuntime.AutomaticResolutionQueue.bActive)
+	{
+		NewResult.MaximumAutomaticQueueDepth = FMath::Max(
+			NewResult.MaximumAutomaticQueueDepth,
+			NewRuntime.AutomaticResolutionQueue.PendingCards.Num()
+				- NewRuntime.AutomaticResolutionQueue.NextCardIndex
+				+ (NewRuntime.AutomaticResolutionQueue.PendingReward != EGameXXKHeroSpellTaskReward::None ? 1 : 0)
+				+ (NewRuntime.AutomaticResolutionQueue.PendingSorcererReward != EGameXXKSorcererRewardRule::None ? 1 : 0));
+		TArray<FGameXXKCardPlayResult> AutomaticResults;
+		if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(NewRuntime, AutomaticResults, &ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		for (FGameXXKCardPlayResult& AutomaticResult : AutomaticResults)
+		{
+			NewResult.DamageResults.Append(MoveTemp(AutomaticResult.DamageResults));
+			NewResult.StatusChanges.Append(MoveTemp(AutomaticResult.StatusChanges));
+			NewResult.HealingResults.Append(MoveTemp(AutomaticResult.HealingResults));
+			NewResult.ToxicExplosionDistinctDotTypeCounts.Append(MoveTemp(AutomaticResult.ToxicExplosionDistinctDotTypeCounts));
+			NewResult.bOpenedPendingChoice |= AutomaticResult.bOpenedPendingChoice;
+			NewResult.AutomaticResolutionCount += AutomaticResult.AutomaticResolutionCount;
+		}
+		NewResult.AutomaticResolutionCount += AutomaticResults.Num();
+	}
+	if (!ResolveZhuiFengAfterActiveCard(
+			NewRuntime,
+			ActiveCardCountIncrement,
+			NewResult,
+			ValidationError)
+		|| !ResolveQingNangAfterPaidHighCostActive(
+			NewRuntime,
+			Preview.EffectiveEnergyCost,
+			NewResult,
+			ValidationError)
+		|| !ResolveOpenedHealerFormulasAfterActiveCard(
+			NewRuntime,
+			HealerFormulaUnitsBeforeActiveCard,
+			PreexistingHealerFormulaCount,
+			Preview.EffectiveEnergyCost,
+			ActiveSnapshot,
+			NewResult,
+			ValidationError)
+		|| !InstallHealerFormulaAfterActivePlay(
+			NewRuntime,
+			QualityEffectiveDefinition,
+			CopiedInstance.OwnerUnitId,
+			ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
 	}
 	if (!IsActiveChoice(NewRuntime.Deck.PendingChoice.Kind)
 		&& !NewRuntime.AutomaticResolutionQueue.bActive)
 	{
 		GameXXKCardRules::RefreshCombatTerminalPhase(NewRuntime);
+		if (NewRuntime.Phase == EGameXXKCardBattlePhase::Victory
+			|| NewRuntime.Phase == EGameXXKCardBattlePhase::Defeat)
+		{
+			NewRuntime.PendingBladeCharge = FGameXXKBladeChargeRuntime();
+			NewRuntime.PendingBladeDelayedCard = FGameXXKBladeDelayedCardRuntime();
+			NewRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+			NewRuntime.PendingBladeNativeStyle = FGameXXKBladeStyleRuntime();
+			NewRuntime.PendingBladeResidualStyle = FGameXXKBladeStyleRuntime();
+			NewRuntime.BladeRetainedHandCardInstanceIds.Reset();
+			ClearPoJunBattleState(NewRuntime);
+		}
 		if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);
@@ -8572,6 +15409,11 @@ bool GameXXKCardRules::EndPlayerCardPhase(
 	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
 	TArray<FGameXXKCardDamageResult> NewEndPhaseDamageResults;
 	ExpireUntriggeredNextPlayerRoundModifiers(NewRuntime);
+	ExpirePoJunNextRoundStateAtPlayerPhaseEnd(NewRuntime);
+	NewRuntime.PendingBladeCharge = FGameXXKBladeChargeRuntime();
+	NewRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+	NewRuntime.PendingBladeNativeStyle = FGameXXKBladeStyleRuntime();
+	NewRuntime.PendingBladeResidualStyle = FGameXXKBladeStyleRuntime();
 	if (NewRuntime.ActiveCardsPlayedThisRound > 0 && !NewRuntime.LastActiveCard.CardId.IsNone())
 	{
 		const FGameXXKCardDefinition* BaseDefinition = FGameXXKCardCatalog::FindCardDefinition(NewRuntime.LastActiveCard.CardId);
@@ -8604,14 +15446,40 @@ bool GameXXKCardRules::EndPlayerCardPhase(
 			}
 			NewEndPhaseDamageResults.Append(MoveTemp(FinishResult.DamageResults));
 		}
+		ArmImplementedPartnerBladeFinish(NewRuntime, EffectiveDefinition, NewRuntime.LastActiveCard);
+		if (!ResolvePoJunAfterSuccessfulBladeFinish(
+			NewRuntime,
+			EffectiveDefinition,
+			NewRuntime.LastActiveCard,
+			ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
 	}
+	ResetPoJunCurrentRoundProgress(NewRuntime);
 	NewRuntime.LastActiveCard = FGameXXKResolvedCardSnapshot();
-	if (!DiscardRemainingHand(NewRuntime.Deck, ValidationError))
+	ExpireTemporaryCardsAtPlayerRoundEnd(NewRuntime.Deck, NewRuntime.RoundNumber);
+	const bool bHandDiscarded = NewRuntime.BladeRetainedHandCardInstanceIds.IsEmpty()
+		? DiscardRemainingHand(NewRuntime.Deck, ValidationError)
+		: DiscardRemainingHandExcept(NewRuntime.Deck, NewRuntime.BladeRetainedHandCardInstanceIds, ValidationError);
+	if (!bHandDiscarded)
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	NewRuntime.BladeRetainedHandCardInstanceIds.Reset();
 	RemoveHandBoundEnergySurchargesOutsideCurrentHand(NewRuntime);
+	const TArray<FGameXXKCardCombatUnit> HealerFormulaUnitsBeforePlayerDot = NewRuntime.Units;
+	const int32 FirstPlayerDotResultIndex = NewEndPhaseDamageResults.Num();
 	if (!ApplyEndPhaseDotForSide(NewRuntime, EGameXXKCardTargetSide::Party, NewEndPhaseDamageResults, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (!ResolveOpenedHealerFormulasAfterDamageEvents(
+		NewRuntime,
+		HealerFormulaUnitsBeforePlayerDot,
+		NewEndPhaseDamageResults,
+		FirstPlayerDotResultIndex,
+		ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
@@ -8619,6 +15487,15 @@ bool GameXXKCardRules::EndPlayerCardPhase(
 	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
+	}
+	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Victory
+		|| NewRuntime.Phase == EGameXXKCardBattlePhase::Defeat)
+	{
+		NewRuntime.PendingBladeDelayedCard = FGameXXKBladeDelayedCardRuntime();
+		NewRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+		NewRuntime.PendingBladeNativeStyle = FGameXXKBladeStyleRuntime();
+		NewRuntime.PendingBladeResidualStyle = FGameXXKBladeStyleRuntime();
+		ClearPoJunBattleState(NewRuntime);
 	}
 	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Player)
 	{
@@ -8675,6 +15552,7 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 	}
 
 	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	const TArray<FGameXXKCardCombatUnit> HealerFormulaUnitsBeforeEnemyDamage = NewRuntime.Units;
 	FGameXXKCardDamageContext ResolvedContext = Context;
 	ResolvedContext.AgilityRollPercent = AdvanceCombatRandomRoll(NewRuntime);
 	FName AppliedTargetUnitId = SelectedPartyTargetUnitId;
@@ -8683,14 +15561,54 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	if (!PrepareImplementedBladeFinishForEnemyCard(NewRuntime, ResolvedContext, AppliedTargetUnitId, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	FGameXXKCardDamageResult NewResult;
 	if (!ApplyCombatDirectDamage(NewRuntime.Units, NewRuntime.GuardLinks, ResolvedContext, AppliedTargetUnitId, RequestedDamage, NewResult, &ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	FGameXXKBladeFinishRuntime& DodgeFinish = NewRuntime.PendingBladeFinish;
+	if (DodgeFinish.Rule == EGameXXKBladeFinishRule::FirstTwoDodgesFree
+		&& DodgeFinish.TriggerPlayerRound == NewRuntime.RoundNumber + 1
+		&& DodgeFinish.RemainingTriggers > 0
+		&& AppliedTargetUnitId == DodgeFinish.SourceOwnerUnitId
+		&& NewResult.bAvoidedByAgility
+		&& NewResult.AgilityStacksConsumed > 0)
+	{
+		FGameXXKCardCombatUnit* DodgeOwner = FindCombatUnitById(NewRuntime.Units, AppliedTargetUnitId);
+		if (!DodgeOwner
+			|| GameXXKCardRules::AddCombatStatus(
+				*DodgeOwner,
+				EGameXXKCardStatus::Agility,
+				NewResult.AgilityStacksConsumed) != NewResult.AgilityStacksConsumed)
+		{
+			return SetFailure(OutError, TEXT("Zhu Ying Finish could not restore the Agility consumed by its protected dodge."));
+		}
+		NewResult.AgilityStacksConsumed = 0;
+		if (--DodgeFinish.RemainingTriggers == 0)
+		{
+			DodgeFinish = FGameXXKBladeFinishRuntime();
+		}
+	}
+	if (NewResult.bPerfectAgilityDodge)
+	{
+		if (const int32* PendingCharge = NewRuntime.PendingHunterPerfectDodgeCharge.Find(AppliedTargetUnitId))
+		{
+			FGameXXKCardCombatUnit* DodgeOwner = FindCombatUnitById(NewRuntime.Units, AppliedTargetUnitId);
+			if (!DodgeOwner || !DodgeOwner->bLiving
+				|| GameXXKCardRules::AddCombatStatus(*DodgeOwner, EGameXXKCardStatus::Charge, *PendingCharge) != *PendingCharge)
+			{
+				return SetFailure(OutError, TEXT("A Hunter perfect-dodge payload could not grant its exact Charge."));
+			}
+			NewRuntime.PendingHunterPerfectDodgeCharge.Remove(AppliedTargetUnitId);
+		}
+	}
 	NewResult.OriginalTargetUnitId = SelectedPartyTargetUnitId;
 	NewResult.bRedirected |= bRedirectedByCard;
-	UE_LOG(LogTemp, Warning, TEXT("[EnemyAtk] source=%s requested=%d target=%s redirected=%d before=%d dmg=%d after=%d"),
+	UE_LOG(LogTemp, Verbose, TEXT("[EnemyAtk] source=%s requested=%d target=%s redirected=%d before=%d dmg=%d after=%d"),
 		*ResolvedContext.SourceUnitId.ToString(),
 		RequestedDamage,
 		*AppliedTargetUnitId.ToString(),
@@ -8703,9 +15621,33 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	TArray<FGameXXKCardDamageResult> HealerFormulaDamageResults;
+	HealerFormulaDamageResults.Reserve(1 + NewReactiveDamageResults.Num());
+	HealerFormulaDamageResults.Add(NewResult);
+	HealerFormulaDamageResults.Append(NewReactiveDamageResults);
+	if (!ResolveOpenedHealerFormulasAfterDamageEvents(
+		NewRuntime,
+		HealerFormulaUnitsBeforeEnemyDamage,
+		HealerFormulaDamageResults,
+		0,
+		ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	if (!bDeferTerminalPhase)
 	{
 		GameXXKCardRules::RefreshCombatTerminalPhase(NewRuntime);
+		if (NewRuntime.Phase == EGameXXKCardBattlePhase::Victory
+			|| NewRuntime.Phase == EGameXXKCardBattlePhase::Defeat)
+		{
+			NewRuntime.PendingBladeCharge = FGameXXKBladeChargeRuntime();
+			NewRuntime.PendingBladeDelayedCard = FGameXXKBladeDelayedCardRuntime();
+			NewRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+			NewRuntime.PendingBladeNativeStyle = FGameXXKBladeStyleRuntime();
+			NewRuntime.PendingBladeResidualStyle = FGameXXKBladeStyleRuntime();
+			NewRuntime.BladeRetainedHandCardInstanceIds.Reset();
+			ClearPoJunBattleState(NewRuntime);
+		}
 	}
 	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError))
 	{
@@ -8759,25 +15701,88 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 		}
 
 		TArray<FGameXXKReactionRuntime> TriggeredReactions;
+		TSet<FString> TriggeredRegistrationGroups;
 		for (const FGameXXKReactionRuntime& Reaction : NewRuntime.Reactions)
 		{
 			if (Reaction.RecipientUnitId == FinalRecipientUnitId && Reaction.RemainingTriggers > 0)
 			{
-				TriggeredReactions.Add(Reaction);
+				const FString TriggerGroupKey = BuildPartyReactionTriggerGroupKey(Reaction);
+				if (!TriggeredRegistrationGroups.Contains(TriggerGroupKey))
+				{
+					TriggeredRegistrationGroups.Add(TriggerGroupKey);
+					TriggeredReactions.Add(Reaction);
+				}
 			}
 		}
-		NewRuntime.Reactions.RemoveAll([FinalRecipientUnitId](const FGameXXKReactionRuntime& Reaction)
+		TSet<FName> ConsumedReactionIds;
+		const bool bPreserveFirstTriggeredReaction = NewRuntime.PendingPreservedPartyReactionUses > 0
+			&& !TriggeredReactions.IsEmpty();
+		for (int32 TriggeredIndex = bPreserveFirstTriggeredReaction ? 1 : 0;
+			TriggeredIndex < TriggeredReactions.Num();
+			++TriggeredIndex)
 		{
-			return Reaction.RecipientUnitId == FinalRecipientUnitId && Reaction.RemainingTriggers > 0;
+			ConsumedReactionIds.Add(TriggeredReactions[TriggeredIndex].ReactionId);
+		}
+		NewRuntime.Reactions.RemoveAll([&ConsumedReactionIds](const FGameXXKReactionRuntime& Reaction)
+		{
+			return ConsumedReactionIds.Contains(Reaction.ReactionId);
 		});
+		if (bPreserveFirstTriggeredReaction)
+		{
+			--NewRuntime.PendingPreservedPartyReactionUses;
+		}
 		SyncPartyReactionStatuses(NewRuntime);
+
+		const FGameXXKBladeFinishRuntime FinishAtVolleyStart = NewRuntime.PendingBladeFinish;
+		int32 BladeCounterSourceCount = 0;
+		for (const FGameXXKReactionRuntime& Reaction : TriggeredReactions)
+		{
+			if (Reaction.Status == EGameXXKCardStatus::Counter
+				&& Reaction.RecipientUnitId == FinishAtVolleyStart.SourceOwnerUnitId)
+			{
+				++BladeCounterSourceCount;
+			}
+		}
+		const bool bBladeCounterVolley = BladeCounterSourceCount > 0;
+		const bool bGroupBladeCounterVolley = bBladeCounterVolley
+			&& FinishAtVolleyStart.Rule == EGameXXKBladeFinishRule::FirstCounterVolleyHitsAll
+			&& FinishAtVolleyStart.RemainingTriggers > 0;
+		const TArray<FName> GroupCounterTargetIds = bGroupBladeCounterVolley
+			? CollectLivingUnitIdsForSide(NewRuntime, EGameXXKCardTargetSide::Enemy)
+			: TArray<FName>();
+
+		if (bBladeCounterVolley
+			&& FinishAtVolleyStart.Rule == EGameXXKBladeFinishRule::TransferMarkBeforeCounter)
+		{
+			FGameXXKCardCombatUnit* FinishOwner = FindCombatUnitById(NewRuntime.Units, FinishAtVolleyStart.SourceOwnerUnitId);
+			FGameXXKCardCombatUnit* AttackingEnemy = FindCombatUnitById(NewRuntime.Units, EnemySourceUnitId);
+			if (!FinishOwner || FinishOwner->Side != EGameXXKCardTargetSide::Party
+				|| !AttackingEnemy || !AttackingEnemy->bLiving || AttackingEnemy->Side != EGameXXKCardTargetSide::Enemy)
+			{
+				return SetFailure(OutError, TEXT("Po Lang Finish lost its party owner or living enemy before transferring Mark."));
+			}
+			const int32 TransferLimit = FMath::Min(
+				BladeCounterSourceCount,
+				GameXXKCardRules::GetCombatStatusStacks(*FinishOwner, EGameXXKCardStatus::Mark));
+			const int32 Transferred = GameXXKCardRules::AddCombatStatus(
+				*AttackingEnemy,
+				EGameXXKCardStatus::Mark,
+				TransferLimit);
+			if (GameXXKCardRules::ConsumeCombatStatus(*FinishOwner, EGameXXKCardStatus::Mark, Transferred) != Transferred)
+			{
+				return SetFailure(OutError, TEXT("Po Lang Finish could not remove the exact Mark amount transferred to the attacker."));
+			}
+		}
 
 		for (const FGameXXKReactionRuntime& Reaction : TriggeredReactions)
 		{
 			const FGameXXKCardCombatUnit* ReactionSource = FindCombatUnitById(NewRuntime.Units, Reaction.RecipientUnitId);
+			const bool bGroupThisCounter = bGroupBladeCounterVolley
+				&& Reaction.Status == EGameXXKCardStatus::Counter
+				&& Reaction.RecipientUnitId == FinishAtVolleyStart.SourceOwnerUnitId;
 			const FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(NewRuntime.Units, EnemySourceUnitId);
 			if (!ReactionSource || ReactionSource->Side != EGameXXKCardTargetSide::Party
-				|| !Enemy || !Enemy->bLiving || Enemy->Side != EGameXXKCardTargetSide::Enemy)
+				|| (!bGroupThisCounter && (!Enemy || !Enemy->bLiving || Enemy->Side != EGameXXKCardTargetSide::Enemy)))
 			{
 				continue;
 			}
@@ -8788,30 +15793,85 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 			{
 				return SetFailure(OutError, TEXT("A queued Counter or Block source produced an unsupported damage amount."));
 			}
+			const FName ReactionSourceUnitId = ReactionSource->UnitId;
 
-			FGameXXKCardDamageContext ReactionContext;
-			ReactionContext.SourceUnitId = ReactionSource->UnitId;
-			ReactionContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
-			ReactionContext.ResolutionOrigin = EGameXXKCardResolutionOrigin::Reaction;
-			FGameXXKCardDamageResult ReactionResult;
-			if (!ApplyCombatDirectDamageInternal(
-				NewRuntime.Units,
-				NewRuntime.GuardLinks,
-				ReactionContext,
-				EnemySourceUnitId,
-				static_cast<int32>(RequestedDamage),
-				ReactionResult,
-				nullptr,
-				true,
-				&ValidationError))
+			const TArray<FName> ReactionTargetIds = bGroupThisCounter
+				? GroupCounterTargetIds
+				: TArray<FName>{EnemySourceUnitId};
+			for (const FName ReactionTargetId : ReactionTargetIds)
 			{
-				return SetFailure(OutError, ValidationError);
+				const FGameXXKCardCombatUnit* CurrentTarget = FindCombatUnitById(NewRuntime.Units, ReactionTargetId);
+				if (!CurrentTarget || !CurrentTarget->bLiving || CurrentTarget->Side != EGameXXKCardTargetSide::Enemy)
+				{
+					continue;
+				}
+				FGameXXKCardDamageContext ReactionContext;
+				ReactionContext.SourceUnitId = ReactionSourceUnitId;
+				ReactionContext.Kind = bGroupThisCounter
+					? EGameXXKCardDamageKind::GroupAttack
+					: EGameXXKCardDamageKind::SingleTargetAttack;
+				ReactionContext.ResolutionOrigin = EGameXXKCardResolutionOrigin::Reaction;
+				FGameXXKCardDamageResult ReactionResult;
+				if (!ApplyCombatDirectDamageInternal(
+					NewRuntime.Units,
+					NewRuntime.GuardLinks,
+					ReactionContext,
+					ReactionTargetId,
+					static_cast<int32>(RequestedDamage),
+					ReactionResult,
+					nullptr,
+					true,
+					&ValidationError))
+				{
+					return SetFailure(OutError, ValidationError);
+				}
+				ReactionResult.Cause = Reaction.Status == EGameXXKCardStatus::Block
+					? EGameXXKCardDamageCause::Block
+					: EGameXXKCardDamageCause::Counter;
+				NewResults.Add(MoveTemp(ReactionResult));
 			}
-			ReactionResult.Cause = Reaction.Status == EGameXXKCardStatus::Block
-				? EGameXXKCardDamageCause::Block
-				: EGameXXKCardDamageCause::Counter;
-			NewResults.Add(MoveTemp(ReactionResult));
 		}
+
+		if (bBladeCounterVolley
+			&& FinishAtVolleyStart.Rule == EGameXXKBladeFinishRule::MarkAndReregisterCounterVolley
+			&& FinishAtVolleyStart.RemainingTriggers > 0)
+		{
+			for (const FGameXXKReactionRuntime& Reaction : TriggeredReactions)
+			{
+				if (Reaction.Status != EGameXXKCardStatus::Counter
+					|| Reaction.RecipientUnitId != FinishAtVolleyStart.SourceOwnerUnitId)
+				{
+					continue;
+				}
+				const FGameXXKCardCombatUnit* Grantor = FindCombatUnitById(NewRuntime.Units, Reaction.GrantedByUnitId);
+				if (!Grantor || !Grantor->bLiving || Grantor->Side != EGameXXKCardTargetSide::Party)
+				{
+					continue;
+				}
+				FGameXXKCardInstance SourceInstance;
+				SourceInstance.InstanceId = Reaction.SourceCardInstanceId;
+				SourceInstance.OwnerUnitId = Reaction.GrantedByUnitId;
+				if (!RegisterPartyReactionUses(
+					NewRuntime,
+					SourceInstance,
+					Reaction.RecipientUnitId,
+					EGameXXKCardStatus::Counter,
+					1,
+					ValidationError))
+				{
+					return SetFailure(OutError, ValidationError);
+				}
+			}
+			NewRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+		}
+		else if (bGroupBladeCounterVolley)
+		{
+			NewRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+		}
+	}
+	if (NewRuntime.PendingBladeFinish.Rule == EGameXXKBladeFinishRule::MarkAndPrepareTwoCounters)
+	{
+		NewRuntime.PendingBladeFinish.bTriggeredForCurrentEnemyCard = false;
 	}
 	RemoveDefeatedPartyReactions(NewRuntime);
 	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError)
@@ -8848,8 +15908,18 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 	}
 
 	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	const TArray<FGameXXKCardCombatUnit> HealerFormulaUnitsBeforeEnemyDot = NewRuntime.Units;
 	TArray<FGameXXKCardDamageResult> NewEndPhaseDamageResults;
 	if (!ApplyEndPhaseDotForSide(NewRuntime, EGameXXKCardTargetSide::Enemy, NewEndPhaseDamageResults, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (!ResolveOpenedHealerFormulasAfterDamageEvents(
+		NewRuntime,
+		HealerFormulaUnitsBeforeEnemyDot,
+		NewEndPhaseDamageResults,
+		0,
+		ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
@@ -8858,8 +15928,25 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Victory
+		|| NewRuntime.Phase == EGameXXKCardBattlePhase::Defeat)
+	{
+		NewRuntime.PendingBladeDelayedCard = FGameXXKBladeDelayedCardRuntime();
+		NewRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+		NewRuntime.PendingBladeNativeStyle = FGameXXKBladeStyleRuntime();
+		NewRuntime.PendingBladeResidualStyle = FGameXXKBladeStyleRuntime();
+		ClearPoJunBattleState(NewRuntime);
+	}
 	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Enemy)
 	{
+		if (NewRuntime.PendingBladeFinish.Rule == EGameXXKBladeFinishRule::MarkAndPrepareTwoCounters
+			|| NewRuntime.PendingBladeFinish.Rule == EGameXXKBladeFinishRule::MarkAndReregisterCounterVolley
+			|| NewRuntime.PendingBladeFinish.Rule == EGameXXKBladeFinishRule::FirstTwoDodgesFree
+			|| NewRuntime.PendingBladeFinish.Rule == EGameXXKBladeFinishRule::TransferMarkBeforeCounter
+			|| NewRuntime.PendingBladeFinish.Rule == EGameXXKBladeFinishRule::FirstCounterVolleyHitsAll)
+		{
+			NewRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+		}
 		// A full round ends only after enemy-side DoT. Evaluate this before clearing party armor.
 		if (!ResolveEndOfRoundModifiers(NewRuntime, ValidationError))
 		{
@@ -8893,12 +15980,24 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		{
 			return SetFailure(OutError, ValidationError);
 		}
+		if (!RestoreDuanYueProtectedVulnerability(NewRuntime, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
 		NewRuntime.ActiveCardsPlayedThisRound = 0;
 		NewRuntime.LastActiveCard = FGameXXKResolvedCardSnapshot();
 		NewRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, 3 + NewRuntime.PendingNextRoundEnergyBonus);
 		NewRuntime.PendingNextRoundEnergyBonus = 0;
-		const int32 DrawCount = FMath::Max(0, NewRuntime.Deck.HandLimit - NewRuntime.Deck.Hand.Num());
-		// A party unit defeated last round must not contribute cards to this round's hand.
+		const int32 ReservedRetainedCardSlots = NewRuntime.PendingBladeDelayedCard.Rule == EGameXXKBladeChargeRule::RetainNextActiveNextRound ? 1 : 0;
+		const int32 DrawCount = FMath::Max(0, NewRuntime.Deck.HandLimit - ReservedRetainedCardSlots - NewRuntime.Deck.Hand.Num());
+		// A party unit defeated last round must not contribute cards or an owner-bound
+		// Sorcerer task to this round. The task's locked-card and per-battle auto-hand
+		// history become unreachable at the same boundary that removes its five cards.
+		NewRuntime.SorcererPartnerTasks.RemoveAll([&NewRuntime](const FGameXXKSorcererPartnerTaskRuntime& Task)
+		{
+			const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(NewRuntime.Units, Task.OwnerUnitId);
+			return !Owner || !Owner->bLiving || Owner->Side != EGameXXKCardTargetSide::Party;
+		});
 		RemoveDefeatedPartyOwnerCards(NewRuntime.Deck, NewRuntime.Units);
 		if (!DrawCards(NewRuntime.Deck, DrawCount, 0, &ValidationError))
 		{
@@ -8906,6 +16005,10 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		}
 		NewRuntime.Phase = EGameXXKCardBattlePhase::Player;
 		if (!MaterializePendingNextPlayerHandEnergySurcharge(NewRuntime, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		if (!ResolveBladeDelayedCardAtPlayerRoundStart(NewRuntime, NewEndPhaseDamageResults, ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);
 		}

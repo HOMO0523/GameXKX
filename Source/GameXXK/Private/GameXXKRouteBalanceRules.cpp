@@ -396,6 +396,22 @@ bool FGameXXKRouteBalanceRules::RunCase(
 	TArray<FGameXXKSimulationTraceEntry> Trace;
 	if (!FGameXXKCombatSimulationRules::RunScenario(Scenario, PendingResult.Metrics, Trace, OutError))
 	{
+		if (OutError)
+		{
+			*OutError = FString::Printf(
+				TEXT("reason=%s cohort=%s chapter=%d node=%d seed=%d: %s"),
+				*PendingResult.Metrics.FailureReason.ToString(),
+				*Case.CohortId.ToString(),
+				Case.Chapter,
+				static_cast<int32>(Case.NodeKind),
+				Case.Seed,
+				**OutError);
+		}
+		if (OutTrace)
+		{
+			*OutTrace = MoveTemp(Trace);
+		}
+		OutResult = MoveTemp(PendingResult);
 		return false;
 	}
 	if (OutTrace)

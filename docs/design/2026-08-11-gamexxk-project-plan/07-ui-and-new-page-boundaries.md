@@ -18,7 +18,7 @@
 | 城镇 HUD | 任务提示、NPC 交互、进入路线、打开背包/商店 | 入口接线和短提示；不重排 | 已实现 |
 | 路线图 | 三章节点、当前位置、节点可达状态、资源 | 节点数据、提示和状态；不改变现有地图结构 | 已实现 |
 | 战斗 HUD | 单位、血条、状态、意图、手牌、资源、结束回合 | 规则同步、短 Tooltip、目标高亮；不移动区域 | 已实现 |
-| 背包/角色界面 | 角色、装备六槽、装备仓库、卡牌配置 | 数据模型从旧伙伴解锁迁移到出生六牌；沿用模板 | 部分实现 |
+| 背包/角色界面 | 角色、装备六槽、装备仓库、主角8/伙伴5/NPC3卡牌配置 | 出生六牌、携带五牌、NPC四选三与两条背包门禁已接入；沿用模板 | 已实现 |
 | 商店 | 永久包、路线商品、价格、库存和购买结果 | 更新经济与概率；不静默添加新页面 | 部分实现 |
 | 战斗结算 | 胜负、奖励、路线返回 | 同死玩家胜利与奖励事务 | 已实现 |
 
@@ -85,7 +85,7 @@ Task11 已把局内卡牌关键词和血条下状态 Tooltip 改为短而准确�
 - 当前地势收益：按当前地势触发对应效果。
 - 法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发首牌奖励。
 
-精确测试证据：`Saved/Automation/Task11_StatusTooltips_GREEN_20260811/index.json` 中 `GameXXK.UI.Battle.StatusTooltips` 为 1/1 Success、0 error、0 warning；`Saved/Automation/Task11_CardText_GREEN_20260811/index.json` 中 `GameXXK.Integration.CardText` 为 1/1 Success、0 error、0 warning。对应实现提交为 `aba2a2e`。因此当前卡牌/状态 Tooltip 状态为“已实现”，不是待评审或待落地；以后若再次改文案，需要同步更新精确断言，但仍不得顺带改布局。
+精确测试证据：`Saved/Automation/Task11_StatusTooltips_GREEN_20260811/index.json` 中 `GameXXK.UI.Battle.StatusTooltips` 为 1/1 Success、0 error、0 warning；当前 `GameXXK.Integration.CardText` 又在 `Full198_FinalFresh_A_20260812/T1_CardText` 独立通过。两条伙伴背包配置门禁也已纳入55份最终新鲜报告。对应实现只改文本/数据接线，既有 slot、anchor、size 与页面布局未改。因此当前卡牌/状态 Tooltip 和8+5+3配置状态均为“已实现”；以后若再次改文案，需要同步更新精确断言，但仍不得顺带改布局。
 
 ## 6. 天赋系统：讨论边界
 

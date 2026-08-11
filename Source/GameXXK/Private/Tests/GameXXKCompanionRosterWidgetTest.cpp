@@ -234,7 +234,14 @@ bool FGameXXKCompanionRosterWidgetPersonalDeckTest::RunTest(const FString& Param
 	}
 
 	UGameXXKCompanionRosterWidget* Widget = BuildWidget(Subsystem);
-	TestEqual(TEXT("the selected companion exposes its deterministic twelve-card personal pool"), Widget->GetVisiblePersonalCardIds().Num(), 12);
+	TestEqual(TEXT("the selected companion exposes its deterministic six-card birth pool"), Widget->GetVisiblePersonalCardIds().Num(), 6);
+	UTextBlock* PersonalDeckCaption = Widget->WidgetTree
+		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterDeckCaption")))
+		: nullptr;
+	TestNotNull(TEXT("the personal deck keeps its existing caption control"), PersonalDeckCaption);
+	TestEqual(TEXT("the personal deck caption describes six birth cards and five configured cards"),
+		PersonalDeckCaption ? PersonalDeckCaption->GetText().ToString() : FString(),
+		FString(TEXT("个人牌组（6 张，编入 5 张）")));
 	TArray<FName> PendingCards = Widget->GetPendingPersonalCardIds();
 	TestEqual(TEXT("the saved permanent companion begins with five staged loadout cards"), PendingCards.Num(), 5);
 	if (PendingCards.Num() != 5)
@@ -248,7 +255,7 @@ bool FGameXXKCompanionRosterWidgetPersonalDeckTest::RunTest(const FString& Param
 	{
 		return !PendingCards.Contains(CardId) && Companion.UnlockedPersonalCardIds.Contains(CardId);
 	});
-	TestNotNull(TEXT("the twelve-card pool contains an unselected replacement card"), ReplacementCardId);
+	TestNotNull(TEXT("the six-card birth pool contains its one unselected replacement card"), ReplacementCardId);
 	if (!ReplacementCardId)
 	{
 		return false;

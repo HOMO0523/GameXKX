@@ -111,7 +111,13 @@ enum class EGameXXKEquipmentModifierKind : uint8
 	TerrainCostReduction = 32,
 	AdjacentAllyPower = 33,
 	FormationPower = 34,
-	TeamTerrainPower = 35
+	TeamTerrainPower = 35,
+	BladeChargeDraw = 36,
+	BladeStoredCharge = 37,
+	BladeOpeningReplay = 38,
+	QingNangCycle = 39,
+	ShiGuCycle = 40,
+	ZhuiFengCycle = 41
 };
 
 USTRUCT(BlueprintType)

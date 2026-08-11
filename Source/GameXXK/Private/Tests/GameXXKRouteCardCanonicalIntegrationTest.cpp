@@ -17,8 +17,7 @@ namespace GameXXKRouteCardCanonicalIntegrationTest
 
 	bool StartAcceptedRoute(
 		FGameXXKRuntimeState& OutState,
-		const int32 RootSeed,
-		const bool bKeepQingshanFollower)
+		const int32 RootSeed)
 	{
 		OutState = UGameXXKMVPRules::CreateNewGame();
 		if (!UGameXXKMVPRules::OpenWorldMap(OutState)
@@ -28,7 +27,6 @@ namespace GameXXKRouteCardCanonicalIntegrationTest
 			return false;
 		}
 		OutState.RouteSeed = RootSeed;
-		OutState.bFollowerJoined = bKeepQingshanFollower;
 		return UGameXXKMVPRules::EnterDungeon(OutState);
 	}
 
@@ -124,7 +122,7 @@ bool FGameXXKCanonicalRouteEntryInitializationTest::RunTest(const FString& Param
 	using namespace GameXXKRouteCardCanonicalIntegrationTest;
 	constexpr int32 RootSeed = 0x2468;
 	FGameXXKRuntimeState State;
-	if (!TestTrue(TEXT("the fixed-seed accepted route opens"), StartAcceptedRoute(State, RootSeed, true)))
+	if (!TestTrue(TEXT("the fixed-seed accepted route opens"), StartAcceptedRoute(State, RootSeed)))
 	{
 		return false;
 	}
@@ -147,7 +145,6 @@ bool FGameXXKCanonicalRouteEntryInitializationTest::RunTest(const FString& Param
 		&& UGameXXKMVPRules::EnterWorldRegion(RejectedState, UGameXXKMVPRules::RegionQingshan())
 		&& UGameXXKMVPRules::AcceptTownQuest(RejectedState));
 	RejectedState.RouteSeed = 0x3579;
-	RejectedState.bFollowerJoined = false;
 	TestTrue(TEXT("the rejected-route fixture initializes its permanent card state"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(RejectedState, &Error));
 	FGameXXKPermanentCompanion& Companion = RejectedState.CardRun.CompanionRoster.PermanentCompanions.AddDefaulted_GetRef();
@@ -188,7 +185,7 @@ bool FGameXXKCanonicalBattleMaterializationTest::RunTest(const FString& Paramete
 {
 	using namespace GameXXKRouteCardCanonicalIntegrationTest;
 	FGameXXKRuntimeState State;
-	if (!TestTrue(TEXT("the battle materialization fixture enters a route"), StartAcceptedRoute(State, 0x468A, false)))
+	if (!TestTrue(TEXT("the battle materialization fixture enters a route"), StartAcceptedRoute(State, 0x468A)))
 	{
 		return false;
 	}
@@ -287,10 +284,12 @@ bool FGameXXKCanonicalQuestNpcSlotReplacementTest::RunTest(const FString& Parame
 {
 	using namespace GameXXKRouteCardCanonicalIntegrationTest;
 	FGameXXKRuntimeState State;
-	if (!TestTrue(TEXT("the support-slot fixture enters without an automatic NPC"), StartAcceptedRoute(State, 0x579B, false)))
+	if (!TestTrue(TEXT("the support-slot fixture enters without an automatic combat NPC"), StartAcceptedRoute(State, 0x579B)))
 	{
 		return false;
 	}
+	TestTrue(TEXT("the accepted quest keeps its narrative follower active"), State.bFollowerJoined);
+	TestTrue(TEXT("the combat NPC slot remains independently empty"), State.CardRun.PartySelection.QuestNpc.NpcId.IsNone());
 	for (int32 Ordinal = FirstQuestNpcOrdinal; Ordinal <= LastQuestNpcOrdinal; ++Ordinal)
 	{
 		FGameXXKRouteCardEntry* Entry = FindEntryByOrdinal(State.CardRun.RouteCardEntries, Ordinal);
@@ -416,7 +415,7 @@ bool FGameXXKCanonicalRouteLocalCleanupTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKRouteCardCanonicalIntegrationTest;
 	FGameXXKRuntimeState State;
-	if (!TestTrue(TEXT("the cleanup fixture enters a canonical route"), StartAcceptedRoute(State, 0x68AC, false)))
+	if (!TestTrue(TEXT("the cleanup fixture enters a canonical route"), StartAcceptedRoute(State, 0x68AC)))
 	{
 		return false;
 	}
@@ -446,7 +445,7 @@ bool FGameXXKCanonicalThreeChapterEntryLifecycleTest::RunTest(const FString& Par
 {
 	using namespace GameXXKRouteCardCanonicalIntegrationTest;
 	FGameXXKRuntimeState State;
-	if (!TestTrue(TEXT("the chapter fixture enters a canonical three-chapter route"), StartAcceptedRoute(State, 0x79BD, false)))
+	if (!TestTrue(TEXT("the chapter fixture enters a canonical three-chapter route"), StartAcceptedRoute(State, 0x79BD)))
 	{
 		return false;
 	}

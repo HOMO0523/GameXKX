@@ -579,7 +579,7 @@ void UGameXXKBattleBoardWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	++GAliveBattleBoardInstances;
-	UE_LOG(LogTemp, Warning, TEXT("[Board] constructed name=%s alive=%d"), *GetName(), GAliveBattleBoardInstances);
+	UE_LOG(LogTemp, Verbose, TEXT("[Board] constructed name=%s alive=%d"), *GetName(), GAliveBattleBoardInstances);
 	BuildProgrammaticLayout();
 	RefreshFromState();
 }
@@ -587,7 +587,7 @@ void UGameXXKBattleBoardWidget::NativeConstruct()
 void UGameXXKBattleBoardWidget::NativeDestruct()
 {
 	--GAliveBattleBoardInstances;
-	UE_LOG(LogTemp, Warning, TEXT("[Board] destructed name=%s alive=%d"), *GetName(), GAliveBattleBoardInstances);
+	UE_LOG(LogTemp, Verbose, TEXT("[Board] destructed name=%s alive=%d"), *GetName(), GAliveBattleBoardInstances);
 	if (ActiveBattleVisualSessionToken != 0)
 	{
 		CancelBattleVisualSession(ActiveBattleVisualSessionToken);
@@ -2217,7 +2217,7 @@ void UGameXXKBattleBoardWidget::RefreshFromState()
 {
 	if (GAliveBattleBoardInstances > 1)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[Board] refresh name=%s inViewport=%d"), *GetName(), IsInViewport());
+		UE_LOG(LogTemp, Verbose, TEXT("[Board] refresh name=%s inViewport=%d"), *GetName(), IsInViewport());
 	}
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const bool bInBattle = Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle;
@@ -3012,7 +3012,7 @@ void UGameXXKBattleBoardWidget::RefreshProjectedUnitHuds()
 					View.bLiving = true;
 				}
 			}
-			UE_LOG(LogTemp, Warning, TEXT("[HPSnap] unit=%s view=%d runtime=%d snap=%d snapHP=%d healthOverride=%d"),
+			UE_LOG(LogTemp, Verbose, TEXT("[HPSnap] unit=%s view=%d runtime=%d snap=%d snapHP=%d healthOverride=%d"),
 				*Unit.UnitId.ToString(),
 				View.CurrentHP,
 				Unit.HP,
@@ -3060,7 +3060,7 @@ void UGameXXKBattleBoardWidget::RefreshProjectedUnitHuds()
 				HudSlot->SetZOrder(0);
 				ProjectedUnitHuds.Add(Unit.UnitId, Hud);
 			}
-			UE_LOG(LogTemp, Warning, TEXT("[HudSet] unit=%s hud=%s viewHP=%d layerChildren=%d"),
+			UE_LOG(LogTemp, Verbose, TEXT("[HudSet] unit=%s hud=%s viewHP=%d layerChildren=%d"),
 				*Unit.UnitId.ToString(),
 				*Hud->GetPathName(),
 				View.CurrentHP,

@@ -110,7 +110,7 @@ namespace
 		State.bHasActiveBattle = true;
 		State.ActiveBattleNodeId = 83;
 		State.ActiveBattleParty = {
-			MakeStatusPresentationLegacyUnit(TEXT("Npc.QiongMeiEr"), TEXT("琼梅儿"), false)};
+			MakeStatusPresentationLegacyUnit(TEXT("Npc.JinGui"), TEXT("金贵"), false)};
 		State.ActiveBattleEnemies = {
 			MakeStatusPresentationLegacyUnit(TEXT("Enemy.Status"), TEXT("状态敌人"), true)};
 
@@ -119,14 +119,14 @@ namespace
 		{
 			FGameXXKCardInstance& Card = Cards.AddDefaulted_GetRef();
 			Card.InstanceId = FName(*FString::Printf(TEXT("Status.Presentation.Card.%d"), Index));
-			Card.CardId = TEXT("Npc.QiongMeiEr.GuWuMiZong");
-			Card.OwnerUnitId = TEXT("Npc.QiongMeiEr");
+			Card.CardId = TEXT("Npc.JinGui.QiaoYanZhouXuan");
+			Card.OwnerUnitId = TEXT("Npc.JinGui");
 			Card.SourceEntryId = FName(*FString::Printf(TEXT("Status.Presentation.Source.%d"), Index));
 			Card.AcquisitionOrdinal = Index;
 		}
 		FGameXXKCardBattleRuntime Runtime;
 		TArray<FGameXXKCardCombatUnit> Units = {
-			MakeStatusPresentationUnit(TEXT("Npc.QiongMeiEr"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 0),
+			MakeStatusPresentationUnit(TEXT("Npc.JinGui"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 0),
 			MakeStatusPresentationUnit(TEXT("Enemy.Status"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 0)};
 		if (!GameXXKCardRules::InitializeCardBattleRuntime(
 			Runtime,

@@ -36,9 +36,14 @@ namespace
 	{
 		const bool bOpenedRoute = UGameXXKMVPRules::OpenWorldMap(State)
 			&& UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())
-			&& UGameXXKMVPRules::AcceptTownQuest(State)
-			&& UGameXXKMVPRules::EnterDungeon(State);
+			&& UGameXXKMVPRules::AcceptTownQuest(State);
 		if (!bOpenedRoute)
+		{
+			return false;
+		}
+		FString Error;
+		if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, TEXT("Npc.TusiChief"), {}, &Error)
+			|| !UGameXXKMVPRules::EnterDungeon(State))
 		{
 			return false;
 		}

@@ -171,10 +171,10 @@ namespace
 			OutCompanion = nullptr;
 			return SetError(OutError, TEXT("The route's active companion does not match exactly one active saved roster entry."));
 		}
-		if (OutCompanion->PersonalCardIds.Num() != 12)
+		if (OutCompanion->PersonalCardIds.Num() != 6)
 		{
 			OutCompanion = nullptr;
-			return SetError(OutError, TEXT("The active companion must retain its exact twelve-card personal pool."));
+			return SetError(OutError, TEXT("The active companion must retain its exact six-card birth pool."));
 		}
 		TSet<FName> SeenPersonalIds;
 		for (const FName CardId : OutCompanion->PersonalCardIds)

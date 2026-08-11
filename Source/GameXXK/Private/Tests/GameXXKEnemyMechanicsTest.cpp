@@ -43,7 +43,7 @@ namespace
 		{
 			FGameXXKCardInstance& Card = Cards.AddDefaulted_GetRef();
 			Card.InstanceId = FName(*FString::Printf(TEXT("Ironfeather.Card.%d"), Index));
-			Card.CardId = TEXT("Profession.Guard.ZhenDun");
+			Card.CardId = TEXT("Hero.Generic.HeYuZhan");
 			Card.OwnerUnitId = TEXT("Hero");
 			Card.SourceEntryId = FName(*FString::Printf(TEXT("Ironfeather.Source.%d"), Index));
 			Card.AcquisitionOrdinal = Index;
@@ -54,7 +54,10 @@ namespace
 	bool InitializeIronfeatherFixture(FGameXXKCardBattleRuntime& OutRuntime, FString& OutError, const int32 EnemyDefense = 4)
 	{
 		TArray<FGameXXKCardCombatUnit> Units;
-		Units.Add(MakeIronfeatherFixtureUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, 100, 20, 0, 1));
+		FGameXXKCardCombatUnit Hero = MakeIronfeatherFixtureUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, 100, 20, 0, 1);
+		Hero.Mana = 30;
+		Hero.MaxMana = 30;
+		Units.Add(Hero);
 		Units.Add(MakeIronfeatherFixtureUnit(TEXT("Ironfeather"), EGameXXKCardTargetSide::Enemy, 1000, 0, EnemyDefense, 2));
 		if (!GameXXKCardRules::InitializeCardBattleRuntime(OutRuntime, MakeIronfeatherFixtureCards(), Units, EGameXXKCardTerrain::Plain, 1977, &OutError))
 		{
@@ -185,7 +188,7 @@ namespace
 		{
 			FGameXXKCardInstance& Card = Cards.AddDefaulted_GetRef();
 			Card.InstanceId = FName(*FString::Printf(TEXT("BlackBear.GroupCard.%d"), Index));
-			Card.CardId = TEXT("Profession.Sorcerer.XingHuoLiaoYuan");
+			Card.CardId = TEXT("Profession.Guard.ZhenYueLing");
 			Card.OwnerUnitId = TEXT("Hero");
 			Card.SourceEntryId = FName(*FString::Printf(TEXT("BlackBear.GroupSource.%d"), Index));
 			Card.AcquisitionOrdinal = Index;
@@ -333,10 +336,10 @@ bool FGameXXKBlackBearThickHidePassiveTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("Black Bear thick hide applies to the all-enemies card entry"), BlackBearGroupDamage->HealthDamage, 11);
-	TestEqual(TEXT("a non-passive enemy keeps the unreduced group-card damage"), OtherEnemyGroupDamage->HealthDamage, 14);
-	TestEqual(TEXT("the all-enemies player card leaves Black Bear at reduced direct-card health"), FindFixtureUnit(GroupRuntime, TEXT("BlackBear"))->HP, 89);
-	TestEqual(TEXT("the all-enemies player card leaves the non-passive enemy at normal health"), FindFixtureUnit(GroupRuntime, TEXT("OtherEnemy"))->HP, 86);
+	TestEqual(TEXT("Black Bear thick hide applies to the all-enemies card entry"), BlackBearGroupDamage->HealthDamage, 13);
+	TestEqual(TEXT("a non-passive enemy keeps the unreduced group-card damage"), OtherEnemyGroupDamage->HealthDamage, 16);
+	TestEqual(TEXT("the all-enemies player card leaves Black Bear at reduced direct-card health"), FindFixtureUnit(GroupRuntime, TEXT("BlackBear"))->HP, 87);
+	TestEqual(TEXT("the all-enemies player card leaves the non-passive enemy at normal health"), FindFixtureUnit(GroupRuntime, TEXT("OtherEnemy"))->HP, 84);
 
 	FGameXXKCardBattleRuntime DotRuntime;
 	if (!TestTrue(TEXT("the Black Bear DOT fixture initializes"), InitializeBlackBearFixture(DotRuntime, Error)))
@@ -402,8 +405,8 @@ bool FGameXXKIronfeatherFirstHitPassiveTest::RunTest(const FString& Parameters)
 	const FName FirstCardId = Runtime.Deck.Hand[0].InstanceId;
 	FGameXXKCardPlayResult FirstResult;
 	TestTrue(TEXT("the first equal player card hit resolves"), GameXXKCardRules::ResolveCardPlay(Runtime, FirstCardId, TEXT("Ironfeather"), FirstResult, &Error));
-	TestEqual(TEXT("the first hit retains normal defense mitigation before the passive"), FirstResult.DamageResults[0].DamageAfterDefense, 16);
-	TestEqual(TEXT("the first Ironfeather hit loses exactly half of the normally mitigated health damage"), FirstResult.DamageResults[0].HealthDamage, 8);
+	TestEqual(TEXT("the first hit retains normal defense mitigation before the passive"), FirstResult.DamageResults[0].DamageAfterDefense, 28);
+	TestEqual(TEXT("the first Ironfeather hit loses exactly half of the normally mitigated health damage"), FirstResult.DamageResults[0].HealthDamage, 14);
 	const FGameXXKEnemyBattleState* FirstState = Runtime.EnemyStates.Find(TEXT("Ironfeather"));
 	TestNotNull(TEXT("the Ironfeather state remains addressable after the first card hit"), FirstState);
 	if (!FirstState)
@@ -426,9 +429,9 @@ bool FGameXXKIronfeatherFirstHitPassiveTest::RunTest(const FString& Parameters)
 	const FName SecondCardId = ReloadedRuntime.Deck.Hand[0].InstanceId;
 	FGameXXKCardPlayResult SecondResult;
 	TestTrue(TEXT("the second equal player card hit resolves after runtime persistence"), GameXXKCardRules::ResolveCardPlay(ReloadedRuntime, SecondCardId, TEXT("Ironfeather"), SecondResult, &Error));
-	TestEqual(TEXT("the second direct player card hit has the same normal defense result"), SecondResult.DamageResults[0].DamageAfterDefense, 16);
-	TestEqual(TEXT("the consumed first-hit passive leaves the second direct player card hit unmodified"), SecondResult.DamageResults[0].HealthDamage, 16);
-	TestEqual(TEXT("the two equal hits leave the expected total Ironfeather health"), FindFixtureUnit(ReloadedRuntime, TEXT("Ironfeather"))->HP, 976);
+	TestEqual(TEXT("the second direct player card hit has the same normal defense result"), SecondResult.DamageResults[0].DamageAfterDefense, 28);
+	TestEqual(TEXT("the consumed first-hit passive leaves the second direct player card hit unmodified"), SecondResult.DamageResults[0].HealthDamage, 28);
+	TestEqual(TEXT("the two equal hits leave the expected total Ironfeather health"), FindFixtureUnit(ReloadedRuntime, TEXT("Ironfeather"))->HP, 958);
 
 	FGameXXKCardBattleRuntime ArmorRuntime;
 	if (!TestTrue(TEXT("the armor-nullification fixture initializes"), InitializeIronfeatherFixture(ArmorRuntime, Error, 0)))
@@ -441,7 +444,7 @@ bool FGameXXKIronfeatherFirstHitPassiveTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	ArmorTarget->Armor = 20;
+	ArmorTarget->Armor = 32;
 	FGameXXKCardPlayResult ArmorBlockedResult;
 	TestTrue(TEXT("an armor-nullified player card hit resolves"), GameXXKCardRules::ResolveCardPlay(ArmorRuntime, ArmorRuntime.Deck.Hand[0].InstanceId, TEXT("Ironfeather"), ArmorBlockedResult, &Error));
 	TestEqual(TEXT("armor can leave the first attempted player card hit with zero health damage"), ArmorBlockedResult.DamageResults[0].HealthDamage, 0);
@@ -453,11 +456,11 @@ bool FGameXXKIronfeatherFirstHitPassiveTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("armor-nullified damage leaves the first-hit passive available"), ArmorState->bFirstHitPassiveAvailable);
 	FGameXXKCardPlayResult ArmorFollowupResult;
 	TestTrue(TEXT("the later positive player card hit resolves after armor is spent"), GameXXKCardRules::ResolveCardPlay(ArmorRuntime, ArmorRuntime.Deck.Hand[0].InstanceId, TEXT("Ironfeather"), ArmorFollowupResult, &Error));
-	TestEqual(TEXT("the later positive player card hit receives the first-hit reduction"), ArmorFollowupResult.DamageResults[0].HealthDamage, 10);
+	TestEqual(TEXT("the later positive player card hit receives the first-hit reduction"), ArmorFollowupResult.DamageResults[0].HealthDamage, 16);
 	TestFalse(TEXT("the later positive player card hit consumes the first-hit passive"), ArmorRuntime.EnemyStates.Find(TEXT("Ironfeather"))->bFirstHitPassiveAvailable);
 
 	FGameXXKCardBattleRuntime OnePointRuntime;
-	if (!TestTrue(TEXT("the one-point fixture initializes"), InitializeIronfeatherFixture(OnePointRuntime, Error, 19)))
+	if (!TestTrue(TEXT("the one-point fixture initializes"), InitializeIronfeatherFixture(OnePointRuntime, Error, 31)))
 	{
 		return false;
 	}
@@ -473,7 +476,7 @@ bool FGameXXKIronfeatherFirstHitPassiveTest::RunTest(const FString& Parameters)
 	FindFixtureUnit(OnePointRuntime, TEXT("Ironfeather"))->Defense = 0;
 	FGameXXKCardPlayResult OnePointFollowupResult;
 	TestTrue(TEXT("a later positive player card hit resolves after the one-point hit"), GameXXKCardRules::ResolveCardPlay(OnePointRuntime, OnePointRuntime.Deck.Hand[0].InstanceId, TEXT("Ironfeather"), OnePointFollowupResult, &Error));
-	TestEqual(TEXT("the later positive player card hit is reduced after the one-point hit"), OnePointFollowupResult.DamageResults[0].HealthDamage, 10);
+	TestEqual(TEXT("the later positive player card hit is reduced after the one-point hit"), OnePointFollowupResult.DamageResults[0].HealthDamage, 16);
 	TestFalse(TEXT("the later positive player card hit consumes the first-hit passive after the one-point hit"), OnePointRuntime.EnemyStates.Find(TEXT("Ironfeather"))->bFirstHitPassiveAvailable);
 
 	FGameXXKCardBattleRuntime AgilityRuntime;
@@ -505,7 +508,7 @@ bool FGameXXKIronfeatherFirstHitPassiveTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	DotTarget->Armor = 20;
+	DotTarget->Armor = 32;
 	FGameXXKCardPlayResult DotSetupResult;
 	TestTrue(TEXT("an armor-nullified player-card hit resolves before poison"), GameXXKCardRules::ResolveCardPlay(DotRuntime, DotRuntime.Deck.Hand[0].InstanceId, TEXT("Ironfeather"), DotSetupResult, &Error));
 	TestEqual(TEXT("the armor-nullified poison setup deals no health damage"), DotSetupResult.DamageResults[0].HealthDamage, 0);

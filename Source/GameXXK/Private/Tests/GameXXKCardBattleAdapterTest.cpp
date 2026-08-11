@@ -77,11 +77,14 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	TestTrue(FString::Printf(TEXT("a migrated or new runtime receives the approved card-run defaults: %s"), *Error),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
 	TestEqual(TEXT("the fixed hero starts with the approved eight selected permanent cards"), State.CardRun.HeroSelectedCardIds.Num(), 8);
-	TestEqual(TEXT("the fixed hero exposes all twelve approved permanent cards for the eight-slot loadout editor"), State.CardRun.HeroUnlockedCardIds.Num(), 12);
-	TArray<FName> EditedHeroLoadout = State.CardRun.HeroUnlockedCardIds;
-	EditedHeroLoadout.RemoveAt(0, 4, EAllowShrinking::No);
+	TestEqual(TEXT("the level-one hero exposes the approved thirty-two-card pool for the eight-slot loadout editor"), State.CardRun.HeroUnlockedCardIds.Num(), 32);
+	TArray<FName> EditedHeroLoadout;
+	for (int32 Index = State.CardRun.HeroUnlockedCardIds.Num() - 8; Index < State.CardRun.HeroUnlockedCardIds.Num(); ++Index)
+	{
+		EditedHeroLoadout.Add(State.CardRun.HeroUnlockedCardIds[Index]);
+	}
 	TestEqual(TEXT("the edited hero fixture still contains exactly eight selections"), EditedHeroLoadout.Num(), 8);
-	TestTrue(TEXT("the fixed hero can swap the first four defaults for the other approved cards"),
+	TestTrue(TEXT("the fixed hero can replace its defaults with any eight unlocked approved cards"),
 		FGameXXKCardBattleAdapter::SetHeroSelectedCards(State, EditedHeroLoadout, &Error));
 	TestEqual(TEXT("the edited hero loadout persists the chosen eight cards"), State.CardRun.HeroSelectedCardIds, EditedHeroLoadout);
 
@@ -91,7 +94,7 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	const TArray<FName> PreviouslyEquippedHeroCards = MigratedState.CardRun.HeroSelectedCardIds;
 	TestTrue(TEXT("an old eight-card hero save safely migrates to the full editable pool"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(MigratedState, &Error));
-	TestEqual(TEXT("migration backfills the four missing approved hero cards"), MigratedState.CardRun.HeroUnlockedCardIds.Num(), 12);
+	TestEqual(TEXT("migration backfills the complete level-one thirty-two-card pool"), MigratedState.CardRun.HeroUnlockedCardIds.Num(), 32);
 	TestEqual(TEXT("migration keeps the previously equipped eight cards intact"),
 		MigratedState.CardRun.HeroSelectedCardIds, PreviouslyEquippedHeroCards);
 
@@ -212,12 +215,22 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("hero joins the card runtime during the snapshot fixture"), SnapshotHero);
 	if (SnapshotNpc && SnapshotHero)
 	{
-		TestEqual(TEXT("task NPC level exactly mirrors the current hero"), SnapshotNpc->CombatLevel, SnapshotHero->CombatLevel);
-		TestEqual(TEXT("task NPC health exactly mirrors the current hero"), SnapshotNpc->MaxHP, SnapshotHero->MaxHP);
-		TestEqual(TEXT("task NPC mana exactly mirrors the current hero"), SnapshotNpc->MaxMana, SnapshotHero->MaxMana);
-		TestEqual(TEXT("task NPC attack exactly mirrors the current hero"), SnapshotNpc->Attack, SnapshotHero->Attack);
-		TestEqual(TEXT("task NPC defense exactly mirrors the current hero"), SnapshotNpc->Defense, SnapshotHero->Defense);
-		TestEqual(TEXT("task NPC speed exactly mirrors the current hero"), SnapshotNpc->Speed, SnapshotHero->Speed);
+		FGameXXKCompanionAttributes ExpectedNpcAttributes;
+		TestTrue(TEXT("task NPC snapshot resolves the canonical level-scaled NPC template"),
+			FGameXXKCompanionRules::GetQuestNpcAttributes(
+				TEXT("Npc.TusiChief"),
+				QuestNpcSnapshotState.PlayerLevel,
+				ExpectedNpcAttributes,
+				&Error));
+		TestEqual(TEXT("task NPC level follows the current route level"), SnapshotNpc->CombatLevel, QuestNpcSnapshotState.PlayerLevel);
+		TestEqual(TEXT("task NPC health comes from its own NPC template"), SnapshotNpc->MaxHP, ExpectedNpcAttributes.Health);
+		TestEqual(TEXT("task NPC mana comes from its own NPC template"), SnapshotNpc->MaxMana, ExpectedNpcAttributes.Mana);
+		TestEqual(TEXT("task NPC attack comes from its own NPC template"), SnapshotNpc->Attack, ExpectedNpcAttributes.Attack);
+		TestEqual(TEXT("task NPC defense comes from its own NPC template"), SnapshotNpc->Defense, ExpectedNpcAttributes.Defense);
+		TestEqual(TEXT("task NPC speed comes from its own NPC template"), SnapshotNpc->Speed, ExpectedNpcAttributes.Speed);
+		TestTrue(TEXT("task NPC projection does not inherit the hero's equipped-stat snapshot"),
+			SnapshotNpc->MaxHP != SnapshotHero->MaxHP
+			&& SnapshotNpc->Attack != SnapshotHero->Attack);
 	}
 
 	FGameXXKRuntimeState RewardState = UGameXXKMVPRules::CreateNewGame();

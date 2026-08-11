@@ -156,6 +156,7 @@ bool FGameXXKEquipmentRulesDeterministicRollTest::RunTest(const FString& Paramet
 	const double StartSeconds = FPlatformTime::Seconds();
 	int32 SlotCounts[6] = {};
 	int32 TierCounts[3] = {};
+	int32 RetiredSpeedRollCount = 0;
 	for (int32 FixedSeed = 1; FixedSeed <= 10000; ++FixedSeed)
 	{
 		FGameXXKEquipmentCollectionState Collection;
@@ -191,6 +192,7 @@ bool FGameXXKEquipmentRulesDeterministicRollTest::RunTest(const FString& Paramet
 		}
 		for (const FGameXXKEquipmentAffixRoll& Roll : Instance->RolledAffixes)
 		{
+			RetiredSpeedRollCount += Roll.AffixId == FName(TEXT("Affix.Universal.Speed")) ? 1 : 0;
 			if (IsValidTier(Roll.Tier))
 			{
 				++TierCounts[static_cast<uint8>(Roll.Tier) - 1];
@@ -204,6 +206,7 @@ bool FGameXXKEquipmentRulesDeterministicRollTest::RunTest(const FString& Paramet
 	TestTrue(TEXT("epic-quality common tiers follow the catalog's 50% weight"), TierCounts[0] >= 14000 && TierCounts[0] <= 16000);
 	TestTrue(TEXT("epic-quality rare tiers follow the catalog's 35% weight"), TierCounts[1] >= 9500 && TierCounts[1] <= 11500);
 	TestTrue(TEXT("epic-quality epic tiers follow the catalog's 15% weight"), TierCounts[2] >= 3500 && TierCounts[2] <= 5500);
+	TestEqual(TEXT("new equipment never rolls the retired Speed affix"), RetiredSpeedRollCount, 0);
 	AddInfo(FString::Printf(TEXT("[EquipmentRules] 10000 deterministic rolls completed in %.3f seconds"), FPlatformTime::Seconds() - StartSeconds));
 
 	FGameXXKEquipmentCollectionState Uninterrupted;
@@ -229,7 +232,7 @@ bool FGameXXKEquipmentRulesDeterministicRollTest::RunTest(const FString& Paramet
 	const FName KnownId = CreateChecked(*this, KnownSeed, MakeRequest(EGameXXKEquipmentSet::PoJun, EGameXXKEquipmentQuality::Rare, 9, EGameXXKEquipmentSlot::Weapon));
 	TestEqual(TEXT("stable instance ID uses seed hex and ordinal"), KnownId, FName(TEXT("EquipmentInstance.0000002A.7")));
 	const FGameXXKEquipmentInstance* KnownInstance = FGameXXKEquipmentRules::FindInstance(KnownSeed, KnownId);
-	const uint32 ExpectedCrc = FCrc::StrCrc32(TEXT("42|7|2|1|2|9"));
+	const uint32 ExpectedCrc = FCrc::StrCrc32(TEXT("42|7|3|1|2|9"));
 	TestNotNull(TEXT("known-seed instance resolves"), KnownInstance);
 	if (KnownInstance)
 	{

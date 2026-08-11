@@ -281,8 +281,8 @@ bool FGameXXKEquipmentStatOrderTest::RunTest(const FString& Parameters)
 	FGameXXKEquipmentLoadoutSnapshot Snapshot;
 	FString Error;
 	TestTrue(TEXT("modern six-piece projection builds"), FGameXXKEquipmentRules::BuildLoadoutSnapshot(Modern, Hero, Bare, Snapshot, &Error));
-	TestStats(*this, TEXT("each item floors its own enhancement before summing"), Snapshot.EnhancedEquipmentBaseStats, Stats(20, 10, 4, 1, 2));
-	TestStats(*this, TEXT("six attack percentages add to sixty percent once"), Snapshot.AttributesBeforeRoute, Stats(121, 61, 24, 8, 5));
+	TestStats(*this, TEXT("percent and flat enhancement resolve per item before summing"), Snapshot.EnhancedEquipmentBaseStats, Stats(80, 40, 34, 31, 32));
+	TestStats(*this, TEXT("six attack percentages add to sixty percent of the shared attack subtotal once"), Snapshot.AttributesBeforeRoute, Stats(181, 91, 72, 38, 35));
 	TestEqual(TEXT("six attack affixes aggregate to 6000 BP"), Snapshot.UniversalModifiers.FindRef(EGameXXKEquipmentModifierKind::Attack), 6000);
 	TestEqual(TEXT("set percentage affixes remain additive descriptors"), Snapshot.SetModifiers.FindRef(EGameXXKEquipmentModifierKind::DirectDamage), 6000);
 	TestEqual(TEXT("flat-count set affixes remain exact integers"), Snapshot.SetModifiers.FindRef(EGameXXKEquipmentModifierKind::ArmorBreakStacks), 12);
@@ -307,8 +307,8 @@ bool FGameXXKEquipmentStatOrderTest::RunTest(const FString& Parameters)
 		Snapshot.AttributesBeforeRoute,
 		PostBasisPoints,
 		PostFlatCounts);
-	TestStats(*this, TEXT("route/relic/terrain/status modifiers apply only through explicit post call"), Post, Stats(126, 61, 26, 8, 5));
-	TestStats(*this, TEXT("explicit post call never mutates the pre-route snapshot"), Snapshot.AttributesBeforeRoute, Stats(121, 61, 24, 8, 5));
+	TestStats(*this, TEXT("route/relic/terrain/status modifiers apply only through explicit post call"), Post, Stats(186, 91, 79, 38, 35));
+	TestStats(*this, TEXT("explicit post call never mutates the pre-route snapshot"), Snapshot.AttributesBeforeRoute, Stats(181, 91, 72, 38, 35));
 	return true;
 }
 
@@ -341,16 +341,16 @@ bool FGameXXKEquipmentCrossLayerAdditiveTest::RunTest(const FString& Parameters)
 		Hero,
 		Stats(100, 40, 10, 10, 200),
 		Snapshot));
-	TestEqual(TEXT("universal +10% and ZhuiFeng passive +5% add once against speed subtotal 200"), Snapshot.AttributesBeforeRoute.Speed, 230);
+	TestEqual(TEXT("legacy universal Speed remains readable without any retired ZhuiFeng speed passive"), Snapshot.AttributesBeforeRoute.Speed, 220);
 	TestEqual(TEXT("universal speed basis points remain separately inspectable"), Snapshot.UniversalModifiers.FindRef(EGameXXKEquipmentModifierKind::Speed), 1000);
-	const FGameXXKEquipmentActiveEffect* OpeningDraw = FindEffect(Snapshot.ActivePersonalEffects, TEXT("Set.ZhuiFeng.2"));
-	TestNotNull(TEXT("ZhuiFeng two-piece still emits its battle-start event descriptor"), OpeningDraw);
-	if (OpeningDraw)
+	const FGameXXKEquipmentActiveEffect* PairDraw = FindEffect(Snapshot.CandidateTeamEffects, TEXT("Set.ZhuiFeng.2"));
+	TestNotNull(TEXT("ZhuiFeng two-piece emits the approved team card-count descriptor"), PairDraw);
+	if (PairDraw)
 	{
-		TestEqual(TEXT("already-projected speed is not emitted as a consumable event"), OpeningDraw->ModifierKind, EGameXXKEquipmentModifierKind::Draw);
-		TestEqual(TEXT("opening draw is a flat event count"), OpeningDraw->Unit, EGameXXKEquipmentMagnitudeUnit::FlatCount);
-		TestEqual(TEXT("opening draw grants one card"), OpeningDraw->Magnitude, 1);
-		TestEqual(TEXT("opening draw keeps the catalog battle-start hook"), OpeningDraw->Hook, EGameXXKEquipmentSetBonusHook::BattleStart);
+		TestEqual(TEXT("pair-draw uses the combined ZhuiFeng cycle modifier"), PairDraw->ModifierKind, EGameXXKEquipmentModifierKind::ZhuiFengCycle);
+		TestEqual(TEXT("pair-draw is a flat event count"), PairDraw->Unit, EGameXXKEquipmentMagnitudeUnit::FlatCount);
+		TestEqual(TEXT("pair-draw grants one card"), PairDraw->Magnitude, 1);
+		TestEqual(TEXT("pair-draw listens to active card count"), PairDraw->Hook, EGameXXKEquipmentSetBonusHook::ZhuiFengActiveCardCount);
 	}
 	TestFalse(TEXT("no active descriptor can apply projected speed a second time"), Snapshot.ActivePersonalEffects.ContainsByPredicate(
 		[](const FGameXXKEquipmentActiveEffect& Effect)
@@ -468,13 +468,13 @@ bool FGameXXKEquipmentTooltipProjectionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("current complete loadout has five PoJun pieces"), TooltipA.CurrentSetPieceCounts.FindRef(EGameXXKEquipmentSet::PoJun), 5);
 	TestEqual(TEXT("candidate complete loadout crosses ZhuiFeng two-piece threshold"), TooltipA.CandidateSetPieceCounts.FindRef(EGameXXKEquipmentSet::ZhuiFeng), 2);
 	TestEqual(TEXT("legal warehouse swap reports no transaction error"), TooltipA.EquipError, EGameXXKEquipmentTransactionError::None);
-	TestStats(*this, TEXT("tooltip delta is candidate complete stats minus current complete stats"), TooltipA.CharacterStatDeltas, Stats(-5, 0, 1, 0, 1));
+	TestStats(*this, TEXT("tooltip delta is candidate complete stats minus current complete stats"), TooltipA.CharacterStatDeltas, Stats(-1, 3, 3, 2, 2));
 
 	const FGameXXKCharacterStats BareB = Stats(100, 40, 220, 10, 220);
 	FGameXXKEquipmentTooltipSnapshot TooltipB;
 	TestTrue(TEXT("same candidate supports a second authoritative naked-stat input"), FGameXXKEquipmentRules::BuildTooltipSnapshot(Collection, CandidateWeapon, Hero, BareB, TooltipB, &Error));
 	TestTrue(TEXT("percentage-derived attack delta changes with CompareBareStats"), TooltipB.CharacterStatDeltas.Attack > TooltipA.CharacterStatDeltas.Attack);
-	TestTrue(TEXT("passive set speed delta changes with CompareBareStats"), TooltipB.CharacterStatDeltas.Speed > TooltipA.CharacterStatDeltas.Speed);
+	TestEqual(TEXT("retired passive set speed no longer scales the tooltip delta with CompareBareStats"), TooltipB.CharacterStatDeltas.Speed, TooltipA.CharacterStatDeltas.Speed);
 	TestEqual(TEXT("tooltip projection never mutates the source collection"), SerializeCollection(Collection), Before);
 
 	FGameXXKEquipmentTooltipSnapshot AlreadyEquipped;

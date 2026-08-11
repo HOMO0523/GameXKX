@@ -97,6 +97,38 @@ bool FGameXXKMarkCardCompatibilityTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Zhui Lie keeps its start-of-card Mark mana reward"),
 		FindCompatibilityUnit(ZhuiLieRuntime.Units, TEXT("Hunter"))->Mana, 18);
 
+	FGameXXKCardBattleRuntime LethalZhuiLieRuntime;
+	const bool bLethalZhuiLieInitialized = InitializeCompatibilityRuntime(
+		LethalZhuiLieRuntime,
+		TEXT("Profession.Hunter.ZhuiLie"));
+	TestTrue(TEXT("lethal Zhui Lie compatibility runtime initializes"), bLethalZhuiLieInitialized);
+	if (!bLethalZhuiLieInitialized)
+	{
+		return false;
+	}
+	FGameXXKCardCombatUnit* LethalZhuiLieEnemy = FindCompatibilityUnit(LethalZhuiLieRuntime.Units, TEXT("Enemy"));
+	TestNotNull(TEXT("lethal Zhui Lie keeps the stable enemy target"), LethalZhuiLieEnemy);
+	if (!LethalZhuiLieEnemy)
+	{
+		return false;
+	}
+	LethalZhuiLieEnemy->HP = 1;
+	TestEqual(TEXT("lethal Zhui Lie target starts with one Mark"),
+		GameXXKCardRules::AddCombatStatus(*LethalZhuiLieEnemy, EGameXXKCardStatus::Mark, 1), 1);
+	LethalZhuiLieRuntime.Deck.SharedEnergy = 3;
+	FGameXXKCardPlayResult LethalZhuiLieResult;
+	TestTrue(TEXT("lethal Zhui Lie resolves against the marked enemy"), GameXXKCardRules::ResolveCardPlay(
+		LethalZhuiLieRuntime,
+		LethalZhuiLieRuntime.Deck.Hand[0].InstanceId,
+		TEXT("Enemy"),
+		LethalZhuiLieResult));
+	TestFalse(TEXT("lethal Zhui Lie defeats the marked enemy"),
+		FindCompatibilityUnit(LethalZhuiLieRuntime.Units, TEXT("Enemy"))->bLiving);
+	TestEqual(TEXT("lethal Zhui Lie still grants its start-of-card Mark draw reward"),
+		LethalZhuiLieRuntime.Deck.Hand.Num(), 5);
+	TestEqual(TEXT("lethal Zhui Lie still grants its start-of-card Mark Energy reward"),
+		LethalZhuiLieRuntime.Deck.SharedEnergy, 3);
+
 	FGameXXKCardBattleRuntime BaiBuRuntime;
 	const bool bBaiBuInitialized = InitializeCompatibilityRuntime(BaiBuRuntime, TEXT("Profession.Hunter.BaiBuChuanYang"));
 	TestTrue(TEXT("Bai Bu Chuan Yang compatibility runtime initializes"), bBaiBuInitialized);
@@ -129,16 +161,27 @@ bool FGameXXKMarkCardCompatibilityTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult LianZhuResult;
 	TestTrue(TEXT("Lian Zhu Jian resolves against an initially unmarked enemy"), GameXXKCardRules::ResolveCardPlay(
 		LianZhuRuntime, LianZhuRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), LianZhuResult));
-	TestEqual(TEXT("Lian Zhu Jian produces exactly two direct-damage packets"), LianZhuResult.DamageResults.Num(), 2);
-	if (LianZhuResult.DamageResults.Num() == 2)
+	TestEqual(TEXT("Lian Zhu Jian produces one attack plus one Bleed trigger"), LianZhuResult.DamageResults.Num(), 2);
+	int32 DirectAttackPackets = 0;
+	int32 BleedPackets = 0;
+	for (const FGameXXKCardDamageResult& DamageResult : LianZhuResult.DamageResults)
 	{
-		TestEqual(TEXT("Lian Zhu Jian first hit reads the initial live Mark state"),
-			LianZhuResult.DamageResults[0].MarkDamageBonusPercent, 0);
-		TestEqual(TEXT("Lian Zhu Jian second hit reads the Mark applied after the first hit"),
-			LianZhuResult.DamageResults[1].MarkDamageBonusPercent, 15);
+		DirectAttackPackets += DamageResult.Cause == EGameXXKCardDamageCause::DirectAttack ? 1 : 0;
+		BleedPackets += DamageResult.Cause == EGameXXKCardDamageCause::Bleed ? 1 : 0;
+		TestEqual(TEXT("an unmarked Lian Zhu packet receives no Mark bonus"), DamageResult.MarkDamageBonusPercent, 0);
 	}
-	TestEqual(TEXT("Lian Zhu Jian leaves the Mark applied after its second hit"),
-		GameXXKCardRules::GetCombatStatusStacks(*FindCompatibilityUnit(LianZhuRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Mark), 1);
+	TestEqual(TEXT("Lian Zhu Jian has exactly one base direct attack without stored Charge"), DirectAttackPackets, 1);
+	TestEqual(TEXT("Lian Zhu Jian triggers its newly applied Bleed exactly once"), BleedPackets, 1);
+	const FGameXXKCardCombatUnit* LianZhuEnemy = FindCompatibilityUnit(LianZhuRuntime.Units, TEXT("Enemy"));
+	const FGameXXKCardCombatUnit* LianZhuHunter = FindCompatibilityUnit(LianZhuRuntime.Units, TEXT("Hunter"));
+	TestEqual(TEXT("Lian Zhu Jian never creates an implicit Mark"),
+		GameXXKCardRules::GetCombatStatusStacks(*LianZhuEnemy, EGameXXKCardStatus::Mark), 0);
+	TestEqual(TEXT("the attack consumes one of Lian Zhu Jian's eight Bleed"),
+		GameXXKCardRules::GetCombatStatusStacks(*LianZhuEnemy, EGameXXKCardStatus::Bleed), 7);
+	TestEqual(TEXT("Lian Zhu Jian leaves Poison6"),
+		GameXXKCardRules::GetCombatStatusStacks(*LianZhuEnemy, EGameXXKCardStatus::Poison), 6);
+	TestEqual(TEXT("Lian Zhu Jian grants one new Charge after its attack"),
+		GameXXKCardRules::GetCombatStatusStacks(*LianZhuHunter, EGameXXKCardStatus::Charge), 1);
 
 	return true;
 }

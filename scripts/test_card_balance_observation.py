@@ -109,7 +109,7 @@ class CardBalanceObservationCatalogTests(unittest.TestCase):
         )
         self.assertEqual(
             audit["energy_counts"],
-            {"0": 33, "1": 89, "2": 55, "3": 21},
+            {"0": 43, "1": 97, "2": 48, "3": 10},
         )
         self.assertEqual(
             audit["owner_counts"],
@@ -120,44 +120,40 @@ class CardBalanceObservationCatalogTests(unittest.TestCase):
             for card_id in audit["setup_only_for_greedy_policy_cards"]
             if card_id.startswith("Profession.FormationMaster.")
         ]
-        self.assertEqual(len(formation_setup_cards), 9)
-        self.assertIn("Profession.FormationMaster.GuanShi", formation_setup_cards)
-        self.assertIn("Profession.FormationMaster.ZhenQiGuWu", formation_setup_cards)
+        self.assertEqual(
+            formation_setup_cards,
+            [
+                "Profession.FormationMaster.BaMenLunZhuan",
+                "Profession.FormationMaster.DingZhen",
+                "Profession.FormationMaster.GuanShi",
+                "Profession.FormationMaster.JieShanWeiZhang",
+                "Profession.FormationMaster.KunZhen",
+                "Profession.FormationMaster.LinFengFuZhen",
+                "Profession.FormationMaster.LinYingMiZong",
+                "Profession.FormationMaster.ShanMenFengSuo",
+                "Profession.FormationMaster.YiWeiZhen",
+                "Profession.FormationMaster.YinShuiHuiYuan",
+                "Profession.FormationMaster.ZhenQiGuWu",
+            ],
+        )
         self.assertIn(
             "Npc.JinGui.ShiJingErMu",
             audit["zero_cost_draw_cards"],
         )
-        self.assertIn(
-            [
-                "Profession.Guard.BuDongRuShan",
-                "Profession.Guard.YiFuDangGuan",
-            ],
-            audit["exact_duplicate_effect_groups"],
-        )
-        formation_dominance = next(
-            group
-            for group in audit["strict_energy_dominance_groups"]
-            if {
-                card["id"] for card in group["cards"]
-            }
-            == {
-                "Profession.FormationMaster.LinFengFuZhen",
-                "Profession.FormationMaster.LinYingMiZong",
-            }
-        )
         self.assertEqual(
-            formation_dominance["cards"],
+            audit["exact_duplicate_effect_groups"],
             [
-                {
-                    "id": "Profession.FormationMaster.LinFengFuZhen",
-                    "energy": 0,
-                },
-                {
-                    "id": "Profession.FormationMaster.LinYingMiZong",
-                    "energy": 1,
-                },
+                [
+                    "Profession.Blade.LianXiGuiQiao",
+                    "Profession.Sorcerer.JuLing",
+                ],
+                [
+                    "Profession.Sorcerer.FenMaiFu",
+                    "Profession.Sorcerer.LingYanLianDan",
+                ],
             ],
         )
+        self.assertEqual(audit["strict_energy_dominance_groups"], [])
 
 
 class CardBalanceObservationReportTests(unittest.TestCase):

@@ -224,8 +224,9 @@ namespace GameXXKCardRules
 		bool bDeferTerminalPhase = false);
 
 	/**
-	 * Resolves independently registered Counter and Block sources once after one complete enemy
-	 * card. Only a real single-target attack is eligible; group cards merely clean up reaction
+	 * Resolves at most one layer from each independently registered Counter or Block batch after one
+	 * complete enemy card. Separate card plays and replays remain separate batches and may each fire.
+	 * Only a real single-target attack is eligible; group cards merely clean up reaction
 	 * records owned by defeated recipients. Damage is queued without recursively opening another
 	 * reaction boundary, and a defeated recipient may still emit the reaction already queued by
 	 * the completed enemy card.

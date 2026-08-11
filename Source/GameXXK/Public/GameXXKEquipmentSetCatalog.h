@@ -29,7 +29,15 @@ enum class EGameXXKEquipmentSetBonusHook : uint8
 	ComboThreshold = 10,
 	MultipleDamageOverTime = 11,
 	RoundEnd = 12,
-	TerrainSynergyCard = 13
+	TerrainSynergyCard = 13,
+	PoJunChargeConsumed = 14,
+	PoJunBladeFinish = 15,
+	PoJunFirstActiveNextRound = 16,
+	QingNangHighCostActive = 17,
+	ShiGuDotApplied = 18,
+	ShiGuDualDotEstablished = 19,
+	ShiGuToxicExplosion = 20,
+	ZhuiFengActiveCardCount = 21
 };
 
 UENUM(BlueprintType)
@@ -53,7 +61,19 @@ enum class EGameXXKEquipmentSetBonusKind : uint8
 	ShiGuExtraDamageOverTimeTick = 15,
 	ShanHeTerrainPower = 16,
 	ShanHeTerrainCardFormation = 17,
-	ShanHeTeamFormationCore = 18
+	ShanHeTeamFormationCore = 18,
+	PoJunChargeDraw = 19,
+	PoJunFinishStoresCharge = 20,
+	PoJunOpeningFinishReplay = 21,
+	QingNangHighCostDraw = 22,
+	QingNangHighCostBloodCycle = 23,
+	QingNangHighCostEnergyCycle = 24,
+	ShiGuCardTargetRot = 25,
+	ShiGuFirstDualDotExplosion = 26,
+	ShiGuFirstExplosionPreservesDots = 27,
+	ZhuiFengPairDraw = 28,
+	ZhuiFengSecondCardEnergy = 29,
+	ZhuiFengFourthCardCycle = 30
 };
 
 USTRUCT(BlueprintType)

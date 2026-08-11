@@ -355,6 +355,57 @@ bool FGameXXKDeadOriginalEnemyFallsBackByStableOrderTest::RunTest(const FString&
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKLethalFallbackSkipsLaterSelectedTargetEffectsTest,
+	"GameXXK.Data.HeroCards.Foundation.LethalFallbackSkipsLaterSelectedTargetEffects",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKLethalFallbackSkipsLaterSelectedTargetEffectsTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKCardResolutionQueueTest;
+	const FName YueBaiUnitId(TEXT("Npc.YueBai"));
+	const FName DeadEnemyId(TEXT("Enemy.Dead"));
+	const FName LethalFallbackEnemyId(TEXT("Enemy.LethalFallback"));
+	const FName SurvivingEnemyId(TEXT("Enemy.Survivor"));
+	TArray<FGameXXKCardCombatUnit> Units = {
+		MakeUnit(HeroUnitId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 10, 20, 20, 1),
+		MakeUnit(YueBaiUnitId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Sorcerer, 100, 100, 20, 20, 20, 2),
+		MakeUnit(DeadEnemyId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 0, 100, 10, 0, 0, 20),
+		MakeUnit(LethalFallbackEnemyId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 15, 100, 10, 0, 0, 5),
+		MakeUnit(SurvivingEnemyId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10)
+	};
+	FGameXXKCardBattleRuntime Runtime;
+	if (!InitializeRuntime(*this, Runtime, MoveTemp(Units)))
+	{
+		return false;
+	}
+	FGameXXKResolvedCardSnapshot Snapshot;
+	Snapshot.CardId = TEXT("Npc.YueBai.YueBaiZhaoYe");
+	Snapshot.Quality = EGameXXKCardQuality::Common;
+	Snapshot.OwnerUnitId = YueBaiUnitId;
+	Snapshot.OriginalTargetUnitIds = {DeadEnemyId};
+	SeedQueue(Runtime, {Snapshot});
+
+	TArray<FGameXXKCardPlayResult> Results;
+	FString Error;
+	const bool bResolved = GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error);
+	TestTrue(FString::Printf(TEXT("a lethal fallback target does not invalidate later effects in the same automatic card: %s"), *Error), bResolved);
+	if (!bResolved)
+	{
+		return true;
+	}
+	TestEqual(TEXT("the stable fallback target keeps the committed lethal attack"), FindUnit(Runtime, LethalFallbackEnemyId)->HP, 0);
+	TestEqual(TEXT("the later living enemy is not retargeted mid-card"), FindUnit(Runtime, SurvivingEnemyId)->HP, 100);
+	TestEqual(TEXT("the automatic replay reports exactly one committed card"), Results.Num(), 1);
+	if (Results.Num() == 1)
+	{
+		TestTrue(TEXT("the replay audit keeps the initially resolved fallback target"), Results[0].TargetUnitIds == TArray<FName>{LethalFallbackEnemyId});
+		TestEqual(TEXT("only the lethal direct packet resolves after the target dies"), Results[0].DamageResults.Num(), 1);
+	}
+	TestTrue(TEXT("the completed lethal fallback replay clears its queue"), IsQueueDefault(Runtime.AutomaticResolutionQueue));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKNoLegalFallbackSkipsOnlyTargetDependentEffectsTest,
 	"GameXXK.Data.HeroCards.Foundation.NoLegalFallbackSkipsOnlyTargetDependentEffects",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -433,7 +484,7 @@ bool FGameXXKInsightPausesAndResumesReplayQueueTest::RunTest(const FString& Para
 		return false;
 	}
 	SeedQueue(BaseRuntime, {
-		MakeSnapshot(TEXT("Npc.YueBai.CanJuanPiZhu")),
+		MakeSnapshot(TEXT("Route.Rare.GuJuanCanZhang")),
 		MakeSnapshot(TEXT("Route.General.PoJiaTuCi"), {EnemyUnitId})
 	});
 
@@ -447,6 +498,11 @@ bool FGameXXKInsightPausesAndResumesReplayQueueTest::RunTest(const FString& Para
 	TestEqual(TEXT("insight leaves later lethal damage pending"), FindUnit(SubmitRuntime, EnemyUnitId)->HP, 10);
 	TestEqual(TEXT("insight opens the expected choice"), SubmitRuntime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::InsightChooseToHand);
 	const TArray<FGameXXKCardInstance> SubmitCandidates = SubmitRuntime.Deck.PendingChoice.Candidates;
+	TestTrue(TEXT("insight exposes at least one safe candidate"), !SubmitCandidates.IsEmpty());
+	if (SubmitCandidates.IsEmpty())
+	{
+		return false;
+	}
 	TArray<FName> RemainingOrder;
 	for (int32 Index = 1; Index < SubmitCandidates.Num(); ++Index)
 	{
@@ -493,7 +549,7 @@ bool FGameXXKTerminalPhaseWaitsForTheWholeQueuedSequenceTest::RunTest(const FStr
 	}
 	SeedQueue(Runtime, {
 		MakeSnapshot(TEXT("Route.General.PoJiaTuCi"), {EnemyUnitId}),
-		MakeSnapshot(TEXT("Npc.YueBai.CanJuanPiZhu"))
+		MakeSnapshot(TEXT("Route.Rare.GuJuanCanZhang"))
 	});
 	TArray<FGameXXKCardPlayResult> Results;
 	FString Error;
@@ -524,13 +580,37 @@ bool FGameXXKSimultaneousEliminationChoosesPlayerVictoryTest::RunTest(const FStr
 	{
 		return false;
 	}
-	SeedQueue(Runtime, {MakeSnapshot(TEXT("Profession.Sorcerer.FenTianJue"), {EnemyUnitId})});
-	TArray<FGameXXKCardPlayResult> Results;
+	FGameXXKCardDamageContext EnemyHit;
+	EnemyHit.SourceUnitId = HeroUnitId;
+	EnemyHit.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+	FGameXXKCardDamageResult EnemyDamage;
 	FString Error;
-	TestTrue(FString::Printf(TEXT("simultaneous-elimination replay resolves: %s"), *Error),
-		GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
+	TestTrue(FString::Printf(TEXT("same-boundary lethal enemy hit resolves: %s"), *Error),
+		GameXXKCardRules::ApplyCombatDirectDamage(
+			Runtime.Units,
+			Runtime.GuardLinks,
+			EnemyHit,
+			EnemyUnitId,
+			10,
+			EnemyDamage,
+			&Error));
+
+	FGameXXKCardDamageContext SelfLoss;
+	SelfLoss.SourceUnitId = HeroUnitId;
+	SelfLoss.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
+	FGameXXKCardDamageResult PartyDamage;
+	TestTrue(FString::Printf(TEXT("same-boundary lethal party self-loss resolves: %s"), *Error),
+		GameXXKCardRules::ApplyCombatDirectDamage(
+			Runtime.Units,
+			Runtime.GuardLinks,
+			SelfLoss,
+			HeroUnitId,
+			8,
+			PartyDamage,
+			&Error));
+	GameXXKCardRules::RefreshCombatTerminalPhase(Runtime);
 	TestEqual(TEXT("the final enemy is defeated"), FindUnit(Runtime, EnemyUnitId)->HP, 0);
-	TestEqual(TEXT("the final party member is defeated by the same card"), FindUnit(Runtime, HeroUnitId)->HP, 0);
+	TestEqual(TEXT("the final party member is defeated in the same resolution boundary"), FindUnit(Runtime, HeroUnitId)->HP, 0);
 	TestEqual(TEXT("simultaneous elimination resolves as player victory"), Runtime.Phase, EGameXXKCardBattlePhase::Victory);
 	TestTrue(TEXT("simultaneous-elimination queue clears"), IsQueueDefault(Runtime.AutomaticResolutionQueue));
 	return true;

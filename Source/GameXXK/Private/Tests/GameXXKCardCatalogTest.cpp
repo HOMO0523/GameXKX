@@ -270,11 +270,19 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 		TestDefinitionIsRejected(*this, TEXT("public validator rejects an apply-status effect without a status"), MissingAppliedStatus);
 	}
 
-	if (const FGameXXKCardDefinition* DiMaiJieLi = RequireCard(*this, TEXT("Profession.FormationMaster.DiMaiJieLi")))
+	if (const FGameXXKCardDefinition* JieShiTuXi = RequireCard(*this, TEXT("Route.Terrain.JieShiTuXi")))
 	{
-		FGameXXKCardDefinition InvalidTerrainCondition = *DiMaiJieLi;
-		InvalidTerrainCondition.Effects[2].Condition.Terrain = EGameXXKCardTerrain::Invalid;
-		TestDefinitionIsRejected(*this, TEXT("public validator rejects TerrainIsAny without a terrain"), InvalidTerrainCondition);
+		FGameXXKCardDefinition InvalidTerrainCondition = *JieShiTuXi;
+		FGameXXKCardEffect* TerrainEffect = InvalidTerrainCondition.Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Condition.Type == EGameXXKCardEffectConditionType::TerrainIsAny;
+		});
+		TestNotNull(TEXT("terrain-condition validation fixture has a conditioned effect"), TerrainEffect);
+		if (TerrainEffect)
+		{
+			TerrainEffect->Condition.Terrain = EGameXXKCardTerrain::Invalid;
+			TestDefinitionIsRejected(*this, TEXT("public validator rejects TerrainIsAny without a terrain"), InvalidTerrainCondition);
+		}
 	}
 
 	if (const FGameXXKCardDefinition* PoYunYiShan = RequireCard(*this, TEXT("Hero.Generic.PoYunYiShan")))
@@ -291,9 +299,18 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 
 	if (const FGameXXKCardDefinition* YinShuiHuiYuan = RequireCard(*this, TEXT("Profession.FormationMaster.YinShuiHuiYuan")))
 	{
-		FGameXXKCardDefinition InvalidTargetOverride = *YinShuiHuiYuan;
-		InvalidTargetOverride.TargetSpec.ModeOverrides[0].Mode = EGameXXKCardTargetMode::SingleAlly;
-		TestDefinitionIsRejected(*this, TEXT("public validator derives target override presentation from its mode"), InvalidTargetOverride);
+		TestTrue(TEXT("confirmed formation switches use fixed targets without terrain overrides"), YinShuiHuiYuan->TargetSpec.ModeOverrides.IsEmpty());
+		FGameXXKCardDefinition InvalidTerrainSwitch = *YinShuiHuiYuan;
+		FGameXXKCardEffect* ChangeTerrain = InvalidTerrainSwitch.Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Type == EGameXXKCardEffectType::ChangeTerrain;
+		});
+		TestNotNull(TEXT("引水回元 carries a terrain-switch effect"), ChangeTerrain);
+		if (ChangeTerrain)
+		{
+			ChangeTerrain->TerrainOverride = EGameXXKCardTerrain::Invalid;
+			TestDefinitionIsRejected(*this, TEXT("public validator rejects a terrain switch without a destination"), InvalidTerrainSwitch);
+		}
 	}
 
 	if (const FGameXXKCardDefinition* TieYiYiJue = RequireCard(*this, TEXT("Route.Rare.TieYiYiJue")))
@@ -376,8 +393,23 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 			}
 		}
 	};
-	TestTwoLayerPartyGuardLink(TEXT("Profession.Guard.BuDongRuShan"));
+	TestTwoLayerPartyGuardLink(TEXT("Profession.Guard.TieSuoHengJiang"));
 	TestTwoLayerPartyGuardLink(TEXT("Profession.Guard.YiFuDangGuan"));
+
+	if (const FGameXXKCardDefinition* BuDongRuShan = RequireCard(*this, TEXT("Profession.Guard.BuDongRuShan")))
+	{
+		TestEqual(TEXT("BuDongRuShan no longer duplicates the Protection archetype guard link"), CountEffects(*BuDongRuShan, EGameXXKCardEffectType::ApplyGuardLink), 0);
+		const FGameXXKCardEffect* Retention = BuDongRuShan->Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Type == EGameXXKCardEffectType::RetainArmorNextRound;
+		});
+		TestNotNull(TEXT("BuDongRuShan owns the Armor-growth archetype retention clause"), Retention);
+		if (Retention)
+		{
+			TestEqual(TEXT("BuDongRuShan retains only the card owner's Armor"), Retention->Target, EGameXXKCardEffectTarget::CardOwner);
+			TestEqual(TEXT("BuDongRuShan retention is enabled once"), Retention->Magnitude, 1);
+		}
+	}
 
 	if (const FGameXXKCardDefinition* YuanHuBu = RequireCard(*this, TEXT("Profession.Guard.YuanHuBu")))
 	{
@@ -422,18 +454,20 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 
 	if (const FGameXXKCardDefinition* SheLingHuo = RequireCard(*this, TEXT("Profession.Sorcerer.SheLingHuo")))
 	{
-		const FGameXXKCardEffect* ConsumeBurnEffect = SheLingHuo->Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
+		const FGameXXKCardEffect* CurrentManaPlaceholder = SheLingHuo->Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
 		{
-			return Effect.Type == EGameXXKCardEffectType::GainManaPerConsumedStatus
+			return Effect.Type == EGameXXKCardEffectType::GainMana
 				&& Effect.Target == EGameXXKCardEffectTarget::CardOwner
-				&& Effect.Magnitude == 2
-				&& Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetHasStatus
-				&& Effect.Condition.Status == EGameXXKCardStatus::Burn
-				&& Effect.Condition.bConsumeStatus
-				&& Effect.Condition.MaxConsumedStatusStacks == 4
-				&& Effect.Condition.bScaleMagnitudeByConsumedStacks;
+				&& Effect.Magnitude == 1;
 		});
-		TestNotNull(TEXT("SheLingHuo consumes up to four burn stacks through its effect condition"), ConsumeBurnEffect);
+		TestEqual(TEXT("SheLingHuo is the self-only current-Mana Ice card"), SheLingHuo->TargetSpec.Mode, EGameXXKCardTargetMode::Self);
+		TestNotNull(TEXT("SheLingHuo retains the data placeholder transformed by its Sorcerer sequence rule"), CurrentManaPlaceholder);
+		TestEqual(TEXT("SheLingHuo uses the current-Mana restore rule"), SheLingHuo->SorcererRule.SequenceRule, EGameXXKSorcererSequenceRule::IceCurrentManaRestore);
+		TestEqual(TEXT("SheLingHuo uses its matching Ice reward"), SheLingHuo->SorcererRule.RewardRule, EGameXXKSorcererRewardRule::IceCurrentManaRestore);
+		TestFalse(TEXT("SheLingHuo no longer consumes Burn"), SheLingHuo->Effects.ContainsByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Condition.bConsumeStatus && Effect.Condition.Status == EGameXXKCardStatus::Burn;
+		}));
 	}
 
 	if (const FGameXXKCardDefinition* FuHuDuanJiang = RequireCard(*this, TEXT("Route.Boss.FuHuDuanJiang")))
@@ -466,26 +500,6 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 				&& Effect.Modifier.bPersistent;
 		});
 		TestNotNull(TEXT("XiongPiPiJia carries its persistent retaliation trigger as data"), RetaliationModifier);
-	}
-
-	if (const FGameXXKCardDefinition* YiNuoQianJin = RequireCard(*this, TEXT("Npc.SongJinBao.YiNuoQianJin")))
-	{
-		TestEqual(TEXT("YiNuoQianJin has exactly one modifier"), CountEffects(*YiNuoQianJin, EGameXXKCardEffectType::ApplyBattleModifier), 1);
-		const FGameXXKCardEffect* EnergyModifier = YiNuoQianJin->Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
-		{
-			return Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier
-				&& Effect.Modifier.Trigger == EGameXXKCardBattleModifierTrigger::OnCardPlayed
-				&& Effect.Modifier.EffectType == EGameXXKCardEffectType::ModifyEnergyCost
-				&& Effect.Modifier.Target == EGameXXKCardEffectTarget::PlayedCard
-				&& Effect.Modifier.Magnitude == -1
-				&& Effect.Modifier.MinimumResult == 0
-				&& Effect.Modifier.RemainingTriggers == 2
-				&& Effect.Modifier.RecipientScope == EGameXXKCardModifierRecipientScope::SharedDeck
-				&& Effect.Modifier.RecipientTarget == EGameXXKCardEffectTarget::PlayedCard
-				&& Effect.Modifier.Expiry == EGameXXKCardModifierExpiry::AfterTriggerCount
-				&& Effect.Modifier.bPersistent;
-		});
-		TestNotNull(TEXT("YiNuoQianJin carries its two-card energy modifier as data"), EnergyModifier);
 	}
 
 	const auto FindModifier = [](const FGameXXKCardDefinition& Definition) -> const FGameXXKCardEffect*
@@ -522,43 +536,6 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	const auto TestRoleBoundAttackModifier = [this, &FindModifier](const TCHAR* CardId, const EGameXXKCharacterRole RequiredRole, const TCHAR* RequiredOwnerId, const int32 Magnitude)
-	{
-		if (const FGameXXKCardDefinition* Definition = RequireCard(*this, CardId))
-		{
-			TestEqual(FString::Printf(TEXT("%s has exactly one modifier"), CardId), CountEffects(*Definition, EGameXXKCardEffectType::ApplyBattleModifier), 1);
-			const FGameXXKCardEffect* Modifier = FindModifier(*Definition);
-			TestNotNull(FString::Printf(TEXT("%s has its role-bound next-attack modifier"), CardId), Modifier);
-			if (Modifier)
-			{
-				TestEqual(FString::Printf(TEXT("%s restricts the triggered role"), CardId), Modifier->Modifier.RequiredTriggeredRole, RequiredRole);
-				TestEqual(FString::Printf(TEXT("%s restricts the triggered owner"), CardId), Modifier->Modifier.RequiredTriggeredOwnerId, FName(RequiredOwnerId));
-				TestEqual(FString::Printf(TEXT("%s binds the modifier to its owner"), CardId), Modifier->Modifier.RecipientScope, EGameXXKCardModifierRecipientScope::CardOwner);
-				TestEqual(FString::Printf(TEXT("%s applies its approved attack bonus"), CardId), Modifier->Modifier.Magnitude, Magnitude);
-				TestEqual(FString::Printf(TEXT("%s accepts any attack target"), CardId), Modifier->Modifier.TriggeredAttackTargetScope, EGameXXKCardTriggeredAttackTargetScope::AnyTarget);
-			}
-		}
-	};
-	TestRoleBoundAttackModifier(TEXT("Profession.Blade.JieShiHuiFeng"), EGameXXKCharacterRole::Blade, TEXT("Profession.Blade"), 40);
-	TestRoleBoundAttackModifier(TEXT("Profession.Blade.ZhuYing"), EGameXXKCharacterRole::Blade, TEXT("Profession.Blade"), 50);
-	TestRoleBoundAttackModifier(TEXT("Profession.Blade.HuiFengJiaShi"), EGameXXKCharacterRole::Blade, TEXT("Profession.Blade"), 40);
-	TestRoleBoundAttackModifier(TEXT("Profession.Hunter.LieHunBiao"), EGameXXKCharacterRole::Hunter, TEXT("Profession.Hunter"), 40);
-
-	if (const FGameXXKCardDefinition* ZhuYing = RequireCard(*this, TEXT("Profession.Blade.ZhuYing")))
-	{
-		TestEqual(TEXT("ZhuYing has exactly one modifier"), CountEffects(*ZhuYing, EGameXXKCardEffectType::ApplyBattleModifier), 1);
-		const FGameXXKCardEffect* Modifier = FindModifier(*ZhuYing);
-		TestNotNull(TEXT("ZhuYing has its next-attack modifier"), Modifier);
-		if (Modifier)
-		{
-			TestEqual(TEXT("ZhuYing requires agility before the attack bonus"), Modifier->Modifier.Condition.Type, EGameXXKCardEffectConditionType::OwnerHasStatus);
-			TestEqual(TEXT("ZhuYing consumes agility for the attack bonus"), Modifier->Modifier.Condition.Status, EGameXXKCardStatus::Agility);
-			TestEqual(TEXT("ZhuYing requires one agility stack"), Modifier->Modifier.Condition.MinimumStatusStacks, 1);
-			TestTrue(TEXT("ZhuYing consumes its agility condition"), Modifier->Modifier.Condition.bConsumeStatus);
-			TestEqual(TEXT("ZhuYing consumes exactly one agility stack"), Modifier->Modifier.Condition.MaxConsumedStatusStacks, 1);
-		}
-	}
-
 	if (const FGameXXKCardDefinition* ZhenQiGuWu = RequireCard(*this, TEXT("Profession.FormationMaster.ZhenQiGuWu")))
 	{
 		TestEqual(TEXT("ZhenQiGuWu has exactly one modifier"), CountEffects(*ZhenQiGuWu, EGameXXKCardEffectType::ApplyBattleModifier), 1);
@@ -568,20 +545,6 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 		{
 			TestEqual(TEXT("ZhenQiGuWu covers all allies"), Modifier->Modifier.RecipientScope, EGameXXKCardModifierRecipientScope::AllAllies);
 			TestEqual(TEXT("ZhenQiGuWu does not restrict a profession"), Modifier->Modifier.RequiredTriggeredRole, EGameXXKCharacterRole::Invalid);
-		}
-	}
-
-	if (const FGameXXKCardDefinition* WuWeiTiaoHe = RequireCard(*this, TEXT("Profession.Healer.WuWeiTiaoHe")))
-	{
-		TestEqual(TEXT("WuWeiTiaoHe has exactly one modifier"), CountEffects(*WuWeiTiaoHe, EGameXXKCardEffectType::ApplyBattleModifier), 1);
-		const FGameXXKCardEffect* Modifier = FindModifier(*WuWeiTiaoHe);
-		TestNotNull(TEXT("WuWeiTiaoHe has a healing modifier"), Modifier);
-		if (Modifier)
-		{
-			TestEqual(TEXT("WuWeiTiaoHe modifies healing instead of damage"), Modifier->Modifier.EffectType, EGameXXKCardEffectType::ModifyHealingPercent);
-			TestEqual(TEXT("WuWeiTiaoHe increases healing by fifty percent"), Modifier->Modifier.Magnitude, 50);
-			TestEqual(TEXT("WuWeiTiaoHe expires at the end of this round"), Modifier->Modifier.Expiry, EGameXXKCardModifierExpiry::EndOfCurrentRound);
-			TestEqual(TEXT("WuWeiTiaoHe covers the party"), Modifier->Modifier.RecipientScope, EGameXXKCardModifierRecipientScope::AllAllies);
 		}
 	}
 
@@ -606,32 +569,18 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 			}
 		}
 	};
-	TestConsumptionResult(TEXT("Profession.Sorcerer.XingHuoHuiShou"), EGameXXKCardEffectType::GainManaPerConsumedStatus, EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus);
 	TestConsumptionResult(TEXT("Hero.Generic.PoYunYiShan"), EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectType::DrawCards);
-	TestConsumptionResult(TEXT("Profession.Blade.DaoYiShouShu"), EGameXXKCardEffectType::GainManaPerConsumedStatus, EGameXXKCardEffectType::DrawCards);
-
-	const auto TestTerrainTargetOverride = [this](const TCHAR* CardId, const EGameXXKCardTerrain Terrain, const EGameXXKCardTerrain AlternateTerrain)
+	if (const FGameXXKCardDefinition* XingHuoHuiShou = RequireCard(*this, TEXT("Profession.Sorcerer.XingHuoHuiShou")))
 	{
-		if (const FGameXXKCardDefinition* Definition = RequireCard(*this, CardId))
-		{
-			const FGameXXKCardTargetModeOverride* Override = Definition->TargetSpec.ModeOverrides.FindByPredicate([Terrain, AlternateTerrain](const FGameXXKCardTargetModeOverride& Candidate)
-			{
-				return Candidate.ConditionType == EGameXXKCardTargetModeOverrideConditionType::TerrainIsAny
-					&& Candidate.Terrain == Terrain
-					&& Candidate.AlternateTerrain == AlternateTerrain;
-			});
-			TestNotNull(FString::Printf(TEXT("%s declares its terrain target override"), CardId), Override);
-			if (Override)
-			{
-				TestEqual(FString::Printf(TEXT("%s becomes an all-allies card on its terrain"), CardId), Override->Mode, EGameXXKCardTargetMode::AllAllies);
-				TestEqual(FString::Printf(TEXT("%s becomes group presentation on its terrain"), CardId), Override->Presentation, EGameXXKCardTargetPresentation::Group);
-			}
-		}
-	};
-	TestTerrainTargetOverride(TEXT("Npc.QiongMeiEr.TengQiaoFeiDu"), EGameXXKCardTerrain::Cliff, EGameXXKCardTerrain::Forest);
-	TestTerrainTargetOverride(TEXT("Profession.FormationMaster.YinShuiHuiYuan"), EGameXXKCardTerrain::WaterShore, EGameXXKCardTerrain::Ferry);
-	TestTerrainTargetOverride(TEXT("Profession.FormationMaster.LinYingMiZong"), EGameXXKCardTerrain::Forest, EGameXXKCardTerrain::Invalid);
-	TestTerrainTargetOverride(TEXT("Profession.FormationMaster.LinFengFuZhen"), EGameXXKCardTerrain::Forest, EGameXXKCardTerrain::Invalid);
+		TestTrue(TEXT("XingHuoHuiShou now grants three party Armor as its base"),
+			HasEffect(*XingHuoHuiShou, EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 3));
+		TestEqual(TEXT("XingHuoHuiShou uses the Universal party-Armor sequence"),
+			XingHuoHuiShou->SorcererRule.SequenceRule,
+			EGameXXKSorcererSequenceRule::UniversalPartyArmor);
+		TestEqual(TEXT("XingHuoHuiShou uses the matching four-branch reward"),
+			XingHuoHuiShou->SorcererRule.RewardRule,
+			EGameXXKSorcererRewardRule::UniversalPartyArmor);
+	}
 
 	const auto TestSingleAllyTarget = [this](const TCHAR* CardId)
 	{
@@ -643,9 +592,6 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	};
 	TestSingleAllyTarget(TEXT("Profession.Guard.HuZhu"));
 	TestSingleAllyTarget(TEXT("Profession.Guard.YuanJunBiLei"));
-	TestSingleAllyTarget(TEXT("Profession.Healer.HuiQiXiang"));
-	TestSingleAllyTarget(TEXT("Profession.FormationMaster.YinShuiHuiYuan"));
-	TestSingleAllyTarget(TEXT("Profession.FormationMaster.LinYingMiZong"));
 	TestSingleAllyTarget(TEXT("Profession.FormationMaster.YiWeiZhen"));
 	TestSingleAllyTarget(TEXT("Profession.FormationMaster.ShuiJingZheGuang"));
 	TestSingleAllyTarget(TEXT("Profession.FormationMaster.LinFengFuZhen"));
@@ -671,7 +617,6 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 			}
 		}
 	};
-	TestWaterShoreAndFerryCondition(TEXT("Profession.FormationMaster.DiMaiJieLi"));
 	TestWaterShoreAndFerryCondition(TEXT("Route.Terrain.JieShiTuXi"));
 
 	const auto TestNoUnitTarget = [this](const TCHAR* CardId)
@@ -684,24 +629,8 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 		}
 	};
 	TestNoUnitTarget(TEXT("Npc.SongJinBao.YiNuoQianJin"));
-	TestNoUnitTarget(TEXT("Npc.YueBai.CanJuanPiZhu"));
 	TestNoUnitTarget(TEXT("Route.Terrain.DiMaiHuiXiang"));
 	TestNoUnitTarget(TEXT("Route.Rare.GuJuanCanZhang"));
-
-	const auto TestAnyDotCondition = [this](const TCHAR* CardId)
-	{
-		if (const FGameXXKCardDefinition* Definition = RequireCard(*this, CardId))
-		{
-			const FGameXXKCardEffect* RemoveDot = Definition->Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
-			{
-				return Effect.Type == EGameXXKCardEffectType::RemoveAnyDamageOverTime
-					&& Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetHasAnyDamageOverTime;
-			});
-			TestNotNull(FString::Printf(TEXT("%s recognizes bleed, poison, or burn as damage over time"), CardId), RemoveDot);
-		}
-	};
-	TestAnyDotCondition(TEXT("Profession.Healer.XingQiZhen"));
-	TestAnyDotCondition(TEXT("Profession.Healer.HuiQiXiang"));
 
 	TMap<FName, int32> ProfessionCardCounts;
 	TMap<FName, int32> ProfessionCoreCounts;
@@ -770,7 +699,10 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	for (const FName OwnerId : ProfessionOwnerIds)
 	{
 		TestEqual(FString::Printf(TEXT("%s has exactly eighteen profession cards"), *OwnerId.ToString()), ProfessionCardCounts.FindRef(OwnerId), 18);
-		TestEqual(FString::Printf(TEXT("%s has exactly four core cards"), *OwnerId.ToString()), ProfessionCoreCounts.FindRef(OwnerId), 4);
+		TestEqual(
+			FString::Printf(TEXT("%s has the approved fixed-birth core count"), *OwnerId.ToString()),
+			ProfessionCoreCounts.FindRef(OwnerId),
+			OwnerId == FName(TEXT("Profession.FormationMaster")) ? 0 : 2);
 	}
 
 	const TArray<FName> NpcOwnerIds = {

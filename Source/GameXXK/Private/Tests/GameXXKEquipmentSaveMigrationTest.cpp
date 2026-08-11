@@ -422,7 +422,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("current save schema is version twelve"), FGameXXKSaveMigration::CurrentSaveVersion, 12);
+	TestEqual(TEXT("current save schema is version fifteen"), FGameXXKSaveMigration::CurrentSaveVersion, 15);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
@@ -435,7 +435,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 	FGameXXKSaveState Migrated;
 	FGameXXKSaveMigrationReport Report;
 	TestTrue(TEXT("v10 migrates"), FGameXXKSaveMigration::MigrateToCurrent(VersionTen, Migrated, Report));
-	TestEqual(TEXT("v10 targets v12"), Migrated.SaveVersion, 12);
+	TestEqual(TEXT("v10 targets v15"), Migrated.SaveVersion, 15);
 	TestTrue(TEXT("v10 migration initializes a positive seed"), Migrated.RuntimeState.MetaShop.Seed > 0);
 	TestEqual(TEXT("v10 migration starts at ordinal zero"), Migrated.RuntimeState.MetaShop.NextPurchaseOrdinal, 0);
 
@@ -738,7 +738,7 @@ bool FGameXXKEquipmentSaveMigrationDeterminismTest::RunTest(const FString& Param
 	TestEqual(TEXT("legacy enemy projection survives"), State.ActiveBattleEnemies.Num(), SourceState.ActiveBattleEnemies.Num());
 	TestEqual(TEXT("temporary task NPC provenance survives"), State.CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.TusiChief")));
 	TestEqual(TEXT("route relic survives"), State.CardRun.Relics.Num(), 1);
-	TestTrue(TEXT("codex discovery survives"), State.DiscoveredCodexEntryIds.Contains(TEXT("Codex.MoneyRat")));
+	TestTrue(TEXT("codex discovery migrates to the current enemy id"), State.DiscoveredCodexEntryIds.Contains(TEXT("Codex.Enemy.Ch1.MoneyRat")));
 	TestEqual(TEXT("twelve companions survive in order"), State.CardRun.CompanionRoster.PermanentCompanions.Num(), 12);
 	TestTrue(TEXT("pending full-roster replacement survives"), State.CardRun.CompanionRoster.PendingRecruitment.bHasPendingRecruitment);
 	TestEqual(
@@ -897,6 +897,46 @@ bool FGameXXKEquipmentSaveMigrationOverflowTest::RunTest(const FString& Paramete
 	TestTrue(TEXT("overflow state is explicitly flagged"), Migrated.RuntimeState.EquipmentCollection.bLegacyWarehouseOverflow);
 	TestTrue(TEXT("report exposes migrated overflow"), Report.bCreatedLegacyOverflow);
 	TestTrue(TEXT("flagged legacy overflow validates"), FGameXXKEquipmentRules::ValidateCollectionState(Migrated.RuntimeState.EquipmentCollection));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKEquipmentSaveMigrationRefinementSandMirrorTest,
+	"GameXXK.Equipment.SaveMigration.RefinementSandMirrorCompatibility",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKEquipmentSaveMigrationRefinementSandMirrorTest::RunTest(const FString& Parameters)
+{
+	const FName SandId = UGameXXKMVPRules::ItemRefinementSand();
+
+	FGameXXKSaveState LegacyMirrorOnly;
+	LegacyMirrorOnly.SaveVersion = FGameXXKSaveMigration::CurrentSaveVersion;
+	LegacyMirrorOnly.RuntimeState = UGameXXKMVPRules::CreateNewGame();
+	LegacyMirrorOnly.RuntimeState.Inventory.Remove(SandId);
+	LegacyMirrorOnly.RuntimeState.EquipmentCollection.RefinementSand = 7;
+	FGameXXKSaveState MigratedLegacyMirrorOnly;
+	FGameXXKSaveMigrationReport LegacyMirrorOnlyReport;
+	TestTrue(TEXT("a current-version save written before backpack sand remains loadable"),
+		FGameXXKSaveMigration::MigrateToCurrent(
+			LegacyMirrorOnly,
+			MigratedLegacyMirrorOnly,
+			LegacyMirrorOnlyReport));
+	TestEqual(TEXT("legacy collection-only sand is preserved in the authoritative backpack item"),
+		MigratedLegacyMirrorOnly.RuntimeState.Inventory.FindRef(SandId), 7);
+	TestEqual(TEXT("legacy collection-only sand keeps its compatibility mirror"),
+		MigratedLegacyMirrorOnly.RuntimeState.EquipmentCollection.RefinementSand, 7);
+
+	FGameXXKSaveState MismatchedCurrent = LegacyMirrorOnly;
+	MismatchedCurrent.RuntimeState.Inventory.FindOrAdd(SandId) = 3;
+	MismatchedCurrent.RuntimeState.EquipmentCollection.RefinementSand = 7;
+	FGameXXKSaveState MigratedMismatch;
+	FGameXXKSaveMigrationReport MismatchReport;
+	TestTrue(TEXT("an explicit backpack sand balance repairs a stale collection mirror"),
+		FGameXXKSaveMigration::MigrateToCurrent(MismatchedCurrent, MigratedMismatch, MismatchReport));
+	TestEqual(TEXT("the explicit backpack sand balance remains authoritative"),
+		MigratedMismatch.RuntimeState.Inventory.FindRef(SandId), 3);
+	TestEqual(TEXT("migration rewrites the stale collection sand mirror"),
+		MigratedMismatch.RuntimeState.EquipmentCollection.RefinementSand, 3);
 	return true;
 }
 

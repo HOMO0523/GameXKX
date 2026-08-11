@@ -58,7 +58,7 @@ bool FGameXXKStarterCompanionTest::RunTest(const FString& Parameters)
 		TEXT("party selection points at the active starter companion"),
 		StartedState.CardRun.PartySelection.ActivePermanentCompanionInstanceId,
 		StarterCompanion.InstanceId);
-	TestEqual(TEXT("the starter companion owns twelve personal cards"), StarterCompanion.PersonalCardIds.Num(), 12);
+	TestEqual(TEXT("the starter companion owns six birth cards"), StarterCompanion.PersonalCardIds.Num(), 6);
 	TestEqual(TEXT("the starter companion equips five selected cards"), StarterCompanion.SelectedCardIds.Num(), 5);
 
 	const FGameXXKSaveState SaveState = UGameXXKMVPRules::MakeSaveState(StartedState);

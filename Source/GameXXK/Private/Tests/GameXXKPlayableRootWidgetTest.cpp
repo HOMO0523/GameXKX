@@ -1,6 +1,7 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
 #include "Components/Button.h"
+#include "GameFramework/SaveGame.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
@@ -13,6 +14,47 @@ namespace
 {
 	static const FString PlayableRootTestSlot(TEXT("GameXXK_MVP_Automation_PlayableRoot_Start"));
 	static const int32 PlayableRootUserIndex = 0;
+
+	struct FScopedSaveSlotBackup
+	{
+		FScopedSaveSlotBackup(const FString& InSlotName, int32 InUserIndex)
+			: SlotName(InSlotName)
+			, UserIndex(InUserIndex)
+		{
+			bHadExistingSave = UGameplayStatics::DoesSaveGameExist(SlotName, UserIndex);
+			if (bHadExistingSave)
+			{
+				ExistingSave = UGameplayStatics::LoadGameFromSlot(SlotName, UserIndex);
+				if (!ExistingSave)
+				{
+					return;
+				}
+				ExistingSave->AddToRoot();
+			}
+			bReady = true;
+			UGameplayStatics::DeleteGameInSlot(SlotName, UserIndex);
+		}
+
+		~FScopedSaveSlotBackup()
+		{
+			if (!bReady)
+			{
+				return;
+			}
+			UGameplayStatics::DeleteGameInSlot(SlotName, UserIndex);
+			if (bHadExistingSave && ExistingSave)
+			{
+				UGameplayStatics::SaveGameToSlot(ExistingSave, SlotName, UserIndex);
+				ExistingSave->RemoveFromRoot();
+			}
+		}
+
+		FString SlotName;
+		int32 UserIndex = 0;
+		bool bHadExistingSave = false;
+		bool bReady = false;
+		TObjectPtr<USaveGame> ExistingSave;
+	};
 
 	static bool ClickProgrammaticRootCommand(UGameXXKPlayableRootWidget* RootWidget, int32 CommandIndex)
 	{
@@ -149,9 +191,19 @@ namespace
 			{
 				return false;
 			}
-			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteEvent && !RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveEventGold"))))
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteEvent)
 			{
-				return false;
+				bool bResolvedChoice = false;
+				for (int32 ChoiceIndex = 0; ChoiceIndex < 3 && !bResolvedChoice; ++ChoiceIndex)
+				{
+					const FName ChoiceCommand(*FString::Printf(TEXT("ResolveRouteChoice%d"), ChoiceIndex));
+					bResolvedChoice = RootWidget->HasVisibleCommand(ChoiceCommand, true)
+						&& RootWidget->ExecuteVisibleCommand(ChoiceCommand);
+				}
+				if (!bResolvedChoice)
+				{
+					return false;
+				}
 			}
 			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteCamp && !RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveCampHeal"))))
 			{
@@ -163,6 +215,13 @@ namespace
 			}
 			if (NodeKind == TargetKind)
 			{
+				// The canonical route spans three chapters. A chapter boss advances to
+				// the next generated map; only the terminal boss completes the route.
+				if (TargetKind == EGameXXKNodeKind::Boss
+					&& Subsystem->GetRuntimeState().Screen == EGameXXKScreen::DungeonMap)
+				{
+					continue;
+				}
 				return true;
 			}
 		}
@@ -178,6 +237,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKPlayableRootWidgetTest::RunTest(const FString& Parameters)
 {
 	UGameplayStatics::DeleteGameInSlot(PlayableRootTestSlot, PlayableRootUserIndex);
+	const FString ManualSlot1 = UGameXXKMVPSubsystem::GetManualSaveSlotName(0);
+	FScopedSaveSlotBackup ManualSlot1Backup(ManualSlot1, PlayableRootUserIndex);
+	if (!TestTrue(TEXT("playable root safely isolates the player's manual slot 1"), ManualSlot1Backup.bReady))
+	{
+		return false;
+	}
 
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
@@ -189,15 +254,54 @@ bool FGameXXKPlayableRootWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("main menu has New Game, Continue, five slots, and five deletes"), RootWidget->BuildVisibleCommands().Num(), 12);
 	TestTrue(TEXT("UMG New Game command is available"), RootWidget->HasVisibleCommand(FName(TEXT("StartGame")), true));
 	TestTrue(TEXT("UMG Continue command is disabled without a save"), RootWidget->HasVisibleCommand(FName(TEXT("ContinueGame")), false));
-	TestTrue(TEXT("UMG continue slot 1 is disabled without a save"), RootWidget->HasVisibleCommand(FName(TEXT("ContinueSlot1")), false));
-	TestTrue(TEXT("UMG delete slot 1 is disabled without a save"), RootWidget->HasVisibleCommand(FName(TEXT("DeleteSlot1")), false));
-	TestTrue(TEXT("UMG New Game opens world map"), RootWidget->ExecuteVisibleCommand(FName(TEXT("StartGame"))));
-	TestEqual(TEXT("UMG root updates to world map after start"), RootWidget->GetCurrentScreen(), EGameXXKScreen::WorldMap);
+	TestTrue(TEXT("UMG continue slot 1 is disabled before the isolated manual save"),
+		RootWidget->HasVisibleCommand(FName(TEXT("ContinueSlot1")), false));
+	TestTrue(TEXT("UMG delete slot 1 is disabled before the isolated manual save"),
+		RootWidget->HasVisibleCommand(FName(TEXT("DeleteSlot1")), false));
+	TestTrue(TEXT("UMG New Game opens Qingshan town"), RootWidget->ExecuteVisibleCommand(FName(TEXT("StartGame"))));
+	TestEqual(TEXT("UMG root updates to town after start"), RootWidget->GetCurrentScreen(), EGameXXKScreen::Town);
+	TestEqual(TEXT("UMG root selects Qingshan after start"), Subsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionQingshan());
 	TestFalse(TEXT("UMG New Game does not create a manual save slot"), UGameplayStatics::DoesSaveGameExist(PlayableRootTestSlot, PlayableRootUserIndex));
+	TestTrue(TEXT("town exposes manual save button"), RootWidget->HasVisibleCommand(FName(TEXT("SaveGame")), true));
+	TestTrue(TEXT("town exposes explicit world-map navigation"), RootWidget->ExecuteVisibleCommand(FName(TEXT("OpenWorldMap"))));
+	TestEqual(TEXT("world-map command leaves town"), RootWidget->GetCurrentScreen(), EGameXXKScreen::WorldMap);
 	TestTrue(TEXT("world map exposes Qingshan button"), RootWidget->HasVisibleCommand(FName(TEXT("SelectQingshan")), true));
 	TestTrue(TEXT("world map exposes locked Tanjiang button"), RootWidget->HasVisibleCommand(FName(TEXT("SelectTanjiang")), false));
 	TestTrue(TEXT("world map exposes manual save button"), RootWidget->HasVisibleCommand(FName(TEXT("SaveGame")), true));
 	TestTrue(TEXT("world map exposes save slot 1 button"), RootWidget->HasVisibleCommand(FName(TEXT("SaveSlot1")), true));
+	Subsystem->GetMutableRuntimeState().PlayerGold = 321;
+	TestTrue(TEXT("world map save slot 1 command writes the isolated manual slot"),
+		RootWidget->ExecuteVisibleCommand(FName(TEXT("SaveSlot1"))));
+	TestTrue(TEXT("manual slot 1 exists after the save command"),
+		UGameplayStatics::DoesSaveGameExist(ManualSlot1, PlayableRootUserIndex));
+
+	UGameXXKMVPSubsystem* ManualContinueSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	UGameXXKPlayableRootWidget* ManualContinueRoot = NewObject<UGameXXKPlayableRootWidget>();
+	ManualContinueRoot->SetMVPSubsystem(ManualContinueSubsystem);
+	ManualContinueRoot->SetStartGameSlotForTest(PlayableRootTestSlot, PlayableRootUserIndex);
+	TestTrue(TEXT("main menu enables continue slot 1 after the save command"),
+		ManualContinueRoot->HasVisibleCommand(FName(TEXT("ContinueSlot1")), true));
+	TestTrue(TEXT("main menu enables delete slot 1 after the save command"),
+		ManualContinueRoot->HasVisibleCommand(FName(TEXT("DeleteSlot1")), true));
+	TestTrue(TEXT("continue slot 1 command restores the isolated manual save"),
+		ManualContinueRoot->ExecuteVisibleCommand(FName(TEXT("ContinueSlot1"))));
+	TestEqual(TEXT("continue slot 1 restores the saved world-map screen"),
+		ManualContinueSubsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestEqual(TEXT("continue slot 1 restores the saved state payload"),
+		ManualContinueSubsystem->GetRuntimeState().PlayerGold, 321);
+
+	UGameXXKMVPSubsystem* ManualDeleteSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	UGameXXKPlayableRootWidget* ManualDeleteRoot = NewObject<UGameXXKPlayableRootWidget>();
+	ManualDeleteRoot->SetMVPSubsystem(ManualDeleteSubsystem);
+	ManualDeleteRoot->SetStartGameSlotForTest(PlayableRootTestSlot, PlayableRootUserIndex);
+	TestTrue(TEXT("delete slot 1 command removes the isolated manual save"),
+		ManualDeleteRoot->ExecuteVisibleCommand(FName(TEXT("DeleteSlot1"))));
+	TestFalse(TEXT("manual slot 1 is absent after the delete command"),
+		UGameplayStatics::DoesSaveGameExist(ManualSlot1, PlayableRootUserIndex));
+	TestTrue(TEXT("continue slot 1 disables after deletion"),
+		ManualDeleteRoot->HasVisibleCommand(FName(TEXT("ContinueSlot1")), false));
+	TestTrue(TEXT("delete slot 1 disables after deletion"),
+		ManualDeleteRoot->HasVisibleCommand(FName(TEXT("DeleteSlot1")), false));
 	TestFalse(TEXT("locked Tanjiang UMG button cannot execute"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectTanjiang"))));
 	TestTrue(TEXT("Qingshan UMG button enters town"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectQingshan"))));
 	TestEqual(TEXT("Qingshan UMG click opens town"), RootWidget->GetCurrentScreen(), EGameXXKScreen::Town);
@@ -221,8 +325,6 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKPlayableRootHUDIntegrationTest::RunTest(const FString& Parameters)
 {
-	const FString DefaultSlot = UGameXXKMVPSubsystem::GetDefaultSaveSlotName();
-	UGameplayStatics::DeleteGameInSlot(DefaultSlot, PlayableRootUserIndex);
 	UGameplayStatics::DeleteGameInSlot(PlayableRootTestSlot, PlayableRootUserIndex);
 
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
@@ -230,6 +332,7 @@ bool FGameXXKPlayableRootHUDIntegrationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("seed slot starts game"), SeedSubsystem->StartGame());
 	SeedSubsystem->GetMutableRuntimeState().QuestState = EGameXXKQuestState::Completed;
 	SeedSubsystem->GetMutableRuntimeState().UnlockedRegions.Add(UGameXXKMVPRules::RegionTanjiang());
+	TestTrue(TEXT("seed slot explicitly opens the world map"), SeedSubsystem->OpenWorldMap());
 	TestTrue(TEXT("seed slot saves Tanjiang unlock"), SeedSubsystem->SaveCurrentGame(PlayableRootTestSlot, PlayableRootUserIndex));
 
 	UGameXXKMVPSubsystem* RoutedSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
@@ -240,7 +343,6 @@ bool FGameXXKPlayableRootHUDIntegrationTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("HUD creates playable root for dynamic button test"), HUDRootWidget);
 	if (!HUDRootWidget)
 	{
-		UGameplayStatics::DeleteGameInSlot(DefaultSlot, PlayableRootUserIndex);
 		UGameplayStatics::DeleteGameInSlot(PlayableRootTestSlot, PlayableRootUserIndex);
 		return false;
 	}
@@ -260,7 +362,6 @@ bool FGameXXKPlayableRootHUDIntegrationTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("HUD creates playable root for refresh test"), RefreshRootWidget);
 	if (!RefreshRootWidget)
 	{
-		UGameplayStatics::DeleteGameInSlot(DefaultSlot, PlayableRootUserIndex);
 		UGameplayStatics::DeleteGameInSlot(PlayableRootTestSlot, PlayableRootUserIndex);
 		return false;
 	}
@@ -268,7 +369,10 @@ bool FGameXXKPlayableRootHUDIntegrationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("refresh UMG root initializes widget tree"), RefreshRootWidget->Initialize());
 	RefreshRootWidget->NativeConstruct();
 	TestTrue(TEXT("HUD command starts game"), RefreshHUD->HandleDemoCommand(FName(TEXT("StartGame"))));
-	TestTrue(TEXT("HUD command refreshes UMG root to Qingshan button"), ClickProgrammaticRootCommand(RefreshRootWidget, 0));
+	TestEqual(TEXT("HUD start command lands directly in Qingshan town"), RefreshSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestTrue(TEXT("HUD command refreshes UMG root to the town map button"), ClickProgrammaticRootCommand(RefreshRootWidget, 0));
+	TestEqual(TEXT("town map button opens the world map"), RefreshSubsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestTrue(TEXT("refreshed world map exposes the Qingshan button"), ClickProgrammaticRootCommand(RefreshRootWidget, 0));
 	TestEqual(TEXT("refreshed UMG root click enters Qingshan town"), RefreshSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("refreshed UMG root click selects Qingshan"), RefreshSubsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionQingshan());
 
@@ -284,7 +388,6 @@ bool FGameXXKPlayableRootHUDIntegrationTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("HUD creates playable root for manual save failure refresh test"), ManualSaveFailureRootWidget);
 	if (!ManualSaveFailureRootWidget)
 	{
-		UGameplayStatics::DeleteGameInSlot(DefaultSlot, PlayableRootUserIndex);
 		UGameplayStatics::DeleteGameInSlot(PlayableRootTestSlot, PlayableRootUserIndex);
 		return false;
 	}
@@ -292,13 +395,14 @@ bool FGameXXKPlayableRootHUDIntegrationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("manual save failure root initializes widget tree"), ManualSaveFailureRootWidget->Initialize());
 	ManualSaveFailureRootWidget->NativeConstruct();
 	TestTrue(TEXT("HUD command starts even when manual save slot override is invalid"), ManualSaveFailureHUD->HandleDemoCommand(FName(TEXT("StartGame"))));
-	TestEqual(TEXT("manual save failure command changes subsystem screen"), ManualSaveFailureSubsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestEqual(TEXT("manual save failure command lands directly in town"), ManualSaveFailureSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestFalse(TEXT("HUD manual save command reports invalid slot failure"), ManualSaveFailureHUD->HandleDemoCommand(FName(TEXT("SaveGame"))));
-	TestTrue(TEXT("HUD refreshes UMG root after manual save failure"), ClickProgrammaticRootCommand(ManualSaveFailureRootWidget, 0));
+	TestTrue(TEXT("HUD refreshes the town map command after manual save failure"), ClickProgrammaticRootCommand(ManualSaveFailureRootWidget, 0));
+	TestEqual(TEXT("manual-save-failure town map command opens world map"), ManualSaveFailureSubsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestTrue(TEXT("HUD refreshes the Qingshan command on the world map"), ClickProgrammaticRootCommand(ManualSaveFailureRootWidget, 0));
 	TestEqual(TEXT("manual-save-failure refreshed root click enters Qingshan town"), ManualSaveFailureSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("manual-save-failure refreshed root click selects Qingshan"), ManualSaveFailureSubsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionQingshan());
 
-	UGameplayStatics::DeleteGameInSlot(DefaultSlot, PlayableRootUserIndex);
 	UGameplayStatics::DeleteGameInSlot(PlayableRootTestSlot, PlayableRootUserIndex);
 	return true;
 }
@@ -318,8 +422,8 @@ bool FGameXXKPlayableRootFullLoopTest::RunTest(const FString& Parameters)
 	RootWidget->SetMVPSubsystem(Subsystem);
 	RootWidget->SetStartGameSlotForTest(PlayableRootTestSlot, PlayableRootUserIndex);
 
-	TestTrue(TEXT("UMG root starts into world map"), RootWidget->ExecuteVisibleCommand(FName(TEXT("StartGame"))));
-	TestTrue(TEXT("UMG root enters Qingshan town"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectQingshan"))));
+	TestTrue(TEXT("UMG root starts directly in Qingshan town"), RootWidget->ExecuteVisibleCommand(FName(TEXT("StartGame"))));
+	TestEqual(TEXT("UMG root start selects the town screen"), RootWidget->GetCurrentScreen(), EGameXXKScreen::Town);
 	TestFalse(TEXT("UMG root does not autosave start or town entry"), UGameplayStatics::DoesSaveGameExist(PlayableRootTestSlot, PlayableRootUserIndex));
 	TestTrue(TEXT("UMG root exposes manual save in town"), RootWidget->HasVisibleCommand(FName(TEXT("SaveGame")), true));
 
@@ -332,10 +436,11 @@ bool FGameXXKPlayableRootFullLoopTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("UMG root joins follower after NPC quest acceptance"), Subsystem->GetRuntimeState().bFollowerJoined);
 
 	const int32 GoldBeforeTrade = Subsystem->GetRuntimeState().PlayerGold;
-	TestTrue(TEXT("UMG root buys healing powder"), RootWidget->ExecuteVisibleCommand(FName(TEXT("BuyHealingPowder"))));
+	TestTrue(TEXT("town trade flow buys healing powder"), Subsystem->BuyItem(UGameXXKMVPRules::ItemHealingPowder(), 1));
 	TestEqual(TEXT("UMG root buy spends gold"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeTrade - 10);
-	TestTrue(TEXT("UMG root sells healing powder"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SellHealingPowder"))));
+	TestTrue(TEXT("town trade flow sells healing powder"), Subsystem->SellItem(UGameXXKMVPRules::ItemHealingPowder(), 1));
 	TestEqual(TEXT("UMG root sell refunds gold"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeTrade - 5);
+	RootWidget->RefreshFromState();
 
 	TestTrue(TEXT("UMG root enters dungeon map after quest"), RootWidget->ExecuteVisibleCommand(FName(TEXT("EnterDungeon"))));
 	TestTrue(TEXT("UMG root advances start node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectStart"))));
@@ -346,7 +451,8 @@ bool FGameXXKPlayableRootFullLoopTest::RunTest(const FString& Parameters)
 
 	const int32 GoldAfterFailure = Subsystem->GetRuntimeState().PlayerGold;
 	const int32 HealingPowderAfterFailure = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
-	TestTrue(TEXT("UMG root resupplies after failure"), RootWidget->ExecuteVisibleCommand(FName(TEXT("BuyHealingPowder"))));
+	TestTrue(TEXT("town trade flow resupplies after failure"), Subsystem->BuyItem(UGameXXKMVPRules::ItemHealingPowder(), 1));
+	RootWidget->RefreshFromState();
 	TestEqual(TEXT("post-failure resupply spends gold"), Subsystem->GetRuntimeState().PlayerGold, GoldAfterFailure - 10);
 	TestEqual(TEXT("post-failure resupply adds healing powder"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), HealingPowderAfterFailure + 1);
 	Subsystem->GetMutableRuntimeState().PlayerHP = 40;
@@ -383,19 +489,7 @@ bool FGameXXKPlayableRootFullLoopTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("reloaded UMG root remains on world map after unavailable Tanjiang"), ReloadedSubsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 	TestEqual(TEXT("reloaded UMG root keeps world-map selection clear after unavailable Tanjiang"), ReloadedSubsystem->GetRuntimeState().CurrentRegion, NAME_None);
 
-	UGameXXKMVPSubsystem* ManualSlotSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-	UGameXXKPlayableRootWidget* ManualSlotRootWidget = NewObject<UGameXXKPlayableRootWidget>();
-	ManualSlotRootWidget->SetMVPSubsystem(ManualSlotSubsystem);
-	TestTrue(TEXT("manual slot root starts new game"), ManualSlotRootWidget->ExecuteVisibleCommand(FName(TEXT("StartGame"))));
-	TestTrue(TEXT("manual slot root saves slot 1"), ManualSlotRootWidget->ExecuteVisibleCommand(FName(TEXT("SaveSlot1"))));
-	ManualSlotSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::MainMenu;
-	ManualSlotRootWidget->RefreshFromState();
-	TestTrue(TEXT("manual slot root can delete slot 1 after save"), ManualSlotRootWidget->ExecuteVisibleCommand(FName(TEXT("DeleteSlot1"))));
-	ManualSlotRootWidget->RefreshFromState();
-	TestTrue(TEXT("manual slot root disables deleted continue slot 1"), ManualSlotRootWidget->HasVisibleCommand(FName(TEXT("ContinueSlot1")), false));
-
 	UGameplayStatics::DeleteGameInSlot(PlayableRootTestSlot, PlayableRootUserIndex);
-	UGameplayStatics::DeleteGameInSlot(UGameXXKMVPSubsystem::GetManualSaveSlotName(0), PlayableRootUserIndex);
 	return true;
 }
 
@@ -414,8 +508,8 @@ bool FGameXXKPlayableRootPostFailureResupplyRetryTest::RunTest(const FString& Pa
 	RootWidget->SetMVPSubsystem(Subsystem);
 	RootWidget->SetStartGameSlotForTest(PlayableRootTestSlot, PlayableRootUserIndex);
 
-	TestTrue(TEXT("post-failure test starts into world map"), RootWidget->ExecuteVisibleCommand(FName(TEXT("StartGame"))));
-	TestTrue(TEXT("post-failure test enters Qingshan town"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectQingshan"))));
+	TestTrue(TEXT("post-failure test starts directly in Qingshan town"), RootWidget->ExecuteVisibleCommand(FName(TEXT("StartGame"))));
+	TestEqual(TEXT("post-failure test begins on the town screen"), RootWidget->GetCurrentScreen(), EGameXXKScreen::Town);
 	TestFalse(TEXT("post-failure UMG root rejects route quest acceptance because F on the quest NPC owns that flow"), RootWidget->ExecuteVisibleCommand(FName(TEXT("AcceptQuest"))));
 	TestTrue(TEXT("post-failure test marks the route quest accepted after the NPC interaction path"), Subsystem->AcceptQuest());
 	RootWidget->RefreshFromState();
@@ -430,7 +524,8 @@ bool FGameXXKPlayableRootPostFailureResupplyRetryTest::RunTest(const FString& Pa
 
 	const int32 GoldAfterFailure = Subsystem->GetRuntimeState().PlayerGold;
 	const int32 PowderAfterFailure = UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder());
-	TestTrue(TEXT("post-failure test buys healing powder after return"), RootWidget->ExecuteVisibleCommand(FName(TEXT("BuyHealingPowder"))));
+	TestTrue(TEXT("post-failure town trade buys healing powder after return"), Subsystem->BuyItem(UGameXXKMVPRules::ItemHealingPowder(), 1));
+	RootWidget->RefreshFromState();
 	TestEqual(TEXT("post-failure test buy spends town gold"), Subsystem->GetRuntimeState().PlayerGold, GoldAfterFailure - 10);
 	TestEqual(TEXT("post-failure test buy adds one powder"), UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemHealingPowder()), PowderAfterFailure + 1);
 

@@ -178,6 +178,278 @@ bool FGameXXKRouteBalanceNakedBaselineTraceTest::RunTest(const FString& Paramete
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteBalanceHeroDefeatTerminalRegressionTest,
+	"GameXXK.RouteBalance.Diagnostics.HeroDefeatTerminates901087",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteBalanceHeroDefeatTerminalRegressionTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	FString Error;
+	TestTrue(TEXT("the locked matrix expands before the hero-defeat terminal regression"),
+		FGameXXKRouteBalanceRules::ExpandCases(FGameXXKRouteBalanceRules::MakeLockedFullMatrix(), Cases, &Error));
+	const FGameXXKRouteBalanceCase* Case = Cases.FindByPredicate([](const FGameXXKRouteBalanceCase& Candidate)
+	{
+		return Candidate.CohortId == TEXT("NakedBaseline")
+			&& Candidate.NodeKind == EGameXXKNodeKind::Elite
+			&& Candidate.Chapter == 1
+			&& Candidate.SeedOrdinal == 87
+			&& Candidate.Seed == 901087;
+	});
+	TestNotNull(TEXT("the fixed hero-defeat soft-lock case remains in the locked matrix"), Case);
+	if (!Case)
+	{
+		return false;
+	}
+
+	FGameXXKRouteBalanceCaseResult Result;
+	TArray<FGameXXKSimulationTraceEntry> Trace;
+	const bool bResolved = FGameXXKRouteBalanceRules::RunCase(*Case, Result, &Error, nullptr, &Trace);
+	const int32 FirstTraceIndex = FMath::Max(0, Trace.Num() - 40);
+	for (int32 TraceIndex = FirstTraceIndex; TraceIndex < Trace.Num(); ++TraceIndex)
+	{
+		const FGameXXKSimulationTraceEntry& Entry = Trace[TraceIndex];
+		AddInfo(FString::Printf(
+			TEXT("[HeroDefeatTerminalTrace] index=%d round=%d action=%s source=%s card_or_intent=%s target=%s hp=%d mana=%d armor=%d"),
+			TraceIndex,
+			Entry.Round,
+			*Entry.Action.ToString(),
+			*Entry.SourceUnitId.ToString(),
+			*Entry.CardOrIntentId.ToString(),
+			*Entry.TargetUnitId.ToString(),
+			Entry.HealthDelta,
+			Entry.ManaDelta,
+			Entry.ArmorDelta));
+	}
+	TestTrue(FString::Printf(TEXT("the fixed hero-defeat case reaches a normal terminal result: %s"), *Error), bResolved);
+	if (!bResolved)
+	{
+		return false;
+	}
+	TestTrue(TEXT("the fixed case ends in victory or an ordinary defeat"),
+		Result.Metrics.bVictory || Result.Metrics.FailureReason == TEXT("Simulation.Defeat"));
+	TestTrue(TEXT("the fixed case terminates before the simulation safety limit"),
+		Result.Metrics.Rounds > 0 && Result.Metrics.Rounds <= 100);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteBalanceNakedBaselineEliteBladeFinishRegressionTest,
+	"GameXXK.RouteBalance.Diagnostics.NakedBaselineElite901027",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteBalanceNakedBaselineEliteBladeFinishRegressionTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	FString Error;
+	TestTrue(TEXT("the locked matrix expands before the Blade Finish regression case"),
+		FGameXXKRouteBalanceRules::ExpandCases(FGameXXKRouteBalanceRules::MakeLockedFullMatrix(), Cases, &Error));
+	const FGameXXKRouteBalanceCase* Case = Cases.FindByPredicate([](const FGameXXKRouteBalanceCase& Candidate)
+	{
+		return Candidate.CohortId == TEXT("NakedBaseline")
+			&& Candidate.NodeKind == EGameXXKNodeKind::Elite
+			&& Candidate.Chapter == 1
+			&& Candidate.SeedOrdinal == 27
+			&& Candidate.Seed == 901027;
+	});
+	TestNotNull(TEXT("the fixed failing Blade Finish case remains in the locked matrix"), Case);
+	if (!Case)
+	{
+		return false;
+	}
+
+	FGameXXKRouteBalanceCaseResult Result;
+	TArray<FGameXXKSimulationTraceEntry> Trace;
+	const bool bResolved = FGameXXKRouteBalanceRules::RunCase(*Case, Result, &Error, nullptr, &Trace);
+	const int32 FirstTraceIndex = FMath::Max(0, Trace.Num() - 24);
+	for (int32 TraceIndex = FirstTraceIndex; TraceIndex < Trace.Num(); ++TraceIndex)
+	{
+		const FGameXXKSimulationTraceEntry& Entry = Trace[TraceIndex];
+		AddInfo(FString::Printf(
+			TEXT("[BladeFinishRegressionTrace] index=%d round=%d action=%s source=%s card_or_intent=%s target=%s hp=%d mana=%d armor=%d"),
+			TraceIndex,
+			Entry.Round,
+			*Entry.Action.ToString(),
+			*Entry.SourceUnitId.ToString(),
+			*Entry.CardOrIntentId.ToString(),
+			*Entry.TargetUnitId.ToString(),
+			Entry.HealthDelta,
+			Entry.ManaDelta,
+			Entry.ArmorDelta));
+	}
+	TestTrue(FString::Printf(TEXT("the fixed Blade Finish case reaches a normal terminal result: %s"), *Error), bResolved);
+	if (!bResolved)
+	{
+		return false;
+	}
+	TestTrue(TEXT("the fixed case ends in victory or an ordinary defeat"),
+		Result.Metrics.bVictory || Result.Metrics.FailureReason == TEXT("Simulation.Defeat"));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteBalanceSorcererUniversalHistoryRegressionTest,
+	"GameXXK.RouteBalance.Diagnostics.NakedBaselineElite901040",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteBalanceSorcererUniversalHistoryRegressionTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	FString Error;
+	TestTrue(TEXT("the locked matrix expands before the Sorcerer history regression case"),
+		FGameXXKRouteBalanceRules::ExpandCases(FGameXXKRouteBalanceRules::MakeLockedFullMatrix(), Cases, &Error));
+	const FGameXXKRouteBalanceCase* Case = Cases.FindByPredicate([](const FGameXXKRouteBalanceCase& Candidate)
+	{
+		return Candidate.CohortId == TEXT("NakedBaseline")
+			&& Candidate.NodeKind == EGameXXKNodeKind::Elite
+			&& Candidate.Chapter == 2
+			&& Candidate.SeedOrdinal == 40
+			&& Candidate.Seed == 901040;
+	});
+	TestNotNull(TEXT("the fixed failing Sorcerer history case remains in the locked matrix"), Case);
+	if (!Case)
+	{
+		return false;
+	}
+
+	FGameXXKRouteBalanceCaseResult Result;
+	TArray<FGameXXKSimulationTraceEntry> Trace;
+	const bool bResolved = FGameXXKRouteBalanceRules::RunCase(*Case, Result, &Error, nullptr, &Trace);
+	const int32 FirstTraceIndex = FMath::Max(0, Trace.Num() - 24);
+	for (int32 TraceIndex = FirstTraceIndex; TraceIndex < Trace.Num(); ++TraceIndex)
+	{
+		const FGameXXKSimulationTraceEntry& Entry = Trace[TraceIndex];
+		AddInfo(FString::Printf(
+			TEXT("[SorcererHistoryRegressionTrace] index=%d round=%d action=%s source=%s card_or_intent=%s target=%s hp=%d mana=%d armor=%d"),
+			TraceIndex,
+			Entry.Round,
+			*Entry.Action.ToString(),
+			*Entry.SourceUnitId.ToString(),
+			*Entry.CardOrIntentId.ToString(),
+			*Entry.TargetUnitId.ToString(),
+			Entry.HealthDelta,
+			Entry.ManaDelta,
+			Entry.ArmorDelta));
+	}
+	TestTrue(FString::Printf(TEXT("the fixed Sorcerer history case reaches a normal terminal result: %s"), *Error), bResolved);
+	if (!bResolved)
+	{
+		return false;
+	}
+	TestTrue(TEXT("the fixed case ends in victory or an ordinary defeat"),
+		Result.Metrics.bVictory || Result.Metrics.FailureReason == TEXT("Simulation.Defeat"));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteBalanceSelectedTargetFallbackRegressionTest,
+	"GameXXK.RouteBalance.Diagnostics.NakedBaselineElite901046",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteBalanceSelectedTargetFallbackRegressionTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	FString Error;
+	TestTrue(TEXT("the locked matrix expands before the selected-target fallback regression case"),
+		FGameXXKRouteBalanceRules::ExpandCases(FGameXXKRouteBalanceRules::MakeLockedFullMatrix(), Cases, &Error));
+	const FGameXXKRouteBalanceCase* Case = Cases.FindByPredicate([](const FGameXXKRouteBalanceCase& Candidate)
+	{
+		return Candidate.CohortId == TEXT("NakedBaseline")
+			&& Candidate.NodeKind == EGameXXKNodeKind::Elite
+			&& Candidate.Chapter == 2
+			&& Candidate.SeedOrdinal == 46
+			&& Candidate.Seed == 901046;
+	});
+	TestNotNull(TEXT("the fixed failing selected-target case remains in the locked matrix"), Case);
+	if (!Case)
+	{
+		return false;
+	}
+
+	FGameXXKRouteBalanceCaseResult Result;
+	TArray<FGameXXKSimulationTraceEntry> Trace;
+	const bool bResolved = FGameXXKRouteBalanceRules::RunCase(*Case, Result, &Error, nullptr, &Trace);
+	const int32 FirstTraceIndex = FMath::Max(0, Trace.Num() - 24);
+	for (int32 TraceIndex = FirstTraceIndex; TraceIndex < Trace.Num(); ++TraceIndex)
+	{
+		const FGameXXKSimulationTraceEntry& Entry = Trace[TraceIndex];
+		AddInfo(FString::Printf(
+			TEXT("[SelectedTargetRegressionTrace] index=%d round=%d action=%s source=%s card_or_intent=%s target=%s hp=%d mana=%d armor=%d"),
+			TraceIndex,
+			Entry.Round,
+			*Entry.Action.ToString(),
+			*Entry.SourceUnitId.ToString(),
+			*Entry.CardOrIntentId.ToString(),
+			*Entry.TargetUnitId.ToString(),
+			Entry.HealthDelta,
+			Entry.ManaDelta,
+			Entry.ArmorDelta));
+	}
+	TestTrue(FString::Printf(TEXT("the fixed selected-target case reaches a normal terminal result: %s"), *Error), bResolved);
+	if (!bResolved)
+	{
+		return false;
+	}
+	TestTrue(TEXT("the fixed case ends in victory or an ordinary defeat"),
+		Result.Metrics.bVictory || Result.Metrics.FailureReason == TEXT("Simulation.Defeat"));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteBalanceDelayedSelectedTargetFallbackRegressionTest,
+	"GameXXK.RouteBalance.Diagnostics.XuanJiaYueBaiBoss922010",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteBalanceDelayedSelectedTargetFallbackRegressionTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	FString Error;
+	TestTrue(TEXT("the locked matrix expands before the delayed selected-target fallback regression case"),
+		FGameXXKRouteBalanceRules::ExpandCases(FGameXXKRouteBalanceRules::MakeLockedFullMatrix(), Cases, &Error));
+	const FGameXXKRouteBalanceCase* Case = Cases.FindByPredicate([](const FGameXXKRouteBalanceCase& Candidate)
+	{
+		return Candidate.CohortId == TEXT("XuanJiaYueBai")
+			&& Candidate.NodeKind == EGameXXKNodeKind::Boss
+			&& Candidate.Chapter == 1
+			&& Candidate.SeedOrdinal == 10
+			&& Candidate.Seed == 922010;
+	});
+	TestNotNull(TEXT("the fixed failing delayed selected-target case remains in the locked matrix"), Case);
+	if (!Case)
+	{
+		return false;
+	}
+
+	FGameXXKRouteBalanceCaseResult Result;
+	TArray<FGameXXKSimulationTraceEntry> Trace;
+	const bool bResolved = FGameXXKRouteBalanceRules::RunCase(*Case, Result, &Error, nullptr, &Trace);
+	const int32 FirstTraceIndex = FMath::Max(0, Trace.Num() - 24);
+	for (int32 TraceIndex = FirstTraceIndex; TraceIndex < Trace.Num(); ++TraceIndex)
+	{
+		const FGameXXKSimulationTraceEntry& Entry = Trace[TraceIndex];
+		AddInfo(FString::Printf(
+			TEXT("[DelayedSelectedTargetRegressionTrace] index=%d round=%d action=%s source=%s card_or_intent=%s target=%s hp=%d mana=%d armor=%d"),
+			TraceIndex,
+			Entry.Round,
+			*Entry.Action.ToString(),
+			*Entry.SourceUnitId.ToString(),
+			*Entry.CardOrIntentId.ToString(),
+			*Entry.TargetUnitId.ToString(),
+			Entry.HealthDelta,
+			Entry.ManaDelta,
+			Entry.ArmorDelta));
+	}
+	TestTrue(FString::Printf(TEXT("the fixed delayed selected-target case reaches a normal terminal result: %s"), *Error), bResolved);
+	if (!bResolved)
+	{
+		return false;
+	}
+	TestTrue(TEXT("the fixed case ends in victory or an ordinary defeat"),
+		Result.Metrics.bVictory || Result.Metrics.FailureReason == TEXT("Simulation.Defeat"));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKRouteBalanceChapterTwoNormalReplayTest,
 	"GameXXK.RouteBalance.Determinism.ChapterTwoNormalReplay",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -471,78 +743,50 @@ bool FGameXXKRouteBalanceCalibrationCoarseSweepTest::RunTest(const FString& Para
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FGameXXKRouteBalanceFinalCandidateTest,
-	"GameXXK.RouteBalance.FinalCandidateTargets",
+	FGameXXKRouteBalanceAuthoredProfilePolicyTest,
+	"GameXXK.RouteBalance.AuthoredProfilePolicy",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FGameXXKRouteBalanceFinalCandidateTest::RunTest(const FString& Parameters)
+bool FGameXXKRouteBalanceAuthoredProfilePolicyTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRouteBalanceCalibrationProfile Profile;
-	Profile.ProfileId = TEXT("RouteBalance.FinalCandidate.v1");
-	auto AddScale = [&Profile](const int32 Chapter,
-		const EGameXXKNodeKind NodeKind,
-		const int32 MaxHPPercent,
-		const int32 AttackPercent,
-		const int32 DefensePercent)
+	struct FExpectedAuthoredScale
 	{
-		Profile.EncounterScales.Add(
-			FGameXXKRouteBalanceCalibrationProfile::MakeEncounterKey(Chapter, NodeKind),
-			FGameXXKRouteBalanceStatScale{MaxHPPercent, AttackPercent, DefensePercent});
+		int32 Chapter = 1;
+		EGameXXKNodeKind NodeKind = EGameXXKNodeKind::Battle;
+		int32 MaxHPPercent = 100;
+		int32 AttackPercent = 100;
+		int32 DefensePercent = 100;
 	};
-	AddScale(1, EGameXXKNodeKind::Battle, 140, 850, 100);
-	AddScale(2, EGameXXKNodeKind::Battle, 140, 540, 100);
-	AddScale(3, EGameXXKNodeKind::Battle, 140, 540, 100);
-	AddScale(1, EGameXXKNodeKind::Elite, 160, 270, 100);
-	AddScale(2, EGameXXKNodeKind::Elite, 160, 170, 105);
-	AddScale(3, EGameXXKNodeKind::Elite, 160, 180, 110);
-	AddScale(1, EGameXXKNodeKind::Boss, 120, 120, 100);
-	AddScale(3, EGameXXKNodeKind::Boss, 80, 90, 100);
 
-	TArray<FGameXXKRouteBalanceCase> Cases;
-	FString Error;
-	TestTrue(TEXT("the locked cases expand before final-candidate certification"),
-		FGameXXKRouteBalanceRules::ExpandCases(FGameXXKRouteBalanceRules::MakeLockedFullMatrix(), Cases, &Error));
-	if (Cases.Num() != 2400)
-	{
-		return false;
-	}
+	const TArray<FExpectedAuthoredScale> ExpectedScales = {
+		{1, EGameXXKNodeKind::Battle, 140, 250, 100},
+		{2, EGameXXKNodeKind::Battle, 140, 250, 100},
+		{3, EGameXXKNodeKind::Battle, 140, 250, 100},
+		{1, EGameXXKNodeKind::Elite, 160, 270, 100},
+		{2, EGameXXKNodeKind::Elite, 160, 170, 105},
+		{3, EGameXXKNodeKind::Elite, 160, 180, 110},
+		{1, EGameXXKNodeKind::Boss, 120, 120, 100},
+		{2, EGameXXKNodeKind::Boss, 100, 100, 100},
+		{3, EGameXXKNodeKind::Boss, 80, 90, 100},
+	};
 
-	int32 BucketCount[4][3] = {};
-	int32 BucketVictories[4][3] = {};
-	for (const FGameXXKRouteBalanceCase& Case : Cases)
+	for (const FExpectedAuthoredScale& Expected : ExpectedScales)
 	{
-		FGameXXKRouteBalanceCaseResult Result;
-		if (!FGameXXKRouteBalanceRules::RunCase(Case, Result, &Error, &Profile))
-		{
-			AddError(FString::Printf(TEXT("the final candidate failed a real-rule fixture: %s"), *Error));
-			return false;
-		}
-		const int32 NodeIndex = Case.NodeKind == EGameXXKNodeKind::Battle ? 0 : Case.NodeKind == EGameXXKNodeKind::Elite ? 1 : 2;
-		++BucketCount[Case.Chapter][NodeIndex];
-		BucketVictories[Case.Chapter][NodeIndex] += Result.Metrics.bVictory ? 1 : 0;
-	}
-
-	const double MinimumRates[3] = {0.55, 0.35, 0.15};
-	const double MaximumRates[3] = {0.70, 0.50, 0.35};
-	for (int32 Chapter = 1; Chapter <= 3; ++Chapter)
-	{
-		for (int32 NodeIndex = 0; NodeIndex < 3; ++NodeIndex)
-		{
-			const double VictoryRate = static_cast<double>(BucketVictories[Chapter][NodeIndex]) / static_cast<double>(BucketCount[Chapter][NodeIndex]);
-			const TCHAR* NodeLabel = NodeIndex == 0 ? TEXT("Normal") : NodeIndex == 1 ? TEXT("Elite") : TEXT("Boss");
-			AddInfo(FString::Printf(
-				TEXT("[RouteBalanceFinal] Chapter=%d Node=%s Win=%d/%d Rate=%.4f Target=[%.2f,%.2f]"),
-				Chapter,
-				NodeLabel,
-				BucketVictories[Chapter][NodeIndex],
-				BucketCount[Chapter][NodeIndex],
-				VictoryRate,
-				MinimumRates[NodeIndex],
-				MaximumRates[NodeIndex]));
-			TestTrue(
-				FString::Printf(TEXT("chapter %d %s final win rate is within the locked target range"), Chapter, NodeLabel),
-				VictoryRate >= MinimumRates[NodeIndex] && VictoryRate <= MaximumRates[NodeIndex]);
-		}
+		const FGameXXKEncounterStatScale Actual = FGameXXKEncounterRules::GetAuthoredStatScale(
+			Expected.Chapter,
+			Expected.NodeKind);
+		const FString Context = FString::Printf(
+			TEXT("chapter %d node %d"),
+			Expected.Chapter,
+			static_cast<int32>(Expected.NodeKind));
+		TestEqual(Context + TEXT(" keeps the approved maximum-health multiplier"),
+			Actual.MaxHPPercent, Expected.MaxHPPercent);
+		TestEqual(Context + TEXT(" keeps the approved attack multiplier"),
+			Actual.AttackPercent, Expected.AttackPercent);
+		TestEqual(Context + TEXT(" keeps the approved defense multiplier"),
+			Actual.DefensePercent, Expected.DefensePercent);
+		TestTrue(Context + TEXT(" never restores the retired 540/850 normal-attack pressure profile"),
+			Expected.NodeKind != EGameXXKNodeKind::Battle || Actual.AttackPercent <= 250);
 	}
 	return true;
 }

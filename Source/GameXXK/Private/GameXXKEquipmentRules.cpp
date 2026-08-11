@@ -384,6 +384,21 @@ namespace
 		case EGameXXKEquipmentSetBonusKind::ShanHeTerrainPower: return EGameXXKEquipmentModifierKind::TerrainPower;
 		case EGameXXKEquipmentSetBonusKind::ShanHeTerrainCardFormation: return EGameXXKEquipmentModifierKind::TerrainCostReduction;
 		case EGameXXKEquipmentSetBonusKind::ShanHeTeamFormationCore: return EGameXXKEquipmentModifierKind::TeamTerrainPower;
+		case EGameXXKEquipmentSetBonusKind::PoJunChargeDraw: return EGameXXKEquipmentModifierKind::BladeChargeDraw;
+		case EGameXXKEquipmentSetBonusKind::PoJunFinishStoresCharge: return EGameXXKEquipmentModifierKind::BladeStoredCharge;
+		case EGameXXKEquipmentSetBonusKind::PoJunOpeningFinishReplay: return EGameXXKEquipmentModifierKind::BladeOpeningReplay;
+		case EGameXXKEquipmentSetBonusKind::QingNangHighCostDraw:
+		case EGameXXKEquipmentSetBonusKind::QingNangHighCostBloodCycle:
+		case EGameXXKEquipmentSetBonusKind::QingNangHighCostEnergyCycle:
+			return EGameXXKEquipmentModifierKind::QingNangCycle;
+		case EGameXXKEquipmentSetBonusKind::ShiGuCardTargetRot:
+		case EGameXXKEquipmentSetBonusKind::ShiGuFirstDualDotExplosion:
+		case EGameXXKEquipmentSetBonusKind::ShiGuFirstExplosionPreservesDots:
+			return EGameXXKEquipmentModifierKind::ShiGuCycle;
+		case EGameXXKEquipmentSetBonusKind::ZhuiFengPairDraw:
+		case EGameXXKEquipmentSetBonusKind::ZhuiFengSecondCardEnergy:
+		case EGameXXKEquipmentSetBonusKind::ZhuiFengFourthCardCycle:
+			return EGameXXKEquipmentModifierKind::ZhuiFengCycle;
 		default: return EGameXXKEquipmentModifierKind::Invalid;
 		}
 	}
@@ -1317,10 +1332,16 @@ TArray<FGameXXKEquipmentActiveEffect> FGameXXKEquipmentRules::ResolveTeamEffects
 		for (const FGameXXKEquipmentActiveEffect& Effect : Snapshot.CandidateTeamEffects)
 		{
 			FChosenEffect* Existing = ChosenBySet.Find(Effect.Set);
+			const bool bHigherTier = Existing
+				&& Effect.RequiredPieces > Existing->Effect.RequiredPieces;
+			const bool bHigherScoreAtSameTier = Existing
+				&& Effect.RequiredPieces == Existing->Effect.RequiredPieces
+				&& Snapshot.TeamEffectSourceScore > Existing->Score;
 			const bool bWinsTie = Existing
+				&& Effect.RequiredPieces == Existing->Effect.RequiredPieces
 				&& Snapshot.TeamEffectSourceScore == Existing->Score
 				&& Effect.SourceCharacterId.ToString() < Existing->Effect.SourceCharacterId.ToString();
-			if (!Existing || Snapshot.TeamEffectSourceScore > Existing->Score || bWinsTie)
+			if (!Existing || bHigherTier || bHigherScoreAtSameTier || bWinsTie)
 			{
 				FChosenEffect Choice;
 				Choice.Effect = Effect;

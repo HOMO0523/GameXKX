@@ -64,7 +64,49 @@ void AGameXXKTownNpcCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	RaiseRootToGroundedHeightIfNeeded();
-	UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
+
+	AActor* Target = FollowTarget.Get();
+	if (!bFollowerActive || !Target)
+	{
+		UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
+		return;
+	}
+
+	const FVector CurrentLocation = GetActorLocation();
+	const FVector TargetLocation = Target->GetActorLocation();
+	FVector ToTarget = TargetLocation - CurrentLocation;
+	ToTarget.Z = 0.0f;
+	const float DistanceToTarget = ToTarget.Size();
+	if (DistanceToTarget <= FollowDistance || DistanceToTarget <= KINDA_SMALL_NUMBER)
+	{
+		UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
+		return;
+	}
+
+	FVector DesiredLocation = TargetLocation - ToTarget.GetSafeNormal() * FollowDistance;
+	DesiredLocation.Z = CurrentLocation.Z;
+	const FVector NewLocation = FMath::VInterpConstantTo(CurrentLocation, DesiredLocation, DeltaSeconds, FollowSpeed);
+	FVector MovementDelta = NewLocation - CurrentLocation;
+	MovementDelta.Z = 0.0f;
+	if (!NewLocation.Equals(CurrentLocation))
+	{
+		SetActorLocation(NewLocation);
+		if (CanOfferQuest())
+		{
+			RecordQuestNpcMovedLocation(ResolveMVPSubsystem(Cast<APawn>(Target)), NewLocation);
+		}
+	}
+	if (!MovementDelta.IsNearlyZero())
+	{
+		const FVector MoveDirection = MovementDelta.GetSafeNormal();
+		UpdateTownVisualFromMovementIntent(
+			FVector::DotProduct(MoveDirection, FVector::RightVector),
+			FVector::DotProduct(MoveDirection, FVector::ForwardVector));
+	}
+	else
+	{
+		UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
+	}
 }
 
 void AGameXXKTownNpcCharacter::NotifyActorBeginOverlap(AActor* OtherActor)
@@ -174,9 +216,16 @@ bool AGameXXKTownNpcCharacter::CanJoinParty() const
 
 void AGameXXKTownNpcCharacter::ActivateFollower(AActor* Target, float Distance)
 {
-	(void)Target;
-	(void)Distance;
-	DismissFollower();
+	FollowTarget = Target;
+	FollowDistance = FMath::Max(0.0f, Distance);
+	bFollowerActive = Target != nullptr;
+	if (bFollowerActive && CanOfferQuest())
+	{
+		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem(Cast<APawn>(Target)))
+		{
+			Subsystem->RecordQuestNpcLocation(GetActorLocation());
+		}
+	}
 }
 
 void AGameXXKTownNpcCharacter::DismissFollower()
@@ -188,12 +237,12 @@ void AGameXXKTownNpcCharacter::DismissFollower()
 
 bool AGameXXKTownNpcCharacter::IsFollowerActive() const
 {
-	return false;
+	return bFollowerActive;
 }
 
 AActor* AGameXXKTownNpcCharacter::GetFollowTarget() const
 {
-	return nullptr;
+	return FollowTarget.Get();
 }
 
 float AGameXXKTownNpcCharacter::GetFollowDistance() const
@@ -287,6 +336,14 @@ bool AGameXXKTownNpcCharacter::ApplyDefaultInteraction(APawn* InstigatorPawn)
 	if (CanOfferQuest())
 	{
 		const bool bAccepted = Subsystem->AcceptQuest();
+		if (bAccepted && InstigatorPawn)
+		{
+			ActivateFollower(InstigatorPawn, FollowDistance);
+		}
+		if (bAccepted)
+		{
+			Subsystem->RecordQuestNpcLocation(GetActorLocation());
+		}
 		bLastInteractionSuccessful = bAccepted;
 		return bAccepted;
 	}

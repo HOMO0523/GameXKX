@@ -14,7 +14,9 @@ bool FGameXXKCardRouteBattleEntryTest::RunTest(const FString& Parameters)
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
 	TestTrue(TEXT("the main-menu route can open the world map"), UGameXXKMVPRules::OpenWorldMap(State));
 	TestTrue(TEXT("the world map can enter Qingshan"), UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan()));
-	TestTrue(TEXT("the Qingshan quest can be accepted without changing its legacy follower narrative flag"), UGameXXKMVPRules::AcceptTownQuest(State));
+	TestTrue(TEXT("the Qingshan quest can be accepted through the current follower contract"), UGameXXKMVPRules::AcceptTownQuest(State));
+	TestTrue(TEXT("accepting the Qingshan quest activates the narrative follower"), State.bFollowerJoined);
+	TestTrue(TEXT("accepting the narrative quest does not auto-select a combat NPC"), State.CardRun.PartySelection.QuestNpc.NpcId.IsNone());
 	TestTrue(TEXT("the accepted town quest enters the route map"), UGameXXKMVPRules::EnterDungeon(State));
 	// This test isolates the shared BeginBattle entry point rather than making an assumption about
 	// the first randomly generated map layer.  The legacy linear fallback reaches the same battle

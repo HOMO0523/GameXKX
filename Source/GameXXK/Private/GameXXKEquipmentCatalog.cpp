@@ -295,11 +295,5 @@ int32 FGameXXKEquipmentCatalog::GetReforgeSandCost(const EGameXXKEquipmentQualit
 
 int32 FGameXXKEquipmentCatalog::GetDismantleSandYield(const EGameXXKEquipmentQuality Quality)
 {
-	switch (Quality)
-	{
-	case EGameXXKEquipmentQuality::Common: return 5;
-	case EGameXXKEquipmentQuality::Rare: return 15;
-	case EGameXXKEquipmentQuality::Epic: return 45;
-	default: return 0;
-	}
+	return Quality >= EGameXXKEquipmentQuality::Common && Quality <= EGameXXKEquipmentQuality::Epic ? 1 : 0;
 }

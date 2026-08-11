@@ -197,7 +197,7 @@ bool FGameXXKHunterNoChargeTest::RunTest(const FString& Parameters)
 		int32 ExpectedDamageResults;
 	};
 	const TArray<FCase> Cases = {
-		{TEXT("LieYu"), TEXT("Hero.Hunter.LieYuLianShi"), 1},
+		{TEXT("LieYu"), TEXT("Hero.Hunter.LieYuLianShi"), 2},
 		{TEXT("CuiDu"), TEXT("Hero.Hunter.CuiDuChuanXin"), 2},
 		{TEXT("HuiFeng"), TEXT("Hero.Hunter.HuiFengGuanRi"), 1}};
 	for (int32 CaseIndex = 0; CaseIndex < Cases.Num(); ++CaseIndex)
@@ -261,18 +261,28 @@ bool FGameXXKHunterLieYuTest::RunTest(const FString& Parameters)
 	if (!Resolve(*this, Runtime, TEXT("LieYu"), EnemyUnitId, Result, TEXT("Lie Yu Heavy Arrow"))) return true;
 	TestEqual(TEXT("Lie Yu locks and consumes Charge3"), Result.HeavyArrowChargeConsumed, 3);
 	TestEqual(TEXT("Lie Yu appends three Heavy Arrow attacks"), Result.HeavyArrowExtraAttackCount, 3);
-	TestEqual(TEXT("Lie Yu emits one base plus three extra direct packets"), Result.DamageResults.Num(), 4);
+	TestEqual(TEXT("Lie Yu emits four direct packets and four triggered Bleed packets"), Result.DamageResults.Num(), 8);
 	const TArray<int32> ExpectedBaseRequested = {14, 5, 5, 5};
 	const TArray<int32> ExpectedMarkBefore = {4, 3, 2, 1};
-	for (int32 Index = 0; Index < Result.DamageResults.Num() && Index < ExpectedBaseRequested.Num(); ++Index)
+	TArray<const FGameXXKCardDamageResult*> DirectPackets;
+	for (const FGameXXKCardDamageResult& DamageResult : Result.DamageResults)
 	{
-		TestEqual(FString::Printf(TEXT("Lie Yu packet %d uses its exact requested amount"), Index), Result.DamageResults[Index].BaseRequestedDamage, ExpectedBaseRequested[Index]);
-		TestEqual(FString::Printf(TEXT("Lie Yu packet %d observes live Mark"), Index), Result.DamageResults[Index].MarkStacksBeforeHit, ExpectedMarkBefore[Index]);
-		TestEqual(FString::Printf(TEXT("Lie Yu packet %d consumes one live Mark"), Index), Result.DamageResults[Index].MarkStacksConsumed, 1);
+		if (DamageResult.Cause == EGameXXKCardDamageCause::DirectAttack)
+		{
+			DirectPackets.Add(&DamageResult);
+		}
 	}
-	TestEqual(TEXT("only the base packet has active-play origin"), CountOrigin(Result.DamageResults, EGameXXKCardResolutionOrigin::ActivePlay), 1);
-	TestEqual(TEXT("all three appended packets have HeavyArrow origin"), CountOrigin(Result.DamageResults, EGameXXKCardResolutionOrigin::HeavyArrow), 3);
-	TestEqual(TEXT("Bleed8 is applied before and survives all appended hits"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 8);
+	TestEqual(TEXT("Lie Yu keeps exactly four direct attack packets"), DirectPackets.Num(), 4);
+	TestEqual(TEXT("each unavoided hit triggers Bleed once"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::Bleed), 4);
+	for (int32 Index = 0; Index < DirectPackets.Num() && Index < ExpectedBaseRequested.Num(); ++Index)
+	{
+		TestEqual(FString::Printf(TEXT("Lie Yu direct packet %d uses its exact requested amount"), Index), DirectPackets[Index]->BaseRequestedDamage, ExpectedBaseRequested[Index]);
+		TestEqual(FString::Printf(TEXT("Lie Yu direct packet %d observes live Mark"), Index), DirectPackets[Index]->MarkStacksBeforeHit, ExpectedMarkBefore[Index]);
+		TestEqual(FString::Printf(TEXT("Lie Yu direct packet %d consumes one live Mark"), Index), DirectPackets[Index]->MarkStacksConsumed, 1);
+	}
+	TestEqual(TEXT("the base direct hit and its Bleed packet have active-play origin"), CountOrigin(Result.DamageResults, EGameXXKCardResolutionOrigin::ActivePlay), 2);
+	TestEqual(TEXT("three appended hits and their Bleed packets have HeavyArrow origin"), CountOrigin(Result.DamageResults, EGameXXKCardResolutionOrigin::HeavyArrow), 6);
+	TestEqual(TEXT("four hits consume Bleed8 down to Bleed4"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 4);
 	TestEqual(TEXT("all four direct hits consume the four live Mark layers"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Mark), 0);
 	TestEqual(TEXT("the locked Charge is empty after resolution"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Charge), 0);
 	return true;

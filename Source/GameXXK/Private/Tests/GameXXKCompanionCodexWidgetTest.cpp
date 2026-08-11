@@ -89,17 +89,17 @@ bool FGameXXKCompanionCodexWidgetTest::RunTest(const FString& Parameters)
 		GetBorderResourcePath(CodexDetail).Contains(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/T_TownBackpack_WindowFrame")));
 	TestTrue(TEXT("task NPC detail portrait uses the approved backpack slot"),
 		GetBorderResourcePath(TaskNpcDetailSlot).Contains(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/T_TownBackpack_Slot")));
-	TestEqual(TEXT("aggregate collection summary reports the discovered Guide"), TownHud->GetCodexCollectionSummaryForTest().ToString(), FString(TEXT("已收录 1 / 4")));
+	TestEqual(TEXT("aggregate collection summary reports the discovered Guide"), TownHud->GetCodexCollectionSummaryForTest().ToString(), FString(TEXT("已收录 1 / 22")));
 	TestTrue(TEXT("aggregate list exposes the discovered Guide"), TownHud->GetVisibleCodexEntryIdsForTest().Contains(FName(TEXT("Codex.Guide"))));
 	TestTrue(TEXT("unread discovered Guide raises the companion badge"), TownHud->HasCompanionUnreadNoticeForTest());
 
 	TestTrue(TEXT("selecting the Guide uses the codex interaction path"), TownHud->SelectCodexEntryForTest(FName(TEXT("Codex.Guide"))));
 	TestFalse(TEXT("reading the Guide clears the companion unread badge"), TownHud->HasCompanionUnreadNoticeForTest());
-	TestTrue(TEXT("runtime codex discovery adds the Money Rat while the overlay is open"), UGameXXKMVPRules::DiscoverCodexEntry(Subsystem->GetMutableRuntimeState(), FName(TEXT("Codex.MoneyRat"))));
+	TestTrue(TEXT("runtime codex discovery adds the Money Rat while the overlay is open"), UGameXXKMVPRules::DiscoverCodexEntry(Subsystem->GetMutableRuntimeState(), FName(TEXT("Codex.Enemy.Ch1.MoneyRat"))));
 	TownHud->RefreshFromState();
 	TestTrue(TEXT("refresh after runtime codex discovery keeps the overlay open"), TownHud->IsCompanionCodexOpenForTest());
-	TestEqual(TEXT("refresh rebuilds the aggregate collection summary from runtime codex data"), TownHud->GetCodexCollectionSummaryForTest().ToString(), FString(TEXT("已收录 2 / 4")));
-	TestTrue(TEXT("refresh rebuilds the aggregate list with the newly discovered Money Rat"), TownHud->GetVisibleCodexEntryIdsForTest().Contains(FName(TEXT("Codex.MoneyRat"))));
+	TestEqual(TEXT("refresh rebuilds the aggregate collection summary from runtime codex data"), TownHud->GetCodexCollectionSummaryForTest().ToString(), FString(TEXT("已收录 2 / 22")));
+	TestTrue(TEXT("refresh rebuilds the aggregate list with the newly discovered Money Rat"), TownHud->GetVisibleCodexEntryIdsForTest().Contains(FName(TEXT("Codex.Enemy.Ch1.MoneyRat"))));
 	USizeBox* RefreshedCodexCardSize = CodexGrid ? Cast<USizeBox>(CodexGrid->GetChildAt(0)) : nullptr;
 	TestNotNull(TEXT("refresh rebuilds the first codex card frame in the grid"), RefreshedCodexCardSize);
 	if (RefreshedCodexCardSize)

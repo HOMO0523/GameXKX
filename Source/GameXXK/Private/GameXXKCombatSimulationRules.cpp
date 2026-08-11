@@ -674,6 +674,11 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 				}
 				else
 				{
+					EGameXXKCardZone DecisionZone = EGameXXKCardZone::Invalid;
+					const FGameXXKCardInstance* DecisionInstance = GameXXKCardRules::FindInstance(
+						CurrentRuntime.Deck,
+						Decision.CardInstanceId,
+						DecisionZone);
 					FGameXXKCardPlayPreview CommittedPreview;
 					if (!FGameXXKCardBattleAdapter::BuildCardPlayPreview(
 						State,
@@ -692,7 +697,14 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 						PlayResult,
 						&AdapterError))
 					{
-						return SetFailure(OutMetrics, OutError, TEXT("Simulation.ResolveCardFailed"), AdapterError);
+						const FString DetailedError = FString::Printf(
+							TEXT("card=%s instance=%s target=%s zone=%d: %s"),
+							DecisionInstance ? *DecisionInstance->CardId.ToString() : TEXT("None"),
+							*Decision.CardInstanceId.ToString(),
+							*Decision.TargetUnitId.ToString(),
+							static_cast<int32>(DecisionZone),
+							*AdapterError);
+						return SetFailure(OutMetrics, OutError, TEXT("Simulation.ResolveCardFailed"), DetailedError);
 					}
 					RecordAction(
 						Before,

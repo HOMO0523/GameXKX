@@ -103,8 +103,8 @@ bool FGameXXKCompanionRecruitmentSequenceTest::RunTest(const FString& Parameters
 	TestTrue(TEXT("the matching saved deterministic recruitment resolves"),
 		FGameXXKCompanionRules::CreateAndResolveNextRecruitment(SecondRoster, SecondResult, nullptr));
 	TestEqual(TEXT("matching uninitialized saves choose the same first template"), FirstResult.Companion.RecruitTemplateId, SecondResult.Companion.RecruitTemplateId);
-	TestEqual(TEXT("matching uninitialized saves choose the same first personal twelve-card pool"), FirstResult.Companion.PersonalCardIds, SecondResult.Companion.PersonalCardIds);
-	TestEqual(TEXT("a new permanent recruit owns twelve personal cards"), FirstResult.Companion.PersonalCardIds.Num(), 12);
+	TestEqual(TEXT("matching uninitialized saves choose the same first personal six-card birth pool"), FirstResult.Companion.PersonalCardIds, SecondResult.Companion.PersonalCardIds);
+	TestEqual(TEXT("a new permanent recruit owns six birth cards"), FirstResult.Companion.PersonalCardIds.Num(), 6);
 	TestTrue(TEXT("the old-save fallback initializes a persistent sequence seed"), FirstRoster.RecruitSequenceSeed != 0);
 	TestEqual(TEXT("the first claim advances the persisted sequence ordinal"), FirstRoster.RecruitSequenceOrdinal, 1);
 
@@ -182,7 +182,7 @@ bool FGameXXKCompanionRecruitmentFacadePersistenceTest::RunTest(const FString& P
 	FGameXXKCompanionRecruitResult FirstTownRecruit;
 	TestTrue(TEXT("the town facade starts a random permanent recruitment"), Subsystem->StartRandomPermanentCompanionRecruitment(FirstTownRecruit));
 	TestEqual(TEXT("the town facade yields a permanent recruit while roster has space"), FirstTownRecruit.Outcome, EGameXXKCompanionRecruitOutcome::Recruited);
-	TestEqual(TEXT("the facade recruit has its own twelve-card personal pool"), FirstTownRecruit.Companion.PersonalCardIds.Num(), 12);
+	TestEqual(TEXT("the facade recruit has its own six-card birth pool"), FirstTownRecruit.Companion.PersonalCardIds.Num(), 6);
 
 	const FGameXXKSaveState SavedAfterFirstRecruit = UGameXXKMVPRules::MakeSaveState(Subsystem->GetRuntimeState());
 	UGameInstance* ReloadedGameInstance = NewObject<UGameInstance>();

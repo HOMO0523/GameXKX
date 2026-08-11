@@ -1614,11 +1614,8 @@ bool UGameXXKMVPSubsystem::SelectTownQuestNpcForParty(const FName QuestNpcId)
 		return false;
 	}
 
-	// These fields remain serialized only for old-save compatibility. A town
-	// party choice no longer creates a moving scene follower.
-	RuntimeState.bFollowerJoined = false;
-	RuntimeState.bHasQuestNpcLocation = false;
-	RuntimeState.QuestNpcLocation = FVector::ZeroVector;
+	// Route support selection is independent from the accepted story NPC that
+	// follows the player in town. Never discard that follower's saved state here.
 	return true;
 }
 

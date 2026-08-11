@@ -182,12 +182,25 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	const FName WoodenSword = UGameXXKMVPRules::ItemWoodenSword();
-	const FName StarterClothArmor = UGameXXKMVPRules::ItemStarterClothArmor();
-	const FName ClothTalisman = UGameXXKMVPRules::ItemClothTalisman();
-	TestEqual(TEXT("new game starts with a wooden sword for equipment replacement testing"), UGameXXKMVPRules::GetItemCount(State, WoodenSword), 1);
-	TestEqual(TEXT("new game starts with cloth armor for equipment replacement testing"), UGameXXKMVPRules::GetItemCount(State, StarterClothArmor), 1);
-	TestEqual(TEXT("new game starts with a cloth talisman for equipment replacement testing"), UGameXXKMVPRules::GetItemCount(State, ClothTalisman), 1);
+	const TArray<FName> ExpectedStarterEquipment{
+		TEXT("Equipment.Starter.Weapon"),
+		TEXT("Equipment.Starter.Head"),
+		TEXT("Equipment.Starter.Armor"),
+		TEXT("Equipment.Starter.Belt"),
+		TEXT("Equipment.Starter.Shoes"),
+		TEXT("Equipment.Starter.Accessory")};
+	TestEqual(TEXT("new game starts with six modern starter equipment instances"), State.EquipmentCollection.EquipmentInstances.Num(), 6);
+	TestEqual(TEXT("all six starter instances begin in the warehouse"), State.EquipmentCollection.WarehouseInstanceIds.Num(), 6);
+	for (const FName ExpectedBaseId : ExpectedStarterEquipment)
+	{
+		TestTrue(
+			FString::Printf(TEXT("new game owns modern starter equipment %s"), *ExpectedBaseId.ToString()),
+			State.EquipmentCollection.EquipmentInstances.ContainsByPredicate([ExpectedBaseId](const FGameXXKEquipmentInstance& Instance)
+			{
+				return Instance.BaseEquipmentId == ExpectedBaseId
+					&& Instance.OwnerKind == EGameXXKEquipmentOwnerKind::Warehouse;
+			}));
+	}
 	TestTrue(TEXT("Qingshan starts unlocked"), State.UnlockedRegions.Contains(UGameXXKMVPRules::RegionQingshan()));
 	TestFalse(TEXT("Tanjiang starts locked"), State.UnlockedRegions.Contains(UGameXXKMVPRules::RegionTanjiang()));
 
@@ -202,6 +215,8 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("quest state accepted"), State.QuestState, EGameXXKQuestState::Accepted);
 	TestTrue(TEXT("follower joins after quest"), State.bFollowerJoined);
 	TestTrue(TEXT("accepted quest opens dungeon"), UGameXXKMVPRules::CanEnterDungeon(State));
+	TestTrue(TEXT("full-flow route explicitly selects Tusi Chief as its task NPC"),
+		Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.TusiChief")));
 
 	State.PlayerGold = 500;
 	const int32 GoldBeforeTrade = State.PlayerGold;

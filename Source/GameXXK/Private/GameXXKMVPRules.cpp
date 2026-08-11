@@ -39,9 +39,12 @@ namespace GameXXKMVP
 	static const FName TaskQingshanMainName(TEXT("Task.QingshanMain"));
 	static const FName QuestNpcTusiChiefName(TEXT("Npc.TusiChief"));
 	static const FName CodexGuideName(TEXT("Codex.Guide"));
-	static const FName CodexMoneyRatName(TEXT("Codex.MoneyRat"));
-	static const FName CodexBlackBearName(TEXT("Codex.BlackBear"));
-	static const FName CodexTigerName(TEXT("Codex.Tiger"));
+	static const FName CodexMoneyRatName(TEXT("Codex.Enemy.Ch1.MoneyRat"));
+	static const FName CodexBlackBearName(TEXT("Codex.Enemy.Ch2.BlackBear"));
+	static const FName CodexTigerName(TEXT("Codex.Enemy.Ch3.Tiger"));
+	static const FName PreviousCodexMoneyRatName(TEXT("Codex.MoneyRat"));
+	static const FName PreviousCodexBlackBearName(TEXT("Codex.BlackBear"));
+	static const FName PreviousCodexTigerName(TEXT("Codex.Tiger"));
 	static const FName LegacyCodexBanditName(TEXT("Codex.Bandit"));
 	static const FName LegacyCodexWolfName(TEXT("Codex.Wolf"));
 	static const FName LegacyCodexEliteBanditName(TEXT("Codex.EliteBandit"));
@@ -94,12 +97,34 @@ namespace GameXXKMVP
 
 	static const TArray<FGameXXKCodexEntryDef>& GetCodexEntryDefsInternal()
 	{
-		static const TArray<FGameXXKCodexEntryDef> EntryDefs = {
-			MakeCodexEntry(CodexGuideName, EGameXXKCodexCategory::Hero, TEXT("引路人"), TEXT("在青山镇相遇的同行者。")),
-			MakeCodexEntry(CodexMoneyRatName, EGameXXKCodexCategory::Monster, TEXT("金钱鼠"), TEXT("潜伏在青山路旁、伺机窜逃的小兽。")),
-			MakeCodexEntry(CodexBlackBearName, EGameXXKCodexCategory::Monster, TEXT("黑熊"), TEXT("盘踞林洞、以重掌横扫来敌的凶兽。")),
-			MakeCodexEntry(CodexTigerName, EGameXXKCodexCategory::Monster, TEXT("虎王"), TEXT("守在青山尽头的首领。")),
-		};
+		static const TArray<FGameXXKCodexEntryDef> EntryDefs = []
+		{
+			TArray<FGameXXKCodexEntryDef> Definitions;
+			const TArray<FGameXXKEnemyDefinition>& EnemyDefinitions = FGameXXKEnemyCatalog::GetAllDefinitions();
+			Definitions.Reserve(EnemyDefinitions.Num() + 1);
+			Definitions.Add(MakeCodexEntry(
+				CodexGuideName,
+				EGameXXKCodexCategory::Hero,
+				TEXT("引路人"),
+				TEXT("在青山镇相遇的同行者。")));
+			for (const FGameXXKEnemyDefinition& Enemy : EnemyDefinitions)
+			{
+				const TCHAR* TierLabel = Enemy.Tier == EGameXXKEnemyTier::Boss
+					? TEXT("首领")
+					: (Enemy.Tier == EGameXXKEnemyTier::Elite ? TEXT("精英敌人") : TEXT("敌人"));
+				FGameXXKCodexEntryDef Definition;
+				Definition.Id = Enemy.CodexId;
+				Definition.Category = EGameXXKCodexCategory::Monster;
+				Definition.DisplayName = Enemy.DisplayName;
+				Definition.Description = FText::FromString(FString::Printf(
+					TEXT("第%d章遭遇的%s。"),
+					Enemy.Chapter,
+					TierLabel));
+				Definition.IconPath = Enemy.PortraitSoftPath;
+				Definitions.Add(MoveTemp(Definition));
+			}
+			return Definitions;
+		}();
 		return EntryDefs;
 	}
 
@@ -139,15 +164,17 @@ namespace GameXXKMVP
 
 	static FName GetMigratedCurrentCodexEntryId(FName EntryId)
 	{
-		if (EntryId == LegacyCodexBanditName || EntryId == LegacyCodexWolfName)
+		if (EntryId == PreviousCodexMoneyRatName
+			|| EntryId == LegacyCodexBanditName
+			|| EntryId == LegacyCodexWolfName)
 		{
 			return CodexMoneyRatName;
 		}
-		if (EntryId == LegacyCodexEliteBanditName)
+		if (EntryId == PreviousCodexBlackBearName || EntryId == LegacyCodexEliteBanditName)
 		{
 			return CodexBlackBearName;
 		}
-		if (EntryId == LegacyCodexBossName)
+		if (EntryId == PreviousCodexTigerName || EntryId == LegacyCodexBossName)
 		{
 			return CodexTigerName;
 		}
@@ -1054,9 +1081,6 @@ namespace GameXXKMVP
 		Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
 		Candidate.PlayerHP = Candidate.PlayerMaxHP;
 		Candidate.PlayerMP = Candidate.PlayerMaxMP;
-		Candidate.bFollowerJoined = false;
-		Candidate.bHasQuestNpcLocation = false;
-		Candidate.QuestNpcLocation = FVector::ZeroVector;
 		ClearActiveBattle(Candidate);
 		State = MoveTemp(Candidate);
 		return true;
@@ -1782,7 +1806,7 @@ bool UGameXXKMVPRules::AcceptTownQuest(FGameXXKRuntimeState& State)
 		return false;
 	}
 	State.QuestState = EGameXXKQuestState::Accepted;
-	State.bFollowerJoined = false;
+	State.bFollowerJoined = true;
 	State.bHasQuestNpcLocation = false;
 	State.QuestNpcLocation = FVector::ZeroVector;
 	State.TrackedTaskId = NAME_None;
@@ -1853,11 +1877,6 @@ bool UGameXXKMVPRules::EnterDungeon(FGameXXKRuntimeState& State)
 	// InitializeRoute is intentionally idempotent, so a genuinely new route must
 	// first discard a prior valid balance and its chapter-scoped receipts.
 	FGameXXKRouteEconomyRules::ClearRouteEconomy(Candidate.CardRun);
-	if (!SelectedTownNpcId.IsNone()
-		&& !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, SelectedTownNpcId, {}, &CardRunError))
-	{
-		return false;
-	}
 	Candidate.CardRun.bLoadoutLockedForRoute = true;
 	Candidate.Screen = EGameXXKScreen::DungeonMap;
 	Candidate.CurrentRegion = RegionHuangshan();
@@ -1867,6 +1886,11 @@ bool UGameXXKMVPRules::EnterDungeon(FGameXXKRuntimeState& State)
 	Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
 	GameXXKMVP::GenerateRouteMap(Candidate);
 	GameXXKMVP::InitializeThreeChapterRouteProgress(Candidate);
+	if (!SelectedTownNpcId.IsNone()
+		&& !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, SelectedTownNpcId, {}, &CardRunError))
+	{
+		return false;
+	}
 	if (!FGameXXKRouteEconomyRules::InitializeRoute(Candidate.CardRun, 60, &CardRunError))
 	{
 		return false;

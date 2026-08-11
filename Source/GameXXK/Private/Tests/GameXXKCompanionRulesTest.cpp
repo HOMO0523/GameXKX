@@ -18,12 +18,35 @@ bool FGameXXKCompanionRulesTest::RunTest(const FString& Parameters)
 	const TArray<EGameXXKCharacterRole> PermanentRoles = {
 		EGameXXKCharacterRole::Blade, EGameXXKCharacterRole::Guard, EGameXXKCharacterRole::Healer,
 		EGameXXKCharacterRole::Hunter, EGameXXKCharacterRole::Sorcerer, EGameXXKCharacterRole::FormationMaster};
+	const TSet<FName> FormationSwitchCardIds = {
+		TEXT("Profession.FormationMaster.GuanShi"),
+		TEXT("Profession.FormationMaster.DingZhen"),
+		TEXT("Profession.FormationMaster.YinShuiHuiYuan"),
+		TEXT("Profession.FormationMaster.KunZhen"),
+		TEXT("Profession.FormationMaster.LinYingMiZong"),
+		TEXT("Profession.FormationMaster.JieShanWeiZhang")};
 	for (const EGameXXKCharacterRole Role : PermanentRoles)
 	{
 		int32 TemplateCountForRole = 0;
 		TArray<FName> RolePool;
-		TestTrue(FString::Printf(TEXT("each permanent role can build its deterministic twelve-card pool (%d)"), static_cast<int32>(Role)), FGameXXKCompanionRules::BuildPersonalCardPool(Role, 7331, RolePool, nullptr));
-		TestEqual(FString::Printf(TEXT("each permanent role pool has twelve cards (%d)"), static_cast<int32>(Role)), RolePool.Num(), 12);
+		TestTrue(FString::Printf(TEXT("each permanent role can build its deterministic six-card birth pool (%d)"), static_cast<int32>(Role)), FGameXXKCompanionRules::BuildPersonalCardPool(Role, 7331, RolePool, nullptr));
+		TestEqual(FString::Printf(TEXT("each permanent role birth pool has six cards (%d)"), static_cast<int32>(Role)), RolePool.Num(), 6);
+		int32 CoreCardsInPool = 0;
+		int32 FormationSwitchCardsInPool = 0;
+		for (const FName CardId : RolePool)
+		{
+			const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+			CoreCardsInPool += Definition && Definition->bCoreProfessionCard ? 1 : 0;
+			FormationSwitchCardsInPool += FormationSwitchCardIds.Contains(CardId) ? 1 : 0;
+		}
+		if (Role == EGameXXKCharacterRole::FormationMaster)
+		{
+			TestEqual(TEXT("formation master birth pools contain exactly two distinct terrain switch cards"), FormationSwitchCardsInPool, 2);
+		}
+		else
+		{
+			TestEqual(FString::Printf(TEXT("normal profession birth pools contain exactly two fixed cores (%d)"), static_cast<int32>(Role)), CoreCardsInPool, 2);
+		}
 		for (const FGameXXKCompanionTemplateDefinition& Template : Templates)
 		{
 			TemplateCountForRole += Template.Role == Role ? 1 : 0;
@@ -37,7 +60,7 @@ bool FGameXXKCompanionRulesTest::RunTest(const FString& Parameters)
 	FString SecondPoolError;
 	TestTrue(TEXT("a blade companion can build its seeded personal card pool"), FGameXXKCompanionRules::BuildPersonalCardPool(EGameXXKCharacterRole::Blade, 7331, FirstPool, &FirstPoolError));
 	TestTrue(TEXT("the same role and seed rebuild the same personal card pool"), FGameXXKCompanionRules::BuildPersonalCardPool(EGameXXKCharacterRole::Blade, 7331, SecondPool, &SecondPoolError));
-	TestEqual(TEXT("a personal pool has the approved twelve cards"), FirstPool.Num(), 12);
+	TestEqual(TEXT("a personal pool has the approved six birth cards"), FirstPool.Num(), 6);
 	TestEqual(TEXT("same seed preserves pool order"), FirstPool, SecondPool);
 	TSet<FName> UniquePoolCards(FirstPool);
 	TestEqual(TEXT("a personal pool has no duplicate card ids"), UniquePoolCards.Num(), FirstPool.Num());
@@ -47,7 +70,7 @@ bool FGameXXKCompanionRulesTest::RunTest(const FString& Parameters)
 		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
 		CoreCardCount += Definition && Definition->bCoreProfessionCard ? 1 : 0;
 	}
-	TestEqual(TEXT("a personal pool always contains exactly four profession core cards"), CoreCardCount, 4);
+	TestEqual(TEXT("a normal profession birth pool always contains exactly two core cards"), CoreCardCount, 2);
 
 	FGameXXKCompanionRosterState Roster;
 	FGameXXKCompanionRecruitResult RecruitResult;
@@ -60,8 +83,9 @@ bool FGameXXKCompanionRulesTest::RunTest(const FString& Parameters)
 		const FGameXXKPermanentCompanion& Companion = Roster.PermanentCompanions[0];
 		TestEqual(TEXT("a recruited companion begins at level one"), Companion.Level, 1);
 		TestEqual(TEXT("a recruited companion begins at one star"), Companion.Star, 1);
-		TestEqual(TEXT("a recruited companion persists all twelve generated personal cards"), Companion.PersonalCardIds.Num(), 12);
+		TestEqual(TEXT("a recruited companion persists exactly six generated birth cards"), Companion.PersonalCardIds.Num(), 6);
 		TestEqual(TEXT("a recruited companion begins with six unlocked cards"), Companion.UnlockedPersonalCardIds.Num(), 6);
+		TestEqual(TEXT("all six birth cards are permanently unlocked"), Companion.UnlockedPersonalCardIds, Companion.PersonalCardIds);
 		TestEqual(TEXT("a recruited companion begins with a valid five-card route selection"), Companion.SelectedCardIds.Num(), 5);
 		TestTrue(TEXT("the default five-card selection is valid against its unlocked personal pool"), FGameXXKCompanionRules::ValidateSelectedPersonalCards(Companion, Companion.SelectedCardIds, nullptr));
 		TestTrue(TEXT("a freshly recruited companion passes complete immutable-profile validation"), FGameXXKCompanionRules::ValidatePermanentCompanionProfile(Companion, nullptr));
@@ -108,16 +132,16 @@ bool FGameXXKCompanionRulesTest::RunTest(const FString& Parameters)
 	if (Roster.PermanentCompanions.Num() == 1)
 	{
 		FGameXXKPermanentCompanion& ProgressingCompanion = Roster.PermanentCompanions[0];
+		const TArray<FName> BirthCardsBeforeProgression = ProgressingCompanion.PersonalCardIds;
 		TestTrue(TEXT("companion experience advances through the published level thresholds"), FGameXXKCompanionRules::AwardExperience(ProgressingCompanion, 180, nullptr));
 		TestEqual(TEXT("one hundred eighty experience advances the companion to level four"), ProgressingCompanion.Level, 4);
-		TestEqual(TEXT("level four unlocks the seventh personal card"), ProgressingCompanion.UnlockedPersonalCardIds.Num(), 7);
+		TestEqual(TEXT("level four does not unlock a seventh personal card"), ProgressingCompanion.UnlockedPersonalCardIds.Num(), 6);
+		TestEqual(TEXT("level progression cannot reroll or expand the birth cards"), ProgressingCompanion.PersonalCardIds, BirthCardsBeforeProgression);
 		int32 Sigils = 1;
 		TestTrue(TEXT("one sigil promotes a one-star companion to two stars"), FGameXXKCompanionRules::PromoteCompanionStar(ProgressingCompanion, Sigils, nullptr));
 		TestEqual(TEXT("promotion consumes the required one sigil"), Sigils, 0);
-		TestEqual(TEXT("two stars unlock the eighth personal card"), ProgressingCompanion.UnlockedPersonalCardIds.Num(), 8);
-		TArray<FName> LockedCardSelection = ProgressingCompanion.SelectedCardIds;
-		LockedCardSelection[4] = ProgressingCompanion.PersonalCardIds[8];
-		TestFalse(TEXT("a five-card selection cannot include a still-locked personal card"), FGameXXKCompanionRules::ValidateSelectedPersonalCards(ProgressingCompanion, LockedCardSelection, nullptr));
+		TestEqual(TEXT("two stars do not unlock an eighth personal card"), ProgressingCompanion.UnlockedPersonalCardIds.Num(), 6);
+		TestEqual(TEXT("star progression cannot reroll or expand the birth cards"), ProgressingCompanion.PersonalCardIds, BirthCardsBeforeProgression);
 		TArray<FName> UpdatedPersonalSelection;
 		UpdatedPersonalSelection.Append(ProgressingCompanion.UnlockedPersonalCardIds.GetData() + 1, 5);
 		TestTrue(TEXT("the player can persist a different valid five-card personal selection"), FGameXXKCompanionRules::SetSelectedPersonalCards(ProgressingCompanion, UpdatedPersonalSelection, nullptr));

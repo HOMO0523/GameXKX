@@ -3,6 +3,7 @@
 #include "GameXXKBattlePresentation.h"
 #include "Blueprint/GameViewportSubsystem.h"
 #include "Components/InputComponent.h"
+#include "GameFramework/SaveGame.h"
 #include "InputKeyEventArgs.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
@@ -24,6 +25,47 @@
 
 namespace
 {
+	struct FScopedSaveSlotBackup
+	{
+		FScopedSaveSlotBackup(const FString& InSlotName, int32 InUserIndex)
+			: SlotName(InSlotName)
+			, UserIndex(InUserIndex)
+		{
+			bHadExistingSave = UGameplayStatics::DoesSaveGameExist(SlotName, UserIndex);
+			if (bHadExistingSave)
+			{
+				ExistingSave = UGameplayStatics::LoadGameFromSlot(SlotName, UserIndex);
+				if (!ExistingSave)
+				{
+					return;
+				}
+				ExistingSave->AddToRoot();
+			}
+			bReady = true;
+			UGameplayStatics::DeleteGameInSlot(SlotName, UserIndex);
+		}
+
+		~FScopedSaveSlotBackup()
+		{
+			if (!bReady)
+			{
+				return;
+			}
+			UGameplayStatics::DeleteGameInSlot(SlotName, UserIndex);
+			if (bHadExistingSave && ExistingSave)
+			{
+				UGameplayStatics::SaveGameToSlot(ExistingSave, SlotName, UserIndex);
+				ExistingSave->RemoveFromRoot();
+			}
+		}
+
+		FString SlotName;
+		int32 UserIndex = 0;
+		bool bHadExistingSave = false;
+		bool bReady = false;
+		USaveGame* ExistingSave = nullptr;
+	};
+
 	/**
 	 * Resolves a current-hand card through CardCheck rather than assuming a
 	 * legacy command-menu action exists.  The fixed route seed below makes this
@@ -151,7 +193,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKTownOverlayCommandsTest::RunTest(const FString& Parameters)
 {
 	const FString TestSlotName = UGameXXKMVPSubsystem::GetManualSaveSlotName(0);
-	UGameplayStatics::DeleteGameInSlot(TestSlotName, 0);
+	FScopedSaveSlotBackup TestSlotBackup(TestSlotName, 0);
+	if (!TestTrue(TEXT("town overlay safely isolates the player's manual slot 1"), TestSlotBackup.bReady))
+	{
+		return false;
+	}
 
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
@@ -177,7 +223,6 @@ bool FGameXXKTownOverlayCommandsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("town exit changes state to dungeon map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestFalse(TEXT("town overlay hides after entering route map"), TownOverlay->IsTownOverlayVisible());
 
-	UGameplayStatics::DeleteGameInSlot(TestSlotName, 0);
 	return true;
 }
 
@@ -233,7 +278,7 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("main menu visible on initial main menu state"), PlayerController->GetMainMenuWidgetForTest()->GetVisibility(), ESlateVisibility::Visible);
 	TestFalse(TEXT("town overlay hidden on initial main menu state"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
 
-	TestTrue(TEXT("start game opens world map for player controller flow"), Subsystem->StartGame());
+	TestTrue(TEXT("start game opens Qingshan town for player controller flow"), Subsystem->StartGame());
 	const FGameXXKCompanionRosterState& StarterRoster = Subsystem->GetRuntimeState().CardRun.CompanionRoster;
 	TestEqual(TEXT("StartNewGame grants two permanent companions for the player flow"), StarterRoster.PermanentCompanions.Num(), 2);
 	FName StarterCompanionId = NAME_None;
@@ -252,8 +297,12 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 		return false;
 	}
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
-	TestTrue(TEXT("world map is visible after new game"), PlayerController->GetWorldMapWidgetForTest()->IsWorldMapVisibleForTest());
-	TestFalse(TEXT("town overlay stays hidden before a town is selected"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
+	TestFalse(TEXT("world map stays hidden after direct-town new game"), PlayerController->GetWorldMapWidgetForTest()->IsWorldMapVisibleForTest());
+	TestTrue(TEXT("town overlay is visible after direct-town new game"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
+	TestTrue(TEXT("player flow explicitly opens the world map"), Subsystem->OpenWorldMap());
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestTrue(TEXT("world map becomes visible after explicit navigation"), PlayerController->GetWorldMapWidgetForTest()->IsWorldMapVisibleForTest());
+	TestFalse(TEXT("town overlay hides while the world map is visible"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
 	TestTrue(TEXT("controller-routed Qingshan click enters town"), PlayerController->GetWorldMapWidgetForTest()->TrySelectRegion(UGameXXKMVPRules::RegionQingshan()));
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestEqual(TEXT("main menu hides after town state"), PlayerController->GetMainMenuWidgetForTest()->GetVisibility(), ESlateVisibility::Collapsed);

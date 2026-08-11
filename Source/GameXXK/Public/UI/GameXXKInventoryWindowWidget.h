@@ -285,6 +285,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow|Test")
 	bool RequestSelectedEnhanceForTest();
 
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow|Test")
+	bool EnhanceSelectedEquipmentInstanceForTest();
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	FText GetSelectedDetailTextForTest() const;
 

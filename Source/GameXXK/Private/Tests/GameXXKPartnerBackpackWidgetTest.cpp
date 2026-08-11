@@ -95,7 +95,7 @@ bool FGameXXKPartnerBackpackWidgetTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("the card tab can replace the equipment warehouse"), Widget->OpenCardBackpackTabForTest());
 	TestTrue(TEXT("the card tab becomes the active right-hand content"), Widget->IsCardBackpackTabOpenForTest());
-	TestEqual(TEXT("the selected partner card backpack exposes twelve cards"), Widget->GetVisiblePersonalCardIds().Num(), 12);
+	TestEqual(TEXT("the selected partner card backpack exposes six birth cards"), Widget->GetVisiblePersonalCardIds().Num(), 6);
 	TestTrue(TEXT("cards use the approved final card frame"), Widget->GetPersonalCardFrameResourcePathForTest().Contains(TEXT("T_MasterV2_CardFrame")));
 	TestTrue(TEXT("locked cards use the approved simplified ink lock"), Widget->GetLockedCardIconResourcePathForTest().Contains(TEXT("T_MasterV2_CardLockedIcon")));
 	TestTrue(TEXT("the equipment tab can be restored without losing equipment state"), Widget->OpenEquipmentBackpackTabForTest());

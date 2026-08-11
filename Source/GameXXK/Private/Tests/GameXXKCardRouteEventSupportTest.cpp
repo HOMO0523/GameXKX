@@ -75,7 +75,10 @@ bool FGameXXKCardRouteEventSupportTest::RunTest(const FString& Parameters)
 			TestNotNull(TEXT("the accepted named task NPC resolves its named battle flipbook"), QuestNpcFlipbook);
 			if (QuestNpcFlipbook)
 			{
-				TestTrue(TEXT("the accepted Yue Bai NPC uses its dedicated battle flipbook"), QuestNpcFlipbook->GetPathName().Contains(TEXT("FB_PartyDeckNPC_YueBai_Idle_South")));
+				TestEqual(
+					TEXT("the accepted Yue Bai NPC uses its dedicated battle flipbook"),
+					QuestNpcFlipbook->GetPathName(),
+					FString(TEXT("/Game/GameXXK/BattleAnimations/IdleFlipbooks/FB_character_09_yue_bai_idle.FB_character_09_yue_bai_idle")));
 			}
 		}
 	}

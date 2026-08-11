@@ -101,13 +101,27 @@ namespace
 	static FGameXXKRuntimeState BuildPendingRoomRouteState(EGameXXKNodeKind RoomKind)
 	{
 		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
-		State.Screen = EGameXXKScreen::DungeonMap;
-		State.CurrentMapId = TEXT("HuangshanRoute");
-		State.bDungeonActive = true;
-		State.bHasGeneratedRouteMap = true;
+		if (!UGameXXKMVPRules::OpenWorldMap(State)
+			|| !UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())
+			|| !UGameXXKMVPRules::AcceptTownQuest(State))
+		{
+			return FGameXXKRuntimeState();
+		}
 		State.RouteSeed = 404;
-		State.CurrentRouteNodeId = 1;
+		if (!UGameXXKMVPRules::EnterDungeon(State))
+		{
+			return FGameXXKRuntimeState();
+		}
+
+		// EnterDungeon establishes the stable card-entry authority and route economy.
+		// This fixture only replaces the visible topology with one focused room.
+		State.bHasGeneratedRouteMap = true;
+		State.CurrentRouteNodeId = 0;
 		State.PendingRouteNodeId = INDEX_NONE;
+		State.RouteMapNodes.Reset();
+		State.RouteMapEdges.Reset();
+		State.VisitedRouteNodeIds.Reset();
+		State.ReachableRouteNodeIds.Reset();
 		State.RouteMapNodes.Add(FGameXXKRouteMapNode{0, 0, 0, EGameXXKNodeKind::Start, FVector2D(0.5f, 0.0f), TArray<int32>{1}});
 		State.RouteMapNodes.Add(FGameXXKRouteMapNode{1, 1, 0, RoomKind, FVector2D(0.5f, 0.35f), TArray<int32>{2}});
 		State.RouteMapNodes.Add(FGameXXKRouteMapNode{2, 2, 0, EGameXXKNodeKind::Boss, FVector2D(0.5f, 1.0f), TArray<int32>{}});
@@ -115,12 +129,6 @@ namespace
 		State.RouteMapEdges.Add(FGameXXKRouteMapEdge{1, 2});
 		State.VisitedRouteNodeIds.Add(0);
 		State.ReachableRouteNodeIds.Add(1);
-		State.CardRun.RouteProgress.SchemaVersion = 1;
-		State.CardRun.RouteProgress.RootSeed = State.RouteSeed;
-		State.CardRun.RouteProgress.CurrentChapter = 1;
-		State.CardRun.RouteProgress.RouteCombatLevel = 1;
-		State.CardRun.bLoadoutLockedForRoute = true;
-		FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun);
 		return State;
 	}
 
@@ -279,12 +287,14 @@ bool FGameXXKRouteMapSeedRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("entry opens dungeon route map"), EntrySubsystem->OpenDungeonFromTownExit());
 	TestNotEqual(TEXT("dungeon entry assigns a nonzero route seed"), EntrySubsystem->GetRuntimeState().RouteSeed, 0);
 
-	FGameXXKRuntimeState& FlowState = Seed101A;
-	FlowState.Screen = EGameXXKScreen::DungeonMap;
-	FlowState.CurrentMapId = TEXT("HuangshanRoute");
-	FlowState.bDungeonActive = true;
-	FlowState.CardRun.RouteProgress.CurrentChapter = 1;
-	TestTrue(TEXT("generated route flow initializes its route economy"), FGameXXKRouteEconomyRules::InitializeRoute(FlowState.CardRun));
+	FGameXXKRuntimeState FlowState = UGameXXKMVPRules::CreateNewGame();
+	TestTrue(TEXT("generated route flow reaches accepted Qingshan town"),
+		UGameXXKMVPRules::OpenWorldMap(FlowState)
+			&& UGameXXKMVPRules::EnterWorldRegion(FlowState, UGameXXKMVPRules::RegionQingshan())
+			&& UGameXXKMVPRules::AcceptTownQuest(FlowState));
+	FlowState.RouteSeed = 101;
+	TestTrue(TEXT("generated route flow enters through the canonical route initializer"),
+		UGameXXKMVPRules::EnterDungeon(FlowState));
 	TestTrue(TEXT("start node selection succeeds"), UGameXXKMVPRules::SelectRouteNodeById(FlowState, 0));
 	TestEqual(TEXT("non-combat start keeps route map active"), FlowState.Screen, EGameXXKScreen::DungeonMap);
 	TestTrue(TEXT("start node is visited"), FlowState.VisitedRouteNodeIds.Contains(0));

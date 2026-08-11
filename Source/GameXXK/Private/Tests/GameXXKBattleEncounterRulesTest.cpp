@@ -12,13 +12,27 @@ namespace
 	static FGameXXKRuntimeState BuildRouteBattleState(EGameXXKNodeKind NodeKind)
 	{
 		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
-		State.Screen = EGameXXKScreen::DungeonMap;
-		State.CurrentMapId = TEXT("HuangshanRoute");
-		State.QuestState = EGameXXKQuestState::Accepted;
-		State.bFollowerJoined = true;
-		State.bDungeonActive = true;
-		State.bHasGeneratedRouteMap = true;
+		if (!UGameXXKMVPRules::OpenWorldMap(State)
+			|| !UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())
+			|| !UGameXXKMVPRules::AcceptTownQuest(State))
+		{
+			return FGameXXKRuntimeState();
+		}
 		State.RouteSeed = 707;
+		if (!UGameXXKMVPRules::EnterDungeon(State))
+		{
+			return FGameXXKRuntimeState();
+		}
+
+		// Keep the production route-card recipe/economy initialized by EnterDungeon,
+		// while replacing only the route topology needed by this focused fixture.
+		State.bHasGeneratedRouteMap = true;
+		State.CurrentRouteNodeId = 0;
+		State.PendingRouteNodeId = INDEX_NONE;
+		State.RouteMapNodes.Reset();
+		State.RouteMapEdges.Reset();
+		State.VisitedRouteNodeIds.Reset();
+		State.ReachableRouteNodeIds.Reset();
 		State.RouteMapNodes.Add(FGameXXKRouteMapNode{0, 0, 0, EGameXXKNodeKind::Start, FVector2D(0.5f, 0.0f), TArray<int32>{1}});
 		State.RouteMapNodes.Add(FGameXXKRouteMapNode{1, 1, 0, NodeKind, FVector2D(0.5f, 0.5f), TArray<int32>{2}});
 		State.RouteMapNodes.Add(FGameXXKRouteMapNode{2, 2, 0, EGameXXKNodeKind::Boss, FVector2D(0.5f, 1.0f), TArray<int32>{}});
@@ -26,8 +40,6 @@ namespace
 		State.RouteMapEdges.Add(FGameXXKRouteMapEdge{1, 2});
 		State.VisitedRouteNodeIds.Add(0);
 		State.ReachableRouteNodeIds.Add(1);
-		State.CardRun.RouteProgress.CurrentChapter = 1;
-		FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun);
 		return State;
 	}
 
@@ -169,6 +181,8 @@ bool FGameXXKBattleEncounterRulesTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("defending flag clears after enemy response"), DefendState.ActiveBattleParty[0].bDefending);
 
 	FGameXXKRuntimeState PowderState = BuildRouteBattleState(EGameXXKNodeKind::Battle);
+	TestTrue(TEXT("powder fixture explicitly grants one healing powder"),
+		UGameXXKMVPRules::AddItem(PowderState, UGameXXKMVPRules::ItemHealingPowder(), 1));
 	TestTrue(TEXT("powder test selects battle node"), UGameXXKMVPRules::SelectRouteNodeById(PowderState, 1));
 	for (FGameXXKBattleRuntimeUnit& Enemy : PowderState.ActiveBattleEnemies)
 	{

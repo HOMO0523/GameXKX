@@ -1,6 +1,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
+#include "GameXXKCompanionRules.h"
 #include "GameXXKEncounterRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRouteCardRecipe.h"
@@ -64,17 +65,22 @@ namespace
 
 		if (bWithActiveCompanion)
 		{
-			const TArray<FName> BladeCards = FindCardIdsByOwner(EGameXXKCardOwner::Profession, EGameXXKCharacterRole::Blade);
-			FGameXXKPermanentCompanion Companion;
-			Companion.InstanceId = TEXT("Companion.Instance.Merchant.Blade");
-			Companion.RecruitTemplateId = TEXT("Companion.Blade.01");
-			Companion.Role = EGameXXKCharacterRole::Blade;
-			Companion.bIsActive = true;
-			Companion.PersonalCardIds.Append(BladeCards.GetData(), FMath::Min(12, BladeCards.Num()));
-			Companion.UnlockedPersonalCardIds = Companion.PersonalCardIds;
-			Companion.SelectedCardIds.Append(Companion.PersonalCardIds.GetData(), FMath::Min(5, Companion.PersonalCardIds.Num()));
-			State.CardRun.CompanionRoster.PermanentCompanions.Add(Companion);
-			State.CardRun.PartySelection.ActivePermanentCompanionInstanceId = Companion.InstanceId;
+			FGameXXKCompanionRecruitResult RecruitResult;
+			FString RecruitError;
+			if (FGameXXKCompanionRules::RecruitPermanentCompanion(
+				State.CardRun.CompanionRoster,
+				TEXT("Companion.Blade.01"),
+				0x4D31,
+				RecruitResult,
+				&RecruitError)
+				&& RecruitResult.Outcome == EGameXXKCompanionRecruitOutcome::Recruited
+				&& FGameXXKCompanionRules::SetActivePermanentCompanion(
+					State.CardRun.CompanionRoster,
+					RecruitResult.Companion.InstanceId,
+					&RecruitError))
+			{
+				State.CardRun.PartySelection.ActivePermanentCompanionInstanceId = RecruitResult.Companion.InstanceId;
+			}
 		}
 		return State;
 	}
@@ -247,7 +253,12 @@ bool FGameXXKRouteMerchantStockCompanionTest::RunTest(const FString& Parameters)
 	AddEpicOwnedEntry(State, EpicRouteCard, 1);
 
 	FString Error;
-	TestTrue(TEXT("locked active merchant generates stock"), FGameXXKRouteMerchantRules::EnsureStock(State, &Error));
+	if (!TestTrue(TEXT("a locked route with a real six-card companion generates merchant stock"),
+		FGameXXKRouteMerchantRules::EnsureStock(State, &Error)))
+	{
+		AddError(Error);
+		return false;
+	}
 	TestTrue(TEXT("stock generation reports no error"), Error.IsEmpty());
 	const FGameXXKRouteMerchantState FirstStock = State.CardRun.RouteMerchant;
 	TestEqual(TEXT("merchant snapshot records pending node"), FirstStock.SourceNodeId, 10);
@@ -258,6 +269,7 @@ bool FGameXXKRouteMerchantStockCompanionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("snapshot has exactly three relic slots"), CountOffersOfKind(FirstStock, EGameXXKRouteMerchantOfferKind::Relic), 3);
 
 	const FGameXXKPermanentCompanion& Companion = State.CardRun.CompanionRoster.PermanentCompanions[0];
+	TestEqual(TEXT("the merchant fixture uses the production six-card companion birth pool"), Companion.PersonalCardIds.Num(), 6);
 	TSet<FName> SeenCardIds;
 	TSet<FName> SeenRelicIds;
 	int32 HeroOfferCount = 0;
@@ -292,7 +304,7 @@ bool FGameXXKRouteMerchantStockCompanionTest::RunTest(const FString& Parameters)
 			else if (Definition->Owner == EGameXXKCardOwner::Profession)
 			{
 				++CompanionOfferCount;
-				TestTrue(TEXT("companion offer comes from the active companion's exact twelve-card personal pool"), Companion.PersonalCardIds.Contains(Offer.ContentId));
+				TestTrue(TEXT("companion offer comes from the active companion's exact six-card birth pool"), Companion.PersonalCardIds.Contains(Offer.ContentId));
 			}
 			else if (Definition->Owner == EGameXXKCardOwner::Route)
 			{
@@ -356,7 +368,7 @@ bool FGameXXKRouteMerchantStockCompanionTest::RunTest(const FString& Parameters)
 	FGameXXKRuntimeState InvalidCompanion = MakeMerchantState(true);
 	InvalidCompanion.CardRun.CompanionRoster.PermanentCompanions[0].PersonalCardIds.Pop();
 	const FGameXXKRuntimeState InvalidCompanionBefore = InvalidCompanion;
-	TestFalse(TEXT("invalid eleven-card active companion cannot generate merchant stock"), FGameXXKRouteMerchantRules::EnsureStock(InvalidCompanion, &Error));
+	TestFalse(TEXT("invalid five-card active companion cannot generate merchant stock"), FGameXXKRouteMerchantRules::EnsureStock(InvalidCompanion, &Error));
 	TestTrue(TEXT("invalid companion stock rejection preserves complete runtime"), RuntimeStatesMatch(InvalidCompanion, InvalidCompanionBefore));
 	return true;
 }

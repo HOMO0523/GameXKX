@@ -99,6 +99,19 @@ namespace
 			State.Inventory.FindRef(UGameXXKMVPRules::ItemEnhancementStone()));
 	}
 
+	void SynchronizeRefinementSand(FGameXXKRuntimeState& State)
+	{
+		const FName SandId = UGameXXKMVPRules::ItemRefinementSand();
+		// Saves written before refinement sand became a backpack material only
+		// carry the collection field. Once the item key exists, the backpack is
+		// authoritative and the collection value is a compatibility mirror.
+		if (!State.Inventory.Contains(SandId) && State.EquipmentCollection.RefinementSand > 0)
+		{
+			State.Inventory.Add(SandId, State.EquipmentCollection.RefinementSand);
+		}
+		State.EquipmentCollection.RefinementSand = FMath::Max(0, State.Inventory.FindRef(SandId));
+	}
+
 	void SynchronizeLegacyEquipmentMirrors(FGameXXKRuntimeState& State)
 	{
 		TArray<FName> InventoryKeys;
@@ -199,11 +212,13 @@ namespace
 	bool SynchronizeAndValidate(FGameXXKRuntimeState& Candidate)
 	{
 		if (Candidate.Inventory.FindRef(UGameXXKMVPRules::ItemEnhancementStone()) < 0
+			|| Candidate.Inventory.FindRef(UGameXXKMVPRules::ItemRefinementSand()) < 0
 			|| Candidate.PlayerGold < 0)
 		{
 			return false;
 		}
 		SynchronizeEnhancementMaterial(Candidate);
+		SynchronizeRefinementSand(Candidate);
 		SynchronizeLegacyEquipmentMirrors(Candidate);
 		return RecalculateHeroMirrors(Candidate)
 			&& FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(
@@ -214,6 +229,7 @@ namespace
 	bool ValidateInputCollection(const FGameXXKRuntimeState& State)
 	{
 		return State.Inventory.FindRef(UGameXXKMVPRules::ItemEnhancementStone()) >= 0
+			&& State.Inventory.FindRef(UGameXXKMVPRules::ItemRefinementSand()) >= 0
 			&& State.PlayerGold >= 0
 			&& FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(
 				State.EquipmentCollection,
@@ -711,10 +727,9 @@ bool FGameXXKEquipmentEconomyRules::BeginReforge(
 	Pending.CandidateAffix = CandidateAffix;
 	Pending.PaidRefinementSand = Cost;
 	Pending.ConsumedReforgeOrdinal = Candidate.EquipmentCollection.NextReforgeOrdinal;
-	// Consume refinement sand from the backpack material item and keep the
-	// legacy resource field in sync.
+	// Consume the authoritative backpack material; SynchronizeAndValidate
+	// derives the legacy collection mirror from the resulting balance.
 	Candidate.Inventory.FindOrAdd(SandItemId) = FMath::Max(0, Candidate.Inventory.FindOrAdd(SandItemId) - Cost);
-	Candidate.EquipmentCollection.RefinementSand = FMath::Max(0, Candidate.EquipmentCollection.RefinementSand - Cost);
 	Candidate.EquipmentCollection.NextReforgeOrdinal += 1;
 	if (!SynchronizeAndValidate(Candidate))
 	{
@@ -811,7 +826,7 @@ bool FGameXXKEquipmentEconomyRules::DismantleBatch(
 			return false;
 		}
 		// Fixed dismantle reward per piece: 10 gold, 1 enhancement stone, 1 refinement sand.
-		SandYieldWide += 1;
+		SandYieldWide += FGameXXKEquipmentCatalog::GetDismantleSandYield(Instance->Quality);
 		StoneRefundWide += 1;
 		GoldRewardWide += 10;
 		bProtected = bProtected
@@ -820,7 +835,8 @@ bool FGameXXKEquipmentEconomyRules::DismantleBatch(
 			|| Instance->OwnerKind != EGameXXKEquipmentOwnerKind::Warehouse;
 	}
 	const FName StoneId = UGameXXKMVPRules::ItemEnhancementStone();
-	const int64 SandAfterDismantle = static_cast<int64>(InOutState.EquipmentCollection.RefinementSand) + SandYieldWide;
+	const FName SandId = UGameXXKMVPRules::ItemRefinementSand();
+	const int64 SandAfterDismantle = static_cast<int64>(InOutState.Inventory.FindRef(SandId)) + SandYieldWide;
 	const int64 StonesAfterDismantle = static_cast<int64>(InOutState.Inventory.FindRef(StoneId)) + StoneRefundWide;
 	const int64 GoldAfterDismantle = static_cast<int64>(InOutState.PlayerGold) + GoldRewardWide;
 	if (SandYieldWide > MAX_int32 || StoneRefundWide > MAX_int32 || GoldRewardWide > MAX_int32
@@ -879,10 +895,8 @@ bool FGameXXKEquipmentEconomyRules::DismantleBatch(
 	{
 		Candidate.EquipmentCollection.bLegacyWarehouseOverflow = false;
 	}
-	Candidate.EquipmentCollection.RefinementSand += SandYield;
 	Candidate.Inventory.FindOrAdd(StoneId) += StoneRefund;
-	// Refinement sand also lands in the backpack as a material item.
-	Candidate.Inventory.FindOrAdd(UGameXXKMVPRules::ItemRefinementSand()) += SandYield;
+	Candidate.Inventory.FindOrAdd(SandId) += SandYield;
 	Candidate.PlayerGold += GoldReward;
 	if (!SynchronizeAndValidate(Candidate))
 	{

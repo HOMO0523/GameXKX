@@ -321,7 +321,8 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestEqual(TEXT("legacy accepted quest save restores accepted quest state"), AcceptedWithoutFollowerRuntimeState.QuestState, EGameXXKQuestState::Accepted);
-	TestFalse(TEXT("legacy accepted quest save without follower flag does not auto-join task NPC"), AcceptedWithoutFollowerRuntimeState.bFollowerJoined);
+	TestTrue(TEXT("legacy accepted quest save restores the required task NPC follower"), AcceptedWithoutFollowerRuntimeState.bFollowerJoined);
+	TestFalse(TEXT("legacy accepted quest save does not invent a task NPC location"), AcceptedWithoutFollowerRuntimeState.bHasQuestNpcLocation);
 
 	UGameInstance* StartGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* StartGameSubsystem = NewObject<UGameXXKMVPSubsystem>(StartGameInstance);

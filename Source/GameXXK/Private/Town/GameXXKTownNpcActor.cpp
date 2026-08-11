@@ -48,8 +48,37 @@ void AGameXXKTownNpcActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void AGameXXKTownNpcActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	// Town NPCs are fixed interaction anchors. Party selection is data-only and
-	// never turns a placed NPC into a follower.
+
+	AActor* Target = FollowTarget.Get();
+	if (!bFollowerActive || !Target)
+	{
+		return;
+	}
+
+	const FVector CurrentLocation = GetActorLocation();
+	const FVector TargetLocation = Target->GetActorLocation();
+	FVector ToTarget = TargetLocation - CurrentLocation;
+	ToTarget.Z = 0.0f;
+	const float DistanceToTarget = ToTarget.Size();
+	if (DistanceToTarget <= FollowDistance || DistanceToTarget <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
+	FVector DesiredLocation = TargetLocation - ToTarget.GetSafeNormal() * FollowDistance;
+	DesiredLocation.Z = CurrentLocation.Z;
+	const FVector NewLocation = FMath::VInterpConstantTo(CurrentLocation, DesiredLocation, DeltaSeconds, FollowSpeed);
+	if (!NewLocation.Equals(CurrentLocation))
+	{
+		SetActorLocation(NewLocation);
+		if (CanOfferQuest())
+		{
+			if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem(Cast<APawn>(Target)))
+			{
+				Subsystem->RecordQuestNpcLocation(NewLocation);
+			}
+		}
+	}
 }
 
 void AGameXXKTownNpcActor::NotifyActorBeginOverlap(AActor* OtherActor)
@@ -133,9 +162,16 @@ bool AGameXXKTownNpcActor::CanJoinParty() const
 
 void AGameXXKTownNpcActor::ActivateFollower(AActor* Target, float Distance)
 {
-	(void)Target;
-	(void)Distance;
-	DismissFollower();
+	FollowTarget = Target;
+	FollowDistance = FMath::Max(0.0f, Distance);
+	bFollowerActive = Target != nullptr;
+	if (bFollowerActive && CanOfferQuest())
+	{
+		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem(Cast<APawn>(Target)))
+		{
+			Subsystem->RecordQuestNpcLocation(GetActorLocation());
+		}
+	}
 }
 
 void AGameXXKTownNpcActor::DismissFollower()
@@ -146,12 +182,12 @@ void AGameXXKTownNpcActor::DismissFollower()
 
 bool AGameXXKTownNpcActor::IsFollowerActive() const
 {
-	return false;
+	return bFollowerActive;
 }
 
 AActor* AGameXXKTownNpcActor::GetFollowTarget() const
 {
-	return nullptr;
+	return FollowTarget.Get();
 }
 
 float AGameXXKTownNpcActor::GetFollowDistance() const
@@ -269,6 +305,14 @@ bool AGameXXKTownNpcActor::ApplyDefaultInteraction(APawn* InstigatorPawn)
 	if (CanOfferQuest())
 	{
 		const bool bAccepted = Subsystem->AcceptQuest();
+		if (bAccepted && InstigatorPawn)
+		{
+			ActivateFollower(InstigatorPawn, FollowDistance);
+		}
+		if (bAccepted)
+		{
+			Subsystem->RecordQuestNpcLocation(GetActorLocation());
+		}
 		bLastInteractionSuccessful = bAccepted;
 		return bAccepted;
 	}

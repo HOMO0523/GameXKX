@@ -85,22 +85,25 @@ bool FGameXXKRouteSettlementReplayTest::RunTest(const FString& Parameters)
 		UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemEnhancementStone()), StonesBefore + 10);
 
 	FGameXXKRuntimeState NextRouteState = UGameXXKMVPRules::CreateNewGame();
-	NextRouteState.Screen = EGameXXKScreen::Town;
-	NextRouteState.CurrentRegion = UGameXXKMVPRules::RegionQingshan();
-	NextRouteState.CurrentMapId = UGameXXKMVPRules::RegionQingshan();
-	NextRouteState.QuestState = EGameXXKQuestState::Accepted;
+	TestTrue(TEXT("the later route opens the world map"), UGameXXKMVPRules::OpenWorldMap(NextRouteState));
+	TestTrue(TEXT("the later route enters Qingshan through the canonical town path"),
+		UGameXXKMVPRules::EnterWorldRegion(NextRouteState, UGameXXKMVPRules::RegionQingshan()));
+	TestTrue(TEXT("the later route accepts the quest through the canonical follower path"),
+		UGameXXKMVPRules::AcceptTownQuest(NextRouteState));
 	NextRouteState.CardRun.LastAppliedRouteSettlementId = Receipt.SettlementId;
 	TestTrue(TEXT("a later route enters while retaining the old settlement idempotency key"),
 		UGameXXKMVPRules::EnterDungeon(NextRouteState));
-	const FGameXXKRouteMapNode* LaterMerchantNode = NextRouteState.RouteMapNodes.FindByPredicate(
+	FGameXXKRouteMapNode* LaterMerchantNode = NextRouteState.RouteMapNodes.FindByPredicate(
 		[](const FGameXXKRouteMapNode& Node)
 		{
-			return Node.NodeKind == EGameXXKNodeKind::Merchant;
+			return Node.NodeKind != EGameXXKNodeKind::Start
+				&& Node.NodeKind != EGameXXKNodeKind::Boss;
 		});
-	if (!TestNotNull(TEXT("the later route has a generated merchant"), LaterMerchantNode))
+	if (!TestNotNull(TEXT("the later route has a deterministic non-terminal node for the merchant fixture"), LaterMerchantNode))
 	{
 		return false;
 	}
+	LaterMerchantNode->NodeKind = EGameXXKNodeKind::Merchant;
 	NextRouteState.Screen = EGameXXKScreen::RouteMerchant;
 	NextRouteState.CurrentMapId = TEXT("RouteMerchant");
 	NextRouteState.PendingRouteNodeId = LaterMerchantNode->NodeId;

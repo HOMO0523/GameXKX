@@ -717,8 +717,8 @@ void UGameXXKCompanionRosterWidget::RefreshFromState()
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (Subsystem)
 	{
-		// A new save reaches town before any battle setup has touched CardRun.  Prepare the fixed
-		// twelve-card hero pool before this presentation layer performs its read-only snapshots.
+		// A new save reaches town before any battle setup has touched CardRun. Prepare the hero
+		// card pool before this presentation layer performs its read-only snapshots.
 		Subsystem->PrepareCompanionRosterForTown();
 	}
 	CachedRoster = Subsystem ? Subsystem->GetPermanentCompanionViews() : TArray<FGameXXKPermanentCompanion>();
@@ -1628,7 +1628,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 	EquipmentBackpackScrollBox->SetScrollBarVisibility(ESlateVisibility::Collapsed);
 	EquipmentBackpackScrollBox->OnUserScrolled.AddDynamic(this, &UGameXXKCompanionRosterWidget::HandleEquipmentBackpackScrolled);
 	AddCanvasChild(FrameCanvas, EquipmentBackpackScrollBox, CompanionBackpackViewportPos, CompanionBackpackViewportSize);
-	UE_LOG(LogTemp, Warning, TEXT("[WarehouseGrid] scrollbox pos=%s size=%s grid size=%s slot count=%d"),
+	UE_LOG(LogTemp, Verbose, TEXT("[WarehouseGrid] scrollbox pos=%s size=%s grid size=%s slot count=%d"),
 		*CompanionBackpackViewportPos.ToString(),
 		*CompanionBackpackViewportSize.ToString(),
 		*CompanionBackpackGridSize.ToString(),
@@ -1741,7 +1741,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 	UCanvasPanel* PersonalDeckCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("CompanionRosterPersonalDeckCanvas"));
 	PersonalDeckPanel->AddChild(PersonalDeckCanvas);
 
-	DeckCaptionText = MakeText(WidgetTree, NSLOCTEXT("GameXXKCompanionRoster", "PersonalDeckCaption", "个人牌组（12 张，编入 5 张）"), 17, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f), TEXT("CompanionRosterDeckCaption"));
+	DeckCaptionText = MakeText(WidgetTree, NSLOCTEXT("GameXXKCompanionRoster", "PersonalDeckCaption", "个人牌组（6 张，编入 5 张）"), 17, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f), TEXT("CompanionRosterDeckCaption"));
 	AddCanvasChild(PersonalDeckCanvas, DeckCaptionText, FVector2D::ZeroVector, FVector2D(470.0f, 28.0f));
 
 	PersonalCardScroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("CompanionRosterPersonalCardScroll"));
@@ -2786,7 +2786,7 @@ void UGameXXKCompanionRosterWidget::UpdateEquipmentScrollbarThumb()
 		return;
 	}
 	const float MaxOffset = EquipmentBackpackScrollBox->GetScrollOffsetOfEnd();
-	UE_LOG(LogTemp, Warning, TEXT("[WarehouseGrid] scrollOffsetOfEnd=%.1f viewport=%s"),
+	UE_LOG(LogTemp, Verbose, TEXT("[WarehouseGrid] scrollOffsetOfEnd=%.1f viewport=%s"),
 		MaxOffset,
 		*EquipmentBackpackScrollBox->GetCachedGeometry().GetLocalSize().ToString());
 	const float Offset = EquipmentBackpackScrollBox->GetScrollOffset();
@@ -2902,7 +2902,7 @@ void UGameXXKCompanionRosterWidget::RefreshDeckEditorControls()
 	{
 		DeckCaptionText->SetText(bEditingHeroDeck
 			? NSLOCTEXT("GameXXKCompanionRoster", "HeroDeckCaption", "主角牌组（36 张，编入 8 张）")
-			: NSLOCTEXT("GameXXKCompanionRoster", "PersonalDeckCaption", "个人牌组（12 张，编入 5 张）"));
+			: NSLOCTEXT("GameXXKCompanionRoster", "PersonalDeckCaption", "个人牌组（6 张，编入 5 张）"));
 	}
 	if (HeroDeckToggleButtonText)
 	{

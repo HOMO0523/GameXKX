@@ -89,7 +89,16 @@ namespace
 bool FGameXXKEquipmentCatalogTest::RunTest(const FString& Parameters)
 {
 	const TArray<FGameXXKEquipmentDefinition>& Packages = FGameXXKEquipmentCatalog::GetPackageDefinitions();
-	TestEqual(TEXT("six sets times six slots produce exactly 36 package definitions"), Packages.Num(), 36);
+	TestEqual(TEXT("six combat sets plus Starter across six slots produce exactly 42 package definitions"), Packages.Num(), 42);
+	TSet<FName> AllPackageIds;
+	int32 StarterPackageCount = 0;
+	for (const FGameXXKEquipmentDefinition& Definition : Packages)
+	{
+		AllPackageIds.Add(Definition.Id);
+		StarterPackageCount += Definition.Set == EGameXXKEquipmentSet::Starter ? 1 : 0;
+	}
+	TestEqual(TEXT("Starter contributes exactly one package per slot"), StarterPackageCount, 6);
+	TestEqual(TEXT("all combat-set and Starter package IDs are unique"), AllPackageIds.Num(), 42);
 
 	TSet<FName> StableIds;
 	TSet<int32> SetSlotPairs;
@@ -124,8 +133,20 @@ bool FGameXXKEquipmentCatalogTest::RunTest(const FString& Parameters)
 			TestStats(*this, TEXT("level twenty-one clamps to twenty"), Definition->BaseStatCoefficients.Resolve(21), ExpectedSlotStats(Slot, 20));
 		}
 	}
-	TestEqual(TEXT("all package IDs are unique"), StableIds.Num(), 36);
-	TestEqual(TEXT("all package set-slot combinations are unique"), SetSlotPairs.Num(), 36);
+	TestEqual(TEXT("all six combat-set package IDs are unique"), StableIds.Num(), 36);
+	TestEqual(TEXT("all six combat-set slot combinations are unique"), SetSlotPairs.Num(), 36);
+	for (uint8 SlotValue = static_cast<uint8>(EGameXXKEquipmentSlot::Weapon); SlotValue <= static_cast<uint8>(EGameXXKEquipmentSlot::Accessory); ++SlotValue)
+	{
+		const EGameXXKEquipmentSlot Slot = static_cast<EGameXXKEquipmentSlot>(SlotValue);
+		const FName StarterId(*FString::Printf(TEXT("Equipment.Starter.%s"), SlotSegment(Slot)));
+		const FGameXXKEquipmentDefinition* Starter = FGameXXKEquipmentCatalog::FindDefinition(StarterId);
+		TestNotNull(FString::Printf(TEXT("Starter package %s resolves"), *StarterId.ToString()), Starter);
+		if (Starter)
+		{
+			TestEqual(TEXT("Starter package keeps the Starter set identity"), Starter->Set, EGameXXKEquipmentSet::Starter);
+			TestEqual(TEXT("Starter package keeps its requested slot"), Starter->Slot, Slot);
+		}
+	}
 
 	struct FLegacyExpectation
 	{

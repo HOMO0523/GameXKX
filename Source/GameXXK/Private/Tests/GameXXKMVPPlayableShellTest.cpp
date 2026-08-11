@@ -196,7 +196,8 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("direct Qingshan town PIE hides main menu state"), DirectTownSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("direct Qingshan town PIE selects Qingshan region"), DirectTownSubsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionQingshan());
 	UGameXXKMVPSubsystem* WorldMapTownSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-	TestTrue(TEXT("test setup opens world map before direct town normalization"), WorldMapTownSubsystem->StartGame());
+	TestTrue(TEXT("test setup starts directly in Qingshan town"), WorldMapTownSubsystem->StartGame());
+	TestTrue(TEXT("test setup explicitly opens world map before direct town normalization"), WorldMapTownSubsystem->OpenWorldMap());
 	TestTrue(TEXT("direct Qingshan town PIE normalizes world map state to town"), WorldMapTownSubsystem->EnsureQingshanTownRuntimeForDirectMap());
 	TestEqual(TEXT("direct Qingshan town PIE from world map selects town screen"), WorldMapTownSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	AGameXXKMVPHUD* HUD = NewObject<AGameXXKMVPHUD>();
@@ -206,9 +207,12 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 	UGameplayStatics::DeleteGameInSlot(TestSlotName, 0);
 
 	TestTrue(TEXT("main menu exposes start command"), HasCommand(HUD->BuildVisibleCommands(), FName(TEXT("StartGame"))));
-	TestTrue(TEXT("start command opens world map"), HUD->HandleDemoCommand(FName(TEXT("StartGame"))));
-	TestEqual(TEXT("screen after start"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
+	TestTrue(TEXT("start command opens Qingshan town"), HUD->HandleDemoCommand(FName(TEXT("StartGame"))));
+	TestEqual(TEXT("screen after start"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestFalse(TEXT("start command does not create a manual save slot"), UGameplayStatics::DoesSaveGameExist(TestSlotName, 0));
+	TestTrue(TEXT("town exposes world-map command"), HasCommand(HUD->BuildVisibleCommands(), FName(TEXT("OpenWorldMap"))));
+	TestTrue(TEXT("world-map command leaves town"), HUD->HandleDemoCommand(FName(TEXT("OpenWorldMap"))));
+	TestEqual(TEXT("screen after world-map command"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 	TestTrue(TEXT("world map exposes manual save command"), HasCommand(HUD->BuildVisibleCommands(), FName(TEXT("SaveGame"))));
 
 	bool bTanjiangEnabled = true;

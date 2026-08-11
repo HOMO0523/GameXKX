@@ -27,6 +27,14 @@ namespace
 			MakeAffix(TEXT("Affix.Universal.MaxMana"), TEXT("纳息"), EGameXXKEquipmentSet::Invalid, K::MaxMana, U::BasisPoints),
 			MakeAffix(TEXT("Affix.Universal.Attack"), TEXT("劲力"), EGameXXKEquipmentSet::Invalid, K::Attack, U::BasisPoints),
 			MakeAffix(TEXT("Affix.Universal.Defense"), TEXT("坚骨"), EGameXXKEquipmentSet::Invalid, K::Defense, U::BasisPoints),
+		};
+	}
+
+	TArray<FGameXXKAffixDefinition> BuildLegacyCompatibilityDefinitions()
+	{
+		using K = EGameXXKEquipmentModifierKind;
+		using U = EGameXXKEquipmentMagnitudeUnit;
+		return {
 			MakeAffix(TEXT("Affix.Universal.Speed"), TEXT("轻身"), EGameXXKEquipmentSet::Invalid, K::Speed, U::BasisPoints),
 		};
 	}
@@ -96,6 +104,12 @@ namespace
 		return Definitions;
 	}
 
+	const TArray<FGameXXKAffixDefinition>& LegacyCompatibilityDefinitions()
+	{
+		static const TArray<FGameXXKAffixDefinition> Definitions = BuildLegacyCompatibilityDefinitions();
+		return Definitions;
+	}
+
 	const TArray<FGameXXKAffixDefinition>& DefinitionsForSet(const EGameXXKEquipmentSet Set)
 	{
 		static const TArray<FGameXXKAffixDefinition> Empty;
@@ -121,6 +135,7 @@ namespace
 	{
 		TArray<FGameXXKAffixDefinition> Definitions = UniversalDefinitions();
 		Definitions.Reserve(35);
+		Definitions.Append(LegacyCompatibilityDefinitions());
 		for (uint8 Value = static_cast<uint8>(EGameXXKEquipmentSet::PoJun); Value <= static_cast<uint8>(EGameXXKEquipmentSet::ShanHe); ++Value)
 		{
 			Definitions.Append(DefinitionsForSet(static_cast<EGameXXKEquipmentSet>(Value)));

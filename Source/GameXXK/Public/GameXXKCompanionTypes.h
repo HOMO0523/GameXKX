@@ -251,12 +251,12 @@ struct GAMEXXK_API FGameXXKQuestNpcDefinition
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TArray<FName> FixedCardIds;
 
-	/** Authored three-card order used when this named task NPC joins a route without an explicit selection. */
+	/** Deprecated authored fallback retained for data compatibility; runtime routes use seeded four-choose-three selection. */
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TArray<FName> DefaultRouteCardIds;
 };
 
-/** Route-local three-card configuration for one temporary task NPC. */
+/** Persisted route-local three-card result for one temporary task NPC. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKQuestNpcCardSelection
 {

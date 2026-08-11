@@ -15,9 +15,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKCompanionCodexPersistenceTest::RunTest(const FString& Parameters)
 {
 	const FName GuideId(TEXT("Codex.Guide"));
-	const FName MoneyRatId(TEXT("Codex.MoneyRat"));
-	const FName BlackBearId(TEXT("Codex.BlackBear"));
-	const FName TigerId(TEXT("Codex.Tiger"));
+	const FName MoneyRatId(TEXT("Codex.Enemy.Ch1.MoneyRat"));
+	const FName BlackBearId(TEXT("Codex.Enemy.Ch2.BlackBear"));
+	const FName TigerId(TEXT("Codex.Enemy.Ch3.Tiger"));
+	const FName PreviousMoneyRatId(TEXT("Codex.MoneyRat"));
+	const FName PreviousBlackBearId(TEXT("Codex.BlackBear"));
+	const FName PreviousTigerId(TEXT("Codex.Tiger"));
 	const FName LegacyBanditId(TEXT("Codex.Bandit"));
 	const FName LegacyWolfId(TEXT("Codex.Wolf"));
 	const FName LegacyEliteBanditId(TEXT("Codex.EliteBandit"));
@@ -29,7 +32,7 @@ bool FGameXXKCompanionCodexPersistenceTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("guide can be marked read"), UGameXXKMVPRules::MarkCodexEntryRead(State, GuideId));
 
 	const FGameXXKSaveState SaveState = UGameXXKMVPRules::MakeSaveState(State);
-	TestEqual(TEXT("codex save uses version seven"), SaveState.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
+	TestEqual(TEXT("codex save uses the current version"), SaveState.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
 	FGameXXKRuntimeState DirectRestoredState;
 	FGameXXKSaveMigrationReport DirectReport;
 	TestTrue(TEXT("current codex save restores through typed dispatcher"), FGameXXKSaveMigration::TryRestoreRuntimeState(SaveState, DirectRestoredState, DirectReport));
@@ -43,6 +46,55 @@ bool FGameXXKCompanionCodexPersistenceTest::RunTest(const FString& Parameters)
 	const int32 SaveUserIndex = 0;
 	UGameplayStatics::DeleteGameInSlot(SaveSlot, SaveUserIndex);
 	UGameplayStatics::DeleteGameInSlot(BackupSlot, SaveUserIndex);
+
+	FGameXXKSaveState InvalidCurrentFollowerSave = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
+	InvalidCurrentFollowerSave.RuntimeState.QuestState = EGameXXKQuestState::Accepted;
+	InvalidCurrentFollowerSave.RuntimeState.bFollowerJoined = false;
+	FGameXXKRuntimeState InvalidCurrentFollowerState;
+	FGameXXKSaveMigrationReport InvalidCurrentFollowerReport;
+	TestFalse(
+		TEXT("current saves reject an accepted quest without its required follower"),
+		FGameXXKSaveMigration::TryRestoreRuntimeState(
+			InvalidCurrentFollowerSave,
+			InvalidCurrentFollowerState,
+			InvalidCurrentFollowerReport));
+
+	FGameXXKSaveState VersionFourteenSave = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
+	VersionFourteenSave.SaveVersion = 14;
+	VersionFourteenSave.RuntimeState.QuestState = EGameXXKQuestState::Accepted;
+	VersionFourteenSave.RuntimeState.bFollowerJoined = false;
+	VersionFourteenSave.RuntimeState.bHasQuestNpcLocation = false;
+	VersionFourteenSave.RuntimeState.DiscoveredCodexEntryIds.Reset();
+	VersionFourteenSave.RuntimeState.ReadCodexEntryIds.Reset();
+	VersionFourteenSave.RuntimeState.DiscoveredCodexEntryIds.Add(PreviousMoneyRatId);
+	VersionFourteenSave.RuntimeState.DiscoveredCodexEntryIds.Add(PreviousBlackBearId);
+	VersionFourteenSave.RuntimeState.DiscoveredCodexEntryIds.Add(PreviousTigerId);
+	VersionFourteenSave.RuntimeState.ReadCodexEntryIds.Add(PreviousMoneyRatId);
+	VersionFourteenSave.RuntimeState.ReadCodexEntryIds.Add(PreviousTigerId);
+	FGameXXKRuntimeState MigratedVersionFourteenState;
+	FGameXXKSaveMigrationReport VersionFourteenReport;
+	if (!TestTrue(
+		TEXT("version fourteen save migrates follower and current enemy codex contracts"),
+		FGameXXKSaveMigration::TryRestoreRuntimeState(
+			VersionFourteenSave,
+			MigratedVersionFourteenState,
+			VersionFourteenReport)))
+	{
+		return false;
+	}
+	TestEqual(TEXT("version fourteen report keeps its source version"), VersionFourteenReport.SourceVersion, 14);
+	TestEqual(TEXT("version fourteen report targets the current version"), VersionFourteenReport.TargetVersion, FGameXXKSaveMigration::CurrentSaveVersion);
+	TestEqual(TEXT("version fourteen accepted quest remains accepted"), MigratedVersionFourteenState.QuestState, EGameXXKQuestState::Accepted);
+	TestTrue(TEXT("version fourteen accepted quest restores the required follower"), MigratedVersionFourteenState.bFollowerJoined);
+	TestFalse(TEXT("version fourteen migration does not invent an NPC location"), MigratedVersionFourteenState.bHasQuestNpcLocation);
+	TestTrue(TEXT("version fourteen Money Rat discovery migrates to the current enemy id"), MigratedVersionFourteenState.DiscoveredCodexEntryIds.Contains(MoneyRatId));
+	TestTrue(TEXT("version fourteen Black Bear discovery migrates to the current enemy id"), MigratedVersionFourteenState.DiscoveredCodexEntryIds.Contains(BlackBearId));
+	TestTrue(TEXT("version fourteen Tiger discovery migrates to the current enemy id"), MigratedVersionFourteenState.DiscoveredCodexEntryIds.Contains(TigerId));
+	TestTrue(TEXT("version fourteen Money Rat read history migrates to the current enemy id"), MigratedVersionFourteenState.ReadCodexEntryIds.Contains(MoneyRatId));
+	TestTrue(TEXT("version fourteen Tiger read history migrates to the current enemy id"), MigratedVersionFourteenState.ReadCodexEntryIds.Contains(TigerId));
+	TestFalse(TEXT("version fourteen migration removes the previous Money Rat id"), MigratedVersionFourteenState.DiscoveredCodexEntryIds.Contains(PreviousMoneyRatId));
+	TestFalse(TEXT("version fourteen migration removes the previous Black Bear id"), MigratedVersionFourteenState.DiscoveredCodexEntryIds.Contains(PreviousBlackBearId));
+	TestFalse(TEXT("version fourteen migration removes the previous Tiger id"), MigratedVersionFourteenState.DiscoveredCodexEntryIds.Contains(PreviousTigerId));
 	UGameInstance* SourceGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* SourceSubsystem = NewObject<UGameXXKMVPSubsystem>(SourceGameInstance);
 	FGameXXKRuntimeState& SourceState = SourceSubsystem->GetMutableRuntimeState();

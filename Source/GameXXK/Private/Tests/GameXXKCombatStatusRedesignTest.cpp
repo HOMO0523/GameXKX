@@ -123,6 +123,17 @@ bool FGameXXKCombatStatusTerminalPrecedenceTest::RunTest(const FString& Paramete
 	TestEqual(TEXT("party elimination with a living enemy remains defeat"),
 		PartyOnlyDefeat.Phase, EGameXXKCardBattlePhase::Defeat);
 
+	FGameXXKCardBattleRuntime HeroDefeatWithLivingCompanion;
+	HeroDefeatWithLivingCompanion.Phase = EGameXXKCardBattlePhase::Enemy;
+	HeroDefeatWithLivingCompanion.Units = {
+		MakeTerminalUnit(TEXT("Player"), EGameXXKCardTargetSide::Party, false, 1),
+		MakeTerminalUnit(TEXT("FormationMaster"), EGameXXKCardTargetSide::Party, true, 2),
+		MakeTerminalUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, true, 10)};
+	HeroDefeatWithLivingCompanion.Units[1].Role = EGameXXKCharacterRole::FormationMaster;
+	GameXXKCardRules::RefreshCombatTerminalPhase(HeroDefeatWithLivingCompanion);
+	TestEqual(TEXT("hero defeat ends the battle even while a companion remains alive"),
+		HeroDefeatWithLivingCompanion.Phase, EGameXXKCardBattlePhase::Defeat);
+
 	FGameXXKCardBattleRuntime EnemyOnlyDefeat;
 	EnemyOnlyDefeat.Phase = EGameXXKCardBattlePhase::Player;
 	EnemyOnlyDefeat.Units = {

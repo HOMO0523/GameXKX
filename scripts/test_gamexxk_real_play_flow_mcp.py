@@ -30,6 +30,177 @@ _ONE_PIXEL_PNG = base64.b64decode(
 
 
 class SlateScreenshotFallbackTest(unittest.TestCase):
+    def test_save_file_snapshot_restores_original_player_save_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            save_path = Path(temp_dir) / "GameXXK_MVP_SaveSlot_1.sav"
+            backup_path = Path(temp_dir) / "GameXXK_MVP_SaveSlot_1.sav.codex-real-flow-backup"
+            save_path.write_bytes(b"original-player-save")
+
+            snapshot = flow._begin_file_preservation(save_path, backup_path)
+            self.assertTrue(backup_path.is_file())
+            save_path.write_bytes(b"automation-save")
+            restored = flow._restore_file_preservation(save_path, backup_path)
+
+            self.assertTrue(snapshot["existed"])
+            self.assertTrue(restored["existed"])
+            self.assertEqual(b"original-player-save", save_path.read_bytes())
+            self.assertFalse(backup_path.exists())
+
+    def test_save_file_snapshot_removes_automation_save_when_slot_was_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            save_path = Path(temp_dir) / "GameXXK_MVP_SaveSlot_1.sav"
+            backup_path = Path(temp_dir) / "GameXXK_MVP_SaveSlot_1.sav.codex-real-flow-backup"
+
+            snapshot = flow._begin_file_preservation(save_path, backup_path)
+            self.assertTrue(backup_path.is_file())
+            save_path.write_bytes(b"automation-save")
+            restored = flow._restore_file_preservation(save_path, backup_path)
+
+            self.assertFalse(snapshot["existed"])
+            self.assertFalse(restored["existed"])
+            self.assertFalse(save_path.exists())
+            self.assertFalse(backup_path.exists())
+
+    def test_save_file_preservation_recovers_an_interrupted_previous_run_before_recapturing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            save_path = Path(temp_dir) / "GameXXK_MVP_SaveSlot_1.sav"
+            backup_path = Path(temp_dir) / "GameXXK_MVP_SaveSlot_1.sav.codex-real-flow-backup"
+            save_path.write_bytes(b"original-player-save")
+            flow._begin_file_preservation(save_path, backup_path)
+            save_path.write_bytes(b"interrupted-automation-save")
+
+            snapshot = flow._begin_file_preservation(save_path, backup_path)
+
+            self.assertTrue(snapshot["recovered_previous_run"])
+            self.assertEqual(b"original-player-save", save_path.read_bytes())
+            flow._restore_file_preservation(save_path, backup_path)
+            self.assertEqual(b"original-player-save", save_path.read_bytes())
+
+    def test_harness_close_restores_persisted_save_while_keep_pie_is_enabled(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            save_path = Path(temp_dir) / "GameXXK_MVP_SaveSlot_1.sav"
+            backup_path = Path(temp_dir) / "GameXXK_MVP_SaveSlot_1.sav.codex-real-flow-backup"
+            save_path.write_bytes(b"original-player-save")
+            with patch.object(flow, "DEFAULT_SAVE_FILE", save_path), patch.object(
+                flow, "DEFAULT_SAVE_BACKUP_FILE", backup_path
+            ):
+                harness = flow.RealFlowHarness(timeout=1.0, keep_pie=True)
+                harness.preserve_default_save()
+                save_path.write_bytes(b"automation-save")
+                cleanup = harness.close()
+
+            self.assertTrue(cleanup["ok"])
+            self.assertTrue(cleanup["kept_pie"])
+            self.assertEqual(b"original-player-save", save_path.read_bytes())
+            self.assertFalse(backup_path.exists())
+
+    def test_harness_close_restores_persisted_save_when_engine_cleanup_raises(self) -> None:
+        class CleanupFailureClient:
+            session_id = "test-session"
+
+            @staticmethod
+            def is_in_pie() -> bool:
+                return False
+
+            @staticmethod
+            def run_project_python_file(*_args, **_kwargs):
+                raise RuntimeError("cleanup failed")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            save_path = Path(temp_dir) / "GameXXK_MVP_SaveSlot_1.sav"
+            backup_path = Path(temp_dir) / "GameXXK_MVP_SaveSlot_1.sav.codex-real-flow-backup"
+            save_path.write_bytes(b"original-player-save")
+            with patch.object(flow, "DEFAULT_SAVE_FILE", save_path), patch.object(
+                flow, "DEFAULT_SAVE_BACKUP_FILE", backup_path
+            ):
+                harness = flow.RealFlowHarness(timeout=1.0, keep_pie=False)
+                harness.client = CleanupFailureClient()
+                harness.preserve_default_save()
+                save_path.write_bytes(b"automation-save")
+                cleanup = harness.close()
+
+            self.assertFalse(cleanup["ok"])
+            self.assertIn("delete_default_save_after_real_flow", cleanup["errors"])
+            self.assertEqual(b"original-player-save", save_path.read_bytes())
+            self.assertFalse(backup_path.exists())
+
+    def test_harness_close_fails_when_pie_stop_never_completes(self) -> None:
+        class NonStoppingClient:
+            session_id = "test-session"
+
+            @staticmethod
+            def is_in_pie() -> bool:
+                return True
+
+            @staticmethod
+            def stop_pie() -> None:
+                return None
+
+            @staticmethod
+            def wait_for_pie_state(_expected: bool) -> bool:
+                return False
+
+            @staticmethod
+            def run_project_python_file(*_args, **_kwargs):
+                return {"stdout": '{"delete_default_save": true}'}
+
+        harness = flow.RealFlowHarness(timeout=1.0, keep_pie=False)
+        harness.client = NonStoppingClient()
+
+        cleanup = harness.close()
+
+        self.assertFalse(cleanup["ok"])
+        self.assertIn("wait_for_pie_stop_after_real_flow", cleanup["errors"])
+
+    def test_harness_close_fails_when_default_save_delete_reports_false(self) -> None:
+        class FailedDeleteClient:
+            session_id = "test-session"
+
+            @staticmethod
+            def is_in_pie() -> bool:
+                return False
+
+            @staticmethod
+            def run_project_python_file(*_args, **_kwargs):
+                return {"stdout": '{"delete_default_save": false}'}
+
+        harness = flow.RealFlowHarness(timeout=1.0, keep_pie=False)
+        harness.client = FailedDeleteClient()
+
+        cleanup = harness.close()
+
+        self.assertFalse(cleanup["ok"])
+        self.assertIn("delete_default_save_after_real_flow", cleanup["errors"])
+
+    def test_main_marks_the_report_failed_when_cleanup_is_not_clean(self) -> None:
+        class CleanupFailingHarness:
+            def __init__(self, **_kwargs) -> None:
+                self.events = []
+
+            def run(self):
+                return {"ok": True, "events": self.events}
+
+            def observe_battle_actor_hud(self):
+                return self.run()
+
+            @staticmethod
+            def close():
+                return {
+                    "ok": False,
+                    "kept_pie": False,
+                    "errors": ["stop_pie_after_real_flow"],
+                }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "real-flow.json"
+            with patch.object(flow, "RealFlowHarness", CleanupFailingHarness):
+                exit_code = flow.main(["--report", str(report_path)])
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(1, exit_code)
+        self.assertFalse(report["ok"])
+        self.assertEqual(["stop_pie_after_real_flow"], report["cleanup"]["errors"])
+
     def test_meta_shop_probe_accepts_unreal_style_iterable_arrays(self) -> None:
         from gamexxk_meta_shop_probe_utils import warehouse_ids_from_snapshot
 
@@ -143,7 +314,7 @@ class SlateScreenshotFallbackTest(unittest.TestCase):
         self.assertTrue(flow._town_npc_context_dialog_open(probe))
         self.assertFalse(flow._task_offer_open(probe))
 
-    def test_quest_acceptance_uses_runtime_state_not_retired_follower_state(self) -> None:
+    def test_quest_acceptance_reads_runtime_state_independently_of_actor_probe(self) -> None:
         probe = {
             "probe": {
                 "runtime_state": {"quest_state": "ACCEPTED"},
@@ -151,7 +322,7 @@ class SlateScreenshotFallbackTest(unittest.TestCase):
                     {
                         "get_npc_role": "QUEST",
                         "was_last_interaction_successful": True,
-                        "is_follower_active": False,
+                        "is_follower_active": True,
                     }
                 ],
             }
@@ -161,7 +332,15 @@ class SlateScreenshotFallbackTest(unittest.TestCase):
         probe["probe"]["runtime_state"]["quest_state"] = "NOT_ACCEPTED"
         self.assertFalse(flow._quest_accepted(probe))
 
-    def test_fixed_quest_npc_verdict_requires_idle_stationary_npc_without_autosave(self) -> None:
+    def test_cardinal_key_away_from_uses_the_dominant_axis_away_from_the_npc(self) -> None:
+        npc = {"x": 20.0, "y": 40.0, "z": 60.0}
+
+        self.assertEqual("W", flow._cardinal_key_away_from({"x": 120.0, "y": 40.0}, npc))
+        self.assertEqual("S", flow._cardinal_key_away_from({"x": -80.0, "y": 40.0}, npc))
+        self.assertEqual("D", flow._cardinal_key_away_from({"x": 20.0, "y": 140.0}, npc))
+        self.assertEqual("A", flow._cardinal_key_away_from({"x": 20.0, "y": -60.0}, npc))
+
+    def test_quest_npc_follower_verdict_requires_active_follower_and_recorded_location(self) -> None:
         before = {
             "probe": {
                 "actors": [
@@ -174,47 +353,76 @@ class SlateScreenshotFallbackTest(unittest.TestCase):
         }
         after = {
             "probe": {
+                "runtime_state": {
+                    "quest_state": "ACCEPTED",
+                    "b_follower_joined": True,
+                    "b_has_quest_npc_location": True,
+                    "quest_npc_location": {"x": 80.0, "y": 40.0, "z": 60.0},
+                },
                 "save_state": {"exists": False},
                 "actors": [
                     {
                         "get_npc_role": "QUEST",
-                        "location": {"x": 20.0, "y": 40.0, "z": 60.0},
-                        "is_follower_active": False,
+                        "location": {"x": 80.0, "y": 40.0, "z": 60.0},
+                        "is_follower_active": True,
                         "body_character": {
-                            "is_town_moving": False,
-                            "current_flipbook": "/Game/Test/FB_TusiChief_Idle_East.FB_TusiChief_Idle_East",
+                            "is_town_moving": True,
+                            "current_flipbook": "/Game/Test/FB_TusiChief_Walk_East.FB_TusiChief_Walk_East",
                         },
                     }
                 ],
             }
         }
 
-        verdict = flow._fixed_quest_npc_verdict(before, after)
+        verdict = flow._quest_npc_follower_verdict(before, after)
 
         self.assertTrue(verdict["ok"])
-        self.assertEqual(0.0, verdict["distance"])
+        self.assertEqual(60.0, verdict["distance"])
+        self.assertEqual(0.0, verdict["runtime_location_distance"])
 
-    def test_fixed_quest_npc_manual_save_persists_quest_and_player_only(self) -> None:
+        after["probe"]["actors"][0]["is_follower_active"] = False
+        self.assertFalse(flow._quest_npc_follower_verdict(before, after)["ok"])
+
+    def test_quest_npc_manual_save_persists_follower_and_actual_npc_location(self) -> None:
         probe = {
             "probe": {
-                "runtime_state": {"quest_state": "ACCEPTED"},
+                "runtime_state": {
+                    "quest_state": "ACCEPTED",
+                    "b_follower_joined": True,
+                    "b_has_quest_npc_location": True,
+                    "quest_npc_location": {"x": 80.0, "y": 40.0, "z": 60.0},
+                },
                 "pawn": {"location": {"x": 100.0, "y": 200.0, "z": 300.0}},
+                "actors": [
+                    {
+                        "get_npc_role": "QUEST",
+                        "location": {"x": 80.0, "y": 40.0, "z": 60.0},
+                        "is_follower_active": True,
+                    }
+                ],
                 "save_state": {
                     "exists": True,
                     "quest_state": "ACCEPTED",
                     "b_has_player_location": True,
                     "player_location": {"x": 101.0, "y": 200.0, "z": 300.0},
-                    "b_follower_joined": False,
-                    "b_has_quest_npc_location": False,
-                    "quest_npc_location": {"x": 0.0, "y": 0.0, "z": 0.0},
+                    "b_follower_joined": True,
+                    "b_has_quest_npc_location": True,
+                    "quest_npc_location": {"x": 81.0, "y": 40.0, "z": 60.0},
                 },
             }
         }
 
-        verdict = flow._fixed_quest_npc_manual_save_verdict(probe)
+        verdict = flow._quest_npc_manual_save_verdict(probe)
 
         self.assertTrue(verdict["ok"])
         self.assertEqual(1.0, verdict["saved_player_location_distance"])
+        self.assertEqual(1.0, verdict["saved_quest_npc_location_distance"])
+
+        probe["probe"]["save_state"]["b_follower_joined"] = False
+        self.assertFalse(flow._quest_npc_manual_save_verdict(probe)["ok"])
+        probe["probe"]["save_state"]["b_follower_joined"] = True
+        probe["probe"]["save_state"]["quest_npc_location"]["x"] = 86.0
+        self.assertFalse(flow._quest_npc_manual_save_verdict(probe)["ok"])
 
     def test_preview_ref_is_selected_from_the_slate_window_snapshot(self) -> None:
         snapshot = (

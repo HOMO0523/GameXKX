@@ -1,4 +1,7 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKCharacterStatRules.h"
+#include "GameXXKEquipmentCatalog.h"
+#include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
@@ -29,6 +32,45 @@ namespace
 			return 4;
 		}
 	}
+
+	static FName FindWarehouseInstanceForSlot(
+		const FGameXXKRuntimeState& State,
+		const EGameXXKEquipmentSlot Slot)
+	{
+		for (const FName InstanceId : State.EquipmentCollection.WarehouseInstanceIds)
+		{
+			const FGameXXKEquipmentInstance* Instance =
+				FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, InstanceId);
+			const FGameXXKEquipmentDefinition* Definition = Instance
+				? FGameXXKEquipmentCatalog::FindDefinition(Instance->BaseEquipmentId)
+				: nullptr;
+			if (Definition && Definition->Slot == Slot)
+			{
+				return InstanceId;
+			}
+		}
+		return NAME_None;
+	}
+
+	static void TestHeroMatchesProjection(
+		FAutomationTestBase& Test,
+		const TCHAR* Context,
+		const FGameXXKRuntimeState& State)
+	{
+		FGameXXKEquipmentLoadoutSnapshot Snapshot;
+		FString Error;
+		Test.TestTrue(
+			FString::Printf(TEXT("%s builds the authoritative loadout projection: %s"), Context, *Error),
+			FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+				State.EquipmentCollection,
+				FGameXXKEquipmentRules::HeroCharacterId(),
+				FGameXXKCharacterStatRules::GetBareHeroStats(State.PlayerLevel),
+				Snapshot,
+				&Error));
+		Test.TestEqual(FString::Printf(TEXT("%s mirrors attack"), Context), State.PlayerAttack, Snapshot.AttributesBeforeRoute.Attack);
+		Test.TestEqual(FString::Printf(TEXT("%s mirrors defense"), Context), State.PlayerDefense, Snapshot.AttributesBeforeRoute.Defense);
+		Test.TestEqual(FString::Printf(TEXT("%s mirrors speed"), Context), State.PlayerSpeed, Snapshot.AttributesBeforeRoute.Speed);
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -39,24 +81,46 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKInventoryEnhancementTest::RunTest(const FString& Parameters)
 {
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
-	const FName Weapon = UGameXXKMVPRules::ItemWoodenSword();
-	const FName Armor = UGameXXKMVPRules::ItemStarterClothArmor();
-	const FName Accessory = UGameXXKMVPRules::ItemClothTalisman();
+	const FName LegacyWeapon = UGameXXKMVPRules::ItemWoodenSword();
+	const FName LegacyArmor = UGameXXKMVPRules::ItemStarterClothArmor();
+	const FName LegacyAccessory = UGameXXKMVPRules::ItemClothTalisman();
 	const FName EnhancementStone = UGameXXKMVPRules::ItemEnhancementStone();
 	const FName QingshanRouteSeal = UGameXXKMVPRules::ItemQingshanRouteSeal();
+	const FName WeaponInstanceId = FindWarehouseInstanceForSlot(State, EGameXXKEquipmentSlot::Weapon);
+	const FName ArmorInstanceId = FindWarehouseInstanceForSlot(State, EGameXXKEquipmentSlot::Armor);
+	const FName ShoesInstanceId = FindWarehouseInstanceForSlot(State, EGameXXKEquipmentSlot::Shoes);
+	TestFalse(TEXT("new game no longer grants the retired legacy wooden sword"),
+		UGameXXKMVPRules::GetItemCount(State, LegacyWeapon) > 0);
+	TestFalse(TEXT("new game no longer grants the retired legacy cloth armor"),
+		UGameXXKMVPRules::GetItemCount(State, LegacyArmor) > 0);
+	TestFalse(TEXT("new game no longer grants the retired legacy cloth talisman"),
+		UGameXXKMVPRules::GetItemCount(State, LegacyAccessory) > 0);
+	TestFalse(TEXT("starter weapon instance resolves"), WeaponInstanceId.IsNone());
+	TestFalse(TEXT("starter armor instance resolves"), ArmorInstanceId.IsNone());
+	TestFalse(TEXT("starter shoes instance resolves"), ShoesInstanceId.IsNone());
+	if (WeaponInstanceId.IsNone() || ArmorInstanceId.IsNone() || ShoesInstanceId.IsNone())
+	{
+		return false;
+	}
 
 	TestEqual(TEXT("new game grants ten enhancement materials"), State.EnhancementMaterial, 10);
 	TestEqual(TEXT("new game exposes enhancement material in the backpack"), UGameXXKMVPRules::GetItemCount(State, EnhancementStone), 10);
-	TestTrue(TEXT("owned equipment can be enhanced"), UGameXXKMVPRules::CanEnhanceItem(State, Weapon));
+	TestFalse(TEXT("legacy item-id enhancement does not invent retired starter gear"), UGameXXKMVPRules::CanEnhanceItem(State, LegacyWeapon));
 	TestFalse(TEXT("consumables cannot be enhanced"), UGameXXKMVPRules::CanEnhanceItem(State, UGameXXKMVPRules::ItemHealingPowder()));
-	TestTrue(TEXT("equipment can be decomposed into material"), UGameXXKMVPRules::CanDecomposeItem(State, Weapon));
+	TestFalse(TEXT("legacy item-id decomposition does not invent retired starter gear"), UGameXXKMVPRules::CanDecomposeItem(State, LegacyWeapon));
 	TestFalse(TEXT("consumables cannot be decomposed"), UGameXXKMVPRules::CanDecomposeItem(State, UGameXXKMVPRules::ItemHealingPowder()));
 	TestFalse(TEXT("task items cannot be bought directly"), UGameXXKMVPRules::BuyItem(State, QingshanRouteSeal, 1));
 	TestEqual(TEXT("new game equipment schema is one"), State.EquipmentCollection.EquipmentSchemaVersion, 1);
 	TestTrue(TEXT("new game collection seed is nonzero"), State.EquipmentCollection.CollectionSeed != 0);
-	TestEqual(TEXT("new game starter ordinal advances exactly three times"), State.EquipmentCollection.NextInstanceOrdinal, 3);
-	TestEqual(TEXT("new game has exactly three starter warehouse entries"), State.EquipmentCollection.WarehouseInstanceIds.Num(), 3);
-	const TArray<FName> ExpectedStarterOrder{Weapon, Armor, Accessory};
+	TestEqual(TEXT("new game starter ordinal advances exactly six times"), State.EquipmentCollection.NextInstanceOrdinal, 6);
+	TestEqual(TEXT("new game has exactly six starter warehouse entries"), State.EquipmentCollection.WarehouseInstanceIds.Num(), 6);
+	const TArray<FName> ExpectedStarterOrder{
+		TEXT("Equipment.Starter.Weapon"),
+		TEXT("Equipment.Starter.Head"),
+		TEXT("Equipment.Starter.Armor"),
+		TEXT("Equipment.Starter.Belt"),
+		TEXT("Equipment.Starter.Shoes"),
+		TEXT("Equipment.Starter.Accessory")};
 	for (int32 Index = 0; Index < ExpectedStarterOrder.Num() && State.EquipmentCollection.WarehouseInstanceIds.IsValidIndex(Index); ++Index)
 	{
 		const FGameXXKEquipmentInstance* Starter = FGameXXKEquipmentRules::FindInstance(
@@ -69,31 +133,66 @@ bool FGameXXKInventoryEnhancementTest::RunTest(const FString& Parameters)
 	const int32 BaseAttack = State.PlayerAttack;
 	const int32 BaseDefense = State.PlayerDefense;
 	const int32 BaseSpeed = State.PlayerSpeed;
-	TestTrue(TEXT("weapon enhancement spends one material"), UGameXXKMVPRules::EnhanceItem(State, Weapon));
-	TestEqual(TEXT("weapon enhancement level starts at one"), UGameXXKMVPRules::GetItemEnhancementLevel(State, Weapon), 1);
+	FGameXXKEquipmentTransactionResult EquipmentResult;
+	TestTrue(TEXT("starter weapon enhancement spends one material"),
+		FGameXXKEquipmentEconomyRules::EnhanceInstance(State, WeaponInstanceId, EquipmentResult));
+	const FGameXXKEquipmentInstance* EnhancedWeapon =
+		FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, WeaponInstanceId);
+	TestEqual(TEXT("starter weapon enhancement level starts at one"), EnhancedWeapon ? EnhancedWeapon->EnhancementLevel : INDEX_NONE, 1);
 	TestEqual(TEXT("weapon enhancement consumes one material"), State.EnhancementMaterial, 9);
 	TestEqual(TEXT("weapon enhancement consumes one backpack material"), UGameXXKMVPRules::GetItemCount(State, EnhancementStone), 9);
 	TestEqual(TEXT("un-equipped weapon enhancement does not change attack"), State.PlayerAttack, BaseAttack);
-	TestTrue(TEXT("enhanced weapon equips"), UGameXXKMVPRules::EquipItem(State, Weapon));
-	TestEqual(TEXT("enhanced weapon adds base plus one attack"), State.PlayerAttack, BaseAttack + 4);
+	TestTrue(TEXT("enhanced starter weapon equips"), FGameXXKEquipmentEconomyRules::Equip(
+		State,
+		FGameXXKEquipmentRules::HeroCharacterId(),
+		EGameXXKEquipmentSlot::Weapon,
+		WeaponInstanceId,
+		EquipmentResult));
+	TestTrue(TEXT("enhanced starter weapon increases attack"), State.PlayerAttack > BaseAttack);
+	TestHeroMatchesProjection(*this, TEXT("enhanced starter weapon"), State);
 
-	TestTrue(TEXT("armor enhancement succeeds"), UGameXXKMVPRules::EnhanceItem(State, Armor));
-	TestTrue(TEXT("enhanced armor equips"), UGameXXKMVPRules::EquipItem(State, Armor));
-	TestEqual(TEXT("enhanced armor adds base plus one defense"), State.PlayerDefense, BaseDefense + 4);
+	TestTrue(TEXT("starter armor enhancement succeeds"),
+		FGameXXKEquipmentEconomyRules::EnhanceInstance(State, ArmorInstanceId, EquipmentResult));
+	TestTrue(TEXT("enhanced starter armor equips"), FGameXXKEquipmentEconomyRules::Equip(
+		State,
+		FGameXXKEquipmentRules::HeroCharacterId(),
+		EGameXXKEquipmentSlot::Armor,
+		ArmorInstanceId,
+		EquipmentResult));
+	TestTrue(TEXT("enhanced starter armor increases defense"), State.PlayerDefense > BaseDefense);
+	TestHeroMatchesProjection(*this, TEXT("enhanced starter armor"), State);
 
-	TestTrue(TEXT("accessory enhancement succeeds"), UGameXXKMVPRules::EnhanceItem(State, Accessory));
-	TestTrue(TEXT("enhanced accessory equips"), UGameXXKMVPRules::EquipItem(State, Accessory));
-	TestEqual(TEXT("enhanced accessory adds one speed"), State.PlayerSpeed, BaseSpeed + 1);
+	TestTrue(TEXT("starter shoes enhancement succeeds"),
+		FGameXXKEquipmentEconomyRules::EnhanceInstance(State, ShoesInstanceId, EquipmentResult));
+	TestTrue(TEXT("enhanced starter shoes equip"), FGameXXKEquipmentEconomyRules::Equip(
+		State,
+		FGameXXKEquipmentRules::HeroCharacterId(),
+		EGameXXKEquipmentSlot::Shoes,
+		ShoesInstanceId,
+		EquipmentResult));
+	TestTrue(TEXT("enhanced starter shoes increase speed"), State.PlayerSpeed > BaseSpeed);
+	TestHeroMatchesProjection(*this, TEXT("enhanced starter shoes"), State);
 
 	State.EnhancementMaterial = 20;
-	State.Inventory.Add(EnhancementStone, 20);
-	while (UGameXXKMVPRules::CanEnhanceItem(State, Weapon))
+	State.Inventory.FindOrAdd(EnhancementStone) = 20;
+	const int32 AttackBeforeWeaponCap = State.PlayerAttack;
+	while (const FGameXXKEquipmentInstance* WeaponInstance =
+		FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, WeaponInstanceId))
 	{
-		TestTrue(TEXT("weapon can advance toward the cap"), UGameXXKMVPRules::EnhanceItem(State, Weapon));
+		if (WeaponInstance->EnhancementLevel >= FGameXXKEquipmentRules::MaxEnhancementLevel)
+		{
+			break;
+		}
+		TestTrue(TEXT("starter weapon can advance toward the cap"),
+			FGameXXKEquipmentEconomyRules::EnhanceInstance(State, WeaponInstanceId, EquipmentResult));
 	}
-	TestEqual(TEXT("enhancement caps at plus ten"), UGameXXKMVPRules::GetItemEnhancementLevel(State, Weapon), 10);
-	TestFalse(TEXT("plus ten weapon cannot consume another material"), UGameXXKMVPRules::EnhanceItem(State, Weapon));
-	TestEqual(TEXT("equipped plus ten weapon contributes ten extra attack"), State.PlayerAttack, BaseAttack + 13);
+	EnhancedWeapon = FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, WeaponInstanceId);
+	TestEqual(TEXT("enhancement caps at plus ten"), EnhancedWeapon ? EnhancedWeapon->EnhancementLevel : INDEX_NONE, 10);
+	TestFalse(TEXT("plus ten weapon cannot consume another material"),
+		FGameXXKEquipmentEconomyRules::EnhanceInstance(State, WeaponInstanceId, EquipmentResult));
+	TestTrue(TEXT("equipped plus ten starter weapon exceeds its plus-one attack projection"),
+		State.PlayerAttack > AttackBeforeWeaponCap);
+	TestHeroMatchesProjection(*this, TEXT("plus-ten starter weapon"), State);
 
 	const FGameXXKSaveState SaveState = UGameXXKMVPRules::MakeSaveState(State);
 	TestEqual(TEXT("enhancement save uses the current version seven format"), SaveState.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
@@ -102,24 +201,26 @@ bool FGameXXKInventoryEnhancementTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("current enhancement save restores through typed dispatcher"), FGameXXKSaveMigration::TryRestoreRuntimeState(SaveState, Restored, RestoreReport));
 	TestEqual(TEXT("save restores enhancement material"), Restored.EnhancementMaterial, State.EnhancementMaterial);
 	TestEqual(TEXT("save restores enhancement material backpack item"), UGameXXKMVPRules::GetItemCount(Restored, EnhancementStone), State.EnhancementMaterial);
-	TestEqual(TEXT("save restores enhancement levels"), UGameXXKMVPRules::GetItemEnhancementLevel(Restored, Weapon), 10);
+	const FGameXXKEquipmentInstance* RestoredWeapon =
+		FGameXXKEquipmentRules::FindInstance(Restored.EquipmentCollection, WeaponInstanceId);
+	TestEqual(TEXT("save restores modern instance enhancement levels"), RestoredWeapon ? RestoredWeapon->EnhancementLevel : INDEX_NONE, 10);
 
 	FGameXXKSaveState VersionTwoSave;
 	VersionTwoSave.SaveVersion = 2;
 	VersionTwoSave.RuntimeState = FGameXXKRuntimeState();
 	VersionTwoSave.RuntimeState.Inventory.Reset();
-	VersionTwoSave.RuntimeState.Inventory.Add(Weapon, 1);
+	VersionTwoSave.RuntimeState.Inventory.Add(LegacyWeapon, 1);
 	VersionTwoSave.RuntimeState.EnhancementMaterial = 0;
-	VersionTwoSave.RuntimeState.ItemEnhancementLevels.Add(Weapon, 4);
+	VersionTwoSave.RuntimeState.ItemEnhancementLevels.Add(LegacyWeapon, 4);
 	FGameXXKRuntimeState MigratedVersionTwoState;
 	FGameXXKSaveMigrationReport VersionTwoReport;
 	TestTrue(TEXT("version two migration succeeds through typed dispatcher"), FGameXXKSaveMigration::TryRestoreRuntimeState(VersionTwoSave, MigratedVersionTwoState, VersionTwoReport));
 	TestEqual(TEXT("version two migration grants default enhancement materials"), MigratedVersionTwoState.EnhancementMaterial, 10);
 	TestEqual(TEXT("version two migration adds enhancement material backpack item"), UGameXXKMVPRules::GetItemCount(MigratedVersionTwoState, EnhancementStone), 10);
-	TestEqual(TEXT("version two migration clears unsupported enhancement levels"), UGameXXKMVPRules::GetItemEnhancementLevel(MigratedVersionTwoState, Weapon), 0);
+	TestEqual(TEXT("version two migration clears unsupported enhancement levels"), UGameXXKMVPRules::GetItemEnhancementLevel(MigratedVersionTwoState, LegacyWeapon), 0);
 	TestEqual(TEXT("version two migration keeps only explicit legacy weapon"), MigratedVersionTwoState.EquipmentCollection.EquipmentInstances.Num(), 1);
-	TestEqual(TEXT("version two migration inherits no starter armor"), UGameXXKMVPRules::GetItemCount(MigratedVersionTwoState, Armor), 0);
-	TestEqual(TEXT("version two migration inherits no starter accessory"), UGameXXKMVPRules::GetItemCount(MigratedVersionTwoState, Accessory), 0);
+	TestEqual(TEXT("version two migration inherits no starter armor"), UGameXXKMVPRules::GetItemCount(MigratedVersionTwoState, LegacyArmor), 0);
+	TestEqual(TEXT("version two migration inherits no starter accessory"), UGameXXKMVPRules::GetItemCount(MigratedVersionTwoState, LegacyAccessory), 0);
 
 	UGameInstance* GameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
@@ -131,35 +232,83 @@ bool FGameXXKInventoryEnhancementTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("accepting the route quest adds its task item"), Subsystem->GetItemCount(QingshanRouteSeal), 1);
 	TestFalse(TEXT("active task item cannot be sold"), Subsystem->CanSellItem(QingshanRouteSeal));
 	TestTrue(TEXT("test state can buy a second equipment item"), Subsystem->BuyItem(UGameXXKMVPRules::ItemIronSword(), 1));
+	const FName UiStarterWeaponInstanceId = FindWarehouseInstanceForSlot(
+		Subsystem->GetRuntimeState(),
+		EGameXXKEquipmentSlot::Weapon);
+	TestFalse(TEXT("inventory UI fixture resolves its starter weapon instance"), UiStarterWeaponInstanceId.IsNone());
+	if (UiStarterWeaponInstanceId.IsNone())
+	{
+		return false;
+	}
 
 	UGameXXKInventoryWindowWidget* InventoryWindow = NewObject<UGameXXKInventoryWindowWidget>();
 	InventoryWindow->SetMVPSubsystem(Subsystem);
 	TestTrue(TEXT("inventory window opens for filter and action tests"), InventoryWindow->OpenFreeInventoryForTest());
 	TestEqual(TEXT("inventory starts on all filter"), InventoryWindow->GetActiveInventoryFilterForTest(), EGameXXKInventoryFilter::All);
-	TestTrue(TEXT("backpack selection starts on wooden sword"), InventoryWindow->SelectPlayerBackpackItemForTest(Weapon));
-	TestTrue(TEXT("equipment filter preserves selected wooden sword"), InventoryWindow->SelectInventoryFilterForTest(EGameXXKInventoryFilter::Equipment));
-	const int32 EquipmentFilterWoodenSwordIndex = InventoryWindow->GetVisibleBackpackItemIdsForTest().IndexOfByKey(Weapon);
-	TestTrue(TEXT("equipment filter keeps wooden sword visible"), EquipmentFilterWoodenSwordIndex != INDEX_NONE);
-	TestEqual(TEXT("equipment filter rebinds the selected highlight to wooden sword"), InventoryWindow->GetSelectedBackpackSlotIndexForTest(), EquipmentFilterWoodenSwordIndex);
-	TestTrue(TEXT("sort preserves selected wooden sword"), InventoryWindow->SortInventoryForTest());
-	const int32 SortedWoodenSwordIndex = InventoryWindow->GetVisibleBackpackItemIdsForTest().IndexOfByKey(Weapon);
-	TestTrue(TEXT("sorted backpack keeps wooden sword visible"), SortedWoodenSwordIndex != INDEX_NONE);
-	TestEqual(TEXT("sort rebinds the selected highlight to wooden sword"), InventoryWindow->GetSelectedBackpackSlotIndexForTest(), SortedWoodenSwordIndex);
-	TestTrue(TEXT("selected wooden sword equips before equipped-slot decomposition"), InventoryWindow->ExecuteSelectedPrimaryActionForTest());
-	TestEqual(TEXT("wooden sword is equipped before equipped-slot decomposition"), InventoryWindow->GetEquippedItemForSlotForTest(FName(TEXT("Weapon"))), Weapon);
+	const int32 InitialStarterWeaponSlot =
+		InventoryWindow->FindBackpackEquipmentInstanceSlotForTest(UiStarterWeaponInstanceId);
+	TestTrue(TEXT("backpack exposes the starter weapon instance"), InitialStarterWeaponSlot != INDEX_NONE);
+	InventoryWindow->HandleConfiguredSlotClicked(
+		EGameXXKInventorySlotSource::PlayerBackpack,
+		InitialStarterWeaponSlot,
+		NAME_None);
+	TestEqual(TEXT("backpack selection starts on the starter weapon instance"),
+		InventoryWindow->GetSelectedBackpackSlotIndexForTest(), InitialStarterWeaponSlot);
+	TestTrue(TEXT("equipment filter preserves the selected starter weapon"), InventoryWindow->SelectInventoryFilterForTest(EGameXXKInventoryFilter::Equipment));
+	const int32 EquipmentFilterStarterWeaponIndex =
+		InventoryWindow->FindBackpackEquipmentInstanceSlotForTest(UiStarterWeaponInstanceId);
+	TestTrue(TEXT("equipment filter keeps the starter weapon visible"), EquipmentFilterStarterWeaponIndex != INDEX_NONE);
+	TestEqual(TEXT("equipment filter rebinds the selected highlight to the starter weapon"),
+		InventoryWindow->GetSelectedBackpackSlotIndexForTest(), EquipmentFilterStarterWeaponIndex);
+	TestTrue(TEXT("sort preserves the selected starter weapon"), InventoryWindow->SortInventoryForTest());
+	const int32 SortedStarterWeaponIndex =
+		InventoryWindow->FindBackpackEquipmentInstanceSlotForTest(UiStarterWeaponInstanceId);
+	TestTrue(TEXT("sorted backpack keeps the starter weapon visible"), SortedStarterWeaponIndex != INDEX_NONE);
+	TestEqual(TEXT("sort rebinds the selected highlight to the starter weapon"),
+		InventoryWindow->GetSelectedBackpackSlotIndexForTest(), SortedStarterWeaponIndex);
+	const int32 ModernEnhancementMaterialBefore = Subsystem->GetItemCount(EnhancementStone);
+	const FGameXXKEquipmentInstance* ModernWeaponBeforeEnhancement =
+		FGameXXKEquipmentRules::FindInstance(Subsystem->GetRuntimeState().EquipmentCollection, UiStarterWeaponInstanceId);
+	TestEqual(TEXT("selected modern starter weapon begins unenhanced"),
+		ModernWeaponBeforeEnhancement ? ModernWeaponBeforeEnhancement->EnhancementLevel : INDEX_NONE, 0);
+	TestTrue(TEXT("main inventory enhancement action upgrades the selected modern equipment instance"),
+		InventoryWindow->EnhanceSelectedEquipmentInstanceForTest());
+	const FGameXXKEquipmentInstance* ModernWeaponAfterEnhancement =
+		FGameXXKEquipmentRules::FindInstance(Subsystem->GetRuntimeState().EquipmentCollection, UiStarterWeaponInstanceId);
+	TestEqual(TEXT("modern inventory enhancement writes the authoritative instance level"),
+		ModernWeaponAfterEnhancement ? ModernWeaponAfterEnhancement->EnhancementLevel : INDEX_NONE, 1);
+	TestEqual(TEXT("modern inventory enhancement spends one mirrored enhancement stone"),
+		Subsystem->GetItemCount(EnhancementStone), ModernEnhancementMaterialBefore - 1);
+	TestTrue(TEXT("modern inventory detail refreshes to the new enhancement level"),
+		InventoryWindow->GetSelectedDetailTextForTest().ToString().Contains(TEXT("强化 +1")));
+	TestTrue(TEXT("selected starter weapon equips before equipped-slot decomposition"), InventoryWindow->ExecuteSelectedPrimaryActionForTest());
+	TestEqual(TEXT("starter weapon instance is equipped before equipped-slot decomposition"),
+		InventoryWindow->GetEquippedInstanceForSlotForTest(EGameXXKEquipmentSlot::Weapon),
+		UiStarterWeaponInstanceId);
 	InventoryWindow->HandleConfiguredSlotClicked(EGameXXKInventorySlotSource::Equipment, 0, FName(TEXT("Weapon")));
 	const int32 MaterialBeforeEquippedDecompose = Subsystem->GetItemCount(EnhancementStone);
 	const int32 SandBeforeEquippedDecompose = Subsystem->GetRuntimeState().EquipmentCollection.RefinementSand;
 	const int32 GoldBeforeEquippedDecompose = Subsystem->GetRuntimeState().PlayerGold;
 	TestTrue(TEXT("equipped item can open global decomposition confirmation"), InventoryWindow->RequestSelectedDecomposeForTest());
 	TestTrue(TEXT("equipped item decomposition confirmation executes"), InventoryWindow->ConfirmDialogForTest());
-	TestEqual(TEXT("equipped item decomposition removes the last owned copy"), Subsystem->GetItemCount(Weapon), 0);
-	TestEqual(TEXT("equipped item decomposition clears the equipment slot"), InventoryWindow->GetEquippedItemForSlotForTest(FName(TEXT("Weapon"))), NAME_None);
-	TestEqual(TEXT("zero-enhancement decomposition does not invent enhancement stones"), Subsystem->GetItemCount(EnhancementStone), MaterialBeforeEquippedDecompose);
-	TestEqual(TEXT("common equipment decomposition grants refinement sand"), Subsystem->GetRuntimeState().EquipmentCollection.RefinementSand, SandBeforeEquippedDecompose + 5);
-	TestEqual(TEXT("equipped item decomposition does not grant merchant gold"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeEquippedDecompose);
+	TestNull(TEXT("equipped item decomposition removes the authoritative instance"),
+		FGameXXKEquipmentRules::FindInstance(Subsystem->GetRuntimeState().EquipmentCollection, UiStarterWeaponInstanceId));
+	TestTrue(TEXT("equipped item decomposition clears the equipment slot"),
+		InventoryWindow->GetEquippedInstanceForSlotForTest(EGameXXKEquipmentSlot::Weapon).IsNone());
+	TestEqual(TEXT("each decomposed item grants one enhancement stone"),
+		Subsystem->GetItemCount(EnhancementStone), MaterialBeforeEquippedDecompose + 1);
+	TestEqual(TEXT("each decomposed item grants one refinement sand"),
+		Subsystem->GetRuntimeState().EquipmentCollection.RefinementSand, SandBeforeEquippedDecompose + 1);
+	TestEqual(TEXT("each decomposed item grants ten gold"),
+		Subsystem->GetRuntimeState().PlayerGold, GoldBeforeEquippedDecompose + 10);
 	TestTrue(TEXT("all filter is restored after equipped-slot decomposition"), InventoryWindow->SelectInventoryFilterForTest(EGameXXKInventoryFilter::All));
 	TestTrue(TEXT("equipment filter is selectable"), InventoryWindow->SelectInventoryFilterForTest(EGameXXKInventoryFilter::Equipment));
+	for (const FName InstanceId : InventoryWindow->GetVisibleBackpackEquipmentInstanceIdsForTest())
+	{
+		const FGameXXKEquipmentInstance* Instance =
+			FGameXXKEquipmentRules::FindInstance(Subsystem->GetRuntimeState().EquipmentCollection, InstanceId);
+		TestNotNull(TEXT("equipment filter contains only valid equipment instances"), Instance);
+	}
 	for (const FName ItemId : InventoryWindow->GetVisibleBackpackItemIdsForTest())
 	{
 		bool bFound = false;
@@ -199,6 +348,8 @@ bool FGameXXKInventoryEnhancementTest::RunTest(const FString& Parameters)
 	}
 
 	const FName Powder = UGameXXKMVPRules::ItemHealingPowder();
+	TestTrue(TEXT("inventory test buys a consumable before validating decomposition rejection"),
+		Subsystem->BuyItem(Powder, 1));
 	const int32 GoldBeforeDecompose = Subsystem->GetRuntimeState().PlayerGold;
 	const int32 PowderBeforeDecompose = Subsystem->GetItemCount(Powder);
 	TestTrue(TEXT("decompose selects a player backpack item"), InventoryWindow->SelectPlayerBackpackItemForTest(Powder));
@@ -221,7 +372,14 @@ bool FGameXXKInventoryEnhancementTest::RunTest(const FString& Parameters)
 	UGameInstance* EnhancementSaveSourceGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* EnhancementSaveSourceSubsystem = NewObject<UGameXXKMVPSubsystem>(EnhancementSaveSourceGameInstance);
 	EnhancementSaveSourceSubsystem->GetMutableRuntimeState() = UGameXXKMVPRules::CreateNewGame();
-	TestTrue(TEXT("save path enhancement succeeds"), EnhancementSaveSourceSubsystem->EnhanceItem(Weapon));
+	EnhancementSaveSourceSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
+	const FName SaveWeaponInstanceId = FindWarehouseInstanceForSlot(
+		EnhancementSaveSourceSubsystem->GetRuntimeState(),
+		EGameXXKEquipmentSlot::Weapon);
+	FGameXXKEquipmentTransactionResult SaveEnhancementResult;
+	TestFalse(TEXT("save path fixture resolves its modern starter weapon"), SaveWeaponInstanceId.IsNone());
+	TestTrue(TEXT("save path enhancement succeeds"),
+		EnhancementSaveSourceSubsystem->EnhanceEquipmentInstance(SaveWeaponInstanceId, SaveEnhancementResult));
 	TestTrue(TEXT("save path writes enhancement state"), EnhancementSaveSourceSubsystem->SaveCurrentGame(EnhancementSaveSlot, EnhancementSaveUserIndex));
 	TestFalse(TEXT("current v7 save creates no migration backup"), UGameplayStatics::DoesSaveGameExist(EnhancementBackupSlot, EnhancementSaveUserIndex));
 	UGameInstance* EnhancementSaveLoadGameInstance = NewObject<UGameInstance>();
@@ -229,7 +387,12 @@ bool FGameXXKInventoryEnhancementTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("save path reloads enhancement state"), EnhancementSaveLoadSubsystem->LoadGameFromSlot(EnhancementSaveSlot, EnhancementSaveUserIndex));
 	TestEqual(TEXT("real SaveGame reload preserves enhancement material"), EnhancementSaveLoadSubsystem->GetRuntimeState().EnhancementMaterial, 9);
 	TestEqual(TEXT("real SaveGame reload preserves enhancement material backpack item"), EnhancementSaveLoadSubsystem->GetItemCount(EnhancementStone), 9);
-	TestEqual(TEXT("real SaveGame reload preserves enhancement level"), EnhancementSaveLoadSubsystem->GetItemEnhancementLevel(Weapon), 1);
+	const FGameXXKEquipmentInstance* ReloadedSaveWeapon = FGameXXKEquipmentRules::FindInstance(
+		EnhancementSaveLoadSubsystem->GetRuntimeState().EquipmentCollection,
+		SaveWeaponInstanceId);
+	TestEqual(TEXT("real SaveGame reload preserves modern instance enhancement level"),
+		ReloadedSaveWeapon ? ReloadedSaveWeapon->EnhancementLevel : INDEX_NONE,
+		1);
 	UGameplayStatics::DeleteGameInSlot(EnhancementSaveSlot, EnhancementSaveUserIndex);
 	UGameplayStatics::DeleteGameInSlot(EnhancementBackupSlot, EnhancementSaveUserIndex);
 	TestTrue(TEXT("selling the final enhanced copy succeeds"), Subsystem->SellItem(IronSword, 1));

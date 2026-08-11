@@ -313,6 +313,22 @@ def _extract_add_hero_blocks(source: str) -> list[str]:
     return _extract_call_blocks(source, "AddHero", 'TEXT("')
 
 
+def _extract_add_blade_blocks(source: str) -> list[str]:
+    return _extract_call_blocks(source, "AddBlade", 'TEXT("')
+
+
+def _extract_add_healer_blocks(source: str) -> list[str]:
+    return _extract_call_blocks(source, "AddHealer", 'TEXT("')
+
+
+def _extract_add_sorcerer_blocks(source: str) -> list[str]:
+    return _extract_call_blocks(source, "AddSorcerer", 'TEXT("')
+
+
+def _extract_add_quest_npc_blocks(source: str) -> list[str]:
+    return _extract_call_blocks(source, "AddQuestNpcCard", "Cards")
+
+
 def _quality_ids(source: str, function: str, next_function: str) -> set[str]:
     start = source.index(f"{function}()")
     end = source.index(f"{next_function}()", start)
@@ -333,15 +349,22 @@ def audit_card_catalog(project_root: Path) -> dict[str, object]:
         re.DOTALL,
     )
     cards: list[dict[str, object]] = []
-    parsed_blocks = [
-        (block, None) for block in _extract_add_card_blocks(catalog_source)
-    ] + [
-        (block, "Hero") for block in _extract_add_hero_blocks(catalog_source)
-    ]
-    for block, forced_owner in parsed_blocks:
+    parsed_blocks = (
+        [(block, None, "AddCard") for block in _extract_add_card_blocks(catalog_source)]
+        + [(block, "Hero", "AddHero") for block in _extract_add_hero_blocks(catalog_source)]
+        + [(block, "Profession", "AddBlade") for block in _extract_add_blade_blocks(catalog_source)]
+        + [(block, "Profession", "AddHealer") for block in _extract_add_healer_blocks(catalog_source)]
+        + [(block, "Profession", "AddSorcerer") for block in _extract_add_sorcerer_blocks(catalog_source)]
+        + [(block, "QuestNpc", "AddQuestNpcCard") for block in _extract_add_quest_npc_blocks(catalog_source)]
+    )
+    for block, forced_owner, builder_name in parsed_blocks:
         match = metadata_pattern.search(block)
         if not match:
-            raise ValueError("could not parse AddCard metadata")
+            # Local typed builders forward variables into AddCard; their concrete
+            # literal call sites are parsed independently above.
+            if builder_name == "AddCard":
+                continue
+            raise ValueError(f"could not parse {builder_name} metadata")
         card_id, display_name, energy, mana, target_mode = match.groups()
         owner_match = re.search(r"EGameXXKCardOwner::(\w+)", block)
         if forced_owner is None and not owner_match:

@@ -41,21 +41,56 @@ bool FGameXXKTownNpcInteractionRulesTest::RunTest(const FString& Parameters)
 		YueBaiCharacter->GetDefaultTownFlipbookPathString(),
 		FString(TEXT("/Game/GameXXK/Characters/PartyDeckNPC/YueBai/Flipbooks/FB_PartyDeckNPC_YueBai_Idle_South.FB_PartyDeckNPC_YueBai_Idle_South")));
 
-	YueBai->ActivateFollower(NewObject<AActor>(), 96.0f);
-	TestFalse(TEXT("retired follower activation is a no-op"), YueBai->IsFollowerActive());
-	TestNull(TEXT("retired follower activation stores no target"), YueBai->GetFollowTarget());
+	AActor* FollowTarget = NewObject<AActor>();
+	YueBai->ActivateFollower(FollowTarget, 96.0f);
+	TestTrue(TEXT("town NPC follower activation stores an active state"), YueBai->IsFollowerActive());
+	TestTrue(TEXT("town NPC follower activation stores its target"), YueBai->GetFollowTarget() == FollowTarget);
+	TestEqual(TEXT("town NPC follower activation stores its distance"), YueBai->GetFollowDistance(), 96.0f);
+
+	UGameInstance* RecoveryGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* RecoverySubsystem = NewObject<UGameXXKMVPSubsystem>(RecoveryGameInstance);
+	FGameXXKRuntimeState& RecoveryState = RecoverySubsystem->GetMutableRuntimeState();
+	RecoveryState = UGameXXKMVPRules::CreateNewGame();
+	RecoveryState.QuestState = EGameXXKQuestState::Accepted;
+	RecoveryState.bFollowerJoined = true;
+	RecoveryState.bHasQuestNpcLocation = false;
+	AGameXXKTownNpcActor* RestoredActorFollower = NewObject<AGameXXKTownNpcActor>();
+	RestoredActorFollower->SetNpcId(TEXT("Npc.TusiChief"));
+	RestoredActorFollower->SetMVPSubsystemForTest(RecoverySubsystem);
+	RestoredActorFollower->ActivateFollower(FollowTarget, 96.0f);
+	TestTrue(TEXT("restoring an actor follower backfills a missing legacy NPC location flag"),
+		RecoveryState.bHasQuestNpcLocation);
+	TestEqual(TEXT("restoring an actor follower records its actual current location"),
+		RecoveryState.QuestNpcLocation, RestoredActorFollower->GetActorLocation());
+
+	RecoveryState.bHasQuestNpcLocation = false;
+	RecoveryState.QuestNpcLocation = FVector::ZeroVector;
+	AGameXXKTownNpcCharacter* RestoredCharacterFollower = NewObject<AGameXXKTownNpcCharacter>();
+	RestoredCharacterFollower->SetNpcId(TEXT("Npc.TusiChief"));
+	RestoredCharacterFollower->SetMVPSubsystemForTest(RecoverySubsystem);
+	RestoredCharacterFollower->ActivateFollower(FollowTarget, 96.0f);
+	TestTrue(TEXT("restoring a character follower backfills a missing legacy NPC location flag"),
+		RecoveryState.bHasQuestNpcLocation);
+	TestEqual(TEXT("restoring a character follower records its actual current location"),
+		RecoveryState.QuestNpcLocation, RestoredCharacterFollower->GetActorLocation());
 
 	UGameInstance* GameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
 	TestTrue(TEXT("town-NPC fixture opens the world map"), Subsystem->OpenWorldMap());
 	TestTrue(TEXT("town-NPC fixture enters Qingshan town"), Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan()));
+	TestTrue(TEXT("town-NPC fixture accepts the narrative quest"), Subsystem->AcceptQuest());
+	const FVector NarrativeFollowerLocation(320.0f, -96.0f, 72.0f);
+	Subsystem->RecordQuestNpcLocation(NarrativeFollowerLocation);
 	TestTrue(TEXT("Yue Bai can be selected directly from the town interaction"), Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.YueBai")));
 	TestEqual(TEXT("town interaction stores the selected named NPC"), Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.YueBai")));
 	TestEqual(TEXT("town interaction applies the fixed three-card NPC loadout"), Subsystem->GetRuntimeState().CardRun.PartySelection.QuestNpc.SelectedCardIds.Num(), 3);
-	TestFalse(TEXT("town recruitment never reactivates legacy following"), Subsystem->GetRuntimeState().bFollowerJoined);
-	TestFalse(TEXT("town recruitment never stores a moving NPC location"), Subsystem->GetRuntimeState().bHasQuestNpcLocation);
+	TestTrue(TEXT("route-support selection preserves the narrative follower"), Subsystem->GetRuntimeState().bFollowerJoined);
+	TestTrue(TEXT("route-support selection preserves the narrative follower location flag"), Subsystem->GetRuntimeState().bHasQuestNpcLocation);
+	TestEqual(TEXT("route-support selection preserves the narrative follower location"), Subsystem->GetRuntimeState().QuestNpcLocation, NarrativeFollowerLocation);
 	TestTrue(TEXT("selecting another NPC replaces the current task NPC"), Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.SongJinBao")));
 	TestEqual(TEXT("replacement NPC becomes the active route support"), Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.SongJinBao")));
+	TestTrue(TEXT("replacing route support still preserves the narrative follower"), Subsystem->GetRuntimeState().bFollowerJoined);
+	TestEqual(TEXT("replacing route support still preserves the narrative follower location"), Subsystem->GetRuntimeState().QuestNpcLocation, NarrativeFollowerLocation);
 
 	return true;
 }

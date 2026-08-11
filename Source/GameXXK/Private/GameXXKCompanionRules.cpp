@@ -3,6 +3,7 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCharacterStatRules.h"
 #include "GameXXKCompanionCatalog.h"
+#include "Misc/Crc.h"
 
 namespace
 {
@@ -33,6 +34,38 @@ namespace
 	bool NameLess(const FName Left, const FName Right)
 	{
 		return Left.ToString() < Right.ToString();
+	}
+
+	FName GetBirthCompatibilitySortId(const FName CardId)
+	{
+		static const TMap<FName, FName> CompatibilityIds = {
+			{ TEXT("Profession.Blade.JingHongChuQiao"), TEXT("Profession.Blade.YiShangHuanShi") },
+			{ TEXT("Profession.Blade.HengYunKaiFeng"), TEXT("Profession.Blade.DaoYiShouShu") },
+			{ TEXT("Profession.Blade.LianXiGuiQiao"), TEXT("Profession.Blade.XiaoJiaLianJi") },
+			{ TEXT("Profession.Blade.BaoDaoShouYe"), TEXT("Profession.Blade.CanYueSanDie") },
+		};
+		if (const FName* CompatibilityId = CompatibilityIds.Find(CardId))
+		{
+			return *CompatibilityId;
+		}
+		return CardId;
+	}
+
+	bool BirthCardLess(const FName Left, const FName Right)
+	{
+		return GetBirthCompatibilitySortId(Left).ToString() < GetBirthCompatibilitySortId(Right).ToString();
+	}
+
+	bool IsFormationTerrainSwitchCard(const FName CardId)
+	{
+		static const TSet<FName> TerrainSwitchCardIds = {
+			TEXT("Profession.FormationMaster.GuanShi"),
+			TEXT("Profession.FormationMaster.DingZhen"),
+			TEXT("Profession.FormationMaster.YinShuiHuiYuan"),
+			TEXT("Profession.FormationMaster.KunZhen"),
+			TEXT("Profession.FormationMaster.LinYingMiZong"),
+			TEXT("Profession.FormationMaster.JieShanWeiZhang")};
+		return TerrainSwitchCardIds.Contains(CardId);
 	}
 
 	uint32 NextCardRandom(uint32& InOutState)
@@ -93,32 +126,8 @@ namespace
 
 	int32 GetUnlockedPersonalCardCount(const FGameXXKPermanentCompanion& Companion)
 	{
-		int32 Count = 6;
-		if (Companion.Level >= 4)
-		{
-			++Count;
-		}
-		if (Companion.Star >= 2)
-		{
-			++Count;
-		}
-		if (Companion.Level >= 8)
-		{
-			++Count;
-		}
-		if (Companion.Star >= 3)
-		{
-			++Count;
-		}
-		if (Companion.Level >= 12)
-		{
-			++Count;
-		}
-		if (Companion.Star >= 4)
-		{
-			++Count;
-		}
-		return Count;
+		(void)Companion;
+		return 6;
 	}
 
 	bool BuildExpectedUnlockedPersonalCardIds(
@@ -205,9 +214,14 @@ bool FGameXXKCompanionRules::BuildPersonalCardPool(
 	const EGameXXKCharacterRole Role,
 	const int32 CardSeed,
 	TArray<FName>& OutCardIds,
-	FString* OutError)
+	FString* OutError,
+	FName* OutPrimaryArchetypeId)
 {
 	OutCardIds.Reset();
+	if (OutPrimaryArchetypeId)
+	{
+		*OutPrimaryArchetypeId = NAME_None;
+	}
 	if (!IsPermanentCompanionRole(Role))
 	{
 		SetError(OutError, TEXT("A companion personal card pool requires one of the six permanent companion roles."));
@@ -216,6 +230,8 @@ bool FGameXXKCompanionRules::BuildPersonalCardPool(
 
 	TArray<FName> CoreCardIds;
 	TArray<FName> CandidateCardIds;
+	TArray<FName> FormationSwitchCardIds;
+	TMap<FName, TArray<FName>> CandidateCardIdsByArchetype;
 	for (const FGameXXKCardDefinition& Definition : FGameXXKCardCatalog::GetAllCardDefinitions())
 	{
 		if (Definition.Owner != EGameXXKCardOwner::Profession || Definition.Role != Role)
@@ -223,36 +239,149 @@ bool FGameXXKCompanionRules::BuildPersonalCardPool(
 			continue;
 		}
 
-		if (Definition.bCoreProfessionCard)
+		if (Role == EGameXXKCharacterRole::FormationMaster && IsFormationTerrainSwitchCard(Definition.Id))
+		{
+			FormationSwitchCardIds.Add(Definition.Id);
+		}
+		else if (Definition.bCoreProfessionCard)
 		{
 			CoreCardIds.Add(Definition.Id);
 		}
 		else
 		{
 			CandidateCardIds.Add(Definition.Id);
+			if (Definition.ProfessionArchetypeIds.IsEmpty())
+			{
+				SetError(OutError, FString::Printf(
+					TEXT("Profession candidate %s has no birth-archetype metadata."),
+					*Definition.Id.ToString()));
+				return false;
+			}
+			TSet<FName> SeenArchetypeIds;
+			for (const FName ArchetypeId : Definition.ProfessionArchetypeIds)
+			{
+				if (ArchetypeId.IsNone() || SeenArchetypeIds.Contains(ArchetypeId))
+				{
+					SetError(OutError, FString::Printf(
+						TEXT("Profession candidate %s has an empty or duplicate birth-archetype id."),
+						*Definition.Id.ToString()));
+					return false;
+				}
+				SeenArchetypeIds.Add(ArchetypeId);
+				CandidateCardIdsByArchetype.FindOrAdd(ArchetypeId).Add(Definition.Id);
+			}
 		}
 	}
 
-	CoreCardIds.Sort(NameLess);
-	CandidateCardIds.Sort(NameLess);
-	if (CoreCardIds.Num() != 4 || CandidateCardIds.Num() != 14)
+	CoreCardIds.Sort(BirthCardLess);
+	CandidateCardIds.Sort(BirthCardLess);
+	FormationSwitchCardIds.Sort(BirthCardLess);
+	TArray<FName> ArchetypeIds;
+	CandidateCardIdsByArchetype.GetKeys(ArchetypeIds);
+	ArchetypeIds.Sort(NameLess);
+	for (TPair<FName, TArray<FName>>& Pair : CandidateCardIdsByArchetype)
+	{
+		Pair.Value.Sort(BirthCardLess);
+		const int32 MinimumCandidateCount = Role == EGameXXKCharacterRole::FormationMaster ? 3 : 4;
+		if (Pair.Value.Num() < MinimumCandidateCount)
+		{
+			SetError(OutError, FString::Printf(
+				TEXT("Birth archetype %s has %d candidates but requires at least %d."),
+				*Pair.Key.ToString(),
+				Pair.Value.Num(),
+				MinimumCandidateCount));
+			return false;
+		}
+	}
+	if (ArchetypeIds.Num() < 2)
+	{
+		SetError(OutError, TEXT("A permanent profession must expose at least two equally selectable birth archetypes."));
+		return false;
+	}
+
+	uint32 RandomState = static_cast<uint32>(CardSeed);
+	const auto PickAndRemove = [&RandomState](TArray<FName>& InOutCandidates)
+	{
+		const int32 CandidateIndex = static_cast<int32>(
+			NextCardRandom(RandomState) % static_cast<uint32>(InOutCandidates.Num()));
+		const FName SelectedId = InOutCandidates[CandidateIndex];
+		InOutCandidates.RemoveAt(CandidateIndex);
+		return SelectedId;
+	};
+	if (Role == EGameXXKCharacterRole::FormationMaster)
+	{
+		if (FormationSwitchCardIds.Num() != 6 || CandidateCardIds.Num() != 12)
+		{
+			SetError(OutError, FString::Printf(
+				TEXT("The formation catalog must contain six terrain switches and twelve terrain-benefit cards, but has %d and %d."),
+				FormationSwitchCardIds.Num(),
+				CandidateCardIds.Num()));
+			return false;
+		}
+		for (int32 SelectionIndex = 0; SelectionIndex < 2; ++SelectionIndex)
+		{
+			OutCardIds.Add(PickAndRemove(FormationSwitchCardIds));
+		}
+		const FName PrimaryArchetypeId = ArchetypeIds[static_cast<int32>(
+			NextCardRandom(RandomState) % static_cast<uint32>(ArchetypeIds.Num()))];
+		if (OutPrimaryArchetypeId)
+		{
+			*OutPrimaryArchetypeId = PrimaryArchetypeId;
+		}
+		TArray<FName> PrimaryCandidates = CandidateCardIdsByArchetype.FindChecked(PrimaryArchetypeId);
+		for (int32 SelectionIndex = 0; SelectionIndex < 3; ++SelectionIndex)
+		{
+			OutCardIds.Add(PickAndRemove(PrimaryCandidates));
+		}
+		CandidateCardIds.RemoveAll([&OutCardIds](const FName CardId)
+		{
+			return OutCardIds.Contains(CardId);
+		});
+		OutCardIds.Add(PickAndRemove(CandidateCardIds));
+		return true;
+	}
+
+	if (CoreCardIds.Num() != 2 || CandidateCardIds.Num() != 16)
 	{
 		SetError(OutError, FString::Printf(
-			TEXT("The %d role catalog must contain four core cards and fourteen seeded candidates, but has %d and %d."),
+			TEXT("The %d role catalog must contain two core cards and sixteen seeded candidates, but has %d and %d."),
 			static_cast<int32>(Role),
 			CoreCardIds.Num(),
 			CandidateCardIds.Num()));
 		return false;
 	}
-
 	OutCardIds = CoreCardIds;
-	uint32 RandomState = static_cast<uint32>(CardSeed);
-	for (int32 SelectionIndex = 0; SelectionIndex < 8; ++SelectionIndex)
+	const FName PrimaryArchetypeId = ArchetypeIds[static_cast<int32>(
+		NextCardRandom(RandomState) % static_cast<uint32>(ArchetypeIds.Num()))];
+	if (OutPrimaryArchetypeId)
 	{
-		const int32 CandidateIndex = static_cast<int32>(NextCardRandom(RandomState) % static_cast<uint32>(CandidateCardIds.Num()));
-		OutCardIds.Add(CandidateCardIds[CandidateIndex]);
-		CandidateCardIds.RemoveAt(CandidateIndex);
+		*OutPrimaryArchetypeId = PrimaryArchetypeId;
 	}
+	TArray<FName> PrimaryCandidates = CandidateCardIdsByArchetype.FindChecked(PrimaryArchetypeId);
+	for (int32 SelectionIndex = 0; SelectionIndex < 3; ++SelectionIndex)
+	{
+		OutCardIds.Add(PickAndRemove(PrimaryCandidates));
+	}
+	const FName FreeArchetypeId = ArchetypeIds[static_cast<int32>(
+		NextCardRandom(RandomState) % static_cast<uint32>(ArchetypeIds.Num()))];
+	TArray<FName> FreeCandidates = CandidateCardIdsByArchetype.FindChecked(FreeArchetypeId);
+	FreeCandidates.RemoveAll([&OutCardIds](const FName CardId)
+	{
+		return OutCardIds.Contains(CardId);
+	});
+	if (FreeCandidates.IsEmpty())
+	{
+		SetError(OutError, FString::Printf(
+			TEXT("Birth archetype %s cannot supply a distinct free-slot card."),
+			*FreeArchetypeId.ToString()));
+		OutCardIds.Reset();
+		if (OutPrimaryArchetypeId)
+		{
+			*OutPrimaryArchetypeId = NAME_None;
+		}
+		return false;
+	}
+	OutCardIds.Add(PickAndRemove(FreeCandidates));
 
 	return true;
 }
@@ -532,6 +661,31 @@ bool FGameXXKCompanionRules::SetSelectedPersonalCards(
 		return false;
 	}
 	InOutCompanion.SelectedCardIds = SelectedCardIds;
+	return true;
+}
+
+bool FGameXXKCompanionRules::BuildQuestNpcRouteCardSelection(
+	const FName QuestNpcId,
+	const int32 RouteSeed,
+	TArray<FName>& OutSelectedCardIds,
+	FString* OutError)
+{
+	OutSelectedCardIds.Reset();
+	const FGameXXKQuestNpcDefinition* Definition = FGameXXKCompanionCatalog::FindQuestNpcDefinition(QuestNpcId);
+	if (!Definition || Definition->FixedCardIds.Num() != 4 || !HasUniqueNames(Definition->FixedCardIds))
+	{
+		SetError(OutError, FString::Printf(TEXT("Task NPC does not expose four distinct fixed cards: %s."), *QuestNpcId.ToString()));
+		return false;
+	}
+
+	OutSelectedCardIds = Definition->FixedCardIds;
+	OutSelectedCardIds.Sort(NameLess);
+	const uint32 EffectiveRouteSeed = RouteSeed == 0
+		? 0x13579BDFU
+		: static_cast<uint32>(RouteSeed);
+	const uint32 StableNpcSalt = FCrc::StrCrc32(*QuestNpcId.ToString());
+	const int32 OmittedIndex = static_cast<int32>((EffectiveRouteSeed ^ StableNpcSalt) % 4U);
+	OutSelectedCardIds.RemoveAt(OmittedIndex, 1, EAllowShrinking::No);
 	return true;
 }
 

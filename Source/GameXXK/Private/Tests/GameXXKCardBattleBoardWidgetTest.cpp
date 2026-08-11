@@ -476,6 +476,10 @@ namespace
 			Card.OwnerUnitId = OwnerUnitId;
 			Card.SourceEntryId = FName(*FString::Printf(TEXT("Board.Presentation.Source.%d"), Index));
 			Card.AcquisitionOrdinal = Index;
+			Card.bTemporary = true;
+			Card.EnergyCostOverride = 1;
+			Card.ManaCostOverride = 3;
+			Card.ExpireAfterPlayerRound = 1;
 		}
 		return Cards;
 	}
@@ -499,17 +503,17 @@ namespace
 		State.bHasActiveBattle = true;
 		State.ActiveBattleNodeId = 73;
 		State.ActiveBattleParty = {
-			MakeBoardPresentationLegacyUnit(TEXT("Blade"), TEXT("刀客"), false, 20)};
+			MakeBoardPresentationLegacyUnit(TEXT("Npc.JinGui"), TEXT("金桂"), false, 20)};
 		State.ActiveBattleEnemies = {
 			MakeBoardPresentationLegacyUnit(TEXT("Enemy"), TEXT("反击敌人"), true, 10)};
 
 		TArray<FGameXXKCardCombatUnit> Units = {
-			MakeBoardPresentationUnit(TEXT("Blade"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Blade, 20, 0),
+			MakeBoardPresentationUnit(TEXT("Npc.JinGui"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Invalid, 20, 0),
 			MakeBoardPresentationUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 10, 0)};
 		FGameXXKCardBattleRuntime Runtime;
 		if (!GameXXKCardRules::InitializeCardBattleRuntime(
 			Runtime,
-			MakeBoardPresentationCards(TEXT("Profession.Blade.JiYuLianZhan"), TEXT("Blade")),
+			MakeBoardPresentationCards(TEXT("Npc.JinGui.ShiJingErMu"), TEXT("Npc.JinGui")),
 			Units,
 			EGameXXKCardTerrain::Plain,
 			8801,
@@ -517,7 +521,6 @@ namespace
 		{
 			return false;
 		}
-
 		FGameXXKCardBattleModifierRuntime& Reflect = Runtime.Modifiers.AddDefaulted_GetRef();
 		Reflect.ModifierId = TEXT("Board.Presentation.Reflect");
 		Reflect.SourceCardInstanceId = Runtime.Deck.ActiveInstanceIds[0];
@@ -606,7 +609,7 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 
 	FGameXXKBattlePresentationEvent BlockingEvent;
 	BlockingEvent.EventId = 9001;
-	BlockingEvent.AttackerUnitId = TEXT("Blade");
+	BlockingEvent.AttackerUnitId = TEXT("Npc.JinGui");
 	BlockingEvent.TargetUnitId = TEXT("Enemy");
 	BlockingEvent.TargetHealthBefore = 100;
 	BlockingEvent.TargetHealthAfter = 90;
@@ -678,31 +681,31 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("a locked responsive-layout refresh cannot expose post-mutation Qi"),
 		OrderedPartyQiWidget ? OrderedPartyQiWidget->GetSharedQiForTest() : INDEX_NONE,
 		OrderedQiBeforeCommit);
-	TestEqual(TEXT("the Board enqueues the two primary packets and reflected packet before refresh"),
+	TestEqual(TEXT("the Board enqueues two Heavy Arrow packets and the reflected packet before refresh"),
 		OrderedBoard->GetBattlePresentationQueueCountForTest(),
 		3);
 	OrderedBoard->AdvanceVisualsAtRealTime(0.0);
-	TestEqual(TEXT("packet one retains the primary attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Blade")));
+	TestEqual(TEXT("packet one retains the Heavy Arrow attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Npc.JinGui")));
 	TestEqual(TEXT("packet one retains the primary target"), FGateApi::Target(OrderedBoard), FName(TEXT("Enemy")));
 	TestEqual(TEXT("the first target baseline is seeded from packet one"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 100);
 	OrderedBoard->AdvanceVisualsAtRealTime(1.1);
-	TestEqual(TEXT("packet one marker applies only packet one's health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 85);
+	TestEqual(TEXT("packet one marker applies only packet one's health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
 	OrderedBoard->AdvanceVisualsAtRealTime(2.5);
 	TestEqual(TEXT("packet two reverses the reflected source"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Enemy")));
-	TestEqual(TEXT("packet two reverses the reflected target"), FGateApi::Target(OrderedBoard), FName(TEXT("Blade")));
-	TestEqual(TEXT("packet one's target override survives the reflected intermediate entry"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 85);
+	TestEqual(TEXT("packet two reverses the reflected target"), FGateApi::Target(OrderedBoard), FName(TEXT("Npc.JinGui")));
+	TestEqual(TEXT("packet one's target override survives the reflected intermediate entry"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
 	OrderedBoard->AdvanceVisualsAtRealTime(3.6);
-	TestEqual(TEXT("the reflection marker applies its own target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Blade")), 95);
+	TestEqual(TEXT("the reflection marker applies its own target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Npc.JinGui")), 95);
 	OrderedBoard->AdvanceVisualsAtRealTime(5.0);
-	TestEqual(TEXT("packet three returns to the primary attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Blade")));
+	TestEqual(TEXT("packet three returns to the Heavy Arrow attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Npc.JinGui")));
 	TestEqual(TEXT("packet three returns to the primary target"), FGateApi::Target(OrderedBoard), FName(TEXT("Enemy")));
-	TestEqual(TEXT("packet three begins at packet one's committed target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 85);
+	TestEqual(TEXT("packet three begins at packet one's committed target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
 	OrderedBoard->AdvanceVisualsAtRealTime(6.1);
-	TestEqual(TEXT("packet three marker reaches the final target health without early reconciliation"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 70);
+	TestEqual(TEXT("packet three marker reaches the final target health without early reconciliation"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 78);
 	OrderedBoard->AdvanceVisualsAtRealTime(7.5);
 	TestFalse(TEXT("the ordered batch unlocks after all three packets"), FGateApi::IsLocked(OrderedBoard));
-	TestEqual(TEXT("ordered target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 70);
-	TestEqual(TEXT("reflected target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Blade")), 95);
+	TestEqual(TEXT("ordered target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 78);
+	TestEqual(TEXT("reflected target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Npc.JinGui")), 95);
 	TestEqual(TEXT("Party Qi reconciles to authoritative energy only after the complete batch drains"),
 		OrderedPartyQiWidget ? OrderedPartyQiWidget->GetSharedQiForTest() : INDEX_NONE,
 		OrderedQiAfterCommit);

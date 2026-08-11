@@ -22,6 +22,16 @@ Plugins/**/Saved/
 Plugins/**/__pycache__/
 *.pyc
 
+# Local packaging, scratch, and generated review outputs
+Packaged/
+tmp/
+outputs/
+Build/Windows/FileOpenOrder/
+*.log
+*.log.err
+*.log.out
+*.out.err
+
 # Visual Studio generated solutions can be regenerated from the uproject
 *.sln
 *.slnx

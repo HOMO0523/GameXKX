@@ -13,7 +13,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKEquipmentTypesContractTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("six equipment slots use contiguous saved values"), static_cast<uint8>(EGameXXKEquipmentSlot::Accessory), static_cast<uint8>(6));
-	TestEqual(TEXT("six modern sets plus Legacy use contiguous saved values"), static_cast<uint8>(EGameXXKEquipmentSet::ShanHe), static_cast<uint8>(7));
+	TestEqual(TEXT("Starter and six combat sets follow Legacy in the saved enum"), static_cast<uint8>(EGameXXKEquipmentSet::ShanHe), static_cast<uint8>(8));
 	TestEqual(TEXT("three equipment qualities use contiguous saved values"), static_cast<uint8>(EGameXXKEquipmentQuality::Epic), static_cast<uint8>(3));
 	TestEqual(TEXT("three affix tiers use contiguous saved values"), static_cast<uint8>(EGameXXKAffixTier::Epic), static_cast<uint8>(3));
 	TestEqual(TEXT("the approved five universal and thirty set-specific modifier kinds are present"), static_cast<uint8>(EGameXXKEquipmentModifierKind::TeamTerrainPower), static_cast<uint8>(35));

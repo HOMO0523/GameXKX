@@ -4,7 +4,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardRules.h"
 #include "GameXXKMVPRules.h"
-#include "Components/Button.h"
 #include "Engine/GameInstance.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
@@ -232,70 +231,59 @@ bool FGameXXKFormationMasterTargetingDiagnosticTest::RunTest(const FString& Para
 	TestEqual(TEXT("all formation-master card/terrain pairs build previews"), PreviewCount, 18 * 7);
 	TestEqual(TEXT("all formation-master card/terrain pairs resolve"), ResolveCount, 18 * 7);
 
-	TArray<FGameXXKCardCombatUnit> InsightUnits;
-	InsightUnits.Add(MakeFormationTargetingUnit(TEXT("FormationOwner"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::FormationMaster, 1));
-	InsightUnits.Add(MakeFormationTargetingUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 2));
-	InsightUnits.Add(MakeFormationTargetingUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 10));
-	FGameXXKCardBattleRuntime InsightRuntime;
-	FString InsightError;
-	const bool bInsightInitialized = GameXXKCardRules::InitializeCardBattleRuntime(
-		InsightRuntime,
+	TArray<FGameXXKCardCombatUnit> GuanShiUnits;
+	GuanShiUnits.Add(MakeFormationTargetingUnit(TEXT("FormationOwner"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::FormationMaster, 1));
+	GuanShiUnits.Add(MakeFormationTargetingUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 2));
+	GuanShiUnits.Add(MakeFormationTargetingUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 10));
+	FGameXXKCardBattleRuntime GuanShiRuntime;
+	FString GuanShiError;
+	const bool bGuanShiInitialized = GameXXKCardRules::InitializeCardBattleRuntime(
+		GuanShiRuntime,
 		MakeFormationTargetingInstances(TEXT("Profession.FormationMaster.GuanShi")),
-		InsightUnits,
+		GuanShiUnits,
 		EGameXXKCardTerrain::Plain,
 		17201,
-		&InsightError);
+		&GuanShiError);
 	TestTrue(
-		FString::Printf(TEXT("观势 pending-choice fixture initializes: %s"), *InsightError),
-		bInsightInitialized);
-	if (!bInsightInitialized || InsightRuntime.Deck.Hand.IsEmpty())
+		FString::Printf(TEXT("平野观势 same-terrain fixture initializes: %s"), *GuanShiError),
+		bGuanShiInitialized);
+	if (!bGuanShiInitialized || GuanShiRuntime.Deck.Hand.IsEmpty())
 	{
 		return false;
 	}
-	const FName GuanShiInstanceId = InsightRuntime.Deck.Hand[0].InstanceId;
+	const FName GuanShiInstanceId = GuanShiRuntime.Deck.Hand[0].InstanceId;
+	FGameXXKCardPlayPreview GuanShiPreview;
+	TestTrue(
+		FString::Printf(TEXT("平野观势 builds its fixed enemy preview: %s"), *GuanShiError),
+		GameXXKCardRules::BuildCardPlayPreview(GuanShiRuntime, GuanShiInstanceId, GuanShiPreview, &GuanShiError));
+	TestEqual(TEXT("平野观势 always uses a single-enemy target"), GuanShiPreview.TargetRequest.EffectiveMode, EGameXXKCardTargetMode::SingleEnemy);
+	TestTrue(TEXT("平野观势 can select the living enemy"), IsCandidateLegal(GuanShiPreview.TargetRequest, TEXT("Enemy")));
 	FGameXXKCardPlayResult GuanShiResult;
 	const bool bGuanShiResolved = GameXXKCardRules::ResolveCardPlay(
-		InsightRuntime,
+		GuanShiRuntime,
 		GuanShiInstanceId,
-		NAME_None,
+		TEXT("Enemy"),
 		GuanShiResult,
-		&InsightError);
+		&GuanShiError);
 	TestTrue(
-		FString::Printf(TEXT("观势 resolves before its insight choice: %s"), *InsightError),
+		FString::Printf(TEXT("平野观势 resolves on its already-active terrain: %s"), *GuanShiError),
 		bGuanShiResolved);
-	if (!bGuanShiResolved || InsightRuntime.Deck.Hand.IsEmpty())
+	if (!bGuanShiResolved)
 	{
 		return false;
 	}
-	TestTrue(TEXT("观势 explicitly opens a blocking insight choice"), GameXXKCardRules::HasPendingChoice(InsightRuntime.Deck));
-	FGameXXKCardPlayPreview BlockedPreview;
-	InsightError.Reset();
-	TestFalse(
-		TEXT("another card is intentionally blocked until the 观势 choice completes"),
-		GameXXKCardRules::BuildCardPlayPreview(InsightRuntime, InsightRuntime.Deck.Hand[0].InstanceId, BlockedPreview, &InsightError));
-	TestTrue(TEXT("the blocking failure names the pending choice"), InsightError.Contains(TEXT("pending card choice")));
-	if (!InsightRuntime.Deck.PendingChoice.Candidates.IsEmpty())
+	TestEqual(TEXT("平野观势 keeps the terrain on Plain"), GuanShiRuntime.Terrain, EGameXXKCardTerrain::Plain);
+	TestFalse(TEXT("same-terrain 平野观势 does not report a terrain change"), GuanShiRuntime.bTerrainChangedThisRound);
+	const FGameXXKCardCombatUnit* GuanShiEnemy = GuanShiRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
 	{
-		const FName PickedId = InsightRuntime.Deck.PendingChoice.Candidates[0].InstanceId;
-		TArray<FName> ReorderedIds;
-		for (int32 CandidateIndex = 1; CandidateIndex < InsightRuntime.Deck.PendingChoice.Candidates.Num(); ++CandidateIndex)
-		{
-			ReorderedIds.Add(InsightRuntime.Deck.PendingChoice.Candidates[CandidateIndex].InstanceId);
-		}
-		InsightError.Reset();
-		TestTrue(
-			FString::Printf(TEXT("the 观势 insight choice can complete: %s"), *InsightError),
-			GameXXKCardRules::SubmitInsightChoice(InsightRuntime.Deck, PickedId, ReorderedIds, &InsightError));
-		TestFalse(TEXT("completing 观势 clears the blocking choice"), GameXXKCardRules::HasPendingChoice(InsightRuntime.Deck));
-		FGameXXKCardPlayPreview UnblockedPreview;
-		TestTrue(
-			FString::Printf(TEXT("a remaining card becomes previewable after 观势 completes: %s"), *InsightError),
-			GameXXKCardRules::BuildCardPlayPreview(InsightRuntime, InsightRuntime.Deck.Hand[0].InstanceId, UnblockedPreview, &InsightError));
-	}
-	else
+		return Unit.UnitId == TEXT("Enemy");
+	});
+	TestNotNull(TEXT("平野观势 retains its selected enemy"), GuanShiEnemy);
+	if (GuanShiEnemy)
 	{
-		AddError(TEXT("观势 opened an insight choice without candidates"));
+		TestEqual(TEXT("same-terrain 平野观势 still grants the Plain Burn2 benefit"), GameXXKCardRules::GetCombatStatusStacks(*GuanShiEnemy, EGameXXKCardStatus::Burn), 2);
 	}
+	TestFalse(TEXT("平野观势 no longer opens an obsolete insight choice"), GameXXKCardRules::HasPendingChoice(GuanShiRuntime.Deck));
 
 	TArray<FGameXXKCardCombatUnit> RotationUnits;
 	RotationUnits.Add(MakeFormationTargetingUnit(TEXT("FormationOwner"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::FormationMaster, 1));
@@ -378,7 +366,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKQuestNpcTerrainTargetingDiagnosticTest::RunTest(const FString& Parameters)
 {
-	for (const EGameXXKCardTerrain Terrain : {EGameXXKCardTerrain::Cliff, EGameXXKCardTerrain::Forest})
+	for (const EGameXXKCardTerrain Terrain : {
+		EGameXXKCardTerrain::Plain,
+		EGameXXKCardTerrain::Cliff,
+		EGameXXKCardTerrain::Forest,
+		EGameXXKCardTerrain::WaterShore,
+		EGameXXKCardTerrain::Ferry,
+		EGameXXKCardTerrain::Village,
+		EGameXXKCardTerrain::Cave})
 	{
 		TArray<FGameXXKCardCombatUnit> Units;
 		Units.Add(MakeFormationTargetingUnit(TEXT("FormationOwner"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 1));
@@ -410,23 +405,23 @@ bool FGameXXKQuestNpcTerrainTargetingDiagnosticTest::RunTest(const FString& Para
 		TestTrue(
 			FString::Printf(TEXT("%s previews: %s"), *Context, *Error),
 			GameXXKCardRules::BuildCardPlayPreview(Runtime, Runtime.Deck.Hand[0].InstanceId, Preview, &Error));
-		TestFalse(FString::Printf(TEXT("%s is automatic"), *Context), Preview.TargetRequest.bRequiresManualSelection);
-		TestEqual(FString::Printf(TEXT("%s targets all allies"), *Context), Preview.TargetRequest.EffectiveMode, EGameXXKCardTargetMode::AllAllies);
+		TestTrue(FString::Printf(TEXT("%s requires one enemy anchor"), *Context), Preview.TargetRequest.bRequiresManualSelection);
+		TestEqual(FString::Printf(TEXT("%s remains fixed SingleEnemy"), *Context), Preview.TargetRequest.EffectiveMode, EGameXXKCardTargetMode::SingleEnemy);
+		TestTrue(FString::Printf(TEXT("%s permits the living enemy"), *Context), IsCandidateLegal(Preview.TargetRequest, TEXT("Enemy")));
+		TestFalse(FString::Printf(TEXT("%s never permits the owner"), *Context), IsCandidateLegal(Preview.TargetRequest, TEXT("FormationOwner")));
+		TestFalse(FString::Printf(TEXT("%s never permits another ally"), *Context), IsCandidateLegal(Preview.TargetRequest, TEXT("Hero")));
 		FGameXXKCardPlayResult Result;
 		Error.Reset();
-		const bool bResolved = GameXXKCardRules::ResolveCardPlay(Runtime, Runtime.Deck.Hand[0].InstanceId, NAME_None, Result, &Error);
-		TestTrue(FString::Printf(TEXT("%s resolves without a stale selected target: %s"), *Context, *Error), bResolved);
+		const bool bResolved = GameXXKCardRules::ResolveCardPlay(Runtime, Runtime.Deck.Hand[0].InstanceId, TEXT("Enemy"), Result, &Error);
+		TestTrue(FString::Printf(TEXT("%s resolves on its selected enemy: %s"), *Context, *Error), bResolved);
 		if (!bResolved)
 		{
 			continue;
 		}
-		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		TestEqual(FString::Printf(TEXT("%s commits one target"), *Context), Result.TargetUnitIds.Num(), 1);
+		if (Result.TargetUnitIds.Num() == 1)
 		{
-			if (Unit.Side == EGameXXKCardTargetSide::Party)
-			{
-				TestEqual(FString::Printf(TEXT("%s grants Agility1 to %s"), *Context, *Unit.UnitId.ToString()), GameXXKCardRules::GetCombatStatusStacks(Unit, EGameXXKCardStatus::Agility), 1);
-				TestEqual(FString::Printf(TEXT("%s grants Mana3 to %s"), *Context, *Unit.UnitId.ToString()), Unit.Mana, 23);
-			}
+			TestEqual(FString::Printf(TEXT("%s preserves the selected enemy anchor"), *Context), Result.TargetUnitIds[0], FName(TEXT("Enemy")));
 		}
 	}
 	return true;
@@ -457,25 +452,16 @@ bool FGameXXKFormationMasterBoardTargetingDiagnosticTest::RunTest(const FString&
 	Board->NativeConstruct();
 	Board->RefreshFromState();
 	TestTrue(TEXT("formation targeting Board begins a visual session"), Board->BeginBattleVisualSession(17101));
-	TestTrue(TEXT("plain-terrain 引水回元 enters manual ally targeting"), Board->ClickCardInHand(CardInstanceId));
-	TestTrue(TEXT("formation Board highlights another ally"), Board->IsTargetUnitHighlighted(TEXT("Hero")));
-	TestTrue(TEXT("formation Board also permits the card owner"), Board->IsTargetUnitHighlighted(TEXT("FormationOwner")));
-	TestFalse(TEXT("formation Board does not highlight an enemy for 引水回元"), Board->IsTargetUnitHighlighted(TEXT("Enemy")));
-
-	UButton* const AllyProxy = Board->GetUnitTargetProxyForTest(TEXT("Hero"));
-	TestNotNull(TEXT("the highlighted ally has a real clickable target proxy"), AllyProxy);
-	TestTrue(TEXT("the highlighted ally target proxy is enabled"), AllyProxy && AllyProxy->GetIsEnabled());
-	if (AllyProxy)
-	{
-		AllyProxy->OnClicked.Broadcast();
-	}
+	TestTrue(TEXT("plain-terrain 引水回元 resolves with its fixed automatic all-allies target"), Board->ClickCardInHand(CardInstanceId));
 	TestFalse(
-		TEXT("clicking the ally proxy commits 引水回元 and removes the card from hand"),
+		TEXT("automatic 引水回元 removes the card from hand"),
 		Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.ContainsByPredicate([CardInstanceId](const FGameXXKCardInstance& Candidate)
 		{
 			return Candidate.InstanceId == CardInstanceId;
 		}));
-	TestFalse(TEXT("successful ally targeting exits the card-targeting mode"), Board->IsCardTargetingForTest());
+	TestFalse(TEXT("automatic 引水回元 never opens card-targeting mode"), Board->IsCardTargetingForTest());
+	TestEqual(TEXT("plain-terrain 引水回元 switches the battle to Water Shore"), Subsystem->GetRuntimeState().CardRun.ActiveBattle.Terrain, EGameXXKCardTerrain::WaterShore);
+	TestTrue(TEXT("plain-terrain 引水回元 records an actual terrain change"), Subsystem->GetRuntimeState().CardRun.ActiveBattle.bTerrainChangedThisRound);
 
 	UGameInstance* const WaterGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const WaterSubsystem = NewObject<UGameXXKMVPSubsystem>(WaterGameInstance);
@@ -495,8 +481,9 @@ bool FGameXXKFormationMasterBoardTargetingDiagnosticTest::RunTest(const FString&
 	WaterBoard->RefreshFromState();
 	TestTrue(TEXT("water-terrain formation Board begins a visual session"), WaterBoard->BeginBattleVisualSession(17102));
 	const bool bWaterTerrainResolved = WaterBoard->ClickCardInHand(WaterCardInstanceId);
-	TestTrue(TEXT("water-terrain 引水回元 commits through its automatic all-allies override"), bWaterTerrainResolved);
-	TestFalse(TEXT("water-terrain target override never opens a stale arrow"), WaterBoard->IsCardTargetingForTest());
+	TestTrue(TEXT("water-terrain 引水回元 commits through its fixed automatic all-allies target"), bWaterTerrainResolved);
+	TestFalse(TEXT("same-terrain 引水回元 never opens a stale arrow"), WaterBoard->IsCardTargetingForTest());
+	TestFalse(TEXT("same-terrain 引水回元 does not report an actual terrain change"), WaterSubsystem->GetRuntimeState().CardRun.ActiveBattle.bTerrainChangedThisRound);
 	const bool bWaterCardRemainsInHand = WaterSubsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.ContainsByPredicate(
 		[WaterCardInstanceId](const FGameXXKCardInstance& Candidate)
 		{

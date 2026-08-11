@@ -494,6 +494,8 @@ namespace
 		}
 		FGameXXKRuntimeState& HealingRawState = HealingMutationSubsystem->GetMutableRuntimeState();
 		HealingRawState.PlayerHP = FMath::Max(1, HealingRawState.PlayerMaxHP - 10);
+		Test.TestTrue(TEXT("healing facade fixture explicitly grants one healing powder"),
+			UGameXXKMVPRules::AddItem(HealingRawState, UGameXXKMVPRules::ItemHealingPowder(), 1));
 		const int32 RawHealingUnitCount = HealingRawState.CardRun.ActiveBattle.Units.Num();
 		const int32 RawHealingEnemyCount = HealingRawState.ActiveBattleEnemies.Num();
 		Test.TestTrue(TEXT("fixture applies before the direct healing facade mutation"), HealingMutationSubsystem->ApplyBattleHudFixtureForTest(ApplyError));

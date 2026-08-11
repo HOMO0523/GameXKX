@@ -94,7 +94,9 @@ enum class EGameXXKCardResolutionOrigin : uint8
 	HeavyArrow = 4,
 	Reaction = 5,
 	TerrainListener = 6,
-	TaskReward = 7
+	TaskReward = 7,
+	TaskNpcTaskReplay = 8,
+	PartnerSorcererTaskReplay = 9
 };
 
 /** Declarative post-base behavior for protagonist Hunter cards. */
@@ -107,6 +109,22 @@ enum class EGameXXKHeavyArrowKind : uint8
 	AddPrimaryAttackPercentPerCharge = 3
 };
 
+/** Unit whose Charge is locked and consumed by a Heavy Arrow payload. */
+UENUM(BlueprintType)
+enum class EGameXXKHeavyArrowChargeSource : uint8
+{
+	CardOwner = 0,
+	HighestAttackAlly = 1
+};
+
+/** When Charge is snapshotted. Hunter attacks lock before their base effects; support NPCs may grant it first. */
+UENUM(BlueprintType)
+enum class EGameXXKHeavyArrowLockTiming : uint8
+{
+	BeforeBaseEffects = 0,
+	AfterBaseEffects = 1
+};
+
 /** Reward executed after the complete eight-card protagonist spell task replay. */
 UENUM(BlueprintType)
 enum class EGameXXKHeroSpellTaskReward : uint8
@@ -116,6 +134,139 @@ enum class EGameXXKHeroSpellTaskReward : uint8
 	Ice = 2,
 	Lightning = 3,
 	Universal = 4
+};
+
+/** Sequencing family for one permanent Sorcerer-partner card. */
+UENUM(BlueprintType)
+enum class EGameXXKSorcererCardFamily : uint8
+{
+	None = 0,
+	Core = 1,
+	Fire = 2,
+	Ice = 3,
+	Lightning = 4,
+	Universal = 5
+};
+
+/** Locked five-card task branch for a permanent Sorcerer partner. */
+UENUM(BlueprintType)
+enum class EGameXXKSorcererTaskBranch : uint8
+{
+	None = 0,
+	Normal = 1,
+	Fire = 2,
+	Ice = 3,
+	Lightning = 4
+};
+
+/** Data-selected base/sequence behavior for permanent Sorcerer-partner cards. */
+UENUM(BlueprintType)
+enum class EGameXXKSorcererSequenceRule : uint8
+{
+	None = 0,
+	CoreSearch = 1,
+	CoreManaEcho = 2,
+	FireLamp = 3,
+	FireSpread = 4,
+	FireBurst = 5,
+	FireSearch = 6,
+	IceCurrentManaRestore = 7,
+	IceMaxMana = 8,
+	IceArmorDouble = 9,
+	IceSearch = 10,
+	LightningMark = 11,
+	LightningSearch = 12,
+	LightningMarkHits = 13,
+	LightningStorm = 14,
+	UniversalScalingAttack = 15,
+	UniversalDraw = 16,
+	UniversalPartyArmor = 17,
+	UniversalSearch = 18
+};
+
+/** Starter reward selected by Sorcerer card data after a five-card replay. */
+UENUM(BlueprintType)
+enum class EGameXXKSorcererRewardRule : uint8
+{
+	None = 0,
+	CoreSearch = 1,
+	CoreManaEcho = 2,
+	FireLamp = 3,
+	FireSpread = 4,
+	FireBurst = 5,
+	FireSearch = 6,
+	IceCurrentManaRestore = 7,
+	IceMaxMana = 8,
+	IceArmorDouble = 9,
+	IceSearch = 10,
+	LightningMark = 11,
+	LightningSearch = 12,
+	LightningMarkHits = 13,
+	LightningStorm = 14,
+	UniversalScalingAttack = 15,
+	UniversalDraw = 16,
+	UniversalPartyArmor = 17,
+	UniversalSearch = 18
+};
+
+/** Data-selected special handling for the base effects of permanent Blade partner cards. */
+UENUM(BlueprintType)
+enum class EGameXXKBladeBaseRule : uint8
+{
+	None = 0,
+	HealFromTriggeredBleed = 1,
+	PreserveTriggeredBleed = 2,
+	ConsumeVulnerabilityForExtraAttacks = 3,
+	RefundCostsAndDrawOnKill = 4,
+	OpenBladeExtraAttack = 5,
+	OpenBladeResidualStyle = 6
+};
+
+/** The first-active-card payload contributed by a permanent Blade partner card. */
+UENUM(BlueprintType)
+enum class EGameXXKBladeChargeRule : uint8
+{
+	None = 0,
+	ReplayNextActiveBase = 1,
+	CopyNextActiveToHand = 2,
+	ReturnNextActiveToHandOnce = 3,
+	ReplayNextActiveNextRound = 4,
+	RestoreNextActiveOwnerState = 5,
+	DuplicateNextSingleTargetOrDraw = 6,
+	MakeNextActiveEnergyFree = 7,
+	MakeNextActiveManaFree = 8,
+	RefundNextActiveCosts = 9,
+	CountNextActiveTwice = 10,
+	CopyNextActiveNextRound = 11,
+	RetainNextActiveNextRound = 12,
+	PreserveFinishCandidate = 13,
+	RetainRemainingHand = 14,
+	LightLoad = 15,
+	DrawTwoAfterNextActive = 16,
+	DrawSameOwnerAfterNextActive = 17,
+	DrawOtherOwnerAfterNextActive = 18
+};
+
+/** The end-of-player-phase payload contributed by the final permanent Blade partner card. */
+UENUM(BlueprintType)
+enum class EGameXXKBladeFinishRule : uint8
+{
+	None = 0,
+	ReturnFirstActiveNextRound = 1,
+	MarkAndPrepareTwoCounters = 2,
+	PreserveFirstTwoBleedTriggers = 3,
+	DrawOnFirstThreeBleedTriggers = 4,
+	HealBladeBleedCapTwelve = 5,
+	ReturnFirstActiveAgainstBleeding = 6,
+	FreezeVulnerabilityAndReplay = 7,
+	CopyFirstStatusConsumer = 8,
+	RefundFirstHighCostAndDrawTwo = 9,
+	CopyFirstKill = 10,
+	MarkAndReregisterCounterVolley = 11,
+	FirstTwoDodgesFree = 12,
+	TransferMarkBeforeCounter = 13,
+	FirstCounterVolleyHitsAll = 14,
+	StoreChargeAsNativeStyle = 15
 };
 
 /** Lifecycle state reserved for deck, hand, discard, and battle integrations. */
@@ -202,7 +353,11 @@ enum class EGameXXKCardEffectTarget : uint8
 	LowestHealthOtherAlly = 8,
 	Attacker = 9,
 	PlayedCard = 10,
-	HighestArmorAlly = 11
+	HighestArmorAlly = 11,
+	HighestAttackAlly = 12,
+	PriorityEnemy = 13,
+	/** Every living unit on the manually selected unit's side. */
+	SelectedTargetSide = 14
 };
 
 /** Unit whose attributes supply an effect's requested amount. */
@@ -212,7 +367,8 @@ enum class EGameXXKCardEffectSource : uint8
 	Invalid = 0 UMETA(Hidden),
 	CardOwner = 1,
 	SelectedTarget = 2,
-	HighestArmorAlly = 3
+	HighestArmorAlly = 3,
+	HighestAttackAlly = 4
 };
 
 /** Declarative effect operations. No operation is selected by CardId at runtime. */
@@ -264,7 +420,21 @@ enum class EGameXXKCardEffectType : uint8
 	TriggerStatus = 42,
 	LightningPerTargetStatusSnapshot = 43,
 	ReplayTriggeredCardBase = 44,
-	ReplaySourceCardBase = 45
+	ReplaySourceCardBase = 45,
+	SearchUnfinishedTaskNpcCard = 46,
+	ModifyManaCost = 47,
+	WidenNextActiveSingleTarget = 48,
+	PreserveNextReactionUse = 49,
+	RetainArmorNextRound = 50,
+	CleanseFriendlyDamageOverTime = 51,
+	/** Heals an ally or applies equal unmitigated health loss to an enemy without consuming Medicine. */
+	HealOrReverseFlat = 52,
+	/** Switches the battle to TerrainOverride; choosing the current terrain is a valid no-op. */
+	ChangeTerrain = 53,
+	/** Deals Attack-percent damage plus an additional percentage for each live stack of Status on that target. */
+	DamagePercentAttackPerTargetStatus = 54,
+	/** Raises the target's maximum Mana without changing its current Mana. */
+	IncreaseMaxMana = 55
 };
 
 /** Optional, soft gate for an effect. It may also describe status consumption. */
@@ -279,7 +449,34 @@ enum class EGameXXKCardEffectConditionType : uint8
 	OwnerHealthBelowPercent = 5,
 	TargetHealthBelowPercent = 6,
 	TerrainIsAny = 7,
-	OwnerHasDamageOverTime = 8
+	OwnerHasDamageOverTime = 8,
+	TargetIsAlly = 9,
+	TargetIsEnemy = 10
+};
+
+/** Persistent formula installed by the first successful active play of one permanent Healer card. */
+UENUM(BlueprintType)
+enum class EGameXXKHealerFormulaKind : uint8
+{
+	None = 0,
+	AnyHealthChangeMedicine = 1,
+	HighEnergyAndSixMedicine = 2,
+	FirstHealingMedicine = 3,
+	ThreeCleansedDotMedicine = 4,
+	LowHealthCrossMedicine = 5,
+	ThreeEffectiveHealsDraw = 6,
+	BleedRemovedPartyArmor = 7,
+	LargeHealingArmorOrVulnerability = 8,
+	LowHealthCrossAgility = 9,
+	ThreeUnitHealthChangeDrawMana = 10,
+	PoisonDamageMedicine = 11,
+	BleedPoisonMark = 12,
+	GroupPoisonMedicineDraw = 13,
+	DualDotExplosionMedicine = 14,
+	TwoBleedPacketsMedicine = 15,
+	GroupDirectDamageEnergy = 16,
+	PoisonedVulnerabilityMedicineDraw = 17,
+	TripleDotExplosionMomentumDraw = 18
 };
 
 UENUM(BlueprintType)
@@ -351,6 +548,38 @@ enum class EGameXXKCardTargetModeOverrideConditionType : uint8
 	TargetHasStatus = 3
 };
 
+/** Declarative Blade sequence identity. Runtime resolves these enums without CardId branches. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKBladeSequenceRule
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKBladeBaseRule BaseRule = EGameXXKBladeBaseRule::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKBladeChargeRule ChargeRule = EGameXXKBladeChargeRule::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKBladeFinishRule FinishRule = EGameXXKBladeFinishRule::None;
+};
+
+/** Declarative identity for one permanent Sorcerer-partner card. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKSorcererCardRule
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKSorcererCardFamily Family = EGameXXKSorcererCardFamily::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKSorcererSequenceRule SequenceRule = EGameXXKSorcererSequenceRule::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKSorcererRewardRule RewardRule = EGameXXKSorcererRewardRule::None;
+};
+
 /** Data-only Heavy Arrow payload; runtime behavior is selected by Kind rather than CardId. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKHeavyArrowRule
@@ -371,6 +600,130 @@ struct GAMEXXK_API FGameXXKHeavyArrowRule
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 EnergyGain = 0;
+
+	/** Protagonist cards use CardOwner; task-NPC support cards may empower the highest-Attack ally. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKHeavyArrowChargeSource ChargeSource = EGameXXKHeavyArrowChargeSource::CardOwner;
+
+	/** Mana restored to the locked Charge owner for each consumed stack. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 ManaPerCharge = 0;
+
+	/** Extra primary-packet scaling used when the main payload is an attack or Toxic Explosion. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 AdditionalPrimaryAttackPercentPerCharge = 0;
+
+	/** Defense ignored by the primary attack for each locked Charge stack. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 IgnoreDefensePerCharge = 0;
+
+	/** Additional live Bleed resolutions after the base hit for each locked Charge stack. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 TriggeredBleedResolutionsPerCharge = 0;
+
+	/** Optional post-hit status granted once per locked Charge stack. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardStatus BonusStatus = EGameXXKCardStatus::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 BonusStatusStacksPerCharge = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardEffectTarget BonusStatusTarget = EGameXXKCardEffectTarget::Invalid;
+
+	/** Percentage-point increase to a TargetHealthBelowPercent attack attachment per Charge. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 HealthThresholdPointsPerCharge = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKHeavyArrowLockTiming LockTiming = EGameXXKHeavyArrowLockTiming::BeforeBaseEffects;
+};
+
+/** Data-only permanent-Hunter sequencing and one-shot setup payloads. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKHunterCardRule
+{
+	GENERATED_BODY()
+
+	/** Added to the primary attack for every active card already played this round. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 PrimaryAttackPercentPerPriorActiveCard = 0;
+
+	/** Completed intervals are floor(prior active cards / interval). */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 PriorActiveCardInterval = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 DrawPerCompletedInterval = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardStatus StatusPerCompletedInterval = EGameXXKCardStatus::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 StatusStacksPerCompletedInterval = 0;
+
+	/** Accumulated Defense ignore consumed by this owner's next Heavy Arrow card. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 NextHeavyArrowIgnoreDefense = 0;
+
+	/** Accumulated Charge granted by this owner's next successful perfect Agility dodge. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 ChargeOnNextPerfectDodge = 0;
+};
+
+/** Data-only permanent-Healer cost and formula identity. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKHealerCardRule
+{
+	GENERATED_BODY()
+
+	/** Added while this CardId's formula has not yet been installed this battle. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 UnopenedFormulaEnergySurcharge = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKHealerFormulaKind FormulaKind = EGameXXKHealerFormulaKind::None;
+};
+
+/** One formula already opened by a successful permanent-Healer active play. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKHealerFormulaRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName OwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceCardId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKHealerFormulaKind Kind = EGameXXKHealerFormulaKind::None;
+
+	/** Generic cumulative counter used by the selected formula kind. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Progress = 0;
+
+	/** Generic per-phase counter used by formulas with separate player/enemy thresholds. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PhaseProgress = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bProgressFromEnemyPhase = false;
+
+	/** Zero means the formula has not spent its once-per-player-round budget. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 LastTriggeredRound = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 SecondaryLastTriggeredRound = 0;
+
+	/** Per-target once-per-round formulas store their current budget round here. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 UnitBudgetRound = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> TriggeredUnitIdsThisRound;
 };
 
 /** Declarative target-mode switch used by terrain- and status-sensitive cards. */
@@ -680,6 +1033,10 @@ struct GAMEXXK_API FGameXXKCardDefinition
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bCoreProfessionCard = false;
 
+	/** One or more equally selectable birth-build tags for non-core permanent-partner cards. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FName> ProfessionArchetypeIds;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bIdentityLocked = false;
 
@@ -698,11 +1055,28 @@ struct GAMEXXK_API FGameXXKCardDefinition
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<FGameXXKCardEffect> FinishEffects;
 
+	/** Permanent Blade partner rules; each stage is selected by data rather than CardId. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FGameXXKBladeSequenceRule BladeSequence;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FGameXXKHeavyArrowRule HeavyArrow;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FGameXXKHunterCardRule HunterRule;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FGameXXKHealerCardRule HealerRule;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FGameXXKSorcererCardRule SorcererRule;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKHeroSpellTaskReward SpellTaskReward = EGameXXKHeroSpellTaskReward::None;
+
+	/** Reward resolved only after this named task NPC's carried three-card task completes. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<FGameXXKCardEffect> TaskNpcRewardEffects;
 };
 
 /** Visual recipe only. Keys are stable semantic names, not asset paths or UI text. */
@@ -755,7 +1129,8 @@ enum class EGameXXKCardZone : uint8
 	DrawPile = 1,
 	Hand = 2,
 	DiscardPile = 3,
-	ExhaustPile = 4
+	ExhaustPile = 4,
+	PendingAutomaticHand = 5
 };
 
 /** One materialized battle card. InstanceId, rather than CardId, is the unique runtime identity. */
@@ -784,6 +1159,19 @@ struct GAMEXXK_API FGameXXKCardInstance
 	/** Stable acquisition order within the source deck. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 AcquisitionOrdinal = INDEX_NONE;
+
+	/** Generated copies remain real deck instances but expire at their owning player-round boundary. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bTemporary = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 EnergyCostOverride = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 ManaCostOverride = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 ExpireAfterPlayerRound = 0;
 };
 
 /** Persisted data for a choice that blocks normal deck mutations until it is resolved or cancelled. */
@@ -855,6 +1243,10 @@ struct GAMEXXK_API FGameXXKBattleDeckState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKCardInstance> ExhaustPile;
+
+	/** Stable overflow zone for rules-owned automatic additions while the twenty-card hand is full. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardInstance> PendingAutomaticHandCards;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKPendingCardChoice PendingChoice;
@@ -1123,6 +1515,10 @@ struct GAMEXXK_API FGameXXKCardDamageContext
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MomentumStacksOverride = INDEX_NONE;
 
+	/** Optional explicit Vulnerability consumption limit; INDEX_NONE keeps the global consume-all rule. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 VulnerabilityStacksToConsumeOverride = INDEX_NONE;
+
 	/** Statuses that belong to this direct hit and therefore are cancelled when agility avoids it. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<FGameXXKCardStatusStack> OnHitStatuses;
@@ -1189,6 +1585,14 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 DamageAfterVulnerability = 0;
 
+	/** Vulnerability stacks on the resolved receiver immediately before this hit. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 VulnerabilityStacksBeforeHit = 0;
+
+	/** Vulnerability stacks removed by this hit after applying any explicit card override. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 VulnerabilityStacksConsumed = 0;
+
 	/** Mark stacks on the final resolved receiver immediately before this hit. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MarkStacksBeforeHit = 0;
@@ -1250,6 +1654,44 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 	int32 StatusStacksConsumed = 0;
 };
 
+/** Actual status mutation produced inside one committed card transaction. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardStatusChangeResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName TargetUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardStatus Status = EGameXXKCardStatus::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 AppliedStacks = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RemovedStacks = 0;
+};
+
+/** Actual positive healing produced inside one committed card transaction. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardHealingResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName TargetUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RequestedHealing = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 EffectiveHealing = 0;
+};
+
 /** Explicit serializable phase for the card-driven battle runtime. */
 UENUM(BlueprintType)
 enum class EGameXXKCardBattlePhase : uint8
@@ -1278,6 +1720,136 @@ struct GAMEXXK_API FGameXXKResolvedCardSnapshot
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FName> OriginalTargetUnitIds;
+
+	/** Actual Mana paid by the active play; automatic resolutions never overwrite it. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PaidManaCost = 0;
+
+	/** One-based first-play position inside a permanent Sorcerer partner task, or zero otherwise. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 SorcererSequencePosition = 0;
+
+	/** Family of the immediately preceding recorded Sorcerer card, or None at position one. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKSorcererCardFamily PreviousSorcererFamily = EGameXXKSorcererCardFamily::None;
+
+	/** Branch locked for replay; a Universal starter may remain None until its second distinct card. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKSorcererTaskBranch SorcererTaskBranch = EGameXXKSorcererTaskBranch::None;
+};
+
+/** One ordinary Blade Charge waiting for the next successful active card this player round. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKBladeChargeRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKBladeChargeRule Rule = EGameXXKBladeChargeRule::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceCardId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardQuality SourceQuality = EGameXXKCardQuality::Common;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceOwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 CreatedRound = 0;
+};
+
+/** One next-active Blade Charge payload deferred to the following player round. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKBladeDelayedCardRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKBladeChargeRule Rule = EGameXXKBladeChargeRule::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceCardId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardQuality SourceQuality = EGameXXKCardQuality::Common;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceOwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKResolvedCardSnapshot RecordedCard;
+
+	/** Exact original instance used when a delayed Charge must copy or return the physical card. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKCardInstance RecordedInstance;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TriggerPlayerRound = 0;
+};
+
+/** One Sheathed-style Charge saved for a later active card without occupying the ordinary Charge slot. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKBladeStyleRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKBladeChargeRule Rule = EGameXXKBladeChargeRule::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceCardId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardQuality SourceQuality = EGameXXKCardQuality::Common;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceOwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TriggerPlayerRound = 0;
+
+	/** Residual styles target the next active this round and may never create another residual style. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bResidual = false;
+};
+
+/** One Blade Finish waiting for its next-player-round active-card window. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKBladeFinishRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKBladeFinishRule Rule = EGameXXKBladeFinishRule::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceCardId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardQuality SourceQuality = EGameXXKCardQuality::Common;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceOwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TriggerPlayerRound = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RemainingTriggers = 0;
+
+	/** Exact enemy whose existing Vulnerability is protected by Duan Yue until the next player round. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName ProtectedTargetUnitId = NAME_None;
+
+	/** Minimum pre-existing Vulnerability restored after the protected enemy phase. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 ProtectedStatusStacks = 0;
+
+	/** Prevents a multi-hit enemy card from preparing this Finish once per packet. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bTriggeredForCurrentEnemyCard = false;
 };
 
 /** One persisted delayed-effect instance. Recipient IDs are resolved when the source card is played. */
@@ -1349,6 +1921,28 @@ struct GAMEXXK_API FGameXXKEquipmentActiveEffect
 	int32 MaxTriggersPerRound = 0;
 };
 
+/** One wearer-owned PoJun copy of a successful Blade finisher's Charge. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKPoJunStoredStyleRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKBladeChargeRule Rule = EGameXXKBladeChargeRule::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceCardId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardQuality SourceQuality = EGameXXKCardQuality::Common;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceOwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TriggerPlayerRound = 0;
+};
+
 /** One persistent equipment descriptor attached exactly once to its permanent party source. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKEquipmentBattleEffectRuntime
@@ -1366,6 +1960,21 @@ struct GAMEXXK_API FGameXXKEquipmentBattleEffectRuntime
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 LastTriggerRound = 0;
+
+	/** Four-piece style slot. It is local to this exact wearer descriptor. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKPoJunStoredStyleRuntime PendingPoJunStyle;
+
+	/** Six-piece progress exists only in the player round that consumed this wearer's Charge. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PoJunChargeProgressRound = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bPoJunChargeConsumedThisRound = false;
+
+	/** Six-piece replay is consumed by the first successful active card in this player round. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingPoJunReplayPlayerRound = 0;
 };
 
 /** One independently consumable Counter or Block source registered for an enemy-card boundary. */
@@ -1388,6 +1997,10 @@ struct GAMEXXK_API FGameXXKReactionRuntime
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName SourceCardInstanceId = NAME_None;
+
+	/** One card-effect registration may grant multiple layers; only one layer from that batch fires per enemy card. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RegistrationBatchOrdinal = INDEX_NONE;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 RemainingTriggers = 0;
@@ -1416,6 +2029,10 @@ struct GAMEXXK_API FGameXXKAutomaticResolutionQueue
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKHeroSpellTaskReward PendingReward = EGameXXKHeroSpellTaskReward::None;
+
+	/** Permanent Sorcerer-partner starter reward, mutually exclusive with PendingReward. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKSorcererRewardRule PendingSorcererReward = EGameXXKSorcererRewardRule::None;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName RewardOwnerUnitId = NAME_None;
@@ -1446,6 +2063,60 @@ struct GAMEXXK_API FGameXXKHeroSpellTaskRuntime
 	FName StarterOwnerUnitId = NAME_None;
 };
 
+/** Persisted three-card task progress for one named task NPC. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKTaskNpcSpellTaskRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bActive = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName OwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> LockedCardIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> CompletedCardIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKResolvedCardSnapshot> FirstPlayOrder;
+};
+
+/** Persisted five-card task progress and per-battle auto-hand history for one Sorcerer partner. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKSorcererPartnerTaskRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bActive = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName OwnerUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> LockedCardIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> CompletedCardIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKResolvedCardSnapshot> FirstPlayOrder;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKSorcererRewardRule StarterReward = EGameXXKSorcererRewardRule::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKSorcererTaskBranch LockedBranch = EGameXXKSorcererTaskBranch::None;
+
+	/** Each Universal card may be moved automatically at most once per battle. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> AutoHandedUniversalCardIds;
+};
+
 /** Complete pure state of an in-progress card battle. It is deliberately independent from widget and scene indexes. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKCardBattleRuntime
@@ -1470,6 +2141,44 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKResolvedCardSnapshot LastActiveCard;
+
+	/** Automatic resolutions never create or consume this active-play-only sequence payload. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKBladeChargeRuntime PendingBladeCharge;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKBladeDelayedCardRuntime PendingBladeDelayedCard;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKBladeFinishRuntime PendingBladeFinish;
+
+	/** A Sheathed finisher's Charge, reserved for the first active card of its trigger round. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKBladeStyleRuntime PendingBladeNativeStyle;
+
+	/** Heng Yun may copy one consumed native style here for exactly the next active card. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKBladeStyleRuntime PendingBladeResidualStyle;
+
+	/** Non-temporary cards that Yi Shi's consumed Charge may keep through this player-round boundary. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> BladeRetainedHandCardInstanceIds;
+
+	/** Owner-keyed one-shot setup created by permanent Hunter cards such as Eagle Eye. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<FName, int32> PendingHunterHeavyArrowIgnoreDefense;
+
+	/** Owner-keyed one-shot setup consumed only by a successful perfect Agility dodge. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<FName, int32> PendingHunterPerfectDodgeCharge;
+
+	/** Open formulas are keyed by their stable owner plus CardId; duplicate instances share one formula. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKHealerFormulaRuntime> HealerFormulas;
+
+	/** Cumulative Medicine gain remainder; every complete six grants Momentum once. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<FName, int32> MedicineGainRemainderByOwner;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bTerrainChangedThisRound = false;
@@ -1496,8 +2205,20 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKReactionRuntime> Reactions;
 
+	/** Team-wide one-shot protection for the next independently stored Counter or Block source. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingPreservedPartyReactionUses = 0;
+
+	/** Party units whose armor skips exactly the next party phase-start decay point. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> RetainArmorAtNextPartyPhaseUnitIds;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 NextReactionOrdinal = 0;
+
+	/** Monotonic source for generated temporary card identities. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 NextGeneratedCardOrdinal = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKAutomaticResolutionQueue AutomaticResolutionQueue;
@@ -1505,9 +2226,21 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKHeroSpellTaskRuntime HeroSpellTask;
 
+	/** Owner-scoped permanent Sorcerer five-card tasks; inactive entries retain only battle history. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKSorcererPartnerTaskRuntime> SorcererPartnerTasks;
+
+	/** Independent named-NPC spell tasks; one active task per NPC owner. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKTaskNpcSpellTaskRuntime> TaskNpcSpellTasks;
+
 	/** Equipment snapshots are materialized at battle start; card rules must never recalculate loadouts. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKEquipmentBattleEffectRuntime> EquipmentEffects;
+
+	/** Triggered draws that must wait until the current blocking card choice and replay queue finish. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingTriggeredDrawCount = 0;
 
 	/** Monotonic per-battle source for stable modifier IDs. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
@@ -1584,6 +2317,16 @@ struct GAMEXXK_API FGameXXKCardPlayResult
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKCardDamageResult> DamageResults;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardStatusChangeResult> StatusChanges;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardHealingResult> HealingResults;
+
+	/** One entry per real Toxic Explosion operation, containing its distinct resolved DOT-type count. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<int32> ToxicExplosionDistinctDotTypeCounts;
 
 	/** Charge locked and consumed by this Heavy Arrow action. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)

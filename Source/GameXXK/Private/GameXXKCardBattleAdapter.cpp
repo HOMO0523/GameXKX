@@ -318,14 +318,24 @@ namespace
 			{
 				return SetFailure(OutError, TEXT("The route-local task NPC provenance does not match the configured NPC cards."));
 			}
-			FGameXXKBattleRuntimeUnit TaskNpc = Hero;
-			TaskNpc.Id = Run.ActiveTemporaryQuestNpcId;
-			TaskNpc.DisplayName = FText::FromString(TEXT("任务同伴"));
+			FGameXXKCompanionAttributes TaskNpcAttributes;
+			if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
+				Run.ActiveTemporaryQuestNpcId,
+				InOutState.PlayerLevel,
+				TaskNpcAttributes,
+				OutError))
+			{
+				return false;
+			}
+			FGameXXKBattleRuntimeUnit TaskNpc = MakeLegacyProjectionUnit(
+				Run.ActiveTemporaryQuestNpcId,
+				FText::FromString(TEXT("任务同伴")),
+				TaskNpcAttributes,
+				false);
 			TaskNpc.BattleSlotNumber = INDEX_NONE;
 			TaskNpc.EnemyDefinitionId = NAME_None;
 			TaskNpc.bDefending = false;
-			TaskNpc.bEnemy = false;
-			TaskNpc.bDefeated = false;
+			TaskNpc.CombatLevel = FMath::Max(1, InOutState.PlayerLevel);
 			NewParty.Add(MoveTemp(TaskNpc));
 		}
 
@@ -2304,7 +2314,17 @@ bool FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
 		TArray<FName> EffectiveSelection = SelectedCardIds;
 		if (EffectiveSelection.IsEmpty())
 		{
-			EffectiveSelection = Definition->DefaultRouteCardIds;
+			const int32 SelectionSeed = Run.RouteProgress.RootSeed != 0
+				? Run.RouteProgress.RootSeed
+				: (Candidate.RouteSeed != 0 ? Candidate.RouteSeed : Run.RouteRandomSeed);
+			if (!FGameXXKCompanionRules::BuildQuestNpcRouteCardSelection(
+				QuestNpcId,
+				SelectionSeed,
+				EffectiveSelection,
+				OutError))
+			{
+				return false;
+			}
 		}
 		if (!FGameXXKCompanionRules::SetQuestNpcCardSelection(
 			Run.PartySelection.QuestNpc,

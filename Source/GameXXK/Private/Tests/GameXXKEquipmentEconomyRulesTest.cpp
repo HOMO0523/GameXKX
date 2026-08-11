@@ -39,6 +39,7 @@ namespace
 		State.PlayerDefense = 8;
 		State.PlayerSpeed = 10;
 		State.Inventory.Add(UGameXXKMVPRules::ItemEnhancementStone(), EnhancementStones);
+		State.Inventory.Add(UGameXXKMVPRules::ItemRefinementSand(), RefinementSand);
 		State.EnhancementMaterial = EnhancementStones;
 		State.EquipmentCollection.CollectionSeed = 0x2157;
 		State.EquipmentCollection.RefinementSand = RefinementSand;
@@ -206,7 +207,7 @@ bool FGameXXKEquipmentEconomyEnhancementTest::RunTest(const FString& Parameters)
 		FGameXXKEquipmentRules::HeroCharacterId(),
 		FGameXXKCharacterStatRules::GetBareHeroStats(1),
 		PlusTenSnapshot));
-	TestEqual(TEXT("+10 modern weapon doubles only its level-one base attack"), PlusTenSnapshot.EnhancedEquipmentBaseStats.Attack, 4);
+	TestEqual(TEXT("+10 modern weapon doubles its level-one base and gains ten flat enhancement attack"), PlusTenSnapshot.EnhancedEquipmentBaseStats.Attack, 14);
 	TestHeroMatchesProjection(*this, TEXT("+10 modern hero"), State);
 
 	const TArray<uint8> AtMaximum = SerializeRuntimeState(State);
@@ -264,12 +265,28 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEquipmentEconomyReforgeTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("common reforge costs ten sand"), FGameXXKEquipmentCatalog::GetReforgeSandCost(EGameXXKEquipmentQuality::Common), 10);
-	TestEqual(TEXT("rare reforge costs thirty sand"), FGameXXKEquipmentCatalog::GetReforgeSandCost(EGameXXKEquipmentQuality::Rare), 30);
-	TestEqual(TEXT("epic reforge costs ninety sand"), FGameXXKEquipmentCatalog::GetReforgeSandCost(EGameXXKEquipmentQuality::Epic), 90);
+	TestEqual(TEXT("common reforge costs one sand"), FGameXXKEquipmentCatalog::GetReforgeSandCost(EGameXXKEquipmentQuality::Common), 1);
+	TestEqual(TEXT("rare reforge costs one sand"), FGameXXKEquipmentCatalog::GetReforgeSandCost(EGameXXKEquipmentQuality::Rare), 1);
+	TestEqual(TEXT("epic reforge costs one sand"), FGameXXKEquipmentCatalog::GetReforgeSandCost(EGameXXKEquipmentQuality::Epic), 1);
 
 	FGameXXKRuntimeState SeedState = MakeState(0, 200);
 	const FName EpicItem = CreateModern(*this, SeedState, EGameXXKEquipmentQuality::Epic, EGameXXKEquipmentSlot::Weapon, EGameXXKEquipmentSet::QingNang, 8);
+	FGameXXKRuntimeState LegacySpeedState = SeedState;
+	FGameXXKEquipmentInstance* LegacySpeedInstance = FindMutableInstance(LegacySpeedState, EpicItem);
+	TestNotNull(TEXT("legacy Speed reforge fixture resolves"), LegacySpeedInstance);
+	if (LegacySpeedInstance)
+	{
+		FGameXXKEquipmentAffixRoll& LegacySpeed = LegacySpeedInstance->RolledAffixes[0];
+		LegacySpeed.AffixId = TEXT("Affix.Universal.Speed");
+		LegacySpeed.Tier = EGameXXKAffixTier::Common;
+		LegacySpeed.Magnitude = 300;
+		LegacySpeed.Unit = EGameXXKEquipmentMagnitudeUnit::BasisPoints;
+		FGameXXKEquipmentTransactionResult LegacySpeedResult;
+		TestTrue(TEXT("an existing legacy Speed affix remains eligible for paid replacement"),
+			FGameXXKEquipmentEconomyRules::BeginReforge(LegacySpeedState, EpicItem, 0, LegacySpeedResult));
+		TestFalse(TEXT("paid replacement never proposes the retired Speed affix again"),
+			LegacySpeedState.EquipmentCollection.PendingReforge.CandidateAffix.AffixId == FName(TEXT("Affix.Universal.Speed")));
+	}
 	FGameXXKRuntimeState A = SeedState;
 	FGameXXKRuntimeState B = SeedState;
 	FGameXXKEquipmentTransactionResult ResultA;
@@ -281,14 +298,24 @@ bool FGameXXKEquipmentEconomyReforgeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("pending reforge stores a complete active preview"), PendingA.bActive);
 	TestEqual(TEXT("pending reforge stores the selected instance"), PendingA.InstanceId, EpicItem);
 	TestEqual(TEXT("pending reforge stores the selected affix index"), PendingA.AffixIndex, 0);
-	TestEqual(TEXT("pending reforge stores its paid cost"), PendingA.PaidRefinementSand, 90);
+	TestEqual(TEXT("pending reforge stores its paid cost"), PendingA.PaidRefinementSand, 1);
 	TestEqual(TEXT("pending reforge stores its consumed ordinal"), PendingA.ConsumedReforgeOrdinal, 0);
-	TestEqual(TEXT("paid preview deducts sand immediately"), A.EquipmentCollection.RefinementSand, 110);
-	TestEqual(TEXT("paid preview reports negative sand delta"), ResultA.RefinementSandDelta, -90);
+	TestEqual(TEXT("paid preview deducts sand immediately"), A.EquipmentCollection.RefinementSand, 199);
+	TestEqual(TEXT("paid preview reports negative sand delta"), ResultA.RefinementSandDelta, -1);
 	TestEqual(TEXT("paid preview advances the sequence once"), A.EquipmentCollection.NextReforgeOrdinal, 1);
 	TestTrue(TEXT("fixed seed produces the same complete candidate"), AffixRollsEqual(PendingA.CandidateAffix, PendingB.CandidateAffix));
 	TestFalse(TEXT("reforge replaces the selected affix with a new type"), PendingA.CandidateAffix.AffixId == PendingA.OriginalAffix.AffixId);
 	TestTrue(TEXT("the stored preview keeps the complete collection valid"), FGameXXKEquipmentRules::ValidateCollectionState(A.EquipmentCollection));
+
+	FGameXXKRuntimeState StaleSandMirror = SeedState;
+	StaleSandMirror.EquipmentCollection.RefinementSand = 0;
+	FGameXXKEquipmentTransactionResult StaleSandResult;
+	TestTrue(TEXT("reforge accepts the authoritative backpack sand when the legacy mirror is stale"),
+		FGameXXKEquipmentEconomyRules::BeginReforge(StaleSandMirror, EpicItem, 0, StaleSandResult));
+	TestEqual(TEXT("reforge deducts one authoritative backpack sand"),
+		StaleSandMirror.Inventory.FindRef(UGameXXKMVPRules::ItemRefinementSand()), 199);
+	TestEqual(TEXT("reforge repairs the legacy sand mirror from the authoritative backpack balance"),
+		StaleSandMirror.EquipmentCollection.RefinementSand, 199);
 
 	const TArray<uint8> BeforeSecondPreview = SerializeRuntimeState(A);
 	TestFalse(TEXT("a second preview is rejected"), FGameXXKEquipmentEconomyRules::BeginReforge(A, EpicItem, 1, ResultA));
@@ -304,7 +331,7 @@ bool FGameXXKEquipmentEconomyReforgeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("accept applies the saved candidate exactly"), Accepted && AffixRollsEqual(Accepted->RolledAffixes[0], SavedCandidate));
 	TestFalse(TEXT("accept clears pending data"), Reloaded.EquipmentCollection.PendingReforge.bActive);
 	TestEqual(TEXT("accept does not advance the sequence again"), Reloaded.EquipmentCollection.NextReforgeOrdinal, 1);
-	TestEqual(TEXT("accept does not refund paid sand"), Reloaded.EquipmentCollection.RefinementSand, 110);
+	TestEqual(TEXT("accept does not refund paid sand"), Reloaded.EquipmentCollection.RefinementSand, 199);
 
 	TestTrue(TEXT("another paid preview can begin after accept"), FGameXXKEquipmentEconomyRules::BeginReforge(Reloaded, EpicItem, 0, ResultA));
 	const FGameXXKEquipmentAffixRoll BeforeCancel = Reloaded.EquipmentCollection.PendingReforge.OriginalAffix;
@@ -316,7 +343,8 @@ bool FGameXXKEquipmentEconomyReforgeTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("cancel clears pending data"), Reloaded.EquipmentCollection.PendingReforge.bActive);
 
 	FGameXXKRuntimeState Insufficient = SeedState;
-	Insufficient.EquipmentCollection.RefinementSand = 89;
+	Insufficient.EquipmentCollection.RefinementSand = 0;
+	Insufficient.Inventory.FindOrAdd(UGameXXKMVPRules::ItemRefinementSand()) = 0;
 	const TArray<uint8> BeforeInsufficient = SerializeRuntimeState(Insufficient);
 	TestFalse(TEXT("insufficient sand blocks preview"), FGameXXKEquipmentEconomyRules::BeginReforge(Insufficient, EpicItem, 0, ResultA));
 	TestEqual(TEXT("insufficient sand returns the typed error"), ResultA.Error, EGameXXKEquipmentTransactionError::InsufficientRefinementSand);
@@ -357,9 +385,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEquipmentEconomyDismantleTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("common dismantle yields five sand"), FGameXXKEquipmentCatalog::GetDismantleSandYield(EGameXXKEquipmentQuality::Common), 5);
-	TestEqual(TEXT("rare dismantle yields fifteen sand"), FGameXXKEquipmentCatalog::GetDismantleSandYield(EGameXXKEquipmentQuality::Rare), 15);
-	TestEqual(TEXT("epic dismantle yields forty-five sand"), FGameXXKEquipmentCatalog::GetDismantleSandYield(EGameXXKEquipmentQuality::Epic), 45);
+	TestEqual(TEXT("common dismantle yields one sand"), FGameXXKEquipmentCatalog::GetDismantleSandYield(EGameXXKEquipmentQuality::Common), 1);
+	TestEqual(TEXT("rare dismantle yields one sand"), FGameXXKEquipmentCatalog::GetDismantleSandYield(EGameXXKEquipmentQuality::Rare), 1);
+	TestEqual(TEXT("epic dismantle yields one sand"), FGameXXKEquipmentCatalog::GetDismantleSandYield(EGameXXKEquipmentQuality::Epic), 1);
 
 	FGameXXKRuntimeState State = MakeState(0, 1);
 	State.PlayerGold = 777;
@@ -377,17 +405,18 @@ bool FGameXXKEquipmentEconomyDismantleTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("protected batch requires confirmation"), FGameXXKEquipmentEconomyRules::DismantleBatch(State, Selected, false, Result));
 	TestEqual(TEXT("protected batch returns confirmation error"), Result.Error, EGameXXKEquipmentTransactionError::ConfirmationRequired);
 	TestTrue(TEXT("protected batch exposes confirmation flag"), Result.bConfirmationRequired);
-	TestEqual(TEXT("confirmation preview reports exact sand"), Result.RefinementSandDelta, 65);
-	TestEqual(TEXT("confirmation preview floors each item's 80 percent stone refund"), Result.EnhancementStoneDelta, 3);
+	TestEqual(TEXT("confirmation preview reports one sand per item"), Result.RefinementSandDelta, 3);
+	TestEqual(TEXT("confirmation preview reports one stone per item"), Result.EnhancementStoneDelta, 3);
 	TestRuntimeUnchanged(*this, TEXT("confirmation preview mutates nothing"), BeforeConfirmation, State);
 
 	TestTrue(TEXT("confirmed protected batch dismantles"), FGameXXKEquipmentEconomyRules::DismantleBatch(State, Selected, true, Result));
 	TestTrue(TEXT("confirmed dismantle result succeeds"), Result.bSucceeded);
 	TestEqual(TEXT("confirmed dismantle reports all instances"), Result.AffectedInstanceIds.Num(), 3);
-	TestEqual(TEXT("confirmed dismantle adds sand"), State.EquipmentCollection.RefinementSand, 66);
-	TestEqual(TEXT("confirmed dismantle adds per-item rounded stones"), State.Inventory.FindRef(UGameXXKMVPRules::ItemEnhancementStone()), 3);
+	TestEqual(TEXT("confirmed dismantle adds sand"), State.EquipmentCollection.RefinementSand, 4);
+	TestEqual(TEXT("confirmed dismantle adds backpack sand"), State.Inventory.FindRef(UGameXXKMVPRules::ItemRefinementSand()), 4);
+	TestEqual(TEXT("confirmed dismantle adds one stone per item"), State.Inventory.FindRef(UGameXXKMVPRules::ItemEnhancementStone()), 3);
 	TestEqual(TEXT("confirmed dismantle synchronizes the stone mirror"), State.EnhancementMaterial, 3);
-	TestEqual(TEXT("dismantle never awards or spends gold"), State.PlayerGold, 777);
+	TestEqual(TEXT("dismantle awards ten gold per item"), State.PlayerGold, 807);
 	TestNull(TEXT("common instance is deleted"), FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, Common));
 	TestNull(TEXT("rare instance is deleted"), FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, Rare));
 	TestNull(TEXT("epic instance is deleted"), FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, Epic));
@@ -410,9 +439,9 @@ bool FGameXXKEquipmentEconomyDismantleTest::RunTest(const FString& Parameters)
 	FindMutableInstance(PerItemFloor, FloorB)->EnhancementLevel = 1;
 	TestFalse(TEXT("two enhanced common items still require confirmation"), FGameXXKEquipmentEconomyRules::DismantleBatch(
 		PerItemFloor, {FloorA, FloorB}, false, Result));
-	TestEqual(TEXT("two +1 items refund floor(0.8) each, not floor(1.6) once"), Result.EnhancementStoneDelta, 0);
+	TestEqual(TEXT("two items always preview two fixed stone rewards"), Result.EnhancementStoneDelta, 2);
 
-	FGameXXKRuntimeState SandOverflow = MakeState(0, MAX_int32 - 1);
+	FGameXXKRuntimeState SandOverflow = MakeState(0, MAX_int32);
 	const FName SandOverflowItem = CreateModern(*this, SandOverflow, EGameXXKEquipmentQuality::Common, EGameXXKEquipmentSlot::Weapon);
 	FindMutableInstance(SandOverflow, SandOverflowItem)->EnhancementLevel = 1;
 	const TArray<uint8> BeforeSandOverflow = SerializeRuntimeState(SandOverflow);
@@ -428,7 +457,30 @@ bool FGameXXKEquipmentEconomyDismantleTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("confirmed sand overflow reports no unapplied sand delta"), Result.RefinementSandDelta, 0);
 	TestRuntimeUnchanged(*this, TEXT("confirmed sand overflow preserves the complete runtime"), BeforeSandOverflow, SandOverflow);
 
-	FGameXXKRuntimeState StoneOverflow = MakeState(MAX_int32 - 1, 0);
+	FGameXXKRuntimeState BackpackSandOverflow = MakeState(0, 0);
+	BackpackSandOverflow.Inventory.FindOrAdd(UGameXXKMVPRules::ItemRefinementSand()) = MAX_int32;
+	const FName BackpackSandOverflowItem = CreateModern(
+		*this,
+		BackpackSandOverflow,
+		EGameXXKEquipmentQuality::Common,
+		EGameXXKEquipmentSlot::Weapon);
+	const TArray<uint8> BeforeBackpackSandOverflow = SerializeRuntimeState(BackpackSandOverflow);
+	TestFalse(TEXT("dismantle rejects overflow of the authoritative backpack sand even when the legacy mirror is stale"),
+		FGameXXKEquipmentEconomyRules::DismantleBatch(
+			BackpackSandOverflow,
+			{BackpackSandOverflowItem},
+			true,
+			Result));
+	TestEqual(TEXT("authoritative backpack sand overflow returns invalid request"),
+		Result.Error,
+		EGameXXKEquipmentTransactionError::InvalidRequest);
+	TestRuntimeUnchanged(
+		*this,
+		TEXT("authoritative backpack sand overflow preserves the complete runtime"),
+		BeforeBackpackSandOverflow,
+		BackpackSandOverflow);
+
+	FGameXXKRuntimeState StoneOverflow = MakeState(MAX_int32, 0);
 	const FName StoneOverflowItem = CreateModern(*this, StoneOverflow, EGameXXKEquipmentQuality::Common, EGameXXKEquipmentSlot::Armor);
 	FindMutableInstance(StoneOverflow, StoneOverflowItem)->EnhancementLevel = 10;
 	const TArray<uint8> BeforeStoneOverflow = SerializeRuntimeState(StoneOverflow);
@@ -467,7 +519,7 @@ bool FGameXXKEquipmentEconomyDismantleTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("overflow reduces to normal capacity"), Overflow.EquipmentCollection.WarehouseInstanceIds.Num(), 200);
 	TestFalse(TEXT("overflow flag clears at normal capacity"), Overflow.EquipmentCollection.bLegacyWarehouseOverflow);
 	TestEqual(TEXT("legacy compatibility inventory rebuilds remaining copies"), Overflow.Inventory.FindRef(TEXT("Item.WoodenSword")), 200);
-	TestEqual(TEXT("overflow dismantle yields common sand"), Overflow.EquipmentCollection.RefinementSand, 5);
+	TestEqual(TEXT("overflow dismantle yields one fixed sand"), Overflow.EquipmentCollection.RefinementSand, 1);
 	return true;
 }
 

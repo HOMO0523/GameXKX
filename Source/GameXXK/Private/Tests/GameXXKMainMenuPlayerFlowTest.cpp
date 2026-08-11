@@ -36,25 +36,60 @@ namespace
 		{
 			const int32 SlotCount = UGameXXKMVPSubsystem::GetManualSaveSlotCount();
 			Backups.SetNumZeroed(SlotCount);
+			PreV7Backups.SetNumZeroed(SlotCount);
 
 			for (int32 SlotIndex = 0; SlotIndex < SlotCount; ++SlotIndex)
 			{
 				const FString SlotName = UGameXXKMVPSubsystem::GetManualSaveSlotName(SlotIndex);
-				USaveGame* ExistingSave = UGameplayStatics::DoesSaveGameExist(SlotName, UserIndex)
-					? UGameplayStatics::LoadGameFromSlot(SlotName, UserIndex)
-					: nullptr;
-				if (ExistingSave)
+				if (UGameplayStatics::DoesSaveGameExist(SlotName, UserIndex))
 				{
+					USaveGame* ExistingSave = UGameplayStatics::LoadGameFromSlot(SlotName, UserIndex);
+					if (!ExistingSave)
+					{
+						return;
+					}
 					ExistingSave->AddToRoot();
 					Backups[SlotIndex] = ExistingSave;
 				}
+
+				const FString PreV7BackupSlotName = SlotName + TEXT(".PreV7Backup");
+				if (UGameplayStatics::DoesSaveGameExist(PreV7BackupSlotName, UserIndex))
+				{
+					USaveGame* ExistingPreV7Backup = UGameplayStatics::LoadGameFromSlot(PreV7BackupSlotName, UserIndex);
+					if (!ExistingPreV7Backup)
+					{
+						return;
+					}
+					ExistingPreV7Backup->AddToRoot();
+					PreV7Backups[SlotIndex] = ExistingPreV7Backup;
+				}
 			}
 
+			bReady = true;
 			DeleteManualSaveSlots(UserIndex);
 		}
 
 		~FScopedManualSaveSlotBackup()
 		{
+			if (!bReady)
+			{
+				for (USaveGame* ExistingSave : Backups)
+				{
+					if (ExistingSave)
+					{
+						ExistingSave->RemoveFromRoot();
+					}
+				}
+				for (USaveGame* ExistingPreV7Backup : PreV7Backups)
+				{
+					if (ExistingPreV7Backup)
+					{
+						ExistingPreV7Backup->RemoveFromRoot();
+					}
+				}
+				return;
+			}
+
 			const int32 SlotCount = UGameXXKMVPSubsystem::GetManualSaveSlotCount();
 			for (int32 SlotIndex = 0; SlotIndex < SlotCount; ++SlotIndex)
 			{
@@ -66,11 +101,18 @@ namespace
 					UGameplayStatics::SaveGameToSlot(Backups[SlotIndex], SlotName, UserIndex);
 					Backups[SlotIndex]->RemoveFromRoot();
 				}
+				if (PreV7Backups.IsValidIndex(SlotIndex) && PreV7Backups[SlotIndex])
+				{
+					UGameplayStatics::SaveGameToSlot(PreV7Backups[SlotIndex], SlotName + TEXT(".PreV7Backup"), UserIndex);
+					PreV7Backups[SlotIndex]->RemoveFromRoot();
+				}
 			}
 		}
 
 		int32 UserIndex = 0;
 		TArray<USaveGame*> Backups;
+		TArray<USaveGame*> PreV7Backups;
+		bool bReady = false;
 	};
 
 	static UGameXXKMVPSubsystem* CreateSeededSubsystem(UGameInstance* GameInstance, EGameXXKScreen Screen, int32 PlayerLevel)
@@ -105,6 +147,10 @@ bool FGameXXKMainMenuPlayerFlowTest::RunTest(const FString& Parameters)
 {
 	const int32 UserIndex = 9103;
 	FScopedManualSaveSlotBackup SlotBackup(UserIndex);
+	if (!TestTrue(TEXT("main-menu flow safely isolates all player manual save slots and migration backups"), SlotBackup.bReady))
+	{
+		return false;
+	}
 
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Slot1Subsystem = CreateSeededSubsystem(TestGameInstance, EGameXXKScreen::Town, 2);

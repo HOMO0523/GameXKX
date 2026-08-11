@@ -301,22 +301,44 @@ bool FGameXXKHeroGenericHeYuTest::RunTest(const FString& Parameters)
 			return;
 		}
 		TestEqual(FString::Printf(TEXT("%s spends three mana"), Label), FindUnit(Runtime, HeroUnitId)->Mana, 17);
-		const int32 ExpectedPacketCount = ExpectedTriggeredStacks > 0 ? 2 : 1;
+		const int32 ExpectedPacketCount = 1 + (Bleed > 0 ? 1 : 0) + (ExpectedTriggeredStacks > 0 ? 1 : 0);
 		TestEqual(FString::Printf(TEXT("%s emits the expected packet count"), Label), Result.DamageResults.Num(), ExpectedPacketCount);
-		if (ExpectedTriggeredStacks > 0 && Result.DamageResults.Num() == 2)
+		if (Bleed > 0)
 		{
-			const FGameXXKCardDamageResult& Trigger = Result.DamageResults[1];
-			TestEqual(FString::Printf(TEXT("%s uses the fixed status cause"), Label), Trigger.Cause, ExpectedCause);
-			TestEqual(FString::Printf(TEXT("%s snapshots the highest live stack"), Label), Trigger.StatusStacksBefore, ExpectedTriggeredStacks);
-			TestEqual(FString::Printf(TEXT("%s adds the full Rot amplifier"), Label), Trigger.RotDamageBonus, Rot);
-			TestEqual(FString::Printf(TEXT("%s consumes one triggered stack"), Label), Trigger.StatusStacksConsumed, 1);
-			TestEqual(FString::Printf(TEXT("%s leaves the chosen status one lower"), Label),
+			const FGameXXKCardDamageResult* AutomaticBleed = Result.DamageResults.FindByPredicate([](const FGameXXKCardDamageResult& DamageResult)
+			{
+				return DamageResult.Cause == EGameXXKCardDamageCause::Bleed;
+			});
+			TestNotNull(FString::Printf(TEXT("%s direct hit automatically triggers Bleed"), Label), AutomaticBleed);
+			if (AutomaticBleed)
+			{
+				TestEqual(FString::Printf(TEXT("%s automatic Bleed snapshots its live layers"), Label), AutomaticBleed->StatusStacksBefore, Bleed);
+				TestEqual(FString::Printf(TEXT("%s automatic Bleed consumes one layer"), Label), AutomaticBleed->StatusStacksConsumed, 1);
+			}
+			TestEqual(FString::Printf(TEXT("%s leaves Bleed one lower after the direct hit"), Label),
+				Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), Bleed - 1);
+		}
+		if (ExpectedTriggeredStacks > 0)
+		{
+			const FGameXXKCardDamageResult* Trigger = Result.DamageResults.FindByPredicate([ExpectedCause](const FGameXXKCardDamageResult& DamageResult)
+			{
+				return DamageResult.Cause == ExpectedCause;
+			});
+			TestNotNull(FString::Printf(TEXT("%s explicitly triggers the highest remaining DoT"), Label), Trigger);
+			if (Trigger)
+			{
+				TestEqual(FString::Printf(TEXT("%s uses the fixed status cause"), Label), Trigger->Cause, ExpectedCause);
+				TestEqual(FString::Printf(TEXT("%s snapshots the highest remaining live stack"), Label), Trigger->StatusStacksBefore, ExpectedTriggeredStacks);
+				TestEqual(FString::Printf(TEXT("%s adds the full Rot amplifier"), Label), Trigger->RotDamageBonus, Rot);
+				TestEqual(FString::Printf(TEXT("%s consumes one explicitly triggered stack"), Label), Trigger->StatusStacksConsumed, 1);
+			}
+			TestEqual(FString::Printf(TEXT("%s leaves the explicitly chosen status one lower"), Label),
 				Status(Runtime, EnemyUnitId, ExpectedConsumedStatus), ExpectedTriggeredStacks - 1);
 		}
 		TestEqual(FString::Printf(TEXT("%s never consumes Rot"), Label), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::DamageOverTime), Rot);
 	};
 
-	RunCase(TEXT("tie prefers Bleed"), 5, 5, 5, 20, EGameXXKCardDamageCause::Bleed, EGameXXKCardStatus::Bleed, 5);
+	RunCase(TEXT("initial tie becomes Poison after the direct hit consumes Bleed"), 5, 5, 5, 20, EGameXXKCardDamageCause::Poison, EGameXXKCardStatus::Poison, 5);
 	RunCase(TEXT("Poison wins when strictly highest"), 3, 6, 4, 2, EGameXXKCardDamageCause::Poison, EGameXXKCardStatus::Poison, 6);
 	RunCase(TEXT("Burn wins when strictly highest"), 3, 4, 7, 2, EGameXXKCardDamageCause::Burn, EGameXXKCardStatus::Burn, 7);
 	RunCase(TEXT("Rot alone is never selected"), 0, 0, 0, 20, EGameXXKCardDamageCause::Invalid, EGameXXKCardStatus::None, 0);

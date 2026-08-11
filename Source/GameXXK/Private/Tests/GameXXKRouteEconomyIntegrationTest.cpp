@@ -32,7 +32,7 @@ namespace
 		OutState.CurrentRegion = UGameXXKMVPRules::RegionQingshan();
 		OutState.CurrentMapId = UGameXXKMVPRules::RegionQingshan();
 		OutState.QuestState = EGameXXKQuestState::Accepted;
-		OutState.bFollowerJoined = false;
+		OutState.bFollowerJoined = true;
 		OutState.PlayerGold = PlayerGold;
 		if (!UGameXXKMVPRules::EnterDungeon(OutState))
 		{
@@ -166,6 +166,7 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	EntryState.CurrentRegion = UGameXXKMVPRules::RegionQingshan();
 	EntryState.CurrentMapId = UGameXXKMVPRules::RegionQingshan();
 	EntryState.QuestState = EGameXXKQuestState::Accepted;
+	EntryState.bFollowerJoined = true;
 	EntryState.PlayerGold = 913;
 	EntryState.CardRun.bRouteEconomyInitialized = true;
 	EntryState.CardRun.RouteTravelMoney = 777;

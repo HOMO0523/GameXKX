@@ -11,7 +11,8 @@ namespace
 		const EGameXXKEquipmentSetBonusScope Scope,
 		const EGameXXKEquipmentSetBonusHook Hook,
 		const EGameXXKEquipmentMagnitudeUnit Unit,
-		const int32 Value)
+		const int32 Value,
+		const int32 TriggersPerRound = INDEX_NONE)
 	{
 		FGameXXKEquipmentSetBonusDefinition Definition;
 		Definition.Id = FName(Id);
@@ -23,7 +24,9 @@ namespace
 		Definition.Hook = Hook;
 		Definition.Unit = Unit;
 		Definition.Value = Value;
-		Definition.TriggersPerRound = Hook == EGameXXKEquipmentSetBonusHook::Passive ? 0 : 1;
+		Definition.TriggersPerRound = TriggersPerRound >= 0
+			? TriggersPerRound
+			: Hook == EGameXXKEquipmentSetBonusHook::Passive ? 0 : 1;
 		return Definition;
 	}
 
@@ -34,25 +37,25 @@ namespace
 		using H = EGameXXKEquipmentSetBonusHook;
 		using U = EGameXXKEquipmentMagnitudeUnit;
 		return {
-			MakeBonus(TEXT("Set.PoJun.2"), TEXT("直接伤害提高5%。"), EGameXXKEquipmentSet::PoJun, 2, K::PoJunDirectDamage, S::Owner, H::Passive, U::BasisPoints, 500),
-			MakeBonus(TEXT("Set.PoJun.4"), TEXT("每回合首次多段攻击额外施加1层破甲。"), EGameXXKEquipmentSet::PoJun, 4, K::PoJunMultiHitArmorBreak, S::Owner, H::MultiHit, U::FlatCount, 1),
-			MakeBonus(TEXT("Set.PoJun.6"), TEXT("每回合首次攻击破甲目标时触发120%追击。"), EGameXXKEquipmentSet::PoJun, 6, K::PoJunFirstAttackFollowUp, S::Owner, H::FirstAttackPerRound, U::BasisPoints, 1200),
+			MakeBonus(TEXT("Set.PoJun.2"), TEXT("每回合首次由穿戴者产生的冲锋被消费后，抽1张牌。"), EGameXXKEquipmentSet::PoJun, 2, K::PoJunChargeDraw, S::Owner, H::PoJunChargeConsumed, U::FlatCount, 1),
+			MakeBonus(TEXT("Set.PoJun.4"), TEXT("穿戴者收招后，将该牌的冲锋保存为下回合藏式。"), EGameXXKEquipmentSet::PoJun, 4, K::PoJunFinishStoresCharge, S::Owner, H::PoJunBladeFinish, U::FlatCount, 1),
+			MakeBonus(TEXT("Set.PoJun.6"), TEXT("同回合消费冲锋并触发收招：下回合首张主动牌重放基础效果。"), EGameXXKEquipmentSet::PoJun, 6, K::PoJunOpeningFinishReplay, S::Owner, H::PoJunFirstActiveNextRound, U::FlatCount, 1),
 
 			MakeBonus(TEXT("Set.XuanJia.2"), TEXT("获得的护甲提高5%。"), EGameXXKEquipmentSet::XuanJia, 2, K::XuanJiaArmorGain, S::Owner, H::Passive, U::BasisPoints, 500),
 			MakeBonus(TEXT("Set.XuanJia.4"), TEXT("回合开始保留护甲并使首次直接受击反击80%。"), EGameXXKEquipmentSet::XuanJia, 4, K::XuanJiaArmorRetentionCounter, S::Owner, H::RoundStart, U::BasisPoints, 800),
 			MakeBonus(TEXT("Set.XuanJia.6"), TEXT("每回合首次有友方受到气血伤害时，为全队提供1次护甲与护援。"), EGameXXKEquipmentSet::XuanJia, 6, K::XuanJiaTeamGuard, S::Team, H::FirstAllyHealthDamagePerRound, U::FlatCount, 1),
 
-			MakeBonus(TEXT("Set.QingNang.2"), TEXT("治疗与净化效果提高5%。"), EGameXXKEquipmentSet::QingNang, 2, K::QingNangHealingCleanse, S::Owner, H::Passive, U::BasisPoints, 500),
-			MakeBonus(TEXT("Set.QingNang.4"), TEXT("每回合首次净化返还内力，溢出治疗的80%转化为护甲。"), EGameXXKEquipmentSet::QingNang, 4, K::QingNangCleanseOverheal, S::Owner, H::CleanseOrOverheal, U::BasisPoints, 800),
-			MakeBonus(TEXT("Set.QingNang.6"), TEXT("每回合首次治疗同时治疗全队并产生1点共享气力。"), EGameXXKEquipmentSet::QingNang, 6, K::QingNangTeamHealEnergy, S::Team, H::FirstHealPerRound, U::FlatCount, 1),
+			MakeBonus(TEXT("Set.QingNang.2"), TEXT("每回合首次打出2费及以上牌：抽1张牌。"), EGameXXKEquipmentSet::QingNang, 2, K::QingNangHighCostDraw, S::Team, H::QingNangHighCostActive, U::FlatCount, 1),
+			MakeBonus(TEXT("Set.QingNang.4"), TEXT("每回合首次打出2费及以上牌：抽1张牌；全队失去至多1点气血，再回复2点。"), EGameXXKEquipmentSet::QingNang, 4, K::QingNangHighCostBloodCycle, S::Team, H::QingNangHighCostActive, U::FlatCount, 1),
+			MakeBonus(TEXT("Set.QingNang.6"), TEXT("每回合首次打出2费及以上牌：抽1张牌；全队失去至多1点气血，再回复2点；回复1点气力。"), EGameXXKEquipmentSet::QingNang, 6, K::QingNangHighCostEnergyCycle, S::Team, H::QingNangHighCostActive, U::FlatCount, 1),
 
-			MakeBonus(TEXT("Set.ZhuiFeng.2"), TEXT("速度提高5%，开战时增加抽牌。"), EGameXXKEquipmentSet::ZhuiFeng, 2, K::ZhuiFengSpeedOpeningDraw, S::Owner, H::BattleStart, U::BasisPoints, 500),
-			MakeBonus(TEXT("Set.ZhuiFeng.4"), TEXT("每回合首次连续打出低费牌时恢复1点共享气力。"), EGameXXKEquipmentSet::ZhuiFeng, 4, K::ZhuiFengLowCostEnergy, S::Owner, H::LowCostStreak, U::FlatCount, 1),
-			MakeBonus(TEXT("Set.ZhuiFeng.6"), TEXT("每回合首次达到连击数时，下一张牌费用归零并补抽1张。"), EGameXXKEquipmentSet::ZhuiFeng, 6, K::ZhuiFengComboFreeCard, S::Owner, H::ComboThreshold, U::FlatCount, 1),
+			MakeBonus(TEXT("Set.ZhuiFeng.2"), TEXT("全队每主动打出2张牌，抽1张牌。"), EGameXXKEquipmentSet::ZhuiFeng, 2, K::ZhuiFengPairDraw, S::Team, H::ZhuiFengActiveCardCount, U::FlatCount, 1, 0),
+			MakeBonus(TEXT("Set.ZhuiFeng.4"), TEXT("全队每主动打出2张牌，抽1张牌；每回合第2张回复1点气力。"), EGameXXKEquipmentSet::ZhuiFeng, 4, K::ZhuiFengSecondCardEnergy, S::Team, H::ZhuiFengActiveCardCount, U::FlatCount, 1, 0),
+			MakeBonus(TEXT("Set.ZhuiFeng.6"), TEXT("全队每主动打出2张牌，抽1张牌；每回合第2张回1气，第4张再回1气、全队蓄力1并抽1张。"), EGameXXKEquipmentSet::ZhuiFeng, 6, K::ZhuiFengFourthCardCycle, S::Team, H::ZhuiFengActiveCardCount, U::FlatCount, 1, 0),
 
-			MakeBonus(TEXT("Set.ShiGu.2"), TEXT("施加的持续伤害层数提高5%。"), EGameXXKEquipmentSet::ShiGu, 2, K::ShiGuDamageOverTimeStacks, S::Owner, H::Passive, U::BasisPoints, 500),
-			MakeBonus(TEXT("Set.ShiGu.4"), TEXT("每回合首次令目标具有多种持续伤害时，额外造成80%伤害。"), EGameXXKEquipmentSet::ShiGu, 4, K::ShiGuMixedDamageOverTime, S::Owner, H::MultipleDamageOverTime, U::BasisPoints, 800),
-			MakeBonus(TEXT("Set.ShiGu.6"), TEXT("每回合结束时令持续伤害额外结算1次且不消耗层数。"), EGameXXKEquipmentSet::ShiGu, 6, K::ShiGuExtraDamageOverTimeTick, S::Owner, H::RoundEnd, U::FlatCount, 1),
+			MakeBonus(TEXT("Set.ShiGu.2"), TEXT("每张牌首次对一个目标施加流血、中毒或灼烧时，施加1层蚀伤。"), EGameXXKEquipmentSet::ShiGu, 2, K::ShiGuCardTargetRot, S::Owner, H::ShiGuDotApplied, U::FlatCount, 1, 0),
+			MakeBonus(TEXT("Set.ShiGu.4"), TEXT("每回合首次使目标同时具有至少2种流血、中毒或灼烧时，自动毒爆1次。"), EGameXXKEquipmentSet::ShiGu, 4, K::ShiGuFirstDualDotExplosion, S::Owner, H::ShiGuDualDotEstablished, U::FlatCount, 1),
+			MakeBonus(TEXT("Set.ShiGu.6"), TEXT("每回合首次毒爆不减少流血、中毒和灼烧层数。"), EGameXXKEquipmentSet::ShiGu, 6, K::ShiGuFirstExplosionPreservesDots, S::Owner, H::ShiGuToxicExplosion, U::FlatCount, 1),
 
 			MakeBonus(TEXT("Set.ShanHe.2"), TEXT("当前地形效果提高5%。"), EGameXXKEquipmentSet::ShanHe, 2, K::ShanHeTerrainPower, S::Owner, H::Passive, U::BasisPoints, 500),
 			MakeBonus(TEXT("Set.ShanHe.4"), TEXT("每回合首张地形联动牌费用降低1并强化相邻队友。"), EGameXXKEquipmentSet::ShanHe, 4, K::ShanHeTerrainCardFormation, S::Owner, H::TerrainSynergyCard, U::FlatCount, 1),

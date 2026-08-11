@@ -421,16 +421,32 @@ bool FGameXXKXueLuChargeBleedTest::RunTest(const FString& Parameters)
 	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("XueLu"), TEXT("Attack")}, 52008)) return false;
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("XueLu"), EnemyUnitId, Result, TEXT("Xue Lu Charge source"))) return true;
-	TestEqual(TEXT("Xue Lu base applies Bleed8"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 8);
-	if (!Resolve(*this, Runtime, TEXT("Attack"), EnemyUnitId, Result, TEXT("next active attack"))) return true;
-	const FGameXXKCardDamageResult* BleedResult = FindCause(Result.DamageResults, EGameXXKCardDamageCause::Bleed);
-	TestNotNull(TEXT("the next attack triggers one Bleed packet"), BleedResult);
-	if (BleedResult)
+	const FGameXXKCardDamageResult* SourceBleed = FindCause(Result.DamageResults, EGameXXKCardDamageCause::Bleed);
+	TestNotNull(TEXT("Xue Lu's own direct hit triggers its attached Bleed"), SourceBleed);
+	if (SourceBleed)
 	{
-		TestEqual(TEXT("the triggered packet snapshots all eight Bleed"), BleedResult->StatusStacksBefore, 8);
-		TestEqual(TEXT("the trigger audit records the normally consumed layer"), BleedResult->StatusStacksConsumed, 1);
+		TestEqual(TEXT("Xue Lu applies eight Bleed before its own hit trigger"), SourceBleed->StatusStacksBefore, 8);
+		TestEqual(TEXT("the ordinary direct hit consumes one of those eight layers"), SourceBleed->StatusStacksConsumed, 1);
 	}
-	TestEqual(TEXT("the Charge explicitly restores the consumed Bleed layer"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 8);
+	TestEqual(TEXT("Xue Lu leaves seven Bleed after its own ordinary direct hit"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 7);
+	if (!Resolve(*this, Runtime, TEXT("Attack"), EnemyUnitId, Result, TEXT("next active attack"))) return true;
+	TArray<const FGameXXKCardDamageResult*> BleedResults;
+	for (const FGameXXKCardDamageResult& DamageResult : Result.DamageResults)
+	{
+		if (DamageResult.Cause == EGameXXKCardDamageCause::Bleed)
+		{
+			BleedResults.Add(&DamageResult);
+		}
+	}
+	TestEqual(TEXT("the next attack produces its normal Bleed trigger plus Xue Lu's extra trigger"), BleedResults.Num(), 2);
+	if (BleedResults.Num() == 2)
+	{
+		TestEqual(TEXT("the ordinary hit snapshots the seven live Bleed"), BleedResults[0]->StatusStacksBefore, 7);
+		TestEqual(TEXT("the ordinary hit consumes one Bleed"), BleedResults[0]->StatusStacksConsumed, 1);
+		TestEqual(TEXT("Xue Lu's extra trigger reads the remaining six Bleed"), BleedResults[1]->StatusStacksBefore, 6);
+		TestEqual(TEXT("the preserving trigger still audits its provisional one-layer consumption"), BleedResults[1]->StatusStacksConsumed, 1);
+	}
+	TestEqual(TEXT("Xue Lu restores only its extra trigger's layer, leaving the ordinary hit decay"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 6);
 	return true;
 }
 
