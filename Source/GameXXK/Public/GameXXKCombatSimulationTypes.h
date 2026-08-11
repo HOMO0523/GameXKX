@@ -97,6 +97,27 @@ struct GAMEXXK_API FGameXXKSimulationMetrics
 	UPROPERTY(SaveGame)
 	bool bVictory = false;
 
+	/** Deterministic permanent-partner identity captured before the battle starts. */
+	UPROPERTY(SaveGame)
+	FName CompanionTemplateId = NAME_None;
+
+	UPROPERTY(SaveGame)
+	EGameXXKCharacterRole CompanionRole = EGameXXKCharacterRole::Invalid;
+
+	UPROPERTY(SaveGame)
+	FName CompanionPrimaryArchetypeId = NAME_None;
+
+	/** Six immutable birth cards reconstructed from Role + CardSeed. */
+	UPROPERTY(SaveGame)
+	TArray<FName> CompanionBirthCardIds;
+
+	/** Five cards actually selected for this route. */
+	UPROPERTY(SaveGame)
+	TArray<FName> CompanionSelectedCardIds;
+
+	UPROPERTY(SaveGame)
+	EGameXXKCardTerrain Terrain = EGameXXKCardTerrain::Invalid;
+
 	UPROPERTY(SaveGame)
 	int32 Rounds = 0;
 
@@ -125,11 +146,26 @@ struct GAMEXXK_API FGameXXKSimulationMetrics
 	UPROPERTY(SaveGame)
 	int64 ManaGained = 0;
 
+	/** Resources left when the policy explicitly ends a player phase, accumulated across rounds. */
+	UPROPERTY(SaveGame)
+	int64 EnergyUnspentAtPhaseEnd = 0;
+
+	UPROPERTY(SaveGame)
+	int64 ManaUnspentAtPhaseEnd = 0;
+
 	UPROPERTY(SaveGame)
 	int64 HealingGenerated = 0;
 
 	UPROPERTY(SaveGame)
 	int64 ArmorGenerated = 0;
+
+	/** Player-card damage remaining after armor and target health were exhausted. */
+	UPROPERTY(SaveGame)
+	int64 OverkillDamage = 0;
+
+	/** Requested player-card healing that could not become effective healing. */
+	UPROPERTY(SaveGame)
+	int64 Overhealing = 0;
 
 	/** Hand cards with affordable costs but no legal selectable target when the phase ends. */
 	UPROPERTY(SaveGame)
@@ -158,6 +194,24 @@ struct GAMEXXK_API FGameXXKSimulationMetrics
 
 	UPROPERTY(SaveGame)
 	TMap<FName, int64> StatusConsumed;
+
+	/** A card is seen once when its stable instance newly enters the hand. */
+	UPROPERTY(SaveGame)
+	TMap<FName, int64> CardsSeenById;
+
+	/** Active player commits only; automatic replays never increment this map. */
+	UPROPERTY(SaveGame)
+	TMap<FName, int64> CardsPlayedById;
+
+	/** Effective contribution of the active card transaction, keyed by its stable CardId. */
+	UPROPERTY(SaveGame)
+	TMap<FName, int64> DamageByCardId;
+
+	UPROPERTY(SaveGame)
+	TMap<FName, int64> HealingByCardId;
+
+	UPROPERTY(SaveGame)
+	TMap<FName, int64> ArmorByCardId;
 
 	UPROPERTY(SaveGame)
 	FName FailureReason = NAME_None;

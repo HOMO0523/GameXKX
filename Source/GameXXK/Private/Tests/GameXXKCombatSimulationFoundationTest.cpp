@@ -175,12 +175,39 @@ bool FGameXXKCombatSimulationFoundationTest::RunTest(const FString& Parameters)
 		SerializeSimulationResult(FirstMetrics, FirstTrace), SerializeSimulationResult(SecondMetrics, SecondTrace));
 	TestTrue(TEXT("simulation never mutates the scenario input"),
 		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&OriginalInput, &Scenario.InitialRuntimeState, PPF_None));
+	TestEqual(TEXT("simulation records the requested terrain identity"), FirstMetrics.Terrain, Scenario.Terrain);
+	TestTrue(TEXT("initial and newly drawn hand cards are attributed by CardId"), !FirstMetrics.CardsSeenById.IsEmpty());
+	TestTrue(TEXT("active plays are attributed by CardId"), !FirstMetrics.CardsPlayedById.IsEmpty());
+	int64 TotalAttributedActivePlays = 0;
+	for (const TPair<FName, int64>& Pair : FirstMetrics.CardsPlayedById)
+	{
+		TotalAttributedActivePlays += Pair.Value;
+	}
+	TestEqual(TEXT("automatic replays never masquerade as active card plays"),
+		TotalAttributedActivePlays,
+		static_cast<int64>(FirstMetrics.ActivelyPlayedCards));
+	TestTrue(TEXT("effective enemy damage is attributed to the active CardId"), !FirstMetrics.DamageByCardId.IsEmpty());
+	TestTrue(TEXT("phase-end unused energy is always non-negative"), FirstMetrics.EnergyUnspentAtPhaseEnd >= 0);
+	TestTrue(TEXT("phase-end unused living-party Mana is always non-negative"), FirstMetrics.ManaUnspentAtPhaseEnd >= 0);
+	TestTrue(TEXT("overkill is always non-negative"), FirstMetrics.OverkillDamage >= 0);
+	TestTrue(TEXT("overhealing is always non-negative"), FirstMetrics.Overhealing >= 0);
 
 	const bool bRecordedEnemyDamage = FirstTrace.ContainsByPredicate([](const FGameXXKSimulationTraceEntry& Entry)
 	{
 		return Entry.Action == TEXT("PlayCard") && Entry.HealthDelta < 0;
 	});
 	TestTrue(TEXT("a player damage card records its authoritative negative total-health delta"), bRecordedEnemyDamage);
+
+	FGameXXKSimulationScenario OverkillScenario = MakeScenario(20260724);
+	OverkillScenario.InitialRuntimeState.ActiveBattleEnemies[0].HP = 1;
+	OverkillScenario.InitialRuntimeState.ActiveBattleEnemies[0].MaxHP = 1;
+	OverkillScenario.InitialRuntimeState.ActiveBattleEnemies[0].Attack = 0;
+	FGameXXKSimulationMetrics OverkillMetrics;
+	TArray<FGameXXKSimulationTraceEntry> OverkillTrace;
+	Error.Reset();
+	TestTrue(FString::Printf(TEXT("one-health fixed battle resolves for overkill attribution: %s"), *Error),
+		FGameXXKCombatSimulationRules::RunScenario(OverkillScenario, OverkillMetrics, OverkillTrace, &Error));
+	TestTrue(TEXT("damage beyond the one-health enemy is recorded as overkill"), OverkillMetrics.OverkillDamage > 0);
 	return true;
 }
 

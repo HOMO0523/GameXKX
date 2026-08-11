@@ -22,7 +22,7 @@ from typing import Iterable, TextIO
 
 AUTOMATION_TEST = "GameXXK.Diagnostics.CardBalanceObservation"
 EXPECTED_CASE_COUNT = 2400
-OBSERVATION_SCHEMA_VERSION = 2
+OBSERVATION_SCHEMA_VERSION = 3
 SAFE_RUN_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 
 INTEGER_FIELDS = (
@@ -40,8 +40,12 @@ INTEGER_FIELDS = (
     "energy_gained",
     "mana_spent",
     "mana_gained",
+    "energy_unspent_at_phase_end",
+    "mana_unspent_at_phase_end",
     "healing_generated",
     "armor_generated",
+    "overkill_damage",
+    "overhealing",
     "stranded_target_failures",
     "maximum_queue_depth",
     "maximum_hand_size",
@@ -54,6 +58,23 @@ METRIC_FIELDS = (
     "armor_by_source",
     "status_produced",
     "status_consumed",
+    "cards_seen_by_id",
+    "cards_played_by_id",
+    "damage_by_card_id",
+    "healing_by_card_id",
+    "armor_by_card_id",
+)
+
+IDENTITY_FIELDS = (
+    "companion_template",
+    "companion_role",
+    "companion_primary_archetype",
+    "terrain",
+)
+
+NAME_LIST_FIELDS = (
+    "companion_birth_cards",
+    "companion_selected_cards",
 )
 
 SOURCE_METRIC_FIELDS = (
@@ -70,8 +91,12 @@ RUNTIME_TOTAL_FIELDS = (
     "energy_gained",
     "mana_spent",
     "mana_gained",
+    "energy_unspent_at_phase_end",
+    "mana_unspent_at_phase_end",
     "healing_generated",
     "armor_generated",
+    "overkill_damage",
+    "overhealing",
     "stranded_target_failures",
 )
 
@@ -109,6 +134,13 @@ def parse_metric_map(value: str) -> dict[str, int]:
     return result
 
 
+def parse_name_list(value: str) -> list[str]:
+    items = [item.strip() for item in value.split(";")]
+    if not items or any(not item for item in items) or len(set(items)) != len(items):
+        raise ValueError(f"invalid stable-name list: {value!r}")
+    return items
+
+
 def read_case_rows(source: TextIO) -> list[dict[str, object]]:
     reader = csv.DictReader(source)
     rows: list[dict[str, object]] = []
@@ -123,8 +155,17 @@ def read_case_rows(source: TextIO) -> list[dict[str, object]]:
                 raise ValueError(
                     f"unsupported case CSV schema: {parsed['schema_version']}"
                 )
+            if any(int(parsed[key]) < 0 for key in INTEGER_FIELDS):
+                raise ValueError("case CSV integer metrics must be non-negative")
+            for key in IDENTITY_FIELDS:
+                if not row[key].strip():
+                    raise ValueError(f"missing required identity field: {key}")
+            for key in NAME_LIST_FIELDS:
+                parsed[key] = parse_name_list(row[key])
             for key in METRIC_FIELDS:
                 parsed[key] = parse_metric_map(row[key])
+                if any(value < 0 for value in parsed[key].values()):
+                    raise ValueError(f"negative metric value in {key}")
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError(f"case CSV row {line_number} is malformed") from error
         rows.append(parsed)
@@ -184,17 +225,37 @@ def aggregate_case_rows(
     source_totals: dict[str, Counter[str]] = {
         field: Counter() for field in SOURCE_METRIC_FIELDS
     }
+    card_totals: dict[str, Counter[str]] = {
+        field: Counter()
+        for field in (
+            "cards_seen_by_id",
+            "cards_played_by_id",
+            "damage_by_card_id",
+            "healing_by_card_id",
+            "armor_by_card_id",
+        )
+    }
     buckets: dict[tuple[str, int, str], list[dict[str, object]]] = defaultdict(list)
     cohort_buckets: dict[str, list[dict[str, object]]] = defaultdict(list)
     chapter_node_buckets: dict[tuple[int, str], list[dict[str, object]]] = defaultdict(list)
+    companion_template_buckets: dict[str, list[dict[str, object]]] = defaultdict(list)
+    companion_role_buckets: dict[str, list[dict[str, object]]] = defaultdict(list)
+    companion_archetype_buckets: dict[str, list[dict[str, object]]] = defaultdict(list)
+    terrain_buckets: dict[str, list[dict[str, object]]] = defaultdict(list)
     for row in rows:
         produced.update(row["status_produced"])
         consumed.update(row["status_consumed"])
         for field in source_totals:
             source_totals[field].update(row[field])
+        for field in card_totals:
+            card_totals[field].update(row[field])
         buckets[(str(row["cohort"]), int(row["chapter"]), str(row["node"]))].append(row)
         cohort_buckets[str(row["cohort"])].append(row)
         chapter_node_buckets[(int(row["chapter"]), str(row["node"]))].append(row)
+        companion_template_buckets[str(row["companion_template"])].append(row)
+        companion_role_buckets[str(row["companion_role"])].append(row)
+        companion_archetype_buckets[str(row["companion_primary_archetype"])].append(row)
+        terrain_buckets[str(row["terrain"])].append(row)
 
     status_utilization = {
         key: {
@@ -225,6 +286,24 @@ def aggregate_case_rows(
         f"{chapter}|{node}": _outcome_summary(bucket_rows)
         for (chapter, node), bucket_rows in sorted(chapter_node_buckets.items())
     }
+    card_ids = set().union(*(set(total.keys()) for total in card_totals.values()))
+    card_usage = {
+        card_id: {
+            "seen": card_totals["cards_seen_by_id"][card_id],
+            "played": card_totals["cards_played_by_id"][card_id],
+            "play_rate": round(
+                card_totals["cards_played_by_id"][card_id]
+                / card_totals["cards_seen_by_id"][card_id],
+                6,
+            )
+            if card_totals["cards_seen_by_id"][card_id]
+            else 0.0,
+            "damage": card_totals["damage_by_card_id"][card_id],
+            "healing": card_totals["healing_by_card_id"][card_id],
+            "armor": card_totals["armor_by_card_id"][card_id],
+        }
+        for card_id in sorted(card_ids)
+    }
     stalemates = sorted(
         f"{row['cohort']}|{row['chapter']}|{row['node']}|{row['seed']}"
         for row in rows
@@ -252,6 +331,23 @@ def aggregate_case_rows(
         "buckets": bucket_summaries,
         "cohorts": cohort_summaries,
         "chapter_nodes": chapter_node_summaries,
+        "companion_templates": {
+            key: _outcome_summary(bucket_rows)
+            for key, bucket_rows in sorted(companion_template_buckets.items())
+        },
+        "companion_roles": {
+            key: _outcome_summary(bucket_rows)
+            for key, bucket_rows in sorted(companion_role_buckets.items())
+        },
+        "companion_archetypes": {
+            key: _outcome_summary(bucket_rows)
+            for key, bucket_rows in sorted(companion_archetype_buckets.items())
+        },
+        "terrains": {
+            key: _outcome_summary(bucket_rows)
+            for key, bucket_rows in sorted(terrain_buckets.items())
+        },
+        "card_usage": card_usage,
         "runtime_totals": runtime_totals,
         "runtime_maxima": runtime_maxima,
         "stranded_target_cases": stranded_target_cases,
@@ -694,8 +790,12 @@ def write_final_summary(
                 f"- Active / automatic resolutions: {runtime_totals.get('active_cards')} / {runtime_totals.get('automatic_resolutions')}",
                 f"- Energy spent / gained: {runtime_totals.get('energy_spent')} / {runtime_totals.get('energy_gained')}",
                 f"- Mana spent / gained: {runtime_totals.get('mana_spent')} / {runtime_totals.get('mana_gained')}",
+                f"- Phase-end unused energy / Mana: {runtime_totals.get('energy_unspent_at_phase_end')} / {runtime_totals.get('mana_unspent_at_phase_end')}",
+                f"- Overkill / overhealing: {runtime_totals.get('overkill_damage')} / {runtime_totals.get('overhealing')}",
                 f"- Max hand / automatic queue: {runtime_maxima.get('maximum_hand_size')} / {runtime_maxima.get('maximum_queue_depth')}",
                 f"- Stranded target cases: {len(representative.get('stranded_target_cases') or [])}",
+                f"- Companion roles / primary archetypes: {len(representative.get('companion_roles') or {})} / {len(representative.get('companion_archetypes') or {})}",
+                f"- Cards observed: {len(representative.get('card_usage') or {})}",
             ]
         )
     lines.extend(

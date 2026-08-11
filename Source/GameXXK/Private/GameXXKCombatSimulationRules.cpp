@@ -2,6 +2,7 @@
 
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardRules.h"
+#include "GameXXKCompanionRules.h"
 
 namespace
 {
@@ -290,6 +291,152 @@ namespace
 		}
 	}
 
+	static void RecordCurrentHandAsSeen(
+		const FGameXXKCardBattleRuntime& Runtime,
+		FGameXXKSimulationMetrics& InOutMetrics)
+	{
+		for (const FGameXXKCardInstance& Card : Runtime.Deck.Hand)
+		{
+			AddMetric(InOutMetrics.CardsSeenById, Card.CardId, 1);
+		}
+	}
+
+	static void RecordNewHandCardsAsSeen(
+		const FGameXXKCardBattleRuntime& Before,
+		const FGameXXKCardBattleRuntime& After,
+		FGameXXKSimulationMetrics& InOutMetrics)
+	{
+		TSet<FName> ExistingInstanceIds;
+		for (const FGameXXKCardInstance& Card : Before.Deck.Hand)
+		{
+			ExistingInstanceIds.Add(Card.InstanceId);
+		}
+		for (const FGameXXKCardInstance& Card : After.Deck.Hand)
+		{
+			if (!ExistingInstanceIds.Contains(Card.InstanceId))
+			{
+				AddMetric(InOutMetrics.CardsSeenById, Card.CardId, 1);
+			}
+		}
+	}
+
+	static int32 SumLivingPartyMana(const FGameXXKCardBattleRuntime& Runtime)
+	{
+		int32 Total = 0;
+		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		{
+			if (Unit.Side == EGameXXKCardTargetSide::Party && Unit.bLiving)
+			{
+				Total += FMath::Max(0, Unit.Mana);
+			}
+		}
+		return Total;
+	}
+
+	static int32 CountPositivePartyArmorDelta(
+		const FGameXXKCardBattleRuntime& Before,
+		const FGameXXKCardBattleRuntime& After)
+	{
+		int32 Total = 0;
+		for (const FGameXXKCardCombatUnit& BeforeUnit : Before.Units)
+		{
+			if (BeforeUnit.Side != EGameXXKCardTargetSide::Party)
+			{
+				continue;
+			}
+			if (const FGameXXKCardCombatUnit* AfterUnit = FindUnit(After.Units, BeforeUnit.UnitId))
+			{
+				Total += FMath::Max(0, AfterUnit->Armor - BeforeUnit.Armor);
+			}
+		}
+		return Total;
+	}
+
+	static void RecordActiveCardMetrics(
+		const FGameXXKCardBattleRuntime& Before,
+		const FGameXXKCardBattleRuntime& After,
+		const FGameXXKCardPlayResult& PlayResult,
+		FGameXXKSimulationMetrics& InOutMetrics)
+	{
+		AddMetric(InOutMetrics.CardsPlayedById, PlayResult.CardId, 1);
+		for (const FGameXXKCardDamageResult& Damage : PlayResult.DamageResults)
+		{
+			const FGameXXKCardCombatUnit* Target = FindUnit(Before.Units, Damage.ResolvedTargetUnitId);
+			if (!Target)
+			{
+				Target = FindUnit(After.Units, Damage.ResolvedTargetUnitId);
+			}
+			if (!Target || Target->Side != EGameXXKCardTargetSide::Enemy)
+			{
+				continue;
+			}
+			AddMetric(InOutMetrics.DamageByCardId, PlayResult.CardId, FMath::Max(0, Damage.HealthDamage));
+			if (!Damage.bAvoidedByAgility)
+			{
+				const int32 DamagePastArmor = FMath::Max(
+					0,
+					Damage.DamageAfterVulnerability - Damage.ArmorAbsorbed);
+				InOutMetrics.OverkillDamage += FMath::Max(0, DamagePastArmor - Damage.HealthDamage);
+			}
+		}
+
+		for (const FGameXXKCardHealingResult& Healing : PlayResult.HealingResults)
+		{
+			AddMetric(InOutMetrics.HealingByCardId, PlayResult.CardId, FMath::Max(0, Healing.EffectiveHealing));
+			InOutMetrics.Overhealing += FMath::Max(0, Healing.RequestedHealing - Healing.EffectiveHealing);
+		}
+
+		AddMetric(
+			InOutMetrics.ArmorByCardId,
+			PlayResult.CardId,
+			CountPositivePartyArmorDelta(Before, After));
+	}
+
+	static bool InitializeScenarioIdentity(
+		const FGameXXKRuntimeState& State,
+		const EGameXXKCardTerrain Terrain,
+		FGameXXKSimulationMetrics& InOutMetrics,
+		FString* OutError)
+	{
+		InOutMetrics.Terrain = Terrain;
+		const FGameXXKPermanentCompanion* Companion = State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[](const FGameXXKPermanentCompanion& Candidate)
+			{
+				return Candidate.bIsActive;
+			});
+		if (!Companion)
+		{
+			return true;
+		}
+
+		TArray<FName> RebuiltBirthCards;
+		FName PrimaryArchetypeId;
+		FString RebuildError;
+		if (!FGameXXKCompanionRules::BuildPersonalCardPool(
+			Companion->Role,
+			Companion->CardSeed,
+			RebuiltBirthCards,
+			&RebuildError,
+			&PrimaryArchetypeId)
+			|| RebuiltBirthCards != Companion->PersonalCardIds)
+		{
+			if (OutError)
+			{
+				*OutError = RebuildError.IsEmpty()
+					? TEXT("The active companion birth-card identity does not match Role + CardSeed.")
+					: RebuildError;
+			}
+			return false;
+		}
+
+		InOutMetrics.CompanionTemplateId = Companion->RecruitTemplateId;
+		InOutMetrics.CompanionRole = Companion->Role;
+		InOutMetrics.CompanionPrimaryArchetypeId = PrimaryArchetypeId;
+		InOutMetrics.CompanionBirthCardIds = MoveTemp(RebuiltBirthCards);
+		InOutMetrics.CompanionSelectedCardIds = Companion->SelectedCardIds;
+		return true;
+	}
+
 	static FName DamageOriginMetricKey(const FGameXXKCardDamageResult& Damage)
 	{
 		if (Damage.ResolutionOrigin == EGameXXKCardResolutionOrigin::Reaction)
@@ -375,7 +522,8 @@ namespace
 		const int32 ExplicitEnergySpent = 0,
 		const int32 ExplicitManaSpent = 0,
 		const int32 AutomaticResolutionCount = 0,
-		const int32 AdditionalQueueDepth = 0)
+		const int32 AdditionalQueueDepth = 0,
+		const FGameXXKCardPlayResult* ActivePlayResult = nullptr)
 	{
 		const int32 PartyHealthDelta = SumPartyHealth(After) - SumPartyHealth(Before);
 		const int32 TotalHealthDelta = SumAllHealth(After) - SumAllHealth(Before);
@@ -401,6 +549,11 @@ namespace
 		InOutMetrics.AutomaticResolutionCount += FMath::Max(0, AutomaticResolutionCount);
 		RecordDamageMetrics(DamageResults, InOutMetrics);
 		RecordStatusDeltas(Before, After, InOutMetrics);
+		RecordNewHandCardsAsSeen(Before, After, InOutMetrics);
+		if (ActivePlayResult)
+		{
+			RecordActiveCardMetrics(Before, After, *ActivePlayResult, InOutMetrics);
+		}
 		RecordRuntimeHighWaterMarks(Before, InOutMetrics, AdditionalQueueDepth);
 		RecordRuntimeHighWaterMarks(After, InOutMetrics, AdditionalQueueDepth);
 
@@ -835,6 +988,11 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 	{
 		return SetFailure(OutMetrics, OutError, TEXT("Simulation.InvalidInitialRuntime"), AdapterError);
 	}
+	if (!InitializeScenarioIdentity(State, Scenario.Terrain, OutMetrics, &AdapterError))
+	{
+		return SetFailure(OutMetrics, OutError, TEXT("Simulation.InvalidCompanionIdentity"), AdapterError);
+	}
+	RecordCurrentHandAsSeen(State.CardRun.ActiveBattle, OutMetrics);
 	RecordRuntimeHighWaterMarks(State.CardRun.ActiveBattle, OutMetrics);
 
 	int32 DecisionCount = 0;
@@ -874,6 +1032,8 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 				if (Decision.bEndPlayerPhase)
 				{
 					OutMetrics.StrandedTargetFailures += CountStrandedTargetFailures(State);
+					OutMetrics.EnergyUnspentAtPhaseEnd += FMath::Max(0, Before.Deck.SharedEnergy);
+					OutMetrics.ManaUnspentAtPhaseEnd += SumLivingPartyMana(Before);
 					TArray<FGameXXKCardDamageResult> DamageResults;
 					if (!FGameXXKCardBattleAdapter::EndPlayerCardPhase(State, DamageResults, &AdapterError))
 					{
@@ -928,7 +1088,8 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 						CommittedPreview.EffectiveEnergyCost,
 						CommittedPreview.EffectiveManaCost,
 						PlayResult.AutomaticResolutionCount,
-						PlayResult.MaximumAutomaticQueueDepth);
+						PlayResult.MaximumAutomaticQueueDepth,
+						&PlayResult);
 					++OutMetrics.ActivelyPlayedCards;
 				}
 				RecordFirstRoundDefeats(Before, State.CardRun.ActiveBattle, FirstRoundDefeats, OutMetrics);
