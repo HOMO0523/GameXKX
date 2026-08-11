@@ -79,6 +79,9 @@ struct GAMEXXK_API FGameXXKRouteBalanceCaseResult
 	FGameXXKRouteBalanceCase Case;
 	FGameXXKSimulationMetrics Metrics;
 	TArray<FGameXXKRouteBalanceInitialEnemy> InitialEnemies;
+	/** Diagnostic proof that equipment variants use the intended item budget. */
+	int32 InitialHeroEquippedPieceCount = 0;
+	int32 InitialHeroHighestSetPieceCount = 0;
 };
 
 /** One chapter and node-kind win-rate bucket in a completed diagnostic report. */

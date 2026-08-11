@@ -5,6 +5,7 @@
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEncounterRules.h"
 #include "GameXXKEnemyCatalog.h"
+#include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "HAL/PlatformTime.h"
@@ -73,9 +74,11 @@ namespace
 			return true;
 		}
 
+		const bool bMixedNoBonus = Case.EquipmentSetId == TEXT("MixedNoBonus");
 		EGameXXKEquipmentSet Set = EGameXXKEquipmentSet::Invalid;
 		EGameXXKEquipmentQuality Quality = EGameXXKEquipmentQuality::Invalid;
-		if (!ResolveEquipmentSet(Case.EquipmentSetId, Set) || !ResolveEquipmentQuality(Case.EquipmentQualityId, Quality))
+		if ((!bMixedNoBonus && !ResolveEquipmentSet(Case.EquipmentSetId, Set))
+			|| !ResolveEquipmentQuality(Case.EquipmentQualityId, Quality))
 		{
 			return SetError(OutError, TEXT("The balance fixture has an unknown equipment set or quality."));
 		}
@@ -88,10 +91,19 @@ namespace
 			EGameXXKEquipmentSlot::Belt,
 			EGameXXKEquipmentSlot::Shoes,
 			EGameXXKEquipmentSlot::Accessory};
-		for (const EGameXXKEquipmentSlot Slot : Slots)
+		constexpr EGameXXKEquipmentSet MixedSets[] = {
+			EGameXXKEquipmentSet::PoJun,
+			EGameXXKEquipmentSet::XuanJia,
+			EGameXXKEquipmentSet::QingNang,
+			EGameXXKEquipmentSet::ZhuiFeng,
+			EGameXXKEquipmentSet::ShiGu,
+			EGameXXKEquipmentSet::ShanHe};
+		static_assert(UE_ARRAY_COUNT(Slots) == UE_ARRAY_COUNT(MixedSets));
+		for (int32 SlotIndex = 0; SlotIndex < UE_ARRAY_COUNT(Slots); ++SlotIndex)
 		{
+			const EGameXXKEquipmentSlot Slot = Slots[SlotIndex];
 			FGameXXKEquipmentCreateRequest Request;
-			Request.Set = Set;
+			Request.Set = bMixedNoBonus ? MixedSets[SlotIndex] : Set;
 			Request.Quality = Quality;
 			Request.ItemLevel = Case.RouteLevel;
 			Request.bForceSlot = true;
@@ -119,6 +131,53 @@ namespace
 			{
 				return SetError(OutError, Equip.Message.ToString());
 			}
+		}
+		return true;
+	}
+
+	bool CaptureInitialHeroEquipmentDiagnostics(
+		const FGameXXKRuntimeState& State,
+		FGameXXKRouteBalanceCaseResult& OutResult,
+		FString* OutError)
+	{
+		const FGameXXKEquipmentLoadout* Loadout = State.EquipmentCollection.CharacterLoadouts.Find(
+			FGameXXKEquipmentRules::HeroCharacterId());
+		if (!Loadout)
+		{
+			return true;
+		}
+		const FName InstanceIds[] = {
+			Loadout->WeaponInstanceId,
+			Loadout->HeadInstanceId,
+			Loadout->ArmorInstanceId,
+			Loadout->BeltInstanceId,
+			Loadout->ShoesInstanceId,
+			Loadout->AccessoryInstanceId};
+		TMap<EGameXXKEquipmentSet, int32> PieceCounts;
+		for (const FName InstanceId : InstanceIds)
+		{
+			if (InstanceId.IsNone())
+			{
+				continue;
+			}
+			const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(
+				State.EquipmentCollection,
+				InstanceId);
+			if (!Instance)
+			{
+				return SetError(OutError, TEXT("A diagnostic hero loadout references a missing equipment instance."));
+			}
+			const FGameXXKEquipmentDefinition* Definition = FGameXXKEquipmentCatalog::FindDefinition(
+				Instance->BaseEquipmentId);
+			if (!Definition)
+			{
+				return SetError(OutError, TEXT("A diagnostic hero loadout references an unknown equipment definition."));
+			}
+			++OutResult.InitialHeroEquippedPieceCount;
+			const int32 Count = ++PieceCounts.FindOrAdd(Definition->Set);
+			OutResult.InitialHeroHighestSetPieceCount = FMath::Max(
+				OutResult.InitialHeroHighestSetPieceCount,
+				Count);
 		}
 		return true;
 	}
@@ -453,11 +512,11 @@ bool FGameXXKRouteBalanceRules::MakeOrthogonalCases(
 	AppendOrthogonalDimension(
 		Cases,
 		TEXT("EquipmentSet"),
-		{TEXT("NoSet"), TEXT("PoJun"), TEXT("XuanJia"), TEXT("QingNang"), TEXT("ZhuiFeng"), TEXT("ShiGu"), TEXT("ShanHe")},
+		{TEXT("MixedNoBonus"), TEXT("PoJun"), TEXT("XuanJia"), TEXT("QingNang"), TEXT("ZhuiFeng"), TEXT("ShiGu"), TEXT("ShanHe")},
 		1200000,
 		[](const FName VariantId, FGameXXKRouteBalanceCase& Case)
 		{
-			Case.EquipmentSetId = VariantId == TEXT("NoSet") ? FName(TEXT("None")) : VariantId;
+			Case.EquipmentSetId = VariantId;
 		});
 
 	AppendOrthogonalDimension(
@@ -576,6 +635,10 @@ bool FGameXXKRouteBalanceRules::RunCase(
 	PendingResult.Case = Case;
 	FGameXXKSimulationScenario Scenario;
 	if (!BuildScenario(Case, Scenario, CalibrationProfile, &PendingResult.InitialEnemies, OutError))
+	{
+		return false;
+	}
+	if (!CaptureInitialHeroEquipmentDiagnostics(Scenario.InitialRuntimeState, PendingResult, OutError))
 	{
 		return false;
 	}

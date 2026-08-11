@@ -157,6 +157,10 @@ bool FGameXXKOrthogonalBalanceObservationTest::RunTest(const FString& Parameters
 	TestEqual(TEXT("progression dimension cases"), DimensionCounts.FindRef(TEXT("Progression")), 270);
 	TestEqual(TEXT("profession variants"), DimensionVariants.FindRef(TEXT("Profession")).Num(), 6);
 	TestEqual(TEXT("equipment-set variants"), DimensionVariants.FindRef(TEXT("EquipmentSet")).Num(), 7);
+	TestTrue(TEXT("equipment-set diagnostics include a six-piece mixed control"),
+		DimensionVariants.FindRef(TEXT("EquipmentSet")).Contains(TEXT("MixedNoBonus")));
+	TestFalse(TEXT("equipment-set diagnostics no longer compare full sets against a naked NoSet control"),
+		DimensionVariants.FindRef(TEXT("EquipmentSet")).Contains(TEXT("NoSet")));
 	TestEqual(TEXT("quest-NPC variants"), DimensionVariants.FindRef(TEXT("QuestNpc")).Num(), 6);
 	TestEqual(TEXT("terrain variants"), DimensionVariants.FindRef(TEXT("Terrain")).Num(), 6);
 	TestEqual(TEXT("progression variants"), DimensionVariants.FindRef(TEXT("Progression")).Num(), 3);
@@ -192,6 +196,16 @@ bool FGameXXKOrthogonalBalanceObservationTest::RunTest(const FString& Parameters
 				*Case.VariantId.ToString(),
 				Case.Seed));
 			return false;
+		}
+		if (Case.DimensionId == TEXT("EquipmentSet"))
+		{
+			TestEqual(TEXT("every equipment-set diagnostic uses the same six-piece item budget"),
+				Result.InitialHeroEquippedPieceCount,
+				6);
+			const int32 ExpectedHighestSetPieceCount = Case.VariantId == TEXT("MixedNoBonus") ? 1 : 6;
+			TestEqual(TEXT("mixed control suppresses set thresholds while full-set variants keep six pieces"),
+				Result.InitialHeroHighestSetPieceCount,
+				ExpectedHighestSetPieceCount);
 		}
 		Csv += BuildCaseCsvRow(
 			Case,
