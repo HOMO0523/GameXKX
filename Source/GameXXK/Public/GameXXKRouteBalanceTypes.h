@@ -25,6 +25,8 @@ struct GAMEXXK_API FGameXXKRouteBalanceCase
 	FName QuestNpcId = NAME_None;
 	FName EquipmentSetId = NAME_None;
 	FName EquipmentQualityId = NAME_None;
+	/** Optional diagnostic item level; locked cases continue to use RouteLevel. */
+	int32 EquipmentItemLevel = INDEX_NONE;
 
 	/** Optional explicit permanent companion identity for orthogonal diagnostics. */
 	FName CompanionTemplateId = NAME_None;
@@ -82,6 +84,10 @@ struct GAMEXXK_API FGameXXKRouteBalanceCaseResult
 	/** Diagnostic proof that equipment variants use the intended item budget. */
 	int32 InitialHeroEquippedPieceCount = 0;
 	int32 InitialHeroHighestSetPieceCount = 0;
+	int32 InitialHeroMaxHP = 0;
+	int32 InitialHeroAttack = 0;
+	int32 InitialHeroDefense = 0;
+	int32 InitialHeroMaxMP = 0;
 };
 
 /** One chapter and node-kind win-rate bucket in a completed diagnostic report. */

@@ -105,7 +105,7 @@ namespace
 			FGameXXKEquipmentCreateRequest Request;
 			Request.Set = bMixedNoBonus ? MixedSets[SlotIndex] : Set;
 			Request.Quality = Quality;
-			Request.ItemLevel = Case.RouteLevel;
+			Request.ItemLevel = Case.EquipmentItemLevel > 0 ? Case.EquipmentItemLevel : Case.RouteLevel;
 			Request.bForceSlot = true;
 			Request.ForcedSlot = Slot;
 			FName InstanceId;
@@ -140,6 +140,10 @@ namespace
 		FGameXXKRouteBalanceCaseResult& OutResult,
 		FString* OutError)
 	{
+		OutResult.InitialHeroMaxHP = State.PlayerMaxHP;
+		OutResult.InitialHeroAttack = State.PlayerAttack;
+		OutResult.InitialHeroDefense = State.PlayerDefense;
+		OutResult.InitialHeroMaxMP = State.PlayerMaxMP;
 		const FGameXXKEquipmentLoadout* Loadout = State.EquipmentCollection.CharacterLoadouts.Find(
 			FGameXXKEquipmentRules::HeroCharacterId());
 		if (!Loadout)
@@ -567,6 +571,48 @@ bool FGameXXKRouteBalanceRules::MakeOrthogonalCases(
 	if (Cases.Num() != 2520)
 	{
 		return SetError(OutError, TEXT("The orthogonal balance matrix did not produce exactly 2,520 cases."));
+	}
+	OutCases = MoveTemp(Cases);
+	return true;
+}
+
+bool FGameXXKRouteBalanceRules::MakeEquipmentBudgetCases(
+	TArray<FGameXXKRouteBalanceCase>& OutCases,
+	FString* OutError)
+{
+	const TArray<FName> Variants = {
+		TEXT("Naked"),
+		TEXT("MixedCommonL1"), TEXT("MixedCommonL5"), TEXT("MixedCommonL10"),
+		TEXT("MixedRareL1"), TEXT("MixedRareL5"), TEXT("MixedRareL10"),
+		TEXT("MixedEpicL1"), TEXT("MixedEpicL5"), TEXT("MixedEpicL10")};
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	Cases.Reserve(900);
+	AppendOrthogonalDimension(
+		Cases,
+		TEXT("EquipmentBudget"),
+		Variants,
+		1600000,
+		[](const FName VariantId, FGameXXKRouteBalanceCase& Case)
+		{
+			if (VariantId == TEXT("Naked"))
+			{
+				Case.EquipmentSetId = TEXT("None");
+				Case.EquipmentQualityId = TEXT("Common");
+				Case.EquipmentItemLevel = INDEX_NONE;
+				return;
+			}
+			const FString Variant = VariantId.ToString();
+			Case.EquipmentSetId = TEXT("MixedNoBonus");
+			if (Variant.StartsWith(TEXT("MixedCommon"))) { Case.EquipmentQualityId = TEXT("Common"); }
+			else if (Variant.StartsWith(TEXT("MixedRare"))) { Case.EquipmentQualityId = TEXT("Rare"); }
+			else { Case.EquipmentQualityId = TEXT("Epic"); }
+			if (Variant.EndsWith(TEXT("L10"))) { Case.EquipmentItemLevel = 10; }
+			else if (Variant.EndsWith(TEXT("L5"))) { Case.EquipmentItemLevel = 5; }
+			else { Case.EquipmentItemLevel = 1; }
+		});
+	if (Cases.Num() != 900)
+	{
+		return SetError(OutError, TEXT("The equipment-budget matrix did not produce exactly 900 cases."));
 	}
 	OutCases = MoveTemp(Cases);
 	return true;
