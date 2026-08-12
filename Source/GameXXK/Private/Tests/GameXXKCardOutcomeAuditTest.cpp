@@ -751,6 +751,38 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKWhiteApeOnHitArmorAuditTest,
+	"GameXXK.Data.CardOutcomePreview.Audit.WhiteApeOnHitArmor",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKWhiteApeOnHitArmorAuditTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKCardOutcomeAuditTest;
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildRuntime(*this, Runtime, 61049, TEXT("Hero.Generic.SuiYanJi"))) return false;
+	FGameXXKCardCombatUnit* WhiteApe = FindUnit(Runtime, EnemyAUnitId);
+	if (!TestNotNull(TEXT("Sui Yan Ji White Ape target exists"), WhiteApe)) return false;
+	WhiteApe->EnemyDefinitionId = WhiteApeDefinitionId;
+	WhiteApe->CombatLevel = 1;
+	FGameXXKEnemyBattleState& EnemyState = Runtime.EnemyStates.FindOrAdd(EnemyAUnitId);
+	EnemyState.DefinitionId = WhiteApeDefinitionId;
+	EnemyState.bFirstStatusPassiveAvailable = true;
+	FString Error;
+	if (!TestTrue(FString::Printf(TEXT("Sui Yan Ji White Ape fixture validates: %s"), *Error),
+		GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &Error))) return false;
+
+	FGameXXKCardPlayResult Result;
+	if (!ResolveCard(*this, Runtime, EnemyAUnitId, Result, TEXT("Sui Yan Ji attack-attached statuses"))) return false;
+	WhiteApe = FindUnit(Runtime, EnemyAUnitId);
+	if (!TestNotNull(TEXT("Sui Yan Ji White Ape target remains alive"), WhiteApe)) return false;
+	TestEqual(TEXT("Sui Yan Ji triggers White Ape status-guard armor"), WhiteApe->Armor, 8);
+	TestEqual(TEXT("Sui Yan Ji applies its attached Vulnerability"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Vulnerability), 3);
+	TestEqual(TEXT("Sui Yan Ji applies its attached Mark"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Mark), 1);
+	if (!TestEqual(TEXT("two attack-attached statuses emit one White Ape armor packet"), Result.ArmorResults.Num(), 1)) return false;
+	return TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, EnemyAUnitId, 8, 8, TEXT("Sui Yan Ji White Ape Armor"));
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKSorcererNestedArmorMergeAuditTest,
 	"GameXXK.Data.CardOutcomePreview.Audit.Merge.SorcererNested",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

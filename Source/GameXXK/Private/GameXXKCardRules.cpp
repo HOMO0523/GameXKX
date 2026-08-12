@@ -3210,6 +3210,7 @@ namespace
 	const int32 RequestedDamage,
 	FGameXXKCardDamageResult& OutResult,
 	FGameXXKCardBattleRuntime* PlayerCardRuntime,
+	FGameXXKCardPlayResult* InOutPlayResult,
 	const bool bAllowDefeatedDirectSource,
 	FString* OutError)
 {
@@ -3432,7 +3433,12 @@ namespace
 			{
 				if (GameXXKCardRules::AddCombatStatus(*ResolvedTarget, OnHitStatus.Status, OnHitStatus.Stacks) > 0
 					&& PlayerCardRuntime
-					&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(*PlayerCardRuntime, *ResolvedTarget, OutError))
+					&& !ResolveWhiteApeStatusGuardAfterStatusAppliedInternal(
+						*PlayerCardRuntime,
+						*ResolvedTarget,
+						Context.SourceUnitId,
+						InOutPlayResult,
+						OutError))
 				{
 					return false;
 				}
@@ -3465,6 +3471,7 @@ bool GameXXKCardRules::ApplyCombatDirectDamage(
 		TargetUnitId,
 		RequestedDamage,
 		OutResult,
+		nullptr,
 		nullptr,
 		false,
 		OutError);
@@ -7821,6 +7828,66 @@ namespace
 		return true;
 	}
 
+	bool ApplyPlayerCardDirectDamageInternal(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardDamageContext& Context,
+		const FName TargetUnitId,
+		const int32 RequestedDamage,
+		FGameXXKCardDamageResult& OutResult,
+		FGameXXKCardPlayResult* InOutPlayResult,
+		FString* OutError)
+	{
+		if (OutError)
+		{
+			OutError->Reset();
+		}
+		if (!IsDirectAttackDamageKind(Context.Kind) || Context.SourceUnitId.IsNone())
+		{
+			return SetFailure(OutError, TEXT("Player card direct damage requires a concrete direct-attack context and source."));
+		}
+		FString ValidationError;
+		if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		const FGameXXKCardCombatUnit* Source = FindCombatUnitById(InOutRuntime.Units, Context.SourceUnitId);
+		if (!Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Party)
+		{
+			return SetFailure(OutError, TEXT("Player card direct damage requires one living party source."));
+		}
+
+		FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+		FGameXXKCardDamageContext ResolvedContext = Context;
+		ResolvedContext.AgilityRollPercent = AdvanceCombatRandomRoll(NewRuntime);
+		FGameXXKCardDamageResult NewResult;
+		FGameXXKCardPlayResult PendingAuditResult;
+		if (!ApplyCombatDirectDamageInternal(
+			NewRuntime.Units,
+			NewRuntime.GuardLinks,
+			ResolvedContext,
+			TargetUnitId,
+			RequestedDamage,
+			NewResult,
+			&NewRuntime,
+			InOutPlayResult ? &PendingAuditResult : nullptr,
+			false,
+			&ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		InOutRuntime = MoveTemp(NewRuntime);
+		OutResult = MoveTemp(NewResult);
+		if (InOutPlayResult)
+		{
+			InOutPlayResult->ArmorResults.Append(MoveTemp(PendingAuditResult.ArmorResults));
+		}
+		return true;
+	}
+
 	bool ResolveAttackPacket(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FGameXXKCardDefinition& Definition,
@@ -8093,7 +8160,14 @@ namespace
 					Status.Stacks = 1;
 				}
 				FGameXXKCardDamageResult DamageResult;
-				if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(InOutRuntime, Context, TargetId, static_cast<int32>(RawDamage), DamageResult, &OutError))
+				if (!ApplyPlayerCardDirectDamageInternal(
+					InOutRuntime,
+					Context,
+					TargetId,
+					static_cast<int32>(RawDamage),
+					DamageResult,
+					&InOutResult,
+					&OutError))
 				{
 					return false;
 				}
@@ -14323,49 +14397,14 @@ bool GameXXKCardRules::ApplyPlayerCardDirectDamage(
 	FGameXXKCardDamageResult& OutResult,
 	FString* OutError)
 {
-	if (OutError)
-	{
-		OutError->Reset();
-	}
-	if (!IsDirectAttackDamageKind(Context.Kind) || Context.SourceUnitId.IsNone())
-	{
-		return SetFailure(OutError, TEXT("Player card direct damage requires a concrete direct-attack context and source."));
-	}
-	FString ValidationError;
-	if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
-	{
-		return SetFailure(OutError, ValidationError);
-	}
-	const FGameXXKCardCombatUnit* Source = FindCombatUnitById(InOutRuntime.Units, Context.SourceUnitId);
-	if (!Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Party)
-	{
-		return SetFailure(OutError, TEXT("Player card direct damage requires one living party source."));
-	}
-
-	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
-	FGameXXKCardDamageContext ResolvedContext = Context;
-	ResolvedContext.AgilityRollPercent = AdvanceCombatRandomRoll(NewRuntime);
-	FGameXXKCardDamageResult NewResult;
-	if (!ApplyCombatDirectDamageInternal(
-		NewRuntime.Units,
-		NewRuntime.GuardLinks,
-		ResolvedContext,
+	return ApplyPlayerCardDirectDamageInternal(
+		InOutRuntime,
+		Context,
 		TargetUnitId,
 		RequestedDamage,
-		NewResult,
-		&NewRuntime,
-		false,
-		&ValidationError))
-	{
-		return SetFailure(OutError, ValidationError);
-	}
-	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
-	{
-		return SetFailure(OutError, ValidationError);
-	}
-	InOutRuntime = MoveTemp(NewRuntime);
-	OutResult = MoveTemp(NewResult);
-	return true;
+		OutResult,
+		nullptr,
+		OutError);
 }
 
 bool GameXXKCardRules::QueueNextPlayerHandEnergySurcharge(
@@ -15947,6 +15986,7 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 					ReactionTargetId,
 					static_cast<int32>(RequestedDamage),
 					ReactionResult,
+					nullptr,
 					nullptr,
 					true,
 					&ValidationError))
