@@ -292,6 +292,8 @@ bool FGameXXKCombatStatusToxicExplosionTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Rot adds its full current value to every present DoT packet"), Results[Index].RotDamageBonus, 2);
 		TestEqual(TEXT("each non-preserved packet consumes exactly one matching status stack"), Results[Index].StatusStacksConsumed, 1);
 		TestEqual(TEXT("each toxic explosion packet bypasses mitigation"), Results[Index].HealthDamage, ExpectedHealthDamage[Index]);
+		TestEqual(TEXT("each toxic explosion packet snapshots armor before bypassing it"), Results[Index].TargetArmorBefore, 99);
+		TestEqual(TEXT("each toxic explosion packet preserves armor after bypassing it"), Results[Index].TargetArmorAfter, 99);
 	}
 	TestEqual(TEXT("B4 P3 Burn2 Rot2 toxic explosion deals fifteen total health damage"), Runtime.Units[1].HP, 85);
 	TestEqual(TEXT("toxic explosion leaves Bleed at three"),

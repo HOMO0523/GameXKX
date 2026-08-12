@@ -1152,6 +1152,7 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 		TEXT("poison fixture applies three real stacks"),
 		GameXXKCardRules::AddCombatStatus(*PoisonTarget, EGameXXKCardStatus::Poison, 3),
 		3);
+	PoisonTarget->Armor = 9;
 	TArray<FGameXXKCardDamageResult> EndPhaseResults;
 	FString EndPhaseError;
 	if (!TestTrue(
@@ -1208,6 +1209,8 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("direct single keeps kind"), Single.Kind, EGameXXKCardDamageKind::SingleTargetAttack);
 	TestEqual(TEXT("group packet keeps kind"), Group.Kind, EGameXXKCardDamageKind::GroupAttack);
 	TestEqual(TEXT("ordinary poison keeps dot kind"), Poison.Kind, EGameXXKCardDamageKind::DamageOverTime);
+	TestEqual(TEXT("ordinary poison snapshots armor before bypassing it"), Poison.TargetArmorBefore, 9);
+	TestEqual(TEXT("ordinary poison preserves armor after bypassing it"), Poison.TargetArmorAfter, 9);
 	TestEqual(TEXT("medicine reverse has medicine cause"), Reverse.Cause, EGameXXKCardDamageCause::Medicine);
 	TestEqual(TEXT("medicine source remains the card owner"), Reverse.SourceUnitId, OwnerUnitId);
 	TestTrue(

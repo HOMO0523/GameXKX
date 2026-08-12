@@ -634,7 +634,8 @@ private:
 		bool bEnemy,
 		EGameXXKBattleAnimationAction Action) const;
 	void SetTargetProxiesVisible(bool bVisible);
-	void SetDisplayedHealthOverlay(FName UnitId, int32 Health);
+	void SetDisplayedHealthOverlay(FName UnitId, int32 Health, int32 Armor = INDEX_NONE);
+	void ApplyDisplayedDamagePacket(const FGameXXKBattlePresentationEvent& Event);
 	void ClearDisplayedHealthOverlay(FName UnitId);
 	bool IsUnitRetainedByPresentation(FName UnitId) const;
 	void UpdateBattlePresentationShake(double AbsoluteSeconds);

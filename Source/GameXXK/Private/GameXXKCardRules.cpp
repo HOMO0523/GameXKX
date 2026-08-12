@@ -1283,6 +1283,7 @@ namespace
 		{
 			const FGameXXKCardCombatUnit* TargetBeforeDot = FindCombatUnitById(InOutRuntime.Units, UnitId);
 			const int32 TargetHealthBefore = TargetBeforeDot ? TargetBeforeDot->HP : 0;
+			const int32 TargetArmorBefore = TargetBeforeDot ? TargetBeforeDot->Armor : 0;
 			const int32 PoisonStacksBefore = TargetBeforeDot
 				? GameXXKCardRules::GetCombatStatusStacks(*TargetBeforeDot, EGameXXKCardStatus::Poison)
 				: 0;
@@ -1311,10 +1312,13 @@ namespace
 				Result.DamageAfterVulnerability = Result.RequestedDamage;
 				Result.HealthDamage = HealthDamage;
 				Result.TargetHealthBefore = TargetHealthBefore;
+				Result.TargetArmorBefore = TargetArmorBefore;
 				Result.TargetHealthAfter = FMath::Max(0, TargetHealthBefore - HealthDamage);
+				Result.TargetArmorAfter = TargetArmorBefore;
 				if (const FGameXXKCardCombatUnit* TargetAfterDot = FindCombatUnitById(InOutRuntime.Units, UnitId))
 				{
 					Result.TargetHealthAfter = TargetAfterDot->HP;
+					Result.TargetArmorAfter = TargetAfterDot->Armor;
 				}
 			}
 		}
@@ -3040,10 +3044,12 @@ namespace
 		NewResult.DamageAfterDefense = NewResult.RequestedDamage;
 		NewResult.DamageAfterVulnerability = NewResult.RequestedDamage;
 		NewResult.TargetHealthBefore = Target->HP;
+		NewResult.TargetArmorBefore = Target->Armor;
 		NewResult.HealthDamage = FMath::Min(Target->HP, NewResult.RequestedDamage);
 		Target->HP -= NewResult.HealthDamage;
 		Target->bLiving = Target->HP > 0;
 		NewResult.TargetHealthAfter = Target->HP;
+		NewResult.TargetArmorAfter = Target->Armor;
 		RemoveLinksForDefeatedUnits(InOutRuntime.GuardLinks, InOutRuntime.Units);
 		OutResult = MoveTemp(NewResult);
 		return true;
@@ -3308,6 +3314,7 @@ namespace
 		NewResult.ResolvedTargetUnitId = ResolvedTarget->UnitId;
 	}
 	NewResult.TargetHealthBefore = ResolvedTarget->HP;
+	NewResult.TargetArmorBefore = ResolvedTarget->Armor;
 
 	const bool bDirectAttack = IsDirectAttackDamageKind(Context.Kind);
 	if (bDirectAttack)
@@ -3474,6 +3481,7 @@ namespace
 		}
 	}
 	NewResult.TargetHealthAfter = ResolvedTarget->HP;
+	NewResult.TargetArmorAfter = ResolvedTarget->Armor;
 
 	RemoveLinksForDefeatedUnits(NewGuardLinks, NewUnits);
 	InOutUnits = MoveTemp(NewUnits);

@@ -112,7 +112,7 @@ namespace
 	static constexpr float PlayerHandSelectedLift = -32.0f;
 	static constexpr double PlayedCardCommitDurationSeconds = 0.18;
 	static constexpr float PlayedCardCommitLift = -72.0f;
-	static constexpr float PlayedCardCommitPeakScale = 1.08f;
+	static constexpr float PlayedCardCommitPeakScale = 1.26f;
 	static const FVector2D EnemyIntentCardSize(150.0f, 171.0f);
 	static const FVector2D EnemyIntentShowcaseCardSize(256.0f, 292.0f);
 	static const FVector2D RewardCardSize(206.0f, 285.0f);
@@ -1477,7 +1477,10 @@ void UGameXXKBattleBoardWidget::StartPresentationEntry(
 		return;
 	}
 
-	SetDisplayedHealthOverlay(Entry.Event.TargetUnitId, Entry.Event.TargetHealthBefore);
+	SetDisplayedHealthOverlay(
+		Entry.Event.TargetUnitId,
+		Entry.Event.TargetHealthBefore,
+		Entry.Event.TargetArmorBefore);
 	UGameXXKBattleUnitVisualWidget* const AttackerVisual = UnitVisuals.FindRef(Entry.Event.AttackerUnitId);
 	if (AttackerVisual)
 	{
@@ -1545,15 +1548,34 @@ void UGameXXKBattleBoardWidget::FirePresentationImpact(FBattlePresentationQueueE
 	}
 	Entry.bImpactFired = true;
 	++BattlePresentationImpactCount;
-	SetDisplayedHealthOverlay(Entry.Event.TargetUnitId, Entry.Event.TargetHealthAfter);
+	ApplyDisplayedDamagePacket(Entry.Event);
 
 	if (BattleCinematicReadout)
 	{
-		const FText Readout = Entry.Event.bAvoided
-			? NSLOCTEXT("GameXXK", "BattlePresentationAvoid", "闪避")
-			: FText::Format(
+		FText Readout;
+		if (Entry.Event.bAvoided)
+		{
+			Readout = NSLOCTEXT("GameXXK", "BattlePresentationAvoid", "闪避");
+		}
+		else if (Entry.Event.ArmorAbsorbed > 0 && Entry.Event.HealthDamage > 0)
+		{
+			Readout = FText::Format(
+				NSLOCTEXT("GameXXK", "BattlePresentationArmorAndHealthDamage", "护甲 -{0} · 气血 -{1}"),
+				FText::AsNumber(Entry.Event.ArmorAbsorbed),
+				FText::AsNumber(Entry.Event.HealthDamage));
+		}
+		else if (Entry.Event.ArmorAbsorbed > 0)
+		{
+			Readout = FText::Format(
+				NSLOCTEXT("GameXXK", "BattlePresentationArmorDamage", "护甲 -{0}"),
+				FText::AsNumber(Entry.Event.ArmorAbsorbed));
+		}
+		else
+		{
+			Readout = FText::Format(
 				NSLOCTEXT("GameXXK", "BattlePresentationDamage", "-{0}"),
 				FText::AsNumber(Entry.Event.HealthDamage));
+		}
 		BattleCinematicReadout->SetText(Readout);
 		BattleCinematicReadout->SetVisibility(ESlateVisibility::HitTestInvisible);
 		BattleCinematicReadout->SetRenderScale(FVector2D(
@@ -1812,7 +1834,10 @@ void UGameXXKBattleBoardWidget::SetTargetProxiesVisible(const bool bVisible)
 	}
 }
 
-void UGameXXKBattleBoardWidget::SetDisplayedHealthOverlay(const FName UnitId, const int32 Health)
+void UGameXXKBattleBoardWidget::SetDisplayedHealthOverlay(
+	const FName UnitId,
+	const int32 Health,
+	const int32 Armor)
 {
 	if (!UnitId.IsNone())
 	{
@@ -1821,10 +1846,51 @@ void UGameXXKBattleBoardWidget::SetDisplayedHealthOverlay(const FName UnitId, co
 		if (FGameXXKBattleUnitHudView* const View = DisplayedUnitHudOverrides.Find(UnitId))
 		{
 			View->CurrentHP = FMath::Max(0, Health);
+			if (Armor != INDEX_NONE)
+			{
+				View->Armor = FMath::Max(0, Armor);
+			}
 			View->bLiving = true;
 		}
 		RefreshProjectedUnitHuds();
 	}
+}
+
+void UGameXXKBattleBoardWidget::ApplyDisplayedDamagePacket(
+	const FGameXXKBattlePresentationEvent& Event)
+{
+	if (Event.TargetUnitId.IsNone())
+	{
+		return;
+	}
+
+	const int32 DisplayedHealth = FMath::Max(0, Event.TargetHealthAfter);
+	DisplayedHealthOverrides.Add(Event.TargetUnitId, DisplayedHealth);
+	FGameXXKBattleUnitHudView* View = DisplayedUnitHudOverrides.Find(Event.TargetUnitId);
+	if (!View)
+	{
+		const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+		const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+		FGameXXKBattleUnitHudView Snapshot;
+		if (State
+			&& State->CardRun.bHasActiveCardBattle
+			&& FGameXXKBattlePresentation::BuildUnitHudView(
+				State->CardRun.ActiveBattle,
+				Event.TargetUnitId,
+				ResolveProjectedUnitHudDisplayName(Event.TargetUnitId),
+				Snapshot))
+		{
+			DisplayedUnitHudOverrides.Add(Event.TargetUnitId, MoveTemp(Snapshot));
+			View = DisplayedUnitHudOverrides.Find(Event.TargetUnitId);
+		}
+	}
+	if (View)
+	{
+		View->CurrentHP = DisplayedHealth;
+		View->Armor = FMath::Max(0, Event.TargetArmorAfter);
+		View->bLiving = true;
+	}
+	RefreshProjectedUnitHuds();
 }
 
 void UGameXXKBattleBoardWidget::ClearDisplayedHealthOverlay(const FName UnitId)

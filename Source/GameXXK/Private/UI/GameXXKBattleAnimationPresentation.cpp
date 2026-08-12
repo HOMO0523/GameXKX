@@ -308,6 +308,9 @@ TArray<FGameXXKBattlePresentationEvent> FGameXXKBattleAnimationPresentation::Bui
 		{
 			Event.bTargetEnemy = Target->Side == EGameXXKCardTargetSide::Enemy;
 		}
+		Event.ArmorAbsorbed = Damage.ArmorAbsorbed;
+		Event.TargetArmorBefore = Damage.TargetArmorBefore;
+		Event.TargetArmorAfter = Damage.TargetArmorAfter;
 		Event.HealthDamage = Damage.HealthDamage;
 		Event.TargetHealthBefore = Damage.TargetHealthBefore;
 		Event.TargetHealthAfter = Damage.TargetHealthAfter;
@@ -474,7 +477,9 @@ FGameXXKBattlePresentationRhythm FGameXXKBattleAnimationPresentation::ResolveCom
 	Rhythm.DurationSeconds = bFirstHit ? 0.82f : 0.30f;
 	Rhythm.ImpactSeconds = bFirstHit ? 0.30f : 0.10f;
 
-	const int64 SafeDamage = FMath::Max<int64>(0, static_cast<int64>(Event.HealthDamage));
+	const int64 SafeDamage = FMath::Max<int64>(
+		0,
+		static_cast<int64>(Event.HealthDamage) + static_cast<int64>(Event.ArmorAbsorbed));
 	const int64 SafeHealthBefore = FMath::Max<int64>(1, static_cast<int64>(Event.TargetHealthBefore));
 	const double DamageRatio = static_cast<double>(SafeDamage) / static_cast<double>(SafeHealthBefore);
 	if (Event.bTargetDefeated || DamageRatio >= 0.60)

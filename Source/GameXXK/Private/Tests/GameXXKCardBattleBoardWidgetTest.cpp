@@ -870,9 +870,15 @@ bool FGameXXKPlayedCardCommitPresentationTest::RunTest(const FString& Parameters
 		ManualBoard->ConfirmTargetingUnit(TEXT("Missing.Target")));
 	TestFalse(TEXT("failed target confirmation leaves commit inactive"), FCommitApi::IsActive(ManualBoard));
 	TestEqual(TEXT("failed target confirmation does not increment completion"), FCommitApi::CompletionCount(ManualBoard), 0);
+	ManualBoard->AdvanceHandCardHoverMotionForTest(1.0f);
+	TestTrue(TEXT("targeting presents the selected card at its approved one-point-two scale before release"),
+		ManualSourceButton
+		&& ManualSourceButton->GetRenderTransform().Scale.Equals(FVector2D(1.20f, 1.20f), 0.001f));
 	TestTrue(TEXT("valid manual target commits the card"), ManualBoard->ConfirmTargetingUnit(TEXT("Enemy")));
 	TestTrue(TEXT("successful manual target starts commit immediately"), FCommitApi::IsActive(ManualBoard));
 	TestEqual(TEXT("manual commit retains the resolved source instance"), FCommitApi::InstanceId(ManualBoard), ManualCardInstanceId);
+	TestTrue(TEXT("commit preserves the already-selected card scale instead of shrinking on release"),
+		FCommitApi::Scale(ManualBoard).X >= 1.20f - KINDA_SMALL_NUMBER);
 	TestEqual(TEXT("multi-packet base, reflection, and follow-up queue before commit finishes"),
 		ManualBoard->GetBattlePresentationQueueCountForTest(), 3);
 	TestEqual(TEXT("damage presentation cannot start before the commit timeline"),
@@ -894,8 +900,8 @@ bool FGameXXKPlayedCardCommitPresentationTest::RunTest(const FString& Parameters
 	ManualBoard->AdvanceVisualsAtRealTime(0.09);
 	TestTrue(TEXT("ease-out commit lifts the card during the first half"),
 		FCommitApi::Translation(ManualBoard).Y < InitialTransform.Translation.Y - 1.0f);
-	TestTrue(TEXT("ease-out commit applies a light positive scale during the first half"),
-		FCommitApi::Scale(ManualBoard).X > InitialTransform.Scale.X);
+	TestTrue(TEXT("ease-out commit keeps scaling outward from the selected-card pose"),
+		FCommitApi::Scale(ManualBoard).X > 1.20f);
 	const FVector2D MidCommitTranslation = FCommitApi::Translation(ManualBoard);
 	const FVector2D MidCommitScale = FCommitApi::Scale(ManualBoard);
 	ManualBoard->AdvanceHandCardHoverMotionForTest(1.0f);

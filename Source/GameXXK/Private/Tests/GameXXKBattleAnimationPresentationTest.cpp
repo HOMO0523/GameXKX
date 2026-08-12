@@ -83,6 +83,13 @@ bool FGameXXKBattlePresentationRhythmTest::RunTest(const FString& Parameters)
 		EGameXXKBattlePresentationImpactTier::Heavy);
 	TestEqual(TEXT("sixty percent begins lethal feedback"), ResolveTierAtPercent(60),
 		EGameXXKBattlePresentationImpactTier::Lethal);
+	FGameXXKBattlePresentationEvent ArmorOnlyEvent = FirstLightEvent;
+	ArmorOnlyEvent.HealthDamage = 0;
+	ArmorOnlyEvent.ArmorAbsorbed = 35;
+	ArmorOnlyEvent.TargetHealthAfter = ArmorOnlyEvent.TargetHealthBefore;
+	TestEqual(TEXT("armor-only impact strength uses total mitigated plus health damage"),
+		FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(ArmorOnlyEvent).ImpactTier,
+		EGameXXKBattlePresentationImpactTier::Heavy);
 
 	FGameXXKBattlePresentationEvent FollowMediumEvent = FirstLightEvent;
 	FollowMediumEvent.HitOrdinal = 1;
@@ -459,6 +466,44 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("third hit health after"), MultiHitEvents[2].TargetHealthAfter, 72);
 		TestEqual(TEXT("presentation copies health damage"), MultiHitEvents[1].HealthDamage, 14);
 		TestFalse(TEXT("nonlethal multi-hit packets never infer death from post-state"), MultiHitEvents[2].bTargetDefeated);
+	}
+
+	TArray<FGameXXKCardCombatUnit> ArmoredUnits;
+	ArmoredUnits.Add(MakePresentationUnit(TEXT("ArmoredAttacker"), EGameXXKCardTargetSide::Party, 100, 1));
+	ArmoredUnits.Add(MakePresentationUnit(TEXT("ArmoredTarget"), EGameXXKCardTargetSide::Enemy, 100, 10));
+	ArmoredUnits[1].Armor = 12;
+	FGameXXKCardDamageContext ArmoredContext;
+	ArmoredContext.SourceUnitId = TEXT("ArmoredAttacker");
+	ArmoredContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+	TArray<FGameXXKCardGuardLinkRuntime> ArmoredGuardLinks;
+	TArray<FGameXXKCardDamageResult> ArmoredResults;
+	for (const int32 Damage : {5, 11})
+	{
+		FGameXXKCardDamageResult& Result = ArmoredResults.AddDefaulted_GetRef();
+		if (!TestTrue(TEXT("armored presentation packet resolves through real rules"),
+			GameXXKCardRules::ApplyCombatDirectDamage(
+				ArmoredUnits, ArmoredGuardLinks, ArmoredContext, TEXT("ArmoredTarget"), Damage, Result)))
+		{
+			return false;
+		}
+	}
+	FGameXXKCardBattleRuntime ArmoredPostState;
+	ArmoredPostState.Units = ArmoredUnits;
+	const TArray<FGameXXKBattlePresentationEvent> ArmoredEvents =
+		FGameXXKBattleAnimationPresentation::BuildPresentationEvents(
+			ArmoredPostState, NAME_None, ArmoredResults);
+	TestEqual(TEXT("two armored packets remain two presentation events"), ArmoredEvents.Num(), 2);
+	if (ArmoredEvents.Num() == 2)
+	{
+		TestEqual(TEXT("first armored packet snapshots twelve armor before impact"), ArmoredEvents[0].TargetArmorBefore, 12);
+		TestEqual(TEXT("first armored packet leaves seven armor"), ArmoredEvents[0].TargetArmorAfter, 7);
+		TestEqual(TEXT("first armored packet reports five absorbed"), ArmoredEvents[0].ArmorAbsorbed, 5);
+		TestEqual(TEXT("first rules packet stores twelve armor before impact"), ArmoredResults[0].TargetArmorBefore, 12);
+		TestEqual(TEXT("first rules packet stores seven armor after impact"), ArmoredResults[0].TargetArmorAfter, 7);
+		TestEqual(TEXT("second armored packet begins from seven armor"), ArmoredEvents[1].TargetArmorBefore, 7);
+		TestEqual(TEXT("second armored packet drains the remaining armor"), ArmoredEvents[1].TargetArmorAfter, 0);
+		TestEqual(TEXT("second armored packet reports seven absorbed"), ArmoredEvents[1].ArmorAbsorbed, 7);
+		TestEqual(TEXT("second armored packet preserves four health damage"), ArmoredEvents[1].HealthDamage, 4);
 	}
 
 	TArray<FGameXXKCardCombatUnit> RedirectUnits;

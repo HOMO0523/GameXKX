@@ -1618,6 +1618,14 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 ArmorAbsorbed = 0;
 
+	/** Resolved target armor immediately before this successful damage attempt mutates combat state. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 TargetArmorBefore = 0;
+
+	/** Resolved target armor immediately after this packet, before later effects may grant new armor. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 TargetArmorAfter = 0;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 HealthDamage = 0;
 

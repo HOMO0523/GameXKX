@@ -14,6 +14,7 @@
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattleUnitHudWidget.h"
 #include "UI/GameXXKBattleUnitResourceWidget.h"
+#include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
 #include "UObject/StrongObjectPtr.h"
 
@@ -272,7 +273,8 @@ namespace
 		const int32 HealthAfter,
 		const bool bAvoided = false,
 		const bool bTargetDefeated = false,
-		const int32 HitOrdinal = 0)
+		const int32 HitOrdinal = 0,
+		const int32 ArmorAbsorbed = 0)
 	{
 		FGameXXKBattlePresentationEvent Event;
 		Event.EventId = EventId;
@@ -281,9 +283,12 @@ namespace
 		Event.bAttackerEnemy = bAttackerEnemy;
 		Event.TargetUnitId = TargetUnitId;
 		Event.bTargetEnemy = bTargetEnemy;
+		Event.TargetArmorBefore = ArmorAbsorbed;
+		Event.TargetArmorAfter = 0;
 		Event.TargetHealthBefore = HealthBefore;
 		Event.TargetHealthAfter = HealthAfter;
 		Event.HealthDamage = FMath::Max(0, HealthBefore - HealthAfter);
+		Event.ArmorAbsorbed = ArmorAbsorbed;
 		Event.bAvoided = bAvoided;
 		Event.bTargetDefeated = bTargetDefeated;
 		return Event;
@@ -294,6 +299,17 @@ namespace
 		const UGameXXKBattleUnitHudWidget* const Hud = Board ? Board->GetProjectedUnitHudForTest(UnitId) : nullptr;
 		return Hud && Hud->GetResourceWidgetForTest()
 			? Hud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest()
+			: FString();
+	}
+
+	FString GetRenderedArmor(const UGameXXKBattleBoardWidget* const Board, const FName UnitId)
+	{
+		const UGameXXKBattleUnitHudWidget* const Hud = Board ? Board->GetProjectedUnitHudForTest(UnitId) : nullptr;
+		const UGameXXKBattleUnitStatusEffectsWidget* const Effects = Hud
+			? Hud->GetStatusEffectsWidgetForTest()
+			: nullptr;
+		return Effects && Effects->GetIconCountForTest() > 0
+			? Effects->GetIconDisplayedStackForTest(0)
 			: FString();
 	}
 
@@ -388,6 +404,14 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	UGameInstance* const TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	BuildPresentationFixture(Subsystem);
+	if (FGameXXKCardCombatUnit* const ArmoredTarget =
+		Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == TEXT("Enemy.Tiger");
+		}))
+	{
+		ArmoredTarget->Armor = 7;
+	}
 
 	UGameXXKBattleBoardWidget* const Board = NewObject<UGameXXKBattleBoardWidget>();
 	Board->SetMVPSubsystem(Subsystem);
@@ -405,7 +429,7 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	UWidget* const TargetParent = TargetVisual ? TargetVisual->GetParent() : nullptr;
 
 	const FGameXXKBattlePresentationEvent First = MakePresentationEvent(
-		1, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 100, 70);
+		1, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 100, 70, false, false, 0, 7);
 	const FGameXXKBattleAnimationClipDescriptor FirstAttackClip =
 		FGameXXKBattleAnimationPresentation::ResolveClip(
 			First.AttackerUnitId, First.bAttackerEnemy, EGameXXKBattleAnimationAction::Attack);
@@ -479,6 +503,8 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		FApi::DisplayedHealth(Board, First.TargetUnitId), First.TargetHealthBefore);
 	TestEqual(TEXT("the real fixed HUD renders the pre-impact health"),
 		GetRenderedHealth(Board, First.TargetUnitId), FString(TEXT("气血 100 / 120")));
+	TestEqual(TEXT("the real fixed HUD retains pre-impact armor until the impact marker"),
+		GetRenderedArmor(Board, First.TargetUnitId), FString(TEXT("7")));
 
 	Board->AdvanceVisualsAtRealTime(0.15);
 	const int32 ExpectedAttackFrameAtPartial =
@@ -509,7 +535,10 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		GetRenderedHealth(Board, First.TargetUnitId), FString(TEXT("气血 70 / 120")));
 	TestEqual(TEXT("crossing zero-point-three fires impact exactly once"), FApi::ImpactCount(Board), 1);
 	TestEqual(TEXT("crossing zero-point-three fires the HUD-root shake exactly once"), FApi::ShakeCount(Board), 1);
-	TestEqual(TEXT("damage presentation emits its readout at the marker"), FApi::Readout(Board), FString(TEXT("-30")));
+	TestEqual(TEXT("mixed armor and health damage emits a semantic split readout at the marker"),
+		FApi::Readout(Board), FString(TEXT("护甲 -7 · 气血 -30")));
+	TestEqual(TEXT("the impact marker consumes the rendered armor alongside the packet"),
+		GetRenderedArmor(Board, First.TargetUnitId), FString());
 	TestTrue(TEXT("thirty-percent heavy impact drives the authored nine-by-four-point-five shake"),
 		FApi::ShakeAmplitude(Board).Equals(FVector2D(9.0f, 4.5f), 0.001f));
 	TestTrue(TEXT("thirty-percent heavy impact drives the authored zero-point-two shake duration"),
@@ -560,6 +589,51 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		TargetVisual
 		&& TargetVisual->GetParent() == TargetParent
 		&& TargetVisual->GetPresentedSize().Equals(FVector2D(410.0f, 410.0f), 0.01f));
+
+	UGameInstance* const InterHitArmorGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const InterHitArmorSubsystem = NewObject<UGameXXKMVPSubsystem>(InterHitArmorGameInstance);
+	BuildPresentationFixture(InterHitArmorSubsystem);
+	FGameXXKCardCombatUnit* const InterHitArmorTarget =
+		InterHitArmorSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == TEXT("Enemy.Tiger");
+		});
+	if (!TestNotNull(TEXT("inter-hit armor fixture keeps the target"), InterHitArmorTarget))
+	{
+		return false;
+	}
+	InterHitArmorTarget->Armor = 4;
+	UGameXXKBattleBoardWidget* const InterHitArmorBoard = NewObject<UGameXXKBattleBoardWidget>();
+	InterHitArmorBoard->SetMVPSubsystem(InterHitArmorSubsystem);
+	InterHitArmorBoard->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+		MakeShared<FPresentationAtlasLoader>(),
+		[]() { return 0.0; }));
+	TestTrue(TEXT("inter-hit armor fixture initializes its real Board"), InterHitArmorBoard->Initialize());
+	InterHitArmorBoard->NativeConstruct();
+	TestTrue(TEXT("inter-hit armor fixture begins one visual session"), InterHitArmorBoard->BeginBattleVisualSession(1002));
+	FGameXXKBattlePresentationEvent ArmorDrain = MakePresentationEvent(
+		2, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 70, 70, false, false, 0, 4);
+	ArmorDrain.TargetArmorBefore = 4;
+	ArmorDrain.TargetArmorAfter = 0;
+	FGameXXKBattlePresentationEvent ArmorAfterGain = MakePresentationEvent(
+		3, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 70, 70, false, false, 1, 4);
+	ArmorAfterGain.TargetArmorBefore = 6;
+	ArmorAfterGain.TargetArmorAfter = 2;
+	FApi::Queue(InterHitArmorBoard, ArmorDrain);
+	FApi::Queue(InterHitArmorBoard, ArmorAfterGain);
+	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.0);
+	TestEqual(TEXT("the first packet starts from its four-armor snapshot"),
+		GetRenderedArmor(InterHitArmorBoard, ArmorDrain.TargetUnitId), FString(TEXT("4")));
+	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.301);
+	TestEqual(TEXT("the first packet drains its four armor at impact"),
+		GetRenderedArmor(InterHitArmorBoard, ArmorDrain.TargetUnitId), FString());
+	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.821);
+	TestEqual(TEXT("the second packet restores its six-armor pre-impact snapshot after an inter-hit gain"),
+		GetRenderedArmor(InterHitArmorBoard, ArmorAfterGain.TargetUnitId), FString(TEXT("6")));
+	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.921);
+	TestEqual(TEXT("the second packet applies its two-armor post-impact snapshot"),
+		GetRenderedArmor(InterHitArmorBoard, ArmorAfterGain.TargetUnitId), FString(TEXT("2")));
+	InterHitArmorBoard->AdvanceVisualsAtRealTime(3.121);
 
 	UGameInstance* const FiveHitGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const FiveHitSubsystem = NewObject<UGameXXKMVPSubsystem>(FiveHitGameInstance);

@@ -47,6 +47,9 @@ struct GAMEXXK_API FGameXXKBattlePresentationEvent
 	FName TargetUnitId = NAME_None;
 	bool bAttackerEnemy = false;
 	bool bTargetEnemy = false;
+	int32 TargetArmorBefore = 0;
+	int32 TargetArmorAfter = 0;
+	int32 ArmorAbsorbed = 0;
 	int32 HealthDamage = 0;
 	int32 TargetHealthBefore = 0;
 	int32 TargetHealthAfter = 0;
