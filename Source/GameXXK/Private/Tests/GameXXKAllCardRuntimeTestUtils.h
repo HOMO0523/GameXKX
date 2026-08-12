@@ -311,8 +311,10 @@ namespace GameXXKAllCardPlayabilityAuditTest
 			TEXT("CardId=%s Terrain=%d"),
 			*Definition.Id.ToString(),
 			static_cast<int32>(Terrain));
-		const auto Fail = [&OutError, &Context](const FString& Reason)
+		const auto Fail = [&OutState, &OutPlayedInstanceId, &OutError, &Context](const FString& Reason)
 		{
+			OutState = FGameXXKRuntimeState();
+			OutPlayedInstanceId = NAME_None;
 			OutError = FString::Printf(TEXT("%s %s"), *Context, *Reason);
 			return false;
 		};

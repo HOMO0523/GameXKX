@@ -17,6 +17,17 @@ namespace GameXXKCardOutcomePreviewCatalogTest
 		FString FirstPureEnemyGroupContext;
 	};
 
+	const TCHAR* ClassificationName(const EGameXXKCardOutcomePreviewClass Classification)
+	{
+		switch (Classification)
+		{
+		case EGameXXKCardOutcomePreviewClass::None: return TEXT("None");
+		case EGameXXKCardOutcomePreviewClass::ManualUnit: return TEXT("ManualUnit");
+		case EGameXXKCardOutcomePreviewClass::PureEnemyGroup: return TEXT("PureEnemyGroup");
+		default: return TEXT("Unknown");
+		}
+	}
+
 	FString MakeContext(
 		const FGameXXKCardDefinition& Definition,
 		const EGameXXKCardTerrain Terrain,
@@ -165,6 +176,19 @@ bool FGameXXKCardOutcomePreviewCatalogCoverageTest::RunTest(const FString& Param
 						else
 						{
 							ObserveClassification(*this, OutcomePreview, TargetContext, Observation);
+							const EGameXXKCardOutcomePreviewClass ExpectedClassification =
+								EGameXXKCardOutcomePreviewClass::ManualUnit;
+							const EGameXXKCardOutcomePreviewClass ActualClassification = OutcomePreview.Classification;
+							if (ActualClassification != ExpectedClassification)
+							{
+								const FString Failure = FString::Printf(
+									TEXT("%s classification mismatch: expected=%s actual=%s"),
+									*TargetContext,
+									ClassificationName(ExpectedClassification),
+									ClassificationName(ActualClassification));
+								ManualTargetFailures.Add(Failure);
+								AddError(Failure);
+							}
 						}
 					}
 
@@ -193,6 +217,25 @@ bool FGameXXKCardOutcomePreviewCatalogCoverageTest::RunTest(const FString& Param
 					else
 					{
 						ObserveClassification(*this, OutcomePreview, TerrainContext, Observation);
+						const bool bExpectedPureEnemyGroup =
+							Playability.TargetRequest.EffectiveMode == EGameXXKCardTargetMode::AllEnemies
+							&& OutcomePreview.bUsesEnemyPositionList;
+						const EGameXXKCardOutcomePreviewClass ExpectedClassification = bExpectedPureEnemyGroup
+							? EGameXXKCardOutcomePreviewClass::PureEnemyGroup
+							: EGameXXKCardOutcomePreviewClass::None;
+						if (OutcomePreview.Classification != ExpectedClassification)
+						{
+							const FString Failure = FString::Printf(
+								TEXT("%s classification mismatch: expected=%s actual=%s"),
+								*TerrainContext,
+								ClassificationName(ExpectedClassification),
+								ClassificationName(OutcomePreview.Classification));
+							if (bExpectedPureEnemyGroup)
+							{
+								GroupFailures.Add(Failure);
+							}
+							AddError(Failure);
+						}
 						const bool bAutomaticNonAllEnemiesGroup = OutcomePreview.bUsesEnemyPositionList
 							&& Playability.TargetRequest.EffectiveMode != EGameXXKCardTargetMode::AllEnemies;
 						if (bAutomaticNonAllEnemiesGroup)
@@ -247,21 +290,9 @@ bool FGameXXKCardOutcomePreviewCatalogCoverageTest::RunTest(const FString& Param
 		}
 	}
 
-	for (const FName CardId : Group)
-	{
-		const FCardObservation* Observation = Observations.Find(CardId);
-		if (!Observation || !Observation->bSawPureEnemyGroup)
-		{
-			GroupFailures.Add(FString::Printf(TEXT("CardId=%s has no successful PureEnemyGroup terrain"), *CardId.ToString()));
-		}
-	}
 	for (const FString& Conflict : Conflicts)
 	{
 		AddError(Conflict);
-	}
-	for (const FString& Failure : GroupFailures)
-	{
-		AddError(Failure);
 	}
 
 	AddInfo(FString::Printf(
