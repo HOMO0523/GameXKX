@@ -123,4 +123,88 @@ bool FGameXXKYueBaiSurvivalBudgetTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKZhouGuangZuDamageBudgetTest,
+	"GameXXK.RouteBalance.NpcTuning.ZhouGuangZuDamageBudget",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKZhouGuangZuDamageBudgetTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	FString Error;
+	if (!TestTrue(TEXT("orthogonal cases build for the ZhouGuangZu damage budget"),
+		FGameXXKRouteBalanceRules::MakeOrthogonalCases(Cases, &Error)))
+	{
+		return false;
+	}
+
+	int32 ZhouCaseCount = 0;
+	int32 BattleCaseCount = 0;
+	int32 EliteCaseCount = 0;
+	int32 BossCaseCount = 0;
+	int32 BattleVictories = 0;
+	int32 EliteVictories = 0;
+	int32 BossVictories = 0;
+	int32 StrandedTargetFailures = 0;
+	for (const FGameXXKRouteBalanceCase& Case : Cases)
+	{
+		if (Case.DimensionId != TEXT("QuestNpc") || Case.VariantId != TEXT("ZhouGuangZu"))
+		{
+			continue;
+		}
+		++ZhouCaseCount;
+		switch (Case.NodeKind)
+		{
+		case EGameXXKNodeKind::Battle:
+			++BattleCaseCount;
+			break;
+		case EGameXXKNodeKind::Elite:
+			++EliteCaseCount;
+			break;
+		case EGameXXKNodeKind::Boss:
+			++BossCaseCount;
+			break;
+		default:
+			AddError(TEXT("ZhouGuangZu damage budget encountered an unexpected node kind."));
+			break;
+		}
+		FGameXXKRouteBalanceCaseResult Result;
+		if (!FGameXXKRouteBalanceRules::RunCase(Case, Result, &Error))
+		{
+			AddError(FString::Printf(TEXT("ZhouGuangZu case seed %d failed an invariant: %s"), Case.Seed, *Error));
+			continue;
+		}
+		StrandedTargetFailures += Result.Metrics.StrandedTargetFailures;
+		if (!Result.Metrics.bVictory)
+		{
+			continue;
+		}
+		switch (Case.NodeKind)
+		{
+		case EGameXXKNodeKind::Battle:
+			++BattleVictories;
+			break;
+		case EGameXXKNodeKind::Elite:
+			++EliteVictories;
+			break;
+		case EGameXXKNodeKind::Boss:
+			++BossVictories;
+			break;
+		default:
+			AddError(TEXT("ZhouGuangZu damage budget encountered an unexpected node kind."));
+			break;
+		}
+	}
+
+	TestEqual(TEXT("the ZhouGuangZu orthogonal slice contains exactly ninety cases"), ZhouCaseCount, 90);
+	TestEqual(TEXT("the ZhouGuangZu slice contains exactly thirty normal encounters"), BattleCaseCount, 30);
+	TestEqual(TEXT("the ZhouGuangZu slice contains exactly thirty elite encounters"), EliteCaseCount, 30);
+	TestEqual(TEXT("the ZhouGuangZu slice contains exactly thirty boss encounters"), BossCaseCount, 30);
+	TestEqual(TEXT("ZhouGuangZu keeps all thirty normal encounters"), BattleVictories, 30);
+	TestTrue(TEXT("ZhouGuangZu reaches the first bounded elite-damage step of ten victories"), EliteVictories >= 10);
+	TestTrue(TEXT("ZhouGuangZu reaches the first bounded boss-damage step of five victories"), BossVictories >= 5);
+	TestEqual(TEXT("ZhouGuangZu never strands a selected target across the slice"), StrandedTargetFailures, 0);
+	return true;
+}
+
 #endif

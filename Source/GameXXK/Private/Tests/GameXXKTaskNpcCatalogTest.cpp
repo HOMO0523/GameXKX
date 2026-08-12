@@ -333,7 +333,7 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("岩粉封脉 has terrain, Vulnerability, Poison, and Toxic Explosion"), YanFen->Effects.Num(), 4);
 		ExpectEffect(*this, YanFen->Id, YanFen->Effects, TEXT("地势收益1次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1);
 		ExpectEffect(*this, YanFen->Id, YanFen->Effects, TEXT("破绽3"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability);
-		ExpectEffect(*this, YanFen->Id, YanFen->Effects, TEXT("中毒6"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::Poison);
+		ExpectEffect(*this, YanFen->Id, YanFen->Effects, TEXT("中毒10"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 10, EGameXXKCardStatus::Poison);
 		ExpectEffect(*this, YanFen->Id, YanFen->Effects, TEXT("毒爆1"), EGameXXKCardEffectType::ResolveToxicExplosion, EGameXXKCardEffectTarget::SelectedTarget, 1);
 	}
 

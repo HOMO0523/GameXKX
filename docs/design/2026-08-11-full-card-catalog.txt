@@ -605,8 +605,8 @@ ID：Npc.ZhouGuangZu.YanFenFengMai
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：触发当前地势收益1次；所选目标获得5层破绽；所选目标获得8层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害
-实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=3,Status=Vulnerability}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=6,Status=Poison}; Effect{Type=ResolveToxicExplosion,Target=SelectedTarget,Magnitude=1}]
+基础：触发当前地势收益1次；所选目标获得5层破绽；所选目标获得12层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害
+实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=3,Status=Vulnerability}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=10,Status=Poison}; Effect{Type=ResolveToxicExplosion,Target=SelectedTarget,Magnitude=1}]
 
 
 [12] 任务 NPC·金贵（4 张）

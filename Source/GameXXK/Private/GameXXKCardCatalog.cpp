@@ -1115,7 +1115,7 @@ namespace
 		AddQuestNpcCard(Cards, Zhou, TEXT("Npc.ZhouGuangZu.YanFenFengMai"), TEXT("岩粉封脉"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
 			{Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability),
-			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::Poison),
+			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 10, EGameXXKCardStatus::Poison),
 			 Effect(EGameXXKCardEffectType::ResolveToxicExplosion, EGameXXKCardEffectTarget::SelectedTarget, 1)});
 
 		constexpr const TCHAR* JinGui = TEXT("Npc.JinGui");

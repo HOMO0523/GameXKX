@@ -893,7 +893,7 @@ Task11 已完成卡牌/状态文案替换，只修改文本构造、名称映射
 | 土司首领 | 刀客 + 守卫 | 寨主号令：0 气，协战者气势1/护甲8/格挡1并协战100%，冲锋重放、收招全队甲6；石门守势：1 气，友方标记2/灵动2/甲16/格挡2，冲锋给下一使用者甲12/格挡1，收招改向；土司军令：1 气，敌破绽3/标记2，协战者甲8/格挡1并协战150%，冲锋改单体为同阵营群体，收招保护下一次格挡次数；盟寨誓约：2 气，全队气势1/甲8/格挡1并各攻击60%，冲锋下一张0/0，收招下回合护甲保留 |
 | 金贵 | 守卫 + 弓手 | 市井耳目：0 气，敌群标记2、抽2、协战者蓄力2，重箭每层协战50%；杂役筹备：1 气，抽3弃1回1气、蓄力3，重箭每层协战40%并回内1；巧言周旋：1 气，敌破绽3，最高护甲友方甲12/格挡2；后巷脱身：2 气，全队灵动2，最低生命友方标记2/甲16/格挡2 |
 | 琼么儿 | 弓手 + 药师 | 藤桥飞渡：0 气，协战者灵动2/蓄力2、抽1，重箭每层协战50%；蛊雾迷踪：1 气，敌流血4/中毒6并毒爆；银铃镇心：1 气，药效6，清除友方三 DoT并治疗12+药效；山歌唤灵：2 气，药效6，全队治疗6+药效 |
-| 周光祖 | 药师 + 阵师 | 异草辨识：0 气，任一单体，药效6，对友治疗6+药效并净三 DoT，对敌反向治疗；黄山敷治：1 气，全队非致死失血1，药效6，全队治疗6+药效；地志摹图：0 气，敌方目标、抽2、当前地势收益两次；岩粉封脉：1 气，地势收益一次、敌破绽3/中毒6并毒爆 |
+| 周光祖 | 药师 + 阵师 | 异草辨识：0 气，任一单体，药效6，对友治疗6+药效并净三 DoT，对敌反向治疗；黄山敷治：1 气，全队非致死失血1，药效6，全队治疗6+药效；地志摹图：0 气，敌方目标、抽2、当前地势收益两次；岩粉封脉：1 气，地势收益一次、敌破绽3/中毒10并毒爆 |
 | 月白 | 阵师 + 法师 | 四张牌的基础效果均检索1张未完成月白牌。青焰点灯：0 气，敌灼烧6并触发一次，任务奖敌群同效；月白照夜：1 气，敌标记2/灼烧4、100%攻击并触发灼烧，任务奖敌群标记3并按锁定标记数落雷50%；残卷批注：0 气，抽2、地势收益一次，任务奖地势收益三次；山河残图：0 气，全队甲8/内3并地势收益一次，任务奖耗月白全甲、每甲群攻20% |
 | 宋金宝 | 法师 + 刀客 | 赏钱鼓舞：0 气，友方气势2/内6并协战100%，任务奖全队气势2/抽2/回气2，另有冲锋重放与收招延迟重放；耳目密报：0 气，显示意图、敌标记2、检索未完成本 NPC牌，任务奖标记3并全队各100%攻击；贵客令：1 气，自身标记2/灵动2/反击1/抽1，任务奖标记3/灵动4/反击3，另有冲锋/收招反击；一诺千金：1 气，检索并令后两张0/0，任务奖抽3回气2、本回合其余主动牌0/0 |
 
@@ -2230,7 +2230,7 @@ C++ 变更不用 Live Coding 或 Hot Reload 作为验证。编辑器有脏包时
 | 049 | 异草辨识 | `Npc.ZhouGuangZu.YiCaoBianShi` | 普通 | 0 气 / 0 内 | 任意存活单位（点击后选择目标） | NPC 固定 4 选 3 卡池 | 基础：出牌者获得6层药效；消耗出牌者全部药效；若所选目标为友方，恢复6+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去6+药效层数生命；若所选目标为友方，清除其全部流血、中毒和灼烧 | `TargetMode=AnyLivingUnit \| Base=[Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=6,Status=Medicine}; Effect{Type=HealOrReverseWithMedicine,Target=SelectedTarget,Magnitude=6}; Effect{Type=CleanseFriendlyDamageOverTime,Target=SelectedTarget,Magnitude=1}]` |
 | 050 | 黄山敷治 | `Npc.ZhouGuangZu.HuangShanFuZhi` | 普通 | 1 气 / 3 内 | 全体友方（直接施放） | NPC 固定 4 选 3 卡池 | 基础：全体友方失去1点生命，最低保留1点；出牌者获得6层药效；消耗出牌者全部药效；若全体友方为友方，恢复6+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去6+药效层数生命 | `TargetMode=AllAllies \| Base=[Effect{Type=LoseHealthNonlethal,Target=AllAllies,Magnitude=1}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=6,Status=Medicine}; Effect{Type=HealOrReverseWithMedicine,Target=AllAllies,Magnitude=6}]` |
 | 051 | 地志摹图 | `Npc.ZhouGuangZu.DiZhiMoTu` | 稀有 | 0 气 / 3 内 | 单体敌方（点击后选择目标） | NPC 固定 4 选 3 卡池 | 基础：出牌者抽3张牌；触发当前地势收益2次 | `TargetMode=SingleEnemy \| Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=2}]` |
-| 052 | 岩粉封脉 | `Npc.ZhouGuangZu.YanFenFengMai` | 珍稀 | 1 气 / 3 内 | 单体敌方（点击后选择目标） | NPC 固定 4 选 3 卡池 | 基础：触发当前地势收益1次；所选目标获得5层破绽；所选目标获得8层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害 | `TargetMode=SingleEnemy \| Base=[Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=3,Status=Vulnerability}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=6,Status=Poison}; Effect{Type=ResolveToxicExplosion,Target=SelectedTarget,Magnitude=1}]` |
+| 052 | 岩粉封脉 | `Npc.ZhouGuangZu.YanFenFengMai` | 珍稀 | 1 气 / 3 内 | 单体敌方（点击后选择目标） | NPC 固定 4 选 3 卡池 | 基础：触发当前地势收益1次；所选目标获得5层破绽；所选目标获得12层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害 | `TargetMode=SingleEnemy \| Base=[Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=3,Status=Vulnerability}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=10,Status=Poison}; Effect{Type=ResolveToxicExplosion,Target=SelectedTarget,Magnitude=1}]` |
 ## 12. 任务 NPC·金贵（4 张）
 
 | # | 卡牌 | CardId | 品质 | 费用 | 目标 | 获取 | 完整效果 | 实现签名 |
