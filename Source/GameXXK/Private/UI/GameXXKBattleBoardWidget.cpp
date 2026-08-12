@@ -119,7 +119,10 @@ namespace
 	static constexpr float EnemyIntentRevealDuration = 0.55f;
 	static constexpr float EnemyIntentResolveDuration = 0.18f;
 	static const FVector2D GroupOutcomePreviewAnchor(0.245f, 0.34f);
-	static const FMargin SingleOutcomePreviewOffsets(0.0f, -8.0f, 272.0f, 56.0f);
+	static constexpr float SingleOutcomePreviewTargetGap = 12.0f;
+	static const float SingleOutcomePreviewTopOffset =
+		-(FormationVisualSize.Y * 0.5f + SingleOutcomePreviewTargetGap);
+	static const FMargin SingleOutcomePreviewOffsets(0.0f, SingleOutcomePreviewTopOffset, 272.0f, 56.0f);
 	static const FMargin GroupOutcomePreviewOffsets(0.0f, 0.0f, 620.0f, 108.0f);
 
 	TArray<FGameXXKCardDamageResult> FlattenResumedCardDamageResults(
@@ -2089,6 +2092,11 @@ void UGameXXKBattleBoardWidget::HandleUnitTargetProxyHoverChanged(const FName Un
 	{
 		if (IsCardTargetingActive() && LegalCardTargetUnitIds.Contains(UnitId))
 		{
+			FVector2D TargetStageCenter;
+			if (TryResolveUnitTargetStageCenter(UnitId, TargetStageCenter))
+			{
+				TargetingPointerPosition = TargetStageCenter;
+			}
 			BuildCardOutcomePreview(PendingCardPreview.CardInstanceId, UnitId);
 		}
 		else
@@ -2785,6 +2793,14 @@ bool UGameXXKBattleBoardWidget::ToggleCommandMenuForPartyUnit(int32 PartyIndex, 
 
 void UGameXXKBattleBoardWidget::UpdateTargetingPointer(FVector2D ScreenPosition)
 {
+	FVector2D LockedTargetStageCenter;
+	if (IsCardTargetingActive()
+		&& !CachedOutcomeTargetUnitId.IsNone()
+		&& LegalCardTargetUnitIds.Contains(CachedOutcomeTargetUnitId)
+		&& TryResolveUnitTargetStageCenter(CachedOutcomeTargetUnitId, LockedTargetStageCenter))
+	{
+		ScreenPosition = LockedTargetStageCenter;
+	}
 	if (IsTargetingBattleActionForTest() && !TargetingPointerPosition.Equals(ScreenPosition, 0.5f))
 	{
 		TargetingPointerPosition = ScreenPosition;
@@ -7244,26 +7260,48 @@ void UGameXXKBattleBoardWidget::ApplyCardOutcomePreview(const FGameXXKCardOutcom
 void UGameXXKBattleBoardWidget::RefreshSingleOutcomePreviewPlacement(const FName UnitId)
 {
 	UCanvasPanelSlot* const OutcomeSlot = SingleOutcomeWidget ? Cast<UCanvasPanelSlot>(SingleOutcomeWidget->Slot) : nullptr;
-	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
-	if (!OutcomeSlot || !Subsystem || UnitId.IsNone())
+	FVector2D TargetStageCenter;
+	if (!OutcomeSlot || !TryResolveUnitTargetStageCenter(UnitId, TargetStageCenter))
 	{
 		return;
 	}
 
-	FGameXXKBattleUnitHudView View;
-	FGameXXKFixedUnitHudLayout FixedLayout;
-	if (Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle
-		&& FGameXXKBattlePresentation::BuildUnitHudView(
-			Subsystem->GetRuntimeState().CardRun.ActiveBattle,
-			UnitId,
-			ResolveProjectedUnitHudDisplayName(UnitId),
-			View)
-		&& TryResolveFixedUnitHudLayout(View, FixedLayout))
+	const FVector2D TargetAnchor(
+		TargetStageCenter.X / BattleHudSafeStageDesignSize.X,
+		TargetStageCenter.Y / BattleHudSafeStageDesignSize.Y);
+	OutcomeSlot->SetAnchors(FAnchors(TargetAnchor.X, TargetAnchor.Y));
+	OutcomeSlot->SetAlignment(FVector2D(0.5f, 1.0f));
+	OutcomeSlot->SetOffsets(SingleOutcomePreviewOffsets);
+}
+
+bool UGameXXKBattleBoardWidget::TryResolveUnitTargetStageCenter(
+	const FName UnitId,
+	FVector2D& OutStageCenter) const
+{
+	OutStageCenter = FVector2D::ZeroVector;
+	if (UnitId.IsNone())
 	{
-		OutcomeSlot->SetAnchors(FixedLayout.Anchors);
-		OutcomeSlot->SetAlignment(FVector2D(0.5f, 1.0f));
-		OutcomeSlot->SetOffsets(SingleOutcomePreviewOffsets);
+		return false;
 	}
+
+	if (const UGameXXKBattleUnitVisualWidget* const Visual = UnitVisuals.FindRef(UnitId))
+	{
+		OutStageCenter = Visual->GetStageCenter();
+		return true;
+	}
+
+	const UCanvasPanelSlot* const ProxySlot = UnitTargetProxies.FindRef(UnitId)
+		? Cast<UCanvasPanelSlot>(UnitTargetProxies.FindRef(UnitId)->Slot)
+		: nullptr;
+	if (!ProxySlot)
+	{
+		return false;
+	}
+	const FVector2D ProxyAnchor = ProxySlot->GetAnchors().Minimum;
+	OutStageCenter = FVector2D(
+		ProxyAnchor.X * BattleHudSafeStageDesignSize.X,
+		ProxyAnchor.Y * BattleHudSafeStageDesignSize.Y);
+	return true;
 }
 
 bool UGameXXKBattleBoardWidget::BeginCardTargeting(const FGameXXKCardPlayPreview& Preview)

@@ -3,9 +3,11 @@
 #include "UI/GameXXKCardOutcomePreviewWidget.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Components/Border.h"
 #include "Components/HorizontalBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "Engine/Texture2D.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -43,11 +45,24 @@ namespace GameXXKCardOutcomePreviewWidgetTest
 		}).Num();
 	}
 
-	UVerticalBox* RenderedRoot(const UGameXXKCardOutcomePreviewWidget* Widget)
+	UBorder* RenderedBackground(const UGameXXKCardOutcomePreviewWidget* Widget)
 	{
 		return Widget && Widget->WidgetTree
-			? Cast<UVerticalBox>(Widget->WidgetTree->RootWidget)
+			? Cast<UBorder>(Widget->WidgetTree->RootWidget)
 			: nullptr;
+	}
+
+	UVerticalBox* RenderedRoot(const UGameXXKCardOutcomePreviewWidget* Widget)
+	{
+		if (!Widget || !Widget->WidgetTree)
+		{
+			return nullptr;
+		}
+		if (UBorder* const Background = RenderedBackground(Widget))
+		{
+			return Cast<UVerticalBox>(Background->GetContent());
+		}
+		return Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
 	}
 
 	UHorizontalBox* RenderedRow(const UGameXXKCardOutcomePreviewWidget* Widget, const int32 LineIndex)
@@ -138,8 +153,24 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TSharedPtr<SWidget> FirstSlate = Widget->TakeWidget();
 	TWeakPtr<SWidget> OldSlateWeak = FirstSlate;
 	TestEqual(TEXT("non-empty rebuilt Slate root is hit-test invisible"), FirstSlate->GetVisibility(), EVisibility::HitTestInvisible);
-	UVerticalBox* FocusedRoot = Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
-	TestNotNull(TEXT("the runtime WidgetTree root is the rendered vertical line box"), FocusedRoot);
+	UBorder* const FocusedBackground = RenderedBackground(Widget);
+	TestNotNull(TEXT("the runtime WidgetTree root is a real tooltip-paper background"), FocusedBackground);
+	if (FocusedBackground)
+	{
+		TestEqual(TEXT("the tooltip-paper background never intercepts input"),
+			FocusedBackground->GetVisibility(), ESlateVisibility::HitTestInvisible);
+		TestEqual(TEXT("the tooltip-paper background uses a nine-slice box brush"),
+			FocusedBackground->Background.DrawAs, ESlateBrushDrawType::Box);
+		const UObject* const BackgroundResource = FocusedBackground->Background.GetResourceObject();
+		TestNotNull(TEXT("the tooltip-paper background has a loaded project texture"), BackgroundResource);
+		TestEqual(TEXT("the tooltip reuses the approved low-saturation paper asset"),
+			BackgroundResource ? BackgroundResource->GetPathName() : FString(),
+			FString(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TooltipPaper.T_MasterV2_TooltipPaper")));
+		TestEqual(TEXT("the tooltip-paper background keeps compact readable padding"),
+			FocusedBackground->GetPadding(), FMargin(10.0f, 6.0f));
+	}
+	UVerticalBox* FocusedRoot = RenderedRoot(Widget);
+	TestNotNull(TEXT("the tooltip-paper background contains the rendered vertical line box"), FocusedRoot);
 	if (!FocusedRoot)
 	{
 		return false;
@@ -207,7 +238,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 		ToneLine.Segments.Add(Segment(*FString::Printf(TEXT("tone%d"), ToneIndex), ToneColors[ToneIndex].Key));
 	}
 	Widget->SetLines({ToneLine});
-	UVerticalBox* ToneRoot = Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
+	UVerticalBox* ToneRoot = RenderedRoot(Widget);
 	TestNotNull(TEXT("tone fixture retains the real rendered root"), ToneRoot);
 	TestEqual(TEXT("tone fixture renders one row"), ToneRoot ? ToneRoot->GetChildrenCount() : 0, 1);
 	UHorizontalBox* ToneRow = ToneRoot ? Cast<UHorizontalBox>(ToneRoot->GetChildAt(0)) : nullptr;
@@ -281,7 +312,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	Widget->SetLines(GroupLines);
 	TestEqual(TEXT("representative group input keeps its rules-owned three rows"), Widget->GetVisibleLineCountForTest(), 3);
 	TestEqual(TEXT("group category order remains exactly as supplied by rules"), Widget->GetPlainLineForTest(1), FString(TEXT("2P 中毒 4")));
-	UVerticalBox* GroupRoot = Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
+	UVerticalBox* GroupRoot = RenderedRoot(Widget);
 	TestEqual(TEXT("the real group tree contains three rows in rules order"), GroupRoot ? GroupRoot->GetChildrenCount() : 0, 3);
 	for (int32 LineIndex = 0; LineIndex < GroupLines.Num(); ++LineIndex)
 	{
@@ -301,7 +332,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("mode-independent safety cap trims a fourth row"), Widget->GetVisibleLineCountForTest(), 3);
 	TestEqual(TEXT("safety cap keeps the first three rows in order"), Widget->GetPlainLineForTest(2), FString(TEXT("3P 治疗 +2")));
 	TestEqual(TEXT("trimmed row cannot be observed"), Widget->GetPlainLineForTest(3), FString());
-	UVerticalBox* DefensiveRoot = Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
+	UVerticalBox* DefensiveRoot = RenderedRoot(Widget);
 	TestEqual(TEXT("real rendered tree applies the absolute three-row safety cap"),
 		DefensiveRoot ? DefensiveRoot->GetChildrenCount() : 0, 3);
 	TArray<UWidget*> DefensiveRenderedObjects;
@@ -324,7 +355,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("replacement SetLines removes old rows"), Widget->GetVisibleLineCountForTest(), 1);
 	TestEqual(TEXT("replacement SetLines removes old segments"), CountWidgetsOfClass(Widget, UTextBlock::StaticClass()), 1);
 	TestEqual(TEXT("replacement text contains no stale content"), Widget->GetPlainLineForTest(0), FString(TEXT("replacement")));
-	UVerticalBox* ReplacementRoot = Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
+	UVerticalBox* ReplacementRoot = RenderedRoot(Widget);
 	TestEqual(TEXT("replacement real tree has exactly one row"), ReplacementRoot ? ReplacementRoot->GetChildrenCount() : 0, 1);
 	UHorizontalBox* ReplacementRow = RenderedRow(Widget, 0);
 	TestNotNull(TEXT("replacement real row exists"), ReplacementRow);
@@ -349,7 +380,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Clear removes all visible rows"), Widget->GetVisibleLineCountForTest(), 0);
 	TestEqual(TEXT("Clear removes generated row children"), CountWidgetsOfClass(Widget, UHorizontalBox::StaticClass()), 0);
 	TestEqual(TEXT("Clear removes generated segment children"), CountWidgetsOfClass(Widget, UTextBlock::StaticClass()), 0);
-	UVerticalBox* ClearedRoot = Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
+	UVerticalBox* ClearedRoot = RenderedRoot(Widget);
 	TestNotNull(TEXT("Clear retains the real root for reuse"), ClearedRoot);
 	TestEqual(TEXT("Clear directly removes every real row child"), ClearedRoot ? ClearedRoot->GetChildrenCount() : 0, 0);
 	TestEqual(TEXT("Clear collapses the preview"), Widget->GetVisibility(), ESlateVisibility::Collapsed);
@@ -363,7 +394,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("TakeWidget after the old wrapper expires returns a new live wrapper"), RebuiltSlate.IsValid());
 	TestEqual(TEXT("rebuild after Clear remains empty"), Widget->GetVisibleLineCountForTest(), 0);
 	TestEqual(TEXT("rebuild after Clear remains collapsed"), RebuiltSlate->GetVisibility(), EVisibility::Collapsed);
-	UVerticalBox* RebuiltRoot = Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
+	UVerticalBox* RebuiltRoot = RenderedRoot(Widget);
 	TestNotNull(TEXT("Slate rebuild exposes a real vertical root"), RebuiltRoot);
 	TestEqual(TEXT("Slate rebuild keeps the real root free of stale rows"), RebuiltRoot ? RebuiltRoot->GetChildrenCount() : 0, 0);
 	Widget->SetLines({Line({Segment(TEXT("fresh"), EGameXXKCardOutcomeTone::Healing), Segment(TEXT(" row"), EGameXXKCardOutcomeTone::Neutral)})});
@@ -371,7 +402,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("SetLines after rebuild creates only the new segments"), CountWidgetsOfClass(Widget, UTextBlock::StaticClass()), 2);
 	TestEqual(TEXT("SetLines after rebuild has no stale line text"), Widget->GetPlainLineForTest(0), FString(TEXT("fresh row")));
 	TestEqual(TEXT("SetLines after rebuild restores transparent visibility"), Widget->GetVisibility(), ESlateVisibility::HitTestInvisible);
-	UVerticalBox* FreshRoot = Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
+	UVerticalBox* FreshRoot = RenderedRoot(Widget);
 	TestEqual(TEXT("fresh real tree has exactly one row"), FreshRoot ? FreshRoot->GetChildrenCount() : 0, 1);
 	UHorizontalBox* FreshRow = RenderedRow(Widget, 0);
 	TestNotNull(TEXT("fresh real row exists"), FreshRow);

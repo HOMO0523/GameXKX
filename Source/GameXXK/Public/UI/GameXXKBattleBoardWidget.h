@@ -698,6 +698,7 @@ private:
 	bool BuildCardOutcomePreview(FName CardInstanceId, FName RequestedTargetUnitId);
 	void ApplyCardOutcomePreview(const FGameXXKCardOutcomePreview& Preview);
 	void RefreshSingleOutcomePreviewPlacement(FName UnitId);
+	bool TryResolveUnitTargetStageCenter(FName UnitId, FVector2D& OutStageCenter) const;
 	bool ResolveCardBattleTerminalState();
 	FVector2D ResolveCardTargetingSourcePosition(FName OwnerUnitId) const;
 	bool ResolveAndRefreshCardBattleAfterMutation();

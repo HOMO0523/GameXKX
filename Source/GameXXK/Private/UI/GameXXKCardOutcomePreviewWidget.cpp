@@ -1,17 +1,24 @@
 #include "UI/GameXXKCardOutcomePreviewWidget.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Components/Border.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Engine/Texture2D.h"
 #include "Styling/CoreStyle.h"
 
 namespace
 {
 	constexpr int32 MaxOutcomeLines = 3;
 	constexpr int32 OutcomeFontSize = 18;
+	constexpr const TCHAR* OutcomeTooltipPaperTexturePath =
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TooltipPaper.T_MasterV2_TooltipPaper");
+	const FVector2D OutcomeTooltipPaperImageSize(520.0f, 240.0f);
+	const FMargin OutcomeTooltipPaperMargin(12.0f / 520.0f, 10.0f / 240.0f);
+	const FMargin OutcomeTooltipPaperPadding(10.0f, 6.0f);
 
 	FLinearColor ResolveSegmentColor(const EGameXXKCardOutcomeTone Tone)
 	{
@@ -116,13 +123,34 @@ TSharedRef<SWidget> UGameXXKCardOutcomePreviewWidget::RebuildWidget()
 	{
 		WidgetTree = NewObject<UWidgetTree>(this, TEXT("CardOutcomePreviewWidgetTree"));
 	}
-	if (WidgetTree && !LineBox)
+	if (WidgetTree && (!BackgroundBorder || !LineBox))
 	{
+		BackgroundBorder = WidgetTree->ConstructWidget<UBorder>(
+			UBorder::StaticClass(),
+			TEXT("CardOutcomePreviewPaper"));
 		LineBox = WidgetTree->ConstructWidget<UVerticalBox>(
 			UVerticalBox::StaticClass(),
 			TEXT("CardOutcomePreviewLines"));
-		LineBox->SetVisibility(ESlateVisibility::HitTestInvisible);
-		WidgetTree->RootWidget = LineBox;
+		if (BackgroundBorder && LineBox)
+		{
+			if (!BackgroundTexture)
+			{
+				BackgroundTexture = LoadObject<UTexture2D>(nullptr, OutcomeTooltipPaperTexturePath);
+			}
+			FSlateBrush BackgroundBrush;
+			BackgroundBrush.SetResourceObject(BackgroundTexture);
+			BackgroundBrush.ImageSize = OutcomeTooltipPaperImageSize;
+			BackgroundBrush.DrawAs = ESlateBrushDrawType::Box;
+			BackgroundBrush.Margin = OutcomeTooltipPaperMargin;
+			BackgroundBrush.TintColor = FSlateColor(FLinearColor::White);
+			BackgroundBorder->SetBrush(BackgroundBrush);
+			BackgroundBorder->SetBrushColor(FLinearColor::White);
+			BackgroundBorder->SetPadding(OutcomeTooltipPaperPadding);
+			BackgroundBorder->SetVisibility(ESlateVisibility::HitTestInvisible);
+			LineBox->SetVisibility(ESlateVisibility::HitTestInvisible);
+			BackgroundBorder->SetContent(LineBox);
+			WidgetTree->RootWidget = BackgroundBorder;
+		}
 	}
 	RefreshLines();
 	return Super::RebuildWidget();

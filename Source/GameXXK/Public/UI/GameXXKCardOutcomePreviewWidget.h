@@ -6,6 +6,8 @@
 #include "GameXXKCardOutcomePreviewWidget.generated.h"
 
 class UVerticalBox;
+class UBorder;
+class UTexture2D;
 
 UCLASS()
 class GAMEXXK_API UGameXXKCardOutcomePreviewWidget : public UUserWidget
@@ -27,6 +29,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> LineBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> BackgroundBorder;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> BackgroundTexture;
 
 	TArray<FGameXXKCardOutcomeTextLine> Lines;
 };

@@ -24,6 +24,7 @@
 #include "UI/GameXXKBattlePartyQiWidget.h"
 #include "UI/GameXXKCardOutcomePreviewWidget.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
+#include "UObject/UObjectGlobals.h"
 
 #include <type_traits>
 #include <utility>
@@ -1657,6 +1658,7 @@ bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Paramet
 	TestTrue(TEXT("manual outcome Board initializes"), Board->Initialize());
 	Board->NativeConstruct();
 	TestTrue(TEXT("manual outcome Board begins its real visual session"), Board->BeginBattleVisualSession(8701));
+	FlushAsyncLoading();
 	UButton* FirstProxy = Board->GetUnitTargetProxyForTest(LegalEnemyTargets[0]);
 	UButton* const SecondProxy = Board->GetUnitTargetProxyForTest(LegalEnemyTargets[1]);
 	UButton* const OwnerProxy = Board->GetUnitTargetProxyForTest(OwnerUnitId);
@@ -1683,8 +1685,21 @@ bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("manual hover is classified without exposing the private enum"), Board->GetCardOutcomePreviewClassForTest(), FString(TEXT("ManualUnit")));
 	TestTrue(TEXT("manual hover displays at least one concise line"), Board->GetCardOutcomePreviewLinesForTest().Num() >= 1);
 	TestTrue(TEXT("manual hover never displays more than two lines"), Board->GetCardOutcomePreviewLinesForTest().Num() <= 2);
-	TestEqual(TEXT("manual preview follows the first target HUD anchor"),
-		Board->GetSingleOutcomePreviewAnchorForTest(), Board->GetProjectedUnitHudAnchorPositionForTest(LegalEnemyTargets[0]));
+	const UGameXXKBattleUnitVisualWidget* const FirstTargetVisual = Board->GetUnitVisualForTest(LegalEnemyTargets[0]);
+	TestNotNull(TEXT("first legal target has a real formation visual"), FirstTargetVisual);
+	const FVector2D FirstTargetCenter = FirstTargetVisual ? FirstTargetVisual->GetStageCenter() : FVector2D::ZeroVector;
+	const FVector2D FirstTargetAnchor(
+		FirstTargetCenter.X / 1920.0f,
+		FirstTargetCenter.Y / 1080.0f);
+	TestTrue(TEXT("legal hover snaps the targeting arrow head to the first target center"),
+		Board->GetTargetingPointerPositionForTest().Equals(FirstTargetCenter, 0.01f));
+	Board->UpdateTargetingPointer(FVector2D(1730.0f, 900.0f));
+	TestTrue(TEXT("controller mouse updates cannot pull the arrow away while the target remains hovered"),
+		Board->GetTargetingPointerPositionForTest().Equals(FirstTargetCenter, 0.01f));
+	TestTrue(TEXT("manual preview shares the first arrow-target anchor instead of the HUD anchor"),
+		Board->GetSingleOutcomePreviewAnchorForTest().Equals(FirstTargetAnchor, 0.001f));
+	TestEqual(TEXT("manual preview bottom stays twelve pixels above the 410px target visual"),
+		Board->GetSingleOutcomePreviewOffsetsForTest(), FMargin(0.0f, -217.0f, 272.0f, 56.0f));
 	TestEqual(TEXT("first manual hover performs one outcome build"), Board->GetCardOutcomePreviewBuildCountForTest(), 1);
 	FirstProxy->OnHovered.Broadcast();
 	TestEqual(TEXT("identical consecutive hover reuses the complete-state cache"), Board->GetCardOutcomePreviewBuildCountForTest(), 1);
@@ -1692,8 +1707,16 @@ bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Paramet
 	SecondProxy->OnHovered.Broadcast();
 	TestEqual(TEXT("changing legal target performs exactly one additional build"), Board->GetCardOutcomePreviewBuildCountForTest(), 2);
 	TestEqual(TEXT("changing legal target updates the stable target id"), Board->GetCardOutcomePreviewTargetUnitIdForTest(), LegalEnemyTargets[1]);
-	TestEqual(TEXT("manual preview follows the second target HUD anchor"),
-		Board->GetSingleOutcomePreviewAnchorForTest(), Board->GetProjectedUnitHudAnchorPositionForTest(LegalEnemyTargets[1]));
+	const UGameXXKBattleUnitVisualWidget* const SecondTargetVisual = Board->GetUnitVisualForTest(LegalEnemyTargets[1]);
+	TestNotNull(TEXT("second legal target has a real formation visual"), SecondTargetVisual);
+	const FVector2D SecondTargetCenter = SecondTargetVisual ? SecondTargetVisual->GetStageCenter() : FVector2D::ZeroVector;
+	const FVector2D SecondTargetAnchor(
+		SecondTargetCenter.X / 1920.0f,
+		SecondTargetCenter.Y / 1080.0f);
+	TestTrue(TEXT("changing target snaps the arrow head to the second target center"),
+		Board->GetTargetingPointerPositionForTest().Equals(SecondTargetCenter, 0.01f));
+	TestTrue(TEXT("manual preview follows the second arrow-target anchor"),
+		Board->GetSingleOutcomePreviewAnchorForTest().Equals(SecondTargetAnchor, 0.001f));
 	FirstProxy->OnUnhovered.Broadcast();
 	TestTrue(TEXT("late unhover from the old target cannot clear the newer hover"), Board->IsCardOutcomePreviewVisibleForTest());
 	SecondProxy->OnUnhovered.Broadcast();
@@ -1712,8 +1735,8 @@ bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("failed manual preview keeps the requested target"), Board->GetCardOutcomePreviewTargetUnitIdForTest(), LegalEnemyTargets[0]);
 	TestEqual(TEXT("failed manual preview exposes exactly one line"), Board->GetCardOutcomePreviewLinesForTest().Num(), 1);
 	TestEqual(TEXT("failed manual preview uses the neutral fallback text"), Board->GetCardOutcomePreviewLinesForTest()[0], FString(TEXT("无法预演")));
-	TestEqual(TEXT("failed manual preview remains in the single target position"),
-		Board->GetSingleOutcomePreviewAnchorForTest(), Board->GetProjectedUnitHudAnchorPositionForTest(LegalEnemyTargets[0]));
+	TestTrue(TEXT("failed manual preview remains above the first arrow-target position"),
+		Board->GetSingleOutcomePreviewAnchorForTest().Equals(FirstTargetAnchor, 0.001f));
 	const int32 ManualFailureBuildCount = Board->GetCardOutcomePreviewBuildCountForTest();
 	FirstProxy->OnHovered.Broadcast();
 	TestEqual(TEXT("identical failed manual hover reuses the complete-state cache"),
@@ -2184,6 +2207,7 @@ bool FGameXXKTargetOutcomePreviewLayoutInvariantTest::RunTest(const FString& Par
 	TestTrue(TEXT("layout Board initializes"), Board->Initialize());
 	Board->NativeConstruct();
 	TestTrue(TEXT("layout Board begins visual session"), Board->BeginBattleVisualSession(8705));
+	FlushAsyncLoading();
 	TestTrue(TEXT("layout card enters targeting"), Board->ClickCardInHand(CardInstanceId));
 	const TMap<FName, FCanvasLayoutSnapshot> BeforeManualHover = CaptureNonOutcomeCanvasLayout(Board);
 	UButton* const TargetProxy = Board->GetUnitTargetProxyForTest(TargetUnitId);
@@ -2246,9 +2270,17 @@ bool FGameXXKTargetOutcomePreviewLayoutInvariantTest::RunTest(const FString& Par
 		}
 	}
 	TestEqual(TEXT("outcome overlay uses only z=1"), Board->GetBattleOutcomePreviewLayerZForTest(), 1);
-	TestEqual(TEXT("single outcome uses the target HUD anchor"), Board->GetSingleOutcomePreviewAnchorForTest(), Board->GetProjectedUnitHudAnchorPositionForTest(TargetUnitId));
+	const UGameXXKBattleUnitVisualWidget* const OutcomeTargetVisual = Board->GetUnitVisualForTest(TargetUnitId);
+	TestNotNull(TEXT("layout outcome target has a real formation visual"), OutcomeTargetVisual);
+	const FVector2D OutcomeTargetCenter = OutcomeTargetVisual ? OutcomeTargetVisual->GetStageCenter() : FVector2D::ZeroVector;
+	const FVector2D OutcomeTargetAnchor(OutcomeTargetCenter.X / 1920.0f, OutcomeTargetCenter.Y / 1080.0f);
+	TestTrue(TEXT("single outcome uses the arrow target anchor"),
+		Board->GetSingleOutcomePreviewAnchorForTest().Equals(OutcomeTargetAnchor, 0.001f));
+	TestTrue(TEXT("layout hover snaps the targeting arrow head to the same target anchor"),
+		Board->GetTargetingPointerPositionForTest().Equals(OutcomeTargetCenter, 0.01f));
 	TestEqual(TEXT("single outcome uses exact alignment"), Board->GetSingleOutcomePreviewAlignmentForTest(), FVector2D(0.5f, 1.0f));
-	TestEqual(TEXT("single outcome uses exact offsets/size"), Board->GetSingleOutcomePreviewOffsetsForTest(), FMargin(0.0f, -8.0f, 272.0f, 56.0f));
+	TestEqual(TEXT("single outcome sits above the full target visual without changing its compact size"),
+		Board->GetSingleOutcomePreviewOffsetsForTest(), FMargin(0.0f, -217.0f, 272.0f, 56.0f));
 	const UCanvasPanelSlot* const ProjectedLayerSlot = Cast<UCanvasPanelSlot>(Board->GetBattleProjectedUnitHudLayerForTest()->Slot);
 	const UCanvasPanelSlot* const RootCanvasSlot = Cast<UCanvasPanelSlot>(Board->GetBattleControlsLayerForTest()->Slot);
 	TestNotNull(TEXT("projected HUD layer remains attached by Canvas slot"), ProjectedLayerSlot);
