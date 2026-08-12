@@ -2582,7 +2582,16 @@ bool FGameXXKCardBattleAdapter::ResolveCardPlay(
 		}
 	}
 
-	FGameXXKRelicRules::ApplyCardPlayed(NewState, NewResult.OwnerUnitId, NewResult.DamageResults);
+	const TArray<FGameXXKCardDamageResult> PrimaryDamageResults = NewResult.DamageResults;
+	if (!FGameXXKRelicRules::ApplyCardPlayed(
+		NewState,
+		NewResult.OwnerUnitId,
+		PrimaryDamageResults,
+		NewResult,
+		OutError))
+	{
+		return false;
+	}
 	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
 		return false;

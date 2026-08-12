@@ -56,12 +56,14 @@ namespace
 		return Definition.Magnitude * (Definition.bStackable ? FMath::Max(1, Instance.Stacks) : 1);
 	}
 
-	void ApplyCombatEffect(
+	bool ApplyCombatEffect(
 		FGameXXKRuntimeState& State,
 		const FGameXXKRelicDefinition& Definition,
 		const FGameXXKRelicInstance& Instance,
 		FName OwnerUnitId,
-		const TArray<FGameXXKCardDamageResult>* DamageResults)
+		const TArray<FGameXXKCardDamageResult>* DamageResults,
+		FGameXXKCardPlayResult* InOutCardPlayResult,
+		FString* OutError)
 	{
 		FGameXXKCardBattleRuntime& Battle = State.CardRun.ActiveBattle;
 		const int32 Magnitude = EffectiveMagnitude(Definition, Instance);
@@ -79,18 +81,50 @@ namespace
 				if (Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Enemy) Callback(Unit);
 			}
 		};
+		auto ApplyArmor = [InOutCardPlayResult, OwnerUnitId](FGameXXKCardCombatUnit& Unit, const int32 RequestedArmor)
+		{
+			const int32 ApprovedRequest = FMath::Max(0, RequestedArmor);
+			if (InOutCardPlayResult)
+			{
+				FGameXXKCardArmorResult& Result = InOutCardPlayResult->ArmorResults.AddDefaulted_GetRef();
+				Result.SourceUnitId = OwnerUnitId;
+				Result.TargetUnitId = Unit.UnitId;
+				Result.RequestedArmor = ApprovedRequest;
+				Result.EffectiveArmor = GameXXKCardRules::AddCombatArmor(Unit, ApprovedRequest);
+			}
+			else
+			{
+				GameXXKCardRules::AddCombatArmor(Unit, ApprovedRequest);
+			}
+		};
+		auto ApplyHealing = [InOutCardPlayResult, OwnerUnitId](FGameXXKCardCombatUnit& Unit, const int32 RequestedHealing)
+		{
+			const int32 ApprovedRequest = FMath::Max(0, RequestedHealing);
+			if (InOutCardPlayResult)
+			{
+				FGameXXKCardHealingResult& Result = InOutCardPlayResult->HealingResults.AddDefaulted_GetRef();
+				Result.SourceUnitId = OwnerUnitId;
+				Result.TargetUnitId = Unit.UnitId;
+				Result.RequestedHealing = ApprovedRequest;
+				Result.EffectiveHealing = GameXXKCardRules::HealCombatUnit(Unit, ApprovedRequest);
+			}
+			else
+			{
+				GameXXKCardRules::HealCombatUnit(Unit, ApprovedRequest);
+			}
+		};
 
 		switch (Definition.EffectKind)
 		{
 		case EGameXXKRelicEffectKind::GainPartyArmor:
-			ForLivingParty([Magnitude](FGameXXKCardCombatUnit& Unit){ Unit.Armor = FMath::Clamp(Unit.Armor + Magnitude, 0, 99); });
+			ForLivingParty([Magnitude, &ApplyArmor](FGameXXKCardCombatUnit& Unit){ ApplyArmor(Unit, Magnitude); });
 			break;
 		case EGameXXKRelicEffectKind::GainHeroArmor:
 			if (FGameXXKCardCombatUnit* Unit = FindUnit(State, OwnerUnitId.IsNone() ? FName(TEXT("Player")) : OwnerUnitId))
-				Unit->Armor = FMath::Clamp(Unit->Armor + Magnitude, 0, 99);
+				ApplyArmor(*Unit, Magnitude);
 			break;
 		case EGameXXKRelicEffectKind::HealParty:
-			ForLivingParty([Magnitude](FGameXXKCardCombatUnit& Unit){ Unit.HP = FMath::Min(Unit.MaxHP, Unit.HP + Magnitude); });
+			ForLivingParty([Magnitude, &ApplyHealing](FGameXXKCardCombatUnit& Unit){ ApplyHealing(Unit, Magnitude); });
 			break;
 		case EGameXXKRelicEffectKind::RestorePartyMana:
 			ForLivingParty([Magnitude](FGameXXKCardCombatUnit& Unit){ Unit.Mana = FMath::Min(Unit.MaxMana, Unit.Mana + Magnitude); });
@@ -105,8 +139,46 @@ namespace
 			ForLivingParty([Magnitude](FGameXXKCardCombatUnit& Unit){ Unit.Defense += Magnitude; });
 			break;
 		case EGameXXKRelicEffectKind::DamageAllEnemies:
-			ForLivingEnemies([Magnitude](FGameXXKCardCombatUnit& Unit){ Unit.HP = FMath::Max(0, Unit.HP - Magnitude); Unit.bLiving = Unit.HP > 0; });
+		{
+			if (Definition.Trigger == EGameXXKRelicTrigger::CardPlayed && !InOutCardPlayResult)
+			{
+				return Fail(OutError, TEXT("A card-played damage relic requires the active card play audit."));
+			}
+			TArray<FName> LivingEnemyUnitIds;
+			for (const FGameXXKCardCombatUnit& Unit : Battle.Units)
+			{
+				if (Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Enemy)
+				{
+					LivingEnemyUnitIds.Add(Unit.UnitId);
+				}
+			}
+			for (const FName EnemyUnitId : LivingEnemyUnitIds)
+			{
+				FGameXXKCardDamageContext Context;
+				Context.SourceUnitId = NAME_None;
+				Context.Kind = EGameXXKCardDamageKind::EnvironmentalHealthLoss;
+				Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::ActivePlay;
+				FGameXXKCardDamageResult Packet;
+				if (!GameXXKCardRules::ApplyCombatDirectDamage(
+					Battle.Units,
+					Battle.GuardLinks,
+					Context,
+					EnemyUnitId,
+					Magnitude,
+					Packet,
+					OutError))
+				{
+					return false;
+				}
+				if (InOutCardPlayResult)
+				{
+					Packet.SourceUnitId = OwnerUnitId;
+					Packet.Cause = EGameXXKCardDamageCause::Relic;
+					InOutCardPlayResult->DamageResults.Add(MoveTemp(Packet));
+				}
+			}
 			break;
+		}
 		case EGameXXKRelicEffectKind::PoisonAllEnemies:
 			ForLivingEnemies([Magnitude](FGameXXKCardCombatUnit& Unit){ AddStatus(Unit, EGameXXKCardStatus::Poison, Magnitude); });
 			break;
@@ -136,8 +208,8 @@ namespace
 						// These are player-owned relics.  Card plays also report damage dealt to
 						// enemies, so never turn an offensive hit into healing or armor for the foe.
 						if (Unit->Side != EGameXXKCardTargetSide::Party || !Unit->bLiving) continue;
-						if (Definition.EffectKind == EGameXXKRelicEffectKind::HealDamagedUnit) Unit->HP = FMath::Min(Unit->MaxHP, Unit->HP + Magnitude);
-						else Unit->Armor = FMath::Clamp(Unit->Armor + Magnitude, 0, 99);
+						if (Definition.EffectKind == EGameXXKRelicEffectKind::HealDamagedUnit) ApplyHealing(*Unit, Magnitude);
+						else ApplyArmor(*Unit, Magnitude);
 					}
 				}
 			}
@@ -145,23 +217,37 @@ namespace
 		default:
 			break;
 		}
+		return true;
 	}
 
-	void ApplyTrigger(
+	bool ApplyTrigger(
 		FGameXXKRuntimeState& State,
 		EGameXXKRelicTrigger Trigger,
 		FName OwnerUnitId = NAME_None,
-		const TArray<FGameXXKCardDamageResult>* DamageResults = nullptr)
+		const TArray<FGameXXKCardDamageResult>* DamageResults = nullptr,
+		FGameXXKCardPlayResult* InOutCardPlayResult = nullptr,
+		FString* OutError = nullptr)
 	{
-		if (!State.CardRun.bHasActiveCardBattle) return;
+		if (!State.CardRun.bHasActiveCardBattle) return true;
 		for (const FGameXXKRelicInstance& Instance : State.CardRun.Relics)
 		{
 			const FGameXXKRelicDefinition* Definition = FGameXXKRelicCatalog::FindDefinition(Instance.RelicId);
 			if (Definition && Definition->Trigger == Trigger)
 			{
-				ApplyCombatEffect(State, *Definition, Instance, OwnerUnitId, DamageResults);
+				if (!ApplyCombatEffect(
+					State,
+					*Definition,
+					Instance,
+					OwnerUnitId,
+					DamageResults,
+					InOutCardPlayResult,
+					OutError))
+				{
+					return false;
+				}
 			}
 		}
+		return true;
 	}
 }
 
@@ -235,26 +321,78 @@ void FGameXXKRelicRules::ClearRouteRelics(FGameXXKRuntimeState& InOutState)
 	InOutState.CardRun.RouteAttributeBonuses = FGameXXKRouteAttributeBonuses();
 }
 
-void FGameXXKRelicRules::ApplyBattleStart(FGameXXKRuntimeState& InOutState) { ApplyTrigger(InOutState, EGameXXKRelicTrigger::BattleStart); }
-void FGameXXKRelicRules::ApplyPlayerRoundStart(FGameXXKRuntimeState& InOutState) { ApplyTrigger(InOutState, EGameXXKRelicTrigger::PlayerRoundStart); }
-void FGameXXKRelicRules::ApplyPlayerRoundEnd(FGameXXKRuntimeState& InOutState) { ApplyTrigger(InOutState, EGameXXKRelicTrigger::PlayerRoundEnd); }
-
-void FGameXXKRelicRules::ApplyCardPlayed(FGameXXKRuntimeState& InOutState, FName OwnerUnitId, const TArray<FGameXXKCardDamageResult>& DamageResults)
+void FGameXXKRelicRules::ApplyBattleStart(FGameXXKRuntimeState& InOutState)
 {
-	ApplyTrigger(InOutState, EGameXXKRelicTrigger::CardPlayed, OwnerUnitId, &DamageResults);
-	ApplyDamageTaken(InOutState, DamageResults);
-	TSet<FName> DefeatedEnemies;
-	for (const FGameXXKCardDamageResult& Result : DamageResults)
+	ApplyTrigger(InOutState, EGameXXKRelicTrigger::BattleStart, NAME_None, nullptr, nullptr, nullptr);
+}
+
+void FGameXXKRelicRules::ApplyPlayerRoundStart(FGameXXKRuntimeState& InOutState)
+{
+	ApplyTrigger(InOutState, EGameXXKRelicTrigger::PlayerRoundStart, NAME_None, nullptr, nullptr, nullptr);
+}
+
+void FGameXXKRelicRules::ApplyPlayerRoundEnd(FGameXXKRuntimeState& InOutState)
+{
+	ApplyTrigger(InOutState, EGameXXKRelicTrigger::PlayerRoundEnd, NAME_None, nullptr, nullptr, nullptr);
+}
+
+bool FGameXXKRelicRules::ApplyCardPlayed(
+	FGameXXKRuntimeState& InOutState,
+	const FName OwnerUnitId,
+	const TArray<FGameXXKCardDamageResult>& PrimaryDamageResults,
+	FGameXXKCardPlayResult& InOutCardPlayResult,
+	FString* OutError)
+{
+	if (OutError)
 	{
-		if (FGameXXKCardCombatUnit* Unit = FindUnit(InOutState, Result.ResolvedTargetUnitId); Unit && Unit->Side == EGameXXKCardTargetSide::Enemy && !Unit->bLiving)
-			DefeatedEnemies.Add(Unit->UnitId);
+		OutError->Reset();
 	}
-	if (!DefeatedEnemies.IsEmpty()) ApplyTrigger(InOutState, EGameXXKRelicTrigger::EnemyDefeated, OwnerUnitId, &DamageResults);
+	TSet<FName> DefeatedEnemies;
+	for (const FGameXXKCardDamageResult& Result : PrimaryDamageResults)
+	{
+		if (const FGameXXKCardCombatUnit* Unit = FindUnit(InOutState, Result.ResolvedTargetUnitId);
+			Unit
+			&& Unit->Side == EGameXXKCardTargetSide::Enemy
+			&& Result.TargetHealthBefore > 0
+			&& Result.TargetHealthAfter == 0)
+		{
+			DefeatedEnemies.Add(Unit->UnitId);
+		}
+	}
+	if (!ApplyTrigger(
+		InOutState,
+		EGameXXKRelicTrigger::CardPlayed,
+		OwnerUnitId,
+		&PrimaryDamageResults,
+		&InOutCardPlayResult,
+		OutError)
+		|| !ApplyTrigger(
+			InOutState,
+			EGameXXKRelicTrigger::DamageTaken,
+			OwnerUnitId,
+			&PrimaryDamageResults,
+			&InOutCardPlayResult,
+			OutError))
+	{
+		return false;
+	}
+	if (!DefeatedEnemies.IsEmpty()
+		&& !ApplyTrigger(
+			InOutState,
+			EGameXXKRelicTrigger::EnemyDefeated,
+			OwnerUnitId,
+			&PrimaryDamageResults,
+			&InOutCardPlayResult,
+			OutError))
+	{
+		return false;
+	}
+	return true;
 }
 
 void FGameXXKRelicRules::ApplyDamageTaken(FGameXXKRuntimeState& InOutState, const TArray<FGameXXKCardDamageResult>& DamageResults)
 {
-	ApplyTrigger(InOutState, EGameXXKRelicTrigger::DamageTaken, NAME_None, &DamageResults);
+	ApplyTrigger(InOutState, EGameXXKRelicTrigger::DamageTaken, NAME_None, &DamageResults, nullptr, nullptr);
 }
 
 bool FGameXXKRelicRules::CalculateRouteNodeTravelMoneyBonus(

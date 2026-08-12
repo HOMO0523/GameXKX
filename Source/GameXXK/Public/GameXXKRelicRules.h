@@ -16,7 +16,12 @@ public:
 	static void ApplyBattleStart(FGameXXKRuntimeState& InOutState);
 	static void ApplyPlayerRoundStart(FGameXXKRuntimeState& InOutState);
 	static void ApplyPlayerRoundEnd(FGameXXKRuntimeState& InOutState);
-	static void ApplyCardPlayed(FGameXXKRuntimeState& InOutState, FName OwnerUnitId, const TArray<FGameXXKCardDamageResult>& DamageResults);
+	static bool ApplyCardPlayed(
+		FGameXXKRuntimeState& InOutState,
+		FName OwnerUnitId,
+		const TArray<FGameXXKCardDamageResult>& PrimaryDamageResults,
+		FGameXXKCardPlayResult& InOutCardPlayResult,
+		FString* OutError = nullptr);
 	static void ApplyDamageTaken(FGameXXKRuntimeState& InOutState, const TArray<FGameXXKCardDamageResult>& DamageResults);
 
 	/** Pure checked sum of route-travel-money relic effects for one completed node. */

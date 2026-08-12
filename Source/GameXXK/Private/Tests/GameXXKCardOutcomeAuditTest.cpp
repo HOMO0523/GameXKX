@@ -1,6 +1,9 @@
 #include "GameXXKCardCatalog.h"
+#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardRules.h"
 #include "GameXXKEquipmentSetCatalog.h"
+#include "GameXXKMVPRules.h"
+#include "GameXXKRelicRules.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -17,7 +20,9 @@ namespace GameXXKCardOutcomeAuditTest
 	const FName AllyUnitId(TEXT("Outcome.Ally"));
 	const FName EnemyAUnitId(TEXT("Outcome.EnemyA"));
 	const FName EnemyBUnitId(TEXT("Outcome.EnemyB"));
+	const FName EnemyCUnitId(TEXT("Outcome.EnemyC"));
 	const FName MedicineCardInstanceId(TEXT("Outcome.HuiChun"));
+	const FName RelicCardInstanceId(TEXT("Outcome.Relic.Card"));
 	const FName MedicineCardId(TEXT("Hero.Healer.HuiChunNiMai"));
 	const FName FlatReverseCardId(TEXT("Profession.Healer.LingZhiXuMing"));
 	const FName BelowThresholdCardId(TEXT("Profession.Healer.CaoMuFuZhi"));
@@ -154,6 +159,101 @@ namespace GameXXKCardOutcomeAuditTest
 			return false;
 		}
 		return true;
+	}
+
+	bool BuildRelicAdapterState(
+		FAutomationTestBase& Test,
+		FGameXXKRuntimeState& OutState,
+		const FName CardId,
+		const EGameXXKCharacterRole OwnerRole,
+		const int32 Seed)
+	{
+		const FGameXXKCardInstance Card = MakeNamedCard(RelicCardInstanceId, CardId, OwnerUnitId, 0);
+		TArray<FGameXXKCardCombatUnit> Units = {
+			MakeUnit(OwnerUnitId, EGameXXKCardTargetSide::Party, OwnerRole, 1),
+			MakeUnit(AllyUnitId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Healer, 2),
+			MakeUnit(EnemyAUnitId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 10),
+			MakeUnit(EnemyBUnitId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 11),
+			MakeUnit(EnemyCUnitId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 12)};
+		const TArray<FName> EnemyDefinitionIds = {
+			TEXT("Enemy.Ch1.Rooster"),
+			TEXT("Enemy.Ch1.Goat"),
+			TEXT("Enemy.Ch1.Weasel")};
+		for (int32 EnemyIndex = 0; EnemyIndex < EnemyDefinitionIds.Num(); ++EnemyIndex)
+		{
+			FGameXXKCardCombatUnit& Enemy = Units[EnemyIndex + 2];
+			Enemy.EnemyDefinitionId = EnemyDefinitionIds[EnemyIndex];
+			Enemy.BattleSlotNumber = EnemyIndex + 1;
+			Enemy.CombatLevel = 1;
+		}
+
+		FGameXXKCardBattleRuntime Runtime;
+		FString Error;
+		if (!GameXXKCardRules::InitializeCardBattleRuntime(
+			Runtime,
+			{Card},
+			Units,
+			EGameXXKCardTerrain::Plain,
+			Seed,
+			&Error))
+		{
+			Test.AddError(FString::Printf(TEXT("relic outcome adapter runtime failed to initialize: %s"), *Error));
+			return false;
+		}
+		Runtime.Deck.Hand = {Card};
+		Runtime.Deck.DrawPile.Reset();
+		Runtime.Deck.DiscardPile.Reset();
+		Runtime.Deck.ExhaustPile.Reset();
+		Runtime.Deck.SharedEnergy = 10;
+		if (!GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &Error))
+		{
+			Test.AddError(FString::Printf(TEXT("relic outcome adapter fixture is invalid: %s"), *Error));
+			return false;
+		}
+
+		OutState = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRelicRules::ClearRouteRelics(OutState);
+		OutState.CardRun.bHasActiveCardBattle = true;
+		OutState.CardRun.ActiveBattleSourceNodeId = 1;
+		OutState.CardRun.ActiveBattle = MoveTemp(Runtime);
+		return true;
+	}
+
+	bool AcquireRelics(
+		FAutomationTestBase& Test,
+		FGameXXKRuntimeState& State,
+		const TArray<FName>& RelicIds,
+		const TCHAR* ContextText)
+	{
+		for (const FName RelicId : RelicIds)
+		{
+			FString Error;
+			if (!Test.TestTrue(
+				FString::Printf(TEXT("%s acquires real catalog relic %s: %s"), ContextText, *RelicId.ToString(), *Error),
+				FGameXXKRelicRules::AcquireRelic(State, RelicId, &Error)))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool ResolveRelicAdapterCard(
+		FAutomationTestBase& Test,
+		FGameXXKRuntimeState& State,
+		const FName TargetUnitId,
+		FGameXXKCardPlayResult& OutResult,
+		const TCHAR* ContextText)
+	{
+		FString Error;
+		const bool bResolved = FGameXXKCardBattleAdapter::ResolveCardPlay(
+			State,
+			RelicCardInstanceId,
+			TargetUnitId,
+			OutResult,
+			&Error);
+		Test.TestTrue(FString::Printf(TEXT("%s resolves through the real battle adapter: %s"), ContextText, *Error), bResolved);
+		return bResolved;
 	}
 
 	FGameXXKCardCombatUnit* FindUnit(FGameXXKCardBattleRuntime& Runtime, const FName UnitId)
@@ -1262,6 +1362,222 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestEqual(TEXT("ten-point boundary reverse spends this round's formula budget"), BoundaryFormula->LastTriggeredRound, BoundaryRuntime.RoundNumber);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRelicLinkedDamageAuditTest,
+	"GameXXK.Data.CardOutcomePreview.Audit.RelicLinkedDamage",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRelicLinkedDamageAuditTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKCardOutcomeAuditTest;
+	const FName NoDirectDamageCardId(TEXT("Hero.Generic.NingShenTuNa"));
+	const FName PartyHealthLossCardId(TEXT("Hero.Healer.YiXueCuiFang"));
+	const FName DirectDamageCardId(TEXT("Hero.Generic.QingFengYiShi"));
+	const TArray<FName> EnemyUnitIds = {EnemyAUnitId, EnemyBUnitId, EnemyCUnitId};
+
+	{
+		FGameXXKRuntimeState State;
+		if (!BuildRelicAdapterState(*this, State, NoDirectDamageCardId, EGameXXKCharacterRole::Hero, 61201)
+			|| !AcquireRelics(*this, State, {TEXT("Relic.DrumCharm")}, TEXT("Drum fixture")))
+		{
+			return false;
+		}
+		FGameXXKCardPlayResult Result;
+		if (!ResolveRelicAdapterCard(*this, State, NAME_None, Result, TEXT("Drum no-direct-damage card")))
+		{
+			return false;
+		}
+		for (const FName EnemyUnitId : EnemyUnitIds)
+		{
+			const FGameXXKCardCombatUnit* Enemy = FindUnit(State.CardRun.ActiveBattle, EnemyUnitId);
+			if (!TestNotNull(FString::Printf(TEXT("Drum keeps stable enemy %s addressable"), *EnemyUnitId.ToString()), Enemy))
+			{
+				return false;
+			}
+			TestEqual(FString::Printf(TEXT("Drum removes exactly one HP from %s"), *EnemyUnitId.ToString()), Enemy->HP, 99);
+		}
+		if (!TestEqual(TEXT("Drum appends exactly three linked damage packets"), Result.DamageResults.Num(), 3))
+		{
+			return false;
+		}
+		for (int32 Index = 0; Index < EnemyUnitIds.Num(); ++Index)
+		{
+			const FGameXXKCardDamageResult& Packet = Result.DamageResults[Index];
+			const FString Prefix = FString::Printf(TEXT("Drum packet %d"), Index + 1);
+			TestEqual(Prefix + TEXT(" original stable target"), Packet.OriginalTargetUnitId, EnemyUnitIds[Index]);
+			TestEqual(Prefix + TEXT(" resolved stable target"), Packet.ResolvedTargetUnitId, EnemyUnitIds[Index]);
+			TestEqual(Prefix + TEXT(" uses environmental mitigation kind"), Packet.Kind, EGameXXKCardDamageKind::EnvironmentalHealthLoss);
+			TestEqual(Prefix + TEXT(" has relic semantic cause"), Packet.Cause, EGameXXKCardDamageCause::Relic);
+			TestEqual(Prefix + TEXT(" preserves card owner source"), Packet.SourceUnitId, OwnerUnitId);
+			TestEqual(Prefix + TEXT(" requests exactly one damage"), Packet.RequestedDamage, 1);
+			TestEqual(Prefix + TEXT(" deals exactly one health"), Packet.HealthDamage, 1);
+		}
+	}
+
+	{
+		FGameXXKRuntimeState State;
+		if (!BuildRelicAdapterState(*this, State, NoDirectDamageCardId, EGameXXKCharacterRole::Hero, 61202)
+			|| !AcquireRelics(*this, State, {TEXT("Relic.ChessStone")}, TEXT("Chess Stone fixture")))
+		{
+			return false;
+		}
+		FGameXXKCardPlayResult Result;
+		if (!ResolveRelicAdapterCard(*this, State, NAME_None, Result, TEXT("Chess Stone no-direct-damage card")))
+		{
+			return false;
+		}
+		TestEqual(TEXT("Chess Stone grants the card owner one armor"), FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->Armor, 1);
+		if (!TestEqual(TEXT("Chess Stone appends one owner armor packet"), Result.ArmorResults.Num(), 1))
+		{
+			return false;
+		}
+		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 1, 1, TEXT("Chess Stone Armor"));
+	}
+
+	{
+		FGameXXKRuntimeState State;
+		if (!BuildRelicAdapterState(*this, State, NoDirectDamageCardId, EGameXXKCharacterRole::Hero, 61203))
+		{
+			return false;
+		}
+		FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->Armor = 99;
+		FindUnit(State.CardRun.ActiveBattle, AllyUnitId)->Armor = 10;
+		if (!AcquireRelics(*this, State, {TEXT("Relic.SwordGuard")}, TEXT("Sword Guard fixture")))
+		{
+			return false;
+		}
+		FGameXXKCardPlayResult Result;
+		if (!ResolveRelicAdapterCard(*this, State, NAME_None, Result, TEXT("Sword Guard no-direct-damage card")))
+		{
+			return false;
+		}
+		TestEqual(TEXT("Sword Guard preserves owner armor at the cap"), FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->Armor, 99);
+		TestEqual(TEXT("Sword Guard grants the ally one armor"), FindUnit(State.CardRun.ActiveBattle, AllyUnitId)->Armor, 11);
+		if (!TestEqual(TEXT("Sword Guard appends one packet per living party member"), Result.ArmorResults.Num(), 2))
+		{
+			return false;
+		}
+		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 1, 0, TEXT("Sword Guard capped owner Armor"));
+		TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, AllyUnitId, 1, 1, TEXT("Sword Guard ally Armor"));
+	}
+
+	{
+		FGameXXKRuntimeState State;
+		if (!BuildRelicAdapterState(*this, State, PartyHealthLossCardId, EGameXXKCharacterRole::Healer, 61204))
+		{
+			return false;
+		}
+		FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->HP = 90;
+		FindUnit(State.CardRun.ActiveBattle, AllyUnitId)->HP = 90;
+		if (!AcquireRelics(
+			*this,
+			State,
+			{TEXT("Relic.DrumCharm"), TEXT("Relic.PineCone"), TEXT("Relic.RiverPearl")},
+			TEXT("primary DamageTaken fixture")))
+		{
+			return false;
+		}
+		FGameXXKCardPlayResult Result;
+		if (!ResolveRelicAdapterCard(*this, State, NAME_None, Result, TEXT("primary party-health-loss card")))
+		{
+			return false;
+		}
+		TestEqual(TEXT("primary party loss plus Drum produces two primary and three linked packets"), Result.DamageResults.Num(), 5);
+		TestEqual(TEXT("River Pearl heals only the two primary damaged party targets"), Result.HealingResults.Num(), 2);
+		TestEqual(TEXT("Pine Cone armors only the two primary damaged party targets"), Result.ArmorResults.Num(), 2);
+		if (Result.HealingResults.Num() != 2 || Result.ArmorResults.Num() != 2)
+		{
+			return false;
+		}
+		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, OwnerUnitId, 1, 1, TEXT("River Pearl owner Heal"));
+		TestHealingPacket(*this, Result.HealingResults[1], OwnerUnitId, AllyUnitId, 1, 1, TEXT("River Pearl ally Heal"));
+		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 2, 2, TEXT("Pine Cone owner Armor"));
+		TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, AllyUnitId, 2, 2, TEXT("Pine Cone ally Armor"));
+		TestEqual(TEXT("River Pearl restores the owner after primary loss exactly once"), FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->HP, 90);
+		TestEqual(TEXT("River Pearl restores the ally after primary loss exactly once"), FindUnit(State.CardRun.ActiveBattle, AllyUnitId)->HP, 90);
+		TestEqual(TEXT("Pine Cone protects the owner after primary loss exactly once"), FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->Armor, 2);
+		TestEqual(TEXT("Pine Cone protects the ally after primary loss exactly once"), FindUnit(State.CardRun.ActiveBattle, AllyUnitId)->Armor, 2);
+	}
+
+	{
+		FGameXXKRuntimeState State;
+		if (!BuildRelicAdapterState(*this, State, DirectDamageCardId, EGameXXKCharacterRole::Hero, 61205))
+		{
+			return false;
+		}
+		FindUnit(State.CardRun.ActiveBattle, EnemyAUnitId)->HP = 1;
+		FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->HP = 90;
+		FindUnit(State.CardRun.ActiveBattle, AllyUnitId)->HP = 90;
+		if (!AcquireRelics(
+			*this,
+			State,
+			{TEXT("Relic.CandleStub"), TEXT("Relic.StoneLion")},
+			TEXT("primary EnemyDefeated fixture")))
+		{
+			return false;
+		}
+		FGameXXKCardPlayResult Result;
+		if (!ResolveRelicAdapterCard(*this, State, EnemyAUnitId, Result, TEXT("primary enemy-defeating card")))
+		{
+			return false;
+		}
+		TestFalse(TEXT("the primary card defeats its one-health target"), FindUnit(State.CardRun.ActiveBattle, EnemyAUnitId)->bLiving);
+		TestEqual(TEXT("Candle Stub appends one four-heal packet per living party member"), Result.HealingResults.Num(), 2);
+		TestEqual(TEXT("Stone Lion appends one three-armor packet per living party member"), Result.ArmorResults.Num(), 2);
+		if (Result.HealingResults.Num() != 2 || Result.ArmorResults.Num() != 2)
+		{
+			return false;
+		}
+		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, OwnerUnitId, 4, 4, TEXT("Candle Stub owner Heal"));
+		TestHealingPacket(*this, Result.HealingResults[1], OwnerUnitId, AllyUnitId, 4, 4, TEXT("Candle Stub ally Heal"));
+		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 3, 3, TEXT("Stone Lion owner Armor"));
+		TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, AllyUnitId, 3, 3, TEXT("Stone Lion ally Armor"));
+	}
+
+	{
+		FGameXXKRuntimeState State;
+		if (!BuildRelicAdapterState(*this, State, DirectDamageCardId, EGameXXKCharacterRole::Hero, 61206))
+		{
+			return false;
+		}
+		FindUnit(State.CardRun.ActiveBattle, EnemyAUnitId)->HP = 15;
+		FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->HP = 90;
+		FindUnit(State.CardRun.ActiveBattle, AllyUnitId)->HP = 90;
+		if (!AcquireRelics(
+			*this,
+			State,
+			{TEXT("Relic.CandleStub"), TEXT("Relic.StoneLion"), TEXT("Relic.DrumCharm")},
+			TEXT("linked Drum kill fixture")))
+		{
+			return false;
+		}
+		FGameXXKCardPlayResult Result;
+		if (!ResolveRelicAdapterCard(*this, State, EnemyAUnitId, Result, TEXT("card followed by linked Drum kill")))
+		{
+			return false;
+		}
+		if (!TestEqual(TEXT("one primary attack plus three Drum packets are audited"), Result.DamageResults.Num(), 4))
+		{
+			return false;
+		}
+		TestEqual(TEXT("the immutable primary packet leaves its target at one HP"), Result.DamageResults[0].TargetHealthAfter, 1);
+		TestFalse(TEXT("the later linked Drum packet defeats that target"), FindUnit(State.CardRun.ActiveBattle, EnemyAUnitId)->bLiving);
+		TestTrue(TEXT("the target-killing linked packet has Relic cause"),
+			Result.DamageResults.ContainsByPredicate([](const FGameXXKCardDamageResult& Packet)
+			{
+				return Packet.ResolvedTargetUnitId == EnemyAUnitId
+					&& Packet.Cause == EGameXXKCardDamageCause::Relic
+					&& Packet.HealthDamage == 1;
+			}));
+		TestTrue(TEXT("a Drum-only kill does not trigger Candle Stub audit"), Result.HealingResults.IsEmpty());
+		TestTrue(TEXT("a Drum-only kill does not trigger Stone Lion audit"), Result.ArmorResults.IsEmpty());
+		TestEqual(TEXT("a Drum-only kill does not heal the owner"), FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->HP, 90);
+		TestEqual(TEXT("a Drum-only kill does not armor the owner"), FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->Armor, 0);
+	}
+
 	return true;
 }
 

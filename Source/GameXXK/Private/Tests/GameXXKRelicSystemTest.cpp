@@ -358,4 +358,58 @@ bool FGameXXKDamageReactiveRelicOwnershipTest::RunTest(const FString& Parameters
 #endif
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKNonCardRelicTriggerCompatibilityTest,
+	"GameXXK.Route.Relics.NonCardCombatTriggersPreserveLegacyEffects",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKNonCardRelicTriggerCompatibilityTest::RunTest(const FString& Parameters)
+{
+#if !GAMEXXK_HAS_RELIC_SYSTEM
+	AddError(TEXT("The required non-card relic trigger behavior has not been implemented."));
+	return false;
+#else
+	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	State.CardRun.bHasActiveCardBattle = true;
+	FGameXXKCardCombatUnit Hero;
+	Hero.UnitId = TEXT("Player");
+	Hero.Side = EGameXXKCardTargetSide::Party;
+	Hero.MaxHP = 100;
+	Hero.HP = 50;
+	Hero.bLiving = true;
+	FGameXXKCardCombatUnit Ally = Hero;
+	Ally.UnitId = TEXT("Relic.Legacy.Ally");
+	Ally.HP = 70;
+	State.CardRun.ActiveBattle.Units = {Hero, Ally};
+	TestTrue(TEXT("the compatibility fixture acquires the battle-start armor relic"),
+		FGameXXKRelicRules::AcquireRelic(State, TEXT("Relic.AncientCoin")));
+	TestTrue(TEXT("the compatibility fixture acquires the round-start owner armor relic"),
+		FGameXXKRelicRules::AcquireRelic(State, TEXT("Relic.StoneBead")));
+	TestTrue(TEXT("the compatibility fixture acquires the round-end healing relic"),
+		FGameXXKRelicRules::AcquireRelic(State, TEXT("Relic.RedCord")));
+
+	FGameXXKRelicRules::ApplyBattleStart(State);
+	FGameXXKRelicRules::ApplyPlayerRoundStart(State);
+	FGameXXKRelicRules::ApplyPlayerRoundEnd(State);
+	const FGameXXKCardCombatUnit* HeroAfter = State.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("Player");
+	});
+	const FGameXXKCardCombatUnit* AllyAfter = State.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == TEXT("Relic.Legacy.Ally");
+	});
+	if (!TestNotNull(TEXT("the compatibility fixture retains the hero"), HeroAfter)
+		|| !TestNotNull(TEXT("the compatibility fixture retains the ally"), AllyAfter))
+	{
+		return false;
+	}
+	TestEqual(TEXT("battle-start plus round-start relics preserve hero armor timing"), HeroAfter->Armor, 7);
+	TestEqual(TEXT("battle-start relic preserves ally armor timing"), AllyAfter->Armor, 4);
+	TestEqual(TEXT("round-end relic preserves hero healing"), HeroAfter->HP, 53);
+	TestEqual(TEXT("round-end relic preserves ally healing"), AllyAfter->HP, 73);
+	return true;
+#endif
+}
+
 #endif
