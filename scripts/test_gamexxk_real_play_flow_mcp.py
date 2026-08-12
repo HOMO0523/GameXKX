@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import base64
+import inspect
 import json
 import sys
 import tempfile
@@ -29,7 +30,384 @@ _ONE_PIXEL_PNG = base64.b64decode(
 )
 
 
+TARGET_OUTCOME_SCENARIOS = (
+    "Outcome.Single",
+    "Outcome.HeavyArrow",
+    "Outcome.GroupThree",
+    "Outcome.GroupMissing2P",
+    "Outcome.ToxicExplosion",
+    "Outcome.MedicineEnemy",
+    "Outcome.Healing",
+    "Outcome.Armor",
+    "Outcome.AgilityDodge",
+    "Outcome.ArmorBlocked",
+    "Outcome.GuardRedirect",
+    "Outcome.Lethal",
+)
+
+
 class SlateScreenshotFallbackTest(unittest.TestCase):
+    def _valid_target_outcome_report(self) -> dict[str, object]:
+        scenarios: dict[str, object] = {}
+        for index, scenario_id in enumerate(TARGET_OUTCOME_SCENARIOS, start=1):
+            unit_id = "Enemy.1P"
+            preview_lines = [f"伤害 {index}"]
+            if scenario_id == "Outcome.GroupThree":
+                preview_lines = [
+                    "1P 群体伤害 10",
+                    "2P 群体伤害 11",
+                    "3P 群体伤害 12",
+                ]
+            elif scenario_id == "Outcome.GroupMissing2P":
+                preview_lines = ["1P 群体伤害 10", "3P 群体伤害 12"]
+            predicted = {
+                unit_id: {
+                    "health_damage": index,
+                    "healing": 0,
+                    "armor": 0,
+                }
+            }
+            scenarios[scenario_id] = {
+                "ok": True,
+                "screenshot": f"Saved/Codex/{scenario_id}.png",
+                "preview_lines": preview_lines,
+                "predicted": predicted,
+                "committed_delta": json.loads(json.dumps(predicted)),
+                "after_unhover": {"visible": False, "lines": []},
+            }
+            if scenario_id not in ("Outcome.GroupThree", "Outcome.GroupMissing2P"):
+                scenarios[scenario_id]["target_geometry"] = {
+                    "expected_anchor": {"x": 0.095, "y": 0.5407407},
+                    "single_anchor": {"x": 0.095, "y": 0.5407407},
+                    "targeting_pointer": {"x": 182.4, "y": 584.0},
+                    "anchor_matches_target": True,
+                    "pointer_matches_target": True,
+                    "single_offsets": {
+                        "left": 0.0,
+                        "top": -217.0,
+                        "right": 272.0,
+                        "bottom": 56.0,
+                    },
+                    "single_alignment": {"x": 0.5, "y": 1.0},
+                    "tooltip_above_target": True,
+                    "background_resource": (
+                        "/Game/GameXXK/UI/MasterV2/Approved/"
+                        "T_MasterV2_TooltipPaper.T_MasterV2_TooltipPaper"
+                    ),
+                }
+        return {
+            "ok": True,
+            "mode": "target_outcome_preview",
+            "scenarios": scenarios,
+            "cleanup": {"ok": True, "errors": []},
+        }
+
+    def test_target_outcome_preview_verdict_accepts_all_twelve_parity_scenarios(self) -> None:
+        report = self._valid_target_outcome_report()
+
+        verdict = flow._target_outcome_preview_verdict(report)
+
+        self.assertTrue(verdict["ok"])
+        self.assertEqual([], verdict["errors"])
+        self.assertEqual(list(TARGET_OUTCOME_SCENARIOS), verdict["scenario_ids"])
+
+    def test_target_outcome_preview_verdict_reports_a_stable_missing_scenario_key(self) -> None:
+        report = self._valid_target_outcome_report()
+        del report["scenarios"]["Outcome.HeavyArrow"]
+
+        verdict = flow._target_outcome_preview_verdict(report)
+
+        self.assertFalse(verdict["ok"])
+        self.assertIn("scenario_missing:Outcome.HeavyArrow", verdict["errors"])
+
+    def test_target_outcome_preview_verdict_requires_group_slot_order_and_wording(self) -> None:
+        report = self._valid_target_outcome_report()
+        report["scenarios"]["Outcome.GroupThree"]["preview_lines"] = [
+            "2P 伤害 11",
+            "1P 群体伤害 10",
+            "3P 群体伤害 12",
+            "全场总计 33",
+        ]
+        report["scenarios"]["Outcome.GroupMissing2P"]["preview_lines"] = [
+            "1P 群体伤害 10",
+            "2P 群体伤害 0",
+            "3P 群体伤害 12",
+        ]
+
+        verdict = flow._target_outcome_preview_verdict(report)
+
+        self.assertFalse(verdict["ok"])
+        self.assertIn("group_lines_invalid:Outcome.GroupThree", verdict["errors"])
+        self.assertIn("group_lines_invalid:Outcome.GroupMissing2P", verdict["errors"])
+
+    def test_target_outcome_preview_verdict_rejects_stale_unhover_preview(self) -> None:
+        report = self._valid_target_outcome_report()
+        report["scenarios"]["Outcome.Single"]["after_unhover"] = {
+            "visible": True,
+            "lines": ["伤害 1"],
+        }
+
+        verdict = flow._target_outcome_preview_verdict(report)
+
+        self.assertFalse(verdict["ok"])
+        self.assertIn("stale_preview_after_unhover:Outcome.Single", verdict["errors"])
+
+    def test_target_outcome_preview_verdict_rejects_missing_screenshot(self) -> None:
+        report = self._valid_target_outcome_report()
+        report["scenarios"]["Outcome.ToxicExplosion"]["screenshot"] = ""
+
+        verdict = flow._target_outcome_preview_verdict(report)
+
+        self.assertFalse(verdict["ok"])
+        self.assertIn("screenshot_missing:Outcome.ToxicExplosion", verdict["errors"])
+
+    def test_target_outcome_preview_verdict_rejects_cleanup_failure(self) -> None:
+        report = self._valid_target_outcome_report()
+        report["cleanup"] = {
+            "ok": False,
+            "errors": [
+                "wait_for_pie_stop_after_real_flow",
+                "delete_default_save_after_real_flow",
+            ],
+        }
+
+        verdict = flow._target_outcome_preview_verdict(report)
+
+        self.assertFalse(verdict["ok"])
+        self.assertIn("cleanup_failed", verdict["errors"])
+
+    def test_target_outcome_preview_verdict_rejects_scenario_failure_and_delta_mismatch(self) -> None:
+        report = self._valid_target_outcome_report()
+        report["scenarios"]["Outcome.Healing"]["ok"] = False
+        report["scenarios"]["Outcome.Armor"]["committed_delta"]["Enemy.1P"]["armor"] = 99
+
+        verdict = flow._target_outcome_preview_verdict(report)
+
+        self.assertFalse(verdict["ok"])
+        self.assertIn("scenario_failed:Outcome.Healing", verdict["errors"])
+        self.assertIn("outcome_parity_mismatch:Outcome.Armor", verdict["errors"])
+
+    def test_target_outcome_preview_verdict_rejects_target_geometry_and_background_regressions(self) -> None:
+        report = self._valid_target_outcome_report()
+        geometry = report["scenarios"]["Outcome.Single"]["target_geometry"]
+        geometry["anchor_matches_target"] = False
+        geometry["pointer_matches_target"] = False
+        geometry["tooltip_above_target"] = False
+        geometry["background_resource"] = ""
+
+        verdict = flow._target_outcome_preview_verdict(report)
+
+        self.assertFalse(verdict["ok"])
+        self.assertIn("target_anchor_mismatch:Outcome.Single", verdict["errors"])
+        self.assertIn("target_pointer_mismatch:Outcome.Single", verdict["errors"])
+        self.assertIn("tooltip_not_above_target:Outcome.Single", verdict["errors"])
+        self.assertIn("tooltip_background_missing:Outcome.Single", verdict["errors"])
+
+    def test_slate_target_outcome_buttons_drive_real_hand_and_sparse_target_positions(self) -> None:
+        snapshot = """
+  button "伙伴\n载入中" [pos=1151,316 size=410,410] [ref=b199]
+  button "敌人一\n载入中" [pos=111,316 size=410,410] [ref=b200]
+  button "敌人三\n载入中" [pos=496,201 size=410,410] [ref=b203]
+  button "青锋一式\n1 气 / 0 内" [pos=380,582 size=206,285] [ref=b184]
+"""
+        hand = flow._slate_target_outcome_hand_button(snapshot, "青锋一式")
+        enemy_one = flow._slate_target_outcome_unit_button(snapshot, "敌人一")
+        enemy_three = flow._slate_target_outcome_unit_button(snapshot, "敌人三")
+
+        self.assertEqual({"ref": "b184", "x": 380, "y": 582, "w": 206, "h": 285}, hand)
+        self.assertEqual({"ref": "b200", "x": 111, "y": 316, "w": 410, "h": 410}, enemy_one)
+        self.assertEqual({"ref": "b203", "x": 496, "y": 201, "w": 410, "h": 410}, enemy_three)
+        with self.assertRaisesRegex(RuntimeError, "target_outcome_unit_button_missing:敌人二"):
+            flow._slate_target_outcome_unit_button(snapshot, "敌人二")
+
+    def test_target_outcome_party_anchor_uses_stable_formation_order_without_enemy_slots(self) -> None:
+        anchor = flow._target_outcome_expected_anchor(
+            {
+                "side": "Party",
+                "slot": -1,
+                "stable_sort_order": 0,
+            }
+        )
+
+        self.assertAlmostEqual(0.905, anchor["x"])
+        self.assertAlmostEqual(0.60 - 64.0 / 1080.0, anchor["y"])
+
+    def test_slate_target_outcome_button_parser_rejects_disabled_or_ambiguous_matches(self) -> None:
+        disabled = 'button "青锋一式\n1 气 / 0 内" [disabled] [pos=380,582 size=206,285] [ref=b184]'
+        with self.assertRaisesRegex(RuntimeError, "target_outcome_hand_button_missing"):
+            flow._slate_target_outcome_hand_button(disabled, "青锋一式")
+
+        ambiguous = "\n".join((
+            'button "敌人一\n载入中" [pos=111,316 size=410,410] [ref=b200]',
+            'button "敌人一\n替身" [pos=222,316 size=410,410] [ref=b201]',
+        ))
+        with self.assertRaisesRegex(RuntimeError, "target_outcome_unit_button_ambiguous:敌人一"):
+            flow._slate_target_outcome_unit_button(ambiguous, "敌人一")
+
+    def test_slate_target_outcome_button_parser_accepts_inspector_escaped_newlines(self) -> None:
+        snapshot = r'button "青锋一式\n1 气 / 0 内" [pos=380,582 size=206,285] [ref=b184]'
+
+        button = flow._slate_target_outcome_hand_button(snapshot, "青锋一式")
+
+        self.assertEqual("b184", button["ref"])
+
+    def test_slate_target_outcome_button_parser_accepts_reused_focused_hand_slot(self) -> None:
+        snapshot = (
+            r'button "横云开锋\n2 气 / 6 内" [focused] '
+            r'[pos=369,535 size=206,285] [ref=b1112]'
+        )
+
+        button = flow._slate_target_outcome_hand_button(snapshot, "横云开锋")
+
+        self.assertEqual("b1112", button["ref"])
+
+    def test_preview_window_controller_move_absolute_point_never_emits_mouse_buttons(self) -> None:
+        class FakeUser32:
+            def __init__(self) -> None:
+                self.calls: list[tuple[object, ...]] = []
+
+            def SetCursorPos(self, x, y):
+                self.calls.append(("SetCursorPos", x, y))
+                return True
+
+            def mouse_event(self, *args):
+                self.calls.append(("mouse_event", *args))
+
+            def SendMessageW(self, *args):
+                self.calls.append(("SendMessageW", *args))
+
+        controller = object.__new__(flow.PreviewWindowController)
+        controller.user32 = FakeUser32()
+        focus_calls = []
+        controller.focus = lambda window: focus_calls.append(window)
+        window = {"hwnd": 71}
+
+        with patch.object(flow.time, "sleep") as sleep:
+            point = controller.move_absolute_point(window, 123.8, 456.2)
+
+        self.assertEqual([window], focus_calls)
+        self.assertEqual([("SetCursorPos", 123, 456)], controller.user32.calls)
+        sleep.assert_called_once_with(0.12)
+        self.assertEqual({"x": 123, "y": 456}, point)
+
+    def test_target_outcome_slate_points_are_translated_from_window_to_desktop_coordinates(self) -> None:
+        harness = object.__new__(flow.RealFlowHarness)
+        harness.input = type("Input", (), {
+            "preview_window_geometry": staticmethod(lambda _window: {
+                "window_screen_rect": {"left": 100.0, "top": 200.0, "right": 2020.0, "bottom": 1150.0},
+            })
+        })()
+
+        point = harness._slate_button_desktop_center(
+            {"hwnd": 71},
+            {
+                "ref": "b184",
+                "x": 380,
+                "y": 582,
+                "w": 206,
+                "h": 285,
+                "slate_window": {"x": 0, "y": 28, "w": 1536, "h": 760},
+            },
+        )
+
+        self.assertEqual((703.75, 1070.625), point)
+
+    def test_target_outcome_waits_for_the_real_slate_hand_button_to_unlock(self) -> None:
+        harness = object.__new__(flow.RealFlowHarness)
+        snapshots = iter((
+            'button "青锋一式\\n1 气 / 0 内" [disabled] [pos=380,582 size=206,285] [ref=b184]',
+            'button "青锋一式\\n1 气 / 0 内" [pos=380,582 size=206,285] [ref=b185]',
+        ))
+        harness.slate_preview_snapshot = lambda: next(snapshots)
+
+        with patch.object(flow.time, "sleep") as sleep:
+            button = harness._wait_for_target_outcome_hand_button("青锋一式", timeout=1.0)
+
+        self.assertEqual("b185", button["ref"])
+        sleep.assert_called_once_with(0.1)
+
+    def test_target_outcome_waits_for_presentation_to_reenable_end_turn_before_restoring_fixture(self) -> None:
+        harness = object.__new__(flow.RealFlowHarness)
+        snapshots = iter((
+            'button "结束回合" [disabled] [pos=1256,693 size=190,62] [ref=b189]',
+            'button "结束回合" [pos=1256,693 size=190,62] [ref=b190]',
+        ))
+        harness.slate_preview_snapshot = lambda: next(snapshots)
+
+        with patch.object(flow.time, "sleep") as sleep:
+            button = harness._wait_for_target_outcome_presentation_unlock(timeout=1.0)
+
+        self.assertEqual("b190", button["ref"])
+        sleep.assert_called_once_with(0.1)
+
+    def test_target_outcome_leaves_reused_hand_slot_before_each_fixture(self) -> None:
+        source = inspect.getsource(flow.RealFlowHarness.run_target_outcome_preview)
+
+        loop_index = source.index("for scenario_id in self.target_outcome_scenarios:")
+        leave_index = source.index("self._move_to_safe_unhover_point(window)", loop_index)
+        apply_index = source.index("self.apply_target_outcome_fixture(scenario_id)", loop_index)
+
+        self.assertLess(leave_index, apply_index)
+
+    def test_real_flow_requests_the_numeric_floating_pie_mode(self) -> None:
+        class CapturingClient:
+            def __init__(self) -> None:
+                self.start_options = None
+                self.session_id = "test-session"
+                self.endpoint = "http://fake-mcp"
+
+            @staticmethod
+            def connect():
+                return True
+
+            @staticmethod
+            def is_in_pie():
+                return False
+
+            def call_tool(self, name, args=None, **_kwargs):
+                if name == "StartPIE":
+                    self.start_options = dict((args or {}).get("options", {}))
+                    raise RuntimeError("stop_after_start_capture")
+                return True
+
+            @staticmethod
+            def run_project_python_file(*_args, **_kwargs):
+                return {"stdout": '{"delete_default_save": true}'}
+
+        harness = flow.RealFlowHarness(timeout=1.0, keep_pie=False)
+        harness.client = CapturingClient()
+        harness.preserve_default_save = lambda: None
+        harness.probe = lambda *_args: {}
+
+        with self.assertRaisesRegex(RuntimeError, "stop_after_start_capture"):
+            harness.run()
+
+        self.assertEqual(1, harness.client.start_options["playMode"])
+
+    def test_main_routes_target_outcome_preview_mode_through_its_verdict(self) -> None:
+        report = self._valid_target_outcome_report()
+
+        class TargetOutcomeHarness:
+            def __init__(self, **_kwargs) -> None:
+                self.events = []
+
+            def run_target_outcome_preview(self):
+                return json.loads(json.dumps(report))
+
+            @staticmethod
+            def close():
+                return {"ok": True, "kept_pie": False, "errors": []}
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "target-outcome.json"
+            with patch.object(flow, "RealFlowHarness", TargetOutcomeHarness):
+                exit_code = flow.main(["--target-outcome-preview", "--report", str(report_path)])
+            written = json.loads(report_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(0, exit_code)
+        self.assertTrue(written["ok"])
+        self.assertTrue(written["target_outcome_preview_verdict"]["ok"])
+
     def test_save_file_snapshot_restores_original_player_save_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = Path(temp_dir) / "GameXXK_MVP_SaveSlot_1.sav"

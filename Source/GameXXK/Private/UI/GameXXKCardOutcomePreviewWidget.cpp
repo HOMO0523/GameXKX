@@ -117,6 +117,11 @@ FLinearColor UGameXXKCardOutcomePreviewWidget::GetSegmentColorForTest(
 	return ResolveSegmentColor(Lines[LineIndex].Segments[SegmentIndex].Tone);
 }
 
+FString UGameXXKCardOutcomePreviewWidget::GetBackgroundResourcePathForTest() const
+{
+	return BackgroundTexture ? BackgroundTexture->GetPathName() : FString();
+}
+
 TSharedRef<SWidget> UGameXXKCardOutcomePreviewWidget::RebuildWidget()
 {
 	if (!WidgetTree)

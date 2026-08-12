@@ -20,6 +20,7 @@ public:
 	int32 GetVisibleLineCountForTest() const;
 	FString GetPlainLineForTest(int32 LineIndex) const;
 	FLinearColor GetSegmentColorForTest(int32 LineIndex, int32 SegmentIndex) const;
+	FString GetBackgroundResourcePathForTest() const;
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;

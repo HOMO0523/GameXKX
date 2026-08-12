@@ -46,12 +46,106 @@ BATTLE_PC_TOKEN = "GameXXKMVPPlayerController"
 # delay alone can still leave the final release on the stale diagonal facing.
 DIAGONAL_D_TO_W_VERTICAL_PROBE_SETTLE_SECONDS = 0.20
 SLATE_WINDOW_PATTERN = re.compile(r'window "([^"]*GameXXK Preview[^"]*)"[^\n]*\[ref=([^\]]+)\]')
+SLATE_PREVIEW_WINDOW_GEOMETRY_PATTERN = re.compile(
+    r'window "[^"]*GameXXK Preview[^"]*"[^\n]*'
+    r'\[pos=(?P<x>-?\d+),(?P<y>-?\d+) size=(?P<w>\d+),(?P<h>\d+)\]'
+)
 SLATE_BUTTON_PATTERN = re.compile(
-    r'button(?: "(?P<label>[^"]*)")?(?P<disabled> \[disabled\])? \[pos=(?P<x>-?\d+),(?P<y>-?\d+) size=(?P<w>\d+),(?P<h>\d+)\] \[ref=(?P<ref>[^\]]+)\]'
+    r'button(?: "(?P<label>[^"]*)")?'
+    r'(?P<states>(?: \[(?!pos=)[^\]\r\n]+\])*)'
+    r' \[pos=(?P<x>-?\d+),(?P<y>-?\d+) size=(?P<w>\d+),(?P<h>\d+)\]'
+    r' \[ref=(?P<ref>[^\]]+)\]'
 )
 
 
 _SAVE_BACKUP_MAGIC = b"GameXXKRealFlowSaveBackupV1\x00"
+
+TARGET_OUTCOME_SCENARIOS = (
+    "Outcome.Single",
+    "Outcome.HeavyArrow",
+    "Outcome.GroupThree",
+    "Outcome.GroupMissing2P",
+    "Outcome.ToxicExplosion",
+    "Outcome.MedicineEnemy",
+    "Outcome.Healing",
+    "Outcome.Armor",
+    "Outcome.AgilityDodge",
+    "Outcome.ArmorBlocked",
+    "Outcome.GuardRedirect",
+    "Outcome.Lethal",
+)
+
+TARGET_OUTCOME_TOOLTIP_PAPER = (
+    "/Game/GameXXK/UI/MasterV2/Approved/"
+    "T_MasterV2_TooltipPaper.T_MasterV2_TooltipPaper"
+)
+TARGET_OUTCOME_STAGE_SIZE = (1920.0, 1080.0)
+TARGET_OUTCOME_SINGLE_OFFSETS = {
+    "left": 0.0,
+    "top": -217.0,
+    "right": 272.0,
+    "bottom": 56.0,
+}
+TARGET_OUTCOME_SINGLE_ALIGNMENT = {"x": 0.5, "y": 1.0}
+TARGET_OUTCOME_CARD_DISPLAY_NAMES = {
+    "Hero.Generic.QingFengYiShi": "青锋一式",
+    "Hero.Hunter.LieYuLianShi": "裂羽连矢",
+    "Profession.Blade.HengYunKaiFeng": "横云开锋",
+    "Hero.Healer.DuHuoTongLu": "毒火同炉",
+    "Profession.Healer.CaoMuFuZhi": "草木敷治",
+    "Profession.Healer.WenYangGao": "温养膏",
+}
+TARGET_OUTCOME_UNIT_DISPLAY_NAMES = {
+    "Outcome.Party.1P": "伙伴",
+    "Player": "Hero",
+    "Outcome.Party.3P": "任务伙伴",
+    "Outcome.Enemy.1P": "敌人一",
+    "Outcome.Enemy.2P": "敌人二",
+    "Outcome.Enemy.3P": "敌人三",
+}
+
+
+def _slate_target_outcome_button(snapshot: str, label: str, kind: str) -> dict[str, Any]:
+    window_match = SLATE_PREVIEW_WINDOW_GEOMETRY_PATTERN.search(str(snapshot or ""))
+    slate_window = None
+    if window_match:
+        slate_window = {
+            key: int(window_match.group(key))
+            for key in ("x", "y", "w", "h")
+        }
+    matches: list[dict[str, Any]] = []
+    for match in SLATE_BUTTON_PATTERN.finditer(snapshot):
+        candidate_label = str(match.group("label") or "")
+        first_line = candidate_label.replace("\\n", "\n").split("\n", 1)[0]
+        if _slate_button_is_disabled(match) or first_line != label:
+            continue
+        candidate = {
+            "ref": match.group("ref"),
+            "x": int(match.group("x")),
+            "y": int(match.group("y")),
+            "w": int(match.group("w")),
+            "h": int(match.group("h")),
+        }
+        if slate_window is not None:
+            candidate["slate_window"] = dict(slate_window)
+        matches.append(candidate)
+    if not matches:
+        raise RuntimeError(f"target_outcome_{kind}_button_missing:{label}")
+    if len(matches) != 1:
+        raise RuntimeError(f"target_outcome_{kind}_button_ambiguous:{label}")
+    return matches[0]
+
+
+def _slate_button_is_disabled(match: re.Match[str]) -> bool:
+    return "[disabled]" in str(match.group("states") or "")
+
+
+def _slate_target_outcome_hand_button(snapshot: str, display_name: str) -> dict[str, Any]:
+    return _slate_target_outcome_button(snapshot, display_name, "hand")
+
+
+def _slate_target_outcome_unit_button(snapshot: str, display_name: str) -> dict[str, Any]:
+    return _slate_target_outcome_button(snapshot, display_name, "unit")
 
 
 def _atomic_write_bytes(path: Path, contents: bytes) -> None:
@@ -153,6 +247,250 @@ def _load_json_from_probe(result: dict[str, Any]) -> dict[str, Any]:
         return {}
     last_line = stdout.splitlines()[-1]
     return json.loads(last_line)
+
+
+def _target_outcome_preview_verdict(report: Any) -> dict[str, Any]:
+    errors: list[str] = []
+    payload = report if isinstance(report, dict) else {}
+    scenarios = payload.get("scenarios")
+    if not isinstance(scenarios, dict):
+        scenarios = {}
+        errors.append("scenarios_invalid")
+
+    for scenario_id in TARGET_OUTCOME_SCENARIOS:
+        scenario = scenarios.get(scenario_id)
+        if not isinstance(scenario, dict):
+            errors.append(f"scenario_missing:{scenario_id}")
+            continue
+        if not bool(scenario.get("ok")):
+            errors.append(f"scenario_failed:{scenario_id}")
+        if not isinstance(scenario.get("screenshot"), str) or not scenario.get("screenshot"):
+            errors.append(f"screenshot_missing:{scenario_id}")
+
+        preview_lines = scenario.get("preview_lines")
+        if not isinstance(preview_lines, list) or not all(isinstance(line, str) and line for line in preview_lines):
+            errors.append(f"preview_lines_invalid:{scenario_id}")
+
+        predicted = scenario.get("predicted")
+        committed_delta = scenario.get("committed_delta")
+        valid_delta = True
+        for delta in (predicted, committed_delta):
+            if not isinstance(delta, dict) or not delta:
+                valid_delta = False
+                continue
+            for unit_id, unit_delta in delta.items():
+                if not isinstance(unit_id, str) or not unit_id or not isinstance(unit_delta, dict):
+                    valid_delta = False
+                    continue
+                if set(unit_delta) != {"health_damage", "healing", "armor"}:
+                    valid_delta = False
+                    continue
+                if not all(type(unit_delta[key]) is int for key in ("health_damage", "healing", "armor")):
+                    valid_delta = False
+        if not valid_delta:
+            errors.append(f"outcome_delta_invalid:{scenario_id}")
+        elif predicted != committed_delta:
+            errors.append(f"outcome_parity_mismatch:{scenario_id}")
+
+        after_unhover = scenario.get("after_unhover")
+        if not isinstance(after_unhover, dict) or after_unhover.get("visible") is not False or after_unhover.get("lines") != []:
+            errors.append(f"stale_preview_after_unhover:{scenario_id}")
+
+        if scenario_id not in ("Outcome.GroupThree", "Outcome.GroupMissing2P"):
+            geometry = scenario.get("target_geometry")
+            if not isinstance(geometry, dict):
+                errors.append(f"target_geometry_missing:{scenario_id}")
+            else:
+                if geometry.get("anchor_matches_target") is not True:
+                    errors.append(f"target_anchor_mismatch:{scenario_id}")
+                if geometry.get("pointer_matches_target") is not True:
+                    errors.append(f"target_pointer_mismatch:{scenario_id}")
+                if geometry.get("tooltip_above_target") is not True:
+                    errors.append(f"tooltip_not_above_target:{scenario_id}")
+                if geometry.get("background_resource") != TARGET_OUTCOME_TOOLTIP_PAPER:
+                    errors.append(f"tooltip_background_missing:{scenario_id}")
+
+    for unexpected_id in scenarios:
+        if unexpected_id not in TARGET_OUTCOME_SCENARIOS:
+            errors.append(f"scenario_unexpected:{unexpected_id}")
+
+    expected_group_lines = {
+        "Outcome.GroupThree": [
+            "1P 群体伤害 10",
+            "2P 群体伤害 11",
+            "3P 群体伤害 12",
+        ],
+        "Outcome.GroupMissing2P": [
+            "1P 群体伤害 10",
+            "3P 群体伤害 12",
+        ],
+    }
+    for scenario_id, expected_lines in expected_group_lines.items():
+        scenario = scenarios.get(scenario_id)
+        if isinstance(scenario, dict) and scenario.get("preview_lines") != expected_lines:
+            errors.append(f"group_lines_invalid:{scenario_id}")
+
+    cleanup = payload.get("cleanup")
+    if not isinstance(cleanup, dict) or not bool(cleanup.get("ok")):
+        errors.append("cleanup_failed")
+
+    return {
+        "ok": not errors,
+        "errors": errors,
+        "scenario_ids": [scenario_id for scenario_id in TARGET_OUTCOME_SCENARIOS if scenario_id in scenarios],
+    }
+
+
+def _rect_center(rect: Any) -> tuple[float, float]:
+    if not isinstance(rect, dict):
+        raise RuntimeError("screen_rect_missing")
+    try:
+        left = float(rect["left"])
+        top = float(rect["top"])
+        right = float(rect["right"])
+        bottom = float(rect["bottom"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RuntimeError("screen_rect_invalid") from exc
+    if not all(math.isfinite(value) for value in (left, top, right, bottom)) or right <= left or bottom <= top:
+        raise RuntimeError("screen_rect_invalid")
+    return (left + right) * 0.5, (top + bottom) * 0.5
+
+
+def _target_outcome_expected_anchor(unit: dict[str, Any]) -> dict[str, float]:
+    try:
+        slot = int(unit.get("slot"))
+    except (TypeError, ValueError):
+        raise RuntimeError("target_slot_invalid")
+    side = str(unit.get("side", ""))
+    if side == "Party" and slot not in (1, 2, 3):
+        try:
+            slot = int(unit.get("stable_sort_order")) + 1
+        except (TypeError, ValueError):
+            raise RuntimeError("target_party_order_invalid")
+    fixed_anchors = {
+        ("Party", 1): (0.905, 0.60),
+        ("Party", 2): (0.755, 0.52),
+        ("Party", 3): (0.605, 0.44),
+        ("Enemy", 1): (0.095, 0.60),
+        ("Enemy", 2): (0.245, 0.52),
+        ("Enemy", 3): (0.395, 0.44),
+    }
+    fixed_anchor = fixed_anchors.get((side, slot))
+    if fixed_anchor is None:
+        raise RuntimeError(f"target_lane_invalid:{side}:{slot}")
+    return {
+        "x": fixed_anchor[0],
+        "y": fixed_anchor[1] - 64.0 / TARGET_OUTCOME_STAGE_SIZE[1],
+    }
+
+
+def _vector2_near(actual: Any, expected: Any, tolerance: float = 0.001) -> bool:
+    if not isinstance(actual, dict) or not isinstance(expected, dict):
+        return False
+    try:
+        return (
+            abs(float(actual["x"]) - float(expected["x"])) <= tolerance
+            and abs(float(actual["y"]) - float(expected["y"])) <= tolerance
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def _margin_near(actual: Any, expected: Any, tolerance: float = 0.01) -> bool:
+    if not isinstance(actual, dict) or not isinstance(expected, dict):
+        return False
+    try:
+        return all(
+            abs(float(actual[key]) - float(expected[key])) <= tolerance
+            for key in ("left", "top", "right", "bottom")
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def _target_outcome_units(probe: Any) -> dict[str, dict[str, Any]]:
+    units = _runtime_state(probe).get("battle_units", {})
+    return units if isinstance(units, dict) else {}
+
+
+def _target_outcome_unit_delta(
+    before_units: dict[str, dict[str, Any]],
+    after_units: dict[str, dict[str, Any]],
+    unit_ids: list[str],
+) -> dict[str, dict[str, int]]:
+    result: dict[str, dict[str, int]] = {}
+    for unit_id in unit_ids:
+        before = before_units.get(unit_id, {})
+        after = after_units.get(unit_id, {})
+        try:
+            before_hp = int(before.get("hp", 0))
+            after_hp = int(after.get("hp", 0))
+            before_armor = int(before.get("armor", 0))
+            after_armor = int(after.get("armor", 0))
+        except (TypeError, ValueError):
+            raise RuntimeError(f"unit_vitals_invalid:{unit_id}")
+        result[unit_id] = {
+            "health_damage": max(0, before_hp - after_hp),
+            "healing": max(0, after_hp - before_hp),
+            # Preview armor is an effective grant audit, not armor consumed by an incoming hit.
+            "armor": max(0, after_armor - before_armor),
+        }
+    return result
+
+
+def _target_outcome_predicted_delta(
+    scenario_id: str,
+    preview_lines: list[str],
+    units: dict[str, dict[str, Any]],
+    target_unit_id: str,
+) -> dict[str, dict[str, int]]:
+    if scenario_id in ("Outcome.GroupThree", "Outcome.GroupMissing2P"):
+        target_ids = []
+        for line in preview_lines:
+            slot_match = re.match(r"^([123])P\s+", str(line))
+            if not slot_match:
+                continue
+            slot = int(slot_match.group(1))
+            matching = [
+                unit_id
+                for unit_id, unit in units.items()
+                if str(unit.get("side")) == "Enemy" and int(unit.get("slot") or -1) == slot
+            ]
+            if len(matching) != 1:
+                raise RuntimeError(f"group_slot_identity_invalid:{slot}")
+            target_ids.append(matching[0])
+    else:
+        target_ids = [target_unit_id]
+
+    result = {
+        unit_id: {"health_damage": 0, "healing": 0, "armor": 0}
+        for unit_id in target_ids
+    }
+    for line in preview_lines:
+        line_target = target_unit_id
+        slot_match = re.match(r"^([123])P\s+", str(line))
+        if slot_match:
+            slot = int(slot_match.group(1))
+            line_target = next(
+                (
+                    unit_id
+                    for unit_id, unit in units.items()
+                    if str(unit.get("side")) == "Enemy" and int(unit.get("slot") or -1) == slot
+                ),
+                "",
+            )
+        if line_target not in result:
+            continue
+        text = str(line)
+        for match in re.finditer(r"(?:群体伤害|药效伤害|联动伤害|毒爆|流血|中毒|灼烧|伤害)\s+(\d+)", text):
+            result[line_target]["health_damage"] += int(match.group(1))
+        healing = re.search(r"治疗\s+\+(\d+)", text)
+        armor = re.search(r"护甲\s+\+(\d+)", text)
+        if healing:
+            result[line_target]["healing"] += int(healing.group(1))
+        if armor:
+            result[line_target]["armor"] += int(armor.group(1))
+    return result
 
 
 def _runtime_screen(probe: dict[str, Any]) -> str:
@@ -435,9 +773,15 @@ def _ue58_python_geometry_api_unavailable(summary: Any) -> bool:
     for error in geometry.get("errors", []):
         if not isinstance(error, dict):
             continue
-        if str(error.get("stage", "")) != "geometry.get_local_size":
-            continue
-        if "has no attribute 'get_local_size'" in str(error.get("exception", "")):
+        stage = str(error.get("stage", ""))
+        exception = str(error.get("exception", ""))
+        if stage == "geometry.get_local_size" and "has no attribute 'get_local_size'" in exception:
+            return True
+        # A fixture refresh can replace the visible hierarchy immediately before
+        # Slate's next prepass.  UE reports a valid cached FGeometry with zero size
+        # for that one probe; the existing fixed-slot seams remain authoritative for
+        # the baseline HUD contract while input-driving callers wait for real rects.
+        if stage == "screen_rect.local_size" and exception == "non_positive_local_size":
             return True
     return False
 
@@ -1570,7 +1914,7 @@ def _cardinal_key_away_from(position: dict[str, float], origin: dict[str, float]
     return "D" if delta_y >= 0.0 else "A"
 
 
-class PreviewInput:
+class PreviewWindowController:
     def __init__(self) -> None:
         self.user32 = ctypes.windll.user32
         self.gdi32 = ctypes.windll.gdi32
@@ -1832,6 +2176,16 @@ class PreviewInput:
             "root_hwnd": int(window["hwnd"]),
         }
 
+    def move_absolute_point(self, window: dict[str, Any], x: float, y: float) -> dict[str, int]:
+        """Move-only hover input: focus and position the cursor without any button messages."""
+        screen_x = int(x)
+        screen_y = int(y)
+        self.focus(window)
+        if not self.user32.SetCursorPos(screen_x, screen_y):
+            raise RuntimeError("SetCursorPos failed for GameXXK Preview")
+        time.sleep(0.12)
+        return {"x": screen_x, "y": screen_y}
+
     def click_window_message(self, window: dict[str, Any], screen_x: int, screen_y: int) -> dict[str, int]:
         class Point(ctypes.Structure):
             _fields_ = [
@@ -1880,12 +2234,17 @@ class PreviewInput:
 class RealFlowHarness:
     def __init__(self, timeout: float, keep_pie: bool) -> None:
         self.client = UnrealMCPClient(timeout=timeout)
-        self.input = PreviewInput()
+        self.input = PreviewWindowController()
         self.keep_pie = keep_pie
         self.events: list[dict[str, Any]] = []
         self.battle_hud_fixture_may_be_applied = False
+        self.target_outcome_fixture_may_be_applied = False
         self._screenshot_contexts: dict[str, dict[str, Any]] = {}
         self._default_save_backup_active = False
+        self.preview_window: dict[str, Any] | None = None
+        # Tests may narrow this list to reproduce an adjacent-scenario transition
+        # without weakening the production CLI's canonical twelve-scenario gate.
+        self.target_outcome_scenarios = TARGET_OUTCOME_SCENARIOS
 
     def event(self, name: str, **payload: Any) -> None:
         item = {"name": name, **payload}
@@ -1974,6 +2333,421 @@ class RealFlowHarness:
             raise RuntimeError(f"Battle HUD fixture clear failed: {clear_result}")
         self.battle_hud_fixture_may_be_applied = False
         return payload
+
+    def apply_target_outcome_fixture(self, scenario_id: str) -> dict[str, Any]:
+        self.target_outcome_fixture_may_be_applied = True
+        payload = self.probe("--apply-target-outcome-fixture", scenario_id)
+        fixture = payload.get("target_outcome_fixture", {})
+        if not isinstance(fixture, dict) or not fixture.get("ok") or not fixture.get("active"):
+            raise RuntimeError(f"Target-outcome fixture apply failed for {scenario_id}: {fixture}")
+        self.event("target_outcome_fixture_apply", scenario_id=scenario_id, detail=fixture)
+        return payload
+
+    def clear_target_outcome_fixture(self) -> dict[str, Any]:
+        payload = self.probe("--clear-target-outcome-fixture")
+        clear_result = payload.get("target_outcome_fixture_clear", {})
+        runtime = _runtime_state(payload)
+        if (
+            not isinstance(clear_result, dict)
+            or not clear_result.get("ok")
+            or clear_result.get("active") is not False
+            or runtime.get("target_outcome_fixture_active") is not False
+        ):
+            raise RuntimeError(f"Target-outcome fixture clear failed: {clear_result}; runtime={runtime}")
+        self.target_outcome_fixture_may_be_applied = False
+        self.event("target_outcome_fixture_clear", detail=clear_result)
+        return payload
+
+    def _absolute_widget_center(
+        self,
+        window: dict[str, Any],
+        widget_summary: dict[str, Any],
+    ) -> tuple[float, float]:
+        viewport_x, viewport_y = _rect_center(widget_summary.get("screen_rect"))
+        geometry = self.input.preview_window_geometry(window)
+        client_rect = geometry.get("client_screen_rect", {})
+        try:
+            return (
+                float(client_rect["left"]) + viewport_x,
+                float(client_rect["top"]) + viewport_y,
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise RuntimeError("preview_client_geometry_invalid") from exc
+
+    def _slate_button_desktop_center(
+        self,
+        window: dict[str, Any],
+        button: dict[str, Any],
+    ) -> tuple[float, float]:
+        geometry = self.input.preview_window_geometry(window)
+        window_rect = geometry.get("window_screen_rect", {})
+        try:
+            slate_window = button.get("slate_window")
+            if isinstance(slate_window, dict):
+                slate_width = float(slate_window["w"])
+                slate_height = float(slate_window["h"])
+                if slate_width <= 0.0 or slate_height <= 0.0:
+                    raise RuntimeError("slate_preview_window_size_invalid")
+                scale_x = (
+                    float(window_rect["right"]) - float(window_rect["left"])
+                ) / slate_width
+                scale_y = (
+                    float(window_rect["bottom"]) - float(window_rect["top"])
+                ) / slate_height
+                return (
+                    float(window_rect["left"])
+                    + (float(button["x"]) + float(button["w"]) * 0.5 - float(slate_window["x"])) * scale_x,
+                    float(window_rect["top"])
+                    + (float(button["y"]) + float(button["h"]) * 0.5 - float(slate_window["y"])) * scale_y,
+                )
+            return (
+                float(window_rect["left"])
+                + float(button["x"])
+                + float(button["w"]) * 0.5,
+                float(window_rect["top"])
+                + float(button["y"])
+                + float(button["h"]) * 0.5,
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise RuntimeError("slate_button_desktop_geometry_invalid") from exc
+
+    def _wait_for_target_outcome_hand_button(
+        self,
+        display_name: str,
+        timeout: float = 8.0,
+    ) -> dict[str, Any]:
+        deadline = time.monotonic() + timeout
+        last_error = ""
+        while time.monotonic() < deadline:
+            try:
+                return _slate_target_outcome_hand_button(
+                    self.slate_preview_snapshot(),
+                    display_name,
+                )
+            except RuntimeError as exc:
+                last_error = str(exc)
+                time.sleep(0.1)
+        raise RuntimeError(
+            f"target_outcome_hand_button_did_not_unlock:{display_name}:{last_error}"
+        )
+
+    def _wait_for_target_outcome_presentation_unlock(
+        self,
+        timeout: float = 15.0,
+    ) -> dict[str, Any]:
+        deadline = time.monotonic() + timeout
+        last_error = ""
+        while time.monotonic() < deadline:
+            try:
+                return _slate_target_outcome_button(
+                    self.slate_preview_snapshot(),
+                    "结束回合",
+                    "presentation_unlock",
+                )
+            except RuntimeError as exc:
+                last_error = str(exc)
+                time.sleep(0.1)
+        raise RuntimeError(f"target_outcome_presentation_did_not_unlock:{last_error}")
+
+    def _move_to_safe_unhover_point(self, window: dict[str, Any]) -> dict[str, int]:
+        geometry = self.input.preview_window_geometry(window)
+        window_rect = geometry.get("window_screen_rect", {})
+        try:
+            # The title bar is outside Slate's client tree and cannot activate a battle control.
+            x = float(window_rect["left"]) + 12.0
+            y = float(window_rect["top"]) + 8.0
+        except (KeyError, TypeError, ValueError) as exc:
+            raise RuntimeError("preview_window_geometry_invalid") from exc
+        return self.input.move_absolute_point(window, x, y)
+
+    def _wait_for_card_commit(self, card_instance_id: str) -> dict[str, Any]:
+        return self.wait_for(
+            f"target-outcome card {card_instance_id} commit and presentation completion",
+            lambda payload: (
+                card_instance_id
+                not in {
+                    str(card.get("instance_id", ""))
+                    for card in _runtime_state(payload).get("battle_hand", [])
+                    if isinstance(card, dict)
+                }
+                and not bool(
+                    payload.get("probe", {})
+                    .get("battle_board", {})
+                    .get("outcome_preview", {})
+                    .get("visible")
+                )
+            ),
+            timeout=15.0,
+            interval=0.2,
+        )
+
+    def run_target_outcome_preview(self) -> dict[str, Any]:
+        baseline_flow = self.run()
+        window = self.preview_window or self.input.find_preview_window()
+        self.input.focus(window)
+        original_probe = self.probe()
+        original_runtime = _runtime_state(original_probe)
+        scenarios: dict[str, Any] = {}
+        for scenario_id in self.target_outcome_scenarios:
+            scenario: dict[str, Any] = {"ok": False}
+            try:
+                # A programmatic fixture can replace the card identity in a reused
+                # hand slot while the OS cursor still overlaps that slot. UMG then
+                # correctly keeps the old hover lifecycle and emits no fresh
+                # OnHovered event for the new card. Leave the client area before
+                # each fixture so the following move enters the new real button.
+                self._move_to_safe_unhover_point(window)
+                self.apply_target_outcome_fixture(scenario_id)
+                self.input.focus(window)
+                time.sleep(0.12)
+                before_probe = self.wait_for(
+                    f"{scenario_id} fixture unique hand",
+                    lambda payload: (
+                        len(
+                            payload.get("probe", {})
+                            .get("battle_board", {})
+                            .get("hand_buttons", [])
+                        )
+                        == 1
+                    ),
+                    timeout=8.0,
+                    interval=0.15,
+                )
+                runtime = _runtime_state(before_probe)
+                units = _target_outcome_units(before_probe)
+                hand = runtime.get("battle_hand", [])
+                board = before_probe.get("probe", {}).get("battle_board", {})
+                hand_buttons = board.get("hand_buttons", []) if isinstance(board, dict) else []
+                if len(hand) != 1 or len(hand_buttons) != 1:
+                    raise RuntimeError(f"fixture_unique_hand_missing:{scenario_id}:{hand}:{hand_buttons}")
+                card_instance_id = str(hand[0].get("instance_id", ""))
+                if not card_instance_id or hand_buttons[0].get("instance_id") != card_instance_id:
+                    raise RuntimeError(f"fixture_hand_identity_mismatch:{scenario_id}")
+
+                card_id = str(hand[0].get("card_id", ""))
+                card_display_name = TARGET_OUTCOME_CARD_DISPLAY_NAMES.get(card_id)
+                if not card_display_name:
+                    raise RuntimeError(f"fixture_card_display_name_missing:{scenario_id}:{card_id}")
+                hand_slate_button = self._wait_for_target_outcome_hand_button(
+                    card_display_name,
+                )
+
+                target_unit_id = ""
+                if scenario_id not in ("Outcome.GroupThree", "Outcome.GroupMissing2P"):
+                    target_unit_id = (
+                        "Outcome.Party.1P"
+                        if scenario_id in ("Outcome.Healing", "Outcome.Armor")
+                        else "Outcome.Enemy.1P"
+                    )
+                    if target_unit_id not in units:
+                        raise RuntimeError(f"fixture_target_identity_invalid:{scenario_id}:{target_unit_id}")
+
+                hand_x, hand_y = self._slate_button_desktop_center(window, hand_slate_button)
+                is_group = scenario_id in ("Outcome.GroupThree", "Outcome.GroupMissing2P")
+                if is_group:
+                    self.input.move_absolute_point(window, hand_x, hand_y)
+                else:
+                    self.input.click_absolute_point(window, int(hand_x), int(hand_y))
+                    target_display_name = TARGET_OUTCOME_UNIT_DISPLAY_NAMES.get(target_unit_id)
+                    if not target_display_name:
+                        raise RuntimeError(
+                            f"fixture_target_display_name_missing:{scenario_id}:{target_unit_id}"
+                        )
+                    target_slate_button = _slate_target_outcome_unit_button(
+                        self.slate_preview_snapshot(),
+                        target_display_name,
+                    )
+                    target_x, target_y = self._slate_button_desktop_center(window, target_slate_button)
+                    self.input.move_absolute_point(window, target_x, target_y)
+
+                preview_probe = self.wait_for(
+                    f"{scenario_id} outcome preview",
+                    lambda payload: bool(
+                        payload.get("probe", {})
+                        .get("battle_board", {})
+                        .get("outcome_preview", {})
+                        .get("visible")
+                    ),
+                    timeout=8.0,
+                    interval=0.15,
+                )
+                preview = preview_probe["probe"]["battle_board"]["outcome_preview"]
+                preview_lines = list(preview.get("lines", []))
+                initial_build_count = int(preview.get("build_count") or 0)
+                initial_layout = {
+                    "single_anchor": preview.get("single_anchor"),
+                    "group_anchor": preview.get("group_anchor"),
+                }
+                target_geometry: dict[str, Any] | None = None
+                if not is_group:
+                    expected_anchor = _target_outcome_expected_anchor(units[target_unit_id])
+                    expected_pointer = {
+                        "x": expected_anchor["x"] * TARGET_OUTCOME_STAGE_SIZE[0],
+                        "y": expected_anchor["y"] * TARGET_OUTCOME_STAGE_SIZE[1],
+                    }
+                    target_geometry = {
+                        "expected_anchor": expected_anchor,
+                        "single_anchor": preview.get("single_anchor"),
+                        "targeting_pointer": preview.get("targeting_pointer"),
+                        "anchor_matches_target": _vector2_near(
+                            preview.get("single_anchor"), expected_anchor
+                        ),
+                        "pointer_matches_target": _vector2_near(
+                            preview.get("targeting_pointer"), expected_pointer, 1.0
+                        ),
+                        "single_offsets": preview.get("single_offsets"),
+                        "single_alignment": preview.get("single_alignment"),
+                        "tooltip_above_target": bool(
+                            _margin_near(
+                                preview.get("single_offsets"),
+                                TARGET_OUTCOME_SINGLE_OFFSETS,
+                            )
+                            and _vector2_near(
+                                preview.get("single_alignment"),
+                                TARGET_OUTCOME_SINGLE_ALIGNMENT,
+                            )
+                            and float(
+                                (preview.get("single_offsets") or {}).get("top", 0.0)
+                            )
+                            + float(
+                                (preview.get("single_offsets") or {}).get("bottom", 0.0)
+                            )
+                            <= -12.0
+                        ),
+                        "background_resource": preview.get("background_resource", ""),
+                    }
+                if is_group:
+                    self.input.move_absolute_point(window, hand_x, hand_y)
+                else:
+                    self.input.move_absolute_point(window, target_x, target_y)
+                repeat_probe = self.probe()
+                repeated_preview = repeat_probe["probe"]["battle_board"]["outcome_preview"]
+                repeat_build_count = int(repeated_preview.get("build_count") or 0)
+                repeated_layout = {
+                    "single_anchor": repeated_preview.get("single_anchor"),
+                    "group_anchor": repeated_preview.get("group_anchor"),
+                }
+
+                screenshot_name = f"target_outcome_{scenario_id.split('.')[-1]}.png"
+                screenshot_path, _ = self.screenshot(screenshot_name)
+                self._move_to_safe_unhover_point(window)
+                after_unhover_probe = self.wait_for(
+                    f"{scenario_id} preview clears after unhover",
+                    lambda payload: (
+                        payload.get("probe", {})
+                        .get("battle_board", {})
+                        .get("outcome_preview", {})
+                        .get("visible")
+                        is False
+                    ),
+                    timeout=8.0,
+                    interval=0.15,
+                )
+                after_unhover_preview = after_unhover_probe["probe"]["battle_board"]["outcome_preview"]
+
+                if is_group:
+                    self.input.click_absolute_point(window, int(hand_x), int(hand_y))
+                else:
+                    self.input.move_absolute_point(window, target_x, target_y)
+                    time.sleep(0.15)
+                    self.input.click_absolute_point(window, int(target_x), int(target_y))
+                committed_probe = self._wait_for_card_commit(card_instance_id)
+                self._wait_for_target_outcome_presentation_unlock()
+                committed_units = _target_outcome_units(committed_probe)
+                predicted = _target_outcome_predicted_delta(
+                    scenario_id,
+                    preview_lines,
+                    units,
+                    target_unit_id,
+                )
+                committed_delta = _target_outcome_unit_delta(
+                    units,
+                    committed_units,
+                    list(predicted),
+                )
+                scenario.update({
+                    "ok": bool(
+                        preview_lines
+                        and screenshot_path.is_file()
+                        and initial_build_count == repeat_build_count
+                        and initial_layout == repeated_layout
+                        and predicted == committed_delta
+                        and (
+                            is_group
+                            or bool(
+                                target_geometry
+                                and target_geometry["anchor_matches_target"]
+                                and target_geometry["pointer_matches_target"]
+                                and target_geometry["tooltip_above_target"]
+                                and target_geometry["background_resource"]
+                                == TARGET_OUTCOME_TOOLTIP_PAPER
+                            )
+                        )
+                    ),
+                    "screenshot": str(screenshot_path),
+                    "preview_lines": preview_lines,
+                    "predicted": predicted,
+                    "committed_delta": committed_delta,
+                    "before_units": units,
+                    "after_units": committed_units,
+                    "cache": {
+                        "initial_build_count": initial_build_count,
+                        "repeat_build_count": repeat_build_count,
+                    },
+                    "layout": {
+                        "initial": initial_layout,
+                        "repeat": repeated_layout,
+                    },
+                    "target_geometry": target_geometry,
+                    "after_unhover": {
+                        "visible": bool(after_unhover_preview.get("visible")),
+                        "lines": list(after_unhover_preview.get("lines", [])),
+                    },
+                })
+            except Exception as exc:
+                scenario["error"] = str(exc)
+                try:
+                    error_snapshot = self.slate_preview_snapshot()
+                    scenario["slate_buttons_after_error"] = [
+                        {
+                            "label": match.group("label") or "",
+                            "disabled": _slate_button_is_disabled(match),
+                            "x": int(match.group("x")),
+                            "y": int(match.group("y")),
+                            "w": int(match.group("w")),
+                            "h": int(match.group("h")),
+                        }
+                        for match in SLATE_BUTTON_PATTERN.finditer(error_snapshot)
+                    ]
+                except Exception as snapshot_exc:
+                    scenario["slate_snapshot_error"] = str(snapshot_exc)
+            finally:
+                try:
+                    if self.target_outcome_fixture_may_be_applied:
+                        restored = self.clear_target_outcome_fixture()
+                        restored_runtime = _runtime_state(restored)
+                        scenario["fixture_restored"] = bool(
+                            restored_runtime.get("target_outcome_fixture_active") is False
+                            and restored_runtime.get("battle_units") == original_runtime.get("battle_units")
+                            and restored_runtime.get("battle_hand") == original_runtime.get("battle_hand")
+                        )
+                        if not scenario["fixture_restored"]:
+                            scenario["ok"] = False
+                            scenario["restore_error"] = "runtime_state_not_restored"
+                except Exception as exc:
+                    scenario["ok"] = False
+                    scenario["fixture_restored"] = False
+                    scenario["restore_error"] = str(exc)
+                scenarios[scenario_id] = scenario
+
+        result = {
+            "ok": all(bool(scenario.get("ok")) for scenario in scenarios.values()),
+            "mode": "target_outcome_preview",
+            "scenarios": scenarios,
+            "baseline_flow": baseline_flow,
+            "events": list(self.events),
+        }
+        return result
 
     def observe_battle_actor_hud(self) -> dict[str, Any]:
         """Read the current PIE battle HUD without starting, stopping, or clicking PIE."""
@@ -2218,7 +2992,7 @@ class RealFlowHarness:
         for match in SLATE_BUTTON_PATTERN.finditer(snapshot):
             candidate = {
                 "ref": match.group("ref"),
-                "disabled": bool(match.group("disabled")),
+                "disabled": _slate_button_is_disabled(match),
                 "x": int(match.group("x")),
                 "y": int(match.group("y")),
                 "w": int(match.group("w")),
@@ -2250,14 +3024,14 @@ class RealFlowHarness:
         named_candidates = [
             {
                 "ref": match.group("ref"),
-                "disabled": bool(match.group("disabled")),
+                "disabled": _slate_button_is_disabled(match),
                 "x": int(match.group("x")),
                 "y": int(match.group("y")),
                 "w": int(match.group("w")),
                 "h": int(match.group("h")),
             }
             for match in SLATE_BUTTON_PATTERN.finditer(snapshot)
-            if match.group("label") == label and not bool(match.group("disabled"))
+            if match.group("label") == label and not _slate_button_is_disabled(match)
         ]
         if named_candidates:
             return named_candidates[-1]
@@ -2269,7 +3043,7 @@ class RealFlowHarness:
         candidates = [
             {
                 "ref": match.group("ref"),
-                "disabled": bool(match.group("disabled")),
+                "disabled": _slate_button_is_disabled(match),
                 "x": int(match.group("x")),
                 "y": int(match.group("y")),
                 "w": int(match.group("w")),
@@ -2366,14 +3140,14 @@ class RealFlowHarness:
         candidates = [
             {
                 "ref": match.group("ref"),
-                "disabled": bool(match.group("disabled")),
+                "disabled": _slate_button_is_disabled(match),
                 "x": int(match.group("x")),
                 "y": int(match.group("y")),
                 "w": int(match.group("w")),
                 "h": int(match.group("h")),
             }
             for match in SLATE_BUTTON_PATTERN.finditer(snapshot)
-            if not bool(match.group("disabled"))
+            if not _slate_button_is_disabled(match)
             and int(match.group("w")) == 50
             and int(match.group("h")) == 27
         ]
@@ -2490,12 +3264,16 @@ class RealFlowHarness:
 
         self.client.call_tool(
             "StartPIE",
-            {"options": {"bSimulate": False, "playMode": "PlayMode_InEditorFloating", "warmupSeconds": 1.0}},
+            # MCP's reflected TEnumAsByte parser accepts the numeric EPlayModeType
+            # value reliably; the symbolic string silently fell back to viewport.
+            {"options": {"bSimulate": False, "playMode": 1, "warmupSeconds": 1.0}},
             toolset_name=EDITOR_TOOLSET,
             timeout=60.0,
         )
         self.event("started_pie")
         self.wait_for("PIE play session", _has_play_session)
+
+        self.preview_window = self.input.find_preview_window()
 
         before_start_probe = self.probe()
         main_menu_probe = {
@@ -2903,6 +3681,13 @@ class RealFlowHarness:
     def close(self) -> dict[str, Any]:
         errors: list[str] = []
         try:
+            if getattr(self, "target_outcome_fixture_may_be_applied", False):
+                try:
+                    if self.client.session_id and self.client.is_in_pie():
+                        self.clear_target_outcome_fixture()
+                except Exception as exc:
+                    errors.append("target_outcome_fixture_cleanup")
+                    self.event("target_outcome_fixture_cleanup_failed", error=str(exc))
             if getattr(self, "battle_hud_fixture_may_be_applied", False):
                 try:
                     if self.client.session_id and self.client.is_in_pie():
@@ -2958,12 +3743,16 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--keep-pie", action="store_true")
     parser.add_argument("--battle-hud-observation", action="store_true")
+    parser.add_argument("--target-outcome-preview", action="store_true")
     parser.add_argument("--report", type=Path, default=None)
     args = parser.parse_args(argv)
 
     harness = RealFlowHarness(timeout=args.timeout, keep_pie=args.keep_pie or args.battle_hud_observation)
     try:
-        if args.battle_hud_observation:
+        if args.target_outcome_preview:
+            result = harness.run_target_outcome_preview()
+            return_code = 0
+        elif args.battle_hud_observation:
             result = harness.observe_battle_actor_hud()
             return_code = 0 if bool(result.get("ok")) else 1
         else:
@@ -2984,6 +3773,11 @@ def main(argv: list[str]) -> int:
             }
 
     result["cleanup"] = cleanup
+    if args.target_outcome_preview:
+        result["target_outcome_preview_verdict"] = _target_outcome_preview_verdict(result)
+        if not result["target_outcome_preview_verdict"]["ok"]:
+            result["ok"] = False
+            return_code = 1
     if not bool(cleanup.get("ok")):
         result["ok"] = False
         result["cleanup_error"] = "Real-flow environment cleanup was not clean"

@@ -129,6 +129,30 @@ namespace
 		}
 	}
 
+	bool MoveRecyclableDiscardToDraw(FGameXXKBattleDeckState& InOutDeck)
+	{
+		TOptional<FGameXXKCardInstance> ResolvingCard;
+		if (!InOutDeck.ResolvingCardInstanceId.IsNone())
+		{
+			const int32 ResolvingIndex = InOutDeck.DiscardPile.IndexOfByPredicate([&InOutDeck](const FGameXXKCardInstance& Instance)
+			{
+				return Instance.InstanceId == InOutDeck.ResolvingCardInstanceId;
+			});
+			if (ResolvingIndex != INDEX_NONE)
+			{
+				ResolvingCard.Emplace(MoveTemp(InOutDeck.DiscardPile[ResolvingIndex]));
+				InOutDeck.DiscardPile.RemoveAt(ResolvingIndex, 1, EAllowShrinking::No);
+			}
+		}
+
+		InOutDeck.DrawPile = MoveTemp(InOutDeck.DiscardPile);
+		if (ResolvingCard.IsSet())
+		{
+			InOutDeck.DiscardPile.Add(MoveTemp(ResolvingCard.GetValue()));
+		}
+		return !InOutDeck.DrawPile.IsEmpty();
+	}
+
 	bool EnsureDrawPileHasCard(FGameXXKBattleDeckState& InOutDeck)
 	{
 		if (!InOutDeck.DrawPile.IsEmpty())
@@ -136,12 +160,10 @@ namespace
 			return true;
 		}
 
-		if (InOutDeck.DiscardPile.IsEmpty())
+		if (!MoveRecyclableDiscardToDraw(InOutDeck))
 		{
 			return false;
 		}
-
-		InOutDeck.DrawPile = MoveTemp(InOutDeck.DiscardPile);
 		ShufflePile(InOutDeck.DrawPile, InOutDeck.CurrentRandomState);
 		return true;
 	}
@@ -295,6 +317,12 @@ namespace
 		if (ZoneIds.Num() != LedgerIds.Num())
 		{
 			OutError = TEXT("A ledger instance is not present in any logical card zone.");
+			return false;
+		}
+		if (!Deck.ResolvingCardInstanceId.IsNone()
+			&& !LedgerIds.Contains(Deck.ResolvingCardInstanceId))
+		{
+			OutError = TEXT("The synchronously resolving card is absent from the active instance ledger.");
 			return false;
 		}
 		if (Deck.Hand.Num() > BattleHandCapacity)
@@ -1554,9 +1582,9 @@ bool GameXXKCardRules::DrawCards(
 	{
 		// No card is consumed by the overflow. If the draw pile was just exhausted, recycle the
 		// discard pile once; then shuffle the complete remaining draw pile deterministically.
-		if (NewDeck.DrawPile.IsEmpty() && !NewDeck.DiscardPile.IsEmpty())
+		if (NewDeck.DrawPile.IsEmpty())
 		{
-			NewDeck.DrawPile = MoveTemp(NewDeck.DiscardPile);
+			MoveRecyclableDiscardToDraw(NewDeck);
 		}
 		ShufflePile(NewDeck.DrawPile, NewDeck.CurrentRandomState);
 	}
@@ -14952,6 +14980,7 @@ bool GameXXKCardRules::ResolveCardPlay(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	NewRuntime.Deck.ResolvingCardInstanceId = CopiedInstance.InstanceId;
 	TArray<FName> AppliedCostModifierIds = MoveTemp(AppliedEnergyCostModifierIds);
 	AppliedCostModifierIds.Append(MoveTemp(AppliedManaCostModifierIds));
 	if (!ConsumeOnCardPlayedModifiers(NewRuntime, AppliedCostModifierIds, ValidationError))
@@ -15507,6 +15536,11 @@ bool GameXXKCardRules::ResolveCardPlay(
 			return SetFailure(OutError, ValidationError);
 		}
 	}
+	if (NewRuntime.Deck.ResolvingCardInstanceId != CopiedInstance.InstanceId)
+	{
+		return SetFailure(OutError, TEXT("The resolving-card guard changed before the active card transaction completed."));
+	}
+	NewRuntime.Deck.ResolvingCardInstanceId = NAME_None;
 	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);

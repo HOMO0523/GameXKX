@@ -504,12 +504,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	FVector2D GetGroupOutcomePreviewAnchorForTest() const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FMargin GetSingleOutcomePreviewOffsetsForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FVector2D GetSingleOutcomePreviewAlignmentForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FString GetCardOutcomePreviewBackgroundResourceForTest() const;
+
 #if WITH_DEV_AUTOMATION_TESTS
 	UCanvasPanel* GetBattleOutcomePreviewLayerForTest() const;
 	int32 GetBattleOutcomePreviewLayerZForTest() const;
-	FMargin GetSingleOutcomePreviewOffsetsForTest() const;
 	FMargin GetGroupOutcomePreviewOffsetsForTest() const;
-	FVector2D GetSingleOutcomePreviewAlignmentForTest() const;
 	FVector2D GetGroupOutcomePreviewAlignmentForTest() const;
 	/** Drives the production visual-removal path without mutating authoritative runtime state. */
 	void RemoveUnitVisualForTest(FName UnitId);

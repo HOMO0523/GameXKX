@@ -323,7 +323,17 @@ bool FGameXXKQingNangPendingChoiceDrawTest::RunTest(const FString& Parameters)
 		Runtime.Deck.PendingChoice.Kind,
 		EGameXXKCardPendingChoiceKind::ForcedDiscard);
 	TestEqual(TEXT("the QingNang once-per-round trigger is committed"), Runtime.EquipmentEffects[0].CurrentRoundTriggerCount, 1);
-	TestEqual(TEXT("BaMen draws three before its forced discard while the QingNang draw waits"), Runtime.Deck.Hand.Num(), 5);
+	TestEqual(TEXT("BaMen draws the two available non-resolving cards before its forced discard while the QingNang draw waits"), Runtime.Deck.Hand.Num(), 4);
+	TestFalse(TEXT("BaMen cannot redraw its own still-resolving instance"),
+		Runtime.Deck.Hand.ContainsByPredicate([](const FGameXXKCardInstance& Card)
+		{
+			return Card.InstanceId == FName(TEXT("HighA"));
+		}));
+	TestTrue(TEXT("BaMen remains in discard until its synchronous transaction finishes"),
+		Runtime.Deck.DiscardPile.ContainsByPredicate([](const FGameXXKCardInstance& Card)
+		{
+			return Card.InstanceId == FName(TEXT("HighA"));
+		}));
 	TestEqual(TEXT("exactly one QingNang draw is deferred behind the choice"), Runtime.PendingTriggeredDrawCount, 1);
 	if (Runtime.Deck.PendingChoice.Kind != EGameXXKCardPendingChoiceKind::ForcedDiscard || Runtime.Deck.Hand.IsEmpty())
 	{
@@ -338,7 +348,7 @@ bool FGameXXKQingNangPendingChoiceDrawTest::RunTest(const FString& Parameters)
 			{Runtime.Deck.Hand[0].InstanceId},
 			&Error,
 			&ResumedResults));
-	TestEqual(TEXT("discard one then materialize the deferred QingNang draw"), Runtime.Deck.Hand.Num(), 5);
+	TestEqual(TEXT("discard one then materialize the one deferred QingNang draw"), Runtime.Deck.Hand.Num(), 4);
 	TestEqual(TEXT("the deferred QingNang draw is consumed exactly once"), Runtime.PendingTriggeredDrawCount, 0);
 	return true;
 }

@@ -80,12 +80,13 @@ namespace
 	FString DeckSnapshot(const FGameXXKBattleDeckState& Deck)
 	{
 		return FString::Printf(
-			TEXT("seed=%d;state=%d;energy=%d;limit=%d;active=%s;draw=%s;hand=%s;discard=%s;pending={kind=%d;required=%d;discard=%d;pick=%d;candidates=%s;insight=%s;picked=%s;reordered=%s;cancel=%d;preserve=%d}"),
+			TEXT("seed=%d;state=%d;energy=%d;limit=%d;active=%s;resolving=%s;draw=%s;hand=%s;discard=%s;pending={kind=%d;required=%d;discard=%d;pick=%d;candidates=%s;insight=%s;picked=%s;reordered=%s;cancel=%d;preserve=%d}"),
 			Deck.InitialRandomSeed,
 			Deck.CurrentRandomState,
 			Deck.SharedEnergy,
 			Deck.HandLimit,
 			*NameIds(Deck.ActiveInstanceIds),
+			*Deck.ResolvingCardInstanceId.ToString(),
 			*InstanceSnapshots(Deck.DrawPile),
 			*InstanceSnapshots(Deck.Hand),
 			*InstanceSnapshots(Deck.DiscardPile),
@@ -354,6 +355,40 @@ bool FGameXXKCardRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("reshuffle includes the just-moved instance"), IsInAnyZone(ReshuffleDeck, JustMovedInstanceId));
 	TestFalse(TEXT("just-moved instance is not left outside the reshuffled draw/hand zones"), ReshuffleDeck.DiscardPile.ContainsByPredicate([JustMovedInstanceId](const FGameXXKCardInstance& Instance) { return Instance.InstanceId == JustMovedInstanceId; }));
 	TestTrue(TEXT("reshuffled zones retain one instance per id"), GameXXKCardRules::ValidateDeckState(ReshuffleDeck));
+
+	FGameXXKBattleDeckState ResolvingGuardDeck;
+	TestTrue(TEXT("resolving-card guard deck initializes"), GameXXKCardRules::InitializeBattleDeck(ResolvingGuardDeck, Instances, 1214));
+	ResolvingGuardDeck.DiscardPile.Append(ResolvingGuardDeck.DrawPile);
+	ResolvingGuardDeck.DrawPile.Reset();
+	const FName ResolvingInstanceId = ResolvingGuardDeck.Hand.Last().InstanceId;
+	TestTrue(TEXT("resolving-card guard setup moves the active instance to discard"),
+		GameXXKCardRules::MoveHandCardToDiscard(ResolvingGuardDeck, ResolvingInstanceId));
+	ResolvingGuardDeck.ResolvingCardInstanceId = ResolvingInstanceId;
+	TestTrue(TEXT("a draw request larger than the recyclable discard still resolves"),
+		GameXXKCardRules::DrawCards(ResolvingGuardDeck, 14, 0));
+	TestTrue(TEXT("the synchronously resolving card stays isolated in discard"),
+		ResolvingGuardDeck.DiscardPile.ContainsByPredicate([ResolvingInstanceId](const FGameXXKCardInstance& Instance)
+		{
+			return Instance.InstanceId == ResolvingInstanceId;
+		}));
+	TestFalse(TEXT("the synchronously resolving card cannot redraw itself"),
+		ResolvingGuardDeck.Hand.ContainsByPredicate([ResolvingInstanceId](const FGameXXKCardInstance& Instance)
+		{
+			return Instance.InstanceId == ResolvingInstanceId;
+		}));
+	TestEqual(TEXT("all thirteen other discard cards remain drawable"), ResolvingGuardDeck.Hand.Num(), 17);
+	TestTrue(TEXT("the guarded intermediate deck remains structurally valid"),
+		GameXXKCardRules::ValidateDeckState(ResolvingGuardDeck));
+	ResolvingGuardDeck.ResolvingCardInstanceId = NAME_None;
+	TestTrue(TEXT("the former resolving card becomes drawable after the transaction guard clears"),
+		GameXXKCardRules::DrawCards(ResolvingGuardDeck, 1, 0));
+	TestTrue(TEXT("the former resolving card returns through the ordinary draw lifecycle"),
+		ResolvingGuardDeck.Hand.ContainsByPredicate([ResolvingInstanceId](const FGameXXKCardInstance& Instance)
+		{
+			return Instance.InstanceId == ResolvingInstanceId;
+		}));
+	TestTrue(TEXT("the post-transaction deck remains structurally valid"),
+		GameXXKCardRules::ValidateDeckState(ResolvingGuardDeck));
 
 	FGameXXKBattleDeckState SameReshuffleDeckA;
 	FGameXXKBattleDeckState SameReshuffleDeckB;

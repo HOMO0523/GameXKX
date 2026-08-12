@@ -114,6 +114,13 @@ bool FGameXXKYueBaiSurvivalBudgetTest::RunTest(const FString& Parameters)
 			break;
 		}
 	}
+	AddInfo(FString::Printf(
+		TEXT("[NpcBudget] YueBai cases=%d battle=%d elite=%d boss=%d stranded=%d"),
+		YueBaiCaseCount,
+		BattleVictories,
+		EliteVictories,
+		BossVictories,
+		StrandedTargetFailures));
 
 	TestEqual(TEXT("the YueBai orthogonal slice contains exactly ninety cases"), YueBaiCaseCount, 90);
 	TestEqual(TEXT("YueBai keeps all thirty normal encounters"), BattleVictories, 30);
@@ -195,6 +202,16 @@ bool FGameXXKZhouGuangZuDamageBudgetTest::RunTest(const FString& Parameters)
 			break;
 		}
 	}
+	AddInfo(FString::Printf(
+		TEXT("[NpcBudget] ZhouGuangZu cases=%d battle=%d/%d elite=%d/%d boss=%d/%d stranded=%d"),
+		ZhouCaseCount,
+		BattleVictories,
+		BattleCaseCount,
+		EliteVictories,
+		EliteCaseCount,
+		BossVictories,
+		BossCaseCount,
+		StrandedTargetFailures));
 
 	TestEqual(TEXT("the ZhouGuangZu orthogonal slice contains exactly ninety cases"), ZhouCaseCount, 90);
 	TestEqual(TEXT("the ZhouGuangZu slice contains exactly thirty normal encounters"), BattleCaseCount, 30);

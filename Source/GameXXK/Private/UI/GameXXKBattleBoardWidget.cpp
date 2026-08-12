@@ -77,6 +77,11 @@ namespace
 	static const FVector2D FixedUnitHudWidgetSize(272.0f, 142.0f);
 	static const FVector2D BattleHudSafeStageDesignSize(1920.0f, 1080.0f);
 	static const FVector2D FormationVisualSize(410.0f, 410.0f);
+	// Adjacent formation centers are 288 design pixels apart horizontally. Keep
+	// the transparent interaction regions centered on their visuals, but narrow
+	// enough that one unit can never intercept the hover/click meant for its
+	// neighbour. The 410x410 rendered character layout remains unchanged.
+	static const FVector2D FormationTargetProxySize(180.0f, 320.0f);
 	static constexpr float FormationVisualVerticalOffsetPixels = -64.0f;
 	static constexpr float FormationVisualVerticalOffsetNormalized = FormationVisualVerticalOffsetPixels / 1080.0f;
 	static const FVector2D CinematicImpactVisualSize(360.0f, 360.0f);
@@ -3589,7 +3594,7 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 				{
 					ProxySlot->SetAnchors(FAnchors(FormationAnchor.X, FormationAnchor.Y));
 					ProxySlot->SetAlignment(FVector2D(0.5f, 0.5f));
-					ProxySlot->SetOffsets(FMargin(0.0f, 0.0f, FormationVisualSize.X, FormationVisualSize.Y));
+					ProxySlot->SetOffsets(FMargin(0.0f, 0.0f, FormationTargetProxySize.X, FormationTargetProxySize.Y));
 					ProxySlot->SetZOrder(BattleTargetProxyBaseZOrder + FMath::Clamp(View.SlotNumber, 1, 5));
 				}
 			}
@@ -4587,6 +4592,23 @@ FVector2D UGameXXKBattleBoardWidget::GetGroupOutcomePreviewAnchorForTest() const
 	return FVector2D::ZeroVector;
 }
 
+FMargin UGameXXKBattleBoardWidget::GetSingleOutcomePreviewOffsetsForTest() const
+{
+	const UCanvasPanelSlot* const OutcomeSlot = SingleOutcomeWidget ? Cast<UCanvasPanelSlot>(SingleOutcomeWidget->Slot) : nullptr;
+	return OutcomeSlot ? OutcomeSlot->GetOffsets() : FMargin();
+}
+
+FVector2D UGameXXKBattleBoardWidget::GetSingleOutcomePreviewAlignmentForTest() const
+{
+	const UCanvasPanelSlot* const OutcomeSlot = SingleOutcomeWidget ? Cast<UCanvasPanelSlot>(SingleOutcomeWidget->Slot) : nullptr;
+	return OutcomeSlot ? OutcomeSlot->GetAlignment() : FVector2D::ZeroVector;
+}
+
+FString UGameXXKBattleBoardWidget::GetCardOutcomePreviewBackgroundResourceForTest() const
+{
+	return SingleOutcomeWidget ? SingleOutcomeWidget->GetBackgroundResourcePathForTest() : FString();
+}
+
 #if WITH_DEV_AUTOMATION_TESTS
 UCanvasPanel* UGameXXKBattleBoardWidget::GetBattleOutcomePreviewLayerForTest() const
 {
@@ -4601,22 +4623,10 @@ int32 UGameXXKBattleBoardWidget::GetBattleOutcomePreviewLayerZForTest() const
 	return OutcomeSlot ? OutcomeSlot->GetZOrder() : INDEX_NONE;
 }
 
-FMargin UGameXXKBattleBoardWidget::GetSingleOutcomePreviewOffsetsForTest() const
-{
-	const UCanvasPanelSlot* const OutcomeSlot = SingleOutcomeWidget ? Cast<UCanvasPanelSlot>(SingleOutcomeWidget->Slot) : nullptr;
-	return OutcomeSlot ? OutcomeSlot->GetOffsets() : FMargin();
-}
-
 FMargin UGameXXKBattleBoardWidget::GetGroupOutcomePreviewOffsetsForTest() const
 {
 	const UCanvasPanelSlot* const OutcomeSlot = GroupOutcomeWidget ? Cast<UCanvasPanelSlot>(GroupOutcomeWidget->Slot) : nullptr;
 	return OutcomeSlot ? OutcomeSlot->GetOffsets() : FMargin();
-}
-
-FVector2D UGameXXKBattleBoardWidget::GetSingleOutcomePreviewAlignmentForTest() const
-{
-	const UCanvasPanelSlot* const OutcomeSlot = SingleOutcomeWidget ? Cast<UCanvasPanelSlot>(SingleOutcomeWidget->Slot) : nullptr;
-	return OutcomeSlot ? OutcomeSlot->GetAlignment() : FVector2D::ZeroVector;
 }
 
 FVector2D UGameXXKBattleBoardWidget::GetGroupOutcomePreviewAlignmentForTest() const

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 
 import unreal
@@ -241,6 +242,50 @@ def _runtime_state(subsystem):
         elif key in ("player_location", "quest_npc_location"):
             value = _vector_to_dict(value)
         result[key] = value
+
+    card_run = _struct_get(state, "card_run", "CardRun")
+    active_battle = _struct_get(card_run, "active_battle", "ActiveBattle")
+    units = _struct_get(active_battle, "units", "Units")
+    battle_units = {}
+    try:
+        unit_entries = list(units) if units is not None else []
+    except Exception:
+        unit_entries = []
+    for unit in unit_entries:
+        unit_id = str(_struct_get(unit, "unit_id", "UnitId") or "")
+        if not unit_id:
+            continue
+        armor_value = _struct_get(unit, "armor", "Armor")
+        battle_units[unit_id] = {
+            "unit_id": unit_id,
+            "side": _battle_side_name(_struct_get(unit, "side", "Side")),
+            "slot": _struct_get(unit, "battle_slot_number", "BattleSlotNumber"),
+            "stable_sort_order": _struct_get(unit, "stable_sort_order", "StableSortOrder"),
+            "hp": _struct_get(unit, "hp", "HP"),
+            "max_hp": _struct_get(unit, "max_hp", "MaxHP"),
+            "armor": armor_value,
+            "shield": armor_value,
+            "living": bool(_struct_get(unit, "b_living", "living", "bLiving", "Living")),
+        }
+    result["battle_units"] = battle_units
+
+    deck = _struct_get(active_battle, "deck", "Deck")
+    hand = _struct_get(deck, "hand", "Hand")
+    result["battle_hand"] = []
+    try:
+        hand_entries = list(hand) if hand is not None else []
+    except Exception:
+        hand_entries = []
+    for card in hand_entries:
+        result["battle_hand"].append({
+            "instance_id": str(_struct_get(card, "instance_id", "InstanceId") or ""),
+            "card_id": str(_struct_get(card, "card_id", "CardId") or ""),
+            "owner_unit_id": str(_struct_get(card, "owner_unit_id", "OwnerUnitId") or ""),
+        })
+    try:
+        result["target_outcome_fixture_active"] = bool(subsystem.is_target_outcome_fixture_active_for_test())
+    except Exception:
+        result["target_outcome_fixture_active"] = None
 
     return result
 
@@ -638,6 +683,61 @@ def _handle_clear_battle_hud_fixture(world):
     return {"ok": True, "subsystem": _object_path(subsystem)}
 
 
+def _handle_apply_target_outcome_fixture(world, scenario_id):
+    player_controller = _first_player_controller(world)
+    subsystem = _get_mvp_subsystem(world) or _get_mvp_subsystem_from_player_controller(player_controller)
+    if not player_controller:
+        return {"ok": False, "reason": "player_controller_missing"}
+    if not subsystem:
+        return {"ok": False, "reason": "mvp_subsystem_missing"}
+    try:
+        ok, out_error = _fixture_apply_result(
+            subsystem.apply_target_outcome_fixture_for_test(unreal.Name(str(scenario_id)))
+        )
+    except Exception as exc:
+        return {"ok": False, "reason": str(exc)}
+    if not ok:
+        return {"ok": False, "reason": out_error or "target_outcome_fixture_apply_rejected"}
+    try:
+        player_controller.refresh_player_flow_widgets_for_test()
+    except Exception as exc:
+        clear_error = ""
+        try:
+            _, clear_error = _fixture_apply_result(subsystem.clear_target_outcome_fixture_for_test())
+        except Exception:
+            pass
+        return {"ok": False, "reason": str(exc), "clear_error": clear_error}
+    return {
+        "ok": True,
+        "scenario_id": str(scenario_id),
+        "active": bool(subsystem.is_target_outcome_fixture_active_for_test()),
+        "out_error": out_error,
+    }
+
+
+def _handle_clear_target_outcome_fixture(world):
+    player_controller = _first_player_controller(world)
+    subsystem = _get_mvp_subsystem(world) or _get_mvp_subsystem_from_player_controller(player_controller)
+    if not subsystem:
+        return {"ok": False, "reason": "mvp_subsystem_missing"}
+    try:
+        ok, out_error = _fixture_apply_result(subsystem.clear_target_outcome_fixture_for_test())
+    except Exception as exc:
+        return {"ok": False, "reason": str(exc)}
+    if not ok:
+        return {"ok": False, "reason": out_error or "target_outcome_fixture_clear_rejected"}
+    if player_controller:
+        try:
+            player_controller.refresh_player_flow_widgets_for_test()
+        except Exception as exc:
+            return {"ok": False, "reason": str(exc)}
+    try:
+        active = bool(subsystem.is_target_outcome_fixture_active_for_test())
+    except Exception as exc:
+        return {"ok": False, "reason": str(exc)}
+    return {"ok": not active, "active": active, "out_error": out_error}
+
+
 def _handle_town_key(world, key_name, state):
     pawn = _first_player_pawn(world)
     if not pawn:
@@ -752,9 +852,26 @@ def _append_geometry_error(result, stage, exc):
     result["errors"].append({"stage": stage, "exception": _short_exception(exc)})
 
 
+def _slate_library():
+    # UE 5.8 honors USlateBlueprintLibrary's ScriptName="SlateLibrary" in the
+    # Python API.  Older installations expose the generated class name instead.
+    return getattr(unreal, "SlateLibrary", getattr(unreal, "SlateBlueprintLibrary", None))
+
+
 def _read_geometry_vector(geometry, method_name, result_key, result):
     try:
-        value = getattr(geometry, method_name)()
+        geometry_method = getattr(geometry, method_name, None)
+        if callable(geometry_method):
+            value = geometry_method()
+        else:
+            # UE 5.8's Python FGeometry wrapper does not expose these C++ member
+            # helpers, but the reflected Slate library exposes the same geometry
+            # transforms and reads the actual cached Slate layout.
+            slate_library = _slate_library()
+            if method_name == "get_absolute_position":
+                value = slate_library.local_to_absolute(geometry, unreal.Vector2D(0.0, 0.0))
+            else:
+                value = getattr(slate_library, method_name)(geometry)
     except Exception as exc:
         _append_geometry_error(result, f"geometry.{method_name}", exc)
         return None
@@ -808,24 +925,29 @@ def _screen_rect_with_diagnostics(world, widget):
         diagnostics["errors"].append({"stage": "screen_rect.local_size", "exception": "non_positive_local_size"})
         return None, diagnostics
     try:
-        top_left = _viewport_pixel_position(
-            unreal.SlateBlueprintLibrary.local_to_viewport(
-                world,
-                geometry,
-                unreal.Vector2D(0.0, 0.0),
+        slate_library = _slate_library()
+        if hasattr(unreal, "SlateLibrary"):
+            top_left_raw = slate_library.local_to_viewport(
+                world, geometry, unreal.Vector2D(0.0, 0.0)
             )
-        )
+        else:
+            top_left_raw = unreal.SlateBlueprintLibrary.local_to_viewport(
+                world, geometry, unreal.Vector2D(0.0, 0.0)
+            )
+        top_left = _viewport_pixel_position(top_left_raw)
     except Exception as exc:
         _append_geometry_error(diagnostics, "SlateBlueprintLibrary.local_to_viewport.top_left", exc)
         return None, diagnostics
     try:
-        bottom_right = _viewport_pixel_position(
-            unreal.SlateBlueprintLibrary.local_to_viewport(
-                world,
-                geometry,
-                unreal.Vector2D(local_size["x"], local_size["y"]),
+        if hasattr(unreal, "SlateLibrary"):
+            bottom_right_raw = slate_library.local_to_viewport(
+                world, geometry, unreal.Vector2D(local_size["x"], local_size["y"])
             )
-        )
+        else:
+            bottom_right_raw = unreal.SlateBlueprintLibrary.local_to_viewport(
+                world, geometry, unreal.Vector2D(local_size["x"], local_size["y"])
+            )
+        bottom_right = _viewport_pixel_position(bottom_right_raw)
     except Exception as exc:
         _append_geometry_error(diagnostics, "SlateBlueprintLibrary.local_to_viewport.bottom_right", exc)
         return None, diagnostics
@@ -1024,6 +1146,24 @@ def _widget_screen_summary(world, widget, diagnostic_stage_prefix="widget"):
     )
     if visibility is not None:
         result["visibility"] = _enum_name(visibility)
+    enabled = _component_value(
+        result,
+        "is_enabled",
+        widget,
+        "get_is_enabled",
+        diagnostic_stage_prefix=diagnostic_stage_prefix,
+    )
+    if enabled is not None:
+        result["is_enabled"] = bool(enabled)
+    render_opacity = _component_value(
+        result,
+        "render_opacity",
+        widget,
+        "get_render_opacity",
+        diagnostic_stage_prefix=diagnostic_stage_prefix,
+    )
+    if render_opacity is not None:
+        result["render_opacity"] = _finite_float(render_opacity)
     result["screen_rect"], result["geometry"] = _screen_rect_with_diagnostics(world, widget)
     if result["screen_rect"] is None:
         _append_legacy_error_with_diagnostic(
@@ -1373,6 +1513,22 @@ def _battle_board_summary(world, player_controller, subsystem):
         "unit_hud_layer": None,
         "unit_ids": [],
         "unit_huds": {},
+        "target_proxies": {},
+        "hand_buttons": [],
+        "outcome_preview": {
+            "visible": False,
+            "class": "",
+            "card_instance_id": "",
+            "target_unit_id": "",
+            "lines": [],
+            "build_count": None,
+            "single_anchor": None,
+            "group_anchor": None,
+            "targeting_pointer": None,
+            "single_offsets": None,
+            "single_alignment": None,
+            "background_resource": "",
+        },
         "projection": {
             "canvas": {"cached": None, "local_size": None, "size": None, "absolute_position": None, "absolute_size": None, "screen_rect": None, "errors": []},
             "root_geometry": {"cached": None, "local_size": None, "absolute_position": None, "absolute_size": None, "screen_rect": None, "errors": []},
@@ -1479,6 +1635,100 @@ def _battle_board_summary(world, player_controller, subsystem):
     result["unit_ids"] = _active_battle_unit_ids(subsystem)
     for unit_id in result["unit_ids"]:
         result["unit_huds"][unit_id] = _board_unit_hud_summary(world, board, unit_id)
+        try:
+            proxy = board.get_unit_target_proxy_for_test(unreal.Name(unit_id))
+            result["target_proxies"][unit_id] = _widget_screen_summary(
+                world,
+                proxy,
+                f"battle_board.target_proxy.{unit_id}",
+            )
+        except Exception as exc:
+            result["errors"].append(f"target_proxy_unavailable:{unit_id}:{exc}")
+            _append_structured_diagnostic(
+                result["diagnostics"],
+                "battle_board.get_unit_target_proxy_for_test",
+                exc=exc,
+            )
+
+    runtime_summary = _runtime_state(subsystem)
+    hand_cards = runtime_summary.get("battle_hand", []) if isinstance(runtime_summary, dict) else []
+    # The board exposes each button as a reflected read-only seam, while its native
+    # visible-count helper intentionally remains C++-only.  The runtime hand is the
+    # authoritative identity/order source used by RefreshHandCards, so probe exactly
+    # those slots and retain only buttons Slate reports as visible.
+    for slot_index in range(min(5, len(hand_cards))):
+        try:
+            button = board.get_hand_card_button_for_test(slot_index)
+            button_summary = _widget_screen_summary(
+                world,
+                button,
+                f"battle_board.hand_button.{slot_index}",
+            )
+            button_summary["slot_index"] = slot_index
+            button_summary["instance_id"] = (
+                str(hand_cards[slot_index].get("instance_id", ""))
+                if slot_index < len(hand_cards) and isinstance(hand_cards[slot_index], dict)
+                else ""
+            )
+            if button_summary.get("visible"):
+                result["hand_buttons"].append(button_summary)
+        except Exception as exc:
+            result["errors"].append(f"hand_button_unavailable:{slot_index}:{exc}")
+            _append_structured_diagnostic(
+                result["diagnostics"],
+                "battle_board.get_hand_card_button_for_test",
+                exc=exc,
+            )
+
+    outcome_getters = (
+        ("visible", "is_card_outcome_preview_visible_for_test", bool),
+        ("class", "get_card_outcome_preview_class_for_test", str),
+        ("card_instance_id", "get_card_outcome_preview_card_instance_id_for_test", str),
+        ("target_unit_id", "get_card_outcome_preview_target_unit_id_for_test", str),
+        ("lines", "get_card_outcome_preview_lines_for_test", list),
+        ("build_count", "get_card_outcome_preview_build_count_for_test", int),
+        ("single_anchor", "get_single_outcome_preview_anchor_for_test", _strict_vector2d_to_dict),
+        ("group_anchor", "get_group_outcome_preview_anchor_for_test", _strict_vector2d_to_dict),
+        ("targeting_pointer", "get_targeting_pointer_position_for_test", _strict_vector2d_to_dict),
+    )
+    for key, getter_name, converter in outcome_getters:
+        try:
+            value = getattr(board, getter_name)()
+            if key == "lines":
+                value = [re.sub(r"^([123]P)(?=\S)", r"\1 ", str(line)) for line in list(value)]
+            else:
+                value = converter(value)
+            result["outcome_preview"][key] = value
+        except Exception as exc:
+            result["errors"].append(f"outcome_preview_{key}_unavailable:{exc}")
+            _append_structured_diagnostic(
+                result["diagnostics"],
+                f"battle_board.{getter_name}",
+                exc=exc,
+            )
+
+    # The render-tree snapshot is exposed through reflected Board seams because
+    # UUserWidget::GetWidgetTree is not exported to Python in UE 5.8.
+    render_tree_getters = (
+        ("single_offsets", "get_single_outcome_preview_offsets_for_test", lambda value: {
+            "left": float(_struct_get(value, "left", "Left")),
+            "top": float(_struct_get(value, "top", "Top")),
+            "right": float(_struct_get(value, "right", "Right")),
+            "bottom": float(_struct_get(value, "bottom", "Bottom")),
+        }),
+        ("single_alignment", "get_single_outcome_preview_alignment_for_test", _strict_vector2d_to_dict),
+        ("background_resource", "get_card_outcome_preview_background_resource_for_test", str),
+    )
+    for key, getter_name, converter in render_tree_getters:
+        try:
+            result["outcome_preview"][key] = converter(getattr(board, getter_name)())
+        except Exception as exc:
+            result["errors"].append(f"outcome_preview_{key}_unavailable:{exc}")
+            _append_structured_diagnostic(
+                result["diagnostics"],
+                f"battle_board.{getter_name}",
+                exc=exc,
+            )
     return result
 
 
@@ -1862,6 +2112,8 @@ def main(argv):
     parser.add_argument("--accept-task-id", default="")
     parser.add_argument("--apply-battle-hud-fixture", action="store_true")
     parser.add_argument("--clear-battle-hud-fixture", action="store_true")
+    parser.add_argument("--apply-target-outcome-fixture", default="")
+    parser.add_argument("--clear-target-outcome-fixture", action="store_true")
     args = parser.parse_args(argv)
 
     result = {}
@@ -1889,6 +2141,13 @@ def main(argv):
         result["battle_hud_fixture"] = _handle_apply_battle_hud_fixture(world)
     if args.clear_battle_hud_fixture:
         result["battle_hud_fixture_clear"] = _handle_clear_battle_hud_fixture(world)
+    if args.apply_target_outcome_fixture:
+        result["target_outcome_fixture"] = _handle_apply_target_outcome_fixture(
+            world,
+            args.apply_target_outcome_fixture,
+        )
+    if args.clear_target_outcome_fixture:
+        result["target_outcome_fixture_clear"] = _handle_clear_target_outcome_fixture(world)
     result["probe"] = probe()
     print(_strict_json_dumps(result))
 

@@ -210,8 +210,8 @@ bool FGameXXKTaskNpcSpellReplayTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("completion audits three base replays plus one reward"), ThirdResult.AutomaticResolutionCount, 4);
 	TestEqual(TEXT("only replayed 青焰 contributes one task-replay damage packet"), CountOrigin(ThirdResult.DamageResults, EGameXXKCardResolutionOrigin::TaskNpcTaskReplay), 1);
 	TestEqual(TEXT("青焰 starter reward contributes one packet per enemy"), CountOrigin(ThirdResult.DamageResults, EGameXXKCardResolutionOrigin::TaskReward), 2);
-	TestEqual(TEXT("山河 base and replay each grant Armor8; its non-starter reward never consumes armor"), FindUnit(Runtime, OwnerUnitId)->Armor, 16);
-	TestEqual(TEXT("ally also receives both Armor8 base resolutions"), FindUnit(Runtime, AllyUnitId)->Armor, 16);
+	TestEqual(TEXT("山河 base and replay each grant Armor9; its non-starter reward never consumes armor"), FindUnit(Runtime, OwnerUnitId)->Armor, 18);
+	TestEqual(TEXT("ally also receives both Armor9 base resolutions"), FindUnit(Runtime, AllyUnitId)->Armor, 18);
 	TestEqual(TEXT("enemy A Burn reflects ordered base replay then starter group reward"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 19);
 	TestEqual(TEXT("enemy B Burn reflects terrain replays then starter group reward"), Status(Runtime, EnemyBId, EGameXXKCardStatus::Burn), 9);
 	return true;

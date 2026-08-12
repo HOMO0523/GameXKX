@@ -450,6 +450,62 @@ bool FGameXXKRouteBalanceDelayedSelectedTargetFallbackRegressionTest::RunTest(co
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteBalanceXuanJiaYueBaiBossDecisionLimitRegressionTest,
+	"GameXXK.RouteBalance.Diagnostics.XuanJiaYueBaiBoss922021",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteBalanceXuanJiaYueBaiBossDecisionLimitRegressionTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	FString Error;
+	TestTrue(TEXT("the locked matrix expands before the decision-limit regression"),
+		FGameXXKRouteBalanceRules::ExpandCases(FGameXXKRouteBalanceRules::MakeLockedFullMatrix(), Cases, &Error));
+	const FGameXXKRouteBalanceCase* Case = Cases.FindByPredicate([](const FGameXXKRouteBalanceCase& Candidate)
+	{
+		return Candidate.CohortId == TEXT("XuanJiaYueBai")
+			&& Candidate.NodeKind == EGameXXKNodeKind::Boss
+			&& Candidate.Chapter == 3
+			&& Candidate.SeedOrdinal == 21
+			&& Candidate.Seed == 922021;
+	});
+	TestNotNull(TEXT("the fixed decision-limit case remains in the locked matrix"), Case);
+	if (!Case)
+	{
+		return false;
+	}
+
+	FGameXXKRouteBalanceCaseResult Result;
+	TArray<FGameXXKSimulationTraceEntry> Trace;
+	const bool bResolved = FGameXXKRouteBalanceRules::RunCase(*Case, Result, &Error, nullptr, &Trace);
+	const int32 FirstTraceIndex = FMath::Max(0, Trace.Num() - 80);
+	for (int32 TraceIndex = FirstTraceIndex; TraceIndex < Trace.Num(); ++TraceIndex)
+	{
+		const FGameXXKSimulationTraceEntry& Entry = Trace[TraceIndex];
+		AddInfo(FString::Printf(
+			TEXT("[DecisionLimitRegressionTrace] index=%d round=%d action=%s source=%s card_or_intent=%s target=%s hp=%d mana=%d armor=%d"),
+			TraceIndex,
+			Entry.Round,
+			*Entry.Action.ToString(),
+			*Entry.SourceUnitId.ToString(),
+			*Entry.CardOrIntentId.ToString(),
+			*Entry.TargetUnitId.ToString(),
+			Entry.HealthDelta,
+			Entry.ManaDelta,
+			Entry.ArmorDelta));
+	}
+	TestTrue(FString::Printf(TEXT("the fixed decision-limit case reaches a normal terminal result: %s"), *Error), bResolved);
+	if (!bResolved)
+	{
+		return false;
+	}
+	TestTrue(TEXT("the fixed case ends in victory or an ordinary defeat"),
+		Result.Metrics.bVictory || Result.Metrics.FailureReason == TEXT("Simulation.Defeat"));
+	TestTrue(TEXT("the fixed case terminates before the simulation safety limit"),
+		Result.Metrics.Rounds > 0 && Result.Metrics.Rounds <= 100);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKRouteBalanceChapterTwoNormalReplayTest,
 	"GameXXK.RouteBalance.Determinism.ChapterTwoNormalReplay",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

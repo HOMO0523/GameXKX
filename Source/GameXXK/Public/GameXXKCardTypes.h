@@ -1261,6 +1261,14 @@ struct GAMEXXK_API FGameXXKBattleDeckState
 	/** Stable non-zone ledger used to prove that every initialized instance remains in exactly one zone. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FName> ActiveInstanceIds;
+
+	/**
+	 * Runtime-only identity of the synchronously resolving active card. It remains in its normal
+	 * discard/exhaust/hand zone for explicit Blade mechanics, but generic draws must not recycle it
+	 * until the outer card transaction has finished.
+	 */
+	UPROPERTY(Transient)
+	FName ResolvingCardInstanceId = NAME_None;
 };
 
 /** Logical battle side used by pure target selection. This is never a widget index. */

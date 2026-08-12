@@ -1,14 +1,18 @@
 #include "GameXXKCardTypes.h"
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKCardCatalog.h"
+#include "GameXXKCardRules.h"
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKMVPRules.h"
 #include "Components/Button.h"
+#include "Components/CanvasPanelSlot.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKBattleSceneUnitActor.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattlePartyQiWidget.h"
+#include "UI/GameXXKBattleUnitVisualWidget.h"
 #include "UObject/UnrealType.h"
 
 #include <utility>
@@ -127,6 +131,242 @@ namespace
 				return false;
 			}
 		}
+		return true;
+	}
+
+	FString TargetOutcomeFixtureFingerprint(const FGameXXKRuntimeState& State)
+	{
+		FString Result = FString::Printf(
+			TEXT("screen=%d|active=%d|party=%d|enemy=%d|phase=%d|energy=%d|random=%d"),
+			static_cast<int32>(State.Screen),
+			State.CardRun.bHasActiveCardBattle ? 1 : 0,
+			State.ActiveBattleParty.Num(),
+			State.ActiveBattleEnemies.Num(),
+			static_cast<int32>(State.CardRun.ActiveBattle.Phase),
+			State.CardRun.ActiveBattle.Deck.SharedEnergy,
+			State.CardRun.ActiveBattle.CombatRandomState);
+		for (const FGameXXKCardCombatUnit& Unit : State.CardRun.ActiveBattle.Units)
+		{
+			Result += FString::Printf(
+				TEXT("|unit=%s,%d,%d,%d,%d,%d,%d"),
+				*Unit.UnitId.ToString(),
+				static_cast<int32>(Unit.Side),
+				Unit.StableSortOrder,
+				Unit.HP,
+				Unit.MaxHP,
+				Unit.Armor,
+				Unit.bLiving ? 1 : 0);
+		}
+		for (const FGameXXKCardInstance& Card : State.CardRun.ActiveBattle.Deck.Hand)
+		{
+			Result += FString::Printf(
+				TEXT("|hand=%s,%s,%s"),
+				*Card.InstanceId.ToString(),
+				*Card.CardId.ToString(),
+				*Card.OwnerUnitId.ToString());
+		}
+		return Result;
+	}
+
+	FBox2D TargetOutcomeProxyRect(const UButton* const Proxy)
+	{
+		const UCanvasPanelSlot* const Slot = Proxy ? Cast<UCanvasPanelSlot>(Proxy->Slot) : nullptr;
+		if (!Slot)
+		{
+			return FBox2D(EForceInit::ForceInit);
+		}
+		const FVector2D StageSize(1920.0f, 1080.0f);
+		const FVector2D Size = Slot->GetSize();
+		const FVector2D Anchor(
+			Slot->GetAnchors().Minimum.X * StageSize.X,
+			Slot->GetAnchors().Minimum.Y * StageSize.Y);
+		const FVector2D Minimum = Anchor + Slot->GetPosition() - Slot->GetAlignment() * Size;
+		return FBox2D(Minimum, Minimum + Size);
+	}
+
+	bool TargetOutcomeRectsOverlap(const FBox2D& A, const FBox2D& B)
+	{
+		return A.bIsValid && B.bIsValid
+			&& A.Min.X < B.Max.X && B.Min.X < A.Max.X
+			&& A.Min.Y < B.Max.Y && B.Min.Y < A.Max.Y;
+	}
+
+	bool RunTargetOutcomeFixtureContract(FAutomationTestBase& Test)
+	{
+		const TArray<FName> ScenarioIds = {
+			TEXT("Outcome.Single"),
+			TEXT("Outcome.HeavyArrow"),
+			TEXT("Outcome.GroupThree"),
+			TEXT("Outcome.GroupMissing2P"),
+			TEXT("Outcome.ToxicExplosion"),
+			TEXT("Outcome.MedicineEnemy"),
+			TEXT("Outcome.Healing"),
+			TEXT("Outcome.Armor"),
+			TEXT("Outcome.AgilityDodge"),
+			TEXT("Outcome.ArmorBlocked"),
+			TEXT("Outcome.GuardRedirect"),
+			TEXT("Outcome.Lethal")};
+
+		UGameInstance* const TestGameInstance = NewObject<UGameInstance>();
+		UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+		if (!BuildActiveCardBattle(Subsystem, Test))
+		{
+			return false;
+		}
+
+		const FString OriginalFingerprint = TargetOutcomeFixtureFingerprint(Subsystem->GetRuntimeStateCopy());
+		FString Error;
+		Test.TestFalse(
+			TEXT("unknown target-outcome scenario rejects atomically"),
+			Subsystem->ApplyTargetOutcomeFixtureForTest(TEXT("Outcome.Unknown"), Error));
+		Test.TestFalse(TEXT("unknown scenario leaves no target-outcome fixture active"), Subsystem->IsTargetOutcomeFixtureActiveForTest());
+		Test.TestFalse(TEXT("unknown scenario reports a concrete reason"), Error.IsEmpty());
+		Test.TestEqual(
+			TEXT("unknown scenario leaves the complete fixture fingerprint unchanged"),
+			TargetOutcomeFixtureFingerprint(Subsystem->GetRuntimeStateCopy()),
+			OriginalFingerprint);
+
+		Error.Reset();
+		Test.TestTrue(
+			TEXT("first target-outcome fixture applies"),
+			Subsystem->ApplyTargetOutcomeFixtureForTest(TEXT("Outcome.Single"), Error));
+		const FString FirstFixtureFingerprint = TargetOutcomeFixtureFingerprint(Subsystem->GetRuntimeStateCopy());
+		Test.TestFalse(
+			TEXT("a second target-outcome fixture apply rejects atomically"),
+			Subsystem->ApplyTargetOutcomeFixtureForTest(TEXT("Outcome.HeavyArrow"), Error));
+		Test.TestTrue(TEXT("failed repeated apply preserves the active fixture"), Subsystem->IsTargetOutcomeFixtureActiveForTest());
+		Test.TestEqual(
+			TEXT("failed repeated apply leaves the first fixture unchanged"),
+			TargetOutcomeFixtureFingerprint(Subsystem->GetRuntimeStateCopy()),
+			FirstFixtureFingerprint);
+		Test.TestTrue(TEXT("clear restores the source runtime"), Subsystem->ClearTargetOutcomeFixtureForTest(Error));
+		Test.TestFalse(TEXT("clear deactivates the target-outcome fixture"), Subsystem->IsTargetOutcomeFixtureActiveForTest());
+		Test.TestEqual(
+			TEXT("clear restores the original runtime fingerprint"),
+			TargetOutcomeFixtureFingerprint(Subsystem->GetRuntimeStateCopy()),
+			OriginalFingerprint);
+		Test.TestTrue(TEXT("clear without a backup is a successful no-op"), Subsystem->ClearTargetOutcomeFixtureForTest(Error));
+		Test.TestEqual(
+			TEXT("no-op clear preserves the original runtime fingerprint"),
+			TargetOutcomeFixtureFingerprint(Subsystem->GetRuntimeStateCopy()),
+			OriginalFingerprint);
+
+		for (const FName ScenarioId : ScenarioIds)
+		{
+			Error.Reset();
+			if (!Test.TestTrue(
+				*FString::Printf(TEXT("%s fixture applies: %s"), *ScenarioId.ToString(), *Error),
+				Subsystem->ApplyTargetOutcomeFixtureForTest(ScenarioId, Error)))
+			{
+				return false;
+			}
+
+			const FGameXXKRuntimeState Fixture = Subsystem->GetRuntimeStateCopy();
+			const FGameXXKBattleDeckState& Deck = Fixture.CardRun.ActiveBattle.Deck;
+			Test.TestTrue(*FString::Printf(TEXT("%s is active"), *ScenarioId.ToString()), Subsystem->IsTargetOutcomeFixtureActiveForTest());
+			Test.TestEqual(*FString::Printf(TEXT("%s has exactly one test card"), *ScenarioId.ToString()), Deck.Hand.Num(), 1);
+			if (Deck.Hand.Num() == 1)
+			{
+				Test.TestNotNull(
+					*FString::Printf(TEXT("%s hand card is from the real catalog"), *ScenarioId.ToString()),
+					FGameXXKCardCatalog::FindCardDefinition(Deck.Hand[0].CardId));
+				FGameXXKCardPlayPreview Preview;
+				FString PreviewError;
+				Test.TestTrue(
+					*FString::Printf(TEXT("%s unique hand card has a real play preview: %s"), *ScenarioId.ToString(), *PreviewError),
+					FGameXXKCardBattleAdapter::BuildCardPlayPreview(Fixture, Deck.Hand[0].InstanceId, Preview, &PreviewError));
+			}
+
+			FString ValidationError;
+			Test.TestTrue(
+				*FString::Printf(TEXT("%s validates as a real card runtime: %s"), *ScenarioId.ToString(), *ValidationError),
+				GameXXKCardRules::ValidateCardBattleRuntime(Fixture.CardRun.ActiveBattle, &ValidationError));
+			FGameXXKRuntimeState ProjectionCopy = Fixture;
+			FString ProjectionError;
+			Test.TestTrue(
+				*FString::Printf(TEXT("%s synchronizes through the legacy projection: %s"), *ScenarioId.ToString(), *ProjectionError),
+				FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(ProjectionCopy, &ProjectionError));
+			Test.TestEqual(
+				*FString::Printf(TEXT("%s legacy party count matches"), *ScenarioId.ToString()),
+				ProjectionCopy.ActiveBattleParty.Num(),
+				CountLivingUnits(ProjectionCopy, EGameXXKCardTargetSide::Party));
+			Test.TestEqual(
+				*FString::Printf(TEXT("%s legacy enemy count matches"), *ScenarioId.ToString()),
+				ProjectionCopy.ActiveBattleEnemies.Num(),
+				CountLivingUnits(ProjectionCopy, EGameXXKCardTargetSide::Enemy));
+
+			const FName PartyOneId(TEXT("Outcome.Party.1P"));
+			const FName PartyTwoId(TEXT("Player"));
+			const FName PartyThreeId(TEXT("Outcome.Party.3P"));
+			const FName EnemyOneId(TEXT("Outcome.Enemy.1P"));
+			const FName EnemyTwoId(TEXT("Outcome.Enemy.2P"));
+			const FName EnemyThreeId(TEXT("Outcome.Enemy.3P"));
+			Test.TestEqual(TEXT("stable party 1P slot"), FGameXXKBattlePresentation::GetSlotNumber(Fixture.CardRun.ActiveBattle, PartyOneId), 1);
+			Test.TestEqual(TEXT("stable party 2P slot"), FGameXXKBattlePresentation::GetSlotNumber(Fixture.CardRun.ActiveBattle, PartyTwoId), 2);
+			Test.TestEqual(TEXT("stable party 3P slot"), FGameXXKBattlePresentation::GetSlotNumber(Fixture.CardRun.ActiveBattle, PartyThreeId), 3);
+			Test.TestEqual(TEXT("stable enemy 1P slot"), FGameXXKBattlePresentation::GetSlotNumber(Fixture.CardRun.ActiveBattle, EnemyOneId), 1);
+			if (ScenarioId == TEXT("Outcome.GroupMissing2P"))
+			{
+				Test.TestNull(TEXT("missing-2P fixture has no enemy in 2P"), FindUnitById(Fixture, EnemyTwoId));
+			}
+			else
+			{
+				Test.TestEqual(TEXT("stable enemy 2P slot"), FGameXXKBattlePresentation::GetSlotNumber(Fixture.CardRun.ActiveBattle, EnemyTwoId), 2);
+			}
+			Test.TestEqual(TEXT("stable enemy 3P slot"), FGameXXKBattlePresentation::GetSlotNumber(Fixture.CardRun.ActiveBattle, EnemyThreeId), 3);
+
+			UGameXXKBattleBoardWidget* const Board = NewObject<UGameXXKBattleBoardWidget>();
+			Board->SetMVPSubsystem(Subsystem);
+			Test.TestTrue(TEXT("target-outcome fixture board initializes"), Board->Initialize());
+			Board->NativeConstruct();
+			Board->RefreshFromState();
+			if (ScenarioId == TEXT("Outcome.Healing"))
+			{
+				Test.TestTrue(TEXT("party target-proxy overlap fixture starts its real visual session"),
+					Board->BeginBattleVisualSession(8813));
+				UButton* const PartyOneProxy = Board->GetUnitTargetProxyForTest(PartyOneId);
+				UButton* const PartyTwoProxy = Board->GetUnitTargetProxyForTest(PartyTwoId);
+				UButton* const PartyThreeProxy = Board->GetUnitTargetProxyForTest(PartyThreeId);
+				Test.TestNotNull(TEXT("party 1P has a real target proxy"), PartyOneProxy);
+				Test.TestNotNull(TEXT("party 2P has a real target proxy"), PartyTwoProxy);
+				Test.TestNotNull(TEXT("party 3P has a real target proxy"), PartyThreeProxy);
+				const FBox2D PartyOneRect = TargetOutcomeProxyRect(PartyOneProxy);
+				const FBox2D PartyTwoRect = TargetOutcomeProxyRect(PartyTwoProxy);
+				const FBox2D PartyThreeRect = TargetOutcomeProxyRect(PartyThreeProxy);
+				for (const UButton* const Proxy : {PartyOneProxy, PartyTwoProxy, PartyThreeProxy})
+				{
+					const UCanvasPanelSlot* const ProxySlot = Proxy ? Cast<UCanvasPanelSlot>(Proxy->Slot) : nullptr;
+					Test.TestEqual(TEXT("party target proxy keeps the non-overlapping low-resolution hit size"),
+						ProxySlot ? ProxySlot->GetSize() : FVector2D::ZeroVector,
+						FVector2D(180.0f, 320.0f));
+				}
+				Test.TestFalse(TEXT("party 1P target center cannot be intercepted by party 2P"),
+					TargetOutcomeRectsOverlap(PartyOneRect, PartyTwoRect));
+				Test.TestFalse(TEXT("party 2P target center cannot be intercepted by party 3P"),
+					TargetOutcomeRectsOverlap(PartyTwoRect, PartyThreeRect));
+				for (const FName UnitId : {PartyOneId, PartyTwoId, PartyThreeId})
+				{
+					const UGameXXKBattleUnitVisualWidget* const Visual = Board->GetUnitVisualForTest(UnitId);
+					const UCanvasPanelSlot* const VisualSlot = Visual ? Cast<UCanvasPanelSlot>(Visual->Slot) : nullptr;
+					Test.TestEqual(*FString::Printf(TEXT("%s keeps the confirmed 410x410 visual layout"), *UnitId.ToString()),
+						VisualSlot ? VisualSlot->GetSize() : FVector2D::ZeroVector,
+						FVector2D(410.0f, 410.0f));
+				}
+			}
+			Test.TestTrue(TEXT("target-outcome fixture hand is really clickable"), Board->IsHandCardSlotEnabledForTest(0));
+			if (Deck.Hand.Num() == 1)
+			{
+				Test.TestTrue(TEXT("target-outcome fixture click enters targeting or commits"), Board->ClickCardInHand(Deck.Hand[0].InstanceId));
+			}
+
+			Test.TestTrue(TEXT("fixture clears after click"), Subsystem->ClearTargetOutcomeFixtureForTest(Error));
+			Test.TestFalse(TEXT("fixture is inactive after clear"), Subsystem->IsTargetOutcomeFixtureActiveForTest());
+			Test.TestEqual(
+				TEXT("every scenario clear restores the original runtime"),
+				TargetOutcomeFixtureFingerprint(Subsystem->GetRuntimeStateCopy()),
+				OriginalFingerprint);
+		}
+
 		return true;
 	}
 
@@ -546,7 +786,8 @@ bool FGameXXKBattleHudFixtureTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Board hand accessor is reflected"), UGameXXKBattleBoardWidget::StaticClass()->FindFunctionByName(TEXT("GetHandCardBoxForTest")));
 	TestNotNull(TEXT("Board end-turn accessor is reflected"), UGameXXKBattleBoardWidget::StaticClass()->FindFunctionByName(TEXT("GetEndTurnButtonForTest")));
 	TestNotNull(TEXT("Party Qi value accessor is reflected"), UGameXXKBattlePartyQiWidget::StaticClass()->FindFunctionByName(TEXT("GetSharedQiForTest")));
-	return RunBattleHudFixtureContract<UGameXXKMVPSubsystem>(*this, 0);
+	return RunTargetOutcomeFixtureContract(*this)
+		&& RunBattleHudFixtureContract<UGameXXKMVPSubsystem>(*this, 0);
 }
 
 #endif

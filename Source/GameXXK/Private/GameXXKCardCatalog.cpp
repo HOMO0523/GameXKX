@@ -1092,7 +1092,7 @@ namespace
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 3, EGameXXKCardStatus::Mark),
 			 Effect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 50, EGameXXKCardStatus::Mark)});
 		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.ShanHeCanTu"), TEXT("山河残图"), 0, 6, EGameXXKCardTargetMode::SingleEnemy,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8),
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 9),
 			 Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 3),
 			 Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1),
 			 Effect(EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1)},
@@ -1115,7 +1115,7 @@ namespace
 		AddQuestNpcCard(Cards, Zhou, TEXT("Npc.ZhouGuangZu.YanFenFengMai"), TEXT("岩粉封脉"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
 			{Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability),
-			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 10, EGameXXKCardStatus::Poison),
+			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 11, EGameXXKCardStatus::Poison),
 			 Effect(EGameXXKCardEffectType::ResolveToxicExplosion, EGameXXKCardEffectTarget::SelectedTarget, 1)});
 
 		constexpr const TCHAR* JinGui = TEXT("Npc.JinGui");

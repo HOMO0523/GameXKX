@@ -336,14 +336,25 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	DiscardChoiceUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
 	FGameXXKCardBattleRuntime DiscardChoiceRuntime;
 	TestTrue(TEXT("draw-then-discard runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(DiscardChoiceRuntime, MakeRuntimeInstances(TEXT("Npc.JinGui.ZaYiChouBei"), 7, TEXT("JinGui")), DiscardChoiceUnits, EGameXXKCardTerrain::Plain, 781));
+	const FName DrawThenDiscardPlayedInstanceId = DiscardChoiceRuntime.Deck.Hand[0].InstanceId;
 	FGameXXKCardPlayResult DiscardChoiceResult;
-	TestTrue(TEXT("draw three discard one card opens an explicit blocking forced-discard choice"), GameXXKCardRules::ResolveCardPlay(DiscardChoiceRuntime, DiscardChoiceRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), DiscardChoiceResult));
+	TestTrue(TEXT("draw three discard one card opens an explicit blocking forced-discard choice"), GameXXKCardRules::ResolveCardPlay(DiscardChoiceRuntime, DrawThenDiscardPlayedInstanceId, TEXT("Enemy"), DiscardChoiceResult));
 	TestTrue(TEXT("draw-then-discard result reports its pending choice to the HUD"), DiscardChoiceResult.bOpenedPendingChoice);
 	TestEqual(TEXT("draw-then-discard is represented by the serialized forced-discard choice"), DiscardChoiceRuntime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
 	TestEqual(TEXT("draw-then-discard allows exactly one card to be selected for discard"), DiscardChoiceRuntime.Deck.PendingChoice.RequiredDiscardCount, 1);
+	TestFalse(TEXT("the card that is still resolving cannot draw itself back into hand"),
+		DiscardChoiceRuntime.Deck.Hand.ContainsByPredicate([DrawThenDiscardPlayedInstanceId](const FGameXXKCardInstance& Card)
+		{
+			return Card.InstanceId == DrawThenDiscardPlayedInstanceId;
+		}));
+	TestTrue(TEXT("the card that is still resolving remains in discard until its transaction completes"),
+		DiscardChoiceRuntime.Deck.DiscardPile.ContainsByPredicate([DrawThenDiscardPlayedInstanceId](const FGameXXKCardInstance& Card)
+		{
+			return Card.InstanceId == DrawThenDiscardPlayedInstanceId;
+		}));
 	const FName DiscardedAfterDrawId = DiscardChoiceRuntime.Deck.Hand[0].InstanceId;
 	TestTrue(TEXT("submitting one stable hand instance completes the forced-discard choice"), GameXXKCardRules::SubmitForcedDiscard(DiscardChoiceRuntime.Deck, { DiscardedAfterDrawId }));
-	TestEqual(TEXT("discard choice keeps the six-card post-draw hand below battle capacity"), DiscardChoiceRuntime.Deck.Hand.Num(), 6);
+	TestEqual(TEXT("discard choice keeps the five-card post-draw hand below battle capacity without self-redraw"), DiscardChoiceRuntime.Deck.Hand.Num(), 5);
 	TestEqual(TEXT("submitting the discard clears the serialized blocking choice"), DiscardChoiceRuntime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::None);
 
 	TArray<FGameXXKCardCombatUnit> DiscoverUnits;

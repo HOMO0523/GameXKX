@@ -2,6 +2,7 @@
 
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardCatalog.h"
+#include "GameXXKCardRules.h"
 #include "GameXXKCharacterStatRules.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentEconomyRules.h"
@@ -9,6 +10,8 @@
 #include "GameXXKMetaShopRules.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
+#include "MVP/GameXXKMVPPlayerController.h"
+#include "UI/GameXXKBattleBoardWidget.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
@@ -166,10 +169,46 @@ namespace
 			});
 	}
 
+	static bool StarterRecruitSequenceBeginsWithDifferentRoles(const int32 Seed)
+	{
+		if (Seed == 0 || Seed == MIN_int32)
+		{
+			return false;
+		}
+
+		FGameXXKCompanionRosterState ProbeRoster;
+		ProbeRoster.RecruitSequenceSeed = Seed;
+		FGameXXKCompanionRecruitResult FirstRecruit;
+		FGameXXKCompanionRecruitResult SecondRecruit;
+		return FGameXXKCompanionRules::CreateAndResolveNextRecruitment(ProbeRoster, FirstRecruit, nullptr)
+			&& FirstRecruit.Outcome == EGameXXKCompanionRecruitOutcome::Recruited
+			&& FGameXXKCompanionRules::CreateAndResolveNextRecruitment(ProbeRoster, SecondRecruit, nullptr)
+			&& SecondRecruit.Outcome == EGameXXKCompanionRecruitOutcome::Recruited
+			&& FirstRecruit.Companion.Role != SecondRecruit.Companion.Role;
+	}
+
 	static int32 MakeStarterRecruitSequenceSeed()
 	{
-		const int32 Seed = FMath::Rand();
-		return Seed == 0 || Seed == MIN_int32 ? 1 : Seed;
+		// Existing saves retain their persisted sequence exactly. Only a fresh game's seed is filtered
+		// so its two initial tickets cannot land in adjacent templates of the same four-variant role block.
+		for (int32 Attempt = 0; Attempt < 64; ++Attempt)
+		{
+			const int32 Candidate = FMath::Rand();
+			if (StarterRecruitSequenceBeginsWithDifferentRoles(Candidate))
+			{
+				return Candidate;
+			}
+		}
+
+		// A deterministic fallback keeps new-game creation total even if the process RNG is unavailable.
+		for (int32 Candidate = 1; Candidate <= 4096; ++Candidate)
+		{
+			if (StarterRecruitSequenceBeginsWithDifferentRoles(Candidate))
+			{
+				return Candidate;
+			}
+		}
+		return 3;
 	}
 
 	/** Every facade mutation invalidates the copied development-only HUD view before it can become stale. */
@@ -285,6 +324,255 @@ namespace
 		Intent.Damage = Damage;
 		Intent.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
 		return Intent;
+	}
+
+	static FGameXXKCardCombatUnit MakeTargetOutcomeFixtureUnit(
+		const FName UnitId,
+		const EGameXXKCardTargetSide Side,
+		const EGameXXKCharacterRole Role,
+		const int32 StableSortOrder,
+		const int32 BattleSlotNumber)
+	{
+		FGameXXKCardCombatUnit Unit;
+		Unit.UnitId = UnitId;
+		Unit.Side = Side;
+		Unit.Role = Role;
+		Unit.bLiving = true;
+		Unit.HP = 120;
+		Unit.MaxHP = 120;
+		Unit.Mana = Side == EGameXXKCardTargetSide::Party ? 100 : 0;
+		Unit.MaxMana = Unit.Mana;
+		Unit.Attack = Side == EGameXXKCardTargetSide::Party ? 20 : 10;
+		Unit.Defense = 0;
+		Unit.Speed = 1;
+		Unit.StableSortOrder = StableSortOrder;
+		Unit.BattleSlotNumber = BattleSlotNumber;
+		if (Side == EGameXXKCardTargetSide::Enemy)
+		{
+			static const FName EnemyDefinitions[] = {
+				TEXT("Enemy.Ch1.Rooster"),
+				TEXT("Enemy.Ch1.Goat"),
+				TEXT("Enemy.Ch1.Weasel")};
+			Unit.EnemyDefinitionId = EnemyDefinitions[FMath::Clamp(BattleSlotNumber, 1, 3) - 1];
+			Unit.CombatLevel = 1;
+		}
+		return Unit;
+	}
+
+	static FGameXXKCardInstance MakeTargetOutcomeFixtureCard(const FName CardId, const FName OwnerUnitId)
+	{
+		FGameXXKCardInstance Card;
+		Card.InstanceId = TEXT("Outcome.Card.Only");
+		Card.CardId = CardId;
+		Card.CurrentQuality = EGameXXKCardQuality::Common;
+		Card.OwnerUnitId = OwnerUnitId;
+		Card.SourceEntryId = TEXT("Outcome.Source.Only");
+		Card.AcquisitionOrdinal = 0;
+		return Card;
+	}
+
+	static FGameXXKCardCombatUnit* FindTargetOutcomeFixtureUnit(
+		FGameXXKRuntimeState& State,
+		const FName UnitId)
+	{
+		return State.CardRun.ActiveBattle.Units.FindByPredicate([UnitId](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == UnitId;
+		});
+	}
+
+	static bool BuildTargetOutcomeFixtureState(
+		const FName ScenarioId,
+		FGameXXKRuntimeState& OutState,
+		FString& OutError)
+	{
+		const FName PartyOneId(TEXT("Outcome.Party.1P"));
+		const FName HeroId(TEXT("Player"));
+		const FName PartyThreeId(TEXT("Outcome.Party.3P"));
+		const FName EnemyOneId(TEXT("Outcome.Enemy.1P"));
+		const FName EnemyTwoId(TEXT("Outcome.Enemy.2P"));
+		const FName EnemyThreeId(TEXT("Outcome.Enemy.3P"));
+
+		FName CardId;
+		EGameXXKCharacterRole OwnerRole = EGameXXKCharacterRole::Guard;
+		if (ScenarioId == TEXT("Outcome.Single")
+			|| ScenarioId == TEXT("Outcome.AgilityDodge")
+			|| ScenarioId == TEXT("Outcome.ArmorBlocked")
+			|| ScenarioId == TEXT("Outcome.GuardRedirect")
+			|| ScenarioId == TEXT("Outcome.Lethal"))
+		{
+			CardId = TEXT("Hero.Generic.QingFengYiShi");
+		}
+		else if (ScenarioId == TEXT("Outcome.HeavyArrow"))
+		{
+			CardId = TEXT("Hero.Hunter.LieYuLianShi");
+			OwnerRole = EGameXXKCharacterRole::Hunter;
+		}
+		else if (ScenarioId == TEXT("Outcome.GroupThree") || ScenarioId == TEXT("Outcome.GroupMissing2P"))
+		{
+			CardId = TEXT("Profession.Blade.HengYunKaiFeng");
+			OwnerRole = EGameXXKCharacterRole::Blade;
+		}
+		else if (ScenarioId == TEXT("Outcome.ToxicExplosion"))
+		{
+			CardId = TEXT("Hero.Healer.DuHuoTongLu");
+			OwnerRole = EGameXXKCharacterRole::Healer;
+		}
+		else if (ScenarioId == TEXT("Outcome.MedicineEnemy"))
+		{
+			CardId = TEXT("Profession.Healer.CaoMuFuZhi");
+			OwnerRole = EGameXXKCharacterRole::Healer;
+		}
+		else if (ScenarioId == TEXT("Outcome.Healing") || ScenarioId == TEXT("Outcome.Armor"))
+		{
+			CardId = TEXT("Profession.Healer.WenYangGao");
+			OwnerRole = EGameXXKCharacterRole::Healer;
+		}
+		else
+		{
+			OutError = FString::Printf(TEXT("Unknown target-outcome fixture scenario: %s"), *ScenarioId.ToString());
+			return false;
+		}
+
+		if (!FGameXXKCardCatalog::FindCardDefinition(CardId))
+		{
+			OutError = FString::Printf(TEXT("Target-outcome fixture card is not in the catalog: %s"), *CardId.ToString());
+			return false;
+		}
+
+		TArray<FGameXXKCardCombatUnit> Units = {
+			MakeTargetOutcomeFixtureUnit(PartyOneId, EGameXXKCardTargetSide::Party, OwnerRole, 0, INDEX_NONE),
+			MakeTargetOutcomeFixtureUnit(HeroId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 1, INDEX_NONE),
+			MakeTargetOutcomeFixtureUnit(PartyThreeId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 2, INDEX_NONE),
+			MakeTargetOutcomeFixtureUnit(EnemyOneId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 10, 1)};
+		if (ScenarioId != TEXT("Outcome.GroupMissing2P"))
+		{
+			Units.Add(MakeTargetOutcomeFixtureUnit(EnemyTwoId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 11, 2));
+		}
+		Units.Add(MakeTargetOutcomeFixtureUnit(EnemyThreeId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 12, 3));
+
+		const FGameXXKCardInstance Card = MakeTargetOutcomeFixtureCard(CardId, PartyOneId);
+		FGameXXKCardBattleRuntime Runtime;
+		if (!GameXXKCardRules::InitializeCardBattleRuntime(
+			Runtime,
+			{Card},
+			Units,
+			EGameXXKCardTerrain::Plain,
+			81208,
+			&OutError))
+		{
+			return false;
+		}
+		Runtime.Phase = EGameXXKCardBattlePhase::Player;
+		Runtime.Deck.Hand = {Card};
+		Runtime.Deck.DrawPile.Reset();
+		Runtime.Deck.DiscardPile.Reset();
+		Runtime.Deck.ExhaustPile.Reset();
+		Runtime.Deck.SharedEnergy = 20;
+		Runtime.CombatRandomState = 81208;
+
+		OutState = UGameXXKMVPRules::CreateNewGame();
+		OutState.Screen = EGameXXKScreen::Battle;
+		OutState.CardRun.bHasActiveCardBattle = true;
+		OutState.CardRun.ActiveBattleSourceNodeId = 1;
+		OutState.CardRun.ActiveBattle = MoveTemp(Runtime);
+
+		FGameXXKCardCombatUnit* const Owner = FindTargetOutcomeFixtureUnit(OutState, PartyOneId);
+		FGameXXKCardCombatUnit* const PartyOne = FindTargetOutcomeFixtureUnit(OutState, PartyOneId);
+		FGameXXKCardCombatUnit* const EnemyOne = FindTargetOutcomeFixtureUnit(OutState, EnemyOneId);
+		FGameXXKCardCombatUnit* const EnemyTwo = FindTargetOutcomeFixtureUnit(OutState, EnemyTwoId);
+		FGameXXKCardCombatUnit* const EnemyThree = FindTargetOutcomeFixtureUnit(OutState, EnemyThreeId);
+		if (!Owner || !PartyOne || !EnemyOne || !EnemyThree)
+		{
+			OutError = TEXT("Target-outcome fixture lost a required stable unit.");
+			return false;
+		}
+
+		if (ScenarioId == TEXT("Outcome.HeavyArrow"))
+		{
+			GameXXKCardRules::AddCombatStatus(*Owner, EGameXXKCardStatus::Charge, 3);
+			EnemyOne->HP = EnemyOne->MaxHP = 300;
+		}
+		else if (ScenarioId == TEXT("Outcome.GroupThree") || ScenarioId == TEXT("Outcome.GroupMissing2P"))
+		{
+			EnemyOne->Defense = 4;
+			if (EnemyTwo)
+			{
+				EnemyTwo->Defense = 3;
+			}
+			EnemyThree->Defense = 2;
+		}
+		else if (ScenarioId == TEXT("Outcome.ToxicExplosion"))
+		{
+			GameXXKCardRules::AddCombatStatus(*EnemyOne, EGameXXKCardStatus::Bleed, 3);
+			GameXXKCardRules::AddCombatStatus(*EnemyOne, EGameXXKCardStatus::Poison, 2);
+			GameXXKCardRules::AddCombatStatus(*EnemyOne, EGameXXKCardStatus::Burn, 4);
+			EnemyOne->HP = EnemyOne->MaxHP = 300;
+		}
+		else if (ScenarioId == TEXT("Outcome.MedicineEnemy"))
+		{
+			GameXXKCardRules::AddCombatStatus(*Owner, EGameXXKCardStatus::Medicine, 5);
+		}
+		else if (ScenarioId == TEXT("Outcome.Healing"))
+		{
+			PartyOne->HP = 90;
+			PartyOne->Armor = 99;
+		}
+		else if (ScenarioId == TEXT("Outcome.Armor"))
+		{
+			PartyOne->HP = PartyOne->MaxHP;
+			PartyOne->Armor = 0;
+		}
+		else if (ScenarioId == TEXT("Outcome.AgilityDodge"))
+		{
+			GameXXKCardRules::AddCombatStatus(*EnemyOne, EGameXXKCardStatus::Agility, 1);
+			OutState.CardRun.ActiveBattle.CombatRandomState = 3;
+		}
+		else if (ScenarioId == TEXT("Outcome.ArmorBlocked"))
+		{
+			EnemyOne->Armor = 99;
+		}
+		else if (ScenarioId == TEXT("Outcome.GuardRedirect"))
+		{
+			if (!EnemyTwo)
+			{
+				OutError = TEXT("Guard redirect fixture requires enemy 2P.");
+				return false;
+			}
+			FGameXXKCardGuardLinkRuntime& Link = OutState.CardRun.ActiveBattle.GuardLinks.AddDefaulted_GetRef();
+			Link.GuardianUnitId = EnemyTwoId;
+			Link.ProtectedUnitId = EnemyOneId;
+			Link.Stacks = 1;
+			Link.RedirectPolicy = EGameXXKCardGuardRedirectPolicy::RedirectNextSingleTargetDirectAttackToGuardian;
+		}
+		else if (ScenarioId == TEXT("Outcome.Lethal"))
+		{
+			EnemyOne->HP = 10;
+		}
+
+		OutState.ActiveBattleParty = {
+			MakeBattleHudFixtureLegacyProjection(PartyOneId, FText::FromString(TEXT("伙伴")), false),
+			MakeBattleHudFixtureLegacyProjection(HeroId, FText::FromString(TEXT("主角")), false),
+			MakeBattleHudFixtureLegacyProjection(PartyThreeId, FText::FromString(TEXT("任务伙伴")), false)};
+		OutState.ActiveBattleEnemies = {
+			MakeBattleHudFixtureLegacyProjection(EnemyOneId, FText::FromString(TEXT("敌人一")), true)};
+		if (EnemyTwo)
+		{
+			OutState.ActiveBattleEnemies.Add(
+				MakeBattleHudFixtureLegacyProjection(EnemyTwoId, FText::FromString(TEXT("敌人二")), true));
+		}
+		OutState.ActiveBattleEnemies.Add(
+			MakeBattleHudFixtureLegacyProjection(EnemyThreeId, FText::FromString(TEXT("敌人三")), true));
+
+		if (!GameXXKCardRules::ValidateCardBattleRuntime(OutState.CardRun.ActiveBattle, &OutError))
+		{
+			return false;
+		}
+		if (!FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(OutState, &OutError))
+		{
+			return false;
+		}
+		return true;
 	}
 }
 
@@ -484,6 +772,63 @@ void UGameXXKMVPSubsystem::ClearBattleHudFixtureForTest()
 bool UGameXXKMVPSubsystem::IsBattleHudFixtureActiveForTest() const
 {
 	return BattleHudFixtureView.IsSet();
+}
+
+bool UGameXXKMVPSubsystem::ApplyTargetOutcomeFixtureForTest(const FName ScenarioId, FString& OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	OutError.Reset();
+	if (TargetOutcomeFixtureBackup.IsSet())
+	{
+		OutError = TEXT("A target-outcome fixture is already active.");
+		return false;
+	}
+
+	TargetOutcomeFixtureBackup.Emplace(RuntimeState);
+	FGameXXKRuntimeState FixtureState;
+	if (!BuildTargetOutcomeFixtureState(ScenarioId, FixtureState, OutError))
+	{
+		TargetOutcomeFixtureBackup.Reset();
+		return false;
+	}
+
+	RuntimeState = MoveTemp(FixtureState);
+	if (AGameXXKMVPPlayerController* const PlayerController =
+		Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		if (UGameXXKBattleBoardWidget* const Board = PlayerController->GetBattleBoardWidgetForTest())
+		{
+			Board->RefreshFromState();
+		}
+	}
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ClearTargetOutcomeFixtureForTest(FString& OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	OutError.Reset();
+	if (!TargetOutcomeFixtureBackup.IsSet())
+	{
+		return true;
+	}
+
+	RuntimeState = MoveTemp(TargetOutcomeFixtureBackup.GetValue());
+	TargetOutcomeFixtureBackup.Reset();
+	if (AGameXXKMVPPlayerController* const PlayerController =
+		Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		if (UGameXXKBattleBoardWidget* const Board = PlayerController->GetBattleBoardWidgetForTest())
+		{
+			Board->RefreshFromState();
+		}
+	}
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::IsTargetOutcomeFixtureActiveForTest() const
+{
+	return TargetOutcomeFixtureBackup.IsSet();
 }
 
 bool UGameXXKMVPSubsystem::StartGame()

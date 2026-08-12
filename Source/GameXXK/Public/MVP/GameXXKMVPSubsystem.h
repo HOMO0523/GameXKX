@@ -42,6 +42,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	bool IsBattleHudFixtureActiveForTest() const;
 
+	/** Development-only mutable battle fixture used to certify outcome-preview parity in real PIE. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool ApplyTargetOutcomeFixtureForTest(FName ScenarioId, FString& OutError);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool ClearTargetOutcomeFixtureForTest(FString& OutError);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool IsTargetOutcomeFixtureActiveForTest() const;
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool StartGame();
 
@@ -387,6 +397,9 @@ private:
 
 	/** Never serialized: this only lets visual PIE probes render a safe copied battle state. */
 	TOptional<FGameXXKRuntimeState> BattleHudFixtureView;
+
+	/** Never serialized: exact source state restored after each mutable target-outcome parity fixture. */
+	TOptional<FGameXXKRuntimeState> TargetOutcomeFixtureBackup;
 
 	UPROPERTY(Transient)
 	FText LastSaveLoadError;
