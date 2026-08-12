@@ -1484,7 +1484,9 @@ enum class EGameXXKCardDamageCause : uint8
 	ToxicExplosionBurn = 9,
 	SelfLoss = 10,
 	Environment = 11,
-	Block = 12
+	Block = 12,
+	Medicine = 13,
+	Relic = 14
 };
 
 /** Source and policy metadata for one atomic damage packet. It is never inferred from a UI widget. */
@@ -1633,6 +1635,10 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bPerfectAgilityDodge = false;
+
+	/** Mitigation policy that produced this packet; never inferred from target mode or card name. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardDamageKind Kind = EGameXXKCardDamageKind::Invalid;
 
 	/** Semantic source of this packet, independent of the mitigation path used to resolve it. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)

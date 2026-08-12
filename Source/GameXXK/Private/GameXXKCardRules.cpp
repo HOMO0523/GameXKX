@@ -1271,6 +1271,7 @@ namespace
 				FGameXXKCardDamageResult& Result = OutResults.AddDefaulted_GetRef();
 				Result.OriginalTargetUnitId = UnitId;
 				Result.ResolvedTargetUnitId = UnitId;
+				Result.Kind = EGameXXKCardDamageKind::DamageOverTime;
 				Result.Cause = EGameXXKCardDamageCause::Poison;
 				Result.StatusStacksBefore = PoisonStacksBefore;
 				Result.RotDamageBonus = RotStacksBefore;
@@ -2949,6 +2950,7 @@ namespace
 		FGameXXKCardDamageResult NewResult;
 		NewResult.OriginalTargetUnitId = TargetUnitId;
 		NewResult.ResolvedTargetUnitId = TargetUnitId;
+		NewResult.Kind = EGameXXKCardDamageKind::DamageOverTime;
 		NewResult.Cause = Cause;
 		NewResult.StatusStacksBefore = BaseStacks;
 		NewResult.RotDamageBonus = bApplyRot
@@ -3189,6 +3191,7 @@ namespace
 
 	FGameXXKCardDamageResult NewResult;
 	NewResult.SourceUnitId = Context.SourceUnitId;
+	NewResult.Kind = Context.Kind;
 	NewResult.ResolutionOrigin = Context.ResolutionOrigin;
 	NewResult.Cause = IsDirectAttackDamageKind(Context.Kind)
 		? EGameXXKCardDamageCause::DirectAttack
@@ -6397,6 +6400,13 @@ namespace
 		return true;
 	}
 
+	bool IsMedicineReverseDamage(const FGameXXKCardDamageResult& Result, const FName OwnerUnitId)
+	{
+		return Result.SourceUnitId == OwnerUnitId
+			&& Result.Cause == EGameXXKCardDamageCause::Medicine
+			&& Result.HealthDamage > 0;
+	}
+
 	bool ResolveOpenedHealerFormulasAfterActiveCard(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const TArray<FGameXXKCardCombatUnit>& UnitsBeforeActiveCard,
@@ -6606,9 +6616,7 @@ namespace
 					return Result.EffectiveHealing > 0;
 				}) || InOutResult.DamageResults.ContainsByPredicate([&PlayedSnapshot](const FGameXXKCardDamageResult& Result)
 				{
-					return Result.SourceUnitId == PlayedSnapshot.OwnerUnitId
-						&& Result.Cause == EGameXXKCardDamageCause::Environment
-						&& Result.HealthDamage > 0;
+					return IsMedicineReverseDamage(Result, PlayedSnapshot.OwnerUnitId);
 				});
 				if (bResolvedHealing && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
 				{
@@ -6705,7 +6713,7 @@ namespace
 				{
 					for (const FGameXXKCardDamageResult& Damage : InOutResult.DamageResults)
 					{
-						if (Damage.SourceUnitId == PlayedSnapshot.OwnerUnitId && Damage.Cause == EGameXXKCardDamageCause::Environment && Damage.RequestedDamage >= 10 && Damage.HealthDamage > 0) { QualifiedTargetId = Damage.ResolvedTargetUnitId; break; }
+						if (IsMedicineReverseDamage(Damage, PlayedSnapshot.OwnerUnitId) && Damage.RequestedDamage >= 10) { QualifiedTargetId = Damage.ResolvedTargetUnitId; break; }
 					}
 				}
 				if (!QualifiedTargetId.IsNone() && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
@@ -9985,6 +9993,7 @@ namespace
 							return false;
 						}
 						DamageResult.SourceUnitId = MedicineOwnerUnitId;
+						DamageResult.Cause = EGameXXKCardDamageCause::Medicine;
 						InOutResult.DamageResults.Add(MoveTemp(DamageResult));
 					}
 					break;
@@ -10028,6 +10037,7 @@ namespace
 							return false;
 						}
 						DamageResult.SourceUnitId = EffectOwnerUnitId;
+						DamageResult.Cause = EGameXXKCardDamageCause::Medicine;
 						InOutResult.DamageResults.Add(MoveTemp(DamageResult));
 					}
 					break;

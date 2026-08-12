@@ -110,8 +110,10 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("pending hero search choice appends as four"), static_cast<uint8>(EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand), static_cast<uint8>(4));
 	TestEqual(TEXT("discard zone remains serialized as three"), static_cast<uint8>(EGameXXKCardZone::DiscardPile), static_cast<uint8>(3));
 	TestEqual(TEXT("exhaust zone appends as four"), static_cast<uint8>(EGameXXKCardZone::ExhaustPile), static_cast<uint8>(4));
-	TestEqual(TEXT("environment damage cause remains serialized as eleven"), static_cast<uint8>(EGameXXKCardDamageCause::Environment), static_cast<uint8>(11));
-	TestEqual(TEXT("Block damage cause appends as twelve"), static_cast<uint8>(EGameXXKCardDamageCause::Block), static_cast<uint8>(12));
+	TestEqual(TEXT("Environment remains 11"), static_cast<uint8>(EGameXXKCardDamageCause::Environment), uint8(11));
+	TestEqual(TEXT("Block remains 12"), static_cast<uint8>(EGameXXKCardDamageCause::Block), uint8(12));
+	TestEqual(TEXT("Medicine appends at 13"), static_cast<uint8>(EGameXXKCardDamageCause::Medicine), uint8(13));
+	TestEqual(TEXT("Relic appends at 14"), static_cast<uint8>(EGameXXKCardDamageCause::Relic), uint8(14));
 	int32 StrongNpcCardCount = 0;
 	for (const FGameXXKCardDefinition& Definition : Definitions)
 	{

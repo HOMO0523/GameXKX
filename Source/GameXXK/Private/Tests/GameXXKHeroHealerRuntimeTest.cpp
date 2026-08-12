@@ -334,7 +334,7 @@ bool FGameXXKHealerEnemyReverseTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("enemy Hui Chun emits one health-loss audit"), Result.DamageResults.Num(), 1);
 	if (Result.DamageResults.Num() == 1)
 	{
-		TestEqual(TEXT("reverse healing is environmental health loss"), Result.DamageResults[0].Cause, EGameXXKCardDamageCause::Environment);
+		TestEqual(TEXT("reverse healing has Medicine cause"), Result.DamageResults[0].Cause, EGameXXKCardDamageCause::Medicine);
 		TestEqual(TEXT("reverse healing is not a direct-attack base packet"), Result.DamageResults[0].BaseRequestedDamage, 0);
 		TestEqual(TEXT("reverse healing loses exactly fifteen health"), Result.DamageResults[0].HealthDamage, 15);
 		TestEqual(TEXT("reverse healing absorbs no Armor"), Result.DamageResults[0].ArmorAbsorbed, 0);

@@ -79,7 +79,10 @@ bool FGameXXKHeroCardCatalogSchemaTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("highest-armor ally appends after PlayedCard"), static_cast<uint8>(EGameXXKCardEffectTarget::HighestArmorAlly), static_cast<uint8>(11));
 	TestEqual(TEXT("Exhaust appends after Discard"), static_cast<uint8>(EGameXXKCardZone::ExhaustPile), static_cast<uint8>(4));
 	TestEqual(TEXT("hero search appends after Insight"), static_cast<uint8>(EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand), static_cast<uint8>(4));
-	TestEqual(TEXT("Block damage cause appends after Environment"), static_cast<uint8>(EGameXXKCardDamageCause::Block), static_cast<uint8>(12));
+	TestEqual(TEXT("Environment remains 11"), static_cast<uint8>(EGameXXKCardDamageCause::Environment), uint8(11));
+	TestEqual(TEXT("Block remains 12"), static_cast<uint8>(EGameXXKCardDamageCause::Block), uint8(12));
+	TestEqual(TEXT("Medicine appends at 13"), static_cast<uint8>(EGameXXKCardDamageCause::Medicine), uint8(13));
+	TestEqual(TEXT("Relic appends at 14"), static_cast<uint8>(EGameXXKCardDamageCause::Relic), uint8(14));
 
 	const TMap<EGameXXKCardEffectType, uint8> ExpectedEffectValues = {
 		{EGameXXKCardEffectType::RegisterReaction, 29},
