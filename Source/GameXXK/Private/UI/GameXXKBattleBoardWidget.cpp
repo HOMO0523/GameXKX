@@ -103,6 +103,9 @@ namespace
 	static constexpr float PartyQiHandSafetyGap = 12.0f;
 	static constexpr float PlayerHandSelectedScale = 1.20f;
 	static constexpr float PlayerHandSelectedLift = -32.0f;
+	static constexpr double PlayedCardCommitDurationSeconds = 0.18;
+	static constexpr float PlayedCardCommitLift = -72.0f;
+	static constexpr float PlayedCardCommitPeakScale = 1.08f;
 	static const FVector2D EnemyIntentCardSize(150.0f, 171.0f);
 	static const FVector2D EnemyIntentShowcaseCardSize(256.0f, 292.0f);
 	static const FVector2D RewardCardSize(206.0f, 285.0f);
@@ -759,7 +762,8 @@ void UGameXXKBattleBoardWidget::DiscardPresentationHudSnapshot()
 bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
 	const FGameXXKCardBattleRuntime& Before,
 	const TArray<FGameXXKCardDamageResult>& DamageResults,
-	const EBattlePresentationContinuation Continuation)
+	const EBattlePresentationContinuation Continuation,
+	const FName PlayedCardInstanceId)
 {
 	UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || !Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle)
@@ -784,12 +788,18 @@ bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
 		// mutation but never consumes a full-screen presentation entry.
 		ApplyDisplayedStatusDelta(Event);
 	}
+	const bool bCommitStarted = BeginPlayedCardCommit(PlayedCardInstanceId);
 
 	if (!BattlePresentationQueue.IsEmpty())
 	{
 		// Paint the captured pre-mutation baseline only after the complete immutable
 		// damage-plus-status batch exists. No partial batch may leak through a HUD refresh.
 		RefreshProjectedUnitHuds();
+		ApplyBattlePresentationInteractionLock();
+		return true;
+	}
+	if (bCommitStarted)
+	{
 		ApplyBattlePresentationInteractionLock();
 		return true;
 	}
@@ -807,9 +817,133 @@ bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
 	return ExecuteBattlePresentationContinuation(ImmediateContinuation);
 }
 
+bool UGameXXKBattleBoardWidget::BeginPlayedCardCommit(const FName PlayedCardInstanceId)
+{
+	if (PlayedCardInstanceId.IsNone()
+		|| ActiveBattleVisualSessionToken == 0
+		|| bPlayedCardCommitActive)
+	{
+		return false;
+	}
+
+	const int32 SlotIndex = HandCardInstanceIds.IndexOfByKey(PlayedCardInstanceId);
+	if (!HandCardButtons.IsValidIndex(SlotIndex) || !HandCardButtons[SlotIndex])
+	{
+		return false;
+	}
+
+	UButton* const SourceButton = HandCardButtons[SlotIndex];
+	bPlayedCardCommitActive = true;
+	bPlayedCardCommitStarted = false;
+	PlayedCardCommitInstanceId = PlayedCardInstanceId;
+	PlayedCardCommitButton = SourceButton;
+	PlayedCardCommitInitialTransform = SourceButton->GetRenderTransform();
+	PlayedCardCommitInitialOpacity = SourceButton->GetRenderOpacity();
+	PlayedCardCommitStartSeconds = 0.0;
+	PlayedCardCommitElapsedSeconds = 0.0;
+	return true;
+}
+
+TOptional<double> UGameXXKBattleBoardWidget::AdvancePlayedCardCommit(const double AbsoluteSeconds)
+{
+	if (!bPlayedCardCommitActive || !FMath::IsFinite(AbsoluteSeconds))
+	{
+		return TOptional<double>();
+	}
+	if (!bPlayedCardCommitStarted)
+	{
+		bPlayedCardCommitStarted = true;
+		PlayedCardCommitStartSeconds = AbsoluteSeconds;
+	}
+
+	PlayedCardCommitElapsedSeconds = FMath::Max(0.0, AbsoluteSeconds - PlayedCardCommitStartSeconds);
+	const float LinearProgress = static_cast<float>(FMath::Clamp(
+		PlayedCardCommitElapsedSeconds / PlayedCardCommitDurationSeconds,
+		0.0,
+		1.0));
+	const float EaseOutProgress = 1.0f - FMath::Square(1.0f - LinearProgress);
+	if (UButton* const SourceButton = PlayedCardCommitButton.Get())
+	{
+		const FVector2D InitialTranslation = PlayedCardCommitInitialTransform.Translation;
+		SourceButton->SetRenderTranslation(FVector2D(
+			InitialTranslation.X,
+			FMath::Lerp(InitialTranslation.Y, PlayedCardCommitLift, EaseOutProgress)));
+		const float Scale = FMath::Lerp(
+			PlayedCardCommitInitialTransform.Scale.X,
+			PlayedCardCommitPeakScale,
+			EaseOutProgress);
+		SourceButton->SetRenderScale(FVector2D(Scale, Scale));
+		const float FadeProgress = FMath::Clamp((LinearProgress - 0.5f) * 2.0f, 0.0f, 1.0f);
+		SourceButton->SetRenderOpacity(FMath::Lerp(PlayedCardCommitInitialOpacity, 0.0f, FadeProgress));
+	}
+
+	if (PlayedCardCommitElapsedSeconds + static_cast<double>(KINDA_SMALL_NUMBER)
+		< PlayedCardCommitDurationSeconds)
+	{
+		return TOptional<double>();
+	}
+
+	const double CompletionBoundarySeconds = PlayedCardCommitStartSeconds + PlayedCardCommitDurationSeconds;
+	CompletePlayedCardCommit();
+	return CompletionBoundarySeconds;
+}
+
+void UGameXXKBattleBoardWidget::CompletePlayedCardCommit()
+{
+	if (!bPlayedCardCommitActive)
+	{
+		return;
+	}
+	++PlayedCardCommitCompletionCount;
+	ResetPlayedCardCommit(false);
+	if (!BattlePresentationQueue.IsEmpty())
+	{
+		return;
+	}
+
+	const EBattlePresentationContinuation Continuation = DeferredBattlePresentationContinuation;
+	DeferredBattlePresentationContinuation = EBattlePresentationContinuation::None;
+	DiscardPresentationHudSnapshot();
+	RefreshProjectedUnitHuds();
+	if (Continuation != EBattlePresentationContinuation::None)
+	{
+		++ExecutedBattlePresentationContinuationCount;
+	}
+	ExecuteBattlePresentationContinuation(Continuation);
+}
+
+void UGameXXKBattleBoardWidget::ResetPlayedCardCommit(const bool bRestoreInitialVisual)
+{
+	if (UButton* const SourceButton = PlayedCardCommitButton.Get())
+	{
+		if (bRestoreInitialVisual)
+		{
+			SourceButton->SetRenderTransform(PlayedCardCommitInitialTransform);
+			SourceButton->SetRenderOpacity(PlayedCardCommitInitialOpacity);
+		}
+		else
+		{
+			SourceButton->SetRenderTransform(FWidgetTransform());
+			// The authoritative mutation has already consumed this card. Keep the
+			// old slot hidden until the deferred continuation refreshes the hand;
+			// restoring opacity here would flash the spent card over the damage queue.
+			SourceButton->SetRenderOpacity(0.0f);
+		}
+	}
+	bPlayedCardCommitActive = false;
+	bPlayedCardCommitStarted = false;
+	PlayedCardCommitInstanceId = NAME_None;
+	PlayedCardCommitButton.Reset();
+	PlayedCardCommitInitialTransform = FWidgetTransform();
+	PlayedCardCommitInitialOpacity = 1.0f;
+	PlayedCardCommitStartSeconds = 0.0;
+	PlayedCardCommitElapsedSeconds = 0.0;
+}
+
 bool UGameXXKBattleBoardWidget::IsBattlePresentationPending() const
 {
-	return !BattlePresentationQueue.IsEmpty()
+	return bPlayedCardCommitActive
+		|| !BattlePresentationQueue.IsEmpty()
 		|| DeferredBattlePresentationContinuation != EBattlePresentationContinuation::None;
 }
 
@@ -1125,7 +1259,17 @@ void UGameXXKBattleBoardWidget::AdvanceBattlePresentation(const double AbsoluteS
 		return;
 	}
 
-	double NextStartSeconds = AbsoluteSeconds;
+	const TOptional<double> CommitCompletionBoundary = AdvancePlayedCardCommit(AbsoluteSeconds);
+	if (bPlayedCardCommitActive)
+	{
+		UpdateBattlePresentationShake(AbsoluteSeconds);
+		UpdateBattlePresentationReadout(AbsoluteSeconds);
+		return;
+	}
+
+	double NextStartSeconds = CommitCompletionBoundary.IsSet()
+		? CommitCompletionBoundary.GetValue()
+		: AbsoluteSeconds;
 	int32 CompletedEntryGuard = 0;
 	bool bQueueDrained = false;
 	while (!BattlePresentationQueue.IsEmpty() && CompletedEntryGuard++ < 256)
@@ -1502,6 +1646,7 @@ void UGameXXKBattleBoardWidget::ReleasePresentationPins(FBattlePresentationQueue
 
 void UGameXXKBattleBoardWidget::ResetBattlePresentation()
 {
+	ResetPlayedCardCommit(true);
 	DeferredBattlePresentationContinuation = EBattlePresentationContinuation::None;
 	for (FBattlePresentationQueueEntry& Entry : BattlePresentationQueue)
 	{
@@ -1518,6 +1663,7 @@ void UGameXXKBattleBoardWidget::ResetBattlePresentation()
 	BattlePresentationCompletionCount = 0;
 	BattlePresentationHudShakeCount = 0;
 	ExecutedBattlePresentationContinuationCount = 0;
+	PlayedCardCommitCompletionCount = 0;
 	ResetBattlePresentationFeedback();
 	RestoreFormationAfterPresentation();
 	if (BattleCinematicImpact)
@@ -2100,6 +2246,47 @@ double UGameXXKBattleBoardWidget::GetBattlePresentationShakeDurationForTest() co
 int32 UGameXXKBattleBoardWidget::GetExecutedBattlePresentationContinuationCountForTest() const
 {
 	return ExecutedBattlePresentationContinuationCount;
+}
+
+bool UGameXXKBattleBoardWidget::IsPlayedCardCommitActiveForTest() const
+{
+	return bPlayedCardCommitActive;
+}
+
+FName UGameXXKBattleBoardWidget::GetPlayedCardCommitInstanceIdForTest() const
+{
+	return PlayedCardCommitInstanceId;
+}
+
+double UGameXXKBattleBoardWidget::GetPlayedCardCommitElapsedForTest() const
+{
+	return PlayedCardCommitElapsedSeconds;
+}
+
+FVector2D UGameXXKBattleBoardWidget::GetPlayedCardCommitTranslationForTest() const
+{
+	return PlayedCardCommitButton.IsValid()
+		? PlayedCardCommitButton->GetRenderTransform().Translation
+		: FVector2D::ZeroVector;
+}
+
+FVector2D UGameXXKBattleBoardWidget::GetPlayedCardCommitScaleForTest() const
+{
+	return PlayedCardCommitButton.IsValid()
+		? PlayedCardCommitButton->GetRenderTransform().Scale
+		: FVector2D(1.0f, 1.0f);
+}
+
+float UGameXXKBattleBoardWidget::GetPlayedCardCommitOpacityForTest() const
+{
+	return PlayedCardCommitButton.IsValid()
+		? PlayedCardCommitButton->GetRenderOpacity()
+		: 1.0f;
+}
+
+int32 UGameXXKBattleBoardWidget::GetPlayedCardCommitCompletionCountForTest() const
+{
+	return PlayedCardCommitCompletionCount;
 }
 
 FString UGameXXKBattleBoardWidget::GetActiveBattleStatusAnimationAssetIdForTest() const
@@ -2743,7 +2930,8 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 	return QueueMutationPresentation(
 		Before,
 		Result.DamageResults,
-		EBattlePresentationContinuation::FinalizeCardMutation);
+		EBattlePresentationContinuation::FinalizeCardMutation,
+		Result.CardInstanceId);
 }
 
 bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
@@ -6032,6 +6220,10 @@ void UGameXXKBattleBoardWidget::AdvanceHandCardHoverMotion(float InDeltaTime)
 		{
 			continue;
 		}
+		if (bPlayedCardCommitActive && CardButton == PlayedCardCommitButton.Get())
+		{
+			continue;
+		}
 
 		const bool bSelected = SlotIndex == SelectedCardSlot;
 		const bool bHovered = !bCardTargeting && SlotIndex == HoveredHandCardSlot;
@@ -6755,7 +6947,8 @@ bool UGameXXKBattleBoardWidget::ResolveAutomaticCardPlay(FName CardInstanceId)
 	return QueueMutationPresentation(
 		Before,
 		Result.DamageResults,
-		EBattlePresentationContinuation::FinalizeCardMutation);
+		EBattlePresentationContinuation::FinalizeCardMutation,
+		Result.CardInstanceId);
 }
 
 bool UGameXXKBattleBoardWidget::RefreshPendingCardTargetingPreview()

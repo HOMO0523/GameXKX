@@ -9,6 +9,7 @@
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/HorizontalBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Engine/GameInstance.h"
@@ -487,7 +488,9 @@ namespace
 	bool BuildBoardPresentationGateFixture(
 		UGameXXKMVPSubsystem* const Subsystem,
 		FName& OutCardInstanceId,
-		FString& OutError)
+		FString& OutError,
+		const FName CardId = TEXT("Npc.JinGui.ShiJingErMu"),
+		const bool bAddReflection = true)
 	{
 		OutCardInstanceId = NAME_None;
 		OutError.Reset();
@@ -513,7 +516,7 @@ namespace
 		FGameXXKCardBattleRuntime Runtime;
 		if (!GameXXKCardRules::InitializeCardBattleRuntime(
 			Runtime,
-			MakeBoardPresentationCards(TEXT("Npc.JinGui.ShiJingErMu"), TEXT("Npc.JinGui")),
+			MakeBoardPresentationCards(CardId, TEXT("Npc.JinGui")),
 			Units,
 			EGameXXKCardTerrain::Plain,
 			8801,
@@ -521,19 +524,22 @@ namespace
 		{
 			return false;
 		}
-		FGameXXKCardBattleModifierRuntime& Reflect = Runtime.Modifiers.AddDefaulted_GetRef();
-		Reflect.ModifierId = TEXT("Board.Presentation.Reflect");
-		Reflect.SourceCardInstanceId = Runtime.Deck.ActiveInstanceIds[0];
-		Reflect.SourceUnitId = TEXT("Enemy");
-		Reflect.RecipientUnitIds = {TEXT("Enemy")};
-		Reflect.Definition.Trigger = EGameXXKCardBattleModifierTrigger::FirstDirectDamageReceivedThisRound;
-		Reflect.Definition.EffectType = EGameXXKCardEffectType::DamagePercentAttack;
-		Reflect.Definition.Target = EGameXXKCardEffectTarget::Attacker;
-		Reflect.Definition.Magnitude = 50;
-		Reflect.Definition.RemainingTriggers = 1;
-		Reflect.Definition.Expiry = EGameXXKCardModifierExpiry::AfterTriggerCount;
-		Reflect.Definition.RecipientScope = EGameXXKCardModifierRecipientScope::CardOwner;
-		Reflect.Definition.RecipientTarget = EGameXXKCardEffectTarget::CardOwner;
+		if (bAddReflection)
+		{
+			FGameXXKCardBattleModifierRuntime& Reflect = Runtime.Modifiers.AddDefaulted_GetRef();
+			Reflect.ModifierId = TEXT("Board.Presentation.Reflect");
+			Reflect.SourceCardInstanceId = Runtime.Deck.ActiveInstanceIds[0];
+			Reflect.SourceUnitId = TEXT("Enemy");
+			Reflect.RecipientUnitIds = {TEXT("Enemy")};
+			Reflect.Definition.Trigger = EGameXXKCardBattleModifierTrigger::FirstDirectDamageReceivedThisRound;
+			Reflect.Definition.EffectType = EGameXXKCardEffectType::DamagePercentAttack;
+			Reflect.Definition.Target = EGameXXKCardEffectTarget::Attacker;
+			Reflect.Definition.Magnitude = 50;
+			Reflect.Definition.RemainingTriggers = 1;
+			Reflect.Definition.Expiry = EGameXXKCardModifierExpiry::AfterTriggerCount;
+			Reflect.Definition.RecipientScope = EGameXXKCardModifierRecipientScope::CardOwner;
+			Reflect.Definition.RecipientTarget = EGameXXKCardEffectTarget::CardOwner;
+		}
 
 		State.CardRun.bHasActiveCardBattle = true;
 		State.CardRun.ActiveBattleSourceNodeId = State.ActiveBattleNodeId;
@@ -574,6 +580,361 @@ namespace
 		static FName Target(const TBoard* Board) { return Board->GetActiveBattlePresentationTargetUnitIdForTest(); }
 		static int32 Continuations(const TBoard* Board) { return Board->GetExecutedBattlePresentationContinuationCountForTest(); }
 	};
+
+	template <typename TBoard, typename = void>
+	struct TPlayedCardCommitApi
+	{
+		static constexpr bool bAvailable = false;
+		static bool IsActive(const TBoard*) { return false; }
+		static FName InstanceId(const TBoard*) { return NAME_None; }
+		static double Elapsed(const TBoard*) { return 0.0; }
+		static FVector2D Translation(const TBoard*) { return FVector2D::ZeroVector; }
+		static FVector2D Scale(const TBoard*) { return FVector2D(1.0f, 1.0f); }
+		static float Opacity(const TBoard*) { return 1.0f; }
+		static int32 CompletionCount(const TBoard*) { return 0; }
+	};
+
+	template <typename TBoard>
+	struct TPlayedCardCommitApi<TBoard, std::void_t<
+		decltype(std::declval<const TBoard&>().IsPlayedCardCommitActiveForTest()),
+		decltype(std::declval<const TBoard&>().GetPlayedCardCommitInstanceIdForTest()),
+		decltype(std::declval<const TBoard&>().GetPlayedCardCommitElapsedForTest()),
+		decltype(std::declval<const TBoard&>().GetPlayedCardCommitTranslationForTest()),
+		decltype(std::declval<const TBoard&>().GetPlayedCardCommitScaleForTest()),
+		decltype(std::declval<const TBoard&>().GetPlayedCardCommitOpacityForTest()),
+		decltype(std::declval<const TBoard&>().GetPlayedCardCommitCompletionCountForTest())>>
+	{
+		static constexpr bool bAvailable = true;
+		static bool IsActive(const TBoard* Board) { return Board->IsPlayedCardCommitActiveForTest(); }
+		static FName InstanceId(const TBoard* Board) { return Board->GetPlayedCardCommitInstanceIdForTest(); }
+		static double Elapsed(const TBoard* Board) { return Board->GetPlayedCardCommitElapsedForTest(); }
+		static FVector2D Translation(const TBoard* Board) { return Board->GetPlayedCardCommitTranslationForTest(); }
+		static FVector2D Scale(const TBoard* Board) { return Board->GetPlayedCardCommitScaleForTest(); }
+		static float Opacity(const TBoard* Board) { return Board->GetPlayedCardCommitOpacityForTest(); }
+		static int32 CompletionCount(const TBoard* Board) { return Board->GetPlayedCardCommitCompletionCountForTest(); }
+	};
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKPlayedCardCommitPresentationTest,
+	"GameXXK.Integration.CardBattle.PlayedCardCommit",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKPlayedCardCommitPresentationTest::RunTest(const FString& Parameters)
+{
+	using FCommitApi = TPlayedCardCommitApi<UGameXXKBattleBoardWidget>;
+	using FGateApi = TBoardPresentationGateApi<UGameXXKBattleBoardWidget>;
+	TestTrue(TEXT("Board exposes deterministic played-card commit diagnostics"), FCommitApi::bAvailable);
+	if (!FCommitApi::bAvailable || !FGateApi::bAvailable)
+	{
+		return false;
+	}
+
+	FString Error;
+	UGameInstance* const ManualGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const ManualSubsystem = NewObject<UGameXXKMVPSubsystem>(ManualGameInstance);
+	FName ManualCardInstanceId;
+	if (!TestTrue(TEXT("manual commit fixture builds the reflected multi-packet card battle"),
+		BuildBoardPresentationGateFixture(ManualSubsystem, ManualCardInstanceId, Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	UGameXXKBattleBoardWidget* const ManualBoard = NewObject<UGameXXKBattleBoardWidget>();
+	ManualBoard->SetMVPSubsystem(ManualSubsystem);
+	TestTrue(TEXT("manual commit Board initializes"), ManualBoard->Initialize());
+	ManualBoard->NativeConstruct();
+	TestTrue(TEXT("manual commit Board begins its visual session"), ManualBoard->BeginBattleVisualSession(8301));
+	UButton* const ManualSourceButton = ManualBoard->WidgetTree
+		? Cast<UButton>(ManualBoard->WidgetTree->FindWidget(TEXT("BattleHandCard_00")))
+		: nullptr;
+	USizeBox* const ManualSourceSize = ManualBoard->WidgetTree
+		? Cast<USizeBox>(ManualBoard->WidgetTree->FindWidget(TEXT("BattleHandCardSize_00")))
+		: nullptr;
+	TestNotNull(TEXT("manual commit keeps the real source hand button"), ManualSourceButton);
+	TestNotNull(TEXT("manual commit keeps the approved source size box"), ManualSourceSize);
+	const FWidgetTransform InitialTransform = ManualSourceButton
+		? ManualSourceButton->GetRenderTransform()
+		: FWidgetTransform();
+	const float InitialOpacity = ManualSourceButton ? ManualSourceButton->GetRenderOpacity() : 1.0f;
+	const int32 InitialHandChildCount = ManualBoard->GetHandCardBoxForTest()
+		? ManualBoard->GetHandCardBoxForTest()->GetChildrenCount()
+		: INDEX_NONE;
+
+	TestTrue(TEXT("manual source card enters targeting without starting commit"),
+		ManualBoard->ClickCardInHand(ManualCardInstanceId));
+	TestFalse(TEXT("an illegal target cannot start played-card commit"),
+		ManualBoard->ConfirmTargetingUnit(TEXT("Missing.Target")));
+	TestFalse(TEXT("failed target confirmation leaves commit inactive"), FCommitApi::IsActive(ManualBoard));
+	TestEqual(TEXT("failed target confirmation does not increment completion"), FCommitApi::CompletionCount(ManualBoard), 0);
+	TestTrue(TEXT("valid manual target commits the card"), ManualBoard->ConfirmTargetingUnit(TEXT("Enemy")));
+	TestTrue(TEXT("successful manual target starts commit immediately"), FCommitApi::IsActive(ManualBoard));
+	TestEqual(TEXT("manual commit retains the resolved source instance"), FCommitApi::InstanceId(ManualBoard), ManualCardInstanceId);
+	TestEqual(TEXT("multi-packet base, reflection, and follow-up queue before commit finishes"),
+		ManualBoard->GetBattlePresentationQueueCountForTest(), 3);
+	TestEqual(TEXT("damage presentation cannot start before the commit timeline"),
+		ManualBoard->GetActiveBattlePresentationEventIdForTest(), static_cast<uint64>(0));
+	TestTrue(TEXT("commit locks the whole Board"), FGateApi::IsLocked(ManualBoard));
+	TestEqual(TEXT("commit never changes the approved hand width"),
+		ManualSourceSize ? ManualSourceSize->GetWidthOverride() : 0.0f, 206.0f);
+	TestEqual(TEXT("commit never changes the approved hand height"),
+		ManualSourceSize ? ManualSourceSize->GetHeightOverride() : 0.0f, 285.0f);
+	TestEqual(TEXT("commit never inserts or removes layout slots"),
+		ManualBoard->GetHandCardBoxForTest() ? ManualBoard->GetHandCardBoxForTest()->GetChildrenCount() : INDEX_NONE,
+		InitialHandChildCount);
+	TestTrue(TEXT("commit retains the original source button in its slot"),
+		ManualBoard->WidgetTree
+		&& ManualBoard->WidgetTree->FindWidget(TEXT("BattleHandCard_00")) == ManualSourceButton);
+
+	ManualBoard->AdvanceVisualsAtRealTime(0.0);
+	TestEqual(TEXT("the first absolute sample starts commit at zero elapsed"), FCommitApi::Elapsed(ManualBoard), 0.0);
+	ManualBoard->AdvanceVisualsAtRealTime(0.09);
+	TestTrue(TEXT("ease-out commit lifts the card during the first half"),
+		FCommitApi::Translation(ManualBoard).Y < InitialTransform.Translation.Y - 1.0f);
+	TestTrue(TEXT("ease-out commit applies a light positive scale during the first half"),
+		FCommitApi::Scale(ManualBoard).X > InitialTransform.Scale.X);
+	const FVector2D MidCommitTranslation = FCommitApi::Translation(ManualBoard);
+	const FVector2D MidCommitScale = FCommitApi::Scale(ManualBoard);
+	ManualBoard->AdvanceHandCardHoverMotionForTest(1.0f);
+	TestEqual(TEXT("hover motion cannot overwrite active commit translation"),
+		FCommitApi::Translation(ManualBoard), MidCommitTranslation);
+	TestEqual(TEXT("hover motion cannot overwrite active commit scale"),
+		FCommitApi::Scale(ManualBoard), MidCommitScale);
+	TestEqual(TEXT("commit opacity stays intact through its first half"),
+		FCommitApi::Opacity(ManualBoard), InitialOpacity);
+	TestEqual(TEXT("damage presentation still has not started at half commit"),
+		ManualBoard->GetActiveBattlePresentationEventIdForTest(), static_cast<uint64>(0));
+	ManualBoard->AdvanceVisualsAtRealTime(0.179);
+	TestTrue(TEXT("the second half fades the committed source card"), FCommitApi::Opacity(ManualBoard) < 0.05f);
+	TestTrue(TEXT("commit remains active strictly before 0.18 seconds"), FCommitApi::IsActive(ManualBoard));
+	TestEqual(TEXT("damage presentation remains gated strictly before 0.18 seconds"),
+		ManualBoard->GetActiveBattlePresentationEventIdForTest(), static_cast<uint64>(0));
+	ManualBoard->AdvanceVisualsAtRealTime(0.18);
+	TestFalse(TEXT("commit completes exactly at 0.18 seconds"), FCommitApi::IsActive(ManualBoard));
+	TestEqual(TEXT("one active hand play completes exactly one commit"), FCommitApi::CompletionCount(ManualBoard), 1);
+	TestTrue(TEXT("the first damage packet starts only after commit completion"),
+		ManualBoard->GetActiveBattlePresentationEventIdForTest() != 0);
+	TestEqual(TEXT("normal completion returns the reusable hand slot to identity scale"),
+		ManualSourceButton ? ManualSourceButton->GetRenderTransform().Scale : FVector2D::ZeroVector,
+		FVector2D(1.0f, 1.0f));
+	TestEqual(TEXT("normal completion returns the reusable hand slot to identity translation"),
+		ManualSourceButton ? ManualSourceButton->GetRenderTransform().Translation : FVector2D(1.0f, 1.0f),
+		FVector2D::ZeroVector);
+	TestEqual(TEXT("the spent source card stays hidden while its damage queue is still playing"),
+		ManualSourceButton ? ManualSourceButton->GetRenderOpacity() : 1.0f,
+		0.0f);
+	ManualBoard->AdvanceVisualsAtRealTime(0.48);
+	TestEqual(TEXT("later frames cannot flash the spent source card back during damage presentation"),
+		ManualSourceButton ? ManualSourceButton->GetRenderOpacity() : 1.0f,
+		0.0f);
+	ManualBoard->AdvanceVisualsAtRealTime(100.0);
+	TestEqual(TEXT("automatic follow-up packets never create extra hand commits"), FCommitApi::CompletionCount(ManualBoard), 1);
+	TestEqual(TEXT("the active-card continuation still executes exactly once"), FGateApi::Continuations(ManualBoard), 1);
+	TestTrue(TEXT("the deferred hand refresh makes the next real card in the reused slot visible"),
+		ManualSourceButton && ManualSourceButton->GetRenderOpacity() >= 0.58f);
+
+	UGameInstance* const AutomaticGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const AutomaticSubsystem = NewObject<UGameXXKMVPSubsystem>(AutomaticGameInstance);
+	FName AutomaticCardInstanceId;
+	if (!TestTrue(TEXT("automatic no-damage fixture builds a status-and-resource card battle"),
+		BuildBoardPresentationGateFixture(
+			AutomaticSubsystem,
+			AutomaticCardInstanceId,
+			Error,
+			TEXT("Npc.JinGui.HouXiangTuoShen"),
+			false)))
+	{
+		AddError(Error);
+		return false;
+	}
+	UGameXXKBattleBoardWidget* const AutomaticBoard = NewObject<UGameXXKBattleBoardWidget>();
+	AutomaticBoard->SetMVPSubsystem(AutomaticSubsystem);
+	TestTrue(TEXT("automatic commit Board initializes"), AutomaticBoard->Initialize());
+	AutomaticBoard->NativeConstruct();
+	TestTrue(TEXT("automatic commit Board begins its visual session"), AutomaticBoard->BeginBattleVisualSession(8302));
+	TestTrue(TEXT("automatic target card resolves from one hand click"), AutomaticBoard->ClickCardInHand(AutomaticCardInstanceId));
+	TestTrue(TEXT("automatic target card starts the same commit feedback"), FCommitApi::IsActive(AutomaticBoard));
+	TestEqual(TEXT("automatic commit retains the resolved source instance"), FCommitApi::InstanceId(AutomaticBoard), AutomaticCardInstanceId);
+	TestEqual(TEXT("status-only automatic card owns no damage queue"), AutomaticBoard->GetBattlePresentationQueueCountForTest(), 0);
+	TestEqual(TEXT("status-only continuation cannot execute before commit"), FGateApi::Continuations(AutomaticBoard), 0);
+	AutomaticBoard->AdvanceVisualsAtRealTime(4.0);
+	AutomaticBoard->AdvanceVisualsAtRealTime(4.179);
+	TestTrue(TEXT("status-only commit remains pending before its boundary"), FCommitApi::IsActive(AutomaticBoard));
+	TestEqual(TEXT("status-only continuation remains deferred before its boundary"), FGateApi::Continuations(AutomaticBoard), 0);
+	AutomaticBoard->AdvanceVisualsAtRealTime(4.18);
+	TestFalse(TEXT("status-only commit drains at its boundary"), FCommitApi::IsActive(AutomaticBoard));
+	TestEqual(TEXT("status-only continuation executes exactly once after commit"), FGateApi::Continuations(AutomaticBoard), 1);
+
+	UGameInstance* const FailedGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const FailedSubsystem = NewObject<UGameXXKMVPSubsystem>(FailedGameInstance);
+	FName FailedCardInstanceId;
+	if (!TestTrue(TEXT("failed-play fixture builds an automatic card battle"),
+		BuildBoardPresentationGateFixture(
+			FailedSubsystem,
+			FailedCardInstanceId,
+			Error,
+			TEXT("Npc.JinGui.HouXiangTuoShen"),
+			false)))
+	{
+		AddError(Error);
+		return false;
+	}
+	FailedSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Deck.SharedEnergy = 0;
+	UGameXXKBattleBoardWidget* const FailedBoard = NewObject<UGameXXKBattleBoardWidget>();
+	FailedBoard->SetMVPSubsystem(FailedSubsystem);
+	TestTrue(TEXT("failed-play Board initializes"), FailedBoard->Initialize());
+	FailedBoard->NativeConstruct();
+	TestTrue(TEXT("failed-play Board begins its visual session"), FailedBoard->BeginBattleVisualSession(8303));
+	TestFalse(TEXT("unaffordable automatic card is rejected"), FailedBoard->ClickCardInHand(FailedCardInstanceId));
+	TestFalse(TEXT("rejected card never starts commit"), FCommitApi::IsActive(FailedBoard));
+	TestEqual(TEXT("rejected card never increments commit completion"), FCommitApi::CompletionCount(FailedBoard), 0);
+
+	UGameInstance* const CancelGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const CancelSubsystem = NewObject<UGameXXKMVPSubsystem>(CancelGameInstance);
+	FName CancelCardInstanceId;
+	if (!TestTrue(TEXT("commit-cancel fixture builds a manual card battle"),
+		BuildBoardPresentationGateFixture(CancelSubsystem, CancelCardInstanceId, Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	UGameXXKBattleBoardWidget* const CancelBoard = NewObject<UGameXXKBattleBoardWidget>();
+	CancelBoard->SetMVPSubsystem(CancelSubsystem);
+	TestTrue(TEXT("commit-cancel Board initializes"), CancelBoard->Initialize());
+	CancelBoard->NativeConstruct();
+	TestTrue(TEXT("commit-cancel Board begins its visual session"), CancelBoard->BeginBattleVisualSession(8304));
+	UButton* const CancelSourceButton = CancelBoard->WidgetTree
+		? Cast<UButton>(CancelBoard->WidgetTree->FindWidget(TEXT("BattleHandCard_00")))
+		: nullptr;
+	const FWidgetTransform CancelInitialTransform = CancelSourceButton
+		? CancelSourceButton->GetRenderTransform()
+		: FWidgetTransform();
+	const float CancelInitialOpacity = CancelSourceButton ? CancelSourceButton->GetRenderOpacity() : 1.0f;
+	TestTrue(TEXT("commit-cancel card enters targeting"), CancelBoard->ClickCardInHand(CancelCardInstanceId));
+	TestTrue(TEXT("commit-cancel card resolves"), CancelBoard->ConfirmTargetingUnit(TEXT("Enemy")));
+	CancelBoard->AdvanceVisualsAtRealTime(8.0);
+	CancelBoard->AdvanceVisualsAtRealTime(8.09);
+	TestTrue(TEXT("commit-cancel fixture reaches a transformed active frame"), FCommitApi::IsActive(CancelBoard));
+	CancelBoard->CancelBattleVisualSession(8304);
+	TestFalse(TEXT("visual-session cancellation clears commit"), FCommitApi::IsActive(CancelBoard));
+	TestEqual(TEXT("visual-session cancellation restores the exact initial transform"),
+		CancelSourceButton ? CancelSourceButton->GetRenderTransform() : FWidgetTransform(),
+		CancelInitialTransform);
+	TestEqual(TEXT("visual-session cancellation restores the exact initial opacity"),
+		CancelSourceButton ? CancelSourceButton->GetRenderOpacity() : 0.0f,
+		CancelInitialOpacity);
+	CancelBoard->AdvanceVisualsAtRealTime(100.0);
+	TestEqual(TEXT("visual-session cancellation discards continuation without executing it"), FGateApi::Continuations(CancelBoard), 0);
+
+	UGameInstance* const TeardownGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const TeardownSubsystem = NewObject<UGameXXKMVPSubsystem>(TeardownGameInstance);
+	FName TeardownCardInstanceId;
+	if (!TestTrue(TEXT("commit-teardown fixture builds an automatic card battle"),
+		BuildBoardPresentationGateFixture(
+			TeardownSubsystem,
+			TeardownCardInstanceId,
+			Error,
+			TEXT("Npc.JinGui.HouXiangTuoShen"),
+			false)))
+	{
+		AddError(Error);
+		return false;
+	}
+	UGameXXKBattleBoardWidget* const TeardownBoard = NewObject<UGameXXKBattleBoardWidget>();
+	TeardownBoard->SetMVPSubsystem(TeardownSubsystem);
+	TestTrue(TEXT("commit-teardown Board initializes"), TeardownBoard->Initialize());
+	TeardownBoard->NativeConstruct();
+	TestTrue(TEXT("commit-teardown Board begins its visual session"), TeardownBoard->BeginBattleVisualSession(8305));
+	UButton* const TeardownSourceButton = TeardownBoard->WidgetTree
+		? Cast<UButton>(TeardownBoard->WidgetTree->FindWidget(TEXT("BattleHandCard_00")))
+		: nullptr;
+	const FWidgetTransform TeardownInitialTransform = TeardownSourceButton
+		? TeardownSourceButton->GetRenderTransform()
+		: FWidgetTransform();
+	const float TeardownInitialOpacity = TeardownSourceButton ? TeardownSourceButton->GetRenderOpacity() : 1.0f;
+	TestTrue(TEXT("commit-teardown automatic card resolves"), TeardownBoard->ClickCardInHand(TeardownCardInstanceId));
+	TeardownBoard->AdvanceVisualsAtRealTime(12.0);
+	TeardownBoard->AdvanceVisualsAtRealTime(12.09);
+	TestTrue(TEXT("commit-teardown fixture reaches a transformed active frame"), FCommitApi::IsActive(TeardownBoard));
+	TeardownBoard->NativeDestruct();
+	TestFalse(TEXT("widget teardown clears commit"), FCommitApi::IsActive(TeardownBoard));
+	TestEqual(TEXT("widget teardown restores the exact initial transform"),
+		TeardownSourceButton ? TeardownSourceButton->GetRenderTransform() : FWidgetTransform(),
+		TeardownInitialTransform);
+	TestEqual(TEXT("widget teardown restores the exact initial opacity"),
+		TeardownSourceButton ? TeardownSourceButton->GetRenderOpacity() : 0.0f,
+		TeardownInitialOpacity);
+	TestEqual(TEXT("widget teardown never executes the discarded continuation"), FGateApi::Continuations(TeardownBoard), 0);
+
+	UGameInstance* const LargeDeltaGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const LargeDeltaSubsystem = NewObject<UGameXXKMVPSubsystem>(LargeDeltaGameInstance);
+	FName LargeDeltaCardInstanceId;
+	FName LargeDeltaTargetUnitId;
+	FName LargeDeltaOwnerUnitId;
+	if (!TestTrue(TEXT("large-delta fixture enters a one-health route battle"),
+		BuildRouteRewardFixture(
+			LargeDeltaSubsystem,
+			LargeDeltaCardInstanceId,
+			LargeDeltaTargetUnitId,
+			LargeDeltaOwnerUnitId,
+			Error,
+			true)))
+	{
+		AddError(Error);
+		return false;
+	}
+	UGameXXKBattleBoardWidget* const LargeDeltaBoard = NewObject<UGameXXKBattleBoardWidget>();
+	LargeDeltaBoard->SetMVPSubsystem(LargeDeltaSubsystem);
+	TestTrue(TEXT("large-delta Board initializes"), LargeDeltaBoard->Initialize());
+	LargeDeltaBoard->NativeConstruct();
+	TestTrue(TEXT("large-delta Board begins its visual session"), LargeDeltaBoard->BeginBattleVisualSession(8306));
+	TestTrue(TEXT("large-delta card enters targeting"), LargeDeltaBoard->ClickCardInHand(LargeDeltaCardInstanceId));
+	TestTrue(TEXT("large-delta card commits"), LargeDeltaBoard->ConfirmTargetingUnit(LargeDeltaTargetUnitId));
+	LargeDeltaBoard->AdvanceVisualsAtRealTime(20.0);
+	LargeDeltaBoard->AdvanceVisualsAtRealTime(100.0);
+	TestFalse(TEXT("one large frame drains commit, hit, and death without leaving commit active"),
+		FCommitApi::IsActive(LargeDeltaBoard));
+	TestEqual(TEXT("one large frame completes the source card exactly once"),
+		FCommitApi::CompletionCount(LargeDeltaBoard),
+		1);
+	TestEqual(TEXT("one large frame drains every queued damage and death entry"),
+		LargeDeltaBoard->GetBattlePresentationQueueCountForTest(),
+		0);
+	TestTrue(TEXT("one large frame reaches the terminal route reward"), LargeDeltaBoard->HasPendingRouteReward());
+	TestEqual(TEXT("one large frame executes the terminal continuation exactly once"),
+		FGateApi::Continuations(LargeDeltaBoard),
+		1);
+
+	UGameInstance* const NoSessionGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const NoSessionSubsystem = NewObject<UGameXXKMVPSubsystem>(NoSessionGameInstance);
+	FName NoSessionCardInstanceId;
+	if (!TestTrue(TEXT("no-session fixture builds a reflected damage card battle"),
+		BuildBoardPresentationGateFixture(NoSessionSubsystem, NoSessionCardInstanceId, Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	UGameXXKBattleBoardWidget* const NoSessionBoard = NewObject<UGameXXKBattleBoardWidget>();
+	NoSessionBoard->SetMVPSubsystem(NoSessionSubsystem);
+	TestTrue(TEXT("no-session Board initializes"), NoSessionBoard->Initialize());
+	NoSessionBoard->NativeConstruct();
+	TestTrue(TEXT("no-session card enters targeting"), NoSessionBoard->ClickCardInHand(NoSessionCardInstanceId));
+	TestTrue(TEXT("no-session card still commits authoritative gameplay"),
+		NoSessionBoard->ConfirmTargetingUnit(TEXT("Enemy")));
+	TestFalse(TEXT("a missing visual session never starts played-card commit"), FCommitApi::IsActive(NoSessionBoard));
+	TestTrue(TEXT("a missing visual session initially leaves the queued presentation locked"),
+		FGateApi::IsLocked(NoSessionBoard));
+	NoSessionBoard->RefreshFromState();
+	TestFalse(TEXT("refresh safely downgrades a presentation that has no visual session"),
+		FGateApi::IsLocked(NoSessionBoard));
+	TestEqual(TEXT("no-session downgrade executes the committed continuation exactly once"),
+		FGateApi::Continuations(NoSessionBoard),
+		1);
+	NoSessionBoard->RefreshFromState();
+	TestEqual(TEXT("later refreshes never repeat the no-session continuation"),
+		FGateApi::Continuations(NoSessionBoard),
+		1);
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -685,24 +1046,25 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 		OrderedBoard->GetBattlePresentationQueueCountForTest(),
 		3);
 	OrderedBoard->AdvanceVisualsAtRealTime(0.0);
+	OrderedBoard->AdvanceVisualsAtRealTime(0.18);
 	TestEqual(TEXT("packet one retains the Heavy Arrow attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Npc.JinGui")));
 	TestEqual(TEXT("packet one retains the primary target"), FGateApi::Target(OrderedBoard), FName(TEXT("Enemy")));
 	TestEqual(TEXT("the first target baseline is seeded from packet one"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 100);
-	OrderedBoard->AdvanceVisualsAtRealTime(0.301);
+	OrderedBoard->AdvanceVisualsAtRealTime(0.481);
 	TestEqual(TEXT("packet one marker applies only packet one's health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
-	OrderedBoard->AdvanceVisualsAtRealTime(0.821);
+	OrderedBoard->AdvanceVisualsAtRealTime(1.001);
 	TestEqual(TEXT("packet two reverses the reflected source"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Enemy")));
 	TestEqual(TEXT("packet two reverses the reflected target"), FGateApi::Target(OrderedBoard), FName(TEXT("Npc.JinGui")));
 	TestEqual(TEXT("packet one's target override survives the reflected intermediate entry"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
-	OrderedBoard->AdvanceVisualsAtRealTime(0.921);
+	OrderedBoard->AdvanceVisualsAtRealTime(1.101);
 	TestEqual(TEXT("the reflection marker applies its own target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Npc.JinGui")), 95);
-	OrderedBoard->AdvanceVisualsAtRealTime(1.121);
+	OrderedBoard->AdvanceVisualsAtRealTime(1.301);
 	TestEqual(TEXT("packet three returns to the Heavy Arrow attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Npc.JinGui")));
 	TestEqual(TEXT("packet three returns to the primary target"), FGateApi::Target(OrderedBoard), FName(TEXT("Enemy")));
 	TestEqual(TEXT("packet three begins at packet one's committed target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
-	OrderedBoard->AdvanceVisualsAtRealTime(1.221);
+	OrderedBoard->AdvanceVisualsAtRealTime(1.401);
 	TestEqual(TEXT("packet three marker reaches the final target health without early reconciliation"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 78);
-	OrderedBoard->AdvanceVisualsAtRealTime(1.421);
+	OrderedBoard->AdvanceVisualsAtRealTime(1.601);
 	TestFalse(TEXT("the ordered batch unlocks after all three packets"), FGateApi::IsLocked(OrderedBoard));
 	TestEqual(TEXT("ordered target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 78);
 	TestEqual(TEXT("reflected target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Npc.JinGui")), 95);
@@ -758,10 +1120,10 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 			EGameXXKCardStatus::Vulnerability) == 0);
 	TestFalse(TEXT("terminal reward handling is deferred until after Death"), LethalBoard->HasPendingRouteReward());
 	LethalBoard->AdvanceVisualsAtRealTime(0.0);
-	LethalBoard->AdvanceVisualsAtRealTime(0.821);
+	LethalBoard->AdvanceVisualsAtRealTime(1.001);
 	TestTrue(TEXT("lethal Hit transitions to Death before removal"), LethalBoard->IsBattleDeathPresentationActiveForTest());
 	TestFalse(TEXT("reward remains deferred throughout Death"), LethalBoard->HasPendingRouteReward());
-	LethalBoard->AdvanceVisualsAtRealTime(1.721);
+	LethalBoard->AdvanceVisualsAtRealTime(1.901);
 	TestFalse(TEXT("fixed-HUD status reconciliation does not open a separate full-screen status presentation"),
 		LethalBoard->IsBattleStatusPresentationActiveForTest());
 	TestEqual(TEXT("the presentation gate releases the defeated target after Death"),

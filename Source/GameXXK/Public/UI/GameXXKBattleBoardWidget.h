@@ -230,6 +230,13 @@ public:
 	FVector2D GetBattlePresentationShakeAmplitudeForTest() const;
 	double GetBattlePresentationShakeDurationForTest() const;
 	int32 GetExecutedBattlePresentationContinuationCountForTest() const;
+	bool IsPlayedCardCommitActiveForTest() const;
+	FName GetPlayedCardCommitInstanceIdForTest() const;
+	double GetPlayedCardCommitElapsedForTest() const;
+	FVector2D GetPlayedCardCommitTranslationForTest() const;
+	FVector2D GetPlayedCardCommitScaleForTest() const;
+	float GetPlayedCardCommitOpacityForTest() const;
+	int32 GetPlayedCardCommitCompletionCountForTest() const;
 	FString GetActiveBattleStatusAnimationAssetIdForTest() const;
 	int32 GetActiveBattleStatusDeltaForTest() const;
 	FName GetActiveBattleStatusIconIdForTest() const;
@@ -536,7 +543,12 @@ private:
 	bool QueueMutationPresentation(
 		const FGameXXKCardBattleRuntime& Before,
 		const TArray<FGameXXKCardDamageResult>& DamageResults,
-		EBattlePresentationContinuation Continuation);
+		EBattlePresentationContinuation Continuation,
+		FName PlayedCardInstanceId = NAME_None);
+	bool BeginPlayedCardCommit(FName PlayedCardInstanceId);
+	TOptional<double> AdvancePlayedCardCommit(double AbsoluteSeconds);
+	void CompletePlayedCardCommit();
+	void ResetPlayedCardCommit(bool bRestoreInitialVisual);
 	void CapturePresentationHudSnapshot(const FGameXXKCardBattleRuntime& Runtime);
 	void DiscardPresentationHudSnapshot();
 	void ApplyDisplayedStatusDelta(const FGameXXKBattleStatusPresentationEvent& Event);
@@ -839,6 +851,15 @@ private:
 	int32 BattlePresentationCompletionCount = 0;
 	int32 BattlePresentationHudShakeCount = 0;
 	int32 ExecutedBattlePresentationContinuationCount = 0;
+	bool bPlayedCardCommitActive = false;
+	bool bPlayedCardCommitStarted = false;
+	FName PlayedCardCommitInstanceId = NAME_None;
+	TWeakObjectPtr<UButton> PlayedCardCommitButton;
+	FWidgetTransform PlayedCardCommitInitialTransform;
+	float PlayedCardCommitInitialOpacity = 1.0f;
+	double PlayedCardCommitStartSeconds = 0.0;
+	double PlayedCardCommitElapsedSeconds = 0.0;
+	int32 PlayedCardCommitCompletionCount = 0;
 	double BattlePresentationShakeStartSeconds = 0.0;
 	double BattlePresentationShakeDurationSeconds = 0.0;
 	FVector2D BattlePresentationShakeAmplitude = FVector2D::ZeroVector;
