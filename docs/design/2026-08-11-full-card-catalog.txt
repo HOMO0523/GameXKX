@@ -531,8 +531,8 @@ ID：Npc.YueBai.QingYanDianDeng
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：所选目标获得6层灼烧；触发所选目标的灼烧1次；每次按当前层数造成生命伤害并减少1层
-实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=6,Status=Burn}; Effect{Type=TriggerStatus,Target=SelectedTarget,Magnitude=1,Status=Burn}]
+基础：所选目标获得6层灼烧；触发所选目标的灼烧1次；每次按当前层数造成生命伤害并减少1层；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌
+实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=6,Status=Burn}; Effect{Type=TriggerStatus,Target=SelectedTarget,Magnitude=1,Status=Burn}; Effect{Type=SearchUnfinishedTaskNpcCard,Target=CardOwner,Magnitude=1}]
 
 [046] 残卷批注
 ID：Npc.YueBai.CanJuanPiZhu
@@ -541,8 +541,8 @@ ID：Npc.YueBai.CanJuanPiZhu
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：出牌者抽3张牌；触发当前地势收益1次
-实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
+基础：出牌者抽3张牌；触发当前地势收益1次；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌
+实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=SearchUnfinishedTaskNpcCard,Target=CardOwner,Magnitude=1}]
 
 [047] 月白照夜
 ID：Npc.YueBai.YueBaiZhaoYe
@@ -551,18 +551,18 @@ ID：Npc.YueBai.YueBaiZhaoYe
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：所选目标获得2层标记；所选目标获得4层灼烧；所选目标造成100%攻击伤害；触发所选目标的灼烧1次；每次按当前层数造成生命伤害并减少1层
-实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Mark}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=4,Status=Burn}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=100}; Effect{Type=TriggerStatus,Target=SelectedTarget,Magnitude=1,Status=Burn}]
+基础：所选目标获得2层标记；所选目标获得4层灼烧；所选目标造成100%攻击伤害；触发所选目标的灼烧1次；每次按当前层数造成生命伤害并减少1层；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌
+实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Mark}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=4,Status=Burn}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=100}; Effect{Type=TriggerStatus,Target=SelectedTarget,Magnitude=1,Status=Burn}; Effect{Type=SearchUnfinishedTaskNpcCard,Target=CardOwner,Magnitude=1}]
 
 [048] 山河残图
 ID：Npc.YueBai.ShanHeCanTu
 品质：珍稀
-费用：1 气力 / 6 内力
+费用：0 气力 / 6 内力
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：全体友方获得32点护甲；全体友方获得7点内力；触发当前地势收益1次
-实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=8}; Effect{Type=GainMana,Target=AllAllies,Magnitude=3}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
+基础：全体友方获得32点护甲；全体友方获得7点内力；触发当前地势收益1次；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌
+实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=8}; Effect{Type=GainMana,Target=AllAllies,Magnitude=3}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=SearchUnfinishedTaskNpcCard,Target=CardOwner,Magnitude=1}]
 
 
 [11] 任务 NPC·周光祖（4 张）

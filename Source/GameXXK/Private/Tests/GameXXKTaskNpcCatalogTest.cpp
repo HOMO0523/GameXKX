@@ -40,7 +40,7 @@ namespace GameXXKTaskNpcCatalogTest
 		{TEXT("Npc.YueBai.QingYanDianDeng"), TEXT("青焰点灯"), TEXT("Npc.YueBai"), 0, 3, EGameXXKCardTargetMode::SingleEnemy},
 		{TEXT("Npc.YueBai.YueBaiZhaoYe"), TEXT("月白照夜"), TEXT("Npc.YueBai"), 1, 3, EGameXXKCardTargetMode::SingleEnemy},
 		{TEXT("Npc.YueBai.CanJuanPiZhu"), TEXT("残卷批注"), TEXT("Npc.YueBai"), 0, 0, EGameXXKCardTargetMode::SingleEnemy},
-		{TEXT("Npc.YueBai.ShanHeCanTu"), TEXT("山河残图"), TEXT("Npc.YueBai"), 1, 6, EGameXXKCardTargetMode::SingleEnemy},
+		{TEXT("Npc.YueBai.ShanHeCanTu"), TEXT("山河残图"), TEXT("Npc.YueBai"), 0, 6, EGameXXKCardTargetMode::SingleEnemy},
 
 		{TEXT("Npc.SongJinBao.ShangQianGuWu"), TEXT("赏钱鼓舞"), TEXT("Npc.SongJinBao"), 0, 0, EGameXXKCardTargetMode::SingleAlly},
 		{TEXT("Npc.SongJinBao.ErMuMiBao"), TEXT("耳目密报"), TEXT("Npc.SongJinBao"), 0, 3, EGameXXKCardTargetMode::SingleEnemy},
@@ -340,9 +340,10 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	const FGameXXKCardDefinition* QingYan = Card(TEXT("Npc.YueBai.QingYanDianDeng"));
 	if (QingYan)
 	{
-		TestEqual(TEXT("青焰点灯 base has Burn6 then one trigger"), QingYan->Effects.Num(), 2);
+		TestEqual(TEXT("青焰点灯 base has Burn6, one trigger, and task search"), QingYan->Effects.Num(), 3);
 		ExpectEffect(*this, QingYan->Id, QingYan->Effects, TEXT("灼烧6"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::Burn);
 		ExpectEffect(*this, QingYan->Id, QingYan->Effects, TEXT("触发灼烧1次"), EGameXXKCardEffectType::TriggerStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Burn);
+		ExpectEffect(*this, QingYan->Id, QingYan->Effects, TEXT("检索未完成月白牌"), EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1);
 		TestEqual(TEXT("青焰点灯 reward has group Burn and trigger"), QingYan->TaskNpcRewardEffects.Num(), 2);
 		ExpectEffect(*this, QingYan->Id, QingYan->TaskNpcRewardEffects, TEXT("奖励敌群灼烧6"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 6, EGameXXKCardStatus::Burn);
 		ExpectEffect(*this, QingYan->Id, QingYan->TaskNpcRewardEffects, TEXT("奖励敌群触发灼烧"), EGameXXKCardEffectType::TriggerStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Burn);
@@ -351,11 +352,12 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	const FGameXXKCardDefinition* YueZhao = Card(TEXT("Npc.YueBai.YueBaiZhaoYe"));
 	if (YueZhao)
 	{
-		TestEqual(TEXT("月白照夜 base has Mark, Burn, attack, and Burn trigger"), YueZhao->Effects.Num(), 4);
+		TestEqual(TEXT("月白照夜 base has Mark, Burn, attack, trigger, and task search"), YueZhao->Effects.Num(), 5);
 		ExpectEffect(*this, YueZhao->Id, YueZhao->Effects, TEXT("标记2"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark);
 		ExpectEffect(*this, YueZhao->Id, YueZhao->Effects, TEXT("灼烧4"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 4, EGameXXKCardStatus::Burn);
 		ExpectEffect(*this, YueZhao->Id, YueZhao->Effects, TEXT("攻击100%"), EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::SelectedTarget, 100);
 		ExpectEffect(*this, YueZhao->Id, YueZhao->Effects, TEXT("触发灼烧1次"), EGameXXKCardEffectType::TriggerStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Burn);
+		ExpectEffect(*this, YueZhao->Id, YueZhao->Effects, TEXT("检索未完成月白牌"), EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1);
 		ExpectEffect(*this, YueZhao->Id, YueZhao->TaskNpcRewardEffects, TEXT("奖励敌群标记3"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 3, EGameXXKCardStatus::Mark);
 		ExpectEffect(*this, YueZhao->Id, YueZhao->TaskNpcRewardEffects, TEXT("奖励每层标记落雷50%"), EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 50, EGameXXKCardStatus::Mark);
 	}
@@ -363,19 +365,21 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	const FGameXXKCardDefinition* CanJuan = Card(TEXT("Npc.YueBai.CanJuanPiZhu"));
 	if (CanJuan)
 	{
-		TestEqual(TEXT("残卷批注 base has draw2 and one terrain benefit"), CanJuan->Effects.Num(), 2);
+		TestEqual(TEXT("残卷批注 base has draw2, terrain, and task search"), CanJuan->Effects.Num(), 3);
 		ExpectEffect(*this, CanJuan->Id, CanJuan->Effects, TEXT("抽2"), EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2);
 		ExpectEffect(*this, CanJuan->Id, CanJuan->Effects, TEXT("地势收益1次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1);
+		ExpectEffect(*this, CanJuan->Id, CanJuan->Effects, TEXT("检索未完成月白牌"), EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1);
 		ExpectEffect(*this, CanJuan->Id, CanJuan->TaskNpcRewardEffects, TEXT("奖励地势收益3次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 3);
 	}
 
 	const FGameXXKCardDefinition* ShanHe = Card(TEXT("Npc.YueBai.ShanHeCanTu"));
 	if (ShanHe)
 	{
-		TestEqual(TEXT("山河残图 base has group armor, group Mana, and terrain"), ShanHe->Effects.Num(), 3);
+		TestEqual(TEXT("山河残图 base has group armor, group Mana, terrain, and task search"), ShanHe->Effects.Num(), 4);
 		ExpectEffect(*this, ShanHe->Id, ShanHe->Effects, TEXT("全队护甲8"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8);
 		ExpectEffect(*this, ShanHe->Id, ShanHe->Effects, TEXT("全队内力3"), EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 3);
 		ExpectEffect(*this, ShanHe->Id, ShanHe->Effects, TEXT("地势收益1次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1);
+		ExpectEffect(*this, ShanHe->Id, ShanHe->Effects, TEXT("检索未完成月白牌"), EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1);
 		ExpectEffect(*this, ShanHe->Id, ShanHe->TaskNpcRewardEffects, TEXT("奖励每甲20%敌群"), EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 0, EGameXXKCardStatus::None, EGameXXKCardEffectSource::CardOwner, 20);
 	}
 
