@@ -305,6 +305,14 @@ bool FGameXXKYinXueDaoHealsTriggeredBleedRuntimeTest::RunTest(const FString& Par
 	TestEqual(TEXT("Yin Xue consumes one old Bleed then applies its two new layers"),
 		GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed), 5);
 	TestEqual(TEXT("Yin Xue audits its direct hit and triggered Bleed separately"), Result.DamageResults.Num(), 2);
+	TestEqual(TEXT("Yin Xue audits its triggered-Bleed healing attempt"), Result.HealingResults.Num(), 1);
+	if (Result.HealingResults.Num() == 1)
+	{
+		TestEqual(TEXT("Yin Xue healing keeps the Blade source"), Result.HealingResults[0].SourceUnitId, BladeUnitId);
+		TestEqual(TEXT("Yin Xue healing keeps the Blade target"), Result.HealingResults[0].TargetUnitId, BladeUnitId);
+		TestEqual(TEXT("Yin Xue healing requests the four triggered Bleed damage"), Result.HealingResults[0].RequestedHealing, 4);
+		TestEqual(TEXT("Yin Xue healing restores all four requested health"), Result.HealingResults[0].EffectiveHealing, 4);
+	}
 	if (Result.DamageResults.Num() == 2)
 	{
 		TestEqual(TEXT("Yin Xue's live Blood Edge hit requests thirty-two damage"), Result.DamageResults[0].RequestedDamage, 32);
@@ -637,6 +645,7 @@ bool FGameXXKYinXueChargeRestoresConsumptionRuntimeTest::RunTest(const FString& 
 	}
 	Blade = FindUnit(ArmorRuntime, BladeUnitId);
 	TestEqual(TEXT("all ten consumed Armor points are restored after resolution"), Blade ? Blade->Armor : INDEX_NONE, 10);
+	TestTrue(TEXT("internal restore-consumption Armor rollback emits no gain audit packet"), Result.ArmorResults.IsEmpty());
 	return true;
 }
 
@@ -694,6 +703,19 @@ bool FGameXXKYinXueFinishHealsCappedBleedRuntimeTest::RunTest(const FString& Par
 	TestEqual(TEXT("the healing Finish clears immediately when its budget reaches zero"),
 		Runtime.PendingBladeFinish.Rule, EGameXXKBladeFinishRule::None);
 	TestEqual(TEXT("the three-hit trigger still audits three direct and three Bleed packets"), Result.DamageResults.Num(), 6);
+	TestEqual(TEXT("the three Bleed triggers each emit one healing attempt packet"), Result.HealingResults.Num(), 3);
+	if (Result.HealingResults.Num() == 3)
+	{
+		const int32 ExpectedHealing[3] = {5, 4, 3};
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			const FString Context = FString::Printf(TEXT("Yin Xue Finish healing packet %d"), Index);
+			TestEqual(Context + TEXT(" keeps the Blade source"), Result.HealingResults[Index].SourceUnitId, FName(BladeUnitId));
+			TestEqual(Context + TEXT(" keeps the Blade target"), Result.HealingResults[Index].TargetUnitId, FName(BladeUnitId));
+			TestEqual(Context + TEXT(" records its capped request"), Result.HealingResults[Index].RequestedHealing, ExpectedHealing[Index]);
+			TestEqual(Context + TEXT(" records its effective healing"), Result.HealingResults[Index].EffectiveHealing, ExpectedHealing[Index]);
+		}
+	}
 	return true;
 }
 

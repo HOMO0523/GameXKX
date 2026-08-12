@@ -212,6 +212,14 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("healing card removes its declared one DoT stack"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(HealRuntime.Units, TEXT("Ally")), EGameXXKCardStatus::Bleed), 0);
 	TestEqual(TEXT("healing card spends its one shared energy"), HealRuntime.Deck.SharedEnergy, 2);
 	TestEqual(TEXT("zero-mana healing preserves owner mana"), FindRuntimeUnit(HealRuntime.Units, TEXT("Hero"))->Mana, 20);
+	TestEqual(TEXT("healing card emits one positive-attempt audit packet"), HealResult.HealingResults.Num(), 1);
+	if (HealResult.HealingResults.Num() == 1)
+	{
+		TestEqual(TEXT("healing audit keeps the stable card owner"), HealResult.HealingResults[0].SourceUnitId, FName(TEXT("Hero")));
+		TestEqual(TEXT("healing audit keeps the stable selected ally"), HealResult.HealingResults[0].TargetUnitId, FName(TEXT("Ally")));
+		TestEqual(TEXT("healing audit records the declared request"), HealResult.HealingResults[0].RequestedHealing, 12);
+		TestEqual(TEXT("healing audit records the effective restoration"), HealResult.HealingResults[0].EffectiveHealing, 12);
+	}
 
 	TArray<FGameXXKCardCombatUnit> SelfUnits;
 	SelfUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 10, 20, 1));
@@ -668,6 +676,18 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("Liu He protection grants the Sorcerer three Armor"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Sorcerer"))->Armor, 3);
 			TestEqual(TEXT("Liu He protection grants the other ally three Armor"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Ally"))->Armor, 3);
 			TestEqual(TEXT("Liu He protection has no direct damage packet"), XingHuoResult.DamageResults.Num(), 0);
+			TestEqual(TEXT("Liu He protection emits one Armor packet per living ally"), XingHuoResult.ArmorResults.Num(), 2);
+			if (XingHuoResult.ArmorResults.Num() == 2)
+			{
+				TestEqual(TEXT("Liu He owner Armor packet keeps its source"), XingHuoResult.ArmorResults[0].SourceUnitId, FName(TEXT("Sorcerer")));
+				TestEqual(TEXT("Liu He owner Armor packet keeps its target"), XingHuoResult.ArmorResults[0].TargetUnitId, FName(TEXT("Sorcerer")));
+				TestEqual(TEXT("Liu He owner Armor packet records its request"), XingHuoResult.ArmorResults[0].RequestedArmor, 3);
+				TestEqual(TEXT("Liu He owner Armor packet records its effective gain"), XingHuoResult.ArmorResults[0].EffectiveArmor, 3);
+				TestEqual(TEXT("Liu He ally Armor packet keeps its source"), XingHuoResult.ArmorResults[1].SourceUnitId, FName(TEXT("Sorcerer")));
+				TestEqual(TEXT("Liu He ally Armor packet keeps its target"), XingHuoResult.ArmorResults[1].TargetUnitId, FName(TEXT("Ally")));
+				TestEqual(TEXT("Liu He ally Armor packet records its request"), XingHuoResult.ArmorResults[1].RequestedArmor, 3);
+				TestEqual(TEXT("Liu He ally Armor packet records its effective gain"), XingHuoResult.ArmorResults[1].EffectiveArmor, 3);
+			}
 			TestEqual(TEXT("Liu He protection leaves enemy health unchanged"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Enemy"))->HP, 100);
 			TestEqual(TEXT("Liu He protection no longer consumes unrelated Burn"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Burn), 4);
 		}
@@ -695,6 +715,14 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("lifesteal resolves through an enemy reflection without rolling back its hit"), GameXXKCardRules::ResolveCardPlay(LifestealReflectRuntime, LifestealReflectRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), LifestealReflectResult));
 	TestEqual(TEXT("lifesteal only restores the triggered four-point Bleed before the five-point enemy counter"), FindRuntimeUnit(LifestealReflectRuntime.Units, TEXT("Blade"))->HP, 49);
 	TestEqual(TEXT("the enemy receives the live-Bleed-scaled attack and its separate Bleed trigger"), FindRuntimeUnit(LifestealReflectRuntime.Units, TEXT("Enemy"))->HP, 64);
+	TestEqual(TEXT("lifesteal audits its one triggered-Bleed healing attempt"), LifestealReflectResult.HealingResults.Num(), 1);
+	if (LifestealReflectResult.HealingResults.Num() == 1)
+	{
+		TestEqual(TEXT("lifesteal healing keeps the Blade source"), LifestealReflectResult.HealingResults[0].SourceUnitId, FName(TEXT("Blade")));
+		TestEqual(TEXT("lifesteal healing keeps the Blade target"), LifestealReflectResult.HealingResults[0].TargetUnitId, FName(TEXT("Blade")));
+		TestEqual(TEXT("lifesteal healing requests the triggered Bleed damage"), LifestealReflectResult.HealingResults[0].RequestedHealing, 4);
+		TestEqual(TEXT("lifesteal healing records the effective restoration"), LifestealReflectResult.HealingResults[0].EffectiveHealing, 4);
+	}
 	TestEqual(TEXT("direct damage and triggered Bleed remain before the reactive counter in UI audit order"), LifestealReflectResult.DamageResults.Num(), 3);
 	if (LifestealReflectResult.DamageResults.Num() == 3)
 	{

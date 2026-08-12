@@ -303,6 +303,18 @@ bool FGameXXKFormationMasterSwitchRuntimeTest::RunTest(const FString& Parameters
 			{
 				TestEqual(Context + TEXT(" heals the formation owner by four"), Formation->HP, 84);
 				TestEqual(Context + TEXT(" heals every ally by four"), Ally->HP, 84);
+				TestEqual(Context + TEXT(" audits both Forest healing attempts"), Result.HealingResults.Num(), 2);
+				if (Result.HealingResults.Num() == 2)
+				{
+					TestEqual(Context + TEXT(" keeps the Formation source on its Forest packet"), Result.HealingResults[0].SourceUnitId, FName(TEXT("Formation")));
+					TestEqual(Context + TEXT(" targets the Formation owner in its first Forest packet"), Result.HealingResults[0].TargetUnitId, FName(TEXT("Formation")));
+					TestEqual(Context + TEXT(" requests four healing for the Formation owner"), Result.HealingResults[0].RequestedHealing, 4);
+					TestEqual(Context + TEXT(" restores four health to the Formation owner"), Result.HealingResults[0].EffectiveHealing, 4);
+					TestEqual(Context + TEXT(" keeps the Formation source on the ally Forest packet"), Result.HealingResults[1].SourceUnitId, FName(TEXT("Formation")));
+					TestEqual(Context + TEXT(" targets the ally in its second Forest packet"), Result.HealingResults[1].TargetUnitId, FName(TEXT("Ally")));
+					TestEqual(Context + TEXT(" requests four healing for the ally"), Result.HealingResults[1].RequestedHealing, 4);
+					TestEqual(Context + TEXT(" restores four health to the ally"), Result.HealingResults[1].EffectiveHealing, 4);
+				}
 			}
 			else if (Case.Destination == EGameXXKCardTerrain::WaterShore)
 			{
@@ -313,6 +325,18 @@ bool FGameXXKFormationMasterSwitchRuntimeTest::RunTest(const FString& Parameters
 			{
 				TestEqual(Context + TEXT(" grants the formation owner four Armor"), Formation->Armor, 4);
 				TestEqual(Context + TEXT(" grants every ally four Armor"), Ally->Armor, 4);
+				TestEqual(Context + TEXT(" audits both Village Armor attempts"), Result.ArmorResults.Num(), 2);
+				if (Result.ArmorResults.Num() == 2)
+				{
+					TestEqual(Context + TEXT(" keeps the Formation source on its Village packet"), Result.ArmorResults[0].SourceUnitId, FName(TEXT("Formation")));
+					TestEqual(Context + TEXT(" targets the Formation owner in its first Village packet"), Result.ArmorResults[0].TargetUnitId, FName(TEXT("Formation")));
+					TestEqual(Context + TEXT(" requests four Village Armor for the owner"), Result.ArmorResults[0].RequestedArmor, 4);
+					TestEqual(Context + TEXT(" grants four effective Village Armor to the owner"), Result.ArmorResults[0].EffectiveArmor, 4);
+					TestEqual(Context + TEXT(" keeps the Formation source on the ally Village packet"), Result.ArmorResults[1].SourceUnitId, FName(TEXT("Formation")));
+					TestEqual(Context + TEXT(" targets the ally in its second Village packet"), Result.ArmorResults[1].TargetUnitId, FName(TEXT("Ally")));
+					TestEqual(Context + TEXT(" requests four Village Armor for the ally"), Result.ArmorResults[1].RequestedArmor, 4);
+					TestEqual(Context + TEXT(" grants four effective Village Armor to the ally"), Result.ArmorResults[1].EffectiveArmor, 4);
+				}
 				TestEqual(Context + TEXT(" replaces the played card with one drawn card"), Runtime.Deck.Hand.Num(), 5);
 			}
 			else if (Case.Destination == EGameXXKCardTerrain::Cave)
@@ -321,6 +345,18 @@ bool FGameXXKFormationMasterSwitchRuntimeTest::RunTest(const FString& Parameters
 				TestEqual(Context + TEXT(" grants every ally eight Armor"), Ally->Armor, 8);
 				TestEqual(Context + TEXT(" grants the formation owner one Block"), GameXXKCardRules::GetCombatStatusStacks(*Formation, EGameXXKCardStatus::Block), 1);
 				TestEqual(Context + TEXT(" grants every ally one Block"), GameXXKCardRules::GetCombatStatusStacks(*Ally, EGameXXKCardStatus::Block), 1);
+				TestEqual(Context + TEXT(" audits both Cave Armor attempts"), Result.ArmorResults.Num(), 2);
+				if (Result.ArmorResults.Num() == 2)
+				{
+					TestEqual(Context + TEXT(" keeps the Formation source on its Cave packet"), Result.ArmorResults[0].SourceUnitId, FName(TEXT("Formation")));
+					TestEqual(Context + TEXT(" targets the Formation owner in its first Cave packet"), Result.ArmorResults[0].TargetUnitId, FName(TEXT("Formation")));
+					TestEqual(Context + TEXT(" requests eight Cave Armor for the owner"), Result.ArmorResults[0].RequestedArmor, 8);
+					TestEqual(Context + TEXT(" grants eight effective Cave Armor to the owner"), Result.ArmorResults[0].EffectiveArmor, 8);
+					TestEqual(Context + TEXT(" keeps the Formation source on the ally Cave packet"), Result.ArmorResults[1].SourceUnitId, FName(TEXT("Formation")));
+					TestEqual(Context + TEXT(" targets the ally in its second Cave packet"), Result.ArmorResults[1].TargetUnitId, FName(TEXT("Ally")));
+					TestEqual(Context + TEXT(" requests eight Cave Armor for the ally"), Result.ArmorResults[1].RequestedArmor, 8);
+					TestEqual(Context + TEXT(" grants eight effective Cave Armor to the ally"), Result.ArmorResults[1].EffectiveArmor, 8);
+				}
 			}
 		}
 	}

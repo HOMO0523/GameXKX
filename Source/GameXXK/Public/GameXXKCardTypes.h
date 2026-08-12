@@ -1698,6 +1698,24 @@ struct GAMEXXK_API FGameXXKCardHealingResult
 	int32 EffectiveHealing = 0;
 };
 
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardArmorResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName TargetUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RequestedArmor = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 EffectiveArmor = 0;
+};
+
 /** Explicit serializable phase for the card-driven battle runtime. */
 UENUM(BlueprintType)
 enum class EGameXXKCardBattlePhase : uint8
@@ -2329,6 +2347,9 @@ struct GAMEXXK_API FGameXXKCardPlayResult
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKCardHealingResult> HealingResults;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardArmorResult> ArmorResults;
 
 	/** One entry per real Toxic Explosion operation, containing its distinct resolved DOT-type count. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)

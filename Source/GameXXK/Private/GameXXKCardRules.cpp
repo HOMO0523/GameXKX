@@ -2246,6 +2246,34 @@ namespace
 	constexpr uint32 CombatRandomIncrement = 907633515u;
 	constexpr uint32 CombatRandomSalt = 0xA341316Cu;
 
+	int32 ApplyAndRecordHealing(
+		FGameXXKCardPlayResult& Result,
+		const FName SourceUnitId,
+		FGameXXKCardCombatUnit& Target,
+		const int32 RequestedHealing)
+	{
+		FGameXXKCardHealingResult& HealingResult = Result.HealingResults.AddDefaulted_GetRef();
+		HealingResult.SourceUnitId = SourceUnitId;
+		HealingResult.TargetUnitId = Target.UnitId;
+		HealingResult.RequestedHealing = FMath::Max(0, RequestedHealing);
+		HealingResult.EffectiveHealing = GameXXKCardRules::HealCombatUnit(Target, HealingResult.RequestedHealing);
+		return HealingResult.EffectiveHealing;
+	}
+
+	int32 ApplyAndRecordArmor(
+		FGameXXKCardPlayResult& Result,
+		const FName SourceUnitId,
+		FGameXXKCardCombatUnit& Target,
+		const int32 RequestedArmor)
+	{
+		FGameXXKCardArmorResult& ArmorResult = Result.ArmorResults.AddDefaulted_GetRef();
+		ArmorResult.SourceUnitId = SourceUnitId;
+		ArmorResult.TargetUnitId = Target.UnitId;
+		ArmorResult.RequestedArmor = FMath::Max(0, RequestedArmor);
+		ArmorResult.EffectiveArmor = GameXXKCardRules::AddCombatArmor(Target, ArmorResult.RequestedArmor);
+		return ArmorResult.EffectiveArmor;
+	}
+
 	const FGameXXKEnemyDefinition* FindWhiteApeStatusGuardDefinition(const FGameXXKCardCombatUnit& Unit)
 	{
 		if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy || Unit.EnemyDefinitionId.IsNone())
@@ -2256,6 +2284,48 @@ namespace
 		return EnemyDefinition && EnemyDefinition->PassiveId == EGameXXKEnemyPassiveId::WhiteApeStatusGuard
 			? EnemyDefinition
 			: nullptr;
+	}
+
+	bool ResolveWhiteApeStatusGuardAfterStatusAppliedInternal(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKCardCombatUnit& InOutStatusTarget,
+		const FName SourceUnitId,
+		FGameXXKCardPlayResult* InOutResult,
+		FString* OutError)
+	{
+		const FGameXXKEnemyDefinition* EnemyDefinition = FindWhiteApeStatusGuardDefinition(InOutStatusTarget);
+		if (!EnemyDefinition)
+		{
+			return true;
+		}
+
+		FGameXXKEnemyBattleState NewEnemyState;
+		if (const FGameXXKEnemyBattleState* ExistingEnemyState = InOutRuntime.EnemyStates.Find(InOutStatusTarget.UnitId))
+		{
+			NewEnemyState = *ExistingEnemyState;
+		}
+		if (NewEnemyState.DefinitionId.IsNone())
+		{
+			NewEnemyState.DefinitionId = EnemyDefinition->Id;
+		}
+		if (NewEnemyState.DefinitionId != EnemyDefinition->Id)
+		{
+			return SetFailure(OutError, TEXT("White Ape status guard found a mismatched persisted enemy definition."));
+		}
+		if (NewEnemyState.bFirstStatusPassiveAvailable)
+		{
+			if (InOutResult && !SourceUnitId.IsNone())
+			{
+				ApplyAndRecordArmor(*InOutResult, SourceUnitId, InOutStatusTarget, WhiteApeStatusGuardArmor);
+			}
+			else
+			{
+				GameXXKCardRules::AddCombatArmor(InOutStatusTarget, WhiteApeStatusGuardArmor);
+			}
+			NewEnemyState.bFirstStatusPassiveAvailable = false;
+		}
+		InOutRuntime.EnemyStates.Add(InOutStatusTarget.UnitId, MoveTemp(NewEnemyState));
+		return true;
 	}
 
 	bool IsConcreteCombatStatus(const EGameXXKCardStatus Status)
@@ -2803,32 +2873,12 @@ bool GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(
 	FGameXXKCardCombatUnit& InOutStatusTarget,
 	FString* OutError)
 {
-	const FGameXXKEnemyDefinition* EnemyDefinition = FindWhiteApeStatusGuardDefinition(InOutStatusTarget);
-	if (!EnemyDefinition)
-	{
-		return true;
-	}
-
-	FGameXXKEnemyBattleState NewEnemyState;
-	if (const FGameXXKEnemyBattleState* ExistingEnemyState = InOutRuntime.EnemyStates.Find(InOutStatusTarget.UnitId))
-	{
-		NewEnemyState = *ExistingEnemyState;
-	}
-	if (NewEnemyState.DefinitionId.IsNone())
-	{
-		NewEnemyState.DefinitionId = EnemyDefinition->Id;
-	}
-	if (NewEnemyState.DefinitionId != EnemyDefinition->Id)
-	{
-		return SetFailure(OutError, TEXT("White Ape status guard found a mismatched persisted enemy definition."));
-	}
-	if (NewEnemyState.bFirstStatusPassiveAvailable)
-	{
-		GameXXKCardRules::AddCombatArmor(InOutStatusTarget, WhiteApeStatusGuardArmor);
-		NewEnemyState.bFirstStatusPassiveAvailable = false;
-	}
-	InOutRuntime.EnemyStates.Add(InOutStatusTarget.UnitId, MoveTemp(NewEnemyState));
-	return true;
+	return ResolveWhiteApeStatusGuardAfterStatusAppliedInternal(
+		InOutRuntime,
+		InOutStatusTarget,
+		NAME_None,
+		nullptr,
+		OutError);
 }
 
 bool GameXXKCardRules::ResetWhiteApeStatusGuardsForPlayerRound(
@@ -5923,11 +5973,18 @@ namespace
 		FGameXXKCardCombatUnit& InOutTarget,
 		const EGameXXKCardStatus Status,
 		const int32 Magnitude,
-		FString& OutError)
+		FString& OutError,
+		FGameXXKCardPlayResult* InOutResult = nullptr,
+		const FName SourceUnitId = NAME_None)
 	{
 		const int32 Applied = GameXXKCardRules::AddCombatStatus(InOutTarget, Status, Magnitude);
 		if (Applied > 0
-			&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(InOutRuntime, InOutTarget, &OutError))
+			&& !ResolveWhiteApeStatusGuardAfterStatusAppliedInternal(
+				InOutRuntime,
+				InOutTarget,
+				SourceUnitId,
+				InOutResult,
+				&OutError))
 		{
 			return false;
 		}
@@ -6381,11 +6438,7 @@ namespace
 				FGameXXKCardCombatUnit* CurrentAlly = FindCombatUnitById(InOutRuntime.Units, AllyUnitId);
 				if (CurrentAlly && CurrentAlly->bLiving)
 				{
-					FGameXXKCardHealingResult& HealingResult = InOutResult.HealingResults.AddDefaulted_GetRef();
-					HealingResult.SourceUnitId = Effect.SourceCharacterId;
-					HealingResult.TargetUnitId = AllyUnitId;
-					HealingResult.RequestedHealing = 2;
-					HealingResult.EffectiveHealing = GameXXKCardRules::HealCombatUnit(*CurrentAlly, 2);
+					ApplyAndRecordHealing(InOutResult, Effect.SourceCharacterId, *CurrentAlly, 2);
 				}
 			}
 		}
@@ -6555,7 +6608,9 @@ namespace
 						*FormulaOwner,
 						EGameXXKCardStatus::Medicine,
 						HealthChangeCount,
-						OutError))
+						OutError,
+						&InOutResult,
+						FormulaOwner->UnitId))
 				{
 					return false;
 				}
@@ -6564,6 +6619,7 @@ namespace
 			case EGameXXKHealerFormulaKind::HighEnergyAndSixMedicine:
 				if (PaidEnergyCost >= 2 && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
 				{
+					const FName FormulaOwnerUnitId = FormulaOwner->UnitId;
 					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
 					TArray<FName> AllyUnitIds;
 					for (const FGameXXKCardCombatUnit& Ally : InOutRuntime.Units)
@@ -6604,7 +6660,7 @@ namespace
 						FGameXXKCardCombatUnit* CurrentAlly = FindCombatUnitById(InOutRuntime.Units, AllyUnitId);
 						if (CurrentAlly && CurrentAlly->bLiving)
 						{
-							GameXXKCardRules::HealCombatUnit(*CurrentAlly, 2);
+							ApplyAndRecordHealing(InOutResult, FormulaOwnerUnitId, *CurrentAlly, 2);
 						}
 					}
 				}
@@ -6621,7 +6677,7 @@ namespace
 				if (bResolvedHealing && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
 				{
 					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
-					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 2, OutError)) return false;
+					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 2, OutError, &InOutResult, FormulaOwner->UnitId)) return false;
 				}
 				break;
 			}
@@ -6630,7 +6686,7 @@ namespace
 				const int64 Total = static_cast<int64>(Formula.Progress) + CleansedPartyDotLayers;
 				const int32 Rewards = static_cast<int32>(Total / 3);
 				Formula.Progress = static_cast<int32>(Total % 3);
-				if (Rewards > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, Rewards, OutError)) return false;
+				if (Rewards > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, Rewards, OutError, &InOutResult, FormulaOwner->UnitId)) return false;
 				break;
 			}
 			case EGameXXKHealerFormulaKind::LowHealthCrossMedicine:
@@ -6655,11 +6711,11 @@ namespace
 					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
 					if (Formula.Kind == EGameXXKHealerFormulaKind::LowHealthCrossMedicine)
 					{
-						if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 3, OutError)) return false;
+						if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 3, OutError, &InOutResult, FormulaOwner->UnitId)) return false;
 					}
 					else if (FGameXXKCardCombatUnit* CrossedUnit = FindCombatUnitById(InOutRuntime.Units, CrossedUnitId))
 					{
-						if (!GrantStatusFromCardEffect(InOutRuntime, *CrossedUnit, EGameXXKCardStatus::Agility, 2, OutError)) return false;
+						if (!GrantStatusFromCardEffect(InOutRuntime, *CrossedUnit, EGameXXKCardStatus::Agility, 2, OutError, &InOutResult, FormulaOwner->UnitId)) return false;
 					}
 				}
 				break;
@@ -6698,7 +6754,13 @@ namespace
 					if (bBleedRemoved)
 					{
 						Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
-						for (FGameXXKCardCombatUnit& Ally : InOutRuntime.Units) if (Ally.bLiving && Ally.Side == EGameXXKCardTargetSide::Party) GameXXKCardRules::AddCombatArmor(Ally, 2);
+						for (FGameXXKCardCombatUnit& Ally : InOutRuntime.Units)
+						{
+							if (Ally.bLiving && Ally.Side == EGameXXKCardTargetSide::Party)
+							{
+								ApplyAndRecordArmor(InOutResult, FormulaOwner->UnitId, Ally, 2);
+							}
+						}
 					}
 				}
 				break;
@@ -6721,8 +6783,11 @@ namespace
 					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
 					if (FGameXXKCardCombatUnit* QualifiedTarget = FindCombatUnitById(InOutRuntime.Units, QualifiedTargetId))
 					{
-						if (QualifiedTarget->Side == EGameXXKCardTargetSide::Party) GameXXKCardRules::AddCombatArmor(*QualifiedTarget, 4);
-						else if (!GrantStatusFromCardEffect(InOutRuntime, *QualifiedTarget, EGameXXKCardStatus::Vulnerability, 1, OutError)) return false;
+						if (QualifiedTarget->Side == EGameXXKCardTargetSide::Party)
+						{
+							ApplyAndRecordArmor(InOutResult, FormulaOwner->UnitId, *QualifiedTarget, 4);
+						}
+						else if (!GrantStatusFromCardEffect(InOutRuntime, *QualifiedTarget, EGameXXKCardStatus::Vulnerability, 1, OutError, &InOutResult, FormulaOwner->UnitId)) return false;
 					}
 				}
 				break;
@@ -6739,7 +6804,7 @@ namespace
 				}
 				break;
 			case EGameXXKHealerFormulaKind::PoisonDamageMedicine:
-				if (PoisonPacketCount > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, PoisonPacketCount, OutError)) return false;
+				if (PoisonPacketCount > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, PoisonPacketCount, OutError, &InOutResult, FormulaOwner->UnitId)) return false;
 				break;
 			case EGameXXKHealerFormulaKind::BleedPoisonMark:
 			{
@@ -6755,7 +6820,7 @@ namespace
 						&& GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed) > 0
 						&& GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Poison) > 0)
 					{
-						if (!GrantStatusFromCardEffect(InOutRuntime, *Enemy, EGameXXKCardStatus::Mark, 1, OutError)) return false;
+						if (!GrantStatusFromCardEffect(InOutRuntime, *Enemy, EGameXXKCardStatus::Mark, 1, OutError, &InOutResult, FormulaOwner->UnitId)) return false;
 						Formula.TriggeredUnitIdsThisRound.Add(EnemyId);
 					}
 				}
@@ -6765,7 +6830,7 @@ namespace
 				if (PoisonedEnemyIds.Num() >= 2 && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
 				{
 					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
-					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 2, OutError) || !DrawFormulaCards(1)) return false;
+					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 2, OutError, &InOutResult, FormulaOwner->UnitId) || !DrawFormulaCards(1)) return false;
 				}
 				break;
 			case EGameXXKHealerFormulaKind::DualDotExplosionMedicine:
@@ -6775,7 +6840,7 @@ namespace
 				{
 					QualifiedExplosions += DistinctDotTypeCount >= 2 ? 1 : 0;
 				}
-				if (QualifiedExplosions > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, QualifiedExplosions * 2, OutError)) return false;
+				if (QualifiedExplosions > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, QualifiedExplosions * 2, OutError, &InOutResult, FormulaOwner->UnitId)) return false;
 				break;
 			}
 			case EGameXXKHealerFormulaKind::TwoBleedPacketsMedicine:
@@ -6783,7 +6848,7 @@ namespace
 				const int64 Total = static_cast<int64>(Formula.Progress) + BleedPacketCount;
 				const int32 Rewards = static_cast<int32>(Total / 2);
 				Formula.Progress = static_cast<int32>(Total % 2);
-				if (Rewards > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, Rewards, OutError)) return false;
+				if (Rewards > 0 && !GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, Rewards, OutError, &InOutResult, FormulaOwner->UnitId)) return false;
 				break;
 			}
 			case EGameXXKHealerFormulaKind::GroupDirectDamageEnergy:
@@ -6808,7 +6873,7 @@ namespace
 				if (bQualified && Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
 				{
 					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
-					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 1, OutError) || !DrawFormulaCards(1)) return false;
+					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Medicine, 1, OutError, &InOutResult, FormulaOwner->UnitId) || !DrawFormulaCards(1)) return false;
 				}
 				break;
 			}
@@ -6817,7 +6882,7 @@ namespace
 					&& Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
 				{
 					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
-					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Momentum, 1, OutError) || !DrawFormulaCards(1)) return false;
+					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Momentum, 1, OutError, &InOutResult, FormulaOwner->UnitId) || !DrawFormulaCards(1)) return false;
 				}
 				break;
 			default:
@@ -7628,7 +7693,8 @@ namespace
 		const FName TriggerSourceUnitId,
 		const int32 TriggeredHealthDamage,
 		int32& OutConsumedStacks,
-		FString& OutError)
+		FString& OutError,
+		FGameXXKCardPlayResult* InOutResult = nullptr)
 	{
 		OutConsumedStacks = 0;
 		if (DefaultConsumption < 0)
@@ -7680,9 +7746,10 @@ namespace
 				OutError = TEXT("A Bleed-healing Blade Finish lost its living owner.");
 				return false;
 			}
-			const int32 AppliedHealing = GameXXKCardRules::HealCombatUnit(
-				*Blade,
-				FMath::Min(TriggeredHealthDamage, Finish.RemainingTriggers));
+			const int32 RequestedHealing = FMath::Min(TriggeredHealthDamage, Finish.RemainingTriggers);
+			const int32 AppliedHealing = InOutResult
+				? ApplyAndRecordHealing(*InOutResult, Finish.SourceOwnerUnitId, *Blade, RequestedHealing)
+				: GameXXKCardRules::HealCombatUnit(*Blade, RequestedHealing);
 			Finish.RemainingTriggers -= AppliedHealing;
 			if (Finish.RemainingTriggers == 0)
 			{
@@ -7744,7 +7811,8 @@ namespace
 			SourceUnitId,
 			BleedResult.HealthDamage,
 			BleedResult.StatusStacksConsumed,
-			OutError))
+			OutError,
+			&InOutResult))
 		{
 			return false;
 		}
@@ -8051,7 +8119,7 @@ namespace
 					{
 						if (FGameXXKCardCombatUnit* BleedHealer = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId))
 						{
-							GameXXKCardRules::HealCombatUnit(*BleedHealer, TriggeredBleedDamage);
+							ApplyAndRecordHealing(InOutResult, Instance.OwnerUnitId, *BleedHealer, TriggeredBleedDamage);
 						}
 					}
 				}
@@ -9067,6 +9135,7 @@ namespace
 		const FName PreferredEnemyTargetUnitId,
 		const EGameXXKCardTerrain Terrain,
 		const int32 Repetitions,
+		FGameXXKCardPlayResult& InOutResult,
 		FString& OutError)
 	{
 		if (!IsConcreteTerrain(Terrain) || Repetitions <= 0)
@@ -9095,7 +9164,7 @@ namespace
 					InOutRuntime,
 					SourceInstance.OwnerUnitId,
 					PreferredEnemyTargetUnitId);
-				if (Target && !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Burn, 2, OutError))
+				if (Target && !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Burn, 2, OutError, &InOutResult, SourceInstance.OwnerUnitId))
 				{
 					return false;
 				}
@@ -9108,8 +9177,8 @@ namespace
 					SourceInstance.OwnerUnitId,
 					PreferredEnemyTargetUnitId);
 				if (Target
-					&& (!GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Vulnerability, 2, OutError)
-						|| !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Mark, 1, OutError)))
+					&& (!GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Vulnerability, 2, OutError, &InOutResult, SourceInstance.OwnerUnitId)
+						|| !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Mark, 1, OutError, &InOutResult, SourceInstance.OwnerUnitId)))
 				{
 					return false;
 				}
@@ -9120,7 +9189,7 @@ namespace
 				{
 					if (Candidate.bLiving && Candidate.Side == Owner->Side)
 					{
-						GameXXKCardRules::HealCombatUnit(Candidate, 4);
+						ApplyAndRecordHealing(InOutResult, SourceInstance.OwnerUnitId, Candidate, 4);
 					}
 				}
 				break;
@@ -9146,7 +9215,7 @@ namespace
 				{
 					if (Candidate.bLiving && Candidate.Side == Owner->Side)
 					{
-						GameXXKCardRules::AddCombatArmor(Candidate, 4);
+						ApplyAndRecordArmor(InOutResult, SourceInstance.OwnerUnitId, Candidate, 4);
 					}
 				}
 				break;
@@ -9173,7 +9242,7 @@ namespace
 					{
 						continue;
 					}
-					GameXXKCardRules::AddCombatArmor(*Ally, 8);
+					ApplyAndRecordArmor(InOutResult, SourceInstance.OwnerUnitId, *Ally, 8);
 					if (!RegisterPartyReactionUses(
 						InOutRuntime,
 						SourceInstance,
@@ -9332,6 +9401,7 @@ namespace
 					CardTargetIds.Num() == 1 ? CardTargetIds[0] : NAME_None,
 					BenefitTerrain,
 					Repetitions,
+					InOutResult,
 					OutError))
 				{
 					return false;
@@ -9928,14 +9998,9 @@ namespace
 					const int64 MultiplierPercent = FMath::Max<int64>(0, 100 + static_cast<int64>(HealingBonusPercent));
 					const int64 FinalHealing = BaseHealing * MultiplierPercent / 100 + HealingFlatBonus;
 					const int32 RequestedHealing = static_cast<int32>(FMath::Clamp<int64>(FinalHealing, 0, MAX_int32));
-					const int32 EffectiveHealing = GameXXKCardRules::HealCombatUnit(*Target, RequestedHealing);
-					if (EffectiveHealing > 0)
+					if (RequestedHealing > 0)
 					{
-						FGameXXKCardHealingResult& HealingResult = InOutResult.HealingResults.AddDefaulted_GetRef();
-						HealingResult.SourceUnitId = Owner->UnitId;
-						HealingResult.TargetUnitId = Target->UnitId;
-						HealingResult.RequestedHealing = RequestedHealing;
-						HealingResult.EffectiveHealing = EffectiveHealing;
+						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, RequestedHealing);
 					}
 					break;
 				}
@@ -9963,15 +10028,7 @@ namespace
 					}
 					if (Target->Side == Owner->Side)
 					{
-						const int32 EffectiveHealing = GameXXKCardRules::HealCombatUnit(*Target, static_cast<int32>(RawAmount));
-						if (EffectiveHealing > 0)
-						{
-							FGameXXKCardHealingResult& HealingResult = InOutResult.HealingResults.AddDefaulted_GetRef();
-							HealingResult.SourceUnitId = Owner->UnitId;
-							HealingResult.TargetUnitId = Target->UnitId;
-							HealingResult.RequestedHealing = static_cast<int32>(RawAmount);
-							HealingResult.EffectiveHealing = EffectiveHealing;
-						}
+						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, static_cast<int32>(RawAmount));
 					}
 					else
 					{
@@ -10007,15 +10064,7 @@ namespace
 					}
 					if (Target->Side == Owner->Side)
 					{
-						const int32 EffectiveHealing = GameXXKCardRules::HealCombatUnit(*Target, Effect.Magnitude);
-						if (EffectiveHealing > 0)
-						{
-							FGameXXKCardHealingResult& HealingResult = InOutResult.HealingResults.AddDefaulted_GetRef();
-							HealingResult.SourceUnitId = Owner->UnitId;
-							HealingResult.TargetUnitId = Target->UnitId;
-							HealingResult.RequestedHealing = Effect.Magnitude;
-							HealingResult.EffectiveHealing = EffectiveHealing;
-						}
+						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, Effect.Magnitude);
 					}
 					else
 					{
@@ -10043,7 +10092,10 @@ namespace
 					break;
 				}
 				case EGameXXKCardEffectType::AddArmor:
-					GameXXKCardRules::AddCombatArmor(*Target, Effect.Magnitude);
+					if (Effect.Magnitude > 0)
+					{
+						ApplyAndRecordArmor(InOutResult, Owner->UnitId, *Target, Effect.Magnitude);
+					}
 					break;
 				case EGameXXKCardEffectType::RetainArmorNextRound:
 					if ((Effect.Target != EGameXXKCardEffectTarget::AllAllies
@@ -10069,7 +10121,10 @@ namespace
 						OutError = TEXT("Armor from current Mana exceeds the supported range.");
 						return false;
 					}
-					GameXXKCardRules::AddCombatArmor(*Target, static_cast<int32>(ArmorGain));
+					if (ArmorGain > 0)
+					{
+						ApplyAndRecordArmor(InOutResult, Owner->UnitId, *Target, static_cast<int32>(ArmorGain));
+					}
 					break;
 				}
 				case EGameXXKCardEffectType::GainMana:
@@ -10101,7 +10156,10 @@ namespace
 						return false;
 					}
 					Target->Mana = static_cast<int32>(FMath::Min<int64>(Target->MaxMana, RawMana));
-					GameXXKCardRules::AddCombatArmor(*Target, static_cast<int32>(ArmorGain));
+					if (ArmorGain > 0)
+					{
+						ApplyAndRecordArmor(InOutResult, Owner->UnitId, *Target, static_cast<int32>(ArmorGain));
+					}
 					break;
 				}
 				case EGameXXKCardEffectType::GainManaPerConsumedStatus:
@@ -10144,7 +10202,9 @@ namespace
 							*Target,
 							EGameXXKCardStatus::Medicine,
 							static_cast<int32>(RawMedicine),
-							OutError))
+							OutError,
+							&InOutResult,
+							Owner->UnitId))
 					{
 						return false;
 					}
@@ -10158,7 +10218,9 @@ namespace
 						*Target,
 						Effect.Status,
 						Effect.Magnitude,
-						OutError))
+						OutError,
+						&InOutResult,
+						Owner->UnitId))
 					{
 						return false;
 					}
@@ -10259,7 +10321,8 @@ namespace
 						TriggerSourceUnitId,
 						TriggerResult.HealthDamage,
 						TriggerResult.StatusStacksConsumed,
-						OutError))
+						OutError,
+						&InOutResult))
 					{
 						return false;
 					}
@@ -10329,7 +10392,8 @@ namespace
 							TriggerOwnerId,
 							TriggerResult.HealthDamage,
 							TriggerResult.StatusStacksConsumed,
-							OutError))
+							OutError,
+							&InOutResult))
 						{
 							return false;
 						}
@@ -12257,6 +12321,7 @@ namespace
 				Modifier.OriginalSelectedTargetUnitId,
 				InOutRuntime.Terrain,
 				Definition.Magnitude,
+				InOutResult,
 				OutError);
 		}
 		TArray<FName> RecipientUnitIds;
@@ -12300,7 +12365,9 @@ namespace
 						*Recipient,
 						Definition.Status,
 						Definition.Magnitude,
-						OutError))
+						OutError,
+						&InOutResult,
+						Modifier.SourceUnitId))
 					{
 						return false;
 					}
@@ -12400,7 +12467,8 @@ namespace
 				Modifier.SourceUnitId,
 				DamageResult.HealthDamage,
 				DamageResult.StatusStacksConsumed,
-				OutError))
+				OutError,
+				&InOutResult))
 			{
 				return false;
 			}
@@ -13353,6 +13421,7 @@ namespace
 		InOutRewardResult.DamageResults.Append(MoveTemp(NestedResult.DamageResults));
 		InOutRewardResult.StatusChanges.Append(MoveTemp(NestedResult.StatusChanges));
 		InOutRewardResult.HealingResults.Append(MoveTemp(NestedResult.HealingResults));
+		InOutRewardResult.ArmorResults.Append(MoveTemp(NestedResult.ArmorResults));
 		InOutRewardResult.ToxicExplosionDistinctDotTypeCounts.Append(MoveTemp(NestedResult.ToxicExplosionDistinctDotTypeCounts));
 		InOutRewardResult.HeavyArrowChargeConsumed += NestedResult.HeavyArrowChargeConsumed;
 		InOutRewardResult.HeavyArrowExtraAttackCount += NestedResult.HeavyArrowExtraAttackCount;
@@ -13383,7 +13452,14 @@ namespace
 			return true;
 		}
 		const int32 Before = GameXXKCardRules::GetCombatStatusStacks(*Target, Status);
-		if (!GrantStatusFromCardEffect(InOutRuntime, *Target, Status, Stacks, OutError))
+		if (!GrantStatusFromCardEffect(
+			InOutRuntime,
+			*Target,
+			Status,
+			Stacks,
+			OutError,
+			&InOutResult,
+			InOutResult.OwnerUnitId))
 		{
 			return false;
 		}
@@ -13789,7 +13865,11 @@ namespace
 					OutError = TEXT("The Universal Ice reward lost its owner before its armor refund.");
 					return false;
 				}
-				GameXXKCardRules::AddCombatArmor(*CurrentOwner, ConsumedArmor / 4);
+				const int32 RefundedArmor = ConsumedArmor / 4;
+				if (RefundedArmor > 0)
+				{
+					ApplyAndRecordArmor(OutResult, OwnerUnitId, *CurrentOwner, RefundedArmor);
+				}
 				return ResolveEffects({
 					MakeTaskRewardEffect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1),
 					MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2)});
@@ -14050,6 +14130,7 @@ namespace
 					return false;
 				}
 				InOutActiveResult.DamageResults.Append(MoveTemp(ReplayResult.DamageResults));
+				InOutActiveResult.ArmorResults.Append(MoveTemp(ReplayResult.ArmorResults));
 			}
 
 			FGameXXKCardPlayResult RewardResult;
@@ -14063,6 +14144,7 @@ namespace
 				return false;
 			}
 			InOutActiveResult.DamageResults.Append(MoveTemp(RewardResult.DamageResults));
+			InOutActiveResult.ArmorResults.Append(MoveTemp(RewardResult.ArmorResults));
 			InOutActiveResult.AutomaticResolutionCount += 4;
 			InOutRuntime.TaskNpcSpellTasks.RemoveAt(TaskIndex, 1, EAllowShrinking::No);
 		}
@@ -15239,6 +15321,7 @@ bool GameXXKCardRules::ResolveCardPlay(
 			NewResult.DamageResults.Append(MoveTemp(AutomaticResult.DamageResults));
 			NewResult.StatusChanges.Append(MoveTemp(AutomaticResult.StatusChanges));
 			NewResult.HealingResults.Append(MoveTemp(AutomaticResult.HealingResults));
+			NewResult.ArmorResults.Append(MoveTemp(AutomaticResult.ArmorResults));
 			NewResult.ToxicExplosionDistinctDotTypeCounts.Append(MoveTemp(AutomaticResult.ToxicExplosionDistinctDotTypeCounts));
 			NewResult.bOpenedPendingChoice |= AutomaticResult.bOpenedPendingChoice;
 			NewResult.AutomaticResolutionCount += AutomaticResult.AutomaticResolutionCount;
@@ -15276,6 +15359,7 @@ bool GameXXKCardRules::ResolveCardPlay(
 			NewResult.DamageResults.Append(MoveTemp(AutomaticResult.DamageResults));
 			NewResult.StatusChanges.Append(MoveTemp(AutomaticResult.StatusChanges));
 			NewResult.HealingResults.Append(MoveTemp(AutomaticResult.HealingResults));
+			NewResult.ArmorResults.Append(MoveTemp(AutomaticResult.ArmorResults));
 			NewResult.ToxicExplosionDistinctDotTypeCounts.Append(MoveTemp(AutomaticResult.ToxicExplosionDistinctDotTypeCounts));
 			NewResult.bOpenedPendingChoice |= AutomaticResult.bOpenedPendingChoice;
 			NewResult.AutomaticResolutionCount += AutomaticResult.AutomaticResolutionCount;
@@ -15308,6 +15392,7 @@ bool GameXXKCardRules::ResolveCardPlay(
 			NewResult.DamageResults.Append(MoveTemp(AutomaticResult.DamageResults));
 			NewResult.StatusChanges.Append(MoveTemp(AutomaticResult.StatusChanges));
 			NewResult.HealingResults.Append(MoveTemp(AutomaticResult.HealingResults));
+			NewResult.ArmorResults.Append(MoveTemp(AutomaticResult.ArmorResults));
 			NewResult.ToxicExplosionDistinctDotTypeCounts.Append(MoveTemp(AutomaticResult.ToxicExplosionDistinctDotTypeCounts));
 			NewResult.bOpenedPendingChoice |= AutomaticResult.bOpenedPendingChoice;
 			NewResult.AutomaticResolutionCount += AutomaticResult.AutomaticResolutionCount;
