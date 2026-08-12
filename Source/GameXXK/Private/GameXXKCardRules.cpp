@@ -14145,6 +14145,16 @@ namespace
 	}
 }
 
+#if WITH_DEV_AUTOMATION_TESTS
+namespace GameXXKCardRulesTestBridge
+{
+	bool IsMedicineReverseDamage(const FGameXXKCardDamageResult& Result, const FName OwnerUnitId)
+	{
+		return ::IsMedicineReverseDamage(Result, OwnerUnitId);
+	}
+}
+#endif
+
 bool GameXXKCardRules::InitializeCardBattleRuntime(
 	FGameXXKCardBattleRuntime& InOutRuntime,
 	const TArray<FGameXXKCardInstance>& Instances,

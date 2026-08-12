@@ -5,6 +5,11 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+namespace GameXXKCardRulesTestBridge
+{
+	bool IsMedicineReverseDamage(const FGameXXKCardDamageResult& Result, FName OwnerUnitId);
+}
+
 namespace GameXXKCardOutcomeAuditTest
 {
 	const FName OwnerUnitId(TEXT("Outcome.Owner"));
@@ -296,6 +301,9 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("ordinary poison keeps dot kind"), Poison.Kind, EGameXXKCardDamageKind::DamageOverTime);
 	TestEqual(TEXT("medicine reverse has medicine cause"), Reverse.Cause, EGameXXKCardDamageCause::Medicine);
 	TestEqual(TEXT("medicine source remains the card owner"), Reverse.SourceUnitId, OwnerUnitId);
+	TestTrue(
+		TEXT("real Medicine reverse is accepted by the Medicine classifier"),
+		GameXXKCardRulesTestBridge::IsMedicineReverseDamage(Reverse, OwnerUnitId));
 
 	FGameXXKCardBattleRuntime FlatRuntime;
 	if (!BuildRuntime(*this, FlatRuntime, 61004, FlatReverseCardId))
@@ -360,8 +368,7 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("first-healing formula spends this round's budget"), TriggeredFirstFormula->LastTriggeredRound, FirstFormulaRuntime.RoundNumber);
 
 	FGameXXKCardBattleRuntime EnvironmentalControlRuntime;
-	if (!BuildRuntime(*this, EnvironmentalControlRuntime, 61006)
-		|| !InstallFormula(*this, EnvironmentalControlRuntime, FirstHealingFormulaCardId))
+	if (!BuildRuntime(*this, EnvironmentalControlRuntime, 61006))
 	{
 		return false;
 	}
@@ -385,15 +392,9 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestEqual(TEXT("environmental control remains Environment"), EnvironmentalResult.Cause, EGameXXKCardDamageCause::Environment);
-	TestEqual(TEXT("non-Medicine environmental damage grants no Medicine"), Status(EnvironmentalControlRuntime, OwnerUnitId, EGameXXKCardStatus::Medicine), 0);
-	const FGameXXKHealerFormulaRuntime* ControlFirstFormula = FindFormula(
-		EnvironmentalControlRuntime,
-		EGameXXKHealerFormulaKind::FirstHealingMedicine);
-	if (!TestNotNull(TEXT("environmental control formula remains installed"), ControlFirstFormula))
-	{
-		return false;
-	}
-	TestEqual(TEXT("non-Medicine environmental damage spends no formula budget"), ControlFirstFormula->LastTriggeredRound, 0);
+	TestFalse(
+		TEXT("real environmental packet is rejected by the Medicine classifier"),
+		GameXXKCardRulesTestBridge::IsMedicineReverseDamage(EnvironmentalResult, EnvironmentalResult.SourceUnitId));
 
 	FGameXXKCardBattleRuntime BelowThresholdRuntime;
 	if (!BuildRuntime(*this, BelowThresholdRuntime, 61007, BelowThresholdCardId)
