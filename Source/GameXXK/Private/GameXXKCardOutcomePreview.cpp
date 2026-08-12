@@ -175,6 +175,10 @@ namespace
 	void AddDamage(FTargetAggregate& Aggregate, const FGameXXKCardDamageResult& Packet)
 	{
 		const EDamageBucket Bucket = GetDamageBucket(Packet);
+		if (Bucket == EDamageBucket::None)
+		{
+			return;
+		}
 		MarkDamageAttempt(Aggregate, Bucket);
 		switch (Bucket)
 		{
@@ -395,6 +399,22 @@ namespace
 		return Line;
 	}
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+namespace GameXXKCardOutcomePreviewTestBridge
+{
+	FGameXXKCardOutcomeTarget AggregateDamagePackets(
+		const TArray<FGameXXKCardDamageResult>& Packets)
+	{
+		FTargetAggregate Aggregate;
+		for (const FGameXXKCardDamageResult& Packet : Packets)
+		{
+			AddDamage(Aggregate, Packet);
+		}
+		return Aggregate.Target;
+	}
+}
+#endif
 
 bool FGameXXKCardOutcomePreviewRules::Build(
 	const FGameXXKRuntimeState& State,

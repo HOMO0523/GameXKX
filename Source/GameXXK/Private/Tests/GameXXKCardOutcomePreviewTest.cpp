@@ -11,6 +11,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+namespace GameXXKCardOutcomePreviewTestBridge
+{
+	FGameXXKCardOutcomeTarget AggregateDamagePackets(
+		const TArray<FGameXXKCardDamageResult>& Packets);
+}
+
 namespace GameXXKCardOutcomePreviewTest
 {
 	const FName OwnerUnitId(TEXT("Hero"));
@@ -1067,6 +1073,43 @@ bool FGameXXKCardOutcomePreviewHeavyArrowPassiveAndLethalTest::RunTest(const FSt
 	}
 	TestEqual(TEXT("White Ape preview includes its real first-status armor packet"),
 		WhiteApePreview.FocusedTarget->EffectiveArmor, 8);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardOutcomePreviewExcludedDamageDoesNotPropagateFlagsTest,
+	"GameXXK.Data.CardOutcomePreview.Rules.ExcludedDamageDoesNotPropagateFlags",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardOutcomePreviewExcludedDamageDoesNotPropagateFlagsTest::RunTest(const FString& Parameters)
+{
+	FGameXXKCardDamageResult DirectPacket;
+	DirectPacket.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+	DirectPacket.Cause = EGameXXKCardDamageCause::DirectAttack;
+	DirectPacket.HealthDamage = 7;
+	DirectPacket.TargetHealthBefore = 20;
+	DirectPacket.TargetHealthAfter = 13;
+
+	FGameXXKCardDamageResult ExcludedPacket;
+	ExcludedPacket.Kind = EGameXXKCardDamageKind::EnvironmentalHealthLoss;
+	ExcludedPacket.Cause = EGameXXKCardDamageCause::Environment;
+	ExcludedPacket.HealthDamage = 13;
+	ExcludedPacket.TargetHealthBefore = 13;
+	ExcludedPacket.TargetHealthAfter = 0;
+	ExcludedPacket.bAvoidedByAgility = true;
+	ExcludedPacket.bRedirected = true;
+
+	TArray<FGameXXKCardDamageResult> Packets;
+	Packets.Add(DirectPacket);
+	Packets.Add(ExcludedPacket);
+	const FGameXXKCardOutcomeTarget Aggregate =
+		GameXXKCardOutcomePreviewTestBridge::AggregateDamagePackets(Packets);
+
+	TestEqual(TEXT("displayable direct damage remains aggregated"), Aggregate.DirectDamage, 7);
+	TestEqual(TEXT("excluded environment damage remains outside linked damage"), Aggregate.LinkedDamage, 0);
+	TestFalse(TEXT("excluded packet cannot mark displayed damage avoided"), Aggregate.bAvoided);
+	TestFalse(TEXT("excluded packet cannot mark displayed damage redirected"), Aggregate.bRedirected);
+	TestFalse(TEXT("excluded packet cannot mark displayed damage lethal"), Aggregate.bLethal);
 	return true;
 }
 
