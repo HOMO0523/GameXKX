@@ -143,11 +143,16 @@ namespace
 			return EDamageBucket::Toxic;
 		case EGameXXKCardDamageCause::Medicine:
 			return EDamageBucket::Medicine;
+		case EGameXXKCardDamageCause::Relic:
+		case EGameXXKCardDamageCause::Counter:
+		case EGameXXKCardDamageCause::Block:
+			return EDamageBucket::Linked;
+		case EGameXXKCardDamageCause::SelfLoss:
+		case EGameXXKCardDamageCause::Environment:
 		case EGameXXKCardDamageCause::Rot:
 		case EGameXXKCardDamageCause::Invalid:
-			return EDamageBucket::None;
 		default:
-			return EDamageBucket::Linked;
+			return EDamageBucket::None;
 		}
 	}
 
@@ -493,13 +498,37 @@ bool FGameXXKCardOutcomePreviewRules::Build(
 		&& !(bHasGroupPacket && HoveredBefore->Side == EGameXXKCardTargetSide::Enemy))
 	{
 		FTargetAggregate Focused = MakeAggregate(State.CardRun.ActiveBattle, *HoveredBefore);
-		if (const FTargetAggregate* Actual = ActualAggregates.Find(HoveredTargetUnitId))
+		if (HoveredBefore->Side == EGameXXKCardTargetSide::Party)
 		{
-			Focused = *Actual;
+			for (const FGameXXKCardHealingResult& Healing : PlayResult.HealingResults)
+			{
+				if (Healing.TargetUnitId == HoveredTargetUnitId)
+				{
+					Focused.bHealingAttempt = true;
+					Focused.Target.EffectiveHealing = AddActual(
+						Focused.Target.EffectiveHealing, Healing.EffectiveHealing);
+				}
+			}
+			for (const FGameXXKCardArmorResult& Armor : PlayResult.ArmorResults)
+			{
+				if (Armor.TargetUnitId == HoveredTargetUnitId)
+				{
+					Focused.bArmorAttempt = true;
+					Focused.Target.EffectiveArmor = AddActual(
+						Focused.Target.EffectiveArmor, Armor.EffectiveArmor);
+				}
+			}
 		}
-		for (const FGameXXKCardDamageResult& Packet : PlayResult.DamageResults)
+		else
 		{
-			ApplyOriginalAttackAttempt(Focused, Packet, HoveredTargetUnitId);
+			if (const FTargetAggregate* Actual = ActualAggregates.Find(HoveredTargetUnitId))
+			{
+				Focused = *Actual;
+			}
+			for (const FGameXXKCardDamageResult& Packet : PlayResult.DamageResults)
+			{
+				ApplyOriginalAttackAttempt(Focused, Packet, HoveredTargetUnitId);
+			}
 		}
 		OutPreview.FocusedTarget = Focused.Target;
 		OutPreview.FocusedLines = BuildFocusedLines(Focused);

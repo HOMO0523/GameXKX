@@ -868,6 +868,65 @@ bool FGameXXKCardOutcomePreviewHealingArmorAndZeroTest::RunTest(const FString& P
 		TestEqual(TEXT("legal zero text remains explicit"),
 			RenderLine(ZeroPreview.FocusedLines[0]), FString(TEXT("治疗 +0 · 护甲 +0")));
 	}
+
+	FGameXXKRuntimeState SelfLossState;
+	if (!BuildStandardState(
+		*this, SelfLossState, TEXT("Profession.Healer.JinChuangXuMing"), EGameXXKCharacterRole::Healer, 61132)
+		|| !InstallHealerFormula(*this, SelfLossState, TEXT("Profession.Healer.XingQiZhen")))
+	{
+		return false;
+	}
+	FindUnit(SelfLossState, AllyUnitId)->HP = 480;
+	FindUnit(SelfLossState, AllyUnitId)->MaxHP = 500;
+	FGameXXKRuntimeState SelfLossCommitted = SelfLossState;
+	FGameXXKCardPlayResult SelfLossResult;
+	Error.Reset();
+	if (!TestTrue(TEXT("direct adapter oracle resolves real party self-loss plus formula healing"),
+		FGameXXKCardBattleAdapter::ResolveCardPlay(
+			SelfLossCommitted, PrimaryCardInstanceId, AllyUnitId, SelfLossResult, &Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	const int32 AllySelfLoss = SumDamageCause(
+		SelfLossResult.DamageResults, AllyUnitId, EGameXXKCardDamageCause::SelfLoss);
+	int32 AllyHealing = 0;
+	for (const FGameXXKCardHealingResult& Healing : SelfLossResult.HealingResults)
+	{
+		if (Healing.TargetUnitId == AllyUnitId)
+		{
+			AllyHealing += Healing.EffectiveHealing;
+		}
+	}
+	TestEqual(TEXT("real high-energy healer formula emits selected-ally SelfLoss"), AllySelfLoss, 1);
+	TestEqual(TEXT("real card plus formula heals the selected ally"), AllyHealing, 14);
+	FGameXXKCardOutcomePreview SelfLossPreview;
+	Error.Reset();
+	if (!TestTrue(TEXT("party self-loss plus healing preview succeeds"),
+		FGameXXKCardOutcomePreviewRules::Build(
+			SelfLossState, PrimaryCardInstanceId, AllyUnitId, SelfLossPreview, &Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	if (!TestTrue(TEXT("party self-loss preview keeps the selected ally focus"), SelfLossPreview.FocusedTarget.IsSet()))
+	{
+		return false;
+	}
+	TestEqual(TEXT("party focus keeps only the adapter's effective healing"),
+		SelfLossPreview.FocusedTarget->EffectiveHealing, AllyHealing);
+	TestEqual(TEXT("party SelfLoss is never mislabeled as linked damage"),
+		SelfLossPreview.FocusedTarget->LinkedDamage, 0);
+	TestEqual(TEXT("party focus never exposes SelfLoss as a direct category"),
+		SelfLossPreview.FocusedTarget->DirectDamage, 0);
+	TestEqual(TEXT("party self-loss plus healing remains one concise line"), SelfLossPreview.FocusedLines.Num(), 1);
+	if (SelfLossPreview.FocusedLines.Num() == 1)
+	{
+		TestEqual(TEXT("party self-loss text contains only healing"),
+			RenderLine(SelfLossPreview.FocusedLines[0]), FString(TEXT("治疗 +14")));
+		TestFalse(TEXT("party focus has no linked-damage phrase"),
+			RenderLine(SelfLossPreview.FocusedLines[0]).Contains(TEXT("联动伤害")));
+	}
 	return true;
 }
 
