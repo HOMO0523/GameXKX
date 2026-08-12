@@ -4608,6 +4608,16 @@ FVector2D UGameXXKBattleBoardWidget::GetGroupOutcomePreviewAlignmentForTest() co
 	const UCanvasPanelSlot* const OutcomeSlot = GroupOutcomeWidget ? Cast<UCanvasPanelSlot>(GroupOutcomeWidget->Slot) : nullptr;
 	return OutcomeSlot ? OutcomeSlot->GetAlignment() : FVector2D::ZeroVector;
 }
+
+void UGameXXKBattleBoardWidget::RemoveUnitVisualForTest(const FName UnitId)
+{
+	RemoveUnitVisual(UnitId);
+}
+
+bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalStateForTest()
+{
+	return ResolveCardBattleTerminalState();
+}
 #endif
 
 void UGameXXKBattleBoardWidget::HandlePendingChoiceCardHoverChanged(

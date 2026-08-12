@@ -789,6 +789,32 @@ namespace
 		bClear &= Test.TestEqual(*FString::Printf(TEXT("%s clears visible lines"), Context), Board->GetCardOutcomePreviewLinesForTest().Num(), 0);
 		return bClear;
 	}
+
+	TArray<FString> FlattenOutcomeLines(const TArray<FGameXXKCardOutcomeTextLine>& Lines)
+	{
+		TArray<FString> Result;
+		for (const FGameXXKCardOutcomeTextLine& Line : Lines)
+		{
+			FString& PlainLine = Result.AddDefaulted_GetRef();
+			for (const FGameXXKCardOutcomeTextSegment& Segment : Line.Segments)
+			{
+				PlainLine += Segment.Text.ToString();
+			}
+		}
+		return Result;
+	}
+
+	int32 GetPreviewHealthDamage(const FGameXXKCardOutcomeTarget& Target)
+	{
+		return Target.DirectDamage
+			+ Target.GroupDamage
+			+ Target.BleedDamage
+			+ Target.PoisonDamage
+			+ Target.BurnDamage
+			+ Target.ToxicExplosionDamage
+			+ Target.MedicineDamage
+			+ Target.LinkedDamage;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -1738,12 +1764,12 @@ bool FGameXXKTargetOutcomePreviewGroupHandHoverTest::RunTest(const FString& Para
 	{
 		return false;
 	}
-	TArray<int32> EnemyHpBefore;
+	TMap<FName, int32> EnemyHpBefore;
 	for (const FGameXXKCardCombatUnit& Unit : Subsystem->GetRuntimeState().CardRun.ActiveBattle.Units)
 	{
 		if (Unit.Side == EGameXXKCardTargetSide::Enemy)
 		{
-			EnemyHpBefore.Add(Unit.HP);
+			EnemyHpBefore.Add(Unit.UnitId, Unit.HP);
 		}
 	}
 	GroupCardButton->OnHovered.Broadcast();
@@ -1752,6 +1778,8 @@ bool FGameXXKTargetOutcomePreviewGroupHandHoverTest::RunTest(const FString& Para
 	TestEqual(TEXT("pure group hover requests NAME_None"), Board->GetCardOutcomePreviewTargetUnitIdForTest(), NAME_None);
 	TestEqual(TEXT("pure group hover exposes the safe class string"), Board->GetCardOutcomePreviewClassForTest(), FString(TEXT("PureEnemyGroup")));
 	const TArray<FString> GroupLines = Board->GetCardOutcomePreviewLinesForTest();
+	const TArray<FString> ExpectedGroupLines = FlattenOutcomeLines(ExpectedOutcome.EnemyPositionLines);
+	TestEqual(TEXT("group widget text exactly matches the real rules output"), GroupLines, ExpectedGroupLines);
 	TestEqual(TEXT("three living enemies produce exactly three ordered lines"), GroupLines.Num(), 3);
 	for (int32 PositionIndex = 0; PositionIndex < GroupLines.Num(); ++PositionIndex)
 	{
@@ -1773,14 +1801,22 @@ bool FGameXXKTargetOutcomePreviewGroupHandHoverTest::RunTest(const FString& Para
 	TestFalse(TEXT("automatic group click removes the one played instance from hand"),
 		Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.ContainsByPredicate(
 			[CardInstanceId](const FGameXXKCardInstance& Card) { return Card.InstanceId == CardInstanceId; }));
-	int32 EnemyOrdinal = 0;
-	for (const FGameXXKCardCombatUnit& Unit : Subsystem->GetRuntimeState().CardRun.ActiveBattle.Units)
+	for (const FGameXXKCardOutcomeTarget& ExpectedTarget : ExpectedOutcome.EnemyPositionTargets)
 	{
-		if (Unit.Side == EGameXXKCardTargetSide::Enemy && EnemyHpBefore.IsValidIndex(EnemyOrdinal))
+		const FGameXXKCardCombatUnit* const CommittedUnit = Subsystem->GetRuntimeState().CardRun.ActiveBattle.Units.FindByPredicate(
+			[&ExpectedTarget](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == ExpectedTarget.UnitId; });
+		const int32* const BeforeHp = EnemyHpBefore.Find(ExpectedTarget.UnitId);
+		TestNotNull(*FString::Printf(TEXT("preview target %s remains in authoritative runtime"), *ExpectedTarget.UnitId.ToString()), CommittedUnit);
+		TestNotNull(*FString::Printf(TEXT("preview target %s has captured pre-submit HP"), *ExpectedTarget.UnitId.ToString()), BeforeHp);
+		if (CommittedUnit && BeforeHp)
 		{
-			TestTrue(*FString::Printf(TEXT("automatic group click damages enemy position %d"), EnemyOrdinal + 1), Unit.HP < EnemyHpBefore[EnemyOrdinal]);
-			++EnemyOrdinal;
+			TestEqual(
+				*FString::Printf(TEXT("position %d committed HP damage equals its exact preview total"), ExpectedTarget.SlotNumber),
+				*BeforeHp - CommittedUnit->HP,
+				GetPreviewHealthDamage(ExpectedTarget));
 		}
+		TestEqual(*FString::Printf(TEXT("position %d pure enemy group preview has no healing side effect"), ExpectedTarget.SlotNumber), ExpectedTarget.EffectiveHealing, 0);
+		TestEqual(*FString::Printf(TEXT("position %d pure enemy group preview has no armor side effect"), ExpectedTarget.SlotNumber), ExpectedTarget.EffectiveArmor, 0);
 	}
 
 	UGameInstance* const TwoEnemyGameInstance = NewObject<UGameInstance>();
@@ -1800,6 +1836,8 @@ bool FGameXXKTargetOutcomePreviewGroupHandHoverTest::RunTest(const FString& Para
 	{
 		TwoEnemyButton->OnHovered.Broadcast();
 		const TArray<FString> TwoEnemyLines = TwoEnemyBoard->GetCardOutcomePreviewLinesForTest();
+		TestEqual(TEXT("two-enemy widget text exactly matches the real rules output"),
+			TwoEnemyLines, FlattenOutcomeLines(TwoEnemyOutcome.EnemyPositionLines));
 		TestEqual(TEXT("missing 3P enemy omits the third line"), TwoEnemyLines.Num(), 2);
 		TestTrue(TEXT("two-enemy group retains 1P"), TwoEnemyLines.IsValidIndex(0) && TwoEnemyLines[0].StartsWith(TEXT("1P")));
 		TestTrue(TEXT("two-enemy group retains 2P"), TwoEnemyLines.IsValidIndex(1) && TwoEnemyLines[1].StartsWith(TEXT("2P")));
@@ -1965,6 +2003,58 @@ bool FGameXXKTargetOutcomePreviewCacheAndClearTest::RunTest(const FString& Param
 		OtherButton->OnHovered.Broadcast();
 	}
 	AssertOutcomeCleared(*this, SwitchBoard, TEXT("hovering a different non-group hand card"));
+
+	UGameInstance* const RemoveGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const RemoveSubsystem = NewObject<UGameXXKMVPSubsystem>(RemoveGameInstance);
+	FName RemoveCardId;
+	FName RemoveTargetId;
+	FName RemoveOwnerId;
+	FGameXXKCardPlayPreview RemovePlayability;
+	TestTrue(TEXT("RemoveUnitVisual clear fixture builds"), BuildManualTargetCardFixture(
+		RemoveSubsystem, RemoveCardId, RemoveTargetId, RemoveOwnerId, RemovePlayability, Error));
+	UGameXXKBattleBoardWidget* const RemoveBoard = NewObject<UGameXXKBattleBoardWidget>();
+	RemoveBoard->SetMVPSubsystem(RemoveSubsystem);
+	TestTrue(TEXT("RemoveUnitVisual clear Board initializes"), RemoveBoard->Initialize());
+	RemoveBoard->NativeConstruct();
+	TestTrue(TEXT("RemoveUnitVisual clear card targets"), RemoveBoard->ClickCardInHand(RemoveCardId));
+	RemoveBoard->HandleUnitTargetProxyHoverChanged(RemoveTargetId, true);
+	TestTrue(TEXT("RemoveUnitVisual preview is visible before removal"), RemoveBoard->IsCardOutcomePreviewVisibleForTest());
+	const int32 RemoveBuildCount = RemoveBoard->GetCardOutcomePreviewBuildCountForTest();
+	const FGameXXKRuntimeState RemoveStateBefore = RemoveSubsystem->GetRuntimeState();
+	RemoveBoard->RemoveUnitVisualForTest(RemoveTargetId);
+	AssertOutcomeCleared(*this, RemoveBoard, TEXT("death RemoveUnitVisual path"));
+	TestEqual(TEXT("RemoveUnitVisual clear preserves cumulative build count"), RemoveBoard->GetCardOutcomePreviewBuildCountForTest(), RemoveBuildCount);
+	TestTrue(TEXT("RemoveUnitVisual seam does not mutate authoritative runtime state"),
+		RuntimeStatesEqual(RemoveStateBefore, RemoveSubsystem->GetRuntimeState()));
+
+	const auto AssertTerminalClear = [this, &Error](const EGameXXKCardBattlePhase Phase, const TCHAR* Context)
+	{
+		UGameInstance* const TerminalGameInstance = NewObject<UGameInstance>();
+		UGameXXKMVPSubsystem* const TerminalSubsystem = NewObject<UGameXXKMVPSubsystem>(TerminalGameInstance);
+		FName TerminalCardId;
+		FName TerminalTargetId;
+		FName TerminalOwnerId;
+		if (!TestTrue(*FString::Printf(TEXT("%s fixture builds"), Context), BuildRouteRewardFixture(
+			TerminalSubsystem, TerminalCardId, TerminalTargetId, TerminalOwnerId, Error)))
+		{
+			return;
+		}
+		UGameXXKBattleBoardWidget* const TerminalBoard = NewObject<UGameXXKBattleBoardWidget>();
+		TerminalBoard->SetMVPSubsystem(TerminalSubsystem);
+		TestTrue(*FString::Printf(TEXT("%s Board initializes"), Context), TerminalBoard->Initialize());
+		TerminalBoard->NativeConstruct();
+		TestTrue(*FString::Printf(TEXT("%s card targets"), Context), TerminalBoard->ClickCardInHand(TerminalCardId));
+		TerminalBoard->HandleUnitTargetProxyHoverChanged(TerminalTargetId, true);
+		TestTrue(*FString::Printf(TEXT("%s preview is visible before terminal handling"), Context), TerminalBoard->IsCardOutcomePreviewVisibleForTest());
+		const int32 TerminalBuildCount = TerminalBoard->GetCardOutcomePreviewBuildCountForTest();
+		TerminalSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = Phase;
+		TestTrue(*FString::Printf(TEXT("%s invokes the real terminal handler"), Context), TerminalBoard->ResolveCardBattleTerminalStateForTest());
+		AssertOutcomeCleared(*this, TerminalBoard, Context);
+		TestEqual(*FString::Printf(TEXT("%s clear preserves cumulative build count"), Context),
+			TerminalBoard->GetCardOutcomePreviewBuildCountForTest(), TerminalBuildCount);
+	};
+	AssertTerminalClear(EGameXXKCardBattlePhase::Victory, TEXT("terminal Victory branch"));
+	AssertTerminalClear(EGameXXKCardBattlePhase::Defeat, TEXT("terminal Defeat branch"));
 	return true;
 }
 

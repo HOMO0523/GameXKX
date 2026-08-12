@@ -511,6 +511,10 @@ public:
 	FMargin GetGroupOutcomePreviewOffsetsForTest() const;
 	FVector2D GetSingleOutcomePreviewAlignmentForTest() const;
 	FVector2D GetGroupOutcomePreviewAlignmentForTest() const;
+	/** Drives the production visual-removal path without mutating authoritative runtime state. */
+	void RemoveUnitVisualForTest(FName UnitId);
+	/** Drives the production Victory/Defeat terminal handler against the supplied authoritative fixture state. */
+	bool ResolveCardBattleTerminalStateForTest();
 	/** Pure layout seam: callers supply a canvas size to validate the right rail against expanded hand and end-turn bounds. */
 	FGameXXKBattlePartyQiLayout ResolvePartyQiLayoutForTest(FVector2D CanvasSize) const;
 	/** Runs the same responsive Party Qi refresh used when NativeTick observes settled or resized canvas geometry. */
