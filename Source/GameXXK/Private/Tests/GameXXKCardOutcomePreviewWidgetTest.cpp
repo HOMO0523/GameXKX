@@ -101,6 +101,24 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKCardOutcomePreviewWidgetTest;
 
+	{
+		UGameXXKCardOutcomePreviewWidget* ClearBeforeBuildWidget = NewObject<UGameXXKCardOutcomePreviewWidget>();
+		TestNotNull(TEXT("pre-build Clear fixture is created"), ClearBeforeBuildWidget);
+		if (ClearBeforeBuildWidget)
+		{
+			ClearBeforeBuildWidget->Clear();
+			TestEqual(TEXT("Clear before first TakeWidget is safe and collapsed"),
+				ClearBeforeBuildWidget->GetVisibility(), ESlateVisibility::Collapsed);
+			TSharedRef<SWidget> ClearBeforeBuildSlate = ClearBeforeBuildWidget->TakeWidget();
+			TestEqual(TEXT("Clear before first TakeWidget builds a collapsed Slate wrapper"),
+				ClearBeforeBuildSlate->GetVisibility(), EVisibility::Collapsed);
+			UVerticalBox* EmptyRoot = RenderedRoot(ClearBeforeBuildWidget);
+			TestNotNull(TEXT("Clear before first TakeWidget still builds a real vertical root"), EmptyRoot);
+			TestEqual(TEXT("Clear before first TakeWidget leaves the real root empty"),
+				EmptyRoot ? EmptyRoot->GetChildrenCount() : 0, 0);
+		}
+	}
+
 	UGameXXKCardOutcomePreviewWidget* Widget = NewObject<UGameXXKCardOutcomePreviewWidget>();
 	TestNotNull(TEXT("card outcome preview widget is created without a viewport"), Widget);
 	if (!Widget)
@@ -117,7 +135,8 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("second row remains after the first without widget reordering"), Widget->GetPlainLineForTest(1), FString(TEXT("护甲 +5致死")));
 	TestEqual(TEXT("non-empty preview is input-transparent"), Widget->GetVisibility(), ESlateVisibility::HitTestInvisible);
 
-	TSharedRef<SWidget> FirstSlate = Widget->TakeWidget();
+	TSharedPtr<SWidget> FirstSlate = Widget->TakeWidget();
+	TWeakPtr<SWidget> OldSlateWeak = FirstSlate;
 	TestEqual(TEXT("non-empty rebuilt Slate root is hit-test invisible"), FirstSlate->GetVisibility(), EVisibility::HitTestInvisible);
 	UVerticalBox* FocusedRoot = Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
 	TestNotNull(TEXT("the runtime WidgetTree root is the rendered vertical line box"), FocusedRoot);
@@ -222,6 +241,39 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("out-of-range segment color access is transparent"),
 		Widget->GetSegmentColorForTest(0, ToneColors.Num()) == FLinearColor::Transparent);
 
+	Widget->SetLines({Line({Segment(TEXT("invalid tone"), static_cast<EGameXXKCardOutcomeTone>(255))})});
+	UTextBlock* InvalidToneText = RenderedSegment(Widget, 0, 0);
+	TestNotNull(TEXT("invalid tone still creates a real rendered text child"), InvalidToneText);
+	TestEqual(TEXT("invalid tone real text preserves its supplied text"),
+		InvalidToneText ? InvalidToneText->GetText().ToString() : FString(), FString(TEXT("invalid tone")));
+	TestTrue(TEXT("invalid tone real text falls back to Neutral color"),
+		InvalidToneText
+		&& InvalidToneText->GetColorAndOpacity().GetSpecifiedColor()
+			== FLinearColor(0.79f, 0.75f, 0.66f, 1.0f));
+
+	Widget->SetLines({});
+	TestEqual(TEXT("empty SetLines collapses the wrapper"), Widget->GetVisibility(), ESlateVisibility::Collapsed);
+	TestEqual(TEXT("empty SetLines clears every real rendered row"),
+		RenderedRoot(Widget) ? RenderedRoot(Widget)->GetChildrenCount() : 0, 0);
+
+	Widget->SetLines({Line({})});
+	TestEqual(TEXT("empty-segment line remains one explicit rendered row"),
+		RenderedRoot(Widget) ? RenderedRoot(Widget)->GetChildrenCount() : 0, 1);
+	UHorizontalBox* EmptySegmentRow = RenderedRow(Widget, 0);
+	TestNotNull(TEXT("empty-segment line renders a real horizontal row"), EmptySegmentRow);
+	TestEqual(TEXT("empty-segment line renders zero text children"),
+		EmptySegmentRow ? EmptySegmentRow->GetChildrenCount() : 0, 0);
+	TestEqual(TEXT("empty-segment line keeps the wrapper input-transparent"),
+		Widget->GetVisibility(), ESlateVisibility::HitTestInvisible);
+
+	Widget->SetLines({Line({Segment(TEXT(""), EGameXXKCardOutcomeTone::Neutral)})});
+	UTextBlock* EmptyText = RenderedSegment(Widget, 0, 0);
+	TestNotNull(TEXT("empty text segment still creates a real text child"), EmptyText);
+	TestEqual(TEXT("empty text segment renders an explicitly empty value"),
+		EmptyText ? EmptyText->GetText().ToString() : FString(TEXT("missing")), FString());
+	TestEqual(TEXT("empty text segment remains input-transparent"),
+		EmptyText ? EmptyText->GetVisibility() : ESlateVisibility::Visible, ESlateVisibility::HitTestInvisible);
+
 	const TArray<FGameXXKCardOutcomeTextLine> GroupLines = {
 		Line({Segment(TEXT("1P 伤害 8"), EGameXXKCardOutcomeTone::Damage)}),
 		Line({Segment(TEXT("2P 中毒 4"), EGameXXKCardOutcomeTone::Dot)}),
@@ -286,6 +338,12 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("replacement text is absent from every detached defensive object"),
 		ReplacementText && !DefensiveRenderedObjects.Contains(ReplacementText));
 	const TArray<UWidget*> ReplacementRenderedObjects = {ReplacementRow, ReplacementText};
+	TWeakPtr<SWidget> OldReplacementTextSlateWeak;
+	{
+		TSharedPtr<SWidget> OldReplacementTextSlate = ReplacementText ? ReplacementText->GetCachedWidget() : nullptr;
+		TestTrue(TEXT("replacement text is attached to the original live Slate tree"), OldReplacementTextSlate.IsValid());
+		OldReplacementTextSlateWeak = OldReplacementTextSlate;
+	}
 
 	Widget->Clear();
 	TestEqual(TEXT("Clear removes all visible rows"), Widget->GetVisibleLineCountForTest(), 0);
@@ -298,7 +356,11 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("cleared Slate root is collapsed"), FirstSlate->GetVisibility(), EVisibility::Collapsed);
 
 	Widget->ReleaseSlateResources(false);
-	TSharedRef<SWidget> RebuiltSlate = Widget->TakeWidget();
+	FirstSlate.Reset();
+	TestFalse(TEXT("releasing Slate resources and dropping all old wrapper refs destroys the old wrapper"), OldSlateWeak.IsValid());
+	TestFalse(TEXT("releasing the old tree destroys the old replacement text Slate widget"), OldReplacementTextSlateWeak.IsValid());
+	TSharedPtr<SWidget> RebuiltSlate = Widget->TakeWidget();
+	TestTrue(TEXT("TakeWidget after the old wrapper expires returns a new live wrapper"), RebuiltSlate.IsValid());
 	TestEqual(TEXT("rebuild after Clear remains empty"), Widget->GetVisibleLineCountForTest(), 0);
 	TestEqual(TEXT("rebuild after Clear remains collapsed"), RebuiltSlate->GetVisibility(), EVisibility::Collapsed);
 	UVerticalBox* RebuiltRoot = Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
@@ -316,6 +378,12 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("fresh real row has exactly two segments"), FreshRow ? FreshRow->GetChildrenCount() : 0, 2);
 	UTextBlock* FreshText = RenderedSegment(Widget, 0, 0);
 	UTextBlock* FreshSuffix = RenderedSegment(Widget, 0, 1);
+	TSharedPtr<SWidget> FreshTextSlate = FreshText ? FreshText->GetCachedWidget() : nullptr;
+	TSharedPtr<SWidget> FreshSuffixSlate = FreshSuffix ? FreshSuffix->GetCachedWidget() : nullptr;
+	TestTrue(TEXT("fresh first UTextBlock has a live cached widget after the old text Slate expires"),
+		!OldReplacementTextSlateWeak.IsValid() && FreshTextSlate.IsValid());
+	TestTrue(TEXT("fresh second UTextBlock has a live cached widget after the old text Slate expires"),
+		!OldReplacementTextSlateWeak.IsValid() && FreshSuffixSlate.IsValid());
 	TestEqual(TEXT("fresh first real segment contains exact text"),
 		FreshText ? FreshText->GetText().ToString() : FString(), FString(TEXT("fresh")));
 	TestEqual(TEXT("fresh second real segment contains exact text"),
