@@ -1826,6 +1826,86 @@ bool FGameXXKTargetOutcomePreviewGroupHandHoverTest::RunTest(const FString& Para
 	FGameXXKCardOutcomePreview TwoEnemyOutcome;
 	TestTrue(TEXT("two-enemy pure group fixture builds"), BuildPureEnemyGroupCardFixture(
 		TwoEnemySubsystem, TwoEnemyCardId, TwoEnemyPlayability, TwoEnemyOutcome, Error, 2));
+	FGameXXKRuntimeState& SparseEnemyState = TwoEnemySubsystem->GetMutableRuntimeState();
+	FGameXXKCardCombatUnit* FirstLivingEnemy = nullptr;
+	FGameXXKCardCombatUnit* SecondLivingEnemy = nullptr;
+	for (FGameXXKCardCombatUnit& Unit : SparseEnemyState.CardRun.ActiveBattle.Units)
+	{
+		if (Unit.Side != EGameXXKCardTargetSide::Enemy || Unit.HP <= 0)
+		{
+			continue;
+		}
+		if (!FirstLivingEnemy)
+		{
+			FirstLivingEnemy = &Unit;
+		}
+		else if (!SecondLivingEnemy)
+		{
+			SecondLivingEnemy = &Unit;
+		}
+	}
+	TestNotNull(TEXT("sparse fixture retains its first living enemy"), FirstLivingEnemy);
+	TestNotNull(TEXT("sparse fixture retains its second living enemy"), SecondLivingEnemy);
+	if (!FirstLivingEnemy || !SecondLivingEnemy)
+	{
+		return false;
+	}
+	if (SecondLivingEnemy->StableSortOrder < FirstLivingEnemy->StableSortOrder)
+	{
+		Swap(FirstLivingEnemy, SecondLivingEnemy);
+	}
+	const int32 EnemyStableSortBase = FirstLivingEnemy->StableSortOrder;
+	FirstLivingEnemy->BattleSlotNumber = 1;
+	FirstLivingEnemy->StableSortOrder = EnemyStableSortBase;
+	FirstLivingEnemy->EnemyDefinitionId = TEXT("Enemy.Ch1.Rooster");
+	FirstLivingEnemy->CombatLevel = 1;
+	SecondLivingEnemy->BattleSlotNumber = 3;
+	SecondLivingEnemy->StableSortOrder = EnemyStableSortBase + 2;
+	SecondLivingEnemy->EnemyDefinitionId = TEXT("Enemy.Ch1.Weasel");
+	SecondLivingEnemy->CombatLevel = 1;
+	for (FGameXXKBattleRuntimeUnit& LegacyEnemy : SparseEnemyState.ActiveBattleEnemies)
+	{
+		const FGameXXKCardCombatUnit* const CardEnemy = LegacyEnemy.Id == FirstLivingEnemy->UnitId
+			? FirstLivingEnemy
+			: (LegacyEnemy.Id == SecondLivingEnemy->UnitId ? SecondLivingEnemy : nullptr);
+		if (CardEnemy)
+		{
+			LegacyEnemy.BattleSlotNumber = CardEnemy->BattleSlotNumber;
+			LegacyEnemy.EnemyDefinitionId = CardEnemy->EnemyDefinitionId;
+			LegacyEnemy.CombatLevel = CardEnemy->CombatLevel;
+		}
+	}
+	Error.Reset();
+	TestTrue(FString::Printf(TEXT("sparse 1P/3P card runtime validates before projection sync: %s"), *Error),
+		GameXXKCardRules::ValidateCardBattleRuntime(SparseEnemyState.CardRun.ActiveBattle, &Error));
+	Error.Reset();
+	TestTrue(FString::Printf(TEXT("sparse 1P/3P fixture syncs to the legacy projection: %s"), *Error),
+		FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(SparseEnemyState, &Error));
+	TArray<int32> LegacyLivingEnemySlots;
+	for (const FGameXXKBattleRuntimeUnit& Unit : SparseEnemyState.ActiveBattleEnemies)
+	{
+		if (Unit.HP > 0)
+		{
+			LegacyLivingEnemySlots.Add(Unit.BattleSlotNumber);
+		}
+	}
+	LegacyLivingEnemySlots.Sort();
+	TestEqual(TEXT("legacy projection preserves the sparse 1P/3P positions"),
+		LegacyLivingEnemySlots, TArray<int32>{1, 3});
+	TwoEnemyPlayability = FGameXXKCardPlayPreview();
+	TwoEnemyOutcome = FGameXXKCardOutcomePreview();
+	Error.Reset();
+	TestTrue(FString::Printf(TEXT("sparse fixture rebuilds real adapter playability: %s"), *Error),
+		FGameXXKCardBattleAdapter::BuildCardPlayPreview(
+			SparseEnemyState, TwoEnemyCardId, TwoEnemyPlayability, &Error));
+	TestTrue(TEXT("sparse fixture remains a playable automatic AllEnemies card"),
+		TwoEnemyPlayability.bCanPlay
+			&& !TwoEnemyPlayability.TargetRequest.bRequiresManualSelection
+			&& TwoEnemyPlayability.TargetRequest.EffectiveMode == EGameXXKCardTargetMode::AllEnemies);
+	Error.Reset();
+	TestTrue(FString::Printf(TEXT("sparse fixture rebuilds real outcome rules: %s"), *Error),
+		FGameXXKCardOutcomePreviewRules::Build(
+			SparseEnemyState, TwoEnemyCardId, NAME_None, TwoEnemyOutcome, &Error));
 	UGameXXKBattleBoardWidget* const TwoEnemyBoard = NewObject<UGameXXKBattleBoardWidget>();
 	TwoEnemyBoard->SetMVPSubsystem(TwoEnemySubsystem);
 	TestTrue(TEXT("two-enemy group Board initializes"), TwoEnemyBoard->Initialize());
@@ -1838,9 +1918,17 @@ bool FGameXXKTargetOutcomePreviewGroupHandHoverTest::RunTest(const FString& Para
 		const TArray<FString> TwoEnemyLines = TwoEnemyBoard->GetCardOutcomePreviewLinesForTest();
 		TestEqual(TEXT("two-enemy widget text exactly matches the real rules output"),
 			TwoEnemyLines, FlattenOutcomeLines(TwoEnemyOutcome.EnemyPositionLines));
-		TestEqual(TEXT("missing 3P enemy omits the third line"), TwoEnemyLines.Num(), 2);
-		TestTrue(TEXT("two-enemy group retains 1P"), TwoEnemyLines.IsValidIndex(0) && TwoEnemyLines[0].StartsWith(TEXT("1P")));
-		TestTrue(TEXT("two-enemy group retains 2P"), TwoEnemyLines.IsValidIndex(1) && TwoEnemyLines[1].StartsWith(TEXT("2P")));
+		TArray<FString> SparseLinePrefixes;
+		for (const FString& Line : TwoEnemyLines)
+		{
+			SparseLinePrefixes.Add(Line.Left(2));
+		}
+		TestEqual(TEXT("sparse group lines have the strict ordered 1P/3P prefixes"),
+			SparseLinePrefixes, TArray<FString>{TEXT("1P"), TEXT("3P")});
+		const FString JoinedSparseLines = FString::Join(TwoEnemyLines, TEXT("|"));
+		TestTrue(TEXT("sparse group retains the 1P line"), JoinedSparseLines.Contains(TEXT("1P")));
+		TestFalse(TEXT("missing middle enemy omits every 2P line"), JoinedSparseLines.Contains(TEXT("2P")));
+		TestTrue(TEXT("sparse group retains the 3P line"), JoinedSparseLines.Contains(TEXT("3P")));
 	}
 
 	UGameInstance* const FailureGameInstance = NewObject<UGameInstance>();
