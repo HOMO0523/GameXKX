@@ -85,7 +85,7 @@ namespace
 			{TEXT("Npc.TusiChief.ZhaiZhuHaoLing"), TEXT("Npc.TusiChief.ShiMenShouShi"), TEXT("Npc.TusiChief.TuSiJunLing")});
 		AddQuestNpcDefinition(Definitions, TEXT("Npc.SongJinBao"), TEXT("Passive.SongJinBao.RenQingMian"), 88, 10, 7, 30, 10, 8.0f, 1.0f, 0.6f, 2.0f,
 			{TEXT("Npc.SongJinBao.ErMuMiBao"), TEXT("Npc.SongJinBao.ShangQianGuWu"), TEXT("Npc.SongJinBao.YiNuoQianJin")});
-		AddQuestNpcDefinition(Definitions, TEXT("Npc.YueBai"), TEXT("Passive.YueBai.CanJuanXianZhi"), 84, 15, 6, 34, 10, 7.0f, 1.5f, 0.5f, 2.0f,
+		AddQuestNpcDefinition(Definitions, TEXT("Npc.YueBai"), TEXT("Passive.YueBai.CanJuanXianZhi"), 84, 15, 6, 34, 10, 8.0f, 1.5f, 0.5f, 2.0f,
 			{TEXT("Npc.YueBai.QingYanDianDeng"), TEXT("Npc.YueBai.CanJuanPiZhu"), TEXT("Npc.YueBai.YueBaiZhaoYe")});
 		AddQuestNpcDefinition(Definitions, TEXT("Npc.ZhouGuangZu"), TEXT("Passive.ZhouGuangZu.CaoMuZhaJi"), 90, 12, 7, 32, 10, 8.0f, 1.2f, 0.7f, 2.0f,
 			{TEXT("Npc.ZhouGuangZu.YiCaoBianShi"), TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"), TEXT("Npc.ZhouGuangZu.YanFenFengMai")});

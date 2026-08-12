@@ -60,4 +60,67 @@ bool FGameXXKYueBaiTaskLoopBalanceTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKYueBaiSurvivalBudgetTest,
+	"GameXXK.RouteBalance.NpcTuning.YueBaiSurvivalBudget",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKYueBaiSurvivalBudgetTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	FString Error;
+	if (!TestTrue(TEXT("orthogonal cases build for the YueBai survival budget"),
+		FGameXXKRouteBalanceRules::MakeOrthogonalCases(Cases, &Error)))
+	{
+		return false;
+	}
+
+	int32 YueBaiCaseCount = 0;
+	int32 BattleVictories = 0;
+	int32 EliteVictories = 0;
+	int32 BossVictories = 0;
+	int32 StrandedTargetFailures = 0;
+	for (const FGameXXKRouteBalanceCase& Case : Cases)
+	{
+		if (Case.DimensionId != TEXT("QuestNpc") || Case.VariantId != TEXT("YueBai"))
+		{
+			continue;
+		}
+		++YueBaiCaseCount;
+		FGameXXKRouteBalanceCaseResult Result;
+		if (!FGameXXKRouteBalanceRules::RunCase(Case, Result, &Error))
+		{
+			AddError(FString::Printf(TEXT("YueBai case seed %d failed an invariant: %s"), Case.Seed, *Error));
+			continue;
+		}
+		StrandedTargetFailures += Result.Metrics.StrandedTargetFailures;
+		if (!Result.Metrics.bVictory)
+		{
+			continue;
+		}
+		switch (Case.NodeKind)
+		{
+		case EGameXXKNodeKind::Battle:
+			++BattleVictories;
+			break;
+		case EGameXXKNodeKind::Elite:
+			++EliteVictories;
+			break;
+		case EGameXXKNodeKind::Boss:
+			++BossVictories;
+			break;
+		default:
+			AddError(TEXT("YueBai survival budget encountered an unexpected node kind."));
+			break;
+		}
+	}
+
+	TestEqual(TEXT("the YueBai orthogonal slice contains exactly ninety cases"), YueBaiCaseCount, 90);
+	TestEqual(TEXT("YueBai keeps all thirty normal encounters"), BattleVictories, 30);
+	TestTrue(TEXT("YueBai keeps at least eighteen elite victories"), EliteVictories >= 18);
+	TestTrue(TEXT("YueBai reaches the first bounded boss-survival step of ten victories"), BossVictories >= 10);
+	TestEqual(TEXT("YueBai never strands a selected target across the slice"), StrandedTargetFailures, 0);
+	return true;
+}
+
 #endif
