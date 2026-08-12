@@ -1714,6 +1714,14 @@ bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("failed manual preview uses the neutral fallback text"), Board->GetCardOutcomePreviewLinesForTest()[0], FString(TEXT("无法预演")));
 	TestEqual(TEXT("failed manual preview remains in the single target position"),
 		Board->GetSingleOutcomePreviewAnchorForTest(), Board->GetProjectedUnitHudAnchorPositionForTest(LegalEnemyTargets[0]));
+	const int32 ManualFailureBuildCount = Board->GetCardOutcomePreviewBuildCountForTest();
+	FirstProxy->OnHovered.Broadcast();
+	TestEqual(TEXT("identical failed manual hover reuses the complete-state cache"),
+		Board->GetCardOutcomePreviewBuildCountForTest(), ManualFailureBuildCount);
+	TestEqual(TEXT("cached manual failure retains exactly the neutral fallback line"),
+		Board->GetCardOutcomePreviewLinesForTest(), TArray<FString>{TEXT("无法预演")});
+	TestEqual(TEXT("cached manual failure retains the requested target"),
+		Board->GetCardOutcomePreviewTargetUnitIdForTest(), LegalEnemyTargets[0]);
 	TestFalse(TEXT("manual submit failure is reported"), Board->ConfirmTargetingUnit(LegalEnemyTargets[0]));
 	AssertOutcomeCleared(*this, Board, TEXT("manual submit failure"));
 
@@ -1960,6 +1968,14 @@ bool FGameXXKTargetOutcomePreviewGroupHandHoverTest::RunTest(const FString& Para
 		TestEqual(TEXT("NAME_None build failure retains the group target id"), FailureBoard->GetCardOutcomePreviewTargetUnitIdForTest(), NAME_None);
 		TestEqual(TEXT("NAME_None build failure has one neutral fallback line"), FailureBoard->GetCardOutcomePreviewLinesForTest(), TArray<FString>{TEXT("无法预演")});
 		TestEqual(TEXT("NAME_None build failure does not masquerade as a successful class"), FailureBoard->GetCardOutcomePreviewClassForTest(), FString(TEXT("None")));
+		const int32 GroupFailureBuildCount = FailureBoard->GetCardOutcomePreviewBuildCountForTest();
+		FailureButton->OnHovered.Broadcast();
+		TestEqual(TEXT("identical failed NAME_None hover reuses the complete-state cache"),
+			FailureBoard->GetCardOutcomePreviewBuildCountForTest(), GroupFailureBuildCount);
+		TestEqual(TEXT("cached NAME_None failure retains exactly the neutral fallback line"),
+			FailureBoard->GetCardOutcomePreviewLinesForTest(), TArray<FString>{TEXT("无法预演")});
+		TestEqual(TEXT("cached NAME_None failure remains in the group target context"),
+			FailureBoard->GetCardOutcomePreviewTargetUnitIdForTest(), NAME_None);
 		if (!FailureSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Deck.Hand.IsEmpty())
 		{
 			FailureSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Deck.Hand[0].CardId = TEXT("Missing.GroupSubmit.Card");
@@ -2178,7 +2194,57 @@ bool FGameXXKTargetOutcomePreviewLayoutInvariantTest::RunTest(const FString& Par
 	}
 	const TMap<FName, FCanvasLayoutSnapshot> AfterManualHover = CaptureNonOutcomeCanvasLayout(Board);
 	AssertCanvasLayoutUnchanged(*this, BeforeManualHover, AfterManualHover);
-	TestNotNull(TEXT("outcome overlay is one RootCanvas sibling"), Board->GetBattleOutcomePreviewLayerForTest());
+	UCanvasPanel* const OutcomeLayer = Board->GetBattleOutcomePreviewLayerForTest();
+	UCanvasPanel* const RootCanvas = Board->GetBattleControlsLayerForTest();
+	TestNotNull(TEXT("outcome overlay is one RootCanvas sibling"), OutcomeLayer);
+	TestTrue(TEXT("outcome overlay is directly parented by RootCanvas"),
+		OutcomeLayer && OutcomeLayer->GetParent() == RootCanvas);
+	TestEqual(TEXT("outcome overlay is input transparent"),
+		OutcomeLayer ? OutcomeLayer->GetVisibility() : ESlateVisibility::Collapsed,
+		ESlateVisibility::HitTestInvisible);
+	TArray<UWidget*> ManualBoardWidgets;
+	Board->WidgetTree->GetAllWidgets(ManualBoardWidgets);
+	int32 SingleOutcomeWidgetCount = 0;
+	int32 GroupOutcomeWidgetCount = 0;
+	UGameXXKCardOutcomePreviewWidget* SingleOutcomeWidget = nullptr;
+	UGameXXKCardOutcomePreviewWidget* GroupOutcomeWidget = nullptr;
+	for (UWidget* const Widget : ManualBoardWidgets)
+	{
+		if (Widget && Widget->GetFName() == TEXT("BattleSingleOutcomePreview"))
+		{
+			++SingleOutcomeWidgetCount;
+			SingleOutcomeWidget = Cast<UGameXXKCardOutcomePreviewWidget>(Widget);
+		}
+		else if (Widget && Widget->GetFName() == TEXT("BattleGroupOutcomePreview"))
+		{
+			++GroupOutcomeWidgetCount;
+			GroupOutcomeWidget = Cast<UGameXXKCardOutcomePreviewWidget>(Widget);
+		}
+	}
+	TestEqual(TEXT("WidgetTree contains exactly one named single outcome widget"), SingleOutcomeWidgetCount, 1);
+	TestEqual(TEXT("WidgetTree contains exactly one named group outcome widget"), GroupOutcomeWidgetCount, 1);
+	TestNotNull(TEXT("named single outcome widget has the concrete preview type"), SingleOutcomeWidget);
+	TestNotNull(TEXT("named group outcome widget has the concrete preview type"), GroupOutcomeWidget);
+	TestTrue(TEXT("single outcome widget is directly parented by the outcome overlay"),
+		SingleOutcomeWidget && SingleOutcomeWidget->GetParent() == OutcomeLayer);
+	TestTrue(TEXT("group outcome widget is directly parented by the outcome overlay"),
+		GroupOutcomeWidget && GroupOutcomeWidget->GetParent() == OutcomeLayer);
+	TestEqual(TEXT("visible single outcome widget is input transparent"),
+		SingleOutcomeWidget ? SingleOutcomeWidget->GetVisibility() : ESlateVisibility::Collapsed,
+		ESlateVisibility::HitTestInvisible);
+	if (SingleOutcomeWidget)
+	{
+		SingleOutcomeWidget->TakeWidget();
+		TArray<UWidget*> SingleOutcomeChildren;
+		SingleOutcomeWidget->WidgetTree->GetAllWidgets(SingleOutcomeChildren);
+		TestTrue(TEXT("visible single outcome widget has real generated children"), !SingleOutcomeChildren.IsEmpty());
+		for (UWidget* const Child : SingleOutcomeChildren)
+		{
+			TestEqual(*FString::Printf(TEXT("single outcome child %s is input transparent"), *GetNameSafe(Child)),
+				Child ? Child->GetVisibility() : ESlateVisibility::Collapsed,
+				ESlateVisibility::HitTestInvisible);
+		}
+	}
 	TestEqual(TEXT("outcome overlay uses only z=1"), Board->GetBattleOutcomePreviewLayerZForTest(), 1);
 	TestEqual(TEXT("single outcome uses the target HUD anchor"), Board->GetSingleOutcomePreviewAnchorForTest(), Board->GetProjectedUnitHudAnchorPositionForTest(TargetUnitId));
 	TestEqual(TEXT("single outcome uses exact alignment"), Board->GetSingleOutcomePreviewAlignmentForTest(), FVector2D(0.5f, 1.0f));
@@ -2210,6 +2276,29 @@ bool FGameXXKTargetOutcomePreviewLayoutInvariantTest::RunTest(const FString& Par
 	}
 	const TMap<FName, FCanvasLayoutSnapshot> AfterGroupHover = CaptureNonOutcomeCanvasLayout(GroupBoard);
 	AssertCanvasLayoutUnchanged(*this, BeforeGroupHover, AfterGroupHover);
+	UGameXXKCardOutcomePreviewWidget* const VisibleGroupOutcomeWidget = GroupBoard->WidgetTree
+		? Cast<UGameXXKCardOutcomePreviewWidget>(GroupBoard->WidgetTree->FindWidget(TEXT("BattleGroupOutcomePreview")))
+		: nullptr;
+	TestNotNull(TEXT("group Board retains the concrete named group outcome widget"), VisibleGroupOutcomeWidget);
+	TestTrue(TEXT("visible group outcome widget is directly parented by its outcome overlay"),
+		VisibleGroupOutcomeWidget
+			&& VisibleGroupOutcomeWidget->GetParent() == GroupBoard->GetBattleOutcomePreviewLayerForTest());
+	TestEqual(TEXT("visible group outcome widget is input transparent"),
+		VisibleGroupOutcomeWidget ? VisibleGroupOutcomeWidget->GetVisibility() : ESlateVisibility::Collapsed,
+		ESlateVisibility::HitTestInvisible);
+	if (VisibleGroupOutcomeWidget)
+	{
+		VisibleGroupOutcomeWidget->TakeWidget();
+		TArray<UWidget*> GroupOutcomeChildren;
+		VisibleGroupOutcomeWidget->WidgetTree->GetAllWidgets(GroupOutcomeChildren);
+		TestTrue(TEXT("visible group outcome widget has real generated children"), !GroupOutcomeChildren.IsEmpty());
+		for (UWidget* const Child : GroupOutcomeChildren)
+		{
+			TestEqual(*FString::Printf(TEXT("group outcome child %s is input transparent"), *GetNameSafe(Child)),
+				Child ? Child->GetVisibility() : ESlateVisibility::Collapsed,
+				ESlateVisibility::HitTestInvisible);
+		}
+	}
 	TestEqual(TEXT("group outcome keeps the fixed 0.245/0.34 anchor"), GroupBoard->GetGroupOutcomePreviewAnchorForTest(), FVector2D(0.245f, 0.34f));
 	TestEqual(TEXT("group outcome uses exact alignment"), GroupBoard->GetGroupOutcomePreviewAlignmentForTest(), FVector2D(0.5f, 1.0f));
 	TestEqual(TEXT("group outcome uses exact offsets/size"), GroupBoard->GetGroupOutcomePreviewOffsetsForTest(), FMargin(0.0f, 0.0f, 620.0f, 108.0f));
