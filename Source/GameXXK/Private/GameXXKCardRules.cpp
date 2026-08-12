@@ -9135,7 +9135,7 @@ namespace
 		const FName PreferredEnemyTargetUnitId,
 		const EGameXXKCardTerrain Terrain,
 		const int32 Repetitions,
-		FGameXXKCardPlayResult& InOutResult,
+		FGameXXKCardPlayResult* InOutResult,
 		FString& OutError)
 	{
 		if (!IsConcreteTerrain(Terrain) || Repetitions <= 0)
@@ -9164,7 +9164,7 @@ namespace
 					InOutRuntime,
 					SourceInstance.OwnerUnitId,
 					PreferredEnemyTargetUnitId);
-				if (Target && !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Burn, 2, OutError, &InOutResult, SourceInstance.OwnerUnitId))
+				if (Target && !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Burn, 2, OutError, InOutResult, SourceInstance.OwnerUnitId))
 				{
 					return false;
 				}
@@ -9177,8 +9177,8 @@ namespace
 					SourceInstance.OwnerUnitId,
 					PreferredEnemyTargetUnitId);
 				if (Target
-					&& (!GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Vulnerability, 2, OutError, &InOutResult, SourceInstance.OwnerUnitId)
-						|| !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Mark, 1, OutError, &InOutResult, SourceInstance.OwnerUnitId)))
+					&& (!GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Vulnerability, 2, OutError, InOutResult, SourceInstance.OwnerUnitId)
+						|| !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Mark, 1, OutError, InOutResult, SourceInstance.OwnerUnitId)))
 				{
 					return false;
 				}
@@ -9189,7 +9189,14 @@ namespace
 				{
 					if (Candidate.bLiving && Candidate.Side == Owner->Side)
 					{
-						ApplyAndRecordHealing(InOutResult, SourceInstance.OwnerUnitId, Candidate, 4);
+						if (InOutResult)
+						{
+							ApplyAndRecordHealing(*InOutResult, SourceInstance.OwnerUnitId, Candidate, 4);
+						}
+						else
+						{
+							GameXXKCardRules::HealCombatUnit(Candidate, 4);
+						}
 					}
 				}
 				break;
@@ -9215,7 +9222,14 @@ namespace
 				{
 					if (Candidate.bLiving && Candidate.Side == Owner->Side)
 					{
-						ApplyAndRecordArmor(InOutResult, SourceInstance.OwnerUnitId, Candidate, 4);
+						if (InOutResult)
+						{
+							ApplyAndRecordArmor(*InOutResult, SourceInstance.OwnerUnitId, Candidate, 4);
+						}
+						else
+						{
+							GameXXKCardRules::AddCombatArmor(Candidate, 4);
+						}
 					}
 				}
 				break;
@@ -9242,7 +9256,14 @@ namespace
 					{
 						continue;
 					}
-					ApplyAndRecordArmor(InOutResult, SourceInstance.OwnerUnitId, *Ally, 8);
+					if (InOutResult)
+					{
+						ApplyAndRecordArmor(*InOutResult, SourceInstance.OwnerUnitId, *Ally, 8);
+					}
+					else
+					{
+						GameXXKCardRules::AddCombatArmor(*Ally, 8);
+					}
 					if (!RegisterPartyReactionUses(
 						InOutRuntime,
 						SourceInstance,
@@ -9401,7 +9422,7 @@ namespace
 					CardTargetIds.Num() == 1 ? CardTargetIds[0] : NAME_None,
 					BenefitTerrain,
 					Repetitions,
-					InOutResult,
+					&InOutResult,
 					OutError))
 				{
 					return false;
@@ -12306,7 +12327,7 @@ namespace
 		const FGameXXKResolvedCardSnapshot& PlayedSnapshot,
 		const FGameXXKCardInstance& PlayedInstance,
 		const FName ConditionTargetUnitId,
-		FGameXXKCardPlayResult& InOutResult,
+		FGameXXKCardPlayResult* InOutResult,
 		FString& OutError)
 	{
 		const FGameXXKCardBattleModifier& Definition = Modifier.Definition;
@@ -12366,7 +12387,7 @@ namespace
 						Definition.Status,
 						Definition.Magnitude,
 						OutError,
-						&InOutResult,
+						InOutResult,
 						Modifier.SourceUnitId))
 					{
 						return false;
@@ -12468,7 +12489,7 @@ namespace
 				DamageResult.HealthDamage,
 				DamageResult.StatusStacksConsumed,
 				OutError,
-				&InOutResult))
+				InOutResult))
 			{
 				return false;
 			}
@@ -12484,7 +12505,10 @@ namespace
 				OutError = TEXT("A preserving status trigger failed to restore its consumed layer.");
 				return false;
 			}
-			InOutResult.DamageResults.Add(MoveTemp(DamageResult));
+			if (InOutResult)
+			{
+				InOutResult->DamageResults.Add(MoveTemp(DamageResult));
+			}
 			return true;
 		}
 		default:
@@ -12556,7 +12580,7 @@ namespace
 				continue;
 			}
 			const FGameXXKCardBattleModifierRuntime ModifierCopy = *LiveModifier;
-			if (!ResolveTriggeredModifierAction(InOutRuntime, ModifierCopy, PlayedSnapshot, PlayedInstance, ConditionTargetUnitId, InOutResult, OutError)
+			if (!ResolveTriggeredModifierAction(InOutRuntime, ModifierCopy, PlayedSnapshot, PlayedInstance, ConditionTargetUnitId, &InOutResult, OutError)
 				|| !ConsumeTriggeredModifierUse(InOutRuntime, ModifierCopy.ModifierId, OutError))
 			{
 				return false;
@@ -14212,8 +14236,7 @@ namespace
 			{
 				const FGameXXKCardBattleModifierRuntime ModifierCopy = *LiveModifier;
 				const FGameXXKCardInstance SourceInstance = MakeSnapshotInstance(ModifierCopy.SourceCardSnapshot, ModifierCopy.SourceCardInstanceId);
-				FGameXXKCardPlayResult IgnoredResult;
-				if (!ResolveTriggeredModifierAction(InOutRuntime, ModifierCopy, ModifierCopy.SourceCardSnapshot, SourceInstance, ConditionTargetUnitId, IgnoredResult, OutError))
+				if (!ResolveTriggeredModifierAction(InOutRuntime, ModifierCopy, ModifierCopy.SourceCardSnapshot, SourceInstance, ConditionTargetUnitId, nullptr, OutError))
 				{
 					return false;
 				}

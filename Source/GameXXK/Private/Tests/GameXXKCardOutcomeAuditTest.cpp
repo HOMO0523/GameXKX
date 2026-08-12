@@ -298,6 +298,65 @@ namespace GameXXKCardOutcomeAuditTest
 		return true;
 	}
 
+	FGameXXKResolvedCardSnapshot MakeSnapshot(
+		const FName CardId,
+		const TArray<FName>& OriginalTargetUnitIds = {})
+	{
+		FGameXXKResolvedCardSnapshot Snapshot;
+		Snapshot.CardId = CardId;
+		Snapshot.Quality = EGameXXKCardQuality::Common;
+		Snapshot.OwnerUnitId = OwnerUnitId;
+		Snapshot.OriginalTargetUnitIds = OriginalTargetUnitIds;
+		return Snapshot;
+	}
+
+	void KeepOnlyLastCardInHand(
+		FGameXXKCardBattleRuntime& Runtime,
+		const TArray<FGameXXKCardInstance>& Cards)
+	{
+		Runtime.Deck.Hand = {Cards.Last()};
+		Runtime.Deck.DrawPile.Reset();
+		Runtime.Deck.DiscardPile.Reset();
+		Runtime.Deck.ExhaustPile.Reset();
+		for (int32 Index = 0; Index + 1 < Cards.Num(); ++Index)
+		{
+			Runtime.Deck.DiscardPile.Add(Cards[Index]);
+		}
+	}
+
+	bool InstallPoJunOpeningReplay(
+		FAutomationTestBase& Test,
+		FGameXXKCardBattleRuntime& Runtime)
+	{
+		const FGameXXKEquipmentSetBonusDefinition* Definition =
+			FGameXXKEquipmentSetCatalog::FindDefinition(TEXT("Set.PoJun.6"));
+		if (!Definition)
+		{
+			Test.AddError(TEXT("outer merge audit requires the catalog PoJun six-piece definition"));
+			return false;
+		}
+		FGameXXKEquipmentBattleEffectRuntime& RuntimeEffect = Runtime.EquipmentEffects.AddDefaulted_GetRef();
+		RuntimeEffect.SourceCharacterId = OwnerUnitId;
+		RuntimeEffect.ActiveEffect.EffectId = Definition->Id;
+		RuntimeEffect.ActiveEffect.SourceCharacterId = OwnerUnitId;
+		RuntimeEffect.ActiveEffect.Set = Definition->Set;
+		RuntimeEffect.ActiveEffect.RequiredPieces = Definition->RequiredPieces;
+		RuntimeEffect.ActiveEffect.Scope = Definition->Scope;
+		RuntimeEffect.ActiveEffect.Hook = Definition->Hook;
+		RuntimeEffect.ActiveEffect.ModifierKind = EGameXXKEquipmentModifierKind::BladeOpeningReplay;
+		RuntimeEffect.ActiveEffect.Magnitude = Definition->Value;
+		RuntimeEffect.ActiveEffect.Unit = Definition->Unit;
+		RuntimeEffect.ActiveEffect.MaxTriggersPerRound = Definition->TriggersPerRound;
+		RuntimeEffect.PendingPoJunReplayPlayerRound = Runtime.RoundNumber;
+		FString Error;
+		if (!GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &Error))
+		{
+			Test.AddError(FString::Printf(TEXT("outer PoJun merge fixture is invalid: %s"), *Error));
+			return false;
+		}
+		return true;
+	}
+
 	bool TestHealingPacket(
 		FAutomationTestBase& Test,
 		const FGameXXKCardHealingResult& Result,
@@ -629,10 +688,52 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 
 	{
 		const TArray<FGameXXKCardInstance> Cards = {
+			MakeNamedCard(TEXT("Outcome.Modifier.LianYing.1"), TEXT("Hero.Formation.LianYingBuShi"), OwnerUnitId, 0),
+			MakeNamedCard(TEXT("Outcome.Modifier.LianYing.2"), TEXT("Hero.Formation.LianYingBuShi"), OwnerUnitId, 1)};
+		FGameXXKCardBattleRuntime Runtime;
+		if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::FormationMaster, 61046)) return false;
+		Runtime.Terrain = EGameXXKCardTerrain::Village;
+		FGameXXKCardPlayResult Result;
+		FString Error;
+		if (!TestTrue(FString::Printf(TEXT("active terrain listener installs: %s"), *Error),
+			GameXXKCardRules::ResolveCardPlay(Runtime, Cards[0].InstanceId, EnemyAUnitId, Result, &Error))) return false;
+		Result = FGameXXKCardPlayResult();
+		Error.Reset();
+		if (!TestTrue(FString::Printf(TEXT("active terrain listener resolves into the current transaction: %s"), *Error),
+			GameXXKCardRules::ResolveCardPlay(Runtime, Cards[1].InstanceId, EnemyAUnitId, Result, &Error))) return false;
+		if (!TestEqual(TEXT("active terrain listener contributes both Village armor packets to its play result"), Result.ArmorResults.Num(), 2)) return false;
+		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 4, 4, TEXT("active modifier owner Armor"));
+		TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, AllyUnitId, 4, 4, TEXT("active modifier ally Armor"));
+	}
+
+	{
+		const TArray<FGameXXKCardInstance> Cards = {
+			MakeNamedCard(TEXT("Outcome.RoundStart.YingFeng"), TEXT("Hero.Blade.YingFengHuanBu"), OwnerUnitId, 0)};
+		FGameXXKCardBattleRuntime Runtime;
+		if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::Blade, 61047)) return false;
+		FGameXXKCardPlayResult Result;
+		FString Error;
+		if (!TestTrue(FString::Printf(TEXT("round-start modifier source resolves: %s"), *Error),
+			GameXXKCardRules::ResolveCardPlay(Runtime, Cards[0].InstanceId, NAME_None, Result, &Error))) return false;
+		TestEqual(TEXT("Ying Feng base play starts with two Mark"), Status(Runtime, OwnerUnitId, EGameXXKCardStatus::Mark), 2);
+		TArray<FGameXXKCardDamageResult> BoundaryDamage;
+		Error.Reset();
+		if (!TestTrue(FString::Printf(TEXT("round-start modifier source reaches enemy phase: %s"), *Error),
+			GameXXKCardRules::EndPlayerCardPhase(Runtime, BoundaryDamage, &Error))) return false;
+		BoundaryDamage.Reset();
+		Error.Reset();
+		if (!TestTrue(FString::Printf(TEXT("round-start modifier executes through its no-play-result boundary: %s"), *Error),
+			GameXXKCardRules::BeginNextPlayerCardRound(Runtime, BoundaryDamage, &Error))) return false;
+		TestEqual(TEXT("round-start modifier adds its two Mark without a card transaction"), Status(Runtime, OwnerUnitId, EGameXXKCardStatus::Mark), 4);
+		TestTrue(TEXT("round-start status modifier invents no damage result"), BoundaryDamage.IsEmpty());
+	}
+
+	{
+		const TArray<FGameXXKCardInstance> Cards = {
 			MakeNamedCard(TEXT("Outcome.Rollback.YinXue"), TEXT("Profession.Blade.YinXueDao"), OwnerUnitId, 0),
 			MakeNamedCard(TEXT("Outcome.Rollback.Consumer"), TEXT("Hero.Guard.XuanJiaZhenYue"), OwnerUnitId, 1)};
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::Blade, 61046)) return false;
+		if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::Blade, 61048)) return false;
 		FindUnit(Runtime, OwnerUnitId)->Armor = 10;
 		FGameXXKCardPlayResult Result;
 		FString Error;
@@ -646,6 +747,225 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("RestoreConsumedStatusesAndArmor emits no visible armor packet"), Result.ArmorResults.IsEmpty());
 	}
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKSorcererNestedArmorMergeAuditTest,
+	"GameXXK.Data.CardOutcomePreview.Audit.Merge.SorcererNested",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKSorcererNestedArmorMergeAuditTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKCardOutcomeAuditTest;
+	const TArray<FName> CardIds = {
+		TEXT("Profession.Sorcerer.ChiYanFengJie"),
+		TEXT("Profession.Sorcerer.LingYanLianDan"),
+		TEXT("Profession.Sorcerer.JuLing"),
+		TEXT("Profession.Sorcerer.LiHuoYin"),
+		TEXT("Profession.Sorcerer.ChiXiaoFenXing")};
+	TArray<FGameXXKCardInstance> Cards;
+	for (int32 Index = 0; Index < CardIds.Num(); ++Index)
+	{
+		Cards.Add(MakeNamedCard(
+			FName(*FString::Printf(TEXT("Outcome.Merge.Sorcerer.%d"), Index)),
+			CardIds[Index],
+			OwnerUnitId,
+			Index));
+	}
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::Sorcerer, 61101)) return false;
+	KeepOnlyLastCardInHand(Runtime, Cards);
+
+	FGameXXKSorcererPartnerTaskRuntime& Task = Runtime.SorcererPartnerTasks.AddDefaulted_GetRef();
+	Task.bActive = true;
+	Task.OwnerUnitId = OwnerUnitId;
+	Task.LockedCardIds = CardIds;
+	Task.StarterReward = EGameXXKSorcererRewardRule::UniversalSearch;
+	Task.LockedBranch = EGameXXKSorcererTaskBranch::Ice;
+	for (int32 Index = 0; Index < CardIds.Num() - 1; ++Index)
+	{
+		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardIds[Index]);
+		if (!TestNotNull(TEXT("Sorcerer outer merge card exists"), Definition)) return false;
+		Task.CompletedCardIds.Add(CardIds[Index]);
+		FGameXXKResolvedCardSnapshot& Snapshot = Task.FirstPlayOrder.Add_GetRef(MakeSnapshot(CardIds[Index]));
+		Snapshot.PaidManaCost = Definition->ManaCost;
+		Snapshot.SorcererSequencePosition = Index + 1;
+		Snapshot.PreviousSorcererFamily = Index == 0
+			? EGameXXKSorcererCardFamily::None
+			: FGameXXKCardCatalog::FindCardDefinition(CardIds[Index - 1])->SorcererRule.Family;
+		Snapshot.SorcererTaskBranch = EGameXXKSorcererTaskBranch::Ice;
+	}
+
+	FGameXXKCardPlayResult Result;
+	FString Error;
+	if (!TestTrue(FString::Printf(TEXT("fifth Sorcerer card resolves its full outer transaction: %s"), *Error),
+		GameXXKCardRules::ResolveCardPlay(Runtime, Cards.Last().InstanceId, NAME_None, Result, &Error))) return false;
+	if (!TestEqual(TEXT("Sorcerer queue and nested Universal reward all reach the final armor audit"), Result.ArmorResults.Num(), 3)) return false;
+	TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 4, 4, TEXT("Sorcerer outer queue first Ice Armor"));
+	TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, OwnerUnitId, 2, 2, TEXT("Sorcerer queue sequence Armor"));
+	TestArmorPacket(*this, Result.ArmorResults[2], OwnerUnitId, OwnerUnitId, 6, 6, TEXT("Sorcerer nested reward replay Armor"));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTaskNpcArmorMergeAuditTest,
+	"GameXXK.Data.CardOutcomePreview.Audit.Merge.TaskNpcReplayReward",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTaskNpcArmorMergeAuditTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKCardOutcomeAuditTest;
+	const TArray<FName> CardIds = {
+		TEXT("Npc.YueBai.CanJuanPiZhu"),
+		TEXT("Npc.YueBai.QingYanDianDeng"),
+		TEXT("Npc.YueBai.YueBaiZhaoYe")};
+	TArray<FGameXXKCardInstance> Cards;
+	for (int32 Index = 0; Index < CardIds.Num(); ++Index)
+	{
+		Cards.Add(MakeNamedCard(
+			FName(*FString::Printf(TEXT("Outcome.Merge.TaskNpc.%d"), Index)),
+			CardIds[Index],
+			OwnerUnitId,
+			Index));
+	}
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::QuestNpc, 61102)) return false;
+	KeepOnlyLastCardInHand(Runtime, Cards);
+	Runtime.Terrain = EGameXXKCardTerrain::Village;
+
+	FGameXXKTaskNpcSpellTaskRuntime& Task = Runtime.TaskNpcSpellTasks.AddDefaulted_GetRef();
+	Task.bActive = true;
+	Task.OwnerUnitId = OwnerUnitId;
+	Task.LockedCardIds = CardIds;
+	for (int32 Index = 0; Index < CardIds.Num() - 1; ++Index)
+	{
+		Task.CompletedCardIds.Add(CardIds[Index]);
+		Task.FirstPlayOrder.Add(MakeSnapshot(CardIds[Index], {EnemyAUnitId}));
+	}
+
+	FGameXXKCardPlayResult Result;
+	FString Error;
+	if (!TestTrue(FString::Printf(TEXT("third Yue Bai card resolves replay and reward into its outer transaction: %s"), *Error),
+		GameXXKCardRules::ResolveCardPlay(Runtime, Cards.Last().InstanceId, EnemyAUnitId, Result, &Error))) return false;
+	if (!TestEqual(TEXT("one replay terrain benefit and three reward benefits all reach the final armor audit"), Result.ArmorResults.Num(), 8)) return false;
+	for (int32 Index = 0; Index < Result.ArmorResults.Num(); ++Index)
+	{
+		TestArmorPacket(
+			*this,
+			Result.ArmorResults[Index],
+			OwnerUnitId,
+			Index % 2 == 0 ? OwnerUnitId : AllyUnitId,
+			4,
+			4,
+			TEXT("task NPC merged Village Armor"));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKHeroTaskArmorMergeAuditTest,
+	"GameXXK.Data.CardOutcomePreview.Audit.Merge.HeroTaskOuterDrain",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKHeroTaskArmorMergeAuditTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKCardOutcomeAuditTest;
+	const TArray<FName> CardIds = {
+		TEXT("Hero.Mage.HanXuNingChuan"),
+		TEXT("Hero.Generic.QingFengYiShi"),
+		TEXT("Hero.Generic.HeYuZhan"),
+		TEXT("Hero.Generic.SuiYanJi"),
+		TEXT("Hero.Generic.PoYunYiShan"),
+		TEXT("Hero.Blade.XueLuXiangCheng"),
+		TEXT("Hero.Hunter.LieYuLianShi"),
+		TEXT("Hero.Generic.NingShenTuNa")};
+	TArray<FGameXXKCardInstance> Cards;
+	for (int32 Index = 0; Index < CardIds.Num(); ++Index)
+	{
+		Cards.Add(MakeNamedCard(
+			FName(*FString::Printf(TEXT("Outcome.Merge.HeroTask.%d"), Index)),
+			CardIds[Index],
+			OwnerUnitId,
+			Index));
+	}
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::Hero, 61103)) return false;
+	KeepOnlyLastCardInHand(Runtime, Cards);
+	Runtime.EquippedHeroCardIds = CardIds;
+	Runtime.HeroSpellTask.bActive = true;
+	Runtime.HeroSpellTask.LockedHeroCardIds = CardIds;
+	Runtime.HeroSpellTask.StarterReward = EGameXXKHeroSpellTaskReward::Ice;
+	Runtime.HeroSpellTask.StarterOwnerUnitId = OwnerUnitId;
+	for (int32 Index = 0; Index < CardIds.Num() - 1; ++Index)
+	{
+		Runtime.HeroSpellTask.CompletedHeroCardIds.Add(CardIds[Index]);
+		Runtime.HeroSpellTask.FirstPlayOrder.Add(MakeSnapshot(
+			CardIds[Index],
+			Index == 0 ? TArray<FName>() : TArray<FName>{EnemyAUnitId}));
+	}
+
+	FGameXXKCardPlayResult Result;
+	FString Error;
+	if (!TestTrue(FString::Printf(TEXT("eighth Hero card resolves its replay queue into the outer transaction: %s"), *Error),
+		GameXXKCardRules::ResolveCardPlay(Runtime, Cards.Last().InstanceId, NAME_None, Result, &Error))) return false;
+	if (!TestEqual(TEXT("Hero task outer drain preserves both Han Xu armor attempts"), Result.ArmorResults.Num(), 2)) return false;
+	TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 5, 5, TEXT("Hero task current Mana Armor"));
+	TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, OwnerUnitId, 6, 6, TEXT("Hero task overflow Armor"));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKBladeFinishArmorMergeAuditTest,
+	"GameXXK.Data.CardOutcomePreview.Audit.Merge.BladeFinishOuterDrain",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKBladeFinishArmorMergeAuditTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKCardOutcomeAuditTest;
+	const TArray<FGameXXKCardInstance> Cards = {
+		MakeNamedCard(TEXT("Outcome.Merge.BladeFinish"), TEXT("Hero.Guard.JieJiaHuanFeng"), OwnerUnitId, 0)};
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::Blade, 61104)) return false;
+	TestEqual(TEXT("Blade finish fixture adds Vulnerability"),
+		GameXXKCardRules::AddCombatStatus(*FindUnit(Runtime, EnemyAUnitId), EGameXXKCardStatus::Vulnerability, 3), 3);
+	Runtime.PendingBladeFinish.Rule = EGameXXKBladeFinishRule::FreezeVulnerabilityAndReplay;
+	Runtime.PendingBladeFinish.SourceCardId = TEXT("Profession.Blade.DuanYue");
+	Runtime.PendingBladeFinish.SourceQuality = EGameXXKCardQuality::Common;
+	Runtime.PendingBladeFinish.SourceOwnerUnitId = OwnerUnitId;
+	Runtime.PendingBladeFinish.TriggerPlayerRound = Runtime.RoundNumber;
+
+	FGameXXKCardPlayResult Result;
+	FString Error;
+	if (!TestTrue(FString::Printf(TEXT("Duan Yue finish replay resolves into the outer transaction: %s"), *Error),
+		GameXXKCardRules::ResolveCardPlay(Runtime, Cards[0].InstanceId, EnemyAUnitId, Result, &Error))) return false;
+	if (!TestEqual(TEXT("Blade finish outer drain preserves base and replay armor"), Result.ArmorResults.Num(), 2)) return false;
+	TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 10, 10, TEXT("Blade finish active Armor"));
+	TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, OwnerUnitId, 10, 10, TEXT("Blade finish replay Armor"));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKPoJunArmorMergeAuditTest,
+	"GameXXK.Data.CardOutcomePreview.Audit.Merge.PoJunOuterDrain",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKPoJunArmorMergeAuditTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKCardOutcomeAuditTest;
+	const TArray<FGameXXKCardInstance> Cards = {
+		MakeNamedCard(TEXT("Outcome.Merge.PoJun"), TEXT("Hero.Generic.HengJianShouShi"), OwnerUnitId, 0)};
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::Blade, 61105)
+		|| !InstallPoJunOpeningReplay(*this, Runtime)) return false;
+
+	FGameXXKCardPlayResult Result;
+	FString Error;
+	if (!TestTrue(FString::Printf(TEXT("PoJun opening replay resolves into the outer transaction: %s"), *Error),
+		GameXXKCardRules::ResolveCardPlay(Runtime, Cards[0].InstanceId, AllyUnitId, Result, &Error))) return false;
+	if (!TestEqual(TEXT("PoJun outer drain preserves base and replay armor"), Result.ArmorResults.Num(), 2)) return false;
+	TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, AllyUnitId, 16, 16, TEXT("PoJun active Armor"));
+	TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, AllyUnitId, 16, 16, TEXT("PoJun replay Armor"));
 	return true;
 }
 
