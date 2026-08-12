@@ -8,6 +8,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/SizeBox.h"
@@ -21,6 +22,7 @@
 #include "PaperFlipbookComponent.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattlePartyQiWidget.h"
+#include "UI/GameXXKCardOutcomePreviewWidget.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
 
 #include <type_traits>
@@ -138,7 +140,8 @@ namespace
 		FName& OutTargetUnitId,
 		FName& OutOwnerUnitId,
 		FGameXXKCardPlayPreview& OutPreview,
-		FString& OutError)
+		FString& OutError,
+		const int32 EnemyCount = 1)
 	{
 		OutCardInstanceId = NAME_None;
 		OutTargetUnitId = NAME_None;
@@ -158,7 +161,13 @@ namespace
 			State.Screen = EGameXXKScreen::Battle;
 			State.bHasActiveBattle = true;
 			State.ActiveBattleNodeId = 17;
-			State.ActiveBattleEnemies = {MakeEnemy(TEXT("MoneyRat"), TEXT("钱鼠"))};
+			State.ActiveBattleEnemies.Reset();
+			for (int32 EnemyIndex = 0; EnemyIndex < FMath::Clamp(EnemyCount, 1, 3); ++EnemyIndex)
+			{
+				State.ActiveBattleEnemies.Add(MakeEnemy(
+					*FString::Printf(TEXT("PreviewEnemy%d"), EnemyIndex + 1),
+					*FString::Printf(TEXT("预演敌人%d"), EnemyIndex + 1)));
+			}
 
 			FString Error;
 			if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error)
@@ -613,6 +622,173 @@ namespace
 		static float Opacity(const TBoard* Board) { return Board->GetPlayedCardCommitOpacityForTest(); }
 		static int32 CompletionCount(const TBoard* Board) { return Board->GetPlayedCardCommitCompletionCountForTest(); }
 	};
+
+	bool BuildPureEnemyGroupCardFixture(
+		UGameXXKMVPSubsystem* const Subsystem,
+		FName& OutCardInstanceId,
+		FGameXXKCardPlayPreview& OutPlayability,
+		FGameXXKCardOutcomePreview& OutOutcome,
+		FString& OutError,
+		const int32 EnemyCount = 3)
+	{
+		OutCardInstanceId = NAME_None;
+		OutPlayability = FGameXXKCardPlayPreview();
+		OutOutcome = FGameXXKCardOutcomePreview();
+		OutError.Reset();
+		if (!Subsystem)
+		{
+			OutError = TEXT("The pure-group test subsystem is missing.");
+			return false;
+		}
+
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		State = UGameXXKMVPRules::CreateNewGame();
+		State.Screen = EGameXXKScreen::Battle;
+		State.bHasActiveBattle = true;
+		State.ActiveBattleNodeId = 23;
+		State.ActiveBattleEnemies.Reset();
+		for (int32 EnemyIndex = 0; EnemyIndex < FMath::Clamp(EnemyCount, 1, 3); ++EnemyIndex)
+		{
+			State.ActiveBattleEnemies.Add(MakeEnemy(
+				*FString::Printf(TEXT("GroupPreviewEnemy%d"), EnemyIndex + 1),
+				*FString::Printf(TEXT("群攻敌人%d"), EnemyIndex + 1)));
+		}
+
+		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &OutError)
+			|| !FGameXXKCardBattleAdapter::BeginCardBattle(
+				State, EGameXXKNodeKind::Battle, EGameXXKCardTerrain::Plain, 37, &OutError)
+			|| State.CardRun.ActiveBattle.Deck.Hand.IsEmpty())
+		{
+			return false;
+		}
+
+		FGameXXKCardInstance& Card = State.CardRun.ActiveBattle.Deck.Hand[0];
+		const TArray<FName> SorcererTaskCardIds = {
+			TEXT("Profession.Sorcerer.BaoYanShu"),
+			TEXT("Profession.Sorcerer.LiHuoYin"),
+			TEXT("Profession.Sorcerer.YanQiang"),
+			TEXT("Profession.Sorcerer.XingHuoLiaoYuan"),
+			TEXT("Profession.Sorcerer.ChiXiaoFenXing")};
+		TArray<FGameXXKCardInstance*> CarriedInstances;
+		for (FGameXXKCardInstance& Instance : State.CardRun.ActiveBattle.Deck.Hand)
+		{
+			CarriedInstances.Add(&Instance);
+		}
+		for (FGameXXKCardInstance& Instance : State.CardRun.ActiveBattle.Deck.DrawPile)
+		{
+			CarriedInstances.Add(&Instance);
+		}
+		if (CarriedInstances.Num() < SorcererTaskCardIds.Num())
+		{
+			OutError = TEXT("The pure-group fixture has fewer than five carried instances.");
+			return false;
+		}
+		for (int32 CardIndex = 0; CardIndex < SorcererTaskCardIds.Num(); ++CardIndex)
+		{
+			CarriedInstances[CardIndex]->CardId = SorcererTaskCardIds[CardIndex];
+			CarriedInstances[CardIndex]->OwnerUnitId = Card.OwnerUnitId;
+			CarriedInstances[CardIndex]->bTemporary = false;
+		}
+		OutCardInstanceId = Card.InstanceId;
+		if (FGameXXKCardCombatUnit* const Owner = State.CardRun.ActiveBattle.Units.FindByPredicate(
+			[&Card](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == Card.OwnerUnitId; }))
+		{
+			Owner->Role = EGameXXKCharacterRole::Sorcerer;
+			Owner->Mana = 99;
+			Owner->MaxMana = 99;
+			Owner->Attack = FMath::Max(Owner->Attack, 30);
+		}
+		State.CardRun.ActiveBattle.Deck.SharedEnergy = 99;
+
+		return FGameXXKCardBattleAdapter::BuildCardPlayPreview(
+				State, OutCardInstanceId, OutPlayability, &OutError)
+			&& OutPlayability.bCanPlay
+			&& !OutPlayability.TargetRequest.bRequiresManualSelection
+			&& OutPlayability.TargetRequest.EffectiveMode == EGameXXKCardTargetMode::AllEnemies
+			&& FGameXXKCardOutcomePreviewRules::Build(
+				State, OutCardInstanceId, NAME_None, OutOutcome, &OutError)
+			&& OutOutcome.Classification == EGameXXKCardOutcomePreviewClass::PureEnemyGroup
+			&& OutOutcome.EnemyPositionLines.Num() == FMath::Clamp(EnemyCount, 1, 3);
+	}
+
+	struct FCanvasLayoutSnapshot
+	{
+		FVector2D AnchorMinimum = FVector2D::ZeroVector;
+		FVector2D AnchorMaximum = FVector2D::ZeroVector;
+		FVector2D Alignment = FVector2D::ZeroVector;
+		FMargin Offsets;
+		FVector2D Size = FVector2D::ZeroVector;
+		int32 ZOrder = INDEX_NONE;
+	};
+
+	TMap<FName, FCanvasLayoutSnapshot> CaptureNonOutcomeCanvasLayout(const UGameXXKBattleBoardWidget* const Board)
+	{
+		TMap<FName, FCanvasLayoutSnapshot> Result;
+		if (!Board || !Board->WidgetTree)
+		{
+			return Result;
+		}
+		TArray<UWidget*> Widgets;
+		Board->WidgetTree->GetAllWidgets(Widgets);
+		for (UWidget* const Widget : Widgets)
+		{
+			if (!Widget || Widget->GetName().Contains(TEXT("OutcomePreview")))
+			{
+				continue;
+			}
+			const UCanvasPanelSlot* const CanvasSlot = Cast<UCanvasPanelSlot>(Widget->Slot);
+			if (!CanvasSlot)
+			{
+				continue;
+			}
+			FCanvasLayoutSnapshot& Snapshot = Result.Add(Widget->GetFName());
+			Snapshot.AnchorMinimum = CanvasSlot->GetAnchors().Minimum;
+			Snapshot.AnchorMaximum = CanvasSlot->GetAnchors().Maximum;
+			Snapshot.Alignment = CanvasSlot->GetAlignment();
+			Snapshot.Offsets = CanvasSlot->GetOffsets();
+			Snapshot.Size = CanvasSlot->GetSize();
+			Snapshot.ZOrder = CanvasSlot->GetZOrder();
+		}
+		return Result;
+	}
+
+	bool AssertCanvasLayoutUnchanged(
+		FAutomationTestBase& Test,
+		const TMap<FName, FCanvasLayoutSnapshot>& Before,
+		const TMap<FName, FCanvasLayoutSnapshot>& After)
+	{
+		bool bEqual = Test.TestEqual(TEXT("functional hover preserves the number of pre-existing Canvas slots"), After.Num(), Before.Num());
+		for (const TPair<FName, FCanvasLayoutSnapshot>& Pair : Before)
+		{
+			const FCanvasLayoutSnapshot* const Actual = After.Find(Pair.Key);
+			bEqual &= Test.TestNotNull(*FString::Printf(TEXT("Canvas slot %s remains present"), *Pair.Key.ToString()), Actual);
+			if (!Actual)
+			{
+				continue;
+			}
+			bEqual &= Test.TestEqual(*FString::Printf(TEXT("%s anchor minimum is invariant"), *Pair.Key.ToString()), Actual->AnchorMinimum, Pair.Value.AnchorMinimum);
+			bEqual &= Test.TestEqual(*FString::Printf(TEXT("%s anchor maximum is invariant"), *Pair.Key.ToString()), Actual->AnchorMaximum, Pair.Value.AnchorMaximum);
+			bEqual &= Test.TestEqual(*FString::Printf(TEXT("%s alignment is invariant"), *Pair.Key.ToString()), Actual->Alignment, Pair.Value.Alignment);
+			bEqual &= Test.TestEqual(*FString::Printf(TEXT("%s offsets are invariant"), *Pair.Key.ToString()), Actual->Offsets, Pair.Value.Offsets);
+			bEqual &= Test.TestEqual(*FString::Printf(TEXT("%s size is invariant"), *Pair.Key.ToString()), Actual->Size, Pair.Value.Size);
+			bEqual &= Test.TestEqual(*FString::Printf(TEXT("%s z-order is invariant"), *Pair.Key.ToString()), Actual->ZOrder, Pair.Value.ZOrder);
+		}
+		return bEqual;
+	}
+
+	bool AssertOutcomeCleared(FAutomationTestBase& Test, const UGameXXKBattleBoardWidget* const Board, const TCHAR* Context)
+	{
+		if (!Board)
+		{
+			Test.AddError(FString::Printf(TEXT("%s: Board is missing"), Context));
+			return false;
+		}
+		bool bClear = Test.TestFalse(*FString::Printf(TEXT("%s hides both preview widgets"), Context), Board->IsCardOutcomePreviewVisibleForTest());
+		bClear &= Test.TestEqual(*FString::Printf(TEXT("%s clears cached card"), Context), Board->GetCardOutcomePreviewCardInstanceIdForTest(), NAME_None);
+		bClear &= Test.TestEqual(*FString::Printf(TEXT("%s clears cached target"), Context), Board->GetCardOutcomePreviewTargetUnitIdForTest(), NAME_None);
+		bClear &= Test.TestEqual(*FString::Printf(TEXT("%s clears visible lines"), Context), Board->GetCardOutcomePreviewLinesForTest().Num(), 0);
+		return bClear;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -1415,6 +1591,450 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("clearing a legal target disables the scene highlight"), SceneUnit->IsCardTargetHighlighted());
 	Board->CancelBattleVisualSession(8201);
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTargetOutcomePreviewManualHoverTest,
+	"GameXXK.Integration.CardBattle.TargetOutcomePreview.ManualHover",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Parameters)
+{
+	AddExpectedError(TEXT("cannot enter the 268435456-byte resident budget; using fallback."), EAutomationExpectedErrorFlags::Contains, 0);
+	UGameInstance* const GameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
+	FName CardInstanceId;
+	FName FirstTargetUnitId;
+	FName OwnerUnitId;
+	FGameXXKCardPlayPreview Playability;
+	FString Error;
+	TestTrue(FString::Printf(TEXT("two-target manual fixture builds through the real catalog/adapter: %s"), *Error),
+		BuildManualTargetCardFixture(
+			Subsystem, CardInstanceId, FirstTargetUnitId, OwnerUnitId, Playability, Error, 2));
+	TArray<FName> LegalEnemyTargets;
+	for (const FGameXXKCardTargetCandidateView& Candidate : Playability.TargetRequest.CandidateViews)
+	{
+		if (Candidate.bCanSelect && Candidate.Side == EGameXXKCardTargetSide::Enemy)
+		{
+			LegalEnemyTargets.Add(Candidate.UnitId);
+		}
+	}
+	TestEqual(TEXT("manual fixture exposes two legal stable enemy targets"), LegalEnemyTargets.Num(), 2);
+	if (LegalEnemyTargets.Num() != 2)
+	{
+		return false;
+	}
+
+	UGameXXKBattleBoardWidget* const Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("manual outcome Board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	TestTrue(TEXT("manual outcome Board begins its real visual session"), Board->BeginBattleVisualSession(8701));
+	UButton* FirstProxy = Board->GetUnitTargetProxyForTest(LegalEnemyTargets[0]);
+	UButton* const SecondProxy = Board->GetUnitTargetProxyForTest(LegalEnemyTargets[1]);
+	UButton* const OwnerProxy = Board->GetUnitTargetProxyForTest(OwnerUnitId);
+	TestNotNull(TEXT("first legal enemy has a real transparent proxy"), FirstProxy);
+	TestNotNull(TEXT("second legal enemy has a real transparent proxy"), SecondProxy);
+	TestNotNull(TEXT("illegal card owner still has a real transparent proxy"), OwnerProxy);
+	if (!FirstProxy || !SecondProxy || !OwnerProxy)
+	{
+		return false;
+	}
+
+	FirstProxy->OnHovered.Broadcast();
+	TestFalse(TEXT("unit hover outside TargetingCard never displays an outcome"), Board->IsCardOutcomePreviewVisibleForTest());
+	TestEqual(TEXT("unit hover outside TargetingCard never runs outcome simulation"), Board->GetCardOutcomePreviewBuildCountForTest(), 0);
+	TestTrue(TEXT("manual card enters the existing TargetingCard click path"), Board->ClickCardInHand(CardInstanceId));
+	OwnerProxy->OnHovered.Broadcast();
+	TestFalse(TEXT("illegal target hover does not display an outcome"), Board->IsCardOutcomePreviewVisibleForTest());
+	TestEqual(TEXT("illegal target hover does not run outcome simulation"), Board->GetCardOutcomePreviewBuildCountForTest(), 0);
+
+	FirstProxy->OnHovered.Broadcast();
+	TestTrue(TEXT("legal manual target hover displays an outcome"), Board->IsCardOutcomePreviewVisibleForTest());
+	TestEqual(TEXT("manual hover exposes the stable card instance"), Board->GetCardOutcomePreviewCardInstanceIdForTest(), CardInstanceId);
+	TestEqual(TEXT("manual hover exposes the first stable target"), Board->GetCardOutcomePreviewTargetUnitIdForTest(), LegalEnemyTargets[0]);
+	TestEqual(TEXT("manual hover is classified without exposing the private enum"), Board->GetCardOutcomePreviewClassForTest(), FString(TEXT("ManualUnit")));
+	TestTrue(TEXT("manual hover displays at least one concise line"), Board->GetCardOutcomePreviewLinesForTest().Num() >= 1);
+	TestTrue(TEXT("manual hover never displays more than two lines"), Board->GetCardOutcomePreviewLinesForTest().Num() <= 2);
+	TestEqual(TEXT("manual preview follows the first target HUD anchor"),
+		Board->GetSingleOutcomePreviewAnchorForTest(), Board->GetProjectedUnitHudAnchorPositionForTest(LegalEnemyTargets[0]));
+	TestEqual(TEXT("first manual hover performs one outcome build"), Board->GetCardOutcomePreviewBuildCountForTest(), 1);
+	FirstProxy->OnHovered.Broadcast();
+	TestEqual(TEXT("identical consecutive hover reuses the complete-state cache"), Board->GetCardOutcomePreviewBuildCountForTest(), 1);
+
+	SecondProxy->OnHovered.Broadcast();
+	TestEqual(TEXT("changing legal target performs exactly one additional build"), Board->GetCardOutcomePreviewBuildCountForTest(), 2);
+	TestEqual(TEXT("changing legal target updates the stable target id"), Board->GetCardOutcomePreviewTargetUnitIdForTest(), LegalEnemyTargets[1]);
+	TestEqual(TEXT("manual preview follows the second target HUD anchor"),
+		Board->GetSingleOutcomePreviewAnchorForTest(), Board->GetProjectedUnitHudAnchorPositionForTest(LegalEnemyTargets[1]));
+	FirstProxy->OnUnhovered.Broadcast();
+	TestTrue(TEXT("late unhover from the old target cannot clear the newer hover"), Board->IsCardOutcomePreviewVisibleForTest());
+	SecondProxy->OnUnhovered.Broadcast();
+	AssertOutcomeCleared(*this, Board, TEXT("current manual target unhover"));
+
+	FGameXXKCardInstance* const RuntimeCard = Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Deck.Hand.FindByPredicate(
+		[CardInstanceId](const FGameXXKCardInstance& Card) { return Card.InstanceId == CardInstanceId; });
+	TestNotNull(TEXT("manual failure fixture retains the real hand card"), RuntimeCard);
+	if (!RuntimeCard)
+	{
+		return false;
+	}
+	RuntimeCard->CardId = TEXT("Missing.TargetOutcome.Card");
+	FirstProxy->OnHovered.Broadcast();
+	TestTrue(TEXT("failed manual preview replaces old content with one visible fallback"), Board->IsCardOutcomePreviewVisibleForTest());
+	TestEqual(TEXT("failed manual preview keeps the requested target"), Board->GetCardOutcomePreviewTargetUnitIdForTest(), LegalEnemyTargets[0]);
+	TestEqual(TEXT("failed manual preview exposes exactly one line"), Board->GetCardOutcomePreviewLinesForTest().Num(), 1);
+	TestEqual(TEXT("failed manual preview uses the neutral fallback text"), Board->GetCardOutcomePreviewLinesForTest()[0], FString(TEXT("无法预演")));
+	TestEqual(TEXT("failed manual preview remains in the single target position"),
+		Board->GetSingleOutcomePreviewAnchorForTest(), Board->GetProjectedUnitHudAnchorPositionForTest(LegalEnemyTargets[0]));
+	TestFalse(TEXT("manual submit failure is reported"), Board->ConfirmTargetingUnit(LegalEnemyTargets[0]));
+	AssertOutcomeCleared(*this, Board, TEXT("manual submit failure"));
+
+	RuntimeCard->CardId = TEXT("Route.General.PoJiaTuCi");
+	Board->RefreshFromState();
+	FirstProxy = Board->GetUnitTargetProxyForTest(LegalEnemyTargets[0]);
+	TestNotNull(TEXT("manual target proxy survives authoritative recovery"), FirstProxy);
+	if (!FirstProxy)
+	{
+		return false;
+	}
+	FirstProxy->OnHovered.Broadcast();
+	TestTrue(TEXT("recovered manual preview is visible before cancellation"), Board->IsCardOutcomePreviewVisibleForTest());
+	TestTrue(TEXT("manual targeting cancellation succeeds"), Board->CancelBattleTargeting());
+	AssertOutcomeCleared(*this, Board, TEXT("manual targeting cancellation"));
+
+	TestTrue(TEXT("manual card can re-enter the unchanged click path"), Board->ClickCardInHand(CardInstanceId));
+	FirstProxy->OnHovered.Broadcast();
+	TestTrue(TEXT("manual preview is visible immediately before successful submit"), Board->IsCardOutcomePreviewVisibleForTest());
+	TestTrue(TEXT("manual submit succeeds through the existing resolver"), Board->ConfirmTargetingUnit(LegalEnemyTargets[0]));
+	AssertOutcomeCleared(*this, Board, TEXT("manual submit success"));
+	Board->CancelBattleVisualSession(8701);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTargetOutcomePreviewGroupHandHoverTest,
+	"GameXXK.Integration.CardBattle.TargetOutcomePreview.GroupHandHover",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTargetOutcomePreviewGroupHandHoverTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* const GameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
+	FName CardInstanceId;
+	FGameXXKCardPlayPreview Playability;
+	FGameXXKCardOutcomePreview ExpectedOutcome;
+	FString Error;
+	TestTrue(FString::Printf(TEXT("three-enemy pure group fixture builds through catalog/adapter/rules: %s"), *Error),
+		BuildPureEnemyGroupCardFixture(Subsystem, CardInstanceId, Playability, ExpectedOutcome, Error));
+	UGameXXKBattleBoardWidget* const Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("group outcome Board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	UButton* const GroupCardButton = Board->GetHandCardButtonForTest(0);
+	TestNotNull(TEXT("group fixture exposes its real hand button"), GroupCardButton);
+	if (!GroupCardButton)
+	{
+		return false;
+	}
+	TArray<int32> EnemyHpBefore;
+	for (const FGameXXKCardCombatUnit& Unit : Subsystem->GetRuntimeState().CardRun.ActiveBattle.Units)
+	{
+		if (Unit.Side == EGameXXKCardTargetSide::Enemy)
+		{
+			EnemyHpBefore.Add(Unit.HP);
+		}
+	}
+	GroupCardButton->OnHovered.Broadcast();
+	TestTrue(TEXT("pure group hand hover displays the shared group widget"), Board->IsCardOutcomePreviewVisibleForTest());
+	TestEqual(TEXT("pure group hover exposes its stable card"), Board->GetCardOutcomePreviewCardInstanceIdForTest(), CardInstanceId);
+	TestEqual(TEXT("pure group hover requests NAME_None"), Board->GetCardOutcomePreviewTargetUnitIdForTest(), NAME_None);
+	TestEqual(TEXT("pure group hover exposes the safe class string"), Board->GetCardOutcomePreviewClassForTest(), FString(TEXT("PureEnemyGroup")));
+	const TArray<FString> GroupLines = Board->GetCardOutcomePreviewLinesForTest();
+	TestEqual(TEXT("three living enemies produce exactly three ordered lines"), GroupLines.Num(), 3);
+	for (int32 PositionIndex = 0; PositionIndex < GroupLines.Num(); ++PositionIndex)
+	{
+		TestTrue(*FString::Printf(TEXT("group line %d starts with its 1P/2P/3P position"), PositionIndex + 1),
+			GroupLines[PositionIndex].StartsWith(FString::Printf(TEXT("%dP"), PositionIndex + 1)));
+		TestTrue(*FString::Printf(TEXT("group line %d includes real resolved damage"), PositionIndex + 1),
+			GroupLines[PositionIndex].Contains(TEXT("伤害")));
+	}
+	TestEqual(TEXT("first pure-group hover builds once"), Board->GetCardOutcomePreviewBuildCountForTest(), 1);
+	GroupCardButton->OnHovered.Broadcast();
+	TestEqual(TEXT("same group hover and full state reuse one build"), Board->GetCardOutcomePreviewBuildCountForTest(), 1);
+	GroupCardButton->OnUnhovered.Broadcast();
+	AssertOutcomeCleared(*this, Board, TEXT("group hand unhover"));
+
+	GroupCardButton->OnHovered.Broadcast();
+	TestTrue(TEXT("automatic group click resolves once"), Board->ClickCardInHand(CardInstanceId));
+	TestFalse(TEXT("automatic group click never enters TargetingCard"), Board->IsCardTargetingForTest());
+	AssertOutcomeCleared(*this, Board, TEXT("automatic group submit success"));
+	TestFalse(TEXT("automatic group click removes the one played instance from hand"),
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.ContainsByPredicate(
+			[CardInstanceId](const FGameXXKCardInstance& Card) { return Card.InstanceId == CardInstanceId; }));
+	int32 EnemyOrdinal = 0;
+	for (const FGameXXKCardCombatUnit& Unit : Subsystem->GetRuntimeState().CardRun.ActiveBattle.Units)
+	{
+		if (Unit.Side == EGameXXKCardTargetSide::Enemy && EnemyHpBefore.IsValidIndex(EnemyOrdinal))
+		{
+			TestTrue(*FString::Printf(TEXT("automatic group click damages enemy position %d"), EnemyOrdinal + 1), Unit.HP < EnemyHpBefore[EnemyOrdinal]);
+			++EnemyOrdinal;
+		}
+	}
+
+	UGameInstance* const TwoEnemyGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const TwoEnemySubsystem = NewObject<UGameXXKMVPSubsystem>(TwoEnemyGameInstance);
+	FName TwoEnemyCardId;
+	FGameXXKCardPlayPreview TwoEnemyPlayability;
+	FGameXXKCardOutcomePreview TwoEnemyOutcome;
+	TestTrue(TEXT("two-enemy pure group fixture builds"), BuildPureEnemyGroupCardFixture(
+		TwoEnemySubsystem, TwoEnemyCardId, TwoEnemyPlayability, TwoEnemyOutcome, Error, 2));
+	UGameXXKBattleBoardWidget* const TwoEnemyBoard = NewObject<UGameXXKBattleBoardWidget>();
+	TwoEnemyBoard->SetMVPSubsystem(TwoEnemySubsystem);
+	TestTrue(TEXT("two-enemy group Board initializes"), TwoEnemyBoard->Initialize());
+	TwoEnemyBoard->NativeConstruct();
+	UButton* const TwoEnemyButton = TwoEnemyBoard->GetHandCardButtonForTest(0);
+	TestNotNull(TEXT("two-enemy group has a real hand button"), TwoEnemyButton);
+	if (TwoEnemyButton)
+	{
+		TwoEnemyButton->OnHovered.Broadcast();
+		const TArray<FString> TwoEnemyLines = TwoEnemyBoard->GetCardOutcomePreviewLinesForTest();
+		TestEqual(TEXT("missing 3P enemy omits the third line"), TwoEnemyLines.Num(), 2);
+		TestTrue(TEXT("two-enemy group retains 1P"), TwoEnemyLines.IsValidIndex(0) && TwoEnemyLines[0].StartsWith(TEXT("1P")));
+		TestTrue(TEXT("two-enemy group retains 2P"), TwoEnemyLines.IsValidIndex(1) && TwoEnemyLines[1].StartsWith(TEXT("2P")));
+	}
+
+	UGameInstance* const FailureGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const FailureSubsystem = NewObject<UGameXXKMVPSubsystem>(FailureGameInstance);
+	FName FailureCardId;
+	FGameXXKCardPlayPreview FailurePlayability;
+	FGameXXKCardOutcomePreview FailureOutcome;
+	TestTrue(TEXT("group failure base fixture builds"), BuildPureEnemyGroupCardFixture(
+		FailureSubsystem, FailureCardId, FailurePlayability, FailureOutcome, Error));
+	UGameXXKBattleBoardWidget* const FailureBoard = NewObject<UGameXXKBattleBoardWidget>();
+	FailureBoard->SetMVPSubsystem(FailureSubsystem);
+	TestTrue(TEXT("group failure Board initializes"), FailureBoard->Initialize());
+	FailureBoard->NativeConstruct();
+	for (FGameXXKCardCombatUnit& Unit : FailureSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units)
+	{
+		if (Unit.Side == EGameXXKCardTargetSide::Enemy)
+		{
+			Unit.BattleSlotNumber = INDEX_NONE;
+			Unit.StableSortOrder = 99;
+			break;
+		}
+	}
+	UButton* const FailureButton = FailureBoard->GetHandCardButtonForTest(0);
+	TestNotNull(TEXT("group failure uses a real hand button"), FailureButton);
+	if (FailureButton)
+	{
+		FailureButton->OnHovered.Broadcast();
+		TestTrue(TEXT("NAME_None build failure is visible in the group widget"), FailureBoard->IsCardOutcomePreviewVisibleForTest());
+		TestEqual(TEXT("NAME_None build failure retains the group target id"), FailureBoard->GetCardOutcomePreviewTargetUnitIdForTest(), NAME_None);
+		TestEqual(TEXT("NAME_None build failure has one neutral fallback line"), FailureBoard->GetCardOutcomePreviewLinesForTest(), TArray<FString>{TEXT("无法预演")});
+		TestEqual(TEXT("NAME_None build failure does not masquerade as a successful class"), FailureBoard->GetCardOutcomePreviewClassForTest(), FString(TEXT("None")));
+		if (!FailureSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Deck.Hand.IsEmpty())
+		{
+			FailureSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Deck.Hand[0].CardId = TEXT("Missing.GroupSubmit.Card");
+		}
+		TestFalse(TEXT("automatic submit failure is reported after the malformed authoritative state"), FailureBoard->ClickCardInHand(FailureCardId));
+		AssertOutcomeCleared(*this, FailureBoard, TEXT("automatic group submit failure"));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTargetOutcomePreviewCacheAndClearTest,
+	"GameXXK.Integration.CardBattle.TargetOutcomePreview.CacheAndClear",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTargetOutcomePreviewCacheAndClearTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* const GameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FGameXXKCardPlayPreview Playability;
+	FString Error;
+	TestTrue(TEXT("cache fixture builds"), BuildManualTargetCardFixture(
+		Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Playability, Error));
+	UGameXXKBattleBoardWidget* const Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("cache Board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	TestTrue(TEXT("cache Board starts its visual session"), Board->BeginBattleVisualSession(8702));
+	TestTrue(TEXT("cache card enters manual targeting"), Board->ClickCardInHand(CardInstanceId));
+	UButton* const TargetProxy = Board->GetUnitTargetProxyForTest(TargetUnitId);
+	TestNotNull(TEXT("cache target has a real proxy"), TargetProxy);
+	if (!TargetProxy)
+	{
+		return false;
+	}
+	TargetProxy->OnHovered.Broadcast();
+	const int32 BuildCountBeforeRefresh = Board->GetCardOutcomePreviewBuildCountForTest();
+	Subsystem->GetMutableRuntimeState().PlayerGold += 1;
+	Board->RefreshFromState();
+	AssertOutcomeCleared(*this, Board, TEXT("Refresh authoritative full-state change"));
+	TestEqual(TEXT("Refresh clear never rewinds the lifetime build count"), Board->GetCardOutcomePreviewBuildCountForTest(), BuildCountBeforeRefresh);
+	TargetProxy->OnHovered.Broadcast();
+	TestEqual(TEXT("new authoritative full state forces exactly one new build"), Board->GetCardOutcomePreviewBuildCountForTest(), BuildCountBeforeRefresh + 1);
+	FGameXXKBattlePresentationEvent Event;
+	Event.TargetUnitId = TargetUnitId;
+	Board->QueuePresentation(Event);
+	AssertOutcomeCleared(*this, Board, TEXT("QueuePresentation first event"));
+	TestEqual(TEXT("QueuePresentation clear preserves cumulative build count"), Board->GetCardOutcomePreviewBuildCountForTest(), BuildCountBeforeRefresh + 1);
+	Board->CancelBattleVisualSession(8702);
+
+	UGameInstance* const CancelGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const CancelSubsystem = NewObject<UGameXXKMVPSubsystem>(CancelGameInstance);
+	FName CancelCardId;
+	FName CancelTargetId;
+	FName CancelOwnerId;
+	FGameXXKCardPlayPreview CancelPlayability;
+	TestTrue(TEXT("session-cancel fixture builds"), BuildManualTargetCardFixture(
+		CancelSubsystem, CancelCardId, CancelTargetId, CancelOwnerId, CancelPlayability, Error));
+	UGameXXKBattleBoardWidget* const CancelBoard = NewObject<UGameXXKBattleBoardWidget>();
+	CancelBoard->SetMVPSubsystem(CancelSubsystem);
+	TestTrue(TEXT("session-cancel Board initializes"), CancelBoard->Initialize());
+	CancelBoard->NativeConstruct();
+	TestTrue(TEXT("session-cancel Board begins visual session"), CancelBoard->BeginBattleVisualSession(8703));
+	TestTrue(TEXT("session-cancel card targets"), CancelBoard->ClickCardInHand(CancelCardId));
+	UButton* const CancelProxy = CancelBoard->GetUnitTargetProxyForTest(CancelTargetId);
+	if (CancelProxy)
+	{
+		CancelProxy->OnHovered.Broadcast();
+	}
+	TestTrue(TEXT("session-cancel preview is visible before cancellation"), CancelBoard->IsCardOutcomePreviewVisibleForTest());
+	const int32 CancelBuildCount = CancelBoard->GetCardOutcomePreviewBuildCountForTest();
+	CancelBoard->CancelBattleVisualSession(8703);
+	AssertOutcomeCleared(*this, CancelBoard, TEXT("CancelBattleVisualSession"));
+	TestEqual(TEXT("visual-session clear preserves cumulative build count"), CancelBoard->GetCardOutcomePreviewBuildCountForTest(), CancelBuildCount);
+
+	UGameInstance* const DestructGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const DestructSubsystem = NewObject<UGameXXKMVPSubsystem>(DestructGameInstance);
+	FName DestructCardId;
+	FName DestructTargetId;
+	FName DestructOwnerId;
+	FGameXXKCardPlayPreview DestructPlayability;
+	TestTrue(TEXT("destruct fixture builds"), BuildManualTargetCardFixture(
+		DestructSubsystem, DestructCardId, DestructTargetId, DestructOwnerId, DestructPlayability, Error));
+	UGameXXKBattleBoardWidget* const DestructBoard = NewObject<UGameXXKBattleBoardWidget>();
+	DestructBoard->SetMVPSubsystem(DestructSubsystem);
+	TestTrue(TEXT("destruct Board initializes"), DestructBoard->Initialize());
+	DestructBoard->NativeConstruct();
+	TestTrue(TEXT("destruct Board begins visual session"), DestructBoard->BeginBattleVisualSession(8704));
+	TestTrue(TEXT("destruct card targets"), DestructBoard->ClickCardInHand(DestructCardId));
+	UButton* const DestructProxy = DestructBoard->GetUnitTargetProxyForTest(DestructTargetId);
+	if (DestructProxy)
+	{
+		DestructProxy->OnHovered.Broadcast();
+	}
+	TestTrue(TEXT("destruct preview is visible before NativeDestruct"), DestructBoard->IsCardOutcomePreviewVisibleForTest());
+	const int32 DestructBuildCount = DestructBoard->GetCardOutcomePreviewBuildCountForTest();
+	DestructBoard->NativeDestruct();
+	AssertOutcomeCleared(*this, DestructBoard, TEXT("NativeDestruct"));
+	TestEqual(TEXT("NativeDestruct clear preserves cumulative build count"), DestructBoard->GetCardOutcomePreviewBuildCountForTest(), DestructBuildCount);
+
+	UGameInstance* const SwitchGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const SwitchSubsystem = NewObject<UGameXXKMVPSubsystem>(SwitchGameInstance);
+	FName GroupCardId;
+	FGameXXKCardPlayPreview GroupPlayability;
+	FGameXXKCardOutcomePreview GroupOutcome;
+	TestTrue(TEXT("card-switch group fixture builds"), BuildPureEnemyGroupCardFixture(
+		SwitchSubsystem, GroupCardId, GroupPlayability, GroupOutcome, Error));
+	TestTrue(TEXT("card-switch fixture has a second real hand instance"), SwitchSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Deck.Hand.Num() >= 2);
+	if (SwitchSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Deck.Hand.Num() >= 2)
+	{
+		SwitchSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Deck.Hand[1].CardId = TEXT("Route.General.PoJiaTuCi");
+	}
+	UGameXXKBattleBoardWidget* const SwitchBoard = NewObject<UGameXXKBattleBoardWidget>();
+	SwitchBoard->SetMVPSubsystem(SwitchSubsystem);
+	TestTrue(TEXT("card-switch Board initializes"), SwitchBoard->Initialize());
+	SwitchBoard->NativeConstruct();
+	UButton* const GroupButton = SwitchBoard->GetHandCardButtonForTest(0);
+	UButton* const OtherButton = SwitchBoard->GetHandCardButtonForTest(1);
+	if (GroupButton)
+	{
+		GroupButton->OnHovered.Broadcast();
+	}
+	TestTrue(TEXT("group preview is visible before switching hand cards"), SwitchBoard->IsCardOutcomePreviewVisibleForTest());
+	if (OtherButton)
+	{
+		OtherButton->OnHovered.Broadcast();
+	}
+	AssertOutcomeCleared(*this, SwitchBoard, TEXT("hovering a different non-group hand card"));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTargetOutcomePreviewLayoutInvariantTest,
+	"GameXXK.Integration.CardBattle.TargetOutcomePreview.LayoutInvariant",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTargetOutcomePreviewLayoutInvariantTest::RunTest(const FString& Parameters)
+{
+	AddExpectedError(TEXT("cannot enter the 268435456-byte resident budget; using fallback."), EAutomationExpectedErrorFlags::Contains, 0);
+	UGameInstance* const GameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FGameXXKCardPlayPreview Playability;
+	FString Error;
+	TestTrue(TEXT("layout manual fixture builds"), BuildManualTargetCardFixture(
+		Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Playability, Error));
+	UGameXXKBattleBoardWidget* const Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("layout Board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	TestTrue(TEXT("layout Board begins visual session"), Board->BeginBattleVisualSession(8705));
+	TestTrue(TEXT("layout card enters targeting"), Board->ClickCardInHand(CardInstanceId));
+	const TMap<FName, FCanvasLayoutSnapshot> BeforeManualHover = CaptureNonOutcomeCanvasLayout(Board);
+	UButton* const TargetProxy = Board->GetUnitTargetProxyForTest(TargetUnitId);
+	TestNotNull(TEXT("layout target has a real proxy"), TargetProxy);
+	if (TargetProxy)
+	{
+		TargetProxy->OnHovered.Broadcast();
+	}
+	const TMap<FName, FCanvasLayoutSnapshot> AfterManualHover = CaptureNonOutcomeCanvasLayout(Board);
+	AssertCanvasLayoutUnchanged(*this, BeforeManualHover, AfterManualHover);
+	TestNotNull(TEXT("outcome overlay is one RootCanvas sibling"), Board->GetBattleOutcomePreviewLayerForTest());
+	TestEqual(TEXT("outcome overlay uses only z=1"), Board->GetBattleOutcomePreviewLayerZForTest(), 1);
+	TestEqual(TEXT("single outcome uses the target HUD anchor"), Board->GetSingleOutcomePreviewAnchorForTest(), Board->GetProjectedUnitHudAnchorPositionForTest(TargetUnitId));
+	TestEqual(TEXT("single outcome uses exact alignment"), Board->GetSingleOutcomePreviewAlignmentForTest(), FVector2D(0.5f, 1.0f));
+	TestEqual(TEXT("single outcome uses exact offsets/size"), Board->GetSingleOutcomePreviewOffsetsForTest(), FMargin(0.0f, -8.0f, 272.0f, 56.0f));
+	const UCanvasPanelSlot* const ProjectedLayerSlot = Cast<UCanvasPanelSlot>(Board->GetBattleProjectedUnitHudLayerForTest()->Slot);
+	const UCanvasPanelSlot* const RootCanvasSlot = Cast<UCanvasPanelSlot>(Board->GetBattleControlsLayerForTest()->Slot);
+	TestNotNull(TEXT("projected HUD layer remains attached by Canvas slot"), ProjectedLayerSlot);
+	TestNotNull(TEXT("RootCanvas remains attached by Canvas slot"), RootCanvasSlot);
+	TestEqual(TEXT("projected HUD layer remains z=0"), ProjectedLayerSlot ? ProjectedLayerSlot->GetZOrder() : INDEX_NONE, 0);
+	TestEqual(TEXT("RootCanvas remains z=20 on BattleDesignStage"), RootCanvasSlot ? RootCanvasSlot->GetZOrder() : INDEX_NONE, 20);
+
+	UGameInstance* const GroupGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const GroupSubsystem = NewObject<UGameXXKMVPSubsystem>(GroupGameInstance);
+	FName GroupCardId;
+	FGameXXKCardPlayPreview GroupPlayability;
+	FGameXXKCardOutcomePreview GroupOutcome;
+	TestTrue(TEXT("layout group fixture builds"), BuildPureEnemyGroupCardFixture(
+		GroupSubsystem, GroupCardId, GroupPlayability, GroupOutcome, Error));
+	UGameXXKBattleBoardWidget* const GroupBoard = NewObject<UGameXXKBattleBoardWidget>();
+	GroupBoard->SetMVPSubsystem(GroupSubsystem);
+	TestTrue(TEXT("layout group Board initializes"), GroupBoard->Initialize());
+	GroupBoard->NativeConstruct();
+	const TMap<FName, FCanvasLayoutSnapshot> BeforeGroupHover = CaptureNonOutcomeCanvasLayout(GroupBoard);
+	UButton* const GroupButton = GroupBoard->GetHandCardButtonForTest(0);
+	TestNotNull(TEXT("layout group uses a real hand button"), GroupButton);
+	if (GroupButton)
+	{
+		GroupButton->OnHovered.Broadcast();
+	}
+	const TMap<FName, FCanvasLayoutSnapshot> AfterGroupHover = CaptureNonOutcomeCanvasLayout(GroupBoard);
+	AssertCanvasLayoutUnchanged(*this, BeforeGroupHover, AfterGroupHover);
+	TestEqual(TEXT("group outcome keeps the fixed 0.245/0.34 anchor"), GroupBoard->GetGroupOutcomePreviewAnchorForTest(), FVector2D(0.245f, 0.34f));
+	TestEqual(TEXT("group outcome uses exact alignment"), GroupBoard->GetGroupOutcomePreviewAlignmentForTest(), FVector2D(0.5f, 1.0f));
+	TestEqual(TEXT("group outcome uses exact offsets/size"), GroupBoard->GetGroupOutcomePreviewOffsetsForTest(), FMargin(0.0f, 0.0f, 620.0f, 108.0f));
 	return true;
 }
 

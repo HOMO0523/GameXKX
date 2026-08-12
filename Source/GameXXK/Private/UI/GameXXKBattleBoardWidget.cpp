@@ -39,6 +39,7 @@
 #include "Styling/SlateTypes.h"
 #include "UI/GameXXKMVPCommandRouter.h"
 #include "UI/GameXXKBattlePartyQiWidget.h"
+#include "UI/GameXXKCardOutcomePreviewWidget.h"
 #include "UI/GameXXKBattleStatusIconWidget.h"
 #include "UI/GameXXKBattleStatusIconStyle.h"
 #include "UI/GameXXKBattleUnitHudWidget.h"
@@ -88,6 +89,7 @@ namespace
 	static constexpr float ProjectedUnitHudFootGap = 8.0f;
 	static constexpr float ProjectedUnitHudObstacleGap = 10.0f;
 	static constexpr int32 ProjectedUnitHudLayerZOrder = -1;
+	static constexpr int32 OutcomePreviewLayerZOrder = 1;
 	static constexpr int32 BattleBackdropZOrder = 0;
 	static constexpr int32 BattleSafeStageRootZOrder = 1;
 	static constexpr int32 BattleCinematicViewportCoverZOrder = 2;
@@ -116,6 +118,9 @@ namespace
 	static constexpr float BattleStatusFrameMarginRatio = 5.0f / 368.0f;
 	static constexpr float EnemyIntentRevealDuration = 0.55f;
 	static constexpr float EnemyIntentResolveDuration = 0.18f;
+	static const FVector2D GroupOutcomePreviewAnchor(0.245f, 0.34f);
+	static const FMargin SingleOutcomePreviewOffsets(0.0f, -8.0f, 272.0f, 56.0f);
+	static const FMargin GroupOutcomePreviewOffsets(0.0f, 0.0f, 620.0f, 108.0f);
 
 	TArray<FGameXXKCardDamageResult> FlattenResumedCardDamageResults(
 		const TArray<FGameXXKCardPlayResult>& ResumedResults)
@@ -558,7 +563,27 @@ void UGameXXKBattleUnitTargetProxyButton::Configure(
 	Owner = InOwner;
 	UnitId = InUnitId;
 	OnClicked.Clear();
+	OnHovered.Clear();
+	OnUnhovered.Clear();
 	OnClicked.AddDynamic(this, &UGameXXKBattleUnitTargetProxyButton::HandleClicked);
+	OnHovered.AddDynamic(this, &UGameXXKBattleUnitTargetProxyButton::HandleHovered);
+	OnUnhovered.AddDynamic(this, &UGameXXKBattleUnitTargetProxyButton::HandleUnhovered);
+}
+
+void UGameXXKBattleUnitTargetProxyButton::HandleHovered()
+{
+	if (Owner && !UnitId.IsNone())
+	{
+		Owner->HandleUnitTargetProxyHoverChanged(UnitId, true);
+	}
+}
+
+void UGameXXKBattleUnitTargetProxyButton::HandleUnhovered()
+{
+	if (Owner && !UnitId.IsNone())
+	{
+		Owner->HandleUnitTargetProxyHoverChanged(UnitId, false);
+	}
 }
 
 void UGameXXKBattleUnitTargetProxyButton::HandleClicked()
@@ -586,6 +611,7 @@ void UGameXXKBattleBoardWidget::NativeConstruct()
 
 void UGameXXKBattleBoardWidget::NativeDestruct()
 {
+	ClearCardOutcomePreview();
 	--GAliveBattleBoardInstances;
 	UE_LOG(LogTemp, Verbose, TEXT("[Board] destructed name=%s alive=%d"), *GetName(), GAliveBattleBoardInstances);
 	if (ActiveBattleVisualSessionToken != 0)
@@ -648,6 +674,7 @@ void UGameXXKBattleBoardWidget::QueuePresentationInternal(
 	{
 		return;
 	}
+	ClearCardOutcomePreview();
 
 	FBattlePresentationQueueEntry Entry;
 	Entry.Event = Event;
@@ -1946,6 +1973,7 @@ void UGameXXKBattleBoardWidget::CancelBattleVisualSession(const uint64 ClosingSe
 	{
 		return;
 	}
+	ClearCardOutcomePreview();
 	ResetBattlePresentation();
 
 	// Invalidate the Board first. CancelSession may synchronously deliver callbacks,
@@ -2052,6 +2080,27 @@ void UGameXXKBattleBoardWidget::HandleUnitTargetProxyClicked(const FName UnitId)
 	if (EnemyIndex != INDEX_NONE)
 	{
 		ConfirmTargetingEnemy(EnemyIndex);
+	}
+}
+
+void UGameXXKBattleBoardWidget::HandleUnitTargetProxyHoverChanged(const FName UnitId, const bool bHovered)
+{
+	if (bHovered)
+	{
+		if (IsCardTargetingActive() && LegalCardTargetUnitIds.Contains(UnitId))
+		{
+			BuildCardOutcomePreview(PendingCardPreview.CardInstanceId, UnitId);
+		}
+		else
+		{
+			ClearCardOutcomePreview();
+		}
+		return;
+	}
+
+	if (CachedOutcomeTargetUnitId == UnitId)
+	{
+		ClearCardOutcomePreview();
 	}
 }
 
@@ -2822,6 +2871,7 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingEnemy(int32 EnemyIndex)
 
 bool UGameXXKBattleBoardWidget::ClickCardInHand(FName CardInstanceId)
 {
+	ClearCardOutcomePreview();
 	if (RejectBattleHudFixtureMutation())
 	{
 		return false;
@@ -2883,6 +2933,7 @@ bool UGameXXKBattleBoardWidget::ClickCardInHand(FName CardInstanceId)
 
 bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 {
+	ClearCardOutcomePreview();
 	if (RejectBattleHudFixtureMutation())
 	{
 		return false;
@@ -3647,6 +3698,7 @@ void UGameXXKBattleBoardWidget::ReleasePinnedAtlasForUnit(const FName UnitId)
 
 void UGameXXKBattleBoardWidget::RemoveUnitVisual(const FName UnitId)
 {
+	ClearCardOutcomePreview();
 	ReleasePinnedAtlasForUnit(UnitId);
 	RequestedUnitAtlasPaths.Remove(UnitId);
 	UnitIdleAtlasTextures.Remove(UnitId);
@@ -4436,6 +4488,128 @@ bool UGameXXKBattleBoardWidget::IsCardTooltipHitTestInvisibleForTest() const
 	return HandCardDetailPanel && HandCardDetailPanel->GetVisibility() == ESlateVisibility::HitTestInvisible;
 }
 
+UButton* UGameXXKBattleBoardWidget::GetHandCardButtonForTest(const int32 SlotIndex) const
+{
+	return HandCardButtons.IsValidIndex(SlotIndex) ? HandCardButtons[SlotIndex] : nullptr;
+}
+
+bool UGameXXKBattleBoardWidget::IsCardOutcomePreviewVisibleForTest() const
+{
+	const auto IsVisible = [](const UWidget* Widget)
+	{
+		return Widget
+			&& Widget->GetVisibility() != ESlateVisibility::Collapsed
+			&& Widget->GetVisibility() != ESlateVisibility::Hidden;
+	};
+	return IsVisible(SingleOutcomeWidget) || IsVisible(GroupOutcomeWidget);
+}
+
+FString UGameXXKBattleBoardWidget::GetCardOutcomePreviewClassForTest() const
+{
+	switch (CachedOutcomePreview.Classification)
+	{
+	case EGameXXKCardOutcomePreviewClass::ManualUnit: return TEXT("ManualUnit");
+	case EGameXXKCardOutcomePreviewClass::PureEnemyGroup: return TEXT("PureEnemyGroup");
+	default: return TEXT("None");
+	}
+}
+
+FName UGameXXKBattleBoardWidget::GetCardOutcomePreviewCardInstanceIdForTest() const
+{
+	return CachedOutcomeCardInstanceId;
+}
+
+FName UGameXXKBattleBoardWidget::GetCardOutcomePreviewTargetUnitIdForTest() const
+{
+	return CachedOutcomeTargetUnitId;
+}
+
+TArray<FString> UGameXXKBattleBoardWidget::GetCardOutcomePreviewLinesForTest() const
+{
+	const UGameXXKCardOutcomePreviewWidget* VisibleWidget = nullptr;
+	if (SingleOutcomeWidget && SingleOutcomeWidget->GetVisibility() != ESlateVisibility::Collapsed)
+	{
+		VisibleWidget = SingleOutcomeWidget;
+	}
+	else if (GroupOutcomeWidget && GroupOutcomeWidget->GetVisibility() != ESlateVisibility::Collapsed)
+	{
+		VisibleWidget = GroupOutcomeWidget;
+	}
+
+	TArray<FString> Result;
+	if (!VisibleWidget)
+	{
+		return Result;
+	}
+	for (int32 LineIndex = 0; LineIndex < VisibleWidget->GetVisibleLineCountForTest(); ++LineIndex)
+	{
+		Result.Add(VisibleWidget->GetPlainLineForTest(LineIndex));
+	}
+	return Result;
+}
+
+int32 UGameXXKBattleBoardWidget::GetCardOutcomePreviewBuildCountForTest() const
+{
+	return OutcomePreviewBuildCountForTest;
+}
+
+FVector2D UGameXXKBattleBoardWidget::GetSingleOutcomePreviewAnchorForTest() const
+{
+	if (const UCanvasPanelSlot* const OutcomeSlot = SingleOutcomeWidget ? Cast<UCanvasPanelSlot>(SingleOutcomeWidget->Slot) : nullptr)
+	{
+		return OutcomeSlot->GetAnchors().Minimum;
+	}
+	return FVector2D::ZeroVector;
+}
+
+FVector2D UGameXXKBattleBoardWidget::GetGroupOutcomePreviewAnchorForTest() const
+{
+	if (const UCanvasPanelSlot* const OutcomeSlot = GroupOutcomeWidget ? Cast<UCanvasPanelSlot>(GroupOutcomeWidget->Slot) : nullptr)
+	{
+		return OutcomeSlot->GetAnchors().Minimum;
+	}
+	return FVector2D::ZeroVector;
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+UCanvasPanel* UGameXXKBattleBoardWidget::GetBattleOutcomePreviewLayerForTest() const
+{
+	return BattleOutcomePreviewLayer;
+}
+
+int32 UGameXXKBattleBoardWidget::GetBattleOutcomePreviewLayerZForTest() const
+{
+	const UCanvasPanelSlot* const OutcomeSlot = BattleOutcomePreviewLayer
+		? Cast<UCanvasPanelSlot>(BattleOutcomePreviewLayer->Slot)
+		: nullptr;
+	return OutcomeSlot ? OutcomeSlot->GetZOrder() : INDEX_NONE;
+}
+
+FMargin UGameXXKBattleBoardWidget::GetSingleOutcomePreviewOffsetsForTest() const
+{
+	const UCanvasPanelSlot* const OutcomeSlot = SingleOutcomeWidget ? Cast<UCanvasPanelSlot>(SingleOutcomeWidget->Slot) : nullptr;
+	return OutcomeSlot ? OutcomeSlot->GetOffsets() : FMargin();
+}
+
+FMargin UGameXXKBattleBoardWidget::GetGroupOutcomePreviewOffsetsForTest() const
+{
+	const UCanvasPanelSlot* const OutcomeSlot = GroupOutcomeWidget ? Cast<UCanvasPanelSlot>(GroupOutcomeWidget->Slot) : nullptr;
+	return OutcomeSlot ? OutcomeSlot->GetOffsets() : FMargin();
+}
+
+FVector2D UGameXXKBattleBoardWidget::GetSingleOutcomePreviewAlignmentForTest() const
+{
+	const UCanvasPanelSlot* const OutcomeSlot = SingleOutcomeWidget ? Cast<UCanvasPanelSlot>(SingleOutcomeWidget->Slot) : nullptr;
+	return OutcomeSlot ? OutcomeSlot->GetAlignment() : FVector2D::ZeroVector;
+}
+
+FVector2D UGameXXKBattleBoardWidget::GetGroupOutcomePreviewAlignmentForTest() const
+{
+	const UCanvasPanelSlot* const OutcomeSlot = GroupOutcomeWidget ? Cast<UCanvasPanelSlot>(GroupOutcomeWidget->Slot) : nullptr;
+	return OutcomeSlot ? OutcomeSlot->GetAlignment() : FVector2D::ZeroVector;
+}
+#endif
+
 void UGameXXKBattleBoardWidget::HandlePendingChoiceCardHoverChanged(
 	const FName CandidateInstanceId,
 	const EGameXXKCardPendingChoiceKind ChoiceKind,
@@ -4504,11 +4678,23 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	BattleProjectedUnitHudLayer = WidgetTree->ConstructWidget<UCanvasPanel>(
 		UCanvasPanel::StaticClass(),
 		TEXT("BattleProjectedUnitHudLayer"));
+	BattleOutcomePreviewLayer = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(),
+		TEXT("BattleOutcomePreviewLayer"));
+	SingleOutcomeWidget = WidgetTree->ConstructWidget<UGameXXKCardOutcomePreviewWidget>(
+		UGameXXKCardOutcomePreviewWidget::StaticClass(),
+		TEXT("BattleSingleOutcomePreview"));
+	GroupOutcomeWidget = WidgetTree->ConstructWidget<UGameXXKCardOutcomePreviewWidget>(
+		UGameXXKCardOutcomePreviewWidget::StaticClass(),
+		TEXT("BattleGroupOutcomePreview"));
 	if (BattleHudSafeStage
 		&& BattleHudSafeStageSize
 		&& BattleDesignStage
 		&& RootCanvas
-		&& BattleProjectedUnitHudLayer)
+		&& BattleProjectedUnitHudLayer
+		&& BattleOutcomePreviewLayer
+		&& SingleOutcomeWidget
+		&& GroupOutcomeWidget)
 	{
 		BattleHudSafeStage->SetStretch(EStretch::ScaleToFit);
 		BattleHudSafeStage->SetStretchDirection(EStretchDirection::Both);
@@ -4517,6 +4703,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		BattleDesignStage->SetClipping(EWidgetClipping::ClipToBounds);
 		RootCanvas->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 		BattleProjectedUnitHudLayer->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		BattleOutcomePreviewLayer->SetVisibility(ESlateVisibility::HitTestInvisible);
 		BattleHudSafeStageSize->SetContent(BattleDesignStage);
 		BattleHudSafeStage->SetContent(BattleHudSafeStageSize);
 		if (UScaleBoxSlot* const SafeStageContentSlot = Cast<UScaleBoxSlot>(BattleHudSafeStageSize->Slot))
@@ -4580,6 +4767,28 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 			UnitHudLayerSlot->SetAlignment(FVector2D::ZeroVector);
 			UnitHudLayerSlot->SetZOrder(0);
 		}
+		if (UCanvasPanelSlot* const OutcomeLayerSlot = RootCanvas->AddChildToCanvas(BattleOutcomePreviewLayer))
+		{
+			OutcomeLayerSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
+			OutcomeLayerSlot->SetOffsets(FMargin(0.0f));
+			OutcomeLayerSlot->SetAlignment(FVector2D::ZeroVector);
+			OutcomeLayerSlot->SetZOrder(OutcomePreviewLayerZOrder);
+		}
+		if (UCanvasPanelSlot* const SingleSlot = BattleOutcomePreviewLayer->AddChildToCanvas(SingleOutcomeWidget))
+		{
+			SingleSlot->SetAnchors(FAnchors(0.0f));
+			SingleSlot->SetAlignment(FVector2D(0.5f, 1.0f));
+			SingleSlot->SetOffsets(SingleOutcomePreviewOffsets);
+			SingleSlot->SetZOrder(0);
+		}
+		if (UCanvasPanelSlot* const GroupSlot = BattleOutcomePreviewLayer->AddChildToCanvas(GroupOutcomeWidget))
+		{
+			GroupSlot->SetAnchors(FAnchors(GroupOutcomePreviewAnchor.X, GroupOutcomePreviewAnchor.Y));
+			GroupSlot->SetAlignment(FVector2D(0.5f, 1.0f));
+			GroupSlot->SetOffsets(GroupOutcomePreviewOffsets);
+			GroupSlot->SetZOrder(0);
+		}
+		ClearCardOutcomePreview();
 	}
 
 	BattleCinematicViewportCover = WidgetTree->ConstructWidget<UCanvasPanel>(
@@ -5213,6 +5422,16 @@ UButton* UGameXXKBattleBoardWidget::AddBattleActionButton(const FText& Label, FN
 
 void UGameXXKBattleBoardWidget::RefreshProgrammaticLayout()
 {
+	const UGameXXKMVPSubsystem* const OutcomeSubsystem = ResolveMVPSubsystem();
+	if (CachedOutcomeSourceState.IsSet()
+		&& (!OutcomeSubsystem
+			|| !FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+				&OutcomeSubsystem->GetRuntimeState(),
+				&CachedOutcomeSourceState.GetValue(),
+				PPF_None)))
+	{
+		ClearCardOutcomePreview();
+	}
 	if (ActionBox)
 	{
 		if (UCanvasPanelSlot* ActionSlot = Cast<UCanvasPanelSlot>(ActionBox->Slot))
@@ -6161,10 +6380,40 @@ void UGameXXKBattleBoardWidget::SetHandCardHoverState(int32 SlotIndex, bool bHov
 		HoveredCardTooltipSource = ECardTooltipSource::None;
 	}
 	RefreshCardTooltip();
+
+	const FName HoveredInstanceId = HandCardInstanceIds.IsValidIndex(SlotIndex)
+		? HandCardInstanceIds[SlotIndex]
+		: NAME_None;
+	if (!bHovered)
+	{
+		if (CachedOutcomeTargetUnitId.IsNone() && CachedOutcomeCardInstanceId == HoveredInstanceId)
+		{
+			ClearCardOutcomePreview();
+		}
+		return;
+	}
+
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	FGameXXKCardPlayPreview Playability;
+	FString Error;
+	if (Subsystem
+		&& !HoveredInstanceId.IsNone()
+		&& FGameXXKCardBattleAdapter::BuildCardPlayPreview(
+			Subsystem->GetRuntimeState(), HoveredInstanceId, Playability, &Error)
+		&& Playability.bCanPlay
+		&& Playability.TargetRequest.EffectiveMode == EGameXXKCardTargetMode::AllEnemies)
+	{
+		BuildCardOutcomePreview(HoveredInstanceId, NAME_None);
+	}
+	else
+	{
+		ClearCardOutcomePreview();
+	}
 }
 
 void UGameXXKBattleBoardWidget::ClearCardTooltipHoverState()
 {
+	ClearCardOutcomePreview();
 	HoveredCardTooltipSource = ECardTooltipSource::None;
 	HoveredHandCardSlot = INDEX_NONE;
 	HoveredCardTooltipId = NAME_None;
@@ -6869,6 +7118,144 @@ FVector2D UGameXXKBattleBoardWidget::ResolveSlateAbsolutePositionToLocal(FVector
 	return ClampToLocalSize(FVector2D(NormalizedPosition.X * LocalSize.X, NormalizedPosition.Y * LocalSize.Y), LocalSize);
 }
 
+void UGameXXKBattleBoardWidget::ClearCardOutcomePreview()
+{
+	CachedOutcomeCardInstanceId = NAME_None;
+	CachedOutcomeTargetUnitId = NAME_None;
+	CachedOutcomeSourceState.Reset();
+	CachedOutcomePreview = FGameXXKCardOutcomePreview();
+	if (SingleOutcomeWidget)
+	{
+		SingleOutcomeWidget->Clear();
+	}
+	if (GroupOutcomeWidget)
+	{
+		GroupOutcomeWidget->Clear();
+	}
+}
+
+bool UGameXXKBattleBoardWidget::BuildCardOutcomePreview(
+	const FName CardInstanceId,
+	const FName RequestedTargetUnitId)
+{
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || CardInstanceId.IsNone())
+	{
+		ClearCardOutcomePreview();
+		return false;
+	}
+
+	const FGameXXKRuntimeState& CurrentState = Subsystem->GetRuntimeState();
+	const bool bCacheHit = CachedOutcomeSourceState.IsSet()
+		&& CachedOutcomeCardInstanceId == CardInstanceId
+		&& CachedOutcomeTargetUnitId == RequestedTargetUnitId
+		&& FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&CurrentState,
+			&CachedOutcomeSourceState.GetValue(),
+			PPF_None);
+	if (bCacheHit)
+	{
+		ApplyCardOutcomePreview(CachedOutcomePreview);
+		return CachedOutcomePreview.bSuccess;
+	}
+
+	ClearCardOutcomePreview();
+	++OutcomePreviewBuildCountForTest;
+	FGameXXKCardOutcomePreview Preview;
+	FString Error;
+	const bool bBuilt = FGameXXKCardOutcomePreviewRules::Build(
+		CurrentState,
+		CardInstanceId,
+		RequestedTargetUnitId,
+		Preview,
+		&Error);
+	CachedOutcomeCardInstanceId = CardInstanceId;
+	CachedOutcomeTargetUnitId = RequestedTargetUnitId;
+	CachedOutcomeSourceState = CurrentState;
+	CachedOutcomePreview = Preview;
+	ApplyCardOutcomePreview(CachedOutcomePreview);
+	return bBuilt;
+}
+
+void UGameXXKBattleBoardWidget::ApplyCardOutcomePreview(const FGameXXKCardOutcomePreview& Preview)
+{
+	if (SingleOutcomeWidget)
+	{
+		SingleOutcomeWidget->Clear();
+	}
+	if (GroupOutcomeWidget)
+	{
+		GroupOutcomeWidget->Clear();
+	}
+
+	if (!Preview.bSuccess)
+	{
+		FGameXXKCardOutcomeTextLine FailureLine;
+		FGameXXKCardOutcomeTextSegment& Segment = FailureLine.Segments.AddDefaulted_GetRef();
+		Segment.Text = FText::FromString(Preview.FailureText.IsEmpty() ? TEXT("无法预演") : Preview.FailureText);
+		Segment.Tone = EGameXXKCardOutcomeTone::Neutral;
+		if (Preview.HoveredTargetUnitId.IsNone())
+		{
+			if (GroupOutcomeWidget)
+			{
+				GroupOutcomeWidget->SetLines({FailureLine});
+			}
+		}
+		else
+		{
+			RefreshSingleOutcomePreviewPlacement(Preview.HoveredTargetUnitId);
+			if (SingleOutcomeWidget)
+			{
+				SingleOutcomeWidget->SetLines({FailureLine});
+			}
+		}
+		return;
+	}
+
+	if (Preview.Classification == EGameXXKCardOutcomePreviewClass::ManualUnit)
+	{
+		TArray<FGameXXKCardOutcomeTextLine> Lines = Preview.FocusedLines;
+		if (Lines.Num() > 2)
+		{
+			Lines.SetNum(2);
+		}
+		RefreshSingleOutcomePreviewPlacement(Preview.HoveredTargetUnitId);
+		if (SingleOutcomeWidget)
+		{
+			SingleOutcomeWidget->SetLines(Lines);
+		}
+	}
+	else if (Preview.Classification == EGameXXKCardOutcomePreviewClass::PureEnemyGroup && GroupOutcomeWidget)
+	{
+		GroupOutcomeWidget->SetLines(Preview.EnemyPositionLines);
+	}
+}
+
+void UGameXXKBattleBoardWidget::RefreshSingleOutcomePreviewPlacement(const FName UnitId)
+{
+	UCanvasPanelSlot* const OutcomeSlot = SingleOutcomeWidget ? Cast<UCanvasPanelSlot>(SingleOutcomeWidget->Slot) : nullptr;
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!OutcomeSlot || !Subsystem || UnitId.IsNone())
+	{
+		return;
+	}
+
+	FGameXXKBattleUnitHudView View;
+	FGameXXKFixedUnitHudLayout FixedLayout;
+	if (Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle
+		&& FGameXXKBattlePresentation::BuildUnitHudView(
+			Subsystem->GetRuntimeState().CardRun.ActiveBattle,
+			UnitId,
+			ResolveProjectedUnitHudDisplayName(UnitId),
+			View)
+		&& TryResolveFixedUnitHudLayout(View, FixedLayout))
+	{
+		OutcomeSlot->SetAnchors(FixedLayout.Anchors);
+		OutcomeSlot->SetAlignment(FVector2D(0.5f, 1.0f));
+		OutcomeSlot->SetOffsets(SingleOutcomePreviewOffsets);
+	}
+}
+
 bool UGameXXKBattleBoardWidget::BeginCardTargeting(const FGameXXKCardPlayPreview& Preview)
 {
 	if (RejectBattleHudFixtureMutation())
@@ -6916,6 +7303,7 @@ bool UGameXXKBattleBoardWidget::BeginCardTargeting(const FGameXXKCardPlayPreview
 
 bool UGameXXKBattleBoardWidget::ResolveAutomaticCardPlay(FName CardInstanceId)
 {
+	ClearCardOutcomePreview();
 	if (RejectBattleHudFixtureMutation())
 	{
 		return false;
@@ -6963,6 +7351,14 @@ bool UGameXXKBattleBoardWidget::RefreshPendingCardTargetingPreview()
 	{
 		return false;
 	}
+	if (CachedOutcomeSourceState.IsSet()
+		&& !FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&Subsystem->GetRuntimeState(),
+			&CachedOutcomeSourceState.GetValue(),
+			PPF_None))
+	{
+		ClearCardOutcomePreview();
+	}
 
 	FGameXXKCardPlayPreview NewPreview;
 	FString Error;
@@ -6997,6 +7393,7 @@ bool UGameXXKBattleBoardWidget::RefreshPendingCardTargetingPreview()
 
 void UGameXXKBattleBoardWidget::ClearCardTargetingState()
 {
+	ClearCardOutcomePreview();
 	PendingCardPreview = FGameXXKCardPlayPreview();
 	LegalCardTargetUnitIds.Reset();
 	if (InteractionMode == EGameXXKBattleInteractionMode::TargetingCard)
@@ -7027,6 +7424,7 @@ bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalState()
 	const EGameXXKCardBattlePhase Phase = Subsystem->GetRuntimeState().CardRun.ActiveBattle.Phase;
 	if (Phase == EGameXXKCardBattlePhase::Victory)
 	{
+		ClearCardOutcomePreview();
 		if (!Subsystem->ResolveBattleVictory(false))
 		{
 			LastCardInteractionError = TEXT("战斗胜利奖励未能生成。");
@@ -7035,6 +7433,7 @@ bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalState()
 	}
 	else if (Phase == EGameXXKCardBattlePhase::Defeat)
 	{
+		ClearCardOutcomePreview();
 		if (!Subsystem->FailDungeonToTown())
 		{
 			LastCardInteractionError = TEXT("战斗失败后未能返回城镇。");

@@ -2,8 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/Button.h"
+#include "GameXXKCardOutcomePreview.h"
 #include "GameXXKCardTypes.h"
 #include "GameXXKBattlePresentation.h"
+#include "GameXXKMVPRules.h"
 #include "Math/Box2D.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKBattleAtlasCache.h"
@@ -25,6 +27,7 @@ class UGameXXKBattleStatusIconWidget;
 class UGameXXKBattleUnitHudWidget;
 class UGameXXKBattleUnitVisualWidget;
 class UGameXXKBattleBoardWidget;
+class UGameXXKCardOutcomePreviewWidget;
 
 enum class EGameXXKBattleHudLayer : uint8
 {
@@ -158,6 +161,12 @@ private:
 	UFUNCTION()
 	void HandleClicked();
 
+	UFUNCTION()
+	void HandleHovered();
+
+	UFUNCTION()
+	void HandleUnhovered();
+
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKBattleBoardWidget> Owner;
 
@@ -198,6 +207,7 @@ public:
 	void CancelBattleVisualSession(uint64 ClosingSessionToken);
 	void AdvanceVisualsAtRealTime(double AbsoluteSeconds);
 	void HandleUnitTargetProxyClicked(FName UnitId);
+	void HandleUnitTargetProxyHoverChanged(FName UnitId, bool bHovered);
 	int32 GetLayerZ(EGameXXKBattleHudLayer Layer) const;
 
 	UCanvasPanel* GetBattleViewportRootForTest() const;
@@ -207,6 +217,7 @@ public:
 	UImage* GetBattleBackdropImageForTest() const;
 	FString GetBattleBackdropResourcePathForTest() const;
 	UGameXXKBattleUnitVisualWidget* GetUnitVisualForTest(FName UnitId) const;
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	UButton* GetUnitTargetProxyForTest(FName UnitId) const;
 	int32 GetUnitVisualCountForTest() const;
 	bool IsUnitTargetPlaceholderVisibleForTest(FName UnitId) const;
@@ -466,7 +477,40 @@ public:
 	bool IsCardTooltipVisibleForTest() const;
 	bool IsCardTooltipHitTestInvisibleForTest() const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	UButton* GetHandCardButtonForTest(int32 SlotIndex) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	bool IsCardOutcomePreviewVisibleForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FString GetCardOutcomePreviewClassForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FName GetCardOutcomePreviewCardInstanceIdForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FName GetCardOutcomePreviewTargetUnitIdForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	TArray<FString> GetCardOutcomePreviewLinesForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	int32 GetCardOutcomePreviewBuildCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FVector2D GetSingleOutcomePreviewAnchorForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FVector2D GetGroupOutcomePreviewAnchorForTest() const;
+
 #if WITH_DEV_AUTOMATION_TESTS
+	UCanvasPanel* GetBattleOutcomePreviewLayerForTest() const;
+	int32 GetBattleOutcomePreviewLayerZForTest() const;
+	FMargin GetSingleOutcomePreviewOffsetsForTest() const;
+	FMargin GetGroupOutcomePreviewOffsetsForTest() const;
+	FVector2D GetSingleOutcomePreviewAlignmentForTest() const;
+	FVector2D GetGroupOutcomePreviewAlignmentForTest() const;
 	/** Pure layout seam: callers supply a canvas size to validate the right rail against expanded hand and end-turn bounds. */
 	FGameXXKBattlePartyQiLayout ResolvePartyQiLayoutForTest(FVector2D CanvasSize) const;
 	/** Runs the same responsive Party Qi refresh used when NativeTick observes settled or resized canvas geometry. */
@@ -646,6 +690,10 @@ private:
 	bool ResolveAutomaticCardPlay(FName CardInstanceId);
 	bool RefreshPendingCardTargetingPreview();
 	void ClearCardTargetingState();
+	void ClearCardOutcomePreview();
+	bool BuildCardOutcomePreview(FName CardInstanceId, FName RequestedTargetUnitId);
+	void ApplyCardOutcomePreview(const FGameXXKCardOutcomePreview& Preview);
+	void RefreshSingleOutcomePreviewPlacement(FName UnitId);
 	bool ResolveCardBattleTerminalState();
 	FVector2D ResolveCardTargetingSourcePosition(FName OwnerUnitId) const;
 	bool ResolveAndRefreshCardBattleAfterMutation();
@@ -796,6 +844,16 @@ private:
 	/** One ordinary input-transparent Canvas inside the centered 16:9 battle safe stage. */
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> BattleProjectedUnitHudLayer;
+
+	/** Input-transparent sibling above the fixed unit HUD projection; existing layout stays untouched. */
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> BattleOutcomePreviewLayer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKCardOutcomePreviewWidget> SingleOutcomeWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKCardOutcomePreviewWidget> GroupOutcomeWidget;
 
 	/** Battle-only full-screen action layer; it never replaces card or story portraits. */
 	/** Marker-driven presentation elements live directly in the common design stage. */
@@ -1028,6 +1086,12 @@ private:
 
 	UPROPERTY(Transient)
 	TSet<FName> LegalCardTargetUnitIds;
+
+	FName CachedOutcomeCardInstanceId = NAME_None;
+	FName CachedOutcomeTargetUnitId = NAME_None;
+	TOptional<FGameXXKRuntimeState> CachedOutcomeSourceState;
+	FGameXXKCardOutcomePreview CachedOutcomePreview;
+	int32 OutcomePreviewBuildCountForTest = 0;
 
 	UPROPERTY(Transient)
 	TArray<FName> HandCardInstanceIds;

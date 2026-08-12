@@ -552,14 +552,29 @@ bool FGameXXKBattleStatusEffectsWidgetTest::RunTest(const FString& Parameters)
 	StatusBoard->NativeConstruct();
 	TestTrue(TEXT("positive-status Board begins a visual session"), StatusBoard->BeginBattleVisualSession(8201));
 	TestTrue(TEXT("positive-status card enters manual targeting"), StatusBoard->ClickCardInHand(StatusCardInstanceId));
+	const int32 ContinuationCountBeforeCommit = StatusBoard->GetExecutedBattlePresentationContinuationCountForTest();
 	TestTrue(TEXT("positive-status card commits through the Board"), StatusBoard->ConfirmTargetingUnit(TEXT("Enemy.Status")));
 	TestEqual(TEXT("buff and debuff deltas never enter the cinematic queue"),
 		StatusBoard->GetBattlePresentationQueueCountForTest(),
 		0);
+	TestTrue(TEXT("status-only hand play starts the shared played-card commit"),
+		StatusBoard->IsPlayedCardCommitActiveForTest());
+	TestTrue(TEXT("status-only hand play remains presentation locked during commit"),
+		StatusBoard->IsBattlePresentationLockedForTest());
 	StatusBoard->AdvanceVisualsAtRealTime(0.0);
 	TestFalse(TEXT("status-only card resolution never starts a central close-up"), FBoardApi::IsStatus(StatusBoard));
-	TestTrue(TEXT("status-only card resolution immediately completes its continuation"),
-		!StatusBoard->IsBattlePresentationLockedForTest());
+	TestTrue(TEXT("status-only commit remains active at its initial absolute sample"),
+		StatusBoard->IsPlayedCardCommitActiveForTest());
+	TestTrue(TEXT("status-only continuation stays locked at its initial absolute sample"),
+		StatusBoard->IsBattlePresentationLockedForTest());
+	StatusBoard->AdvanceVisualsAtRealTime(0.18);
+	TestFalse(TEXT("status-only commit completes exactly at the shared 0.18-second boundary"),
+		StatusBoard->IsPlayedCardCommitActiveForTest());
+	TestFalse(TEXT("status-only continuation unlocks after commit completion"),
+		StatusBoard->IsBattlePresentationLockedForTest());
+	TestEqual(TEXT("status-only commit executes its continuation exactly once"),
+		StatusBoard->GetExecutedBattlePresentationContinuationCountForTest(),
+		ContinuationCountBeforeCommit + 1);
 	UGameXXKBattleStatusIconWidget* const CentralStatusIcon = StatusBoard->WidgetTree
 		? Cast<UGameXXKBattleStatusIconWidget>(StatusBoard->WidgetTree->FindWidget(TEXT("BattleCinematicStatusIcon")))
 		: nullptr;
