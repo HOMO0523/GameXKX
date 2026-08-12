@@ -635,9 +635,9 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 		LockedTargetProxy
 		&& (!LockedTargetProxy->GetIsEnabled() || LockedTargetProxy->GetVisibility() != ESlateVisibility::Visible));
 	GateBoard->AdvanceVisualsAtRealTime(0.0);
-	GateBoard->AdvanceVisualsAtRealTime(1.1);
+	GateBoard->AdvanceVisualsAtRealTime(0.301);
 	TestEqual(TEXT("the marker exposes the packet-local intermediate health"), GateBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 90);
-	GateBoard->AdvanceVisualsAtRealTime(2.5);
+	GateBoard->AdvanceVisualsAtRealTime(0.821);
 	TestFalse(TEXT("input unlocks only after the full presentation queue drains"), FGateApi::IsLocked(GateBoard));
 	TestEqual(TEXT("full-drain reconciliation restores authoritative target health"), GateBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 100);
 	TestTrue(TEXT("the target confirmation can mutate again after full drain"), GateBoard->ConfirmTargetingUnit(TEXT("Enemy")));
@@ -688,21 +688,21 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("packet one retains the Heavy Arrow attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Npc.JinGui")));
 	TestEqual(TEXT("packet one retains the primary target"), FGateApi::Target(OrderedBoard), FName(TEXT("Enemy")));
 	TestEqual(TEXT("the first target baseline is seeded from packet one"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 100);
-	OrderedBoard->AdvanceVisualsAtRealTime(1.1);
+	OrderedBoard->AdvanceVisualsAtRealTime(0.301);
 	TestEqual(TEXT("packet one marker applies only packet one's health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
-	OrderedBoard->AdvanceVisualsAtRealTime(2.5);
+	OrderedBoard->AdvanceVisualsAtRealTime(0.821);
 	TestEqual(TEXT("packet two reverses the reflected source"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Enemy")));
 	TestEqual(TEXT("packet two reverses the reflected target"), FGateApi::Target(OrderedBoard), FName(TEXT("Npc.JinGui")));
 	TestEqual(TEXT("packet one's target override survives the reflected intermediate entry"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
-	OrderedBoard->AdvanceVisualsAtRealTime(3.6);
+	OrderedBoard->AdvanceVisualsAtRealTime(0.921);
 	TestEqual(TEXT("the reflection marker applies its own target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Npc.JinGui")), 95);
-	OrderedBoard->AdvanceVisualsAtRealTime(5.0);
+	OrderedBoard->AdvanceVisualsAtRealTime(1.121);
 	TestEqual(TEXT("packet three returns to the Heavy Arrow attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Npc.JinGui")));
 	TestEqual(TEXT("packet three returns to the primary target"), FGateApi::Target(OrderedBoard), FName(TEXT("Enemy")));
 	TestEqual(TEXT("packet three begins at packet one's committed target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
-	OrderedBoard->AdvanceVisualsAtRealTime(6.1);
+	OrderedBoard->AdvanceVisualsAtRealTime(1.221);
 	TestEqual(TEXT("packet three marker reaches the final target health without early reconciliation"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 78);
-	OrderedBoard->AdvanceVisualsAtRealTime(7.5);
+	OrderedBoard->AdvanceVisualsAtRealTime(1.421);
 	TestFalse(TEXT("the ordered batch unlocks after all three packets"), FGateApi::IsLocked(OrderedBoard));
 	TestEqual(TEXT("ordered target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 78);
 	TestEqual(TEXT("reflected target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Npc.JinGui")), 95);
@@ -758,10 +758,10 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 			EGameXXKCardStatus::Vulnerability) == 0);
 	TestFalse(TEXT("terminal reward handling is deferred until after Death"), LethalBoard->HasPendingRouteReward());
 	LethalBoard->AdvanceVisualsAtRealTime(0.0);
-	LethalBoard->AdvanceVisualsAtRealTime(2.5);
+	LethalBoard->AdvanceVisualsAtRealTime(0.821);
 	TestTrue(TEXT("lethal Hit transitions to Death before removal"), LethalBoard->IsBattleDeathPresentationActiveForTest());
 	TestFalse(TEXT("reward remains deferred throughout Death"), LethalBoard->HasPendingRouteReward());
-	LethalBoard->AdvanceVisualsAtRealTime(7.5);
+	LethalBoard->AdvanceVisualsAtRealTime(1.721);
 	TestFalse(TEXT("fixed-HUD status reconciliation does not open a separate full-screen status presentation"),
 		LethalBoard->IsBattleStatusPresentationActiveForTest());
 	TestEqual(TEXT("the presentation gate releases the defeated target after Death"),

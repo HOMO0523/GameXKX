@@ -429,16 +429,16 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		CinematicImpact ? CinematicImpact->GetVisibility() : ESlateVisibility::Visible,
 		ESlateVisibility::Hidden);
 
-	Board->AdvanceVisualsAtRealTime(1.101);
-	TestEqual(TEXT("crossing 1.1 updates the displayed-health overlay"),
+	Board->AdvanceVisualsAtRealTime(0.301);
+	TestEqual(TEXT("crossing zero-point-three updates the displayed-health overlay"),
 		FPresentationApi::DisplayedHealth(Board, CinematicEvent.TargetUnitId), CinematicEvent.TargetHealthAfter);
 	const UGameXXKBattleUnitHudWidget* const PostImpactTargetHud = Board->GetProjectedUnitHudForTest(CinematicEvent.TargetUnitId);
-	TestEqual(TEXT("crossing 1.1 redraws the real target HUD"),
+	TestEqual(TEXT("crossing zero-point-three redraws the real target HUD"),
 		PostImpactTargetHud && PostImpactTargetHud->GetResourceWidgetForTest()
 			? PostImpactTargetHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest()
 			: FString(),
 		FString(TEXT("气血 152 / 180")));
-	TestEqual(TEXT("crossing 1.1 emits the damage readout"),
+	TestEqual(TEXT("crossing zero-point-three emits the damage readout"),
 		FPresentationApi::Readout(Board), FString(TEXT("-18")));
 	TestEqual(TEXT("the retired generic impact stays hidden at the damage marker"),
 		CinematicImpact ? CinematicImpact->GetVisibility() : ESlateVisibility::Hidden,
@@ -446,7 +446,7 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	TestNull(TEXT("the retired generic impact never binds an atlas"),
 		CinematicImpact ? CinematicImpact->GetAtlasForTest() : nullptr);
 
-	Board->AdvanceVisualsAtRealTime(2.5);
+	Board->AdvanceVisualsAtRealTime(0.821);
 	TestTrue(TEXT("surviving attacker restores its formation size"),
 		CinematicAttacker && CinematicAttacker->GetPresentedSize().Equals(FVector2D(410.0f, 410.0f), 0.01f));
 	TestTrue(TEXT("surviving target restores its formation size"),

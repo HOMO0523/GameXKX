@@ -125,9 +125,6 @@ namespace
 		return DamageResults;
 	}
 	static constexpr float EnemyIntentSettleDuration = 0.32f;
-	static constexpr double BattleImpactMarkerSeconds = 1.1;
-	static constexpr double BattleAttackHitDurationSeconds = 2.5;
-	static constexpr double BattleDeathDurationSeconds = 5.0;
 	static constexpr double BattleHudShakeDurationSeconds = 0.32;
 
 	struct FGameXXKFixedUnitHudLayout
@@ -651,6 +648,7 @@ void UGameXXKBattleBoardWidget::QueuePresentationInternal(
 	FBattlePresentationQueueEntry Entry;
 	Entry.Event = Event;
 	Entry.Kind = EBattlePresentationKind::AttackHit;
+	Entry.Rhythm = FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(Event);
 	Entry.QueueSerial = NextBattlePresentationQueueSerial++;
 	if (NextBattlePresentationQueueSerial == 0)
 	{
@@ -662,11 +660,17 @@ void UGameXXKBattleBoardWidget::QueuePresentationInternal(
 			Event.AttackerUnitId,
 			Event.bAttackerEnemy,
 			EGameXXKBattleAnimationAction::Attack);
+		Entry.AttackerClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(
+			Entry.AttackerClip,
+			Entry.Rhythm.DurationSeconds);
 	}
 	Entry.TargetClip = ResolveUnitAnimationClip(
 		Event.TargetUnitId,
 		Event.bTargetEnemy,
 		EGameXXKBattleAnimationAction::Hit);
+	Entry.TargetClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(
+		Entry.TargetClip,
+		Entry.Rhythm.DurationSeconds);
 	const uint64 QueueSerial = Entry.QueueSerial;
 	BattlePresentationQueue.Add(MoveTemp(Entry));
 	if (!DisplayedHealthOverrides.Contains(Event.TargetUnitId))
@@ -704,12 +708,15 @@ void UGameXXKBattleBoardWidget::QueueStatusPresentation(
 	FBattlePresentationQueueEntry Entry;
 	Entry.StatusEvent = Event;
 	Entry.Kind = EBattlePresentationKind::Status;
+	Entry.Rhythm = FGameXXKBattleAnimationPresentation::ResolveStatusRhythm();
 	Entry.QueueSerial = NextBattlePresentationQueueSerial++;
 	if (NextBattlePresentationQueueSerial == 0)
 	{
 		NextBattlePresentationQueueSerial = 1;
 	}
-	Entry.StatusClip = FGameXXKBattleAnimationPresentation::ResolveGenericClip(Event.AnimationAction);
+	Entry.StatusClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(
+		FGameXXKBattleAnimationPresentation::ResolveGenericClip(Event.AnimationAction),
+		Entry.Rhythm.DurationSeconds);
 	const uint64 QueueSerial = Entry.QueueSerial;
 	BattlePresentationQueue.Add(MoveTemp(Entry));
 	ApplyBattlePresentationInteractionLock();
@@ -1092,7 +1099,7 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
 				{
 					Board->BattleCinematicImpact->SetAtlas(Texture);
 					Board->BattleCinematicImpact->AdvanceAtRealTime(
-						RequestEntry->StartSeconds + BattleImpactMarkerSeconds);
+						RequestEntry->StartSeconds + RequestEntry->Rhythm.ImpactSeconds);
 					Board->BattleCinematicImpact->AdvanceAtRealTime(Board->LastSlateSeconds);
 				}
 				break;
@@ -1133,18 +1140,11 @@ void UGameXXKBattleBoardWidget::AdvanceBattlePresentation(const double AbsoluteS
 		}
 
 		const double ElapsedSeconds = FMath::Max(0.0, AbsoluteSeconds - Entry.StartSeconds);
-		double DurationSeconds = BattleAttackHitDurationSeconds;
-		if (Entry.Kind == EBattlePresentationKind::Death)
-		{
-			DurationSeconds = BattleDeathDurationSeconds;
-		}
-		else if (Entry.Kind == EBattlePresentationKind::Status)
-		{
-			DurationSeconds = FGameXXKBattleAnimationPresentation::GetRuntimeDuration(Entry.StatusClip);
-		}
+		const double DurationSeconds = static_cast<double>(Entry.Rhythm.DurationSeconds);
 		if (Entry.Kind == EBattlePresentationKind::AttackHit
 			&& !Entry.bImpactFired
-			&& ElapsedSeconds + static_cast<double>(KINDA_SMALL_NUMBER) >= BattleImpactMarkerSeconds)
+			&& ElapsedSeconds + static_cast<double>(KINDA_SMALL_NUMBER)
+				>= static_cast<double>(Entry.Rhythm.ImpactSeconds))
 		{
 			FirePresentationImpact(Entry);
 		}
@@ -1381,7 +1381,7 @@ void UGameXXKBattleBoardWidget::FirePresentationImpact(FBattlePresentationQueueE
 		BattleCinematicReadout->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 
-	BattlePresentationShakeStartSeconds = Entry.StartSeconds + BattleImpactMarkerSeconds;
+	BattlePresentationShakeStartSeconds = Entry.StartSeconds + Entry.Rhythm.ImpactSeconds;
 	bBattlePresentationShakeActive = true;
 	++BattlePresentationHudShakeCount;
 }
@@ -1452,6 +1452,7 @@ void UGameXXKBattleBoardWidget::EnqueueDeathPresentationAfterActive(
 	FBattlePresentationQueueEntry DeathEntry;
 	DeathEntry.Event = Event;
 	DeathEntry.Kind = EBattlePresentationKind::Death;
+	DeathEntry.Rhythm = FGameXXKBattleAnimationPresentation::ResolveDeathRhythm();
 	DeathEntry.QueueSerial = NextBattlePresentationQueueSerial++;
 	if (NextBattlePresentationQueueSerial == 0)
 	{
@@ -1461,6 +1462,9 @@ void UGameXXKBattleBoardWidget::EnqueueDeathPresentationAfterActive(
 		Event.TargetUnitId,
 		Event.bTargetEnemy,
 		EGameXXKBattleAnimationAction::Death);
+	DeathEntry.TargetClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(
+		DeathEntry.TargetClip,
+		DeathEntry.Rhythm.DurationSeconds);
 	const uint64 QueueSerial = DeathEntry.QueueSerial;
 	BattlePresentationQueue.Insert(MoveTemp(DeathEntry), FMath::Min(1, BattlePresentationQueue.Num()));
 	PrefetchPresentationEntry(QueueSerial);
@@ -1996,15 +2000,7 @@ double UGameXXKBattleBoardWidget::GetActiveBattlePresentationDurationForTest() c
 	{
 		return 0.0;
 	}
-	if (Entry->Kind == EBattlePresentationKind::Death)
-	{
-		return BattleDeathDurationSeconds;
-	}
-	if (Entry->Kind == EBattlePresentationKind::Status)
-	{
-		return static_cast<double>(FGameXXKBattleAnimationPresentation::GetRuntimeDuration(Entry->StatusClip));
-	}
-	return BattleAttackHitDurationSeconds;
+	return static_cast<double>(Entry->Rhythm.DurationSeconds);
 }
 
 int32 UGameXXKBattleBoardWidget::GetBattlePresentationImpactCountForTest() const

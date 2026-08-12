@@ -510,6 +510,7 @@ private:
 		bool bStarted = false;
 		bool bImpactFired = false;
 		bool bCompletionFired = false;
+		FGameXXKBattlePresentationRhythm Rhythm;
 		FGameXXKBattleAnimationClipDescriptor AttackerClip;
 		FGameXXKBattleAnimationClipDescriptor TargetClip;
 		FGameXXKBattleAnimationClipDescriptor ImpactClip;
