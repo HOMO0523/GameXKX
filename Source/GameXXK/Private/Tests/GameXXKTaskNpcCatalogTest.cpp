@@ -33,7 +33,7 @@ namespace GameXXKTaskNpcCatalogTest
 		{TEXT("Npc.QiongMeiEr.ShanGeHuanLing"), TEXT("山歌唤灵"), TEXT("Npc.QiongMeiEr"), 2, 6, EGameXXKCardTargetMode::AllAllies},
 
 		{TEXT("Npc.ZhouGuangZu.YiCaoBianShi"), TEXT("异草辨识"), TEXT("Npc.ZhouGuangZu"), 0, 0, EGameXXKCardTargetMode::AnyLivingUnit},
-		{TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"), TEXT("黄山敷治"), TEXT("Npc.ZhouGuangZu"), 1, 3, EGameXXKCardTargetMode::AllAllies},
+		{TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"), TEXT("黄山敷治"), TEXT("Npc.ZhouGuangZu"), 0, 3, EGameXXKCardTargetMode::AllAllies},
 		{TEXT("Npc.ZhouGuangZu.DiZhiMoTu"), TEXT("地志摹图"), TEXT("Npc.ZhouGuangZu"), 0, 3, EGameXXKCardTargetMode::SingleEnemy},
 		{TEXT("Npc.ZhouGuangZu.YanFenFengMai"), TEXT("岩粉封脉"), TEXT("Npc.ZhouGuangZu"), 1, 3, EGameXXKCardTargetMode::SingleEnemy},
 

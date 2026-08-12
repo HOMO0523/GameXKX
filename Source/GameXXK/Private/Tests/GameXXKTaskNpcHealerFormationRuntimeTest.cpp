@@ -1,4 +1,5 @@
 #include "GameXXKCardRules.h"
+#include "GameXXKCardCatalog.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -180,6 +181,21 @@ bool FGameXXKTaskNpcGroupMedicineTest::RunTest(const FString& Parameters)
 	const FName OwnerUnitId(TEXT("Npc.ZhouGuangZu"));
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, OwnerUnitId, TEXT("HuangShan"), TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"), EGameXXKCardTerrain::Plain, 58203)) return false;
+	const FGameXXKCardInstance* HuangShanInstance = Runtime.Deck.Hand.FindByPredicate([](const FGameXXKCardInstance& Instance)
+	{
+		return Instance.InstanceId == TEXT("HuangShan");
+	});
+	TestNotNull(TEXT("黄山敷治 runtime keeps its real card instance"), HuangShanInstance);
+	if (HuangShanInstance)
+	{
+		TestEqual(TEXT("黄山敷治 no longer competes for the shared energy action"), HuangShanInstance->EnergyCostOverride, INDEX_NONE);
+		const FGameXXKCardDefinition* HuangShanDefinition = FGameXXKCardCatalog::FindCardDefinition(HuangShanInstance->CardId);
+		TestNotNull(TEXT("黄山敷治 runtime resolves its catalog definition"), HuangShanDefinition);
+		if (HuangShanDefinition)
+		{
+			TestEqual(TEXT("黄山敷治 catalog energy cost is zero"), HuangShanDefinition->EnergyCost, 0);
+		}
+	}
 	FindUnit(Runtime, OwnerUnitId)->HP = 2;
 	FindUnit(Runtime, AllyUnitId)->HP = 1;
 	FGameXXKCardPlayResult Result;

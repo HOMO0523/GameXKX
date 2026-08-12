@@ -581,7 +581,7 @@ ID：Npc.ZhouGuangZu.YiCaoBianShi
 [050] 黄山敷治
 ID：Npc.ZhouGuangZu.HuangShanFuZhi
 品质：普通
-费用：1 气力 / 3 内力
+费用：0 气力 / 3 内力
 目标：全体友方（直接施放）
 获取：NPC 固定 4 选 3 卡池
 完整效果：

@@ -1,5 +1,6 @@
 #include "Misc/AutomationTest.h"
 
+#include "GameXXKCompanionRules.h"
 #include "GameXXKRouteBalanceRules.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -152,6 +153,8 @@ bool FGameXXKZhouGuangZuDamageBudgetTest::RunTest(const FString& Parameters)
 	int32 BattleVictories = 0;
 	int32 EliteVictories = 0;
 	int32 BossVictories = 0;
+	int32 BossCasesWithoutYanFen = 0;
+	int32 BossVictoriesWithoutYanFen = 0;
 	int32 StrandedTargetFailures = 0;
 	for (const FGameXXKRouteBalanceCase& Case : Cases)
 	{
@@ -182,6 +185,24 @@ bool FGameXXKZhouGuangZuDamageBudgetTest::RunTest(const FString& Parameters)
 			continue;
 		}
 		StrandedTargetFailures += Result.Metrics.StrandedTargetFailures;
+		if (Case.NodeKind == EGameXXKNodeKind::Boss)
+		{
+			TArray<FName> SelectedCardIds;
+			FString SelectionError;
+			if (!FGameXXKCompanionRules::BuildQuestNpcRouteCardSelection(
+				Case.QuestNpcId,
+				Case.Seed,
+				SelectedCardIds,
+				&SelectionError))
+			{
+				AddError(FString::Printf(TEXT("ZhouGuangZu seed %d cannot reconstruct its route cards: %s"), Case.Seed, *SelectionError));
+			}
+			else if (!SelectedCardIds.Contains(TEXT("Npc.ZhouGuangZu.YanFenFengMai")))
+			{
+				++BossCasesWithoutYanFen;
+				BossVictoriesWithoutYanFen += Result.Metrics.bVictory ? 1 : 0;
+			}
+		}
 		if (!Result.Metrics.bVictory)
 		{
 			continue;
@@ -203,7 +224,7 @@ bool FGameXXKZhouGuangZuDamageBudgetTest::RunTest(const FString& Parameters)
 		}
 	}
 	AddInfo(FString::Printf(
-		TEXT("[NpcBudget] ZhouGuangZu cases=%d battle=%d/%d elite=%d/%d boss=%d/%d stranded=%d"),
+		TEXT("[NpcBudget] ZhouGuangZu cases=%d battle=%d/%d elite=%d/%d boss=%d/%d boss_without_yanfen=%d/%d stranded=%d"),
 		ZhouCaseCount,
 		BattleVictories,
 		BattleCaseCount,
@@ -211,6 +232,8 @@ bool FGameXXKZhouGuangZuDamageBudgetTest::RunTest(const FString& Parameters)
 		EliteCaseCount,
 		BossVictories,
 		BossCaseCount,
+		BossVictoriesWithoutYanFen,
+		BossCasesWithoutYanFen,
 		StrandedTargetFailures));
 
 	TestEqual(TEXT("the ZhouGuangZu orthogonal slice contains exactly ninety cases"), ZhouCaseCount, 90);
@@ -219,7 +242,9 @@ bool FGameXXKZhouGuangZuDamageBudgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the ZhouGuangZu slice contains exactly thirty boss encounters"), BossCaseCount, 30);
 	TestEqual(TEXT("ZhouGuangZu keeps all thirty normal encounters"), BattleVictories, 30);
 	TestTrue(TEXT("ZhouGuangZu reaches the first bounded elite-damage step of ten victories"), EliteVictories >= 10);
-	TestTrue(TEXT("ZhouGuangZu reaches the first bounded boss-damage step of five victories"), BossVictories >= 5);
+	TestTrue(TEXT("ZhouGuangZu reaches the next bounded boss-damage step of six victories"), BossVictories >= 6);
+	TestEqual(TEXT("the ZhouGuangZu boss slice contains seven routes without YanFenFengMai"), BossCasesWithoutYanFen, 7);
+	TestTrue(TEXT("the healing-terrain trio can defeat at least one boss without YanFenFengMai"), BossVictoriesWithoutYanFen >= 1);
 	TestEqual(TEXT("ZhouGuangZu never strands a selected target across the slice"), StrandedTargetFailures, 0);
 	return true;
 }

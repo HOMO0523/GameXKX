@@ -1105,7 +1105,7 @@ namespace
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::Medicine),
 			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 6),
 			 Effect(EGameXXKCardEffectType::CleanseFriendlyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 1)});
-		AddQuestNpcCard(Cards, Zhou, TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"), TEXT("黄山敷治"), 1, 3, EGameXXKCardTargetMode::AllAllies,
+		AddQuestNpcCard(Cards, Zhou, TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"), TEXT("黄山敷治"), 0, 3, EGameXXKCardTargetMode::AllAllies,
 			{Effect(EGameXXKCardEffectType::LoseHealthNonlethal, EGameXXKCardEffectTarget::AllAllies, 1),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::Medicine),
 			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 6)});
