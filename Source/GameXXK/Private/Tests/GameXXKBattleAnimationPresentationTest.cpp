@@ -35,6 +35,179 @@ namespace
 	}
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKBattlePresentationRhythmTest,
+	"GameXXK.Presentation.BattleAnimation.Rhythm",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKBattlePresentationRhythmTest::RunTest(const FString& Parameters)
+{
+	const auto ExpectSeconds = [this](const TCHAR* What, const float Actual, const float Expected)
+	{
+		TestTrue(What, FMath::IsNearlyEqual(Actual, Expected, 0.0001f));
+	};
+
+	FGameXXKBattlePresentationEvent FirstLightEvent;
+	FirstLightEvent.HitOrdinal = 0;
+	FirstLightEvent.HealthDamage = 5;
+	FirstLightEvent.TargetHealthBefore = 100;
+	FirstLightEvent.TargetHealthAfter = 95;
+	const FGameXXKBattlePresentationRhythm FirstLight =
+		FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(FirstLightEvent);
+	TestTrue(TEXT("first-hit light rhythm is valid"), FirstLight.IsValid());
+	ExpectSeconds(TEXT("first hit lasts zero-point-eight-two seconds"), FirstLight.DurationSeconds, 0.82f);
+	ExpectSeconds(TEXT("first hit impacts at zero-point-three seconds"), FirstLight.ImpactSeconds, 0.30f);
+	TestEqual(TEXT("five-percent damage resolves to light feedback"), FirstLight.ImpactTier,
+		EGameXXKBattlePresentationImpactTier::Light);
+	ExpectSeconds(TEXT("light shake uses three horizontal units"), FirstLight.ShakeAmplitude.X, 3.0f);
+	ExpectSeconds(TEXT("light shake uses one-point-five vertical units"), FirstLight.ShakeAmplitude.Y, 1.5f);
+	ExpectSeconds(TEXT("light shake lasts zero-point-twelve seconds"), FirstLight.ShakeDurationSeconds, 0.12f);
+	ExpectSeconds(TEXT("light readout peaks at one-point-twelve"), FirstLight.ReadoutPeakScale, 1.12f);
+	const auto ResolveTierAtPercent = [](const int32 Damage)
+	{
+		FGameXXKBattlePresentationEvent Event;
+		Event.HealthDamage = Damage;
+		Event.TargetHealthBefore = 100;
+		Event.TargetHealthAfter = 100 - Damage;
+		return FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(Event).ImpactTier;
+	};
+	TestEqual(TEXT("nine percent remains light feedback"), ResolveTierAtPercent(9),
+		EGameXXKBattlePresentationImpactTier::Light);
+	TestEqual(TEXT("ten percent begins medium feedback"), ResolveTierAtPercent(10),
+		EGameXXKBattlePresentationImpactTier::Medium);
+	TestEqual(TEXT("twenty-nine percent remains medium feedback"), ResolveTierAtPercent(29),
+		EGameXXKBattlePresentationImpactTier::Medium);
+	TestEqual(TEXT("thirty percent begins heavy feedback"), ResolveTierAtPercent(30),
+		EGameXXKBattlePresentationImpactTier::Heavy);
+	TestEqual(TEXT("fifty-nine percent remains heavy feedback"), ResolveTierAtPercent(59),
+		EGameXXKBattlePresentationImpactTier::Heavy);
+	TestEqual(TEXT("sixty percent begins lethal feedback"), ResolveTierAtPercent(60),
+		EGameXXKBattlePresentationImpactTier::Lethal);
+
+	FGameXXKBattlePresentationEvent FollowMediumEvent = FirstLightEvent;
+	FollowMediumEvent.HitOrdinal = 1;
+	FollowMediumEvent.HealthDamage = 20;
+	FollowMediumEvent.TargetHealthAfter = 80;
+	const FGameXXKBattlePresentationRhythm FollowMedium =
+		FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(FollowMediumEvent);
+	ExpectSeconds(TEXT("follow-up hit lasts zero-point-three seconds"), FollowMedium.DurationSeconds, 0.30f);
+	ExpectSeconds(TEXT("follow-up hit impacts at zero-point-one seconds"), FollowMedium.ImpactSeconds, 0.10f);
+	TestEqual(TEXT("twenty-percent damage resolves to medium feedback"), FollowMedium.ImpactTier,
+		EGameXXKBattlePresentationImpactTier::Medium);
+	ExpectSeconds(TEXT("medium shake uses six horizontal units"), FollowMedium.ShakeAmplitude.X, 6.0f);
+	ExpectSeconds(TEXT("medium shake uses three vertical units"), FollowMedium.ShakeAmplitude.Y, 3.0f);
+	ExpectSeconds(TEXT("medium shake lasts zero-point-sixteen seconds"), FollowMedium.ShakeDurationSeconds, 0.16f);
+	ExpectSeconds(TEXT("medium readout peaks at one-point-two"), FollowMedium.ReadoutPeakScale, 1.20f);
+
+	FGameXXKBattlePresentationEvent HeavyEvent = FirstLightEvent;
+	HeavyEvent.HealthDamage = 45;
+	HeavyEvent.TargetHealthAfter = 55;
+	const FGameXXKBattlePresentationRhythm Heavy =
+		FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(HeavyEvent);
+	TestEqual(TEXT("forty-five-percent damage resolves to heavy feedback"), Heavy.ImpactTier,
+		EGameXXKBattlePresentationImpactTier::Heavy);
+	ExpectSeconds(TEXT("heavy shake uses nine horizontal units"), Heavy.ShakeAmplitude.X, 9.0f);
+	ExpectSeconds(TEXT("heavy shake uses four-point-five vertical units"), Heavy.ShakeAmplitude.Y, 4.5f);
+	ExpectSeconds(TEXT("heavy shake lasts zero-point-two seconds"), Heavy.ShakeDurationSeconds, 0.20f);
+	ExpectSeconds(TEXT("heavy readout peaks at one-point-three"), Heavy.ReadoutPeakScale, 1.30f);
+
+	FGameXXKBattlePresentationEvent LethalEvent = FirstLightEvent;
+	LethalEvent.HealthDamage = 60;
+	LethalEvent.TargetHealthAfter = 40;
+	const FGameXXKBattlePresentationRhythm LethalByRatio =
+		FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(LethalEvent);
+	TestEqual(TEXT("sixty-percent damage resolves to lethal feedback even without defeat"), LethalByRatio.ImpactTier,
+		EGameXXKBattlePresentationImpactTier::Lethal);
+	ExpectSeconds(TEXT("lethal shake uses fourteen horizontal units"), LethalByRatio.ShakeAmplitude.X, 14.0f);
+	ExpectSeconds(TEXT("lethal shake uses seven vertical units"), LethalByRatio.ShakeAmplitude.Y, 7.0f);
+	ExpectSeconds(TEXT("lethal shake lasts zero-point-two-six seconds"), LethalByRatio.ShakeDurationSeconds, 0.26f);
+	ExpectSeconds(TEXT("lethal readout peaks at one-point-four-two"), LethalByRatio.ReadoutPeakScale, 1.42f);
+
+	FGameXXKBattlePresentationEvent LethalTransitionEvent = FirstLightEvent;
+	LethalTransitionEvent.HealthDamage = 1;
+	LethalTransitionEvent.TargetHealthAfter = 0;
+	LethalTransitionEvent.bTargetDefeated = true;
+	TestEqual(TEXT("a real lethal transition always resolves to lethal feedback"),
+		FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(LethalTransitionEvent).ImpactTier,
+		EGameXXKBattlePresentationImpactTier::Lethal);
+
+	FGameXXKBattlePresentationEvent AvoidedEvent = LethalTransitionEvent;
+	AvoidedEvent.HitOrdinal = 3;
+	AvoidedEvent.bAvoided = true;
+	const FGameXXKBattlePresentationRhythm Avoided =
+		FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(AvoidedEvent);
+	TestTrue(TEXT("avoid rhythm is valid"), Avoided.IsValid());
+	TestEqual(TEXT("avoid overrides damage and lethal feedback"), Avoided.ImpactTier,
+		EGameXXKBattlePresentationImpactTier::Avoided);
+	ExpectSeconds(TEXT("avoid lasts zero-point-four-five seconds"), Avoided.DurationSeconds, 0.45f);
+	ExpectSeconds(TEXT("avoid marker occurs at zero-point-sixteen seconds"), Avoided.ImpactSeconds, 0.16f);
+	ExpectSeconds(TEXT("avoid never shakes horizontally"), Avoided.ShakeAmplitude.X, 0.0f);
+	ExpectSeconds(TEXT("avoid never shakes vertically"), Avoided.ShakeAmplitude.Y, 0.0f);
+	ExpectSeconds(TEXT("avoid has no shake duration"), Avoided.ShakeDurationSeconds, 0.0f);
+	ExpectSeconds(TEXT("avoid readout peaks at one-point-one"), Avoided.ReadoutPeakScale, 1.10f);
+
+	const FGameXXKBattlePresentationRhythm Death =
+		FGameXXKBattleAnimationPresentation::ResolveDeathRhythm();
+	TestTrue(TEXT("death rhythm is valid"), Death.IsValid());
+	ExpectSeconds(TEXT("death lasts zero-point-nine seconds"), Death.DurationSeconds, 0.90f);
+	const FGameXXKBattlePresentationRhythm Status =
+		FGameXXKBattleAnimationPresentation::ResolveStatusRhythm();
+	TestTrue(TEXT("status rhythm is valid"), Status.IsValid());
+	ExpectSeconds(TEXT("status pulse lasts zero-point-three seconds"), Status.DurationSeconds, 0.30f);
+
+	FGameXXKBattlePresentationEvent InvalidMagnitudeEvent;
+	InvalidMagnitudeEvent.HitOrdinal = -7;
+	InvalidMagnitudeEvent.HealthDamage = MIN_int32;
+	InvalidMagnitudeEvent.TargetHealthBefore = 0;
+	InvalidMagnitudeEvent.TargetHealthAfter = MAX_int32;
+	const FGameXXKBattlePresentationRhythm Sanitized =
+		FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(InvalidMagnitudeEvent);
+	TestTrue(TEXT("invalid health and negative damage still resolve to finite safe rhythm"), Sanitized.IsValid());
+	TestEqual(TEXT("negative damage clamps to the lightest non-avoid tier"), Sanitized.ImpactTier,
+		EGameXXKBattlePresentationImpactTier::Light);
+
+	const FGameXXKBattleAnimationClipDescriptor SourceClip =
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			TEXT("Player"), false, EGameXXKBattleAnimationAction::Attack);
+	const FGameXXKBattleAnimationClipDescriptor FittedFirst =
+		FGameXXKBattleAnimationPresentation::FitClipToDuration(SourceClip, FirstLight.DurationSeconds);
+	TestTrue(TEXT("duration-fitted first attack remains a valid clip"), FittedFirst.IsValid());
+	ExpectSeconds(TEXT("duration-fitted first attack occupies exactly the rhythm duration"),
+		FGameXXKBattleAnimationPresentation::GetRuntimeDuration(FittedFirst), 0.82f);
+	TestEqual(TEXT("duration fitting preserves the source atlas path"), FittedFirst.TexturePath, SourceClip.TexturePath);
+	TestEqual(TEXT("duration fitting preserves the source atlas frame count"), FittedFirst.FrameCount, SourceClip.FrameCount);
+	TestEqual(TEXT("duration fitting preserves the source atlas columns"), FittedFirst.Columns, SourceClip.Columns);
+	TestEqual(TEXT("duration fitting preserves the source atlas rows"), FittedFirst.Rows, SourceClip.Rows);
+	TestEqual(TEXT("the fitted atlas reaches its final frame before the event boundary"),
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(FittedFirst, 0.819f, false),
+		FittedFirst.FrameCount - 1);
+
+	const FGameXXKBattleAnimationClipDescriptor FittedDeath =
+		FGameXXKBattleAnimationPresentation::FitClipToDuration(
+			FGameXXKBattleAnimationPresentation::ResolveClip(
+				TEXT("Player"), false, EGameXXKBattleAnimationAction::Death),
+			Death.DurationSeconds);
+	ExpectSeconds(TEXT("duration-fitted death occupies exactly zero-point-nine seconds"),
+		FGameXXKBattleAnimationPresentation::GetRuntimeDuration(FittedDeath), 0.90f);
+
+	const FGameXXKBattleAnimationClipDescriptor NanFit =
+		FGameXXKBattleAnimationPresentation::FitClipToDuration(
+			SourceClip, std::numeric_limits<float>::quiet_NaN());
+	const FGameXXKBattleAnimationClipDescriptor InfiniteFit =
+		FGameXXKBattleAnimationPresentation::FitClipToDuration(
+			SourceClip, std::numeric_limits<float>::infinity());
+	const FGameXXKBattleAnimationClipDescriptor ZeroFit =
+		FGameXXKBattleAnimationPresentation::FitClipToDuration(SourceClip, 0.0f);
+	TestTrue(TEXT("NaN duration safely preserves a valid finite source clip"), NanFit.IsValid());
+	TestTrue(TEXT("infinite duration safely preserves a valid finite source clip"), InfiniteFit.IsValid());
+	TestTrue(TEXT("zero duration safely preserves a valid finite source clip"), ZeroFit.IsValid());
+	ExpectSeconds(TEXT("NaN duration preserves source playback rate"), NanFit.PlaybackRate, SourceClip.PlaybackRate);
+	ExpectSeconds(TEXT("infinite duration preserves source playback rate"), InfiniteFit.PlaybackRate, SourceClip.PlaybackRate);
+	ExpectSeconds(TEXT("zero duration preserves source playback rate"), ZeroFit.PlaybackRate, SourceClip.PlaybackRate);
+
+	return true;
+}
+
 bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("Player resolves the approved hero source"),

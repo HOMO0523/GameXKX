@@ -124,6 +124,47 @@ namespace
 	{
 		return static_cast<int32>(FMath::Clamp<int64>(Value, MIN_int32, MAX_int32));
 	}
+
+	void ApplyImpactFeedback(
+		const EGameXXKBattlePresentationImpactTier Tier,
+		FGameXXKBattlePresentationRhythm& InOutRhythm)
+	{
+		InOutRhythm.ImpactTier = Tier;
+		switch (Tier)
+		{
+		case EGameXXKBattlePresentationImpactTier::Avoided:
+			InOutRhythm.ShakeAmplitude = FVector2f(0.0f, 0.0f);
+			InOutRhythm.ShakeDurationSeconds = 0.0f;
+			InOutRhythm.ReadoutPeakScale = 1.10f;
+			break;
+		case EGameXXKBattlePresentationImpactTier::Light:
+			InOutRhythm.ShakeAmplitude = FVector2f(3.0f, 1.5f);
+			InOutRhythm.ShakeDurationSeconds = 0.12f;
+			InOutRhythm.ReadoutPeakScale = 1.12f;
+			break;
+		case EGameXXKBattlePresentationImpactTier::Medium:
+			InOutRhythm.ShakeAmplitude = FVector2f(6.0f, 3.0f);
+			InOutRhythm.ShakeDurationSeconds = 0.16f;
+			InOutRhythm.ReadoutPeakScale = 1.20f;
+			break;
+		case EGameXXKBattlePresentationImpactTier::Heavy:
+			InOutRhythm.ShakeAmplitude = FVector2f(9.0f, 4.5f);
+			InOutRhythm.ShakeDurationSeconds = 0.20f;
+			InOutRhythm.ReadoutPeakScale = 1.30f;
+			break;
+		case EGameXXKBattlePresentationImpactTier::Lethal:
+			InOutRhythm.ShakeAmplitude = FVector2f(14.0f, 7.0f);
+			InOutRhythm.ShakeDurationSeconds = 0.26f;
+			InOutRhythm.ReadoutPeakScale = 1.42f;
+			break;
+		case EGameXXKBattlePresentationImpactTier::None:
+		default:
+			InOutRhythm.ShakeAmplitude = FVector2f(0.0f, 0.0f);
+			InOutRhythm.ShakeDurationSeconds = 0.0f;
+			InOutRhythm.ReadoutPeakScale = 1.0f;
+			break;
+		}
+	}
 }
 
 FString FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(const FName RuntimeUnitId, const bool bEnemy)
@@ -415,6 +456,90 @@ FBox2f FGameXXKBattleAnimationPresentation::CalculateUvRegion(
 	const FVector2f CellSize(1.0f / SafeColumns, 1.0f / SafeRows);
 	const FVector2f Minimum(Column * CellSize.X, Row * CellSize.Y);
 	return FBox2f(Minimum, Minimum + CellSize);
+}
+
+FGameXXKBattlePresentationRhythm FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(
+	const FGameXXKBattlePresentationEvent& Event)
+{
+	FGameXXKBattlePresentationRhythm Rhythm;
+	if (Event.bAvoided)
+	{
+		Rhythm.DurationSeconds = 0.45f;
+		Rhythm.ImpactSeconds = 0.16f;
+		ApplyImpactFeedback(EGameXXKBattlePresentationImpactTier::Avoided, Rhythm);
+		return Rhythm;
+	}
+
+	const bool bFirstHit = Event.HitOrdinal <= 0;
+	Rhythm.DurationSeconds = bFirstHit ? 0.82f : 0.30f;
+	Rhythm.ImpactSeconds = bFirstHit ? 0.30f : 0.10f;
+
+	const int64 SafeDamage = FMath::Max<int64>(0, static_cast<int64>(Event.HealthDamage));
+	const int64 SafeHealthBefore = FMath::Max<int64>(1, static_cast<int64>(Event.TargetHealthBefore));
+	const double DamageRatio = static_cast<double>(SafeDamage) / static_cast<double>(SafeHealthBefore);
+	if (Event.bTargetDefeated || DamageRatio >= 0.60)
+	{
+		ApplyImpactFeedback(EGameXXKBattlePresentationImpactTier::Lethal, Rhythm);
+	}
+	else if (DamageRatio >= 0.30)
+	{
+		ApplyImpactFeedback(EGameXXKBattlePresentationImpactTier::Heavy, Rhythm);
+	}
+	else if (DamageRatio >= 0.10)
+	{
+		ApplyImpactFeedback(EGameXXKBattlePresentationImpactTier::Medium, Rhythm);
+	}
+	else
+	{
+		ApplyImpactFeedback(EGameXXKBattlePresentationImpactTier::Light, Rhythm);
+	}
+	return Rhythm;
+}
+
+FGameXXKBattlePresentationRhythm FGameXXKBattleAnimationPresentation::ResolveDeathRhythm()
+{
+	FGameXXKBattlePresentationRhythm Rhythm;
+	Rhythm.DurationSeconds = 0.90f;
+	ApplyImpactFeedback(EGameXXKBattlePresentationImpactTier::None, Rhythm);
+	return Rhythm;
+}
+
+FGameXXKBattlePresentationRhythm FGameXXKBattleAnimationPresentation::ResolveStatusRhythm()
+{
+	FGameXXKBattlePresentationRhythm Rhythm;
+	Rhythm.DurationSeconds = 0.30f;
+	ApplyImpactFeedback(EGameXXKBattlePresentationImpactTier::None, Rhythm);
+	return Rhythm;
+}
+
+FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::FitClipToDuration(
+	const FGameXXKBattleAnimationClipDescriptor& Clip,
+	const float TargetDurationSeconds)
+{
+	if (!Clip.IsValid()
+		|| !FMath::IsFinite(TargetDurationSeconds)
+		|| TargetDurationSeconds <= 0.0f)
+	{
+		return Clip;
+	}
+
+	const double Denominator = static_cast<double>(Clip.SourceFramesPerSecond)
+		* static_cast<double>(TargetDurationSeconds);
+	const double PlaybackRate = static_cast<double>(Clip.FrameCount) / Denominator;
+	if (!FMath::IsFinite(PlaybackRate)
+		|| PlaybackRate <= 0.0
+		|| PlaybackRate > static_cast<double>(MAX_flt))
+	{
+		return Clip;
+	}
+
+	FGameXXKBattleAnimationClipDescriptor Fitted = Clip;
+	Fitted.PlaybackRate = static_cast<float>(PlaybackRate);
+	if (!Fitted.IsValid())
+	{
+		return Clip;
+	}
+	return Fitted;
 }
 
 float FGameXXKBattleAnimationPresentation::GetRuntimeDuration(

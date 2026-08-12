@@ -67,6 +67,44 @@ struct GAMEXXK_API FGameXXKBattleStatusPresentationEvent
 	EGameXXKBattleAnimationAction AnimationAction = EGameXXKBattleAnimationAction::Idle;
 };
 
+enum class EGameXXKBattlePresentationImpactTier : uint8
+{
+	None,
+	Avoided,
+	Light,
+	Medium,
+	Heavy,
+	Lethal
+};
+
+/** Pure, layout-independent timing and feedback resolved from one immutable presentation event. */
+struct GAMEXXK_API FGameXXKBattlePresentationRhythm
+{
+	float DurationSeconds = 0.0f;
+	float ImpactSeconds = 0.0f;
+	FVector2f ShakeAmplitude = FVector2f(0.0f, 0.0f);
+	float ShakeDurationSeconds = 0.0f;
+	float ReadoutPeakScale = 1.0f;
+	EGameXXKBattlePresentationImpactTier ImpactTier = EGameXXKBattlePresentationImpactTier::None;
+
+	bool IsValid() const
+	{
+		return FMath::IsFinite(DurationSeconds)
+			&& DurationSeconds > 0.0f
+			&& FMath::IsFinite(ImpactSeconds)
+			&& ImpactSeconds >= 0.0f
+			&& ImpactSeconds <= DurationSeconds
+			&& FMath::IsFinite(ShakeAmplitude.X)
+			&& FMath::IsFinite(ShakeAmplitude.Y)
+			&& ShakeAmplitude.X >= 0.0f
+			&& ShakeAmplitude.Y >= 0.0f
+			&& FMath::IsFinite(ShakeDurationSeconds)
+			&& ShakeDurationSeconds >= 0.0f
+			&& FMath::IsFinite(ReadoutPeakScale)
+			&& ReadoutPeakScale >= 1.0f;
+	}
+};
+
 struct GAMEXXK_API FGameXXKBattleAnimationCombatRequest
 {
 	FName AttackerUnitId = NAME_None;
@@ -110,6 +148,13 @@ public:
 		float RuntimeElapsedSeconds,
 		bool bLooping);
 	static FBox2f CalculateUvRegion(const FGameXXKBattleAnimationClipDescriptor& Clip, int32 FrameIndex);
+	static FGameXXKBattlePresentationRhythm ResolveCombatRhythm(
+		const FGameXXKBattlePresentationEvent& Event);
+	static FGameXXKBattlePresentationRhythm ResolveDeathRhythm();
+	static FGameXXKBattlePresentationRhythm ResolveStatusRhythm();
+	static FGameXXKBattleAnimationClipDescriptor FitClipToDuration(
+		const FGameXXKBattleAnimationClipDescriptor& Clip,
+		float TargetDurationSeconds);
 	static float GetRuntimeDuration(const FGameXXKBattleAnimationClipDescriptor& Clip);
 	static float GetImpactRuntimeSeconds();
 };
