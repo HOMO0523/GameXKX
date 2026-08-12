@@ -315,11 +315,15 @@ namespace
 		static int32 ImpactCount(const TBoard*) { return INDEX_NONE; }
 		static int32 CompletionCount(const TBoard*) { return INDEX_NONE; }
 		static int32 ShakeCount(const TBoard*) { return INDEX_NONE; }
+		static FVector2D ShakeAmplitude(const TBoard*) { return FVector2D(-1.0f, -1.0f); }
+		static double ShakeDuration(const TBoard*) { return -1.0; }
 		static int32 DisplayedHealth(const TBoard*, FName) { return INDEX_NONE; }
 		static float AttackerRate(const TBoard*) { return 0.0f; }
 		static float TargetRate(const TBoard*) { return 0.0f; }
 		static float ImpactRate(const TBoard*) { return 0.0f; }
 		static FString Readout(const TBoard*) { return FString(); }
+		static FVector2D ReadoutScale(const TBoard*) { return FVector2D::ZeroVector; }
+		static float ReadoutOpacity(const TBoard*) { return -1.0f; }
 	};
 
 	template <typename TBoard>
@@ -334,11 +338,15 @@ namespace
 		decltype(std::declval<const TBoard&>().GetBattlePresentationImpactCountForTest()),
 		decltype(std::declval<const TBoard&>().GetBattlePresentationCompletionCountForTest()),
 		decltype(std::declval<const TBoard&>().GetBattlePresentationHudShakeCountForTest()),
+		decltype(std::declval<const TBoard&>().GetBattlePresentationShakeAmplitudeForTest()),
+		decltype(std::declval<const TBoard&>().GetBattlePresentationShakeDurationForTest()),
 		decltype(std::declval<const TBoard&>().GetDisplayedHealthForTest(std::declval<FName>())),
 		decltype(std::declval<const TBoard&>().GetActiveAttackerPlaybackRateForTest()),
 		decltype(std::declval<const TBoard&>().GetActiveTargetPlaybackRateForTest()),
 		decltype(std::declval<const TBoard&>().GetActiveImpactPlaybackRateForTest()),
-		decltype(std::declval<const TBoard&>().GetBattlePresentationReadoutForTest())>>
+		decltype(std::declval<const TBoard&>().GetBattlePresentationReadoutForTest()),
+		decltype(std::declval<const TBoard&>().GetBattlePresentationReadoutScaleForTest()),
+		decltype(std::declval<const TBoard&>().GetBattlePresentationReadoutOpacityForTest())>>
 	{
 		static constexpr bool bAvailable = true;
 		static void Queue(TBoard* Board, const FGameXXKBattlePresentationEvent& Event) { Board->QueuePresentation(Event); }
@@ -351,11 +359,15 @@ namespace
 		static int32 ImpactCount(const TBoard* Board) { return Board->GetBattlePresentationImpactCountForTest(); }
 		static int32 CompletionCount(const TBoard* Board) { return Board->GetBattlePresentationCompletionCountForTest(); }
 		static int32 ShakeCount(const TBoard* Board) { return Board->GetBattlePresentationHudShakeCountForTest(); }
+		static FVector2D ShakeAmplitude(const TBoard* Board) { return Board->GetBattlePresentationShakeAmplitudeForTest(); }
+		static double ShakeDuration(const TBoard* Board) { return Board->GetBattlePresentationShakeDurationForTest(); }
 		static int32 DisplayedHealth(const TBoard* Board, const FName UnitId) { return Board->GetDisplayedHealthForTest(UnitId); }
 		static float AttackerRate(const TBoard* Board) { return Board->GetActiveAttackerPlaybackRateForTest(); }
 		static float TargetRate(const TBoard* Board) { return Board->GetActiveTargetPlaybackRateForTest(); }
 		static float ImpactRate(const TBoard* Board) { return Board->GetActiveImpactPlaybackRateForTest(); }
 		static FString Readout(const TBoard* Board) { return Board->GetBattlePresentationReadoutForTest(); }
+		static FVector2D ReadoutScale(const TBoard* Board) { return Board->GetBattlePresentationReadoutScaleForTest(); }
+		static float ReadoutOpacity(const TBoard* Board) { return Board->GetBattlePresentationReadoutOpacityForTest(); }
 	};
 }
 
@@ -498,12 +510,27 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("crossing zero-point-three fires impact exactly once"), FApi::ImpactCount(Board), 1);
 	TestEqual(TEXT("crossing zero-point-three fires the HUD-root shake exactly once"), FApi::ShakeCount(Board), 1);
 	TestEqual(TEXT("damage presentation emits its readout at the marker"), FApi::Readout(Board), FString(TEXT("-30")));
+	TestTrue(TEXT("thirty-percent heavy impact drives the authored nine-by-four-point-five shake"),
+		FApi::ShakeAmplitude(Board).Equals(FVector2D(9.0f, 4.5f), 0.001f));
+	TestTrue(TEXT("thirty-percent heavy impact drives the authored zero-point-two shake duration"),
+		FMath::IsNearlyEqual(FApi::ShakeDuration(Board), 0.20, 0.0001));
+	TestTrue(TEXT("heavy damage readout reaches its one-point-three impact peak"),
+		FApi::ReadoutScale(Board).Equals(FVector2D(1.30f, 1.30f), 0.001f));
+	TestTrue(TEXT("damage readout is fully opaque at impact"),
+		FMath::IsNearlyEqual(FApi::ReadoutOpacity(Board), 1.0f, 0.001f));
 	TestTrue(TEXT("crossing the marker moves the full viewport root for HUD shake"),
 		Board->GetBattleViewportRootForTest()
 		&& !Board->GetBattleViewportRootForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
-	Board->AdvanceVisualsAtRealTime(0.60);
+	Board->AdvanceVisualsAtRealTime(0.50);
 	TestEqual(TEXT("later samples cannot refire the same impact"), FApi::ImpactCount(Board), 1);
 	TestEqual(TEXT("later samples cannot restart the same shake"), FApi::ShakeCount(Board), 1);
+	TestTrue(TEXT("heavy readout settles toward unit scale after the impact peak"),
+		FApi::ReadoutScale(Board).X < 1.30f && FApi::ReadoutScale(Board).X > 1.0f);
+	TestTrue(TEXT("heavy readout fades after the impact peak"),
+		FApi::ReadoutOpacity(Board) < 1.0f && FApi::ReadoutOpacity(Board) > 0.0f);
+	TestTrue(TEXT("heavy shake is exactly settled at its authored duration"),
+		Board->GetBattleViewportRootForTest()
+		&& Board->GetBattleViewportRootForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
 
 	Board->AdvanceVisualsAtRealTime(0.82);
 	TestFalse(TEXT("a nonlethal presentation completes at exactly zero-point-eight-two real seconds"), FApi::IsActive(Board));
@@ -514,6 +541,10 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("completion also hides the full-viewport margin cover"),
 		ViewportCinematicCover ? ViewportCinematicCover->GetVisibility() : ESlateVisibility::Visible,
 		ESlateVisibility::Hidden);
+	TestTrue(TEXT("completion restores damage readout unit scale"),
+		FApi::ReadoutScale(Board).Equals(FVector2D(1.0f, 1.0f), 0.001f));
+	TestTrue(TEXT("completion restores damage readout opacity"),
+		FMath::IsNearlyEqual(FApi::ReadoutOpacity(Board), 1.0f, 0.001f));
 	TestTrue(TEXT("completion restores the full viewport root after shake"),
 		Board->GetBattleViewportRootForTest()
 		&& Board->GetBattleViewportRootForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
@@ -605,6 +636,90 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("five-hit queue fires every impact exactly once"), FApi::ImpactCount(FiveHitBoard), 5);
 	TestEqual(TEXT("five-hit queue fires every completion exactly once"), FApi::CompletionCount(FiveHitBoard), 5);
 
+	const auto BuildImpactFeedbackBoard = [this](
+		const uint64 SessionToken,
+		const double StartSeconds,
+		const int32 Damage,
+		const bool bDefeated,
+		const bool bAvoided = false)
+	{
+		UGameInstance* const GameInstance = NewObject<UGameInstance>();
+		UGameXXKMVPSubsystem* const FeedbackSubsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
+		BuildPresentationFixture(FeedbackSubsystem);
+		UGameXXKBattleBoardWidget* const FeedbackBoard = NewObject<UGameXXKBattleBoardWidget>();
+		FeedbackBoard->SetMVPSubsystem(FeedbackSubsystem);
+		const TSharedRef<FPresentationAtlasLoader> FeedbackLoader = MakeShared<FPresentationAtlasLoader>();
+		FeedbackBoard->SetAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+			FeedbackLoader,
+			[StartSeconds]() { return StartSeconds; }));
+		TestTrue(TEXT("graded feedback fixture initializes its real Board"), FeedbackBoard->Initialize());
+		FeedbackBoard->NativeConstruct();
+		TestTrue(TEXT("graded feedback fixture begins one visual session"),
+			FeedbackBoard->BeginBattleVisualSession(SessionToken));
+		const int32 HealthAfter = bDefeated ? 0 : FMath::Max(0, 100 - Damage);
+		FApi::Queue(FeedbackBoard, MakePresentationEvent(
+			SessionToken,
+			TEXT("Player"),
+			false,
+			TEXT("Enemy.Tiger"),
+			true,
+			100,
+			HealthAfter,
+			bAvoided,
+			bDefeated));
+		FeedbackBoard->AdvanceVisualsAtRealTime(StartSeconds);
+		FeedbackBoard->AdvanceVisualsAtRealTime(StartSeconds + (bAvoided ? 0.161 : 0.301));
+		return FeedbackBoard;
+	};
+	UGameXXKBattleBoardWidget* const LightFeedbackBoard =
+		BuildImpactFeedbackBoard(1101, 30.0, 5, false);
+	TestTrue(TEXT("five-percent light hit uses the authored three-by-one-point-five shake"),
+		FApi::ShakeAmplitude(LightFeedbackBoard).Equals(FVector2D(3.0f, 1.5f), 0.001f));
+	TestTrue(TEXT("five-percent light hit uses the authored zero-point-twelve shake"),
+		FMath::IsNearlyEqual(FApi::ShakeDuration(LightFeedbackBoard), 0.12, 0.0001));
+	TestTrue(TEXT("five-percent light hit uses the one-point-twelve readout peak"),
+		FApi::ReadoutScale(LightFeedbackBoard).Equals(FVector2D(1.12f, 1.12f), 0.001f));
+	UGameXXKBattleBoardWidget* const MediumFeedbackBoard =
+		BuildImpactFeedbackBoard(1102, 32.0, 20, false);
+	TestTrue(TEXT("twenty-percent medium hit uses the authored six-by-three shake"),
+		FApi::ShakeAmplitude(MediumFeedbackBoard).Equals(FVector2D(6.0f, 3.0f), 0.001f));
+	TestTrue(TEXT("twenty-percent medium hit uses the authored zero-point-sixteen shake"),
+		FMath::IsNearlyEqual(FApi::ShakeDuration(MediumFeedbackBoard), 0.16, 0.0001));
+	TestTrue(TEXT("twenty-percent medium hit uses the one-point-two readout peak"),
+		FApi::ReadoutScale(MediumFeedbackBoard).Equals(FVector2D(1.20f, 1.20f), 0.001f));
+	UGameXXKBattleBoardWidget* const HeavyFeedbackBoard =
+		BuildImpactFeedbackBoard(1103, 34.0, 45, false);
+	TestTrue(TEXT("forty-five-percent heavy hit uses the authored nine-by-four-point-five shake"),
+		FApi::ShakeAmplitude(HeavyFeedbackBoard).Equals(FVector2D(9.0f, 4.5f), 0.001f));
+	TestTrue(TEXT("forty-five-percent heavy hit uses the one-point-three readout peak"),
+		FApi::ReadoutScale(HeavyFeedbackBoard).Equals(FVector2D(1.30f, 1.30f), 0.001f));
+	UGameXXKBattleBoardWidget* const LethalFeedbackBoard =
+		BuildImpactFeedbackBoard(1104, 36.0, 1, true);
+	TestTrue(TEXT("lethal transition uses the authored fourteen-by-seven shake"),
+		FApi::ShakeAmplitude(LethalFeedbackBoard).Equals(FVector2D(14.0f, 7.0f), 0.001f));
+	TestTrue(TEXT("lethal transition uses the authored zero-point-two-six shake"),
+		FMath::IsNearlyEqual(FApi::ShakeDuration(LethalFeedbackBoard), 0.26, 0.0001));
+	TestTrue(TEXT("lethal transition uses the one-point-four-two readout peak"),
+		FApi::ReadoutScale(LethalFeedbackBoard).Equals(FVector2D(1.42f, 1.42f), 0.001f));
+
+	LethalFeedbackBoard->CancelBattleVisualSession(1104);
+	TestTrue(TEXT("session cancellation restores zero shake amplitude"),
+		FApi::ShakeAmplitude(LethalFeedbackBoard).IsNearlyZero(0.001f));
+	TestTrue(TEXT("session cancellation restores zero shake duration"),
+		FMath::IsNearlyZero(FApi::ShakeDuration(LethalFeedbackBoard), 0.0001));
+	TestTrue(TEXT("session cancellation restores readout unit scale"),
+		FApi::ReadoutScale(LethalFeedbackBoard).Equals(FVector2D(1.0f, 1.0f), 0.001f));
+	TestTrue(TEXT("session cancellation restores readout opacity"),
+		FMath::IsNearlyEqual(FApi::ReadoutOpacity(LethalFeedbackBoard), 1.0f, 0.001f));
+	TestTrue(TEXT("session cancellation restores the viewport root translation"),
+		LethalFeedbackBoard->GetBattleViewportRootForTest()
+		&& LethalFeedbackBoard->GetBattleViewportRootForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
+	LethalFeedbackBoard->NativeDestruct();
+	TestTrue(TEXT("widget teardown keeps readout unit scale"),
+		FApi::ReadoutScale(LethalFeedbackBoard).Equals(FVector2D(1.0f, 1.0f), 0.001f));
+	TestTrue(TEXT("widget teardown keeps readout opacity"),
+		FMath::IsNearlyEqual(FApi::ReadoutOpacity(LethalFeedbackBoard), 1.0f, 0.001f));
+
 	UGameInstance* const CrossDeathGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const CrossDeathSubsystem = NewObject<UGameXXKMVPSubsystem>(CrossDeathGameInstance);
 	BuildPresentationFixture(CrossDeathSubsystem);
@@ -687,6 +802,17 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		FApi::Readout(Board), FString(TEXT("闪避")));
 	TestEqual(TEXT("the overflow event owns one distinct impact"),
 		FApi::ImpactCount(Board), ImpactBeforeLargeDelta + 2);
+	TestEqual(TEXT("an avoided packet never increments HUD shake bookkeeping"),
+		FApi::ShakeCount(Board), 2);
+	TestTrue(TEXT("an avoided packet publishes zero shake amplitude"),
+		FApi::ShakeAmplitude(Board).IsNearlyZero(0.001f));
+	TestTrue(TEXT("an avoided packet publishes zero shake duration"),
+		FMath::IsNearlyZero(FApi::ShakeDuration(Board), 0.0001));
+	TestTrue(TEXT("avoid readout reaches its one-point-one impact peak"),
+		FApi::ReadoutScale(Board).Equals(FVector2D(1.10f, 1.10f), 0.001f));
+	TestTrue(TEXT("avoid keeps the viewport root motionless"),
+		Board->GetBattleViewportRootForTest()
+		&& Board->GetBattleViewportRootForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
 	Board->AdvanceVisualsAtRealTime(11.271);
 	TestFalse(TEXT("the overflow event completes on the inherited ten-point-eight-two epoch"), FApi::IsActive(Board));
 

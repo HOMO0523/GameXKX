@@ -227,6 +227,8 @@ public:
 	int32 GetBattlePresentationImpactCountForTest() const;
 	int32 GetBattlePresentationCompletionCountForTest() const;
 	int32 GetBattlePresentationHudShakeCountForTest() const;
+	FVector2D GetBattlePresentationShakeAmplitudeForTest() const;
+	double GetBattlePresentationShakeDurationForTest() const;
 	int32 GetExecutedBattlePresentationContinuationCountForTest() const;
 	FString GetActiveBattleStatusAnimationAssetIdForTest() const;
 	int32 GetActiveBattleStatusDeltaForTest() const;
@@ -236,6 +238,8 @@ public:
 	float GetActiveTargetPlaybackRateForTest() const;
 	float GetActiveImpactPlaybackRateForTest() const;
 	FString GetBattlePresentationReadoutForTest() const;
+	FVector2D GetBattlePresentationReadoutScaleForTest() const;
+	float GetBattlePresentationReadoutOpacityForTest() const;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	void SetAtlasCacheForTest(TUniquePtr<FGameXXKBattleAtlasCache> InAtlasCache);
@@ -567,6 +571,8 @@ private:
 	void ClearDisplayedHealthOverlay(FName UnitId);
 	bool IsUnitRetainedByPresentation(FName UnitId) const;
 	void UpdateBattlePresentationShake(double AbsoluteSeconds);
+	void UpdateBattlePresentationReadout(double AbsoluteSeconds);
+	void ResetBattlePresentationFeedback();
 	void RefreshUnitVisuals();
 	void RefreshUnitTargetingPresentation();
 	void RefreshCinematicViewportCoverLayout(FVector2D ViewportSize);
@@ -834,7 +840,13 @@ private:
 	int32 BattlePresentationHudShakeCount = 0;
 	int32 ExecutedBattlePresentationContinuationCount = 0;
 	double BattlePresentationShakeStartSeconds = 0.0;
+	double BattlePresentationShakeDurationSeconds = 0.0;
+	FVector2D BattlePresentationShakeAmplitude = FVector2D::ZeroVector;
 	bool bBattlePresentationShakeActive = false;
+	double BattlePresentationReadoutStartSeconds = 0.0;
+	double BattlePresentationReadoutDurationSeconds = 0.0;
+	float BattlePresentationReadoutPeakScale = 1.0f;
+	bool bBattlePresentationReadoutActive = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> ActionBox;

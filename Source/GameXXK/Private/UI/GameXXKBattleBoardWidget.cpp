@@ -125,7 +125,7 @@ namespace
 		return DamageResults;
 	}
 	static constexpr float EnemyIntentSettleDuration = 0.32f;
-	static constexpr double BattleHudShakeDurationSeconds = 0.32;
+	static constexpr double BattleReadoutPeakHoldSeconds = 0.04;
 
 	struct FGameXXKFixedUnitHudLayout
 	{
@@ -589,6 +589,7 @@ void UGameXXKBattleBoardWidget::NativeDestruct()
 	{
 		CancelBattleVisualSession(ActiveBattleVisualSessionToken);
 	}
+	ResetBattlePresentationFeedback();
 	if (AtlasCache)
 	{
 		AtlasCache->Clear();
@@ -891,11 +892,7 @@ void UGameXXKBattleBoardWidget::HandleBattlePresentationQueueDrained()
 	}
 	DefeatedUnitVisualsPendingRemoval.Reset();
 	DiscardPresentationHudSnapshot();
-	bBattlePresentationShakeActive = false;
-	if (ViewportRootCanvas)
-	{
-		ViewportRootCanvas->SetRenderTranslation(FVector2D::ZeroVector);
-	}
+	ResetBattlePresentationFeedback();
 	if (BattleCinematicImpact)
 	{
 		BattleCinematicImpact->HideForCinematic();
@@ -1165,6 +1162,7 @@ void UGameXXKBattleBoardWidget::AdvanceBattlePresentation(const double AbsoluteS
 	}
 
 	UpdateBattlePresentationShake(AbsoluteSeconds);
+	UpdateBattlePresentationReadout(AbsoluteSeconds);
 	if (bQueueDrained)
 	{
 		HandleBattlePresentationQueueDrained();
@@ -1379,11 +1377,35 @@ void UGameXXKBattleBoardWidget::FirePresentationImpact(FBattlePresentationQueueE
 				FText::AsNumber(Entry.Event.HealthDamage));
 		BattleCinematicReadout->SetText(Readout);
 		BattleCinematicReadout->SetVisibility(ESlateVisibility::HitTestInvisible);
+		BattleCinematicReadout->SetRenderScale(FVector2D(
+			Entry.Rhythm.ReadoutPeakScale,
+			Entry.Rhythm.ReadoutPeakScale));
+		BattleCinematicReadout->SetRenderOpacity(1.0f);
 	}
 
-	BattlePresentationShakeStartSeconds = Entry.StartSeconds + Entry.Rhythm.ImpactSeconds;
-	bBattlePresentationShakeActive = true;
-	++BattlePresentationHudShakeCount;
+	const double ImpactAbsoluteSeconds = Entry.StartSeconds + Entry.Rhythm.ImpactSeconds;
+	BattlePresentationReadoutStartSeconds = ImpactAbsoluteSeconds;
+	BattlePresentationReadoutDurationSeconds = FMath::Max(
+		static_cast<double>(Entry.Rhythm.DurationSeconds - Entry.Rhythm.ImpactSeconds),
+		static_cast<double>(KINDA_SMALL_NUMBER));
+	BattlePresentationReadoutPeakScale = Entry.Rhythm.ReadoutPeakScale;
+	bBattlePresentationReadoutActive = true;
+
+	BattlePresentationShakeStartSeconds = ImpactAbsoluteSeconds;
+	BattlePresentationShakeAmplitude = FVector2D(
+		Entry.Rhythm.ShakeAmplitude.X,
+		Entry.Rhythm.ShakeAmplitude.Y);
+	BattlePresentationShakeDurationSeconds = Entry.Rhythm.ShakeDurationSeconds;
+	bBattlePresentationShakeActive = BattlePresentationShakeDurationSeconds > 0.0
+		&& !BattlePresentationShakeAmplitude.IsNearlyZero();
+	if (bBattlePresentationShakeActive)
+	{
+		++BattlePresentationHudShakeCount;
+	}
+	else if (ViewportRootCanvas)
+	{
+		ViewportRootCanvas->SetRenderTranslation(FVector2D::ZeroVector);
+	}
 }
 
 void UGameXXKBattleBoardWidget::CompletePresentationEntry(FBattlePresentationQueueEntry& Entry)
@@ -1412,11 +1434,7 @@ void UGameXXKBattleBoardWidget::CompletePresentationEntry(FBattlePresentationQue
 	{
 		BattleCinematicStatusIcon->SetVisibility(ESlateVisibility::Hidden);
 	}
-	bBattlePresentationShakeActive = false;
-	if (ViewportRootCanvas)
-	{
-		ViewportRootCanvas->SetRenderTranslation(FVector2D::ZeroVector);
-	}
+	ResetBattlePresentationFeedback();
 
 	if (CompletedKind == EBattlePresentationKind::Death)
 	{
@@ -1500,8 +1518,7 @@ void UGameXXKBattleBoardWidget::ResetBattlePresentation()
 	BattlePresentationCompletionCount = 0;
 	BattlePresentationHudShakeCount = 0;
 	ExecutedBattlePresentationContinuationCount = 0;
-	BattlePresentationShakeStartSeconds = 0.0;
-	bBattlePresentationShakeActive = false;
+	ResetBattlePresentationFeedback();
 	RestoreFormationAfterPresentation();
 	if (BattleCinematicImpact)
 	{
@@ -1677,17 +1694,69 @@ void UGameXXKBattleBoardWidget::UpdateBattlePresentationShake(const double Absol
 		return;
 	}
 	const double ElapsedSeconds = AbsoluteSeconds - BattlePresentationShakeStartSeconds;
-	if (ElapsedSeconds < 0.0 || ElapsedSeconds >= BattleHudShakeDurationSeconds)
+	if (ElapsedSeconds < 0.0
+		|| BattlePresentationShakeDurationSeconds <= 0.0
+		|| ElapsedSeconds >= BattlePresentationShakeDurationSeconds)
 	{
 		bBattlePresentationShakeActive = false;
 		ViewportRootCanvas->SetRenderTranslation(FVector2D::ZeroVector);
 		return;
 	}
 
-	const double Decay = 1.0 - (ElapsedSeconds / BattleHudShakeDurationSeconds);
-	const float X = static_cast<float>(FMath::Sin(ElapsedSeconds * 85.0) * 12.0 * Decay);
-	const float Y = static_cast<float>(FMath::Cos(ElapsedSeconds * 110.0) * 6.0 * Decay);
+	const double Decay = 1.0 - (ElapsedSeconds / BattlePresentationShakeDurationSeconds);
+	const float X = static_cast<float>(
+		FMath::Sin(ElapsedSeconds * 85.0) * BattlePresentationShakeAmplitude.X * Decay);
+	const float Y = static_cast<float>(
+		FMath::Cos(ElapsedSeconds * 110.0) * BattlePresentationShakeAmplitude.Y * Decay);
 	ViewportRootCanvas->SetRenderTranslation(FVector2D(X, Y));
+}
+
+void UGameXXKBattleBoardWidget::UpdateBattlePresentationReadout(const double AbsoluteSeconds)
+{
+	if (!BattleCinematicReadout || !bBattlePresentationReadoutActive)
+	{
+		return;
+	}
+
+	const double ElapsedSeconds = AbsoluteSeconds - BattlePresentationReadoutStartSeconds;
+	if (ElapsedSeconds < 0.0)
+	{
+		return;
+	}
+	const double FadeSeconds = FMath::Max(
+		BattlePresentationReadoutDurationSeconds - BattleReadoutPeakHoldSeconds,
+		static_cast<double>(KINDA_SMALL_NUMBER));
+	const double FadeElapsedSeconds = FMath::Max(0.0, ElapsedSeconds - BattleReadoutPeakHoldSeconds);
+	const float Progress = static_cast<float>(FMath::Clamp(FadeElapsedSeconds / FadeSeconds, 0.0, 1.0));
+	const float SettleAlpha = FMath::InterpEaseOut(0.0f, 1.0f, Progress, 2.0f);
+	const float Scale = FMath::Lerp(BattlePresentationReadoutPeakScale, 1.0f, SettleAlpha);
+	BattleCinematicReadout->SetRenderScale(FVector2D(Scale, Scale));
+	BattleCinematicReadout->SetRenderOpacity(1.0f - Progress);
+	if (Progress >= 1.0f)
+	{
+		bBattlePresentationReadoutActive = false;
+	}
+}
+
+void UGameXXKBattleBoardWidget::ResetBattlePresentationFeedback()
+{
+	BattlePresentationShakeStartSeconds = 0.0;
+	BattlePresentationShakeDurationSeconds = 0.0;
+	BattlePresentationShakeAmplitude = FVector2D::ZeroVector;
+	bBattlePresentationShakeActive = false;
+	BattlePresentationReadoutStartSeconds = 0.0;
+	BattlePresentationReadoutDurationSeconds = 0.0;
+	BattlePresentationReadoutPeakScale = 1.0f;
+	bBattlePresentationReadoutActive = false;
+	if (ViewportRootCanvas)
+	{
+		ViewportRootCanvas->SetRenderTranslation(FVector2D::ZeroVector);
+	}
+	if (BattleCinematicReadout)
+	{
+		BattleCinematicReadout->SetRenderScale(FVector2D(1.0f, 1.0f));
+		BattleCinematicReadout->SetRenderOpacity(1.0f);
+	}
 }
 
 bool UGameXXKBattleBoardWidget::BeginBattleVisualSession(const uint64 SessionToken)
@@ -2018,6 +2087,16 @@ int32 UGameXXKBattleBoardWidget::GetBattlePresentationHudShakeCountForTest() con
 	return BattlePresentationHudShakeCount;
 }
 
+FVector2D UGameXXKBattleBoardWidget::GetBattlePresentationShakeAmplitudeForTest() const
+{
+	return BattlePresentationShakeAmplitude;
+}
+
+double UGameXXKBattleBoardWidget::GetBattlePresentationShakeDurationForTest() const
+{
+	return BattlePresentationShakeDurationSeconds;
+}
+
 int32 UGameXXKBattleBoardWidget::GetExecutedBattlePresentationContinuationCountForTest() const
 {
 	return ExecutedBattlePresentationContinuationCount;
@@ -2088,6 +2167,18 @@ float UGameXXKBattleBoardWidget::GetActiveImpactPlaybackRateForTest() const
 FString UGameXXKBattleBoardWidget::GetBattlePresentationReadoutForTest() const
 {
 	return BattleCinematicReadout ? BattleCinematicReadout->GetText().ToString() : FString();
+}
+
+FVector2D UGameXXKBattleBoardWidget::GetBattlePresentationReadoutScaleForTest() const
+{
+	return BattleCinematicReadout
+		? BattleCinematicReadout->GetRenderTransform().Scale
+		: FVector2D::ZeroVector;
+}
+
+float UGameXXKBattleBoardWidget::GetBattlePresentationReadoutOpacityForTest() const
+{
+	return BattleCinematicReadout ? BattleCinematicReadout->GetRenderOpacity() : 0.0f;
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
