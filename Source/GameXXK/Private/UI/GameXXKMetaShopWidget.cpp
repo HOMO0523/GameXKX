@@ -361,7 +361,6 @@ void UGameXXKMetaShopWidget::BuildProgrammaticLayout()
 	PurchaseText->SetAutoWrapText(false);
 	PurchaseButton->AddChild(PurchaseText);
 	AddCanvas(FrameCanvas, PurchaseButton, FVector2D(1375.0f, 870.0f), PurchaseButtonSize, 0);
-	// The price already sits under the product card; the purchase button carries no price row.
 
 	ConfirmOverlay = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("MetaShopConfirmOverlay"));
 	ConfirmOverlay->SetBrush(TextureBrush(PaperFrameTexturePath));
@@ -501,6 +500,12 @@ void UGameXXKMetaShopWidget::UpdateSelectedProduct()
 	{
 		if (UTexture2D* Texture = Cast<UTexture2D>(Product->IconSoftPath.TryLoad()))
 		{
+			// Aspect-fit the source texture inside the 72x132 detail slot instead of
+			// stretching it (square art forced into the tall slot looked squished).
+			const float TexW = static_cast<float>(Texture->GetSizeX());
+			const float TexH = static_cast<float>(Texture->GetSizeY());
+			const float Scale = FMath::Min(72.0f / TexW, 132.0f / TexH);
+			DetailIconImage->SetDesiredSizeOverride(FVector2D(TexW * Scale, TexH * Scale));
 			DetailIconImage->SetBrushFromTexture(Texture, true);
 			DetailIconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 		}
