@@ -15,6 +15,7 @@ import sys
 import time
 import argparse
 import os
+import re
 from pathlib import Path
 
 # === Config ===
@@ -23,60 +24,86 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = _SCRIPT_DIR.parent
 UPROJECT = PROJECT_ROOT / "GameXXK.uproject"
 
-# UE 5.8 path — check common locations first, then older fallbacks for local triage.
-_UE_CANDIDATES = [
-    Path(r"E:\epic\UE_5.8"),
-    Path(r"E:\UE_5.8"),
-    Path(r"D:\UE_5.8"),
-    Path(r"C:\Program Files\Epic Games\UE_5.8"),
-    Path(r"E:\epic\UE_5.7"),
-    Path(r"E:\UE_5.7"),
-    Path(r"D:\UE_5.7"),
-    Path(r"C:\Program Files\Epic Games\UE_5.7"),
-]
-UE_ROOT = None
-for _cand in _UE_CANDIDATES:
-    _ue_editor = _cand / "Engine" / "Binaries" / "Win64" / "UnrealEditor.exe"
-    if _ue_editor.exists():
-        UE_ROOT = _cand
-        break
+# UE path resolution lives in ue_paths.py: GAMEXXK_UE_ROOT > known
+# candidates > Windows registry. Kept module-level so existing callers and
+# tests can keep using UE_ROOT / UE_EDITOR / UE_BUILD_BAT.
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 
-if UE_ROOT is None:
-    # Fallback: try to find via registry or parent of UE_5.5
-    import os as _os
-    _ue55 = Path(r"E:\UE_5.5")
-    if _ue55.exists():
-        UE_ROOT = _ue55  # fallback to 5.5
-    else:
-        raise RuntimeError(
-            "Cannot find Unreal Engine installation. "
-            "Checked: " + ", ".join(str(c) for c in _UE_CANDIDATES)
-        )
+from ue_paths import find_ue_root, ue_build_bat, ue_editor_exe  # noqa: E402
 
-UE_EDITOR = UE_ROOT / "Engine" / "Binaries" / "Win64" / "UnrealEditor.exe"
-UE_BUILD_BAT = UE_ROOT / "Engine" / "Build" / "BatchFiles" / "Build.bat"
+UE_ROOT = find_ue_root()
+UE_EDITOR = ue_editor_exe(UE_ROOT)
+UE_BUILD_BAT = ue_build_bat(UE_ROOT)
 BUILD_TARGET = "GameXXKEditor"
 BUILD_CONFIG = "Development"
-SCRIPT_DIR = Path(__file__).resolve().parent
 
-sys.path.insert(0, str(SCRIPT_DIR))
-from ue_mcp_client import DEFAULT_HOST, DEFAULT_PATH, DEFAULT_PORT, UnrealMCPClient
+from ue_mcp_client import DEFAULT_HOST, DEFAULT_PATH, DEFAULT_PORT, UnrealMCPClient  # noqa: E402
 
 
 # === Editor Lifecycle ===
 
-def kill_editor() -> bool:
-    """Kill any running UnrealEditor process. Returns True if a process was killed."""
-    result = subprocess.run(
-        ["taskkill", "/f", "/im", "UnrealEditor.exe"],
-        capture_output=True, text=True
+def _project_editor_pids() -> list[int] | None:
+    """Return PIDs of UnrealEditor processes whose command line mentions this project, or None if the query failed."""
+    token = UPROJECT.stem
+    script = (
+        "$ErrorActionPreference='SilentlyContinue';"
+        f"Get-CimInstance Win32_Process -Filter \"Name='UnrealEditor.exe'\" |"
+        f" Where-Object {{ $_.CommandLine -like '*{token}*' }} |"
+        " Select-Object -ExpandProperty ProcessId"
     )
-    killed = "SUCCESS" in result.stdout.upper() or result.returncode == 0
-    if killed:
-        print("[KILL] UnrealEditor terminated")
-    else:
+    result = subprocess.run(
+        ["powershell", "-NoProfile", "-Command", script],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    pids: list[int] = []
+    for part in (result.stdout or "").split():
+        if part.isdigit():
+            pids.append(int(part))
+    return pids
+
+
+def kill_editor() -> bool:
+    """Kill only UnrealEditor instances that belong to this project.
+
+    Returns True when no GameXXK editor remains, False when the editor state
+    cannot be confirmed safe (e.g. other projects' editors are running). On
+    False the caller must abort instead of proceeding with a half-closed
+    editor or, worse, killing editors it does not own.
+    """
+    pids = _project_editor_pids()
+    if pids is None:
+        print("[KILL] Could not query UnrealEditor processes; refusing to kill unknown instances")
+        return False
+    if not pids:
+        if is_editor_running():
+            print(
+                "[KILL] REFUSING: UnrealEditor is running but no instance matches this project."
+                " Close other projects' editors or kill them manually."
+            )
+            return False
         print("[KILL] No running editor found")
-    return killed
+        return True
+    for pid in pids:
+        result = subprocess.run(
+            ["taskkill", "/f", "/pid", str(pid)],
+            capture_output=True,
+            text=True,
+        )
+        print(f"[KILL] taskkill /pid {pid}: exit {result.returncode}")
+    time.sleep(1)
+    remaining = _project_editor_pids()
+    if remaining is None:
+        print("[KILL] Could not confirm the project editor is closed; refusing to continue")
+        return False
+    if remaining:
+        print(f"[KILL] Project editor still running (pids={remaining}); refusing to continue")
+        return False
+    print("[KILL] Project UnrealEditor terminated")
+    return True
 
 
 def is_editor_running() -> bool | None:
@@ -230,7 +257,12 @@ def run_tdd_cycle(
         if not save_running_editor_before_close(host=mcp_host, port=mcp_port, path=mcp_path):
             result["error"] = "Could not save running editor before close"
             return result
-        kill_editor()
+        if not kill_editor():
+            result["error"] = (
+                "Could not confirm this project's editor is closed before the build. "
+                "Close other UnrealEditor instances (or the GameXXK editor manually) and retry."
+            )
+            return result
         time.sleep(2)
 
     # Phase 4.2: Build
@@ -280,7 +312,7 @@ def run_tdd_cycle(
     world_time = client.get_pie_world_time()
     print(f"[TDD] PIE world time: {world_time:.2f}s")
 
-    tdd_lines = client.filter_tdd_lines(num_lines=log_lines)
+    tdd_lines = client.filter_tdd_lines(num_lines=log_lines, pattern=tdd_filter)
     all_lines = client.get_recent_log_lines(num_lines=log_lines)
 
     # Phase 4.8: Stop PIE
@@ -292,7 +324,7 @@ def run_tdd_cycle(
 
     # Additional wait for any post-PIE log flush
     time.sleep(1)
-    tdd_lines2 = client.filter_tdd_lines(num_lines=log_lines)
+    tdd_lines2 = client.filter_tdd_lines(num_lines=log_lines, pattern=tdd_filter)
     all_lines2 = client.get_recent_log_lines(num_lines=log_lines)
 
     # Merge
@@ -309,15 +341,20 @@ def analyze_logs(tdd_lines: list[str]) -> dict:
 
     Expected format: [TDD] CheckName: actual=%d expected=%d
     Also supports: [TDD] CheckName: <any descriptive assertion>
+
+    Result tokens are matched on word boundaries only. Naive substring
+    checks previously classified incidental words as verdicts — e.g.
+    "SMOKE" and "BROKEN" contain "OK" and falsely passed. Lines without an
+    explicit ``result=PASS/FAIL`` or a structured assertion stay INFO and
+    are never counted as passing.
     """
-    report = {"total": len(tdd_lines), "passed": 0, "failed": 0, "details": []}
+    report = {"total": len(tdd_lines), "passed": 0, "failed": 0, "info": 0, "details": []}
 
     for line in tdd_lines:
         # Try to parse structured assertion: actual=%d expected=%d
         detail = {"line": line, "status": "info"}
         b_structured_assertion = False
         explicit_result = None
-        import re
 
         result_match = re.search(r"\bresult\s*=\s*(PASS|FAIL|OK|ERROR)\b", line, re.IGNORECASE)
         if result_match:
@@ -352,12 +389,18 @@ def analyze_logs(tdd_lines: list[str]) -> dict:
         elif not b_structured_assertion and explicit_result in ("FAIL", "ERROR"):
             detail["status"] = "fail"
             report["failed"] += 1
-        elif not b_structured_assertion and ("PASS" in line.upper() or "OK" in line.upper()):
-            detail["status"] = "pass"
-            report["passed"] += 1
-        elif not b_structured_assertion and ("FAIL" in line.upper() or "ERROR" in line.upper()):
-            detail["status"] = "fail"
-            report["failed"] += 1
+        elif not b_structured_assertion and explicit_result is None:
+            # Word-boundary fallback for lines that spell a verdict without
+            # the canonical result= prefix. Fail tokens are checked first so
+            # an ambiguous line never counts as passing.
+            if re.search(r"\b(?:FAIL|ERROR)\b", line, re.IGNORECASE):
+                detail["status"] = "fail"
+                report["failed"] += 1
+            elif re.search(r"\b(?:PASS|OK)\b", line, re.IGNORECASE):
+                detail["status"] = "pass"
+                report["passed"] += 1
+            else:
+                report["info"] += 1
 
         report["details"].append(detail)
 
@@ -418,6 +461,7 @@ def main():
     print(f"  Total [TDD] lines: {report['total']}")
     print(f"  Passed:            {report['passed']}")
     print(f"  Failed:            {report['failed']}")
+    print(f"  Info:              {report['info']}")
 
     if report["details"]:
         print("\n  --- Details ---")

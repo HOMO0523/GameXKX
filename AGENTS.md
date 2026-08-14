@@ -24,6 +24,7 @@
 - `--check-only` can inspect logs but is not a compile verification.
 
 ### Current MVP Acceptance
+- Current-goal status and semantic freezes live in the rolling pointer `docs/production/current-goal-acceptance.md`; this list is only the baseline regression floor.
 - `L_Main` PIE shows a player-facing main menu.
 - `Start/New Game` is clickable and opens `/Game/GameXXK/Maps/L_QingshanInn`.
 - Town UI is visible after the level load.
@@ -37,7 +38,10 @@
 | Resource | Purpose |
 |---|---|
 | `docs/design/agent-operating-guide.md` | Low-context handoff checklist |
+| `docs/production/current-goal-acceptance.md` | Rolling "current goal" pointer (source of truth for current state) |
+| `docs/production/optimization-plan.md` | Project self-optimization plan |
 | `docs/production/*` | Production-unit state files and acceptance records |
+| `scripts/README.md` | Script index and entry navigation |
 | `scripts/harness_state_validator.py` | Validate production-unit files |
 | `scripts/ai_production_loop.py` | Run lightweight project-management and optional gameplay verification loop |
 | `scripts/gamexxk_real_play_flow_mcp.py` | Real PIE/MCP playable-flow harness |

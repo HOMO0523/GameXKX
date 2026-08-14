@@ -29,13 +29,18 @@ GAMEFEATURE_ASSET_MANAGER_ERROR = (
 )
 
 
-def make_json_rpc(method: str, params: dict[str, Any] | None, request_id: int | None) -> bytes:
-    payload: dict[str, Any] = {"jsonrpc": "2.0", "method": method}
-    if params is not None:
-        payload["params"] = params
-    if request_id is not None:
-        payload["id"] = request_id
-    return json.dumps(payload, separators=(",", ":")).encode("utf-8")
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
+# Transport primitives are shared with the main MCP client; keep one copy.
+from ue_mcp_client import (  # noqa: E402
+    extract_sse_json,
+    iter_sse_payloads,
+    make_json_rpc,
+    parse_json_response,
+    read_sse_event,
+    try_extract_sse_json,
+)
 
 
 def post_json_rpc(
@@ -74,79 +79,8 @@ def post_json_rpc(
         connection.close()
 
 
-def read_sse_event(response: http.client.HTTPResponse, max_wait: float = 10.0) -> bytes:
-    chunks: list[bytes] = []
-    deadline = time.monotonic() + max_wait
-    while time.monotonic() < deadline:
-        try:
-            chunk = response.read1(65536)
-        except socket.timeout:
-            break
-        if not chunk:
-            break
-        chunks.append(chunk)
-        raw = b"".join(chunks)
-        if try_extract_sse_json(raw) is not None:
-            break
-        if len(raw) > 2_000_000:
-            raise RuntimeError("SSE response exceeded 2MB")
-    return b"".join(chunks)
-
-
-def iter_sse_payloads(body: bytes) -> list[str]:
-    if not body.startswith(b"event:") and b"\ndata:" not in body and b"\r\ndata:" not in body:
-        return []
-    text = body.decode("utf-8", "ignore")
-    events = text.replace("\r\n", "\n").split("\n\n")
-    payloads: list[str] = []
-    for event in events:
-        data_lines: list[str] = []
-        for line in event.splitlines():
-            if line.startswith("data:"):
-                data_lines.append(line[len("data:") :].strip())
-        if data_lines:
-            payloads.append("\n".join(data_lines))
-    return payloads
-
-
-def try_extract_sse_json(body: bytes) -> dict[str, Any] | None:
-    for payload in iter_sse_payloads(body):
-        try:
-            parsed = json.loads(payload)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(parsed, dict):
-            return parsed
-    return None
-
-
-def extract_sse_json(body: bytes) -> dict[str, Any] | None:
-    payloads = iter_sse_payloads(body)
-    if not payloads:
-        return None
-    last_error: json.JSONDecodeError | None = None
-    for payload in payloads:
-        try:
-            parsed = json.loads(payload)
-        except json.JSONDecodeError as exc:
-            last_error = exc
-            continue
-        if isinstance(parsed, dict):
-            return parsed
-    if last_error:
-        raise last_error
-    return None
-
-
-def parse_json_response(method: str, status: int, body: bytes) -> dict[str, Any]:
-    if status < 200 or status >= 300:
-        raise RuntimeError(f"{method} failed with HTTP {status}: {body.decode('utf-8', 'ignore')}")
-    if not body:
-        return {}
-    parsed = extract_sse_json(body) or json.loads(body.decode("utf-8"))
-    if "error" in parsed:
-        raise RuntimeError(f"{method} returned JSON-RPC error: {parsed['error']}")
-    return parsed
+# read_sse_event / iter_sse_payloads / try_extract_sse_json / extract_sse_json /
+# parse_json_response are imported from ue_mcp_client above.
 
 
 def parse_toolset_names(toolsets_response: dict[str, Any]) -> list[str]:

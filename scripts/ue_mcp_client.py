@@ -307,8 +307,10 @@ class UnrealMCPClient:
             lines = lines[marker_index:]
         return lines
 
-    def filter_tdd_lines(self, num_lines: int = 200) -> list[str]:
-        return [line for line in self.get_recent_log_lines(num_lines=num_lines, pattern=r"\[TDD\]") if "[TDD]" in line]
+    def filter_tdd_lines(self, num_lines: int = 200, pattern: str = r"[TDD]") -> list[str]:
+        marker = pattern.strip("[]")
+        lines = self.get_recent_log_lines(num_lines=num_lines, pattern=pattern)
+        return [line for line in lines if marker in line] if marker else lines
 
     def execute_console_command(self, command: str) -> str:
         result = self.call_tool(

@@ -36,7 +36,19 @@ $jsx = @"
   }
   function layerRecord(layer, prefix, kind) {
     var path = prefix ? prefix + '/' + layer.name : layer.name;
-    return {name: String(layer.name), path: String(path), kind: kind, visible: !!layer.visible, bounds: boundsOf(layer)};
+    var record = {name: String(layer.name), path: String(path), kind: kind, visible: !!layer.visible, bounds: boundsOf(layer)};
+    record.layerKind = String(layer.kind);
+    if (layer.kind == LayerKind.TEXT && layer.textItem) {
+      try {
+        record.text = String(layer.textItem.contents);
+        record.fontSize = layer.textItem.size ? Number(layer.textItem.size) : 0;
+        record.font = String(layer.textItem.font);
+        record.color = layer.textItem.color ? String(layer.textItem.color.rgb.hexValue) : '';
+      } catch (textError) {
+        record.text = '';
+      }
+    }
+    return record;
   }
   function jsonStringify(value) {
     if (value === null) return 'null';
