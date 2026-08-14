@@ -660,10 +660,16 @@ void UGameXXKTownHudWidget::RefreshCompanionCodex()
 				*FString::Printf(TEXT("TownHudTaskNpcCodexCard_%s"), *SafeNpcName));
 			CardButton->Configure(this, TaskNpcId);
 			CardButton->SetStyle(MakeTextureButtonStyle(PartyDeckCardFrameTexturePath, CodexCardSize));
-			CardButton->SetBackgroundColor(FLinearColor::White);
+			// Selected task-NPC card matches the generic codex card: ink background, white name.
+			const bool bTaskNpcSelected = SelectedTaskNpcCodexId == TaskNpcId;
+			CardButton->SetBackgroundColor(bTaskNpcSelected
+				? FLinearColor(0.12f, 0.09f, 0.06f, 1.0f)
+				: FLinearColor::White);
 
 			UCanvasPanel* CardCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass());
-			UTextBlock* NameText = MakeText(WidgetTree, FText::FromString(FString(Presentation->DisplayName)), 11, FLinearColor(0.14f, 0.10f, 0.06f, 1.0f));
+			UTextBlock* NameText = MakeText(WidgetTree, FText::FromString(FString(Presentation->DisplayName)), 11, bTaskNpcSelected
+				? FLinearColor::White
+				: FLinearColor(0.12f, 0.08f, 0.04f, 1.0f));
 			NameText->SetJustification(ETextJustify::Center);
 			AddCanvasChild(CardCanvas, NameText, FVector2D(12.0f, 5.0f), FVector2D(89.0f, 17.0f));
 			if (UImage* Portrait = MakeImage(WidgetTree, Presentation->PortraitResourcePath, FVector2D(75.0f, 54.0f)))
@@ -707,10 +713,12 @@ void UGameXXKTownHudWidget::RefreshCompanionCodex()
 			const bool bSelected = SelectedCodexEntryId == EntryView.Id;
 			CardButton->SetBackgroundColor(!EntryView.bIsDiscovered
 				? FLinearColor(0.72f, 0.72f, 0.69f, 1.0f)
-				: (bSelected ? FLinearColor(1.0f, 0.88f, 0.62f, 1.0f) : FLinearColor::White));
+				: (bSelected ? FLinearColor(0.12f, 0.09f, 0.06f, 1.0f) : FLinearColor::White));
 			UCanvasPanel* CardCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass());
 
-			UTextBlock* CardTitle = MakeText(WidgetTree, EntryView.bIsDiscovered ? EntryView.DisplayName : FText::FromString(TEXT("????")), 11, FLinearColor(0.12f, 0.08f, 0.04f, 1.0f));
+			UTextBlock* CardTitle = MakeText(WidgetTree, EntryView.bIsDiscovered ? EntryView.DisplayName : FText::FromString(TEXT("????")), 11, bSelected
+				? FLinearColor::White
+				: FLinearColor(0.12f, 0.08f, 0.04f, 1.0f));
 			CardTitle->SetJustification(ETextJustify::Center);
 			AddCanvasChild(CardCanvas, CardTitle, FVector2D(12.0f, 7.0f), FVector2D(89.0f, 17.0f));
 			if (EntryView.bIsDiscovered)
