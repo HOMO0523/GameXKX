@@ -19,6 +19,8 @@
 
 - **`test_*.py`**(83 个):脚本单元测试,`python -m unittest` 风格;核心子集见 `ai_production_loop.py` 默认列表。
 - **`gamexxk_*_check.py` / `gamexxk_*_apply.py`**(成对):资产流水线,check 只读校验、apply 构建/导入/装配(经 MCP `run_project_python_file` 调 `Content/Python/gamexxk_validate_*` / `assemble_*`)。
+  - `gamexxk_battle_ui_assets_check.py` / `gamexxk_battle_ui_assets_apply.py`:校验/应用**已导入 UE** 的战斗 UI 纹理(MCP);
+  - `gamexxk_battle_target_art_check.py`:本地 PIL 校验**源图**(目标箭头/墨点图集,无需 UE)。
 - **`run_*.py` / `build_*.py`**(15 个):一次性运行器,如 `run_qingshan_town_pcg_vertical_slice.py`、`run_qingshan_whitebox_b0r.py`、`run_asian_village_migration.py`、`build_qingshan_b1_heightmap.py`。
 - **`qingshan*` / `asian_village*`**:青山镇 PCG 与亚洲村庄迁移专项。
 - **`_archive/`**:一次性/调试脚本归档区(不参与日常流程)。
@@ -41,6 +43,6 @@ python scripts/gamexxk_real_play_flow_mcp.py
 
 ## 已知问题(见 docs/production/optimization-plan.md)
 
-- `ue_mcp_smoke.py` 曾复刻 `ue_mcp_client.py` 传输逻辑(Phase 1.4 去重)。
-- `battle_ui_assets_check` vs `battle_ui_asset_check` 命名漂移(Phase 2.4 收敛)。
+- `ue_mcp_smoke.py` 曾复刻 `ue_mcp_client.py` 传输逻辑(已去重)。
+- `battle_ui_assets_check` vs `battle_ui_asset_check` 命名漂移(已重命名为 `gamexxk_battle_target_art_check.py`)。
 - 一次性脚本见 `_archive/`。
