@@ -761,7 +761,9 @@ namespace
 		Board->WidgetTree->GetAllWidgets(Widgets);
 		for (UWidget* const Widget : Widgets)
 		{
-			if (!Widget || Widget->GetName().Contains(TEXT("OutcomePreview")))
+			if (!Widget
+				|| Widget->GetName().Contains(TEXT("OutcomePreview"))
+				|| Widget->GetName().Contains(TEXT("HandCardDetailPanel")))
 			{
 				continue;
 			}
@@ -2342,6 +2344,12 @@ bool FGameXXKTargetOutcomePreviewLayoutInvariantTest::RunTest(const FString& Par
 	}
 	const TMap<FName, FCanvasLayoutSnapshot> AfterGroupHover = CaptureNonOutcomeCanvasLayout(GroupBoard);
 	AssertCanvasLayoutUnchanged(*this, BeforeGroupHover, AfterGroupHover);
+	UBorder* const GroupDetailPanel = GroupBoard->WidgetTree
+		? Cast<UBorder>(GroupBoard->WidgetTree->FindWidget(TEXT("BattleHandCardDetailPanel")))
+		: nullptr;
+	TestEqual(TEXT("group hand hover shows the hover-following card tooltip"),
+		GroupDetailPanel ? GroupDetailPanel->GetVisibility() : ESlateVisibility::Collapsed,
+		ESlateVisibility::HitTestInvisible);
 	UGameXXKCardOutcomePreviewWidget* const VisibleGroupOutcomeWidget = GroupBoard->WidgetTree
 		? Cast<UGameXXKCardOutcomePreviewWidget>(GroupBoard->WidgetTree->FindWidget(TEXT("BattleGroupOutcomePreview")))
 		: nullptr;
@@ -2761,7 +2769,7 @@ bool FGameXXKCardBattleBoardHandCardHoverStyleTest::RunTest(const FString& Param
 	const FString DetailText = DetailBody ? DetailBody->GetText().ToString() : FString();
 	TestTrue(TEXT("hover detail explains the target instruction"), DetailText.Contains(TEXT("目标：")) && DetailText.Contains(TEXT("单体敌方")));
 	TestTrue(TEXT("hover detail explains the card effect"), DetailText.Contains(TEXT("攻击伤害")));
-	TestTrue(TEXT("hand hover exposes the actual preview interaction"), DetailText.Contains(TEXT("点击后选择高亮合法目标。")));
+	TestFalse(TEXT("concise hand tooltip omits the legacy interaction instruction"), DetailText.Contains(TEXT("点击后选择高亮合法目标。")));
 	TestTrue(TEXT("hand hover keeps the reusable tooltip input-transparent"), Board->IsCardTooltipHitTestInvisibleForTest());
 
 	CardButton->OnUnhovered.Broadcast();

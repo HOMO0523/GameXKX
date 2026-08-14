@@ -6167,6 +6167,41 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		break;
 	}
 
+	// Unified concise format shared with the out-of-battle deck tooltips:
+	// 18pt ink title + 13pt concise description, no battle preview or context noise.
+	FText TooltipTitle;
+	FText TooltipBody;
+	if (DirectTooltipText.IsSet())
+	{
+		FString TitlePart;
+		FString BodyPart;
+		const FString Raw = DirectTooltipText.GetValue().ToString();
+		if (Raw.Split(TEXT("\n"), &TitlePart, &BodyPart))
+		{
+			TooltipTitle = FText::FromString(TitlePart);
+			TooltipBody = FText::FromString(BodyPart);
+		}
+		else
+		{
+			TooltipBody = DirectTooltipText.GetValue();
+		}
+	}
+	else if (Definition)
+	{
+		TooltipTitle = Definition->DisplayName;
+		TooltipBody = FText::FromString(
+			TooltipQuality == EGameXXKCardQuality::Invalid
+				? GameXXKCardText::DescribeTooltip(*Definition, nullptr, FGameXXKCardTooltipContext())
+				: GameXXKCardText::DescribeTooltip(*Definition, TooltipQuality, nullptr, FGameXXKCardTooltipContext()));
+	}
+	if (TooltipBody.IsEmpty() && TooltipTitle.IsEmpty())
+	{
+		// An empty tooltip must not touch layout: collapsing without rewriting
+		// the slot keeps hover-invariant layout checks deterministic.
+		HandCardDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+
 	// Follow the hovered card slot instead of the fixed default anchor.
 	if (UCanvasPanelSlot* DetailSlot = Cast<UCanvasPanelSlot>(HandCardDetailPanel->Slot))
 	{
@@ -6198,38 +6233,6 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 			HandCardDetailPanelSize.Y));
 	}
 
-	// Unified concise format shared with the out-of-battle deck tooltips:
-	// 18pt ink title + 13pt concise description, no battle preview or context noise.
-	FText TooltipTitle;
-	FText TooltipBody;
-	if (DirectTooltipText.IsSet())
-	{
-		FString TitlePart;
-		FString BodyPart;
-		const FString Raw = DirectTooltipText.GetValue().ToString();
-		if (Raw.Split(TEXT("\n"), &TitlePart, &BodyPart))
-		{
-			TooltipTitle = FText::FromString(TitlePart);
-			TooltipBody = FText::FromString(BodyPart);
-		}
-		else
-		{
-			TooltipBody = DirectTooltipText.GetValue();
-		}
-	}
-	else if (Definition)
-	{
-		TooltipTitle = Definition->DisplayName;
-		TooltipBody = FText::FromString(
-			TooltipQuality == EGameXXKCardQuality::Invalid
-				? GameXXKCardText::DescribeTooltip(*Definition, nullptr, FGameXXKCardTooltipContext())
-				: GameXXKCardText::DescribeTooltip(*Definition, TooltipQuality, nullptr, FGameXXKCardTooltipContext()));
-	}
-	if (TooltipBody.IsEmpty() && TooltipTitle.IsEmpty())
-	{
-		HandCardDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
-		return;
-	}
 	if (HandCardDetailTitle)
 	{
 		HandCardDetailTitle->SetText(TooltipTitle);
