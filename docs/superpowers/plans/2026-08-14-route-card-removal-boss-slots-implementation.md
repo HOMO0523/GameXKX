@@ -23,7 +23,7 @@
 - ✅ 新增回归测试:`GameXXK.RouteBalance.Diagnostics.ZhuiFengJinGuiBoss942090`、`GameXXK.RouteBalance.Diagnostics.BladeRetainedOwnerDefeat1100213`;
 - ✅ 全量 2400 锁定案例 0 卡死/0 错误(胜利 2298 / 战败 102);卡牌文档已重新生成;
 - ✅ 修复两个进程 RNG 导致的偶发测试(`BattleEntry` 固定路线种子、`PlayerFlowOwnsFlowWidgets` 固定初始同伴招募种子 + 目标卡必须造成伤害);
-- ✅ 全量自动化 596 项 0 失败(两轮通过);
+- ✅ 全量自动化 596 项 0 失败(两个曾偶发失败的测试单独复跑 3 次均通过);
 - ✅ 真机 PIE:新档→青山→接任务→路线图→战斗入场→16 张共享牌库正确装配(无路线卡)→通过真实 UMG 打出卡牌/结束回合/敌方意图演出正常;奖励框的首领牌选择路径由无头 UI 测试 + 2400 案例矩阵钉死;
 - ⏳ 待办:提交推送。
 
