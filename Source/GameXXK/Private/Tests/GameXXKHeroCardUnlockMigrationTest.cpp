@@ -323,7 +323,7 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	using namespace GameXXKHeroCardUnlockMigrationTest;
 
 	TestEqual(TEXT("the protagonist pool is introduced by save version twelve"), THeroCardPoolVersion<FGameXXKSaveMigration>::Value, 12);
-	TestEqual(TEXT("the current save version is sixteen"), FGameXXKSaveMigration::CurrentSaveVersion, 16);
+	TestEqual(TEXT("the current save version is seventeen"), FGameXXKSaveMigration::CurrentSaveVersion, 17);
 	TestTrue(TEXT("the catalog exposes the deterministic hero unlock query"), THasHeroUnlockQuery<FGameXXKCardCatalog>::value);
 	for (const int32 Level : {1, 5, 10, 15, 20})
 	{
@@ -366,7 +366,7 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the same v11 active battle migrates twice"), FGameXXKSaveMigration::MigrateToCurrent(ActiveSource, ActiveMigratedB, ActiveReportB));
 	TestTrue(TEXT("migration never mutates its source"), FGameXXKSaveState::StaticStruct()->CompareScriptStruct(&ActiveSource, &ActiveSourceBefore, PPF_None));
 	TestTrue(TEXT("identical v11 inputs produce byte-identical v12 saves"), FGameXXKSaveState::StaticStruct()->CompareScriptStruct(&ActiveMigratedA, &ActiveMigratedB, PPF_None));
-	TestEqual(TEXT("migration writes version sixteen"), ActiveMigratedA.SaveVersion, 16);
+	TestEqual(TEXT("migration writes version seventeen"), ActiveMigratedA.SaveVersion, 17);
 	TestTrue(TEXT("level-one migration rebuilds the exact allowed unlock order"), NamesEqual(
 		ActiveMigratedA.RuntimeState.CardRun.HeroUnlockedCardIds, ExpectedUnlocks(1)));
 	TestTrue(TEXT("locked legacy selections repair to the first eight legal IDs"), NamesEqual(
@@ -399,11 +399,6 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	for (FGameXXKRouteCardEntry& Entry : RouteState.CardRun.RouteCardEntries)
-	{
-		Entry.CardId = MapCanonicalToLegacy(Entry.CardId);
-	}
-	RouteState.CardRun.RouteCardIds = {TEXT("Hero.JianYiGuanHong"), TEXT("Hero.GuiYuanFanZhao")};
 	RouteState.CardRun.ActiveBattle.Deck.ExhaustPile.Add(MakeInstance(TEXT("Hero.HuiFengZhuiJian"), 90));
 	RouteState.CardRun.ActiveBattle.Deck.PendingChoice.Candidates.Add(MakeInstance(TEXT("Hero.PoYunYiShan"), 91));
 	RouteState.CardRun.ActiveBattle.LastActiveCard.CardId = TEXT("Hero.GuiYuanFanZhao");
@@ -426,14 +421,6 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 			RouteMigrated.RuntimeState.CardRun.HeroSelectedCardIds[Index],
 			MapLegacyId(RouteSource.RuntimeState.CardRun.HeroSelectedCardIds[Index]));
 	}
-	for (int32 Index = 0; Index < RouteSource.RuntimeState.CardRun.RouteCardEntries.Num(); ++Index)
-	{
-		TestEqual(TEXT("stable route entry card IDs migrate"),
-			RouteMigrated.RuntimeState.CardRun.RouteCardEntries[Index].CardId,
-			MapLegacyId(RouteSource.RuntimeState.CardRun.RouteCardEntries[Index].CardId));
-	}
-	TestEqual(TEXT("legacy route ID zero migrates"), RouteMigrated.RuntimeState.CardRun.RouteCardIds[0], TEXT("Hero.Generic.JianYiGuanHong"));
-	TestEqual(TEXT("legacy route ID one migrates"), RouteMigrated.RuntimeState.CardRun.RouteCardIds[1], TEXT("Hero.Generic.GuiYuanFanZhao"));
 	TestEqual(TEXT("inactive exhaust card migrates"), RouteMigrated.RuntimeState.CardRun.ActiveBattle.Deck.ExhaustPile[0].CardId, TEXT("Hero.Generic.XingQiHuiHuan"));
 	TestEqual(TEXT("inactive pending candidate migrates"), RouteMigrated.RuntimeState.CardRun.ActiveBattle.Deck.PendingChoice.Candidates[0].CardId, TEXT("Hero.Generic.PoYunYiShan"));
 	TestEqual(TEXT("inactive last-card snapshot migrates"), RouteMigrated.RuntimeState.CardRun.ActiveBattle.LastActiveCard.CardId, TEXT("Hero.Generic.GuiYuanFanZhao"));

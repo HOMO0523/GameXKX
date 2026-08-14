@@ -147,7 +147,6 @@ bool FGameXXKThreeChapterLifecycleTest::RunTest(const FString& Parameters)
 	FGameXXKRuntimeState FirstBossState = EntryState;
 	FirstBossState.PlayerHP = 1;
 	FirstBossState.PlayerMP = 0;
-	FirstBossState.CardRun.RouteCardIds = {TEXT("Card.Hero.Observe")};
 	FirstBossState.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.TusiChief");
 	FirstBossState.CardRun.PartySelection.QuestNpc.NpcId = TEXT("Npc.TusiChief");
 	FirstBossState.CardRun.RouteTravelMoney = 321;
@@ -165,8 +164,6 @@ bool FGameXXKThreeChapterLifecycleTest::RunTest(const FString& Parameters)
 	MerchantSentinel.Quality = EGameXXKCardQuality::Common;
 	MerchantSentinel.Price = 30;
 	FirstBossState.CardRun.RouteMerchant.Offers.Add(MerchantSentinel);
-	const TArray<FGameXXKRouteCardEntry> EntriesBeforeChapterAdvance = FirstBossState.CardRun.RouteCardEntries;
-	const int32 NextEntryOrdinalBeforeChapterAdvance = FirstBossState.CardRun.NextRouteCardEntryOrdinal;
 	const TArray<FGameXXKRelicInstance> RelicsBeforeChapterAdvance = FirstBossState.CardRun.Relics;
 	const int32 NextRelicOrdinalBeforeChapterAdvance = FirstBossState.CardRun.NextRelicAcquisitionOrdinal;
 	const int32 TravelMoneyBeforeChapterAdvance = FirstBossState.CardRun.RouteTravelMoney;
@@ -181,7 +178,6 @@ bool FGameXXKThreeChapterLifecycleTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("chapter two has a freshly generated existing topology"), FirstBossState.bHasGeneratedRouteMap && !FirstBossState.RouteMapNodes.IsEmpty());
 	TestEqual(TEXT("chapter transitions fully restore hero health"), FirstBossState.PlayerHP, FirstBossState.PlayerMaxHP);
 	TestEqual(TEXT("chapter transitions fully restore hero MP"), FirstBossState.PlayerMP, FirstBossState.PlayerMaxMP);
-	TestTrue(TEXT("chapter transitions preserve already acquired route cards"), FirstBossState.CardRun.RouteCardIds.Contains(TEXT("Card.Hero.Observe")));
 	TestEqual(TEXT("chapter transitions preserve the active temporary task NPC"), FirstBossState.CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.TusiChief")));
 	const FGameXXKRouteMerchantState EmptyMerchant;
 	TestTrue(TEXT("chapter transitions clear the prior chapter's merchant snapshot before node IDs are reused"),
@@ -189,21 +185,6 @@ bool FGameXXKThreeChapterLifecycleTest::RunTest(const FString& Parameters)
 			&FirstBossState.CardRun.RouteMerchant,
 			&EmptyMerchant,
 			PPF_None));
-	TestEqual(TEXT("chapter transitions preserve the stable deck size"),
-		FirstBossState.CardRun.RouteCardEntries.Num(), EntriesBeforeChapterAdvance.Num());
-	if (FirstBossState.CardRun.RouteCardEntries.Num() == EntriesBeforeChapterAdvance.Num())
-	{
-		for (int32 Index = 0; Index < EntriesBeforeChapterAdvance.Num(); ++Index)
-		{
-			TestTrue(*FString::Printf(TEXT("chapter transitions preserve stable deck entry %d"), Index),
-				FGameXXKRouteCardEntry::StaticStruct()->CompareScriptStruct(
-					&FirstBossState.CardRun.RouteCardEntries[Index],
-					&EntriesBeforeChapterAdvance[Index],
-					PPF_None));
-		}
-	}
-	TestEqual(TEXT("chapter transitions preserve the next stable deck ordinal"),
-		FirstBossState.CardRun.NextRouteCardEntryOrdinal, NextEntryOrdinalBeforeChapterAdvance);
 	TestEqual(TEXT("chapter transitions preserve the route relic count"),
 		FirstBossState.CardRun.Relics.Num(), RelicsBeforeChapterAdvance.Num());
 	if (FirstBossState.CardRun.Relics.Num() == RelicsBeforeChapterAdvance.Num())

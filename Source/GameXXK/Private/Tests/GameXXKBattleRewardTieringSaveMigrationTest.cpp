@@ -9,8 +9,8 @@ static_assert(
 	FGameXXKSaveMigration::BattleRewardTieringIntroducedSaveVersion == 16,
 	"Battle reward tiering persistence requires save version 16.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 16,
-	"The battle reward tiering migration advances the current save version to sixteen.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 17,
+	"The boss-card-slot migration advances the current save version to seventeen.");
 
 namespace
 {
@@ -45,7 +45,7 @@ bool FGameXXKBattleRewardTieringMigrationTest::RunTest(const FString& Parameters
 	FGameXXKSaveMigrationReport Report;
 	TestTrue(TEXT("v15 save migrates to the v16 schema"),
 		FGameXXKSaveMigration::MigrateToCurrent(LegacySave, MigratedSave, Report));
-	TestEqual(TEXT("migrated save reports version sixteen"), MigratedSave.SaveVersion, 16);
+	TestEqual(TEXT("migrated save reports version seventeen"), MigratedSave.SaveVersion, 17);
 	TestEqual(TEXT("legacy in-flight reward offer is cleared"),
 		MigratedSave.RuntimeState.CardRun.PendingReward.CardIds.Num(), 0);
 	TestEqual(TEXT("legacy replacement demand is cleared"),

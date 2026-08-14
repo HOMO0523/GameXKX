@@ -6,7 +6,6 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardRules.h"
 #include "GameXXKCompanionRules.h"
-#include "GameXXKRouteCardRecipe.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -114,7 +113,7 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 		FGameXXKCardBattleAdapter::BeginCardBattle(State, EGameXXKNodeKind::Battle, EGameXXKCardTerrain::Plain, 991, &Error));
 	TestTrue(TEXT("the active card battle is explicitly persisted inside runtime state"), State.CardRun.bHasActiveCardBattle);
 	TestTrue(TEXT("the active card battle passes its independent persistence validation"), GameXXKCardRules::ValidateCardBattleRuntime(State.CardRun.ActiveBattle, &Error));
-	TestEqual(TEXT("hero plus one temporary NPC and deterministic fillers still creates the exact eighteen-card opening deck"), State.CardRun.ActiveBattle.Deck.ActiveInstanceIds.Num(), 18);
+	TestEqual(TEXT("hero plus one temporary NPC creates the exact eleven-card opening deck without route cards"), State.CardRun.ActiveBattle.Deck.ActiveInstanceIds.Num(), 11);
 	TestEqual(TEXT("the opening card runtime begins with five materialized hand cards"), State.CardRun.ActiveBattle.Deck.Hand.Num(), 5);
 	TestEqual(TEXT("the legacy projection contains hero and one task NPC, not the old automatic follower"), State.ActiveBattleParty.Num(), 2);
 	TestTrue(TEXT("the temporary task NPC has a stable card-runtime unit"), State.CardRun.ActiveBattle.Units.ContainsByPredicate([](const FGameXXKCardCombatUnit& Unit)
@@ -256,7 +255,6 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	RewardState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
 	TestTrue(TEXT("the route-reward fixture reaches a real locked battle victory"), bRewardBattleReady);
 
-	const int32 RewardEntryOrdinalBefore = RewardState.CardRun.NextRouteCardEntryOrdinal;
 	const int32 RewardAcquisitionCountBefore = RewardState.CardRun.RouteProgress.ActualRouteCardAcquisitionCount;
 	const int32 RewardSourceNodeId = RewardState.CardRun.ActiveBattleSourceNodeId >= 0
 		? RewardState.CardRun.ActiveBattleSourceNodeId
@@ -279,22 +277,14 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the chosen upgrade persists its one-step quality"),
 		RewardState.CardRun.UpgradedCardQualities.FindRef(UpgradedCardId),
 		FGameXXKCardBattleAdapter::GetNextCardQuality(UpgradedQualityBefore));
-	TestEqual(TEXT("a deck-card upgrade never advances the stable-entry sequence"),
-		RewardState.CardRun.NextRouteCardEntryOrdinal,
-		RewardEntryOrdinalBefore);
 	TestEqual(TEXT("a deck-card upgrade never advances acquisition history"),
 		RewardState.CardRun.RouteProgress.ActualRouteCardAcquisitionCount,
 		RewardAcquisitionCountBefore);
-	TestTrue(TEXT("the selected reward leaves legacy RouteCardIds empty"), RewardState.CardRun.RouteCardIds.IsEmpty());
 	TestEqual(TEXT("the reward offer clears only after an explicit pick"), RewardState.CardRun.PendingReward.Options.Num(), 0);
 	FGameXXKCardBattleAdapter::ClearRouteLocalCardState(RewardState);
-	TestTrue(TEXT("ending the reward route removes stable route-card entries"), RewardState.CardRun.RouteCardEntries.IsEmpty());
-	TestTrue(TEXT("ending the reward route keeps legacy RouteCardIds empty"), RewardState.CardRun.RouteCardIds.IsEmpty());
 
 	FGameXXKCardBattleAdapter::ClearRouteLocalCardState(State);
 	TestFalse(TEXT("ending the route clears an in-progress card battle"), State.CardRun.bHasActiveCardBattle);
-	TestTrue(TEXT("ending the route removes stable route-card entries"), State.CardRun.RouteCardEntries.IsEmpty());
-	TestTrue(TEXT("ending the route removes legacy route-card residue"), State.CardRun.RouteCardIds.IsEmpty());
 	TestEqual(TEXT("ending the route removes the temporary task NPC selection"), State.CardRun.PartySelection.QuestNpc.NpcId, NAME_None);
 	TestEqual(TEXT("ending the route preserves the hero's permanent configured cards"), State.CardRun.HeroSelectedCardIds.Num(), 8);
 

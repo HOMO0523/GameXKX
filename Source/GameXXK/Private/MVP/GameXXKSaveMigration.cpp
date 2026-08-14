@@ -11,11 +11,9 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKRelicCatalog.h"
-#include "GameXXKRouteCardRecipe.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "GameXXKRouteMerchantRules.h"
-#include "GameXXKRunDeckRules.h"
 #include "Misc/Crc.h"
 
 namespace
@@ -33,9 +31,7 @@ namespace
 	const FName LegacyBossId(TEXT("Codex.Boss"));
 	constexpr int32 GuideIntroductionVersion = 5;
 	constexpr int32 StableMigrationCollectionSeed = 0x4758584B;
-	constexpr int32 RouteEntrySeedFallback = 0x13579BDF;
 	constexpr uint32 HeroCombatRandomSalt = 0xA341316CU;
-	const FName RouteEntryOwnerUnitId(TEXT("Player"));
 
 	const TArray<TPair<FName, FName>>& LegacyHeroCardPairs()
 	{
@@ -193,12 +189,7 @@ namespace
 		{
 			MigrateBladePartnerProfile(Run.CompanionRoster.PendingRecruitment.Candidate, MigratedReferenceCount);
 		}
-		MigrateBladePartnerCardIds(Run.RouteCardIds, MigratedReferenceCount);
 		MigrateBladePartnerCardIds(Run.PendingReward.CardIds, MigratedReferenceCount);
-		for (FGameXXKRouteCardEntry& Entry : Run.RouteCardEntries)
-		{
-			MigratedReferenceCount += MigrateBladePartnerCardId(Entry.CardId) ? 1 : 0;
-		}
 		for (FGameXXKCardEnemyIntent& Intent : Run.EnemyIntents)
 		{
 			MigratedReferenceCount += MigrateBladePartnerCardId(Intent.CardId) ? 1 : 0;
@@ -307,15 +298,7 @@ namespace
 		FGameXXKCardRunState& Run = InOutState.CardRun;
 		MigrateHeroCardIds(Run.HeroUnlockedCardIds);
 		MigrateHeroCardIds(Run.HeroSelectedCardIds);
-		MigrateHeroCardIds(Run.RouteCardIds);
 		MigrateHeroCardIds(Run.PendingReward.CardIds);
-		for (FGameXXKRouteCardEntry& Entry : Run.RouteCardEntries)
-		{
-			if (MigrateHeroCardId(Entry.CardId))
-			{
-				Entry.CurrentQuality = EGameXXKCardQuality::Common;
-			}
-		}
 		for (FGameXXKCardEnemyIntent& Intent : Run.EnemyIntents)
 		{
 			MigrateHeroCardId(Intent.CardId);
@@ -686,206 +669,6 @@ namespace
 			return false;
 		}
 		CardRun = MoveTemp(Candidate);
-		return true;
-	}
-
-	int32 ResolveRouteEntryMigrationSeed(const FGameXXKRuntimeState& State)
-	{
-		if (State.CardRun.RouteProgress.RootSeed != 0)
-		{
-			return State.CardRun.RouteProgress.RootSeed;
-		}
-		if (State.RouteSeed != 0)
-		{
-			return State.RouteSeed;
-		}
-		if (State.CardRun.RouteRandomSeed != 0)
-		{
-			return State.CardRun.RouteRandomSeed;
-		}
-		return RouteEntrySeedFallback;
-	}
-
-	bool MigrateRouteCardEntries(
-		FGameXXKRuntimeState& State,
-		FGameXXKSaveMigrationReport& Report,
-		FString& OutError)
-	{
-		OutError.Reset();
-		FGameXXKRuntimeState Candidate = State;
-		FGameXXKCardRunState& Run = Candidate.CardRun;
-		const TArray<FName> LegacyRouteCardIds = Run.RouteCardIds;
-		if (!Run.RouteCardEntries.IsEmpty())
-		{
-			Report.Warnings.Add(TEXT("Discarded nonempty prerelease RouteCardEntries while migrating a pre-v9 save."));
-		}
-		Run.RouteCardEntries.Reset();
-
-		if (!Candidate.bDungeonActive)
-		{
-			Run.RouteCardIds.Reset();
-			Run.NextRouteCardEntryOrdinal = 0;
-			Run.PendingReward.bRequiresRouteCardReplacement = false;
-			State = MoveTemp(Candidate);
-			return true;
-		}
-
-		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(Candidate, &OutError))
-		{
-			return false;
-		}
-
-		FGameXXKCardRunState& InitializedRun = Candidate.CardRun;
-		const int32 RouteEntrySeed = ResolveRouteEntryMigrationSeed(Candidate);
-		TArray<FGameXXKRouteCardEntry> MigratedEntries;
-		if (!FGameXXKRouteCardRecipe::BuildBaseEntries(
-			Candidate,
-			RouteEntrySeed,
-			MigratedEntries,
-			&OutError))
-		{
-			return false;
-		}
-		if (MigratedEntries.Num() != FGameXXKRouteCardRecipe::BaseEntryCount)
-		{
-			OutError = TEXT("Route-card entry migration did not produce the canonical eighteen-entry base recipe.");
-			return false;
-		}
-
-		const int32 MigratedLegacySlotCount = FMath::Min(
-			LegacyRouteCardIds.Num(),
-			FGameXXKRunDeckRules::MaxRouteCardCapacity);
-		if (LegacyRouteCardIds.Num() > FGameXXKRunDeckRules::MaxRouteCardCapacity)
-		{
-			Report.Warnings.Add(FString::Printf(
-				TEXT("Ignored %d legacy route-card IDs beyond the first 12 migration slots."),
-				LegacyRouteCardIds.Num() - FGameXXKRunDeckRules::MaxRouteCardCapacity));
-		}
-
-		for (int32 LegacyIndex = 0; LegacyIndex < MigratedLegacySlotCount; ++LegacyIndex)
-		{
-			const FName LegacyCardId = LegacyRouteCardIds[LegacyIndex];
-			if (LegacyCardId.IsNone())
-			{
-				Report.Warnings.Add(FString::Printf(
-					TEXT("Skipped empty legacy RouteCardIds entry at source index %d."),
-					LegacyIndex));
-				continue;
-			}
-
-			const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(LegacyCardId);
-			if (!Definition)
-			{
-				Report.Warnings.Add(FString::Printf(
-					TEXT("Skipped unknown legacy route-card ID '%s' at source index %d."),
-					*LegacyCardId.ToString(),
-					LegacyIndex));
-				continue;
-			}
-			if (Definition->Owner != EGameXXKCardOwner::Route)
-			{
-				Report.Warnings.Add(FString::Printf(
-					TEXT("Skipped non-route legacy card '%s' at source index %d."),
-					*LegacyCardId.ToString(),
-					LegacyIndex));
-				continue;
-			}
-
-			FGameXXKRouteCardEntry Entry;
-			Entry.CardId = Definition->Id;
-			Entry.CurrentQuality = Definition->BaseQuality;
-			Entry.SourceKind = EGameXXKRouteCardSourceKind::RouteReward;
-			Entry.OwnerUnitId = RouteEntryOwnerUnitId;
-			Entry.bTemporaryRouteCard = true;
-			Entry.bConsumesRouteCapacity = true;
-			Entry.AcquisitionOrdinal = FGameXXKRouteCardRecipe::BaseEntryCount + LegacyIndex;
-			if (!FGameXXKRouteCardRecipe::MakeStableEntryId(
-				RouteEntrySeed,
-				Entry.AcquisitionOrdinal,
-				Entry.EntryId,
-				&OutError))
-			{
-				return false;
-			}
-
-			FGameXXKCardMergePreview AppliedMerge;
-			if (!FGameXXKRunDeckRules::AddAndMerge(
-				MigratedEntries,
-				Entry,
-				AppliedMerge,
-				&OutError))
-			{
-				return false;
-			}
-		}
-
-		const int64 NextFromLegacySlots = static_cast<int64>(FGameXXKRouteCardRecipe::BaseEntryCount)
-			+ static_cast<int64>(MigratedLegacySlotCount);
-		const int64 NextFromAcquisitionHistory = static_cast<int64>(FGameXXKRouteCardRecipe::BaseEntryCount)
-			+ static_cast<int64>(InitializedRun.RouteProgress.ActualRouteCardAcquisitionCount);
-		const int64 NextEntryOrdinal = FMath::Max(NextFromLegacySlots, NextFromAcquisitionHistory);
-		if (NextEntryOrdinal < 0 || NextEntryOrdinal > MAX_int32)
-		{
-			OutError = TEXT("Migrated route-card next entry ordinal exceeds its persisted int32 range.");
-			return false;
-		}
-
-		InitializedRun.RouteCardEntries = MoveTemp(MigratedEntries);
-		InitializedRun.NextRouteCardEntryOrdinal = static_cast<int32>(NextEntryOrdinal);
-		InitializedRun.RouteCardIds.Reset();
-		InitializedRun.PendingReward.bRequiresRouteCardReplacement = false;
-		State = MoveTemp(Candidate);
-		return true;
-	}
-
-	bool ValidateRouteCardEntryState(const FGameXXKRuntimeState& State, FString& OutError)
-	{
-		const FGameXXKCardRunState& Run = State.CardRun;
-		if (!State.bDungeonActive)
-		{
-			if (!Run.RouteCardEntries.IsEmpty() || Run.NextRouteCardEntryOrdinal != 0)
-			{
-				OutError = TEXT("Saved inactive route retains stable route-card entry state.");
-				return false;
-			}
-			return true;
-		}
-		if (Run.RouteCardEntries.IsEmpty())
-		{
-			return true;
-		}
-
-		int32 CapacityUsed = 0;
-		if (!FGameXXKRunDeckRules::GetCapacityUsed(Run.RouteCardEntries, CapacityUsed, &OutError))
-		{
-			return false;
-		}
-		if (CapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity)
-		{
-			OutError = TEXT("Saved stable route-card entries exceed route capacity.");
-			return false;
-		}
-
-		int32 MaximumAcquisitionOrdinal = INDEX_NONE;
-		for (const FGameXXKRouteCardEntry& Entry : Run.RouteCardEntries)
-		{
-			if (!FGameXXKCardCatalog::FindCardDefinition(Entry.CardId))
-			{
-				OutError = TEXT("Saved stable route-card entry references an unknown catalog card.");
-				return false;
-			}
-			if (Entry.OwnerUnitId.IsNone())
-			{
-				OutError = TEXT("Saved stable route-card entry has an empty owner.");
-				return false;
-			}
-			MaximumAcquisitionOrdinal = FMath::Max(MaximumAcquisitionOrdinal, Entry.AcquisitionOrdinal);
-		}
-		if (Run.NextRouteCardEntryOrdinal <= MaximumAcquisitionOrdinal)
-		{
-			OutError = TEXT("Saved stable route-card next ordinal does not follow every persisted entry.");
-			return false;
-		}
 		return true;
 	}
 
@@ -1295,12 +1078,6 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Fail(OutReport, MigrationError);
 		return false;
 	}
-	if (Source.SaveVersion < RouteCardEntriesIntroducedSaveVersion
-		&& !MigrateRouteCardEntries(Candidate.RuntimeState, OutReport, MigrationError))
-	{
-		Fail(OutReport, MigrationError);
-		return false;
-	}
 	if (Source.SaveVersion < RouteEconomyIntroducedSaveVersion
 		&& !MigrateRouteEconomy(Candidate.RuntimeState, MigrationError))
 	{
@@ -1315,6 +1092,13 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		// their zero defaults.
 		Candidate.RuntimeState.CardRun.PendingReward = FGameXXKPendingRouteCardReward();
 		Candidate.RuntimeState.CardRun.bActiveBattleRewardResolved = false;
+	}
+	if (Source.SaveVersion < BossCardSlotsIntroducedSaveVersion)
+	{
+		// v17 removed the route-card system (2026-08-14). Discard any persisted merchant
+		// card stock and pending card-replacement purchase; BossCardSlots keeps its empty
+		// default and removed RouteCardIds/RouteCardEntries simply no longer deserialize.
+		Candidate.RuntimeState.CardRun.RouteMerchant = FGameXXKRouteMerchantState();
 	}
 	Candidate.SaveVersion = CurrentSaveVersion;
 	if (!ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
@@ -1415,10 +1199,6 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		return false;
 	}
 	if (!ValidateRouteEconomyState(State, OutError))
-	{
-		return false;
-	}
-	if (!ValidateRouteCardEntryState(State, OutError))
 	{
 		return false;
 	}
@@ -1703,14 +1483,6 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 				return false;
 			}
 			SeenSelected.Add(CardId);
-		}
-	}
-	for (const FName RouteCardId : State.CardRun.RouteCardIds)
-	{
-		if (RouteCardId.IsNone() || !FGameXXKCardCatalog::FindCardDefinition(RouteCardId))
-		{
-			OutError = TEXT("Saved route card collection contains an unknown card.");
-			return false;
 		}
 	}
 

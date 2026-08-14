@@ -1,6 +1,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKBattlePresentation.h"
+#include "GameXXKCompanionRules.h"
 #include "Blueprint/GameViewportSubsystem.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/SaveGame.h"
@@ -108,12 +109,39 @@ namespace
 			{
 				return Candidate.bCanSelect && Candidate.Side == EGameXXKCardTargetSide::Enemy && !Candidate.UnitId.IsNone();
 			});
-			if (EnemyCandidate)
+			if (!EnemyCandidate)
 			{
-				OutCardInstanceId = CardInstance.InstanceId;
-				OutEnemyUnitId = EnemyCandidate->UnitId;
-				return true;
+				continue;
 			}
+			// Some affordable enemy-target cards only apply statuses.  Resolve on a copy and
+			// require the target to actually lose health so the commit assertion below never
+			// depends on which utility card happens to precede the damage cards in hand.
+			const FGameXXKCardCombatUnit* TargetBefore = State.CardRun.ActiveBattle.Units.FindByPredicate([&EnemyCandidate](const FGameXXKCardCombatUnit& Unit)
+			{
+				return Unit.UnitId == EnemyCandidate->UnitId;
+			});
+			if (!TargetBefore)
+			{
+				continue;
+			}
+			FGameXXKRuntimeState CandidateState = State;
+			FGameXXKCardPlayResult PlayResult;
+			FString ResolveError;
+			if (!FGameXXKCardBattleAdapter::ResolveCardPlay(CandidateState, CardInstance.InstanceId, EnemyCandidate->UnitId, PlayResult, &ResolveError))
+			{
+				continue;
+			}
+			const FGameXXKCardCombatUnit* TargetAfter = CandidateState.CardRun.ActiveBattle.Units.FindByPredicate([&EnemyCandidate](const FGameXXKCardCombatUnit& Unit)
+			{
+				return Unit.UnitId == EnemyCandidate->UnitId;
+			});
+			if (!TargetAfter || TargetAfter->HP >= TargetBefore->HP)
+			{
+				continue;
+			}
+			OutCardInstanceId = CardInstance.InstanceId;
+			OutEnemyUnitId = EnemyCandidate->UnitId;
+			return true;
 		}
 
 		OutError = TEXT("No affordable manual enemy-target card was available in the current hand.");
@@ -279,6 +307,28 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestFalse(TEXT("town overlay hidden on initial main menu state"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
 
 	TestTrue(TEXT("start game opens Qingshan town for player controller flow"), Subsystem->StartGame());
+	// StartNewGame rolls the two starter companions from the process RNG, which would make the
+	// battle hand below vary across runs.  Rebuild the roster from a fixed recruit sequence so
+	// the battle fixture is reproducible.
+	{
+		FGameXXKCompanionRosterState& Roster = Subsystem->GetMutableRuntimeState().CardRun.CompanionRoster;
+		Roster.PermanentCompanions.Reset();
+		Roster.RecruitSequenceSeed = 0x2A4F6E1D;
+		Roster.RecruitSequenceOrdinal = 0;
+		FGameXXKCompanionRecruitResult RecruitA;
+		FGameXXKCompanionRecruitResult RecruitB;
+		FString RosterError;
+		if (!FGameXXKCompanionRules::CreateAndResolveNextRecruitment(Roster, RecruitA, &RosterError)
+			|| RecruitA.Outcome != EGameXXKCompanionRecruitOutcome::Recruited
+			|| !FGameXXKCompanionRules::SetActivePermanentCompanion(Roster, RecruitA.Companion.InstanceId, &RosterError)
+			|| !FGameXXKCompanionRules::CreateAndResolveNextRecruitment(Roster, RecruitB, &RosterError)
+			|| RecruitB.Outcome != EGameXXKCompanionRecruitOutcome::Recruited
+			|| !FGameXXKCardBattleAdapter::EnsureCardRunInitialized(Subsystem->GetMutableRuntimeState(), &RosterError))
+		{
+			AddError(FString::Printf(TEXT("deterministic starter roster pin failed: %s"), *RosterError));
+			return false;
+		}
+	}
 	const FGameXXKCompanionRosterState& StarterRoster = Subsystem->GetRuntimeState().CardRun.CompanionRoster;
 	TestEqual(TEXT("StartNewGame grants two permanent companions for the player flow"), StarterRoster.PermanentCompanions.Num(), 2);
 	FName StarterCompanionId = NAME_None;

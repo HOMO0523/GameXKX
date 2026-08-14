@@ -138,7 +138,7 @@ struct GAMEXXK_API FGameXXKRouteMapSummaryView
 	int32 CapacityUsed = 0;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-	int32 CapacityLimit = 12;
+	int32 CapacityLimit = 3;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	bool bCapacityValid = false;

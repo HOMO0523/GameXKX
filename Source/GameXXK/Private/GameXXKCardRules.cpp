@@ -11285,11 +11285,35 @@ namespace
 		const FGameXXKCardInstance& PlayedInstance,
 		FString& OutError);
 
+	/**
+	 * A defeated party unit's cards leave every zone at death, including a retained Blade card
+	 * isolated in the exhaust pile. Its pending delay dies with the owner: cancel it so the next
+	 * round boundary neither reserves a phantom hand slot nor fails the isolated-instance lookup.
+	 */
+	void CancelBladeDelayIfOwnerDefeated(FGameXXKCardBattleRuntime& InOutRuntime)
+	{
+		FGameXXKBladeDelayedCardRuntime& Delayed = InOutRuntime.PendingBladeDelayedCard;
+		if (Delayed.Rule == EGameXXKBladeChargeRule::None || Delayed.RecordedInstance.OwnerUnitId.IsNone())
+		{
+			return;
+		}
+		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, Delayed.RecordedInstance.OwnerUnitId);
+		if (!Owner || !Owner->bLiving || Owner->Side != EGameXXKCardTargetSide::Party)
+		{
+			Delayed = FGameXXKBladeDelayedCardRuntime();
+		}
+	}
+
 	bool ResolveBladeDelayedCardAtPlayerRoundStart(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		TArray<FGameXXKCardDamageResult>& InOutBoundaryDamageResults,
 		FString& OutError)
 	{
+		if (InOutRuntime.PendingBladeDelayedCard.Rule == EGameXXKBladeChargeRule::None)
+		{
+			return true;
+		}
+		CancelBladeDelayIfOwnerDefeated(InOutRuntime);
 		if (InOutRuntime.PendingBladeDelayedCard.Rule == EGameXXKBladeChargeRule::None)
 		{
 			return true;
@@ -16198,6 +16222,7 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		NewRuntime.LastActiveCard = FGameXXKResolvedCardSnapshot();
 		NewRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, 3 + NewRuntime.BonusSharedEnergyCap + NewRuntime.PendingNextRoundEnergyBonus);
 		NewRuntime.PendingNextRoundEnergyBonus = 0;
+		CancelBladeDelayIfOwnerDefeated(NewRuntime);
 		const int32 ReservedRetainedCardSlots = NewRuntime.PendingBladeDelayedCard.Rule == EGameXXKBladeChargeRule::RetainNextActiveNextRound ? 1 : 0;
 		const int32 DrawCount = FMath::Max(0, NewRuntime.Deck.HandLimit + NewRuntime.BonusRoundDrawCount - ReservedRetainedCardSlots - NewRuntime.Deck.Hand.Num());
 		// A party unit defeated last round must not contribute cards or an owner-bound

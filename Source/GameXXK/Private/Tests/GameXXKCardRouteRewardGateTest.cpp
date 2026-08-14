@@ -1,5 +1,4 @@
 #include "GameXXKMVPRules.h"
-#include "GameXXKRouteCardRecipe.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -46,21 +45,9 @@ bool FGameXXKCardRouteRewardGateTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("a normal battle offers a relic as its second option"), State.CardRun.PendingReward.Options[1].Kind, EGameXXKBattleRewardKind::Relic);
 	TestEqual(TEXT("a normal battle offers a deck-card upgrade as its third option"), State.CardRun.PendingReward.Options[2].Kind, EGameXXKBattleRewardKind::DeckCardUpgrade);
 	TestTrue(TEXT("the legacy CardIds payload stays empty for a tiered offer"), State.CardRun.PendingReward.CardIds.IsEmpty());
-	int32 AcquiredCapacityEntryCount = 0;
-	for (const FGameXXKRouteCardEntry& Entry : State.CardRun.RouteCardEntries)
-	{
-		AcquiredCapacityEntryCount += Entry.bConsumesRouteCapacity ? 1 : 0;
-	}
-	TestEqual(TEXT("no acquired capacity entry is granted before an explicit player choice"),
-		AcquiredCapacityEntryCount,
-		0);
-	TestEqual(TEXT("the pending offer does not advance the stable-entry sequence"),
-		State.CardRun.NextRouteCardEntryOrdinal,
-		FGameXXKRouteCardRecipe::BaseEntryCount);
 	TestEqual(TEXT("the pending offer does not advance acquisition history"),
 		State.CardRun.RouteProgress.ActualRouteCardAcquisitionCount,
 		0);
-	TestTrue(TEXT("the canonical pending offer keeps legacy RouteCardIds empty"), State.CardRun.RouteCardIds.IsEmpty());
 	return true;
 }
 

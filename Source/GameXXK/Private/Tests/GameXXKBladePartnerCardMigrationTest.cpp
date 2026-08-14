@@ -205,7 +205,7 @@ bool FGameXXKBladePartnerCardMigrationTest::RunTest(const FString& Parameters)
 		TEXT("the replacement Blade partner cards introduce save version fourteen"),
 		FGameXXKSaveMigration::BladePartnerCardsIntroducedSaveVersion,
 		14);
-	TestEqual(TEXT("the current save version advances to sixteen"), FGameXXKSaveMigration::CurrentSaveVersion, 16);
+	TestEqual(TEXT("the current save version advances to seventeen"), FGameXXKSaveMigration::CurrentSaveVersion, 17);
 	FString Error;
 	for (int32 Seed = 1; Seed <= 256; ++Seed)
 	{
@@ -271,7 +271,7 @@ bool FGameXXKBladePartnerCardMigrationTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	TestEqual(TEXT("the migrated save writes version sixteen"), Migrated.SaveVersion, 16);
+	TestEqual(TEXT("the migrated save writes version seventeen"), Migrated.SaveVersion, 17);
 	const FGameXXKCompanionRosterState& MigratedRoster = Migrated.RuntimeState.CardRun.CompanionRoster;
 	TestEqual(TEXT("the three permanent Blade profiles survive migration"), MigratedRoster.PermanentCompanions.Num(), 3);
 	for (int32 PairIndex = 0; PairIndex < MigratedRoster.PermanentCompanions.Num(); ++PairIndex)

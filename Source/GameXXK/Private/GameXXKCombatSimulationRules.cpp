@@ -47,6 +47,18 @@ namespace
 
 	const FGameXXKSimulationPolicyWeights SimulationPolicy;
 
+	/**
+	 * Progress guards for the greedy Skilled policy. A human player can always end the turn, but
+	 * the evaluator only stops when nothing scores positively, so zero-cost mana/draw pairs (for
+	 * example a mage's mana-gain and draw-one cards) can cycle forever inside one player phase.
+	 * After this many consecutive decisions with no living enemy losing health, the simulation
+	 * ends the phase exactly like a player would. Separately, when neither side's unit health
+	 * changes for this many consecutive round boundaries, the battle resolves as a stalemate
+	 * defeat instead of burning the round budget.
+	 */
+	constexpr int32 MaxDecisionsWithoutEnemyProgress = 64;
+	constexpr int32 MaxStagnantRoundBoundaries = 5;
+
 	static bool SetFailure(
 		FGameXXKSimulationMetrics& OutMetrics,
 		FString* OutError,
@@ -67,6 +79,40 @@ namespace
 		{
 			return Candidate.UnitId == UnitId;
 		});
+	}
+
+	static bool AnyLivingEnemyLostHealth(
+		const FGameXXKCardBattleRuntime& Before,
+		const FGameXXKCardBattleRuntime& After)
+	{
+		for (const FGameXXKCardCombatUnit& BeforeUnit : Before.Units)
+		{
+			if (BeforeUnit.Side != EGameXXKCardTargetSide::Enemy)
+			{
+				continue;
+			}
+			const FGameXXKCardCombatUnit* AfterUnit = FindUnit(After.Units, BeforeUnit.UnitId);
+			if (AfterUnit && AfterUnit->HP < BeforeUnit.HP)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	static TArray<TPair<FName, int32>> SnapshotUnitHealth(const FGameXXKCardBattleRuntime& Runtime)
+	{
+		TArray<TPair<FName, int32>> Snapshot;
+		Snapshot.Reserve(Runtime.Units.Num());
+		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		{
+			Snapshot.Add(MakeTuple(Unit.UnitId, Unit.HP));
+		}
+		Snapshot.Sort([](const TPair<FName, int32>& Left, const TPair<FName, int32>& Right)
+		{
+			return Left.Key.LexicalLess(Right.Key);
+		});
+		return Snapshot;
 	}
 
 	static int32 SumPartyHealth(const FGameXXKCardBattleRuntime& Runtime)
@@ -996,6 +1042,10 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 	RecordRuntimeHighWaterMarks(State.CardRun.ActiveBattle, OutMetrics);
 
 	int32 DecisionCount = 0;
+	int32 DecisionsWithoutEnemyProgress = 0;
+	int32 StagnantRoundBoundaries = 0;
+	int32 LastBoundaryRound = State.CardRun.ActiveBattle.RoundNumber;
+	TArray<TPair<FName, int32>> LastRoundHealthSnapshot = SnapshotUnitHealth(State.CardRun.ActiveBattle);
 	TSet<FName> FirstRoundDefeats;
 	while (!FGameXXKCardBattleAdapter::IsCardBattleTerminal(State))
 	{
@@ -1007,6 +1057,36 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 		if (DecisionCount >= Scenario.MaxDecisions)
 		{
 			return SetFailure(OutMetrics, OutError, TEXT("Simulation.MaxDecisions"), TEXT("Simulation reached MaxDecisions before a terminal result."));
+		}
+
+		if (CurrentRuntime.RoundNumber != LastBoundaryRound)
+		{
+			const TArray<TPair<FName, int32>> NewSnapshot = SnapshotUnitHealth(CurrentRuntime);
+			StagnantRoundBoundaries = (NewSnapshot == LastRoundHealthSnapshot)
+				? StagnantRoundBoundaries + 1
+				: 0;
+			LastRoundHealthSnapshot = NewSnapshot;
+			LastBoundaryRound = CurrentRuntime.RoundNumber;
+			DecisionsWithoutEnemyProgress = 0;
+			if (StagnantRoundBoundaries >= MaxStagnantRoundBoundaries)
+			{
+				OutMetrics.bVictory = false;
+				OutMetrics.bStalemateResolved = true;
+				OutMetrics.Rounds = CurrentRuntime.RoundNumber;
+				OutMetrics.RemainingPartyHealth = SumPartyHealth(CurrentRuntime);
+				OutMetrics.FailureReason = TEXT("Simulation.Defeat");
+				RecordAction(
+					CurrentRuntime,
+					CurrentRuntime,
+					TEXT("StalemateDefeat"),
+					NAME_None,
+					NAME_None,
+					NAME_None,
+					TArray<FGameXXKCardDamageResult>(),
+					OutMetrics,
+					OutTrace);
+				return true;
+			}
 		}
 
 		if (CurrentRuntime.Phase == EGameXXKCardBattlePhase::Player)
@@ -1024,7 +1104,12 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 			else
 			{
 				FGameXXKSimulationDecision Decision;
-				if (!ChooseSkilledDecision(State, Decision, &AdapterError))
+				if (DecisionsWithoutEnemyProgress >= MaxDecisionsWithoutEnemyProgress)
+				{
+					// A human player would end the turn here; the greedy evaluator never would.
+					Decision.bEndPlayerPhase = true;
+				}
+				else if (!ChooseSkilledDecision(State, Decision, &AdapterError))
 				{
 					return SetFailure(OutMetrics, OutError, TEXT("Simulation.PolicyFailed"), AdapterError);
 				}
@@ -1090,6 +1175,9 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 						PlayResult.AutomaticResolutionCount,
 						PlayResult.MaximumAutomaticQueueDepth,
 						&PlayResult);
+					DecisionsWithoutEnemyProgress = AnyLivingEnemyLostHealth(Before, State.CardRun.ActiveBattle)
+						? 0
+						: DecisionsWithoutEnemyProgress + 1;
 					++OutMetrics.ActivelyPlayedCards;
 				}
 				RecordFirstRoundDefeats(Before, State.CardRun.ActiveBattle, FirstRoundDefeats, OutMetrics);

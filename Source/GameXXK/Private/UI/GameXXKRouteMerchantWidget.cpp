@@ -31,8 +31,8 @@ namespace
 	const FVector2D MerchantRelicFrameSize(250.0f, 250.0f);
 	constexpr float MerchantColumnFraction = 0.23f;
 	constexpr float OffersColumnFraction = 0.77f;
-	constexpr int32 MerchantCardSlotCount = 3;
-	constexpr int32 MerchantRelicSlotCount = 3;
+	constexpr int32 MerchantCardSlotCount = 0;
+	constexpr int32 MerchantRelicSlotCount = 4;
 	constexpr int32 MerchantOfferSlotCount = MerchantCardSlotCount + MerchantRelicSlotCount;
 
 	static constexpr const TCHAR* CardFrameTexturePath = TEXT("/Game/GameXXK/UI/Cards/Textures/T_CardFrame_PSD057.T_CardFrame_PSD057");
@@ -846,33 +846,7 @@ void UGameXXKRouteMerchantWidget::UpdateLastActionErrorDisplay()
 
 FText UGameXXKRouteMerchantWidget::BuildReplacementEntryLabel(const FName ReplacementEntryId) const
 {
-	FString CardName = TEXT("未知路线牌");
-	FString QualityName;
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const FGameXXKRouteCardEntry* Entry = Subsystem
-		? Subsystem->GetRuntimeState().CardRun.RouteCardEntries.FindByPredicate([ReplacementEntryId](const FGameXXKRouteCardEntry& Candidate)
-		{
-			return Candidate.EntryId == ReplacementEntryId;
-		})
-		: nullptr;
-	if (Entry)
-	{
-		CardName = Entry->CardId.ToString();
-		if (const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(Entry->CardId))
-		{
-			CardName = Definition->DisplayName.ToString();
-		}
-		QualityName = FGameXXKCardQualityRules::GetDisplayName(Entry->CurrentQuality).ToString();
-	}
-
-	const FString QualitySuffix = QualityName.IsEmpty()
-		? FString()
-		: FString::Printf(TEXT(" · %s"), *QualityName);
-	return FText::FromString(FString::Printf(
-		TEXT("%s%s\n%s"),
-		*CardName,
-		*QualitySuffix,
-		*ReplacementEntryId.ToString()));
+	return FText::FromString(ReplacementEntryId.ToString());
 }
 
 void UGameXXKRouteMerchantWidget::ApplyOffer(

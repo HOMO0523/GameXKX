@@ -23,7 +23,6 @@ bool FGameXXKCardRouteLifecycleTest::RunTest(const FString& Parameters)
 		State.CardRun.bLoadoutLockedForRoute);
 	TestTrue(TEXT("a named task NPC can still join after the route lock but before combat"),
 		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, TEXT("Npc.YueBai"), {}));
-	State.CardRun.RouteCardIds = { TEXT("Hero.FlyingCloud"), TEXT("Npc.YueBai.MoonWard") };
 	State.CardRun.PendingEvent.SourceNodeId = 71;
 	State.CardRun.PendingEvent.EventNpcId = TEXT("Npc.YueBai");
 	State.CardRun.RouteMerchant.SourceNodeId = 71;
@@ -36,11 +35,10 @@ bool FGameXXKCardRouteLifecycleTest::RunTest(const FString& Parameters)
 	MerchantOffer.Quality = EGameXXKCardQuality::Common;
 	MerchantOffer.Price = 15;
 	State.CardRun.RouteMerchant.Offers.Add(MerchantOffer);
-	TestTrue(TEXT("failing a route removes temporary NPC, transient route cards, and pending events"),
+	TestTrue(TEXT("failing a route removes the temporary NPC and pending events"),
 		UGameXXKMVPRules::FailDungeonToTown(State));
 	TestFalse(TEXT("the returned town state no longer has a route loadout lock"), State.CardRun.bLoadoutLockedForRoute);
 	TestTrue(TEXT("the returned town state removes the temporary task NPC"), State.CardRun.ActiveTemporaryQuestNpcId.IsNone());
-	TestTrue(TEXT("the returned town state removes route-only cards"), State.CardRun.RouteCardIds.IsEmpty());
 	TestTrue(TEXT("the returned town state removes pending events"), State.CardRun.PendingEvent.EventNpcId.IsNone());
 	const FGameXXKRouteMerchantState EmptyMerchant;
 	TestTrue(TEXT("the returned town state removes the terminal route's merchant snapshot"),

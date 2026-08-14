@@ -174,8 +174,7 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 		ExpectEffect(*this, ZhaiZhu->Id, ZhaiZhu->Effects, TEXT("协战者护甲8"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestAttackAlly, 8);
 		ExpectEffect(*this, ZhaiZhu->Id, ZhaiZhu->Effects, TEXT("协战者格挡1"), EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::HighestAttackAlly, 1, EGameXXKCardStatus::Block);
 		ExpectEffect(*this, ZhaiZhu->Id, ZhaiZhu->Effects, TEXT("协战100%"), EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::SelectedTarget, 100, EGameXXKCardStatus::None, EGameXXKCardEffectSource::HighestAttackAlly);
-		TestEqual(TEXT("寨主号令 has one Charge payload"), ZhaiZhu->ChargeEffects.Num(), 1);
-		ExpectModifierEffect(*this, ZhaiZhu->Id, ZhaiZhu->ChargeEffects, TEXT("冲锋重放下一主动牌基础"), EGameXXKCardBattleModifierTrigger::AfterNextActiveCard, EGameXXKCardEffectType::ReplayTriggeredCardBase, EGameXXKCardEffectTarget::PlayedCard, 1, 1);
+		TestEqual(TEXT("寨主号令 has no Charge payload after the delayed-replay removal"), ZhaiZhu->ChargeEffects.Num(), 0);
 		TestEqual(TEXT("寨主号令 has one Finish payload"), ZhaiZhu->FinishEffects.Num(), 1);
 		ExpectEffect(*this, ZhaiZhu->Id, ZhaiZhu->FinishEffects, TEXT("收招全队护甲6"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6);
 	}

@@ -432,9 +432,8 @@ ID：Npc.TusiChief.ZhaiZhuHaoLing
 获取：NPC 固定 4 选 3 卡池
 完整效果：
 基础：攻击最高友方获得2层气势；攻击最高友方获得16点护甲；攻击最高友方登记1次格挡；所选目标造成200%攻击伤害
-冲锋：持续效果：下一张主动牌结算后，重放本次触发牌的基础效果；仅主动出牌触发；触发1次后失效
 收招：全体友方获得6点护甲
-实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=HighestAttackAlly,Magnitude=1,Status=Momentum}; Effect{Type=AddArmor,Target=HighestAttackAlly,Magnitude=8}; Effect{Type=RegisterReaction,Target=HighestAttackAlly,Magnitude=1,Status=Block}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=100,Source=HighestAttackAlly}] | Charge=[Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=AfterNextActiveCard,Effect=ReplayTriggeredCardBase,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}] | Finish=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=6}]
+实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=HighestAttackAlly,Magnitude=1,Status=Momentum}; Effect{Type=AddArmor,Target=HighestAttackAlly,Magnitude=8}; Effect{Type=RegisterReaction,Target=HighestAttackAlly,Magnitude=1,Status=Block}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=100,Source=HighestAttackAlly}] | Finish=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=6}]
 
 [038] 石门守势
 ID：Npc.TusiChief.ShiMenShouShi

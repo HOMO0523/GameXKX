@@ -9,8 +9,8 @@ struct FGameXXKRuntimeState;
 class GAMEXXK_API FGameXXKRouteMerchantRules final
 {
 public:
-	static constexpr int32 CardSlotCount = 3;
-	static constexpr int32 RelicSlotCount = 3;
+	static constexpr int32 CardSlotCount = 0;
+	static constexpr int32 RelicSlotCount = 4;
 	static constexpr int32 TotalSlotCount = CardSlotCount + RelicSlotCount;
 
 	/** Cost for the next refresh at the supplied persisted refresh count. Zero means invalid. */

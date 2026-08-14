@@ -23,7 +23,6 @@ class GAMEXXK_API FGameXXKSaveMigration final
 public:
 	static constexpr int32 ThreeChapterRouteIntroducedSaveVersion = 8;
 	static constexpr int32 RouteMerchantSnapshotIntroducedSaveVersion = 8;
-	static constexpr int32 RouteCardEntriesIntroducedSaveVersion = 9;
 	static constexpr int32 RouteEconomyIntroducedSaveVersion = 9;
 	static constexpr int32 RouteMerchantStockSchemaIntroducedSaveVersion = 10;
 	static constexpr int32 MetaShopIntroducedSaveVersion = 11;
@@ -32,7 +31,9 @@ public:
 	static constexpr int32 BladePartnerCardsIntroducedSaveVersion = 14;
 	static constexpr int32 QuestFollowerAndCurrentEnemyCodexIntroducedSaveVersion = 15;
 	static constexpr int32 BattleRewardTieringIntroducedSaveVersion = 16;
-	static constexpr int32 CurrentSaveVersion = 16;
+	/** v17: route-card entries (RouteCardIds/RouteCardEntries) were removed; BossCardSlots were added (empty default). */
+	static constexpr int32 BossCardSlotsIntroducedSaveVersion = 17;
+	static constexpr int32 CurrentSaveVersion = 17;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

@@ -177,11 +177,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool ResolveBattleVictory(bool bBossBattle);
 
-	bool ResolvePendingRouteRewardChoiceAndFinish(
-		FName RewardCardId,
-		FName ReplacementEntryId = NAME_None,
-		FString* OutError = nullptr);
-
 	/** Commits one tiered battle reward option through the rules, then the victory gate advances the route. */
 	bool ResolvePendingBattleRewardChoiceAndFinish(
 		int32 OptionIndex,

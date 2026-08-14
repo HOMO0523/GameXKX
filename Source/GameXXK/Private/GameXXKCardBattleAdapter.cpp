@@ -10,9 +10,7 @@
 #include "GameXXKEnemyCatalog.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRelicCatalog.h"
-#include "GameXXKRouteCardRecipe.h"
 #include "GameXXKRouteEncounterCatalog.h"
-#include "GameXXKRunDeckRules.h"
 #include "Misc/Crc.h"
 
 namespace
@@ -20,24 +18,13 @@ namespace
 	constexpr int32 HeroSelectedCardCount = 8;
 	constexpr int32 PermanentCompanionSelectedCardCount = 5;
 	constexpr int32 QuestNpcSelectedCardCount = 3;
-	constexpr int32 BaseRouteCardCount = 2;
-	constexpr int32 StartingDeckCardCount = 18;
-	constexpr int32 MaximumDeckCardCount = 30;
+	// The shared battle deck is now exclusively the player's configured cards
+	// plus boss-card slots; no route cards are materialized (2026-08-14).
+	constexpr int32 StartingDeckCardCount = 8;
+	constexpr int32 MaximumDeckCardCount = 8 + 5 + 3 + FGameXXKCardRunState::MaxBossCardSlots;
 
 	const FName HeroUnitId(TEXT("Player"));
 	const FName SpiralHornDeerSpringHealIntentId(TEXT("SpringHeal"));
-	const TArray<FName> BaseRouteCards = {
-		FName(TEXT("Route.General.PoJiaTuCi")),
-		FName(TEXT("Route.General.ShouShiHuiYuan"))};
-	const TArray<FName> MissingPartyFillCards = {
-		FName(TEXT("Route.General.QingShenQuShi")),
-		FName(TEXT("Route.General.TuNaJue")),
-		FName(TEXT("Route.General.ZhiXueSan")),
-		FName(TEXT("Route.General.FeiZhen")),
-		FName(TEXT("Route.General.YanDun")),
-		FName(TEXT("Route.General.TieJiLi")),
-		FName(TEXT("Route.General.LinZhenMoRen")),
-		FName(TEXT("Route.Terrain.XingJunBuZhen"))};
 
 	bool SetFailure(FString* OutError, const TCHAR* Error)
 	{
@@ -427,83 +414,6 @@ namespace
 	{
 		OutInstances.Reset();
 		const FGameXXKCardRunState& Run = State.CardRun;
-		if (!Run.RouteCardEntries.IsEmpty())
-		{
-			int32 CapacityUsed = 0;
-			if (!FGameXXKRunDeckRules::GetCapacityUsed(Run.RouteCardEntries, CapacityUsed, OutError))
-			{
-				return false;
-			}
-			if (CapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity)
-			{
-				return SetFailure(OutError, TEXT("The persisted route deck exceeds its twelve-card route capacity."));
-			}
-
-			TArray<FGameXXKRouteCardEntry> SortedEntries = Run.RouteCardEntries;
-			SortedEntries.Sort([](const FGameXXKRouteCardEntry& Left, const FGameXXKRouteCardEntry& Right)
-			{
-				return Left.AcquisitionOrdinal < Right.AcquisitionOrdinal;
-			});
-			TSet<int32> UsedMaterializationOrdinals;
-			OutInstances.Reserve(SortedEntries.Num() + Run.RouteCardIds.Num());
-			for (const FGameXXKRouteCardEntry& Entry : SortedEntries)
-			{
-				if (!FGameXXKCardCatalog::FindCardDefinition(Entry.CardId) || Entry.OwnerUnitId.IsNone())
-				{
-					return SetFailure(OutError, TEXT("A persisted route-card entry references an unknown card or invalid owner."));
-				}
-				FGameXXKCardInstance& Instance = OutInstances.AddDefaulted_GetRef();
-				Instance.InstanceId = FName(*FString::Printf(
-					TEXT("CardRun.%d.%03d"),
-					SourceNodeId,
-					Entry.AcquisitionOrdinal));
-				Instance.CardId = Entry.CardId;
-				Instance.CurrentQuality = Entry.CurrentQuality;
-				Instance.OwnerUnitId = Entry.OwnerUnitId;
-				Instance.SourceEntryId = Entry.EntryId;
-				Instance.AcquisitionOrdinal = Entry.AcquisitionOrdinal;
-				UsedMaterializationOrdinals.Add(Entry.AcquisitionOrdinal);
-			}
-
-			// TODO: Remove this compatibility projection once pre-entry route rewards have a save migration.
-			int32 CompatibilityOrdinal = 0;
-			for (const FName CardId : Run.RouteCardIds)
-			{
-				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
-				if (!Definition || !IsRouteCard(CardId))
-				{
-					return SetFailure(OutError, TEXT("The legacy route-local deck contains an invalid reward card."));
-				}
-				while (UsedMaterializationOrdinals.Contains(CompatibilityOrdinal))
-				{
-					if (CompatibilityOrdinal == MAX_int32)
-					{
-						return SetFailure(OutError, TEXT("The legacy route-card compatibility sequence is exhausted."));
-					}
-					++CompatibilityOrdinal;
-				}
-				FGameXXKCardInstance& Instance = OutInstances.AddDefaulted_GetRef();
-				Instance.InstanceId = FName(*FString::Printf(
-					TEXT("CardRun.%d.%03d"),
-					SourceNodeId,
-					CompatibilityOrdinal));
-				Instance.CardId = Definition->Id;
-				Instance.CurrentQuality = Definition->BaseQuality;
-				Instance.OwnerUnitId = HeroUnitId;
-				Instance.SourceEntryId = FName(*FString::Printf(
-					TEXT("LegacyRouteEntry.%d.%03d"),
-					SourceNodeId,
-					CompatibilityOrdinal));
-				Instance.AcquisitionOrdinal = CompatibilityOrdinal;
-				UsedMaterializationOrdinals.Add(CompatibilityOrdinal);
-			}
-
-			if (OutInstances.Num() < StartingDeckCardCount || OutInstances.Num() > MaximumDeckCardCount)
-			{
-				return SetFailure(OutError, TEXT("The materialized persisted route deck is outside its 18-30 card contract."));
-			}
-			return true;
-		}
 		if (!ValidateHeroLoadout(Run, OutError))
 		{
 			return false;
@@ -549,16 +459,6 @@ namespace
 				}
 			}
 		}
-		else
-		{
-			for (int32 Index = 0; Index < PermanentCompanionSelectedCardCount; ++Index)
-			{
-				if (!MissingPartyFillCards.IsValidIndex(MissingFillIndex) || !AddInstance(MissingPartyFillCards[MissingFillIndex++], HeroUnitId))
-				{
-					return SetFailure(OutError, TEXT("The deterministic missing-companion fill sequence is incomplete."));
-				}
-			}
-		}
 
 		if (Run.ActiveTemporaryQuestNpcId != NAME_None)
 		{
@@ -575,29 +475,13 @@ namespace
 				}
 			}
 		}
-		else
-		{
-			for (int32 Index = 0; Index < QuestNpcSelectedCardCount; ++Index)
-			{
-				if (!MissingPartyFillCards.IsValidIndex(MissingFillIndex) || !AddInstance(MissingPartyFillCards[MissingFillIndex++], HeroUnitId))
-				{
-					return SetFailure(OutError, TEXT("The deterministic missing-NPC fill sequence is incomplete."));
-				}
-			}
-		}
 
-		for (const FName CardId : BaseRouteCards)
-		{
-			if (!AddInstance(CardId, HeroUnitId))
-			{
-				return false;
-			}
-		}
-		for (const FName CardId : Run.RouteCardIds)
+		// Boss cards are the only non-character cards allowed into the player deck.
+		for (const FName CardId : Run.BossCardSlots)
 		{
 			if (!IsRouteCard(CardId) || !AddInstance(CardId, HeroUnitId))
 			{
-				return SetFailure(OutError, TEXT("The route-local deck contains an invalid reward card."));
+				return SetFailure(OutError, TEXT("The boss-card slot contains an invalid card."));
 			}
 		}
 
@@ -1958,75 +1842,6 @@ namespace
 			: INDEX_NONE;
 	}
 
-	bool ValidateRouteRewardEntryAuthority(
-		const FGameXXKRuntimeState& State,
-		const bool bRequireIncrementableEntryOrdinal,
-		int32& OutCapacityUsed,
-		FString* OutError)
-	{
-		OutCapacityUsed = 0;
-		const FGameXXKCardRunState& Run = State.CardRun;
-		if (!State.bDungeonActive || !Run.bLoadoutLockedForRoute)
-		{
-			return SetFailure(OutError, TEXT("Route rewards require an active route with its loadout locked."));
-		}
-		if (!Run.RouteCardEntries.IsEmpty() && !Run.RouteCardIds.IsEmpty())
-		{
-			return SetFailure(OutError, TEXT("Route rewards reject mixed RouteCardEntries and legacy RouteCardIds authority."));
-		}
-		if (Run.RouteCardEntries.IsEmpty())
-		{
-			return SetFailure(OutError, Run.RouteCardIds.IsEmpty()
-				? TEXT("Route rewards require non-empty stable RouteCardEntries authority.")
-				: TEXT("Legacy-only RouteCardIds cannot acquire a new stable route reward."));
-		}
-		if (Run.RouteProgress.RootSeed == 0)
-		{
-			return SetFailure(OutError, TEXT("Route rewards require a non-zero route root seed."));
-		}
-		if (Run.NextRouteCardEntryOrdinal < 0
-			|| (bRequireIncrementableEntryOrdinal && Run.NextRouteCardEntryOrdinal == MAX_int32))
-		{
-			return SetFailure(OutError, TEXT("The next route-card entry ordinal must be non-negative and safely incrementable."));
-		}
-		if (!FGameXXKRunDeckRules::GetCapacityUsed(Run.RouteCardEntries, OutCapacityUsed, OutError))
-		{
-			return false;
-		}
-		if (OutCapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity)
-		{
-			return SetFailure(OutError, TEXT("The stable route deck already exceeds its twelve-card acquisition capacity."));
-		}
-
-		int32 MaximumEntryOrdinal = INDEX_NONE;
-		for (const FGameXXKRouteCardEntry& Entry : Run.RouteCardEntries)
-		{
-			if (!FGameXXKCardCatalog::FindCardDefinition(Entry.CardId) || Entry.OwnerUnitId.IsNone())
-			{
-				return SetFailure(OutError, TEXT("A stable route-card entry references an unknown catalog card or empty owner."));
-			}
-			FName ExpectedEntryId;
-			if (!FGameXXKRouteCardRecipe::MakeStableEntryId(
-				Run.RouteProgress.RootSeed,
-				Entry.AcquisitionOrdinal,
-				ExpectedEntryId,
-				OutError))
-			{
-				return false;
-			}
-			if (Entry.EntryId != ExpectedEntryId)
-			{
-				return SetFailure(OutError, TEXT("A stable route-card EntryId does not match the route root seed and acquisition ordinal."));
-			}
-			MaximumEntryOrdinal = FMath::Max(MaximumEntryOrdinal, Entry.AcquisitionOrdinal);
-		}
-		if (Run.NextRouteCardEntryOrdinal <= MaximumEntryOrdinal)
-		{
-			return SetFailure(OutError, TEXT("The next route-card entry ordinal must follow every persisted entry."));
-		}
-		return true;
-	}
-
 	bool ValidatePendingRouteRewardGate(
 		const FGameXXKRuntimeState& State,
 		const bool bRequirePendingReward,
@@ -2092,64 +1907,6 @@ namespace
 		return true;
 	}
 
-	bool BuildPendingRouteRewardCandidate(
-		const FGameXXKRuntimeState& State,
-		const FName RewardCardId,
-		FGameXXKRouteCardEntry& OutCandidate,
-		FString* OutError)
-	{
-		OutCandidate = FGameXXKRouteCardEntry();
-		int32 CapacityUsed = 0;
-		if (!ValidateRouteRewardEntryAuthority(State, true, CapacityUsed, OutError)
-			|| !ValidatePendingRouteRewardGate(State, true, OutError))
-		{
-			return false;
-		}
-		const FGameXXKCardRunState& Run = State.CardRun;
-		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(RewardCardId);
-		const bool bInTieredOffer = Run.PendingReward.Options.ContainsByPredicate(
-			[RewardCardId](const FGameXXKBattleRewardOption& Option)
-			{
-				return Option.CardId == RewardCardId
-					&& (Option.Kind == EGameXXKBattleRewardKind::BossCard
-						|| Option.Kind == EGameXXKBattleRewardKind::DeckCardUpgrade);
-			});
-		if (RewardCardId.IsNone()
-			|| (!Run.PendingReward.CardIds.Contains(RewardCardId) && !bInTieredOffer)
-			|| !Definition
-			|| Definition->Owner != EGameXXKCardOwner::Route)
-		{
-			return SetFailure(OutError, TEXT("The selected route reward is not a catalog card in the saved pending offer."));
-		}
-
-		FGameXXKRouteCardEntry Candidate;
-		Candidate.CardId = RewardCardId;
-		Candidate.CurrentQuality = Definition->BaseQuality;
-		Candidate.SourceKind = EGameXXKRouteCardSourceKind::RouteReward;
-		Candidate.OwnerUnitId = HeroUnitId;
-		Candidate.bTemporaryRouteCard = true;
-		Candidate.bConsumesRouteCapacity = true;
-		Candidate.AcquisitionOrdinal = Run.NextRouteCardEntryOrdinal;
-		if (!FGameXXKRouteCardRecipe::MakeStableEntryId(
-			Run.RouteProgress.RootSeed,
-			Candidate.AcquisitionOrdinal,
-			Candidate.EntryId,
-			OutError))
-		{
-			return false;
-		}
-		OutCandidate = MoveTemp(Candidate);
-		return true;
-	}
-
-	bool HasEpicRouteCardEntry(const FGameXXKCardRunState& Run, const FName CardId)
-	{
-		return Run.RouteCardEntries.ContainsByPredicate([CardId](const FGameXXKRouteCardEntry& Entry)
-		{
-			return Entry.CardId == CardId && Entry.CurrentQuality == EGameXXKCardQuality::Epic;
-		});
-	}
-
 	void AppendEligibleRouteCards(
 		const FGameXXKCardRunState& Run,
 		const TFunctionRef<bool(const FGameXXKCardDefinition&)>& Predicate,
@@ -2159,7 +1916,7 @@ namespace
 		{
 			if (Definition.Owner == EGameXXKCardOwner::Route
 				&& Predicate(Definition)
-				&& !HasEpicRouteCardEntry(Run, Definition.Id))
+				&& !Run.BossCardSlots.Contains(Definition.Id))
 			{
 				OutCards.Add(Definition.Id);
 			}
@@ -2360,78 +2117,6 @@ bool FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
 		Run.ActiveTemporaryQuestNpcId = QuestNpcId;
 	}
 
-	if (!Candidate.bDungeonActive || Run.RouteCardEntries.IsEmpty())
-	{
-		InOutState = MoveTemp(Candidate);
-		return true;
-	}
-	if (Run.RouteProgress.RootSeed == 0)
-	{
-		return SetFailure(OutError, TEXT("An active canonical route requires a non-zero root seed before task-NPC slots can change."));
-	}
-
-	int32 CapacityUsed = 0;
-	if (!FGameXXKRunDeckRules::GetCapacityUsed(Run.RouteCardEntries, CapacityUsed, OutError)
-		|| CapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity)
-	{
-		return CapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity
-			? SetFailure(OutError, TEXT("The persisted route deck exceeds its twelve-card route capacity."))
-			: false;
-	}
-	TArray<FGameXXKRouteCardEntry> RebuiltBaseEntries;
-	if (!FGameXXKRouteCardRecipe::BuildBaseEntries(
-		Candidate,
-		Run.RouteProgress.RootSeed,
-		RebuiltBaseEntries,
-		OutError))
-	{
-		return false;
-	}
-
-	constexpr int32 FirstSupportOrdinal = HeroSelectedCardCount + PermanentCompanionSelectedCardCount;
-	constexpr int32 LastSupportOrdinal = FirstSupportOrdinal + QuestNpcSelectedCardCount - 1;
-	for (int32 Ordinal = FirstSupportOrdinal; Ordinal <= LastSupportOrdinal; ++Ordinal)
-	{
-		int32 ExistingIndex = INDEX_NONE;
-		for (int32 Index = 0; Index < Run.RouteCardEntries.Num(); ++Index)
-		{
-			if (Run.RouteCardEntries[Index].AcquisitionOrdinal != Ordinal)
-			{
-				continue;
-			}
-			if (ExistingIndex != INDEX_NONE)
-			{
-				return SetFailure(OutError, TEXT("The canonical task-NPC support ordinal is duplicated."));
-			}
-			ExistingIndex = Index;
-		}
-		const FGameXXKRouteCardEntry* RebuiltEntry = RebuiltBaseEntries.FindByPredicate([Ordinal](const FGameXXKRouteCardEntry& Entry)
-		{
-			return Entry.AcquisitionOrdinal == Ordinal;
-		});
-		if (ExistingIndex == INDEX_NONE || !RebuiltEntry)
-		{
-			return SetFailure(OutError, TEXT("The canonical task-NPC support slots are incomplete."));
-		}
-
-		const FGameXXKRouteCardEntry& ExistingEntry = Run.RouteCardEntries[ExistingIndex];
-		if (ExistingEntry.bConsumesRouteCapacity
-			|| (ExistingEntry.SourceKind != EGameXXKRouteCardSourceKind::QuestNpcBase
-				&& ExistingEntry.SourceKind != EGameXXKRouteCardSourceKind::RouteBase)
-			|| ExistingEntry.EntryId != RebuiltEntry->EntryId)
-		{
-			return SetFailure(OutError, TEXT("A canonical task-NPC support slot has unexpected source or stable identity."));
-		}
-		Run.RouteCardEntries[ExistingIndex] = *RebuiltEntry;
-	}
-
-	if (!FGameXXKRunDeckRules::GetCapacityUsed(Run.RouteCardEntries, CapacityUsed, OutError)
-		|| CapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity)
-	{
-		return CapacityUsed > FGameXXKRunDeckRules::MaxRouteCardCapacity
-			? SetFailure(OutError, TEXT("Task-NPC slot replacement exceeds the route-card capacity."))
-			: false;
-	}
 	InOutState = MoveTemp(Candidate);
 	return true;
 }
@@ -3136,129 +2821,6 @@ bool FGameXXKCardBattleAdapter::ResolveEnemyPhase(
 	return true;
 }
 
-bool FGameXXKCardBattleAdapter::CreateRouteRewardOffer(
-	FGameXXKRuntimeState& InOutState,
-	const EGameXXKNodeKind NodeKind,
-	const int32 SourceNodeId,
-	const int32 ChoiceSeed,
-	TArray<FName>& OutCardIds,
-	FString* OutError)
-{
-	if (OutError)
-	{
-		OutError->Reset();
-	}
-	OutCardIds.Reset();
-	if (SourceNodeId < 0)
-	{
-		return SetFailure(OutError, TEXT("Route rewards require a non-negative source node."));
-	}
-
-	FGameXXKRuntimeState CandidateState = InOutState;
-	if (!EnsureCardRunInitialized(CandidateState, OutError))
-	{
-		return false;
-	}
-	int32 CapacityUsed = 0;
-	if (!ValidateRouteRewardEntryAuthority(CandidateState, false, CapacityUsed, OutError)
-		|| !ValidatePendingRouteRewardGate(CandidateState, false, OutError))
-	{
-		return false;
-	}
-
-	FGameXXKCardRunState& Run = CandidateState.CardRun;
-	if (!Run.PendingReward.CardIds.IsEmpty())
-	{
-		if (Run.PendingReward.SourceNodeId != SourceNodeId)
-		{
-			return SetFailure(OutError, TEXT("A different route reward source cannot replace the saved pending offer."));
-		}
-		OutCardIds = Run.PendingReward.CardIds;
-		return true;
-	}
-	if (!IsRewardNodeKind(NodeKind) || ChoiceSeed == 0)
-	{
-		return SetFailure(OutError, TEXT("A new route reward requires a battle, elite, or boss node and a non-zero choice seed."));
-	}
-	if (SourceNodeId != GetActiveRewardSourceNodeId(CandidateState))
-	{
-		return SetFailure(OutError, TEXT("The route reward source does not match the active card-battle victory."));
-	}
-	if (Run.NextRewardOrdinal < 0 || Run.NextRewardOrdinal == MAX_int32)
-	{
-		return SetFailure(OutError, TEXT("The next route reward ordinal must be non-negative and safely incrementable."));
-	}
-
-	TArray<FName> AllEligible;
-	AppendEligibleRouteCards(Run, [](const FGameXXKCardDefinition&)
-	{
-		return true;
-	}, AllEligible);
-	TArray<FName> GeneralOrTerrain;
-	AppendEligibleRouteCards(Run, [](const FGameXXKCardDefinition& Definition)
-	{
-		return Definition.AcquisitionKey == TEXT("Route.General") || Definition.AcquisitionKey == TEXT("Route.Terrain");
-	}, GeneralOrTerrain);
-	TArray<FName> TerrainCards;
-	AppendEligibleRouteCards(Run, [](const FGameXXKCardDefinition& Definition)
-	{
-		return Definition.AcquisitionKey == TEXT("Route.Terrain");
-	}, TerrainCards);
-	TArray<FName> RareCards;
-	AppendEligibleRouteCards(Run, [](const FGameXXKCardDefinition& Definition)
-	{
-		return Definition.Rarity == EGameXXKCardRarity::Rare;
-	}, RareCards);
-
-	uint32 RandomState = static_cast<uint32>(ChoiceSeed);
-	TArray<FName> Picks;
-	if (NodeKind == EGameXXKNodeKind::Boss)
-	{
-		const bool bTiger = CandidateState.ActiveBattleEnemies.ContainsByPredicate([](const FGameXXKBattleRuntimeUnit& Enemy)
-		{
-			return Enemy.Id == TEXT("Tiger");
-		});
-		const FName BossAcquisitionKey = bTiger ? FName(TEXT("Route.Boss.Tiger")) : FName(TEXT("Route.Boss.BlackBear"));
-		TArray<FName> BossCards;
-		AppendEligibleRouteCards(Run, [BossAcquisitionKey](const FGameXXKCardDefinition& Definition)
-		{
-			return Definition.AcquisitionKey == BossAcquisitionKey;
-		}, BossCards);
-		if (!AddDeterministicRewardFromPool(BossCards, RandomState, Picks))
-		{
-			AddDeterministicRewardFromPool(RareCards, RandomState, Picks);
-		}
-	}
-	else if (NodeKind == EGameXXKNodeKind::Elite)
-	{
-		if (!AddDeterministicRewardFromPool(RareCards, RandomState, Picks))
-		{
-			AddDeterministicRewardFromPool(AllEligible, RandomState, Picks);
-		}
-	}
-	else
-	{
-		AddDeterministicRewardFromPool(GeneralOrTerrain, RandomState, Picks);
-		AddDeterministicRewardFromPool(GeneralOrTerrain, RandomState, Picks);
-		AddDeterministicRewardFromPool(TerrainCards, RandomState, Picks);
-	}
-	while (Picks.Num() < 3 && AddDeterministicRewardFromPool(AllEligible, RandomState, Picks))
-	{
-	}
-	if (Picks.Num() != 3)
-	{
-		return SetFailure(OutError, TEXT("The route reward catalog cannot supply three distinct legal cards."));
-	}
-	Run.PendingReward.SourceNodeId = SourceNodeId;
-	Run.PendingReward.ChoiceSeed = ChoiceSeed;
-	Run.PendingReward.CardIds = Picks;
-	Run.PendingReward.bRequiresRouteCardReplacement = false;
-	++Run.NextRewardOrdinal;
-	InOutState = MoveTemp(CandidateState);
-	OutCardIds = MoveTemp(Picks);
-	return true;
-}
-
 EGameXXKCardQuality FGameXXKCardBattleAdapter::GetConfiguredCardQuality(
 	const FGameXXKCardRunState& CardRun,
 	const FName CardId)
@@ -3293,26 +2855,52 @@ EGameXXKCardQuality FGameXXKCardBattleAdapter::GetNextCardQuality(const EGameXXK
 bool FGameXXKCardBattleAdapter::CommitBossCardReward(
 	FGameXXKRuntimeState& InOutState,
 	const FName RewardCardId,
-	const FName ReplacementEntryId,
 	FString* OutError)
 {
 	FGameXXKRuntimeState CandidateState = InOutState;
-	FGameXXKRouteCardEntry CandidateEntry;
-	if (!BuildPendingRouteRewardCandidate(CandidateState, RewardCardId, CandidateEntry, OutError))
+	if (!ValidatePendingRouteRewardGate(CandidateState, true, OutError))
 	{
 		return false;
 	}
-	FGameXXKRouteCardAcquisitionPreview AppliedPreview;
-	if (!FGameXXKRunDeckRules::CommitAcquisition(
-		CandidateState.CardRun,
-		CandidateEntry,
-		ReplacementEntryId,
-		AppliedPreview,
-		OutError))
+
+	const FGameXXKCardRunState& Run = CandidateState.CardRun;
+	const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(RewardCardId);
+	const bool bInTieredOffer = Run.PendingReward.Options.ContainsByPredicate(
+		[RewardCardId](const FGameXXKBattleRewardOption& Option)
+		{
+			return Option.CardId == RewardCardId && Option.Kind == EGameXXKBattleRewardKind::BossCard;
+		});
+	if (RewardCardId.IsNone() || !bInTieredOffer || !Definition || Definition->Owner != EGameXXKCardOwner::Route)
 	{
-		return false;
+		return SetFailure(OutError, TEXT("The selected boss card is not part of the saved boss reward offer."));
 	}
-	++CandidateState.CardRun.NextRouteCardEntryOrdinal;
+	if (Run.BossCardSlots.Contains(RewardCardId))
+	{
+		return SetFailure(OutError, TEXT("The selected boss card already occupies a boss card slot."));
+	}
+	if (Run.BossCardSlots.Num() >= FGameXXKCardRunState::MaxBossCardSlots)
+	{
+		return SetFailure(OutError, TEXT("All boss card slots are full; no further boss card can be acquired."));
+	}
+
+	// Boss cards enter the player deck through one of the three dedicated
+	// slots, and the chosen card is granted straight into the current hand.
+	CandidateState.CardRun.BossCardSlots.Add(RewardCardId);
+	if (CandidateState.CardRun.bHasActiveCardBattle)
+	{
+		FGameXXKCardInstance BossInstance;
+		BossInstance.InstanceId = FName(*FString::Printf(
+			TEXT("BossSlot.%d.%s"),
+			CandidateState.CardRun.BossCardSlots.Num(),
+			*RewardCardId.ToString()));
+		BossInstance.CardId = RewardCardId;
+		BossInstance.CurrentQuality = Definition->BaseQuality;
+		BossInstance.OwnerUnitId = HeroUnitId;
+		BossInstance.SourceEntryId = BossInstance.InstanceId;
+		BossInstance.AcquisitionOrdinal = CandidateState.CardRun.NextRewardOrdinal;
+		CandidateState.CardRun.ActiveBattle.Deck.Hand.Add(MoveTemp(BossInstance));
+	}
+
 	InOutState = MoveTemp(CandidateState);
 	return true;
 }
@@ -3338,19 +2926,21 @@ bool FGameXXKCardBattleAdapter::CreateTieredBattleRewardOffer(
 	{
 		return false;
 	}
-	int32 CapacityUsed = 0;
-	if (!ValidateRouteRewardEntryAuthority(CandidateState, false, CapacityUsed, OutError)
-		|| !ValidatePendingRouteRewardGate(CandidateState, false, OutError))
+	if (!CandidateState.bDungeonActive || !CandidateState.CardRun.bLoadoutLockedForRoute)
+	{
+		return SetFailure(OutError, TEXT("Battle rewards require an active route with its loadout locked."));
+	}
+	if (!ValidatePendingRouteRewardGate(CandidateState, false, OutError))
 	{
 		return false;
 	}
 
 	FGameXXKCardRunState& Run = CandidateState.CardRun;
-	if (!Run.PendingReward.Options.IsEmpty() || !Run.PendingReward.CardIds.IsEmpty())
+	if (!Run.PendingReward.Options.IsEmpty())
 	{
 		if (Run.PendingReward.SourceNodeId != SourceNodeId)
 		{
-			return SetFailure(OutError, TEXT("A different route reward source cannot replace the saved pending offer."));
+			return SetFailure(OutError, TEXT("A different battle reward source cannot replace the saved pending offer."));
 		}
 		return true;
 	}
@@ -3449,10 +3039,17 @@ bool FGameXXKCardBattleAdapter::CreateTieredBattleRewardOffer(
 		}, BossCards);
 		if (BossCards.IsEmpty())
 		{
-			return SetFailure(OutError, TEXT("The boss reward pool is empty."));
+			// Every boss card already occupies a boss slot; fall back to a relic.
+			if (!PickRelic())
+			{
+				return SetFailure(OutError, TEXT("The boss reward pool is empty and no relic fallback is available."));
+			}
 		}
-		const int32 BossPick = static_cast<int32>(NextRandom(RandomState) % static_cast<uint32>(BossCards.Num()));
-		AddOption(EGameXXKBattleRewardKind::BossCard, BossCards[BossPick], NAME_None);
+		else
+		{
+			const int32 BossPick = static_cast<int32>(NextRandom(RandomState) % static_cast<uint32>(BossCards.Num()));
+			AddOption(EGameXXKBattleRewardKind::BossCard, BossCards[BossPick], NAME_None);
+		}
 		if (!PickDeckCard())
 		{
 			PickRelic();
@@ -3510,103 +3107,35 @@ bool FGameXXKCardBattleAdapter::PreviewPendingRouteReward(
 		OutError->Reset();
 	}
 	OutPreview = FGameXXKRouteCardAcquisitionPreview();
-	FGameXXKRouteCardEntry Candidate;
-	if (!BuildPendingRouteRewardCandidate(State, RewardCardId, Candidate, OutError))
+	if (!ValidatePendingRouteRewardGate(State, true, OutError))
 	{
 		return false;
 	}
 
-	FGameXXKRouteCardAcquisitionPreview CandidatePreview;
-	if (!FGameXXKRunDeckRules::PreviewAcquisition(
-		State.CardRun,
-		Candidate,
-		ReplacementEntryId,
-		CandidatePreview,
-		OutError))
-	{
-		return false;
-	}
-	OutPreview = MoveTemp(CandidatePreview);
-	return true;
-}
-
-bool FGameXXKCardBattleAdapter::ChoosePendingRouteReward(
-	FGameXXKRuntimeState& InOutState,
-	const FName RewardCardId,
-	const FName ReplacementEntryId,
-	FString* OutError)
-{
-	if (OutError)
-	{
-		OutError->Reset();
-	}
-
-	FGameXXKRuntimeState CandidateState = InOutState;
-	FGameXXKRouteCardAcquisitionPreview InitialPreview;
-	if (!PreviewPendingRouteReward(
-		CandidateState,
-		RewardCardId,
-		NAME_None,
-		InitialPreview,
-		OutError))
-	{
-		return false;
-	}
-
-	if (InitialPreview.Decision == EGameXXKRouteCardAcquisitionDecision::CanCommit)
-	{
-		if (!ReplacementEntryId.IsNone())
+	const FGameXXKCardRunState& Run = State.CardRun;
+	const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(RewardCardId);
+	const bool bInTieredOffer = Run.PendingReward.Options.ContainsByPredicate(
+		[RewardCardId](const FGameXXKBattleRewardOption& Option)
 		{
-			return SetFailure(OutError, TEXT("This reward candidate can commit without replacing a route-card entry."));
-		}
-	}
-	else
+			return Option.CardId == RewardCardId && Option.Kind == EGameXXKBattleRewardKind::BossCard;
+		});
+	if (RewardCardId.IsNone() || !bInTieredOffer || !Definition || Definition->Owner != EGameXXKCardOwner::Route)
 	{
-		if (ReplacementEntryId.IsNone())
-		{
-			return SetFailure(OutError, TEXT("This reward candidate requires one stable replacement EntryId."));
-		}
-		if (!InitialPreview.EligibleReplacementEntryIds.Contains(ReplacementEntryId))
-		{
-			return SetFailure(OutError, TEXT("The selected replacement EntryId is not eligible for this reward candidate."));
-		}
+		return SetFailure(OutError, TEXT("The selected boss card is not part of the saved boss reward offer."));
+	}
+	if (Run.BossCardSlots.Contains(RewardCardId))
+	{
+		return SetFailure(OutError, TEXT("The selected boss card already occupies a boss card slot."));
+	}
+	if (Run.BossCardSlots.Num() >= FGameXXKCardRunState::MaxBossCardSlots)
+	{
+		return SetFailure(OutError, TEXT("All boss card slots are full; no further boss card can be acquired."));
 	}
 
-	FGameXXKRouteCardAcquisitionPreview CommitPreview;
-	if (!PreviewPendingRouteReward(
-		CandidateState,
-		RewardCardId,
-		ReplacementEntryId,
-		CommitPreview,
-		OutError))
-	{
-		return false;
-	}
-	if (CommitPreview.Decision != EGameXXKRouteCardAcquisitionDecision::CanCommit)
-	{
-		return SetFailure(OutError, TEXT("The selected reward candidate still requires a valid replacement EntryId."));
-	}
-
-	FGameXXKRouteCardEntry CandidateEntry;
-	if (!BuildPendingRouteRewardCandidate(CandidateState, RewardCardId, CandidateEntry, OutError))
-	{
-		return false;
-	}
-	FGameXXKRouteCardAcquisitionPreview AppliedPreview;
-	if (!FGameXXKRunDeckRules::CommitAcquisition(
-		CandidateState.CardRun,
-		CandidateEntry,
-		ReplacementEntryId,
-		AppliedPreview,
-		OutError))
-	{
-		return false;
-	}
-
-	++CandidateState.CardRun.NextRouteCardEntryOrdinal;
-	CandidateState.CardRun.PendingReward = FGameXXKPendingRouteCardReward();
-	CandidateState.CardRun.bActiveBattleRewardResolved = true;
-	InOutState = MoveTemp(CandidateState);
+	// Boss cards never replace another card: an available slot means the
+	// reward commits directly into the player deck and the current hand.
+	OutPreview.Decision = EGameXXKRouteCardAcquisitionDecision::CanCommit;
+	OutPreview.CardId = RewardCardId;
 	return true;
 }
 
@@ -3621,9 +3150,7 @@ bool FGameXXKCardBattleAdapter::SkipPendingRouteReward(FGameXXKRuntimeState& InO
 	{
 		return false;
 	}
-	int32 CapacityUsed = 0;
-	if (!ValidateRouteRewardEntryAuthority(CandidateState, false, CapacityUsed, OutError)
-		|| !ValidatePendingRouteRewardGate(CandidateState, true, OutError))
+	if (!ValidatePendingRouteRewardGate(CandidateState, true, OutError))
 	{
 		return false;
 	}
@@ -3690,9 +3217,6 @@ void FGameXXKCardBattleAdapter::ClearRouteLocalCardState(FGameXXKRuntimeState& I
 	Run.bLoadoutLockedForRoute = false;
 	Run.ActiveTemporaryQuestNpcId = NAME_None;
 	Run.PartySelection.QuestNpc = FGameXXKQuestNpcCardSelection();
-	Run.RouteCardIds.Reset();
-	Run.RouteCardEntries.Reset();
-	Run.NextRouteCardEntryOrdinal = 0;
 	ClearActiveCardBattle(InOutState);
 	Run.PendingEvent = FGameXXKPendingRouteEvent();
 	Run.RouteMerchant = FGameXXKRouteMerchantState();

@@ -250,10 +250,6 @@ struct GAMEXXK_API FGameXXKQuestNpcDefinition
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TArray<FName> FixedCardIds;
-
-	/** Deprecated authored fallback retained for data compatibility; runtime routes use seeded four-choose-three selection. */
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	TArray<FName> DefaultRouteCardIds;
 };
 
 /** Persisted route-local three-card result for one temporary task NPC. */

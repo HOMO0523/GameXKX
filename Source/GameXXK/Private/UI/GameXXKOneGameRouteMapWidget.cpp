@@ -17,7 +17,6 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Components/Widget.h"
 #include "Engine/Texture2D.h"
-#include "GameXXKRunDeckRules.h"
 #include "Input/Reply.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKMVPCommandRouter.h"
@@ -310,7 +309,7 @@ void UGameXXKOneGameRouteMapWidget::HandleRouteUserScrolled(float CurrentOffset)
 FGameXXKRouteMapSummaryView UGameXXKOneGameRouteMapWidget::BuildRouteSummaryView() const
 {
 	FGameXXKRouteMapSummaryView Summary;
-	Summary.CapacityLimit = FGameXXKRunDeckRules::MaxRouteCardCapacity;
+	Summary.CapacityLimit = FGameXXKCardRunState::MaxBossCardSlots;
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem)
 	{
@@ -332,10 +331,8 @@ FGameXXKRouteMapSummaryView UGameXXKOneGameRouteMapWidget::BuildRouteSummaryView
 		}
 	}
 
-	Summary.bCapacityValid = FGameXXKRunDeckRules::GetCapacityUsed(
-		State.CardRun.RouteCardEntries,
-		Summary.CapacityUsed,
-		nullptr);
+	Summary.CapacityUsed = State.CardRun.BossCardSlots.Num();
+	Summary.bCapacityValid = true;
 	return Summary;
 }
 
@@ -369,10 +366,10 @@ void UGameXXKOneGameRouteMapWidget::UpdateRouteSummary()
 	{
 		RouteCapacitySummaryText->SetText(Summary.bCapacityValid
 			? FText::Format(
-				NSLOCTEXT("GameXXKRouteMap", "CapacitySummary", "临时路线牌  {0} / {1}"),
+				NSLOCTEXT("GameXXKRouteMap", "CapacitySummary", "首领卡槽  {0} / {1}"),
 				FText::AsNumber(Summary.CapacityUsed),
 				FText::AsNumber(Summary.CapacityLimit))
-			: NSLOCTEXT("GameXXKRouteMap", "CapacitySummaryInvalid", "临时路线牌  -- / 12"));
+			: NSLOCTEXT("GameXXKRouteMap", "CapacitySummaryInvalid", "首领卡槽  -- / 3"));
 	}
 }
 

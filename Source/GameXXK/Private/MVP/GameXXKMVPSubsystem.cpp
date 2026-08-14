@@ -1405,19 +1405,6 @@ bool UGameXXKMVPSubsystem::ResolveBattleVictory(bool bBossBattle)
 	return UGameXXKMVPRules::ResolveBattleVictory(RuntimeState, bBossBattle);
 }
 
-bool UGameXXKMVPSubsystem::ResolvePendingRouteRewardChoiceAndFinish(
-	const FName RewardCardId,
-	const FName ReplacementEntryId,
-	FString* OutError)
-{
-	BeginRuntimeStateMutation(BattleHudFixtureView);
-	return UGameXXKMVPRules::ResolvePendingRouteRewardChoiceAndFinish(
-		RuntimeState,
-		RewardCardId,
-		ReplacementEntryId,
-		OutError);
-}
-
 bool UGameXXKMVPSubsystem::ResolvePendingBattleRewardChoiceAndFinish(
 	const int32 OptionIndex,
 	const FName ReplacementEntryId,

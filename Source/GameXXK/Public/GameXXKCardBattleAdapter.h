@@ -3,8 +3,6 @@
 #include "CoreMinimal.h"
 #include "GameXXKMVPRules.h"
 
-struct FGameXXKRouteCardAcquisitionPreview;
-
 /**
  * Bridges the card-combat authority to the existing MVP game state.  Every public operation accepts
  * stable card instance / unit IDs; legacy party and enemy arrays are UI and scene projections only.
@@ -108,15 +106,6 @@ public:
 		TArray<FGameXXKCardDamageResult>& OutDamageResults,
 		FString* OutError = nullptr);
 
-	/** Produces a deterministic, persistent three-card post-battle route reward offer without completing the route node. */
-	static bool CreateRouteRewardOffer(
-		FGameXXKRuntimeState& InOutState,
-		EGameXXKNodeKind NodeKind,
-		int32 SourceNodeId,
-		int32 ChoiceSeed,
-		TArray<FName>& OutCardIds,
-		FString* OutError = nullptr);
-
 	/** Produces the tiered three-choice battle reward (Battle: relic-heavy; Elite: attribute bonus; Boss: boss card). */
 	static bool CreateTieredBattleRewardOffer(
 		FGameXXKRuntimeState& InOutState,
@@ -125,11 +114,10 @@ public:
 		int32 ChoiceSeed,
 		FString* OutError = nullptr);
 
-	/** Commits a boss-exclusive reward card into the route deck, honoring capacity replacement. */
+	/** Commits a boss-exclusive reward card into one of the three boss card slots and the current hand. */
 	static bool CommitBossCardReward(
 		FGameXXKRuntimeState& InOutState,
 		FName RewardCardId,
-		FName ReplacementEntryId,
 		FString* OutError = nullptr);
 
 	/** Current quality of a configured hero/companion card, honoring earned upgrades. */
@@ -140,19 +128,12 @@ public:
 	/** The next quality step (Common->Rare->Epic); Epic stays. */
 	static EGameXXKCardQuality GetNextCardQuality(EGameXXKCardQuality Quality);
 
-	/** Purely previews one saved reward candidate and optional stable replacement entry. */
+	/** Purely previews one saved boss-card reward candidate against the free boss-slot availability. */
 	static bool PreviewPendingRouteReward(
 		const FGameXXKRuntimeState& State,
 		FName RewardCardId,
 		FName ReplacementEntryId,
 		FGameXXKRouteCardAcquisitionPreview& OutPreview,
-		FString* OutError = nullptr);
-
-	/** Commits a reward card; when required, replacement identifies one exact capacity-consuming EntryId. */
-	static bool ChoosePendingRouteReward(
-		FGameXXKRuntimeState& InOutState,
-		FName RewardCardId,
-		FName ReplacementEntryId,
 		FString* OutError = nullptr);
 
 	static bool SkipPendingRouteReward(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);

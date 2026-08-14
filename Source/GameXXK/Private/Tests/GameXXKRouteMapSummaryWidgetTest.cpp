@@ -9,7 +9,6 @@
 #include "Components/ScrollBox.h"
 #include "Engine/GameInstance.h"
 #include "GameXXKMVPRules.h"
-#include "GameXXKRunDeckRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
 
@@ -41,29 +40,7 @@ bool FGameXXKRouteMapFixedSummaryWidgetTest::RunTest(const FString& Parameters)
 	State.VisitedRouteNodeIds = {10, 11, 12};
 	State.ReachableRouteNodeIds = {13};
 	State.CardRun.RouteTravelMoney = 137;
-	State.CardRun.RouteCardEntries.Reset();
-
-	FGameXXKRouteCardEntry CapacityEntry;
-	CapacityEntry.EntryId = TEXT("Route.Entry.Capacity");
-	CapacityEntry.CardId = TEXT("Route.General.PoJiaTuCi");
-	CapacityEntry.CurrentQuality = EGameXXKCardQuality::Common;
-	CapacityEntry.SourceKind = EGameXXKRouteCardSourceKind::Merchant;
-	CapacityEntry.OwnerUnitId = TEXT("Hero.XuXian");
-	CapacityEntry.bTemporaryRouteCard = false;
-	CapacityEntry.bConsumesRouteCapacity = true;
-	CapacityEntry.AcquisitionOrdinal = 0;
-	State.CardRun.RouteCardEntries.Add(CapacityEntry);
-
-	FGameXXKRouteCardEntry TemporaryFreeEntry;
-	TemporaryFreeEntry.EntryId = TEXT("Route.Entry.TemporaryFree");
-	TemporaryFreeEntry.CardId = TEXT("Hero.Generic.QingFengYiShi");
-	TemporaryFreeEntry.CurrentQuality = EGameXXKCardQuality::Common;
-	TemporaryFreeEntry.SourceKind = EGameXXKRouteCardSourceKind::HeroBase;
-	TemporaryFreeEntry.OwnerUnitId = TEXT("Hero.XuXian");
-	TemporaryFreeEntry.bTemporaryRouteCard = true;
-	TemporaryFreeEntry.bConsumesRouteCapacity = false;
-	TemporaryFreeEntry.AcquisitionOrdinal = 1;
-	State.CardRun.RouteCardEntries.Add(TemporaryFreeEntry);
+	State.CardRun.BossCardSlots = {TEXT("BossCard.One"), TEXT("BossCard.Two")};
 
 	UGameXXKOneGameRouteMapWidget* Widget = NewObject<UGameXXKOneGameRouteMapWidget>();
 	Widget->SetMVPSubsystem(Subsystem);
@@ -73,12 +50,12 @@ bool FGameXXKRouteMapFixedSummaryWidgetTest::RunTest(const FString& Parameters)
 	Widget->RefreshFromState();
 
 	const FGameXXKRouteMapSummaryView Summary = Widget->GetRouteSummaryViewForTest();
-	TestTrue(TEXT("route summary validates capacity through the run-deck rules"), Summary.bCapacityValid);
+	TestTrue(TEXT("route summary validates capacity through the boss-slot rules"), Summary.bCapacityValid);
 	TestEqual(TEXT("route summary shows route-only money"), Summary.RouteTravelMoney, 137);
 	TestEqual(TEXT("route progress excludes Start from completed nodes"), Summary.CompletedNodeCount, 2);
 	TestEqual(TEXT("route progress excludes Start from total nodes"), Summary.TotalNodeCount, 3);
-	TestEqual(TEXT("capacity follows bConsumesRouteCapacity rather than bTemporaryRouteCard"), Summary.CapacityUsed, 1);
-	TestEqual(TEXT("capacity shows the authoritative twelve-slot limit"), Summary.CapacityLimit, FGameXXKRunDeckRules::MaxRouteCardCapacity);
+	TestEqual(TEXT("capacity follows the boss-card slots"), Summary.CapacityUsed, State.CardRun.BossCardSlots.Num());
+	TestEqual(TEXT("capacity shows the authoritative three-slot limit"), Summary.CapacityLimit, FGameXXKCardRunState::MaxBossCardSlots);
 
 	UWidget* RootWidget = Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("GameXXKOneGameRouteMapRoot")) : nullptr;
 	UWidget* ScrollWidget = Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("GameXXKOneGameRouteMapScroll")) : nullptr;

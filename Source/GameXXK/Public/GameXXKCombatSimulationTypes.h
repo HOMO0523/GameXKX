@@ -97,6 +97,10 @@ struct GAMEXXK_API FGameXXKSimulationMetrics
 	UPROPERTY(SaveGame)
 	bool bVictory = false;
 
+	/** The battle resolved as a no-progress stalemate defeat instead of a combat outcome. */
+	UPROPERTY(SaveGame)
+	bool bStalemateResolved = false;
+
 	/** Deterministic permanent-partner identity captured before the battle starts. */
 	UPROPERTY(SaveGame)
 	FName CompanionTemplateId = NAME_None;

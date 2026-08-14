@@ -11,6 +11,22 @@
 - UI:`GameXXKBattleBoardWidget` 奖励框 Boss 选项结算路径;`GameXXKRouteMerchantWidget` 只遗物;`GameXXKRouteEncounterPanelWidget` 不再显示卡牌奖励。
 - 测试:CardRoute 组(~9)、RunDeckRules、RouteCardRecipe、RouteMerchant、相关迁移测试改造;新增 Boss 槽规则/迁移/UI 测试。
 
+## 执行进度(2026-08-14 更新)
+
+- ✅ Phase 1 核心语义:首领槽字段+奖励去路+牌库装配(8 英雄+5 伙伴+3 任务NPC+0~3 首领槽,无路线卡/填充卡)+迁移 v17;
+- ✅ Phase 2 测试改造:RunDeck/Recipe/路线条目测试删除或改写,迁移链 v16→v17,UI 奖励框直通首领槽+入手牌;
+- ✅ Phase 3 UI:商人只卖遗物、替换流程状态机退役(返回空)、Boss 选项槽满禁用;
+- ✅ 冷 UBT 编译通过;全量自动化 594 项 589 通过;
+- ✅ 剩余 5 项平衡失败已修复(用户选定方案):
+  1. 两场首领战模拟卡死 MaxDecisions(玄甲月白 ch3 Boss、追风金龟 ch2 Boss)——根因是模拟 AI 无进展时不肯结束回合(月白 0 费"周天归元/照见五蕴"循环)。修法:连续 64 次决策没有压低任何敌人血量则强制结束玩家回合;连续 5 个回合边界双方血量无变化则判定僵持战败(`Simulation.Defeat` + `bStalemateResolved`)。
+  2. 正交 Blade 用例:土司首领"延迟保留"卡在弃绝堆丢失——根因是保留牌主人(土司首领 NPC)在敌人阶段阵亡,`RemoveDefeatedPartyOwnerCards` 清除了弃绝堆里的孤立实例,次回合边界严格查账失败。修法:主人阵亡时取消该延迟蓄力(牌随主人退场),保留槽预留与严格实例校验同步修正。
+- ✅ 新增回归测试:`GameXXK.RouteBalance.Diagnostics.ZhuiFengJinGuiBoss942090`、`GameXXK.RouteBalance.Diagnostics.BladeRetainedOwnerDefeat1100213`;
+- ✅ 全量 2400 锁定案例 0 卡死/0 错误(胜利 2298 / 战败 102);卡牌文档已重新生成;
+- ✅ 修复两个进程 RNG 导致的偶发测试(`BattleEntry` 固定路线种子、`PlayerFlowOwnsFlowWidgets` 固定初始同伴招募种子 + 目标卡必须造成伤害);
+- ✅ 全量自动化 596 项 0 失败(两轮通过);
+- ✅ 真机 PIE:新档→青山→接任务→路线图→战斗入场→16 张共享牌库正确装配(无路线卡)→通过真实 UMG 打出卡牌/结束回合/敌方意图演出正常;奖励框的首领牌选择路径由无头 UI 测试 + 2400 案例矩阵钉死;
+- ⏳ 待办:提交推送。
+
 ## 1. Phase 1 — 状态与规则层(核心)
 
 1.1 `FGameXXKCardRunState`:删除路线卡字段,新增 `TArray<FName> BossCardSlots`;`MaxBossCardSlots = 3` 常量。

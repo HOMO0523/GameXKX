@@ -6,10 +6,8 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMetaShopTypes.h"
-#include "GameXXKRouteCardRecipe.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteMerchantRules.h"
-#include "GameXXKRunDeckRules.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKSaveGame.h"
 
@@ -130,7 +128,6 @@ namespace
 		State.DiscoveredCodexEntryIds.Add(TEXT("Codex.MoneyRat"));
 		State.ReadCodexEntryIds.Add(TEXT("Codex.MoneyRat"));
 		State.CardRun.RouteRandomSeed = 0x1234567;
-		State.CardRun.RouteCardIds.Add(TEXT("Route.General.PoJiaTuCi"));
 		AddSimpleCompanions(State);
 		if (!State.CardRun.CompanionRoster.PermanentCompanions.IsEmpty())
 		{
@@ -441,7 +438,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("current save schema is version sixteen"), FGameXXKSaveMigration::CurrentSaveVersion, 16);
+	TestEqual(TEXT("current save schema is version seventeen"), FGameXXKSaveMigration::CurrentSaveVersion, 17);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
@@ -454,7 +451,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 	FGameXXKSaveState Migrated;
 	FGameXXKSaveMigrationReport Report;
 	TestTrue(TEXT("v10 migrates"), FGameXXKSaveMigration::MigrateToCurrent(VersionTen, Migrated, Report));
-	TestEqual(TEXT("v10 targets v16"), Migrated.SaveVersion, 16);
+	TestEqual(TEXT("v10 targets v17"), Migrated.SaveVersion, 17);
 	TestTrue(TEXT("v10 migration initializes a positive seed"), Migrated.RuntimeState.MetaShop.Seed > 0);
 	TestEqual(TEXT("v10 migration starts at ordinal zero"), Migrated.RuntimeState.MetaShop.NextPurchaseOrdinal, 0);
 
@@ -664,51 +661,6 @@ bool FGameXXKEquipmentSaveMigrationDeterminismTest::RunTest(const FString& Param
 	ExpectedCardRun.RouteTravelMoney = SourceState.CardRun.RouteTravelMoney;
 	ExpectedCardRun.bRouteEconomyInitialized = true;
 	ExpectedCardRun.RewardedTravelMoneyNodes.Reset();
-	TArray<FGameXXKRouteCardEntry> ExpectedRouteCardEntries;
-	FString ExpectedRouteCardError;
-	if (!TestTrue(
-		TEXT("the version-six fixture can build its independent canonical route-card recipe"),
-		FGameXXKRouteCardRecipe::BuildBaseEntries(
-			ExpectedCardRun,
-			ExpectedCardRun.RouteProgress.RootSeed,
-			ExpectedRouteCardEntries,
-			&ExpectedRouteCardError)))
-	{
-		return false;
-	}
-	FGameXXKRouteCardEntry ExpectedLegacyRouteCard;
-	ExpectedLegacyRouteCard.CardId = TEXT("Route.General.PoJiaTuCi");
-	ExpectedLegacyRouteCard.CurrentQuality = EGameXXKCardQuality::Common;
-	ExpectedLegacyRouteCard.SourceKind = EGameXXKRouteCardSourceKind::RouteReward;
-	ExpectedLegacyRouteCard.OwnerUnitId = TEXT("Player");
-	ExpectedLegacyRouteCard.bTemporaryRouteCard = true;
-	ExpectedLegacyRouteCard.bConsumesRouteCapacity = true;
-	ExpectedLegacyRouteCard.AcquisitionOrdinal = FGameXXKRouteCardRecipe::BaseEntryCount;
-	if (!TestTrue(
-		TEXT("the expected legacy route card receives its independent stable id"),
-		FGameXXKRouteCardRecipe::MakeStableEntryId(
-			ExpectedCardRun.RouteProgress.RootSeed,
-			ExpectedLegacyRouteCard.AcquisitionOrdinal,
-			ExpectedLegacyRouteCard.EntryId,
-			&ExpectedRouteCardError)))
-	{
-		return false;
-	}
-	FGameXXKCardMergePreview ExpectedLegacyMerge;
-	if (!TestTrue(
-		TEXT("the expected legacy route card independently merges into the canonical base survivor"),
-		FGameXXKRunDeckRules::AddAndMerge(
-			ExpectedRouteCardEntries,
-			ExpectedLegacyRouteCard,
-			ExpectedLegacyMerge,
-			&ExpectedRouteCardError)))
-	{
-		return false;
-	}
-	ExpectedCardRun.RouteCardIds.Reset();
-	ExpectedCardRun.RouteCardEntries = MoveTemp(ExpectedRouteCardEntries);
-	ExpectedCardRun.NextRouteCardEntryOrdinal = FGameXXKRouteCardRecipe::BaseEntryCount + 1;
-	ExpectedCardRun.PendingReward.bRequiresRouteCardReplacement = false;
 	FGameXXKResolvedEnemyIntentEffect ExpectedLegacyDamageEffect;
 	ExpectedLegacyDamageEffect.Type = EGameXXKEnemyIntentEffectType::DirectDamage;
 	ExpectedLegacyDamageEffect.TargetUnitIds = { LegacyDamageIntent.SuggestedTargetUnitId };
@@ -716,27 +668,10 @@ bool FGameXXKEquipmentSaveMigrationDeterminismTest::RunTest(const FString& Param
 	ExpectedLegacyDamageEffect.HitCount = 1;
 	ExpectedCardRun.EnemyIntents[0].Effects = { ExpectedLegacyDamageEffect };
 	TestTrue(
-		TEXT("card-run payload survives except for explicit three-chapter and stable route-card migration state"),
+		TEXT("card-run payload survives except for explicit three-chapter and removed route-card migration state"),
 		FGameXXKCardRunState::StaticStruct()->CompareScriptStruct(&State.CardRun, &ExpectedCardRun, PPF_None));
-	TestTrue(TEXT("version-six legacy route-card IDs are cleared"), State.CardRun.RouteCardIds.IsEmpty());
 	TestFalse(TEXT("version-six legacy replacement flag is cleared"),
 		State.CardRun.PendingReward.bRequiresRouteCardReplacement);
-	TestEqual(
-		TEXT("version-six route cards become the canonical eighteen-entry recipe after deterministic merging"),
-		State.CardRun.RouteCardEntries.Num(),
-		FGameXXKRouteCardRecipe::BaseEntryCount);
-	TestEqual(TEXT("one legacy source slot advances next to nineteen"), State.CardRun.NextRouteCardEntryOrdinal, 19);
-	const FGameXXKRouteCardEntry* MigratedBaseSurvivor = State.CardRun.RouteCardEntries.FindByPredicate(
-		[](const FGameXXKRouteCardEntry& Entry)
-		{
-			return Entry.AcquisitionOrdinal == 16;
-		});
-	TestNotNull(TEXT("the canonical PoJiaTuCi base entry survives the legacy duplicate merge"), MigratedBaseSurvivor);
-	if (MigratedBaseSurvivor)
-	{
-		TestEqual(TEXT("the surviving base entry is upgraded to Rare"),
-			MigratedBaseSurvivor->CurrentQuality, EGameXXKCardQuality::Rare);
-	}
 	TestEqual(TEXT("damage-only legacy intent remains one intent"), State.CardRun.EnemyIntents.Num(), 1);
 	if (!State.CardRun.EnemyIntents.IsEmpty())
 	{

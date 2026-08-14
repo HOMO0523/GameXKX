@@ -26,7 +26,6 @@
 #include "GameXXKCardText.h"
 #include "GameXXKEnemyText.h"
 #include "GameXXKMVPRules.h"
-#include "GameXXKRunDeckRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "Engine/Texture2D.h"
 #include "Input/Events.h"
@@ -3875,78 +3874,6 @@ bool UGameXXKBattleBoardWidget::IsCardTargetingActive() const
 	return InteractionMode == EGameXXKBattleInteractionMode::TargetingCard;
 }
 
-bool UGameXXKBattleBoardWidget::ChoosePendingRouteReward(FName RewardCardId, FName ReplacementEntryId)
-{
-	if (RejectBattleHudFixtureMutation())
-	{
-		return false;
-	}
-
-	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || !HasPendingRouteReward())
-	{
-		LastCardInteractionError = TEXT("当前没有可选取的战后卡牌。");
-		return false;
-	}
-
-	FGameXXKRouteCardAcquisitionPreview Preview;
-	FString Error;
-	if (!FGameXXKCardBattleAdapter::PreviewPendingRouteReward(
-		Subsystem->GetRuntimeState(),
-		RewardCardId,
-		NAME_None,
-		Preview,
-		&Error))
-	{
-		LastCardInteractionError = Error;
-		RefreshProgrammaticLayout();
-		return false;
-	}
-
-	if (Preview.Decision == EGameXXKRouteCardAcquisitionDecision::RequiresReplacement)
-	{
-		if (RouteRewardCardIdAwaitingReplacement != RewardCardId)
-		{
-			RouteRewardCardIdAwaitingReplacement = RewardCardId;
-			SelectedRouteRewardReplacementEntryId = NAME_None;
-			LastCardInteractionError.Reset();
-			RefreshProgrammaticLayout();
-			return false;
-		}
-
-		if (ReplacementEntryId.IsNone()
-			|| ReplacementEntryId != SelectedRouteRewardReplacementEntryId
-			|| !Preview.EligibleReplacementEntryIds.Contains(ReplacementEntryId))
-		{
-			LastCardInteractionError = TEXT("路线临时牌已满，请先选择一张可替换的路线牌实例。");
-			RefreshProgrammaticLayout();
-			return false;
-		}
-	}
-	else if (Preview.Decision != EGameXXKRouteCardAcquisitionDecision::CanCommit)
-	{
-		LastCardInteractionError = Error.IsEmpty() ? TEXT("当前奖励候选不可提交。") : Error;
-		RefreshProgrammaticLayout();
-		return false;
-	}
-	else
-	{
-		ReplacementEntryId = NAME_None;
-		SelectedRouteRewardReplacementEntryId = NAME_None;
-		RouteRewardCardIdAwaitingReplacement = NAME_None;
-	}
-
-	if (!Subsystem->ResolvePendingRouteRewardChoiceAndFinish(RewardCardId, ReplacementEntryId, &Error))
-	{
-		LastCardInteractionError = Error;
-		RefreshProgrammaticLayout();
-		return false;
-	}
-	SelectedRouteRewardReplacementEntryId = NAME_None;
-	RouteRewardCardIdAwaitingReplacement = NAME_None;
-	return ResolveAndRefreshCardBattleAfterMutation();
-}
-
 bool UGameXXKBattleBoardWidget::ChoosePendingBattleRewardOption(int32 OptionIndex, FName ReplacementEntryId)
 {
 	if (RejectBattleHudFixtureMutation())
@@ -3968,57 +3895,10 @@ bool UGameXXKBattleBoardWidget::ChoosePendingBattleRewardOption(int32 OptionInde
 		return false;
 	}
 	const FGameXXKBattleRewardOption Option = Options[OptionIndex];
-
-	if (Option.Kind == EGameXXKBattleRewardKind::BossCard)
-	{
-		FGameXXKRouteCardAcquisitionPreview Preview;
-		FString Error;
-		if (!FGameXXKCardBattleAdapter::PreviewPendingRouteReward(
-			Subsystem->GetRuntimeState(),
-			Option.CardId,
-			NAME_None,
-			Preview,
-			&Error))
-		{
-			LastCardInteractionError = Error;
-			RefreshProgrammaticLayout();
-			return false;
-		}
-		if (Preview.Decision == EGameXXKRouteCardAcquisitionDecision::RequiresReplacement)
-		{
-			if (RouteRewardCardIdAwaitingReplacement != Option.CardId)
-			{
-				RouteRewardCardIdAwaitingReplacement = Option.CardId;
-				SelectedRouteRewardReplacementEntryId = NAME_None;
-				LastCardInteractionError.Reset();
-				RefreshProgrammaticLayout();
-				return false;
-			}
-			if (ReplacementEntryId.IsNone()
-				|| ReplacementEntryId != SelectedRouteRewardReplacementEntryId
-				|| !Preview.EligibleReplacementEntryIds.Contains(ReplacementEntryId))
-			{
-				LastCardInteractionError = TEXT("路线临时牌已满，请先选择一张可替换的路线牌实例。");
-				RefreshProgrammaticLayout();
-				return false;
-			}
-		}
-		else if (Preview.Decision != EGameXXKRouteCardAcquisitionDecision::CanCommit)
-		{
-			LastCardInteractionError = Error.IsEmpty() ? TEXT("当前奖励候选不可提交。") : Error;
-			RefreshProgrammaticLayout();
-			return false;
-		}
-		else
-		{
-			ReplacementEntryId = NAME_None;
-			SelectedRouteRewardReplacementEntryId = NAME_None;
-			RouteRewardCardIdAwaitingReplacement = NAME_None;
-		}
-	}
+	(void)Option;
 
 	FString Error;
-	if (!Subsystem->ResolvePendingBattleRewardChoiceAndFinish(OptionIndex, ReplacementEntryId, &Error))
+	if (!Subsystem->ResolvePendingBattleRewardChoiceAndFinish(OptionIndex, NAME_None, &Error))
 	{
 		LastCardInteractionError = Error;
 		RefreshProgrammaticLayout();
@@ -4110,25 +3990,9 @@ bool UGameXXKBattleBoardWidget::SelectRouteRewardReplacementEntry(FName EntryId)
 
 TArray<FName> UGameXXKBattleBoardWidget::GetRouteRewardReplacementEntryIds() const
 {
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || !HasPendingRouteReward() || RouteRewardCardIdAwaitingReplacement.IsNone())
-	{
-		return TArray<FName>();
-	}
-
-	FGameXXKRouteCardAcquisitionPreview Preview;
-	FString Error;
-	if (!FGameXXKCardBattleAdapter::PreviewPendingRouteReward(
-		Subsystem->GetRuntimeState(),
-		RouteRewardCardIdAwaitingReplacement,
-		NAME_None,
-		Preview,
-		&Error)
-		|| Preview.Decision != EGameXXKRouteCardAcquisitionDecision::RequiresReplacement)
-	{
-		return TArray<FName>();
-	}
-	return Preview.EligibleReplacementEntryIds;
+	// Boss cards commit directly into a free boss slot; no route-card replacement
+	// is ever required after the 2026-08-14 route-card removal.
+	return TArray<FName>();
 }
 
 bool UGameXXKBattleBoardWidget::CancelRouteRewardReplacement()
@@ -6156,19 +6020,7 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	}
 	case ECardTooltipSource::RouteReplacement:
 	{
-		if (GetRouteRewardReplacementEntryIds().Contains(HoveredCardTooltipId))
-		{
-			const FGameXXKRouteCardEntry* Entry = State->CardRun.RouteCardEntries.FindByPredicate([this](const FGameXXKRouteCardEntry& Candidate)
-			{
-				return Candidate.EntryId == HoveredCardTooltipId;
-			});
-			Definition = Entry ? FGameXXKCardCatalog::FindCardDefinition(Entry->CardId) : nullptr;
-			TooltipQuality = Entry ? Entry->CurrentQuality : EGameXXKCardQuality::Invalid;
-			if (Definition)
-			{
-				Context.InteractionResult = TEXT("点击后作为被替换的临时路线牌。");
-			}
-		}
+		// Route-card replacement was removed in the 2026-08-14 redesign; no tooltip.
 		break;
 	}
 	default:
@@ -7139,21 +6991,11 @@ void UGameXXKBattleBoardWidget::RefreshRouteRewardReplacementChoices()
 	}
 
 	const bool bFixtureReadOnly = IsBattleHudFixtureReadOnly();
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const FGameXXKCardRunState* Run = Subsystem ? &Subsystem->GetRuntimeState().CardRun : nullptr;
 	RouteRewardReplacementScrollBox->SetVisibility(ESlateVisibility::Visible);
 	for (int32 CardIndex = 0; CardIndex < ReplaceableEntryIds.Num(); ++CardIndex)
 	{
 		const FName EntryId = ReplaceableEntryIds[CardIndex];
-		const FGameXXKRouteCardEntry* Entry = Run
-			? Run->RouteCardEntries.FindByPredicate([EntryId](const FGameXXKRouteCardEntry& Candidate)
-			{
-				return Candidate.EntryId == EntryId;
-			})
-			: nullptr;
-		const FGameXXKCardDefinition* Definition = Entry
-			? FGameXXKCardCatalog::FindCardDefinition(Entry->CardId)
-			: nullptr;
+		const FGameXXKCardDefinition* Definition = nullptr;
 		USizeBox* CardSizeBox = WidgetTree->ConstructWidget<USizeBox>(
 			USizeBox::StaticClass(),
 			*FString::Printf(TEXT("BattleRouteReplaceCardSize_%02d"), CardIndex));
@@ -7179,8 +7021,8 @@ void UGameXXKBattleBoardWidget::RefreshRouteRewardReplacementChoices()
 		{
 			const FString DisplayName = Definition ? Definition->DisplayName.ToString() : EntryId.ToString();
 			const FString Prefix = EntryId == SelectedRouteRewardReplacementEntryId ? TEXT("替换\n") : TEXT("");
-			const FString Quality = Entry
-				? FGameXXKCardQualityRules::GetDisplayName(Entry->CurrentQuality).ToString()
+			const FString Quality = Definition
+				? FGameXXKCardQualityRules::GetDisplayName(Definition->BaseQuality).ToString()
 				: FString();
 			Label->SetText(FText::FromString(FString::Printf(TEXT("%s%s\n[%s]"), *Prefix, *DisplayName, *Quality)));
 		}

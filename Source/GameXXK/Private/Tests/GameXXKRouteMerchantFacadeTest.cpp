@@ -70,13 +70,13 @@ bool FGameXXKRouteMerchantFacadeEntryAndTransactionTest::RunTest(const FString& 
 	TestTrue(TEXT("selecting a reachable merchant enters atomically"), UGameXXKMVPRules::SelectRouteNodeById(State, 10));
 	TestEqual(TEXT("merchant selection opens the dedicated screen"), State.Screen, EGameXXKScreen::RouteMerchant);
 	TestEqual(TEXT("merchant selection records the pending node"), State.PendingRouteNodeId, 10);
-	TestEqual(TEXT("merchant selection materializes all six stable slots"), State.CardRun.RouteMerchant.Offers.Num(), 6);
+	TestEqual(TEXT("merchant selection materializes all four stable slots"), State.CardRun.RouteMerchant.Offers.Num(), 4);
 
 	FGameXXKRouteMerchantView View;
 	FString Error;
 	TestTrue(TEXT("rules facade exposes the persisted merchant view"), UGameXXKMVPRules::GetRouteMerchantView(State, View, &Error));
-	TestEqual(TEXT("view exposes three card slots"), View.CardOffers.Num(), 3);
-	TestEqual(TEXT("view exposes three relic slots"), View.RelicOffers.Num(), 3);
+	TestEqual(TEXT("view exposes zero card slots"), View.CardOffers.Num(), 0);
+	TestEqual(TEXT("view exposes four relic slots"), View.RelicOffers.Num(), 4);
 	TestEqual(TEXT("view exposes route-only money"), View.RouteTravelMoney, 500);
 	TestEqual(TEXT("first refresh costs twenty"), View.RefreshCost, 20);
 
@@ -87,12 +87,12 @@ bool FGameXXKRouteMerchantFacadeEntryAndTransactionTest::RunTest(const FString& 
 	TestEqual(TEXT("refresh never touches permanent gold"), State.PlayerGold, PermanentGoldBefore);
 
 	TestTrue(TEXT("refreshed view remains valid"), UGameXXKMVPRules::GetRouteMerchantView(State, View, &Error));
-	const FGameXXKRouteMerchantOfferView* PurchasableCard = View.CardOffers.FindByPredicate([](const FGameXXKRouteMerchantOfferView& Offer)
+	const FGameXXKRouteMerchantOfferView* PurchasableRelic = View.RelicOffers.FindByPredicate([](const FGameXXKRouteMerchantOfferView& Offer)
 	{
 		return Offer.bPurchaseEnabled;
 	});
-	TestNotNull(TEXT("at least one hero or route card is purchasable"), PurchasableCard);
-	if (!PurchasableCard)
+	TestNotNull(TEXT("at least one relic is purchasable"), PurchasableRelic);
+	if (!PurchasableRelic)
 	{
 		return false;
 	}
@@ -100,17 +100,16 @@ bool FGameXXKRouteMerchantFacadeEntryAndTransactionTest::RunTest(const FString& 
 	FGameXXKRouteMerchantPurchasePreview Preview;
 	TestTrue(
 		TEXT("purchase preview facade succeeds"),
-		UGameXXKMVPRules::PreviewRouteMerchantPurchase(State, PurchasableCard->SavedOffer.OfferId, NAME_None, Preview, &Error));
-	TestTrue(TEXT("empty acquired-card capacity can buy directly"), Preview.bCanPurchase);
+		UGameXXKMVPRules::PreviewRouteMerchantPurchase(State, PurchasableRelic->SavedOffer.OfferId, NAME_None, Preview, &Error));
+	TestTrue(TEXT("a relic can be bought directly"), Preview.bCanPurchase);
+	TestFalse(TEXT("a relic purchase never requires replacement"), Preview.bRequiresReplacement);
 	const int32 RouteMoneyBeforePurchase = State.CardRun.RouteTravelMoney;
 	FGameXXKRouteMerchantPurchaseResult Result;
 	TestTrue(
 		TEXT("purchase facade commits"),
-		UGameXXKMVPRules::PurchaseRouteMerchant(State, PurchasableCard->SavedOffer.OfferId, NAME_None, Result));
+		UGameXXKMVPRules::PurchaseRouteMerchant(State, PurchasableRelic->SavedOffer.OfferId, NAME_None, Result));
 	TestTrue(TEXT("result reports committed purchase"), Result.bPurchased);
 	TestEqual(TEXT("purchase debits exactly its price"), State.CardRun.RouteTravelMoney, RouteMoneyBeforePurchase - Result.Price);
-	TestEqual(TEXT("purchase adds one stable route entry"), State.CardRun.RouteCardEntries.Num(), 1);
-	TestFalse(TEXT("purchased entry id is concrete"), State.CardRun.RouteCardEntries[0].EntryId.IsNone());
 	TestEqual(TEXT("purchase still never touches permanent gold"), State.PlayerGold, PermanentGoldBefore);
 	return true;
 }
@@ -131,23 +130,9 @@ bool FGameXXKRouteMerchantFacadeAtomicFailureAndLeaveTest::RunTest(const FString
 
 	FGameXXKRuntimeState State = MakeRouteMapMerchantFixture();
 	TestTrue(TEXT("valid merchant opens"), UGameXXKMVPRules::SelectRouteNodeById(State, 10));
-	const FGameXXKRouteMerchantOffer* CardOffer = State.CardRun.RouteMerchant.Offers.FindByPredicate([](const FGameXXKRouteMerchantOffer& Offer)
-	{
-		return Offer.Kind == EGameXXKRouteMerchantOfferKind::Card && !Offer.bUnavailable && !Offer.bSold;
-	});
-	TestNotNull(TEXT("fixture has a card offer"), CardOffer);
-	if (!CardOffer)
-	{
-		return false;
-	}
-	State.CardRun.RouteMerchant.PendingPurchase.bActive = true;
-	State.CardRun.RouteMerchant.PendingPurchase.OfferId = CardOffer->OfferId;
-	State.CardRun.RouteMerchant.PendingPurchase.CardId = CardOffer->ContentId;
-	State.CardRun.RouteMerchant.PendingPurchase.Price = CardOffer->Price;
 	const int32 MoneyBeforeLeave = State.CardRun.RouteTravelMoney;
-	TestTrue(TEXT("leaving cancels a pending replacement and settles the node"), UGameXXKMVPRules::ResolveMerchantRouteNode(State));
-	TestFalse(TEXT("leave clears pending replacement metadata"), State.CardRun.RouteMerchant.PendingPurchase.bActive);
-	TestEqual(TEXT("leave never charges the pending offer"), State.CardRun.RouteTravelMoney, MoneyBeforeLeave);
+	TestTrue(TEXT("leaving settles the merchant node"), UGameXXKMVPRules::ResolveMerchantRouteNode(State));
+	TestEqual(TEXT("leave never charges an offer"), State.CardRun.RouteTravelMoney, MoneyBeforeLeave);
 	TestEqual(TEXT("leave returns to route map"), State.Screen, EGameXXKScreen::DungeonMap);
 	TestTrue(TEXT("leave marks merchant node visited"), State.VisitedRouteNodeIds.Contains(10));
 	return true;
@@ -173,7 +158,8 @@ bool FGameXXKRouteMerchantSubsystemFacadeTest::RunTest(const FString& Parameters
 	FGameXXKRouteMerchantView View;
 	FString Error;
 	TestTrue(TEXT("subsystem exposes merchant view"), Subsystem->GetRouteMerchantView(View, &Error));
-	TestEqual(TEXT("subsystem view has three card offers"), View.CardOffers.Num(), 3);
+	TestEqual(TEXT("subsystem view has zero card offers"), View.CardOffers.Num(), 0);
+	TestEqual(TEXT("subsystem view has four relic offers"), View.RelicOffers.Num(), 4);
 	TestTrue(TEXT("subsystem refresh wrapper succeeds"), Subsystem->RefreshRouteMerchant(&Error));
 	TestEqual(TEXT("subsystem refresh is visible on next view"), Subsystem->GetRuntimeState().CardRun.RouteMerchant.RefreshCount, 1);
 	return true;

@@ -200,49 +200,18 @@ struct GAMEXXK_API FGameXXKPendingRouteEvent
 	bool bCanRecruitPermanentCompanion = false;
 };
 
-/** Stable provenance for a route-run card entry. */
-UENUM(BlueprintType)
-enum class EGameXXKRouteCardSourceKind : uint8
+/** Whether a validated acquisition can commit immediately (boss cards always commit once a slot is free). */
+enum class EGameXXKRouteCardAcquisitionDecision : uint8
 {
-	Invalid = 0 UMETA(Hidden),
-	HeroBase = 1,
-	CompanionBase = 2,
-	QuestNpcBase = 3,
-	RouteReward = 4,
-	Merchant = 5,
-	RouteBase = 6
+	CanCommit,
+	RequiresReplacement
 };
 
-/** A stable, serializable card entry owned by one route run. */
-USTRUCT(BlueprintType)
-struct GAMEXXK_API FGameXXKRouteCardEntry
+/** Pure acquisition summary shared by the boss-card reward preview. */
+struct GAMEXXK_API FGameXXKRouteCardAcquisitionPreview
 {
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
-	FName EntryId = NAME_None;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKRouteCardAcquisitionDecision Decision = EGameXXKRouteCardAcquisitionDecision::CanCommit;
 	FName CardId = NAME_None;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
-	EGameXXKCardQuality CurrentQuality = EGameXXKCardQuality::Common;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
-	EGameXXKRouteCardSourceKind SourceKind = EGameXXKRouteCardSourceKind::Invalid;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
-	FName OwnerUnitId = NAME_None;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
-	bool bTemporaryRouteCard = false;
-
-	/** The sole authority for whether this stable entry occupies one of the route deck's 12 slots. */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
-	bool bConsumesRouteCapacity = false;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
-	int32 AcquisitionOrdinal = INDEX_NONE;
 };
 
 UENUM(BlueprintType)
@@ -354,17 +323,12 @@ struct GAMEXXK_API FGameXXKCardRunState
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 NextRewardOrdinal = 0;
 
-	/** Only temporary route rewards live here; permanent hero/partner/NPC configuration remains elsewhere. */
+	/** Boss-exclusive cards owned by the player deck; at most MaxBossCardSlots entries (2026-08-14 redesign). */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
-	TArray<FName> RouteCardIds;
+	TArray<FName> BossCardSlots;
 
-	/** Stable route-card entries; legacy RouteCardIds remains a transitional consumer input until migration/adapter integration. */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
-	TArray<FGameXXKRouteCardEntry> RouteCardEntries;
-
-	/** Dedicated stable-entry sequence, independent from the legacy reward-offer ordinal. */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
-	int32 NextRouteCardEntryOrdinal = 0;
+	/** The player deck accepts at most this many boss-exclusive cards. */
+	static constexpr int32 MaxBossCardSlots = 3;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bHasActiveCardBattle = false;

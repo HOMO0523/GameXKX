@@ -214,7 +214,7 @@ def _card_run_summary(state):
     return {
         "has_active_card_battle": bool(_prop(run, "b_has_active_card_battle", "has_active_card_battle", "bHasActiveCardBattle")),
         "loadout_locked_for_route": bool(_prop(run, "b_loadout_locked_for_route", "loadout_locked_for_route", "bLoadoutLockedForRoute")),
-        "route_card_ids": [_name(value) for value in (_prop(run, "route_card_ids", "RouteCardIds") or [])],
+        "boss_card_slots": [_name(value) for value in (_prop(run, "boss_card_slots", "BossCardSlots") or [])],
         "active_temporary_quest_npc_id": _name(_prop(run, "active_temporary_quest_npc_id", "ActiveTemporaryQuestNpcId")),
         "party_selection": {
             "active_permanent_companion_instance_id": _name(_prop(party, "active_permanent_companion_instance_id", "ActivePermanentCompanionInstanceId")),

@@ -938,4 +938,114 @@ bool FGameXXKRouteBalanceFullMatrixExecutionTest::RunTest(const FString& Paramet
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteBalanceZhuiFengJinGuiDecisionLimitRegressionTest,
+	"GameXXK.RouteBalance.Diagnostics.ZhuiFengJinGuiBoss942090",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteBalanceZhuiFengJinGuiDecisionLimitRegressionTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	FString Error;
+	TestTrue(TEXT("the locked matrix expands before the ZhuiFeng decision-limit regression"),
+		FGameXXKRouteBalanceRules::ExpandCases(FGameXXKRouteBalanceRules::MakeLockedFullMatrix(), Cases, &Error));
+	const FGameXXKRouteBalanceCase* Case = Cases.FindByPredicate([](const FGameXXKRouteBalanceCase& Candidate)
+	{
+		return Candidate.CohortId == TEXT("ZhuiFengJinGui")
+			&& Candidate.NodeKind == EGameXXKNodeKind::Boss
+			&& Candidate.Chapter == 2
+			&& Candidate.Seed == 942090;
+	});
+	TestNotNull(TEXT("the fixed decision-limit case remains in the locked matrix"), Case);
+	if (!Case)
+	{
+		return false;
+	}
+
+	FGameXXKRouteBalanceCaseResult Result;
+	TArray<FGameXXKSimulationTraceEntry> Trace;
+	const bool bResolved = FGameXXKRouteBalanceRules::RunCase(*Case, Result, &Error, nullptr, &Trace);
+	const int32 FirstTraceIndex = FMath::Max(0, Trace.Num() - 80);
+	for (int32 TraceIndex = FirstTraceIndex; TraceIndex < Trace.Num(); ++TraceIndex)
+	{
+		const FGameXXKSimulationTraceEntry& Entry = Trace[TraceIndex];
+		AddInfo(FString::Printf(
+			TEXT("[ZhuiFengRegressionTrace] index=%d round=%d action=%s source=%s card_or_intent=%s target=%s hp=%d mana=%d armor=%d"),
+			TraceIndex,
+			Entry.Round,
+			*Entry.Action.ToString(),
+			*Entry.SourceUnitId.ToString(),
+			*Entry.CardOrIntentId.ToString(),
+			*Entry.TargetUnitId.ToString(),
+			Entry.HealthDelta,
+			Entry.ManaDelta,
+			Entry.ArmorDelta));
+	}
+	TestTrue(FString::Printf(TEXT("the fixed ZhuiFeng decision-limit case reaches a normal terminal result: %s"), *Error), bResolved);
+	if (!bResolved)
+	{
+		return false;
+	}
+	TestTrue(TEXT("the fixed ZhuiFeng case ends in victory or an ordinary defeat"),
+		Result.Metrics.bVictory || Result.Metrics.FailureReason == TEXT("Simulation.Defeat"));
+	TestTrue(TEXT("the fixed ZhuiFeng case terminates before the simulation safety limit"),
+		Result.Metrics.Rounds > 0 && Result.Metrics.Rounds <= 100);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKBladeRetainedOwnerDefeatRegressionTest,
+	"GameXXK.RouteBalance.Diagnostics.BladeRetainedOwnerDefeat1100213",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKBladeRetainedOwnerDefeatRegressionTest::RunTest(const FString& Parameters)
+{
+	TArray<FGameXXKRouteBalanceCase> Cases;
+	FString Error;
+	TestTrue(TEXT("orthogonal matrix builds before the Blade retained-owner regression"),
+		FGameXXKRouteBalanceRules::MakeOrthogonalCases(Cases, &Error));
+	const FGameXXKRouteBalanceCase* Case = Cases.FindByPredicate([](const FGameXXKRouteBalanceCase& Candidate)
+	{
+		return Candidate.DimensionId == TEXT("Profession")
+			&& Candidate.VariantId == TEXT("Blade")
+			&& Candidate.NodeKind == EGameXXKNodeKind::Boss
+			&& Candidate.Seed == 1100213;
+	});
+	TestNotNull(TEXT("the fixed Blade retained-owner case remains in the orthogonal matrix"), Case);
+	if (!Case)
+	{
+		return false;
+	}
+
+	FGameXXKRouteBalanceCaseResult Result;
+	TArray<FGameXXKSimulationTraceEntry> Trace;
+	const bool bResolved = FGameXXKRouteBalanceRules::RunCase(*Case, Result, &Error, nullptr, &Trace);
+	const int32 FirstTraceIndex = FMath::Max(0, Trace.Num() - 80);
+	for (int32 TraceIndex = FirstTraceIndex; TraceIndex < Trace.Num(); ++TraceIndex)
+	{
+		const FGameXXKSimulationTraceEntry& Entry = Trace[TraceIndex];
+		AddInfo(FString::Printf(
+			TEXT("[BladeRetainedOwnerTrace] index=%d round=%d action=%s source=%s card_or_intent=%s target=%s hp=%d mana=%d armor=%d"),
+			TraceIndex,
+			Entry.Round,
+			*Entry.Action.ToString(),
+			*Entry.SourceUnitId.ToString(),
+			*Entry.CardOrIntentId.ToString(),
+			*Entry.TargetUnitId.ToString(),
+			Entry.HealthDelta,
+			Entry.ManaDelta,
+			Entry.ArmorDelta));
+	}
+	TestTrue(FString::Printf(TEXT("the fixed Blade retained-owner case reaches a normal terminal result: %s"), *Error), bResolved);
+	if (!bResolved)
+	{
+		return false;
+	}
+	TestTrue(TEXT("the fixed Blade retained-owner case ends in victory or an ordinary defeat"),
+		Result.Metrics.bVictory || Result.Metrics.FailureReason == TEXT("Simulation.Defeat"));
+	TestTrue(TEXT("the fixed Blade retained-owner case terminates before the simulation safety limit"),
+		Result.Metrics.Rounds > 0 && Result.Metrics.Rounds <= 100);
+	return true;
+}
+
 #endif

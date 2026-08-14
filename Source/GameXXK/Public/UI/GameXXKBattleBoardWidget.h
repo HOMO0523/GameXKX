@@ -356,10 +356,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Cards")
 	bool IsCardTargetingActive() const;
 
-	/** Commits an existing saved route reward through the adapter, then lets the existing Rules victory gate advance the route. */
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Rewards")
-	bool ChoosePendingRouteReward(FName RewardCardId, FName ReplacementEntryId);
-
 	/** Commits one tiered battle reward option (card upgrade, boss card, relic, or attribute bonus). */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Rewards")
 	bool ChoosePendingBattleRewardOption(int32 OptionIndex, FName ReplacementEntryId = NAME_None);

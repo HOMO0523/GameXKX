@@ -12,6 +12,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKCardRouteBattleEntryTest::RunTest(const FString& Parameters)
 {
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	// Pin the route seed: a fresh game otherwise rolls it from the process RNG, which would
+	// make the chapter-one formation vary across automation runs.  Seed 1 yields the canonical
+	// Weasel formation asserted below.
+	State.RouteSeed = 1;
 	TestTrue(TEXT("the main-menu route can open the world map"), UGameXXKMVPRules::OpenWorldMap(State));
 	TestTrue(TEXT("the world map can enter Qingshan"), UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan()));
 	TestTrue(TEXT("the Qingshan quest can be accepted through the current follower contract"), UGameXXKMVPRules::AcceptTownQuest(State));
@@ -31,9 +35,9 @@ bool FGameXXKCardRouteBattleEntryTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("battle entry remains on the battle screen"), State.Screen, EGameXXKScreen::Battle);
 	TestTrue(TEXT("battle entry creates the serialized card authority rather than only legacy action buttons"), State.CardRun.bHasActiveCardBattle);
 	TestEqual(TEXT("the shared card battle opens with the fixed five-card hand"), State.CardRun.ActiveBattle.Deck.Hand.Num(), 5);
-	TestTrue(TEXT("a regular route battle contains the canonical MoneyRat monster"), State.ActiveBattleEnemies.ContainsByPredicate([](const FGameXXKBattleRuntimeUnit& Unit)
+	TestTrue(TEXT("a regular route battle contains the canonical chapter-one Weasel monster"), State.ActiveBattleEnemies.ContainsByPredicate([](const FGameXXKBattleRuntimeUnit& Unit)
 	{
-		return Unit.Id == TEXT("MoneyRat");
+		return Unit.EnemyDefinitionId == TEXT("Enemy.Ch1.Weasel");
 	}));
 	TestFalse(TEXT("legacy narrative follower state does not silently become a combat party member"), State.ActiveBattleParty.ContainsByPredicate([](const FGameXXKBattleRuntimeUnit& Unit)
 	{

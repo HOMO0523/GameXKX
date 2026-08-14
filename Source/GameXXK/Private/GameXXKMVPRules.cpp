@@ -10,7 +10,6 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKRelicRules.h"
-#include "GameXXKRouteCardRecipe.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "GameXXKRouteMerchantRules.h"
@@ -1895,20 +1894,8 @@ bool UGameXXKMVPRules::EnterDungeon(FGameXXKRuntimeState& State)
 	{
 		return false;
 	}
-	TArray<FGameXXKRouteCardEntry> BaseRouteCardEntries;
 	const int32 RootSeed = Candidate.CardRun.RouteProgress.RootSeed;
-	if (!FGameXXKRouteCardRecipe::BuildBaseEntries(
-		Candidate,
-		RootSeed,
-		BaseRouteCardEntries,
-		&CardRunError))
-	{
-		return false;
-	}
 	Candidate.CardRun.RouteRandomSeed = RootSeed;
-	Candidate.CardRun.RouteCardEntries = MoveTemp(BaseRouteCardEntries);
-	Candidate.CardRun.NextRouteCardEntryOrdinal = FGameXXKRouteCardRecipe::BaseEntryCount;
-	Candidate.CardRun.RouteCardIds.Reset();
 	State = MoveTemp(Candidate);
 	return true;
 }
@@ -2187,65 +2174,6 @@ bool UGameXXKMVPRules::ResolveBattleVictory(FGameXXKRuntimeState& State, bool bB
 	return true;
 }
 
-bool UGameXXKMVPRules::ResolvePendingRouteRewardChoiceAndFinish(
-	FGameXXKRuntimeState& State,
-	const FName RewardCardId,
-	const FName ReplacementEntryId,
-	FString* OutError)
-{
-	FGameXXKRuntimeState Candidate = State;
-	if (!FGameXXKCardBattleAdapter::ChoosePendingRouteReward(
-		Candidate,
-		RewardCardId,
-		ReplacementEntryId,
-		OutError))
-	{
-		return false;
-	}
-
-	bool bBossBattle = false;
-	if (Candidate.bHasGeneratedRouteMap)
-	{
-		const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(Candidate);
-		if (!PendingNode
-			|| (PendingNode->NodeKind != EGameXXKNodeKind::Battle
-				&& PendingNode->NodeKind != EGameXXKNodeKind::Elite
-				&& PendingNode->NodeKind != EGameXXKNodeKind::Boss))
-		{
-			if (OutError)
-			{
-				*OutError = TEXT("Pending route reward has no resolvable battle node.");
-			}
-			return false;
-		}
-		bBossBattle = PendingNode->NodeKind == EGameXXKNodeKind::Boss;
-	}
-	else
-	{
-		bBossBattle = GameXXKMVP::IsDungeonNode(Candidate, EGameXXKNodeKind::Boss);
-		if (!bBossBattle && !GameXXKMVP::IsDungeonNode(Candidate, EGameXXKNodeKind::Battle))
-		{
-			if (OutError)
-			{
-				*OutError = TEXT("Pending route reward has no resolvable fixed battle node.");
-			}
-			return false;
-		}
-	}
-
-	if (!ResolveBattleVictory(Candidate, bBossBattle))
-	{
-		if (OutError)
-		{
-			*OutError = TEXT("Reward choice succeeded but battle victory settlement failed.");
-		}
-		return false;
-	}
-
-	State = MoveTemp(Candidate);
-	return true;
-}
-
 bool UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(
 	FGameXXKRuntimeState& State,
 	const int32 OptionIndex,
@@ -2317,7 +2245,6 @@ bool UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(
 		if (!FGameXXKCardBattleAdapter::CommitBossCardReward(
 			Candidate,
 			Option.CardId,
-			ReplacementEntryId,
 			OutError))
 		{
 			return false;

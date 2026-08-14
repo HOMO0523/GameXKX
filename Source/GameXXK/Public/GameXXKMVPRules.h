@@ -667,13 +667,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveBattleVictory(UPARAM(ref) FGameXXKRuntimeState& State, bool bBossBattle);
 
-	/** Atomically commits one pending route-card reward and the gated battle victory settlement. */
-	static bool ResolvePendingRouteRewardChoiceAndFinish(
-		FGameXXKRuntimeState& State,
-		FName RewardCardId,
-		FName ReplacementEntryId = NAME_None,
-		FString* OutError = nullptr);
-
 	/** Atomically skips the pending route-card reward and finishes the gated battle victory settlement. */
 	static bool SkipPendingRouteRewardAndFinish(
 		FGameXXKRuntimeState& State,

@@ -59,7 +59,6 @@ bool FGameXXKRouteSettlementReplayTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("replay fixture initializes its route economy"),
 		FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun, 101));
 	State.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 51;
-	State.CardRun.RouteCardIds = {TEXT("Route.Test.Card")};
 	const int32 GoldBefore = State.PlayerGold;
 	const int32 StonesBefore = UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemEnhancementStone());
 
@@ -73,7 +72,6 @@ bool FGameXXKRouteSettlementReplayTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("clear settlement awards permanent gold exactly once"), State.PlayerGold, GoldBefore + 10);
 	TestEqual(TEXT("clear settlement awards enhancement stones exactly once"),
 		UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemEnhancementStone()), StonesBefore + 10);
-	TestTrue(TEXT("settlement removes the temporary route deck"), State.CardRun.RouteCardIds.IsEmpty());
 	TestEqual(TEXT("settlement clears the source travel money"), State.CardRun.RouteTravelMoney, 0);
 	TestEqual(TEXT("settlement clears the source card-acquisition count"), State.CardRun.RouteProgress.ActualRouteCardAcquisitionCount, 0);
 	TestEqual(TEXT("settlement records its idempotency key"), State.CardRun.LastAppliedRouteSettlementId, Receipt.SettlementId);
@@ -125,7 +123,6 @@ bool FGameXXKRouteSettlementReplayTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("crash-recovery fixture initializes its original route economy"),
 		FGameXXKRouteEconomyRules::InitializeRoute(RecoveryState.CardRun, Receipt.SourceTravelMoney));
 	RecoveryState.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = Receipt.SourceCardAcquisitionCount;
-	RecoveryState.CardRun.RouteCardIds = {TEXT("Route.Test.Card")};
 	RecoveryState.CardRun.PendingSettlement = Receipt;
 	RecoveryState.CardRun.LastAppliedRouteSettlementId = Receipt.SettlementId;
 	const int32 RecoveryGoldBefore = RecoveryState.PlayerGold;
@@ -138,7 +135,6 @@ bool FGameXXKRouteSettlementReplayTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("crash recovery never duplicates enhancement stones"),
 		UGameXXKMVPRules::GetItemCount(RecoveryState, UGameXXKMVPRules::ItemEnhancementStone()),
 		RecoveryStonesBefore);
-	TestTrue(TEXT("crash recovery clears the matching route deck"), RecoveryState.CardRun.RouteCardIds.IsEmpty());
 	TestEqual(TEXT("crash recovery clears the matching source travel money"), RecoveryState.CardRun.RouteTravelMoney, 0);
 	TestFalse(TEXT("crash recovery clears route economy initialization"), RecoveryState.CardRun.bRouteEconomyInitialized);
 	TestEqual(TEXT("crash recovery retains the applied receipt id"),
@@ -182,7 +178,6 @@ namespace
 	{
 		InOutState.CardRun.RouteTravelMoney = 101;
 		InOutState.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 51;
-		InOutState.CardRun.RouteCardIds = {TEXT("Route.Test.Card")};
 	}
 }
 

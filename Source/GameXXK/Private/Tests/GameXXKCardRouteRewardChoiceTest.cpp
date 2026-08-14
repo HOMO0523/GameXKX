@@ -59,7 +59,6 @@ bool FGameXXKCardRouteRewardChoiceTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("the upgrade option names a configured card"), UpgradedCardId.IsNone());
 	const EGameXXKCardQuality QualityBefore = FGameXXKCardBattleAdapter::GetConfiguredCardQuality(State.CardRun, UpgradedCardId);
 	TestTrue(TEXT("the upgrade candidate is below maximum quality"), QualityBefore < EGameXXKCardQuality::Epic);
-	const int32 NextEntryBefore = State.CardRun.NextRouteCardEntryOrdinal;
 	const int32 AcquisitionCountBefore = State.CardRun.RouteProgress.ActualRouteCardAcquisitionCount;
 	TestTrue(TEXT("an explicit option choice commits the saved offer and finishes the victory"),
 		UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(State, UpgradeOptionIndex, NAME_None));
@@ -68,9 +67,7 @@ bool FGameXXKCardRouteRewardChoiceTest::RunTest(const FString& Parameters)
 		FGameXXKCardBattleAdapter::GetNextCardQuality(QualityBefore));
 	TestTrue(TEXT("the completed reward clears the saved tiered offer"), State.CardRun.PendingReward.Options.IsEmpty());
 	TestEqual(TEXT("the completed reward advances back to the route map"), State.Screen, EGameXXKScreen::DungeonMap);
-	TestEqual(TEXT("a deck-card upgrade never advances the stable-entry sequence"), State.CardRun.NextRouteCardEntryOrdinal, NextEntryBefore);
 	TestEqual(TEXT("a deck-card upgrade never advances acquisition history"), State.CardRun.RouteProgress.ActualRouteCardAcquisitionCount, AcquisitionCountBefore);
-	TestTrue(TEXT("reward choice leaves legacy RouteCardIds empty"), State.CardRun.RouteCardIds.IsEmpty());
 	TestFalse(TEXT("the completed battle clears only its active card-combat session"), State.CardRun.bHasActiveCardBattle);
 	return true;
 }

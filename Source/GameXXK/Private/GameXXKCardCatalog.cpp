@@ -990,7 +990,7 @@ namespace
 			 Reaction(EGameXXKCardEffectTarget::HighestAttackAlly, EGameXXKCardStatus::Block, 1),
 			 WithSource(Attack(100, EGameXXKCardEffectTarget::SelectedTarget), EGameXXKCardEffectSource::HighestAttackAlly)},
 			EGameXXKCharacterRole::Blade,
-			{SharedPlayedModifier(EGameXXKCardBattleModifierTrigger::AfterNextActiveCard, EGameXXKCardEffectType::ReplayTriggeredCardBase, 1, 1, EGameXXKCardStatus::None, EGameXXKCardModifierExpiry::AfterTriggerCount)},
+			{},
 			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6)});
 		AddQuestNpcCard(Cards, Tusi, TEXT("Npc.TusiChief.ShiMenShouShi"), TEXT("石门守势"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark),

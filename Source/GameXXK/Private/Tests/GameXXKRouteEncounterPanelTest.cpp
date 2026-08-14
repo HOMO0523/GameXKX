@@ -193,8 +193,8 @@ bool FGameXXKRouteEncounterNodeClickFlowTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("merchant HUD consumes legacy F without opening the generic panel"),
 		PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::F, IE_Pressed, 1.0f)));
 	TestFalse(TEXT("legacy F leaves the generic encounter panel closed"), PlayerController->IsRouteEncounterPanelOpenForTest());
-	TestEqual(TEXT("runtime merchant HUD renders three card offers"), MerchantWidget ? MerchantWidget->GetRenderedCardOfferCountForTest() : 0, 3);
-	TestEqual(TEXT("runtime merchant HUD renders three relic offers"), MerchantWidget ? MerchantWidget->GetRenderedRelicOfferCountForTest() : 0, 3);
+	TestEqual(TEXT("runtime merchant HUD renders zero card offers"), MerchantWidget ? MerchantWidget->GetRenderedCardOfferCountForTest() : 0, 0);
+	TestEqual(TEXT("runtime merchant HUD renders four relic offers"), MerchantWidget ? MerchantWidget->GetRenderedRelicOfferCountForTest() : 0, 4);
 	TestTrue(TEXT("dedicated merchant leave action resolves the node"), MerchantWidget && MerchantWidget->LeaveMerchant());
 	TestEqual(TEXT("merchant leave returns to the route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestFalse(TEXT("merchant leave hides the dedicated merchant HUD"), PlayerController->IsRouteMerchantWidgetOpenForTest());
