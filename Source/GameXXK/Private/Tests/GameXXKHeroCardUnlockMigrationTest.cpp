@@ -323,7 +323,7 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	using namespace GameXXKHeroCardUnlockMigrationTest;
 
 	TestEqual(TEXT("the protagonist pool is introduced by save version twelve"), THeroCardPoolVersion<FGameXXKSaveMigration>::Value, 12);
-	TestEqual(TEXT("the current save version is fifteen"), FGameXXKSaveMigration::CurrentSaveVersion, 15);
+	TestEqual(TEXT("the current save version is sixteen"), FGameXXKSaveMigration::CurrentSaveVersion, 16);
 	TestTrue(TEXT("the catalog exposes the deterministic hero unlock query"), THasHeroUnlockQuery<FGameXXKCardCatalog>::value);
 	for (const int32 Level : {1, 5, 10, 15, 20})
 	{
@@ -366,7 +366,7 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the same v11 active battle migrates twice"), FGameXXKSaveMigration::MigrateToCurrent(ActiveSource, ActiveMigratedB, ActiveReportB));
 	TestTrue(TEXT("migration never mutates its source"), FGameXXKSaveState::StaticStruct()->CompareScriptStruct(&ActiveSource, &ActiveSourceBefore, PPF_None));
 	TestTrue(TEXT("identical v11 inputs produce byte-identical v12 saves"), FGameXXKSaveState::StaticStruct()->CompareScriptStruct(&ActiveMigratedA, &ActiveMigratedB, PPF_None));
-	TestEqual(TEXT("migration writes version fifteen"), ActiveMigratedA.SaveVersion, 15);
+	TestEqual(TEXT("migration writes version sixteen"), ActiveMigratedA.SaveVersion, 16);
 	TestTrue(TEXT("level-one migration rebuilds the exact allowed unlock order"), NamesEqual(
 		ActiveMigratedA.RuntimeState.CardRun.HeroUnlockedCardIds, ExpectedUnlocks(1)));
 	TestTrue(TEXT("locked legacy selections repair to the first eight legal IDs"), NamesEqual(

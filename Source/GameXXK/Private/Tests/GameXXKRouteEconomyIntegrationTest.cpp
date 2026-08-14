@@ -132,7 +132,7 @@ namespace
 		{
 			return false;
 		}
-		if (State.CardRun.PendingReward.CardIds.IsEmpty())
+		if (State.CardRun.PendingReward.CardIds.IsEmpty() && State.CardRun.PendingReward.Options.IsEmpty())
 		{
 			return true;
 		}
@@ -214,7 +214,7 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	const int32 NormalAttributesBeforeGate = SumRouteAttributes(NormalState.CardRun.RouteAttributeBonuses);
 	const int32 NormalReceiptsBeforeGate = NormalState.CardRun.RewardedTravelMoneyNodes.Num();
 	TestTrue(TEXT("the first normal victory call creates its reward offer"), UGameXXKMVPRules::ResolveBattleVictory(NormalState, false));
-	TestEqual(TEXT("the reward gate offers exactly three cards"), NormalState.CardRun.PendingReward.CardIds.Num(), 3);
+	TestEqual(TEXT("the reward gate offers exactly three tiered options"), NormalState.CardRun.PendingReward.Options.Num(), 3);
 	TestEqual(TEXT("the reward gate does not award travel money"), NormalState.CardRun.RouteTravelMoney, NormalMoneyBeforeGate);
 	TestEqual(TEXT("the reward gate does not write a node receipt"), NormalState.CardRun.RewardedTravelMoneyNodes.Num(), NormalReceiptsBeforeGate);
 	TestEqual(TEXT("the reward gate does not award XP"), NormalState.PlayerXP, NormalXPBeforeGate);

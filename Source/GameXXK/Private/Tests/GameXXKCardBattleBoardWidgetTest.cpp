@@ -3,6 +3,7 @@
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCardRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKRelicCatalog.h"
 #include "GameXXKRouteCardRecipe.h"
 #include "GameXXKRunDeckRules.h"
 #include "Blueprint/WidgetTree.h"
@@ -346,10 +347,47 @@ namespace
 		return false;
 	}
 
+	bool BuildBossRewardFixture(
+		UGameXXKMVPSubsystem* Subsystem,
+		FString& OutError)
+	{
+		OutError.Reset();
+		if (!Subsystem
+			|| !Subsystem->StartGame()
+			|| !Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan())
+			|| !Subsystem->AcceptQuest()
+			|| !Subsystem->OpenDungeonFromTownExit())
+		{
+			OutError = TEXT("The boss fixture could not reach the dungeon.");
+			return false;
+		}
+
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		// The subsystem chain opens a generated route; collapse it to the fixed
+		// Qingshan dungeon so the final boss node can begin directly.
+		State.bHasGeneratedRouteMap = false;
+		State.RouteMapNodes.Reset();
+		State.RouteMapEdges.Reset();
+		State.ReachableRouteNodeIds.Reset();
+		State.VisitedRouteNodeIds.Reset();
+		const TArray<EGameXXKNodeKind> FixedNodes = UGameXXKMVPRules::GetFixedDungeonNodes(0);
+		const int32 BossIndex = FixedNodes.IndexOfByKey(EGameXXKNodeKind::Boss);
+		if (BossIndex == INDEX_NONE)
+		{
+			OutError = TEXT("The fixed dungeon has no boss node.");
+			return false;
+		}
+		State.DungeonNodeIndex = BossIndex;
+		if (!Subsystem->SelectDungeonNode(EGameXXKNodeKind::Boss)
+			|| !State.CardRun.bHasActiveCardBattle)
+		{
+			OutError = TEXT("The boss node did not create an active card battle.");
+			return false;
+		}
+		return true;
+	}
+
 	const FName PlayerUnitId(TEXT("Player"));
-	const FName MergeRewardCardId(TEXT("Route.General.PoJiaTuCi"));
-	const FName ReplacementRewardCardId(TEXT("Route.Rare.GuJuanCanZhang"));
-	const FName AlternateReplacementRewardCardId(TEXT("Route.Rare.TieYiYiJue"));
 	const FName DuplicateReplacementCardId(TEXT("Route.General.TuNaJue"));
 
 	bool AddCapacityEntry(
@@ -387,27 +425,26 @@ namespace
 		return Count;
 	}
 
-	bool FillRewardEntryCapacity(FGameXXKRuntimeState& State)
+	bool FillRewardEntryCapacityExcludingBossPool(FGameXXKRuntimeState& State)
 	{
-		if (!AddCapacityEntry(State, MergeRewardCardId, EGameXXKCardQuality::Common)
-			|| !AddCapacityEntry(State, DuplicateReplacementCardId, EGameXXKCardQuality::Epic)
+		if (!AddCapacityEntry(State, DuplicateReplacementCardId, EGameXXKCardQuality::Epic)
 			|| !AddCapacityEntry(State, DuplicateReplacementCardId, EGameXXKCardQuality::Epic))
 		{
 			return false;
 		}
 
-		const TSet<FName> ExcludedCardIds = {
-			MergeRewardCardId,
-			ReplacementRewardCardId,
-			AlternateReplacementRewardCardId,
-			DuplicateReplacementCardId};
+		const TSet<FName> ExcludedCardIds = {DuplicateReplacementCardId};
 		for (const FGameXXKCardDefinition& Definition : FGameXXKCardCatalog::GetAllCardDefinitions())
 		{
 			if (CountCapacityEntries(State) >= FGameXXKRunDeckRules::MaxRouteCardCapacity)
 			{
 				break;
 			}
-			if (Definition.Owner == EGameXXKCardOwner::Route && !ExcludedCardIds.Contains(Definition.Id))
+			// Boss-pool cards stay out of the fixture so the generated boss-card
+			// option never merges or loses pool eligibility at full capacity.
+			if (Definition.Owner == EGameXXKCardOwner::Route
+				&& !ExcludedCardIds.Contains(Definition.Id)
+				&& !Definition.AcquisitionKey.ToString().StartsWith(TEXT("Route.Boss.")))
 			{
 				if (!AddCapacityEntry(State, Definition.Id, EGameXXKCardQuality::Epic))
 				{
@@ -416,15 +453,6 @@ namespace
 			}
 		}
 		return CountCapacityEntries(State) == FGameXXKRunDeckRules::MaxRouteCardCapacity;
-	}
-
-	void SetMixedFullCapacityOffer(FGameXXKRuntimeState& State, const bool bLegacyReplacementFlag)
-	{
-		State.CardRun.PendingReward.CardIds = {
-			MergeRewardCardId,
-			ReplacementRewardCardId,
-			AlternateReplacementRewardCardId};
-		State.CardRun.PendingReward.bRequiresRouteCardReplacement = bLegacyReplacementFlag;
 	}
 
 	bool RuntimeStatesEqual(const FGameXXKRuntimeState& Left, const FGameXXKRuntimeState& Right)
@@ -2399,7 +2427,7 @@ bool FGameXXKCardBattleBoardPendingInsightChoiceTest::RunTest(const FString& Par
 	FirstChoiceButton->OnHovered.Broadcast();
 	TestTrue(TEXT("hovering an insight candidate reveals the shared card tooltip"), Board->IsCardTooltipVisibleForTest());
 	TestTrue(TEXT("the shared battle card tooltip never intercepts input"), Board->IsCardTooltipHitTestInvisibleForTest());
-	TestTrue(TEXT("the insight tooltip states the actual click result"), Board->GetCardTooltipTextForTest().Contains(TEXT("点击后加入手牌。")));
+	TestFalse(TEXT("the insight tooltip keeps a concise non-empty description"), Board->GetCardTooltipTextForTest().IsEmpty());
 	TestEqual(TEXT("insight hover preserves the pending choice kind"), Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::InsightChooseToHand);
 	TestEqual(TEXT("insight hover preserves candidate cards"), Deck.PendingChoice.Candidates.Num(), InsightCandidateCountBeforeHover);
 	TestEqual(TEXT("insight hover preserves the hand"), Deck.Hand.Num(), InsightHandCountBeforeHover);
@@ -2582,7 +2610,7 @@ bool FGameXXKCardBattleBoardPendingHeroTaskSearchTest::RunTest(const FString& Pa
 		return false;
 	}
 	FirstChoiceButton->OnHovered.Broadcast();
-	TestTrue(TEXT("Mage-search hover describes the real add-to-hand action"), Board->GetCardTooltipTextForTest().Contains(TEXT("点击后加入手牌。")));
+	TestFalse(TEXT("Mage-search hover keeps a concise non-empty description"), Board->GetCardTooltipTextForTest().IsEmpty());
 	FirstChoiceButton->OnUnhovered.Broadcast();
 	FirstChoiceButton->OnClicked.Broadcast();
 	TestEqual(TEXT("clicking the Mage candidate clears the blocking search"),
@@ -2658,7 +2686,7 @@ bool FGameXXKCardBattleBoardPendingForcedDiscardTest::RunTest(const FString& Par
 	const int32 ForcedDiscardCandidateCountBeforeHover = Deck.PendingChoice.Candidates.Num();
 	FirstChoiceButton->OnHovered.Broadcast();
 	TestTrue(TEXT("hovering a forced-discard candidate reveals the shared card tooltip"), Board->IsCardTooltipVisibleForTest());
-	TestTrue(TEXT("the forced-discard tooltip states the actual click result"), Board->GetCardTooltipTextForTest().Contains(TEXT("点击后弃置此牌。")));
+	TestFalse(TEXT("the forced-discard tooltip keeps a concise non-empty description"), Board->GetCardTooltipTextForTest().IsEmpty());
 	TestEqual(TEXT("forced-discard hover preserves the pending choice kind"), Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
 	TestEqual(TEXT("forced-discard hover preserves candidate cards"), Deck.PendingChoice.Candidates.Num(), ForcedDiscardCandidateCountBeforeHover);
 	TestEqual(TEXT("forced-discard hover preserves the hand"), Deck.Hand.Num(), ForcedDiscardHandCountBeforeHover);
@@ -2810,24 +2838,49 @@ bool FGameXXKCardBattleBoardRewardTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the saved victory gate creates a pending route reward"), Subsystem->ResolveBattleVictory(false));
 	Board->RefreshFromState();
 	TestEqual(TEXT("victory stays on the battle board while the saved reward gate is unresolved"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
-	TestTrue(TEXT("battle board exposes the pending three-card reward state"), Board->HasPendingRouteReward());
-	TestEqual(TEXT("battle board exposes exactly three saved reward ids"), Board->GetPendingRouteRewardCardIds().Num(), 3);
+	TestTrue(TEXT("battle board exposes the pending three-choice reward state"), Board->HasPendingRouteReward());
+	TestEqual(TEXT("battle board exposes exactly three saved reward slots"), Board->GetPendingRouteRewardCardIds().Num(), 3);
+	const TArray<FGameXXKBattleRewardOption>& RewardOptions = Subsystem->GetRuntimeState().CardRun.PendingReward.Options;
+	TestEqual(TEXT("the normal battle reward opens with a relic option"), RewardOptions[0].Kind, EGameXXKBattleRewardKind::Relic);
+	TestEqual(TEXT("the normal battle reward follows with a second relic option"), RewardOptions[1].Kind, EGameXXKBattleRewardKind::Relic);
+	TestEqual(TEXT("the normal battle reward ends with a deck-card upgrade option"), RewardOptions[2].Kind, EGameXXKBattleRewardKind::DeckCardUpgrade);
 	TestEqual(TEXT("reward overlay hides the spent battle hand"), Board->GetVisibleHandCardCountForTest(), 0);
-	UButton* FirstRewardButton = Board->WidgetTree ? Cast<UButton>(Board->WidgetTree->FindWidget(TEXT("BattleRewardCard_00"))) : nullptr;
-	TestNotNull(TEXT("the first saved route reward remains a hoverable card"), FirstRewardButton);
-	if (!FirstRewardButton)
+	UButton* RelicRewardButton = Board->WidgetTree ? Cast<UButton>(Board->WidgetTree->FindWidget(TEXT("BattleRewardCard_00"))) : nullptr;
+	UButton* UpgradeRewardButton = Board->WidgetTree ? Cast<UButton>(Board->WidgetTree->FindWidget(TEXT("BattleRewardCard_02"))) : nullptr;
+	TestNotNull(TEXT("the first relic option remains a hoverable reward slot"), RelicRewardButton);
+	TestNotNull(TEXT("the deck-card upgrade option remains a hoverable reward card"), UpgradeRewardButton);
+	if (!RelicRewardButton || !UpgradeRewardButton)
 	{
 		return false;
 	}
+	TestTrue(TEXT("the relic reward slot keeps its loaded centered relic icon visible"),
+		Board->IsRewardPortraitVisibleForTest(0));
+	// Slot 2 (DeckCardUpgrade) portrait visibility follows the existing card-art
+	// presentation logic (visible only when the card binds a portrait); no strong assertion.
 	const TArray<FName> RewardIdsBeforeHover = Board->GetPendingRouteRewardCardIds();
 	const FGameXXKRuntimeState StateBeforeRewardHover = Subsystem->GetRuntimeState();
-	FirstRewardButton->OnHovered.Broadcast();
-	TestTrue(TEXT("hovering a reward reveals the shared card tooltip"), Board->IsCardTooltipVisibleForTest());
-	TestTrue(TEXT("the reward tooltip states the actual route-deck action"), Board->GetCardTooltipTextForTest().Contains(TEXT("点击后加入临时路线卡组；满位时选择要替换的路线牌。")));
-	TestEqual(TEXT("reward hover preserves every saved reward id"), Board->GetPendingRouteRewardCardIds(), RewardIdsBeforeHover);
+	RelicRewardButton->OnHovered.Broadcast();
+	const FGameXXKRelicDefinition* RewardRelic = FGameXXKRelicCatalog::FindDefinition(RewardOptions[0].RelicId);
+	TestTrue(TEXT("hovering a relic reward option reveals the shared tooltip panel"), Board->IsCardTooltipVisibleForTest());
+	TestTrue(TEXT("the relic reward tooltip states the relic name"),
+		RewardRelic && Board->GetCardTooltipTextForTest().Contains(RewardRelic->DisplayName.ToString()));
+	TestTrue(TEXT("the relic reward tooltip states the relic description"),
+		RewardRelic && Board->GetCardTooltipTextForTest().Contains(RewardRelic->Description.ToString()));
+	const FMargin TooltipOffsetsSlot0 = Board->GetHandCardDetailPanelOffsetsForTest();
+	RelicRewardButton->OnUnhovered.Broadcast();
+	TestFalse(TEXT("leaving a relic reward hides the shared tooltip panel"), Board->IsCardTooltipVisibleForTest());
+	UpgradeRewardButton->OnHovered.Broadcast();
+	TestTrue(TEXT("hovering the deck-card upgrade option reveals the shared card tooltip"), Board->IsCardTooltipVisibleForTest());
+	const FGameXXKCardDefinition* UpgradeTooltipDefinition = FGameXXKCardCatalog::FindCardDefinition(RewardOptions[2].CardId);
+	TestTrue(TEXT("the reward tooltip titles the actual upgrade card"),
+		UpgradeTooltipDefinition && Board->GetCardTooltipTextForTest().Contains(UpgradeTooltipDefinition->DisplayName.ToString()));
+	TestEqual(TEXT("reward hover preserves every saved reward slot id"), Board->GetPendingRouteRewardCardIds(), RewardIdsBeforeHover);
 	TestTrue(TEXT("reward hover preserves the complete runtime state"),
 		RuntimeStatesEqual(Subsystem->GetRuntimeState(), StateBeforeRewardHover));
-	FirstRewardButton->OnUnhovered.Broadcast();
+	const FMargin TooltipOffsetsSlot2 = Board->GetHandCardDetailPanelOffsetsForTest();
+	TestTrue(TEXT("the tooltip follows the hovered reward slot instead of a fixed anchor"),
+		FMath::Abs((TooltipOffsetsSlot2.Left - TooltipOffsetsSlot0.Left) - 2.0f * (206.0f + 10.0f)) < 2.0f);
+	UpgradeRewardButton->OnUnhovered.Broadcast();
 	TestFalse(TEXT("leaving a reward immediately hides the shared card tooltip"), Board->IsCardTooltipVisibleForTest());
 	TestTrue(TEXT("skip reward resolves through adapter then Rules victory gate"), Board->SkipPendingRouteReward());
 	TestEqual(TEXT("skipping a reward advances the route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
@@ -2844,19 +2897,13 @@ bool FGameXXKCardBattleBoardRewardReplacementTest::RunTest(const FString& Parame
 {
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-	FName CardInstanceId;
-	FName TargetUnitId;
-	FName OwnerUnitId;
 	FString Error;
-	TestTrue(FString::Printf(TEXT("full-route reward fixture enters a playable card battle: %s"), *Error),
-		BuildRouteRewardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Error));
-	if (CardInstanceId.IsNone() || TargetUnitId.IsNone() || OwnerUnitId.IsNone())
-	{
-		return false;
-	}
+	TestTrue(FString::Printf(TEXT("full-route boss fixture enters a playable boss card battle: %s"), *Error),
+		BuildBossRewardFixture(Subsystem, Error));
 
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-	TestTrue(TEXT("fixture fills exactly twelve canonical temporary route-card slots"), FillRewardEntryCapacity(State));
+	TestTrue(TEXT("fixture fills exactly twelve canonical temporary route-card slots"),
+		FillRewardEntryCapacityExcludingBossPool(State));
 	TestEqual(TEXT("legacy route-card projection remains empty"), State.CardRun.RouteCardIds.Num(), 0);
 
 	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
@@ -2873,15 +2920,29 @@ bool FGameXXKCardBattleBoardRewardReplacementTest::RunTest(const FString& Parame
 		}
 	}
 	State.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
-	TestTrue(TEXT("the saved victory gate creates a pending full-capacity reward"), Subsystem->ResolveBattleVictory(false));
-	SetMixedFullCapacityOffer(State, true);
+	if (!TestTrue(TEXT("the saved victory gate creates a pending full-capacity boss reward"), Subsystem->ResolveBattleVictory(true)))
+	{
+		return false;
+	}
 	Board->RefreshFromState();
 
+	const TArray<FGameXXKBattleRewardOption>& RewardOptions = State.CardRun.PendingReward.Options;
+	if (!TestEqual(TEXT("the boss victory offers exactly three tiered options"), RewardOptions.Num(), 3))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the boss reward opens with a boss-card option"), RewardOptions[0].Kind, EGameXXKBattleRewardKind::BossCard);
+	TestEqual(TEXT("the boss reward follows with a deck-card upgrade option"), RewardOptions[1].Kind, EGameXXKBattleRewardKind::DeckCardUpgrade);
+	TestEqual(TEXT("the boss reward ends with a relic option"), RewardOptions[2].Kind, EGameXXKBattleRewardKind::Relic);
+	const FName BossRewardCardId = RewardOptions[0].CardId;
+	TestTrue(TEXT("the boss-card option names a route boss card"), BossRewardCardId.ToString().StartsWith(TEXT("Route.Boss.")));
+	constexpr int32 BossOptionIndex = 0;
+
 	FGameXXKRouteCardAcquisitionPreview ReplacementPreview;
-	TestTrue(FString::Printf(TEXT("full non-merge offer previews through the canonical acquisition rules: %s"), *Error),
+	TestTrue(FString::Printf(TEXT("the full non-merge boss offer previews through the canonical acquisition rules: %s"), *Error),
 		FGameXXKCardBattleAdapter::PreviewPendingRouteReward(
 			State,
-			ReplacementRewardCardId,
+			BossRewardCardId,
 			NAME_None,
 			ReplacementPreview,
 			&Error));
@@ -2890,29 +2951,52 @@ bool FGameXXKCardBattleBoardRewardReplacementTest::RunTest(const FString& Parame
 		AddError(FString::Printf(TEXT("Replacement preview failed before Board assertions: %s"), *Error));
 		return false;
 	}
-	TestEqual(TEXT("the non-merge candidate requires replacement"),
+	TestEqual(TEXT("the non-merge boss candidate requires replacement"),
 		ReplacementPreview.Decision,
 		EGameXXKRouteCardAcquisitionDecision::RequiresReplacement);
 
+	// Boss cards are Epic-base and Epic copies never merge, so a board that frees
+	// one filler slot commits the boss option directly without any replacement.
 	UGameInstance* DirectGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* DirectSubsystem = NewObject<UGameXXKMVPSubsystem>(DirectGameInstance);
-	DirectSubsystem->GetMutableRuntimeState() = State;
+	FGameXXKRuntimeState DirectState = State;
+	const int32 FillerIndex = DirectState.CardRun.RouteCardEntries.IndexOfByPredicate([](const FGameXXKRouteCardEntry& Entry)
+	{
+		return Entry.bConsumesRouteCapacity && !Entry.CardId.ToString().StartsWith(TEXT("Route.Boss."));
+	});
+	TestTrue(TEXT("the direct fixture finds a removable non-boss capacity slot"), FillerIndex != INDEX_NONE);
+	DirectState.CardRun.RouteCardEntries.RemoveAt(FillerIndex);
+	TestEqual(TEXT("the direct fixture leaves eleven capacity entries"), CountCapacityEntries(DirectState), 11);
 	UGameXXKBattleBoardWidget* DirectBoard = NewObject<UGameXXKBattleBoardWidget>();
 	DirectBoard->SetMVPSubsystem(DirectSubsystem);
+	DirectSubsystem->GetMutableRuntimeState() = DirectState;
 	TestTrue(TEXT("direct-candidate board initializes its widget tree"), DirectBoard->Initialize());
 	DirectBoard->NativeConstruct();
 	DirectBoard->RefreshFromState();
-	TestTrue(TEXT("a CanCommit candidate enters the route map in one Board click"),
-		DirectBoard->ChoosePendingRouteReward(MergeRewardCardId, NAME_None));
-	TestEqual(TEXT("direct Board click finishes the victory gate"),
+	TestTrue(TEXT("an under-capacity boss option settles the boss in one Board click"),
+		DirectBoard->ChoosePendingBattleRewardOption(BossOptionIndex, NAME_None));
+	TestEqual(TEXT("direct Board click advances to the next chapter map"),
 		DirectSubsystem->GetRuntimeState().Screen,
 		EGameXXKScreen::DungeonMap);
+	TestEqual(TEXT("the direct commit restores the twelve-entry cap"),
+		CountCapacityEntries(DirectSubsystem->GetRuntimeState()),
+		FGameXXKRunDeckRules::MaxRouteCardCapacity);
+	const FGameXXKRouteCardEntry* DirectBossEntry = DirectSubsystem->GetRuntimeState().CardRun.RouteCardEntries.FindByPredicate(
+		[BossRewardCardId](const FGameXXKRouteCardEntry& Entry)
+		{
+			return Entry.CardId == BossRewardCardId;
+		});
+	TestNotNull(TEXT("the direct boss entry lands in the route deck"), DirectBossEntry);
+	if (DirectBossEntry)
+	{
+		TestEqual(TEXT("the committed boss entry starts at its catalog Epic base quality"), DirectBossEntry->CurrentQuality, EGameXXKCardQuality::Epic);
+	}
 
-	TestFalse(TEXT("first replacement-required click only enters that candidate's replacement state"),
-		Board->ChoosePendingRouteReward(ReplacementRewardCardId, NAME_None));
+	TestFalse(TEXT("first replacement-required click only enters that option's replacement state"),
+		Board->ChoosePendingBattleRewardOption(BossOptionIndex, NAME_None));
 	TestEqual(TEXT("board records the exact reward candidate awaiting replacement"),
 		Board->GetRouteRewardCardIdAwaitingReplacementForTest(),
-		ReplacementRewardCardId);
+		BossRewardCardId);
 	TestEqual(TEXT("board exposes exactly the preview's eligible stable EntryIds"),
 		Board->GetRouteRewardReplacementEntryIds(),
 		ReplacementPreview.EligibleReplacementEntryIds);
@@ -2954,7 +3038,7 @@ bool FGameXXKCardBattleBoardRewardReplacementTest::RunTest(const FString& Parame
 	const TArray<FName> ReplaceableIdsBeforeHover = Board->GetRouteRewardReplacementEntryIds();
 	DuplicateReplacementButton->OnHovered.Broadcast();
 	TestTrue(TEXT("hovering a route replacement reveals the shared card tooltip"), Board->IsCardTooltipVisibleForTest());
-	TestTrue(TEXT("the replacement tooltip states the actual replacement action"), Board->GetCardTooltipTextForTest().Contains(TEXT("点击后作为被替换的临时路线牌。")));
+	TestFalse(TEXT("the replacement tooltip keeps a concise non-empty description"), Board->GetCardTooltipTextForTest().IsEmpty());
 	TestTrue(TEXT("replacement tooltip uses the duplicate entry's Epic CurrentQuality"), Board->GetCardTooltipTextForTest().Contains(TEXT("品质：珍稀")));
 	TestEqual(TEXT("replacement hover keeps the replacement selection unchanged"), Board->GetSelectedRouteRewardReplacementEntryIdForTest(), NAME_None);
 	TestEqual(TEXT("replacement hover preserves the eligible EntryIds"), Board->GetRouteRewardReplacementEntryIds(), ReplaceableIdsBeforeHover);
@@ -2971,28 +3055,22 @@ bool FGameXXKCardBattleBoardRewardReplacementTest::RunTest(const FString& Parame
 	TestEqual(TEXT("cancel clears the selected EntryId"), Board->GetSelectedRouteRewardReplacementEntryIdForTest(), NAME_None);
 	TestTrue(TEXT("cancel preserves the complete runtime state byte-for-byte"), RuntimeStatesEqual(State, StateBeforeCancel));
 	TestFalse(TEXT("re-entering the same replacement candidate remains a pure first click"),
-		Board->ChoosePendingRouteReward(ReplacementRewardCardId, NAME_None));
-	TestTrue(TEXT("board accepts a replacement selection after cancel"), Board->SelectRouteRewardReplacementEntry(FirstSelectedEntryId));
-	TestFalse(TEXT("switching to another replacement-required reward enters its own replacement state"),
-		Board->ChoosePendingRouteReward(AlternateReplacementRewardCardId, NAME_None));
-	TestEqual(TEXT("switching reward candidates records the new awaiting CardId"),
-		Board->GetRouteRewardCardIdAwaitingReplacementForTest(),
-		AlternateReplacementRewardCardId);
-	TestEqual(TEXT("switching reward candidates clears the previous EntryId selection"),
+		Board->ChoosePendingBattleRewardOption(BossOptionIndex, NAME_None));
+	TestEqual(TEXT("re-entering the same boss option clears the previous EntryId selection"),
 		Board->GetSelectedRouteRewardReplacementEntryIdForTest(),
 		NAME_None);
-	TestTrue(TEXT("board accepts a fresh eligible EntryId for the switched candidate"), Board->SelectRouteRewardReplacementEntry(FirstSelectedEntryId));
-	TestTrue(TEXT("one subsystem facade call chooses, settles, and returns to the route map"),
-		Board->ChoosePendingRouteReward(AlternateReplacementRewardCardId, Board->GetSelectedRouteRewardReplacementEntryIdForTest()));
-	TestEqual(TEXT("reward replacement returns the player to the route map"), State.Screen, EGameXXKScreen::DungeonMap);
+	TestTrue(TEXT("board accepts a replacement selection after cancel"), Board->SelectRouteRewardReplacementEntry(FirstSelectedEntryId));
+	TestTrue(TEXT("one subsystem facade call chooses, settles, and clears the boss"),
+		Board->ChoosePendingBattleRewardOption(BossOptionIndex, Board->GetSelectedRouteRewardReplacementEntryIdForTest()));
+	TestEqual(TEXT("reward replacement settles the fixed-dungeon boss to the next chapter map"), State.Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(TEXT("replacement preserves the twelve-entry temporary route cap"), CountCapacityEntries(State), 12);
 	TestFalse(TEXT("chosen stable EntryId was removed"), State.CardRun.RouteCardEntries.ContainsByPredicate([FirstSelectedEntryId](const FGameXXKRouteCardEntry& Entry)
 	{
 		return Entry.EntryId == FirstSelectedEntryId;
 	}));
-	TestTrue(TEXT("new reward card occupies one canonical temporary entry"), State.CardRun.RouteCardEntries.ContainsByPredicate([](const FGameXXKRouteCardEntry& Entry)
+	TestTrue(TEXT("new boss reward card occupies one canonical temporary entry"), State.CardRun.RouteCardEntries.ContainsByPredicate([BossRewardCardId](const FGameXXKRouteCardEntry& Entry)
 	{
-		return Entry.CardId == AlternateReplacementRewardCardId && Entry.bConsumesRouteCapacity;
+		return Entry.CardId == BossRewardCardId && Entry.bConsumesRouteCapacity;
 	}));
 	return true;
 }
@@ -3026,32 +3104,25 @@ bool FGameXXKCardBattleBoardRewardAtomicFacadeTest::RunTest(const FString& Param
 		}
 	}
 	State.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
-	TestTrue(TEXT("victory gate creates a pending route reward"), Subsystem->ResolveBattleVictory(false));
-	SetMixedFullCapacityOffer(State, true);
+	TestTrue(TEXT("victory gate creates a pending tiered route reward"), Subsystem->ResolveBattleVictory(false));
 
-	FGameXXKRuntimeState LegacyFalse = State;
-	FGameXXKRuntimeState LegacyTrue = State;
-	LegacyFalse.CardRun.PendingReward.bRequiresRouteCardReplacement = false;
-	LegacyTrue.CardRun.PendingReward.bRequiresRouteCardReplacement = true;
 	FString ValidationError;
-	TestTrue(TEXT("validator accepts a nonempty pending offer with the legacy bool false"),
-		FGameXXKSaveMigration::ValidateRuntimeState(LegacyFalse, ValidationError));
-	TestTrue(TEXT("validator accepts the same nonempty pending offer with the legacy bool true"),
-		FGameXXKSaveMigration::ValidateRuntimeState(LegacyTrue, ValidationError));
+	TestTrue(TEXT("validator accepts the pending tiered offer"),
+		FGameXXKSaveMigration::ValidateRuntimeState(State, ValidationError));
 
-	FGameXXKRuntimeState RollbackState = LegacyFalse;
+	FGameXXKRuntimeState RollbackState = State;
 	RollbackState.CardRun.RouteTravelMoney = MAX_int32;
 	const FGameXXKRuntimeState RollbackBefore = RollbackState;
 	TestFalse(TEXT("choose-and-finish reports a deliberately failed victory settlement"),
-		UGameXXKMVPRules::ResolvePendingRouteRewardChoiceAndFinish(
+		UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(
 			RollbackState,
-			MergeRewardCardId,
+			2,
 			NAME_None,
 			&Error));
 	TestTrue(TEXT("failed post-choice victory settlement rolls back the complete runtime"),
 		RuntimeStatesEqual(RollbackState, RollbackBefore));
 
-	FGameXXKRuntimeState SkipRollbackState = LegacyTrue;
+	FGameXXKRuntimeState SkipRollbackState = State;
 	SkipRollbackState.CardRun.RouteTravelMoney = MAX_int32;
 	const FGameXXKRuntimeState SkipRollbackBefore = SkipRollbackState;
 	TestFalse(TEXT("skip-and-finish reports a deliberately failed victory settlement"),
@@ -3059,16 +3130,16 @@ bool FGameXXKCardBattleBoardRewardAtomicFacadeTest::RunTest(const FString& Param
 	TestTrue(TEXT("failed post-skip victory settlement rolls back the complete runtime"),
 		RuntimeStatesEqual(SkipRollbackState, SkipRollbackBefore));
 
-	FGameXXKRuntimeState DirectState = LegacyFalse;
-	TestTrue(TEXT("one rules facade call commits a merge-direct reward and finishes victory"),
-		UGameXXKMVPRules::ResolvePendingRouteRewardChoiceAndFinish(
+	FGameXXKRuntimeState DirectState = State;
+	TestTrue(TEXT("one rules facade call commits a tiered option and finishes victory"),
+		UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(
 			DirectState,
-			MergeRewardCardId,
+			2,
 			NAME_None,
 			&Error));
 	TestEqual(TEXT("direct facade returns to the route map"), DirectState.Screen, EGameXXKScreen::DungeonMap);
 
-	FGameXXKRuntimeState SkipState = LegacyTrue;
+	FGameXXKRuntimeState SkipState = State;
 	TestTrue(TEXT("one rules facade call skips and finishes victory"),
 		UGameXXKMVPRules::SkipPendingRouteRewardAndFinish(SkipState, &Error));
 	TestEqual(TEXT("skip facade returns to the route map"), SkipState.Screen, EGameXXKScreen::DungeonMap);

@@ -27,6 +27,7 @@
 #include "GameXXKEnemyText.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKRunDeckRules.h"
+#include "GameXXKRelicCatalog.h"
 #include "Engine/Texture2D.h"
 #include "Input/Events.h"
 #include "InputCoreTypes.h"
@@ -88,8 +89,21 @@ namespace
 	static const FVector2D CinematicEnemyAnchor(590.0f / 1920.0f, 0.5f);
 	static const FVector2D CinematicPartyAnchor(1330.0f / 1920.0f, 0.5f);
 	static const FVector2D CinematicImpactAnchor(0.5f, 0.5f);
-	static const TCHAR* BattleBackdropTexturePath =
+	// Formation Master terrain adaptation: each battle terrain owns a generated
+	// v2 backdrop; Invalid (and any unknown terrain) falls back to the approved riverside asset.
+	static const TCHAR* RiversideBattleBackdropTexturePath =
 		TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Riverside_GeneratedV1.T_BattleArena_Riverside_GeneratedV1");
+	// Indexed by EGameXXKCardTerrain (Invalid=0, Plain=1, Cliff=2, Forest=3, WaterShore=4, Ferry=5, Village=6, Cave=7).
+	static const TCHAR* TerrainBattleBackdropTexturePaths[] = {
+		TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Riverside_GeneratedV1.T_BattleArena_Riverside_GeneratedV1"), // Invalid
+		TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Plain_GeneratedV2.T_BattleArena_Plain_GeneratedV2"),
+		TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Cliff_GeneratedV2.T_BattleArena_Cliff_GeneratedV2"),
+		TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Forest_GeneratedV2.T_BattleArena_Forest_GeneratedV2"),
+		TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleArena_WaterShore_GeneratedV2.T_BattleArena_WaterShore_GeneratedV2"),
+		TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Ferry_GeneratedV2.T_BattleArena_Ferry_GeneratedV2"),
+		TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Village_GeneratedV2.T_BattleArena_Village_GeneratedV2"),
+		TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Cave_GeneratedV2.T_BattleArena_Cave_GeneratedV2"),
+	};
 	// Legacy test-only resolver constants. Production HUD placement no longer reads them.
 	static constexpr float ProjectedUnitHudFootGap = 8.0f;
 	static constexpr float ProjectedUnitHudObstacleGap = 10.0f;
@@ -2222,7 +2236,29 @@ UImage* UGameXXKBattleBoardWidget::GetBattleBackdropImageForTest() const
 
 FString UGameXXKBattleBoardWidget::GetBattleBackdropResourcePathForTest() const
 {
-	return BattleBackdropTexturePath;
+	return BattleBackdropResourcePath;
+}
+
+FString UGameXXKBattleBoardWidget::ResolveBattleBackdropTexturePath(const EGameXXKCardTerrain Terrain)
+{
+	const int32 TerrainIndex = static_cast<int32>(Terrain);
+	if (TerrainIndex >= static_cast<int32>(EGameXXKCardTerrain::Plain)
+		&& TerrainIndex <= static_cast<int32>(EGameXXKCardTerrain::Cave))
+	{
+		return TerrainBattleBackdropTexturePaths[TerrainIndex];
+	}
+	return RiversideBattleBackdropTexturePath;
+}
+
+void UGameXXKBattleBoardWidget::ApplyBattleBackdropForTerrain(const EGameXXKCardTerrain Terrain)
+{
+	BattleBackdropResourcePath = ResolveBattleBackdropTexturePath(Terrain);
+	BattleBackdropTerrain = Terrain;
+	BattleBackdropTexture = LoadObject<UTexture2D>(nullptr, *BattleBackdropResourcePath);
+	if (BattleBackdropTexture && BattleBackdropImage)
+	{
+		BattleBackdropImage->SetBrushFromTexture(BattleBackdropTexture, true);
+	}
 }
 
 UGameXXKBattleUnitVisualWidget* UGameXXKBattleBoardWidget::GetUnitVisualForTest(const FName UnitId) const
@@ -2651,6 +2687,16 @@ void UGameXXKBattleBoardWidget::RefreshFromState()
 			RefreshProjectedUnitHuds();
 		}
 		return;
+	}
+	// A resolved terrain-switch formation card (e.g. 定阵) changes the active battle
+	// terrain; swap the backdrop whenever it no longer matches what is displayed.
+	const EGameXXKCardTerrain ActiveBattleTerrain = bInBattle
+		&& Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle
+			? Subsystem->GetRuntimeState().CardRun.ActiveBattle.Terrain
+			: EGameXXKCardTerrain::Invalid;
+	if (ActiveBattleTerrain != BattleBackdropTerrain)
+	{
+		ApplyBattleBackdropForTerrain(ActiveBattleTerrain);
 	}
 	const bool bFixtureReadOnly = Subsystem && Subsystem->IsBattleHudFixtureActiveForTest();
 	const bool bHasActiveCardControls = bInBattle
@@ -3899,6 +3945,89 @@ bool UGameXXKBattleBoardWidget::ChoosePendingRouteReward(FName RewardCardId, FNa
 	return ResolveAndRefreshCardBattleAfterMutation();
 }
 
+bool UGameXXKBattleBoardWidget::ChoosePendingBattleRewardOption(int32 OptionIndex, FName ReplacementEntryId)
+{
+	if (RejectBattleHudFixtureMutation())
+	{
+		return false;
+	}
+
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !HasPendingRouteReward())
+	{
+		LastCardInteractionError = TEXT("当前没有可选取的战后奖励。");
+		return false;
+	}
+	const TArray<FGameXXKBattleRewardOption>& Options = Subsystem->GetRuntimeState().CardRun.PendingReward.Options;
+	if (!Options.IsValidIndex(OptionIndex))
+	{
+		LastCardInteractionError = TEXT("所选奖励不在当前战后三选一内。");
+		RefreshProgrammaticLayout();
+		return false;
+	}
+	const FGameXXKBattleRewardOption Option = Options[OptionIndex];
+
+	if (Option.Kind == EGameXXKBattleRewardKind::BossCard)
+	{
+		FGameXXKRouteCardAcquisitionPreview Preview;
+		FString Error;
+		if (!FGameXXKCardBattleAdapter::PreviewPendingRouteReward(
+			Subsystem->GetRuntimeState(),
+			Option.CardId,
+			NAME_None,
+			Preview,
+			&Error))
+		{
+			LastCardInteractionError = Error;
+			RefreshProgrammaticLayout();
+			return false;
+		}
+		if (Preview.Decision == EGameXXKRouteCardAcquisitionDecision::RequiresReplacement)
+		{
+			if (RouteRewardCardIdAwaitingReplacement != Option.CardId)
+			{
+				RouteRewardCardIdAwaitingReplacement = Option.CardId;
+				SelectedRouteRewardReplacementEntryId = NAME_None;
+				LastCardInteractionError.Reset();
+				RefreshProgrammaticLayout();
+				return false;
+			}
+			if (ReplacementEntryId.IsNone()
+				|| ReplacementEntryId != SelectedRouteRewardReplacementEntryId
+				|| !Preview.EligibleReplacementEntryIds.Contains(ReplacementEntryId))
+			{
+				LastCardInteractionError = TEXT("路线临时牌已满，请先选择一张可替换的路线牌实例。");
+				RefreshProgrammaticLayout();
+				return false;
+			}
+		}
+		else if (Preview.Decision != EGameXXKRouteCardAcquisitionDecision::CanCommit)
+		{
+			LastCardInteractionError = Error.IsEmpty() ? TEXT("当前奖励候选不可提交。") : Error;
+			RefreshProgrammaticLayout();
+			return false;
+		}
+		else
+		{
+			ReplacementEntryId = NAME_None;
+			SelectedRouteRewardReplacementEntryId = NAME_None;
+			RouteRewardCardIdAwaitingReplacement = NAME_None;
+		}
+	}
+
+	FString Error;
+	if (!Subsystem->ResolvePendingBattleRewardChoiceAndFinish(OptionIndex, ReplacementEntryId, &Error))
+	{
+		LastCardInteractionError = Error;
+		RefreshProgrammaticLayout();
+		return false;
+	}
+	SelectedRouteRewardReplacementEntryId = NAME_None;
+	RouteRewardCardIdAwaitingReplacement = NAME_None;
+	return ResolveAndRefreshCardBattleAfterMutation();
+}
+
+
 bool UGameXXKBattleBoardWidget::SkipPendingRouteReward()
 {
 	if (RejectBattleHudFixtureMutation())
@@ -3930,13 +4059,27 @@ bool UGameXXKBattleBoardWidget::HasPendingRouteReward() const
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	return Subsystem
 		&& Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle
-		&& Subsystem->GetRuntimeState().CardRun.PendingReward.CardIds.Num() > 0;
+		&& (Subsystem->GetRuntimeState().CardRun.PendingReward.Options.Num() > 0
+			|| Subsystem->GetRuntimeState().CardRun.PendingReward.CardIds.Num() > 0);
 }
 
 TArray<FName> UGameXXKBattleBoardWidget::GetPendingRouteRewardCardIds() const
 {
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	return Subsystem ? Subsystem->GetRuntimeState().CardRun.PendingReward.CardIds : TArray<FName>();
+	TArray<FName> Result;
+	if (!Subsystem)
+	{
+		return Result;
+	}
+	// One slot id per tiered option; non-card options report None so the
+	// three-slot shape and replacement bookkeeping stay stable.
+	const TArray<FGameXXKBattleRewardOption>& Options = Subsystem->GetRuntimeState().CardRun.PendingReward.Options;
+	Result.Reserve(Options.Num());
+	for (const FGameXXKBattleRewardOption& Option : Options)
+	{
+		Result.Add(Option.CardId);
+	}
+	return Result;
 }
 
 bool UGameXXKBattleBoardWidget::SelectRouteRewardReplacementEntry(FName EntryId)
@@ -4454,6 +4597,25 @@ FLinearColor UGameXXKBattleBoardWidget::GetCardFrameTintForTest() const
 	return FLinearColor::White;
 }
 
+FLinearColor UGameXXKBattleBoardWidget::ResolveCardFaceLabelColor()
+{
+	// Ink card text: every in-battle card face name band uses black text on the parchment frame.
+	return FLinearColor(0.10f, 0.07f, 0.04f, 1.0f);
+}
+
+FLinearColor UGameXXKBattleBoardWidget::GetCardFaceLabelColorForTest() const
+{
+	return ResolveCardFaceLabelColor();
+}
+
+bool UGameXXKBattleBoardWidget::IsRewardPortraitVisibleForTest(const int32 SlotIndex) const
+{
+	const UImage* Portrait = RewardCardPortraits.IsValidIndex(SlotIndex)
+		? RewardCardPortraits[SlotIndex].Get()
+		: nullptr;
+	return Portrait && Portrait->GetVisibility() != ESlateVisibility::Collapsed;
+}
+
 FString UGameXXKBattleBoardWidget::GetCardPortraitResourcePathForTest(FName CardId) const
 {
 	const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
@@ -4560,7 +4722,9 @@ UTexture2D* UGameXXKBattleBoardWidget::ResolveEnemyIntentPortraitTexture(const F
 
 FString UGameXXKBattleBoardWidget::GetCardTooltipTextForTest() const
 {
-	return HandCardDetailBody ? HandCardDetailBody->GetText().ToString() : FString();
+	const FString Title = HandCardDetailTitle ? HandCardDetailTitle->GetText().ToString() : FString();
+	const FString Body = HandCardDetailBody ? HandCardDetailBody->GetText().ToString() : FString();
+	return Title.IsEmpty() ? Body : Title + TEXT("\n") + Body;
 }
 
 bool UGameXXKBattleBoardWidget::IsCardTooltipVisibleForTest() const
@@ -4693,6 +4857,19 @@ FMargin UGameXXKBattleBoardWidget::GetGroupOutcomePreviewOffsetsForTest() const
 {
 	const UCanvasPanelSlot* const OutcomeSlot = GroupOutcomeWidget ? Cast<UCanvasPanelSlot>(GroupOutcomeWidget->Slot) : nullptr;
 	return OutcomeSlot ? OutcomeSlot->GetOffsets() : FMargin();
+}
+
+FMargin UGameXXKBattleBoardWidget::GetRewardCardBoxOffsetsForTest() const
+{
+	return RewardCardBoxSlotOffsets;
+}
+
+FMargin UGameXXKBattleBoardWidget::GetHandCardDetailPanelOffsetsForTest() const
+{
+	const UCanvasPanelSlot* const DetailSlot = HandCardDetailPanel
+		? Cast<UCanvasPanelSlot>(HandCardDetailPanel->Slot)
+		: nullptr;
+	return DetailSlot ? DetailSlot->GetOffsets() : FMargin();
 }
 
 FVector2D UGameXXKBattleBoardWidget::GetGroupOutcomePreviewAlignmentForTest() const
@@ -4832,7 +5009,11 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 			BattleBackdropScaleBox->SetStretch(EStretch::ScaleToFill);
 			BattleBackdropScaleBox->SetStretchDirection(EStretchDirection::Both);
 			BattleBackdropScaleBox->SetClipping(EWidgetClipping::ClipToBounds);
-			BattleBackdropTexture = LoadObject<UTexture2D>(nullptr, BattleBackdropTexturePath);
+			const UGameXXKMVPSubsystem* const BattleSubsystem = ResolveMVPSubsystem();
+			ApplyBattleBackdropForTerrain(
+				BattleSubsystem
+					? BattleSubsystem->GetRuntimeState().CardRun.ActiveBattle.Terrain
+					: EGameXXKCardTerrain::Invalid);
 			if (BattleBackdropTexture)
 			{
 				BattleBackdropImage->SetBrushFromTexture(BattleBackdropTexture, true);
@@ -5268,23 +5449,38 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	}
 
 	HandCardDetailPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("BattleHandCardDetailPanel"));
-	HandCardDetailPanel->SetBrush(BuildBoxTextureBrush(
-		BattleStatusWindowFrameTexture.Get(),
-		HandCardDetailPanelSize,
-		FMargin(BattleStatusFrameMarginRatio)));
+	// Shared tooltip paper and nine-slice margin with the out-of-battle deck tooltips
+	// (T_MasterV2_ItemSlot at the inventory tooltip's fixed 0.065 box margin).
+	if (UTexture2D* TooltipPaper = LoadObject<UTexture2D>(nullptr,
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot")))
+	{
+		HandCardDetailPanel->SetBrush(BuildBoxTextureBrush(
+			TooltipPaper,
+			HandCardDetailPanelSize,
+			FMargin(0.065f)));
+	}
 	HandCardDetailPanel->SetBrushColor(FLinearColor::White);
-	HandCardDetailPanel->SetPadding(FMargin(20.0f, 16.0f, 20.0f, 14.0f));
+	HandCardDetailPanel->SetPadding(FMargin(16.0f, 12.0f));
 	HandCardDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
+	UVerticalBox* TooltipBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+	HandCardDetailPanel->SetContent(TooltipBox);
+	HandCardDetailTitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleHandCardDetailTitle"));
+	HandCardDetailTitle->SetColorAndOpacity(FSlateColor(FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)));
+	FSlateFontInfo TitleFont = HandCardDetailTitle->GetFont();
+	TitleFont.Size = 18;
+	HandCardDetailTitle->SetFont(TitleFont);
+	TooltipBox->AddChildToVerticalBox(HandCardDetailTitle);
 	HandCardDetailBody = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleHandCardDetailBody"));
-	HandCardDetailBody->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
+	HandCardDetailBody->SetColorAndOpacity(FSlateColor(FLinearColor(0.14f, 0.11f, 0.08f, 1.0f)));
 	HandCardDetailBody->SetAutoWrapText(true);
 	HandCardDetailBody->SetJustification(ETextJustify::Left);
-	HandCardDetailBody->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.12f));
-	HandCardDetailBody->SetShadowOffset(FVector2D(0.5f, 0.5f));
 	FSlateFontInfo DetailFont = HandCardDetailBody->GetFont();
-	DetailFont.Size = 14;
+	DetailFont.Size = 13;
 	HandCardDetailBody->SetFont(DetailFont);
-	HandCardDetailPanel->SetContent(HandCardDetailBody);
+	if (UVerticalBoxSlot* TooltipBodySlot = TooltipBox->AddChildToVerticalBox(HandCardDetailBody))
+	{
+		TooltipBodySlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
+	}
 	if (UCanvasPanelSlot* DetailSlot = RootCanvas->AddChildToCanvas(HandCardDetailPanel))
 	{
 		DetailSlot->SetAnchors(FAnchors(0.5f, 1.0f, 0.5f, 1.0f));
@@ -5297,7 +5493,17 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	if (UCanvasPanelSlot* RewardSlot = RootCanvas->AddChildToCanvas(RewardCardBox))
 	{
 		RewardSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
-		RewardSlot->SetOffsets(FMargin(-185.0f, -116.0f, 370.0f, 136.0f));
+		// Three vertical BuildCardFace reward cards (RewardCardSize each, 5px
+		// slot padding per side) need a row sized for the full card faces.
+		// The previous 370x136 strip was the legacy small-card container and
+		// clipped the 206x285 faces down to horizontal slivers.
+		const float RewardRowWidth = static_cast<float>(MaximumVisibleRewardCards) * (RewardCardSize.X + 10.0f);
+		RewardCardBoxSlotOffsets = FMargin(
+			-RewardRowWidth * 0.5f,
+			-RewardCardSize.Y * 0.5f,
+			RewardRowWidth,
+			RewardCardSize.Y);
+		RewardSlot->SetOffsets(RewardCardBoxSlotOffsets);
 		RewardSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
 	RewardCardButtons.Reserve(MaximumVisibleRewardCards);
@@ -5373,7 +5579,8 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	if (UCanvasPanelSlot* SkipRewardSlot = RootCanvas->AddChildToCanvas(SkipRewardButton))
 	{
 		SkipRewardSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
-		SkipRewardSlot->SetOffsets(FMargin(-95.0f, 26.0f, 190.0f, 56.0f));
+		// Below the full-height reward row, clear of the card faces.
+		SkipRewardSlot->SetOffsets(FMargin(-95.0f, RewardCardSize.Y * 0.5f + 40.0f, 190.0f, 56.0f));
 		SkipRewardSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
 
@@ -5873,9 +6080,9 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	const FGameXXKCardDefinition* Definition = nullptr;
 	EGameXXKCardQuality TooltipQuality = EGameXXKCardQuality::Invalid;
-	const FGameXXKCardPlayPreview* PreviewForText = nullptr;
-	FGameXXKCardPlayPreview Preview;
 	FGameXXKCardTooltipContext Context;
+	/** Non-card reward options write their tooltip text directly instead of a card definition. */
+	TOptional<FText> DirectTooltipText;
 	if (!State)
 	{
 		HandCardDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
@@ -5897,16 +6104,6 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		});
 		Definition = CardInstance ? FGameXXKCardCatalog::FindCardDefinition(CardInstance->CardId) : nullptr;
 		TooltipQuality = CardInstance ? CardInstance->CurrentQuality : EGameXXKCardQuality::Invalid;
-		FString Error;
-		if (Definition && !FGameXXKCardBattleAdapter::BuildCardPlayPreview(*State, CardInstanceId, Preview, &Error) && !Error.IsEmpty())
-		{
-			Preview.FailureReason = Error;
-		}
-		if (Definition)
-		{
-			PreviewForText = &Preview;
-			Context = BuildHandTooltipContext(Preview);
-		}
 		break;
 	}
 	case ECardTooltipSource::PendingChoice:
@@ -5932,9 +6129,33 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	}
 	case ECardTooltipSource::Reward:
 	{
-		if (GetPendingRouteRewardCardIds().Contains(HoveredCardTooltipId))
+		if (!PendingRewardOptions.IsValidIndex(HoveredRewardCardSlot))
 		{
-			Definition = FGameXXKCardCatalog::FindCardDefinition(HoveredCardTooltipId);
+			break;
+		}
+		const FGameXXKBattleRewardOption& RewardOption = PendingRewardOptions[HoveredRewardCardSlot];
+		if (RewardOption.Kind == EGameXXKBattleRewardKind::Relic)
+		{
+			const FGameXXKRelicDefinition* RelicDefinition = FGameXXKRelicCatalog::FindDefinition(RewardOption.RelicId);
+			if (RelicDefinition)
+			{
+				DirectTooltipText = FText::FromString(FString::Printf(
+					TEXT("%s\n%s"),
+					*RelicDefinition->DisplayName.ToString(),
+					*RelicDefinition->Description.ToString()));
+			}
+		}
+		else if (RewardOption.Kind == EGameXXKBattleRewardKind::EnergyCapBonus)
+		{
+			DirectTooltipText = FText::FromString(TEXT("[属性奖励]\n气力上限永久 +1"));
+		}
+		else if (RewardOption.Kind == EGameXXKBattleRewardKind::DrawBonus)
+		{
+			DirectTooltipText = FText::FromString(TEXT("[属性奖励]\n每回合抽牌数永久 +1"));
+		}
+		else if (!RewardOption.CardId.IsNone())
+		{
+			Definition = FGameXXKCardCatalog::FindCardDefinition(RewardOption.CardId);
 			TooltipQuality = Definition ? Definition->BaseQuality : EGameXXKCardQuality::Invalid;
 			Context.InteractionResult = TEXT("点击后加入临时路线卡组；满位时选择要替换的路线牌。");
 		}
@@ -5961,16 +6182,77 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		break;
 	}
 
-	if (!Definition)
+	// Follow the hovered card slot instead of the fixed default anchor.
+	if (UCanvasPanelSlot* DetailSlot = Cast<UCanvasPanelSlot>(HandCardDetailPanel->Slot))
+	{
+		FVector2D PanelPosition(-HandCardDetailPanelSize.X * 0.5f, -588.0f);
+		if (HoveredCardTooltipSource == ECardTooltipSource::Reward
+			&& PendingRewardOptions.IsValidIndex(HoveredRewardCardSlot))
+		{
+			const float SlotCenterX = RewardCardBoxSlotOffsets.Left + 5.0f
+				+ HoveredRewardCardSlot * (RewardCardSize.X + 10.0f)
+				+ RewardCardSize.X * 0.5f;
+			PanelPosition = FVector2D(
+				SlotCenterX - HandCardDetailPanelSize.X * 0.5f,
+				RewardCardBoxSlotOffsets.Top - HandCardDetailPanelSize.Y - 12.0f);
+		}
+		else if (HoveredCardTooltipSource == ECardTooltipSource::Hand
+			&& HandCardInstanceIds.IsValidIndex(HoveredHandCardSlot))
+		{
+			const float SlotCenterX = -585.0f + 4.0f
+				+ HoveredHandCardSlot * (PlayerHandCardSize.X + 8.0f)
+				+ PlayerHandCardSize.X * 0.5f;
+			PanelPosition = FVector2D(
+				SlotCenterX - HandCardDetailPanelSize.X * 0.5f,
+				-305.0f - HandCardDetailPanelSize.Y - 12.0f);
+		}
+		DetailSlot->SetOffsets(FMargin(
+			PanelPosition.X,
+			PanelPosition.Y,
+			HandCardDetailPanelSize.X,
+			HandCardDetailPanelSize.Y));
+	}
+
+	// Unified concise format shared with the out-of-battle deck tooltips:
+	// 18pt ink title + 13pt concise description, no battle preview or context noise.
+	FText TooltipTitle;
+	FText TooltipBody;
+	if (DirectTooltipText.IsSet())
+	{
+		FString TitlePart;
+		FString BodyPart;
+		const FString Raw = DirectTooltipText.GetValue().ToString();
+		if (Raw.Split(TEXT("\n"), &TitlePart, &BodyPart))
+		{
+			TooltipTitle = FText::FromString(TitlePart);
+			TooltipBody = FText::FromString(BodyPart);
+		}
+		else
+		{
+			TooltipBody = DirectTooltipText.GetValue();
+		}
+	}
+	else if (Definition)
+	{
+		TooltipTitle = Definition->DisplayName;
+		TooltipBody = FText::FromString(
+			TooltipQuality == EGameXXKCardQuality::Invalid
+				? GameXXKCardText::DescribeTooltip(*Definition, nullptr, FGameXXKCardTooltipContext())
+				: GameXXKCardText::DescribeTooltip(*Definition, TooltipQuality, nullptr, FGameXXKCardTooltipContext()));
+	}
+	if (TooltipBody.IsEmpty() && TooltipTitle.IsEmpty())
 	{
 		HandCardDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
 		return;
 	}
-
-	HandCardDetailBody->SetText(FText::FromString(
-		TooltipQuality == EGameXXKCardQuality::Invalid
-			? GameXXKCardText::DescribeTooltip(*Definition, PreviewForText, Context)
-			: GameXXKCardText::DescribeTooltip(*Definition, TooltipQuality, PreviewForText, Context)));
+	if (HandCardDetailTitle)
+	{
+		HandCardDetailTitle->SetText(TooltipTitle);
+	}
+	if (HandCardDetailBody)
+	{
+		HandCardDetailBody->SetText(TooltipBody);
+	}
 	// The panel must never swallow the button's leave/click events while it overlaps the hand.
 	HandCardDetailPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
@@ -6518,6 +6800,7 @@ void UGameXXKBattleBoardWidget::ClearCardTooltipHoverState()
 	ClearCardOutcomePreview();
 	HoveredCardTooltipSource = ECardTooltipSource::None;
 	HoveredHandCardSlot = INDEX_NONE;
+	HoveredRewardCardSlot = INDEX_NONE;
 	HoveredCardTooltipId = NAME_None;
 	HoveredPendingChoiceKind = EGameXXKCardPendingChoiceKind::Invalid;
 	for (UButton* CardButton : HandCardButtons)
@@ -6543,16 +6826,19 @@ void UGameXXKBattleBoardWidget::SetRewardCardHoverState(const int32 SlotIndex, c
 	{
 		return;
 	}
-	const FName RewardCardId = PendingRewardCardIds[SlotIndex];
 	if (bHovered)
 	{
+		// Track the option slot instead of a card id: relic and attribute options
+		// carry no CardId, but every option owns exactly one visible slot.
 		HoveredCardTooltipSource = ECardTooltipSource::Reward;
-		HoveredCardTooltipId = RewardCardId;
+		HoveredRewardCardSlot = SlotIndex;
+		HoveredCardTooltipId = NAME_None;
 		HoveredPendingChoiceKind = EGameXXKCardPendingChoiceKind::Invalid;
 	}
-	else if (HoveredCardTooltipSource == ECardTooltipSource::Reward && HoveredCardTooltipId == RewardCardId)
+	else if (HoveredCardTooltipSource == ECardTooltipSource::Reward && HoveredRewardCardSlot == SlotIndex)
 	{
 		HoveredCardTooltipSource = ECardTooltipSource::None;
+		HoveredRewardCardSlot = INDEX_NONE;
 		HoveredCardTooltipId = NAME_None;
 	}
 	RefreshCardTooltip();
@@ -6688,8 +6974,10 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 {
 	const bool bFixtureReadOnly = IsBattleHudFixtureReadOnly();
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	PendingRewardOptions = Subsystem ? Subsystem->GetRuntimeState().CardRun.PendingReward.Options : TArray<FGameXXKBattleRewardOption>();
 	PendingRewardCardIds = GetPendingRouteRewardCardIds();
-	const bool bShowRewards = PendingRewardCardIds.Num() > 0;
+	const bool bShowRewards = PendingRewardOptions.Num() > 0;
 	if (!bShowRewards || !PendingRewardCardIds.Contains(RouteRewardCardIdAwaitingReplacement))
 	{
 		RouteRewardCardIdAwaitingReplacement = NAME_None;
@@ -6724,40 +7012,109 @@ void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 			continue;
 		}
 
-		const FName RewardCardId = PendingRewardCardIds[SlotIndex];
-		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(RewardCardId);
+		const FGameXXKBattleRewardOption& Option = PendingRewardOptions[SlotIndex];
+		const bool bIsCardOption = Option.Kind == EGameXXKBattleRewardKind::DeckCardUpgrade
+			|| Option.Kind == EGameXXKBattleRewardKind::BossCard;
+		const FGameXXKCardDefinition* Definition = !Option.CardId.IsNone()
+			? FGameXXKCardCatalog::FindCardDefinition(Option.CardId)
+			: nullptr;
 		FGameXXKRouteCardAcquisitionPreview Preview;
 		FString PreviewError;
-		const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-		const bool bPreviewValid = Subsystem
-			&& FGameXXKCardBattleAdapter::PreviewPendingRouteReward(
-				Subsystem->GetRuntimeState(),
-				RewardCardId,
-				NAME_None,
-				Preview,
-				&PreviewError)
-			&& (Preview.Decision == EGameXXKRouteCardAcquisitionDecision::CanCommit
-				|| Preview.Decision == EGameXXKRouteCardAcquisitionDecision::RequiresReplacement);
+		bool bPreviewValid = !bIsCardOption;
+		if (Option.Kind == EGameXXKBattleRewardKind::BossCard)
+		{
+			bPreviewValid = Subsystem
+				&& FGameXXKCardBattleAdapter::PreviewPendingRouteReward(
+					Subsystem->GetRuntimeState(),
+					Option.CardId,
+					NAME_None,
+					Preview,
+					&PreviewError)
+				&& (Preview.Decision == EGameXXKRouteCardAcquisitionDecision::CanCommit
+					|| Preview.Decision == EGameXXKRouteCardAcquisitionDecision::RequiresReplacement);
+		}
+		else if (bIsCardOption)
+		{
+			// Deck-card upgrades never touch route-deck capacity; always committable.
+			bPreviewValid = true;
+		}
 		if (RewardButton)
 		{
 			RewardButton->SetIsEnabled(
 				bPreviewValid && !bFixtureReadOnly && !IsBattlePresentationPending());
 		}
-		ApplyCardPresentation(RewardButton, RewardLabel, RewardPortrait, RewardInfoStrip, Definition);
+		if (bIsCardOption)
+		{
+			ApplyCardPresentation(RewardButton, RewardLabel, RewardPortrait, RewardInfoStrip, Definition);
+		}
+		else
+		{
+			if (RewardInfoStrip)
+			{
+				RewardInfoStrip->SetVisibility(ESlateVisibility::Collapsed);
+			}
+			if (RewardPortrait && Option.Kind != EGameXXKBattleRewardKind::Relic)
+			{
+				RewardPortrait->SetVisibility(ESlateVisibility::Collapsed);
+			}
+		}
 		if (RewardLabel)
 		{
-			const FString DisplayName = Definition ? Definition->DisplayName.ToString() : RewardCardId.ToString();
-			const int32 Energy = Definition ? Definition->EnergyCost : 0;
-			const int32 Mana = Definition ? Definition->ManaCost : 0;
-			const FString Quality = Definition
-				? FGameXXKCardQualityRules::GetDisplayName(Definition->BaseQuality).ToString()
-				: FString();
-			RewardLabel->SetText(FText::FromString(FString::Printf(
-				TEXT("%s\n[%s] %d 气 / %d 内"),
-				*DisplayName,
-				*Quality,
-				Energy,
-				Mana)));
+			if (Option.Kind == EGameXXKBattleRewardKind::EnergyCapBonus)
+			{
+				RewardLabel->SetText(FText::FromString(TEXT("气力上限 +1\n[属性奖励]")));
+			}
+			else if (Option.Kind == EGameXXKBattleRewardKind::DrawBonus)
+			{
+				RewardLabel->SetText(FText::FromString(TEXT("每回合抽牌 +1\n[属性奖励]")));
+			}
+			else if (Option.Kind == EGameXXKBattleRewardKind::Relic)
+			{
+				FString RelicName = Option.RelicId.ToString();
+				UTexture2D* RelicIcon = nullptr;
+				for (const FGameXXKRelicDefinition& RelicDefinition : FGameXXKRelicCatalog::GetAllDefinitions())
+				{
+					if (RelicDefinition.Id == Option.RelicId)
+					{
+						RelicName = RelicDefinition.DisplayName.ToString();
+						RelicIcon = Cast<UTexture2D>(RelicDefinition.IconTexturePath.TryLoad());
+						break;
+					}
+				}
+				if (RewardPortrait)
+				{
+					if (RelicIcon)
+					{
+						// Centered relic icon inside the card's portrait area.
+						RewardPortrait->SetBrushFromTexture(RelicIcon, true);
+						RewardPortrait->SetDesiredSizeOverride(FVector2D(100.0f, 100.0f));
+						RewardPortrait->SetVisibility(ESlateVisibility::HitTestInvisible);
+					}
+					else
+					{
+						RewardPortrait->SetVisibility(ESlateVisibility::Collapsed);
+					}
+				}
+				RewardLabel->SetText(FText::FromString(FString::Printf(TEXT("%s\n[遗物]"), *RelicName)));
+			}
+			else
+			{
+				const FString DisplayName = Definition ? Definition->DisplayName.ToString() : Option.CardId.ToString();
+				const int32 Energy = Definition ? Definition->EnergyCost : 0;
+				const int32 Mana = Definition ? Definition->ManaCost : 0;
+				EGameXXKCardQuality ShownQuality = Definition ? Definition->BaseQuality : EGameXXKCardQuality::Common;
+				if (Option.Kind == EGameXXKBattleRewardKind::DeckCardUpgrade)
+				{
+					ShownQuality = FGameXXKCardBattleAdapter::GetNextCardQuality(ShownQuality);
+				}
+				const FString Quality = FGameXXKCardQualityRules::GetDisplayName(ShownQuality).ToString();
+				RewardLabel->SetText(FText::FromString(FString::Printf(
+					TEXT("%s\n[%s] %d 气 / %d 内"),
+					*DisplayName,
+					*Quality,
+					Energy,
+					Mana)));
+			}
 		}
 	}
 	RefreshRouteRewardReplacementChoices();
@@ -6954,10 +7311,11 @@ void UGameXXKBattleBoardWidget::BuildCardFace(
 		*FString::Printf(TEXT("%sLabel"), *NamePrefix));
 	Label->SetJustification(ETextJustify::Center);
 	Label->SetAutoWrapText(false);
-	Label->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.36f));
+	// Ink card text: all in-battle card faces use black text on the parchment frame.
+	Label->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.18f));
 	Label->SetShadowOffset(FVector2D(0.5f, 0.5f));
 	Label->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 20));
-	Label->SetColorAndOpacity(FSlateColor(FLinearColor(0.95f, 0.90f, 0.82f, 1.0f)));
+	Label->SetColorAndOpacity(FSlateColor(ResolveCardFaceLabelColor()));
 	if (UCanvasPanelSlot* LabelSlot = FaceCanvas->AddChildToCanvas(Label))
 	{
 		LabelSlot->SetOffsets(FMargin(0.0f, 12.0f, 206.0f, 33.0f));
@@ -7911,7 +8269,7 @@ void UGameXXKBattleBoardWidget::HandleRewardCardSlotClicked(int32 SlotIndex)
 {
 	if (PendingRewardCardIds.IsValidIndex(SlotIndex))
 	{
-		ChoosePendingRouteReward(PendingRewardCardIds[SlotIndex], SelectedRouteRewardReplacementEntryId);
+		ChoosePendingBattleRewardOption(SlotIndex, SelectedRouteRewardReplacementEntryId);
 	}
 }
 

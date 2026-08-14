@@ -104,7 +104,7 @@ bool FGameXXKCompanionBattleProgressionRewardTest::RunTest(const FString& Parame
 
 	TestTrue(TEXT("the one permanent partner joins the normal card battle"), BeginLinearCardBattle(State));
 	ForceCardBattleVictory(State);
-	TestTrue(TEXT("victory first creates the explicit three-card reward gate"), UGameXXKMVPRules::ResolveBattleVictory(State, false));
+	TestTrue(TEXT("victory first creates the explicit tiered three-choice reward gate"), UGameXXKMVPRules::ResolveBattleVictory(State, false));
 	const FGameXXKPermanentCompanion* BeforeReward = State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([&ActiveCompanion](const FGameXXKPermanentCompanion& Candidate)
 	{
 		return Candidate.InstanceId == ActiveCompanion.InstanceId;

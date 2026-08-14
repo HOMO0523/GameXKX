@@ -16196,10 +16196,10 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		}
 		NewRuntime.ActiveCardsPlayedThisRound = 0;
 		NewRuntime.LastActiveCard = FGameXXKResolvedCardSnapshot();
-		NewRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, 3 + NewRuntime.PendingNextRoundEnergyBonus);
+		NewRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, 3 + NewRuntime.BonusSharedEnergyCap + NewRuntime.PendingNextRoundEnergyBonus);
 		NewRuntime.PendingNextRoundEnergyBonus = 0;
 		const int32 ReservedRetainedCardSlots = NewRuntime.PendingBladeDelayedCard.Rule == EGameXXKBladeChargeRule::RetainNextActiveNextRound ? 1 : 0;
-		const int32 DrawCount = FMath::Max(0, NewRuntime.Deck.HandLimit - ReservedRetainedCardSlots - NewRuntime.Deck.Hand.Num());
+		const int32 DrawCount = FMath::Max(0, NewRuntime.Deck.HandLimit + NewRuntime.BonusRoundDrawCount - ReservedRetainedCardSlots - NewRuntime.Deck.Hand.Num());
 		// A party unit defeated last round must not contribute cards or an owner-bound
 		// Sorcerer task to this round. The task's locked-card and per-battle auto-hand
 		// history become unreachable at the same boundary that removes its five cards.

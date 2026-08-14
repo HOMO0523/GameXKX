@@ -152,7 +152,7 @@ bool FGameXXKRouteCardEntriesV9VersionContractTest::RunTest(const FString& Param
 		TEXT("stable route-card entries are introduced by save version nine"),
 		TRouteCardEntriesVersionValue<FGameXXKSaveMigration>::Value,
 		9);
-	TestEqual(TEXT("the follower and enemy-codex migration advances the current save version to fifteen"), FGameXXKSaveMigration::CurrentSaveVersion, 15);
+	TestEqual(TEXT("the follower and enemy-codex migration advances the current save version to sixteen"), FGameXXKSaveMigration::CurrentSaveVersion, 16);
 	return true;
 }
 

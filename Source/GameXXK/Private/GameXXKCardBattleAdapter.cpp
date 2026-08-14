@@ -9,6 +9,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKEnemyCatalog.h"
 #include "GameXXKRelicRules.h"
+#include "GameXXKRelicCatalog.h"
 #include "GameXXKRouteCardRecipe.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "GameXXKRunDeckRules.h"
@@ -2041,7 +2042,7 @@ namespace
 		}
 
 		const FGameXXKPendingRouteCardReward& Pending = Run.PendingReward;
-		if (Pending.CardIds.IsEmpty())
+		if (Pending.CardIds.IsEmpty() && Pending.Options.IsEmpty())
 		{
 			if (Pending.SourceNodeId != INDEX_NONE
 				|| Pending.ChoiceSeed != 0)
@@ -2053,25 +2054,40 @@ namespace
 				: true;
 		}
 
-		if (Pending.SourceNodeId < 0
-			|| Pending.SourceNodeId != GetActiveRewardSourceNodeId(State)
-			|| Pending.ChoiceSeed == 0
-			|| Pending.CardIds.Num() != 3)
+		if (Pending.Options.IsEmpty())
 		{
-			return SetFailure(OutError, TEXT("The pending route reward metadata does not match the active victory gate."));
-		}
-		TSet<FName> SeenCardIds;
-		for (const FName CardId : Pending.CardIds)
-		{
-			const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
-			if (CardId.IsNone()
-				|| SeenCardIds.Contains(CardId)
-				|| !Definition
-				|| Definition->Owner != EGameXXKCardOwner::Route)
+			// Legacy three-route-card offer: card ids must be three distinct catalog route cards.
+			if (Pending.SourceNodeId < 0
+				|| Pending.SourceNodeId != GetActiveRewardSourceNodeId(State)
+				|| Pending.ChoiceSeed == 0
+				|| Pending.CardIds.Num() != 3)
 			{
-				return SetFailure(OutError, TEXT("The pending route reward must contain three distinct catalog route cards."));
+				return SetFailure(OutError, TEXT("The pending route reward metadata does not match the active victory gate."));
 			}
-			SeenCardIds.Add(CardId);
+			TSet<FName> SeenCardIds;
+			for (const FName CardId : Pending.CardIds)
+			{
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+				if (CardId.IsNone()
+					|| SeenCardIds.Contains(CardId)
+					|| !Definition
+					|| Definition->Owner != EGameXXKCardOwner::Route)
+				{
+					return SetFailure(OutError, TEXT("The pending route reward must contain three distinct catalog route cards."));
+				}
+				SeenCardIds.Add(CardId);
+			}
+		}
+		else
+		{
+			// Tiered battle reward: three typed options.
+			if (Pending.SourceNodeId < 0
+				|| Pending.SourceNodeId != GetActiveRewardSourceNodeId(State)
+				|| Pending.ChoiceSeed == 0
+				|| Pending.Options.Num() != 3)
+			{
+				return SetFailure(OutError, TEXT("The pending battle reward metadata does not match the active victory gate."));
+			}
 		}
 		return true;
 	}
@@ -2091,8 +2107,15 @@ namespace
 		}
 		const FGameXXKCardRunState& Run = State.CardRun;
 		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(RewardCardId);
+		const bool bInTieredOffer = Run.PendingReward.Options.ContainsByPredicate(
+			[RewardCardId](const FGameXXKBattleRewardOption& Option)
+			{
+				return Option.CardId == RewardCardId
+					&& (Option.Kind == EGameXXKBattleRewardKind::BossCard
+						|| Option.Kind == EGameXXKBattleRewardKind::DeckCardUpgrade);
+			});
 		if (RewardCardId.IsNone()
-			|| !Run.PendingReward.CardIds.Contains(RewardCardId)
+			|| (!Run.PendingReward.CardIds.Contains(RewardCardId) && !bInTieredOffer)
 			|| !Definition
 			|| Definition->Owner != EGameXXKCardOwner::Route)
 		{
@@ -2450,6 +2473,14 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	{
 		return false;
 	}
+	// Permanent deck-card quality upgrades (tiered battle rewards) override base quality.
+	for (FGameXXKCardInstance& Instance : Instances)
+	{
+		if (const EGameXXKCardQuality* Upgraded = Run.UpgradedCardQualities.Find(Instance.CardId))
+		{
+			Instance.CurrentQuality = *Upgraded;
+		}
+	}
 	FGameXXKCardBattleRuntime NewRuntime;
 	const int32 EffectiveSeed = InitialRandomSeed != 0
 		? InitialRandomSeed
@@ -2459,6 +2490,16 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 		return false;
 	}
 	NewRuntime.EquippedHeroCardIds = Run.HeroSelectedCardIds;
+	NewRuntime.BonusSharedEnergyCap = Run.BonusSharedEnergyCap;
+	NewRuntime.BonusRoundDrawCount = Run.BonusRoundDrawCount;
+	if (NewRuntime.BonusRoundDrawCount > 0)
+	{
+		FString DrawError;
+		if (!GameXXKCardRules::DrawCards(NewRuntime.Deck, NewRuntime.BonusRoundDrawCount, 0, &DrawError))
+		{
+			return SetFailure(OutError, FString::Printf(TEXT("Opening-hand bonus draw failed: %s"), *DrawError));
+		}
+	}
 	if (!MaterializeEquipmentBattleEffects(NewState, NewRuntime, OutError))
 	{
 		return false;
@@ -3217,6 +3258,245 @@ bool FGameXXKCardBattleAdapter::CreateRouteRewardOffer(
 	OutCardIds = MoveTemp(Picks);
 	return true;
 }
+
+EGameXXKCardQuality FGameXXKCardBattleAdapter::GetConfiguredCardQuality(
+	const FGameXXKCardRunState& CardRun,
+	const FName CardId)
+{
+	if (const EGameXXKCardQuality* Upgraded = CardRun.UpgradedCardQualities.Find(CardId))
+	{
+		return *Upgraded;
+	}
+	for (const FGameXXKCardDefinition& Definition : FGameXXKCardCatalog::GetAllCardDefinitions())
+	{
+		if (Definition.Id == CardId)
+		{
+			return Definition.BaseQuality;
+		}
+	}
+	return EGameXXKCardQuality::Common;
+}
+
+EGameXXKCardQuality FGameXXKCardBattleAdapter::GetNextCardQuality(const EGameXXKCardQuality Quality)
+{
+	switch (Quality)
+	{
+	case EGameXXKCardQuality::Common:
+		return EGameXXKCardQuality::Rare;
+	case EGameXXKCardQuality::Rare:
+		return EGameXXKCardQuality::Epic;
+	default:
+		return Quality;
+	}
+}
+
+bool FGameXXKCardBattleAdapter::CommitBossCardReward(
+	FGameXXKRuntimeState& InOutState,
+	const FName RewardCardId,
+	const FName ReplacementEntryId,
+	FString* OutError)
+{
+	FGameXXKRuntimeState CandidateState = InOutState;
+	FGameXXKRouteCardEntry CandidateEntry;
+	if (!BuildPendingRouteRewardCandidate(CandidateState, RewardCardId, CandidateEntry, OutError))
+	{
+		return false;
+	}
+	FGameXXKRouteCardAcquisitionPreview AppliedPreview;
+	if (!FGameXXKRunDeckRules::CommitAcquisition(
+		CandidateState.CardRun,
+		CandidateEntry,
+		ReplacementEntryId,
+		AppliedPreview,
+		OutError))
+	{
+		return false;
+	}
+	++CandidateState.CardRun.NextRouteCardEntryOrdinal;
+	InOutState = MoveTemp(CandidateState);
+	return true;
+}
+
+bool FGameXXKCardBattleAdapter::CreateTieredBattleRewardOffer(
+	FGameXXKRuntimeState& InOutState,
+	const EGameXXKNodeKind NodeKind,
+	const int32 SourceNodeId,
+	const int32 ChoiceSeed,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	if (SourceNodeId < 0)
+	{
+		return SetFailure(OutError, TEXT("Tiered battle rewards require a non-negative source node."));
+	}
+
+	FGameXXKRuntimeState CandidateState = InOutState;
+	if (!EnsureCardRunInitialized(CandidateState, OutError))
+	{
+		return false;
+	}
+	int32 CapacityUsed = 0;
+	if (!ValidateRouteRewardEntryAuthority(CandidateState, false, CapacityUsed, OutError)
+		|| !ValidatePendingRouteRewardGate(CandidateState, false, OutError))
+	{
+		return false;
+	}
+
+	FGameXXKCardRunState& Run = CandidateState.CardRun;
+	if (!Run.PendingReward.Options.IsEmpty() || !Run.PendingReward.CardIds.IsEmpty())
+	{
+		if (Run.PendingReward.SourceNodeId != SourceNodeId)
+		{
+			return SetFailure(OutError, TEXT("A different route reward source cannot replace the saved pending offer."));
+		}
+		return true;
+	}
+	if (!IsRewardNodeKind(NodeKind) || ChoiceSeed == 0)
+	{
+		return SetFailure(OutError, TEXT("A new tiered battle reward requires a battle, elite, or boss node and a non-zero choice seed."));
+	}
+	if (SourceNodeId != GetActiveRewardSourceNodeId(CandidateState))
+	{
+		return SetFailure(OutError, TEXT("The route reward source does not match the active card-battle victory."));
+	}
+	if (Run.NextRewardOrdinal < 0 || Run.NextRewardOrdinal == MAX_int32)
+	{
+		return SetFailure(OutError, TEXT("The next route reward ordinal must be non-negative and safely incrementable."));
+	}
+
+	uint32 RandomState = static_cast<uint32>(ChoiceSeed);
+	TArray<FGameXXKBattleRewardOption> Options;
+	Options.Reserve(3);
+	auto AddOption = [&Options](const EGameXXKBattleRewardKind Kind, const FName CardId, const FName RelicId)
+	{
+		FGameXXKBattleRewardOption Option;
+		Option.Kind = Kind;
+		Option.CardId = CardId;
+		Option.RelicId = RelicId;
+		Options.Add(MoveTemp(Option));
+	};
+
+	// Deck-card upgrade candidates: hero + active-companion configured cards below Epic.
+	TArray<FName> DeckCandidates;
+	TSet<FName> SeenDeckCards;
+	auto AppendDeckCards = [&](const TArray<FName>& CardIds)
+	{
+		for (const FName CardId : CardIds)
+		{
+			if (!CardId.IsNone() && !SeenDeckCards.Contains(CardId)
+				&& GetConfiguredCardQuality(Run, CardId) < EGameXXKCardQuality::Epic)
+			{
+				SeenDeckCards.Add(CardId);
+				DeckCandidates.Add(CardId);
+			}
+		}
+	};
+	AppendDeckCards(Run.HeroSelectedCardIds);
+	for (const FGameXXKPermanentCompanion& Companion : Run.CompanionRoster.PermanentCompanions)
+	{
+		if (Companion.bIsActive)
+		{
+			AppendDeckCards(Companion.SelectedCardIds);
+		}
+	}
+
+	TArray<FName> RelicPool;
+	for (const FGameXXKRelicDefinition& Definition : FGameXXKRelicCatalog::GetAllDefinitions())
+	{
+		const bool bOwned = Run.Relics.ContainsByPredicate(
+			[&Definition](const FGameXXKRelicInstance& Instance) { return Instance.RelicId == Definition.Id; });
+		if (!bOwned || Definition.bStackable)
+		{
+			RelicPool.Add(Definition.Id);
+		}
+	}
+
+	auto PickDeckCard = [&]() -> bool
+	{
+		if (DeckCandidates.IsEmpty())
+		{
+			return false;
+		}
+		const int32 Index = static_cast<int32>(NextRandom(RandomState) % static_cast<uint32>(DeckCandidates.Num()));
+		AddOption(EGameXXKBattleRewardKind::DeckCardUpgrade, DeckCandidates[Index], NAME_None);
+		DeckCandidates.RemoveAt(Index);
+		return true;
+	};
+	auto PickRelic = [&]() -> bool
+	{
+		if (RelicPool.IsEmpty())
+		{
+			return false;
+		}
+		const int32 Index = static_cast<int32>(NextRandom(RandomState) % static_cast<uint32>(RelicPool.Num()));
+		AddOption(EGameXXKBattleRewardKind::Relic, NAME_None, RelicPool[Index]);
+		RelicPool.RemoveAt(Index);
+		return true;
+	};
+
+	if (NodeKind == EGameXXKNodeKind::Boss)
+	{
+		const bool bTiger = CandidateState.ActiveBattleEnemies.ContainsByPredicate(
+			[](const FGameXXKBattleRuntimeUnit& Enemy) { return Enemy.Id == TEXT("Tiger"); });
+		const FName BossAcquisitionKey = bTiger ? FName(TEXT("Route.Boss.Tiger")) : FName(TEXT("Route.Boss.BlackBear"));
+		TArray<FName> BossCards;
+		AppendEligibleRouteCards(Run, [BossAcquisitionKey](const FGameXXKCardDefinition& Definition)
+		{
+			return Definition.AcquisitionKey == BossAcquisitionKey;
+		}, BossCards);
+		if (BossCards.IsEmpty())
+		{
+			return SetFailure(OutError, TEXT("The boss reward pool is empty."));
+		}
+		const int32 BossPick = static_cast<int32>(NextRandom(RandomState) % static_cast<uint32>(BossCards.Num()));
+		AddOption(EGameXXKBattleRewardKind::BossCard, BossCards[BossPick], NAME_None);
+		if (!PickDeckCard())
+		{
+			PickRelic();
+		}
+		PickRelic();
+	}
+	else if (NodeKind == EGameXXKNodeKind::Elite)
+	{
+		const EGameXXKBattleRewardKind AttributeKind = (NextRandom(RandomState) % 2U) == 0U
+			? EGameXXKBattleRewardKind::EnergyCapBonus
+			: EGameXXKBattleRewardKind::DrawBonus;
+		AddOption(AttributeKind, NAME_None, NAME_None);
+		if (!PickDeckCard())
+		{
+			PickRelic();
+		}
+		PickRelic();
+	}
+	else
+	{
+		PickRelic();
+		PickRelic();
+		if (!PickDeckCard())
+		{
+			PickRelic();
+		}
+	}
+	while (Options.Num() < 3 && PickRelic())
+	{
+	}
+
+	if (Options.Num() != 3)
+	{
+		return SetFailure(OutError, TEXT("The tiered battle reward pools cannot supply three distinct legal options."));
+	}
+	Run.PendingReward.SourceNodeId = SourceNodeId;
+	Run.PendingReward.ChoiceSeed = ChoiceSeed;
+	Run.PendingReward.Options = MoveTemp(Options);
+	Run.PendingReward.bRequiresRouteCardReplacement = false;
+	++Run.NextRewardOrdinal;
+	InOutState = MoveTemp(CandidateState);
+	return true;
+}
+
 
 bool FGameXXKCardBattleAdapter::PreviewPendingRouteReward(
 	const FGameXXKRuntimeState& State,

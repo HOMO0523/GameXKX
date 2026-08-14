@@ -325,9 +325,9 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	BattleState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
 	const int32 GoldBeforeBattle = Subsystem->GetRuntimeState().PlayerGold;
 	const int32 TravelMoneyBeforeBattle = BattleState.CardRun.RouteTravelMoney;
-	TestTrue(TEXT("battle widget opens the three-card route reward after a card battle victory"), Battle->ResolveVictory(false));
+	TestTrue(TEXT("battle widget opens the tiered three-choice route reward after a card battle victory"), Battle->ResolveVictory(false));
 	TestEqual(TEXT("pending route reward keeps the battle screen active"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
-	TestEqual(TEXT("battle victory exposes exactly three pending route reward cards"), BattleState.CardRun.PendingReward.CardIds.Num(), 3);
+	TestEqual(TEXT("battle victory exposes exactly three pending route reward options"), BattleState.CardRun.PendingReward.Options.Num(), 3);
 	TestEqual(TEXT("opening the route reward does not grant permanent gold"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeBattle);
 	TestEqual(TEXT("opening the route reward does not settle route travel money"), BattleState.CardRun.RouteTravelMoney, TravelMoneyBeforeBattle);
 	FString RewardError;

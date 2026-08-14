@@ -679,6 +679,13 @@ public:
 		FGameXXKRuntimeState& State,
 		FString* OutError = nullptr);
 
+	/** Atomically commits one tiered battle reward option and the gated battle victory settlement. */
+	static bool ResolvePendingBattleRewardChoiceAndFinish(
+		FGameXXKRuntimeState& State,
+		int32 OptionIndex,
+		FName ReplacementEntryId = NAME_None,
+		FString* OutError = nullptr);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ExecuteBattleBasicAttack(UPARAM(ref) FGameXXKRuntimeState& State, int32 PartyIndex, int32 EnemyIndex);
 

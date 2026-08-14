@@ -159,7 +159,7 @@ namespace
 		State.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
 		if (!RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveBattleVictory")))
 			|| State.Screen != EGameXXKScreen::Battle
-			|| State.CardRun.PendingReward.CardIds.Num() != 3)
+			|| State.CardRun.PendingReward.Options.Num() != 3)
 		{
 			return false;
 		}

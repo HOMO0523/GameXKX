@@ -162,7 +162,7 @@ namespace
 			{
 				return false;
 			}
-			if (!State.CardRun.PendingReward.CardIds.IsEmpty())
+			if (!State.CardRun.PendingReward.CardIds.IsEmpty() || !State.CardRun.PendingReward.Options.IsEmpty())
 			{
 				FString RewardError;
 				return FGameXXKCardBattleAdapter::SkipPendingRouteReward(State, &RewardError)
@@ -348,9 +348,9 @@ bool FGameXXKRouteMapSeedRulesTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("pending combat node waits for victory before visited"), FlowState.VisitedRouteNodeIds.Contains(CombatNodeId));
 
 	TestTrue(TEXT("combat victory fixture marks all card-runtime enemies defeated"), ForceActiveCardBattleVictory(FlowState));
-	TestTrue(TEXT("battle victory opens the saved three-card route reward"), UGameXXKMVPRules::ResolveBattleVictory(FlowState, false));
+	TestTrue(TEXT("battle victory opens the saved tiered three-choice route reward"), UGameXXKMVPRules::ResolveBattleVictory(FlowState, false));
 	TestEqual(TEXT("pending battle reward keeps the player on the battle screen"), FlowState.Screen, EGameXXKScreen::Battle);
-	TestEqual(TEXT("pending battle reward presents exactly three route cards"), FlowState.CardRun.PendingReward.CardIds.Num(), 3);
+	TestEqual(TEXT("pending battle reward presents exactly three route reward options"), FlowState.CardRun.PendingReward.Options.Num(), 3);
 	FString RewardError;
 	TestTrue(FString::Printf(TEXT("skipping the pending reward unlocks route completion: %s"), *RewardError),
 		FGameXXKCardBattleAdapter::SkipPendingRouteReward(FlowState, &RewardError));

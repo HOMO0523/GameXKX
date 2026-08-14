@@ -89,9 +89,15 @@ bool FGameXXKRouteRewardChoiceSeedDeterminismTest::RunTest(const FString& Parame
 		RepeatedResolution.CardRun.PendingReward.ChoiceSeed,
 		StableChoiceSeed);
 	TestEqual(
-		TEXT("identical facade inputs persist the same three-card offer"),
-		RepeatedResolution.CardRun.PendingReward.CardIds,
-		FirstResolution.CardRun.PendingReward.CardIds);
+		TEXT("identical facade inputs persist the same three-option offer"),
+		RepeatedResolution.CardRun.PendingReward.Options.Num(),
+		FirstResolution.CardRun.PendingReward.Options.Num());
+	TestTrue(
+		TEXT("identical facade inputs persist the same option fields"),
+		FGameXXKPendingRouteCardReward::StaticStruct()->CompareScriptStruct(
+			&RepeatedResolution.CardRun.PendingReward,
+			&FirstResolution.CardRun.PendingReward,
+			PPF_None));
 	TestEqual(
 		TEXT("creating an offer at MAX minus one advances the persisted ordinal to MAX"),
 		FirstResolution.CardRun.NextRewardOrdinal,

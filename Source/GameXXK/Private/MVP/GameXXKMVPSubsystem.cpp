@@ -1418,6 +1418,19 @@ bool UGameXXKMVPSubsystem::ResolvePendingRouteRewardChoiceAndFinish(
 		OutError);
 }
 
+bool UGameXXKMVPSubsystem::ResolvePendingBattleRewardChoiceAndFinish(
+	const int32 OptionIndex,
+	const FName ReplacementEntryId,
+	FString* OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	return UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(
+		RuntimeState,
+		OptionIndex,
+		ReplacementEntryId,
+		OutError);
+}
+
 bool UGameXXKMVPSubsystem::SkipPendingRouteRewardAndFinish(FString* OutError)
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView);

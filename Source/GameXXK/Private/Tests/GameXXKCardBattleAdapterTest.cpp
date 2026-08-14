@@ -261,65 +261,32 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	const int32 RewardSourceNodeId = RewardState.CardRun.ActiveBattleSourceNodeId >= 0
 		? RewardState.CardRun.ActiveBattleSourceNodeId
 		: RewardState.DungeonNodeIndex;
-	TArray<FName> RewardChoiceIds;
-	TestTrue(FString::Printf(TEXT("a normal battle produces a deterministic three-card route reward offer: %s"), *Error),
-		FGameXXKCardBattleAdapter::CreateRouteRewardOffer(RewardState, EGameXXKNodeKind::Battle, RewardSourceNodeId, 2026, RewardChoiceIds, &Error));
-	TestEqual(TEXT("normal battle reward exposes exactly three card choices"), RewardChoiceIds.Num(), 3);
-	TSet<FName> UniqueRewardIds(RewardChoiceIds);
-	TestEqual(TEXT("normal battle reward never duplicates a card within its visible three choices"), UniqueRewardIds.Num(), RewardChoiceIds.Num());
-	FName ChosenRewardCardId = NAME_None;
-	for (const FName RewardCardId : RewardChoiceIds)
-	{
-		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(RewardCardId);
-		const bool bWouldMerge = Definition && RewardState.CardRun.RouteCardEntries.ContainsByPredicate(
-			[RewardCardId, Definition](const FGameXXKRouteCardEntry& Entry)
-			{
-				return Entry.CardId == RewardCardId && Entry.CurrentQuality == Definition->BaseQuality;
-			});
-		if (Definition && !bWouldMerge)
-		{
-			ChosenRewardCardId = RewardCardId;
-			break;
-		}
-	}
-	TestFalse(TEXT("the deterministic offer contains a direct-acquisition candidate for field-level assertions"), ChosenRewardCardId.IsNone());
-	if (!ChosenRewardCardId.IsNone())
-	{
-		TestTrue(TEXT("the selected reward commits as a route-local card rather than a permanent hero card"),
-			FGameXXKCardBattleAdapter::ChoosePendingRouteReward(RewardState, ChosenRewardCardId, NAME_None, &Error));
-		const FGameXXKRouteCardEntry* AcquiredEntry = RewardState.CardRun.RouteCardEntries.FindByPredicate(
-			[ChosenRewardCardId, RewardEntryOrdinalBefore](const FGameXXKRouteCardEntry& Entry)
-			{
-				return Entry.CardId == ChosenRewardCardId
-					&& Entry.AcquisitionOrdinal == RewardEntryOrdinalBefore;
-			});
-		const FGameXXKCardDefinition* RewardDefinition = FGameXXKCardCatalog::FindCardDefinition(ChosenRewardCardId);
-		TestNotNull(TEXT("a chosen route reward remains in stable route-entry authority"), AcquiredEntry);
-		TestNotNull(TEXT("the selected route reward resolves its catalog definition"), RewardDefinition);
-		if (AcquiredEntry && RewardDefinition)
-		{
-			FName ExpectedEntryId;
-			TestTrue(TEXT("the chosen reward derives a stable entry ID"),
-				FGameXXKRouteCardRecipe::MakeStableEntryId(
-					RewardState.CardRun.RouteProgress.RootSeed,
-					RewardEntryOrdinalBefore,
-					ExpectedEntryId));
-			TestEqual(TEXT("the chosen reward keeps catalog base quality"), AcquiredEntry->CurrentQuality, RewardDefinition->BaseQuality);
-			TestEqual(TEXT("the chosen reward records route-reward source"), AcquiredEntry->SourceKind, EGameXXKRouteCardSourceKind::RouteReward);
-			TestEqual(TEXT("the chosen reward belongs to the player unit"), AcquiredEntry->OwnerUnitId, FName(TEXT("Player")));
-			TestEqual(TEXT("the chosen reward records its pre-commit acquisition ordinal"), AcquiredEntry->AcquisitionOrdinal, RewardEntryOrdinalBefore);
-			TestEqual(TEXT("the chosen reward stores the derived stable entry ID"), AcquiredEntry->EntryId, ExpectedEntryId);
-			TestTrue(TEXT("the chosen reward is temporary route capacity"), AcquiredEntry->bTemporaryRouteCard && AcquiredEntry->bConsumesRouteCapacity);
-		}
-		TestEqual(TEXT("the selected reward advances the stable-entry sequence exactly once"),
-			RewardState.CardRun.NextRouteCardEntryOrdinal,
-			RewardEntryOrdinalBefore + 1);
-		TestEqual(TEXT("the selected reward advances acquisition history exactly once"),
-			RewardState.CardRun.RouteProgress.ActualRouteCardAcquisitionCount,
-			RewardAcquisitionCountBefore + 1);
-		TestTrue(TEXT("the selected reward leaves legacy RouteCardIds empty"), RewardState.CardRun.RouteCardIds.IsEmpty());
-		TestEqual(TEXT("the reward offer clears only after an explicit pick"), RewardState.CardRun.PendingReward.CardIds.Num(), 0);
-	}
+	TestTrue(FString::Printf(TEXT("a normal battle produces a deterministic tiered three-choice reward offer: %s"), *Error),
+		FGameXXKCardBattleAdapter::CreateTieredBattleRewardOffer(RewardState, EGameXXKNodeKind::Battle, RewardSourceNodeId, 2026, &Error));
+	const TArray<FGameXXKBattleRewardOption>& RewardOptions = RewardState.CardRun.PendingReward.Options;
+	TestEqual(TEXT("normal battle reward exposes exactly three options"), RewardOptions.Num(), 3);
+	TestEqual(TEXT("normal battle reward opens with a relic option"), RewardOptions[0].Kind, EGameXXKBattleRewardKind::Relic);
+	TestEqual(TEXT("normal battle reward follows with a second relic option"), RewardOptions[1].Kind, EGameXXKBattleRewardKind::Relic);
+	TestEqual(TEXT("normal battle reward ends with a deck-card upgrade option"), RewardOptions[2].Kind, EGameXXKBattleRewardKind::DeckCardUpgrade);
+	TestFalse(TEXT("normal battle reward never duplicates a relic within its visible choices"), RewardOptions[0].RelicId == RewardOptions[1].RelicId);
+	TestFalse(TEXT("the deck-card upgrade option names a configured card"), RewardOptions[2].CardId.IsNone());
+	constexpr int32 UpgradeOptionIndex = 2;
+	const FName UpgradedCardId = RewardOptions[UpgradeOptionIndex].CardId;
+	const EGameXXKCardQuality UpgradedQualityBefore = FGameXXKCardBattleAdapter::GetConfiguredCardQuality(RewardState.CardRun, UpgradedCardId);
+	TestTrue(TEXT("the offered upgrade card starts below maximum quality"), UpgradedQualityBefore < EGameXXKCardQuality::Epic);
+	TestTrue(TEXT("the selected reward commits as a deck-card quality upgrade rather than a route card"),
+		UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(RewardState, UpgradeOptionIndex, NAME_None, &Error));
+	TestEqual(TEXT("the chosen upgrade persists its one-step quality"),
+		RewardState.CardRun.UpgradedCardQualities.FindRef(UpgradedCardId),
+		FGameXXKCardBattleAdapter::GetNextCardQuality(UpgradedQualityBefore));
+	TestEqual(TEXT("a deck-card upgrade never advances the stable-entry sequence"),
+		RewardState.CardRun.NextRouteCardEntryOrdinal,
+		RewardEntryOrdinalBefore);
+	TestEqual(TEXT("a deck-card upgrade never advances acquisition history"),
+		RewardState.CardRun.RouteProgress.ActualRouteCardAcquisitionCount,
+		RewardAcquisitionCountBefore);
+	TestTrue(TEXT("the selected reward leaves legacy RouteCardIds empty"), RewardState.CardRun.RouteCardIds.IsEmpty());
+	TestEqual(TEXT("the reward offer clears only after an explicit pick"), RewardState.CardRun.PendingReward.Options.Num(), 0);
 	FGameXXKCardBattleAdapter::ClearRouteLocalCardState(RewardState);
 	TestTrue(TEXT("ending the reward route removes stable route-card entries"), RewardState.CardRun.RouteCardEntries.IsEmpty());
 	TestTrue(TEXT("ending the reward route keeps legacy RouteCardIds empty"), RewardState.CardRun.RouteCardIds.IsEmpty());
@@ -715,6 +682,7 @@ bool FGameXXKCardBattleFourEnemySafetyTest::RunTest(const FString& Parameters)
 	const int32 PendingRewardSourceNodeIdBeforeRejectedBegin = State.CardRun.PendingReward.SourceNodeId;
 	const int32 PendingRewardChoiceSeedBeforeRejectedBegin = State.CardRun.PendingReward.ChoiceSeed;
 	const TArray<FName> PendingRewardCardIdsBeforeRejectedBegin = State.CardRun.PendingReward.CardIds;
+	const int32 PendingRewardOptionCountBeforeRejectedBegin = State.CardRun.PendingReward.Options.Num();
 	const bool bPendingRewardRequiresReplacementBeforeRejectedBegin = State.CardRun.PendingReward.bRequiresRouteCardReplacement;
 	const bool bActiveBattleRewardResolvedBeforeRejectedBegin = State.CardRun.bActiveBattleRewardResolved;
 	Error.Reset();
@@ -830,6 +798,9 @@ bool FGameXXKCardBattleFourEnemySafetyTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the rejected four-enemy battle start preserves pending reward cards"),
 		State.CardRun.PendingReward.CardIds,
 		PendingRewardCardIdsBeforeRejectedBegin);
+	TestEqual(TEXT("the rejected four-enemy battle start preserves pending reward options"),
+		State.CardRun.PendingReward.Options.Num(),
+		PendingRewardOptionCountBeforeRejectedBegin);
 	TestEqual(TEXT("the rejected four-enemy battle start preserves pending reward replacement state"),
 		State.CardRun.PendingReward.bRequiresRouteCardReplacement,
 		bPendingRewardRequiresReplacementBeforeRejectedBegin);

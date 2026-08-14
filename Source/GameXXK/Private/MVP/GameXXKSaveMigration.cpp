@@ -1307,6 +1307,15 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Fail(OutReport, MigrationError);
 		return false;
 	}
+	if (Source.SaveVersion < BattleRewardTieringIntroducedSaveVersion)
+	{
+		// v16 reward tiering: typed Options replace the legacy three-route-card offer.
+		// An in-flight pre-v16 reward cannot map to the new tiering, so it is cleared
+		// and the next victory re-rolls the offer.  New permanent bonus fields keep
+		// their zero defaults.
+		Candidate.RuntimeState.CardRun.PendingReward = FGameXXKPendingRouteCardReward();
+		Candidate.RuntimeState.CardRun.bActiveBattleRewardResolved = false;
+	}
 	Candidate.SaveVersion = CurrentSaveVersion;
 	if (!ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
 	{
@@ -1500,13 +1509,27 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 	}
 
 	const FGameXXKPendingRouteCardReward& PendingReward = State.CardRun.PendingReward;
-	const bool bHasPendingReward = !PendingReward.CardIds.IsEmpty();
+	const bool bHasPendingReward = !PendingReward.CardIds.IsEmpty() || !PendingReward.Options.IsEmpty();
 	if (!bHasPendingReward)
 	{
 		if (PendingReward.SourceNodeId != INDEX_NONE
 			|| PendingReward.ChoiceSeed != 0)
 		{
 			OutError = TEXT("Saved pending reward has incomplete metadata.");
+			return false;
+		}
+	}
+	else if (!PendingReward.Options.IsEmpty())
+	{
+		// Tiered battle reward: three typed options on a live victory gate.
+		if (PendingReward.SourceNodeId < 0
+			|| PendingReward.ChoiceSeed == 0
+			|| PendingReward.Options.Num() != 3
+			|| !State.CardRun.bHasActiveCardBattle
+			|| State.CardRun.ActiveBattle.Phase != EGameXXKCardBattlePhase::Victory
+			|| State.CardRun.bActiveBattleRewardResolved)
+		{
+			OutError = TEXT("Saved pending battle reward metadata is invalid.");
 			return false;
 		}
 	}

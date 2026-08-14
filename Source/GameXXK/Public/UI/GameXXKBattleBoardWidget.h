@@ -216,6 +216,10 @@ public:
 	UScaleBox* GetBattleBackdropScaleBoxForTest() const;
 	UImage* GetBattleBackdropImageForTest() const;
 	FString GetBattleBackdropResourcePathForTest() const;
+	/** Resolves the battle backdrop texture asset path for a terrain; Invalid falls back to the riverside asset. */
+	static FString ResolveBattleBackdropTexturePath(EGameXXKCardTerrain Terrain);
+	/** Loads and applies the backdrop texture for the given terrain; called at construction and on terrain switches. */
+	void ApplyBattleBackdropForTerrain(EGameXXKCardTerrain Terrain);
 	UGameXXKBattleUnitVisualWidget* GetUnitVisualForTest(FName UnitId) const;
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	UButton* GetUnitTargetProxyForTest(FName UnitId) const;
@@ -356,6 +360,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Rewards")
 	bool ChoosePendingRouteReward(FName RewardCardId, FName ReplacementEntryId);
 
+	/** Commits one tiered battle reward option (card upgrade, boss card, relic, or attribute bonus). */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Rewards")
+	bool ChoosePendingBattleRewardOption(int32 OptionIndex, FName ReplacementEntryId = NAME_None);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Rewards")
 	bool SkipPendingRouteReward();
 
@@ -463,8 +471,12 @@ public:
 	FVector2D GetCardFrameRuntimeSizeForTest() const;
 	/** The approved PSD frame is immutable parchment/ink; ownership color belongs only to a lower strip. */
 	FLinearColor GetCardFrameTintForTest() const;
+	/** The single ink name-band color shared by every BuildCardFace card face. */
+	FLinearColor GetCardFaceLabelColorForTest() const;
 	FString GetCardPortraitResourcePathForTest(FName CardId) const;
 	FLinearColor GetCardInfoStripTintForTest(FName CardId) const;
+	/** True while the given reward slot keeps a non-collapsed portrait (relic icon or card art). */
+	bool IsRewardPortraitVisibleForTest(int32 SlotIndex) const;
 	FName GetSelectedRouteRewardReplacementEntryIdForTest() const;
 	FName GetRouteRewardCardIdAwaitingReplacementForTest() const;
 	int32 GetVisibleEnemyIntentCardCountForTest() const;
@@ -517,6 +529,10 @@ public:
 	UCanvasPanel* GetBattleOutcomePreviewLayerForTest() const;
 	int32 GetBattleOutcomePreviewLayerZForTest() const;
 	FMargin GetGroupOutcomePreviewOffsetsForTest() const;
+	/** Reward row container slot geometry (legacy small-card strip replaced by full card faces). */
+	FMargin GetRewardCardBoxOffsetsForTest() const;
+	/** Current tooltip panel offsets (follows the hovered card slot). */
+	FMargin GetHandCardDetailPanelOffsetsForTest() const;
 	FVector2D GetGroupOutcomePreviewAlignmentForTest() const;
 	/** Drives the production visual-removal path without mutating authoritative runtime state. */
 	void RemoveUnitVisualForTest(FName UnitId);
@@ -685,6 +701,8 @@ private:
 	void StyleBattleActionButton(UButton* Button, FName ActionName);
 	void StyleCardButton(UButton* Button, const FVector2D& CardImageSize);
 	void BuildCardFace(UButton* CardButton, const FString& NamePrefix, UTextBlock*& OutLabel, UImage*& OutPortrait, UBorder*& OutInfoStrip, bool bUsePlayerHandSize = false);
+	/** Approved ink label color for every BuildCardFace name band. */
+	static FLinearColor ResolveCardFaceLabelColor();
 	void BuildEnemyIntentCardFace(UButton* CardButton, const FString& NamePrefix, UTextBlock*& OutBody, UImage*& OutPortrait);
 	FString ResolveEnemyIntentPortraitResourcePath(FName EnemyDefinitionId) const;
 	UTexture2D* ResolveEnemyIntentPortraitTexture(FName EnemyDefinitionId) const;
@@ -854,6 +872,12 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> BattleBackdropTexture;
 
+	/** Asset path of the backdrop chosen for the battle terrain active at construction. */
+	FString BattleBackdropResourcePath;
+
+	/** Terrain the displayed backdrop currently represents; Invalid until applied. */
+	EGameXXKCardTerrain BattleBackdropTerrain = EGameXXKCardTerrain::Invalid;
+
 	/** One ordinary input-transparent Canvas inside the centered 16:9 battle safe stage. */
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> BattleProjectedUnitHudLayer;
@@ -975,10 +999,13 @@ private:
 	TObjectPtr<UBorder> HandCardDetailPanel;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> HandCardDetailTitle;
 	TObjectPtr<UTextBlock> HandCardDetailBody;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHorizontalBox> RewardCardBox;
+
+	FMargin RewardCardBoxSlotOffsets = FMargin(0.0f);
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> PendingChoicePanel;
@@ -1112,6 +1139,9 @@ private:
 	UPROPERTY(Transient)
 	int32 HoveredHandCardSlot = INDEX_NONE;
 
+	/** Reward hover tracks the option slot index so relic and attribute options tooltip too. */
+	int32 HoveredRewardCardSlot = INDEX_NONE;
+
 	enum class ECardTooltipSource : uint8
 	{
 		None,
@@ -1144,6 +1174,8 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<FName> PendingRewardCardIds;
+
+	TArray<FGameXXKBattleRewardOption> PendingRewardOptions;
 
 	UPROPERTY(Transient)
 	FName SelectedRouteRewardReplacementEntryId = NAME_None;

@@ -247,9 +247,9 @@ bool FGameXXKBattleEncounterRulesTest::RunTest(const FString& Parameters)
 		}
 	}
 	VictoryState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
-	TestTrue(TEXT("card-runtime victory opens the saved three-card reward offer"), UGameXXKMVPRules::ResolveBattleVictory(VictoryState, false));
+	TestTrue(TEXT("card-runtime victory opens the saved tiered three-choice reward offer"), UGameXXKMVPRules::ResolveBattleVictory(VictoryState, false));
 	TestEqual(TEXT("battle victory remains on the board while card reward is pending"), VictoryState.Screen, EGameXXKScreen::Battle);
-	TestEqual(TEXT("battle victory exposes three route reward choices"), VictoryState.CardRun.PendingReward.CardIds.Num(), 3);
+	TestEqual(TEXT("battle victory exposes three tiered reward options"), VictoryState.CardRun.PendingReward.Options.Num(), 3);
 	FString RewardError;
 	TestTrue(FString::Printf(TEXT("skipping the saved reward resolves the route victory gate: %s"), *RewardError),
 		FGameXXKCardBattleAdapter::SkipPendingRouteReward(VictoryState, &RewardError));

@@ -122,10 +122,10 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 		}
 	}
 	HeroCapState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
-	TestTrue(TEXT("the fixed-route cap fixture opens its card-reward gate"),
+	TestTrue(TEXT("the fixed-route cap fixture opens its tiered reward gate"),
 		UGameXXKMVPRules::ResolveBattleVictory(HeroCapState, false));
 	FString HeroCapRewardError;
-	TestTrue(TEXT("the fixed-route cap fixture resolves its card-reward gate"),
+	TestTrue(TEXT("the fixed-route cap fixture skips its tiered reward gate"),
 		FGameXXKCardBattleAdapter::SkipPendingRouteReward(HeroCapState, &HeroCapRewardError));
 	TestTrue(TEXT("a fixed-route battle can award XP at the hero cap after its reward gate"),
 		UGameXXKMVPRules::ResolveBattleVictory(HeroCapState, false));

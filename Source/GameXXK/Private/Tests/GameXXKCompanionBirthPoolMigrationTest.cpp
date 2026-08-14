@@ -136,7 +136,7 @@ bool FGameXXKCompanionBirthPoolMigrationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the fixed six-card companion birth pool was introduced by save version thirteen"),
 		FGameXXKSaveMigration::CompanionBirthPoolIntroducedSaveVersion, 13);
 	TestEqual(TEXT("the current save schema includes the follower and enemy-codex migration"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 15);
+		FGameXXKSaveMigration::CurrentSaveVersion, 16);
 
 	FGameXXKRuntimeState LegacyRuntime = UGameXXKMVPRules::CreateNewGame();
 	FGameXXKCompanionRecruitResult RecruitResult;
@@ -195,7 +195,7 @@ bool FGameXXKCompanionBirthPoolMigrationTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	TestEqual(TEXT("the migrated save writes the current version"), Migrated.SaveVersion, 15);
+	TestEqual(TEXT("the migrated save writes the current version"), Migrated.SaveVersion, 16);
 	if (!TestTrue(TEXT("the migrated roster still contains the same companion slot"),
 		!Migrated.RuntimeState.CardRun.CompanionRoster.PermanentCompanions.IsEmpty()))
 	{

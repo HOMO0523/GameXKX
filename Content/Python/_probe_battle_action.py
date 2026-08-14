@@ -311,6 +311,34 @@ def main():
         result.update(_accept_quest(world))
     elif action == "select_battle":
         result.update(_select_battle(world))
+    elif action == "refresh_route":
+        pc = unreal.GameplayStatics.get_player_controller(world, 0) if world else None
+        if not pc:
+            result["reason"] = "pc_missing"
+        else:
+            try:
+                route = pc.get_route_map_widget_for_test()
+                if not route:
+                    result["reason"] = "route_map_missing"
+                else:
+                    route.refresh_from_state()
+                    result["ok"] = True
+            except Exception as exc:
+                result["reason"] = str(exc)
+    elif action == "select_elite":
+        subsystem = _subsystem(world)
+        if not subsystem:
+            result["reason"] = "subsystem_missing"
+        else:
+            kind_type = getattr(unreal, "GameXXKNodeKind", None)
+            if not kind_type:
+                result["reason"] = "node_kind_type_missing"
+            else:
+                try:
+                    kind = getattr(kind_type, "ELITE")
+                    result["ok"] = bool(subsystem.select_dungeon_node(kind))
+                except Exception as exc:
+                    result["reason"] = str(exc)
     elif action == "select_route":
         result.update(_select_route_node(world, arg))
     elif action == "route_nodes":
@@ -381,6 +409,186 @@ def main():
             try:
                 result["ok"] = bool(board.is_card_targeting_active())
                 result["pending"] = _name(board.get_pending_card_instance_id_for_test())
+            except Exception as exc:
+                result["reason"] = str(exc)
+    elif action == "pending_reward":
+        # Authoritative reward-offer state: CardRun.PendingReward.Options (3 after
+        # ResolveBattleVictory) drives the board's RewardCardBox/SkipRewardButton.
+        subsystem = _subsystem(world)
+        if not subsystem:
+            result["reason"] = "subsystem_missing"
+        else:
+            try:
+                state = subsystem.get_runtime_state_copy()
+            except Exception as exc:
+                result["reason"] = f"state_error: {exc}"
+            else:
+                run = _property(state, "card_run", "CardRun")
+                reward = _property(run, "pending_reward", "PendingReward")
+                ids = _property(reward, "card_ids", "CardIds") or []
+                options = _property(reward, "options", "Options") or []
+                result["ok"] = len(ids) > 0 or len(options) > 0
+                result["card_ids"] = [str(i) for i in ids]
+                result["options"] = [
+                    {
+                        "kind": _name(_property(o, "kind", "Kind")),
+                        "card_id": _name(_property(o, "card_id", "CardId")),
+                        "relic_id": _name(_property(o, "relic_id", "RelicId")),
+                    }
+                    for o in options
+                ]
+    elif action == "choose_reward_option":
+        if not board:
+            result["reason"] = "board_missing"
+        else:
+            try:
+                result["ok"] = bool(board.choose_pending_battle_reward_option(int(arg), unreal.Name("")))
+            except Exception as exc:
+                result["reason"] = str(exc)
+    elif action == "pending_choice":
+        # Deck.PendingChoice blocks all card interaction and EndCardPlayerPhase
+        # (e.g. GuanXi's forced discard: "此牌要求弃置 N 张手牌"). Candidates are
+        # card-instance views; the owning instance stays in Hand until confirmed.
+        subsystem = _subsystem(world)
+        if not subsystem:
+            result["reason"] = "subsystem_missing"
+        else:
+            try:
+                state = subsystem.get_runtime_state_copy()
+            except Exception as exc:
+                result["reason"] = f"state_error: {exc}"
+            else:
+                run = _property(state, "card_run", "CardRun")
+                battle = _property(run, "active_battle", "ActiveBattle")
+                deck = _property(battle, "deck", "Deck")
+                choice = _property(deck, "pending_choice", "PendingChoice")
+                kind_value = _property(choice, "kind", "Kind")
+                kind = getattr(kind_value, "name", None) or _name(kind_value)
+                result["ok"] = choice is not None and kind.upper() not in ("", "NONE", "INVALID")
+                result["kind"] = kind
+                result["required_count"] = int(_property(choice, "required_count", "RequiredCount") or 0)
+                result["required_discard_count"] = int(_property(choice, "required_discard_count", "RequiredDiscardCount") or 0)
+                result["b_can_cancel"] = bool(_property(choice, "b_can_cancel", "bCanCancel"))
+                candidates = _property(choice, "candidates", "Candidates") or []
+                result["candidate_ids"] = [
+                    _name(_property(c, "instance_id", "InstanceId")) for c in candidates
+                ]
+    elif action == "submit_discard":
+        if not board:
+            result["reason"] = "board_missing"
+        else:
+            try:
+                result["ok"] = bool(board.submit_pending_forced_discard(unreal.Name(arg)))
+            except Exception as exc:
+                result["reason"] = str(exc)
+    elif action == "submit_insight":
+        if not board:
+            result["reason"] = "board_missing"
+        else:
+            try:
+                result["ok"] = bool(board.submit_pending_insight_choice(unreal.Name(arg)))
+            except Exception as exc:
+                result["reason"] = str(exc)
+    elif action == "submit_task_search":
+        if not board:
+            result["reason"] = "board_missing"
+        else:
+            try:
+                result["ok"] = bool(board.submit_pending_hero_task_search_choice(unreal.Name(arg)))
+            except Exception as exc:
+                result["reason"] = str(exc)
+    elif action == "cancel_insight":
+        if not board:
+            result["reason"] = "board_missing"
+        else:
+            try:
+                result["ok"] = bool(board.cancel_pending_insight_choice())
+            except Exception as exc:
+                result["reason"] = str(exc)
+    elif action == "target_highlights":
+        # During targeting, IsTargetUnitHighlighted marks every unit that is a
+        # legal candidate for the pending card. Lets the capture prefer
+        # enemy-targeting attack cards over party-targeting defend/heal cards.
+        if not board:
+            result["reason"] = "board_missing"
+        else:
+            subsystem = _subsystem(world)
+            if not subsystem:
+                result["reason"] = "subsystem_missing"
+            else:
+                try:
+                    state = subsystem.get_runtime_state_copy()
+                except Exception as exc:
+                    result["reason"] = f"state_error: {exc}"
+                else:
+                    run = _property(state, "card_run", "CardRun")
+                    battle = _property(run, "active_battle", "ActiveBattle")
+                    units = _property(battle, "units", "Units") or []
+                    highlighted = []
+                    for unit in units:
+                        uid = _name(_property(unit, "unit_id", "UnitId"))
+                        try:
+                            if uid and board.is_target_unit_highlighted(unreal.Name(uid)):
+                                highlighted.append(uid)
+                        except Exception:
+                            pass
+                    result["ok"] = True
+                    result["highlighted_unit_ids"] = highlighted
+    elif action == "enter_route":
+        subsystem = _subsystem(world)
+        if not subsystem:
+            result["reason"] = "subsystem_missing"
+        else:
+            try:
+                result["ok"] = bool(subsystem.open_dungeon_from_town_exit())
+            except Exception as exc:
+                result["reason"] = str(exc)
+    elif action == "resolve_victory":
+        subsystem = _subsystem(world)
+        if not subsystem:
+            result["reason"] = "subsystem_missing"
+        else:
+            try:
+                result["ok"] = bool(subsystem.resolve_battle_victory(False))
+            except Exception as exc:
+                result["reason"] = str(exc)
+    elif action == "refresh_board":
+        if not board:
+            result["reason"] = "board_missing"
+        else:
+            try:
+                board.refresh_from_state()
+                result["ok"] = True
+            except Exception as exc:
+                result["reason"] = str(exc)
+    elif action == "battle_state":
+        subsystem = _subsystem(world)
+        if not subsystem:
+            result["reason"] = "subsystem_missing"
+        else:
+            try:
+                state = subsystem.get_runtime_state_copy()
+                run = _property(state, "card_run", "CardRun")
+                battle = _property(run, "active_battle", "ActiveBattle")
+                deck = _property(battle, "deck", "Deck")
+                reward = _property(run, "pending_reward", "PendingReward")
+                ids = _property(reward, "card_ids", "CardIds") or []
+                result["ok"] = True
+                result["screen"] = _name(_property(state, "screen", "Screen"))
+                result["b_has_active_card_battle"] = bool(_property(run, "b_has_active_card_battle", "bHasActiveCardBattle"))
+                result["phase"] = _name(_property(battle, "phase", "Phase"))
+                result["terrain"] = _name(_property(battle, "terrain", "Terrain"))
+                units = _property(battle, "units", "Units") or []
+                result["units"] = [
+                    {
+                        "unit_id": _name(_property(u, "unit_id", "UnitId")),
+                        "side": _name(_property(u, "side", "Side")),
+                        "b_living": bool(_property(u, "b_living", "bLiving")),
+                    }
+                    for u in units
+                ]
+                result["hand_count"] = len(_property(deck, "hand", "Hand") or [])
+                result["pending_reward_card_ids"] = [str(i) for i in ids]
             except Exception as exc:
                 result["reason"] = str(exc)
     else:

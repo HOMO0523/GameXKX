@@ -274,8 +274,45 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 		BackdropContentSlot
 		&& BackdropContentSlot->GetHorizontalAlignment() == HAlign_Center
 		&& BackdropContentSlot->GetVerticalAlignment() == VAlign_Center);
-	TestTrue(TEXT("battle backdrop uses the approved generated riverside asset"),
-		BattleWidget->GetBattleBackdropResourcePathForTest().Contains(TEXT("T_BattleArena_Riverside_GeneratedV1")));
+	const EGameXXKCardTerrain FixtureBattleTerrain =
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.Terrain;
+	TestTrue(TEXT("battle backdrop follows the terrain of the active card battle"),
+		BattleWidget->GetBattleBackdropResourcePathForTest()
+			== UGameXXKBattleBoardWidget::ResolveBattleBackdropTexturePath(FixtureBattleTerrain));
+
+	// TDD: a resolved terrain-switch card (e.g. 定阵 -> Village) must swap the backdrop on refresh.
+	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Terrain = EGameXXKCardTerrain::Village;
+	BattleWidget->RefreshFromState();
+	TestTrue(TEXT("battle backdrop follows a terrain switch resolved by a formation card"),
+		BattleWidget->GetBattleBackdropResourcePathForTest().Contains(TEXT("T_BattleArena_Village_GeneratedV2")));
+	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Terrain = FixtureBattleTerrain;
+	BattleWidget->RefreshFromState();
+
+	// TDD: terrain backdrop mapping (RED until the resolver is implemented).
+	struct FTerrainBackdropExpectation
+	{
+		EGameXXKCardTerrain Terrain;
+		const TCHAR* AssetName;
+	};
+	const FTerrainBackdropExpectation TerrainBackdropExpectations[] = {
+		{ EGameXXKCardTerrain::Plain, TEXT("T_BattleArena_Plain_GeneratedV2") },
+		{ EGameXXKCardTerrain::Cliff, TEXT("T_BattleArena_Cliff_GeneratedV2") },
+		{ EGameXXKCardTerrain::Forest, TEXT("T_BattleArena_Forest_GeneratedV2") },
+		{ EGameXXKCardTerrain::WaterShore, TEXT("T_BattleArena_WaterShore_GeneratedV2") },
+		{ EGameXXKCardTerrain::Ferry, TEXT("T_BattleArena_Ferry_GeneratedV2") },
+		{ EGameXXKCardTerrain::Village, TEXT("T_BattleArena_Village_GeneratedV2") },
+		{ EGameXXKCardTerrain::Cave, TEXT("T_BattleArena_Cave_GeneratedV2") },
+	};
+	for (const FTerrainBackdropExpectation& Expectation : TerrainBackdropExpectations)
+	{
+		TestTrue(FString::Printf(TEXT("backdrop path for terrain %d uses %s"),
+			static_cast<int32>(Expectation.Terrain), Expectation.AssetName),
+			UGameXXKBattleBoardWidget::ResolveBattleBackdropTexturePath(Expectation.Terrain)
+				.Contains(Expectation.AssetName));
+	}
+	TestTrue(TEXT("invalid terrain keeps the approved riverside backdrop"),
+		UGameXXKBattleBoardWidget::ResolveBattleBackdropTexturePath(EGameXXKCardTerrain::Invalid)
+			.Contains(TEXT("T_BattleArena_Riverside_GeneratedV1")));
 	const UTexture2D* const BackdropTexture = BackdropImage
 		? Cast<UTexture2D>(BackdropImage->GetBrush().GetResourceObject())
 		: nullptr;
@@ -406,7 +443,19 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("battle targeting arrow head asset is loaded"), BattleWidget->GetTargetingArrowHeadResourcePathForTest().Contains(TEXT("T_BattleTargetArrowHead")));
 	TestEqual(TEXT("battle targeting uses all generated ink dab pieces"), BattleWidget->GetTargetingInkDabTextureCountForTest(), 12);
 	TestEqual(TEXT("the active battle hand preserves the approved current PSD card size"), BattleWidget->GetCardFrameRuntimeSizeForTest(), FVector2D(206.0f, 285.0f));
+	{
+		// The reward row shares the same 206x285 card faces, so its container must
+		// be sized for three full card faces instead of the legacy 370x136 strip.
+		const FMargin RewardRowOffsets = BattleWidget->GetRewardCardBoxOffsetsForTest();
+		TestTrue(TEXT("reward row container fits three full-height 206x285 card faces"),
+			RewardRowOffsets.Right >= 3.0f * 206.0f && RewardRowOffsets.Bottom >= 285.0f);
+		TestTrue(TEXT("reward row is horizontally centered on the battle stage"),
+			FMath::Abs(RewardRowOffsets.Left + RewardRowOffsets.Right * 0.5f) < 0.01f);
+	}
 	TestEqual(TEXT("PSD card frame stays un-tinted while ownership is carried by its strip"), BattleWidget->GetCardFrameTintForTest(), FLinearColor::White);
+	TestEqual(TEXT("every in-battle card face name band uses the approved ink label color"),
+		BattleWidget->GetCardFaceLabelColorForTest(),
+		FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
 	TestEqual(TEXT("hero cards use the locked original-hero portrait asset"), BattleWidget->GetCardPortraitResourcePathForTest(TEXT("Hero.Generic.QingFengYiShi")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero")));
 	TestEqual(TEXT("NPC cards use their named original-art portrait asset"), BattleWidget->GetCardPortraitResourcePathForTest(TEXT("Npc.TusiChief.ZhaiZhuHaoLing")), FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_TusiChief.T_CardPortrait_Npc_TusiChief")));
 	TestTrue(TEXT("card UI exposes at least one card from the active hand"), BattleWidget->GetVisibleHandCardCountForTest() > 0);
@@ -457,7 +506,7 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 		BattleWidget->IsBattlePresentationLockedForTest());
 	TestEqual(TEXT("victory waits on the battle screen for a reward decision"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
 	TestTrue(TEXT("victory exposes the saved route reward offer"), BattleWidget->HasPendingRouteReward());
-	TestEqual(TEXT("victory exposes exactly three reward cards"), BattleWidget->GetPendingRouteRewardCardIds().Num(), 3);
+	TestEqual(TEXT("victory exposes exactly three reward slots"), BattleWidget->GetPendingRouteRewardCardIds().Num(), 3);
 	TestEqual(TEXT("reward choice hides the spent battle hand"), BattleWidget->GetVisibleHandCardCountForTest(), 0);
 	if (PartyQiWidget)
 	{

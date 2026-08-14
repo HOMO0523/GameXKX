@@ -117,6 +117,29 @@ public:
 		TArray<FName>& OutCardIds,
 		FString* OutError = nullptr);
 
+	/** Produces the tiered three-choice battle reward (Battle: relic-heavy; Elite: attribute bonus; Boss: boss card). */
+	static bool CreateTieredBattleRewardOffer(
+		FGameXXKRuntimeState& InOutState,
+		EGameXXKNodeKind NodeKind,
+		int32 SourceNodeId,
+		int32 ChoiceSeed,
+		FString* OutError = nullptr);
+
+	/** Commits a boss-exclusive reward card into the route deck, honoring capacity replacement. */
+	static bool CommitBossCardReward(
+		FGameXXKRuntimeState& InOutState,
+		FName RewardCardId,
+		FName ReplacementEntryId,
+		FString* OutError = nullptr);
+
+	/** Current quality of a configured hero/companion card, honoring earned upgrades. */
+	static EGameXXKCardQuality GetConfiguredCardQuality(
+		const FGameXXKCardRunState& CardRun,
+		FName CardId);
+
+	/** The next quality step (Common->Rare->Epic); Epic stays. */
+	static EGameXXKCardQuality GetNextCardQuality(EGameXXKCardQuality Quality);
+
 	/** Purely previews one saved reward candidate and optional stable replacement entry. */
 	static bool PreviewPendingRouteReward(
 		const FGameXXKRuntimeState& State,

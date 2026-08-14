@@ -1226,13 +1226,12 @@ bool FGameXXKRouteMerchantV10SaveMigrationTest::RunTest(const FString& Parameter
 	{
 		return false;
 	}
-	TestEqual(TEXT("v9 fixture has three pending reward cards"), LegacyState.CardRun.PendingReward.CardIds.Num(), 3);
+	TestEqual(TEXT("v9 fixture has three tiered pending reward options"), LegacyState.CardRun.PendingReward.Options.Num(), 3);
 
 	const TArray<FGameXXKRouteMapNode> ExpectedNodes = LegacyState.RouteMapNodes;
 	const TArray<FGameXXKRouteMapEdge> ExpectedEdges = LegacyState.RouteMapEdges;
 	const int32 ExpectedCurrentNodeId = LegacyState.CurrentRouteNodeId;
 	const int32 ExpectedPendingNodeId = LegacyState.PendingRouteNodeId;
-	const FGameXXKPendingRouteCardReward ExpectedReward = LegacyState.CardRun.PendingReward;
 	const TArray<FGameXXKRouteCardEntry> ExpectedEntries = LegacyState.CardRun.RouteCardEntries;
 	const int32 ExpectedNextEntryOrdinal = LegacyState.CardRun.NextRouteCardEntryOrdinal;
 	const bool bExpectedEconomyInitialized = LegacyState.CardRun.bRouteEconomyInitialized;
@@ -1254,11 +1253,12 @@ bool FGameXXKRouteMerchantV10SaveMigrationTest::RunTest(const FString& Parameter
 		MigratedSave.RuntimeState.CurrentRouteNodeId, ExpectedCurrentNodeId);
 	TestEqual(TEXT("v9 merchant migration preserves the pending node"),
 		MigratedSave.RuntimeState.PendingRouteNodeId, ExpectedPendingNodeId);
-	TestTrue(TEXT("v9 merchant migration preserves the pending reward byte-for-byte"),
-		FGameXXKPendingRouteCardReward::StaticStruct()->CompareScriptStruct(
-			&MigratedSave.RuntimeState.CardRun.PendingReward,
-			&ExpectedReward,
-			PPF_None));
+	TestEqual(TEXT("v9 migration clears the pre-tiering pending reward options"),
+		MigratedSave.RuntimeState.CardRun.PendingReward.Options.Num(), 0);
+	TestEqual(TEXT("v9 migration clears the pre-tiering pending reward cards"),
+		MigratedSave.RuntimeState.CardRun.PendingReward.CardIds.Num(), 0);
+	TestFalse(TEXT("v9 migration re-arms the reward gate for the next victory"),
+		MigratedSave.RuntimeState.CardRun.bActiveBattleRewardResolved);
 	TestEqual(TEXT("v9 merchant migration preserves the stable deck size"),
 		MigratedSave.RuntimeState.CardRun.RouteCardEntries.Num(), ExpectedEntries.Num());
 	if (MigratedSave.RuntimeState.CardRun.RouteCardEntries.Num() == ExpectedEntries.Num())

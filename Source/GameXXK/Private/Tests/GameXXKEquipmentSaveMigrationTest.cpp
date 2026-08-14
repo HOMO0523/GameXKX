@@ -272,10 +272,18 @@ namespace
 		FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(State, nullptr);
 		State.CardRun.PendingReward.SourceNodeId = 10;
 		State.CardRun.PendingReward.ChoiceSeed = 0x7104;
-		State.CardRun.PendingReward.CardIds = {
-			TEXT("Route.General.PoJiaTuCi"),
-			TEXT("Route.General.ShouShiHuiYuan"),
-			TEXT("Route.General.QingShenQuShi")};
+		FGameXXKBattleRewardOption FixtureUpgradeOption;
+		FixtureUpgradeOption.Kind = EGameXXKBattleRewardKind::DeckCardUpgrade;
+		FixtureUpgradeOption.CardId = TEXT("Hero.Generic.QingFengYiShi");
+		State.CardRun.PendingReward.Options.Add(FixtureUpgradeOption);
+		FGameXXKBattleRewardOption FixtureBossOption;
+		FixtureBossOption.Kind = EGameXXKBattleRewardKind::BossCard;
+		FixtureBossOption.CardId = TEXT("Route.Boss.HuPoZhenDan");
+		State.CardRun.PendingReward.Options.Add(FixtureBossOption);
+		FGameXXKBattleRewardOption FixtureRelicOption;
+		FixtureRelicOption.Kind = EGameXXKBattleRewardKind::Relic;
+		FixtureRelicOption.RelicId = TEXT("Relic.PaperCrane");
+		State.CardRun.PendingReward.Options.Add(FixtureRelicOption);
 		return UGameXXKMVPRules::MakeSaveState(State);
 	}
 
@@ -377,12 +385,23 @@ bool FGameXXKEquipmentSaveMigrationVersionContractTest::RunTest(const FString& P
 	TestTrue(
 		TEXT("the pending-reward mutation starts from a valid current save"),
 		FGameXXKSaveMigration::MigrateToCurrent(ValidPendingReward, Migrated, Report));
-	FGameXXKSaveState UnknownPendingReward = ValidPendingReward;
-	UnknownPendingReward.RuntimeState.CardRun.PendingReward.CardIds[2] = TEXT("Route.Unknown");
+	FGameXXKSaveState MalformedPendingReward = ValidPendingReward;
+	MalformedPendingReward.RuntimeState.CardRun.PendingReward.Options.SetNum(2);
 	TestFalse(
-		TEXT("a current save cannot retain an unknown pending reward card"),
-		FGameXXKSaveMigration::MigrateToCurrent(UnknownPendingReward, Migrated, Report));
-	TestTrue(TEXT("unknown pending reward reports its contract"), Report.Error.Contains(TEXT("reward")));
+		TEXT("a current save cannot retain a malformed tiered pending reward"),
+		FGameXXKSaveMigration::MigrateToCurrent(MalformedPendingReward, Migrated, Report));
+	TestTrue(TEXT("malformed tiered pending reward reports its contract"), Report.Error.Contains(TEXT("reward")));
+
+	FGameXXKSaveState UnknownLegacyPendingReward = ValidPendingReward;
+	UnknownLegacyPendingReward.RuntimeState.CardRun.PendingReward.Options.Reset();
+	UnknownLegacyPendingReward.RuntimeState.CardRun.PendingReward.CardIds = {
+		TEXT("Route.General.PoJiaTuCi"),
+		TEXT("Route.General.ShouShiHuiYuan"),
+		TEXT("Route.Unknown")};
+	TestFalse(
+		TEXT("a current save still rejects an unknown legacy pending reward card"),
+		FGameXXKSaveMigration::MigrateToCurrent(UnknownLegacyPendingReward, Migrated, Report));
+	TestTrue(TEXT("unknown legacy pending reward reports its contract"), Report.Error.Contains(TEXT("reward")));
 
 	FGameXXKSaveState ValidPendingEvent = MakeCurrentPendingEventFixture(false);
 	TestTrue(
@@ -422,7 +441,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("current save schema is version fifteen"), FGameXXKSaveMigration::CurrentSaveVersion, 15);
+	TestEqual(TEXT("current save schema is version sixteen"), FGameXXKSaveMigration::CurrentSaveVersion, 16);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
@@ -435,7 +454,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 	FGameXXKSaveState Migrated;
 	FGameXXKSaveMigrationReport Report;
 	TestTrue(TEXT("v10 migrates"), FGameXXKSaveMigration::MigrateToCurrent(VersionTen, Migrated, Report));
-	TestEqual(TEXT("v10 targets v15"), Migrated.SaveVersion, 15);
+	TestEqual(TEXT("v10 targets v16"), Migrated.SaveVersion, 16);
 	TestTrue(TEXT("v10 migration initializes a positive seed"), Migrated.RuntimeState.MetaShop.Seed > 0);
 	TestEqual(TEXT("v10 migration starts at ordinal zero"), Migrated.RuntimeState.MetaShop.NextPurchaseOrdinal, 0);
 
@@ -868,12 +887,18 @@ bool FGameXXKEquipmentSaveMigrationDeterminismTest::RunTest(const FString& Param
 	FGameXXKSaveState MigratedReward;
 	FGameXXKSaveMigrationReport RewardReport;
 	TestTrue(TEXT("version six pending card reward migrates"), FGameXXKSaveMigration::MigrateToCurrent(RewardSource, MigratedReward, RewardReport));
-	TestTrue(
-		TEXT("version six pending card reward survives exactly"),
-		FGameXXKPendingRouteCardReward::StaticStruct()->CompareScriptStruct(
-			&MigratedReward.RuntimeState.CardRun.PendingReward,
-			&RewardRuntime.CardRun.PendingReward,
-			PPF_None));
+	TestEqual(
+		TEXT("the pre-tiering version-six reward offer is cleared"),
+		MigratedReward.RuntimeState.CardRun.PendingReward.Options.Num(), 0);
+	TestEqual(
+		TEXT("the pre-tiering version-six reward cards are cleared"),
+		MigratedReward.RuntimeState.CardRun.PendingReward.CardIds.Num(), 0);
+	TestEqual(
+		TEXT("the pre-tiering version-six reward metadata is cleared"),
+		MigratedReward.RuntimeState.CardRun.PendingReward.SourceNodeId, INDEX_NONE);
+	TestFalse(
+		TEXT("the version-six reward gate re-arms for the next victory"),
+		MigratedReward.RuntimeState.CardRun.bActiveBattleRewardResolved);
 	return true;
 }
 

@@ -332,9 +332,9 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 		}
 	}
 	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
-	TestTrue(TEXT("battle victory opens the saved three-card route reward"), Subsystem->ResolveBattleVictory(false));
+	TestTrue(TEXT("battle victory opens the saved tiered three-choice route reward"), Subsystem->ResolveBattleVictory(false));
 	TestEqual(TEXT("battle victory keeps the battle screen active until the reward is resolved"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
-	TestEqual(TEXT("battle victory exposes exactly three saved route reward choices"), Subsystem->GetRuntimeState().CardRun.PendingReward.CardIds.Num(), 3);
+	TestEqual(TEXT("battle victory exposes exactly three saved route reward options"), Subsystem->GetRuntimeState().CardRun.PendingReward.Options.Num(), 3);
 	FString RewardError;
 	TestTrue(FString::Printf(TEXT("skipping the saved route reward unlocks route progression: %s"), *RewardError),
 		FGameXXKCardBattleAdapter::SkipPendingRouteReward(Subsystem->GetMutableRuntimeState(), &RewardError));

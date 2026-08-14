@@ -31,7 +31,8 @@ public:
 	static constexpr int32 CompanionBirthPoolIntroducedSaveVersion = 13;
 	static constexpr int32 BladePartnerCardsIntroducedSaveVersion = 14;
 	static constexpr int32 QuestFollowerAndCurrentEnemyCodexIntroducedSaveVersion = 15;
-	static constexpr int32 CurrentSaveVersion = 15;
+	static constexpr int32 BattleRewardTieringIntroducedSaveVersion = 16;
+	static constexpr int32 CurrentSaveVersion = 16;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

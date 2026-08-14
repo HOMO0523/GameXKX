@@ -90,7 +90,7 @@ namespace
 	{
 		if (!ForceActiveCardBattleVictory(State)
 			|| !UGameXXKMVPRules::ResolveBattleVictory(State, bBossBattle)
-			|| State.CardRun.PendingReward.CardIds.Num() != 3)
+			|| State.CardRun.PendingReward.Options.Num() != 3)
 		{
 			return false;
 		}
@@ -316,9 +316,9 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 	const int32 TravelMoneyBeforeBattle = State.CardRun.RouteTravelMoney;
 	const int32 PermanentGoldBeforeBattle = State.PlayerGold;
 	TestTrue(TEXT("normal battle fixture forces the card runtime into victory"), ForceActiveCardBattleVictory(State));
-	TestTrue(TEXT("normal card battle victory opens the saved three-card route reward"), UGameXXKMVPRules::ResolveBattleVictory(State, false));
+	TestTrue(TEXT("normal card battle victory opens the saved tiered three-choice route reward"), UGameXXKMVPRules::ResolveBattleVictory(State, false));
 	TestEqual(TEXT("normal card battle stays on the battle screen while the reward is pending"), State.Screen, EGameXXKScreen::Battle);
-	TestEqual(TEXT("normal card battle exposes exactly three route reward choices"), State.CardRun.PendingReward.CardIds.Num(), 3);
+	TestEqual(TEXT("normal card battle exposes exactly three route reward options"), State.CardRun.PendingReward.Options.Num(), 3);
 	FString NormalBattleRewardError;
 	TestTrue(FString::Printf(TEXT("skipping the normal battle route reward unlocks victory completion: %s"), *NormalBattleRewardError),
 		FGameXXKCardBattleAdapter::SkipPendingRouteReward(State, &NormalBattleRewardError));

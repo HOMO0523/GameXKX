@@ -120,6 +120,41 @@ struct GAMEXXK_API FGameXXKCardEnemyIntent
 	TArray<FString> TooltipLines;
 };
 
+/** Post-battle reward option kinds for the tiered three-choice (2026-08-14 redesign). */
+UENUM(BlueprintType)
+enum class EGameXXKBattleRewardKind : uint8
+{
+	None = 0 UMETA(Hidden),
+	/** A hero or active-companion configured card; choosing upgrades its quality one step. */
+	DeckCardUpgrade = 1,
+	/** A boss-exclusive card entering the route deck (Boss battles only). */
+	BossCard = 2,
+	/** A relic grant. */
+	Relic = 3,
+	/** Permanent +1 shared-energy cap (Elite battles only). */
+	EnergyCapBonus = 4,
+	/** Permanent +1 draw-per-round (Elite battles only). */
+	DrawBonus = 5
+};
+
+/** One typed post-battle three-choice option. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKBattleRewardOption
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKBattleRewardKind Kind = EGameXXKBattleRewardKind::None;
+
+	/** DeckCardUpgrade / BossCard payload. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName CardId = NAME_None;
+
+	/** Relic payload. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName RelicId = NAME_None;
+};
+
 /** A pending post-battle reward. It stays stable until the player picks, replaces a route card, or skips. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKPendingRouteCardReward
@@ -131,6 +166,10 @@ struct GAMEXXK_API FGameXXKPendingRouteCardReward
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 ChoiceSeed = 0;
+
+	/** Tiered typed reward options; the legacy CardIds payload stays until reward generation switches over. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKBattleRewardOption> Options;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FName> CardIds;
@@ -344,6 +383,18 @@ struct GAMEXXK_API FGameXXKCardRunState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKPendingRouteCardReward PendingReward;
+
+	/** Quality upgrades earned by choosing deck-card battle rewards; applied when battle decks assemble. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<FName, EGameXXKCardQuality> UpgradedCardQualities;
+
+	/** Permanent shared-energy cap bonus from Elite battle rewards. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 BonusSharedEnergyCap = 0;
+
+	/** Permanent draw-per-round bonus from Elite battle rewards. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 BonusRoundDrawCount = 0;
 
 	/** Set only after the player explicitly chooses or skips the current battle's saved reward offer. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)

@@ -2223,6 +2223,13 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bTerrainChangedThisRound = false;
 
+	/** Run-scoped Elite reward bonuses, copied in at battle start. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 BonusSharedEnergyCap = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 BonusRoundDrawCount = 0;
+
 	/** Independent deterministic stream for combat rolls such as Agility. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 CombatRandomState = 0;

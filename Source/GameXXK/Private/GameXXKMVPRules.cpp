@@ -2069,7 +2069,8 @@ bool UGameXXKMVPRules::ResolveBattleVictory(FGameXXKRuntimeState& State, bool bB
 	if (!Candidate.CardRun.bActiveBattleRewardResolved)
 	{
 		int32 ChoiceSeed = Candidate.CardRun.PendingReward.ChoiceSeed;
-		if (Candidate.CardRun.PendingReward.CardIds.IsEmpty()
+		if (Candidate.CardRun.PendingReward.Options.IsEmpty()
+			&& Candidate.CardRun.PendingReward.CardIds.IsEmpty()
 			&& !GameXXKMVP::TryBuildRouteRewardChoiceSeed(
 				Candidate.CardRun.RouteRandomSeed,
 				StableRewardSourceNodeId,
@@ -2078,13 +2079,11 @@ bool UGameXXKMVPRules::ResolveBattleVictory(FGameXXKRuntimeState& State, bool bB
 		{
 			return false;
 		}
-		TArray<FName> IgnoredRewardCardIds;
-		if (!FGameXXKCardBattleAdapter::CreateRouteRewardOffer(
+		if (!FGameXXKCardBattleAdapter::CreateTieredBattleRewardOffer(
 			Candidate,
 			RewardNodeKind,
 			StableRewardSourceNodeId,
-			ChoiceSeed,
-			IgnoredRewardCardIds))
+			ChoiceSeed))
 		{
 			return false;
 		}
@@ -2246,6 +2245,120 @@ bool UGameXXKMVPRules::ResolvePendingRouteRewardChoiceAndFinish(
 	State = MoveTemp(Candidate);
 	return true;
 }
+
+bool UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(
+	FGameXXKRuntimeState& State,
+	const int32 OptionIndex,
+	const FName ReplacementEntryId,
+	FString* OutError)
+{
+	FGameXXKRuntimeState Candidate = State;
+
+	bool bBossBattle = false;
+	if (Candidate.bHasGeneratedRouteMap)
+	{
+		const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(Candidate);
+		if (!PendingNode
+			|| (PendingNode->NodeKind != EGameXXKNodeKind::Battle
+				&& PendingNode->NodeKind != EGameXXKNodeKind::Elite
+				&& PendingNode->NodeKind != EGameXXKNodeKind::Boss))
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("Pending battle reward has no resolvable battle node.");
+			}
+			return false;
+		}
+		bBossBattle = PendingNode->NodeKind == EGameXXKNodeKind::Boss;
+	}
+	else
+	{
+		bBossBattle = GameXXKMVP::IsDungeonNode(Candidate, EGameXXKNodeKind::Boss);
+		if (!bBossBattle && !GameXXKMVP::IsDungeonNode(Candidate, EGameXXKNodeKind::Battle))
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("Pending battle reward has no resolvable fixed battle node.");
+			}
+			return false;
+		}
+	}
+
+	if (!Candidate.CardRun.PendingReward.Options.IsValidIndex(OptionIndex))
+	{
+		if (OutError)
+		{
+			*OutError = TEXT("The chosen battle reward option is not part of the saved offer.");
+		}
+		return false;
+	}
+
+	const FGameXXKBattleRewardOption Option = Candidate.CardRun.PendingReward.Options[OptionIndex];
+	switch (Option.Kind)
+	{
+	case EGameXXKBattleRewardKind::DeckCardUpgrade:
+		{
+			const EGameXXKCardQuality CurrentQuality =
+				FGameXXKCardBattleAdapter::GetConfiguredCardQuality(Candidate.CardRun, Option.CardId);
+			if (CurrentQuality >= EGameXXKCardQuality::Epic)
+			{
+				if (OutError)
+				{
+					*OutError = TEXT("The chosen deck card is already at maximum quality.");
+				}
+				return false;
+			}
+			Candidate.CardRun.UpgradedCardQualities.Add(
+				Option.CardId,
+				FGameXXKCardBattleAdapter::GetNextCardQuality(CurrentQuality));
+			break;
+		}
+	case EGameXXKBattleRewardKind::BossCard:
+		if (!FGameXXKCardBattleAdapter::CommitBossCardReward(
+			Candidate,
+			Option.CardId,
+			ReplacementEntryId,
+			OutError))
+		{
+			return false;
+		}
+		break;
+	case EGameXXKBattleRewardKind::Relic:
+		if (!FGameXXKRelicRules::AcquireRelic(Candidate, Option.RelicId, OutError))
+		{
+			return false;
+		}
+		break;
+	case EGameXXKBattleRewardKind::EnergyCapBonus:
+		++Candidate.CardRun.BonusSharedEnergyCap;
+		break;
+	case EGameXXKBattleRewardKind::DrawBonus:
+		++Candidate.CardRun.BonusRoundDrawCount;
+		break;
+	default:
+		if (OutError)
+		{
+			*OutError = TEXT("The chosen battle reward option has an unknown kind.");
+		}
+		return false;
+	}
+
+	Candidate.CardRun.PendingReward = FGameXXKPendingRouteCardReward();
+	Candidate.CardRun.bActiveBattleRewardResolved = true;
+
+	if (!ResolveBattleVictory(Candidate, bBossBattle))
+	{
+		if (OutError)
+		{
+			*OutError = TEXT("Reward choice succeeded but battle victory settlement failed.");
+		}
+		return false;
+	}
+
+	State = MoveTemp(Candidate);
+	return true;
+}
+
 
 bool UGameXXKMVPRules::SkipPendingRouteRewardAndFinish(
 	FGameXXKRuntimeState& State,

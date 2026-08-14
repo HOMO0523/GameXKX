@@ -182,6 +182,12 @@ public:
 		FName ReplacementEntryId = NAME_None,
 		FString* OutError = nullptr);
 
+	/** Commits one tiered battle reward option through the rules, then the victory gate advances the route. */
+	bool ResolvePendingBattleRewardChoiceAndFinish(
+		int32 OptionIndex,
+		FName ReplacementEntryId = NAME_None,
+		FString* OutError = nullptr);
+
 	bool SkipPendingRouteRewardAndFinish(FString* OutError = nullptr);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
