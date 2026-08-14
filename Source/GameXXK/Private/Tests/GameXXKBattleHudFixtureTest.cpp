@@ -10,6 +10,7 @@
 #include "MVP/GameXXKBattleSceneUnitActor.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
+#include "PaperFlipbook.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattlePartyQiWidget.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
@@ -788,6 +789,111 @@ bool FGameXXKBattleHudFixtureTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Party Qi value accessor is reflected"), UGameXXKBattlePartyQiWidget::StaticClass()->FindFunctionByName(TEXT("GetSharedQiForTest")));
 	return RunTargetOutcomeFixtureContract(*this)
 		&& RunBattleHudFixtureContract<UGameXXKMVPSubsystem>(*this, 0);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKPilotComparisonFixtureTest,
+	"GameXXK.MVP.Battle.PilotComparisonFixture",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKPilotComparisonFixtureTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!BuildActiveCardBattle(Subsystem, *this))
+	{
+		return false;
+	}
+	const FGameXXKRuntimeState RawBefore = Subsystem->GetRuntimeStateCopy();
+
+	FString ApplyError;
+	TestTrue(TEXT("pilot comparison fixture applies over the active card battle"),
+		Subsystem->ApplyPilotComparisonFixtureForTest(ApplyError));
+	const FGameXXKRuntimeState FixtureView = Subsystem->GetRuntimeStateCopy();
+	TestTrue(TEXT("pilot comparison fixture reports as the active fixture view"),
+		Subsystem->IsBattleHudFixtureActiveForTest());
+
+	TestEqual(TEXT("pilot fixture presents three party units"),
+		CountLivingUnits(FixtureView, EGameXXKCardTargetSide::Party), 3);
+	TestEqual(TEXT("pilot fixture presents three enemies"),
+		CountLivingUnits(FixtureView, EGameXXKCardTargetSide::Enemy), 3);
+	int32 HeroRoleCount = 0;
+	for (const FGameXXKCardCombatUnit& Unit : FixtureView.CardRun.ActiveBattle.Units)
+	{
+		if (Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Party && Unit.Role == EGameXXKCharacterRole::Hero)
+		{
+			++HeroRoleCount;
+		}
+	}
+	TestEqual(TEXT("pilot fixture marks every party unit with the hero role"), HeroRoleCount, 3);
+	TestTrue(TEXT("pilot fixture ids carry the resolution tokens for side-by-side comparison"),
+		FixtureView.CardRun.ActiveBattle.Units.ContainsByPredicate([](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == TEXT("Pilot.Hero.Two.2K");
+		})
+		&& FixtureView.CardRun.ActiveBattle.Units.ContainsByPredicate([](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == TEXT("Pilot.Hero.Three.1K");
+		})
+		&& FixtureView.CardRun.ActiveBattle.Units.ContainsByPredicate([](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == TEXT("Pilot.Rooster.Two.2K");
+		})
+		&& FixtureView.CardRun.ActiveBattle.Units.ContainsByPredicate([](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == TEXT("Pilot.Rooster.Three.1K");
+		}));
+	for (const FName RoosterId : {FName(TEXT("Pilot.Rooster.One")), FName(TEXT("Pilot.Rooster.Two.2K")), FName(TEXT("Pilot.Rooster.Three.1K"))})
+	{
+		const FGameXXKCardCombatUnit* const Rooster = FindUnitById(FixtureView, RoosterId);
+		TestTrue(FString::Printf(TEXT("pilot fixture rooster %s leaves its definition empty for suffix resolution"), *RoosterId.ToString()),
+			Rooster && Rooster->EnemyDefinitionId.IsNone());
+	}
+	TestEqual(TEXT("pilot fixture intent rail carries three rooster intents"), FixtureView.CardRun.EnemyIntents.Num(), 3);
+
+	// The scene-unit actor must resolve the hero/rooster idle flipbooks for this fixture.
+	const FGameXXKBattleRuntimeUnit* const HeroLegacy = FindLegacyUnitById(FixtureView.ActiveBattleParty, TEXT("Pilot.Hero.One"));
+	const FGameXXKBattleRuntimeUnit* const RoosterLegacy = FindLegacyUnitById(FixtureView.ActiveBattleEnemies, TEXT("Pilot.Rooster.One"));
+	TestNotNull(TEXT("pilot fixture keeps the first hero in the legacy party projection"), HeroLegacy);
+	TestNotNull(TEXT("pilot fixture keeps the first rooster in the legacy enemy projection"), RoosterLegacy);
+	if (HeroLegacy && RoosterLegacy)
+	{
+		AGameXXKBattleSceneUnitActor* const HeroActor = NewObject<AGameXXKBattleSceneUnitActor>();
+		HeroActor->SetMVPSubsystemForTest(Subsystem);
+		HeroActor->ConfigureFromRuntimeUnit(
+			false,
+			0,
+			*HeroLegacy,
+			FGameXXKBattlePresentation::GetSlotNumber(Subsystem->GetRuntimeState().CardRun.ActiveBattle, HeroLegacy->Id));
+		TestNotNull(TEXT("pilot fixture hero resolves an approved battle flipbook"), HeroActor->GetCurrentBattleFlipbook());
+		if (const UPaperFlipbook* const HeroFlipbook = HeroActor->GetCurrentBattleFlipbook())
+		{
+			TestTrue(TEXT("pilot fixture hero flipbook resolves to the hero asset"),
+				HeroFlipbook->GetName().Contains(TEXT("hero")));
+		}
+		AGameXXKBattleSceneUnitActor* const RoosterActor = NewObject<AGameXXKBattleSceneUnitActor>();
+		RoosterActor->SetMVPSubsystemForTest(Subsystem);
+		RoosterActor->ConfigureFromRuntimeUnit(
+			true,
+			0,
+			*RoosterLegacy,
+			FGameXXKBattlePresentation::GetSlotNumber(Subsystem->GetRuntimeState().CardRun.ActiveBattle, RoosterLegacy->Id));
+		TestNotNull(TEXT("pilot fixture rooster resolves an approved battle flipbook"), RoosterActor->GetCurrentBattleFlipbook());
+		if (const UPaperFlipbook* const RoosterFlipbook = RoosterActor->GetCurrentBattleFlipbook())
+		{
+			TestTrue(TEXT("pilot fixture rooster flipbook resolves to the rooster asset"),
+				RoosterFlipbook->GetName().Contains(TEXT("rooster")));
+		}
+	}
+
+	// The overlay is non-saving and clears back to the raw battle.
+	Subsystem->ClearBattleHudFixtureForTest();
+	const FGameXXKRuntimeState RawAfterClear = Subsystem->GetRuntimeStateCopy();
+	TestEqual(TEXT("pilot fixture clear restores raw party membership"), RawAfterClear.ActiveBattleParty.Num(), RawBefore.ActiveBattleParty.Num());
+	TestEqual(TEXT("pilot fixture clear restores raw enemy membership"), RawAfterClear.ActiveBattleEnemies.Num(), RawBefore.ActiveBattleEnemies.Num());
+	TestEqual(TEXT("pilot fixture clear restores raw combat-unit membership"), RawAfterClear.CardRun.ActiveBattle.Units.Num(), RawBefore.CardRun.ActiveBattle.Units.Num());
+	TestEqual(TEXT("pilot fixture clear never creates permanent companions"), RawAfterClear.CardRun.CompanionRoster.PermanentCompanions.Num(), RawBefore.CardRun.CompanionRoster.PermanentCompanions.Num());
+	return true;
 }
 
 #endif

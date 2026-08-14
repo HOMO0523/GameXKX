@@ -7,6 +7,8 @@ import sys
 PREFERRED_HERO_ATTACK_CARD_IDS = (
     "Route.General.PoJiaTuCi",
     "Hero.HeYuZhan",
+    "Hero.Generic.SuiYanJi",
+    "Hero.Generic.QingFengYiShi",
 )
 
 

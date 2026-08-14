@@ -170,26 +170,50 @@ namespace
 FString FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(const FName RuntimeUnitId, const bool bEnemy)
 {
 	const FString RuntimeId = RuntimeUnitId.ToString();
+	FString BaseAssetId;
 	if (!bEnemy)
 	{
 		for (const FRuntimeAssetMapping& Mapping : PartyMappings)
 		{
 			if (RuntimeId.Contains(Mapping.RuntimeToken))
 			{
-				return Mapping.AssetId;
+				BaseAssetId = Mapping.AssetId;
+				break;
 			}
 		}
-		return TEXT("character_00_hero");
-	}
-
-	for (const FRuntimeAssetMapping& Mapping : EnemyMappings)
-	{
-		if (RuntimeId.Contains(Mapping.RuntimeToken))
+		if (BaseAssetId.IsEmpty())
 		{
-			return Mapping.AssetId;
+			BaseAssetId = TEXT("character_00_hero");
 		}
 	}
-	return TEXT("enemy_01_rooster");
+	else
+	{
+		for (const FRuntimeAssetMapping& Mapping : EnemyMappings)
+		{
+			if (RuntimeId.Contains(Mapping.RuntimeToken))
+			{
+				BaseAssetId = Mapping.AssetId;
+				break;
+			}
+		}
+		if (BaseAssetId.IsEmpty())
+		{
+			BaseAssetId = TEXT("enemy_01_rooster");
+		}
+	}
+
+	// Resolution-suffix convention: a runtime unit id carrying a ".2K" or ".1K" token selects the
+	// correspondingly suffixed sibling asset set, letting one battle scene compare atlas
+	// resolutions side by side. Production unit ids never carry these tokens.
+	if (RuntimeId.Contains(TEXT(".2K"), ESearchCase::IgnoreCase))
+	{
+		return BaseAssetId + TEXT("_2k");
+	}
+	if (RuntimeId.Contains(TEXT(".1K"), ESearchCase::IgnoreCase))
+	{
+		return BaseAssetId + TEXT("_1k");
+	}
+	return BaseAssetId;
 }
 
 FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::ResolveClip(

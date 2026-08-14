@@ -774,6 +774,83 @@ bool UGameXXKMVPSubsystem::IsBattleHudFixtureActiveForTest() const
 	return BattleHudFixtureView.IsSet();
 }
 
+bool UGameXXKMVPSubsystem::ApplyPilotComparisonFixtureForTest(FString& OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	OutError.Reset();
+	if (RuntimeState.Screen != EGameXXKScreen::Battle)
+	{
+		OutError = TEXT("Pilot comparison fixture requires the Battle screen.");
+		return false;
+	}
+	if (!RuntimeState.CardRun.bHasActiveCardBattle)
+	{
+		OutError = TEXT("Pilot comparison fixture requires an active card battle.");
+		return false;
+	}
+
+	FGameXXKRuntimeState FixtureState = RuntimeState;
+	FixtureState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Player;
+	// Three party units with deliberately unmapped runtime ids: the animation presentation
+	// falls back to the hero asset for unknown party units, and to the rooster asset for
+	// unknown enemies. The ".2K"/".1K" id tokens select the sibling downscaled asset sets,
+	// so one scene compares the three atlas resolutions side by side.
+	const FName HeroOneId(TEXT("Pilot.Hero.One"));
+	const FName HeroTwoId(TEXT("Pilot.Hero.Two.2K"));
+	const FName HeroThreeId(TEXT("Pilot.Hero.Three.1K"));
+	const FName RoosterOneId(TEXT("Pilot.Rooster.One"));
+	const FName RoosterTwoId(TEXT("Pilot.Rooster.Two.2K"));
+	const FName RoosterThreeId(TEXT("Pilot.Rooster.Three.1K"));
+
+	FGameXXKCardCombatUnit HeroOne = MakeBattleHudFixtureCombatUnit(
+		HeroOneId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 0, 72, 100, 18, 30, 20, 8, 7);
+	FGameXXKCardCombatUnit HeroTwo = MakeBattleHudFixtureCombatUnit(
+		HeroTwoId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 1, 66, 92, 15, 26, 18, 7, 5);
+	FGameXXKCardCombatUnit HeroThree = MakeBattleHudFixtureCombatUnit(
+		HeroThreeId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 2, 78, 108, 20, 32, 22, 9, 8);
+	FGameXXKCardCombatUnit RoosterOne = MakeBattleHudFixtureCombatUnit(
+		RoosterOneId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 0, 46, 60, 0, 0, 11, 3, 0);
+	FGameXXKCardCombatUnit RoosterTwo = MakeBattleHudFixtureCombatUnit(
+		RoosterTwoId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 1, 50, 64, 0, 0, 12, 3, 0);
+	FGameXXKCardCombatUnit RoosterThree = MakeBattleHudFixtureCombatUnit(
+		RoosterThreeId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 2, 44, 58, 0, 0, 10, 3, 0);
+
+	FixtureState.CardRun.ActiveBattle.Units = {
+		MoveTemp(HeroOne),
+		MoveTemp(HeroTwo),
+		MoveTemp(HeroThree),
+		MoveTemp(RoosterOne),
+		MoveTemp(RoosterTwo),
+		MoveTemp(RoosterThree)};
+	RebindBattleHudFixtureDeckOwners(FixtureState.CardRun.ActiveBattle.Deck, HeroOneId, HeroTwoId, HeroThreeId);
+	FixtureState.ActiveBattleParty = {
+		MakeBattleHudFixtureLegacyProjection(HeroOneId, FText::FromString(TEXT("主角一")), false),
+		MakeBattleHudFixtureLegacyProjection(HeroTwoId, FText::FromString(TEXT("主角二")), false),
+		MakeBattleHudFixtureLegacyProjection(HeroThreeId, FText::FromString(TEXT("主角三")), false)};
+	FixtureState.ActiveBattleEnemies = {
+		MakeBattleHudFixtureLegacyProjection(RoosterOneId, FText::FromString(TEXT("公鸡一")), true),
+		MakeBattleHudFixtureLegacyProjection(RoosterTwoId, FText::FromString(TEXT("公鸡二")), true),
+		MakeBattleHudFixtureLegacyProjection(RoosterThreeId, FText::FromString(TEXT("公鸡三")), true)};
+	FixtureState.CardRun.ActiveBattle.GuardLinks.Reset();
+	FixtureState.CardRun.ActiveBattle.Modifiers.Reset();
+	FixtureState.CardRun.ActiveBattle.NextModifierOrdinal = 0;
+	FixtureState.CardRun.ActiveBattle.Deck.SharedEnergy = 2;
+
+	FixtureState.CardRun.EnemyIntents = {
+		MakeBattleHudFixtureEnemyIntent(TEXT("Pilot.Intent.Rooster.Peck"), TEXT("啄击"), RoosterOneId, 1, HeroOneId, 1, 8),
+		MakeBattleHudFixtureEnemyIntent(TEXT("Pilot.Intent.Rooster.Peck"), TEXT("啄击"), RoosterTwoId, 2, HeroTwoId, 2, 8),
+		MakeBattleHudFixtureEnemyIntent(TEXT("Pilot.Intent.Rooster.Peck"), TEXT("啄击"), RoosterThreeId, 3, HeroThreeId, 3, 8)};
+	FixtureState.CardRun.NextEnemyIntentIndex = 0;
+
+	if (!FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(FixtureState, &OutError))
+	{
+		return false;
+	}
+
+	BattleHudFixtureView.Emplace(MoveTemp(FixtureState));
+	return true;
+}
+
 bool UGameXXKMVPSubsystem::ApplyTargetOutcomeFixtureForTest(const FName ScenarioId, FString& OutError)
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView);

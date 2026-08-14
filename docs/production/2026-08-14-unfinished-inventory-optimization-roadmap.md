@@ -122,6 +122,12 @@ Phase 0（收尾+指针+卫生+版本边界修订）      ← 立即，零风险
 
 ### 4.3 优化执行方式（修订后）
 
-1. **图集 4K→2K**（最大杠杆）：必须走正常引擎导入流程——用项目既有导入工具 `Content/Python/gamexxk_import_battle_animation_production.py` 小批量重导入，编辑器正常开启、用户在场时执行，禁后台批量脚本。
-2. `r.Streaming.PoolSize` 收紧：正常控制台/ini 设置，下次编辑器开启时核对。
+1. **图集 4K→2K（/1K）**：按用户裁决改为**引擎内直改**——4K 母本不动，在纹理编辑器里 Duplicate 后 Resize（`_2k`=2048²、`_1k`=1024²），命名 `T_<角色>_<档位>_<动作>_atlas`；战斗动画解析层已支持单位 id 带 `.2K`/`.1K` 后缀时自动取对应档位资产（`ResolveUnitAssetId` 后缀约定 + `PilotComparisonFixture` 3 主角+3 公鸡同屏对比阵型，聚焦自动化 10/10、1/1 全绿）。禁止再走"删除后重导入"路径覆盖母本。
+2. `r.Streaming.PoolSize` 收紧：项目当前未覆盖该值（引擎默认约 1 GB）；图集为无 mip 永不流送，收紧只影响城镇/UI 纹理。提案 `512`，需用户城镇步行视觉验收后写入 `DefaultEngine.ini`。
 3. 编辑器重启时不再附加 `-DDC-ForceMemoryCache`（自动化专用参数）。
+
+### 4.4 试点进度（2026-08-14 晚）
+
+- 磁盘级审计完成（4.1/4.2）；4K 母本已确认恢复为 4096² 未被覆盖。
+- 2K/1K 暂存管线（`gamexxk_prepare_animation_2k.py`，纯磁盘降采样）与导入工具 `--two-k/--one-k/--restore/--variant-suffix` 已就绪，纯测试 14/14；作为引擎内直改之外的备用路径保留。
+- 待用户：在纹理编辑器完成 4 张副本 Resize → PIE 同屏 6 实例截图对比 → 用户选档。

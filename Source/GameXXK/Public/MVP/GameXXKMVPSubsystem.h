@@ -35,6 +35,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	bool ApplyBattleHudFixtureForTest(FString& OutError);
 
+	/**
+	 * Development-only pilot-comparison fixture: three hero-role party units and three rooster
+	 * enemies, used to visually compare animation atlas resolutions. Same non-saving overlay
+	 * contract as ApplyBattleHudFixtureForTest.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool ApplyPilotComparisonFixtureForTest(FString& OutError);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	void ClearBattleHudFixtureForTest();
 

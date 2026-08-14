@@ -33,6 +33,14 @@ TEXTURE_COMPRESSION_SETTING = "TC_BC7"
 TEXTURE_MIP_SETTING = "TMGS_NO_MIPMAPS"
 TEXTURE_FILTER_SETTING = "TF_BILINEAR"
 TEXTURE_SRGB = True
+# 2K memory-optimization staging: same 8x8 grid at half resolution.
+TWO_K_PRODUCTION_RELATIVE_ROOT = Path("SourceAssets/AnimationProcessing/Production2K")
+TWO_K_CELL_SIZE = 256
+TWO_K_ATLAS_SIZE = 2048
+# 1K staging: quarter resolution, same grid.
+ONE_K_PRODUCTION_RELATIVE_ROOT = Path("SourceAssets/AnimationProcessing/Production1K")
+ONE_K_CELL_SIZE = 128
+ONE_K_ATLAS_SIZE = 1024
 PILOT_ASSET_IDS = {
     "character_00_hero_idle",
     "character_00_hero_attack",
@@ -41,6 +49,41 @@ PILOT_ASSET_IDS = {
     "enemy_01_rooster_attack",
     "enemy_01_rooster_hit",
 }
+
+
+def _apply_resolution_mode(relative_root: Path, cell_size: int, atlas_size: int) -> None:
+    global PRODUCTION_RELATIVE_ROOT, CELL_SIZE, ATLAS_SIZE
+    PRODUCTION_RELATIVE_ROOT = relative_root
+    CELL_SIZE = cell_size
+    ATLAS_SIZE = atlas_size
+
+
+def _apply_two_k_mode() -> None:
+    _apply_resolution_mode(TWO_K_PRODUCTION_RELATIVE_ROOT, TWO_K_CELL_SIZE, TWO_K_ATLAS_SIZE)
+
+
+def _apply_one_k_mode() -> None:
+    _apply_resolution_mode(ONE_K_PRODUCTION_RELATIVE_ROOT, ONE_K_CELL_SIZE, ONE_K_ATLAS_SIZE)
+
+
+def _with_variant_suffix(entries: list, suffix: str) -> list:
+    """Rename entries so the import writes NEW sibling assets (4K originals stay untouched).
+
+    The suffix is inserted before the action suffix so the names match the animation
+    presentation's resolution convention: "character_00_hero_idle" -> "character_00_hero_2k_idle".
+    """
+    if not suffix:
+        return entries
+    variants = []
+    for entry in entries:
+        base, _, action = entry.asset_id.rpartition("_")
+        variant_id = f"{base}{suffix}_{action}" if action else f"{entry.asset_id}{suffix}"
+        variants.append(entry._replace(
+            asset_id=variant_id,
+            texture_name=f"T_{variant_id}_atlas",
+            flipbook_name=f"FB_{variant_id}" if entry.create_idle_flipbook else "",
+        ))
+    return variants
 
 
 class AnimationAssetEntry(NamedTuple):
@@ -147,9 +190,27 @@ def _configure_texture(texture: object) -> None:
     texture.set_editor_property("srgb", TEXTURE_SRGB)
 
 
-def _import_texture(entry: AnimationAssetEntry):
+def _import_texture(entry: AnimationAssetEntry, replace_existing: bool = False):
     asset_path = f"{ATLAS_ASSET_DIR}/{entry.texture_name}"
     texture = unreal.EditorAssetLibrary.load_asset(asset_path) if unreal.EditorAssetLibrary.does_asset_exist(asset_path) else None
+    if replace_existing:
+        task = unreal.AssetImportTask()
+        task.filename = str(entry.atlas_path)
+        task.destination_path = ATLAS_ASSET_DIR
+        task.destination_name = entry.texture_name
+        task.automated = True
+        task.save = False
+        task.replace_existing = True
+        task.replace_existing_settings = True
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        texture = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if texture is None or not isinstance(texture, unreal.Texture2D):
+            raise RuntimeError(f"could not re-import animation Texture2D: {asset_path}")
+        if _texture_size(texture) != (ATLAS_SIZE, ATLAS_SIZE):
+            raise RuntimeError(f"{entry.asset_id} atlas must be {ATLAS_SIZE}x{ATLAS_SIZE}")
+        _configure_texture(texture)
+        _save(texture)
+        return texture, False
     created = texture is None
     if texture is None:
         task = unreal.AssetImportTask()
@@ -233,19 +294,49 @@ def _create_idle_flipbook(entry: AnimationAssetEntry, texture: object) -> tuple[
     return flipbook, created_sprites, bool(created_flipbook)
 
 
-def import_production(asset_ids: set[str] | None = None, textures_only: bool = False, limit: int = 0) -> dict:
-    _require_unreal()
-    entries = discover_animation_assets(_project_root() / PRODUCTION_RELATIVE_ROOT)
+def _select_entries(entries: list, asset_ids: set[str] | None, limit: int) -> list:
+    """Filter by BASE asset ids and limit BEFORE any variant-suffix rename."""
     if asset_ids:
         entries = [entry for entry in entries if entry.asset_id in asset_ids]
     if limit > 0:
         entries = entries[:limit]
+    return entries
+
+
+def import_production(
+    asset_ids: set[str] | None = None,
+    textures_only: bool = False,
+    limit: int = 0,
+    two_k: bool = False,
+    one_k: bool = False,
+    restore: bool = False,
+    variant_suffix: str = "",
+) -> dict:
+    _require_unreal()
+    if two_k and one_k:
+        raise RuntimeError("two-k and one-k modes are mutually exclusive")
+    if restore:
+        # Default 4K root/constants; replace the current (possibly downscaled) assets.
+        replace_existing = True
+    elif two_k:
+        _apply_two_k_mode()
+        replace_existing = True
+    elif one_k:
+        _apply_one_k_mode()
+        replace_existing = True
+    else:
+        replace_existing = False
+    entries = discover_animation_assets(_project_root() / PRODUCTION_RELATIVE_ROOT)
+    entries = _select_entries(entries, asset_ids, limit)
+    if variant_suffix:
+        entries = _with_variant_suffix(entries, variant_suffix)
+        replace_existing = False
     for path in (ATLAS_ASSET_DIR, IDLE_SPRITE_ROOT, IDLE_FLIPBOOK_DIR):
         _ensure_directory(path)
 
     results = []
     for entry in entries:
-        texture, created_texture = _import_texture(entry)
+        texture, created_texture = _import_texture(entry, replace_existing=replace_existing)
         item = {
             "asset_id": entry.asset_id,
             "texture": texture.get_path_name(),
@@ -265,6 +356,10 @@ def import_production(asset_ids: set[str] | None = None, textures_only: bool = F
     return {
         "ok": True,
         "asset_root": ATLAS_ASSET_DIR,
+        "two_k": bool(two_k),
+        "one_k": bool(one_k),
+        "restore": bool(restore),
+        "variant_suffix": variant_suffix,
         "requested_count": len(entries),
         "imported": results,
     }
@@ -275,8 +370,23 @@ def main() -> None:
     parser.add_argument("--asset-id", action="append", default=[])
     parser.add_argument("--textures-only", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--two-k", action="store_true")
+    parser.add_argument("--one-k", action="store_true")
+    parser.add_argument("--restore", action="store_true")
+    parser.add_argument("--variant-suffix", default="")
     args = parser.parse_args()
-    print(json.dumps(import_production(set(args.asset_id), args.textures_only, args.limit), ensure_ascii=False))
+    print(json.dumps(
+        import_production(
+            set(args.asset_id),
+            args.textures_only,
+            args.limit,
+            args.two_k,
+            args.one_k,
+            args.restore,
+            args.variant_suffix,
+        ),
+        ensure_ascii=False,
+    ))
 
 
 if __name__ == "__main__":

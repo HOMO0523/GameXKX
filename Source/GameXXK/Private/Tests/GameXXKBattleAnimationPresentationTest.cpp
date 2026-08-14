@@ -357,6 +357,28 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("unknown Enemy_07 attack resolves through the rooster fallback"),
 		FGameXXKBattleAnimationPresentation::ResolveClip(
 			TEXT("Enemy_07"), true, EGameXXKBattleAnimationAction::Attack).IsValid());
+	// Resolution-suffix convention: ".2K"/".1K" runtime tokens select sibling downscaled asset sets.
+	TestEqual(TEXT("a 2K hero token resolves the 2K hero sibling asset set"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Hero.Two.2K"), false),
+		FString(TEXT("character_00_hero_2k")));
+	TestEqual(TEXT("a 1K hero token resolves the 1K hero sibling asset set"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Hero.Three.1K"), false),
+		FString(TEXT("character_00_hero_1k")));
+	TestEqual(TEXT("a 2K rooster token resolves the 2K rooster sibling asset set"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Rooster.Two.2K"), true),
+		FString(TEXT("enemy_01_rooster_2k")));
+	TestEqual(TEXT("a 1K rooster token resolves the 1K rooster sibling asset set"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Rooster.Three.1K"), true),
+		FString(TEXT("enemy_01_rooster_1k")));
+	TestEqual(TEXT("the unsuffixed pilot hero token keeps the original hero asset set"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Hero.One"), false),
+		FString(TEXT("character_00_hero")));
+	TestEqual(TEXT("the unsuffixed pilot rooster token keeps the original rooster asset set"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Rooster.One"), true),
+		FString(TEXT("enemy_01_rooster")));
+	TestEqual(TEXT("production unit ids never resolve through the suffix convention"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Player"), false),
+		FString(TEXT("character_00_hero")));
 	const FGameXXKBattleAnimationClipDescriptor AuthoritativeTigerAttack =
 		FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
 			TEXT("OpaqueEnemy.P3"),
