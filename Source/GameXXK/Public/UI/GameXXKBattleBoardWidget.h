@@ -1107,6 +1107,9 @@ private:
 	TMap<FName, TObjectPtr<UTexture2D>> CardPortraitTextures;
 
 	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<UTexture2D>> RelicIconTextures;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> TargetingArrowHeadTexture;
 
 	UPROPERTY(Transient)

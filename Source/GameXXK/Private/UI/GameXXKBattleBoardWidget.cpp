@@ -6961,6 +6961,7 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 
 void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 {
+	EnsureBattleVisualResourcesLoaded();
 	const bool bFixtureReadOnly = IsBattleHudFixtureReadOnly();
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	PendingRewardOptions = Subsystem ? Subsystem->GetRuntimeState().CardRun.PendingReward.Options : TArray<FGameXXKBattleRewardOption>();
@@ -7065,7 +7066,7 @@ void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 					if (RelicDefinition.Id == Option.RelicId)
 					{
 						RelicName = RelicDefinition.DisplayName.ToString();
-						RelicIcon = Cast<UTexture2D>(RelicDefinition.IconTexturePath.TryLoad());
+						RelicIcon = RelicIconTextures.FindRef(RelicDefinition.Id);
 						break;
 					}
 				}
@@ -7212,6 +7213,20 @@ void UGameXXKBattleBoardWidget::EnsureBattleVisualResourcesLoaded()
 		for (int32 DabIndex = 0; DabIndex < TargetingInkDabCount; ++DabIndex)
 		{
 			TargetingInkDabTextures.Add(LoadObject<UTexture2D>(nullptr, *BuildTargetingInkDabTexturePath(DabIndex)));
+		}
+	}
+	if (RelicIconTextures.IsEmpty())
+	{
+		// Reward relic icons load once with the other board resources so the
+		// reward refresh path performs no synchronous loads.
+		for (const FGameXXKRelicDefinition& RelicDefinition : FGameXXKRelicCatalog::GetAllDefinitions())
+		{
+			if (!RelicDefinition.IconTexturePath.IsNull())
+			{
+				RelicIconTextures.Add(
+					RelicDefinition.Id,
+					LoadObject<UTexture2D>(nullptr, *RelicDefinition.IconTexturePath.ToString()));
+			}
 		}
 	}
 }
