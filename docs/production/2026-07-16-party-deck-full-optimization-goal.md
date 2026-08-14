@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-07-28
+source_commit: e3ebf6a0c7d12ade0ef73c2fe24ee1a8f939b996
+---
 # 《江湖行》卡牌、伙伴与 PSD 界面全套优化目标
 
 ## 1. 交付目标

@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-08-13
+source_commit: f0bef87cd96950dd38885c65d96e466b2ee0dbe3
+---
 # GameXXK 当前目标最终验收记录
 
 日期：2026-08-13

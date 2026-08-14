@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-08-05
+source_commit: 526f63393014847364c7eece5387eeaba71f84cf
+---
 # GameXXK UI 校准 V2 进度记录
 
 日期：2026-08-05

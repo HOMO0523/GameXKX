@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-07-28
+source_commit: e3ebf6a0c7d12ade0ef73c2fe24ee1a8f939b996
+---
 # GameXXK 图像资产生产清单（Phase 0）
 
 更新日期：2026-07-22  

@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-07-28
+source_commit: e3ebf6a0c7d12ade0ef73c2fe24ee1a8f939b996
+---
 # Equipment Foundation Task 6 Save-Migration Preflight
 
 Date: 2026-07-22 (Asia/Shanghai)

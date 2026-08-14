@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-07-11
+source_commit: 04e3e642ed19eaf99c38fa1617351c84851f5fcc
+---
 # Qingshan Environment Concept B0 Report
 
 Generated deterministically from registered asset JSON and verified output files.

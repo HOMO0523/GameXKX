@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-07-11
+source_commit: 9abd8f73f1270639c090e0af12491d880d3cbc9d
+---
 # Qingshan Scale Lineup v003 Bounding-Box Audit
 
 Artifact: `SourceAssets/TownPCG/QingshanEnvironment/style/boards/REF_QS_SCALE_LINEUP__board__v003.png`

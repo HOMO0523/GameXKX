@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-08-11
+source_commit: 2e85c1f0d7f9df9418db085da3b6a69a59ab1f1e
+---
 # 主角卡牌运行时最终验收
 
 日期：2026-08-11

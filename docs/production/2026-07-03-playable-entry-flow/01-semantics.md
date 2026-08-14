@@ -3,7 +3,7 @@ unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
 updated_at: 2026-07-04T01:27:00+08:00
-source_commit: working-tree
+source_commit: c2262c1d95c45293b83b5804625abe31f427cfbc
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
 unit_type: gameplay_slice

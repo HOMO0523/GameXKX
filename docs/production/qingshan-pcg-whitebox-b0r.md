@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-07-11
+source_commit: 74462cfde35d0937ddb19db8552ca3e89246c2fc
+---
 # Qingshan PCG Whitebox B0R Acceptance
 
 Status: **DONE_WITH_CONCERNS — structural whitebox evidence only.** The saved B0R map, deterministic layout, four fixed cameras, production gameplay flow, and host validation pass. Visual review does not grant beauty, atmosphere, material, or final-style approval. Two requested reads remain ambiguous in the current canonical captures: the gate does not clearly read on the image's right side in the canonical top-down orientation, and the same-tone bridge/river/bank proxies do not make the bridge connection visually unambiguous.

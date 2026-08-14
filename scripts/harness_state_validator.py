@@ -54,7 +54,9 @@ LOOSE_REPORT_METADATA = [
     "source_commit",
 ]
 
-TERMINAL_STATUSES = {"done", "complete", "closed", "ship", "shipped", "verified"}
+# "record" marks archival loose reports whose work concluded; they are terminal
+# by nature and exempt from the staleness check.
+TERMINAL_STATUSES = {"done", "complete", "closed", "ship", "shipped", "verified", "record"}
 NON_UNIT_DIRECTORIES = {"evidence"}
 STALE_UNIT_DAYS = 14
 STALE_REPORT_DAYS = 30

@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-08-14
+source_commit: c463e1d7fccaa4de5f7afc913901bc874c0d35e2
+---
 # GameXXK 项目优化计划
 
 > 本文档是项目自身(工具链、文档、进程、代码健康度)的优化计划,不是玩法功能计划。
@@ -117,6 +123,7 @@
 
 验证证据:生产循环 `--run-script-tests` 5 步全 PASS;冷 UBT GREEN;`GameXXK.MVP` 自动化桶 77/77 通过;`GameXXK.Integration.CardBattle` 桶与未改动基线失败集**完全一致**(2 个失败为奖励分层提交 7e1513a 引入的既有问题,与本重构无关:TargetOutcomePreview.LayoutInvariant、BoardHandCardHoverStyle)。
 
-### 已知遗留(非本优化引入)
+### 已知遗留(均已处理)
 
-- `GameXXK.Integration.CardBattle.TargetOutcomePreview.LayoutInvariant` 与 `BoardHandCardHoverStyle` 在奖励分层提交(7e1513a)后失败,需单独修复(建议纳入奖励分层任务收尾)。
+- ~~`GameXXK.Integration.CardBattle.TargetOutcomePreview.LayoutInvariant` 与 `BoardHandCardHoverStyle` 在奖励分层提交(7e1513a)后失败~~ → 已按"简洁 tooltip 新设计"更新测试并收紧空 tooltip 布局写入(`728079f`),CardBattle 桶 27/27 通过。
+- ~~地形切换代码引用的 7 张 `T_BattleArena_*_GeneratedV2` 贴图未入库~~ → 已补提交(`2909200`)。

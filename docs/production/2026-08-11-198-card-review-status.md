@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-08-12
+source_commit: 003c43abeda12b15f3e91c3429feb5b821196836
+---
 # GameXXK 198 张卡牌交叉复审状态
 
 日期：2026-08-11

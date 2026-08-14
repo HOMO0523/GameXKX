@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-07-12
+source_commit: 5aafdc06c3dc3ff5a4a5c51d24babf94b06c4786
+---
 # Asian Village — Qingshan town shortlist
 
 Review map: `/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Integration`.

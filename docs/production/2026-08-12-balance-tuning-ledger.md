@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-08-13
+source_commit: 9d33e612505e1354191cac8d02f3eea9140e6b04
+---
 # GameXXK 数值调优台账（2026-08-12）
 
 ## 1. 写入边界

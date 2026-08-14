@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-08-07
+source_commit: c5cfe2e7508fa38273041ed415f1fa096e4b7ad3
+---
 # GameXXK 城镇 UI 性能与内存基线（2026-08-04）
 
 ## 记录目的

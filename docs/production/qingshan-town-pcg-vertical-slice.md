@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-07-10
+source_commit: 226128314019684c22cb5c284db1b96dfd954b6f
+---
 # Qingshan Town PCG Vertical Slice — Acceptance Record
 
 Date: 2026-07-10 (Asia/Shanghai)

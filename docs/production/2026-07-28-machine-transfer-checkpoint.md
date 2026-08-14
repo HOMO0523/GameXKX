@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-07-28
+source_commit: 4d4c0147ae9cb2b35606c328219e3cc7eb0efb4e
+---
 # GameXXK Machine Transfer Checkpoint — 2026-07-28
 
 ## Purpose

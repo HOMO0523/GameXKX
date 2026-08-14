@@ -1,3 +1,9 @@
+---
+status: record
+owner: codex
+updated_at: 2026-08-14
+source_commit: d4c5e1f5a45162e8e924e956dc53c53fee574e3c
+---
 # GameXXK 当前目标(滚动指针)
 
 > 本文件是"当前做到哪了"的**唯一滚动指针**。`AGENTS.md` 不再硬编码验收状态,改指向这里。每次目标收尾后更新本文件。
