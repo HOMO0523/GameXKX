@@ -376,7 +376,9 @@ namespace
 		{
 			return FLinearColor(0.722f, 0.706f, 0.671f, 1.0f);
 		}
-		return FLinearColor(0.953f, 0.941f, 0.914f, 1.0f);
+		// Companion cards read like the hero: black ink on the parchment frame.
+		// The previous near-white ink was too light against the light frame.
+		return FLinearColor(0.137f, 0.118f, 0.098f, 1.0f);
 	}
 
 	static FSlateBrush BuildTextureBrush(UTexture2D* Texture, const FVector2D& ImageSize, const FLinearColor& Tint)
@@ -4626,6 +4628,12 @@ FLinearColor UGameXXKBattleBoardWidget::GetCardInfoStripTintForTest(FName CardId
 {
 	const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
 	return Definition ? ResolveCardInfoStripTint(*Definition) : FLinearColor::Transparent;
+}
+
+FLinearColor UGameXXKBattleBoardWidget::GetCardInfoInkTintForTest(FName CardId) const
+{
+	const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+	return Definition ? ResolveCardInfoInkTint(*Definition) : FLinearColor::Transparent;
 }
 
 FName UGameXXKBattleBoardWidget::GetSelectedRouteRewardReplacementEntryIdForTest() const

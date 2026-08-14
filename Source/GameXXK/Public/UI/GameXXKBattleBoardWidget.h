@@ -475,6 +475,7 @@ public:
 	FLinearColor GetCardFaceLabelColorForTest() const;
 	FString GetCardPortraitResourcePathForTest(FName CardId) const;
 	FLinearColor GetCardInfoStripTintForTest(FName CardId) const;
+	FLinearColor GetCardInfoInkTintForTest(FName CardId) const;
 	/** True while the given reward slot keeps a non-collapsed portrait (relic icon or card art). */
 	bool IsRewardPortraitVisibleForTest(int32 SlotIndex) const;
 	FName GetSelectedRouteRewardReplacementEntryIdForTest() const;
