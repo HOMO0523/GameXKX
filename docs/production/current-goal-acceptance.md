@@ -2,7 +2,7 @@
 status: record
 owner: codex
 updated_at: 2026-08-14
-source_commit: d4c5e1f5a45162e8e924e956dc53c53fee574e3c
+source_commit: 3534648
 ---
 # GameXXK 当前目标(滚动指针)
 
@@ -11,25 +11,27 @@ source_commit: d4c5e1f5a45162e8e924e956dc53c53fee574e3c
 ## 当前基线(更新于 2026-08-14)
 
 - 分支:`main`
-- 最近一次完整验收:`docs/production/2026-08-13-current-goal-final-acceptance.md`
+- 最近一次完整验收:`docs/production/2026-08-14-unfinished-inventory-optimization-roadmap.md`(未完成项盘点与路线图)
 
-## 已落地(最近一轮)
+## 已落地(最近两轮)
 
+- **奖励体系重构**(`00002f1`):彻底删除路线临时卡体系(路线卡条目/12 容量/18 张配方/事件宝箱商人发卡);新增玩家卡组**首领卡槽 3 个**,击杀首领后选择首领牌(虎/熊)写入空槽并加入当前手牌;战后奖励只剩首领牌(例外)+携带牌品质升级+遗物+气力点+抽牌数;存档 v16→v17 迁移。
+- **两项平衡修复**:①模拟 AI 无进展死循环(连续 64 次决策无敌方掉血强制结束回合;5 个回合边界血量无变化判僵持战败);②刀锋延迟保留牌主人阵亡时实例丢失(牌随主人退场)。
+- 新增回归测试 `ZhuiFengJinGuiBoss942090`、`BladeRetainedOwnerDefeat1100213`;修复两处进程 RNG 偶发测试;卡牌文档重新生成。
+- 全量自动化 **596/596 通过**;2400 锁定案例 0 卡死/0 错误(胜 2298 / 负 102)。
 - 198 张卡(36 主角 + 108 永久伙伴 + 24 任务 NPC + 30 路线牌)完整执行,全 198 × 七地势 + 条件缺失分支通过。
-- 战斗目标结果提示(悬停结算预演):水墨底图、指向目标上方、群体牌按真实存活槽位 `1P/2P/3P`、悬停不提交状态。
-- 护甲前后快照与命中读条(`护甲 -N`/`气血 -N`)、出牌确认缩放 1.26×、防 0 费无限循环。
 
 ## 关键语义冻结(注意差异)
 
-- **当前生产仍维持 v15 follower 语义**:接任务即 NPC 跟随/入队。
-- **未来(放置迁移包执行后)改为**:接任务不跟随、不自动入队,玩家另点"入队"才进入战斗队伍。
-- 迁移入口:`docs/superpowers/plans/2026-08-13-gamexxk-idle-desktop-migration-implementation-index.md`。
+- **当前生产仍维持接任务即跟随/入队语义**。任务 NPC 显式入队("接任务不跟随、不自动入队")属历练迁移第 6 包,已按用户决定(2026-08-14)**搁置**。
+- 地形增益仍为**旧表**;新模型(每回合全员 1 次 + 对应职业再 1 次 + 山河套再 1 次,敌方统一 1 易伤+1 燃烧)已裁决,待 §5 山河三档与 `TriggerTerrainBenefit` 口径复核后实施,见 `docs/design/2026-08-13-terrain-benefit-redesign.md`。
 
-## 仅规划未实施(7 包)
+## 仅规划未实施 / 已搁置
 
-历练放置、离线收益、双宝箱、2D 主界面、桌面迷你窗、自动战斗、任务 NPC 显式入队 + 默认入口迁移。**未执行生产实现。**
+- **历练桌面迁移 7 包**(历练放置、离线收益、双宝箱、2D 主界面、桌面迷你窗、自动战斗、任务 NPC 显式入队 + 默认入口迁移):**用户已决定搁置**。执行前必须先修订索引里的存档版本边界(当前 `CurrentSaveVersion=17`,索引仍按 v16/v17/v18 规划)。
+- 项目自身优化:`optimization-plan.md` 2.2(ForTest 收敛)与 Phase 3(状态合并/巨型文件拆分/DataAsset 化/测试盲区)仅规划。
 
 ## 下一步待办
 
-- 见 `docs/production/optimization-plan.md`(项目自身优化计划)。
-- 战斗奖励分层(新规格 `docs/superpowers/specs/2026-08-14-battle-reward-tiering-design.md`)。
+- 见 `docs/production/2026-08-14-unfinished-inventory-optimization-roadmap.md`。
+- 顺序:Phase 0 收尾 → Phase 1 地形增益重设计(先复核 2 个口径)→ Phase 2 数值迭代(台账 §6)。

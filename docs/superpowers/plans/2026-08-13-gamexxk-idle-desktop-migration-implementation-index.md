@@ -1,5 +1,9 @@
 # GameXXK Idle Desktop Migration Implementation Index
 
+> **状态(2026-08-14):用户决定整体搁置。** 执行前必须处理以下两点:
+> 1. **存档版本边界已过期**:本文按 v16/v17/v18 规划,但奖励体系重构(`00002f1`)已把 `CurrentSaveVersion` 提到 **17**。恢复执行时须重排为:包 1-5 落在 v17→v18(历练核心+存档)、包 6 v18→v19(任务 NPC 语义)、包 7 v19→v20(默认入口),并同步修订包 1/6/7 各自计划中的版本断言。
+> 2. 进入时须以 `docs/production/2026-08-14-unfinished-inventory-optimization-roadmap.md` Phase 3 为准,先取干净基线再开工。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 把已确认的历练放置、双宝箱、2D 主界面、桌面迷你窗、局内自动战斗、任务 NPC 显式入队和默认入口迁移拆成七个可独立回滚、可独立验收的实施包。
