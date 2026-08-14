@@ -36,13 +36,13 @@ private:
 	UClass* ResolveRouteMapWidgetClass() const;
 	UClass* ResolveRouteNodeWidgetClass() const;
 	UUserWidget* FindRouteMapWidget(UClass* RouteMapClass) const;
-	FBoolProperty* FindRouteNodeClickableProperty(UClass* RouteNodeClass) const;
+	FBoolProperty* FindRouteNodeClickableProperty(UClass* RouteNodeClass);
 	bool IsRouteNodeClickable(UUserWidget* RouteNodeWidget, FBoolProperty* ClickableProperty) const;
 	UScrollBox* FindParentScrollBox(UUserWidget* RouteNodeWidget) const;
 	UCanvasPanelSlot* FindCanvasSlot(UUserWidget* RouteNodeWidget) const;
 	void SynchronizeOriginalBattleLayout(UUserWidget* RouteMapWidget);
-	bool TryReadOriginalCurrentLevel(int32& OutCurrentLevel) const;
-	FIntProperty* FindOriginalCurrentLevelProperty(UClass* PlayerControllerClass) const;
+	bool TryReadOriginalCurrentLevel(int32& OutCurrentLevel);
+	FIntProperty* FindOriginalCurrentLevelProperty(UClass* PlayerControllerClass);
 	bool OpenBattleLayoutFromOriginalRoute(UUserWidget* RouteMapWidget);
 	UGameXXKMVPSubsystem* ResolveBattleSubsystem();
 
@@ -81,4 +81,19 @@ private:
 	float LastAppliedScrollOffset = -1.0f;
 	int32 LastObservedOriginalLevel = INDEX_NONE;
 	bool bBattleLayoutOpen = false;
+
+	// Reflection-contract cache. The 1Game route-node widget exposes its
+	// clickability and the original player controller exposes its level as
+	// plain Blueprint properties; resolve each once per class instead of
+	// re-scanning reflection every sync tick.
+	FBoolProperty* CachedRouteNodeClickableProperty = nullptr;
+	TWeakObjectPtr<UClass> CachedRouteNodePropertyClass;
+	FIntProperty* CachedOriginalCurrentLevelProperty = nullptr;
+	TWeakObjectPtr<UClass> CachedOriginalLevelPropertyClass;
+
+	// One-time diagnostics so a broken reflection contract is visible in the
+	// log instead of silently degrading the sync loop.
+	bool bLoggedMissingRouteNodeProperty = false;
+	bool bLoggedMissingOriginalLevelProperty = false;
+	bool bLoggedMaxSyncAttempts = false;
 };

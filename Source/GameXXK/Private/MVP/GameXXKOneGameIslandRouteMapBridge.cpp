@@ -89,6 +89,12 @@ void AGameXXKOneGameIslandRouteMapBridge::SynchronizeRouteMapScroll()
 	++SyncAttempts;
 	if (MaxSyncAttempts > 0 && SyncAttempts > MaxSyncAttempts)
 	{
+		if (!bLoggedMaxSyncAttempts)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("GameXXKOneGameIslandRouteMapBridge: route-map sync gave up after %d attempts; the 1Game route widget may not be present"),
+				MaxSyncAttempts);
+			bLoggedMaxSyncAttempts = true;
+		}
 		if (UWorld* World = GetWorld())
 		{
 			World->GetTimerManager().ClearTimer(SyncTimerHandle);
@@ -191,22 +197,38 @@ UUserWidget* AGameXXKOneGameIslandRouteMapBridge::FindRouteMapWidget(UClass* Rou
 	return nullptr;
 }
 
-FBoolProperty* AGameXXKOneGameIslandRouteMapBridge::FindRouteNodeClickableProperty(UClass* RouteNodeClass) const
+FBoolProperty* AGameXXKOneGameIslandRouteMapBridge::FindRouteNodeClickableProperty(UClass* RouteNodeClass)
 {
 	if (!RouteNodeClass)
 	{
 		return nullptr;
 	}
 
+	if (CachedRouteNodePropertyClass.Get() == RouteNodeClass)
+	{
+		return CachedRouteNodeClickableProperty;
+	}
+
+	FBoolProperty* ClickableProperty = nullptr;
 	for (TFieldIterator<FBoolProperty> PropertyIt(RouteNodeClass, EFieldIteratorFlags::IncludeSuper); PropertyIt; ++PropertyIt)
 	{
 		FBoolProperty* BoolProperty = *PropertyIt;
 		if (BoolProperty && BoolProperty->GetOwnerClass() == RouteNodeClass)
 		{
-			return BoolProperty;
+			ClickableProperty = BoolProperty;
+			break;
 		}
 	}
-	return nullptr;
+
+	CachedRouteNodePropertyClass = RouteNodeClass;
+	CachedRouteNodeClickableProperty = ClickableProperty;
+	if (!ClickableProperty && !bLoggedMissingRouteNodeProperty)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GameXXKOneGameIslandRouteMapBridge: route-node class '%s' exposes no owned bool property; node clickability cannot be read"),
+			*RouteNodeClass->GetName());
+		bLoggedMissingRouteNodeProperty = true;
+	}
+	return ClickableProperty;
 }
 
 bool AGameXXKOneGameIslandRouteMapBridge::IsRouteNodeClickable(UUserWidget* RouteNodeWidget, FBoolProperty* ClickableProperty) const
@@ -286,7 +308,7 @@ void AGameXXKOneGameIslandRouteMapBridge::SynchronizeOriginalBattleLayout(UUserW
 	LastObservedOriginalLevel = CurrentLevel;
 }
 
-bool AGameXXKOneGameIslandRouteMapBridge::TryReadOriginalCurrentLevel(int32& OutCurrentLevel) const
+bool AGameXXKOneGameIslandRouteMapBridge::TryReadOriginalCurrentLevel(int32& OutCurrentLevel)
 {
 	const UWorld* World = GetWorld();
 	const APlayerController* PlayerController = World ? World->GetFirstPlayerController() : nullptr;
@@ -305,13 +327,19 @@ bool AGameXXKOneGameIslandRouteMapBridge::TryReadOriginalCurrentLevel(int32& Out
 	return true;
 }
 
-FIntProperty* AGameXXKOneGameIslandRouteMapBridge::FindOriginalCurrentLevelProperty(UClass* PlayerControllerClass) const
+FIntProperty* AGameXXKOneGameIslandRouteMapBridge::FindOriginalCurrentLevelProperty(UClass* PlayerControllerClass)
 {
 	if (!PlayerControllerClass || OriginalCurrentLevelIntPropertyIndex < 0)
 	{
 		return nullptr;
 	}
 
+	if (CachedOriginalLevelPropertyClass.Get() == PlayerControllerClass)
+	{
+		return CachedOriginalCurrentLevelProperty;
+	}
+
+	FIntProperty* CurrentLevelProperty = nullptr;
 	int32 DirectIntPropertyIndex = 0;
 	for (TFieldIterator<FIntProperty> PropertyIt(PlayerControllerClass, EFieldIteratorFlags::IncludeSuper); PropertyIt; ++PropertyIt)
 	{
@@ -323,11 +351,21 @@ FIntProperty* AGameXXKOneGameIslandRouteMapBridge::FindOriginalCurrentLevelPrope
 
 		if (DirectIntPropertyIndex == OriginalCurrentLevelIntPropertyIndex)
 		{
-			return IntProperty;
+			CurrentLevelProperty = IntProperty;
+			break;
 		}
 		++DirectIntPropertyIndex;
 	}
-	return nullptr;
+
+	CachedOriginalLevelPropertyClass = PlayerControllerClass;
+	CachedOriginalCurrentLevelProperty = CurrentLevelProperty;
+	if (!CurrentLevelProperty && !bLoggedMissingOriginalLevelProperty)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GameXXKOneGameIslandRouteMapBridge: player-controller class '%s' has fewer than %d owned int properties; original level cannot be read (index-based contract may need updating)"),
+			*PlayerControllerClass->GetName(), OriginalCurrentLevelIntPropertyIndex + 1);
+		bLoggedMissingOriginalLevelProperty = true;
+	}
+	return CurrentLevelProperty;
 }
 
 bool AGameXXKOneGameIslandRouteMapBridge::OpenBattleLayoutFromOriginalRoute(UUserWidget* RouteMapWidget)
