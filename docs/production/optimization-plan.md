@@ -110,7 +110,10 @@
 | 1.4 ue_mcp_smoke.py 去重 | ✅ 已完成(6 个传输函数改为 import `ue_mcp_client`,import 冒烟通过) |
 | 1.5 生产循环 self-test 覆盖 | ✅ 已完成(新增 `--script-tests all` 全量发现模式;另修复 subprocess GBK 解码与 stdout=None 崩溃) |
 | 2.1 样板化 slot handler 去重 | ✅ 已完成(路线图 24 节点 + 手牌 5 槽的 24/5 分支 switch 改为 `FDelegate::BindUFunction` 按名绑定,UFUNCTION 保留) |
-| Phase 2.2~2.4 / Phase 3 | 仅计划(待逐项批准后执行) |
+| 2.3 反射桥接加固 | ✅ 已完成(1Game 路线图桥:按类缓存属性解析 + 缺失/超时一次性告警,选择语义不变;MVP 桶 77/77) |
+| 2.4 命名漂移收敛 | ✅ 已完成(`gamexxk_battle_ui_asset_check.py` 重命名为 `gamexxk_battle_target_art_check.py` 并实测运行;README 更新) |
+| 2.2 `WITH_DEV_AUTOMATION_TESTS` 收敛 | ⏸ 评估后暂缓:503 处 `*ForTest` 遍布 30+ 生产头文件,整体迁出属"接口重设计"(friend 测试类/独立 accessor),且需 Shipping 构建回归保障;建议单独立项设计后再执行 |
+| Phase 3 | 仅计划(待逐项批准后执行) |
 
 验证证据:生产循环 `--run-script-tests` 5 步全 PASS;冷 UBT GREEN;`GameXXK.MVP` 自动化桶 77/77 通过;`GameXXK.Integration.CardBattle` 桶与未改动基线失败集**完全一致**(2 个失败为奖励分层提交 7e1513a 引入的既有问题,与本重构无关:TargetOutcomePreview.LayoutInvariant、BoardHandCardHoverStyle)。
 
