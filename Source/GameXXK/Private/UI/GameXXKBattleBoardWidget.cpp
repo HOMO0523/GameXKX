@@ -5391,35 +5391,20 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		HandCardLabels.Add(CardLabel);
 		HandCardPortraits.Add(CardPortrait);
 		HandCardInfoStrips.Add(CardInfoStrip);
-		switch (SlotIndex)
-		{
-		case 0:
-			CardButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot0Clicked);
-			CardButton->OnHovered.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot0Hovered);
-			CardButton->OnUnhovered.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot0Unhovered);
-			break;
-		case 1:
-			CardButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot1Clicked);
-			CardButton->OnHovered.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot1Hovered);
-			CardButton->OnUnhovered.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot1Unhovered);
-			break;
-		case 2:
-			CardButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot2Clicked);
-			CardButton->OnHovered.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot2Hovered);
-			CardButton->OnUnhovered.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot2Unhovered);
-			break;
-		case 3:
-			CardButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot3Clicked);
-			CardButton->OnHovered.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot3Hovered);
-			CardButton->OnUnhovered.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot3Unhovered);
-			break;
-		case 4:
-			CardButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot4Clicked);
-			CardButton->OnHovered.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot4Hovered);
-			CardButton->OnUnhovered.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHandCardSlot4Unhovered);
-			break;
-		default: break;
-		}
+		// UMG dynamic delegates cannot carry a slot index through AddDynamic,
+		// so the per-slot UFUNCTIONs are bound by name.
+		const FName ClickHandlerName(*FString::Printf(TEXT("HandleHandCardSlot%dClicked"), SlotIndex));
+		const FName HoverHandlerName(*FString::Printf(TEXT("HandleHandCardSlot%dHovered"), SlotIndex));
+		const FName UnhoverHandlerName(*FString::Printf(TEXT("HandleHandCardSlot%dUnhovered"), SlotIndex));
+		FOnButtonClickedEvent::FDelegate ClickHandler;
+		ClickHandler.BindUFunction(this, ClickHandlerName);
+		CardButton->OnClicked.Add(ClickHandler);
+		FOnButtonHoverEvent::FDelegate HoverHandler;
+		HoverHandler.BindUFunction(this, HoverHandlerName);
+		CardButton->OnHovered.Add(HoverHandler);
+		FOnButtonHoverEvent::FDelegate UnhoverHandler;
+		UnhoverHandler.BindUFunction(this, UnhoverHandlerName);
+		CardButton->OnUnhovered.Add(UnhoverHandler);
 	}
 
 	PartyQiWidget = WidgetTree->ConstructWidget<UGameXXKBattlePartyQiWidget>(UGameXXKBattlePartyQiWidget::StaticClass(), TEXT("BattlePartyQiWidget"));

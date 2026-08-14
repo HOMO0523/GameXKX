@@ -1172,88 +1172,18 @@ bool UGameXXKOneGameRouteMapWidget::TryExecuteRouteNodeAtScreenPosition(const FV
 
 void UGameXXKOneGameRouteMapWidget::BindNodeButton(UButton* Button, int32 ButtonIndex)
 {
-	if (!Button)
+	if (!Button || ButtonIndex < 0 || ButtonIndex >= MaxRouteNodeButtons)
 	{
 		return;
 	}
 
-	switch (ButtonIndex)
-	{
-	case 0:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton0Clicked);
-		break;
-	case 1:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton1Clicked);
-		break;
-	case 2:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton2Clicked);
-		break;
-	case 3:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton3Clicked);
-		break;
-	case 4:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton4Clicked);
-		break;
-	case 5:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton5Clicked);
-		break;
-	case 6:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton6Clicked);
-		break;
-	case 7:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton7Clicked);
-		break;
-	case 8:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton8Clicked);
-		break;
-	case 9:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton9Clicked);
-		break;
-	case 10:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton10Clicked);
-		break;
-	case 11:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton11Clicked);
-		break;
-	case 12:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton12Clicked);
-		break;
-	case 13:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton13Clicked);
-		break;
-	case 14:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton14Clicked);
-		break;
-	case 15:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton15Clicked);
-		break;
-	case 16:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton16Clicked);
-		break;
-	case 17:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton17Clicked);
-		break;
-	case 18:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton18Clicked);
-		break;
-	case 19:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton19Clicked);
-		break;
-	case 20:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton20Clicked);
-		break;
-	case 21:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton21Clicked);
-		break;
-	case 22:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton22Clicked);
-		break;
-	case 23:
-		Button->OnClicked.AddDynamic(this, &UGameXXKOneGameRouteMapWidget::HandleNodeButton23Clicked);
-		break;
-	default:
-		break;
-	}
+	// UMG dynamic delegates cannot carry a slot index through AddDynamic, so
+	// the per-node UFUNCTION is bound by name; the 24-case switch is gone and
+	// adding a node only needs a matching UFUNCTION.
+	const FName HandlerName(*FString::Printf(TEXT("HandleNodeButton%dClicked"), ButtonIndex));
+	FOnButtonClickedEvent::FDelegate Handler;
+	Handler.BindUFunction(this, HandlerName);
+	Button->OnClicked.Add(Handler);
 }
 
 UWidget* UGameXXKOneGameRouteMapWidget::ConstructNodeVisualWidget(int32 NodeIndex)
