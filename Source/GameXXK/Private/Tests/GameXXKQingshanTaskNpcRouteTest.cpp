@@ -17,6 +17,11 @@ bool FGameXXKQingshanTaskNpcRouteTest::RunTest(const FString& Parameters)
 		UGameXXKMVPRules::OpenWorldMap(State)
 		&& UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())
 		&& UGameXXKMVPRules::AcceptTownQuest(State));
+	// New semantics: accepting the quest keeps the guide NPC in town. Simulate the dialog
+	// 入队 recruit (controller RecruitPendingTownNpc) so the route assertions below still
+	// exercise the recruited narrative follower and its recorded location.
+	TestFalse(TEXT("accepting the Qingshan quest keeps the guide NPC in town until 入队"), State.bFollowerJoined);
+	State.bFollowerJoined = true;
 	const FVector NarrativeFollowerLocation(180.0f, -64.0f, 72.0f);
 	State.bHasQuestNpcLocation = true;
 	State.QuestNpcLocation = NarrativeFollowerLocation;

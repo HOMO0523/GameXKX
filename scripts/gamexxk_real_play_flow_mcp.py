@@ -3099,6 +3099,21 @@ class RealFlowHarness:
             raise RuntimeError(f"Slate click failed for the quest NPC story action: {button}")
         time.sleep(0.45)
 
+    def click_town_npc_recruit_action(self) -> None:
+        """Recruit the guide NPC as the narrative follower through the dialog's 入队 action."""
+        label = "入队"
+        button = self.slate_button_for_visible_text(label)
+        click_ok = bool(self.client.call_tool(
+            "Click",
+            {"ref": button["ref"], "button": "left", "doubleClick": False},
+            toolset_name=SLATE_TOOLSET,
+            timeout=self.client.timeout,
+        ))
+        self.event("town_npc_recruit_slate_click", click_ok=click_ok, button=button, label=label)
+        if not click_ok:
+            raise RuntimeError(f"Slate click failed for the quest NPC 入队 recruit action: {button}")
+        time.sleep(0.45)
+
     def click_route_node(self, probe: dict[str, Any], node_id: int) -> dict[str, Any]:
         node_state = _route_node_visual_state(probe, node_id)
         if not node_state:
@@ -3436,13 +3451,54 @@ class RealFlowHarness:
 
         meta_shop_probe, meta_shop_path = self.probe_meta_shop()
 
-        quest_after_interact = _quest_npc(after_interact)
-        quest_location_after_interact = quest_after_interact.get("location") if isinstance(quest_after_interact.get("location"), dict) else {}
-        if not quest_location_after_interact:
+        # New semantics: accepting the quest keeps the guide NPC in town. The narrative
+        # follower only joins after the player re-opens the NPC dialog and clicks its 入队
+        # action (RecruitPendingTownNpc). Record the accepted state before walking back to
+        # the NPC for that second interaction.
+        quest_after_accept = _quest_npc(after_interact)
+        if not isinstance(quest_after_accept.get("location"), dict) or not quest_after_accept["location"]:
             raise RuntimeError("Quest NPC location missing after accepting quest")
+
+        context_probe: dict[str, Any] = {}
+        recruit_interact_probe: dict[str, Any] = after_interact
+        for attempt in range(3):
+            self.town_interact()
+            self.event("town_interact_attempt", target="quest_npc_recruit", attempt=attempt + 1)
+            deadline = time.monotonic() + 2.0
+            while time.monotonic() < deadline:
+                recruit_interact_probe = self.probe()
+                if _town_npc_context_dialog_open(recruit_interact_probe):
+                    context_probe = recruit_interact_probe
+                    self.event("wait_ok", label="Town interact reopens the NPC context dialog for 入队", attempt=attempt + 1)
+                    break
+                time.sleep(0.35)
+            if context_probe:
+                break
+        if not context_probe:
+            raise RuntimeError(
+                f"Timed out waiting for the NPC context dialog to reopen for the 入队 recruit; last probe={json.dumps(recruit_interact_probe, ensure_ascii=False)}"
+            )
+
+        self.click_town_npc_recruit_action()
+        after_recruit = self.wait_for(
+            "入队 recruit closes the dialog and joins the narrative follower",
+            lambda probe: (
+                _quest_accepted(probe)
+                and not _town_npc_context_dialog_open(probe)
+                and bool(_runtime_state(probe).get("b_follower_joined"))
+                and bool(_quest_npc(probe).get("is_follower_active"))
+            ),
+            timeout=5.0,
+            interval=0.35,
+        )
+
+        quest_after_recruit = _quest_npc(after_recruit)
+        quest_location_after_recruit = quest_after_recruit.get("location") if isinstance(quest_after_recruit.get("location"), dict) else {}
+        if not quest_location_after_recruit:
+            raise RuntimeError("Quest NPC location missing after 入队 recruit")
         follower_separation_key = _cardinal_key_away_from(
-            _pawn_location(after_interact),
-            quest_location_after_interact,
+            _pawn_location(after_recruit),
+            quest_location_after_recruit,
         )
         with self.hold_town_keys(follower_separation_key):
             time.sleep(1.25)
@@ -3452,19 +3508,19 @@ class RealFlowHarness:
             "quest_follower_separation_move",
             key=follower_separation_key,
             player_distance_cm=_distance(
-                _pawn_location(after_interact),
+                _pawn_location(after_recruit),
                 _pawn_location(after_follower_input_move),
             ),
             distance_from_initial_npc_cm=_distance(
                 _pawn_location(after_follower_input_move),
-                quest_location_after_interact,
+                quest_location_after_recruit,
             ),
         )
-        quest_npc_follower_probe = _quest_npc_follower_verdict(after_interact, after_follower_input_move)
+        quest_npc_follower_probe = _quest_npc_follower_verdict(after_recruit, after_follower_input_move)
         self.event("quest_npc_follower_after_player_move_probe", **quest_npc_follower_probe)
         if not quest_npc_follower_probe["ok"]:
             raise RuntimeError(
-                f"Accepted quest NPC did not activate, follow, and record its live position before manual save: {quest_npc_follower_probe}"
+                f"Recruited quest NPC did not activate, follow, and record its live position before manual save: {quest_npc_follower_probe}"
             )
 
         after_manual_save = self.town_command("SaveSlot1")

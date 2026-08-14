@@ -433,7 +433,9 @@ bool FGameXXKPlayableRootFullLoopTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("UMG root rejects route quest acceptance because F on the quest NPC owns that flow"), RootWidget->ExecuteVisibleCommand(FName(TEXT("AcceptQuest"))));
 	TestTrue(TEXT("test flow marks the route quest accepted after the NPC interaction path"), Subsystem->AcceptQuest());
 	RootWidget->RefreshFromState();
-	TestTrue(TEXT("UMG root joins follower after NPC quest acceptance"), Subsystem->GetRuntimeState().bFollowerJoined);
+	// New semantics: accepting the quest keeps the guide NPC in town; the follower joins
+	// only through the dialog 入队 action.
+	TestFalse(TEXT("UMG root keeps the guide NPC in town after quest acceptance"), Subsystem->GetRuntimeState().bFollowerJoined);
 
 	const int32 GoldBeforeTrade = Subsystem->GetRuntimeState().PlayerGold;
 	TestTrue(TEXT("town trade flow buys healing powder"), Subsystem->BuyItem(UGameXXKMVPRules::ItemHealingPowder(), 1));
@@ -513,7 +515,11 @@ bool FGameXXKPlayableRootPostFailureResupplyRetryTest::RunTest(const FString& Pa
 	TestFalse(TEXT("post-failure UMG root rejects route quest acceptance because F on the quest NPC owns that flow"), RootWidget->ExecuteVisibleCommand(FName(TEXT("AcceptQuest"))));
 	TestTrue(TEXT("post-failure test marks the route quest accepted after the NPC interaction path"), Subsystem->AcceptQuest());
 	RootWidget->RefreshFromState();
-	TestTrue(TEXT("post-failure test follower joins before challenge"), Subsystem->GetRuntimeState().bFollowerJoined);
+	// New semantics: accepting the quest keeps the guide NPC in town. Simulate the dialog
+	// 入队 recruit (controller RecruitPendingTownNpc) at this subsystem layer so the
+	// post-failure follower assertion below still exercises a recruited follower.
+	TestFalse(TEXT("post-failure test keeps the guide NPC in town after acceptance"), Subsystem->GetRuntimeState().bFollowerJoined);
+	Subsystem->GetMutableRuntimeState().bFollowerJoined = true;
 	TestTrue(TEXT("post-failure test enters dungeon"), RootWidget->ExecuteVisibleCommand(FName(TEXT("EnterDungeon"))));
 	TestTrue(TEXT("post-failure test selects start node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectStart"))));
 	TestTrue(TEXT("post-failure test selects battle node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectBattle"))));

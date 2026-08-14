@@ -336,12 +336,10 @@ bool AGameXXKTownNpcCharacter::ApplyDefaultInteraction(APawn* InstigatorPawn)
 	if (CanOfferQuest())
 	{
 		const bool bAccepted = Subsystem->AcceptQuest();
-		if (bAccepted && InstigatorPawn)
-		{
-			ActivateFollower(InstigatorPawn, FollowDistance);
-		}
 		if (bAccepted)
 		{
+			// Accepting the quest keeps the guide NPC at its town spot. Following
+			// activates only through the dialog's 入队 recruit action.
 			Subsystem->RecordQuestNpcLocation(GetActorLocation());
 		}
 		bLastInteractionSuccessful = bAccepted;

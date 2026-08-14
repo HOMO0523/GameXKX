@@ -396,6 +396,9 @@ void AGameXXKMVPPlayerController::EnterBattleOverlay()
 	}
 	if (BattleOverlayCoordinator && !BattleOverlayCoordinator->IsActive())
 	{
+		const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+		UE_LOG(LogTemp, Warning, TEXT("[BattleOverlay] Enter screen=%d board=%s"),
+			Subsystem ? static_cast<int32>(Subsystem->GetRuntimeState().Screen) : -1, *BattleBoardWidget->GetName());
 		BattleOverlayCoordinator->Enter(*this, *RouteMapWidget, *BattleBoardWidget);
 	}
 }
@@ -404,6 +407,10 @@ void AGameXXKMVPPlayerController::ExitBattleOverlay()
 {
 	if (BattleOverlayCoordinator)
 	{
+		const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+		UE_LOG(LogTemp, Warning, TEXT("[BattleOverlay] Exit screen=%d active=%d"),
+			Subsystem ? static_cast<int32>(Subsystem->GetRuntimeState().Screen) : -1,
+			BattleOverlayCoordinator->IsActive() ? 1 : 0);
 		BattleOverlayCoordinator->Exit(*this);
 	}
 }
@@ -804,6 +811,29 @@ bool AGameXXKMVPPlayerController::RecruitPendingTownNpc()
 		|| !Subsystem->SelectTownQuestNpcForParty(NpcId))
 	{
 		return false;
+	}
+
+	// Recruiting the quest guide makes it the narrative follower: it leaves its
+	// town spot and accompanies the hero instead of waiting for a dialog click.
+	if (ResolveTownNpcRole(TownNpc) == EGameXXKTownNpcRole::Quest)
+	{
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		State.bFollowerJoined = true;
+		State.bHasQuestNpcLocation = false;
+		State.QuestNpcLocation = FVector::ZeroVector;
+
+		APawn* InstigatorPawn = PendingQuestInstigator.Get();
+		if (InstigatorPawn)
+		{
+			if (AGameXXKTownNpcCharacter* CharacterNpc = Cast<AGameXXKTownNpcCharacter>(TownNpc))
+			{
+				CharacterNpc->ActivateFollower(InstigatorPawn, CharacterNpc->GetFollowDistance());
+			}
+			else if (AGameXXKTownNpcActor* ActorNpc = Cast<AGameXXKTownNpcActor>(TownNpc))
+			{
+				ActorNpc->ActivateFollower(InstigatorPawn, ActorNpc->GetFollowDistance());
+			}
+		}
 	}
 
 	CloseQuestDialog();

@@ -228,6 +228,10 @@ public:
 	uint64 GetActiveBattleVisualSessionTokenForTest() const;
 	int32 GetPinnedBattleAtlasCountForTest() const;
 	int32 GetDuplicateParticipantImageCountForTest() const;
+	bool TryResolveCardTargetUnitAtStagePositionForTest(FVector2D StagePosition, FName& OutUnitId) const;
+	/** Live-PIE diagnostic: JSON-ish summary of presentation/session/choice state. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
+	FString GetBattleBoardDebugStateForTest() const;
 	FGameXXKBattleAtlasCacheStats GetAtlasCacheStatsForTest() const;
 	bool IsBattlePresentationActiveForTest() const;
 	bool IsBattlePresentationLockedForTest() const;
@@ -722,6 +726,9 @@ private:
 	void ApplyCardOutcomePreview(const FGameXXKCardOutcomePreview& Preview);
 	void RefreshSingleOutcomePreviewPlacement(FName UnitId);
 	bool TryResolveUnitTargetStageCenter(FName UnitId, FVector2D& OutStageCenter) const;
+	/** Geometry-driven input fallback: resolves the battle unit whose target-proxy rect contains the board-local point. */
+	bool TryResolveCardTargetUnitAtLocalPosition(FVector2D LocalPosition, FName& OutUnitId) const;
+	bool TryResolveCardTargetUnitAtStagePosition(FVector2D StagePosition, FName& OutUnitId) const;
 	bool ResolveCardBattleTerminalState();
 	FVector2D ResolveCardTargetingSourcePosition(FName OwnerUnitId) const;
 	bool ResolveAndRefreshCardBattleAfterMutation();

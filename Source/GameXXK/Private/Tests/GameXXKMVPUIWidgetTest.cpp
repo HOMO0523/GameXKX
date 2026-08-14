@@ -216,7 +216,9 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("quest dialog accepts quest"), QuestDialog->AcceptQuest());
 	TestEqual(TEXT("quest accepted in subsystem state"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
-	TestTrue(TEXT("follower joins after quest dialog"), Subsystem->GetRuntimeState().bFollowerJoined);
+	// New semantics: accepting through the dialog keeps the guide NPC in town; the follower
+	// only joins when the player later clicks the dialog's 入队 action.
+	TestFalse(TEXT("accepting the quest keeps the guide NPC in town until 入队"), Subsystem->GetRuntimeState().bFollowerJoined);
 	TestTrue(TEXT("town party selector explicitly adds Tusi Chief to this route"),
 		Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.TusiChief")));
 

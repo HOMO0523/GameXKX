@@ -1654,17 +1654,39 @@ bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("manual hover is classified without exposing the private enum"), Board->GetCardOutcomePreviewClassForTest(), FString(TEXT("ManualUnit")));
 	TestTrue(TEXT("manual hover displays at least one concise line"), Board->GetCardOutcomePreviewLinesForTest().Num() >= 1);
 	TestTrue(TEXT("manual hover never displays more than two lines"), Board->GetCardOutcomePreviewLinesForTest().Num() <= 2);
+
+	// Geometry fallback covers the full 410x410 formation sprite (not the small
+	// 180x320 proxy) and resolves overlapping edges by nearest unit center.
+	{
+		const UGameXXKBattleUnitVisualWidget* const GeometryVisual = Board->GetUnitVisualForTest(LegalEnemyTargets[0]);
+		if (TestTrue(TEXT("sprite-geometry target has a real formation visual"), GeometryVisual != nullptr))
+		{
+			const FVector2D GeometryCenter = GeometryVisual->GetStageCenter();
+			FName ResolvedUnitId = NAME_None;
+			TestTrue(TEXT("a sprite-edge stage point resolves the legal enemy"),
+				Board->TryResolveCardTargetUnitAtStagePositionForTest(
+					GeometryCenter + FVector2D(0.0f, -190.0f), ResolvedUnitId)
+					&& ResolvedUnitId == LegalEnemyTargets[0]);
+			ResolvedUnitId = NAME_None;
+			TestTrue(TEXT("the sprite center resolves the legal enemy"),
+				Board->TryResolveCardTargetUnitAtStagePositionForTest(GeometryCenter, ResolvedUnitId)
+					&& ResolvedUnitId == LegalEnemyTargets[0]);
+			ResolvedUnitId = NAME_None;
+			TestFalse(TEXT("an empty top-left stage point resolves no unit"),
+				Board->TryResolveCardTargetUnitAtStagePositionForTest(FVector2D(60.0f, 60.0f), ResolvedUnitId));
+		}
+	}
 	const UGameXXKBattleUnitVisualWidget* const FirstTargetVisual = Board->GetUnitVisualForTest(LegalEnemyTargets[0]);
 	TestNotNull(TEXT("first legal target has a real formation visual"), FirstTargetVisual);
 	const FVector2D FirstTargetCenter = FirstTargetVisual ? FirstTargetVisual->GetStageCenter() : FVector2D::ZeroVector;
 	const FVector2D FirstTargetAnchor(
 		FirstTargetCenter.X / 1920.0f,
 		FirstTargetCenter.Y / 1080.0f);
-	TestTrue(TEXT("legal hover snaps the targeting arrow head to the first target center"),
-		Board->GetTargetingPointerPositionForTest().Equals(FirstTargetCenter, 0.01f));
+	TestTrue(TEXT("legal hover leaves the arrow head at the targeting source instead of snapping"),
+		Board->GetTargetingPointerPositionForTest().Equals(Board->GetTargetingSourcePositionForTest(), 0.01f));
 	Board->UpdateTargetingPointer(FVector2D(1730.0f, 900.0f));
-	TestTrue(TEXT("controller mouse updates cannot pull the arrow away while the target remains hovered"),
-		Board->GetTargetingPointerPositionForTest().Equals(FirstTargetCenter, 0.01f));
+	TestTrue(TEXT("controller mouse updates keep the arrow tracking the cursor during card targeting"),
+		Board->GetTargetingPointerPositionForTest().Equals(FVector2D(1730.0f, 900.0f), 0.01f));
 	TestTrue(TEXT("manual preview shares the first arrow-target anchor instead of the HUD anchor"),
 		Board->GetSingleOutcomePreviewAnchorForTest().Equals(FirstTargetAnchor, 0.001f));
 	TestEqual(TEXT("manual preview bottom stays twelve pixels above the 410px target visual"),
@@ -1682,8 +1704,8 @@ bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Paramet
 	const FVector2D SecondTargetAnchor(
 		SecondTargetCenter.X / 1920.0f,
 		SecondTargetCenter.Y / 1080.0f);
-	TestTrue(TEXT("changing target snaps the arrow head to the second target center"),
-		Board->GetTargetingPointerPositionForTest().Equals(SecondTargetCenter, 0.01f));
+	TestTrue(TEXT("changing legal target keeps the arrow head at the cursor"),
+		Board->GetTargetingPointerPositionForTest().Equals(FVector2D(1730.0f, 900.0f), 0.01f));
 	TestTrue(TEXT("manual preview follows the second arrow-target anchor"),
 		Board->GetSingleOutcomePreviewAnchorForTest().Equals(SecondTargetAnchor, 0.001f));
 	FirstProxy->OnUnhovered.Broadcast();
@@ -2245,8 +2267,8 @@ bool FGameXXKTargetOutcomePreviewLayoutInvariantTest::RunTest(const FString& Par
 	const FVector2D OutcomeTargetAnchor(OutcomeTargetCenter.X / 1920.0f, OutcomeTargetCenter.Y / 1080.0f);
 	TestTrue(TEXT("single outcome uses the arrow target anchor"),
 		Board->GetSingleOutcomePreviewAnchorForTest().Equals(OutcomeTargetAnchor, 0.001f));
-	TestTrue(TEXT("layout hover snaps the targeting arrow head to the same target anchor"),
-		Board->GetTargetingPointerPositionForTest().Equals(OutcomeTargetCenter, 0.01f));
+	TestTrue(TEXT("layout hover never snaps the targeting arrow head"),
+		Board->GetTargetingPointerPositionForTest().Equals(Board->GetTargetingSourcePositionForTest(), 0.01f));
 	TestEqual(TEXT("single outcome uses exact alignment"), Board->GetSingleOutcomePreviewAlignmentForTest(), FVector2D(0.5f, 1.0f));
 	TestEqual(TEXT("single outcome sits above the full target visual without changing its compact size"),
 		Board->GetSingleOutcomePreviewOffsetsForTest(), FMargin(0.0f, -217.0f, 272.0f, 56.0f));

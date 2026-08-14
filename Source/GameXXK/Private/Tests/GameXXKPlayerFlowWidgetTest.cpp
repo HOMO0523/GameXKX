@@ -381,8 +381,8 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("opening dialogue does not accept quest yet"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::NotAccepted);
 	TestTrue(TEXT("accept button resolves the original quest NPC path"), PlayerController->AcceptQuestDialog());
 	TestEqual(TEXT("accept button marks quest accepted"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
-	TestTrue(TEXT("accept button preserves follower activation"), QuestNpc->IsFollowerActive());
-	TestTrue(TEXT("accept button preserves follower target"), QuestNpc->GetFollowTarget() == QuestPawn);
+	TestFalse(TEXT("accept button keeps the guide in town instead of activating a follower"), QuestNpc->IsFollowerActive());
+	TestNull(TEXT("accept button leaves no follower target before 入队"), QuestNpc->GetFollowTarget());
 	TestTrue(TEXT("I key opens the independent free inventory window"), PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::I, IE_Pressed, 1.0f)));
 	TestEqual(TEXT("I key records free inventory window mode"), PlayerController->GetInventoryWindowWidgetForTest()->GetWindowModeForTest(), EGameXXKInventoryWindowMode::FreeInventory);
 	TestFalse(TEXT("I key free inventory keeps movement input unlocked"), PlayerController->IsInventoryWindowModalInputLockedForTest());

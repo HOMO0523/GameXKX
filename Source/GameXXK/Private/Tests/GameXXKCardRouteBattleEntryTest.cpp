@@ -19,7 +19,9 @@ bool FGameXXKCardRouteBattleEntryTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the main-menu route can open the world map"), UGameXXKMVPRules::OpenWorldMap(State));
 	TestTrue(TEXT("the world map can enter Qingshan"), UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan()));
 	TestTrue(TEXT("the Qingshan quest can be accepted through the current follower contract"), UGameXXKMVPRules::AcceptTownQuest(State));
-	TestTrue(TEXT("accepting the Qingshan quest activates the narrative follower"), State.bFollowerJoined);
+	// New semantics: accepting the quest keeps the guide NPC in town. The narrative
+	// follower only joins through the NPC dialog's 入队 action (RecruitPendingTownNpc).
+	TestFalse(TEXT("accepting the Qingshan quest keeps the guide NPC in town instead of following"), State.bFollowerJoined);
 	TestTrue(TEXT("accepting the narrative quest does not auto-select a combat NPC"), State.CardRun.PartySelection.QuestNpc.NpcId.IsNone());
 	TestTrue(TEXT("the accepted town quest enters the route map"), UGameXXKMVPRules::EnterDungeon(State));
 	// This test isolates the shared BeginBattle entry point rather than making an assumption about

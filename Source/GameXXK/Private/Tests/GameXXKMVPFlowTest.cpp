@@ -213,7 +213,11 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("quest NPC accepts Huangshan route quest"), UGameXXKMVPRules::AcceptTownQuest(State));
 	TestEqual(TEXT("quest state accepted"), State.QuestState, EGameXXKQuestState::Accepted);
-	TestTrue(TEXT("follower joins after quest"), State.bFollowerJoined);
+	// New semantics: accepting the quest keeps the guide NPC in town. This test drives
+	// the rules/subsystem layer, so the dialog 入队 recruit (controller RecruitPendingTownNpc)
+	// is simulated here so the later failure/clear assertions still exercise the follower.
+	TestFalse(TEXT("accepting the quest keeps the guide NPC in town until 入队"), State.bFollowerJoined);
+	State.bFollowerJoined = true;
 	TestTrue(TEXT("accepted quest opens dungeon"), UGameXXKMVPRules::CanEnterDungeon(State));
 	TestTrue(TEXT("full-flow route explicitly selects Tusi Chief as its task NPC"),
 		Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.TusiChief")));

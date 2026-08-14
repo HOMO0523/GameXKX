@@ -483,8 +483,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	HeroCharacter->GetInteractionComponent()->SetFocusedActorForTest(HeroQuestNpc);
 	HeroCharacter->Interact();
 	TestEqual(TEXT("hero F on quest NPC accepts quest"), HeroInteractionSubsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
-	TestTrue(TEXT("hero F on quest NPC starts follower"), HeroQuestNpc->IsFollowerActive());
-	TestTrue(TEXT("hero F quest follower targets hero character"), HeroQuestNpc->GetFollowTarget() == HeroCharacter);
+	TestFalse(TEXT("hero F on quest NPC keeps the guide in town instead of starting a follower"), HeroQuestNpc->IsFollowerActive());
+	TestNull(TEXT("hero F quest NPC has no follow target before 入队"), HeroQuestNpc->GetFollowTarget());
 	TestTrue(TEXT("hero F quest NPC records successful interaction"), HeroQuestNpc->WasLastInteractionSuccessful());
 	UGameXXKMVPSubsystem* ReloadedHeroQuestF = NewObject<UGameXXKMVPSubsystem>(HeroInteractionGameInstance);
 	TestFalse(TEXT("hero F quest interaction does not autosave default slot"), ReloadedHeroQuestF->LoadGameFromSlot(HeroInteractionAutosaveSlot, 0));
@@ -664,8 +664,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("ending merchant overlap restores quest focus"), Player->GetInteractionComponent()->GetFocusedActor() == QuestNpc);
 	Player->Interact();
 	TestEqual(TEXT("F on quest NPC accepts quest"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
-	TestTrue(TEXT("F on quest NPC starts follower"), QuestNpc->IsFollowerActive());
-	TestTrue(TEXT("quest follower targets player"), QuestNpc->GetFollowTarget() == Player);
+	TestFalse(TEXT("F on quest NPC keeps the guide in town instead of starting a follower"), QuestNpc->IsFollowerActive());
+	TestNull(TEXT("quest NPC has no follow target before 入队"), QuestNpc->GetFollowTarget());
 	TestTrue(TEXT("quest NPC records successful interaction"), QuestNpc->WasLastInteractionSuccessful());
 	UGameXXKMVPSubsystem* ReloadedAfterQuestF = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestFalse(TEXT("F quest interaction waits for manual save"), ReloadedAfterQuestF->LoadGameFromSlot(NpcAutosaveSlot, 0));
@@ -673,7 +673,10 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	UGameXXKMVPSubsystem* ReloadedAfterQuestManualSave = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestTrue(TEXT("manual quest save loads default slot"), ReloadedAfterQuestManualSave->LoadGameFromSlot(NpcAutosaveSlot, 0));
 	TestEqual(TEXT("manual quest save persists accepted quest"), ReloadedAfterQuestManualSave->GetRuntimeState().QuestState, EGameXXKQuestState::Accepted);
-	TestTrue(TEXT("manual quest save persists follower state"), ReloadedAfterQuestManualSave->GetRuntimeState().bFollowerJoined);
+	// New semantics: accepting the quest keeps the guide NPC in town; it is only recruited
+	// (bFollowerJoined=true) through the dialog 入队 action. Accepting alone must not persist
+	// a joined follower.
+	TestFalse(TEXT("manual quest save keeps the guide unrecruited until 入队"), ReloadedAfterQuestManualSave->GetRuntimeState().bFollowerJoined);
 	TestTrue(TEXT("manual quest save persists the quest NPC location flag"), ReloadedAfterQuestManualSave->GetRuntimeState().bHasQuestNpcLocation);
 	QuestNpc->NotifyActorEndOverlap(Player);
 	TestNull(TEXT("quest NPC end overlap clears focus"), Player->GetInteractionComponent()->GetFocusedActor());
@@ -886,7 +889,9 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("direct quest NPC accepts quest for save-state recording"), RecordingQuestNpc->ApplyDefaultInteraction(MovingHero));
 			const FVector RecordedQuestNpcAcceptLocation = RecordingQuestNpc->GetActorLocation();
 			TestTrue(TEXT("quest NPC accept records a task NPC location flag"), RecordingSubsystem->GetRuntimeState().bHasQuestNpcLocation);
-			TestTrue(TEXT("quest NPC accept enables narrative following"), RecordingSubsystem->GetRuntimeState().bFollowerJoined);
+			// New semantics: accepting the quest keeps the guide NPC in town. The narrative
+			// follower (bFollowerJoined) is only enabled by the dialog 入队 recruit.
+			TestFalse(TEXT("quest NPC accept keeps the guide in town until 入队 recruits it"), RecordingSubsystem->GetRuntimeState().bFollowerJoined);
 			TestTrue(TEXT("quest NPC accept records the task NPC location"),
 				RecordingSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
 			UGameXXKMVPSubsystem* ReloadedRecordingSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
@@ -895,10 +900,24 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 			UGameXXKMVPSubsystem* ReloadedRecordingManualSaveSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 			TestTrue(TEXT("quest NPC manual save can be loaded for task NPC state"), ReloadedRecordingManualSaveSubsystem->LoadGameFromSlot(NpcAutosaveSlot, 0));
 			TestTrue(TEXT("quest NPC manual save persists task NPC location flag"), ReloadedRecordingManualSaveSubsystem->GetRuntimeState().bHasQuestNpcLocation);
-			TestTrue(TEXT("quest NPC manual save persists follower state"), ReloadedRecordingManualSaveSubsystem->GetRuntimeState().bFollowerJoined);
+			// New semantics: manual save after acceptance alone does not persist a joined
+			// follower; the 入队 recruit is what sets bFollowerJoined.
+			TestFalse(TEXT("quest NPC manual save keeps the guide unrecruited until 入队"), ReloadedRecordingManualSaveSubsystem->GetRuntimeState().bFollowerJoined);
 			TestTrue(TEXT("quest NPC manual save persists task NPC location"),
 				ReloadedRecordingManualSaveSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordedQuestNpcAcceptLocation, 0.1f));
 			MovingHero->SetActorLocation(RecordedQuestNpcAcceptLocation + FVector(0.0f, 260.0f, 0.0f));
+			// Recruit the guide through the dialog 入队 path: the follower flag
+			// flips, the NPC activates as the hero's follower, and its live
+			// location is re-recorded.
+			{
+				FGameXXKRuntimeState& RecruitState = RecordingSubsystem->GetMutableRuntimeState();
+				RecruitState.bFollowerJoined = true;
+				RecruitState.bHasQuestNpcLocation = false;
+				RecruitState.QuestNpcLocation = FVector::ZeroVector;
+			}
+			RecordingQuestNpc->ActivateFollower(MovingHero, RecordingQuestNpc->GetFollowDistance());
+			TestTrue(TEXT("入队 recruit activates the quest NPC follower"), RecordingQuestNpc->IsFollowerActive());
+			TestTrue(TEXT("入队 recruit re-records the follower live location"), RecordingSubsystem->GetRuntimeState().bHasQuestNpcLocation);
 			RecordingQuestNpc->Tick(0.25f);
 			TestTrue(TEXT("quest NPC follower movement updates runtime task NPC location"),
 				RecordingSubsystem->GetRuntimeState().QuestNpcLocation.Equals(RecordingQuestNpc->GetActorLocation(), 0.1f));

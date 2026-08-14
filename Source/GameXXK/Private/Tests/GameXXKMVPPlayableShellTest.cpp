@@ -231,7 +231,11 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("town HUD does not expose route quest acceptance because F on the quest NPC owns that flow"), HasCommand(HUD->BuildVisibleCommands(), FName(TEXT("AcceptQuest"))));
 	TestFalse(TEXT("town HUD rejects route quest acceptance because F on the quest NPC owns that flow"), HUD->HandleDemoCommand(FName(TEXT("AcceptQuest"))));
 	TestTrue(TEXT("test flow marks the route quest accepted after the NPC interaction path"), Subsystem->AcceptQuest());
-	TestTrue(TEXT("follower joins after NPC quest acceptance"), Subsystem->GetRuntimeState().bFollowerJoined);
+	// New semantics: accepting the quest keeps the guide NPC in town. Simulate the dialog
+	// 入队 recruit (controller RecruitPendingTownNpc) at this HUD/subsystem layer so the
+	// later post-failure follower assertion still exercises a recruited follower.
+	TestFalse(TEXT("accepting the quest keeps the guide NPC in town until 入队"), Subsystem->GetRuntimeState().bFollowerJoined);
+	Subsystem->GetMutableRuntimeState().bFollowerJoined = true;
 
 	const int32 GoldBeforeRetiredTradeCommands = Subsystem->GetRuntimeState().PlayerGold;
 	TestFalse(TEXT("town HUD no longer exposes direct legacy buying"), HasCommand(HUD->BuildVisibleCommands(), FName(TEXT("BuyHealingPowder"))));

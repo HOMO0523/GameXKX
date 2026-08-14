@@ -2053,6 +2053,8 @@ bool UGameXXKBattleBoardWidget::BeginBattleVisualSession(const uint64 SessionTok
 	{
 		PrefetchPresentationEntry(Entry.QueueSerial);
 	}
+	UE_LOG(LogTemp, Warning, TEXT("[BattleVisual] BeginSession token=%llu unitVisuals=%d proxies=%d"),
+		SessionToken, UnitVisuals.Num(), UnitTargetProxies.Num());
 	return ActiveBattleVisualSessionToken == SessionToken;
 }
 
@@ -2062,6 +2064,9 @@ void UGameXXKBattleBoardWidget::CancelBattleVisualSession(const uint64 ClosingSe
 	{
 		return;
 	}
+	UE_LOG(LogTemp, Warning, TEXT("[BattleVisual] CancelSession token=%llu unitVisuals=%d proxies=%d queue=%d deferred=%d commitActive=%d"),
+		ClosingSessionToken, UnitVisuals.Num(), UnitTargetProxies.Num(), BattlePresentationQueue.Num(),
+		static_cast<int32>(DeferredBattlePresentationContinuation), bPlayedCardCommitActive ? 1 : 0);
 	ClearCardOutcomePreview();
 	ResetBattlePresentation();
 
@@ -2138,6 +2143,9 @@ void UGameXXKBattleBoardWidget::AdvanceVisualsAtRealTime(const double AbsoluteSe
 
 void UGameXXKBattleBoardWidget::HandleUnitTargetProxyClicked(const FName UnitId)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[TargetProxy] Clicked unit=%s targeting=%d pending=%d legal=%d"),
+		*UnitId.ToString(), IsCardTargetingActive() ? 1 : 0, IsBattlePresentationPending() ? 1 : 0,
+		LegalCardTargetUnitIds.Contains(UnitId) ? 1 : 0);
 	if (UnitId.IsNone())
 	{
 		return;
@@ -2176,13 +2184,13 @@ void UGameXXKBattleBoardWidget::HandleUnitTargetProxyHoverChanged(const FName Un
 {
 	if (bHovered)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[TargetProxy] Hover unit=%s targeting=%d legal=%d"),
+			*UnitId.ToString(), IsCardTargetingActive() ? 1 : 0,
+			LegalCardTargetUnitIds.Contains(UnitId) ? 1 : 0);
 		if (IsCardTargetingActive() && LegalCardTargetUnitIds.Contains(UnitId))
 		{
-			FVector2D TargetStageCenter;
-			if (TryResolveUnitTargetStageCenter(UnitId, TargetStageCenter))
-			{
-				TargetingPointerPosition = TargetStageCenter;
-			}
+			// The arrow tracks the cursor; hovering a legal target only feeds the
+			// outcome tooltip, it never snaps the arrow.
 			BuildCardOutcomePreview(PendingCardPreview.CardInstanceId, UnitId);
 		}
 		else
@@ -2288,6 +2296,33 @@ bool UGameXXKBattleBoardWidget::IsUnitTargetPlaceholderVisibleForTest(const FNam
 uint64 UGameXXKBattleBoardWidget::GetActiveBattleVisualSessionTokenForTest() const
 {
 	return ActiveBattleVisualSessionToken;
+}
+
+FString UGameXXKBattleBoardWidget::GetBattleBoardDebugStateForTest() const
+{
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	const FGameXXKPendingCardChoice* PendingChoice = State
+		&& State->Screen == EGameXXKScreen::Battle
+		&& State->CardRun.bHasActiveCardBattle
+		? &State->CardRun.ActiveBattle.Deck.PendingChoice
+		: nullptr;
+	return FString::Printf(
+		TEXT("token=%llu visuals=%d proxies=%d queue=%d commit=%d deferred=%d pending=%d mode=%d targeting=%d screen=%d choice=%d choiceCandidates=%d atlasPins=%d alive=%d"),
+		ActiveBattleVisualSessionToken,
+		UnitVisuals.Num(),
+		UnitTargetProxies.Num(),
+		BattlePresentationQueue.Num(),
+		bPlayedCardCommitActive ? 1 : 0,
+		static_cast<int32>(DeferredBattlePresentationContinuation),
+		IsBattlePresentationPending() ? 1 : 0,
+		static_cast<int32>(InteractionMode),
+		IsCardTargetingActive() ? 1 : 0,
+		State ? static_cast<int32>(State->Screen) : -1,
+		PendingChoice ? static_cast<int32>(PendingChoice->Kind) : -1,
+		PendingChoice ? PendingChoice->Candidates.Num() : -1,
+		PinnedUnitAtlasPaths.Num(),
+		GAliveBattleBoardInstances);
 }
 
 int32 UGameXXKBattleBoardWidget::GetPinnedBattleAtlasCountForTest() const
@@ -2568,6 +2603,18 @@ FReply UGameXXKBattleBoardWidget::NativeOnMouseButtonDown(const FGeometry& InGeo
 	{
 		return FReply::Handled();
 	}
+	if (IsCardTargetingActive() && InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		// Geometry-driven click fallback: commits a legal target even when the
+		// invisible target-proxy buttons are missing, hidden, or stale.
+		const FVector2D LocalPosition = InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition());
+		FName ResolvedUnitId = NAME_None;
+		if (TryResolveCardTargetUnitAtLocalPosition(LocalPosition, ResolvedUnitId))
+		{
+			HandleUnitTargetProxyClicked(ResolvedUnitId);
+			return FReply::Handled();
+		}
+	}
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
@@ -2662,6 +2709,9 @@ void UGameXXKBattleBoardWidget::RefreshFromState()
 	const bool bInBattle = Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle;
 	if (bInBattle && IsBattlePresentationPending())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[BattleVisual] RefreshFromState pending-branch queue=%d commit=%d deferred=%d token=%llu"),
+			BattlePresentationQueue.Num(), bPlayedCardCommitActive ? 1 : 0,
+			static_cast<int32>(DeferredBattlePresentationContinuation), ActiveBattleVisualSessionToken);
 		SetVisibility(ESlateVisibility::Visible);
 		if (ActiveBattleVisualSessionToken == 0)
 		{
@@ -2911,19 +2961,130 @@ bool UGameXXKBattleBoardWidget::ToggleCommandMenuForPartyUnit(int32 PartyIndex, 
 
 void UGameXXKBattleBoardWidget::UpdateTargetingPointer(FVector2D ScreenPosition)
 {
-	FVector2D LockedTargetStageCenter;
-	if (IsCardTargetingActive()
-		&& !CachedOutcomeTargetUnitId.IsNone()
-		&& LegalCardTargetUnitIds.Contains(CachedOutcomeTargetUnitId)
-		&& TryResolveUnitTargetStageCenter(CachedOutcomeTargetUnitId, LockedTargetStageCenter))
+	if (IsCardTargetingActive())
 	{
-		ScreenPosition = LockedTargetStageCenter;
+		// Geometry-driven hover fallback: the invisible target-proxy buttons are
+		// a visual layer only; hover feedback must not depend on them surviving.
+		// Without a real stage geometry (no viewport, isolated tests) the proxy
+		// hover path remains the only preview driver, so skip the tick fallback.
+		const FVector2D LocalSize = GetCachedGeometry().GetLocalSize();
+		const FGameXXKBattleHudSafeStageLayout SafeStage = ResolveBattleHudSafeStageLayoutForTest(LocalSize);
+		if (SafeStage.Scale > KINDA_SMALL_NUMBER)
+		{
+			FName ResolvedUnitId = NAME_None;
+			if (TryResolveCardTargetUnitAtLocalPosition(ScreenPosition, ResolvedUnitId)
+				&& LegalCardTargetUnitIds.Contains(ResolvedUnitId))
+			{
+				if (CachedOutcomeTargetUnitId != ResolvedUnitId)
+				{
+					BuildCardOutcomePreview(PendingCardPreview.CardInstanceId, ResolvedUnitId);
+				}
+			}
+			else if (!CachedOutcomeTargetUnitId.IsNone())
+			{
+				ClearCardOutcomePreview();
+			}
+		}
 	}
+
+	// The card-targeting arrow always tracks the cursor; it never snaps to a
+	// target (the outcome tooltip is the target feedback).
 	if (IsTargetingBattleActionForTest() && !TargetingPointerPosition.Equals(ScreenPosition, 0.5f))
 	{
 		TargetingPointerPosition = ScreenPosition;
 		InvalidateLayoutAndVolatility();
 	}
+}
+
+bool UGameXXKBattleBoardWidget::TryResolveCardTargetUnitAtLocalPosition(
+	const FVector2D LocalPosition,
+	FName& OutUnitId) const
+{
+	OutUnitId = NAME_None;
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if (!State || State->Screen != EGameXXKScreen::Battle || !State->CardRun.bHasActiveCardBattle)
+	{
+		return false;
+	}
+
+	const FVector2D LocalSize = GetCachedGeometry().GetLocalSize();
+	const FGameXXKBattleHudSafeStageLayout SafeStage = ResolveBattleHudSafeStageLayoutForTest(LocalSize);
+	if (SafeStage.Scale <= KINDA_SMALL_NUMBER || !FMath::IsFinite(LocalPosition.X) || !FMath::IsFinite(LocalPosition.Y))
+	{
+		return false;
+	}
+	return TryResolveCardTargetUnitAtStagePosition(
+		(LocalPosition - SafeStage.Offset) / SafeStage.Scale,
+		OutUnitId);
+}
+
+bool UGameXXKBattleBoardWidget::TryResolveCardTargetUnitAtStagePosition(
+	const FVector2D StagePosition,
+	FName& OutUnitId) const
+{
+	OutUnitId = NAME_None;
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if (!State || State->Screen != EGameXXKScreen::Battle || !State->CardRun.bHasActiveCardBattle
+		|| !FMath::IsFinite(StagePosition.X) || !FMath::IsFinite(StagePosition.Y))
+	{
+		return false;
+	}
+
+	// The interactive region is the full 410x410 formation sprite. Adjacent
+	// units may overlap at the edges, so overlapping hits resolve to the
+	// nearest unit center instead of the topmost widget.
+	FName BestUnitId = NAME_None;
+	double BestDistanceSquared = TNumericLimits<double>::Max();
+	for (const FGameXXKCardCombatUnit& Unit : State->CardRun.ActiveBattle.Units)
+	{
+		if (Unit.UnitId.IsNone() || (!Unit.bLiving && !IsUnitRetainedByPresentation(Unit.UnitId)))
+		{
+			continue;
+		}
+		FGameXXKBattleUnitHudView View;
+		if (!FGameXXKBattlePresentation::BuildUnitHudView(
+			State->CardRun.ActiveBattle,
+			Unit.UnitId,
+			ResolveProjectedUnitHudDisplayName(Unit.UnitId),
+			View))
+		{
+			continue;
+		}
+		FGameXXKFixedUnitHudLayout FixedLayout;
+		if (!TryResolveFixedUnitHudLayout(View, FixedLayout))
+		{
+			continue;
+		}
+		const FVector2D FormationAnchor(
+			FixedLayout.Anchors.Minimum.X,
+			FixedLayout.Anchors.Minimum.Y + FormationVisualVerticalOffsetNormalized);
+		const FVector2D Center(
+			FormationAnchor.X * BattleHudSafeStageDesignSize.X,
+			FormationAnchor.Y * BattleHudSafeStageDesignSize.Y);
+		const FBox2D UnitRect(
+			Center - FormationVisualSize * 0.5f,
+			Center + FormationVisualSize * 0.5f);
+		if (UnitRect.IsInside(StagePosition))
+		{
+			const double DistanceSquared = FVector2D::DistSquared(StagePosition, Center);
+			if (DistanceSquared < BestDistanceSquared)
+			{
+				BestDistanceSquared = DistanceSquared;
+				BestUnitId = Unit.UnitId;
+			}
+		}
+	}
+	OutUnitId = BestUnitId;
+	return !BestUnitId.IsNone();
+}
+
+bool UGameXXKBattleBoardWidget::TryResolveCardTargetUnitAtStagePositionForTest(
+	const FVector2D StagePosition,
+	FName& OutUnitId) const
+{
+	return TryResolveCardTargetUnitAtStagePosition(StagePosition, OutUnitId);
 }
 
 void UGameXXKBattleBoardWidget::UpdateTargetingPointerFromSlateAbsolutePosition(FVector2D ScreenPosition)
@@ -3554,6 +3715,8 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 {
 	if (ActiveBattleVisualSessionToken == 0 || !BattleDesignStage || !WidgetTree || !AtlasCache)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[BattleVisual] RefreshUnitVisuals SKIPPED token=%llu stage=%d tree=%d cache=%d"),
+			ActiveBattleVisualSessionToken, BattleDesignStage ? 1 : 0, WidgetTree ? 1 : 0, AtlasCache ? 1 : 0);
 		return;
 	}
 
@@ -3832,6 +3995,8 @@ void UGameXXKBattleBoardWidget::ReleasePinnedAtlasForUnit(const FName UnitId)
 
 void UGameXXKBattleBoardWidget::RemoveUnitVisual(const FName UnitId)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[BattleVisual] RemoveUnitVisual unit=%s visuals=%d proxies=%d token=%llu"),
+		*UnitId.ToString(), UnitVisuals.Num(), UnitTargetProxies.Num(), ActiveBattleVisualSessionToken);
 	ClearCardOutcomePreview();
 	ReleasePinnedAtlasForUnit(UnitId);
 	RequestedUnitAtlasPaths.Remove(UnitId);
@@ -5692,7 +5857,8 @@ void UGameXXKBattleBoardWidget::RefreshHandCards()
 		? State->CardRun.ActiveBattle.Deck.PendingChoice.Kind
 		: EGameXXKCardPendingChoiceKind::None;
 	const bool bHasBlockingCardChoice = PendingChoiceKind == EGameXXKCardPendingChoiceKind::InsightChooseToHand
-		|| PendingChoiceKind == EGameXXKCardPendingChoiceKind::ForcedDiscard;
+		|| PendingChoiceKind == EGameXXKCardPendingChoiceKind::ForcedDiscard
+		|| PendingChoiceKind == EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand;
 	// Enemy intent Reveal/Resolve/Settle owns the board. The cards stay visible
 	// for spatial continuity, but their buttons must not remain interactive while
 	// the runtime phase is Enemy.

@@ -57,7 +57,9 @@ bool FGameXXKOneGameIslandRouteMapBridgeTest::RunTest(const FString& Parameters)
 		TEXT("bridge can prime a real battle state for the 1Game route map"),
 		AGameXXKOneGameIslandRouteMapBridge::PrimeBattleSubsystemForIslandRoute(*Subsystem));
 	TestEqual(TEXT("bridge battle state is the real battle screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
-	TestTrue(TEXT("bridge battle state includes the quest follower"), Subsystem->GetRuntimeState().bFollowerJoined);
+	// New semantics: the bridge primes a battle through accept + dungeon entry, which no
+	// longer joins the narrative follower. The follower only joins via the dialog 入队 action.
+	TestFalse(TEXT("bridge battle state keeps the quest follower unrecruited until 入队"), Subsystem->GetRuntimeState().bFollowerJoined);
 
 	return true;
 }

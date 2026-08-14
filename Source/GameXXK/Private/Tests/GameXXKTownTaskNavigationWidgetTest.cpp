@@ -53,8 +53,8 @@ bool FGameXXKTownTaskNavigationWidgetTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("an offer cannot accept a task id that is not visible in the active offer panel"), PlayerController->AcceptTaskOfferById(FName(TEXT("Task.NotVisible"))));
 	TestTrue(TEXT("accept action resolves through the visible task id and pending quest NPC"), Widget->TriggerPrimaryTaskActionForTest());
 	TestEqual(TEXT("accept action marks the quest accepted"), State.QuestState, EGameXXKQuestState::Accepted);
-	TestTrue(TEXT("accept action preserves follower activation"), QuestNpc->IsFollowerActive());
-	TestTrue(TEXT("accept action preserves follower target"), QuestNpc->GetFollowTarget() == QuestPawn);
+	TestFalse(TEXT("accept action keeps the guide in town instead of activating a follower"), QuestNpc->IsFollowerActive());
+	TestNull(TEXT("accept action leaves no follower target before 入队"), QuestNpc->GetFollowTarget());
 	TestTrue(TEXT("offer panel stays open after acceptance"), Widget->IsTaskPanelOpenForTest());
 	TestTrue(TEXT("offer panel remains in available-task mode after acceptance"), Widget->IsShowingTaskOffersForTest());
 	TestEqual(TEXT("accepted task disappears from the available list"), Widget->GetVisibleTaskCountForTest(), 0);

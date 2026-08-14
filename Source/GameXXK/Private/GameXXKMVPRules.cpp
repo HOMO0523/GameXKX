@@ -1804,10 +1804,9 @@ bool UGameXXKMVPRules::AcceptTownQuest(FGameXXKRuntimeState& State)
 	{
 		return false;
 	}
+	// Accepting the quest keeps the guide NPC in town. The player recruits the
+	// narrative follower explicitly through the NPC dialog's 入队 action.
 	State.QuestState = EGameXXKQuestState::Accepted;
-	State.bFollowerJoined = true;
-	State.bHasQuestNpcLocation = false;
-	State.QuestNpcLocation = FVector::ZeroVector;
 	State.TrackedTaskId = NAME_None;
 	DiscoverCodexEntry(State, GameXXKMVP::CodexGuideName);
 	return true;

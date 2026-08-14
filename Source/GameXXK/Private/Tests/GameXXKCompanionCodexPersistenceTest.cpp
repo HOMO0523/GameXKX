@@ -52,12 +52,17 @@ bool FGameXXKCompanionCodexPersistenceTest::RunTest(const FString& Parameters)
 	InvalidCurrentFollowerSave.RuntimeState.bFollowerJoined = false;
 	FGameXXKRuntimeState InvalidCurrentFollowerState;
 	FGameXXKSaveMigrationReport InvalidCurrentFollowerReport;
-	TestFalse(
-		TEXT("current saves reject an accepted quest without its required follower"),
+	// New semantics: accepting the quest keeps the guide in town. An accepted
+	// quest without a recruited follower is a legal current save.
+	TestTrue(
+		TEXT("current saves accept an accepted quest without its follower until 入队 recruits it"),
 		FGameXXKSaveMigration::TryRestoreRuntimeState(
 			InvalidCurrentFollowerSave,
 			InvalidCurrentFollowerState,
 			InvalidCurrentFollowerReport));
+	TestFalse(
+		TEXT("current-save restore keeps the guide unrecruited until 入队"),
+		InvalidCurrentFollowerState.bFollowerJoined);
 
 	FGameXXKSaveState VersionFourteenSave = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
 	VersionFourteenSave.SaveVersion = 14;

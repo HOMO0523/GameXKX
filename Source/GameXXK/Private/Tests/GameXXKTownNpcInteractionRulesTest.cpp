@@ -79,6 +79,10 @@ bool FGameXXKTownNpcInteractionRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("town-NPC fixture opens the world map"), Subsystem->OpenWorldMap());
 	TestTrue(TEXT("town-NPC fixture enters Qingshan town"), Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan()));
 	TestTrue(TEXT("town-NPC fixture accepts the narrative quest"), Subsystem->AcceptQuest());
+	// New semantics: accepting the quest keeps the guide NPC in town. Simulate the dialog
+	// 入队 recruit (controller RecruitPendingTownNpc) so the route-support selection path
+	// below still verifies it preserves an already-recruited narrative follower.
+	Subsystem->GetMutableRuntimeState().bFollowerJoined = true;
 	const FVector NarrativeFollowerLocation(320.0f, -96.0f, 72.0f);
 	Subsystem->RecordQuestNpcLocation(NarrativeFollowerLocation);
 	TestTrue(TEXT("Yue Bai can be selected directly from the town interaction"), Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.YueBai")));

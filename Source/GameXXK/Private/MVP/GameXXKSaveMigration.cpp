@@ -1129,11 +1129,9 @@ bool FGameXXKSaveMigration::TryRestoreRuntimeState(
 bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& State, FString& OutError)
 {
 	OutError.Reset();
-	if (State.QuestState == EGameXXKQuestState::Accepted && !State.bFollowerJoined)
-	{
-		OutError = TEXT("An accepted quest is missing its required task-NPC follower.");
-		return false;
-	}
+	// Accepted-without-follower is a legal current save: the guide NPC stays in
+	// town until the player recruits it through the dialog's 入队 action. Legacy
+	// saves are still upgraded to a joined follower by the version migration path.
 	const int32 EffectiveMaxHP = FMath::Max(
 		1,
 		State.PlayerMaxHP + FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxHealth));
