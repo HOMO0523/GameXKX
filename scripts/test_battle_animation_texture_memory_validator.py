@@ -37,6 +37,11 @@ class BattleAnimationTextureMemoryValidatorTests(unittest.TestCase):
             16 * 1024 * 1024,
         )
 
+    def test_production_target_is_2k_atlas(self) -> None:
+        validator = load_validator()
+        self.assertEqual(validator.ATLAS_SIZE, 2048)
+        self.assertEqual(validator.MAX_RESOURCE_SIZE_BYTES, 8 * 1024 * 1024)
+
     def test_report_rejects_any_texture_that_drifted_from_bc7_policy(self) -> None:
         validator = load_validator()
 

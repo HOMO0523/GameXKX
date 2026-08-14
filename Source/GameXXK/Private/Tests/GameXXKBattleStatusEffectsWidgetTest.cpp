@@ -529,12 +529,12 @@ bool FGameXXKBattleStatusEffectsWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("negative net stacks request only the generic Debuff action"),
 		FDeltaApi::Action(StatusBefore, StatusAfter, 1),
 		EGameXXKBattleAnimationAction::Debuff);
-	TestEqual(TEXT("generic Buff uses the one approved atlas"),
+	TestEqual(TEXT("generic Buff uses the one approved 2K sibling atlas"),
 		FGameXXKBattleAnimationPresentation::ResolveGenericClip(EGameXXKBattleAnimationAction::Buff).AssetId,
-		FString(TEXT("status_buff_generic")));
-	TestEqual(TEXT("generic Debuff uses the one approved atlas"),
+		FString(TEXT("status_buff_2k_generic")));
+	TestEqual(TEXT("generic Debuff uses the one approved 2K sibling atlas"),
 		FGameXXKBattleAnimationPresentation::ResolveGenericClip(EGameXXKBattleAnimationAction::Debuff).AssetId,
-		FString(TEXT("status_debuff_generic")));
+		FString(TEXT("status_debuff_2k_generic")));
 
 	UGameInstance* const StatusGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const StatusSubsystem = NewObject<UGameXXKMVPSubsystem>(StatusGameInstance);

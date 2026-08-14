@@ -217,30 +217,30 @@ bool FGameXXKBattlePresentationRhythmTest::RunTest(const FString& Parameters)
 
 bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("Player resolves the approved hero source"),
+	TestEqual(TEXT("Player resolves the 2K production sibling of the hero source"),
 		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Player"), false),
-		FString(TEXT("character_00_hero")));
-	TestEqual(TEXT("persistent Blade resolves its distinct source"),
+		FString(TEXT("character_00_hero_2k")));
+	TestEqual(TEXT("persistent Blade resolves its 2K sibling source"),
 		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("CompanionInstance.Companion_Blade_01"), false),
-		FString(TEXT("character_01_blade")));
-	TestEqual(TEXT("Zhou Guang Zu resolves the approved fox-and-scroll source"),
+		FString(TEXT("character_01_blade_2k")));
+	TestEqual(TEXT("Zhou Guang Zu resolves its 2K sibling source"),
 		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Npc.ZhouGuangZu"), false),
-		FString(TEXT("character_10_zhou_guang_zu")));
-	TestEqual(TEXT("chapter-one rooster resolves its own monster source"),
+		FString(TEXT("character_10_zhou_guang_zu_2k")));
+	TestEqual(TEXT("chapter-one rooster resolves its 2K sibling monster source"),
 		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Enemy.Ch1.Rooster"), true),
-		FString(TEXT("enemy_01_rooster")));
-	TestEqual(TEXT("chapter-two gray wolf resolves its own monster source"),
+		FString(TEXT("enemy_01_rooster_2k")));
+	TestEqual(TEXT("chapter-two gray wolf resolves its 2K sibling monster source"),
 		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Enemy.Ch2.GrayWolf"), true),
-		FString(TEXT("enemy_07_graywolf")));
-	TestEqual(TEXT("legacy BlackBear resolves the approved boss source"),
+		FString(TEXT("enemy_07_graywolf_2k")));
+	TestEqual(TEXT("legacy BlackBear resolves the 2K sibling boss source"),
 		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("BlackBear"), true),
-		FString(TEXT("enemy_20_blackbear_boss")));
+		FString(TEXT("enemy_20_blackbear_boss_2k")));
 
 	const FGameXXKBattleAnimationClipDescriptor HeroAttack =
 		FGameXXKBattleAnimationPresentation::ResolveClip(TEXT("Player"), false, EGameXXKBattleAnimationAction::Attack);
 	TestTrue(TEXT("hero attack descriptor is valid"), HeroAttack.IsValid());
-	TestEqual(TEXT("hero attack uses the imported production atlas"), HeroAttack.TexturePath.ToString(),
-		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_00_hero_attack_atlas.T_character_00_hero_attack_atlas")));
+	TestEqual(TEXT("hero attack uses the imported 2K production atlas"), HeroAttack.TexturePath.ToString(),
+		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_00_hero_2k_attack_atlas.T_character_00_hero_2k_attack_atlas")));
 	TestEqual(TEXT("production clips retain sixty generated frames"), HeroAttack.FrameCount, 60);
 	TestEqual(TEXT("production atlases use an eight by eight grid"), HeroAttack.Columns, 8);
 	TestEqual(TEXT("production source playback is twelve fps"), HeroAttack.SourceFramesPerSecond, 12.0f);
@@ -269,12 +269,12 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("generic impact descriptor is valid"), GenericImpact.IsValid());
 	TestTrue(TEXT("generic buff descriptor is valid"), GenericBuff.IsValid());
 	TestTrue(TEXT("generic debuff descriptor is valid"), GenericDebuff.IsValid());
-	TestEqual(TEXT("generic impact uses the exact approved atlas path"), GenericImpact.TexturePath.ToString(),
-		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_impact_ink_generic_atlas.T_impact_ink_generic_atlas")));
-	TestEqual(TEXT("generic buff uses the exact approved atlas path"), GenericBuff.TexturePath.ToString(),
-		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_status_buff_generic_atlas.T_status_buff_generic_atlas")));
-	TestEqual(TEXT("generic debuff uses the exact approved atlas path"), GenericDebuff.TexturePath.ToString(),
-		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_status_debuff_generic_atlas.T_status_debuff_generic_atlas")));
+	TestEqual(TEXT("generic impact uses the 2K sibling atlas path"), GenericImpact.TexturePath.ToString(),
+		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_impact_ink_2k_generic_atlas.T_impact_ink_2k_generic_atlas")));
+	TestEqual(TEXT("generic buff uses the 2K sibling atlas path"), GenericBuff.TexturePath.ToString(),
+		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_status_buff_2k_generic_atlas.T_status_buff_2k_generic_atlas")));
+	TestEqual(TEXT("generic debuff uses the 2K sibling atlas path"), GenericDebuff.TexturePath.ToString(),
+		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_status_debuff_2k_generic_atlas.T_status_debuff_2k_generic_atlas")));
 	TestEqual(TEXT("generic impact plays at four times speed"), GenericImpact.PlaybackRate, 4.0f);
 	TestEqual(TEXT("generic buff plays at source speed"), GenericBuff.PlaybackRate, 1.0f);
 	TestEqual(TEXT("generic debuff plays at source speed"), GenericDebuff.PlaybackRate, 1.0f);
@@ -283,12 +283,12 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 		FGameXXKBattleAnimationPresentation::GetImpactRuntimeSeconds(), 1.1f);
 	TestEqual(TEXT("runtime impact samples the synchronized source frame"),
 		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(HeroAttack, 1.1f, false), 26);
-	TestEqual(TEXT("hero scene idle resolves the production PaperFlipbook path"),
+	TestEqual(TEXT("hero scene idle resolves the 2K production PaperFlipbook path"),
 		FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(TEXT("Player"), false).ToString(),
-		FString(TEXT("/Game/GameXXK/BattleAnimations/IdleFlipbooks/FB_character_00_hero_idle.FB_character_00_hero_idle")));
-	TestEqual(TEXT("rooster scene idle resolves the production PaperFlipbook path"),
+		FString(TEXT("/Game/GameXXK/BattleAnimations/IdleFlipbooks/FB_character_00_hero_2k_idle.FB_character_00_hero_2k_idle")));
+	TestEqual(TEXT("rooster scene idle resolves the 2K production PaperFlipbook path"),
 		FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(TEXT("Enemy.Ch1.Rooster"), true).ToString(),
-		FString(TEXT("/Game/GameXXK/BattleAnimations/IdleFlipbooks/FB_enemy_01_rooster_idle.FB_enemy_01_rooster_idle")));
+		FString(TEXT("/Game/GameXXK/BattleAnimations/IdleFlipbooks/FB_enemy_01_rooster_2k_idle.FB_enemy_01_rooster_2k_idle")));
 	TestEqual(TEXT("non-looping playback holds the last generated frame"),
 		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(HeroAttack, 3.0f, false), 59);
 	TestEqual(TEXT("negative elapsed time samples the first frame"),
@@ -351,34 +351,35 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("gray-wolf death remains available"),
 		FGameXXKBattleAnimationPresentation::ResolveClip(
 			TEXT("Enemy.Ch2.GrayWolf"), true, EGameXXKBattleAnimationAction::Death).IsValid());
-	TestEqual(TEXT("unknown Enemy_07 token intentionally uses the rooster fallback"),
+	TestEqual(TEXT("unknown Enemy_07 token uses the 2K rooster sibling by default"),
 		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Enemy_07"), true),
-		FString(TEXT("enemy_01_rooster")));
-	TestTrue(TEXT("unknown Enemy_07 attack resolves through the rooster fallback"),
+		FString(TEXT("enemy_01_rooster_2k")));
+	TestTrue(TEXT("unknown Enemy_07 attack resolves through the 2K rooster sibling"),
 		FGameXXKBattleAnimationPresentation::ResolveClip(
 			TEXT("Enemy_07"), true, EGameXXKBattleAnimationAction::Attack).IsValid());
-	// Resolution-suffix convention: ".2K"/".1K" runtime tokens select sibling downscaled asset sets.
-	TestEqual(TEXT("a 2K hero token resolves the 2K hero sibling asset set"),
-		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Hero.Two.2K"), false),
+	// Resolution-suffix convention: production ids default to the "_2k" sibling set, while
+	// explicit ".4K"/".1K" tokens select the untouched 4K masters or the 1K siblings.
+	TestEqual(TEXT("a 4K hero token resolves the untouched hero master set"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Hero.One.4K"), false),
+		FString(TEXT("character_00_hero")));
+	TestEqual(TEXT("an unsuffixed hero id resolves the 2K production sibling set"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Hero.Two"), false),
 		FString(TEXT("character_00_hero_2k")));
-	TestEqual(TEXT("a 1K hero token resolves the 1K hero sibling asset set"),
+	TestEqual(TEXT("a 1K hero token resolves the 1K hero sibling set"),
 		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Hero.Three.1K"), false),
 		FString(TEXT("character_00_hero_1k")));
-	TestEqual(TEXT("a 2K rooster token resolves the 2K rooster sibling asset set"),
-		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Rooster.Two.2K"), true),
+	TestEqual(TEXT("a 4K rooster token resolves the untouched rooster master set"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Rooster.One.4K"), true),
+		FString(TEXT("enemy_01_rooster")));
+	TestEqual(TEXT("an unsuffixed rooster id resolves the 2K rooster sibling set"),
+		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Rooster.Two"), true),
 		FString(TEXT("enemy_01_rooster_2k")));
-	TestEqual(TEXT("a 1K rooster token resolves the 1K rooster sibling asset set"),
+	TestEqual(TEXT("a 1K rooster token resolves the 1K rooster sibling set"),
 		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Rooster.Three.1K"), true),
 		FString(TEXT("enemy_01_rooster_1k")));
-	TestEqual(TEXT("the unsuffixed pilot hero token keeps the original hero asset set"),
-		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Hero.One"), false),
-		FString(TEXT("character_00_hero")));
-	TestEqual(TEXT("the unsuffixed pilot rooster token keeps the original rooster asset set"),
-		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Pilot.Rooster.One"), true),
-		FString(TEXT("enemy_01_rooster")));
-	TestEqual(TEXT("production unit ids never resolve through the suffix convention"),
+	TestEqual(TEXT("production party ids resolve the 2K sibling set without tokens"),
 		FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(TEXT("Player"), false),
-		FString(TEXT("character_00_hero")));
+		FString(TEXT("character_00_hero_2k")));
 	const FGameXXKBattleAnimationClipDescriptor AuthoritativeTigerAttack =
 		FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
 			TEXT("OpaqueEnemy.P3"),
@@ -387,10 +388,10 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 			EGameXXKBattleAnimationAction::Attack);
 	TestEqual(TEXT("enemy attacks prefer the authoritative definition instead of the legacy runtime-id fallback"),
 		AuthoritativeTigerAttack.AssetId,
-		FString(TEXT("enemy_21_tiger_boss_attack")));
-	TestEqual(TEXT("the authoritative enemy attack resolves the production tiger close-up atlas"),
+		FString(TEXT("enemy_21_tiger_boss_2k_attack")));
+	TestEqual(TEXT("the authoritative enemy attack resolves the production 2K tiger close-up atlas"),
 		AuthoritativeTigerAttack.TexturePath.ToString(),
-		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_enemy_21_tiger_boss_attack_atlas.T_enemy_21_tiger_boss_attack_atlas")));
+		FString(TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_enemy_21_tiger_boss_2k_attack_atlas.T_enemy_21_tiger_boss_2k_attack_atlas")));
 
 	FGameXXKBattleAnimationClipDescriptor InvalidDescriptor = HeroAttack;
 	InvalidDescriptor.AssetId.Reset();
@@ -648,8 +649,8 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("imported production hero idle is loadable by the scene actor"), HeroActor->GetCurrentBattleFlipbook());
 	if (HeroActor->GetCurrentBattleFlipbook())
 	{
-		TestTrue(TEXT("scene hero prefers the imported production idle over the legacy portrait flipbook"),
-			HeroActor->GetCurrentBattleFlipbook()->GetPathName().Contains(TEXT("FB_character_00_hero_idle")));
+		TestTrue(TEXT("scene hero prefers the 2K production idle sibling over the legacy portrait flipbook"),
+			HeroActor->GetCurrentBattleFlipbook()->GetPathName().Contains(TEXT("FB_character_00_hero_2k_idle")));
 	}
 
 	FGameXXKBattleRuntimeUnit RoosterUnit = HeroUnit;
@@ -660,8 +661,8 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("imported production rooster idle is loadable by the scene actor"), RoosterActor->GetCurrentBattleFlipbook());
 	if (RoosterActor->GetCurrentBattleFlipbook())
 	{
-		TestTrue(TEXT("scene rooster prefers its own production idle instead of the money-rat placeholder"),
-			RoosterActor->GetCurrentBattleFlipbook()->GetPathName().Contains(TEXT("FB_enemy_01_rooster_idle")));
+		TestTrue(TEXT("scene rooster prefers its 2K production idle sibling instead of the money-rat placeholder"),
+			RoosterActor->GetCurrentBattleFlipbook()->GetPathName().Contains(TEXT("FB_enemy_01_rooster_2k_idle")));
 	}
 
 	return true;

@@ -76,9 +76,9 @@ bool FGameXXKCardRouteEventSupportTest::RunTest(const FString& Parameters)
 			if (QuestNpcFlipbook)
 			{
 				TestEqual(
-					TEXT("the accepted Yue Bai NPC uses its dedicated battle flipbook"),
+					TEXT("the accepted Yue Bai NPC uses its dedicated 2K battle flipbook"),
 					QuestNpcFlipbook->GetPathName(),
-					FString(TEXT("/Game/GameXXK/BattleAnimations/IdleFlipbooks/FB_character_09_yue_bai_idle.FB_character_09_yue_bai_idle")));
+					FString(TEXT("/Game/GameXXK/BattleAnimations/IdleFlipbooks/FB_character_09_yue_bai_2k_idle.FB_character_09_yue_bai_2k_idle")));
 			}
 		}
 	}

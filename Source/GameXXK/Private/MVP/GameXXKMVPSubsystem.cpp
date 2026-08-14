@@ -791,15 +791,14 @@ bool UGameXXKMVPSubsystem::ApplyPilotComparisonFixtureForTest(FString& OutError)
 
 	FGameXXKRuntimeState FixtureState = RuntimeState;
 	FixtureState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Player;
-	// Three party units with deliberately unmapped runtime ids: the animation presentation
-	// falls back to the hero asset for unknown party units, and to the rooster asset for
-	// unknown enemies. The ".2K"/".1K" id tokens select the sibling downscaled asset sets,
-	// so one scene compares the three atlas resolutions side by side.
-	const FName HeroOneId(TEXT("Pilot.Hero.One"));
-	const FName HeroTwoId(TEXT("Pilot.Hero.Two.2K"));
+	// Three party units with deliberately unmapped runtime ids.  The ".4K" token selects the
+	// untouched 4K masters, the plain id selects the default 2K production siblings, and the
+	// ".1K" token selects the quarter-resolution siblings, so one scene compares all three.
+	const FName HeroOneId(TEXT("Pilot.Hero.One.4K"));
+	const FName HeroTwoId(TEXT("Pilot.Hero.Two"));
 	const FName HeroThreeId(TEXT("Pilot.Hero.Three.1K"));
-	const FName RoosterOneId(TEXT("Pilot.Rooster.One"));
-	const FName RoosterTwoId(TEXT("Pilot.Rooster.Two.2K"));
+	const FName RoosterOneId(TEXT("Pilot.Rooster.One.4K"));
+	const FName RoosterTwoId(TEXT("Pilot.Rooster.Two"));
 	const FName RoosterThreeId(TEXT("Pilot.Rooster.Three.1K"));
 
 	FGameXXKCardCombatUnit HeroOne = MakeBattleHudFixtureCombatUnit(

@@ -294,10 +294,12 @@ def _create_idle_flipbook(entry: AnimationAssetEntry, texture: object) -> tuple[
     return flipbook, created_sprites, bool(created_flipbook)
 
 
-def _select_entries(entries: list, asset_ids: set[str] | None, limit: int) -> list:
+def _select_entries(entries: list, asset_ids: set[str] | None, limit: int, offset: int = 0) -> list:
     """Filter by BASE asset ids and limit BEFORE any variant-suffix rename."""
     if asset_ids:
         entries = [entry for entry in entries if entry.asset_id in asset_ids]
+    if offset > 0:
+        entries = entries[offset:]
     if limit > 0:
         entries = entries[:limit]
     return entries
@@ -311,6 +313,7 @@ def import_production(
     one_k: bool = False,
     restore: bool = False,
     variant_suffix: str = "",
+    offset: int = 0,
 ) -> dict:
     _require_unreal()
     if two_k and one_k:
@@ -327,7 +330,7 @@ def import_production(
     else:
         replace_existing = False
     entries = discover_animation_assets(_project_root() / PRODUCTION_RELATIVE_ROOT)
-    entries = _select_entries(entries, asset_ids, limit)
+    entries = _select_entries(entries, asset_ids, limit, offset)
     if variant_suffix:
         entries = _with_variant_suffix(entries, variant_suffix)
         replace_existing = False
@@ -353,6 +356,10 @@ def import_production(
                 created_flipbook=created_flipbook,
             )
         results.append(item)
+        # Release UE object references immediately: batch drivers GC between chunks, and
+        # retaining every texture/sprites of a chunk is what OOM-ed 16 GB machines before.
+        texture = None
+        flipbook = None
     return {
         "ok": True,
         "asset_root": ATLAS_ASSET_DIR,
@@ -374,6 +381,7 @@ def main() -> None:
     parser.add_argument("--one-k", action="store_true")
     parser.add_argument("--restore", action="store_true")
     parser.add_argument("--variant-suffix", default="")
+    parser.add_argument("--offset", type=int, default=0)
     args = parser.parse_args()
     print(json.dumps(
         import_production(
@@ -384,6 +392,7 @@ def main() -> None:
             args.one_k,
             args.restore,
             args.variant_suffix,
+            args.offset,
         ),
         ensure_ascii=False,
     ))

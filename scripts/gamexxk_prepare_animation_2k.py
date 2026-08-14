@@ -93,11 +93,24 @@ def prepare_asset(asset_id: str, atlas_size: int = 2048) -> dict:
     }
 
 
+def discover_all_asset_ids() -> list[str]:
+    """Enumerate every production asset that owns a valid manifest (disk-only)."""
+    ids = []
+    for manifest_path in sorted(PRODUCTION_ROOT.glob("*/manifest.json")):
+        asset_id = manifest_path.parent.name
+        if asset_id:
+            ids.append(asset_id)
+    return ids
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("asset_ids", nargs="*", default=list(DEFAULT_ASSET_IDS))
     parser.add_argument("--atlas-size", type=int, default=2048)
+    parser.add_argument("--all", action="store_true")
     args = parser.parse_args()
+    if args.all:
+        args.asset_ids = discover_all_asset_ids()
     results = []
     for asset_id in args.asset_ids:
         results.append(prepare_asset(asset_id, args.atlas_size))

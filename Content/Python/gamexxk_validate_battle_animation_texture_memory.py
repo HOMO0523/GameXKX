@@ -13,8 +13,10 @@ except ImportError:  # Pure report tests run outside the editor.
 
 
 ATLAS_ASSET_DIR = "/Game/GameXXK/BattleAnimations/Atlases"
-ATLAS_SIZE = 4096
-MAX_RESOURCE_SIZE_BYTES = 20 * 1024 * 1024
+# 2026-08-14 memory optimization: production atlases now ship at 2K (2048x2048, BC7).
+# The 4K masters remain on disk for restore; flip this back if the 4K rollout is restored.
+ATLAS_SIZE = 2048
+MAX_RESOURCE_SIZE_BYTES = 8 * 1024 * 1024
 PILOT_ASSET_IDS = {
     "character_00_hero_idle",
     "character_00_hero_attack",

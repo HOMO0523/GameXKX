@@ -78,6 +78,13 @@ class PrepareAnimationDownscaleTests(unittest.TestCase):
             {"character_00_hero_idle", "character_00_hero_attack", "enemy_01_rooster_idle"},
         )
 
+    def test_discovers_all_production_assets(self) -> None:
+        ids = prepare.discover_all_asset_ids()
+        self.assertEqual(len(ids), 138)
+        self.assertIn("character_00_hero_idle", ids)
+        self.assertIn("enemy_21_tiger_boss_idle", ids)
+        self.assertIn("impact_ink_generic", ids)
+
 
 if __name__ == "__main__":
     unittest.main()

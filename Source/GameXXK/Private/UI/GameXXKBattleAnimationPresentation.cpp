@@ -202,18 +202,20 @@ FString FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(const FName Runt
 		}
 	}
 
-	// Resolution-suffix convention: a runtime unit id carrying a ".2K" or ".1K" token selects the
-	// correspondingly suffixed sibling asset set, letting one battle scene compare atlas
-	// resolutions side by side. Production unit ids never carry these tokens.
-	if (RuntimeId.Contains(TEXT(".2K"), ESearchCase::IgnoreCase))
+	// Resolution-suffix convention (memory optimization, 2026-08-14):
+	//   default -> the production "_2k" sibling asset set;
+	//   ".4K"    -> the original 4K masters, kept untouched as source of truth;
+	//   ".1K"    -> quarter-resolution siblings reserved for the future mini-window mode.
+	// Production unit ids never carry these tokens, so they always get the 2K set.
+	if (RuntimeId.Contains(TEXT(".4K"), ESearchCase::IgnoreCase))
 	{
-		return BaseAssetId + TEXT("_2k");
+		return BaseAssetId;
 	}
 	if (RuntimeId.Contains(TEXT(".1K"), ESearchCase::IgnoreCase))
 	{
 		return BaseAssetId + TEXT("_1k");
 	}
-	return BaseAssetId;
+	return BaseAssetId + TEXT("_2k");
 }
 
 FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::ResolveClip(
@@ -227,7 +229,7 @@ FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::Resol
 		return {};
 	}
 	const FString UnitAssetId = ResolveUnitAssetId(RuntimeUnitId, bEnemy);
-	if (UnitAssetId == TEXT("enemy_07_graywolf") && Action == EGameXXKBattleAnimationAction::Attack)
+	if (UnitAssetId.Contains(TEXT("enemy_07_graywolf")) && Action == EGameXXKBattleAnimationAction::Attack)
 	{
 		return {};
 	}
@@ -257,11 +259,11 @@ FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::Resol
 	switch (Action)
 	{
 	case EGameXXKBattleAnimationAction::Buff:
-		return MakeClip(TEXT("status_buff_generic"), 1.0f);
+		return MakeClip(TEXT("status_buff_2k_generic"), 1.0f);
 	case EGameXXKBattleAnimationAction::Debuff:
-		return MakeClip(TEXT("status_debuff_generic"), 1.0f);
+		return MakeClip(TEXT("status_debuff_2k_generic"), 1.0f);
 	case EGameXXKBattleAnimationAction::Impact:
-		return MakeClip(TEXT("impact_ink_generic"), 4.0f);
+		return MakeClip(TEXT("impact_ink_2k_generic"), 4.0f);
 	default:
 		return {};
 	}

@@ -829,7 +829,7 @@ bool FGameXXKPilotComparisonFixtureTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("pilot fixture ids carry the resolution tokens for side-by-side comparison"),
 		FixtureView.CardRun.ActiveBattle.Units.ContainsByPredicate([](const FGameXXKCardCombatUnit& Unit)
 		{
-			return Unit.UnitId == TEXT("Pilot.Hero.Two.2K");
+			return Unit.UnitId == TEXT("Pilot.Hero.One.4K");
 		})
 		&& FixtureView.CardRun.ActiveBattle.Units.ContainsByPredicate([](const FGameXXKCardCombatUnit& Unit)
 		{
@@ -837,13 +837,13 @@ bool FGameXXKPilotComparisonFixtureTest::RunTest(const FString& Parameters)
 		})
 		&& FixtureView.CardRun.ActiveBattle.Units.ContainsByPredicate([](const FGameXXKCardCombatUnit& Unit)
 		{
-			return Unit.UnitId == TEXT("Pilot.Rooster.Two.2K");
+			return Unit.UnitId == TEXT("Pilot.Rooster.One.4K");
 		})
 		&& FixtureView.CardRun.ActiveBattle.Units.ContainsByPredicate([](const FGameXXKCardCombatUnit& Unit)
 		{
 			return Unit.UnitId == TEXT("Pilot.Rooster.Three.1K");
 		}));
-	for (const FName RoosterId : {FName(TEXT("Pilot.Rooster.One")), FName(TEXT("Pilot.Rooster.Two.2K")), FName(TEXT("Pilot.Rooster.Three.1K"))})
+	for (const FName RoosterId : {FName(TEXT("Pilot.Rooster.One.4K")), FName(TEXT("Pilot.Rooster.Two")), FName(TEXT("Pilot.Rooster.Three.1K"))})
 	{
 		const FGameXXKCardCombatUnit* const Rooster = FindUnitById(FixtureView, RoosterId);
 		TestTrue(FString::Printf(TEXT("pilot fixture rooster %s leaves its definition empty for suffix resolution"), *RoosterId.ToString()),
@@ -852,8 +852,8 @@ bool FGameXXKPilotComparisonFixtureTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("pilot fixture intent rail carries three rooster intents"), FixtureView.CardRun.EnemyIntents.Num(), 3);
 
 	// The scene-unit actor must resolve the hero/rooster idle flipbooks for this fixture.
-	const FGameXXKBattleRuntimeUnit* const HeroLegacy = FindLegacyUnitById(FixtureView.ActiveBattleParty, TEXT("Pilot.Hero.One"));
-	const FGameXXKBattleRuntimeUnit* const RoosterLegacy = FindLegacyUnitById(FixtureView.ActiveBattleEnemies, TEXT("Pilot.Rooster.One"));
+	const FGameXXKBattleRuntimeUnit* const HeroLegacy = FindLegacyUnitById(FixtureView.ActiveBattleParty, TEXT("Pilot.Hero.One.4K"));
+	const FGameXXKBattleRuntimeUnit* const RoosterLegacy = FindLegacyUnitById(FixtureView.ActiveBattleEnemies, TEXT("Pilot.Rooster.One.4K"));
 	TestNotNull(TEXT("pilot fixture keeps the first hero in the legacy party projection"), HeroLegacy);
 	TestNotNull(TEXT("pilot fixture keeps the first rooster in the legacy enemy projection"), RoosterLegacy);
 	if (HeroLegacy && RoosterLegacy)
