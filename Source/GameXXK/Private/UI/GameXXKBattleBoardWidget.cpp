@@ -3,6 +3,8 @@
 #include "UI/GameXXKBattleUnitVisualWidget.h"
 
 #include "Application/SlateApplicationBase.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Fonts/FontMeasure.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Components/Border.h"
@@ -503,9 +505,10 @@ namespace
 		float Width = 0.0f;
 		for (const TCHAR Ch : Text)
 		{
-			// Slightly generous advance estimates (1.04 for CJK, 0.60 for
-			// Latin/digits) so wrapped rows never exceed the parchment width.
-			Width += (Ch >= 0x20 && Ch <= 0x7E) ? FontSize * 0.60f : FontSize * 1.04f;
+			// Fallback estimate only (used when Slate has no renderer); the
+			// live path measures with the real font. CJK advances at 13px are
+			// roughly 1.3-1.4x the nominal size, so stay on the generous side.
+			Width += (Ch >= 0x20 && Ch <= 0x7E) ? FontSize * 0.62f : FontSize * 1.30f;
 		}
 		return Width;
 	}
@@ -530,7 +533,58 @@ namespace
 			TEXT("蓄力"), TEXT("反击"), TEXT("格挡"), TEXT("药效"), TEXT("守护"),
 			TEXT("代挡"),
 		};
+
+		/** Length of a trailing quantity run ("8层", "2点", "1回合", "5") or 0. */
+		const auto TrailingQuantityRunLength = [](const FString& S) -> int32
+		{
+			if (S.IsEmpty())
+			{
+				return 0;
+			}
+			const auto IsDigit = [](const TCHAR Ch) { return Ch >= TEXT('0') && Ch <= TEXT('9'); };
+			const TCHAR Last = S[S.Len() - 1];
+			int32 UnitLen = 0;
+			if (Last == TEXT('层') || Last == TEXT('点') || Last == TEXT('段') || Last == TEXT('次'))
+			{
+				UnitLen = 1;
+			}
+			else if (S.Len() >= 2 && S[S.Len() - 1] == TEXT('合') && S[S.Len() - 2] == TEXT('回'))
+			{
+				UnitLen = 2;
+			}
+			else if (!IsDigit(Last))
+			{
+				return 0;
+			}
+			int32 DigitCount = 0;
+			while (DigitCount + UnitLen < S.Len() && IsDigit(S[S.Len() - UnitLen - DigitCount - 1]))
+			{
+				++DigitCount;
+			}
+			// "每层"/"第3～5位" style runs carry no digits and must stay put.
+			return DigitCount > 0 ? DigitCount + UnitLen : 0;
+		};
+
 		TArray<FBodySegment> Segments;
+		const auto EmitPill = [&](const FString& Name)
+		{
+			FBodySegment PillSegment;
+			PillSegment.Text = Name;
+			PillSegment.bPill = true;
+			PillSegment.PillColor = StatusPillColor;
+			PillSegment.FontSize = 10.0f;
+			Segments.Add(PillSegment);
+		};
+		const auto EmitText = [&](const FString& Value)
+		{
+			if (!Value.IsEmpty())
+			{
+				FBodySegment TextSegment;
+				TextSegment.Text = Value;
+				Segments.Add(TextSegment);
+			}
+		};
+
 		int32 Pos = 0;
 		while (Pos < Text.Len())
 		{
@@ -544,33 +598,54 @@ namespace
 					BestName = &Name;
 				}
 			}
-			if (BestName)
+			if (!BestName)
 			{
-				FBodySegment PillSegment;
-				PillSegment.Text = *BestName;
-				PillSegment.bPill = true;
-				PillSegment.PillColor = StatusPillColor;
-				PillSegment.FontSize = 10.0f;
-				Segments.Add(PillSegment);
-				Pos += BestLen;
-				continue;
-			}
-			int32 Next = Text.Len();
-			for (const FString& Name : StatusNames)
-			{
-				const int32 Index = Text.Find(Name, ESearchCase::CaseSensitive, ESearchDir::FromStart, Pos);
-				if (Index != INDEX_NONE && Index < Next)
+				int32 Next = Text.Len();
+				for (const FString& Name : StatusNames)
 				{
-					Next = Index;
+					const int32 Index = Text.Find(Name, ESearchCase::CaseSensitive, ESearchDir::FromStart, Pos);
+					if (Index != INDEX_NONE && Index < Next)
+					{
+						Next = Index;
+						BestName = &Name;
+						BestLen = Name.Len();
+					}
+				}
+				if (Next > Pos)
+				{
+					// "获得8层流血" reads better as 获得 + [流血] + 8层: detach
+					// the trailing quantity so the number lands after the pill.
+					FString PreText = Text.Mid(Pos, Next - Pos);
+					const int32 QuantityLen = TrailingQuantityRunLength(PreText);
+					FString QuantityText;
+					if (QuantityLen > 0)
+					{
+						QuantityText = PreText.Right(QuantityLen);
+						PreText = PreText.LeftChop(QuantityLen);
+					}
+					EmitText(PreText);
+					if (BestName)
+					{
+						EmitPill(*BestName);
+						EmitText(QuantityText);
+						Pos = Next + BestLen;
+						continue;
+					}
+					// PreText is Text.Mid(Pos) when no status follows; it has
+					// already been emitted above, so nothing more to add.
+					break;
 				}
 			}
-			if (Next > Pos)
+			if (BestName)
 			{
-				FBodySegment TextSegment;
-				TextSegment.Text = Text.Mid(Pos, Next - Pos);
-				Segments.Add(TextSegment);
+				EmitPill(*BestName);
+				Pos += BestLen;
 			}
-			Pos = Next;
+			else
+			{
+				EmitText(Text.Mid(Pos));
+				break;
+			}
 		}
 		return Segments;
 	}
@@ -596,6 +671,8 @@ namespace
 			UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 			TextBlock->SetText(FText::FromString(Content));
 			TextBlock->SetColorAndOpacity(FSlateColor(BodyInk));
+			// Chunks are pre-measured to fit one line; no UMG auto-wrap, which
+			// would feed wrapped desired sizes back into row layout.
 			TextBlock->SetAutoWrapText(false);
 			TextBlock->SetJustification(ETextJustify::Left);
 			FSlateFontInfo Font = TextBlock->GetFont();
@@ -628,18 +705,44 @@ namespace
 			return Pill;
 		};
 
-		const auto SegmentWidth = [](const FBodySegment& Segment)
+		// Measure with the same composite font the text blocks render with, so
+		// chunk widths match the painted glyphs exactly. Falls back to a
+		// generous per-character estimate when Slate has no renderer (e.g.
+		// headless commandlets).
+		UTextBlock* FontProbe = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+		const FSlateFontInfo BodyBaseFont = FontProbe->GetFont();
+		const auto MeasureText = [BodyBaseFont](const FString& Content, const float FontSize, const bool bBold) -> float
 		{
-			return Segment.bPill
-				? 10.0f + EstimateTextWidthUnits(Segment.Text, Segment.FontSize)
-				: EstimateTextWidthUnits(Segment.Text, Segment.FontSize);
+			if (Content.IsEmpty())
+			{
+				return 0.0f;
+			}
+			if (FSlateApplication::IsInitialized())
+			{
+				FSlateFontInfo Font = BodyBaseFont;
+				Font.Size = static_cast<int32>(FontSize);
+				if (bBold)
+				{
+					Font.TypefaceFontName = TEXT("Bold");
+				}
+				return FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Content, Font).X;
+			}
+			return EstimateTextWidthUnits(Content, FontSize);
 		};
 
-		// Wrap a flat segment stream into visual rows. Text segments split at
-		// character granularity; pill segments are atomic and never break.
+		const auto CellWidth = [&](const FBodySegment& Segment)
+		{
+			return Segment.bPill
+				? 10.0f + MeasureText(Segment.Text, Segment.FontSize, true)
+				: MeasureText(Segment.Text, Segment.FontSize, false);
+		};
+
+		// Deterministic row packing: text segments are split into measured
+		// single-line chunks that always fit beside the row's pills. Every
+		// cell stays auto-sized and unwrapped, so cells lay out strictly
+		// left-to-right with no overlap and no wrap-size feedback loops.
 		const auto EmitWrappedRows = [&](const TArray<FBodySegment>& InSegments)
 		{
-			TArray<FBodySegment> Queue = InSegments;
 			TArray<FBodySegment> Row;
 			float RowWidth = 0.0f;
 			const auto FlushRow = [&]()
@@ -679,53 +782,73 @@ namespace
 				RowWidth = 0.0f;
 			};
 
-			for (int32 SegmentIndex = 0; SegmentIndex < Queue.Num(); ++SegmentIndex)
+			for (const FBodySegment& Segment : InSegments)
 			{
-				const FBodySegment& Segment = Queue[SegmentIndex];
 				if (Segment.Text.IsEmpty())
 				{
 					continue;
 				}
-				const float SegmentW = SegmentWidth(Segment);
-				if (!Segment.bPill && RowWidth + SegmentW > WrapWidth)
+				if (Segment.bPill)
 				{
-					// Split the text at the character boundary that fits. This
-					// also handles a first segment that is wider than the row
-					// on its own (RowWidth == 0).
-					int32 CharsThatFit = 0;
-					float Accumulated = 0.0f;
-					for (int32 Index = 0; Index < Segment.Text.Len(); ++Index)
+					const float Width = CellWidth(Segment);
+					if (RowWidth + Width > WrapWidth && !Row.IsEmpty())
 					{
-						const float CharWidth = EstimateTextWidthUnits(FString::Chr(Segment.Text[Index]), Segment.FontSize);
-						if (RowWidth + Accumulated + CharWidth > WrapWidth)
+						FlushRow();
+					}
+					Row.Add(Segment);
+					RowWidth += Width;
+					continue;
+				}
+				FString Remaining = Segment.Text;
+				while (!Remaining.IsEmpty())
+				{
+					float Free = WrapWidth - RowWidth;
+					if (Free < KINDA_SMALL_NUMBER)
+					{
+						FlushRow();
+						Free = WrapWidth;
+					}
+					// Longest measured prefix that fits the free width.
+					int32 Low = 0;
+					int32 High = Remaining.Len();
+					while (Low < High)
+					{
+						const int32 Mid = (Low + High + 1) / 2;
+						if (MeasureText(Remaining.Left(Mid), Segment.FontSize, false) <= Free)
 						{
-							break;
+							Low = Mid;
 						}
-						Accumulated += CharWidth;
-						++CharsThatFit;
+						else
+						{
+							High = Mid - 1;
+						}
 					}
-					if (CharsThatFit > 0)
+					const int32 Count = FMath::Max(Low, 1);
+					// Prefer splitting Latin runs at spaces ("1 气 / 3 内"),
+					// but only when the prefix actually truncates the text.
+					int32 BreakAt = INDEX_NONE;
+					if (Count < Remaining.Len())
 					{
-						FBodySegment Head = Segment;
-						Head.Text = Segment.Text.Left(CharsThatFit);
-						Row.Add(Head);
-						FlushRow();
-						FBodySegment Tail = Segment;
-						Tail.Text = Segment.Text.Mid(CharsThatFit);
-						Queue.Insert(Tail, SegmentIndex + 1);
-						continue;
+						for (int32 Index = Count - 1; Index >= 1; --Index)
+						{
+							if (Remaining[Index] == TEXT(' '))
+							{
+								BreakAt = Index;
+								break;
+							}
+						}
 					}
-					if (RowWidth > 0.0f)
+					FBodySegment Chunk;
+					Chunk.Text = BreakAt == INDEX_NONE ? Remaining.Left(Count) : Remaining.Left(BreakAt);
+					Chunk.FontSize = Segment.FontSize;
+					Row.Add(Chunk);
+					RowWidth += MeasureText(Chunk.Text, Segment.FontSize, false);
+					Remaining = BreakAt == INDEX_NONE ? Remaining.Mid(Count) : Remaining.Mid(BreakAt + 1);
+					if (!Remaining.IsEmpty())
 					{
 						FlushRow();
 					}
 				}
-				if (Segment.bPill && RowWidth + SegmentW > WrapWidth && RowWidth > 0.0f)
-				{
-					FlushRow();
-				}
-				Row.Add(Segment);
-				RowWidth += SegmentW;
 			}
 			FlushRow();
 		};
@@ -776,6 +899,15 @@ namespace
 				bSeenAbilityRow = true;
 			}
 			EmitWrappedRows(Segments);
+		}
+
+		// Prefer the real measured height (single-line auto-sized rows make
+		// the prepass exact); fall back to the row estimate without a layout.
+		BodyBox->ForceLayoutPrepass();
+		const FVector2D MeasuredSize = BodyBox->GetDesiredSize();
+		if (MeasuredSize.Y > KINDA_SMALL_NUMBER)
+		{
+			return MeasuredSize.Y;
 		}
 		return TotalEstimatedHeight;
 	}
@@ -912,10 +1044,12 @@ void UGameXXKRouteRewardReplacementButton::HandleUnhovered()
 
 void UGameXXKPendingChoiceCardButton::Configure(
 	UGameXXKBattleBoardWidget* InOwner,
+	const int32 InSlotIndex,
 	FName InCandidateInstanceId,
 	EGameXXKCardPendingChoiceKind InChoiceKind)
 {
 	Owner = InOwner;
+	SlotIndex = InSlotIndex;
 	CandidateInstanceId = InCandidateInstanceId;
 	ChoiceKind = InChoiceKind;
 	OnClicked.RemoveDynamic(this, &UGameXXKPendingChoiceCardButton::HandleClicked);
@@ -949,7 +1083,7 @@ void UGameXXKPendingChoiceCardButton::HandleHovered()
 {
 	if (Owner && !CandidateInstanceId.IsNone())
 	{
-		Owner->HandlePendingChoiceCardHoverChanged(CandidateInstanceId, ChoiceKind, true);
+		Owner->HandlePendingChoiceCardHoverChanged(SlotIndex, CandidateInstanceId, ChoiceKind, true);
 	}
 }
 
@@ -957,7 +1091,7 @@ void UGameXXKPendingChoiceCardButton::HandleUnhovered()
 {
 	if (Owner && !CandidateInstanceId.IsNone())
 	{
-		Owner->HandlePendingChoiceCardHoverChanged(CandidateInstanceId, ChoiceKind, false);
+		Owner->HandlePendingChoiceCardHoverChanged(SlotIndex, CandidateInstanceId, ChoiceKind, false);
 	}
 }
 
@@ -5356,6 +5490,7 @@ bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalStateForTest()
 #endif
 
 void UGameXXKBattleBoardWidget::HandlePendingChoiceCardHoverChanged(
+	const int32 SlotIndex,
 	const FName CandidateInstanceId,
 	const EGameXXKCardPendingChoiceKind ChoiceKind,
 	const bool bHovered)
@@ -5365,6 +5500,7 @@ void UGameXXKBattleBoardWidget::HandlePendingChoiceCardHoverChanged(
 		HoveredCardTooltipSource = ECardTooltipSource::PendingChoice;
 		HoveredCardTooltipId = CandidateInstanceId;
 		HoveredPendingChoiceKind = ChoiceKind;
+		HoveredPendingChoiceSlot = SlotIndex;
 	}
 	else if (HoveredCardTooltipSource == ECardTooltipSource::PendingChoice
 		&& HoveredCardTooltipId == CandidateInstanceId
@@ -5373,6 +5509,7 @@ void UGameXXKBattleBoardWidget::HandlePendingChoiceCardHoverChanged(
 		HoveredCardTooltipSource = ECardTooltipSource::None;
 		HoveredCardTooltipId = NAME_None;
 		HoveredPendingChoiceKind = EGameXXKCardPendingChoiceKind::Invalid;
+		HoveredPendingChoiceSlot = INDEX_NONE;
 	}
 	RefreshCardTooltip();
 }
@@ -6086,7 +6223,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		UGameXXKPendingChoiceCardButton* CardButton = WidgetTree->ConstructWidget<UGameXXKPendingChoiceCardButton>(
 			UGameXXKPendingChoiceCardButton::StaticClass(),
 			*FString::Printf(TEXT("BattlePendingChoiceCard_%02d"), SlotIndex));
-		CardButton->Configure(this, NAME_None, EGameXXKCardPendingChoiceKind::Invalid);
+		CardButton->Configure(this, SlotIndex, NAME_None, EGameXXKCardPendingChoiceKind::Invalid);
 		StyleCardButton(CardButton, RewardCardSize);
 		UTextBlock* CardLabel = nullptr;
 		UImage* CardPortrait = nullptr;
@@ -6669,57 +6806,81 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		return;
 	}
 
-	// Follow the hovered card slot instead of the fixed default anchor.
-	if (UCanvasPanelSlot* DetailSlot = Cast<UCanvasPanelSlot>(HandCardDetailPanel->Slot))
+	// The panel must be visible before measuring the populated body so the
+	// layout prepass has a real width constraint for text wrapping.
+	HandCardDetailPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (HandCardDetailTitle)
 	{
-		FVector2D PanelPosition(-HandCardDetailPanelSize.X * 0.5f, -588.0f);
-		if (HoveredCardTooltipSource == ECardTooltipSource::Reward
-			&& PendingRewardOptions.IsValidIndex(HoveredRewardCardSlot))
+		HandCardDetailTitle->SetText(TooltipTitle);
+	}
+	float PanelHeight = HandCardDetailPanelSize.Y;
+	if (HandCardDetailBody)
+	{
+		// Height follows the populated rows: title band + gap + measured
+		// wrapped body height + vertical padding + parchment bottom border.
+		const float BodyHeight = PopulateHandCardDetailBody(
+			WidgetTree, HandCardDetailBody, TooltipTitle.ToString(), TooltipBody.ToString());
+		PanelHeight = 12.0f + 28.0f + 6.0f + BodyHeight + 12.0f + 20.0f;
+	}
+
+	// Follow the hovered card slot instead of the fixed default anchor.
+	FVector2D PanelPosition(-HandCardDetailPanelSize.X * 0.5f, -588.0f);
+	switch (HoveredCardTooltipSource)
+	{
+	case ECardTooltipSource::Reward:
+		if (PendingRewardOptions.IsValidIndex(HoveredRewardCardSlot))
 		{
 			const float SlotCenterX = RewardCardBoxSlotOffsets.Left + 5.0f
 				+ HoveredRewardCardSlot * (RewardCardSize.X + 10.0f)
 				+ RewardCardSize.X * 0.5f;
 			PanelPosition = FVector2D(
 				SlotCenterX - HandCardDetailPanelSize.X * 0.5f,
-				RewardCardBoxSlotOffsets.Top - HandCardDetailPanelSize.Y - 12.0f);
+				RewardCardBoxSlotOffsets.Top - PanelHeight - 12.0f);
 		}
-		else if (HoveredCardTooltipSource == ECardTooltipSource::Hand
-			&& HandCardInstanceIds.IsValidIndex(HoveredHandCardSlot))
+		break;
+	case ECardTooltipSource::Hand:
+		if (HandCardInstanceIds.IsValidIndex(HoveredHandCardSlot))
 		{
 			const float SlotCenterX = -585.0f + 4.0f
 				+ HoveredHandCardSlot * (PlayerHandCardSize.X + 8.0f)
 				+ PlayerHandCardSize.X * 0.5f;
 			PanelPosition = FVector2D(
 				SlotCenterX - HandCardDetailPanelSize.X * 0.5f,
-				-305.0f - HandCardDetailPanelSize.Y - 12.0f);
+				-305.0f - PanelHeight - 12.0f);
 		}
+		break;
+	case ECardTooltipSource::PendingChoice:
+		if (HoveredPendingChoiceSlot != INDEX_NONE)
+		{
+			const int32 VisibleCandidateCount = Subsystem
+				? FMath::Min(
+					Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.PendingChoice.Candidates.Num(),
+					MaximumVisiblePendingCardChoices)
+				: 0;
+			const float RowWidth = VisibleCandidateCount > 0
+				? static_cast<float>(VisibleCandidateCount) * (RewardCardSize.X + PendingChoiceCardGap) - PendingChoiceCardGap
+				: 0.0f;
+			const float SlotCenterX = -RowWidth * 0.5f
+				+ HoveredPendingChoiceSlot * (RewardCardSize.X + PendingChoiceCardGap)
+				+ RewardCardSize.X * 0.5f;
+			// Cards start at panel-relative y 39; the panel is centered, so the
+			// card top sits at board y -142. Keep the tooltip bottom 12px above it.
+			PanelPosition = FVector2D(
+				SlotCenterX - HandCardDetailPanelSize.X * 0.5f,
+				-142.0f - PanelHeight - 12.0f);
+		}
+		break;
+	default:
+		break;
+	}
+	if (UCanvasPanelSlot* DetailSlot = Cast<UCanvasPanelSlot>(HandCardDetailPanel->Slot))
+	{
 		DetailSlot->SetOffsets(FMargin(
 			PanelPosition.X,
 			PanelPosition.Y,
 			HandCardDetailPanelSize.X,
-			HandCardDetailPanelSize.Y));
+			PanelHeight));
 	}
-
-	if (HandCardDetailTitle)
-	{
-		HandCardDetailTitle->SetText(TooltipTitle);
-	}
-	if (HandCardDetailBody)
-	{
-		// Height follows the populated rows: title band + gap + estimated
-		// wrapped body height + vertical padding + parchment bottom border.
-		const float BodyHeight = PopulateHandCardDetailBody(
-			WidgetTree, HandCardDetailBody, TooltipTitle.ToString(), TooltipBody.ToString());
-		const float PanelHeight = 12.0f + 28.0f + 6.0f + BodyHeight + 12.0f + 20.0f;
-		if (UCanvasPanelSlot* DetailSlot = Cast<UCanvasPanelSlot>(HandCardDetailPanel->Slot))
-		{
-			FMargin Offsets = DetailSlot->GetOffsets();
-			Offsets.Bottom = PanelHeight;
-			DetailSlot->SetOffsets(Offsets);
-		}
-	}
-	// The panel must never swallow the button's leave/click events while it overlaps the hand.
-	HandCardDetailPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 
 void UGameXXKBattleBoardWidget::RefreshEnemyIntentCards()
@@ -7222,6 +7383,7 @@ void UGameXXKBattleBoardWidget::SetHandCardHoverState(int32 SlotIndex, bool bHov
 		HoveredCardTooltipSource = ECardTooltipSource::Hand;
 		HoveredCardTooltipId = NAME_None;
 		HoveredPendingChoiceKind = EGameXXKCardPendingChoiceKind::Invalid;
+		HoveredPendingChoiceSlot = INDEX_NONE;
 	}
 	else if (HoveredCardTooltipSource == ECardTooltipSource::Hand && HoveredHandCardSlot == SlotIndex)
 	{
@@ -7268,6 +7430,7 @@ void UGameXXKBattleBoardWidget::ClearCardTooltipHoverState()
 	HoveredRewardCardSlot = INDEX_NONE;
 	HoveredCardTooltipId = NAME_None;
 	HoveredPendingChoiceKind = EGameXXKCardPendingChoiceKind::Invalid;
+		HoveredPendingChoiceSlot = INDEX_NONE;
 	for (UButton* CardButton : HandCardButtons)
 	{
 		if (CardButton)
@@ -7299,6 +7462,7 @@ void UGameXXKBattleBoardWidget::SetRewardCardHoverState(const int32 SlotIndex, c
 		HoveredRewardCardSlot = SlotIndex;
 		HoveredCardTooltipId = NAME_None;
 		HoveredPendingChoiceKind = EGameXXKCardPendingChoiceKind::Invalid;
+		HoveredPendingChoiceSlot = INDEX_NONE;
 	}
 	else if (HoveredCardTooltipSource == ECardTooltipSource::Reward && HoveredRewardCardSlot == SlotIndex)
 	{
@@ -7442,7 +7606,7 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(Candidate.CardId);
 		if (UGameXXKPendingChoiceCardButton* PendingChoiceButton = Cast<UGameXXKPendingChoiceCardButton>(CardButton))
 		{
-			PendingChoiceButton->Configure(this, Candidate.InstanceId, PendingChoice->Kind);
+			PendingChoiceButton->Configure(this, SlotIndex, Candidate.InstanceId, PendingChoice->Kind);
 		}
 		ApplyCardPresentation(CardButton, CardLabel, CardPortrait, CardInfoStrip, Definition);
 		if (CardLabel)

@@ -125,6 +125,7 @@ class GAMEXXK_API UGameXXKPendingChoiceCardButton : public UButton
 public:
 	void Configure(
 		UGameXXKBattleBoardWidget* InOwner,
+		const int32 InSlotIndex,
 		FName InCandidateInstanceId,
 		EGameXXKCardPendingChoiceKind InChoiceKind);
 
@@ -140,6 +141,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKBattleBoardWidget> Owner;
+
+	UPROPERTY(Transient)
+	int32 SlotIndex = INDEX_NONE;
 
 	UPROPERTY(Transient)
 	FName CandidateInstanceId;
@@ -491,6 +495,7 @@ public:
 	FString GetEnemyIntentTooltipForTest(int32 VisibleSlotIndex) const;
 	FString GetEnemyIntentPortraitResourcePathForTest(int32 VisibleSlotIndex) const;
 	bool IsHandCardSlotEnabledForTest(int32 SlotIndex) const;
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	FString GetCardTooltipTextForTest() const;
 	bool IsCardTooltipVisibleForTest() const;
 	bool IsCardTooltipHitTestInvisibleForTest() const;
@@ -553,7 +558,7 @@ public:
 #endif
 
 	/** Dynamic card subclasses forward pure hover transitions here; these never mutate card runtime state. */
-	void HandlePendingChoiceCardHoverChanged(FName CandidateInstanceId, EGameXXKCardPendingChoiceKind ChoiceKind, bool bHovered);
+	void HandlePendingChoiceCardHoverChanged(int32 SlotIndex, FName CandidateInstanceId, EGameXXKCardPendingChoiceKind ChoiceKind, bool bHovered);
 	void HandleRouteRewardReplacementEntryHoverChanged(FName EntryId, bool bHovered);
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -1175,6 +1180,9 @@ private:
 	FName HoveredCardTooltipId = NAME_None;
 
 	EGameXXKCardPendingChoiceKind HoveredPendingChoiceKind = EGameXXKCardPendingChoiceKind::Invalid;
+
+	/** Choice-card slot index for tooltip follow positioning. */
+	int32 HoveredPendingChoiceSlot = INDEX_NONE;
 
 	UPROPERTY(Transient)
 	TArray<int32> VisibleEnemyIntentIndices;
