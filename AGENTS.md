@@ -13,6 +13,10 @@
 - Verify art work after implementation with deterministic asset checks such as dimensions, alpha edges, hashes, manifests, build reports, and visual review.
 - Runtime code or gameplay behavior changes remain subject to the project's normal code verification rules.
 
+### Visual / Presentation Issues
+- 表现类问题(渲染错位、视觉校准、截图取证、界面呈现判断)优先**委托 lunamax** 处理:通过 `~/.claude/skills/codex-vision/scripts/codex_vision.ps1` 的 luna 视觉代理(`-Effort max`)截图/读图、定位与修复,不要自行盲改表现层代码。
+- 教训(2026-08-15 箭头错位事件):坐标换算链经数值验证自洽时,优先怀疑绘制端局部公式(如贴图锚点/旋转枢轴),而不是反复改换算;取证截图前排除用户鼠标移动与同类色块(如立绘与箭头同为橙色墨)的干扰;方向向量只参与旋转/法线,不得参与位置平移。
+
 ### UE MCP Automation
 - Project UE automation should use `scripts/ue_mcp_client.py`, `scripts/ue_mcp_smoke.py`, `scripts/ue_tdd_pipeline.py`, and project scripts under `Content/Python`.
 - If the editor is running, save dirty packages through UE MCP before closing or restarting it.
