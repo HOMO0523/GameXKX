@@ -748,7 +748,26 @@ bool FGameXXKCardOutcomePreviewDotToxicMedicineRelicTest::RunTest(const FString&
 		ToxicPreview.FocusedTarget->ToxicExplosionDamage, ExpectedToxic);
 	TestEqual(TEXT("ShiGu first explosion preserves live Rot"),
 		Status(ToxicCommitted, EnemyOneUnitId, EGameXXKCardStatus::DamageOverTime), 2);
-	TestEqual(TEXT("direct plus Toxic Explosion produces exactly two focused lines"), ToxicPreview.FocusedLines.Num(), 2);
+	TestEqual(TEXT("direct plus Toxic Explosion stacks one row per damage type"), ToxicPreview.FocusedLines.Num(), 3);
+	if (ToxicPreview.FocusedLines.Num() == 3)
+	{
+		TestTrue(TEXT("direct damage owns its own focused row"),
+			HasSegment(ToxicPreview.FocusedLines[0],
+				FString::Printf(TEXT("伤害 %d"), ToxicPreview.FocusedTarget->DirectDamage),
+				EGameXXKCardOutcomeTone::Damage));
+		TestTrue(TEXT("toxic explosion owns the dot row"),
+			HasSegment(ToxicPreview.FocusedLines[1],
+				FString::Printf(TEXT("毒爆 %d"), ExpectedToxic),
+				EGameXXKCardOutcomeTone::Dot));
+		TestEqual(TEXT("the mixed outcome keeps its total on a trailing row"),
+			RenderLine(ToxicPreview.FocusedLines[2]),
+			FString::Printf(TEXT("合计 %d"),
+				ToxicPreview.FocusedTarget->DirectDamage
+					+ ToxicPreview.FocusedTarget->BleedDamage
+					+ ToxicPreview.FocusedTarget->PoisonDamage
+					+ ToxicPreview.FocusedTarget->BurnDamage
+					+ ToxicPreview.FocusedTarget->ToxicExplosionDamage));
+	}
 
 	FGameXXKRuntimeState MedicineState;
 	if (!BuildStandardState(
@@ -796,16 +815,27 @@ bool FGameXXKCardOutcomePreviewDotToxicMedicineRelicTest::RunTest(const FString&
 		MedicinePreview.FocusedTarget->LinkedDamage, ExpectedLinked);
 	TestEqual(TEXT("the consumed snapshot does not remove newly granted Medicine"),
 		Status(MedicineCommitted, OwnerUnitId, EGameXXKCardStatus::Medicine), 2);
-	TestEqual(TEXT("Medicine plus linked damage gets a category line and one total line"),
-		MedicinePreview.FocusedLines.Num(), 2);
-	if (MedicinePreview.FocusedLines.Num() == 2)
+	TestEqual(TEXT("Medicine plus linked damage gets a row per type plus one total row"),
+		MedicinePreview.FocusedLines.Num(), 3);
+	if (MedicinePreview.FocusedLines.Num() == 3)
 	{
-		TestTrue(TEXT("Medicine phrase has the Medicine tone"),
-			HasSegment(MedicinePreview.FocusedLines[0],
-				FString::Printf(TEXT("药效伤害 %d"), ExpectedMedicine), EGameXXKCardOutcomeTone::Medicine));
-		TestTrue(TEXT("relic phrase has the Damage tone"),
+		TestTrue(TEXT("relic phrase has the Damage tone on its own row"),
 			HasSegment(MedicinePreview.FocusedLines[0],
 				FString::Printf(TEXT("联动伤害 %d"), ExpectedLinked), EGameXXKCardOutcomeTone::Damage));
+		TestTrue(TEXT("Medicine phrase has the Medicine tone on its own row"),
+			HasSegment(MedicinePreview.FocusedLines[1],
+				FString::Printf(TEXT("药效伤害 %d"), ExpectedMedicine), EGameXXKCardOutcomeTone::Medicine));
+		TestEqual(TEXT("the mixed outcome keeps its total on a trailing row"),
+			RenderLine(MedicinePreview.FocusedLines[2]),
+			FString::Printf(TEXT("合计 %d"),
+				MedicinePreview.FocusedTarget->DirectDamage
+					+ MedicinePreview.FocusedTarget->GroupDamage
+					+ MedicinePreview.FocusedTarget->BleedDamage
+					+ MedicinePreview.FocusedTarget->PoisonDamage
+					+ MedicinePreview.FocusedTarget->BurnDamage
+					+ MedicinePreview.FocusedTarget->ToxicExplosionDamage
+					+ MedicinePreview.FocusedTarget->MedicineDamage
+					+ MedicinePreview.FocusedTarget->LinkedDamage));
 	}
 	return true;
 }
@@ -839,15 +869,17 @@ bool FGameXXKCardOutcomePreviewHealingArmorAndZeroTest::RunTest(const FString& P
 	TestTrue(TEXT("combined positive preview keeps the selected ally"), Preview.FocusedTarget.IsSet());
 	TestEqual(TEXT("combined preview uses actual effective healing"), Preview.FocusedTarget->EffectiveHealing, 10);
 	TestEqual(TEXT("combined preview uses actual effective armor"), Preview.FocusedTarget->EffectiveArmor, 6);
-	TestEqual(TEXT("healing and armor share one concise line"), Preview.FocusedLines.Num(), 1);
-	if (Preview.FocusedLines.Num() == 1)
+	TestEqual(TEXT("healing and armor split into one row per type"), Preview.FocusedLines.Num(), 2);
+	if (Preview.FocusedLines.Num() == 2)
 	{
-		TestEqual(TEXT("healing precedes armor in deterministic text"),
-			RenderLine(Preview.FocusedLines[0]), FString(TEXT("治疗 +10 · 护甲 +6")));
+		TestEqual(TEXT("healing owns its own row"),
+			RenderLine(Preview.FocusedLines[0]), FString(TEXT("治疗 +10")));
 		TestTrue(TEXT("healing segment has Healing tone"),
 			HasSegment(Preview.FocusedLines[0], TEXT("治疗 +10"), EGameXXKCardOutcomeTone::Healing));
+		TestEqual(TEXT("armor owns the trailing row"),
+			RenderLine(Preview.FocusedLines[1]), FString(TEXT("护甲 +6")));
 		TestTrue(TEXT("armor segment has Armor tone"),
-			HasSegment(Preview.FocusedLines[0], TEXT("护甲 +6"), EGameXXKCardOutcomeTone::Armor));
+			HasSegment(Preview.FocusedLines[1], TEXT("护甲 +6"), EGameXXKCardOutcomeTone::Armor));
 	}
 
 	FGameXXKRuntimeState ZeroState;
@@ -868,11 +900,13 @@ bool FGameXXKCardOutcomePreviewHealingArmorAndZeroTest::RunTest(const FString& P
 	}
 	TestEqual(TEXT("full-health attempt retains effective healing zero"), ZeroPreview.FocusedTarget->EffectiveHealing, 0);
 	TestEqual(TEXT("armor-cap attempt retains effective armor zero"), ZeroPreview.FocusedTarget->EffectiveArmor, 0);
-	TestEqual(TEXT("legal zero attempts still create one line"), ZeroPreview.FocusedLines.Num(), 1);
-	if (ZeroPreview.FocusedLines.Num() == 1)
+	TestEqual(TEXT("legal zero attempts still create one row per type"), ZeroPreview.FocusedLines.Num(), 2);
+	if (ZeroPreview.FocusedLines.Num() == 2)
 	{
-		TestEqual(TEXT("legal zero text remains explicit"),
-			RenderLine(ZeroPreview.FocusedLines[0]), FString(TEXT("治疗 +0 · 护甲 +0")));
+		TestEqual(TEXT("legal zero healing text remains explicit"),
+			RenderLine(ZeroPreview.FocusedLines[0]), FString(TEXT("治疗 +0")));
+		TestEqual(TEXT("legal zero armor text remains explicit"),
+			RenderLine(ZeroPreview.FocusedLines[1]), FString(TEXT("护甲 +0")));
 	}
 
 	FGameXXKRuntimeState SelfLossState;

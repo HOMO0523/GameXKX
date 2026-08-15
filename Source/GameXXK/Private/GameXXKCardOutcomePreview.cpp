@@ -357,6 +357,67 @@ namespace
 		}
 	}
 
+	void AppendValueLines(
+		const FTargetAggregate& Aggregate,
+		TArray<FGameXXKCardOutcomeTextLine>& Lines)
+	{
+		// Mixed damage types stack into one row per type instead of running
+		// side by side in a single line: direct/physical damage first, then the
+		// damage-over-time row, then medicine, healing and armor rows.
+		FGameXXKCardOutcomeTextLine* DamageLine = nullptr;
+		if (Aggregate.bDirectAttempt || Aggregate.bGroupAttempt || Aggregate.bLinkedAttempt)
+		{
+			DamageLine = &Lines.AddDefaulted_GetRef();
+		}
+		if (Aggregate.bDirectAttempt)
+		{
+			AddSegment(*DamageLine, FString::Printf(TEXT("伤害 %d"), Aggregate.Target.DirectDamage), EGameXXKCardOutcomeTone::Damage);
+		}
+		if (Aggregate.bGroupAttempt)
+		{
+			AddSegment(*DamageLine, FString::Printf(TEXT("群体伤害 %d"), Aggregate.Target.GroupDamage), EGameXXKCardOutcomeTone::Damage);
+		}
+		if (Aggregate.bLinkedAttempt)
+		{
+			AddSegment(*DamageLine, FString::Printf(TEXT("联动伤害 %d"), Aggregate.Target.LinkedDamage), EGameXXKCardOutcomeTone::Damage);
+		}
+
+		FGameXXKCardOutcomeTextLine* DotLine = nullptr;
+		if (Aggregate.bBleedAttempt || Aggregate.bPoisonAttempt || Aggregate.bBurnAttempt || Aggregate.bToxicAttempt)
+		{
+			DotLine = &Lines.AddDefaulted_GetRef();
+		}
+		if (Aggregate.bBleedAttempt)
+		{
+			AddSegment(*DotLine, FString::Printf(TEXT("流血 %d"), Aggregate.Target.BleedDamage), EGameXXKCardOutcomeTone::Dot);
+		}
+		if (Aggregate.bPoisonAttempt)
+		{
+			AddSegment(*DotLine, FString::Printf(TEXT("中毒 %d"), Aggregate.Target.PoisonDamage), EGameXXKCardOutcomeTone::Dot);
+		}
+		if (Aggregate.bBurnAttempt)
+		{
+			AddSegment(*DotLine, FString::Printf(TEXT("灼烧 %d"), Aggregate.Target.BurnDamage), EGameXXKCardOutcomeTone::Dot);
+		}
+		if (Aggregate.bToxicAttempt)
+		{
+			AddSegment(*DotLine, FString::Printf(TEXT("毒爆 %d"), Aggregate.Target.ToxicExplosionDamage), EGameXXKCardOutcomeTone::Dot);
+		}
+
+		if (Aggregate.bMedicineAttempt)
+		{
+			AddSegment(Lines.AddDefaulted_GetRef(), FString::Printf(TEXT("药效伤害 %d"), Aggregate.Target.MedicineDamage), EGameXXKCardOutcomeTone::Medicine);
+		}
+		if (Aggregate.bHealingAttempt)
+		{
+			AddSegment(Lines.AddDefaulted_GetRef(), FString::Printf(TEXT("治疗 +%d"), Aggregate.Target.EffectiveHealing), EGameXXKCardOutcomeTone::Healing);
+		}
+		if (Aggregate.bArmorAttempt)
+		{
+			AddSegment(Lines.AddDefaulted_GetRef(), FString::Printf(TEXT("护甲 +%d"), Aggregate.Target.EffectiveArmor), EGameXXKCardOutcomeTone::Armor);
+		}
+	}
+
 	TArray<FGameXXKCardOutcomeTextLine> BuildFocusedLines(const FTargetAggregate& Aggregate)
 	{
 		TArray<FGameXXKCardOutcomeTextLine> Lines;
@@ -365,8 +426,7 @@ namespace
 		{
 			return Lines;
 		}
-		FGameXXKCardOutcomeTextLine& ValueLine = Lines.AddDefaulted_GetRef();
-		AppendValueSegments(Aggregate, ValueLine);
+		AppendValueLines(Aggregate, Lines);
 		if (DamageCategoryCount >= 2)
 		{
 			FGameXXKCardOutcomeTextLine& TotalLine = Lines.AddDefaulted_GetRef();
@@ -376,9 +436,9 @@ namespace
 				EGameXXKCardOutcomeTone::Neutral);
 			AppendOutcomeFlags(Aggregate, TotalLine);
 		}
-		else
+		else if (!Lines.IsEmpty())
 		{
-			AppendOutcomeFlags(Aggregate, ValueLine);
+			AppendOutcomeFlags(Aggregate, Lines.Last());
 		}
 		return Lines;
 	}

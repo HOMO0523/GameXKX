@@ -12,6 +12,7 @@
 #include "Components/HorizontalBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Components/VerticalBox.h"
 #include "Engine/GameInstance.h"
 #include "Math/Box2D.h"
 #include "Misc/AutomationTest.h"
@@ -2737,13 +2738,13 @@ bool FGameXXKCardBattleBoardHandCardHoverStyleTest::RunTest(const FString& Param
 	UBorder* DetailPanel = Board->WidgetTree
 		? Cast<UBorder>(Board->WidgetTree->FindWidget(TEXT("BattleHandCardDetailPanel")))
 		: nullptr;
-	UTextBlock* DetailBody = Board->WidgetTree
-		? Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleHandCardDetailBody")))
+	UVerticalBox* DetailBody = Board->WidgetTree
+		? Cast<UVerticalBox>(Board->WidgetTree->FindWidget(TEXT("BattleHandCardDetailBody")))
 		: nullptr;
 	TestNotNull(TEXT("hover creates a parchment card-detail panel"), DetailPanel);
 	TestNotNull(TEXT("hover creates a readable card-detail body"), DetailBody);
 	TestEqual(TEXT("hover reveals the card-detail panel"), DetailPanel ? DetailPanel->GetVisibility() : ESlateVisibility::Collapsed, ESlateVisibility::HitTestInvisible);
-	const FString DetailText = DetailBody ? DetailBody->GetText().ToString() : FString();
+	const FString DetailText = Board->GetCardTooltipTextForTest();
 	TestTrue(TEXT("hover detail explains the target instruction"), DetailText.Contains(TEXT("目标：")) && DetailText.Contains(TEXT("单体敌方")));
 	TestTrue(TEXT("hover detail explains the card effect"), DetailText.Contains(TEXT("攻击伤害")));
 	TestFalse(TEXT("concise hand tooltip omits the legacy interaction instruction"), DetailText.Contains(TEXT("点击后选择高亮合法目标。")));

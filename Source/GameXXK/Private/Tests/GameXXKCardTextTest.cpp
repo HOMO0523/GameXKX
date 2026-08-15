@@ -114,6 +114,41 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("terrain cards expose the exact concise current-terrain rule"), TerrainBenefitText.Contains(TEXT("当前地势收益：按当前地势触发对应效果。")));
 	TestTrue(TEXT("terrain cards retain the data-defined terrain payload"), TerrainBenefitText.Contains(TEXT("触发当前地势收益1次")));
 
+	const FGameXXKCardDefinition* BladeLieFeng = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.LieFengZhan"));
+	const FGameXXKCardDefinition* BladeFengHou = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.FengHou"));
+	const FGameXXKCardDefinition* BladeDuanYue = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.DuanYue"));
+	const FGameXXKCardDefinition* BladeJingHong = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.JingHongChuQiao"));
+	const FGameXXKCardDefinition* BladeHengYun = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.HengYunKaiFeng"));
+	TestNotNull(TEXT("the Blade charge/finish fixture exists"), BladeLieFeng);
+	TestNotNull(TEXT("the Blood Edge keyword fixture exists"), BladeFengHou);
+	TestNotNull(TEXT("the Momentum Break keyword fixture exists"), BladeDuanYue);
+	TestNotNull(TEXT("the Sheathed open-blade fixture exists"), BladeJingHong);
+	TestNotNull(TEXT("the Sheathed residual fixture exists"), BladeHengYun);
+	if (BladeLieFeng && BladeFengHou && BladeDuanYue && BladeJingHong && BladeHengYun)
+	{
+		const FString LieFengText = GameXXKCardText::DescribeDetail(*BladeLieFeng, nullptr);
+		const FString FengHouText = GameXXKCardText::DescribeDetail(*BladeFengHou, nullptr);
+		const FString DuanYueText = GameXXKCardText::DescribeDetail(*BladeDuanYue, nullptr);
+		const FString JingHongText = GameXXKCardText::DescribeDetail(*BladeJingHong, nullptr);
+		const FString HengYunText = GameXXKCardText::DescribeDetail(*BladeHengYun, nullptr);
+		TestTrue(TEXT("Blade charge text names its trigger and payload"),
+			LieFengText.Contains(TEXT("冲锋：本回合第一张主动牌时，下一张主动牌基础效果再结算一次。")));
+		TestTrue(TEXT("Blade finish text names its trigger and payload"),
+			LieFengText.Contains(TEXT("收招：本回合最后一张主动牌时，返还本回合首张主动牌至手牌（原费用）。")));
+		TestTrue(TEXT("Blood Edge cards expose the blood-edge keyword"),
+			FengHouText.Contains(TEXT("血势：每层目标流血使本段攻击倍率+10%。")));
+		TestTrue(TEXT("Momentum Break cards expose the momentum keyword"),
+			DuanYueText.Contains(TEXT("乘势：每层自身气势使本段攻击倍率+10%。")));
+		TestTrue(TEXT("Sheathed cards explain storing the charge as a native style"),
+			JingHongText.Contains(TEXT("收招：本回合最后一张主动牌时，将冲锋效果保存为「藏式」。")));
+		TestTrue(TEXT("Sheathed cards explain the style expiry"),
+			JingHongText.Contains(TEXT("藏式：下回合第一张主动牌消耗；未消耗则回合末失效。")));
+		TestTrue(TEXT("Sheathed opener explains its blade-draw bonus"),
+			JingHongText.Contains(TEXT("开锋：本牌消耗藏式时，追加1段90%攻击。")));
+		TestTrue(TEXT("Sheathed residual explains its one-shot continuation"),
+			HengYunText.Contains(TEXT("开锋：本牌消耗藏式时，将该藏式复制为「余式」，继续作用于本回合下一张主动牌；余式不再产生余式。")));
+	}
+
 	FGameXXKRuntimeState EnemyTextState;
 	FGameXXKCardEnemyIntent EnemyTextIntent;
 	EnemyTextIntent.SourceUnitId = TEXT("Enemy.StatusText");

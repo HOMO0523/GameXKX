@@ -405,6 +405,132 @@ namespace
 		return Brush;
 	}
 
+	static FSlateBrush BuildRoundedPillBrush(const FLinearColor& FillColor, const float CornerRadius)
+	{
+		FSlateBrush Brush;
+		Brush.DrawAs = ESlateBrushDrawType::RoundedBox;
+		Brush.TintColor = FSlateColor(FillColor);
+		Brush.OutlineSettings = FSlateBrushOutlineSettings(CornerRadius, FSlateColor(FLinearColor::Transparent), 0.0f);
+		return Brush;
+	}
+
+	/** Trait keywords rendered as pill chips at the start of a tooltip line. */
+	bool TrySplitKeywordPill(const FString& Line, FString& OutKeyword, FString& OutRest)
+	{
+		static const TArray<FString> PillKeywords = {
+			TEXT("冲锋"), TEXT("收招"), TEXT("藏式"), TEXT("开锋"),
+			TEXT("血势"), TEXT("乘势"), TEXT("重箭"), TEXT("编序"),
+			TEXT("首牌奖励"), TEXT("反击"), TEXT("格挡"), TEXT("药效"),
+			TEXT("基础"), TEXT("冲锋效果"), TEXT("收招效果"), TEXT("重箭效果"),
+		};
+		int32 HalfColon = INDEX_NONE;
+		int32 FullColon = INDEX_NONE;
+		Line.FindChar(TEXT(':'), HalfColon);
+		Line.FindChar(TEXT('：'), FullColon);
+		int32 ColonIndex = HalfColon == INDEX_NONE
+			? FullColon
+			: (FullColon == INDEX_NONE ? HalfColon : FMath::Min(HalfColon, FullColon));
+		if (ColonIndex <= 0)
+		{
+			return false;
+		}
+		const FString Prefix = Line.Left(ColonIndex);
+		for (const FString& Keyword : PillKeywords)
+		{
+			if (Prefix == Keyword)
+			{
+				OutKeyword = Prefix;
+				OutRest = Line.Mid(ColonIndex + 1);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void PopulateHandCardDetailBody(UWidgetTree* WidgetTree, UVerticalBox* BodyBox, const FString& Text)
+	{
+		if (!WidgetTree || !BodyBox)
+		{
+			return;
+		}
+		BodyBox->ClearChildren();
+
+		const FLinearColor PillFill(0.18f, 0.13f, 0.09f, 1.0f);
+		const FLinearColor PillInk(0.96f, 0.90f, 0.76f, 1.0f);
+		const FLinearColor BodyInk(0.14f, 0.11f, 0.08f, 1.0f);
+
+		const auto MakeBodyText = [WidgetTree, &BodyInk](const FString& Content) -> UTextBlock*
+		{
+			UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+			TextBlock->SetText(FText::FromString(Content));
+			TextBlock->SetColorAndOpacity(FSlateColor(BodyInk));
+			TextBlock->SetAutoWrapText(true);
+			TextBlock->SetJustification(ETextJustify::Left);
+			FSlateFontInfo Font = TextBlock->GetFont();
+			Font.Size = 13;
+			TextBlock->SetFont(Font);
+			TextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
+			return TextBlock;
+		};
+
+		TArray<FString> Lines;
+		Text.ParseIntoArrayLines(Lines, false);
+		for (int32 LineIndex = 0; LineIndex < Lines.Num(); ++LineIndex)
+		{
+			const FString Line = Lines[LineIndex].TrimEnd();
+			if (Line.IsEmpty())
+			{
+				continue;
+			}
+
+			UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+			Row->SetVisibility(ESlateVisibility::HitTestInvisible);
+			FString Keyword;
+			FString Rest;
+			if (TrySplitKeywordPill(Line, Keyword, Rest))
+			{
+				UBorder* Pill = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
+				Pill->SetBrush(BuildRoundedPillBrush(PillFill, 5.0f));
+				Pill->SetPadding(FMargin(5.0f, 1.0f, 5.0f, 1.0f));
+				Pill->SetVisibility(ESlateVisibility::HitTestInvisible);
+				UTextBlock* PillText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+				PillText->SetText(FText::FromString(Keyword));
+				PillText->SetColorAndOpacity(FSlateColor(PillInk));
+				PillText->SetJustification(ETextJustify::Center);
+				FSlateFontInfo PillFont = PillText->GetFont();
+				PillFont.Size = 11;
+				PillFont.TypefaceFontName = TEXT("Bold");
+				PillText->SetFont(PillFont);
+				PillText->SetVisibility(ESlateVisibility::HitTestInvisible);
+				Pill->SetContent(PillText);
+				if (UHorizontalBoxSlot* PillSlot = Row->AddChildToHorizontalBox(Pill))
+				{
+					PillSlot->SetVerticalAlignment(VAlign_Center);
+				}
+				UTextBlock* RestText = MakeBodyText(Rest);
+				if (UHorizontalBoxSlot* RestSlot = Row->AddChildToHorizontalBox(RestText))
+				{
+					RestSlot->SetPadding(FMargin(4.0f, 0.0f, 0.0f, 0.0f));
+					RestSlot->SetHorizontalAlignment(HAlign_Fill);
+					RestSlot->SetVerticalAlignment(VAlign_Center);
+				}
+			}
+			else
+			{
+				UTextBlock* PlainText = MakeBodyText(Line);
+				if (UHorizontalBoxSlot* PlainSlot = Row->AddChildToHorizontalBox(PlainText))
+				{
+					PlainSlot->SetHorizontalAlignment(HAlign_Fill);
+				}
+			}
+			if (UVerticalBoxSlot* RowSlot = BodyBox->AddChildToVerticalBox(Row))
+			{
+				RowSlot->SetHorizontalAlignment(HAlign_Fill);
+				RowSlot->SetVerticalAlignment(VAlign_Top);
+			}
+		}
+	}
+
 	static FString BuildTargetingInkDabTexturePath(int32 DabIndex)
 	{
 		return FString::Printf(
@@ -4779,7 +4905,35 @@ UTexture2D* UGameXXKBattleBoardWidget::ResolveEnemyIntentPortraitTexture(const F
 FString UGameXXKBattleBoardWidget::GetCardTooltipTextForTest() const
 {
 	const FString Title = HandCardDetailTitle ? HandCardDetailTitle->GetText().ToString() : FString();
-	const FString Body = HandCardDetailBody ? HandCardDetailBody->GetText().ToString() : FString();
+	TArray<FString> BodyLines;
+	if (HandCardDetailBody)
+	{
+		for (UWidget* Child : HandCardDetailBody->GetAllChildren())
+		{
+			UHorizontalBox* Row = Cast<UHorizontalBox>(Child);
+			if (!Row)
+			{
+				continue;
+			}
+			FString RowText;
+			for (UWidget* Cell : Row->GetAllChildren())
+			{
+				if (UTextBlock* TextBlock = Cast<UTextBlock>(Cell))
+				{
+					RowText += TextBlock->GetText().ToString();
+				}
+				else if (UBorder* Pill = Cast<UBorder>(Cell))
+				{
+					if (UTextBlock* PillText = Cast<UTextBlock>(Pill->GetContent()))
+					{
+						RowText += PillText->GetText().ToString() + TEXT("：");
+					}
+				}
+			}
+			BodyLines.Add(RowText);
+		}
+	}
+	const FString Body = FString::Join(BodyLines, TEXT("\n"));
 	return Title.IsEmpty() ? Body : Title + TEXT("\n") + Body;
 }
 
@@ -5508,21 +5662,22 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	HandCardDetailPanel->SetBrushColor(FLinearColor::White);
 	HandCardDetailPanel->SetPadding(FMargin(16.0f, 12.0f));
 	HandCardDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
+	// Fixed width, content-driven height: multi-line keyword bodies (Blade
+	// charge/finish rows, pill rows) must never overflow the parchment.
+	USizeBox* TooltipSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("BattleHandCardDetailSizeBox"));
+	TooltipSizeBox->SetWidthOverride(HandCardDetailPanelSize.X);
+	TooltipSizeBox->SetHeightOverride(0.0f);
+	HandCardDetailPanel->SetContent(TooltipSizeBox);
 	UVerticalBox* TooltipBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-	HandCardDetailPanel->SetContent(TooltipBox);
+	TooltipSizeBox->AddChild(TooltipBox);
 	HandCardDetailTitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleHandCardDetailTitle"));
 	HandCardDetailTitle->SetColorAndOpacity(FSlateColor(FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)));
 	FSlateFontInfo TitleFont = HandCardDetailTitle->GetFont();
 	TitleFont.Size = 18;
 	HandCardDetailTitle->SetFont(TitleFont);
 	TooltipBox->AddChildToVerticalBox(HandCardDetailTitle);
-	HandCardDetailBody = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleHandCardDetailBody"));
-	HandCardDetailBody->SetColorAndOpacity(FSlateColor(FLinearColor(0.14f, 0.11f, 0.08f, 1.0f)));
-	HandCardDetailBody->SetAutoWrapText(true);
-	HandCardDetailBody->SetJustification(ETextJustify::Left);
-	FSlateFontInfo DetailFont = HandCardDetailBody->GetFont();
-	DetailFont.Size = 13;
-	HandCardDetailBody->SetFont(DetailFont);
+	HandCardDetailBody = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("BattleHandCardDetailBody"));
+	HandCardDetailBody->SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (UVerticalBoxSlot* TooltipBodySlot = TooltipBox->AddChildToVerticalBox(HandCardDetailBody))
 	{
 		TooltipBodySlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
@@ -5532,6 +5687,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		DetailSlot->SetAnchors(FAnchors(0.5f, 1.0f, 0.5f, 1.0f));
 		DetailSlot->SetOffsets(FMargin(-HandCardDetailPanelSize.X * 0.5f, -588.0f, HandCardDetailPanelSize.X, HandCardDetailPanelSize.Y));
 		DetailSlot->SetAlignment(FVector2D::ZeroVector);
+		DetailSlot->SetAutoSize(true);
 		DetailSlot->SetZOrder(50);
 	}
 
@@ -6303,7 +6459,7 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	}
 	if (HandCardDetailBody)
 	{
-		HandCardDetailBody->SetText(TooltipBody);
+		PopulateHandCardDetailBody(WidgetTree, HandCardDetailBody, TooltipBody.ToString());
 	}
 	// The panel must never swallow the button's leave/click events while it overlaps the hand.
 	HandCardDetailPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -6868,7 +7024,7 @@ void UGameXXKBattleBoardWidget::ClearCardTooltipHoverState()
 	}
 	if (HandCardDetailBody)
 	{
-		HandCardDetailBody->SetText(FText::GetEmpty());
+		HandCardDetailBody->ClearChildren();
 	}
 }
 

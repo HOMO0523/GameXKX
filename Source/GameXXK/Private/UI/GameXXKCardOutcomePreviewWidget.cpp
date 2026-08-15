@@ -12,12 +12,15 @@
 
 namespace
 {
-	constexpr int32 MaxOutcomeLines = 3;
+	constexpr int32 MaxOutcomeLines = 8;
 	constexpr int32 OutcomeFontSize = 18;
+	// Same approved MasterV2 item-slot paper as the pending-choice panel:
+	// straight, regular warm border drawn at the texture's authored size with
+	// the project's fixed 0.065 nine-slice margin.
 	constexpr const TCHAR* OutcomeTooltipPaperTexturePath =
-		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TooltipPaper.T_MasterV2_TooltipPaper");
-	const FVector2D OutcomeTooltipPaperImageSize(520.0f, 240.0f);
-	const FMargin OutcomeTooltipPaperMargin(12.0f / 520.0f, 10.0f / 240.0f);
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
+	const FVector2D OutcomeTooltipPaperImageSize(100.0f, 101.0f);
+	const FMargin OutcomeTooltipPaperMargin(0.065f);
 	const FMargin OutcomeTooltipPaperPadding(10.0f, 6.0f);
 
 	FLinearColor ResolveSegmentColor(const EGameXXKCardOutcomeTone Tone)

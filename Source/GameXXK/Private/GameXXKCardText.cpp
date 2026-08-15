@@ -764,11 +764,168 @@ namespace
 		return FString::Join(Lines, TEXT("\n"));
 	}
 
+	bool IsBladeProfessionCard(const FGameXXKCardDefinition& Definition)
+	{
+		return Definition.Owner == EGameXXKCardOwner::Profession
+			&& Definition.Role == EGameXXKCharacterRole::Blade;
+	}
+
+	FString DescribeBladeChargeRule(const EGameXXKBladeChargeRule Rule)
+	{
+		switch (Rule)
+		{
+		case EGameXXKBladeChargeRule::ReplayNextActiveBase:
+			return TEXT("下一张主动牌基础效果再结算一次。");
+		case EGameXXKBladeChargeRule::CopyNextActiveToHand:
+			return TEXT("下一张主动牌结算后，加入其0费临时复制。");
+		case EGameXXKBladeChargeRule::ReturnNextActiveToHandOnce:
+			return TEXT("下一张主动牌结算后返回手牌一次。");
+		case EGameXXKBladeChargeRule::ReplayNextActiveNextRound:
+			return TEXT("记录下一张主动牌，下回合自动重放其基础效果。");
+		case EGameXXKBladeChargeRule::RestoreNextActiveOwnerState:
+			return TEXT("下一张主动牌的状态/护甲消耗，结算后恢复。");
+		case EGameXXKBladeChargeRule::DuplicateNextSingleTargetOrDraw:
+			return TEXT("下一张单体牌同时作用于另一合法目标；否则抽2张。");
+		case EGameXXKBladeChargeRule::MakeNextActiveEnergyFree:
+			return TEXT("下一张主动牌气力消耗为0。");
+		case EGameXXKBladeChargeRule::MakeNextActiveManaFree:
+			return TEXT("下一张主动牌内力消耗为0。");
+		case EGameXXKBladeChargeRule::RefundNextActiveCosts:
+			return TEXT("下一张主动牌结算后，全额返还气力与内力。");
+		case EGameXXKBladeChargeRule::CountNextActiveTwice:
+			return TEXT("下一张主动牌在出牌数与套装门槛中计为2张。");
+		case EGameXXKBladeChargeRule::CopyNextActiveNextRound:
+			return TEXT("记录下一张主动牌，下回合加入其0费临时复制。");
+		case EGameXXKBladeChargeRule::RetainNextActiveNextRound:
+			return TEXT("下一张主动牌不弃牌，下回合按原费用返回手牌。");
+		case EGameXXKBladeChargeRule::PreserveFinishCandidate:
+			return TEXT("下一张主动牌不替换收招候选。");
+		case EGameXXKBladeChargeRule::RetainRemainingHand:
+			return TEXT("下一张主动牌结算后，保留其余手牌至下回合。");
+		case EGameXXKBladeChargeRule::LightLoad:
+			return TEXT("下一张主动牌气力-1（最低0），结算后抽1张。");
+		case EGameXXKBladeChargeRule::DrawTwoAfterNextActive:
+			return TEXT("下一张主动牌结算后抽2张。");
+		case EGameXXKBladeChargeRule::DrawSameOwnerAfterNextActive:
+			return TEXT("下一张主动牌结算后，抽1张同角色牌（无则普通抽1张）。");
+		case EGameXXKBladeChargeRule::DrawOtherOwnerAfterNextActive:
+			return TEXT("下一张主动牌结算后，抽1张其他角色牌（无则普通抽1张）。");
+		case EGameXXKBladeChargeRule::None:
+		default:
+			return FString();
+		}
+	}
+
+	FString DescribeBladeFinishRule(const EGameXXKBladeFinishRule Rule)
+	{
+		switch (Rule)
+		{
+		case EGameXXKBladeFinishRule::ReturnFirstActiveNextRound:
+			return TEXT("返还本回合首张主动牌至手牌（原费用）。");
+		case EGameXXKBladeFinishRule::MarkAndPrepareTwoCounters:
+			return TEXT("获得2层标记；下个敌方阶段最先以你为目标的2张攻击牌结算前，各获得2层灵动并反击1次。");
+		case EGameXXKBladeFinishRule::PreserveFirstTwoBleedTriggers:
+			return TEXT("下回合结束前最先2次流血不减层。");
+		case EGameXXKBladeFinishRule::DrawOnFirstThreeBleedTriggers:
+			return TEXT("下回合最先3次流血各抽1张。");
+		case EGameXXKBladeFinishRule::HealBladeBleedCapTwelve:
+			return TEXT("下回合结束前刀客触发的流血回复等量生命（累计上限12）。");
+		case EGameXXKBladeFinishRule::ReturnFirstActiveAgainstBleeding:
+			return TEXT("下回合首张以流血敌人为目标的牌结算后返回手牌。");
+		case EGameXXKBladeFinishRule::FreezeVulnerabilityAndReplay:
+			return TEXT("下回合结束前破绽不减不清；下回合首张以破绽敌人为目标的牌额外重放。");
+		case EGameXXKBladeFinishRule::CopyFirstStatusConsumer:
+			return TEXT("下回合首张消耗敌方状态的牌结算后，生成0费临时复制。");
+		case EGameXXKBladeFinishRule::RefundFirstHighCostAndDrawTwo:
+			return TEXT("下回合首张基础气力≥2的牌返还气力并抽2张。");
+		case EGameXXKBladeFinishRule::CopyFirstKill:
+			return TEXT("下回合首张完成击杀的牌结算后，生成0费临时复制。");
+		case EGameXXKBladeFinishRule::MarkAndReregisterCounterVolley:
+			return TEXT("获得2层标记；下个敌方阶段首次反击齐射后，重新登记全部反击来源。");
+		case EGameXXKBladeFinishRule::FirstTwoDodgesFree:
+			return TEXT("下个敌方阶段最先2次成功闪避不消耗灵动。");
+		case EGameXXKBladeFinishRule::TransferMarkBeforeCounter:
+			return TEXT("反击齐射前把标记转移给攻击者（≤待结算反击数），反击获得标记加成。");
+		case EGameXXKBladeFinishRule::FirstCounterVolleyHitsAll:
+			return TEXT("首次反击齐射中，每个反击来源对全体敌人各反击一次。");
+		case EGameXXKBladeFinishRule::StoreChargeAsNativeStyle:
+			return TEXT("将冲锋效果保存为「藏式」。");
+		case EGameXXKBladeFinishRule::None:
+		default:
+			return FString();
+		}
+	}
+
+	FString DescribeBladeEffects(const FGameXXKCardDefinition& EffectiveDefinition)
+	{
+		TArray<FString> Lines;
+		for (const FGameXXKCardEffect& Effect : EffectiveDefinition.Effects)
+		{
+			Lines.Add(DescribeEffect(Effect));
+		}
+
+		const FGameXXKBladeSequenceRule& Sequence = EffectiveDefinition.BladeSequence;
+		switch (Sequence.BaseRule)
+		{
+		case EGameXXKBladeBaseRule::HealFromTriggeredBleed:
+			Lines.Add(TEXT("回复本次命中所触发的流血伤害。"));
+			break;
+		case EGameXXKBladeBaseRule::PreserveTriggeredBleed:
+			Lines.Add(TEXT("本次命中所触发的流血不减层。"));
+			break;
+		case EGameXXKBladeBaseRule::ConsumeVulnerabilityForExtraAttacks:
+			Lines.Add(TEXT("消耗至多3层破绽，每层追加1段50%攻击。"));
+			break;
+		case EGameXXKBladeBaseRule::RefundCostsAndDrawOnKill:
+			Lines.Add(TEXT("若本牌完成击杀，返还全部费用并抽1张。"));
+			break;
+		default:
+			break;
+		}
+
+		if (EffectiveDefinition.ProfessionArchetypeIds.Contains(TEXT("Archetype.Blade.BloodEdge")))
+		{
+			Lines.Add(TEXT("血势：每层目标流血使本段攻击倍率+10%。"));
+		}
+		if (EffectiveDefinition.ProfessionArchetypeIds.Contains(TEXT("Archetype.Blade.MomentumBreak")))
+		{
+			Lines.Add(TEXT("乘势：每层自身气势使本段攻击倍率+10%。"));
+		}
+
+		if (Sequence.ChargeRule != EGameXXKBladeChargeRule::None)
+		{
+			Lines.Add(FString::Printf(TEXT("冲锋：本回合第一张主动牌时，%s"), *DescribeBladeChargeRule(Sequence.ChargeRule)));
+		}
+
+		if (Sequence.FinishRule == EGameXXKBladeFinishRule::StoreChargeAsNativeStyle)
+		{
+			Lines.Add(TEXT("收招：本回合最后一张主动牌时，将冲锋效果保存为「藏式」。"));
+			Lines.Add(TEXT("藏式：下回合第一张主动牌消耗；未消耗则回合末失效。"));
+			if (Sequence.BaseRule == EGameXXKBladeBaseRule::OpenBladeExtraAttack)
+			{
+				Lines.Add(TEXT("开锋：本牌消耗藏式时，追加1段90%攻击。"));
+			}
+			else if (Sequence.BaseRule == EGameXXKBladeBaseRule::OpenBladeResidualStyle)
+			{
+				Lines.Add(TEXT("开锋：本牌消耗藏式时，将该藏式复制为「余式」，继续作用于本回合下一张主动牌；余式不再产生余式。"));
+			}
+		}
+		else if (Sequence.FinishRule != EGameXXKBladeFinishRule::None)
+		{
+			Lines.Add(FString::Printf(TEXT("收招：本回合最后一张主动牌时，%s"), *DescribeBladeFinishRule(Sequence.FinishRule)));
+		}
+		return FString::Join(Lines, TEXT("\n"));
+	}
+
 	FString DescribeEffectsResolved(const FGameXXKCardDefinition& EffectiveDefinition)
 	{
 		if (IsPermanentSorcererCard(EffectiveDefinition))
 		{
 			return DescribeSorcererEffects(EffectiveDefinition);
+		}
+		if (IsBladeProfessionCard(EffectiveDefinition))
+		{
+			return DescribeBladeEffects(EffectiveDefinition);
 		}
 		TArray<FString> Lines;
 		for (const FGameXXKCardEffect& Effect : EffectiveDefinition.Effects)

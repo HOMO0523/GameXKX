@@ -1011,7 +1011,8 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> HandCardDetailTitle;
-	TObjectPtr<UTextBlock> HandCardDetailBody;
+	/** Row container for the tooltip body; keyword lines render a pill + remainder. */
+	TObjectPtr<UVerticalBox> HandCardDetailBody;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHorizontalBox> RewardCardBox;

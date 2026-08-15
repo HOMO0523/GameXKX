@@ -163,9 +163,9 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 			FocusedBackground->Background.DrawAs, ESlateBrushDrawType::Box);
 		const UObject* const BackgroundResource = FocusedBackground->Background.GetResourceObject();
 		TestNotNull(TEXT("the tooltip-paper background has a loaded project texture"), BackgroundResource);
-		TestEqual(TEXT("the tooltip reuses the approved low-saturation paper asset"),
+		TestEqual(TEXT("the tooltip reuses the approved MasterV2 item-slot paper"),
 			BackgroundResource ? BackgroundResource->GetPathName() : FString(),
-			FString(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TooltipPaper.T_MasterV2_TooltipPaper")));
+			FString(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot")));
 		TestEqual(TEXT("the tooltip-paper background keeps compact readable padding"),
 			FocusedBackground->GetPadding(), FMargin(10.0f, 6.0f));
 	}
@@ -327,14 +327,17 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	}
 
 	TArray<FGameXXKCardOutcomeTextLine> DefensiveInput = GroupLines;
-	DefensiveInput.Add(Line({Segment(TEXT("unexpected fourth row"), EGameXXKCardOutcomeTone::Neutral)}));
+	for (int32 ExtraIndex = 0; ExtraIndex < 6; ++ExtraIndex)
+	{
+		DefensiveInput.Add(Line({Segment(*FString::Printf(TEXT("row %d"), 4 + ExtraIndex), EGameXXKCardOutcomeTone::Neutral)}));
+	}
 	Widget->SetLines(DefensiveInput);
-	TestEqual(TEXT("mode-independent safety cap trims a fourth row"), Widget->GetVisibleLineCountForTest(), 3);
-	TestEqual(TEXT("safety cap keeps the first three rows in order"), Widget->GetPlainLineForTest(2), FString(TEXT("3P 治疗 +2")));
-	TestEqual(TEXT("trimmed row cannot be observed"), Widget->GetPlainLineForTest(3), FString());
+	TestEqual(TEXT("mode-independent safety cap trims rows beyond eight"), Widget->GetVisibleLineCountForTest(), 8);
+	TestEqual(TEXT("safety cap keeps the first rows in order"), Widget->GetPlainLineForTest(2), FString(TEXT("3P 治疗 +2")));
+	TestEqual(TEXT("trimmed row cannot be observed"), Widget->GetPlainLineForTest(8), FString());
 	UVerticalBox* DefensiveRoot = RenderedRoot(Widget);
-	TestEqual(TEXT("real rendered tree applies the absolute three-row safety cap"),
-		DefensiveRoot ? DefensiveRoot->GetChildrenCount() : 0, 3);
+	TestEqual(TEXT("real rendered tree applies the absolute eight-row safety cap"),
+		DefensiveRoot ? DefensiveRoot->GetChildrenCount() : 0, 8);
 	TArray<UWidget*> DefensiveRenderedObjects;
 	if (DefensiveRoot)
 	{
