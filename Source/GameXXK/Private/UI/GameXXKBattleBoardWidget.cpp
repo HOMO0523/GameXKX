@@ -415,7 +415,7 @@ namespace
 	}
 
 	/** Trait keywords rendered as pill chips at the start of a tooltip line. */
-	bool TrySplitKeywordPill(const FString& Line, FString& OutKeyword, FString& OutRest)
+	bool IsPillKeywordText(const FString& Prefix)
 	{
 		static const TArray<FString> PillKeywords = {
 			TEXT("冲锋"), TEXT("收招"), TEXT("藏式"), TEXT("开锋"),
@@ -424,6 +424,19 @@ namespace
 			TEXT("反击"), TEXT("格挡"), TEXT("药效"),
 			TEXT("地势"),
 		};
+		const FString BasePrefix = Prefix.Left(Prefix.Find(TEXT("·"), ESearchCase::CaseSensitive, ESearchDir::FromStart, INDEX_NONE));
+		for (const FString& Keyword : PillKeywords)
+		{
+			if (Prefix == Keyword || BasePrefix == Keyword)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool TrySplitKeywordPill(const FString& Line, FString& OutKeyword, FString& OutRest)
+	{
 		int32 HalfColon = INDEX_NONE;
 		int32 FullColon = INDEX_NONE;
 		Line.FindChar(TEXT(':'), HalfColon);
@@ -438,17 +451,13 @@ namespace
 		const FString Prefix = Line.Left(ColonIndex);
 		// Sub-tagged variants (阵赏·炎法) keep their full prefix as the
 		// pill label; matching only needs the base keyword before the first dot.
-		const FString BasePrefix = Prefix.Left(Prefix.Find(TEXT("·"), ESearchCase::CaseSensitive, ESearchDir::FromStart, INDEX_NONE));
-		for (const FString& Keyword : PillKeywords)
+		if (!IsPillKeywordText(Prefix))
 		{
-			if (Prefix == Keyword || BasePrefix == Keyword)
-			{
-				OutKeyword = Prefix;
-				OutRest = Line.Mid(ColonIndex + 1);
-				return true;
-			}
+			return false;
 		}
-		return false;
+		OutKeyword = Prefix;
+		OutRest = Line.Mid(ColonIndex + 1);
+		return true;
 	}
 
 	/** Pill fill color: the desaturated profession accent of the ability the keyword belongs to. */
@@ -499,7 +508,72 @@ namespace
 		return Width;
 	}
 
-	float PopulateHandCardDetailBody(UWidgetTree* WidgetTree, UVerticalBox* BodyBox, const FString& Text)
+	struct FBodySegment
+	{
+		FString Text;
+		bool bPill = false;
+		FLinearColor PillColor = FLinearColor::White;
+		float FontSize = 13.0f;
+	};
+
+	/** Splits effect prose so every battle-status mention becomes its own neutral pill. */
+	TArray<FBodySegment> SplitStatusSegments(const FString& Text, const FLinearColor& StatusPillColor)
+	{
+		// Longer compound names first so e.g. 破绽免疫 never half-matches 破绽.
+		static const TArray<FString> StatusNames = {
+			TEXT("本回合地形双效"), TEXT("破绽免疫"), TEXT("追击标记"), TEXT("破绽追击"),
+			TEXT("疗愈增幅"), TEXT("地形双效"), TEXT("地形免耗"), TEXT("地形减耗"),
+			TEXT("护甲"), TEXT("蚀伤"), TEXT("流血"), TEXT("中毒"), TEXT("灼烧"),
+			TEXT("破绽"), TEXT("气势"), TEXT("灵动"), TEXT("标记"), TEXT("虚弱"),
+			TEXT("蓄力"), TEXT("反击"), TEXT("格挡"), TEXT("药效"), TEXT("守护"),
+			TEXT("代挡"),
+		};
+		TArray<FBodySegment> Segments;
+		int32 Pos = 0;
+		while (Pos < Text.Len())
+		{
+			int32 BestLen = 0;
+			const FString* BestName = nullptr;
+			for (const FString& Name : StatusNames)
+			{
+				if (Name.Len() > BestLen && Text.Mid(Pos).StartsWith(Name))
+				{
+					BestLen = Name.Len();
+					BestName = &Name;
+				}
+			}
+			if (BestName)
+			{
+				FBodySegment PillSegment;
+				PillSegment.Text = *BestName;
+				PillSegment.bPill = true;
+				PillSegment.PillColor = StatusPillColor;
+				PillSegment.FontSize = 10.0f;
+				Segments.Add(PillSegment);
+				Pos += BestLen;
+				continue;
+			}
+			int32 Next = Text.Len();
+			for (const FString& Name : StatusNames)
+			{
+				const int32 Index = Text.Find(Name, ESearchCase::CaseSensitive, ESearchDir::FromStart, Pos);
+				if (Index != INDEX_NONE && Index < Next)
+				{
+					Next = Index;
+				}
+			}
+			if (Next > Pos)
+			{
+				FBodySegment TextSegment;
+				TextSegment.Text = Text.Mid(Pos, Next - Pos);
+				Segments.Add(TextSegment);
+			}
+			Pos = Next;
+		}
+		return Segments;
+	}
+
+	float PopulateHandCardDetailBody(UWidgetTree* WidgetTree, UVerticalBox* BodyBox, const FString& Title, const FString& Text)
 	{
 		if (!WidgetTree || !BodyBox)
 		{
@@ -507,23 +581,146 @@ namespace
 		}
 		BodyBox->ClearChildren();
 
+		constexpr float WrapWidth = 388.0f;
+		constexpr float RowHeight = 22.0f;
 		const FLinearColor PillInk(0.96f, 0.90f, 0.76f, 1.0f);
 		const FLinearColor BodyInk(0.14f, 0.11f, 0.08f, 1.0f);
+		const FLinearColor StatusPillColor(0.18f, 0.13f, 0.09f, 1.0f);
 		float TotalEstimatedHeight = 0.0f;
-		bool bSeenPillRow = false;
+		bool bSeenAbilityRow = false;
 
-		const auto MakeBodyText = [WidgetTree, &BodyInk](const FString& Content) -> UTextBlock*
+		const auto MakeTextBlock = [WidgetTree, &BodyInk](const FString& Content, const float FontSize, const bool bBold) -> UTextBlock*
 		{
 			UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 			TextBlock->SetText(FText::FromString(Content));
 			TextBlock->SetColorAndOpacity(FSlateColor(BodyInk));
-			TextBlock->SetAutoWrapText(true);
+			TextBlock->SetAutoWrapText(false);
 			TextBlock->SetJustification(ETextJustify::Left);
 			FSlateFontInfo Font = TextBlock->GetFont();
-			Font.Size = 13;
+			Font.Size = static_cast<int32>(FontSize);
+			if (bBold)
+			{
+				Font.TypefaceFontName = TEXT("Bold");
+			}
 			TextBlock->SetFont(Font);
 			TextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
 			return TextBlock;
+		};
+
+		const auto MakePill = [WidgetTree, &PillInk](const FString& Content, const FLinearColor& Fill, const float FontSize) -> UBorder*
+		{
+			UBorder* Pill = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
+			Pill->SetBrush(BuildRoundedPillBrush(Fill, 5.0f));
+			Pill->SetPadding(FMargin(5.0f, 1.0f, 5.0f, 1.0f));
+			Pill->SetVisibility(ESlateVisibility::HitTestInvisible);
+			UTextBlock* PillText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+			PillText->SetText(FText::FromString(Content));
+			PillText->SetColorAndOpacity(FSlateColor(PillInk));
+			PillText->SetJustification(ETextJustify::Center);
+			FSlateFontInfo Font = PillText->GetFont();
+			Font.Size = static_cast<int32>(FontSize);
+			Font.TypefaceFontName = TEXT("Bold");
+			PillText->SetFont(Font);
+			PillText->SetVisibility(ESlateVisibility::HitTestInvisible);
+			Pill->SetContent(PillText);
+			return Pill;
+		};
+
+		const auto SegmentWidth = [](const FBodySegment& Segment)
+		{
+			return Segment.bPill
+				? 10.0f + EstimateTextWidthUnits(Segment.Text, Segment.FontSize)
+				: EstimateTextWidthUnits(Segment.Text, Segment.FontSize);
+		};
+
+		// Wrap a flat segment stream into visual rows. Text segments split at
+		// character granularity; pill segments are atomic and never break.
+		const auto EmitWrappedRows = [&](const TArray<FBodySegment>& InSegments)
+		{
+			TArray<FBodySegment> Queue = InSegments;
+			TArray<FBodySegment> Row;
+			float RowWidth = 0.0f;
+			const auto FlushRow = [&]()
+			{
+				if (Row.IsEmpty())
+				{
+					return;
+				}
+				UHorizontalBox* RowBox = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+				RowBox->SetVisibility(ESlateVisibility::HitTestInvisible);
+				for (const FBodySegment& Segment : Row)
+				{
+					if (Segment.bPill)
+					{
+						UBorder* Pill = MakePill(Segment.Text, Segment.PillColor, Segment.FontSize);
+						if (UHorizontalBoxSlot* PillSlot = RowBox->AddChildToHorizontalBox(Pill))
+						{
+							PillSlot->SetVerticalAlignment(VAlign_Center);
+						}
+					}
+					else
+					{
+						UTextBlock* TextBlock = MakeTextBlock(Segment.Text, Segment.FontSize, false);
+						if (UHorizontalBoxSlot* TextSlot = RowBox->AddChildToHorizontalBox(TextBlock))
+						{
+							TextSlot->SetVerticalAlignment(VAlign_Center);
+						}
+					}
+				}
+				if (UVerticalBoxSlot* RowSlot = BodyBox->AddChildToVerticalBox(RowBox))
+				{
+					RowSlot->SetHorizontalAlignment(HAlign_Fill);
+					RowSlot->SetVerticalAlignment(VAlign_Top);
+				}
+				TotalEstimatedHeight += RowHeight;
+				Row.Reset();
+				RowWidth = 0.0f;
+			};
+
+			for (int32 SegmentIndex = 0; SegmentIndex < Queue.Num(); ++SegmentIndex)
+			{
+				const FBodySegment& Segment = Queue[SegmentIndex];
+				if (Segment.Text.IsEmpty())
+				{
+					continue;
+				}
+				const float SegmentW = SegmentWidth(Segment);
+				if (!Segment.bPill && RowWidth + SegmentW > WrapWidth && RowWidth > 0.0f)
+				{
+					// Split the text at the character boundary that fits.
+					int32 CharsThatFit = 0;
+					float Accumulated = 0.0f;
+					for (int32 Index = 0; Index < Segment.Text.Len(); ++Index)
+					{
+						const float CharWidth = EstimateTextWidthUnits(FString::Chr(Segment.Text[Index]), Segment.FontSize);
+						if (RowWidth + Accumulated + CharWidth > WrapWidth)
+						{
+							break;
+						}
+						Accumulated += CharWidth;
+						++CharsThatFit;
+					}
+					if (CharsThatFit > 0)
+					{
+						FBodySegment Head = Segment;
+						Head.Text = Segment.Text.Left(CharsThatFit);
+						Row.Add(Head);
+						FlushRow();
+						FBodySegment Tail = Segment;
+						Tail.Text = Segment.Text.Mid(CharsThatFit);
+						Queue.Insert(Tail, SegmentIndex + 1);
+						continue;
+					}
+					FlushRow();
+				}
+				if (Segment.bPill && RowWidth + SegmentW > WrapWidth && RowWidth > 0.0f)
+				{
+					FlushRow();
+				}
+				Row.Add(Segment);
+				RowWidth += SegmentW;
+			}
+			FlushRow();
 		};
 
 		TArray<FString> Lines;
@@ -531,71 +728,47 @@ namespace
 		for (int32 LineIndex = 0; LineIndex < Lines.Num(); ++LineIndex)
 		{
 			const FString Line = Lines[LineIndex].TrimEnd();
-			if (Line.IsEmpty())
+			if (Line.IsEmpty() || (!Title.IsEmpty() && Line == Title))
 			{
+				// Skip the duplicated card-name line; the panel title already
+				// shows the name.
 				continue;
 			}
 
-			UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-			Row->SetVisibility(ESlateVisibility::HitTestInvisible);
 			FString Keyword;
 			FString Rest;
-			FString RowText;
-			const bool bHasPill = TrySplitKeywordPill(Line, Keyword, Rest);
-			if (bHasPill)
+			TArray<FBodySegment> Segments;
+			bool bAbilityLine = false;
+			if (TrySplitKeywordPill(Line, Keyword, Rest))
 			{
-				UBorder* Pill = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
-				Pill->SetBrush(BuildRoundedPillBrush(ResolvePillFillColor(Keyword), 5.0f));
-				Pill->SetPadding(FMargin(5.0f, 1.0f, 5.0f, 1.0f));
-				Pill->SetVisibility(ESlateVisibility::HitTestInvisible);
-				UTextBlock* PillText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
-				PillText->SetText(FText::FromString(Keyword));
-				PillText->SetColorAndOpacity(FSlateColor(PillInk));
-				PillText->SetJustification(ETextJustify::Center);
-				FSlateFontInfo PillFont = PillText->GetFont();
-				PillFont.Size = 11;
-				PillFont.TypefaceFontName = TEXT("Bold");
-				PillText->SetFont(PillFont);
-				PillText->SetVisibility(ESlateVisibility::HitTestInvisible);
-				Pill->SetContent(PillText);
-				if (UHorizontalBoxSlot* PillSlot = Row->AddChildToHorizontalBox(Pill))
+				bAbilityLine = true;
+				FBodySegment KeywordSegment;
+				KeywordSegment.Text = Keyword;
+				KeywordSegment.bPill = true;
+				KeywordSegment.PillColor = ResolvePillFillColor(Keyword);
+				KeywordSegment.FontSize = 11.0f;
+				Segments.Add(KeywordSegment);
+				for (const FBodySegment& StatusSegment : SplitStatusSegments(Rest, StatusPillColor))
 				{
-					PillSlot->SetVerticalAlignment(VAlign_Center);
+					Segments.Add(StatusSegment);
 				}
-				UTextBlock* RestText = MakeBodyText(Rest);
-				if (UHorizontalBoxSlot* RestSlot = Row->AddChildToHorizontalBox(RestText))
-				{
-					RestSlot->SetPadding(FMargin(4.0f, 0.0f, 0.0f, 0.0f));
-					RestSlot->SetHorizontalAlignment(HAlign_Fill);
-					RestSlot->SetVerticalAlignment(VAlign_Center);
-				}
-				RowText = Rest;
 			}
 			else
 			{
-				UTextBlock* PlainText = MakeBodyText(Line);
-				if (UHorizontalBoxSlot* PlainSlot = Row->AddChildToHorizontalBox(PlainText))
+				for (const FBodySegment& StatusSegment : SplitStatusSegments(Line, StatusPillColor))
 				{
-					PlainSlot->SetHorizontalAlignment(HAlign_Fill);
+					Segments.Add(StatusSegment);
 				}
-				RowText = Line;
 			}
-			if (UVerticalBoxSlot* RowSlot = BodyBox->AddChildToVerticalBox(Row))
+
+			if (bAbilityLine && !bSeenAbilityRow)
 			{
-				RowSlot->SetHorizontalAlignment(HAlign_Fill);
-				RowSlot->SetVerticalAlignment(VAlign_Top);
-				if (bHasPill && !bSeenPillRow)
-				{
-					// One blank row between the base effects and the ability
-					// keyword rows keeps the two groups visually separated.
-					RowSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
-					TotalEstimatedHeight += 8.0f;
-					bSeenPillRow = true;
-				}
+				// One blank row between the base effects and the ability
+				// keyword rows keeps the two groups visually separated.
+				TotalEstimatedHeight += 8.0f;
+				bSeenAbilityRow = true;
 			}
-			const float WrapWidth = bHasPill ? 320.0f : 388.0f;
-			const int32 WrapLines = FMath::Max(1, FMath::CeilToInt(EstimateTextWidthUnits(RowText, 13.0f) / WrapWidth));
-			TotalEstimatedHeight += static_cast<float>(WrapLines) * 22.0f;
+			EmitWrappedRows(Segments);
 		}
 		return TotalEstimatedHeight;
 	}
@@ -4995,7 +5168,9 @@ FString UGameXXKBattleBoardWidget::GetCardTooltipTextForTest() const
 				{
 					if (UTextBlock* PillText = Cast<UTextBlock>(Pill->GetContent()))
 					{
-						RowText += PillText->GetText().ToString() + TEXT("：");
+						// Keyword pills carry the trailing colon; inline status
+						// pills are plain mentions inside the prose.
+						RowText += PillText->GetText().ToString() + (IsPillKeywordText(PillText->GetText().ToString()) ? TEXT("：") : TEXT(""));
 					}
 				}
 			}
@@ -6529,7 +6704,8 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	{
 		// Height follows the populated rows: title band + gap + estimated
 		// wrapped body height + vertical padding + parchment bottom border.
-		const float BodyHeight = PopulateHandCardDetailBody(WidgetTree, HandCardDetailBody, TooltipBody.ToString());
+		const float BodyHeight = PopulateHandCardDetailBody(
+			WidgetTree, HandCardDetailBody, TooltipTitle.ToString(), TooltipBody.ToString());
 		const float PanelHeight = 12.0f + 28.0f + 6.0f + BodyHeight + 12.0f + 20.0f;
 		if (UCanvasPanelSlot* DetailSlot = Cast<UCanvasPanelSlot>(HandCardDetailPanel->Slot))
 		{
