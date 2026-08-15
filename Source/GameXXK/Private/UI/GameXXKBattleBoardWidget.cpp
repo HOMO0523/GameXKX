@@ -61,6 +61,8 @@ namespace
 	static constexpr int32 MaximumVisibleEnemyIntentCards = 3;
 	static constexpr int32 MaximumVisibleRewardCards = 3;
 	static constexpr int32 MaximumVisiblePendingCardChoices = 6;
+	/** Horizontal gap between pending-choice card faces, in stage design units (~13px at 0.58 stage scale). */
+	static constexpr float PendingChoiceCardGap = 22.0f;
 	static constexpr float CommandMenuWidth = 260.0f;
 	static constexpr float CommandMenuHeight = 300.0f;
 	static constexpr float CommandMenuGap = 18.0f;
@@ -5648,7 +5650,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	if (UCanvasPanelSlot* PendingCardsSlot = PendingChoiceCanvas->AddChildToCanvas(PendingChoiceCardBox))
 	{
 		PendingCardsSlot->SetAnchors(FAnchors(0.5f, 0.0f, 0.5f, 0.0f));
-		PendingCardsSlot->SetOffsets(FMargin(-357.0f, 39.0f, 714.0f, 129.0f));
+		PendingCardsSlot->SetOffsets(FMargin(-673.0f, 39.0f, 1346.0f, RewardCardSize.Y));
 		PendingCardsSlot->SetAlignment(FVector2D::ZeroVector);
 	}
 	PendingChoiceCardButtons.Reserve(MaximumVisiblePendingCardChoices);
@@ -5677,7 +5679,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		CardSizeBox->AddChild(CardButton);
 		if (UHorizontalBoxSlot* CardSlot = PendingChoiceCardBox->AddChildToHorizontalBox(CardSizeBox))
 		{
-			CardSlot->SetPadding(FMargin(3.0f, 0.0f, 3.0f, 0.0f));
+			CardSlot->SetPadding(FMargin(PendingChoiceCardGap * 0.5f, 0.0f, PendingChoiceCardGap * 0.5f, 0.0f));
 		}
 		CardButton->SetVisibility(ESlateVisibility::Collapsed);
 		PendingChoiceCardButtons.Add(CardButton);
@@ -5697,13 +5699,13 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	if (UCanvasPanelSlot* PendingCancelSlot = PendingChoiceCanvas->AddChildToCanvas(PendingChoiceCancelButton))
 	{
 		PendingCancelSlot->SetAnchors(FAnchors(0.5f, 0.0f, 0.5f, 0.0f));
-		PendingCancelSlot->SetOffsets(FMargin(-90.0f, 178.0f, 180.0f, 32.0f));
+		PendingCancelSlot->SetOffsets(FMargin(-90.0f, 39.0f + RewardCardSize.Y + 8.0f, 180.0f, 32.0f));
 		PendingCancelSlot->SetAlignment(FVector2D::ZeroVector);
 	}
 	if (UCanvasPanelSlot* PendingChoiceSlot = RootCanvas->AddChildToCanvas(PendingChoicePanel))
 	{
 		PendingChoiceSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
-		PendingChoiceSlot->SetOffsets(FMargin(-380.0f, -125.0f, 760.0f, 250.0f));
+		PendingChoiceSlot->SetOffsets(FMargin(-691.0f, -181.0f, 1382.0f, 362.0f));
 		PendingChoiceSlot->SetAlignment(FVector2D::ZeroVector);
 	}
 
@@ -5861,16 +5863,22 @@ void UGameXXKBattleBoardWidget::RefreshHandCards()
 		}
 	}
 
-	if (HandCardBox)
-	{
-		HandCardBox->SetVisibility(bCardBattleVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	}
 	const EGameXXKCardPendingChoiceKind PendingChoiceKind = bCardBattleVisible
 		? State->CardRun.ActiveBattle.Deck.PendingChoice.Kind
 		: EGameXXKCardPendingChoiceKind::None;
 	const bool bHasBlockingCardChoice = PendingChoiceKind == EGameXXKCardPendingChoiceKind::InsightChooseToHand
 		|| PendingChoiceKind == EGameXXKCardPendingChoiceKind::ForcedDiscard
 		|| PendingChoiceKind == EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand;
+	if (HandCardBox)
+	{
+		// While a blocking card choice owns the board, the bottom hand row is a
+		// duplicate of the choice cards. Keep exactly one interactive card set:
+		// hide the hand row and let the centered choice panel be the only cards.
+		HandCardBox->SetVisibility(
+			bCardBattleVisible && !bHasBlockingCardChoice
+				? ESlateVisibility::Visible
+				: ESlateVisibility::Collapsed);
+	}
 	// Enemy intent Reveal/Resolve/Settle owns the board. The cards stay visible
 	// for spatial continuity, but their buttons must not remain interactive while
 	// the runtime phase is Enemy.
@@ -6954,10 +6962,30 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 		const int32 VisibleCandidateCount = bShowPendingChoice
 			? FMath::Min(PendingChoice->Candidates.Num(), MaximumVisiblePendingCardChoices)
 			: 0;
-		const float RowWidth = static_cast<float>(VisibleCandidateCount) * 119.0f;
+		// The choice cards are full RewardCardSize card faces. The row must be
+		// sized from the real card width so the group stays centered inside the
+		// panel instead of overflowing to the right (previous 119px-per-card
+		// assumption left the trailing cards outside the parchment).
+		const float CardStep = RewardCardSize.X + PendingChoiceCardGap;
+		const float RowWidth = VisibleCandidateCount > 0
+			? static_cast<float>(VisibleCandidateCount) * CardStep - PendingChoiceCardGap
+			: 0.0f;
 		if (UCanvasPanelSlot* PendingCardsSlot = Cast<UCanvasPanelSlot>(PendingChoiceCardBox->Slot))
 		{
-			PendingCardsSlot->SetOffsets(FMargin(-RowWidth * 0.5f, 39.0f, RowWidth, 129.0f));
+			PendingCardsSlot->SetOffsets(FMargin(-RowWidth * 0.5f, 39.0f, RowWidth, RewardCardSize.Y));
+		}
+		if (UCanvasPanelSlot* PendingChoiceSlot = Cast<UCanvasPanelSlot>(PendingChoicePanel->Slot))
+		{
+			const float PanelWidth = RowWidth + 36.0f;
+			const float PanelHeight = 39.0f + RewardCardSize.Y + 38.0f;
+			PendingChoiceSlot->SetOffsets(FMargin(-PanelWidth * 0.5f, -PanelHeight * 0.5f, PanelWidth, PanelHeight));
+		}
+		if (PendingChoiceCancelButton)
+		{
+			if (UCanvasPanelSlot* PendingCancelSlot = Cast<UCanvasPanelSlot>(PendingChoiceCancelButton->Slot))
+			{
+				PendingCancelSlot->SetOffsets(FMargin(-90.0f, 39.0f + RewardCardSize.Y + 8.0f, 180.0f, 32.0f));
+			}
 		}
 	}
 

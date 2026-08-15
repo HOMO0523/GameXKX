@@ -1597,7 +1597,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Parameters)
 {
-	AddExpectedError(TEXT("cannot enter the 268435456-byte resident budget; using fallback."), EAutomationExpectedErrorFlags::Contains, 0);
+	// NOTE: no expected budget-fallback warning here. The warning only fires when
+	// an atlas load completes with zero computed bytes (a streaming race, seen
+	// during the 2K rollout), which is an anomaly, not behavior these layout
+	// tests require. Budget enforcement is covered deterministically by
+	// GameXXK.UI.Battle.AtlasCache.BudgetAndLru with its own 64-byte budget.
 	UGameInstance* const GameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
 	FName CardInstanceId;
@@ -2183,7 +2187,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKTargetOutcomePreviewLayoutInvariantTest::RunTest(const FString& Parameters)
 {
-	AddExpectedError(TEXT("cannot enter the 268435456-byte resident budget; using fallback."), EAutomationExpectedErrorFlags::Contains, 0);
+	// NOTE: no expected budget-fallback warning here. The warning only fires when
+	// an atlas load completes with zero computed bytes (a streaming race, seen
+	// during the 2K rollout), which is an anomaly, not behavior these layout
+	// tests require. Budget enforcement is covered deterministically by
+	// GameXXK.UI.Battle.AtlasCache.BudgetAndLru with its own 64-byte budget.
 	UGameInstance* const GameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
 	FName CardInstanceId;
@@ -2505,6 +2513,13 @@ bool FGameXXKCardBattleBoardPendingHeroTaskSearchTest::RunTest(const FString& Pa
 	const FMargin InsightOffsets = InsightPanelSlot->GetOffsets();
 	const float InsightCardWidth = InsightCardSize->GetWidthOverride();
 	const float InsightCardHeight = InsightCardSize->GetHeightOverride();
+	// The insight fixture offers two candidates, so the refreshed panel must
+	// size itself to a two-card row: width = 2 * (206 + 22) - 22 + 36 = 470,
+	// height = 39 + 285 + 38 = 362, centered at the panel anchor.
+	TestEqual(TEXT("canonical insight panel centers its two-candidate row"), InsightOffsets.Left, -235.0f);
+	TestEqual(TEXT("canonical insight panel keeps its top edge"), InsightOffsets.Top, -181.0f);
+	TestEqual(TEXT("canonical insight panel width follows its two-candidate row"), InsightOffsets.Right, 470.0f);
+	TestEqual(TEXT("canonical insight panel height fits prompt plus full card faces"), InsightOffsets.Bottom, 362.0f);
 
 	TestTrue(FString::Printf(TEXT("canonical insight cancels before installing the Mage search fixture: %s"), *Error),
 		GameXXKCardRules::CancelInsight(Deck, &Error));
@@ -2554,10 +2569,15 @@ bool FGameXXKCardBattleBoardPendingHeroTaskSearchTest::RunTest(const FString& Pa
 		TestEqual(TEXT("Mage search keeps the insight panel minimum anchor"), SearchPanelSlot->GetAnchors().Minimum, InsightAnchors.Minimum);
 		TestEqual(TEXT("Mage search keeps the insight panel maximum anchor"), SearchPanelSlot->GetAnchors().Maximum, InsightAnchors.Maximum);
 		const FMargin SearchOffsets = SearchPanelSlot->GetOffsets();
-		TestEqual(TEXT("Mage search keeps the insight panel left offset"), SearchOffsets.Left, InsightOffsets.Left);
-		TestEqual(TEXT("Mage search keeps the insight panel top offset"), SearchOffsets.Top, InsightOffsets.Top);
-		TestEqual(TEXT("Mage search keeps the insight panel width"), SearchOffsets.Right, InsightOffsets.Right);
-		TestEqual(TEXT("Mage search keeps the insight panel height"), SearchOffsets.Bottom, InsightOffsets.Bottom);
+		// The panel now sizes itself to the candidate row: width = row + 36
+		// (row = count * (206 + 22) - 22), height = 39 + 285 + 38 = 362, centered.
+		// The Mage search offers a single candidate while the insight fixture
+		// offers two, so the two states no longer share the same offsets.
+		constexpr float SearchExpectedWidth = 242.0f;
+		TestEqual(TEXT("Mage search sizes the panel to its single candidate"), SearchOffsets.Left, -SearchExpectedWidth * 0.5f);
+		TestEqual(TEXT("Mage search keeps the panel vertically centered"), SearchOffsets.Top, -181.0f);
+		TestEqual(TEXT("Mage search panel width follows the candidate row"), SearchOffsets.Right, SearchExpectedWidth);
+		TestEqual(TEXT("Mage search panel height fits prompt plus full card faces"), SearchOffsets.Bottom, 362.0f);
 	}
 	if (SearchCardSize)
 	{
