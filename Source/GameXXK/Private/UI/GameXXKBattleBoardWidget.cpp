@@ -503,7 +503,9 @@ namespace
 		float Width = 0.0f;
 		for (const TCHAR Ch : Text)
 		{
-			Width += (Ch >= 0x20 && Ch <= 0x7E) ? FontSize * 0.55f : FontSize;
+			// Slightly generous advance estimates (1.04 for CJK, 0.60 for
+			// Latin/digits) so wrapped rows never exceed the parchment width.
+			Width += (Ch >= 0x20 && Ch <= 0x7E) ? FontSize * 0.60f : FontSize * 1.04f;
 		}
 		return Width;
 	}
@@ -581,7 +583,7 @@ namespace
 		}
 		BodyBox->ClearChildren();
 
-		constexpr float WrapWidth = 388.0f;
+		constexpr float WrapWidth = 380.0f;
 		constexpr float RowHeight = 22.0f;
 		const FLinearColor PillInk(0.96f, 0.90f, 0.76f, 1.0f);
 		const FLinearColor BodyInk(0.14f, 0.11f, 0.08f, 1.0f);
@@ -685,9 +687,11 @@ namespace
 					continue;
 				}
 				const float SegmentW = SegmentWidth(Segment);
-				if (!Segment.bPill && RowWidth + SegmentW > WrapWidth && RowWidth > 0.0f)
+				if (!Segment.bPill && RowWidth + SegmentW > WrapWidth)
 				{
-					// Split the text at the character boundary that fits.
+					// Split the text at the character boundary that fits. This
+					// also handles a first segment that is wider than the row
+					// on its own (RowWidth == 0).
 					int32 CharsThatFit = 0;
 					float Accumulated = 0.0f;
 					for (int32 Index = 0; Index < Segment.Text.Len(); ++Index)
@@ -711,7 +715,10 @@ namespace
 						Queue.Insert(Tail, SegmentIndex + 1);
 						continue;
 					}
-					FlushRow();
+					if (RowWidth > 0.0f)
+					{
+						FlushRow();
+					}
 				}
 				if (Segment.bPill && RowWidth + SegmentW > WrapWidth && RowWidth > 0.0f)
 				{
@@ -5906,14 +5913,11 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	HandCardDetailPanel->SetBrushColor(FLinearColor::White);
 	HandCardDetailPanel->SetPadding(FMargin(16.0f, 12.0f));
 	HandCardDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
-	// Fixed width, content-driven height: multi-line keyword bodies (Blade
-	// charge/finish rows, pill rows) must never overflow the parchment.
-	USizeBox* TooltipSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("BattleHandCardDetailSizeBox"));
-	TooltipSizeBox->SetWidthOverride(HandCardDetailPanelSize.X);
-	TooltipSizeBox->SetHeightOverride(0.0f);
-	HandCardDetailPanel->SetContent(TooltipSizeBox);
+	// The body box fills the panel's content width naturally (panel width
+	// minus the 16px side padding). No SizeBox override: a wider override
+	// would let wrapped rows render past the parchment's right edge.
 	UVerticalBox* TooltipBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-	TooltipSizeBox->AddChild(TooltipBox);
+	HandCardDetailPanel->SetContent(TooltipBox);
 	HandCardDetailTitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleHandCardDetailTitle"));
 	HandCardDetailTitle->SetColorAndOpacity(FSlateColor(FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)));
 	FSlateFontInfo TitleFont = HandCardDetailTitle->GetFont();
