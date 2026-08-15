@@ -109,9 +109,9 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Medicine cards expose the exact concise Medicine keyword rule"), MedicineText.Contains(TEXT("药效：下一次治疗或治疗反转每层＋1；结算时全部消耗。")));
 	TestTrue(TEXT("Heavy Arrow cards expose the exact concise Heavy Arrow keyword rule"), HeavyArrowText.Contains(TEXT("重箭：消耗全部蓄力，逐层触发本牌重箭效果。")));
 	TestTrue(TEXT("Heavy Arrow cards retain their data-defined per-layer payload"), HeavyArrowText.Contains(TEXT("每消耗1层")) && HeavyArrowText.Contains(TEXT("抽1张牌")));
-	TestTrue(TEXT("spell-task cards expose the exact concise task rule"), SpellTaskText.Contains(TEXT("法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发首牌奖励。")));
-	TestTrue(TEXT("spell-task cards retain the data-defined reward"), SpellTaskText.Contains(TEXT("首牌奖励·炎")) && SpellTaskText.Contains(TEXT("8层灼烧")));
-	TestTrue(TEXT("terrain cards expose the exact concise current-terrain rule"), TerrainBenefitText.Contains(TEXT("当前地势收益：按当前地势触发对应效果。")));
+	TestTrue(TEXT("spell-task cards expose the exact concise task rule"), SpellTaskText.Contains(TEXT("法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。")));
+	TestTrue(TEXT("spell-task cards retain the data-defined reward"), SpellTaskText.Contains(TEXT("阵赏·炎")) && SpellTaskText.Contains(TEXT("8层灼烧")));
+	TestTrue(TEXT("terrain cards expose the exact concise current-terrain rule"), TerrainBenefitText.Contains(TEXT("地势：按当前地势触发对应效果。")));
 	TestTrue(TEXT("terrain cards retain the data-defined terrain payload"), TerrainBenefitText.Contains(TEXT("触发当前地势收益1次")));
 
 	const FGameXXKCardDefinition* BladeLieFeng = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.LieFengZhan"));

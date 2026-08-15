@@ -66,24 +66,24 @@ bool FGameXXKSorcererPartnerAllCardTextTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKSorcererPartnerTextTest;
 	const TArray<FExpectedCardText> Expected = {
-		{TEXT("Profession.Sorcerer.LingHuoFu"), TEXT("基础：敌方全体造成70%攻击伤害"), TEXT("编序：第1～2位时，检索牌本回合内力消耗-3"), TEXT("首牌奖励：回复1点气力、8点内力，抽2张牌")},
-		{TEXT("Profession.Sorcerer.JuLing"), TEXT("基础：自身回复3点内力"), TEXT("编序：再回复此前记录牌实际支付内力总和的50%"), TEXT("首牌奖励：我方全体回复8点内力，抽2张牌")},
-		{TEXT("Profession.Sorcerer.LiHuoYin"), TEXT("基础：敌方全体造成60%攻击伤害并获得2层灼烧"), TEXT("编序：第1～2位时，灼烧改为4层"), TEXT("首牌奖励：敌方全体当前灼烧翻倍")},
-		{TEXT("Profession.Sorcerer.YanQiang"), TEXT("基础：敌方全体获得1层灼烧"), TEXT("编序：前一张记录牌为炎牌时，灼烧改为3层"), TEXT("首牌奖励：按场上最高灼烧补齐敌方全体，再各获得3层灼烧")},
-		{TEXT("Profession.Sorcerer.BaoYanShu"), TEXT("基础：敌方全体造成80%攻击伤害"), TEXT("编序：第3～5位时，每层灼烧使倍率+10个百分点，不消耗灼烧"), TEXT("首牌奖励：敌方全体结算2次当前灼烧伤害，均不减层")},
-		{TEXT("Profession.Sorcerer.XingHuoLiaoYuan"), TEXT("基础：敌方全体造成40%攻击伤害"), TEXT("编序：第4～5位时，每段改为70%攻击伤害"), TEXT("首牌奖励：敌方全体获得6层灼烧；回复1点气力，抽2张牌")},
-		{TEXT("Profession.Sorcerer.SheLingHuo"), TEXT("基础：自身回复当前内力25%的内力，向下取整；溢出内力100%转为护甲"), TEXT(""), TEXT("首牌奖励：执行标准寒冰伤害；回复1点气力，抽1张牌")},
-		{TEXT("Profession.Sorcerer.FenMaiFu"), TEXT("基础：自身内力上限+4并获得4点护甲，当前内力不变"), TEXT(""), TEXT("首牌奖励：执行标准寒冰伤害；自身内力上限再+8并补满内力")},
-		{TEXT("Profession.Sorcerer.LingYanLianDan"), TEXT("基础：自身护甲为0时获得4点护甲，否则当前护甲翻倍，最高99"), TEXT(""), TEXT("首牌奖励：执行标准寒冰伤害；我方全体获得6点护甲")},
-		{TEXT("Profession.Sorcerer.HuLingMu"), TEXT("基础：自身获得当前内力25%的护甲"), TEXT(""), TEXT("首牌奖励：执行标准寒冰伤害；敌方全体获得2层虚弱")},
-		{TEXT("Profession.Sorcerer.ChiXiaoFenXing"), TEXT("基础：敌方全体造成50%攻击伤害，伤害后获得2层标记"), TEXT("编序：第1～2位时，标记改为3层"), TEXT("首牌奖励：敌方全体获得5层标记；回复1点气力，抽2张牌")},
-		{TEXT("Profession.Sorcerer.FenTianJue"), TEXT("基础：敌方全体造成70%攻击伤害"), TEXT("编序：第1～2位时，标记改为3层"), TEXT("首牌奖励：敌方全体获得3层标记；回复1点气力，抽2张牌")},
-		{TEXT("Profession.Sorcerer.NingYanChengRen"), TEXT("基础：按敌方各自标记快照逐层落雷，每次造成50%攻击伤害"), TEXT("编序：第4～5位时，每次改为65%攻击伤害"), TEXT("首牌奖励：敌方全体先获得5层标记，再各触发5次70%落雷")},
-		{TEXT("Profession.Sorcerer.RanLingHuanYuan"), TEXT("基础：按敌方各自标记快照逐层落雷，每次造成30%攻击伤害"), TEXT("编序：第4～5位时，每次改为45%攻击伤害"), TEXT("首牌奖励：敌方全体先获得3层标记，再各触发3次60%落雷")},
-		{TEXT("Profession.Sorcerer.YanMuHuTi"), TEXT("基础：敌方全体造成60%攻击伤害"), TEXT("编序：此前每记录1张牌，倍率+25个百分点"), TEXT("首牌奖励·普通：敌方全体造成300%攻击伤害")},
-		{TEXT("Profession.Sorcerer.LieFu"), TEXT("基础：自身抽1张牌"), TEXT("编序：第3～5位时，额外回复5点内力"), TEXT("首牌奖励·普通：回复2点气力，抽3张牌；我方全体回复6点内力")},
-		{TEXT("Profession.Sorcerer.XingHuoHuiShou"), TEXT("基础：我方全体获得3点护甲"), TEXT("编序：前一张记录牌不含直接伤害时，改为6点护甲"), TEXT("首牌奖励·普通：我方全体获得12点护甲；敌方全体获得2层虚弱")},
-		{TEXT("Profession.Sorcerer.ChiYanFengJie"), TEXT("基础：敌方全体造成65%攻击伤害"), TEXT("编序：第4～5位时，每段改为90%攻击伤害"), TEXT("首牌奖励·普通：额外重放第5张记录牌，抽1张牌")}};
+		{TEXT("Profession.Sorcerer.LingHuoFu"), TEXT("基础：敌方全体造成70%攻击伤害"), TEXT("编序：第1～2位时，检索牌本回合内力消耗-3"), TEXT("阵赏：回复1点气力、8点内力，抽2张牌")},
+		{TEXT("Profession.Sorcerer.JuLing"), TEXT("基础：自身回复3点内力"), TEXT("编序：再回复此前记录牌实际支付内力总和的50%"), TEXT("阵赏：我方全体回复8点内力，抽2张牌")},
+		{TEXT("Profession.Sorcerer.LiHuoYin"), TEXT("基础：敌方全体造成60%攻击伤害并获得2层灼烧"), TEXT("编序：第1～2位时，灼烧改为4层"), TEXT("阵赏：敌方全体当前灼烧翻倍")},
+		{TEXT("Profession.Sorcerer.YanQiang"), TEXT("基础：敌方全体获得1层灼烧"), TEXT("编序：前一张记录牌为炎牌时，灼烧改为3层"), TEXT("阵赏：按场上最高灼烧补齐敌方全体，再各获得3层灼烧")},
+		{TEXT("Profession.Sorcerer.BaoYanShu"), TEXT("基础：敌方全体造成80%攻击伤害"), TEXT("编序：第3～5位时，每层灼烧使倍率+10个百分点，不消耗灼烧"), TEXT("阵赏：敌方全体结算2次当前灼烧伤害，均不减层")},
+		{TEXT("Profession.Sorcerer.XingHuoLiaoYuan"), TEXT("基础：敌方全体造成40%攻击伤害"), TEXT("编序：第4～5位时，每段改为70%攻击伤害"), TEXT("阵赏：敌方全体获得6层灼烧；回复1点气力，抽2张牌")},
+		{TEXT("Profession.Sorcerer.SheLingHuo"), TEXT("基础：自身回复当前内力25%的内力，向下取整；溢出内力100%转为护甲"), TEXT(""), TEXT("阵赏：执行标准寒冰伤害；回复1点气力，抽1张牌")},
+		{TEXT("Profession.Sorcerer.FenMaiFu"), TEXT("基础：自身内力上限+4并获得4点护甲，当前内力不变"), TEXT(""), TEXT("阵赏：执行标准寒冰伤害；自身内力上限再+8并补满内力")},
+		{TEXT("Profession.Sorcerer.LingYanLianDan"), TEXT("基础：自身护甲为0时获得4点护甲，否则当前护甲翻倍，最高99"), TEXT(""), TEXT("阵赏：执行标准寒冰伤害；我方全体获得6点护甲")},
+		{TEXT("Profession.Sorcerer.HuLingMu"), TEXT("基础：自身获得当前内力25%的护甲"), TEXT(""), TEXT("阵赏：执行标准寒冰伤害；敌方全体获得2层虚弱")},
+		{TEXT("Profession.Sorcerer.ChiXiaoFenXing"), TEXT("基础：敌方全体造成50%攻击伤害，伤害后获得2层标记"), TEXT("编序：第1～2位时，标记改为3层"), TEXT("阵赏：敌方全体获得5层标记；回复1点气力，抽2张牌")},
+		{TEXT("Profession.Sorcerer.FenTianJue"), TEXT("基础：敌方全体造成70%攻击伤害"), TEXT("编序：第1～2位时，标记改为3层"), TEXT("阵赏：敌方全体获得3层标记；回复1点气力，抽2张牌")},
+		{TEXT("Profession.Sorcerer.NingYanChengRen"), TEXT("基础：按敌方各自标记快照逐层落雷，每次造成50%攻击伤害"), TEXT("编序：第4～5位时，每次改为65%攻击伤害"), TEXT("阵赏：敌方全体先获得5层标记，再各触发5次70%落雷")},
+		{TEXT("Profession.Sorcerer.RanLingHuanYuan"), TEXT("基础：按敌方各自标记快照逐层落雷，每次造成30%攻击伤害"), TEXT("编序：第4～5位时，每次改为45%攻击伤害"), TEXT("阵赏：敌方全体先获得3层标记，再各触发3次60%落雷")},
+		{TEXT("Profession.Sorcerer.YanMuHuTi"), TEXT("基础：敌方全体造成60%攻击伤害"), TEXT("编序：此前每记录1张牌，倍率+25个百分点"), TEXT("阵赏·普通：敌方全体造成300%攻击伤害")},
+		{TEXT("Profession.Sorcerer.LieFu"), TEXT("基础：自身抽1张牌"), TEXT("编序：第3～5位时，额外回复5点内力"), TEXT("阵赏·普通：回复2点气力，抽3张牌；我方全体回复6点内力")},
+		{TEXT("Profession.Sorcerer.XingHuoHuiShou"), TEXT("基础：我方全体获得3点护甲"), TEXT("编序：前一张记录牌不含直接伤害时，改为6点护甲"), TEXT("阵赏·普通：我方全体获得12点护甲；敌方全体获得2层虚弱")},
+		{TEXT("Profession.Sorcerer.ChiYanFengJie"), TEXT("基础：敌方全体造成65%攻击伤害"), TEXT("编序：第4～5位时，每段改为90%攻击伤害"), TEXT("阵赏·普通：额外重放第5张记录牌，抽1张牌")}};
 
 	TestEqual(TEXT("Sorcerer text matrix covers exactly 18 cards"), Expected.Num(), 18);
 	const TArray<FString> RetiredNames = {
@@ -129,10 +129,10 @@ bool FGameXXKSorcererPartnerAllCardTextTest::RunTest(const FString& Parameters)
 		}
 		const FString Detail = GameXXKCardText::DescribeDetail(*Definition, EGameXXKCardQuality::Common, nullptr);
 		TestOrderedFragments(*this, CardId.ToString(), Detail, {
-			TEXT("首牌奖励·普通："),
-			TEXT("首牌奖励·炎法："),
-			TEXT("首牌奖励·寒冰："),
-			TEXT("首牌奖励·雷法：")});
+			TEXT("阵赏·普通："),
+			TEXT("阵赏·炎法："),
+			TEXT("阵赏·寒冰："),
+			TEXT("阵赏·雷法：")});
 	}
 	return true;
 }

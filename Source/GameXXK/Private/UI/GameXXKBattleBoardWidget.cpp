@@ -419,9 +419,10 @@ namespace
 	{
 		static const TArray<FString> PillKeywords = {
 			TEXT("冲锋"), TEXT("收招"), TEXT("藏式"), TEXT("开锋"),
-			TEXT("血势"), TEXT("乘势"), TEXT("重箭"), TEXT("编序"),
-			TEXT("首牌奖励"), TEXT("反击"), TEXT("格挡"), TEXT("药效"),
-			TEXT("基础"), TEXT("冲锋效果"), TEXT("收招效果"), TEXT("重箭效果"),
+			TEXT("血势"), TEXT("乘势"), TEXT("重箭"),
+			TEXT("阵法"), TEXT("阵赏"), TEXT("编序"),
+			TEXT("反击"), TEXT("格挡"), TEXT("药效"),
+			TEXT("地势"),
 		};
 		int32 HalfColon = INDEX_NONE;
 		int32 FullColon = INDEX_NONE;
@@ -435,9 +436,12 @@ namespace
 			return false;
 		}
 		const FString Prefix = Line.Left(ColonIndex);
+		// Sub-tagged variants (阵赏·炎法) keep their full prefix as the
+		// pill label; matching only needs the base keyword before the first dot.
+		const FString BasePrefix = Prefix.Left(Prefix.Find(TEXT("·"), ESearchCase::CaseSensitive, ESearchDir::FromStart, INDEX_NONE));
 		for (const FString& Keyword : PillKeywords)
 		{
-			if (Prefix == Keyword)
+			if (Prefix == Keyword || BasePrefix == Keyword)
 			{
 				OutKeyword = Prefix;
 				OutRest = Line.Mid(ColonIndex + 1);
@@ -447,17 +451,66 @@ namespace
 		return false;
 	}
 
-	void PopulateHandCardDetailBody(UWidgetTree* WidgetTree, UVerticalBox* BodyBox, const FString& Text)
+	/** Pill fill color: the desaturated profession accent of the ability the keyword belongs to. */
+	FLinearColor ResolvePillFillColor(const FString& Keyword)
+	{
+		const auto Desaturate = [](const FLinearColor& Color)
+		{
+			return FMath::Lerp(Color, FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), 0.35f);
+		};
+		if (Keyword.StartsWith(TEXT("冲锋")) || Keyword.StartsWith(TEXT("收招"))
+			|| Keyword.StartsWith(TEXT("藏式")) || Keyword.StartsWith(TEXT("开锋"))
+			|| Keyword.StartsWith(TEXT("血势")) || Keyword.StartsWith(TEXT("乘势"))
+			|| Keyword == TEXT("反击"))
+		{
+			return Desaturate(FLinearColor(0.714f, 0.282f, 0.247f, 1.0f)); // 刀客
+		}
+		if (Keyword.StartsWith(TEXT("重箭")))
+		{
+			return Desaturate(FLinearColor(0.604f, 0.408f, 0.200f, 1.0f)); // 猎人
+		}
+		if (Keyword.StartsWith(TEXT("阵法")) || Keyword.StartsWith(TEXT("阵赏"))
+			|| Keyword == TEXT("编序"))
+		{
+			return Desaturate(FLinearColor(0.251f, 0.318f, 0.553f, 1.0f)); // 法师
+		}
+		if (Keyword == TEXT("药效"))
+		{
+			return Desaturate(FLinearColor(0.353f, 0.576f, 0.427f, 1.0f)); // 医师
+		}
+		if (Keyword == TEXT("格挡"))
+		{
+			return Desaturate(FLinearColor(0.145f, 0.302f, 0.302f, 1.0f)); // 守卫
+		}
+		if (Keyword == TEXT("地势"))
+		{
+			return Desaturate(FLinearColor(0.502f, 0.384f, 0.475f, 1.0f)); // 阵师
+		}
+		return FLinearColor(0.18f, 0.13f, 0.09f, 1.0f);
+	}
+
+	float EstimateTextWidthUnits(const FString& Text, const float FontSize)
+	{
+		float Width = 0.0f;
+		for (const TCHAR Ch : Text)
+		{
+			Width += (Ch >= 0x20 && Ch <= 0x7E) ? FontSize * 0.55f : FontSize;
+		}
+		return Width;
+	}
+
+	float PopulateHandCardDetailBody(UWidgetTree* WidgetTree, UVerticalBox* BodyBox, const FString& Text)
 	{
 		if (!WidgetTree || !BodyBox)
 		{
-			return;
+			return 0.0f;
 		}
 		BodyBox->ClearChildren();
 
-		const FLinearColor PillFill(0.18f, 0.13f, 0.09f, 1.0f);
 		const FLinearColor PillInk(0.96f, 0.90f, 0.76f, 1.0f);
 		const FLinearColor BodyInk(0.14f, 0.11f, 0.08f, 1.0f);
+		float TotalEstimatedHeight = 0.0f;
+		bool bSeenPillRow = false;
 
 		const auto MakeBodyText = [WidgetTree, &BodyInk](const FString& Content) -> UTextBlock*
 		{
@@ -487,10 +540,12 @@ namespace
 			Row->SetVisibility(ESlateVisibility::HitTestInvisible);
 			FString Keyword;
 			FString Rest;
-			if (TrySplitKeywordPill(Line, Keyword, Rest))
+			FString RowText;
+			const bool bHasPill = TrySplitKeywordPill(Line, Keyword, Rest);
+			if (bHasPill)
 			{
 				UBorder* Pill = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
-				Pill->SetBrush(BuildRoundedPillBrush(PillFill, 5.0f));
+				Pill->SetBrush(BuildRoundedPillBrush(ResolvePillFillColor(Keyword), 5.0f));
 				Pill->SetPadding(FMargin(5.0f, 1.0f, 5.0f, 1.0f));
 				Pill->SetVisibility(ESlateVisibility::HitTestInvisible);
 				UTextBlock* PillText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
@@ -514,6 +569,7 @@ namespace
 					RestSlot->SetHorizontalAlignment(HAlign_Fill);
 					RestSlot->SetVerticalAlignment(VAlign_Center);
 				}
+				RowText = Rest;
 			}
 			else
 			{
@@ -522,13 +578,26 @@ namespace
 				{
 					PlainSlot->SetHorizontalAlignment(HAlign_Fill);
 				}
+				RowText = Line;
 			}
 			if (UVerticalBoxSlot* RowSlot = BodyBox->AddChildToVerticalBox(Row))
 			{
 				RowSlot->SetHorizontalAlignment(HAlign_Fill);
 				RowSlot->SetVerticalAlignment(VAlign_Top);
+				if (bHasPill && !bSeenPillRow)
+				{
+					// One blank row between the base effects and the ability
+					// keyword rows keeps the two groups visually separated.
+					RowSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 0.0f));
+					TotalEstimatedHeight += 8.0f;
+					bSeenPillRow = true;
+				}
 			}
+			const float WrapWidth = bHasPill ? 320.0f : 388.0f;
+			const int32 WrapLines = FMath::Max(1, FMath::CeilToInt(EstimateTextWidthUnits(RowText, 13.0f) / WrapWidth));
+			TotalEstimatedHeight += static_cast<float>(WrapLines) * 22.0f;
 		}
+		return TotalEstimatedHeight;
 	}
 
 	static FString BuildTargetingInkDabTexturePath(int32 DabIndex)
@@ -5687,7 +5756,6 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		DetailSlot->SetAnchors(FAnchors(0.5f, 1.0f, 0.5f, 1.0f));
 		DetailSlot->SetOffsets(FMargin(-HandCardDetailPanelSize.X * 0.5f, -588.0f, HandCardDetailPanelSize.X, HandCardDetailPanelSize.Y));
 		DetailSlot->SetAlignment(FVector2D::ZeroVector);
-		DetailSlot->SetAutoSize(true);
 		DetailSlot->SetZOrder(50);
 	}
 
@@ -6459,7 +6527,16 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	}
 	if (HandCardDetailBody)
 	{
-		PopulateHandCardDetailBody(WidgetTree, HandCardDetailBody, TooltipBody.ToString());
+		// Height follows the populated rows: title band + gap + estimated
+		// wrapped body height + vertical padding + parchment bottom border.
+		const float BodyHeight = PopulateHandCardDetailBody(WidgetTree, HandCardDetailBody, TooltipBody.ToString());
+		const float PanelHeight = 12.0f + 28.0f + 6.0f + BodyHeight + 12.0f + 20.0f;
+		if (UCanvasPanelSlot* DetailSlot = Cast<UCanvasPanelSlot>(HandCardDetailPanel->Slot))
+		{
+			FMargin Offsets = DetailSlot->GetOffsets();
+			Offsets.Bottom = PanelHeight;
+			DetailSlot->SetOffsets(Offsets);
+		}
 	}
 	// The panel must never swallow the button's leave/click events while it overlaps the hand.
 	HandCardDetailPanel->SetVisibility(ESlateVisibility::HitTestInvisible);

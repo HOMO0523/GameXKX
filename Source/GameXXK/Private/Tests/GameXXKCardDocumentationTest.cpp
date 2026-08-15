@@ -284,13 +284,13 @@ namespace GameXXKCardDocumentationTest
 		switch (Reward)
 		{
 		case EGameXXKHeroSpellTaskReward::Fire:
-			return TEXT("法术任务首牌奖励·炎：全体敌方获得8层灼烧，再触发2次灼烧伤害。");
+			return TEXT("法术任务阵赏·炎：全体敌方获得8层灼烧，再触发2次灼烧伤害。");
 		case EGameXXKHeroSpellTaskReward::Ice:
-			return TEXT("法术任务首牌奖励·冰：消耗自身全部护甲；按护甲快照层数，对敌方全体逐段造成20%攻击伤害。");
+			return TEXT("法术任务阵赏·冰：消耗自身全部护甲；按护甲快照层数，对敌方全体逐段造成20%攻击伤害。");
 		case EGameXXKHeroSpellTaskReward::Lightning:
-			return TEXT("法术任务首牌奖励·雷：全体敌方获得3层标记，再按各目标标记快照逐层造成60%攻击伤害。");
+			return TEXT("法术任务阵赏·雷：全体敌方获得3层标记，再按各目标标记快照逐层造成60%攻击伤害。");
 		case EGameXXKHeroSpellTaskReward::Universal:
-			return TEXT("法术任务首牌奖励·通用：抽4张牌、回复2点气力；本回合后续主角牌气力消耗-1。");
+			return TEXT("法术任务阵赏·通用：抽4张牌、回复2点气力；本回合后续主角牌气力消耗-1。");
 		case EGameXXKHeroSpellTaskReward::None:
 		default:
 			return FString();

@@ -340,7 +340,7 @@ ID：Hero.Mage.YanXuLiaoYuan
 获取：初始解锁
 完整效果：
 基础：全体敌方造成100%攻击伤害；全体敌方获得4层灼烧；从抽牌堆或弃牌堆检索1张尚未完成的主角法术任务牌加入手牌
-法术任务首牌奖励·炎：全体敌方获得8层灼烧，再触发2次灼烧伤害。
+法术任务阵赏·炎：全体敌方获得8层灼烧，再触发2次灼烧伤害。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=100}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=4,Status=Burn}; Effect{Type=SearchUnfinishedHeroTaskCard,Target=CardOwner,Magnitude=1}] | SpellReward=Fire
 
 [030] 寒序凝川
@@ -351,7 +351,7 @@ ID：Hero.Mage.HanXuNingChuan
 获取：初始解锁
 完整效果：
 基础：出牌者获得等于当前内力25%的护甲；出牌者回复6点内力；溢出内力按100%转为护甲
-法术任务首牌奖励·冰：消耗自身全部护甲；按护甲快照层数，对敌方全体逐段造成20%攻击伤害。
+法术任务阵赏·冰：消耗自身全部护甲；按护甲快照层数，对敌方全体逐段造成20%攻击伤害。
 实现签名：TargetMode=Self | Base=[Effect{Type=GainArmorFromCurrentManaPercent,Target=CardOwner,Magnitude=25}; Effect{Type=GainManaOverflowToArmor,Target=CardOwner,Magnitude=100,Secondary=6}] | SpellReward=Ice
 
 [031] 雷序引霆
@@ -362,7 +362,7 @@ ID：Hero.Mage.LeiXuYinTing
 获取：初始解锁
 完整效果：
 基础：全体敌方获得3层标记；按全体敌方当前标记层数，逐层造成30%攻击伤害；从抽牌堆或弃牌堆检索1张尚未完成的主角法术任务牌加入手牌
-法术任务首牌奖励·雷：全体敌方获得3层标记，再按各目标标记快照逐层造成60%攻击伤害。
+法术任务阵赏·雷：全体敌方获得3层标记，再按各目标标记快照逐层造成60%攻击伤害。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=3,Status=Mark}; Effect{Type=LightningPerTargetStatusSnapshot,Target=AllEnemies,Magnitude=30,Status=Mark}; Effect{Type=SearchUnfinishedHeroTaskCard,Target=CardOwner,Magnitude=1}] | SpellReward=Lightning
 
 [032] 归序通玄
@@ -373,7 +373,7 @@ ID：Hero.Mage.GuiXuTongXuan
 获取：初始解锁
 完整效果：
 基础：出牌者抽2张牌；出牌者弃置1张牌
-法术任务首牌奖励·通用：抽4张牌、回复2点气力；本回合后续主角牌气力消耗-1。
+法术任务阵赏·通用：抽4张牌、回复2点气力；本回合后续主角牌气力消耗-1。
 实现签名：TargetMode=None | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=DiscardCards,Target=CardOwner,Magnitude=1}] | SpellReward=Universal
 
 
@@ -1459,8 +1459,8 @@ ID：Profession.Sorcerer.LingHuoFu
 完整效果：
 基础：敌方全体造成70%攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。
 编序：第1～2位时，检索牌本回合内力消耗-3。
-首牌奖励：回复1点气力、8点内力，抽2张牌。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：回复1点气力、8点内力，抽2张牌。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=70}; Effect{Type=SearchUnfinishedHeroTaskCard,Target=CardOwner,Magnitude=1}] | Sorcerer{Family=Core,Sequence=CoreSearch,Reward=CoreSearch}
 
 [134] 周天归元
@@ -1472,8 +1472,8 @@ ID：Profession.Sorcerer.JuLing
 完整效果：
 基础：自身回复3点内力。
 编序：再回复此前记录牌实际支付内力总和的50%，向下取整。
-首牌奖励：我方全体回复8点内力，抽2张牌。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：我方全体回复8点内力，抽2张牌。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=Self | Base=[Effect{Type=GainMana,Target=CardOwner,Magnitude=3}] | Sorcerer{Family=Core,Sequence=CoreManaEcho,Reward=CoreManaEcho}
 
 [135] 灵火点灯
@@ -1485,8 +1485,8 @@ ID：Profession.Sorcerer.LiHuoYin
 完整效果：
 基础：敌方全体造成60%攻击伤害并获得2层灼烧。
 编序：第1～2位时，灼烧改为4层。
-首牌奖励：敌方全体当前灼烧翻倍。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：敌方全体当前灼烧翻倍。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=60}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=2,Status=Burn}] | Sorcerer{Family=Fire,Sequence=FireLamp,Reward=FireLamp}
 
 [136] 流焰传薪
@@ -1498,8 +1498,8 @@ ID：Profession.Sorcerer.YanQiang
 完整效果：
 基础：敌方全体获得1层灼烧。
 编序：前一张记录牌为炎牌时，灼烧改为3层。
-首牌奖励：按场上最高灼烧补齐敌方全体，再各获得3层灼烧。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：按场上最高灼烧补齐敌方全体，再各获得3层灼烧。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=1,Status=Burn}] | Sorcerer{Family=Fire,Sequence=FireSpread,Reward=FireSpread}
 
 [137] 焚脉爆炎
@@ -1511,8 +1511,8 @@ ID：Profession.Sorcerer.BaoYanShu
 完整效果：
 基础：敌方全体造成160%攻击伤害。
 编序：第3～5位时，每层灼烧使倍率+10个百分点，不消耗灼烧。
-首牌奖励：敌方全体结算2次当前灼烧伤害，均不减层。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：敌方全体结算2次当前灼烧伤害，均不减层。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=80}] | Sorcerer{Family=Fire,Sequence=FireBurst,Reward=FireBurst}
 
 [138] 燎原寻诀
@@ -1524,8 +1524,8 @@ ID：Profession.Sorcerer.XingHuoLiaoYuan
 完整效果：
 基础：敌方全体造成160%攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。
 编序：第4～5位时，每段改为70%攻击伤害。
-首牌奖励：敌方全体获得6层灼烧；回复1点气力，抽2张牌。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：敌方全体获得6层灼烧；回复1点气力，抽2张牌。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=40}; Effect{Type=SearchUnfinishedHeroTaskCard,Target=CardOwner,Magnitude=1}] | Sorcerer{Family=Fire,Sequence=FireSearch,Reward=FireSearch}
 
 [139] 寒息回流
@@ -1537,8 +1537,8 @@ ID：Profession.Sorcerer.SheLingHuo
 完整效果：
 基础：自身回复当前内力25%的内力，向下取整；溢出内力100%转为护甲。
 标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。
-首牌奖励：执行标准寒冰伤害；回复1点气力，抽1张牌。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：执行标准寒冰伤害；回复1点气力，抽1张牌。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=Self | Base=[Effect{Type=GainMana,Target=CardOwner,Magnitude=1}] | Sorcerer{Family=Ice,Sequence=IceCurrentManaRestore,Reward=IceCurrentManaRestore}
 
 [140] 玄冰拓脉
@@ -1550,8 +1550,8 @@ ID：Profession.Sorcerer.FenMaiFu
 完整效果：
 基础：自身内力上限+4并获得4点护甲，当前内力不变。
 标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。
-首牌奖励：执行标准寒冰伤害；自身内力上限再+8并补满内力。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：执行标准寒冰伤害；自身内力上限再+8并补满内力。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=4}] | Sorcerer{Family=Ice,Sequence=IceMaxMana,Reward=IceMaxMana}
 
 [141] 霜镜叠甲
@@ -1563,8 +1563,8 @@ ID：Profession.Sorcerer.LingYanLianDan
 完整效果：
 基础：自身护甲为0时获得4点护甲，否则当前护甲翻倍，最高99。
 标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。
-首牌奖励：执行标准寒冰伤害；我方全体获得6点护甲。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：执行标准寒冰伤害；我方全体获得6点护甲。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=4}] | Sorcerer{Family=Ice,Sequence=IceArmorDouble,Reward=IceArmorDouble}
 
 [142] 冰鉴索法
@@ -1576,8 +1576,8 @@ ID：Profession.Sorcerer.HuLingMu
 完整效果：
 基础：自身获得当前内力25%的护甲；检索1张尚未完成的携带法师牌；无合法牌时再获得一次等量护甲。
 标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。
-首牌奖励：执行标准寒冰伤害；敌方全体获得2层虚弱。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：执行标准寒冰伤害；敌方全体获得2层虚弱。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=Self | Base=[Effect{Type=GainArmorFromCurrentManaPercent,Target=CardOwner,Magnitude=25}; Effect{Type=SearchUnfinishedHeroTaskCard,Target=CardOwner,Magnitude=1}] | Sorcerer{Family=Ice,Sequence=IceSearch,Reward=IceSearch}
 
 [143] 引雷定标
@@ -1589,8 +1589,8 @@ ID：Profession.Sorcerer.ChiXiaoFenXing
 完整效果：
 基础：敌方全体造成100%攻击伤害，伤害后获得3层标记。
 编序：第1～2位时，标记改为3层。
-首牌奖励：敌方全体获得5层标记；回复1点气力，抽2张牌。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：敌方全体获得5层标记；回复1点气力，抽2张牌。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=50}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=2,Status=Mark}] | Sorcerer{Family=Lightning,Sequence=LightningMark,Reward=LightningMark}
 
 [144] 雷符索敌
@@ -1602,8 +1602,8 @@ ID：Profession.Sorcerer.FenTianJue
 完整效果：
 基础：敌方全体造成280%攻击伤害；检索1张尚未完成的携带法师牌，随后获得3层标记；无合法牌时再结算一次同等伤害。
 编序：第1～2位时，标记改为3层。
-首牌奖励：敌方全体获得3层标记；回复1点气力，抽2张牌。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：敌方全体获得3层标记；回复1点气力，抽2张牌。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=70}; Effect{Type=SearchUnfinishedHeroTaskCard,Target=CardOwner,Magnitude=1}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=1,Status=Mark}] | Sorcerer{Family=Lightning,Sequence=LightningSearch,Reward=LightningSearch}
 
 [145] 连霆穿云
@@ -1615,8 +1615,8 @@ ID：Profession.Sorcerer.NingYanChengRen
 完整效果：
 基础：按敌方各自标记快照逐层落雷，每次造成50%攻击伤害。
 编序：第4～5位时，每次改为65%攻击伤害。
-首牌奖励：敌方全体先获得5层标记，再各触发5次70%落雷。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：敌方全体先获得5层标记，再各触发5次70%落雷。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=LightningPerTargetStatusSnapshot,Target=AllEnemies,Magnitude=50,Status=Mark}] | Sorcerer{Family=Lightning,Sequence=LightningMarkHits,Reward=LightningMarkHits}
 
 [146] 雷走八方
@@ -1628,8 +1628,8 @@ ID：Profession.Sorcerer.RanLingHuanYuan
 完整效果：
 基础：按敌方各自标记快照逐层落雷，每次造成30%攻击伤害。
 编序：第4～5位时，每次改为45%攻击伤害。
-首牌奖励：敌方全体先获得3层标记，再各触发3次60%落雷。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏：敌方全体先获得3层标记，再各触发3次60%落雷。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=LightningPerTargetStatusSnapshot,Target=AllEnemies,Magnitude=30,Status=Mark}] | Sorcerer{Family=Lightning,Sequence=LightningStorm,Reward=LightningStorm}
 
 [147] 万法归一
@@ -1642,11 +1642,11 @@ ID：Profession.Sorcerer.YanMuHuTi
 基础：敌方全体造成60%攻击伤害。
 编序：此前每记录1张牌，倍率+25个百分点；第1～5位依次为60/85/110/135/160%。
 任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。
-首牌奖励·普通：敌方全体造成300%攻击伤害。
-首牌奖励·炎法：敌方全体获得3层灼烧，再结算1次灼烧且不减层。
-首牌奖励·寒冰：消耗自身全部护甲，对敌方全体造成（120%+每点护甲25个百分点）攻击伤害。
-首牌奖励·雷法：敌方全体获得3层标记，再按各自标记逐层触发60%落雷。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏·普通：敌方全体造成300%攻击伤害。
+阵赏·炎法：敌方全体获得3层灼烧，再结算1次灼烧且不减层。
+阵赏·寒冰：消耗自身全部护甲，对敌方全体造成（120%+每点护甲25个百分点）攻击伤害。
+阵赏·雷法：敌方全体获得3层标记，再按各自标记逐层触发60%落雷。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=60}] | Sorcerer{Family=Universal,Sequence=UniversalScalingAttack,Reward=UniversalScalingAttack}
 
 [148] 照见五蕴
@@ -1660,11 +1660,11 @@ ID：Profession.Sorcerer.LieFu
 编序：第3～5位时，额外回复5点内力。
 标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。
 任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。
-首牌奖励·普通：回复2点气力，抽3张牌；我方全体回复6点内力。
-首牌奖励·炎法：敌方全体获得4层灼烧；回复1点气力，抽3张牌。
-首牌奖励·寒冰：执行标准寒冰伤害，返还25%所耗护甲；回复1点气力，抽2张牌。
-首牌奖励·雷法：敌方全体获得2层标记并逐层触发40%落雷；回复1点气力，抽2张牌。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏·普通：回复2点气力，抽3张牌；我方全体回复6点内力。
+阵赏·炎法：敌方全体获得4层灼烧；回复1点气力，抽3张牌。
+阵赏·寒冰：执行标准寒冰伤害，返还25%所耗护甲；回复1点气力，抽2张牌。
+阵赏·雷法：敌方全体获得2层标记并逐层触发40%落雷；回复1点气力，抽2张牌。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=Self | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=1}] | Sorcerer{Family=Universal,Sequence=UniversalDraw,Reward=UniversalDraw}
 
 [149] 六合护法
@@ -1678,11 +1678,11 @@ ID：Profession.Sorcerer.XingHuoHuiShou
 编序：前一张记录牌不含直接伤害时，改为6点护甲。
 标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。
 任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。
-首牌奖励·普通：我方全体获得12点护甲；敌方全体获得2层虚弱。
-首牌奖励·炎法：我方全体获得8点护甲；敌方全体获得4层灼烧、1层虚弱。
-首牌奖励·寒冰：执行标准寒冰伤害；我方全体获得6+所耗护甲25%的护甲。
-首牌奖励·雷法：敌方全体获得2层标记并逐层触发30%落雷；我方全体获得6点护甲。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏·普通：我方全体获得12点护甲；敌方全体获得2层虚弱。
+阵赏·炎法：我方全体获得8点护甲；敌方全体获得4层灼烧、1层虚弱。
+阵赏·寒冰：执行标准寒冰伤害；我方全体获得6+所耗护甲25%的护甲。
+阵赏·雷法：敌方全体获得2层标记并逐层触发30%落雷；我方全体获得6点护甲。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=3}] | Sorcerer{Family=Universal,Sequence=UniversalPartyArmor,Reward=UniversalPartyArmor}
 
 [150] 斗转星移
@@ -1696,11 +1696,11 @@ ID：Profession.Sorcerer.ChiYanFengJie
 编序：第4～5位时，每段改为90%攻击伤害。
 标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。
 任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。
-首牌奖励·普通：额外重放第5张记录牌，抽1张牌。
-首牌奖励·炎法：额外重放最后一张炎牌，其施加灼烧翻倍；敌方全体再获得2层灼烧。
-首牌奖励·寒冰：额外重放最后一张冰牌，再执行标准寒冰伤害，抽1张牌。
-首牌奖励·雷法：敌方全体获得2层标记，额外重放最后一张雷牌；再逐层触发40%落雷，抽1张牌。
-五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。
+阵赏·普通：额外重放第5张记录牌，抽1张牌。
+阵赏·炎法：额外重放最后一张炎牌，其施加灼烧翻倍；敌方全体再获得2层灼烧。
+阵赏·寒冰：额外重放最后一张冰牌，再执行标准寒冰伤害，抽1张牌。
+阵赏·雷法：敌方全体获得2层标记，额外重放最后一张雷牌；再逐层触发40%落雷，抽1张牌。
+阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=65}; Effect{Type=SearchUnfinishedHeroTaskCard,Target=CardOwner,Magnitude=1}] | Sorcerer{Family=Universal,Sequence=UniversalSearch,Reward=UniversalSearch}
 
 

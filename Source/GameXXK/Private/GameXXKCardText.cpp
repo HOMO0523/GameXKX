@@ -533,13 +533,13 @@ namespace
 		switch (Reward)
 		{
 		case EGameXXKHeroSpellTaskReward::Fire:
-			return TEXT("首牌奖励·炎：全体敌方获得8层灼烧，再触发2次灼烧伤害。");
+			return TEXT("阵赏·炎：全体敌方获得8层灼烧，再触发2次灼烧伤害。");
 		case EGameXXKHeroSpellTaskReward::Ice:
-			return TEXT("首牌奖励·冰：消耗自身全部护甲；按护甲快照层数，对敌方全体逐段造成20%攻击伤害。");
+			return TEXT("阵赏·冰：消耗自身全部护甲；按护甲快照层数，对敌方全体逐段造成20%攻击伤害。");
 		case EGameXXKHeroSpellTaskReward::Lightning:
-			return TEXT("首牌奖励·雷：全体敌方获得3层标记，再按各目标标记快照逐层造成60%攻击伤害。");
+			return TEXT("阵赏·雷：全体敌方获得3层标记，再按各目标标记快照逐层造成60%攻击伤害。");
 		case EGameXXKHeroSpellTaskReward::Universal:
-			return TEXT("首牌奖励·通用：抽4张牌、回复2点气力；本回合后续主角牌气力消耗-1。");
+			return TEXT("阵赏·通用：抽4张牌、回复2点气力；本回合后续主角牌气力消耗-1。");
 		case EGameXXKHeroSpellTaskReward::None:
 		default:
 			return FString();
@@ -584,70 +584,70 @@ namespace
 		switch (Reward)
 		{
 		case EGameXXKSorcererRewardRule::CoreSearch:
-			OutLines.Add(TEXT("首牌奖励：回复1点气力、8点内力，抽2张牌。"));
+			OutLines.Add(TEXT("阵赏：回复1点气力、8点内力，抽2张牌。"));
 			break;
 		case EGameXXKSorcererRewardRule::CoreManaEcho:
-			OutLines.Add(TEXT("首牌奖励：我方全体回复8点内力，抽2张牌。"));
+			OutLines.Add(TEXT("阵赏：我方全体回复8点内力，抽2张牌。"));
 			break;
 		case EGameXXKSorcererRewardRule::FireLamp:
-			OutLines.Add(TEXT("首牌奖励：敌方全体当前灼烧翻倍。"));
+			OutLines.Add(TEXT("阵赏：敌方全体当前灼烧翻倍。"));
 			break;
 		case EGameXXKSorcererRewardRule::FireSpread:
-			OutLines.Add(TEXT("首牌奖励：按场上最高灼烧补齐敌方全体，再各获得3层灼烧。"));
+			OutLines.Add(TEXT("阵赏：按场上最高灼烧补齐敌方全体，再各获得3层灼烧。"));
 			break;
 		case EGameXXKSorcererRewardRule::FireBurst:
-			OutLines.Add(TEXT("首牌奖励：敌方全体结算2次当前灼烧伤害，均不减层。"));
+			OutLines.Add(TEXT("阵赏：敌方全体结算2次当前灼烧伤害，均不减层。"));
 			break;
 		case EGameXXKSorcererRewardRule::FireSearch:
-			OutLines.Add(TEXT("首牌奖励：敌方全体获得6层灼烧；回复1点气力，抽2张牌。"));
+			OutLines.Add(TEXT("阵赏：敌方全体获得6层灼烧；回复1点气力，抽2张牌。"));
 			break;
 		case EGameXXKSorcererRewardRule::IceCurrentManaRestore:
-			OutLines.Add(TEXT("首牌奖励：执行标准寒冰伤害；回复1点气力，抽1张牌。"));
+			OutLines.Add(TEXT("阵赏：执行标准寒冰伤害；回复1点气力，抽1张牌。"));
 			break;
 		case EGameXXKSorcererRewardRule::IceMaxMana:
-			OutLines.Add(TEXT("首牌奖励：执行标准寒冰伤害；自身内力上限再+8并补满内力。"));
+			OutLines.Add(TEXT("阵赏：执行标准寒冰伤害；自身内力上限再+8并补满内力。"));
 			break;
 		case EGameXXKSorcererRewardRule::IceArmorDouble:
-			OutLines.Add(TEXT("首牌奖励：执行标准寒冰伤害；我方全体获得6点护甲。"));
+			OutLines.Add(TEXT("阵赏：执行标准寒冰伤害；我方全体获得6点护甲。"));
 			break;
 		case EGameXXKSorcererRewardRule::IceSearch:
-			OutLines.Add(TEXT("首牌奖励：执行标准寒冰伤害；敌方全体获得2层虚弱。"));
+			OutLines.Add(TEXT("阵赏：执行标准寒冰伤害；敌方全体获得2层虚弱。"));
 			break;
 		case EGameXXKSorcererRewardRule::LightningMark:
-			OutLines.Add(TEXT("首牌奖励：敌方全体获得5层标记；回复1点气力，抽2张牌。"));
+			OutLines.Add(TEXT("阵赏：敌方全体获得5层标记；回复1点气力，抽2张牌。"));
 			break;
 		case EGameXXKSorcererRewardRule::LightningSearch:
-			OutLines.Add(TEXT("首牌奖励：敌方全体获得3层标记；回复1点气力，抽2张牌。"));
+			OutLines.Add(TEXT("阵赏：敌方全体获得3层标记；回复1点气力，抽2张牌。"));
 			break;
 		case EGameXXKSorcererRewardRule::LightningMarkHits:
-			OutLines.Add(TEXT("首牌奖励：敌方全体先获得5层标记，再各触发5次70%落雷。"));
+			OutLines.Add(TEXT("阵赏：敌方全体先获得5层标记，再各触发5次70%落雷。"));
 			break;
 		case EGameXXKSorcererRewardRule::LightningStorm:
-			OutLines.Add(TEXT("首牌奖励：敌方全体先获得3层标记，再各触发3次60%落雷。"));
+			OutLines.Add(TEXT("阵赏：敌方全体先获得3层标记，再各触发3次60%落雷。"));
 			break;
 		case EGameXXKSorcererRewardRule::UniversalScalingAttack:
-			OutLines.Add(TEXT("首牌奖励·普通：敌方全体造成300%攻击伤害。"));
-			OutLines.Add(TEXT("首牌奖励·炎法：敌方全体获得3层灼烧，再结算1次灼烧且不减层。"));
-			OutLines.Add(TEXT("首牌奖励·寒冰：消耗自身全部护甲，对敌方全体造成（120%+每点护甲25个百分点）攻击伤害。"));
-			OutLines.Add(TEXT("首牌奖励·雷法：敌方全体获得3层标记，再按各自标记逐层触发60%落雷。"));
+			OutLines.Add(TEXT("阵赏·普通：敌方全体造成300%攻击伤害。"));
+			OutLines.Add(TEXT("阵赏·炎法：敌方全体获得3层灼烧，再结算1次灼烧且不减层。"));
+			OutLines.Add(TEXT("阵赏·寒冰：消耗自身全部护甲，对敌方全体造成（120%+每点护甲25个百分点）攻击伤害。"));
+			OutLines.Add(TEXT("阵赏·雷法：敌方全体获得3层标记，再按各自标记逐层触发60%落雷。"));
 			break;
 		case EGameXXKSorcererRewardRule::UniversalDraw:
-			OutLines.Add(TEXT("首牌奖励·普通：回复2点气力，抽3张牌；我方全体回复6点内力。"));
-			OutLines.Add(TEXT("首牌奖励·炎法：敌方全体获得4层灼烧；回复1点气力，抽3张牌。"));
-			OutLines.Add(TEXT("首牌奖励·寒冰：执行标准寒冰伤害，返还25%所耗护甲；回复1点气力，抽2张牌。"));
-			OutLines.Add(TEXT("首牌奖励·雷法：敌方全体获得2层标记并逐层触发40%落雷；回复1点气力，抽2张牌。"));
+			OutLines.Add(TEXT("阵赏·普通：回复2点气力，抽3张牌；我方全体回复6点内力。"));
+			OutLines.Add(TEXT("阵赏·炎法：敌方全体获得4层灼烧；回复1点气力，抽3张牌。"));
+			OutLines.Add(TEXT("阵赏·寒冰：执行标准寒冰伤害，返还25%所耗护甲；回复1点气力，抽2张牌。"));
+			OutLines.Add(TEXT("阵赏·雷法：敌方全体获得2层标记并逐层触发40%落雷；回复1点气力，抽2张牌。"));
 			break;
 		case EGameXXKSorcererRewardRule::UniversalPartyArmor:
-			OutLines.Add(TEXT("首牌奖励·普通：我方全体获得12点护甲；敌方全体获得2层虚弱。"));
-			OutLines.Add(TEXT("首牌奖励·炎法：我方全体获得8点护甲；敌方全体获得4层灼烧、1层虚弱。"));
-			OutLines.Add(TEXT("首牌奖励·寒冰：执行标准寒冰伤害；我方全体获得6+所耗护甲25%的护甲。"));
-			OutLines.Add(TEXT("首牌奖励·雷法：敌方全体获得2层标记并逐层触发30%落雷；我方全体获得6点护甲。"));
+			OutLines.Add(TEXT("阵赏·普通：我方全体获得12点护甲；敌方全体获得2层虚弱。"));
+			OutLines.Add(TEXT("阵赏·炎法：我方全体获得8点护甲；敌方全体获得4层灼烧、1层虚弱。"));
+			OutLines.Add(TEXT("阵赏·寒冰：执行标准寒冰伤害；我方全体获得6+所耗护甲25%的护甲。"));
+			OutLines.Add(TEXT("阵赏·雷法：敌方全体获得2层标记并逐层触发30%落雷；我方全体获得6点护甲。"));
 			break;
 		case EGameXXKSorcererRewardRule::UniversalSearch:
-			OutLines.Add(TEXT("首牌奖励·普通：额外重放第5张记录牌，抽1张牌。"));
-			OutLines.Add(TEXT("首牌奖励·炎法：额外重放最后一张炎牌，其施加灼烧翻倍；敌方全体再获得2层灼烧。"));
-			OutLines.Add(TEXT("首牌奖励·寒冰：额外重放最后一张冰牌，再执行标准寒冰伤害，抽1张牌。"));
-			OutLines.Add(TEXT("首牌奖励·雷法：敌方全体获得2层标记，额外重放最后一张雷牌；再逐层触发40%落雷，抽1张牌。"));
+			OutLines.Add(TEXT("阵赏·普通：额外重放第5张记录牌，抽1张牌。"));
+			OutLines.Add(TEXT("阵赏·炎法：额外重放最后一张炎牌，其施加灼烧翻倍；敌方全体再获得2层灼烧。"));
+			OutLines.Add(TEXT("阵赏·寒冰：额外重放最后一张冰牌，再执行标准寒冰伤害，抽1张牌。"));
+			OutLines.Add(TEXT("阵赏·雷法：敌方全体获得2层标记，额外重放最后一张雷牌；再逐层触发40%落雷，抽1张牌。"));
 			break;
 		case EGameXXKSorcererRewardRule::None:
 		default:
@@ -760,7 +760,7 @@ namespace
 			Lines.Add(TEXT("任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。"));
 		}
 		AppendSorcererRewardText(Definition.SorcererRule.RewardRule, Lines);
-		Lines.Add(TEXT("五牌任务：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行首牌奖励。"));
+		Lines.Add(TEXT("阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。"));
 		return FString::Join(Lines, TEXT("\n"));
 	}
 
@@ -987,12 +987,12 @@ namespace
 		});
 		if (bUsesTerrainBenefit)
 		{
-			Lines.Add(TEXT("当前地势收益：按当前地势触发对应效果。"));
+			Lines.Add(TEXT("地势：按当前地势触发对应效果。"));
 		}
 
 		if (EffectiveDefinition.SpellTaskReward != EGameXXKHeroSpellTaskReward::None)
 		{
-			Lines.Add(TEXT("法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发首牌奖励。"));
+			Lines.Add(TEXT("法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。"));
 			Lines.Add(DescribeSpellTaskReward(EffectiveDefinition.SpellTaskReward));
 		}
 		return FString::Join(Lines, TEXT("\n"));
