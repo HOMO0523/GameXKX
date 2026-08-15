@@ -265,6 +265,11 @@ namespace
 	}
 	static constexpr const TCHAR* InkButtonTexturePath = TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_InkButtonBase.T_InkButtonBase");
 	static constexpr const TCHAR* BattleStatusWindowFrameTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/T_TownBackpack_WindowFrame.T_TownBackpack_WindowFrame");
+	// Pending-choice paper: the approved MasterV2 item-slot paper gives the
+	// straight, regular frame used across the modern UI (tooltips, backpack
+	// slots) instead of the legacy town-backpack window frame.
+	static constexpr const TCHAR* PendingChoicePanelPaperTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
+	static constexpr float PendingChoicePanelPaperMargin = 0.065f;
 	// Master V1 approved card frame, matching the out-of-battle deck pages.
 	static constexpr const TCHAR* CardFrameTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardFrame.T_MasterV2_CardFrame");
 	static constexpr const TCHAR* HeroCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero");
@@ -4923,6 +4928,11 @@ FMargin UGameXXKBattleBoardWidget::GetHandCardDetailPanelOffsetsForTest() const
 	return DetailSlot ? DetailSlot->GetOffsets() : FMargin();
 }
 
+FString UGameXXKBattleBoardWidget::GetPendingChoicePanelResourcePathForTest() const
+{
+	return PendingChoicePanelPaperTexture ? PendingChoicePanelPaperTexture->GetPathName() : FString();
+}
+
 FVector2D UGameXXKBattleBoardWidget::GetGroupOutcomePreviewAlignmentForTest() const
 {
 	const UCanvasPanelSlot* const OutcomeSlot = GroupOutcomeWidget ? Cast<UCanvasPanelSlot>(GroupOutcomeWidget->Slot) : nullptr;
@@ -5624,10 +5634,18 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	// parchment overlay keeps that blocking state visible and actionable instead
 	// of leaving an apparently enabled End Turn button that the rules reject.
 	PendingChoicePanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("BattlePendingChoicePanel"));
-	PendingChoicePanel->SetBrush(BuildBoxTextureBrush(
-		BattleStatusWindowFrameTexture.Get(),
-		FVector2D(760.0f, 250.0f),
-		FMargin(BattleStatusFrameMarginRatio)));
+	PendingChoicePanelPaperTexture = LoadObject<UTexture2D>(nullptr, PendingChoicePanelPaperTexturePath);
+	if (PendingChoicePanelPaperTexture)
+	{
+		// MasterV2 item-slot paper drawn as a nine-slice box. The logical image
+		// size stays at the texture's authored size, so the 0.065 frame margin
+		// renders as a thin (~6.5px), straight, regular warm border at every
+		// candidate count instead of scaling up with the stretched legacy frame.
+		PendingChoicePanel->SetBrush(BuildBoxTextureBrush(
+			PendingChoicePanelPaperTexture,
+			FVector2D(100.0f, 101.0f),
+			FMargin(PendingChoicePanelPaperMargin)));
+	}
 	PendingChoicePanel->SetBrushColor(FLinearColor::White);
 	PendingChoicePanel->SetPadding(FMargin(18.0f, 14.0f, 18.0f, 14.0f));
 	PendingChoicePanel->SetVisibility(ESlateVisibility::Collapsed);

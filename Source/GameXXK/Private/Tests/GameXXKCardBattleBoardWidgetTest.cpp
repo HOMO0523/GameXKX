@@ -2505,6 +2505,8 @@ bool FGameXXKCardBattleBoardPendingHeroTaskSearchTest::RunTest(const FString& Pa
 	TestNotNull(TEXT("canonical insight panel exists"), InsightPanel);
 	TestNotNull(TEXT("canonical insight panel keeps its canvas slot"), InsightPanelSlot);
 	TestNotNull(TEXT("canonical insight candidate keeps its size box"), InsightCardSize);
+	TestTrue(TEXT("canonical insight panel uses the approved MasterV2 item-slot paper"),
+		Board->GetPendingChoicePanelResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot")));
 	if (!InsightPanel || !InsightPanelSlot || !InsightCardSize)
 	{
 		return false;

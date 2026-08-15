@@ -539,6 +539,8 @@ public:
 	FMargin GetRewardCardBoxOffsetsForTest() const;
 	/** Current tooltip panel offsets (follows the hovered card slot). */
 	FMargin GetHandCardDetailPanelOffsetsForTest() const;
+	/** Background paper resource path of the pending-choice panel (MasterV2 item-slot paper). */
+	FString GetPendingChoicePanelResourcePathForTest() const;
 	FVector2D GetGroupOutcomePreviewAlignmentForTest() const;
 	/** Drives the production visual-removal path without mutating authoritative runtime state. */
 	void RemoveUnitVisualForTest(FName UnitId);
@@ -1108,6 +1110,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> BattleStatusWindowFrameTexture;
+
+	/** MasterV2 item-slot paper backing the pending-choice panel. */
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> PendingChoicePanelPaperTexture;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> CardFrameTexture;
