@@ -2298,6 +2298,15 @@ uint64 UGameXXKBattleBoardWidget::GetActiveBattleVisualSessionTokenForTest() con
 	return ActiveBattleVisualSessionToken;
 }
 
+FVector2D UGameXXKBattleBoardWidget::ResolveTargetingArrowHeadTopLeftForTest(
+	const FVector2D TargetingStart,
+	const FVector2D TargetingEnd,
+	const FVector2D ArrowSize)
+{
+	static_cast<void>(TargetingStart);
+	return TargetingEnd - ArrowSize * 0.5f;
+}
+
 FString UGameXXKBattleBoardWidget::GetBattleBoardDebugStateForTest() const
 {
 	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
@@ -2683,7 +2692,7 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 	}
 
 	const FVector2D ArrowSize(74.0f, 56.0f);
-	const FVector2D ArrowPosition = End - ArrowSize * 0.5f;
+	const FVector2D ArrowPosition = ResolveTargetingArrowHeadTopLeftForTest(Start, End, ArrowSize);
 	FSlateBrush ArrowBrush = BuildTextureBrush(TargetingArrowHeadTexture.Get(), ArrowSize, FLinearColor(1.0f, 1.0f, 1.0f, 0.96f));
 	FSlateDrawElement::MakeRotatedBox(
 		OutDrawElements,
@@ -2965,14 +2974,16 @@ void UGameXXKBattleBoardWidget::UpdateTargetingPointer(FVector2D ScreenPosition)
 	{
 		// Geometry-driven hover fallback: the invisible target-proxy buttons are
 		// a visual layer only; hover feedback must not depend on them surviving.
-		// Without a real stage geometry (no viewport, isolated tests) the proxy
-		// hover path remains the only preview driver, so skip the tick fallback.
+		// The value arriving here is already in stage (1920x1080 design) space:
+		// UpdateTargetingPointerFromSlateAbsolutePosition converts the cursor
+		// through BattleDesignStage's geometry. Resolve against the stage rects
+		// directly and store the stage position unchanged for the paint path.
 		const FVector2D LocalSize = GetCachedGeometry().GetLocalSize();
 		const FGameXXKBattleHudSafeStageLayout SafeStage = ResolveBattleHudSafeStageLayoutForTest(LocalSize);
 		if (SafeStage.Scale > KINDA_SMALL_NUMBER)
 		{
 			FName ResolvedUnitId = NAME_None;
-			if (TryResolveCardTargetUnitAtLocalPosition(ScreenPosition, ResolvedUnitId)
+			if (TryResolveCardTargetUnitAtStagePosition(ScreenPosition, ResolvedUnitId)
 				&& LegalCardTargetUnitIds.Contains(ResolvedUnitId))
 			{
 				if (CachedOutcomeTargetUnitId != ResolvedUnitId)
@@ -2988,7 +2999,8 @@ void UGameXXKBattleBoardWidget::UpdateTargetingPointer(FVector2D ScreenPosition)
 	}
 
 	// The card-targeting arrow always tracks the cursor; it never snaps to a
-	// target (the outcome tooltip is the target feedback).
+	// target (the outcome tooltip is the target feedback). The stored pointer
+	// stays in stage space, which is exactly what the paint path expects.
 	if (IsTargetingBattleActionForTest() && !TargetingPointerPosition.Equals(ScreenPosition, 0.5f))
 	{
 		TargetingPointerPosition = ScreenPosition;

@@ -229,6 +229,11 @@ public:
 	int32 GetPinnedBattleAtlasCountForTest() const;
 	int32 GetDuplicateParticipantImageCountForTest() const;
 	bool TryResolveCardTargetUnitAtStagePositionForTest(FVector2D StagePosition, FName& OutUnitId) const;
+	/** Returns the unrotated arrow brush top-left used by NativePaint. */
+	static FVector2D ResolveTargetingArrowHeadTopLeftForTest(
+		FVector2D TargetingStart,
+		FVector2D TargetingEnd,
+		FVector2D ArrowSize);
 	/** Live-PIE diagnostic: JSON-ish summary of presentation/session/choice state. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	FString GetBattleBoardDebugStateForTest() const;

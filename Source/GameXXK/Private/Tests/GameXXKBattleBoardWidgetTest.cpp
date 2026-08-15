@@ -183,6 +183,39 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKBattleTargetArrowAlignmentTest,
+	"GameXXK.MVP.Battle.TargetArrowAlignment",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKBattleTargetArrowAlignmentTest::RunTest(const FString& Parameters)
+{
+	const FVector2D End(640.0f, 360.0f);
+	const FVector2D ArrowSize(74.0f, 56.0f);
+	const FVector2D ExpectedTopLeft(603.0f, 332.0f);
+
+	const auto VerifyDirection = [this, End, ArrowSize, ExpectedTopLeft](
+		const TCHAR* Label,
+		const FVector2D Start)
+	{
+		const FVector2D TopLeft = UGameXXKBattleBoardWidget::ResolveTargetingArrowHeadTopLeftForTest(
+			Start,
+			End,
+			ArrowSize);
+		TestTrue(
+			FString::Printf(TEXT("%s targeting keeps the brush top-left centered on End"), Label),
+			TopLeft.Equals(ExpectedTopLeft, 0.01f));
+		TestTrue(
+			FString::Printf(TEXT("%s targeting keeps the brush center equal to End"), Label),
+			(TopLeft + ArrowSize * 0.5f).Equals(End, 0.01f));
+	};
+
+	VerifyDirection(TEXT("horizontal"), FVector2D(320.0f, 360.0f));
+	VerifyDirection(TEXT("vertical"), FVector2D(640.0f, 40.0f));
+	VerifyDirection(TEXT("diagonal"), FVector2D(320.0f, 120.0f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKBattleBoardWidgetTest,
 	"GameXXK.MVP.Battle.BoardWidget",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
