@@ -1,20 +1,21 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-14
-source_commit: 3534648
+updated_at: 2026-08-15
+source_commit: a490235a32ad324c2f74e21a8b79a344c65b0125
 ---
 # GameXXK 当前目标(滚动指针)
 
 > 本文件是"当前做到哪了"的**唯一滚动指针**。`AGENTS.md` 不再硬编码验收状态,改指向这里。每次目标收尾后更新本文件。
 
-## 当前基线(更新于 2026-08-14)
+## 当前基线(更新于 2026-08-15)
 
 - 分支:`main`
-- 最近一次完整验收:`docs/production/2026-08-14-unfinished-inventory-optimization-roadmap.md`(未完成项盘点与路线图)
+- 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 
-## 已落地(最近两轮)
+## 已落地(最近三轮)
 
+- **战斗目标箭头视觉回归修复**(`a490235`):移除箭头头部的方向相关平移，恢复贴图中心严格落在实时鼠标端点；保留自由鼠标跟随与 stage-space 目标命中；新增水平/垂直/对角回归测试。真实 PIE 的 Single/Healing 双方向对比通过，用户在保持运行的目标卡验收现场确认 `ok`。
 - **奖励体系重构**(`00002f1`):彻底删除路线临时卡体系(路线卡条目/12 容量/18 张配方/事件宝箱商人发卡);新增玩家卡组**首领卡槽 3 个**,击杀首领后选择首领牌(虎/熊)写入空槽并加入当前手牌;战后奖励只剩首领牌(例外)+携带牌品质升级+遗物+气力点+抽牌数;存档 v16→v17 迁移。
 - **两项平衡修复**:①模拟 AI 无进展死循环(连续 64 次决策无敌方掉血强制结束回合;5 个回合边界血量无变化判僵持战败);②刀锋延迟保留牌主人阵亡时实例丢失(牌随主人退场)。
 - 新增回归测试 `ZhuiFengJinGuiBoss942090`、`BladeRetainedOwnerDefeat1100213`;修复两处进程 RNG 偶发测试;卡牌文档重新生成。
@@ -35,3 +36,4 @@ source_commit: 3534648
 
 - 见 `docs/production/2026-08-14-unfinished-inventory-optimization-roadmap.md`。
 - 顺序:Phase 0 收尾 → Phase 1 地形增益重设计(先复核 2 个口径)→ Phase 2 数值迭代(台账 §6)。
+- 非阻塞测试工具维护:更新 `scripts/gamexxk_real_play_flow_mcp.py` 的旧 `pointer_matches_target` 吸附断言，使其符合 `6668146` 冻结的自由鼠标跟随语义；详见本次问题报告“已知测试工具欠账”。

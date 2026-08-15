@@ -2,8 +2,8 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-10T03:55:00+08:00
-source_commit: b43d477f1a769c1b2152ac17c9e108acb1353635
+updated_at: 2026-08-15T10:55:00+08:00
+source_commit: a490235a32ad324c2f74e21a8b79a344c65b0125
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
 ---
@@ -128,3 +128,14 @@ parallel_lock: GameXXK.PlayableEntryFlow
 - Moved generated/reference source PNGs out of UE `Content/GameXXK/SourceArt` into `docs/art/source_art`, `docs/ui/main_menu/source_art`, `docs/ui/battle/source_art`, and `docs/ui/inventory/source_art`; runtime imported Texture2D assets remain under `/Game/GameXXK/.../Textures`.
 - Updated source-art scripts and MCP import scripts to read the new `docs` source paths, and set project editor defaults to disable Auto Reimport content-directory monitoring because GameXXK source art import is now script-owned.
 - Kept `Content/Python/gamexxk_probe_inventory_window.py` as the runtime object-state probe while treating foreground screenshots as the player-facing source of truth.
+
+## 2026-08-15 Battle Target Arrow Alignment Regression Repair
+
+- Repaired a presentation-only regression where the orange targeting-arrow head was translated along its direction after rotation, leaving it down-right of the live cursor and separated from the terminal ink dabs.
+- Restored the paint contract to `TargetingEnd - ArrowSize * 0.5f`, so the unrotated brush center is exactly the live cursor endpoint and direction affects only the Bezier normal and arrow rotation.
+- Preserved the approved no-snap interaction from `6668146`: the card-targeting arrow follows the real cursor and the target tooltip supplies target feedback.
+- Preserved the independent stage-space target-resolution correction in `UpdateTargetingPointer`; no texture, `.uasset`, character, backdrop, or card-resolution changes were made.
+- Added `ResolveTargetingArrowHeadTopLeftForTest` as the production-used deterministic seam and added `GameXXK.MVP.Battle.TargetArrowAlignment` coverage for horizontal, vertical, and diagonal directions.
+- Removed the temporary `ArrowHeadTipOffsetRatio`, recurring `[ArrowPaint]` logs, Win32 cursor reads, and platform-specific diagnostic include.
+- Implementation commit: `a490235a32ad324c2f74e21a8b79a344c65b0125`.
+- Full incident and acceptance record: `docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`.

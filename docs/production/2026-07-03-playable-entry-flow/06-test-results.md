@@ -2,8 +2,8 @@
 unit_id: 2026-07-03-playable-entry-flow
 status: verified
 owner: codex
-updated_at: 2026-07-10T03:55:00+08:00
-source_commit: b43d477f1a769c1b2152ac17c9e108acb1353635
+updated_at: 2026-08-15T10:55:00+08:00
+source_commit: a490235a32ad324c2f74e21a8b79a344c65b0125
 depends_on: []
 parallel_lock: GameXXK.PlayableEntryFlow
 ---
@@ -174,3 +174,15 @@ Acceptance evidence: GameXXK now owns route seed/state/clicks; the route widget 
 - Visual GREEN evidence: `Saved\HarnessReports\live-ue-town-merchant-window-final-visible.png` shows direct `L_QingshanInn` PIE with no source-import prompt and the independent water-ink merchant/inventory window visibly open after the merchant `F` path.
 - Full MVP automation: `python scripts\gamexxk_mvp_playtest.py --skip-build --test-timeout 600 --report Saved\HarnessReports\direct-town-merchant-window-green.json` passed with `ok: true`, 22/22 `GameXXK.MVP` automation tests successful, `failed_tests=[]`, and `flow_coverage.ok=true`.
 - Project checks: `python scripts\harness_state_validator.py --require-units --json` returned `ok: true`; `git diff --check` returned exit code 0 with line-ending warnings only.
+
+## 2026-08-15 Battle Target Arrow Alignment Regression Repair
+
+- RED: the new `GameXXK.MVP.Battle.TargetArrowAlignment` test was discovered and all six intended center/top-left assertions failed under the old direction-dependent head offset (horizontal, vertical, and diagonal).
+- GREEN build/PIE: `python scripts/ue_tdd_pipeline.py --pie-duration 1 --log-lines 120` ran UBT with `-NoHotReload`, returned `Result: Succeeded`, restarted the editor, and completed a clean short PIE start/stop.
+- Focused automation: `Saved/Automation/battle-target-arrow-alignment-final-primary/index.json` reports 1 discovered, 1 succeeded, 0 failed, 0 warnings, 0 errors. Adjacent `Saved/Automation/battle-board-widget-adjacent-final-primary/index.json` reports 1 succeeded, 0 failed, 11 existing `BattleVisual` diagnostic warnings, and 0 errors.
+- Deterministic art check: `python scripts/gamexxk_battle_target_art_check.py` returned `ok=True` with all 12 ink dabs valid.
+- Real-PIE visual evidence: `Saved/Codex/arrow_alignment_repaired_single.png` shows the repaired head seated against the terminal dabs; `Saved/Codex/target_outcome_Healing.png` proves the reverse direction rotates without a direction-dependent translation.
+- Baseline preservation: `Saved/Codex/arrow_alignment_accepted_baseline.png` and restored `Saved/Codex/target_outcome_Single.png` are byte-identical with SHA-256 `2EA86BE31973379D2B4830139AF7B504E0E9701CFA47E484E7E4619E6B79B918`.
+- Manual acceptance: real input flow was left in PIE with `青锋一式` selected and the arrow active over `敌人 1P`; evidence is `Saved/HarnessReports/battle-arrow-manual-acceptance-stage-20260815.json` and `Saved/Codex/battle_arrow_manual_acceptance_ready.png`. The user inspected this session and replied `ok`.
+- Cleanup: the temporary target-outcome fixture was cleared, UE MCP reported no dirty packages, and PIE stopped normally after acceptance.
+- Known harness limitation: `Saved/HarnessReports/battle-target-arrow-alignment-final-20260815.json` has top-level `ok=false` only because the legacy `pointer_matches_target` assertion still expects pre-`6668146` target snapping. All other single-target predicates and both group scenarios pass; this non-product harness debt is recorded separately and was not used to weaken or reverse the approved cursor-follow behavior.
