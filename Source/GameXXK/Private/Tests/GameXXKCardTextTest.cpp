@@ -102,8 +102,8 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	const FString TerrainBenefitText = GameXXKCardText::DescribeDetail(*TerrainBenefit, nullptr);
 	TestTrue(TEXT("card text uses the approved Momentum name"), MomentumText.Contains(TEXT("气势")));
 	TestFalse(TEXT("card text never falls back to the retired one-character Momentum name"), MomentumText.Contains(TEXT("获得2层势")));
-	TestTrue(TEXT("Blade cards expose the exact concise Charge keyword rule"), BladeText.Contains(TEXT("冲锋：本回合第一张主动牌时触发。")));
-	TestTrue(TEXT("Blade cards expose the exact concise Finish keyword rule"), BladeText.Contains(TEXT("收招：作为结束回合前最后一张主动牌时触发。")));
+	TestTrue(TEXT("Blade cards expose the exact concise Charge keyword rule"), BladeText.Contains(TEXT("冲锋：此牌是本回合第一张主动牌打出时触发。")));
+	TestTrue(TEXT("Blade cards expose the exact concise Finish keyword rule"), BladeText.Contains(TEXT("收招：此牌是本回合最后一张主动牌时触发。")));
 	TestTrue(TEXT("Blade cards describe their actual Charge payload"), BladeText.Contains(TEXT("冲锋效果：")) && BladeText.Contains(TEXT("重放")));
 	TestTrue(TEXT("Blade cards describe their actual Finish payload"), BladeText.Contains(TEXT("收招效果：")) && BladeText.Contains(TEXT("重放")));
 	TestTrue(TEXT("Medicine cards expose the exact concise Medicine keyword rule"), MedicineText.Contains(TEXT("药效：下一次治疗或治疗反转每层＋1；结算时全部消耗。")));
@@ -132,15 +132,15 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 		const FString JingHongText = GameXXKCardText::DescribeDetail(*BladeJingHong, nullptr);
 		const FString HengYunText = GameXXKCardText::DescribeDetail(*BladeHengYun, nullptr);
 		TestTrue(TEXT("Blade charge text names its trigger and payload"),
-			LieFengText.Contains(TEXT("冲锋：本回合第一张主动牌时，下一张主动牌基础效果再结算一次。")));
+			LieFengText.Contains(TEXT("冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌基础效果再结算一次。")));
 		TestTrue(TEXT("Blade finish text names its trigger and payload"),
-			LieFengText.Contains(TEXT("收招：本回合最后一张主动牌时，返还本回合首张主动牌至手牌（原费用）。")));
+			LieFengText.Contains(TEXT("收招：此牌是本回合最后一张主动牌时，返还本回合首张主动牌至手牌（原费用）。")));
 		TestTrue(TEXT("Blood Edge cards expose the blood-edge keyword"),
 			FengHouText.Contains(TEXT("血势：每层目标流血使本段攻击倍率+10%。")));
 		TestTrue(TEXT("Momentum Break cards expose the momentum keyword"),
 			DuanYueText.Contains(TEXT("乘势：每层自身气势使本段攻击倍率+10%。")));
 		TestTrue(TEXT("Sheathed cards explain storing the charge as a native style"),
-			JingHongText.Contains(TEXT("收招：本回合最后一张主动牌时，将冲锋效果保存为「藏式」。")));
+			JingHongText.Contains(TEXT("收招：此牌是本回合最后一张主动牌时，将冲锋效果保存为「藏式」。")));
 		TestTrue(TEXT("Sheathed cards explain the style expiry"),
 			JingHongText.Contains(TEXT("藏式：下回合第一张主动牌消耗；未消耗则回合末失效。")));
 		TestTrue(TEXT("Sheathed opener explains its blade-draw bonus"),

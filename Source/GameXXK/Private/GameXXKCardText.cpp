@@ -914,12 +914,12 @@ namespace
 
 		if (Sequence.ChargeRule != EGameXXKBladeChargeRule::None)
 		{
-			Lines.Add(FString::Printf(TEXT("冲锋：本回合第一张主动牌时，%s"), *DescribeBladeChargeRule(Sequence.ChargeRule)));
+			Lines.Add(FString::Printf(TEXT("冲锋：此牌是本回合第一张主动牌打出时，%s"), *DescribeBladeChargeRule(Sequence.ChargeRule)));
 		}
 
 		if (Sequence.FinishRule == EGameXXKBladeFinishRule::StoreChargeAsNativeStyle)
 		{
-			Lines.Add(TEXT("收招：本回合最后一张主动牌时，将冲锋效果保存为「藏式」。"));
+			Lines.Add(TEXT("收招：此牌是本回合最后一张主动牌时，将冲锋效果保存为「藏式」。"));
 			Lines.Add(TEXT("藏式：下回合第一张主动牌消耗；未消耗则回合末失效。"));
 			if (Sequence.BaseRule == EGameXXKBladeBaseRule::OpenBladeExtraAttack)
 			{
@@ -932,7 +932,7 @@ namespace
 		}
 		else if (Sequence.FinishRule != EGameXXKBladeFinishRule::None)
 		{
-			Lines.Add(FString::Printf(TEXT("收招：本回合最后一张主动牌时，%s"), *DescribeBladeFinishRule(Sequence.FinishRule)));
+			Lines.Add(FString::Printf(TEXT("收招：此牌是本回合最后一张主动牌时，%s"), *DescribeBladeFinishRule(Sequence.FinishRule)));
 		}
 		return FString::Join(Lines, TEXT("\n"));
 	}
@@ -959,12 +959,12 @@ namespace
 		}
 		if (!EffectiveDefinition.ChargeEffects.IsEmpty())
 		{
-			Lines.Add(TEXT("冲锋：本回合第一张主动牌时触发。"));
+			Lines.Add(TEXT("冲锋：此牌是本回合第一张主动牌打出时触发。"));
 			Lines.Add(FString::Printf(TEXT("冲锋效果：%s"), *DescribeEffectArray(EffectiveDefinition.ChargeEffects)));
 		}
 		if (!EffectiveDefinition.FinishEffects.IsEmpty())
 		{
-			Lines.Add(TEXT("收招：作为结束回合前最后一张主动牌时触发。"));
+			Lines.Add(TEXT("收招：此牌是本回合最后一张主动牌时触发。"));
 			Lines.Add(FString::Printf(TEXT("收招效果：%s"), *DescribeEffectArray(EffectiveDefinition.FinishEffects)));
 		}
 		if (EffectiveDefinition.HeavyArrow.Kind != EGameXXKHeavyArrowKind::None)
