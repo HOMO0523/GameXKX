@@ -48,6 +48,13 @@ public:
 	bool ApplyCardTooltipFixtureForTest(FName CardId, FString& OutError);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	void ClearCardTooltipFixtureForTest();
+
+	/** True only while the non-persistent card-tooltip fixture is active. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool IsCardTooltipFixtureActiveForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	void ClearBattleHudFixtureForTest();
 
 	/** True only while the non-persistent development Battle HUD fixture is the visible runtime view. */
@@ -410,6 +417,9 @@ private:
 
 	/** Never serialized: this only lets visual PIE probes render a safe copied battle state. */
 	TOptional<FGameXXKRuntimeState> BattleHudFixtureView;
+
+	/** Backup for the development card-tooltip fixture; restoring it never writes a save. */
+	TOptional<FGameXXKRuntimeState> CardTooltipFixtureBackup;
 
 	/** Never serialized: exact source state restored after each mutable target-outcome parity fixture. */
 	TOptional<FGameXXKRuntimeState> TargetOutcomeFixtureBackup;

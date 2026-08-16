@@ -211,10 +211,16 @@ namespace
 		return 3;
 	}
 
-	/** Every facade mutation invalidates the copied development-only HUD view before it can become stale. */
-	static void BeginRuntimeStateMutation(TOptional<FGameXXKRuntimeState>& InOutBattleHudFixtureView)
+	/** Every facade mutation invalidates development-only overlays before they can become stale. */
+	static void BeginRuntimeStateMutation(
+		TOptional<FGameXXKRuntimeState>& InOutBattleHudFixtureView,
+		TOptional<FGameXXKRuntimeState>* InOutCardTooltipFixtureBackup = nullptr)
 	{
 		InOutBattleHudFixtureView.Reset();
+		if (InOutCardTooltipFixtureBackup)
+		{
+			InOutCardTooltipFixtureBackup->Reset();
+		}
 	}
 
 	static FName ResolveBattleHudFixtureCardOwner(
@@ -588,7 +594,7 @@ const FGameXXKRuntimeState& UGameXXKMVPSubsystem::GetRuntimeState() const
 
 FGameXXKRuntimeState& UGameXXKMVPSubsystem::GetMutableRuntimeState()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return RuntimeState;
 }
 
@@ -618,7 +624,7 @@ bool UGameXXKMVPSubsystem::PurchaseMetaShopProduct(
 
 bool UGameXXKMVPSubsystem::ApplyBattleHudFixtureForTest(FString& OutError)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	OutError.Reset();
 	if (RuntimeState.Screen != EGameXXKScreen::Battle)
 	{
@@ -766,7 +772,7 @@ bool UGameXXKMVPSubsystem::ApplyBattleHudFixtureForTest(FString& OutError)
 
 void UGameXXKMVPSubsystem::ClearBattleHudFixtureForTest()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 }
 
 bool UGameXXKMVPSubsystem::IsBattleHudFixtureActiveForTest() const
@@ -776,8 +782,13 @@ bool UGameXXKMVPSubsystem::IsBattleHudFixtureActiveForTest() const
 
 bool UGameXXKMVPSubsystem::ApplyCardTooltipFixtureForTest(const FName CardId, FString& OutError)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	OutError.Reset();
+	if (CardTooltipFixtureBackup.IsSet())
+	{
+		OutError = TEXT("A card-tooltip fixture is already active.");
+		return false;
+	}
 	if (RuntimeState.Screen != EGameXXKScreen::Battle)
 	{
 		OutError = TEXT("Card tooltip fixture requires the Battle screen.");
@@ -795,11 +806,13 @@ bool UGameXXKMVPSubsystem::ApplyCardTooltipFixtureForTest(const FName CardId, FS
 		return false;
 	}
 
+	CardTooltipFixtureBackup.Emplace(RuntimeState);
 	FGameXXKRuntimeState FixtureState = RuntimeState;
 	FixtureState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Player;
 	FGameXXKBattleDeckState& FixtureDeck = FixtureState.CardRun.ActiveBattle.Deck;
 	if (FixtureDeck.Hand.IsEmpty())
 	{
+		CardTooltipFixtureBackup.Reset();
 		OutError = TEXT("Card tooltip fixture requires at least one visible hand card.");
 		return false;
 	}
@@ -811,7 +824,7 @@ bool UGameXXKMVPSubsystem::ApplyCardTooltipFixtureForTest(const FName CardId, FS
 	// on shared Energy.
 	FixtureDeck.SharedEnergy = FMath::Max(FixtureDeck.SharedEnergy, 5);
 
-	BattleHudFixtureView.Emplace(MoveTemp(FixtureState));
+	RuntimeState = MoveTemp(FixtureState);
 	if (AGameXXKMVPPlayerController* const PlayerController =
 		Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
 	{
@@ -823,9 +836,33 @@ bool UGameXXKMVPSubsystem::ApplyCardTooltipFixtureForTest(const FName CardId, FS
 	return true;
 }
 
+void UGameXXKMVPSubsystem::ClearCardTooltipFixtureForTest()
+{
+	if (CardTooltipFixtureBackup.IsSet())
+	{
+		RuntimeState = MoveTemp(CardTooltipFixtureBackup.GetValue());
+		CardTooltipFixtureBackup.Reset();
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	if (AGameXXKMVPPlayerController* const PlayerController =
+		Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		if (UGameXXKBattleBoardWidget* const Board = PlayerController->GetBattleBoardWidgetForTest())
+		{
+			Board->RefreshFromState();
+		}
+	}
+}
+
+bool UGameXXKMVPSubsystem::IsCardTooltipFixtureActiveForTest() const
+{
+	return CardTooltipFixtureBackup.IsSet();
+}
+
+
 bool UGameXXKMVPSubsystem::ApplyPilotComparisonFixtureForTest(FString& OutError)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	OutError.Reset();
 	if (RuntimeState.Screen != EGameXXKScreen::Battle)
 	{
@@ -901,7 +938,7 @@ bool UGameXXKMVPSubsystem::ApplyPilotComparisonFixtureForTest(FString& OutError)
 
 bool UGameXXKMVPSubsystem::ApplyTargetOutcomeFixtureForTest(const FName ScenarioId, FString& OutError)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	OutError.Reset();
 	if (TargetOutcomeFixtureBackup.IsSet())
 	{
@@ -931,7 +968,7 @@ bool UGameXXKMVPSubsystem::ApplyTargetOutcomeFixtureForTest(const FName Scenario
 
 bool UGameXXKMVPSubsystem::ClearTargetOutcomeFixtureForTest(FString& OutError)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	OutError.Reset();
 	if (!TargetOutcomeFixtureBackup.IsSet())
 	{
@@ -964,7 +1001,7 @@ bool UGameXXKMVPSubsystem::StartGame()
 bool UGameXXKMVPSubsystem::StartNewGame()
 {
 	LastSaveLoadError = FText::GetEmpty();
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = UGameXXKMVPRules::CreateNewGame();
 	FString Error;
 	if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(RuntimeState, &Error))
@@ -1057,7 +1094,7 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 			SetSaveMigrationFailure();
 			return false;
 		}
-		BeginRuntimeStateMutation(BattleHudFixtureView);
+		BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 		RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
 		return true;
 	}
@@ -1192,7 +1229,7 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 		return false;
 	}
 
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
 	return true;
 }
@@ -1280,7 +1317,7 @@ bool UGameXXKMVPSubsystem::EquipEquipmentInstance(
 		return false;
 	}
 
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	return true;
 }
@@ -1302,7 +1339,7 @@ bool UGameXXKMVPSubsystem::UnequipEquipmentSlot(
 		return false;
 	}
 
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	return true;
 }
@@ -1321,7 +1358,7 @@ bool UGameXXKMVPSubsystem::EnhanceEquipmentInstance(const FName InstanceId, FGam
 		return false;
 	}
 
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	return true;
 }
@@ -1343,7 +1380,7 @@ bool UGameXXKMVPSubsystem::BeginEquipmentReforge(
 		return false;
 	}
 
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	return true;
 }
@@ -1362,7 +1399,7 @@ bool UGameXXKMVPSubsystem::ResolveEquipmentReforge(const bool bAccept, FGameXXKE
 		return false;
 	}
 
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	return true;
 }
@@ -1384,7 +1421,7 @@ bool UGameXXKMVPSubsystem::DismantleEquipmentInstances(
 		return false;
 	}
 
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	return true;
 }
@@ -1446,19 +1483,19 @@ FString UGameXXKMVPSubsystem::GetManualSaveSlotName(int32 SlotIndex)
 
 bool UGameXXKMVPSubsystem::OpenWorldMap()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::OpenWorldMap(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::SelectWorldRegion(FName RegionId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::EnterWorldRegion(RuntimeState, RegionId);
 }
 
 bool UGameXXKMVPSubsystem::EnsureQingshanTownRuntimeForDirectMap()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	if (RuntimeState.Screen == EGameXXKScreen::Town && RuntimeState.CurrentRegion == UGameXXKMVPRules::RegionQingshan())
 	{
 		return true;
@@ -1483,20 +1520,20 @@ bool UGameXXKMVPSubsystem::IsRegionUnlocked(FName RegionId) const
 
 bool UGameXXKMVPSubsystem::AcceptQuest()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::AcceptTownQuest(RuntimeState);
 }
 
 void UGameXXKMVPSubsystem::RecordQuestNpcLocation(FVector Location)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState.bHasQuestNpcLocation = true;
 	RuntimeState.QuestNpcLocation = Location;
 }
 
 void UGameXXKMVPSubsystem::RecordPlayerLocation(FVector Location)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState.bHasPlayerLocation = true;
 	RuntimeState.PlayerLocation = Location;
 }
@@ -1508,25 +1545,25 @@ bool UGameXXKMVPSubsystem::CanEnterDungeon() const
 
 bool UGameXXKMVPSubsystem::OpenDungeonFromTownExit()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::EnterDungeon(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::SelectDungeonNode(EGameXXKNodeKind ExpectedNode)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::AdvanceDungeonNode(RuntimeState, ExpectedNode);
 }
 
 bool UGameXXKMVPSubsystem::SelectRouteNodeById(int32 NodeId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::SelectRouteNodeById(RuntimeState, NodeId);
 }
 
 bool UGameXXKMVPSubsystem::ResolveBattleVictory(bool bBossBattle)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ResolveBattleVictory(RuntimeState, bBossBattle);
 }
 
@@ -1535,7 +1572,7 @@ bool UGameXXKMVPSubsystem::ResolvePendingBattleRewardChoiceAndFinish(
 	const FName ReplacementEntryId,
 	FString* OutError)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(
 		RuntimeState,
 		OptionIndex,
@@ -1545,67 +1582,67 @@ bool UGameXXKMVPSubsystem::ResolvePendingBattleRewardChoiceAndFinish(
 
 bool UGameXXKMVPSubsystem::SkipPendingRouteRewardAndFinish(FString* OutError)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::SkipPendingRouteRewardAndFinish(RuntimeState, OutError);
 }
 
 bool UGameXXKMVPSubsystem::ExecuteBattleBasicAttack(int32 PartyIndex, int32 EnemyIndex)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ExecuteBattleBasicAttack(RuntimeState, PartyIndex, EnemyIndex);
 }
 
 bool UGameXXKMVPSubsystem::ExecuteBattleCraneWingSlash(int32 PartyIndex, int32 EnemyIndex)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ExecuteBattleCraneWingSlash(RuntimeState, PartyIndex, EnemyIndex);
 }
 
 bool UGameXXKMVPSubsystem::ExecuteBattleGuiyuanArt(int32 PartyIndex)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ExecuteBattleGuiyuanArt(RuntimeState, PartyIndex);
 }
 
 bool UGameXXKMVPSubsystem::ExecuteBattleDefend(int32 PartyIndex)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ExecuteBattleDefend(RuntimeState, PartyIndex);
 }
 
 bool UGameXXKMVPSubsystem::ExecuteBattleHealingPowder(int32 PartyIndex)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ExecuteBattleHealingPowder(RuntimeState, PartyIndex);
 }
 
 bool UGameXXKMVPSubsystem::ResolveEventReward(bool bTakeGold)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ResolveEventReward(RuntimeState, bTakeGold);
 }
 
 bool UGameXXKMVPSubsystem::ResolveRouteEncounterChoice(const int32 ChoiceIndex)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ResolveRouteEncounterChoice(RuntimeState, ChoiceIndex);
 }
 
 bool UGameXXKMVPSubsystem::AcceptRouteEventNpcSupport()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::AcceptRouteEventNpcSupport(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::ResolveCampReward(bool bHealNow)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ResolveCampReward(RuntimeState, bHealNow);
 }
 
 bool UGameXXKMVPSubsystem::EnsureRouteMerchantStock(FString* OutError)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::EnsureRouteMerchantStock(RuntimeState, OutError);
 }
 
@@ -1618,7 +1655,7 @@ bool UGameXXKMVPSubsystem::GetRouteMerchantView(
 
 bool UGameXXKMVPSubsystem::RefreshRouteMerchant(FString* OutError)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::RefreshRouteMerchant(RuntimeState, OutError);
 }
 
@@ -1641,7 +1678,7 @@ bool UGameXXKMVPSubsystem::PurchaseRouteMerchant(
 	const FName ReplacementEntryId,
 	FGameXXKRouteMerchantPurchaseResult& OutResult)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::PurchaseRouteMerchant(
 		RuntimeState,
 		OfferId,
@@ -1651,31 +1688,31 @@ bool UGameXXKMVPSubsystem::PurchaseRouteMerchant(
 
 bool UGameXXKMVPSubsystem::CancelPendingRouteMerchantPurchase(FString* OutError)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::CancelPendingRouteMerchantPurchase(RuntimeState, OutError);
 }
 
 bool UGameXXKMVPSubsystem::ResolveMerchantRouteNode()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ResolveMerchantRouteNode(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::FailDungeonToTown()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::FailDungeonToTown(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::BuyItem(FName ItemId, int32 Quantity)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::BuyItem(RuntimeState, ItemId, Quantity);
 }
 
 bool UGameXXKMVPSubsystem::SellItem(FName ItemId, int32 Quantity)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::SellItem(RuntimeState, ItemId, Quantity);
 }
 
@@ -1696,7 +1733,7 @@ bool UGameXXKMVPSubsystem::CanEnhanceItem(FName ItemId) const
 
 bool UGameXXKMVPSubsystem::EnhanceItem(FName ItemId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::EnhanceItem(RuntimeState, ItemId);
 }
 
@@ -1707,43 +1744,43 @@ bool UGameXXKMVPSubsystem::CanDecomposeItem(FName ItemId) const
 
 bool UGameXXKMVPSubsystem::DecomposeItem(FName ItemId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::DecomposeItem(RuntimeState, ItemId);
 }
 
 bool UGameXXKMVPSubsystem::UseHealingItem()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::UseHealingItem(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::UseItem(FName ItemId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::UseItem(RuntimeState, ItemId);
 }
 
 bool UGameXXKMVPSubsystem::EquipItem(FName ItemId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::EquipItem(RuntimeState, ItemId);
 }
 
 bool UGameXXKMVPSubsystem::UnequipItem(FName ItemId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::UnequipItem(RuntimeState, ItemId);
 }
 
 bool UGameXXKMVPSubsystem::OpenTownPanel(EGameXXKTownPanelMode PanelMode)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::OpenTownPanel(RuntimeState, PanelMode);
 }
 
 bool UGameXXKMVPSubsystem::CloseTownPanel()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::CloseTownPanel(RuntimeState);
 }
 
@@ -1774,7 +1811,7 @@ bool UGameXXKMVPSubsystem::HasUnreadCodexEntries() const
 
 bool UGameXXKMVPSubsystem::MarkCodexEntryRead(FName EntryId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::MarkCodexEntryRead(RuntimeState, EntryId);
 }
 
@@ -1827,13 +1864,13 @@ bool UGameXXKMVPSubsystem::PrepareCompanionRosterForTown()
 		// development-only battle HUD overlay before the scene presenter reads it.
 		return false;
 	}
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return EnsureCompanionCardRun(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::RecruitPermanentCompanionFromSeed(const int32 RecruitOrderSeed, FGameXXKCompanionRecruitResult& OutResult)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	OutResult = FGameXXKCompanionRecruitResult();
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
 	{
@@ -1848,7 +1885,7 @@ bool UGameXXKMVPSubsystem::RecruitPermanentCompanionFromSeed(const int32 Recruit
 
 bool UGameXXKMVPSubsystem::StartRandomPermanentCompanionRecruitment(FGameXXKCompanionRecruitResult& OutResult)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	OutResult = FGameXXKCompanionRecruitResult();
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
 	{
@@ -1948,7 +1985,7 @@ bool UGameXXKMVPSubsystem::ResolvePendingPermanentCompanionReplacement(
 		return OutResult.bSucceeded;
 	}
 
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	OutResult = MoveTemp(EquipmentResult);
 	return OutResult.bSucceeded;
@@ -1998,14 +2035,14 @@ bool UGameXXKMVPSubsystem::DismissPermanentCompanion(const FName InstanceId)
 		return false;
 	}
 
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	return true;
 }
 
 bool UGameXXKMVPSubsystem::DiscardPendingPermanentCompanionRecruitment()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
 	{
 		return false;
@@ -2022,7 +2059,7 @@ int32 UGameXXKMVPSubsystem::GetPermanentCompanionSigilCount() const
 
 bool UGameXXKMVPSubsystem::SetActivePermanentCompanion(const FName InstanceId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
 	{
 		return false;
@@ -2035,7 +2072,7 @@ bool UGameXXKMVPSubsystem::SetActivePermanentCompanion(const FName InstanceId)
 
 bool UGameXXKMVPSubsystem::ClearActivePermanentCompanion()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
 	{
 		return false;
@@ -2048,7 +2085,7 @@ bool UGameXXKMVPSubsystem::ClearActivePermanentCompanion()
 
 bool UGameXXKMVPSubsystem::SetPermanentCompanionCardLoadout(const FName InstanceId, const TArray<FName>& SelectedCardIds)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
 	{
 		return false;
@@ -2061,7 +2098,7 @@ bool UGameXXKMVPSubsystem::SetPermanentCompanionCardLoadout(const FName Instance
 
 bool UGameXXKMVPSubsystem::SetHeroCardLoadout(const TArray<FName>& SelectedCardIds)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
 	{
 		return false;
@@ -2072,7 +2109,7 @@ bool UGameXXKMVPSubsystem::SetHeroCardLoadout(const TArray<FName>& SelectedCardI
 
 bool UGameXXKMVPSubsystem::SelectTownQuestNpcForParty(const FName QuestNpcId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || QuestNpcId.IsNone())
 	{
 		return false;
@@ -2101,7 +2138,7 @@ bool UGameXXKMVPSubsystem::SetTemporaryQuestNpcCardLoadout(const FName QuestNpcI
 
 bool UGameXXKMVPSubsystem::AwardPermanentCompanionExperience(const FName InstanceId, const int32 ExperienceAmount)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	if (IsCompanionConfigurationLocked(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
 	{
 		return false;
@@ -2113,7 +2150,7 @@ bool UGameXXKMVPSubsystem::AwardPermanentCompanionExperience(const FName Instanc
 
 bool UGameXXKMVPSubsystem::PromotePermanentCompanionStar(const FName InstanceId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView);
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	if (IsCompanionConfigurationLocked(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
 	{
 		return false;

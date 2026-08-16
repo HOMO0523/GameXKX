@@ -761,6 +761,47 @@ class SlateScreenshotFallbackTest(unittest.TestCase):
         after["probe"]["actors"][0]["is_follower_active"] = False
         self.assertFalse(flow._quest_npc_follower_verdict(before, after)["ok"])
 
+    def test_quest_npc_manual_save_unrecruited_keeps_npc_at_town_spot(self) -> None:
+        probe = {
+            "probe": {
+                "runtime_state": {
+                    "quest_state": "ACCEPTED",
+                    "b_follower_joined": False,
+                    "b_has_quest_npc_location": True,
+                    "quest_npc_location": {"x": 80.0, "y": 40.0, "z": 60.0},
+                },
+                "pawn": {"location": {"x": 100.0, "y": 200.0, "z": 300.0}},
+                "actors": [
+                    {
+                        "get_npc_role": "QUEST",
+                        "location": {"x": 80.0, "y": 40.0, "z": 60.0},
+                        "is_follower_active": False,
+                    }
+                ],
+                "save_state": {
+                    "exists": True,
+                    "quest_state": "ACCEPTED",
+                    "b_has_player_location": True,
+                    "player_location": {"x": 101.0, "y": 200.0, "z": 300.0},
+                    "b_follower_joined": False,
+                    "b_has_quest_npc_location": True,
+                    "quest_npc_location": {"x": 81.0, "y": 40.0, "z": 60.0},
+                },
+            }
+        }
+
+        verdict = flow._quest_npc_manual_save_unrecruited_verdict(probe)
+        self.assertTrue(verdict["ok"])
+        self.assertFalse(verdict["runtime_follower_joined"])
+        self.assertFalse(verdict["saved_follower_joined"])
+        self.assertFalse(verdict["quest_npc_follower_active"])
+
+        probe["probe"]["save_state"]["b_follower_joined"] = True
+        self.assertFalse(flow._quest_npc_manual_save_unrecruited_verdict(probe)["ok"])
+        probe["probe"]["save_state"]["b_follower_joined"] = False
+        probe["probe"]["actors"][0]["is_follower_active"] = True
+        self.assertFalse(flow._quest_npc_manual_save_unrecruited_verdict(probe)["ok"])
+
     def test_quest_npc_manual_save_persists_follower_and_actual_npc_location(self) -> None:
         probe = {
             "probe": {

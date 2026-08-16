@@ -809,28 +809,29 @@ bool FGameXXKCardTooltipFixtureTest::RunTest(const FString& Parameters)
 	FString ApplyError;
 	TestTrue(TEXT("card tooltip fixture applies over an active card battle"),
 		Subsystem->ApplyCardTooltipFixtureForTest(TEXT("Profession.Healer.YaoYin"), ApplyError));
-	if (!Subsystem->IsBattleHudFixtureActiveForTest())
+	if (!Subsystem->IsCardTooltipFixtureActiveForTest())
 	{
 		return false;
 	}
 	const FGameXXKRuntimeState FixtureView = Subsystem->GetRuntimeStateCopy();
 	TestFalse(TEXT("card tooltip fixture requires a non-empty visible hand"), FixtureView.CardRun.ActiveBattle.Deck.Hand.IsEmpty());
+	TestTrue(TEXT("card tooltip fixture keeps the replaced hand card hover-enabled"), FixtureView.CardRun.ActiveBattle.Deck.SharedEnergy >= 5);
 	if (!FixtureView.CardRun.ActiveBattle.Deck.Hand.IsEmpty())
 	{
 		TestEqual(TEXT("card tooltip fixture replaces the first visible hand card"),
 			FixtureView.CardRun.ActiveBattle.Deck.Hand[0].CardId,
 			FName(TEXT("Profession.Healer.YaoYin")));
 	}
-	Subsystem->ClearBattleHudFixtureForTest();
+	Subsystem->ClearCardTooltipFixtureForTest();
 	FString UnknownCardError;
 	TestFalse(TEXT("card tooltip fixture rejects an unknown card id"),
 		Subsystem->ApplyCardTooltipFixtureForTest(TEXT("Missing.Card.TooltipFixture"), UnknownCardError));
 	TestFalse(TEXT("unknown card rejection reports a concrete reason"), UnknownCardError.IsEmpty());
-	TestFalse(TEXT("unknown card rejection never installs a fixture overlay"), Subsystem->IsBattleHudFixtureActiveForTest());
+	TestFalse(TEXT("unknown card rejection never installs a fixture overlay"), Subsystem->IsCardTooltipFixtureActiveForTest());
 
 	TestTrue(TEXT("card tooltip fixture can apply again after the unknown rejection"),
 		Subsystem->ApplyCardTooltipFixtureForTest(TEXT("Profession.Healer.YaoYin"), ApplyError));
-	Subsystem->ClearBattleHudFixtureForTest();
+	Subsystem->ClearCardTooltipFixtureForTest();
 	const FGameXXKRuntimeState RawAfter = Subsystem->GetRuntimeStateCopy();
 	TestEqual(TEXT("clearing the card tooltip fixture restores the raw hand"),
 		RawAfter.CardRun.ActiveBattle.Deck.Hand.Num(),

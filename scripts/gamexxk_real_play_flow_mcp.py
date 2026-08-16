@@ -1702,6 +1702,55 @@ def _quest_npc_follower_verdict(before: dict[str, Any], after: dict[str, Any]) -
     }
 
 
+def _quest_npc_manual_save_unrecruited_verdict(probe: dict[str, Any]) -> dict[str, Any]:
+    """Accepted-but-not-recruited save contract: the quest and NPC town location
+    persist, while follower state stays false everywhere."""
+    runtime = _runtime_state(probe)
+    save = _save_state(probe)
+    player_location = _pawn_location(probe)
+    quest_npc = _quest_npc(probe)
+    quest_npc_location = quest_npc.get("location", {})
+    if not isinstance(quest_npc_location, dict):
+        quest_npc_location = {}
+    runtime_quest_npc_location = runtime.get("quest_npc_location", {})
+    if not isinstance(runtime_quest_npc_location, dict):
+        runtime_quest_npc_location = {}
+    saved_quest_npc_location = save.get("quest_npc_location", {})
+    if not isinstance(saved_quest_npc_location, dict):
+        saved_quest_npc_location = {}
+    saved_player_location = save.get("player_location", {})
+    if not isinstance(saved_player_location, dict):
+        saved_player_location = {}
+    return {
+        "ok": bool(
+            _quest_accepted(probe)
+            and _quest_state_is_accepted(save.get("quest_state", ""))
+            and bool(save.get("exists"))
+            and not bool(runtime.get("b_follower_joined"))
+            and not bool(save.get("b_follower_joined"))
+            and not bool(quest_npc.get("is_follower_active"))
+            and bool(runtime.get("b_has_quest_npc_location"))
+            and bool(save.get("b_has_quest_npc_location"))
+            and bool(player_location)
+            and bool(saved_player_location)
+            and _distance(saved_player_location, player_location) <= 5.0
+            and quest_npc_location
+            and runtime_quest_npc_location
+            and saved_quest_npc_location
+            and _distance(runtime_quest_npc_location, quest_npc_location) <= 5.0
+            and _distance(saved_quest_npc_location, quest_npc_location) <= 5.0
+        ),
+        "runtime_follower_joined": runtime.get("b_follower_joined"),
+        "saved_follower_joined": save.get("b_follower_joined"),
+        "quest_npc_follower_active": quest_npc.get("is_follower_active"),
+        "runtime_has_quest_npc_location": runtime.get("b_has_quest_npc_location"),
+        "saved_has_quest_npc_location": save.get("b_has_quest_npc_location"),
+        "player_location_distance": _distance(saved_player_location, player_location),
+        "runtime_quest_npc_location_distance": _distance(runtime_quest_npc_location, quest_npc_location),
+        "saved_quest_npc_location_distance": _distance(saved_quest_npc_location, quest_npc_location),
+    }
+
+
 def _quest_npc_manual_save_verdict(probe: dict[str, Any]) -> dict[str, Any]:
     runtime = _runtime_state(probe)
     save = _save_state(probe)
@@ -3451,84 +3500,33 @@ class RealFlowHarness:
 
         meta_shop_probe, meta_shop_path = self.probe_meta_shop()
 
-        # New semantics: accepting the quest keeps the guide NPC in town. The narrative
-        # follower only joins after the player re-opens the NPC dialog and clicks its 入队
-        # action (RecruitPendingTownNpc). Record the accepted state before walking back to
-        # the NPC for that second interaction.
+        # 任务与入队是两个选项：自动验收只确认“接任务”这个选项，
+        # 不得把引导 NPC 变成跟随者。入队由玩家在 NPC 对话框里显式选择。
         quest_after_accept = _quest_npc(after_interact)
-        if not isinstance(quest_after_accept.get("location"), dict) or not quest_after_accept["location"]:
-            raise RuntimeError("Quest NPC location missing after accepting quest")
-
-        context_probe: dict[str, Any] = {}
-        recruit_interact_probe: dict[str, Any] = after_interact
-        for attempt in range(3):
-            self.town_interact()
-            self.event("town_interact_attempt", target="quest_npc_recruit", attempt=attempt + 1)
-            deadline = time.monotonic() + 2.0
-            while time.monotonic() < deadline:
-                recruit_interact_probe = self.probe()
-                if _town_npc_context_dialog_open(recruit_interact_probe):
-                    context_probe = recruit_interact_probe
-                    self.event("wait_ok", label="Town interact reopens the NPC context dialog for 入队", attempt=attempt + 1)
-                    break
-                time.sleep(0.35)
-            if context_probe:
-                break
-        if not context_probe:
-            raise RuntimeError(
-                f"Timed out waiting for the NPC context dialog to reopen for the 入队 recruit; last probe={json.dumps(recruit_interact_probe, ensure_ascii=False)}"
-            )
-
-        self.click_town_npc_recruit_action()
-        after_recruit = self.wait_for(
-            "入队 recruit closes the dialog and joins the narrative follower",
-            lambda probe: (
-                _quest_accepted(probe)
-                and not _town_npc_context_dialog_open(probe)
-                and bool(_runtime_state(probe).get("b_follower_joined"))
-                and bool(_quest_npc(probe).get("is_follower_active"))
+        quest_location_after_accept = quest_after_accept.get("location") if isinstance(quest_after_accept.get("location"), dict) else {}
+        if not quest_location_after_accept:
+            raise RuntimeError("Quest NPC location missing after accepting the quest without recruit")
+        quest_npc_accept_probe = {
+            "ok": (
+                _quest_accepted(after_interact)
+                and not bool(_runtime_state(after_interact).get("b_follower_joined"))
+                and not bool(quest_after_accept.get("is_follower_active"))
+                and bool(_runtime_state(after_interact).get("b_has_quest_npc_location"))
             ),
-            timeout=5.0,
-            interval=0.35,
-        )
-
-        quest_after_recruit = _quest_npc(after_recruit)
-        quest_location_after_recruit = quest_after_recruit.get("location") if isinstance(quest_after_recruit.get("location"), dict) else {}
-        if not quest_location_after_recruit:
-            raise RuntimeError("Quest NPC location missing after 入队 recruit")
-        follower_separation_key = _cardinal_key_away_from(
-            _pawn_location(after_recruit),
-            quest_location_after_recruit,
-        )
-        with self.hold_town_keys(follower_separation_key):
-            time.sleep(1.25)
-            after_follower_input_move = self.probe()
-        time.sleep(0.15)
-        self.event(
-            "quest_follower_separation_move",
-            key=follower_separation_key,
-            player_distance_cm=_distance(
-                _pawn_location(after_recruit),
-                _pawn_location(after_follower_input_move),
-            ),
-            distance_from_initial_npc_cm=_distance(
-                _pawn_location(after_follower_input_move),
-                quest_location_after_recruit,
-            ),
-        )
-        quest_npc_follower_probe = _quest_npc_follower_verdict(after_recruit, after_follower_input_move)
-        self.event("quest_npc_follower_after_player_move_probe", **quest_npc_follower_probe)
-        if not quest_npc_follower_probe["ok"]:
-            raise RuntimeError(
-                f"Recruited quest NPC did not activate, follow, and record its live position before manual save: {quest_npc_follower_probe}"
-            )
+            "quest_npc": quest_after_accept,
+            "runtime_follower_joined": _runtime_state(after_interact).get("b_follower_joined"),
+            "runtime_has_quest_npc_location": _runtime_state(after_interact).get("b_has_quest_npc_location"),
+        }
+        self.event("quest_npc_accept_without_recruit_probe", **quest_npc_accept_probe)
+        if not quest_npc_accept_probe["ok"]:
+            raise RuntimeError(f"Accepting the quest must not recruit the guide NPC or clear its town location: {quest_npc_accept_probe}")
 
         after_manual_save = self.town_command("SaveSlot1")
-        manual_save_probe = _quest_npc_manual_save_verdict(after_manual_save)
-        self.event("manual_save_probe", **manual_save_probe)
+        manual_save_probe = _quest_npc_manual_save_unrecruited_verdict(after_manual_save)
+        self.event("manual_save_probe_without_recruit", **manual_save_probe)
         if not manual_save_probe["ok"]:
             raise RuntimeError(
-                f"Manual SaveGame did not persist the accepted quest, active follower, player position, and live task-NPC position: {manual_save_probe}"
+                f"Manual save did not persist the accepted quest and NPC town location without a follower: {manual_save_probe}"
             )
 
         town_exit = _town_exit(after_manual_save)
@@ -3723,8 +3721,7 @@ class RealFlowHarness:
             "npc_visuals": npc_visual_state,
             "movement_distance_cm": movement_distance,
             "quest_distance_cm": _distance(_pawn_location(near_quest), quest_location),
-            "quest_follower_npc_input_distance_cm": quest_npc_follower_probe["distance"],
-            "quest_follower_runtime_location_distance_cm": quest_npc_follower_probe["runtime_location_distance"],
+            "quest_npc_accept_without_recruit": quest_npc_accept_probe,
             "manual_save": manual_save_probe,
             "route_map": route_map_probe,
             "battle": battle_probe,
