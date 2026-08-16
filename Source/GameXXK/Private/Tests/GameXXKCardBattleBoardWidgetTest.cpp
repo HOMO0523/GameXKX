@@ -22,6 +22,8 @@
 #include "PaperFlipbookComponent.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattlePartyQiWidget.h"
+#include "UI/GameXXKBattleUnitHudWidget.h"
+#include "UI/GameXXKBattleUnitResourceWidget.h"
 #include "UI/GameXXKCardOutcomePreviewWidget.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
 #include "UObject/UObjectGlobals.h"
@@ -1242,6 +1244,23 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 		OrderedPartyQiWidget ? OrderedPartyQiWidget->GetSharedQiForTest() : INDEX_NONE,
 		OrderedQiAfterCommit);
 	TestEqual(TEXT("the card finalization continuation executes exactly once"), FGateApi::Continuations(OrderedBoard), 1);
+
+	// A leftover HP snapshot on an idle board is a stale presentation artifact:
+	// the next visual tick must discard it and re-sync the HUD to live runtime.
+	TestFalse(TEXT("the drained board has no pending presentation"), FGateApi::IsLocked(OrderedBoard));
+	OrderedBoard->SeedPresentationHudSnapshotForTest(OrderedSubsystem->GetRuntimeState().CardRun.ActiveBattle);
+	FGameXXKCardCombatUnit* EnemyUnit = OrderedSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units.FindByPredicate(
+		[](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == FName(TEXT("Enemy")); });
+	TestTrue(TEXT("the stale-snapshot fixture finds the enemy unit"), EnemyUnit != nullptr);
+	EnemyUnit->HP = 42;
+	OrderedBoard->AdvanceVisualsAtRealTime(1.701);
+	if (UGameXXKBattleUnitHudWidget* const EnemyHud = OrderedBoard->GetProjectedUnitHudForTest(TEXT("Enemy")))
+	{
+		const UGameXXKBattleUnitResourceWidget* const Resource = EnemyHud->GetResourceWidgetForTest();
+		TestEqual(TEXT("the idle tick discards the stale snapshot and re-syncs the HP number to live runtime"),
+			Resource ? Resource->GetHealthDisplayTextForTest() : FString(),
+			TEXT("气血 42 / 100"));
+	}
 
 	UGameInstance* const LethalGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const LethalSubsystem = NewObject<UGameXXKMVPSubsystem>(LethalGameInstance);

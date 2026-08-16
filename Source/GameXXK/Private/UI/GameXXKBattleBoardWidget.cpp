@@ -1186,7 +1186,15 @@ void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float In
 		{
 			++ExecutedBattlePresentationContinuationCount;
 			ExecuteBattlePresentationContinuation(StuckContinuation);
+			return;
 		}
+		RefreshProjectedUnitHuds();
+	}
+	else if (!DisplayedHealthOverrides.IsEmpty() || !DisplayedUnitHudOverrides.IsEmpty())
+	{
+		// Leftover HP snapshot on an idle board must not keep stale numbers.
+		DiscardPresentationHudSnapshot();
+		RefreshProjectedUnitHuds();
 	}
 	AdvanceHandCardHoverMotion(InDeltaTime);
 	AdvanceEnemyIntentPresentation(InDeltaTime);
@@ -2644,6 +2652,16 @@ void UGameXXKBattleBoardWidget::AdvanceVisualsAtRealTime(const double AbsoluteSe
 		AtlasCache->AdvanceTimeouts(AbsoluteSeconds);
 	}
 	AdvanceBattlePresentation(AbsoluteSeconds);
+	// HP snapshots/overrides may only exist while a presentation is pending.
+	// If any survive an idle board (multi-packet edge cases, aborted
+	// continuations, interrupted replays), discard them so the projected HP
+	// number mirrors the authoritative runtime instead of freezing.
+	if (!IsBattlePresentationPending()
+		&& (!DisplayedHealthOverrides.IsEmpty() || !DisplayedUnitHudOverrides.IsEmpty()))
+	{
+		DiscardPresentationHudSnapshot();
+		RefreshProjectedUnitHuds();
+	}
 	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitVisualWidget>>& Pair : UnitVisuals)
 	{
 		if (Pair.Value)
@@ -4852,6 +4870,11 @@ UCanvasPanel* UGameXXKBattleBoardWidget::GetBattleProjectedUnitHudLayerForTest()
 UGameXXKBattleUnitHudWidget* UGameXXKBattleBoardWidget::GetProjectedUnitHudForTest(const FName UnitId) const
 {
 	return ProjectedUnitHuds.FindRef(UnitId);
+}
+
+void UGameXXKBattleBoardWidget::SeedPresentationHudSnapshotForTest(const FGameXXKCardBattleRuntime& Runtime)
+{
+	CapturePresentationHudSnapshot(Runtime);
 }
 
 int32 UGameXXKBattleBoardWidget::GetProjectedUnitHudCountForTest() const

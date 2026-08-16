@@ -427,6 +427,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	UGameXXKBattleUnitHudWidget* GetProjectedUnitHudForTest(FName UnitId) const;
 
+	/** Test seam: seeds the presentation HUD snapshot without queueing a presentation. */
+	void SeedPresentationHudSnapshotForTest(const FGameXXKCardBattleRuntime& Runtime);
+
 	int32 GetProjectedUnitHudCountForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
