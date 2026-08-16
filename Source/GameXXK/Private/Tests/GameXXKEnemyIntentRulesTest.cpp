@@ -2070,8 +2070,8 @@ bool FGameXXKGraymaneMarkedHuntActualTargetOnlyTest::RunTest(const FString& Para
 	}
 	const FGameXXKCardEnemyIntent& Forecast = State.CardRun.EnemyIntents[0];
 	TestEqual(TEXT("the target-specific forecast remains hunt mark"), Forecast.IntentDefinitionId, FName(TEXT("HuntMark")));
-	TestEqual(TEXT("a marked non-target does not amplify the unmarked low-health actual target"), Forecast.Damage, 18);
-	TestEqual(TEXT("the unmarked lower-health hero remains the locked target"), Forecast.SuggestedTargetUnitId, FName(TEXT("Player")));
+	TestEqual(TEXT("a marked party member pulls the hunt-mark attack onto itself"), Forecast.SuggestedTargetUnitId, FName(TEXT("Partner")));
+	TestEqual(TEXT("the marked actual target receives the amplified requested damage"), Forecast.Damage, 21);
 	FGameXXKCardEnemyIntent ResolvedIntent;
 	TArray<FGameXXKCardDamageResult> IntentResults;
 	bool bIntentsFinished = false;
@@ -2084,7 +2084,7 @@ bool FGameXXKGraymaneMarkedHuntActualTargetOnlyTest::RunTest(const FString& Para
 	{
 		return false;
 	}
-	TestEqual(TEXT("the unmarked actual target receives the unamplified requested damage"), IntentResults[0].RequestedDamage, 18);
+	TestEqual(TEXT("the marked actual target receives the amplified requested damage"), IntentResults[0].RequestedDamage, 21);
 	return true;
 }
 
@@ -3579,6 +3579,59 @@ namespace
 			return Intent.SourceUnitId == TEXT("Enemy.Tiger.P2") && Intent.IntentDefinitionId == IntentId;
 		});
 	}
+
+	/** Mirrors the production random-pick: living party sorted by stable order, seeded per source and round. */
+	FName ResolveExpectedRandomPartyTarget(const FGameXXKRuntimeState& State, const FName SourceUnitId)
+	{
+		TArray<const FGameXXKCardCombatUnit*> Living;
+		for (const FGameXXKCardCombatUnit& Unit : State.CardRun.ActiveBattle.Units)
+		{
+			if (Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Party)
+			{
+				Living.Add(&Unit);
+			}
+		}
+		Living.Sort([](const FGameXXKCardCombatUnit& Left, const FGameXXKCardCombatUnit& Right)
+		{
+			return Left.StableSortOrder != Right.StableSortOrder
+				? Left.StableSortOrder < Right.StableSortOrder
+				: Left.UnitId.ToString() < Right.UnitId.ToString();
+		});
+		if (Living.IsEmpty())
+		{
+			return NAME_None;
+		}
+		if (Living.Num() == 1)
+		{
+			return Living[0]->UnitId;
+		}
+		const uint32 Seed = FGameXXKCardBattleAdapter::MakeStableEnemyIntentTargetSeed(
+			SourceUnitId,
+			State.CardRun.ActiveBattle.RoundNumber);
+		return Living[Seed % static_cast<uint32>(Living.Num())]->UnitId;
+	}
+
+	/** Mirrors the production lowest-health-percentage pick with the same tie-breaks. */
+	FName ResolveExpectedLowestHealthPartyUnitId(const FGameXXKRuntimeState& State)
+	{
+		const FGameXXKCardCombatUnit* Result = nullptr;
+		for (const FGameXXKCardCombatUnit& Unit : State.CardRun.ActiveBattle.Units)
+		{
+			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Party)
+			{
+				continue;
+			}
+			if (!Result
+				|| static_cast<int64>(Unit.HP) * Result->MaxHP < static_cast<int64>(Result->HP) * Unit.MaxHP
+				|| (static_cast<int64>(Unit.HP) * Result->MaxHP == static_cast<int64>(Result->HP) * Unit.MaxHP
+					&& (Unit.StableSortOrder < Result->StableSortOrder
+						|| (Unit.StableSortOrder == Result->StableSortOrder && Unit.UnitId.ToString() < Result->UnitId.ToString()))))
+			{
+				Result = &Unit;
+			}
+		}
+		return Result ? Result->UnitId : NAME_None;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -3603,9 +3656,10 @@ bool FGameXXKTigerPreyPhaseRetargetTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	const FGameXXKCardEnemyIntent* MarkPreyForecast = FindTigerPreyFixtureIntent(State, TEXT("MarkPrey"));
+	const FName InitialPreyId = ResolveExpectedRandomPartyTarget(State, TEXT("Enemy.Tiger.P2"));
 	if (!TestNotNull(TEXT("the Tiger Mark Prey forecast remains visible"), MarkPreyForecast)
-		|| !TestEqual(TEXT("Mark Prey locks the current lowest-health party member"),
-			MarkPreyForecast->SuggestedTargetUnitId, FName(TEXT("Fixture.Tiger.Prey"))))
+		|| !TestEqual(TEXT("Mark Prey locks the seeded-random living party member"),
+			MarkPreyForecast->SuggestedTargetUnitId, InitialPreyId))
 	{
 		return false;
 	}
@@ -3620,14 +3674,14 @@ bool FGameXXKTigerPreyPhaseRetargetTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	FGameXXKEnemyBattleState* TigerState = FindBossPhaseState(State, TEXT("Enemy.Tiger.P2"));
-	FGameXXKCardCombatUnit* FirstPrey = FindTigerPreyFixtureUnit(State, TEXT("Fixture.Tiger.Prey"));
+	FGameXXKCardCombatUnit* FirstPrey = FindTigerPreyFixtureUnit(State, InitialPreyId);
 	if (!TestNotNull(TEXT("the Tiger retains serializable state after marking prey"), TigerState)
 		|| !TestNotNull(TEXT("the marked party member remains addressable"), FirstPrey))
 	{
 		return false;
 	}
 	TestEqual(TEXT("Mark Prey records a stable target identity rather than relying on live health ordering"),
-		TigerState->PersistentTargetUnitId, FName(TEXT("Fixture.Tiger.Prey")));
+		TigerState->PersistentTargetUnitId, InitialPreyId);
 	TestEqual(TEXT("the recorded target status is the catalog Prey status"),
 		TigerState->PersistentTargetStatus, static_cast<uint8>(EGameXXKCardStatus::Prey));
 	TestEqual(TEXT("the recorded target receives the visible Prey status"),
@@ -3646,7 +3700,7 @@ bool FGameXXKTigerPreyPhaseRetargetTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestEqual(TEXT("reload preserves the locked Prey target"),
-		TigerState->PersistentTargetUnitId, FName(TEXT("Fixture.Tiger.Prey")));
+		TigerState->PersistentTargetUnitId, InitialPreyId);
 
 	if (!TestTrue(TEXT("the Mark Prey phase completes into a player turn"),
 		FGameXXKCardBattleAdapter::CompleteEnemyCardPhase(State, PhaseResults, &Error)))
@@ -3680,7 +3734,7 @@ bool FGameXXKTigerPreyPhaseRetargetTest::RunTest(const FString& Parameters)
 	}
 	const FGameXXKResolvedEnemyIntentEffect& PounceEffect = PounceForecast->Effects[0];
 	TestEqual(TEXT("a lower-health non-Prey party member cannot steal the locked Tiger Pounce forecast"),
-		PounceEffect.TargetUnitIds.IsEmpty() ? NAME_None : PounceEffect.TargetUnitIds[0], FName(TEXT("Fixture.Tiger.Prey")));
+		PounceEffect.TargetUnitIds.IsEmpty() ? NAME_None : PounceEffect.TargetUnitIds[0], InitialPreyId);
 	TestEqual(TEXT("Tiger phase two raises only Tiger Pounce to one-hundred-fifty percent damage"), PounceEffect.Magnitude, 24);
 	TestEqual(TEXT("Tiger phase two changes Tiger Pounce from one hit to two hits"), PounceEffect.HitCount, 2);
 	if (!TestTrue(TEXT("the player phase ends before the saved Tiger Pounce resolves"),
@@ -3689,17 +3743,27 @@ bool FGameXXKTigerPreyPhaseRetargetTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	FirstPrey = FindTigerPreyFixtureUnit(State, TEXT("Fixture.Tiger.Prey"));
-	FGameXXKCardCombatUnit* NextPrey = FindTigerPreyFixtureUnit(State, TEXT("Fixture.Tiger.NextPrey"));
-	if (!TestNotNull(TEXT("the locked first Prey remains mutable for the execution test"), FirstPrey)
-		|| !TestNotNull(TEXT("the eventual second Prey remains mutable for the execution test"), NextPrey))
+	FirstPrey = FindTigerPreyFixtureUnit(State, InitialPreyId);
+	if (!TestNotNull(TEXT("the locked first Prey remains mutable for the execution test"), FirstPrey))
 	{
 		return false;
 	}
+	// Normalize every other living party member to full health and leave exactly
+	// one designated successor at a lower percentage, so the phase-two fallback
+	// retarget is deterministic no matter which member the random mark locked.
+	const FName SuccessorId = InitialPreyId == TEXT("Fixture.Tiger.Prey")
+		? FName(TEXT("Fixture.Tiger.NextPrey"))
+		: FName(TEXT("Fixture.Tiger.Prey"));
+	for (FGameXXKCardCombatUnit& PartyUnit : State.CardRun.ActiveBattle.Units)
+	{
+		if (!PartyUnit.bLiving || PartyUnit.Side != EGameXXKCardTargetSide::Party || PartyUnit.UnitId == InitialPreyId)
+		{
+			continue;
+		}
+		PartyUnit.HP = PartyUnit.UnitId == SuccessorId ? 10 : PartyUnit.MaxHP;
+	}
 	FirstPrey->HP = 1;
 	FirstPrey->bLiving = true;
-	NextPrey->HP = 10;
-	NextPrey->bLiving = true;
 
 	if (!TestTrue(TEXT("the two-hit phase-two Tiger Pounce resolves its locked first target"),
 		FGameXXKCardBattleAdapter::ResolveNextEnemyIntent(State, ResolvedIntent, IntentResults, bIntentsFinished, &Error)))
@@ -3707,18 +3771,19 @@ bool FGameXXKTigerPreyPhaseRetargetTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TigerState = FindBossPhaseState(State, TEXT("Enemy.Tiger.P2"));
-	FirstPrey = FindTigerPreyFixtureUnit(State, TEXT("Fixture.Tiger.Prey"));
-	NextPrey = FindTigerPreyFixtureUnit(State, TEXT("Fixture.Tiger.NextPrey"));
+	FirstPrey = FindTigerPreyFixtureUnit(State, InitialPreyId);
+	const FName RetargetedPreyId = ResolveExpectedLowestHealthPartyUnitId(State);
+	FGameXXKCardCombatUnit* RetargetedPrey = FindTigerPreyFixtureUnit(State, RetargetedPreyId);
 	if (!TestNotNull(TEXT("the Tiger retains state after a defeated Prey"), TigerState)
-		|| !TestNotNull(TEXT("the next lowest living party member remains addressable"), NextPrey))
+		|| !TestNotNull(TEXT("the lowest-health successor remains addressable after retargeting"), RetargetedPrey))
 	{
 		return false;
 	}
 	TestTrue(TEXT("the locked Prey is defeated by the phase-two Pounce"), FirstPrey && !FirstPrey->bLiving);
-	TestEqual(TEXT("Tiger retargets only after its stored Prey dies"),
-		TigerState->PersistentTargetUnitId, FName(TEXT("Fixture.Tiger.NextPrey")));
+	TestEqual(TEXT("Tiger retargets to the lowest-health living member after its stored Prey dies"),
+		TigerState->PersistentTargetUnitId, RetargetedPreyId);
 	TestEqual(TEXT("the newly selected target receives the visible Prey status"),
-		GameXXKCardRules::GetCombatStatusStacks(*NextPrey, EGameXXKCardStatus::Prey), 1);
+		GameXXKCardRules::GetCombatStatusStacks(*RetargetedPrey, EGameXXKCardStatus::Prey), 1);
 	TestEqual(TEXT("the defeated former target no longer retains the visible Prey status"),
 		FirstPrey ? GameXXKCardRules::GetCombatStatusStacks(*FirstPrey, EGameXXKCardStatus::Prey) : INDEX_NONE, 0);
 	return true;
@@ -3801,15 +3866,18 @@ bool FGameXXKTigerMarkPreyStaleForecastTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	FGameXXKCardCombatUnit* ExpiredForecastTarget = FindTigerPreyFixtureUnit(State, TEXT("Fixture.Tiger.Prey"));
-	FGameXXKCardCombatUnit* ExpectedReplacement = FindTigerPreyFixtureUnit(State, TEXT("Fixture.Tiger.NextPrey"));
-	if (!TestNotNull(TEXT("the forecast target remains addressable before expiry"), ExpiredForecastTarget)
-		|| !TestNotNull(TEXT("the living replacement prey remains addressable"), ExpectedReplacement))
+	const FGameXXKCardEnemyIntent* MarkPreyForecast = FindTigerPreyFixtureIntent(State, TEXT("MarkPrey"));
+	const FName ForecastTargetId = MarkPreyForecast && !MarkPreyForecast->SuggestedTargetUnitId.IsNone()
+		? MarkPreyForecast->SuggestedTargetUnitId
+		: ResolveExpectedRandomPartyTarget(State, TEXT("Enemy.Tiger.P2"));
+	FGameXXKCardCombatUnit* ExpiredForecastTarget = FindTigerPreyFixtureUnit(State, ForecastTargetId);
+	if (!TestNotNull(TEXT("the seeded forecast target remains addressable before expiry"), ExpiredForecastTarget))
 	{
 		return false;
 	}
 	ExpiredForecastTarget->HP = 0;
 	ExpiredForecastTarget->bLiving = false;
+	const FName ExpectedReplacementId = ResolveExpectedRandomPartyTarget(State, TEXT("Enemy.Tiger.P2"));
 
 	FGameXXKCardEnemyIntent ResolvedIntent;
 	TArray<FGameXXKCardDamageResult> IntentResults;
@@ -3823,10 +3891,10 @@ bool FGameXXKTigerMarkPreyStaleForecastTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Tiger keeps serializable state after stale-forecast retargeting"), TigerState);
 	if (TigerState)
 	{
-		TestEqual(TEXT("Tiger records the current lowest living party member as Prey"),
-			TigerState->PersistentTargetUnitId, FName(TEXT("Fixture.Tiger.NextPrey")));
+		TestEqual(TEXT("Tiger records a seeded-random living party member as Prey after the stale target expires"),
+			TigerState->PersistentTargetUnitId, ExpectedReplacementId);
 	}
-	ExpectedReplacement = FindTigerPreyFixtureUnit(State, TEXT("Fixture.Tiger.NextPrey"));
+	FGameXXKCardCombatUnit* ExpectedReplacement = FindTigerPreyFixtureUnit(State, ExpectedReplacementId);
 	TestNotNull(TEXT("the replacement target remains addressable after transactional intent resolution"), ExpectedReplacement);
 	if (ExpectedReplacement)
 	{
@@ -3867,6 +3935,8 @@ bool FGameXXKTigerPredatorBleedHealingTest::RunTest(const FString& Parameters)
 	TigerState->PersistentTargetStatus = static_cast<uint8>(EGameXXKCardStatus::Invalid);
 	TestEqual(TEXT("the target receives the required Bleed status before Tiger damages it"),
 		GameXXKCardRules::AddCombatStatus(*BleedingTarget, EGameXXKCardStatus::Bleed, 1), 1);
+	TestEqual(TEXT("the bleeding target also carries Mark so the catalog attack deterministically chases it"),
+		GameXXKCardRules::AddCombatStatus(*BleedingTarget, EGameXXKCardStatus::Mark, 1), 1);
 	State.CardRun.EnemyIntents.Reset();
 	State.CardRun.NextEnemyIntentIndex = 0;
 

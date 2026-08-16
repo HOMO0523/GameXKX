@@ -64,8 +64,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 {
 	const FName StableEnemyId(TEXT("Balance.Enemy.Ch2.Macaque.P1"));
-	const uint32 ExpectedRandomTargetSeed = FCrc::StrCrc32(*StableEnemyId.ToString())
+	uint32 ExpectedRandomTargetSeed = FCrc::StrCrc32(*StableEnemyId.ToString())
 		^ static_cast<uint32>(1 * 2654435761U);
+	ExpectedRandomTargetSeed ^= ExpectedRandomTargetSeed >> 16;
+	ExpectedRandomTargetSeed *= 0x85ebca6bU;
+	ExpectedRandomTargetSeed ^= ExpectedRandomTargetSeed >> 13;
+	ExpectedRandomTargetSeed *= 0xc2b2ae35U;
+	ExpectedRandomTargetSeed ^= ExpectedRandomTargetSeed >> 16;
 	TestEqual(
 		TEXT("random enemy target selection derives from the stable lexical unit ID instead of the process-local FName index"),
 		static_cast<int64>(FGameXXKCardBattleAdapter::MakeStableEnemyIntentTargetSeed(StableEnemyId, 1)),

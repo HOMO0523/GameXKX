@@ -856,6 +856,26 @@ namespace
 		case EGameXXKEnemyIntentTargetRule::LowestHealthParty:
 			if (const FGameXXKCardCombatUnit* Target = FindLowestLivingUnitForSide(Runtime, EGameXXKCardTargetSide::Party)) Result.Add(Target->UnitId);
 			break;
+		case EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom:
+		{
+			// A marked party member is the only thing that overrides an otherwise
+			// random pick: monsters chase the mark, otherwise they spread damage
+			// across the party with a stable per-round seed.
+			if (const FGameXXKCardCombatUnit* MarkedTarget = FindLowestLivingUnitForSide(Runtime, EGameXXKCardTargetSide::Party, EGameXXKCardStatus::Mark))
+			{
+				Result.Add(MarkedTarget->UnitId);
+				break;
+			}
+			AppendLivingSide(EGameXXKCardTargetSide::Party);
+			if (Result.Num() > 1)
+			{
+				const uint32 Seed = FGameXXKCardBattleAdapter::MakeStableEnemyIntentTargetSeed(Source.UnitId, Runtime.RoundNumber);
+				const FName Selected = Result[Seed % static_cast<uint32>(Result.Num())];
+				Result.Reset();
+				Result.Add(Selected);
+			}
+			break;
+		}
 		case EGameXXKEnemyIntentTargetRule::RandomLivingParty:
 		{
 			AppendLivingSide(EGameXXKCardTargetSide::Party);
@@ -1964,8 +1984,17 @@ namespace
 
 uint32 FGameXXKCardBattleAdapter::MakeStableEnemyIntentTargetSeed(const FName SourceUnitId, const int32 RoundNumber)
 {
-	return FCrc::StrCrc32(*SourceUnitId.ToString())
+	// Stable lexical source + round mix, then a Murmur-style finalizer so the
+	// low bits (used for modulo target picks) look random across rounds instead
+	// of alternating mechanically when exactly two party members are alive.
+	uint32 Seed = FCrc::StrCrc32(*SourceUnitId.ToString())
 		^ (static_cast<uint32>(RoundNumber) * 2654435761U);
+	Seed ^= Seed >> 16;
+	Seed *= 0x85ebca6bU;
+	Seed ^= Seed >> 13;
+	Seed *= 0xc2b2ae35U;
+	Seed ^= Seed >> 16;
+	return Seed;
 }
 
 bool FGameXXKCardBattleAdapter::EnsureCardRunInitialized(FGameXXKRuntimeState& InOutState, FString* OutError)

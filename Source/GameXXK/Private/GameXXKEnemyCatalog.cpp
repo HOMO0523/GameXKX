@@ -29,7 +29,7 @@ namespace
 
 	FGameXXKEnemyIntentEffectDefinition Direct(
 		const int32 AttackPercent,
-		const EGameXXKEnemyIntentTargetRule Target = EGameXXKEnemyIntentTargetRule::LowestHealthParty,
+		const EGameXXKEnemyIntentTargetRule Target = EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom,
 		const int32 HitCount = 1,
 		const EGameXXKCardStatus Status = EGameXXKCardStatus::None,
 		const int32 StatusStacks = 0)
@@ -48,7 +48,7 @@ namespace
 		const int32 AttackPercent,
 		const EGameXXKCardStatus SourceStatus,
 		const int32 FlatMagnitudePerStatusStack,
-		const EGameXXKEnemyIntentTargetRule Target = EGameXXKEnemyIntentTargetRule::LowestHealthParty)
+		const EGameXXKEnemyIntentTargetRule Target = EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom)
 	{
 		FGameXXKEnemyIntentEffectDefinition Effect = Direct(AttackPercent, Target);
 		Effect.SourceStatusForFlatMagnitude = SourceStatus;
@@ -218,37 +218,37 @@ namespace
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch1.Rooster"), TEXT("公鸡"), 1, EGameXXKEnemyTier::Normal, 46, 7.0f, 8, 1.1f, 1, 0.25f, 10,
 			{
 				MakeIntent(TEXT("Peck"), TEXT("啄击"), {Direct(100)}),
-				MakeIntent(TEXT("DoublePeck"), TEXT("双重啄击"), {Direct(55, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 2)}),
+				MakeIntent(TEXT("DoublePeck"), TEXT("双重啄击"), {Direct(55, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 2)}),
 				MakeIntent(TEXT("Crow"), TEXT("鸣啼"), {AttackModifier(2, EGameXXKEnemyIntentTargetRule::AllEnemyAllies)})
 			}));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch1.Goat"), TEXT("山羊"), 1, EGameXXKEnemyTier::Normal, 58, 8.0f, 7, 1.0f, 3, 0.35f, 6,
 			{
-				MakeIntent(TEXT("Horn"), TEXT("顶角"), {Direct(90, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 1, EGameXXKCardStatus::Weak, 1)}),
+				MakeIntent(TEXT("Horn"), TEXT("顶角"), {Direct(90, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 1, EGameXXKCardStatus::Weak, 1)}),
 				MakeIntent(TEXT("Stomp"), TEXT("踏地"), {Armor(10)}),
 				MakeIntent(TEXT("Charge"), TEXT("冲撞"), {Direct(170)}, 1)
 			}));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch1.Weasel"), TEXT("黄鼬"), 1, EGameXXKEnemyTier::Normal, 42, 6.0f, 9, 1.2f, 1, 0.20f, 11,
 			{
-				MakeIntent(TEXT("Harass"), TEXT("骚扰"), {Direct(80, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 1, EGameXXKCardStatus::Mark, 1)}),
+				MakeIntent(TEXT("Harass"), TEXT("骚扰"), {Direct(80, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 1, EGameXXKCardStatus::Mark, 1)}),
 				MakeIntent(TEXT("StinkFog"), TEXT("臭雾"), {Status(EGameXXKCardStatus::Weak, 1, EGameXXKEnemyIntentTargetRule::AllLivingParty)}),
 				MakeIntent(TEXT("Escape"), TEXT("遁逃"), {SpeedModifier(1, EGameXXKEnemyIntentTargetRule::Self), Armor(5)})
 			}));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch1.Civet"), TEXT("狸猫"), 1, EGameXXKEnemyTier::Normal, 48, 7.0f, 8, 1.1f, 2, 0.25f, 9,
 			{
 				MakeIntent(TEXT("Claw"), TEXT("爪击"), {Direct(95)}),
-				MakeIntent(TEXT("Feint"), TEXT("佯攻"), {Status(EGameXXKCardStatus::Mark, 2, EGameXXKEnemyIntentTargetRule::LowestHealthParty)}),
+				MakeIntent(TEXT("Feint"), TEXT("佯攻"), {Status(EGameXXKCardStatus::Mark, 2, EGameXXKEnemyIntentTargetRule::RandomLivingParty)}),
 				MakeIntent(TEXT("Pickpocket"), TEXT("扒窃"), {Direct(70), MakeEffect(EGameXXKEnemyIntentEffectType::ConsumeSharedQi, EGameXXKEnemyIntentTargetRule::None, 1), Armor(8)})
 			}));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch1.IronfeatherRooster"), TEXT("铁羽斗鸡"), 1, EGameXXKEnemyTier::Elite, 118, 15.0f, 14, 1.7f, 5, 0.50f, 11,
 			{
-				MakeIntent(TEXT("RapidPeck"), TEXT("疾啄"), {Direct(50, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 3)}),
+				MakeIntent(TEXT("RapidPeck"), TEXT("疾啄"), {Direct(50, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 3)}),
 				MakeIntent(TEXT("IronGuard"), TEXT("铁羽守势"), {Armor(16)}),
 				MakeIntent(TEXT("BattleCry"), TEXT("斗鸣"), {AttackModifier(3, EGameXXKEnemyIntentTargetRule::AllEnemyAllies)}),
 				MakeIntent(TEXT("BloodFight"), TEXT("血斗"), {Direct(170)}, 0, false, true)
 			}, EGameXXKEnemyPassiveId::IronfeatherFirstHit));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch1.BluehornGoatKing"), TEXT("青角羊王"), 1, EGameXXKEnemyTier::Elite, 138, 17.0f, 13, 1.6f, 7, 0.65f, 7,
 			{
-				MakeIntent(TEXT("Pierce"), TEXT("贯角"), {Direct(120, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 1, EGameXXKCardStatus::Weak, 2)}),
+				MakeIntent(TEXT("Pierce"), TEXT("贯角"), {Direct(120, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 1, EGameXXKCardStatus::Weak, 2)}),
 				MakeIntent(TEXT("HerdStomp"), TEXT("群踏"), {Direct(70, EGameXXKEnemyIntentTargetRule::AllLivingParty)}),
 				MakeIntent(TEXT("GuardHerd"), TEXT("护群"), {Armor(8, EGameXXKEnemyIntentTargetRule::AllEnemyAllies)}),
 				MakeIntent(TEXT("RageCharge"), TEXT("怒角冲撞"), {Direct(210)}, 1)
@@ -257,7 +257,7 @@ namespace
 			{
 				MakeIntent(TEXT("CoinVolley"), TEXT("撒币"), {Direct(70, EGameXXKEnemyIntentTargetRule::AllLivingParty)}),
 				MakeIntent(TEXT("Hoard"), TEXT("敛财"), {Armor(18), Status(EGameXXKCardStatus::Wealth, 2, EGameXXKEnemyIntentTargetRule::Self)}),
-				MakeIntent(TEXT("GreedyMark"), TEXT("贪印"), {Status(EGameXXKCardStatus::Mark, 2, EGameXXKEnemyIntentTargetRule::LowestHealthParty)}),
+				MakeIntent(TEXT("GreedyMark"), TEXT("贪印"), {Status(EGameXXKCardStatus::Mark, 2, EGameXXKEnemyIntentTargetRule::RandomLivingParty)}),
 				MakeIntent(TEXT("Pickpocket"), TEXT("扒窃"), {Direct(90), MakeEffect(EGameXXKEnemyIntentEffectType::ConsumeSharedQi, EGameXXKEnemyIntentTargetRule::None, 1), Status(EGameXXKCardStatus::Wealth, 1, EGameXXKEnemyIntentTargetRule::Self)}),
 				MakeIntent(TEXT("BreakWealth"), TEXT("散财疗伤"), {HealFromConsumedStatus(EGameXXKCardStatus::Wealth, 3, 6)}),
 				MakeIntent(TEXT("CoinCrash"), TEXT("钱潮冲击"), {DirectWithSourceStatusFlatBonus(100, EGameXXKCardStatus::Wealth, 15)})
@@ -266,7 +266,7 @@ namespace
 
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch2.GrayWolf"), TEXT("灰狼"), 2, EGameXXKEnemyTier::Normal, 62, 9.0f, 11, 1.3f, 2, 0.30f, 12,
 			{
-				MakeIntent(TEXT("Bite"), TEXT("咬击"), {Direct(100, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 1, EGameXXKCardStatus::Mark, 1)}),
+				MakeIntent(TEXT("Bite"), TEXT("咬击"), {Direct(100, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 1, EGameXXKCardStatus::Mark, 1)}),
 				MakeIntent(TEXT("Pursuit"), TEXT("追猎"), {Direct(130)}, 0, false, false, EGameXXKCardStatus::Mark),
 				MakeIntent(TEXT("CallPack"), TEXT("呼群"), {AttackModifier(2, EGameXXKEnemyIntentTargetRule::AllEnemyAllies)})
 			}));
@@ -274,7 +274,7 @@ namespace
 			{
 				MakeIntent(TEXT("Tusk"), TEXT("獠牙突刺"), {Direct(110)}),
 				MakeIntent(TEXT("Bristle"), TEXT("鬃毛守势"), {Armor(12)}),
-				MakeIntent(TEXT("ArmorBreakCharge"), TEXT("破甲冲锋"), {Direct(145, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 1, EGameXXKCardStatus::Weak, 1)})
+				MakeIntent(TEXT("ArmorBreakCharge"), TEXT("破甲冲锋"), {Direct(145, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 1, EGameXXKCardStatus::Weak, 1)})
 			}));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch2.Macaque"), TEXT("猕猴"), 2, EGameXXKEnemyTier::Normal, 58, 8.0f, 10, 1.3f, 2, 0.25f, 13,
 			{
@@ -284,15 +284,15 @@ namespace
 			}));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch2.Porcupine"), TEXT("豪猪"), 2, EGameXXKEnemyTier::Normal, 70, 9.0f, 9, 1.1f, 5, 0.50f, 8,
 			{
-				MakeIntent(TEXT("Quill"), TEXT("刺毛"), {Direct(85, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 1, EGameXXKCardStatus::Bleed, 1)}),
+				MakeIntent(TEXT("Quill"), TEXT("刺毛"), {Direct(85, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 1, EGameXXKCardStatus::Bleed, 1)}),
 				MakeIntent(TEXT("BristleGuard"), TEXT("蓄刺"), {Armor(8), Status(EGameXXKCardStatus::Counter, 1, EGameXXKEnemyIntentTargetRule::Self)}),
 				MakeIntent(TEXT("QuillVolley"), TEXT("飞刺"), {Direct(55, EGameXXKEnemyIntentTargetRule::AllLivingParty, 1, EGameXXKCardStatus::Bleed, 1)})
 			}, EGameXXKEnemyPassiveId::PorcupineCounter));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch2.GraymaneWolfKing"), TEXT("苍鬃狼王"), 2, EGameXXKEnemyTier::Elite, 158, 18.0f, 18, 2.0f, 6, 0.55f, 13,
 			{
-				MakeIntent(TEXT("HuntMark"), TEXT("猎印"), {Direct(90, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 1, EGameXXKCardStatus::Mark, 2)}),
+				MakeIntent(TEXT("HuntMark"), TEXT("猎印"), {Direct(90, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 1, EGameXXKCardStatus::Mark, 2)}),
 				MakeIntent(TEXT("ContinuousHunt"), TEXT("连环狩猎"), {Direct(70, EGameXXKEnemyIntentTargetRule::MarkedParty, 3)}, 0, false, false, EGameXXKCardStatus::Mark),
-				MakeIntent(TEXT("PackOrder"), TEXT("群猎号令"), {AttackModifier(3, EGameXXKEnemyIntentTargetRule::AllEnemyAllies), Status(EGameXXKCardStatus::Mark, 1, EGameXXKEnemyIntentTargetRule::LowestHealthParty)}),
+				MakeIntent(TEXT("PackOrder"), TEXT("群猎号令"), {AttackModifier(3, EGameXXKEnemyIntentTargetRule::AllEnemyAllies), Status(EGameXXKCardStatus::Mark, 1, EGameXXKEnemyIntentTargetRule::RandomLivingParty)}),
 				MakeIntent(TEXT("Sidestep"), TEXT("侧跃"), {SpeedModifier(1, EGameXXKEnemyIntentTargetRule::Self), Armor(6)})
 			}, EGameXXKEnemyPassiveId::GraymaneMarkedHunt));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch2.RedtuskBoarKing"), TEXT("赤獠猪王"), 2, EGameXXKEnemyTier::Elite, 188, 20.0f, 17, 1.9f, 9, 0.75f, 8,
@@ -315,19 +315,19 @@ namespace
 
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch3.VenomSnake"), TEXT("毒蛇"), 3, EGameXXKEnemyTier::Normal, 72, 9.0f, 12, 1.35f, 2, 0.25f, 14,
 			{
-				MakeIntent(TEXT("VenomBite"), TEXT("毒牙"), {Direct(70, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 1, EGameXXKCardStatus::Poison, 2)}),
+				MakeIntent(TEXT("VenomBite"), TEXT("毒牙"), {Direct(70, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 1, EGameXXKCardStatus::Poison, 2)}),
 				MakeIntent(TEXT("Coil"), TEXT("盘缠"), {SpeedModifier(1, EGameXXKEnemyIntentTargetRule::Self), Armor(5)}),
 				MakeIntent(TEXT("ToxicPursuit"), TEXT("毒袭"), {Direct(90)}, 0, false, false, EGameXXKCardStatus::Poison)
 			}));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch3.Wildcat"), TEXT("山猫"), 3, EGameXXKEnemyTier::Normal, 70, 9.0f, 14, 1.50f, 3, 0.30f, 14,
 			{
-				MakeIntent(TEXT("Rake"), TEXT("抓挠"), {Direct(95, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 1, EGameXXKCardStatus::Bleed, 1)}),
-				MakeIntent(TEXT("Stalk"), TEXT("潜伏"), {Status(EGameXXKCardStatus::Mark, 2, EGameXXKEnemyIntentTargetRule::LowestHealthParty), SpeedModifier(1, EGameXXKEnemyIntentTargetRule::Self)}),
+				MakeIntent(TEXT("Rake"), TEXT("抓挠"), {Direct(95, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 1, EGameXXKCardStatus::Bleed, 1)}),
+				MakeIntent(TEXT("Stalk"), TEXT("潜伏"), {Status(EGameXXKCardStatus::Mark, 2, EGameXXKEnemyIntentTargetRule::RandomLivingParty), SpeedModifier(1, EGameXXKEnemyIntentTargetRule::Self)}),
 				MakeIntent(TEXT("BloodPursuit"), TEXT("血猎"), {Direct(140)}, 0, false, false, EGameXXKCardStatus::Bleed)
 			}));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch3.Vulture"), TEXT("秃鹫"), 3, EGameXXKEnemyTier::Normal, 74, 9.0f, 13, 1.45f, 3, 0.30f, 15,
 			{
-				MakeIntent(TEXT("Gaze"), TEXT("凝视"), {Status(EGameXXKCardStatus::Mark, 1, EGameXXKEnemyIntentTargetRule::LowestHealthParty)}),
+				MakeIntent(TEXT("Gaze"), TEXT("凝视"), {Status(EGameXXKCardStatus::Mark, 1, EGameXXKEnemyIntentTargetRule::RandomLivingParty)}),
 				MakeIntent(TEXT("Dive"), TEXT("俯冲"), {Direct(120)}),
 				MakeIntent(TEXT("WingCut"), TEXT("翼斩"), {Direct(60, EGameXXKEnemyIntentTargetRule::AllLivingParty)})
 			}));
@@ -353,10 +353,10 @@ namespace
 			}, EGameXXKEnemyPassiveId::DeerHealCooldown));
 		Definitions.Add(MakeEnemy(TEXT("Enemy.Ch3.Tiger"), TEXT("老虎"), 3, EGameXXKEnemyTier::Boss, 380, 34.0f, 28, 2.70f, 12, 1.00f, 14,
 			{
-				MakeIntent(TEXT("MarkPrey"), TEXT("标记猎物"), {PersistentTargetStatus(EGameXXKCardStatus::Prey, 1, EGameXXKEnemyIntentTargetRule::LowestHealthParty)}),
+				MakeIntent(TEXT("MarkPrey"), TEXT("标记猎物"), {PersistentTargetStatus(EGameXXKCardStatus::Prey, 1, EGameXXKEnemyIntentTargetRule::RandomLivingParty)}),
 				MakeIntent(TEXT("TigerPounce"), TEXT("虎扑"), {PersistentTargetDirect(160, EGameXXKEnemyIntentTargetRule::PreyTarget)}, 0, false, false, EGameXXKCardStatus::Prey, 0, 150),
 				MakeIntent(TEXT("TailSweep"), TEXT("尾扫"), {Direct(95, EGameXXKEnemyIntentTargetRule::AllLivingParty)}),
-				MakeIntent(TEXT("BleedingRend"), TEXT("裂伤"), {Direct(120, EGameXXKEnemyIntentTargetRule::LowestHealthParty, 1, EGameXXKCardStatus::Bleed, 2)}),
+				MakeIntent(TEXT("BleedingRend"), TEXT("裂伤"), {Direct(120, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, 1, EGameXXKCardStatus::Bleed, 2)}),
 				MakeIntent(TEXT("DreadRoar"), TEXT("威吓咆哮"), {Status(EGameXXKCardStatus::Weak, 1, EGameXXKEnemyIntentTargetRule::AllLivingParty)}),
 				MakeIntent(TEXT("Ambush"), TEXT("伏杀"), {Direct(240)}, 1)
 			}, EGameXXKEnemyPassiveId::TigerPredator, EGameXXKEnemyPhaseId::TigerDread,

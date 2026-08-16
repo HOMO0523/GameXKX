@@ -23,7 +23,9 @@ enum class EGameXXKEnemyIntentTargetRule : uint8
 	AllEnemyAllies = 5,
 	LowestHealthEnemyAlly = 6,
 	MarkedParty = 7,
-	PreyTarget = 8
+	PreyTarget = 8,
+	/** Marked living party member first; otherwise a stable per-round random pick. */
+	MarkedPartyElseRandom = 9
 };
 
 UENUM(BlueprintType)
