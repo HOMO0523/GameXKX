@@ -33,8 +33,8 @@
 - `Start/New Game` is clickable and opens `/Game/GameXXK/Maps/L_QingshanInn`.
 - Town UI is visible after the level load.
 - `F` accepts the quest through the quest NPC interaction path.
-- Quest NPC state persists through manual save: quest accepted/follower active and NPC location.
-- Town button enters the Slay-the-Spire-style route map.
+- Quest NPC state persists through manual save: quest accepted and NPC location. Follower-active is only true after the player explicitly chooses 入队 (`RecruitPendingTownNpc`).
+- The north gate `QingshanInn_TownExit` F interaction enters the Slay-the-Spire-style route map.
 - Route-map button/node enters the battle screen.
 
 ## Navigation

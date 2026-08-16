@@ -112,7 +112,7 @@ source_commit: c463e1d7fccaa4de5f7afc913901bc874c0d35e2
 |---|---|
 | 1.1 scripts/README.md + Content/Python/README.md | ✅ 已完成(两份索引落地) |
 | 1.2 current-goal 指针 + AGENTS.md 对齐 | ✅ 已完成(`docs/production/current-goal-acceptance.md` 落地,`AGENTS.md` Navigation 引用) |
-| 1.3 归档一次性脚本 | ✅ 已完成并补提交(17 个已跟踪 `scripts/_archive/`;`Content/Python/_archive/` 21 个探针副本落地,对应 5 个根目录删除;`battle_target_reward_capture.py`/`battle_reward_recapture.py` 成对移入 `scripts/_archive/`) |
+| 1.3 归档一次性脚本 | ✅ 已完成并补提交(20 个已跟踪 `scripts/_archive/`;`Content/Python/_archive/` 21 个探针副本落地,对应 5 个根目录删除;`battle_target_reward_capture.py`/`battle_reward_recapture.py` 成对移入 `scripts/_archive/`) |
 | 1.4 ue_mcp_smoke.py 去重 | ✅ 已完成(6 个传输函数改为 import `ue_mcp_client`,import 冒烟通过) |
 | 1.5 生产循环 self-test 覆盖 | ✅ 已完成(新增 `--script-tests all` 全量发现模式;另修复 subprocess GBK 解码与 stdout=None 崩溃)。⚠ 2026-08-16 复查:`all` 模式 64/86 绿,仍需按 P16 打测试标签,详见 `2026-08-16-optimization-followup.md` |
 | 2.1 样板化 slot handler 去重 | ✅ 已完成(路线图 24 节点 + 手牌 5 槽的 24/5 分支 switch 改为 `FDelegate::BindUFunction` 按名绑定,UFUNCTION 保留) |
@@ -134,6 +134,6 @@ source_commit: c463e1d7fccaa4de5f7afc913901bc874c0d35e2
 ## 6. 2026-08-16 复查
 
 - 项目进程已推进到 `b6763a0`;新增 13 个 tooltip/卡牌文本/HP HUD 提交,`GameXXKBattleBoardWidget.cpp` 增至 8956 行。
-- 新问题 P14–P20 与建议执行顺序见 `docs/production/2026-08-16-optimization-followup.md`。
+- 新问题 P14–P20 与全量审查后的分阶段方案见 `docs/production/2026-08-16-full-project-optimization-proposal.md`(旧定向建议见 `2026-08-16-optimization-followup.md`)。
 - 立即项:探针归档提交与 `test_hp_hud_updates.py` 指向 `_archive` 已完成;`git gc --prune=now` 已执行(`.git` 6.5 GB → 2.2 GB)。剩余:`gamexxk_real_play_flow_mcp.py` 旧 pointer 断言、`--script-tests all` 标签化。
 - SourceAssets/SourceArt 约 5.4 GB 未跟踪资产的归属策略需用户拍板,禁止无差别 `git add`。

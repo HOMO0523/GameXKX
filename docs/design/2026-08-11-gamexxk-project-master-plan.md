@@ -1,5 +1,7 @@
 # GameXXK 全项目规划总纲（B：总纲 + 专题维护版）
 
+> ⚠ 本文件冻结于 2026-08-11/12 基线。之后任务 NPC 语义已切换：`AcceptTownQuest` **不再**把 `bFollowerJoined` 设为 true；玩家显式点“入队”后才跟随。现行语义以 `docs/production/current-goal-acceptance.md` 与代码为准。
+
 日期：2026-08-11
 
 适用项目：GameXXK

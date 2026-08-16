@@ -2,7 +2,7 @@
 status: record
 owner: codex
 updated_at: 2026-08-16
-source_commit: 3ae0561a28fa18208d957650451aea1a34878d19
+source_commit: e78be7c8078760b4ea4eee0e7382cf3a7c9294c5
 ---
 # GameXXK 当前目标(滚动指针)
 
@@ -11,13 +11,14 @@ source_commit: 3ae0561a28fa18208d957650451aea1a34878d19
 ## 当前基线(更新于 2026-08-16)
 
 - 分支:`main`
-- HEAD:`3ae0561`(收尾提交:归档一次性探针 + 记录 2026-08-16 优化建议跟进)
+- 代码基线:`e78be7c`(`feat: guard armor cards taunt by marking the guard itself`);随后为文档收尾提交,`git log -1` 可查
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
-- 最新全量自动化:`Saved/Automation/ChargeFinishSubject` **598/598 通过、0 error**;最近冷 UBT GREEN(2026-08-16 11:45)。
+- 最新全量自动化:**598/598 通过、0 error**;`9598072`/`e78be7c` 两个玩法提交各自均以全量 `GameXXK` 通过后合入;最近冷 UBT GREEN。
 
-## 已落地(最近四轮)
+## 已落地(最近六轮)
 
+- **敌方意图随机化与守卫嘲讽闭环**(`9598072`、`e78be7c`):敌方单体攻击意图默认 `MarkedPartyElseRandom`(只有带标记的队友吸引集火,否则稳定种子随机目标);标记施加类意图随机落点;种子加 Murmur finalizer 防止两名队友机械交替。守卫 16 张加甲牌结算末尾给守卫本人上 1 层标记,与标记优先规则形成坦克闭环;标记既有代价规则(受击增伤/命中消耗)随之生效。聚焦敌方 61/61、守卫 23/23、全量 598/598 通过。
 - **战斗 tooltip / 卡牌文本 / HP HUD 一致性热修簇**(`a490235..b6763a0`,13 个提交):补全刀锋特质/药丸/分类型伤害行的卡牌悬浮文本;彩色双字特质药丸与内容自适应纸张;tooltip 行确定性换行、药丸排序与跟随定位;猎手重箭/掠影箭文本;修复未封顶 sentinel 泄漏、自愈后 HUD 生命值冻结、蓄力/终结句缺失卡牌主语。全量自动化 598/598、冷 UBT GREEN。
 - **战斗目标箭头视觉回归修复**(`a490235`):移除箭头头部的方向相关平移，恢复贴图中心严格落在实时鼠标端点；保留自由鼠标跟随与 stage-space 目标命中；新增水平/垂直/对角回归测试。真实 PIE 的 Single/Healing 双方向对比通过，用户在保持运行的目标卡验收现场确认 `ok`。
 - **奖励体系重构**(`00002f1`):彻底删除路线临时卡体系(路线卡条目/12 容量/18 张配方/事件宝箱商人发卡);新增玩家卡组**首领卡槽 3 个**,击杀首领后选择首领牌(虎/熊)写入空槽并加入当前手牌;战后奖励只剩首领牌(例外)+携带牌品质升级+遗物+气力点+抽牌数;存档 v16→v17 迁移。

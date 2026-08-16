@@ -2,7 +2,7 @@
 status: proposal
 owner: codex
 updated_at: 2026-08-16
-source_commit: 3ae0561a28fa18208d957650451aea1a34878d19
+source_commit: e78be7c8078760b4ea4eee0e7382cf3a7c9294c5
 ---
 # GameXXK 全量代码与文档审查及优化方案（2026-08-16）
 
@@ -26,7 +26,15 @@ source_commit: 3ae0561a28fa18208d957650451aea1a34878d19
 | Content/Python/*.py（含 _archive） | 222 | 40,196 | 同上；**非核心脚本未逐行通读** |
 | 配置/Build/uproject/插件 | 12 | — | 全部逐行阅读 |
 
-实测基线：`HEAD=3ae0561`，全量 Automation `598/598`、冷 UBT GREEN、默认生产循环 PASS、`--script-tests all` **84 个脚本测试中 22 个失败**。
+实测基线：代码基线 `e78be7c`（已包含审查期间合入的两个玩法提交，见下）；全量 Automation `598/598`（两个新提交各自均跑过）、冷 UBT GREEN、默认生产循环 PASS、`--script-tests all` **84 个脚本测试中 22 个失败**。
+
+### 审查后合入的新提交（已纳入本方案基线）
+
+| 提交 | 内容 | 对方案的影响 |
+|---|---|---|
+| `9598072` | 敌方单体意图改为 `MarkedPartyElseRandom`：有标记队友才集火，否则稳定种子随机目标；标记施加类意图随机落点；种子 finalizer 防两名队友机械交替 | A5 中 `CardBattleAdapter.cpp` 行号变为 2201；**需要重跑 2400/2520 平衡矩阵记录新基线** |
+| `e78be7c` | 守卫 16 张加甲牌结算末尾给守卫上 1 层标记，形成“守卫=坦克、标记吸引火力”闭环 | 守卫卡目录与相关测试已更新；数值台账尚无新闭环后的平衡基线，需纳入下一轮审计 |
+
 
 ---
 
@@ -54,7 +62,7 @@ source_commit: 3ae0561a28fa18208d957650451aea1a34878d19
 | A2 | `MVPRules.h:353,505` | 高 | `FGameXXKSaveState` 顶层重复保存 PlayerLocation/QuestState/follower/Gold/UnlockedRegions；`MakeSaveState` 双写，易漂移 | SaveState 只保留 SaveVersion+RuntimeState+派生缓存；补 v1→v17 全版本迁移矩阵 |
 | A3 | `CardRules.cpp` 16,258 行；`BattleBoardWidget.cpp` 8,956 行 | 高 | 单文件 god object；ResolveCardPlay 约 660 行，BattleBoard 同时管布局/演出/手牌/奖励/HUD/NativePaint | 按阶段拆 CardRules；BattleBoard 拆 BattleLayout/Hand/IntentRail/Reward/UnitHud 子部件 |
 | A4 | `CardCatalog.cpp:1834` 等 8 个 catalog | 高 | 198 卡/21 敌/30 遗物/49 装备/35 词缀全部编译期静态数组；坏数据直接 `UE_LOG(Fatal)` 崩溃 | DataAsset/DataTable 化；校验降级为可恢复错误+回退，保留确定性单测 |
-| A5 | `MVPRules.cpp:1315`、`CardBattleAdapter.cpp:2172` | 高 | `NodeId * 486187739` 使用有符号 int32 乘法溢出，属未定义行为 | 改 uint32/int64 混合后截断，抽统一 seed 工具并加测试 |
+| A5 | `MVPRules.cpp:1315`、`CardBattleAdapter.cpp:2201` | 高 | `NodeId * 486187739` 使用有符号 int32 乘法溢出，属未定义行为 | 改 uint32/int64 混合后截断，抽统一 seed 工具并加测试 |
 | A6 | `MVPHUD.cpp:396` → `BattleBoard.cpp:3383`、`RouteMap.cpp:254` | 高 | DrawHUD 每帧无条件 `RefreshAuxiliaryWidgets`，触发 BattleBoard/RouteMap 全量重建与规则预览重算 | 状态脏标记/事件驱动；只刷新可见且变更的部件 |
 | A7 | `BattleBoard.cpp:6511,3756,7435` | 高 | 每帧/每次刷新对手牌逐张 `BuildCardPlayPreview`（完整规则预演） | 缓存 preview，费用/目标/牌变化才重算 |
 | A8 | `BattleBoard.cpp:7870-7902,8156`、`InventoryWindow.cpp:188`、`CompanionRoster.cpp:206` | 中 | 48 处同步 `LoadObject`；背包/卡面/路线图节点每刷新建 Brush 或 LoadSynchronous | 推广 AtlasCache 式软引用预载 + Brush 缓存 |
@@ -85,7 +93,7 @@ source_commit: 3ae0561a28fa18208d957650451aea1a34878d19
 | C1 | `AGENTS.md:36-37`、`master-plan.md:35`、`all-in-one.md:47,1705,1866` | 高 | 文档仍写“接任务即 follower=true、Town 按钮进路线图”；代码已切为“接任务不跟随、显式入队、北门 F 进路线图” | 统一 follower 语义；给旧验收加 superseded 注记 |
 | C2 | `current-goal-acceptance.md:19,26`；`balance-ledger.md §6`；`roadmap.md:24` | 中 | 提交区间写成 `8dc5ee6..b6763a0`（实为 `a490235..b6763a0`）；596/598 并存未标时间；§6/路线图 A2 仍写月白 33.3%、周 16.7%（最新为 36.7%、30%） | 修正数字并给每条证据带日期/报告路径 |
 | C3 | `superpowers/` 186 篇 | 中 | 171 篇无 front-matter 状态；历练 7 包仍按 v16/v17/v18 规划，而 `CurrentSaveVersion=17` 已被首领槽占用；多代 UI/卡池方案互相覆盖未标记 | 补 `status: implemented/superseded/shelved/historical`；历练索引整组标 shelved；归档清单见下 |
-| C4 | `8dc5ee6..b6763a0` | 中 | 8 个 UI/文本热修提交无 spec/plan/生产记录 | 补一份收尾记录；恢复 spec→TDD→record 纪律 |
+| C4 | `8dc5ee6..b6763a0`，以及 `9598072`、`e78be7c` | 中 | UI/文本热修与两个玩法提交均无 spec/plan/生产记录（两个玩法提交有完整提交说明与测试，但未回填 production/superpowers） | 补收尾记录；恢复 spec→TDD→record 纪律 |
 | C5 | `all-in-one.md` 与分拆专题 | 中 | A 版全集与 B 版专题重复，生成后未随 08-13~16 刷新 | 重建或冻结版本头 |
 | C6 | 建议归档 | 低 | 见 §7，约 40-50 篇已被取代 | 移入 `docs/superpowers/_archive/`，保留 git 历史 |
 
@@ -152,7 +160,7 @@ source_commit: 3ae0561a28fa18208d957650451aea1a34878d19
 ### Phase 5 —— 玩法主线（沿用既有裁决，不因本方案插队）
 
 1. 地形增益重设计：先复核 §5 山河三档 + `TriggerTerrainBenefit` 口径，再 TDD。
-2. 数值迭代：按台账 4.8 继续月白/周光祖单变量审计 → 弓手上限 → 装备/套装预算 → 成长档。
+2. 数值迭代：按台账 4.8 继续月白/周光祖单变量审计 → 弓手上限 → 装备/套装预算 → 成长档；**先把 `9598072`/`e78be7c` 后的 2400/2520 矩阵新基线跑出来并写回台账 SHA**。
 3. 历练桌面迁移 7 包：维持搁置；恢复前先修版本边界并重新取 clean baseline。
 4. 补 `8dc5ee6..b6763a0` UI 热修簇的收尾生产记录。
 
