@@ -774,6 +774,51 @@ bool UGameXXKMVPSubsystem::IsBattleHudFixtureActiveForTest() const
 	return BattleHudFixtureView.IsSet();
 }
 
+bool UGameXXKMVPSubsystem::ApplyCardTooltipFixtureForTest(const FName CardId, FString& OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView);
+	OutError.Reset();
+	if (RuntimeState.Screen != EGameXXKScreen::Battle)
+	{
+		OutError = TEXT("Card tooltip fixture requires the Battle screen.");
+		return false;
+	}
+	if (!RuntimeState.CardRun.bHasActiveCardBattle)
+	{
+		OutError = TEXT("Card tooltip fixture requires an active card battle.");
+		return false;
+	}
+	const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+	if (!Definition)
+	{
+		OutError = FString::Printf(TEXT("Card tooltip fixture rejected an unknown card id: %s."), *CardId.ToString());
+		return false;
+	}
+
+	FGameXXKRuntimeState FixtureState = RuntimeState;
+	FixtureState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Player;
+	FGameXXKBattleDeckState& FixtureDeck = FixtureState.CardRun.ActiveBattle.Deck;
+	if (FixtureDeck.Hand.IsEmpty())
+	{
+		OutError = TEXT("Card tooltip fixture requires at least one visible hand card.");
+		return false;
+	}
+	FGameXXKCardInstance& FixtureCard = FixtureDeck.Hand[0];
+	FixtureCard.CardId = CardId;
+	FixtureCard.CurrentQuality = Definition->BaseQuality;
+
+	BattleHudFixtureView.Emplace(MoveTemp(FixtureState));
+	if (AGameXXKMVPPlayerController* const PlayerController =
+		Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		if (UGameXXKBattleBoardWidget* const Board = PlayerController->GetBattleBoardWidgetForTest())
+		{
+			Board->RefreshFromState();
+		}
+	}
+	return true;
+}
+
 bool UGameXXKMVPSubsystem::ApplyPilotComparisonFixtureForTest(FString& OutError)
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView);

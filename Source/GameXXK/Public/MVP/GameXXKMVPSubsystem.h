@@ -43,6 +43,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	bool ApplyPilotComparisonFixtureForTest(FString& OutError);
 
+	/** Development-only non-saving tooltip fixture: replaces the first visible hand card with CardId. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool ApplyCardTooltipFixtureForTest(FName CardId, FString& OutError);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	void ClearBattleHudFixtureForTest();
 
