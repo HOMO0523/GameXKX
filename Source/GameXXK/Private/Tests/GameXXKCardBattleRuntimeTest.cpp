@@ -539,13 +539,14 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 		TEXT("Guard"),
 		ReflectReactionResults));
 	TestEqual(TEXT("armor can absorb the triggering hit while reflection still triggers"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Guard"))->HP, 100);
-	TestEqual(TEXT("the incoming hit spends ten of the twelve gained Armor before Block"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Guard"))->Armor, 2);
-	TestEqual(TEXT("Block deals current Attack twenty plus post-hit Armor two"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Enemy"))->HP, 78);
+	TestEqual(TEXT("the marked guard takes the amplified eleven-point hit and keeps one Armor"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Guard"))->Armor, 1);
+	TestEqual(TEXT("Block deals current Attack twenty plus post-hit Armor one"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Enemy"))->HP, 79);
+	TestEqual(TEXT("one direct hit consumes the guard's one taunt Mark"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(ReflectRuntime.Units, TEXT("Guard")), EGameXXKCardStatus::Mark), 0);
 	TestEqual(TEXT("the reaction creates one separate stable audit packet"), ReflectReactionResults.Num(), 1);
 	if (ReflectReactionResults.Num() == 1)
 	{
 		TestEqual(TEXT("the reflection audit records the guard as its true source"), ReflectReactionResults[0].SourceUnitId, FName(TEXT("Guard")));
-		TestEqual(TEXT("the reflection audit locks the Attack-plus-Armor request"), ReflectReactionResults[0].BaseRequestedDamage, 22);
+		TestEqual(TEXT("the reflection audit locks the Attack-plus-Armor request"), ReflectReactionResults[0].BaseRequestedDamage, 21);
 	}
 	TestEqual(TEXT("one of the card's two Block layers remains after one enemy card"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(ReflectRuntime.Units, TEXT("Guard")), EGameXXKCardStatus::Block), 1);
 
@@ -574,7 +575,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("redirect audit preserves the enemy intent's original selected hero"), RedirectIncomingResult.OriginalTargetUnitId, FName(TEXT("Hero")));
 	TestEqual(TEXT("redirect audit exposes the stable final guard target"), RedirectIncomingResult.ResolvedTargetUnitId, FName(TEXT("Guard")));
 	TestTrue(TEXT("redirect audit flags the interception"), RedirectIncomingResult.bRedirected);
-	TestEqual(TEXT("the guard's twenty Armor receives the ten-point intercepted packet"), FindRuntimeUnit(RedirectRuntime.Units, TEXT("Guard"))->Armor, 10);
+	TestEqual(TEXT("the guard's twenty Armor receives the amplified eleven-point intercepted packet"), FindRuntimeUnit(RedirectRuntime.Units, TEXT("Guard"))->Armor, 9);
 	TestEqual(TEXT("the consumed guard link remains addressable"), RedirectRuntime.GuardLinks.Num(), 1);
 	if (RedirectRuntime.GuardLinks.Num() == 1)
 	{

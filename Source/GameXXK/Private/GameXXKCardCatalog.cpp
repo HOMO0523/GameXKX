@@ -1266,60 +1266,66 @@ namespace
 		constexpr const TCHAR* OwnerId = TEXT("Profession.Guard");
 		constexpr const TCHAR* Frame = TEXT("Style.Guard");
 		constexpr const TCHAR* Pool = TEXT("Pool.Profession.Guard");
+		// Armor-granting guard cards also mark the guard, so monsters chasing
+		// marks focus the armored tank instead of the party's other members.
+		const auto GuardTaunt = []()
+		{
+			return Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::Mark);
+		};
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.TieBi"), TEXT("铁壁"), 1, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 14), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 1) }, Frame, Pool, true);
+			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 14), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 1), GuardTaunt() }, Frame, Pool, true);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.HuZhu"), TEXT("护主"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 8), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 8), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::SelectedTarget), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 1) }, Frame, Pool, true);
+			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 8), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 8), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::SelectedTarget), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 1), GuardTaunt() }, Frame, Pool, true);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.ZhenDun"), TEXT("震盾"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.GuShou"), TEXT("固守"), 0, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 2) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 2), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.FanZhenJia"), TEXT("反震甲"), 1, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 12), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 2) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 12), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 2), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.ZhenYueLing"), TEXT("镇岳令"), 2, 6, EGameXXKCardTargetMode::AllEnemies,
-			{ EffectWithSecondary(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 80, 20), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8), Reaction(EGameXXKCardEffectTarget::AllAllies, EGameXXKCardStatus::Block, 1) }, Frame, Pool);
+			{ EffectWithSecondary(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 80, 20), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8), Reaction(EGameXXKCardEffectTarget::AllAllies, EGameXXKCardStatus::Block, 1), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.YuanHuBu"), TEXT("援护步"), 0, 0, EGameXXKCardTargetMode::LowestHealthAlly,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::LowestHealthAlly, 6), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::LowestHealthAlly), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 1) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::LowestHealthAlly, 6), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::LowestHealthAlly), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 1), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.PiJiaXingJun"), TEXT("披甲行军"), 1, 0, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6), Reaction(EGameXXKCardEffectTarget::AllAllies, EGameXXKCardStatus::Block, 1), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 6) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6), Reaction(EGameXXKCardEffectTarget::AllAllies, EGameXXKCardStatus::Block, 1), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 6), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.QinWangDunJi"), TEXT("擒王盾击"), 2, 5, EGameXXKCardTargetMode::SingleEnemy,
 			{ Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Mark) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.TieBiRuShan"), TEXT("铁壁如山"), 2, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 24), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::CannotReceiveVulnerability), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 2) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 24), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::CannotReceiveVulnerability), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 2), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.BiLeiFanGong"), TEXT("壁垒反攻"), 2, 6, EGameXXKCardTargetMode::AllEnemies,
-			{ EffectWithSecondary(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 120, 20), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 10), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 1) }, Frame, Pool);
+			{ EffectWithSecondary(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 120, 20), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 10), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 1), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.BuDongRuShan"), TEXT("不动如山"), 3, 10, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 36), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 3), Effect(EGameXXKCardEffectType::RetainArmorNextRound, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 36), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 3), Effect(EGameXXKCardEffectType::RetainArmorNextRound, EGameXXKCardEffectTarget::CardOwner, 1), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.PanShiTuNa"), TEXT("磐石吐纳"), 0, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 5, EGameXXKCardStatus::None, 1, OwnerArmorAtLeast(8)), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, 1, OwnerArmorAtLeast(8)), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::None, 1, OwnerArmorAtLeast(8, true)) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 5, EGameXXKCardStatus::None, 1, OwnerArmorAtLeast(8)), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, 1, OwnerArmorAtLeast(8)), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::None, 1, OwnerArmorAtLeast(8, true)), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.YuanJunBiLei"), TEXT("援军壁垒"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 16), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 10), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::SelectedTarget, 2), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 2) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 16), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 10), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::SelectedTarget, 2), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 2), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.DunZhenTuiJin"), TEXT("盾阵推进"), 2, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.TieSuoHengJiang"), TEXT("铁锁横江"), 2, 6, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 20), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::AllOtherAllies, 2), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 2) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 20), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::AllOtherAllies, 2), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 2), GuardTaunt() }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.SuiJiaHuiJi"), TEXT("碎甲回击"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
 			{ Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 1), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, 1, OwnerArmorAtLeast(12)) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Guard, OwnerId, nullptr,
 			TEXT("Profession.Guard.YiFuDangGuan"), TEXT("一夫当关"), 3, 12, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 10), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 20), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::AllOtherAllies, 2), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 3) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 10), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 20), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::AllOtherAllies, 2), Reaction(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Block, 3), GuardTaunt() }, Frame, Pool);
 	}
 
 	void AddHealerCards(TArray<FGameXXKCardDefinition>& Cards)

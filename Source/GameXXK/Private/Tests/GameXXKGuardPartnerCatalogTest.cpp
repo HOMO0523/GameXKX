@@ -68,6 +68,12 @@ namespace GameXXKGuardPartnerCatalogTest
 		return Effect(EGameXXKCardEffectType::RegisterReaction, Target, Stacks, EGameXXKCardStatus::Block);
 	}
 
+	/** Armor-granting guard cards also taunt: the guard marks itself. */
+	FExpectedEffect Mark()
+	{
+		return Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::Mark);
+	}
+
 	FExpectedEffect GuardLink(
 		const EGameXXKCardEffectTarget Guardian,
 		const EGameXXKCardEffectTarget ProtectedUnit,
@@ -95,45 +101,45 @@ bool FGameXXKGuardPartnerAll18CatalogTest::RunTest(const FString& Parameters)
 	const TCHAR* ArmorRelease = TEXT("Archetype.Guard.ArmorRelease");
 	const TArray<FExpectedCard> ExpectedCards = {
 		{TEXT("Profession.Guard.TieBi"), TEXT("铁壁"), 1, 0, EGameXXKCardTargetMode::Self, true, nullptr,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 14), Block(EGameXXKCardEffectTarget::CardOwner, 1)}},
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 14), Block(EGameXXKCardEffectTarget::CardOwner, 1), Mark()}},
 		{TEXT("Profession.Guard.HuZhu"), TEXT("护主"), 1, 0, EGameXXKCardTargetMode::SingleAlly, true, nullptr,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 8), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 8), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::SelectedTarget, 1), Block(EGameXXKCardEffectTarget::CardOwner, 1)}},
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 8), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 8), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::SelectedTarget, 1), Block(EGameXXKCardEffectTarget::CardOwner, 1), Mark()}},
 
 		{TEXT("Profession.Guard.GuShou"), TEXT("固守"), 0, 0, EGameXXKCardTargetMode::Self, false, ArmorGrowth,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 2)}},
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 2), Mark()}},
 		{TEXT("Profession.Guard.FanZhenJia"), TEXT("反震甲"), 1, 0, EGameXXKCardTargetMode::Self, false, ArmorGrowth,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 12), Block(EGameXXKCardEffectTarget::CardOwner, 2)}},
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 12), Block(EGameXXKCardEffectTarget::CardOwner, 2), Mark()}},
 		{TEXT("Profession.Guard.TieBiRuShan"), TEXT("铁壁如山"), 2, 0, EGameXXKCardTargetMode::Self, false, ArmorGrowth,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 24), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::CannotReceiveVulnerability), Block(EGameXXKCardEffectTarget::CardOwner, 2)}},
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 24), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::CannotReceiveVulnerability), Block(EGameXXKCardEffectTarget::CardOwner, 2), Mark()}},
 		{TEXT("Profession.Guard.BuDongRuShan"), TEXT("不动如山"), 3, 10, EGameXXKCardTargetMode::Self, false, ArmorGrowth,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 36), Block(EGameXXKCardEffectTarget::CardOwner, 3), Effect(EGameXXKCardEffectType::RetainArmorNextRound, EGameXXKCardEffectTarget::CardOwner, 1)}},
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 36), Block(EGameXXKCardEffectTarget::CardOwner, 3), Effect(EGameXXKCardEffectType::RetainArmorNextRound, EGameXXKCardEffectTarget::CardOwner, 1), Mark()}},
 
 		{TEXT("Profession.Guard.YuanHuBu"), TEXT("援护步"), 0, 0, EGameXXKCardTargetMode::LowestHealthAlly, false, Protection,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::LowestHealthAlly, 6), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::LowestHealthAlly, 1), Block(EGameXXKCardEffectTarget::CardOwner, 1)}},
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::LowestHealthAlly, 6), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::LowestHealthAlly, 1), Block(EGameXXKCardEffectTarget::CardOwner, 1), Mark()}},
 		{TEXT("Profession.Guard.YuanJunBiLei"), TEXT("援军壁垒"), 1, 0, EGameXXKCardTargetMode::SingleAlly, false, Protection,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 16), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 10), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::SelectedTarget, 2), Block(EGameXXKCardEffectTarget::CardOwner, 2)}},
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 16), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 10), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::SelectedTarget, 2), Block(EGameXXKCardEffectTarget::CardOwner, 2), Mark()}},
 		{TEXT("Profession.Guard.TieSuoHengJiang"), TEXT("铁锁横江"), 2, 6, EGameXXKCardTargetMode::Self, false, Protection,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 20), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::AllOtherAllies, 2), Block(EGameXXKCardEffectTarget::CardOwner, 2)}},
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 20), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::AllOtherAllies, 2), Block(EGameXXKCardEffectTarget::CardOwner, 2), Mark()}},
 		{TEXT("Profession.Guard.YiFuDangGuan"), TEXT("一夫当关"), 3, 12, EGameXXKCardTargetMode::AllAllies, false, Protection,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 10), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 20), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::AllOtherAllies, 2), Block(EGameXXKCardEffectTarget::CardOwner, 3)}},
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 10), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 20), GuardLink(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardEffectTarget::AllOtherAllies, 2), Block(EGameXXKCardEffectTarget::CardOwner, 3), Mark()}},
 
 		{TEXT("Profession.Guard.ZhenDun"), TEXT("震盾"), 1, 0, EGameXXKCardTargetMode::SingleEnemy, false, ArmorConversion,
-			{Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6)}},
+			{Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6), Mark()}},
 		{TEXT("Profession.Guard.QinWangDunJi"), TEXT("擒王盾击"), 2, 5, EGameXXKCardTargetMode::SingleEnemy, false, ArmorConversion,
 			{Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Mark)}},
 		{TEXT("Profession.Guard.DunZhenTuiJin"), TEXT("盾阵推进"), 2, 0, EGameXXKCardTargetMode::SingleEnemy, false, ArmorConversion,
-			{Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6)}},
+			{Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6), Mark()}},
 		{TEXT("Profession.Guard.SuiJiaHuiJi"), TEXT("碎甲回击"), 1, 0, EGameXXKCardTargetMode::SingleEnemy, false, ArmorConversion,
 			{Effect(EGameXXKCardEffectType::DamagePercentAttackPlusArmor, EGameXXKCardEffectTarget::SelectedTarget, 100), Block(EGameXXKCardEffectTarget::CardOwner, 1), ArmorConditionEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1, 12)}},
 
 		{TEXT("Profession.Guard.PanShiTuNa"), TEXT("磐石吐纳"), 0, 0, EGameXXKCardTargetMode::Self, false, ArmorRelease,
-			{ArmorConditionEffect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 5, 8), ArmorConditionEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1, 8), ArmorConditionEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6, 8, true)}},
+			{ArmorConditionEffect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 5, 8), ArmorConditionEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1, 8), ArmorConditionEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 6, 8, true), Mark()}},
 		{TEXT("Profession.Guard.PiJiaXingJun"), TEXT("披甲行军"), 1, 0, EGameXXKCardTargetMode::AllAllies, false, ArmorRelease,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6), Block(EGameXXKCardEffectTarget::AllAllies, 1), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 6)}},
+			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6), Block(EGameXXKCardEffectTarget::AllAllies, 1), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 6), Mark()}},
 		{TEXT("Profession.Guard.ZhenYueLing"), TEXT("镇岳令"), 2, 6, EGameXXKCardTargetMode::AllEnemies, false, ArmorRelease,
-			{Effect(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 80, EGameXXKCardStatus::None, 20), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8), Block(EGameXXKCardEffectTarget::AllAllies, 1)}},
+			{Effect(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 80, EGameXXKCardStatus::None, 20), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8), Block(EGameXXKCardEffectTarget::AllAllies, 1), Mark()}},
 		{TEXT("Profession.Guard.BiLeiFanGong"), TEXT("壁垒反攻"), 2, 6, EGameXXKCardTargetMode::AllEnemies, false, ArmorRelease,
-			{Effect(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 120, EGameXXKCardStatus::None, 20), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 10), Block(EGameXXKCardEffectTarget::CardOwner, 1)}},
+			{Effect(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 120, EGameXXKCardStatus::None, 20), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 10), Block(EGameXXKCardEffectTarget::CardOwner, 1), Mark()}},
 	};
 
 	int32 GuardCardCount = 0;

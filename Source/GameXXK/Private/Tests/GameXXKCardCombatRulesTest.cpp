@@ -449,7 +449,7 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("the incoming hit spends armor before Block snapshots its damage"), ReflectGuardAfterIncoming->Armor, 2);
+	TestEqual(TEXT("the marked guard takes the amplified eleven-point hit and keeps one Armor"), ReflectGuardAfterIncoming->Armor, 1);
 	TArray<FGameXXKCardDamageResult> ReflectReactionResults;
 	if (!TestTrue(TEXT("the completed enemy card opens the reflection boundary"), GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 		ReflectRuntime,
@@ -465,9 +465,9 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("real reflection source is the defending guard"), ReflectReactionResults[0].SourceUnitId, FName(TEXT("ReflectGuard")));
 		TestEqual(TEXT("real reflection resolves against the original attacker"), ReflectReactionResults[0].ResolvedTargetUnitId, FName(TEXT("ReflectEnemy")));
-		TestEqual(TEXT("Block deals one hundred percent current Attack plus post-hit Armor"), ReflectReactionResults[0].BaseRequestedDamage, 22);
+		TestEqual(TEXT("Block deals one hundred percent current Attack plus post-hit Armor"), ReflectReactionResults[0].BaseRequestedDamage, 21);
 		TestEqual(TEXT("real reflection snapshots attacker health before retaliation"), ReflectReactionResults[0].TargetHealthBefore, 100);
-		TestEqual(TEXT("real reflection snapshots attacker health after retaliation"), ReflectReactionResults[0].TargetHealthAfter, 78);
+		TestEqual(TEXT("real reflection snapshots attacker health after retaliation"), ReflectReactionResults[0].TargetHealthAfter, 79);
 	}
 
 	return true;

@@ -114,10 +114,12 @@ bool FGameXXKGuardPartnerCoreProtectionRuntimeTest::RunTest(const FString& Param
 	if (!Resolve(*this, Runtime, TEXT("TieBi"), NAME_None, Result)) return true;
 	TestEqual(TEXT("铁壁精确获得14护甲"), Unit(Runtime, GuardId)->Armor, 14);
 	TestEqual(TEXT("铁壁精确获得1层格挡"), Status(Runtime, GuardId, EGameXXKCardStatus::Block), 1);
+	TestEqual(TEXT("铁壁为守卫叠加1层嘲讽标记"), Status(Runtime, GuardId, EGameXXKCardStatus::Mark), 1);
 	if (!Resolve(*this, Runtime, TEXT("HuZhu"), AllyAId, Result)) return true;
 	TestEqual(TEXT("护主为指定友军增加8护甲"), Unit(Runtime, AllyAId)->Armor, 8);
 	TestEqual(TEXT("护主为守卫本人再增加8护甲"), Unit(Runtime, GuardId)->Armor, 22);
 	TestEqual(TEXT("护主再增加1层格挡"), Status(Runtime, GuardId, EGameXXKCardStatus::Block), 2);
+	TestEqual(TEXT("护主继续叠加1层嘲讽标记"), Status(Runtime, GuardId, EGameXXKCardStatus::Mark), 2);
 	TestTrue(TEXT("护主注册守卫保护指定友军一次"), HasGuardLink(Runtime, GuardId, AllyAId, 1));
 	return true;
 }

@@ -893,8 +893,8 @@ ID：Profession.Guard.TieBi
 目标：自身（直接施放）
 获取：固定核心牌
 完整效果：
-基础：出牌者获得14点护甲；出牌者登记1次格挡
-实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=14}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}]
+基础：出牌者获得14点护甲；出牌者登记1次格挡；出牌者获得1层标记
+实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=14}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [080] 护主
 ID：Profession.Guard.HuZhu
@@ -903,8 +903,8 @@ ID：Profession.Guard.HuZhu
 目标：单体友方（点击后选择目标）
 获取：固定核心牌
 完整效果：
-基础：所选目标获得8点护甲；出牌者获得8点护甲；由出牌者守护所选目标，转移接下来1次单体直接攻击；出牌者登记1次格挡
-实现签名：TargetMode=SingleAlly | Base=[Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=8}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=8}; Effect{Type=ApplyGuardLink,Target=SelectedTarget,Magnitude=1,Guard{Guardian=CardOwner,Protected=SelectedTarget,Stacks=1,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}]
+基础：所选目标获得8点护甲；出牌者获得8点护甲；由出牌者守护所选目标，转移接下来1次单体直接攻击；出牌者登记1次格挡；出牌者获得1层标记
+实现签名：TargetMode=SingleAlly | Base=[Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=8}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=8}; Effect{Type=ApplyGuardLink,Target=SelectedTarget,Magnitude=1,Guard{Guardian=CardOwner,Protected=SelectedTarget,Stacks=1,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [081] 震盾
 ID：Profession.Guard.ZhenDun
@@ -913,8 +913,8 @@ ID：Profession.Guard.ZhenDun
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：由出牌者对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；出牌者获得6点护甲
-实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttackPlusArmor,Target=SelectedTarget,Magnitude=100}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=6}]
+基础：由出牌者对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；出牌者获得6点护甲；出牌者获得1层标记
+实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttackPlusArmor,Target=SelectedTarget,Magnitude=100}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=6}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [082] 固守
 ID：Profession.Guard.GuShou
@@ -923,8 +923,8 @@ ID：Profession.Guard.GuShou
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得6点护甲；出牌者获得2点内力
-实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=6}; Effect{Type=GainMana,Target=CardOwner,Magnitude=2}]
+基础：出牌者获得6点护甲；出牌者获得2点内力；出牌者获得1层标记
+实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=6}; Effect{Type=GainMana,Target=CardOwner,Magnitude=2}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [083] 反震甲
 ID：Profession.Guard.FanZhenJia
@@ -933,8 +933,8 @@ ID：Profession.Guard.FanZhenJia
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得24点护甲；出牌者登记2次格挡
-实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=12}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}]
+基础：出牌者获得24点护甲；出牌者登记2次格挡；出牌者获得2层标记
+实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=12}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [084] 镇岳令
 ID：Profession.Guard.ZhenYueLing
@@ -943,8 +943,8 @@ ID：Profession.Guard.ZhenYueLing
 目标：全体敌方（直接施放）
 获取：职业随机池
 完整效果：
-基础：消耗出牌者全部护甲，对全体敌方造成（80%+每点护甲20个百分点）攻击伤害；全体友方获得16点护甲；全体友方登记1次格挡
-实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamageAllPercentAttackPerConsumedArmor,Target=AllEnemies,Magnitude=80,Secondary=20}; Effect{Type=AddArmor,Target=AllAllies,Magnitude=8}; Effect{Type=RegisterReaction,Target=AllAllies,Magnitude=1,Status=Block}]
+基础：消耗出牌者全部护甲，对全体敌方造成（80%+每点护甲20个百分点）攻击伤害；全体友方获得16点护甲；全体友方登记1次格挡；出牌者获得2层标记
+实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamageAllPercentAttackPerConsumedArmor,Target=AllEnemies,Magnitude=80,Secondary=20}; Effect{Type=AddArmor,Target=AllAllies,Magnitude=8}; Effect{Type=RegisterReaction,Target=AllAllies,Magnitude=1,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [085] 援护步
 ID：Profession.Guard.YuanHuBu
@@ -953,8 +953,8 @@ ID：Profession.Guard.YuanHuBu
 目标：生命最低友方（自动结算）
 获取：职业随机池
 完整效果：
-基础：生命最低友方获得6点护甲；出牌者获得6点护甲；由出牌者守护生命最低友方，转移接下来1次单体直接攻击；出牌者登记1次格挡
-实现签名：TargetMode=LowestHealthAlly | Base=[Effect{Type=AddArmor,Target=LowestHealthAlly,Magnitude=6}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=6}; Effect{Type=ApplyGuardLink,Target=LowestHealthAlly,Magnitude=1,Guard{Guardian=CardOwner,Protected=LowestHealthAlly,Stacks=1,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}]
+基础：生命最低友方获得6点护甲；出牌者获得6点护甲；由出牌者守护生命最低友方，转移接下来1次单体直接攻击；出牌者登记1次格挡；出牌者获得1层标记
+实现签名：TargetMode=LowestHealthAlly | Base=[Effect{Type=AddArmor,Target=LowestHealthAlly,Magnitude=6}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=6}; Effect{Type=ApplyGuardLink,Target=LowestHealthAlly,Magnitude=1,Guard{Guardian=CardOwner,Protected=LowestHealthAlly,Stacks=1,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [086] 披甲行军
 ID：Profession.Guard.PiJiaXingJun
@@ -963,8 +963,8 @@ ID：Profession.Guard.PiJiaXingJun
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体友方获得6点护甲；全体友方登记1次格挡；出牌者获得6点内力
-实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=6}; Effect{Type=RegisterReaction,Target=AllAllies,Magnitude=1,Status=Block}; Effect{Type=GainMana,Target=CardOwner,Magnitude=6}]
+基础：全体友方获得6点护甲；全体友方登记1次格挡；出牌者获得6点内力；出牌者获得1层标记
+实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=6}; Effect{Type=RegisterReaction,Target=AllAllies,Magnitude=1,Status=Block}; Effect{Type=GainMana,Target=CardOwner,Magnitude=6}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [087] 擒王盾击
 ID：Profession.Guard.QinWangDunJi
@@ -983,8 +983,8 @@ ID：Profession.Guard.TieBiRuShan
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得48点护甲；出牌者获得2层破绽免疫；出牌者登记2次格挡
-实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=24}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=CannotReceiveVulnerability}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}]
+基础：出牌者获得48点护甲；出牌者获得2层破绽免疫；出牌者登记2次格挡；出牌者获得2层标记
+实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=24}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=CannotReceiveVulnerability}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [089] 壁垒反攻
 ID：Profession.Guard.BiLeiFanGong
@@ -993,8 +993,8 @@ ID：Profession.Guard.BiLeiFanGong
 目标：全体敌方（直接施放）
 获取：职业随机池
 完整效果：
-基础：消耗出牌者全部护甲，对全体敌方造成（120%+每点护甲20个百分点）攻击伤害；出牌者获得20点护甲；出牌者登记1次格挡
-实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamageAllPercentAttackPerConsumedArmor,Target=AllEnemies,Magnitude=120,Secondary=20}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=10}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}]
+基础：消耗出牌者全部护甲，对全体敌方造成（120%+每点护甲20个百分点）攻击伤害；出牌者获得20点护甲；出牌者登记1次格挡；出牌者获得2层标记
+实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamageAllPercentAttackPerConsumedArmor,Target=AllEnemies,Magnitude=120,Secondary=20}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=10}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [090] 不动如山
 ID：Profession.Guard.BuDongRuShan
@@ -1003,8 +1003,8 @@ ID：Profession.Guard.BuDongRuShan
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得144点护甲；出牌者登记3次格挡；出牌者下回合保留当前护甲
-实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=36}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=3,Status=Block}; Effect{Type=RetainArmorNextRound,Target=CardOwner,Magnitude=1}]
+基础：出牌者获得144点护甲；出牌者登记3次格挡；出牌者下回合保留当前护甲；出牌者获得3层标记
+实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=36}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=3,Status=Block}; Effect{Type=RetainArmorNextRound,Target=CardOwner,Magnitude=1}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [091] 磐石吐纳
 ID：Profession.Guard.PanShiTuNa
@@ -1013,8 +1013,8 @@ ID：Profession.Guard.PanShiTuNa
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得5点内力（当出牌者护甲不少于8时）；出牌者抽1张牌（当出牌者护甲不少于8时）；出牌者获得6点护甲（不满足“出牌者护甲不少于8”时）
-实现签名：TargetMode=Self | Base=[Effect{Type=GainMana,Target=CardOwner,Magnitude=5,Condition{Type=OwnerArmorAtLeast,MinArmor=8}}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1,Condition{Type=OwnerArmorAtLeast,MinArmor=8}}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=6,Condition{Type=OwnerArmorAtLeast,MinArmor=8,Negate=true}}]
+基础：出牌者获得5点内力（当出牌者护甲不少于8时）；出牌者抽1张牌（当出牌者护甲不少于8时）；出牌者获得6点护甲（不满足“出牌者护甲不少于8”时）；出牌者获得1层标记
+实现签名：TargetMode=Self | Base=[Effect{Type=GainMana,Target=CardOwner,Magnitude=5,Condition{Type=OwnerArmorAtLeast,MinArmor=8}}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1,Condition{Type=OwnerArmorAtLeast,MinArmor=8}}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=6,Condition{Type=OwnerArmorAtLeast,MinArmor=8,Negate=true}}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [092] 援军壁垒
 ID：Profession.Guard.YuanJunBiLei
@@ -1023,8 +1023,8 @@ ID：Profession.Guard.YuanJunBiLei
 目标：单体友方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得16点护甲；出牌者获得10点护甲；由出牌者守护所选目标，转移接下来2次单体直接攻击；出牌者登记2次格挡
-实现签名：TargetMode=SingleAlly | Base=[Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=16}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=10}; Effect{Type=ApplyGuardLink,Target=SelectedTarget,Magnitude=2,Guard{Guardian=CardOwner,Protected=SelectedTarget,Stacks=2,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}]
+基础：所选目标获得16点护甲；出牌者获得10点护甲；由出牌者守护所选目标，转移接下来2次单体直接攻击；出牌者登记2次格挡；出牌者获得1层标记
+实现签名：TargetMode=SingleAlly | Base=[Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=16}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=10}; Effect{Type=ApplyGuardLink,Target=SelectedTarget,Magnitude=2,Guard{Guardian=CardOwner,Protected=SelectedTarget,Stacks=2,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [093] 盾阵推进
 ID：Profession.Guard.DunZhenTuiJin
@@ -1033,8 +1033,8 @@ ID：Profession.Guard.DunZhenTuiJin
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：由出牌者对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；全体友方获得6点护甲
-实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttackPlusArmor,Target=SelectedTarget,Magnitude=100}; Effect{Type=AddArmor,Target=AllAllies,Magnitude=6}]
+基础：由出牌者对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；全体友方获得6点护甲；出牌者获得1层标记
+实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttackPlusArmor,Target=SelectedTarget,Magnitude=100}; Effect{Type=AddArmor,Target=AllAllies,Magnitude=6}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [094] 铁锁横江
 ID：Profession.Guard.TieSuoHengJiang
@@ -1043,8 +1043,8 @@ ID：Profession.Guard.TieSuoHengJiang
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得80点护甲；由出牌者守护其他全体友方，转移接下来2次单体直接攻击；出牌者登记2次格挡
-实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=20}; Effect{Type=ApplyGuardLink,Target=AllOtherAllies,Magnitude=2,Guard{Guardian=CardOwner,Protected=AllOtherAllies,Stacks=2,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}]
+基础：出牌者获得80点护甲；由出牌者守护其他全体友方，转移接下来2次单体直接攻击；出牌者登记2次格挡；出牌者获得3层标记
+实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=20}; Effect{Type=ApplyGuardLink,Target=AllOtherAllies,Magnitude=2,Guard{Guardian=CardOwner,Protected=AllOtherAllies,Stacks=2,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [095] 碎甲回击
 ID：Profession.Guard.SuiJiaHuiJi
@@ -1063,8 +1063,8 @@ ID：Profession.Guard.YiFuDangGuan
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体友方获得40点护甲；出牌者获得80点护甲；由出牌者守护其他全体友方，转移接下来2次单体直接攻击；出牌者登记3次格挡
-实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=10}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=20}; Effect{Type=ApplyGuardLink,Target=AllOtherAllies,Magnitude=2,Guard{Guardian=CardOwner,Protected=AllOtherAllies,Stacks=2,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=3,Status=Block}]
+基础：全体友方获得40点护甲；出牌者获得80点护甲；由出牌者守护其他全体友方，转移接下来2次单体直接攻击；出牌者登记3次格挡；出牌者获得3层标记
+实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=10}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=20}; Effect{Type=ApplyGuardLink,Target=AllOtherAllies,Magnitude=2,Guard{Guardian=CardOwner,Protected=AllOtherAllies,Stacks=2,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=3,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 
 [16] 永久伙伴·药师（18 张）
