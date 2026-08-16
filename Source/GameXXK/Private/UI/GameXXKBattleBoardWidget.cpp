@@ -873,9 +873,9 @@ namespace
 			{
 				bAbilityLine = true;
 				FBodySegment KeywordSegment;
-				// The pill itself carries the trailing colon so the visual
-				// text and the test getter never disagree about the separator.
-				KeywordSegment.Text = Keyword + TEXT("：");
+				// Keyword pills stay exactly two characters with no trailing
+				// colon; the pill background itself is the separator.
+				KeywordSegment.Text = Keyword;
 				KeywordSegment.bPill = true;
 				KeywordSegment.PillColor = ResolvePillFillColor(Keyword);
 				KeywordSegment.FontSize = 11.0f;

@@ -818,9 +818,16 @@ bool FGameXXKCardTooltipFixtureTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("card tooltip fixture keeps the replaced hand card hover-enabled"), FixtureView.CardRun.ActiveBattle.Deck.SharedEnergy >= 5);
 	if (!FixtureView.CardRun.ActiveBattle.Deck.Hand.IsEmpty())
 	{
-		TestEqual(TEXT("card tooltip fixture replaces the first visible hand card"),
+		TestEqual(TEXT("card tooltip fixture puts the requested card in the first visible hand slot"),
 			FixtureView.CardRun.ActiveBattle.Deck.Hand[0].CardId,
 			FName(TEXT("Profession.Healer.YaoYin")));
+		int32 TargetCardCount = 0;
+		for (const FGameXXKCardInstance& HandCard : FixtureView.CardRun.ActiveBattle.Deck.Hand)
+		{
+			TargetCardCount += HandCard.CardId == FName(TEXT("Profession.Healer.YaoYin")) ? 1 : 0;
+		}
+		TestEqual(TEXT("card tooltip fixture never creates duplicate visible cards"),
+			TargetCardCount, 1);
 	}
 	Subsystem->ClearCardTooltipFixtureForTest();
 	FString UnknownCardError;

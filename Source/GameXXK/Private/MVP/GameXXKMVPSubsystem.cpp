@@ -816,10 +816,29 @@ bool UGameXXKMVPSubsystem::ApplyCardTooltipFixtureForTest(const FName CardId, FS
 		OutError = TEXT("Card tooltip fixture requires at least one visible hand card.");
 		return false;
 	}
-	FGameXXKCardInstance& FixtureCard = FixtureDeck.Hand[0];
-	FixtureCard.CardId = CardId;
-	FixtureCard.CurrentQuality = Definition->BaseQuality;
-	// Keep the replaced card playable so hover/tooltip acceptance never sees a
+	// If the requested card is already visible elsewhere in the hand, move it
+	// to the first slot instead of overwriting another card and creating a
+	// duplicate. Otherwise replace the first slot.
+	int32 ExistingTargetIndex = INDEX_NONE;
+	for (int32 HandIndex = 0; HandIndex < FixtureDeck.Hand.Num(); ++HandIndex)
+	{
+		if (FixtureDeck.Hand[HandIndex].CardId == CardId)
+		{
+			ExistingTargetIndex = HandIndex;
+			break;
+		}
+	}
+	if (ExistingTargetIndex != INDEX_NONE)
+	{
+		FixtureDeck.Hand.Swap(0, ExistingTargetIndex);
+	}
+	else
+	{
+		FGameXXKCardInstance& FixtureCard = FixtureDeck.Hand[0];
+		FixtureCard.CardId = CardId;
+		FixtureCard.CurrentQuality = Definition->BaseQuality;
+	}
+	// Keep the visible card playable so hover/tooltip acceptance never sees a
 	// disabled-slot fallback just because the copied battle happened to be low
 	// on shared Energy.
 	FixtureDeck.SharedEnergy = FMath::Max(FixtureDeck.SharedEnergy, 5);
