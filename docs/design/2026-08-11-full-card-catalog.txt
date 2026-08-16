@@ -1367,7 +1367,7 @@ ID：Profession.Hunter.ShouHun
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成600%攻击伤害；目标每有1层指定状态，本段攻击倍率+20个百分点，最多计算2147483647层（当所选目标具有标记时）
+基础：所选目标造成600%攻击伤害；目标每有1层指定状态，本段攻击倍率+20个百分点（当所选目标具有标记时）
 重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+35个百分点；所选目标获得1层标记。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=150}; Effect{Type=BonusDamagePercent,Target=SelectedTarget,Magnitude=20,Secondary=2147483647,Condition{Type=TargetHasStatus,Status=Mark,MinStacks=1}}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=35,DrawPerCharge=0,MinCharge=0,Energy=0}
 

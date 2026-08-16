@@ -577,9 +577,14 @@ namespace GameXXKCardDocumentationTest
 		case EGameXXKCardEffectType::DiscardCards: return FString::Printf(TEXT("%s弃置%d张牌"), *Target, Magnitude);
 		case EGameXXKCardEffectType::IgnoreDefense: return FString::Printf(TEXT("%s本段伤害无视%d点防御"), *Target, Magnitude);
 		case EGameXXKCardEffectType::BonusDamagePercent:
-			return SecondaryMagnitude > 0
-				? FString::Printf(TEXT("目标每有1层指定状态，本段攻击倍率+%d个百分点，最多计算%d层"), Magnitude, SecondaryMagnitude)
-				: FString::Printf(TEXT("本段攻击倍率+%d个百分点"), Magnitude);
+			if (SecondaryMagnitude <= 0)
+			{
+				return FString::Printf(TEXT("本段攻击倍率+%d个百分点"), Magnitude);
+			}
+			// MAX_int32 is the uncapped sentinel; never leak it to the player.
+			return SecondaryMagnitude >= MAX_int32
+				? FString::Printf(TEXT("目标每有1层指定状态，本段攻击倍率+%d个百分点"), Magnitude)
+				: FString::Printf(TEXT("目标每有1层指定状态，本段攻击倍率+%d个百分点，最多计算%d层"), Magnitude, SecondaryMagnitude);
 		case EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus: return FString::Printf(TEXT("每消耗1层状态，本段攻击倍率+%d个百分点"), Magnitude);
 		case EGameXXKCardEffectType::BonusDamagePercentPerConsumedArmor: return FString::Printf(TEXT("每消耗1点护甲，本段攻击倍率+%d个百分点"), Magnitude);
 		case EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget: return FString::Printf(TEXT("每名存活友方对%s造成%d%%各自攻击伤害"), *Target, Magnitude);
