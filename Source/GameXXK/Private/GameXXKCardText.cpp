@@ -504,28 +504,43 @@ namespace
 
 	FString DescribeHeavyArrowPayload(const FGameXXKHeavyArrowRule& Rule)
 	{
+		FString Text;
 		switch (Rule.Kind)
 		{
 		case EGameXXKHeavyArrowKind::ExtraAttackPerCharge:
-			return FString::Printf(TEXT("每消耗1层，追加1段%d%%攻击伤害。"), Rule.MagnitudePerCharge);
+			Text = FString::Printf(TEXT("每消耗1层，追加1段%d%%攻击伤害"), Rule.MagnitudePerCharge);
+			break;
 		case EGameXXKHeavyArrowKind::ToxicExplosionPerCharge:
-			return TEXT("每消耗1层，再触发1次毒爆。");
+			Text = TEXT("每消耗1层，再触发1次毒爆");
+			break;
 		case EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge:
 		{
-			FString Text = FString::Printf(
-				TEXT("每消耗1层，本牌首段攻击倍率+%d个百分点并抽%d张牌"),
-				Rule.MagnitudePerCharge,
-				Rule.DrawPerCharge);
+			Text = FString::Printf(
+				TEXT("每消耗1层，本牌首段攻击倍率+%d个百分点"),
+				Rule.MagnitudePerCharge);
+			if (Rule.DrawPerCharge > 0)
+			{
+				Text += FString::Printf(TEXT("并抽%d张牌"), Rule.DrawPerCharge);
+			}
 			if (Rule.MinimumChargeForEnergy > 0)
 			{
 				Text += FString::Printf(TEXT("；消耗至少%d层时回复%d点气力一次"), Rule.MinimumChargeForEnergy, Rule.EnergyGain);
 			}
-			return Text + TEXT("。");
+			break;
 		}
 		case EGameXXKHeavyArrowKind::None:
 		default:
 			return FString();
 		}
+		if (Rule.BonusStatus != EGameXXKCardStatus::None && Rule.BonusStatusStacksPerCharge > 0)
+		{
+			Text += FString::Printf(
+				TEXT("；%s获得%d层%s"),
+				Rule.BonusStatusTarget == EGameXXKCardEffectTarget::CardOwner ? TEXT("出牌者") : TEXT("所选目标"),
+				Rule.BonusStatusStacksPerCharge,
+				*DescribeStatus(Rule.BonusStatus));
+		}
+		return Text + TEXT("。");
 	}
 
 	FString DescribeSpellTaskReward(const EGameXXKHeroSpellTaskReward Reward)
@@ -951,6 +966,30 @@ namespace
 		{
 			Lines.Add(TEXT("重箭：消耗全部蓄力，逐层触发本牌重箭效果。"));
 			Lines.Add(FString::Printf(TEXT("重箭效果：%s"), *DescribeHeavyArrowPayload(EffectiveDefinition.HeavyArrow)));
+		}
+		if (EffectiveDefinition.HunterRule.PriorActiveCardInterval > 0)
+		{
+			const FGameXXKHunterCardRule& Hunter = EffectiveDefinition.HunterRule;
+			TArray<FString> IntervalRewards;
+			if (Hunter.DrawPerCompletedInterval > 0)
+			{
+				IntervalRewards.Add(FString::Printf(TEXT("出牌者抽%d张牌"), Hunter.DrawPerCompletedInterval));
+			}
+			if (Hunter.StatusPerCompletedInterval != EGameXXKCardStatus::None
+				&& Hunter.StatusStacksPerCompletedInterval > 0)
+			{
+				IntervalRewards.Add(FString::Printf(
+					TEXT("出牌者获得%d层%s"),
+					Hunter.StatusStacksPerCompletedInterval,
+					*DescribeStatus(Hunter.StatusPerCompletedInterval)));
+			}
+			if (!IntervalRewards.IsEmpty())
+			{
+				Lines.Add(FString::Printf(
+					TEXT("打出本牌时，本回合此前每打出%d张主动牌，%s。"),
+					Hunter.PriorActiveCardInterval,
+					*FString::Join(IntervalRewards, TEXT("、"))));
+			}
 		}
 
 		const bool bUsesMedicine = AnyDefinitionEffectMatches(EffectiveDefinition, [](const FGameXXKCardEffect& Effect)

@@ -264,12 +264,23 @@ namespace GameXXKCardDocumentationTest
 		case EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge:
 		{
 			FString Text = FString::Printf(
-				TEXT("重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+%d个百分点并抽%d张牌"),
-				Rule.MagnitudePerCharge,
-				Rule.DrawPerCharge);
+				TEXT("重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+%d个百分点"),
+				Rule.MagnitudePerCharge);
+			if (Rule.DrawPerCharge > 0)
+			{
+				Text += FString::Printf(TEXT("并抽%d张牌"), Rule.DrawPerCharge);
+			}
 			if (Rule.MinimumChargeForEnergy > 0)
 			{
 				Text += FString::Printf(TEXT("；消耗至少%d层时回复%d点气力一次"), Rule.MinimumChargeForEnergy, Rule.EnergyGain);
+			}
+			if (Rule.BonusStatus != EGameXXKCardStatus::None && Rule.BonusStatusStacksPerCharge > 0)
+			{
+				Text += FString::Printf(
+					TEXT("；%s获得%d层%s"),
+					Rule.BonusStatusTarget == EGameXXKCardEffectTarget::CardOwner ? TEXT("出牌者") : TEXT("所选目标"),
+					Rule.BonusStatusStacksPerCharge,
+					*DescribeStatus(Rule.BonusStatus));
 			}
 			return Text + TEXT("。");
 		}
@@ -715,6 +726,30 @@ namespace GameXXKCardDocumentationTest
 		}
 		const FString HeavyArrow = DescribeHeavyArrow(EffectiveDefinition.HeavyArrow);
 		if (!HeavyArrow.IsEmpty()) Lines.Add(HeavyArrow);
+		if (EffectiveDefinition.HunterRule.PriorActiveCardInterval > 0)
+		{
+			const FGameXXKHunterCardRule& Hunter = EffectiveDefinition.HunterRule;
+			TArray<FString> IntervalRewards;
+			if (Hunter.DrawPerCompletedInterval > 0)
+			{
+				IntervalRewards.Add(FString::Printf(TEXT("出牌者抽%d张牌"), Hunter.DrawPerCompletedInterval));
+			}
+			if (Hunter.StatusPerCompletedInterval != EGameXXKCardStatus::None
+				&& Hunter.StatusStacksPerCompletedInterval > 0)
+			{
+				IntervalRewards.Add(FString::Printf(
+					TEXT("出牌者获得%d层%s"),
+					Hunter.StatusStacksPerCompletedInterval,
+					*DescribeStatus(Hunter.StatusPerCompletedInterval)));
+			}
+			if (!IntervalRewards.IsEmpty())
+			{
+				Lines.Add(FString::Printf(
+					TEXT("打出本牌时，本回合此前每打出%d张主动牌，%s。"),
+					Hunter.PriorActiveCardInterval,
+					*FString::Join(IntervalRewards, TEXT("、"))));
+			}
+		}
 		const FString SpellReward = DescribeSpellTaskReward(EffectiveDefinition.SpellTaskReward);
 		if (!SpellReward.IsEmpty()) Lines.Add(SpellReward);
 		for (const FGameXXKCardEffect& Effect : EffectiveDefinition.Effects)
