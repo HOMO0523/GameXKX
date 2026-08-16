@@ -367,7 +367,7 @@ ID：Hero.Formation.GuanShiLuoZi
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：所选目标造成80%攻击伤害；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；出牌者抽1张牌；地势：按当前地势触发对应效果。
+基础：所选目标造成80%攻击伤害；触发当前地势收益1次；出牌者抽1张牌；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=80}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1}]
 
 [034] 移阵回响
@@ -377,7 +377,7 @@ ID：Hero.Formation.YiZhenHuiXiang
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：触发当前地势收益2次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；若本回合已实际换场，改为3次；出牌者回复1点气力（仅当前述结果成功时）；地势：按当前地势触发对应效果。
+基础：触发当前地势收益2次；若本回合已实际换场，改为3次；出牌者回复1点气力（仅当前述结果成功时）；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=2,Secondary=3,ResultGroup=Result.TerrainChanged}; Effect{Type=GainEnergy,Target=CardOwner,Magnitude=1,ResultRef=Result.TerrainChanged}]
 
 [035] 连营布势
@@ -397,7 +397,7 @@ ID：Hero.Formation.LiuHeGuiYi
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：触发平原收益1次（敌方目标获得2层灼烧）；触发断崖收益1次（敌方目标获得2层破绽、1层标记）；触发山林收益1次（全体友方恢复4点生命）；触发水岸收益1次（全体友方获得3点内力）；触发村镇收益1次（抽1张牌，全体友方获得4点护甲）；触发洞窟收益1次（全体友方获得8点护甲并登记1次格挡）；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：触发平原收益1次（敌方目标获得2层灼烧）；触发断崖收益1次（敌方目标获得2层破绽、1层标记）；触发山林收益1次（全体友方恢复4点生命）；触发水岸收益1次（全体友方获得3点内力）；触发村镇收益1次（抽1张牌，全体友方获得4点护甲）；触发洞窟收益1次（全体友方获得8点护甲并登记1次格挡）；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=Plain}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=Cliff}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=Forest}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=WaterShore}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=Village}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=Cave}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
 
 
@@ -509,7 +509,7 @@ ID：Npc.YueBai.CanJuanPiZhu
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：出牌者抽3张牌；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌；地势：按当前地势触发对应效果。
+基础：出牌者抽3张牌；触发当前地势收益1次；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=SearchUnfinishedTaskNpcCard,Target=CardOwner,Magnitude=1}]
 
 [047] 月白照夜
@@ -529,7 +529,7 @@ ID：Npc.YueBai.ShanHeCanTu
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：全体友方获得36点护甲；全体友方获得7点内力；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌；地势：按当前地势触发对应效果。
+基础：全体友方获得36点护甲；全体友方获得7点内力；触发当前地势收益1次；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=9}; Effect{Type=GainMana,Target=AllAllies,Magnitude=3}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=SearchUnfinishedTaskNpcCard,Target=CardOwner,Magnitude=1}]
 
 
@@ -563,7 +563,7 @@ ID：Npc.ZhouGuangZu.DiZhiMoTu
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：出牌者抽3张牌；触发当前地势收益2次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：出牌者抽3张牌；触发当前地势收益2次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=2}]
 
 [052] 岩粉封脉
@@ -573,7 +573,7 @@ ID：Npc.ZhouGuangZu.YanFenFengMai
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；所选目标获得5层破绽；所选目标获得13层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；地势：按当前地势触发对应效果。
+基础：触发当前地势收益1次；所选目标获得5层破绽；所选目标获得13层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=3,Status=Vulnerability}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=11,Status=Poison}; Effect{Type=ResolveToxicExplosion,Target=SelectedTarget,Magnitude=1}]
 
 
@@ -1668,7 +1668,7 @@ ID：Profession.FormationMaster.GuanShi
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：切换至平原；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：切换至平原（平原收益：敌方目标获得2层灼烧）；触发当前地势收益1次（切换后平原：敌方目标获得2层灼烧）；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=Plain}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
 
 [152] 定阵
@@ -1678,7 +1678,7 @@ ID：Profession.FormationMaster.DingZhen
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：切换至村镇；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：切换至村镇（村镇收益：抽1张牌，全体友方获得4点护甲）；触发当前地势收益1次（切换后村镇：抽1张牌，全体友方获得4点护甲）；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=Village}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [153] 引水回元
@@ -1688,7 +1688,7 @@ ID：Profession.FormationMaster.YinShuiHuiYuan
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：切换至水岸；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：切换至水岸（水岸收益：全体友方获得3点内力）；触发当前地势收益1次（切换后水岸：全体友方获得3点内力）；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=WaterShore}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [154] 困阵
@@ -1698,7 +1698,7 @@ ID：Profession.FormationMaster.KunZhen
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：切换至洞窟；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：切换至洞窟（洞窟收益：全体友方获得8点护甲并登记1次格挡）；触发当前地势收益1次（切换后洞窟：全体友方获得8点护甲并登记1次格挡）；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=Cave}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [155] 林影迷踪
@@ -1708,7 +1708,7 @@ ID：Profession.FormationMaster.LinYingMiZong
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：切换至山林；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：切换至山林（山林收益：全体友方恢复4点生命）；触发当前地势收益1次（切换后山林：全体友方恢复4点生命）；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=Forest}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [156] 借山为障
@@ -1718,7 +1718,7 @@ ID：Profession.FormationMaster.JieShanWeiZhang
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：切换至断崖；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：切换至断崖（断崖收益：敌方目标获得2层破绽、1层标记）；触发当前地势收益1次（切换后断崖：敌方目标获得2层破绽、1层标记）；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=Cliff}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
 
 [157] 村寨援阵
@@ -1728,7 +1728,7 @@ ID：Profession.FormationMaster.CunZhaiYuanZhen
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体友方恢复24点生命；全体友方获得16点护甲；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：全体友方恢复24点生命；全体友方获得16点护甲；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=Heal,Target=AllAllies,Magnitude=12}; Effect{Type=AddArmor,Target=AllAllies,Magnitude=8}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [158] 回声震杀
@@ -1738,7 +1738,7 @@ ID：Profession.FormationMaster.HuiShengZhenSha
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成480%攻击伤害；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：所选目标造成480%攻击伤害；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=240}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
 
 [159] 易位阵
@@ -1748,7 +1748,7 @@ ID：Profession.FormationMaster.YiWeiZhen
 目标：单体友方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得1层灵动；移除所选目标1层破绽；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：所选目标获得1层灵动；移除所选目标1层破绽；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=1,Status=Agility}; Effect{Type=RemoveStatus,Target=SelectedTarget,Magnitude=1,Status=Vulnerability}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [160] 八门轮转
@@ -1758,7 +1758,7 @@ ID：Profession.FormationMaster.BaMenLunZhuan
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者抽4张牌；出牌者弃置1张牌；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；出牌者接下来1次地势收益翻倍；地势：按当前地势触发对应效果。
+基础：出牌者抽4张牌；出牌者弃置1张牌；触发当前地势收益1次；出牌者接下来1次地势收益翻倍；地势：按当前地势触发对应效果。
 实现签名：TargetMode=Self | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=3}; Effect{Type=DiscardCards,Target=CardOwner,Magnitude=1}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}; Effect{Type=DoubleTerrainBonus,Target=CardOwner,Magnitude=1}]
 
 [161] 镇煞阵
@@ -1768,7 +1768,7 @@ ID：Profession.FormationMaster.ZhenShaZhen
 目标：全体敌方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体敌方造成1280%攻击伤害；全体敌方获得5层破绽；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：全体敌方造成1280%攻击伤害；全体敌方获得5层破绽；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=320}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=3,Status=Vulnerability}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [162] 万象归阵
@@ -1778,7 +1778,7 @@ ID：Profession.FormationMaster.WanXiangGuiZhen
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体友方获得160点护甲；出牌者抽5张牌；出牌者获得3层地形免耗；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：全体友方获得160点护甲；出牌者抽5张牌；出牌者获得3层地形免耗；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=40}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=3}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=NextTerrainCardFree}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [163] 山门封锁
@@ -1788,7 +1788,7 @@ ID：Profession.FormationMaster.ShanMenFengSuo
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得2层破绽；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：所选目标获得2层破绽；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Vulnerability}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
 
 [164] 水镜折光
@@ -1798,7 +1798,7 @@ ID：Profession.FormationMaster.ShuiJingZheGuang
 目标：单体友方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得32点护甲；从所选目标的流血、中毒、灼烧、蚀伤中依次清除至多3层；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：所选目标获得32点护甲；从所选目标的流血、中毒、灼烧、蚀伤中依次清除至多3层；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=16}; Effect{Type=RemoveAnyDamageOverTime,Target=SelectedTarget,Magnitude=2}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [165] 林风拂阵
@@ -1808,7 +1808,7 @@ ID：Profession.FormationMaster.LinFengFuZhen
 目标：单体友方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得1层灵动；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：所选目标获得1层灵动；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=1,Status=Agility}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [166] 阵旗鼓舞
@@ -1818,7 +1818,7 @@ ID：Profession.FormationMaster.ZhenQiGuWu
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：持续效果：下次攻击时，本段攻击倍率+20个百分点；触发1次后失效；触发当前地势收益1次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：持续效果：下次攻击时，本段攻击倍率+20个百分点；触发1次后失效；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ApplyBattleModifier,Target=AllAllies,Magnitude=0,Modifier{Trigger=OnNextAttack,Effect=BonusDamagePercent,Target=PlayedCard,RecipientScope=AllAllies,RecipientTarget=AllAllies,Expiry=AfterTriggerCount,Magnitude=20,Triggers=1,AttackScope=AnyTarget,Persistent=true}}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [167] 地脉借力
@@ -1828,7 +1828,7 @@ ID：Profession.FormationMaster.DiMaiJieLi
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成400%攻击伤害；触发当前地势收益2次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：所选目标造成400%攻击伤害；触发当前地势收益2次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=200}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=2}]
 
 [168] 四象连环
@@ -1838,7 +1838,7 @@ ID：Profession.FormationMaster.SiXiangLianHuan
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体友方获得96点护甲；出牌者抽5张牌；触发当前地势收益2次（平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡）；地势：按当前地势触发对应效果。
+基础：全体友方获得96点护甲；出牌者抽5张牌；触发当前地势收益2次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=24}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=3}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=2}]
 
 

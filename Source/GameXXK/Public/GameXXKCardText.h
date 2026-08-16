@@ -8,6 +8,9 @@ struct GAMEXXK_API FGameXXKCardTooltipContext
 {
 	FString InteractionResult;
 	FString UnavailableReason;
+
+	/** Live battle terrain used to resolve current-terrain benefit text. */
+	EGameXXKCardTerrain CurrentTerrain = EGameXXKCardTerrain::Invalid;
 };
 
 /**

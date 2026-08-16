@@ -114,6 +114,25 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("terrain cards expose the exact concise current-terrain rule"), TerrainBenefitText.Contains(TEXT("地势：按当前地势触发对应效果。")));
 	TestTrue(TEXT("terrain cards retain the data-defined terrain payload"), TerrainBenefitText.Contains(TEXT("触发当前地势收益1次")));
 
+	FGameXXKCardTooltipContext PlainTerrainContext;
+	PlainTerrainContext.CurrentTerrain = EGameXXKCardTerrain::Plain;
+	const FString CurrentTerrainText = GameXXKCardText::DescribeTooltip(*TerrainBenefit, nullptr, PlainTerrainContext);
+	TestTrue(TEXT("live terrain tooltips show only the current terrain benefit"),
+		CurrentTerrainText.Contains(TEXT("当前平原：敌方目标获得2层灼烧")));
+	TestFalse(TEXT("live terrain tooltips do not dump every other terrain"),
+		CurrentTerrainText.Contains(TEXT("山崖=敌方2层破绽")));
+
+	const FGameXXKCardDefinition* PlannedTerrainSwitch = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.FormationMaster.GuanShi"));
+	TestNotNull(TEXT("the planned-terrain switch fixture exists"), PlannedTerrainSwitch);
+	if (PlannedTerrainSwitch)
+	{
+		const FString PlannedTerrainSwitchText = GameXXKCardText::DescribeTooltip(*PlannedTerrainSwitch, nullptr, PlainTerrainContext);
+		TestTrue(TEXT("terrain-switch cards name the destination terrain benefit"),
+			PlannedTerrainSwitchText.Contains(TEXT("切换至平原（平原收益：敌方目标获得2层灼烧）")));
+		TestTrue(TEXT("terrain-switch cards describe the post-switch trigger using the destination terrain"),
+			PlannedTerrainSwitchText.Contains(TEXT("切换后平原：敌方目标获得2层灼烧")));
+	}
+
 	const FGameXXKCardDefinition* BladeLieFeng = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.LieFengZhan"));
 	const FGameXXKCardDefinition* BladeFengHou = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.FengHou"));
 	const FGameXXKCardDefinition* BladeDuanYue = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.DuanYue"));

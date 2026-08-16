@@ -6714,6 +6714,10 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		HandCardDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
 		return;
 	}
+	if (State->CardRun.bHasActiveCardBattle)
+	{
+		Context.CurrentTerrain = State->CardRun.ActiveBattle.Terrain;
+	}
 
 	switch (HoveredCardTooltipSource)
 	{
@@ -6820,8 +6824,8 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		TooltipTitle = Definition->DisplayName;
 		TooltipBody = FText::FromString(
 			TooltipQuality == EGameXXKCardQuality::Invalid
-				? GameXXKCardText::DescribeTooltip(*Definition, nullptr, FGameXXKCardTooltipContext())
-				: GameXXKCardText::DescribeTooltip(*Definition, TooltipQuality, nullptr, FGameXXKCardTooltipContext()));
+				? GameXXKCardText::DescribeTooltip(*Definition, nullptr, Context)
+				: GameXXKCardText::DescribeTooltip(*Definition, TooltipQuality, nullptr, Context));
 	}
 	if (TooltipBody.IsEmpty() && TooltipTitle.IsEmpty())
 	{

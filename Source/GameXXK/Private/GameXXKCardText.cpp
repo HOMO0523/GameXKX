@@ -91,11 +91,6 @@ namespace
 		}
 	}
 
-	FString DescribeAllTerrainBenefits()
-	{
-		return TEXT("平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡");
-	}
-
 	FString DescribeEffectTarget(EGameXXKCardEffectTarget Target)
 	{
 		switch (Target)
@@ -592,7 +587,11 @@ namespace
 			|| ConditionType == EGameXXKCardEffectConditionType::TargetIsEnemy;
 	}
 
-	FString DescribeEffect(const FGameXXKCardEffect& Effect, const bool bAppendCondition = true)
+	FString DescribeEffect(
+		const FGameXXKCardEffect& Effect,
+		const bool bAppendCondition = true,
+		const EGameXXKCardTerrain CurrentTerrain = EGameXXKCardTerrain::Invalid,
+		const EGameXXKCardTerrain PlannedTerrain = EGameXXKCardTerrain::Invalid)
 	{
 		FString Line;
 		if (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier)
@@ -605,23 +604,42 @@ namespace
 		}
 		else if (Effect.Type == EGameXXKCardEffectType::ChangeTerrain)
 		{
-			Line = FString::Printf(TEXT("切换至%s"), *DescribeTerrain(Effect.TerrainOverride));
+			const FString Terrain = DescribeTerrain(Effect.TerrainOverride);
+			const FString Summary = DescribeTerrainBenefitSummary(Effect.TerrainOverride);
+			Line = FString::Printf(TEXT("切换至%s（%s收益：%s）"), *Terrain, *Terrain, *Summary);
 		}
 		else if (Effect.Type == EGameXXKCardEffectType::TriggerTerrainBenefit)
 		{
-			if (Effect.TerrainOverride == EGameXXKCardTerrain::Invalid)
-			{
-				Line = Effect.SecondaryMagnitude > 0
-					? FString::Printf(TEXT("触发当前地势收益%d次（%s）；若本回合已实际换场，改为%d次"), Effect.Magnitude, *DescribeAllTerrainBenefits(), Effect.SecondaryMagnitude)
-					: FString::Printf(TEXT("触发当前地势收益%d次（%s）"), Effect.Magnitude, *DescribeAllTerrainBenefits());
-			}
-			else
+			const EGameXXKCardTerrain BenefitTerrain = Effect.TerrainOverride != EGameXXKCardTerrain::Invalid
+				? Effect.TerrainOverride
+				: (PlannedTerrain != EGameXXKCardTerrain::Invalid ? PlannedTerrain : CurrentTerrain);
+			const FString Summary = DescribeTerrainBenefitSummary(BenefitTerrain);
+			if (Effect.TerrainOverride != EGameXXKCardTerrain::Invalid)
 			{
 				const FString Terrain = DescribeTerrain(Effect.TerrainOverride);
-				const FString Summary = DescribeTerrainBenefitSummary(Effect.TerrainOverride);
 				Line = Effect.SecondaryMagnitude > 0
 					? FString::Printf(TEXT("触发%s收益%d次（%s）；若本回合已实际换场，改为%d次"), *Terrain, Effect.Magnitude, *Summary, Effect.SecondaryMagnitude)
 					: FString::Printf(TEXT("触发%s收益%d次（%s）"), *Terrain, Effect.Magnitude, *Summary);
+			}
+			else if (PlannedTerrain != EGameXXKCardTerrain::Invalid)
+			{
+				const FString Terrain = DescribeTerrain(PlannedTerrain);
+				Line = Effect.SecondaryMagnitude > 0
+					? FString::Printf(TEXT("触发当前地势收益%d次（切换后%s：%s）；若本回合已实际换场，改为%d次"), Effect.Magnitude, *Terrain, *Summary, Effect.SecondaryMagnitude)
+					: FString::Printf(TEXT("触发当前地势收益%d次（切换后%s：%s）"), Effect.Magnitude, *Terrain, *Summary);
+			}
+			else if (CurrentTerrain != EGameXXKCardTerrain::Invalid)
+			{
+				const FString Terrain = DescribeTerrain(CurrentTerrain);
+				Line = Effect.SecondaryMagnitude > 0
+					? FString::Printf(TEXT("触发当前地势收益%d次（当前%s：%s）；若本回合已实际换场，改为%d次"), Effect.Magnitude, *Terrain, *Summary, Effect.SecondaryMagnitude)
+					: FString::Printf(TEXT("触发当前地势收益%d次（当前%s：%s）"), Effect.Magnitude, *Terrain, *Summary);
+			}
+			else
+			{
+				Line = Effect.SecondaryMagnitude > 0
+					? FString::Printf(TEXT("触发当前地势收益%d次；若本回合已实际换场，改为%d次"), Effect.Magnitude, Effect.SecondaryMagnitude)
+					: FString::Printf(TEXT("触发当前地势收益%d次"), Effect.Magnitude);
 			}
 		}
 		else
@@ -1202,7 +1220,9 @@ namespace
 		}
 	}
 
-	FString DescribeEffectsResolved(const FGameXXKCardDefinition& EffectiveDefinition)
+	FString DescribeEffectsResolved(
+		const FGameXXKCardDefinition& EffectiveDefinition,
+		const EGameXXKCardTerrain CurrentTerrain = EGameXXKCardTerrain::Invalid)
 	{
 		if (IsPermanentSorcererCard(EffectiveDefinition))
 		{
@@ -1212,6 +1232,17 @@ namespace
 		{
 			return DescribeBladeEffects(EffectiveDefinition);
 		}
+		EGameXXKCardTerrain PlannedTerrain = EGameXXKCardTerrain::Invalid;
+		for (const FGameXXKCardEffect& Effect : EffectiveDefinition.Effects)
+		{
+			if (Effect.Type == EGameXXKCardEffectType::ChangeTerrain
+				&& Effect.TerrainOverride != EGameXXKCardTerrain::Invalid)
+			{
+				PlannedTerrain = Effect.TerrainOverride;
+				break;
+			}
+		}
+
 		TArray<FString> Lines;
 		const TArray<FGameXXKCardEffect>& Effects = EffectiveDefinition.Effects;
 		for (int32 EffectIndex = 0; EffectIndex < Effects.Num();)
@@ -1245,7 +1276,7 @@ namespace
 			}
 			else
 			{
-				Lines.Add(DescribeEffect(Effects[EffectIndex]));
+				Lines.Add(DescribeEffect(Effects[EffectIndex], true, CurrentTerrain, PlannedTerrain));
 				++EffectIndex;
 			}
 		}
@@ -1349,7 +1380,8 @@ namespace
 	FString DescribeDetailResolved(
 		const FGameXXKCardDefinition& EffectiveDefinition,
 		const EGameXXKCardQuality ResolvedQuality,
-		const FGameXXKCardPlayPreview* Preview)
+		const FGameXXKCardPlayPreview* Preview,
+		const EGameXXKCardTerrain CurrentTerrain = EGameXXKCardTerrain::Invalid)
 	{
 		TArray<FString> Lines;
 		Lines.Add(EffectiveDefinition.DisplayName.ToString());
@@ -1362,7 +1394,7 @@ namespace
 			*FGameXXKCardQualityRules::GetDisplayName(ResolvedQuality).ToString()));
 		Lines.Add(FString::Printf(TEXT("费用：%d 气 / %d 内"), EffectiveDefinition.EnergyCost, EffectiveDefinition.ManaCost));
 		Lines.Add(GameXXKCardText::DescribeTarget(EffectiveDefinition.TargetSpec));
-		Lines.Add(FString::Printf(TEXT("效果：\n%s"), *DescribeEffectsResolved(EffectiveDefinition)));
+		Lines.Add(FString::Printf(TEXT("效果：\n%s"), *DescribeEffectsResolved(EffectiveDefinition, CurrentTerrain)));
 		if (Preview)
 		{
 			Lines.Add(DescribePreviewState(*Preview));
@@ -1454,7 +1486,7 @@ FString GameXXKCardText::DescribeTooltip(
 	const EGameXXKCardQuality ResolvedQuality = ResolveQuality(Definition, Quality);
 	const FGameXXKCardDefinition EffectiveDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(Definition, Quality);
 	TArray<FString> Lines;
-	Lines.Add(DescribeDetailResolved(EffectiveDefinition, ResolvedQuality, Preview));
+	Lines.Add(DescribeDetailResolved(EffectiveDefinition, ResolvedQuality, Preview, Context.CurrentTerrain));
 	if (!Context.InteractionResult.IsEmpty())
 	{
 		Lines.Add(Context.InteractionResult);
