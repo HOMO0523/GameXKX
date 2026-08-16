@@ -75,6 +75,27 @@ namespace
 		}
 	}
 
+	FString DescribeTerrainBenefitSummary(const EGameXXKCardTerrain Terrain)
+	{
+		switch (Terrain)
+		{
+		case EGameXXKCardTerrain::Plain: return TEXT("敌方目标获得2层灼烧");
+		case EGameXXKCardTerrain::Cliff: return TEXT("敌方目标获得2层破绽、1层标记");
+		case EGameXXKCardTerrain::Forest: return TEXT("全体友方恢复4点生命");
+		case EGameXXKCardTerrain::WaterShore: return TEXT("全体友方获得3点内力");
+		case EGameXXKCardTerrain::Ferry: return TEXT("全体友方获得3点内力");
+		case EGameXXKCardTerrain::Village: return TEXT("抽1张牌，全体友方获得4点护甲");
+		case EGameXXKCardTerrain::Cave: return TEXT("全体友方获得8点护甲并登记1次格挡");
+		case EGameXXKCardTerrain::Invalid:
+		default: return FString();
+		}
+	}
+
+	FString DescribeAllTerrainBenefits()
+	{
+		return TEXT("平原=敌方2层灼烧；山崖=敌方2层破绽+1层标记；山林=全队恢复4生命；水岸/渡口=全队+3内力；村寨=抽1张+全队4护甲；洞窟=全队8护甲+1次格挡");
+	}
+
 	FString DescribeEffectTarget(EGameXXKCardEffectTarget Target)
 	{
 		switch (Target)
@@ -347,15 +368,22 @@ namespace
 		case EGameXXKCardEffectType::DiscardCards: return FString::Printf(TEXT("%s弃置%d张牌"), *Target, Magnitude);
 		case EGameXXKCardEffectType::IgnoreDefense: return FString::Printf(TEXT("%s本段伤害无视%d点防御"), *Target, Magnitude);
 		case EGameXXKCardEffectType::BonusDamagePercent:
+		{
+			const FString StatusName = Status == EGameXXKCardStatus::None ? TEXT("指定状态") : DescribeStatus(Status);
 			if (SecondaryMagnitude <= 0)
 			{
 				return FString::Printf(TEXT("本段攻击倍率+%d个百分点"), Magnitude);
 			}
 			// MAX_int32 is the uncapped sentinel; never leak it to the player.
 			return SecondaryMagnitude >= MAX_int32
-				? FString::Printf(TEXT("目标每有1层指定状态，本段攻击倍率+%d个百分点"), Magnitude)
-				: FString::Printf(TEXT("目标每有1层指定状态，本段攻击倍率+%d个百分点，最多计算%d层"), Magnitude, SecondaryMagnitude);
-		case EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus: return FString::Printf(TEXT("每消耗1层状态，本段攻击倍率+%d个百分点"), Magnitude);
+				? FString::Printf(TEXT("目标每有1层%s，本段攻击倍率+%d个百分点"), *StatusName, Magnitude)
+				: FString::Printf(TEXT("目标每有1层%s，本段攻击倍率+%d个百分点，最多计算%d层"), *StatusName, Magnitude, SecondaryMagnitude);
+		}
+		case EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus:
+		{
+			const FString StatusName = Status == EGameXXKCardStatus::None ? TEXT("状态") : DescribeStatus(Status);
+			return FString::Printf(TEXT("每消耗1层%s，本段攻击倍率+%d个百分点"), *StatusName, Magnitude);
+		}
 		case EGameXXKCardEffectType::BonusDamagePercentPerConsumedArmor: return FString::Printf(TEXT("每消耗1点护甲，本段攻击倍率+%d个百分点"), Magnitude);
 		case EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget: return FString::Printf(TEXT("每名存活友方对%s造成%d%%各自攻击伤害"), *Target, Magnitude);
 		case EGameXXKCardEffectType::ApplyGuardLink: return FString::Printf(TEXT("%s建立守护关系"), *Target);
@@ -581,15 +609,28 @@ namespace
 		}
 		else if (Effect.Type == EGameXXKCardEffectType::TriggerTerrainBenefit)
 		{
-			const FString Terrain = Effect.TerrainOverride == EGameXXKCardTerrain::Invalid
-				? TEXT("当前地势")
-				: DescribeTerrain(Effect.TerrainOverride);
-			Line = Effect.SecondaryMagnitude > 0
-				? FString::Printf(TEXT("触发%s收益%d次；若本回合已实际换场，改为%d次"), *Terrain, Effect.Magnitude, Effect.SecondaryMagnitude)
-				: FString::Printf(TEXT("触发%s收益%d次"), *Terrain, Effect.Magnitude);
+			if (Effect.TerrainOverride == EGameXXKCardTerrain::Invalid)
+			{
+				Line = Effect.SecondaryMagnitude > 0
+					? FString::Printf(TEXT("触发当前地势收益%d次（%s）；若本回合已实际换场，改为%d次"), Effect.Magnitude, *DescribeAllTerrainBenefits(), Effect.SecondaryMagnitude)
+					: FString::Printf(TEXT("触发当前地势收益%d次（%s）"), Effect.Magnitude, *DescribeAllTerrainBenefits());
+			}
+			else
+			{
+				const FString Terrain = DescribeTerrain(Effect.TerrainOverride);
+				const FString Summary = DescribeTerrainBenefitSummary(Effect.TerrainOverride);
+				Line = Effect.SecondaryMagnitude > 0
+					? FString::Printf(TEXT("触发%s收益%d次（%s）；若本回合已实际换场，改为%d次"), *Terrain, Effect.Magnitude, *Summary, Effect.SecondaryMagnitude)
+					: FString::Printf(TEXT("触发%s收益%d次（%s）"), *Terrain, Effect.Magnitude, *Summary);
+			}
 		}
 		else
 		{
+			const EGameXXKCardStatus DescribedStatus = Effect.Status != EGameXXKCardStatus::None
+				? Effect.Status
+				: (Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetHasStatus
+					? Effect.Condition.Status
+					: Effect.Status);
 			Line = DescribeEffectType(
 				Effect.Type,
 				Effect.Target,
@@ -597,11 +638,16 @@ namespace
 				Effect.Magnitude,
 				Effect.SecondaryMagnitude,
 				Effect.HitCount,
-				Effect.Status);
+				DescribedStatus);
 		}
 
+		const bool bStatusAlreadyNamedInline = Effect.Type == EGameXXKCardEffectType::BonusDamagePercent
+			&& Effect.Condition.Type == EGameXXKCardEffectConditionType::TargetHasStatus
+			&& !Effect.Condition.bConsumeStatus
+			&& !Effect.Condition.bScaleMagnitudeByConsumedStacks
+			&& !Effect.Condition.bConsumeOwnerArmor;
 		const FString Condition = DescribeCondition(Effect.Condition);
-		if (bAppendCondition && !Condition.IsEmpty())
+		if (bAppendCondition && !Condition.IsEmpty() && !bStatusAlreadyNamedInline)
 		{
 			Line += FString::Printf(TEXT("（%s）"), *Condition);
 		}
