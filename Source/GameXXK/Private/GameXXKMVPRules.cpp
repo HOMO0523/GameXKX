@@ -1306,13 +1306,16 @@ namespace GameXXKMVP
 			}
 		}
 
+		const int32 BattleSeed = NodeId == INDEX_NONE
+			? State.RouteSeed ^ 0x51F15EED
+			: FGameXXKCardBattleAdapter::MixBattleSeed(State.RouteSeed, NodeId);
 		FString CardBattleError;
 		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &CardBattleError)
 			|| !FGameXXKCardBattleAdapter::BeginCardBattle(
 				State,
 				NodeKind,
 				ResolveCardBattleTerrain(NodeKind, NodeId),
-				State.RouteSeed ^ (NodeId == INDEX_NONE ? 0x51F15EED : NodeId * 486187739),
+				BattleSeed,
 				&CardBattleError))
 		{
 			ClearActiveBattle(State);

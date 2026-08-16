@@ -1982,6 +1982,12 @@ namespace
 	}
 }
 
+int32 FGameXXKCardBattleAdapter::MixBattleSeed(const int32 BaseSeed, const int32 NodeId)
+{
+	constexpr int64 BattleNodeSeedMultiplier = 486187739;
+	return BaseSeed ^ static_cast<int32>(static_cast<int64>(NodeId) * BattleNodeSeedMultiplier);
+}
+
 uint32 FGameXXKCardBattleAdapter::MakeStableEnemyIntentTargetSeed(const FName SourceUnitId, const int32 RoundNumber)
 {
 	// Stable lexical source + round mix, then a Murmur-style finalizer so the
@@ -2198,7 +2204,7 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	FGameXXKCardBattleRuntime NewRuntime;
 	const int32 EffectiveSeed = InitialRandomSeed != 0
 		? InitialRandomSeed
-		: Run.RouteRandomSeed ^ (NewState.ActiveBattleNodeId * 486187739);
+		: FGameXXKCardBattleAdapter::MixBattleSeed(Run.RouteRandomSeed, NewState.ActiveBattleNodeId);
 	if (!GameXXKCardRules::InitializeCardBattleRuntime(NewRuntime, Instances, Units, Terrain, EffectiveSeed, OutError))
 	{
 		return false;

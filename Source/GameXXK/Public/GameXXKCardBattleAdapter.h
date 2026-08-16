@@ -13,6 +13,9 @@ public:
 	/** Process-independent seed for deterministic random enemy target selection. */
 	static uint32 MakeStableEnemyIntentTargetSeed(FName SourceUnitId, int32 RoundNumber);
 
+	/** Mixes a route/run seed with a battle node id. Uses 64-bit multiplication then int32 truncation to avoid signed-overflow UB while preserving the previous wrapped result for every node id. */
+	static int32 MixBattleSeed(int32 BaseSeed, int32 NodeId);
+
 	/** Migrates or initializes persistent hero loadout and card-run fields without resetting existing legacy state. */
 	static bool EnsureCardRunInitialized(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);
 
