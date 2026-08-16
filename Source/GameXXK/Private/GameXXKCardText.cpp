@@ -125,11 +125,15 @@ namespace
 		{
 		case EGameXXKCardEffectConditionType::None: break;
 		case EGameXXKCardEffectConditionType::TargetHasStatus:
-			Gate = FString::Printf(TEXT("所选目标具有%s%s层"), *DescribeStatus(Condition.Status), Condition.MinimumStatusStacks > 1 ? *FString::Printf(TEXT("至少%d"), Condition.MinimumStatusStacks) : TEXT(""));
+			Gate = Condition.MinimumStatusStacks > 1
+				? FString::Printf(TEXT("所选目标具有至少%d层%s"), Condition.MinimumStatusStacks, *DescribeStatus(Condition.Status))
+				: FString::Printf(TEXT("所选目标具有%s"), *DescribeStatus(Condition.Status));
 			break;
 		case EGameXXKCardEffectConditionType::TargetHasAnyDamageOverTime: Gate = TEXT("所选目标具有流血、中毒、灼烧或蚀伤"); break;
 		case EGameXXKCardEffectConditionType::OwnerHasStatus:
-			Gate = FString::Printf(TEXT("出牌者具有%s%s层"), *DescribeStatus(Condition.Status), Condition.MinimumStatusStacks > 1 ? *FString::Printf(TEXT("至少%d"), Condition.MinimumStatusStacks) : TEXT(""));
+			Gate = Condition.MinimumStatusStacks > 1
+				? FString::Printf(TEXT("出牌者具有至少%d层%s"), Condition.MinimumStatusStacks, *DescribeStatus(Condition.Status))
+				: FString::Printf(TEXT("出牌者具有%s"), *DescribeStatus(Condition.Status));
 			break;
 		case EGameXXKCardEffectConditionType::OwnerArmorAtLeast: Gate = FString::Printf(TEXT("出牌者护甲不少于%d"), Condition.MinimumArmor); break;
 		case EGameXXKCardEffectConditionType::OwnerHealthBelowPercent: Gate = FString::Printf(TEXT("出牌者生命低于%.0f%%"), Condition.HealthPercentThreshold); break;
@@ -212,6 +216,102 @@ namespace
 		}
 	}
 
+	FString DescribeMedicineTargetOutcome(
+		const FGameXXKCardEffect& Effect,
+		const EGameXXKCardEffectConditionType Gate)
+	{
+		const FString Heal = FString::Printf(TEXT("恢复%d+药效层数生命"), Effect.Magnitude);
+		const FString Lose = FString::Printf(TEXT("失去%d+药效层数生命"), Effect.Magnitude);
+		switch (Effect.Target)
+		{
+		case EGameXXKCardEffectTarget::AllAllies:
+			return FString::Printf(TEXT("全体友方%s"), *Heal);
+		case EGameXXKCardEffectTarget::AllOtherAllies:
+			return FString::Printf(TEXT("其他全体友方%s"), *Heal);
+		case EGameXXKCardEffectTarget::SelectedTarget:
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsEnemy)
+			{
+				return FString::Printf(TEXT("所选目标%s"), *Lose);
+			}
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsAlly)
+			{
+				return FString::Printf(TEXT("所选目标%s"), *Heal);
+			}
+			return FString::Printf(TEXT("若所选目标为友方，%s；若为敌方，%s"), *Heal, *Lose);
+		case EGameXXKCardEffectTarget::SelectedTargetSide:
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsEnemy)
+			{
+				return FString::Printf(TEXT("所选目标同阵营全体%s"), *Lose);
+			}
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsAlly)
+			{
+				return FString::Printf(TEXT("所选目标同阵营全体%s"), *Heal);
+			}
+			return FString::Printf(TEXT("所选目标同阵营全体：若为友方，%s；若为敌方，%s"), *Heal, *Lose);
+		default:
+		{
+			const FString Target = DescribeEffectTarget(Effect.Target);
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsEnemy)
+			{
+				return FString::Printf(TEXT("%s%s"), *Target, *Lose);
+			}
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsAlly)
+			{
+				return FString::Printf(TEXT("%s%s"), *Target, *Heal);
+			}
+			return FString::Printf(TEXT("若%s为友方，%s；若为敌方，%s"), *Target, *Heal, *Lose);
+		}
+		}
+	}
+
+	FString DescribeFlatTargetOutcome(
+		const FGameXXKCardEffect& Effect,
+		const EGameXXKCardEffectConditionType Gate)
+	{
+		const FString Heal = FString::Printf(TEXT("恢复%d点生命"), Effect.Magnitude);
+		const FString Lose = FString::Printf(TEXT("失去%d点生命"), Effect.Magnitude);
+		switch (Effect.Target)
+		{
+		case EGameXXKCardEffectTarget::AllAllies:
+			return FString::Printf(TEXT("全体友方%s"), *Heal);
+		case EGameXXKCardEffectTarget::AllOtherAllies:
+			return FString::Printf(TEXT("其他全体友方%s"), *Heal);
+		case EGameXXKCardEffectTarget::SelectedTarget:
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsEnemy)
+			{
+				return FString::Printf(TEXT("所选目标%s"), *Lose);
+			}
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsAlly)
+			{
+				return FString::Printf(TEXT("所选目标%s"), *Heal);
+			}
+			return FString::Printf(TEXT("若所选目标为友方，%s；若为敌方，%s"), *Heal, *Lose);
+		case EGameXXKCardEffectTarget::SelectedTargetSide:
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsEnemy)
+			{
+				return FString::Printf(TEXT("所选目标同阵营全体%s"), *Lose);
+			}
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsAlly)
+			{
+				return FString::Printf(TEXT("所选目标同阵营全体%s"), *Heal);
+			}
+			return FString::Printf(TEXT("所选目标同阵营全体：若为友方，%s；若为敌方，%s"), *Heal, *Lose);
+		default:
+		{
+			const FString Target = DescribeEffectTarget(Effect.Target);
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsEnemy)
+			{
+				return FString::Printf(TEXT("%s%s"), *Target, *Lose);
+			}
+			if (Gate == EGameXXKCardEffectConditionType::TargetIsAlly)
+			{
+				return FString::Printf(TEXT("%s%s"), *Target, *Heal);
+			}
+			return FString::Printf(TEXT("若%s为友方，%s；若为敌方，%s"), *Target, *Heal, *Lose);
+		}
+		}
+	}
+
 	FString DescribeEffectType(
 		const EGameXXKCardEffectType Type,
 		const EGameXXKCardEffectTarget TargetValue,
@@ -261,8 +361,14 @@ namespace
 		case EGameXXKCardEffectType::ApplyGuardLink: return FString::Printf(TEXT("%s建立守护关系"), *Target);
 		case EGameXXKCardEffectType::ApplyBattleModifier: return FString::Printf(TEXT("%s获得持续效果"), *Target);
 		case EGameXXKCardEffectType::ModifyHealingPercent: return FString::Printf(TEXT("%s治疗量调整%d%%"), *Target, Magnitude);
-		case EGameXXKCardEffectType::ModifyEnergyCost: return FString::Printf(TEXT("%s气力消耗%+d"), *Target, Magnitude);
-		case EGameXXKCardEffectType::RevealEnemyIntent: return FString::Printf(TEXT("%s揭示%d个敌方意图"), *Target, Magnitude);
+		case EGameXXKCardEffectType::ModifyEnergyCost:
+			return Magnitude <= -99
+				? FString::Printf(TEXT("%s气力消耗改为0"), *Target)
+				: FString::Printf(TEXT("%s气力消耗%+d"), *Target, Magnitude);
+		case EGameXXKCardEffectType::RevealEnemyIntent:
+			return Magnitude >= 99
+				? FString::Printf(TEXT("%s揭示全部敌方意图"), *Target)
+				: FString::Printf(TEXT("%s揭示%d个敌方意图"), *Target, Magnitude);
 		case EGameXXKCardEffectType::DoubleTerrainBonus: return FString::Printf(TEXT("%s接下来%d次地势收益翻倍"), *Target, Magnitude);
 		case EGameXXKCardEffectType::RedirectSingleTargetEnemyAttacks: return FString::Printf(TEXT("%s转移%d次敌方单体攻击"), *Target, Magnitude);
 		case EGameXXKCardEffectType::RegisterReaction: return FString::Printf(TEXT("%s登记%d次%s"), *Target, Magnitude, *DescribeStatus(Status));
@@ -270,8 +376,24 @@ namespace
 		case EGameXXKCardEffectType::Cleanse: return FString::Printf(TEXT("清除%s的全部流血、中毒和灼烧"), *Target);
 		case EGameXXKCardEffectType::TriggerHighestDamageOverTime: return FString::Printf(TEXT("触发%s层数最高的流血、中毒或灼烧1次，并减少对应状态1层"), *Target);
 		case EGameXXKCardEffectType::ResolveToxicExplosion: return FString::Printf(TEXT("对%s毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害"), *Target);
-		case EGameXXKCardEffectType::HealOrReverseWithMedicine: return FString::Printf(TEXT("消耗出牌者全部药效；若%s为友方，恢复%d+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去%d+药效层数生命"), *Target, Magnitude, Magnitude);
-		case EGameXXKCardEffectType::GainMedicineFromPartyHealthLoss: return FString::Printf(TEXT("本牌每实际扣血1名友方，%s获得%d层药效；本次获得至少%d层时再获得1层气势"), *Target, Magnitude, SecondaryMagnitude);
+		case EGameXXKCardEffectType::HealOrReverseWithMedicine:
+		{
+			FGameXXKCardEffect EffectForMedicine;
+			EffectForMedicine.Type = EGameXXKCardEffectType::HealOrReverseWithMedicine;
+			EffectForMedicine.Target = TargetValue;
+			EffectForMedicine.Magnitude = Magnitude;
+			return FString::Printf(TEXT("消耗出牌者全部药效；%s"),
+				*DescribeMedicineTargetOutcome(EffectForMedicine, EGameXXKCardEffectConditionType::None));
+		}
+		case EGameXXKCardEffectType::GainMedicineFromPartyHealthLoss:
+		{
+			FString Text = FString::Printf(TEXT("本牌每实际扣血1名友方，%s获得%d层药效"), *Target, Magnitude);
+			if (SecondaryMagnitude > 0)
+			{
+				Text += FString::Printf(TEXT("；本次获得至少%d层时再获得1层气势"), SecondaryMagnitude);
+			}
+			return Text;
+		}
 		case EGameXXKCardEffectType::DamagePercentAttackPlusArmor: return FString::Printf(TEXT("由%s对%s造成%d%%攻击+当前护甲的伤害，不消耗护甲"), *Source, *Target, Magnitude);
 		case EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor: return FString::Printf(TEXT("消耗%s全部护甲，对%s造成（%d%%+每点护甲%d个百分点）攻击伤害"), *Source, *Target, Magnitude, SecondaryMagnitude);
 		case EGameXXKCardEffectType::TriggerTerrainBenefit: return FString::Printf(TEXT("触发当前地势收益%d次"), Magnitude);
@@ -283,12 +405,22 @@ namespace
 		case EGameXXKCardEffectType::LightningPerTargetStatusSnapshot: return FString::Printf(TEXT("按%s当前%s层数，逐层造成%d%%攻击伤害"), *Target, *DescribeStatus(Status), Magnitude);
 		case EGameXXKCardEffectType::ReplayTriggeredCardBase: return TEXT("重放本次触发牌的基础效果");
 		case EGameXXKCardEffectType::ReplaySourceCardBase: return TEXT("重放本牌的基础效果");
-		case EGameXXKCardEffectType::ModifyManaCost: return FString::Printf(TEXT("%s内力消耗%+d"), *Target, Magnitude);
+		case EGameXXKCardEffectType::ModifyManaCost:
+			return Magnitude <= -99
+				? FString::Printf(TEXT("%s内力消耗改为0"), *Target)
+				: FString::Printf(TEXT("%s内力消耗%+d"), *Target, Magnitude);
 		case EGameXXKCardEffectType::WidenNextActiveSingleTarget: return FString::Printf(TEXT("%s的单体效果扩展为目标所在阵营全体"), *Target);
 		case EGameXXKCardEffectType::PreserveNextReactionUse: return TEXT("全队下一次反击或格挡不消耗次数");
 		case EGameXXKCardEffectType::RetainArmorNextRound: return FString::Printf(TEXT("%s下回合保留当前护甲"), *Target);
 		case EGameXXKCardEffectType::CleanseFriendlyDamageOverTime: return FString::Printf(TEXT("若%s为友方，清除其全部流血、中毒和灼烧"), *Target);
-		case EGameXXKCardEffectType::HealOrReverseFlat: return FString::Printf(TEXT("若%s为友方，恢复%d点生命；若为敌方，失去%d点生命"), *Target, Magnitude, Magnitude);
+		case EGameXXKCardEffectType::HealOrReverseFlat:
+		{
+			FGameXXKCardEffect EffectForFlat;
+			EffectForFlat.Type = EGameXXKCardEffectType::HealOrReverseFlat;
+			EffectForFlat.Target = TargetValue;
+			EffectForFlat.Magnitude = Magnitude;
+			return DescribeFlatTargetOutcome(EffectForFlat, EGameXXKCardEffectConditionType::None);
+		}
 		case EGameXXKCardEffectType::ChangeTerrain: return TEXT("切换地势");
 		case EGameXXKCardEffectType::DamagePercentAttackPerTargetStatus:
 			return FString::Printf(
@@ -426,7 +558,13 @@ namespace
 		return TEXT("点击后立即施放");
 	}
 
-	FString DescribeEffect(const FGameXXKCardEffect& Effect)
+	bool IsTargetSideCondition(const EGameXXKCardEffectConditionType ConditionType)
+	{
+		return ConditionType == EGameXXKCardEffectConditionType::TargetIsAlly
+			|| ConditionType == EGameXXKCardEffectConditionType::TargetIsEnemy;
+	}
+
+	FString DescribeEffect(const FGameXXKCardEffect& Effect, const bool bAppendCondition = true)
 	{
 		FString Line;
 		if (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier)
@@ -463,7 +601,7 @@ namespace
 		}
 
 		const FString Condition = DescribeCondition(Effect.Condition);
-		if (!Condition.IsEmpty())
+		if (bAppendCondition && !Condition.IsEmpty())
 		{
 			Line += FString::Printf(TEXT("（%s）"), *Condition);
 		}
@@ -937,6 +1075,87 @@ namespace
 		return FString::Join(Lines, TEXT("\n"));
 	}
 
+	FString DescribeTargetSideEffect(
+		const FGameXXKCardEffect& Effect,
+		const EGameXXKCardEffectConditionType Gate)
+	{
+		FString Text;
+		if (Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine)
+		{
+			Text = DescribeMedicineTargetOutcome(Effect, Gate);
+		}
+		else if (Effect.Type == EGameXXKCardEffectType::HealOrReverseFlat)
+		{
+			Text = DescribeFlatTargetOutcome(Effect, Gate);
+		}
+		else
+		{
+			Text = DescribeEffect(Effect, false);
+		}
+
+		if (Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine
+			|| Effect.Type == EGameXXKCardEffectType::HealOrReverseFlat)
+		{
+			if (!Effect.ResultRef.IsNone())
+			{
+				Text += TEXT("（仅当前述结果成功时）");
+			}
+			if (!Effect.ConsumedStackResultRef.IsNone())
+			{
+				Text += Effect.Type == EGameXXKCardEffectType::GainEnergy && Effect.SecondaryMagnitude > 0
+					? FString::Printf(TEXT("（前述消耗至少%d层时，仅结算一次）"), Effect.SecondaryMagnitude)
+					: TEXT("（仅当前述消耗成功时）");
+			}
+		}
+		return Text;
+	}
+
+	FString DescribeHealerFormula(const EGameXXKHealerFormulaKind Kind)
+	{
+		switch (Kind)
+		{
+		case EGameXXKHealerFormulaKind::AnyHealthChangeMedicine:
+			return TEXT("任一敌我单位实际生命变化时，药师获得等量层数药效（每笔伤害或治疗各计1层）。");
+		case EGameXXKHealerFormulaKind::HighEnergyAndSixMedicine:
+			return TEXT("每回合首次打出当前气力消耗至少2的牌时，全体友方失去1点生命（最低保留1点）再恢复2点；每回合累计获得至少6层药效时，回复1点气力（每回合1次；敌方回合触发则下回合开始到账）。");
+		case EGameXXKHealerFormulaKind::FirstHealingMedicine:
+			return TEXT("每回合首次完成实际治疗或药效反向伤害时，药师获得2层药效。");
+		case EGameXXKHealerFormulaKind::ThreeCleansedDotMedicine:
+			return TEXT("友方被清除的流血、中毒、灼烧每累计3层，药师获得1层药效（余数保留）。");
+		case EGameXXKHealerFormulaKind::LowHealthCrossMedicine:
+			return TEXT("每回合首次有友方从生命不低于35%降到低于35%时，药师获得3层药效。");
+		case EGameXXKHealerFormulaKind::ThreeEffectiveHealsDraw:
+			return TEXT("每回合每完成3次有效友方治疗，抽1张牌（每回合最多2张）。");
+		case EGameXXKHealerFormulaKind::BleedRemovedPartyArmor:
+			return TEXT("每回合首次清除友方流血时，全体友方获得2点护甲。");
+		case EGameXXKHealerFormulaKind::LargeHealingArmorOrVulnerability:
+			return TEXT("每回合首次完成至少10点治疗或药效反向伤害时：对友方目标额外获得4点护甲，对敌方目标施加1层破绽。");
+		case EGameXXKHealerFormulaKind::LowHealthCrossAgility:
+			return TEXT("每回合首次有友方从生命不低于30%降到低于30%时，该友方获得2层灵动。");
+		case EGameXXKHealerFormulaKind::ThreeUnitHealthChangeDrawMana:
+			return TEXT("同一次结算中至少3个不同单位实际生命变化时，抽1张牌，全体友方获得2点内力（每回合1次）。");
+		case EGameXXKHealerFormulaKind::PoisonDamageMedicine:
+			return TEXT("每笔中毒伤害生效时，药师获得1层药效。");
+		case EGameXXKHealerFormulaKind::BleedPoisonMark:
+			return TEXT("每回合每名同时具有流血和中毒的敌方，获得1层标记。");
+		case EGameXXKHealerFormulaKind::GroupPoisonMedicineDraw:
+			return TEXT("每回合首次使至少2名敌方获得中毒时，药师获得2层药效并抽1张牌。");
+		case EGameXXKHealerFormulaKind::DualDotExplosionMedicine:
+			return TEXT("每次毒爆包含至少2类持续伤害时，药师获得2层药效。");
+		case EGameXXKHealerFormulaKind::TwoBleedPacketsMedicine:
+			return TEXT("每2笔流血伤害生效，药师获得1层药效（余数保留）。");
+		case EGameXXKHealerFormulaKind::GroupDirectDamageEnergy:
+			return TEXT("每回合首次直接攻击命中至少2名敌方时，回复1点气力。");
+		case EGameXXKHealerFormulaKind::PoisonedVulnerabilityMedicineDraw:
+			return TEXT("每回合首次给已具有中毒的敌方施加破绽时，药师获得1层药效并抽1张牌。");
+		case EGameXXKHealerFormulaKind::TripleDotExplosionMomentumDraw:
+			return TEXT("每回合首次毒爆包含流血、中毒、灼烧3类时，药师获得1层气势并抽1张牌。");
+		case EGameXXKHealerFormulaKind::None:
+		default:
+			return FString();
+		}
+	}
+
 	FString DescribeEffectsResolved(const FGameXXKCardDefinition& EffectiveDefinition)
 	{
 		if (IsPermanentSorcererCard(EffectiveDefinition))
@@ -948,9 +1167,41 @@ namespace
 			return DescribeBladeEffects(EffectiveDefinition);
 		}
 		TArray<FString> Lines;
-		for (const FGameXXKCardEffect& Effect : EffectiveDefinition.Effects)
+		const TArray<FGameXXKCardEffect>& Effects = EffectiveDefinition.Effects;
+		for (int32 EffectIndex = 0; EffectIndex < Effects.Num();)
 		{
-			Lines.Add(DescribeEffect(Effect));
+			const EGameXXKCardEffectConditionType Gate = Effects[EffectIndex].Condition.Type;
+			if (IsTargetSideCondition(Gate))
+			{
+				int32 GroupEnd = EffectIndex;
+				bool bConsumesMedicine = false;
+				TArray<FString> BranchParts;
+				while (GroupEnd < Effects.Num()
+					&& Effects[GroupEnd].Condition.Type == Gate)
+				{
+					const FGameXXKCardEffect& Effect = Effects[GroupEnd];
+					bConsumesMedicine = bConsumesMedicine
+						|| Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine;
+					BranchParts.Add(DescribeTargetSideEffect(Effect, Gate));
+					++GroupEnd;
+				}
+
+				FString Branch = Gate == EGameXXKCardEffectConditionType::TargetIsAlly
+					? TEXT("若目标是友方：")
+					: TEXT("若目标是敌方：");
+				if (bConsumesMedicine)
+				{
+					Branch += TEXT("消耗出牌者全部药效；");
+				}
+				Branch += FString::Join(BranchParts, TEXT("；"));
+				Lines.Add(Branch);
+				EffectIndex = GroupEnd;
+			}
+			else
+			{
+				Lines.Add(DescribeEffect(Effects[EffectIndex]));
+				++EffectIndex;
+			}
 		}
 
 		if (EffectiveDefinition.bExhaustOnPlay)
@@ -997,6 +1248,13 @@ namespace
 			}
 		}
 
+		if (EffectiveDefinition.HealerRule.FormulaKind != EGameXXKHealerFormulaKind::None)
+		{
+			Lines.Add(FString::Printf(
+				TEXT("药方：首次打出本牌时气力+1并激活，本局持续；%s"),
+				*DescribeHealerFormula(EffectiveDefinition.HealerRule.FormulaKind)));
+		}
+
 		const bool bUsesMedicine = AnyDefinitionEffectMatches(EffectiveDefinition, [](const FGameXXKCardEffect& Effect)
 		{
 			return Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine
@@ -1005,7 +1263,7 @@ namespace
 		});
 		if (bUsesMedicine)
 		{
-			Lines.Add(TEXT("药效：下一次治疗或治疗反转每层＋1；结算时全部消耗。"));
+			Lines.Add(TEXT("药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。"));
 		}
 
 		const bool bUsesCounter = AnyDefinitionEffectMatches(EffectiveDefinition, [](const FGameXXKCardEffect& Effect)

@@ -43,8 +43,7 @@ ID：Hero.Generic.FengShenBu
 目标：单体友方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：所选目标获得2层灵动；出牌者抽2张牌；出牌者弃置1张牌
-消耗：打出后进入本局消耗区。
+基础：所选目标获得2层灵动；出牌者抽2张牌；出牌者弃置1张牌；消耗：打出后进入本局消耗区。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Agility}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=DiscardCards,Target=CardOwner,Magnitude=1}] | Exhaust=true
 
 [004] 碎岩击
@@ -74,7 +73,7 @@ ID：Hero.Generic.HengJianShouShi
 目标：单体友方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：所选目标获得2层标记；所选目标获得16点护甲；所选目标登记1次格挡
+基础：所选目标获得2层标记；所选目标获得16点护甲；所选目标登记1次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Mark}; Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=16}; Effect{Type=RegisterReaction,Target=SelectedTarget,Magnitude=1,Status=Block}]
 
 [007] 凝神吐纳
@@ -84,8 +83,7 @@ ID：Hero.Generic.NingShenTuNa
 目标：自身（直接施放）
 获取：初始解锁
 完整效果：
-基础：出牌者获得2层气势；出牌者获得10点内力
-消耗：打出后进入本局消耗区。
+基础：出牌者获得2层气势；出牌者获得10点内力；消耗：打出后进入本局消耗区。
 实现签名：TargetMode=Self | Base=[Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=2,Status=Momentum}; Effect{Type=GainMana,Target=CardOwner,Magnitude=10}] | Exhaust=true
 
 [008] 观隙
@@ -95,8 +93,7 @@ ID：Hero.Generic.GuanXi
 目标：无需选择（直接施放）
 获取：初始解锁
 完整效果：
-基础：出牌者抽3张牌；出牌者弃置1张牌
-消耗：打出后进入本局消耗区。
+基础：出牌者抽3张牌；出牌者弃置1张牌；消耗：打出后进入本局消耗区。
 实现签名：TargetMode=None | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=3}; Effect{Type=DiscardCards,Target=CardOwner,Magnitude=1}] | Exhaust=true
 
 [009] 破云一闪
@@ -106,7 +103,7 @@ ID：Hero.Generic.PoYunYiShan
 目标：单体敌方（点击后选择目标）
 获取：主角 Lv.5 解锁
 完整效果：
-基础：所选目标造成160%攻击伤害；所选目标造成100%攻击伤害（当出牌者具有灵动时；消耗至多1层灵动；数值按实际消耗层数结算）；出牌者抽1张牌（仅当前述消耗成功时）
+基础：所选目标造成160%攻击伤害；所选目标造成100%攻击伤害（当出牌者具有灵动；消耗至多1层灵动；数值按消耗层数结算）；出牌者抽1张牌（仅当前述消耗成功时）
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=160}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=100,Condition{Type=OwnerHasStatus,Status=Agility,MinStacks=1,ConsumeStatus<=1,ScaleByConsumedStatus=true},ConsumptionGroup=Result.PoYun.Agility}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1,ConsumedRef=Result.PoYun.Agility}]
 
 [010] 行气回环
@@ -116,8 +113,7 @@ ID：Hero.Generic.XingQiHuiHuan
 目标：无需选择（直接施放）
 获取：主角 Lv.10 解锁
 完整效果：
-基础：出牌者抽2张牌；出牌者回复1点气力
-消耗：打出后进入本局消耗区。
+基础：出牌者抽2张牌；出牌者回复1点气力；消耗：打出后进入本局消耗区。
 实现签名：TargetMode=None | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=GainEnergy,Target=CardOwner,Magnitude=1}] | Exhaust=true
 
 [011] 剑意贯虹
@@ -127,8 +123,7 @@ ID：Hero.Generic.JianYiGuanHong
 目标：单体敌方（点击后选择目标）
 获取：主角 Lv.15 解锁
 完整效果：
-基础：所选目标造成260%攻击伤害；每消耗1层状态，本段攻击倍率+20个百分点（当出牌者具有气势时；消耗全部气势；数值按实际消耗层数结算）；出牌者回复1点气力（前述消耗至少3层时，仅结算一次）
-结算阈值：同次消耗达到至少3层时，回复1点气力一次。
+基础：所选目标造成260%攻击伤害；每消耗1层状态，本段攻击倍率+20个百分点（当出牌者具有气势；消耗全部气势；数值按消耗层数结算）；出牌者回复1点气力（前述消耗至少3层时，仅结算一次）
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=260}; Effect{Type=BonusDamagePercentPerConsumedStatus,Target=SelectedTarget,Magnitude=20,Condition{Type=OwnerHasStatus,Status=Momentum,MinStacks=1,ConsumeStatus=All(Max=0),ScaleByConsumedStatus=true},ConsumptionGroup=Result.JianYi.Momentum}; Effect{Type=GainEnergy,Target=CardOwner,Magnitude=1,Secondary=3,ConsumedRef=Result.JianYi.Momentum}]
 
 [012] 归元返照
@@ -152,9 +147,7 @@ ID：Hero.Blade.TongFengYinShi
 目标：单体友方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：出牌者抽1张牌；所选目标获得2层气势
-冲锋：持续效果：下一张主动牌结算后，重放本次触发牌的基础效果；仅主动出牌触发；触发1次后失效
-收招：持续效果：下个玩家回合第一张主动牌结算后，重放本牌的基础效果；仅主动出牌触发；触发1次后失效
+基础：出牌者抽1张牌；所选目标获得2层气势；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算后，重放本次触发牌的基础效果；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合第一张主动牌结算后，重放本牌的基础效果；仅主动出牌触发；触发1次后失效
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=1}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Momentum}] | Charge=[Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=AfterNextActiveCard,Effect=ReplayTriggeredCardBase,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}] | Finish=[Effect{Type=ApplyBattleModifier,Target=CardOwner,Magnitude=0,Modifier{Trigger=AfterFirstActiveCardNextPlayerRound,Effect=ReplaySourceCardBase,Target=CardOwner,RecipientScope=CardOwner,RecipientTarget=CardOwner,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}]
 
 [014] 血路相承
@@ -164,9 +157,7 @@ ID：Hero.Blade.XueLuXiangCheng
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：所选目标造成150%攻击伤害；所选目标获得8层流血
-冲锋：持续效果：下次攻击时，触发所选目标的流血1次；每次按当前层数造成生命伤害并减少1层；仅主动出牌触发；触发状态伤害时不减层；当所选目标具有流血时；触发1次后失效
-收招：持续效果：下个玩家回合首次主动攻击指定状态目标时，出牌者抽2张牌；仅主动出牌触发；当所选目标具有流血时；触发1次后失效；持续效果：下个玩家回合首次主动攻击指定状态目标时，出牌者回复1点气力；仅主动出牌触发；当所选目标具有流血时；触发1次后失效
+基础：所选目标造成150%攻击伤害；所选目标获得8层流血；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下次攻击时，触发所选目标的流血1次；每次按当前层数造成生命伤害并减少1层；仅主动出牌触发；触发状态伤害时不减层；触发1次后失效；当所选目标具有流血；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合首次主动攻击指定状态目标时，出牌者抽2张牌；仅主动出牌触发；触发1次后失效；当所选目标具有流血；持续效果：下个玩家回合首次主动攻击指定状态目标时，出牌者回复1点气力；仅主动出牌触发；触发1次后失效；当所选目标具有流血
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=150}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=8,Status=Bleed}] | Charge=[Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=OnNextAttack,Effect=TriggerStatus,Target=SelectedTarget,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Status=Bleed,Persistent=true,ActivePlayOnly=true,PreserveStatus=true,Condition{Type=TargetHasStatus,Status=Bleed,MinStacks=1}}}] | Finish=[Effect{Type=ApplyBattleModifier,Target=CardOwner,Magnitude=0,Modifier{Trigger=FirstActiveAttackAgainstStatusNextPlayerRound,Effect=DrawCards,Target=CardOwner,RecipientScope=CardOwner,RecipientTarget=CardOwner,Expiry=AfterTriggerCount,Magnitude=2,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true,Condition{Type=TargetHasStatus,Status=Bleed,MinStacks=1}}}; Effect{Type=ApplyBattleModifier,Target=CardOwner,Magnitude=0,Modifier{Trigger=FirstActiveAttackAgainstStatusNextPlayerRound,Effect=GainEnergy,Target=CardOwner,RecipientScope=CardOwner,RecipientTarget=CardOwner,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true,Condition{Type=TargetHasStatus,Status=Bleed,MinStacks=1}}}]
 
 [015] 迎锋换步
@@ -176,9 +167,7 @@ ID：Hero.Blade.YingFengHuanBu
 目标：自身（直接施放）
 获取：初始解锁
 完整效果：
-基础：出牌者获得2层标记；出牌者获得3层灵动；出牌者登记2次反击
-冲锋：持续效果：下一张主动牌结算前，本次打出的牌获得2层灵动；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌登记1次反击；仅主动出牌触发；触发1次后失效
-收招：持续效果：下个玩家回合开始时，出牌者获得2层标记；触发1次后失效；持续效果：下个玩家回合开始时，出牌者登记2次反击；触发1次后失效
+基础：出牌者获得2层标记；出牌者获得3层灵动；出牌者登记2次反击；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌获得2层灵动；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌登记1次反击；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合开始时，出牌者获得2层标记；触发1次后失效；持续效果：下个玩家回合开始时，出牌者登记2次反击；触发1次后失效；反击：敌方单体攻击牌结算后，造成100%攻击并消耗1次。
 实现签名：TargetMode=Self | Base=[Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=2,Status=Mark}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=3,Status=Agility}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Counter}] | Charge=[Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=BeforeNextActiveCard,Effect=ApplyStatus,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=2,Triggers=1,AttackScope=AnyTarget,Status=Agility,Persistent=true,ActivePlayOnly=true}}; Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=BeforeNextActiveCard,Effect=RegisterReaction,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Status=Counter,Persistent=true,ActivePlayOnly=true}}] | Finish=[Effect{Type=ApplyBattleModifier,Target=CardOwner,Magnitude=0,Modifier{Trigger=NextPlayerRoundStart,Effect=ApplyStatus,Target=CardOwner,RecipientScope=CardOwner,RecipientTarget=CardOwner,Expiry=AfterTriggerCount,Magnitude=2,Triggers=1,AttackScope=AnyTarget,Status=Mark,Persistent=true}}; Effect{Type=ApplyBattleModifier,Target=CardOwner,Magnitude=0,Modifier{Trigger=NextPlayerRoundStart,Effect=RegisterReaction,Target=CardOwner,RecipientScope=CardOwner,RecipientTarget=CardOwner,Expiry=AfterTriggerCount,Magnitude=2,Triggers=1,AttackScope=AnyTarget,Status=Counter,Persistent=true}}]
 
 [016] 同袍聚势
@@ -188,9 +177,7 @@ ID：Hero.Blade.TongPaoJuShi
 目标：单体友方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：所选目标获得3层气势；持续效果：下次攻击时，每消耗1层状态，本段攻击倍率+10个百分点；仅主动出牌触发；触发状态伤害时不减层；当出牌者具有气势时；触发1次后失效
-冲锋：持续效果：下一张主动牌结算前，本次打出的牌获得3层气势；仅主动出牌触发；触发1次后失效
-收招：持续效果：下个玩家回合第一张主动牌结算前，本次打出的牌气力消耗-99；仅主动出牌触发；触发1次后失效
+基础：所选目标获得3层气势；持续效果：下次攻击时，每消耗1层状态，本段攻击倍率+10个百分点；仅主动出牌触发；触发状态伤害时不减层；触发1次后失效；当出牌者具有气势；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌获得3层气势；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合第一张主动牌结算前，本次打出的牌气力消耗改为0；仅主动出牌触发；触发1次后失效
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=3,Status=Momentum}; Effect{Type=ApplyBattleModifier,Target=CardOwner,Magnitude=0,Modifier{Trigger=OnNextAttack,Effect=BonusDamagePercentPerConsumedStatus,Target=SelectedTarget,RecipientScope=CardOwner,RecipientTarget=CardOwner,Expiry=AfterTriggerCount,Magnitude=10,Triggers=1,AttackScope=AnyTarget,Status=Momentum,Persistent=true,ActivePlayOnly=true,PreserveStatus=true,Condition{Type=OwnerHasStatus,Status=Momentum,MinStacks=1}}}] | Charge=[Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=BeforeNextActiveCard,Effect=ApplyStatus,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=3,Triggers=1,AttackScope=AnyTarget,Status=Momentum,Persistent=true,ActivePlayOnly=true}}] | Finish=[Effect{Type=ApplyBattleModifier,Target=SelectedTarget,Magnitude=0,Modifier{Trigger=BeforeFirstActiveCardNextPlayerRound,Effect=ModifyEnergyCost,Target=PlayedCard,RecipientScope=SelectedTarget,RecipientTarget=SelectedTarget,Expiry=AfterTriggerCount,Magnitude=-99,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}]
 
 
@@ -204,7 +191,7 @@ ID：Hero.Guard.TieBiTongShou
 目标：单体友方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：所选目标获得18点护甲；所选目标登记2次格挡
+基础：所选目标获得18点护甲；所选目标登记2次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=18}; Effect{Type=RegisterReaction,Target=SelectedTarget,Magnitude=2,Status=Block}]
 
 [018] 借甲还锋
@@ -214,7 +201,7 @@ ID：Hero.Guard.JieJiaHuanFeng
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：由护甲最高友方对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；护甲最高友方获得10点护甲；护甲最高友方登记1次格挡
+基础：由护甲最高友方对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；护甲最高友方获得10点护甲；护甲最高友方登记1次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttackPlusArmor,Target=SelectedTarget,Magnitude=100,Source=HighestArmorAlly}; Effect{Type=AddArmor,Target=HighestArmorAlly,Magnitude=10}; Effect{Type=RegisterReaction,Target=HighestArmorAlly,Magnitude=1,Status=Block}]
 
 [019] 列阵承锋
@@ -224,7 +211,7 @@ ID：Hero.Guard.LieZhenChengFeng
 目标：全体友方（直接施放）
 获取：初始解锁
 完整效果：
-基础：全体友方获得8点护甲；全体友方登记1次格挡
+基础：全体友方获得8点护甲；全体友方登记1次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=8}; Effect{Type=RegisterReaction,Target=AllAllies,Magnitude=1,Status=Block}]
 
 [020] 玄甲镇岳
@@ -248,7 +235,7 @@ ID：Hero.Healer.YiXueCuiFang
 目标：无需选择（直接施放）
 获取：初始解锁
 完整效果：
-基础：全体友方失去1点生命，最低保留1点；本牌每实际扣血1名友方，出牌者获得2层药效；本次获得至少6层时再获得1层气势；出牌者抽1张牌
+基础：全体友方失去1点生命，最低保留1点；本牌每实际扣血1名友方，出牌者获得2层药效；本次获得至少6层时再获得1层气势；出牌者抽1张牌；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=None | Base=[Effect{Type=LoseHealthNonlethal,Target=AllAllies,Magnitude=1}; Effect{Type=GainMedicineFromPartyHealthLoss,Target=CardOwner,Magnitude=2,Secondary=6}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1}]
 
 [022] 回春逆脉
@@ -258,7 +245,7 @@ ID：Hero.Healer.HuiChunNiMai
 目标：任意存活单位（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：消耗出牌者全部药效；若所选目标为友方，恢复10+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去10+药效层数生命；清除所选目标的全部流血、中毒和灼烧
+基础：消耗出牌者全部药效；若所选目标为友方，恢复10+药效层数生命；若为敌方，失去10+药效层数生命；清除所选目标的全部流血、中毒和灼烧；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AnyLivingUnit | Base=[Effect{Type=HealOrReverseWithMedicine,Target=SelectedTarget,Magnitude=10}; Effect{Type=Cleanse,Target=SelectedTarget,Magnitude=0}]
 
 [023] 毒火同炉
@@ -268,7 +255,7 @@ ID：Hero.Healer.DuHuoTongLu
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：所选目标造成130%攻击伤害；所选目标获得6层中毒；所选目标获得2层灼烧；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；出牌者获得6层药效
+基础：所选目标造成130%攻击伤害；所选目标获得6层中毒；所选目标获得2层灼烧；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；出牌者获得6层药效；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=130}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=6,Status=Poison}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Burn}; Effect{Type=ResolveToxicExplosion,Target=SelectedTarget,Magnitude=0}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=6,Status=Medicine}]
 
 [024] 百草济阵
@@ -278,7 +265,7 @@ ID：Hero.Healer.BaiCaoJiZhen
 目标：无需选择（直接施放）
 获取：初始解锁
 完整效果：
-基础：消耗出牌者全部药效；若全体友方为友方，恢复6+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去6+药效层数生命；全体敌方获得1层中毒；全体敌方获得1层灼烧
+基础：消耗出牌者全部药效；全体友方恢复6+药效层数生命；全体敌方获得1层中毒；全体敌方获得1层灼烧；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=None | Base=[Effect{Type=HealOrReverseWithMedicine,Target=AllAllies,Magnitude=6}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=1,Status=Poison}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=1,Status=Burn}]
 
 
@@ -302,8 +289,7 @@ ID：Hero.Hunter.LieYuLianShi
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：所选目标造成140%攻击伤害；所选目标获得8层流血
-重箭：消耗全部蓄力；每消耗1层，追加1段50%攻击伤害。
+基础：所选目标造成140%攻击伤害；所选目标获得8层流血；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，追加1段50%攻击伤害。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=140}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=8,Status=Bleed}] | HeavyArrow{Kind=ExtraAttackPerCharge,PerCharge=50,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [027] 淬毒穿心
@@ -313,8 +299,7 @@ ID：Hero.Hunter.CuiDuChuanXin
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：所选目标造成130%攻击伤害；所选目标获得6层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害
-重箭：消耗全部蓄力；每消耗1层，再触发1次毒爆。
+基础：所选目标造成130%攻击伤害；所选目标获得6层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，再触发1次毒爆。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=130}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=6,Status=Poison}; Effect{Type=ResolveToxicExplosion,Target=SelectedTarget,Magnitude=0}] | HeavyArrow{Kind=ToxicExplosionPerCharge,PerCharge=1,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [028] 回风贯日
@@ -324,8 +309,7 @@ ID：Hero.Hunter.HuiFengGuanRi
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：所选目标造成150%攻击伤害
-重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+40个百分点并抽1张牌；消耗至少3层时回复1点气力一次。
+基础：所选目标造成150%攻击伤害；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+40个百分点并抽1张牌；消耗至少3层时回复1点气力一次。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=150}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=40,DrawPerCharge=1,MinCharge=3,Energy=1}
 
 
@@ -339,8 +323,7 @@ ID：Hero.Mage.YanXuLiaoYuan
 目标：全体敌方（直接施放）
 获取：初始解锁
 完整效果：
-基础：全体敌方造成100%攻击伤害；全体敌方获得4层灼烧；从抽牌堆或弃牌堆检索1张尚未完成的主角法术任务牌加入手牌
-法术任务阵赏·炎：全体敌方获得8层灼烧，再触发2次灼烧伤害。
+基础：全体敌方造成100%攻击伤害；全体敌方获得4层灼烧；从抽牌堆或弃牌堆检索1张尚未完成的主角法术任务牌加入手牌；法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。；阵赏·炎：全体敌方获得8层灼烧，再触发2次灼烧伤害。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=100}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=4,Status=Burn}; Effect{Type=SearchUnfinishedHeroTaskCard,Target=CardOwner,Magnitude=1}] | SpellReward=Fire
 
 [030] 寒序凝川
@@ -350,8 +333,7 @@ ID：Hero.Mage.HanXuNingChuan
 目标：自身（直接施放）
 获取：初始解锁
 完整效果：
-基础：出牌者获得等于当前内力25%的护甲；出牌者回复6点内力；溢出内力按100%转为护甲
-法术任务阵赏·冰：消耗自身全部护甲；按护甲快照层数，对敌方全体逐段造成20%攻击伤害。
+基础：出牌者获得等于当前内力25%的护甲；出牌者回复6点内力；溢出内力按100%转为护甲；法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。；阵赏·冰：消耗自身全部护甲；按护甲快照层数，对敌方全体逐段造成20%攻击伤害。
 实现签名：TargetMode=Self | Base=[Effect{Type=GainArmorFromCurrentManaPercent,Target=CardOwner,Magnitude=25}; Effect{Type=GainManaOverflowToArmor,Target=CardOwner,Magnitude=100,Secondary=6}] | SpellReward=Ice
 
 [031] 雷序引霆
@@ -361,8 +343,7 @@ ID：Hero.Mage.LeiXuYinTing
 目标：全体敌方（直接施放）
 获取：初始解锁
 完整效果：
-基础：全体敌方获得3层标记；按全体敌方当前标记层数，逐层造成30%攻击伤害；从抽牌堆或弃牌堆检索1张尚未完成的主角法术任务牌加入手牌
-法术任务阵赏·雷：全体敌方获得3层标记，再按各目标标记快照逐层造成60%攻击伤害。
+基础：全体敌方获得3层标记；按全体敌方当前标记层数，逐层造成30%攻击伤害；从抽牌堆或弃牌堆检索1张尚未完成的主角法术任务牌加入手牌；法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。；阵赏·雷：全体敌方获得3层标记，再按各目标标记快照逐层造成60%攻击伤害。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=3,Status=Mark}; Effect{Type=LightningPerTargetStatusSnapshot,Target=AllEnemies,Magnitude=30,Status=Mark}; Effect{Type=SearchUnfinishedHeroTaskCard,Target=CardOwner,Magnitude=1}] | SpellReward=Lightning
 
 [032] 归序通玄
@@ -372,8 +353,7 @@ ID：Hero.Mage.GuiXuTongXuan
 目标：无需选择（直接施放）
 获取：初始解锁
 完整效果：
-基础：出牌者抽2张牌；出牌者弃置1张牌
-法术任务阵赏·通用：抽4张牌、回复2点气力；本回合后续主角牌气力消耗-1。
+基础：出牌者抽2张牌；出牌者弃置1张牌；法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。；阵赏·通用：抽4张牌、回复2点气力；本回合后续主角牌气力消耗-1。
 实现签名：TargetMode=None | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=DiscardCards,Target=CardOwner,Magnitude=1}] | SpellReward=Universal
 
 
@@ -387,7 +367,7 @@ ID：Hero.Formation.GuanShiLuoZi
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：所选目标造成80%攻击伤害；触发当前地势收益1次；出牌者抽1张牌
+基础：所选目标造成80%攻击伤害；触发当前地势收益1次；出牌者抽1张牌；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=80}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1}]
 
 [034] 移阵回响
@@ -397,7 +377,7 @@ ID：Hero.Formation.YiZhenHuiXiang
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：触发当前地势收益2次；若本回合已实际换场，改为3次；出牌者回复1点气力（仅当前述结果成功时）
+基础：触发当前地势收益2次；若本回合已实际换场，改为3次；出牌者回复1点气力（仅当前述结果成功时）；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=2,Secondary=3,ResultGroup=Result.TerrainChanged}; Effect{Type=GainEnergy,Target=CardOwner,Magnitude=1,ResultRef=Result.TerrainChanged}]
 
 [035] 连营布势
@@ -417,7 +397,7 @@ ID：Hero.Formation.LiuHeGuiYi
 目标：单体敌方（点击后选择目标）
 获取：初始解锁
 完整效果：
-基础：触发平原收益1次；触发山崖收益1次；触发山林收益1次；触发水岸收益1次；触发村寨收益1次；触发洞穴收益1次；触发当前地势收益1次
+基础：触发平原收益1次；触发断崖收益1次；触发山林收益1次；触发水岸收益1次；触发村镇收益1次；触发洞窟收益1次；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=Plain}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=Cliff}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=Forest}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=WaterShore}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=Village}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1,TerrainOverride=Cave}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
 
 
@@ -431,8 +411,7 @@ ID：Npc.TusiChief.ZhaiZhuHaoLing
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：攻击最高友方获得2层气势；攻击最高友方获得16点护甲；攻击最高友方登记1次格挡；所选目标造成200%攻击伤害
-收招：全体友方获得6点护甲
+基础：攻击最高友方获得2层气势；攻击最高友方获得16点护甲；攻击最高友方登记1次格挡；所选目标造成200%攻击伤害；收招：此牌是本回合最后一张主动牌时触发。；收招效果：全体友方获得6点护甲；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=HighestAttackAlly,Magnitude=1,Status=Momentum}; Effect{Type=AddArmor,Target=HighestAttackAlly,Magnitude=8}; Effect{Type=RegisterReaction,Target=HighestAttackAlly,Magnitude=1,Status=Block}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=100,Source=HighestAttackAlly}] | Finish=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=6}]
 
 [038] 石门守势
@@ -442,9 +421,7 @@ ID：Npc.TusiChief.ShiMenShouShi
 目标：单体友方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：所选目标获得2层标记；所选目标获得2层灵动；所选目标获得16点护甲；所选目标登记2次格挡
-冲锋：持续效果：下一张主动牌结算前，本次打出的牌获得12点护甲；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌登记1次格挡；仅主动出牌触发；触发1次后失效
-收招：所选目标转移1次敌方单体攻击
+基础：所选目标获得2层标记；所选目标获得2层灵动；所选目标获得16点护甲；所选目标登记2次格挡；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌获得12点护甲；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌登记1次格挡；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：所选目标转移1次敌方单体攻击；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Mark}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Agility}; Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=16}; Effect{Type=RegisterReaction,Target=SelectedTarget,Magnitude=2,Status=Block}] | Charge=[Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=BeforeNextActiveCard,Effect=AddArmor,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=12,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}; Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=BeforeNextActiveCard,Effect=RegisterReaction,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Status=Block,Persistent=true,ActivePlayOnly=true}}] | Finish=[Effect{Type=RedirectSingleTargetEnemyAttacks,Target=SelectedTarget,Magnitude=1}]
 
 [039] 土司军令
@@ -454,9 +431,7 @@ ID：Npc.TusiChief.TuSiJunLing
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：所选目标获得2层标记；所选目标获得3层破绽；攻击最高友方获得8点护甲；攻击最高友方登记1次格挡；所选目标造成150%攻击伤害
-冲锋：持续效果：下一张主动牌结算前，本次打出的牌的单体效果扩展为目标所在阵营全体；仅主动出牌触发；触发1次后失效
-收招：全队下一次反击或格挡不消耗次数
+基础：所选目标获得2层标记；所选目标获得3层破绽；攻击最高友方获得8点护甲；攻击最高友方登记1次格挡；所选目标造成150%攻击伤害；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌的单体效果扩展为目标所在阵营全体；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：全队下一次反击或格挡不消耗次数；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Mark}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=3,Status=Vulnerability}; Effect{Type=AddArmor,Target=HighestAttackAlly,Magnitude=8}; Effect{Type=RegisterReaction,Target=HighestAttackAlly,Magnitude=1,Status=Block}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=150,Source=HighestAttackAlly}] | Charge=[Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=BeforeNextActiveCard,Effect=WidenNextActiveSingleTarget,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}] | Finish=[Effect{Type=PreserveNextReactionUse,Target=AllAllies,Magnitude=1}]
 
 [040] 盟寨誓约
@@ -466,9 +441,7 @@ ID：Npc.TusiChief.MengZhaiShiYue
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：全体友方获得3层气势；全体友方获得32点护甲；全体友方登记1次格挡；每名存活友方对所选目标造成240%各自攻击伤害
-冲锋：持续效果：下一张主动牌结算前，本次打出的牌气力消耗-99；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌内力消耗-99；仅主动出牌触发；触发1次后失效
-收招：全体友方下回合保留当前护甲
+基础：全体友方获得3层气势；全体友方获得32点护甲；全体友方登记1次格挡；每名存活友方对所选目标造成240%各自攻击伤害；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌气力消耗改为0；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌内力消耗改为0；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：全体友方下回合保留当前护甲；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=AllAllies,Magnitude=1,Status=Momentum}; Effect{Type=AddArmor,Target=AllAllies,Magnitude=8}; Effect{Type=RegisterReaction,Target=AllAllies,Magnitude=1,Status=Block}; Effect{Type=EachLivingAllyAttackSelectedTarget,Target=SelectedTarget,Magnitude=60}] | Charge=[Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=BeforeNextActiveCard,Effect=ModifyEnergyCost,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=-99,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}; Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=BeforeNextActiveCard,Effect=ModifyManaCost,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=-99,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}] | Finish=[Effect{Type=RetainArmorNextRound,Target=AllAllies,Magnitude=1}]
 
 
@@ -482,9 +455,7 @@ ID：Npc.SongJinBao.ShangQianGuWu
 目标：单体友方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：所选目标获得2层气势；所选目标获得6点内力；标记最高敌方（同层优先生命比例最低）造成100%攻击伤害
-冲锋：持续效果：下一张主动牌结算后，重放本次触发牌的基础效果；仅主动出牌触发；触发1次后失效
-收招：持续效果：下个玩家回合第一张主动牌结算后，重放本牌的基础效果；仅主动出牌触发；触发1次后失效
+基础：所选目标获得2层气势；所选目标获得6点内力；标记最高敌方（同层优先生命比例最低）造成100%攻击伤害；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算后，重放本次触发牌的基础效果；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合第一张主动牌结算后，重放本牌的基础效果；仅主动出牌触发；触发1次后失效
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Momentum}; Effect{Type=GainMana,Target=SelectedTarget,Magnitude=6}; Effect{Type=DamagePercentAttack,Target=PriorityEnemy,Magnitude=100,Source=SelectedTarget}] | Charge=[Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=AfterNextActiveCard,Effect=ReplayTriggeredCardBase,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}] | Finish=[Effect{Type=ApplyBattleModifier,Target=CardOwner,Magnitude=0,Modifier{Trigger=AfterFirstActiveCardNextPlayerRound,Effect=ReplaySourceCardBase,Target=CardOwner,RecipientScope=CardOwner,RecipientTarget=CardOwner,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}]
 
 [042] 耳目密报
@@ -494,7 +465,7 @@ ID：Npc.SongJinBao.ErMuMiBao
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：出牌者揭示99个敌方意图；所选目标获得3层标记；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌
+基础：出牌者揭示全部敌方意图；所选目标获得3层标记；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=RevealEnemyIntent,Target=CardOwner,Magnitude=99}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Mark}; Effect{Type=SearchUnfinishedTaskNpcCard,Target=CardOwner,Magnitude=1}]
 
 [043] 贵客令
@@ -504,9 +475,7 @@ ID：Npc.SongJinBao.GuiKeLing
 目标：自身（直接施放）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：出牌者获得2层标记；出牌者获得2层灵动；出牌者登记1次反击；出牌者抽1张牌
-冲锋：持续效果：下一张主动牌结算前，本次打出的牌获得2层灵动；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌登记1次反击；仅主动出牌触发；触发1次后失效
-收招：持续效果：下个玩家回合开始时，出牌者获得2层标记；仅主动出牌触发；触发1次后失效；持续效果：下个玩家回合开始时，出牌者登记2次反击；仅主动出牌触发；触发1次后失效
+基础：出牌者获得2层标记；出牌者获得2层灵动；出牌者登记1次反击；出牌者抽1张牌；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌获得2层灵动；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌登记1次反击；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合开始时，出牌者获得2层标记；仅主动出牌触发；触发1次后失效；持续效果：下个玩家回合开始时，出牌者登记2次反击；仅主动出牌触发；触发1次后失效；反击：敌方单体攻击牌结算后，造成100%攻击并消耗1次。
 实现签名：TargetMode=Self | Base=[Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=2,Status=Mark}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=2,Status=Agility}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Counter}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1}] | Charge=[Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=BeforeNextActiveCard,Effect=ApplyStatus,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=2,Triggers=1,AttackScope=AnyTarget,Status=Agility,Persistent=true,ActivePlayOnly=true}}; Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=BeforeNextActiveCard,Effect=RegisterReaction,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Status=Counter,Persistent=true,ActivePlayOnly=true}}] | Finish=[Effect{Type=ApplyBattleModifier,Target=CardOwner,Magnitude=0,Modifier{Trigger=NextPlayerRoundStart,Effect=ApplyStatus,Target=CardOwner,RecipientScope=CardOwner,RecipientTarget=CardOwner,Expiry=AfterTriggerCount,Magnitude=2,Triggers=1,AttackScope=AnyTarget,Status=Mark,Persistent=true,ActivePlayOnly=true}}; Effect{Type=ApplyBattleModifier,Target=CardOwner,Magnitude=0,Modifier{Trigger=NextPlayerRoundStart,Effect=RegisterReaction,Target=CardOwner,RecipientScope=CardOwner,RecipientTarget=CardOwner,Expiry=AfterTriggerCount,Magnitude=2,Triggers=1,AttackScope=AnyTarget,Status=Counter,Persistent=true,ActivePlayOnly=true}}]
 
 [044] 一诺千金
@@ -516,7 +485,7 @@ ID：Npc.SongJinBao.YiNuoQianJin
 目标：无需选择（直接施放）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌；持续效果：打出牌时，本次打出的牌气力消耗-99；仅主动出牌触发；触发2次后失效；持续效果：打出牌时，本次打出的牌内力消耗-99；仅主动出牌触发；触发2次后失效
+基础：从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌；持续效果：打出牌时，本次打出的牌气力消耗改为0；仅主动出牌触发；触发2次后失效；持续效果：打出牌时，本次打出的牌内力消耗改为0；仅主动出牌触发；触发2次后失效
 实现签名：TargetMode=None | Base=[Effect{Type=SearchUnfinishedTaskNpcCard,Target=CardOwner,Magnitude=1}; Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=OnCardPlayed,Effect=ModifyEnergyCost,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=-99,Triggers=2,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}; Effect{Type=ApplyBattleModifier,Target=PlayedCard,Magnitude=0,Modifier{Trigger=OnCardPlayed,Effect=ModifyManaCost,Target=PlayedCard,RecipientScope=SharedDeck,RecipientTarget=PlayedCard,Expiry=AfterTriggerCount,Magnitude=-99,Triggers=2,AttackScope=AnyTarget,Persistent=true,ActivePlayOnly=true}}]
 
 
@@ -540,7 +509,7 @@ ID：Npc.YueBai.CanJuanPiZhu
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：出牌者抽3张牌；触发当前地势收益1次；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌
+基础：出牌者抽3张牌；触发当前地势收益1次；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=SearchUnfinishedTaskNpcCard,Target=CardOwner,Magnitude=1}]
 
 [047] 月白照夜
@@ -560,7 +529,7 @@ ID：Npc.YueBai.ShanHeCanTu
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：全体友方获得36点护甲；全体友方获得7点内力；触发当前地势收益1次；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌
+基础：全体友方获得36点护甲；全体友方获得7点内力；触发当前地势收益1次；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=9}; Effect{Type=GainMana,Target=AllAllies,Magnitude=3}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=SearchUnfinishedTaskNpcCard,Target=CardOwner,Magnitude=1}]
 
 
@@ -574,7 +543,7 @@ ID：Npc.ZhouGuangZu.YiCaoBianShi
 目标：任意存活单位（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：出牌者获得6层药效；消耗出牌者全部药效；若所选目标为友方，恢复6+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去6+药效层数生命；若所选目标为友方，清除其全部流血、中毒和灼烧
+基础：出牌者获得6层药效；消耗出牌者全部药效；若所选目标为友方，恢复6+药效层数生命；若为敌方，失去6+药效层数生命；若所选目标为友方，清除其全部流血、中毒和灼烧；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AnyLivingUnit | Base=[Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=6,Status=Medicine}; Effect{Type=HealOrReverseWithMedicine,Target=SelectedTarget,Magnitude=6}; Effect{Type=CleanseFriendlyDamageOverTime,Target=SelectedTarget,Magnitude=1}]
 
 [050] 黄山敷治
@@ -584,7 +553,7 @@ ID：Npc.ZhouGuangZu.HuangShanFuZhi
 目标：全体友方（直接施放）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：全体友方失去1点生命，最低保留1点；出牌者获得6层药效；消耗出牌者全部药效；若全体友方为友方，恢复6+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去6+药效层数生命
+基础：全体友方失去1点生命，最低保留1点；出牌者获得6层药效；消耗出牌者全部药效；全体友方恢复6+药效层数生命；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=LoseHealthNonlethal,Target=AllAllies,Magnitude=1}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=6,Status=Medicine}; Effect{Type=HealOrReverseWithMedicine,Target=AllAllies,Magnitude=6}]
 
 [051] 地志摹图
@@ -594,7 +563,7 @@ ID：Npc.ZhouGuangZu.DiZhiMoTu
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：出牌者抽3张牌；触发当前地势收益2次
+基础：出牌者抽3张牌；触发当前地势收益2次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=2}]
 
 [052] 岩粉封脉
@@ -604,7 +573,7 @@ ID：Npc.ZhouGuangZu.YanFenFengMai
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：触发当前地势收益1次；所选目标获得5层破绽；所选目标获得13层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害
+基础：触发当前地势收益1次；所选目标获得5层破绽；所选目标获得13层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=3,Status=Vulnerability}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=11,Status=Poison}; Effect{Type=ResolveToxicExplosion,Target=SelectedTarget,Magnitude=1}]
 
 
@@ -618,8 +587,7 @@ ID：Npc.JinGui.ShiJingErMu
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：全体敌方获得3层标记；出牌者抽3张牌；攻击最高友方获得3层蓄力
-重箭：消耗全部蓄力；每消耗1层，追加1段50%攻击伤害。
+基础：全体敌方获得3层标记；出牌者抽3张牌；攻击最高友方获得3层蓄力；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，追加1段50%攻击伤害。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=2,Status=Mark}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=2}; Effect{Type=ApplyStatus,Target=HighestAttackAlly,Magnitude=2,Status=Charge}] | HeavyArrow{Kind=ExtraAttackPerCharge,PerCharge=50,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [054] 巧言周旋
@@ -629,7 +597,7 @@ ID：Npc.JinGui.QiaoYanZhouXuan
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：所选目标获得3层破绽；护甲最高友方获得12点护甲；护甲最高友方登记2次格挡
+基础：所选目标获得3层破绽；护甲最高友方获得12点护甲；护甲最高友方登记2次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=3,Status=Vulnerability}; Effect{Type=AddArmor,Target=HighestArmorAlly,Magnitude=12}; Effect{Type=RegisterReaction,Target=HighestArmorAlly,Magnitude=2,Status=Block}]
 
 [055] 杂役筹备
@@ -639,8 +607,7 @@ ID：Npc.JinGui.ZaYiChouBei
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：出牌者抽3张牌；出牌者弃置1张牌；出牌者回复1点气力；攻击最高友方获得3层蓄力
-重箭：消耗全部蓄力；每消耗1层，追加1段40%攻击伤害。
+基础：出牌者抽3张牌；出牌者弃置1张牌；出牌者回复1点气力；攻击最高友方获得3层蓄力；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，追加1段40%攻击伤害。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=3}; Effect{Type=DiscardCards,Target=CardOwner,Magnitude=1}; Effect{Type=GainEnergy,Target=CardOwner,Magnitude=1}; Effect{Type=ApplyStatus,Target=HighestAttackAlly,Magnitude=3,Status=Charge}] | HeavyArrow{Kind=ExtraAttackPerCharge,PerCharge=40,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [056] 后巷脱身
@@ -650,7 +617,7 @@ ID：Npc.JinGui.HouXiangTuoShen
 目标：无需选择（直接施放）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：全体友方获得4层灵动；生命最低友方获得4层标记；生命最低友方获得64点护甲；生命最低友方登记2次格挡
+基础：全体友方获得4层灵动；生命最低友方获得4层标记；生命最低友方获得64点护甲；生命最低友方登记2次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=None | Base=[Effect{Type=ApplyStatus,Target=AllAllies,Magnitude=2,Status=Agility}; Effect{Type=ApplyStatus,Target=LowestHealthAlly,Magnitude=2,Status=Mark}; Effect{Type=AddArmor,Target=LowestHealthAlly,Magnitude=16}; Effect{Type=RegisterReaction,Target=LowestHealthAlly,Magnitude=2,Status=Block}]
 
 
@@ -664,8 +631,7 @@ ID：Npc.QiongMeiEr.TengQiaoFeiDu
 目标：单体敌方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：攻击最高友方获得3层灵动；攻击最高友方获得3层蓄力；出牌者抽2张牌
-重箭：消耗全部蓄力；每消耗1层，追加1段50%攻击伤害。
+基础：攻击最高友方获得3层灵动；攻击最高友方获得3层蓄力；出牌者抽2张牌；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，追加1段50%攻击伤害。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=HighestAttackAlly,Magnitude=2,Status=Agility}; Effect{Type=ApplyStatus,Target=HighestAttackAlly,Magnitude=2,Status=Charge}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1}] | HeavyArrow{Kind=ExtraAttackPerCharge,PerCharge=50,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [058] 蛊雾迷踪
@@ -685,7 +651,7 @@ ID：Npc.QiongMeiEr.YinLingZhenXin
 目标：单体友方（点击后选择目标）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：出牌者获得6层药效；若所选目标为友方，清除其全部流血、中毒和灼烧；消耗出牌者全部药效；若所选目标为友方，恢复12+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去12+药效层数生命
+基础：出牌者获得6层药效；若所选目标为友方，清除其全部流血、中毒和灼烧；消耗出牌者全部药效；若所选目标为友方，恢复12+药效层数生命；若为敌方，失去12+药效层数生命；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=6,Status=Medicine}; Effect{Type=CleanseFriendlyDamageOverTime,Target=SelectedTarget,Magnitude=1}; Effect{Type=HealOrReverseWithMedicine,Target=SelectedTarget,Magnitude=12}]
 
 [060] 山歌唤灵
@@ -695,7 +661,7 @@ ID：Npc.QiongMeiEr.ShanGeHuanLing
 目标：全体友方（直接施放）
 获取：NPC 固定 4 选 3 卡池
 完整效果：
-基础：出牌者获得8层药效；消耗出牌者全部药效；若全体友方为友方，恢复6+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去6+药效层数生命
+基础：出牌者获得8层药效；消耗出牌者全部药效；全体友方恢复6+药效层数生命；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=6,Status=Medicine}; Effect{Type=HealOrReverseWithMedicine,Target=AllAllies,Magnitude=6}]
 
 
@@ -709,7 +675,7 @@ ID：Profession.Blade.LieFengZhan
 目标：单体敌方（点击后选择目标）
 获取：固定核心牌
 完整效果：
-基础：所选目标造成100%攻击伤害；所选目标获得1层流血
+基础：所选目标造成100%攻击伤害；所选目标获得1层流血；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌基础效果再结算一次。；收招：此牌是本回合最后一张主动牌时，返还本回合首张主动牌至手牌（原费用）。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=100}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=1,Status=Bleed}]
 
 [062] 回锋架势
@@ -719,7 +685,7 @@ ID：Profession.Blade.HuiFengJiaShi
 目标：自身（直接施放）
 获取：固定核心牌
 完整效果：
-基础：出牌者获得1层灵动
+基础：出牌者获得1层灵动；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后，加入其0费临时复制。；收招：此牌是本回合最后一张主动牌时，获得2层标记；下个敌方阶段最先以你为目标的2张攻击牌结算前，各获得2层灵动并反击1次。
 实现签名：TargetMode=Self | Base=[Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Agility}]
 
 [063] 封喉
@@ -729,7 +695,7 @@ ID：Profession.Blade.FengHou
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成100%攻击伤害；所选目标获得5层流血
+基础：所选目标造成100%攻击伤害；所选目标获得5层流血；血势：每层目标流血使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后返回手牌一次。；收招：此牌是本回合最后一张主动牌时，下回合结束前最先2次流血不减层。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=100}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=5,Status=Bleed}]
 
 [064] 疾雨连斩
@@ -739,7 +705,7 @@ ID：Profession.Blade.JiYuLianZhan
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得3层流血；所选目标造成55%攻击伤害，共3段
+基础：所选目标获得3层流血；所选目标造成55%攻击伤害，共3段；血势：每层目标流血使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，记录下一张主动牌，下回合自动重放其基础效果。；收招：此牌是本回合最后一张主动牌时，下回合最先3次流血各抽1张。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=3,Status=Bleed}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=55,Hits=3}]
 
 [065] 饮血刀
@@ -749,7 +715,7 @@ ID：Profession.Blade.YinXueDao
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成240%攻击伤害；所选目标获得3层流血
+基础：所选目标造成240%攻击伤害；所选目标获得3层流血；回复本次命中所触发的流血伤害。；血势：每层目标流血使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌的状态/护甲消耗，结算后恢复。；收招：此牌是本回合最后一张主动牌时，下回合结束前刀客触发的流血回复等量生命（累计上限12）。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=120}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Bleed}]
 
 [066] 浪断
@@ -759,7 +725,7 @@ ID：Profession.Blade.LangDuan
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成100%攻击伤害
+基础：所选目标造成100%攻击伤害；本次命中所触发的流血不减层。；血势：每层目标流血使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张单体牌同时作用于另一合法目标；否则抽2张。；收招：此牌是本回合最后一张主动牌时，下回合首张以流血敌人为目标的牌结算后返回手牌。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=100}]
 
 [067] 断岳
@@ -769,7 +735,7 @@ ID：Profession.Blade.DuanYue
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成280%攻击伤害；所选目标获得4层破绽；出牌者获得2层气势
+基础：所选目标造成280%攻击伤害；所选目标获得4层破绽；出牌者获得2层气势；乘势：每层自身气势使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌气力消耗为0。；收招：此牌是本回合最后一张主动牌时，下回合结束前破绽不减不清；下回合首张以破绽敌人为目标的牌额外重放。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=140}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=3,Status=Vulnerability}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Momentum}]
 
 [068] 破军
@@ -779,7 +745,7 @@ ID：Profession.Blade.PoJun
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成260%攻击伤害
+基础：所选目标造成260%攻击伤害；消耗至多3层破绽，每层追加1段50%攻击。；乘势：每层自身气势使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌内力消耗为0。；收招：此牌是本回合最后一张主动牌时，下回合首张消耗敌方状态的牌结算后，生成0费临时复制。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=130}]
 
 [069] 战意沸腾
@@ -789,7 +755,7 @@ ID：Profession.Blade.ZhanYiFeiTeng
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得3层气势；出牌者获得6点内力
+基础：出牌者获得3层气势；出牌者获得6点内力；乘势：每层自身气势使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后，全额返还气力与内力。；收招：此牌是本回合最后一张主动牌时，下回合首张基础气力≥2的牌返还气力并抽2张。
 实现签名：TargetMode=Self | Base=[Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=2,Status=Momentum}; Effect{Type=GainMana,Target=CardOwner,Magnitude=4}]
 
 [070] 斩尽
@@ -799,7 +765,7 @@ ID：Profession.Blade.ZhanJin
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成800%攻击伤害
+基础：所选目标造成800%攻击伤害；若本牌完成击杀，返还全部费用并抽1张。；乘势：每层自身气势使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌在出牌数与套装门槛中计为2张。；收招：此牌是本回合最后一张主动牌时，下回合首张完成击杀的牌结算后，生成0费临时复制。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=200}]
 
 [071] 借势回锋
@@ -809,7 +775,7 @@ ID：Profession.Blade.JieShiHuiFeng
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得1层灵动；出牌者登记1次反击
+基础：出牌者获得1层灵动；出牌者登记1次反击；冲锋：此牌是本回合第一张主动牌打出时，记录下一张主动牌，下回合加入其0费临时复制。；收招：此牌是本回合最后一张主动牌时，获得2层标记；下个敌方阶段首次反击齐射后，重新登记全部反击来源。
 实现签名：TargetMode=Self | Base=[Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Agility}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Counter}]
 
 [072] 逐影
@@ -819,7 +785,7 @@ ID：Profession.Blade.ZhuYing
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成90%攻击伤害；出牌者获得2层灵动；出牌者登记1次反击
+基础：所选目标造成90%攻击伤害；出牌者获得2层灵动；出牌者登记1次反击；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌不弃牌，下回合按原费用返回手牌。；收招：此牌是本回合最后一张主动牌时，下个敌方阶段最先2次成功闪避不消耗灵动。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=90}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=2,Status=Agility}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Counter}]
 
 [073] 破浪突进
@@ -829,7 +795,7 @@ ID：Profession.Blade.PoLangTuJin
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成110%攻击伤害；出牌者获得2层标记；出牌者登记1次反击
+基础：所选目标造成110%攻击伤害；出牌者获得2层标记；出牌者登记1次反击；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌不替换收招候选。；收招：此牌是本回合最后一张主动牌时，反击齐射前把标记转移给攻击者（≤待结算反击数），反击获得标记加成。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=110}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=2,Status=Mark}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Counter}]
 
 [074] 一式断江
@@ -839,7 +805,7 @@ ID：Profession.Blade.YiShiDuanJiang
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成640%攻击伤害；出牌者登记1次反击
+基础：所选目标造成640%攻击伤害；出牌者登记1次反击；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后，保留其余手牌至下回合。；收招：此牌是本回合最后一张主动牌时，首次反击齐射中，每个反击来源对全体敌人各反击一次。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=160}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Counter}]
 
 [075] 惊鸿出鞘
@@ -849,7 +815,7 @@ ID：Profession.Blade.JingHongChuQiao
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成90%攻击伤害
+基础：所选目标造成90%攻击伤害；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌气力-1（最低0），结算后抽1张。；收招：此牌是本回合最后一张主动牌时，将冲锋效果保存为「藏式」。；藏式：下回合第一张主动牌消耗；未消耗则回合末失效。；开锋：本牌消耗藏式时，追加1段90%攻击。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=90}]
 
 [076] 横云开锋
@@ -859,7 +825,7 @@ ID：Profession.Blade.HengYunKaiFeng
 目标：全体敌方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体敌方造成140%攻击伤害
+基础：全体敌方造成140%攻击伤害；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后抽2张。；收招：此牌是本回合最后一张主动牌时，将冲锋效果保存为「藏式」。；藏式：下回合第一张主动牌消耗；未消耗则回合末失效。；开锋：本牌消耗藏式时，将该藏式复制为「余式」，继续作用于本回合下一张主动牌；余式不再产生余式。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=70}]
 
 [077] 敛息归鞘
@@ -869,7 +835,7 @@ ID：Profession.Blade.LianXiGuiQiao
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得5点内力
+基础：出牌者获得5点内力；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后，抽1张同角色牌（无则普通抽1张）。；收招：此牌是本回合最后一张主动牌时，将冲锋效果保存为「藏式」。；藏式：下回合第一张主动牌消耗；未消耗则回合末失效。
 实现签名：TargetMode=Self | Base=[Effect{Type=GainMana,Target=CardOwner,Magnitude=3}]
 
 [078] 抱刀守夜
@@ -879,7 +845,7 @@ ID：Profession.Blade.BaoDaoShouYe
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得4层灵动
+基础：出牌者获得4层灵动；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后，抽1张其他角色牌（无则普通抽1张）。；收招：此牌是本回合最后一张主动牌时，将冲锋效果保存为「藏式」。；藏式：下回合第一张主动牌消耗；未消耗则回合末失效。
 实现签名：TargetMode=Self | Base=[Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=2,Status=Agility}]
 
 
@@ -893,7 +859,7 @@ ID：Profession.Guard.TieBi
 目标：自身（直接施放）
 获取：固定核心牌
 完整效果：
-基础：出牌者获得14点护甲；出牌者登记1次格挡；出牌者获得1层标记
+基础：出牌者获得14点护甲；出牌者登记1次格挡；出牌者获得1层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=14}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [080] 护主
@@ -903,7 +869,7 @@ ID：Profession.Guard.HuZhu
 目标：单体友方（点击后选择目标）
 获取：固定核心牌
 完整效果：
-基础：所选目标获得8点护甲；出牌者获得8点护甲；由出牌者守护所选目标，转移接下来1次单体直接攻击；出牌者登记1次格挡；出牌者获得1层标记
+基础：所选目标获得8点护甲；出牌者获得8点护甲；由出牌者援护所选目标，转移1次下一次单体直接攻击；出牌者登记1次格挡；出牌者获得1层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=8}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=8}; Effect{Type=ApplyGuardLink,Target=SelectedTarget,Magnitude=1,Guard{Guardian=CardOwner,Protected=SelectedTarget,Stacks=1,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [081] 震盾
@@ -933,7 +899,7 @@ ID：Profession.Guard.FanZhenJia
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得24点护甲；出牌者登记2次格挡；出牌者获得2层标记
+基础：出牌者获得24点护甲；出牌者登记2次格挡；出牌者获得2层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=12}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [084] 镇岳令
@@ -943,7 +909,7 @@ ID：Profession.Guard.ZhenYueLing
 目标：全体敌方（直接施放）
 获取：职业随机池
 完整效果：
-基础：消耗出牌者全部护甲，对全体敌方造成（80%+每点护甲20个百分点）攻击伤害；全体友方获得16点护甲；全体友方登记1次格挡；出牌者获得2层标记
+基础：消耗出牌者全部护甲，对全体敌方造成（80%+每点护甲20个百分点）攻击伤害；全体友方获得16点护甲；全体友方登记1次格挡；出牌者获得2层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamageAllPercentAttackPerConsumedArmor,Target=AllEnemies,Magnitude=80,Secondary=20}; Effect{Type=AddArmor,Target=AllAllies,Magnitude=8}; Effect{Type=RegisterReaction,Target=AllAllies,Magnitude=1,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [085] 援护步
@@ -953,7 +919,7 @@ ID：Profession.Guard.YuanHuBu
 目标：生命最低友方（自动结算）
 获取：职业随机池
 完整效果：
-基础：生命最低友方获得6点护甲；出牌者获得6点护甲；由出牌者守护生命最低友方，转移接下来1次单体直接攻击；出牌者登记1次格挡；出牌者获得1层标记
+基础：生命最低友方获得6点护甲；出牌者获得6点护甲；由出牌者援护生命最低友方，转移1次下一次单体直接攻击；出牌者登记1次格挡；出牌者获得1层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=LowestHealthAlly | Base=[Effect{Type=AddArmor,Target=LowestHealthAlly,Magnitude=6}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=6}; Effect{Type=ApplyGuardLink,Target=LowestHealthAlly,Magnitude=1,Guard{Guardian=CardOwner,Protected=LowestHealthAlly,Stacks=1,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [086] 披甲行军
@@ -963,7 +929,7 @@ ID：Profession.Guard.PiJiaXingJun
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体友方获得6点护甲；全体友方登记1次格挡；出牌者获得6点内力；出牌者获得1层标记
+基础：全体友方获得6点护甲；全体友方登记1次格挡；出牌者获得6点内力；出牌者获得1层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=6}; Effect{Type=RegisterReaction,Target=AllAllies,Magnitude=1,Status=Block}; Effect{Type=GainMana,Target=CardOwner,Magnitude=6}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [087] 擒王盾击
@@ -983,7 +949,7 @@ ID：Profession.Guard.TieBiRuShan
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得48点护甲；出牌者获得2层破绽免疫；出牌者登记2次格挡；出牌者获得2层标记
+基础：出牌者获得48点护甲；出牌者获得2层破绽免疫；出牌者登记2次格挡；出牌者获得2层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=24}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=CannotReceiveVulnerability}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [089] 壁垒反攻
@@ -993,7 +959,7 @@ ID：Profession.Guard.BiLeiFanGong
 目标：全体敌方（直接施放）
 获取：职业随机池
 完整效果：
-基础：消耗出牌者全部护甲，对全体敌方造成（120%+每点护甲20个百分点）攻击伤害；出牌者获得20点护甲；出牌者登记1次格挡；出牌者获得2层标记
+基础：消耗出牌者全部护甲，对全体敌方造成（120%+每点护甲20个百分点）攻击伤害；出牌者获得20点护甲；出牌者登记1次格挡；出牌者获得2层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamageAllPercentAttackPerConsumedArmor,Target=AllEnemies,Magnitude=120,Secondary=20}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=10}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [090] 不动如山
@@ -1003,7 +969,7 @@ ID：Profession.Guard.BuDongRuShan
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得144点护甲；出牌者登记3次格挡；出牌者下回合保留当前护甲；出牌者获得3层标记
+基础：出牌者获得144点护甲；出牌者登记3次格挡；出牌者下回合保留当前护甲；出牌者获得3层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=36}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=3,Status=Block}; Effect{Type=RetainArmorNextRound,Target=CardOwner,Magnitude=1}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [091] 磐石吐纳
@@ -1013,7 +979,7 @@ ID：Profession.Guard.PanShiTuNa
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得5点内力（当出牌者护甲不少于8时）；出牌者抽1张牌（当出牌者护甲不少于8时）；出牌者获得6点护甲（不满足“出牌者护甲不少于8”时）；出牌者获得1层标记
+基础：出牌者获得5点内力（当出牌者护甲不少于8）；出牌者抽1张牌（当出牌者护甲不少于8）；出牌者获得6点护甲（当出牌者护甲不少于8不成立）；出牌者获得1层标记
 实现签名：TargetMode=Self | Base=[Effect{Type=GainMana,Target=CardOwner,Magnitude=5,Condition{Type=OwnerArmorAtLeast,MinArmor=8}}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1,Condition{Type=OwnerArmorAtLeast,MinArmor=8}}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=6,Condition{Type=OwnerArmorAtLeast,MinArmor=8,Negate=true}}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [092] 援军壁垒
@@ -1023,7 +989,7 @@ ID：Profession.Guard.YuanJunBiLei
 目标：单体友方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得16点护甲；出牌者获得10点护甲；由出牌者守护所选目标，转移接下来2次单体直接攻击；出牌者登记2次格挡；出牌者获得1层标记
+基础：所选目标获得16点护甲；出牌者获得10点护甲；由出牌者援护所选目标，转移2次下一次单体直接攻击；出牌者登记2次格挡；出牌者获得1层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=16}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=10}; Effect{Type=ApplyGuardLink,Target=SelectedTarget,Magnitude=2,Guard{Guardian=CardOwner,Protected=SelectedTarget,Stacks=2,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [093] 盾阵推进
@@ -1043,7 +1009,7 @@ ID：Profession.Guard.TieSuoHengJiang
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者获得80点护甲；由出牌者守护其他全体友方，转移接下来2次单体直接攻击；出牌者登记2次格挡；出牌者获得3层标记
+基础：出牌者获得80点护甲；由出牌者援护其他全体友方，转移2次下一次单体直接攻击；出牌者登记2次格挡；出牌者获得3层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=20}; Effect{Type=ApplyGuardLink,Target=AllOtherAllies,Magnitude=2,Guard{Guardian=CardOwner,Protected=AllOtherAllies,Stacks=2,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=2,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 [095] 碎甲回击
@@ -1053,7 +1019,7 @@ ID：Profession.Guard.SuiJiaHuiJi
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：由出牌者对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；出牌者登记1次格挡；出牌者抽2张牌（当出牌者护甲不少于12时）
+基础：由出牌者对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；出牌者登记1次格挡；出牌者抽2张牌（当出牌者护甲不少于12）；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttackPlusArmor,Target=SelectedTarget,Magnitude=100}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=1,Status=Block}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1,Condition{Type=OwnerArmorAtLeast,MinArmor=12}}]
 
 [096] 一夫当关
@@ -1063,7 +1029,7 @@ ID：Profession.Guard.YiFuDangGuan
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体友方获得40点护甲；出牌者获得80点护甲；由出牌者守护其他全体友方，转移接下来2次单体直接攻击；出牌者登记3次格挡；出牌者获得3层标记
+基础：全体友方获得40点护甲；出牌者获得80点护甲；由出牌者援护其他全体友方，转移2次下一次单体直接攻击；出牌者登记3次格挡；出牌者获得3层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=10}; Effect{Type=AddArmor,Target=CardOwner,Magnitude=20}; Effect{Type=ApplyGuardLink,Target=AllOtherAllies,Magnitude=2,Guard{Guardian=CardOwner,Protected=AllOtherAllies,Stacks=2,Policy=RedirectNextSingleTargetDirectAttackToGuardian}}; Effect{Type=RegisterReaction,Target=CardOwner,Magnitude=3,Status=Block}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Mark}]
 
 
@@ -1077,7 +1043,7 @@ ID：Profession.Healer.YaoYin
 目标：任意存活单位（点击后选择目标）
 获取：固定核心牌
 完整效果：
-基础：消耗出牌者全部药效；若所选目标为友方，恢复8+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去8+药效层数生命（当所选目标是友方时）；全体敌方获得1层中毒（当所选目标是友方时）；全体敌方获得1层灼烧（当所选目标是友方时）；所选目标获得2层中毒（当所选目标是敌方时）；所选目标获得2层灼烧（当所选目标是敌方时）；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害（当所选目标是敌方时）；消耗出牌者全部药效；若全体友方为友方，恢复4+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去4+药效层数生命（当所选目标是敌方时）
+基础：若目标是友方：消耗出牌者全部药效；所选目标恢复8+药效层数生命；全体敌方获得1层中毒；全体敌方获得1层灼烧；若目标是敌方：消耗出牌者全部药效；所选目标获得2层中毒；所选目标获得2层灼烧；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；全体友方恢复4+药效层数生命；药方：首次打出本牌时气力+1并激活，本局持续；任一敌我单位实际生命变化时，药师获得等量层数药效（每笔伤害或治疗各计1层）。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AnyLivingUnit | Base=[Effect{Type=HealOrReverseWithMedicine,Target=SelectedTarget,Magnitude=8,Condition{Type=TargetIsAlly}}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=1,Status=Poison,Condition{Type=TargetIsAlly}}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=1,Status=Burn,Condition{Type=TargetIsAlly}}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Poison,Condition{Type=TargetIsEnemy}}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Burn,Condition{Type=TargetIsEnemy}}; Effect{Type=ResolveToxicExplosion,Target=SelectedTarget,Magnitude=1,Condition{Type=TargetIsEnemy}}; Effect{Type=HealOrReverseWithMedicine,Target=AllAllies,Magnitude=4,Condition{Type=TargetIsEnemy}}]
 
 [098] 行气活血
@@ -1087,7 +1053,7 @@ ID：Profession.Healer.XingQiZhen
 目标：自身（直接施放）
 获取：固定核心牌
 完整效果：
-基础：全体友方失去1点生命，最低保留1点；本牌每实际扣血1名友方，出牌者获得1层药效；本次获得至少0层时再获得1层气势；出牌者抽1张牌
+基础：全体友方失去1点生命，最低保留1点；本牌每实际扣血1名友方，出牌者获得1层药效；出牌者抽1张牌；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次打出当前气力消耗至少2的牌时，全体友方失去1点生命（最低保留1点）再恢复2点；每回合累计获得至少6层药效时，回复1点气力（每回合1次；敌方回合触发则下回合开始到账）。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=Self | Base=[Effect{Type=LoseHealthNonlethal,Target=AllAllies,Magnitude=1}; Effect{Type=GainMedicineFromPartyHealthLoss,Target=CardOwner,Magnitude=1}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1}]
 
 [099] 草木敷治
@@ -1097,7 +1063,7 @@ ID：Profession.Healer.CaoMuFuZhi
 目标：任意存活单位（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：消耗出牌者全部药效；若所选目标为友方，恢复8+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去8+药效层数生命
+基础：消耗出牌者全部药效；若所选目标为友方，恢复8+药效层数生命；若为敌方，失去8+药效层数生命；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次完成实际治疗或药效反向伤害时，药师获得2层药效。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AnyLivingUnit | Base=[Effect{Type=HealOrReverseWithMedicine,Target=SelectedTarget,Magnitude=8}]
 
 [100] 清心散
@@ -1107,7 +1073,7 @@ ID：Profession.Healer.QingXinSan
 目标：任意存活单位（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：移除所选目标1层流血（当所选目标是友方时）；移除所选目标1层中毒（当所选目标是友方时）；移除所选目标1层灼烧（当所选目标是友方时）；消耗出牌者全部药效；若所选目标为友方，恢复6+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去6+药效层数生命
+基础：若目标是友方：移除所选目标1层流血；移除所选目标1层中毒；移除所选目标1层灼烧；消耗出牌者全部药效；若所选目标为友方，恢复6+药效层数生命；若为敌方，失去6+药效层数生命；药方：首次打出本牌时气力+1并激活，本局持续；友方被清除的流血、中毒、灼烧每累计3层，药师获得1层药效（余数保留）。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AnyLivingUnit | Base=[Effect{Type=RemoveStatus,Target=SelectedTarget,Magnitude=1,Status=Bleed,Condition{Type=TargetIsAlly}}; Effect{Type=RemoveStatus,Target=SelectedTarget,Magnitude=1,Status=Poison,Condition{Type=TargetIsAlly}}; Effect{Type=RemoveStatus,Target=SelectedTarget,Magnitude=1,Status=Burn,Condition{Type=TargetIsAlly}}; Effect{Type=HealOrReverseWithMedicine,Target=SelectedTarget,Magnitude=6}]
 
 [101] 灵芝续命
@@ -1117,7 +1083,7 @@ ID：Profession.Healer.LingZhiXuMing
 目标：任意存活单位（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：消耗出牌者全部药效；若所选目标为友方，恢复10+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去10+药效层数生命；若所选目标为友方，恢复2点生命；若为敌方，失去2点生命（当所选目标生命低于35%时）
+基础：消耗出牌者全部药效；若所选目标为友方，恢复10+药效层数生命；若为敌方，失去10+药效层数生命；若所选目标为友方，恢复2点生命；若为敌方，失去2点生命（当所选目标生命低于35%）；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次有友方从生命不低于35%降到低于35%时，药师获得3层药效。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AnyLivingUnit | Base=[Effect{Type=HealOrReverseWithMedicine,Target=SelectedTarget,Magnitude=10}; Effect{Type=HealOrReverseFlat,Target=SelectedTarget,Magnitude=2,Condition{Type=TargetHealthBelowPercent,Health=35%}}]
 
 [102] 回春露
@@ -1127,7 +1093,7 @@ ID：Profession.Healer.HuiChunLu
 目标：任意存活单位（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：消耗出牌者全部药效；若所选目标同阵营全体为友方，恢复5+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去5+药效层数生命
+基础：消耗出牌者全部药效；所选目标同阵营全体：若为友方，恢复5+药效层数生命；若为敌方，失去5+药效层数生命；药方：首次打出本牌时气力+1并激活，本局持续；每回合每完成3次有效友方治疗，抽1张牌（每回合最多2张）。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AnyLivingUnit | Base=[Effect{Type=HealOrReverseWithMedicine,Target=SelectedTargetSide,Magnitude=5}]
 
 [103] 止血草
@@ -1137,7 +1103,7 @@ ID：Profession.Healer.ZhiXueCao
 目标：任意存活单位（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：移除所选目标3层流血（当所选目标是友方时）；消耗出牌者全部药效；若所选目标为友方，恢复4+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去4+药效层数生命
+基础：若目标是友方：移除所选目标3层流血；消耗出牌者全部药效；若所选目标为友方，恢复4+药效层数生命；若为敌方，失去4+药效层数生命；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次清除友方流血时，全体友方获得2点护甲。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AnyLivingUnit | Base=[Effect{Type=RemoveStatus,Target=SelectedTarget,Magnitude=3,Status=Bleed,Condition{Type=TargetIsAlly}}; Effect{Type=HealOrReverseWithMedicine,Target=SelectedTarget,Magnitude=4}]
 
 [104] 温养膏
@@ -1147,7 +1113,7 @@ ID：Profession.Healer.WenYangGao
 目标：任意存活单位（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：消耗出牌者全部药效；若所选目标为友方，恢复10+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去10+药效层数生命；所选目标获得12点护甲（当所选目标是友方时）
+基础：消耗出牌者全部药效；若所选目标为友方，恢复10+药效层数生命；若为敌方，失去10+药效层数生命；若目标是友方：所选目标获得12点护甲；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次完成至少10点治疗或药效反向伤害时：对友方目标额外获得4点护甲，对敌方目标施加1层破绽。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AnyLivingUnit | Base=[Effect{Type=HealOrReverseWithMedicine,Target=SelectedTarget,Magnitude=10}; Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=6,Condition{Type=TargetIsAlly}}]
 
 [105] 金疮续命
@@ -1157,7 +1123,7 @@ ID：Profession.Healer.JinChuangXuMing
 目标：任意存活单位（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：消耗出牌者全部药效；若所选目标为友方，恢复12+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去12+药效层数生命；所选目标获得2层灵动（当所选目标是友方时）
+基础：消耗出牌者全部药效；若所选目标为友方，恢复12+药效层数生命；若为敌方，失去12+药效层数生命；若目标是友方：所选目标获得2层灵动；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次有友方从生命不低于30%降到低于30%时，该友方获得2层灵动。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AnyLivingUnit | Base=[Effect{Type=HealOrReverseWithMedicine,Target=SelectedTarget,Magnitude=12}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=1,Status=Agility,Condition{Type=TargetIsAlly}}]
 
 [106] 药王归元
@@ -1167,7 +1133,7 @@ ID：Profession.Healer.YaoWangGuiYuan
 目标：任意存活单位（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：消耗出牌者全部药效；若所选目标同阵营全体为友方，恢复6+药效层数生命并清除流血、中毒、灼烧；若为敌方，失去6+药效层数生命；移除所选目标同阵营全体3层流血（当所选目标是友方时）；移除所选目标同阵营全体3层中毒（当所选目标是友方时）；移除所选目标同阵营全体3层灼烧（当所选目标是友方时）；所选目标同阵营全体获得7点内力（当所选目标是友方时）
+基础：消耗出牌者全部药效；所选目标同阵营全体：若为友方，恢复6+药效层数生命；若为敌方，失去6+药效层数生命；若目标是友方：移除所选目标同阵营全体3层流血；移除所选目标同阵营全体3层中毒；移除所选目标同阵营全体3层灼烧；所选目标同阵营全体获得7点内力；药方：首次打出本牌时气力+1并激活，本局持续；同一次结算中至少3个不同单位实际生命变化时，抽1张牌，全体友方获得2点内力（每回合1次）。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。
 实现签名：TargetMode=AnyLivingUnit | Base=[Effect{Type=HealOrReverseWithMedicine,Target=SelectedTargetSide,Magnitude=6}; Effect{Type=RemoveStatus,Target=SelectedTargetSide,Magnitude=1,Status=Bleed,Condition{Type=TargetIsAlly}}; Effect{Type=RemoveStatus,Target=SelectedTargetSide,Magnitude=1,Status=Poison,Condition{Type=TargetIsAlly}}; Effect{Type=RemoveStatus,Target=SelectedTargetSide,Magnitude=1,Status=Burn,Condition{Type=TargetIsAlly}}; Effect{Type=GainMana,Target=SelectedTargetSide,Magnitude=3,Condition{Type=TargetIsAlly}}]
 
 [107] 百草毒
@@ -1177,7 +1143,7 @@ ID：Profession.Healer.BaiCaoDu
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得6层中毒
+基础：所选目标获得6层中毒；药方：首次打出本牌时气力+1并激活，本局持续；每笔中毒伤害生效时，药师获得1层药效。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=6,Status=Poison}]
 
 [108] 腐骨散
@@ -1187,7 +1153,7 @@ ID：Profession.Healer.FuGuSan
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成120%攻击伤害；所选目标获得7层流血；所选目标获得5层中毒；所选目标获得2层破绽
+基础：所选目标造成120%攻击伤害；所选目标获得7层流血；所选目标获得5层中毒；所选目标获得2层破绽；药方：首次打出本牌时气力+1并激活，本局持续；每回合每名同时具有流血和中毒的敌方，获得1层标记。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=60}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=6,Status=Bleed}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=4,Status=Poison}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=1,Status=Vulnerability}]
 
 [109] 蚀心香
@@ -1197,7 +1163,7 @@ ID：Profession.Healer.HuiQiXiang
 目标：全体敌方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体敌方获得1层中毒
+基础：全体敌方获得1层中毒；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次使至少2名敌方获得中毒时，药师获得2层药效并抽1张牌。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=1,Status=Poison}]
 
 [110] 连翘引毒
@@ -1207,7 +1173,7 @@ ID：Profession.Healer.LianQiaoJieDu
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得5层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害
+基础：所选目标获得5层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；药方：首次打出本牌时气力+1并激活，本局持续；每次毒爆包含至少2类持续伤害时，药师获得2层药效。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=5,Status=Poison}; Effect{Type=ResolveToxicExplosion,Target=SelectedTarget,Magnitude=1}]
 
 [111] 红花透骨
@@ -1217,7 +1183,7 @@ ID：Profession.Healer.YaoJiuWenShen
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成70%攻击伤害；所选目标获得8层流血
+基础：所选目标造成70%攻击伤害；所选目标获得8层流血；药方：首次打出本牌时气力+1并激活，本局持续；每2笔流血伤害生效，药师获得1层药效（余数保留）。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=70}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=8,Status=Bleed}]
 
 [112] 药囊飞投
@@ -1227,7 +1193,7 @@ ID：Profession.Healer.YaoNangFeiTou
 目标：全体敌方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体敌方造成180%攻击伤害；全体敌方获得5层流血；全体敌方获得3层中毒
+基础：全体敌方造成180%攻击伤害；全体敌方获得5层流血；全体敌方获得3层中毒；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次直接攻击命中至少2名敌方时，回复1点气力。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=45}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=3,Status=Bleed}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=1,Status=Poison}]
 
 [113] 苦参麻散
@@ -1237,7 +1203,7 @@ ID：Profession.Healer.KuShenMaSan
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得9层中毒；所选目标获得3层破绽
+基础：所选目标获得9层中毒；所选目标获得3层破绽；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次给已具有中毒的敌方施加破绽时，药师获得1层药效并抽1张牌。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=8,Status=Poison}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Vulnerability}]
 
 [114] 五毒调和
@@ -1247,7 +1213,7 @@ ID：Profession.Healer.WuWeiTiaoHe
 目标：全体敌方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体敌方获得3层中毒；对全体敌方毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；对全体敌方毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害
+基础：全体敌方获得3层中毒；对全体敌方毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；对全体敌方毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次毒爆包含流血、中毒、灼烧3类时，药师获得1层气势并抽1张牌。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=1,Status=Poison}; Effect{Type=ResolveToxicExplosion,Target=AllEnemies,Magnitude=1}; Effect{Type=ResolveToxicExplosion,Target=AllEnemies,Magnitude=1}]
 
 
@@ -1261,8 +1227,7 @@ ID：Profession.Hunter.XunXiJian
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成80%攻击伤害；所选目标获得2层标记
-重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+25个百分点；所选目标获得1层标记。
+基础：所选目标造成80%攻击伤害；所选目标获得2层标记；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+25个百分点；所选目标获得1层标记。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=80}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Mark}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=25,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [116] 鹰眼
@@ -1282,8 +1247,7 @@ ID：Profession.Hunter.ZhuiLie
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成75%攻击伤害；出牌者抽1张牌（当所选目标具有标记时）；出牌者回复1点气力（当所选目标具有标记时）
-重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+25个百分点。
+基础：所选目标造成75%攻击伤害；出牌者抽1张牌（当所选目标具有标记）；出牌者回复1点气力（当所选目标具有标记）；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+25个百分点。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=75}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1,Condition{Type=TargetHasStatus,Status=Mark,MinStacks=1}}; Effect{Type=GainEnergy,Target=CardOwner,Magnitude=1,Condition{Type=TargetHasStatus,Status=Mark,MinStacks=1}}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=25,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [118] 锐意感知
@@ -1313,8 +1277,7 @@ ID：Profession.Hunter.ChuanYang
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成300%攻击伤害；所选目标本段伤害无视6点防御
-重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+50个百分点。
+基础：所选目标造成300%攻击伤害；所选目标本段伤害无视6点防御；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+50个百分点。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=150}; Effect{Type=IgnoreDefense,Target=SelectedTarget,Magnitude=6}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=50,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [121] 连珠箭
@@ -1324,8 +1287,7 @@ ID：Profession.Hunter.LianZhuJian
 目标：单体敌方（点击后选择目标）
 获取：固定核心牌
 完整效果：
-基础：所选目标获得9层流血；所选目标获得7层中毒；所选目标造成100%攻击伤害；出牌者获得2层蓄力
-重箭：消耗全部蓄力；每消耗1层，追加1段50%攻击伤害。
+基础：所选目标获得9层流血；所选目标获得7层中毒；所选目标造成100%攻击伤害；出牌者获得2层蓄力；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，追加1段50%攻击伤害。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=8,Status=Bleed}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=6,Status=Poison}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=50}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Charge}] | HeavyArrow{Kind=ExtraAttackPerCharge,PerCharge=50,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [122] 淬毒矢
@@ -1335,8 +1297,7 @@ ID：Profession.Hunter.FuZuShi
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成70%攻击伤害；所选目标获得6层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害
-重箭：消耗全部蓄力；每消耗1层，再触发1次毒爆。
+基础：所选目标造成70%攻击伤害；所选目标获得6层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，再触发1次毒爆。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=70}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=6,Status=Poison}; Effect{Type=ResolveToxicExplosion,Target=SelectedTarget,Magnitude=1}] | HeavyArrow{Kind=ToxicExplosionPerCharge,PerCharge=1,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [123] 隐踪
@@ -1356,8 +1317,7 @@ ID：Profession.Hunter.DuanMaiShi
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成200%攻击伤害；所选目标获得9层流血
-重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+30个百分点。
+基础：所选目标造成200%攻击伤害；所选目标获得9层流血；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+30个百分点。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=100}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=8,Status=Bleed}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=30,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [125] 狩魂
@@ -1367,8 +1327,7 @@ ID：Profession.Hunter.ShouHun
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成600%攻击伤害；目标每有1层指定状态，本段攻击倍率+20个百分点（当所选目标具有标记时）
-重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+35个百分点；所选目标获得1层标记。
+基础：所选目标造成600%攻击伤害；目标每有1层指定状态，本段攻击倍率+20个百分点（当所选目标具有标记）；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+35个百分点；所选目标获得1层标记。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=150}; Effect{Type=BonusDamagePercent,Target=SelectedTarget,Magnitude=20,Secondary=2147483647,Condition{Type=TargetHasStatus,Status=Mark,MinStacks=1}}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=35,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [126] 百步穿杨
@@ -1378,8 +1337,7 @@ ID：Profession.Hunter.BaiBuChuanYang
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成840%攻击伤害；出牌者抽4张牌（当所选目标具有标记至少5层时）
-重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+40个百分点并抽1张牌。
+基础：所选目标造成840%攻击伤害；出牌者抽4张牌（当所选目标具有至少5层标记）；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+40个百分点并抽1张牌。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=210}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=2,Condition{Type=TargetHasStatus,Status=Mark,MinStacks=5}}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=40,DrawPerCharge=1,MinCharge=0,Energy=0}
 
 [127] 掠影箭
@@ -1389,9 +1347,7 @@ ID：Profession.Hunter.LueYingJian
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成65%攻击伤害；出牌者抽1张牌（当所选目标具有标记时）；出牌者回复1点气力（当所选目标具有标记时）
-重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+20个百分点；出牌者获得1层灵动。
-打出本牌时，本回合此前每打出3张主动牌，出牌者获得1层灵动。
+基础：所选目标造成65%攻击伤害；出牌者抽1张牌（当所选目标具有标记）；出牌者回复1点气力（当所选目标具有标记）；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+20个百分点；出牌者获得1层灵动。；打出本牌时，本回合此前每打出3张主动牌，出牌者获得1层灵动。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=65}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1,Condition{Type=TargetHasStatus,Status=Mark,MinStacks=1}}; Effect{Type=GainEnergy,Target=CardOwner,Magnitude=1,Condition{Type=TargetHasStatus,Status=Mark,MinStacks=1}}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=20,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [128] 猎魂标
@@ -1411,8 +1367,7 @@ ID：Profession.Hunter.PoJiaDing
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成150%攻击伤害；所选目标获得3层破绽；所选目标获得2层中毒
-重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+25个百分点。
+基础：所选目标造成150%攻击伤害；所选目标获得3层破绽；所选目标获得2层中毒；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+25个百分点。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=75}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Vulnerability}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=1,Status=Poison}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=25,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 [130] 回环箭
@@ -1422,9 +1377,7 @@ ID：Profession.Hunter.HuiHuanJian
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成60%攻击伤害；出牌者抽1张牌；出牌者回复1点气力
-重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+15个百分点并抽1张牌。
-打出本牌时，本回合此前每打出3张主动牌，出牌者抽1张牌。
+基础：所选目标造成60%攻击伤害；出牌者抽1张牌；出牌者回复1点气力；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+15个百分点并抽1张牌。；打出本牌时，本回合此前每打出3张主动牌，出牌者抽1张牌。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=60}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1}; Effect{Type=GainEnergy,Target=CardOwner,Magnitude=1}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=15,DrawPerCharge=1,MinCharge=0,Energy=0}
 
 [131] 腐叶陷阱
@@ -1444,8 +1397,7 @@ ID：Profession.Hunter.YingLuo
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成800%攻击伤害；本段攻击倍率+100个百分点（当所选目标生命低于35%时）
-重箭：消耗全部蓄力；每消耗1层，本牌首段攻击倍率+60个百分点。
+基础：所选目标造成800%攻击伤害；本段攻击倍率+100个百分点（当所选目标生命低于35%）；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+60个百分点。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=200}; Effect{Type=BonusDamagePercent,Target=SelectedTarget,Magnitude=100,Condition{Type=TargetHealthBelowPercent,Health=35%}}] | HeavyArrow{Kind=AddPrimaryAttackPercentPerCharge,PerCharge=60,DrawPerCharge=0,MinCharge=0,Energy=0}
 
 
@@ -1716,7 +1668,7 @@ ID：Profession.FormationMaster.GuanShi
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：切换至平原；触发当前地势收益1次
+基础：切换至平原；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=Plain}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
 
 [152] 定阵
@@ -1726,7 +1678,7 @@ ID：Profession.FormationMaster.DingZhen
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：切换至村寨；触发当前地势收益1次
+基础：切换至村镇；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=Village}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [153] 引水回元
@@ -1736,7 +1688,7 @@ ID：Profession.FormationMaster.YinShuiHuiYuan
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：切换至水岸；触发当前地势收益1次
+基础：切换至水岸；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=WaterShore}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [154] 困阵
@@ -1746,7 +1698,7 @@ ID：Profession.FormationMaster.KunZhen
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：切换至洞穴；触发当前地势收益1次
+基础：切换至洞窟；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=Cave}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [155] 林影迷踪
@@ -1756,7 +1708,7 @@ ID：Profession.FormationMaster.LinYingMiZong
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：切换至山林；触发当前地势收益1次
+基础：切换至山林；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=Forest}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [156] 借山为障
@@ -1766,7 +1718,7 @@ ID：Profession.FormationMaster.JieShanWeiZhang
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：切换至山崖；触发当前地势收益1次
+基础：切换至断崖；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ChangeTerrain,Target=CardOwner,Magnitude=1,TerrainOverride=Cliff}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
 
 [157] 村寨援阵
@@ -1776,7 +1728,7 @@ ID：Profession.FormationMaster.CunZhaiYuanZhen
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体友方恢复24点生命；全体友方获得16点护甲；触发当前地势收益1次
+基础：全体友方恢复24点生命；全体友方获得16点护甲；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=Heal,Target=AllAllies,Magnitude=12}; Effect{Type=AddArmor,Target=AllAllies,Magnitude=8}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [158] 回声震杀
@@ -1786,7 +1738,7 @@ ID：Profession.FormationMaster.HuiShengZhenSha
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成480%攻击伤害；触发当前地势收益1次
+基础：所选目标造成480%攻击伤害；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=240}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
 
 [159] 易位阵
@@ -1796,7 +1748,7 @@ ID：Profession.FormationMaster.YiWeiZhen
 目标：单体友方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得1层灵动；移除所选目标1层破绽；触发当前地势收益1次
+基础：所选目标获得1层灵动；移除所选目标1层破绽；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=1,Status=Agility}; Effect{Type=RemoveStatus,Target=SelectedTarget,Magnitude=1,Status=Vulnerability}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [160] 八门轮转
@@ -1806,7 +1758,7 @@ ID：Profession.FormationMaster.BaMenLunZhuan
 目标：自身（直接施放）
 获取：职业随机池
 完整效果：
-基础：出牌者抽4张牌；出牌者弃置1张牌；触发当前地势收益1次；出牌者接下来1次地势收益翻倍
+基础：出牌者抽4张牌；出牌者弃置1张牌；触发当前地势收益1次；出牌者接下来1次地势收益翻倍；地势：按当前地势触发对应效果。
 实现签名：TargetMode=Self | Base=[Effect{Type=DrawCards,Target=CardOwner,Magnitude=3}; Effect{Type=DiscardCards,Target=CardOwner,Magnitude=1}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}; Effect{Type=DoubleTerrainBonus,Target=CardOwner,Magnitude=1}]
 
 [161] 镇煞阵
@@ -1816,7 +1768,7 @@ ID：Profession.FormationMaster.ZhenShaZhen
 目标：全体敌方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体敌方造成1280%攻击伤害；全体敌方获得5层破绽；触发当前地势收益1次
+基础：全体敌方造成1280%攻击伤害；全体敌方获得5层破绽；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=DamagePercentAttack,Target=AllEnemies,Magnitude=320}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=3,Status=Vulnerability}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [162] 万象归阵
@@ -1826,7 +1778,7 @@ ID：Profession.FormationMaster.WanXiangGuiZhen
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体友方获得160点护甲；出牌者抽5张牌；出牌者获得3层地形免耗；触发当前地势收益1次
+基础：全体友方获得160点护甲；出牌者抽5张牌；出牌者获得3层地形免耗；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=40}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=3}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=NextTerrainCardFree}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [163] 山门封锁
@@ -1836,7 +1788,7 @@ ID：Profession.FormationMaster.ShanMenFengSuo
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得2层破绽；触发当前地势收益1次
+基础：所选目标获得2层破绽；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Vulnerability}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=1}]
 
 [164] 水镜折光
@@ -1846,7 +1798,7 @@ ID：Profession.FormationMaster.ShuiJingZheGuang
 目标：单体友方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得32点护甲；从所选目标的流血、中毒、灼烧、蚀伤中依次清除至多3层；触发当前地势收益1次
+基础：所选目标获得32点护甲；从所选目标的流血、中毒、灼烧、蚀伤中依次清除至多3层；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=AddArmor,Target=SelectedTarget,Magnitude=16}; Effect{Type=RemoveAnyDamageOverTime,Target=SelectedTarget,Magnitude=2}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [165] 林风拂阵
@@ -1856,7 +1808,7 @@ ID：Profession.FormationMaster.LinFengFuZhen
 目标：单体友方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标获得1层灵动；触发当前地势收益1次
+基础：所选目标获得1层灵动；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleAlly | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=1,Status=Agility}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [166] 阵旗鼓舞
@@ -1866,7 +1818,7 @@ ID：Profession.FormationMaster.ZhenQiGuWu
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：持续效果：下次攻击时，本段攻击倍率+20个百分点；触发1次后失效；触发当前地势收益1次
+基础：持续效果：下次攻击时，本段攻击倍率+20个百分点；触发1次后失效；触发当前地势收益1次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ApplyBattleModifier,Target=AllAllies,Magnitude=0,Modifier{Trigger=OnNextAttack,Effect=BonusDamagePercent,Target=PlayedCard,RecipientScope=AllAllies,RecipientTarget=AllAllies,Expiry=AfterTriggerCount,Magnitude=20,Triggers=1,AttackScope=AnyTarget,Persistent=true}}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=1}]
 
 [167] 地脉借力
@@ -1876,7 +1828,7 @@ ID：Profession.FormationMaster.DiMaiJieLi
 目标：单体敌方（点击后选择目标）
 获取：职业随机池
 完整效果：
-基础：所选目标造成400%攻击伤害；触发当前地势收益2次
+基础：所选目标造成400%攻击伤害；触发当前地势收益2次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=200}; Effect{Type=TriggerTerrainBenefit,Target=SelectedTarget,Magnitude=2}]
 
 [168] 四象连环
@@ -1886,7 +1838,7 @@ ID：Profession.FormationMaster.SiXiangLianHuan
 目标：全体友方（直接施放）
 获取：职业随机池
 完整效果：
-基础：全体友方获得96点护甲；出牌者抽5张牌；触发当前地势收益2次
+基础：全体友方获得96点护甲；出牌者抽5张牌；触发当前地势收益2次；地势：按当前地势触发对应效果。
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=24}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=3}; Effect{Type=TriggerTerrainBenefit,Target=CardOwner,Magnitude=2}]
 
 
@@ -2000,7 +1952,7 @@ ID：Route.Terrain.DuanYaLuoShi
 目标：单体敌方（点击后选择目标）
 获取：普通路线临时卡
 完整效果：
-基础：所选目标造成130%攻击伤害（不满足“当前地势为山崖”时）；所选目标获得1层破绽（不满足“当前地势为山崖”时）；所选目标造成180%攻击伤害（当当前地势为山崖时）；所选目标获得2层破绽（当当前地势为山崖时）
+基础：所选目标造成130%攻击伤害（当地形为断崖不成立）；所选目标获得1层破绽（当地形为断崖不成立）；所选目标造成180%攻击伤害（当地形为断崖）；所选目标获得2层破绽（当地形为断崖）
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=130,Condition{Type=TerrainIsAny,Terrain=Cliff,Negate=true}}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=1,Status=Vulnerability,Condition{Type=TerrainIsAny,Terrain=Cliff,Negate=true}}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=180,Condition{Type=TerrainIsAny,Terrain=Cliff}}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Vulnerability,Condition{Type=TerrainIsAny,Terrain=Cliff}}]
 
 [180] 林影伏袭
@@ -2010,7 +1962,7 @@ ID：Route.Terrain.LinYingFuXi
 目标：单体敌方（点击后选择目标）
 获取：普通路线临时卡
 完整效果：
-基础：所选目标获得2层标记；出牌者获得1层灵动（当当前地势为山林时）；出牌者抽1张牌（当当前地势为山林时）
+基础：所选目标获得2层标记；出牌者获得1层灵动（当地形为山林）；出牌者抽1张牌（当地形为山林）
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Mark}; Effect{Type=ApplyStatus,Target=CardOwner,Magnitude=1,Status=Agility,Condition{Type=TerrainIsAny,Terrain=Forest}}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1,Condition{Type=TerrainIsAny,Terrain=Forest}}]
 
 [181] 渡口回流
@@ -2020,7 +1972,7 @@ ID：Route.Terrain.DuKouHuiLiu
 目标：全体友方（直接施放）
 获取：普通路线临时卡
 完整效果：
-基础：全体友方获得3点内力；全体友方获得3点内力（当当前地势为水岸或渡口时）
+基础：全体友方获得3点内力；全体友方获得3点内力（当地形为水岸或渡口）
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=GainMana,Target=AllAllies,Magnitude=3}; Effect{Type=GainMana,Target=AllAllies,Magnitude=3,Condition{Type=TerrainIsAny,Terrain=WaterShore,AltTerrain=Ferry}}]
 
 [182] 寨火援手
@@ -2030,7 +1982,7 @@ ID：Route.Terrain.ZhaiHuoYuanShou
 目标：全体友方（直接施放）
 获取：普通路线临时卡
 完整效果：
-基础：全体友方获得5点护甲；全体友方恢复6点生命（当当前地势为村寨时）
+基础：全体友方获得5点护甲；全体友方恢复6点生命（当地形为村镇）
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=AddArmor,Target=AllAllies,Magnitude=5}; Effect{Type=Heal,Target=AllAllies,Magnitude=6,Condition{Type=TerrainIsAny,Terrain=Village}}]
 
 [183] 洞火照明
@@ -2040,7 +1992,7 @@ ID：Route.Terrain.DongHuoZhaoMing
 目标：全体敌方（直接施放）
 获取：普通路线临时卡
 完整效果：
-基础：全体敌方获得1层标记；全体敌方获得2层灼烧（当当前地势为洞穴时）；出牌者抽1张牌（当当前地势为洞穴时）
+基础：全体敌方获得1层标记；全体敌方获得2层灼烧（当地形为洞窟）；出牌者抽1张牌（当地形为洞窟）
 实现签名：TargetMode=AllEnemies | Base=[Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=1,Status=Mark}; Effect{Type=ApplyStatus,Target=AllEnemies,Magnitude=2,Status=Burn,Condition{Type=TerrainIsAny,Terrain=Cave}}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1,Condition{Type=TerrainIsAny,Terrain=Cave}}]
 
 [184] 借势突袭
@@ -2050,7 +2002,7 @@ ID：Route.Terrain.JieShiTuXi
 目标：单体敌方（点击后选择目标）
 获取：普通路线临时卡
 完整效果：
-基础：所选目标造成115%攻击伤害；所选目标获得2层破绽（当当前地势为山崖时）；所选目标获得2层标记（当当前地势为山林时）；出牌者获得4点内力（当当前地势为水岸或渡口时）；全体友方获得4点护甲（当当前地势为村寨时）；所选目标获得2层中毒（当当前地势为洞穴时）；出牌者抽1张牌（当当前地势为平原时）
+基础：所选目标造成115%攻击伤害；所选目标获得2层破绽（当地形为断崖）；所选目标获得2层标记（当地形为山林）；出牌者获得4点内力（当地形为水岸或渡口）；全体友方获得4点护甲（当地形为村镇）；所选目标获得2层中毒（当地形为洞窟）；出牌者抽1张牌（当地形为平原）
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=115}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Vulnerability,Condition{Type=TerrainIsAny,Terrain=Cliff}}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Mark,Condition{Type=TerrainIsAny,Terrain=Forest}}; Effect{Type=GainMana,Target=CardOwner,Magnitude=4,Condition{Type=TerrainIsAny,Terrain=WaterShore,AltTerrain=Ferry}}; Effect{Type=AddArmor,Target=AllAllies,Magnitude=4,Condition{Type=TerrainIsAny,Terrain=Village}}; Effect{Type=ApplyStatus,Target=SelectedTarget,Magnitude=2,Status=Poison,Condition{Type=TerrainIsAny,Terrain=Cave}}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1,Condition{Type=TerrainIsAny,Terrain=Plain}}]
 
 [185] 行军布阵
@@ -2080,7 +2032,7 @@ ID：Route.Terrain.LinShiZhaYing
 目标：全体友方（直接施放）
 获取：普通路线临时卡
 完整效果：
-基础：全体友方恢复8点生命；全体友方获得2点内力；全体友方恢复4点生命（当当前地势为山林或村寨时）
+基础：全体友方恢复8点生命；全体友方获得2点内力；全体友方恢复4点生命（当地形为山林或村镇）
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=Heal,Target=AllAllies,Magnitude=8}; Effect{Type=GainMana,Target=AllAllies,Magnitude=2}; Effect{Type=Heal,Target=AllAllies,Magnitude=4,Condition{Type=TerrainIsAny,Terrain=Forest,AltTerrain=Village}}]
 
 [188] 险路突围
@@ -2090,7 +2042,7 @@ ID：Route.Terrain.XianLuTuWei
 目标：全体友方（直接施放）
 获取：普通路线临时卡
 完整效果：
-基础：全体友方获得1层灵动；出牌者抽1张牌；生命最低友方获得8点护甲（当当前地势为山崖或山林时）
+基础：全体友方获得1层灵动；出牌者抽1张牌；生命最低友方获得8点护甲（当地形为断崖或山林）
 实现签名：TargetMode=AllAllies | Base=[Effect{Type=ApplyStatus,Target=AllAllies,Magnitude=1,Status=Agility}; Effect{Type=DrawCards,Target=CardOwner,Magnitude=1}; Effect{Type=AddArmor,Target=LowestHealthAlly,Magnitude=8,Condition{Type=TerrainIsAny,Terrain=Cliff,AltTerrain=Forest}}]
 
 
@@ -2114,7 +2066,7 @@ ID：Route.Rare.TieYiYiJue
 目标：自身（直接施放）
 获取：稀有路线临时卡
 完整效果：
-基础：出牌者获得36点护甲；持续效果：本回合结束时，出牌者回复1点气力；当出牌者护甲不少于10时；触发1次后失效
+基础：出牌者获得36点护甲；持续效果：回合结束时，出牌者回复1点气力；触发1次后失效；当出牌者护甲不少于10
 实现签名：TargetMode=Self | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=18}; Effect{Type=ApplyBattleModifier,Target=CardOwner,Magnitude=0,Modifier{Trigger=EndOfRound,Effect=GainEnergy,Target=CardOwner,RecipientScope=CardOwner,RecipientTarget=CardOwner,Expiry=AfterTriggerCount,Magnitude=1,Triggers=1,AttackScope=AnyTarget,Persistent=true,Condition{Type=OwnerArmorAtLeast,MinArmor=10}}}]
 
 [191] 灵泉一饮
@@ -2134,7 +2086,7 @@ ID：Route.Rare.JueJingFanJi
 目标：单体敌方（点击后选择目标）
 获取：稀有路线临时卡
 完整效果：
-基础：出牌者获得20点护甲；所选目标造成440%攻击伤害（当出牌者生命低于30%时）；所选目标造成240%攻击伤害（不满足“出牌者生命低于30%”时）
+基础：出牌者获得20点护甲；所选目标造成440%攻击伤害（当出牌者生命低于30%）；所选目标造成240%攻击伤害（当出牌者生命低于30%不成立）
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=AddArmor,Target=CardOwner,Magnitude=10}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=220,Condition{Type=OwnerHealthBelowPercent,Health=30%}}; Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=120,Condition{Type=OwnerHealthBelowPercent,Health=30%,Negate=true}}]
 
 [193] 同心合璧
@@ -2188,7 +2140,7 @@ ID：Route.Boss.DuKouLieFeng
 目标：单体敌方（点击后选择目标）
 获取：首领路线临时卡
 完整效果：
-基础：所选目标造成560%攻击伤害；本段攻击倍率+80个百分点（当所选目标具有标记时）
+基础：所选目标造成560%攻击伤害；本段攻击倍率+80个百分点（当所选目标具有标记）
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=140}; Effect{Type=BonusDamagePercent,Target=SelectedTarget,Magnitude=80,Condition{Type=TargetHasStatus,Status=Mark,MinStacks=1}}]
 
 [198] 伏虎断江
@@ -2198,5 +2150,5 @@ ID：Route.Boss.FuHuDuanJiang
 目标：单体敌方（点击后选择目标）
 获取：首领路线临时卡
 完整效果：
-基础：所选目标造成920%攻击伤害；每消耗1层状态，本段攻击倍率+25个百分点（当所选目标具有破绽时；消耗至多3层破绽；数值按实际消耗层数结算）
+基础：所选目标造成920%攻击伤害；每消耗1层状态，本段攻击倍率+25个百分点（当所选目标具有破绽；消耗至多3层破绽；数值按消耗层数结算）
 实现签名：TargetMode=SingleEnemy | Base=[Effect{Type=DamagePercentAttack,Target=SelectedTarget,Magnitude=230}; Effect{Type=BonusDamagePercentPerConsumedStatus,Target=SelectedTarget,Magnitude=25,Condition{Type=TargetHasStatus,Status=Vulnerability,MinStacks=1,ConsumeStatus<=3,ScaleByConsumedStatus=true}}]

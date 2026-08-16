@@ -106,7 +106,7 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Blade cards expose the exact concise Finish keyword rule"), BladeText.Contains(TEXT("收招：此牌是本回合最后一张主动牌时触发。")));
 	TestTrue(TEXT("Blade cards describe their actual Charge payload"), BladeText.Contains(TEXT("冲锋效果：")) && BladeText.Contains(TEXT("重放")));
 	TestTrue(TEXT("Blade cards describe their actual Finish payload"), BladeText.Contains(TEXT("收招效果：")) && BladeText.Contains(TEXT("重放")));
-	TestTrue(TEXT("Medicine cards expose the exact concise Medicine keyword rule"), MedicineText.Contains(TEXT("药效：下一次治疗或治疗反转每层＋1；结算时全部消耗。")));
+	TestTrue(TEXT("Medicine cards expose the exact concise Medicine keyword rule"), MedicineText.Contains(TEXT("药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。")));
 	TestTrue(TEXT("Heavy Arrow cards expose the exact concise Heavy Arrow keyword rule"), HeavyArrowText.Contains(TEXT("重箭：消耗全部蓄力，逐层触发本牌重箭效果。")));
 	TestTrue(TEXT("Heavy Arrow cards retain their data-defined per-layer payload"), HeavyArrowText.Contains(TEXT("每消耗1层")) && HeavyArrowText.Contains(TEXT("抽1张牌")));
 	TestTrue(TEXT("spell-task cards expose the exact concise task rule"), SpellTaskText.Contains(TEXT("法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。")));
@@ -235,7 +235,7 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("current formatter explains next-round Armor retention"), FormatterCoverageText.Contains(TEXT("下回合保留当前护甲")));
 	TestTrue(TEXT("current formatter explains ally-only damage-over-time cleansing"), FormatterCoverageText.Contains(TEXT("若所选目标为友方")) && FormatterCoverageText.Contains(TEXT("清除其全部流血、中毒和灼烧")));
 	TestTrue(TEXT("current formatter explains flat healing reversal"), FormatterCoverageText.Contains(TEXT("恢复2点生命")) && FormatterCoverageText.Contains(TEXT("失去2点生命")));
-	TestTrue(TEXT("current formatter explains ally and enemy gates"), FormatterCoverageText.Contains(TEXT("当所选目标是友方")) && FormatterCoverageText.Contains(TEXT("当所选目标是敌方")));
+	TestTrue(TEXT("current formatter groups ally and enemy gates"), FormatterCoverageText.Contains(TEXT("若目标是友方")) && FormatterCoverageText.Contains(TEXT("若目标是敌方")));
 	TestFalse(TEXT("current enum coverage has no unresolved fallback"), FormatterCoverageText.Contains(TEXT("未知")) || FormatterCoverageText.Contains(TEXT("无效")));
 
 	FGameXXKCardDefinition QualityFixture;
@@ -286,6 +286,38 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	const FString DoubleInvalidQualityText = GameXXKCardText::DescribeDetail(QualityFixture, nullptr);
 	TestTrue(TEXT("legacy detail safely falls back to Common when BaseQuality is Invalid"),
 		DoubleInvalidQualityText.Contains(TEXT("7%攻击伤害")) && DoubleInvalidQualityText.Contains(TEXT("品质：普通")));
+
+	const FGameXXKCardDefinition* YaoYin = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Healer.YaoYin"));
+	TestNotNull(TEXT("Yin-Yang Medicine formula card exists"), YaoYin);
+	if (YaoYin)
+	{
+		const FString YaoYinText = GameXXKCardText::DescribeEffects(*YaoYin);
+		TestTrue(TEXT("branch cards group friendly effects under one ally branch"), YaoYinText.Contains(TEXT("若目标是友方：")));
+		TestTrue(TEXT("branch cards group hostile effects under one enemy branch"), YaoYinText.Contains(TEXT("若目标是敌方：")));
+		TestTrue(TEXT("branch cards consume Medicine once per branch"), YaoYinText.Contains(TEXT("消耗出牌者全部药效")));
+		TestTrue(TEXT("branch cards expose the activated Healer formula"), YaoYinText.Contains(TEXT("药方：首次打出本牌时气力+1并激活，本局持续；")));
+		TestTrue(TEXT("Yin-Yang formula describes the health-change listener"), YaoYinText.Contains(TEXT("任一敌我单位实际生命变化时")));
+		TestFalse(TEXT("branch-aware Medicine text no longer repeats ally/enemy condition suffixes"), YaoYinText.Contains(TEXT("（当所选目标是友方")) || YaoYinText.Contains(TEXT("（当所选目标是敌方")));
+		TestFalse(TEXT("branch-aware Medicine text no longer claims an unimplemented DoT cleanse"), YaoYinText.Contains(TEXT("恢复8+药效层数生命并清除")));
+	}
+
+	const FGameXXKCardDefinition* XingQiZhen = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Healer.XingQiZhen"));
+	TestNotNull(TEXT("High Energy Healer formula card exists"), XingQiZhen);
+	if (XingQiZhen)
+	{
+		const FString XingQiZhenText = GameXXKCardText::DescribeEffects(*XingQiZhen);
+		TestTrue(TEXT("High Energy Healer formula explains both listener clauses"), XingQiZhenText.Contains(TEXT("当前气力消耗至少2的牌")) && XingQiZhenText.Contains(TEXT("累计获得至少6层药效")));
+		TestFalse(TEXT("party health-loss Medicine text no longer leaks the zero threshold sentinel"), XingQiZhenText.Contains(TEXT("至少0层")));
+	}
+
+	const FGameXXKCardDefinition* ErMuMiBao = FGameXXKCardCatalog::FindCardDefinition(TEXT("Npc.SongJinBao.ErMuMiBao"));
+	TestNotNull(TEXT("reveal-all-intents card exists"), ErMuMiBao);
+	if (ErMuMiBao)
+	{
+		const FString ErMuText = GameXXKCardText::DescribeEffects(*ErMuMiBao);
+		TestTrue(TEXT("reveal-all sentinel renders as all intents instead of a magic 99"), ErMuText.Contains(TEXT("揭示全部敌方意图")));
+		TestFalse(TEXT("reveal-all sentinel never leaks the magic 99 count"), ErMuText.Contains(TEXT("揭示99个敌方意图")));
+	}
 	return true;
 }
 

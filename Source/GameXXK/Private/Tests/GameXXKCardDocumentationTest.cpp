@@ -711,71 +711,16 @@ namespace GameXXKCardDocumentationTest
 
 	FString DescribeCompleteEffects(const FGameXXKCardDefinition& Definition)
 	{
+		const FString RuntimeEffects = GameXXKCardText::DescribeEffects(Definition, Definition.BaseQuality);
 		const FGameXXKCardDefinition EffectiveDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
 			Definition,
 			Definition.BaseQuality);
 		if (EffectiveDefinition.SorcererRule.Family != EGameXXKSorcererCardFamily::None)
 		{
-			return GameXXKCardText::DescribeEffects(Definition, Definition.BaseQuality);
+			return RuntimeEffects;
 		}
-
-		TArray<FString> Lines;
-		Lines.Add(FString::Printf(TEXT("基础：%s"), *NormalizeLineBreaks(DescribeEffectArray(EffectiveDefinition, EffectiveDefinition.Effects), TEXT("；"))));
-		if (!EffectiveDefinition.ChargeEffects.IsEmpty())
-		{
-			Lines.Add(FString::Printf(TEXT("冲锋：%s"), *NormalizeLineBreaks(DescribeEffectArray(EffectiveDefinition, EffectiveDefinition.ChargeEffects), TEXT("；"))));
-		}
-		if (!EffectiveDefinition.FinishEffects.IsEmpty())
-		{
-			Lines.Add(FString::Printf(TEXT("收招：%s"), *NormalizeLineBreaks(DescribeEffectArray(EffectiveDefinition, EffectiveDefinition.FinishEffects), TEXT("；"))));
-		}
-		const FString HeavyArrow = DescribeHeavyArrow(EffectiveDefinition.HeavyArrow);
-		if (!HeavyArrow.IsEmpty()) Lines.Add(HeavyArrow);
-		if (EffectiveDefinition.HunterRule.PriorActiveCardInterval > 0)
-		{
-			const FGameXXKHunterCardRule& Hunter = EffectiveDefinition.HunterRule;
-			TArray<FString> IntervalRewards;
-			if (Hunter.DrawPerCompletedInterval > 0)
-			{
-				IntervalRewards.Add(FString::Printf(TEXT("出牌者抽%d张牌"), Hunter.DrawPerCompletedInterval));
-			}
-			if (Hunter.StatusPerCompletedInterval != EGameXXKCardStatus::None
-				&& Hunter.StatusStacksPerCompletedInterval > 0)
-			{
-				IntervalRewards.Add(FString::Printf(
-					TEXT("出牌者获得%d层%s"),
-					Hunter.StatusStacksPerCompletedInterval,
-					*DescribeStatus(Hunter.StatusPerCompletedInterval)));
-			}
-			if (!IntervalRewards.IsEmpty())
-			{
-				Lines.Add(FString::Printf(
-					TEXT("打出本牌时，本回合此前每打出%d张主动牌，%s。"),
-					Hunter.PriorActiveCardInterval,
-					*FString::Join(IntervalRewards, TEXT("、"))));
-			}
-		}
-		const FString SpellReward = DescribeSpellTaskReward(EffectiveDefinition.SpellTaskReward);
-		if (!SpellReward.IsEmpty()) Lines.Add(SpellReward);
-		for (const FGameXXKCardEffect& Effect : EffectiveDefinition.Effects)
-		{
-			if (Effect.Type == EGameXXKCardEffectType::GainEnergy
-				&& !Effect.ConsumedStackResultRef.IsNone()
-				&& Effect.SecondaryMagnitude > 0)
-			{
-				Lines.Add(FString::Printf(
-					TEXT("结算阈值：同次消耗达到至少%d层时，回复%d点气力一次。"),
-					Effect.SecondaryMagnitude,
-					Effect.Magnitude));
-			}
-		}
-		if (EffectiveDefinition.bExhaustOnPlay)
-		{
-			Lines.Add(TEXT("消耗：打出后进入本局消耗区。"));
-		}
-		return FString::Join(Lines, TEXT("\n"));
+		return FString::Printf(TEXT("基础：%s"), *NormalizeLineBreaks(RuntimeEffects, TEXT("；")));
 	}
-
 	FString DescribeImplementationContract(const FGameXXKCardDefinition& Definition)
 	{
 		TArray<FString> Parts;
