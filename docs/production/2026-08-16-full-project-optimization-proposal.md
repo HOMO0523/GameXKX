@@ -6,8 +6,10 @@ source_commit: 3ae0561a28fa18208d957650451aea1a34878d19
 ---
 # GameXXK 全量代码与文档审查及优化方案（2026-08-16）
 
-> 任务：先阅读全量项目代码和文档，再提出优化方案。本文档是全量审查后的方案真源，取代 `2026-08-16-optimization-followup.md` 的“下一步待办”部分，与其发现兼容。
+> 任务：先阅读全量项目代码和文档，再提出优化方案。本文档是本次项目级审查后的方案真源，取代 `2026-08-16-optimization-followup.md` 的“下一步待办”部分，与其发现兼容。
 > 范围：Source C++、docs 全部、scripts 与 Content/Python 全部、配置与构建文件。本轮只读审查；除本方案文档外不改生产代码。
+>
+> **诚实声明**：本次并未逐行读完 24 万+ 行。实际做法是 **100% 文件枚举 + 100% 结构化/模式扫描 + 关键文件与大文件分段精读**，不是对每个文件的每一行做人工逐行阅读。具体覆盖率见下表；如果你要求逐行验证全部代码，需要另开批量精读任务，逐文件确认后我会单独交付核对清单。
 
 ---
 
@@ -15,12 +17,14 @@ source_commit: 3ae0561a28fa18208d957650451aea1a34878d19
 
 | 范围 | 数量 | 行数 | 审查方式 |
 |---|---:|---:|---|
-| Source C++（GameXXK/GameXXKEditor/TestMap，含 .h/.cpp/.cs） | 385 | 170,193 | 6 个并行只读审查 + 全量 grep 交叉扫描 |
-| 其中 GameXXK Tests | 176 cpp + 3 helper | 74,616 | 全量统计 + 分域精读 |
-| docs 全部（production/design/verification/superpowers/ui/defense） | 251 | 73,628 | 活跃文档逐篇全文；superpowers 全量结构 + 08 月全文 |
-| scripts/*.py（含子目录与 _archive） | 198 | 59,873 | AST import/函数清单 + 核心精读 + 84 个测试实测 |
-| Content/Python/*.py（含 _archive） | 222 | 40,196 | 同上 |
-| 配置/Build/uproject/插件 | 12 | — | 全读 |
+| Source C++（GameXXK/GameXXKEditor/TestMap，含 .h/.cpp/.cs） | 385 | 170,193 | 100% 文件枚举与 grep/结构扫描；核心规则、UI/MVP、测试分 6 路精读（细节见下） |
+| 其中核心规则/数据 | 69 | 44,432 | 全部结构扫描；<800 行文件全文；大文件分段精读；**198 张卡定义未逐条逐行核对** |
+| 其中 UI/MVP/Town | 118 | 48,459 | 全部结构扫描；约 1.2 万+ 行逐行精读，其余按 300–500 行分段抽读 |
+| 其中 Tests | 176 cpp + 3 helper | 74,616 | 全部统计扫描；全部 <100 行测试 + 3 helper + 每域 2–4 个代表全文；**600 个测试体未逐个逐行读** |
+| docs 全部（production/design/verification/superpowers/ui/defense） | 251 | 73,628 | production/design/verification/ui/defense/AGENTS 等活跃文档逐篇正文；superpowers 全部 186 篇读标题/结构/首 30–60 行，2026-08 的 64 篇与 index/final/current 类全文，历史文档抽读 |
+| scripts/*.py（含子目录与 _archive） | 198 | 59,873 | 100% AST import/函数清单；核心 8 个全文；check/apply/短脚本抽样精读；84 个测试全部实际执行 |
+| Content/Python/*.py（含 _archive） | 222 | 40,196 | 同上；**非核心脚本未逐行通读** |
+| 配置/Build/uproject/插件 | 12 | — | 全部逐行阅读 |
 
 实测基线：`HEAD=3ae0561`，全量 Automation `598/598`、冷 UBT GREEN、默认生产循环 PASS、`--script-tests all` **84 个脚本测试中 22 个失败**。
 
