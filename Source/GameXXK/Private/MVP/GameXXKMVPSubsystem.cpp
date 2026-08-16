@@ -806,6 +806,10 @@ bool UGameXXKMVPSubsystem::ApplyCardTooltipFixtureForTest(const FName CardId, FS
 	FGameXXKCardInstance& FixtureCard = FixtureDeck.Hand[0];
 	FixtureCard.CardId = CardId;
 	FixtureCard.CurrentQuality = Definition->BaseQuality;
+	// Keep the replaced card playable so hover/tooltip acceptance never sees a
+	// disabled-slot fallback just because the copied battle happened to be low
+	// on shared Energy.
+	FixtureDeck.SharedEnergy = FMath::Max(FixtureDeck.SharedEnergy, 5);
 
 	BattleHudFixtureView.Emplace(MoveTemp(FixtureState));
 	if (AGameXXKMVPPlayerController* const PlayerController =
