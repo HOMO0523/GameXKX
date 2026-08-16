@@ -423,7 +423,7 @@ namespace
 			TEXT("冲锋"), TEXT("收招"), TEXT("藏式"), TEXT("开锋"),
 			TEXT("血势"), TEXT("乘势"), TEXT("重箭"),
 			TEXT("阵法"), TEXT("阵赏"), TEXT("编序"),
-			TEXT("反击"), TEXT("格挡"), TEXT("药效"),
+			TEXT("反击"), TEXT("格挡"), TEXT("药效"), TEXT("药方"),
 			TEXT("地势"),
 		};
 		const FString BasePrefix = Prefix.Left(Prefix.Find(TEXT("·"), ESearchCase::CaseSensitive, ESearchDir::FromStart, INDEX_NONE));
@@ -485,7 +485,7 @@ namespace
 		{
 			return Desaturate(FLinearColor(0.251f, 0.318f, 0.553f, 1.0f)); // 法师
 		}
-		if (Keyword == TEXT("药效"))
+		if (Keyword == TEXT("药效") || Keyword == TEXT("药方"))
 		{
 			return Desaturate(FLinearColor(0.353f, 0.576f, 0.427f, 1.0f)); // 医师
 		}
@@ -873,7 +873,9 @@ namespace
 			{
 				bAbilityLine = true;
 				FBodySegment KeywordSegment;
-				KeywordSegment.Text = Keyword;
+				// The pill itself carries the trailing colon so the visual
+				// text and the test getter never disagree about the separator.
+				KeywordSegment.Text = Keyword + TEXT("：");
 				KeywordSegment.bPill = true;
 				KeywordSegment.PillColor = ResolvePillFillColor(Keyword);
 				KeywordSegment.FontSize = 11.0f;
@@ -5332,9 +5334,9 @@ FString UGameXXKBattleBoardWidget::GetCardTooltipTextForTest() const
 				{
 					if (UTextBlock* PillText = Cast<UTextBlock>(Pill->GetContent()))
 					{
-						// Keyword pills carry the trailing colon; inline status
-						// pills are plain mentions inside the prose.
-						RowText += PillText->GetText().ToString() + (IsPillKeywordText(PillText->GetText().ToString()) ? TEXT("：") : TEXT(""));
+						// Keyword pills already carry their trailing colon in the
+						// pill text; inline status pills are plain prose mentions.
+						RowText += PillText->GetText().ToString();
 					}
 				}
 			}

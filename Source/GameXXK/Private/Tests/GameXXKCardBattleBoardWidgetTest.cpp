@@ -2869,8 +2869,34 @@ bool FGameXXKCardBattleBoardRewardTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("hovering a relic reward option reveals the shared tooltip panel"), Board->IsCardTooltipVisibleForTest());
 	TestTrue(TEXT("the relic reward tooltip states the relic name"),
 		RewardRelic && Board->GetCardTooltipTextForTest().Contains(RewardRelic->DisplayName.ToString()));
-	TestTrue(TEXT("the relic reward tooltip states the relic description"),
-		RewardRelic && Board->GetCardTooltipTextForTest().Contains(RewardRelic->Description.ToString()));
+	const FString RewardTooltipText = Board->GetCardTooltipTextForTest();
+	if (RewardRelic)
+	{
+		// Status-pill rendering deliberately moves a trailing quantity behind the
+		// pill ("获得2层中毒" becomes "获得[中毒]2层"). Normalize the expected
+		// description the same way before comparing the test-only text getter.
+		FString PillOrderedDescription = RewardRelic->Description.ToString();
+		for (const FString& StatusName : {
+			TEXT("破绽免疫"), TEXT("疗愈增幅"), TEXT("本回合地形双效"), TEXT("追击标记"), TEXT("破绽追击"),
+			TEXT("地形双效"), TEXT("地形免耗"), TEXT("地形减耗"), TEXT("护甲"), TEXT("蚀伤"),
+			TEXT("流血"), TEXT("中毒"), TEXT("灼烧"), TEXT("破绽"), TEXT("气势"), TEXT("灵动"),
+			TEXT("标记"), TEXT("虚弱"), TEXT("蓄力"), TEXT("反击"), TEXT("格挡"), TEXT("药效"),
+			TEXT("守护"), TEXT("代挡")})
+		{
+			for (const FString& Unit : {TEXT("层"), TEXT("点"), TEXT("段"), TEXT("次")})
+			{
+				for (int32 Quantity = 1; Quantity <= 99; ++Quantity)
+				{
+					const FString Before = FString::Printf(TEXT("%d%s%s"), Quantity, *Unit, *StatusName);
+					const FString After = FString::Printf(TEXT("%s%d%s"), *StatusName, Quantity, *Unit);
+					PillOrderedDescription = PillOrderedDescription.Replace(*Before, *After);
+				}
+			}
+		}
+		TestTrue(TEXT("the relic reward tooltip states the relic description"),
+			RewardTooltipText.Contains(RewardRelic->Description.ToString())
+			|| RewardTooltipText.Contains(PillOrderedDescription));
+	}
 	const FMargin TooltipOffsetsSlot0 = Board->GetHandCardDetailPanelOffsetsForTest();
 	RelicRewardButton->OnUnhovered.Broadcast();
 	TestFalse(TEXT("leaving a relic reward hides the shared tooltip panel"), Board->IsCardTooltipVisibleForTest());
