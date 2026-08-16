@@ -531,4 +531,49 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKBattleProjectedUnitHudIdleSyncTest,
+	"GameXXK.UI.Battle.FixedSlotUnitHudIdleSync",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKBattleProjectedUnitHudIdleSyncTest::RunTest(const FString& Parameters)
+{
+	const auto RenderedHealth = [](UGameXXKBattleBoardWidget* const Board, const FName UnitId) -> FString
+	{
+		const UGameXXKBattleUnitHudWidget* const Hud = Board ? Board->GetProjectedUnitHudForTest(UnitId) : nullptr;
+		return Hud && Hud->GetResourceWidgetForTest()
+			? Hud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest()
+			: FString();
+	};
+
+	UGameInstance* const TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	BuildFixedSlotHudFixture(Subsystem);
+
+	UGameXXKBattleBoardWidget* const Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("idle-sync HUD board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestTrue(TEXT("idle-sync fixture begins a common-stage visual session"), Board->BeginBattleVisualSession(902));
+	TestEqual(TEXT("idle-sync fixture renders the initial authoritative enemy HP"),
+		RenderedHealth(Board, TEXT("Enemy.MoneyRat")), FString(TEXT("气血 54 / 90")));
+
+	// An external runtime mutation (for example a recovery path that commits
+	// authoritative HP without a Board refresh) must be picked up by the very
+	// next idle visual sample.  HP text is allowed to freeze only while a damage
+	// presentation is actively animating that unit.
+	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units[3].HP = 9;
+	Board->AdvanceVisualsAtRealTime(0.10);
+	TestEqual(TEXT("an idle visual sample re-syncs an externally mutated enemy HP number"),
+		RenderedHealth(Board, TEXT("Enemy.MoneyRat")), FString(TEXT("气血 9 / 90")));
+
+	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units[1].HP = 31;
+	const FGeometry TickGeometry = FGeometry::MakeRoot(FVector2D(1280.0f, 720.0f), FSlateLayoutTransform());
+	Board->NativeTick(TickGeometry, 0.016f);
+	TestEqual(TEXT("an idle board tick re-syncs an externally mutated hero HP number"),
+		RenderedHealth(Board, TEXT("Player")), FString(TEXT("气血 31 / 100")));
+	return true;
+}
+
 #endif

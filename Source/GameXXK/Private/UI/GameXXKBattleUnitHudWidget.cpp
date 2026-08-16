@@ -22,6 +22,55 @@ void UGameXXKBattleUnitHudWidget::SetUnitView(const FGameXXKBattleUnitHudView& I
 	RefreshFromView();
 }
 
+bool UGameXXKBattleUnitHudWidget::MatchesUnitView(const FGameXXKBattleUnitHudView& InView) const
+{
+	if (!bHasUnitView
+		|| CachedView.UnitId != InView.UnitId
+		|| CachedView.Side != InView.Side
+		|| CachedView.Role != InView.Role
+		|| CachedView.SlotNumber != InView.SlotNumber
+		|| CachedView.bLiving != InView.bLiving
+		|| CachedView.bShowMana != InView.bShowMana
+		|| CachedView.CurrentHP != InView.CurrentHP
+		|| CachedView.MaxHP != InView.MaxHP
+		|| CachedView.CurrentMana != InView.CurrentMana
+		|| CachedView.MaxMana != InView.MaxMana
+		|| CachedView.Armor != InView.Armor
+		|| !CachedView.DisplayName.ToString().Equals(InView.DisplayName.ToString(), ESearchCase::CaseSensitive))
+	{
+		return false;
+	}
+
+	TArray<FGameXXKCardStatusStack> CachedStatuses = CachedView.Statuses;
+	TArray<FGameXXKCardStatusStack> IncomingStatuses = InView.Statuses;
+	const auto SortStatuses = [](TArray<FGameXXKCardStatusStack>& Statuses)
+	{
+		Statuses.Sort([](const FGameXXKCardStatusStack& Left, const FGameXXKCardStatusStack& Right)
+		{
+			if (Left.Status != Right.Status)
+			{
+				return static_cast<uint8>(Left.Status) < static_cast<uint8>(Right.Status);
+			}
+			return Left.Stacks < Right.Stacks;
+		});
+	};
+	SortStatuses(CachedStatuses);
+	SortStatuses(IncomingStatuses);
+	if (CachedStatuses.Num() != IncomingStatuses.Num())
+	{
+		return false;
+	}
+	for (int32 Index = 0; Index < CachedStatuses.Num(); ++Index)
+	{
+		if (CachedStatuses[Index].Status != IncomingStatuses[Index].Status
+			|| CachedStatuses[Index].Stacks != IncomingStatuses[Index].Stacks)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 bool UGameXXKBattleUnitHudWidget::PrepareForBoardEmbedding()
 {
 	Initialize();

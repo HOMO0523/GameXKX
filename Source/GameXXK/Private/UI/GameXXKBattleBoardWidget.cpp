@@ -1198,6 +1198,13 @@ void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float In
 		DiscardPresentationHudSnapshot();
 		RefreshProjectedUnitHuds();
 	}
+	else
+	{
+		// Last-line safety net: if any non-presentation path mutates authoritative
+		// vitals without a Board refresh, the next idle tick re-syncs the projected
+		// HP number instead of leaving 64 / 64 frozen on screen.
+		RefreshProjectedUnitHudsIfStale();
+	}
 	AdvanceHandCardHoverMotion(InDeltaTime);
 	AdvanceEnemyIntentPresentation(InDeltaTime);
 	if (PartyQiWidget && RootCanvas)
@@ -2658,11 +2665,17 @@ void UGameXXKBattleBoardWidget::AdvanceVisualsAtRealTime(const double AbsoluteSe
 	// If any survive an idle board (multi-packet edge cases, aborted
 	// continuations, interrupted replays), discard them so the projected HP
 	// number mirrors the authoritative runtime instead of freezing.
-	if (!IsBattlePresentationPending()
-		&& (!DisplayedHealthOverrides.IsEmpty() || !DisplayedUnitHudOverrides.IsEmpty()))
+	if (!IsBattlePresentationPending())
 	{
-		DiscardPresentationHudSnapshot();
-		RefreshProjectedUnitHuds();
+		if (!DisplayedHealthOverrides.IsEmpty() || !DisplayedUnitHudOverrides.IsEmpty())
+		{
+			DiscardPresentationHudSnapshot();
+			RefreshProjectedUnitHuds();
+		}
+		else
+		{
+			RefreshProjectedUnitHudsIfStale();
+		}
 	}
 	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitVisualWidget>>& Pair : UnitVisuals)
 	{
@@ -4257,6 +4270,97 @@ void UGameXXKBattleBoardWidget::RefreshProjectedUnitHuds()
 		}
 		It.RemoveCurrent();
 	}
+}
+
+bool UGameXXKBattleBoardWidget::RefreshProjectedUnitHudsIfStale()
+{
+	// A presentation owns its baseline snapshot: animated HP values are
+	// intentional and must not be reconciled by the idle watchdog.
+	if (IsBattlePresentationPending()
+		|| !DisplayedHealthOverrides.IsEmpty()
+		|| !DisplayedUnitHudOverrides.IsEmpty())
+	{
+		return false;
+	}
+
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	const bool bHasCardBattle = State
+		&& State->Screen == EGameXXKScreen::Battle
+		&& State->CardRun.bHasActiveCardBattle;
+	if (!bHasCardBattle)
+	{
+		if (!ProjectedUnitHuds.IsEmpty())
+		{
+			RefreshProjectedUnitHuds();
+			return true;
+		}
+		return false;
+	}
+
+	const FGameXXKCardBattleRuntime& Runtime = State->CardRun.ActiveBattle;
+	TSet<FName> RenderedUnitIds;
+	bool bStale = false;
+	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitHudWidget>>& Pair : ProjectedUnitHuds)
+	{
+		RenderedUnitIds.Add(Pair.Key);
+		const FGameXXKCardCombatUnit* const Unit = Runtime.Units.FindByPredicate(
+			[&Pair](const FGameXXKCardCombatUnit& Candidate)
+			{
+				return Candidate.UnitId == Pair.Key;
+			});
+		if (!Unit || !Unit->bLiving)
+		{
+			bStale = true;
+			break;
+		}
+		FGameXXKBattleUnitHudView AuthoritativeView;
+		FGameXXKFixedUnitHudLayout AuthoritativeLayout;
+		if (!FGameXXKBattlePresentation::BuildUnitHudView(
+				Runtime,
+				Pair.Key,
+				ResolveProjectedUnitHudDisplayName(Pair.Key),
+				AuthoritativeView)
+			|| !TryResolveFixedUnitHudLayout(AuthoritativeView, AuthoritativeLayout)
+			|| !Pair.Value
+			|| Pair.Value->GetUnitIdForTest() != Pair.Key
+			|| !Pair.Value->MatchesUnitView(AuthoritativeView))
+		{
+			bStale = true;
+			break;
+		}
+	}
+
+	if (!bStale)
+	{
+		// A valid living unit can also be missing entirely when an earlier refresh
+		// skipped it; the watchdog recreates it from authoritative state.
+		for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		{
+			if (Unit.UnitId.IsNone() || !Unit.bLiving || RenderedUnitIds.Contains(Unit.UnitId))
+			{
+				continue;
+			}
+			FGameXXKBattleUnitHudView View;
+			FGameXXKFixedUnitHudLayout FixedLayout;
+			if (FGameXXKBattlePresentation::BuildUnitHudView(
+					Runtime,
+					Unit.UnitId,
+					ResolveProjectedUnitHudDisplayName(Unit.UnitId),
+					View)
+				&& TryResolveFixedUnitHudLayout(View, FixedLayout))
+			{
+				bStale = true;
+				break;
+			}
+		}
+	}
+
+	if (bStale)
+	{
+		RefreshProjectedUnitHuds();
+	}
+	return bStale;
 }
 
 void UGameXXKBattleBoardWidget::RefreshUnitVisuals()

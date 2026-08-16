@@ -674,6 +674,8 @@ private:
 	void UpdateBattlePresentationReadout(double AbsoluteSeconds);
 	void ResetBattlePresentationFeedback();
 	void RefreshUnitVisuals();
+	/** Idle watchdog: refresh projected HUDs only when their cached views no longer match authoritative runtime. */
+	bool RefreshProjectedUnitHudsIfStale();
 	void RefreshUnitTargetingPresentation();
 	void RefreshCinematicViewportCoverLayout(FVector2D ViewportSize);
 	void ReleasePinnedAtlasForUnit(FName UnitId);

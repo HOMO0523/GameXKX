@@ -19,6 +19,8 @@ class GAMEXXK_API UGameXXKBattleUnitHudWidget : public UUserWidget
 public:
 	void SetUnitView(const FGameXXKBattleUnitHudView& InView);
 	bool PrepareForBoardEmbedding();
+	/** True when the cached view already equals an authoritative idle view, so idle ticks can skip redraws. */
+	bool MatchesUnitView(const FGameXXKBattleUnitHudView& InView) const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	FName GetUnitIdForTest() const;
