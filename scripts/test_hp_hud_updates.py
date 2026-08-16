@@ -61,7 +61,10 @@ class HpHudTestError(RuntimeError):
 
 
 # Probe that executes ONE battle-board action through BlueprintCallable seams.
-BATTLE_ACTION_PROBE = "Content/Python/_probe_battle_action.py"
+# Kept in _archive after the 2026-08-14 one-shot-probe cleanup; this live MCP
+# verification still drives battle actions through it until the probe is
+# promoted to a stable gamexxk_probe_battle_action.py.
+BATTLE_ACTION_PROBE = "Content/Python/_archive/_probe_battle_action.py"
 
 
 class HpHudTester:
