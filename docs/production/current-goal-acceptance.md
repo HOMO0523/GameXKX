@@ -1,20 +1,21 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-16
-source_commit: e78be7c8078760b4ea4eee0e7382cf3a7c9294c5
+updated_at: 2026-08-17
+source_commit: ba90810
 ---
 # GameXXK 当前目标(滚动指针)
 
 > 本文件是"当前做到哪了"的**唯一滚动指针**。`AGENTS.md` 不再硬编码验收状态,改指向这里。每次目标收尾后更新本文件。
 
-## 当前基线(更新于 2026-08-16)
+## 当前基线(更新于 2026-08-17)
 
 - 分支:`main`
-- 代码基线:`e78be7c`(`feat: guard armor cards taunt by marking the guard itself`);随后为文档收尾提交,`git log -1` 可查
+- 当前 HEAD:`ba90810`(`docs: freeze desktop training workbench design`);该提交只新增桌面历练工作台设计规格，未改变运行时代码；最近代码基线仍为 `e78be7c`
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
-- 最新全量自动化:**598/598 通过、0 error**;`9598072`/`e78be7c` 两个玩法提交各自均以全量 `GameXXK` 通过后合入;最近冷 UBT GREEN。
+- 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。本轮未把旧报告冒充为 `ba90810` 后的新全量运行。
+- 当前工作区保护：`Content/GameXXK/Maps/L_Main.umap` 保留用户已有修改；`SourceAssets/`、`SourceArt/` 及未跟踪探针不在本轮 Phase 0 写入范围。
 
 ## 已落地(最近六轮)
 
@@ -34,11 +35,12 @@ source_commit: e78be7c8078760b4ea4eee0e7382cf3a7c9294c5
 
 ## 仅规划未实施 / 已搁置
 
-- **历练桌面迁移 7 包**(历练放置、离线收益、双宝箱、2D 主界面、桌面迷你窗、自动战斗、任务 NPC 显式入队 + 默认入口迁移):**用户已决定搁置**。执行前必须先修订索引里的存档版本边界(当前 `CurrentSaveVersion=17`,索引仍按 v16/v17/v18 规划)。
-- 项目自身优化:`optimization-plan.md` 2.2(ForTest 收敛)与 Phase 3(状态合并/巨型文件拆分/DataAsset 化/测试盲区)仅规划。
+- **旧历练桌面迁移 7 包索引**(历练放置、离线收益、双宝箱、旧 2D 主界面、桌面迷你窗、自动战斗、任务 NPC 显式入队 + 默认入口迁移):**已标记 shelved，不得按旧计划直接执行**。新桌面工作台设计见 `docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md`，当前只冻结布局/UX 和 PSD 生产规则，运行时实现尚未开始；恢复执行必须先完成 Phase 0，并以 `CurrentSaveVersion=17` 重新编排迁移编号。
+- 项目自身优化:`docs/production/2026-08-16-full-project-optimization-proposal.md` Phase 0 正在执行；Phase 1/2/3/4 仍未实施，旧 `optimization-plan.md` 仅作历史索引。
 
 ## 下一步待办
 
-- 项目自身优化:见 `docs/production/2026-08-16-full-project-optimization-proposal.md`(Phase 0 → Phase 4 全量方案)。
+- Phase 0 基线证据：`docs/production/2026-08-17-phase0-baseline.md`；执行计划：`docs/superpowers/plans/2026-08-17-gamexxk-phase0-source-of-truth-and-gates.md`。
+- 项目自身优化:见 `docs/production/2026-08-16-full-project-optimization-proposal.md`(Phase 0 → Phase 4 全量方案)。Phase 0 门禁为 harness 无 finding、默认生产循环全绿、headless 脚本全绿、all 不启动编辑器、`git diff --check` 通过。
 - 玩法顺序:Phase 0 收尾已基本完成 → Phase 1 地形增益重设计(先复核 §5 山河三档与 `TriggerTerrainBenefit` 两个口径)→ Phase 2 数值迭代(以 `2026-08-12-balance-tuning-ledger.md` §4.8 为最新基准)。
-- 非阻塞测试工具维护:更新 `scripts/gamexxk_real_play_flow_mcp.py` 的旧 `pointer_matches_target` 吸附断言，使其符合 `6668146` 冻结的自由鼠标跟随语义;`--script-tests all` 当前 64/86,按 P16 打标签后再纳入门禁。
+- 非阻塞测试工具维护:更新 `scripts/gamexxk_real_play_flow_mcp.py` 的旧 `pointer_matches_target` 吸附断言，使其符合 `6668146` 冻结的自由鼠标跟随语义；Phase 0 将把 `--script-tests all` 分成 `headless`、`asset-contract`、`mcp-live` 三类，当前历史记录仍为 64/86，未纳入新门禁。
