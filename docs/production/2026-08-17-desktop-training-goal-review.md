@@ -2,7 +2,7 @@
 status: review
 owner: codex
 updated_at: 2026-08-17
-source_commit: c4762be
+source_commit: 8475ba8
 decision: not-complete
 goal_status: active
 ---

@@ -2,7 +2,7 @@
 status: record
 owner: codex
 updated_at: 2026-08-17
-source_commit: c4762be
+source_commit: 8475ba8
 ---
 # GameXXK Phase 0 基线证据
 
@@ -27,7 +27,7 @@ source_commit: c4762be
 ## Current repository state
 
 - 分支：`main`。
-- HEAD：`c4762be chore: parameterize external asset migration paths`；工作区在其上有未提交的 Training 规则、v18 存档、程序化工作台和 PlayerController opt-in 接线。
+- HEAD：`8475ba8 docs: record desktop training goal review`；运行时代码基线为 `c4762be`，工作区在其上有未提交的 Training 规则、v18 存档、程序化工作台和 PlayerController opt-in 接线。
 - 当前 `CurrentSaveVersion=18`；`DesktopTrainingWorkbenchIntroducedSaveVersion=18`。旧历练索引按 v16/v17/v18 的边界已经失效，不得复用。
 - 最新设计真源：`docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md`；运行时已有 opt-in 规则/壳实现，但默认 3D 城镇入口未切换，PSD/真实战斗/挂机结算/性能和 PIE 验收未完成。
 - 当前新增规则/工作台证据：`Saved/HarnessReports/20260817-234829-ai-production-loop.md`（DesktopTraining 1/1）、`20260817-234854-ai-production-loop.md`（Training 4/4）、`20260817-234916-ai-production-loop.md`（SaveGame 12/12）、`20260817-233157-ai-production-loop.md`（headless 13/13）、最新冷 UBT `-NoHotReload` 成功。

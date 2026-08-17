@@ -2,7 +2,7 @@
 status: record
 owner: codex
 updated_at: 2026-08-17
-source_commit: c4762be
+source_commit: 8475ba8
 working_tree: dirty (opt-in Training runtime work; preserve user L_Main.umap change)
 ---
 # GameXXK 当前目标(滚动指针)
@@ -12,7 +12,7 @@ working_tree: dirty (opt-in Training runtime work; preserve user L_Main.umap cha
 ## 当前基线(更新于 2026-08-17)
 
 - 分支:`main`
-- 当前 HEAD:`c4762be`(`chore: parameterize external asset migration paths`);工作区在该提交之上包含未提交的桌面历练规则、存档 v18、程序化工作台和 PlayerController opt-in 接线；用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护。
+- 当前 HEAD:`8475ba8`(`docs: record desktop training goal review`);运行时代码基线为 `c4762be`，工作区在当前 HEAD 之上包含未提交的桌面历练规则、存档 v18、程序化工作台和 PlayerController opt-in 接线；用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护。
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
 - 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。本轮未把旧报告冒充为 `c4762be` 工作区上的新全量运行。
