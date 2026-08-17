@@ -2,7 +2,7 @@
 status: record
 owner: codex
 updated_at: 2026-08-18T05:31:00+08:00
-source_commit: 5c60999
+source_commit: 4632179
 working_tree: dirty (uncommitted MasterV2 workbench/nav-disc binding; preserve user L_Main.umap, unrelated probes and source-art changes)
 ---
 # GameXXK 当前目标(滚动指针)

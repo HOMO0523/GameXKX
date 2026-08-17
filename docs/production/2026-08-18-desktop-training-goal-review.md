@@ -2,7 +2,7 @@
 status: review
 owner: codex
 updated_at: 2026-08-18T05:31:00+08:00
-source_commit: 5c60999
+source_commit: 4632179
 decision: not-complete
 goal_status: active
 ---
@@ -29,7 +29,7 @@ goal_status: active
 | 项目 | 当前事实 |
 |---|---|
 | 分支 | `main` |
-| 本轮代码提交 | `5c60999 fix: keep challenge auto battle moving through card choices`；离线补算/收菜与 v20 存档提交为 `a2c9e06`，前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`，桥接提交为 `7881927` |
+| 本轮代码提交 | `4632179 feat: skin desktop training workbench with masterv2 assets`；挑战自动战斗待选牌处理为 `5c60999`，离线补算/收菜与 v20 存档提交为 `a2c9e06`，前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`，桥接提交为 `7881927` |
 | 当前存档版本 | `CurrentSaveVersion=20`；v18 引入桌面 Training 进度，v19 引入奖励 seed 与游历宝箱冷却，v20 引入离线游历账本/UTC 基线 |
 | 默认入口 | `bEnableDesktopTrainingWorkbench=false`；Tab/显式测试开关才会打开工作台 |
 | 用户地图保护 | `Content/GameXXK/Maps/L_Main.umap` 保留已有修改，未加入本轮提交、未 reset/checkout |
