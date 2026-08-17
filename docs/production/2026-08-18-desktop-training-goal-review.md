@@ -1,15 +1,15 @@
 ---
 status: review
 owner: codex
-updated_at: 2026-08-18T05:22:00+08:00
-source_commit: bdfcf9e
+updated_at: 2026-08-18T05:36:00+08:00
+source_commit: 57bf299
 decision: not-complete
 goal_status: active
 ---
 
 # 桌面历练 /goal 完成后复核（2026-08-18）
 
-这份记录是当前目标的收尾审计，不把“程序能编译”写成“产品已完成”。审计输入包括 `docs/production/2026-08-16-full-project-optimization-proposal.md`、`docs/production/2026-08-16-optimization-followup.md`、`docs/production/current-goal-acceptance.md`、桌面工作台设计稿以及本轮实际代码、Automation、冷 UBT 和脚本报告；本轮追加复核了 `5c60999` 的挑战自动战斗待选牌处理，并在 `4632179`/`bdfcf9e` 中接入批准的 MasterV2 面板/槽位/页签/路线节点、五张等比 NavDisc 图标和连续挑战画布。
+这份记录是当前目标的收尾审计，不把“程序能编译”写成“产品已完成”。审计输入包括 `docs/production/2026-08-16-full-project-optimization-proposal.md`、`docs/production/2026-08-16-optimization-followup.md`、`docs/production/current-goal-acceptance.md`、桌面工作台设计稿以及本轮实际代码、Automation、冷 UBT 和脚本报告；本轮追加复核了 `5c60999` 的挑战自动战斗待选牌处理，并在 `4632179`/`bdfcf9e` 中接入批准的 MasterV2 面板/槽位/页签/路线节点、五张等比 NavDisc 图标和连续挑战画布，最后以 `57bf299` 锁定游历与局内宝箱概率/seed 一致、仅受游历冷却门控的回归合同。
 
 ## 1. 结论先行
 
@@ -53,7 +53,7 @@ goal_status: active
 | 挑战真实战斗 | `StartTrainingChallenge` 创建真实 `FGameXXKCardBattleAdapter` 会话，进入 `Battle`，投影现有敌人 catalog；BattleBoard 挂到 960×968 ChallengeViewport，并在上方保留 3 敌+3 我站位槽；左仓库与右历练地图在挑战中以无 ActionButton 的只读外壳保留 | **新增且已自动化通过** | 尚未完成全路线手牌/意图/胜负/结算的 PIE 视觉闭环 |
 | 挑战自动战斗 | 每次调用推进一张合法卡、结束玩家阶段或解析敌方阶段；强制弃牌、洞察、任务检索和自动解析队列由现有 CardRules/Adapter 以有界确定性策略处理；终结后结算并打开下一遭遇 | **规则与聚焦 Automation 通过** | 目前是运行时适配器，不是完整自动战斗 UX；需要手牌、意图、血条、tooltip 和战斗结算截图 |
 | 游历循环 | `InitializeTravelRunner`/`AdvanceTravelRunner` 与 `AdvanceTrainingTravelStep` 已按 Walking→Combat→Settlement 推进 7 遭遇；失败重试/回退由 `ResolveTrainingTravelFailure` 处理；挂机条读取阶段/HP/遭遇；`ApplyOfflineTravelSinceLastUpdate` 负责读档补算并把奖励放入待领取账本，工作台“收菜”按钮再入库 | **规则、离线桥接与聚焦 Automation 通过** | 仍缺真实 Actor/动画、后台运行时 Timer、失败弹窗与最终美术收菜窗口 |
-| 奖励与宝箱 | `ResolveChallengeReward`/`ResolveTravelReward` 使用稳定 seed、同一 Stage 概率和天赋 bonus 参数；普通 encounter 为普通箱，精英/首领为高级箱；普通游历箱 240 秒、精英/首领高级箱 360 秒；1-1 游历所有 encounter 强制不掉箱；canonical item 写入 Runtime Inventory，离线结果先记账，收菜后入库并通过 v20 round-trip | **规则/聚焦 Automation 通过，产品未闭环** | 天赋真实 read model、最终概率表、FIFO 箱批/容量、箱内物品和重复结算保护仍待接入 |
+| 奖励与宝箱 | `ResolveChallengeReward`/`ResolveTravelReward` 使用稳定 seed、同一 Stage 概率和天赋 bonus 参数；`57bf299` 对普通/精英明确断言游历与局内结果一致；普通 encounter 为普通箱，精英/首领为高级箱；普通游历箱 240 秒、精英/首领高级箱 360 秒；1-1 游历所有 encounter 强制不掉箱；canonical item 写入 Runtime Inventory，离线结果先记账，收菜后入库并通过 v20 round-trip | **规则/聚焦 Automation 通过，产品未闭环** | 天赋真实 read model、最终概率表、FIFO 箱批/容量、箱内物品和重复结算保护仍待接入 |
 | 存档迁移 | v18 Training 字段、旧档 Normal 1-1 初始化、challenge/travel 互斥；v19 新增 reward seed 与两档游历冷却；v20 新增 pending ledger、UTC 基线、暂停阵亡标记与离线补算；范围/负值校验和迁移测试已补 | 通过 | 需要补实际战斗中断/恢复、生产窗口关闭/重开和最终存档视觉 round-trip |
 | 性能 | 保留 TaskBarHero 参考包络：Working Set 约 513 MiB、Private 约 1418 MiB、GPU Dedicated 约 282 MiB、整机 CPU 约 2.3%、GPU Engine 约 2% | 未验收 | 没有当前 2D 静置/游历/挑战/3D 四组 Shipping/PIE 采样 |
 | PSD/素材规范 | 设计稿冻结复用优先、透明 1:1、禁止拉伸/噪点/文字烘焙、manifest/hash 规则 | 未验收 | 没有本工作台专用 icon manifest/hash；程序化壳不得直接进 PSD/UE 生产资产 |
@@ -207,7 +207,7 @@ goal_status: active
 | E. 第一章敌人编制 | 公鸡/狸猫普通，山羊/黄鼬次级精英，1-1 山羊、1-2 黄鼬、1-3 青角羊王；挑战和游历共享编制定义 | **数据/测试通过** | 每个节点真实 tooltip 显示实际编制，且路线图不把两个次级精英错误合成同一波 |
 | F. 游历循环 | `Walking → Combat → Defeated/下一遭遇` runner；一只敌人一次推进；击杀结算；1-1 游历 1 HP；每个 encounter 可按同一概率表掉箱，普通/高级箱冷却分别 240/360 秒；失败重试/回退；v20 离线补算与待领取账本/收菜入口已接线 | **确定性运行时与离线桥接通过** | 接真实 Actor/动画/移动、后台 Timer、失败弹窗和最终收菜视觉；不能只依赖 ForTest/tick |
 | G. 主动挑战 | `StartTrainingChallenge` 建立真实 `FGameXXKCardBattleAdapter`；支持一步合法卡/阶段推进；待选牌自动策略已由 `5c60999` 接通并通过 `GameXXK.Training.ChallengePendingChoiceAutoBattle`；工作台可切换 ChallengeViewport | **适配器/规则通过，产品流未闭合** | 路线图→卡牌→意图→胜负→宝箱/经验→下一遭遇的完整 PIE/MCP；最终 UX 的自动/手动切换和视觉证据 |
-| H. 奖励与天赋 | 普通/高级 tier 与金币/经验结算入口；`ResolveChallengeReward`/`ResolveTravelReward` 的稳定 seed、同一配置概率、天赋 bonus 参数；Travel 普通/高级冷却 240/360 秒；1-1 无箱；canonical chest item 写入 Runtime Inventory；v20 离线奖励账本/收菜入口 | **规则/聚焦 Automation 通过** | 接真实天赋 read model、最终概率、FIFO 箱批/容量、箱内物品和重复结算保护 |
+| H. 奖励与天赋 | 普通/高级 tier 与金币/经验结算入口；`ResolveChallengeReward`/`ResolveTravelReward` 的稳定 seed、同一配置概率、天赋 bonus 参数；`57bf299` 锁定普通/精英 parity；Travel 普通/高级冷却 240/360 秒；1-1 无箱；canonical chest item 写入 Runtime Inventory；v20 离线奖励账本/收菜入口 | **规则/聚焦 Automation 通过** | 接真实天赋 read model、最终概率、FIFO 箱批/容量、箱内物品和重复结算保护 |
 | I. 存档与恢复 | `CurrentSaveVersion=20`；v18→v19 为 reward seed/Travel cooldown，v19→v20 为 pending ledger/UTC 基线/离线补算迁移；训练互斥/范围/负值校验；runner 为 transient，读档后重建 | **聚焦通过** | 未结束挑战/游历在生产 UI 中断、退出、读档、重开和失败后状态一致的 PIE 证据 |
 | J. 素材/PSD | 规格已冻结 reuse→derive→new、透明单图、1:1 安全框、alpha/尺寸/hash manifest | **规范通过，资产未交付** | UI Master 实际图层绑定；新增图标逐个 manifest/hash；无概念图裁切、噪点和非等比缩放 |
 | K. 性能 | 已记录 TBH 参考包络和四组采样方案 | **未验收** | 同机 Shipping 空壳/游历/挑战/3D 四组数据，包含静置 30 FPS、退出回落和长时稳定性 |
@@ -274,9 +274,9 @@ TaskBarHero 参照快照：Working Set 约 513 MiB、Private Bytes 约 1418 MiB�
 | harness 状态 | `python scripts/harness_state_validator.py --json`，本轮 exit 0、`findings=[]` | PASS |
 | headless 脚本门禁 | `Saved/HarnessReports/20260818-011435-ai-production-loop.md`，本轮 headless 全部通过 | PASS |
 | 空白检查 | `git diff --check`，exit 0；仅有 Windows LF→CRLF warning | PASS |
-| 冷 UBT | `Saved/HarnessReports/20260818-043332-ai-production-loop.md`，`GameXXKEditor`、`-NoHotReload`、Result Succeeded | PASS |
+| 冷 UBT + Training Automation | `Saved/HarnessReports/20260818-053115-ai-production-loop.md`，`GameXXKEditor`、`-NoHotReload`、Result Succeeded；同报告 `GameXXK.Training` 18/18 | PASS |
 | Training pending-choice Automation | `Saved/HarnessReports/20260818-043354-ai-production-loop.md`、`Saved/Automation/TrainingPendingChoiceGreen-20260818-r3/index.json`，1 discovered / 1 succeeded / 0 warnings / 0 failed | PASS |
-| Training Automation | `Saved/HarnessReports/20260818-043418-ai-production-loop.md`、`Saved/Automation/TrainingFull-20260818-r4/index.json`，18 discovered / 18 succeeded / 0 warnings / 0 failed；含待选牌自动推进、1-1 无箱、同概率、240/360 秒 CD、离线补算、待领取账本、读档恢复 | PASS |
+| Training chest parity Automation | `Saved/HarnessReports/20260818-053115-ai-production-loop.md`、`Saved/Automation/TrainingTravelChestParity-20260818/index.json`，18 discovered / 18 succeeded / 0 warnings / 0 failed；含游历/局内同 seed/概率、1-1 无箱、普通 240 秒/高级 360 秒 CD、离线补算、待领取账本、读档恢复 | PASS |
 | DesktopTraining Automation | `Saved/HarnessReports/20260818-043438-ai-production-loop.md`、`Saved/Automation/DesktopTrainingFull-20260818-r5/index.json`，1 discovered / 1 succeeded / 0 warnings / 0 failed；含收菜、导航、挑战侧壳与布局契约 | PASS |
 | DesktopTraining Automation | `Saved/HarnessReports/20260818-041517-ai-production-loop.md`、`Saved/Automation/DesktopTrainingWorkbenchCollectGreen-20260818/index.json`，1 / 1 / 0 / 0；含收菜待领取/金币入库，同时保留挑战左右只读外壳、导航锁定、设置/关闭分离前置证据 | PASS |
 | SaveGame Automation | `Saved/HarnessReports/20260818-041625-ai-production-loop.md`、`Saved/Automation/SaveGameTravelOfflineV20Green-20260818/index.json`，12 / 12 / 0 / 0；v20 migration/UTC/pending ledger round-trip | PASS |
@@ -286,7 +286,7 @@ TaskBarHero 参照快照：Working Set 约 513 MiB、Private Bytes 约 1418 MiB�
 
 ## 16. 工作区、提交和回滚核对
 
-- 本轮运行时提交为 `5c60999`（挑战自动战斗确定性处理待选牌、手牌快照与回归测试）；v20 离线补算、待领取账本、收菜 API/UI 与迁移断言为 `a2c9e06`，前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 read model 为 `dfb5230`，奖励/冷却与 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`，桥接为 `7881927`；提交后 `git ls-files -m` 仍只剩用户已有 `Content/GameXXK/Maps/L_Main.umap` 与既有 `scripts/test_battle_camera_framing.py`，文档更新另行提交且不触碰用户资产。
+- 本轮最新运行时增量为 `57bf299`（游历宝箱与局内概率/seed parity 回归测试）；挑战画布为 `bdfcf9e`，MasterV2 资源为 `4632179`，挑战自动战斗确定性处理待选牌、手牌快照与回归测试为 `5c60999`；v20 离线补算、待领取账本、收菜 API/UI 与迁移断言为 `a2c9e06`，前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 read model 为 `dfb5230`，奖励/冷却与 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`，桥接为 `7881927`；提交后 `git ls-files -m` 仍只剩用户已有 `Content/GameXXK/Maps/L_Main.umap` 与既有 `scripts/test_battle_camera_framing.py`，文档更新另行提交且不触碰用户资产。
 - 当前仍有约 10,235 个未跟踪文件，其中约 10,176 个在 `SourceAssets/`/`SourceArt/`；它们不属于本轮提交，不得通过清理、覆盖或无差别 stage 处理。
 - `L_Main.umap` 没有被 reset、checkout、格式化或加入本轮提交；默认 3D 城镇仍可回退。
 - 最小回滚顺序仍为：保持 `bEnableDesktopTrainingWorkbench=false` → 单独回滚 `23aee95` → 如需再回滚 `7881927`；任何回滚都不触碰用户地图和源美术。

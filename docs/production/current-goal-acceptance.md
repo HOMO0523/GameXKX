@@ -1,9 +1,9 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-18T05:22:00+08:00
-source_commit: bdfcf9e
-working_tree: dirty (uncommitted MasterV2 workbench/nav-disc binding; preserve user L_Main.umap, unrelated probes and source-art changes)
+updated_at: 2026-08-18T05:36:00+08:00
+source_commit: 57bf299
+working_tree: dirty (preserve user L_Main.umap, unrelated probes and source-art changes; current rule/test/docs updates are committed through 57bf299)
 ---
 # GameXXK 当前目标(滚动指针)
 
@@ -12,11 +12,11 @@ working_tree: dirty (uncommitted MasterV2 workbench/nav-disc binding; preserve u
 ## 当前基线(更新于 2026-08-18)
 
 - 分支:`main`
-- 当前代码 HEAD:`bdfcf9e`(`feat: expand desktop challenge canvas`)，前置 MasterV2 资源提交为 `4632179`，目标记录已同步，挑战自动战斗待选牌处理为 `5c60999`；文档基线为 `ffe3613`；前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`、桥接为 `7881927`。本轮补上挑战自动战斗对强制弃牌、洞察、任务检索和自动解析队列的确定性处理，并加入待选牌回归测试；桌面历练规则、存档 v20、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner、离线补算/待领取账本/收菜入口、奖励/冷却 Resolver、最小宝箱 Inventory 镜像、背包角色/伙伴切换、工具/天赋容器基础导航、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、背包内独立设置与关闭动作、挑战期间左右仓库/历练地图只读外壳与导航锁定已提交；本轮又把顶部 3 敌/3 我站位并入 960×968 ChallengeViewport，BattleBoard 使用 710×535 连续画布，挑战态自动战斗可见而游历失败重试隐藏。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
+- 当前代码 HEAD:`57bf299`(`test: lock travel chest probability parity`)，前置挑战画布提交为 `bdfcf9e`，MasterV2 资源提交为 `4632179`，挑战自动战斗待选牌处理为 `5c60999`；文档基线为 `ffe3613`；前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`、桥接为 `7881927`。本轮补上挑战自动战斗对强制弃牌、洞察、任务检索和自动解析队列的确定性处理，并加入待选牌回归测试；桌面历练规则、存档 v20、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner、离线补算/待领取账本/收菜入口、奖励/冷却 Resolver、最小宝箱 Inventory 镜像、背包角色/伙伴切换、工具/天赋容器基础导航、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、背包内独立设置与关闭动作、挑战期间左右仓库/历练地图只读外壳与导航锁定已提交；本轮又把顶部 3 敌/3 我站位并入 960×968 ChallengeViewport，BattleBoard 使用 710×535 连续画布，挑战态自动战斗可见而游历失败重试隐藏，并以 `57bf299` 增加“游历与局内共用同一概率/seed，冷却单独门控”的普通与精英回归断言。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
 - 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。这两份报告只作历史回归参考，不冒充当前工作区的本轮全量运行。
-- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-011435-ai-production-loop.md`）；本轮最新冷 UBT `-NoHotReload` 成功（`Saved/HarnessReports/20260818-051626-ai-production-loop.md`）；定向挑战待选牌回归 `1/1`（`Saved/HarnessReports/20260818-043354-ai-production-loop.md`，Automation 目录 `TrainingPendingChoiceGreen-20260818-r3`）；最新 `GameXXK.Training` `18/18`（`Saved/HarnessReports/20260818-051709-ai-production-loop.md`，Automation 目录 `TrainingAfterChallengeStrip-20260818`，含 1-1 全 encounter 无箱、非 1-1 游历复用局内概率、普通箱 240 秒/精英与首领高级箱 360 秒冷却、离线补算/待领取账本/读档恢复、真实挑战自动推进与待选牌处理）；`GameXXK.DesktopTraining` `2/2`（`Saved/HarnessReports/20260818-051647-ai-production-loop.md`，Automation 目录 `DesktopTrainingChallengeStrip-20260818`，含 960×968 连续挑战画布、6 敌我站位槽、只读侧壳和挑战/游历控件隔离）；MasterV2 资源合同 `1/1`（`Saved/Automation/MasterV2NavDiscGreen-20260818-r1/index.json`），覆盖 PanelLarge、ItemSlot、EquipmentSlot、Tab、Route 和五张等比 NavDisc；`GameXXK.MVP.SaveGame` `12/12`（`Saved/HarnessReports/20260818-041625-ai-production-loop.md`，Automation 目录 `SaveGameTravelOfflineV20Green-20260818`）。挑战侧壳只读/导航锁定、设置/关闭分离、仓库分页/排序/卸下仍有前置证据。最新 asset-contract 报告 `Saved/HarnessReports/20260818-012130-ai-production-loop.md` 仍为 `51/66`，15 个测试文件失败；本次完成后复核已明确其未关闭，故 Phase 0 总门禁仍未通过。
+- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-011435-ai-production-loop.md`）；本轮最新冷 UBT `-NoHotReload` 与训练 Automation 均成功（`Saved/HarnessReports/20260818-053115-ai-production-loop.md`）；最新 `GameXXK.Training` `18/18`（`Saved/Automation/TrainingTravelChestParity-20260818/index.json`，含 1-1 全 encounter 无箱、非 1-1 游历与局内同 seed/概率、普通箱 240 秒/精英与首领高级箱 360 秒冷却、离线补算/待领取账本/读档恢复、真实挑战自动推进与待选牌处理）；`GameXXK.DesktopTraining` `2/2`（`Saved/HarnessReports/20260818-051647-ai-production-loop.md`，Automation 目录 `DesktopTrainingChallengeStrip-20260818`，含 960×968 连续挑战画布、6 敌我站位槽、只读侧壳和挑战/游历控件隔离）；MasterV2 资源合同 `1/1`（`Saved/Automation/MasterV2NavDiscGreen-20260818-r1/index.json`），覆盖 PanelLarge、ItemSlot、EquipmentSlot、Tab、Route 和五张等比 NavDisc；`GameXXK.MVP.SaveGame` `12/12`（`Saved/HarnessReports/20260818-041625-ai-production-loop.md`，Automation 目录 `SaveGameTravelOfflineV20Green-20260818`）。挑战侧壳只读/导航锁定、设置/关闭分离、仓库分页/排序/卸下仍有前置证据。最新 asset-contract 报告 `Saved/HarnessReports/20260818-012130-ai-production-loop.md` 仍为 `51/66`，15 个测试文件失败；本次完成后复核已明确其未关闭，故 Phase 0 总门禁仍未通过。
 - 当前工作区保护：`Content/GameXXK/Maps/L_Main.umap` 保留用户已有修改；`SourceAssets/`、`SourceArt/` 及未跟踪探针不在本轮 Phase 0 写入范围。
 
 ## 已落地(最近六轮)
