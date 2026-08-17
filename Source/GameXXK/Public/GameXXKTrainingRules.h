@@ -52,6 +52,10 @@ struct GAMEXXK_API FGameXXKTrainingReward
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	EGameXXKTrainingRewardTier ChestTier = EGameXXKTrainingRewardTier::None;
 
+	/** Canonical Inventory item mirror for a successfully rolled chest. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName ChestItemId = NAME_None;
+
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	bool bChestRolled = false;
 };
@@ -322,5 +326,6 @@ public:
 	static int32 NextChallengeRewardSeed(int32 RewardSeed);
 	static int32 AdvanceTravelChestCooldown(int32 RemainingSeconds, int32 ElapsedSeconds);
 	static int32 TravelChestCooldownSeconds(EGameXXKTrainingRewardTier ChestTier);
+	static FName ChestItemIdForTier(EGameXXKTrainingRewardTier ChestTier);
 	static FText BuildStageTooltip(const FGameXXKTrainingProgress& Progress, FName StageId);
 };

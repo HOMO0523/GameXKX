@@ -141,6 +141,19 @@ namespace
 			: EGameXXKTrainingRewardTier::AdvancedChest;
 	}
 
+	FName ChestItemIdForTierInternal(const EGameXXKTrainingRewardTier Tier)
+	{
+		switch (Tier)
+		{
+		case EGameXXKTrainingRewardTier::NormalChest:
+			return FName(TEXT("Item.TrainingNormalChest"));
+		case EGameXXKTrainingRewardTier::AdvancedChest:
+			return FName(TEXT("Item.TrainingAdvancedChest"));
+		default:
+			return NAME_None;
+		}
+	}
+
 	float ChestChanceForEncounter(
 		const FGameXXKTrainingStageDefinition& Stage,
 		const EGameXXKTrainingEncounterKind Kind)
@@ -653,6 +666,7 @@ FGameXXKTrainingReward FGameXXKTrainingRules::BuildChallengeReward(
 	Reward.ChestTier = EffectiveChance > 0.0f
 		? ChestTierForEncounter(EncounterKind)
 		: EGameXXKTrainingRewardTier::None;
+	Reward.ChestItemId = ChestItemIdForTierInternal(Reward.ChestTier);
 	return Reward;
 }
 
@@ -681,6 +695,7 @@ FGameXXKTrainingReward FGameXXKTrainingRules::ResolveChallengeReward(
 	{
 		Reward.bChestRolled = true;
 		Reward.ChestTier = ChestTierForEncounter(EncounterKind);
+		Reward.ChestItemId = ChestItemIdForTierInternal(Reward.ChestTier);
 	}
 	return Reward;
 }
@@ -704,6 +719,14 @@ FGameXXKTrainingReward FGameXXKTrainingRules::ResolveTravelReward(
 	{
 		return Reward;
 	}
+	// Normal 1-1 is the explicit low-cost onboarding exception: Travel uses
+	// one-health encounters there and grants only gold/experience.  It must not
+	// silently inherit the normal/advanced chest resolver even when the caller
+	// supplies a guaranteed chance or a talent bonus.
+	if (Stage.bOneHealthTravelException)
+	{
+		return Reward;
+	}
 	const EGameXXKTrainingRewardTier Tier = ChestTierForEncounter(EncounterKind);
 	const int32 CooldownRemaining = Tier == EGameXXKTrainingRewardTier::AdvancedChest
 		? FMath::Max(0, AdvancedChestCooldownRemainingSeconds)
@@ -717,6 +740,7 @@ FGameXXKTrainingReward FGameXXKTrainingRules::ResolveTravelReward(
 	{
 		Reward.bChestRolled = true;
 		Reward.ChestTier = Tier;
+		Reward.ChestItemId = ChestItemIdForTierInternal(Tier);
 	}
 	return Reward;
 }
@@ -753,6 +777,11 @@ int32 FGameXXKTrainingRules::TravelChestCooldownSeconds(const EGameXXKTrainingRe
 	default:
 		return 0;
 	}
+}
+
+FName FGameXXKTrainingRules::ChestItemIdForTier(const EGameXXKTrainingRewardTier ChestTier)
+{
+	return ChestItemIdForTierInternal(ChestTier);
 }
 
 FText FGameXXKTrainingRules::BuildStageTooltip(const FGameXXKTrainingProgress& Progress, const FName StageId)

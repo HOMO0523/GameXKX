@@ -38,6 +38,18 @@ namespace
 		}
 	}
 
+	static bool ApplyTrainingRewardToRuntime(FGameXXKRuntimeState& State, const FGameXXKTrainingReward& Reward)
+	{
+		State.PlayerGold = FMath::Max(0, State.PlayerGold + Reward.Gold);
+		State.PlayerXP = FMath::Max(0, State.PlayerXP + Reward.Experience);
+		if (!Reward.bChestRolled)
+		{
+			return true;
+		}
+		return !Reward.ChestItemId.IsNone()
+			&& UGameXXKMVPRules::AddItem(State, Reward.ChestItemId, 1);
+	}
+
 	static FName MakeTrainingEnemyRuntimeId(const FName DefinitionId, const int32 EncounterIndex)
 	{
 		FString Leaf = DefinitionId.ToString();
@@ -948,8 +960,10 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 			0.0f);
 		Candidate.Training.ChallengeRewardSeed = FGameXXKTrainingRules::NextChallengeRewardSeed(
 			Candidate.Training.ChallengeRewardSeed);
-		Candidate.PlayerGold = FMath::Max(0, Candidate.PlayerGold + OutReward.Gold);
-		Candidate.PlayerXP = FMath::Max(0, Candidate.PlayerXP + OutReward.Experience);
+		if (!ApplyTrainingRewardToRuntime(Candidate, OutReward))
+		{
+			return false;
+		}
 		ClearTrainingBattleProjection(Candidate);
 		const bool bLastEncounter = EncounterIndex == Encounters.Num() - 1;
 		if (bLastEncounter)
@@ -990,6 +1004,10 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 		0.0f);
 	RuntimeState.Training.ChallengeRewardSeed = FGameXXKTrainingRules::NextChallengeRewardSeed(
 		RuntimeState.Training.ChallengeRewardSeed);
+	if (!ApplyTrainingRewardToRuntime(RuntimeState, OutReward))
+	{
+		return false;
+	}
 	if (bLastEncounter)
 	{
 		bOutStageCompleted = FGameXXKTrainingRules::CompleteChallenge(RuntimeState.Training, Progress.ActiveChallengeStageId);
@@ -1061,10 +1079,9 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingTravelStep(
 		return false;
 	}
 
-	if (bOutEncounterCompleted)
+	if (bOutEncounterCompleted && !ApplyTrainingRewardToRuntime(Candidate, OutReward))
 	{
-		Candidate.PlayerGold = FMath::Max(0, Candidate.PlayerGold + OutReward.Gold);
-		Candidate.PlayerXP = FMath::Max(0, Candidate.PlayerXP + OutReward.Experience);
+		return false;
 	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
@@ -1076,10 +1093,9 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingTravelEncounter(bool& bOutStageComplet
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	const bool bAdvanced = FGameXXKTrainingRules::AdvanceTravelEncounter(RuntimeState.Training, bOutStageCompleted, OutReward);
-	if (bAdvanced && bOutStageCompleted)
+	if (bAdvanced && bOutStageCompleted && !ApplyTrainingRewardToRuntime(RuntimeState, OutReward))
 	{
-		RuntimeState.PlayerGold = FMath::Max(0, RuntimeState.PlayerGold + OutReward.Gold);
-		RuntimeState.PlayerXP = FMath::Max(0, RuntimeState.PlayerXP + OutReward.Experience);
+		return false;
 	}
 	return bAdvanced;
 }

@@ -169,7 +169,7 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("an elite roll resolves to the advanced chest tier"), EliteChest.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
 
 	const FGameXXKTrainingReward TravelNormalChest = FGameXXKTrainingRules::ResolveTravelReward(
-		StageOne,
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2),
 		EGameXXKTrainingEncounterKind::Normal,
 		Seed,
 		0,
@@ -177,8 +177,39 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		1.0f);
 	TestTrue(TEXT("Travel can roll a normal chest when its cooldown is ready"), TravelNormalChest.bChestRolled);
 	TestEqual(TEXT("Travel normal encounters use the normal chest tier"), TravelNormalChest.ChestTier, EGameXXKTrainingRewardTier::NormalChest);
-	const FGameXXKTrainingReward TravelNormalOnCooldown = FGameXXKTrainingRules::ResolveTravelReward(
+	TestEqual(TEXT("normal chest resolves to the canonical inventory item"), TravelNormalChest.ChestItemId, FName(TEXT("Item.TrainingNormalChest")));
+	bool bNormalChestItemFound = false;
+	UGameXXKMVPRules::GetItemDef(TravelNormalChest.ChestItemId, bNormalChestItemFound);
+	TestTrue(TEXT("normal chest item is registered in the inventory catalog"), bNormalChestItemFound);
+	const FGameXXKTrainingReward TravelOneOneNormal = FGameXXKTrainingRules::ResolveTravelReward(
 		StageOne,
+		EGameXXKTrainingEncounterKind::Normal,
+		Seed,
+		0,
+		0,
+		1.0f);
+	TestFalse(TEXT("the one-health 1-1 Travel exception never rolls a normal chest"), TravelOneOneNormal.bChestRolled);
+	TestEqual(TEXT("the one-health 1-1 Travel exception has no chest tier"), TravelOneOneNormal.ChestTier, EGameXXKTrainingRewardTier::None);
+	const FGameXXKTrainingReward TravelOneOneElite = FGameXXKTrainingRules::ResolveTravelReward(
+		StageOne,
+		EGameXXKTrainingEncounterKind::Elite,
+		Seed,
+		0,
+		0,
+		1.0f);
+	TestFalse(TEXT("the one-health 1-1 Travel exception never rolls an elite chest"), TravelOneOneElite.bChestRolled);
+	const FGameXXKTrainingReward TravelOneOneBoss = FGameXXKTrainingRules::ResolveTravelReward(
+		StageOne,
+		EGameXXKTrainingEncounterKind::Boss,
+		Seed,
+		0,
+		0,
+		1.0f,
+		true);
+	TestFalse(TEXT("the one-health 1-1 Travel exception never rolls a boss chest"), TravelOneOneBoss.bChestRolled);
+	TestEqual(TEXT("the one-health 1-1 boss still keeps its gold/experience stage reward"), TravelOneOneBoss.Gold, FGameXXKTrainingRules::BuildTravelReward(StageOne).Gold);
+	const FGameXXKTrainingReward TravelNormalOnCooldown = FGameXXKTrainingRules::ResolveTravelReward(
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2),
 		EGameXXKTrainingEncounterKind::Normal,
 		Seed,
 		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds,
@@ -187,7 +218,7 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Travel normal chest cooldown blocks an otherwise guaranteed roll"), TravelNormalOnCooldown.bChestRolled);
 
 	const FGameXXKTrainingReward TravelEliteChest = FGameXXKTrainingRules::ResolveTravelReward(
-		StageOne,
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2),
 		EGameXXKTrainingEncounterKind::Elite,
 		Seed,
 		0,
@@ -195,8 +226,12 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		1.0f);
 	TestTrue(TEXT("Travel can roll an advanced elite chest when its cooldown is ready"), TravelEliteChest.bChestRolled);
 	TestEqual(TEXT("Travel elite encounters use the advanced chest tier"), TravelEliteChest.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
+	TestEqual(TEXT("advanced chest resolves to the canonical inventory item"), TravelEliteChest.ChestItemId, FName(TEXT("Item.TrainingAdvancedChest")));
+	bool bAdvancedChestItemFound = false;
+	UGameXXKMVPRules::GetItemDef(TravelEliteChest.ChestItemId, bAdvancedChestItemFound);
+	TestTrue(TEXT("advanced chest item is registered in the inventory catalog"), bAdvancedChestItemFound);
 	const FGameXXKTrainingReward TravelEliteOnCooldown = FGameXXKTrainingRules::ResolveTravelReward(
-		StageOne,
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2),
 		EGameXXKTrainingEncounterKind::Elite,
 		Seed,
 		0,
@@ -499,6 +534,93 @@ bool FGameXXKTrainingRealCardBattleBridgeTest::RunTest(const FString& Parameters
 	FGameXXKTrainingReward Reward;
 	TestTrue(TEXT("one auto step advances the real card runtime"), Subsystem->AdvanceTrainingChallengeEncounter(bStageCompleted, Reward));
 	TestTrue(TEXT("training challenge remains active until the encounter is terminal"), Subsystem->GetRuntimeState().Training.bChallengeActive);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelChestInventoryBridgeTest,
+	"GameXXK.Training.TravelChestInventoryBridge",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelChestInventoryBridgeTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestNotNull(TEXT("travel chest inventory bridge subsystem exists"), Subsystem);
+	if (!Subsystem || !Subsystem->StartGame())
+	{
+		return false;
+	}
+
+	const FName StageTwo = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Training.ClearedStageIds.Add(StageTwo);
+	State.Training.CurrentTravelStageId = StageTwo;
+	State.Training.SelectedStageId = StageTwo;
+	State.Training.TravelNormalChestCooldownRemainingSeconds = 0;
+	State.Training.ChallengeRewardSeed = FGameXXKTrainingRules::DefaultChallengeRewardSeed();
+	int32 GuaranteedSeed = State.Training.ChallengeRewardSeed;
+	for (int32 Attempt = 0; Attempt < 10000; ++Attempt)
+	{
+		if (FGameXXKTrainingRules::ResolveTravelReward(
+			StageTwo,
+			EGameXXKTrainingEncounterKind::Normal,
+			GuaranteedSeed,
+			0,
+			0,
+			0.0f).bChestRolled)
+		{
+			break;
+		}
+		GuaranteedSeed = FGameXXKTrainingRules::NextChallengeRewardSeed(GuaranteedSeed);
+	}
+	State.Training.ChallengeRewardSeed = GuaranteedSeed;
+
+	TestTrue(TEXT("travel chest inventory bridge starts a cleared stage"), Subsystem->StartTrainingTravel(StageTwo));
+	const int32 NormalChestBefore = UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemTrainingNormalChest());
+	FGameXXKTrainingReward Reward;
+	bool bEncounterCompleted = false;
+	bool bStageCompleted = false;
+	bool bDefeated = false;
+	for (int32 Guard = 0; Guard < 64 && !bEncounterCompleted; ++Guard)
+	{
+		TestTrue(TEXT("travel chest inventory bridge advances"), Subsystem->AdvanceTrainingTravelStep(
+			bEncounterCompleted,
+			bStageCompleted,
+			bDefeated,
+			Reward));
+	}
+	TestFalse(TEXT("guaranteed chest fixture does not defeat the player"), bDefeated);
+	TestTrue(TEXT("travel chest inventory bridge settles an encounter"), bEncounterCompleted);
+	TestTrue(TEXT("travel chest inventory bridge reports the normal chest"), Reward.bChestRolled);
+	TestEqual(TEXT("travel chest inventory bridge reports the canonical item"), Reward.ChestItemId, UGameXXKMVPRules::ItemTrainingNormalChest());
+	TestEqual(TEXT("travel chest inventory bridge writes one normal chest to inventory"),
+		UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemTrainingNormalChest()),
+		NormalChestBefore + 1);
+	TestEqual(TEXT("normal Travel chest settlement starts the four-minute cooldown"),
+		Subsystem->GetRuntimeState().Training.TravelNormalChestCooldownRemainingSeconds,
+		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds);
+	bool bCooldownEncounterCompleted = false;
+	bool bCooldownStageCompleted = false;
+	bool bCooldownDefeated = false;
+	FGameXXKTrainingReward CooldownTickReward;
+	TestTrue(TEXT("Travel cooldown can advance during the next logical tick"), Subsystem->AdvanceTrainingTravelStep(
+		bCooldownEncounterCompleted,
+		bCooldownStageCompleted,
+		bCooldownDefeated,
+		CooldownTickReward,
+		30));
+	TestEqual(TEXT("normal Travel cooldown decrements by elapsed logical seconds"),
+		Subsystem->GetRuntimeState().Training.TravelNormalChestCooldownRemainingSeconds,
+		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds - 30);
+	const FGameXXKSaveState SaveState = UGameXXKMVPRules::MakeSaveState(Subsystem->GetRuntimeState());
+	FGameXXKSaveState RoundTrip;
+	FGameXXKSaveMigrationReport MigrationReport;
+	TestTrue(TEXT("travel chest inventory save round-trip succeeds"),
+		FGameXXKSaveMigration::MigrateToCurrent(SaveState, RoundTrip, MigrationReport));
+	TestEqual(TEXT("travel chest inventory survives save round-trip"),
+		UGameXXKMVPRules::GetItemCount(RoundTrip.RuntimeState, UGameXXKMVPRules::ItemTrainingNormalChest()),
+		NormalChestBefore + 1);
 	return true;
 }
 

@@ -25,6 +25,8 @@ namespace GameXXKMVP
 	static const FName ItemEnhancementStoneName(TEXT("Item.EnhancementStone"));
 	static const FName ItemRefinementSandName(TEXT("Item.RefinementSand"));
 	static const FName ItemQingshanRouteSealName(TEXT("Item.QingshanRouteSeal"));
+	static const FName ItemTrainingNormalChestName(TEXT("Item.TrainingNormalChest"));
+	static const FName ItemTrainingAdvancedChestName(TEXT("Item.TrainingAdvancedChest"));
 	static const FName ItemLingzhiPowderName(TEXT("Item.LingzhiPowder"));
 	static const FName ItemQingxinTeaName(TEXT("Item.QingxinTea"));
 	static const FName ItemCraneSachetName(TEXT("Item.CraneSachet"));
@@ -210,6 +212,8 @@ namespace GameXXKMVP
 			ItemHealingPowderName,
 			ItemEnhancementStoneName,
 			ItemQingshanRouteSealName,
+			ItemTrainingNormalChestName,
+			ItemTrainingAdvancedChestName,
 			ItemLingzhiPowderName,
 			ItemQingxinTeaName,
 			ItemCraneSachetName,
@@ -258,6 +262,16 @@ namespace GameXXKMVP
 		if (ItemId == ItemQingshanRouteSealName)
 		{
 			OutDef = MakeItem(ItemId, TEXT("青山讨伐令"), EGameXXKItemKind::Task, 0, 0, 0, 0, 0, 0, 0, 0);
+			return true;
+		}
+		if (ItemId == ItemTrainingNormalChestName)
+		{
+			OutDef = MakeItem(ItemId, TEXT("普通历练宝箱"), EGameXXKItemKind::Material, 0, 0, 0, 0, 0, 0, 0, 0);
+			return true;
+		}
+		if (ItemId == ItemTrainingAdvancedChestName)
+		{
+			OutDef = MakeItem(ItemId, TEXT("高级历练宝箱"), EGameXXKItemKind::Material, 0, 0, 0, 0, 0, 0, 0, 0);
 			return true;
 		}
 		if (ItemId == ItemLingzhiPowderName)
@@ -1523,6 +1537,16 @@ FName UGameXXKMVPRules::ItemRefinementSand()
 FName UGameXXKMVPRules::ItemQingshanRouteSeal()
 {
 	return GameXXKMVP::ItemQingshanRouteSealName;
+}
+
+FName UGameXXKMVPRules::ItemTrainingNormalChest()
+{
+	return GameXXKMVP::ItemTrainingNormalChestName;
+}
+
+FName UGameXXKMVPRules::ItemTrainingAdvancedChest()
+{
+	return GameXXKMVP::ItemTrainingAdvancedChestName;
 }
 
 FName UGameXXKMVPRules::ItemIronSword()

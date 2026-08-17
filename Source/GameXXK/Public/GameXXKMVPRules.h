@@ -577,6 +577,12 @@ public:
 	static FName ItemQingshanRouteSeal();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FName ItemTrainingNormalChest();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FName ItemTrainingAdvancedChest();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FName ItemIronSword();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
