@@ -1,4 +1,5 @@
 #include "GameXXKTrainingRules.h"
+#include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
@@ -38,6 +39,29 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	State.Inventory.Add(UGameXXKMVPRules::ItemHealingPowder(), 3);
 	State.Inventory.Add(UGameXXKMVPRules::ItemTrainingNormalChest(), 2);
 	Widget->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("Tab/backpack entry opens the formation-backed backpack view"), Widget->OpenBackpack());
+	TestEqual(TEXT("backpack defaults to the hero character"),
+		Widget->GetActiveBackpackCharacterIdForTest(),
+		FGameXXKEquipmentRules::HeroCharacterId());
+	const TArray<FName> BackpackCharacterIds = Widget->GetBackpackCharacterIdsForTest();
+	TestEqual(TEXT("backpack exposes the hero and both starter companions"), BackpackCharacterIds.Num(), 3);
+	TestTrue(TEXT("backpack character list keeps the hero first"),
+		BackpackCharacterIds.Num() > 0
+		&& BackpackCharacterIds[0] == FGameXXKEquipmentRules::HeroCharacterId());
+	if (BackpackCharacterIds.Num() > 1)
+	{
+		TestTrue(TEXT("backpack can switch to a permanent companion"), Widget->SelectBackpackCharacterForTest(BackpackCharacterIds[1]));
+		TestEqual(TEXT("selected companion becomes the backpack read-model owner"),
+			Widget->GetActiveBackpackCharacterIdForTest(),
+			BackpackCharacterIds[1]);
+	}
+	TestFalse(TEXT("backpack rejects an unknown character"), Widget->SelectBackpackCharacterForTest(FName(TEXT("Character.Unknown"))));
+	Widget->HandleActionClicked(3);
+	TestEqual(TEXT("tools navigation replaces the right-side map"), Widget->GetActiveNavForTest(), EGameXXKDesktopTrainingNav::Tools);
+	TestTrue(TEXT("tools panel is active outside challenge viewport"), Widget->IsToolsPanelActiveForTest());
+	Widget->HandleActionClicked(4);
+	TestEqual(TEXT("training navigation returns to the map shell"), Widget->GetActiveNavForTest(), EGameXXKDesktopTrainingNav::Training);
+	TestFalse(TEXT("training navigation is not the tools panel"), Widget->IsToolsPanelActiveForTest());
 	TestEqual(TEXT("workbench reads the authoritative runtime gold"), Widget->GetRuntimeGoldForTest(), 4242);
 	TestEqual(TEXT("workbench warehouse occupancy comes from the equipment collection"),
 		Widget->GetWarehouseOccupancyForTest(),

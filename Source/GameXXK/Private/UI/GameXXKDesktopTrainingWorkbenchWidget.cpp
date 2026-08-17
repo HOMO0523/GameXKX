@@ -6,11 +6,13 @@
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
+#include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKCharacterBackpackModel.h"
 #include "Styling/CoreStyle.h"
 
 namespace
@@ -120,6 +122,28 @@ namespace
 		default: return NAME_None;
 		}
 	}
+
+	FString BackpackCharacterDisplayName(
+		const UGameXXKMVPSubsystem* Subsystem,
+		const FName CharacterId)
+	{
+		if (CharacterId == FGameXXKEquipmentRules::HeroCharacterId())
+		{
+			return TEXT("主角");
+		}
+		if (Subsystem)
+		{
+			FGameXXKPermanentCompanion Companion;
+			if (Subsystem->TryGetPermanentCompanionView(CharacterId, Companion))
+			{
+				return FString::Printf(
+					TEXT("%s Lv.%d"),
+					*FGameXXKCompanionRules::GetCompanionDisplayName(Companion.Role, Companion.NameSeed),
+					Companion.Level);
+			}
+		}
+		return CharacterId.ToString();
+	}
 }
 
 void UGameXXKDesktopTrainingStageButton::Configure(UGameXXKDesktopTrainingWorkbenchWidget* InOwner, const FName InStageId)
@@ -206,6 +230,13 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 	}
 	const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
 	SelectedStageId = Progress.SelectedStageId.IsNone() ? Progress.CurrentTravelStageId : Progress.SelectedStageId;
+	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
+	if (ActiveBackpackCharacterId.IsNone() || !CharacterIds.Contains(ActiveBackpackCharacterId))
+	{
+		ActiveBackpackCharacterId = CharacterIds.Num() > 0
+			? CharacterIds[0]
+			: FGameXXKEquipmentRules::HeroCharacterId();
+	}
 	ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 	TravelAccumulator = 0.0f;
 	RefreshLayout();
@@ -222,6 +253,69 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::CloseWorkbench()
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::OpenBackpack()
 {
+	ActiveNav = EGameXXKDesktopTrainingNav::Formation;
+	ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
+	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
+	if (ActiveBackpackCharacterId.IsNone() || !CharacterIds.Contains(ActiveBackpackCharacterId))
+	{
+		ActiveBackpackCharacterId = CharacterIds.Num() > 0
+			? CharacterIds[0]
+			: FGameXXKEquipmentRules::HeroCharacterId();
+	}
+	RefreshLayout();
+	return true;
+}
+
+FName UGameXXKDesktopTrainingWorkbenchWidget::GetActiveBackpackCharacterIdForTest() const
+{
+	return ActiveBackpackCharacterId.IsNone()
+		? FGameXXKEquipmentRules::HeroCharacterId()
+		: ActiveBackpackCharacterId;
+}
+
+EGameXXKDesktopTrainingNav UGameXXKDesktopTrainingWorkbenchWidget::GetActiveNavForTest() const
+{
+	return ActiveNav;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsToolsPanelActiveForTest() const
+{
+	return ViewMode == EGameXXKDesktopTrainingViewMode::Workbench
+		&& ActiveNav == EGameXXKDesktopTrainingNav::Tools;
+}
+
+TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetBackpackCharacterIdsForTest() const
+{
+	TArray<FName> CharacterIds;
+	CharacterIds.Add(FGameXXKEquipmentRules::HeroCharacterId());
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return CharacterIds;
+	}
+	for (const FGameXXKPermanentCompanion& Companion : Subsystem->GetPermanentCompanionViews())
+	{
+		if (!Companion.InstanceId.IsNone() && !CharacterIds.Contains(Companion.InstanceId))
+		{
+			CharacterIds.Add(Companion.InstanceId);
+		}
+	}
+	return CharacterIds;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::SelectBackpackCharacterForTest(const FName CharacterId)
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || CharacterId.IsNone() || !GetBackpackCharacterIdsForTest().Contains(CharacterId))
+	{
+		return false;
+	}
+	FGameXXKEquipmentLoadoutSnapshot Snapshot;
+	if (!Subsystem->GetEquipmentLoadoutSnapshot(CharacterId, Snapshot))
+	{
+		return false;
+	}
+	ActiveBackpackCharacterId = CharacterId;
 	ActiveNav = EGameXXKDesktopTrainingNav::Formation;
 	ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 	RefreshLayout();
@@ -443,8 +537,22 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 	{
 		BuildTopIdleStrip();
 		BuildWarehousePanel();
-		BuildBackpackPanel();
-		BuildTrainingMapPanel();
+		if (ActiveNav == EGameXXKDesktopTrainingNav::Talents)
+		{
+			BuildTalentsPanel();
+		}
+		else
+		{
+			BuildBackpackPanel();
+		}
+		if (ActiveNav == EGameXXKDesktopTrainingNav::Tools)
+		{
+			BuildToolsPanel();
+		}
+		else
+		{
+			BuildTrainingMapPanel();
+		}
 	}
 	BuildBottomNavigation();
 	NoticePanel = MakePanel(WidgetTree, FLinearColor(0.08f, 0.05f, 0.03f, 0.96f));
@@ -550,10 +658,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 {
 	UBorder* PanelBorder = MakePanel(WidgetTree, PanelAlt);
 	AddCanvas(RootCanvas, PanelBorder, FVector2D(365.0f, 150.0f), FVector2D(960.0f, 840.0f));
-	UTextBlock* Title = MakeText(WidgetTree, ActiveNav == EGameXXKDesktopTrainingNav::Tools
-		? FText::FromString(TEXT("工具  ·  魔方 / 合成 / 制作"))
-		: ActiveNav == EGameXXKDesktopTrainingNav::Formation ? FText::FromString(TEXT("编队  ·  角色 / 伙伴"))
-		: FText::FromString(TEXT("背包  ·  角色装备")), 30, Gold);
+	UTextBlock* Title = MakeText(WidgetTree,
+		ActiveNav == EGameXXKDesktopTrainingNav::Formation
+			? FText::FromString(TEXT("编队  ·  角色 / 伙伴"))
+			: FText::FromString(TEXT("背包  ·  角色装备")), 30, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(400.0f, 175.0f), FVector2D(700.0f, 46.0f));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
@@ -562,40 +670,76 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 		: TEXT("金币  --  ·  等待存档");
 	UTextBlock* GoldText = MakeText(WidgetTree, FText::FromString(GoldLabel), 20, Gold);
 	AddCanvas(RootCanvas, GoldText, FVector2D(1010.0f, 180.0f), FVector2D(260.0f, 40.0f));
-	TArray<FName> EquippedInstanceIds;
-	if (RuntimeState)
+	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
+	for (int32 CharacterIndex = 0; CharacterIndex < CharacterIds.Num(); ++CharacterIndex)
 	{
-		if (const FGameXXKEquipmentLoadout* HeroLoadout = RuntimeState->EquipmentCollection.CharacterLoadouts.Find(FGameXXKEquipmentRules::HeroCharacterId()))
-		{
-			for (int32 SlotIndex = 0; SlotIndex < 6; ++SlotIndex)
-			{
-				EquippedInstanceIds.Add(EquippedInstanceIdForSlot(*HeroLoadout, SlotIndex));
-			}
-		}
+		UGameXXKDesktopTrainingActionButton* CharacterButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+		CharacterButton->Configure(this, 20 + CharacterIndex);
+		CharacterButton->SetBackgroundColor(CharacterIds[CharacterIndex] == GetActiveBackpackCharacterIdForTest() ? Accent : Panel);
+		CharacterButton->SetContent(MakeText(
+			WidgetTree,
+			FText::FromString(BackpackCharacterDisplayName(Subsystem, CharacterIds[CharacterIndex])),
+			16));
+		AddCanvas(RootCanvas, CharacterButton, FVector2D(405.0f + CharacterIndex * 170.0f, 220.0f), FVector2D(155.0f, 42.0f));
+		ActionButtons.Add(CharacterButton);
+	}
+	const FName ActiveCharacterId = GetActiveBackpackCharacterIdForTest();
+	FGameXXKCharacterBackpackModel BackpackModel;
+	if (Subsystem)
+	{
+		BackpackModel.Bind(const_cast<UGameXXKMVPSubsystem*>(Subsystem), ActiveCharacterId);
+	}
+	const TArray<FGameXXKCharacterBackpackSlotView> SlotViews = BackpackModel.GetSixSlotSnapshot();
+	TArray<FName> EquippedInstanceIds;
+	for (const FGameXXKCharacterBackpackSlotView& SlotView : SlotViews)
+	{
+		EquippedInstanceIds.Add(SlotView.EquippedInstanceId);
 	}
 	for (int32 SlotIndex = 0; SlotIndex < 6; ++SlotIndex)
 	{
 		UBorder* Equip = MakePanel(WidgetTree, FLinearColor(0.10f, 0.07f, 0.05f, 1.0f));
-		AddCanvas(RootCanvas, Equip, FVector2D(405.0f + (SlotIndex % 3) * 90.0f, 240.0f + (SlotIndex / 3) * 90.0f), FVector2D(78.0f, 78.0f));
+		AddCanvas(RootCanvas, Equip, FVector2D(405.0f + (SlotIndex % 3) * 90.0f, 275.0f + (SlotIndex / 3) * 90.0f), FVector2D(78.0f, 78.0f));
 		if (EquippedInstanceIds.IsValidIndex(SlotIndex) && !EquippedInstanceIds[SlotIndex].IsNone() && RuntimeState)
 		{
 			const FString EquipmentLabel = EquipmentDisplayName(RuntimeState->EquipmentCollection, EquippedInstanceIds[SlotIndex]);
 			UTextBlock* EquipText = MakeText(WidgetTree, FText::FromString(EquipmentLabel), 11, FLinearColor::White);
-			AddCanvas(RootCanvas, EquipText, FVector2D(409.0f + (SlotIndex % 3) * 90.0f, 255.0f + (SlotIndex / 3) * 90.0f), FVector2D(70.0f, 48.0f));
+			AddCanvas(RootCanvas, EquipText, FVector2D(409.0f + (SlotIndex % 3) * 90.0f, 290.0f + (SlotIndex / 3) * 90.0f), FVector2D(70.0f, 48.0f));
 			Equip->SetToolTipText(FText::FromString(FString::Printf(TEXT("已装备实例：%s\n%s"), *EquippedInstanceIds[SlotIndex].ToString(), *EquipmentLabel)));
 		}
 	}
-	const FString IdentityLabel = RuntimeState
+	FGameXXKEquipmentLoadoutSnapshot ActiveLoadoutSnapshot;
+	const bool bHasActiveLoadout = Subsystem && Subsystem->GetEquipmentLoadoutSnapshot(ActiveCharacterId, ActiveLoadoutSnapshot);
+	int32 ActiveLevel = RuntimeState ? RuntimeState->PlayerLevel : 0;
+	int32 ActiveHP = RuntimeState ? RuntimeState->PlayerHP : 0;
+	int32 ActiveMaxHP = RuntimeState ? RuntimeState->PlayerMaxHP : 0;
+	int32 ActiveMP = RuntimeState ? RuntimeState->PlayerMP : 0;
+	int32 ActiveMaxMP = RuntimeState ? RuntimeState->PlayerMaxMP : 0;
+	if (RuntimeState && ActiveCharacterId != FGameXXKEquipmentRules::HeroCharacterId())
+	{
+		FGameXXKPermanentCompanion Companion;
+		if (Subsystem && Subsystem->TryGetPermanentCompanionView(ActiveCharacterId, Companion))
+		{
+			ActiveLevel = Companion.Level;
+		}
+	}
+	if (bHasActiveLoadout && ActiveCharacterId != FGameXXKEquipmentRules::HeroCharacterId())
+	{
+		ActiveHP = ActiveLoadoutSnapshot.AttributesBeforeRoute.MaxHealth;
+		ActiveMaxHP = ActiveLoadoutSnapshot.AttributesBeforeRoute.MaxHealth;
+		ActiveMP = ActiveLoadoutSnapshot.AttributesBeforeRoute.MaxMana;
+		ActiveMaxMP = ActiveLoadoutSnapshot.AttributesBeforeRoute.MaxMana;
+	}
+	const FString IdentityLabel = RuntimeState && bHasActiveLoadout
 		? FString::Printf(
 			TEXT("角色 / 伙伴 · %s\nLv.%d  HP %d/%d  MP %d/%d\n攻击 %d  防御 %d\n六装备槽 · 角色与伙伴在背包内部切换"),
-			*FGameXXKEquipmentRules::HeroCharacterId().ToString(),
-			RuntimeState->PlayerLevel,
-			RuntimeState->PlayerHP,
-			RuntimeState->PlayerMaxHP,
-			RuntimeState->PlayerMP,
-			RuntimeState->PlayerMaxMP,
-			RuntimeState->PlayerAttack,
-			RuntimeState->PlayerDefense)
+			*BackpackCharacterDisplayName(Subsystem, ActiveCharacterId),
+			ActiveLevel,
+			ActiveHP,
+			ActiveMaxHP,
+			ActiveMP,
+			ActiveMaxMP,
+			ActiveLoadoutSnapshot.AttributesBeforeRoute.Attack,
+			ActiveLoadoutSnapshot.AttributesBeforeRoute.Defense)
 		: TEXT("角色 / 伙伴\n等待存档\n六装备槽 · 角色与伙伴在背包内部切换");
 	UTextBlock* Identity = MakeText(WidgetTree, FText::FromString(IdentityLabel), 16, FLinearColor::White);
 	AddCanvas(RootCanvas, Identity, FVector2D(720.0f, 250.0f), FVector2D(300.0f, 100.0f));
@@ -605,7 +749,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 		const int32 Column = SlotIndex % 4;
 		const int32 Row = SlotIndex / 4;
 		UBorder* Cell = MakePanel(WidgetTree, FLinearColor(0.06f, 0.05f, 0.04f, 1.0f));
-		AddCanvas(RootCanvas, Cell, FVector2D(700.0f + Column * 118.0f, 410.0f + Row * 66.0f), FVector2D(105.0f, 56.0f));
+		AddCanvas(RootCanvas, Cell, FVector2D(700.0f + Column * 118.0f, 450.0f + Row * 66.0f), FVector2D(105.0f, 56.0f));
 		if (VisibleInventoryItems.IsValidIndex(SlotIndex) && RuntimeState)
 		{
 			const FName ItemId = VisibleInventoryItems[SlotIndex];
@@ -614,7 +758,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 				*ItemDisplayName(ItemId),
 				RuntimeState->Inventory.FindRef(ItemId));
 			UTextBlock* ItemText = MakeText(WidgetTree, FText::FromString(ItemLabel), 12, FLinearColor::White);
-			AddCanvas(RootCanvas, ItemText, FVector2D(704.0f + Column * 118.0f, 416.0f + Row * 66.0f), FVector2D(98.0f, 44.0f));
+			AddCanvas(RootCanvas, ItemText, FVector2D(704.0f + Column * 118.0f, 456.0f + Row * 66.0f), FVector2D(98.0f, 44.0f));
 			Cell->SetToolTipText(FText::FromString(FString::Printf(TEXT("%s\n数量：%d\n物品 ID：%s"),
 				*ItemDisplayName(ItemId),
 				RuntimeState->Inventory.FindRef(ItemId),
@@ -631,6 +775,74 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 		TEXT("背包比例锁定：1.76 : 1  ·  4 × 5 可视格  ·  %d 类物品"),
 		VisibleInventoryItems.Num())), 16, FLinearColor(0.78f, 0.70f, 0.60f, 1.0f));
 	AddCanvas(RootCanvas, Ratio, FVector2D(400.0f, 925.0f), FVector2D(460.0f, 30.0f));
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildTalentsPanel()
+{
+	UBorder* PanelBorder = MakePanel(WidgetTree, PanelAlt);
+	AddCanvas(RootCanvas, PanelBorder, FVector2D(365.0f, 150.0f), FVector2D(960.0f, 840.0f));
+	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("天赋  ·  天赋树 / 称号")), 30, Gold);
+	AddCanvas(RootCanvas, Title, FVector2D(400.0f, 175.0f), FVector2D(700.0f, 46.0f));
+	UTextBlock* Notice = MakeText(
+		WidgetTree,
+		FText::FromString(TEXT("天赋和称号集中在此页；真实节点数据与宝箱掉率加成尚未接入。")),
+		18,
+		FLinearColor(0.82f, 0.74f, 0.62f, 1.0f));
+	AddCanvas(RootCanvas, Notice, FVector2D(405.0f, 235.0f), FVector2D(760.0f, 42.0f));
+	for (int32 NodeIndex = 0; NodeIndex < 12; ++NodeIndex)
+	{
+		UBorder* Node = MakePanel(WidgetTree, NodeIndex == 0 ? Accent : Panel);
+		AddCanvas(
+			RootCanvas,
+			Node,
+			FVector2D(430.0f + (NodeIndex % 4) * 190.0f, 320.0f + (NodeIndex / 4) * 130.0f),
+			FVector2D(150.0f, 92.0f));
+		UTextBlock* NodeText = MakeText(
+			WidgetTree,
+			FText::FromString(NodeIndex == 0 ? TEXT("基础天赋\n待配置") : FString::Printf(TEXT("节点 %02d\n锁定"), NodeIndex + 1)),
+			16,
+			FLinearColor::White);
+		AddCanvas(
+			RootCanvas,
+			NodeText,
+			FVector2D(442.0f + (NodeIndex % 4) * 190.0f, 342.0f + (NodeIndex / 4) * 130.0f),
+			FVector2D(126.0f, 54.0f));
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
+{
+	UBorder* PanelBorder = MakePanel(WidgetTree, Panel);
+	AddCanvas(RootCanvas, PanelBorder, FVector2D(1340.0f, 150.0f), FVector2D(556.0f, 840.0f));
+	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("工具  ·  魔方 / 合成 / 制作")), 30, Gold);
+	AddCanvas(RootCanvas, Title, FVector2D(1370.0f, 175.0f), FVector2D(480.0f, 48.0f));
+	const TArray<FText> ToolLabels = {
+		FText::FromString(TEXT("魔方")),
+		FText::FromString(TEXT("合成")),
+		FText::FromString(TEXT("制作"))};
+	for (int32 ToolIndex = 0; ToolIndex < ToolLabels.Num(); ++ToolIndex)
+	{
+		UGameXXKDesktopTrainingActionButton* ToolButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+		ToolButton->Configure(this, 30 + ToolIndex);
+		ToolButton->SetBackgroundColor(ToolIndex == 0 ? Accent : PanelAlt);
+		ToolButton->SetContent(MakeText(WidgetTree, ToolLabels[ToolIndex], 22));
+		AddCanvas(RootCanvas, ToolButton, FVector2D(1375.0f + ToolIndex * 175.0f, 245.0f), FVector2D(155.0f, 58.0f));
+		ActionButtons.Add(ToolButton);
+	}
+	UTextBlock* Hint = MakeText(
+		WidgetTree,
+		FText::FromString(TEXT("工具容器替换右侧历练地图；强化、洗炼、分解后续只从这里进入。")),
+		18,
+		FLinearColor(0.82f, 0.74f, 0.62f, 1.0f));
+	AddCanvas(RootCanvas, Hint, FVector2D(1375.0f, 345.0f), FVector2D(480.0f, 72.0f));
+	UBorder* Queue = MakePanel(WidgetTree, PanelAlt);
+	AddCanvas(RootCanvas, Queue, FVector2D(1375.0f, 455.0f), FVector2D(480.0f, 270.0f));
+	UTextBlock* QueueText = MakeText(
+		WidgetTree,
+		FText::FromString(TEXT("制作队列\n\n当前没有进行中的制作\n\n材料与配方将从 RuntimeState 读取")),
+		18,
+		FLinearColor::White);
+	AddCanvas(RootCanvas, QueueText, FVector2D(1400.0f, 485.0f), FVector2D(420.0f, 190.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
@@ -795,12 +1007,19 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	}
 	if (ActionId >= 0 && ActionId <= 4)
 	{
-		ActiveNav = static_cast<EGameXXKDesktopTrainingNav>(ActionId);
-		if (ActiveNav == EGameXXKDesktopTrainingNav::Training)
+		if (ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport)
 		{
-			ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
+			SetNotice(FText::FromString(TEXT("挑战进行中：左仓库与右侧导航暂时只读")));
+			return;
 		}
+		ActiveNav = static_cast<EGameXXKDesktopTrainingNav>(ActionId);
+		ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 		RefreshLayout();
+		return;
+	}
+	if (ActionId >= 20 && ActionId < 20 + GetBackpackCharacterIdsForTest().Num())
+	{
+		SelectBackpackCharacterForTest(GetBackpackCharacterIdsForTest()[ActionId - 20]);
 		return;
 	}
 	if (ActionId >= 11 && ActionId <= 13)
@@ -855,6 +1074,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	case 10:
 		Subsystem->SetTrainingRetryOnFailure(!Subsystem->GetTrainingProgressCopy().bRetryOnFailure);
 		SetNotice(FText::FromString(TEXT("已切换游历失败重试策略")));
+		break;
+	case 30:
+	case 31:
+	case 32:
+		SetNotice(FText::FromString(TEXT("工具容器已打开：具体配方/材料读取待接入")));
 		break;
 	default:
 		break;

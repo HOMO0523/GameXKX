@@ -77,6 +77,23 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining")
 	bool OpenBackpack();
 
+	/** Selected owner for the shared role/companion backpack surface. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FName GetActiveBackpackCharacterIdForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	EGameXXKDesktopTrainingNav GetActiveNavForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	bool IsToolsPanelActiveForTest() const;
+
+	/** Hero first, followed by the save-authoritative permanent companion instance IDs. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	TArray<FName> GetBackpackCharacterIdsForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	bool SelectBackpackCharacterForTest(FName CharacterId);
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsWorkbenchVisibleForTest() const;
 
@@ -150,7 +167,9 @@ private:
 	void BuildChallengeViewport();
 	void BuildWarehousePanel();
 	void BuildBackpackPanel();
+	void BuildTalentsPanel();
 	void BuildTrainingMapPanel();
+	void BuildToolsPanel();
 	void BuildTopIdleStrip();
 	void BuildBottomNavigation();
 	void RefreshLayout();
@@ -187,6 +206,7 @@ private:
 	EGameXXKDesktopTrainingNav ActiveNav = EGameXXKDesktopTrainingNav::Training;
 	EGameXXKDesktopTrainingViewMode ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 	FName SelectedStageId = NAME_None;
+	FName ActiveBackpackCharacterId = NAME_None;
 	float AutoBattleAccumulator = 0.0f;
 	float TravelAccumulator = 0.0f;
 	FVector2D BackpackAspectRatio = FVector2D(1.76f, 1.0f);
