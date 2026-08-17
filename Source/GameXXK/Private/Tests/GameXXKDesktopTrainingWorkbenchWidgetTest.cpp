@@ -105,6 +105,12 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	TestTrue(TEXT("workbench backpack read model includes a travel chest"), VisibleItems.Contains(UGameXXKMVPRules::ItemTrainingNormalChest()));
 	TestEqual(TEXT("three difficulty bands each expose nine stage definitions"), FGameXXKTrainingRules::GetStageDefinitions().Num(), 27);
 	TestEqual(TEXT("normal 1-1 id remains stable"), FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1), FName(TEXT("Training.Normal.1-1")));
+	Widget->HandleActionClicked(14);
+	TestTrue(TEXT("backpack settings action opens an independent settings surface"), Widget->IsSettingsPanelOpenForTest());
+	TestTrue(TEXT("opening settings keeps the workbench visible"), Widget->IsWorkbenchVisibleForTest());
+	Widget->HandleActionClicked(15);
+	TestFalse(TEXT("close action closes the workbench independently of settings"), Widget->IsWorkbenchVisibleForTest());
+	TestFalse(TEXT("closing the workbench clears the settings surface"), Widget->IsSettingsPanelOpenForTest());
 	return true;
 }
 

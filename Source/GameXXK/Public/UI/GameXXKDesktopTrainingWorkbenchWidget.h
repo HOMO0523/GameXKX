@@ -97,6 +97,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsWorkbenchVisibleForTest() const;
 
+	/** Whether the independent settings surface is open above the backpack. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	bool IsSettingsPanelOpenForTest() const;
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	int32 GetWarehouseColumnCountForTest() const;
 
@@ -236,5 +240,6 @@ private:
 	float AutoBattleAccumulator = 0.0f;
 	float TravelAccumulator = 0.0f;
 	FVector2D BackpackAspectRatio = FVector2D(1.76f, 1.0f);
+	bool bSettingsPanelOpen = false;
 	FText LastNotice;
 };

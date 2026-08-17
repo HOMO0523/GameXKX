@@ -239,6 +239,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 			: FGameXXKEquipmentRules::HeroCharacterId();
 	}
 	ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
+	bSettingsPanelOpen = false;
 	TravelAccumulator = 0.0f;
 	RefreshLayout();
 	SetVisibility(ESlateVisibility::Visible);
@@ -248,6 +249,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 bool UGameXXKDesktopTrainingWorkbenchWidget::CloseWorkbench()
 {
 	const bool bWasVisible = IsInViewport() && GetVisibility() != ESlateVisibility::Collapsed;
+	bSettingsPanelOpen = false;
 	SetVisibility(ESlateVisibility::Collapsed);
 	return bWasVisible;
 }
@@ -256,6 +258,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenBackpack()
 {
 	ActiveNav = EGameXXKDesktopTrainingNav::Formation;
 	ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
+	bSettingsPanelOpen = false;
 	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
 	if (ActiveBackpackCharacterId.IsNone() || !CharacterIds.Contains(ActiveBackpackCharacterId))
 	{
@@ -319,6 +322,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::SelectBackpackCharacterForTest(cons
 	ActiveBackpackCharacterId = CharacterId;
 	ActiveNav = EGameXXKDesktopTrainingNav::Formation;
 	ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
+	bSettingsPanelOpen = false;
 	RefreshLayout();
 	return true;
 }
@@ -326,6 +330,13 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::SelectBackpackCharacterForTest(cons
 bool UGameXXKDesktopTrainingWorkbenchWidget::IsWorkbenchVisibleForTest() const
 {
 	return GetVisibility() != ESlateVisibility::Collapsed;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsSettingsPanelOpenForTest() const
+{
+	return bSettingsPanelOpen
+		&& ViewMode == EGameXXKDesktopTrainingViewMode::Workbench
+		&& ActiveNav != EGameXXKDesktopTrainingNav::Talents;
 }
 
 int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehouseColumnCountForTest() const
@@ -821,7 +832,21 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 		? FString::Printf(TEXT("金币  %d  ·  数据来自存档"), RuntimeState->PlayerGold)
 		: TEXT("金币  --  ·  等待存档");
 	UTextBlock* GoldText = MakeText(WidgetTree, FText::FromString(GoldLabel), 20, Gold);
-	AddCanvas(RootCanvas, GoldText, FVector2D(1010.0f, 180.0f), FVector2D(260.0f, 40.0f));
+	AddCanvas(RootCanvas, GoldText, FVector2D(810.0f, 180.0f), FVector2D(190.0f, 40.0f));
+	UGameXXKDesktopTrainingActionButton* Settings = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+	Settings->Configure(this, 14);
+	Settings->SetBackgroundColor(bSettingsPanelOpen ? Accent : Panel);
+	Settings->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("设置")), 17));
+	Settings->SetToolTipText(FText::FromString(TEXT("打开独立设置面板；不会关闭历练工作台")));
+	AddCanvas(RootCanvas, Settings, FVector2D(1015.0f, 180.0f), FVector2D(90.0f, 40.0f));
+	ActionButtons.Add(Settings);
+	UGameXXKDesktopTrainingActionButton* Close = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+	Close->Configure(this, 15);
+	Close->SetBackgroundColor(FLinearColor(0.30f, 0.10f, 0.08f, 1.0f));
+	Close->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("关闭")), 17));
+	Close->SetToolTipText(FText::FromString(TEXT("关闭桌面历练工作台；与设置按钮独立")));
+	AddCanvas(RootCanvas, Close, FVector2D(1115.0f, 180.0f), FVector2D(90.0f, 40.0f));
+	ActionButtons.Add(Close);
 	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
 	for (int32 CharacterIndex = 0; CharacterIndex < CharacterIds.Num(); ++CharacterIndex)
 	{
@@ -938,6 +963,19 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 		TEXT("背包比例锁定：1.76 : 1  ·  4 × 5 可视格  ·  %d 类物品"),
 		VisibleInventoryItems.Num())), 16, FLinearColor(0.78f, 0.70f, 0.60f, 1.0f));
 	AddCanvas(RootCanvas, Ratio, FVector2D(400.0f, 925.0f), FVector2D(460.0f, 30.0f));
+	if (bSettingsPanelOpen)
+	{
+		UBorder* SettingsPanel = MakePanel(WidgetTree, FLinearColor(0.08f, 0.06f, 0.05f, 0.98f));
+		AddCanvas(RootCanvas, SettingsPanel, FVector2D(705.0f, 320.0f), FVector2D(560.0f, 360.0f));
+		UTextBlock* SettingsTitle = MakeText(WidgetTree, FText::FromString(TEXT("设置")), 26, Gold);
+		AddCanvas(RootCanvas, SettingsTitle, FVector2D(745.0f, 350.0f), FVector2D(460.0f, 42.0f));
+		UTextBlock* SettingsText = MakeText(
+			WidgetTree,
+			FText::FromString(TEXT("工作台设置入口已独立于关闭按钮\n\n默认 3D 城镇回退：保持开启\n静置帧率与窗口尺寸：沿用项目配置\n\n设置数据接入 RuntimeState 后在此处扩展。")),
+			18,
+			FLinearColor::White);
+		AddCanvas(RootCanvas, SettingsText, FVector2D(745.0f, 410.0f), FVector2D(470.0f, 210.0f));
+	}
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTalentsPanel()
@@ -1177,6 +1215,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		}
 		ActiveNav = static_cast<EGameXXKDesktopTrainingNav>(ActionId);
 		ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
+		bSettingsPanelOpen = false;
 		RefreshLayout();
 		return;
 	}
@@ -1257,6 +1296,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	case 10:
 		Subsystem->SetTrainingRetryOnFailure(!Subsystem->GetTrainingProgressCopy().bRetryOnFailure);
 		SetNotice(FText::FromString(TEXT("已切换游历失败重试策略")));
+		break;
+	case 14:
+		bSettingsPanelOpen = !bSettingsPanelOpen;
+		SetNotice(bSettingsPanelOpen
+			? FText::FromString(TEXT("设置面板已打开；关闭按钮保持独立"))
+			: FText::FromString(TEXT("设置面板已收起")));
+		RefreshLayout();
+		break;
+	case 15:
+		CloseWorkbench();
 		break;
 	case 30:
 	case 31:
