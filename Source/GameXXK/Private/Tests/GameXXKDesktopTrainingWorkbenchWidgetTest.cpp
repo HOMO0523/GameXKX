@@ -165,6 +165,18 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	TestTrue(TEXT("challenge keeps warehouse and map shells read-only"), Widget->AreChallengeSidePanelsReadOnlyForTest());
 	TestTrue(TEXT("challenge viewport exposes active auto-battle control"), Widget->IsAutoBattleVisibleForTest());
 	TestFalse(TEXT("challenge viewport does not expose travel retry control"), Widget->IsRetryVisibleForTest());
+	const FVector4 ChallengeViewportRect = Widget->GetChallengeViewportRectForTest();
+	const FVector4 ChallengeCombatStripRect = Widget->GetChallengeCombatStripRectForTest();
+	const FVector4 ChallengeBattleBoardRect = Widget->GetChallengeBattleBoardRectForTest();
+	TestTrue(TEXT("challenge uses the full continuous center canvas"),
+		FMath::IsNearlyEqual(ChallengeViewportRect.Z, 960.0f)
+		&& FMath::IsNearlyEqual(ChallengeViewportRect.W, 968.0f));
+	TestEqual(TEXT("challenge combat strip reserves three enemy and three party slots"),
+		Widget->GetChallengeCombatSlotCountForTest(), 6);
+	TestTrue(TEXT("challenge combat strip precedes the battle board inside the center canvas"),
+		ChallengeCombatStripRect.Y + ChallengeCombatStripRect.W <= ChallengeBattleBoardRect.Y
+		&& ChallengeBattleBoardRect.Z >= 710.0f
+		&& ChallengeBattleBoardRect.W >= 535.0f);
 	const EGameXXKDesktopTrainingNav NavDuringChallenge = Widget->GetActiveNavForTest();
 	Widget->HandleActionClicked(4);
 	TestEqual(TEXT("challenge locks bottom navigation while side shells remain visible"), Widget->GetActiveNavForTest(), NavDuringChallenge);

@@ -179,6 +179,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsRetryVisibleForTest() const;
 
+	/** Geometry contract for the merged challenge route/battle canvas. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FVector4 GetChallengeViewportRectForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FVector4 GetChallengeCombatStripRectForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FVector4 GetChallengeBattleBoardRectForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetChallengeCombatSlotCountForTest() const;
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	FText GetStageTooltipForTest(FName StageId) const;
 
@@ -214,6 +227,7 @@ private:
 	void BuildProgrammaticLayout();
 	void BuildWorkbenchShell();
 	void BuildChallengeViewport();
+	void BuildChallengeCombatStrip();
 	void BuildWarehousePanel(bool bReadOnly = false);
 	void BuildBackpackPanel();
 	void BuildTalentsPanel();

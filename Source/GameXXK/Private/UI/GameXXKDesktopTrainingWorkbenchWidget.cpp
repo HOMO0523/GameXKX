@@ -27,6 +27,10 @@
 	constexpr int32 WarehouseColumns = 4;
 	constexpr int32 WarehousePageSize = 20;
 	const FVector2D ShellSize(1920.0f, 1080.0f);
+	const FVector4 ChallengeViewportRect(365.0f, 22.0f, 960.0f, 968.0f);
+	const FVector4 ChallengeCombatStripRect(405.0f, 145.0f, 880.0f, 86.0f);
+	const FVector4 ChallengeBattleBoardRect(395.0f, 240.0f, 710.0f, 535.0f);
+	constexpr int32 ChallengeCombatSlotCount = 6;
 	const FLinearColor Ink(0.06f, 0.045f, 0.035f, 0.98f);
 	const FLinearColor Panel(0.13f, 0.09f, 0.055f, 0.97f);
 	const FLinearColor PanelAlt(0.20f, 0.13f, 0.07f, 0.98f);
@@ -730,6 +734,26 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::IsAutoBattleVisibleForTest() const
 bool UGameXXKDesktopTrainingWorkbenchWidget::IsRetryVisibleForTest() const
 {
 	return ViewMode == EGameXXKDesktopTrainingViewMode::Workbench;
+}
+
+FVector4 UGameXXKDesktopTrainingWorkbenchWidget::GetChallengeViewportRectForTest() const
+{
+	return ChallengeViewportRect;
+}
+
+FVector4 UGameXXKDesktopTrainingWorkbenchWidget::GetChallengeCombatStripRectForTest() const
+{
+	return ChallengeCombatStripRect;
+}
+
+FVector4 UGameXXKDesktopTrainingWorkbenchWidget::GetChallengeBattleBoardRectForTest() const
+{
+	return ChallengeBattleBoardRect;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetChallengeCombatSlotCountForTest() const
+{
+	return ChallengeCombatSlotCount;
 }
 
 FText UGameXXKDesktopTrainingWorkbenchWidget::GetStageTooltipForTest(const FName StageId) const
@@ -1441,11 +1465,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel(const bool bR
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildChallengeViewport()
 {
 	UBorder* Viewport = MakePanel(WidgetTree, PanelAlt);
-	AddCanvas(RootCanvas, Viewport, FVector2D(365.0f, 22.0f), FVector2D(960.0f, 968.0f));
+	AddCanvas(RootCanvas, Viewport, FVector2D(ChallengeViewportRect.X, ChallengeViewportRect.Y), FVector2D(ChallengeViewportRect.Z, ChallengeViewportRect.W));
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("挑战路线 / 局内战斗")), 32, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(405.0f, 55.0f), FVector2D(600.0f, 48.0f));
 	ChallengeStatusText = MakeText(WidgetTree, FText::FromString(TEXT("路线加载中：普通怪 → 次级精英 → 首领")), 22, FLinearColor::White);
 	AddCanvas(RootCanvas, ChallengeStatusText.Get(), FVector2D(405.0f, 115.0f), FVector2D(800.0f, 44.0f));
+	BuildChallengeCombatStrip();
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (Subsystem)
 	{
@@ -1460,7 +1485,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildChallengeViewport()
 			if (ChallengeBattleBoard)
 			{
 				ChallengeBattleBoard->SetMVPSubsystem(const_cast<UGameXXKMVPSubsystem*>(Subsystem));
-				AddCanvas(RootCanvas, ChallengeBattleBoard.Get(), FVector2D(395.0f, 175.0f), FVector2D(710.0f, 535.0f));
+				AddCanvas(RootCanvas, ChallengeBattleBoard.Get(), FVector2D(ChallengeBattleBoardRect.X, ChallengeBattleBoardRect.Y), FVector2D(ChallengeBattleBoardRect.Z, ChallengeBattleBoardRect.W));
 				ChallengeBattleBoard->SetVisibility(ESlateVisibility::Visible);
 				ChallengeBattleVisualSessionToken = 1;
 				ChallengeBattleBoard->BeginBattleVisualSession(ChallengeBattleVisualSessionToken);
@@ -1489,6 +1514,62 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildChallengeViewport()
 	UTextBlock* Hint = MakeText(WidgetTree, FText::FromString(TEXT("自动战斗只在挑战局内显示；游历条仅提供失败重试。")), 18, FLinearColor(0.78f, 0.70f, 0.60f, 1.0f));
 	AddCanvas(RootCanvas, Hint, FVector2D(450.0f, 880.0f), FVector2D(700.0f, 36.0f));
 	}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildChallengeCombatStrip()
+{
+	UBorder* Strip = MakePanel(WidgetTree, PanelAlt);
+	AddCanvas(RootCanvas, Strip, FVector2D(ChallengeCombatStripRect.X, ChallengeCombatStripRect.Y), FVector2D(ChallengeCombatStripRect.Z, ChallengeCombatStripRect.W));
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	FString EnemyName = TEXT("等待");
+	FString BattleState = TEXT("战斗准备");
+	if (Subsystem)
+	{
+		const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
+		const FName StageId = Progress.ActiveChallengeStageId.IsNone() ? SelectedStageId : Progress.ActiveChallengeStageId;
+		const TArray<FGameXXKTrainingEncounterDefinition> Encounters = Subsystem->GetTrainingEncounterSequence(StageId);
+		if (Encounters.IsValidIndex(Progress.ActiveChallengeEncounterIndex))
+		{
+			EnemyName = Encounters[Progress.ActiveChallengeEncounterIndex].DisplayName.ToString();
+		}
+		BattleState = Subsystem->IsTrainingChallengeBattleActive() ? TEXT("自动战斗") : TEXT("路线结算");
+	}
+	UTextBlock* EnemySide = MakeText(WidgetTree, FText::FromString(TEXT("敌方")), 15, FLinearColor(1.0f, 0.68f, 0.55f, 1.0f));
+	AddCanvas(RootCanvas, EnemySide, FVector2D(420.0f, 148.0f), FVector2D(70.0f, 24.0f));
+	UTextBlock* StateText = MakeText(
+		WidgetTree,
+		FText::FromString(FString::Printf(TEXT("挑战画布 · 3 敌 / 3 我 · %s · %s"), *EnemyName, *BattleState)),
+		15,
+		Gold);
+	AddCanvas(RootCanvas, StateText, FVector2D(620.0f, 148.0f), FVector2D(480.0f, 24.0f));
+	UTextBlock* PartySide = MakeText(WidgetTree, FText::FromString(TEXT("我方")), 15, FLinearColor(0.58f, 0.86f, 1.0f, 1.0f));
+	AddCanvas(RootCanvas, PartySide, FVector2D(1190.0f, 148.0f), FVector2D(70.0f, 24.0f));
+
+	const FVector2D SlotSize(64.0f, 64.0f);
+	const FVector2D SlotPositions[ChallengeCombatSlotCount] = {
+		FVector2D(435.0f, 162.0f), FVector2D(510.0f, 162.0f), FVector2D(585.0f, 162.0f),
+		FVector2D(1030.0f, 162.0f), FVector2D(1105.0f, 162.0f), FVector2D(1180.0f, 162.0f)};
+	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
+	for (int32 Index = 0; Index < ChallengeCombatSlotCount; ++Index)
+	{
+		UBorder* CellBorder = MakeSlotPanel(WidgetTree, ItemSlotTexturePath, PanelAlt, SlotSize);
+		AddCanvas(RootCanvas, CellBorder, SlotPositions[Index], SlotSize);
+		FString SlotLabel;
+		if (Index < 3)
+		{
+			SlotLabel = Index == 0 ? EnemyName : TEXT("待机");
+		}
+		else if (CharacterIds.IsValidIndex(Index - 3))
+		{
+			SlotLabel = BackpackCharacterDisplayName(Subsystem, CharacterIds[Index - 3]);
+		}
+		else
+		{
+			SlotLabel = TEXT("待机");
+		}
+		UTextBlock* SlotText = MakeText(WidgetTree, FText::FromString(SlotLabel), 12, Ink);
+		AddCanvas(RootCanvas, SlotText, SlotPositions[Index] + FVector2D(4.0f, 22.0f), FVector2D(56.0f, 32.0f));
+	}
+}
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildBottomNavigation()
 {
