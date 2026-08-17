@@ -182,6 +182,124 @@ namespace
 		InOutState.CardRun.bLoadoutLockedForRoute = false;
 	}
 
+	static bool ResolveTrainingPendingCardChoice(FGameXXKRuntimeState& InOutState, FString* OutError)
+	{
+		if (OutError)
+		{
+			OutError->Reset();
+		}
+		if (!InOutState.CardRun.bHasActiveCardBattle)
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("Training challenge has no active card battle for its pending choice.");
+			}
+			return false;
+		}
+
+		FGameXXKCardBattleRuntime& Runtime = InOutState.CardRun.ActiveBattle;
+		const FGameXXKPendingCardChoice Pending = Runtime.Deck.PendingChoice;
+		TArray<FGameXXKCardPlayResult> ResumedResults;
+		switch (Pending.Kind)
+		{
+		case EGameXXKCardPendingChoiceKind::ForcedDiscard:
+		{
+			TArray<FName> DiscardedInstanceIds;
+			for (const FGameXXKCardInstance& Candidate : Pending.Candidates)
+			{
+				if (DiscardedInstanceIds.Num() >= Pending.RequiredCount)
+				{
+					break;
+				}
+				if (Runtime.Deck.Hand.ContainsByPredicate([&Candidate](const FGameXXKCardInstance& HandCard)
+				{
+					return HandCard.InstanceId == Candidate.InstanceId;
+				}))
+				{
+					DiscardedInstanceIds.Add(Candidate.InstanceId);
+				}
+			}
+			if (DiscardedInstanceIds.Num() != Pending.RequiredCount)
+			{
+				if (OutError)
+				{
+					*OutError = TEXT("Training auto battle could not select the required forced-discard cards.");
+				}
+				return false;
+			}
+			return FGameXXKCardBattleAdapter::SubmitForcedDiscard(
+				InOutState,
+				DiscardedInstanceIds,
+				OutError,
+				&ResumedResults);
+		}
+
+		case EGameXXKCardPendingChoiceKind::InsightChooseToHand:
+		{
+			if (Pending.InsightTopOrder.IsEmpty())
+			{
+				if (OutError)
+				{
+					*OutError = TEXT("Training auto battle opened insight without stable candidates.");
+				}
+				return false;
+			}
+			const FName PickedInstanceId = Pending.InsightTopOrder[0];
+			TArray<FName> RemainingInstanceIds = Pending.InsightTopOrder;
+			RemainingInstanceIds.RemoveAt(0);
+			return FGameXXKCardBattleAdapter::SubmitInsightChoice(
+				InOutState,
+				PickedInstanceId,
+				RemainingInstanceIds,
+				OutError,
+				&ResumedResults);
+		}
+
+		case EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand:
+		{
+			if (Pending.Candidates.IsEmpty())
+			{
+				if (OutError)
+				{
+					*OutError = TEXT("Training auto battle opened Hero task search without stable candidates.");
+				}
+				return false;
+			}
+			TArray<FGameXXKCardInstance> Candidates = Pending.Candidates;
+			Candidates.Sort([](const FGameXXKCardInstance& Left, const FGameXXKCardInstance& Right)
+			{
+				return Left.AcquisitionOrdinal != Right.AcquisitionOrdinal
+					? Left.AcquisitionOrdinal < Right.AcquisitionOrdinal
+					: Left.InstanceId.LexicalLess(Right.InstanceId);
+			});
+			return FGameXXKCardBattleAdapter::SubmitHeroTaskSearchChoice(
+				InOutState,
+				Candidates[0].InstanceId,
+				ResumedResults,
+				OutError);
+		}
+
+		case EGameXXKCardPendingChoiceKind::None:
+			if (!Runtime.AutomaticResolutionQueue.bActive)
+			{
+				return true;
+			}
+			if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, ResumedResults, OutError))
+			{
+				return false;
+			}
+			return FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(InOutState, OutError);
+
+		case EGameXXKCardPendingChoiceKind::Invalid:
+		default:
+			if (OutError)
+			{
+				*OutError = TEXT("Training auto battle encountered an invalid pending card choice.");
+			}
+			return false;
+		}
+	}
+
 	static bool AdvanceTrainingCardBattleStep(FGameXXKRuntimeState& InOutState, FString* OutError)
 	{
 		if (OutError)
@@ -200,16 +318,27 @@ namespace
 		FGameXXKCardBattleRuntime& Runtime = InOutState.CardRun.ActiveBattle;
 		if (Runtime.Phase == EGameXXKCardBattlePhase::Player)
 		{
-			if (GameXXKCardRules::HasPendingChoice(Runtime.Deck))
+			for (int32 ChoiceGuard = 0;
+				ChoiceGuard < 128
+				&& (GameXXKCardRules::HasPendingChoice(Runtime.Deck) || Runtime.AutomaticResolutionQueue.bActive);
+				++ChoiceGuard)
+			{
+				if (!ResolveTrainingPendingCardChoice(InOutState, OutError))
+				{
+					return false;
+				}
+			}
+			if (GameXXKCardRules::HasPendingChoice(Runtime.Deck) || Runtime.AutomaticResolutionQueue.bActive)
 			{
 				if (OutError)
 				{
-					*OutError = TEXT("Training auto battle paused on a pending card choice.");
+					*OutError = TEXT("Training auto battle exceeded the pending-choice resolution guard.");
 				}
 				return false;
 			}
 
-			for (const FGameXXKCardInstance& Card : Runtime.Deck.Hand)
+			const TArray<FGameXXKCardInstance> HandSnapshot = Runtime.Deck.Hand;
+			for (const FGameXXKCardInstance& Card : HandSnapshot)
 			{
 				FGameXXKCardPlayPreview Preview;
 				FString PreviewError;

@@ -557,6 +557,49 @@ bool FGameXXKTrainingRealCardBattleBridgeTest::RunTest(const FString& Parameters
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingChallengePendingChoiceAutoBattleTest,
+	"GameXXK.Training.ChallengePendingChoiceAutoBattle",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingChallengePendingChoiceAutoBattleTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestNotNull(TEXT("pending-choice challenge fixture subsystem exists"), Subsystem);
+	if (!Subsystem || !Subsystem->StartGame())
+	{
+		return false;
+	}
+
+	const FName StageTwo = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	TestTrue(TEXT("pending-choice challenge fixture starts an unlocked stage"), Subsystem->StartTrainingChallenge(StageTwo));
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	FGameXXKBattleDeckState& Deck = State.CardRun.ActiveBattle.Deck;
+	if (!TestTrue(TEXT("pending-choice challenge fixture has a hand to discard from"), !Deck.Hand.IsEmpty()))
+	{
+		return false;
+	}
+
+	Deck.PendingChoice = FGameXXKPendingCardChoice();
+	Deck.PendingChoice.Kind = EGameXXKCardPendingChoiceKind::ForcedDiscard;
+	Deck.PendingChoice.Candidates = Deck.Hand;
+	Deck.PendingChoice.RequiredCount = 1;
+	Deck.PendingChoice.RequiredDiscardCount = 1;
+	Deck.PendingChoice.RequiredHandPickCount = 0;
+	Deck.PendingChoice.bCanCancel = false;
+	Deck.PendingChoice.bCancelPreservesDrawTop = true;
+
+	bool bStageCompleted = false;
+	FGameXXKTrainingReward Reward;
+	TestTrue(TEXT("auto battle resolves a forced-discard choice and keeps advancing"),
+		Subsystem->AdvanceTrainingChallengeEncounter(bStageCompleted, Reward));
+	TestTrue(TEXT("forced-discard choice is no longer blocking after the auto step"),
+		State.CardRun.ActiveBattle.Deck.PendingChoice.Kind != EGameXXKCardPendingChoiceKind::ForcedDiscard);
+	TestTrue(TEXT("resolving a pending choice does not end the challenge fixture"), State.Training.bChallengeActive);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTrainingTravelChestInventoryBridgeTest,
 	"GameXXK.Training.TravelChestInventoryBridge",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
