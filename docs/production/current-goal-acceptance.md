@@ -1,8 +1,8 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-18T05:02:00+08:00
-source_commit: 61c92e5
+updated_at: 2026-08-18T05:24:00+08:00
+source_commit: 74d837f
 working_tree: dirty (runtime/docs committed; preserve user L_Main.umap, unrelated probes and source-art changes)
 ---
 # GameXXK 当前目标(滚动指针)
@@ -12,11 +12,11 @@ working_tree: dirty (runtime/docs committed; preserve user L_Main.umap, unrelate
 ## 当前基线(更新于 2026-08-18)
 
 - 分支:`main`
-- 当前 HEAD:`61c92e5`(`feat: separate backpack settings and close actions`)；前置仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`、桥接为 `7881927`。桌面历练规则、存档 v19、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner、奖励/冷却 Resolver、最小宝箱 Inventory 镜像、背包角色/伙伴切换、工具/天赋容器基础导航、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、背包内独立设置与关闭动作已提交。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
+- 当前 HEAD:`74d837f`(`feat: keep challenge side shells read-only`)；前置背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`、桥接为 `7881927`。桌面历练规则、存档 v19、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner、奖励/冷却 Resolver、最小宝箱 Inventory 镜像、背包角色/伙伴切换、工具/天赋容器基础导航、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、背包内独立设置与关闭动作、挑战期间左右仓库/历练地图只读外壳与导航锁定已提交。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
 - 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。这两份报告只作历史回归参考，不冒充 `7881927` 工作区上的本轮全量运行。
-- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-011435-ai-production-loop.md`）；最新冷 UBT `-NoHotReload` 成功（`Saved/HarnessReports/20260818-032446-ai-production-loop.md`）；最新 `GameXXK.Training` `14/14`（`Saved/HarnessReports/20260818-025938-ai-production-loop.md`，Automation 目录 `TrainingTravelChestCooldownFollowup-20260818`，含 1-1 全 encounter 无箱、非 1-1 游历复用局内概率、普通箱 240 秒/精英与首领高级箱 360 秒冷却重置/递减、宝箱 Inventory bridge 与 v19 round-trip）；`GameXXK.MVP.SaveGame` `12/12`（`Saved/HarnessReports/20260818-022528-ai-production-loop.md`，Automation 目录 `SaveGameTravelChestCooldownGreen-20260818`）；最新 `GameXXK.DesktopTraining` 设置/关闭分离 `1/1`（`Saved/HarnessReports/20260818-032523-ai-production-loop.md`，Automation 目录 `DesktopTrainingSettingsGreen-20260818`），前置仓库排序/卸下 `Saved/HarnessReports/20260818-031507-ai-production-loop.md`、分页/quick-equip `Saved/HarnessReports/20260818-025624-ai-production-loop.md`，角色/伙伴切换和工具/历练导航见 `Saved/HarnessReports/20260818-025005-ai-production-loop.md`。最新 asset-contract 报告 `Saved/HarnessReports/20260818-012130-ai-production-loop.md` 仍为 `51/66`，15 个测试文件失败；本次完成后复核已明确其未关闭，故 Phase 0 总门禁仍未通过。
+- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-011435-ai-production-loop.md`）；最新冷 UBT `-NoHotReload` 成功（`Saved/HarnessReports/20260818-033827-ai-production-loop.md`）；最新 `GameXXK.Training` `14/14`（`Saved/HarnessReports/20260818-025938-ai-production-loop.md`，Automation 目录 `TrainingTravelChestCooldownFollowup-20260818`，含 1-1 全 encounter 无箱、非 1-1 游历复用局内概率、普通箱 240 秒/精英与首领高级箱 360 秒冷却重置/递减、宝箱 Inventory bridge 与 v19 round-trip）；`GameXXK.MVP.SaveGame` `12/12`（`Saved/HarnessReports/20260818-022528-ai-production-loop.md`，Automation 目录 `SaveGameTravelChestCooldownGreen-20260818`）；`GameXXK.DesktopTraining` 挑战侧壳只读/导航锁定 `1/1`（`Saved/HarnessReports/20260818-033849-ai-production-loop.md`，Automation 目录 `DesktopTrainingChallengeShellGreen-20260818-r2`），设置/关闭分离前置证据为 `Saved/HarnessReports/20260818-032523-ai-production-loop.md`，仓库排序/卸下 `Saved/HarnessReports/20260818-031507-ai-production-loop.md`、分页/quick-equip `Saved/HarnessReports/20260818-025624-ai-production-loop.md`，角色/伙伴切换和工具/历练导航见 `Saved/HarnessReports/20260818-025005-ai-production-loop.md`。最新 asset-contract 报告 `Saved/HarnessReports/20260818-012130-ai-production-loop.md` 仍为 `51/66`，15 个测试文件失败；本次完成后复核已明确其未关闭，故 Phase 0 总门禁仍未通过。
 - 当前工作区保护：`Content/GameXXK/Maps/L_Main.umap` 保留用户已有修改；`SourceAssets/`、`SourceArt/` 及未跟踪探针不在本轮 Phase 0 写入范围。
 
 ## 已落地(最近六轮)
