@@ -1,22 +1,22 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-17
-source_commit: 8475ba8
-working_tree: dirty (opt-in Training runtime work; preserve user L_Main.umap change)
+updated_at: 2026-08-18
+source_commit: 7881927
+working_tree: dirty (runtime committed; preserve user L_Main.umap, unrelated probes and source-art changes)
 ---
 # GameXXK 当前目标(滚动指针)
 
 > 本文件是"当前做到哪了"的**唯一滚动指针**。`AGENTS.md` 不再硬编码验收状态,改指向这里。每次目标收尾后更新本文件。
 
-## 当前基线(更新于 2026-08-17)
+## 当前基线(更新于 2026-08-18)
 
 - 分支:`main`
-- 当前 HEAD:`8475ba8`(`docs: record desktop training goal review`);运行时代码基线为 `c4762be`，工作区在当前 HEAD 之上包含未提交的桌面历练规则、存档 v18、程序化工作台和 PlayerController opt-in 接线；用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护。
+- 当前 HEAD:`7881927`(`feat: add opt-in desktop training runtime bridge`);本轮桌面历练规则、存档 v18、程序化工作台、PlayerController opt-in 与真实 CardBattle 桥接已提交。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
-- 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。本轮未把旧报告冒充为 `c4762be` 工作区上的新全量运行。
-- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260817-233157-ai-production-loop.md`）；最新 `GameXXK.DesktopTraining` `1/1`、`GameXXK.Training` `4/4`、`GameXXK.MVP.SaveGame` `12/12` 通过（分别见 `Saved/HarnessReports/20260817-234829-ai-production-loop.md`、`20260817-234854-ai-production-loop.md`、`20260817-234916-ai-production-loop.md`）；最新冷 UBT `-NoHotReload` 成功。asset-contract 独立报告 `Saved/HarnessReports/20260817-233751-ai-production-loop.md` 为 `51/66`，15 项失败，故 Phase 0 总门禁仍未通过。
+- 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。这两份报告只作历史回归参考，不冒充 `7881927` 工作区上的本轮全量运行。
+- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-002949-ai-production-loop.md`）；`GameXXK.DesktopTraining` `1/1`、`GameXXK.Training` `8/8`（含真实 CardBattle bridge 与 SaveValidation）、`GameXXK.MVP.SaveGame` `12/12` 通过（分别见 `Saved/HarnessReports/20260818-002649-ai-production-loop.md`、`Saved/HarnessReports/20260818-003445-ai-production-loop.md`、`Saved/HarnessReports/20260818-003510-ai-production-loop.md`）；最新冷 UBT `-NoHotReload` 成功。asset-contract 独立报告 `Saved/HarnessReports/20260818-003545-ai-production-loop.md` 为 `51/66`，15 个测试文件失败，故 Phase 0 总门禁仍未通过。
 - 当前工作区保护：`Content/GameXXK/Maps/L_Main.umap` 保留用户已有修改；`SourceAssets/`、`SourceArt/` 及未跟踪探针不在本轮 Phase 0 写入范围。
 
 ## 已落地(最近六轮)
@@ -35,12 +35,12 @@ working_tree: dirty (opt-in Training runtime work; preserve user L_Main.umap cha
 - **任务接受与跟随者激活语义已切换**。`AcceptTownQuest` 接取青山镇主线**不再**自动设置 `bFollowerJoined`;引导 NPC 留在原地(不跟随、不自动入队)。玩家在 NPC 对话框点"入队"(`RecruitPendingTownNpc`)后,引导 NPC 才成为叙事跟随者(`bFollowerJoined=true`,并清空 `bHasQuestNpcLocation`/`QuestNpcLocation` 随主角离镇)。旧档迁移(`GameXXKSaveMigration`)仍会把 v14 及更早"已接受但未跟随"的存档规范化为跟随已加入,保持兼容。
 - 地形增益仍为**旧表**;新模型(每回合全员 1 次 + 对应职业再 1 次 + 山河套再 1 次,敌方统一 1 易伤+1 燃烧)已裁决,待 §5 山河三档与 `TriggerTerrainBenefit` 口径复核后实施,见 `docs/design/2026-08-13-terrain-benefit-redesign.md`。
 
-## 桌面历练工作台当前进度(2026-08-17)
+## 桌面历练工作台当前进度(2026-08-18)
 
-- **规则/存档已开始接线但未完成玩法闭环**：新增 `Source/GameXXK/Public/GameXXKTrainingRules.h`、`Private/GameXXKTrainingRules.cpp`，覆盖三难度、27 个稳定关卡 ID、挑战/游历分离、1-1 默认通关、失败重试策略、章节编制与掉落层级占位；`FGameXXKSaveState` 新增 `Training`，存档版本为 v18，迁移与验证在 `GameXXKSaveMigration.*`。
-- **程序化工作台壳已接线且默认关闭**：`UI/GameXXKDesktopTrainingWorkbenchWidget.*` 提供 1920×1080 几何合同、仓库 4 列、背包比例约 1.76:1、右侧 9 节点/三难度页签、挑战/游历按钮、顶部 3 敌+3 我挂机条、挑战视图与自动战斗按钮；`GameXXKMVPPlayerController.*` 仅在 `bEnableDesktopTrainingWorkbench=false` 被显式打开时响应 Tab/工作台入口，默认 3D 城镇与旧回退未切换。
-- **已验证的最小交互**：`GameXXK.DesktopTraining` 几何合同 1/1；`GameXXK.Training` 规则 4/4；`GameXXK.MVP.SaveGame` v18 迁移 12/12。当前 `AdvanceTrainingChallengeEncounter` 是规则/状态机 façade，尚未连接真实路线卡牌战斗、真实战斗结算、掉落 RNG、天赋树 Resolver、离线挂机计时与实际金币/经验写回。
-- **章节敌人语义仍需产品确认并锁定**：代码目前从现有 catalog 取 4 个 Normal + 2 个 Elite，并将 1-1/1-2 复用现有精英定义为 Boss；这与“公鸡/狸猫普通、山羊/黄鼬次级精英”的最终口径可能存在映射差异，未通过最终验收前不得当作已冻结。
+- **规则/存档已提交但未完成玩法闭环**：`GameXXKTrainingRules.*` 覆盖三难度、27 个稳定关卡 ID、挑战/游历分离、普通 1-1 默认通关、失败策略、章节编制与掉落层级占位；`FGameXXKSaveState` 的 Training 字段为 v18，迁移、挑战/游历 encounter index 范围校验和互斥校验已接入。
+- **程序化工作台和真实挑战桥接已提交且默认关闭**：`GameXXKDesktopTrainingWorkbenchWidget.*` 提供 1920×1080 几何合同、仓库 4 列、背包比例约 1.76:1、右侧 27 节点/三难度页签、挑战/游历按钮、顶部 3 敌+3 我挂机条；挑战画布可挂现有 `GameXXKBattleBoardWidget`。`StartTrainingChallenge` 已创建真实 `FGameXXKCardBattleAdapter` 会话并支持单步推进，但仍是 opt-in 适配层，`GameXXKMVPPlayerController` 默认保持 3D 城镇。
+- **章节敌人语义已按最终口径冻结到规则与测试**：普通候选为公鸡/狸猫，次级精英为山羊/黄鼬，每场 4 个普通槽、2 个精英槽和 1 个首领；1-1 山羊、1-2 黄鼬、1-3 青角羊王。挑战生命与游历 1 HP 例外已分离；挑战/游历真实表现和结算仍待 PIE。
+- **当前仍未完成**：TravelRunner/角色走动与挂机计时、完整路线卡战斗 UX、真实奖励 RNG 与天赋掉率 Resolver、仓库/背包 read model、PSD/图标 manifest、1920/2560 截图与 TaskBarHero 四组性能采样。完整逐项复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
 
 ## 仅规划未实施 / 已搁置
 
@@ -49,7 +49,7 @@ working_tree: dirty (opt-in Training runtime work; preserve user L_Main.umap cha
 
 ## 下一步待办
 
-- Phase 0 基线证据：`docs/production/2026-08-17-phase0-baseline.md`；执行计划：`docs/superpowers/plans/2026-08-17-gamexxk-phase0-source-of-truth-and-gates.md`；本轮完整复核：`docs/production/2026-08-17-desktop-training-goal-review.md`。
+- Phase 0 基线证据：`docs/production/2026-08-17-phase0-baseline.md`；执行计划：`docs/superpowers/plans/2026-08-17-gamexxk-phase0-source-of-truth-and-gates.md`；本轮完整复核：`docs/production/2026-08-18-desktop-training-goal-review.md`。
 - 项目自身优化:见 `docs/production/2026-08-16-full-project-optimization-proposal.md`(Phase 0 → Phase 4 全量方案)。Phase 0 门禁为 harness 无 finding、默认生产循环全绿、headless 脚本全绿、all 不启动编辑器、`git diff --check` 通过。
 - 玩法顺序:Phase 0 收尾已基本完成 → Phase 1 地形增益重设计(先复核 §5 山河三档与 `TriggerTerrainBenefit` 两个口径)→ Phase 2 数值迭代(以 `2026-08-12-balance-tuning-ledger.md` §4.8 为最新基准)。
 - 非阻塞测试工具维护:更新 `scripts/gamexxk_real_play_flow_mcp.py` 的旧 `pointer_matches_target` 吸附断言，使其符合 `6668146` 冻结的自由鼠标跟随语义；Phase 0 已把 `--script-tests all` 分成 `headless`、`asset-contract`、`mcp-live` 三类，历史 64/86 仅保留作迁移前对照，当前 headless 13/13、asset-contract 51/66、mcp-live 未运行。
