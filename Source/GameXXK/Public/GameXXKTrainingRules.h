@@ -28,6 +28,16 @@ enum class EGameXXKTrainingRewardTier : uint8
 	AdvancedChest
 };
 
+/** Runtime-only phase for the low-cost repeating Travel loop. */
+UENUM(BlueprintType)
+enum class EGameXXKTrainingTravelPhase : uint8
+{
+	Idle,
+	Walking,
+	Combat,
+	Defeated
+};
+
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKTrainingReward
 {
@@ -44,6 +54,65 @@ struct GAMEXXK_API FGameXXKTrainingReward
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	bool bChestRolled = false;
+};
+
+/**
+ * Runtime read model for one Travel loop tick.  It is intentionally not a
+ * SaveGame struct: the save stores the durable stage/encounter cursor, while
+ * this presentation/combat snapshot is rebuilt after load.
+ */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKTrainingTravelRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName StageId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 EncounterIndex = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName EnemyDefinitionId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	EGameXXKTrainingEncounterKind EncounterKind = EGameXXKTrainingEncounterKind::Normal;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	EGameXXKTrainingTravelPhase Phase = EGameXXKTrainingTravelPhase::Idle;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 WalkStep = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 WalkStepsRequired = 2;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 PlayerHP = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 PlayerMaxHP = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 PlayerAttack = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 EnemyHP = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 EnemyMaxHP = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 EnemyAttack = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 LastDamageToEnemy = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 LastDamageToPlayer = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	bool bAutoBattle = true;
 };
 
 USTRUCT(BlueprintType)
@@ -179,11 +248,25 @@ public:
 	static void InitializeNewGame(FGameXXKTrainingProgress& Progress);
 	static bool IsDifficultyUnlocked(const FGameXXKTrainingProgress& Progress, EGameXXKTrainingDifficulty Difficulty);
 	static bool IsStageCleared(const FGameXXKTrainingProgress& Progress, FName StageId);
+	static bool AreAllStagesCleared(const FGameXXKTrainingProgress& Progress);
 	static bool CanChallenge(const FGameXXKTrainingProgress& Progress, FName StageId);
 	static bool CanTravel(const FGameXXKTrainingProgress& Progress, FName StageId);
 	static bool StartChallenge(FGameXXKTrainingProgress& Progress, FName StageId);
 	static bool CompleteChallenge(FGameXXKTrainingProgress& Progress, FName StageId);
 	static bool StartTravel(FGameXXKTrainingProgress& Progress, FName StageId);
+	static bool InitializeTravelRunner(
+		const FGameXXKTrainingProgress& Progress,
+		FGameXXKTrainingTravelRuntime& OutRuntime,
+		int32 PlayerHP,
+		int32 PlayerMaxHP,
+		int32 PlayerAttack);
+	static bool AdvanceTravelRunner(
+		FGameXXKTrainingProgress& Progress,
+		FGameXXKTrainingTravelRuntime& InOutRuntime,
+		bool& bOutEncounterCompleted,
+		bool& bOutStageCompleted,
+		bool& bOutDefeated,
+		FGameXXKTrainingReward& OutReward);
 	static bool AdvanceTravelEncounter(
 		FGameXXKTrainingProgress& Progress,
 		bool& bOutStageCompleted,

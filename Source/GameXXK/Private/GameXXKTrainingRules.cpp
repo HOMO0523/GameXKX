@@ -120,6 +120,19 @@ namespace
 		}
 		return Stages;
 	}
+
+	int32 TravelEnemyAttack(const EGameXXKTrainingEncounterKind Kind)
+	{
+		switch (Kind)
+		{
+		case EGameXXKTrainingEncounterKind::Elite:
+			return 2;
+		case EGameXXKTrainingEncounterKind::Boss:
+			return 3;
+		default:
+			return 1;
+		}
+	}
 }
 
 FName FGameXXKTrainingRules::DifficultyId(const EGameXXKTrainingDifficulty Difficulty)
@@ -229,6 +242,18 @@ bool FGameXXKTrainingRules::IsStageCleared(const FGameXXKTrainingProgress& Progr
 	return Progress.ClearedStageIds.Contains(StageId);
 }
 
+bool FGameXXKTrainingRules::AreAllStagesCleared(const FGameXXKTrainingProgress& Progress)
+{
+	for (const FGameXXKTrainingStageDefinition& Stage : GetStageDefinitions())
+	{
+		if (!IsStageCleared(Progress, Stage.StageId))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 bool FGameXXKTrainingRules::CanChallenge(const FGameXXKTrainingProgress& Progress, const FName StageId)
 {
 	FGameXXKTrainingStageDefinition Stage;
@@ -317,6 +342,131 @@ bool FGameXXKTrainingRules::StartTravel(FGameXXKTrainingProgress& Progress, cons
 	Progress.CurrentTravelStageId = StageId;
 	Progress.bTravelActive = true;
 	Progress.ActiveTravelEncounterIndex = 0;
+	return true;
+}
+
+bool FGameXXKTrainingRules::InitializeTravelRunner(
+	const FGameXXKTrainingProgress& Progress,
+	FGameXXKTrainingTravelRuntime& OutRuntime,
+	const int32 PlayerHP,
+	const int32 PlayerMaxHP,
+	const int32 PlayerAttack)
+{
+	OutRuntime = FGameXXKTrainingTravelRuntime();
+	if (!Progress.bTravelActive || Progress.bChallengeActive || Progress.CurrentTravelStageId.IsNone())
+	{
+		return false;
+	}
+
+	const TArray<FGameXXKTrainingEncounterDefinition> Encounters = BuildEncounterSequence(Progress.CurrentTravelStageId, true);
+	if (!Encounters.IsValidIndex(Progress.ActiveTravelEncounterIndex))
+	{
+		return false;
+	}
+
+	const FGameXXKTrainingEncounterDefinition& Encounter = Encounters[Progress.ActiveTravelEncounterIndex];
+	OutRuntime.StageId = Progress.CurrentTravelStageId;
+	OutRuntime.EncounterIndex = Progress.ActiveTravelEncounterIndex;
+	OutRuntime.EnemyDefinitionId = Encounter.EnemyDefinitionId;
+	OutRuntime.EncounterKind = Encounter.Kind;
+	OutRuntime.Phase = EGameXXKTrainingTravelPhase::Walking;
+	OutRuntime.WalkStep = 0;
+	OutRuntime.WalkStepsRequired = 2;
+	OutRuntime.PlayerMaxHP = FMath::Max(1, PlayerMaxHP);
+	OutRuntime.PlayerHP = FMath::Clamp(PlayerHP, 0, OutRuntime.PlayerMaxHP);
+	OutRuntime.PlayerAttack = FMath::Max(1, PlayerAttack);
+	OutRuntime.EnemyMaxHP = FMath::Max(1, Encounter.BaseHealth);
+	OutRuntime.EnemyHP = OutRuntime.EnemyMaxHP;
+	OutRuntime.EnemyAttack = TravelEnemyAttack(Encounter.Kind);
+	OutRuntime.LastDamageToEnemy = 0;
+	OutRuntime.LastDamageToPlayer = 0;
+	OutRuntime.bAutoBattle = true;
+	return true;
+}
+
+bool FGameXXKTrainingRules::AdvanceTravelRunner(
+	FGameXXKTrainingProgress& Progress,
+	FGameXXKTrainingTravelRuntime& InOutRuntime,
+	bool& bOutEncounterCompleted,
+	bool& bOutStageCompleted,
+	bool& bOutDefeated,
+	FGameXXKTrainingReward& OutReward)
+{
+	bOutEncounterCompleted = false;
+	bOutStageCompleted = false;
+	bOutDefeated = false;
+	OutReward = FGameXXKTrainingReward();
+
+	if (!Progress.bTravelActive || Progress.bChallengeActive || Progress.CurrentTravelStageId.IsNone())
+	{
+		return false;
+	}
+	if (InOutRuntime.StageId != Progress.CurrentTravelStageId
+		|| InOutRuntime.EncounterIndex != Progress.ActiveTravelEncounterIndex)
+	{
+		return false;
+	}
+
+	if (InOutRuntime.Phase == EGameXXKTrainingTravelPhase::Walking)
+	{
+		InOutRuntime.LastDamageToEnemy = 0;
+		InOutRuntime.LastDamageToPlayer = 0;
+		InOutRuntime.WalkStep = FMath::Min(InOutRuntime.WalkStepsRequired, InOutRuntime.WalkStep + 1);
+		if (InOutRuntime.WalkStep >= InOutRuntime.WalkStepsRequired)
+		{
+			InOutRuntime.Phase = EGameXXKTrainingTravelPhase::Combat;
+		}
+		return true;
+	}
+
+	if (InOutRuntime.Phase != EGameXXKTrainingTravelPhase::Combat)
+	{
+		return false;
+	}
+
+	InOutRuntime.LastDamageToEnemy = FMath::Clamp(InOutRuntime.PlayerAttack, 0, InOutRuntime.EnemyHP);
+	InOutRuntime.EnemyHP = FMath::Max(0, InOutRuntime.EnemyHP - InOutRuntime.LastDamageToEnemy);
+	InOutRuntime.LastDamageToPlayer = 0;
+	if (InOutRuntime.EnemyHP <= 0)
+	{
+		bOutEncounterCompleted = true;
+		const TArray<FGameXXKTrainingEncounterDefinition> Encounters = BuildEncounterSequence(Progress.CurrentTravelStageId, true);
+		if (!Encounters.IsValidIndex(InOutRuntime.EncounterIndex))
+		{
+			return false;
+		}
+
+		const bool bLastEncounter = InOutRuntime.EncounterIndex == Encounters.Num() - 1;
+		if (bLastEncounter)
+		{
+			OutReward = BuildTravelReward(Progress.CurrentTravelStageId);
+			++Progress.TravelVictories;
+			Progress.ActiveTravelEncounterIndex = 0;
+			bOutStageCompleted = true;
+		}
+		else
+		{
+			++Progress.ActiveTravelEncounterIndex;
+		}
+
+		// Keep the player's remaining HP and restart the next loop at its walking
+		// phase.  This is the deterministic low-cost loop consumed by the desktop
+		// strip; the UI can render the new enemy without inventing another state.
+		return InitializeTravelRunner(
+			Progress,
+			InOutRuntime,
+			InOutRuntime.PlayerHP,
+			InOutRuntime.PlayerMaxHP,
+			InOutRuntime.PlayerAttack);
+	}
+
+	InOutRuntime.LastDamageToPlayer = FMath::Min(InOutRuntime.EnemyAttack, InOutRuntime.PlayerHP);
+	InOutRuntime.PlayerHP = FMath::Max(0, InOutRuntime.PlayerHP - InOutRuntime.LastDamageToPlayer);
+	if (InOutRuntime.PlayerHP <= 0)
+	{
+		InOutRuntime.Phase = EGameXXKTrainingTravelPhase::Defeated;
+		bOutDefeated = true;
+	}
 	return true;
 }
 

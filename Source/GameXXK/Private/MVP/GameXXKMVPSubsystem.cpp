@@ -793,6 +793,22 @@ namespace
 UGameXXKMVPSubsystem::UGameXXKMVPSubsystem()
 {
 	RuntimeState = UGameXXKMVPRules::CreateNewGame();
+	RebuildTrainingTravelRuntime();
+}
+
+bool UGameXXKMVPSubsystem::RebuildTrainingTravelRuntime()
+{
+	TrainingTravelRuntime = FGameXXKTrainingTravelRuntime();
+	if (!RuntimeState.Training.bTravelActive)
+	{
+		return true;
+	}
+	return FGameXXKTrainingRules::InitializeTravelRunner(
+		RuntimeState.Training,
+		TrainingTravelRuntime,
+		RuntimeState.PlayerHP,
+		RuntimeState.PlayerMaxHP,
+		RuntimeState.PlayerAttack);
 }
 
 const FGameXXKRuntimeState& UGameXXKMVPSubsystem::GetRuntimeState() const
@@ -987,8 +1003,62 @@ bool UGameXXKMVPSubsystem::SetTrainingChallengeAutoBattle(const bool bEnabled)
 
 bool UGameXXKMVPSubsystem::StartTrainingTravel(const FName StageId)
 {
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKTrainingRules::StartTravel(Candidate.Training, StageId))
+	{
+		return false;
+	}
+
+	FGameXXKTrainingTravelRuntime CandidateRunner;
+	if (!FGameXXKTrainingRules::InitializeTravelRunner(
+		Candidate.Training,
+		CandidateRunner,
+		Candidate.PlayerHP,
+		Candidate.PlayerMaxHP,
+		Candidate.PlayerAttack))
+	{
+		return false;
+	}
+
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	return FGameXXKTrainingRules::StartTravel(RuntimeState.Training, StageId);
+	RuntimeState = MoveTemp(Candidate);
+	TrainingTravelRuntime = MoveTemp(CandidateRunner);
+	return true;
+}
+
+FGameXXKTrainingTravelRuntime UGameXXKMVPSubsystem::GetTrainingTravelRuntimeCopy() const
+{
+	return TrainingTravelRuntime;
+}
+
+bool UGameXXKMVPSubsystem::AdvanceTrainingTravelStep(
+	bool& bOutEncounterCompleted,
+	bool& bOutStageCompleted,
+	bool& bOutDefeated,
+	FGameXXKTrainingReward& OutReward)
+{
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
+	if (!FGameXXKTrainingRules::AdvanceTravelRunner(
+		Candidate.Training,
+		CandidateRunner,
+		bOutEncounterCompleted,
+		bOutStageCompleted,
+		bOutDefeated,
+		OutReward))
+	{
+		return false;
+	}
+
+	if (bOutStageCompleted)
+	{
+		Candidate.PlayerGold = FMath::Max(0, Candidate.PlayerGold + OutReward.Gold);
+		Candidate.PlayerXP = FMath::Max(0, Candidate.PlayerXP + OutReward.Experience);
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	TrainingTravelRuntime = MoveTemp(CandidateRunner);
+	return true;
 }
 
 bool UGameXXKMVPSubsystem::AdvanceTrainingTravelEncounter(bool& bOutStageCompleted, FGameXXKTrainingReward& OutReward)
@@ -1012,8 +1082,32 @@ bool UGameXXKMVPSubsystem::SetTrainingRetryOnFailure(const bool bEnabled)
 
 bool UGameXXKMVPSubsystem::ResolveTrainingTravelFailure()
 {
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKTrainingRules::ResolveTravelFailure(Candidate.Training))
+	{
+		return false;
+	}
+
+	// A retry is a fresh low-cost attempt, not a continuation from the death
+	// frame.  The durable stage/index policy remains owned by TrainingRules.
+	Candidate.PlayerHP = Candidate.PlayerMaxHP;
+	Candidate.PlayerMP = Candidate.PlayerMaxMP;
+	FGameXXKTrainingTravelRuntime CandidateRunner;
+	if (Candidate.Training.bTravelActive
+		&& !FGameXXKTrainingRules::InitializeTravelRunner(
+			Candidate.Training,
+			CandidateRunner,
+			Candidate.PlayerHP,
+			Candidate.PlayerMaxHP,
+			Candidate.PlayerAttack))
+	{
+		return false;
+	}
+
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	return FGameXXKTrainingRules::ResolveTravelFailure(RuntimeState.Training);
+	RuntimeState = MoveTemp(Candidate);
+	TrainingTravelRuntime = MoveTemp(CandidateRunner);
+	return true;
 }
 
 TArray<FGameXXKMetaShopProductDefinition> UGameXXKMVPSubsystem::GetMetaShopProducts() const
@@ -1440,6 +1534,10 @@ bool UGameXXKMVPSubsystem::StartNewGame()
 	{
 		return false;
 	}
+	if (!RebuildTrainingTravelRuntime())
+	{
+		return false;
+	}
 
 	FGameXXKCompanionRosterState& StarterRoster = RuntimeState.CardRun.CompanionRoster;
 	StarterRoster.RecruitSequenceSeed = MakeStarterRecruitSequenceSeed();
@@ -1528,7 +1626,7 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 		}
 		BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 		RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
-		return true;
+		return RebuildTrainingTravelRuntime();
 	}
 
 	// Invalid/future versions are rejected before any backup or main-slot write.
@@ -1663,7 +1761,7 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
-	return true;
+	return RebuildTrainingTravelRuntime();
 }
 
 bool UGameXXKMVPSubsystem::LoadOrCreateGame(FString SlotName, int32 UserIndex)

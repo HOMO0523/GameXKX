@@ -64,6 +64,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
 	bool StartTrainingTravel(FName StageId);
 
+	/** Copy-safe runtime snapshot for the pure 2D Travel strip. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
+	FGameXXKTrainingTravelRuntime GetTrainingTravelRuntimeCopy() const;
+
+	/** Advances walking, one auto attack exchange, or encounter settlement. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool AdvanceTrainingTravelStep(
+		bool& bOutEncounterCompleted,
+		bool& bOutStageCompleted,
+		bool& bOutDefeated,
+		FGameXXKTrainingReward& OutReward);
+
 	/** Advances one encounter in the repeating travel loop and returns the stage reward at its boss. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
 	bool AdvanceTrainingTravelEncounter(bool& bOutStageCompleted, FGameXXKTrainingReward& OutReward);
@@ -455,6 +467,7 @@ public:
 
 private:
 	bool WriteSaveGameToSlot(USaveGame* SaveGame, const FString& SlotName, int32 UserIndex);
+	bool RebuildTrainingTravelRuntime();
 	void SetSaveMigrationFailure();
 	void SetSaveRollbackFailure();
 
@@ -476,4 +489,7 @@ private:
 
 	UPROPERTY()
 	FGameXXKRuntimeState RuntimeState;
+
+	/** Rebuilt from save-authoritative Training progress; never serialized itself. */
+	FGameXXKTrainingTravelRuntime TrainingTravelRuntime;
 };

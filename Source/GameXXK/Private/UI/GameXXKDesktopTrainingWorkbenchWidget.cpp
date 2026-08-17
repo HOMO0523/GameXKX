@@ -286,15 +286,33 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest()
 	{
 		return false;
 	}
+	bool bEncounterCompleted = false;
 	bool bCompleted = false;
+	bool bDefeated = false;
 	FGameXXKTrainingReward Reward;
-	if (!Subsystem->AdvanceTrainingTravelEncounter(bCompleted, Reward))
+	if (!Subsystem->AdvanceTrainingTravelStep(bEncounterCompleted, bCompleted, bDefeated, Reward))
 	{
 		return false;
 	}
-	if (bCompleted)
+	if (bDefeated)
+	{
+		const bool bRetry = Subsystem->GetTrainingProgressCopy().bRetryOnFailure;
+		if (Subsystem->ResolveTrainingTravelFailure())
+		{
+			SetNotice(bRetry
+				? FText::FromString(TEXT("游历阵亡：重试当前关卡"))
+				: FText::FromString(TEXT("游历阵亡：已暂停并回退前一关")));
+			RefreshLayout();
+		}
+	}
+	else if (bCompleted)
 	{
 		SetNotice(FText::FromString(FString::Printf(TEXT("游历结算：+%d 金币 / +%d 经验，继续循环"), Reward.Gold, Reward.Experience)));
+		RefreshLayout();
+	}
+	else if (bEncounterCompleted)
+	{
+		SetNotice(FText::FromString(TEXT("游历中：击杀当前怪物，继续走动")));
 		RefreshLayout();
 	}
 	else
@@ -363,13 +381,48 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 {
 	UBorder* Strip = MakePanel(WidgetTree, PanelAlt);
 	AddCanvas(RootCanvas, Strip, FVector2D(360.0f, 22.0f), FVector2D(1200.0f, 108.0f));
-	UTextBlock* Label = MakeText(WidgetTree, FText::FromString(TEXT("游历挂机  ·  3 敌方 / 3 我方")), 22, Gold);
-	AddCanvas(RootCanvas, Label, FVector2D(385.0f, 38.0f), FVector2D(330.0f, 40.0f));
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKTrainingTravelRuntime TravelRuntime = Subsystem
+		? Subsystem->GetTrainingTravelRuntimeCopy()
+		: FGameXXKTrainingTravelRuntime();
+	FString PhaseLabel = TEXT("待机");
+	switch (TravelRuntime.Phase)
+	{
+	case EGameXXKTrainingTravelPhase::Walking: PhaseLabel = TEXT("走动"); break;
+	case EGameXXKTrainingTravelPhase::Combat: PhaseLabel = TEXT("自动战斗"); break;
+	case EGameXXKTrainingTravelPhase::Defeated: PhaseLabel = TEXT("阵亡"); break;
+	default: break;
+	}
+	FString CurrentEnemyDisplayName = TravelRuntime.EnemyDefinitionId.ToString();
+	FString EnemyLabel = TEXT("当前遭遇：等待");
+	if (Subsystem && !TravelRuntime.EnemyDefinitionId.IsNone())
+	{
+		const TArray<FGameXXKTrainingEncounterDefinition> Encounters = Subsystem->GetTrainingEncounterSequence(TravelRuntime.StageId, true);
+		if (Encounters.IsValidIndex(TravelRuntime.EncounterIndex))
+		{
+			CurrentEnemyDisplayName = Encounters[TravelRuntime.EncounterIndex].DisplayName.ToString();
+			EnemyLabel = FString::Printf(
+				TEXT("当前遭遇：%s · %s · HP %d/%d"),
+				*Encounters[TravelRuntime.EncounterIndex].DisplayName.ToString(),
+				*PhaseLabel,
+				TravelRuntime.EnemyHP,
+				TravelRuntime.EnemyMaxHP);
+		}
+	}
+	UTextBlock* Label = MakeText(WidgetTree, FText::FromString(FString::Printf(TEXT("游历挂机 · 3 敌方 / 3 我方 · %s"), *EnemyLabel)), 18, Gold);
+	AddCanvas(RootCanvas, Label, FVector2D(385.0f, 38.0f), FVector2D(650.0f, 40.0f));
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
-		UTextBlock* Enemy = MakeText(WidgetTree, FText::FromString(FString::Printf(TEXT("敌 %d\n走动"), Index + 1)), 18, FLinearColor(1.0f, 0.65f, 0.55f, 1.0f));
+		const bool bCurrentEnemy = Index == 0 && !TravelRuntime.EnemyDefinitionId.IsNone();
+		const FString EnemyText = bCurrentEnemy
+			? FString::Printf(TEXT("敌 %d\n%s\n%d/%d"), Index + 1, *CurrentEnemyDisplayName, TravelRuntime.EnemyHP, TravelRuntime.EnemyMaxHP)
+			: FString::Printf(TEXT("敌 %d\n待机"), Index + 1);
+		UTextBlock* Enemy = MakeText(WidgetTree, FText::FromString(EnemyText), 17, FLinearColor(1.0f, 0.65f, 0.55f, 1.0f));
 		AddCanvas(RootCanvas, Enemy, FVector2D(725.0f + Index * 115.0f, 35.0f), FVector2D(95.0f, 58.0f));
-		UTextBlock* Party = MakeText(WidgetTree, FText::FromString(FString::Printf(TEXT("角 %d\n待机"), Index + 1)), 18, FLinearColor(0.55f, 0.85f, 1.0f, 1.0f));
+		const FString PartyText = Index == 0
+			? FString::Printf(TEXT("角 %d\n%s\n%d/%d"), Index + 1, *PhaseLabel, TravelRuntime.PlayerHP, TravelRuntime.PlayerMaxHP)
+			: FString::Printf(TEXT("角 %d\n待机"), Index + 1);
+		UTextBlock* Party = MakeText(WidgetTree, FText::FromString(PartyText), 17, FLinearColor(0.55f, 0.85f, 1.0f, 1.0f));
 		AddCanvas(RootCanvas, Party, FVector2D(1080.0f + Index * 115.0f, 35.0f), FVector2D(95.0f, 58.0f));
 	}
 	UGameXXKDesktopTrainingActionButton* RetryButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
@@ -497,9 +550,17 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 		const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
 		const bool bCanChallenge = FGameXXKTrainingRules::CanChallenge(Progress, SelectedStageId);
 		Challenge->SetIsEnabled(bCanChallenge);
-		if (!bCanChallenge && FGameXXKTrainingRules::IsStageCleared(Progress, SelectedStageId))
+		if (!bCanChallenge && FGameXXKTrainingRules::AreAllStagesCleared(Progress))
 		{
-			Challenge->SetToolTipText(FText::FromString(TEXT("已通关；全部关卡完成后期待新内容")));
+			Challenge->SetToolTipText(FText::FromString(TEXT("挑战按钮已完成；期待新内容")));
+		}
+		else if (!bCanChallenge && FGameXXKTrainingRules::IsStageCleared(Progress, SelectedStageId))
+		{
+			Challenge->SetToolTipText(FText::FromString(TEXT("本关已通关，请选择其他未通关关卡")));
+		}
+		else if (!bCanChallenge)
+		{
+			Challenge->SetToolTipText(FText::FromString(TEXT("需要先完成前置关卡或解锁当前难度")));
 		}
 	}
 	AddCanvas(RootCanvas, Challenge, FVector2D(1380.0f, 820.0f), FVector2D(175.0f, 64.0f));

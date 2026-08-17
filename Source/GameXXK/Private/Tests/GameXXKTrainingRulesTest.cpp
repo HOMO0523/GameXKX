@@ -157,6 +157,141 @@ bool FGameXXKTrainingFailurePausesWhenRetryDisabledTest::RunTest(const FString& 
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelRunnerLoopTest,
+	"GameXXK.Training.TravelRunnerLoop",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelRunnerLoopTest::RunTest(const FString& Parameters)
+{
+	FGameXXKTrainingProgress Progress;
+	FGameXXKTrainingRules::InitializeNewGame(Progress);
+	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	FGameXXKTrainingTravelRuntime Runner;
+	TestTrue(TEXT("the new-game travel runner initializes"), FGameXXKTrainingRules::InitializeTravelRunner(Progress, Runner, 100, 100, 100));
+	TestEqual(TEXT("runner starts in walking phase"), Runner.Phase, EGameXXKTrainingTravelPhase::Walking);
+
+	bool bEncounterCompleted = false;
+	bool bStageCompleted = false;
+	bool bDefeated = false;
+	FGameXXKTrainingReward Reward;
+	TestTrue(TEXT("first walk step advances"), FGameXXKTrainingRules::AdvanceTravelRunner(
+		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+	TestFalse(TEXT("first walk step does not complete an encounter"), bEncounterCompleted);
+	TestEqual(TEXT("first walk step remains walking"), Runner.Phase, EGameXXKTrainingTravelPhase::Walking);
+	TestTrue(TEXT("second walk step reaches the encounter"), FGameXXKTrainingRules::AdvanceTravelRunner(
+		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+	TestEqual(TEXT("second walk step enters combat"), Runner.Phase, EGameXXKTrainingTravelPhase::Combat);
+
+	int32 CompletedEncounters = 0;
+	for (int32 Guard = 0; Guard < 64 && !bStageCompleted; ++Guard)
+	{
+		bEncounterCompleted = false;
+		bStageCompleted = false;
+		bDefeated = false;
+		TestTrue(TEXT("travel runner advances a deterministic tick"), FGameXXKTrainingRules::AdvanceTravelRunner(
+			Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+		TestFalse(TEXT("high attack runner does not die"), bDefeated);
+		if (bEncounterCompleted)
+		{
+			++CompletedEncounters;
+		}
+	}
+
+	TestEqual(TEXT("all seven encounters complete as one travel stage"), CompletedEncounters, 7);
+	TestTrue(TEXT("travel stage completes at the boss"), bStageCompleted);
+	TestEqual(TEXT("travel victory loops back to encounter zero"), Progress.ActiveTravelEncounterIndex, 0);
+	TestEqual(TEXT("travel victory count increments once"), Progress.TravelVictories, 1);
+	TestEqual(TEXT("1-1 travel reward remains chest-free"), Reward.ChestTier, EGameXXKTrainingRewardTier::None);
+	TestTrue(TEXT("travel reward grants gold"), Reward.Gold > 0);
+	TestTrue(TEXT("travel runner continues walking after settlement"), Runner.Phase == EGameXXKTrainingTravelPhase::Walking);
+	TestEqual(TEXT("runner remains on the selected stage"), Runner.StageId, StageOne);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelRunnerFailureTest,
+	"GameXXK.Training.TravelRunnerFailure",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelRunnerFailureTest::RunTest(const FString& Parameters)
+{
+	FGameXXKTrainingProgress Progress;
+	FGameXXKTrainingRules::InitializeNewGame(Progress);
+	const FName StageTwo = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	Progress.ClearedStageIds.Add(StageTwo);
+	TestTrue(TEXT("stage two travel starts"), FGameXXKTrainingRules::StartTravel(Progress, StageTwo));
+	FGameXXKTrainingTravelRuntime Runner;
+	TestTrue(TEXT("stage two runner initializes"), FGameXXKTrainingRules::InitializeTravelRunner(Progress, Runner, 1, 1, 1));
+
+	bool bEncounterCompleted = false;
+	bool bStageCompleted = false;
+	bool bDefeated = false;
+	FGameXXKTrainingReward Reward;
+	for (int32 Guard = 0; Guard < 3 && Runner.Phase != EGameXXKTrainingTravelPhase::Combat; ++Guard)
+	{
+		TestTrue(TEXT("failure fixture reaches combat"), FGameXXKTrainingRules::AdvanceTravelRunner(
+			Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+	}
+	TestEqual(TEXT("failure fixture is in combat"), Runner.Phase, EGameXXKTrainingTravelPhase::Combat);
+	TestTrue(TEXT("enemy attack defeats the one-health player"), FGameXXKTrainingRules::AdvanceTravelRunner(
+		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+	TestTrue(TEXT("runner reports defeat"), bDefeated);
+	TestEqual(TEXT("defeated runner records zero player HP"), Runner.PlayerHP, 0);
+	TestEqual(TEXT("defeated runner stays on the current encounter"), Progress.ActiveTravelEncounterIndex, 0);
+
+	Progress.bRetryOnFailure = true;
+	TestTrue(TEXT("retry-on failure resets the travel encounter"), FGameXXKTrainingRules::ResolveTravelFailure(Progress));
+	TestEqual(TEXT("retry-on keeps the selected stage"), Progress.CurrentTravelStageId, StageTwo);
+	TestEqual(TEXT("retry-on resets the encounter index"), Progress.ActiveTravelEncounterIndex, 0);
+	TestTrue(TEXT("travel remains active after retry"), Progress.bTravelActive);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelSubsystemBridgeTest,
+	"GameXXK.Training.TravelSubsystemBridge",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelSubsystemBridgeTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestNotNull(TEXT("travel bridge subsystem exists"), Subsystem);
+	if (!Subsystem)
+	{
+		return false;
+	}
+	TestTrue(TEXT("travel bridge starts a new game"), Subsystem->StartGame());
+	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("travel bridge starts cleared 1-1"), Subsystem->StartTrainingTravel(StageOne));
+	TestEqual(TEXT("travel bridge exposes the walking phase"), Subsystem->GetTrainingTravelRuntimeCopy().Phase, EGameXXKTrainingTravelPhase::Walking);
+
+	const int32 GoldBefore = Subsystem->GetRuntimeState().PlayerGold;
+	bool bStageCompleted = false;
+	int32 CompletedEncounters = 0;
+	FGameXXKTrainingReward Reward;
+	for (int32 Guard = 0; Guard < 64 && !bStageCompleted; ++Guard)
+	{
+		bool bEncounterCompleted = false;
+		bool bDefeated = false;
+		TestTrue(TEXT("subsystem advances the travel runner"), Subsystem->AdvanceTrainingTravelStep(
+			bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+		TestFalse(TEXT("default player survives the 1-1 travel loop"), bDefeated);
+		if (bEncounterCompleted)
+		{
+			++CompletedEncounters;
+		}
+	}
+
+	TestEqual(TEXT("subsystem settles seven encounters"), CompletedEncounters, 7);
+	TestTrue(TEXT("subsystem reports boss settlement"), bStageCompleted);
+	TestTrue(TEXT("subsystem writes travel gold at settlement"), Subsystem->GetRuntimeState().PlayerGold > GoldBefore);
+	TestEqual(TEXT("subsystem restarts the travel strip at walking"), Subsystem->GetTrainingTravelRuntimeCopy().Phase, EGameXXKTrainingTravelPhase::Walking);
+	TestEqual(TEXT("subsystem leaves travel mode active after looping"), Subsystem->GetTrainingProgressCopy().bTravelActive, true);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTrainingRealCardBattleBridgeTest,
 	"GameXXK.Training.RealCardBattleBridge",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
