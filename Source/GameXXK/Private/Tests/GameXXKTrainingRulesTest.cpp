@@ -229,6 +229,36 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Travel can roll an advanced elite chest when its cooldown is ready"), TravelEliteChest.bChestRolled);
 	TestEqual(TEXT("Travel elite encounters use the advanced chest tier"), TravelEliteChest.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
 	TestEqual(TEXT("advanced chest resolves to the canonical inventory item"), TravelEliteChest.ChestItemId, FName(TEXT("Item.TrainingAdvancedChest")));
+	const FGameXXKTrainingReward ChallengeNormalParity = FGameXXKTrainingRules::ResolveChallengeReward(
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2),
+		EGameXXKTrainingEncounterKind::Normal,
+		Seed,
+		0.10f);
+	const FGameXXKTrainingReward TravelNormalParity = FGameXXKTrainingRules::ResolveTravelReward(
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2),
+		EGameXXKTrainingEncounterKind::Normal,
+		Seed,
+		0,
+		0,
+		0.10f,
+		false);
+	TestEqual(TEXT("Travel normal chest probability reuses the in-level resolver"), TravelNormalParity.bChestRolled, ChallengeNormalParity.bChestRolled);
+	TestEqual(TEXT("Travel normal chest tier matches the in-level resolver"), TravelNormalParity.ChestTier, ChallengeNormalParity.ChestTier);
+	const FGameXXKTrainingReward ChallengeEliteParity = FGameXXKTrainingRules::ResolveChallengeReward(
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2),
+		EGameXXKTrainingEncounterKind::Elite,
+		Seed,
+		0.10f);
+	const FGameXXKTrainingReward TravelEliteParity = FGameXXKTrainingRules::ResolveTravelReward(
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2),
+		EGameXXKTrainingEncounterKind::Elite,
+		Seed,
+		0,
+		0,
+		0.10f,
+		false);
+	TestEqual(TEXT("Travel elite chest probability reuses the in-level resolver"), TravelEliteParity.bChestRolled, ChallengeEliteParity.bChestRolled);
+	TestEqual(TEXT("Travel elite chest tier matches the in-level resolver"), TravelEliteParity.ChestTier, ChallengeEliteParity.ChestTier);
 	bool bAdvancedChestItemFound = false;
 	UGameXXKMVPRules::GetItemDef(TravelEliteChest.ChestItemId, bAdvancedChestItemFound);
 	TestTrue(TEXT("advanced chest item is registered in the inventory catalog"), bAdvancedChestItemFound);
