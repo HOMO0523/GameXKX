@@ -1,7 +1,7 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-18
+updated_at: 2026-08-18T01:18:00+08:00
 source_commit: 23aee95
 ---
 # GameXXK Phase 0 基线证据
@@ -13,10 +13,10 @@ source_commit: 23aee95
 | 检查 | 时间/证据 | 结果 |
 |---|---|---|
 | `python scripts/harness_state_validator.py --json` | 2026-08-18 当前工作区 | `ok=true`，`findings=[]` |
-| `python scripts/ai_production_loop.py --run-script-tests --script-test-tag headless --json` | `Saved/HarnessReports/20260818-002949-ai-production-loop.md` | `ok=true`，headless `13/13`；不启动 UE 编辑器 |
+| `python scripts/ai_production_loop.py --run-script-tests --script-test-tag headless --json` | `Saved/HarnessReports/20260818-011435-ai-production-loop.md` | `ok=true`，headless `13/13`；不启动 UE 编辑器 |
 | `git diff --check` | 2026-08-18 当前工作区 | exit 0 |
 
-默认生产循环报告中的 `test_ue_tdd_pipeline.py` 是脚本自测 fake pipeline，不等同于本轮实际冷 UBT。asset-contract 单独运行于 `Saved/HarnessReports/20260818-003545-ai-production-loop.md`，66 项中 51 通过、15 个测试文件失败；这些失败涉及本机外部素材、旧 hash/manifest、Pillow API、受保护的 L_Main 资产合同等，不能记作 Phase 0 全绿。mcp-live 未运行。
+默认生产循环报告中的 `test_ue_tdd_pipeline.py` 是脚本自测 fake pipeline，不等同于本轮实际冷 UBT。asset-contract 最新独立运行于 `Saved/HarnessReports/20260818-012130-ai-production-loop.md`，66 项中 51 通过、15 个测试文件失败；这些失败涉及本机外部素材、旧 hash/manifest、Pillow API、受保护的 L_Main 资产合同等，不能记作 Phase 0 全绿。mcp-live 未运行。
 
 ## Historical checks
 
@@ -30,7 +30,7 @@ source_commit: 23aee95
 - HEAD：`23aee95 feat: run desktop training travel loop`；Training 规则、v18 存档、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接和确定性 TravelRunner 已在本轮提交。`Content/GameXXK/Maps/L_Main.umap`、未跟踪探针与源美术仍受保护且不在提交内。
 - 当前 `CurrentSaveVersion=18`；`DesktopTrainingWorkbenchIntroducedSaveVersion=18`。旧历练索引按 v16/v17/v18 的边界已经失效，不得复用。
 - 最新设计真源：`docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md`；运行时已有 opt-in 规则/壳和真实 CardBattle 单步桥接，但默认 3D 城镇入口未切换，PSD/游历执行器/完整战斗结算/奖励 RNG/性能和 PIE 验收未完成。
-- 当前新增规则/工作台证据：`Saved/HarnessReports/20260818-010941-ai-production-loop.md`（DesktopTraining 1/1）、`Saved/HarnessReports/20260818-005702-ai-production-loop.md`（Training 11/11，含 TravelRunner loop/failure/subsystem bridge）、`Saved/HarnessReports/20260818-010554-ai-production-loop.md`（最新冷 UBT `-NoHotReload` 成功）、`Saved/HarnessReports/20260818-002949-ai-production-loop.md`（headless 13/13）。完整目标复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
+- 当前新增规则/工作台证据：`Saved/HarnessReports/20260818-011532-ai-production-loop.md`（DesktopTraining 1/1）、`Saved/HarnessReports/20260818-011511-ai-production-loop.md`（Training 11/11，含 TravelRunner loop/failure/subsystem bridge）、`Saved/HarnessReports/20260818-011554-ai-production-loop.md`（SaveGame 12/12）、`Saved/HarnessReports/20260818-011442-ai-production-loop.md`（最新冷 UBT `-NoHotReload` 成功）、`Saved/HarnessReports/20260818-011435-ai-production-loop.md`（headless 13/13）。完整目标复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
 
 ## Protection lock
 

@@ -1,7 +1,7 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-18
+updated_at: 2026-08-18T01:18:00+08:00
 source_commit: 23aee95
 working_tree: dirty (runtime committed; preserve user L_Main.umap, unrelated probes and source-art changes)
 ---
@@ -16,7 +16,7 @@ working_tree: dirty (runtime committed; preserve user L_Main.umap, unrelated pro
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
 - 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。这两份报告只作历史回归参考，不冒充 `7881927` 工作区上的本轮全量运行。
-- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-002949-ai-production-loop.md`）；TravelRunner 接线后的 `GameXXK.Training` `11/11`（`Saved/HarnessReports/20260818-005702-ai-production-loop.md`，Automation 目录 `TrainingTravelRunner-20260818-r2`）、`GameXXK.DesktopTraining` `1/1`（`Saved/HarnessReports/20260818-010941-ai-production-loop.md`，Automation 目录 `DesktopTraining-20260818-r3`）、`GameXXK.MVP.SaveGame` 历史本轮 `12/12` 通过；最新冷 UBT `-NoHotReload` 成功（`Saved/HarnessReports/20260818-010554-ai-production-loop.md`）。asset-contract 独立报告 `Saved/HarnessReports/20260818-003545-ai-production-loop.md` 为 `51/66`，15 个测试文件失败，故 Phase 0 总门禁仍未通过。
+- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-011435-ai-production-loop.md`）；冷 UBT `-NoHotReload` 成功（`Saved/HarnessReports/20260818-011442-ai-production-loop.md`）；新一轮 `GameXXK.Training` `11/11`（`Saved/HarnessReports/20260818-011511-ai-production-loop.md`，Automation 目录 `TrainingGoalReview-20260818`）、`GameXXK.DesktopTraining` `1/1`（`Saved/HarnessReports/20260818-011532-ai-production-loop.md`，Automation 目录 `DesktopTrainingGoalReview-20260818`）、`GameXXK.MVP.SaveGame` `12/12`（`Saved/HarnessReports/20260818-011554-ai-production-loop.md`，Automation 目录 `SaveGameGoalReview-20260818`）。最新 asset-contract 报告 `Saved/HarnessReports/20260818-012130-ai-production-loop.md` 仍为 `51/66`，15 个测试文件失败；本次完成后复核已明确其未关闭，故 Phase 0 总门禁仍未通过。
 - 当前工作区保护：`Content/GameXXK/Maps/L_Main.umap` 保留用户已有修改；`SourceAssets/`、`SourceArt/` 及未跟踪探针不在本轮 Phase 0 写入范围。
 
 ## 已落地(最近六轮)

@@ -1,7 +1,7 @@
 ---
 status: review
 owner: codex
-updated_at: 2026-08-18
+updated_at: 2026-08-18T01:18:00+08:00
 source_commit: 23aee95
 decision: not-complete
 goal_status: active
@@ -89,19 +89,19 @@ goal_status: active
 |---|---|---:|
 | harness 状态 | 每次 `ai_production_loop.py` 报告中的 `harness_state_validator.py --json` | PASS，`findings=[]` |
 | 代码空白 | 同上报告中的 `git diff --check` | PASS（仅 CRLF 提示） |
-| headless script gate | `Saved/HarnessReports/20260818-002949-ai-production-loop.md` | 13/13 PASS；不启动 UE |
-| Training rules + bridge + TravelRunner | `Saved/HarnessReports/20260818-005702-ai-production-loop.md`；`Saved/Automation/TrainingTravelRunner-20260818-r2/index.json` | 11/11 PASS；含 `RealCardBattleBridge`、`TravelRunnerLoop`、`TravelRunnerFailure`、`TravelSubsystemBridge`、`SaveValidation` |
-| DesktopTraining geometry | `Saved/HarnessReports/20260818-010941-ai-production-loop.md`；`Saved/Automation/DesktopTraining-20260818-r3/index.json` | 1/1 PASS |
-| SaveGame migration | `Saved/HarnessReports/20260818-003510-ai-production-loop.md`；`Saved/Automation/SaveGame-20260818-r3/index.json` | 12/12 PASS |
+| headless script gate | `Saved/HarnessReports/20260818-011435-ai-production-loop.md` | 13/13 PASS；不启动 UE |
+| Training rules + bridge + TravelRunner | `Saved/HarnessReports/20260818-011511-ai-production-loop.md`；`Saved/Automation/TrainingGoalReview-20260818/index.json` | 11/11 PASS；含 `RealCardBattleBridge`、`TravelRunnerLoop`、`TravelRunnerFailure`、`TravelSubsystemBridge`、`SaveValidation` |
+| DesktopTraining geometry | `Saved/HarnessReports/20260818-011532-ai-production-loop.md`；`Saved/Automation/DesktopTrainingGoalReview-20260818/index.json` | 1/1 PASS |
+| SaveGame migration | `Saved/HarnessReports/20260818-011554-ai-production-loop.md`；`Saved/Automation/SaveGameGoalReview-20260818/index.json` | 12/12 PASS |
 | Real bridge isolated rerun | `Saved/Automation/TrainingBridge-20260818-r6/index.json` | 1/1 PASS：真实 Battle 屏、1 个 authored enemy、auto step |
-| Cold UBT | `Saved/HarnessReports/20260818-010554-ai-production-loop.md`，本轮变更后成功 | PASS；未用 Live Coding/Hot Reload |
+| Cold UBT | `Saved/HarnessReports/20260818-011442-ai-production-loop.md`，本轮变更后成功 | PASS；未用 Live Coding/Hot Reload |
 | 历史全量回归 | `Saved/Automation/ChargeFinishSubject/index.json` | 598/598 是 2026-08-16 历史证据，只作为回归参考，不冒充本轮全量 |
-| asset-contract | `Saved/HarnessReports/20260818-003545-ai-production-loop.md` | 51/66 PASS，15 个测试文件 FAIL，门禁未通过 |
+| asset-contract | `Saved/HarnessReports/20260818-012130-ai-production-loop.md` | 51/66 PASS，15 个测试文件 FAIL，门禁未通过 |
 | PIE/MCP 工作台 | 本轮仍无新的 1920×1080 / 2560×1440 工作台截图、点击流或悬停视觉证据 | 未运行 |
 
 ### 5.1 asset-contract 失败分类
 
-本轮报告明确失败的 15 个文件是：
+本轮最新报告（`Saved/HarnessReports/20260818-012130-ai-production-loop.md`）明确失败的 15 个文件是：
 
 `test_battle_party_qi_icon.py`、`test_battle_resource_psd_cuts.py`、`test_battle_terrain_art.py`、`test_gamexxk_ui_master_pages.py`、`test_party_deck_card_portrait_pipeline.py`、`test_party_deck_sprite_atlas_packer.py`、`test_party_deck_sprite_import_pipeline.py`、`test_party_deck_sprite_manifest.py`、`test_psd_card_frame_pipeline.py`、`test_qingshan_b1_heightmap.py`、`test_qingshan_building_concepts.py`、`test_qingshan_dress_b1_config.py`、`test_qingshan_dress_b1_scripts.py`、`test_reference_faithful_task_ui_icons.py`、`test_town_hud_psd_visual_contract.py`。
 
@@ -171,3 +171,129 @@ goal_status: active
 2. 回滚 `23aee95` 可移除 TravelRunner/工作台 tick；继续回滚 `7881927` 可移除 Training 运行时和 v18 接线；两者都不触碰 `L_Main.umap`；
 3. 不删除或覆盖 `SourceAssets/`、`SourceArt/`、Master UI 和角色/地图资产；
 4. 若产品冻结敌人或概率有变化，只更新规则/配置与测试，不把视觉概念图当补丁素材。
+
+## 10. 本次复核的范围与方法
+
+本次“完成后复核”不是对旧截图或旧报告的转述，而是以当前 `main`、当前工作区和刚刚刷新出的验证结果为准。复核按四条证据链执行：
+
+1. **需求链**：逐项对照当前 goal、`2026-08-16-full-project-optimization-proposal.md`、`2026-08-17-gamexxk-desktop-training-workbench-design.md` 与本轮用户已经冻结的布局/交互口径。
+2. **实现链**：检查 `GameXXKTrainingRules`、`GameXXKMVPSubsystem`、`GameXXKDesktopTrainingWorkbenchWidget`、`GameXXKMVPPlayerController`、存档迁移和对应测试的实际接口；不以 Widget 文案推断后端已经完成。
+3. **验证链**：重新执行 harness、headless 脚本、冷 UBT、Training、DesktopTraining 和 SaveGame 聚焦 Automation；历史 598/598 只保留为历史回归证据。
+4. **生产链**：单独审查 PSD/图标来源、真实库存、PIE/MCP 截图和 TBH 同机性能四组采样；没有证据的项一律记为“未验收”，不记为通过。
+
+## 11. 当前目标的逐项交付矩阵
+
+| 目标包 | 当前实现/证据 | 结论 | 关闭条件 |
+|---|---|---|---|
+| A. 项目状态与优化基线 | `main`/HEAD/脏工作区已记录；Phase 0 指针、旧历练 shelved、脚本标签和 v18 边界已对齐 | **部分通过** | asset-contract 失败清零或逐项标明外部依赖；mcp-live 真实运行并留档 |
+| B. 纯 2D 工作台壳 | `GameXXKDesktopTrainingWorkbenchWidget` 建立左 4 列仓库、中栏 1.76:1/4×5、右 27 节点/三难度、顶部 3+3 站位、底部五按钮 | **几何/接口通过** | UI Master 纹理绑定、真实字体/图标、真实数据、1920/2560 截图通过 |
+| C. Tab 与五按钮导航 | `InputKey(Tab)` 在 opt-in 时打开并调用 `OpenBackpack()`；仓库/编队/天赋/工具/历练的替换关系已写入壳逻辑 | **规则部分通过** | PIE 中逐个点击并截取焦点、关闭/设置分离、战斗中输入锁定的证据 |
+| D. 历练进度与难度 | 27 个稳定 StageId；普通 1-1 新档通关；普通→困难→地狱顺序和锁定规则由纯规则层验证 | **规则通过** | 真实地图节点状态、挑战/游历按钮 disabled/hover、全内容后的“期待新内容”截图 |
+| E. 第一章敌人编制 | 公鸡/狸猫普通，山羊/黄鼬次级精英，1-1 山羊、1-2 黄鼬、1-3 青角羊王；挑战和游历共享编制定义 | **数据/测试通过** | 每个节点真实 tooltip 显示实际编制，且路线图不把两个次级精英错误合成同一波 |
+| F. 游历循环 | `Walking → Combat → Defeated/下一遭遇` runner；一只敌人一次推进；击杀结算；1-1 游历 1 HP/不掉箱；失败重试/回退 | **确定性运行时通过** | 接真实 Actor/动画/移动、Timer/离线时间、失败弹窗和收菜入库；不能只依赖 ForTest/tick |
+| G. 主动挑战 | `StartTrainingChallenge` 建立真实 `FGameXXKCardBattleAdapter`；支持一步合法卡/阶段推进；工作台可切换 ChallengeViewport | **适配器通过，产品流未闭合** | 路线图→卡牌→意图→胜负→宝箱/经验→下一遭遇的完整 PIE/MCP；pending card choice 策略明确 |
+| H. 奖励与天赋 | 普通/高级 tier 字段和金币/经验结算入口已存在；Travel 奖励不掉箱 | **占位通过** | 真实 seed/RNG、天赋掉率 Resolver、普通怪/精英/首领双箱概率、仓库/背包实际掉落和收菜 |
+| I. 存档与恢复 | `CurrentSaveVersion=18`，Training 字段和互斥/范围校验；runner 为 transient，读档后重建 | **聚焦通过** | 未结束挑战/游历在生产 UI 中断、退出、读档、恢复和失败后状态一致 |
+| J. 素材/PSD | 规格已冻结 reuse→derive→new、透明单图、1:1 安全框、alpha/尺寸/hash manifest | **规范通过，资产未交付** | UI Master 实际图层绑定；新增图标逐个 manifest/hash；无概念图裁切、噪点和非等比缩放 |
+| K. 性能 | 已记录 TBH 参考包络和四组采样方案 | **未验收** | 同机 Shipping 空壳/游历/挑战/3D 四组数据，包含静置 30 FPS、退出回落和长时稳定性 |
+| L. 默认入口 | `bEnableDesktopTrainingWorkbench=false`，3D 城镇仍为默认 | **保护正确** | 只有全部 A–K 关闭后才允许改为默认；保留回退开关并重新做全量验收 |
+
+## 12. 代码规范与边界复核
+
+### 12.1 已遵守的约束
+
+- 关卡、编制、解锁、失败策略和奖励基础字段集中在纯 `FGameXXKTrainingRules`，Widget 不直接改存档 flag。
+- `StartTrainingChallenge`、`StartTrainingTravel`、`AdvanceTrainingTravelStep` 和失败处理采用 Candidate 状态后提交，初始化失败不会留下半套挑战/游历状态。
+- 持久状态在 `FGameXXKTrainingProgress`；`FGameXXKTrainingTravelRuntime` 明确为 transient read model，读档后由 `RebuildTrainingTravelRuntime()` 重建，避免把动画/当前伤害帧写进存档。
+- 挑战与游历使用同一 Stage/Encounter 定义，但使用两套运行状态机；游历不能驱动 CardBattle，挑战不能偷用 1 HP 游历例外。
+- 运行时新增逻辑先写聚焦 Automation，再执行冷 UBT（`-NoHotReload`）；没有用 Live Coding/Hot Reload 作为验收依据。
+- 默认入口继续 opt-in，用户 `L_Main.umap`、PaperZD、角色像素图、相机/HD2D 参数和未跟踪源资产没有被本轮提交覆盖。
+
+### 12.2 仍需单独立项的代码问题
+
+- TravelRunner 目前是确定性规则/Slate tick，不是生产 Actor、动画、碰撞移动或后台离线服务；不能称为“完整挂机”。
+- `BuildChallengeReward` 仍接收调用方的 `bChestRolled`，有效概率只做 clamp 后分层，不负责真实随机抽样；天赋树没有 Resolver。
+- 背包标题中的 `金币 0 · 数据来自存档` 仍是程序化壳文案，当前未证明金币实际从 RuntimeState 投影到 UI；仓库只读装备实例 snapshot，转移/排序/容量/选择态还没有工作台闭环。
+- `BuildTopIdleStrip` 目前只有当前 runner 槽位是真实投影，其余站位仍是等待占位；角色/怪物 Actor 和像素动画没有接入。
+- ChallengeViewport 已可挂接现有 BattleBoard，但完整手牌选择、目标选择、意图、结算、退出确认和 pending choice 自动策略还没有产品级闭环。
+
+## 13. 素材、PSD 与 UI 生产复核
+
+### 13.1 已冻结的生产规则
+
+生产唯一链路是：
+
+`UI Master/PSD → reuse/derive/new 语义审计 → 独立透明切图 → alpha/尺寸/hash manifest → UE 导入 → 1920×1080/2560×1440 视觉复核`。
+
+仓库、背包和工具框体优先复用实机 Master；概念图只冻结三栏比例、节点层级和 UX。历练节点必须使用正方形母图并等比显示；导航、挑战、游历、失败重试、锁定、精英和首领图标不得烘焙文字/数字/水印，不得把多次重绘产生的噪点切进 PSD。
+
+### 13.2 当前实际状态
+
+- 程序化壳可以证明命中区域、按钮路由和尺寸合同，但不能作为最终美术基准。
+- 当前没有本工作台新增图标的完整语义 ID、源路径、尺寸、alpha、生成/绘制来源和 SHA256 manifest。
+- 当前没有接受的 1920×1080 与 2560×1440 工作台截图；因此“节点没有被压成椭圆”“图标没有被挤扁”“字体/卡牌可读”都还不能写成通过。
+- `SourceAssets/` 与 `SourceArt/` 当前存在大量未跟踪内容，必须继续按资产归属/manifest 决策处理，不能用 `git add .` 解决。
+
+## 14. 性能与桌面用量复核
+
+### 14.1 可引用的同机参照
+
+TaskBarHero 参照快照：Working Set 约 513 MiB、Private Bytes 约 1418 MiB、GPU Dedicated 约 282 MiB、整机 CPU 约 2.3%、GPU Engine 约 2%。这些是整进程长时样本，不是单张贴图预算。
+
+当前临时验收包络仍为：CPU ≤3%、GPU Engine ≤3%、GPU Dedicated ≤350 MiB、Working Set ≤650 MiB、Private ≤1.6 GiB；游历静置 30 FPS，主动挑战退出后 30 秒内回落。当前没有 GameXXK 工作台的对应测量，因此性能结论是**未验收**而不是“已经贴合”。
+
+必须在同机、同构建、无编辑器附加开销下补齐以下四组：
+
+1. 空 2D Shell 静置；
+2. 2D 游历运行与收菜；
+3. ChallengeViewport 主动 CardBattle；
+4. 原 3D 城镇回退。
+
+每组需要记录启动后稳定窗口、30 FPS、CPU/GPU/Working Set/Private/Dedicated、对象/Widget/纹理是否持续增长，以及挑战退出后的回落时间。四组数据未齐前不得切换默认入口。
+
+## 15. 本次刷新验证证据
+
+| 检查 | 当前证据 | 判定 |
+|---|---|---:|
+| harness 状态 | `python scripts/harness_state_validator.py --json`，本轮 exit 0、`findings=[]` | PASS |
+| headless 脚本门禁 | `Saved/HarnessReports/20260818-011435-ai-production-loop.md`，本轮 headless 全部通过 | PASS |
+| 空白检查 | `git diff --check`，exit 0；仅有 Windows LF→CRLF warning | PASS |
+| 冷 UBT | `Saved/HarnessReports/20260818-011442-ai-production-loop.md`，`GameXXKEditor`、`-NoHotReload`、Result Succeeded | PASS |
+| Training Automation | `Saved/HarnessReports/20260818-011511-ai-production-loop.md`、`Saved/Automation/TrainingGoalReview-20260818/index.json`，11 discovered / 11 succeeded / 0 warnings / 0 failed | PASS |
+| DesktopTraining Automation | `Saved/HarnessReports/20260818-011532-ai-production-loop.md`、`Saved/Automation/DesktopTrainingGoalReview-20260818/index.json`，1 / 1 / 0 / 0 | PASS |
+| SaveGame Automation | `Saved/HarnessReports/20260818-011554-ai-production-loop.md`、`Saved/Automation/SaveGameGoalReview-20260818/index.json`，12 / 12 / 0 / 0 | PASS |
+| 历史全量 Automation | `Saved/Automation/ChargeFinishSubject/index.json`，598/598，2026-08-16 | **历史参考**，非本轮全量 |
+| asset-contract | `Saved/HarnessReports/20260818-012130-ai-production-loop.md`，66 项中 51 PASS / 15 FAIL | **未关闭** |
+| mcp-live / PIE | 本轮没有新的 1920/2560 工作台截图、点击流、悬停或窗口内存采样 | **未运行** |
+
+## 16. 工作区、提交和回滚核对
+
+- 本轮运行时提交为 `23aee95`，前置桥接为 `7881927`；当前 `git ls-files -m` 只有用户已有 `Content/GameXXK/Maps/L_Main.umap` 与既有 `scripts/test_battle_camera_framing.py`。
+- 当前仍有约 10,235 个未跟踪文件，其中约 10,176 个在 `SourceAssets/`/`SourceArt/`；它们不属于本轮提交，不得通过清理、覆盖或无差别 stage 处理。
+- `L_Main.umap` 没有被 reset、checkout、格式化或加入本轮提交；默认 3D 城镇仍可回退。
+- 最小回滚顺序仍为：保持 `bEnableDesktopTrainingWorkbench=false` → 单独回滚 `23aee95` → 如需再回滚 `7881927`；任何回滚都不触碰用户地图和源美术。
+
+## 17. 关闭目标的阻塞项、顺序与完成定义
+
+### P0：必须完成后才能谈入口
+
+1. **生产游历**：Actor/动画/移动表现、失败暂停/重试 UI、后台/离线计时、收菜奖励入库、重新打开窗口恢复。
+2. **生产挑战**：路线图到真实 CardBattle 的完整胜负/结算/下一遭遇流，含自动战斗、pending choice、退出和存档恢复。
+3. **真实库存与 UI**：金币、仓库 4 列多页/排序/转移、背包六槽/角色伙伴切换、工具容器、设置与关闭分离，全部来自 read model。
+4. **奖励 Resolver**：确定 seed/RNG、普通/高级箱概率、天赋 bonus、重复结算保护和仓库/背包写入。
+
+### P1：生产内容与证据
+
+5. UI Master reuse/derive/new 清单和新增图标 manifest/hash；单图与整页双重视觉复核。
+6. 1920×1080、2560×1440 的 PIE/MCP 点击/悬停截图；确认节点圆形、图标不挤扁、字体/卡牌/意图可读。
+7. 四组性能数据与挑战退出回落；asset-contract 失败按环境/旧合同/Pillow/源归属清理或明确 SKIP。
+
+### Complete 的硬判定
+
+只有 P0/P1 全部有当前提交、测试、截图或采样证据，默认入口仍可回退，且以下语义可重现时，才可 `update_goal(status=complete)`：普通 1-1 默认可游历、锁定/解锁、挑战/游历双按钮、失败重试/回退、两个精英 tooltip、首领 tooltip、普通/高级双宝箱、天赋掉率、存档恢复、低耗包络和 3D 回退。当前这些条件没有全部满足。
+
+## 18. 最终决策
+
+**本次复核结论：`not-complete`；goal 继续 `active`，不标记 `blocked`。**
+
+理由不是编译失败，而是产品完成判定还需要真实生产表现、完整挑战/游历闭环、奖励概率、库存 read model、PSD/manifest、PIE/MCP 和性能四组证据。当前提交应被视为“可回滚、默认关闭、规则与运行时桥接可验证的基础包”；在上述门禁关闭前，不能把 2D 历练工作台当作替代 3D 城镇的正式主入口。
