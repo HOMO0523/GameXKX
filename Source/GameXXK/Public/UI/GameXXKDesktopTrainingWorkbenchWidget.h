@@ -127,6 +127,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool QuickEquipVisibleWarehouseSlotForTest(int32 VisibleSlotIndex);
 
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	bool SortWarehouseForTest();
+
+	/** Removes one of the six active character equipment slots back into the warehouse. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	bool QuickUnequipActiveBackpackSlotForTest(int32 SlotIndex);
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	TArray<FName> GetVisibleBackpackItemIdsForTest() const;
 

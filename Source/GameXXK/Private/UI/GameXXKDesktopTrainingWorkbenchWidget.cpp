@@ -110,17 +110,17 @@
 		return FString::Printf(TEXT("%s\nLv.%d"), *Instance->BaseEquipmentId.ToString(), Instance->ItemLevel);
 	}
 
-	FName EquippedInstanceIdForSlot(const FGameXXKEquipmentLoadout& Loadout, const int32 SlotIndex)
+	EGameXXKEquipmentSlot BackpackSlotFromIndex(const int32 SlotIndex)
 	{
 		switch (SlotIndex)
 		{
-		case 0: return Loadout.WeaponInstanceId;
-		case 1: return Loadout.HeadInstanceId;
-		case 2: return Loadout.ArmorInstanceId;
-		case 3: return Loadout.BeltInstanceId;
-		case 4: return Loadout.ShoesInstanceId;
-		case 5: return Loadout.AccessoryInstanceId;
-		default: return NAME_None;
+		case 0: return EGameXXKEquipmentSlot::Weapon;
+		case 1: return EGameXXKEquipmentSlot::Head;
+		case 2: return EGameXXKEquipmentSlot::Armor;
+		case 3: return EGameXXKEquipmentSlot::Belt;
+		case 4: return EGameXXKEquipmentSlot::Shoes;
+		case 5: return EGameXXKEquipmentSlot::Accessory;
+		default: return EGameXXKEquipmentSlot::Invalid;
 		}
 	}
 
@@ -425,6 +425,43 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::QuickEquipVisibleWarehouseSlotForTe
 		RefreshLayout();
 	}
 	return bEquipped;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::SortWarehouseForTest()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !Subsystem->SortEquipmentWarehouse())
+	{
+		return false;
+	}
+	WarehousePageIndex = 0;
+	SetNotice(FText::FromString(TEXT("仓库已排序：槽位 → 品质 → 等级")));
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::QuickUnequipActiveBackpackSlotForTest(const int32 SlotIndex)
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return false;
+	}
+	const EGameXXKEquipmentSlot EquipmentSlot = BackpackSlotFromIndex(SlotIndex);
+	if (EquipmentSlot == EGameXXKEquipmentSlot::Invalid)
+	{
+		return false;
+	}
+	FGameXXKCharacterBackpackModel BackpackModel;
+	BackpackModel.Bind(Subsystem, GetActiveBackpackCharacterIdForTest());
+	FGameXXKEquipmentTransactionResult Result;
+	const bool bUnequipped = BackpackModel.QuickUnequip(EquipmentSlot, Result);
+	if (bUnequipped)
+	{
+		SetNotice(Result.Message.IsEmpty() ? FText::FromString(TEXT("装备已卸下并返回仓库")) : Result.Message);
+		RefreshLayout();
+	}
+	return bUnequipped;
 }
 
 TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetVisibleBackpackItemIdsForTest() const
@@ -755,6 +792,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 	Next->SetIsEnabled(GetWarehousePageIndexForTest() + 1 < GetWarehousePageCountForTest());
 	AddCanvas(RootCanvas, Next, FVector2D(150.0f, 850.0f), FVector2D(90.0f, 40.0f));
 	ActionButtons.Add(Next);
+	UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+	Sort->Configure(this, 5);
+	Sort->SetBackgroundColor(Accent);
+	Sort->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("排序")), 15));
+	Sort->SetToolTipText(FText::FromString(TEXT("按槽位、品质和等级排序仓库")));
+	AddCanvas(RootCanvas, Sort, FVector2D(248.0f, 850.0f), FVector2D(76.0f, 40.0f));
+	ActionButtons.Add(Sort);
 	UTextBlock* Footer = MakeText(WidgetTree, FText::FromString(FString::Printf(
 		TEXT("装备实例 %d / %d\n不显示角色身份卡"),
 		WarehouseCount,
@@ -805,14 +849,25 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 	}
 	for (int32 SlotIndex = 0; SlotIndex < 6; ++SlotIndex)
 	{
-		UBorder* Equip = MakePanel(WidgetTree, FLinearColor(0.10f, 0.07f, 0.05f, 1.0f));
-		AddCanvas(RootCanvas, Equip, FVector2D(405.0f + (SlotIndex % 3) * 90.0f, 275.0f + (SlotIndex / 3) * 90.0f), FVector2D(78.0f, 78.0f));
-		if (EquippedInstanceIds.IsValidIndex(SlotIndex) && !EquippedInstanceIds[SlotIndex].IsNone() && RuntimeState)
+		const FVector2D SlotPosition(405.0f + (SlotIndex % 3) * 90.0f, 275.0f + (SlotIndex / 3) * 90.0f);
+		const bool bHasEquippedInstance = EquippedInstanceIds.IsValidIndex(SlotIndex)
+			&& !EquippedInstanceIds[SlotIndex].IsNone()
+			&& RuntimeState;
+		if (bHasEquippedInstance)
 		{
 			const FString EquipmentLabel = EquipmentDisplayName(RuntimeState->EquipmentCollection, EquippedInstanceIds[SlotIndex]);
-			UTextBlock* EquipText = MakeText(WidgetTree, FText::FromString(EquipmentLabel), 11, FLinearColor::White);
-			AddCanvas(RootCanvas, EquipText, FVector2D(409.0f + (SlotIndex % 3) * 90.0f, 290.0f + (SlotIndex / 3) * 90.0f), FVector2D(70.0f, 48.0f));
-			Equip->SetToolTipText(FText::FromString(FString::Printf(TEXT("已装备实例：%s\n%s"), *EquippedInstanceIds[SlotIndex].ToString(), *EquipmentLabel)));
+			UGameXXKDesktopTrainingActionButton* EquipButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+			EquipButton->Configure(this, 200 + SlotIndex);
+			EquipButton->SetBackgroundColor(FLinearColor(0.10f, 0.07f, 0.05f, 1.0f));
+			EquipButton->SetContent(MakeText(WidgetTree, FText::FromString(EquipmentLabel), 11, FLinearColor::White));
+			EquipButton->SetToolTipText(FText::FromString(FString::Printf(TEXT("已装备实例：%s\n%s\n点击卸下并返回仓库"), *EquippedInstanceIds[SlotIndex].ToString(), *EquipmentLabel)));
+			AddCanvas(RootCanvas, EquipButton, SlotPosition, FVector2D(78.0f, 78.0f));
+			ActionButtons.Add(EquipButton);
+		}
+		else
+		{
+			UBorder* EmptyEquip = MakePanel(WidgetTree, FLinearColor(0.10f, 0.07f, 0.05f, 1.0f));
+			AddCanvas(RootCanvas, EmptyEquip, SlotPosition, FVector2D(78.0f, 78.0f));
 		}
 	}
 	FGameXXKEquipmentLoadoutSnapshot ActiveLoadoutSnapshot;
@@ -876,7 +931,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 	UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 	Sort->Configure(this, 5);
 	Sort->SetBackgroundColor(Accent);
-	Sort->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("物品排序")), 18));
+	Sort->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("排序")), 18));
 	AddCanvas(RootCanvas, Sort, FVector2D(1120.0f, 840.0f), FVector2D(150.0f, 54.0f));
 	ActionButtons.Add(Sort);
 	UTextBlock* Ratio = MakeText(WidgetTree, FText::FromString(FString::Printf(
@@ -1145,6 +1200,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		QuickEquipVisibleWarehouseSlotForTest(ActionId - 100);
 		return;
 	}
+	if (ActionId >= 200 && ActionId < 206)
+	{
+		QuickUnequipActiveBackpackSlotForTest(ActionId - 200);
+		return;
+	}
 	if (ActionId >= 11 && ActionId <= 13)
 	{
 		const EGameXXKTrainingDifficulty Difficulty = static_cast<EGameXXKTrainingDifficulty>(ActionId - 11);
@@ -1156,7 +1216,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	switch (ActionId)
 	{
 	case 5:
-		SetNotice(FText::FromString(TEXT("背包按物品排序")));
+		SortWarehouseForTest();
 		break;
 	case 6:
 		if (Subsystem->StartTrainingChallenge(SelectedStageId))

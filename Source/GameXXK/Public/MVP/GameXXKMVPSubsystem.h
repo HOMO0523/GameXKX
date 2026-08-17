@@ -183,6 +183,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Equipment")
 	bool GetEquipmentTooltipSnapshot(FName InstanceId, FName CompareCharacterId, FGameXXKEquipmentTooltipSnapshot& OutSnapshot) const;
 
+	/** Applies the single deterministic warehouse sort used by the desktop workbench. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Equipment")
+	bool SortEquipmentWarehouse();
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Equipment")
 	bool EquipEquipmentInstance(FName CharacterId, EGameXXKEquipmentSlot Slot, FName InstanceId, FGameXXKEquipmentTransactionResult& OutResult);
 

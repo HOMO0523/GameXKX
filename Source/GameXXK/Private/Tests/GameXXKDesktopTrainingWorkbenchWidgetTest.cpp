@@ -44,6 +44,8 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 		Request.Set = EGameXXKEquipmentSet::Starter;
 		Request.Quality = EGameXXKEquipmentQuality::Common;
 		Request.ItemLevel = 1 + ExtraIndex;
+		Request.bForceSlot = true;
+		Request.ForcedSlot = EGameXXKEquipmentSlot::Weapon;
 		FName InstanceId;
 		FString Error;
 		TestTrue(TEXT("warehouse pagination fixture creates an equipment instance"),
@@ -81,9 +83,19 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	TestEqual(TEXT("warehouse second page exposes the remaining instance"), Widget->GetVisibleWarehouseInstanceIdsForTest().Num(), 1);
 	TestTrue(TEXT("warehouse returns to the first page"), Widget->PreviousWarehousePageForTest());
 	TestEqual(TEXT("warehouse page index clamps at zero"), Widget->GetWarehousePageIndexForTest(), 0);
+	const TArray<FName> WarehouseBeforeSort = Widget->GetVisibleWarehouseInstanceIdsForTest();
+	TestTrue(TEXT("warehouse sort action succeeds"), Widget->SortWarehouseForTest());
+	const TArray<FName> WarehouseAfterSort = Widget->GetVisibleWarehouseInstanceIdsForTest();
+	TestEqual(TEXT("warehouse sort preserves the visible item count"), WarehouseAfterSort.Num(), WarehouseBeforeSort.Num());
+	TestFalse(TEXT("warehouse sort changes the ascending fixture order"), WarehouseAfterSort == WarehouseBeforeSort);
+	TestTrue(TEXT("warehouse sort is idempotent"), Widget->SortWarehouseForTest());
+	TestEqual(TEXT("warehouse sort keeps a stable deterministic order"), Widget->GetVisibleWarehouseInstanceIdsForTest(), WarehouseAfterSort);
 	const int32 WarehouseBeforeEquip = State.EquipmentCollection.WarehouseInstanceIds.Num();
 	TestTrue(TEXT("warehouse slot can quick-equip into the selected backpack character"), Widget->QuickEquipVisibleWarehouseSlotForTest(0));
 	TestEqual(TEXT("quick-equip removes the moved instance from warehouse"), State.EquipmentCollection.WarehouseInstanceIds.Num(), WarehouseBeforeEquip - 1);
+	const int32 WarehouseBeforeUnequip = State.EquipmentCollection.WarehouseInstanceIds.Num();
+	TestTrue(TEXT("backpack can quick-unequip the active weapon slot"), Widget->QuickUnequipActiveBackpackSlotForTest(0));
+	TestEqual(TEXT("quick-unequip returns the item to the warehouse"), State.EquipmentCollection.WarehouseInstanceIds.Num(), WarehouseBeforeUnequip + 1);
 	TestEqual(TEXT("workbench reads the authoritative runtime gold"), Widget->GetRuntimeGoldForTest(), 4242);
 	TestEqual(TEXT("workbench warehouse occupancy comes from the equipment collection"),
 		Widget->GetWarehouseOccupancyForTest(),

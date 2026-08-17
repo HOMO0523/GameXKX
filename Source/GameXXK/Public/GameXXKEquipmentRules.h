@@ -183,6 +183,10 @@ public:
 		const FGameXXKEquipmentCollectionState& Collection,
 		FName InstanceId);
 	static int32 CountWarehouseItems(const FGameXXKEquipmentCollectionState& Collection);
+	/** Deterministically orders warehouse instances for the single UI sort action. */
+	static bool SortWarehouseInstanceIds(
+		FGameXXKEquipmentCollectionState& InOutCollection,
+		FString* OutError = nullptr);
 	static bool HasWarehouseCapacity(
 		const FGameXXKEquipmentCollectionState& Collection,
 		int32 RequiredSlots = 1);

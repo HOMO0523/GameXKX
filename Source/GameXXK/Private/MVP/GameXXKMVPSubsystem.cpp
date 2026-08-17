@@ -1856,6 +1856,32 @@ bool UGameXXKMVPSubsystem::GetEquipmentTooltipSnapshot(
 			&Error);
 }
 
+bool UGameXXKMVPSubsystem::SortEquipmentWarehouse()
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState)
+		|| !FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(
+			RuntimeState.EquipmentCollection,
+			RuntimeState.CardRun.CompanionRoster))
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FString Error;
+	if (!FGameXXKEquipmentRules::SortWarehouseInstanceIds(Candidate.EquipmentCollection, &Error)
+		|| !FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(
+			Candidate.EquipmentCollection,
+			Candidate.CardRun.CompanionRoster,
+			&Error))
+	{
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
 bool UGameXXKMVPSubsystem::EquipEquipmentInstance(
 	const FName CharacterId,
 	const EGameXXKEquipmentSlot Slot,

@@ -542,6 +542,80 @@ int32 FGameXXKEquipmentRules::CountWarehouseItems(const FGameXXKEquipmentCollect
 	return Collection.WarehouseInstanceIds.Num();
 }
 
+bool FGameXXKEquipmentRules::SortWarehouseInstanceIds(
+	FGameXXKEquipmentCollectionState& InOutCollection,
+	FString* OutError)
+{
+	SetError(OutError, FString());
+	FString ValidationError;
+	if (!ValidateCollectionState(InOutCollection, &ValidationError))
+	{
+		SetError(OutError, FString::Printf(TEXT("Collection is invalid before warehouse sort: %s"), *ValidationError));
+		return false;
+	}
+
+	FGameXXKEquipmentCollectionState Candidate = InOutCollection;
+	Candidate.WarehouseInstanceIds.Sort([&Candidate](const FName& LeftId, const FName& RightId)
+	{
+		const FGameXXKEquipmentInstance* Left = FindInstance(Candidate, LeftId);
+		const FGameXXKEquipmentInstance* Right = FindInstance(Candidate, RightId);
+		const FGameXXKEquipmentDefinition* LeftDefinition = Left
+			? FGameXXKEquipmentCatalog::FindDefinition(Left->BaseEquipmentId)
+			: nullptr;
+		const FGameXXKEquipmentDefinition* RightDefinition = Right
+			? FGameXXKEquipmentCatalog::FindDefinition(Right->BaseEquipmentId)
+			: nullptr;
+
+		const uint8 LeftSlot = LeftDefinition
+			? static_cast<uint8>(LeftDefinition->Slot)
+			: static_cast<uint8>(EGameXXKEquipmentSlot::Invalid);
+		const uint8 RightSlot = RightDefinition
+			? static_cast<uint8>(RightDefinition->Slot)
+			: static_cast<uint8>(EGameXXKEquipmentSlot::Invalid);
+		if (LeftSlot != RightSlot)
+		{
+			return LeftSlot < RightSlot;
+		}
+
+		const uint8 LeftQuality = Left ? static_cast<uint8>(Left->Quality) : 0;
+		const uint8 RightQuality = Right ? static_cast<uint8>(Right->Quality) : 0;
+		if (LeftQuality != RightQuality)
+		{
+			return LeftQuality > RightQuality;
+		}
+
+		const int32 LeftItemLevel = Left ? Left->ItemLevel : 0;
+		const int32 RightItemLevel = Right ? Right->ItemLevel : 0;
+		if (LeftItemLevel != RightItemLevel)
+		{
+			return LeftItemLevel > RightItemLevel;
+		}
+
+		const int32 LeftEnhancement = Left ? Left->EnhancementLevel : 0;
+		const int32 RightEnhancement = Right ? Right->EnhancementLevel : 0;
+		if (LeftEnhancement != RightEnhancement)
+		{
+			return LeftEnhancement > RightEnhancement;
+		}
+
+		const FString LeftBaseId = Left ? Left->BaseEquipmentId.ToString() : FString();
+		const FString RightBaseId = Right ? Right->BaseEquipmentId.ToString() : FString();
+		if (LeftBaseId != RightBaseId)
+		{
+			return LeftBaseId < RightBaseId;
+		}
+		return LeftId.ToString() < RightId.ToString();
+	});
+
+	if (!ValidateCollectionState(Candidate, &ValidationError))
+	{
+		SetError(OutError, FString::Printf(TEXT("Warehouse sort produced an invalid collection: %s"), *ValidationError));
+		return false;
+	}
+	InOutCollection = MoveTemp(Candidate);
+	return true;
+}
+
 bool FGameXXKEquipmentRules::HasWarehouseCapacity(
 	const FGameXXKEquipmentCollectionState& Collection,
 	const int32 RequiredSlots)
