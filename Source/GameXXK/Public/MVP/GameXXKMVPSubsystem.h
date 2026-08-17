@@ -87,6 +87,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
 	bool ResolveTrainingTravelFailure();
 
+	/** Simulates closed-window Travel time into the durable pending reward ledger. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool SimulateTrainingTravelOffline(int32 ElapsedSeconds, FGameXXKTrainingOfflineReward& OutReward);
+
+	/** Returns rewards accumulated while the Travel window was closed. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
+	FGameXXKTrainingOfflineReward GetPendingTrainingTravelRewardCopy() const;
+
+	/** Claims pending Travel gold, experience and canonical chests exactly once. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool CollectTrainingTravelRewards(FGameXXKTrainingOfflineReward& OutReward);
+
 	/** Development-only visual fixture. This is a non-saving view over a copied active card battle. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	bool ApplyBattleHudFixtureForTest(FString& OutError);
@@ -473,6 +485,12 @@ public:
 private:
 	bool WriteSaveGameToSlot(USaveGame* SaveGame, const FString& SlotName, int32 UserIndex);
 	bool RebuildTrainingTravelRuntime();
+	bool ApplyTrainingOfflineRewardToRuntime(FGameXXKRuntimeState& State, const FGameXXKTrainingOfflineReward& Reward) const;
+	int64 GetCurrentTravelUnixSeconds() const;
+	bool ApplyOfflineTravelSinceLastUpdate(
+		FGameXXKRuntimeState& State,
+		FGameXXKTrainingTravelRuntime& OutRuntime,
+		int64 NowUnixSeconds) const;
 	void SetSaveMigrationFailure();
 	void SetSaveRollbackFailure();
 

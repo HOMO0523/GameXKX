@@ -1,8 +1,10 @@
 #include "GameXXKTrainingRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
+#include "MVP/GameXXKSaveGame.h"
 
 #include "Engine/GameInstance.h"
+#include "Kismet/GameplayStatics.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -284,7 +286,7 @@ bool FGameXXKTrainingRewardCooldownMigrationTest::RunTest(const FString& Paramet
 
 	FGameXXKSaveState Migrated;
 	FGameXXKSaveMigrationReport Report;
-	TestTrue(TEXT("v18 Training save migrates through the v19 reward/cooldown schema"),
+	TestTrue(TEXT("v18 Training save migrates through the v20 reward/cooldown/offline schema"),
 		FGameXXKSaveMigration::MigrateToCurrent(LegacySave, Migrated, Report));
 	TestEqual(TEXT("reward/cooldown migration writes the current version"),
 		Migrated.SaveVersion,
@@ -306,14 +308,31 @@ bool FGameXXKTrainingRewardCooldownMigrationTest::RunTest(const FString& Paramet
 		FGameXXKTrainingRules::TravelAdvancedChestCooldownSeconds;
 	FGameXXKSaveState CurrentRoundTrip;
 	FGameXXKSaveMigrationReport CurrentReport;
-	TestTrue(TEXT("current v19 cooldown state round-trips"),
+	CurrentSave.RuntimeState.Training.PendingTravelGold = 77;
+	CurrentSave.RuntimeState.Training.PendingTravelExperience = 33;
+	CurrentSave.RuntimeState.Training.PendingTravelNormalChestCount = 2;
+	CurrentSave.RuntimeState.Training.PendingTravelAdvancedChestCount = 1;
+	CurrentSave.RuntimeState.Training.PendingTravelCompletedEncounters = 7;
+	CurrentSave.RuntimeState.Training.PendingTravelCompletedStages = 1;
+	CurrentSave.RuntimeState.Training.PendingTravelSimulatedSeconds = 3600;
+	CurrentSave.RuntimeState.Training.TravelLastUpdatedUnixSeconds = 123456789;
+	TestTrue(TEXT("current v20 cooldown and offline ledger state round-trips"),
 		FGameXXKSaveMigration::MigrateToCurrent(CurrentSave, CurrentRoundTrip, CurrentReport));
-	TestEqual(TEXT("normal cooldown survives a v19 round-trip"),
+	TestEqual(TEXT("normal cooldown survives a v20 round-trip"),
 		CurrentRoundTrip.RuntimeState.Training.TravelNormalChestCooldownRemainingSeconds,
 		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds);
-	TestEqual(TEXT("advanced cooldown survives a v19 round-trip"),
+	TestEqual(TEXT("advanced cooldown survives a v20 round-trip"),
 		CurrentRoundTrip.RuntimeState.Training.TravelAdvancedChestCooldownRemainingSeconds,
 		FGameXXKTrainingRules::TravelAdvancedChestCooldownSeconds);
+	TestEqual(TEXT("pending travel gold survives a v20 round-trip"),
+		CurrentRoundTrip.RuntimeState.Training.PendingTravelGold,
+		77);
+	TestEqual(TEXT("pending advanced chests survive a v20 round-trip"),
+		CurrentRoundTrip.RuntimeState.Training.PendingTravelAdvancedChestCount,
+		1);
+	TestEqual(TEXT("travel offline timestamp survives a v20 round-trip"),
+		CurrentRoundTrip.RuntimeState.Training.TravelLastUpdatedUnixSeconds,
+		int64(123456789));
 	return true;
 }
 
@@ -625,6 +644,83 @@ bool FGameXXKTrainingTravelChestInventoryBridgeTest::RunTest(const FString& Para
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelOfflineRulesTest,
+	"GameXXK.Training.TravelOfflineRules",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelOfflineRulesTest::RunTest(const FString& Parameters)
+{
+	FGameXXKTrainingProgress Progress;
+	FGameXXKTrainingRules::InitializeNewGame(Progress);
+	FGameXXKTrainingTravelRuntime Runtime;
+	TestTrue(TEXT("offline rules initialize the cleared 1-1 runner"),
+		FGameXXKTrainingRules::InitializeTravelRunner(Progress, Runtime, 100, 100, 100));
+
+	FGameXXKTrainingOfflineReward SimulatedReward;
+	TestTrue(TEXT("offline rules simulate a bounded elapsed window"),
+		FGameXXKTrainingRules::AdvanceTravelOffline(Progress, Runtime, 64, SimulatedReward));
+	TestTrue(TEXT("offline rules record simulated logical seconds"), SimulatedReward.SimulatedSeconds > 0);
+	TestTrue(TEXT("offline rules settle at least one 1-1 encounter"), SimulatedReward.CompletedEncounters > 0);
+	TestTrue(TEXT("offline rules settle the 1-1 stage with base gold"), SimulatedReward.Gold > 0);
+	TestEqual(TEXT("offline 1-1 travel never grants a normal chest"), SimulatedReward.NormalChestCount, 0);
+	TestEqual(TEXT("offline 1-1 travel never grants an advanced chest"), SimulatedReward.AdvancedChestCount, 0);
+
+	TestTrue(TEXT("offline rules move the result into the pending reward ledger"),
+		FGameXXKTrainingRules::AccumulatePendingTravelReward(Progress, SimulatedReward));
+	FGameXXKTrainingOfflineReward PendingReward;
+	TestTrue(TEXT("pending travel reward can be read back"),
+		FGameXXKTrainingRules::GetPendingTravelReward(Progress, PendingReward));
+	TestEqual(TEXT("pending travel gold matches the simulated result"), PendingReward.Gold, SimulatedReward.Gold);
+	TestEqual(TEXT("pending travel encounter count matches the simulated result"), PendingReward.CompletedEncounters, SimulatedReward.CompletedEncounters);
+
+	FGameXXKTrainingOfflineReward ConsumedReward;
+	TestTrue(TEXT("pending travel reward can be consumed exactly once"),
+		FGameXXKTrainingRules::ConsumePendingTravelReward(Progress, ConsumedReward));
+	TestEqual(TEXT("consumed travel gold matches the pending result"), ConsumedReward.Gold, SimulatedReward.Gold);
+	FGameXXKTrainingOfflineReward EmptyReward;
+	TestFalse(TEXT("consumed travel reward ledger is empty"),
+		FGameXXKTrainingRules::GetPendingTravelReward(Progress, EmptyReward));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelOfflineSubsystemBridgeTest,
+	"GameXXK.Training.TravelOfflineSubsystemBridge",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelOfflineSubsystemBridgeTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestNotNull(TEXT("offline travel bridge subsystem exists"), Subsystem);
+	if (!Subsystem || !Subsystem->StartGame())
+	{
+		return false;
+	}
+
+	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("offline travel bridge starts 1-1"), Subsystem->StartTrainingTravel(StageOne));
+	FGameXXKTrainingOfflineReward SimulatedReward;
+	TestTrue(TEXT("offline travel bridge simulates elapsed travel"),
+		Subsystem->SimulateTrainingTravelOffline(64, SimulatedReward));
+	TestTrue(TEXT("offline travel bridge exposes pending gold"),
+		Subsystem->GetPendingTrainingTravelRewardCopy().Gold > 0);
+
+	const int32 GoldBeforeCollect = Subsystem->GetRuntimeState().PlayerGold;
+	FGameXXKTrainingOfflineReward CollectedReward;
+	TestTrue(TEXT("offline travel bridge collects pending rewards"),
+		Subsystem->CollectTrainingTravelRewards(CollectedReward));
+	TestEqual(TEXT("offline collect returns the simulated gold"), CollectedReward.Gold, SimulatedReward.Gold);
+	TestEqual(TEXT("offline collect writes gold to the runtime inventory"),
+		Subsystem->GetRuntimeState().PlayerGold,
+		GoldBeforeCollect + SimulatedReward.Gold);
+	TestEqual(TEXT("offline collect clears the pending ledger"),
+		Subsystem->GetPendingTrainingTravelRewardCopy().Gold,
+		0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTrainingSaveValidationTest,
 	"GameXXK.Training.SaveValidation",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -645,6 +741,51 @@ bool FGameXXKTrainingSaveValidationTest::RunTest(const FString& Parameters)
 	State.Training.ActiveChallengeStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
 	State.Training.ActiveChallengeEncounterIndex = 999;
 	TestFalse(TEXT("invalid challenge encounter index is rejected"), FGameXXKSaveMigration::ValidateRuntimeState(State, Error));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelOfflineLoadTest,
+	"GameXXK.Training.TravelOfflineLoad",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelOfflineLoadTest::RunTest(const FString& Parameters)
+{
+	const FString SlotName = TEXT("GameXXK_TrainingTravelOfflineLoadTest");
+	const int32 UserIndex = 0;
+	UGameplayStatics::DeleteGameInSlot(SlotName, UserIndex);
+
+	UGameInstance* SourceGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* SourceSubsystem = NewObject<UGameXXKMVPSubsystem>(SourceGameInstance);
+	TestNotNull(TEXT("offline load source subsystem exists"), SourceSubsystem);
+	if (!SourceSubsystem || !SourceSubsystem->StartGame())
+	{
+		return false;
+	}
+	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("offline load source starts 1-1 travel"), SourceSubsystem->StartTrainingTravel(StageOne));
+
+	FGameXXKRuntimeState SourceState = SourceSubsystem->GetRuntimeStateCopy();
+	SourceState.Training.TravelLastUpdatedUnixSeconds = FDateTime::UtcNow().ToUnixTimestamp() - 64;
+	UGameXXKSaveGame* SaveGame = Cast<UGameXXKSaveGame>(
+		UGameplayStatics::CreateSaveGameObject(UGameXXKSaveGame::StaticClass()));
+	TestNotNull(TEXT("offline load save object exists"), SaveGame);
+	if (!SaveGame)
+	{
+		return false;
+	}
+	SaveGame->SaveState = UGameXXKMVPRules::MakeSaveState(SourceState);
+	TestTrue(TEXT("offline load source save writes"), UGameplayStatics::SaveGameToSlot(SaveGame, SlotName, UserIndex));
+
+	UGameInstance* LoadedGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* LoadedSubsystem = NewObject<UGameXXKMVPSubsystem>(LoadedGameInstance);
+	TestTrue(TEXT("offline load restores the saved travel"), LoadedSubsystem->LoadGameFromSlot(SlotName, UserIndex));
+	TestTrue(TEXT("offline load creates pending travel gold"),
+		LoadedSubsystem->GetPendingTrainingTravelRewardCopy().Gold > 0);
+	TestTrue(TEXT("offline load keeps travel active after simulating"),
+		LoadedSubsystem->GetTrainingProgressCopy().bTravelActive);
+
+	UGameplayStatics::DeleteGameInSlot(SlotName, UserIndex);
 	return true;
 }
 

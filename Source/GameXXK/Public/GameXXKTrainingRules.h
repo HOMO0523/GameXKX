@@ -60,6 +60,37 @@ struct GAMEXXK_API FGameXXKTrainingReward
 	bool bChestRolled = false;
 };
 
+/** Aggregated deterministic result for a closed-window Travel simulation. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKTrainingOfflineReward
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Gold = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Experience = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 NormalChestCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 AdvancedChestCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 CompletedEncounters = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 CompletedStages = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 SimulatedSeconds = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	bool bStoppedAtDefeat = false;
+};
+
 /**
  * Runtime read model for one Travel loop tick.  It is intentionally not a
  * SaveGame struct: the save stores the durable stage/encounter cursor, while
@@ -245,6 +276,35 @@ struct GAMEXXK_API FGameXXKTrainingProgress
 	/** Persisted deterministic sequence used by both challenge and Travel settlement. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 ChallengeRewardSeed = 0;
+
+	/** Durable reward ledger produced while the desktop window was closed. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingTravelGold = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingTravelExperience = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingTravelNormalChestCount = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingTravelAdvancedChestCount = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingTravelCompletedEncounters = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingTravelCompletedStages = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingTravelSimulatedSeconds = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bTravelPausedAtDefeat = false;
+
+	/** UTC Unix seconds at the last persisted Travel update; zero means no offline baseline yet. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int64 TravelLastUpdatedUnixSeconds = 0;
 };
 
 /** Pure, deterministic rules for Training.  UI and save code call this API instead of mutating flags ad hoc. */
@@ -255,6 +315,8 @@ public:
 	/** Travel chest cooldowns are durable gameplay constants, expressed in logical seconds. */
 	static constexpr int32 TravelNormalChestCooldownSeconds = 4 * 60;
 	static constexpr int32 TravelAdvancedChestCooldownSeconds = 6 * 60;
+	/** Closed-window simulation is intentionally bounded to one day per collect. */
+	static constexpr int32 MaxTravelOfflineSimulationSeconds = 24 * 60 * 60;
 
 	static FName DifficultyId(EGameXXKTrainingDifficulty Difficulty);
 	static FName MakeStageId(EGameXXKTrainingDifficulty Difficulty, int32 StageNumber);
@@ -291,6 +353,20 @@ public:
 		FGameXXKTrainingProgress& Progress,
 		bool& bOutStageCompleted,
 		FGameXXKTrainingReward& OutReward);
+	static bool AdvanceTravelOffline(
+		FGameXXKTrainingProgress& Progress,
+		FGameXXKTrainingTravelRuntime& InOutRuntime,
+		int32 ElapsedSeconds,
+		FGameXXKTrainingOfflineReward& OutReward);
+	static bool AccumulatePendingTravelReward(
+		FGameXXKTrainingProgress& Progress,
+		const FGameXXKTrainingOfflineReward& Reward);
+	static bool GetPendingTravelReward(
+		const FGameXXKTrainingProgress& Progress,
+		FGameXXKTrainingOfflineReward& OutReward);
+	static bool ConsumePendingTravelReward(
+		FGameXXKTrainingProgress& Progress,
+		FGameXXKTrainingOfflineReward& OutReward);
 	static bool ResolveTravelFailure(FGameXXKTrainingProgress& Progress);
 
 	static FGameXXKTrainingReward BuildTravelReward(FName StageId);

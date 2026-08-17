@@ -390,6 +390,7 @@ bool FGameXXKTrainingRules::StartTravel(FGameXXKTrainingProgress& Progress, cons
 	Progress.CurrentTravelStageId = StageId;
 	Progress.bTravelActive = true;
 	Progress.ActiveTravelEncounterIndex = 0;
+	Progress.bTravelPausedAtDefeat = false;
 	return true;
 }
 
@@ -429,6 +430,11 @@ bool FGameXXKTrainingRules::InitializeTravelRunner(
 	OutRuntime.LastDamageToEnemy = 0;
 	OutRuntime.LastDamageToPlayer = 0;
 	OutRuntime.bAutoBattle = true;
+	if (Progress.bTravelPausedAtDefeat)
+	{
+		OutRuntime.Phase = EGameXXKTrainingTravelPhase::Defeated;
+		OutRuntime.PlayerHP = 0;
+	}
 	return true;
 }
 
@@ -539,6 +545,7 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 	if (InOutRuntime.PlayerHP <= 0)
 	{
 		InOutRuntime.Phase = EGameXXKTrainingTravelPhase::Defeated;
+		Progress.bTravelPausedAtDefeat = true;
 		bOutDefeated = true;
 	}
 	return true;
@@ -599,6 +606,129 @@ bool FGameXXKTrainingRules::AdvanceTravelEncounter(
 	return true;
 }
 
+bool FGameXXKTrainingRules::AdvanceTravelOffline(
+	FGameXXKTrainingProgress& Progress,
+	FGameXXKTrainingTravelRuntime& InOutRuntime,
+	const int32 ElapsedSeconds,
+	FGameXXKTrainingOfflineReward& OutReward)
+{
+	OutReward = FGameXXKTrainingOfflineReward();
+	if (!Progress.bTravelActive || Progress.bChallengeActive || ElapsedSeconds <= 0)
+	{
+		return false;
+	}
+
+	const int32 SimulationSeconds = FMath::Clamp(ElapsedSeconds, 1, MaxTravelOfflineSimulationSeconds);
+	for (int32 Second = 0; Second < SimulationSeconds; ++Second)
+	{
+		bool bEncounterCompleted = false;
+		bool bStageCompleted = false;
+		bool bDefeated = false;
+		FGameXXKTrainingReward Reward;
+		if (!AdvanceTravelRunner(
+			Progress,
+			InOutRuntime,
+			bEncounterCompleted,
+			bStageCompleted,
+			bDefeated,
+			Reward,
+			1))
+		{
+			return false;
+		}
+
+		++OutReward.SimulatedSeconds;
+		if (bEncounterCompleted)
+		{
+			++OutReward.CompletedEncounters;
+			OutReward.Gold = FMath::Max(0, OutReward.Gold + Reward.Gold);
+			OutReward.Experience = FMath::Max(0, OutReward.Experience + Reward.Experience);
+			if (Reward.ChestTier == EGameXXKTrainingRewardTier::NormalChest && Reward.bChestRolled)
+			{
+				++OutReward.NormalChestCount;
+			}
+			else if (Reward.ChestTier == EGameXXKTrainingRewardTier::AdvancedChest && Reward.bChestRolled)
+			{
+				++OutReward.AdvancedChestCount;
+			}
+		}
+		if (bStageCompleted)
+		{
+			++OutReward.CompletedStages;
+		}
+		if (bDefeated)
+		{
+			OutReward.bStoppedAtDefeat = true;
+			break;
+		}
+	}
+	return OutReward.SimulatedSeconds > 0;
+}
+
+bool FGameXXKTrainingRules::AccumulatePendingTravelReward(
+	FGameXXKTrainingProgress& Progress,
+	const FGameXXKTrainingOfflineReward& Reward)
+{
+	if (Reward.Gold < 0
+		|| Reward.Experience < 0
+		|| Reward.NormalChestCount < 0
+		|| Reward.AdvancedChestCount < 0
+		|| Reward.CompletedEncounters < 0
+		|| Reward.CompletedStages < 0
+		|| Reward.SimulatedSeconds < 0)
+	{
+		return false;
+	}
+	Progress.PendingTravelGold = FMath::Max(0, Progress.PendingTravelGold + Reward.Gold);
+	Progress.PendingTravelExperience = FMath::Max(0, Progress.PendingTravelExperience + Reward.Experience);
+	Progress.PendingTravelNormalChestCount = FMath::Max(0, Progress.PendingTravelNormalChestCount + Reward.NormalChestCount);
+	Progress.PendingTravelAdvancedChestCount = FMath::Max(0, Progress.PendingTravelAdvancedChestCount + Reward.AdvancedChestCount);
+	Progress.PendingTravelCompletedEncounters = FMath::Max(0, Progress.PendingTravelCompletedEncounters + Reward.CompletedEncounters);
+	Progress.PendingTravelCompletedStages = FMath::Max(0, Progress.PendingTravelCompletedStages + Reward.CompletedStages);
+	Progress.PendingTravelSimulatedSeconds = FMath::Max(0, Progress.PendingTravelSimulatedSeconds + Reward.SimulatedSeconds);
+	return true;
+}
+
+bool FGameXXKTrainingRules::GetPendingTravelReward(
+	const FGameXXKTrainingProgress& Progress,
+	FGameXXKTrainingOfflineReward& OutReward)
+{
+	OutReward = FGameXXKTrainingOfflineReward();
+	OutReward.Gold = FMath::Max(0, Progress.PendingTravelGold);
+	OutReward.Experience = FMath::Max(0, Progress.PendingTravelExperience);
+	OutReward.NormalChestCount = FMath::Max(0, Progress.PendingTravelNormalChestCount);
+	OutReward.AdvancedChestCount = FMath::Max(0, Progress.PendingTravelAdvancedChestCount);
+	OutReward.CompletedEncounters = FMath::Max(0, Progress.PendingTravelCompletedEncounters);
+	OutReward.CompletedStages = FMath::Max(0, Progress.PendingTravelCompletedStages);
+	OutReward.SimulatedSeconds = FMath::Max(0, Progress.PendingTravelSimulatedSeconds);
+	OutReward.bStoppedAtDefeat = Progress.bTravelPausedAtDefeat;
+	return OutReward.Gold > 0
+		|| OutReward.Experience > 0
+		|| OutReward.NormalChestCount > 0
+		|| OutReward.AdvancedChestCount > 0
+		|| OutReward.CompletedEncounters > 0
+		|| OutReward.CompletedStages > 0
+		|| OutReward.SimulatedSeconds > 0;
+}
+
+bool FGameXXKTrainingRules::ConsumePendingTravelReward(
+	FGameXXKTrainingProgress& Progress,
+	FGameXXKTrainingOfflineReward& OutReward)
+{
+	if (!GetPendingTravelReward(Progress, OutReward))
+	{
+		return false;
+	}
+	Progress.PendingTravelGold = 0;
+	Progress.PendingTravelExperience = 0;
+	Progress.PendingTravelNormalChestCount = 0;
+	Progress.PendingTravelAdvancedChestCount = 0;
+	Progress.PendingTravelCompletedEncounters = 0;
+	Progress.PendingTravelCompletedStages = 0;
+	Progress.PendingTravelSimulatedSeconds = 0;
+	return true;
+}
+
 bool FGameXXKTrainingRules::ResolveTravelFailure(FGameXXKTrainingProgress& Progress)
 {
 	if (!Progress.bTravelActive || Progress.CurrentTravelStageId.IsNone())
@@ -609,6 +739,7 @@ bool FGameXXKTrainingRules::ResolveTravelFailure(FGameXXKTrainingProgress& Progr
 	if (Progress.bRetryOnFailure)
 	{
 		Progress.ActiveTravelEncounterIndex = 0;
+		Progress.bTravelPausedAtDefeat = false;
 		return true;
 	}
 	FGameXXKTrainingStageDefinition Stage;
@@ -621,6 +752,7 @@ bool FGameXXKTrainingRules::ResolveTravelFailure(FGameXXKTrainingProgress& Progr
 	Progress.SelectedStageId = Progress.CurrentTravelStageId;
 	Progress.bTravelActive = false;
 	Progress.ActiveTravelEncounterIndex = INDEX_NONE;
+	Progress.bTravelPausedAtDefeat = false;
 	return true;
 }
 

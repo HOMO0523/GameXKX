@@ -438,7 +438,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("current save schema is version nineteen"), FGameXXKSaveMigration::CurrentSaveVersion, 19);
+	TestEqual(TEXT("current save schema includes offline travel collection"), FGameXXKSaveMigration::CurrentSaveVersion, 20);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
@@ -451,7 +451,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 	FGameXXKSaveState Migrated;
 	FGameXXKSaveMigrationReport Report;
 	TestTrue(TEXT("v10 migrates"), FGameXXKSaveMigration::MigrateToCurrent(VersionTen, Migrated, Report));
-	TestEqual(TEXT("v10 targets v19"), Migrated.SaveVersion, 19);
+	TestEqual(TEXT("v10 targets the current save schema"), Migrated.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
 	TestTrue(TEXT("v10 migration initializes a positive seed"), Migrated.RuntimeState.MetaShop.Seed > 0);
 	TestEqual(TEXT("v10 migration starts at ordinal zero"), Migrated.RuntimeState.MetaShop.NextPurchaseOrdinal, 0);
 

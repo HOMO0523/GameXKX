@@ -97,6 +97,21 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	TestTrue(TEXT("backpack can quick-unequip the active weapon slot"), Widget->QuickUnequipActiveBackpackSlotForTest(0));
 	TestEqual(TEXT("quick-unequip returns the item to the warehouse"), State.EquipmentCollection.WarehouseInstanceIds.Num(), WarehouseBeforeUnequip + 1);
 	TestEqual(TEXT("workbench reads the authoritative runtime gold"), Widget->GetRuntimeGoldForTest(), 4242);
+	const FName TravelStage = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("travel fixture starts the default cleared stage"), Subsystem->StartTrainingTravel(TravelStage));
+	FGameXXKTrainingOfflineReward SimulatedTravelReward;
+	TestTrue(TEXT("travel fixture creates a pending offline reward"),
+		Subsystem->SimulateTrainingTravelOffline(64, SimulatedTravelReward));
+	TestTrue(TEXT("workbench exposes pending travel gold for collection"), Widget->GetPendingTravelGoldForTest() > 0);
+	TestEqual(TEXT("workbench exposes pending normal travel chests"),
+		Widget->GetPendingTravelNormalChestCountForTest(), SimulatedTravelReward.NormalChestCount);
+	TestEqual(TEXT("workbench exposes pending advanced travel chests"),
+		Widget->GetPendingTravelAdvancedChestCountForTest(), SimulatedTravelReward.AdvancedChestCount);
+	const int32 GoldBeforeCollect = Widget->GetRuntimeGoldForTest();
+	TestTrue(TEXT("workbench collect action deposits pending travel rewards"), Widget->CollectTravelRewardsForTest());
+	TestEqual(TEXT("collect action deposits pending travel gold"),
+		Widget->GetRuntimeGoldForTest(), GoldBeforeCollect + SimulatedTravelReward.Gold);
+	TestEqual(TEXT("collect action clears pending travel gold"), Widget->GetPendingTravelGoldForTest(), 0);
 	TestEqual(TEXT("workbench warehouse occupancy comes from the equipment collection"),
 		Widget->GetWarehouseOccupancyForTest(),
 		State.EquipmentCollection.WarehouseInstanceIds.Num());

@@ -357,6 +357,46 @@ int32 UGameXXKDesktopTrainingWorkbenchWidget::GetRuntimeGoldForTest() const
 	return Subsystem ? Subsystem->GetRuntimeState().PlayerGold : 0;
 }
 
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetPendingTravelGoldForTest() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return Subsystem ? Subsystem->GetPendingTrainingTravelRewardCopy().Gold : 0;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetPendingTravelNormalChestCountForTest() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return Subsystem ? Subsystem->GetPendingTrainingTravelRewardCopy().NormalChestCount : 0;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetPendingTravelAdvancedChestCountForTest() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return Subsystem ? Subsystem->GetPendingTrainingTravelRewardCopy().AdvancedChestCount : 0;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::CollectTravelRewardsForTest()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport)
+	{
+		return false;
+	}
+	FGameXXKTrainingOfflineReward CollectedReward;
+	if (!Subsystem->CollectTrainingTravelRewards(CollectedReward))
+	{
+		return false;
+	}
+	SetNotice(FText::FromString(FString::Printf(
+		TEXT("收菜完成：+%d 金币 / +%d 经验 · 普通箱 %d · 精英箱 %d"),
+		CollectedReward.Gold,
+		CollectedReward.Experience,
+		CollectedReward.NormalChestCount,
+		CollectedReward.AdvancedChestCount)));
+	RefreshLayout();
+	return true;
+}
+
 int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehouseOccupancyForTest() const
 {
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
@@ -746,6 +786,27 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 		UTextBlock* Party = MakeText(WidgetTree, FText::FromString(PartyText), 17, FLinearColor(0.55f, 0.85f, 1.0f, 1.0f));
 		AddCanvas(RootCanvas, Party, FVector2D(1080.0f + Index * 115.0f, 35.0f), FVector2D(95.0f, 58.0f));
 	}
+	const FGameXXKTrainingOfflineReward PendingReward = Subsystem
+		? Subsystem->GetPendingTrainingTravelRewardCopy()
+		: FGameXXKTrainingOfflineReward();
+	UTextBlock* PendingLabel = MakeText(
+		WidgetTree,
+		FText::FromString(FString::Printf(
+			TEXT("待收菜：%d 金 · 普通箱 %d · 精英箱 %d"),
+			PendingReward.Gold,
+			PendingReward.NormalChestCount,
+			PendingReward.AdvancedChestCount)),
+		15,
+		FLinearColor(0.90f, 0.82f, 0.56f, 1.0f));
+	AddCanvas(RootCanvas, PendingLabel, FVector2D(1335.0f, 28.0f), FVector2D(145.0f, 44.0f));
+	UGameXXKDesktopTrainingActionButton* CollectButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+	CollectButton->Configure(this, 16);
+	CollectButton->SetBackgroundColor(PendingReward.Gold > 0 || PendingReward.NormalChestCount > 0 || PendingReward.AdvancedChestCount > 0 ? Accent : Panel);
+	CollectButton->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("收菜")), 18));
+	CollectButton->SetToolTipText(FText::FromString(TEXT("领取离线游历的金币、经验和宝箱；宝箱概率与局内一致")));
+	CollectButton->SetIsEnabled(PendingReward.Gold > 0 || PendingReward.Experience > 0 || PendingReward.NormalChestCount > 0 || PendingReward.AdvancedChestCount > 0);
+	AddCanvas(RootCanvas, CollectButton, FVector2D(1325.0f, 72.0f), FVector2D(145.0f, 42.0f));
+	ActionButtons.Add(CollectButton);
 	UGameXXKDesktopTrainingActionButton* RetryButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 	RetryButton->Configure(this, 10);
 	RetryButton->SetBackgroundColor(Accent);
@@ -1362,6 +1423,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	case 10:
 		Subsystem->SetTrainingRetryOnFailure(!Subsystem->GetTrainingProgressCopy().bRetryOnFailure);
 		SetNotice(FText::FromString(TEXT("已切换游历失败重试策略")));
+		break;
+	case 16:
+		CollectTravelRewardsForTest();
 		break;
 	case 14:
 		bSettingsPanelOpen = !bSettingsPanelOpen;

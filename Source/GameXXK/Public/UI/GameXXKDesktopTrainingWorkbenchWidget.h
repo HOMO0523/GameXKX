@@ -111,6 +111,18 @@ public:
 	int32 GetRuntimeGoldForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetPendingTravelGoldForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetPendingTravelNormalChestCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetPendingTravelAdvancedChestCountForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	bool CollectTravelRewardsForTest();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	int32 GetWarehouseOccupancyForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")

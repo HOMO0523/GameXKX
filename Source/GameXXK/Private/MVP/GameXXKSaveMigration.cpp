@@ -586,6 +586,18 @@ namespace
 		Progress.TravelFailures = FMath::Max(0, Progress.TravelFailures);
 		Progress.TravelNormalChestCooldownRemainingSeconds = FMath::Max(0, Progress.TravelNormalChestCooldownRemainingSeconds);
 		Progress.TravelAdvancedChestCooldownRemainingSeconds = FMath::Max(0, Progress.TravelAdvancedChestCooldownRemainingSeconds);
+		Progress.PendingTravelGold = FMath::Max(0, Progress.PendingTravelGold);
+		Progress.PendingTravelExperience = FMath::Max(0, Progress.PendingTravelExperience);
+		Progress.PendingTravelNormalChestCount = FMath::Max(0, Progress.PendingTravelNormalChestCount);
+		Progress.PendingTravelAdvancedChestCount = FMath::Max(0, Progress.PendingTravelAdvancedChestCount);
+		Progress.PendingTravelCompletedEncounters = FMath::Max(0, Progress.PendingTravelCompletedEncounters);
+		Progress.PendingTravelCompletedStages = FMath::Max(0, Progress.PendingTravelCompletedStages);
+		Progress.PendingTravelSimulatedSeconds = FMath::Max(0, Progress.PendingTravelSimulatedSeconds);
+		Progress.TravelLastUpdatedUnixSeconds = FMath::Max<int64>(0, Progress.TravelLastUpdatedUnixSeconds);
+		if (!Progress.bTravelActive)
+		{
+			Progress.bTravelPausedAtDefeat = false;
+		}
 		if (Progress.ChallengeRewardSeed == 0)
 		{
 			Progress.ChallengeRewardSeed = FGameXXKTrainingRules::DefaultChallengeRewardSeed();
@@ -1158,6 +1170,20 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		// remains authoritative and receives a safe sequence starting point.
 		Candidate.RuntimeState.Training.ChallengeRewardSeed = FGameXXKTrainingRules::DefaultChallengeRewardSeed();
 	}
+	if (Source.SaveVersion < TrainingOfflineCollectionIntroducedSaveVersion)
+	{
+		// v20 introduces only the closed-window Travel ledger and timestamp. Existing
+		// v19 saves have no pending offline rewards and start with a fresh baseline.
+		Candidate.RuntimeState.Training.PendingTravelGold = 0;
+		Candidate.RuntimeState.Training.PendingTravelExperience = 0;
+		Candidate.RuntimeState.Training.PendingTravelNormalChestCount = 0;
+		Candidate.RuntimeState.Training.PendingTravelAdvancedChestCount = 0;
+		Candidate.RuntimeState.Training.PendingTravelCompletedEncounters = 0;
+		Candidate.RuntimeState.Training.PendingTravelCompletedStages = 0;
+		Candidate.RuntimeState.Training.PendingTravelSimulatedSeconds = 0;
+		Candidate.RuntimeState.Training.bTravelPausedAtDefeat = false;
+		Candidate.RuntimeState.Training.TravelLastUpdatedUnixSeconds = 0;
+	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	Candidate.SaveVersion = CurrentSaveVersion;
 	if (!ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
@@ -1312,7 +1338,16 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 	}
 	if (State.Training.ChallengeRewardSeed == 0
 		|| State.Training.TravelNormalChestCooldownRemainingSeconds < 0
-		|| State.Training.TravelAdvancedChestCooldownRemainingSeconds < 0)
+		|| State.Training.TravelAdvancedChestCooldownRemainingSeconds < 0
+		|| State.Training.PendingTravelGold < 0
+		|| State.Training.PendingTravelExperience < 0
+		|| State.Training.PendingTravelNormalChestCount < 0
+		|| State.Training.PendingTravelAdvancedChestCount < 0
+		|| State.Training.PendingTravelCompletedEncounters < 0
+		|| State.Training.PendingTravelCompletedStages < 0
+		|| State.Training.PendingTravelSimulatedSeconds < 0
+		|| State.Training.TravelLastUpdatedUnixSeconds < 0
+		|| (State.Training.bTravelPausedAtDefeat && !State.Training.bTravelActive))
 	{
 		OutError = TEXT("Saved Training reward seed or chest cooldown state is invalid.");
 		return false;

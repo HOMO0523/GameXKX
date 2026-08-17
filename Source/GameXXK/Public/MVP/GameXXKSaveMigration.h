@@ -37,7 +37,9 @@ public:
 	static constexpr int32 DesktopTrainingWorkbenchIntroducedSaveVersion = 18;
 	/** v19: deterministic Training reward seed and Travel chest cooldown state. */
 	static constexpr int32 TrainingRewardCooldownsIntroducedSaveVersion = 19;
-	static constexpr int32 CurrentSaveVersion = 19;
+	/** v20: closed-window Travel pending reward ledger and offline timestamp. */
+	static constexpr int32 TrainingOfflineCollectionIntroducedSaveVersion = 20;
+	static constexpr int32 CurrentSaveVersion = 20;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

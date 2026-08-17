@@ -50,6 +50,18 @@ namespace
 			&& UGameXXKMVPRules::AddItem(State, Reward.ChestItemId, 1);
 	}
 
+	static bool AddTrainingChestCount(FGameXXKRuntimeState& State, const FName ChestItemId, const int32 Count)
+	{
+		for (int32 Index = 0; Index < FMath::Max(0, Count); ++Index)
+		{
+			if (!UGameXXKMVPRules::AddItem(State, ChestItemId, 1))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	static FName MakeTrainingEnemyRuntimeId(const FName DefinitionId, const int32 EncounterIndex)
 	{
 		FString Leaf = DefinitionId.ToString();
@@ -823,6 +835,69 @@ bool UGameXXKMVPSubsystem::RebuildTrainingTravelRuntime()
 		RuntimeState.PlayerAttack);
 }
 
+int64 UGameXXKMVPSubsystem::GetCurrentTravelUnixSeconds() const
+{
+	return FDateTime::UtcNow().ToUnixTimestamp();
+}
+
+bool UGameXXKMVPSubsystem::ApplyOfflineTravelSinceLastUpdate(
+	FGameXXKRuntimeState& State,
+	FGameXXKTrainingTravelRuntime& OutRuntime,
+	const int64 NowUnixSeconds) const
+{
+	OutRuntime = FGameXXKTrainingTravelRuntime();
+	if (!State.Training.bTravelActive)
+	{
+		return true;
+	}
+
+	if (!FGameXXKTrainingRules::InitializeTravelRunner(
+		State.Training,
+		OutRuntime,
+		State.PlayerHP,
+		State.PlayerMaxHP,
+		State.PlayerAttack))
+	{
+		return false;
+	}
+
+	const int64 SafeNow = FMath::Max<int64>(1, NowUnixSeconds);
+	const int64 LastUpdated = State.Training.TravelLastUpdatedUnixSeconds;
+	if (LastUpdated <= 0 || SafeNow <= LastUpdated || State.Training.bTravelPausedAtDefeat)
+	{
+		State.Training.TravelLastUpdatedUnixSeconds = SafeNow;
+		return true;
+	}
+
+	const int64 Elapsed = SafeNow - LastUpdated;
+	const int32 SimulatedSeconds = static_cast<int32>(FMath::Min<int64>(
+		Elapsed,
+		FGameXXKTrainingRules::MaxTravelOfflineSimulationSeconds));
+	if (SimulatedSeconds <= 0)
+	{
+		State.Training.TravelLastUpdatedUnixSeconds = SafeNow;
+		return true;
+	}
+
+	FGameXXKTrainingOfflineReward SimulatedReward;
+	if (!FGameXXKTrainingRules::AdvanceTravelOffline(
+		State.Training,
+		OutRuntime,
+		SimulatedSeconds,
+		SimulatedReward)
+		|| !FGameXXKTrainingRules::AccumulatePendingTravelReward(State.Training, SimulatedReward))
+	{
+		return false;
+	}
+	State.PlayerHP = OutRuntime.PlayerHP;
+	State.Training.TravelLastUpdatedUnixSeconds = LastUpdated + SimulatedReward.SimulatedSeconds;
+	if (SimulatedReward.bStoppedAtDefeat)
+	{
+		State.Training.bTravelPausedAtDefeat = true;
+	}
+	return true;
+}
+
 const FGameXXKRuntimeState& UGameXXKMVPSubsystem::GetRuntimeState() const
 {
 	return BattleHudFixtureView.IsSet() ? BattleHudFixtureView.GetValue() : RuntimeState;
@@ -1046,6 +1121,7 @@ bool UGameXXKMVPSubsystem::StartTrainingTravel(const FName StageId)
 	{
 		return false;
 	}
+	Candidate.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
 
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
@@ -1083,6 +1159,8 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingTravelStep(
 	{
 		return false;
 	}
+	Candidate.PlayerHP = CandidateRunner.PlayerHP;
+	Candidate.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	TrainingTravelRuntime = MoveTemp(CandidateRunner);
@@ -1130,10 +1208,104 @@ bool UGameXXKMVPSubsystem::ResolveTrainingTravelFailure()
 	{
 		return false;
 	}
+	Candidate.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
 
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	TrainingTravelRuntime = MoveTemp(CandidateRunner);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ApplyTrainingOfflineRewardToRuntime(
+	FGameXXKRuntimeState& State,
+	const FGameXXKTrainingOfflineReward& Reward) const
+{
+	if (Reward.Gold < 0
+		|| Reward.Experience < 0
+		|| Reward.NormalChestCount < 0
+		|| Reward.AdvancedChestCount < 0)
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = State;
+	Candidate.PlayerGold = FMath::Max(0, Candidate.PlayerGold + Reward.Gold);
+	Candidate.PlayerXP = FMath::Max(0, Candidate.PlayerXP + Reward.Experience);
+	if (!AddTrainingChestCount(
+		Candidate,
+		UGameXXKMVPRules::ItemTrainingNormalChest(),
+		Reward.NormalChestCount)
+		|| !AddTrainingChestCount(
+			Candidate,
+			UGameXXKMVPRules::ItemTrainingAdvancedChest(),
+			Reward.AdvancedChestCount))
+	{
+		return false;
+	}
+	State = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::SimulateTrainingTravelOffline(
+	const int32 ElapsedSeconds,
+	FGameXXKTrainingOfflineReward& OutReward)
+{
+	OutReward = FGameXXKTrainingOfflineReward();
+	if (!RuntimeState.Training.bTravelActive || RuntimeState.Training.bChallengeActive)
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
+	if (!FGameXXKTrainingRules::AdvanceTravelOffline(
+		Candidate.Training,
+		CandidateRunner,
+		ElapsedSeconds,
+		OutReward)
+		|| !FGameXXKTrainingRules::AccumulatePendingTravelReward(Candidate.Training, OutReward))
+	{
+		return false;
+	}
+	Candidate.PlayerHP = CandidateRunner.PlayerHP;
+	if (Candidate.Training.TravelLastUpdatedUnixSeconds > 0)
+	{
+		Candidate.Training.TravelLastUpdatedUnixSeconds += OutReward.SimulatedSeconds;
+	}
+	else
+	{
+		Candidate.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	TrainingTravelRuntime = MoveTemp(CandidateRunner);
+	return true;
+}
+
+FGameXXKTrainingOfflineReward UGameXXKMVPSubsystem::GetPendingTrainingTravelRewardCopy() const
+{
+	FGameXXKTrainingOfflineReward PendingReward;
+	FGameXXKTrainingRules::GetPendingTravelReward(GetRuntimeState().Training, PendingReward);
+	return PendingReward;
+}
+
+bool UGameXXKMVPSubsystem::CollectTrainingTravelRewards(FGameXXKTrainingOfflineReward& OutReward)
+{
+	OutReward = FGameXXKTrainingOfflineReward();
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKTrainingRules::ConsumePendingTravelReward(Candidate.Training, OutReward)
+		|| !ApplyTrainingOfflineRewardToRuntime(Candidate, OutReward))
+	{
+		return false;
+	}
+	if (Candidate.Training.bTravelActive)
+	{
+		Candidate.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
 	return true;
 }
 
@@ -1603,6 +1775,10 @@ bool UGameXXKMVPSubsystem::SaveCurrentGame(FString SlotName, int32 UserIndex)
 	{
 		RecordPlayerLocation(PlayerPawn->GetActorLocation());
 	}
+	if (RuntimeState.Training.bTravelActive && !RuntimeState.Training.bChallengeActive)
+	{
+		RuntimeState.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
+	}
 
 	UGameXXKSaveGame* SaveGame = Cast<UGameXXKSaveGame>(UGameplayStatics::CreateSaveGameObject(UGameXXKSaveGame::StaticClass()));
 	if (!SaveGame)
@@ -1651,9 +1827,19 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 			SetSaveMigrationFailure();
 			return false;
 		}
+		FGameXXKTrainingTravelRuntime LoadedTravelRuntime;
+		if (!ApplyOfflineTravelSinceLastUpdate(
+			MigratedSaveState.RuntimeState,
+			LoadedTravelRuntime,
+			GetCurrentTravelUnixSeconds()))
+		{
+			SetSaveMigrationFailure();
+			return false;
+		}
 		BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 		RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
-		return RebuildTrainingTravelRuntime();
+		TrainingTravelRuntime = MoveTemp(LoadedTravelRuntime);
+		return true;
 	}
 
 	// Invalid/future versions are rejected before any backup or main-slot write.
@@ -1725,6 +1911,15 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 		SetSaveMigrationFailure();
 		return false;
 	}
+	FGameXXKTrainingTravelRuntime MigratedTravelRuntime;
+	if (!ApplyOfflineTravelSinceLastUpdate(
+		MigratedSaveState.RuntimeState,
+		MigratedTravelRuntime,
+		GetCurrentTravelUnixSeconds()))
+	{
+		SetSaveMigrationFailure();
+		return false;
+	}
 	MigrationReport.SourceChecksum = OriginalChecksum;
 	MigrationReport.BackupChecksum = OriginalChecksum;
 	MigrationReport.BackupSlotName = BackupSlotName;
@@ -1788,7 +1983,8 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
-	return RebuildTrainingTravelRuntime();
+	TrainingTravelRuntime = MoveTemp(MigratedTravelRuntime);
+	return true;
 }
 
 bool UGameXXKMVPSubsystem::LoadOrCreateGame(FString SlotName, int32 UserIndex)
