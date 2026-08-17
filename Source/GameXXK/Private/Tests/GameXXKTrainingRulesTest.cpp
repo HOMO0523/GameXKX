@@ -115,9 +115,170 @@ bool FGameXXKTrainingChapterOneCompositionTest::RunTest(const FString& Parameter
 	TestEqual(TEXT("1-3 uses the first-chapter boss identity"), StageThreeDefinition.BossEnemyId, FName(TEXT("Enemy.Ch1.BluehornGoatKing")));
 	const FString Tooltip = FGameXXKTrainingRules::BuildStageTooltip(Progress, StageOne).ToString();
 	TestTrue(TEXT("boss tooltip includes the authored boss name"), Tooltip.Contains(Definition.BossDisplayName.ToString()));
-	TestEqual(TEXT("1-1 travel reward has no chest"), FGameXXKTrainingRules::BuildTravelReward(StageOne).ChestTier, EGameXXKTrainingRewardTier::None);
+	TestEqual(TEXT("base travel reward leaves chest resolution to the encounter resolver"), FGameXXKTrainingRules::BuildTravelReward(StageOne).ChestTier, EGameXXKTrainingRewardTier::None);
 	const FGameXXKTrainingReward BossReward = FGameXXKTrainingRules::BuildChallengeReward(StageOne, EGameXXKTrainingEncounterKind::Boss, true);
 	TestEqual(TEXT("boss reward uses advanced chest tier"), BossReward.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingRewardResolverTest,
+	"GameXXK.Training.RewardResolver",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
+{
+	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	const int32 Seed = 0x13579BDF;
+	const FGameXXKTrainingReward First = FGameXXKTrainingRules::ResolveChallengeReward(
+		StageOne,
+		EGameXXKTrainingEncounterKind::Elite,
+		Seed,
+		0.0f);
+	const FGameXXKTrainingReward Repeat = FGameXXKTrainingRules::ResolveChallengeReward(
+		StageOne,
+		EGameXXKTrainingEncounterKind::Elite,
+		Seed,
+		0.0f);
+	TestEqual(TEXT("the same reward seed produces the same gold"), Repeat.Gold, First.Gold);
+	TestEqual(TEXT("the same reward seed produces the same experience"), Repeat.Experience, First.Experience);
+	TestEqual(TEXT("the same reward seed produces the same chest roll"), Repeat.bChestRolled, First.bChestRolled);
+	TestEqual(TEXT("the same reward seed produces the same chest tier"), Repeat.ChestTier, First.ChestTier);
+
+	const FGameXXKTrainingReward NoChest = FGameXXKTrainingRules::ResolveChallengeReward(
+		StageOne,
+		EGameXXKTrainingEncounterKind::Normal,
+		Seed,
+		-1.0f);
+	TestFalse(TEXT("a fully clamped zero chance never rolls a chest"), NoChest.bChestRolled);
+	TestEqual(TEXT("a failed normal roll has no chest tier"), NoChest.ChestTier, EGameXXKTrainingRewardTier::None);
+
+	const FGameXXKTrainingReward BossChest = FGameXXKTrainingRules::ResolveChallengeReward(
+		StageOne,
+		EGameXXKTrainingEncounterKind::Boss,
+		Seed,
+		1.0f);
+	TestTrue(TEXT("a fully clamped one chance always rolls a boss chest"), BossChest.bChestRolled);
+	TestEqual(TEXT("a boss roll resolves to the advanced chest tier"), BossChest.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
+
+	const FGameXXKTrainingReward EliteChest = FGameXXKTrainingRules::ResolveChallengeReward(
+		StageOne,
+		EGameXXKTrainingEncounterKind::Elite,
+		Seed,
+		1.0f);
+	TestEqual(TEXT("an elite roll resolves to the advanced chest tier"), EliteChest.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
+
+	const FGameXXKTrainingReward TravelNormalChest = FGameXXKTrainingRules::ResolveTravelReward(
+		StageOne,
+		EGameXXKTrainingEncounterKind::Normal,
+		Seed,
+		0,
+		0,
+		1.0f);
+	TestTrue(TEXT("Travel can roll a normal chest when its cooldown is ready"), TravelNormalChest.bChestRolled);
+	TestEqual(TEXT("Travel normal encounters use the normal chest tier"), TravelNormalChest.ChestTier, EGameXXKTrainingRewardTier::NormalChest);
+	const FGameXXKTrainingReward TravelNormalOnCooldown = FGameXXKTrainingRules::ResolveTravelReward(
+		StageOne,
+		EGameXXKTrainingEncounterKind::Normal,
+		Seed,
+		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds,
+		0,
+		1.0f);
+	TestFalse(TEXT("Travel normal chest cooldown blocks an otherwise guaranteed roll"), TravelNormalOnCooldown.bChestRolled);
+
+	const FGameXXKTrainingReward TravelEliteChest = FGameXXKTrainingRules::ResolveTravelReward(
+		StageOne,
+		EGameXXKTrainingEncounterKind::Elite,
+		Seed,
+		0,
+		0,
+		1.0f);
+	TestTrue(TEXT("Travel can roll an advanced elite chest when its cooldown is ready"), TravelEliteChest.bChestRolled);
+	TestEqual(TEXT("Travel elite encounters use the advanced chest tier"), TravelEliteChest.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
+	const FGameXXKTrainingReward TravelEliteOnCooldown = FGameXXKTrainingRules::ResolveTravelReward(
+		StageOne,
+		EGameXXKTrainingEncounterKind::Elite,
+		Seed,
+		0,
+		FGameXXKTrainingRules::TravelAdvancedChestCooldownSeconds,
+		1.0f);
+	TestFalse(TEXT("Travel advanced chest cooldown blocks an otherwise guaranteed roll"), TravelEliteOnCooldown.bChestRolled);
+	TestEqual(TEXT("normal chest cooldown is four minutes"),
+		FGameXXKTrainingRules::TravelChestCooldownSeconds(EGameXXKTrainingRewardTier::NormalChest),
+		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds);
+	TestEqual(TEXT("advanced chest cooldown is six minutes"),
+		FGameXXKTrainingRules::TravelChestCooldownSeconds(EGameXXKTrainingRewardTier::AdvancedChest),
+		FGameXXKTrainingRules::TravelAdvancedChestCooldownSeconds);
+	TestEqual(TEXT("cooldown advances without going below zero"),
+		FGameXXKTrainingRules::AdvanceTravelChestCooldown(120, 200),
+		0);
+	TestEqual(TEXT("cooldown ignores negative elapsed time"),
+		FGameXXKTrainingRules::AdvanceTravelChestCooldown(120, -5),
+		120);
+
+	const int32 NextSeed = FGameXXKTrainingRules::NextChallengeRewardSeed(Seed);
+	TestTrue(TEXT("the reward sequence advances to a non-zero seed"), NextSeed != 0);
+	TestTrue(TEXT("the reward sequence advances to a different seed"), NextSeed != Seed);
+	TestEqual(
+		TEXT("the default reward seed is stable and non-zero"),
+		FGameXXKTrainingRules::DefaultChallengeRewardSeed(),
+		FGameXXKTrainingRules::DefaultChallengeRewardSeed());
+	TestTrue(TEXT("the default reward seed is non-zero"), FGameXXKTrainingRules::DefaultChallengeRewardSeed() != 0);
+
+	FGameXXKTrainingProgress NewGameProgress;
+	FGameXXKTrainingRules::InitializeNewGame(NewGameProgress);
+	TestEqual(TEXT("new Training progress starts with the default reward seed"),
+		NewGameProgress.ChallengeRewardSeed,
+		FGameXXKTrainingRules::DefaultChallengeRewardSeed());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingRewardCooldownMigrationTest,
+	"GameXXK.Training.RewardCooldownMigration",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingRewardCooldownMigrationTest::RunTest(const FString& Parameters)
+{
+	FGameXXKRuntimeState LegacyRuntime = UGameXXKMVPRules::CreateNewGame();
+	LegacyRuntime.Training.ChallengeRewardSeed = 0;
+	LegacyRuntime.Training.TravelNormalChestCooldownRemainingSeconds = 0;
+	LegacyRuntime.Training.TravelAdvancedChestCooldownRemainingSeconds = 0;
+	FGameXXKSaveState LegacySave = UGameXXKMVPRules::MakeSaveState(LegacyRuntime);
+	LegacySave.SaveVersion = FGameXXKSaveMigration::DesktopTrainingWorkbenchIntroducedSaveVersion;
+
+	FGameXXKSaveState Migrated;
+	FGameXXKSaveMigrationReport Report;
+	TestTrue(TEXT("v18 Training save migrates through the v19 reward/cooldown schema"),
+		FGameXXKSaveMigration::MigrateToCurrent(LegacySave, Migrated, Report));
+	TestEqual(TEXT("reward/cooldown migration writes the current version"),
+		Migrated.SaveVersion,
+		FGameXXKSaveMigration::CurrentSaveVersion);
+	TestEqual(TEXT("v18 gets the default deterministic reward seed"),
+		Migrated.RuntimeState.Training.ChallengeRewardSeed,
+		FGameXXKTrainingRules::DefaultChallengeRewardSeed());
+	TestEqual(TEXT("legacy normal chest cooldown starts ready"),
+		Migrated.RuntimeState.Training.TravelNormalChestCooldownRemainingSeconds,
+		0);
+	TestEqual(TEXT("legacy advanced chest cooldown starts ready"),
+		Migrated.RuntimeState.Training.TravelAdvancedChestCooldownRemainingSeconds,
+		0);
+
+	FGameXXKSaveState CurrentSave = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
+	CurrentSave.RuntimeState.Training.TravelNormalChestCooldownRemainingSeconds =
+		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds;
+	CurrentSave.RuntimeState.Training.TravelAdvancedChestCooldownRemainingSeconds =
+		FGameXXKTrainingRules::TravelAdvancedChestCooldownSeconds;
+	FGameXXKSaveState CurrentRoundTrip;
+	FGameXXKSaveMigrationReport CurrentReport;
+	TestTrue(TEXT("current v19 cooldown state round-trips"),
+		FGameXXKSaveMigration::MigrateToCurrent(CurrentSave, CurrentRoundTrip, CurrentReport));
+	TestEqual(TEXT("normal cooldown survives a v19 round-trip"),
+		CurrentRoundTrip.RuntimeState.Training.TravelNormalChestCooldownRemainingSeconds,
+		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds);
+	TestEqual(TEXT("advanced cooldown survives a v19 round-trip"),
+		CurrentRoundTrip.RuntimeState.Training.TravelAdvancedChestCooldownRemainingSeconds,
+		FGameXXKTrainingRules::TravelAdvancedChestCooldownSeconds);
 	return true;
 }
 
@@ -201,7 +362,11 @@ bool FGameXXKTrainingTravelRunnerLoopTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("travel stage completes at the boss"), bStageCompleted);
 	TestEqual(TEXT("travel victory loops back to encounter zero"), Progress.ActiveTravelEncounterIndex, 0);
 	TestEqual(TEXT("travel victory count increments once"), Progress.TravelVictories, 1);
-	TestEqual(TEXT("1-1 travel reward remains chest-free"), Reward.ChestTier, EGameXXKTrainingRewardTier::None);
+	TestTrue(TEXT("1-1 travel settlement still grants the base travel reward"), Reward.Gold > 0);
+	TestTrue(TEXT("1-1 travel settlement may resolve a chest independently of the base reward"),
+		Reward.ChestTier == EGameXXKTrainingRewardTier::None
+		|| Reward.ChestTier == EGameXXKTrainingRewardTier::NormalChest
+		|| Reward.ChestTier == EGameXXKTrainingRewardTier::AdvancedChest);
 	TestTrue(TEXT("travel reward grants gold"), Reward.Gold > 0);
 	TestTrue(TEXT("travel runner continues walking after settlement"), Runner.Phase == EGameXXKTrainingTravelPhase::Walking);
 	TestEqual(TEXT("runner remains on the selected stage"), Runner.StageId, StageOne);

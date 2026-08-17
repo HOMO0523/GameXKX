@@ -229,6 +229,18 @@ struct GAMEXXK_API FGameXXKTrainingProgress
 	/** The current encounter within the repeating travel loop. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 ActiveTravelEncounterIndex = INDEX_NONE;
+
+	/** Logical seconds remaining before the next Travel normal chest may roll. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TravelNormalChestCooldownRemainingSeconds = 0;
+
+	/** Logical seconds remaining before the next Travel advanced chest may roll. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TravelAdvancedChestCooldownRemainingSeconds = 0;
+
+	/** Persisted deterministic sequence used by both challenge and Travel settlement. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 ChallengeRewardSeed = 0;
 };
 
 /** Pure, deterministic rules for Training.  UI and save code call this API instead of mutating flags ad hoc. */
@@ -236,6 +248,9 @@ class GAMEXXK_API FGameXXKTrainingRules final
 {
 public:
 	static constexpr int32 StagesPerDifficulty = 9;
+	/** Travel chest cooldowns are durable gameplay constants, expressed in logical seconds. */
+	static constexpr int32 TravelNormalChestCooldownSeconds = 4 * 60;
+	static constexpr int32 TravelAdvancedChestCooldownSeconds = 6 * 60;
 
 	static FName DifficultyId(EGameXXKTrainingDifficulty Difficulty);
 	static FName MakeStageId(EGameXXKTrainingDifficulty Difficulty, int32 StageNumber);
@@ -266,7 +281,8 @@ public:
 		bool& bOutEncounterCompleted,
 		bool& bOutStageCompleted,
 		bool& bOutDefeated,
-		FGameXXKTrainingReward& OutReward);
+		FGameXXKTrainingReward& OutReward,
+		int32 ElapsedSeconds = 1);
 	static bool AdvanceTravelEncounter(
 		FGameXXKTrainingProgress& Progress,
 		bool& bOutStageCompleted,
@@ -279,5 +295,32 @@ public:
 		EGameXXKTrainingEncounterKind EncounterKind,
 		bool bChestRolled,
 		float TalentChestDropBonus = 0.0f);
+	/**
+	 * Resolves a seeded active-challenge reward.  The caller owns the persisted
+	 * seed and advances it once the encounter settlement is committed.
+	 */
+	static FGameXXKTrainingReward ResolveChallengeReward(
+		FName StageId,
+		EGameXXKTrainingEncounterKind EncounterKind,
+		int32 RewardSeed,
+		float TalentChestDropBonus = 0.0f);
+	/**
+	 * Resolves a seeded Travel reward using the same configured chance as an
+	 * active challenge.  A ready cooldown is required before a chest can be
+	 * granted; cooldown state is owned by FGameXXKTrainingProgress and is
+	 * advanced by AdvanceTravelChestCooldown.
+	 */
+	static FGameXXKTrainingReward ResolveTravelReward(
+		FName StageId,
+		EGameXXKTrainingEncounterKind EncounterKind,
+		int32 RewardSeed,
+		int32 NormalChestCooldownRemainingSeconds,
+		int32 AdvancedChestCooldownRemainingSeconds,
+		float TalentChestDropBonus = 0.0f,
+		bool bIncludeStageReward = false);
+	static int32 DefaultChallengeRewardSeed();
+	static int32 NextChallengeRewardSeed(int32 RewardSeed);
+	static int32 AdvanceTravelChestCooldown(int32 RemainingSeconds, int32 ElapsedSeconds);
+	static int32 TravelChestCooldownSeconds(EGameXXKTrainingRewardTier ChestTier);
 	static FText BuildStageTooltip(const FGameXXKTrainingProgress& Progress, FName StageId);
 };

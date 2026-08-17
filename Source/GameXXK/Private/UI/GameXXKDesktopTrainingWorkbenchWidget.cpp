@@ -118,10 +118,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeome
 			return;
 		}
 		TravelAccumulator += InDeltaTime;
-		if (TravelAccumulator >= 1.5f)
+		if (TravelAccumulator >= 1.0f)
 		{
-			TravelAccumulator = 0.0f;
-			AdvanceTravelForTest();
+			const int32 ElapsedSeconds = FMath::Max(1, FMath::FloorToInt(TravelAccumulator));
+			TravelAccumulator -= static_cast<float>(ElapsedSeconds);
+			AdvanceTravelForTest(ElapsedSeconds);
 		}
 		return;
 	}
@@ -279,7 +280,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceChallengeForTest()
 	return true;
 }
 
-bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest()
+bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest(const int32 ElapsedSeconds)
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || ViewMode != EGameXXKDesktopTrainingViewMode::Workbench)
@@ -290,7 +291,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest()
 	bool bCompleted = false;
 	bool bDefeated = false;
 	FGameXXKTrainingReward Reward;
-	if (!Subsystem->AdvanceTrainingTravelStep(bEncounterCompleted, bCompleted, bDefeated, Reward))
+	if (!Subsystem->AdvanceTrainingTravelStep(bEncounterCompleted, bCompleted, bDefeated, Reward, FMath::Max(1, ElapsedSeconds)))
 	{
 		return false;
 	}

@@ -584,6 +584,12 @@ namespace
 		}
 		Progress.TravelVictories = FMath::Max(0, Progress.TravelVictories);
 		Progress.TravelFailures = FMath::Max(0, Progress.TravelFailures);
+		Progress.TravelNormalChestCooldownRemainingSeconds = FMath::Max(0, Progress.TravelNormalChestCooldownRemainingSeconds);
+		Progress.TravelAdvancedChestCooldownRemainingSeconds = FMath::Max(0, Progress.TravelAdvancedChestCooldownRemainingSeconds);
+		if (Progress.ChallengeRewardSeed == 0)
+		{
+			Progress.ChallengeRewardSeed = FGameXXKTrainingRules::DefaultChallengeRewardSeed();
+		}
 	}
 
 	int32 NormalizeRouteSeedForMigration(const int32 Seed)
@@ -1145,6 +1151,13 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		// old saves start at the explicitly cleared Normal 1-1 tutorial stage.
 		FGameXXKTrainingRules::InitializeNewGame(Candidate.RuntimeState.Training);
 	}
+	if (Source.SaveVersion < TrainingRewardCooldownsIntroducedSaveVersion
+		&& Candidate.RuntimeState.Training.ChallengeRewardSeed == 0)
+	{
+		// v19 adds only deterministic reward/cooldown state; old Training progress
+		// remains authoritative and receives a safe sequence starting point.
+		Candidate.RuntimeState.Training.ChallengeRewardSeed = FGameXXKTrainingRules::DefaultChallengeRewardSeed();
+	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	Candidate.SaveVersion = CurrentSaveVersion;
 	if (!ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
@@ -1295,6 +1308,13 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 	if (State.Training.bTravelActive && State.Training.bChallengeActive)
 	{
 		OutError = TEXT("Saved Training challenge and travel sessions cannot be active together.");
+		return false;
+	}
+	if (State.Training.ChallengeRewardSeed == 0
+		|| State.Training.TravelNormalChestCooldownRemainingSeconds < 0
+		|| State.Training.TravelAdvancedChestCooldownRemainingSeconds < 0)
+	{
+		OutError = TEXT("Saved Training reward seed or chest cooldown state is invalid.");
 		return false;
 	}
 	const FGameXXKRouteProgress& RouteProgress = State.CardRun.RouteProgress;

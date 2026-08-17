@@ -35,7 +35,9 @@ public:
 	static constexpr int32 BossCardSlotsIntroducedSaveVersion = 17;
 	/** v18: pure-2D desktop Training progress and challenge/travel state. */
 	static constexpr int32 DesktopTrainingWorkbenchIntroducedSaveVersion = 18;
-	static constexpr int32 CurrentSaveVersion = 18;
+	/** v19: deterministic Training reward seed and Travel chest cooldown state. */
+	static constexpr int32 TrainingRewardCooldownsIntroducedSaveVersion = 19;
+	static constexpr int32 CurrentSaveVersion = 19;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

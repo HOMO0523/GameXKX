@@ -74,9 +74,10 @@ public:
 		bool& bOutEncounterCompleted,
 		bool& bOutStageCompleted,
 		bool& bOutDefeated,
-		FGameXXKTrainingReward& OutReward);
+		FGameXXKTrainingReward& OutReward,
+		int32 ElapsedSeconds = 1);
 
-	/** Advances one encounter in the repeating travel loop and returns the stage reward at its boss. */
+	/** Advances one compatibility encounter; the runner API is preferred because it also resolves Travel chests/cooldowns. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
 	bool AdvanceTrainingTravelEncounter(bool& bOutStageCompleted, FGameXXKTrainingReward& OutReward);
 

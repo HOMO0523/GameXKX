@@ -123,7 +123,7 @@ public:
 	bool AdvanceChallengeForTest();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
-	bool AdvanceTravelForTest();
+	bool AdvanceTravelForTest(int32 ElapsedSeconds = 1);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool SetRetryOnFailureForTest(bool bEnabled);

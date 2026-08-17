@@ -133,6 +133,40 @@ namespace
 			return 1;
 		}
 	}
+
+	EGameXXKTrainingRewardTier ChestTierForEncounter(const EGameXXKTrainingEncounterKind Kind)
+	{
+		return Kind == EGameXXKTrainingEncounterKind::Normal
+			? EGameXXKTrainingRewardTier::NormalChest
+			: EGameXXKTrainingRewardTier::AdvancedChest;
+	}
+
+	float ChestChanceForEncounter(
+		const FGameXXKTrainingStageDefinition& Stage,
+		const EGameXXKTrainingEncounterKind Kind)
+	{
+		return Kind == EGameXXKTrainingEncounterKind::Normal
+			? Stage.NormalChestChance
+			: Stage.AdvancedChestChance;
+	}
+
+	uint32 MixRewardSeed(uint32 Value)
+	{
+		Value ^= Value >> 16;
+		Value *= 0x7feb352dU;
+		Value ^= Value >> 15;
+		Value *= 0x846ca68bU;
+		Value ^= Value >> 16;
+		return Value;
+	}
+
+	float RewardRoll(const FName StageId, const EGameXXKTrainingEncounterKind Kind, const int32 RewardSeed)
+	{
+		const uint32 KindSalt = static_cast<uint32>(static_cast<uint8>(Kind) + 1U) * 0x9e3779b9U;
+		const uint32 StageSalt = FCrc::StrCrc32(*StageId.ToString());
+		const uint32 Mixed = MixRewardSeed(static_cast<uint32>(RewardSeed) ^ StageSalt ^ KindSalt);
+		return static_cast<float>(Mixed & 0x00ffffffU) / 16777216.0f;
+	}
 }
 
 FName FGameXXKTrainingRules::DifficultyId(const EGameXXKTrainingDifficulty Difficulty)
@@ -230,6 +264,7 @@ void FGameXXKTrainingRules::InitializeNewGame(FGameXXKTrainingProgress& Progress
 	Progress.bTravelActive = true;
 	Progress.bRetryOnFailure = true;
 	Progress.ActiveTravelEncounterIndex = 0;
+	Progress.ChallengeRewardSeed = DefaultChallengeRewardSeed();
 }
 
 bool FGameXXKTrainingRules::IsDifficultyUnlocked(const FGameXXKTrainingProgress& Progress, const EGameXXKTrainingDifficulty Difficulty)
@@ -390,7 +425,8 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 	bool& bOutEncounterCompleted,
 	bool& bOutStageCompleted,
 	bool& bOutDefeated,
-	FGameXXKTrainingReward& OutReward)
+	FGameXXKTrainingReward& OutReward,
+	const int32 ElapsedSeconds)
 {
 	bOutEncounterCompleted = false;
 	bOutStageCompleted = false;
@@ -406,6 +442,12 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 	{
 		return false;
 	}
+	Progress.TravelNormalChestCooldownRemainingSeconds = AdvanceTravelChestCooldown(
+		Progress.TravelNormalChestCooldownRemainingSeconds,
+		ElapsedSeconds);
+	Progress.TravelAdvancedChestCooldownRemainingSeconds = AdvanceTravelChestCooldown(
+		Progress.TravelAdvancedChestCooldownRemainingSeconds,
+		ElapsedSeconds);
 
 	if (InOutRuntime.Phase == EGameXXKTrainingTravelPhase::Walking)
 	{
@@ -437,9 +479,28 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 		}
 
 		const bool bLastEncounter = InOutRuntime.EncounterIndex == Encounters.Num() - 1;
+		OutReward = ResolveTravelReward(
+			Progress.CurrentTravelStageId,
+			Encounters[InOutRuntime.EncounterIndex].Kind,
+			Progress.ChallengeRewardSeed,
+			Progress.TravelNormalChestCooldownRemainingSeconds,
+			Progress.TravelAdvancedChestCooldownRemainingSeconds,
+			0.0f,
+			bLastEncounter);
+		if (OutReward.bChestRolled)
+		{
+			if (OutReward.ChestTier == EGameXXKTrainingRewardTier::AdvancedChest)
+			{
+				Progress.TravelAdvancedChestCooldownRemainingSeconds = TravelAdvancedChestCooldownSeconds;
+			}
+			else if (OutReward.ChestTier == EGameXXKTrainingRewardTier::NormalChest)
+			{
+				Progress.TravelNormalChestCooldownRemainingSeconds = TravelNormalChestCooldownSeconds;
+			}
+		}
+		Progress.ChallengeRewardSeed = NextChallengeRewardSeed(Progress.ChallengeRewardSeed);
 		if (bLastEncounter)
 		{
-			OutReward = BuildTravelReward(Progress.CurrentTravelStageId);
 			++Progress.TravelVictories;
 			Progress.ActiveTravelEncounterIndex = 0;
 			bOutStageCompleted = true;
@@ -481,6 +542,12 @@ bool FGameXXKTrainingRules::AdvanceTravelEncounter(
 	{
 		return false;
 	}
+	Progress.TravelNormalChestCooldownRemainingSeconds = AdvanceTravelChestCooldown(
+		Progress.TravelNormalChestCooldownRemainingSeconds,
+		1);
+	Progress.TravelAdvancedChestCooldownRemainingSeconds = AdvanceTravelChestCooldown(
+		Progress.TravelAdvancedChestCooldownRemainingSeconds,
+		1);
 	const TArray<FGameXXKTrainingEncounterDefinition> Encounters = BuildEncounterSequence(Progress.CurrentTravelStageId, true);
 	if (!Encounters.IsValidIndex(Progress.ActiveTravelEncounterIndex))
 	{
@@ -493,7 +560,26 @@ bool FGameXXKTrainingRules::AdvanceTravelEncounter(
 		return true;
 	}
 
-	OutReward = BuildTravelReward(Progress.CurrentTravelStageId);
+	OutReward = ResolveTravelReward(
+		Progress.CurrentTravelStageId,
+		Encounters[Progress.ActiveTravelEncounterIndex].Kind,
+		Progress.ChallengeRewardSeed,
+		Progress.TravelNormalChestCooldownRemainingSeconds,
+		Progress.TravelAdvancedChestCooldownRemainingSeconds,
+		0.0f,
+		bLastEncounter);
+	if (OutReward.bChestRolled)
+	{
+		if (OutReward.ChestTier == EGameXXKTrainingRewardTier::AdvancedChest)
+		{
+			Progress.TravelAdvancedChestCooldownRemainingSeconds = TravelAdvancedChestCooldownSeconds;
+		}
+		else if (OutReward.ChestTier == EGameXXKTrainingRewardTier::NormalChest)
+		{
+			Progress.TravelNormalChestCooldownRemainingSeconds = TravelNormalChestCooldownSeconds;
+		}
+	}
+	Progress.ChallengeRewardSeed = NextChallengeRewardSeed(Progress.ChallengeRewardSeed);
 	++Progress.TravelVictories;
 	Progress.ActiveTravelEncounterIndex = 0;
 	bOutStageCompleted = true;
@@ -559,16 +645,114 @@ FGameXXKTrainingReward FGameXXKTrainingRules::BuildChallengeReward(
 	{
 		return Reward;
 	}
-	const float Chance = EncounterKind == EGameXXKTrainingEncounterKind::Boss
-		? Stage.AdvancedChestChance
-		: Stage.NormalChestChance;
-	// The actual random roll remains outside this pure resolver.  The bonus is
-	// clamped here so future talent trees cannot produce an invalid probability.
+	const float Chance = ChestChanceForEncounter(Stage, EncounterKind);
+	// This legacy entry point intentionally preserves the old forced-roll
+	// contract for compatibility fixtures. Production settlement uses the
+	// seeded ResolveChallengeReward/ResolveTravelReward APIs below.
 	const float EffectiveChance = FMath::Clamp(Chance + TalentChestDropBonus, 0.0f, 1.0f);
-	Reward.ChestTier = EncounterKind == EGameXXKTrainingEncounterKind::Boss && EffectiveChance > 0.0f
-		? EGameXXKTrainingRewardTier::AdvancedChest
-		: (EffectiveChance > 0.0f ? EGameXXKTrainingRewardTier::NormalChest : EGameXXKTrainingRewardTier::None);
+	Reward.ChestTier = EffectiveChance > 0.0f
+		? ChestTierForEncounter(EncounterKind)
+		: EGameXXKTrainingRewardTier::None;
 	return Reward;
+}
+
+FGameXXKTrainingReward FGameXXKTrainingRules::ResolveChallengeReward(
+	const FName StageId,
+	const EGameXXKTrainingEncounterKind EncounterKind,
+	const int32 RewardSeed,
+	const float TalentChestDropBonus)
+{
+	FGameXXKTrainingReward Reward = BuildTravelReward(StageId);
+	FGameXXKTrainingStageDefinition Stage;
+	if (!TryGetStageDefinition(StageId, Stage))
+	{
+		return Reward;
+	}
+	Reward.Gold = FMath::Max(1, Stage.TravelGold * 2);
+	Reward.Experience = FMath::Max(1, Stage.TravelExperience * 2);
+	Reward.ChestTier = EGameXXKTrainingRewardTier::None;
+	Reward.bChestRolled = false;
+	const float Chance = FMath::Clamp(ChestChanceForEncounter(Stage, EncounterKind) + TalentChestDropBonus, 0.0f, 1.0f);
+	if (Chance <= 0.0f)
+	{
+		return Reward;
+	}
+	if (Chance >= 1.0f || RewardRoll(StageId, EncounterKind, RewardSeed == 0 ? DefaultChallengeRewardSeed() : RewardSeed) < Chance)
+	{
+		Reward.bChestRolled = true;
+		Reward.ChestTier = ChestTierForEncounter(EncounterKind);
+	}
+	return Reward;
+}
+
+FGameXXKTrainingReward FGameXXKTrainingRules::ResolveTravelReward(
+	const FName StageId,
+	const EGameXXKTrainingEncounterKind EncounterKind,
+	const int32 RewardSeed,
+	const int32 NormalChestCooldownRemainingSeconds,
+	const int32 AdvancedChestCooldownRemainingSeconds,
+	const float TalentChestDropBonus,
+	const bool bIncludeStageReward)
+{
+	FGameXXKTrainingReward Reward;
+	if (bIncludeStageReward)
+	{
+		Reward = BuildTravelReward(StageId);
+	}
+	FGameXXKTrainingStageDefinition Stage;
+	if (!TryGetStageDefinition(StageId, Stage))
+	{
+		return Reward;
+	}
+	const EGameXXKTrainingRewardTier Tier = ChestTierForEncounter(EncounterKind);
+	const int32 CooldownRemaining = Tier == EGameXXKTrainingRewardTier::AdvancedChest
+		? FMath::Max(0, AdvancedChestCooldownRemainingSeconds)
+		: FMath::Max(0, NormalChestCooldownRemainingSeconds);
+	const float Chance = FMath::Clamp(ChestChanceForEncounter(Stage, EncounterKind) + TalentChestDropBonus, 0.0f, 1.0f);
+	if (CooldownRemaining > 0 || Chance <= 0.0f)
+	{
+		return Reward;
+	}
+	if (Chance >= 1.0f || RewardRoll(StageId, EncounterKind, RewardSeed == 0 ? DefaultChallengeRewardSeed() : RewardSeed) < Chance)
+	{
+		Reward.bChestRolled = true;
+		Reward.ChestTier = Tier;
+	}
+	return Reward;
+}
+
+int32 FGameXXKTrainingRules::DefaultChallengeRewardSeed()
+{
+	return 0x13579BDF;
+}
+
+int32 FGameXXKTrainingRules::NextChallengeRewardSeed(const int32 RewardSeed)
+{
+	uint32 Next = static_cast<uint32>(RewardSeed == 0 ? DefaultChallengeRewardSeed() : RewardSeed);
+	Next = Next * 1664525U + 1013904223U;
+	if (Next == 0U)
+	{
+		Next = static_cast<uint32>(DefaultChallengeRewardSeed());
+	}
+	return static_cast<int32>(Next);
+}
+
+int32 FGameXXKTrainingRules::AdvanceTravelChestCooldown(const int32 RemainingSeconds, const int32 ElapsedSeconds)
+{
+	return FMath::Max(0, FMath::Max(0, RemainingSeconds) - FMath::Max(0, ElapsedSeconds));
+}
+
+int32 FGameXXKTrainingRules::TravelChestCooldownSeconds(const EGameXXKTrainingRewardTier ChestTier)
+{
+	switch (ChestTier)
+	{
+	case EGameXXKTrainingRewardTier::NormalChest:
+		return TravelNormalChestCooldownSeconds;
+	case EGameXXKTrainingRewardTier::AdvancedChest:
+		return TravelAdvancedChestCooldownSeconds;
+	default:
+		return 0;
+	}
 }
 
 FText FGameXXKTrainingRules::BuildStageTooltip(const FGameXXKTrainingProgress& Progress, const FName StageId)
