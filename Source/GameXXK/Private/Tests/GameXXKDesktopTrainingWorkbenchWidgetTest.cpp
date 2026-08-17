@@ -10,6 +10,45 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest,
+	"GameXXK.DesktopTraining.Workbench.MasterV2ResourceContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest::RunTest(const FString& Parameters)
+{
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	TestNotNull(TEXT("resource contract widget exists"), Widget);
+	if (!Widget)
+	{
+		return false;
+	}
+	const TArray<FString> ResourcePaths = Widget->GetMasterV2ResourcePathsForTest();
+
+	int32 ApprovedResourceCount = 0;
+	bool bHasPanelLarge = false;
+	bool bHasItemSlot = false;
+	bool bHasEquipmentSlot = false;
+	int32 NavDiscCount = 0;
+	for (const FString& Path : ResourcePaths)
+	{
+		if (Path.Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/")))
+		{
+			++ApprovedResourceCount;
+			bHasPanelLarge |= Path.Contains(TEXT("T_MasterV2_PanelLarge"));
+			bHasItemSlot |= Path.Contains(TEXT("T_MasterV2_ItemSlot"));
+			bHasEquipmentSlot |= Path.Contains(TEXT("T_MasterV2_EquipmentSlot"));
+			NavDiscCount += Path.Contains(TEXT("T_MasterV2_NavDisc")) ? 1 : 0;
+		}
+	}
+	TestTrue(TEXT("workbench uses approved MasterV2 brush resources"), ApprovedResourceCount >= 3);
+	TestTrue(TEXT("workbench uses the approved large panel texture"), bHasPanelLarge);
+	TestTrue(TEXT("workbench uses the approved item slot texture"), bHasItemSlot);
+	TestTrue(TEXT("workbench uses the approved equipment slot texture"), bHasEquipmentSlot);
+	TestEqual(TEXT("workbench exposes all five approved circular navigation icons"), NavDiscCount, 5);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingWorkbenchLayoutContractTest,
 	"GameXXK.DesktopTraining.Workbench.LayoutContract",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

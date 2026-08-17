@@ -1,9 +1,9 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-18T05:05:00+08:00
+updated_at: 2026-08-18T05:31:00+08:00
 source_commit: 5c60999
-working_tree: dirty (runtime/docs committed; preserve user L_Main.umap, unrelated probes and source-art changes)
+working_tree: dirty (uncommitted MasterV2 workbench/nav-disc binding; preserve user L_Main.umap, unrelated probes and source-art changes)
 ---
 # GameXXK 当前目标(滚动指针)
 
@@ -16,7 +16,7 @@ working_tree: dirty (runtime/docs committed; preserve user L_Main.umap, unrelate
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
 - 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。这两份报告只作历史回归参考，不冒充当前工作区的本轮全量运行。
-- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-011435-ai-production-loop.md`）；本轮最新冷 UBT `-NoHotReload` 成功（`Saved/HarnessReports/20260818-043332-ai-production-loop.md`）；定向挑战待选牌回归 `1/1`（`Saved/HarnessReports/20260818-043354-ai-production-loop.md`，Automation 目录 `TrainingPendingChoiceGreen-20260818-r3`）；最新 `GameXXK.Training` `18/18`（`Saved/HarnessReports/20260818-043418-ai-production-loop.md`，Automation 目录 `TrainingFull-20260818-r4`，含 1-1 全 encounter 无箱、非 1-1 游历复用局内概率、普通箱 240 秒/精英与首领高级箱 360 秒冷却、离线补算/待领取账本/读档恢复、真实挑战自动推进与待选牌处理）；`GameXXK.DesktopTraining` `1/1`（`Saved/HarnessReports/20260818-043438-ai-production-loop.md`，Automation 目录 `DesktopTrainingFull-20260818-r5`）；`GameXXK.MVP.SaveGame` `12/12`（`Saved/HarnessReports/20260818-041625-ai-production-loop.md`，Automation 目录 `SaveGameTravelOfflineV20Green-20260818`）；挑战侧壳只读/导航锁定、设置/关闭分离、仓库分页/排序/卸下仍有前置证据。最新 asset-contract 报告 `Saved/HarnessReports/20260818-012130-ai-production-loop.md` 仍为 `51/66`，15 个测试文件失败；本次完成后复核已明确其未关闭，故 Phase 0 总门禁仍未通过。
+- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-011435-ai-production-loop.md`）；本轮最新冷 UBT `-NoHotReload` 成功（`Saved/HarnessReports/20260818-050426-ai-production-loop.md`）；定向挑战待选牌回归 `1/1`（`Saved/HarnessReports/20260818-043354-ai-production-loop.md`，Automation 目录 `TrainingPendingChoiceGreen-20260818-r3`）；最新 `GameXXK.Training` `18/18`（`Saved/HarnessReports/20260818-050527-ai-production-loop.md`，Automation 目录 `TrainingAfterNavDisc-20260818`，含 1-1 全 encounter 无箱、非 1-1 游历复用局内概率、普通箱 240 秒/精英与首领高级箱 360 秒冷却、离线补算/待领取账本/读档恢复、真实挑战自动推进与待选牌处理）；`GameXXK.DesktopTraining` `2/2`（`Saved/HarnessReports/20260818-050507-ai-production-loop.md`，Automation 目录 `DesktopTrainingNavDisc-20260818`）；MasterV2 资源合同 `1/1`（`Saved/Automation/MasterV2NavDiscGreen-20260818-r1/index.json`），覆盖 PanelLarge、ItemSlot、EquipmentSlot、Tab、Route 和五张等比 NavDisc；`GameXXK.MVP.SaveGame` `12/12`（`Saved/HarnessReports/20260818-041625-ai-production-loop.md`，Automation 目录 `SaveGameTravelOfflineV20Green-20260818`）。挑战侧壳只读/导航锁定、设置/关闭分离、仓库分页/排序/卸下仍有前置证据。最新 asset-contract 报告 `Saved/HarnessReports/20260818-012130-ai-production-loop.md` 仍为 `51/66`，15 个测试文件失败；本次完成后复核已明确其未关闭，故 Phase 0 总门禁仍未通过。
 - 当前工作区保护：`Content/GameXXK/Maps/L_Main.umap` 保留用户已有修改；`SourceAssets/`、`SourceArt/` 及未跟踪探针不在本轮 Phase 0 写入范围。
 
 ## 已落地(最近六轮)
@@ -38,7 +38,7 @@ working_tree: dirty (runtime/docs committed; preserve user L_Main.umap, unrelate
 ## 桌面历练工作台当前进度(2026-08-18)
 
 - **规则/存档已推进但未完成玩法闭环**：`GameXXKTrainingRules.*` 覆盖三难度、27 个稳定关卡 ID、挑战/游历分离、普通 1-1 默认通关、失败策略、章节编制、seeded challenge/travel reward resolver 和普通/高级 Travel 240/360 秒冷却；1-1 游历普通/精英/首领均无箱，只保留阶段金币/经验；v20 新增 UTC 基线、最多 24 小时离线补算、待领取奖励账本、收菜入库和阵亡暂停标记；`FGameXXKSaveState` 的 Training 字段为 v20，迁移、挑战/游历 encounter index、冷却负值和 seed 校验已接入。
-- **程序化工作台、真实挑战桥接和 TravelRunner 已提交且默认关闭**：`GameXXKDesktopTrainingWorkbenchWidget.*` 提供 1920×1080 几何合同、仓库 4 列/20 格分页、背包比例约 1.76:1、右侧 27 节点/三难度页签、挑战/游历按钮、顶部 3 敌+3 我挂机条；挂机条读取 TravelRunner 的遭遇、阶段和 HP。背包内部现在有主角/两名永久伙伴切换、当前角色对可见仓库格 quick-equip、确定性排序、装备槽卸下回仓、独立设置面板和独立关闭动作，工具替换右栏，天赋替换中栏，挑战期间导航只读。`StartTrainingChallenge` 已创建真实 `FGameXXKCardBattleAdapter` 会话并支持单步推进；自动模式会对强制弃牌、洞察、任务检索和自动解析队列做有界确定性选择；`StartTrainingTravel`/`AdvanceTrainingTravelStep` 已支持走动、单敌人自动攻击、掉血、击杀、Boss 结算、重试/回退和 1-1 一血规则，但仍是 opt-in 运行时，`GameXXKMVPPlayerController` 默认保持 3D 城镇。
+- **程序化工作台、真实挑战桥接和 TravelRunner 已提交且默认关闭**：`GameXXKDesktopTrainingWorkbenchWidget.*` 提供 1920×1080 几何合同、仓库 4 列/20 格分页、背包比例约 1.76:1、右侧 27 节点/三难度页签、挑战/游历按钮、顶部 3 敌+3 我挂机条；挂机条读取 TravelRunner 的遭遇、阶段和 HP。背包内部现在有主角/两名永久伙伴切换、当前角色对可见仓库格 quick-equip、确定性排序、装备槽卸下回仓、独立设置面板和独立关闭动作，工具替换右栏，天赋替换中栏，挑战期间导航只读。本轮工作区增量已将批准的 MasterV2 `PanelLarge`、`ItemSlot`、`EquipmentSlot`、页签、路线节点，以及五张圆形 `NavDisc` 以缓存纹理和九宫格/等比槽位接入；资源合同与 DesktopTraining 回归已通过，但仍不是最终 PSD/manifest 交付。`StartTrainingChallenge` 已创建真实 `FGameXXKCardBattleAdapter` 会话并支持单步推进；自动模式会对强制弃牌、洞察、任务检索和自动解析队列做有界确定性选择；`StartTrainingTravel`/`AdvanceTrainingTravelStep` 已支持走动、单敌人自动攻击、掉血、击杀、Boss 结算、重试/回退和 1-1 一血规则，但仍是 opt-in 运行时，`GameXXKMVPPlayerController` 默认保持 3D 城镇。
 - **章节敌人语义已按最终口径冻结到规则与测试**：普通候选为公鸡/狸猫，次级精英为山羊/黄鼬，每场 4 个普通槽、2 个精英槽和 1 个首领；1-1 山羊、1-2 黄鼬、1-3 青角羊王。挑战生命与游历 1 HP 例外已分离；挑战/游历真实表现和结算仍待 PIE。
 - **当前仍未完成**：TravelRunner 的实际 Actor/动画与最终后台 Timer/视觉、完整路线卡战斗 UX、真实天赋 read model/最终概率、FIFO 箱批/容量/箱内物品、仓库转移/容量与完整装备点击交互、工具真实数据、PSD/图标 manifest、1920/2560 截图与 TaskBarHero 四组性能采样。当前已具备金币、装备实例/六槽、物品数量、canonical 宝箱 item 的最小 RuntimeState 镜像、v20 离线补算/待领取/收菜、基础角色/伙伴切换、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、独立设置与关闭动作；完整逐项复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
 

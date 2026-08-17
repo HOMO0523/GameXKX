@@ -5,7 +5,12 @@
 #include "Components/Button.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
+#include "Components/Image.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Engine/Texture2D.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
@@ -14,6 +19,8 @@
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKCharacterBackpackModel.h"
 #include "Styling/CoreStyle.h"
+#include "Styling/SlateBrush.h"
+#include "Styling/SlateTypes.h"
 
 	namespace
 {
@@ -25,6 +32,81 @@
 	const FLinearColor PanelAlt(0.20f, 0.13f, 0.07f, 0.98f);
 	const FLinearColor Accent(0.82f, 0.43f, 0.08f, 1.0f);
 	const FLinearColor Gold(1.0f, 0.78f, 0.25f, 1.0f);
+	static constexpr const TCHAR* PanelLargeTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge.T_MasterV2_PanelLarge");
+	static constexpr const TCHAR* ButtonNeutralTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonNeutral.T_MasterV2_ButtonNeutral");
+	static constexpr const TCHAR* ItemSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
+	static constexpr const TCHAR* EquipmentSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_EquipmentSlot.T_MasterV2_EquipmentSlot");
+	static constexpr const TCHAR* TabNormalTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TabNormal.T_MasterV2_TabNormal");
+	static constexpr const TCHAR* TabSelectedTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TabSelected.T_MasterV2_TabSelected");
+	static constexpr const TCHAR* RouteNodeTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavRoute.T_MasterV2_NavRoute");
+	static constexpr const TCHAR* NavDiscBackpackTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscBackpack.T_MasterV2_NavDiscBackpack");
+	static constexpr const TCHAR* NavDiscCompanionTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscCompanion.T_MasterV2_NavDiscCompanion");
+	static constexpr const TCHAR* NavDiscCodexTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscCodex.T_MasterV2_NavDiscCodex");
+	static constexpr const TCHAR* NavDiscTaskTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscTask.T_MasterV2_NavDiscTask");
+	static constexpr const TCHAR* NavDiscRouteTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscRoute.T_MasterV2_NavDiscRoute");
+
+	TMap<FString, TWeakObjectPtr<UTexture2D>>& GetTextureCache()
+	{
+		static TMap<FString, TWeakObjectPtr<UTexture2D>> Cache;
+		return Cache;
+	}
+
+	UTexture2D* LoadTexture(const TCHAR* Path)
+	{
+		if (!Path)
+		{
+			return nullptr;
+		}
+		TMap<FString, TWeakObjectPtr<UTexture2D>>& Cache = GetTextureCache();
+		const FString Key(Path);
+		if (const TWeakObjectPtr<UTexture2D>* Cached = Cache.Find(Key))
+		{
+			if (Cached->IsValid())
+			{
+				return Cached->Get();
+			}
+		}
+		UTexture2D* Loaded = LoadObject<UTexture2D>(nullptr, Path);
+		Cache.FindOrAdd(Key) = Loaded;
+		return Loaded;
+	}
+
+	FSlateBrush MakeTextureBrush(const TCHAR* Path, const FVector2D& ImageSize, const FLinearColor& Tint = FLinearColor::White)
+	{
+		FSlateBrush Brush;
+		Brush.SetResourceObject(LoadTexture(Path));
+		Brush.DrawAs = ESlateBrushDrawType::Image;
+		Brush.ImageSize = ImageSize;
+		Brush.TintColor = FSlateColor(Tint);
+		return Brush;
+	}
+
+	FSlateBrush MakeBoxTextureBrush(
+		const TCHAR* Path,
+		const FVector2D& ImageSize,
+		const FMargin& Margin = FMargin(0.065f),
+		const FLinearColor& Tint = FLinearColor::White)
+	{
+		FSlateBrush Brush = MakeTextureBrush(Path, ImageSize, Tint);
+		Brush.DrawAs = ESlateBrushDrawType::Box;
+		Brush.Margin = Margin;
+		return Brush;
+	}
+
+	FButtonStyle MakeTextureButtonStyle(
+		const TCHAR* Path,
+		const FVector2D& ImageSize,
+		const FMargin& Margin = FMargin(0.065f),
+		const FLinearColor& Tint = FLinearColor::White)
+	{
+		FButtonStyle Style;
+		const FSlateBrush Normal = MakeBoxTextureBrush(Path, ImageSize, Margin, Tint);
+		Style.SetNormal(Normal);
+		Style.SetHovered(MakeBoxTextureBrush(Path, ImageSize, Margin, Tint * FLinearColor(1.08f, 1.08f, 1.08f, 1.0f)));
+		Style.SetPressed(MakeBoxTextureBrush(Path, ImageSize, Margin, Tint * FLinearColor(0.82f, 0.82f, 0.82f, 1.0f)));
+		Style.SetDisabled(MakeBoxTextureBrush(Path, ImageSize, Margin, FLinearColor(0.45f, 0.45f, 0.45f, 0.75f)));
+		return Style;
+	}
 
 	UTextBlock* MakeText(UWidgetTree* Tree, const FText& Text, int32 Size, const FLinearColor& Color = FLinearColor::White)
 	{
@@ -39,7 +121,30 @@
 	UBorder* MakePanel(UWidgetTree* Tree, const FLinearColor& Color)
 	{
 		UBorder* Result = Tree->ConstructWidget<UBorder>(UBorder::StaticClass());
-		Result->SetBrushColor(Color);
+		const FSlateBrush Brush = MakeBoxTextureBrush(PanelLargeTexturePath, FVector2D(320.0f, 180.0f));
+		if (Brush.GetResourceObject())
+		{
+			Result->SetBrush(Brush);
+		}
+		else
+		{
+			Result->SetBrushColor(Color);
+		}
+		return Result;
+	}
+
+	UBorder* MakeSlotPanel(UWidgetTree* Tree, const TCHAR* TexturePath, const FLinearColor& Color, const FVector2D& ImageSize)
+	{
+		UBorder* Result = Tree->ConstructWidget<UBorder>(UBorder::StaticClass());
+		const FSlateBrush Brush = MakeBoxTextureBrush(TexturePath, ImageSize, FMargin(0.08f));
+		if (Brush.GetResourceObject())
+		{
+			Result->SetBrush(Brush);
+		}
+		else
+		{
+			Result->SetBrushColor(Color);
+		}
 		return Result;
 	}
 
@@ -68,6 +173,45 @@
 		case EGameXXKDesktopTrainingNav::Tools: return FText::FromString(TEXT("工具"));
 		default: return FText::FromString(TEXT("历练"));
 		}
+	}
+
+	const TCHAR* NavDiscTexturePath(const EGameXXKDesktopTrainingNav Nav)
+	{
+		switch (Nav)
+		{
+		case EGameXXKDesktopTrainingNav::Warehouse: return NavDiscBackpackTexturePath;
+		case EGameXXKDesktopTrainingNav::Formation: return NavDiscCompanionTexturePath;
+		case EGameXXKDesktopTrainingNav::Talents: return NavDiscCodexTexturePath;
+		case EGameXXKDesktopTrainingNav::Tools: return NavDiscTaskTexturePath;
+		default: return NavDiscRouteTexturePath;
+		}
+	}
+
+	UWidget* MakeNavigationContent(
+		UWidgetTree* Tree,
+		const EGameXXKDesktopTrainingNav Nav,
+		const bool bSelected)
+	{
+		UHorizontalBox* Content = Tree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		USizeBox* IconBox = Tree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		IconBox->SetWidthOverride(46.0f);
+		IconBox->SetHeightOverride(46.0f);
+		UImage* Icon = Tree->ConstructWidget<UImage>(UImage::StaticClass());
+		const FLinearColor IconTint = bSelected ? FLinearColor::White : FLinearColor(0.78f, 0.72f, 0.62f, 1.0f);
+		const FSlateBrush IconBrush = MakeTextureBrush(NavDiscTexturePath(Nav), FVector2D(46.0f, 46.0f), IconTint);
+		if (IconBrush.GetResourceObject())
+		{
+			Icon->SetBrush(IconBrush);
+		}
+		IconBox->AddChild(Icon);
+		UHorizontalBoxSlot* IconSlot = Content->AddChildToHorizontalBox(IconBox);
+		IconSlot->SetPadding(FMargin(5.0f, 6.0f, 4.0f, 6.0f));
+		IconSlot->SetVerticalAlignment(VAlign_Center);
+		UTextBlock* Label = MakeText(Tree, NavText(Nav), 22, bSelected ? FLinearColor::White : FLinearColor(0.86f, 0.76f, 0.62f, 1.0f));
+		UHorizontalBoxSlot* LabelSlot = Content->AddChildToHorizontalBox(Label);
+		LabelSlot->SetPadding(FMargin(2.0f, 0.0f, 7.0f, 0.0f));
+		LabelSlot->SetVerticalAlignment(VAlign_Center);
+		return Content;
 	}
 
 	TArray<FName> SortedVisibleInventoryItemIds(const FGameXXKRuntimeState& State)
@@ -151,6 +295,7 @@ void UGameXXKDesktopTrainingStageButton::Configure(UGameXXKDesktopTrainingWorkbe
 {
 	Owner = InOwner;
 	StageId = InStageId;
+	SetStyle(MakeTextureButtonStyle(RouteNodeTexturePath, FVector2D(76.0f, 76.0f), FMargin(0.08f)));
 	OnClicked.Clear();
 	OnClicked.AddDynamic(this, &UGameXXKDesktopTrainingStageButton::HandleClicked);
 }
@@ -167,6 +312,7 @@ void UGameXXKDesktopTrainingActionButton::Configure(UGameXXKDesktopTrainingWorkb
 {
 	Owner = InOwner;
 	ActionId = InActionId;
+	SetStyle(MakeTextureButtonStyle(ButtonNeutralTexturePath, FVector2D(150.0f, 54.0f), FMargin(0.08f)));
 	OnClicked.Clear();
 	OnClicked.AddDynamic(this, &UGameXXKDesktopTrainingActionButton::HandleClicked);
 }
@@ -344,6 +490,32 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::IsSettingsPanelOpenForTest() const
 int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehouseColumnCountForTest() const
 {
 	return WarehouseColumns;
+}
+
+TArray<FString> UGameXXKDesktopTrainingWorkbenchWidget::GetMasterV2ResourcePathsForTest() const
+{
+	const TCHAR* RequiredPaths[] = {
+		PanelLargeTexturePath,
+		ButtonNeutralTexturePath,
+		ItemSlotTexturePath,
+		EquipmentSlotTexturePath,
+		TabNormalTexturePath,
+		TabSelectedTexturePath,
+		RouteNodeTexturePath,
+		NavDiscBackpackTexturePath,
+		NavDiscCompanionTexturePath,
+		NavDiscCodexTexturePath,
+		NavDiscTaskTexturePath,
+		NavDiscRouteTexturePath};
+	TArray<FString> LoadedPaths;
+	for (const TCHAR* Path : RequiredPaths)
+	{
+		if (const UTexture2D* Texture = LoadTexture(Path))
+		{
+			LoadedPaths.Add(Texture->GetPathName());
+		}
+	}
+	return LoadedPaths;
 }
 
 FVector2D UGameXXKDesktopTrainingWorkbenchWidget::GetBackpackAspectRatioForTest() const
@@ -842,7 +1014,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel(const bool bRea
 				: InstanceId.ToString();
 			if (bReadOnly)
 			{
-				UBorder* Cell = MakePanel(WidgetTree, FLinearColor(0.07f, 0.06f, 0.05f, 1.0f));
+				UBorder* Cell = MakeSlotPanel(WidgetTree, EquipmentSlotTexturePath, FLinearColor(0.07f, 0.06f, 0.05f, 1.0f), FVector2D(58.0f, 58.0f));
 				Cell->SetContent(MakeText(WidgetTree, FText::FromString(EquipmentLabel), 10, FLinearColor::White));
 				Cell->SetToolTipText(FText::FromString(FString::Printf(TEXT("装备实例：%s\n%s\n挑战中只读"), *InstanceId.ToString(), *EquipmentLabel)));
 				AddCanvas(RootCanvas, Cell, CellPosition, FVector2D(58.0f, 58.0f));
@@ -851,6 +1023,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel(const bool bRea
 			{
 				UGameXXKDesktopTrainingActionButton* SlotButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 				SlotButton->Configure(this, 100 + SlotIndex);
+				SlotButton->SetStyle(MakeTextureButtonStyle(EquipmentSlotTexturePath, FVector2D(58.0f, 58.0f), FMargin(0.08f)));
 				SlotButton->SetBackgroundColor(FLinearColor(0.07f, 0.06f, 0.05f, 1.0f));
 				SlotButton->SetContent(MakeText(WidgetTree, FText::FromString(EquipmentLabel), 10, FLinearColor::White));
 				SlotButton->SetToolTipText(FText::FromString(FString::Printf(TEXT("装备实例：%s\n%s\n点击装备到当前角色"), *InstanceId.ToString(), *EquipmentLabel)));
@@ -860,7 +1033,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel(const bool bRea
 		}
 		else
 		{
-			UBorder* Cell = MakePanel(WidgetTree, FLinearColor(0.07f, 0.06f, 0.05f, 1.0f));
+			UBorder* Cell = MakeSlotPanel(WidgetTree, ItemSlotTexturePath, FLinearColor(0.07f, 0.06f, 0.05f, 1.0f), FVector2D(58.0f, 58.0f));
 			AddCanvas(RootCanvas, Cell, CellPosition, FVector2D(58.0f, 58.0f));
 		}
 	}
@@ -974,6 +1147,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 			const FString EquipmentLabel = EquipmentDisplayName(RuntimeState->EquipmentCollection, EquippedInstanceIds[SlotIndex]);
 			UGameXXKDesktopTrainingActionButton* EquipButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 			EquipButton->Configure(this, 200 + SlotIndex);
+			EquipButton->SetStyle(MakeTextureButtonStyle(EquipmentSlotTexturePath, FVector2D(78.0f, 78.0f), FMargin(0.08f)));
 			EquipButton->SetBackgroundColor(FLinearColor(0.10f, 0.07f, 0.05f, 1.0f));
 			EquipButton->SetContent(MakeText(WidgetTree, FText::FromString(EquipmentLabel), 11, FLinearColor::White));
 			EquipButton->SetToolTipText(FText::FromString(FString::Printf(TEXT("已装备实例：%s\n%s\n点击卸下并返回仓库"), *EquippedInstanceIds[SlotIndex].ToString(), *EquipmentLabel)));
@@ -982,7 +1156,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 		}
 		else
 		{
-			UBorder* EmptyEquip = MakePanel(WidgetTree, FLinearColor(0.10f, 0.07f, 0.05f, 1.0f));
+			UBorder* EmptyEquip = MakeSlotPanel(WidgetTree, EquipmentSlotTexturePath, FLinearColor(0.10f, 0.07f, 0.05f, 1.0f), FVector2D(78.0f, 78.0f));
 			AddCanvas(RootCanvas, EmptyEquip, SlotPosition, FVector2D(78.0f, 78.0f));
 		}
 	}
@@ -1027,7 +1201,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 	{
 		const int32 Column = SlotIndex % 4;
 		const int32 Row = SlotIndex / 4;
-		UBorder* Cell = MakePanel(WidgetTree, FLinearColor(0.06f, 0.05f, 0.04f, 1.0f));
+		UBorder* Cell = MakeSlotPanel(WidgetTree, ItemSlotTexturePath, FLinearColor(0.06f, 0.05f, 0.04f, 1.0f), FVector2D(105.0f, 56.0f));
 		AddCanvas(RootCanvas, Cell, FVector2D(700.0f + Column * 118.0f, 450.0f + Row * 66.0f), FVector2D(105.0f, 56.0f));
 		if (VisibleInventoryItems.IsValidIndex(SlotIndex) && RuntimeState)
 		{
@@ -1158,7 +1332,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel(const bool bR
 		const TCHAR* Label = DifficultyIndex == 0 ? TEXT("普通") : DifficultyIndex == 1 ? TEXT("困难") : TEXT("地狱");
 		if (bReadOnly)
 		{
-			UBorder* DifficultyTab = MakePanel(WidgetTree, Difficulties[DifficultyIndex] == ActiveDifficulty ? Accent : PanelAlt);
+			UBorder* DifficultyTab = MakeSlotPanel(
+				WidgetTree,
+				Difficulties[DifficultyIndex] == ActiveDifficulty ? TabSelectedTexturePath : TabNormalTexturePath,
+				Difficulties[DifficultyIndex] == ActiveDifficulty ? Accent : PanelAlt,
+				FVector2D(135.0f, 42.0f));
 			DifficultyTab->SetContent(MakeText(WidgetTree, FText::FromString(Label), 18));
 			AddCanvas(RootCanvas, DifficultyTab, FVector2D(1380.0f + DifficultyIndex * 155.0f, 225.0f), FVector2D(135.0f, 42.0f));
 		}
@@ -1166,6 +1344,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel(const bool bR
 		{
 			UGameXXKDesktopTrainingActionButton* DifficultyTab = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 			DifficultyTab->Configure(this, 11 + DifficultyIndex);
+			DifficultyTab->SetStyle(MakeTextureButtonStyle(
+				Difficulties[DifficultyIndex] == ActiveDifficulty ? TabSelectedTexturePath : TabNormalTexturePath,
+				FVector2D(135.0f, 42.0f),
+				FMargin(0.08f)));
 			DifficultyTab->SetBackgroundColor(Difficulties[DifficultyIndex] == ActiveDifficulty ? Accent : PanelAlt);
 			DifficultyTab->SetContent(MakeText(WidgetTree, FText::FromString(Label), 18));
 			AddCanvas(RootCanvas, DifficultyTab, FVector2D(1380.0f + DifficultyIndex * 155.0f, 225.0f), FVector2D(135.0f, 42.0f));
@@ -1184,19 +1366,28 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel(const bool bR
 		const FText NodeTooltip = Subsystem ? Subsystem->BuildTrainingStageTooltip(Definition.StageId) : FText::GetEmpty();
 		if (bReadOnly)
 		{
-			UBorder* Node = MakePanel(WidgetTree, Definition.StageId == SelectedStageId ? Gold : FLinearColor(0.35f, 0.25f, 0.13f, 1.0f));
+			UBorder* Node = MakeSlotPanel(
+				WidgetTree,
+				RouteNodeTexturePath,
+				Definition.StageId == SelectedStageId ? Gold : FLinearColor(0.35f, 0.25f, 0.13f, 1.0f),
+				FVector2D(76.0f, 76.0f));
 			Node->SetContent(MakeText(WidgetTree, NodeLabel, 18, Ink));
 			Node->SetToolTipText(FText::FromString(NodeTooltip.ToString() + TEXT("\n挑战中只读")));
-			AddCanvas(RootCanvas, Node, NodePosition, FVector2D(120.0f, 54.0f));
+			AddCanvas(RootCanvas, Node, NodePosition, FVector2D(76.0f, 76.0f));
 		}
 		else
 		{
 			UGameXXKDesktopTrainingStageButton* Node = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingStageButton>(UGameXXKDesktopTrainingStageButton::StaticClass());
 			Node->Configure(this, Definition.StageId);
+			Node->SetStyle(MakeTextureButtonStyle(
+				RouteNodeTexturePath,
+				FVector2D(76.0f, 76.0f),
+				FMargin(0.08f),
+				Definition.StageId == SelectedStageId ? Gold : FLinearColor::White));
 			Node->SetBackgroundColor(Definition.StageId == SelectedStageId ? Gold : FLinearColor(0.35f, 0.25f, 0.13f, 1.0f));
 			Node->SetToolTipText(NodeTooltip);
 			Node->SetContent(MakeText(WidgetTree, NodeLabel, 18, Ink));
-			AddCanvas(RootCanvas, Node, NodePosition, FVector2D(120.0f, 54.0f));
+			AddCanvas(RootCanvas, Node, NodePosition, FVector2D(76.0f, 76.0f));
 			StageButtons.Add(Node);
 		}
 	}
@@ -1312,7 +1503,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBottomNavigation()
 		UGameXXKDesktopTrainingActionButton* Button = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 		Button->Configure(this, Index);
 		Button->SetBackgroundColor(Navs[Index] == ActiveNav ? Accent : PanelAlt);
-		Button->SetContent(MakeText(WidgetTree, NavText(Navs[Index]), 22));
+		Button->SetContent(MakeNavigationContent(WidgetTree, Navs[Index], Navs[Index] == ActiveNav));
 		AddCanvas(RootCanvas, Button, FVector2D(365.0f + Index * 190.0f, 1000.0f), FVector2D(175.0f, 58.0f));
 		ActionButtons.Add(Button);
 	}

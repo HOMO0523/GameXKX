@@ -104,6 +104,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	int32 GetWarehouseColumnCountForTest() const;
 
+	/** The approved MasterV2 resources the programmatic shell binds at runtime. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	TArray<FString> GetMasterV2ResourcePathsForTest() const;
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	FVector2D GetBackpackAspectRatioForTest() const;
 

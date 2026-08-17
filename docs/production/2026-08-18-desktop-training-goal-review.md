@@ -1,7 +1,7 @@
 ---
 status: review
 owner: codex
-updated_at: 2026-08-18T05:08:00+08:00
+updated_at: 2026-08-18T05:31:00+08:00
 source_commit: 5c60999
 decision: not-complete
 goal_status: active
@@ -9,7 +9,7 @@ goal_status: active
 
 # 桌面历练 /goal 完成后复核（2026-08-18）
 
-这份记录是当前目标的收尾审计，不把“程序能编译”写成“产品已完成”。审计输入包括 `docs/production/2026-08-16-full-project-optimization-proposal.md`、`docs/production/2026-08-16-optimization-followup.md`、`docs/production/current-goal-acceptance.md`、桌面工作台设计稿以及本轮实际代码、Automation、冷 UBT 和脚本报告；本轮追加复核了 `5c60999` 的挑战自动战斗待选牌处理。
+这份记录是当前目标的收尾审计，不把“程序能编译”写成“产品已完成”。审计输入包括 `docs/production/2026-08-16-full-project-optimization-proposal.md`、`docs/production/2026-08-16-optimization-followup.md`、`docs/production/current-goal-acceptance.md`、桌面工作台设计稿以及本轮实际代码、Automation、冷 UBT 和脚本报告；本轮追加复核了 `5c60999` 的挑战自动战斗待选牌处理，并在未提交工作区增量中接入批准的 MasterV2 面板/槽位/页签/路线节点和五张等比 NavDisc 图标。
 
 ## 1. 结论先行
 
@@ -18,7 +18,7 @@ goal_status: active
 本轮已经把“规则/存档/程序化壳”推进到“挑战可创建真实 CardBattle 会话、游历可按 runner 步进”的阶段，但离用户要求的完整桌面游戏还有四类硬缺口：
 
 1. **游历仍缺生产表现，但持久在线/收菜模型已落地**：确定性 TravelRunner 已支持走动阶段、一次一只怪、自动攻击、掉血、击杀、Boss 结算、阵亡重试/回退和 1-1 一血例外；v20 增加 UTC 基线、最多 24 小时离线补算、待领取奖励账本、读档补算和工作台“收菜”按钮。仍没有实机角色/怪物 Actor、动画、碰撞/移动表现和最终视觉窗口。
-2. **生产 UI/PSD 尚未闭环**：当前工作台仍是 Slate 程序化壳，但已接入最小 RuntimeState 背包/仓库 read model（金币、装备实例、六槽、物品数量/tooltip），并完成基础角色/伙伴切换、天赋中栏容器、工具右栏替换、仓库 4 列分页、可见格 quick-equip、确定性排序、已装备槽卸下回仓，以及背包内独立设置/关闭动作；现有 Master UI 纹理、透明图标 manifest/hash、转移/容量交互和 1920/2560 校准尚未接入。
+2. **生产 UI/PSD 尚未闭环**：当前工作台仍是 Slate 程序化壳，但已接入最小 RuntimeState 背包/仓库 read model（金币、装备实例、六槽、物品数量/tooltip），并完成基础角色/伙伴切换、天赋中栏容器、工具右栏替换、仓库 4 列分页、可见格 quick-equip、确定性排序、已装备槽卸下回仓，以及背包内独立设置/关闭动作；本轮工作区增量已将批准的 MasterV2 `PanelLarge`、`ItemSlot`、`EquipmentSlot`、页签、路线节点和五张圆形 NavDisc 通过缓存纹理/九宫格/等比槽位绑定，资源合同已自动化通过，但仍没有透明图标 manifest/hash、转移/容量交互、最终 PSD 资产和 1920/2560 校准。
 3. **奖励 Resolver 已进入可验证阶段，但仍未产品闭环**：挑战/游历现在使用稳定 seed + 配置概率 + talent bonus 参数；普通游历箱冷却 240 秒（4 分钟）、精英/首领高级箱冷却 360 秒（6 分钟），两种游历概率与局内 Resolver 共用，状态迁移到 v20。普通/高级历练宝箱已注册为 canonical Inventory item，并在挑战/游历结算时写入当前 Runtime Inventory；离线奖励先进入待领取账本，收菜后入库，读档补算和 v20 round-trip 已通过。真实天赋树数据源、最终概率表、FIFO 箱批/容量和箱内物品仍未接入。
 4. **PIE/MCP 与性能证据缺失**：本轮没有新的工作台 1920×1080 / 2560×1440 截图、实际点击流、悬停视觉证据或 TaskBarHero 对照采样。
 
@@ -44,7 +44,7 @@ goal_status: active
 | 工作包 | 已落地事实 | 当前判定 | 缺口/下一门禁 |
 |---|---|---|---|
 | 项目优化 Phase 0 | 真源文档、旧历练 shelved 标记、脚本标签、GBK/路径边界、harness 状态检查已整理 | 部分通过 | asset-contract 仍 51/66；mcp-live 未跑 |
-| 2D 工作台壳 | 左仓库 4 列、中背包约 1.76 比例、右 27 节点/三难度、底部 5 导航、挑战/游历按钮、顶部 3 敌+3 我占位；背包/仓库已读取 RuntimeState 的金币、装备实例、六槽和物品数量，并有角色/伙伴切换、天赋中栏、工具右栏基础容器、20 格分页、visible-slot quick-equip、单排序、已装备槽卸下回仓、背包内独立设置面板和独立关闭动作；挑战时左仓库与右历练地图保持只读外壳 | 几何/read model 部分通过 | 仍是程序化壳；没有生产纹理、转移/容量/完整装备操作、工具真实数据和视觉校准 |
+| 2D 工作台壳 | 左仓库 4 列、中背包约 1.76 比例、右 27 节点/三难度、底部 5 导航、挑战/游历按钮、顶部 3 敌+3 我占位；背包/仓库已读取 RuntimeState 的金币、装备实例、六槽和物品数量，并有角色/伙伴切换、天赋中栏、工具右栏基础容器、20 格分页、visible-slot quick-equip、单排序、已装备槽卸下回仓、背包内独立设置面板和独立关闭动作；挑战时左仓库与右历练地图保持只读外壳；本轮接入批准 MasterV2 PanelLarge/ItemSlot/EquipmentSlot/页签/路线节点与五张 NavDisc，NavDisc 在 46×46 方形槽位内等比显示 | 几何/read model/资源路径部分通过 | 仍是程序化壳；没有 PSD manifest/hash、转移/容量/完整装备操作、工具真实数据和视觉校准 |
 | Tab/菜单入口 | opt-in 时 Tab 打开工作台并落到背包视图；背包有独立设置与关闭按钮；默认仍不拦截旧 Town HUD | 部分通过 | 未完成真实 PIE 点击流与主入口迁移、窗口关闭/设置视觉证据 |
 | 挑战/游历分离 | `StartChallenge` 会暂停游历；`StartTravel` 会拒绝挑战中启动；保存校验拒绝两种状态同时 active | 规则通过 | 游历执行器和真实 UI 状态还没有上线 |
 | 27 个关卡 | 普通/困难/地狱各 9 个稳定 StageId；普通 1-1 新档默认通关且可游历；整档难度解锁规则已测试 | 规则通过 | 没有真实地图节点视觉/悬停和解锁流程证据 |
@@ -102,6 +102,10 @@ goal_status: active
 | Challenge pending-choice automation | `Saved/HarnessReports/20260818-043354-ai-production-loop.md`；`Saved/Automation/TrainingPendingChoiceGreen-20260818-r3/index.json` | 1/1 PASS；强制弃牌待选被自动提交并继续挑战，未误结束挑战 |
 | Training full follow-up | `Saved/HarnessReports/20260818-043418-ai-production-loop.md`；`Saved/Automation/TrainingFull-20260818-r4/index.json` | 18/18 PASS；包含新增待选牌自动模式回归与既有历练/挑战规则 |
 | DesktopTraining full follow-up | `Saved/HarnessReports/20260818-043438-ai-production-loop.md`；`Saved/Automation/DesktopTrainingFull-20260818-r5/index.json` | 1/1 PASS；工作台收菜、导航、挑战侧壳与布局契约回归 |
+| MasterV2 resource contract (red→green) | 先以 `Saved/Automation/MasterV2NavDiscRed-20260818-r1/index.json` 锁定五张圆形 NavDisc 缺失为红测；接入后 `Saved/Automation/MasterV2NavDiscGreen-20260818-r1/index.json` | 1/1 PASS；PanelLarge、ItemSlot、EquipmentSlot、Tab、Route 与五张 NavDisc 均可解析 |
+| DesktopTraining NavDisc follow-up | `Saved/HarnessReports/20260818-050507-ai-production-loop.md`；`Saved/Automation/DesktopTrainingNavDisc-20260818/index.json` | 2/2 PASS；资源合同与布局合同通过，导航按钮使用方形 46×46 图标槽位，未拉伸圆图 |
+| Training NavDisc follow-up | `Saved/HarnessReports/20260818-050527-ai-production-loop.md`；`Saved/Automation/TrainingAfterNavDisc-20260818/index.json` | 18/18 PASS；导航资源改动未回归训练/奖励/4/6 分钟冷却/离线补算规则 |
+| Cold UBT NavDisc follow-up | `Saved/HarnessReports/20260818-050426-ai-production-loop.md` | PASS；`GameXXKEditor` 使用 `-NoHotReload` 冷编译成功 |
 | Cold UBT follow-up | `Saved/HarnessReports/20260818-043332-ai-production-loop.md` | PASS；`GameXXKEditor` 使用 `-NoHotReload` 冷编译成功 |
 | 历史全量回归 | `Saved/Automation/ChargeFinishSubject/index.json` | 598/598 是 2026-08-16 历史证据，只作为回归参考，不冒充本轮全量 |
 | asset-contract | `Saved/HarnessReports/20260818-012130-ai-production-loop.md` | 51/66 PASS，15 个测试文件 FAIL，门禁未通过 |
@@ -134,7 +138,7 @@ goal_status: active
 
 `UI Master / PSD → reuse/derive/new 语义清单 → 透明切图 → alpha/尺寸/hash manifest → UE 资产导入 → 1920/2560 双分辨率复核`。
 
-现阶段程序化棕橙面板只能证明布局、命中区域和状态机；不能直接作为最终视觉基准。仓库/背包的已有比例应优先复用实机 Master 组件，节点必须保持圆形，图标必须等比缩放，禁止把概念生成图直接裁进 PSD。
+现阶段程序化 Slate 壳加上已批准 MasterV2 纹理只能证明布局、命中区域、资源路径和状态机；不能直接作为最终视觉基准。仓库/背包的已有比例应优先复用实机 Master 组件，节点和 NavDisc 必须保持圆形，图标必须等比缩放，禁止把概念生成图直接裁进 PSD。
 
 ### 6.3 UX/入口
 
@@ -237,6 +241,7 @@ goal_status: active
 
 ### 13.2 当前实际状态
 
+- 本轮已把 `/Game/GameXXK/UI/MasterV2/Approved/` 下的 `PanelLarge`、`ButtonNeutral`、`ItemSlot`、`EquipmentSlot`、`TabNormal/TabSelected`、`NavRoute` 和五张 `NavDisc` 作为运行时资源接入；面板/槽位用九宫格，路线节点与导航图标用等比方形槽位，资源路径由 `GameXXK.DesktopTraining.Workbench.MasterV2ResourceContract` 锁定。
 - 程序化壳可以证明命中区域、按钮路由和尺寸合同，但不能作为最终美术基准。
 - 当前没有本工作台新增图标的完整语义 ID、源路径、尺寸、alpha、生成/绘制来源和 SHA256 manifest。
 - 当前没有接受的 1920×1080 与 2560×1440 工作台截图；因此“节点没有被压成椭圆”“图标没有被挤扁”“字体/卡牌可读”都还不能写成通过。
