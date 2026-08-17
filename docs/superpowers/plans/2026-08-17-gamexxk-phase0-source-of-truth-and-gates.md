@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将 GameXXK 当前项目状态、历练规格、脚本测试分层和资产保护规则对齐到 `main@ba90810`，让 Phase 0 门禁可重复运行且不触碰用户已有 `.umap` 和未跟踪大资产。
+**Goal:** 将 GameXXK 当前项目状态、历练规格、脚本测试分层和资产保护规则对齐到 `main@c4762be`，让 Phase 0 门禁可重复运行且不触碰用户已有 `.umap` 和未跟踪大资产；桌面历练运行时作为独立 opt-in 工作包复核。
 
 **Architecture:** 生产指针只记录事实和证据路径；旧历练迁移文档通过 front matter 标为 `superseded`/`shelved`，新的桌面工作台规格作为唯一待执行设计真源；Python 门禁通过一个只读 manifest 将 `headless`、`asset-contract`、`mcp-live` 分层，`all` 默认只运行 headless。所有路径修复以参数/env 为入口，不把本机资源复制进仓库。
 
@@ -12,12 +12,12 @@
 
 ## Scope and safety lock
 
-本计划只执行优化方案 Phase 0 的文档与 Python 门禁工作。不得修改：
+本计划的 Phase 0 部分只执行文档与 Python 门禁工作。桌面历练 C++ 变更必须独立复核、冷编译和 Automation；无论如何不得修改：
 
 - `Content/GameXXK/Maps/L_Main.umap`（当前用户/编辑器已有 tracked 修改）；
 - `SourceAssets/`、`SourceArt/` 下未跟踪美术；
 - `.uasset`、`.umap`、角色像素图、PaperZD、相机和 HD2D 参数；
-- 任何运行时 C++、存档字段或默认入口行为。
+- 用户既有运行时行为、默认入口和受保护的手调资产；Training 新增运行时代码不计入 Phase 0 绿灯。
 
 每个任务独立提交。任务完成前必须运行该任务列出的验证命令；未通过的任务不得继续下一个任务。
 
@@ -44,7 +44,7 @@
 - Create: `docs/production/2026-08-17-phase0-baseline.md`
 - Modify: `docs/production/current-goal-acceptance.md`
 
-- [ ] **Step 1: Capture immutable identifiers and workspace ownership**
+- [x] **Step 1: Capture immutable identifiers and workspace ownership**
 
 Run from `D:\UE5 demo\GameXXK`:
 
@@ -56,9 +56,9 @@ git status --short --branch
 git status --short -- Content/GameXXK/Maps/L_Main.umap SourceAssets SourceArt
 ```
 
-Expected facts at plan creation time: branch `main`, HEAD `ba90810`, one tracked modification at `Content/GameXXK/Maps/L_Main.umap`, and untracked SourceAssets/SourceArt entries. Record the observed output and the rule that these paths are outside the Phase 0 write set.
+Observed facts at review time: branch `main`, HEAD `c4762be`, one tracked modification at `Content/GameXXK/Maps/L_Main.umap` plus uncommitted Training runtime files, and untracked SourceAssets/SourceArt entries. Protected paths remain outside the Phase 0 write set.
 
-- [ ] **Step 2: Capture the current validation evidence without claiming a fresh UE full run**
+- [x] **Step 2: Capture the current validation evidence without claiming a fresh UE full run**
 
 Run:
 
@@ -74,7 +74,7 @@ The baseline record must distinguish:
 - historical evidence (`598/598` Automation and cold UBT from the dated reports);
 - known stale/partial evidence (`--script-tests all` currently recorded as `64/86`, with 22 failures awaiting tags or fixes).
 
-- [ ] **Step 3: Add the baseline record**
+- [x] **Step 3: Add the baseline record**
 
 Use this structure, replacing only values observed by the commands:
 
@@ -102,7 +102,7 @@ source_commit: ba90810
 - Do not alter `.uasset`, `.umap`, PaperZD, camera, or HD2D values.
 ```
 
-- [ ] **Step 4: Correct the rolling pointer**
+- [x] **Step 4: Correct the rolling pointer**
 
 Update only factual sections of `current-goal-acceptance.md`:
 
@@ -113,7 +113,7 @@ Update only factual sections of `current-goal-acceptance.md`:
 - add the new specification path and the Phase 0 baseline path to the next-step list;
 - preserve the explicit follower semantic freeze and the known `--script-tests all` 64/86 record until the gate is actually rerun.
 
-- [ ] **Step 5: Verify Task 1 and commit**
+- [x] **Step 5: Verify Task 1 and commit**
 
 ```powershell
 python scripts/harness_state_validator.py --json
@@ -139,7 +139,7 @@ Expected: only the two listed Markdown files are in the commit; `L_Main.umap` an
 - Modify: `docs/superpowers/plans/2026-08-13-gamexxk-desktop-migration-implementation-index.md`
 - Modify: `docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md`
 
-- [ ] **Step 1: Add machine-readable status front matter**
+- [x] **Step 1: Add machine-readable status front matter**
 
 Add exactly one YAML block at the beginning of each file, before the current title:
 
@@ -153,17 +153,17 @@ superseded_by: docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbe
 
 Use `status: shelved` and `shelved_reason: legacy migration package; do not execute` for the five old implementation plans and the old index. Use `status: superseded` for the old 2026-08-12 design. The new 2026-08-17 design uses `status: design-review` and keeps its current sentence that layout/UX is confirmed but written spec review is pending.
 
-- [ ] **Step 2: Freeze old version boundaries**
+- [x] **Step 2: Freeze old version boundaries**
 
 Add this notice immediately after the status block of each shelved plan/index:
 
 ```markdown
-> 执行冻结：当前 `CurrentSaveVersion=17`，本文的 v15/v16/v17/v18 迁移边界不能直接执行。恢复历练实现必须以 `2026-08-17-gamexxk-desktop-training-workbench-design.md` 和新的 Phase 0 基线重新编排迁移编号。
+> 执行冻结：本文以 `CurrentSaveVersion=17` 为历史前置基线；当前工作区已进入 `CurrentSaveVersion=18`，本文的 v15/v16/v17/v18 迁移边界不能直接执行。恢复历练实现必须以 `2026-08-17-desktop-training-goal-review.md` 和新的基线从 v19 重新编排迁移编号。
 ```
 
 Do not rewrite the historical task body; the goal is to make an old plan visibly non-authoritative while retaining its audit trail.
 
-- [ ] **Step 3: Verify Task 2 and commit**
+- [x] **Step 3: Verify Task 2 and commit**
 
 ```powershell
 rg -n '^status:|superseded_by:|shelved_reason:|CurrentSaveVersion=17|执行冻结' docs/superpowers/specs/2026-08-12-gamexxk-idle-desktop-migration-design.md docs/superpowers/plans/2026-08-13-gamexxk-idle-*.md docs/superpowers/plans/2026-08-13-gamexxk-desktop-migration-implementation-index.md docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md
@@ -183,7 +183,7 @@ Expected: eight named documents only; no `.umap`, `.uasset`, `SourceAssets`, or 
 - Modify: `scripts/ai_production_loop.py`
 - Test: `scripts/test_ai_production_loop.py`
 
-- [ ] **Step 1: Write the manifest contract test**
+- [x] **Step 1: Write the manifest contract test**
 
 Create `scripts/test_ai_production_loop.py` with this exact initial contract:
 
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 2: Run the new contract test and observe the red state**
+- [x] **Step 2: Run the new contract test and observe the red state**
 
 Run:
 
@@ -229,7 +229,7 @@ python scripts/test_ai_production_loop.py
 
 Expected before implementation: import failure for `SCRIPT_TEST_MANIFEST` or `load_script_test_manifest`. Record the failure, then implement the minimum API.
 
-- [ ] **Step 3: Add the manifest**
+- [x] **Step 3: Add the manifest**
 
 Create `scripts/script-test-manifest.json`:
 
@@ -320,7 +320,7 @@ Create `scripts/script-test-manifest.json`:
 
 The empty `headless` array means “all discovered `test_*.py` not listed in the other two arrays”. It must not be used as an explicit allow-list, otherwise newly added tests silently leave the gate.
 
-- [ ] **Step 4: Implement the tag loader and all-mode behavior**
+- [x] **Step 4: Implement the tag loader and all-mode behavior**
 
 Add to `scripts/ai_production_loop.py`:
 
@@ -356,11 +356,11 @@ def discover_script_tests(tag: str = "headless") -> list[str]:
 
 Change the existing `discover_script_tests()` call so `--script-tests all` calls `discover_script_tests("headless")`. Add `--script-test-tag` with choices `headless`, `asset-contract`, `mcp-live` for explicit tagged runs. Preserve comma-separated filename mode for focused tests. Include the selected tag in the report step name.
 
-- [ ] **Step 5: Make JSON output safe on GBK consoles**
+- [x] **Step 5: Make JSON output safe on GBK consoles**
 
 Replace the two final `ensure_ascii=False` JSON prints in `ai_production_loop.py` with `ensure_ascii=True`. Keep the report file UTF-8 and keep human-readable console output unchanged for non-JSON mode. In `test_gamexxk_ui_master_build.py`, add `encoding="utf-8", errors="replace"` to the `subprocess.run` call that invokes `build_gamexxk_ui_master.py`.
 
-- [ ] **Step 6: Run the red-green gate**
+- [x] **Step 6: Run the red-green gate**
 
 ```powershell
 python scripts/test_ai_production_loop.py
@@ -371,7 +371,7 @@ python scripts/ai_production_loop.py --run-script-tests --script-test-tag mcp-li
 
 Expected: manifest contract passes; `all` executes only unlisted headless tests and never launches UE; asset-contract/mcp-live commands are explicit and may report environment skips/failures without contaminating the default headless gate; JSON commands exit with valid JSON under the current console code page.
 
-- [ ] **Step 7: Commit only the test-gate files**
+- [x] **Step 7: Commit only the test-gate files**
 
 ```powershell
 git diff --check
@@ -389,7 +389,7 @@ git commit -m "test: separate headless and environment script gates"
 - Modify: `scripts/test_asian_village_migration.py`
 - Modify: `scripts/test_run_asian_village_migration.py`
 
-- [ ] **Step 1: Add explicit source and engine arguments**
+- [x] **Step 1: Add explicit source and engine arguments**
 
 Replace module-level personal source constants with functions that resolve in this order:
 
@@ -405,11 +405,11 @@ def resolve_source_asset_dir(cli_value: str | None = None) -> Path:
 
 Apply the same precedence to `--ue54-root`/`GAMEXXK_UE54_ROOT` and `--ue58-root`/`GAMEXXK_UE_ROOT`. No default may point at `D:\UE5 demo\zzz`, `C:\Users\shxuw\Downloads`, or a user-specific temporary folder.
 
-- [ ] **Step 2: Keep tests deterministic with temporary roots**
+- [x] **Step 2: Keep tests deterministic with temporary roots**
 
 Update migration tests to pass temporary source and engine paths through the new resolver arguments. Add tests for: CLI value wins over env; env value works; missing source raises the exact configuration error; existing safe-copy behavior remains unchanged.
 
-- [ ] **Step 3: Run and commit**
+- [x] **Step 3: Run and commit**
 
 ```powershell
 python scripts/test_asian_village_migration.py
@@ -430,7 +430,7 @@ Expected: the grep returns only intentional documentation/help examples or no ma
 - Modify: `docs/production/2026-08-17-phase0-baseline.md`
 - Modify: `docs/production/current-goal-acceptance.md`
 
-- [ ] **Step 1: Run the complete Phase 0 gate**
+- [ ] **Step 1: Run the complete Phase 0 gate** *(headless portion green; asset-contract 51/66, so the complete gate is intentionally not marked complete)*
 
 ```powershell
 python scripts/harness_state_validator.py --json
@@ -444,11 +444,11 @@ git diff --cached --name-only
 
 The default gate is green only when validator, manifest contract, headless tests and whitespace check exit 0. `asset-contract` and `mcp-live` results are reported separately with explicit `SKIP`/environment status; they are not silently counted as headless passes.
 
-- [ ] **Step 2: Update the evidence record**
+- [x] **Step 2: Update the evidence record** *(baseline, rolling pointer, and full review now link the fresh reports and preserve the failure boundary)*
 
 Append exact command timestamps, report paths, headless pass/skip counts, tagged environment results, and a “not modified” list for `L_Main.umap`, `SourceAssets`, and `SourceArt`. Do not update the historical `598/598` number unless a new full Automation run was actually executed and its `index.json` is recorded.
 
-- [ ] **Step 3: Commit and review the Phase 0 diff**
+- [ ] **Step 3: Commit and review the Phase 0 diff** *(runtime work and user dirty state are still uncommitted; do not claim Phase 0 completion)*
 
 ```powershell
 git diff --check
@@ -463,5 +463,5 @@ The review must confirm that every Phase 0 commit contains only its listed files
 
 - **Spec coverage:** current source-of-truth, shelved old migration, script gates, GBK safety, personal paths, asset protection, and Phase 0 acceptance are each mapped to a task.
 - **Completeness:** every task names exact files, commands, expected outputs, and commit boundaries; no unspecified action is required to pass Phase 0.
-- **Scope:** this plan does not implement C++, PSD, Workbench Shell, idle rules, ChallengeViewport, or default-entry migration; those remain separate goal work packages.
+- **Scope:** this plan does not certify PSD, production art, real CardBattle, travel settlement, performance, or default-entry migration; the separate opt-in C++ work package is reviewed in `docs/production/2026-08-17-desktop-training-goal-review.md`.
 - **Safety:** all write sets are explicit and never include `L_Main.umap`, `.uasset`, `SourceAssets`, or `SourceArt`.

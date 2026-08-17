@@ -396,7 +396,7 @@ GameXXK 的低耗工作台以 Shipping 构建、同一台机器、无编辑器�
 - 挑战与游历拥有不同运行状态机，不能让挂机逻辑驱动局内卡牌战斗。
 - `CurrentTravelStage` 必须始终指向已通关关卡；读档发现非法值时回退到该难度最早已通关关卡，最终兜底为普通 1-1。
 - 首次进入新存档时普通 1-1 已通关且为当前游历关卡。
-- 所有新存档字段在详细实施计划中基于 `CurrentSaveVersion=17` 分配新版本，不能复用旧迁移编号。
+- 设计冻结时以 `CurrentSaveVersion=17` 作为前置基线；当前 opt-in 实现已占用并完成 `v18`（`DesktopTrainingWorkbenchIntroducedSaveVersion=18`）。后续字段必须从 v19 继续编号，不得复用旧历练索引的 v16/v17/v18 边界。
 
 ## 13. 错误与边界处理
 

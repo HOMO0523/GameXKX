@@ -1,35 +1,36 @@
 ---
 status: record
+owner: codex
 updated_at: 2026-08-17
-source_commit: ba90810
+source_commit: c4762be
 ---
 # GameXXK Phase 0 基线证据
 
-本记录把优化 Phase 0 开始前的事实、证据和写入保护边界固定下来。它不代表 2D 历练运行时已经实现，也不把历史 Automation/UBT 报告冒充为当前提交的新验证。
+本记录把优化 Phase 0 的事实、证据和写入保护边界固定下来。它不把程序化工作台壳冒充为生产 PSD/真实战斗，也不把历史 Automation/UBT 报告冒充为当前提交的新验证。
 
 ## Fresh checks
 
 | 检查 | 时间/证据 | 结果 |
 |---|---|---|
 | `python scripts/harness_state_validator.py --json` | 2026-08-17 当前工作区 | `ok=true`，`findings=[]` |
-| `python scripts/ai_production_loop.py --run-script-tests --json` | `Saved/HarnessReports/20260817-223034-ai-production-loop.md` | `ok=true`，默认 3 个脚本测试通过 |
+| `python scripts/ai_production_loop.py --run-script-tests --script-tests all --json` | `Saved/HarnessReports/20260817-233157-ai-production-loop.md` | `ok=true`，headless `13/13`；`all` 不启动 UE 编辑器 |
 | `git diff --check` | 2026-08-17 当前工作区 | exit 0 |
 
-默认生产循环报告中的 `test_ue_tdd_pipeline.py` 是脚本自测 fake pipeline，不等同于本轮实际冷 UBT；UE 全量结果只引用下方历史证据。
+默认生产循环报告中的 `test_ue_tdd_pipeline.py` 是脚本自测 fake pipeline，不等同于本轮实际冷 UBT。asset-contract 单独运行于 `Saved/HarnessReports/20260817-233751-ai-production-loop.md`，66 项中 51 通过、15 失败；这些失败涉及本机外部素材、旧 hash/manifest、Pillow API、受保护的 L_Main 资产合同等，不能记作 Phase 0 全绿。mcp-live 未运行。
 
 ## Historical checks
 
 - Automation：`Saved/Automation/ChargeFinishSubject/index.json`，生成时间 `2026.08.16-04.01.35`，`succeeded=557`、`succeededWithWarnings=41`、`failed=0`、`notRun=0`，合计 598/598。
 - 冷 UBT：`Saved/HarnessReports/20260816-114544-ai-production-loop.md`，`GameXXKEditor Win64 Development`、`-NoHotReload`，结果 `PASS`。
-- 全量脚本发现：优化跟进记录 `docs/production/2026-08-16-optimization-followup.md` §3 P16 记录为 64/86，22 项失败；这些失败尚未完成 `headless`/`asset-contract`/`mcp-live` 分层，不得作为 Phase 0 通过证据。
+- 全量脚本历史发现：优化跟进记录 `docs/production/2026-08-16-optimization-followup.md` §3 P16 记录为 64/86，22 项失败；本轮已分层，当前 headless 13/13，通过的 asset-contract 51/66，mcp-live 未运行。历史 598/598 与历史冷 UBT 仍只作回归参考。
 
 ## Current repository state
 
 - 分支：`main`。
-- HEAD：`ba90810 docs: freeze desktop training workbench design`。
-- `ba90810` 只新增桌面历练工作台设计规格；最近运行时代码基线仍为 `e78be7c`。
-- 当前 `CurrentSaveVersion=17`；旧历练索引按 v16/v17/v18 的边界已经失效。
-- 最新设计真源：`docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md`；运行时尚未实现，默认 3D 城镇入口未切换。
+- HEAD：`c4762be chore: parameterize external asset migration paths`；工作区在其上有未提交的 Training 规则、v18 存档、程序化工作台和 PlayerController opt-in 接线。
+- 当前 `CurrentSaveVersion=18`；`DesktopTrainingWorkbenchIntroducedSaveVersion=18`。旧历练索引按 v16/v17/v18 的边界已经失效，不得复用。
+- 最新设计真源：`docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md`；运行时已有 opt-in 规则/壳实现，但默认 3D 城镇入口未切换，PSD/真实战斗/挂机结算/性能和 PIE 验收未完成。
+- 当前新增规则/工作台证据：`Saved/HarnessReports/20260817-234829-ai-production-loop.md`（DesktopTraining 1/1）、`20260817-234854-ai-production-loop.md`（Training 4/4）、`20260817-234916-ai-production-loop.md`（SaveGame 12/12）、`20260817-233157-ai-production-loop.md`（headless 13/13）、最新冷 UBT `-NoHotReload` 成功。
 
 ## Protection lock
 
@@ -40,10 +41,17 @@ source_commit: ba90810
 
 ## Phase 0 exit criteria
 
-以下条件全部满足后，才能进入 PSD reuse/derive/new 审计和 Workbench 运行时计划：
+以下条件全部满足后，才能把 Phase 0 标为通过并进入 PSD reuse/derive/new 生产验收：
 
 1. 当前指针和所有旧历练文档明确标出 `superseded`/`shelved` 与 v17 重排要求。
-2. 默认生产循环、harness、`git diff --check` 全绿。
+2. 默认生产循环、harness、`git diff --check` 全绿；当前 headless 已绿，但 asset-contract 仍为 51/66，故本项未闭环。
 3. `--script-tests all` 只运行 headless；asset-contract 与 mcp-live 单独报告环境状态，不启动 UE 编辑器。
 4. JSON 输出在当前 Windows 控制台编码下可解析，外部个人路径由参数/env 控制。
-5. Phase 0 提交没有触碰保护锁路径。
+5. Phase 0 提交没有触碰保护锁路径；当前用户 `L_Main.umap` 仍为唯一已知 tracked 修改，未跟踪大资产与探针均未加入本轮提交。
+
+## Runtime scope boundary
+
+- `GameXXKTrainingRules.*` 已提供 27 个稳定关卡 ID、挑战/游历状态、1-1 默认通关、失败策略和奖励层级占位；章节敌人从现有 catalog 读取，最终“普通/次级精英/首领”映射仍需产品冻结。
+- `GameXXKDesktopTrainingWorkbenchWidget.*` 是程序化几何合同壳，不是 PSD 生产稿：没有 MasterV2 纹理绑定、透明图标 manifest/hash、真实字体校准、真实地图节点美术或局内卡牌演出。
+- `AdvanceTrainingChallengeEncounter` 只推进规则 façade；未接真实 CardBattle/RouteMap、实际金币/经验/宝箱 RNG、天赋掉率 Resolver、离线计时、失败结算和完整保存回写。
+- `bEnableDesktopTrainingWorkbench` 默认 `false`，因此 3D 城镇可回退且当前未切换默认入口。
