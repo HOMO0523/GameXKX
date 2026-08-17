@@ -1,15 +1,15 @@
 ---
 status: review
 owner: codex
-updated_at: 2026-08-18T05:35:00+08:00
-source_commit: a2c9e06
+updated_at: 2026-08-18T05:08:00+08:00
+source_commit: 5c60999
 decision: not-complete
 goal_status: active
 ---
 
 # 桌面历练 /goal 完成后复核（2026-08-18）
 
-这份记录是当前目标的收尾审计，不把“程序能编译”写成“产品已完成”。审计输入包括 `docs/production/2026-08-16-full-project-optimization-proposal.md`、`docs/production/2026-08-16-optimization-followup.md`、`docs/production/current-goal-acceptance.md`、桌面工作台设计稿以及本轮实际代码、Automation、冷 UBT 和脚本报告。
+这份记录是当前目标的收尾审计，不把“程序能编译”写成“产品已完成”。审计输入包括 `docs/production/2026-08-16-full-project-optimization-proposal.md`、`docs/production/2026-08-16-optimization-followup.md`、`docs/production/current-goal-acceptance.md`、桌面工作台设计稿以及本轮实际代码、Automation、冷 UBT 和脚本报告；本轮追加复核了 `5c60999` 的挑战自动战斗待选牌处理。
 
 ## 1. 结论先行
 
@@ -29,7 +29,7 @@ goal_status: active
 | 项目 | 当前事实 |
 |---|---|
 | 分支 | `main` |
-| 本轮代码提交 | `a2c9e06 feat: add offline travel collection and v20 migration`；前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`，桥接提交为 `7881927` |
+| 本轮代码提交 | `5c60999 fix: keep challenge auto battle moving through card choices`；离线补算/收菜与 v20 存档提交为 `a2c9e06`，前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`，桥接提交为 `7881927` |
 | 当前存档版本 | `CurrentSaveVersion=20`；v18 引入桌面 Training 进度，v19 引入奖励 seed 与游历宝箱冷却，v20 引入离线游历账本/UTC 基线 |
 | 默认入口 | `bEnableDesktopTrainingWorkbench=false`；Tab/显式测试开关才会打开工作台 |
 | 用户地图保护 | `Content/GameXXK/Maps/L_Main.umap` 保留已有修改，未加入本轮提交、未 reset/checkout |
@@ -50,8 +50,8 @@ goal_status: active
 | 27 个关卡 | 普通/困难/地狱各 9 个稳定 StageId；普通 1-1 新档默认通关且可游历；整档难度解锁规则已测试 | 规则通过 | 没有真实地图节点视觉/悬停和解锁流程证据 |
 | 第一章编制 | 普通候选：公鸡、狸猫；次级精英：山羊、黄鼬；每条路线 4 普通 + 2 精英 + 1 首领；1-1 山羊、1-2 黄鼬、1-3 青角羊王 | 数据/测试通过 | 仍需在真实 ChallengeViewport/tooltip 做视觉验收；catalog 的 tier 与 Training 语义需保持文档同步 |
 | 1-1 生命例外 | `BuildEncounterSequence(Stage, false)` 挑战生命 >1；`true` 游历序列为 1 HP，含首领；TravelRunner 与 subsystem wrapper 复用该规则；1-1 普通/精英/首领都不掉箱，只保留阶段金币/经验；其它游历 encounter 按局内同一概率并受 240/360 秒冷却限制；v20 离线补算同样遵守该例外 | 规则、runner 与离线补算通过 | 没有真实 Actor/动画、最终收菜视觉和性能证据 |
-| 挑战真实战斗 | `StartTrainingChallenge` 创建真实 `FGameXXKCardBattleAdapter` 会话，进入 `Battle`，投影现有敌人 catalog；BattleBoard 可挂到 ChallengeViewport；左仓库与右历练地图在挑战中以无 ActionButton 的只读外壳保留 | **新增且已自动化通过** | 尚未完成全路线手牌/意图/胜负/结算的 PIE 视觉闭环；pending card choice 会暂停自动步进 |
-| 挑战自动战斗 | 每次调用推进一张合法卡、结束玩家阶段或解析敌方阶段；终结后结算并打开下一遭遇 | 部分通过 | 目前是运行时适配器，不是完整自动战斗 UX；需要手牌、意图、血条、tooltip 和战斗结算截图 |
+| 挑战真实战斗 | `StartTrainingChallenge` 创建真实 `FGameXXKCardBattleAdapter` 会话，进入 `Battle`，投影现有敌人 catalog；BattleBoard 可挂到 ChallengeViewport；左仓库与右历练地图在挑战中以无 ActionButton 的只读外壳保留 | **新增且已自动化通过** | 尚未完成全路线手牌/意图/胜负/结算的 PIE 视觉闭环 |
+| 挑战自动战斗 | 每次调用推进一张合法卡、结束玩家阶段或解析敌方阶段；强制弃牌、洞察、任务检索和自动解析队列由现有 CardRules/Adapter 以有界确定性策略处理；终结后结算并打开下一遭遇 | **规则与聚焦 Automation 通过** | 目前是运行时适配器，不是完整自动战斗 UX；需要手牌、意图、血条、tooltip 和战斗结算截图 |
 | 游历循环 | `InitializeTravelRunner`/`AdvanceTravelRunner` 与 `AdvanceTrainingTravelStep` 已按 Walking→Combat→Settlement 推进 7 遭遇；失败重试/回退由 `ResolveTrainingTravelFailure` 处理；挂机条读取阶段/HP/遭遇；`ApplyOfflineTravelSinceLastUpdate` 负责读档补算并把奖励放入待领取账本，工作台“收菜”按钮再入库 | **规则、离线桥接与聚焦 Automation 通过** | 仍缺真实 Actor/动画、后台运行时 Timer、失败弹窗与最终美术收菜窗口 |
 | 奖励与宝箱 | `ResolveChallengeReward`/`ResolveTravelReward` 使用稳定 seed、同一 Stage 概率和天赋 bonus 参数；普通 encounter 为普通箱，精英/首领为高级箱；普通游历箱 240 秒、精英/首领高级箱 360 秒；1-1 游历所有 encounter 强制不掉箱；canonical item 写入 Runtime Inventory，离线结果先记账，收菜后入库并通过 v20 round-trip | **规则/聚焦 Automation 通过，产品未闭环** | 天赋真实 read model、最终概率表、FIFO 箱批/容量、箱内物品和重复结算保护仍待接入 |
 | 存档迁移 | v18 Training 字段、旧档 Normal 1-1 初始化、challenge/travel 互斥；v19 新增 reward seed 与两档游历冷却；v20 新增 pending ledger、UTC 基线、暂停阵亡标记与离线补算；范围/负值校验和迁移测试已补 | 通过 | 需要补实际战斗中断/恢复、生产窗口关闭/重开和最终存档视觉 round-trip |
@@ -78,7 +78,7 @@ goal_status: active
 
 ### 4.3 已知技术风险
 
-1. `AdvanceTrainingCardBattleStep` 遇到需要玩家选择的牌会安全暂停；自动战斗需要产品决定“自动选首个合法目标”还是显示待选状态。
+1. `AdvanceTrainingCardBattleStep` 已能对强制弃牌、洞察、任务检索和自动解析队列做有界确定性处理；仍需产品级策略决定是否在最终 UX 中展示“自动选择”提示、允许中断或切换手动牌局。
 2. `BuildChallengeReward` 仍保留给旧 fixture 的强制结算兼容入口；生产路径已改用 seeded Resolver，两个 canonical 历练宝箱 item 已接入 Runtime Inventory 镜像，v20 待领取账本/收菜 API 已接线，但最终概率表、天赋数据源、FIFO 箱批/容量和箱内物品仍不能当作发行掉率。
 3. 游历已有独立的纯规则 Runner、subsystem tick 和 v20 离线补算，但没有生产 Actor/动画、碰撞移动、后台 Timer 和最终收菜视觉，不能声称已经实现完整挂机。
 4. BattleBoard 嵌入工作台的视觉 session 目前是适配性接线，尚未在两种分辨率和真实输入下验证生命周期。
@@ -99,6 +99,10 @@ goal_status: active
 | Real bridge isolated rerun | `Saved/Automation/TrainingBridge-20260818-r6/index.json` | 1/1 PASS：真实 Battle 屏、1 个 authored enemy、auto step |
 | Cold UBT | `Saved/HarnessReports/20260818-041453-ai-production-loop.md`，`-NoHotReload`，GameXXKEditor Result Succeeded | PASS；未用 Live Coding/Hot Reload |
 | Training Automation follow-up | `Saved/HarnessReports/20260818-041647-ai-production-loop.md`；`Saved/Automation/TrainingTravelOfflineV20Green-20260818-r2/index.json` | 17/17 PASS；确认 1-1 全 encounter 无箱，非 1-1 游历复用局内概率，普通箱 240 秒/精英与首领高级箱 360 秒 CD、离线补算和读档恢复 |
+| Challenge pending-choice automation | `Saved/HarnessReports/20260818-043354-ai-production-loop.md`；`Saved/Automation/TrainingPendingChoiceGreen-20260818-r3/index.json` | 1/1 PASS；强制弃牌待选被自动提交并继续挑战，未误结束挑战 |
+| Training full follow-up | `Saved/HarnessReports/20260818-043418-ai-production-loop.md`；`Saved/Automation/TrainingFull-20260818-r4/index.json` | 18/18 PASS；包含新增待选牌自动模式回归与既有历练/挑战规则 |
+| DesktopTraining full follow-up | `Saved/HarnessReports/20260818-043438-ai-production-loop.md`；`Saved/Automation/DesktopTrainingFull-20260818-r5/index.json` | 1/1 PASS；工作台收菜、导航、挑战侧壳与布局契约回归 |
+| Cold UBT follow-up | `Saved/HarnessReports/20260818-043332-ai-production-loop.md` | PASS；`GameXXKEditor` 使用 `-NoHotReload` 冷编译成功 |
 | 历史全量回归 | `Saved/Automation/ChargeFinishSubject/index.json` | 598/598 是 2026-08-16 历史证据，只作为回归参考，不冒充本轮全量 |
 | asset-contract | `Saved/HarnessReports/20260818-012130-ai-production-loop.md` | 51/66 PASS，15 个测试文件 FAIL，门禁未通过 |
 | PIE/MCP 工作台 | 本轮仍无新的 1920×1080 / 2560×1440 工作台截图、点击流或悬停视觉证据 | 未运行 |
@@ -157,7 +161,7 @@ goal_status: active
 ## 8. 关闭目标前的必要顺序
 
 1. 把已通过 Automation 的 TravelRunner 接到生产角色/怪物 Actor、动画/移动表现、失败暂停/重试 UI、后台 Timer 和最终收菜窗口；v20 离线补算/收菜 API 已完成，保留当前纯规则 runner 作为可回滚核心。
-2. 把挑战从“适配器可启动”补到“路线图→卡牌→意图→胜负→奖励→下一遭遇”的真实 PIE/MCP 流，并决定 pending card choice 的自动策略。
+2. 把挑战从“规则与适配器可启动”补到“路线图→卡牌→意图→胜负→奖励→下一遭遇”的真实 PIE/MCP 流；自动模式的待选牌规则已确定性接通，仍需决定最终 UX 是否允许用户中断或切回手动。
 3. 绑定真实背包/仓库 read model：在已完成仓库 4 列 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓和设置/关闭分离的基础上补转移/容量、完整装备点击；保留背包金币/六装备槽/角色伙伴切换和工具容器。
 4. 按 UI Master 做 reuse/derive/new 清单，只为缺失的历练/节点/挑战/游历/重试图标出透明生产稿，登记尺寸、alpha 和 SHA256。
 5. 补 1920×1080 与 2560×1440 PIE 截图和真实点击/悬停证据，重点检查节点不椭圆、图标不挤扁、字体/卡牌/意图可读。
@@ -195,7 +199,7 @@ goal_status: active
 | D. 历练进度与难度 | 27 个稳定 StageId；普通 1-1 新档通关；普通→困难→地狱顺序和锁定规则由纯规则层验证 | **规则通过** | 真实地图节点状态、挑战/游历按钮 disabled/hover、全内容后的“期待新内容”截图 |
 | E. 第一章敌人编制 | 公鸡/狸猫普通，山羊/黄鼬次级精英，1-1 山羊、1-2 黄鼬、1-3 青角羊王；挑战和游历共享编制定义 | **数据/测试通过** | 每个节点真实 tooltip 显示实际编制，且路线图不把两个次级精英错误合成同一波 |
 | F. 游历循环 | `Walking → Combat → Defeated/下一遭遇` runner；一只敌人一次推进；击杀结算；1-1 游历 1 HP；每个 encounter 可按同一概率表掉箱，普通/高级箱冷却分别 240/360 秒；失败重试/回退；v20 离线补算与待领取账本/收菜入口已接线 | **确定性运行时与离线桥接通过** | 接真实 Actor/动画/移动、后台 Timer、失败弹窗和最终收菜视觉；不能只依赖 ForTest/tick |
-| G. 主动挑战 | `StartTrainingChallenge` 建立真实 `FGameXXKCardBattleAdapter`；支持一步合法卡/阶段推进；工作台可切换 ChallengeViewport | **适配器通过，产品流未闭合** | 路线图→卡牌→意图→胜负→宝箱/经验→下一遭遇的完整 PIE/MCP；pending card choice 策略明确 |
+| G. 主动挑战 | `StartTrainingChallenge` 建立真实 `FGameXXKCardBattleAdapter`；支持一步合法卡/阶段推进；待选牌自动策略已由 `5c60999` 接通并通过 `GameXXK.Training.ChallengePendingChoiceAutoBattle`；工作台可切换 ChallengeViewport | **适配器/规则通过，产品流未闭合** | 路线图→卡牌→意图→胜负→宝箱/经验→下一遭遇的完整 PIE/MCP；最终 UX 的自动/手动切换和视觉证据 |
 | H. 奖励与天赋 | 普通/高级 tier 与金币/经验结算入口；`ResolveChallengeReward`/`ResolveTravelReward` 的稳定 seed、同一配置概率、天赋 bonus 参数；Travel 普通/高级冷却 240/360 秒；1-1 无箱；canonical chest item 写入 Runtime Inventory；v20 离线奖励账本/收菜入口 | **规则/聚焦 Automation 通过** | 接真实天赋 read model、最终概率、FIFO 箱批/容量、箱内物品和重复结算保护 |
 | I. 存档与恢复 | `CurrentSaveVersion=20`；v18→v19 为 reward seed/Travel cooldown，v19→v20 为 pending ledger/UTC 基线/离线补算迁移；训练互斥/范围/负值校验；runner 为 transient，读档后重建 | **聚焦通过** | 未结束挑战/游历在生产 UI 中断、退出、读档、重开和失败后状态一致的 PIE 证据 |
 | J. 素材/PSD | 规格已冻结 reuse→derive→new、透明单图、1:1 安全框、alpha/尺寸/hash manifest | **规范通过，资产未交付** | UI Master 实际图层绑定；新增图标逐个 manifest/hash；无概念图裁切、噪点和非等比缩放 |
@@ -262,8 +266,10 @@ TaskBarHero 参照快照：Working Set 约 513 MiB、Private Bytes 约 1418 MiB�
 | harness 状态 | `python scripts/harness_state_validator.py --json`，本轮 exit 0、`findings=[]` | PASS |
 | headless 脚本门禁 | `Saved/HarnessReports/20260818-011435-ai-production-loop.md`，本轮 headless 全部通过 | PASS |
 | 空白检查 | `git diff --check`，exit 0；仅有 Windows LF→CRLF warning | PASS |
-| 冷 UBT | `Saved/HarnessReports/20260818-041453-ai-production-loop.md`，`GameXXKEditor`、`-NoHotReload`、Result Succeeded | PASS |
-| Training Automation | `Saved/HarnessReports/20260818-041647-ai-production-loop.md`、`Saved/Automation/TrainingTravelOfflineV20Green-20260818-r2/index.json`，17 discovered / 17 succeeded / 0 warnings / 0 failed；含 1-1 无箱、同概率、240/360 秒 CD、离线补算、待领取账本、读档恢复 | PASS |
+| 冷 UBT | `Saved/HarnessReports/20260818-043332-ai-production-loop.md`，`GameXXKEditor`、`-NoHotReload`、Result Succeeded | PASS |
+| Training pending-choice Automation | `Saved/HarnessReports/20260818-043354-ai-production-loop.md`、`Saved/Automation/TrainingPendingChoiceGreen-20260818-r3/index.json`，1 discovered / 1 succeeded / 0 warnings / 0 failed | PASS |
+| Training Automation | `Saved/HarnessReports/20260818-043418-ai-production-loop.md`、`Saved/Automation/TrainingFull-20260818-r4/index.json`，18 discovered / 18 succeeded / 0 warnings / 0 failed；含待选牌自动推进、1-1 无箱、同概率、240/360 秒 CD、离线补算、待领取账本、读档恢复 | PASS |
+| DesktopTraining Automation | `Saved/HarnessReports/20260818-043438-ai-production-loop.md`、`Saved/Automation/DesktopTrainingFull-20260818-r5/index.json`，1 discovered / 1 succeeded / 0 warnings / 0 failed；含收菜、导航、挑战侧壳与布局契约 | PASS |
 | DesktopTraining Automation | `Saved/HarnessReports/20260818-041517-ai-production-loop.md`、`Saved/Automation/DesktopTrainingWorkbenchCollectGreen-20260818/index.json`，1 / 1 / 0 / 0；含收菜待领取/金币入库，同时保留挑战左右只读外壳、导航锁定、设置/关闭分离前置证据 | PASS |
 | SaveGame Automation | `Saved/HarnessReports/20260818-041625-ai-production-loop.md`、`Saved/Automation/SaveGameTravelOfflineV20Green-20260818/index.json`，12 / 12 / 0 / 0；v20 migration/UTC/pending ledger round-trip | PASS |
 | 历史全量 Automation | `Saved/Automation/ChargeFinishSubject/index.json`，598/598，2026-08-16 | **历史参考**，非本轮全量 |
@@ -272,7 +278,7 @@ TaskBarHero 参照快照：Working Set 约 513 MiB、Private Bytes 约 1418 MiB�
 
 ## 16. 工作区、提交和回滚核对
 
-- 本轮运行时提交为 `a2c9e06`（v20 离线补算、待领取账本、收菜 API/UI 与迁移断言），前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 read model 为 `dfb5230`，奖励/冷却与 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`，桥接为 `7881927`；提交后 `git ls-files -m` 仍只剩用户已有 `Content/GameXXK/Maps/L_Main.umap` 与既有 `scripts/test_battle_camera_framing.py`。
+- 本轮运行时提交为 `5c60999`（挑战自动战斗确定性处理待选牌、手牌快照与回归测试）；v20 离线补算、待领取账本、收菜 API/UI 与迁移断言为 `a2c9e06`，前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 read model 为 `dfb5230`，奖励/冷却与 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`，桥接为 `7881927`；提交后 `git ls-files -m` 仍只剩用户已有 `Content/GameXXK/Maps/L_Main.umap` 与既有 `scripts/test_battle_camera_framing.py`，文档更新另行提交且不触碰用户资产。
 - 当前仍有约 10,235 个未跟踪文件，其中约 10,176 个在 `SourceAssets/`/`SourceArt/`；它们不属于本轮提交，不得通过清理、覆盖或无差别 stage 处理。
 - `L_Main.umap` 没有被 reset、checkout、格式化或加入本轮提交；默认 3D 城镇仍可回退。
 - 最小回滚顺序仍为：保持 `bEnableDesktopTrainingWorkbench=false` → 单独回滚 `23aee95` → 如需再回滚 `7881927`；任何回滚都不触碰用户地图和源美术。
@@ -282,7 +288,7 @@ TaskBarHero 参照快照：Working Set 约 513 MiB、Private Bytes 约 1418 MiB�
 ### P0：必须完成后才能谈入口
 
 1. **生产游历**：Actor/动画/移动表现、失败暂停/重试 UI、后台 Timer、最终收菜窗口和重新打开窗口的 PIE 恢复证据（v20 离线补算/收菜 API 已完成）。
-2. **生产挑战**：路线图到真实 CardBattle 的完整胜负/结算/下一遭遇流，含自动战斗、pending choice、退出和存档恢复。
+2. **生产挑战**：路线图到真实 CardBattle 的完整胜负/结算/下一遭遇流，含已接通的自动战斗待选牌策略、退出和存档恢复，并补齐 PIE/MCP 视觉证据。
 3. **真实库存与 UI**：在已有金币/装备实例/六槽/物品 read model 和最小角色/伙伴切换、工具/天赋容器、设置/关闭分离基础上，补齐仓库转移/容量、完整装备点击和工具真实数据，全部来自 read model；4 列多页、排序和卸下回仓已有聚焦证据。
 4. **奖励产品闭环**：把已通过的 seed/RNG Resolver 接到真实天赋 bonus、最终概率表、重复结算保护、FIFO 箱批/容量和箱内物品生成；Travel 240/360 秒冷却还要接生产 Timer/最终收菜视觉。
 

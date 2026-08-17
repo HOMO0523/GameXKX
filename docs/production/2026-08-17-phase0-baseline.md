@@ -2,7 +2,7 @@
 status: record
 owner: codex
 updated_at: 2026-08-18T05:35:00+08:00
-source_commit: a2c9e06
+source_commit: 5c60999
 ---
 # GameXXK Phase 0 基线证据
 
@@ -30,7 +30,7 @@ source_commit: a2c9e06
 - HEAD：`a2c9e06 feat: add offline travel collection and v20 migration`；前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`、桥接为 `7881927`。Training 规则、v20 存档、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner、离线补算/待领取账本/收菜入口、seeded reward/cooldown Resolver、最小宝箱 Inventory 镜像、背包角色/伙伴切换、工具/天赋容器基础导航、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、背包内独立设置与关闭动作、挑战期间左右仓库/历练地图只读外壳与导航锁定已提交。`Content/GameXXK/Maps/L_Main.umap`、未跟踪探针与源美术仍受保护且不在提交内。
 - 当前 `CurrentSaveVersion=20`；`DesktopTrainingWorkbenchIntroducedSaveVersion=18`、`TrainingRewardCooldownsIntroducedSaveVersion=19`、`TrainingOfflineCollectionIntroducedSaveVersion=20`。旧历练索引按 v16/v17/v18 的边界已经失效，不得复用。
 - 最新设计真源：`docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md`；运行时已有 opt-in 规则/壳和真实 CardBattle 单步桥接，但默认 3D 城镇入口未切换，PSD/游历执行器/完整战斗结算/奖励 RNG/性能和 PIE 验收未完成。
-- 当前新增规则/工作台证据：`Saved/HarnessReports/20260818-041647-ai-production-loop.md`（Training 17/17，含 1-1 全 encounter 无箱、非 1-1 游历复用局内概率、普通箱 240 秒/精英与首领高级箱 360 秒冷却、离线补算/待领取账本/读档恢复、Inventory bridge 与 v20 round-trip）、`Saved/HarnessReports/20260818-041453-ai-production-loop.md`（最新冷 UBT `-NoHotReload` 成功）、`Saved/HarnessReports/20260818-041625-ai-production-loop.md`（SaveGame 12/12，v20 migration/UTC/pending ledger）、`Saved/HarnessReports/20260818-041517-ai-production-loop.md`（DesktopTraining 收菜入口 1/1，Automation 目录 `DesktopTrainingWorkbenchCollectGreen-20260818`）；挑战侧壳只读/导航锁定、分页/quick-equip、排序/卸下、设置/关闭仍保留前置报告。`Saved/HarnessReports/20260818-011435-ai-production-loop.md`（headless 13/13）。完整目标复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
+- 当前新增规则/工作台证据：`Saved/HarnessReports/20260818-043418-ai-production-loop.md`（Training 18/18，含待选牌自动推进、1-1 全 encounter 无箱、非 1-1 游历复用局内概率、普通箱 240 秒/精英与首领高级箱 360 秒冷却、离线补算/待领取账本/读档恢复、Inventory bridge 与 v20 round-trip）、`Saved/HarnessReports/20260818-043354-ai-production-loop.md`（挑战待选牌 1/1）、`Saved/HarnessReports/20260818-043332-ai-production-loop.md`（最新冷 UBT `-NoHotReload` 成功）、`Saved/HarnessReports/20260818-041625-ai-production-loop.md`（SaveGame 12/12，v20 migration/UTC/pending ledger）、`Saved/HarnessReports/20260818-043438-ai-production-loop.md`（DesktopTraining 1/1，Automation 目录 `DesktopTrainingFull-20260818-r5`）；挑战侧壳只读/导航锁定、分页/quick-equip、排序/卸下、设置/关闭仍保留前置报告。`Saved/HarnessReports/20260818-011435-ai-production-loop.md`（headless 13/13）。完整目标复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
 
 ## Protection lock
 
