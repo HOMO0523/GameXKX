@@ -22,6 +22,7 @@ class UGameXXKTaskPanelWidget;
 class UGameXXKTownHudWidget;
 class UGameXXKTownOverlayWidget;
 class UGameXXKWorldMapWidget;
+class UGameXXKDesktopTrainingWorkbenchWidget;
 class UWidget;
 class AGameXXKRouteEncounterSceneActor;
 struct FWorldContext;
@@ -203,6 +204,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool CloseInventoryWindow();
 
+	/** Explicit opt-in shell entry; 3D town remains the default rollback path. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining")
+	bool OpenDesktopTrainingWorkbench();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining")
+	bool CloseDesktopTrainingWorkbench();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	UGameXXKDesktopTrainingWorkbenchWidget* GetDesktopTrainingWorkbenchWidgetForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	void SetDesktopTrainingWorkbenchEnabledForTest(bool bEnabled);
+
 	/** Opens the permanent-partner backpack in town without replacing the task-NPC codex. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool OpenCompanionRoster();
@@ -278,6 +292,7 @@ private:
 	UGameXXKRelicBarWidget* EnsureRelicBarWidget();
 	UGameXXKTaskPanelWidget* EnsureTaskPanelWidget();
 	UGameXXKTownHudWidget* EnsureTownHudWidget();
+	UGameXXKDesktopTrainingWorkbenchWidget* EnsureDesktopTrainingWorkbenchWidget();
 	UGameXXKWorldMapWidget* EnsureWorldMapWidget();
 	bool ConfirmPendingQuestNpc(FName TaskId);
 	void RefreshPlayerFlowWidgets();
@@ -340,6 +355,13 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|PlayerFlow")
 	TSubclassOf<UGameXXKTownHudWidget> TownHudWidgetClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|DesktopTraining")
+	TSubclassOf<UGameXXKDesktopTrainingWorkbenchWidget> DesktopTrainingWorkbenchWidgetClass;
+
+	/** Deliberately false: do not change the default 3D town entry before acceptance. */
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|DesktopTraining")
+	bool bEnableDesktopTrainingWorkbench = false;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMainMenuWidget> MainMenuWidget;
 
@@ -384,6 +406,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKTownHudWidget> TownHudWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget> DesktopTrainingWorkbenchWidget;
 
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AActor> PendingQuestNpc;

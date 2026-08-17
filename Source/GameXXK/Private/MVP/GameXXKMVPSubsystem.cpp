@@ -5,6 +5,7 @@
 #include "GameXXKCardRules.h"
 #include "GameXXKCharacterStatRules.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKEnemyCatalog.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMetaShopRules.h"
@@ -23,6 +24,213 @@ namespace
 	static constexpr int32 MaximumMigrationBackupAttempts = 999;
 	static const FString ManualSaveSlotPrefix(TEXT("GameXXK_MVP_SaveSlot_"));
 	static const FString DefaultSaveSlotName(TEXT("GameXXK_MVP_SaveSlot_1"));
+
+	static EGameXXKNodeKind TrainingNodeKind(const EGameXXKTrainingEncounterKind EncounterKind)
+	{
+		switch (EncounterKind)
+		{
+		case EGameXXKTrainingEncounterKind::Elite:
+			return EGameXXKNodeKind::Elite;
+		case EGameXXKTrainingEncounterKind::Boss:
+			return EGameXXKNodeKind::Boss;
+		default:
+			return EGameXXKNodeKind::Battle;
+		}
+	}
+
+	static FName MakeTrainingEnemyRuntimeId(const FName DefinitionId, const int32 EncounterIndex)
+	{
+		FString Leaf = DefinitionId.ToString();
+		int32 SeparatorIndex = INDEX_NONE;
+		if (Leaf.FindLastChar(TEXT('.'), SeparatorIndex))
+		{
+			Leaf = Leaf.RightChop(SeparatorIndex + 1);
+		}
+		return FName(*FString::Printf(TEXT("TrainingEnemy.%s.%d"), *Leaf, EncounterIndex + 1));
+	}
+
+	static bool BuildTrainingEnemyProjection(
+		const FGameXXKTrainingEncounterDefinition& Encounter,
+		const int32 CombatLevel,
+		FGameXXKBattleRuntimeUnit& OutEnemy,
+		FString* OutError)
+	{
+		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Encounter.EnemyDefinitionId);
+		if (!Definition)
+		{
+			if (OutError)
+			{
+				*OutError = FString::Printf(TEXT("Training encounter enemy is not in the catalog: %s"), *Encounter.EnemyDefinitionId.ToString());
+			}
+			return false;
+		}
+
+		const FGameXXKEnemyComputedStats Stats = FGameXXKEnemyCatalog::ComputeStats(Definition->Id, FMath::Max(1, CombatLevel));
+		OutEnemy = FGameXXKBattleRuntimeUnit();
+		OutEnemy.Id = MakeTrainingEnemyRuntimeId(Definition->Id, 0);
+		OutEnemy.DisplayName = Definition->DisplayName;
+		OutEnemy.HP = FMath::Max(1, Stats.MaxHP);
+		OutEnemy.MaxHP = OutEnemy.HP;
+		OutEnemy.Attack = FMath::Max(1, Stats.Attack);
+		OutEnemy.Defense = FMath::Max(0, Stats.Defense);
+		OutEnemy.Speed = FMath::Max(1, Stats.Speed);
+		OutEnemy.MP = 0;
+		OutEnemy.MaxMP = 0;
+		OutEnemy.Shield = 0;
+		OutEnemy.bEnemy = true;
+		OutEnemy.bDefeated = false;
+		OutEnemy.EnemyDefinitionId = Definition->Id;
+		OutEnemy.BattleSlotNumber = 1;
+		OutEnemy.CombatLevel = FMath::Max(1, CombatLevel);
+		return true;
+	}
+
+	static bool BeginTrainingEncounterBattle(
+		FGameXXKRuntimeState& InOutState,
+		const FName StageId,
+		const int32 EncounterIndex,
+		FString* OutError)
+	{
+		if (OutError)
+		{
+			OutError->Reset();
+		}
+		const TArray<FGameXXKTrainingEncounterDefinition> Encounters = FGameXXKTrainingRules::BuildEncounterSequence(StageId, false);
+		if (!Encounters.IsValidIndex(EncounterIndex))
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("Training challenge encounter index is invalid.");
+			}
+			return false;
+		}
+		if (InOutState.CardRun.bHasActiveCardBattle)
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("Training challenge cannot replace an active card battle.");
+			}
+			return false;
+		}
+
+		FGameXXKBattleRuntimeUnit Enemy;
+		if (!BuildTrainingEnemyProjection(Encounters[EncounterIndex], InOutState.PlayerLevel, Enemy, OutError))
+		{
+			return false;
+		}
+
+		InOutState.bHasActiveBattle = true;
+		InOutState.ActiveBattleNodeId = -100000 - EncounterIndex;
+		InOutState.ActiveBattleEnemies = {Enemy};
+		InOutState.ActiveBattleParty.Reset();
+		InOutState.PendingRouteNodeId = INDEX_NONE;
+		InOutState.bDungeonActive = false;
+		InOutState.Screen = EGameXXKScreen::Battle;
+		InOutState.CurrentMapId = TEXT("TrainingBattle");
+		InOutState.TownPanelMode = EGameXXKTownPanelMode::None;
+
+		const EGameXXKNodeKind NodeKind = TrainingNodeKind(Encounters[EncounterIndex].Kind);
+		const int32 BattleSeed = FGameXXKCardBattleAdapter::MixBattleSeed(
+			InOutState.RouteSeed != 0 ? InOutState.RouteSeed : 0x13579BDF,
+			InOutState.ActiveBattleNodeId);
+		if (!FGameXXKCardBattleAdapter::BeginCardBattle(
+			InOutState,
+			NodeKind,
+			NodeKind == EGameXXKNodeKind::Boss ? EGameXXKCardTerrain::Cave : EGameXXKCardTerrain::Plain,
+			BattleSeed,
+			OutError))
+		{
+			InOutState.bHasActiveBattle = false;
+			InOutState.ActiveBattleNodeId = INDEX_NONE;
+			InOutState.ActiveBattleEnemies.Reset();
+			return false;
+		}
+		return true;
+	}
+
+	static void ClearTrainingBattleProjection(FGameXXKRuntimeState& InOutState)
+	{
+		FGameXXKCardBattleAdapter::ClearActiveCardBattle(InOutState);
+		InOutState.bHasActiveBattle = false;
+		InOutState.ActiveBattleNodeId = INDEX_NONE;
+		InOutState.ActiveBattleParty.Reset();
+		InOutState.ActiveBattleEnemies.Reset();
+		InOutState.CardRun.bLoadoutLockedForRoute = false;
+	}
+
+	static bool AdvanceTrainingCardBattleStep(FGameXXKRuntimeState& InOutState, FString* OutError)
+	{
+		if (OutError)
+		{
+			OutError->Reset();
+		}
+		if (!InOutState.CardRun.bHasActiveCardBattle)
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("Training challenge has no active card battle.");
+			}
+			return false;
+		}
+
+		FGameXXKCardBattleRuntime& Runtime = InOutState.CardRun.ActiveBattle;
+		if (Runtime.Phase == EGameXXKCardBattlePhase::Player)
+		{
+			if (GameXXKCardRules::HasPendingChoice(Runtime.Deck))
+			{
+				if (OutError)
+				{
+					*OutError = TEXT("Training auto battle paused on a pending card choice.");
+				}
+				return false;
+			}
+
+			for (const FGameXXKCardInstance& Card : Runtime.Deck.Hand)
+			{
+				FGameXXKCardPlayPreview Preview;
+				FString PreviewError;
+				if (!FGameXXKCardBattleAdapter::BuildCardPlayPreview(InOutState, Card.InstanceId, Preview, &PreviewError)
+					|| !Preview.bCanPlay)
+				{
+					continue;
+				}
+
+				FName TargetId = NAME_None;
+				if (Preview.TargetRequest.bRequiresManualSelection)
+				{
+					for (const FGameXXKCardTargetCandidateView& Candidate : Preview.TargetRequest.CandidateViews)
+					{
+						if (Candidate.bCanSelect && !Candidate.UnitId.IsNone())
+						{
+							TargetId = Candidate.UnitId;
+							break;
+						}
+					}
+					if (TargetId.IsNone())
+					{
+						continue;
+					}
+				}
+
+				FGameXXKCardPlayResult Result;
+				if (FGameXXKCardBattleAdapter::ResolveCardPlay(InOutState, Card.InstanceId, TargetId, Result, OutError))
+				{
+					return true;
+				}
+			}
+
+			TArray<FGameXXKCardDamageResult> DamageResults;
+			return FGameXXKCardBattleAdapter::EndPlayerCardPhase(InOutState, DamageResults, OutError);
+		}
+
+		if (Runtime.Phase == EGameXXKCardBattlePhase::Enemy)
+		{
+			TArray<FGameXXKCardDamageResult> DamageResults;
+			return FGameXXKCardBattleAdapter::ResolveEnemyPhase(InOutState, DamageResults, OutError);
+		}
+
+		return true;
+	}
 
 	static FString ResolveSaveSlotName(const FString& SlotName)
 	{
@@ -601,6 +809,211 @@ FGameXXKRuntimeState& UGameXXKMVPSubsystem::GetMutableRuntimeState()
 FGameXXKRuntimeState UGameXXKMVPSubsystem::GetRuntimeStateCopy() const
 {
 	return GetRuntimeState();
+}
+
+FGameXXKTrainingProgress UGameXXKMVPSubsystem::GetTrainingProgressCopy() const
+{
+	return GetRuntimeState().Training;
+}
+
+TArray<FGameXXKTrainingStageDefinition> UGameXXKMVPSubsystem::GetTrainingStageDefinitions() const
+{
+	return FGameXXKTrainingRules::GetStageDefinitions();
+}
+
+TArray<FGameXXKTrainingEncounterDefinition> UGameXXKMVPSubsystem::GetTrainingEncounterSequence(const FName StageId, const bool bTravelMode) const
+{
+	return FGameXXKTrainingRules::BuildEncounterSequence(StageId, bTravelMode);
+}
+
+FText UGameXXKMVPSubsystem::BuildTrainingStageTooltip(const FName StageId) const
+{
+	return FGameXXKTrainingRules::BuildStageTooltip(GetRuntimeState().Training, StageId);
+}
+
+bool UGameXXKMVPSubsystem::SelectTrainingStage(const FName StageId)
+{
+	FGameXXKTrainingStageDefinition Definition;
+	if (!FGameXXKTrainingRules::TryGetStageDefinition(StageId, Definition))
+	{
+		return false;
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState.Training.SelectedStageId = StageId;
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::StartTrainingChallenge(const FName StageId)
+{
+	if (RuntimeState.CardRun.bHasActiveCardBattle)
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKTrainingRules::StartChallenge(Candidate.Training, StageId))
+	{
+		return false;
+	}
+
+	FString Error;
+	if (!BeginTrainingEncounterBattle(Candidate, StageId, Candidate.Training.ActiveChallengeEncounterIndex, &Error))
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Training] BeginTrainingEncounterBattle failed for %s: %s"), *StageId.ToString(), *Error);
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::IsTrainingChallengeBattleActive() const
+{
+	return RuntimeState.Training.bChallengeActive
+		&& RuntimeState.CardRun.bHasActiveCardBattle
+		&& RuntimeState.Screen == EGameXXKScreen::Battle;
+}
+
+bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageCompleted, FGameXXKTrainingReward& OutReward)
+{
+	bOutStageCompleted = false;
+	OutReward = FGameXXKTrainingReward();
+	if (!RuntimeState.Training.bChallengeActive)
+	{
+		return false;
+	}
+
+	if (RuntimeState.CardRun.bHasActiveCardBattle)
+	{
+		FGameXXKRuntimeState Candidate = RuntimeState;
+		FString Error;
+		if (!AdvanceTrainingCardBattleStep(Candidate, &Error))
+		{
+			return false;
+		}
+
+		const FGameXXKTrainingProgress ActiveProgress = Candidate.Training;
+		if (!FGameXXKCardBattleAdapter::IsCardBattleTerminal(Candidate))
+		{
+			BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+			RuntimeState = MoveTemp(Candidate);
+			return true;
+		}
+
+		const FName StageId = ActiveProgress.ActiveChallengeStageId;
+		const int32 EncounterIndex = ActiveProgress.ActiveChallengeEncounterIndex;
+		const TArray<FGameXXKTrainingEncounterDefinition> Encounters = FGameXXKTrainingRules::BuildEncounterSequence(StageId, false);
+		if (!Encounters.IsValidIndex(EncounterIndex))
+		{
+			return false;
+		}
+
+		if (Candidate.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Defeat)
+		{
+			// Challenge failure is a local retry: it does not alter the cleared-stage graph
+			// and it never falls through the town failure settlement used by route runs.
+			ClearTrainingBattleProjection(Candidate);
+			Candidate.PlayerHP = Candidate.PlayerMaxHP;
+			Candidate.PlayerMP = Candidate.PlayerMaxMP;
+			if (!BeginTrainingEncounterBattle(Candidate, StageId, EncounterIndex, &Error))
+			{
+				return false;
+			}
+			BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+			RuntimeState = MoveTemp(Candidate);
+			return true;
+		}
+
+		OutReward = FGameXXKTrainingRules::BuildChallengeReward(
+			StageId,
+			Encounters[EncounterIndex].Kind,
+			true);
+		Candidate.PlayerGold = FMath::Max(0, Candidate.PlayerGold + OutReward.Gold);
+		Candidate.PlayerXP = FMath::Max(0, Candidate.PlayerXP + OutReward.Experience);
+		ClearTrainingBattleProjection(Candidate);
+		const bool bLastEncounter = EncounterIndex == Encounters.Num() - 1;
+		if (bLastEncounter)
+		{
+			bOutStageCompleted = FGameXXKTrainingRules::CompleteChallenge(Candidate.Training, StageId);
+			Candidate.Screen = EGameXXKScreen::Town;
+			Candidate.CurrentMapId = TEXT("QingshanInn");
+		}
+		else
+		{
+			++Candidate.Training.ActiveChallengeEncounterIndex;
+			if (!BeginTrainingEncounterBattle(Candidate, StageId, Candidate.Training.ActiveChallengeEncounterIndex, &Error))
+			{
+				return false;
+			}
+		}
+
+		BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+		RuntimeState = MoveTemp(Candidate);
+		return true;
+	}
+
+	// Compatibility path for pure widget fixtures created before the real battle
+	// bridge was installed. Live challenge sessions always take the branch above.
+	const FGameXXKTrainingProgress Progress = RuntimeState.Training;
+	const TArray<FGameXXKTrainingEncounterDefinition> Encounters = FGameXXKTrainingRules::BuildEncounterSequence(Progress.ActiveChallengeStageId);
+	if (!Encounters.IsValidIndex(Progress.ActiveChallengeEncounterIndex))
+	{
+		return false;
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	const EGameXXKTrainingEncounterKind EncounterKind = Encounters[Progress.ActiveChallengeEncounterIndex].Kind;
+	const bool bLastEncounter = Progress.ActiveChallengeEncounterIndex == Encounters.Num() - 1;
+	OutReward = FGameXXKTrainingRules::BuildChallengeReward(Progress.ActiveChallengeStageId, EncounterKind, true);
+	if (bLastEncounter)
+	{
+		bOutStageCompleted = FGameXXKTrainingRules::CompleteChallenge(RuntimeState.Training, Progress.ActiveChallengeStageId);
+		return bOutStageCompleted;
+	}
+	++RuntimeState.Training.ActiveChallengeEncounterIndex;
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::SetTrainingChallengeAutoBattle(const bool bEnabled)
+{
+	if (!RuntimeState.Training.bChallengeActive)
+	{
+		return false;
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState.Training.bChallengeAutoBattle = bEnabled;
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::StartTrainingTravel(const FName StageId)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	return FGameXXKTrainingRules::StartTravel(RuntimeState.Training, StageId);
+}
+
+bool UGameXXKMVPSubsystem::AdvanceTrainingTravelEncounter(bool& bOutStageCompleted, FGameXXKTrainingReward& OutReward)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	const bool bAdvanced = FGameXXKTrainingRules::AdvanceTravelEncounter(RuntimeState.Training, bOutStageCompleted, OutReward);
+	if (bAdvanced && bOutStageCompleted)
+	{
+		RuntimeState.PlayerGold = FMath::Max(0, RuntimeState.PlayerGold + OutReward.Gold);
+		RuntimeState.PlayerXP = FMath::Max(0, RuntimeState.PlayerXP + OutReward.Experience);
+	}
+	return bAdvanced;
+}
+
+bool UGameXXKMVPSubsystem::SetTrainingRetryOnFailure(const bool bEnabled)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState.Training.bRetryOnFailure = bEnabled;
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ResolveTrainingTravelFailure()
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	return FGameXXKTrainingRules::ResolveTravelFailure(RuntimeState.Training);
 }
 
 TArray<FGameXXKMetaShopProductDefinition> UGameXXKMVPSubsystem::GetMetaShopProducts() const

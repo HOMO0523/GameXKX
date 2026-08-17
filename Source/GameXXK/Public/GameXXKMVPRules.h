@@ -4,6 +4,7 @@
 #include "GameXXKCardRunTypes.h"
 #include "GameXXKEquipmentTypes.h"
 #include "GameXXKMetaShopTypes.h"
+#include "GameXXKTrainingRules.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GameXXKMVPRules.generated.h"
 
@@ -500,6 +501,10 @@ struct FGameXXKRuntimeState
 	/** Save-authoritative shared deck, companion roster, temporary NPC, reward and battle session state. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKCardRunState CardRun;
+
+	/** v18+ save-authoritative pure-2D desktop Training progress. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKTrainingProgress Training;
 };
 
 USTRUCT(BlueprintType)

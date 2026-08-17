@@ -22,6 +22,7 @@
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattleOverlayCoordinator.h"
 #include "UI/GameXXKCompanionRosterWidget.h"
+#include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKMetaShopWidget.h"
@@ -174,6 +175,7 @@ AGameXXKMVPPlayerController::AGameXXKMVPPlayerController()
 	RelicBarWidgetClass = UGameXXKRelicBarWidget::StaticClass();
 	TaskPanelWidgetClass = UGameXXKTaskPanelWidget::StaticClass();
 	TownHudWidgetClass = UGameXXKTownHudWidget::StaticClass();
+	DesktopTrainingWorkbenchWidgetClass = UGameXXKDesktopTrainingWorkbenchWidget::StaticClass();
 }
 
 void AGameXXKMVPPlayerController::BeginPlay()
@@ -283,6 +285,18 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 	{
 		return true;
 	}
+	if (Params.Key == EKeys::Tab && Params.Event == IE_Pressed && bEnableDesktopTrainingWorkbench)
+	{
+		UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+		if (Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
+		{
+			if (OpenDesktopTrainingWorkbench())
+			{
+				DesktopTrainingWorkbenchWidget->OpenBackpack();
+				return true;
+			}
+		}
+	}
 	if (Params.Key == EKeys::Q && Params.Event == IE_Pressed)
 	{
 		EnsurePlayerFlowWidgets();
@@ -367,6 +381,24 @@ void AGameXXKMVPPlayerController::SetMVPSubsystemForTest(UGameXXKMVPSubsystem* I
 {
 	OverrideSubsystem = InSubsystem;
 	RefreshPlayerFlowWidgets();
+}
+
+void AGameXXKMVPPlayerController::SetDesktopTrainingWorkbenchEnabledForTest(const bool bEnabled)
+{
+	bEnableDesktopTrainingWorkbench = bEnabled;
+	if (bEnabled)
+	{
+		OpenDesktopTrainingWorkbench();
+	}
+	else
+	{
+		CloseDesktopTrainingWorkbench();
+	}
+}
+
+UGameXXKDesktopTrainingWorkbenchWidget* AGameXXKMVPPlayerController::GetDesktopTrainingWorkbenchWidgetForTest() const
+{
+	return DesktopTrainingWorkbenchWidget;
 }
 
 bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgetsForTest()
@@ -1420,6 +1452,10 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
 	{
 		EnsureTownHudWidget();
 	}
+	if (bEnableDesktopTrainingWorkbench)
+	{
+		EnsureDesktopTrainingWorkbenchWidget();
+	}
 
 	if (!RouteMapWidget)
 	{
@@ -1849,6 +1885,75 @@ UGameXXKTownHudWidget* AGameXXKMVPPlayerController::EnsureTownHudWidget()
 	return TownHudWidget;
 }
 
+UGameXXKDesktopTrainingWorkbenchWidget* AGameXXKMVPPlayerController::EnsureDesktopTrainingWorkbenchWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!DesktopTrainingWorkbenchWidget)
+	{
+		TSubclassOf<UGameXXKDesktopTrainingWorkbenchWidget> WidgetClass = DesktopTrainingWorkbenchWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKDesktopTrainingWorkbenchWidget::StaticClass();
+		}
+		DesktopTrainingWorkbenchWidget = bCanAddToViewport
+			? CreateWidget<UGameXXKDesktopTrainingWorkbenchWidget>(this, WidgetClass)
+			: nullptr;
+		if (!DesktopTrainingWorkbenchWidget)
+		{
+			DesktopTrainingWorkbenchWidget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>(this, WidgetClass);
+		}
+	}
+	if (DesktopTrainingWorkbenchWidget)
+	{
+		DesktopTrainingWorkbenchWidget->SetMVPSubsystem(Subsystem);
+		ConfigureFullscreenTaskPanelSlot(DesktopTrainingWorkbenchWidget);
+		if (bCanAddToViewport && !DesktopTrainingWorkbenchWidget->IsInViewport())
+		{
+			DesktopTrainingWorkbenchWidget->AddToViewport(200);
+			ConfigureFullscreenTaskPanelSlot(DesktopTrainingWorkbenchWidget);
+		}
+	}
+	return DesktopTrainingWorkbenchWidget;
+}
+
+bool AGameXXKMVPPlayerController::OpenDesktopTrainingWorkbench()
+{
+	if (!bEnableDesktopTrainingWorkbench)
+	{
+		return false;
+	}
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Town)
+	{
+		return false;
+	}
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = EnsureDesktopTrainingWorkbenchWidget();
+	if (!Widget)
+	{
+		return false;
+	}
+	if (TownHudWidget)
+	{
+		TownHudWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	return Widget->OpenWorkbench();
+}
+
+bool AGameXXKMVPPlayerController::CloseDesktopTrainingWorkbench()
+{
+	if (!DesktopTrainingWorkbenchWidget)
+	{
+		return false;
+	}
+	const bool bClosed = DesktopTrainingWorkbenchWidget->CloseWorkbench();
+	if (TownHudWidget && ResolveMVPSubsystem() && ResolveMVPSubsystem()->GetRuntimeState().Screen == EGameXXKScreen::Town)
+	{
+		TownHudWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+	return bClosed;
+}
+
 bool AGameXXKMVPPlayerController::ConfirmPendingQuestNpc(FName TaskId)
 {
 	// The current quest NPC owns the Qingshan main offer. Future NPC/task pairs
@@ -1952,6 +2057,32 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	{
 		TownHudWidget->SetMVPSubsystem(Subsystem);
 		TownHudWidget->RefreshFromState();
+	}
+	if (bEnableDesktopTrainingWorkbench)
+	{
+		UGameXXKDesktopTrainingWorkbenchWidget* Workbench = EnsureDesktopTrainingWorkbenchWidget();
+		if (Workbench && ActiveScreen == EGameXXKScreen::Town && Workbench->IsWorkbenchVisibleForTest())
+		{
+			Workbench->SetMVPSubsystem(Subsystem);
+		}
+		else if (Workbench && ActiveScreen != EGameXXKScreen::Town)
+		{
+			// The workbench is an opt-in town shell. Close it before entering
+			// route/battle screens so it cannot retain input or cover gameplay.
+			Workbench->CloseWorkbench();
+		}
+		if (TownHudWidget && Workbench && Workbench->IsWorkbenchVisibleForTest())
+		{
+			TownHudWidget->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		else if (TownHudWidget && ActiveScreen == EGameXXKScreen::Town)
+		{
+			TownHudWidget->SetVisibility(ESlateVisibility::Visible);
+		}
+	}
+	else if (DesktopTrainingWorkbenchWidget)
+	{
+		DesktopTrainingWorkbenchWidget->CloseWorkbench();
 	}
 	if (RouteMapWidget)
 	{

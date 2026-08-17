@@ -33,7 +33,9 @@ public:
 	static constexpr int32 BattleRewardTieringIntroducedSaveVersion = 16;
 	/** v17: route-card entries (RouteCardIds/RouteCardEntries) were removed; BossCardSlots were added (empty default). */
 	static constexpr int32 BossCardSlotsIntroducedSaveVersion = 17;
-	static constexpr int32 CurrentSaveVersion = 17;
+	/** v18: pure-2D desktop Training progress and challenge/travel state. */
+	static constexpr int32 DesktopTrainingWorkbenchIntroducedSaveVersion = 18;
+	static constexpr int32 CurrentSaveVersion = 18;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

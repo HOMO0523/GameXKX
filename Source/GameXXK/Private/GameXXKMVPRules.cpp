@@ -1688,6 +1688,7 @@ FGameXXKRuntimeState UGameXXKMVPRules::CreateNewGame()
 	State.EquipmentCollection.CollectionSeed = 0x4758584B;
 	State.MetaShop.Seed = FGameXXKMetaShopRules::DeriveSeed(State);
 	State.MetaShop.NextPurchaseOrdinal = 0;
+	FGameXXKTrainingRules::InitializeNewGame(State.Training);
 	GameXXKMVP::RecalculatePlayerStats(State, false);
 	State.UnlockedRegions.Add(RegionQingshan());
 	AddItem(State, ItemEnhancementStone(), 10);

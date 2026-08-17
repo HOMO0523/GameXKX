@@ -547,6 +547,45 @@ namespace
 		}
 	}
 
+	void NormalizeTrainingProgress(FGameXXKTrainingProgress& Progress)
+	{
+		if (!Progress.UnlockedDifficultyIds.Contains(FGameXXKTrainingRules::DifficultyId(EGameXXKTrainingDifficulty::Normal))
+			|| Progress.ClearedStageIds.IsEmpty()
+			|| Progress.CurrentTravelStageId.IsNone())
+		{
+			FGameXXKTrainingRules::InitializeNewGame(Progress);
+			return;
+		}
+		FGameXXKTrainingStageDefinition Definition;
+		if (!FGameXXKTrainingRules::TryGetStageDefinition(Progress.CurrentTravelStageId, Definition))
+		{
+			Progress.CurrentTravelStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+		}
+		if (!FGameXXKTrainingRules::TryGetStageDefinition(Progress.SelectedStageId, Definition))
+		{
+			Progress.SelectedStageId = Progress.CurrentTravelStageId;
+		}
+		if (Progress.bChallengeActive && Progress.ActiveChallengeStageId.IsNone())
+		{
+			Progress.bChallengeActive = false;
+			Progress.ActiveChallengeEncounterIndex = INDEX_NONE;
+		}
+		if (Progress.bTravelActive && Progress.bChallengeActive)
+		{
+			Progress.bTravelActive = false;
+		}
+		if (Progress.bTravelActive)
+		{
+			Progress.ActiveTravelEncounterIndex = FMath::Max(0, Progress.ActiveTravelEncounterIndex);
+		}
+		else
+		{
+			Progress.ActiveTravelEncounterIndex = INDEX_NONE;
+		}
+		Progress.TravelVictories = FMath::Max(0, Progress.TravelVictories);
+		Progress.TravelFailures = FMath::Max(0, Progress.TravelFailures);
+	}
+
 	int32 NormalizeRouteSeedForMigration(const int32 Seed)
 	{
 		return Seed == 0 || Seed == MIN_int32 ? 1 : FMath::Abs(Seed);
@@ -1100,6 +1139,13 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		// default and removed RouteCardIds/RouteCardEntries simply no longer deserialize.
 		Candidate.RuntimeState.CardRun.RouteMerchant = FGameXXKRouteMerchantState();
 	}
+	if (Source.SaveVersion < DesktopTrainingWorkbenchIntroducedSaveVersion)
+	{
+		// v18 introduces a separate pure-2D workbench progression namespace;
+		// old saves start at the explicitly cleared Normal 1-1 tutorial stage.
+		FGameXXKTrainingRules::InitializeNewGame(Candidate.RuntimeState.Training);
+	}
+	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	Candidate.SaveVersion = CurrentSaveVersion;
 	if (!ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
 	{
@@ -1213,6 +1259,42 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 	}
 	if (!FGameXXKRouteMerchantRules::ValidateSavedStock(State, &OutError))
 	{
+		return false;
+	}
+	FGameXXKTrainingStageDefinition TrainingDefinition;
+	if (!State.Training.UnlockedDifficultyIds.Contains(FGameXXKTrainingRules::DifficultyId(EGameXXKTrainingDifficulty::Normal))
+		|| !FGameXXKTrainingRules::TryGetStageDefinition(State.Training.CurrentTravelStageId, TrainingDefinition)
+		|| (!State.Training.SelectedStageId.IsNone()
+			&& !FGameXXKTrainingRules::TryGetStageDefinition(State.Training.SelectedStageId, TrainingDefinition)))
+	{
+		OutError = TEXT("Saved Training progress is invalid.");
+		return false;
+	}
+	if (State.Training.bChallengeActive
+		&& (!FGameXXKTrainingRules::TryGetStageDefinition(State.Training.ActiveChallengeStageId, TrainingDefinition)
+			|| !FGameXXKTrainingRules::BuildEncounterSequence(State.Training.ActiveChallengeStageId).IsValidIndex(State.Training.ActiveChallengeEncounterIndex)))
+	{
+		OutError = TEXT("Saved Training challenge session is invalid.");
+		return false;
+	}
+	if (State.Training.bTravelActive)
+	{
+		const TArray<FGameXXKTrainingEncounterDefinition> TravelEncounters =
+			FGameXXKTrainingRules::BuildEncounterSequence(State.Training.CurrentTravelStageId, true);
+		if (!TravelEncounters.IsValidIndex(State.Training.ActiveTravelEncounterIndex))
+		{
+			OutError = TEXT("Saved Training travel session is invalid.");
+			return false;
+		}
+	}
+	else if (State.Training.ActiveTravelEncounterIndex != INDEX_NONE)
+	{
+		OutError = TEXT("Saved inactive Training travel session retains an encounter index.");
+		return false;
+	}
+	if (State.Training.bTravelActive && State.Training.bChallengeActive)
+	{
+		OutError = TEXT("Saved Training challenge and travel sessions cannot be active together.");
 		return false;
 	}
 	const FGameXXKRouteProgress& RouteProgress = State.CardRun.RouteProgress;

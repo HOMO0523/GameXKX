@@ -31,6 +31,49 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	FGameXXKRuntimeState GetRuntimeStateCopy() const;
 
+	/** Copy-safe Training read model used by the desktop workbench. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
+	FGameXXKTrainingProgress GetTrainingProgressCopy() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
+	TArray<FGameXXKTrainingStageDefinition> GetTrainingStageDefinitions() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
+	TArray<FGameXXKTrainingEncounterDefinition> GetTrainingEncounterSequence(FName StageId, bool bTravelMode = false) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
+	FText BuildTrainingStageTooltip(FName StageId) const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool SelectTrainingStage(FName StageId);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool StartTrainingChallenge(FName StageId);
+
+	/** True while the selected Training challenge is backed by the real card battle runtime. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
+	bool IsTrainingChallengeBattleActive() const;
+
+	/** Advances one real card-battle step, then settles the encounter and opens the next one when terminal. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool AdvanceTrainingChallengeEncounter(bool& bOutStageCompleted, FGameXXKTrainingReward& OutReward);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool SetTrainingChallengeAutoBattle(bool bEnabled);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool StartTrainingTravel(FName StageId);
+
+	/** Advances one encounter in the repeating travel loop and returns the stage reward at its boss. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool AdvanceTrainingTravelEncounter(bool& bOutStageCompleted, FGameXXKTrainingReward& OutReward);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool SetTrainingRetryOnFailure(bool bEnabled);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool ResolveTrainingTravelFailure();
+
 	/** Development-only visual fixture. This is a non-saving view over a copied active card battle. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	bool ApplyBattleHudFixtureForTest(FString& OutError);
