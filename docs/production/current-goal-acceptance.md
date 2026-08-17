@@ -3,7 +3,7 @@ status: record
 owner: codex
 updated_at: 2026-08-18T05:58:00+08:00
 source_commit: 7b7ab90
-working_tree: dirty (preserve user L_Main.umap, unrelated probes and source-art changes; current rule/test/docs updates are committed through 7b7ab90)
+working_tree: dirty (preserve user L_Main.umap, unrelated probes and source-art changes; current runtime/test updates are through 7b7ab90, this documentation refresh is 44f8eee)
 ---
 # GameXXK 当前目标(滚动指针)
 
@@ -12,7 +12,7 @@ working_tree: dirty (preserve user L_Main.umap, unrelated probes and source-art 
 ## 当前基线(更新于 2026-08-18)
 
 - 分支:`main`
-- 当前代码 HEAD:`7b7ab90`（包含 `57bf299` 的游历宝箱概率 parity、`85b9ed4` 的 Pillow 兼容修复、`7b7ab90` 的 PIE 生命周期测试夹具修复），前置挑战画布提交为 `bdfcf9e`，MasterV2 资源提交为 `4632179`，挑战自动战斗待选牌处理为 `5c60999`；文档基线为 `ffe3613`；前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`、桥接为 `7881927`。桌面历练规则、存档 v20、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner、离线补算/待领取账本/收菜入口、奖励/冷却 Resolver、最小宝箱 Inventory 镜像、背包角色/伙伴切换、工具/天赋容器基础导航、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、背包内独立设置与关闭动作、挑战期间左右仓库/历练地图只读外壳与导航锁定已提交；顶部 3 敌/3 我站位已并入 960×968 ChallengeViewport，BattleBoard 使用 710×535 连续画布，挑战态自动战斗可见而游历失败重试隐藏；当前规则明确为普通游历箱 CD 240 秒（4 分钟）、精英/首领高级箱 CD 360 秒（6 分钟），游历与局内共用同一概率/seed/天赋加成，CD 只作为游历侧门控。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
+- 当前运行时代码 HEAD:`7b7ab90`（包含 `57bf299` 的游历宝箱概率 parity、`85b9ed4` 的 Pillow 兼容修复、`7b7ab90` 的 PIE 生命周期测试夹具修复；本次文档刷新为 `44f8eee`），前置挑战画布提交为 `bdfcf9e`，MasterV2 资源提交为 `4632179`，挑战自动战斗待选牌处理为 `5c60999`；文档基线为 `ffe3613`；前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`、桥接为 `7881927`。桌面历练规则、存档 v20、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner、离线补算/待领取账本/收菜入口、奖励/冷却 Resolver、最小宝箱 Inventory 镜像、背包角色/伙伴切换、工具/天赋容器基础导航、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、背包内独立设置与关闭动作、挑战期间左右仓库/历练地图只读外壳与导航锁定已提交；顶部 3 敌/3 我站位已并入 960×968 ChallengeViewport，BattleBoard 使用 710×535 连续画布，挑战态自动战斗可见而游历失败重试隐藏；当前规则明确为普通游历箱 CD 240 秒（4 分钟）、精英/首领高级箱 CD 360 秒（6 分钟），游历与局内共用同一概率/seed/天赋加成，CD 只作为游历侧门控。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
 - 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。这两份报告只作历史回归参考，不冒充当前工作区的本轮全量运行。
