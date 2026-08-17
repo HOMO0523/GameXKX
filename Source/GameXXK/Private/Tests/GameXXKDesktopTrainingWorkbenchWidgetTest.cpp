@@ -5,9 +5,31 @@
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 
 #include "Engine/GameInstance.h"
+#include "Blueprint/WidgetTree.h"
 #include "Misc/AutomationTest.h"
+#include "Widgets/SNullWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchSlateBuildContractTest,
+	"GameXXK.DesktopTraining.Workbench.SlateBuildContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchSlateBuildContractTest::RunTest(const FString& Parameters)
+{
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	TestNotNull(TEXT("workbench widget exists for the Slate build contract"), Widget);
+	if (!Widget)
+	{
+		return false;
+	}
+
+	const TSharedRef<SWidget> SlateWidget = Widget->TakeWidget();
+	TestNotNull(TEXT("workbench creates a WidgetTree root before Slate paints"), Widget->WidgetTree ? Widget->WidgetTree->RootWidget.Get() : nullptr);
+	TestTrue(TEXT("workbench TakeWidget is not the null Slate placeholder"), SlateWidget != SNullWidget::NullWidget);
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest,
@@ -162,6 +184,7 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	const FName ChallengeStage = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
 	TestTrue(TEXT("challenge fixture selects the first uncompleted stage"), Widget->SelectStageForTest(ChallengeStage));
 	TestTrue(TEXT("challenge fixture enters the enlarged challenge viewport"), Widget->ClickChallengeForTest());
+	TestTrue(TEXT("challenge refresh keeps the workbench shell visible"), Widget->IsWorkbenchVisibleForTest());
 	TestTrue(TEXT("challenge keeps warehouse and map shells read-only"), Widget->AreChallengeSidePanelsReadOnlyForTest());
 	TestTrue(TEXT("challenge viewport exposes active auto-battle control"), Widget->IsAutoBattleVisibleForTest());
 	TestFalse(TEXT("challenge viewport does not expose travel retry control"), Widget->IsRetryVisibleForTest());

@@ -220,6 +220,7 @@ public:
 	void HandleActionClicked(int32 ActionId);
 
 protected:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
@@ -236,6 +237,7 @@ private:
 	void BuildTopIdleStrip();
 	void BuildBottomNavigation();
 	void RefreshLayout();
+	void UpdateTravelCooldownText();
 	void ApplyAction(int32 ActionId);
 	void SetNotice(const FText& Notice);
 
@@ -259,6 +261,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ChallengeStatusText;
+
+	/** Live remaining cooldown readout for Travel normal/advanced chest rolls. */
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TravelCooldownText;
 
 	/** Reuses the production card battle board inside the enlarged ChallengeViewport. */
 	UPROPERTY(Transient)

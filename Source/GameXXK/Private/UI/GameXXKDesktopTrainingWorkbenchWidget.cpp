@@ -15,6 +15,7 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
+#include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKCharacterBackpackModel.h"
@@ -329,12 +330,19 @@ void UGameXXKDesktopTrainingActionButton::HandleClicked()
 	}
 }
 
+TSharedRef<SWidget> UGameXXKDesktopTrainingWorkbenchWidget::RebuildWidget()
+{
+	BuildProgrammaticLayout();
+	return Super::RebuildWidget();
+}
+
 void UGameXXKDesktopTrainingWorkbenchWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	SelectedStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
-	RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass());
-	WidgetTree->RootWidget = RootCanvas;
+	if (SelectedStageId.IsNone())
+	{
+		SelectedStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	}
 	BuildProgrammaticLayout();
 	SetVisibility(ESlateVisibility::Collapsed);
 }
@@ -347,8 +355,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeome
 		const UGameXXKMVPSubsystem* TravelSubsystem = ResolveMVPSubsystem();
 		if (!TravelSubsystem || !TravelSubsystem->GetRuntimeState().Training.bTravelActive)
 		{
+			UpdateTravelCooldownText();
 			return;
 		}
+		UpdateTravelCooldownText();
 		TravelAccumulator += InDeltaTime;
 		if (TravelAccumulator >= 1.0f)
 		{
@@ -881,15 +891,29 @@ void UGameXXKDesktopTrainingWorkbenchWidget::HandleActionClicked(const int32 Act
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 {
+	if (!WidgetTree)
+	{
+		WidgetTree = NewObject<UWidgetTree>(this, TEXT("DesktopTrainingWorkbenchWidgetTree"));
+	}
+	if (!WidgetTree)
+	{
+		return;
+	}
+	if (!RootCanvas)
+	{
+		RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("DesktopTrainingWorkbenchRoot"));
+	}
 	if (!RootCanvas)
 	{
 		return;
 	}
+	WidgetTree->RootWidget = RootCanvas;
 	if (ChallengeBattleBoard && ChallengeBattleVisualSessionToken != 0)
 	{
 		ChallengeBattleBoard->CancelBattleVisualSession(ChallengeBattleVisualSessionToken);
 		ChallengeBattleVisualSessionToken = 0;
 	}
+	TravelCooldownText = nullptr;
 	RootCanvas->ClearChildren();
 	StageButtons.Reset();
 	ActionButtons.Reset();
@@ -995,6 +1019,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 		15,
 		FLinearColor(0.90f, 0.82f, 0.56f, 1.0f));
 	AddCanvas(RootCanvas, PendingLabel, FVector2D(1335.0f, 28.0f), FVector2D(145.0f, 44.0f));
+	TravelCooldownText = MakeText(WidgetTree, FText::GetEmpty(), 15, FLinearColor(0.95f, 0.82f, 0.46f, 1.0f));
+	TravelCooldownText->SetToolTipText(FText::FromString(TEXT("游历宝箱概率与局内一致；普通箱掉落后 4 分钟冷却，精英箱掉落后 6 分钟冷却。")));
+	AddCanvas(RootCanvas, TravelCooldownText.Get(), FVector2D(385.0f, 88.0f), FVector2D(335.0f, 30.0f));
+	UpdateTravelCooldownText();
 	UGameXXKDesktopTrainingActionButton* CollectButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 	CollectButton->Configure(this, 16);
 	CollectButton->SetBackgroundColor(PendingReward.Gold > 0 || PendingReward.NormalChestCount > 0 || PendingReward.AdvancedChestCount > 0 ? Accent : Panel);
@@ -1009,6 +1037,30 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 	RetryButton->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("失败重试")), 18));
 	AddCanvas(RootCanvas, RetryButton, FVector2D(1485.0f, 42.0f), FVector2D(135.0f, 50.0f));
 	ActionButtons.Add(RetryButton);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelCooldownText()
+{
+	if (!TravelCooldownText)
+	{
+		return;
+	}
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKTrainingProgress Progress = Subsystem
+		? Subsystem->GetTrainingProgressCopy()
+		: FGameXXKTrainingProgress();
+	const auto FormatCooldown = [](const int32 RemainingSeconds) -> FString
+	{
+		const int32 SafeSeconds = FMath::Max(0, RemainingSeconds);
+		return FString::Printf(TEXT("%02d:%02d"), SafeSeconds / 60, SafeSeconds % 60);
+	};
+	const FString NormalText = Progress.TravelNormalChestCooldownRemainingSeconds > 0
+		? FString::Printf(TEXT("普通箱 CD %s"), *FormatCooldown(Progress.TravelNormalChestCooldownRemainingSeconds))
+		: TEXT("普通箱 可掉落");
+	const FString AdvancedText = Progress.TravelAdvancedChestCooldownRemainingSeconds > 0
+		? FString::Printf(TEXT("精英箱 CD %s"), *FormatCooldown(Progress.TravelAdvancedChestCooldownRemainingSeconds))
+		: TEXT("精英箱 可掉落");
+	TravelCooldownText->SetText(FText::FromString(FString::Printf(TEXT("掉箱冷却 · %s · %s"), *NormalText, *AdvancedText)));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel(const bool bReadOnly)
@@ -1592,7 +1644,31 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBottomNavigation()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::RefreshLayout()
 {
+	const bool bWasInViewport = IsInViewport();
+	const ESlateVisibility PreviousVisibility = GetVisibility();
+	if (bWasInViewport)
+	{
+		// WidgetTree children are rebuilt for the workbench/challenge switch. A
+		// live UUserWidget otherwise keeps the old Slate tree (for example the
+		// idle travel strip remains painted over the challenge canvas). Detach
+		// and release the cached Slate resource before attaching the new tree.
+		RemoveFromParent();
+		ReleaseSlateResources(true);
+	}
 	BuildProgrammaticLayout();
+	if (bWasInViewport)
+	{
+		AddToViewport(200);
+		// Reattaching a live UUserWidget can restore the Slate tree with its
+		// default collapsed visibility. Preserve the caller's visible/collapsed
+		// state so switching from the workbench to the challenge viewport does
+		// not silently remove the whole shell.
+		SetVisibility(PreviousVisibility);
+		if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
+		{
+			PlayerController->RefreshPlayerFlowWidgetsFromState();
+		}
+	}
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
