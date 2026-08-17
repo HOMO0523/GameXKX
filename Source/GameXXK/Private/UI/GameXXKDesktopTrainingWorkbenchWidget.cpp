@@ -240,6 +240,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 	}
 	ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 	bSettingsPanelOpen = false;
+	bChallengeSidePanelsReadOnly = false;
 	TravelAccumulator = 0.0f;
 	RefreshLayout();
 	SetVisibility(ESlateVisibility::Visible);
@@ -259,6 +260,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenBackpack()
 	ActiveNav = EGameXXKDesktopTrainingNav::Formation;
 	ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 	bSettingsPanelOpen = false;
+	bChallengeSidePanelsReadOnly = false;
 	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
 	if (ActiveBackpackCharacterId.IsNone() || !CharacterIds.Contains(ActiveBackpackCharacterId))
 	{
@@ -502,6 +504,12 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::IsChallengeViewportActiveForTest() 
 	return ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport;
 }
 
+bool UGameXXKDesktopTrainingWorkbenchWidget::AreChallengeSidePanelsReadOnlyForTest() const
+{
+	return bChallengeSidePanelsReadOnly
+		&& ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport;
+}
+
 bool UGameXXKDesktopTrainingWorkbenchWidget::IsAutoBattleVisibleForTest() const
 {
 	return ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport;
@@ -654,10 +662,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 {
+	bChallengeSidePanelsReadOnly = ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport;
 	AddCanvas(RootCanvas, MakePanel(WidgetTree, Ink), FVector2D::ZeroVector, ShellSize);
 	if (ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport)
 	{
+		BuildWarehousePanel(true);
 		BuildChallengeViewport();
+		BuildTrainingMapPanel(true);
 	}
 	else
 	{
@@ -743,11 +754,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 	ActionButtons.Add(RetryButton);
 }
 
-void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel(const bool bReadOnly)
 {
 	UBorder* PanelBorder = MakePanel(WidgetTree, Panel);
 	AddCanvas(RootCanvas, PanelBorder, FVector2D(24.0f, 150.0f), FVector2D(320.0f, 840.0f));
-	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("仓库  ·  4 列")), 28, Gold);
+	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(bReadOnly ? TEXT("仓库  ·  4 列  ·  只读") : TEXT("仓库  ·  4 列")), 28, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(48.0f, 174.0f), FVector2D(260.0f, 42.0f));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
@@ -768,13 +779,23 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 			const FString EquipmentLabel = RuntimeState
 				? EquipmentDisplayName(RuntimeState->EquipmentCollection, InstanceId)
 				: InstanceId.ToString();
-			UGameXXKDesktopTrainingActionButton* SlotButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-			SlotButton->Configure(this, 100 + SlotIndex);
-			SlotButton->SetBackgroundColor(FLinearColor(0.07f, 0.06f, 0.05f, 1.0f));
-			SlotButton->SetContent(MakeText(WidgetTree, FText::FromString(EquipmentLabel), 10, FLinearColor::White));
-			SlotButton->SetToolTipText(FText::FromString(FString::Printf(TEXT("装备实例：%s\n%s\n点击装备到当前角色"), *InstanceId.ToString(), *EquipmentLabel)));
-			AddCanvas(RootCanvas, SlotButton, CellPosition, FVector2D(58.0f, 58.0f));
-			ActionButtons.Add(SlotButton);
+			if (bReadOnly)
+			{
+				UBorder* Cell = MakePanel(WidgetTree, FLinearColor(0.07f, 0.06f, 0.05f, 1.0f));
+				Cell->SetContent(MakeText(WidgetTree, FText::FromString(EquipmentLabel), 10, FLinearColor::White));
+				Cell->SetToolTipText(FText::FromString(FString::Printf(TEXT("装备实例：%s\n%s\n挑战中只读"), *InstanceId.ToString(), *EquipmentLabel)));
+				AddCanvas(RootCanvas, Cell, CellPosition, FVector2D(58.0f, 58.0f));
+			}
+			else
+			{
+				UGameXXKDesktopTrainingActionButton* SlotButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+				SlotButton->Configure(this, 100 + SlotIndex);
+				SlotButton->SetBackgroundColor(FLinearColor(0.07f, 0.06f, 0.05f, 1.0f));
+				SlotButton->SetContent(MakeText(WidgetTree, FText::FromString(EquipmentLabel), 10, FLinearColor::White));
+				SlotButton->SetToolTipText(FText::FromString(FString::Printf(TEXT("装备实例：%s\n%s\n点击装备到当前角色"), *InstanceId.ToString(), *EquipmentLabel)));
+				AddCanvas(RootCanvas, SlotButton, CellPosition, FVector2D(58.0f, 58.0f));
+				ActionButtons.Add(SlotButton);
+			}
 		}
 		else
 		{
@@ -789,31 +810,40 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 		GetWarehousePageCountForTest(),
 		WarehousePageSize)), 15, FLinearColor(0.78f, 0.70f, 0.60f, 1.0f));
 	AddCanvas(RootCanvas, PageText, FVector2D(48.0f, 805.0f), FVector2D(230.0f, 28.0f));
-	UGameXXKDesktopTrainingActionButton* Previous = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	Previous->Configure(this, 40);
-	Previous->SetBackgroundColor(PanelAlt);
-	Previous->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("上一页")), 15));
-	Previous->SetIsEnabled(GetWarehousePageIndexForTest() > 0);
-	AddCanvas(RootCanvas, Previous, FVector2D(48.0f, 850.0f), FVector2D(90.0f, 40.0f));
-	ActionButtons.Add(Previous);
-	UGameXXKDesktopTrainingActionButton* Next = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	Next->Configure(this, 41);
-	Next->SetBackgroundColor(PanelAlt);
-	Next->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("下一页")), 15));
-	Next->SetIsEnabled(GetWarehousePageIndexForTest() + 1 < GetWarehousePageCountForTest());
-	AddCanvas(RootCanvas, Next, FVector2D(150.0f, 850.0f), FVector2D(90.0f, 40.0f));
-	ActionButtons.Add(Next);
-	UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	Sort->Configure(this, 5);
-	Sort->SetBackgroundColor(Accent);
-	Sort->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("排序")), 15));
-	Sort->SetToolTipText(FText::FromString(TEXT("按槽位、品质和等级排序仓库")));
-	AddCanvas(RootCanvas, Sort, FVector2D(248.0f, 850.0f), FVector2D(76.0f, 40.0f));
-	ActionButtons.Add(Sort);
+	if (bReadOnly)
+	{
+		UTextBlock* ReadOnlyText = MakeText(WidgetTree, FText::FromString(TEXT("挑战进行中\n仓库只读 · 不可翻页、排序或装备")), 15, FLinearColor(0.82f, 0.74f, 0.62f, 1.0f));
+		AddCanvas(RootCanvas, ReadOnlyText, FVector2D(48.0f, 850.0f), FVector2D(250.0f, 52.0f));
+	}
+	else
+	{
+		UGameXXKDesktopTrainingActionButton* Previous = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+		Previous->Configure(this, 40);
+		Previous->SetBackgroundColor(PanelAlt);
+		Previous->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("上一页")), 15));
+		Previous->SetIsEnabled(GetWarehousePageIndexForTest() > 0);
+		AddCanvas(RootCanvas, Previous, FVector2D(48.0f, 850.0f), FVector2D(90.0f, 40.0f));
+		ActionButtons.Add(Previous);
+		UGameXXKDesktopTrainingActionButton* Next = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+		Next->Configure(this, 41);
+		Next->SetBackgroundColor(PanelAlt);
+		Next->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("下一页")), 15));
+		Next->SetIsEnabled(GetWarehousePageIndexForTest() + 1 < GetWarehousePageCountForTest());
+		AddCanvas(RootCanvas, Next, FVector2D(150.0f, 850.0f), FVector2D(90.0f, 40.0f));
+		ActionButtons.Add(Next);
+		UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+		Sort->Configure(this, 5);
+		Sort->SetBackgroundColor(Accent);
+		Sort->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("排序")), 15));
+		Sort->SetToolTipText(FText::FromString(TEXT("按槽位、品质和等级排序仓库")));
+		AddCanvas(RootCanvas, Sort, FVector2D(248.0f, 850.0f), FVector2D(76.0f, 40.0f));
+		ActionButtons.Add(Sort);
+	}
 	UTextBlock* Footer = MakeText(WidgetTree, FText::FromString(FString::Printf(
-		TEXT("装备实例 %d / %d\n不显示角色身份卡"),
+		TEXT("装备实例 %d / %d\n%s"),
 		WarehouseCount,
-		FGameXXKEquipmentRules::WarehouseCapacity)), 16, FLinearColor(0.75f, 0.68f, 0.55f, 1.0f));
+		FGameXXKEquipmentRules::WarehouseCapacity,
+		bReadOnly ? TEXT("挑战中保持只读") : TEXT("不显示角色身份卡"))), 16, FLinearColor(0.75f, 0.68f, 0.55f, 1.0f));
 	AddCanvas(RootCanvas, Footer, FVector2D(48.0f, 900.0f), FVector2D(240.0f, 54.0f));
 }
 
@@ -1046,11 +1076,14 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	AddCanvas(RootCanvas, QueueText, FVector2D(1400.0f, 485.0f), FVector2D(420.0f, 190.0f));
 }
 
-void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel(const bool bReadOnly)
 {
 	UBorder* Map = MakePanel(WidgetTree, Panel);
 	AddCanvas(RootCanvas, Map, FVector2D(1340.0f, 150.0f), FVector2D(556.0f, 840.0f));
-	UTextBlock* Title = MakeText(WidgetTree, ActiveNav == EGameXXKDesktopTrainingNav::Tools ? FText::FromString(TEXT("工具替换右侧地图")) : FText::FromString(TEXT("历练地图")), 30, Gold);
+	const FText MapTitle = bReadOnly
+		? FText::FromString(TEXT("历练地图  ·  挑战只读"))
+		: (ActiveNav == EGameXXKDesktopTrainingNav::Tools ? FText::FromString(TEXT("工具替换右侧地图")) : FText::FromString(TEXT("历练地图")));
+	UTextBlock* Title = MakeText(WidgetTree, MapTitle, 30, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(1370.0f, 175.0f), FVector2D(450.0f, 48.0f));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const TArray<FGameXXKTrainingStageDefinition> Definitions = Subsystem ? Subsystem->GetTrainingStageDefinitions() : TArray<FGameXXKTrainingStageDefinition>();
@@ -1061,13 +1094,22 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 		EGameXXKTrainingDifficulty::Hell};
 	for (int32 DifficultyIndex = 0; DifficultyIndex < Difficulties.Num(); ++DifficultyIndex)
 	{
-		UGameXXKDesktopTrainingActionButton* DifficultyTab = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-		DifficultyTab->Configure(this, 11 + DifficultyIndex);
-		DifficultyTab->SetBackgroundColor(Difficulties[DifficultyIndex] == ActiveDifficulty ? Accent : PanelAlt);
 		const TCHAR* Label = DifficultyIndex == 0 ? TEXT("普通") : DifficultyIndex == 1 ? TEXT("困难") : TEXT("地狱");
-		DifficultyTab->SetContent(MakeText(WidgetTree, FText::FromString(Label), 18));
-		AddCanvas(RootCanvas, DifficultyTab, FVector2D(1380.0f + DifficultyIndex * 155.0f, 225.0f), FVector2D(135.0f, 42.0f));
-		ActionButtons.Add(DifficultyTab);
+		if (bReadOnly)
+		{
+			UBorder* DifficultyTab = MakePanel(WidgetTree, Difficulties[DifficultyIndex] == ActiveDifficulty ? Accent : PanelAlt);
+			DifficultyTab->SetContent(MakeText(WidgetTree, FText::FromString(Label), 18));
+			AddCanvas(RootCanvas, DifficultyTab, FVector2D(1380.0f + DifficultyIndex * 155.0f, 225.0f), FVector2D(135.0f, 42.0f));
+		}
+		else
+		{
+			UGameXXKDesktopTrainingActionButton* DifficultyTab = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+			DifficultyTab->Configure(this, 11 + DifficultyIndex);
+			DifficultyTab->SetBackgroundColor(Difficulties[DifficultyIndex] == ActiveDifficulty ? Accent : PanelAlt);
+			DifficultyTab->SetContent(MakeText(WidgetTree, FText::FromString(Label), 18));
+			AddCanvas(RootCanvas, DifficultyTab, FVector2D(1380.0f + DifficultyIndex * 155.0f, 225.0f), FVector2D(135.0f, 42.0f));
+			ActionButtons.Add(DifficultyTab);
+		}
 	}
 	for (const FGameXXKTrainingStageDefinition& Definition : Definitions)
 	{
@@ -1075,14 +1117,27 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 		{
 			continue;
 		}
-		UGameXXKDesktopTrainingStageButton* Node = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingStageButton>(UGameXXKDesktopTrainingStageButton::StaticClass());
-		Node->Configure(this, Definition.StageId);
-		Node->SetBackgroundColor(Definition.StageId == SelectedStageId ? Gold : FLinearColor(0.35f, 0.25f, 0.13f, 1.0f));
-		Node->SetToolTipText(Subsystem ? Subsystem->BuildTrainingStageTooltip(Definition.StageId) : FText::GetEmpty());
-		Node->SetContent(MakeText(WidgetTree, FText::FromString(FString::Printf(TEXT("%d-%d"), Definition.Chapter, ((Definition.StageNumber - 1) % 3) + 1)), 18, Ink));
 		const int32 LocalIndex = Definition.StageNumber - 1;
-		AddCanvas(RootCanvas, Node, FVector2D(1380.0f + (LocalIndex % 3) * 160.0f, 300.0f + (LocalIndex / 3) * 78.0f), FVector2D(120.0f, 54.0f));
-		StageButtons.Add(Node);
+		const FVector2D NodePosition(1380.0f + (LocalIndex % 3) * 160.0f, 300.0f + (LocalIndex / 3) * 78.0f);
+		const FText NodeLabel = FText::FromString(FString::Printf(TEXT("%d-%d"), Definition.Chapter, ((Definition.StageNumber - 1) % 3) + 1));
+		const FText NodeTooltip = Subsystem ? Subsystem->BuildTrainingStageTooltip(Definition.StageId) : FText::GetEmpty();
+		if (bReadOnly)
+		{
+			UBorder* Node = MakePanel(WidgetTree, Definition.StageId == SelectedStageId ? Gold : FLinearColor(0.35f, 0.25f, 0.13f, 1.0f));
+			Node->SetContent(MakeText(WidgetTree, NodeLabel, 18, Ink));
+			Node->SetToolTipText(FText::FromString(NodeTooltip.ToString() + TEXT("\n挑战中只读")));
+			AddCanvas(RootCanvas, Node, NodePosition, FVector2D(120.0f, 54.0f));
+		}
+		else
+		{
+			UGameXXKDesktopTrainingStageButton* Node = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingStageButton>(UGameXXKDesktopTrainingStageButton::StaticClass());
+			Node->Configure(this, Definition.StageId);
+			Node->SetBackgroundColor(Definition.StageId == SelectedStageId ? Gold : FLinearColor(0.35f, 0.25f, 0.13f, 1.0f));
+			Node->SetToolTipText(NodeTooltip);
+			Node->SetContent(MakeText(WidgetTree, NodeLabel, 18, Ink));
+			AddCanvas(RootCanvas, Node, NodePosition, FVector2D(120.0f, 54.0f));
+			StageButtons.Add(Node);
+		}
 	}
 	TravelStageText = MakeText(WidgetTree, FText::FromString(TEXT("当前游历关卡：未选择")), 20, FLinearColor::White);
 	if (Subsystem)
@@ -1091,36 +1146,44 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 		TravelStageText->SetText(FText::FromString(FString::Printf(TEXT("当前游历关卡：%s"), *Current.ToString())));
 	}
 	AddCanvas(RootCanvas, TravelStageText.Get(), FVector2D(1375.0f, 735.0f), FVector2D(480.0f, 46.0f));
-	UGameXXKDesktopTrainingActionButton* Challenge = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	Challenge->Configure(this, 6);
-	Challenge->SetBackgroundColor(Accent);
-	Challenge->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("挑战")), 24));
-	if (Subsystem)
+	if (bReadOnly)
 	{
-		const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
-		const bool bCanChallenge = FGameXXKTrainingRules::CanChallenge(Progress, SelectedStageId);
-		Challenge->SetIsEnabled(bCanChallenge);
-		if (!bCanChallenge && FGameXXKTrainingRules::AreAllStagesCleared(Progress))
-		{
-			Challenge->SetToolTipText(FText::FromString(TEXT("挑战按钮已完成；期待新内容")));
-		}
-		else if (!bCanChallenge && FGameXXKTrainingRules::IsStageCleared(Progress, SelectedStageId))
-		{
-			Challenge->SetToolTipText(FText::FromString(TEXT("本关已通关，请选择其他未通关关卡")));
-		}
-		else if (!bCanChallenge)
-		{
-			Challenge->SetToolTipText(FText::FromString(TEXT("需要先完成前置关卡或解锁当前难度")));
-		}
+		UTextBlock* ReadOnlyNotice = MakeText(WidgetTree, FText::FromString(TEXT("挑战进行中\n右侧历练地图只读")), 18, FLinearColor(0.82f, 0.74f, 0.62f, 1.0f));
+		AddCanvas(RootCanvas, ReadOnlyNotice, FVector2D(1375.0f, 820.0f), FVector2D(300.0f, 58.0f));
 	}
-	AddCanvas(RootCanvas, Challenge, FVector2D(1380.0f, 820.0f), FVector2D(175.0f, 64.0f));
-	ActionButtons.Add(Challenge);
-	UGameXXKDesktopTrainingActionButton* Travel = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	Travel->Configure(this, 7);
-	Travel->SetBackgroundColor(FLinearColor(0.28f, 0.20f, 0.12f, 1.0f));
-	Travel->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("游历")), 24));
-	AddCanvas(RootCanvas, Travel, FVector2D(1580.0f, 820.0f), FVector2D(175.0f, 64.0f));
-	ActionButtons.Add(Travel);
+	else
+	{
+		UGameXXKDesktopTrainingActionButton* Challenge = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+		Challenge->Configure(this, 6);
+		Challenge->SetBackgroundColor(Accent);
+		Challenge->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("挑战")), 24));
+		if (Subsystem)
+		{
+			const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
+			const bool bCanChallenge = FGameXXKTrainingRules::CanChallenge(Progress, SelectedStageId);
+			Challenge->SetIsEnabled(bCanChallenge);
+			if (!bCanChallenge && FGameXXKTrainingRules::AreAllStagesCleared(Progress))
+			{
+				Challenge->SetToolTipText(FText::FromString(TEXT("挑战按钮已完成；期待新内容")));
+			}
+			else if (!bCanChallenge && FGameXXKTrainingRules::IsStageCleared(Progress, SelectedStageId))
+			{
+				Challenge->SetToolTipText(FText::FromString(TEXT("本关已通关，请选择其他未通关关卡")));
+			}
+			else if (!bCanChallenge)
+			{
+				Challenge->SetToolTipText(FText::FromString(TEXT("需要先完成前置关卡或解锁当前难度")));
+			}
+		}
+		AddCanvas(RootCanvas, Challenge, FVector2D(1380.0f, 820.0f), FVector2D(175.0f, 64.0f));
+		ActionButtons.Add(Challenge);
+		UGameXXKDesktopTrainingActionButton* Travel = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+		Travel->Configure(this, 7);
+		Travel->SetBackgroundColor(FLinearColor(0.28f, 0.20f, 0.12f, 1.0f));
+		Travel->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("游历")), 24));
+		AddCanvas(RootCanvas, Travel, FVector2D(1580.0f, 820.0f), FVector2D(175.0f, 64.0f));
+		ActionButtons.Add(Travel);
+	}
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildChallengeViewport()
@@ -1261,6 +1324,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		if (Subsystem->StartTrainingChallenge(SelectedStageId))
 		{
 			ViewMode = EGameXXKDesktopTrainingViewMode::ChallengeViewport;
+			bChallengeSidePanelsReadOnly = true;
+			bSettingsPanelOpen = false;
 			AutoBattleAccumulator = 0.0f;
 			RefreshLayout();
 		}
@@ -1273,6 +1338,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		if (Subsystem->StartTrainingTravel(SelectedStageId))
 		{
 			ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
+			bChallengeSidePanelsReadOnly = false;
 			SetNotice(FText::FromString(TEXT("开始游历：走动、遭遇、自动战斗、结算后循环")));
 			RefreshLayout();
 		}

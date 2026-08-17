@@ -153,6 +153,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsChallengeViewportActiveForTest() const;
 
+	/** The warehouse and training-map shells remain present but input-locked during challenge. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	bool AreChallengeSidePanelsReadOnlyForTest() const;
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsAutoBattleVisibleForTest() const;
 
@@ -194,10 +198,10 @@ private:
 	void BuildProgrammaticLayout();
 	void BuildWorkbenchShell();
 	void BuildChallengeViewport();
-	void BuildWarehousePanel();
+	void BuildWarehousePanel(bool bReadOnly = false);
 	void BuildBackpackPanel();
 	void BuildTalentsPanel();
-	void BuildTrainingMapPanel();
+	void BuildTrainingMapPanel(bool bReadOnly = false);
 	void BuildToolsPanel();
 	void BuildTopIdleStrip();
 	void BuildBottomNavigation();
@@ -241,5 +245,6 @@ private:
 	float TravelAccumulator = 0.0f;
 	FVector2D BackpackAspectRatio = FVector2D(1.76f, 1.0f);
 	bool bSettingsPanelOpen = false;
+	bool bChallengeSidePanelsReadOnly = false;
 	FText LastNotice;
 };

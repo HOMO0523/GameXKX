@@ -105,6 +105,16 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	TestTrue(TEXT("workbench backpack read model includes a travel chest"), VisibleItems.Contains(UGameXXKMVPRules::ItemTrainingNormalChest()));
 	TestEqual(TEXT("three difficulty bands each expose nine stage definitions"), FGameXXKTrainingRules::GetStageDefinitions().Num(), 27);
 	TestEqual(TEXT("normal 1-1 id remains stable"), FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1), FName(TEXT("Training.Normal.1-1")));
+	const FName ChallengeStage = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	TestTrue(TEXT("challenge fixture selects the first uncompleted stage"), Widget->SelectStageForTest(ChallengeStage));
+	TestTrue(TEXT("challenge fixture enters the enlarged challenge viewport"), Widget->ClickChallengeForTest());
+	TestTrue(TEXT("challenge keeps warehouse and map shells read-only"), Widget->AreChallengeSidePanelsReadOnlyForTest());
+	TestTrue(TEXT("challenge viewport exposes active auto-battle control"), Widget->IsAutoBattleVisibleForTest());
+	TestFalse(TEXT("challenge viewport does not expose travel retry control"), Widget->IsRetryVisibleForTest());
+	const EGameXXKDesktopTrainingNav NavDuringChallenge = Widget->GetActiveNavForTest();
+	Widget->HandleActionClicked(4);
+	TestEqual(TEXT("challenge locks bottom navigation while side shells remain visible"), Widget->GetActiveNavForTest(), NavDuringChallenge);
+	TestTrue(TEXT("backpack entry returns to the workbench after challenge shell assertion"), Widget->OpenBackpack());
 	Widget->HandleActionClicked(14);
 	TestTrue(TEXT("backpack settings action opens an independent settings surface"), Widget->IsSettingsPanelOpenForTest());
 	TestTrue(TEXT("opening settings keeps the workbench visible"), Widget->IsWorkbenchVisibleForTest());
