@@ -62,8 +62,8 @@ class _PipelineLifecycleClient:
         self.events.append(("get_pie_world_time",))
         return 2.0
 
-    def filter_tdd_lines(self, num_lines: int) -> list[str]:
-        self.events.append(("filter_tdd_lines", num_lines))
+    def filter_tdd_lines(self, num_lines: int, pattern: str = "") -> list[str]:
+        self.events.append(("filter_tdd_lines", num_lines, pattern))
         return []
 
     def get_recent_log_lines(self, num_lines: int) -> list[str]:
@@ -137,6 +137,7 @@ class RealFlowPIELifecycleTests(unittest.TestCase):
         harness.input = None
         harness.battle_hud_fixture_may_be_applied = False
         harness._screenshot_contexts = {}
+        harness._default_save_backup_active = False
 
         with self.assertRaisesRegex(RuntimeError, "PIE did not stop"):
             harness.run()
