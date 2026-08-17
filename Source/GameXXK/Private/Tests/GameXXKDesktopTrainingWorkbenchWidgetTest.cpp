@@ -38,6 +38,17 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	State.Inventory.Empty();
 	State.Inventory.Add(UGameXXKMVPRules::ItemHealingPowder(), 3);
 	State.Inventory.Add(UGameXXKMVPRules::ItemTrainingNormalChest(), 2);
+	for (int32 ExtraIndex = 0; ExtraIndex < 15; ++ExtraIndex)
+	{
+		FGameXXKEquipmentCreateRequest Request;
+		Request.Set = EGameXXKEquipmentSet::Starter;
+		Request.Quality = EGameXXKEquipmentQuality::Common;
+		Request.ItemLevel = 1 + ExtraIndex;
+		FName InstanceId;
+		FString Error;
+		TestTrue(TEXT("warehouse pagination fixture creates an equipment instance"),
+			FGameXXKEquipmentRules::CreateRolledInstance(State.EquipmentCollection, Request, InstanceId, &Error));
+	}
 	Widget->SetMVPSubsystem(Subsystem);
 	TestTrue(TEXT("Tab/backpack entry opens the formation-backed backpack view"), Widget->OpenBackpack());
 	TestEqual(TEXT("backpack defaults to the hero character"),
@@ -62,6 +73,17 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	Widget->HandleActionClicked(4);
 	TestEqual(TEXT("training navigation returns to the map shell"), Widget->GetActiveNavForTest(), EGameXXKDesktopTrainingNav::Training);
 	TestFalse(TEXT("training navigation is not the tools panel"), Widget->IsToolsPanelActiveForTest());
+	TestEqual(TEXT("warehouse exposes two pages at twenty slots per page"), Widget->GetWarehousePageCountForTest(), 2);
+	TestEqual(TEXT("warehouse starts on its first page"), Widget->GetWarehousePageIndexForTest(), 0);
+	TestEqual(TEXT("warehouse first page exposes twenty visible instances"), Widget->GetVisibleWarehouseInstanceIdsForTest().Num(), 20);
+	TestTrue(TEXT("warehouse advances to the second page"), Widget->NextWarehousePageForTest());
+	TestEqual(TEXT("warehouse page index advances without mutating the save"), Widget->GetWarehousePageIndexForTest(), 1);
+	TestEqual(TEXT("warehouse second page exposes the remaining instance"), Widget->GetVisibleWarehouseInstanceIdsForTest().Num(), 1);
+	TestTrue(TEXT("warehouse returns to the first page"), Widget->PreviousWarehousePageForTest());
+	TestEqual(TEXT("warehouse page index clamps at zero"), Widget->GetWarehousePageIndexForTest(), 0);
+	const int32 WarehouseBeforeEquip = State.EquipmentCollection.WarehouseInstanceIds.Num();
+	TestTrue(TEXT("warehouse slot can quick-equip into the selected backpack character"), Widget->QuickEquipVisibleWarehouseSlotForTest(0));
+	TestEqual(TEXT("quick-equip removes the moved instance from warehouse"), State.EquipmentCollection.WarehouseInstanceIds.Num(), WarehouseBeforeEquip - 1);
 	TestEqual(TEXT("workbench reads the authoritative runtime gold"), Widget->GetRuntimeGoldForTest(), 4242);
 	TestEqual(TEXT("workbench warehouse occupancy comes from the equipment collection"),
 		Widget->GetWarehouseOccupancyForTest(),

@@ -110,6 +110,24 @@ public:
 	int32 GetWarehouseOccupancyForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetWarehousePageCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetWarehousePageIndexForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	TArray<FName> GetVisibleWarehouseInstanceIdsForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	bool NextWarehousePageForTest();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	bool PreviousWarehousePageForTest();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	bool QuickEquipVisibleWarehouseSlotForTest(int32 VisibleSlotIndex);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	TArray<FName> GetVisibleBackpackItemIdsForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
@@ -207,6 +225,7 @@ private:
 	EGameXXKDesktopTrainingViewMode ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 	FName SelectedStageId = NAME_None;
 	FName ActiveBackpackCharacterId = NAME_None;
+	int32 WarehousePageIndex = 0;
 	float AutoBattleAccumulator = 0.0f;
 	float TravelAccumulator = 0.0f;
 	FVector2D BackpackAspectRatio = FVector2D(1.76f, 1.0f);

@@ -15,9 +15,10 @@
 #include "UI/GameXXKCharacterBackpackModel.h"
 #include "Styling/CoreStyle.h"
 
-namespace
+	namespace
 {
 	constexpr int32 WarehouseColumns = 4;
+	constexpr int32 WarehousePageSize = 20;
 	const FVector2D ShellSize(1920.0f, 1080.0f);
 	const FLinearColor Ink(0.06f, 0.045f, 0.035f, 0.98f);
 	const FLinearColor Panel(0.13f, 0.09f, 0.055f, 0.97f);
@@ -349,6 +350,83 @@ int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehouseOccupancyForTest() con
 	return Subsystem ? Subsystem->GetRuntimeState().EquipmentCollection.WarehouseInstanceIds.Num() : 0;
 }
 
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehousePageCountForTest() const
+{
+	return FMath::Max(1, FMath::DivideAndRoundUp(GetWarehouseOccupancyForTest(), WarehousePageSize));
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehousePageIndexForTest() const
+{
+	return FMath::Clamp(WarehousePageIndex, 0, GetWarehousePageCountForTest() - 1);
+}
+
+TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetVisibleWarehouseInstanceIdsForTest() const
+{
+	TArray<FName> Warehouse;
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !Subsystem->GetEquipmentWarehouseSnapshot(Warehouse))
+	{
+		return Warehouse;
+	}
+	const int32 PageStart = GetWarehousePageIndexForTest() * WarehousePageSize;
+	const int32 PageEnd = FMath::Min(PageStart + WarehousePageSize, Warehouse.Num());
+	TArray<FName> Visible;
+	for (int32 Index = PageStart; Index < PageEnd; ++Index)
+	{
+		Visible.Add(Warehouse[Index]);
+	}
+	return Visible;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::NextWarehousePageForTest()
+{
+	const int32 CurrentPage = GetWarehousePageIndexForTest();
+	const int32 LastPage = GetWarehousePageCountForTest() - 1;
+	if (CurrentPage >= LastPage)
+	{
+		return false;
+	}
+	WarehousePageIndex = CurrentPage + 1;
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::PreviousWarehousePageForTest()
+{
+	const int32 CurrentPage = GetWarehousePageIndexForTest();
+	if (CurrentPage <= 0)
+	{
+		return false;
+	}
+	WarehousePageIndex = CurrentPage - 1;
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::QuickEquipVisibleWarehouseSlotForTest(const int32 VisibleSlotIndex)
+{
+	const TArray<FName> VisibleWarehouse = GetVisibleWarehouseInstanceIdsForTest();
+	if (!VisibleWarehouse.IsValidIndex(VisibleSlotIndex))
+	{
+		return false;
+	}
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return false;
+	}
+	FGameXXKCharacterBackpackModel BackpackModel;
+	BackpackModel.Bind(Subsystem, GetActiveBackpackCharacterIdForTest());
+	FGameXXKEquipmentTransactionResult Result;
+	const bool bEquipped = BackpackModel.QuickEquip(VisibleWarehouse[VisibleSlotIndex], Result);
+	if (bEquipped)
+	{
+		SetNotice(Result.Message.IsEmpty() ? FText::FromString(TEXT("装备已转入当前角色")) : Result.Message);
+		RefreshLayout();
+	}
+	return bEquipped;
+}
+
 TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetVisibleBackpackItemIdsForTest() const
 {
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
@@ -630,28 +708,58 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 	{
 		Subsystem->GetEquipmentWarehouseSnapshot(Warehouse);
 	}
+	const TArray<FName> VisibleWarehouse = GetVisibleWarehouseInstanceIdsForTest();
 	for (int32 SlotIndex = 0; SlotIndex < 20; ++SlotIndex)
 	{
 		const int32 Column = SlotIndex % WarehouseColumns;
 		const int32 Row = SlotIndex / WarehouseColumns;
-		UBorder* Cell = MakePanel(WidgetTree, FLinearColor(0.07f, 0.06f, 0.05f, 1.0f));
-		AddCanvas(RootCanvas, Cell, FVector2D(46.0f + Column * 68.0f, 235.0f + Row * 68.0f), FVector2D(58.0f, 58.0f));
-		if (Warehouse.IsValidIndex(SlotIndex))
+		const FVector2D CellPosition(46.0f + Column * 68.0f, 235.0f + Row * 68.0f);
+		if (VisibleWarehouse.IsValidIndex(SlotIndex))
 		{
+			const FName InstanceId = VisibleWarehouse[SlotIndex];
 			const FString EquipmentLabel = RuntimeState
-				? EquipmentDisplayName(RuntimeState->EquipmentCollection, Warehouse[SlotIndex])
-				: Warehouse[SlotIndex].ToString();
-			UTextBlock* IdText = MakeText(WidgetTree, FText::FromString(EquipmentLabel), 10, FLinearColor::White);
-			AddCanvas(RootCanvas, IdText, FVector2D(48.0f + Column * 68.0f, 248.0f + Row * 68.0f), FVector2D(54.0f, 42.0f));
-			Cell->SetToolTipText(FText::FromString(FString::Printf(TEXT("装备实例：%s\n%s"), *Warehouse[SlotIndex].ToString(), *EquipmentLabel)));
+				? EquipmentDisplayName(RuntimeState->EquipmentCollection, InstanceId)
+				: InstanceId.ToString();
+			UGameXXKDesktopTrainingActionButton* SlotButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+			SlotButton->Configure(this, 100 + SlotIndex);
+			SlotButton->SetBackgroundColor(FLinearColor(0.07f, 0.06f, 0.05f, 1.0f));
+			SlotButton->SetContent(MakeText(WidgetTree, FText::FromString(EquipmentLabel), 10, FLinearColor::White));
+			SlotButton->SetToolTipText(FText::FromString(FString::Printf(TEXT("装备实例：%s\n%s\n点击装备到当前角色"), *InstanceId.ToString(), *EquipmentLabel)));
+			AddCanvas(RootCanvas, SlotButton, CellPosition, FVector2D(58.0f, 58.0f));
+			ActionButtons.Add(SlotButton);
+		}
+		else
+		{
+			UBorder* Cell = MakePanel(WidgetTree, FLinearColor(0.07f, 0.06f, 0.05f, 1.0f));
+			AddCanvas(RootCanvas, Cell, CellPosition, FVector2D(58.0f, 58.0f));
 		}
 	}
 	const int32 WarehouseCount = Warehouse.Num();
+	UTextBlock* PageText = MakeText(WidgetTree, FText::FromString(FString::Printf(
+		TEXT("第 %d / %d 页 · 每页 %d 格"),
+		GetWarehousePageIndexForTest() + 1,
+		GetWarehousePageCountForTest(),
+		WarehousePageSize)), 15, FLinearColor(0.78f, 0.70f, 0.60f, 1.0f));
+	AddCanvas(RootCanvas, PageText, FVector2D(48.0f, 805.0f), FVector2D(230.0f, 28.0f));
+	UGameXXKDesktopTrainingActionButton* Previous = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+	Previous->Configure(this, 40);
+	Previous->SetBackgroundColor(PanelAlt);
+	Previous->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("上一页")), 15));
+	Previous->SetIsEnabled(GetWarehousePageIndexForTest() > 0);
+	AddCanvas(RootCanvas, Previous, FVector2D(48.0f, 850.0f), FVector2D(90.0f, 40.0f));
+	ActionButtons.Add(Previous);
+	UGameXXKDesktopTrainingActionButton* Next = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+	Next->Configure(this, 41);
+	Next->SetBackgroundColor(PanelAlt);
+	Next->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("下一页")), 15));
+	Next->SetIsEnabled(GetWarehousePageIndexForTest() + 1 < GetWarehousePageCountForTest());
+	AddCanvas(RootCanvas, Next, FVector2D(150.0f, 850.0f), FVector2D(90.0f, 40.0f));
+	ActionButtons.Add(Next);
 	UTextBlock* Footer = MakeText(WidgetTree, FText::FromString(FString::Printf(
 		TEXT("装备实例 %d / %d\n不显示角色身份卡"),
 		WarehouseCount,
 		FGameXXKEquipmentRules::WarehouseCapacity)), 16, FLinearColor(0.75f, 0.68f, 0.55f, 1.0f));
-	AddCanvas(RootCanvas, Footer, FVector2D(48.0f, 830.0f), FVector2D(240.0f, 70.0f));
+	AddCanvas(RootCanvas, Footer, FVector2D(48.0f, 900.0f), FVector2D(240.0f, 54.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
@@ -1020,6 +1128,21 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	if (ActionId >= 20 && ActionId < 20 + GetBackpackCharacterIdsForTest().Num())
 	{
 		SelectBackpackCharacterForTest(GetBackpackCharacterIdsForTest()[ActionId - 20]);
+		return;
+	}
+	if (ActionId == 40)
+	{
+		PreviousWarehousePageForTest();
+		return;
+	}
+	if (ActionId == 41)
+	{
+		NextWarehousePageForTest();
+		return;
+	}
+	if (ActionId >= 100 && ActionId < 100 + WarehousePageSize)
+	{
+		QuickEquipVisibleWarehouseSlotForTest(ActionId - 100);
 		return;
 	}
 	if (ActionId >= 11 && ActionId <= 13)
