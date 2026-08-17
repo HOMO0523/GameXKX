@@ -2,7 +2,7 @@
 status: record
 owner: codex
 updated_at: 2026-08-18T05:31:00+08:00
-source_commit: 4632179
+source_commit: 94464c2
 working_tree: dirty (uncommitted MasterV2 workbench/nav-disc binding; preserve user L_Main.umap, unrelated probes and source-art changes)
 ---
 # GameXXK 当前目标(滚动指针)
@@ -12,7 +12,7 @@ working_tree: dirty (uncommitted MasterV2 workbench/nav-disc binding; preserve u
 ## 当前基线(更新于 2026-08-18)
 
 - 分支:`main`
-- 当前代码 HEAD:`5c60999`(`fix: keep challenge auto battle moving through card choices`)，文档基线为 `ffe3613`；前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`、桥接为 `7881927`。本轮补上挑战自动战斗对强制弃牌、洞察、任务检索和自动解析队列的确定性处理，并加入待选牌回归测试；桌面历练规则、存档 v20、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner、离线补算/待领取账本/收菜入口、奖励/冷却 Resolver、最小宝箱 Inventory 镜像、背包角色/伙伴切换、工具/天赋容器基础导航、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、背包内独立设置与关闭动作、挑战期间左右仓库/历练地图只读外壳与导航锁定已提交。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
+- 当前代码 HEAD:`94464c2`(`docs: point desktop training review at masterv2 commit`)，本轮运行时代码提交为 `4632179`(`feat: skin desktop training workbench with masterv2 assets`)，挑战自动战斗待选牌处理为 `5c60999`；文档基线为 `ffe3613`；前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`、桥接为 `7881927`。本轮补上挑战自动战斗对强制弃牌、洞察、任务检索和自动解析队列的确定性处理，并加入待选牌回归测试；桌面历练规则、存档 v20、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner、离线补算/待领取账本/收菜入口、奖励/冷却 Resolver、最小宝箱 Inventory 镜像、背包角色/伙伴切换、工具/天赋容器基础导航、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、背包内独立设置与关闭动作、挑战期间左右仓库/历练地图只读外壳与导航锁定已提交。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
 - 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。这两份报告只作历史回归参考，不冒充当前工作区的本轮全量运行。
