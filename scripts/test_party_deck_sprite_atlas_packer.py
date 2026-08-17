@@ -110,7 +110,7 @@ class PartyDeckSpriteAtlasPackerTests(unittest.TestCase):
                         alpha = idle_cell.getchannel("A")
                         self.assertIsNotNone(alpha.getbbox(), DIRECTIONS[row])
                         self.assertGreater(alpha.tobytes().count(0), 0, DIRECTIONS[row])
-                        self.assertGreater(sum(1 for pixel in idle_cell.get_flattened_data() if pixel[:3] == color and pixel[3] > 0), 100, DIRECTIONS[row])
+                        self.assertGreater(sum(1 for pixel in idle_cell.getdata() if pixel[:3] == color and pixel[3] > 0), 100, DIRECTIONS[row])
                         white_x = [x for y in range(205) for x in range(171) if idle_cell.getpixel((x, y))[:3] == (255, 255, 255)]
                         bbox = alpha.getbbox()
                         self.assertTrue(bbox)

@@ -25,7 +25,9 @@ class BattlePartyQiIconTests(unittest.TestCase):
         self.assertGreater(center[1], 180, "dynamic number field must remain warm paper, not dark ink")
         self.assertGreater(center[2], 155, "dynamic number field must remain warm paper, not dark ink")
 
-        visible_pixels = [pixel for pixel in image.get_flattened_data() if pixel[3] > 32]
+        # Pillow 11 removed the private ``get_flattened_data`` helper; the
+        # public iterator has identical RGBA semantics for this contract.
+        visible_pixels = [pixel for pixel in image.getdata() if pixel[3] > 32]
         magenta_visible = [
             pixel for pixel in visible_pixels
             if pixel[0] > 210 and pixel[2] > 160 and pixel[1] < 80

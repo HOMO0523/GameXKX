@@ -20,7 +20,7 @@ def mean_saturated_visible_rgb(path: Path) -> tuple[float, float, float]:
     image = Image.open(path).convert("RGBA")
     pixels = [
         pixel
-        for pixel in image.get_flattened_data()
+        for pixel in image.getdata()
         if pixel[3] > 32 and max(pixel[:3]) - min(pixel[:3]) >= 16
     ]
     if not pixels:
