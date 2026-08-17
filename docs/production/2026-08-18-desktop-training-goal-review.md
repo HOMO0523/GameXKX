@@ -1,15 +1,15 @@
 ---
 status: review
 owner: codex
-updated_at: 2026-08-18T05:31:00+08:00
-source_commit: 4632179
+updated_at: 2026-08-18T05:22:00+08:00
+source_commit: bdfcf9e
 decision: not-complete
 goal_status: active
 ---
 
 # 桌面历练 /goal 完成后复核（2026-08-18）
 
-这份记录是当前目标的收尾审计，不把“程序能编译”写成“产品已完成”。审计输入包括 `docs/production/2026-08-16-full-project-optimization-proposal.md`、`docs/production/2026-08-16-optimization-followup.md`、`docs/production/current-goal-acceptance.md`、桌面工作台设计稿以及本轮实际代码、Automation、冷 UBT 和脚本报告；本轮追加复核了 `5c60999` 的挑战自动战斗待选牌处理，并在未提交工作区增量中接入批准的 MasterV2 面板/槽位/页签/路线节点和五张等比 NavDisc 图标。
+这份记录是当前目标的收尾审计，不把“程序能编译”写成“产品已完成”。审计输入包括 `docs/production/2026-08-16-full-project-optimization-proposal.md`、`docs/production/2026-08-16-optimization-followup.md`、`docs/production/current-goal-acceptance.md`、桌面工作台设计稿以及本轮实际代码、Automation、冷 UBT 和脚本报告；本轮追加复核了 `5c60999` 的挑战自动战斗待选牌处理，并在 `4632179`/`bdfcf9e` 中接入批准的 MasterV2 面板/槽位/页签/路线节点、五张等比 NavDisc 图标和连续挑战画布。
 
 ## 1. 结论先行
 
@@ -18,7 +18,7 @@ goal_status: active
 本轮已经把“规则/存档/程序化壳”推进到“挑战可创建真实 CardBattle 会话、游历可按 runner 步进”的阶段，但离用户要求的完整桌面游戏还有四类硬缺口：
 
 1. **游历仍缺生产表现，但持久在线/收菜模型已落地**：确定性 TravelRunner 已支持走动阶段、一次一只怪、自动攻击、掉血、击杀、Boss 结算、阵亡重试/回退和 1-1 一血例外；v20 增加 UTC 基线、最多 24 小时离线补算、待领取奖励账本、读档补算和工作台“收菜”按钮。仍没有实机角色/怪物 Actor、动画、碰撞/移动表现和最终视觉窗口。
-2. **生产 UI/PSD 尚未闭环**：当前工作台仍是 Slate 程序化壳，但已接入最小 RuntimeState 背包/仓库 read model（金币、装备实例、六槽、物品数量/tooltip），并完成基础角色/伙伴切换、天赋中栏容器、工具右栏替换、仓库 4 列分页、可见格 quick-equip、确定性排序、已装备槽卸下回仓，以及背包内独立设置/关闭动作；本轮工作区增量已将批准的 MasterV2 `PanelLarge`、`ItemSlot`、`EquipmentSlot`、页签、路线节点和五张圆形 NavDisc 通过缓存纹理/九宫格/等比槽位绑定，资源合同已自动化通过，但仍没有透明图标 manifest/hash、转移/容量交互、最终 PSD 资产和 1920/2560 校准。
+2. **生产 UI/PSD 尚未闭环**：当前工作台仍是 Slate 程序化壳，但已接入最小 RuntimeState 背包/仓库 read model（金币、装备实例、六槽、物品数量/tooltip），并完成基础角色/伙伴切换、天赋中栏容器、工具右栏替换、仓库 4 列分页、可见格 quick-equip、确定性排序、已装备槽卸下回仓，以及背包内独立设置/关闭动作；批准的 MasterV2 `PanelLarge`、`ItemSlot`、`EquipmentSlot`、页签、路线节点和五张圆形 NavDisc 已通过缓存纹理/九宫格/等比槽位绑定；本轮又把顶部 3 敌/3 我站位并入 960×968 连续 ChallengeViewport，BattleBoard 使用 710×535 区域，挑战态左右侧壳只读且不显示游历失败重试。资源合同已自动化通过，但仍没有透明图标 manifest/hash、转移/容量交互、最终 PSD 资产和 1920/2560 校准。
 3. **奖励 Resolver 已进入可验证阶段，但仍未产品闭环**：挑战/游历现在使用稳定 seed + 配置概率 + talent bonus 参数；普通游历箱冷却 240 秒（4 分钟）、精英/首领高级箱冷却 360 秒（6 分钟），两种游历概率与局内 Resolver 共用，状态迁移到 v20。普通/高级历练宝箱已注册为 canonical Inventory item，并在挑战/游历结算时写入当前 Runtime Inventory；离线奖励先进入待领取账本，收菜后入库，读档补算和 v20 round-trip 已通过。真实天赋树数据源、最终概率表、FIFO 箱批/容量和箱内物品仍未接入。
 4. **PIE/MCP 与性能证据缺失**：本轮没有新的工作台 1920×1080 / 2560×1440 截图、实际点击流、悬停视觉证据或 TaskBarHero 对照采样。
 
@@ -44,13 +44,13 @@ goal_status: active
 | 工作包 | 已落地事实 | 当前判定 | 缺口/下一门禁 |
 |---|---|---|---|
 | 项目优化 Phase 0 | 真源文档、旧历练 shelved 标记、脚本标签、GBK/路径边界、harness 状态检查已整理 | 部分通过 | asset-contract 仍 51/66；mcp-live 未跑 |
-| 2D 工作台壳 | 左仓库 4 列、中背包约 1.76 比例、右 27 节点/三难度、底部 5 导航、挑战/游历按钮、顶部 3 敌+3 我占位；背包/仓库已读取 RuntimeState 的金币、装备实例、六槽和物品数量，并有角色/伙伴切换、天赋中栏、工具右栏基础容器、20 格分页、visible-slot quick-equip、单排序、已装备槽卸下回仓、背包内独立设置面板和独立关闭动作；挑战时左仓库与右历练地图保持只读外壳；本轮接入批准 MasterV2 PanelLarge/ItemSlot/EquipmentSlot/页签/路线节点与五张 NavDisc，NavDisc 在 46×46 方形槽位内等比显示 | 几何/read model/资源路径部分通过 | 仍是程序化壳；没有 PSD manifest/hash、转移/容量/完整装备操作、工具真实数据和视觉校准 |
+| 2D 工作台壳 | 左仓库 4 列、中背包约 1.76 比例、右 27 节点/三难度、底部 5 导航、挑战/游历按钮、普通态顶部 3 敌+3 我挂机条；背包/仓库已读取 RuntimeState 的金币、装备实例、六槽和物品数量，并有角色/伙伴切换、天赋中栏、工具右栏基础容器、20 格分页、visible-slot quick-equip、单排序、已装备槽卸下回仓、背包内独立设置面板和独立关闭动作；挑战态把 3 敌+3 我站位并入 960×968 连续 ChallengeViewport，BattleBoard 使用 710×535，左仓库与右历练地图保持只读外壳；本轮接入批准 MasterV2 PanelLarge/ItemSlot/EquipmentSlot/页签/路线节点与五张 NavDisc，NavDisc 在 46×46 方形槽位内等比显示 | 几何/read model/资源路径部分通过 | 仍是程序化壳；没有 PSD manifest/hash、转移/容量/完整装备操作、工具真实数据和视觉校准 |
 | Tab/菜单入口 | opt-in 时 Tab 打开工作台并落到背包视图；背包有独立设置与关闭按钮；默认仍不拦截旧 Town HUD | 部分通过 | 未完成真实 PIE 点击流与主入口迁移、窗口关闭/设置视觉证据 |
 | 挑战/游历分离 | `StartChallenge` 会暂停游历；`StartTravel` 会拒绝挑战中启动；保存校验拒绝两种状态同时 active | 规则通过 | 游历执行器和真实 UI 状态还没有上线 |
 | 27 个关卡 | 普通/困难/地狱各 9 个稳定 StageId；普通 1-1 新档默认通关且可游历；整档难度解锁规则已测试 | 规则通过 | 没有真实地图节点视觉/悬停和解锁流程证据 |
 | 第一章编制 | 普通候选：公鸡、狸猫；次级精英：山羊、黄鼬；每条路线 4 普通 + 2 精英 + 1 首领；1-1 山羊、1-2 黄鼬、1-3 青角羊王 | 数据/测试通过 | 仍需在真实 ChallengeViewport/tooltip 做视觉验收；catalog 的 tier 与 Training 语义需保持文档同步 |
 | 1-1 生命例外 | `BuildEncounterSequence(Stage, false)` 挑战生命 >1；`true` 游历序列为 1 HP，含首领；TravelRunner 与 subsystem wrapper 复用该规则；1-1 普通/精英/首领都不掉箱，只保留阶段金币/经验；其它游历 encounter 按局内同一概率并受 240/360 秒冷却限制；v20 离线补算同样遵守该例外 | 规则、runner 与离线补算通过 | 没有真实 Actor/动画、最终收菜视觉和性能证据 |
-| 挑战真实战斗 | `StartTrainingChallenge` 创建真实 `FGameXXKCardBattleAdapter` 会话，进入 `Battle`，投影现有敌人 catalog；BattleBoard 可挂到 ChallengeViewport；左仓库与右历练地图在挑战中以无 ActionButton 的只读外壳保留 | **新增且已自动化通过** | 尚未完成全路线手牌/意图/胜负/结算的 PIE 视觉闭环 |
+| 挑战真实战斗 | `StartTrainingChallenge` 创建真实 `FGameXXKCardBattleAdapter` 会话，进入 `Battle`，投影现有敌人 catalog；BattleBoard 挂到 960×968 ChallengeViewport，并在上方保留 3 敌+3 我站位槽；左仓库与右历练地图在挑战中以无 ActionButton 的只读外壳保留 | **新增且已自动化通过** | 尚未完成全路线手牌/意图/胜负/结算的 PIE 视觉闭环 |
 | 挑战自动战斗 | 每次调用推进一张合法卡、结束玩家阶段或解析敌方阶段；强制弃牌、洞察、任务检索和自动解析队列由现有 CardRules/Adapter 以有界确定性策略处理；终结后结算并打开下一遭遇 | **规则与聚焦 Automation 通过** | 目前是运行时适配器，不是完整自动战斗 UX；需要手牌、意图、血条、tooltip 和战斗结算截图 |
 | 游历循环 | `InitializeTravelRunner`/`AdvanceTravelRunner` 与 `AdvanceTrainingTravelStep` 已按 Walking→Combat→Settlement 推进 7 遭遇；失败重试/回退由 `ResolveTrainingTravelFailure` 处理；挂机条读取阶段/HP/遭遇；`ApplyOfflineTravelSinceLastUpdate` 负责读档补算并把奖励放入待领取账本，工作台“收菜”按钮再入库 | **规则、离线桥接与聚焦 Automation 通过** | 仍缺真实 Actor/动画、后台运行时 Timer、失败弹窗与最终美术收菜窗口 |
 | 奖励与宝箱 | `ResolveChallengeReward`/`ResolveTravelReward` 使用稳定 seed、同一 Stage 概率和天赋 bonus 参数；普通 encounter 为普通箱，精英/首领为高级箱；普通游历箱 240 秒、精英/首领高级箱 360 秒；1-1 游历所有 encounter 强制不掉箱；canonical item 写入 Runtime Inventory，离线结果先记账，收菜后入库并通过 v20 round-trip | **规则/聚焦 Automation 通过，产品未闭环** | 天赋真实 read model、最终概率表、FIFO 箱批/容量、箱内物品和重复结算保护仍待接入 |
@@ -73,7 +73,7 @@ goal_status: active
 - `UGameXXKMVPSubsystem::StartTrainingChallenge` 先在 Candidate 状态上启动规则，再通过现有 `FGameXXKCardBattleAdapter::BeginCardBattle` 建立真实卡战；失败不会半提交 RuntimeState。
 - 训练敌人使用 `FGameXXKEnemyCatalog::Find/ComputeStats`，因此敌人意图和战斗数据来自现有敌人池，而不是另造一份“历练假敌人”。
 - 训练挑战终结后在 Candidate 上结算金币/经验、清理 CardRun、进入下一遭遇或回到 Town；挑战失败按本地重试，不调用路线地下城失败结算。
-- `GameXXKDesktopTrainingWorkbenchWidget` 负责显示和按钮路由，ChallengeViewport 复用现有 `GameXXKBattleBoardWidget`；本轮已把最小 RuntimeState inventory/warehouse read model 接入金币、装备实例/等级、六槽和物品数量/tooltip，并通过 `FGameXXKCharacterBackpackModel` 投影选中角色/伙伴六槽；仓库现在按权威实例顺序切 20 格页面，支持确定性槽位/品质/等级排序、当前角色对可见格 quick-equip，以及已装备槽点击卸下回仓；背包内的设置动作（14）打开独立面板，关闭动作（15）单独收起工作台；挑战模式额外绘制左仓库/右历练地图只读外壳，去掉排序、装备、节点、难度和挑战/游历按钮动作；天赋和工具目前是明确标注未接真实数据的容器，仍需完整库存转移/容量交互与生产纹理。
+- `GameXXKDesktopTrainingWorkbenchWidget` 负责显示和按钮路由，ChallengeViewport 复用现有 `GameXXKBattleBoardWidget`；本轮已把最小 RuntimeState inventory/warehouse read model 接入金币、装备实例/等级、六槽和物品数量/tooltip，并通过 `FGameXXKCharacterBackpackModel` 投影选中角色/伙伴六槽；仓库现在按权威实例顺序切 20 格页面，支持确定性槽位/品质/等级排序、当前角色对可见格 quick-equip，以及已装备槽点击卸下回仓；背包内的设置动作（14）打开独立面板，关闭动作（15）单独收起工作台；挑战模式额外绘制左仓库/右历练地图只读外壳，并把顶部 3 敌+3 我站位放入 960×968 连续画布，去掉排序、装备、节点、难度和挑战/游历按钮动作；天赋和工具目前是明确标注未接真实数据的容器，仍需完整库存转移/容量交互与生产纹理。
 - `GameXXKMVPPlayerController` 的新入口是显式 opt-in；没有改动 3D 城镇默认入口，方便逐步验收和回滚。v20 的离线补算只在读档/显式收菜桥接发生，仍未把桌面工作台切成默认主入口。
 
 ### 4.3 已知技术风险
@@ -106,6 +106,9 @@ goal_status: active
 | DesktopTraining NavDisc follow-up | `Saved/HarnessReports/20260818-050507-ai-production-loop.md`；`Saved/Automation/DesktopTrainingNavDisc-20260818/index.json` | 2/2 PASS；资源合同与布局合同通过，导航按钮使用方形 46×46 图标槽位，未拉伸圆图 |
 | Training NavDisc follow-up | `Saved/HarnessReports/20260818-050527-ai-production-loop.md`；`Saved/Automation/TrainingAfterNavDisc-20260818/index.json` | 18/18 PASS；导航资源改动未回归训练/奖励/4/6 分钟冷却/离线补算规则 |
 | Cold UBT NavDisc follow-up | `Saved/HarnessReports/20260818-050426-ai-production-loop.md` | PASS；`GameXXKEditor` 使用 `-NoHotReload` 冷编译成功 |
+| Challenge canvas follow-up | `Saved/HarnessReports/20260818-051626-ai-production-loop.md`；`Saved/Automation/DesktopTrainingChallengeStrip-20260818/index.json` | PASS；冷 UBT 通过，新增 960×968 连续画布、710×535 BattleBoard 和 6 敌我站位槽合同 |
+| DesktopTraining challenge canvas Automation | `Saved/HarnessReports/20260818-051647-ai-production-loop.md`；`Saved/Automation/DesktopTrainingChallengeStrip-20260818/index.json` | 2/2 PASS；挑战侧壳只读、自动战斗可见、游历失败重试隐藏、几何合同通过 |
+| Training challenge canvas regression | `Saved/HarnessReports/20260818-051709-ai-production-loop.md`；`Saved/Automation/TrainingAfterChallengeStrip-20260818/index.json` | 18/18 PASS；画布增量未回归挑战/游历、奖励、4/6 分钟冷却和离线补算 |
 | Cold UBT follow-up | `Saved/HarnessReports/20260818-043332-ai-production-loop.md` | PASS；`GameXXKEditor` 使用 `-NoHotReload` 冷编译成功 |
 | 历史全量回归 | `Saved/Automation/ChargeFinishSubject/index.json` | 598/598 是 2026-08-16 历史证据，只作为回归参考，不冒充本轮全量 |
 | asset-contract | `Saved/HarnessReports/20260818-012130-ai-production-loop.md` | 51/66 PASS，15 个测试文件 FAIL，门禁未通过 |
