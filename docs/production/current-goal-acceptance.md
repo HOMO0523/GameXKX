@@ -1,9 +1,9 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-18T01:18:00+08:00
-source_commit: 23aee95
-working_tree: dirty (runtime committed; preserve user L_Main.umap, unrelated probes and source-art changes)
+updated_at: 2026-08-18T02:00:12+08:00
+source_commit: 1a17019
+working_tree: dirty (runtime/docs committed; preserve user L_Main.umap, unrelated probes and source-art changes)
 ---
 # GameXXK 当前目标(滚动指针)
 
@@ -12,11 +12,11 @@ working_tree: dirty (runtime committed; preserve user L_Main.umap, unrelated pro
 ## 当前基线(更新于 2026-08-18)
 
 - 分支:`main`
-- 当前 HEAD:`23aee95`(`feat: run desktop training travel loop`);桌面历练规则、存档 v18、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接和确定性 TravelRunner 已提交。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
+- 当前 HEAD:`1a17019`(`feat: add seeded training chest rewards and travel cooldowns`)；前置 TravelRunner 为 `23aee95`、桥接为 `7881927`。桌面历练规则、存档 v19、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner 和 seeded reward/cooldown Resolver 已提交。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
 - 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。这两份报告只作历史回归参考，不冒充 `7881927` 工作区上的本轮全量运行。
-- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-011435-ai-production-loop.md`）；冷 UBT `-NoHotReload` 成功（`Saved/HarnessReports/20260818-011442-ai-production-loop.md`）；新一轮 `GameXXK.Training` `11/11`（`Saved/HarnessReports/20260818-011511-ai-production-loop.md`，Automation 目录 `TrainingGoalReview-20260818`）、`GameXXK.DesktopTraining` `1/1`（`Saved/HarnessReports/20260818-011532-ai-production-loop.md`，Automation 目录 `DesktopTrainingGoalReview-20260818`）、`GameXXK.MVP.SaveGame` `12/12`（`Saved/HarnessReports/20260818-011554-ai-production-loop.md`，Automation 目录 `SaveGameGoalReview-20260818`）。最新 asset-contract 报告 `Saved/HarnessReports/20260818-012130-ai-production-loop.md` 仍为 `51/66`，15 个测试文件失败；本次完成后复核已明确其未关闭，故 Phase 0 总门禁仍未通过。
+- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-011435-ai-production-loop.md`）；实际经过秒数接口变更后的冷 UBT `-NoHotReload` 成功（`Saved/HarnessReports/20260818-015636-ai-production-loop.md`）；`GameXXK.Training` `13/13`（`Saved/HarnessReports/20260818-015846-ai-production-loop.md`，Automation 目录 `TrainingRewardCooldownGreen-20260818-r3`，含 Resolver、Travel cooldown、v18→v19 migration）；`GameXXK.MVP.SaveGame` `12/12`（`Saved/HarnessReports/20260818-015019-ai-production-loop.md`，Automation 目录 `SaveGameRewardCooldownGreen-20260818`）；`GameXXK.DesktopTraining` `1/1`（`Saved/HarnessReports/20260818-015908-ai-production-loop.md`，Automation 目录 `DesktopTrainingRewardCooldownGreen-20260818-r2`）。最新 asset-contract 报告 `Saved/HarnessReports/20260818-012130-ai-production-loop.md` 仍为 `51/66`，15 个测试文件失败；本次完成后复核已明确其未关闭，故 Phase 0 总门禁仍未通过。
 - 当前工作区保护：`Content/GameXXK/Maps/L_Main.umap` 保留用户已有修改；`SourceAssets/`、`SourceArt/` 及未跟踪探针不在本轮 Phase 0 写入范围。
 
 ## 已落地(最近六轮)
@@ -37,14 +37,14 @@ working_tree: dirty (runtime committed; preserve user L_Main.umap, unrelated pro
 
 ## 桌面历练工作台当前进度(2026-08-18)
 
-- **规则/存档已提交但未完成玩法闭环**：`GameXXKTrainingRules.*` 覆盖三难度、27 个稳定关卡 ID、挑战/游历分离、普通 1-1 默认通关、失败策略、章节编制与掉落层级占位；`FGameXXKSaveState` 的 Training 字段为 v18，迁移、挑战/游历 encounter index 范围校验和互斥校验已接入。
+- **规则/存档已推进但未完成玩法闭环**：`GameXXKTrainingRules.*` 覆盖三难度、27 个稳定关卡 ID、挑战/游历分离、普通 1-1 默认通关、失败策略、章节编制、seeded challenge/travel reward resolver 和普通/高级 Travel 240/360 秒冷却；`FGameXXKSaveState` 的 Training 字段为 v19，迁移、挑战/游历 encounter index、冷却负值和 seed 校验已接入。
 - **程序化工作台、真实挑战桥接和 TravelRunner 已提交且默认关闭**：`GameXXKDesktopTrainingWorkbenchWidget.*` 提供 1920×1080 几何合同、仓库 4 列、背包比例约 1.76:1、右侧 27 节点/三难度页签、挑战/游历按钮、顶部 3 敌+3 我挂机条；挂机条读取 TravelRunner 的遭遇、阶段和 HP。`StartTrainingChallenge` 已创建真实 `FGameXXKCardBattleAdapter` 会话并支持单步推进；`StartTrainingTravel`/`AdvanceTrainingTravelStep` 已支持走动、单敌人自动攻击、掉血、击杀、Boss 结算、重试/回退和 1-1 一血规则，但仍是 opt-in 运行时，`GameXXKMVPPlayerController` 默认保持 3D 城镇。
 - **章节敌人语义已按最终口径冻结到规则与测试**：普通候选为公鸡/狸猫，次级精英为山羊/黄鼬，每场 4 个普通槽、2 个精英槽和 1 个首领；1-1 山羊、1-2 黄鼬、1-3 青角羊王。挑战生命与游历 1 HP 例外已分离；挑战/游历真实表现和结算仍待 PIE。
-- **当前仍未完成**：TravelRunner 的实际 Actor/动画与离线/持续计时、完整路线卡战斗 UX、真实奖励 RNG 与天赋掉率 Resolver、仓库/背包 read model、PSD/图标 manifest、1920/2560 截图与 TaskBarHero 四组性能采样。完整逐项复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
+- **当前仍未完成**：TravelRunner 的实际 Actor/动画与真实/离线计时、完整路线卡战斗 UX、真实天赋 read model/最终概率/箱内物品落库、仓库/背包 read model、PSD/图标 manifest、1920/2560 截图与 TaskBarHero 四组性能采样。完整逐项复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
 
 ## 仅规划未实施 / 已搁置
 
-- **旧历练桌面迁移 7 包索引**(历练放置、离线收益、双宝箱、旧 2D 主界面、桌面迷你窗、自动战斗、任务 NPC 显式入队 + 默认入口迁移):**已标记 shelved，不得按旧计划直接执行**。新桌面工作台设计见 `docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md`；当前已进入 opt-in 规则/壳实现，但 PSD、真实战斗、挂机结算和性能/PIE 验收仍未完成。旧计划中的 v16/v17/v18 边界失效，现行工作区为 v18；后续迁移必须继续使用新编号，不得复用旧索引。
+- **旧历练桌面迁移 7 包索引**(历练放置、离线收益、双宝箱、旧 2D 主界面、桌面迷你窗、自动战斗、任务 NPC 显式入队 + 默认入口迁移):**已标记 shelved，不得按旧计划直接执行**。新桌面工作台设计见 `docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md`；当前已进入 opt-in 规则/壳实现，但 PSD、真实战斗、挂机结算和性能/PIE 验收仍未完成。旧计划中的 v16/v17/v18 边界失效，现行工作区已推进到 v19；后续迁移必须继续使用新编号，不得复用旧索引。
 - 项目自身优化:`docs/production/2026-08-16-full-project-optimization-proposal.md` Phase 0 正在执行；Phase 1/2/3/4 仍未实施，旧 `optimization-plan.md` 仅作历史索引。
 
 ## 下一步待办
