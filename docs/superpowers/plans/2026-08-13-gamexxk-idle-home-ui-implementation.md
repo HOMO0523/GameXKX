@@ -1,4 +1,12 @@
+---
+status: shelved
+updated_at: 2026-08-17
+shelved_reason: legacy migration package; do not execute
+superseded_by: docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md
+---
 # GameXXK Idle Home UI Implementation Plan
+
+> 执行冻结：当前 `CurrentSaveVersion=17`，本文的 v15/v16/v17/v18 迁移边界不能直接执行。恢复历练实现必须以 `2026-08-17-gamexxk-desktop-training-workbench-design.md` 和新的 Phase 0 基线重新编排迁移编号。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

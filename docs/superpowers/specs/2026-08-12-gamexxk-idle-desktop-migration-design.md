@@ -1,3 +1,8 @@
+---
+status: superseded
+updated_at: 2026-08-17
+superseded_by: docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md
+---
 # GameXXK 历练放置、桌面迷你窗与自动战斗迁移设计
 
 日期：2026-08-12

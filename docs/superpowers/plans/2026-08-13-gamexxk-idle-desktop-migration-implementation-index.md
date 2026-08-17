@@ -1,4 +1,12 @@
+---
+status: shelved
+updated_at: 2026-08-17
+shelved_reason: legacy migration index; do not execute
+superseded_by: docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md
+---
 # GameXXK Idle Desktop Migration Implementation Index
+
+> 执行冻结：当前 `CurrentSaveVersion=17`，本文的 v15/v16/v17/v18 迁移边界不能直接执行。恢复历练实现必须以 `2026-08-17-gamexxk-desktop-training-workbench-design.md` 和新的 Phase 0 基线重新编排迁移编号。
 
 > **状态(2026-08-14):用户决定整体搁置。** 执行前必须处理以下两点:
 > 1. **存档版本边界已过期**:本文按 v16/v17/v18 规划,但奖励体系重构(`00002f1`)已把 `CurrentSaveVersion` 提到 **17**。恢复执行时须重排为:包 1-5 落在 v17→v18(历练核心+存档)、包 6 v18→v19(任务 NPC 语义)、包 7 v19→v20(默认入口),并同步修订包 1/6/7 各自计划中的版本断言。

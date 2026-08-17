@@ -1,3 +1,8 @@
+---
+status: design-review
+updated_at: 2026-08-17
+source_commit: ba90810
+---
 # GameXXK 桌面历练工作台与局内扩展画布设计
 
 > 状态：布局与 UX 已由用户确认；书面规格待用户复核后进入详细实施计划
