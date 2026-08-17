@@ -2,7 +2,7 @@
 status: record
 owner: codex
 updated_at: 2026-08-18
-source_commit: 7881927
+source_commit: 23aee95
 ---
 # GameXXK Phase 0 基线证据
 
@@ -27,10 +27,10 @@ source_commit: 7881927
 ## Current repository state
 
 - 分支：`main`。
-- HEAD：`7881927 feat: add opt-in desktop training runtime bridge`；Training 规则、v18 存档、程序化工作台、PlayerController opt-in 和真实 CardBattle 桥接已在本轮提交。`Content/GameXXK/Maps/L_Main.umap`、未跟踪探针与源美术仍受保护且不在提交内。
+- HEAD：`23aee95 feat: run desktop training travel loop`；Training 规则、v18 存档、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接和确定性 TravelRunner 已在本轮提交。`Content/GameXXK/Maps/L_Main.umap`、未跟踪探针与源美术仍受保护且不在提交内。
 - 当前 `CurrentSaveVersion=18`；`DesktopTrainingWorkbenchIntroducedSaveVersion=18`。旧历练索引按 v16/v17/v18 的边界已经失效，不得复用。
 - 最新设计真源：`docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md`；运行时已有 opt-in 规则/壳和真实 CardBattle 单步桥接，但默认 3D 城镇入口未切换，PSD/游历执行器/完整战斗结算/奖励 RNG/性能和 PIE 验收未完成。
-- 当前新增规则/工作台证据：`Saved/HarnessReports/20260818-002649-ai-production-loop.md`（DesktopTraining 1/1）、`20260818-003445-ai-production-loop.md`（Training 8/8）、`20260818-003510-ai-production-loop.md`（SaveGame 12/12）、`20260818-002949-ai-production-loop.md`（headless 13/13）、最新冷 UBT `-NoHotReload` 成功。完整目标复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
+- 当前新增规则/工作台证据：`Saved/HarnessReports/20260818-010941-ai-production-loop.md`（DesktopTraining 1/1）、`Saved/HarnessReports/20260818-005702-ai-production-loop.md`（Training 11/11，含 TravelRunner loop/failure/subsystem bridge）、`Saved/HarnessReports/20260818-010554-ai-production-loop.md`（最新冷 UBT `-NoHotReload` 成功）、`Saved/HarnessReports/20260818-002949-ai-production-loop.md`（headless 13/13）。完整目标复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
 
 ## Protection lock
 
@@ -51,7 +51,7 @@ source_commit: 7881927
 
 ## Runtime scope boundary
 
-- `GameXXKTrainingRules.*` 已提供 27 个稳定关卡 ID、挑战/游历状态、1-1 默认通关、失败策略和奖励层级占位；第一章映射已冻结为公鸡/狸猫普通、山羊/黄鼬次级精英、1-1 山羊、1-2 黄鼬、1-3 青角羊王。
+- `GameXXKTrainingRules.*` 已提供 27 个稳定关卡 ID、挑战/游历状态、1-1 默认通关、失败策略、确定性 TravelRunner 和奖励层级占位；第一章映射已冻结为公鸡/狸猫普通、山羊/黄鼬次级精英、1-1 山羊、1-2 黄鼬、1-3 青角羊王。
 - `GameXXKDesktopTrainingWorkbenchWidget.*` 是程序化几何合同壳，不是 PSD 生产稿：没有 MasterV2 纹理绑定、透明图标 manifest/hash、真实字体校准、真实地图节点美术或局内卡牌演出。
-- `StartTrainingChallenge` 已接真实 CardBattle 创建和单步推进；但尚未完成 RouteMap→全路线战斗→胜负→奖励→下一遭遇的 PIE 闭环。实际宝箱 RNG、天赋掉率 Resolver、游历离线计时、真实收菜和完整战斗中断恢复仍缺失。
+- `StartTrainingChallenge` 已接真实 CardBattle 创建和单步推进；`StartTrainingTravel` 已接走动/自动攻击/掉血/击杀/结算/失败重试的确定性 runtime runner。尚未完成 RouteMap→全路线战斗→胜负→奖励→下一遭遇的 PIE 闭环、Travel Actor/动画/离线计时、实际宝箱 RNG、天赋掉率 Resolver、真实收菜和完整战斗中断恢复。
 - `bEnableDesktopTrainingWorkbench` 默认 `false`，因此 3D 城镇可回退且当前未切换默认入口。

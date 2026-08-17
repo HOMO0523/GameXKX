@@ -2,7 +2,7 @@
 status: record
 owner: codex
 updated_at: 2026-08-18
-source_commit: 7881927
+source_commit: 23aee95
 working_tree: dirty (runtime committed; preserve user L_Main.umap, unrelated probes and source-art changes)
 ---
 # GameXXK 当前目标(滚动指针)
@@ -12,11 +12,11 @@ working_tree: dirty (runtime committed; preserve user L_Main.umap, unrelated pro
 ## 当前基线(更新于 2026-08-18)
 
 - 分支:`main`
-- 当前 HEAD:`7881927`(`feat: add opt-in desktop training runtime bridge`);本轮桌面历练规则、存档 v18、程序化工作台、PlayerController opt-in 与真实 CardBattle 桥接已提交。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
+- 当前 HEAD:`23aee95`(`feat: run desktop training travel loop`);桌面历练规则、存档 v18、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接和确定性 TravelRunner 已提交。用户已有 `Content/GameXXK/Maps/L_Main.umap` 修改仍受保护；工作区还存在历史探针和源美术未跟踪物，不属于本轮提交。
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
 - 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。这两份报告只作历史回归参考，不冒充 `7881927` 工作区上的本轮全量运行。
-- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-002949-ai-production-loop.md`）；`GameXXK.DesktopTraining` `1/1`、`GameXXK.Training` `8/8`（含真实 CardBattle bridge 与 SaveValidation）、`GameXXK.MVP.SaveGame` `12/12` 通过（分别见 `Saved/HarnessReports/20260818-002649-ai-production-loop.md`、`Saved/HarnessReports/20260818-003445-ai-production-loop.md`、`Saved/HarnessReports/20260818-003510-ai-production-loop.md`）；最新冷 UBT `-NoHotReload` 成功。asset-contract 独立报告 `Saved/HarnessReports/20260818-003545-ai-production-loop.md` 为 `51/66`，15 个测试文件失败，故 Phase 0 总门禁仍未通过。
+- 本轮新增证据：headless 脚本 `13/13` 通过（`Saved/HarnessReports/20260818-002949-ai-production-loop.md`）；TravelRunner 接线后的 `GameXXK.Training` `11/11`（`Saved/HarnessReports/20260818-005702-ai-production-loop.md`，Automation 目录 `TrainingTravelRunner-20260818-r2`）、`GameXXK.DesktopTraining` `1/1`（`Saved/HarnessReports/20260818-010941-ai-production-loop.md`，Automation 目录 `DesktopTraining-20260818-r3`）、`GameXXK.MVP.SaveGame` 历史本轮 `12/12` 通过；最新冷 UBT `-NoHotReload` 成功（`Saved/HarnessReports/20260818-010554-ai-production-loop.md`）。asset-contract 独立报告 `Saved/HarnessReports/20260818-003545-ai-production-loop.md` 为 `51/66`，15 个测试文件失败，故 Phase 0 总门禁仍未通过。
 - 当前工作区保护：`Content/GameXXK/Maps/L_Main.umap` 保留用户已有修改；`SourceAssets/`、`SourceArt/` 及未跟踪探针不在本轮 Phase 0 写入范围。
 
 ## 已落地(最近六轮)
@@ -38,9 +38,9 @@ working_tree: dirty (runtime committed; preserve user L_Main.umap, unrelated pro
 ## 桌面历练工作台当前进度(2026-08-18)
 
 - **规则/存档已提交但未完成玩法闭环**：`GameXXKTrainingRules.*` 覆盖三难度、27 个稳定关卡 ID、挑战/游历分离、普通 1-1 默认通关、失败策略、章节编制与掉落层级占位；`FGameXXKSaveState` 的 Training 字段为 v18，迁移、挑战/游历 encounter index 范围校验和互斥校验已接入。
-- **程序化工作台和真实挑战桥接已提交且默认关闭**：`GameXXKDesktopTrainingWorkbenchWidget.*` 提供 1920×1080 几何合同、仓库 4 列、背包比例约 1.76:1、右侧 27 节点/三难度页签、挑战/游历按钮、顶部 3 敌+3 我挂机条；挑战画布可挂现有 `GameXXKBattleBoardWidget`。`StartTrainingChallenge` 已创建真实 `FGameXXKCardBattleAdapter` 会话并支持单步推进，但仍是 opt-in 适配层，`GameXXKMVPPlayerController` 默认保持 3D 城镇。
+- **程序化工作台、真实挑战桥接和 TravelRunner 已提交且默认关闭**：`GameXXKDesktopTrainingWorkbenchWidget.*` 提供 1920×1080 几何合同、仓库 4 列、背包比例约 1.76:1、右侧 27 节点/三难度页签、挑战/游历按钮、顶部 3 敌+3 我挂机条；挂机条读取 TravelRunner 的遭遇、阶段和 HP。`StartTrainingChallenge` 已创建真实 `FGameXXKCardBattleAdapter` 会话并支持单步推进；`StartTrainingTravel`/`AdvanceTrainingTravelStep` 已支持走动、单敌人自动攻击、掉血、击杀、Boss 结算、重试/回退和 1-1 一血规则，但仍是 opt-in 运行时，`GameXXKMVPPlayerController` 默认保持 3D 城镇。
 - **章节敌人语义已按最终口径冻结到规则与测试**：普通候选为公鸡/狸猫，次级精英为山羊/黄鼬，每场 4 个普通槽、2 个精英槽和 1 个首领；1-1 山羊、1-2 黄鼬、1-3 青角羊王。挑战生命与游历 1 HP 例外已分离；挑战/游历真实表现和结算仍待 PIE。
-- **当前仍未完成**：TravelRunner/角色走动与挂机计时、完整路线卡战斗 UX、真实奖励 RNG 与天赋掉率 Resolver、仓库/背包 read model、PSD/图标 manifest、1920/2560 截图与 TaskBarHero 四组性能采样。完整逐项复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
+- **当前仍未完成**：TravelRunner 的实际 Actor/动画与离线/持续计时、完整路线卡战斗 UX、真实奖励 RNG 与天赋掉率 Resolver、仓库/背包 read model、PSD/图标 manifest、1920/2560 截图与 TaskBarHero 四组性能采样。完整逐项复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
 
 ## 仅规划未实施 / 已搁置
 
