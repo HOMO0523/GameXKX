@@ -6,6 +6,9 @@
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
+#include "GameXXKEquipmentCatalog.h"
+#include "GameXXKEquipmentRules.h"
+#include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "Styling/CoreStyle.h"
@@ -61,6 +64,60 @@ namespace
 		case EGameXXKDesktopTrainingNav::Talents: return FText::FromString(TEXT("天赋"));
 		case EGameXXKDesktopTrainingNav::Tools: return FText::FromString(TEXT("工具"));
 		default: return FText::FromString(TEXT("历练"));
+		}
+	}
+
+	TArray<FName> SortedVisibleInventoryItemIds(const FGameXXKRuntimeState& State)
+	{
+		TArray<FName> Result;
+		for (const TPair<FName, int32>& Pair : State.Inventory)
+		{
+			if (!Pair.Key.IsNone() && Pair.Value > 0)
+			{
+				Result.Add(Pair.Key);
+			}
+		}
+		Result.Sort([](const FName& Left, const FName& Right)
+		{
+			return Left.ToString() < Right.ToString();
+		});
+		return Result;
+	}
+
+	FString ItemDisplayName(const FName ItemId)
+	{
+		bool bFound = false;
+		const FGameXXKItemDef Definition = UGameXXKMVPRules::GetItemDef(ItemId, bFound);
+		return bFound && !Definition.DisplayName.IsEmpty()
+			? Definition.DisplayName.ToString()
+			: ItemId.ToString();
+	}
+
+	FString EquipmentDisplayName(const FGameXXKEquipmentCollectionState& Collection, const FName InstanceId)
+	{
+		const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(Collection, InstanceId);
+		if (!Instance)
+		{
+			return InstanceId.ToString();
+		}
+		if (const FGameXXKEquipmentDefinition* Definition = FGameXXKEquipmentCatalog::FindDefinition(Instance->BaseEquipmentId))
+		{
+			return FString::Printf(TEXT("%s\nLv.%d"), *Definition->DisplayName.ToString(), Instance->ItemLevel);
+		}
+		return FString::Printf(TEXT("%s\nLv.%d"), *Instance->BaseEquipmentId.ToString(), Instance->ItemLevel);
+	}
+
+	FName EquippedInstanceIdForSlot(const FGameXXKEquipmentLoadout& Loadout, const int32 SlotIndex)
+	{
+		switch (SlotIndex)
+		{
+		case 0: return Loadout.WeaponInstanceId;
+		case 1: return Loadout.HeadInstanceId;
+		case 2: return Loadout.ArmorInstanceId;
+		case 3: return Loadout.BeltInstanceId;
+		case 4: return Loadout.ShoesInstanceId;
+		case 5: return Loadout.AccessoryInstanceId;
+		default: return NAME_None;
 		}
 	}
 }
@@ -184,6 +241,24 @@ int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehouseColumnCountForTest() c
 FVector2D UGameXXKDesktopTrainingWorkbenchWidget::GetBackpackAspectRatioForTest() const
 {
 	return BackpackAspectRatio;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetRuntimeGoldForTest() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return Subsystem ? Subsystem->GetRuntimeState().PlayerGold : 0;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehouseOccupancyForTest() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return Subsystem ? Subsystem->GetRuntimeState().EquipmentCollection.WarehouseInstanceIds.Num() : 0;
+}
+
+TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetVisibleBackpackItemIdsForTest() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return Subsystem ? SortedVisibleInventoryItemIds(Subsystem->GetRuntimeState()) : TArray<FName>();
 }
 
 int32 UGameXXKDesktopTrainingWorkbenchWidget::GetTrainingStageButtonCountForTest() const
@@ -441,6 +516,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("仓库  ·  4 列")), 28, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(48.0f, 174.0f), FVector2D(260.0f, 42.0f));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	TArray<FName> Warehouse;
 	if (Subsystem)
 	{
@@ -454,11 +530,19 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 		AddCanvas(RootCanvas, Cell, FVector2D(46.0f + Column * 68.0f, 235.0f + Row * 68.0f), FVector2D(58.0f, 58.0f));
 		if (Warehouse.IsValidIndex(SlotIndex))
 		{
-			UTextBlock* IdText = MakeText(WidgetTree, FText::FromName(Warehouse[SlotIndex]), 10, FLinearColor::White);
-			AddCanvas(RootCanvas, IdText, FVector2D(48.0f + Column * 68.0f, 255.0f + Row * 68.0f), FVector2D(54.0f, 32.0f));
+			const FString EquipmentLabel = RuntimeState
+				? EquipmentDisplayName(RuntimeState->EquipmentCollection, Warehouse[SlotIndex])
+				: Warehouse[SlotIndex].ToString();
+			UTextBlock* IdText = MakeText(WidgetTree, FText::FromString(EquipmentLabel), 10, FLinearColor::White);
+			AddCanvas(RootCanvas, IdText, FVector2D(48.0f + Column * 68.0f, 248.0f + Row * 68.0f), FVector2D(54.0f, 42.0f));
+			Cell->SetToolTipText(FText::FromString(FString::Printf(TEXT("装备实例：%s\n%s"), *Warehouse[SlotIndex].ToString(), *EquipmentLabel)));
 		}
 	}
-	UTextBlock* Footer = MakeText(WidgetTree, FText::FromString(TEXT("仓库仅显示装备实例\n不显示角色身份卡")), 16, FLinearColor(0.75f, 0.68f, 0.55f, 1.0f));
+	const int32 WarehouseCount = Warehouse.Num();
+	UTextBlock* Footer = MakeText(WidgetTree, FText::FromString(FString::Printf(
+		TEXT("装备实例 %d / %d\n不显示角色身份卡"),
+		WarehouseCount,
+		FGameXXKEquipmentRules::WarehouseCapacity)), 16, FLinearColor(0.75f, 0.68f, 0.55f, 1.0f));
 	AddCanvas(RootCanvas, Footer, FVector2D(48.0f, 830.0f), FVector2D(240.0f, 70.0f));
 }
 
@@ -471,21 +555,71 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 		: ActiveNav == EGameXXKDesktopTrainingNav::Formation ? FText::FromString(TEXT("编队  ·  角色 / 伙伴"))
 		: FText::FromString(TEXT("背包  ·  角色装备")), 30, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(400.0f, 175.0f), FVector2D(700.0f, 46.0f));
-	UTextBlock* GoldText = MakeText(WidgetTree, FText::FromString(TEXT("金币  0  ·  数据来自存档")), 20, Gold);
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	const FString GoldLabel = RuntimeState
+		? FString::Printf(TEXT("金币  %d  ·  数据来自存档"), RuntimeState->PlayerGold)
+		: TEXT("金币  --  ·  等待存档");
+	UTextBlock* GoldText = MakeText(WidgetTree, FText::FromString(GoldLabel), 20, Gold);
 	AddCanvas(RootCanvas, GoldText, FVector2D(1010.0f, 180.0f), FVector2D(260.0f, 40.0f));
+	TArray<FName> EquippedInstanceIds;
+	if (RuntimeState)
+	{
+		if (const FGameXXKEquipmentLoadout* HeroLoadout = RuntimeState->EquipmentCollection.CharacterLoadouts.Find(FGameXXKEquipmentRules::HeroCharacterId()))
+		{
+			for (int32 SlotIndex = 0; SlotIndex < 6; ++SlotIndex)
+			{
+				EquippedInstanceIds.Add(EquippedInstanceIdForSlot(*HeroLoadout, SlotIndex));
+			}
+		}
+	}
 	for (int32 SlotIndex = 0; SlotIndex < 6; ++SlotIndex)
 	{
 		UBorder* Equip = MakePanel(WidgetTree, FLinearColor(0.10f, 0.07f, 0.05f, 1.0f));
 		AddCanvas(RootCanvas, Equip, FVector2D(405.0f + (SlotIndex % 3) * 90.0f, 240.0f + (SlotIndex / 3) * 90.0f), FVector2D(78.0f, 78.0f));
+		if (EquippedInstanceIds.IsValidIndex(SlotIndex) && !EquippedInstanceIds[SlotIndex].IsNone() && RuntimeState)
+		{
+			const FString EquipmentLabel = EquipmentDisplayName(RuntimeState->EquipmentCollection, EquippedInstanceIds[SlotIndex]);
+			UTextBlock* EquipText = MakeText(WidgetTree, FText::FromString(EquipmentLabel), 11, FLinearColor::White);
+			AddCanvas(RootCanvas, EquipText, FVector2D(409.0f + (SlotIndex % 3) * 90.0f, 255.0f + (SlotIndex / 3) * 90.0f), FVector2D(70.0f, 48.0f));
+			Equip->SetToolTipText(FText::FromString(FString::Printf(TEXT("已装备实例：%s\n%s"), *EquippedInstanceIds[SlotIndex].ToString(), *EquipmentLabel)));
+		}
 	}
-	UTextBlock* Identity = MakeText(WidgetTree, FText::FromString(TEXT("角色 / 伙伴\n六装备槽\n角色与伙伴在背包内部切换")), 18, FLinearColor::White);
+	const FString IdentityLabel = RuntimeState
+		? FString::Printf(
+			TEXT("角色 / 伙伴 · %s\nLv.%d  HP %d/%d  MP %d/%d\n攻击 %d  防御 %d\n六装备槽 · 角色与伙伴在背包内部切换"),
+			*FGameXXKEquipmentRules::HeroCharacterId().ToString(),
+			RuntimeState->PlayerLevel,
+			RuntimeState->PlayerHP,
+			RuntimeState->PlayerMaxHP,
+			RuntimeState->PlayerMP,
+			RuntimeState->PlayerMaxMP,
+			RuntimeState->PlayerAttack,
+			RuntimeState->PlayerDefense)
+		: TEXT("角色 / 伙伴\n等待存档\n六装备槽 · 角色与伙伴在背包内部切换");
+	UTextBlock* Identity = MakeText(WidgetTree, FText::FromString(IdentityLabel), 16, FLinearColor::White);
 	AddCanvas(RootCanvas, Identity, FVector2D(720.0f, 250.0f), FVector2D(300.0f, 100.0f));
+	const TArray<FName> VisibleInventoryItems = RuntimeState ? SortedVisibleInventoryItemIds(*RuntimeState) : TArray<FName>();
 	for (int32 SlotIndex = 0; SlotIndex < 20; ++SlotIndex)
 	{
 		const int32 Column = SlotIndex % 4;
 		const int32 Row = SlotIndex / 4;
 		UBorder* Cell = MakePanel(WidgetTree, FLinearColor(0.06f, 0.05f, 0.04f, 1.0f));
 		AddCanvas(RootCanvas, Cell, FVector2D(700.0f + Column * 118.0f, 410.0f + Row * 66.0f), FVector2D(105.0f, 56.0f));
+		if (VisibleInventoryItems.IsValidIndex(SlotIndex) && RuntimeState)
+		{
+			const FName ItemId = VisibleInventoryItems[SlotIndex];
+			const FString ItemLabel = FString::Printf(
+				TEXT("%s\nx%d"),
+				*ItemDisplayName(ItemId),
+				RuntimeState->Inventory.FindRef(ItemId));
+			UTextBlock* ItemText = MakeText(WidgetTree, FText::FromString(ItemLabel), 12, FLinearColor::White);
+			AddCanvas(RootCanvas, ItemText, FVector2D(704.0f + Column * 118.0f, 416.0f + Row * 66.0f), FVector2D(98.0f, 44.0f));
+			Cell->SetToolTipText(FText::FromString(FString::Printf(TEXT("%s\n数量：%d\n物品 ID：%s"),
+				*ItemDisplayName(ItemId),
+				RuntimeState->Inventory.FindRef(ItemId),
+				*ItemId.ToString())));
+		}
 	}
 	UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 	Sort->Configure(this, 5);
@@ -493,7 +627,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 	Sort->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("物品排序")), 18));
 	AddCanvas(RootCanvas, Sort, FVector2D(1120.0f, 840.0f), FVector2D(150.0f, 54.0f));
 	ActionButtons.Add(Sort);
-	UTextBlock* Ratio = MakeText(WidgetTree, FText::FromString(TEXT("背包比例锁定：1.76 : 1  ·  4 × 5 可视格")), 16, FLinearColor(0.78f, 0.70f, 0.60f, 1.0f));
+	UTextBlock* Ratio = MakeText(WidgetTree, FText::FromString(FString::Printf(
+		TEXT("背包比例锁定：1.76 : 1  ·  4 × 5 可视格  ·  %d 类物品"),
+		VisibleInventoryItems.Num())), 16, FLinearColor(0.78f, 0.70f, 0.60f, 1.0f));
 	AddCanvas(RootCanvas, Ratio, FVector2D(400.0f, 925.0f), FVector2D(460.0f, 30.0f));
 }
 

@@ -87,6 +87,15 @@ public:
 	FVector2D GetBackpackAspectRatioForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetRuntimeGoldForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetWarehouseOccupancyForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	TArray<FName> GetVisibleBackpackItemIdsForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	int32 GetTrainingStageButtonCountForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
