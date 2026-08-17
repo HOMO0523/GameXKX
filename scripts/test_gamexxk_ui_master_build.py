@@ -21,6 +21,8 @@ class GameXXKUiMasterBuildTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 check=False,
+                encoding="utf-8",
+                errors="replace",
             )
             self.assertEqual(0, result.returncode, result.stderr)
             report = json.loads(result.stdout)

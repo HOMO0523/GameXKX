@@ -37,6 +37,8 @@ DEFAULT_SCRIPT_TESTS = (
     "test_ue_tdd_pipeline.py",
     "test_parse_automation_index.py",
 )
+SCRIPT_TEST_MANIFEST = SCRIPT_DIR / "script-test-manifest.json"
+SCRIPT_TEST_TAGS = ("headless", "asset-contract", "mcp-live")
 
 
 def run_step(
@@ -130,7 +132,7 @@ def run_ubt_step(ue_root: Path) -> dict:
     return run_step(f"Cold UBT build ({BUILD_TARGET})", command, timeout=3600)
 
 
-def run_script_test_step(test_file: str) -> dict:
+def run_script_test_step(test_file: str, tag: str = "focused") -> dict:
     environment = os.environ.copy()
     environment["PYTHONPATH"] = os.pathsep.join(
         filter(None, [str(PROJECT_ROOT), environment.get("PYTHONPATH", "")])
@@ -149,7 +151,7 @@ def run_script_test_step(test_file: str) -> dict:
         )
     except subprocess.TimeoutExpired:
         return {
-            "name": f"Script self-test: {test_file}",
+            "name": f"Script self-test [{tag}]: {test_file}",
             "command": command,
             "returncode": -1,
             "ok": False,
@@ -157,7 +159,7 @@ def run_script_test_step(test_file: str) -> dict:
             "stderr": "step timed out after 600s",
         }
     return {
-        "name": f"Script self-test: {test_file}",
+        "name": f"Script self-test [{tag}]: {test_file}",
         "command": command,
         "returncode": result.returncode,
         "ok": result.returncode == 0,
@@ -217,13 +219,45 @@ def run_automation_step(ue_root: Path, tests: str, report_name: str, fail_on_war
     return step
 
 
-def discover_script_tests() -> list[str]:
-    """All test_*.py under scripts/ (excluding the _archive area)."""
-    return sorted(
+def load_script_test_manifest() -> dict:
+    manifest = json.loads(SCRIPT_TEST_MANIFEST.read_text(encoding="utf-8"))
+    if manifest.get("schema") != 1 or set(manifest.get("tags", {})) != set(SCRIPT_TEST_TAGS):
+        raise RuntimeError(f"invalid script test manifest: {SCRIPT_TEST_MANIFEST}")
+    for tag in SCRIPT_TEST_TAGS:
+        if not isinstance(manifest["tags"][tag], list) or any(
+            not isinstance(name, str) or not name.endswith(".py")
+            for name in manifest["tags"][tag]
+        ):
+            raise RuntimeError(f"script test tag entries must be .py filenames: {tag}")
+    names = [
+        name
+        for tag in ("asset-contract", "mcp-live")
+        for name in manifest["tags"][tag]
+    ]
+    if len(names) != len(set(names)):
+        raise RuntimeError("script test tags overlap")
+    if any(not isinstance(name, str) for name in names):
+        raise RuntimeError("script test tag entries must be filenames")
+    return manifest
+
+
+def discover_script_tests(tag: str = "headless") -> list[str]:
+    """Discover tests for a tag; unlisted tests are headless by default."""
+    manifest = load_script_test_manifest()
+    discovered = {
         path.name
         for path in SCRIPT_DIR.glob("test_*.py")
         if path.is_file() and "_archive" not in path.parts
-    )
+    }
+    tagged = set(manifest["tags"]["asset-contract"]) | set(manifest["tags"]["mcp-live"])
+    missing = sorted(tagged - discovered)
+    if missing:
+        raise RuntimeError(f"script test manifest references missing files: {missing}")
+    if tag == "headless":
+        return sorted(discovered - tagged)
+    if tag not in SCRIPT_TEST_TAGS:
+        raise ValueError(f"unknown script test tag: {tag}")
+    return sorted(manifest["tags"][tag])
 
 
 def main(argv: list[str]) -> int:
@@ -231,7 +265,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--require-units", action="store_true")
     parser.add_argument("--run-real-flow", action="store_true", help="Run the UE MCP real PIE flow harness")
     parser.add_argument("--run-script-tests", action="store_true", help="Run the headless script self-tests")
-    parser.add_argument("--script-tests", default=",".join(DEFAULT_SCRIPT_TESTS), help="Comma-separated script test files, or 'all' to discover every test_*.py under scripts/")
+    parser.add_argument("--script-tests", default=",".join(DEFAULT_SCRIPT_TESTS), help="Comma-separated script test files, or 'all' to run the manifest-defined headless set")
+    parser.add_argument("--script-test-tag", choices=SCRIPT_TEST_TAGS, help="Run all tests in one manifest tag")
     parser.add_argument("--run-ubt", action="store_true", help="Run the cold UBT build")
     parser.add_argument("--run-automation", action="store_true", help="Run the automation suite via UnrealEditor-Cmd")
     parser.add_argument("--automation-tests", default="GameXXK", help="Automation test filter (default: GameXXK)")
@@ -266,12 +301,17 @@ def main(argv: list[str]) -> int:
         ue_root = None
 
     if args.run_script_tests:
-        if args.script_tests.strip().lower() == "all":
-            test_files = discover_script_tests()
+        if args.script_test_tag:
+            test_files = discover_script_tests(args.script_test_tag)
+            test_tag = args.script_test_tag
+        elif args.script_tests.strip().lower() == "all":
+            test_files = discover_script_tests("headless")
+            test_tag = "headless"
         else:
             test_files = [name.strip() for name in args.script_tests.split(",") if name.strip()]
+            test_tag = "focused"
         for test_file in test_files:
-            results.append(run_script_test_step(test_file))
+            results.append(run_script_test_step(test_file, test_tag))
 
     if args.run_ubt and ue_root is not None:
         results.append(run_ubt_step(ue_root))
@@ -287,9 +327,9 @@ def main(argv: list[str]) -> int:
     report_path = write_report(results)
     summary = {"ok": all(item["ok"] for item in results), "report": str(report_path), "results": results}
     if args.json:
-        print(json.dumps(summary, ensure_ascii=False, indent=2))
+        print(json.dumps(summary, ensure_ascii=True, indent=2))
     else:
-        print(json.dumps({"ok": summary["ok"], "report": summary["report"]}, ensure_ascii=False))
+        print(json.dumps({"ok": summary["ok"], "report": summary["report"]}, ensure_ascii=True))
     return 0 if summary["ok"] else 1
 
 

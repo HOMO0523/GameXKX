@@ -29,28 +29,34 @@ class RouteCardVisualMappingTests(unittest.TestCase):
         self.assertIn('AcquisitionKey == TEXT("Route.General")', resolver)
         self.assertIn('AcquisitionKey == TEXT("Route.Terrain")', resolver)
         self.assertIn('AcquisitionKey == TEXT("Route.Rare")', resolver)
-        self.assertIn('AcquisitionKey.StartsWith(TEXT("Route.Boss."))', resolver)
+        self.assertIn('AcquisitionKey == TEXT("Route.Boss.BlackBear")', resolver)
+        self.assertIn('AcquisitionKey == TEXT("Route.Boss.Tiger")', resolver)
         self.assertEqual(set(re.findall(r'TEXT\("(Route\.[^"]+)"\)', resolver)), {
             "Route.General",
             "Route.Terrain",
             "Route.Rare",
-            "Route.Boss.",
+            "Route.Boss.BlackBear",
+            "Route.Boss.Tiger",
         })
         self.assertNotIn("Definition.Id", resolver)
         self.assertNotIn("060", resolver)
         self.assertNotIn("061", resolver)
         self.assertNotIn("062", resolver)
 
-    def test_all_four_category_assets_are_the_card_art_paths(self) -> None:
+    def test_route_category_assets_match_current_portrait_policy(self) -> None:
         source = BOARD_SOURCE.read_text(encoding="utf-8")
         expected = {
-            "General": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_General.T_CardPortrait_Route_General",
-            "Terrain": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Terrain.T_CardPortrait_Route_Terrain",
-            "Rare": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Rare.T_CardPortrait_Route_Rare",
-            "Boss": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Boss.T_CardPortrait_Route_Boss",
+            "GeneralCardPortraitTexturePath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_General.T_CardPortrait_Route_General",
+            "TerrainCardPortraitTexturePath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Terrain.T_CardPortrait_Route_Terrain",
+            "RareCardPortraitTexturePath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Rare.T_CardPortrait_Route_Rare",
+            "Enemy.Ch2.BlackBear": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch2_BlackBearBoss.T_CardPortrait_Enemy_Ch2_BlackBearBoss",
+            "Enemy.Ch3.Tiger": "/Game/GameXXK/UI/Battle/EnemyCardArt/T_CardPortrait_Enemy_Ch3_TigerBoss.T_CardPortrait_Enemy_Ch3_TigerBoss",
         }
-        for category, asset_path in expected.items():
-            self.assertIn(f"Route{category}CardPortraitTexturePath", source)
+        for symbol, asset_path in expected.items():
+            if symbol.startswith("Enemy."):
+                self.assertIn(f'ResolveEnemyPortraitPathByDefinitionId(TEXT("{symbol}"))', source)
+            else:
+                self.assertIn(f"Route{symbol}", source)
             self.assertIn(asset_path, source)
 
     def test_cpp_automation_covers_every_route_definition(self) -> None:

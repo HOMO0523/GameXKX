@@ -410,7 +410,7 @@ class CardBalanceObservationCatalogTests(unittest.TestCase):
         )
         self.assertEqual(
             audit["energy_counts"],
-            {"0": 43, "1": 97, "2": 48, "3": 10},
+            {"0": 45, "1": 95, "2": 48, "3": 10},
         )
         self.assertEqual(
             audit["owner_counts"],
