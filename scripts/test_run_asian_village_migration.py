@@ -37,6 +37,53 @@ class OrchestratorTests(unittest.TestCase):
             ),
         )
 
+    def test_external_path_resolvers_prefer_cli_over_environment(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cli_source = root / "cli-source"
+            env_source = root / "env-source"
+            cli_ue54 = root / "ue54-cli"
+            env_ue54 = root / "ue54-env"
+            with mock.patch.dict(
+                runner.os.environ,
+                {
+                    "GAMEXXK_ASIAN_VILLAGE_SOURCE": str(env_source),
+                    "GAMEXXK_UE54_ROOT": str(env_ue54),
+                    "GAMEXXK_UE_ROOT": str(root / "ue58-env"),
+                },
+                clear=False,
+            ):
+                paths = runner.resolve_migration_paths(
+                    source=cli_source,
+                    ue54_root=cli_ue54,
+                    ue58_root=root / "ue58-cli",
+                )
+            self.assertEqual(paths["source_asset_dir"], cli_source.resolve())
+            self.assertEqual(paths["ue54_cmd"], cli_ue54.resolve() / "Engine/Binaries/Win64/UnrealEditor-Cmd.exe")
+            self.assertEqual(paths["ue58_cmd"], root.joinpath("ue58-cli", "Engine/Binaries/Win64/UnrealEditor-Cmd.exe").resolve())
+
+    def test_external_path_resolvers_require_source_and_engines(self):
+        with mock.patch.dict(runner.os.environ, {}, clear=True):
+            with self.assertRaisesRegex(runner.OrchestrationError, "Asian Village source is not configured"):
+                runner.resolve_migration_paths()
+
+    def test_external_path_resolvers_use_environment_when_cli_is_absent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "project" / "Content" / "Asian_Village"
+            with mock.patch.dict(
+                runner.os.environ,
+                {
+                    "GAMEXXK_ASIAN_VILLAGE_SOURCE": str(source),
+                    "GAMEXXK_UE54_ROOT": str(root / "ue54"),
+                    "GAMEXXK_UE_ROOT": str(root / "ue58"),
+                },
+                clear=True,
+            ):
+                paths = runner.resolve_migration_paths()
+            self.assertEqual(paths["source_asset_dir"], source.resolve())
+            self.assertEqual(paths["source_uproject"], (root / "project" / "project.uproject").resolve())
+
     def test_commandlet_requires_exit_zero_and_ok_report(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -105,9 +152,21 @@ class OrchestratorTests(unittest.TestCase):
             fake_client.execute_console_command.assert_not_called()
 
     def test_preflight_rejects_existing_target_before_mutation(self):
-        with mock.patch.object(runner, "TARGET_ASSET_DIR", Path(__file__).parent):
-            with self.assertRaisesRegex(runner.OrchestrationError, "target already exists"):
-                runner.preflight(require_target_absent=True)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            paths = {
+                "source_asset_dir": root / "source",
+                "source_uproject": root / "source.uproject",
+                "ue54_cmd": root / "ue54.exe",
+                "ue58_cmd": root / "ue58.exe",
+            }
+            paths["source_asset_dir"].mkdir()
+            for path in paths.values():
+                if path.suffix:
+                    path.write_bytes(b"")
+            with mock.patch.object(runner, "TARGET_ASSET_DIR", Path(__file__).parent):
+                with self.assertRaisesRegex(runner.OrchestrationError, "target already exists"):
+                    runner.preflight(require_target_absent=True, resolved_paths=paths)
 
 
 if __name__ == "__main__":

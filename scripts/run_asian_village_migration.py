@@ -18,11 +18,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from scripts.asian_village_migration import (
     EXPECTED_COUNTS,
-    SOURCE_ASSET_DIR,
     MigrationError,
     build_manifest,
     canonical_json_bytes,
     _load_manifest,
+    resolve_source_asset_dir as _resolve_source_asset_dir,
     stage_and_promote,
     verify_manifest,
     write_manifest,
@@ -31,10 +31,7 @@ from scripts.ue_mcp_client import DEFAULT_HOST, DEFAULT_PATH, DEFAULT_PORT, Unre
 from scripts.ue_tdd_pipeline import is_editor_running, kill_editor, launch_editor, wait_for_mcp
 
 
-SOURCE_UPROJECT = Path(r"D:\UE5 demo\zzz\我的项目\我的项目.uproject")
-UE54_CMD = Path(r"D:\UE_5.4\Engine\Binaries\Win64\UnrealEditor-Cmd.exe")
 TARGET_UPROJECT = PROJECT_ROOT / "GameXXK.uproject"
-UE58_CMD = Path(r"D:\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe")
 AUDIT_SCRIPT = PROJECT_ROOT / "Content" / "Python" / "gamexxk_audit_asian_village.py"
 TARGET_ASSET_DIR = PROJECT_ROOT / "Content" / "Asian_Village"
 STAGING_DIR = PROJECT_ROOT / "Saved" / "MigrationStaging" / "Asian_Village"
@@ -64,6 +61,65 @@ class OrchestrationError(RuntimeError):
     pass
 
 
+def resolve_source_asset_dir(cli_value: str | os.PathLike[str] | None = None) -> Path:
+    try:
+        return _resolve_source_asset_dir(cli_value)
+    except RuntimeError as exc:
+        raise OrchestrationError(str(exc)) from exc
+
+
+def resolve_engine_root(
+    cli_value: str | os.PathLike[str] | None,
+    *,
+    environment_key: str,
+    option_name: str,
+    display_name: str,
+) -> Path:
+    value = cli_value or os.environ.get(environment_key)
+    if not value:
+        raise OrchestrationError(
+            f"{display_name} is not configured; pass {option_name} or set {environment_key}"
+        )
+    return Path(value).expanduser().resolve(strict=False)
+
+
+def resolve_migration_paths(
+    *,
+    source: str | os.PathLike[str] | None = None,
+    source_uproject: str | os.PathLike[str] | None = None,
+    ue54_root: str | os.PathLike[str] | None = None,
+    ue58_root: str | os.PathLike[str] | None = None,
+) -> dict[str, Path]:
+    source_asset_dir = resolve_source_asset_dir(source)
+    if source_uproject:
+        source_project = Path(source_uproject).expanduser().resolve(strict=False)
+    else:
+        configured_project = os.environ.get("GAMEXXK_ASIAN_VILLAGE_UPROJECT")
+        if configured_project:
+            source_project = Path(configured_project).expanduser().resolve(strict=False)
+        else:
+            source_project_root = source_asset_dir.parent.parent
+            source_project = source_project_root / f"{source_project_root.name}.uproject"
+    ue54_root_path = resolve_engine_root(
+        ue54_root,
+        environment_key="GAMEXXK_UE54_ROOT",
+        option_name="--ue54-root",
+        display_name="UE5.4 root",
+    )
+    ue58_root_path = resolve_engine_root(
+        ue58_root,
+        environment_key="GAMEXXK_UE_ROOT",
+        option_name="--ue58-root",
+        display_name="UE5.8 root",
+    )
+    return {
+        "source_asset_dir": source_asset_dir,
+        "source_uproject": source_project,
+        "ue54_cmd": ue54_root_path / "Engine" / "Binaries" / "Win64" / "UnrealEditor-Cmd.exe",
+        "ue58_cmd": ue58_root_path / "Engine" / "Binaries" / "Win64" / "UnrealEditor-Cmd.exe",
+    }
+
+
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -78,14 +134,26 @@ def protected_hashes() -> dict[str, str]:
     }
 
 
-def preflight(*, require_target_absent: bool = True) -> dict[str, Any]:
-    required = (SOURCE_ASSET_DIR, SOURCE_UPROJECT, UE54_CMD, TARGET_UPROJECT, UE58_CMD, AUDIT_SCRIPT)
+def preflight(
+    *,
+    require_target_absent: bool = True,
+    resolved_paths: dict[str, Path] | None = None,
+) -> dict[str, Any]:
+    paths = resolved_paths or resolve_migration_paths()
+    required = (
+        paths["source_asset_dir"],
+        paths["source_uproject"],
+        paths["ue54_cmd"],
+        TARGET_UPROJECT,
+        paths["ue58_cmd"],
+        AUDIT_SCRIPT,
+    )
     missing = [str(path) for path in required if not path.exists()]
     if missing:
         raise OrchestrationError(f"migration preflight paths are missing: {missing}")
     if require_target_absent and TARGET_ASSET_DIR.exists():
         raise OrchestrationError(f"target already exists: {TARGET_ASSET_DIR}")
-    manifest = build_manifest(SOURCE_ASSET_DIR)
+    manifest = build_manifest(paths["source_asset_dir"])
     if manifest["counts"] != EXPECTED_COUNTS:
         raise OrchestrationError(
             f"source counts drifted: expected {EXPECTED_COUNTS}, got {manifest['counts']}"
@@ -198,14 +266,26 @@ def _assert_protected(expected: dict[str, str]) -> None:
         raise OrchestrationError("protected Qingshan files changed during migration")
 
 
-def execute_migration() -> dict[str, Any]:
+def execute_migration(
+    *,
+    source: str | os.PathLike[str] | None = None,
+    source_uproject: str | os.PathLike[str] | None = None,
+    ue54_root: str | os.PathLike[str] | None = None,
+    ue58_root: str | os.PathLike[str] | None = None,
+) -> dict[str, Any]:
     state: dict[str, Any] = {"ok": False, "phases": []}
-    initial = preflight(require_target_absent=True)
+    paths = resolve_migration_paths(
+        source=source,
+        source_uproject=source_uproject,
+        ue54_root=ue54_root,
+        ue58_root=ue58_root,
+    )
+    initial = preflight(require_target_absent=True, resolved_paths=paths)
     protected = dict(initial["protected_hashes"])
     state["phases"].append("preflight")
 
     EVIDENCE_ROOT.mkdir(parents=True, exist_ok=True)
-    source_manifest = build_manifest(SOURCE_ASSET_DIR)
+    source_manifest = build_manifest(paths["source_asset_dir"])
     ensure_manifest(EVIDENCE_ROOT / "source-file-manifest.json", source_manifest)
     state["phases"].append("source_inventory")
 
@@ -213,15 +293,15 @@ def execute_migration() -> dict[str, Any]:
     state["phases"].extend(("save_target_editor", "close_target_editor"))
 
     run_commandlet(
-        UE54_CMD,
-        SOURCE_UPROJECT,
+        paths["ue54_cmd"],
+        paths["source_uproject"],
         "source-readonly",
         EVIDENCE_ROOT / "source-ue54-audit.json",
     )
     state["phases"].append("source_ue54_audit")
 
     copied = stage_and_promote(
-        SOURCE_ASSET_DIR,
+        paths["source_asset_dir"],
         TARGET_ASSET_DIR,
         STAGING_DIR,
         source_manifest,
@@ -230,7 +310,7 @@ def execute_migration() -> dict[str, Any]:
     state["phases"].append("copy_and_verify")
 
     run_commandlet(
-        UE58_CMD,
+        paths["ue58_cmd"],
         TARGET_UPROJECT,
         "target-upgrade",
         EVIDENCE_ROOT / "target-ue58-upgrade.json",
@@ -240,7 +320,7 @@ def execute_migration() -> dict[str, Any]:
     upgraded = build_manifest(TARGET_ASSET_DIR)
     ensure_manifest(EVIDENCE_ROOT / "upgraded-file-manifest.json", upgraded)
     run_commandlet(
-        UE58_CMD,
+        paths["ue58_cmd"],
         TARGET_UPROJECT,
         "target-verify",
         EVIDENCE_ROOT / "target-ue58-verify.json",
@@ -255,8 +335,20 @@ def execute_migration() -> dict[str, Any]:
     return state
 
 
-def verify_only() -> dict[str, Any]:
-    initial = preflight(require_target_absent=False)
+def verify_only(
+    *,
+    source: str | os.PathLike[str] | None = None,
+    source_uproject: str | os.PathLike[str] | None = None,
+    ue54_root: str | os.PathLike[str] | None = None,
+    ue58_root: str | os.PathLike[str] | None = None,
+) -> dict[str, Any]:
+    paths = resolve_migration_paths(
+        source=source,
+        source_uproject=source_uproject,
+        ue54_root=ue54_root,
+        ue58_root=ue58_root,
+    )
+    initial = preflight(require_target_absent=False, resolved_paths=paths)
     if not TARGET_ASSET_DIR.is_dir():
         raise OrchestrationError(f"target is missing: {TARGET_ASSET_DIR}")
     manifest = _load_manifest(EVIDENCE_ROOT / "upgraded-file-manifest.json")
@@ -266,7 +358,7 @@ def verify_only() -> dict[str, Any]:
         temporary.unlink()
     if is_editor_running():
         raise OrchestrationError("verify-only commandlet requires the editor to be closed")
-    report = run_commandlet(UE58_CMD, TARGET_UPROJECT, "target-verify", temporary)
+    report = run_commandlet(paths["ue58_cmd"], TARGET_UPROJECT, "target-verify", temporary)
     temporary.unlink(missing_ok=True)
     return {
         "ok": True,
@@ -286,14 +378,34 @@ def main(argv: list[str] | None = None) -> int:
     action.add_argument("--preflight", action="store_true")
     action.add_argument("--execute", action="store_true")
     action.add_argument("--verify-only", action="store_true")
+    parser.add_argument("--source", help="Asian Village source directory (or GAMEXXK_ASIAN_VILLAGE_SOURCE)")
+    parser.add_argument("--source-uproject", help="UE5.4 source project file (or GAMEXXK_ASIAN_VILLAGE_UPROJECT)")
+    parser.add_argument("--ue54-root", help="UE5.4 installation root (or GAMEXXK_UE54_ROOT)")
+    parser.add_argument("--ue58-root", help="UE5.8 installation root (or GAMEXXK_UE_ROOT)")
     args = parser.parse_args(argv)
     try:
         if args.preflight:
-            result = preflight(require_target_absent=True)
+            paths = resolve_migration_paths(
+                source=args.source,
+                source_uproject=args.source_uproject,
+                ue54_root=args.ue54_root,
+                ue58_root=args.ue58_root,
+            )
+            result = preflight(require_target_absent=True, resolved_paths=paths)
         elif args.execute:
-            result = execute_migration()
+            result = execute_migration(
+                source=args.source,
+                source_uproject=args.source_uproject,
+                ue54_root=args.ue54_root,
+                ue58_root=args.ue58_root,
+            )
         else:
-            result = verify_only()
+            result = verify_only(
+                source=args.source,
+                source_uproject=args.source_uproject,
+                ue54_root=args.ue54_root,
+                ue58_root=args.ue58_root,
+            )
         _print(result)
         return 0
     except (OrchestrationError, MigrationError) as exc:

@@ -13,13 +13,23 @@ from ctypes import wintypes
 from pathlib import Path, PurePosixPath
 
 
-SOURCE_ASSET_DIR = Path(r"D:\UE5 demo\zzz\我的项目\Content\Asian_Village")
 TARGET_RELATIVE_DIR = Path("Content") / "Asian_Village"
 EXPECTED_COUNTS = {"files": 505, "uasset": 503, "umap": 2}
 
 
 class MigrationError(RuntimeError):
     pass
+
+
+def resolve_source_asset_dir(cli_value: str | os.PathLike[str] | None = None) -> Path:
+    """Resolve the external Asian Village source without embedding a user path."""
+    value = cli_value or os.environ.get("GAMEXXK_ASIAN_VILLAGE_SOURCE")
+    if not value:
+        raise RuntimeError(
+            "Asian Village source is not configured; pass --source or set "
+            "GAMEXXK_ASIAN_VILLAGE_SOURCE"
+        )
+    return Path(value).expanduser().resolve(strict=False)
 
 
 _IDENTITY_FIELDS = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
@@ -866,16 +876,6 @@ def main(argv: list[str] | None = None, *, process_checker=unreal_editor_running
         arguments = _parser().parse_args(argv)
         if arguments.command == "inventory":
             manifest = build_manifest(arguments.source)
-            try:
-                real_source = arguments.source.resolve(strict=True)
-                canonical_source = SOURCE_ASSET_DIR.resolve(strict=False)
-            except (OSError, RuntimeError, ValueError) as exc:
-                raise _error("unable to resolve inventory source", arguments.source, exc)
-            if real_source == canonical_source and manifest["counts"] != EXPECTED_COUNTS:
-                raise MigrationError(
-                    f"real source counts {manifest['counts']} do not match "
-                    f"expected {EXPECTED_COUNTS}"
-                )
             write_manifest(arguments.output, manifest)
             result = manifest
         elif arguments.command == "copy":

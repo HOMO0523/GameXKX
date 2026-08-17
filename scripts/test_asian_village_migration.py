@@ -78,13 +78,9 @@ def run_cli(*args: object) -> subprocess.CompletedProcess:
 
 
 class MigrationContractTests(unittest.TestCase):
-    def test_module_exposes_exact_constants(self):
+    def test_module_exposes_contract_constants_and_source_resolver(self):
         module = migration_module()
 
-        self.assertEqual(
-            module.SOURCE_ASSET_DIR,
-            Path(r"D:\UE5 demo\zzz\我的项目\Content\Asian_Village"),
-        )
         self.assertEqual(
             module.TARGET_RELATIVE_DIR, Path("Content") / "Asian_Village"
         )
@@ -92,6 +88,38 @@ class MigrationContractTests(unittest.TestCase):
             module.EXPECTED_COUNTS, {"files": 505, "uasset": 503, "umap": 2}
         )
         self.assertTrue(issubclass(module.MigrationError, RuntimeError))
+
+    def test_source_resolver_cli_wins_over_environment(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            cli = Path(directory) / "cli-source"
+            env = Path(directory) / "env-source"
+            with mock.patch.dict(
+                os.environ,
+                {"GAMEXXK_ASIAN_VILLAGE_SOURCE": str(env)},
+                clear=False,
+            ):
+                self.assertEqual(module.resolve_source_asset_dir(cli), cli.resolve())
+
+    def test_source_resolver_reads_environment(self):
+        module = migration_module()
+        with tempfile.TemporaryDirectory() as directory:
+            env = Path(directory) / "env-source"
+            with mock.patch.dict(
+                os.environ,
+                {"GAMEXXK_ASIAN_VILLAGE_SOURCE": str(env)},
+                clear=False,
+            ):
+                self.assertEqual(module.resolve_source_asset_dir(), env.resolve())
+
+    def test_source_resolver_requires_explicit_configuration(self):
+        module = migration_module()
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "Asian Village source is not configured; pass --source or set GAMEXXK_ASIAN_VILLAGE_SOURCE",
+            ):
+                module.resolve_source_asset_dir()
 
     def test_resolve_target_accepts_only_exact_project_destination(self):
         module = migration_module()
