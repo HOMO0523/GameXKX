@@ -1,8 +1,8 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-18T05:24:00+08:00
-source_commit: 74d837f
+updated_at: 2026-08-18T05:35:00+08:00
+source_commit: a2c9e06
 ---
 # GameXXK Phase 0 基线证据
 
@@ -27,10 +27,10 @@ source_commit: 74d837f
 ## Current repository state
 
 - 分支：`main`。
-- HEAD：`74d837f feat: keep challenge side shells read-only`；前置背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`、桥接为 `7881927`。Training 规则、v19 存档、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner、seeded reward/cooldown Resolver、最小宝箱 Inventory 镜像、背包角色/伙伴切换、工具/天赋容器基础导航、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、背包内独立设置与关闭动作、挑战期间左右仓库/历练地图只读外壳与导航锁定已提交。`Content/GameXXK/Maps/L_Main.umap`、未跟踪探针与源美术仍受保护且不在提交内。
-- 当前 `CurrentSaveVersion=19`；`DesktopTrainingWorkbenchIntroducedSaveVersion=18`、`TrainingRewardCooldownsIntroducedSaveVersion=19`。旧历练索引按 v16/v17/v18 的边界已经失效，不得复用。
+- HEAD：`a2c9e06 feat: add offline travel collection and v20 migration`；前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 RuntimeState read model 为 `dfb5230`，宝箱 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`、桥接为 `7881927`。Training 规则、v20 存档、程序化工作台、PlayerController opt-in、真实 CardBattle 桥接、确定性 TravelRunner、离线补算/待领取账本/收菜入口、seeded reward/cooldown Resolver、最小宝箱 Inventory 镜像、背包角色/伙伴切换、工具/天赋容器基础导航、仓库 20 格分页、visible-slot quick-equip、确定性排序、装备槽卸下回仓、背包内独立设置与关闭动作、挑战期间左右仓库/历练地图只读外壳与导航锁定已提交。`Content/GameXXK/Maps/L_Main.umap`、未跟踪探针与源美术仍受保护且不在提交内。
+- 当前 `CurrentSaveVersion=20`；`DesktopTrainingWorkbenchIntroducedSaveVersion=18`、`TrainingRewardCooldownsIntroducedSaveVersion=19`、`TrainingOfflineCollectionIntroducedSaveVersion=20`。旧历练索引按 v16/v17/v18 的边界已经失效，不得复用。
 - 最新设计真源：`docs/superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md`；运行时已有 opt-in 规则/壳和真实 CardBattle 单步桥接，但默认 3D 城镇入口未切换，PSD/游历执行器/完整战斗结算/奖励 RNG/性能和 PIE 验收未完成。
-- 当前新增规则/工作台证据：`Saved/HarnessReports/20260818-025938-ai-production-loop.md`（Training 14/14，含 1-1 全 encounter 无箱、非 1-1 游历复用局内概率、普通箱 240 秒/精英与首领高级箱 360 秒冷却实际重置/递减、Inventory bridge 与 v19 round-trip）、`Saved/HarnessReports/20260818-033827-ai-production-loop.md`（最新冷 UBT `-NoHotReload` 成功）、`Saved/HarnessReports/20260818-022528-ai-production-loop.md`（SaveGame 12/12）、`Saved/HarnessReports/20260818-033849-ai-production-loop.md`（DesktopTraining 挑战侧壳只读/导航锁定 1/1，Automation 目录 `DesktopTrainingChallengeShellGreen-20260818-r2`）、`Saved/HarnessReports/20260818-031507-ai-production-loop.md`（分页、quick-equip、排序幂等与装备槽卸下回仓）和 `Saved/HarnessReports/20260818-032523-ai-production-loop.md`（设置面板与关闭动作分离；角色/伙伴与工具/历练导航前置证据见 `20260818-025005-ai-production-loop.md`）；`Saved/HarnessReports/20260818-011435-ai-production-loop.md`（headless 13/13）。完整目标复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
+- 当前新增规则/工作台证据：`Saved/HarnessReports/20260818-041647-ai-production-loop.md`（Training 17/17，含 1-1 全 encounter 无箱、非 1-1 游历复用局内概率、普通箱 240 秒/精英与首领高级箱 360 秒冷却、离线补算/待领取账本/读档恢复、Inventory bridge 与 v20 round-trip）、`Saved/HarnessReports/20260818-041453-ai-production-loop.md`（最新冷 UBT `-NoHotReload` 成功）、`Saved/HarnessReports/20260818-041625-ai-production-loop.md`（SaveGame 12/12，v20 migration/UTC/pending ledger）、`Saved/HarnessReports/20260818-041517-ai-production-loop.md`（DesktopTraining 收菜入口 1/1，Automation 目录 `DesktopTrainingWorkbenchCollectGreen-20260818`）；挑战侧壳只读/导航锁定、分页/quick-equip、排序/卸下、设置/关闭仍保留前置报告。`Saved/HarnessReports/20260818-011435-ai-production-loop.md`（headless 13/13）。完整目标复核见 `docs/production/2026-08-18-desktop-training-goal-review.md`。
 
 ## Protection lock
 
@@ -53,5 +53,5 @@ source_commit: 74d837f
 
 - `GameXXKTrainingRules.*` 已提供 27 个稳定关卡 ID、挑战/游历状态、1-1 默认通关、失败策略、确定性 TravelRunner、seeded challenge/travel reward Resolver 和普通/高级 Travel 240/360 秒冷却；非 1-1 游历沿用局内 encounter 概率，普通箱 CD 为 4 分钟、精英/首领高级箱 CD 为 6 分钟；1-1 游历普通/精英/首领都不掉箱，只保留阶段金币/经验；第一章映射已冻结为公鸡/狸猫普通、山羊/黄鼬次级精英、1-1 山羊、1-2 黄鼬、1-3 青角羊王。
 - `GameXXKDesktopTrainingWorkbenchWidget.*` 仍是程序化几何合同壳，不是 PSD 生产稿；本轮接入最小 RuntimeState read model（金币、仓库装备实例/等级、背包六槽和物品数量/tooltip），并通过共享背包模型支持主角/永久伙伴选择、仓库 20 格分页、visible-slot quick-equip、确定性排序与装备槽卸下回仓、背包内独立设置与关闭动作；挑战视图额外保留左仓库/右历练地图只读外壳并锁定底部导航，天赋中栏和工具右栏为基础容器；没有 MasterV2 纹理绑定、透明图标 manifest/hash、真实字体校准、真实地图节点美术或局内卡牌演出。
-- `StartTrainingChallenge` 已接真实 CardBattle 创建和单步推进；`StartTrainingTravel` 已接走动/自动攻击/掉血/击杀/结算/失败重试的确定性 runtime runner；挑战/游历结算已写入金币/经验与两个 canonical 宝箱 Inventory item，并通过 v19 save round-trip。尚未完成 RouteMap→全路线战斗→胜负→奖励→下一遭遇的 PIE 闭环、Travel Actor/动画、真实/离线计时、最终概率/天赋 read model、FIFO 箱批/容量、真实收菜和完整战斗中断恢复。
+- `StartTrainingChallenge` 已接真实 CardBattle 创建和单步推进；`StartTrainingTravel` 已接走动/自动攻击/掉血/击杀/结算/失败重试的确定性 runtime runner；挑战/游历结算已写入金币/经验与两个 canonical 宝箱 Inventory item，v20 另有离线补算、待领取账本、收菜入库和 read/save round-trip。尚未完成 RouteMap→全路线战斗→胜负→奖励→下一遭遇的 PIE 闭环、Travel Actor/动画、后台 Timer/最终视觉、最终概率/天赋 read model、FIFO 箱批/容量/箱内物品和完整战斗中断恢复。
 - `bEnableDesktopTrainingWorkbench` 默认 `false`，因此 3D 城镇可回退且当前未切换默认入口。
