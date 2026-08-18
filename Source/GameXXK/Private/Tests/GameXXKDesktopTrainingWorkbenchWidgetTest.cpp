@@ -2,6 +2,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "UI/GameXXKDesktopTrainingLayout.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 
 #include "Engine/GameInstance.h"
@@ -89,6 +90,33 @@ bool FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest::RunTest(const
 	TestTrue(TEXT("workbench uses the approved item slot texture"), bHasItemSlot);
 	TestTrue(TEXT("workbench uses the approved equipment slot texture"), bHasEquipmentSlot);
 	TestEqual(TEXT("workbench exposes all five approved circular navigation icons"), NavDiscCount, 5);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingReferenceGeometryTest,
+	"GameXXK.DesktopTraining.Workbench.ReferenceGeometry",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingReferenceGeometryTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKDesktopTrainingLayout;
+	TestEqual(TEXT("reference canvas is the approved UI Master size"), GetReferenceCanvasSize(), FVector2D(1672.0f, 941.0f));
+	TestEqual(TEXT("warehouse matches the selected layout"), GetWarehouseRect(), FVector4(10.0f, 17.0f, 363.0f, 908.0f));
+	TestEqual(TEXT("center shell matches the selected layout"), GetCenterShellRect(), FVector4(386.0f, 17.0f, 970.0f, 908.0f));
+	TestEqual(TEXT("right shell matches the selected layout"), GetRightShellRect(), FVector4(1369.0f, 17.0f, 291.0f, 908.0f));
+	TestEqual(TEXT("idle strip matches the selected layout"), GetIdleStripRect(), FVector4(394.0f, 21.0f, 953.0f, 202.0f));
+	TestEqual(TEXT("backpack surface matches the selected layout"), GetContentRect(), FVector4(397.0f, 244.0f, 945.0f, 533.0f));
+	TestEqual(TEXT("navigation matches the selected layout"), GetNavigationRect(), FVector4(397.0f, 788.0f, 945.0f, 137.0f));
+
+	const FFitTransform FullHD = MakeFitTransform(FVector2D(1920.0f, 1080.0f));
+	const FFitTransform QHD = MakeFitTransform(FVector2D(2560.0f, 1440.0f));
+	TestTrue(TEXT("Full HD uses one uniform scale"), FMath::IsNearlyEqual(FullHD.Scale, 1080.0f / 941.0f, KINDA_SMALL_NUMBER));
+	TestTrue(TEXT("QHD uses one uniform scale"), FMath::IsNearlyEqual(QHD.Scale, 1440.0f / 941.0f, KINDA_SMALL_NUMBER));
+	const FVector4 FullHDNode = FullHD.ApplyRect(FVector4(0.0f, 0.0f, 58.0f, 58.0f));
+	const FVector4 QHDNode = QHD.ApplyRect(FVector4(0.0f, 0.0f, 58.0f, 58.0f));
+	TestTrue(TEXT("Full HD nodes remain circular"), FMath::IsNearlyEqual(FullHDNode.Z, FullHDNode.W, KINDA_SMALL_NUMBER));
+	TestTrue(TEXT("QHD nodes remain circular"), FMath::IsNearlyEqual(QHDNode.Z, QHDNode.W, KINDA_SMALL_NUMBER));
 	return true;
 }
 
