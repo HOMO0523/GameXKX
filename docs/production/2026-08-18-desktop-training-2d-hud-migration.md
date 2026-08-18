@@ -22,8 +22,9 @@ goal_status: active
 1. `GameXXKLevelFlow::MapForScreen(Town)` 在本分支返回 `/Game/GameXXK/Maps/L_DesktopTrainingHUD`。
 2. `L_DesktopTrainingHUD.umap` 是 `L_QingshanInn` 的隔离副本，只保留 `PlayerStart`；场景、灯光、雾、出口和放置角色不在副本中。
 3. `AGameXXKMVPGameMode::SpawnDefaultPawnAtTransform_Implementation` 在 HUD 地图返回空 Pawn，避免默认城镇 GameMode 注入 3D 主角。
-4. `AGameXXKMVPPlayerController::BeginPlay` 识别 HUD 地图后只在该地图自动启用并打开 `UGameXXKDesktopTrainingWorkbenchWidget`；原 3D 城镇仍保持显式 opt-in。
-5. 工作台默认仍以历练页为主入口；`Tab`、仓库/编队/天赋/工具和挑战/游历交互继续由现有工作台统一承载。
+4. HUD 地图直接启动时，`AGameXXKMVPGameMode::BeginPlay` 只规范化 Town runtime state，不生成 3D 城镇 Actor；从主菜单进入和直接打开地图都能落到同一 HUD 入口。
+5. `AGameXXKMVPPlayerController::BeginPlay` 识别 HUD 地图后只在该地图自动启用并打开 `UGameXXKDesktopTrainingWorkbenchWidget`；原 3D 城镇仍保持显式 opt-in。
+6. 工作台默认仍以历练页为主入口；`Tab`、仓库/编队/天赋/工具和挑战/游历交互继续由现有工作台统一承载。
 
 ## 回退边界
 

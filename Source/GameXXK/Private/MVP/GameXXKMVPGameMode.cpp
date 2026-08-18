@@ -78,6 +78,18 @@ void AGameXXKMVPGameMode::BeginPlay()
 	// This game mode is also used by prototype maps.  Only the gameplay town
 	// should restore its persisted actors and player location; a showcase map
 	// must keep its own PlayerStart and placed scene intact.
+	const UWorld* World = GetWorld();
+	const FString PackageName = World && World->GetOutermost() ? World->GetOutermost()->GetName() : FString();
+	if (GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(PackageName))
+	{
+		// A direct editor/command-line launch of the isolated HUD map still gets a
+		// valid Town runtime state, but never receives the 3D town actor set.
+		if (UGameXXKMVPSubsystem* Subsystem = GetGameInstance() ? GetGameInstance()->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr)
+		{
+			Subsystem->EnsureQingshanTownRuntimeForDirectMap();
+		}
+		return;
+	}
 	if (!IsTownGameplayMap(GetWorld()))
 	{
 		return;
