@@ -385,9 +385,11 @@ TaskBarHero 参照快照：Working Set 约 513 MiB、Private Bytes 约 1418 MiB�
   atlas 检查。
 - 这仍是**运行时 MVP**而不是完成的 PSD/发行资产：尚未把六名角色、三只敌人、
   Actor 碰撞/移动、最终收菜窗口、后台 Timer、1920/2560 双分辨率和四组性能
-  采样标绿；默认 `bEnableDesktopTrainingWorkbench=false`，3D 城镇仍是回退入口。
+  采样标绿；本分支只在 `L_DesktopTrainingHUD` 上自动开启工作台，3D 城镇仍是
+  回退入口。
 - 为隔离纯 HUD 验证，新增副本地图 `Content/GameXXK/Maps/L_DesktopTrainingHUD.umap`：
   来源为 `L_QingshanInn`，仅保留 `PlayerStart`，移除 14 个地形/灯光/雾/出口等
   放置 Actor；原城镇地图与 `L_Main.umap` 未修改。清理报告见
-  `Saved/HarnessReports/desktop-training-hud-map.json`。该副本仍是迁移实验场，
-  不改变默认地图和入口。
+  `Saved/HarnessReports/desktop-training-hud-map.json`。在
+  `codex/desktop-training-2d-hud-migration` 分支中，该副本已经成为 `Town` 状态的
+  默认地图并自动打开工作台；`main` 仍保持原 3D 入口。

@@ -193,8 +193,29 @@ void AGameXXKMVPPlayerController::BeginPlay()
 	bEnableMouseOverEvents = true;
 	SetTrackedInputMode(EGameXXKTrackedInputMode::GameAndUI);
 
+	const UWorld* World = GetWorld();
+	const FString CurrentPackageName = World && World->GetOutermost()
+		? World->GetOutermost()->GetName()
+		: FString();
+	const bool bIsDesktopTrainingHUDMap = GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(CurrentPackageName);
+	if (bIsDesktopTrainingHUDMap)
+	{
+		// Only the migration map opts into the workbench automatically.  The
+		// original 3D town path remains opt-in and keeps its existing rollback
+		// behavior.
+		bEnableDesktopTrainingWorkbench = true;
+	}
+
 	EnsurePlayerFlowWidgets();
 	RefreshPlayerFlowWidgets();
+	if (bIsDesktopTrainingHUDMap)
+	{
+		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+			Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
+		{
+			OpenDesktopTrainingWorkbench();
+		}
+	}
 }
 
 void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)

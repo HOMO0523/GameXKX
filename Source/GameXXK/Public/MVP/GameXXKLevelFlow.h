@@ -15,5 +15,7 @@ namespace GameXXKLevelFlow
 		const FGameXXKRuntimeState& State);
 	GAMEXXK_API bool MapPackageMatches(const FString& CurrentPackageName, FName TargetMap);
 	GAMEXXK_API bool IsTownGameplayMapPackage(const FString& CurrentPackageName);
+	/** True for the isolated pure-HUD town replacement map. */
+	GAMEXXK_API bool IsDesktopTrainingHUDMapPackage(const FString& CurrentPackageName);
 	GAMEXXK_API bool OpenMapForRuntimeState(UGameXXKMVPSubsystem* Subsystem);
 }

@@ -15,7 +15,7 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 	TestEqual(
 		TEXT("town map"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::Town),
-		FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
+		FName(TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD")));
 	TestEqual(
 		TEXT("route map"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::DungeonMap),
@@ -63,6 +63,12 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 	TestTrue(
 		TEXT("legacy QingshanInn remains a Town gameplay map"),
 		GameXXKLevelFlow::IsTownGameplayMapPackage(TEXT("/Game/GameXXK/Maps/L_QingshanInn")));
+	TestTrue(
+		TEXT("desktop training map is recognized as the HUD-only town entry"),
+		GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_DesktopTrainingHUD")));
+	TestFalse(
+		TEXT("desktop training map does not opt into 3D town actor spawning"),
+		GameXXKLevelFlow::IsTownGameplayMapPackage(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_DesktopTrainingHUD")));
 	TestFalse(
 		TEXT("route map is not a Town gameplay map"),
 		GameXXKLevelFlow::IsTownGameplayMapPackage(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap")));

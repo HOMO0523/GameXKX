@@ -63,6 +63,7 @@
       "test_run_qingshan_whitebox_b0r.py",
       "test_seedance_seven_asset_pilot.py",
       "test_training_visual_import_contract.py",
+      "test_desktop_training_hud_migration.py",
       "test_town_hud_psd_visual_contract.py",
       "test_town_psd_image_ops.py",
       "test_town_psd_import_manifest.py",

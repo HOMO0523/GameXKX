@@ -20,6 +20,7 @@ public:
 	AGameXXKMVPGameMode();
 
 	virtual void BeginPlay() override;
+	virtual APawn* SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform) override;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Playable")
 	int32 GetSpawnedTownNpcCount() const;

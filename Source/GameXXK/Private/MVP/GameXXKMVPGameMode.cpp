@@ -55,6 +55,22 @@ AGameXXKMVPGameMode::AGameXXKMVPGameMode()
 	PersonTownNpcCharacterClass = LoadClass<AGameXXKTownNpcCharacter>(nullptr, TEXT("/Game/GameXXK/Characters/Follower/BP_NpcCharacter.BP_NpcCharacter_C"), nullptr, LOAD_NoWarn);
 }
 
+APawn* AGameXXKMVPGameMode::SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform)
+{
+	const UWorld* World = GetWorld();
+	const FString PackageName = World && World->GetOutermost()
+		? World->GetOutermost()->GetName()
+		: FString();
+	if (GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(PackageName))
+	{
+		// The migration surface is intentionally HUD-only.  Do not let the town
+		// GameMode inject the normal 3D hero pawn into the isolated duplicate map.
+		return nullptr;
+	}
+
+	return Super::SpawnDefaultPawnAtTransform_Implementation(NewPlayer, SpawnTransform);
+}
+
 void AGameXXKMVPGameMode::BeginPlay()
 {
 	Super::BeginPlay();

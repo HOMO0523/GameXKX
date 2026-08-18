@@ -11,6 +11,7 @@ namespace
 	const FName MainMap(TEXT("/Game/GameXXK/Maps/L_Main"));
 	const FName QingshanTownMap(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo"));
 	const FName LegacyQingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
+	const FName DesktopTrainingHUDMap(TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD"));
 	const FName RouteMap(TEXT("/Game/GameXXK/Maps/L_RouteMap"));
 	const FName RouteCampMap(TEXT("/Game/GameXXK/Maps/L_RouteCamp"));
 
@@ -42,7 +43,10 @@ FName GameXXKLevelFlow::MapForScreen(EGameXXKScreen Screen)
 	switch (Screen)
 	{
 	case EGameXXKScreen::Town:
-		return QingshanTownMap;
+		// The migration branch makes the isolated HUD surface the canonical town
+		// entry.  The original 3D maps remain available as explicit rollback
+		// assets and are still recognized by IsTownGameplayMapPackage.
+		return DesktopTrainingHUDMap;
 	case EGameXXKScreen::DungeonMap:
 		return RouteMap;
 	case EGameXXKScreen::RouteEvent:
@@ -94,6 +98,11 @@ bool GameXXKLevelFlow::IsTownGameplayMapPackage(const FString& CurrentPackageNam
 {
 	return MapPackageMatches(CurrentPackageName, QingshanTownMap)
 		|| MapPackageMatches(CurrentPackageName, LegacyQingshanTownMap);
+}
+
+bool GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(const FString& CurrentPackageName)
+{
+	return MapPackageMatches(CurrentPackageName, DesktopTrainingHUDMap);
 }
 
 bool GameXXKLevelFlow::OpenMapForRuntimeState(UGameXXKMVPSubsystem* Subsystem)
