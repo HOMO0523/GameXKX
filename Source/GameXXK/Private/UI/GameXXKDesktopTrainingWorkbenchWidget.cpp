@@ -8,6 +8,7 @@
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
+#include "Components/ScaleBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
@@ -19,6 +20,7 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKCharacterBackpackModel.h"
+#include "UI/GameXXKDesktopTrainingLayout.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
 #include "Styling/SlateTypes.h"
@@ -980,16 +982,37 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	{
 		return;
 	}
-	if (!RootCanvas)
+	if (!RootScaleBox)
 	{
-		RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("DesktopTrainingWorkbenchRoot"));
+		RootScaleBox = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), TEXT("DesktopTrainingScaleRoot"));
+	}
+	if (!ReferenceCanvasBox)
+	{
+		ReferenceCanvasBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("DesktopTrainingReferenceBox"));
 	}
 	if (!RootCanvas)
+	{
+		RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("DesktopTrainingReferenceCanvas"));
+	}
+	if (!RootScaleBox || !ReferenceCanvasBox || !RootCanvas)
 	{
 		return;
 	}
+	RootScaleBox->SetStretch(EStretch::ScaleToFit);
+	RootScaleBox->SetStretchDirection(EStretchDirection::Both);
+	const FVector2D ReferenceCanvasSize = GameXXKDesktopTrainingLayout::GetReferenceCanvasSize();
+	ReferenceCanvasBox->SetWidthOverride(ReferenceCanvasSize.X);
+	ReferenceCanvasBox->SetHeightOverride(ReferenceCanvasSize.Y);
+	if (ReferenceCanvasBox->GetContent() != RootCanvas)
+	{
+		ReferenceCanvasBox->SetContent(RootCanvas);
+	}
+	if (RootScaleBox->GetContent() != ReferenceCanvasBox)
+	{
+		RootScaleBox->SetContent(ReferenceCanvasBox);
+	}
 	++ProgrammaticLayoutBuildCount;
-	WidgetTree->RootWidget = RootCanvas;
+	WidgetTree->RootWidget = RootScaleBox;
 	if (ChallengeBattleBoard && ChallengeBattleVisualSessionToken != 0)
 	{
 		ChallengeBattleBoard->CancelBattleVisualSession(ChallengeBattleVisualSessionToken);

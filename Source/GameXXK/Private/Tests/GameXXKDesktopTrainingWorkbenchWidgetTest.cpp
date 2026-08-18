@@ -7,6 +7,8 @@
 
 #include "Engine/GameInstance.h"
 #include "Blueprint/WidgetTree.h"
+#include "Components/ScaleBox.h"
+#include "Components/SizeBox.h"
 #include "Misc/AutomationTest.h"
 #include "Widgets/SNullWidget.h"
 
@@ -29,6 +31,13 @@ bool FGameXXKDesktopTrainingWorkbenchSlateBuildContractTest::RunTest(const FStri
 	const TSharedRef<SWidget> SlateWidget = Widget->TakeWidget();
 	TestNotNull(TEXT("workbench creates a WidgetTree root before Slate paints"), Widget->WidgetTree ? Widget->WidgetTree->RootWidget.Get() : nullptr);
 	TestTrue(TEXT("workbench TakeWidget is not the null Slate placeholder"), SlateWidget != SNullWidget::NullWidget);
+	UScaleBox* ScaleRoot = Widget->WidgetTree ? Cast<UScaleBox>(Widget->WidgetTree->RootWidget) : nullptr;
+	TestNotNull(TEXT("workbench root is a uniform ScaleBox"), ScaleRoot);
+	TestTrue(TEXT("workbench root uses ScaleToFit"), ScaleRoot && ScaleRoot->GetStretch() == EStretch::ScaleToFit);
+	USizeBox* ReferenceBox = ScaleRoot ? Cast<USizeBox>(ScaleRoot->GetContent()) : nullptr;
+	TestNotNull(TEXT("ScaleBox owns the fixed reference SizeBox"), ReferenceBox);
+	TestTrue(TEXT("reference width is 1672"), ReferenceBox && FMath::IsNearlyEqual(ReferenceBox->GetWidthOverride(), 1672.0f));
+	TestTrue(TEXT("reference height is 941"), ReferenceBox && FMath::IsNearlyEqual(ReferenceBox->GetHeightOverride(), 941.0f));
 	return true;
 }
 

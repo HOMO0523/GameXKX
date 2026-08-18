@@ -10,6 +10,8 @@ class UBorder;
 class UButton;
 class UCanvasPanel;
 class UImage;
+class UScaleBox;
+class USizeBox;
 class UTextBlock;
 class UTexture2D;
 class UGameXXKBattleBoardWidget;
@@ -277,6 +279,12 @@ private:
 	void UpdateTravelVisuals();
 	void ApplyAction(int32 ActionId);
 	void SetNotice(const FText& Notice);
+
+	UPROPERTY(Transient)
+	TObjectPtr<UScaleBox> RootScaleBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> ReferenceCanvasBox;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
