@@ -32,6 +32,10 @@
 	const FVector4 ChallengeCombatStripRect(405.0f, 145.0f, 880.0f, 86.0f);
 	const FVector4 ChallengeBattleBoardRect(395.0f, 240.0f, 710.0f, 535.0f);
 	constexpr int32 ChallengeCombatSlotCount = 6;
+	const FVector2D TravelVisualSize(1200.0f, 108.0f);
+	const FVector2D TravelVisualTileSize(FGameXXKTrainingTravelVisualRuntime::LaneTileWidth, 108.0f);
+	const FVector2D TravelBackgroundImageSize(FGameXXKTrainingTravelVisualRuntime::LaneTileWidth, 240.0f);
+	const FVector2D TravelHeroVisualSize(150.0f, 150.0f);
 	const FLinearColor Ink(0.06f, 0.045f, 0.035f, 0.98f);
 	const FLinearColor Panel(0.13f, 0.09f, 0.055f, 0.97f);
 	const FLinearColor PanelAlt(0.20f, 0.13f, 0.07f, 0.98f);
@@ -49,6 +53,16 @@
 	static constexpr const TCHAR* NavDiscCodexTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscCodex.T_MasterV2_NavDiscCodex");
 	static constexpr const TCHAR* NavDiscTaskTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscTask.T_MasterV2_NavDiscTask");
 	static constexpr const TCHAR* NavDiscRouteTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscRoute.T_MasterV2_NavDiscRoute");
+	static constexpr const TCHAR* TravelHeroAtlasTexturePath = TEXT("/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/character_00_hero_walk_left/atlas_2K/T_TrainingHeroWalkLeft_2K.T_TrainingHeroWalkLeft_2K");
+	static constexpr const TCHAR* TravelBackgroundTexturePath = TEXT("/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/T_TrainingIdleStrip_Background.T_TrainingIdleStrip_Background");
+	static constexpr const TCHAR* TravelBackgroundFallbackTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backgrounds/T_TownPsd_Background_Map.T_TownPsd_Background_Map");
+	static constexpr const TCHAR* TravelHeroFallbackTexturePaths[] = {
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"),
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"),
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"),
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"),
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"),
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody")};
 
 	TMap<FString, TWeakObjectPtr<UTexture2D>>& GetTextureCache()
 	{
@@ -339,22 +353,26 @@ TSharedRef<SWidget> UGameXXKDesktopTrainingWorkbenchWidget::RebuildWidget()
 void UGameXXKDesktopTrainingWorkbenchWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	TravelVisualRuntime.Reset();
 	if (SelectedStageId.IsNone())
 	{
 		SelectedStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	}
-	BuildProgrammaticLayout();
 	SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	++TravelVisualNativeTickCount;
+	TGuardValue<bool> NativeTickGuard(bNativeTickActive, true);
 	if (ViewMode != EGameXXKDesktopTrainingViewMode::ChallengeViewport)
 	{
 		const UGameXXKMVPSubsystem* TravelSubsystem = ResolveMVPSubsystem();
 		if (!TravelSubsystem || !TravelSubsystem->GetRuntimeState().Training.bTravelActive)
 		{
+			TravelVisualRuntime.Tick(InDeltaTime, EGameXXKTrainingTravelPhase::Idle);
+			UpdateTravelVisuals();
 			UpdateTravelCooldownText();
 			return;
 		}
@@ -366,6 +384,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeome
 			TravelAccumulator -= static_cast<float>(ElapsedSeconds);
 			AdvanceTravelForTest(ElapsedSeconds);
 		}
+		const FGameXXKTrainingTravelRuntime TravelRuntime = TravelSubsystem->GetTrainingTravelRuntimeCopy();
+		TravelVisualRuntime.Tick(InDeltaTime, TravelRuntime.Phase);
+		UpdateTravelVisuals();
 		return;
 	}
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
@@ -402,6 +423,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 	bSettingsPanelOpen = false;
 	bChallengeSidePanelsReadOnly = false;
 	TravelAccumulator = 0.0f;
+	TravelVisualRuntime.Reset();
 	RefreshLayout();
 	SetVisibility(ESlateVisibility::Visible);
 	return true;
@@ -746,6 +768,44 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::IsRetryVisibleForTest() const
 	return ViewMode == EGameXXKDesktopTrainingViewMode::Workbench;
 }
 
+bool UGameXXKDesktopTrainingWorkbenchWidget::HasTravelVisualStripForTest() const
+{
+	return TravelVisualViewport != nullptr
+		&& TravelBackgroundImageA != nullptr
+		&& TravelBackgroundImageB != nullptr
+		&& TravelHeroImage != nullptr;
+}
+
+float UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualScrollOffsetForTest() const
+{
+	return TravelVisualRuntime.GetScrollOffset();
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualWalkFrameForTest() const
+{
+	return TravelVisualRuntime.GetWalkFrameIndex();
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualCompletedLoopCountForTest() const
+{
+	return TravelVisualRuntime.GetCompletedLoopCount();
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualNativeTickCountForTest() const
+{
+	return TravelVisualNativeTickCount;
+}
+
+FString UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualAtlasResourcePathForTest() const
+{
+	return TravelHeroAtlasTexturePath;
+}
+
+FString UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualBackgroundResourcePathForTest() const
+{
+	return TravelBackgroundTexturePath;
+}
+
 FVector4 UGameXXKDesktopTrainingWorkbenchWidget::GetChallengeViewportRectForTest() const
 {
 	return ChallengeViewportRect;
@@ -869,6 +929,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest(const int32 El
 	{
 		SetNotice(FText::FromString(TEXT("游历中：走动、遭遇、自动战斗")));
 	}
+	TravelVisualRuntime.NotifyTravelStep(bEncounterCompleted, bCompleted);
 	return true;
 }
 
@@ -876,6 +937,26 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::SetRetryOnFailureForTest(const bool
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	return Subsystem && Subsystem->SetTrainingRetryOnFailure(bEnabled);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::TickForTest(const float InDeltaTime)
+{
+	NativeTick(FGeometry(), FMath::Max(0.0f, InDeltaTime));
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HasPendingLayoutRefreshForTest() const
+{
+	return bLayoutRefreshPending;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ConstructForTest()
+{
+	NativeConstruct();
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetProgrammaticLayoutBuildCountForTest() const
+{
+	return ProgrammaticLayoutBuildCount;
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::HandleStageClicked(const FName StageId)
@@ -907,6 +988,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	{
 		return;
 	}
+	++ProgrammaticLayoutBuildCount;
 	WidgetTree->RootWidget = RootCanvas;
 	if (ChallengeBattleBoard && ChallengeBattleVisualSessionToken != 0)
 	{
@@ -914,6 +996,14 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 		ChallengeBattleVisualSessionToken = 0;
 	}
 	TravelCooldownText = nullptr;
+	TravelVisualViewport = nullptr;
+	TravelBackgroundImageA = nullptr;
+	TravelBackgroundImageB = nullptr;
+	TravelHeroImage = nullptr;
+	TravelVisualStatusText = nullptr;
+	TravelHeroAtlasTexture = nullptr;
+	TravelBackgroundTexture = nullptr;
+	TravelHeroFallbackTextures.Reset();
 	RootCanvas->ClearChildren();
 	StageButtons.Reset();
 	ActionButtons.Reset();
@@ -961,7 +1051,73 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 {
 	UBorder* Strip = MakePanel(WidgetTree, PanelAlt);
-	AddCanvas(RootCanvas, Strip, FVector2D(360.0f, 22.0f), FVector2D(1200.0f, 108.0f));
+	TravelVisualViewport = Strip;
+	AddCanvas(RootCanvas, Strip, FVector2D(360.0f, 22.0f), TravelVisualSize);
+	UCanvasPanel* TravelCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("TravelVisualCanvas"));
+	if (TravelCanvas)
+	{
+		TravelCanvas->SetClipping(EWidgetClipping::ClipToBounds);
+		Strip->SetContent(TravelCanvas);
+		TravelBackgroundTexture = LoadTexture(TravelBackgroundTexturePath);
+		if (!TravelBackgroundTexture)
+		{
+			TravelBackgroundTexture = LoadTexture(TravelBackgroundFallbackTexturePath);
+		}
+		FSlateBrush BackgroundBrush;
+		if (TravelBackgroundTexture)
+		{
+			BackgroundBrush.SetResourceObject(TravelBackgroundTexture);
+			BackgroundBrush.DrawAs = ESlateBrushDrawType::Image;
+			BackgroundBrush.ImageSize = TravelBackgroundImageSize;
+		}
+		for (int32 TileIndex = 0; TileIndex < 2; ++TileIndex)
+		{
+			UImage* Tile = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+			if (!Tile)
+			{
+				continue;
+			}
+			if (TravelBackgroundTexture)
+			{
+				Tile->SetBrush(BackgroundBrush);
+			}
+			else
+			{
+				Tile->SetColorAndOpacity(PanelAlt);
+			}
+			UCanvasPanelSlot* TileSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(Tile));
+			if (TileSlot)
+			{
+				TileSlot->SetPosition(FVector2D(TileIndex * TravelVisualTileSize.X, -66.0f));
+				TileSlot->SetSize(TravelBackgroundImageSize);
+			}
+			if (TileIndex == 0)
+			{
+				TravelBackgroundImageA = Tile;
+			}
+			else
+			{
+				TravelBackgroundImageB = Tile;
+			}
+		}
+
+		TravelHeroAtlasTexture = LoadTexture(TravelHeroAtlasTexturePath);
+		TravelHeroFallbackTextures.Reset();
+		for (const TCHAR* FallbackPath : TravelHeroFallbackTexturePaths)
+		{
+			TravelHeroFallbackTextures.Add(LoadTexture(FallbackPath));
+		}
+		TravelHeroImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("TravelHeroWalkloop"));
+		if (TravelHeroImage)
+		{
+			UCanvasPanelSlot* HeroSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(TravelHeroImage));
+			if (HeroSlot)
+			{
+				HeroSlot->SetPosition(FVector2D(470.0f, -18.0f));
+				HeroSlot->SetSize(TravelHeroVisualSize);
+			}
+		}
+	}
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKTrainingTravelRuntime TravelRuntime = Subsystem
 		? Subsystem->GetTrainingTravelRuntimeCopy()
@@ -991,6 +1147,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 		}
 	}
 	UTextBlock* Label = MakeText(WidgetTree, FText::FromString(FString::Printf(TEXT("游历挂机 · 3 敌方 / 3 我方 · %s"), *EnemyLabel)), 18, Gold);
+	TravelVisualStatusText = Label;
 	AddCanvas(RootCanvas, Label, FVector2D(385.0f, 38.0f), FVector2D(650.0f, 40.0f));
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
@@ -1037,6 +1194,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 	RetryButton->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("失败重试")), 18));
 	AddCanvas(RootCanvas, RetryButton, FVector2D(1485.0f, 42.0f), FVector2D(135.0f, 50.0f));
 	ActionButtons.Add(RetryButton);
+	UpdateTravelVisuals();
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelCooldownText()
@@ -1061,6 +1219,66 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelCooldownText()
 		? FString::Printf(TEXT("精英箱 CD %s"), *FormatCooldown(Progress.TravelAdvancedChestCooldownRemainingSeconds))
 		: TEXT("精英箱 可掉落");
 	TravelCooldownText->SetText(FText::FromString(FString::Printf(TEXT("掉箱冷却 · %s · %s"), *NormalText, *AdvancedText)));
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
+{
+	if (!HasTravelVisualStripForTest())
+	{
+		return;
+	}
+
+	const float ScrollOffset = TravelVisualRuntime.GetScrollOffset();
+	TravelBackgroundImageA->SetRenderTranslation(FVector2D(-ScrollOffset, 0.0f));
+	TravelBackgroundImageB->SetRenderTranslation(FVector2D(-ScrollOffset, 0.0f));
+
+	const int32 WalkFrame = TravelVisualRuntime.GetWalkFrameIndex();
+	FSlateBrush HeroBrush;
+	HeroBrush.DrawAs = ESlateBrushDrawType::Image;
+	HeroBrush.ImageSize = TravelHeroVisualSize;
+	if (TravelHeroAtlasTexture)
+	{
+		HeroBrush.SetResourceObject(TravelHeroAtlasTexture);
+		const int32 SafeFrame = FMath::Clamp(WalkFrame, 0, FGameXXKTrainingTravelVisualRuntime::WalkFrameCount - 1);
+		const int32 Column = SafeFrame % 8;
+		const int32 Row = SafeFrame / 8;
+		HeroBrush.SetUVRegion(FBox2f(
+			FVector2f(static_cast<float>(Column) / 8.0f, static_cast<float>(Row) / 8.0f),
+			FVector2f(static_cast<float>(Column + 1) / 8.0f, static_cast<float>(Row + 1) / 8.0f)));
+	}
+	else if (TravelHeroFallbackTextures.Num() > 0
+		&& TravelHeroFallbackTextures.IsValidIndex(WalkFrame % TravelHeroFallbackTextures.Num()))
+	{
+		HeroBrush.SetResourceObject(TravelHeroFallbackTextures[WalkFrame % TravelHeroFallbackTextures.Num()]);
+	}
+	if (HeroBrush.GetResourceObject())
+	{
+		TravelHeroImage->SetBrush(HeroBrush);
+	}
+
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKTrainingTravelRuntime TravelRuntime = Subsystem
+		? Subsystem->GetTrainingTravelRuntimeCopy()
+		: FGameXXKTrainingTravelRuntime();
+	FString PhaseLabel = TEXT("待机");
+	switch (TravelRuntime.Phase)
+	{
+	case EGameXXKTrainingTravelPhase::Walking: PhaseLabel = TEXT("走动"); break;
+	case EGameXXKTrainingTravelPhase::Combat: PhaseLabel = TEXT("遭遇暂停"); break;
+	case EGameXXKTrainingTravelPhase::Defeated: PhaseLabel = TEXT("阵亡暂停"); break;
+	default: break;
+	}
+	if (TravelVisualStatusText)
+	{
+		const FString StageText = TravelRuntime.StageId.IsNone()
+			? TEXT("等待游历")
+			: TravelRuntime.StageId.ToString();
+		TravelVisualStatusText->SetText(FText::FromString(FString::Printf(
+			TEXT("游历挂机 · %s · %s · 循环 %d"),
+			*StageText,
+			*PhaseLabel,
+			TravelVisualRuntime.GetCompletedLoopCount())));
+	}
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel(const bool bReadOnly)
@@ -1644,6 +1862,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBottomNavigation()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::RefreshLayout()
 {
+	if (bNativeTickActive)
+	{
+		bLayoutRefreshPending = true;
+		return;
+	}
+	bLayoutRefreshPending = false;
 	const bool bWasInViewport = IsInViewport();
 	const ESlateVisibility PreviousVisibility = GetVisibility();
 	if (bWasInViewport)
@@ -1670,7 +1894,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshLayout()
 		}
 	}
 }
-
 void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();

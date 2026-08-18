@@ -1,7 +1,7 @@
 ---
 status: review
 owner: codex
-updated_at: 2026-08-18T07:00:00+08:00
+updated_at: 2026-08-18T08:20:00+08:00
 source_commit: 1cd93d7
 decision: not-complete
 goal_status: active
@@ -9,7 +9,7 @@ goal_status: active
 
 # 桌面历练 /goal 完成后复核（2026-08-18）
 
-这份记录是当前目标的收尾审计，不把“程序能编译”写成“产品已完成”。审计输入包括 `docs/production/2026-08-16-full-project-optimization-proposal.md`、`docs/production/2026-08-16-optimization-followup.md`、`docs/production/current-goal-acceptance.md`、桌面工作台设计稿以及本轮实际代码、Automation、冷 UBT 和脚本报告；本轮追加复核了 `5c60999` 的挑战自动战斗待选牌处理，并在 `4632179`/`bdfcf9e` 中接入批准的 MasterV2 面板/槽位/页签/路线节点、五张等比 NavDisc 图标和连续挑战画布，最后以 `57bf299` 锁定游历与局内宝箱概率/seed 一致、以 `7b7ab90` 收束测试夹具兼容性、以 `1cd93d7` 修复工作台实时重建后的可见性并补上游历 CD 文案。当前游历掉箱语义固定为：普通箱 4 分钟 CD、精英/首领高级箱 6 分钟 CD，概率与局内箱子共用同一 Resolver/seed/天赋加成；CD 仅门控游历侧。
+这份记录是当前目标的收尾审计，不把“程序能编译”写成“产品已完成”。审计输入包括 `docs/production/2026-08-16-full-project-optimization-proposal.md`、`docs/production/2026-08-16-optimization-followup.md`、`docs/production/current-goal-acceptance.md`、桌面工作台设计稿以及本轮实际代码、Automation、冷 UBT 和脚本报告；本轮追加复核了 `5c60999` 的挑战自动战斗待选牌处理，并在 `4632179`/`bdfcf9e` 中接入批准的 MasterV2 面板/槽位/页签/路线节点、五张等比 NavDisc 图标和连续挑战画布，最后以 `57bf299` 锁定游历与局内宝箱概率/seed 一致、以 `7b7ab90` 收束测试夹具兼容性、以 `1cd93d7` 修复工作台实时重建后的可见性并补上游历 CD 文案。本轮未提交的工作树增量又移除了 `NativeConstruct()` 的二次 WidgetTree 构建，加入 Slate 生命周期回归，并补做静态/游历/挑战三种 PIE 长时观察。当前游历掉箱语义固定为：普通箱 4 分钟 CD、精英/首领高级箱 6 分钟 CD，概率与局内箱子共用同一 Resolver/seed/天赋加成；CD 仅门控游历侧。
 
 ## 1. 结论先行
 
@@ -287,6 +287,19 @@ TaskBarHero 参照快照：Working Set 约 513 MiB、Private Bytes 约 1418 MiB�
 | asset-contract | `Saved/HarnessReports/20260818-054753-ai-production-loop.md`，66 项中 54 PASS / 12 FAIL | **未关闭** |
 | mcp-live / PIE | `Saved/HarnessReports/20260818-055050-ai-production-loop.md` 仍有 real-flow wrapper/HP HUD/party-deck static catalog 失败；新增 `desktop-challenge-visible.png` 与 `desktop-travel-cooldown.png` 只覆盖 1920 floating PIE 的工作台视觉，不等同于全量 mcp-live、2560、悬停或窗口内存采样 | **未通过** |
 
+### 本轮追加的当前工作树证据
+
+| 检查 | 证据 | 判定 |
+|---|---|---:|
+| Slate 生命周期红灯 | 新增 `GameXXK.DesktopTraining.Workbench.NativeConstructDoesNotRebuildSlateTree` 在生产接口缺失时按预期编译失败，证明回归先于修复 | PASS（TDD red captured） |
+| Slate 生命周期修复 | `NativeConstruct()` 不再重复调用 `BuildProgrammaticLayout()`；`RebuildWidget()` 负责首次构建；新增 build-count contract | PASS |
+| 冷编译 | `GameXXKEditor Win64 Development -NoHotReload -MaxParallelActions=2` 与 `GameXXK Win64 Development` 均 `Result: Succeeded`；Shipping 基线此前已通过 | PASS |
+| 工作台聚焦 Automation | `Saved/Automation/DesktopTrainingFullRegression-editor/index.json`：22 discovered / 22 succeeded / 0 failed / 0 errors（含 SlateBuild、Layout、TravelTickDefers、NativeConstruct、Training） | PASS |
+| 静态工作台 PIE 长时 | 冷启动编辑器 PID 35924，`--static` 工作台保持可见且响应 65 秒；Working Set 约 4.13–4.16 GiB、Private 约 6.17 GiB（编辑器诊断，不是 Shipping 门槛） | 稳定性 PASS；性能未通过 |
+| 游历工作台 PIE 长时 | `--travel` 工作台保持可见且响应 65 秒；Working Set 约 4.14 GiB、Private 约 6.17 GiB（编辑器诊断） | 稳定性 PASS；性能未通过 |
+| 挑战工作台 PIE 长时 | `--challenge` 显示 `screen=BATTLE`、`challenge_active=true`，保持可见且响应 65 秒；Working Set 约 4.13–4.18 GiB、Private 约 6.07–6.17 GiB（编辑器诊断） | 稳定性 PASS；性能未通过 |
+| 视觉工作流纠偏 | `SourceArt/UI/PSD/desktop-training-v1/README.md`、`manifest.json`、v003 RGBA seamless plate 与 runtime-import manifest；背景仅作为 opt-in MVP 候选接入 | 规范/资产登记 PASS；PSD/最终实机视觉未通过 |
+
 ## 16. 工作区、提交和回滚核对
 
 - 本轮最新运行时增量为 `1cd93d7`（含工作台实时 Slate 重建可见性修复、挑战侧壳保留、SlateBuild 回归和游历 CD 文案；前置 `85b9ed4` Pillow 兼容修复与生命周期 mock 兼容修复）；游历宝箱与局内概率/seed parity 为 `57bf299`；挑战画布为 `bdfcf9e`，MasterV2 资源为 `4632179`，挑战自动战斗确定性处理待选牌、手牌快照与回归测试为 `5c60999`；v20 离线补算、待领取账本、收菜 API/UI 与迁移断言为 `a2c9e06`，前置挑战侧壳为 `74d837f`，背包设置/关闭分离为 `61c92e5`，仓库排序/卸下回仓为 `fbd7e7f`，仓库分页/quick-equip 为 `a70b192`，背包/伙伴导航为 `48b7212`，工作台 read model 为 `dfb5230`，奖励/冷却与 Inventory bridge 为 `a650527`、seeded Resolver/cooldown 为 `1a17019`、TravelRunner 为 `23aee95`，桥接为 `7881927`；提交后只保留用户已有 `Content/GameXXK/Maps/L_Main.umap`、既有 `scripts/test_battle_camera_framing.py` 和历史未跟踪探针/源美术，不触碰用户资产。当前 `GameXXK.Training` 冷 UBT 回归证据为 `Saved/HarnessReports/20260818-065557-ai-production-loop.md` / `Saved/Automation/DesktopTrainingAndTravelCooldownFinal-20260818`，18/18 通过并明确普通箱 240 秒、精英/首领高级箱 360 秒；工作台 Slate/Layout 聚焦同一报告合计 20/20。
@@ -318,3 +331,63 @@ TaskBarHero 参照快照：Working Set 约 513 MiB、Private Bytes 约 1418 MiB�
 **本次复核结论：`not-complete`；goal 继续 `active`，不标记 `blocked`。**
 
 理由不是编译失败，而是产品完成判定还需要真实生产表现、完整挑战/游历闭环、奖励概率、库存 read model、PSD/manifest、PIE/MCP 和性能四组证据。当前提交应被视为“可回滚、默认关闭、规则与运行时桥接可验证的基础包”；在上述门禁关闭前，不能把 2D 历练工作台当作替代 3D 城镇的正式主入口。
+
+## 19. 视觉生产纠偏（用户复核后新增）
+
+上一版概念图不通过视觉验收：它把框体、图标、文字和背景全部重绘，破坏了项目已有像素比例和 PSD 可拆分性。后续按以下硬规则执行：
+
+1. **基准锁定**：以实机截图和 `Content/GameXXK/UI/MasterV2/Approved`、`Content/GameXXK/UI/Town/Textures/PSD` 为唯一风格基准；概念图只用于比例/层级讨论。
+2. **生图边界**：GPT 生图只生成无文字、无按钮、无节点、无角色/怪物的背景板。当前候选为 `SourceArt/UI/PSD/desktop-training-v1/generated/TrainingIdleStrip_Background_GPT_v001.png`（1983×200，RGB，无 alpha，draft-preview-only）。
+3. **窄条目标**：挂机模式必须能缩成顶部一条；当前 runtime 约 1200×108，使用等比缩放/裁剪，禁止 X/Y 独立拉伸。六名角色、三只敌人和所有 HUD 文本均为上层复用/程序化元素。
+4. **PSD 拆分**：最终交付必须保留 `BG_CharcoalInk`、`BG_MountainSilhouette`、`BG_Path`、`BG_Decor`、`FX_GroundShadow`、`Actors_ExistingSprites`、`HUD_RuntimeOnly` 独立层；flatten PNG 只能做 review，不可替代 PSD。
+5. **噪点禁止**：不把 GPT 生成的文字、图标、框体或多次重绘噪点裁进 PSD；所有新增历练/挑战/游历/重试图标仍需独立透明稿、尺寸、alpha、来源和 SHA256 manifest。
+
+这项纠偏只新增源美术草稿和规范文档，不接入 runtime，也不改变当前背包/仓库比例和默认 3D 城镇回退。视觉门禁仍保持未通过，直到 PSD、图标 manifest、双分辨率截图和实机复核完成。
+
+## 20. 主角向左 walkloop 试作（当前工作树）
+
+- 以 `SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png`
+  为身份真源，先生成并整理 `hero_walk_contact_1600.png`：保持 1600×1600、
+  面向左的跨步接触姿势和纯 `#FF00FF` 背景。
+- 即梦 `seedance2.0_vip` 使用同一张接触姿势作为首帧/尾帧，提交号
+  `106160d3-2298-4087-ae1b-17dd25b4b266`，成功，消耗 70 credits；原片
+  960×960、5.042 秒，未接入运行时。
+- `scripts/prepare_walkloop_atlases.py` 按项目 12 fps / 60 帧 / 8×8 /
+  bottom-center 512 px cell 规则拆帧、去洋红 spill 并拼图，输出隔离在
+  `SourceAssets/AnimationProcessing/walkloop_pilot_v1/character_00_hero_walk_left/`。
+- 已生成 4K 工作母图、`2048×2048` 2K atlas（256 px cell）与
+  `1024×1024` 1K atlas（128 px cell）；首尾帧字节一致，60 帧中 49 帧有
+  独立内容，RGBA 帧无残留洋红 spill。
+- 机器检查：`python -m unittest scripts/test_walkloop_atlas_pipeline.py -q`
+  → 3/3 PASS。源动画 manifest 仍是 `review-only`，不替换现有 hero idle/attack
+  或默认入口；本轮只把 2K/1K atlas 导入到 opt-in 历练视觉 MVP。
+
+## 21. 历练滚动视觉 MVP（当前工作树）
+
+- 纯规则类 `FGameXXKTrainingTravelVisualRuntime` 将逻辑游历阶段映射为表现状态：
+  `Walking` 时底图以 `96 px/s` 向右循环平移，60 帧主角 atlas 以 12 fps
+  向左 walkloop；`Combat`/`Defeated` 暂停位移和帧；一轮完成后 offset/frame
+  复位并递增 loop counter。遇敌、结算和失败仍由权威 `TravelRuntime.Phase`
+  驱动，表现层不复制规则。
+- 工作台顶部窄条保持约 `1200×108`，将 v003 透明无缝底图以两块 `600 px`
+  tile 裁剪在 viewport 内平移，避免横向拉伸；主角使用 2K atlas（8×8、60
+  帧、每帧 256 px cell），1K atlas 保留为低档运行候选，缺资源时回退到批准的
+  `T_MasterV2_HeroFullBody` 纹理，不会引入错误的 PaperSprite 类型。
+- 导入清单：
+  `SourceAssets/AnimationProcessing/walkloop_pilot_v1/character_00_hero_walk_left/runtime-import-manifest.json`。
+  其中锁定 2K/1K atlas 与 v003 背景的源 SHA256、尺寸和 UE 资源路径；UE 资产位于
+  `/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/`。
+- 回归证据：`Saved/Automation/TravelVisualRuntimeLoop2/index.json` 与
+  `Saved/HarnessReports/20260818-092341-ai-production-loop.md` 为 4/4 PASS、0
+  warning；覆盖滚动 offset、walk frame、战斗暂停、结算继续、9 遭遇完成后回到
+  `1-1` 起点的循环复位；同轮冷 UBT 使用 `-NoHotReload` 通过。脚本资产合同为
+  `scripts/test_training_visual_import_contract.py`，另有原始 walkloop 3/3
+  atlas 检查。
+- 这仍是**运行时 MVP**而不是完成的 PSD/发行资产：尚未把六名角色、三只敌人、
+  Actor 碰撞/移动、最终收菜窗口、后台 Timer、1920/2560 双分辨率和四组性能
+  采样标绿；默认 `bEnableDesktopTrainingWorkbench=false`，3D 城镇仍是回退入口。
+- 为隔离纯 HUD 验证，新增副本地图 `Content/GameXXK/Maps/L_DesktopTrainingHUD.umap`：
+  来源为 `L_QingshanInn`，仅保留 `PlayerStart`，移除 14 个地形/灯光/雾/出口等
+  放置 Actor；原城镇地图与 `L_Main.umap` 未修改。清理报告见
+  `Saved/HarnessReports/desktop-training-hud-map.json`。该副本仍是迁移实验场，
+  不改变默认地图和入口。

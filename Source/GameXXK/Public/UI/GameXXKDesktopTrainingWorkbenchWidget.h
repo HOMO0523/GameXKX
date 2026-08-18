@@ -3,12 +3,15 @@
 #include "CoreMinimal.h"
 #include "Components/Button.h"
 #include "UI/GameXXKMVPWidgetBase.h"
+#include "UI/GameXXKTrainingTravelVisualRuntime.h"
 #include "GameXXKDesktopTrainingWorkbenchWidget.generated.h"
 
 class UBorder;
 class UButton;
 class UCanvasPanel;
+class UImage;
 class UTextBlock;
+class UTexture2D;
 class UGameXXKBattleBoardWidget;
 
 UENUM(BlueprintType)
@@ -179,6 +182,27 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsRetryVisibleForTest() const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	bool HasTravelVisualStripForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	float GetTravelVisualScrollOffsetForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetTravelVisualWalkFrameForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetTravelVisualCompletedLoopCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetTravelVisualNativeTickCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FString GetTravelVisualAtlasResourcePathForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FString GetTravelVisualBackgroundResourcePathForTest() const;
+
 	/** Geometry contract for the merged challenge route/battle canvas. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	FVector4 GetChallengeViewportRectForTest() const;
@@ -216,6 +240,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool SetRetryOnFailureForTest(bool bEnabled);
 
+	/** Drives the same low-cost tick path used by PIE automation without a live Slate viewport. */
+	void TickForTest(float InDeltaTime);
+
+	/** True when a travel tick requested a tree rebuild that waits for explicit UI refresh. */
+	bool HasPendingLayoutRefreshForTest() const;
+
+	/** Invokes NativeConstruct from an automation fixture without exposing it to Blueprint. */
+	void ConstructForTest();
+
+	/** Number of programmatic WidgetTree builds performed by this instance. */
+	int32 GetProgrammaticLayoutBuildCountForTest() const;
+
 	void HandleStageClicked(FName StageId);
 	void HandleActionClicked(int32 ActionId);
 
@@ -238,6 +274,7 @@ private:
 	void BuildBottomNavigation();
 	void RefreshLayout();
 	void UpdateTravelCooldownText();
+	void UpdateTravelVisuals();
 	void ApplyAction(int32 ActionId);
 	void SetNotice(const FText& Notice);
 
@@ -266,6 +303,31 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> TravelCooldownText;
 
+	/** Clipped top-strip surface for the seamless Travel lane. */
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> TravelVisualViewport;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> TravelBackgroundImageA;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> TravelBackgroundImageB;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> TravelHeroImage;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TravelVisualStatusText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> TravelHeroAtlasTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> TravelBackgroundTexture;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTexture2D>> TravelHeroFallbackTextures;
+
 	/** Reuses the production card battle board inside the enlarged ChallengeViewport. */
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKBattleBoardWidget> ChallengeBattleBoard;
@@ -279,8 +341,13 @@ private:
 	int32 WarehousePageIndex = 0;
 	float AutoBattleAccumulator = 0.0f;
 	float TravelAccumulator = 0.0f;
+	int32 TravelVisualNativeTickCount = 0;
+	FGameXXKTrainingTravelVisualRuntime TravelVisualRuntime;
 	FVector2D BackpackAspectRatio = FVector2D(1.76f, 1.0f);
 	bool bSettingsPanelOpen = false;
 	bool bChallengeSidePanelsReadOnly = false;
+	bool bNativeTickActive = false;
+	bool bLayoutRefreshPending = false;
+	int32 ProgrammaticLayoutBuildCount = 0;
 	FText LastNotice;
 };

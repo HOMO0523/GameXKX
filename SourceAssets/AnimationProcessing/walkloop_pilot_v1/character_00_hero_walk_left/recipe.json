@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "sourceVideo": "SourceAssets/AnimationProduction/walkloop_pilot_v1/hero_walk_left/raw/106160d3-2298-4087-ae1b-17dd25b4b266_video_1.mp4",
+  "referenceFrame": "SourceAssets/AnimationProduction/walkloop_pilot_v1/hero_walk_left/input/hero_walk_contact_1600.png",
+  "orientation": "left",
+  "matting": {
+    "mode": "chroma",
+    "key": "#FF00FF",
+    "hardDistance": 108,
+    "softDistance": 58,
+    "spillSuppress": true
+  },
+  "output": {
+    "fps": 12,
+    "durationSeconds": 5,
+    "frameCount": 60,
+    "canvasSize": 512,
+    "atlasGrid": {
+      "columns": 8,
+      "rows": 8
+    },
+    "anchor": "bottom_center",
+    "bottomMargin": 41,
+    "firstLastForcedIdentical": true
+  }
+}

@@ -32,6 +32,28 @@ bool FGameXXKDesktopTrainingWorkbenchSlateBuildContractTest::RunTest(const FStri
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchNativeConstructDoesNotRebuildSlateTreeTest,
+	"GameXXK.DesktopTraining.Workbench.NativeConstructDoesNotRebuildSlateTree",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchNativeConstructDoesNotRebuildSlateTreeTest::RunTest(const FString& Parameters)
+{
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	TestNotNull(TEXT("workbench widget exists for the native construct lifecycle contract"), Widget);
+	if (!Widget)
+	{
+		return false;
+	}
+
+	Widget->TakeWidget();
+	Widget->ConstructForTest();
+	TestEqual(TEXT("NativeConstruct leaves the Slate tree built by RebuildWidget intact"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(),
+		1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest,
 	"GameXXK.DesktopTraining.Workbench.MasterV2ResourceContract",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -210,6 +232,128 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	Widget->HandleActionClicked(15);
 	TestFalse(TEXT("close action closes the workbench independently of settings"), Widget->IsWorkbenchVisibleForTest());
 	TestFalse(TEXT("closing the workbench clears the settings surface"), Widget->IsSettingsPanelOpenForTest());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchTravelTickDefersSlateRebuildTest,
+	"GameXXK.DesktopTraining.Workbench.TravelTickDefersSlateRebuild",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchTravelTickDefersSlateRebuildTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestNotNull(TEXT("travel tick fixture subsystem exists"), Subsystem);
+	if (!Subsystem || !Subsystem->StartGame())
+	{
+		return false;
+	}
+
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("travel tick fixture starts a cleared stage"), Subsystem->StartTrainingTravel(StageId));
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	TestNotNull(TEXT("travel tick fixture widget exists"), Widget);
+	if (!Widget)
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("travel tick fixture opens the workbench"), Widget->OpenWorkbench());
+
+	// 1-1 uses the one-health travel exception, so two logical seconds are
+	// enough to walk into and clear the first encounter.  The Slate widget tree
+	// must not be rebuilt synchronously from NativeTick while Slate is iterating.
+	for (int32 TickIndex = 0; TickIndex < 4; ++TickIndex)
+	{
+		Widget->TickForTest(1.0f);
+	}
+	TestTrue(TEXT("travel NativeTick defers a layout rebuild until after Slate tick"), Widget->HasPendingLayoutRefreshForTest());
+	TestTrue(TEXT("deferred travel refresh keeps the workbench visible"), Widget->IsWorkbenchVisibleForTest());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchTravelVisualStripTest,
+	"GameXXK.DesktopTraining.Workbench.TravelVisualStrip",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchTravelVisualStripTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestNotNull(TEXT("travel visual fixture subsystem exists"), Subsystem);
+	if (!Subsystem || !Subsystem->StartGame())
+	{
+		return false;
+	}
+
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("travel visual fixture starts the cleared stage"), Subsystem->StartTrainingTravel(StageId));
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	TestNotNull(TEXT("travel visual fixture widget exists"), Widget);
+	if (!Widget)
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("travel visual fixture opens the workbench"), Widget->OpenWorkbench());
+	TestTrue(TEXT("top strip creates a live travel visual surface"), Widget->HasTravelVisualStripForTest());
+	TestTrue(TEXT("travel visual surface declares the generated walkloop atlas"),
+		Widget->GetTravelVisualAtlasResourcePathForTest().Contains(TEXT("walkloop_pilot_v1")));
+	TestTrue(TEXT("travel visual surface declares the seamless background"),
+		Widget->GetTravelVisualBackgroundResourcePathForTest().Contains(TEXT("TrainingIdleStrip_Background")));
+
+	Widget->TickForTest(0.5f);
+	TestTrue(TEXT("travel strip moves while the runner is walking"), Widget->GetTravelVisualScrollOffsetForTest() > 0.0f);
+	TestEqual(TEXT("travel strip displays the generated 12 fps walkloop frame"), Widget->GetTravelVisualWalkFrameForTest(), 6);
+
+	Widget->TickForTest(0.5f);
+	TestTrue(TEXT("travel strip keeps the same visual runtime across deferred layout refresh"),
+		Widget->GetTravelVisualScrollOffsetForTest() >= 0.0f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchTravelVisualLoopTest,
+	"GameXXK.DesktopTraining.Workbench.TravelVisualLoop",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchTravelVisualLoopTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestNotNull(TEXT("travel visual loop fixture subsystem exists"), Subsystem);
+	if (!Subsystem || !Subsystem->StartGame())
+	{
+		return false;
+	}
+
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("travel visual loop fixture starts the cleared stage"), Subsystem->StartTrainingTravel(StageId));
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	TestNotNull(TEXT("travel visual loop fixture widget exists"), Widget);
+	if (!Widget)
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("travel visual loop fixture opens the workbench"), Widget->OpenWorkbench());
+
+	// Normal 1-1 has nine travel encounters.  Each one uses two walking ticks
+	// followed by one combat tick in the deterministic MVP runner.
+	for (int32 TickIndex = 0; TickIndex < 27; ++TickIndex)
+	{
+		Widget->TickForTest(1.0f);
+	}
+	TestEqual(TEXT("one completed travel route increments the visual loop count"),
+		Widget->GetTravelVisualCompletedLoopCountForTest(), 1);
+	TestEqual(TEXT("the travel runner returns to the same 1-1 stage after its loop"),
+		Subsystem->GetTrainingProgressCopy().CurrentTravelStageId, StageId);
+	TestTrue(TEXT("the next encounter is walking after the visual loop reset"),
+		Subsystem->GetTrainingTravelRuntimeCopy().Phase == EGameXXKTrainingTravelPhase::Walking);
 	return true;
 }
 

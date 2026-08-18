@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "status": "runtime-mvp-source-still-draft",
+  "source_of_truth": "existing in-game screenshots and approved Content/GameXXK/UI assets",
+  "assets": [
+    {
+      "id": "desktop.training.background.idle_strip.v001",
+      "path": "generated/TrainingIdleStrip_Background_GPT_v001.png",
+      "role": "background-plate-only",
+      "source": "GPT image generation using codex-clipboard-5b23c847-9896-4da2-83f1-8a03d7f08379.png as style reference, then deterministic crop",
+      "width": 1983,
+      "height": 200,
+      "color_mode": "RGB",
+      "alpha": false,
+      "sha256": "2D3526A80B75253D895D709C6F32AA46EC52757A61D90200648DE7FD06B965F2",
+      "runtime_imported": false
+    },
+    {
+      "id": "desktop.training.background.idle_strip.v003.seamless_rgba",
+      "path": "generated/TrainingIdleStrip_Background_GPT_v003_Seamless_RGBA.png",
+      "role": "background-plate-only",
+      "source": "GPT-generated full-canvas travel plate from the approved style reference, then deterministic checkerboard removal and 128 px horizontal seam blend",
+      "width": 1983,
+      "height": 793,
+      "color_mode": "RGBA",
+      "alpha": true,
+      "transparent_pixels": 1027203,
+      "seam_width": 128,
+      "edge_max_delta": 0,
+      "sha256": "BD4C02AEAFD77D8AA797E060A7114F972174F73D47F4C7227C3BCF587F6F1B96",
+      "runtime_imported": true,
+      "runtime_asset": "/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/T_TrainingIdleStrip_Background.T_TrainingIdleStrip_Background",
+      "runtime_status": "opt-in-mvp-only"
+    }
+  ]
+}

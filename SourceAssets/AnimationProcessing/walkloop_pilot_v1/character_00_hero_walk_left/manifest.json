@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "status": "review-only",
+  "assetName": "character_00_hero_walk_left",
+  "direction": "left",
+  "sourceVideo": "SourceAssets/AnimationProduction/walkloop_pilot_v1/hero_walk_left/raw/106160d3-2298-4087-ae1b-17dd25b4b266_video_1.mp4",
+  "referenceFrame": "SourceAssets/AnimationProduction/walkloop_pilot_v1/hero_walk_left/input/hero_walk_contact_1600.png",
+  "sourceVideoSha256": "461181902fa29c9786db1220f09c90c9a661f8d737a35b2fc37f0fa6c64cadd0",
+  "referenceFrameSha256": "d7a45bcd6c38ec697e672f50b5f25d849e84a691c596d4ef3f6303449d46e80c",
+  "fps": 12,
+  "durationSeconds": 5,
+  "frameCount": 60,
+  "canvasSize": 512,
+  "atlasGrid": {
+    "columns": 8,
+    "rows": 8,
+    "cellWidth": 512,
+    "cellHeight": 512
+  },
+  "framesDirectory": "SourceAssets/AnimationProcessing/walkloop_pilot_v1/character_00_hero_walk_left/frames",
+  "contactSheet": "SourceAssets/AnimationProcessing/walkloop_pilot_v1/character_00_hero_walk_left/contact_sheet.png",
+  "firstLastIdentical": true,
+  "firstFrameSha256": "cd189904aed7482e18321fa174f08b2ff581e654a9e964a01ca88a3002b46f63",
+  "lastFrameSha256": "cd189904aed7482e18321fa174f08b2ff581e654a9e964a01ca88a3002b46f63",
+  "uniqueFrameCount": 49,
+  "sourceVideoMetadata": {
+    "ffmpeg_version": "7.1-essentials_build-www.gyan.dev built with gcc 14.2.0 (Rev1, Built by MSYS2 project)",
+    "codec": "h264",
+    "pix_fmt": "yuv420p(progressive)",
+    "audio_codec": "aac",
+    "fps": 24.12,
+    "source_size": [
+      960,
+      960
+    ],
+    "size": [
+      960,
+      960
+    ],
+    "rotate": 0,
+    "duration": 5.06,
+    "selectedFrameCount": 60,
+    "estimatedSourceFrameCount": 122
+  },
+  "variants": {
+    "4K": {
+      "atlas": "SourceAssets/AnimationProcessing/walkloop_pilot_v1/character_00_hero_walk_left/atlas_4K/character_00_hero_walk_left_atlas.png",
+      "size": [
+        4096,
+        4096
+      ],
+      "cellSize": 512,
+      "sha256": "7ae4d9feca33829d98800194e3c56b9194592fc1c7f90d1d248baf9d653f43f0"
+    },
+    "2K": {
+      "atlas": "SourceAssets/AnimationProcessing/walkloop_pilot_v1/character_00_hero_walk_left/atlas_2K/character_00_hero_walk_left_atlas.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "cellSize": 256,
+      "sha256": "5d0013c7c3f312fe93fbcf4a4c03d62ef559c2093f9506efe7930327e0c717ca"
+    },
+    "1K": {
+      "atlas": "SourceAssets/AnimationProcessing/walkloop_pilot_v1/character_00_hero_walk_left/atlas_1K/character_00_hero_walk_left_atlas.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "cellSize": 128,
+      "sha256": "9dc15826a62443d11f1947818a4b374abe30e9f8be47eaedda3706c39ffe8da0"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "status": "runtime-mvp",
+  "imports": [
+    {
+      "source": "SourceAssets/AnimationProcessing/walkloop_pilot_v1/character_00_hero_walk_left/atlas_2K/character_00_hero_walk_left_atlas.png",
+      "sourceSha256": "5d0013c7c3f312fe93fbcf4a4c03d62ef559c2093f9506efe7930327e0c717ca",
+      "asset": "/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/character_00_hero_walk_left/atlas_2K/T_TrainingHeroWalkLeft_2K.T_TrainingHeroWalkLeft_2K",
+      "size": [
+        2048,
+        2048
+      ]
+    },
+    {
+      "source": "SourceAssets/AnimationProcessing/walkloop_pilot_v1/character_00_hero_walk_left/atlas_1K/character_00_hero_walk_left_atlas.png",
+      "sourceSha256": "9dc15826a62443d11f1947818a4b374abe30e9f8be47eaedda3706c39ffe8da0",
+      "asset": "/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/character_00_hero_walk_left/atlas_1K/T_TrainingHeroWalkLeft_1K.T_TrainingHeroWalkLeft_1K",
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "source": "SourceArt/UI/PSD/desktop-training-v1/generated/TrainingIdleStrip_Background_GPT_v003_Seamless_RGBA.png",
+      "sourceSha256": "bd4c02aeafd77d8aa797e060a7114f972174f73d47f4c7227c3bcf587f6f1b96",
+      "asset": "/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/T_TrainingIdleStrip_Background.T_TrainingIdleStrip_Background",
+      "size": [
+        1983,
+        793
+      ]
+    }
+  ]
+}

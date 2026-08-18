@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "status": "success",
+  "submitId": "106160d3-2298-4087-ae1b-17dd25b4b266",
+  "model": "seedance2.0_vip",
+  "videoResolution": "720p",
+  "durationSeconds": 5,
+  "creditCount": 70,
+  "firstFrame": "SourceAssets/AnimationProduction/walkloop_pilot_v1/hero_walk_left/input/hero_walk_contact_1600.png",
+  "lastFrame": "SourceAssets/AnimationProduction/walkloop_pilot_v1/hero_walk_left/input/hero_walk_contact_1600.png",
+  "rawVideo": "SourceAssets/AnimationProduction/walkloop_pilot_v1/hero_walk_left/raw/106160d3-2298-4087-ae1b-17dd25b4b266_video_1.mp4",
+  "rawVideoSha256": "461181902fa29c9786db1220f09c90c9a661f8d737a35b2fc37f0fa6c64cadd0",
+  "resultMetadata": {
+    "fps": 24,
+    "width": 960,
+    "height": 960,
+    "format": "mp4",
+    "duration": 5.042
+  },
+  "runtimeImported": false
+}

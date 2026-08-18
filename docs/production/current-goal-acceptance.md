@@ -49,6 +49,16 @@ working_tree: dirty (preserve user L_Main.umap, unrelated probes and source-art 
 
 ## 下一步待办
 
+### 本轮视觉工作流纠偏（2026-08-18）
+
+- 用户否决了“把所有 UI 重新生成为一张概念图”的路径：它不符合实机像素比例、窄条挂机布局、现有 MasterV2/Town PSD，也会把文字和图标重绘成噪点。
+- 新冻结规则：实机截图与 `Content/GameXXK/UI` 批准资源是唯一视觉基准；GPT 生图只允许生成无文字、无 UI、无角色/怪物的背景板。框体、按钮、图标、文字、角色和敌人必须复用/拆分现有资源，并保持等比与 nearest-neighbor。
+- 已登记并导入一个仅供 opt-in 运行时 MVP 使用的窄条背景候选：`SourceArt/UI/PSD/desktop-training-v1/generated/TrainingIdleStrip_Background_GPT_v003_Seamless_RGBA.png`；源文件仍登记为 draft，UE 资产与源 SHA256 见 `SourceAssets/AnimationProcessing/walkloop_pilot_v1/character_00_hero_walk_left/runtime-import-manifest.json`。它不得被当作 PSD 完成或入口切换证据。
+- 目标运行包络仍是约 `1200×108` 的顶部挂机条，六个既有角色和三只既有敌人以后在其上层合成；禁止非等比拉伸。最终 PSD 必须按 `BG_CharcoalInk / BG_MountainSilhouette / BG_Path / BG_Decor / FX_GroundShadow / Actors_ExistingSprites / HUD_RuntimeOnly` 分层交付。
+- 主角向左走路试作已隔离登记：`SourceAssets/AnimationProduction/walkloop_pilot_v1/hero_walk_left/` 保存 1600×1600 接触姿势、即梦提交记录与原片；`scripts/prepare_walkloop_atlases.py` 生成 60 帧 RGBA 512 cell、4K 工作母图、2048² 2K atlas 和 1024² 1K atlas。首尾帧字节一致，`scripts/test_walkloop_atlas_pipeline.py` 3/3 通过；源状态仍为 `review-only`，仅 2K/1K 作为 opt-in 历练视觉 MVP 导入，未替换现有角色动画。
+- **本轮新增游历滚动 MVP**：`FGameXXKTrainingTravelVisualRuntime` 在 `Walking` 阶段循环平移无缝底图并播放左行主角 atlas，`Combat`/`Defeated` 暂停，完成一轮后回到起点；4 项聚焦 Automation 与冷 UBT 通过。它不改变 1-1 默认通关、挑战/游历规则或默认 3D 城镇入口。
+- 为后续 2D HUD 迁移增加隔离副本 `Content/GameXXK/Maps/L_DesktopTrainingHUD.umap`：复制 `L_QingshanInn` 后仅保留 `PlayerStart`，删除放置场景/灯光/出口/角色 Actor；源城镇和 `L_Main.umap` 保持不动。副本尚未成为默认入口。
+
 - Phase 0 基线证据：`docs/production/2026-08-17-phase0-baseline.md`；执行计划：`docs/superpowers/plans/2026-08-17-gamexxk-phase0-source-of-truth-and-gates.md`；本轮完整复核：`docs/production/2026-08-18-desktop-training-goal-review.md`。
 - 项目自身优化:见 `docs/production/2026-08-16-full-project-optimization-proposal.md`(Phase 0 → Phase 4 全量方案)。Phase 0 门禁为 harness 无 finding、默认生产循环全绿、headless 脚本全绿、all 不启动编辑器、`git diff --check` 通过。
 - 玩法顺序:Phase 0 收尾已基本完成 → Phase 1 地形增益重设计(先复核 §5 山河三档与 `TriggerTerrainBenefit` 两个口径)→ Phase 2 数值迭代(以 `2026-08-12-balance-tuning-ledger.md` §4.8 为最新基准)。
