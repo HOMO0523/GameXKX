@@ -627,6 +627,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	QuestNpc->SetVisualCharacterClass(PersonVisualClass);
 	TestEqual(TEXT("quest NPC stores person visual class"), QuestNpc->GetVisualCharacterClass().Get(), PersonVisualClass);
 	AGameXXKMVPGameMode* MVPGameMode = NewObject<AGameXXKMVPGameMode>();
+	TestTrue(TEXT("3D town explicitly prepares its visual classes"),
+		MVPGameMode->PrepareTownVisualClassesForMapForTest(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
 	TestEqual(TEXT("MVP GameMode configures merchant visual class"), MVPGameMode->GetMerchantTownNpcVisualClass().Get(), MerchantVisualClass);
 	TestEqual(TEXT("MVP GameMode configures person visual class"), MVPGameMode->GetPersonTownNpcVisualClass().Get(), PersonVisualClass);
 

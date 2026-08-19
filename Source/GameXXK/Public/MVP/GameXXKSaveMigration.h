@@ -39,7 +39,11 @@ public:
 	static constexpr int32 TrainingRewardCooldownsIntroducedSaveVersion = 19;
 	/** v20: closed-window Travel pending reward ledger and offline timestamp. */
 	static constexpr int32 TrainingOfflineCollectionIntroducedSaveVersion = 20;
-	static constexpr int32 CurrentSaveVersion = 20;
+	/** v21: physical desktop backpack/warehouse cells and persistent warehouse partition. */
+	static constexpr int32 DesktopInventoryStorageIntroducedSaveVersion = 21;
+	/** v22: approved named NPCs can own central equipment loadouts via the QuestNpc owner kind. */
+	static constexpr int32 QuestNpcEquipmentOwnerIntroducedSaveVersion = 22;
+	static constexpr int32 CurrentSaveVersion = 22;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

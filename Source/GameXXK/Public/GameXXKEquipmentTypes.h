@@ -53,7 +53,8 @@ enum class EGameXXKEquipmentOwnerKind : uint8
 	Invalid = 0 UMETA(Hidden),
 	Warehouse = 1,
 	Hero = 2,
-	PermanentCompanion = 3
+	PermanentCompanion = 3,
+	QuestNpc = 4
 };
 
 UENUM(BlueprintType)

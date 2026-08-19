@@ -3,15 +3,29 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/ButtonSlot.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
+#include "Components/ProgressBar.h"
 #include "Components/ScaleBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Engine/Texture2D.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "GenericPlatform/GenericWindow.h"
+#include "HAL/PlatformTime.h"
+#include "InputCoreTypes.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "Misc/App.h"
+#include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
@@ -19,25 +33,198 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKCharacterBackpackModel.h"
 #include "UI/GameXXKDesktopTrainingLayout.h"
+#include "UI/GameXXKInventoryWindowWidget.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
 #include "Styling/SlateTypes.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/SWindow.h"
+
+#if PLATFORM_WINDOWS
+#include "Windows/AllowWindowsPlatformTypes.h"
+#include <Windows.h>
+#include "Windows/HideWindowsPlatformTypes.h"
+#endif
 
 	namespace
 {
+	class SGameXXKDesktopTrainingActionButton final : public SButton
+	{
+	public:
+		using FArguments = SButton::FArguments;
+
+		void Construct(const FArguments& InArgs, UGameXXKDesktopTrainingActionButton* InOwner)
+		{
+			Owner = InOwner;
+			SButton::Construct(InArgs);
+		}
+
+		virtual FReply OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+		{
+			if (MouseEvent.GetEffectingButton() == EKeys::RightMouseButton
+				&& Owner.IsValid()
+				&& Owner->HandleRightMouseButtonDown())
+			{
+				return FReply::Handled();
+			}
+			return SButton::OnMouseButtonDown(MyGeometry, MouseEvent);
+		}
+
+	private:
+		TWeakObjectPtr<UGameXXKDesktopTrainingActionButton> Owner;
+	};
+
 	constexpr int32 WarehouseColumns = 4;
-	constexpr int32 WarehousePageSize = 20;
-	const FVector2D ShellSize(1920.0f, 1080.0f);
+	constexpr int32 WarehouseRows = 9;
+	constexpr int32 WarehousePageSize = WarehouseColumns * WarehouseRows;
 	const FVector4 ChallengeViewportRect(365.0f, 22.0f, 960.0f, 968.0f);
 	const FVector4 ChallengeCombatStripRect(405.0f, 145.0f, 880.0f, 86.0f);
 	const FVector4 ChallengeBattleBoardRect(395.0f, 240.0f, 710.0f, 535.0f);
 	constexpr int32 ChallengeCombatSlotCount = 6;
-	const FVector2D TravelVisualSize(1200.0f, 108.0f);
-	const FVector2D TravelVisualTileSize(FGameXXKTrainingTravelVisualRuntime::LaneTileWidth, 108.0f);
-	const FVector2D TravelBackgroundImageSize(FGameXXKTrainingTravelVisualRuntime::LaneTileWidth, 240.0f);
-	const FVector2D TravelHeroVisualSize(150.0f, 150.0f);
+	constexpr int32 ToolSlotCount = 9;
+	constexpr int32 ToolModeCount = 5;
+	constexpr int32 TopToolbarButtonCount = 5;
+	const FVector2D TravelVisualSize(953.0f, 202.0f);
+	const FVector2D TravelBackgroundImageSize(FGameXXKTrainingTravelVisualRuntime::LaneTileWidth, 300.0f);
+	const FVector2D TravelCombatVisualSize(150.0f, 150.0f);
+	const FVector2D TravelHeroWalkVisualSize(112.0f, 112.0f);
+	const FVector2D TravelHealthBarSize(124.0f, 9.0f);
+
+	FName MakeTravelOneKUnitId(const FName UnitId)
+	{
+		if (UnitId.IsNone())
+		{
+			return NAME_None;
+		}
+		FString Value = UnitId.ToString();
+		if (!Value.EndsWith(TEXT(".1K"), ESearchCase::IgnoreCase))
+		{
+			Value += TEXT(".1K");
+		}
+		return FName(*Value);
+	}
+	// Deterministic alpha-bounds audit of the approved source atlases.  The walk
+	// atlas occupies 90.6% of its cell height; the battle clips occupy 81.2%
+	// (Idle), 59.8% (Attack), 69.5% (Hit), and 80.9% (Death).  Normalize each
+	// action around a bottom-center pivot so action changes preserve the hero's
+	// apparent size and ground contact.
+	float ResolveTravelHeroContentScale(const EGameXXKBattleAnimationAction Action)
+	{
+		switch (Action)
+		{
+		case EGameXXKBattleAnimationAction::Attack: return 1.516f;
+		case EGameXXKBattleAnimationAction::Hit: return 1.303f;
+		case EGameXXKBattleAnimationAction::Death: return 1.121f;
+		case EGameXXKBattleAnimationAction::Idle:
+		default: return 1.117f;
+		}
+	}
+
+	constexpr float TravelTargetVisibleHeightFraction = 0.906f;
+
+	struct FTravelEnemyAlphaHeights
+	{
+		const TCHAR* AssetToken;
+		float Idle;
+		float Attack;
+		float Hit;
+		float Death;
+	};
+
+	// Median occupied-cell heights from the approved 2K atlas sources.  The
+	// atlases have materially different transparent padding per enemy/action,
+	// so a single widget scale causes the visible character to pulse in size.
+	constexpr FTravelEnemyAlphaHeights TravelEnemyAlphaHeights[] = {
+		{TEXT("enemy_01_rooster"), 0.8047f, 0.5869f, 0.6816f, 0.7363f},
+		{TEXT("enemy_02_goat"), 0.8320f, 0.6191f, 0.5352f, 0.7646f},
+		{TEXT("enemy_03_weasel"), 0.5840f, 0.4307f, 0.5127f, 0.4824f},
+		{TEXT("enemy_04_civet"), 0.5703f, 0.4688f, 0.5547f, 0.6133f},
+		{TEXT("enemy_05_ironfeather"), 0.8066f, 0.5713f, 0.5723f, 0.6602f},
+		{TEXT("enemy_06_bluehorn"), 0.7910f, 0.6094f, 0.5859f, 0.7090f},
+		{TEXT("enemy_19_moneyrat_boss"), 0.6562f, 0.5713f, 0.5684f, 0.5781f},
+	};
+
+	float ResolveTravelEnemyContentScale(
+		const FName EnemyDefinitionId,
+		const EGameXXKBattleAnimationAction Action)
+	{
+		const FString AssetId = FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(EnemyDefinitionId, true);
+		for (const FTravelEnemyAlphaHeights& Entry : TravelEnemyAlphaHeights)
+		{
+			if (!AssetId.Contains(Entry.AssetToken))
+			{
+				continue;
+			}
+
+			float OccupiedHeight = Entry.Idle;
+			switch (Action)
+			{
+			case EGameXXKBattleAnimationAction::Attack: OccupiedHeight = Entry.Attack; break;
+			case EGameXXKBattleAnimationAction::Hit: OccupiedHeight = Entry.Hit; break;
+			case EGameXXKBattleAnimationAction::Death: OccupiedHeight = Entry.Death; break;
+			case EGameXXKBattleAnimationAction::Idle:
+			default: break;
+			}
+			return FMath::Clamp(TravelTargetVisibleHeightFraction / OccupiedHeight, 1.0f, 2.2f);
+		}
+		return 1.13f;
+	}
+
+	struct FTravelPartyAlphaHeights
+	{
+		const TCHAR* AssetToken;
+		float Idle;
+		float Attack;
+		float Hit;
+		float Death;
+	};
+
+	// Median occupied-cell heights measured from the approved action atlases.
+	// Using one scale per identity/action keeps Idle/Attack/Hit/Death at the
+	// same apparent height and ground anchor instead of visibly pulsing.
+	constexpr FTravelPartyAlphaHeights TravelPartyAlphaHeights[] = {
+		{TEXT("character_00_hero"), 0.8164f, 0.6016f, 0.6992f, 0.8125f},
+		{TEXT("character_01_blade"), 0.7832f, 0.6484f, 0.5957f, 0.7109f},
+		{TEXT("character_02_guard"), 0.7969f, 0.6367f, 0.7363f, 0.7617f},
+		{TEXT("character_03_healer"), 0.7969f, 0.5879f, 0.8242f, 0.7930f},
+		{TEXT("character_04_hunter"), 0.6582f, 0.5781f, 0.7129f, 0.6699f},
+		{TEXT("character_05_sorcerer"), 0.7773f, 0.5566f, 0.6738f, 0.7461f},
+		{TEXT("character_06_formation_master"), 0.7305f, 0.6094f, 0.5879f, 0.6699f},
+		{TEXT("character_07_tusi_chief"), 0.6934f, 0.6074f, 0.5703f, 0.5664f},
+		{TEXT("character_08_song_jin_bao"), 0.8340f, 0.8125f, 0.6367f, 0.7949f},
+		{TEXT("character_09_yue_bai"), 0.7344f, 0.6250f, 0.6797f, 0.8281f},
+		{TEXT("character_10_zhou_guang_zu"), 0.8262f, 0.7148f, 0.6680f, 0.7969f},
+		{TEXT("character_11_jin_gui"), 0.6992f, 0.7207f, 0.5859f, 0.8242f},
+		{TEXT("character_12_qiong_mei_er"), 0.8047f, 0.7383f, 0.7793f, 0.7715f},
+	};
+
+	float ResolveTravelPartyContentScale(
+		const FName UnitId,
+		const EGameXXKBattleAnimationAction Action)
+	{
+		const FString AssetId = FGameXXKBattleAnimationPresentation::ResolveUnitAssetId(UnitId, false);
+		for (const FTravelPartyAlphaHeights& Entry : TravelPartyAlphaHeights)
+		{
+			if (AssetId.Contains(Entry.AssetToken))
+			{
+				float OccupiedHeight = Entry.Idle;
+				switch (Action)
+				{
+				case EGameXXKBattleAnimationAction::Attack: OccupiedHeight = Entry.Attack; break;
+				case EGameXXKBattleAnimationAction::Hit: OccupiedHeight = Entry.Hit; break;
+				case EGameXXKBattleAnimationAction::Death: OccupiedHeight = Entry.Death; break;
+				case EGameXXKBattleAnimationAction::Idle:
+				default: break;
+				}
+				return FMath::Clamp(TravelTargetVisibleHeightFraction / OccupiedHeight, 1.0f, 2.2f);
+			}
+		}
+		return 1.12f;
+	}
 	const FLinearColor Ink(0.06f, 0.045f, 0.035f, 0.98f);
 	const FLinearColor Panel(0.13f, 0.09f, 0.055f, 0.97f);
 	const FLinearColor PanelAlt(0.20f, 0.13f, 0.07f, 0.98f);
@@ -45,18 +232,29 @@
 	const FLinearColor Gold(1.0f, 0.78f, 0.25f, 1.0f);
 	static constexpr const TCHAR* PanelLargeTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge.T_MasterV2_PanelLarge");
 	static constexpr const TCHAR* ButtonNeutralTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonNeutral.T_MasterV2_ButtonNeutral");
+	static constexpr const TCHAR* ButtonPrimaryTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonPrimary.T_MasterV2_ButtonPrimary");
+	static constexpr const TCHAR* ButtonDangerTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonDanger.T_MasterV2_ButtonDanger");
 	static constexpr const TCHAR* ItemSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
 	static constexpr const TCHAR* EquipmentSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_EquipmentSlot.T_MasterV2_EquipmentSlot");
+	static constexpr const TCHAR* HeroFullBodyTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody");
+	static constexpr const TCHAR* CloseInkTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk.T_MasterV2_CloseInk");
+	static constexpr const TCHAR* IngotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_Ingot.T_MasterV2_Ingot");
+	static constexpr const TCHAR* CharacterTabNormalTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/003_tab_1.003_tab_1");
+	static constexpr const TCHAR* CharacterTabSelectedTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/004_tab_2.004_tab_2");
+	static constexpr const TCHAR* SettingsTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/PSD/HUD/T_TownPsd_HudSettings.T_TownPsd_HudSettings");
+	static constexpr const TCHAR* InventoryTextureRoot = TEXT("/Game/GameXXK/UI/Inventory/Textures/");
 	static constexpr const TCHAR* TabNormalTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TabNormal.T_MasterV2_TabNormal");
 	static constexpr const TCHAR* TabSelectedTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TabSelected.T_MasterV2_TabSelected");
 	static constexpr const TCHAR* RouteNodeTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavRoute.T_MasterV2_NavRoute");
-	static constexpr const TCHAR* NavDiscBackpackTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscBackpack.T_MasterV2_NavDiscBackpack");
-	static constexpr const TCHAR* NavDiscCompanionTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscCompanion.T_MasterV2_NavDiscCompanion");
-	static constexpr const TCHAR* NavDiscCodexTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscCodex.T_MasterV2_NavDiscCodex");
-	static constexpr const TCHAR* NavDiscTaskTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscTask.T_MasterV2_NavDiscTask");
-	static constexpr const TCHAR* NavDiscRouteTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscRoute.T_MasterV2_NavDiscRoute");
-	static constexpr const TCHAR* TravelHeroAtlasTexturePath = TEXT("/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/character_00_hero_walk_left/atlas_2K/T_TrainingHeroWalkLeft_2K.T_TrainingHeroWalkLeft_2K");
-	static constexpr const TCHAR* TravelBackgroundTexturePath = TEXT("/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/T_TrainingIdleStrip_Background.T_TrainingIdleStrip_Background");
+	static constexpr const TCHAR* TruthNavWarehouseTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavWarehouse.T_TrainingNavWarehouse");
+	static constexpr const TCHAR* TruthNavFormationTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavFormation.T_TrainingNavFormation");
+	static constexpr const TCHAR* TruthNavTalentsTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavTalents.T_TrainingNavTalents");
+	static constexpr const TCHAR* TruthNavToolsTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavTools.T_TrainingNavTools");
+	static constexpr const TCHAR* TruthNavTrainingTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavTraining.T_TrainingNavTraining");
+	static constexpr const TCHAR* TruthTopToolbarAlwaysOnTopTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingTopToolbarAlwaysOnTop.T_TrainingTopToolbarAlwaysOnTop");
+	static constexpr const TCHAR* TruthTopToolbarAlwaysOnTopOffTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingTopToolbarAlwaysOnTopOffGray.T_TrainingTopToolbarAlwaysOnTopOffGray");
+	static constexpr const TCHAR* TravelHeroAtlasTexturePath = TEXT("/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/character_00_hero_walk_left/atlas_1K/T_TrainingHeroWalkLeft_1K.T_TrainingHeroWalkLeft_1K");
+	static constexpr const TCHAR* TravelBackgroundTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingIdleStrip_Background.T_TrainingIdleStrip_Background");
 	static constexpr const TCHAR* TravelBackgroundFallbackTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backgrounds/T_TownPsd_Background_Map.T_TownPsd_Background_Map");
 	static constexpr const TCHAR* TravelHeroFallbackTexturePaths[] = {
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"),
@@ -65,6 +263,50 @@
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"),
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"),
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody")};
+
+	FString TravelVisualPhaseName(const EGameXXKTrainingTravelVisualPhase Phase)
+	{
+		switch (Phase)
+		{
+		case EGameXXKTrainingTravelVisualPhase::Walking: return TEXT("Walking");
+		case EGameXXKTrainingTravelVisualPhase::EncounterIdle: return TEXT("EncounterIdle");
+		case EGameXXKTrainingTravelVisualPhase::HeroAttack: return TEXT("HeroAttack");
+		case EGameXXKTrainingTravelVisualPhase::EnemyHit: return TEXT("EnemyHit");
+		case EGameXXKTrainingTravelVisualPhase::EnemyAttack: return TEXT("EnemyAttack");
+		case EGameXXKTrainingTravelVisualPhase::HeroHit: return TEXT("HeroHit");
+		case EGameXXKTrainingTravelVisualPhase::EnemyDeath: return TEXT("EnemyDeath");
+		case EGameXXKTrainingTravelVisualPhase::HeroDeath: return TEXT("HeroDeath");
+		case EGameXXKTrainingTravelVisualPhase::Paused: return TEXT("Paused");
+		default: return TEXT("Unknown");
+		}
+	}
+
+	FString TrainingTravelPhaseName(const EGameXXKTrainingTravelPhase Phase)
+	{
+		switch (Phase)
+		{
+		case EGameXXKTrainingTravelPhase::Idle: return TEXT("Idle");
+		case EGameXXKTrainingTravelPhase::Walking: return TEXT("Walking");
+		case EGameXXKTrainingTravelPhase::Combat: return TEXT("Combat");
+		case EGameXXKTrainingTravelPhase::Defeated: return TEXT("Defeated");
+		default: return TEXT("Unknown");
+		}
+	}
+
+	FString BattleAnimationActionName(const EGameXXKBattleAnimationAction Action)
+	{
+		switch (Action)
+		{
+		case EGameXXKBattleAnimationAction::Idle: return TEXT("Idle");
+		case EGameXXKBattleAnimationAction::Attack: return TEXT("Attack");
+		case EGameXXKBattleAnimationAction::Hit: return TEXT("Hit");
+		case EGameXXKBattleAnimationAction::Buff: return TEXT("Buff");
+		case EGameXXKBattleAnimationAction::Debuff: return TEXT("Debuff");
+		case EGameXXKBattleAnimationAction::Death: return TEXT("Death");
+		case EGameXXKBattleAnimationAction::Impact: return TEXT("Impact");
+		default: return TEXT("Unknown");
+		}
+	}
 
 	TMap<FString, TWeakObjectPtr<UTexture2D>>& GetTextureCache()
 	{
@@ -129,7 +371,33 @@
 		return Style;
 	}
 
-	UTextBlock* MakeText(UWidgetTree* Tree, const FText& Text, int32 Size, const FLinearColor& Color = FLinearColor::White)
+	FButtonStyle MakeImageButtonStyle(
+		const TCHAR* Path,
+		const FVector2D& ImageSize,
+		const FLinearColor& Tint = FLinearColor::White)
+	{
+		FButtonStyle Style;
+		const FSlateBrush Normal = MakeTextureBrush(Path, ImageSize, Tint);
+		Style.SetNormal(Normal);
+		Style.SetHovered(MakeTextureBrush(Path, ImageSize, Tint * FLinearColor(1.06f, 1.06f, 1.06f, 1.0f)));
+		Style.SetPressed(MakeTextureBrush(Path, ImageSize, Tint * FLinearColor(0.86f, 0.86f, 0.86f, 1.0f)));
+		Style.SetDisabled(MakeTextureBrush(Path, ImageSize, FLinearColor(0.55f, 0.55f, 0.55f, 0.72f)));
+		return Style;
+	}
+
+	FButtonStyle MakeInvisibleButtonStyle()
+	{
+		FSlateBrush EmptyBrush;
+		EmptyBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
+		FButtonStyle Style;
+		Style.SetNormal(EmptyBrush);
+		Style.SetHovered(EmptyBrush);
+		Style.SetPressed(EmptyBrush);
+		Style.SetDisabled(EmptyBrush);
+		return Style;
+	}
+
+	UTextBlock* MakeText(UWidgetTree* Tree, const FText& Text, int32 Size, const FLinearColor& Color = FLinearColor(0.06f, 0.045f, 0.035f, 0.98f))
 	{
 		UTextBlock* Result = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 		Result->SetText(Text);
@@ -139,13 +407,14 @@
 		return Result;
 	}
 
-	UBorder* MakePanel(UWidgetTree* Tree, const FLinearColor& Color)
+	UBorder* MakePanel(UWidgetTree* Tree, const FLinearColor& Color, const FName Name = NAME_None)
 	{
-		UBorder* Result = Tree->ConstructWidget<UBorder>(UBorder::StaticClass());
+		UBorder* Result = Tree->ConstructWidget<UBorder>(UBorder::StaticClass(), Name);
 		const FSlateBrush Brush = MakeBoxTextureBrush(PanelLargeTexturePath, FVector2D(320.0f, 180.0f));
 		if (Brush.GetResourceObject())
 		{
 			Result->SetBrush(Brush);
+			Result->SetBrushColor(FLinearColor::White);
 		}
 		else
 		{
@@ -154,17 +423,55 @@
 		return Result;
 	}
 
-	UBorder* MakeSlotPanel(UWidgetTree* Tree, const TCHAR* TexturePath, const FLinearColor& Color, const FVector2D& ImageSize)
+	UBorder* MakeTransparentPanel(UWidgetTree* Tree, const FName Name)
 	{
-		UBorder* Result = Tree->ConstructWidget<UBorder>(UBorder::StaticClass());
+		UBorder* Result = Tree->ConstructWidget<UBorder>(UBorder::StaticClass(), Name);
+		FSlateBrush TransparentBrush;
+		TransparentBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
+		TransparentBrush.TintColor = FSlateColor(FLinearColor::Transparent);
+		Result->SetBrush(TransparentBrush);
+		Result->SetBrushColor(FLinearColor::Transparent);
+		return Result;
+	}
+
+	UBorder* MakeSlotPanel(
+		UWidgetTree* Tree,
+		const TCHAR* TexturePath,
+		const FLinearColor& Color,
+		const FVector2D& ImageSize,
+		const FName Name = NAME_None)
+	{
+		UBorder* Result = Tree->ConstructWidget<UBorder>(UBorder::StaticClass(), Name);
 		const FSlateBrush Brush = MakeBoxTextureBrush(TexturePath, ImageSize, FMargin(0.08f));
 		if (Brush.GetResourceObject())
 		{
 			Result->SetBrush(Brush);
+			Result->SetBrushColor(FLinearColor::White);
 		}
 		else
 		{
 			Result->SetBrushColor(Color);
+		}
+		return Result;
+	}
+
+	UBorder* MakeImagePanel(
+		UWidgetTree* Tree,
+		const TCHAR* TexturePath,
+		const FLinearColor& FallbackColor,
+		const FVector2D& ImageSize,
+		const FName Name = NAME_None)
+	{
+		UBorder* Result = Tree->ConstructWidget<UBorder>(UBorder::StaticClass(), Name);
+		const FSlateBrush Brush = MakeTextureBrush(TexturePath, ImageSize);
+		if (Brush.GetResourceObject())
+		{
+			Result->SetBrush(Brush);
+			Result->SetBrushColor(FLinearColor::White);
+		}
+		else
+		{
+			Result->SetBrushColor(FallbackColor);
 		}
 		return Result;
 	}
@@ -184,6 +491,11 @@
 		}
 	}
 
+	void AddCanvasRect(UCanvasPanel* Canvas, UWidget* Child, const FVector4& Rect)
+	{
+		AddCanvas(Canvas, Child, FVector2D(Rect.X, Rect.Y), FVector2D(Rect.Z, Rect.W));
+	}
+
 	FText NavText(const EGameXXKDesktopTrainingNav Nav)
 	{
 		switch (Nav)
@@ -196,15 +508,15 @@
 		}
 	}
 
-	const TCHAR* NavDiscTexturePath(const EGameXXKDesktopTrainingNav Nav)
+	const TCHAR* BottomNavigationIconTexturePath(const EGameXXKDesktopTrainingNav Nav)
 	{
 		switch (Nav)
 		{
-		case EGameXXKDesktopTrainingNav::Warehouse: return NavDiscBackpackTexturePath;
-		case EGameXXKDesktopTrainingNav::Formation: return NavDiscCompanionTexturePath;
-		case EGameXXKDesktopTrainingNav::Talents: return NavDiscCodexTexturePath;
-		case EGameXXKDesktopTrainingNav::Tools: return NavDiscTaskTexturePath;
-		default: return NavDiscRouteTexturePath;
+		case EGameXXKDesktopTrainingNav::Warehouse: return TruthNavWarehouseTexturePath;
+		case EGameXXKDesktopTrainingNav::Formation: return TruthNavFormationTexturePath;
+		case EGameXXKDesktopTrainingNav::Talents: return TruthNavTalentsTexturePath;
+		case EGameXXKDesktopTrainingNav::Tools: return TruthNavToolsTexturePath;
+		default: return TruthNavTrainingTexturePath;
 		}
 	}
 
@@ -213,25 +525,30 @@
 		const EGameXXKDesktopTrainingNav Nav,
 		const bool bSelected)
 	{
-		UHorizontalBox* Content = Tree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		UVerticalBox* Content = Tree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
 		USizeBox* IconBox = Tree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		IconBox->SetWidthOverride(46.0f);
-		IconBox->SetHeightOverride(46.0f);
+		IconBox->SetWidthOverride(66.0f);
+		IconBox->SetHeightOverride(66.0f);
 		UImage* Icon = Tree->ConstructWidget<UImage>(UImage::StaticClass());
-		const FLinearColor IconTint = bSelected ? FLinearColor::White : FLinearColor(0.78f, 0.72f, 0.62f, 1.0f);
-		const FSlateBrush IconBrush = MakeTextureBrush(NavDiscTexturePath(Nav), FVector2D(46.0f, 46.0f), IconTint);
+		const FLinearColor IconTint = bSelected ? FLinearColor::White : FLinearColor(0.86f, 0.86f, 0.86f, 1.0f);
+		const FSlateBrush IconBrush = MakeTextureBrush(BottomNavigationIconTexturePath(Nav), FVector2D(66.0f, 66.0f), IconTint);
 		if (IconBrush.GetResourceObject())
 		{
 			Icon->SetBrush(IconBrush);
 		}
-		IconBox->AddChild(Icon);
-		UHorizontalBoxSlot* IconSlot = Content->AddChildToHorizontalBox(IconBox);
-		IconSlot->SetPadding(FMargin(5.0f, 6.0f, 4.0f, 6.0f));
-		IconSlot->SetVerticalAlignment(VAlign_Center);
-		UTextBlock* Label = MakeText(Tree, NavText(Nav), 22, bSelected ? FLinearColor::White : FLinearColor(0.86f, 0.76f, 0.62f, 1.0f));
-		UHorizontalBoxSlot* LabelSlot = Content->AddChildToHorizontalBox(Label);
-		LabelSlot->SetPadding(FMargin(2.0f, 0.0f, 7.0f, 0.0f));
-		LabelSlot->SetVerticalAlignment(VAlign_Center);
+		UScaleBox* IconScale = Tree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass());
+		IconScale->SetStretch(EStretch::ScaleToFit);
+		IconScale->SetStretchDirection(EStretchDirection::Both);
+		IconScale->SetContent(Icon);
+		IconBox->AddChild(IconScale);
+		UVerticalBoxSlot* IconSlot = Content->AddChildToVerticalBox(IconBox);
+		IconSlot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 0.0f));
+		IconSlot->SetHorizontalAlignment(HAlign_Center);
+		UTextBlock* Label = MakeText(Tree, NavText(Nav), 20, bSelected ? FLinearColor(0.48f, 0.12f, 0.07f, 1.0f) : Ink);
+		Label->SetJustification(ETextJustify::Center);
+		UVerticalBoxSlot* LabelSlot = Content->AddChildToVerticalBox(Label);
+		LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 2.0f));
+		LabelSlot->SetHorizontalAlignment(HAlign_Fill);
 		return Content;
 	}
 
@@ -275,6 +592,79 @@
 		return FString::Printf(TEXT("%s\nLv.%d"), *Instance->BaseEquipmentId.ToString(), Instance->ItemLevel);
 	}
 
+	FString EquipmentIconTexturePath(const FGameXXKEquipmentCollectionState& Collection, const FName InstanceId)
+	{
+		const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(Collection, InstanceId);
+		if (!Instance)
+		{
+			return FString();
+		}
+		if (const FGameXXKEquipmentDefinition* Definition = FGameXXKEquipmentCatalog::FindDefinition(Instance->BaseEquipmentId))
+		{
+			return Definition->IconSoftPath.ToString();
+		}
+		return FString();
+	}
+
+	FString InventoryItemIconTexturePath(const FName ItemId)
+	{
+		const FString Root(InventoryTextureRoot);
+		if (ItemId == UGameXXKMVPRules::ItemHealingPowder()) return Root + TEXT("T_ItemHealingPowder.T_ItemHealingPowder");
+		if (ItemId == UGameXXKMVPRules::ItemEnhancementStone()) return TEXT("/Game/GameXXK/UI/Items/strengthening_stone.strengthening_stone");
+		if (ItemId == UGameXXKMVPRules::ItemRefinementSand()) return TEXT("/Game/GameXXK/UI/Items/refinement_sand.refinement_sand");
+		if (ItemId == UGameXXKMVPRules::ItemQingshanRouteSeal()) return TEXT("/Game/GameXXK/UI/Items/qingshan_suppression_token.qingshan_suppression_token");
+		if (ItemId == FName(TEXT("Item.LingzhiPowder"))) return Root + TEXT("T_ItemLingzhiPowder.T_ItemLingzhiPowder");
+		if (ItemId == FName(TEXT("Item.QingxinTea"))) return Root + TEXT("T_ItemQingxinTea.T_ItemQingxinTea");
+		if (ItemId == FName(TEXT("Item.CraneSachet"))) return Root + TEXT("T_ItemCraneSachet.T_ItemCraneSachet");
+		if (ItemId == UGameXXKMVPRules::ItemIronSword()) return Root + TEXT("T_ItemQingfengShortSword.T_ItemQingfengShortSword");
+		if (ItemId == UGameXXKMVPRules::ItemClothArmor()) return Root + TEXT("T_ItemBambooLightArmor.T_ItemBambooLightArmor");
+		if (ItemId == FName(TEXT("Item.CranePatternTalisman"))) return Root + TEXT("T_ItemCranePatternTalisman.T_ItemCranePatternTalisman");
+		if (ItemId == FName(TEXT("Item.InkstonePendant"))) return Root + TEXT("T_ItemInkstonePendant.T_ItemInkstonePendant");
+		if (ItemId == UGameXXKMVPRules::ItemWoodenSword()) return Root + TEXT("T_ItemWoodenSword.T_ItemWoodenSword");
+		if (ItemId == UGameXXKMVPRules::ItemStarterClothArmor()) return Root + TEXT("T_ItemStarterClothArmor.T_ItemStarterClothArmor");
+		if (ItemId == UGameXXKMVPRules::ItemClothTalisman()) return Root + TEXT("T_ItemClothTalisman.T_ItemClothTalisman");
+		return FString();
+	}
+
+	UOverlay* MakeIconLabelContent(
+		UWidgetTree* Tree,
+		const FString& IconTexturePath,
+		const FVector2D& IconSize,
+		const FText& Label,
+		const int32 LabelSize = 11)
+	{
+		UOverlay* Overlay = Tree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
+		if (!IconTexturePath.IsEmpty())
+		{
+			if (UTexture2D* Texture = LoadTexture(*IconTexturePath))
+			{
+				USizeBox* IconBox = Tree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+				IconBox->SetWidthOverride(IconSize.X);
+				IconBox->SetHeightOverride(IconSize.Y);
+				UImage* Icon = Tree->ConstructWidget<UImage>(UImage::StaticClass());
+				Icon->SetBrush(MakeTextureBrush(*IconTexturePath, IconSize));
+				IconBox->AddChild(Icon);
+				if (UOverlaySlot* IconSlot = Overlay->AddChildToOverlay(IconBox))
+				{
+					IconSlot->SetHorizontalAlignment(HAlign_Center);
+					IconSlot->SetVerticalAlignment(VAlign_Center);
+				}
+			}
+		}
+		if (!Label.IsEmpty())
+		{
+			UTextBlock* LabelText = MakeText(Tree, Label, LabelSize, Ink);
+			LabelText->SetJustification(ETextJustify::Center);
+			if (UOverlaySlot* LabelSlot = Overlay->AddChildToOverlay(LabelText))
+			{
+				LabelSlot->SetHorizontalAlignment(HAlign_Fill);
+				LabelSlot->SetVerticalAlignment(VAlign_Bottom);
+				LabelSlot->SetPadding(FMargin(2.0f, 0.0f, 2.0f, 3.0f));
+			}
+		}
+		return Overlay;
+	}
+
 	EGameXXKEquipmentSlot BackpackSlotFromIndex(const int32 SlotIndex)
 	{
 		switch (SlotIndex)
@@ -310,13 +700,65 @@
 		}
 		return CharacterId.ToString();
 	}
+
+	FString QuestNpcDisplayName(const FName NpcId)
+	{
+		if (NpcId == TEXT("Npc.TusiChief")) return TEXT("土司首领");
+		if (NpcId == TEXT("Npc.SongJinBao")) return TEXT("宋金宝");
+		if (NpcId == TEXT("Npc.YueBai")) return TEXT("月白");
+		if (NpcId == TEXT("Npc.ZhouGuangZu")) return TEXT("周光祖");
+		if (NpcId == TEXT("Npc.JinGui")) return TEXT("金贵");
+		if (NpcId == TEXT("Npc.QiongMeiEr")) return TEXT("琼梅儿");
+		return NpcId.ToString();
+	}
+
+	FString CharacterRosterPortraitPath(
+		const UGameXXKMVPSubsystem* Subsystem,
+		const FName CharacterId)
+	{
+		if (CharacterId == FGameXXKEquipmentRules::HeroCharacterId())
+		{
+			return TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero");
+		}
+		if (FGameXXKCompanionCatalog::FindQuestNpcDefinition(CharacterId))
+		{
+			FString Token = CharacterId.ToString().Replace(TEXT("."), TEXT("_"));
+			return FString::Printf(
+				TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_%s.T_CardPortrait_%s"),
+				*Token,
+				*Token);
+		}
+		FGameXXKPermanentCompanion Companion;
+		if (!Subsystem || !Subsystem->TryGetPermanentCompanionView(CharacterId, Companion))
+		{
+			return FString();
+		}
+		const TCHAR* RoleToken = nullptr;
+		switch (Companion.Role)
+		{
+		case EGameXXKCharacterRole::Blade: RoleToken = TEXT("Blade"); break;
+		case EGameXXKCharacterRole::Guard: RoleToken = TEXT("Guard"); break;
+		case EGameXXKCharacterRole::Healer: RoleToken = TEXT("Healer"); break;
+		case EGameXXKCharacterRole::Hunter: RoleToken = TEXT("Hunter"); break;
+		case EGameXXKCharacterRole::Sorcerer: RoleToken = TEXT("Sorcerer"); break;
+		case EGameXXKCharacterRole::FormationMaster: RoleToken = TEXT("FormationMaster"); break;
+		default: break;
+		}
+		return RoleToken
+			? FString::Printf(
+				TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Role_%s.T_CardPortrait_Role_%s"),
+				RoleToken,
+				RoleToken)
+			: FString();
+	}
 }
 
 void UGameXXKDesktopTrainingStageButton::Configure(UGameXXKDesktopTrainingWorkbenchWidget* InOwner, const FName InStageId)
 {
 	Owner = InOwner;
 	StageId = InStageId;
-	SetStyle(MakeTextureButtonStyle(RouteNodeTexturePath, FVector2D(76.0f, 76.0f), FMargin(0.08f)));
+	SetStyle(MakeImageButtonStyle(RouteNodeTexturePath, FVector2D(58.0f, 58.0f)));
+	SetBackgroundColor(FLinearColor::White);
 	OnClicked.Clear();
 	OnClicked.AddDynamic(this, &UGameXXKDesktopTrainingStageButton::HandleClicked);
 }
@@ -334,6 +776,7 @@ void UGameXXKDesktopTrainingActionButton::Configure(UGameXXKDesktopTrainingWorkb
 	Owner = InOwner;
 	ActionId = InActionId;
 	SetStyle(MakeTextureButtonStyle(ButtonNeutralTexturePath, FVector2D(150.0f, 54.0f), FMargin(0.08f)));
+	SetBackgroundColor(FLinearColor::White);
 	OnClicked.Clear();
 	OnClicked.AddDynamic(this, &UGameXXKDesktopTrainingActionButton::HandleClicked);
 }
@@ -346,8 +789,48 @@ void UGameXXKDesktopTrainingActionButton::HandleClicked()
 	}
 }
 
+bool UGameXXKDesktopTrainingActionButton::HandleRightMouseButtonDown()
+{
+	return Owner && Owner->HandleActionRightClicked(ActionId);
+}
+
+TSharedRef<SWidget> UGameXXKDesktopTrainingActionButton::RebuildWidget()
+{
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
+	MyButton = SNew(SGameXXKDesktopTrainingActionButton, this)
+		.OnClicked(BIND_UOBJECT_DELEGATE(FOnClicked, SlateHandleClicked))
+		.OnPressed(BIND_UOBJECT_DELEGATE(FSimpleDelegate, SlateHandlePressed))
+		.OnReleased(BIND_UOBJECT_DELEGATE(FSimpleDelegate, SlateHandleReleased))
+		.OnHovered_UObject(this, &ThisClass::SlateHandleHovered)
+		.OnUnhovered_UObject(this, &ThisClass::SlateHandleUnhovered)
+		.OnReceivedFocus_UObject(this, &ThisClass::SlateHandleOnReceivedFocus)
+		.OnLostFocus_UObject(this, &ThisClass::SlateHandleOnLostFocus)
+		.OnSlateButtonDragDetected(BIND_UOBJECT_DELEGATE(FOnDragDetected, SlateHandleDragDetected))
+		.OnSlateButtonDragEnter(BIND_UOBJECT_DELEGATE(FOnDragEnter, SlateHandleDragEnter))
+		.OnSlateButtonDragLeave(BIND_UOBJECT_DELEGATE(FOnDragLeave, SlateHandleDragLeave))
+		.OnSlateButtonDragOver(BIND_UOBJECT_DELEGATE(FOnDragOver, SlateHandleDragOver))
+		.OnSlateButtonDrop(BIND_UOBJECT_DELEGATE(FOnDrop, SlateHandleDrop))
+		.ButtonStyle(&WidgetStyle)
+		.ClickMethod(ClickMethod)
+		.TouchMethod(TouchMethod)
+		.PressMethod(PressMethod)
+		.IsFocusable(IsFocusable)
+		.AllowDragDrop(bAllowDragDrop);
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+
+	if (GetChildrenCount() > 0)
+	{
+		Cast<UButtonSlot>(GetContentSlot())->BuildSlot(MyButton.ToSharedRef());
+	}
+	return MyButton.ToSharedRef();
+}
+
 TSharedRef<SWidget> UGameXXKDesktopTrainingWorkbenchWidget::RebuildWidget()
 {
+	if (!bInternalLayoutRebuild)
+	{
+		AbortTransientInventoryInteraction(true, false);
+	}
 	BuildProgrammaticLayout();
 	return Super::RebuildWidget();
 }
@@ -356,6 +839,22 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	TravelVisualRuntime.Reset();
+	if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
+	{
+		TravelVisualRuntime.Synchronize(Subsystem->GetTrainingTravelRuntimeCopy());
+		if (!PersistenceBoundaryHandle.IsValid())
+		{
+			PersistenceBoundaryHandle = Subsystem->OnPersistenceBoundary().AddUObject(
+				this,
+				&UGameXXKDesktopTrainingWorkbenchWidget::HandlePersistenceBoundary);
+		}
+	}
+	if (FSlateApplication::IsInitialized() && !ApplicationActivationHandle.IsValid())
+	{
+		ApplicationActivationHandle = FSlateApplication::Get().OnApplicationActivationStateChanged().AddUObject(
+			this,
+			&UGameXXKDesktopTrainingWorkbenchWidget::HandleApplicationActivationChanged);
+	}
 	if (SelectedStageId.IsNone())
 	{
 		SelectedStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
@@ -367,18 +866,30 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeome
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	++TravelVisualNativeTickCount;
+	UpdateCarriedItemVisualPosition();
 	TGuardValue<bool> NativeTickGuard(bNativeTickActive, true);
+	TickCollapsedResourceUnload(InDeltaTime);
 	if (ViewMode != EGameXXKDesktopTrainingViewMode::ChallengeViewport)
 	{
 		const UGameXXKMVPSubsystem* TravelSubsystem = ResolveMVPSubsystem();
+		if (TravelSubsystem)
+		{
+			TravelVisualRuntime.Synchronize(TravelSubsystem->GetTrainingTravelRuntimeCopy());
+		}
+		TravelVisualRuntime.Tick(InDeltaTime);
+		if (TravelAtlasCache)
+		{
+			TravelAtlasCache->AdvanceTimeouts(FPlatformTime::Seconds());
+		}
+		UpdateTravelVisuals();
 		if (!TravelSubsystem || !TravelSubsystem->GetRuntimeState().Training.bTravelActive)
 		{
-			TravelVisualRuntime.Tick(InDeltaTime, EGameXXKTrainingTravelPhase::Idle);
-			UpdateTravelVisuals();
-			UpdateTravelCooldownText();
 			return;
 		}
-		UpdateTravelCooldownText();
+
+		// Logical travel advances on a one-second cadence, but the mutation is
+		// captured at the end of this frame.  Never retroactively consume the
+		// frame's DeltaTime from the newly-created attack/hit/death presentation.
 		TravelAccumulator += InDeltaTime;
 		if (TravelAccumulator >= 1.0f)
 		{
@@ -386,8 +897,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeome
 			TravelAccumulator -= static_cast<float>(ElapsedSeconds);
 			AdvanceTravelForTest(ElapsedSeconds);
 		}
-		const FGameXXKTrainingTravelRuntime TravelRuntime = TravelSubsystem->GetTrainingTravelRuntimeCopy();
-		TravelVisualRuntime.Tick(InDeltaTime, TravelRuntime.Phase);
 		UpdateTravelVisuals();
 		return;
 	}
@@ -405,13 +914,62 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeome
 	AdvanceChallengeForTest();
 }
 
+FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseButtonDown(
+	const FGeometry& InGeometry,
+	const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && CarriedEntry.IsValid())
+	{
+		AbortTransientInventoryInteraction(false, true);
+		return FReply::Handled();
+	}
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::NativeOnFocusLost(const FFocusEvent& InFocusEvent)
+{
+	Super::NativeOnFocusLost(InFocusEvent);
+	AbortTransientInventoryInteraction(false, true);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::NativeDestruct()
+{
+	if (!bInternalLayoutRebuild)
+	{
+		AbortTransientInventoryInteraction(true, false);
+		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+			Subsystem && PersistenceBoundaryHandle.IsValid())
+		{
+			Subsystem->OnPersistenceBoundary().Remove(PersistenceBoundaryHandle);
+		}
+		PersistenceBoundaryHandle.Reset();
+		if (FSlateApplication::IsInitialized() && ApplicationActivationHandle.IsValid())
+		{
+			FSlateApplication::Get().OnApplicationActivationStateChanged().Remove(ApplicationActivationHandle);
+		}
+		ApplicationActivationHandle.Reset();
+		ReleaseTravelAtlasSession();
+	}
+	Super::NativeDestruct();
+}
+
 bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 {
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem)
 	{
 		return false;
 	}
+	if (!Subsystem->NormalizeDesktopInventoryState())
+	{
+		return false;
+	}
+	CancelCollapsedResourceUnload();
+	bCollapsedResourcesReleased = false;
+	bHasCollapsedWorkbenchSession = false;
+	bHasSavedEmbeddedInventorySession = false;
+	AbortTransientInventoryInteraction(true, false);
+	ToolSlots.SetNum(ToolSlotCount);
 	const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
 	SelectedStageId = Progress.SelectedStageId.IsNone() ? Progress.CurrentTravelStageId : Progress.SelectedStageId;
 	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
@@ -423,6 +981,10 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 	}
 	ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 	bSettingsPanelOpen = false;
+	bBackpackExpanded = false;
+	bWarehousePanelOpen = false;
+	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
+	bExitConfirmationOpen = false;
 	bChallengeSidePanelsReadOnly = false;
 	TravelAccumulator = 0.0f;
 	TravelVisualRuntime.Reset();
@@ -434,16 +996,33 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 bool UGameXXKDesktopTrainingWorkbenchWidget::CloseWorkbench()
 {
 	const bool bWasVisible = IsInViewport() && GetVisibility() != ESlateVisibility::Collapsed;
+	CancelCollapsedResourceUnload();
+	bHasCollapsedWorkbenchSession = false;
+	bHasSavedEmbeddedInventorySession = false;
+	AbortTransientInventoryInteraction(true, false);
 	bSettingsPanelOpen = false;
+	bBackpackExpanded = false;
+	bWarehousePanelOpen = false;
+	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
+	bExitConfirmationOpen = false;
 	SetVisibility(ESlateVisibility::Collapsed);
 	return bWasVisible;
 }
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::OpenBackpack()
 {
-	ActiveNav = EGameXXKDesktopTrainingNav::Formation;
+	const bool bRestoreCollapsedSession = bHasCollapsedWorkbenchSession;
+	CancelCollapsedResourceUnload();
+	CancelCarryForStructuralChange();
+	ToolSlots.SetNum(ToolSlotCount);
+	if (!bRestoreCollapsedSession)
+	{
+		ActiveNav = EGameXXKDesktopTrainingNav::Formation;
+	}
 	ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 	bSettingsPanelOpen = false;
+	bBackpackExpanded = true;
+	bExitConfirmationOpen = false;
 	bChallengeSidePanelsReadOnly = false;
 	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
 	if (ActiveBackpackCharacterId.IsNone() || !CharacterIds.Contains(ActiveBackpackCharacterId))
@@ -453,7 +1032,185 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenBackpack()
 			: FGameXXKEquipmentRules::HeroCharacterId();
 	}
 	RefreshLayout();
+	bHasCollapsedWorkbenchSession = false;
+	bCollapsedResourcesReleased = false;
 	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsBackpackExpandedForTest() const
+{
+	return bBackpackExpanded;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsWarehousePanelOpenForTest() const
+{
+	return bBackpackExpanded && bWarehousePanelOpen;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsRightPanelOpenForTest() const
+{
+	return bBackpackExpanded && RightPanel != EGameXXKDesktopTrainingRightPanel::None;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetTopToolbarButtonCountForTest() const
+{
+	return bBackpackExpanded ? TopToolbarButtonCount : 0;
+}
+
+FString UGameXXKDesktopTrainingWorkbenchWidget::GetTopToolbarAlwaysOnTopResourcePathForTest() const
+{
+	return FString(TruthTopToolbarAlwaysOnTopTexturePath);
+}
+
+FString UGameXXKDesktopTrainingWorkbenchWidget::GetTopToolbarAlwaysOnTopOffResourcePathForTest() const
+{
+	return FString(TruthTopToolbarAlwaysOnTopOffTexturePath);
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsAlwaysOnTopForTest() const
+{
+	return bAlwaysOnTop;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsMutedForTest() const
+{
+	return bMuted;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsExitConfirmationOpenForTest() const
+{
+	return bExitConfirmationOpen;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::CancelExitForTest()
+{
+	if (!bExitConfirmationOpen)
+	{
+		return false;
+	}
+	bExitConfirmationOpen = false;
+	RefreshLayout();
+	return true;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetToolSlotCountForTest() const
+{
+	return ToolSlotCount;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetToolModeCountForTest() const
+{
+	return ToolModeCount;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetOccupiedToolSlotCountForTest() const
+{
+	int32 Count = 0;
+	for (const FDesktopToolEntry& Entry : ToolSlots)
+	{
+		Count += Entry.IsValid() ? 1 : 0;
+	}
+	return Count;
+}
+
+FName UGameXXKDesktopTrainingWorkbenchWidget::GetToolSlotItemIdForTest(const int32 SlotIndex) const
+{
+	return ToolSlots.IsValidIndex(SlotIndex) && ToolSlots[SlotIndex].IsValid()
+		? ToolSlots[SlotIndex].Entry.EntryId
+		: NAME_None;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::SetToolModeForTest(const EGameXXKDesktopToolMode Mode)
+{
+	if (static_cast<uint8>(Mode) >= ToolModeCount)
+	{
+		return false;
+	}
+	CancelCarryForStructuralChange();
+	ActiveToolMode = Mode;
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsCarryingItemForTest() const
+{
+	return CarriedEntry.IsValid();
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::PickUpBackpackSlotForTest(const int32 SlotIndex)
+{
+	return PickUpDesktopEntry(EGameXXKDesktopItemContainer::Backpack, SlotIndex);
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::PickUpToolSlotForTest(const int32 SlotIndex)
+{
+	return PickUpToolEntry(SlotIndex);
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::CancelCarriedItemForTest()
+{
+	const bool bCancelled = CancelCarriedItem();
+	if (bCancelled)
+	{
+		RefreshLayout();
+	}
+	return bCancelled;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::DropCarriedOnBackpackSlotForTest(const int32 SlotIndex)
+{
+	return DropCarriedOnDesktopSlot(EGameXXKDesktopItemContainer::Backpack, SlotIndex);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::NotifyApplicationDeactivatedForTest()
+{
+	HandleApplicationActivationChanged(false);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ForceExternalSlateRebuildForTest()
+{
+	RebuildWidget();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::DestructForTest()
+{
+	NativeDestruct();
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::RightClickBackpackSlotForTest(const int32 SlotIndex)
+{
+	return RouteBackpackRightClick(SlotIndex);
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::FindBackpackItemSlotForTest(const FName ItemId) const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return Subsystem
+		? FGameXXKDesktopInventoryRules::FindEntrySlot(
+			Subsystem->GetRuntimeState(),
+			EGameXXKDesktopItemContainer::Backpack,
+			FGameXXKDesktopInventoryRules::MakeItemEntry(ItemId))
+		: INDEX_NONE;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::FindFirstBackpackEquipmentSlotForTest() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return INDEX_NONE;
+	}
+	for (int32 SlotIndex = 0; SlotIndex < FGameXXKDesktopInventoryRules::BackpackCapacity; ++SlotIndex)
+	{
+		if (FGameXXKDesktopInventoryRules::GetEntryAt(
+			Subsystem->GetRuntimeState(),
+			EGameXXKDesktopItemContainer::Backpack,
+			SlotIndex).bEquipmentInstance)
+		{
+			return SlotIndex;
+		}
+	}
+	return INDEX_NONE;
 }
 
 FName UGameXXKDesktopTrainingWorkbenchWidget::GetActiveBackpackCharacterIdForTest() const
@@ -471,7 +1228,8 @@ EGameXXKDesktopTrainingNav UGameXXKDesktopTrainingWorkbenchWidget::GetActiveNavF
 bool UGameXXKDesktopTrainingWorkbenchWidget::IsToolsPanelActiveForTest() const
 {
 	return ViewMode == EGameXXKDesktopTrainingViewMode::Workbench
-		&& ActiveNav == EGameXXKDesktopTrainingNav::Tools;
+		&& bBackpackExpanded
+		&& RightPanel == EGameXXKDesktopTrainingRightPanel::Tools;
 }
 
 TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetBackpackCharacterIdsForTest() const
@@ -493,10 +1251,57 @@ TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetBackpackCharacterIdsFor
 	return CharacterIds;
 }
 
+TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetCompanionCharacterIdsForTest() const
+{
+	TArray<FName> CharacterIds;
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return CharacterIds;
+	}
+	for (const FGameXXKPermanentCompanion& Companion : Subsystem->GetPermanentCompanionViews())
+	{
+		if (!Companion.InstanceId.IsNone())
+		{
+			CharacterIds.AddUnique(Companion.InstanceId);
+		}
+	}
+	return CharacterIds;
+}
+
+TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetNpcCharacterIdsForTest() const
+{
+	TArray<FName> CharacterIds;
+	for (const FGameXXKQuestNpcDefinition& Definition : FGameXXKCompanionCatalog::GetQuestNpcDefinitions())
+	{
+		if (!Definition.NpcId.IsNone())
+		{
+			CharacterIds.AddUnique(Definition.NpcId);
+		}
+	}
+	return CharacterIds;
+}
+
+FName UGameXXKDesktopTrainingWorkbenchWidget::GetEmbeddedBackpackCharacterIdForTest() const
+{
+	return EmbeddedInventoryWidget
+		? EmbeddedInventoryWidget->GetConfiguredCharacterIdForTest()
+		: GetActiveBackpackCharacterIdForTest();
+}
+
 bool UGameXXKDesktopTrainingWorkbenchWidget::SelectBackpackCharacterForTest(const FName CharacterId)
 {
+	CancelCarryForStructuralChange();
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || CharacterId.IsNone() || !GetBackpackCharacterIdsForTest().Contains(CharacterId))
+	const bool bHero = CharacterId == FGameXXKEquipmentRules::HeroCharacterId();
+	const bool bCompanion = GetCompanionCharacterIdsForTest().Contains(CharacterId);
+	const bool bNpc = GetNpcCharacterIdsForTest().Contains(CharacterId);
+	if (!Subsystem || CharacterId.IsNone() || (!bHero && !bCompanion && !bNpc))
+	{
+		return false;
+	}
+	if ((bCompanion && !Subsystem->SetActivePermanentCompanion(CharacterId))
+		|| (bNpc && !Subsystem->SelectTownQuestNpcForParty(CharacterId)))
 	{
 		return false;
 	}
@@ -506,6 +1311,11 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::SelectBackpackCharacterForTest(cons
 		return false;
 	}
 	ActiveBackpackCharacterId = CharacterId;
+	ActiveCharacterRoster = bHero
+		? EGameXXKDesktopTrainingCharacterRoster::Hero
+		: bCompanion
+			? EGameXXKDesktopTrainingCharacterRoster::Companions
+			: EGameXXKDesktopTrainingCharacterRoster::Npcs;
 	ActiveNav = EGameXXKDesktopTrainingNav::Formation;
 	ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 	bSettingsPanelOpen = false;
@@ -530,21 +1340,28 @@ int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehouseColumnCountForTest() c
 	return WarehouseColumns;
 }
 
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehouseRowCountForTest() const
+{
+	return WarehouseRows;
+}
+
 TArray<FString> UGameXXKDesktopTrainingWorkbenchWidget::GetMasterV2ResourcePathsForTest() const
 {
 	const TCHAR* RequiredPaths[] = {
 		PanelLargeTexturePath,
 		ButtonNeutralTexturePath,
+		ButtonPrimaryTexturePath,
+		ButtonDangerTexturePath,
 		ItemSlotTexturePath,
 		EquipmentSlotTexturePath,
+		HeroFullBodyTexturePath,
+		CloseInkTexturePath,
+		IngotTexturePath,
+		CharacterTabNormalTexturePath,
+		CharacterTabSelectedTexturePath,
 		TabNormalTexturePath,
 		TabSelectedTexturePath,
-		RouteNodeTexturePath,
-		NavDiscBackpackTexturePath,
-		NavDiscCompanionTexturePath,
-		NavDiscCodexTexturePath,
-		NavDiscTaskTexturePath,
-		NavDiscRouteTexturePath};
+		RouteNodeTexturePath};
 	TArray<FString> LoadedPaths;
 	for (const TCHAR* Path : RequiredPaths)
 	{
@@ -554,6 +1371,29 @@ TArray<FString> UGameXXKDesktopTrainingWorkbenchWidget::GetMasterV2ResourcePaths
 		}
 	}
 	return LoadedPaths;
+}
+
+FString UGameXXKDesktopTrainingWorkbenchWidget::GetBottomNavigationIconResourcePathForTest(
+	const EGameXXKDesktopTrainingNav Nav) const
+{
+	return FString(BottomNavigationIconTexturePath(Nav));
+}
+
+TArray<FString> UGameXXKDesktopTrainingWorkbenchWidget::GetBottomNavigationIconResourcePathsForTest() const
+{
+	const EGameXXKDesktopTrainingNav Navs[] = {
+		EGameXXKDesktopTrainingNav::Warehouse,
+		EGameXXKDesktopTrainingNav::Formation,
+		EGameXXKDesktopTrainingNav::Talents,
+		EGameXXKDesktopTrainingNav::Tools,
+		EGameXXKDesktopTrainingNav::Training};
+	TArray<FString> Paths;
+	Paths.Reserve(UE_ARRAY_COUNT(Navs));
+	for (const EGameXXKDesktopTrainingNav Nav : Navs)
+	{
+		Paths.Add(GetBottomNavigationIconResourcePathForTest(Nav));
+	}
+	return Paths;
 }
 
 FVector2D UGameXXKDesktopTrainingWorkbenchWidget::GetBackpackAspectRatioForTest() const
@@ -610,12 +1450,22 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::CollectTravelRewardsForTest()
 int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehouseOccupancyForTest() const
 {
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	return Subsystem ? Subsystem->GetRuntimeState().EquipmentCollection.WarehouseInstanceIds.Num() : 0;
+	return Subsystem
+		? FGameXXKDesktopInventoryRules::GetOccupiedSlotCount(
+			Subsystem->GetRuntimeState(),
+			EGameXXKDesktopItemContainer::Warehouse)
+		: 0;
 }
 
 int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehousePageCountForTest() const
 {
-	return FMath::Max(1, FMath::DivideAndRoundUp(GetWarehouseOccupancyForTest(), WarehousePageSize));
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const int32 LastOccupiedSlot = Subsystem
+		? FGameXXKDesktopInventoryRules::GetLastOccupiedSlotIndex(
+			Subsystem->GetRuntimeState(),
+			EGameXXKDesktopItemContainer::Warehouse)
+		: INDEX_NONE;
+	return FMath::Max(1, FMath::DivideAndRoundUp(LastOccupiedSlot + 1, WarehousePageSize));
 }
 
 int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehousePageIndexForTest() const
@@ -625,18 +1475,23 @@ int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehousePageIndexForTest() con
 
 TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetVisibleWarehouseInstanceIdsForTest() const
 {
-	TArray<FName> Warehouse;
+	TArray<FName> Visible;
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || !Subsystem->GetEquipmentWarehouseSnapshot(Warehouse))
+	if (!Subsystem)
 	{
-		return Warehouse;
+		return Visible;
 	}
 	const int32 PageStart = GetWarehousePageIndexForTest() * WarehousePageSize;
-	const int32 PageEnd = FMath::Min(PageStart + WarehousePageSize, Warehouse.Num());
-	TArray<FName> Visible;
-	for (int32 Index = PageStart; Index < PageEnd; ++Index)
+	for (int32 Index = PageStart; Index < PageStart + WarehousePageSize; ++Index)
 	{
-		Visible.Add(Warehouse[Index]);
+		const FGameXXKDesktopInventoryEntryKey Entry = FGameXXKDesktopInventoryRules::GetEntryAt(
+			Subsystem->GetRuntimeState(),
+			EGameXXKDesktopItemContainer::Warehouse,
+			Index);
+		if (Entry.bEquipmentInstance && !ShouldHideDesktopInventoryEntry(EGameXXKDesktopItemContainer::Warehouse, Entry))
+		{
+			Visible.Add(Entry.EntryId);
+		}
 	}
 	return Visible;
 }
@@ -668,22 +1523,41 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::PreviousWarehousePageForTest()
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::QuickEquipVisibleWarehouseSlotForTest(const int32 VisibleSlotIndex)
 {
-	const TArray<FName> VisibleWarehouse = GetVisibleWarehouseInstanceIdsForTest();
-	if (!VisibleWarehouse.IsValidIndex(VisibleSlotIndex))
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
 	{
 		return false;
 	}
-	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem)
+	const int32 PhysicalSlotIndex = GetWarehousePageIndexForTest() * WarehousePageSize + VisibleSlotIndex;
+	const FGameXXKDesktopInventoryEntryKey Entry = FGameXXKDesktopInventoryRules::GetEntryAt(
+		Subsystem->GetRuntimeState(),
+		EGameXXKDesktopItemContainer::Warehouse,
+		PhysicalSlotIndex);
+	if (!Entry.bEquipmentInstance)
+	{
+		return false;
+	}
+	const int32 BackpackSlot = FGameXXKDesktopInventoryRules::FindFirstEmptySlot(
+		Subsystem->GetRuntimeState(),
+		EGameXXKDesktopItemContainer::Backpack);
+	FString MoveError;
+	if (BackpackSlot == INDEX_NONE
+		|| !Subsystem->MoveDesktopInventoryEntry(
+			EGameXXKDesktopItemContainer::Warehouse,
+			PhysicalSlotIndex,
+			EGameXXKDesktopItemContainer::Backpack,
+			BackpackSlot,
+			&MoveError))
 	{
 		return false;
 	}
 	FGameXXKCharacterBackpackModel BackpackModel;
 	BackpackModel.Bind(Subsystem, GetActiveBackpackCharacterIdForTest());
 	FGameXXKEquipmentTransactionResult Result;
-	const bool bEquipped = BackpackModel.QuickEquip(VisibleWarehouse[VisibleSlotIndex], Result);
+	const bool bEquipped = BackpackModel.QuickEquip(Entry.EntryId, Result);
 	if (bEquipped)
 	{
+		Subsystem->NormalizeDesktopInventoryState();
 		SetNotice(Result.Message.IsEmpty() ? FText::FromString(TEXT("装备已转入当前角色")) : Result.Message);
 		RefreshLayout();
 	}
@@ -693,9 +1567,31 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::QuickEquipVisibleWarehouseSlotForTe
 bool UGameXXKDesktopTrainingWorkbenchWidget::SortWarehouseForTest()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || !Subsystem->SortEquipmentWarehouse())
+	if (!Subsystem || !Subsystem->NormalizeDesktopInventoryState())
 	{
 		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	TArray<FGameXXKDesktopInventoryEntryKey> Entries;
+	for (const FGameXXKDesktopInventoryEntryKey& Entry : State.DesktopInventory.WarehouseSlots)
+	{
+		if (Entry.IsValid())
+		{
+			Entries.Add(Entry);
+		}
+	}
+	Entries.Sort([](const FGameXXKDesktopInventoryEntryKey& Left, const FGameXXKDesktopInventoryEntryKey& Right)
+	{
+		if (Left.bEquipmentInstance != Right.bEquipmentInstance)
+		{
+			return Left.bEquipmentInstance;
+		}
+		return Left.EntryId.LexicalLess(Right.EntryId);
+	});
+	State.DesktopInventory.WarehouseSlots.Init(FGameXXKDesktopInventoryEntryKey(), FGameXXKDesktopInventoryRules::WarehouseCapacity);
+	for (int32 Index = 0; Index < Entries.Num(); ++Index)
+	{
+		State.DesktopInventory.WarehouseSlots[Index] = Entries[Index];
 	}
 	WarehousePageIndex = 0;
 	SetNotice(FText::FromString(TEXT("仓库已排序：槽位 → 品质 → 等级")));
@@ -721,7 +1617,8 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::QuickUnequipActiveBackpackSlotForTe
 	const bool bUnequipped = BackpackModel.QuickUnequip(EquipmentSlot, Result);
 	if (bUnequipped)
 	{
-		SetNotice(Result.Message.IsEmpty() ? FText::FromString(TEXT("装备已卸下并返回仓库")) : Result.Message);
+		Subsystem->NormalizeDesktopInventoryState();
+		SetNotice(Result.Message.IsEmpty() ? FText::FromString(TEXT("装备已卸下并返回背包")) : Result.Message);
 		RefreshLayout();
 	}
 	return bUnequipped;
@@ -773,9 +1670,12 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::IsRetryVisibleForTest() const
 bool UGameXXKDesktopTrainingWorkbenchWidget::HasTravelVisualStripForTest() const
 {
 	return TravelVisualViewport != nullptr
-		&& TravelBackgroundImageA != nullptr
-		&& TravelBackgroundImageB != nullptr
-		&& TravelHeroImage != nullptr;
+		&& TravelBackgroundImages.Num() == 3
+		&& TravelEnemyImages.Num() == 3
+		&& TravelHeroImage != nullptr
+		&& TravelEnemyHealthBars.Num() == 3
+		&& TravelCompanionHealthBars.Num() == 2
+		&& TravelHeroHealth != nullptr;
 }
 
 float UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualScrollOffsetForTest() const
@@ -803,9 +1703,118 @@ FString UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualAtlasResourcePath
 	return TravelHeroAtlasTexturePath;
 }
 
+bool UGameXXKDesktopTrainingWorkbenchWidget::AreTravelCombatAtlasesOneKForTest() const
+{
+	if (TravelRequestedAtlasPaths.IsEmpty())
+	{
+		return false;
+	}
+	for (const FSoftObjectPath& Path : TravelRequestedAtlasPaths)
+	{
+		if (!Path.ToString().Contains(TEXT("_1k_"), ESearchCase::IgnoreCase))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 FString UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualBackgroundResourcePathForTest() const
 {
 	return TravelBackgroundTexturePath;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetTravelBackgroundTileCountForTest() const
+{
+	return TravelBackgroundImages.Num();
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVerboseTextBlockCountForTest() const
+{
+	// Stage/reward detail is exposed through the map and compact button tooltips;
+	// the continuously animated strip owns no diagnostic prose.
+	return 0;
+}
+
+EGameXXKTrainingTravelVisualPhase UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualPhaseForTest() const
+{
+	return TravelVisualRuntime.GetVisualPhase();
+}
+
+FString UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualPhaseNameForTest() const
+{
+	return TravelVisualPhaseName(TravelVisualRuntime.GetVisualPhase());
+}
+
+FString UGameXXKDesktopTrainingWorkbenchWidget::GetTravelLogicalPhaseNameForTest() const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return TrainingTravelPhaseName(Subsystem
+		? Subsystem->GetTrainingTravelRuntimeCopy().Phase
+		: EGameXXKTrainingTravelPhase::Idle);
+}
+
+FString UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualHeroActionNameForTest() const
+{
+	return BattleAnimationActionName(TravelVisualRuntime.GetHeroAction());
+}
+
+FString UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualPartyActionNameForTest(const int32 PartyIndex) const
+{
+	return BattleAnimationActionName(TravelVisualRuntime.GetPartyAction(PartyIndex));
+}
+
+FString UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualEnemyActionNameForTest() const
+{
+	return BattleAnimationActionName(TravelVisualRuntime.GetEnemyAction());
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsTravelVisualEnemyVisibleForTest() const
+{
+	return TravelVisualRuntime.IsEnemyVisible();
+}
+
+FName UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualEnemyDefinitionIdForTest() const
+{
+	return TravelVisualRuntime.GetEnemyDefinitionId();
+}
+
+EGameXXKBattleAnimationAction UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualHeroActionForTest() const
+{
+	return TravelVisualRuntime.GetHeroAction();
+}
+
+float UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualEnemyHealthFractionForTest() const
+{
+	return TravelVisualRuntime.GetEnemyHealthFraction();
+}
+
+float UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualHeroHealthFractionForTest() const
+{
+	return TravelVisualRuntime.GetHeroHealthFraction();
+}
+
+float UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualPartyHealthFractionForTest(const int32 PartyIndex) const
+{
+	return TravelVisualRuntime.GetPartyHealthFraction(PartyIndex);
+}
+
+float UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualScrollVelocityForTest() const
+{
+	return TravelVisualRuntime.GetScrollVelocity();
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualHeroRenderedFrameForTest() const
+{
+	return TravelAppliedHeroFrame;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualEnemyRenderedFrameForTest() const
+{
+	const int32 PresentedSlotIndex = TravelVisualRuntime.GetPresentedEnemySlotIndex();
+	return TravelAppliedEnemyFrames.IsValidIndex(PresentedSlotIndex)
+		? TravelAppliedEnemyFrames[PresentedSlotIndex]
+		: INDEX_NONE;
 }
 
 FVector4 UGameXXKDesktopTrainingWorkbenchWidget::GetChallengeViewportRectForTest() const
@@ -836,6 +1845,8 @@ FText UGameXXKDesktopTrainingWorkbenchWidget::GetStageTooltipForTest(const FName
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::SelectStageForTest(const FName StageId)
 {
+	CancelCarryForStructuralChange();
+	ReturnAllToolEntries();
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	FGameXXKTrainingStageDefinition Definition;
 	if (!Subsystem || !FGameXXKTrainingRules::TryGetStageDefinition(StageId, Definition))
@@ -898,6 +1909,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest(const int32 El
 	{
 		return false;
 	}
+	const FGameXXKTrainingTravelRuntime Before = Subsystem->GetTrainingTravelRuntimeCopy();
 	bool bEncounterCompleted = false;
 	bool bCompleted = false;
 	bool bDefeated = false;
@@ -906,32 +1918,13 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest(const int32 El
 	{
 		return false;
 	}
+	const FGameXXKTrainingTravelRuntime AfterStep = Subsystem->GetTrainingTravelRuntimeCopy();
+	TravelVisualRuntime.NotifyTravelStep(Before, AfterStep, bEncounterCompleted, bCompleted, bDefeated);
 	if (bDefeated)
 	{
-		const bool bRetry = Subsystem->GetTrainingProgressCopy().bRetryOnFailure;
-		if (Subsystem->ResolveTrainingTravelFailure())
-		{
-			SetNotice(bRetry
-				? FText::FromString(TEXT("游历阵亡：重试当前关卡"))
-				: FText::FromString(TEXT("游历阵亡：已暂停并回退前一关")));
-			RefreshLayout();
-		}
+		Subsystem->ResolveTrainingTravelFailure();
 	}
-	else if (bCompleted)
-	{
-		SetNotice(FText::FromString(FString::Printf(TEXT("游历结算：+%d 金币 / +%d 经验，继续循环"), Reward.Gold, Reward.Experience)));
-		RefreshLayout();
-	}
-	else if (bEncounterCompleted)
-	{
-		SetNotice(FText::FromString(TEXT("游历中：击杀当前怪物，继续走动")));
-		RefreshLayout();
-	}
-	else
-	{
-		SetNotice(FText::FromString(TEXT("游历中：走动、遭遇、自动战斗")));
-	}
-	TravelVisualRuntime.NotifyTravelStep(bEncounterCompleted, bCompleted);
+	TravelVisualRuntime.Synchronize(Subsystem->GetTrainingTravelRuntimeCopy());
 	return true;
 }
 
@@ -959,6 +1952,45 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ConstructForTest()
 int32 UGameXXKDesktopTrainingWorkbenchWidget::GetProgrammaticLayoutBuildCountForTest() const
 {
 	return ProgrammaticLayoutBuildCount;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsCollapsedResourceUnloadPendingForTest() const
+{
+	return bCollapsedResourceUnloadPending;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::AreCollapsedResourcesReleasedForTest() const
+{
+	return bCollapsedResourcesReleased;
+}
+
+float UGameXXKDesktopTrainingWorkbenchWidget::GetCollapsedResourceUnloadRemainingSecondsForTest() const
+{
+	return CollapsedResourceUnloadRemainingSeconds;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetCollapsedGcRequestCountForTest() const
+{
+	return CollapsedGcRequestCount;
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetEmbeddedInventoryWidgetCountForTest() const
+{
+	return EmbeddedInventoryWidget ? 1 : 0;
+}
+
+EGameXXKCharacterBackpackTab UGameXXKDesktopTrainingWorkbenchWidget::GetEmbeddedBackpackTabForTest() const
+{
+	return EmbeddedInventoryWidget
+		? EmbeddedInventoryWidget->GetActiveCharacterBackpackTabForTest()
+		: EGameXXKCharacterBackpackTab::Equipment;
+}
+
+TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetEmbeddedPendingDeckIdsForTest() const
+{
+	return EmbeddedInventoryWidget
+		? EmbeddedInventoryWidget->GetPendingHeroDeckIdsForTest()
+		: TArray<FName>();
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::HandleStageClicked(const FName StageId)
@@ -1018,15 +2050,30 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 		ChallengeBattleBoard->CancelBattleVisualSession(ChallengeBattleVisualSessionToken);
 		ChallengeBattleVisualSessionToken = 0;
 	}
-	TravelCooldownText = nullptr;
 	TravelVisualViewport = nullptr;
 	TravelBackgroundImageA = nullptr;
 	TravelBackgroundImageB = nullptr;
+	TravelBackgroundImages.Reset();
+	TravelEnemyImages.Reset();
 	TravelHeroImage = nullptr;
-	TravelVisualStatusText = nullptr;
+	TravelCompanionImages.Reset();
+	TravelEnemyHealthBars.Reset();
+	TravelHeroHealth = nullptr;
+	TravelCompanionHealthBars.Reset();
+	EmbeddedInventoryWidget = nullptr;
+	CarriedItemImage = nullptr;
 	TravelHeroAtlasTexture = nullptr;
 	TravelBackgroundTexture = nullptr;
 	TravelHeroFallbackTextures.Reset();
+	TravelAppliedHeroAtlasPath.Reset();
+	TravelAppliedEnemyAtlasPaths.Reset();
+	TravelAppliedCompanionAtlasPaths.Reset();
+	TravelAppliedHeroFrame = INDEX_NONE;
+	TravelAppliedEnemyFrames.Reset();
+	TravelAppliedCompanionFrames.Reset();
+	TravelAppliedHeroHealth = -1.0f;
+	TravelAppliedEnemyHealth.Reset();
+	TravelAppliedCompanionHealth.Reset();
 	RootCanvas->ClearChildren();
 	StageButtons.Reset();
 	ActionButtons.Reset();
@@ -1036,17 +2083,31 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 {
 	bChallengeSidePanelsReadOnly = ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport;
-	AddCanvas(RootCanvas, MakePanel(WidgetTree, Ink), FVector2D::ZeroVector, ShellSize);
+	AddCanvas(RootCanvas, MakeTransparentPanel(WidgetTree, TEXT("WorkbenchBackground")), FVector2D::ZeroVector, GameXXKDesktopTrainingLayout::GetReferenceCanvasSize());
+	AddCanvasRect(
+		RootCanvas,
+		MakeTransparentPanel(WidgetTree, TEXT("CenterWorkbenchFrame")),
+		GameXXKDesktopTrainingLayout::GetCenterShellRect());
+	BuildTopIdleStrip();
+	BuildBackpackTabToggle();
 	if (ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport)
 	{
-		BuildWarehousePanel(true);
+		if (bWarehousePanelOpen)
+		{
+			BuildWarehousePanel(true);
+		}
 		BuildChallengeViewport();
-		BuildTrainingMapPanel(true);
+		if (RightPanel == EGameXXKDesktopTrainingRightPanel::TrainingMap)
+		{
+			BuildTrainingMapPanel(true);
+		}
 	}
-	else
+	else if (bBackpackExpanded)
 	{
-		BuildTopIdleStrip();
-		BuildWarehousePanel();
+		if (bWarehousePanelOpen)
+		{
+			BuildWarehousePanel();
+		}
 		if (ActiveNav == EGameXXKDesktopTrainingNav::Talents)
 		{
 			BuildTalentsPanel();
@@ -1055,27 +2116,163 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 		{
 			BuildBackpackPanel();
 		}
-		if (ActiveNav == EGameXXKDesktopTrainingNav::Tools)
+		if (RightPanel == EGameXXKDesktopTrainingRightPanel::Tools)
 		{
 			BuildToolsPanel();
 		}
-		else
+		else if (RightPanel == EGameXXKDesktopTrainingRightPanel::TrainingMap)
 		{
 			BuildTrainingMapPanel();
 		}
+		BuildTopToolbar();
+		BuildBottomNavigation();
 	}
-	BuildBottomNavigation();
-	NoticePanel = MakePanel(WidgetTree, FLinearColor(0.08f, 0.05f, 0.03f, 0.96f));
-	NoticeText = MakeText(WidgetTree, LastNotice, 22, Gold);
-	NoticePanel->SetContent(NoticeText);
-	AddCanvas(RootCanvas, NoticePanel.Get(), FVector2D(700.0f, 18.0f), FVector2D(520.0f, 48.0f));
+	if (bExitConfirmationOpen)
+	{
+		BuildExitConfirmation();
+	}
+	if (CarriedEntry.IsValid())
+	{
+		BuildCarriedItemVisual();
+	}
+	if (!LastNotice.IsEmpty())
+	{
+		NoticePanel = MakePanel(WidgetTree, FLinearColor(0.08f, 0.05f, 0.03f, 0.96f));
+		NoticeText = MakeText(WidgetTree, LastNotice, 16, Gold);
+		NoticePanel->SetContent(NoticeText);
+		AddCanvas(RootCanvas, NoticePanel.Get(), FVector2D(560.0f, 216.0f), FVector2D(620.0f, 28.0f));
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackTabToggle()
+{
+	UGameXXKDesktopTrainingActionButton* Toggle = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		TEXT("BackpackTabToggleButton"));
+	Toggle->Configure(this, 60);
+	Toggle->SetStyle(MakeTextureButtonStyle(
+		bBackpackExpanded ? ButtonDangerTexturePath : ButtonPrimaryTexturePath,
+		FVector2D(68.0f, 44.0f),
+		FMargin(0.08f)));
+	Toggle->SetBackgroundColor(FLinearColor::White);
+	Toggle->SetContent(MakeText(
+		WidgetTree,
+		FText::FromString(bBackpackExpanded ? TEXT("▲") : TEXT("▼")),
+		24,
+		Ink));
+	Toggle->SetToolTipText(FText::FromString(
+		bBackpackExpanded
+			? TEXT("折叠背包与侧栏；历练挂机继续运行")
+			: TEXT("菜单 [Tab]：展开角色背包")));
+	AddCanvas(RootCanvas, Toggle, FVector2D(837.0f, 214.0f), FVector2D(68.0f, 44.0f));
+	ActionButtons.Add(Toggle);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopToolbar()
+{
+	struct FToolbarSpec
+	{
+		int32 ActionId;
+		const TCHAR* Name;
+		const TCHAR* Label;
+		const TCHAR* Tooltip;
+	};
+	const FToolbarSpec Specs[] = {
+		{14, TEXT("TopToolbarAlwaysOnTop"), bAlwaysOnTop ? TEXT("置") : TEXT("顶"), TEXT("窗口始终置于桌面最顶层")},
+		{17, TEXT("TopToolbarMute"), bMuted ? TEXT("静") : TEXT("声"), TEXT("静音 / 恢复声音")},
+		{18, TEXT("TopToolbarMail"), TEXT("信"), TEXT("邮件")},
+		{19, TEXT("TopToolbarShop"), TEXT("店"), TEXT("商店")},
+		{15, TEXT("TopToolbarExit"), TEXT("退"), TEXT("退出游戏（需要再次确认）")}};
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Specs); ++Index)
+	{
+		UGameXXKDesktopTrainingActionButton* Button = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			Specs[Index].Name);
+		Button->Configure(this, Specs[Index].ActionId);
+		Button->SetStyle(MakeTextureButtonStyle(
+			Specs[Index].ActionId == 15 ? ButtonDangerTexturePath : ButtonNeutralTexturePath,
+			FVector2D(42.0f, 36.0f),
+			FMargin(0.08f)));
+		Button->SetBackgroundColor(FLinearColor::White);
+		if (Index == 0)
+		{
+			UImage* PinIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("TopToolbarAlwaysOnTopIcon"));
+			const TCHAR* PinTexturePath = bAlwaysOnTop
+				? TruthTopToolbarAlwaysOnTopTexturePath
+				: TruthTopToolbarAlwaysOnTopOffTexturePath;
+			PinIcon->SetBrush(MakeTextureBrush(PinTexturePath, FVector2D(52.0f, 52.0f)));
+			UScaleBox* PinScale = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), TEXT("TopToolbarAlwaysOnTopIconScale"));
+			PinScale->SetStretch(EStretch::ScaleToFit);
+			PinScale->SetStretchDirection(EStretchDirection::Both);
+			PinScale->SetContent(PinIcon);
+			Button->SetContent(PinScale);
+		}
+		else
+		{
+			Button->SetContent(MakeText(WidgetTree, FText::FromString(Specs[Index].Label), 15, Ink));
+		}
+		Button->SetToolTipText(FText::FromString(Specs[Index].Tooltip));
+		AddCanvas(RootCanvas, Button, FVector2D(1092.0f + Index * 47.0f, 226.0f), FVector2D(42.0f, 36.0f));
+		ActionButtons.Add(Button);
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildExitConfirmation()
+{
+	UBorder* Frame = MakePanel(WidgetTree, PanelAlt, TEXT("ExitGameConfirmation"));
+	AddCanvas(RootCanvas, Frame, FVector2D(690.0f, 360.0f), FVector2D(360.0f, 210.0f));
+	UTextBlock* Prompt = MakeText(
+		WidgetTree,
+		FText::FromString(TEXT("退出游戏？\n历练挂机会在关闭游戏后按离线规则结算。")),
+		21,
+		Ink);
+	Prompt->SetJustification(ETextJustify::Center);
+	AddCanvas(RootCanvas, Prompt, FVector2D(725.0f, 395.0f), FVector2D(290.0f, 82.0f));
+	UGameXXKDesktopTrainingActionButton* Cancel = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		TEXT("ExitGameCancelButton"));
+	Cancel->Configure(this, 53);
+	Cancel->SetStyle(MakeTextureButtonStyle(ButtonNeutralTexturePath, FVector2D(116.0f, 48.0f), FMargin(0.08f)));
+	Cancel->SetBackgroundColor(FLinearColor::White);
+	Cancel->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("取消")), 18, Ink));
+	AddCanvas(RootCanvas, Cancel, FVector2D(725.0f, 495.0f), FVector2D(116.0f, 48.0f));
+	ActionButtons.Add(Cancel);
+	UGameXXKDesktopTrainingActionButton* Confirm = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		TEXT("ExitGameConfirmButton"));
+	Confirm->Configure(this, 54);
+	Confirm->SetStyle(MakeTextureButtonStyle(ButtonDangerTexturePath, FVector2D(116.0f, 48.0f), FMargin(0.08f)));
+	Confirm->SetBackgroundColor(FLinearColor::White);
+	Confirm->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("退出")), 18, Ink));
+	AddCanvas(RootCanvas, Confirm, FVector2D(899.0f, 495.0f), FVector2D(116.0f, 48.0f));
+	ActionButtons.Add(Confirm);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildCarriedItemVisual()
+{
+	if (!CarriedEntry.IsValid())
+	{
+		return;
+	}
+	CarriedItemImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("DesktopCarriedItemImage"));
+	if (!CarriedEntry.Payload.IconPath.IsEmpty())
+	{
+		CarriedItemImage->SetBrush(MakeTextureBrush(*CarriedEntry.Payload.IconPath, FVector2D(56.0f, 56.0f)));
+	}
+	else
+	{
+		CarriedItemImage->SetBrush(MakeTextureBrush(ItemSlotTexturePath, FVector2D(56.0f, 56.0f)));
+	}
+	CarriedItemImage->SetColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 0.92f));
+	CarriedItemImage->SetIsEnabled(false);
+	AddCanvas(RootCanvas, CarriedItemImage.Get(), FVector2D(800.0f, 470.0f), FVector2D(56.0f, 56.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 {
-	UBorder* Strip = MakePanel(WidgetTree, PanelAlt);
+	UBorder* Strip = MakeTransparentPanel(WidgetTree, TEXT("TrainingTravelStrip"));
 	TravelVisualViewport = Strip;
-	AddCanvas(RootCanvas, Strip, FVector2D(360.0f, 22.0f), TravelVisualSize);
+	AddCanvasRect(RootCanvas, Strip, GameXXKDesktopTrainingLayout::GetIdleStripRect());
 	UCanvasPanel* TravelCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("TravelVisualCanvas"));
 	if (TravelCanvas)
 	{
@@ -1093,9 +2290,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 			BackgroundBrush.DrawAs = ESlateBrushDrawType::Image;
 			BackgroundBrush.ImageSize = TravelBackgroundImageSize;
 		}
-		for (int32 TileIndex = 0; TileIndex < 2; ++TileIndex)
+		for (int32 TileIndex = 0; TileIndex < 3; ++TileIndex)
 		{
-			UImage* Tile = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+			UImage* Tile = WidgetTree->ConstructWidget<UImage>(
+				UImage::StaticClass(),
+				*FString::Printf(TEXT("TravelBackgroundTile_%d"), TileIndex));
 			if (!Tile)
 			{
 				continue;
@@ -1106,19 +2305,21 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 			}
 			else
 			{
-				Tile->SetColorAndOpacity(PanelAlt);
+				Tile->SetColorAndOpacity(FLinearColor::Transparent);
 			}
 			UCanvasPanelSlot* TileSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(Tile));
 			if (TileSlot)
 			{
-				TileSlot->SetPosition(FVector2D(TileIndex * TravelVisualTileSize.X, -66.0f));
+				TileSlot->SetPosition(FVector2D((TileIndex - 1) * TravelBackgroundImageSize.X, 0.0f));
 				TileSlot->SetSize(TravelBackgroundImageSize);
+				TileSlot->SetZOrder(0);
 			}
+			TravelBackgroundImages.Add(Tile);
 			if (TileIndex == 0)
 			{
 				TravelBackgroundImageA = Tile;
 			}
-			else
+			else if (TileIndex == 1)
 			{
 				TravelBackgroundImageB = Tile;
 			}
@@ -1130,103 +2331,145 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 		{
 			TravelHeroFallbackTextures.Add(LoadTexture(FallbackPath));
 		}
-		TravelHeroImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("TravelHeroWalkloop"));
+		for (int32 EnemySlotIndex = 0; EnemySlotIndex < 3; ++EnemySlotIndex)
+		{
+			UImage* EnemyImage = WidgetTree->ConstructWidget<UImage>(
+				UImage::StaticClass(),
+				*FString::Printf(TEXT("TravelEnemyAnimatedUnit_%d"), EnemySlotIndex));
+			if (!EnemyImage)
+			{
+				continue;
+			}
+			EnemyImage->SetRenderTransformPivot(FVector2D(0.5f, 1.0f));
+			EnemyImage->SetVisibility(ESlateVisibility::Collapsed);
+			UCanvasPanelSlot* EnemySlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(EnemyImage));
+			if (EnemySlot)
+			{
+				EnemySlot->SetPosition(FVector2D(20.0f + EnemySlotIndex * 125.0f, 23.0f));
+				EnemySlot->SetSize(TravelCombatVisualSize);
+				EnemySlot->SetZOrder(2);
+			}
+			TravelEnemyImages.Add(EnemyImage);
+			TravelAppliedEnemyAtlasPaths.Add(FSoftObjectPath());
+			TravelAppliedEnemyFrames.Add(INDEX_NONE);
+			TravelAppliedEnemyHealth.Add(-1.0f);
+		}
+
+		TravelHeroImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("TravelHeroAnimatedUnit"));
 		if (TravelHeroImage)
 		{
+			TravelHeroImage->SetRenderTransformPivot(FVector2D(0.5f, 1.0f));
 			UCanvasPanelSlot* HeroSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(TravelHeroImage));
 			if (HeroSlot)
 			{
-				HeroSlot->SetPosition(FVector2D(470.0f, -18.0f));
-				HeroSlot->SetSize(TravelHeroVisualSize);
+				HeroSlot->SetPosition(FVector2D(520.0f, 23.0f));
+				HeroSlot->SetSize(TravelCombatVisualSize);
+				HeroSlot->SetZOrder(2);
 			}
+		}
+
+		for (int32 CompanionIndex = 0; CompanionIndex < 2; ++CompanionIndex)
+		{
+			UImage* CompanionImage = WidgetTree->ConstructWidget<UImage>(
+				UImage::StaticClass(),
+				*FString::Printf(TEXT("TravelCompanionAnimatedUnit_%d"), CompanionIndex));
+			if (!CompanionImage)
+			{
+				continue;
+			}
+			CompanionImage->SetRenderTransformPivot(FVector2D(0.5f, 1.0f));
+			CompanionImage->SetVisibility(ESlateVisibility::Collapsed);
+			UCanvasPanelSlot* CompanionSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(CompanionImage));
+			if (CompanionSlot)
+			{
+				CompanionSlot->SetPosition(FVector2D(645.0f + CompanionIndex * 125.0f, 23.0f));
+				CompanionSlot->SetSize(TravelCombatVisualSize);
+				CompanionSlot->SetZOrder(2);
+			}
+			TravelCompanionImages.Add(CompanionImage);
+			TravelAppliedCompanionAtlasPaths.Add(FSoftObjectPath());
+			TravelAppliedCompanionFrames.Add(INDEX_NONE);
+			TravelAppliedCompanionHealth.Add(-1.0f);
+		}
+
+		for (int32 EnemySlotIndex = 0; EnemySlotIndex < 3; ++EnemySlotIndex)
+		{
+			UProgressBar* EnemyHealth = WidgetTree->ConstructWidget<UProgressBar>(
+				UProgressBar::StaticClass(),
+				*FString::Printf(TEXT("TravelEnemyHealth_%d"), EnemySlotIndex));
+			if (!EnemyHealth)
+			{
+				continue;
+			}
+			EnemyHealth->SetFillColorAndOpacity(FLinearColor(0.78f, 0.08f, 0.045f, 1.0f));
+			EnemyHealth->SetPercent(1.0f);
+			EnemyHealth->SetVisibility(ESlateVisibility::Collapsed);
+			UCanvasPanelSlot* HealthSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(EnemyHealth));
+			if (HealthSlot)
+			{
+				HealthSlot->SetPosition(FVector2D(33.0f + EnemySlotIndex * 125.0f, 174.0f));
+				HealthSlot->SetSize(TravelHealthBarSize);
+				HealthSlot->SetZOrder(3);
+			}
+			TravelEnemyHealthBars.Add(EnemyHealth);
+		}
+
+		TravelHeroHealth = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("TravelHeroHealth"));
+		if (TravelHeroHealth)
+		{
+			TravelHeroHealth->SetFillColorAndOpacity(FLinearColor(0.12f, 0.72f, 0.22f, 1.0f));
+			TravelHeroHealth->SetPercent(1.0f);
+			TravelHeroHealth->SetVisibility(ESlateVisibility::Collapsed);
+			UCanvasPanelSlot* HealthSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(TravelHeroHealth));
+			if (HealthSlot)
+			{
+				HealthSlot->SetPosition(FVector2D(533.0f, 174.0f));
+				HealthSlot->SetSize(TravelHealthBarSize);
+				HealthSlot->SetZOrder(3);
+			}
+		}
+
+		for (int32 CompanionIndex = 0; CompanionIndex < 2; ++CompanionIndex)
+		{
+			UProgressBar* CompanionHealth = WidgetTree->ConstructWidget<UProgressBar>(
+				UProgressBar::StaticClass(),
+				*FString::Printf(TEXT("TravelCompanionHealth_%d"), CompanionIndex));
+			if (!CompanionHealth)
+			{
+				continue;
+			}
+			CompanionHealth->SetFillColorAndOpacity(FLinearColor(0.12f, 0.72f, 0.22f, 1.0f));
+			CompanionHealth->SetPercent(1.0f);
+			CompanionHealth->SetVisibility(ESlateVisibility::Collapsed);
+			UCanvasPanelSlot* HealthSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(CompanionHealth));
+			if (HealthSlot)
+			{
+				HealthSlot->SetPosition(FVector2D(658.0f + CompanionIndex * 125.0f, 174.0f));
+				HealthSlot->SetSize(TravelHealthBarSize);
+				HealthSlot->SetZOrder(3);
+			}
+			TravelCompanionHealthBars.Add(CompanionHealth);
 		}
 	}
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKTrainingTravelRuntime TravelRuntime = Subsystem
 		? Subsystem->GetTrainingTravelRuntimeCopy()
 		: FGameXXKTrainingTravelRuntime();
-	FString PhaseLabel = TEXT("待机");
-	switch (TravelRuntime.Phase)
+	TravelVisualRuntime.Synchronize(TravelRuntime);
+	if (TravelRuntime.Enemies.IsEmpty())
 	{
-	case EGameXXKTrainingTravelPhase::Walking: PhaseLabel = TEXT("走动"); break;
-	case EGameXXKTrainingTravelPhase::Combat: PhaseLabel = TEXT("自动战斗"); break;
-	case EGameXXKTrainingTravelPhase::Defeated: PhaseLabel = TEXT("阵亡"); break;
-	default: break;
+		RequestTravelCombatAtlases(TravelRuntime.EnemyDefinitionId);
 	}
-	FString CurrentEnemyDisplayName = TravelRuntime.EnemyDefinitionId.ToString();
-	FString EnemyLabel = TEXT("当前遭遇：等待");
-	if (Subsystem && !TravelRuntime.EnemyDefinitionId.IsNone())
+	else
 	{
-		const TArray<FGameXXKTrainingEncounterDefinition> Encounters = Subsystem->GetTrainingEncounterSequence(TravelRuntime.StageId, true);
-		if (Encounters.IsValidIndex(TravelRuntime.EncounterIndex))
+		for (const FGameXXKTrainingTravelEnemyRuntime& Enemy : TravelRuntime.Enemies)
 		{
-			CurrentEnemyDisplayName = Encounters[TravelRuntime.EncounterIndex].DisplayName.ToString();
-			EnemyLabel = FString::Printf(
-				TEXT("当前遭遇：%s · %s · HP %d/%d"),
-				*Encounters[TravelRuntime.EncounterIndex].DisplayName.ToString(),
-				*PhaseLabel,
-				TravelRuntime.EnemyHP,
-				TravelRuntime.EnemyMaxHP);
+			RequestTravelCombatAtlases(Enemy.EnemyDefinitionId);
 		}
-	}
-	UTextBlock* Label = MakeText(WidgetTree, FText::FromString(FString::Printf(TEXT("游历挂机 · 3 敌方 / 3 我方 · %s"), *EnemyLabel)), 18, Gold);
-	TravelVisualStatusText = Label;
-	AddCanvas(RootCanvas, Label, FVector2D(385.0f, 38.0f), FVector2D(650.0f, 40.0f));
-	for (int32 Index = 0; Index < 3; ++Index)
-	{
-		const bool bCurrentEnemy = Index == 0 && !TravelRuntime.EnemyDefinitionId.IsNone();
-		const FString EnemyText = bCurrentEnemy
-			? FString::Printf(TEXT("敌 %d\n%s\n%d/%d"), Index + 1, *CurrentEnemyDisplayName, TravelRuntime.EnemyHP, TravelRuntime.EnemyMaxHP)
-			: FString::Printf(TEXT("敌 %d\n待机"), Index + 1);
-		UTextBlock* Enemy = MakeText(WidgetTree, FText::FromString(EnemyText), 17, FLinearColor(1.0f, 0.65f, 0.55f, 1.0f));
-		AddCanvas(RootCanvas, Enemy, FVector2D(725.0f + Index * 115.0f, 35.0f), FVector2D(95.0f, 58.0f));
-		const FString PartyText = Index == 0
-			? FString::Printf(TEXT("角 %d\n%s\n%d/%d"), Index + 1, *PhaseLabel, TravelRuntime.PlayerHP, TravelRuntime.PlayerMaxHP)
-			: FString::Printf(TEXT("角 %d\n待机"), Index + 1);
-		UTextBlock* Party = MakeText(WidgetTree, FText::FromString(PartyText), 17, FLinearColor(0.55f, 0.85f, 1.0f, 1.0f));
-		AddCanvas(RootCanvas, Party, FVector2D(1080.0f + Index * 115.0f, 35.0f), FVector2D(95.0f, 58.0f));
 	}
 	const FGameXXKTrainingOfflineReward PendingReward = Subsystem
 		? Subsystem->GetPendingTrainingTravelRewardCopy()
 		: FGameXXKTrainingOfflineReward();
-	UTextBlock* PendingLabel = MakeText(
-		WidgetTree,
-		FText::FromString(FString::Printf(
-			TEXT("待收菜：%d 金 · 普通箱 %d · 精英箱 %d"),
-			PendingReward.Gold,
-			PendingReward.NormalChestCount,
-			PendingReward.AdvancedChestCount)),
-		15,
-		FLinearColor(0.90f, 0.82f, 0.56f, 1.0f));
-	AddCanvas(RootCanvas, PendingLabel, FVector2D(1335.0f, 28.0f), FVector2D(145.0f, 44.0f));
-	TravelCooldownText = MakeText(WidgetTree, FText::GetEmpty(), 15, FLinearColor(0.95f, 0.82f, 0.46f, 1.0f));
-	TravelCooldownText->SetToolTipText(FText::FromString(TEXT("游历宝箱概率与局内一致；普通箱掉落后 4 分钟冷却，精英箱掉落后 6 分钟冷却。")));
-	AddCanvas(RootCanvas, TravelCooldownText.Get(), FVector2D(385.0f, 88.0f), FVector2D(335.0f, 30.0f));
-	UpdateTravelCooldownText();
-	UGameXXKDesktopTrainingActionButton* CollectButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	CollectButton->Configure(this, 16);
-	CollectButton->SetBackgroundColor(PendingReward.Gold > 0 || PendingReward.NormalChestCount > 0 || PendingReward.AdvancedChestCount > 0 ? Accent : Panel);
-	CollectButton->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("收菜")), 18));
-	CollectButton->SetToolTipText(FText::FromString(TEXT("领取离线游历的金币、经验和宝箱；宝箱概率与局内一致")));
-	CollectButton->SetIsEnabled(PendingReward.Gold > 0 || PendingReward.Experience > 0 || PendingReward.NormalChestCount > 0 || PendingReward.AdvancedChestCount > 0);
-	AddCanvas(RootCanvas, CollectButton, FVector2D(1325.0f, 72.0f), FVector2D(145.0f, 42.0f));
-	ActionButtons.Add(CollectButton);
-	UGameXXKDesktopTrainingActionButton* RetryButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	RetryButton->Configure(this, 10);
-	RetryButton->SetBackgroundColor(Accent);
-	RetryButton->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("失败重试")), 18));
-	AddCanvas(RootCanvas, RetryButton, FVector2D(1485.0f, 42.0f), FVector2D(135.0f, 50.0f));
-	ActionButtons.Add(RetryButton);
-	UpdateTravelVisuals();
-}
-
-void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelCooldownText()
-{
-	if (!TravelCooldownText)
-	{
-		return;
-	}
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKTrainingProgress Progress = Subsystem
 		? Subsystem->GetTrainingProgressCopy()
 		: FGameXXKTrainingProgress();
@@ -1235,13 +2478,26 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelCooldownText()
 		const int32 SafeSeconds = FMath::Max(0, RemainingSeconds);
 		return FString::Printf(TEXT("%02d:%02d"), SafeSeconds / 60, SafeSeconds % 60);
 	};
-	const FString NormalText = Progress.TravelNormalChestCooldownRemainingSeconds > 0
-		? FString::Printf(TEXT("普通箱 CD %s"), *FormatCooldown(Progress.TravelNormalChestCooldownRemainingSeconds))
-		: TEXT("普通箱 可掉落");
-	const FString AdvancedText = Progress.TravelAdvancedChestCooldownRemainingSeconds > 0
-		? FString::Printf(TEXT("精英箱 CD %s"), *FormatCooldown(Progress.TravelAdvancedChestCooldownRemainingSeconds))
-		: TEXT("精英箱 可掉落");
-	TravelCooldownText->SetText(FText::FromString(FString::Printf(TEXT("掉箱冷却 · %s · %s"), *NormalText, *AdvancedText)));
+	const FString RewardTooltip = FString::Printf(
+		TEXT("待领取：%d 金币 / %d 经验 / 普通箱 %d / 精英箱 %d\n普通箱冷却 %s · 精英箱冷却 %s"),
+		PendingReward.Gold,
+		PendingReward.Experience,
+		PendingReward.NormalChestCount,
+		PendingReward.AdvancedChestCount,
+		*FormatCooldown(Progress.TravelNormalChestCooldownRemainingSeconds),
+		*FormatCooldown(Progress.TravelAdvancedChestCooldownRemainingSeconds));
+	Strip->SetToolTipText(FText::FromString(RewardTooltip));
+	UGameXXKDesktopTrainingActionButton* RetryButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		TEXT("TravelRetryButton"));
+	RetryButton->Configure(this, 10);
+	RetryButton->SetStyle(MakeTextureButtonStyle(ButtonDangerTexturePath, FVector2D(104.0f, 45.0f), FMargin(0.08f)));
+	RetryButton->SetBackgroundColor(FLinearColor::White);
+	RetryButton->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("失败重试")), 18));
+	RetryButton->SetToolTipText(FText::FromString(TEXT("关闭时阵亡会回退到前一关；1-1 失败仍重试 1-1。")));
+	AddCanvas(RootCanvas, RetryButton, FVector2D(1223.0f, 150.0f), FVector2D(104.0f, 45.0f));
+	ActionButtons.Add(RetryButton);
+	UpdateTravelVisuals();
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
@@ -1252,334 +2508,751 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 	}
 
 	const float ScrollOffset = TravelVisualRuntime.GetScrollOffset();
-	TravelBackgroundImageA->SetRenderTranslation(FVector2D(-ScrollOffset, 0.0f));
-	TravelBackgroundImageB->SetRenderTranslation(FVector2D(-ScrollOffset, 0.0f));
-
-	const int32 WalkFrame = TravelVisualRuntime.GetWalkFrameIndex();
-	FSlateBrush HeroBrush;
-	HeroBrush.DrawAs = ESlateBrushDrawType::Image;
-	HeroBrush.ImageSize = TravelHeroVisualSize;
-	if (TravelHeroAtlasTexture)
+	for (UImage* BackgroundImage : TravelBackgroundImages)
 	{
-		HeroBrush.SetResourceObject(TravelHeroAtlasTexture);
-		const int32 SafeFrame = FMath::Clamp(WalkFrame, 0, FGameXXKTrainingTravelVisualRuntime::WalkFrameCount - 1);
-		const int32 Column = SafeFrame % 8;
-		const int32 Row = SafeFrame / 8;
-		HeroBrush.SetUVRegion(FBox2f(
-			FVector2f(static_cast<float>(Column) / 8.0f, static_cast<float>(Row) / 8.0f),
-			FVector2f(static_cast<float>(Column + 1) / 8.0f, static_cast<float>(Row + 1) / 8.0f)));
-	}
-	else if (TravelHeroFallbackTextures.Num() > 0
-		&& TravelHeroFallbackTextures.IsValidIndex(WalkFrame % TravelHeroFallbackTextures.Num()))
-	{
-		HeroBrush.SetResourceObject(TravelHeroFallbackTextures[WalkFrame % TravelHeroFallbackTextures.Num()]);
-	}
-	if (HeroBrush.GetResourceObject())
-	{
-		TravelHeroImage->SetBrush(HeroBrush);
+		if (BackgroundImage)
+		{
+			// The authored hero walks left, so scenery must travel right to convey
+			// forward movement while the hero remains anchored in the HUD strip.
+			BackgroundImage->SetRenderTranslation(FVector2D(ScrollOffset, 0.0f));
+		}
 	}
 
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const FGameXXKTrainingTravelRuntime TravelRuntime = Subsystem
+	const FGameXXKTrainingTravelRuntime AuthoritativeRuntime = Subsystem
 		? Subsystem->GetTrainingTravelRuntimeCopy()
 		: FGameXXKTrainingTravelRuntime();
-	FString PhaseLabel = TEXT("待机");
-	switch (TravelRuntime.Phase)
+	const FName PresentedEnemyId = TravelVisualRuntime.GetEnemyDefinitionId();
+	RequestTravelCombatAtlases(PresentedEnemyId.IsNone() ? AuthoritativeRuntime.EnemyDefinitionId : PresentedEnemyId);
+	for (int32 EnemySlotIndex = 0; EnemySlotIndex < TravelVisualRuntime.GetEnemyFormationSlotCount(); ++EnemySlotIndex)
 	{
-	case EGameXXKTrainingTravelPhase::Walking: PhaseLabel = TEXT("走动"); break;
-	case EGameXXKTrainingTravelPhase::Combat: PhaseLabel = TEXT("遭遇暂停"); break;
-	case EGameXXKTrainingTravelPhase::Defeated: PhaseLabel = TEXT("阵亡暂停"); break;
-	default: break;
+		RequestTravelCombatAtlases(TravelVisualRuntime.GetEnemyDefinitionIdForSlot(EnemySlotIndex));
 	}
-	if (TravelVisualStatusText)
+
+	if (TravelVisualRuntime.IsWalking())
 	{
-		const FString StageText = TravelRuntime.StageId.IsNone()
-			? TEXT("等待游历")
-			: TravelRuntime.StageId.ToString();
-		TravelVisualStatusText->SetText(FText::FromString(FString::Printf(
-			TEXT("游历挂机 · %s · %s · 循环 %d"),
-			*StageText,
-			*PhaseLabel,
-			TravelVisualRuntime.GetCompletedLoopCount())));
+		const int32 WalkFrame = TravelVisualRuntime.GetWalkFrameIndex();
+		const FSoftObjectPath WalkAtlasPath(TravelHeroAtlasTexturePath);
+		if (TravelHeroAtlasTexture
+			&& (TravelAppliedHeroAtlasPath != WalkAtlasPath || TravelAppliedHeroFrame != WalkFrame))
+		{
+			FSlateBrush HeroBrush;
+			HeroBrush.DrawAs = ESlateBrushDrawType::Image;
+			HeroBrush.ImageSize = TravelHeroWalkVisualSize;
+			HeroBrush.SetResourceObject(TravelHeroAtlasTexture);
+			const int32 SafeFrame = FMath::Clamp(WalkFrame, 0, FGameXXKTrainingTravelVisualRuntime::WalkFrameCount - 1);
+			const int32 Column = SafeFrame % 8;
+			const int32 Row = SafeFrame / 8;
+			HeroBrush.SetUVRegion(FBox2f(
+				FVector2f(static_cast<float>(Column) / 8.0f, static_cast<float>(Row) / 8.0f),
+				FVector2f(static_cast<float>(Column + 1) / 8.0f, static_cast<float>(Row + 1) / 8.0f)));
+			TravelHeroImage->SetBrush(HeroBrush);
+			TravelAppliedHeroAtlasPath = WalkAtlasPath;
+			TravelAppliedHeroFrame = WalkFrame;
+		}
+		TravelHeroImage->SetRenderScale(FVector2D(1.0f, 1.0f));
 	}
+	else
+	{
+		const EGameXXKBattleAnimationAction HeroAction = TravelVisualRuntime.GetHeroAction();
+		FGameXXKBattleAnimationClipDescriptor HeroClip = FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
+			MakeTravelOneKUnitId(FGameXXKEquipmentRules::HeroCharacterId()),
+			NAME_None,
+			false,
+			HeroAction);
+		float HeroPhaseDuration = 0.0f;
+		switch (TravelVisualRuntime.GetVisualPhase())
+		{
+		case EGameXXKTrainingTravelVisualPhase::HeroAttack: HeroPhaseDuration = FGameXXKTrainingTravelVisualRuntime::HeroAttackSeconds; break;
+		case EGameXXKTrainingTravelVisualPhase::HeroHit: HeroPhaseDuration = FGameXXKTrainingTravelVisualRuntime::HeroHitSeconds; break;
+		case EGameXXKTrainingTravelVisualPhase::HeroDeath: HeroPhaseDuration = FGameXXKTrainingTravelVisualRuntime::HeroDeathSeconds; break;
+		default: break;
+		}
+		if (HeroPhaseDuration > 0.0f)
+		{
+			HeroClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(HeroClip, HeroPhaseDuration);
+		}
+		if (!ApplyTravelAnimationFrame(
+			TravelHeroImage,
+			HeroClip,
+			HeroAction == EGameXXKBattleAnimationAction::Idle,
+			TravelAppliedHeroAtlasPath,
+			TravelAppliedHeroFrame)
+			&& TravelHeroFallbackTextures.Num() > 0
+			&& TravelHeroFallbackTextures[0]
+			&& TravelAppliedHeroAtlasPath == FSoftObjectPath(TravelHeroAtlasTexturePath))
+		{
+			FSlateBrush FallbackBrush;
+			FallbackBrush.DrawAs = ESlateBrushDrawType::Image;
+			FallbackBrush.ImageSize = TravelCombatVisualSize;
+			FallbackBrush.SetResourceObject(TravelHeroFallbackTextures[0]);
+			TravelHeroImage->SetBrush(FallbackBrush);
+			TravelAppliedHeroAtlasPath.Reset();
+			TravelAppliedHeroFrame = INDEX_NONE;
+		}
+		// The compact strip uses the same enemy-left / party-right formation as
+		// the battle board.  Preserve the authored left-facing hero action and
+		// compensate for each action atlas's authored alpha-bounds difference.
+		const float HeroContentScale = ResolveTravelHeroContentScale(HeroAction);
+		TravelHeroImage->SetRenderScale(FVector2D(
+			HeroContentScale,
+			HeroContentScale));
+	}
+
+	const int32 PresentedEnemySlotIndex = TravelVisualRuntime.GetPresentedEnemySlotIndex();
+	bool bEnemyVisible = false;
+	for (int32 EnemySlotIndex = 0; EnemySlotIndex < TravelEnemyImages.Num(); ++EnemySlotIndex)
+	{
+		UImage* EnemyImage = TravelEnemyImages[EnemySlotIndex];
+		UProgressBar* EnemyHealthBar = TravelEnemyHealthBars.IsValidIndex(EnemySlotIndex)
+			? TravelEnemyHealthBars[EnemySlotIndex]
+			: nullptr;
+		const bool bShowEnemy = TravelVisualRuntime.IsEnemySlotVisible(EnemySlotIndex);
+		bEnemyVisible |= bShowEnemy;
+		if (EnemyImage)
+		{
+			EnemyImage->SetVisibility(bShowEnemy ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		}
+		if (EnemyHealthBar)
+		{
+			EnemyHealthBar->SetVisibility(bShowEnemy ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		}
+		if (!bShowEnemy
+			|| !EnemyImage
+			|| !TravelAppliedEnemyAtlasPaths.IsValidIndex(EnemySlotIndex)
+			|| !TravelAppliedEnemyFrames.IsValidIndex(EnemySlotIndex)
+			|| !TravelAppliedEnemyHealth.IsValidIndex(EnemySlotIndex))
+		{
+			continue;
+		}
+
+		const FName EnemyId = TravelVisualRuntime.GetEnemyDefinitionIdForSlot(EnemySlotIndex);
+		const bool bPresentedTarget = EnemySlotIndex == PresentedEnemySlotIndex;
+		const EGameXXKBattleAnimationAction EnemyAction = bPresentedTarget
+			? TravelVisualRuntime.GetEnemyAction()
+			: EGameXXKBattleAnimationAction::Idle;
+		FGameXXKBattleAnimationClipDescriptor EnemyClip = FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
+			MakeTravelOneKUnitId(EnemyId),
+			MakeTravelOneKUnitId(EnemyId),
+			true,
+			EnemyAction);
+		float EnemyPhaseDuration = 0.0f;
+		if (bPresentedTarget)
+		{
+			switch (TravelVisualRuntime.GetVisualPhase())
+			{
+			case EGameXXKTrainingTravelVisualPhase::EnemyHit: EnemyPhaseDuration = FGameXXKTrainingTravelVisualRuntime::EnemyHitSeconds; break;
+			case EGameXXKTrainingTravelVisualPhase::EnemyAttack: EnemyPhaseDuration = FGameXXKTrainingTravelVisualRuntime::EnemyAttackSeconds; break;
+			case EGameXXKTrainingTravelVisualPhase::EnemyDeath: EnemyPhaseDuration = FGameXXKTrainingTravelVisualRuntime::EnemyDeathSeconds; break;
+			default: break;
+			}
+		}
+		if (EnemyPhaseDuration > 0.0f)
+		{
+			EnemyClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(EnemyClip, EnemyPhaseDuration);
+		}
+		ApplyTravelAnimationFrame(
+			EnemyImage,
+			EnemyClip,
+			EnemyAction == EGameXXKBattleAnimationAction::Idle,
+			TravelAppliedEnemyAtlasPaths[EnemySlotIndex],
+			TravelAppliedEnemyFrames[EnemySlotIndex]);
+		const float EnemyContentScale = ResolveTravelEnemyContentScale(EnemyId, EnemyAction);
+		EnemyImage->SetRenderScale(FVector2D(EnemyContentScale, EnemyContentScale));
+
+		const float EnemyHealth = TravelVisualRuntime.GetEnemyHealthFractionForSlot(EnemySlotIndex);
+		if (EnemyHealthBar && !FMath::IsNearlyEqual(EnemyHealth, TravelAppliedEnemyHealth[EnemySlotIndex]))
+		{
+			EnemyHealthBar->SetPercent(EnemyHealth);
+			TravelAppliedEnemyHealth[EnemySlotIndex] = EnemyHealth;
+		}
+	}
+	TravelHeroHealth->SetVisibility(bEnemyVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+	const TArray<FName> CompanionUnitIds = GetTravelCompanionUnitIds();
+	for (int32 CompanionIndex = 0; CompanionIndex < TravelCompanionImages.Num(); ++CompanionIndex)
+	{
+		UImage* CompanionImage = TravelCompanionImages[CompanionIndex];
+		UProgressBar* CompanionHealthBar = TravelCompanionHealthBars.IsValidIndex(CompanionIndex)
+			? TravelCompanionHealthBars[CompanionIndex]
+			: nullptr;
+		const bool bShowCompanion = bEnemyVisible && CompanionUnitIds.IsValidIndex(CompanionIndex);
+		if (!CompanionImage)
+		{
+			continue;
+		}
+		CompanionImage->SetVisibility(
+			bShowCompanion ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		if (CompanionHealthBar)
+		{
+			CompanionHealthBar->SetVisibility(
+				bShowCompanion ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+			const float CompanionHealth = TravelVisualRuntime.GetPartyHealthFraction(CompanionIndex + 1);
+			if (bShowCompanion
+				&& TravelAppliedCompanionHealth.IsValidIndex(CompanionIndex)
+				&& !FMath::IsNearlyEqual(TravelAppliedCompanionHealth[CompanionIndex], CompanionHealth))
+			{
+				CompanionHealthBar->SetPercent(CompanionHealth);
+				TravelAppliedCompanionHealth[CompanionIndex] = CompanionHealth;
+			}
+		}
+		if (!bShowCompanion
+			|| !TravelAppliedCompanionAtlasPaths.IsValidIndex(CompanionIndex)
+			|| !TravelAppliedCompanionFrames.IsValidIndex(CompanionIndex))
+		{
+			continue;
+		}
+
+		const FName CompanionUnitId = CompanionUnitIds[CompanionIndex];
+		const EGameXXKBattleAnimationAction CompanionAction =
+			TravelVisualRuntime.GetPartyAction(CompanionIndex + 1);
+		FGameXXKBattleAnimationClipDescriptor CompanionClip =
+			FGameXXKBattleAnimationPresentation::ResolveClip(
+				MakeTravelOneKUnitId(CompanionUnitId),
+				false,
+				CompanionAction);
+		float CompanionPhaseDuration = 0.0f;
+		switch (TravelVisualRuntime.GetVisualPhase())
+		{
+		case EGameXXKTrainingTravelVisualPhase::HeroAttack:
+			if (CompanionAction == EGameXXKBattleAnimationAction::Attack)
+			{
+				CompanionPhaseDuration = FGameXXKTrainingTravelVisualRuntime::HeroAttackSeconds;
+			}
+			break;
+		case EGameXXKTrainingTravelVisualPhase::HeroHit:
+			if (CompanionAction == EGameXXKBattleAnimationAction::Hit)
+			{
+				CompanionPhaseDuration = FGameXXKTrainingTravelVisualRuntime::HeroHitSeconds;
+			}
+			break;
+		case EGameXXKTrainingTravelVisualPhase::HeroDeath:
+			if (CompanionAction == EGameXXKBattleAnimationAction::Death)
+			{
+				CompanionPhaseDuration = FGameXXKTrainingTravelVisualRuntime::HeroDeathSeconds;
+			}
+			break;
+		default: break;
+		}
+		if (CompanionPhaseDuration > 0.0f)
+		{
+			CompanionClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(
+				CompanionClip,
+				CompanionPhaseDuration);
+		}
+		RequestTravelAtlas(CompanionClip);
+		ApplyTravelAnimationFrame(
+			CompanionImage,
+			CompanionClip,
+			CompanionAction == EGameXXKBattleAnimationAction::Idle,
+			TravelAppliedCompanionAtlasPaths[CompanionIndex],
+			TravelAppliedCompanionFrames[CompanionIndex]);
+		const float CompanionContentScale = ResolveTravelPartyContentScale(
+			CompanionUnitId,
+			CompanionAction);
+		CompanionImage->SetRenderScale(FVector2D(CompanionContentScale, CompanionContentScale));
+	}
+	const float HeroHealth = TravelVisualRuntime.GetHeroHealthFraction();
+	if (!FMath::IsNearlyEqual(HeroHealth, TravelAppliedHeroHealth))
+	{
+		TravelHeroHealth->SetPercent(HeroHealth);
+		TravelAppliedHeroHealth = HeroHealth;
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::EnsureTravelAtlasSession()
+{
+	if (!TravelAtlasCache)
+	{
+		TravelAtlasCache = MakeUnique<FGameXXKBattleAtlasCache>();
+	}
+	if (TravelAtlasSessionToken == 0)
+	{
+		static uint64 NextSessionToken = 1;
+		TravelAtlasSessionToken = NextSessionToken++;
+		if (TravelAtlasSessionToken == 0)
+		{
+			TravelAtlasSessionToken = NextSessionToken++;
+		}
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::RequestTravelCombatAtlases(const FName EnemyDefinitionId)
+{
+	EnsureTravelAtlasSession();
+	const EGameXXKBattleAnimationAction Actions[] = {
+		EGameXXKBattleAnimationAction::Idle,
+		EGameXXKBattleAnimationAction::Attack,
+		EGameXXKBattleAnimationAction::Hit,
+		EGameXXKBattleAnimationAction::Death};
+	for (const EGameXXKBattleAnimationAction Action : Actions)
+	{
+		RequestTravelAtlas(FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
+			MakeTravelOneKUnitId(FGameXXKEquipmentRules::HeroCharacterId()), NAME_None, false, Action));
+		if (!EnemyDefinitionId.IsNone())
+		{
+			RequestTravelAtlas(FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
+				MakeTravelOneKUnitId(EnemyDefinitionId), MakeTravelOneKUnitId(EnemyDefinitionId), true, Action));
+		}
+	}
+	for (const FName CompanionUnitId : GetTravelCompanionUnitIds())
+	{
+		RequestTravelAtlas(FGameXXKBattleAnimationPresentation::ResolveClip(
+			MakeTravelOneKUnitId(CompanionUnitId),
+			false,
+			EGameXXKBattleAnimationAction::Idle));
+	}
+}
+
+TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetTravelCompanionUnitIds() const
+{
+	TArray<FName> Result;
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return Result;
+	}
+	const FGameXXKTrainingTravelRuntime TravelRuntime = Subsystem->GetTrainingTravelRuntimeCopy();
+	if (TravelRuntime.PartyUnits.Num() > 1)
+	{
+		for (int32 PartyIndex = 1; PartyIndex < TravelRuntime.PartyUnits.Num() && PartyIndex < 3; ++PartyIndex)
+		{
+			if (!TravelRuntime.PartyUnits[PartyIndex].UnitId.IsNone())
+			{
+				Result.Add(TravelRuntime.PartyUnits[PartyIndex].UnitId);
+			}
+		}
+		if (!Result.IsEmpty())
+		{
+			return Result;
+		}
+	}
+
+	const FGameXXKCardRunState& CardRun = Subsystem->GetRuntimeState().CardRun;
+	const FName PermanentInstanceId = CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+	if (!PermanentInstanceId.IsNone())
+	{
+		const FGameXXKPermanentCompanion* PermanentCompanion =
+			CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+				[PermanentInstanceId](const FGameXXKPermanentCompanion& Candidate)
+				{
+					return Candidate.InstanceId == PermanentInstanceId && Candidate.bIsActive;
+				});
+		if (PermanentCompanion)
+		{
+			Result.Add(PermanentCompanion->InstanceId);
+		}
+	}
+
+	const FName ActiveQuestNpcId = CardRun.ActiveTemporaryQuestNpcId;
+	if (!ActiveQuestNpcId.IsNone()
+		&& CardRun.PartySelection.QuestNpc.NpcId == ActiveQuestNpcId)
+	{
+		Result.AddUnique(ActiveQuestNpcId);
+	}
+	return Result;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::RequestTravelAtlas(
+	const FGameXXKBattleAnimationClipDescriptor& Clip)
+{
+	if (!TravelAtlasCache
+		|| TravelAtlasSessionToken == 0
+		|| !Clip.IsValid()
+		|| TravelRequestedAtlasPaths.Contains(Clip.TexturePath))
+	{
+		return;
+	}
+
+	TravelRequestedAtlasPaths.Add(Clip.TexturePath);
+	if (!TravelPinnedAtlasPaths.Contains(Clip.TexturePath))
+	{
+		TravelAtlasCache->Pin(Clip.TexturePath);
+		TravelPinnedAtlasPaths.Add(Clip.TexturePath);
+	}
+	const uint64 RequestToken = TravelAtlasSessionToken;
+	const FSoftObjectPath RequestPath = Clip.TexturePath;
+	const TWeakObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget> WeakWidget(this);
+	TravelAtlasCache->Acquire(
+		RequestPath,
+		RequestToken,
+		[WeakWidget, RequestToken, RequestPath](UTexture2D* Texture, const EGameXXKAtlasLoadResult Result)
+		{
+			UGameXXKDesktopTrainingWorkbenchWidget* Widget = WeakWidget.Get();
+			if (!Widget
+				|| Widget->TravelAtlasSessionToken != RequestToken
+				|| Result != EGameXXKAtlasLoadResult::Loaded
+				|| !Texture)
+			{
+				return;
+			}
+			Widget->TravelLoadedAtlasTextures.Add(RequestPath, Texture);
+			Widget->UpdateTravelVisuals();
+		});
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::ApplyTravelAnimationFrame(
+	UImage* Image,
+	const FGameXXKBattleAnimationClipDescriptor& Clip,
+	const bool bLooping,
+	FSoftObjectPath& InOutAppliedPath,
+	int32& InOutAppliedFrame)
+{
+	if (!Image || !Clip.IsValid())
+	{
+		return false;
+	}
+	const TWeakObjectPtr<UTexture2D>* LoadedTexture = TravelLoadedAtlasTextures.Find(Clip.TexturePath);
+	if (!LoadedTexture || !LoadedTexture->IsValid())
+	{
+		return false;
+	}
+	const int32 FrameIndex = FGameXXKBattleAnimationPresentation::CalculateFrameIndex(
+		Clip,
+		TravelVisualRuntime.GetVisualPhaseElapsedSeconds(),
+		bLooping);
+	if (InOutAppliedPath == Clip.TexturePath && InOutAppliedFrame == FrameIndex)
+	{
+		return true;
+	}
+
+	FSlateBrush Brush;
+	Brush.DrawAs = ESlateBrushDrawType::Image;
+	Brush.ImageSize = TravelCombatVisualSize;
+	Brush.SetResourceObject(LoadedTexture->Get());
+	Brush.SetUVRegion(FGameXXKBattleAnimationPresentation::CalculateUvRegion(Clip, FrameIndex));
+	Image->SetBrush(Brush);
+	InOutAppliedPath = Clip.TexturePath;
+	InOutAppliedFrame = FrameIndex;
+	return true;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ReleaseTravelAtlasSession()
+{
+	if (TravelAtlasCache && TravelAtlasSessionToken != 0)
+	{
+		const uint64 ClosingToken = TravelAtlasSessionToken;
+		TravelAtlasSessionToken = 0;
+		TravelAtlasCache->CancelSession(ClosingToken);
+		for (const FSoftObjectPath& Path : TravelPinnedAtlasPaths)
+		{
+			TravelAtlasCache->Unpin(Path);
+		}
+		TravelAtlasCache->Clear();
+	}
+	TravelRequestedAtlasPaths.Reset();
+	TravelPinnedAtlasPaths.Reset();
+	TravelLoadedAtlasTextures.Reset();
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel(const bool bReadOnly)
 {
-	UBorder* PanelBorder = MakePanel(WidgetTree, Panel);
-	AddCanvas(RootCanvas, PanelBorder, FVector2D(24.0f, 150.0f), FVector2D(320.0f, 840.0f));
-	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(bReadOnly ? TEXT("仓库  ·  4 列  ·  只读") : TEXT("仓库  ·  4 列")), 28, Gold);
-	AddCanvas(RootCanvas, Title, FVector2D(48.0f, 174.0f), FVector2D(260.0f, 42.0f));
+	UBorder* PanelBorder = MakePanel(WidgetTree, Panel, TEXT("WarehousePanel"));
+	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetWarehouseRect());
+	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(bReadOnly ? TEXT("仓库  ·  只读") : TEXT("仓库")), 28, Ink);
+	AddCanvas(RootCanvas, Title, FVector2D(30.0f, 34.0f), FVector2D(323.0f, 38.0f));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
-	TArray<FName> Warehouse;
-	if (Subsystem)
+	for (int32 PageTabIndex = 0; PageTabIndex < 4; ++PageTabIndex)
 	{
-		Subsystem->GetEquipmentWarehouseSnapshot(Warehouse);
+		UGameXXKDesktopTrainingActionButton* PageTab = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			*FString::Printf(TEXT("WarehousePageTab_%d"), PageTabIndex));
+		PageTab->Configure(this, 70 + PageTabIndex);
+		const bool bSelectedPage = PageTabIndex < 3 && PageTabIndex == GetWarehousePageIndexForTest();
+		PageTab->SetStyle(MakeTextureButtonStyle(
+			bSelectedPage ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
+			FVector2D(62.0f, 38.0f),
+			FMargin(0.08f)));
+		PageTab->SetBackgroundColor(FLinearColor::White);
+		PageTab->SetContent(MakeText(
+			WidgetTree,
+			FText::FromString(PageTabIndex < 3 ? FString::FromInt(PageTabIndex + 1) : TEXT("+")),
+			17,
+			Ink));
+		PageTab->SetIsEnabled(!bReadOnly && (PageTabIndex == 3 || PageTabIndex < GetWarehousePageCountForTest()));
+		AddCanvas(RootCanvas, PageTab, FVector2D(30.0f + PageTabIndex * 78.0f, 84.0f), FVector2D(62.0f, 38.0f));
+		ActionButtons.Add(PageTab);
 	}
-	const TArray<FName> VisibleWarehouse = GetVisibleWarehouseInstanceIdsForTest();
-	for (int32 SlotIndex = 0; SlotIndex < 20; ++SlotIndex)
+	for (int32 SlotIndex = 0; SlotIndex < WarehousePageSize; ++SlotIndex)
 	{
+		const int32 PhysicalSlotIndex = GetWarehousePageIndexForTest() * WarehousePageSize + SlotIndex;
+		FGameXXKDesktopInventoryEntryKey Entry = RuntimeState
+			? FGameXXKDesktopInventoryRules::GetEntryAt(
+				*RuntimeState,
+				EGameXXKDesktopItemContainer::Warehouse,
+				PhysicalSlotIndex)
+			: FGameXXKDesktopInventoryEntryKey();
+		if (ShouldHideDesktopInventoryEntry(EGameXXKDesktopItemContainer::Warehouse, Entry))
+		{
+			Entry = FGameXXKDesktopInventoryEntryKey();
+		}
 		const int32 Column = SlotIndex % WarehouseColumns;
 		const int32 Row = SlotIndex / WarehouseColumns;
-		const FVector2D CellPosition(46.0f + Column * 68.0f, 235.0f + Row * 68.0f);
-		if (VisibleWarehouse.IsValidIndex(SlotIndex))
+		const FVector2D CellPosition(30.0f + Column * 78.0f, 142.0f + Row * 72.0f);
+		const FVector2D CellSize(68.0f, 68.0f);
+		const FName CellName(*FString::Printf(TEXT("WarehouseSlot_%d"), SlotIndex));
+		UGameXXKDesktopTrainingActionButton* SlotButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			CellName);
+		SlotButton->Configure(this, 100 + SlotIndex);
+		SlotButton->SetBackgroundColor(FLinearColor::White);
+		if (Entry.IsValid())
 		{
-			const FName InstanceId = VisibleWarehouse[SlotIndex];
-			const FString EquipmentLabel = RuntimeState
-				? EquipmentDisplayName(RuntimeState->EquipmentCollection, InstanceId)
-				: InstanceId.ToString();
-			if (bReadOnly)
-			{
-				UBorder* Cell = MakeSlotPanel(WidgetTree, EquipmentSlotTexturePath, FLinearColor(0.07f, 0.06f, 0.05f, 1.0f), FVector2D(58.0f, 58.0f));
-				Cell->SetContent(MakeText(WidgetTree, FText::FromString(EquipmentLabel), 10, FLinearColor::White));
-				Cell->SetToolTipText(FText::FromString(FString::Printf(TEXT("装备实例：%s\n%s\n挑战中只读"), *InstanceId.ToString(), *EquipmentLabel)));
-				AddCanvas(RootCanvas, Cell, CellPosition, FVector2D(58.0f, 58.0f));
-			}
-			else
-			{
-				UGameXXKDesktopTrainingActionButton* SlotButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-				SlotButton->Configure(this, 100 + SlotIndex);
-				SlotButton->SetStyle(MakeTextureButtonStyle(EquipmentSlotTexturePath, FVector2D(58.0f, 58.0f), FMargin(0.08f)));
-				SlotButton->SetBackgroundColor(FLinearColor(0.07f, 0.06f, 0.05f, 1.0f));
-				SlotButton->SetContent(MakeText(WidgetTree, FText::FromString(EquipmentLabel), 10, FLinearColor::White));
-				SlotButton->SetToolTipText(FText::FromString(FString::Printf(TEXT("装备实例：%s\n%s\n点击装备到当前角色"), *InstanceId.ToString(), *EquipmentLabel)));
-				AddCanvas(RootCanvas, SlotButton, CellPosition, FVector2D(58.0f, 58.0f));
-				ActionButtons.Add(SlotButton);
-			}
+			const FString EntryDisplayLabel = Entry.bEquipmentInstance && RuntimeState
+				? EquipmentDisplayName(RuntimeState->EquipmentCollection, Entry.EntryId)
+				: ItemDisplayName(Entry.EntryId);
+			const FString IconPath = Entry.bEquipmentInstance && RuntimeState
+				? EquipmentIconTexturePath(RuntimeState->EquipmentCollection, Entry.EntryId)
+				: InventoryItemIconTexturePath(Entry.EntryId);
+			const int32 Quantity = !Entry.bEquipmentInstance && RuntimeState
+				? RuntimeState->DesktopInventory.WarehouseItems.FindRef(Entry.EntryId)
+				: 1;
+			SlotButton->SetStyle(MakeImageButtonStyle(
+				Entry.bEquipmentInstance ? EquipmentSlotTexturePath : ItemSlotTexturePath,
+				CellSize));
+			SlotButton->SetContent(MakeIconLabelContent(
+				WidgetTree,
+				IconPath,
+				FVector2D(46.0f, 46.0f),
+				Quantity > 1 ? FText::FromString(FString::Printf(TEXT("x%d"), Quantity)) : FText::GetEmpty()));
+			SlotButton->SetToolTipText(FText::FromString(FString::Printf(
+				TEXT("%s\n%s\n%s"),
+				*Entry.EntryId.ToString(),
+				*EntryDisplayLabel,
+				bReadOnly ? TEXT("挑战中只读") : TEXT("左键拿起；右键返回背包"))));
+			SlotButton->SetIsEnabled(!bReadOnly);
 		}
 		else
 		{
-			UBorder* Cell = MakeSlotPanel(WidgetTree, ItemSlotTexturePath, FLinearColor(0.07f, 0.06f, 0.05f, 1.0f), FVector2D(58.0f, 58.0f));
-			AddCanvas(RootCanvas, Cell, CellPosition, FVector2D(58.0f, 58.0f));
+			SlotButton->SetStyle(MakeImageButtonStyle(ItemSlotTexturePath, CellSize));
+			SlotButton->SetContent(nullptr);
+			SlotButton->SetIsEnabled(!bReadOnly && CarriedEntry.IsValid());
 		}
+		AddCanvas(RootCanvas, SlotButton, CellPosition, CellSize);
+		ActionButtons.Add(SlotButton);
 	}
-	const int32 WarehouseCount = Warehouse.Num();
+	const int32 WarehouseCount = GetWarehouseOccupancyForTest();
 	UTextBlock* PageText = MakeText(WidgetTree, FText::FromString(FString::Printf(
 		TEXT("第 %d / %d 页 · 每页 %d 格"),
 		GetWarehousePageIndexForTest() + 1,
 		GetWarehousePageCountForTest(),
-		WarehousePageSize)), 15, FLinearColor(0.78f, 0.70f, 0.60f, 1.0f));
-	AddCanvas(RootCanvas, PageText, FVector2D(48.0f, 805.0f), FVector2D(230.0f, 28.0f));
+		WarehousePageSize)), 15, Ink);
+	AddCanvas(RootCanvas, PageText, FVector2D(30.0f, 806.0f), FVector2D(300.0f, 24.0f));
 	if (bReadOnly)
 	{
-		UTextBlock* ReadOnlyText = MakeText(WidgetTree, FText::FromString(TEXT("挑战进行中\n仓库只读 · 不可翻页、排序或装备")), 15, FLinearColor(0.82f, 0.74f, 0.62f, 1.0f));
-		AddCanvas(RootCanvas, ReadOnlyText, FVector2D(48.0f, 850.0f), FVector2D(250.0f, 52.0f));
+		UTextBlock* ReadOnlyText = MakeText(WidgetTree, FText::FromString(TEXT("挑战进行中\n仓库只读 · 不可翻页、排序或装备")), 15, Ink);
+		AddCanvas(RootCanvas, ReadOnlyText, FVector2D(30.0f, 842.0f), FVector2D(310.0f, 42.0f));
 	}
 	else
 	{
 		UGameXXKDesktopTrainingActionButton* Previous = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 		Previous->Configure(this, 40);
-		Previous->SetBackgroundColor(PanelAlt);
+		Previous->SetStyle(MakeTextureButtonStyle(ButtonDangerTexturePath, FVector2D(94.0f, 40.0f), FMargin(0.08f)));
+		Previous->SetBackgroundColor(FLinearColor::White);
 		Previous->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("上一页")), 15));
 		Previous->SetIsEnabled(GetWarehousePageIndexForTest() > 0);
-		AddCanvas(RootCanvas, Previous, FVector2D(48.0f, 850.0f), FVector2D(90.0f, 40.0f));
+		AddCanvas(RootCanvas, Previous, FVector2D(30.0f, 842.0f), FVector2D(94.0f, 40.0f));
 		ActionButtons.Add(Previous);
 		UGameXXKDesktopTrainingActionButton* Next = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 		Next->Configure(this, 41);
-		Next->SetBackgroundColor(PanelAlt);
+		Next->SetStyle(MakeTextureButtonStyle(ButtonDangerTexturePath, FVector2D(94.0f, 40.0f), FMargin(0.08f)));
+		Next->SetBackgroundColor(FLinearColor::White);
 		Next->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("下一页")), 15));
 		Next->SetIsEnabled(GetWarehousePageIndexForTest() + 1 < GetWarehousePageCountForTest());
-		AddCanvas(RootCanvas, Next, FVector2D(150.0f, 850.0f), FVector2D(90.0f, 40.0f));
+		AddCanvas(RootCanvas, Next, FVector2D(132.0f, 842.0f), FVector2D(94.0f, 40.0f));
 		ActionButtons.Add(Next);
 		UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 		Sort->Configure(this, 5);
-		Sort->SetBackgroundColor(Accent);
+		Sort->SetStyle(MakeTextureButtonStyle(ButtonNeutralTexturePath, FVector2D(104.0f, 40.0f), FMargin(0.08f)));
+		Sort->SetBackgroundColor(FLinearColor::White);
 		Sort->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("排序")), 15));
 		Sort->SetToolTipText(FText::FromString(TEXT("按槽位、品质和等级排序仓库")));
-		AddCanvas(RootCanvas, Sort, FVector2D(248.0f, 850.0f), FVector2D(76.0f, 40.0f));
+		AddCanvas(RootCanvas, Sort, FVector2D(236.0f, 842.0f), FVector2D(104.0f, 40.0f));
 		ActionButtons.Add(Sort);
 	}
 	UTextBlock* Footer = MakeText(WidgetTree, FText::FromString(FString::Printf(
-		TEXT("装备实例 %d / %d\n%s"),
+		TEXT("仓库物品 %d / %d\n%s"),
 		WarehouseCount,
 		FGameXXKEquipmentRules::WarehouseCapacity,
-		bReadOnly ? TEXT("挑战中保持只读") : TEXT("不显示角色身份卡"))), 16, FLinearColor(0.75f, 0.68f, 0.55f, 1.0f));
-	AddCanvas(RootCanvas, Footer, FVector2D(48.0f, 900.0f), FVector2D(240.0f, 54.0f));
+		bReadOnly ? TEXT("挑战中保持只读") : TEXT("不显示角色身份卡"))), 16, Ink);
+	AddCanvas(RootCanvas, Footer, FVector2D(30.0f, 888.0f), FVector2D(310.0f, 32.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 {
-	UBorder* PanelBorder = MakePanel(WidgetTree, PanelAlt);
-	AddCanvas(RootCanvas, PanelBorder, FVector2D(365.0f, 150.0f), FVector2D(960.0f, 840.0f));
-	UTextBlock* Title = MakeText(WidgetTree,
-		ActiveNav == EGameXXKDesktopTrainingNav::Formation
-			? FText::FromString(TEXT("编队  ·  角色 / 伙伴"))
-			: FText::FromString(TEXT("背包  ·  角色装备")), 30, Gold);
-	AddCanvas(RootCanvas, Title, FVector2D(400.0f, 175.0f), FVector2D(700.0f, 46.0f));
+	UBorder* PanelBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("BackpackPanel"));
+	FSlateBrush TransparentBrush;
+	TransparentBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
+	PanelBorder->SetBrush(TransparentBrush);
+	PanelBorder->SetPadding(FMargin(0.0f));
+	PanelBorder->SetClipping(EWidgetClipping::ClipToBounds);
+	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetContentRect());
+
+	UScaleBox* EmbeddedScale = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), TEXT("EmbeddedBackpackScale"));
+	EmbeddedScale->SetStretch(EStretch::ScaleToFit);
+	EmbeddedScale->SetStretchDirection(EStretchDirection::Both);
+	USizeBox* ApprovedPaperReference = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("EmbeddedBackpackPaperReference"));
+	ApprovedPaperReference->SetWidthOverride(1450.0f);
+	ApprovedPaperReference->SetHeightOverride(849.0f);
+	UCanvasPanel* CropCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("EmbeddedBackpackCropCanvas"));
+	CropCanvas->SetClipping(EWidgetClipping::ClipToBounds);
+
+	EmbeddedInventoryWidget = WidgetTree->ConstructWidget<UGameXXKInventoryWindowWidget>(
+		UGameXXKInventoryWindowWidget::StaticClass(),
+		TEXT("EmbeddedApprovedBackpack"));
+	if (EmbeddedInventoryWidget)
+	{
+		EmbeddedInventoryWidget->SetMVPSubsystem(ResolveMVPSubsystem());
+		EmbeddedInventoryWidget->ConfigureDesktopTrainingEmbeddedMode(true);
+		EmbeddedInventoryWidget->ConfigureDesktopTrainingCharacter(GetActiveBackpackCharacterIdForTest());
+		EmbeddedInventoryWidget->ConfigureDesktopTrainingHost(this);
+		EmbeddedInventoryWidget->OpenFreeInventoryForTest();
+		if (bHasSavedEmbeddedInventorySession)
+		{
+			EmbeddedInventoryWidget->RestoreEmbeddedSessionState(SavedEmbeddedInventorySession);
+			bHasSavedEmbeddedInventorySession = false;
+		}
+		AddCanvas(CropCanvas, EmbeddedInventoryWidget.Get(), FVector2D(-311.0f, -173.0f), FVector2D(1920.0f, 1080.0f));
+	}
+	ApprovedPaperReference->SetContent(CropCanvas);
+	EmbeddedScale->SetContent(ApprovedPaperReference);
+	PanelBorder->SetContent(EmbeddedScale);
+
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
-	const FString GoldLabel = RuntimeState
-		? FString::Printf(TEXT("金币  %d  ·  数据来自存档"), RuntimeState->PlayerGold)
-		: TEXT("金币  --  ·  等待存档");
-	UTextBlock* GoldText = MakeText(WidgetTree, FText::FromString(GoldLabel), 20, Gold);
-	AddCanvas(RootCanvas, GoldText, FVector2D(810.0f, 180.0f), FVector2D(190.0f, 40.0f));
-	UGameXXKDesktopTrainingActionButton* Settings = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	Settings->Configure(this, 14);
-	Settings->SetBackgroundColor(bSettingsPanelOpen ? Accent : Panel);
-	Settings->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("设置")), 17));
-	Settings->SetToolTipText(FText::FromString(TEXT("打开独立设置面板；不会关闭历练工作台")));
-	AddCanvas(RootCanvas, Settings, FVector2D(1015.0f, 180.0f), FVector2D(90.0f, 40.0f));
-	ActionButtons.Add(Settings);
-	UGameXXKDesktopTrainingActionButton* Close = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	Close->Configure(this, 15);
-	Close->SetBackgroundColor(FLinearColor(0.30f, 0.10f, 0.08f, 1.0f));
-	Close->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("关闭")), 17));
-	Close->SetToolTipText(FText::FromString(TEXT("关闭桌面历练工作台；与设置按钮独立")));
-	AddCanvas(RootCanvas, Close, FVector2D(1115.0f, 180.0f), FVector2D(90.0f, 40.0f));
-	ActionButtons.Add(Close);
-	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
-	for (int32 CharacterIndex = 0; CharacterIndex < CharacterIds.Num(); ++CharacterIndex)
-	{
-		UGameXXKDesktopTrainingActionButton* CharacterButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-		CharacterButton->Configure(this, 20 + CharacterIndex);
-		CharacterButton->SetBackgroundColor(CharacterIds[CharacterIndex] == GetActiveBackpackCharacterIdForTest() ? Accent : Panel);
-		CharacterButton->SetContent(MakeText(
-			WidgetTree,
-			FText::FromString(BackpackCharacterDisplayName(Subsystem, CharacterIds[CharacterIndex])),
-			16));
-		AddCanvas(RootCanvas, CharacterButton, FVector2D(405.0f + CharacterIndex * 170.0f, 220.0f), FVector2D(155.0f, 42.0f));
-		ActionButtons.Add(CharacterButton);
-	}
-	const FName ActiveCharacterId = GetActiveBackpackCharacterIdForTest();
-	FGameXXKCharacterBackpackModel BackpackModel;
-	if (Subsystem)
-	{
-		BackpackModel.Bind(const_cast<UGameXXKMVPSubsystem*>(Subsystem), ActiveCharacterId);
-	}
-	const TArray<FGameXXKCharacterBackpackSlotView> SlotViews = BackpackModel.GetSixSlotSnapshot();
-	TArray<FName> EquippedInstanceIds;
-	for (const FGameXXKCharacterBackpackSlotView& SlotView : SlotViews)
-	{
-		EquippedInstanceIds.Add(SlotView.EquippedInstanceId);
-	}
-	for (int32 SlotIndex = 0; SlotIndex < 6; ++SlotIndex)
-	{
-		const FVector2D SlotPosition(405.0f + (SlotIndex % 3) * 90.0f, 275.0f + (SlotIndex / 3) * 90.0f);
-		const bool bHasEquippedInstance = EquippedInstanceIds.IsValidIndex(SlotIndex)
-			&& !EquippedInstanceIds[SlotIndex].IsNone()
-			&& RuntimeState;
-		if (bHasEquippedInstance)
-		{
-			const FString EquipmentLabel = EquipmentDisplayName(RuntimeState->EquipmentCollection, EquippedInstanceIds[SlotIndex]);
-			UGameXXKDesktopTrainingActionButton* EquipButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-			EquipButton->Configure(this, 200 + SlotIndex);
-			EquipButton->SetStyle(MakeTextureButtonStyle(EquipmentSlotTexturePath, FVector2D(78.0f, 78.0f), FMargin(0.08f)));
-			EquipButton->SetBackgroundColor(FLinearColor(0.10f, 0.07f, 0.05f, 1.0f));
-			EquipButton->SetContent(MakeText(WidgetTree, FText::FromString(EquipmentLabel), 11, FLinearColor::White));
-			EquipButton->SetToolTipText(FText::FromString(FString::Printf(TEXT("已装备实例：%s\n%s\n点击卸下并返回仓库"), *EquippedInstanceIds[SlotIndex].ToString(), *EquipmentLabel)));
-			AddCanvas(RootCanvas, EquipButton, SlotPosition, FVector2D(78.0f, 78.0f));
-			ActionButtons.Add(EquipButton);
-		}
-		else
-		{
-			UBorder* EmptyEquip = MakeSlotPanel(WidgetTree, EquipmentSlotTexturePath, FLinearColor(0.10f, 0.07f, 0.05f, 1.0f), FVector2D(78.0f, 78.0f));
-			AddCanvas(RootCanvas, EmptyEquip, SlotPosition, FVector2D(78.0f, 78.0f));
-		}
-	}
-	FGameXXKEquipmentLoadoutSnapshot ActiveLoadoutSnapshot;
-	const bool bHasActiveLoadout = Subsystem && Subsystem->GetEquipmentLoadoutSnapshot(ActiveCharacterId, ActiveLoadoutSnapshot);
-	int32 ActiveLevel = RuntimeState ? RuntimeState->PlayerLevel : 0;
-	int32 ActiveHP = RuntimeState ? RuntimeState->PlayerHP : 0;
-	int32 ActiveMaxHP = RuntimeState ? RuntimeState->PlayerMaxHP : 0;
-	int32 ActiveMP = RuntimeState ? RuntimeState->PlayerMP : 0;
-	int32 ActiveMaxMP = RuntimeState ? RuntimeState->PlayerMaxMP : 0;
-	if (RuntimeState && ActiveCharacterId != FGameXXKEquipmentRules::HeroCharacterId())
-	{
-		FGameXXKPermanentCompanion Companion;
-		if (Subsystem && Subsystem->TryGetPermanentCompanionView(ActiveCharacterId, Companion))
-		{
-			ActiveLevel = Companion.Level;
-		}
-	}
-	if (bHasActiveLoadout && ActiveCharacterId != FGameXXKEquipmentRules::HeroCharacterId())
-	{
-		ActiveHP = ActiveLoadoutSnapshot.AttributesBeforeRoute.MaxHealth;
-		ActiveMaxHP = ActiveLoadoutSnapshot.AttributesBeforeRoute.MaxHealth;
-		ActiveMP = ActiveLoadoutSnapshot.AttributesBeforeRoute.MaxMana;
-		ActiveMaxMP = ActiveLoadoutSnapshot.AttributesBeforeRoute.MaxMana;
-	}
-	const FString IdentityLabel = RuntimeState && bHasActiveLoadout
-		? FString::Printf(
-			TEXT("角色 / 伙伴 · %s\nLv.%d  HP %d/%d  MP %d/%d\n攻击 %d  防御 %d\n六装备槽 · 角色与伙伴在背包内部切换"),
-			*BackpackCharacterDisplayName(Subsystem, ActiveCharacterId),
-			ActiveLevel,
-			ActiveHP,
-			ActiveMaxHP,
-			ActiveMP,
-			ActiveMaxMP,
-			ActiveLoadoutSnapshot.AttributesBeforeRoute.Attack,
-			ActiveLoadoutSnapshot.AttributesBeforeRoute.Defense)
-		: TEXT("角色 / 伙伴\n等待存档\n六装备槽 · 角色与伙伴在背包内部切换");
-	UTextBlock* Identity = MakeText(WidgetTree, FText::FromString(IdentityLabel), 16, FLinearColor::White);
-	AddCanvas(RootCanvas, Identity, FVector2D(720.0f, 250.0f), FVector2D(300.0f, 100.0f));
-	const TArray<FName> VisibleInventoryItems = RuntimeState ? SortedVisibleInventoryItemIds(*RuntimeState) : TArray<FName>();
-	for (int32 SlotIndex = 0; SlotIndex < 20; ++SlotIndex)
-	{
-		const int32 Column = SlotIndex % 4;
-		const int32 Row = SlotIndex / 4;
-		UBorder* Cell = MakeSlotPanel(WidgetTree, ItemSlotTexturePath, FLinearColor(0.06f, 0.05f, 0.04f, 1.0f), FVector2D(105.0f, 56.0f));
-		AddCanvas(RootCanvas, Cell, FVector2D(700.0f + Column * 118.0f, 450.0f + Row * 66.0f), FVector2D(105.0f, 56.0f));
-		if (VisibleInventoryItems.IsValidIndex(SlotIndex) && RuntimeState)
-		{
-			const FName ItemId = VisibleInventoryItems[SlotIndex];
-			const FString ItemLabel = FString::Printf(
-				TEXT("%s\nx%d"),
-				*ItemDisplayName(ItemId),
-				RuntimeState->Inventory.FindRef(ItemId));
-			UTextBlock* ItemText = MakeText(WidgetTree, FText::FromString(ItemLabel), 12, FLinearColor::White);
-			AddCanvas(RootCanvas, ItemText, FVector2D(704.0f + Column * 118.0f, 456.0f + Row * 66.0f), FVector2D(98.0f, 44.0f));
-			Cell->SetToolTipText(FText::FromString(FString::Printf(TEXT("%s\n数量：%d\n物品 ID：%s"),
-				*ItemDisplayName(ItemId),
-				RuntimeState->Inventory.FindRef(ItemId),
-				*ItemId.ToString())));
-		}
-	}
-	UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	Sort->Configure(this, 5);
-	Sort->SetBackgroundColor(Accent);
-	Sort->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("排序")), 18));
-	AddCanvas(RootCanvas, Sort, FVector2D(1120.0f, 840.0f), FVector2D(150.0f, 54.0f));
+	UImage* GoldIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("BackpackGoldIcon"));
+	GoldIcon->SetBrush(MakeTextureBrush(IngotTexturePath, FVector2D(30.0f, 30.0f)));
+	AddCanvas(RootCanvas, GoldIcon, FVector2D(1098.0f, 263.0f), FVector2D(30.0f, 30.0f));
+	const FString GoldLabel = RuntimeState ? FString::Printf(TEXT("%d"), RuntimeState->PlayerGold) : TEXT("--");
+	UTextBlock* GoldText = MakeText(WidgetTree, FText::FromString(GoldLabel), 18, Ink);
+	AddCanvas(RootCanvas, GoldText, FVector2D(1132.0f, 264.0f), FVector2D(100.0f, 30.0f));
+
+	UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		TEXT("BackpackSortButton"));
+	Sort->Configure(this, 61);
+	Sort->SetStyle(MakeTextureButtonStyle(ButtonNeutralTexturePath, FVector2D(100.0f, 44.0f), FMargin(0.08f)));
+	Sort->SetBackgroundColor(FLinearColor::White);
+	Sort->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("排序")), 17, Ink));
+	AddCanvas(RootCanvas, Sort, FVector2D(1212.0f, 710.0f), FVector2D(100.0f, 44.0f));
 	ActionButtons.Add(Sort);
-	UTextBlock* Ratio = MakeText(WidgetTree, FText::FromString(FString::Printf(
-		TEXT("背包比例锁定：1.76 : 1  ·  4 × 5 可视格  ·  %d 类物品"),
-		VisibleInventoryItems.Num())), 16, FLinearColor(0.78f, 0.70f, 0.60f, 1.0f));
-	AddCanvas(RootCanvas, Ratio, FVector2D(400.0f, 925.0f), FVector2D(460.0f, 30.0f));
-	if (bSettingsPanelOpen)
+	BuildCharacterRosterTabs();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildCharacterRosterTabs()
+{
+	struct FRosterTabSpec
 	{
-		UBorder* SettingsPanel = MakePanel(WidgetTree, FLinearColor(0.08f, 0.06f, 0.05f, 0.98f));
-		AddCanvas(RootCanvas, SettingsPanel, FVector2D(705.0f, 320.0f), FVector2D(560.0f, 360.0f));
-		UTextBlock* SettingsTitle = MakeText(WidgetTree, FText::FromString(TEXT("设置")), 26, Gold);
-		AddCanvas(RootCanvas, SettingsTitle, FVector2D(745.0f, 350.0f), FVector2D(460.0f, 42.0f));
-		UTextBlock* SettingsText = MakeText(
-			WidgetTree,
-			FText::FromString(TEXT("工作台设置入口已独立于关闭按钮\n\n默认 3D 城镇回退：保持开启\n静置帧率与窗口尺寸：沿用项目配置\n\n设置数据接入 RuntimeState 后在此处扩展。")),
-			18,
-			FLinearColor::White);
-		AddCanvas(RootCanvas, SettingsText, FVector2D(745.0f, 410.0f), FVector2D(470.0f, 210.0f));
+		EGameXXKDesktopTrainingCharacterRoster Roster;
+		int32 ActionId;
+		const TCHAR* Name;
+		const TCHAR* Label;
+	};
+	const FRosterTabSpec Tabs[] = {
+		{EGameXXKDesktopTrainingCharacterRoster::Hero, 80, TEXT("CharacterRosterHeroButton"), TEXT("主角")},
+		{EGameXXKDesktopTrainingCharacterRoster::Companions, 81, TEXT("CharacterRosterCompanionButton"), TEXT("伙伴")},
+		{EGameXXKDesktopTrainingCharacterRoster::Npcs, 82, TEXT("CharacterRosterNpcButton"), TEXT("NPC")}};
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Tabs); ++Index)
+	{
+		const bool bSelected = ActiveCharacterRoster == Tabs[Index].Roster;
+		UGameXXKDesktopTrainingActionButton* Button = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			Tabs[Index].Name);
+		Button->Configure(this, Tabs[Index].ActionId);
+		Button->SetStyle(MakeTextureButtonStyle(
+			bSelected ? TabSelectedTexturePath : TabNormalTexturePath,
+			FVector2D(88.0f, 34.0f),
+			FMargin(0.08f)));
+		Button->SetBackgroundColor(FLinearColor::White);
+		Button->SetContent(MakeText(WidgetTree, FText::FromString(Tabs[Index].Label), 15, Ink));
+		AddCanvas(RootCanvas, Button, FVector2D(424.0f + Index * 94.0f, 262.0f), FVector2D(88.0f, 34.0f));
+		ActionButtons.Add(Button);
+	}
+
+	TArray<FName> VisibleCharacters;
+	int32 FirstActionId = INDEX_NONE;
+	if (ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Companions)
+	{
+		VisibleCharacters = GetCompanionCharacterIdsForTest();
+		FirstActionId = 400;
+	}
+	else if (ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Npcs)
+	{
+		VisibleCharacters = GetNpcCharacterIdsForTest();
+		FirstActionId = 420;
+	}
+	if (FirstActionId == INDEX_NONE)
+	{
+		return;
+	}
+
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	for (int32 Index = 0; Index < VisibleCharacters.Num() && Index < 6; ++Index)
+	{
+		const FName CharacterId = VisibleCharacters[Index];
+		const bool bSelected = CharacterId == ActiveBackpackCharacterId;
+		UGameXXKDesktopTrainingActionButton* PortraitButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			*FString::Printf(TEXT("CharacterRosterPortraitButton_%d_%d"), static_cast<int32>(ActiveCharacterRoster), Index));
+		PortraitButton->Configure(this, FirstActionId + Index);
+		PortraitButton->SetStyle(MakeTextureButtonStyle(
+			bSelected ? TabSelectedTexturePath : ItemSlotTexturePath,
+			FVector2D(118.0f, 70.0f),
+			FMargin(0.08f)));
+		PortraitButton->SetBackgroundColor(FLinearColor::White);
+
+		UOverlay* PortraitContent = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
+		UImage* Portrait = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+		const FString PortraitPath = CharacterRosterPortraitPath(Subsystem, CharacterId);
+		if (UTexture2D* Texture = PortraitPath.IsEmpty() ? nullptr : LoadTexture(*PortraitPath))
+		{
+			Portrait->SetBrushFromTexture(Texture, true);
+			Portrait->SetColorAndOpacity(FLinearColor::White);
+		}
+		if (UOverlaySlot* PortraitSlot = PortraitContent->AddChildToOverlay(Portrait))
+		{
+			PortraitSlot->SetHorizontalAlignment(HAlign_Fill);
+			PortraitSlot->SetVerticalAlignment(VAlign_Fill);
+			PortraitSlot->SetPadding(FMargin(7.0f, 4.0f, 7.0f, 17.0f));
+		}
+		const FString Label = ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Npcs
+			? QuestNpcDisplayName(CharacterId)
+			: BackpackCharacterDisplayName(Subsystem, CharacterId);
+		UTextBlock* LabelText = MakeText(WidgetTree, FText::FromString(Label), 11, Ink);
+		LabelText->SetJustification(ETextJustify::Center);
+		if (UOverlaySlot* LabelSlot = PortraitContent->AddChildToOverlay(LabelText))
+		{
+			LabelSlot->SetHorizontalAlignment(HAlign_Fill);
+			LabelSlot->SetVerticalAlignment(VAlign_Bottom);
+			LabelSlot->SetPadding(FMargin(2.0f, 0.0f, 2.0f, 2.0f));
+		}
+		PortraitButton->SetContent(PortraitContent);
+		PortraitButton->SetToolTipText(FText::FromString(TEXT("点击头像：设为当前背包角色并直接加入队伍")));
+		AddCanvas(RootCanvas, PortraitButton, FVector2D(424.0f + Index * 128.0f, 300.0f), FVector2D(118.0f, 70.0f));
+		ActionButtons.Add(PortraitButton);
 	}
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTalentsPanel()
 {
-	UBorder* PanelBorder = MakePanel(WidgetTree, PanelAlt);
-	AddCanvas(RootCanvas, PanelBorder, FVector2D(365.0f, 150.0f), FVector2D(960.0f, 840.0f));
+	UBorder* PanelBorder = MakePanel(WidgetTree, PanelAlt, TEXT("TalentsPanel"));
+	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetContentRect());
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("天赋  ·  天赋树 / 称号")), 30, Gold);
-	AddCanvas(RootCanvas, Title, FVector2D(400.0f, 175.0f), FVector2D(700.0f, 46.0f));
+	AddCanvas(RootCanvas, Title, FVector2D(417.0f, 260.0f), FVector2D(700.0f, 42.0f));
 	UTextBlock* Notice = MakeText(
 		WidgetTree,
 		FText::FromString(TEXT("天赋和称号集中在此页；真实节点数据与宝箱掉率加成尚未接入。")),
 		18,
 		FLinearColor(0.82f, 0.74f, 0.62f, 1.0f));
-	AddCanvas(RootCanvas, Notice, FVector2D(405.0f, 235.0f), FVector2D(760.0f, 42.0f));
+	AddCanvas(RootCanvas, Notice, FVector2D(420.0f, 312.0f), FVector2D(860.0f, 42.0f));
 	for (int32 NodeIndex = 0; NodeIndex < 12; ++NodeIndex)
 	{
 		UBorder* Node = MakePanel(WidgetTree, NodeIndex == 0 ? Accent : Panel);
 		AddCanvas(
 			RootCanvas,
 			Node,
-			FVector2D(430.0f + (NodeIndex % 4) * 190.0f, 320.0f + (NodeIndex / 4) * 130.0f),
-			FVector2D(150.0f, 92.0f));
+			FVector2D(420.0f + (NodeIndex % 4) * 225.0f, 370.0f + (NodeIndex / 4) * 118.0f),
+			FVector2D(190.0f, 88.0f));
 		UTextBlock* NodeText = MakeText(
 			WidgetTree,
 			FText::FromString(NodeIndex == 0 ? TEXT("基础天赋\n待配置") : FString::Printf(TEXT("节点 %02d\n锁定"), NodeIndex + 1)),
@@ -1588,55 +3261,107 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTalentsPanel()
 		AddCanvas(
 			RootCanvas,
 			NodeText,
-			FVector2D(442.0f + (NodeIndex % 4) * 190.0f, 342.0f + (NodeIndex / 4) * 130.0f),
-			FVector2D(126.0f, 54.0f));
+			FVector2D(436.0f + (NodeIndex % 4) * 225.0f, 388.0f + (NodeIndex / 4) * 118.0f),
+			FVector2D(158.0f, 50.0f));
 	}
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 {
-	UBorder* PanelBorder = MakePanel(WidgetTree, Panel);
-	AddCanvas(RootCanvas, PanelBorder, FVector2D(1340.0f, 150.0f), FVector2D(556.0f, 840.0f));
-	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("工具  ·  魔方 / 合成 / 制作")), 30, Gold);
-	AddCanvas(RootCanvas, Title, FVector2D(1370.0f, 175.0f), FVector2D(480.0f, 48.0f));
+	ToolSlots.SetNum(ToolSlotCount);
+	UBorder* PanelBorder = MakePanel(WidgetTree, Panel, TEXT("ToolsPanel"));
+	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetRightShellRect());
+	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("工具")), 28, Gold);
+	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 34.0f), FVector2D(255.0f, 38.0f));
 	const TArray<FText> ToolLabels = {
-		FText::FromString(TEXT("魔方")),
+		FText::FromString(TEXT("分解")),
 		FText::FromString(TEXT("合成")),
-		FText::FromString(TEXT("制作"))};
+		FText::FromString(TEXT("强化")),
+		FText::FromString(TEXT("洗炼")),
+		FText::FromString(TEXT("镶嵌"))};
 	for (int32 ToolIndex = 0; ToolIndex < ToolLabels.Num(); ++ToolIndex)
 	{
-		UGameXXKDesktopTrainingActionButton* ToolButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+		UGameXXKDesktopTrainingActionButton* ToolButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			*FString::Printf(TEXT("ToolButton_%d"), ToolIndex));
 		ToolButton->Configure(this, 30 + ToolIndex);
-		ToolButton->SetBackgroundColor(ToolIndex == 0 ? Accent : PanelAlt);
-		ToolButton->SetContent(MakeText(WidgetTree, ToolLabels[ToolIndex], 22));
-		AddCanvas(RootCanvas, ToolButton, FVector2D(1375.0f + ToolIndex * 175.0f, 245.0f), FVector2D(155.0f, 58.0f));
+		ToolButton->SetStyle(MakeTextureButtonStyle(
+			ToolIndex == static_cast<int32>(ActiveToolMode) ? TabSelectedTexturePath : TabNormalTexturePath,
+			FVector2D(47.0f, 40.0f),
+			FMargin(0.08f)));
+		ToolButton->SetBackgroundColor(FLinearColor::White);
+		ToolButton->SetContent(MakeText(WidgetTree, ToolLabels[ToolIndex], 13, Ink));
+		AddCanvas(RootCanvas, ToolButton, FVector2D(1385.0f + ToolIndex * 52.0f, 84.0f), FVector2D(47.0f, 40.0f));
 		ActionButtons.Add(ToolButton);
 	}
-	UTextBlock* Hint = MakeText(
-		WidgetTree,
-		FText::FromString(TEXT("工具容器替换右侧历练地图；强化、洗炼、分解后续只从这里进入。")),
-		18,
-		FLinearColor(0.82f, 0.74f, 0.62f, 1.0f));
-	AddCanvas(RootCanvas, Hint, FVector2D(1375.0f, 345.0f), FVector2D(480.0f, 72.0f));
-	UBorder* Queue = MakePanel(WidgetTree, PanelAlt);
-	AddCanvas(RootCanvas, Queue, FVector2D(1375.0f, 455.0f), FVector2D(480.0f, 270.0f));
-	UTextBlock* QueueText = MakeText(
-		WidgetTree,
-		FText::FromString(TEXT("制作队列\n\n当前没有进行中的制作\n\n材料与配方将从 RuntimeState 读取")),
-		18,
-		FLinearColor::White);
-	AddCanvas(RootCanvas, QueueText, FVector2D(1400.0f, 485.0f), FVector2D(420.0f, 190.0f));
+	UBorder* GridFrame = MakePanel(WidgetTree, PanelAlt, TEXT("ToolInputGridFrame"));
+	AddCanvas(RootCanvas, GridFrame, FVector2D(1385.0f, 148.0f), FVector2D(260.0f, 360.0f));
+	for (int32 SlotIndex = 0; SlotIndex < ToolSlotCount; ++SlotIndex)
+	{
+		const int32 Column = SlotIndex % 3;
+		const int32 Row = SlotIndex / 3;
+		UGameXXKDesktopTrainingActionButton* ToolSlotButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			*FString::Printf(TEXT("ToolInputSlot_%d"), SlotIndex));
+		ToolSlotButton->Configure(this, 300 + SlotIndex);
+		ToolSlotButton->SetStyle(MakeImageButtonStyle(ItemSlotTexturePath, FVector2D(64.0f, 64.0f)));
+		ToolSlotButton->SetBackgroundColor(FLinearColor::White);
+		if (ToolSlots[SlotIndex].IsValid())
+		{
+			ToolSlotButton->SetContent(MakeIconLabelContent(
+				WidgetTree,
+				ToolSlots[SlotIndex].IconPath,
+				FVector2D(46.0f, 46.0f),
+				ToolSlots[SlotIndex].Quantity > 1
+					? FText::FromString(FString::Printf(TEXT("x%d"), ToolSlots[SlotIndex].Quantity))
+					: FText::GetEmpty()));
+			ToolSlotButton->SetToolTipText(FText::FromString(TEXT("左键拿起；右键返回原容器")));
+		}
+		else
+		{
+			ToolSlotButton->SetContent(nullptr);
+		}
+		AddCanvas(
+			RootCanvas,
+			ToolSlotButton,
+			FVector2D(1408.0f + Column * 72.0f, 184.0f + Row * 76.0f),
+			FVector2D(64.0f, 64.0f));
+		ActionButtons.Add(ToolSlotButton);
+	}
+	UGameXXKDesktopTrainingActionButton* Confirm = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		TEXT("ToolConfirmButton"));
+	Confirm->Configure(this, 309);
+	Confirm->SetStyle(MakeTextureButtonStyle(ButtonPrimaryTexturePath, FVector2D(170.0f, 54.0f), FMargin(0.08f)));
+	Confirm->SetBackgroundColor(FLinearColor::White);
+	Confirm->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("确定")), 20, Ink));
+	Confirm->SetIsEnabled(GetOccupiedToolSlotCountForTest() > 0);
+	AddCanvas(RootCanvas, Confirm, FVector2D(1430.0f, 450.0f), FVector2D(170.0f, 54.0f));
+	ActionButtons.Add(Confirm);
+
+	FString Description;
+	switch (ActiveToolMode)
+	{
+	case EGameXXKDesktopToolMode::Dismantle: Description = TEXT("分解：放入 1~9 件装备，确认后获得金币与材料。" ); break;
+	case EGameXXKDesktopToolMode::Enhance: Description = TEXT("强化：仅放入 1 件装备，消耗背包强化石。" ); break;
+	case EGameXXKDesktopToolMode::Reforge: Description = TEXT("洗炼：仅放入 1 件带词条装备，消耗背包洗炼材料。" ); break;
+	case EGameXXKDesktopToolMode::Combine: Description = TEXT("合成配方尚未接入；确认不会消耗任何物品。" ); break;
+	case EGameXXKDesktopToolMode::Socket: Description = TEXT("镶嵌为后续内容；确认不会消耗任何物品。" ); break;
+	default: break;
+	}
+	UTextBlock* Hint = MakeText(WidgetTree, FText::FromString(Description), 16, Ink);
+	AddCanvas(RootCanvas, Hint, FVector2D(1398.0f, 540.0f), FVector2D(232.0f, 130.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel(const bool bReadOnly)
 {
-	UBorder* Map = MakePanel(WidgetTree, Panel);
-	AddCanvas(RootCanvas, Map, FVector2D(1340.0f, 150.0f), FVector2D(556.0f, 840.0f));
+	UBorder* Map = MakePanel(WidgetTree, Panel, TEXT("TrainingMapPanel"));
+	AddCanvasRect(RootCanvas, Map, GameXXKDesktopTrainingLayout::GetRightShellRect());
 	const FText MapTitle = bReadOnly
 		? FText::FromString(TEXT("历练地图  ·  挑战只读"))
 		: (ActiveNav == EGameXXKDesktopTrainingNav::Tools ? FText::FromString(TEXT("工具替换右侧地图")) : FText::FromString(TEXT("历练地图")));
-	UTextBlock* Title = MakeText(WidgetTree, MapTitle, 30, Gold);
-	AddCanvas(RootCanvas, Title, FVector2D(1370.0f, 175.0f), FVector2D(450.0f, 48.0f));
+	UTextBlock* Title = MakeText(WidgetTree, MapTitle, 28, Gold);
+	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 34.0f), FVector2D(255.0f, 38.0f));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const TArray<FGameXXKTrainingStageDefinition> Definitions = Subsystem ? Subsystem->GetTrainingStageDefinitions() : TArray<FGameXXKTrainingStageDefinition>();
 	const EGameXXKTrainingDifficulty ActiveDifficulty = FGameXXKTrainingRules::DifficultyFromStageId(SelectedStageId);
@@ -1653,21 +3378,23 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel(const bool bR
 				WidgetTree,
 				Difficulties[DifficultyIndex] == ActiveDifficulty ? TabSelectedTexturePath : TabNormalTexturePath,
 				Difficulties[DifficultyIndex] == ActiveDifficulty ? Accent : PanelAlt,
-				FVector2D(135.0f, 42.0f));
+				FVector2D(78.0f, 36.0f));
 			DifficultyTab->SetContent(MakeText(WidgetTree, FText::FromString(Label), 18));
-			AddCanvas(RootCanvas, DifficultyTab, FVector2D(1380.0f + DifficultyIndex * 155.0f, 225.0f), FVector2D(135.0f, 42.0f));
+			AddCanvas(RootCanvas, DifficultyTab, FVector2D(1388.0f + DifficultyIndex * 84.0f, 84.0f), FVector2D(78.0f, 36.0f));
 		}
 		else
 		{
-			UGameXXKDesktopTrainingActionButton* DifficultyTab = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+			UGameXXKDesktopTrainingActionButton* DifficultyTab = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+				UGameXXKDesktopTrainingActionButton::StaticClass(),
+				*FString::Printf(TEXT("TrainingDifficultyTab_%d"), DifficultyIndex));
 			DifficultyTab->Configure(this, 11 + DifficultyIndex);
 			DifficultyTab->SetStyle(MakeTextureButtonStyle(
 				Difficulties[DifficultyIndex] == ActiveDifficulty ? TabSelectedTexturePath : TabNormalTexturePath,
-				FVector2D(135.0f, 42.0f),
+				FVector2D(78.0f, 36.0f),
 				FMargin(0.08f)));
-			DifficultyTab->SetBackgroundColor(Difficulties[DifficultyIndex] == ActiveDifficulty ? Accent : PanelAlt);
+			DifficultyTab->SetBackgroundColor(FLinearColor::White);
 			DifficultyTab->SetContent(MakeText(WidgetTree, FText::FromString(Label), 18));
-			AddCanvas(RootCanvas, DifficultyTab, FVector2D(1380.0f + DifficultyIndex * 155.0f, 225.0f), FVector2D(135.0f, 42.0f));
+			AddCanvas(RootCanvas, DifficultyTab, FVector2D(1388.0f + DifficultyIndex * 84.0f, 84.0f), FVector2D(78.0f, 36.0f));
 			ActionButtons.Add(DifficultyTab);
 		}
 	}
@@ -1678,33 +3405,41 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel(const bool bR
 			continue;
 		}
 		const int32 LocalIndex = Definition.StageNumber - 1;
-		const FVector2D NodePosition(1380.0f + (LocalIndex % 3) * 160.0f, 300.0f + (LocalIndex / 3) * 78.0f);
+		const FVector2D NodePosition(1390.0f + (LocalIndex % 3) * 84.0f, 158.0f + (LocalIndex / 3) * 104.0f);
+		const FVector2D NodeSize(58.0f, 58.0f);
+		const FString NodeNameString = bReadOnly
+			? FString::Printf(TEXT("TrainingNodeReadOnly_%d"), Definition.StageNumber)
+			: FString::Printf(TEXT("TrainingNode_%d"), Definition.StageNumber);
+		const FName NodeName(*NodeNameString);
 		const FText NodeLabel = FText::FromString(FString::Printf(TEXT("%d-%d"), Definition.Chapter, ((Definition.StageNumber - 1) % 3) + 1));
 		const FText NodeTooltip = Subsystem ? Subsystem->BuildTrainingStageTooltip(Definition.StageId) : FText::GetEmpty();
 		if (bReadOnly)
 		{
-			UBorder* Node = MakeSlotPanel(
+			UBorder* Node = MakeImagePanel(
 				WidgetTree,
 				RouteNodeTexturePath,
 				Definition.StageId == SelectedStageId ? Gold : FLinearColor(0.35f, 0.25f, 0.13f, 1.0f),
-				FVector2D(76.0f, 76.0f));
+				NodeSize,
+				NodeName);
 			Node->SetContent(MakeText(WidgetTree, NodeLabel, 18, Ink));
 			Node->SetToolTipText(FText::FromString(NodeTooltip.ToString() + TEXT("\n挑战中只读")));
-			AddCanvas(RootCanvas, Node, NodePosition, FVector2D(76.0f, 76.0f));
+			AddCanvas(RootCanvas, Node, NodePosition, NodeSize);
 		}
 		else
 		{
-			UGameXXKDesktopTrainingStageButton* Node = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingStageButton>(UGameXXKDesktopTrainingStageButton::StaticClass());
+			UGameXXKDesktopTrainingStageButton* Node = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingStageButton>(
+				UGameXXKDesktopTrainingStageButton::StaticClass(),
+				NodeName);
 			Node->Configure(this, Definition.StageId);
-			Node->SetStyle(MakeTextureButtonStyle(
-				RouteNodeTexturePath,
-				FVector2D(76.0f, 76.0f),
-				FMargin(0.08f),
-				Definition.StageId == SelectedStageId ? Gold : FLinearColor::White));
-			Node->SetBackgroundColor(Definition.StageId == SelectedStageId ? Gold : FLinearColor(0.35f, 0.25f, 0.13f, 1.0f));
+			Node->SetStyle(MakeImageButtonStyle(RouteNodeTexturePath, NodeSize));
+			Node->SetBackgroundColor(FLinearColor::White);
 			Node->SetToolTipText(NodeTooltip);
-			Node->SetContent(MakeText(WidgetTree, NodeLabel, 18, Ink));
-			AddCanvas(RootCanvas, Node, NodePosition, FVector2D(76.0f, 76.0f));
+			Node->SetContent(MakeText(
+				WidgetTree,
+				NodeLabel,
+				18,
+				Definition.StageId == SelectedStageId ? FLinearColor(0.48f, 0.12f, 0.07f, 1.0f) : Ink));
+			AddCanvas(RootCanvas, Node, NodePosition, NodeSize);
 			StageButtons.Add(Node);
 		}
 	}
@@ -1714,18 +3449,21 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel(const bool bR
 		const FName Current = Subsystem->GetTrainingProgressCopy().CurrentTravelStageId;
 		TravelStageText->SetText(FText::FromString(FString::Printf(TEXT("当前游历关卡：%s"), *Current.ToString())));
 	}
-	AddCanvas(RootCanvas, TravelStageText.Get(), FVector2D(1375.0f, 735.0f), FVector2D(480.0f, 46.0f));
+	AddCanvas(RootCanvas, TravelStageText.Get(), FVector2D(1388.0f, 640.0f), FVector2D(252.0f, 72.0f));
 	if (bReadOnly)
 	{
 		UTextBlock* ReadOnlyNotice = MakeText(WidgetTree, FText::FromString(TEXT("挑战进行中\n右侧历练地图只读")), 18, FLinearColor(0.82f, 0.74f, 0.62f, 1.0f));
-		AddCanvas(RootCanvas, ReadOnlyNotice, FVector2D(1375.0f, 820.0f), FVector2D(300.0f, 58.0f));
+		AddCanvas(RootCanvas, ReadOnlyNotice, FVector2D(1388.0f, 828.0f), FVector2D(252.0f, 58.0f));
 	}
 	else
 	{
-		UGameXXKDesktopTrainingActionButton* Challenge = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+		UGameXXKDesktopTrainingActionButton* Challenge = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			TEXT("TrainingChallengeButton"));
 		Challenge->Configure(this, 6);
-		Challenge->SetBackgroundColor(Accent);
-		Challenge->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("挑战")), 24));
+		Challenge->SetStyle(MakeTextureButtonStyle(ButtonDangerTexturePath, FVector2D(116.0f, 58.0f), FMargin(0.08f)));
+		Challenge->SetBackgroundColor(FLinearColor::White);
+		Challenge->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("挑战")), 22));
 		if (Subsystem)
 		{
 			const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
@@ -1744,13 +3482,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel(const bool bR
 				Challenge->SetToolTipText(FText::FromString(TEXT("需要先完成前置关卡或解锁当前难度")));
 			}
 		}
-		AddCanvas(RootCanvas, Challenge, FVector2D(1380.0f, 820.0f), FVector2D(175.0f, 64.0f));
+		AddCanvas(RootCanvas, Challenge, FVector2D(1388.0f, 828.0f), FVector2D(116.0f, 58.0f));
 		ActionButtons.Add(Challenge);
-		UGameXXKDesktopTrainingActionButton* Travel = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+		UGameXXKDesktopTrainingActionButton* Travel = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			TEXT("TrainingTravelButton"));
 		Travel->Configure(this, 7);
-		Travel->SetBackgroundColor(FLinearColor(0.28f, 0.20f, 0.12f, 1.0f));
-		Travel->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("游历")), 24));
-		AddCanvas(RootCanvas, Travel, FVector2D(1580.0f, 820.0f), FVector2D(175.0f, 64.0f));
+		Travel->SetStyle(MakeTextureButtonStyle(ButtonPrimaryTexturePath, FVector2D(116.0f, 58.0f), FMargin(0.08f)));
+		Travel->SetBackgroundColor(FLinearColor::White);
+		Travel->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("游历")), 22));
+		AddCanvas(RootCanvas, Travel, FVector2D(1517.0f, 828.0f), FVector2D(116.0f, 58.0f));
 		ActionButtons.Add(Travel);
 	}
 }
@@ -1792,15 +3533,21 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildChallengeViewport()
 			AddCanvas(RootCanvas, Encounter, FVector2D(1115.0f + (Index % 2) * 145.0f, 230.0f + (Index / 2) * 56.0f), FVector2D(135.0f, 40.0f));
 		}
 	}
-	UGameXXKDesktopTrainingActionButton* Auto = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+	UGameXXKDesktopTrainingActionButton* Auto = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		TEXT("ChallengeAutoButton"));
 	Auto->Configure(this, 8);
-	Auto->SetBackgroundColor(Accent);
+	Auto->SetStyle(MakeTextureButtonStyle(ButtonPrimaryTexturePath, FVector2D(190.0f, 62.0f), FMargin(0.08f)));
+	Auto->SetBackgroundColor(FLinearColor::White);
 	Auto->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("自动战斗")), 22));
 	AddCanvas(RootCanvas, Auto, FVector2D(450.0f, 780.0f), FVector2D(190.0f, 62.0f));
 	ActionButtons.Add(Auto);
-	UGameXXKDesktopTrainingActionButton* Advance = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+	UGameXXKDesktopTrainingActionButton* Advance = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		TEXT("ChallengeAdvanceButton"));
 	Advance->Configure(this, 9);
-	Advance->SetBackgroundColor(FLinearColor(0.25f, 0.18f, 0.11f, 1.0f));
+	Advance->SetStyle(MakeTextureButtonStyle(ButtonDangerTexturePath, FVector2D(260.0f, 62.0f), FMargin(0.08f)));
+	Advance->SetBackgroundColor(FLinearColor::White);
 	Advance->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("击败当前遭遇")), 22));
 	AddCanvas(RootCanvas, Advance, FVector2D(675.0f, 780.0f), FVector2D(260.0f, 62.0f));
 	ActionButtons.Add(Advance);
@@ -1841,7 +3588,22 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildChallengeCombatStrip()
 	const FVector2D SlotPositions[ChallengeCombatSlotCount] = {
 		FVector2D(435.0f, 162.0f), FVector2D(510.0f, 162.0f), FVector2D(585.0f, 162.0f),
 		FVector2D(1030.0f, 162.0f), FVector2D(1105.0f, 162.0f), FVector2D(1180.0f, 162.0f)};
-	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
+	TArray<FName> CharacterIds;
+	if (Subsystem)
+	{
+		for (const FGameXXKBattleRuntimeUnit& PartyUnit : Subsystem->GetRuntimeState().ActiveBattleParty)
+		{
+			if (!PartyUnit.Id.IsNone())
+			{
+				CharacterIds.Add(PartyUnit.Id);
+			}
+		}
+	}
+	if (CharacterIds.IsEmpty())
+	{
+		CharacterIds = {FGameXXKEquipmentRules::HeroCharacterId()};
+		CharacterIds.Append(GetTravelCompanionUnitIds());
+	}
 	for (int32 Index = 0; Index < ChallengeCombatSlotCount; ++Index)
 	{
 		UBorder* CellBorder = MakeSlotPanel(WidgetTree, ItemSlotTexturePath, PanelAlt, SlotSize);
@@ -1866,6 +3628,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildChallengeCombatStrip()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildBottomNavigation()
 {
+	UBorder* NavigationPanel = MakeTransparentPanel(WidgetTree, TEXT("BottomNavigationPanel"));
+	AddCanvasRect(RootCanvas, NavigationPanel, GameXXKDesktopTrainingLayout::GetNavigationRect());
 	const TArray<EGameXXKDesktopTrainingNav> Navs = {
 		EGameXXKDesktopTrainingNav::Warehouse,
 		EGameXXKDesktopTrainingNav::Formation,
@@ -1874,11 +3638,21 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBottomNavigation()
 		EGameXXKDesktopTrainingNav::Training};
 	for (int32 Index = 0; Index < Navs.Num(); ++Index)
 	{
-		UGameXXKDesktopTrainingActionButton* Button = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
+		const bool bSelected = Navs[Index] == EGameXXKDesktopTrainingNav::Warehouse
+			? bWarehousePanelOpen
+			: Navs[Index] == EGameXXKDesktopTrainingNav::Tools
+				? RightPanel == EGameXXKDesktopTrainingRightPanel::Tools
+				: Navs[Index] == EGameXXKDesktopTrainingNav::Training
+					? RightPanel == EGameXXKDesktopTrainingRightPanel::TrainingMap
+					: Navs[Index] == ActiveNav;
+		UGameXXKDesktopTrainingActionButton* Button = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			*FString::Printf(TEXT("BottomNavigationButton_%d"), Index));
 		Button->Configure(this, Index);
-		Button->SetBackgroundColor(Navs[Index] == ActiveNav ? Accent : PanelAlt);
-		Button->SetContent(MakeNavigationContent(WidgetTree, Navs[Index], Navs[Index] == ActiveNav));
-		AddCanvas(RootCanvas, Button, FVector2D(365.0f + Index * 190.0f, 1000.0f), FVector2D(175.0f, 58.0f));
+		Button->SetStyle(MakeInvisibleButtonStyle());
+		Button->SetBackgroundColor(FLinearColor::White);
+		Button->SetContent(MakeNavigationContent(WidgetTree, Navs[Index], bSelected));
+		AddCanvas(RootCanvas, Button, FVector2D(421.0f + Index * 181.0f, 800.0f), FVector2D(151.0f, 112.0f));
 		ActionButtons.Add(Button);
 	}
 }
@@ -1891,6 +3665,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshLayout()
 		return;
 	}
 	bLayoutRefreshPending = false;
+	TGuardValue<bool> InternalLayoutRebuildGuard(bInternalLayoutRebuild, true);
 	const bool bWasInViewport = IsInViewport();
 	const ESlateVisibility PreviousVisibility = GetVisibility();
 	if (bWasInViewport)
@@ -1917,6 +3692,539 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshLayout()
 		}
 	}
 }
+
+void UGameXXKDesktopTrainingWorkbenchWidget::CaptureExpandedSessionState()
+{
+	if (!EmbeddedInventoryWidget)
+	{
+		return;
+	}
+	SavedEmbeddedInventorySession = EmbeddedInventoryWidget->CaptureEmbeddedSessionState();
+	bHasSavedEmbeddedInventorySession = true;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ScheduleCollapsedResourceUnload()
+{
+	CollapsedResourceUnloadRemainingSeconds = CollapsedResourceUnloadDelaySeconds;
+	bCollapsedResourceUnloadPending = true;
+	bCollapsedResourcesReleased = false;
+	++CollapsedResourceGeneration;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::CancelCollapsedResourceUnload()
+{
+	bCollapsedResourceUnloadPending = false;
+	CollapsedResourceUnloadRemainingSeconds = 0.0f;
+	++CollapsedResourceGeneration;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::TickCollapsedResourceUnload(const float InDeltaTime)
+{
+	if (!bCollapsedResourceUnloadPending
+		|| bBackpackExpanded
+		|| ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport)
+	{
+		return;
+	}
+	CollapsedResourceUnloadRemainingSeconds = FMath::Max(
+		0.0f,
+		CollapsedResourceUnloadRemainingSeconds - FMath::Max(0.0f, InDeltaTime));
+	if (CollapsedResourceUnloadRemainingSeconds <= KINDA_SMALL_NUMBER)
+	{
+		ReleaseCollapsedResources();
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ReleaseCollapsedResources()
+{
+	if (!bCollapsedResourceUnloadPending
+		|| bBackpackExpanded
+		|| ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport
+		|| bCollapsedResourcesReleased)
+	{
+		return;
+	}
+	bCollapsedResourceUnloadPending = false;
+	CollapsedResourceUnloadRemainingSeconds = 0.0f;
+	bCollapsedResourcesReleased = true;
+	++CollapsedGcRequestCount;
+	++CollapsedResourceGeneration;
+
+	// The collapsed rebuild has already detached the backpack/warehouse/map/tool
+	// tree. Drop the last non-travel gameplay owner before asking the world to
+	// collect on the frame boundary. The travel cache/session deliberately stays
+	// pinned so the always-on strip never stalls or restarts.
+	ChallengeStatusText = nullptr;
+	ChallengeBattleBoard = nullptr;
+	if (GEngine)
+	{
+		GEngine->ForceGarbageCollection(false);
+	}
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopBackpackSlotLeftClicked(const int32 SlotIndex)
+{
+	return CarriedEntry.IsValid()
+		? DropCarriedOnDesktopSlot(EGameXXKDesktopItemContainer::Backpack, SlotIndex)
+		: PickUpDesktopEntry(EGameXXKDesktopItemContainer::Backpack, SlotIndex);
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopBackpackSlotRightClicked(const int32 SlotIndex)
+{
+	if (CarriedEntry.IsValid())
+	{
+		const bool bCancelled = CancelCarriedItem();
+		if (bCancelled)
+		{
+			RefreshLayout();
+		}
+		return bCancelled;
+	}
+	return RouteBackpackRightClick(SlotIndex);
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::ShouldHideDesktopInventoryEntry(
+	const EGameXXKDesktopItemContainer Container,
+	const FGameXXKDesktopInventoryEntryKey& Entry) const
+{
+	if (!Entry.IsValid())
+	{
+		return false;
+	}
+	if (CarriedEntry.IsValid()
+		&& CarriedEntry.Payload.AuthoritativeContainer == Container
+		&& CarriedEntry.Payload.Entry == Entry)
+	{
+		return true;
+	}
+	for (const FDesktopToolEntry& ToolEntry : ToolSlots)
+	{
+		if (ToolEntry.IsValid()
+			&& ToolEntry.AuthoritativeContainer == Container
+			&& ToolEntry.Entry == Entry)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::PickUpDesktopEntry(
+	const EGameXXKDesktopItemContainer Container,
+	const int32 SlotIndex)
+{
+	if (CarriedEntry.IsValid() || !bBackpackExpanded || ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport)
+	{
+		return false;
+	}
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !Subsystem->NormalizeDesktopInventoryState())
+	{
+		return false;
+	}
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	const FGameXXKDesktopInventoryEntryKey Entry = FGameXXKDesktopInventoryRules::GetEntryAt(State, Container, SlotIndex);
+	if (!Entry.IsValid() || ShouldHideDesktopInventoryEntry(Container, Entry))
+	{
+		return false;
+	}
+
+	CarriedEntry.Reset();
+	CarriedEntry.Payload.Entry = Entry;
+	CarriedEntry.Payload.AuthoritativeContainer = Container;
+	CarriedEntry.Payload.AuthoritativeSlotIndex = SlotIndex;
+	if (Entry.bEquipmentInstance)
+	{
+		CarriedEntry.Payload.Quantity = 1;
+		CarriedEntry.Payload.IconPath = EquipmentIconTexturePath(State.EquipmentCollection, Entry.EntryId);
+	}
+	else
+	{
+		CarriedEntry.Payload.Quantity = Container == EGameXXKDesktopItemContainer::Warehouse
+			? State.DesktopInventory.WarehouseItems.FindRef(Entry.EntryId)
+			: State.Inventory.FindRef(Entry.EntryId);
+		CarriedEntry.Payload.IconPath = InventoryItemIconTexturePath(Entry.EntryId);
+	}
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::PickUpToolEntry(const int32 SlotIndex)
+{
+	if (CarriedEntry.IsValid() || !ToolSlots.IsValidIndex(SlotIndex) || !ToolSlots[SlotIndex].IsValid())
+	{
+		return false;
+	}
+	CarriedEntry.Reset();
+	CarriedEntry.Payload = ToolSlots[SlotIndex];
+	CarriedEntry.bOriginIsTool = true;
+	CarriedEntry.OriginToolSlotIndex = SlotIndex;
+	ToolSlots[SlotIndex] = FDesktopToolEntry();
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::DropCarriedOnDesktopSlot(
+	const EGameXXKDesktopItemContainer Container,
+	const int32 SlotIndex)
+{
+	if (!CarriedEntry.IsValid())
+	{
+		return PickUpDesktopEntry(Container, SlotIndex);
+	}
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || SlotIndex < 0 || SlotIndex >= FGameXXKDesktopInventoryRules::BackpackCapacity)
+	{
+		return false;
+	}
+	const FGameXXKDesktopInventoryEntryKey Destination = FGameXXKDesktopInventoryRules::GetEntryAt(
+		Subsystem->GetRuntimeState(),
+		Container,
+		SlotIndex);
+	if (Destination.IsValid()
+		&& !(Container == CarriedEntry.Payload.AuthoritativeContainer
+			&& SlotIndex == CarriedEntry.Payload.AuthoritativeSlotIndex
+			&& Destination == CarriedEntry.Payload.Entry))
+	{
+		SetNotice(FText::FromString(TEXT("目标格已有道具；当前道具继续吸附在鼠标上")));
+		return false;
+	}
+
+	FString Error;
+	const bool bSameOrigin = Container == CarriedEntry.Payload.AuthoritativeContainer
+		&& SlotIndex == CarriedEntry.Payload.AuthoritativeSlotIndex;
+	if (!bSameOrigin
+		&& !Subsystem->MoveDesktopInventoryEntry(
+			CarriedEntry.Payload.AuthoritativeContainer,
+			CarriedEntry.Payload.AuthoritativeSlotIndex,
+			Container,
+			SlotIndex,
+			&Error))
+	{
+		SetNotice(FText::FromString(Error.IsEmpty() ? TEXT("该格无法放置道具") : Error));
+		return false;
+	}
+	CarriedEntry.Reset();
+	Subsystem->NormalizeDesktopInventoryState();
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::DropCarriedOnToolSlot(const int32 SlotIndex)
+{
+	ToolSlots.SetNum(ToolSlotCount);
+	if (!CarriedEntry.IsValid() || !ToolSlots.IsValidIndex(SlotIndex) || ToolSlots[SlotIndex].IsValid())
+	{
+		return false;
+	}
+	ToolSlots[SlotIndex] = CarriedEntry.Payload;
+	CarriedEntry.Reset();
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::RouteBackpackRightClick(const int32 SlotIndex)
+{
+	if (CarriedEntry.IsValid())
+	{
+		const bool bCancelled = CancelCarriedItem();
+		if (bCancelled)
+		{
+			RefreshLayout();
+		}
+		return bCancelled;
+	}
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return false;
+	}
+	if (bWarehousePanelOpen)
+	{
+		const int32 DestinationSlot = FGameXXKDesktopInventoryRules::FindFirstEmptySlot(
+			Subsystem->GetRuntimeState(),
+			EGameXXKDesktopItemContainer::Warehouse);
+		FString Error;
+		if (DestinationSlot != INDEX_NONE
+			&& Subsystem->MoveDesktopInventoryEntry(
+				EGameXXKDesktopItemContainer::Backpack,
+				SlotIndex,
+				EGameXXKDesktopItemContainer::Warehouse,
+				DestinationSlot,
+				&Error))
+		{
+			RefreshLayout();
+			return true;
+		}
+		SetNotice(FText::FromString(Error.IsEmpty() ? TEXT("仓库已满") : Error));
+		return false;
+	}
+	if (RightPanel == EGameXXKDesktopTrainingRightPanel::Tools)
+	{
+		ToolSlots.SetNum(ToolSlotCount);
+		const int32 ToolSlot = ToolSlots.IndexOfByPredicate([](const FDesktopToolEntry& Entry)
+		{
+			return !Entry.IsValid();
+		});
+		return ToolSlot != INDEX_NONE
+			&& PickUpDesktopEntry(EGameXXKDesktopItemContainer::Backpack, SlotIndex)
+			&& DropCarriedOnToolSlot(ToolSlot);
+	}
+
+	const FGameXXKDesktopInventoryEntryKey Entry = FGameXXKDesktopInventoryRules::GetEntryAt(
+		Subsystem->GetRuntimeState(),
+		EGameXXKDesktopItemContainer::Backpack,
+		SlotIndex);
+	if (Entry.bEquipmentInstance && EmbeddedInventoryWidget)
+	{
+		const bool bEquipped = EmbeddedInventoryWidget->QuickEquipBackpackInstanceForTest(Entry.EntryId);
+		if (bEquipped)
+		{
+			Subsystem->NormalizeDesktopInventoryState();
+			RefreshLayout();
+		}
+		return bEquipped;
+	}
+	return false;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::CancelCarriedItem()
+{
+	if (!CarriedEntry.IsValid())
+	{
+		return false;
+	}
+	if (CarriedEntry.bOriginIsTool)
+	{
+		ToolSlots.SetNum(ToolSlotCount);
+		if (ToolSlots.IsValidIndex(CarriedEntry.OriginToolSlotIndex)
+			&& !ToolSlots[CarriedEntry.OriginToolSlotIndex].IsValid())
+		{
+			ToolSlots[CarriedEntry.OriginToolSlotIndex] = CarriedEntry.Payload;
+		}
+	}
+	CarriedEntry.Reset();
+	return true;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::CancelCarryForStructuralChange()
+{
+	AbortTransientInventoryInteraction(false, false);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ReturnAllToolEntries()
+{
+	ToolSlots.Empty();
+	ToolSlots.SetNum(ToolSlotCount);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::AbortTransientInventoryInteraction(
+	const bool bReturnToolEntries,
+	const bool bRefreshLayout)
+{
+	const bool bHadCarriedEntry = CancelCarriedItem();
+	bool bHadToolEntries = false;
+	if (bReturnToolEntries)
+	{
+		bHadToolEntries = GetOccupiedToolSlotCountForTest() > 0;
+		ReturnAllToolEntries();
+	}
+	if (bRefreshLayout && (bHadCarriedEntry || bHadToolEntries))
+	{
+		RefreshLayout();
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::HandleApplicationActivationChanged(const bool bIsActive)
+{
+	if (!bIsActive)
+	{
+		AbortTransientInventoryInteraction(false, true);
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::HandlePersistenceBoundary()
+{
+	AbortTransientInventoryInteraction(true, true);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateCarriedItemVisualPosition()
+{
+	if (!CarriedEntry.IsValid() || !CarriedItemImage || !GEngine || !GEngine->GameViewport)
+	{
+		return;
+	}
+	APlayerController* PlayerController = GetOwningPlayer();
+	float MouseX = 0.0f;
+	float MouseY = 0.0f;
+	FVector2D ViewportSize;
+	GEngine->GameViewport->GetViewportSize(ViewportSize);
+	if (!PlayerController || !PlayerController->GetMousePosition(MouseX, MouseY) || ViewportSize.X <= 0.0f || ViewportSize.Y <= 0.0f)
+	{
+		return;
+	}
+	const GameXXKDesktopTrainingLayout::FFitTransform Fit = GameXXKDesktopTrainingLayout::MakeFitTransform(ViewportSize);
+	if (Fit.Scale <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+	const FVector2D ReferencePosition = (FVector2D(MouseX, MouseY) - Fit.Offset) / Fit.Scale - FVector2D(28.0f, 28.0f);
+	if (UCanvasPanelSlot* CarriedCanvasSlot = Cast<UCanvasPanelSlot>(CarriedItemImage->Slot))
+	{
+		CarriedCanvasSlot->SetPosition(ReferencePosition);
+	}
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::ToggleAlwaysOnTop()
+{
+	bAlwaysOnTop = !bAlwaysOnTop;
+#if PLATFORM_WINDOWS
+	if (!GIsEditor && FSlateApplication::IsInitialized())
+	{
+		const TSharedPtr<SWindow> Window = FSlateApplication::Get().FindWidgetWindow(TakeWidget());
+		const TSharedPtr<FGenericWindow> NativeWindow = Window.IsValid() ? Window->GetNativeWindow() : nullptr;
+		HWND WindowHandle = NativeWindow.IsValid()
+			? static_cast<HWND>(NativeWindow->GetOSWindowHandle())
+			: nullptr;
+		if (WindowHandle)
+		{
+			::SetWindowPos(
+				WindowHandle,
+				bAlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST,
+				0,
+				0,
+				0,
+				0,
+				SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+		}
+	}
+#endif
+	SetNotice(FText::FromString(bAlwaysOnTop ? TEXT("窗口已保持最顶层") : TEXT("窗口已取消最顶层")));
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::ToggleMuted()
+{
+	if (!bMuted)
+	{
+		UnmutedVolumeMultiplier = FMath::Max(0.01f, FApp::GetVolumeMultiplier());
+		FApp::SetVolumeMultiplier(0.0f);
+		bMuted = true;
+	}
+	else
+	{
+		FApp::SetVolumeMultiplier(UnmutedVolumeMultiplier);
+		bMuted = false;
+	}
+	SetNotice(FText::FromString(bMuted ? TEXT("已静音") : TEXT("声音已恢复")));
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::RequestExit()
+{
+	AbortTransientInventoryInteraction(true, false);
+	bExitConfirmationOpen = true;
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmExit(const bool bExecutePlatformQuit)
+{
+	if (!bExitConfirmationOpen)
+	{
+		return false;
+	}
+	bExitConfirmationOpen = false;
+	if (bExecutePlatformQuit)
+	{
+		UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
+	}
+	else
+	{
+		RefreshLayout();
+	}
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || CarriedEntry.IsValid())
+	{
+		return false;
+	}
+	TArray<FName> EquipmentInstanceIds;
+	for (const FDesktopToolEntry& Entry : ToolSlots)
+	{
+		if (!Entry.IsValid())
+		{
+			continue;
+		}
+		if (!Entry.Entry.bEquipmentInstance)
+		{
+			SetNotice(FText::FromString(TEXT("当前工具模式只接受装备实例")));
+			return false;
+		}
+		EquipmentInstanceIds.Add(Entry.Entry.EntryId);
+	}
+	if (EquipmentInstanceIds.IsEmpty())
+	{
+		SetNotice(FText::FromString(TEXT("请先放入道具")));
+		return false;
+	}
+	if (ActiveToolMode == EGameXXKDesktopToolMode::Combine)
+	{
+		SetNotice(FText::FromString(TEXT("合成配方尚未接入；未消耗任何道具")));
+		return false;
+	}
+	if (ActiveToolMode == EGameXXKDesktopToolMode::Socket)
+	{
+		SetNotice(FText::FromString(TEXT("镶嵌为后续内容；未消耗任何道具")));
+		return false;
+	}
+
+	FGameXXKEquipmentTransactionResult Result;
+	bool bSucceeded = false;
+	if (ActiveToolMode == EGameXXKDesktopToolMode::Dismantle)
+	{
+		bSucceeded = Subsystem->DismantleEquipmentInstances(EquipmentInstanceIds, true, Result);
+	}
+	else if (EquipmentInstanceIds.Num() != 1)
+	{
+		SetNotice(FText::FromString(TEXT("强化和洗炼一次只能放入一件装备")));
+		return false;
+	}
+	else if (ActiveToolMode == EGameXXKDesktopToolMode::Enhance)
+	{
+		bSucceeded = Subsystem->EnhanceEquipmentInstance(EquipmentInstanceIds[0], Result);
+	}
+	else if (ActiveToolMode == EGameXXKDesktopToolMode::Reforge)
+	{
+		bSucceeded = Subsystem->BeginEquipmentReforge(EquipmentInstanceIds[0], 0, Result);
+		if (bSucceeded)
+		{
+			FGameXXKEquipmentTransactionResult ResolveResult;
+			bSucceeded = Subsystem->ResolveEquipmentReforge(true, ResolveResult);
+			if (!bSucceeded)
+			{
+				Result = ResolveResult;
+			}
+		}
+	}
+	if (!bSucceeded)
+	{
+		SetNotice(Result.Message.IsEmpty() ? FText::FromString(TEXT("工具执行失败；未改变输入道具")) : Result.Message);
+		return false;
+	}
+	ReturnAllToolEntries();
+	Subsystem->NormalizeDesktopInventoryState();
+	SetNotice(Result.Message.IsEmpty() ? FText::FromString(TEXT("工具执行完成")) : Result.Message);
+	RefreshLayout();
+	return true;
+}
+
 void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
@@ -1931,9 +4239,49 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 			SetNotice(FText::FromString(TEXT("挑战进行中：左仓库与右侧导航暂时只读")));
 			return;
 		}
-		ActiveNav = static_cast<EGameXXKDesktopTrainingNav>(ActionId);
+		CancelCarryForStructuralChange();
+		bBackpackExpanded = true;
 		ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 		bSettingsPanelOpen = false;
+		if (ActionId == 0)
+		{
+			bWarehousePanelOpen = !bWarehousePanelOpen;
+			ActiveNav = EGameXXKDesktopTrainingNav::Warehouse;
+		}
+		else if (ActionId == 1)
+		{
+			ReturnAllToolEntries();
+			ActiveNav = EGameXXKDesktopTrainingNav::Formation;
+		}
+		else if (ActionId == 2)
+		{
+			ReturnAllToolEntries();
+			ActiveNav = EGameXXKDesktopTrainingNav::Talents;
+		}
+		else if (ActionId == 3)
+		{
+			ActiveNav = EGameXXKDesktopTrainingNav::Tools;
+			if (RightPanel == EGameXXKDesktopTrainingRightPanel::Tools)
+			{
+				ReturnAllToolEntries();
+				RightPanel = EGameXXKDesktopTrainingRightPanel::None;
+			}
+			else
+			{
+				RightPanel = EGameXXKDesktopTrainingRightPanel::Tools;
+			}
+		}
+		else
+		{
+			if (RightPanel == EGameXXKDesktopTrainingRightPanel::Tools)
+			{
+				ReturnAllToolEntries();
+			}
+			ActiveNav = EGameXXKDesktopTrainingNav::Training;
+			RightPanel = RightPanel == EGameXXKDesktopTrainingRightPanel::TrainingMap
+				? EGameXXKDesktopTrainingRightPanel::None
+				: EGameXXKDesktopTrainingRightPanel::TrainingMap;
+		}
 		RefreshLayout();
 		return;
 	}
@@ -1942,19 +4290,92 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		SelectBackpackCharacterForTest(GetBackpackCharacterIdsForTest()[ActionId - 20]);
 		return;
 	}
+	if (ActionId >= 80 && ActionId <= 82)
+	{
+		CancelCarryForStructuralChange();
+		ActiveCharacterRoster = static_cast<EGameXXKDesktopTrainingCharacterRoster>(ActionId - 80);
+		if (ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Hero)
+		{
+			SelectBackpackCharacterForTest(FGameXXKEquipmentRules::HeroCharacterId());
+		}
+		else
+		{
+			RefreshLayout();
+		}
+		return;
+	}
+	if (ActionId >= 400 && ActionId < 406)
+	{
+		const TArray<FName> CompanionIds = GetCompanionCharacterIdsForTest();
+		const int32 Index = ActionId - 400;
+		if (CompanionIds.IsValidIndex(Index))
+		{
+			SelectBackpackCharacterForTest(CompanionIds[Index]);
+		}
+		return;
+	}
+	if (ActionId >= 420 && ActionId < 426)
+	{
+		const TArray<FName> NpcIds = GetNpcCharacterIdsForTest();
+		const int32 Index = ActionId - 420;
+		if (NpcIds.IsValidIndex(Index))
+		{
+			SelectBackpackCharacterForTest(NpcIds[Index]);
+		}
+		return;
+	}
 	if (ActionId == 40)
 	{
+		CancelCarryForStructuralChange();
 		PreviousWarehousePageForTest();
 		return;
 	}
 	if (ActionId == 41)
 	{
+		CancelCarryForStructuralChange();
 		NextWarehousePageForTest();
+		return;
+	}
+	if (ActionId >= 70 && ActionId <= 72)
+	{
+		CancelCarryForStructuralChange();
+		const int32 RequestedPage = ActionId - 70;
+		if (RequestedPage < GetWarehousePageCountForTest())
+		{
+			WarehousePageIndex = RequestedPage;
+			RefreshLayout();
+		}
+		return;
+	}
+	if (ActionId == 73)
+	{
+		SetNotice(FText::FromString(TEXT("仓库扩展页将在容量扩展后启用")));
 		return;
 	}
 	if (ActionId >= 100 && ActionId < 100 + WarehousePageSize)
 	{
-		QuickEquipVisibleWarehouseSlotForTest(ActionId - 100);
+		const int32 PhysicalSlotIndex = GetWarehousePageIndexForTest() * WarehousePageSize + (ActionId - 100);
+		if (CarriedEntry.IsValid())
+		{
+			DropCarriedOnDesktopSlot(EGameXXKDesktopItemContainer::Warehouse, PhysicalSlotIndex);
+		}
+		else
+		{
+			PickUpDesktopEntry(EGameXXKDesktopItemContainer::Warehouse, PhysicalSlotIndex);
+		}
+		return;
+	}
+	if (ActionId >= 300 && ActionId < 300 + ToolSlotCount)
+	{
+		const int32 ToolSlotIndex = ActionId - 300;
+		if (CarriedEntry.IsValid())
+		{
+			DropCarriedOnToolSlot(ToolSlotIndex);
+		}
+		else
+		{
+			PickUpToolEntry(ToolSlotIndex);
+		}
 		return;
 	}
 	if (ActionId >= 200 && ActionId < 206)
@@ -1964,6 +4385,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	}
 	if (ActionId >= 11 && ActionId <= 13)
 	{
+		CancelCarryForStructuralChange();
+		ReturnAllToolEntries();
 		const EGameXXKTrainingDifficulty Difficulty = static_cast<EGameXXKTrainingDifficulty>(ActionId - 11);
 		SelectedStageId = FGameXXKTrainingRules::MakeStageId(Difficulty, 1);
 		Subsystem->SelectTrainingStage(SelectedStageId);
@@ -1973,9 +4396,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	switch (ActionId)
 	{
 	case 5:
+		CancelCarryForStructuralChange();
 		SortWarehouseForTest();
 		break;
 	case 6:
+		CancelCarryForStructuralChange();
+		ReturnAllToolEntries();
 		if (Subsystem->StartTrainingChallenge(SelectedStageId))
 		{
 			ViewMode = EGameXXKDesktopTrainingViewMode::ChallengeViewport;
@@ -1990,6 +4416,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		}
 		break;
 	case 7:
+		CancelCarryForStructuralChange();
 		if (Subsystem->StartTrainingTravel(SelectedStageId))
 		{
 			ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
@@ -2021,24 +4448,146 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	case 16:
 		CollectTravelRewardsForTest();
 		break;
+	case 61:
+		CancelCarryForStructuralChange();
+		ReturnAllToolEntries();
+		if (Subsystem->NormalizeDesktopInventoryState())
+		{
+			FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+			TArray<FGameXXKDesktopInventoryEntryKey> Entries;
+			for (const FGameXXKDesktopInventoryEntryKey& Entry : State.DesktopInventory.BackpackSlots)
+			{
+				if (Entry.IsValid())
+				{
+					Entries.Add(Entry);
+				}
+			}
+			Entries.Sort([](const FGameXXKDesktopInventoryEntryKey& Left, const FGameXXKDesktopInventoryEntryKey& Right)
+			{
+				if (Left.bEquipmentInstance != Right.bEquipmentInstance)
+				{
+					return Left.bEquipmentInstance;
+				}
+				return Left.EntryId.LexicalLess(Right.EntryId);
+			});
+			State.DesktopInventory.BackpackSlots.Init(FGameXXKDesktopInventoryEntryKey(), FGameXXKDesktopInventoryRules::BackpackCapacity);
+			for (int32 Index = 0; Index < Entries.Num(); ++Index)
+			{
+				State.DesktopInventory.BackpackSlots[Index] = Entries[Index];
+			}
+			SetNotice(FText::FromString(TEXT("背包已按已确认规则排序")));
+			RefreshLayout();
+		}
+		break;
 	case 14:
-		bSettingsPanelOpen = !bSettingsPanelOpen;
-		SetNotice(bSettingsPanelOpen
-			? FText::FromString(TEXT("设置面板已打开；关闭按钮保持独立"))
-			: FText::FromString(TEXT("设置面板已收起")));
-		RefreshLayout();
+		ToggleAlwaysOnTop();
 		break;
 	case 15:
-		CloseWorkbench();
+		RequestExit();
 		break;
 	case 30:
 	case 31:
 	case 32:
-		SetNotice(FText::FromString(TEXT("工具容器已打开：具体配方/材料读取待接入")));
+	case 33:
+	case 34:
+		SetToolModeForTest(static_cast<EGameXXKDesktopToolMode>(ActionId - 30));
+		break;
+	case 17:
+		ToggleMuted();
+		break;
+	case 18:
+		SetNotice(FText::FromString(TEXT("邮件功能尚未开放")));
+		break;
+	case 19:
+		SetNotice(FText::FromString(TEXT("商店功能尚未开放")));
+		break;
+	case 53:
+		CancelExitForTest();
+		break;
+	case 54:
+		ConfirmExit(true);
+		break;
+	case 60:
+		if (ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport)
+		{
+			SetNotice(FText::FromString(TEXT("挑战进行中不能折叠局内战斗")));
+			break;
+		}
+		if (bBackpackExpanded)
+		{
+			CancelCarryForStructuralChange();
+			ReturnAllToolEntries();
+			bHasCollapsedWorkbenchSession = true;
+			CaptureExpandedSessionState();
+			bBackpackExpanded = false;
+			bExitConfirmationOpen = false;
+			RefreshLayout();
+			ScheduleCollapsedResourceUnload();
+		}
+		else
+		{
+			OpenBackpack();
+		}
+		break;
+	case 309:
+		ConfirmToolForTest();
 		break;
 	default:
 		break;
 	}
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleActionRightClicked(const int32 ActionId)
+{
+	if (CarriedEntry.IsValid())
+	{
+		const bool bCancelled = CancelCarriedItem();
+		if (bCancelled)
+		{
+			RefreshLayout();
+		}
+		return bCancelled;
+	}
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return false;
+	}
+	if (ActionId >= 100 && ActionId < 100 + WarehousePageSize)
+	{
+		const int32 PhysicalSlotIndex = GetWarehousePageIndexForTest() * WarehousePageSize + (ActionId - 100);
+		const FGameXXKDesktopInventoryEntryKey Entry = FGameXXKDesktopInventoryRules::GetEntryAt(
+			Subsystem->GetRuntimeState(),
+			EGameXXKDesktopItemContainer::Warehouse,
+			PhysicalSlotIndex);
+		const int32 BackpackSlot = FGameXXKDesktopInventoryRules::FindFirstEmptySlot(
+			Subsystem->GetRuntimeState(),
+			EGameXXKDesktopItemContainer::Backpack);
+		FString Error;
+		if (Entry.IsValid() && BackpackSlot != INDEX_NONE
+			&& Subsystem->MoveDesktopInventoryEntry(
+				EGameXXKDesktopItemContainer::Warehouse,
+				PhysicalSlotIndex,
+				EGameXXKDesktopItemContainer::Backpack,
+				BackpackSlot,
+				&Error))
+		{
+			RefreshLayout();
+			return true;
+		}
+		return false;
+	}
+	if (ActionId >= 300 && ActionId < 300 + ToolSlotCount)
+	{
+		const int32 ToolSlotIndex = ActionId - 300;
+		if (ToolSlots.IsValidIndex(ToolSlotIndex) && ToolSlots[ToolSlotIndex].IsValid())
+		{
+			ToolSlots[ToolSlotIndex] = FDesktopToolEntry();
+			RefreshLayout();
+			return true;
+		}
+	}
+	return false;
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::SetNotice(const FText& Notice)

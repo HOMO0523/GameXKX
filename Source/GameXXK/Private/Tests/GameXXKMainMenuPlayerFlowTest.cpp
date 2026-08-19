@@ -292,7 +292,10 @@ bool FGameXXKMainMenuPlayerFlowTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("continue loads populated slot 1"), MainMenu->ContinueFromSlotIndex(0));
 	TestEqual(TEXT("loaded slot restores town screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("loaded slot restores level 2"), Subsystem->GetRuntimeState().PlayerLevel, 2);
-	TestEqual(TEXT("continue requests the desktop HUD town map"), MainMenu->GetLastRequestedTownMapForTest(), FName(TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD")));
+	TestEqual(
+		TEXT("continue keeps the accepted 3D town entry until the HUD migration is approved"),
+		MainMenu->GetLastRequestedTownMapForTest(),
+		FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
 	TestEqual(TEXT("continue hides main menu after load"), MainMenu->GetVisibility(), ESlateVisibility::Collapsed);
 	TestFalse(TEXT("continue disables main menu after load"), MainMenu->GetIsEnabled());
 

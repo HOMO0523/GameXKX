@@ -86,6 +86,12 @@ public:
 		const TArray<FName>& SelectedCardIds,
 		FString* OutError = nullptr);
 
+	/** Repairs/preserves one editable three-card loadout for each of the six always-owned named NPCs. */
+	static bool NormalizeOwnedQuestNpcCardLoadouts(
+		FGameXXKCompanionPartySelection& InOutSelection,
+		int32 SelectionSeed,
+		FString* OutError = nullptr);
+
 	/** Marks exactly one persisted companion as active, or clears the optional permanent-partner slot. */
 	static bool SetActivePermanentCompanion(
 		FGameXXKCompanionRosterState& InOutRoster,

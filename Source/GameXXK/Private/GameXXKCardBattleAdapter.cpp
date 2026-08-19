@@ -2052,7 +2052,12 @@ bool FGameXXKCardBattleAdapter::EnsureCardRunInitialized(FGameXXKRuntimeState& I
 	{
 		Run.RouteRandomSeed = InOutState.RouteSeed != 0 ? InOutState.RouteSeed : 0x13579BDF;
 	}
-	if (!SynchronizePartySelectionWithRoster(Run, OutError) || !ValidateHeroLoadout(Run, OutError))
+	if (!FGameXXKCompanionRules::NormalizeOwnedQuestNpcCardLoadouts(
+			Run.PartySelection,
+			Run.RouteRandomSeed,
+			OutError)
+		|| !SynchronizePartySelectionWithRoster(Run, OutError)
+		|| !ValidateHeroLoadout(Run, OutError))
 	{
 		return false;
 	}
@@ -2129,16 +2134,27 @@ bool FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
 		TArray<FName> EffectiveSelection = SelectedCardIds;
 		if (EffectiveSelection.IsEmpty())
 		{
-			const int32 SelectionSeed = Run.RouteProgress.RootSeed != 0
-				? Run.RouteProgress.RootSeed
-				: (Candidate.RouteSeed != 0 ? Candidate.RouteSeed : Run.RouteRandomSeed);
-			if (!FGameXXKCompanionRules::BuildQuestNpcRouteCardSelection(
-				QuestNpcId,
-				SelectionSeed,
-				EffectiveSelection,
-				OutError))
+			if (const FGameXXKQuestNpcOwnedCardLoadout* SavedLoadout =
+					Run.PartySelection.QuestNpcCardLoadouts.Find(QuestNpcId);
+				SavedLoadout && FGameXXKCompanionRules::ValidateQuestNpcCardSelection(
+					QuestNpcId,
+					SavedLoadout->SelectedCardIds))
 			{
-				return false;
+				EffectiveSelection = SavedLoadout->SelectedCardIds;
+			}
+			else
+			{
+				const int32 SelectionSeed = Run.RouteProgress.RootSeed != 0
+					? Run.RouteProgress.RootSeed
+					: (Candidate.RouteSeed != 0 ? Candidate.RouteSeed : Run.RouteRandomSeed);
+				if (!FGameXXKCompanionRules::BuildQuestNpcRouteCardSelection(
+					QuestNpcId,
+					SelectionSeed,
+					EffectiveSelection,
+					OutError))
+				{
+					return false;
+				}
 			}
 		}
 		if (!FGameXXKCompanionRules::SetQuestNpcCardSelection(
@@ -2149,6 +2165,7 @@ bool FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
 		{
 			return false;
 		}
+		Run.PartySelection.QuestNpcCardLoadouts.FindOrAdd(QuestNpcId).SelectedCardIds = EffectiveSelection;
 		Run.ActiveTemporaryQuestNpcId = QuestNpcId;
 	}
 

@@ -307,6 +307,35 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingDirectEntryPartyTest,
+	"GameXXK.MVP.PlayableShell.DesktopTrainingDirectEntryParty",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingDirectEntryPartyTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestNotNull(TEXT("direct desktop-training fixture creates its subsystem"), Subsystem);
+	if (!Subsystem)
+	{
+		return false;
+	}
+
+	TestEqual(TEXT("fresh desktop-training subsystem starts on main menu"),
+		Subsystem->GetRuntimeState().Screen,
+		EGameXXKScreen::MainMenu);
+	TestTrue(TEXT("direct desktop-training HUD initializes a complete playable new-game state"),
+		Subsystem->EnsureDesktopTrainingRuntimeForDirectMap());
+	const FGameXXKCardRunState& CardRun = Subsystem->GetRuntimeState().CardRun;
+	TestEqual(TEXT("direct desktop-training HUD initializes both deterministic starter companions"),
+		CardRun.CompanionRoster.PermanentCompanions.Num(),
+		2);
+	TestFalse(TEXT("direct desktop-training HUD selects the active permanent partner"),
+		CardRun.PartySelection.ActivePermanentCompanionInstanceId.IsNone());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKMVPPlayableGameModeTest,
 	"GameXXK.MVP.PlayableShell.GameModeDefaults",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -322,7 +351,15 @@ bool FGameXXKMVPPlayableGameModeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("MVP controller enables hover hit testing for visible commands"), PlayerController->bEnableMouseOverEvents);
 	TestTrue(TEXT("default HUD is MVP HUD"), GameMode->HUDClass.Get() == AGameXXKMVPHUD::StaticClass());
 	const FString HeroCharacterGeneratedClassPath = TEXT("/Game/GameXXK/Characters/Hero/BP_HeroCharacter.BP_HeroCharacter_C");
-	TestNotNull(TEXT("default pawn class is configured"), GameMode->DefaultPawnClass.Get());
+	TestEqual(TEXT("constructor keeps a non-asset C++ fallback before the map is known"),
+		GameMode->DefaultPawnClass.Get(), AGameXXKHeroCharacter::StaticClass());
+	TestFalse(TEXT("HUD-only map never resolves the 3D town visual classes"),
+		GameMode->PrepareTownVisualClassesForMapForTest(TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD")));
+	TestNull(TEXT("HUD-only map leaves merchant blueprint unloaded"), GameMode->GetMerchantTownNpcCharacterClass().Get());
+	TestNull(TEXT("HUD-only map leaves person blueprint unloaded"), GameMode->GetPersonTownNpcCharacterClass().Get());
+	TestTrue(TEXT("accepted 3D town resolves its visual classes before pawn spawning"),
+		GameMode->PrepareTownVisualClassesForMapForTest(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
+	TestNotNull(TEXT("town default pawn class is configured"), GameMode->DefaultPawnClass.Get());
 	TestEqual(TEXT("default pawn uses editable BP_HeroCharacter"), GameMode->DefaultPawnClass ? GameMode->DefaultPawnClass->GetPathName() : FString(), HeroCharacterGeneratedClassPath);
 	TestTrue(TEXT("default pawn is a Character blueprint class"), GameMode->DefaultPawnClass && GameMode->DefaultPawnClass->IsChildOf(ACharacter::StaticClass()));
 	TestFalse(TEXT("default pawn is not the pure C++ town pawn"), GameMode->DefaultPawnClass.Get() == AGameXXKTownPlayerPawn::StaticClass());

@@ -86,9 +86,9 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("main menu start creates a new game"), MainMenu->StartGame());
 	TestEqual(TEXT("main menu start lands directly in Qingshan town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	const FGameXXKCompanionRosterState& StarterRoster = Subsystem->GetRuntimeState().CardRun.CompanionRoster;
-	TestEqual(TEXT("main menu StartNewGame grants two permanent companions"), StarterRoster.PermanentCompanions.Num(), 2);
+	TestEqual(TEXT("main menu StartNewGame grants all six profession companions"), StarterRoster.PermanentCompanions.Num(), 6);
 	FName StarterCompanionId = NAME_None;
-	if (StarterRoster.PermanentCompanions.Num() == 2)
+	if (StarterRoster.PermanentCompanions.Num() == 6)
 	{
 		const FGameXXKPermanentCompanion& StarterCompanion = StarterRoster.PermanentCompanions[0];
 		StarterCompanionId = StarterCompanion.InstanceId;

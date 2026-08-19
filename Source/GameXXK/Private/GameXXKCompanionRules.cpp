@@ -734,6 +734,65 @@ bool FGameXXKCompanionRules::SetQuestNpcCardSelection(
 	return true;
 }
 
+bool FGameXXKCompanionRules::NormalizeOwnedQuestNpcCardLoadouts(
+	FGameXXKCompanionPartySelection& InOutSelection,
+	const int32 SelectionSeed,
+	FString* OutError)
+{
+	if (!InOutSelection.QuestNpc.NpcId.IsNone()
+		&& ValidateQuestNpcCardSelection(
+			InOutSelection.QuestNpc.NpcId,
+			InOutSelection.QuestNpc.SelectedCardIds))
+	{
+		InOutSelection.QuestNpcCardLoadouts.FindOrAdd(
+			InOutSelection.QuestNpc.NpcId).SelectedCardIds = InOutSelection.QuestNpc.SelectedCardIds;
+	}
+	TSet<FName> ApprovedNpcIds;
+	for (const FGameXXKQuestNpcDefinition& Definition : FGameXXKCompanionCatalog::GetQuestNpcDefinitions())
+	{
+		ApprovedNpcIds.Add(Definition.NpcId);
+		FGameXXKQuestNpcOwnedCardLoadout* Existing = InOutSelection.QuestNpcCardLoadouts.Find(Definition.NpcId);
+		if (Existing && ValidateQuestNpcCardSelection(Definition.NpcId, Existing->SelectedCardIds))
+		{
+			continue;
+		}
+		TArray<FName> DefaultCards;
+		if (!BuildQuestNpcRouteCardSelection(Definition.NpcId, SelectionSeed, DefaultCards, OutError))
+		{
+			return false;
+		}
+		InOutSelection.QuestNpcCardLoadouts.FindOrAdd(Definition.NpcId).SelectedCardIds = MoveTemp(DefaultCards);
+	}
+	TArray<FName> StaleNpcIds;
+	for (const TPair<FName, FGameXXKQuestNpcOwnedCardLoadout>& Pair : InOutSelection.QuestNpcCardLoadouts)
+	{
+		if (!ApprovedNpcIds.Contains(Pair.Key))
+		{
+			StaleNpcIds.Add(Pair.Key);
+		}
+	}
+	for (const FName StaleNpcId : StaleNpcIds)
+	{
+		InOutSelection.QuestNpcCardLoadouts.Remove(StaleNpcId);
+	}
+
+	if (!InOutSelection.QuestNpc.NpcId.IsNone())
+	{
+		const FGameXXKQuestNpcOwnedCardLoadout* ActiveCards =
+			InOutSelection.QuestNpcCardLoadouts.Find(InOutSelection.QuestNpc.NpcId);
+		if (!ActiveCards
+			|| !SetQuestNpcCardSelection(
+				InOutSelection.QuestNpc,
+				InOutSelection.QuestNpc.NpcId,
+				ActiveCards->SelectedCardIds,
+				OutError))
+		{
+			return false;
+		}
+	}
+	return InOutSelection.QuestNpcCardLoadouts.Num() == ApprovedNpcIds.Num();
+}
+
 bool FGameXXKCompanionRules::SetActivePermanentCompanion(
 	FGameXXKCompanionRosterState& InOutRoster,
 	const FName InstanceId,
@@ -1078,6 +1137,15 @@ bool FGameXXKCompanionRules::ValidatePartySelection(
 		}
 	}
 
+	for (const TPair<FName, FGameXXKQuestNpcOwnedCardLoadout>& Pair : Selection.QuestNpcCardLoadouts)
+	{
+		if (!FGameXXKCompanionCatalog::FindQuestNpcDefinition(Pair.Key)
+			|| !ValidateQuestNpcCardSelection(Pair.Key, Pair.Value.SelectedCardIds, OutError))
+		{
+			return false;
+		}
+	}
+
 	if (Selection.QuestNpc.NpcId.IsNone())
 	{
 		if (!Selection.QuestNpc.SelectedCardIds.IsEmpty())
@@ -1088,6 +1156,13 @@ bool FGameXXKCompanionRules::ValidatePartySelection(
 		return true;
 	}
 
+	const FGameXXKQuestNpcOwnedCardLoadout* SavedActiveLoadout =
+		Selection.QuestNpcCardLoadouts.Find(Selection.QuestNpc.NpcId);
+	if (SavedActiveLoadout && SavedActiveLoadout->SelectedCardIds != Selection.QuestNpc.SelectedCardIds)
+	{
+		SetError(OutError, TEXT("The active named NPC cards must match that NPC's persisted editable loadout."));
+		return false;
+	}
 	return ValidateQuestNpcCardSelection(Selection.QuestNpc.NpcId, Selection.QuestNpc.SelectedCardIds, OutError);
 }
 

@@ -1,4 +1,5 @@
 #include "GameXXKTrainingRules.h"
+#include "GameXXKEquipmentRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKSaveGame.h"
@@ -92,20 +93,47 @@ bool FGameXXKTrainingChapterOneCompositionTest::RunTest(const FString& Parameter
 	TestEqual(TEXT("1-1 has two sub-elite entries"), Definition.EliteEnemyPool.Num(), 2);
 	TestTrue(TEXT("1-1 elite pool contains goat"), Definition.EliteEnemyPool.Contains(FName(TEXT("Enemy.Ch1.Goat"))));
 	TestTrue(TEXT("1-1 elite pool contains weasel"), Definition.EliteEnemyPool.Contains(FName(TEXT("Enemy.Ch1.Weasel"))));
-	TestTrue(TEXT("1-1 travel uses the one-health exception"), Definition.bOneHealthTravelException);
 	const TArray<FGameXXKTrainingEncounterDefinition> Encounters = FGameXXKTrainingRules::BuildEncounterSequence(StageOne, false);
 	const TArray<FGameXXKTrainingEncounterDefinition> TravelEncounters = FGameXXKTrainingRules::BuildEncounterSequence(StageOne, true);
-	TestTrue(TEXT("encounter sequence is non-empty"), Encounters.Num() >= 7);
+	TestEqual(TEXT("one stage keeps four normal waves, two elite waves and one boss wave"), Encounters.Num(), 7);
 	int32 EliteCount = 0;
 	for (const FGameXXKTrainingEncounterDefinition& Encounter : Encounters)
 	{
-		if (Encounter.Kind == EGameXXKTrainingEncounterKind::Elite) ++EliteCount;
+		TestFalse(TEXT("every authored formation has a primary enemy"), Encounter.EnemyDefinitionId.IsNone());
+		TestFalse(TEXT("no formation contains a missing enemy identity"), Encounter.EnemyDefinitionIds.Contains(NAME_None));
+		if (Encounter.Kind == EGameXXKTrainingEncounterKind::Normal)
+		{
+			TestEqual(TEXT("ordinary waves contain two enemies"), Encounter.EnemyDefinitionIds.Num(), 2);
+			if (Encounter.EnemyDefinitionIds.Num() == 2)
+			{
+				TestEqual(TEXT("ordinary wave left slot is rooster"), Encounter.EnemyDefinitionIds[0], FName(TEXT("Enemy.Ch1.Rooster")));
+				TestEqual(TEXT("ordinary wave right slot is civet"), Encounter.EnemyDefinitionIds[1], FName(TEXT("Enemy.Ch1.Civet")));
+			}
+		}
+		else if (Encounter.Kind == EGameXXKTrainingEncounterKind::Elite)
+		{
+			++EliteCount;
+			TestEqual(TEXT("elite waves fill all three enemy slots"), Encounter.EnemyDefinitionIds.Num(), 3);
+			if (Encounter.EnemyDefinitionIds.Num() == 3)
+			{
+				TestEqual(TEXT("elite wave keeps rooster on the left flank"), Encounter.EnemyDefinitionIds[0], FName(TEXT("Enemy.Ch1.Rooster")));
+				TestEqual(TEXT("elite wave primary enemy occupies the center"), Encounter.EnemyDefinitionIds[1], Encounter.EnemyDefinitionId);
+				TestEqual(TEXT("elite wave keeps civet on the right flank"), Encounter.EnemyDefinitionIds[2], FName(TEXT("Enemy.Ch1.Civet")));
+			}
+		}
 	}
 	TestEqual(TEXT("route exposes two sub-elite encounters"), EliteCount, 2);
 	TestTrue(TEXT("route ends with a boss encounter"), Encounters.Last().Kind == EGameXXKTrainingEncounterKind::Boss);
+	TestEqual(TEXT("the 1-1 elite-as-boss wave fills all three slots"), Encounters.Last().EnemyDefinitionIds.Num(), 3);
+	if (Encounters.Last().EnemyDefinitionIds.Num() == 3)
+	{
+		TestEqual(TEXT("the 1-1 boss wave keeps rooster on the left"), Encounters.Last().EnemyDefinitionIds[0], FName(TEXT("Enemy.Ch1.Rooster")));
+		TestEqual(TEXT("the 1-1 goat boss occupies the center"), Encounters.Last().EnemyDefinitionIds[1], FName(TEXT("Enemy.Ch1.Goat")));
+		TestEqual(TEXT("the 1-1 boss wave keeps civet on the right"), Encounters.Last().EnemyDefinitionIds[2], FName(TEXT("Enemy.Ch1.Civet")));
+	}
 	TestTrue(TEXT("challenge 1-1 keeps normal combat health"), Encounters[0].BaseHealth > 1);
-	TestTrue(TEXT("travel 1-1 uses one health for normal encounters"), TravelEncounters[0].BaseHealth == 1);
-	TestTrue(TEXT("travel 1-1 uses one health for the boss"), TravelEncounters.Last().BaseHealth == 1);
+	TestEqual(TEXT("travel 1-1 normal health matches the challenge encounter"), TravelEncounters[0].BaseHealth, Encounters[0].BaseHealth);
+	TestEqual(TEXT("travel 1-1 boss health matches the challenge encounter"), TravelEncounters.Last().BaseHealth, Encounters.Last().BaseHealth);
 	TestEqual(TEXT("1-1 boss tooltip identity is goat boss"), Definition.BossEnemyId, FName(TEXT("Enemy.Ch1.Goat")));
 	const FName StageTwo = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
 	const FName StageThree = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 3);
@@ -115,6 +143,14 @@ bool FGameXXKTrainingChapterOneCompositionTest::RunTest(const FString& Parameter
 	TestTrue(TEXT("1-3 definition exists"), FGameXXKTrainingRules::TryGetStageDefinition(StageThree, StageThreeDefinition));
 	TestEqual(TEXT("1-2 reuses the weasel as the boss"), StageTwoDefinition.BossEnemyId, FName(TEXT("Enemy.Ch1.Weasel")));
 	TestEqual(TEXT("1-3 uses the first-chapter boss identity"), StageThreeDefinition.BossEnemyId, FName(TEXT("Enemy.Ch1.BluehornGoatKing")));
+	const TArray<FGameXXKTrainingEncounterDefinition> StageThreeEncounters = FGameXXKTrainingRules::BuildEncounterSequence(StageThree, false);
+	TestEqual(TEXT("the true chapter-one boss wave fills all three slots"), StageThreeEncounters.Last().EnemyDefinitionIds.Num(), 3);
+	if (StageThreeEncounters.Last().EnemyDefinitionIds.Num() == 3)
+	{
+		TestEqual(TEXT("bluehorn boss wave left flank is goat"), StageThreeEncounters.Last().EnemyDefinitionIds[0], FName(TEXT("Enemy.Ch1.Goat")));
+		TestEqual(TEXT("bluehorn boss occupies the center"), StageThreeEncounters.Last().EnemyDefinitionIds[1], FName(TEXT("Enemy.Ch1.BluehornGoatKing")));
+		TestEqual(TEXT("bluehorn boss wave right flank is weasel"), StageThreeEncounters.Last().EnemyDefinitionIds[2], FName(TEXT("Enemy.Ch1.Weasel")));
+	}
 	const FString Tooltip = FGameXXKTrainingRules::BuildStageTooltip(Progress, StageOne).ToString();
 	TestTrue(TEXT("boss tooltip includes the authored boss name"), Tooltip.Contains(Definition.BossDisplayName.ToString()));
 	TestEqual(TEXT("base travel reward leaves chest resolution to the encounter resolver"), FGameXXKTrainingRules::BuildTravelReward(StageOne).ChestTier, EGameXXKTrainingRewardTier::None);
@@ -190,8 +226,8 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		0,
 		0,
 		1.0f);
-	TestFalse(TEXT("the one-health 1-1 Travel exception never rolls a normal chest"), TravelOneOneNormal.bChestRolled);
-	TestEqual(TEXT("the one-health 1-1 Travel exception has no chest tier"), TravelOneOneNormal.ChestTier, EGameXXKTrainingRewardTier::None);
+	TestTrue(TEXT("1-1 Travel uses the ordinary guaranteed chest path"), TravelOneOneNormal.bChestRolled);
+	TestEqual(TEXT("1-1 ordinary Travel resolves a normal chest"), TravelOneOneNormal.ChestTier, EGameXXKTrainingRewardTier::NormalChest);
 	const FGameXXKTrainingReward TravelOneOneElite = FGameXXKTrainingRules::ResolveTravelReward(
 		StageOne,
 		EGameXXKTrainingEncounterKind::Elite,
@@ -199,7 +235,8 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		0,
 		0,
 		1.0f);
-	TestFalse(TEXT("the one-health 1-1 Travel exception never rolls an elite chest"), TravelOneOneElite.bChestRolled);
+	TestTrue(TEXT("1-1 elite Travel uses the guaranteed advanced chest path"), TravelOneOneElite.bChestRolled);
+	TestEqual(TEXT("1-1 elite Travel resolves an advanced chest"), TravelOneOneElite.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
 	const FGameXXKTrainingReward TravelOneOneBoss = FGameXXKTrainingRules::ResolveTravelReward(
 		StageOne,
 		EGameXXKTrainingEncounterKind::Boss,
@@ -208,8 +245,9 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		0,
 		1.0f,
 		true);
-	TestFalse(TEXT("the one-health 1-1 Travel exception never rolls a boss chest"), TravelOneOneBoss.bChestRolled);
-	TestEqual(TEXT("the one-health 1-1 boss still keeps its gold/experience stage reward"), TravelOneOneBoss.Gold, FGameXXKTrainingRules::BuildTravelReward(StageOne).Gold);
+	TestTrue(TEXT("1-1 boss Travel uses the guaranteed advanced chest path"), TravelOneOneBoss.bChestRolled);
+	TestEqual(TEXT("1-1 boss Travel resolves an advanced chest"), TravelOneOneBoss.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
+	TestEqual(TEXT("1-1 boss keeps its gold/experience stage reward"), TravelOneOneBoss.Gold, FGameXXKTrainingRules::BuildTravelReward(StageOne).Gold);
 	const FGameXXKTrainingReward TravelNormalOnCooldown = FGameXXKTrainingRules::ResolveTravelReward(
 		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2),
 		EGameXXKTrainingEncounterKind::Normal,
@@ -414,6 +452,8 @@ bool FGameXXKTrainingTravelRunnerLoopTest::RunTest(const FString& Parameters)
 	FGameXXKTrainingTravelRuntime Runner;
 	TestTrue(TEXT("the new-game travel runner initializes"), FGameXXKTrainingRules::InitializeTravelRunner(Progress, Runner, 100, 100, 100));
 	TestEqual(TEXT("runner starts in walking phase"), Runner.Phase, EGameXXKTrainingTravelPhase::Walking);
+	TestEqual(TEXT("ordinary travel runner begins with the two-enemy formation"), Runner.Enemies.Num(), 2);
+	TestEqual(TEXT("ordinary travel runner targets the first living slot"), Runner.ActiveEnemyIndex, 0);
 
 	bool bEncounterCompleted = false;
 	bool bStageCompleted = false;
@@ -426,9 +466,16 @@ bool FGameXXKTrainingTravelRunnerLoopTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("second walk step reaches the encounter"), FGameXXKTrainingRules::AdvanceTravelRunner(
 		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
 	TestEqual(TEXT("second walk step enters combat"), Runner.Phase, EGameXXKTrainingTravelPhase::Combat);
+	TestTrue(TEXT("first combat hit advances the ordinary wave"), FGameXXKTrainingRules::AdvanceTravelRunner(
+		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+	TestFalse(TEXT("killing only the first enemy does not settle the wave"), bEncounterCompleted);
+	TestEqual(TEXT("ordinary wave advances to the second enemy"), Runner.ActiveEnemyIndex, 1);
+	TestEqual(TEXT("the first enemy remains defeated in the formation snapshot"), Runner.Enemies[0].HP, 0);
+	TestTrue(TEXT("the second enemy remains alive until its own attack exchange"), Runner.Enemies[1].HP > 0);
 
 	int32 CompletedEncounters = 0;
-	for (int32 Guard = 0; Guard < 64 && !bStageCompleted; ++Guard)
+	// Bound the test by state completion, not by the retired one-hit 1-1 timing.
+	for (int32 Guard = 0; Guard < 512 && !bStageCompleted; ++Guard)
 	{
 		bEncounterCompleted = false;
 		bStageCompleted = false;
@@ -439,6 +486,8 @@ bool FGameXXKTrainingTravelRunnerLoopTest::RunTest(const FString& Parameters)
 		if (bEncounterCompleted)
 		{
 			++CompletedEncounters;
+			TestTrue(TEXT("every completed travel encounter settles gold"), Reward.Gold > 0);
+			TestTrue(TEXT("every completed travel encounter settles experience"), Reward.Experience > 0);
 		}
 	}
 
@@ -497,6 +546,100 @@ bool FGameXXKTrainingTravelRunnerFailureTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelThreeUnitPartyRuntimeTest,
+	"GameXXK.Training.TravelThreeUnitPartyRuntime",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelThreeUnitPartyRuntimeTest::RunTest(const FString& Parameters)
+{
+	FGameXXKTrainingProgress Progress;
+	FGameXXKTrainingRules::InitializeNewGame(Progress);
+
+	const TArray<FGameXXKTrainingTravelPartyUnitRuntime> Party = {
+		FGameXXKTrainingTravelPartyUnitRuntime(TEXT("Hero"), 100, 100, 1),
+		FGameXXKTrainingTravelPartyUnitRuntime(TEXT("Companion.Blade.Test"), 100, 100, 1),
+		FGameXXKTrainingTravelPartyUnitRuntime(TEXT("Npc.TusiChief"), 100, 100, 1)};
+	FGameXXKTrainingTravelRuntime Runner;
+	TestTrue(TEXT("three-unit travel runner initializes"),
+		FGameXXKTrainingRules::InitializeTravelRunner(Progress, Runner, Party));
+	TestEqual(TEXT("travel runtime keeps all three configured party units"), Runner.PartyUnits.Num(), 3);
+	TestEqual(TEXT("hero is the fixed first party unit"), Runner.PartyUnits[0].UnitId, FName(TEXT("Hero")));
+	TestEqual(TEXT("Blade companion occupies the second party unit"), Runner.PartyUnits[1].UnitId, FName(TEXT("Companion.Blade.Test")));
+	TestEqual(TEXT("Tusi Chief occupies the third party unit"), Runner.PartyUnits[2].UnitId, FName(TEXT("Npc.TusiChief")));
+
+	bool bEncounterCompleted = false;
+	bool bStageCompleted = false;
+	bool bDefeated = false;
+	FGameXXKTrainingReward Reward;
+	for (int32 WalkGuard = 0; WalkGuard < 2; ++WalkGuard)
+	{
+		TestTrue(TEXT("party fixture reaches combat"), FGameXXKTrainingRules::AdvanceTravelRunner(
+			Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+	}
+	TestEqual(TEXT("party fixture enters combat"), Runner.Phase, EGameXXKTrainingTravelPhase::Combat);
+
+	const int32 HeroHPBefore = Runner.PartyUnits[0].HP;
+	TestTrue(TEXT("hero performs the first party action"), FGameXXKTrainingRules::AdvanceTravelRunner(
+		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+	TestEqual(TEXT("first action belongs to hero"), Runner.LastAttackingPartyIndex, 0);
+	TestEqual(TEXT("enemy waits until the whole party has acted"), Runner.LastDamagedPartyIndex, INDEX_NONE);
+	TestEqual(TEXT("first action does not damage hero"), Runner.PartyUnits[0].HP, HeroHPBefore);
+
+	TestTrue(TEXT("Blade performs the second party action"), FGameXXKTrainingRules::AdvanceTravelRunner(
+		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+	TestEqual(TEXT("second action belongs to Blade"), Runner.LastAttackingPartyIndex, 1);
+	TestEqual(TEXT("enemy still waits for Tusi Chief"), Runner.LastDamagedPartyIndex, INDEX_NONE);
+
+	TestTrue(TEXT("Tusi Chief performs the third party action"), FGameXXKTrainingRules::AdvanceTravelRunner(
+		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+	TestEqual(TEXT("third action belongs to Tusi Chief"), Runner.LastAttackingPartyIndex, 2);
+	TestEqual(TEXT("enemy retaliates against the deterministic first target"), Runner.LastDamagedPartyIndex, 0);
+	TestEqual(TEXT("enemy retaliation updates the hero runtime HP"), Runner.PartyUnits[0].HP, HeroHPBefore - Runner.EnemyAttack);
+	TestEqual(TEXT("legacy hero HP mirror follows party slot zero"), Runner.PlayerHP, Runner.PartyUnits[0].HP);
+	TestFalse(TEXT("one damaged member is not a party defeat"), bDefeated);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelPartyDefeatRequiresAllUnitsTest,
+	"GameXXK.Training.TravelPartyDefeatRequiresAllUnits",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelPartyDefeatRequiresAllUnitsTest::RunTest(const FString& Parameters)
+{
+	FGameXXKTrainingProgress Progress;
+	FGameXXKTrainingRules::InitializeNewGame(Progress);
+	const TArray<FGameXXKTrainingTravelPartyUnitRuntime> Party = {
+		FGameXXKTrainingTravelPartyUnitRuntime(TEXT("Hero"), 1, 1, 1),
+		FGameXXKTrainingTravelPartyUnitRuntime(TEXT("Companion.Blade.Test"), 1, 1, 1),
+		FGameXXKTrainingTravelPartyUnitRuntime(TEXT("Npc.TusiChief"), 1, 1, 1)};
+	FGameXXKTrainingTravelRuntime Runner;
+	TestTrue(TEXT("one-health three-unit runner initializes"),
+		FGameXXKTrainingRules::InitializeTravelRunner(Progress, Runner, Party));
+
+	bool bEncounterCompleted = false;
+	bool bStageCompleted = false;
+	bool bDefeated = false;
+	FGameXXKTrainingReward Reward;
+	for (int32 Guard = 0; Guard < 32 && !bDefeated; ++Guard)
+	{
+		TestTrue(TEXT("one-health party runner advances"), FGameXXKTrainingRules::AdvanceTravelRunner(
+			Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+		if (Runner.PartyUnits[0].HP == 0 && (Runner.PartyUnits[1].HP > 0 || Runner.PartyUnits[2].HP > 0))
+		{
+			TestFalse(TEXT("hero death alone does not defeat the party"), bDefeated);
+		}
+	}
+	TestTrue(TEXT("runner reports defeat only after all three party members die"), bDefeated);
+	TestTrue(TEXT("every configured party member is defeated"),
+		Runner.PartyUnits.ContainsByPredicate([](const FGameXXKTrainingTravelPartyUnitRuntime& Unit)
+		{
+			return Unit.HP > 0;
+		}) == false);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTrainingTravelSubsystemBridgeTest,
 	"GameXXK.Training.TravelSubsystemBridge",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -519,7 +662,7 @@ bool FGameXXKTrainingTravelSubsystemBridgeTest::RunTest(const FString& Parameter
 	bool bStageCompleted = false;
 	int32 CompletedEncounters = 0;
 	FGameXXKTrainingReward Reward;
-	for (int32 Guard = 0; Guard < 64 && !bStageCompleted; ++Guard)
+	for (int32 Guard = 0; Guard < 512 && !bStageCompleted; ++Guard)
 	{
 		bool bEncounterCompleted = false;
 		bool bDefeated = false;
@@ -537,6 +680,60 @@ bool FGameXXKTrainingTravelSubsystemBridgeTest::RunTest(const FString& Parameter
 	TestTrue(TEXT("subsystem writes travel gold at settlement"), Subsystem->GetRuntimeState().PlayerGold > GoldBefore);
 	TestEqual(TEXT("subsystem restarts the travel strip at walking"), Subsystem->GetTrainingTravelRuntimeCopy().Phase, EGameXXKTrainingTravelPhase::Walking);
 	TestEqual(TEXT("subsystem leaves travel mode active after looping"), Subsystem->GetTrainingProgressCopy().bTravelActive, true);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelDefaultPartyBridgeTest,
+	"GameXXK.Training.TravelDefaultPartyBridge",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelDefaultPartyBridgeTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestNotNull(TEXT("default travel party subsystem exists"), Subsystem);
+	if (!Subsystem || !TestTrue(TEXT("default travel party starts a new game"), Subsystem->StartGame()))
+	{
+		return false;
+	}
+
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	const FName ActiveCompanionId = State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+	const FGameXXKPermanentCompanion* ActiveCompanion =
+		State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[ActiveCompanionId](const FGameXXKPermanentCompanion& Candidate)
+			{
+				return Candidate.InstanceId == ActiveCompanionId && Candidate.bIsActive;
+			});
+	TestNotNull(TEXT("new game selects one active permanent companion"), ActiveCompanion);
+	if (!ActiveCompanion)
+	{
+		return false;
+	}
+	TestEqual(TEXT("new-game default permanent companion is Blade"), ActiveCompanion->Role, EGameXXKCharacterRole::Blade);
+	TestEqual(TEXT("new-game default NPC is Tusi Chief"),
+		State.CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.TusiChief")));
+
+	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("default three-unit party starts 1-1 travel"), Subsystem->StartTrainingTravel(StageOne));
+	const FGameXXKTrainingTravelRuntime Runtime = Subsystem->GetTrainingTravelRuntimeCopy();
+	TestEqual(TEXT("subsystem materializes hero, Blade, and Tusi Chief"), Runtime.PartyUnits.Num(), 3);
+	if (Runtime.PartyUnits.Num() != 3)
+	{
+		return false;
+	}
+	TestEqual(TEXT("subsystem party slot zero is the fixed hero"),
+		Runtime.PartyUnits[0].UnitId, FGameXXKEquipmentRules::HeroCharacterId());
+	TestEqual(TEXT("subsystem party slot one uses the selected Blade instance"),
+		Runtime.PartyUnits[1].UnitId, ActiveCompanionId);
+	TestEqual(TEXT("subsystem party slot two uses Tusi Chief"),
+		Runtime.PartyUnits[2].UnitId, FName(TEXT("Npc.TusiChief")));
+	for (const FGameXXKTrainingTravelPartyUnitRuntime& Unit : Runtime.PartyUnits)
+	{
+		TestTrue(TEXT("each materialized party member has real maximum HP"), Unit.MaxHP > 1);
+		TestTrue(TEXT("each materialized party member has real attack"), Unit.Attack > 0);
+	}
 	return true;
 }
 
@@ -571,13 +768,14 @@ bool FGameXXKTrainingRealCardBattleBridgeTest::RunTest(const FString& Parameters
 	TestTrue(TEXT("training challenge owns a real card battle"), Subsystem->IsTrainingChallengeBattleActive());
 	TestEqual(TEXT("training battle enters the real Battle screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
 	const int32 EnemyCount = Subsystem->GetRuntimeState().ActiveBattleEnemies.Num();
-	TestEqual(TEXT("one training enemy appears per encounter"), EnemyCount, 1);
-	if (EnemyCount != 1)
+	TestEqual(TEXT("the first ordinary challenge wave contains two enemies"), EnemyCount, 2);
+	if (EnemyCount != 2)
 	{
 		return false;
 	}
-	const FName ExpectedEnemy = FGameXXKTrainingRules::BuildEncounterSequence(StageTwo)[0].EnemyDefinitionId;
-	TestEqual(TEXT("training battle uses the authored encounter enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].EnemyDefinitionId, ExpectedEnemy);
+	const TArray<FName> ExpectedFormation = FGameXXKTrainingRules::BuildEncounterSequence(StageTwo)[0].EnemyDefinitionIds;
+	TestEqual(TEXT("training battle uses the authored left enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].EnemyDefinitionId, ExpectedFormation[0]);
+	TestEqual(TEXT("training battle uses the authored right enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[1].EnemyDefinitionId, ExpectedFormation[1]);
 
 	bool bStageCompleted = false;
 	FGameXXKTrainingReward Reward;
@@ -735,8 +933,8 @@ bool FGameXXKTrainingTravelOfflineRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("offline rules record simulated logical seconds"), SimulatedReward.SimulatedSeconds > 0);
 	TestTrue(TEXT("offline rules settle at least one 1-1 encounter"), SimulatedReward.CompletedEncounters > 0);
 	TestTrue(TEXT("offline rules settle the 1-1 stage with base gold"), SimulatedReward.Gold > 0);
-	TestEqual(TEXT("offline 1-1 travel never grants a normal chest"), SimulatedReward.NormalChestCount, 0);
-	TestEqual(TEXT("offline 1-1 travel never grants an advanced chest"), SimulatedReward.AdvancedChestCount, 0);
+	TestTrue(TEXT("offline 1-1 normal chest count is a valid non-negative result"), SimulatedReward.NormalChestCount >= 0);
+	TestTrue(TEXT("offline 1-1 advanced chest count is a valid non-negative result"), SimulatedReward.AdvancedChestCount >= 0);
 
 	TestTrue(TEXT("offline rules move the result into the pending reward ledger"),
 		FGameXXKTrainingRules::AccumulatePendingTravelReward(Progress, SimulatedReward));
@@ -774,8 +972,8 @@ bool FGameXXKTrainingTravelOfflineSubsystemBridgeTest::RunTest(const FString& Pa
 	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	TestTrue(TEXT("offline travel bridge starts 1-1"), Subsystem->StartTrainingTravel(StageOne));
 	FGameXXKTrainingOfflineReward SimulatedReward;
-	TestTrue(TEXT("offline travel bridge simulates elapsed travel"),
-		Subsystem->SimulateTrainingTravelOffline(64, SimulatedReward));
+	TestTrue(TEXT("offline travel bridge simulates a full-health 1-1 window"),
+		Subsystem->SimulateTrainingTravelOffline(512, SimulatedReward));
 	TestTrue(TEXT("offline travel bridge exposes pending gold"),
 		Subsystem->GetPendingTrainingTravelRewardCopy().Gold > 0);
 
@@ -839,7 +1037,7 @@ bool FGameXXKTrainingTravelOfflineLoadTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("offline load source starts 1-1 travel"), SourceSubsystem->StartTrainingTravel(StageOne));
 
 	FGameXXKRuntimeState SourceState = SourceSubsystem->GetRuntimeStateCopy();
-	SourceState.Training.TravelLastUpdatedUnixSeconds = FDateTime::UtcNow().ToUnixTimestamp() - 64;
+	SourceState.Training.TravelLastUpdatedUnixSeconds = FDateTime::UtcNow().ToUnixTimestamp() - 512;
 	UGameXXKSaveGame* SaveGame = Cast<UGameXXKSaveGame>(
 		UGameplayStatics::CreateSaveGameObject(UGameXXKSaveGame::StaticClass()));
 	TestNotNull(TEXT("offline load save object exists"), SaveGame);

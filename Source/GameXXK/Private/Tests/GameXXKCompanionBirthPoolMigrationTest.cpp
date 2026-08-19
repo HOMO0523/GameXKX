@@ -135,8 +135,8 @@ bool FGameXXKCompanionBirthPoolMigrationTest::RunTest(const FString& Parameters)
 
 	TestEqual(TEXT("the fixed six-card companion birth pool was introduced by save version thirteen"),
 		FGameXXKSaveMigration::CompanionBirthPoolIntroducedSaveVersion, 13);
-	TestEqual(TEXT("the current save schema includes offline travel collection"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 20);
+	TestEqual(TEXT("the current save schema includes persistent desktop inventory storage"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 22);
 
 	FGameXXKRuntimeState LegacyRuntime = UGameXXKMVPRules::CreateNewGame();
 	FGameXXKCompanionRecruitResult RecruitResult;

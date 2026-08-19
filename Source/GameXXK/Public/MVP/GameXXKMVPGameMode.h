@@ -19,6 +19,7 @@ class GAMEXXK_API AGameXXKMVPGameMode : public AGameModeBase
 public:
 	AGameXXKMVPGameMode();
 
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void BeginPlay() override;
 	virtual APawn* SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform) override;
 
@@ -39,6 +40,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
 	TSubclassOf<AGameXXKHeroCharacter> GetPersonTownNpcVisualClass() const;
+
+	/** Test seam for the same map-gated lazy class resolution used by InitGame. */
+	bool PrepareTownVisualClassesForMapForTest(const FString& MapPackageName);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	TSubclassOf<AGameXXKTownNpcCharacter> GetMerchantTownNpcCharacterClass() const;

@@ -46,7 +46,17 @@ namespace
 	UGameXXKSaveGame* MakeVersionedSaveObject(const int32 Version, const int32 GoldSentinel)
 	{
 		UGameXXKSaveGame* SaveGame = NewObject<UGameXXKSaveGame>();
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		UGameXXKMVPSubsystem* FixtureSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		FixtureSubsystem->StartGame();
+		FGameXXKRuntimeState State = FixtureSubsystem->GetRuntimeStateCopy();
+		// Migration-transaction fixtures exercise disk/version semantics, not
+		// TravelRunner reconstruction. Keep the generated legacy snapshot in an
+		// inactive, valid state so loading it does not require the post-v22
+		// hero+companion+NPC party fixture.
+		State.Training.bTravelActive = false;
+		State.Training.ActiveTravelEncounterIndex = INDEX_NONE;
+		State.Training.bTravelPausedAtDefeat = false;
+		State.Training.TravelLastUpdatedUnixSeconds = 0;
 		State.PlayerGold = GoldSentinel;
 		SaveGame->SaveState = UGameXXKMVPRules::MakeSaveState(State);
 		SaveGame->SaveState.SaveVersion = Version;
@@ -164,6 +174,13 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	SourceState.PlayerLocation = FVector(120.0f, -34.0f, 88.0f);
 	SourceState.UnlockedRegions.Add(UGameXXKMVPRules::RegionTanjiang());
 	SourceState.Inventory.Add(UGameXXKMVPRules::ItemHealingPowder(), 2);
+	// This slot round-trip focuses on the full persisted state; leave the
+	// background TravelRunner inactive because this fixture intentionally does
+	// not recruit the post-v22 companion/NPC party.
+	SourceState.Training.bTravelActive = false;
+	SourceState.Training.ActiveTravelEncounterIndex = INDEX_NONE;
+	SourceState.Training.bTravelPausedAtDefeat = false;
+	SourceState.Training.TravelLastUpdatedUnixSeconds = 0;
 	const FGameXXKEquipmentInstance* StarterWeapon = SourceState.EquipmentCollection.EquipmentInstances.FindByPredicate(
 		[](const FGameXXKEquipmentInstance& Instance)
 		{
@@ -290,6 +307,10 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	UGameInstance* FollowerSourceGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* FollowerSourceSubsystem = NewObject<UGameXXKMVPSubsystem>(FollowerSourceGameInstance);
 	FGameXXKRuntimeState& FollowerSourceState = FollowerSourceSubsystem->GetMutableRuntimeState();
+	FollowerSourceState.Training.bTravelActive = false;
+	FollowerSourceState.Training.ActiveTravelEncounterIndex = INDEX_NONE;
+	FollowerSourceState.Training.bTravelPausedAtDefeat = false;
+	FollowerSourceState.Training.TravelLastUpdatedUnixSeconds = 0;
 	const FVector SavedQuestNpcLocation(321.0f, -48.0f, 72.0f);
 	FollowerSourceState.QuestState = EGameXXKQuestState::Accepted;
 	FollowerSourceState.bFollowerJoined = true;
@@ -407,7 +428,10 @@ bool FGameXXKSaveGameMigrationTransactionTest::RunTest(const FString& Parameters
 			}
 			return UGameplayStatics::SaveGameToSlot(Object, Slot, Index);
 		}));
-	TestTrue(TEXT("v8 load transaction succeeds"), SuccessSubsystem->LoadGameFromSlot(SuccessSlot, UserIndex));
+	const bool bSuccessLoad = SuccessSubsystem->LoadGameFromSlot(SuccessSlot, UserIndex);
+	TestTrue(
+		FString::Printf(TEXT("v8 load transaction succeeds: %s"), *SuccessSubsystem->GetLastSaveLoadError().ToString()),
+		bSuccessLoad);
 	TestTrue(TEXT("live state is unchanged while upgraded main is written"), bObservedCommitLast);
 	const UGameXXKSaveGame* SuccessBackup = LoadTypedSave(BackupSlotFor(SuccessSlot), UserIndex);
 	const UGameXXKSaveGame* SuccessMain = LoadTypedSave(SuccessSlot, UserIndex);
@@ -417,7 +441,7 @@ bool FGameXXKSaveGameMigrationTransactionTest::RunTest(const FString& Parameters
 	{
 		TestEqual(TEXT("backup remains dependency version"), SuccessBackup->SaveState.SaveVersion, RouteEconomyDependencySaveVersion());
 		TestEqual(TEXT("backup keeps exact source gold"), SuccessBackup->SaveState.RuntimeState.PlayerGold, 601);
-		TestEqual(TEXT("main upgrades to version nine"), SuccessMain->SaveState.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
+		TestEqual(TEXT("main upgrades to the current save version"), SuccessMain->SaveState.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
 	}
 	TestEqual(TEXT("live state commits only migrated source"), SuccessSubsystem->GetRuntimeState().PlayerGold, 601);
 	TestTrue(TEXT("successful migration clears error"), SuccessSubsystem->GetLastSaveLoadError().IsEmpty());

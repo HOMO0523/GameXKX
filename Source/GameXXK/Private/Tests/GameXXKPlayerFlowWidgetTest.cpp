@@ -255,6 +255,50 @@ bool FGameXXKTownOverlayCommandsTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingLazyBootTest,
+	"GameXXK.MVP.UI.DesktopTrainingLazyBoot",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingLazyBootTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	AGameXXKMVPPlayerController* PlayerController = NewObject<AGameXXKMVPPlayerController>();
+	PlayerController->SetMVPSubsystemForTest(Subsystem);
+	PlayerController->SetDesktopTrainingBootProfileForTest(true);
+	TestTrue(TEXT("HUD-only fixture starts in town"), Subsystem->StartGame());
+	TestEqual(TEXT("default desktop performance profile is empty"), PlayerController->GetDesktopTrainingPerfProfileForTest(), FString());
+
+	TestTrue(TEXT("HUD-only ensure creates the workbench"), PlayerController->EnsureDesktopTrainingWidgetsForTest());
+	TestNotNull(TEXT("HUD-only controller owns the workbench"), PlayerController->GetDesktopTrainingWorkbenchWidgetForTest());
+	TestNull(TEXT("main menu stays lazy"), PlayerController->GetMainMenuWidgetForTest());
+	TestNull(TEXT("world map stays lazy"), PlayerController->GetWorldMapWidgetForTest());
+	TestNull(TEXT("town overlay stays lazy"), PlayerController->GetTownOverlayWidgetForTest());
+	TestNull(TEXT("town HUD stays lazy"), PlayerController->GetTownHudWidgetForTest());
+	TestNull(TEXT("route map stays lazy"), PlayerController->GetRouteMapWidgetForTest());
+	TestNull(TEXT("battle board stays lazy"), PlayerController->GetBattleBoardWidgetForTest());
+	TestNull(TEXT("legacy inventory stays lazy"), PlayerController->GetInventoryWindowWidgetForTest());
+	TestNull(TEXT("shop stays lazy"), PlayerController->GetMetaShopWidgetForTest());
+	TestNull(TEXT("roster stays lazy"), PlayerController->GetCompanionRosterWidgetForTest());
+	TestNull(TEXT("quest dialog stays lazy"), PlayerController->GetQuestDialogWidgetForTest());
+	TestNull(TEXT("task panel stays lazy"), PlayerController->GetTaskPanelWidgetForTest());
+	TestNull(TEXT("encounter panel stays lazy"), PlayerController->GetRouteEncounterPanelWidgetForTest());
+	TestNull(TEXT("merchant stays lazy"), PlayerController->GetRouteMerchantWidgetForTest());
+	TestNull(TEXT("relic bar stays lazy"), PlayerController->GetRelicBarWidgetForTest());
+
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestNull(TEXT("HUD refresh does not escalate to full creation"), PlayerController->GetMainMenuWidgetForTest());
+	PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::Escape, IE_Pressed, 1.0f));
+	TestNull(TEXT("HUD Escape does not escalate to full creation"), PlayerController->GetMainMenuWidgetForTest());
+
+	TestTrue(TEXT("explicit shop request succeeds"), PlayerController->OpenMetaShopWindow());
+	TestNotNull(TEXT("explicit request creates the shop"), PlayerController->GetMetaShopWidgetForTest());
+	TestNull(TEXT("shop request does not create the route map"), PlayerController->GetRouteMapWidgetForTest());
+	TestNull(TEXT("shop request does not create the old inventory"), PlayerController->GetInventoryWindowWidgetForTest());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKPlayerControllerOwnsFlowWidgetsTest,
 	"GameXXK.MVP.UI.PlayerControllerOwnsFlowWidgets",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -307,32 +351,12 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestFalse(TEXT("town overlay hidden on initial main menu state"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
 
 	TestTrue(TEXT("start game opens Qingshan town for player controller flow"), Subsystem->StartGame());
-	// StartNewGame rolls the two starter companions from the process RNG, which would make the
-	// battle hand below vary across runs.  Rebuild the roster from a fixed recruit sequence so
-	// the battle fixture is reproducible.
-	{
-		FGameXXKCompanionRosterState& Roster = Subsystem->GetMutableRuntimeState().CardRun.CompanionRoster;
-		Roster.PermanentCompanions.Reset();
-		Roster.RecruitSequenceSeed = 0x2A4F6E1D;
-		Roster.RecruitSequenceOrdinal = 0;
-		FGameXXKCompanionRecruitResult RecruitA;
-		FGameXXKCompanionRecruitResult RecruitB;
-		FString RosterError;
-		if (!FGameXXKCompanionRules::CreateAndResolveNextRecruitment(Roster, RecruitA, &RosterError)
-			|| RecruitA.Outcome != EGameXXKCompanionRecruitOutcome::Recruited
-			|| !FGameXXKCompanionRules::SetActivePermanentCompanion(Roster, RecruitA.Companion.InstanceId, &RosterError)
-			|| !FGameXXKCompanionRules::CreateAndResolveNextRecruitment(Roster, RecruitB, &RosterError)
-			|| RecruitB.Outcome != EGameXXKCompanionRecruitOutcome::Recruited
-			|| !FGameXXKCardBattleAdapter::EnsureCardRunInitialized(Subsystem->GetMutableRuntimeState(), &RosterError))
-		{
-			AddError(FString::Printf(TEXT("deterministic starter roster pin failed: %s"), *RosterError));
-			return false;
-		}
-	}
+	// The v22 starter grant is itself deterministic: one fixed profile for each
+	// profession, with Blade active, so no test-only roster rewrite is needed.
 	const FGameXXKCompanionRosterState& StarterRoster = Subsystem->GetRuntimeState().CardRun.CompanionRoster;
-	TestEqual(TEXT("StartNewGame grants two permanent companions for the player flow"), StarterRoster.PermanentCompanions.Num(), 2);
+	TestEqual(TEXT("StartNewGame grants all six profession companions for the player flow"), StarterRoster.PermanentCompanions.Num(), 6);
 	FName StarterCompanionId = NAME_None;
-	if (StarterRoster.PermanentCompanions.Num() == 2)
+	if (StarterRoster.PermanentCompanions.Num() == 6)
 	{
 		const FGameXXKPermanentCompanion& StarterCompanion = StarterRoster.PermanentCompanions[0];
 		StarterCompanionId = StarterCompanion.InstanceId;

@@ -352,7 +352,11 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 	if (QualityEnum)
 	{
 		const int32 InvalidIndex = QualityEnum->GetIndexByValue(static_cast<int64>(EGameXXKCardQuality::Invalid));
-		TestTrue(TEXT("Invalid quality stays hidden"), QualityEnum->HasMetaData(TEXT("Hidden"), InvalidIndex));
+#if WITH_METADATA
+		TestTrue(TEXT("Invalid quality stays hidden"), !QualityEnum->GetMetaData(TEXT("Hidden"), InvalidIndex).IsEmpty());
+#else
+		TestTrue(TEXT("Invalid quality metadata is unavailable in this target"), true);
+#endif
 		TestEqual(TEXT("Common has the approved Chinese display name"),
 			QualityEnum->GetDisplayNameTextByValue(static_cast<int64>(EGameXXKCardQuality::Common)).ToString(), FString(TEXT("普通")));
 		TestEqual(TEXT("Rare has the approved Chinese display name"),

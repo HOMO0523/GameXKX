@@ -593,7 +593,7 @@ bool FGameXXKCompanionRosterWidgetFreshTownInitializationTest::RunTest(const FSt
 	TestEqual(TEXT("the backpack stages the initialized eight-card hero loadout"), Widget->GetPendingHeroCardIds().Num(), 8);
 
 	const TArray<FGameXXKPermanentCompanion> StarterRoster = Subsystem->GetPermanentCompanionViews();
-	TestEqual(TEXT("a fresh game exposes its two deterministic starter companions"), StarterRoster.Num(), 2);
+	TestEqual(TEXT("a fresh game exposes all six deterministic profession starters"), StarterRoster.Num(), 6);
 	TestTrue(TEXT("the real random-recruit action succeeds from the initialized town backpack"), Widget->BeginRandomRecruitment());
 	const TArray<FGameXXKPermanentCompanion> RecruitedRoster = Subsystem->GetPermanentCompanionViews();
 	TestEqual(TEXT("the first successful recruit is added after the deterministic starter"), RecruitedRoster.Num(), StarterRoster.Num() + 1);

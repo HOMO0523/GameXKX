@@ -690,4 +690,56 @@ bool FGameXXKEquipmentRulesValidationRollbackTest::RunTest(const FString& Parame
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKQuestNpcEquipmentOwnerTest,
+	"GameXXK.Equipment.QuestNpcOwner",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKQuestNpcEquipmentOwnerTest::RunTest(const FString& Parameters)
+{
+	FGameXXKEquipmentCollectionState Collection;
+	Collection.EquipmentSchemaVersion = 1;
+	Collection.CollectionSeed = 0x514E5043;
+	const FName WeaponId = CreateChecked(
+		*this,
+		Collection,
+		MakeRequest(
+			EGameXXKEquipmentSet::Starter,
+			EGameXXKEquipmentQuality::Common,
+			1,
+			EGameXXKEquipmentSlot::Weapon));
+	TestFalse(TEXT("NPC equipment fixture creates a weapon"), WeaponId.IsNone());
+
+	FGameXXKCompanionRosterState EmptyPermanentRoster;
+	const FName TusiChiefId(TEXT("Npc.TusiChief"));
+	const FGameXXKEquipmentTransactionResult EquipResult = FGameXXKEquipmentRules::EquipInstance(
+		Collection,
+		EmptyPermanentRoster,
+		TusiChiefId,
+		EGameXXKEquipmentSlot::Weapon,
+		WeaponId);
+	TestTrue(TEXT("an approved owned NPC can equip from the shared warehouse"), EquipResult.bSucceeded);
+	TestTrue(TEXT("NPC equipment remains valid without a permanent-companion roster entry"),
+		FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(Collection, EmptyPermanentRoster));
+
+	const FGameXXKEquipmentInstance* Equipped = Collection.EquipmentInstances.FindByPredicate(
+		[WeaponId](const FGameXXKEquipmentInstance& Candidate)
+		{
+			return Candidate.InstanceId == WeaponId;
+		});
+	TestNotNull(TEXT("equipped NPC weapon remains in the authoritative collection"), Equipped);
+	if (Equipped)
+	{
+		TestEqual(TEXT("NPC equipment persists a distinct owner kind"),
+			Equipped->OwnerKind, EGameXXKEquipmentOwnerKind::QuestNpc);
+		TestEqual(TEXT("NPC equipment persists the named NPC identity"), Equipped->OwnerCharacterId, TusiChiefId);
+	}
+
+	FGameXXKEquipmentCollectionState Restored;
+	TestTrue(TEXT("NPC-owned equipment collection serializes"), DeserializeCollection(SerializeCollection(Collection), Restored));
+	TestTrue(TEXT("NPC-owned equipment collection validates after serialization"),
+		FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(Restored, EmptyPermanentRoster));
+	return true;
+}
+
 #endif

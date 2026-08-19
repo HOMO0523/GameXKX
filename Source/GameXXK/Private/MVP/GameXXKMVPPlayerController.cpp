@@ -15,6 +15,7 @@
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKRouteEncounterSceneActor.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "Misc/Parse.h"
 #include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKTownNpcActor.h"
 #include "Town/GameXXKTownNpcCharacter.h"
@@ -154,6 +155,13 @@ namespace
 		return Screen == EGameXXKScreen::RouteEvent
 			|| Screen == EGameXXKScreen::RouteCamp;
 	}
+
+	FString ResolveDesktopTrainingPerfProfile()
+	{
+		FString Profile;
+		FParse::Value(FCommandLine::Get(), TEXT("GameXXKPerfProfile="), Profile);
+		return Profile.ToLower();
+	}
 }
 
 AGameXXKMVPPlayerController::AGameXXKMVPPlayerController()
@@ -193,27 +201,39 @@ void AGameXXKMVPPlayerController::BeginPlay()
 	bEnableMouseOverEvents = true;
 	SetTrackedInputMode(EGameXXKTrackedInputMode::GameAndUI);
 
-	const UWorld* World = GetWorld();
-	const FString CurrentPackageName = World && World->GetOutermost()
-		? World->GetOutermost()->GetName()
-		: FString();
-	const bool bIsDesktopTrainingHUDMap = GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(CurrentPackageName);
+	const FString DesktopTrainingPerfProfile = ResolveDesktopTrainingPerfProfile();
+	const bool bPerfEmptyProfile = DesktopTrainingPerfProfile == TEXT("empty");
+	const bool bIsDesktopTrainingHUDMap = ResolvePlayerFlowBootProfile()
+		== EGameXXKPlayerFlowBootProfile::DesktopTrainingOnly;
 	if (bIsDesktopTrainingHUDMap)
 	{
 		// Only the migration map opts into the workbench automatically.  The
 		// original 3D town path remains opt-in and keeps its existing rollback
 		// behavior.
-		bEnableDesktopTrainingWorkbench = true;
+		bEnableDesktopTrainingWorkbench = !bPerfEmptyProfile;
+		if (!bPerfEmptyProfile)
+		{
+			EnsureDesktopTrainingWidgets();
+		}
+	}
+	else
+	{
+		EnsurePlayerFlowWidgets();
 	}
 
-	EnsurePlayerFlowWidgets();
 	RefreshPlayerFlowWidgets();
-	if (bIsDesktopTrainingHUDMap)
+	if (bIsDesktopTrainingHUDMap && !bPerfEmptyProfile)
 	{
 		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 			Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
 		{
 			OpenDesktopTrainingWorkbench();
+			if (DesktopTrainingPerfProfile == TEXT("challenge") && DesktopTrainingWorkbenchWidget)
+			{
+				DesktopTrainingWorkbenchWidget->OpenBackpack();
+				DesktopTrainingWorkbenchWidget->SelectStageForTest(FName(TEXT("Training.Normal.1-2")));
+				DesktopTrainingWorkbenchWidget->ClickChallengeForTest();
+			}
 		}
 	}
 }
@@ -247,7 +267,6 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 {
 	if (Params.Key == EKeys::Escape && Params.Event == IE_Pressed)
 	{
-		EnsurePlayerFlowWidgets();
 		if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
 		{
 			return CloseQuestDialog();
@@ -313,14 +332,13 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 		{
 			if (OpenDesktopTrainingWorkbench())
 			{
-				DesktopTrainingWorkbenchWidget->OpenBackpack();
+				DesktopTrainingWorkbenchWidget->HandleActionClicked(60);
 				return true;
 			}
 		}
 	}
 	if (Params.Key == EKeys::Q && Params.Event == IE_Pressed)
 	{
-		EnsurePlayerFlowWidgets();
 		UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 		if (Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
 		{
@@ -336,7 +354,6 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 	}
 	if (Params.Key == EKeys::I && Params.Event == IE_Pressed)
 	{
-		EnsurePlayerFlowWidgets();
 		UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 		if (Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
 		{
@@ -352,7 +369,6 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 	}
 	if (Params.Key == EKeys::C && Params.Event == IE_Pressed)
 	{
-		EnsurePlayerFlowWidgets();
 		UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 		if (Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
 		{
@@ -403,6 +419,26 @@ void AGameXXKMVPPlayerController::SetMVPSubsystemForTest(UGameXXKMVPSubsystem* I
 	OverrideSubsystem = InSubsystem;
 	RefreshPlayerFlowWidgets();
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+void AGameXXKMVPPlayerController::SetDesktopTrainingBootProfileForTest(const bool bEnabled)
+{
+	OverrideBootProfileForTest = bEnabled
+		? EGameXXKPlayerFlowBootProfile::DesktopTrainingOnly
+		: EGameXXKPlayerFlowBootProfile::FullPlayerFlow;
+	bEnableDesktopTrainingWorkbench = bEnabled;
+}
+
+FString AGameXXKMVPPlayerController::GetDesktopTrainingPerfProfileForTest() const
+{
+	return ResolveDesktopTrainingPerfProfile();
+}
+
+bool AGameXXKMVPPlayerController::EnsureDesktopTrainingWidgetsForTest()
+{
+	return EnsureDesktopTrainingWidgets();
+}
+#endif
 
 void AGameXXKMVPPlayerController::SetDesktopTrainingWorkbenchEnabledForTest(const bool bEnabled)
 {
@@ -616,20 +652,7 @@ UGameXXKBattleBoardWidget* AGameXXKMVPPlayerController::GetBattleBoardWidgetForT
 
 UGameXXKBattleBoardWidget* AGameXXKMVPPlayerController::GetOrCreateBattleBoardWidget()
 {
-	if (!BattleBoardWidget)
-	{
-		TSubclassOf<UGameXXKBattleBoardWidget> WidgetClass = BattleBoardWidgetClass;
-		if (!WidgetClass)
-		{
-			WidgetClass = UGameXXKBattleBoardWidget::StaticClass();
-		}
-		BattleBoardWidget = CreateWidget<UGameXXKBattleBoardWidget>(this, WidgetClass);
-		if (!BattleBoardWidget)
-		{
-			BattleBoardWidget = NewObject<UGameXXKBattleBoardWidget>(this, WidgetClass);
-		}
-	}
-	return BattleBoardWidget;
+	return EnsureBattleBoardWidget();
 }
 
 UGameXXKInventoryWindowWidget* AGameXXKMVPPlayerController::GetInventoryWindowWidgetForTest() const
@@ -1355,7 +1378,7 @@ bool AGameXXKMVPPlayerController::ConfirmBattleTargetForUnitId(const FName UnitI
 	{
 		return false;
 	}
-	EnsurePlayerFlowWidgets();
+	EnsureBattleBoardWidget();
 	if (!BattleBoardWidget || !BattleBoardWidget->IsCardTargetingActive())
 	{
 		return false;
@@ -1365,13 +1388,13 @@ bool AGameXXKMVPPlayerController::ConfirmBattleTargetForUnitId(const FName UnitI
 
 bool AGameXXKMVPPlayerController::CancelBattleTargetingForTest()
 {
-	EnsurePlayerFlowWidgets();
+	EnsureBattleBoardWidget();
 	return BattleBoardWidget && BattleBoardWidget->CancelBattleTargeting();
 }
 
 bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerForTest(FVector2D CursorScreenPosition)
 {
-	EnsurePlayerFlowWidgets();
+	EnsureBattleBoardWidget();
 	return UpdateBattleTargetingPointer(CursorScreenPosition);
 }
 
@@ -1413,6 +1436,30 @@ UGameXXKMVPSubsystem* AGameXXKMVPPlayerController::ResolveMVPSubsystem() const
 
 	UGameInstance* GameInstance = GetGameInstance();
 	return GameInstance ? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr;
+}
+
+EGameXXKPlayerFlowBootProfile AGameXXKMVPPlayerController::ResolvePlayerFlowBootProfile() const
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (OverrideBootProfileForTest.IsSet())
+	{
+		return OverrideBootProfileForTest.GetValue();
+	}
+#endif
+
+	const UWorld* World = GetWorld();
+	const FString PackageName = World && World->GetOutermost()
+		? World->GetOutermost()->GetName()
+		: FString();
+	return GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(PackageName)
+		? EGameXXKPlayerFlowBootProfile::DesktopTrainingOnly
+		: EGameXXKPlayerFlowBootProfile::FullPlayerFlow;
+}
+
+bool AGameXXKMVPPlayerController::EnsureDesktopTrainingWidgets()
+{
+	bEnableDesktopTrainingWorkbench = true;
+	return EnsureDesktopTrainingWorkbenchWidget() != nullptr;
 }
 
 bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
@@ -1478,50 +1525,8 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
 		EnsureDesktopTrainingWorkbenchWidget();
 	}
 
-	if (!RouteMapWidget)
-	{
-		TSubclassOf<UGameXXKOneGameRouteMapWidget> WidgetClass = RouteMapWidgetClass;
-		if (!WidgetClass)
-		{
-			WidgetClass = UGameXXKOneGameRouteMapWidget::StaticClass();
-		}
-		RouteMapWidget = bCanAddToViewport ? CreateWidget<UGameXXKOneGameRouteMapWidget>(this, WidgetClass) : nullptr;
-		if (!RouteMapWidget)
-		{
-			RouteMapWidget = NewObject<UGameXXKOneGameRouteMapWidget>(this, WidgetClass);
-		}
-	}
-	if (RouteMapWidget)
-	{
-		RouteMapWidget->SetMVPSubsystem(Subsystem);
-		ConfigureRouteMapWidgetViewport(RouteMapWidget);
-		if (bCanAddToViewport && !RouteMapWidget->IsInViewport())
-		{
-			RouteMapWidget->AddToViewport(40);
-		}
-	}
-
-	if (!BattleBoardWidget)
-	{
-		TSubclassOf<UGameXXKBattleBoardWidget> WidgetClass = BattleBoardWidgetClass;
-		if (!WidgetClass)
-		{
-			WidgetClass = UGameXXKBattleBoardWidget::StaticClass();
-		}
-		BattleBoardWidget = bCanAddToViewport ? CreateWidget<UGameXXKBattleBoardWidget>(this, WidgetClass) : nullptr;
-		if (!BattleBoardWidget)
-		{
-			BattleBoardWidget = NewObject<UGameXXKBattleBoardWidget>(this, WidgetClass);
-		}
-	}
-	if (BattleBoardWidget)
-	{
-		BattleBoardWidget->SetMVPSubsystem(Subsystem);
-		if (bCanAddToViewport && !BattleBoardWidget->IsInViewport())
-		{
-			BattleBoardWidget->AddToViewport(50);
-		}
-	}
+	EnsureRouteMapWidget();
+	EnsureBattleBoardWidget();
 
 	if (!InventoryWindowWidget)
 	{
@@ -1561,6 +1566,63 @@ bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
 
 	RefreshPlayerFlowWidgets();
 	return MainMenuWidget && WorldMapWidget && TownOverlayWidget && TownHudWidget && RouteMapWidget && BattleBoardWidget && InventoryWindowWidget && MetaShopWidget && CompanionRosterWidget && QuestDialogWidget && RouteEncounterPanelWidget && RouteMerchantWidget && RelicBarWidget && TaskPanelWidget;
+}
+
+UGameXXKOneGameRouteMapWidget* AGameXXKMVPPlayerController::EnsureRouteMapWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!RouteMapWidget)
+	{
+		TSubclassOf<UGameXXKOneGameRouteMapWidget> WidgetClass = RouteMapWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKOneGameRouteMapWidget::StaticClass();
+		}
+		RouteMapWidget = bCanAddToViewport ? CreateWidget<UGameXXKOneGameRouteMapWidget>(this, WidgetClass) : nullptr;
+		if (!RouteMapWidget)
+		{
+			RouteMapWidget = NewObject<UGameXXKOneGameRouteMapWidget>(this, WidgetClass);
+		}
+	}
+	if (RouteMapWidget)
+	{
+		RouteMapWidget->SetMVPSubsystem(Subsystem);
+		ConfigureRouteMapWidgetViewport(RouteMapWidget);
+		if (bCanAddToViewport && !RouteMapWidget->IsInViewport())
+		{
+			RouteMapWidget->AddToViewport(40);
+		}
+	}
+	return RouteMapWidget;
+}
+
+UGameXXKBattleBoardWidget* AGameXXKMVPPlayerController::EnsureBattleBoardWidget()
+{
+	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!BattleBoardWidget)
+	{
+		TSubclassOf<UGameXXKBattleBoardWidget> WidgetClass = BattleBoardWidgetClass;
+		if (!WidgetClass)
+		{
+			WidgetClass = UGameXXKBattleBoardWidget::StaticClass();
+		}
+		BattleBoardWidget = bCanAddToViewport ? CreateWidget<UGameXXKBattleBoardWidget>(this, WidgetClass) : nullptr;
+		if (!BattleBoardWidget)
+		{
+			BattleBoardWidget = NewObject<UGameXXKBattleBoardWidget>(this, WidgetClass);
+		}
+	}
+	if (BattleBoardWidget)
+	{
+		BattleBoardWidget->SetMVPSubsystem(Subsystem);
+		if (bCanAddToViewport && !BattleBoardWidget->IsInViewport())
+		{
+			BattleBoardWidget->AddToViewport(50);
+		}
+	}
+	return BattleBoardWidget;
 }
 
 UGameXXKWorldMapWidget* AGameXXKMVPPlayerController::EnsureWorldMapWidget()
@@ -1958,7 +2020,7 @@ bool AGameXXKMVPPlayerController::OpenDesktopTrainingWorkbench()
 	{
 		TownHudWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
-	return Widget->OpenWorkbench();
+	return Widget->IsWorkbenchVisibleForTest() || Widget->OpenWorkbench();
 }
 
 bool AGameXXKMVPPlayerController::CloseDesktopTrainingWorkbench()
@@ -1999,6 +2061,8 @@ bool AGameXXKMVPPlayerController::ConfirmPendingQuestNpc(FName TaskId)
 void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const bool bDesktopTrainingOnlyFlow = ResolvePlayerFlowBootProfile()
+		== EGameXXKPlayerFlowBootProfile::DesktopTrainingOnly;
 	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
 	if (Subsystem
 		&& ActiveScreen == EGameXXKScreen::Town
@@ -2162,7 +2226,8 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	{
 		CloseRouteEncounterPanel();
 	}
-	else if (IsGenericRouteEncounterScreen(Subsystem->GetRuntimeState().Screen)
+	else if (!bDesktopTrainingOnlyFlow
+		&& IsGenericRouteEncounterScreen(Subsystem->GetRuntimeState().Screen)
 		&& !IsRouteEncounterPanelOpenForTest())
 	{
 		// Event, chest and camp nodes use this shared pure-HUD choice panel.

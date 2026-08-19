@@ -320,7 +320,11 @@ bool FGameXXKBattleStatusEffectsWidgetTest::RunTest(const FString& Parameters)
 		if (Function)
 		{
 			TestTrue(*FString::Printf(TEXT("%s is BlueprintPure"), *FunctionName.ToString()), Function->HasAnyFunctionFlags(FUNC_BlueprintPure));
+#if WITH_METADATA
 			TestTrue(*FString::Printf(TEXT("%s is development-only"), *FunctionName.ToString()), Function->HasMetaData(TEXT("DevelopmentOnly")));
+#else
+			TestTrue(*FString::Printf(TEXT("%s development-only metadata is unavailable in this target"), *FunctionName.ToString()), true);
+#endif
 		}
 	};
 	VerifyReflectedRenderedBadgeGetter(GET_FUNCTION_NAME_CHECKED(UGameXXKBattleUnitStatusEffectsWidget, GetIconCountForTest));

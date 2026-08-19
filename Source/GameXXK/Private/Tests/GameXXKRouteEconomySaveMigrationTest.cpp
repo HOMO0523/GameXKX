@@ -22,8 +22,11 @@ static_assert(
 	FGameXXKSaveMigration::RouteMerchantStockSchemaIntroducedSaveVersion == 10,
 	"Canonical route-merchant stock persistence requires save version 10.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 20,
-	"The offline travel collection migration advances the current save version to twenty.");
+	FGameXXKSaveMigration::DesktopInventoryStorageIntroducedSaveVersion == 21,
+	"Persistent desktop inventory storage advances the current save version to twenty-one.");
+static_assert(
+	FGameXXKSaveMigration::CurrentSaveVersion == 22,
+	"Persistent desktop inventory storage is part of the current save version.");
 
 namespace
 {
@@ -130,7 +133,7 @@ bool FGameXXKRouteEconomySaveVersionContractTest::RunTest(const FString& Paramet
 		TEXT("canonical merchant stock schema is version ten"),
 		FGameXXKSaveMigration::RouteMerchantStockSchemaIntroducedSaveVersion,
 		10);
-	TestEqual(TEXT("current save version includes offline travel collection"), FGameXXKSaveMigration::CurrentSaveVersion, 20);
+	TestEqual(TEXT("current save version includes named-NPC equipment ownership"), FGameXXKSaveMigration::CurrentSaveVersion, 22);
 	return true;
 }
 
@@ -207,6 +210,14 @@ bool FGameXXKRouteEconomyV9MigrationTest::RunTest(const FString& Parameters)
 		NormalizedMigrated.CardRun.HeroUnlockedCardIds = NormalizedExpected.CardRun.HeroUnlockedCardIds;
 		NormalizedMigrated.CardRun.HeroSelectedCardIds = NormalizedExpected.CardRun.HeroSelectedCardIds;
 		NormalizedMigrated.CardRun.RouteRandomSeed = NormalizedExpected.CardRun.RouteRandomSeed;
+		// v18-v22 introduced new durable namespaces after this route-economy
+		// fixture was authored. Their deterministic defaults and NPC loadouts are
+		// covered by their own migration contracts; do not treat those derived
+		// fields as a route-economy preservation failure.
+		NormalizedExpected.Training = NormalizedMigrated.Training;
+		NormalizedExpected.DesktopInventory = NormalizedMigrated.DesktopInventory;
+		NormalizedExpected.CardRun.PartySelection.QuestNpc = NormalizedMigrated.CardRun.PartySelection.QuestNpc;
+		NormalizedExpected.CardRun.PartySelection.QuestNpcCardLoadouts = NormalizedMigrated.CardRun.PartySelection.QuestNpcCardLoadouts;
 		TestTrue(
 			TEXT("v8 migration preserves the complete runtime except the three route-economy fields, the cleared merchant snapshot, and re-derived hero pools"),
 			RuntimeStatesMatch(NormalizedMigrated, NormalizedExpected));

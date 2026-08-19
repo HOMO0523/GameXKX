@@ -265,6 +265,16 @@ struct GAMEXXK_API FGameXXKQuestNpcCardSelection
 	TArray<FName> SelectedCardIds;
 };
 
+/** UHT-compatible map value for one always-owned named NPC's editable three-card deck. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKQuestNpcOwnedCardLoadout
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> SelectedCardIds;
+};
+
 /** Route-ready party selection; the fixed hero is implicit, so this can never encode a fourth combat member. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKCompanionPartySelection
@@ -276,4 +286,8 @@ struct GAMEXXK_API FGameXXKCompanionPartySelection
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKQuestNpcCardSelection QuestNpc;
+
+	/** Owned NPC deck editor state: every named NPC persists exactly three of its four fixed cards. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<FName, FGameXXKQuestNpcOwnedCardLoadout> QuestNpcCardLoadouts;
 };

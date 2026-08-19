@@ -438,7 +438,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("current save schema includes offline travel collection"), FGameXXKSaveMigration::CurrentSaveVersion, 20);
+	TestEqual(TEXT("NPC equipment ownership has an explicit schema gate"),
+		FGameXXKSaveMigration::QuestNpcEquipmentOwnerIntroducedSaveVersion, 22);
+	TestEqual(TEXT("current save schema includes NPC equipment ownership"), FGameXXKSaveMigration::CurrentSaveVersion, 22);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
@@ -851,7 +853,8 @@ bool FGameXXKEquipmentSaveMigrationOverflowTest::RunTest(const FString& Paramete
 	Source.RuntimeState.EquipmentCollection.CollectionSeed = 0x201;
 	FGameXXKSaveState Migrated;
 	FGameXXKSaveMigrationReport Report;
-	TestTrue(TEXT("201-copy legacy save remains loadable"), FGameXXKSaveMigration::MigrateToCurrent(Source, Migrated, Report));
+	const bool bMigrated = FGameXXKSaveMigration::MigrateToCurrent(Source, Migrated, Report);
+	TestTrue(FString::Printf(TEXT("201-copy legacy save remains loadable: %s"), *Report.Error), bMigrated);
 	TestEqual(TEXT("all 201 copies survive in warehouse"), Migrated.RuntimeState.EquipmentCollection.WarehouseInstanceIds.Num(), 201);
 	TestEqual(TEXT("all 201 instances survive"), Migrated.RuntimeState.EquipmentCollection.EquipmentInstances.Num(), 201);
 	TestTrue(TEXT("overflow state is explicitly flagged"), Migrated.RuntimeState.EquipmentCollection.bLegacyWarehouseOverflow);

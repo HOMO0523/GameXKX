@@ -168,9 +168,9 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 
 	TestEqual(TEXT("player-facing StartNewGame lands directly in Qingshan town"), State.Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("new game starts with ten thousand gold"), State.PlayerGold, 10000);
-	TestEqual(TEXT("player-facing StartNewGame grants two permanent companions"), State.CardRun.CompanionRoster.PermanentCompanions.Num(), 2);
+	TestEqual(TEXT("player-facing StartNewGame grants all six profession companions"), State.CardRun.CompanionRoster.PermanentCompanions.Num(), 6);
 	FName StarterCompanionId = NAME_None;
-	if (State.CardRun.CompanionRoster.PermanentCompanions.Num() == 2)
+	if (State.CardRun.CompanionRoster.PermanentCompanions.Num() == 6)
 	{
 		const FGameXXKPermanentCompanion& StarterCompanion = State.CardRun.CompanionRoster.PermanentCompanions[0];
 		StarterCompanionId = StarterCompanion.InstanceId;

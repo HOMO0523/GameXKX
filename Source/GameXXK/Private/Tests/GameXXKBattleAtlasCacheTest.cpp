@@ -145,6 +145,44 @@ bool FGameXXKBattleAtlasCacheCoalescingTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKBattleAtlasCacheZeroByteHeadlessTextureTest,
+	"GameXXK.UI.Battle.AtlasCache.ZeroByteHeadlessTexture",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKBattleAtlasCacheZeroByteHeadlessTextureTest::RunTest(const FString& Parameters)
+{
+	double Now = 100.0;
+	const TSharedRef<FFakeAtlasLoader> Loader = MakeShared<FFakeAtlasLoader>();
+	FGameXXKBattleAtlasCache Cache(Loader, [&Now]() { return Now; });
+	const FSoftObjectPath Path(TEXT("/Game/Test/T_NullRhiResident.T_NullRhiResident"));
+	TStrongObjectPtr<UTexture2D> Texture = MakeTestTexture();
+	EGameXXKAtlasLoadResult Result = EGameXXKAtlasLoadResult::Missing;
+
+	Cache.Acquire(Path, 1, [&Result, Expected = Texture.Get()](UTexture2D* LoadedTexture, EGameXXKAtlasLoadResult LoadResult)
+	{
+		if (LoadedTexture == Expected)
+		{
+			Result = LoadResult;
+		}
+	});
+	Loader->Complete(Path, Texture.Get(), 0);
+	TestEqual(TEXT("a non-null texture with zero reported bytes remains usable under NullRHI"), Result, EGameXXKAtlasLoadResult::Loaded);
+	TestEqual(TEXT("a zero-byte headless resident consumes no tracked budget"), Cache.GetStats().ResidentBytes, 0ll);
+
+	int32 ResidentHitCount = 0;
+	Cache.Acquire(Path, 2, [&ResidentHitCount](UTexture2D* LoadedTexture, EGameXXKAtlasLoadResult LoadResult)
+	{
+		if (LoadedTexture && LoadResult == EGameXXKAtlasLoadResult::Loaded)
+		{
+			++ResidentHitCount;
+		}
+	});
+	TestEqual(TEXT("the headless resident is cached instead of reloaded"), ResidentHitCount, 1);
+	TestEqual(TEXT("zero-byte cache hit issues no duplicate request"), Loader->RequestCount(Path), 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKBattleAtlasCacheSessionAndTimeoutTest,
 	"GameXXK.UI.Battle.AtlasCache.SessionAndTimeout",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

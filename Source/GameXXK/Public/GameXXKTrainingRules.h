@@ -97,6 +97,57 @@ struct GAMEXXK_API FGameXXKTrainingOfflineReward
  * this presentation/combat snapshot is rebuilt after load.
  */
 USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKTrainingTravelEnemyRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName EnemyDefinitionId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 HP = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 MaxHP = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Attack = 0;
+};
+
+/** One authoritative member of the fixed hero + companion + NPC Travel party. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKTrainingTravelPartyUnitRuntime
+{
+	GENERATED_BODY()
+
+	FGameXXKTrainingTravelPartyUnitRuntime() = default;
+
+	FGameXXKTrainingTravelPartyUnitRuntime(
+		const FName InUnitId,
+		const int32 InHP,
+		const int32 InMaxHP,
+		const int32 InAttack)
+		: UnitId(InUnitId)
+		, HP(InHP)
+		, MaxHP(InMaxHP)
+		, Attack(InAttack)
+	{
+	}
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName UnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 HP = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 MaxHP = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Attack = 0;
+};
+
+USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKTrainingTravelRuntime
 {
 	GENERATED_BODY()
@@ -107,6 +158,15 @@ struct GAMEXXK_API FGameXXKTrainingTravelRuntime
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	int32 EncounterIndex = INDEX_NONE;
 
+	/** All authored enemies in the current wave, in the same left-to-right order used by challenge combat. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TArray<FGameXXKTrainingTravelEnemyRuntime> Enemies;
+
+	/** The living enemy currently exchanging attacks with the lightweight Travel runner. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 ActiveEnemyIndex = INDEX_NONE;
+
+	/** Compatibility mirror of Enemies[ActiveEnemyIndex].EnemyDefinitionId. */
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	FName EnemyDefinitionId = NAME_None;
 
@@ -121,6 +181,25 @@ struct GAMEXXK_API FGameXXKTrainingTravelRuntime
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	int32 WalkStepsRequired = 2;
+
+	/** Hero is always slot zero; the active permanent companion and NPC occupy slots one and two. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TArray<FGameXXKTrainingTravelPartyUnitRuntime> PartyUnits;
+
+	/** Next living party member that will perform an automatic attack. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 ActivePartyIndex = INDEX_NONE;
+
+	/** Round-robin party target used by the next enemy retaliation. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 NextEnemyTargetPartyIndex = 0;
+
+	/** Immutable mutation metadata consumed by the presentation queue. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 LastAttackingPartyIndex = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 LastDamagedPartyIndex = INDEX_NONE;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	int32 PlayerHP = 0;
@@ -158,13 +237,17 @@ struct GAMEXXK_API FGameXXKTrainingEncounterDefinition
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	FName EnemyDefinitionId = NAME_None;
 
+	/** Shared left-to-right wave formation used by both challenge and Travel. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TArray<FName> EnemyDefinitionIds;
+
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	FText DisplayName;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	EGameXXKTrainingEncounterKind Kind = EGameXXKTrainingEncounterKind::Normal;
 
-	/** Runtime encounter health.  The cleared Normal 1-1 travel exception intentionally uses 1. */
+	/** Shared encounter health used by both active challenge and Travel presentation. */
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	int32 BaseHealth = 1;
 };
@@ -208,9 +291,6 @@ struct GAMEXXK_API FGameXXKTrainingStageDefinition
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	int32 TravelExperience = 0;
-
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	bool bOneHealthTravelException = false;
 
 	/** Configurable placeholders until the design spreadsheet supplies final probability values. */
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
@@ -341,6 +421,10 @@ public:
 		int32 PlayerHP,
 		int32 PlayerMaxHP,
 		int32 PlayerAttack);
+	static bool InitializeTravelRunner(
+		const FGameXXKTrainingProgress& Progress,
+		FGameXXKTrainingTravelRuntime& OutRuntime,
+		const TArray<FGameXXKTrainingTravelPartyUnitRuntime>& PartyUnits);
 	static bool AdvanceTravelRunner(
 		FGameXXKTrainingProgress& Progress,
 		FGameXXKTrainingTravelRuntime& InOutRuntime,

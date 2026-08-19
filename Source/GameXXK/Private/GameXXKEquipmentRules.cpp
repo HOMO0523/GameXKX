@@ -1,6 +1,7 @@
 #include "GameXXKEquipmentRules.h"
 
 #include "GameXXKAffixCatalog.h"
+#include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "Misc/Crc.h"
@@ -198,6 +199,12 @@ namespace
 		{
 			return true;
 		}
+		if (FGameXXKCompanionCatalog::FindQuestNpcDefinition(CharacterId))
+		{
+			// All six named NPC definitions are owned from new game onward. Their
+			// stable catalog IDs are therefore their equipment owner identities.
+			return true;
+		}
 		return Roster.PermanentCompanions.ContainsByPredicate(
 			[CharacterId](const FGameXXKPermanentCompanion& Companion)
 			{
@@ -207,8 +214,12 @@ namespace
 
 	EGameXXKEquipmentOwnerKind OwnerKindForCharacter(const FName CharacterId)
 	{
-		return CharacterId == FGameXXKEquipmentRules::HeroCharacterId()
-			? EGameXXKEquipmentOwnerKind::Hero
+		if (CharacterId == FGameXXKEquipmentRules::HeroCharacterId())
+		{
+			return EGameXXKEquipmentOwnerKind::Hero;
+		}
+		return FGameXXKCompanionCatalog::FindQuestNpcDefinition(CharacterId)
+			? EGameXXKEquipmentOwnerKind::QuestNpc
 			: EGameXXKEquipmentOwnerKind::PermanentCompanion;
 	}
 
@@ -854,9 +865,11 @@ bool FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(
 	}
 	for (const TPair<FName, FGameXXKEquipmentLoadout>& Pair : Collection.CharacterLoadouts)
 	{
-		if (Pair.Key != HeroCharacterId() && !CompanionIds.Contains(Pair.Key))
+		if (Pair.Key != HeroCharacterId()
+			&& !CompanionIds.Contains(Pair.Key)
+			&& !FGameXXKCompanionCatalog::FindQuestNpcDefinition(Pair.Key))
 		{
-			SetError(OutError, TEXT("Equipment owner is not Player or a current permanent companion."));
+			SetError(OutError, TEXT("Equipment owner is not Player, an owned permanent companion, or an approved named NPC."));
 			return false;
 		}
 	}

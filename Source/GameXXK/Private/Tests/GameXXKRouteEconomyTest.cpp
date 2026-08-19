@@ -79,9 +79,13 @@ bool FGameXXKRouteEconomyRulesTest::RunTest(const FString& Parameters)
 		TestNotNull(TEXT("the route travel-money receipt is reflected"), ReceiptStruct);
 		if (ReceiptStruct)
 		{
+			#if WITH_METADATA
 			TestTrue(
 				TEXT("the route travel-money receipt is BlueprintType"),
 				ReceiptStruct->GetBoolMetaData(TEXT("BlueprintType")));
+			#else
+			TestTrue(TEXT("route receipt metadata is unavailable in this target"), true);
+			#endif
 			TestSaveGameProperty(
 				*this,
 				ReceiptStruct,

@@ -9,8 +9,8 @@ static_assert(
 	FGameXXKSaveMigration::BattleRewardTieringIntroducedSaveVersion == 16,
 	"Battle reward tiering persistence requires save version 16.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 20,
-	"The offline travel collection migration advances the current save version to twenty.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 22,
+	"Persistent desktop inventory storage advances the current save version to twenty-one.");
 
 namespace
 {

@@ -8,6 +8,7 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRouteEconomyRules.h"
@@ -1733,6 +1734,7 @@ FGameXXKRuntimeState UGameXXKMVPRules::CreateNewGame()
 		FString Error;
 		FGameXXKEquipmentRules::CreateRolledInstance(State.EquipmentCollection, Request, InstanceId, &Error);
 	}
+	FGameXXKDesktopInventoryRules::Normalize(State);
 	return State;
 }
 
@@ -3268,19 +3270,28 @@ TArray<FName> UGameXXKMVPRules::BuildTurnOrder(const FGameXXKRuntimeState& State
 
 FGameXXKSaveState UGameXXKMVPRules::MakeSaveState(const FGameXXKRuntimeState& State)
 {
+	// Save snapshots are a persistence boundary. Runtime mutations (tests,
+	// equipment transactions, or UI fixtures) may have changed authoritative
+	// inventory maps without rebuilding their physical desktop cells yet. Take
+	// a normalized copy so a current-version save can pass the same validation
+	// that a load will apply, without mutating the live runtime state.
+	FGameXXKRuntimeState Snapshot = State;
+	FString DesktopInventoryError;
+	FGameXXKDesktopInventoryRules::Normalize(Snapshot, &DesktopInventoryError);
+
 	FGameXXKSaveState SaveState;
 	SaveState.SaveVersion = GameXXKMVP::CurrentSaveVersion;
-	SaveState.RuntimeState = State;
-	SaveState.bHasPlayerLocation = State.bHasPlayerLocation;
-	SaveState.PlayerLocation = State.PlayerLocation;
-	SaveState.QuestState = State.QuestState;
-	SaveState.bFollowerJoined = State.bFollowerJoined;
-	SaveState.bHasQuestNpcLocation = State.bHasQuestNpcLocation;
-	SaveState.QuestNpcLocation = State.QuestNpcLocation;
-	SaveState.PlayerLevel = State.PlayerLevel;
-	SaveState.PlayerXP = State.PlayerXP;
-	SaveState.PlayerGold = State.PlayerGold;
-	SaveState.UnlockedRegions = State.UnlockedRegions;
+	SaveState.RuntimeState = Snapshot;
+	SaveState.bHasPlayerLocation = Snapshot.bHasPlayerLocation;
+	SaveState.PlayerLocation = Snapshot.PlayerLocation;
+	SaveState.QuestState = Snapshot.QuestState;
+	SaveState.bFollowerJoined = Snapshot.bFollowerJoined;
+	SaveState.bHasQuestNpcLocation = Snapshot.bHasQuestNpcLocation;
+	SaveState.QuestNpcLocation = Snapshot.QuestNpcLocation;
+	SaveState.PlayerLevel = Snapshot.PlayerLevel;
+	SaveState.PlayerXP = Snapshot.PlayerXP;
+	SaveState.PlayerGold = Snapshot.PlayerGold;
+	SaveState.UnlockedRegions = Snapshot.UnlockedRegions;
 	return SaveState;
 }
 

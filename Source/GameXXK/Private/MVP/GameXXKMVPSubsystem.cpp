@@ -4,10 +4,12 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardRules.h"
 #include "GameXXKCharacterStatRules.h"
+#include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEnemyCatalog.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
@@ -50,6 +52,89 @@ namespace
 			&& UGameXXKMVPRules::AddItem(State, Reward.ChestItemId, 1);
 	}
 
+	static bool BuildTrainingTravelParty(
+		const FGameXXKRuntimeState& State,
+		TArray<FGameXXKTrainingTravelPartyUnitRuntime>& OutParty,
+		FString* OutError = nullptr)
+	{
+		OutParty.Reset();
+		OutParty.Add(FGameXXKTrainingTravelPartyUnitRuntime(
+			FGameXXKEquipmentRules::HeroCharacterId(),
+			State.PlayerHP,
+			State.PlayerMaxHP,
+			State.PlayerAttack));
+
+		const FName ActiveCompanionId = State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+		const FGameXXKPermanentCompanion* Companion =
+			State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+				[ActiveCompanionId](const FGameXXKPermanentCompanion& Candidate)
+				{
+					return !ActiveCompanionId.IsNone()
+						&& Candidate.InstanceId == ActiveCompanionId
+						&& Candidate.bIsActive;
+				});
+		if (Companion)
+		{
+			FGameXXKCharacterStats BareStats;
+			FGameXXKEquipmentLoadoutSnapshot Snapshot;
+			if (!FGameXXKCharacterStatRules::GetBareCompanionStats(
+					Companion->Role,
+					Companion->Level,
+					Companion->Star,
+					BareStats,
+					OutError)
+				|| !FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+					State.EquipmentCollection,
+					Companion->InstanceId,
+					BareStats,
+					Snapshot,
+					OutError))
+			{
+				return false;
+			}
+			OutParty.Add(FGameXXKTrainingTravelPartyUnitRuntime(
+				Companion->InstanceId,
+				Snapshot.AttributesBeforeRoute.MaxHealth,
+				Snapshot.AttributesBeforeRoute.MaxHealth,
+				Snapshot.AttributesBeforeRoute.Attack));
+		}
+
+		const FName ActiveNpcId = State.CardRun.ActiveTemporaryQuestNpcId.IsNone()
+			? FName(TEXT("Npc.TusiChief"))
+			: State.CardRun.ActiveTemporaryQuestNpcId;
+		FGameXXKCompanionAttributes NpcAttributes;
+		if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
+				ActiveNpcId,
+				State.PlayerLevel,
+				NpcAttributes,
+				OutError))
+		{
+			return false;
+		}
+		FGameXXKCharacterStats NpcBareStats;
+		NpcBareStats.MaxHealth = NpcAttributes.Health;
+		NpcBareStats.MaxMana = NpcAttributes.Mana;
+		NpcBareStats.Attack = NpcAttributes.Attack;
+		NpcBareStats.Defense = NpcAttributes.Defense;
+		NpcBareStats.Speed = NpcAttributes.Speed;
+		FGameXXKEquipmentLoadoutSnapshot NpcSnapshot;
+		if (!FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+				State.EquipmentCollection,
+				ActiveNpcId,
+				NpcBareStats,
+				NpcSnapshot,
+				OutError))
+		{
+			return false;
+		}
+		OutParty.Add(FGameXXKTrainingTravelPartyUnitRuntime(
+			ActiveNpcId,
+			NpcSnapshot.AttributesBeforeRoute.MaxHealth,
+			NpcSnapshot.AttributesBeforeRoute.MaxHealth,
+			NpcSnapshot.AttributesBeforeRoute.Attack));
+		return OutParty.Num() == 3;
+	}
+
 	static bool AddTrainingChestCount(FGameXXKRuntimeState& State, const FName ChestItemId, const int32 Count)
 	{
 		for (int32 Index = 0; Index < FMath::Max(0, Count); ++Index)
@@ -74,24 +159,25 @@ namespace
 	}
 
 	static bool BuildTrainingEnemyProjection(
-		const FGameXXKTrainingEncounterDefinition& Encounter,
+		const FName EnemyDefinitionId,
 		const int32 CombatLevel,
+		const int32 FormationSlotIndex,
 		FGameXXKBattleRuntimeUnit& OutEnemy,
 		FString* OutError)
 	{
-		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Encounter.EnemyDefinitionId);
+		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(EnemyDefinitionId);
 		if (!Definition)
 		{
 			if (OutError)
 			{
-				*OutError = FString::Printf(TEXT("Training encounter enemy is not in the catalog: %s"), *Encounter.EnemyDefinitionId.ToString());
+				*OutError = FString::Printf(TEXT("Training encounter enemy is not in the catalog: %s"), *EnemyDefinitionId.ToString());
 			}
 			return false;
 		}
 
 		const FGameXXKEnemyComputedStats Stats = FGameXXKEnemyCatalog::ComputeStats(Definition->Id, FMath::Max(1, CombatLevel));
 		OutEnemy = FGameXXKBattleRuntimeUnit();
-		OutEnemy.Id = MakeTrainingEnemyRuntimeId(Definition->Id, 0);
+		OutEnemy.Id = MakeTrainingEnemyRuntimeId(Definition->Id, FormationSlotIndex);
 		OutEnemy.DisplayName = Definition->DisplayName;
 		OutEnemy.HP = FMath::Max(1, Stats.MaxHP);
 		OutEnemy.MaxHP = OutEnemy.HP;
@@ -104,7 +190,7 @@ namespace
 		OutEnemy.bEnemy = true;
 		OutEnemy.bDefeated = false;
 		OutEnemy.EnemyDefinitionId = Definition->Id;
-		OutEnemy.BattleSlotNumber = 1;
+		OutEnemy.BattleSlotNumber = FormationSlotIndex + 1;
 		OutEnemy.CombatLevel = FMath::Max(1, CombatLevel);
 		return true;
 	}
@@ -137,15 +223,40 @@ namespace
 			return false;
 		}
 
-		FGameXXKBattleRuntimeUnit Enemy;
-		if (!BuildTrainingEnemyProjection(Encounters[EncounterIndex], InOutState.PlayerLevel, Enemy, OutError))
+		const FGameXXKTrainingEncounterDefinition& Encounter = Encounters[EncounterIndex];
+		TArray<FName> Formation = Encounter.EnemyDefinitionIds;
+		if (Formation.IsEmpty())
 		{
+			Formation.Add(Encounter.EnemyDefinitionId);
+		}
+		if (Formation.IsEmpty() || Formation.Num() > 3)
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("Training challenge formation must contain between one and three enemies.");
+			}
 			return false;
+		}
+		TArray<FGameXXKBattleRuntimeUnit> ProjectedEnemies;
+		ProjectedEnemies.Reserve(Formation.Num());
+		for (int32 FormationSlotIndex = 0; FormationSlotIndex < Formation.Num(); ++FormationSlotIndex)
+		{
+			FGameXXKBattleRuntimeUnit Enemy;
+			if (!BuildTrainingEnemyProjection(
+				Formation[FormationSlotIndex],
+				InOutState.PlayerLevel,
+				FormationSlotIndex,
+				Enemy,
+				OutError))
+			{
+				return false;
+			}
+			ProjectedEnemies.Add(MoveTemp(Enemy));
 		}
 
 		InOutState.bHasActiveBattle = true;
 		InOutState.ActiveBattleNodeId = -100000 - EncounterIndex;
-		InOutState.ActiveBattleEnemies = {Enemy};
+		InOutState.ActiveBattleEnemies = MoveTemp(ProjectedEnemies);
 		InOutState.ActiveBattleParty.Reset();
 		InOutState.PendingRouteNodeId = INDEX_NONE;
 		InOutState.bDungeonActive = false;
@@ -153,7 +264,7 @@ namespace
 		InOutState.CurrentMapId = TEXT("TrainingBattle");
 		InOutState.TownPanelMode = EGameXXKTownPanelMode::None;
 
-		const EGameXXKNodeKind NodeKind = TrainingNodeKind(Encounters[EncounterIndex].Kind);
+		const EGameXXKNodeKind NodeKind = TrainingNodeKind(Encounter.Kind);
 		const int32 BattleSeed = FGameXXKCardBattleAdapter::MixBattleSeed(
 			InOutState.RouteSeed != 0 ? InOutState.RouteSeed : 0x13579BDF,
 			InOutState.ActiveBattleNodeId);
@@ -368,6 +479,30 @@ namespace
 				FGameXXKCardPlayResult Result;
 				if (FGameXXKCardBattleAdapter::ResolveCardPlay(InOutState, Card.InstanceId, TargetId, Result, OutError))
 				{
+					// A successfully played automatic card may itself create a forced
+					// discard/search/selection. Drain that continuation in the same
+					// logical auto step instead of leaving the UI blocked until the
+					// next one-second Travel/Challenge tick.
+					for (int32 ChoiceGuard = 0;
+						ChoiceGuard < 128
+							&& (GameXXKCardRules::HasPendingChoice(InOutState.CardRun.ActiveBattle.Deck)
+								|| InOutState.CardRun.ActiveBattle.AutomaticResolutionQueue.bActive);
+						++ChoiceGuard)
+					{
+						if (!ResolveTrainingPendingCardChoice(InOutState, OutError))
+						{
+							return false;
+						}
+					}
+					if (GameXXKCardRules::HasPendingChoice(InOutState.CardRun.ActiveBattle.Deck)
+						|| InOutState.CardRun.ActiveBattle.AutomaticResolutionQueue.bActive)
+					{
+						if (OutError)
+						{
+							*OutError = TEXT("Training auto battle exceeded the post-play pending-choice resolution guard.");
+						}
+						return false;
+					}
 					return true;
 				}
 			}
@@ -456,6 +591,23 @@ namespace
 		{
 			OutBareStats = FGameXXKCharacterStatRules::GetBareHeroStats(RuntimeState.PlayerLevel);
 			return true;
+		}
+		if (FGameXXKCompanionCatalog::FindQuestNpcDefinition(CharacterId))
+		{
+			FGameXXKCompanionAttributes Attributes;
+			if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
+				CharacterId,
+				RuntimeState.PlayerLevel,
+				Attributes))
+			{
+				return false;
+			}
+			OutBareStats.MaxHealth = Attributes.Health;
+			OutBareStats.MaxMana = Attributes.Mana;
+			OutBareStats.Attack = Attributes.Attack;
+			OutBareStats.Defense = Attributes.Defense;
+			OutBareStats.Speed = Attributes.Speed;
+			return OutBareStats.IsValidProjectionInput();
 		}
 
 		const FGameXXKPermanentCompanion* Companion = RuntimeState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
@@ -956,12 +1108,15 @@ bool UGameXXKMVPSubsystem::RebuildTrainingTravelRuntime()
 	{
 		return true;
 	}
+	TArray<FGameXXKTrainingTravelPartyUnitRuntime> Party;
+	if (!BuildTrainingTravelParty(RuntimeState, Party))
+	{
+		return false;
+	}
 	return FGameXXKTrainingRules::InitializeTravelRunner(
 		RuntimeState.Training,
 		TrainingTravelRuntime,
-		RuntimeState.PlayerHP,
-		RuntimeState.PlayerMaxHP,
-		RuntimeState.PlayerAttack);
+		Party);
 }
 
 int64 UGameXXKMVPSubsystem::GetCurrentTravelUnixSeconds() const
@@ -980,12 +1135,12 @@ bool UGameXXKMVPSubsystem::ApplyOfflineTravelSinceLastUpdate(
 		return true;
 	}
 
-	if (!FGameXXKTrainingRules::InitializeTravelRunner(
-		State.Training,
-		OutRuntime,
-		State.PlayerHP,
-		State.PlayerMaxHP,
-		State.PlayerAttack))
+	TArray<FGameXXKTrainingTravelPartyUnitRuntime> Party;
+	if (!BuildTrainingTravelParty(State, Party)
+		|| !FGameXXKTrainingRules::InitializeTravelRunner(
+			State.Training,
+			OutRuntime,
+			Party))
 	{
 		return false;
 	}
@@ -1241,12 +1396,12 @@ bool UGameXXKMVPSubsystem::StartTrainingTravel(const FName StageId)
 	}
 
 	FGameXXKTrainingTravelRuntime CandidateRunner;
-	if (!FGameXXKTrainingRules::InitializeTravelRunner(
-		Candidate.Training,
-		CandidateRunner,
-		Candidate.PlayerHP,
-		Candidate.PlayerMaxHP,
-		Candidate.PlayerAttack))
+	TArray<FGameXXKTrainingTravelPartyUnitRuntime> Party;
+	if (!BuildTrainingTravelParty(Candidate, Party)
+		|| !FGameXXKTrainingRules::InitializeTravelRunner(
+			Candidate.Training,
+			CandidateRunner,
+			Party))
 	{
 		return false;
 	}
@@ -1300,7 +1455,7 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingTravelEncounter(bool& bOutStageComplet
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	const bool bAdvanced = FGameXXKTrainingRules::AdvanceTravelEncounter(RuntimeState.Training, bOutStageCompleted, OutReward);
-	if (bAdvanced && bOutStageCompleted && !ApplyTrainingRewardToRuntime(RuntimeState, OutReward))
+	if (bAdvanced && !ApplyTrainingRewardToRuntime(RuntimeState, OutReward))
 	{
 		return false;
 	}
@@ -1327,13 +1482,13 @@ bool UGameXXKMVPSubsystem::ResolveTrainingTravelFailure()
 	Candidate.PlayerHP = Candidate.PlayerMaxHP;
 	Candidate.PlayerMP = Candidate.PlayerMaxMP;
 	FGameXXKTrainingTravelRuntime CandidateRunner;
+	TArray<FGameXXKTrainingTravelPartyUnitRuntime> Party;
 	if (Candidate.Training.bTravelActive
-		&& !FGameXXKTrainingRules::InitializeTravelRunner(
-			Candidate.Training,
-			CandidateRunner,
-			Candidate.PlayerHP,
-			Candidate.PlayerMaxHP,
-			Candidate.PlayerAttack))
+		&& (!BuildTrainingTravelParty(Candidate, Party)
+			|| !FGameXXKTrainingRules::InitializeTravelRunner(
+				Candidate.Training,
+				CandidateRunner,
+				Party)))
 	{
 		return false;
 	}
@@ -1854,6 +2009,7 @@ bool UGameXXKMVPSubsystem::StartGame()
 
 bool UGameXXKMVPSubsystem::StartNewGame()
 {
+	PersistenceBoundaryDelegate.Broadcast();
 	LastSaveLoadError = FText::GetEmpty();
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = UGameXXKMVPRules::CreateNewGame();
@@ -1862,23 +2018,49 @@ bool UGameXXKMVPSubsystem::StartNewGame()
 	{
 		return false;
 	}
-	if (!RebuildTrainingTravelRuntime())
-	{
-		return false;
-	}
 
 	FGameXXKCompanionRosterState& StarterRoster = RuntimeState.CardRun.CompanionRoster;
-	StarterRoster.RecruitSequenceSeed = MakeStarterRecruitSequenceSeed();
-	FGameXXKCompanionRecruitResult StarterRecruit;
-	FGameXXKCompanionRecruitResult SecondStarterRecruit;
-	// Two deterministic starters let the player switch partners from the first
-	// town visit; the sequence yields two different roles before duplicates.
-	if (!FGameXXKCompanionRules::CreateAndResolveNextRecruitment(StarterRoster, StarterRecruit, &Error)
-		|| StarterRecruit.Outcome != EGameXXKCompanionRecruitOutcome::Recruited
-		|| !FGameXXKCompanionRules::SetActivePermanentCompanion(StarterRoster, StarterRecruit.Companion.InstanceId, &Error)
-		|| !FGameXXKCompanionRules::CreateAndResolveNextRecruitment(StarterRoster, SecondStarterRecruit, &Error)
-		|| SecondStarterRecruit.Outcome != EGameXXKCompanionRecruitOutcome::Recruited
-		|| !FGameXXKCardBattleAdapter::EnsureCardRunInitialized(RuntimeState, &Error))
+	const int32 StarterSeed = MakeStarterRecruitSequenceSeed();
+	StarterRoster.RecruitSequenceSeed = StarterSeed;
+	static const FName StarterTemplates[] = {
+		FName(TEXT("Companion.Blade.01")),
+		FName(TEXT("Companion.Guard.01")),
+		FName(TEXT("Companion.Healer.01")),
+		FName(TEXT("Companion.Hunter.01")),
+		FName(TEXT("Companion.Sorcerer.01")),
+		FName(TEXT("Companion.FormationMaster.01"))};
+	FName StarterBladeId = NAME_None;
+	for (int32 StarterIndex = 0; StarterIndex < UE_ARRAY_COUNT(StarterTemplates); ++StarterIndex)
+	{
+		FGameXXKCompanionRecruitResult RecruitResult;
+		if (!FGameXXKCompanionRules::RecruitPermanentCompanion(
+				StarterRoster,
+				StarterTemplates[StarterIndex],
+				StarterSeed + StarterIndex + 1,
+				RecruitResult,
+				&Error)
+			|| RecruitResult.Outcome != EGameXXKCompanionRecruitOutcome::Recruited)
+		{
+			return false;
+		}
+		if (RecruitResult.Companion.Role == EGameXXKCharacterRole::Blade)
+		{
+			StarterBladeId = RecruitResult.Companion.InstanceId;
+		}
+	}
+
+	// Every new game owns one representative of all six partner roles and all
+	// six named NPC definitions. The initial fixed three-person party is hero +
+	// Blade + Tusi Chief; clicking another portrait can replace either side slot.
+	if (StarterBladeId.IsNone()
+		|| !FGameXXKCompanionRules::SetActivePermanentCompanion(StarterRoster, StarterBladeId, &Error)
+		|| !FGameXXKCardBattleAdapter::EnsureCardRunInitialized(RuntimeState, &Error)
+		|| !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
+			RuntimeState,
+			FName(TEXT("Npc.TusiChief")),
+			{},
+			&Error)
+		|| !RebuildTrainingTravelRuntime())
 	{
 		return false;
 	}
@@ -1900,6 +2082,7 @@ bool UGameXXKMVPSubsystem::ContinueGameFromSlot(FString SlotName, int32 UserInde
 
 bool UGameXXKMVPSubsystem::SaveCurrentGame(FString SlotName, int32 UserIndex)
 {
+	PersistenceBoundaryDelegate.Broadcast();
 	if (APawn* PlayerPawn = GetLivePlayerPawnForSave(this))
 	{
 		RecordPlayerLocation(PlayerPawn->GetActorLocation());
@@ -1933,6 +2116,7 @@ bool UGameXXKMVPSubsystem::DeleteSaveGame(FString SlotName, int32 UserIndex)
 
 bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 {
+	PersistenceBoundaryDelegate.Broadcast();
 	LastSaveLoadError = FText::GetEmpty();
 	const FString ResolvedSlotName = ResolveSaveSlotName(SlotName);
 	if (!UGameplayStatics::DoesSaveGameExist(ResolvedSlotName, UserIndex))
@@ -2181,6 +2365,42 @@ bool UGameXXKMVPSubsystem::GetEquipmentTooltipSnapshot(
 			&Error);
 }
 
+bool UGameXXKMVPSubsystem::NormalizeDesktopInventoryState()
+{
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FString Error;
+	if (!FGameXXKDesktopInventoryRules::Normalize(Candidate, &Error))
+	{
+		return false;
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::MoveDesktopInventoryEntry(
+	const EGameXXKDesktopItemContainer FromContainer,
+	const int32 FromSlotIndex,
+	const EGameXXKDesktopItemContainer ToContainer,
+	const int32 ToSlotIndex,
+	FString* OutError)
+{
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKDesktopInventoryRules::MoveEntry(
+		Candidate,
+		FromContainer,
+		FromSlotIndex,
+		ToContainer,
+		ToSlotIndex,
+		OutError))
+	{
+		return false;
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
 bool UGameXXKMVPSubsystem::SortEquipmentWarehouse()
 {
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState)
@@ -2419,6 +2639,19 @@ bool UGameXXKMVPSubsystem::EnsureQingshanTownRuntimeForDirectMap()
 		return UGameXXKMVPRules::EnterWorldRegion(RuntimeState, UGameXXKMVPRules::RegionQingshan());
 	}
 	return false;
+}
+
+bool UGameXXKMVPSubsystem::EnsureDesktopTrainingRuntimeForDirectMap()
+{
+	if (RuntimeState.Screen == EGameXXKScreen::MainMenu)
+	{
+		// The isolated HUD map is itself a playable entry surface. A fresh direct
+		// launch therefore needs the full new-game initialization (starter roster,
+		// active party projection, card run, and Training runtime), not the lighter
+		// 3D-town editor normalization used by EnsureQingshanTownRuntimeForDirectMap.
+		return StartNewGame();
+	}
+	return EnsureQingshanTownRuntimeForDirectMap();
 }
 
 bool UGameXXKMVPSubsystem::IsRegionUnlocked(FName RegionId) const
@@ -2967,15 +3200,32 @@ int32 UGameXXKMVPSubsystem::GetPermanentCompanionSigilCount() const
 
 bool UGameXXKMVPSubsystem::SetActivePermanentCompanion(const FName InstanceId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || !EnsureCompanionCardRun(RuntimeState))
 	{
 		return false;
 	}
 
+	FGameXXKRuntimeState Candidate = RuntimeState;
 	FString Error;
-	return FGameXXKCompanionRules::SetActivePermanentCompanion(RuntimeState.CardRun.CompanionRoster, InstanceId, &Error)
-		&& EnsureCompanionCardRun(RuntimeState);
+	if (!FGameXXKCompanionRules::SetActivePermanentCompanion(Candidate.CardRun.CompanionRoster, InstanceId, &Error)
+		|| !EnsureCompanionCardRun(Candidate))
+	{
+		return false;
+	}
+	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
+	if (Candidate.Training.bTravelActive)
+	{
+		TArray<FGameXXKTrainingTravelPartyUnitRuntime> Party;
+		if (!BuildTrainingTravelParty(Candidate, Party)
+			|| !FGameXXKTrainingRules::InitializeTravelRunner(Candidate.Training, CandidateRunner, Party))
+		{
+			return false;
+		}
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	TrainingTravelRuntime = MoveTemp(CandidateRunner);
+	return true;
 }
 
 bool UGameXXKMVPSubsystem::ClearActivePermanentCompanion()
@@ -3017,31 +3267,69 @@ bool UGameXXKMVPSubsystem::SetHeroCardLoadout(const TArray<FName>& SelectedCardI
 
 bool UGameXXKMVPSubsystem::SelectTownQuestNpcForParty(const FName QuestNpcId)
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || QuestNpcId.IsNone())
 	{
 		return false;
 	}
 
+	FGameXXKRuntimeState Candidate = RuntimeState;
 	FString Error;
-	if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(RuntimeState, QuestNpcId, {}, &Error))
+	if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, QuestNpcId, {}, &Error))
 	{
 		return false;
+	}
+	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
+	if (Candidate.Training.bTravelActive)
+	{
+		TArray<FGameXXKTrainingTravelPartyUnitRuntime> Party;
+		if (!BuildTrainingTravelParty(Candidate, Party)
+			|| !FGameXXKTrainingRules::InitializeTravelRunner(Candidate.Training, CandidateRunner, Party))
+		{
+			return false;
+		}
 	}
 
 	// Route support selection is independent from the accepted story NPC that
 	// follows the player in town. Never discard that follower's saved state here.
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	TrainingTravelRuntime = MoveTemp(CandidateRunner);
 	return true;
 }
 
 bool UGameXXKMVPSubsystem::SetTemporaryQuestNpcCardLoadout(const FName QuestNpcId, const TArray<FName>& SelectedCardIds)
 {
-	// This public Blueprint-facing entry point remains for source/save compatibility only.
-	// Route/event resolution owns temporary task NPC selection and assigns the canonical three
-	// fixed cards internally, so a player-facing caller must never be able to persist an edit.
-	(void)QuestNpcId;
-	(void)SelectedCardIds;
-	return false;
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState)
+		|| QuestNpcId.IsNone()
+		|| !FGameXXKCompanionCatalog::FindQuestNpcDefinition(QuestNpcId))
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FString Error;
+	if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(Candidate, &Error)
+		|| !FGameXXKCompanionRules::ValidateQuestNpcCardSelection(QuestNpcId, SelectedCardIds, &Error))
+	{
+		return false;
+	}
+	Candidate.CardRun.PartySelection.QuestNpcCardLoadouts.FindOrAdd(QuestNpcId).SelectedCardIds = SelectedCardIds;
+	if (Candidate.CardRun.ActiveTemporaryQuestNpcId == QuestNpcId
+		&& !FGameXXKCompanionRules::SetQuestNpcCardSelection(
+			Candidate.CardRun.PartySelection.QuestNpc,
+			QuestNpcId,
+			SelectedCardIds,
+			&Error))
+	{
+		return false;
+	}
+	if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(Candidate, &Error))
+	{
+		return false;
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
 }
 
 bool UGameXXKMVPSubsystem::AwardPermanentCompanionExperience(const FName InstanceId, const int32 ExperienceAmount)

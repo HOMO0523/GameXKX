@@ -112,7 +112,6 @@ namespace
 				const int32 TierScale = DifficultyIndexValue + 1;
 				Stage.TravelGold = 18 * TierScale + StageNumber * 3;
 				Stage.TravelExperience = 10 * TierScale + StageNumber * 2;
-				Stage.bOneHealthTravelException = Difficulty == EGameXXKTrainingDifficulty::Normal && StageNumber == 1;
 				Stage.NormalChestChance = 0.25f;
 				Stage.AdvancedChestChance = 0.35f;
 				Stages.Add(MoveTemp(Stage));
@@ -132,6 +131,113 @@ namespace
 		default:
 			return 1;
 		}
+	}
+
+	void AppendFormationEnemy(TArray<FName>& Formation, const FName EnemyId)
+	{
+		if (!EnemyId.IsNone() && Formation.Num() < 3)
+		{
+			Formation.Add(EnemyId);
+		}
+	}
+
+	TArray<FName> BuildNormalFormation(const FGameXXKTrainingStageDefinition& Stage)
+	{
+		TArray<FName> Formation;
+		if (Stage.NormalEnemyPool.Num() > 0)
+		{
+			AppendFormationEnemy(Formation, Stage.NormalEnemyPool[0]);
+		}
+		if (Stage.NormalEnemyPool.Num() > 1)
+		{
+			AppendFormationEnemy(Formation, Stage.NormalEnemyPool[1]);
+		}
+		return Formation;
+	}
+
+	TArray<FName> BuildCoreFormation(
+		const TArray<FName>& FlankPool,
+		const FName CoreEnemyId)
+	{
+		TArray<FName> Formation;
+		if (FlankPool.Num() > 0)
+		{
+			AppendFormationEnemy(Formation, FlankPool[0]);
+		}
+		AppendFormationEnemy(Formation, CoreEnemyId);
+		if (FlankPool.Num() > 1)
+		{
+			AppendFormationEnemy(Formation, FlankPool[1]);
+		}
+		return Formation;
+	}
+
+	int32 FindNextLivingTravelEnemy(
+		const FGameXXKTrainingTravelRuntime& Runtime,
+		const int32 FirstIndex)
+	{
+		for (int32 EnemyIndex = FMath::Max(0, FirstIndex); EnemyIndex < Runtime.Enemies.Num(); ++EnemyIndex)
+		{
+			if (Runtime.Enemies[EnemyIndex].HP > 0)
+			{
+				return EnemyIndex;
+			}
+		}
+		return INDEX_NONE;
+	}
+
+	int32 FindNextLivingTravelPartyUnit(
+		const FGameXXKTrainingTravelRuntime& Runtime,
+		const int32 FirstIndex)
+	{
+		if (Runtime.PartyUnits.IsEmpty())
+		{
+			return INDEX_NONE;
+		}
+		const int32 SafeFirstIndex = FMath::Max(0, FirstIndex) % Runtime.PartyUnits.Num();
+		for (int32 Offset = 0; Offset < Runtime.PartyUnits.Num(); ++Offset)
+		{
+			const int32 PartyIndex = (SafeFirstIndex + Offset) % Runtime.PartyUnits.Num();
+			if (Runtime.PartyUnits[PartyIndex].HP > 0)
+			{
+				return PartyIndex;
+			}
+		}
+		return INDEX_NONE;
+	}
+
+	void SynchronizeTravelPartyCompatibility(FGameXXKTrainingTravelRuntime& Runtime)
+	{
+		if (Runtime.PartyUnits.IsEmpty())
+		{
+			Runtime.PlayerHP = 0;
+			Runtime.PlayerMaxHP = 0;
+			Runtime.PlayerAttack = 0;
+			return;
+		}
+		const FGameXXKTrainingTravelPartyUnitRuntime& Hero = Runtime.PartyUnits[0];
+		Runtime.PlayerHP = Hero.HP;
+		Runtime.PlayerMaxHP = Hero.MaxHP;
+		Runtime.PlayerAttack = Hero.Attack;
+	}
+
+	bool SynchronizeActiveTravelEnemy(FGameXXKTrainingTravelRuntime& Runtime)
+	{
+		if (!Runtime.Enemies.IsValidIndex(Runtime.ActiveEnemyIndex))
+		{
+			Runtime.EnemyDefinitionId = NAME_None;
+			Runtime.EnemyHP = 0;
+			Runtime.EnemyMaxHP = 0;
+			Runtime.EnemyAttack = 0;
+			return false;
+		}
+
+		const FGameXXKTrainingTravelEnemyRuntime& Enemy = Runtime.Enemies[Runtime.ActiveEnemyIndex];
+		Runtime.EnemyDefinitionId = Enemy.EnemyDefinitionId;
+		Runtime.EnemyHP = Enemy.HP;
+		Runtime.EnemyMaxHP = Enemy.MaxHP;
+		Runtime.EnemyAttack = Enemy.Attack;
+		return !Runtime.EnemyDefinitionId.IsNone();
 	}
 
 	EGameXXKTrainingRewardTier ChestTierForEncounter(const EGameXXKTrainingEncounterKind Kind)
@@ -232,35 +338,44 @@ TArray<FGameXXKTrainingEncounterDefinition> FGameXXKTrainingRules::BuildEncounte
 		return Encounters;
 	}
 
-	const bool bOneHealth = bTravelMode && Stage.bOneHealthTravelException;
+	// Travel and active challenge intentionally share the exact authored
+	// encounter health. The only Normal 1-1 exception is progression: it starts
+	// cleared so a new player may Travel immediately.
+	(void)bTravelMode;
+	const TArray<FName> NormalFormation = BuildNormalFormation(Stage);
 	for (int32 NormalIndex = 0; NormalIndex < 4; ++NormalIndex)
 	{
-		const FName EnemyId = Stage.NormalEnemyPool.IsValidIndex(NormalIndex)
-			? Stage.NormalEnemyPool[NormalIndex]
-			: NAME_None;
 		FGameXXKTrainingEncounterDefinition Encounter;
-		Encounter.EnemyDefinitionId = EnemyId;
-		Encounter.DisplayName = EnemyName(EnemyId);
+		Encounter.EnemyDefinitionIds = NormalFormation;
+		Encounter.EnemyDefinitionId = NormalFormation.Num() > 0 ? NormalFormation[0] : NAME_None;
+		Encounter.DisplayName = FText::FromString(JoinNames(Encounter.EnemyDefinitionIds));
 		Encounter.Kind = EGameXXKTrainingEncounterKind::Normal;
-		Encounter.BaseHealth = bOneHealth ? 1 : FMath::Max(1, 20 + Stage.Chapter * 10 + Stage.StageNumber * 3);
+		Encounter.BaseHealth = FMath::Max(1, 20 + Stage.Chapter * 10 + Stage.StageNumber * 3);
 		Encounters.Add(MoveTemp(Encounter));
 		if (NormalIndex == 1 || NormalIndex == 2)
 		{
 			const int32 EliteIndex = NormalIndex == 1 ? 0 : 1;
 			FGameXXKTrainingEncounterDefinition Elite;
 			Elite.EnemyDefinitionId = Stage.EliteEnemyPool.IsValidIndex(EliteIndex) ? Stage.EliteEnemyPool[EliteIndex] : NAME_None;
-			Elite.DisplayName = EnemyName(Elite.EnemyDefinitionId);
+			Elite.EnemyDefinitionIds = BuildCoreFormation(Stage.NormalEnemyPool, Elite.EnemyDefinitionId);
+			Elite.DisplayName = FText::FromString(JoinNames(Elite.EnemyDefinitionIds));
 			Elite.Kind = EGameXXKTrainingEncounterKind::Elite;
-			Elite.BaseHealth = bOneHealth ? 1 : FMath::Max(1, 55 + Stage.Chapter * 20 + Stage.StageNumber * 5);
+			Elite.BaseHealth = FMath::Max(1, 55 + Stage.Chapter * 20 + Stage.StageNumber * 5);
 			Encounters.Add(MoveTemp(Elite));
 		}
 	}
 
 	FGameXXKTrainingEncounterDefinition Boss;
 	Boss.EnemyDefinitionId = Stage.BossEnemyId;
-	Boss.DisplayName = Stage.BossDisplayName;
+	// 1-1/1-2 reuse an elite as the stage boss, so they keep the ordinary
+	// rooster/civet flanks. A true chapter boss uses the two elite flanks.
+	const TArray<FName>& BossFlankPool = Stage.EliteEnemyPool.Contains(Stage.BossEnemyId)
+		? Stage.NormalEnemyPool
+		: Stage.EliteEnemyPool;
+	Boss.EnemyDefinitionIds = BuildCoreFormation(BossFlankPool, Boss.EnemyDefinitionId);
+	Boss.DisplayName = FText::FromString(JoinNames(Boss.EnemyDefinitionIds));
 	Boss.Kind = EGameXXKTrainingEncounterKind::Boss;
-	Boss.BaseHealth = bOneHealth ? 1 : FMath::Max(1, 120 + Stage.Chapter * 50 + Stage.StageNumber * 10);
+	Boss.BaseHealth = FMath::Max(1, 120 + Stage.Chapter * 50 + Stage.StageNumber * 10);
 	Encounters.Add(MoveTemp(Boss));
 	return Encounters;
 }
@@ -400,6 +515,23 @@ bool FGameXXKTrainingRules::InitializeTravelRunner(
 	const int32 PlayerHP,
 	const int32 PlayerMaxHP,
 	const int32 PlayerAttack)
+
+{
+	const int32 SafeMaxHP = FMath::Max(1, PlayerMaxHP);
+	return InitializeTravelRunner(
+		Progress,
+		OutRuntime,
+		{FGameXXKTrainingTravelPartyUnitRuntime(
+			FName(TEXT("Hero")),
+			FMath::Clamp(PlayerHP, 0, SafeMaxHP),
+			SafeMaxHP,
+			FMath::Max(1, PlayerAttack))});
+}
+
+bool FGameXXKTrainingRules::InitializeTravelRunner(
+	const FGameXXKTrainingProgress& Progress,
+	FGameXXKTrainingTravelRuntime& OutRuntime,
+	const TArray<FGameXXKTrainingTravelPartyUnitRuntime>& PartyUnits)
 {
 	OutRuntime = FGameXXKTrainingTravelRuntime();
 	if (!Progress.bTravelActive || Progress.bChallengeActive || Progress.CurrentTravelStageId.IsNone())
@@ -416,24 +548,71 @@ bool FGameXXKTrainingRules::InitializeTravelRunner(
 	const FGameXXKTrainingEncounterDefinition& Encounter = Encounters[Progress.ActiveTravelEncounterIndex];
 	OutRuntime.StageId = Progress.CurrentTravelStageId;
 	OutRuntime.EncounterIndex = Progress.ActiveTravelEncounterIndex;
-	OutRuntime.EnemyDefinitionId = Encounter.EnemyDefinitionId;
 	OutRuntime.EncounterKind = Encounter.Kind;
 	OutRuntime.Phase = EGameXXKTrainingTravelPhase::Walking;
 	OutRuntime.WalkStep = 0;
 	OutRuntime.WalkStepsRequired = 2;
-	OutRuntime.PlayerMaxHP = FMath::Max(1, PlayerMaxHP);
-	OutRuntime.PlayerHP = FMath::Clamp(PlayerHP, 0, OutRuntime.PlayerMaxHP);
-	OutRuntime.PlayerAttack = FMath::Max(1, PlayerAttack);
-	OutRuntime.EnemyMaxHP = FMath::Max(1, Encounter.BaseHealth);
-	OutRuntime.EnemyHP = OutRuntime.EnemyMaxHP;
-	OutRuntime.EnemyAttack = TravelEnemyAttack(Encounter.Kind);
+	TSet<FName> SeenPartyUnitIds;
+	for (const FGameXXKTrainingTravelPartyUnitRuntime& SourceUnit : PartyUnits)
+	{
+		if (SourceUnit.UnitId.IsNone()
+			|| SourceUnit.MaxHP <= 0
+			|| SourceUnit.Attack <= 0
+			|| SeenPartyUnitIds.Contains(SourceUnit.UnitId)
+			|| OutRuntime.PartyUnits.Num() >= 3)
+		{
+			continue;
+		}
+		FGameXXKTrainingTravelPartyUnitRuntime& Unit = OutRuntime.PartyUnits.Add_GetRef(SourceUnit);
+		Unit.MaxHP = FMath::Max(1, Unit.MaxHP);
+		Unit.HP = FMath::Clamp(Unit.HP, 0, Unit.MaxHP);
+		Unit.Attack = FMath::Max(1, Unit.Attack);
+		SeenPartyUnitIds.Add(Unit.UnitId);
+	}
+	if (OutRuntime.PartyUnits.IsEmpty())
+	{
+		return false;
+	}
+	OutRuntime.ActivePartyIndex = FindNextLivingTravelPartyUnit(OutRuntime, 0);
+	OutRuntime.NextEnemyTargetPartyIndex = 0;
+	SynchronizeTravelPartyCompatibility(OutRuntime);
+	TArray<FName> Formation = Encounter.EnemyDefinitionIds;
+	if (Formation.IsEmpty())
+	{
+		Formation.Add(Encounter.EnemyDefinitionId);
+	}
+	for (const FName EnemyId : Formation)
+	{
+		if (EnemyId.IsNone() || OutRuntime.Enemies.Num() >= 3)
+		{
+			continue;
+		}
+		FGameXXKTrainingTravelEnemyRuntime Enemy;
+		Enemy.EnemyDefinitionId = EnemyId;
+		Enemy.MaxHP = FMath::Max(1, Encounter.BaseHealth);
+		Enemy.HP = Enemy.MaxHP;
+		Enemy.Attack = TravelEnemyAttack(Encounter.Kind);
+		OutRuntime.Enemies.Add(MoveTemp(Enemy));
+	}
+	OutRuntime.ActiveEnemyIndex = FindNextLivingTravelEnemy(OutRuntime, 0);
+	if (!SynchronizeActiveTravelEnemy(OutRuntime))
+	{
+		return false;
+	}
 	OutRuntime.LastDamageToEnemy = 0;
 	OutRuntime.LastDamageToPlayer = 0;
+	OutRuntime.LastAttackingPartyIndex = INDEX_NONE;
+	OutRuntime.LastDamagedPartyIndex = INDEX_NONE;
 	OutRuntime.bAutoBattle = true;
 	if (Progress.bTravelPausedAtDefeat)
 	{
 		OutRuntime.Phase = EGameXXKTrainingTravelPhase::Defeated;
-		OutRuntime.PlayerHP = 0;
+		for (FGameXXKTrainingTravelPartyUnitRuntime& Unit : OutRuntime.PartyUnits)
+		{
+			Unit.HP = 0;
+		}
+		OutRuntime.ActivePartyIndex = INDEX_NONE;
+		SynchronizeTravelPartyCompatibility(OutRuntime);
 	}
 	return true;
 }
@@ -472,6 +651,8 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 	{
 		InOutRuntime.LastDamageToEnemy = 0;
 		InOutRuntime.LastDamageToPlayer = 0;
+		InOutRuntime.LastAttackingPartyIndex = INDEX_NONE;
+		InOutRuntime.LastDamagedPartyIndex = INDEX_NONE;
 		InOutRuntime.WalkStep = FMath::Min(InOutRuntime.WalkStepsRequired, InOutRuntime.WalkStep + 1);
 		if (InOutRuntime.WalkStep >= InOutRuntime.WalkStepsRequired)
 		{
@@ -484,12 +665,50 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 	{
 		return false;
 	}
-
-	InOutRuntime.LastDamageToEnemy = FMath::Clamp(InOutRuntime.PlayerAttack, 0, InOutRuntime.EnemyHP);
-	InOutRuntime.EnemyHP = FMath::Max(0, InOutRuntime.EnemyHP - InOutRuntime.LastDamageToEnemy);
-	InOutRuntime.LastDamageToPlayer = 0;
-	if (InOutRuntime.EnemyHP <= 0)
+	if (!InOutRuntime.Enemies.IsValidIndex(InOutRuntime.ActiveEnemyIndex)
+		|| InOutRuntime.Enemies[InOutRuntime.ActiveEnemyIndex].HP <= 0)
 	{
+		return false;
+	}
+	InOutRuntime.ActivePartyIndex = FindNextLivingTravelPartyUnit(
+		InOutRuntime,
+		FMath::Max(0, InOutRuntime.ActivePartyIndex));
+	if (!InOutRuntime.PartyUnits.IsValidIndex(InOutRuntime.ActivePartyIndex))
+	{
+		InOutRuntime.Phase = EGameXXKTrainingTravelPhase::Defeated;
+		Progress.bTravelPausedAtDefeat = true;
+		bOutDefeated = true;
+		SynchronizeTravelPartyCompatibility(InOutRuntime);
+		return true;
+	}
+
+	FGameXXKTrainingTravelEnemyRuntime& ActiveEnemy = InOutRuntime.Enemies[InOutRuntime.ActiveEnemyIndex];
+	const int32 AttackingPartyIndex = InOutRuntime.ActivePartyIndex;
+	const FGameXXKTrainingTravelPartyUnitRuntime& AttackingUnit = InOutRuntime.PartyUnits[AttackingPartyIndex];
+	InOutRuntime.LastAttackingPartyIndex = AttackingPartyIndex;
+	InOutRuntime.LastDamagedPartyIndex = INDEX_NONE;
+	InOutRuntime.LastDamageToEnemy = FMath::Clamp(AttackingUnit.Attack, 0, ActiveEnemy.HP);
+	ActiveEnemy.HP = FMath::Max(0, ActiveEnemy.HP - InOutRuntime.LastDamageToEnemy);
+	InOutRuntime.EnemyHP = ActiveEnemy.HP;
+	InOutRuntime.LastDamageToPlayer = 0;
+	const int32 NextAttackingPartyIndex = FindNextLivingTravelPartyUnit(
+		InOutRuntime,
+		AttackingPartyIndex + 1);
+	InOutRuntime.ActivePartyIndex = NextAttackingPartyIndex;
+	if (ActiveEnemy.HP <= 0)
+	{
+		const int32 NextLivingEnemyIndex = FindNextLivingTravelEnemy(
+			InOutRuntime,
+			InOutRuntime.ActiveEnemyIndex + 1);
+		if (NextLivingEnemyIndex != INDEX_NONE)
+		{
+			// The whole authored formation is one settlement unit. Preserve the
+			// defeated slot for the death presentation, then target the next living
+			// member without advancing the durable encounter cursor or paying rewards.
+			InOutRuntime.ActiveEnemyIndex = NextLivingEnemyIndex;
+			return SynchronizeActiveTravelEnemy(InOutRuntime);
+		}
+
 		bOutEncounterCompleted = true;
 		const TArray<FGameXXKTrainingEncounterDefinition> Encounters = BuildEncounterSequence(Progress.CurrentTravelStageId, true);
 		if (!Encounters.IsValidIndex(InOutRuntime.EncounterIndex))
@@ -505,7 +724,7 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 			Progress.TravelNormalChestCooldownRemainingSeconds,
 			Progress.TravelAdvancedChestCooldownRemainingSeconds,
 			0.0f,
-			bLastEncounter);
+			true);
 		if (OutReward.bChestRolled)
 		{
 			if (OutReward.ChestTier == EGameXXKTrainingRewardTier::AdvancedChest)
@@ -529,25 +748,51 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 			++Progress.ActiveTravelEncounterIndex;
 		}
 
-		// Keep the player's remaining HP and restart the next loop at its walking
-		// phase.  This is the deterministic low-cost loop consumed by the desktop
-		// strip; the UI can render the new enemy without inventing another state.
-		return InitializeTravelRunner(
-			Progress,
+		// Keep every party member's remaining HP and deterministic turn cursors.
+		const TArray<FGameXXKTrainingTravelPartyUnitRuntime> PreservedParty = InOutRuntime.PartyUnits;
+		const int32 PreservedNextAttacker = InOutRuntime.ActivePartyIndex;
+		const int32 PreservedNextEnemyTarget = InOutRuntime.NextEnemyTargetPartyIndex;
+		if (!InitializeTravelRunner(Progress, InOutRuntime, PreservedParty))
+		{
+			return false;
+		}
+		InOutRuntime.ActivePartyIndex = FindNextLivingTravelPartyUnit(
 			InOutRuntime,
-			InOutRuntime.PlayerHP,
-			InOutRuntime.PlayerMaxHP,
-			InOutRuntime.PlayerAttack);
+			FMath::Max(0, PreservedNextAttacker));
+		InOutRuntime.NextEnemyTargetPartyIndex = FMath::Max(0, PreservedNextEnemyTarget);
+		SynchronizeTravelPartyCompatibility(InOutRuntime);
+		return true;
 	}
 
-	InOutRuntime.LastDamageToPlayer = FMath::Min(InOutRuntime.EnemyAttack, InOutRuntime.PlayerHP);
-	InOutRuntime.PlayerHP = FMath::Max(0, InOutRuntime.PlayerHP - InOutRuntime.LastDamageToPlayer);
-	if (InOutRuntime.PlayerHP <= 0)
+	// One enemy retaliation occurs only after every currently living party
+	// member has taken one action. This keeps all three actors meaningful while
+	// retaining the lightweight one-mutation-per-tick desktop simulation.
+	const bool bPartyRoundCompleted = NextAttackingPartyIndex == INDEX_NONE
+		|| NextAttackingPartyIndex <= AttackingPartyIndex;
+	if (bPartyRoundCompleted)
 	{
-		InOutRuntime.Phase = EGameXXKTrainingTravelPhase::Defeated;
-		Progress.bTravelPausedAtDefeat = true;
-		bOutDefeated = true;
+		const int32 DamagedPartyIndex = FindNextLivingTravelPartyUnit(
+			InOutRuntime,
+			InOutRuntime.NextEnemyTargetPartyIndex);
+		if (InOutRuntime.PartyUnits.IsValidIndex(DamagedPartyIndex))
+		{
+			FGameXXKTrainingTravelPartyUnitRuntime& DamagedUnit = InOutRuntime.PartyUnits[DamagedPartyIndex];
+			InOutRuntime.LastDamagedPartyIndex = DamagedPartyIndex;
+			InOutRuntime.LastDamageToPlayer = FMath::Min(ActiveEnemy.Attack, DamagedUnit.HP);
+			DamagedUnit.HP = FMath::Max(0, DamagedUnit.HP - InOutRuntime.LastDamageToPlayer);
+			InOutRuntime.NextEnemyTargetPartyIndex = DamagedPartyIndex + 1;
+		}
+		InOutRuntime.ActivePartyIndex = FindNextLivingTravelPartyUnit(
+			InOutRuntime,
+			FMath::Max(0, NextAttackingPartyIndex));
+		if (InOutRuntime.ActivePartyIndex == INDEX_NONE)
+		{
+			InOutRuntime.Phase = EGameXXKTrainingTravelPhase::Defeated;
+			Progress.bTravelPausedAtDefeat = true;
+			bOutDefeated = true;
+		}
 	}
+	SynchronizeTravelPartyCompatibility(InOutRuntime);
 	return true;
 }
 
@@ -574,12 +819,6 @@ bool FGameXXKTrainingRules::AdvanceTravelEncounter(
 		return false;
 	}
 	const bool bLastEncounter = Progress.ActiveTravelEncounterIndex == Encounters.Num() - 1;
-	if (!bLastEncounter)
-	{
-		++Progress.ActiveTravelEncounterIndex;
-		return true;
-	}
-
 	OutReward = ResolveTravelReward(
 		Progress.CurrentTravelStageId,
 		Encounters[Progress.ActiveTravelEncounterIndex].Kind,
@@ -587,7 +826,7 @@ bool FGameXXKTrainingRules::AdvanceTravelEncounter(
 		Progress.TravelNormalChestCooldownRemainingSeconds,
 		Progress.TravelAdvancedChestCooldownRemainingSeconds,
 		0.0f,
-		bLastEncounter);
+		true);
 	if (OutReward.bChestRolled)
 	{
 		if (OutReward.ChestTier == EGameXXKTrainingRewardTier::AdvancedChest)
@@ -600,6 +839,11 @@ bool FGameXXKTrainingRules::AdvanceTravelEncounter(
 		}
 	}
 	Progress.ChallengeRewardSeed = NextChallengeRewardSeed(Progress.ChallengeRewardSeed);
+	if (!bLastEncounter)
+	{
+		++Progress.ActiveTravelEncounterIndex;
+		return true;
+	}
 	++Progress.TravelVictories;
 	Progress.ActiveTravelEncounterIndex = 0;
 	bOutStageCompleted = true;
@@ -848,14 +1092,6 @@ FGameXXKTrainingReward FGameXXKTrainingRules::ResolveTravelReward(
 	}
 	FGameXXKTrainingStageDefinition Stage;
 	if (!TryGetStageDefinition(StageId, Stage))
-	{
-		return Reward;
-	}
-	// Normal 1-1 is the explicit low-cost onboarding exception: Travel uses
-	// one-health encounters there and grants only gold/experience.  It must not
-	// silently inherit the normal/advanced chest resolver even when the caller
-	// supplies a guaranteed chance or a talent bonus.
-	if (Stage.bOneHealthTravelException)
 	{
 		return Reward;
 	}

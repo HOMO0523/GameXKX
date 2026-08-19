@@ -43,10 +43,10 @@ FName GameXXKLevelFlow::MapForScreen(EGameXXKScreen Screen)
 	switch (Screen)
 	{
 	case EGameXXKScreen::Town:
-		// The migration branch makes the isolated HUD surface the canonical town
-		// entry.  The original 3D maps remain available as explicit rollback
-		// assets and are still recognized by IsTownGameplayMapPackage.
-		return DesktopTrainingHUDMap;
+		// Keep the accepted 3D town as the player-facing entry until the isolated
+		// HUD migration passes its final acceptance.  L_DesktopTrainingHUD stays
+		// directly loadable as the explicit opt-in validation surface.
+		return QingshanTownMap;
 	case EGameXXKScreen::DungeonMap:
 		return RouteMap;
 	case EGameXXKScreen::RouteEvent:
@@ -103,6 +103,11 @@ bool GameXXKLevelFlow::IsTownGameplayMapPackage(const FString& CurrentPackageNam
 bool GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(const FString& CurrentPackageName)
 {
 	return MapPackageMatches(CurrentPackageName, DesktopTrainingHUDMap);
+}
+
+float GameXXKLevelFlow::FrameRateLimitForMapPackage(const FString& CurrentPackageName)
+{
+	return IsDesktopTrainingHUDMapPackage(CurrentPackageName) ? 30.0f : 0.0f;
 }
 
 bool GameXXKLevelFlow::OpenMapForRuntimeState(UGameXXKMVPSubsystem* Subsystem)

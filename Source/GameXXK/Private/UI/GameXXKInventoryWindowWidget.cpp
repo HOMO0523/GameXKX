@@ -24,11 +24,14 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/Texture2D.h"
 #include "GameXXKCardCatalog.h"
+#include "GameXXKCompanionCatalog.h"
+#include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKMVPRules.h"
 #include "InputCoreTypes.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Input/SButton.h"
 
@@ -135,6 +138,37 @@ namespace
 	const FString HeroLockedCardIconTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CardLockedIcon.T_MasterV2_CardLockedIcon"));
 	// Page 18 hero identity card face (card frame + hero bust).
 	const FString HeroCardPortraitTexturePath(TEXT("/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_07.T_Page18CardFinal_07"));
+
+	FString ResolveDeckCardPortraitPath(const FGameXXKCardDefinition& Definition)
+	{
+		static const FString CardArtRoot(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/"));
+		if (Definition.Owner == EGameXXKCardOwner::QuestNpc && !Definition.NpcId.IsNone())
+		{
+			FString Token = Definition.NpcId.ToString().Replace(TEXT("."), TEXT("_"));
+			return CardArtRoot
+				+ FString::Printf(TEXT("T_CardPortrait_%s.T_CardPortrait_%s"), *Token, *Token);
+		}
+		if (Definition.Owner == EGameXXKCardOwner::Profession)
+		{
+			const TCHAR* RoleToken = nullptr;
+			switch (Definition.LinkedRole)
+			{
+			case EGameXXKCharacterRole::Blade: RoleToken = TEXT("Blade"); break;
+			case EGameXXKCharacterRole::Guard: RoleToken = TEXT("Guard"); break;
+			case EGameXXKCharacterRole::Healer: RoleToken = TEXT("Healer"); break;
+			case EGameXXKCharacterRole::Hunter: RoleToken = TEXT("Hunter"); break;
+			case EGameXXKCharacterRole::Sorcerer: RoleToken = TEXT("Sorcerer"); break;
+			case EGameXXKCharacterRole::FormationMaster: RoleToken = TEXT("FormationMaster"); break;
+			default: break;
+			}
+			if (RoleToken)
+			{
+				return CardArtRoot
+					+ FString::Printf(TEXT("T_CardPortrait_Role_%s.T_CardPortrait_Role_%s"), RoleToken, RoleToken);
+			}
+		}
+		return HeroCardPortraitTexturePath;
+	}
 	const FString ApprovedPanelTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_PanelLarge.T_MasterV2_PanelLarge"));
 	const FMargin SlotFrameMargin(5.0f / 61.0f, 5.0f / 56.0f, 5.0f / 61.0f, 5.0f / 56.0f);
 	const FMargin ActionFrameMargin(0.05f, 0.11f, 0.05f, 0.11f);
@@ -512,7 +546,8 @@ namespace
 	FText BuildEquipmentInstanceDetail(
 		const UGameXXKMVPSubsystem* Subsystem,
 		const FGameXXKEquipmentInstance& Instance,
-		const FGameXXKEquipmentDefinition& Definition)
+		const FGameXXKEquipmentDefinition& Definition,
+		const FName CompareCharacterId)
 	{
 		TArray<FString> Lines;
 		Lines.Add(FString::Printf(TEXT("部位：%s"), *EquipmentSlotText(Definition.Slot).ToString()));
@@ -540,7 +575,7 @@ namespace
 		const bool bHasSnapshot = Subsystem
 			&& Subsystem->GetEquipmentTooltipSnapshot(
 				Instance.InstanceId,
-				FGameXXKEquipmentRules::HeroCharacterId(),
+				CompareCharacterId,
 				Snapshot);
 
 		// The 2/4/6-piece set bonus block marks each tier the character has reached.
@@ -697,6 +732,134 @@ void UGameXXKHeroDeckCardButton::HandleClicked()
 	{
 		Owner->HandleHeroDeckCardClicked(CardId);
 	}
+}
+
+void UGameXXKInventoryWindowWidget::ConfigureDesktopTrainingEmbeddedMode(const bool bEnabled)
+{
+	bDesktopTrainingEmbeddedMode = bEnabled;
+	if (RootCanvas)
+	{
+		RefreshProgrammaticLayout();
+	}
+}
+
+void UGameXXKInventoryWindowWidget::ConfigureDesktopTrainingCharacter(const FName CharacterId)
+{
+	if (ConfiguredDesktopTrainingCharacterId != CharacterId)
+	{
+		PendingHeroDeckIds.Reset();
+	}
+	ConfiguredDesktopTrainingCharacterId = CharacterId;
+	if (RootCanvas)
+	{
+		RefreshProgrammaticLayout();
+	}
+}
+
+FName UGameXXKInventoryWindowWidget::GetConfiguredCharacterIdForTest() const
+{
+	return ResolveInventoryCharacterId();
+}
+
+FName UGameXXKInventoryWindowWidget::ResolveInventoryCharacterId() const
+{
+	return bDesktopTrainingEmbeddedMode && !ConfiguredDesktopTrainingCharacterId.IsNone()
+		? ConfiguredDesktopTrainingCharacterId
+		: FGameXXKEquipmentRules::HeroCharacterId();
+}
+
+int32 UGameXXKInventoryWindowWidget::GetConfiguredDeckRequiredCount() const
+{
+	const FName CharacterId = ResolveInventoryCharacterId();
+	if (CharacterId == FGameXXKEquipmentRules::HeroCharacterId())
+	{
+		return 8;
+	}
+	return FGameXXKCompanionCatalog::FindQuestNpcDefinition(CharacterId) ? 3 : 5;
+}
+
+void UGameXXKInventoryWindowWidget::ConfigureDesktopTrainingHost(UGameXXKDesktopTrainingWorkbenchWidget* InHost)
+{
+	DesktopTrainingHost = InHost;
+}
+
+bool UGameXXKInventoryWindowWidget::IsDesktopTrainingEmbeddedModeForTest() const
+{
+	return bDesktopTrainingEmbeddedMode;
+}
+
+FGameXXKEmbeddedInventorySessionState UGameXXKInventoryWindowWidget::CaptureEmbeddedSessionState() const
+{
+	FGameXXKEmbeddedInventorySessionState State;
+	State.CharacterId = ResolveInventoryCharacterId();
+	State.ActiveInventoryFilter = ActiveInventoryFilter;
+	State.ActiveCharacterTab = ActiveCharacterTab;
+	State.bBackpackSorted = bBackpackSorted;
+	State.BackpackScrollOffset = DeferredBackpackScrollOffset;
+	State.PendingDeckIds = PendingHeroDeckIds;
+	return State;
+}
+
+void UGameXXKInventoryWindowWidget::RestoreEmbeddedSessionState(const FGameXXKEmbeddedInventorySessionState& State)
+{
+	ConfiguredDesktopTrainingCharacterId = State.CharacterId;
+	ActiveInventoryFilter = State.ActiveInventoryFilter;
+	ActiveCharacterTab = State.ActiveCharacterTab;
+	bBackpackSorted = State.bBackpackSorted;
+	DeferredBackpackScrollOffset = FMath::Max(0.0f, State.BackpackScrollOffset);
+	PendingHeroDeckIds = State.PendingDeckIds;
+	RefreshProgrammaticLayout();
+	if (BackpackScrollBox)
+	{
+		BackpackScrollBox->SetScrollOffset(DeferredBackpackScrollOffset);
+	}
+}
+
+bool UGameXXKInventoryWindowWidget::IsBackpackSortedForTest() const
+{
+	return bBackpackSorted;
+}
+
+void UGameXXKInventoryWindowWidget::SetBackpackScrollOffsetForTest(const float ScrollOffset)
+{
+	DeferredBackpackScrollOffset = FMath::Max(0.0f, ScrollOffset);
+	if (BackpackScrollBox)
+	{
+		BackpackScrollBox->SetScrollOffset(DeferredBackpackScrollOffset);
+	}
+}
+
+float UGameXXKInventoryWindowWidget::GetBackpackScrollOffsetForTest() const
+{
+	return DeferredBackpackScrollOffset;
+}
+
+FName UGameXXKInventoryWindowWidget::GetBackpackItemIdAtSlotForDesktopTraining(const int32 SlotIndex) const
+{
+	return CurrentBackpackSlotItemIds.IsValidIndex(SlotIndex)
+		? CurrentBackpackSlotItemIds[SlotIndex]
+		: NAME_None;
+}
+
+FName UGameXXKInventoryWindowWidget::GetBackpackEquipmentInstanceIdAtSlotForDesktopTraining(const int32 SlotIndex) const
+{
+	return CurrentBackpackSlotEquipmentInstanceIds.IsValidIndex(SlotIndex)
+		? CurrentBackpackSlotEquipmentInstanceIds[SlotIndex]
+		: NAME_None;
+}
+
+int32 UGameXXKInventoryWindowWidget::GetBackpackQuantityAtSlotForDesktopTraining(const int32 SlotIndex) const
+{
+	return CurrentBackpackSlotQuantities.IsValidIndex(SlotIndex)
+		? CurrentBackpackSlotQuantities[SlotIndex]
+		: 0;
+}
+
+FString UGameXXKInventoryWindowWidget::GetBackpackIconPathAtSlotForDesktopTraining(const int32 SlotIndex) const
+{
+	return CurrentBackpackSlotIconPaths.IsValidIndex(SlotIndex)
+		? CurrentBackpackSlotIconPaths[SlotIndex]
+		: FString();
 }
 
 bool UGameXXKInventoryWindowWidget::OpenFreeInventory()
@@ -923,7 +1086,7 @@ FName UGameXXKInventoryWindowWidget::GetEquippedItemForSlotForTest(FName SlotId)
 
 bool UGameXXKInventoryWindowWidget::QuickEquipBackpackInstanceForTest(const FName InstanceId)
 {
-	CharacterBackpackModel.Bind(ResolveMVPSubsystem(), FGameXXKEquipmentRules::HeroCharacterId());
+	CharacterBackpackModel.Bind(ResolveMVPSubsystem(), ResolveInventoryCharacterId());
 	FGameXXKEquipmentTransactionResult Result;
 	const bool bSucceeded = CharacterBackpackModel.QuickEquip(InstanceId, Result);
 	if (bSucceeded)
@@ -939,7 +1102,7 @@ bool UGameXXKInventoryWindowWidget::QuickEquipBackpackInstanceForTest(const FNam
 
 bool UGameXXKInventoryWindowWidget::QuickUnequipSlotForTest(const EGameXXKEquipmentSlot EquipmentSlot)
 {
-	CharacterBackpackModel.Bind(ResolveMVPSubsystem(), FGameXXKEquipmentRules::HeroCharacterId());
+	CharacterBackpackModel.Bind(ResolveMVPSubsystem(), ResolveInventoryCharacterId());
 	FGameXXKEquipmentTransactionResult Result;
 	const bool bSucceeded = CharacterBackpackModel.QuickUnequip(EquipmentSlot, Result);
 	if (bSucceeded)
@@ -956,7 +1119,7 @@ bool UGameXXKInventoryWindowWidget::QuickUnequipSlotForTest(const EGameXXKEquipm
 FName UGameXXKInventoryWindowWidget::GetEquippedInstanceForSlotForTest(const EGameXXKEquipmentSlot EquipmentSlot) const
 {
 	FGameXXKCharacterBackpackModel Model;
-	Model.Bind(const_cast<UGameXXKMVPSubsystem*>(ResolveMVPSubsystem()), FGameXXKEquipmentRules::HeroCharacterId());
+	Model.Bind(const_cast<UGameXXKMVPSubsystem*>(ResolveMVPSubsystem()), ResolveInventoryCharacterId());
 	const TArray<FGameXXKCharacterBackpackSlotView> Slots = Model.GetSixSlotSnapshot();
 	const FGameXXKCharacterBackpackSlotView* View = Slots.FindByPredicate([EquipmentSlot](const FGameXXKCharacterBackpackSlotView& Candidate)
 	{
@@ -1128,10 +1291,7 @@ bool UGameXXKInventoryWindowWidget::OpenCharacterBackpackTabForTest(const EGameX
 	{
 		if (PreviousTab != EGameXXKCharacterBackpackTab::Deck)
 		{
-			if (const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
-			{
-				PendingHeroDeckIds = Subsystem->GetHeroCardLoadout();
-			}
+			PendingHeroDeckIds.Reset();
 		}
 		RefreshHeroDeckCards();
 	}
@@ -1160,6 +1320,7 @@ TArray<FName> UGameXXKInventoryWindowWidget::GetPendingHeroDeckIdsForTest() cons
 bool UGameXXKInventoryWindowWidget::ToggleHeroDeckCardForTest(const FName CardId)
 {
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const int32 RequiredCount = GetConfiguredDeckRequiredCount();
 	if (!Subsystem
 		|| Subsystem->IsCompanionLoadoutMutationLocked()
 		|| CardId.IsNone()
@@ -1173,7 +1334,7 @@ bool UGameXXKInventoryWindowWidget::ToggleHeroDeckCardForTest(const FName CardId
 	}
 	else
 	{
-		if (PendingHeroDeckIds.Num() >= 8)
+		if (PendingHeroDeckIds.Num() >= RequiredCount)
 		{
 			return false;
 		}
@@ -1186,7 +1347,26 @@ bool UGameXXKInventoryWindowWidget::ToggleHeroDeckCardForTest(const FName CardId
 bool UGameXXKInventoryWindowWidget::ApplyHeroDeckForTest()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || PendingHeroDeckIds.Num() != 8 || !Subsystem->SetHeroCardLoadout(PendingHeroDeckIds))
+	const FName CharacterId = ResolveInventoryCharacterId();
+	const int32 RequiredCount = GetConfiguredDeckRequiredCount();
+	if (!Subsystem || PendingHeroDeckIds.Num() != RequiredCount)
+	{
+		return false;
+	}
+	bool bApplied = false;
+	if (CharacterId == FGameXXKEquipmentRules::HeroCharacterId())
+	{
+		bApplied = Subsystem->SetHeroCardLoadout(PendingHeroDeckIds);
+	}
+	else if (FGameXXKCompanionCatalog::FindQuestNpcDefinition(CharacterId))
+	{
+		bApplied = Subsystem->SetTemporaryQuestNpcCardLoadout(CharacterId, PendingHeroDeckIds);
+	}
+	else
+	{
+		bApplied = Subsystem->SetPermanentCompanionCardLoadout(CharacterId, PendingHeroDeckIds);
+	}
+	if (!bApplied)
 	{
 		return false;
 	}
@@ -1220,6 +1400,13 @@ void UGameXXKInventoryWindowWidget::HandleConfiguredSlotClicked(EGameXXKInventor
 	{
 		return;
 	}
+	if (bDesktopTrainingEmbeddedMode
+		&& Source == EGameXXKInventorySlotSource::PlayerBackpack
+		&& DesktopTrainingHost)
+	{
+		DesktopTrainingHost->HandleDesktopBackpackSlotLeftClicked(SlotIndex);
+		return;
+	}
 
 	bool bSelected = false;
 	switch (Source)
@@ -1251,6 +1438,12 @@ bool UGameXXKInventoryWindowWidget::HandleConfiguredSlotRightClicked(
 	if (PendingConfirmationAction != EConfirmationAction::None)
 	{
 		return false;
+	}
+	if (bDesktopTrainingEmbeddedMode
+		&& Source == EGameXXKInventorySlotSource::PlayerBackpack
+		&& DesktopTrainingHost)
+	{
+		return DesktopTrainingHost->HandleDesktopBackpackSlotRightClicked(SlotIndex);
 	}
 
 	if (Source == EGameXXKInventorySlotSource::Equipment)
@@ -1391,6 +1584,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	BackpackScrollBox->SetAlwaysShowScrollbar(false);
 	BackpackScrollBox->SetScrollBarVisibility(ESlateVisibility::Collapsed);
 	BackpackScrollBox->OnUserScrolled.AddDynamic(this, &UGameXXKInventoryWindowWidget::HandleBackpackScrolled);
+	BackpackScrollBox->SetScrollOffset(DeferredBackpackScrollOffset);
 	AddCanvasChild(FrameCanvas, BackpackScrollBox, BackpackViewportPos, BackpackViewportSize);
 
 	UCanvasPanel* BackpackContentCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("InventoryBackpackContentCanvas"));
@@ -1538,8 +1732,8 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	AddCanvasChild(FrameCanvas, HeroDeckPanel, FVector2D(1135.0f, 300.0f), FVector2D(488.0f, 650.0f));
 	UCanvasPanel* HeroDeckCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("InventoryHeroDeckCanvas"));
 	HeroDeckPanel->SetContent(HeroDeckCanvas);
-	UTextBlock* HeroDeckCaption = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "HeroDeckCaption", "卡组背包 36 张 · 角色卡组 8 张"), 17);
-	AddCanvasChild(HeroDeckCanvas, HeroDeckCaption, FVector2D::ZeroVector, FVector2D(470.0f, 28.0f));
+	HeroDeckCaptionText = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "HeroDeckCaption", "卡组背包 36 张 · 角色卡组 8 张"), 17);
+	AddCanvasChild(HeroDeckCanvas, HeroDeckCaptionText.Get(), FVector2D::ZeroVector, FVector2D(470.0f, 28.0f));
 	HeroDeckGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("InventoryHeroDeckGrid"));
 	HeroDeckGrid->SetSlotPadding(FMargin(5.0f));
 	// Keep the approved three-column viewport; all thirty-six cards are reached
@@ -1884,7 +2078,7 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 	}
 	if (CloseButton)
 	{
-		CloseButton->SetVisibility(bWindowVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		CloseButton->SetVisibility(bWindowVisible && !bDesktopTrainingEmbeddedMode ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 	if (TitleTextBlock)
 	{
@@ -1915,7 +2109,7 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 		if (UGameXXKInventoryFilterButton* FilterButton = InventoryFilterButtons[FilterIndex])
 		{
 			const bool bSelected = static_cast<int32>(ActiveInventoryFilter) == FilterIndex;
-			FilterButton->SetVisibility(bEquipmentBackpackVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			FilterButton->SetVisibility(bEquipmentBackpackVisible && !bDesktopTrainingEmbeddedMode ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		}
 		if (UTextBlock* FilterText = InventoryFilterTextBlocks.IsValidIndex(FilterIndex) ? InventoryFilterTextBlocks[FilterIndex].Get() : nullptr)
 		{
@@ -1931,17 +2125,17 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 		const bool bCanDecompose = Subsystem
 			&& (SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack || SelectedSlotSource == EGameXXKInventorySlotSource::Equipment)
 			&& (!SelectedItemId.IsNone() || !SelectedEquipmentInstanceId.IsNone());
-		DecomposeButton->SetVisibility(bEquipmentBackpackVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		DecomposeButton->SetVisibility(bEquipmentBackpackVisible && !bDesktopTrainingEmbeddedMode ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		DecomposeButton->SetIsEnabled(bCanDecompose);
 	}
 	// Enhance/Reforge actions only exist on the equipment backpack tab.
 	if (EnhanceMainButton)
 	{
-		EnhanceMainButton->SetVisibility(bEquipmentBackpackVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		EnhanceMainButton->SetVisibility(bEquipmentBackpackVisible && !bDesktopTrainingEmbeddedMode ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 	if (ReforgeMainButton)
 	{
-		ReforgeMainButton->SetVisibility(bEquipmentBackpackVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		ReforgeMainButton->SetVisibility(bEquipmentBackpackVisible && !bDesktopTrainingEmbeddedMode ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 
 	RefreshBackpackSlots();
@@ -1975,7 +2169,8 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 		if (UGameXXKCharacterBackpackTabButton* Button = CharacterTabButtons[Index])
 		{
 			const bool bSelected = bFreeInventory && UE_ARRAY_COUNT(Tabs) > Index && Tabs[Index] == ActiveCharacterTab;
-			Button->SetVisibility(bFreeInventory ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			const bool bAllowedInEmbeddedMode = !bDesktopTrainingEmbeddedMode || Index < 3;
+			Button->SetVisibility(bFreeInventory && bAllowedInEmbeddedMode ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 			Button->SetStyle(MakeBoxTextureButtonStyle(
 				bSelected ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
 				CharacterTabSize,
@@ -2028,17 +2223,29 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 			if (const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
 			{
 				const auto& State = Subsystem->GetRuntimeState();
-				CharacterTabBodyText->SetText(FText::FromString(FString::Printf(
-					TEXT("主角属性\n\n等级  %d\n生命  %d / %d\n气血上限  %d\n内力  %d / %d\n攻击  %d\n防御  %d\n速度  %d"),
-					State.PlayerLevel,
-					State.PlayerHP,
-					State.PlayerMaxHP,
-					State.PlayerMaxHP,
-					State.PlayerMP,
-					State.PlayerMaxMP,
-					State.PlayerAttack,
-					State.PlayerDefense,
-					State.PlayerSpeed)));
+				const FName CharacterId = ResolveInventoryCharacterId();
+				FGameXXKEquipmentLoadoutSnapshot Snapshot;
+				if (Subsystem->GetEquipmentLoadoutSnapshot(CharacterId, Snapshot))
+				{
+					const FGameXXKCharacterStats& Stats = Snapshot.AttributesBeforeRoute;
+					const bool bHero = CharacterId == FGameXXKEquipmentRules::HeroCharacterId();
+					const FString CharacterLabel = bHero ? TEXT("主角") : CharacterId.ToString();
+					CharacterTabBodyText->SetText(FText::FromString(FString::Printf(
+						TEXT("%s属性\n\n等级  %d\n生命  %d / %d\n内力  %d / %d\n攻击  %d\n防御  %d\n速度  %d"),
+						*CharacterLabel,
+						State.PlayerLevel,
+						bHero ? State.PlayerHP : Stats.MaxHealth,
+						Stats.MaxHealth,
+						bHero ? State.PlayerMP : Stats.MaxMana,
+						Stats.MaxMana,
+						Stats.Attack,
+						Stats.Defense,
+						Stats.Speed)));
+				}
+				else
+				{
+					CharacterTabBodyText->SetText(NSLOCTEXT("GameXXKInventoryWindow", "AttributesUnavailable", "角色属性\n\n暂无运行时数据"));
+				}
 			}
 			else
 			{
@@ -2059,22 +2266,61 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FName CharacterId = ResolveInventoryCharacterId();
+	const int32 RequiredCount = GetConfiguredDeckRequiredCount();
 	HeroCardBackpackIds.Reset();
 	UnlockedHeroCardIds.Reset();
-	for (const FGameXXKCardDefinition& Definition : FGameXXKCardCatalog::GetAllCardDefinitions())
+	if (CharacterId == FGameXXKEquipmentRules::HeroCharacterId())
 	{
-		if (Definition.Owner == EGameXXKCardOwner::Hero)
+		for (const FGameXXKCardDefinition& Definition : FGameXXKCardCatalog::GetAllCardDefinitions())
 		{
-			HeroCardBackpackIds.Add(Definition.Id);
+			if (Definition.Owner == EGameXXKCardOwner::Hero)
+			{
+				HeroCardBackpackIds.Add(Definition.Id);
+			}
+		}
+		if (Subsystem)
+		{
+			UnlockedHeroCardIds = Subsystem->GetRuntimeState().CardRun.HeroUnlockedCardIds;
+			if (PendingHeroDeckIds.IsEmpty())
+			{
+				PendingHeroDeckIds = Subsystem->GetHeroCardLoadout();
+			}
 		}
 	}
-	if (Subsystem)
+	else if (const FGameXXKQuestNpcDefinition* NpcDefinition =
+		FGameXXKCompanionCatalog::FindQuestNpcDefinition(CharacterId))
 	{
-		UnlockedHeroCardIds = Subsystem->GetRuntimeState().CardRun.HeroUnlockedCardIds;
-		if (PendingHeroDeckIds.IsEmpty())
+		HeroCardBackpackIds = NpcDefinition->FixedCardIds;
+		UnlockedHeroCardIds = HeroCardBackpackIds;
+		if (Subsystem && PendingHeroDeckIds.IsEmpty())
 		{
-			PendingHeroDeckIds = Subsystem->GetHeroCardLoadout();
+			if (const FGameXXKQuestNpcOwnedCardLoadout* Loadout =
+				Subsystem->GetRuntimeState().CardRun.PartySelection.QuestNpcCardLoadouts.Find(CharacterId))
+			{
+				PendingHeroDeckIds = Loadout->SelectedCardIds;
+			}
 		}
+	}
+	else if (Subsystem)
+	{
+		FGameXXKPermanentCompanion Companion;
+		if (Subsystem->TryGetPermanentCompanionView(CharacterId, Companion))
+		{
+			HeroCardBackpackIds = Companion.PersonalCardIds;
+			UnlockedHeroCardIds = Companion.UnlockedPersonalCardIds;
+			if (PendingHeroDeckIds.IsEmpty())
+			{
+				PendingHeroDeckIds = Companion.SelectedCardIds;
+			}
+		}
+	}
+	if (HeroDeckCaptionText)
+	{
+		HeroDeckCaptionText->SetText(FText::FromString(FString::Printf(
+			TEXT("卡组背包 %d 张 · 角色卡组 %d 张"),
+			HeroCardBackpackIds.Num(),
+			RequiredCount)));
 	}
 
 	const bool bMutationLocked = !Subsystem || Subsystem->IsCompanionLoadoutMutationLocked();
@@ -2135,6 +2381,17 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 		}
 		if (UImage* Portrait = HeroDeckCardPortraits.IsValidIndex(Index) ? HeroDeckCardPortraits[Index].Get() : nullptr)
 		{
+			if (Definition)
+			{
+				const FString PortraitPath = ResolveDeckCardPortraitPath(*Definition);
+				if (UTexture2D* Texture = LoadTexture(PortraitPath))
+				{
+					Portrait->SetBrushFromTexture(Texture, true);
+					FSlateBrush Brush = Portrait->GetBrush();
+					Brush.ImageSize = HeroDeckCardSize;
+					Portrait->SetBrush(Brush);
+				}
+			}
 			Portrait->SetVisibility(CardId.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 			Portrait->SetColorAndOpacity(bUnlocked
 				? FLinearColor::White
@@ -2147,11 +2404,11 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 	}
 	if (ApplyHeroDeckButton)
 	{
-		ApplyHeroDeckButton->SetIsEnabled(Subsystem && !bMutationLocked && PendingHeroDeckIds.Num() == 8);
+		ApplyHeroDeckButton->SetIsEnabled(Subsystem && !bMutationLocked && PendingHeroDeckIds.Num() == RequiredCount);
 	}
 	if (HeroDeckCountText)
 	{
-		HeroDeckCountText->SetText(FText::FromString(FString::Printf(TEXT("(%d / 8)"), PendingHeroDeckIds.Num())));
+		HeroDeckCountText->SetText(FText::FromString(FString::Printf(TEXT("(%d / %d)"), PendingHeroDeckIds.Num(), RequiredCount)));
 	}
 }
 
@@ -2160,7 +2417,7 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	// Six-slot snapshot drives the replaced-slot comparison rows inside the
 	// warehouse tooltips, so bind it before the backpack window fills.
-	CharacterBackpackModel.Bind(const_cast<UGameXXKMVPSubsystem*>(Subsystem), FGameXXKEquipmentRules::HeroCharacterId());
+	CharacterBackpackModel.Bind(const_cast<UGameXXKMVPSubsystem*>(Subsystem), ResolveInventoryCharacterId());
 	const TArray<FGameXXKCharacterBackpackSlotView> EquippedSlots = CharacterBackpackModel.GetSixSlotSnapshot();
 	TArray<FBackpackRuntimeEntry> BackpackEntries;
 
@@ -2170,6 +2427,11 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 		Subsystem->GetEquipmentWarehouseSnapshot(WarehouseInstanceIds);
 		for (const FName InstanceId : WarehouseInstanceIds)
 		{
+			if (bDesktopTrainingEmbeddedMode
+				&& Subsystem->GetRuntimeState().DesktopInventory.WarehouseEquipmentInstanceIds.Contains(InstanceId))
+			{
+				continue;
+			}
 			const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(
 				Subsystem->GetRuntimeState().EquipmentCollection,
 				InstanceId);
@@ -2185,7 +2447,7 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 			Entry.EquipmentInstanceId = InstanceId;
 			Entry.IconPath = Definition->IconSoftPath.ToString();
 			Entry.DisplayName = Definition->DisplayName;
-			Entry.DetailText = BuildEquipmentInstanceDetail(Subsystem, *Instance, *Definition);
+			Entry.DetailText = BuildEquipmentInstanceDetail(Subsystem, *Instance, *Definition, ResolveInventoryCharacterId());
 			BackpackEntries.Add(MoveTemp(Entry));
 		}
 	}
@@ -2263,6 +2525,44 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 		});
 	}
 
+	if (bDesktopTrainingEmbeddedMode && Subsystem)
+	{
+		TMap<FGameXXKDesktopInventoryEntryKey, FBackpackRuntimeEntry> EntriesByKey;
+		for (const FBackpackRuntimeEntry& Entry : BackpackEntries)
+		{
+			const FGameXXKDesktopInventoryEntryKey Key = Entry.IsEquipmentInstance()
+				? FGameXXKDesktopInventoryRules::MakeEquipmentEntry(Entry.EquipmentInstanceId)
+				: FGameXXKDesktopInventoryRules::MakeItemEntry(Entry.ItemId);
+			if (Key.IsValid())
+			{
+				EntriesByKey.Add(Key, Entry);
+			}
+		}
+		TArray<FBackpackRuntimeEntry> OrderedEntries;
+		OrderedEntries.SetNum(BackpackSlotButtons.Num());
+		const FGameXXKRuntimeState& RuntimeState = Subsystem->GetRuntimeState();
+		for (int32 SlotIndex = 0; SlotIndex < OrderedEntries.Num(); ++SlotIndex)
+		{
+			const FGameXXKDesktopInventoryEntryKey Key = FGameXXKDesktopInventoryRules::GetEntryAt(
+				RuntimeState,
+				EGameXXKDesktopItemContainer::Backpack,
+				SlotIndex);
+			if (!Key.IsValid()
+				|| (DesktopTrainingHost
+					&& DesktopTrainingHost->ShouldHideDesktopInventoryEntry(
+						EGameXXKDesktopItemContainer::Backpack,
+						Key)))
+			{
+				continue;
+			}
+			if (const FBackpackRuntimeEntry* Existing = EntriesByKey.Find(Key))
+			{
+				OrderedEntries[SlotIndex] = *Existing;
+			}
+		}
+		BackpackEntries = MoveTemp(OrderedEntries);
+	}
+
 	CurrentBackpackSlotItemIds.Reset();
 	CurrentBackpackSlotEquipmentInstanceIds.Reset();
 	CurrentBackpackSlotQuantities.Reset();
@@ -2306,7 +2606,9 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 
 		if (UGameXXKInventorySlotButton* SlotButton = BackpackSlotButtons[SlotIndex])
 		{
-			SlotButton->SetIsEnabled(bHasItem);
+			// Empty physical cells remain valid left-click drop targets while the
+			// desktop carry transaction is active.
+			SlotButton->SetIsEnabled(bHasItem || bDesktopTrainingEmbeddedMode);
 		}
 		if (UBorder* Tooltip = BackpackTooltipFrames.IsValidIndex(SlotIndex) ? BackpackTooltipFrames[SlotIndex].Get() : nullptr)
 		{
@@ -2375,7 +2677,7 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 			if (bSlotOccupied && Subsystem)
 			{
 				FGameXXKEquipmentTooltipSnapshot CompareSnapshot;
-				if (Subsystem->GetEquipmentTooltipSnapshot(Entry->EquipmentInstanceId, FGameXXKEquipmentRules::HeroCharacterId(), CompareSnapshot))
+				if (Subsystem->GetEquipmentTooltipSnapshot(Entry->EquipmentInstanceId, ResolveInventoryCharacterId(), CompareSnapshot))
 				{
 					ShowCompareRow(TEXT("攻击"), CompareSnapshot.CharacterStatDeltas.Attack);
 					ShowCompareRow(TEXT("防御"), CompareSnapshot.CharacterStatDeltas.Defense);
@@ -2415,6 +2717,7 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 
 void UGameXXKInventoryWindowWidget::HandleBackpackScrolled(float CurrentOffset)
 {
+	DeferredBackpackScrollOffset = FMath::Max(0.0f, CurrentOffset);
 	UpdateBackpackScrollbarThumb();
 }
 
@@ -2478,7 +2781,7 @@ void UGameXXKInventoryWindowWidget::RefreshMerchantStockSlots()
 void UGameXXKInventoryWindowWidget::RefreshEquipmentSlots()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	CharacterBackpackModel.Bind(Subsystem, FGameXXKEquipmentRules::HeroCharacterId());
+	CharacterBackpackModel.Bind(Subsystem, ResolveInventoryCharacterId());
 	CurrentEquipmentSlotItemIds.Reset();
 	const TArray<FGameXXKCharacterBackpackSlotView> SlotViews = CharacterBackpackModel.GetSixSlotSnapshot();
 	const FName SlotIds[] = {WeaponSlotId, HeadSlotId, ArmorSlotId, BeltSlotId, ShoesSlotId, AccessorySlotId};
@@ -2544,7 +2847,7 @@ void UGameXXKInventoryWindowWidget::RefreshEquipmentSlots()
 				}
 				if (UTextBlock* TooltipDetail = EquipmentTooltipDetailTextBlocks.IsValidIndex(SlotIndex) ? EquipmentTooltipDetailTextBlocks[SlotIndex].Get() : nullptr)
 				{
-					TooltipDetail->SetText(BuildEquipmentInstanceDetail(Subsystem, *Instance, *EquipmentDefinition));
+					TooltipDetail->SetText(BuildEquipmentInstanceDetail(Subsystem, *Instance, *EquipmentDefinition, ResolveInventoryCharacterId()));
 				}
 			}
 		}
@@ -2599,7 +2902,7 @@ void UGameXXKInventoryWindowWidget::RefreshDetailPanel()
 			}
 			if (SelectedDetailTextBlock)
 			{
-				SelectedDetailTextBlock->SetText(BuildEquipmentInstanceDetail(Subsystem, *Instance, *Definition));
+				SelectedDetailTextBlock->SetText(BuildEquipmentInstanceDetail(Subsystem, *Instance, *Definition, ResolveInventoryCharacterId()));
 			}
 			CurrentPrimaryActionText = SelectedSlotSource == EGameXXKInventorySlotSource::Equipment
 				? NSLOCTEXT("GameXXKInventoryWindow", "UnequipInstanceAction", "卸下")
@@ -2801,10 +3104,10 @@ bool UGameXXKInventoryWindowWidget::OpenInventoryWindow(EGameXXKInventoryWindowM
 	if (InMode == EGameXXKInventoryWindowMode::FreeInventory)
 	{
 		ActiveCharacterTab = EGameXXKCharacterBackpackTab::Equipment;
+		PendingHeroDeckIds.Reset();
 		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
 		{
 			Subsystem->PrepareCompanionRosterForTown();
-			PendingHeroDeckIds = Subsystem->GetHeroCardLoadout();
 		}
 	}
 	BuildProgrammaticLayout();

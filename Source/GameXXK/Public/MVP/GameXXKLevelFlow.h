@@ -17,5 +17,7 @@ namespace GameXXKLevelFlow
 	GAMEXXK_API bool IsTownGameplayMapPackage(const FString& CurrentPackageName);
 	/** True for the isolated pure-HUD town replacement map. */
 	GAMEXXK_API bool IsDesktopTrainingHUDMapPackage(const FString& CurrentPackageName);
+	/** Zero keeps legacy maps uncapped; the HUD-only desktop surface is fixed at 30 FPS. */
+	GAMEXXK_API float FrameRateLimitForMapPackage(const FString& CurrentPackageName);
 	GAMEXXK_API bool OpenMapForRuntimeState(UGameXXKMVPSubsystem* Subsystem);
 }

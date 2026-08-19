@@ -16,6 +16,7 @@ class USizeBox;
 class UTextBlock;
 class UUniformGridPanel;
 class UVerticalBox;
+class UGameXXKDesktopTrainingWorkbenchWidget;
 
 UENUM(BlueprintType)
 enum class EGameXXKInventoryWindowMode : uint8
@@ -51,6 +52,16 @@ enum class EGameXXKInventorySlotSource : uint8
 	PlayerBackpack,
 	MerchantStock,
 	Equipment
+};
+
+struct FGameXXKEmbeddedInventorySessionState
+{
+	FName CharacterId = NAME_None;
+	EGameXXKInventoryFilter ActiveInventoryFilter = EGameXXKInventoryFilter::All;
+	EGameXXKCharacterBackpackTab ActiveCharacterTab = EGameXXKCharacterBackpackTab::Equipment;
+	bool bBackpackSorted = false;
+	float BackpackScrollOffset = 0.0f;
+	TArray<FName> PendingDeckIds;
 };
 
 UCLASS()
@@ -138,6 +149,37 @@ class GAMEXXK_API UGameXXKInventoryWindowWidget : public UGameXXKMVPWidgetBase
 	GENERATED_BODY()
 
 public:
+	/**
+	 * Reuses the approved page-03 backpack inside the desktop-training shell.
+	 * The default full-screen inventory remains unchanged when this is false.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow")
+	void ConfigureDesktopTrainingEmbeddedMode(bool bEnabled);
+
+	/** Selects the hero, one permanent companion, or one approved named NPC as the embedded owner. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow")
+	void ConfigureDesktopTrainingCharacter(FName CharacterId);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	FName GetConfiguredCharacterIdForTest() const;
+
+	/** Routes embedded slot clicks through the desktop carry/warehouse/tool state machine. */
+	void ConfigureDesktopTrainingHost(UGameXXKDesktopTrainingWorkbenchWidget* InHost);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	bool IsDesktopTrainingEmbeddedModeForTest() const;
+
+	FGameXXKEmbeddedInventorySessionState CaptureEmbeddedSessionState() const;
+	void RestoreEmbeddedSessionState(const FGameXXKEmbeddedInventorySessionState& State);
+	bool IsBackpackSortedForTest() const;
+	void SetBackpackScrollOffsetForTest(float ScrollOffset);
+	float GetBackpackScrollOffsetForTest() const;
+
+	FName GetBackpackItemIdAtSlotForDesktopTraining(int32 SlotIndex) const;
+	FName GetBackpackEquipmentInstanceIdAtSlotForDesktopTraining(int32 SlotIndex) const;
+	int32 GetBackpackQuantityAtSlotForDesktopTraining(int32 SlotIndex) const;
+	FString GetBackpackIconPathAtSlotForDesktopTraining(int32 SlotIndex) const;
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow")
 	bool OpenFreeInventory();
 
@@ -329,6 +371,8 @@ private:
 	void RefreshConfirmationDialog();
 	void RefreshCharacterTabs();
 	void RefreshHeroDeckCards();
+	FName ResolveInventoryCharacterId() const;
+	int32 GetConfiguredDeckRequiredCount() const;
 	bool OpenInventoryWindow(EGameXXKInventoryWindowMode InMode);
 	bool SelectPlayerBackpackItem(FName ItemId);
 	bool SelectPlayerBackpackSlot(int32 SlotIndex);
@@ -387,6 +431,9 @@ private:
 	TObjectPtr<UCanvasPanel> RootCanvas;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget> DesktopTrainingHost;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UBorder> ModalBackdrop;
 
 	UPROPERTY(Transient)
@@ -406,6 +453,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> HeroDeckPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> HeroDeckCaptionText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UUniformGridPanel> HeroDeckGrid;
@@ -606,7 +656,10 @@ private:
 	FText CurrentSecondaryActionText;
 	EGameXXKInventoryFilter ActiveInventoryFilter = EGameXXKInventoryFilter::All;
 	EGameXXKCharacterBackpackTab ActiveCharacterTab = EGameXXKCharacterBackpackTab::Equipment;
+	bool bDesktopTrainingEmbeddedMode = false;
+	FName ConfiguredDesktopTrainingCharacterId = NAME_None;
 	bool bBackpackSorted = false;
+	float DeferredBackpackScrollOffset = 0.0f;
 	TArray<FName> CurrentBackpackSlotItemIds;
 	TArray<FName> CurrentBackpackSlotEquipmentInstanceIds;
 	TArray<int32> CurrentBackpackSlotQuantities;

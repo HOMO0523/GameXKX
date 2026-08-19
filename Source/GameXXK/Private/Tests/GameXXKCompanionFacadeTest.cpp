@@ -228,10 +228,11 @@ bool FGameXXKCompanionFacadeLoadoutProgressionTest::RunTest(const FString& Param
 		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Subsystem->GetMutableRuntimeState(), TusiChief->NpcId, {}));
 	const FGameXXKQuestNpcCardSelection NpcLoadout = Subsystem->GetQuestNpcCardLoadout();
 	TestEqual(TEXT("the NPC read view exposes the route-selected three fixed cards"), NpcLoadout.SelectedCardIds.Num(), 3);
-	TestFalse(TEXT("the facade never permits player persistence edits for a task NPC"),
-		Subsystem->SetTemporaryQuestNpcCardLoadout(TusiChief->NpcId, FirstCards(TusiChief->FixedCardIds, 3)));
-	TestEqual(TEXT("a rejected task NPC edit leaves the canonical cards intact"),
-		Subsystem->GetQuestNpcCardLoadout().SelectedCardIds, NpcLoadout.SelectedCardIds);
+	const TArray<FName> EditedNpcLoadout = FirstCards(TusiChief->FixedCardIds, 3);
+	TestTrue(TEXT("the facade persists exactly three cards for an owned NPC"),
+		Subsystem->SetTemporaryQuestNpcCardLoadout(TusiChief->NpcId, EditedNpcLoadout));
+	TestEqual(TEXT("the active NPC read view reflects the persisted edit"),
+		Subsystem->GetQuestNpcCardLoadout().SelectedCardIds, EditedNpcLoadout);
 
 	Subsystem->GetMutableRuntimeState().CardRun.CompanionRoster.SigilCount = 1;
 	TestTrue(TEXT("the facade awards persistent companion experience through the canonical progression rule"), Subsystem->AwardPermanentCompanionExperience(Recruit.InstanceId, 40));
@@ -296,31 +297,31 @@ bool FGameXXKCompanionFacadeTownOnlyConfigurationTest::RunTest(const FString& Pa
 	}
 	TestTrue(TEXT("the route-owned adapter creates a fixed task NPC card selection"),
 		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Subsystem->GetMutableRuntimeState(), TusiChief->NpcId, {}));
-	const FGameXXKQuestNpcCardSelection CanonicalQuestNpcSelection = Subsystem->GetQuestNpcCardLoadout();
 	TArray<FName> QuestNpcEditAttempt = FirstCards(TusiChief->FixedCardIds, 3);
 	QuestNpcEditAttempt[2] = TusiChief->FixedCardIds[3];
-	TestFalse(TEXT("town still rejects task NPC persistence edits because their three cards are route-owned"),
+	TestTrue(TEXT("town permits an owned NPC three-card persistence edit"),
 		Subsystem->SetTemporaryQuestNpcCardLoadout(TusiChief->NpcId, QuestNpcEditAttempt));
-	TestEqual(TEXT("town rejects task NPC edits without changing the read-only selection"),
-		Subsystem->GetQuestNpcCardLoadout().SelectedCardIds, CanonicalQuestNpcSelection.SelectedCardIds);
+	TestEqual(TEXT("town applies the edited NPC selection"),
+		Subsystem->GetQuestNpcCardLoadout().SelectedCardIds, QuestNpcEditAttempt);
+	const FGameXXKQuestNpcCardSelection EditedQuestNpcSelection = Subsystem->GetQuestNpcCardLoadout();
 
 	const FName ExpectedActiveCompanionId = Recruit.InstanceId;
 	const bool bMainMenuRejected = AssertConfigurationRejectedOutsideTown(
 		*this, Subsystem, EGameXXKScreen::MainMenu, TEXT("main menu"), Recruit.InstanceId,
 		CompanionEditAttempt, ConfiguredCompanionCards, HeroEditAttempt, ConfiguredHeroCards,
-		TusiChief->NpcId, QuestNpcEditAttempt, CanonicalQuestNpcSelection, ExpectedActiveCompanionId);
+		TusiChief->NpcId, QuestNpcEditAttempt, EditedQuestNpcSelection, ExpectedActiveCompanionId);
 	const bool bWorldMapRejected = AssertConfigurationRejectedOutsideTown(
 		*this, Subsystem, EGameXXKScreen::WorldMap, TEXT("world map"), Recruit.InstanceId,
 		CompanionEditAttempt, ConfiguredCompanionCards, HeroEditAttempt, ConfiguredHeroCards,
-		TusiChief->NpcId, QuestNpcEditAttempt, CanonicalQuestNpcSelection, ExpectedActiveCompanionId);
+		TusiChief->NpcId, QuestNpcEditAttempt, EditedQuestNpcSelection, ExpectedActiveCompanionId);
 	const bool bRouteRejected = AssertConfigurationRejectedOutsideTown(
 		*this, Subsystem, EGameXXKScreen::DungeonMap, TEXT("route map"), Recruit.InstanceId,
 		CompanionEditAttempt, ConfiguredCompanionCards, HeroEditAttempt, ConfiguredHeroCards,
-		TusiChief->NpcId, QuestNpcEditAttempt, CanonicalQuestNpcSelection, ExpectedActiveCompanionId);
+		TusiChief->NpcId, QuestNpcEditAttempt, EditedQuestNpcSelection, ExpectedActiveCompanionId);
 	const bool bBattleRejected = AssertConfigurationRejectedOutsideTown(
 		*this, Subsystem, EGameXXKScreen::Battle, TEXT("battle"), Recruit.InstanceId,
 		CompanionEditAttempt, ConfiguredCompanionCards, HeroEditAttempt, ConfiguredHeroCards,
-		TusiChief->NpcId, QuestNpcEditAttempt, CanonicalQuestNpcSelection, ExpectedActiveCompanionId);
+		TusiChief->NpcId, QuestNpcEditAttempt, EditedQuestNpcSelection, ExpectedActiveCompanionId);
 	return bMainMenuRejected && bWorldMapRejected && bRouteRejected && bBattleRejected;
 }
 

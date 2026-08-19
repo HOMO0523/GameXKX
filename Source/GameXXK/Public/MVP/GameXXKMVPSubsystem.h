@@ -9,6 +9,7 @@
 
 class USaveGame;
 struct FGameXXKEquipmentTransactionResult;
+enum class EGameXXKDesktopItemContainer : uint8;
 
 DECLARE_DELEGATE_RetVal_ThreeParams(
 	bool,
@@ -16,6 +17,7 @@ DECLARE_DELEGATE_RetVal_ThreeParams(
 	USaveGame*,
 	const FString&,
 	int32);
+DECLARE_MULTICAST_DELEGATE(FGameXXKPersistenceBoundaryDelegate);
 
 UCLASS(BlueprintType)
 class GAMEXXK_API UGameXXKMVPSubsystem : public UGameInstanceSubsystem
@@ -166,6 +168,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool LoadOrCreateGame(FString SlotName = TEXT(""), int32 UserIndex = 0);
 
+	/**
+	 * Fires before new-game, save, or load crosses a persistence boundary.
+	 * Transient UI transactions must roll back before the authoritative state is
+	 * serialized or replaced.
+	 */
+	FGameXXKPersistenceBoundaryDelegate& OnPersistenceBoundary()
+	{
+		return PersistenceBoundaryDelegate;
+	}
+
 	/** Empty after a successful load; otherwise contains the stable player-facing load/migration error. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	FText GetLastSaveLoadError() const;
@@ -186,6 +198,17 @@ public:
 	/** UI read model: returns the save-authoritative warehouse order without mutating runtime state. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Equipment")
 	bool GetEquipmentWarehouseSnapshot(TArray<FName>& OutOrderedInstanceIds) const;
+
+	/** Ensures save-authoritative desktop backpack/warehouse slots include all current possessions. */
+	bool NormalizeDesktopInventoryState();
+
+	/** Atomic whole-stack/instance move between physical desktop cells. */
+	bool MoveDesktopInventoryEntry(
+		EGameXXKDesktopItemContainer FromContainer,
+		int32 FromSlotIndex,
+		EGameXXKDesktopItemContainer ToContainer,
+		int32 ToSlotIndex,
+		FString* OutError = nullptr);
 
 	/** UI read model: projects one valid permanent equipment owner through the authoritative stat rules. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Equipment")
@@ -240,6 +263,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool EnsureQingshanTownRuntimeForDirectMap();
+
+	/** Direct HUD-map launch needs the same starter party as Start/New Game, without changing 3D-town direct-map semantics. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool EnsureDesktopTrainingRuntimeForDirectMap();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	bool IsRegionUnlocked(FName RegionId) const;
@@ -505,6 +532,8 @@ private:
 
 	UPROPERTY(Transient)
 	FText LastSaveLoadError;
+
+	FGameXXKPersistenceBoundaryDelegate PersistenceBoundaryDelegate;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	FGameXXKSaveSlotWriteDelegate SaveSlotWriteDelegateForTest;

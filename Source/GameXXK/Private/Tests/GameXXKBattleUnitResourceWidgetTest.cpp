@@ -24,8 +24,12 @@ bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 		TestNotNull(*FString::Printf(TEXT("%s is exposed for real-PIE inspection"), *FunctionName.ToString()), Function);
 		if (Function)
 		{
-			TestTrue(*FString::Printf(TEXT("%s is BlueprintPure"), *FunctionName.ToString()), Function->HasAnyFunctionFlags(FUNC_BlueprintPure));
-			TestTrue(*FString::Printf(TEXT("%s is development-only"), *FunctionName.ToString()), Function->HasMetaData(TEXT("DevelopmentOnly")));
+		TestTrue(*FString::Printf(TEXT("%s is BlueprintPure"), *FunctionName.ToString()), Function->HasAnyFunctionFlags(FUNC_BlueprintPure));
+#if WITH_METADATA
+		TestTrue(*FString::Printf(TEXT("%s is development-only"), *FunctionName.ToString()), Function->HasMetaData(TEXT("DevelopmentOnly")));
+#else
+		TestTrue(*FString::Printf(TEXT("%s development-only metadata is unavailable in this target"), *FunctionName.ToString()), true);
+#endif
 		}
 	};
 	VerifyReflectedRenderedValueGetter(GET_FUNCTION_NAME_CHECKED(UGameXXKBattleUnitResourceWidget, GetHealthDisplayTextForTest));

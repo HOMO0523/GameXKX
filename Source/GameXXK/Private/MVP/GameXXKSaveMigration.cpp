@@ -9,6 +9,7 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRouteEconomyRules.h"
@@ -1184,6 +1185,35 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Candidate.RuntimeState.Training.bTravelPausedAtDefeat = false;
 		Candidate.RuntimeState.Training.TravelLastUpdatedUnixSeconds = 0;
 	}
+	if (Source.SaveVersion < DesktopInventoryStorageIntroducedSaveVersion)
+	{
+		// v21 splits the visual left warehouse from the character backpack.
+		// Existing unequipped equipment and item stacks remain in the backpack;
+		// storage begins empty and deterministic physical cells are generated.
+		Candidate.RuntimeState.DesktopInventory = FGameXXKDesktopInventoryState();
+		if (!FGameXXKDesktopInventoryRules::Normalize(Candidate.RuntimeState, &MigrationError))
+		{
+			Fail(OutReport, MigrationError);
+			return false;
+		}
+	}
+	if (Source.SaveVersion < QuestNpcEquipmentOwnerIntroducedSaveVersion)
+	{
+		// v22 makes all six named NPCs permanent account-owned configuration
+		// targets. Preserve a valid active v21 selection and deterministically
+		// seed the five missing three-card loadouts.
+		const int32 SelectionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
+			? Candidate.RuntimeState.CardRun.RouteRandomSeed
+			: FGameXXKTrainingRules::DefaultChallengeRewardSeed();
+		if (!FGameXXKCompanionRules::NormalizeOwnedQuestNpcCardLoadouts(
+			Candidate.RuntimeState.CardRun.PartySelection,
+			SelectionSeed,
+			&MigrationError))
+		{
+			Fail(OutReport, MigrationError);
+			return false;
+		}
+	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	Candidate.SaveVersion = CurrentSaveVersion;
 	if (!ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
@@ -1243,6 +1273,10 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 			OutError = TEXT("Saved inventory contains an invalid item quantity.");
 			return false;
 		}
+	}
+	if (!FGameXXKDesktopInventoryRules::Validate(State, &OutError))
+	{
+		return false;
 	}
 	if (!FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(
 		State.EquipmentCollection,

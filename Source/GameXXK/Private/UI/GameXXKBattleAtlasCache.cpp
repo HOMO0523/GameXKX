@@ -123,9 +123,16 @@ struct FGameXXKBattleAtlasCache::FState : public TSharedFromThis<FState>
 
 	bool MakeRoomFor(const int64 IncomingBytes)
 	{
-		if (IncomingBytes <= 0)
+		if (IncomingBytes < 0)
 		{
 			return false;
+		}
+		// NullRHI and other headless render paths can report zero texture
+		// residency for a valid loaded UObject. Keep that asset usable without
+		// charging the byte budget; a null texture is still rejected by Admit.
+		if (IncomingBytes == 0)
+		{
+			return true;
 		}
 
 		const auto Fits = [this, IncomingBytes]()

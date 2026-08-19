@@ -8,6 +8,7 @@
 #include "Town/GameXXKTownNpcCharacter.h"
 #include "UI/GameXXKMVPHUD.h"
 #include "EngineUtils.h"
+#include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
 
 namespace
@@ -42,17 +43,50 @@ AGameXXKMVPGameMode::AGameXXKMVPGameMode()
 {
 	PlayerControllerClass = AGameXXKMVPPlayerController::StaticClass();
 	HUDClass = AGameXXKMVPHUD::StaticClass();
-	UClass* HeroCharacterBlueprintClass = LoadClass<AGameXXKHeroCharacter>(nullptr, TEXT("/Game/GameXXK/Characters/Hero/BP_HeroCharacter.BP_HeroCharacter_C"), nullptr, LOAD_NoWarn);
-	if (HeroCharacterBlueprintClass)
+	// The CDO must remain asset-free: this GameMode also owns the 2D HUD map.
+	// Town Blueprint classes are resolved in InitGame only after the map package
+	// is known to be a 3D town.
+	DefaultPawnClass = AGameXXKHeroCharacter::StaticClass();
+	MerchantTownNpcCharacterClass = nullptr;
+	PersonTownNpcCharacterClass = nullptr;
+}
+
+bool AGameXXKMVPGameMode::PrepareTownVisualClassesForMapForTest(const FString& MapPackageName)
+{
+	if (!GameXXKLevelFlow::IsTownGameplayMapPackage(MapPackageName))
+	{
+		return false;
+	}
+	if (UClass* HeroCharacterBlueprintClass = LoadClass<AGameXXKHeroCharacter>(
+		nullptr,
+		TEXT("/Game/GameXXK/Characters/Hero/BP_HeroCharacter.BP_HeroCharacter_C"),
+		nullptr,
+		LOAD_NoWarn))
 	{
 		DefaultPawnClass = HeroCharacterBlueprintClass;
 	}
-	else
-	{
-		DefaultPawnClass = AGameXXKHeroCharacter::StaticClass();
-	}
-	MerchantTownNpcCharacterClass = LoadClass<AGameXXKTownNpcCharacter>(nullptr, TEXT("/Game/GameXXK/Characters/Merchant/BP_MerchantCharacter.BP_MerchantCharacter_C"), nullptr, LOAD_NoWarn);
-	PersonTownNpcCharacterClass = LoadClass<AGameXXKTownNpcCharacter>(nullptr, TEXT("/Game/GameXXK/Characters/Follower/BP_NpcCharacter.BP_NpcCharacter_C"), nullptr, LOAD_NoWarn);
+	MerchantTownNpcCharacterClass = LoadClass<AGameXXKTownNpcCharacter>(
+		nullptr,
+		TEXT("/Game/GameXXK/Characters/Merchant/BP_MerchantCharacter.BP_MerchantCharacter_C"),
+		nullptr,
+		LOAD_NoWarn);
+	PersonTownNpcCharacterClass = LoadClass<AGameXXKTownNpcCharacter>(
+		nullptr,
+		TEXT("/Game/GameXXK/Characters/Follower/BP_NpcCharacter.BP_NpcCharacter_C"),
+		nullptr,
+		LOAD_NoWarn);
+	return DefaultPawnClass != nullptr
+		&& MerchantTownNpcCharacterClass != nullptr
+		&& PersonTownNpcCharacterClass != nullptr;
+}
+
+void AGameXXKMVPGameMode::InitGame(
+	const FString& MapName,
+	const FString& Options,
+	FString& ErrorMessage)
+{
+	PrepareTownVisualClassesForMapForTest(MapName);
+	Super::InitGame(MapName, Options, ErrorMessage);
 }
 
 APawn* AGameXXKMVPGameMode::SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform)
@@ -80,13 +114,19 @@ void AGameXXKMVPGameMode::BeginPlay()
 	// must keep its own PlayerStart and placed scene intact.
 	const UWorld* World = GetWorld();
 	const FString PackageName = World && World->GetOutermost() ? World->GetOutermost()->GetName() : FString();
+	if (IConsoleVariable* MaxFps = IConsoleManager::Get().FindConsoleVariable(TEXT("t.MaxFPS")))
+	{
+		MaxFps->Set(
+			GameXXKLevelFlow::FrameRateLimitForMapPackage(PackageName),
+			ECVF_SetByGameSetting);
+	}
 	if (GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(PackageName))
 	{
 		// A direct editor/command-line launch of the isolated HUD map still gets a
 		// valid Town runtime state, but never receives the 3D town actor set.
 		if (UGameXXKMVPSubsystem* Subsystem = GetGameInstance() ? GetGameInstance()->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr)
 		{
-			Subsystem->EnsureQingshanTownRuntimeForDirectMap();
+			Subsystem->EnsureDesktopTrainingRuntimeForDirectMap();
 		}
 		return;
 	}

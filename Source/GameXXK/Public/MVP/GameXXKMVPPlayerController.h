@@ -27,6 +27,12 @@ class UWidget;
 class AGameXXKRouteEncounterSceneActor;
 struct FWorldContext;
 
+enum class EGameXXKPlayerFlowBootProfile : uint8
+{
+	FullPlayerFlow,
+	DesktopTrainingOnly
+};
+
 UCLASS(Blueprintable)
 class GAMEXXK_API AGameXXKMVPPlayerController : public APlayerController, public IGameXXKBattleOverlayHost
 {
@@ -273,6 +279,9 @@ public:
 #if WITH_DEV_AUTOMATION_TESTS
 	EGameXXKTrackedInputMode GetTrackedInputModeForTest() const { return TrackedInputMode; }
 	void SetTrackedInputModeForTest(EGameXXKTrackedInputMode InputMode);
+	void SetDesktopTrainingBootProfileForTest(bool bEnabled);
+	FString GetDesktopTrainingPerfProfileForTest() const;
+	bool EnsureDesktopTrainingWidgetsForTest();
 	bool PrepareForRuntimeStateMapTravelForTest(const FString& CurrentPackageName);
 	/** Supplies already-resolved BattleBoard-local pointer coordinates to the real PlayerTick path in headless automation. */
 	void SetBattleMousePositionOverrideForTest(FVector2D InMousePosition);
@@ -282,7 +291,11 @@ public:
 
 private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
+	EGameXXKPlayerFlowBootProfile ResolvePlayerFlowBootProfile() const;
+	bool EnsureDesktopTrainingWidgets();
 	bool EnsurePlayerFlowWidgets();
+	UGameXXKOneGameRouteMapWidget* EnsureRouteMapWidget();
+	UGameXXKBattleBoardWidget* EnsureBattleBoardWidget();
 	UGameXXKInventoryWindowWidget* EnsureInventoryWindowWidget();
 	UGameXXKMetaShopWidget* EnsureMetaShopWidget();
 	UGameXXKCompanionRosterWidget* EnsureCompanionRosterWidget();
@@ -441,6 +454,7 @@ private:
 	FDelegateHandle PreLoadMapWithContextDelegateHandle;
 
 #if WITH_DEV_AUTOMATION_TESTS
+	TOptional<EGameXXKPlayerFlowBootProfile> OverrideBootProfileForTest;
 	bool bUseBattleMousePositionOverrideForTest = false;
 	FVector2D BattleMousePositionOverrideForTest = FVector2D::ZeroVector;
 #endif

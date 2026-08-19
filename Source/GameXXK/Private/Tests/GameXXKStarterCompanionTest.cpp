@@ -40,11 +40,11 @@ bool FGameXXKStarterCompanionTest::RunTest(const FString& Parameters)
 
 	const FGameXXKRuntimeState StartedState = Subsystem->GetRuntimeStateCopy();
 	const FGameXXKCompanionRosterState& StartedRoster = StartedState.CardRun.CompanionRoster;
-	TestEqual(TEXT("a new game owns two deterministic permanent companions"), StartedRoster.PermanentCompanions.Num(), 2);
+	TestEqual(TEXT("a new game owns one permanent companion for each of the six roles"), StartedRoster.PermanentCompanions.Num(), 6);
 	TestEqual(TEXT("a new game exposes exactly one active permanent companion"), CountActivePermanentCompanions(StartedRoster), 1);
 	TestTrue(TEXT("a new game persists a non-zero recruit sequence seed"), StartedRoster.RecruitSequenceSeed != 0);
 	TestNotEqual(TEXT("a new game never uses the reserved minimum recruit sequence seed"), StartedRoster.RecruitSequenceSeed, MIN_int32);
-	if (StartedRoster.PermanentCompanions.Num() != 2)
+	if (StartedRoster.PermanentCompanions.Num() != 6)
 	{
 		return false;
 	}
@@ -52,14 +52,33 @@ bool FGameXXKStarterCompanionTest::RunTest(const FString& Parameters)
 	const FGameXXKPermanentCompanion& StarterCompanion = StartedRoster.PermanentCompanions[0];
 	TestFalse(TEXT("the starter companion has a stable instance id"), StarterCompanion.InstanceId.IsNone());
 	TestTrue(TEXT("the first starter companion is the single active partner"), StarterCompanion.bIsActive);
-	TestNotEqual(TEXT("the second starter companion differs from the first"),
-		StartedRoster.PermanentCompanions[1].Role, StarterCompanion.Role);
+	TestEqual(TEXT("the default active starter is Blade"), StarterCompanion.Role, EGameXXKCharacterRole::Blade);
+	TSet<EGameXXKCharacterRole> StarterRoles;
+	for (const FGameXXKPermanentCompanion& Companion : StartedRoster.PermanentCompanions)
+	{
+		StarterRoles.Add(Companion.Role);
+	}
+	TestEqual(TEXT("the starter roster has six distinct role identities"), StarterRoles.Num(), 6);
+	for (const EGameXXKCharacterRole RequiredRole : {
+		EGameXXKCharacterRole::Blade,
+		EGameXXKCharacterRole::Guard,
+		EGameXXKCharacterRole::Healer,
+		EGameXXKCharacterRole::Hunter,
+		EGameXXKCharacterRole::Sorcerer,
+		EGameXXKCharacterRole::FormationMaster})
+	{
+		TestTrue(TEXT("the starter roster contains every required role"), StarterRoles.Contains(RequiredRole));
+	}
 	TestEqual(
 		TEXT("party selection points at the active starter companion"),
 		StartedState.CardRun.PartySelection.ActivePermanentCompanionInstanceId,
 		StarterCompanion.InstanceId);
 	TestEqual(TEXT("the starter companion owns six birth cards"), StarterCompanion.PersonalCardIds.Num(), 6);
 	TestEqual(TEXT("the starter companion equips five selected cards"), StarterCompanion.SelectedCardIds.Num(), 5);
+	TestEqual(TEXT("the default NPC party slot is Tusi Chief"),
+		StartedState.CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.TusiChief")));
+	TestEqual(TEXT("Tusi Chief keeps the NPC three-card rule"),
+		StartedState.CardRun.PartySelection.QuestNpc.SelectedCardIds.Num(), 3);
 
 	const FGameXXKSaveState SaveState = UGameXXKMVPRules::MakeSaveState(StartedState);
 	FGameXXKRuntimeState RestoredState;
@@ -71,13 +90,13 @@ bool FGameXXKStarterCompanionTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	const FGameXXKCompanionRosterState& RestoredRoster = RestoredState.CardRun.CompanionRoster;
-	TestEqual(TEXT("save restore keeps the two starter companions"), RestoredRoster.PermanentCompanions.Num(), 2);
+	TestEqual(TEXT("save restore keeps all six starter companions"), RestoredRoster.PermanentCompanions.Num(), 6);
 	TestEqual(TEXT("save restore keeps the recruit sequence seed"), RestoredRoster.RecruitSequenceSeed, StartedRoster.RecruitSequenceSeed);
 	TestEqual(
 		TEXT("save restore keeps the active party selection"),
 		RestoredState.CardRun.PartySelection.ActivePermanentCompanionInstanceId,
 		StarterCompanion.InstanceId);
-	if (RestoredRoster.PermanentCompanions.Num() != 2)
+	if (RestoredRoster.PermanentCompanions.Num() != 6)
 	{
 		return false;
 	}
@@ -91,11 +110,16 @@ bool FGameXXKStarterCompanionTest::RunTest(const FString& Parameters)
 
 	// 遣散 has no full-roster requirement, but the roster must keep one partner.
 	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
-	const FName FirstStarterId = StartedRoster.PermanentCompanions[0].InstanceId;
-	const FName SecondStarterId = StartedRoster.PermanentCompanions[1].InstanceId;
-	TestTrue(TEXT("a partner can be dismissed freely without a full roster"), Subsystem->DismissPermanentCompanion(FirstStarterId));
+	const TArray<FGameXXKPermanentCompanion> DismissalRoster =
+		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions;
+	for (int32 Index = 0; Index < DismissalRoster.Num() - 1; ++Index)
+	{
+		TestTrue(TEXT("a companion can be dismissed while another starter remains"),
+			Subsystem->DismissPermanentCompanion(DismissalRoster[Index].InstanceId));
+	}
+	const FName LastStarterId = DismissalRoster.Last().InstanceId;
 	TestEqual(TEXT("dismissal leaves exactly one companion"), Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.Num(), 1);
-	TestFalse(TEXT("the last remaining companion cannot be dismissed"), Subsystem->DismissPermanentCompanion(SecondStarterId));
+	TestFalse(TEXT("the last remaining companion cannot be dismissed"), Subsystem->DismissPermanentCompanion(LastStarterId));
 	TestEqual(TEXT("the rejected dismissal keeps the last companion"), Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.Num(), 1);
 	return true;
 }

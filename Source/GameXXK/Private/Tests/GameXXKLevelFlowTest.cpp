@@ -13,9 +13,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 {
 	TestEqual(
-		TEXT("town map"),
+		TEXT("town map remains the accepted 3D entry until the HUD migration is approved"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::Town),
-		FName(TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD")));
+		FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
 	TestEqual(
 		TEXT("route map"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::DungeonMap),
@@ -69,6 +69,14 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 	TestFalse(
 		TEXT("desktop training map does not opt into 3D town actor spawning"),
 		GameXXKLevelFlow::IsTownGameplayMapPackage(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_DesktopTrainingHUD")));
+	TestEqual(
+		TEXT("desktop training HUD enforces the low-power 30 FPS policy"),
+		GameXXKLevelFlow::FrameRateLimitForMapPackage(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_DesktopTrainingHUD")),
+		30.0f);
+	TestEqual(
+		TEXT("3D town keeps its uncapped legacy presentation policy"),
+		GameXXKLevelFlow::FrameRateLimitForMapPackage(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")),
+		0.0f);
 	TestFalse(
 		TEXT("route map is not a Town gameplay map"),
 		GameXXKLevelFlow::IsTownGameplayMapPackage(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap")));

@@ -351,6 +351,62 @@ struct FGameXXKRouteMapNode
 	TArray<int32> OutgoingNodeIds;
 };
 
+/** Stable identity stored in one physical desktop backpack/warehouse cell. */
+USTRUCT(BlueprintType)
+struct FGameXXKDesktopInventoryEntryKey
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bEquipmentInstance = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName EntryId = NAME_None;
+
+	bool IsValid() const
+	{
+		return !EntryId.IsNone();
+	}
+
+	bool operator==(const FGameXXKDesktopInventoryEntryKey& Other) const
+	{
+		return bEquipmentInstance == Other.bEquipmentInstance && EntryId == Other.EntryId;
+	}
+
+	bool operator!=(const FGameXXKDesktopInventoryEntryKey& Other) const
+	{
+		return !(*this == Other);
+	}
+};
+
+FORCEINLINE uint32 GetTypeHash(const FGameXXKDesktopInventoryEntryKey& Key)
+{
+	return HashCombine(GetTypeHash(Key.bEquipmentInstance), GetTypeHash(Key.EntryId));
+}
+
+/**
+ * Save-authoritative physical placement for the desktop backpack and warehouse.
+ * Equipment remains in the validated equipment collection; the warehouse list
+ * is a strict subset that partitions unequipped instances between both panels.
+ */
+USTRUCT(BlueprintType)
+struct FGameXXKDesktopInventoryState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> WarehouseEquipmentInstanceIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<FName, int32> WarehouseItems;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKDesktopInventoryEntryKey> BackpackSlots;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKDesktopInventoryEntryKey> WarehouseSlots;
+};
+
 USTRUCT(BlueprintType)
 struct FGameXXKRuntimeState
 {
@@ -479,6 +535,10 @@ struct FGameXXKRuntimeState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TMap<FName, int32> Inventory;
+
+	/** v21+ physical backpack/warehouse partition used by the pure-2D desktop shell. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKDesktopInventoryState DesktopInventory;
 
 	// Enhancement levels belong to the item definition and are only applied while that item is equipped.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
