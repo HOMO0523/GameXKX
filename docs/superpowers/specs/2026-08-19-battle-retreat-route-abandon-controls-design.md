@@ -1,7 +1,8 @@
 ---
-status: approved-design-pending-written-review
+status: approved
 owner: user
-updated_at: 2026-08-19T20:45:00+08:00
+updated_at: 2026-08-19T21:00:00+08:00
+written_reviewed_at: 2026-08-19T21:00:00+08:00
 supersedes: []
 depends_on:
   - docs/superpowers/specs/2026-08-19-route-owned-auto-battle-correction-design.md
