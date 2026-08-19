@@ -1,9 +1,11 @@
 ---
-status: approved-layout
-updated_at: 2026-08-18
+status: approved-layout-superseded-in-part
+updated_at: 2026-08-19
 source_commit: ba90810
 ---
 # GameXXK 桌面历练工作台与局内扩展画布设计
+
+> **2026-08-19 用户纠偏（最高优先）**：本文所有“工作台内合并 ChallengeViewport、内嵌路线图/BattleBoard、3 敌 3 我顶栏、挑战只读侧壳”要求已废止。首次通关/主动战斗必须复用现有传送门后的路线图与全屏 BattleBoard；玩家选择路线、事件、商店和奖励，自动战斗只在怪物战中合法出牌。新权威规格：`docs/superpowers/specs/2026-08-19-route-owned-auto-battle-correction-design.md`。
 
 > 状态：布局与 UX 已由用户确认；1672×941 几何基准已冻结，运行时实现与最终验收仍未完成
 > 日期：2026-08-17
