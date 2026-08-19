@@ -48,10 +48,9 @@
 
 - [ ] **Step 1: Write RED checkpoint and migration tests**
 
-Create Automation tests under `GameXXK.Route.BattleRetreat` with deterministic two-node and branched generated-route fixtures:
+Create Automation tests under `GameXXK.Route.BattleRetreat` with deterministic generated-route save fixtures:
 
-- `CheckpointCaptureKinds`: after selecting Battle, Elite, and Boss separately, assert `bValid`, `SourceNodeId == clicked node`, previous current/index/HP/MP, and exact previous visited/reachable arrays. A Camp or Event selection must leave the checkpoint invalid.
-- `CheckpointCaptureFailureAtomicity`: force battle construction failure and compare the whole runtime state to its snapshot; no checkpoint or current/pending-node mutation may leak.
+- `CheckpointSchemaRoundTrip`: populate every checkpoint field, pass it through `MakeSaveState` and current-version migration/restore, then assert exact equality.
 - `LegacySaveMigration`: serialize a v22 active generated-route battle with exactly one visited inbound parent and no checkpoint; migration to v23 must create a valid deterministic checkpoint, retain load-time HP/MP, and preserve current visited/reachable snapshots.
 - `LegacySaveMigrationAmbiguousParent`: give the pending battle node two visited inbound parents; migration succeeds but leaves `bValid == false` and emits a warning, so the UI can disable only battle retreat.
 - `CurrentCheckpointValidation`: v23 state is rejected when a valid checkpoint has no generated route, invalid source node, mismatched active/pending battle, duplicate visited/reachable IDs, or a previous-current node not represented by the route graph.
@@ -163,6 +162,8 @@ git commit -m "feat: save route battle entry checkpoints"
 
 Add:
 
+- `CheckpointCaptureKinds`: after selecting Battle, Elite, and Boss separately, assert `bValid`, `SourceNodeId == clicked node`, previous current/index/HP/MP, and exact previous visited/reachable arrays. A Camp or Event selection must leave the checkpoint invalid.
+- `CheckpointCaptureFailureAtomicity`: force battle construction failure and compare the whole runtime state to its snapshot; no checkpoint or current/pending-node mutation may leak.
 - `NormalEliteBossRollback`: for each encounter kind, snapshot previous current/index/HP/MP/visited/reachable, enter battle, mutate HP/MP and combat state, retreat, then compare every checkpoint-owned field exactly. Assert `Screen == DungeonMap`, `CurrentMapId == "HuangshanRoute"`, `PendingRouteNodeId == INDEX_NONE`, no active CardBattle, no legacy battle units/intents, no pending reward, invalid checkpoint, and the abandoned encounter remains reachable and unvisited.
 - `PendingVictoryRewardRollback`: enter a generated Elite encounter, force Victory, call `ResolveBattleVictory(false)` once to create the saved three-choice reward, then retreat. Assert the offer and unresolved battle disappear and no reward card/relic/currency/node completion survives.
 - `PreservesCompletedRouteEconomy`: seed travel money, acquired route-card count, relics, inventory, and an already completed node before the target encounter; mutate only combat-local fields and retreat. Assert all pre-entry economy and prior progress are byte-for-byte unchanged.
