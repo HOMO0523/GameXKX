@@ -43,7 +43,9 @@ public:
 	static constexpr int32 DesktopInventoryStorageIntroducedSaveVersion = 21;
 	/** v22: approved named NPCs can own central equipment loadouts via the QuestNpc owner kind. */
 	static constexpr int32 QuestNpcEquipmentOwnerIntroducedSaveVersion = 22;
-	static constexpr int32 CurrentSaveVersion = 22;
+	/** v23: generated-route combat saves retain the exact pre-encounter rollback checkpoint. */
+	static constexpr int32 BattleRetreatCheckpointIntroducedSaveVersion = 23;
+	static constexpr int32 CurrentSaveVersion = 23;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

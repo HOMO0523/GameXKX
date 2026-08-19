@@ -440,7 +440,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("NPC equipment ownership has an explicit schema gate"),
 		FGameXXKSaveMigration::QuestNpcEquipmentOwnerIntroducedSaveVersion, 22);
-	TestEqual(TEXT("current save schema includes NPC equipment ownership"), FGameXXKSaveMigration::CurrentSaveVersion, 22);
+	TestEqual(TEXT("current save schema includes battle retreat checkpoints"), FGameXXKSaveMigration::CurrentSaveVersion, 23);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());

@@ -1063,6 +1063,63 @@ namespace
 		NormalizeProgression(State);
 		return State;
 	}
+
+	bool IsBattleRetreatEncounterKind(const EGameXXKNodeKind Kind)
+	{
+		return Kind == EGameXXKNodeKind::Battle
+			|| Kind == EGameXXKNodeKind::Elite
+			|| Kind == EGameXXKNodeKind::Boss;
+	}
+
+	void MigrateBattleRetreatCheckpoint(
+		FGameXXKRuntimeState& State,
+		FGameXXKSaveMigrationReport& Report)
+	{
+		State.BattleEntryCheckpoint = FGameXXKBattleEntryCheckpoint{};
+		if (!State.bDungeonActive
+			|| !State.bHasGeneratedRouteMap
+			|| State.Screen != EGameXXKScreen::Battle
+			|| !State.CardRun.bHasActiveCardBattle
+			|| State.PendingRouteNodeId == INDEX_NONE)
+		{
+			return;
+		}
+
+		const FGameXXKRouteMapNode* SourceNode = State.RouteMapNodes.FindByPredicate([&State](const FGameXXKRouteMapNode& Node)
+		{
+			return Node.NodeId == State.PendingRouteNodeId;
+		});
+		if (!SourceNode || !IsBattleRetreatEncounterKind(SourceNode->NodeKind))
+		{
+			Report.Warnings.Add(TEXT("Legacy active battle has no recoverable battle retreat source node; retreat is disabled for this battle."));
+			return;
+		}
+
+		TSet<int32> UniqueVisitedParents;
+		for (const FGameXXKRouteMapEdge& Edge : State.RouteMapEdges)
+		{
+			if (Edge.ToNodeId == State.PendingRouteNodeId
+				&& State.VisitedRouteNodeIds.Contains(Edge.FromNodeId))
+			{
+				UniqueVisitedParents.Add(Edge.FromNodeId);
+			}
+		}
+		if (UniqueVisitedParents.Num() != 1 || !State.ReachableRouteNodeIds.Contains(State.PendingRouteNodeId))
+		{
+			Report.Warnings.Add(TEXT("Legacy active battle has an ambiguous battle retreat parent; retreat is disabled for this battle."));
+			return;
+		}
+
+		FGameXXKBattleEntryCheckpoint& Checkpoint = State.BattleEntryCheckpoint;
+		Checkpoint.bValid = true;
+		Checkpoint.SourceNodeId = State.PendingRouteNodeId;
+		Checkpoint.PreviousCurrentRouteNodeId = UniqueVisitedParents.Array()[0];
+		Checkpoint.PreviousDungeonNodeIndex = State.DungeonNodeIndex;
+		Checkpoint.PreviousPlayerHP = State.PlayerHP;
+		Checkpoint.PreviousPlayerMP = State.PlayerMP;
+		Checkpoint.PreviousVisitedRouteNodeIds = State.VisitedRouteNodeIds;
+		Checkpoint.PreviousReachableRouteNodeIds = State.ReachableRouteNodeIds;
+	}
 }
 
 bool FGameXXKSaveMigration::MigrateToCurrent(
@@ -1213,6 +1270,10 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 			Fail(OutReport, MigrationError);
 			return false;
 		}
+	}
+	if (Source.SaveVersion < BattleRetreatCheckpointIntroducedSaveVersion)
+	{
+		MigrateBattleRetreatCheckpoint(Candidate.RuntimeState, OutReport);
 	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	Candidate.SaveVersion = CurrentSaveVersion;
@@ -1705,6 +1766,7 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 			|| !State.RouteMapEdges.IsEmpty()
 			|| !State.VisitedRouteNodeIds.IsEmpty()
 			|| !State.ReachableRouteNodeIds.IsEmpty()
+			|| State.BattleEntryCheckpoint.bValid
 			|| State.CurrentRouteNodeId != INDEX_NONE
 			|| State.PendingRouteNodeId != INDEX_NONE
 			|| State.CardRun.ActiveBattleSourceNodeId != INDEX_NONE
@@ -1807,6 +1869,47 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 				return Node.NodeId == NodeId;
 			});
 		};
+		const FGameXXKBattleEntryCheckpoint& Checkpoint = State.BattleEntryCheckpoint;
+		if (Checkpoint.bValid)
+		{
+			const FGameXXKRouteMapNode* SourceNode = FindRouteNode(Checkpoint.SourceNodeId);
+			const FGameXXKRouteMapNode* PreviousCurrentNode = FindRouteNode(Checkpoint.PreviousCurrentRouteNodeId);
+			const auto ValidateCheckpointNodeList = [&NodeIds](const TArray<int32>& Values)
+			{
+				TSet<int32> Seen;
+				for (const int32 NodeId : Values)
+				{
+					if (!NodeIds.Contains(NodeId) || Seen.Contains(NodeId))
+					{
+						return false;
+					}
+					Seen.Add(NodeId);
+				}
+				return true;
+			};
+			if (!State.bDungeonActive
+				|| State.Screen != EGameXXKScreen::Battle
+				|| !State.CardRun.bHasActiveCardBattle
+				|| !SourceNode
+				|| !IsBattleRetreatEncounterKind(SourceNode->NodeKind)
+				|| Checkpoint.SourceNodeId != State.PendingRouteNodeId
+				|| Checkpoint.SourceNodeId != State.CurrentRouteNodeId
+				|| Checkpoint.SourceNodeId != State.CardRun.ActiveBattleSourceNodeId
+				|| !PreviousCurrentNode
+				|| Checkpoint.PreviousDungeonNodeIndex < 0
+				|| Checkpoint.PreviousPlayerHP < 0
+				|| Checkpoint.PreviousPlayerHP > EffectiveMaxHP
+				|| Checkpoint.PreviousPlayerMP < 0
+				|| Checkpoint.PreviousPlayerMP > EffectiveMaxMP
+				|| !ValidateCheckpointNodeList(Checkpoint.PreviousVisitedRouteNodeIds)
+				|| !ValidateCheckpointNodeList(Checkpoint.PreviousReachableRouteNodeIds)
+				|| Checkpoint.PreviousVisitedRouteNodeIds.Contains(Checkpoint.SourceNodeId)
+				|| !Checkpoint.PreviousReachableRouteNodeIds.Contains(Checkpoint.SourceNodeId))
+			{
+				OutError = TEXT("Saved battle-entry retreat checkpoint is invalid or detached from its encounter.");
+				return false;
+			}
+		}
 		if (State.CardRun.RouteMerchant.SourceNodeId != INDEX_NONE)
 		{
 			const FGameXXKRouteMapNode* MerchantNode = FindRouteNode(State.CardRun.RouteMerchant.SourceNodeId);

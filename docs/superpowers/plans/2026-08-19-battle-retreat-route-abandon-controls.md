@@ -46,7 +46,7 @@
 - Modify: `Source/GameXXK/Private/MVP/GameXXKSaveMigration.cpp`
 - Test: `Source/GameXXK/Private/Tests/GameXXKSaveGameTest.cpp`
 
-- [ ] **Step 1: Write RED checkpoint and migration tests**
+- [x] **Step 1: Write RED checkpoint and migration tests**
 
 Create Automation tests under `GameXXK.Route.BattleRetreat` with deterministic generated-route save fixtures:
 
@@ -57,7 +57,7 @@ Create Automation tests under `GameXXK.Route.BattleRetreat` with deterministic g
 
 Use an exact parent rule for legacy saves: collect route edges whose `ToNodeId == PendingRouteNodeId` and whose `FromNodeId` is visited; create a checkpoint only when that set contains exactly one unique node.
 
-- [ ] **Step 2: Cold-build and verify RED**
+- [x] **Step 2: Cold-build and verify RED**
 
 Close Unreal Editor only after saving dirty packages through UE MCP, then run:
 
@@ -67,7 +67,7 @@ Close Unreal Editor only after saving dirty packages through UE MCP, then run:
 
 Expected: compile fails because `FGameXXKBattleEntryCheckpoint`, v23, and migration support do not exist.
 
-- [ ] **Step 3: Implement the minimal saved schema**
+- [x] **Step 3: Implement the minimal saved schema**
 
 Add this USTRUCT before `FGameXXKRuntimeState`:
 
@@ -114,7 +114,7 @@ static constexpr int32 CurrentSaveVersion = 23;
 
 For pre-v23 saves, populate the checkpoint only for an active generated-route Battle screen with a valid pending Battle/Elite/Boss node and one unique visited inbound parent. Otherwise reset it and append one specific warning for ambiguous/unrecoverable active battles. New games and non-battle legacy saves get the default invalid checkpoint.
 
-- [ ] **Step 4: Add compatibility-aware validation**
+- [x] **Step 4: Add compatibility-aware validation**
 
 In `ValidateRuntimeState`, require a valid checkpoint to satisfy all of these:
 
@@ -128,7 +128,7 @@ In `ValidateRuntimeState`, require a valid checkpoint to satisfy all of these:
 
 An invalid/default checkpoint remains valid state, including the explicitly warned ambiguous v22 migration case.
 
-- [ ] **Step 5: Cold-build and verify GREEN**
+- [x] **Step 5: Cold-build and verify GREEN**
 
 ```powershell
 & 'D:\UE_5.8\Engine\Build\BatchFiles\Build.bat' GameXXKEditor Win64 Development '-Project=D:\UE5 demo\GameXXK\GameXXK.uproject' -WaitMutex -NoHotReload -NoHotReloadFromIDE -NoUBA -MaxParallelActions=2
@@ -141,7 +141,7 @@ An invalid/default checkpoint remains valid state, including the explicitly warn
 
 Expected: UBT succeeds; all new checkpoint/migration tests and the full SaveGame suite pass.
 
-- [ ] **Step 6: Commit the schema checkpoint**
+- [x] **Step 6: Commit the schema checkpoint**
 
 Stage only the files in this task and commit:
 

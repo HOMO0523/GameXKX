@@ -9,8 +9,8 @@ static_assert(
 	FGameXXKSaveMigration::BattleRewardTieringIntroducedSaveVersion == 16,
 	"Battle reward tiering persistence requires save version 16.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 22,
-	"Persistent desktop inventory storage advances the current save version to twenty-one.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 23,
+	"Battle retreat checkpoint persistence advances the current save version to twenty-three.");
 
 namespace
 {

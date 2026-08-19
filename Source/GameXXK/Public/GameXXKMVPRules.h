@@ -407,6 +407,42 @@ struct FGameXXKDesktopInventoryState
 	TArray<FGameXXKDesktopInventoryEntryKey> WarehouseSlots;
 };
 
+/**
+ * Save-authoritative snapshot of the generated-route state immediately before
+ * the player commits a Battle, Elite, or Boss node. It intentionally excludes
+ * route economy already earned from completed nodes.
+ */
+USTRUCT(BlueprintType)
+struct FGameXXKBattleEntryCheckpoint
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bValid = false;
+
+	/** Selected encounter node. It matches PendingRouteNodeId while the battle is active. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 SourceNodeId = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PreviousCurrentRouteNodeId = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PreviousDungeonNodeIndex = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PreviousPlayerHP = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PreviousPlayerMP = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<int32> PreviousVisitedRouteNodeIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<int32> PreviousReachableRouteNodeIds;
+};
+
 USTRUCT(BlueprintType)
 struct FGameXXKRuntimeState
 {
@@ -505,6 +541,10 @@ struct FGameXXKRuntimeState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<int32> ReachableRouteNodeIds;
+
+	/** v23+ exact rollback source for player-confirmed encounter retreat. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKBattleEntryCheckpoint BattleEntryCheckpoint;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bHasActiveBattle = false;
