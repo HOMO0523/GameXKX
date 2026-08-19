@@ -83,9 +83,9 @@ class PartyDeckRealPlayAcceptanceTest(unittest.TestCase):
 
     def test_static_catalog_reader_covers_the_approved_card_pool(self) -> None:
         catalog = self.runner.load_card_target_catalog()
-        self.assertGreaterEqual(len(catalog), 174)
-        self.assertEqual(catalog["Hero.QingFengYiShi"]["target_mode"], "SingleEnemy")
-        self.assertEqual(catalog["Hero.QingFengYiShi"]["energy_cost"], 1)
+        self.assertEqual(len(catalog), 198)
+        self.assertEqual(catalog["Hero.Generic.QingFengYiShi"]["target_mode"], "SingleEnemy")
+        self.assertEqual(catalog["Hero.Generic.QingFengYiShi"]["energy_cost"], 1)
 
     def test_targeting_evidence_requires_live_board_and_scene_highlight(self) -> None:
         snapshot = {

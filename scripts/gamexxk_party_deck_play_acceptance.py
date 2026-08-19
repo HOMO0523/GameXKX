@@ -30,7 +30,7 @@ from typing import Any, Callable
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPORT_DIR = PROJECT_ROOT / "Saved" / "HarnessReports"
 RUNTIME_PROBE = "Content/Python/gamexxk_probe_party_deck_runtime.py"
-CATALOG_PATH = PROJECT_ROOT / "Source" / "GameXXK" / "Private" / "GameXXKCardCatalog.cpp"
+CATALOG_PATH = PROJECT_ROOT / "docs" / "design" / "2026-08-11-full-card-catalog.md"
 PARTY_DECK_ACCEPTANCE_VERSION = "2026-07-17.4"
 
 MANUAL_TARGET_MODES = frozenset({"SingleEnemy", "SingleAlly", "OtherAlly", "AnyLivingUnit"})
@@ -156,18 +156,19 @@ def _active_hand(card_run: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def load_card_target_catalog(path: Path = CATALOG_PATH) -> dict[str, dict[str, Any]]:
-    """Parse only the immutable AddCard identity/cost/target fields for selection.
+    """Parse immutable identity/cost/target fields from the verified catalog.
 
-    The game remains authoritative.  This parser is intentionally not a rule
-    reimplementation: it merely avoids clicking a self/group card while the
-    acceptance runner seeks a manual-target card in a live hand.
+    ``GameXXK.Data.CardDocumentation`` verifies this generated Markdown against
+    ``FGameXXKCardCatalog::GetAllCardDefinitions``. Reading that stable table
+    avoids coupling the live runner to C++ helper names such as ``AddHero`` or
+    ``AddHealer`` while still avoiding a rule reimplementation.
     """
     source = path.read_text(encoding="utf-8")
     pattern = re.compile(
-        r'AddCard\(Cards,.*?TEXT\("(?P<card_id>[^"]+)"\),'
-        r'.*?,\s*(?P<energy>\d+),\s*(?P<mana>\d+),'
-        r'\s*EGameXXKCardTargetMode::(?P<target_mode>[A-Za-z0-9_]+),',
-        re.DOTALL,
+        r"^\|\s*\d+\s*\|\s*[^|]+\|\s*`(?P<card_id>[^`]+)`\s*\|"
+        r"\s*[^|]+\|\s*(?P<energy>\d+)\s*气\s*/\s*(?P<mana>\d+)\s*内\s*\|"
+        r".*?TargetMode=(?P<target_mode>[A-Za-z0-9_]+)",
+        re.MULTILINE,
     )
     result: dict[str, dict[str, Any]] = {}
     for match in pattern.finditer(source):
@@ -177,8 +178,8 @@ def load_card_target_catalog(path: Path = CATALOG_PATH) -> dict[str, dict[str, A
             "energy_cost": int(match.group("energy")),
             "mana_cost": int(match.group("mana")),
         }
-    if len(result) < 174:
-        raise RuntimeError(f"Card catalog parser read {len(result)} cards; expected at least the approved 174")
+    if len(result) != 198:
+        raise RuntimeError(f"Card catalog parser read {len(result)} cards; expected the approved 198")
     return result
 
 

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -85,6 +86,7 @@ class HpHudTester:
         """Connect to the UE MCP server; launch the editor if needed."""
         client = UnrealMCPClient(host="127.0.0.1", port=MCP_PORT, timeout=30.0)
         deadline = time.monotonic() + 120.0
+        editor_launch_attempted = False
         while time.monotonic() < deadline:
             if client.connect():
                 self.client = client
@@ -92,12 +94,18 @@ class HpHudTester:
                 return
             if not UE_EDITOR.exists():
                 raise HpHudTestError(f"UE editor binary missing: {UE_EDITOR}")
-            if time.monotonic() < deadline - 110.0:
+            if not editor_launch_attempted:
+                child_environment = os.environ.copy()
+                child_environment["UE_SKIP_UBT_SDK_SETUP"] = "1"
                 subprocess.Popen(
                     [str(UE_EDITOR), str(PROJECT_FILE),
+                     "-Unattended", "-UnattendedInput",
+                     "-NoZenAutoLaunch", "-DDC-ForceMemoryCache",
                      "-ModelContextProtocolStartServer", f"-ModelContextProtocolPort={MCP_PORT}"],
                     cwd=str(PROJECT_ROOT),
+                    env=child_environment,
                 )
+                editor_launch_attempted = True
                 self.event("editor_launched", editor=str(UE_EDITOR))
             time.sleep(5.0)
         raise HpHudTestError("UE MCP server did not become reachable within 120s")
@@ -205,8 +213,8 @@ class HpHudTester:
     def _enter_battle_from_main_menu(self) -> None:
         # Prefer the BlueprintCallable command route over Slate clicks: the
         # start button's Slate label round-trips with encoding corruption.
-        # Retry until the command actually flips the screen (PIE may not be
-        # fully settled immediately after start).
+        # New Game now enters the accepted Qingshan Town directly. Retry until
+        # that destination is visible (PIE may not be fully settled yet).
         deadline = time.monotonic() + 30.0
         started = False
         while time.monotonic() < deadline:
@@ -214,17 +222,13 @@ class HpHudTester:
             screen_now = str(self._state().get("screen", "")).upper()
             self.event("start_game_attempt", ok=bool(start.get("ok")),
                        reason=start.get("reason", ""), screen=screen_now)
-            if start.get("ok") and "WORLD_MAP" in screen_now:
+            if start.get("ok") and "TOWN" in screen_now:
                 started = True
                 break
             time.sleep(1.0)
         if not started:
             self._slate_click("开始游戏")
-        self._wait_for("world map after Start", lambda: "WORLD_MAP" in str(self._state().get("screen", "")).upper())
-        selected = self._board_action("select_qingshan")
-        if not selected.get("ok"):
-            self._slate_click("青山镇")
-        self._wait_for("town after Qingshan", lambda: "TOWN" in str(self._state().get("screen", "")).upper())
+        self._wait_for("town after Start", lambda: "TOWN" in str(self._state().get("screen", "")).upper())
         self.event("reached_town")
 
     def _ensure_battle(self) -> dict[str, Any]:
@@ -509,11 +513,13 @@ class HpHudTester:
             self.failures.append(f"multiple boards refreshing concurrently: {sorted(refreshing_names)}")
 
     def close(self) -> None:
-        if self.client and not self.keep_pie and self.client.is_in_pie():
-            try:
+        if not self.client or self.keep_pie:
+            return
+        try:
+            if self.client.is_in_pie():
                 self.client.stop_pie()
-            except Exception:
-                pass
+        except Exception as exc:
+            self.event("cleanup_mcp_unavailable", error=str(exc))
 
 
 def main(argv: list[str]) -> int:

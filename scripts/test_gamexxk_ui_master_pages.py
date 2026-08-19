@@ -22,11 +22,14 @@ class GameXXKUiMasterPageTests(unittest.TestCase):
             self.assertEqual(18, len(records))
             self.assertEqual("00_公共组件", records[0]["group"])
             self.assertEqual("17_战斗HUD_卡牌选中目标", records[-1]["group"])
-            for record in records:
+            for index, record in enumerate(records):
                 with Image.open(output / record["file"]) as image:
                     self.assertEqual((1920, 1080), image.size)
                 self.assertTrue(record["imageLayers"])
-                self.assertTrue(record["textLayers"])
+                if index == 0:
+                    self.assertEqual([], record["textLayers"])
+                else:
+                    self.assertTrue(record["textLayers"])
 
 
 if __name__ == "__main__":
