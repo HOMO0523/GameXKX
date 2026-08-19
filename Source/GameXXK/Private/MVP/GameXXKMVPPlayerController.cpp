@@ -2183,16 +2183,14 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	if (bEnableDesktopTrainingWorkbench)
 	{
 		UGameXXKDesktopTrainingWorkbenchWidget* Workbench = EnsureDesktopTrainingWorkbenchWidget();
-		const bool bKeepTrainingChallenge = Workbench && Workbench->IsChallengeViewportActiveForTest();
 		if (Workbench && ActiveScreen == EGameXXKScreen::Town && Workbench->IsWorkbenchVisibleForTest())
 		{
 			Workbench->SetMVPSubsystem(Subsystem);
 		}
-		else if (Workbench && ActiveScreen != EGameXXKScreen::Town && !bKeepTrainingChallenge)
+		else if (Workbench && ActiveScreen != EGameXXKScreen::Town)
 		{
-			// The workbench is an opt-in town shell. Close it before entering
-			// route/battle screens so it cannot retain input or cover gameplay;
-			// the workbench-owned challenge viewport is the deliberate exception.
+			// The workbench is a Town-owned shell. Close it before entering route or
+			// battle screens so it cannot retain input or cover gameplay.
 			Workbench->CloseWorkbench();
 		}
 		if (TownHudWidget && Workbench && Workbench->IsWorkbenchVisibleForTest())

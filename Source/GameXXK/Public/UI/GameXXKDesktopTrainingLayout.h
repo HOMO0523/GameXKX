@@ -21,8 +21,5 @@ namespace GameXXKDesktopTrainingLayout
 	GAMEXXK_API FVector4 GetIdleStripRect();
 	GAMEXXK_API FVector4 GetContentRect();
 	GAMEXXK_API FVector4 GetNavigationRect();
-	GAMEXXK_API FVector4 GetChallengeViewportRect();
-	GAMEXXK_API FVector4 GetChallengeCombatStripRect();
-	GAMEXXK_API FVector4 GetChallengeBattleBoardRect();
 	GAMEXXK_API FFitTransform MakeFitTransform(const FVector2D& ViewportSize);
 }

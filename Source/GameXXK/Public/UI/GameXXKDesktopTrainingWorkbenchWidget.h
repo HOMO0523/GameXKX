@@ -18,7 +18,6 @@ class UScaleBox;
 class USizeBox;
 class UTextBlock;
 class UTexture2D;
-class UGameXXKBattleBoardWidget;
 class UGameXXKInventoryWindowWidget;
 
 UENUM(BlueprintType)
@@ -29,13 +28,6 @@ enum class EGameXXKDesktopTrainingNav : uint8
 	Talents,
 	Tools,
 	Training
-};
-
-UENUM(BlueprintType)
-enum class EGameXXKDesktopTrainingViewMode : uint8
-{
-	Workbench,
-	ChallengeViewport
 };
 
 UENUM(BlueprintType)
@@ -306,19 +298,6 @@ public:
 	FName GetCurrentTravelStageIdForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
-	bool IsChallengeViewportActiveForTest() const;
-
-	/** The warehouse and training-map shells remain present but input-locked during challenge. */
-	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
-	bool AreChallengeSidePanelsReadOnlyForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
-	bool IsAutoBattleVisibleForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
-	bool IsRetryVisibleForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool HasTravelVisualStripForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
@@ -387,19 +366,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	int32 GetTravelVisualEnemyRenderedFrameForTest() const;
 
-	/** Geometry contract for the merged challenge route/battle canvas. */
-	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
-	FVector4 GetChallengeViewportRectForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
-	FVector4 GetChallengeCombatStripRectForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
-	FVector4 GetChallengeBattleBoardRectForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
-	int32 GetChallengeCombatSlotCountForTest() const;
-
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	FText GetStageTooltipForTest(FName StageId) const;
 
@@ -411,12 +377,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool ClickTravelForTest();
-
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
-	bool ToggleAutoBattleForTest(bool bEnabled);
-
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
-	bool AdvanceChallengeForTest();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool AdvanceTravelForTest(int32 ElapsedSeconds = 1);
@@ -462,13 +422,11 @@ private:
 	void BuildTopToolbar();
 	void BuildExitConfirmation();
 	void BuildCarriedItemVisual();
-	void BuildChallengeViewport();
-	void BuildChallengeCombatStrip();
-	void BuildWarehousePanel(bool bReadOnly = false);
+	void BuildWarehousePanel();
 	void BuildBackpackPanel();
 	void BuildCharacterRosterTabs();
 	void BuildTalentsPanel();
-	void BuildTrainingMapPanel(bool bReadOnly = false);
+	void BuildTrainingMapPanel();
 	void BuildToolsPanel();
 	void BuildTopIdleStrip();
 	void BuildBottomNavigation();
@@ -561,9 +519,6 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> TravelStageText;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> ChallengeStatusText;
-
 	/** Clipped top-strip surface for the seamless Travel lane. */
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> TravelVisualViewport;
@@ -621,21 +576,13 @@ private:
 	TArray<float> TravelAppliedEnemyHealth;
 	TArray<float> TravelAppliedCompanionHealth;
 
-	/** Reuses the production card battle board inside the enlarged ChallengeViewport. */
-	UPROPERTY(Transient)
-	TObjectPtr<UGameXXKBattleBoardWidget> ChallengeBattleBoard;
-
-	uint64 ChallengeBattleVisualSessionToken = 0;
-
 	EGameXXKDesktopTrainingNav ActiveNav = EGameXXKDesktopTrainingNav::Training;
-	EGameXXKDesktopTrainingViewMode ViewMode = EGameXXKDesktopTrainingViewMode::Workbench;
 	EGameXXKDesktopTrainingRightPanel RightPanel = EGameXXKDesktopTrainingRightPanel::None;
 	EGameXXKDesktopToolMode ActiveToolMode = EGameXXKDesktopToolMode::Dismantle;
 	EGameXXKDesktopTrainingCharacterRoster ActiveCharacterRoster = EGameXXKDesktopTrainingCharacterRoster::Hero;
 	FName SelectedStageId = NAME_None;
 	FName ActiveBackpackCharacterId = NAME_None;
 	int32 WarehousePageIndex = 0;
-	float AutoBattleAccumulator = 0.0f;
 	float TravelAccumulator = 0.0f;
 	int32 TravelVisualNativeTickCount = 0;
 	FGameXXKTrainingTravelVisualRuntime TravelVisualRuntime;
@@ -647,7 +594,6 @@ private:
 	bool bMuted = false;
 	float UnmutedVolumeMultiplier = 1.0f;
 	bool bExitConfirmationOpen = false;
-	bool bChallengeSidePanelsReadOnly = false;
 	bool bNativeTickActive = false;
 	bool bLayoutRefreshPending = false;
 	bool bInternalLayoutRebuild = false;

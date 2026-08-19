@@ -11,9 +11,6 @@ namespace GameXXKDesktopTrainingLayout
 		const FVector4 IdleStripRect(394.0f, 21.0f, 953.0f, 202.0f);
 		const FVector4 ContentRect(397.0f, 244.0f, 945.0f, 533.0f);
 		const FVector4 NavigationRect(397.0f, 788.0f, 945.0f, 137.0f);
-		const FVector4 ChallengeViewportRect(394.0f, 21.0f, 953.0f, 756.0f);
-		const FVector4 ChallengeCombatStripRect(414.0f, 105.0f, 913.0f, 86.0f);
-		const FVector4 ChallengeBattleBoardRect(414.0f, 203.0f, 913.0f, 470.0f);
 	}
 
 	FVector2D FFitTransform::ApplyPoint(const FVector2D& Point) const
@@ -66,21 +63,6 @@ namespace GameXXKDesktopTrainingLayout
 	FVector4 GetNavigationRect()
 	{
 		return NavigationRect;
-	}
-
-	FVector4 GetChallengeViewportRect()
-	{
-		return ChallengeViewportRect;
-	}
-
-	FVector4 GetChallengeCombatStripRect()
-	{
-		return ChallengeCombatStripRect;
-	}
-
-	FVector4 GetChallengeBattleBoardRect()
-	{
-		return ChallengeBattleBoardRect;
 	}
 
 	FFitTransform MakeFitTransform(const FVector2D& ViewportSize)

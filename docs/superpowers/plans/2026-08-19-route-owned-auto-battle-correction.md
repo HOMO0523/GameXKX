@@ -150,7 +150,7 @@ git commit -m "fix: restore route-owned challenge entry"
 - Modify: `Source/GameXXK/Private/MVP/GameXXKMVPPlayerController.cpp`
 - Test: `Source/GameXXK/Private/Tests/GameXXKDesktopTrainingWorkbenchWidgetTest.cpp`
 
-- [ ] **Step 1: Add a failing source-retirement contract**
+- [x] **Step 1: Add a failing source-retirement contract**
 
 Create the focused source contract with all paths and assertions defined:
 
@@ -192,7 +192,7 @@ if __name__ == "__main__":
     unittest.main()
 ```
 
-- [ ] **Step 2: Run the source test and verify RED**
+- [x] **Step 2: Run the source test and verify RED**
 
 Run:
 
@@ -202,7 +202,7 @@ python scripts/test_desktop_training_route_ownership.py
 
 Expected: FAIL listing the still-present rejected names.
 
-- [ ] **Step 3: Remove all zero-reference challenge presentation code**
+- [x] **Step 3: Remove all zero-reference challenge presentation code**
 
 Delete:
 
@@ -225,7 +225,7 @@ else if (Workbench && ActiveScreen != EGameXXKScreen::Town)
 
 `NativeTick` keeps only collapsed-resource and Travel work. `BuildWorkbenchShell` builds normal warehouse/backpack/tools/training views only.
 
-- [ ] **Step 4: Verify no rejected symbol remains and run regression tests**
+- [x] **Step 4: Verify no rejected symbol remains and run regression tests** *(source contract GREEN; cold UBT succeeded; Workbench 21/21 and the three affected MVP UI tests 3/3 passed. The broader `GameXXK.MVP.UI` run was 19/20 because the unrelated pre-existing `MainMenuPlayerFlow.SaveMigration` failed again in isolation.)*
 
 Run:
 
@@ -238,7 +238,7 @@ rg -n "ChallengeViewport|BuildChallengeViewport|BuildChallengeCombatStrip|Challe
 
 Expected: source test passes; `rg` prints nothing; UBT succeeds; selected Automation suites pass.
 
-- [ ] **Step 5: Commit the retirement**
+- [x] **Step 5: Commit the retirement**
 
 ```powershell
 git add scripts/test_desktop_training_route_ownership.py Source/GameXXK/Public/UI/GameXXKDesktopTrainingWorkbenchWidget.h Source/GameXXK/Private/UI/GameXXKDesktopTrainingWorkbenchWidget.cpp Source/GameXXK/Public/UI/GameXXKDesktopTrainingLayout.h Source/GameXXK/Private/UI/GameXXKDesktopTrainingLayout.cpp Source/GameXXK/Private/MVP/GameXXKMVPPlayerController.cpp Source/GameXXK/Private/Tests/GameXXKDesktopTrainingWorkbenchWidgetTest.cpp
