@@ -841,6 +841,39 @@ bool FGameXXKCardBattleBoardAutoPlayToggleTest::RunTest(const FString& Parameter
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardAutoPlayRealTimeCadenceTest,
+	"GameXXK.Integration.CardBattle.BoardAutoPlayRealTimeCadence",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardAutoPlayRealTimeCadenceTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FGameXXKCardPlayPreview Preview;
+	FString Error;
+	TestTrue(FString::Printf(TEXT("real-time cadence fixture builds: %s"), *Error),
+		BuildManualTargetCardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Preview, Error));
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("real-time cadence Board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestTrue(TEXT("real-time cadence auto enables"), Board->SetAutoBattleEnabled(true));
+	TestFalse(TEXT("first wall-clock sample primes the cadence"),
+		Board->AdvanceAutoBattleAtRealTimeForTest(100.0));
+	TestFalse(TEXT("wall-clock cadence still waits before 0.75 seconds"),
+		Board->AdvanceAutoBattleAtRealTimeForTest(100.70));
+	TestTrue(TEXT("wall-clock cadence acts after 0.75 seconds even without gameplay DeltaTime"),
+		Board->AdvanceAutoBattleAtRealTimeForTest(100.80));
+	TestFalse(TEXT("wall-clock action consumes the stable card"),
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.ContainsByPredicate(
+			[CardInstanceId](const FGameXXKCardInstance& Card) { return Card.InstanceId == CardInstanceId; }));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKCardBattleBoardAutoPlayManualTargetTest,
 	"GameXXK.Integration.CardBattle.BoardAutoPlayManualTarget",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -1143,6 +1176,122 @@ bool FGameXXKCardBattleBoardAutoPlayPresentationGateTest::RunTest(const FString&
 	TestTrue(TEXT("waiting for presentation performs no second mutation"),
 		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
 			&Subsystem->GetRuntimeState(), &DuringPresentation, PPF_None));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardAutoPlayEliteEncounterTest,
+	"GameXXK.Integration.CardBattle.BoardAutoPlayEliteEncounter",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardAutoPlayEliteEncounterTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State = UGameXXKMVPRules::CreateNewGame();
+	TestTrue(TEXT("elite auto fixture opens the world map"), UGameXXKMVPRules::OpenWorldMap(State));
+	TestTrue(TEXT("elite auto fixture enters Qingshan"),
+		UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan()));
+	TestTrue(TEXT("elite auto fixture accepts the route prerequisite"), UGameXXKMVPRules::AcceptTownQuest(State));
+	State.RouteSeed = 808;
+	TestTrue(TEXT("elite auto fixture enters the generated route"), UGameXXKMVPRules::EnterDungeon(State));
+	State.bHasGeneratedRouteMap = true;
+	State.CurrentRouteNodeId = 0;
+	State.PendingRouteNodeId = INDEX_NONE;
+	State.RouteMapNodes.Reset();
+	State.RouteMapEdges.Reset();
+	State.VisitedRouteNodeIds.Reset();
+	State.ReachableRouteNodeIds.Reset();
+	State.RouteMapNodes.Add(FGameXXKRouteMapNode{
+		0, 0, 0, EGameXXKNodeKind::Start, FVector2D(0.5f, 0.0f), TArray<int32>{1}});
+	State.RouteMapNodes.Add(FGameXXKRouteMapNode{
+		1, 1, 0, EGameXXKNodeKind::Elite, FVector2D(0.5f, 1.0f), TArray<int32>{}});
+	State.RouteMapEdges.Add(FGameXXKRouteMapEdge{0, 1});
+	State.VisitedRouteNodeIds.Add(0);
+	State.ReachableRouteNodeIds.Add(1);
+	TestTrue(TEXT("elite auto remains enabled while the player selects the Elite node"),
+		Subsystem->SetBattleAutoPlayEnabled(true));
+	TestTrue(TEXT("player-selected Elite node begins the authoritative battle"), Subsystem->SelectRouteNodeById(1));
+	TestEqual(TEXT("Elite node opens the Battle screen"), State.Screen, EGameXXKScreen::Battle);
+	TestTrue(TEXT("Elite node owns an active CardBattle"), State.CardRun.bHasActiveCardBattle);
+
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("elite auto Board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestTrue(TEXT("new Elite Board sees the retained session toggle"), Board->IsAutoBattleEnabled());
+	const FGameXXKRuntimeState BeforeAutoStep = Subsystem->GetRuntimeState();
+	TestTrue(TEXT("Elite auto battle produces its first Board-owned action"),
+		Board->AdvanceAutoBattleForTest(0.8f));
+	TestFalse(TEXT("Elite first auto action changes authoritative combat state"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&Subsystem->GetRuntimeState(), &BeforeAutoStep, PPF_None));
+
+	double PresentationSeconds = 100.0;
+	int32 AutoActionCount = 1;
+	bool bStalledWithoutPresentation = false;
+	bool bReachedTerminal = false;
+	for (int32 Cycle = 0; Cycle < 256 && !bStalledWithoutPresentation && !bReachedTerminal; ++Cycle)
+	{
+		for (int32 DrainStep = 0; DrainStep < 4; ++DrainStep)
+		{
+			PresentationSeconds += 10.0;
+			Board->AdvanceVisualsAtRealTime(PresentationSeconds);
+			Board->AdvanceEnemyIntentPresentationForTest(10.0f);
+		}
+		const FGameXXKRuntimeState& CurrentState = Subsystem->GetRuntimeState();
+		if (CurrentState.Screen != EGameXXKScreen::Battle
+			|| !CurrentState.CardRun.bHasActiveCardBattle
+			|| CurrentState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Victory
+			|| CurrentState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Defeat)
+		{
+			bReachedTerminal = true;
+			break;
+		}
+		const bool bActed = Board->AdvanceAutoBattleForTest(0.8f);
+		if (bActed)
+		{
+			++AutoActionCount;
+			continue;
+		}
+		const FGameXXKCardBattleRuntime& CurrentBattle = CurrentState.CardRun.ActiveBattle;
+		bStalledWithoutPresentation = CurrentBattle.Phase == EGameXXKCardBattlePhase::Player
+			&& !Board->IsBattlePresentationLockedForTest()
+			&& !Board->IsCardTargetingActive();
+	}
+	TestFalse(TEXT("Elite auto battle never stalls on an idle player phase"), bStalledWithoutPresentation);
+	TestTrue(TEXT("Elite auto battle continues beyond its opening action"), AutoActionCount >= 8);
+	TestTrue(TEXT("Elite auto battle reaches Victory or Defeat instead of hanging in Enemy phase"), bReachedTerminal);
+	if (!bReachedTerminal || State.CardRun.ActiveBattle.Phase != EGameXXKCardBattlePhase::Victory)
+	{
+		return !bStalledWithoutPresentation && bReachedTerminal;
+	}
+	TestTrue(TEXT("player manually skips the completed Elite reward"), Board->SkipPendingRouteReward());
+	TestEqual(TEXT("manual reward decision returns to the route map"), State.Screen, EGameXXKScreen::DungeonMap);
+	State.bHasGeneratedRouteMap = true;
+	State.CurrentRouteNodeId = 0;
+	State.PendingRouteNodeId = INDEX_NONE;
+	State.RouteMapNodes.Reset();
+	State.RouteMapEdges.Reset();
+	State.VisitedRouteNodeIds.Reset();
+	State.ReachableRouteNodeIds.Reset();
+	State.RouteMapNodes.Add(FGameXXKRouteMapNode{
+		0, 0, 0, EGameXXKNodeKind::Start, FVector2D(0.5f, 0.0f), TArray<int32>{2}});
+	State.RouteMapNodes.Add(FGameXXKRouteMapNode{
+		2, 2, 0, EGameXXKNodeKind::Elite, FVector2D(0.5f, 1.0f), TArray<int32>{}});
+	State.RouteMapEdges.Add(FGameXXKRouteMapEdge{0, 2});
+	State.VisitedRouteNodeIds.Add(0);
+	State.ReachableRouteNodeIds.Add(2);
+	TestTrue(TEXT("player selects a second Elite with the same retained Board"), Subsystem->SelectRouteNodeById(2));
+	Board->RefreshFromState();
+	TestTrue(TEXT("retained Board keeps auto enabled for the second Elite"), Board->IsAutoBattleEnabled());
+	const FGameXXKRuntimeState BeforeSecondEliteStep = Subsystem->GetRuntimeState();
+	TestTrue(TEXT("retained Board performs the second Elite opening action"),
+		Board->AdvanceAutoBattleForTest(0.8f));
+	TestFalse(TEXT("second Elite opening action changes authoritative combat state"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&Subsystem->GetRuntimeState(), &BeforeSecondEliteStep, PPF_None));
 	return true;
 }
 

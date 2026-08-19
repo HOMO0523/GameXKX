@@ -579,6 +579,8 @@ public:
 	void AdvanceEnemyIntentPresentationForTest(float InDeltaTime);
 	/** Drives the exact production auto-play cadence without requiring a live Slate tick. */
 	bool AdvanceAutoBattleForTest(float InDeltaTime);
+	/** Injects a monotonic wall-clock sample to prove background throttling cannot stretch the cadence. */
+	bool AdvanceAutoBattleAtRealTimeForTest(double AbsoluteSeconds);
 #endif
 
 private:
@@ -709,7 +711,8 @@ private:
 	void RefreshPendingCardChoices();
 	void RefreshPendingRewardChoices();
 	void RefreshRouteRewardReplacementChoices();
-	bool TickAutoBattle(float InDeltaTime);
+	bool CanAdvanceAutoBattle() const;
+	bool TickAutoBattleAtRealTime(double AbsoluteSeconds);
 	bool AdvanceAutoBattleStep();
 	bool SubmitPendingForcedDiscards(const TArray<FName>& DiscardedInstanceIds);
 	TArray<FName> BuildStableForcedDiscardSelection(
@@ -1225,7 +1228,9 @@ private:
 	EGameXXKEnemyIntentPresentationState EnemyIntentPresentationState = EGameXXKEnemyIntentPresentationState::None;
 
 	static constexpr float AutoBattleActionIntervalSeconds = 0.75f;
+	/** Delta accumulator exists only for deterministic automation seams; production uses wall-clock time. */
 	float AutoBattleAccumulator = 0.0f;
+	double AutoBattleReadySinceRealSeconds = 0.0;
 
 	float EnemyIntentPresentationElapsed = 0.0f;
 

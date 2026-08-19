@@ -30,6 +30,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "Engine/Texture2D.h"
+#include "HAL/PlatformTime.h"
 #include "Input/Events.h"
 #include "InputCoreTypes.h"
 #include "Rendering/DrawElementTypes.h"
@@ -1215,7 +1216,7 @@ void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float In
 			RefreshPartyQiWidget();
 		}
 	}
-	TickAutoBattle(InDeltaTime);
+	TickAutoBattleAtRealTime(FPlatformTime::Seconds());
 }
 
 void UGameXXKBattleBoardWidget::QueuePresentation(const FGameXXKBattlePresentationEvent& Event)
@@ -2867,7 +2868,7 @@ FString UGameXXKBattleBoardWidget::GetBattleBoardDebugStateForTest() const
 		? &State->CardRun.ActiveBattle.Deck.PendingChoice
 		: nullptr;
 	return FString::Printf(
-		TEXT("token=%llu visuals=%d proxies=%d queue=%d commit=%d deferred=%d pending=%d mode=%d targeting=%d screen=%d choice=%d choiceCandidates=%d atlasPins=%d alive=%d"),
+		TEXT("token=%llu visuals=%d proxies=%d queue=%d commit=%d deferred=%d pending=%d mode=%d targeting=%d screen=%d choice=%d choiceCandidates=%d atlasPins=%d alive=%d autoAccum=%.3f autoReadySince=%.3f enemyState=%d enemyIndex=%d recovery=%d lastError=%s"),
 		ActiveBattleVisualSessionToken,
 		UnitVisuals.Num(),
 		UnitTargetProxies.Num(),
@@ -2881,7 +2882,13 @@ FString UGameXXKBattleBoardWidget::GetBattleBoardDebugStateForTest() const
 		PendingChoice ? static_cast<int32>(PendingChoice->Kind) : -1,
 		PendingChoice ? PendingChoice->Candidates.Num() : -1,
 		PinnedUnitAtlasPaths.Num(),
-		GAliveBattleBoardInstances);
+		GAliveBattleBoardInstances,
+		AutoBattleAccumulator,
+		AutoBattleReadySinceRealSeconds,
+		static_cast<int32>(EnemyIntentPresentationState),
+		ActiveEnemyIntentPresentationIndex,
+		bEnemyIntentCompletionRecoveryPending ? 1 : 0,
+		*LastCardInteractionError.Replace(TEXT(" "), TEXT("_")));
 }
 
 int32 UGameXXKBattleBoardWidget::GetPinnedBattleAtlasCountForTest() const
@@ -3893,6 +3900,7 @@ bool UGameXXKBattleBoardWidget::SetAutoBattleEnabled(const bool bEnabled)
 		return false;
 	}
 	AutoBattleAccumulator = 0.0f;
+	AutoBattleReadySinceRealSeconds = 0.0;
 	if (AutoBattleLabel)
 	{
 		AutoBattleLabel->SetText(FText::FromString(
@@ -3907,12 +3915,11 @@ bool UGameXXKBattleBoardWidget::IsAutoBattleEnabled() const
 	return Subsystem && Subsystem->IsBattleAutoPlayEnabled();
 }
 
-bool UGameXXKBattleBoardWidget::TickAutoBattle(const float InDeltaTime)
+bool UGameXXKBattleBoardWidget::CanAdvanceAutoBattle() const
 {
 	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || !Subsystem->IsBattleAutoPlayEnabled())
 	{
-		AutoBattleAccumulator = 0.0f;
 		return false;
 	}
 	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
@@ -3925,22 +3932,33 @@ bool UGameXXKBattleBoardWidget::TickAutoBattle(const float InDeltaTime)
 		|| bEnemyIntentCompletionRecoveryPending
 		|| IsCardTargetingActive())
 	{
-		AutoBattleAccumulator = 0.0f;
 		return false;
 	}
 	if (State.CardRun.ActiveBattle.AutomaticResolutionQueue.bActive
 		&& State.CardRun.ActiveBattle.Deck.PendingChoice.Kind == EGameXXKCardPendingChoiceKind::None)
 	{
-		AutoBattleAccumulator = 0.0f;
 		return false;
 	}
+	return true;
+}
 
-	AutoBattleAccumulator += FMath::Max(0.0f, InDeltaTime);
-	if (AutoBattleAccumulator < AutoBattleActionIntervalSeconds)
+bool UGameXXKBattleBoardWidget::TickAutoBattleAtRealTime(const double AbsoluteSeconds)
+	{
+	if (!FMath::IsFinite(AbsoluteSeconds) || AbsoluteSeconds < 0.0 || !CanAdvanceAutoBattle())
+	{
+		AutoBattleReadySinceRealSeconds = 0.0;
+		return false;
+	}
+	if (AutoBattleReadySinceRealSeconds <= 0.0 || AbsoluteSeconds < AutoBattleReadySinceRealSeconds)
+	{
+		AutoBattleReadySinceRealSeconds = AbsoluteSeconds;
+		return false;
+	}
+	if (AbsoluteSeconds - AutoBattleReadySinceRealSeconds < static_cast<double>(AutoBattleActionIntervalSeconds))
 	{
 		return false;
 	}
-	AutoBattleAccumulator = 0.0f;
+	AutoBattleReadySinceRealSeconds = AbsoluteSeconds;
 	return AdvanceAutoBattleStep();
 }
 
@@ -7870,7 +7888,23 @@ void UGameXXKBattleBoardWidget::AdvanceEnemyIntentPresentationForTest(float InDe
 
 bool UGameXXKBattleBoardWidget::AdvanceAutoBattleForTest(const float InDeltaTime)
 {
-	return TickAutoBattle(InDeltaTime);
+	if (!CanAdvanceAutoBattle())
+	{
+		AutoBattleAccumulator = 0.0f;
+		return false;
+	}
+	AutoBattleAccumulator += FMath::Max(0.0f, InDeltaTime);
+	if (AutoBattleAccumulator < AutoBattleActionIntervalSeconds)
+	{
+		return false;
+	}
+	AutoBattleAccumulator = 0.0f;
+	return AdvanceAutoBattleStep();
+}
+
+bool UGameXXKBattleBoardWidget::AdvanceAutoBattleAtRealTimeForTest(const double AbsoluteSeconds)
+{
+	return TickAutoBattleAtRealTime(AbsoluteSeconds);
 }
 #endif
 
