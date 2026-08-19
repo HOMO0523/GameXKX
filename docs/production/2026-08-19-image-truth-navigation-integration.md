@@ -6,8 +6,8 @@
 
 ## 真源与 UE 路径
 
-真源 manifest：`SourceArt/UI/ImageTruth/manifest.json`  
-校验命令：`python scripts/gamexxk_ui_image_truth_check.py --json`  
+真源 manifest：`SourceArt/UI/ImageTruth/manifest.json`
+校验命令：`python scripts/gamexxk_ui_image_truth_check.py --json`
 结果：`ok=true`、`confirmedCount=6`、`manifestCount=6`、`findings=[]`
 
 | ImageTruth 语义 | UE 资产 |
