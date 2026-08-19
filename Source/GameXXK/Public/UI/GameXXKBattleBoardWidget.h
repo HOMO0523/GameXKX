@@ -21,6 +21,7 @@ class UTextBlock;
 class UTexture2D;
 class UVerticalBox;
 class UHorizontalBox;
+class UOverlay;
 class UScrollBox;
 class UGameXXKBattlePartyQiWidget;
 class UGameXXKBattleStatusIconWidget;
@@ -44,7 +45,6 @@ struct FGameXXKBattlePartyQiLayout
 	FBox2D QiRect = FBox2D(EForceInit::ForceInit);
 	FBox2D ExpandedHandRect = FBox2D(EForceInit::ForceInit);
 	FBox2D EndTurnRect = FBox2D(EForceInit::ForceInit);
-	FBox2D AutoBattleRect = FBox2D(EForceInit::ForceInit);
 	bool bUsesHandSafeFallback = false;
 };
 
@@ -566,6 +566,16 @@ public:
 	FGameXXKBattlePartyQiLayout ResolvePartyQiLayoutForTest(FVector2D CanvasSize) const;
 	/** Runs the same responsive Party Qi refresh used when NativeTick observes settled or resized canvas geometry. */
 	void RefreshPartyQiForCanvasSizeForTest(FVector2D CanvasSize);
+	UHorizontalBox* GetBattleTopRightToolbarForTest() const;
+	UButton* GetAutoBattleButtonForTest() const;
+	UButton* GetBattleCloseButtonForTest() const;
+	FBox2D ResolveBattleTopRightToolbarRectForTest(FVector2D ViewportSize) const;
+	bool OpenBattleRetreatConfirmationForTest();
+	bool CancelBattleRetreatConfirmationForTest();
+	bool ConfirmBattleRetreatForTest();
+	bool IsBattleRetreatConfirmationOpenForTest() const;
+	bool IsBattleRetreatConfirmEnabledForTest() const;
+	FString GetBattleRetreatErrorForTest() const;
 #endif
 
 	/** Dynamic card subclasses forward pure hover transitions here; these never mutate card runtime state. */
@@ -711,6 +721,13 @@ private:
 	void RefreshPendingCardChoices();
 	void RefreshPendingRewardChoices();
 	void RefreshRouteRewardReplacementChoices();
+	FBox2D ResolveBattleTopRightToolbarRect(FVector2D ViewportSize) const;
+	void RefreshBattleRetreatConfirmation();
+	void ApplyBattleRetreatInteractionLock();
+	bool CanConfirmBattleRetreat(FString* OutReason = nullptr) const;
+	bool OpenBattleRetreatConfirmation();
+	bool CancelBattleRetreatConfirmation();
+	bool ConfirmBattleRetreat();
 	bool CanAdvanceAutoBattle() const;
 	bool TickAutoBattleAtRealTime(double AbsoluteSeconds);
 	bool AdvanceAutoBattleStep();
@@ -862,6 +879,15 @@ private:
 
 	UFUNCTION()
 	void HandleAutoBattleClicked();
+
+	UFUNCTION()
+	void HandleBattleCloseClicked();
+
+	UFUNCTION()
+	void HandleBattleRetreatConfirmClicked();
+
+	UFUNCTION()
+	void HandleBattleRetreatCancelClicked();
 
 	UFUNCTION()
 	void HandleRewardCardSlot0Clicked();
@@ -1087,10 +1113,28 @@ private:
 	TObjectPtr<UButton> EndTurnButton;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> BattleTopRightToolbar;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UButton> AutoBattleButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> AutoBattleLabel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> BattleCloseButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UOverlay> BattleRetreatModalOverlay;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> BattleRetreatConfirmButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> BattleRetreatCancelButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> BattleRetreatErrorText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> SkipRewardButton;
@@ -1231,6 +1275,9 @@ private:
 	/** Delta accumulator exists only for deterministic automation seams; production uses wall-clock time. */
 	float AutoBattleAccumulator = 0.0f;
 	double AutoBattleReadySinceRealSeconds = 0.0;
+
+	bool bBattleRetreatConfirmationOpen = false;
+	FString BattleRetreatError;
 
 	float EnemyIntentPresentationElapsed = 0.0f;
 

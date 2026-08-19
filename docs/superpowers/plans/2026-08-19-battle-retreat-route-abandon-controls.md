@@ -277,7 +277,7 @@ Expected: the full route-settlement suite passes with unchanged `/20`, `/10`, an
 - Modify: `Source/GameXXK/Public/UI/GameXXKBattleBoardWidget.h`
 - Modify: `Source/GameXXK/Private/UI/GameXXKBattleBoardWidget.cpp`
 
-- [ ] **Step 1: Write RED UI geometry and modal tests**
+- [x] **Step 1: Write RED UI geometry and modal tests**
 
 Add focused tests under `GameXXK.Integration.CardBattle.BoardRetreat`:
 
@@ -288,11 +288,11 @@ Add focused tests under `GameXXK.Integration.CardBattle.BoardRetreat`:
 - `ModalConfirmRollback`: confirm from normal/Elite/Boss and pending-Victory-reward fixtures. Assert the rules transaction result and route screen; no reward or node completion remains.
 - `ModalInvalidCheckpoint`: a legacy ambiguous fixture displays the error and disables `退出战斗` while `继续战斗` remains usable.
 
-- [ ] **Step 2: Cold-build and verify RED**
+- [x] **Step 2: Cold-build and verify RED**
 
 Expected: tests fail because Close, modal seams, and top-right toolbar do not exist and auto still occupies the bottom-right rail.
 
-- [ ] **Step 3: Build the fixed top-right toolbar**
+- [x] **Step 3: Build the fixed top-right toolbar**
 
 Replace the current bottom-right auto slot with a fixed safe-stage top-right `UHorizontalBox` or equivalent canvas-hosted toolbar named `BattleTopRightToolbar`:
 
@@ -303,7 +303,7 @@ Replace the current bottom-right auto slot with a fixed safe-stage top-right `UH
 
 Keep `BattleEndTurnButton` and Party Qi bottom-right. Remove `AutoBattleRect` from `FGameXXKBattlePartyQiLayout` and all bottom-right overlap logic that treats auto as part of the action rail.
 
-- [ ] **Step 4: Build transient modal state and callbacks**
+- [x] **Step 4: Build transient modal state and callbacks**
 
 Add a Board-owned overlay containing backdrop, existing paper panel, title `退出当前战斗？`, body `将返回进入本场前的路线节点。本场进度与未领取奖励不会保留。`, primary `退出战斗`, and secondary `继续战斗`.
 
@@ -319,7 +319,7 @@ Modal behavior:
 
 The auto player must never invoke either confirmation callback.
 
-- [ ] **Step 5: Verify focused and complete BattleBoard suites**
+- [x] **Step 5: Verify focused and complete BattleBoard suites**
 
 ```powershell
 & 'D:\UE_5.8\Engine\Build\BatchFiles\Build.bat' GameXXKEditor Win64 Development '-Project=D:\UE5 demo\GameXXK\GameXXK.uproject' -WaitMutex -NoHotReload -NoHotReloadFromIDE -NoUBA -MaxParallelActions=2
@@ -333,7 +333,7 @@ The auto player must never invoke either confirmation callback.
 
 Expected: all tests pass, including `BoardAutoPlayEliteEncounter` and `BoardAutoPlayRealTimeCadence`.
 
-- [ ] **Step 6: Commit BattleBoard controls**
+- [x] **Step 6: Commit BattleBoard controls**
 
 ```powershell
 git commit -m "feat: add battle retreat confirmation"

@@ -13,6 +13,8 @@
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
 #include "Components/ScaleBox.h"
 #include "Components/ScaleBoxSlot.h"
 #include "Components/SizeBox.h"
@@ -126,6 +128,13 @@ namespace
 	static constexpr int32 BattleCinematicReadoutZOrder = 60;
 	static constexpr int32 PartyQiWidgetZOrder = 35;
 	static constexpr float PartyQiHandSafetyGap = 12.0f;
+	static constexpr float PartyQiEndTurnVerticalLead = 70.0f;
+	static const FVector2D BattleTopRightToolbarPosition(1430.0f, 86.0f);
+	static const FVector2D BattleTopRightToolbarSize(384.0f, 60.0f);
+	static const FVector2D BattleTopRightButtonSize(186.0f, 60.0f);
+	static constexpr float BattleTopRightButtonGap = 12.0f;
+	static constexpr int32 BattleTopRightToolbarZOrder = 90;
+	static constexpr int32 BattleRetreatModalZOrder = 200;
 	static constexpr float PlayerHandSelectedScale = 1.20f;
 	static constexpr float PlayerHandSelectedLift = -32.0f;
 	static constexpr double PlayedCardCommitDurationSeconds = 0.18;
@@ -3156,6 +3165,11 @@ void UGameXXKBattleBoardWidget::SetAtlasCacheForTest(TUniquePtr<FGameXXKBattleAt
 
 FReply UGameXXKBattleBoardWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
+	if (InKeyEvent.GetKey() == EKeys::Escape && bBattleRetreatConfirmationOpen)
+	{
+		CancelBattleRetreatConfirmation();
+		return FReply::Handled();
+	}
 	if (InKeyEvent.GetKey() == EKeys::Escape && CancelBattleTargeting())
 	{
 		return FReply::Handled();
@@ -3165,6 +3179,10 @@ FReply UGameXXKBattleBoardWidget::NativeOnKeyDown(const FGeometry& InGeometry, c
 
 FReply UGameXXKBattleBoardWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
+	if (bBattleRetreatConfirmationOpen)
+	{
+		return FReply::Handled();
+	}
 	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && CancelBattleTargeting())
 	{
 		return FReply::Handled();
@@ -3419,6 +3437,12 @@ bool UGameXXKBattleBoardWidget::IsBattleHudFixtureReadOnly() const
 
 bool UGameXXKBattleBoardWidget::RejectBattleHudFixtureMutation()
 {
+	if (bBattleRetreatConfirmationOpen)
+	{
+		LastCardInteractionError = TEXT("请先处理退出战斗确认。");
+		ApplyBattleRetreatInteractionLock();
+		return true;
+	}
 	if (!IsBattleHudFixtureReadOnly())
 	{
 		return false;
@@ -3894,6 +3918,10 @@ bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
 
 bool UGameXXKBattleBoardWidget::SetAutoBattleEnabled(const bool bEnabled)
 {
+	if (bBattleRetreatConfirmationOpen)
+	{
+		return false;
+	}
 	UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || !Subsystem->SetBattleAutoPlayEnabled(bEnabled))
 	{
@@ -3926,6 +3954,7 @@ bool UGameXXKBattleBoardWidget::CanAdvanceAutoBattle() const
 	if (State.Screen != EGameXXKScreen::Battle
 		|| !State.CardRun.bHasActiveCardBattle
 		|| State.CardRun.ActiveBattle.Phase != EGameXXKCardBattlePhase::Player
+		|| bBattleRetreatConfirmationOpen
 		|| IsBattleHudFixtureReadOnly()
 		|| IsBattlePresentationPending()
 		|| IsEnemyIntentPresentationActive()
@@ -5044,6 +5073,10 @@ bool UGameXXKBattleBoardWidget::CancelRouteRewardReplacement()
 
 bool UGameXXKBattleBoardWidget::CancelBattleTargeting()
 {
+	if (bBattleRetreatConfirmationOpen)
+	{
+		return false;
+	}
 	if (!RouteRewardCardIdAwaitingReplacement.IsNone()
 		|| !SelectedRouteRewardReplacementEntryId.IsNone())
 	{
@@ -5178,6 +5211,66 @@ UButton* UGameXXKBattleBoardWidget::GetEndTurnButtonForTest() const
 	return EndTurnButton;
 }
 
+#if WITH_DEV_AUTOMATION_TESTS
+UHorizontalBox* UGameXXKBattleBoardWidget::GetBattleTopRightToolbarForTest() const
+{
+	return BattleTopRightToolbar;
+}
+
+UButton* UGameXXKBattleBoardWidget::GetAutoBattleButtonForTest() const
+{
+	return AutoBattleButton;
+}
+
+UButton* UGameXXKBattleBoardWidget::GetBattleCloseButtonForTest() const
+{
+	return BattleCloseButton;
+}
+
+FBox2D UGameXXKBattleBoardWidget::ResolveBattleTopRightToolbarRectForTest(const FVector2D ViewportSize) const
+{
+	return ResolveBattleTopRightToolbarRect(ViewportSize);
+}
+
+bool UGameXXKBattleBoardWidget::OpenBattleRetreatConfirmationForTest()
+{
+	return OpenBattleRetreatConfirmation();
+}
+
+bool UGameXXKBattleBoardWidget::CancelBattleRetreatConfirmationForTest()
+{
+	return CancelBattleRetreatConfirmation();
+}
+
+bool UGameXXKBattleBoardWidget::ConfirmBattleRetreatForTest()
+{
+	return ConfirmBattleRetreat();
+}
+
+bool UGameXXKBattleBoardWidget::IsBattleRetreatConfirmationOpenForTest() const
+{
+	return bBattleRetreatConfirmationOpen
+		&& BattleRetreatModalOverlay
+		&& BattleRetreatModalOverlay->GetVisibility() == ESlateVisibility::Visible;
+}
+
+bool UGameXXKBattleBoardWidget::IsBattleRetreatConfirmEnabledForTest() const
+{
+	return BattleRetreatConfirmButton && BattleRetreatConfirmButton->GetIsEnabled();
+}
+
+FString UGameXXKBattleBoardWidget::GetBattleRetreatErrorForTest() const
+{
+	if (!BattleRetreatError.IsEmpty())
+	{
+		return BattleRetreatError;
+	}
+	FString GateReason;
+	CanConfirmBattleRetreat(&GateReason);
+	return GateReason;
+}
+#endif
+
 UCanvasPanel* UGameXXKBattleBoardWidget::GetBattleProjectedUnitHudLayerForTest() const
 {
 	return BattleProjectedUnitHudLayer;
@@ -5236,6 +5329,17 @@ FGameXXKBattleHudSafeStageLayout UGameXXKBattleBoardWidget::ResolveBattleHudSafe
 	Result.Size = BattleHudSafeStageDesignSize * Result.Scale;
 	Result.Offset = (ViewportSize - Result.Size) * 0.5f;
 	return Result;
+}
+
+FBox2D UGameXXKBattleBoardWidget::ResolveBattleTopRightToolbarRect(const FVector2D ViewportSize) const
+{
+	const FGameXXKBattleHudSafeStageLayout SafeStage = ResolveBattleHudSafeStageLayoutForTest(ViewportSize);
+	if (SafeStage.Scale <= KINDA_SMALL_NUMBER)
+	{
+		return FBox2D(EForceInit::ForceInit);
+	}
+	const FVector2D Minimum = SafeStage.Offset + BattleTopRightToolbarPosition * SafeStage.Scale;
+	return FBox2D(Minimum, Minimum + BattleTopRightToolbarSize * SafeStage.Scale);
 }
 
 void UGameXXKBattleBoardWidget::RefreshCinematicViewportCoverLayout(const FVector2D ViewportSize)
@@ -6375,6 +6479,9 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		EndTurnSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
 
+	BattleTopRightToolbar = WidgetTree->ConstructWidget<UHorizontalBox>(
+		UHorizontalBox::StaticClass(),
+		TEXT("BattleTopRightToolbar"));
 	AutoBattleButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("BattleAutoPlayButton"));
 	StyleBattleActionButton(AutoBattleButton, FName(TEXT("BattleAutoPlay")));
 	AutoBattleLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleAutoPlayLabel"));
@@ -6383,11 +6490,48 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	AutoBattleLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 	AutoBattleButton->AddChild(AutoBattleLabel);
 	AutoBattleButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleAutoBattleClicked);
-	if (UCanvasPanelSlot* AutoBattleSlot = RootCanvas->AddChildToCanvas(AutoBattleButton))
+	USizeBox* AutoBattleSizeBox = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(),
+		TEXT("BattleAutoPlaySize"));
+	AutoBattleSizeBox->SetWidthOverride(BattleTopRightButtonSize.X);
+	AutoBattleSizeBox->SetHeightOverride(BattleTopRightButtonSize.Y);
+	AutoBattleSizeBox->AddChild(AutoBattleButton);
+	if (UHorizontalBoxSlot* AutoToolbarSlot = BattleTopRightToolbar->AddChildToHorizontalBox(AutoBattleSizeBox))
 	{
-		AutoBattleSlot->SetAnchors(FAnchors(1.0f, 1.0f, 1.0f, 1.0f));
-		AutoBattleSlot->SetOffsets(FMargin(-230.0f, -208.0f, 190.0f, 62.0f));
-		AutoBattleSlot->SetAlignment(FVector2D(0.0f, 0.0f));
+		AutoToolbarSlot->SetPadding(FMargin(0.0f, 0.0f, BattleTopRightButtonGap, 0.0f));
+		AutoToolbarSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+
+	BattleCloseButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("BattleCloseButton"));
+	StyleBattleActionButton(BattleCloseButton, FName(TEXT("BattleClose")));
+	UTextBlock* BattleCloseLabel = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(),
+		TEXT("BattleCloseLabel"));
+	BattleCloseLabel->SetText(NSLOCTEXT("GameXXKBattle", "CloseBattle", "关闭"));
+	BattleCloseLabel->SetJustification(ETextJustify::Center);
+	BattleCloseLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	BattleCloseButton->AddChild(BattleCloseLabel);
+	BattleCloseButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleBattleCloseClicked);
+	USizeBox* BattleCloseSizeBox = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(),
+		TEXT("BattleCloseSize"));
+	BattleCloseSizeBox->SetWidthOverride(BattleTopRightButtonSize.X);
+	BattleCloseSizeBox->SetHeightOverride(BattleTopRightButtonSize.Y);
+	BattleCloseSizeBox->AddChild(BattleCloseButton);
+	if (UHorizontalBoxSlot* CloseToolbarSlot = BattleTopRightToolbar->AddChildToHorizontalBox(BattleCloseSizeBox))
+	{
+		CloseToolbarSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+	if (UCanvasPanelSlot* ToolbarSlot = RootCanvas->AddChildToCanvas(BattleTopRightToolbar))
+	{
+		ToolbarSlot->SetAnchors(FAnchors(1.0f, 0.0f, 1.0f, 0.0f));
+		ToolbarSlot->SetOffsets(FMargin(
+			BattleTopRightToolbarPosition.X - BattleHudSafeStageDesignSize.X,
+			BattleTopRightToolbarPosition.Y,
+			BattleTopRightToolbarSize.X,
+			BattleTopRightToolbarSize.Y));
+		ToolbarSlot->SetAlignment(FVector2D::ZeroVector);
+		ToolbarSlot->SetZOrder(BattleTopRightToolbarZOrder);
 	}
 
 	HandCardDetailPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("BattleHandCardDetailPanel"));
@@ -6621,6 +6765,153 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		PendingChoiceSlot->SetAlignment(FVector2D::ZeroVector);
 	}
 
+	BattleRetreatModalOverlay = WidgetTree->ConstructWidget<UOverlay>(
+		UOverlay::StaticClass(),
+		TEXT("BattleRetreatModalOverlay"));
+	BattleRetreatModalOverlay->SetVisibility(ESlateVisibility::Collapsed);
+	UBorder* BattleRetreatBackdrop = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(),
+		TEXT("BattleRetreatModalBackdrop"));
+	BattleRetreatBackdrop->SetBrushColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.72f));
+	BattleRetreatBackdrop->SetPadding(FMargin(0.0f));
+	if (UOverlaySlot* BackdropSlot = BattleRetreatModalOverlay->AddChildToOverlay(BattleRetreatBackdrop))
+	{
+		BackdropSlot->SetHorizontalAlignment(HAlign_Fill);
+		BackdropSlot->SetVerticalAlignment(VAlign_Fill);
+	}
+
+	USizeBox* BattleRetreatPanelSize = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(),
+		TEXT("BattleRetreatModalPanelSize"));
+	BattleRetreatPanelSize->SetWidthOverride(720.0f);
+	BattleRetreatPanelSize->SetHeightOverride(360.0f);
+	UBorder* BattleRetreatPanel = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(),
+		TEXT("BattleRetreatModalPanel"));
+	if (PendingChoicePanelPaperTexture)
+	{
+		BattleRetreatPanel->SetBrush(BuildBoxTextureBrush(
+			PendingChoicePanelPaperTexture,
+			FVector2D(100.0f, 101.0f),
+			FMargin(PendingChoicePanelPaperMargin)));
+	}
+	BattleRetreatPanel->SetBrushColor(FLinearColor::White);
+	BattleRetreatPanel->SetPadding(FMargin(42.0f, 34.0f, 42.0f, 30.0f));
+	UVerticalBox* BattleRetreatBody = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(),
+		TEXT("BattleRetreatModalBody"));
+	BattleRetreatPanel->SetContent(BattleRetreatBody);
+
+	UTextBlock* BattleRetreatTitle = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(),
+		TEXT("BattleRetreatModalTitle"));
+	BattleRetreatTitle->SetText(NSLOCTEXT("GameXXKBattle", "RetreatTitle", "退出当前战斗？"));
+	BattleRetreatTitle->SetJustification(ETextJustify::Center);
+	BattleRetreatTitle->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
+	FSlateFontInfo BattleRetreatTitleFont = BattleRetreatTitle->GetFont();
+	BattleRetreatTitleFont.Size = 30;
+	BattleRetreatTitleFont.TypefaceFontName = TEXT("Bold");
+	BattleRetreatTitle->SetFont(BattleRetreatTitleFont);
+	if (UVerticalBoxSlot* TitleSlot = BattleRetreatBody->AddChildToVerticalBox(BattleRetreatTitle))
+	{
+		TitleSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
+		TitleSlot->SetHorizontalAlignment(HAlign_Fill);
+	}
+
+	UTextBlock* BattleRetreatDescription = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(),
+		TEXT("BattleRetreatModalDescription"));
+	BattleRetreatDescription->SetText(NSLOCTEXT(
+		"GameXXKBattle",
+		"RetreatDescription",
+		"将返回进入本场前的路线节点。本场进度与未领取奖励不会保留。"));
+	BattleRetreatDescription->SetAutoWrapText(true);
+	BattleRetreatDescription->SetJustification(ETextJustify::Center);
+	BattleRetreatDescription->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
+	FSlateFontInfo BattleRetreatDescriptionFont = BattleRetreatDescription->GetFont();
+	BattleRetreatDescriptionFont.Size = 20;
+	BattleRetreatDescription->SetFont(BattleRetreatDescriptionFont);
+	if (UVerticalBoxSlot* DescriptionSlot = BattleRetreatBody->AddChildToVerticalBox(BattleRetreatDescription))
+	{
+		DescriptionSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 14.0f));
+		DescriptionSlot->SetHorizontalAlignment(HAlign_Fill);
+	}
+
+	BattleRetreatErrorText = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(),
+		TEXT("BattleRetreatModalError"));
+	BattleRetreatErrorText->SetAutoWrapText(true);
+	BattleRetreatErrorText->SetJustification(ETextJustify::Center);
+	BattleRetreatErrorText->SetColorAndOpacity(FSlateColor(FLinearColor(0.55f, 0.08f, 0.05f, 1.0f)));
+	FSlateFontInfo BattleRetreatErrorFont = BattleRetreatErrorText->GetFont();
+	BattleRetreatErrorFont.Size = 17;
+	BattleRetreatErrorText->SetFont(BattleRetreatErrorFont);
+	if (UVerticalBoxSlot* ErrorSlot = BattleRetreatBody->AddChildToVerticalBox(BattleRetreatErrorText))
+	{
+		ErrorSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 20.0f));
+		ErrorSlot->SetHorizontalAlignment(HAlign_Fill);
+	}
+
+	UHorizontalBox* BattleRetreatButtons = WidgetTree->ConstructWidget<UHorizontalBox>(
+		UHorizontalBox::StaticClass(),
+		TEXT("BattleRetreatModalButtons"));
+	BattleRetreatConfirmButton = WidgetTree->ConstructWidget<UButton>(
+		UButton::StaticClass(),
+		TEXT("BattleRetreatConfirmButton"));
+	StyleBattleActionButton(BattleRetreatConfirmButton, FName(TEXT("BattleRetreatConfirm")));
+	UTextBlock* BattleRetreatConfirmLabel = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(),
+		TEXT("BattleRetreatConfirmLabel"));
+	BattleRetreatConfirmLabel->SetText(NSLOCTEXT("GameXXKBattle", "RetreatConfirm", "退出战斗"));
+	BattleRetreatConfirmLabel->SetJustification(ETextJustify::Center);
+	BattleRetreatConfirmLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	BattleRetreatConfirmButton->AddChild(BattleRetreatConfirmLabel);
+	BattleRetreatConfirmButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleBattleRetreatConfirmClicked);
+	USizeBox* RetreatConfirmSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("BattleRetreatConfirmSize"));
+	RetreatConfirmSize->SetWidthOverride(230.0f);
+	RetreatConfirmSize->SetHeightOverride(60.0f);
+	RetreatConfirmSize->AddChild(BattleRetreatConfirmButton);
+	if (UHorizontalBoxSlot* ConfirmSlot = BattleRetreatButtons->AddChildToHorizontalBox(RetreatConfirmSize))
+	{
+		ConfirmSlot->SetPadding(FMargin(0.0f, 0.0f, 18.0f, 0.0f));
+	}
+
+	BattleRetreatCancelButton = WidgetTree->ConstructWidget<UButton>(
+		UButton::StaticClass(),
+		TEXT("BattleRetreatCancelButton"));
+	StyleBattleActionButton(BattleRetreatCancelButton, FName(TEXT("BattleRetreatCancel")));
+	UTextBlock* BattleRetreatCancelLabel = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(),
+		TEXT("BattleRetreatCancelLabel"));
+	BattleRetreatCancelLabel->SetText(NSLOCTEXT("GameXXKBattle", "RetreatCancel", "继续战斗"));
+	BattleRetreatCancelLabel->SetJustification(ETextJustify::Center);
+	BattleRetreatCancelLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	BattleRetreatCancelButton->AddChild(BattleRetreatCancelLabel);
+	BattleRetreatCancelButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleBattleRetreatCancelClicked);
+	USizeBox* RetreatCancelSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("BattleRetreatCancelSize"));
+	RetreatCancelSize->SetWidthOverride(230.0f);
+	RetreatCancelSize->SetHeightOverride(60.0f);
+	RetreatCancelSize->AddChild(BattleRetreatCancelButton);
+	BattleRetreatButtons->AddChildToHorizontalBox(RetreatCancelSize);
+	if (UVerticalBoxSlot* ButtonsSlot = BattleRetreatBody->AddChildToVerticalBox(BattleRetreatButtons))
+	{
+		ButtonsSlot->SetHorizontalAlignment(HAlign_Center);
+		ButtonsSlot->SetVerticalAlignment(VAlign_Bottom);
+	}
+	BattleRetreatPanelSize->AddChild(BattleRetreatPanel);
+	if (UOverlaySlot* PanelSlot = BattleRetreatModalOverlay->AddChildToOverlay(BattleRetreatPanelSize))
+	{
+		PanelSlot->SetHorizontalAlignment(HAlign_Center);
+		PanelSlot->SetVerticalAlignment(VAlign_Center);
+	}
+	if (UCanvasPanelSlot* ModalSlot = RootCanvas->AddChildToCanvas(BattleRetreatModalOverlay))
+	{
+		ModalSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
+		ModalSlot->SetOffsets(FMargin(0.0f));
+		ModalSlot->SetAlignment(FVector2D::ZeroVector);
+		ModalSlot->SetZOrder(BattleRetreatModalZOrder);
+	}
+
 	BasicAttackButton = AddBattleActionButton(NSLOCTEXT("GameXXKBattle", "BasicAttack", "普攻"), FName(TEXT("BattleBasicAttackButton")), BasicAttackAction);
 	CraneWingSlashButton = AddBattleActionButton(NSLOCTEXT("GameXXKBattle", "CraneWingSlash", "鹤羽斩"), FName(TEXT("BattleCraneWingSlashButton")), CraneWingSlashAction);
 	GuiyuanArtButton = AddBattleActionButton(NSLOCTEXT("GameXXKBattle", "GuiyuanArt", "归元术"), FName(TEXT("BattleGuiyuanArtButton")), GuiyuanArtAction);
@@ -6677,6 +6968,153 @@ UButton* UGameXXKBattleBoardWidget::AddBattleActionButton(const FText& Label, FN
 	return Button;
 }
 
+bool UGameXXKBattleBoardWidget::CanConfirmBattleRetreat(FString* OutReason) const
+{
+	if (OutReason)
+	{
+		OutReason->Reset();
+	}
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		if (OutReason) *OutReason = TEXT("无法读取当前战斗状态。");
+		return false;
+	}
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	const FGameXXKBattleEntryCheckpoint& Checkpoint = State.BattleEntryCheckpoint;
+	if (State.Screen != EGameXXKScreen::Battle
+		|| !State.bDungeonActive
+		|| !State.bHasGeneratedRouteMap
+		|| !State.bHasActiveBattle
+		|| !State.CardRun.bHasActiveCardBattle)
+	{
+		if (OutReason) *OutReason = TEXT("当前战斗不支持返回路线节点。");
+		return false;
+	}
+	if (!Checkpoint.bValid
+		|| Checkpoint.SourceNodeId != State.CurrentRouteNodeId
+		|| Checkpoint.SourceNodeId != State.PendingRouteNodeId
+		|| Checkpoint.SourceNodeId != State.ActiveBattleNodeId
+		|| Checkpoint.SourceNodeId != State.CardRun.ActiveBattleSourceNodeId)
+	{
+		if (OutReason) *OutReason = TEXT("本场缺少可验证的入场检查点，无法安全回退。");
+		return false;
+	}
+	if (IsBattlePresentationPending()
+		|| IsEnemyIntentPresentationActive()
+		|| bEnemyIntentCompletionRecoveryPending)
+	{
+		if (OutReason) *OutReason = TEXT("战斗演出正在结算，完成后即可退出。");
+		return false;
+	}
+	return true;
+}
+
+void UGameXXKBattleBoardWidget::RefreshBattleRetreatConfirmation()
+{
+	if (!BattleRetreatModalOverlay)
+	{
+		return;
+	}
+	BattleRetreatModalOverlay->SetVisibility(
+		bBattleRetreatConfirmationOpen
+			? ESlateVisibility::Visible
+			: ESlateVisibility::Collapsed);
+	if (!bBattleRetreatConfirmationOpen)
+	{
+		return;
+	}
+
+	FString GateReason;
+	const bool bCanConfirm = CanConfirmBattleRetreat(&GateReason);
+	if (BattleRetreatConfirmButton)
+	{
+		BattleRetreatConfirmButton->SetIsEnabled(bCanConfirm);
+	}
+	if (BattleRetreatCancelButton)
+	{
+		BattleRetreatCancelButton->SetIsEnabled(true);
+	}
+	if (BattleRetreatErrorText)
+	{
+		const FString DisplayError = BattleRetreatError.IsEmpty() ? GateReason : BattleRetreatError;
+		BattleRetreatErrorText->SetText(FText::FromString(DisplayError));
+		BattleRetreatErrorText->SetVisibility(
+			DisplayError.IsEmpty()
+				? ESlateVisibility::Collapsed
+				: ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UGameXXKBattleBoardWidget::ApplyBattleRetreatInteractionLock()
+{
+	ApplyBattlePresentationInteractionLock();
+	if (AutoBattleButton) AutoBattleButton->SetIsEnabled(false);
+	if (BattleCloseButton) BattleCloseButton->SetIsEnabled(false);
+}
+
+bool UGameXXKBattleBoardWidget::OpenBattleRetreatConfirmation()
+{
+	if (bBattleRetreatConfirmationOpen)
+	{
+		return false;
+	}
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Battle)
+	{
+		return false;
+	}
+	bBattleRetreatConfirmationOpen = true;
+	BattleRetreatError.Reset();
+	AutoBattleReadySinceRealSeconds = 0.0;
+	AutoBattleAccumulator = 0.0f;
+	RefreshProgrammaticLayout();
+	return true;
+}
+
+bool UGameXXKBattleBoardWidget::CancelBattleRetreatConfirmation()
+{
+	if (!bBattleRetreatConfirmationOpen)
+	{
+		return false;
+	}
+	bBattleRetreatConfirmationOpen = false;
+	BattleRetreatError.Reset();
+	AutoBattleReadySinceRealSeconds = 0.0;
+	AutoBattleAccumulator = 0.0f;
+	RefreshProgrammaticLayout();
+	return true;
+}
+
+bool UGameXXKBattleBoardWidget::ConfirmBattleRetreat()
+{
+	if (!bBattleRetreatConfirmationOpen)
+	{
+		return false;
+	}
+	FString GateReason;
+	if (!CanConfirmBattleRetreat(&GateReason))
+	{
+		RefreshBattleRetreatConfirmation();
+		return false;
+	}
+	UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !Subsystem->RetreatCurrentBattleToRoute())
+	{
+		BattleRetreatError = TEXT("退出战斗失败，当前战斗与路线状态均未改变。");
+		RefreshBattleRetreatConfirmation();
+		return false;
+	}
+
+	bBattleRetreatConfirmationOpen = false;
+	BattleRetreatError.Reset();
+	AutoBattleReadySinceRealSeconds = 0.0;
+	AutoBattleAccumulator = 0.0f;
+	GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
+	NotifyPlayerFlowStateChanged();
+	return true;
+}
+
 void UGameXXKBattleBoardWidget::RefreshProgrammaticLayout()
 {
 	const UGameXXKMVPSubsystem* const OutcomeSubsystem = ResolveMVPSubsystem();
@@ -6708,6 +7146,37 @@ void UGameXXKBattleBoardWidget::RefreshProgrammaticLayout()
 	RefreshPendingCardChoices();
 	RefreshPendingRewardChoices();
 	RefreshCardTooltip();
+
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	const bool bInCardBattle = Subsystem
+		&& Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Battle
+		&& Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle;
+	if (!bInCardBattle && bBattleRetreatConfirmationOpen)
+	{
+		bBattleRetreatConfirmationOpen = false;
+		BattleRetreatError.Reset();
+	}
+	if (BattleTopRightToolbar)
+	{
+		BattleTopRightToolbar->SetVisibility(
+			bInCardBattle ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (AutoBattleButton)
+	{
+		AutoBattleButton->SetIsEnabled(
+			bInCardBattle && !bBattleRetreatConfirmationOpen && !IsBattleHudFixtureReadOnly());
+	}
+	if (BattleCloseButton)
+	{
+		// Opening confirmation is safe while a committed presentation drains;
+		// only the confirm transaction waits for the presentation to become idle.
+		BattleCloseButton->SetIsEnabled(bInCardBattle && !bBattleRetreatConfirmationOpen);
+	}
+	RefreshBattleRetreatConfirmation();
+	if (bBattleRetreatConfirmationOpen)
+	{
+		ApplyBattleRetreatInteractionLock();
+	}
 }
 
 void UGameXXKBattleBoardWidget::RefreshActionButtons()
@@ -6959,7 +7428,6 @@ FGameXXKBattlePartyQiLayout UGameXXKBattleBoardWidget::ResolvePartyQiLayout(cons
 {
 	const UCanvasPanelSlot* HandSlot = HandCardBox ? Cast<UCanvasPanelSlot>(HandCardBox->Slot) : nullptr;
 	const UCanvasPanelSlot* EndTurnSlot = EndTurnButton ? Cast<UCanvasPanelSlot>(EndTurnButton->Slot) : nullptr;
-	const UCanvasPanelSlot* AutoBattleSlot = AutoBattleButton ? Cast<UCanvasPanelSlot>(AutoBattleButton->Slot) : nullptr;
 	const FMargin HandOffsets = HandSlot
 		? HandSlot->GetOffsets()
 		: FMargin(-PlayerHandRowSize.X * 0.5f, -305.0f, PlayerHandRowSize.X, PlayerHandRowSize.Y);
@@ -6968,19 +7436,15 @@ FGameXXKBattlePartyQiLayout UGameXXKBattleBoardWidget::ResolvePartyQiLayout(cons
 		? EndTurnSlot->GetOffsets()
 		: FMargin(-230.0f, -138.0f, 190.0f, 62.0f);
 	const FVector2D EndTurnAlignment = EndTurnSlot ? EndTurnSlot->GetAlignment() : FVector2D::ZeroVector;
-	const FAnchors AutoBattleAnchors = AutoBattleSlot ? AutoBattleSlot->GetAnchors() : FAnchors(1.0f, 1.0f, 1.0f, 1.0f);
-	const FMargin AutoBattleOffsets = AutoBattleSlot
-		? AutoBattleSlot->GetOffsets()
-		: FMargin(-230.0f, -208.0f, 190.0f, 62.0f);
-	const FVector2D AutoBattleAlignment = AutoBattleSlot ? AutoBattleSlot->GetAlignment() : FVector2D::ZeroVector;
 
 	FGameXXKBattlePartyQiLayout Layout;
 	const float CenteredQiLeft = EndTurnOffsets.Left + FMath::Max(0.0f, (EndTurnOffsets.Right - PartyQiWidgetSize.X) * 0.5f);
-	const float ActionRailTop = FMath::Min(EndTurnOffsets.Top, AutoBattleOffsets.Top);
-	const float QiTopAboveActionRail = ActionRailTop - PartyQiHandSafetyGap - PartyQiWidgetSize.Y;
+	const float QiTopAboveActionRail = EndTurnOffsets.Top
+		- PartyQiEndTurnVerticalLead
+		- PartyQiHandSafetyGap
+		- PartyQiWidgetSize.Y;
 	Layout.SlotOffsets = FMargin(CenteredQiLeft, QiTopAboveActionRail, PartyQiWidgetSize.X, PartyQiWidgetSize.Y);
 	Layout.EndTurnRect = ResolveCanvasSlotRect(EndTurnAnchors, EndTurnOffsets, EndTurnAlignment, CanvasSize);
-	Layout.AutoBattleRect = ResolveCanvasSlotRect(AutoBattleAnchors, AutoBattleOffsets, AutoBattleAlignment, CanvasSize);
 	Layout.ExpandedHandRect = ResolveExpandedHandRect(CanvasSize);
 
 	if (CanvasSize.X <= 0.0f || CanvasSize.Y <= 0.0f)
@@ -6999,8 +7463,7 @@ FGameXXKBattlePartyQiLayout UGameXXKBattleBoardWidget::ResolvePartyQiLayout(cons
 		FVector2D::ZeroVector,
 		CanvasSize);
 	if (DoRectsOverlap(Layout.QiRect, Layout.ExpandedHandRect)
-		|| DoRectsOverlap(Layout.QiRect, Layout.EndTurnRect)
-		|| DoRectsOverlap(Layout.QiRect, Layout.AutoBattleRect))
+		|| DoRectsOverlap(Layout.QiRect, Layout.EndTurnRect))
 	{
 		float SafeTop = CanvasSize.Y + Layout.SlotOffsets.Top;
 		if (Layout.ExpandedHandRect.bIsValid)
@@ -7010,10 +7473,6 @@ FGameXXKBattlePartyQiLayout UGameXXKBattleBoardWidget::ResolvePartyQiLayout(cons
 		if (Layout.EndTurnRect.bIsValid)
 		{
 			SafeTop = FMath::Min(SafeTop, Layout.EndTurnRect.Min.Y);
-		}
-		if (Layout.AutoBattleRect.bIsValid)
-		{
-			SafeTop = FMath::Min(SafeTop, Layout.AutoBattleRect.Min.Y);
 		}
 		Layout.SlotOffsets.Top = SafeTop - PartyQiHandSafetyGap - PartyQiWidgetSize.Y - CanvasSize.Y;
 		Layout.bUsesHandSafeFallback = true;
@@ -9245,6 +9704,21 @@ void UGameXXKBattleBoardWidget::HandleEndTurnClicked()
 void UGameXXKBattleBoardWidget::HandleAutoBattleClicked()
 {
 	SetAutoBattleEnabled(!IsAutoBattleEnabled());
+}
+
+void UGameXXKBattleBoardWidget::HandleBattleCloseClicked()
+{
+	OpenBattleRetreatConfirmation();
+}
+
+void UGameXXKBattleBoardWidget::HandleBattleRetreatConfirmClicked()
+{
+	ConfirmBattleRetreat();
+}
+
+void UGameXXKBattleBoardWidget::HandleBattleRetreatCancelClicked()
+{
+	CancelBattleRetreatConfirmation();
 }
 
 void UGameXXKBattleBoardWidget::HandleRewardCardSlot0Clicked()

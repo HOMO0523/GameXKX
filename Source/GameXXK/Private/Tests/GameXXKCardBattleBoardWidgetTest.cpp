@@ -75,11 +75,9 @@ namespace
 			Test.TestTrue(TEXT("compact Party Qi layout has a valid Qi rectangle"), CompactLayout.QiRect.bIsValid);
 			Test.TestTrue(TEXT("compact Party Qi layout has a valid expanded-hand safety rectangle"), CompactLayout.ExpandedHandRect.bIsValid);
 			Test.TestTrue(TEXT("compact Party Qi layout has a valid end-turn rectangle"), CompactLayout.EndTurnRect.bIsValid);
-			Test.TestTrue(TEXT("compact Party Qi layout has a valid auto-battle rectangle"), CompactLayout.AutoBattleRect.bIsValid);
 			Test.TestTrue(TEXT("compact Party Qi layout moves above the expanded hand safety envelope"), CompactLayout.bUsesHandSafeFallback);
 			Test.TestFalse(TEXT("compact Party Qi never overlaps the five-card expanded hand envelope"), RectanglesOverlap(CompactLayout.QiRect, CompactLayout.ExpandedHandRect));
 			Test.TestFalse(TEXT("compact Party Qi never overlaps end turn"), RectanglesOverlap(CompactLayout.QiRect, CompactLayout.EndTurnRect));
-			Test.TestFalse(TEXT("compact Party Qi never overlaps auto battle"), RectanglesOverlap(CompactLayout.QiRect, CompactLayout.AutoBattleRect));
 			Test.TestTrue(TEXT("compact Party Qi keeps the required 12-unit clearance above the expanded hand envelope within float tolerance"), CompactLayout.ExpandedHandRect.Min.Y - CompactLayout.QiRect.Max.Y >= 11.99f);
 
 			const auto WideLayout = Board->ResolvePartyQiLayoutForTest(FVector2D(1920.0f, 1080.0f));
@@ -87,7 +85,6 @@ namespace
 			Test.TestFalse(TEXT("wide Party Qi retains the right action rail when it is clear of the hand"), WideLayout.bUsesHandSafeFallback);
 			Test.TestFalse(TEXT("wide Party Qi never overlaps the five-card expanded hand envelope"), RectanglesOverlap(WideLayout.QiRect, WideLayout.ExpandedHandRect));
 			Test.TestFalse(TEXT("wide Party Qi never overlaps end turn"), RectanglesOverlap(WideLayout.QiRect, WideLayout.EndTurnRect));
-			Test.TestFalse(TEXT("wide Party Qi never overlaps auto battle"), RectanglesOverlap(WideLayout.QiRect, WideLayout.AutoBattleRect));
 
 			const auto InitialGeometryLayout = Board->ResolvePartyQiLayoutForTest(FVector2D::ZeroVector);
 			Test.TestTrue(TEXT("zero-geometry Party Qi layout uses the conservative hand-safe fallback"), InitialGeometryLayout.bUsesHandSafeFallback);
@@ -837,6 +834,211 @@ bool FGameXXKCardBattleBoardAutoPlayToggleTest::RunTest(const FString& Parameter
 	TestTrue(TEXT("the same application session retains auto battle between encounters"), Subsystem->IsBattleAutoPlayEnabled());
 	UGameXXKMVPSubsystem* FreshSession = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	TestFalse(TEXT("a new application session resets auto battle"), FreshSession->IsBattleAutoPlayEnabled());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardRetreatTopRightToolbarTest,
+	"GameXXK.Integration.CardBattle.BoardRetreat.TopRightToolbarGeometry",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardRetreatTopRightToolbarTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FString Error;
+	TestTrue(
+		FString::Printf(TEXT("toolbar fixture enters a generated route battle: %s"), *Error),
+		BuildRouteRewardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Error));
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("toolbar Board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+
+	UHorizontalBox* Toolbar = Board->GetBattleTopRightToolbarForTest();
+	UButton* AutoButton = Board->GetAutoBattleButtonForTest();
+	UButton* CloseButton = Board->GetBattleCloseButtonForTest();
+	TestNotNull(TEXT("BattleBoard owns one top-right toolbar"), Toolbar);
+	TestNotNull(TEXT("top-right toolbar retains auto battle"), AutoButton);
+	TestNotNull(TEXT("top-right toolbar adds Close"), CloseButton);
+	TestEqual(TEXT("toolbar owns exactly two ordered controls"), Toolbar ? Toolbar->GetChildrenCount() : 0, 2);
+	if (Toolbar && Toolbar->GetChildrenCount() == 2)
+	{
+		const USizeBox* AutoSize = Cast<USizeBox>(Toolbar->GetChildAt(0));
+		const USizeBox* CloseSize = Cast<USizeBox>(Toolbar->GetChildAt(1));
+		TestTrue(TEXT("auto battle is the left toolbar control"), AutoSize && AutoSize->GetContent() == AutoButton);
+		TestTrue(TEXT("Close is the right toolbar control"), CloseSize && CloseSize->GetContent() == CloseButton);
+	}
+	TestNull(TEXT("auto battle no longer owns a bottom-right canvas slot"), AutoButton ? Cast<UCanvasPanelSlot>(AutoButton->Slot) : nullptr);
+
+	for (const FVector2D ViewportSize : {
+		FVector2D(1280.0f, 720.0f),
+		FVector2D(1672.0f, 941.0f),
+		FVector2D(1920.0f, 1080.0f)})
+	{
+		const FGameXXKBattleHudSafeStageLayout SafeStage = Board->ResolveBattleHudSafeStageLayoutForTest(ViewportSize);
+		const FBox2D ToolbarRect = Board->ResolveBattleTopRightToolbarRectForTest(ViewportSize);
+		const FBox2D SafeStageRect(SafeStage.Offset, SafeStage.Offset + SafeStage.Size);
+		const FBox2D EnemyIntentRailRect(
+			SafeStage.Offset + FVector2D(660.0f, 24.0f) * SafeStage.Scale,
+			SafeStage.Offset + FVector2D(1260.0f, 195.0f) * SafeStage.Scale);
+		const FBox2D RightUnitHudRect(
+			SafeStage.Offset + FVector2D(1286.0f, 300.0f) * SafeStage.Scale,
+			SafeStage.Offset + FVector2D(1810.0f, 820.0f) * SafeStage.Scale);
+		TestTrue(TEXT("toolbar rectangle is valid"), ToolbarRect.bIsValid);
+		TestTrue(TEXT("toolbar remains inside safe-stage left/top"), ToolbarRect.Min.X >= SafeStageRect.Min.X && ToolbarRect.Min.Y >= SafeStageRect.Min.Y);
+		TestTrue(TEXT("toolbar remains inside safe-stage right/bottom"), ToolbarRect.Max.X <= SafeStageRect.Max.X && ToolbarRect.Max.Y <= SafeStageRect.Max.Y);
+		TestFalse(TEXT("toolbar avoids the centered enemy-intent rail"), RectanglesOverlap(ToolbarRect, EnemyIntentRailRect));
+		TestFalse(TEXT("toolbar avoids the right-side unit HUD"), RectanglesOverlap(ToolbarRect, RightUnitHudRect));
+	}
+	const FBox2D FullHdToolbar = Board->ResolveBattleTopRightToolbarRectForTest(FVector2D(1920.0f, 1080.0f));
+	TestTrue(TEXT("full-HD toolbar begins at Luna-reviewed x"), FMath::IsNearlyEqual(FullHdToolbar.Min.X, 1430.0, 0.01));
+	TestTrue(TEXT("full-HD toolbar begins at Luna-reviewed y"), FMath::IsNearlyEqual(FullHdToolbar.Min.Y, 86.0, 0.01));
+	TestTrue(TEXT("full-HD toolbar width is fixed in design units"), FMath::IsNearlyEqual(FullHdToolbar.GetSize().X, 384.0, 0.01));
+	TestTrue(TEXT("full-HD toolbar height is fixed in design units"), FMath::IsNearlyEqual(FullHdToolbar.GetSize().Y, 60.0, 0.01));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardRetreatModalCancelTest,
+	"GameXXK.Integration.CardBattle.BoardRetreat.ModalCancelAndAutoPause",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardRetreatModalCancelTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FString Error;
+	TestTrue(TEXT("modal cancel fixture builds"), BuildRouteRewardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Error));
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("modal cancel Board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestTrue(TEXT("modal cancel fixture enables auto battle"), Board->SetAutoBattleEnabled(true));
+	const FGameXXKRuntimeState BeforeModal = Subsystem->GetRuntimeState();
+
+	TestTrue(TEXT("Close opens retreat confirmation"), Board->OpenBattleRetreatConfirmationForTest());
+	TestTrue(TEXT("retreat confirmation is visible"), Board->IsBattleRetreatConfirmationOpenForTest());
+	TestTrue(TEXT("valid checkpoint enables retreat confirmation"), Board->IsBattleRetreatConfirmEnabledForTest());
+	TestFalse(TEXT("modal locks auto toggle"), Board->GetAutoBattleButtonForTest() && Board->GetAutoBattleButtonForTest()->GetIsEnabled());
+	TestFalse(TEXT("modal locks Close against re-entry"), Board->GetBattleCloseButtonForTest() && Board->GetBattleCloseButtonForTest()->GetIsEnabled());
+	TestFalse(TEXT("modal rejects session-toggle mutation"), Board->SetAutoBattleEnabled(false));
+	TestTrue(TEXT("rejected modal toggle preserves the session setting"), Board->IsAutoBattleEnabled());
+	TestFalse(TEXT("modal pauses wall-clock auto battle"), Board->AdvanceAutoBattleAtRealTimeForTest(100.0));
+	TestFalse(TEXT("modal stays paused after a full cadence"), Board->AdvanceAutoBattleAtRealTimeForTest(101.0));
+	TestTrue(TEXT("opening and waiting in modal never mutates runtime"), RuntimeStatesEqual(Subsystem->GetRuntimeState(), BeforeModal));
+
+	TestTrue(TEXT("Continue battle cancels confirmation"), Board->CancelBattleRetreatConfirmationForTest());
+	TestFalse(TEXT("cancel hides retreat confirmation"), Board->IsBattleRetreatConfirmationOpenForTest());
+	TestTrue(TEXT("cancel preserves runtime exactly"), RuntimeStatesEqual(Subsystem->GetRuntimeState(), BeforeModal));
+	TestTrue(TEXT("cancel preserves auto battle preference"), Board->IsAutoBattleEnabled());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardRetreatModalConfirmTest,
+	"GameXXK.Integration.CardBattle.BoardRetreat.ModalConfirmRollback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardRetreatModalConfirmTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FString Error;
+	TestTrue(TEXT("modal confirm fixture builds"), BuildRouteRewardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Error));
+	const FGameXXKBattleEntryCheckpoint Checkpoint = Subsystem->GetRuntimeState().BattleEntryCheckpoint;
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("modal confirm Board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestTrue(TEXT("modal confirm opens"), Board->OpenBattleRetreatConfirmationForTest());
+	TestTrue(TEXT("modal confirm applies authoritative rollback"), Board->ConfirmBattleRetreatForTest());
+	const FGameXXKRuntimeState& Retreated = Subsystem->GetRuntimeState();
+	TestEqual(TEXT("modal confirm returns to route map"), Retreated.Screen, EGameXXKScreen::DungeonMap);
+	TestEqual(TEXT("modal confirm restores prior current node"), Retreated.CurrentRouteNodeId, Checkpoint.PreviousCurrentRouteNodeId);
+	TestEqual(TEXT("modal confirm restores prior HP"), Retreated.PlayerHP, Checkpoint.PreviousPlayerHP);
+	TestEqual(TEXT("modal confirm restores prior MP"), Retreated.PlayerMP, Checkpoint.PreviousPlayerMP);
+	TestFalse(TEXT("modal confirm clears active card battle"), Retreated.CardRun.bHasActiveCardBattle);
+	TestFalse(TEXT("modal confirm consumes checkpoint"), Retreated.BattleEntryCheckpoint.bValid);
+
+	UGameXXKMVPSubsystem* RewardSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestTrue(TEXT("pending reward retreat fixture builds"), BuildRouteRewardFixture(RewardSubsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Error));
+	RewardSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+	TestTrue(TEXT("pending reward retreat fixture opens reward"), RewardSubsystem->ResolveBattleVictory(false));
+	TestEqual(TEXT("pending reward retreat fixture owns three options"), RewardSubsystem->GetRuntimeState().CardRun.PendingReward.Options.Num(), 3);
+	const int32 RewardSourceNodeId = RewardSubsystem->GetRuntimeState().BattleEntryCheckpoint.SourceNodeId;
+	UGameXXKBattleBoardWidget* RewardBoard = NewObject<UGameXXKBattleBoardWidget>();
+	RewardBoard->SetMVPSubsystem(RewardSubsystem);
+	TestTrue(TEXT("pending reward retreat Board initializes"), RewardBoard->Initialize());
+	RewardBoard->NativeConstruct();
+	RewardBoard->RefreshFromState();
+	TestTrue(TEXT("pending reward retreat modal opens"), RewardBoard->OpenBattleRetreatConfirmationForTest());
+	TestTrue(TEXT("pending reward retreat confirms"), RewardBoard->ConfirmBattleRetreatForTest());
+	TestTrue(TEXT("pending reward retreat discards options"), RewardSubsystem->GetRuntimeState().CardRun.PendingReward.Options.IsEmpty());
+	TestFalse(TEXT("pending reward retreat does not visit abandoned node"), RewardSubsystem->GetRuntimeState().VisitedRouteNodeIds.Contains(RewardSourceNodeId));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardRetreatPresentationAndInvalidGateTest,
+	"GameXXK.Integration.CardBattle.BoardRetreat.PresentationAndInvalidCheckpointGate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardRetreatPresentationAndInvalidGateTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FString Error;
+	TestTrue(TEXT("presentation retreat fixture builds"), BuildRouteRewardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Error));
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("presentation retreat Board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	TestTrue(TEXT("presentation retreat starts visual session"), Board->BeginBattleVisualSession(9201));
+	FGameXXKBattlePresentationEvent Event;
+	Event.EventId = 9202;
+	Event.AttackerUnitId = OwnerUnitId;
+	Event.TargetUnitId = TargetUnitId;
+	Event.TargetHealthBefore = 100;
+	Event.TargetHealthAfter = 90;
+	Event.HealthDamage = 10;
+	Event.bTargetEnemy = true;
+	Board->QueuePresentation(Event);
+	TestTrue(TEXT("Close may open while presentation drains"), Board->OpenBattleRetreatConfirmationForTest());
+	TestFalse(TEXT("confirm is disabled during committed presentation"), Board->IsBattleRetreatConfirmEnabledForTest());
+	TestFalse(TEXT("disabled presentation confirm does not retreat"), Board->ConfirmBattleRetreatForTest());
+	Board->AdvanceVisualsAtRealTime(0.0);
+	Board->AdvanceVisualsAtRealTime(0.301);
+	Board->AdvanceVisualsAtRealTime(0.821);
+	TestFalse(TEXT("presentation drains without closing confirmation"), Board->IsBattlePresentationLockedForTest());
+	TestTrue(TEXT("confirm enables after presentation becomes idle"), Board->IsBattleRetreatConfirmEnabledForTest());
+	TestTrue(TEXT("idle presentation modal can retreat"), Board->ConfirmBattleRetreatForTest());
+
+	UGameXXKMVPSubsystem* InvalidSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FGameXXKCardPlayPreview Preview;
+	TestTrue(TEXT("invalid checkpoint fixture builds a non-route battle"), BuildManualTargetCardFixture(
+		InvalidSubsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Preview, Error));
+	UGameXXKBattleBoardWidget* InvalidBoard = NewObject<UGameXXKBattleBoardWidget>();
+	InvalidBoard->SetMVPSubsystem(InvalidSubsystem);
+	TestTrue(TEXT("invalid checkpoint Board initializes"), InvalidBoard->Initialize());
+	InvalidBoard->NativeConstruct();
+	const FGameXXKRuntimeState InvalidBefore = InvalidSubsystem->GetRuntimeState();
+	TestTrue(TEXT("invalid checkpoint still opens an explanatory modal"), InvalidBoard->OpenBattleRetreatConfirmationForTest());
+	TestFalse(TEXT("invalid checkpoint disables confirmation"), InvalidBoard->IsBattleRetreatConfirmEnabledForTest());
+	TestFalse(TEXT("invalid checkpoint reports a concrete reason"), InvalidBoard->GetBattleRetreatErrorForTest().IsEmpty());
+	TestFalse(TEXT("invalid checkpoint cannot confirm"), InvalidBoard->ConfirmBattleRetreatForTest());
+	TestTrue(TEXT("invalid checkpoint failure is atomic"), RuntimeStatesEqual(InvalidSubsystem->GetRuntimeState(), InvalidBefore));
 	return true;
 }
 
