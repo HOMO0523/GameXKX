@@ -282,6 +282,7 @@ public:
 	void SetDesktopTrainingBootProfileForTest(bool bEnabled);
 	FString GetDesktopTrainingPerfProfileForTest() const;
 	bool EnsureDesktopTrainingWidgetsForTest();
+	bool ApplyDesktopTrainingPerfProfileForTest(const FString& Profile);
 	bool PrepareForRuntimeStateMapTravelForTest(const FString& CurrentPackageName);
 	/** Supplies already-resolved BattleBoard-local pointer coordinates to the real PlayerTick path in headless automation. */
 	void SetBattleMousePositionOverrideForTest(FVector2D InMousePosition);
@@ -293,6 +294,7 @@ private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
 	EGameXXKPlayerFlowBootProfile ResolvePlayerFlowBootProfile() const;
 	bool EnsureDesktopTrainingWidgets();
+	bool ApplyDesktopTrainingPerfProfile(const FString& Profile);
 	bool EnsurePlayerFlowWidgets();
 	UGameXXKOneGameRouteMapWidget* EnsureRouteMapWidget();
 	UGameXXKBattleBoardWidget* EnsureBattleBoardWidget();

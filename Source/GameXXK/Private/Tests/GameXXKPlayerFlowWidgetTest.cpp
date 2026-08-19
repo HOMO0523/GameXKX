@@ -1,4 +1,5 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKTrainingRules.h"
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKCompanionRules.h"
@@ -295,6 +296,33 @@ bool FGameXXKDesktopTrainingLazyBootTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("explicit request creates the shop"), PlayerController->GetMetaShopWidgetForTest());
 	TestNull(TEXT("shop request does not create the route map"), PlayerController->GetRouteMapWidgetForTest());
 	TestNull(TEXT("shop request does not create the old inventory"), PlayerController->GetInventoryWindowWidgetForTest());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingTravelPerfProfileTest,
+	"GameXXK.MVP.UI.DesktopTrainingTravelPerfProfile",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingTravelPerfProfileTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	AGameXXKMVPPlayerController* PlayerController = NewObject<AGameXXKMVPPlayerController>();
+	PlayerController->SetMVPSubsystemForTest(Subsystem);
+	PlayerController->SetDesktopTrainingBootProfileForTest(true);
+	TestTrue(TEXT("travel profile fixture starts in town"), Subsystem->StartGame());
+	TestTrue(TEXT("travel profile creates only the workbench"), PlayerController->EnsureDesktopTrainingWidgetsForTest());
+	TestTrue(TEXT("travel profile applies"), PlayerController->ApplyDesktopTrainingPerfProfileForTest(TEXT("travel")));
+
+	const FGameXXKTrainingTravelRuntime Runtime = Subsystem->GetTrainingTravelRuntimeCopy();
+	TestEqual(TEXT("travel runner enters walking"), Runtime.Phase, EGameXXKTrainingTravelPhase::Walking);
+	TestEqual(
+		TEXT("travel profile selects cleared 1-1"),
+		Runtime.StageId,
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1));
+	TestNull(TEXT("travel profile keeps legacy route map lazy"), PlayerController->GetRouteMapWidgetForTest());
+	TestNull(TEXT("travel profile keeps legacy battle board lazy"), PlayerController->GetBattleBoardWidgetForTest());
 	return true;
 }
 

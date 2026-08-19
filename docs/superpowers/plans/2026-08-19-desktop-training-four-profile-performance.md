@@ -26,7 +26,7 @@
 - Modify: `scripts/test_measure_desktop_training_hud_memory.py`
 - Modify: `scripts/measure_desktop_training_hud_memory.ps1`
 
-- [ ] **Step 1: Write the failing describe-only matrix test**
+- [x] **Step 1: Write the failing describe-only matrix test**
 
 Replace the old single-map assertion with a request for all profiles:
 
@@ -72,7 +72,7 @@ def test_sampler_records_cpu_and_gpu_process_metrics(self) -> None:
         self.assertIn(field, text)
 ```
 
-- [ ] **Step 2: Run the sampler test and verify RED**
+- [x] **Step 2: Run the sampler test and verify RED**
 
 Run:
 
@@ -82,7 +82,7 @@ python scripts/test_measure_desktop_training_hud_memory.py
 
 Expected: FAIL because `-Profile`, schema version 2, profile definitions, and GPU/CPU fields do not exist.
 
-- [ ] **Step 3: Implement profile definitions and schema-v2 describe output**
+- [x] **Step 3: Implement profile definitions and schema-v2 describe output**
 
 Add the parameter and fixed profile definitions:
 
@@ -125,7 +125,7 @@ $contract = [ordered]@{
 }
 ```
 
-- [ ] **Step 4: Run describe-only GREEN verification**
+- [x] **Step 4: Run describe-only GREEN verification**
 
 Run:
 
@@ -143,7 +143,7 @@ Expected: Python tests pass; JSON lists exactly `empty`, `travel`, `challenge`, 
 - Modify: `Source/GameXXK/Private/MVP/GameXXKMVPPlayerController.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKPlayerFlowWidgetTest.cpp`
 
-- [ ] **Step 1: Write the failing Travel profile automation test**
+- [x] **Step 1: Write the failing Travel profile automation test**
 
 Add `GameXXK.MVP.UI.DesktopTrainingTravelPerfProfile`:
 
@@ -168,7 +168,7 @@ TestNull(TEXT("travel profile keeps legacy route map lazy"), Controller->GetRout
 TestNull(TEXT("travel profile keeps legacy battle board lazy"), Controller->GetBattleBoardWidgetForTest());
 ```
 
-- [ ] **Step 2: Run focused Automation and verify RED**
+- [x] **Step 2: Run focused Automation and verify RED**
 
 Run:
 
@@ -178,7 +178,7 @@ Run:
 
 Expected: compile failure because `ApplyDesktopTrainingPerfProfileForTest` does not exist.
 
-- [ ] **Step 3: Implement one profile application function**
+- [x] **Step 3: Implement one profile application function**
 
 Declare:
 
@@ -215,7 +215,7 @@ bool AGameXXKMVPPlayerController::ApplyDesktopTrainingPerfProfile(const FString&
 
 The automation seam returns `ApplyDesktopTrainingPerfProfile(Profile.ToLower())`. `empty` remains handled before workbench creation and must not allocate the workbench.
 
-- [ ] **Step 4: Run focused and legacy GREEN tests**
+- [x] **Step 4: Run focused and legacy GREEN tests**
 
 Run:
 
@@ -236,7 +236,7 @@ Expected: zero failed tests and no Automation errors.
 - Modify: `scripts/measure_desktop_training_hud_memory.ps1`
 - Modify: `scripts/test_measure_desktop_training_hud_memory.py`
 
-- [ ] **Step 1: Add the failing schema source assertions**
+- [x] **Step 1: Add the failing schema source assertions**
 
 Require the aggregate report to contain profile status, cleanup, samples, and errors:
 
@@ -250,13 +250,13 @@ def test_schema_v2_keeps_each_profile_isolated(self) -> None:
     self.assertIn("gpu_metric_error", text)
 ```
 
-- [ ] **Step 2: Run the test and verify RED**
+- [x] **Step 2: Run the test and verify RED**
 
 Run `python scripts/test_measure_desktop_training_hud_memory.py`.
 
 Expected: FAIL because schema-v2 execution fields are absent.
 
-- [ ] **Step 3: Add metric helpers and one-process-per-profile loop**
+- [x] **Step 3: Add metric helpers and one-process-per-profile loop**
 
 Use stable CIM classes and return zero plus a recorded error only when unavailable:
 
@@ -290,7 +290,7 @@ $cpuPercent = [math]::Round(100.0 * $cpuDeltaSeconds / ($wallDeltaSeconds * [Env
 
 Each profile result contains `profile_name`, `map`, `arguments`, `process_id`, `status`, `cleanup`, `samples`, and `error`. Finish and close one process before starting the next. If one profile fails, record it and continue the remaining profiles; exit nonzero after writing the aggregate report.
 
-- [ ] **Step 4: Run PowerShell parser and Python GREEN tests**
+- [x] **Step 4: Run PowerShell parser and Python GREEN tests**
 
 Run:
 
@@ -315,7 +315,7 @@ Expected: parser exit 0 and all sampler tests pass.
 - Modify: `docs/production/2026-08-19-goal-progress-evidence.md`
 - Evidence: `Saved/HarnessReports/desktop-training-performance-matrix-*.json`
 
-- [ ] **Step 1: Cold-build and run focused Automation**
+- [x] **Step 1: Cold-build and run focused Automation**
 
 Run the standard no-Hot-Reload UBT command, followed by:
 
@@ -326,7 +326,7 @@ python scripts/ai_production_loop.py --run-script-tests --script-tests all --jso
 
 Expected: UBT `Result: Succeeded`; focused Automation and headless/all exit 0.
 
-- [ ] **Step 2: Run the four-profile matrix**
+- [x] **Step 2: Run the four-profile matrix** *(report `desktop-training-performance-matrix-20260819-184206.json`; challenge profile is a pre-correction baseline because the user rejected the embedded ChallengeViewport)*
 
 Run:
 

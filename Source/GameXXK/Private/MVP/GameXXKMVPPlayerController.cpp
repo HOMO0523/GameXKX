@@ -228,12 +228,7 @@ void AGameXXKMVPPlayerController::BeginPlay()
 			Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
 		{
 			OpenDesktopTrainingWorkbench();
-			if (DesktopTrainingPerfProfile == TEXT("challenge") && DesktopTrainingWorkbenchWidget)
-			{
-				DesktopTrainingWorkbenchWidget->OpenBackpack();
-				DesktopTrainingWorkbenchWidget->SelectStageForTest(FName(TEXT("Training.Normal.1-2")));
-				DesktopTrainingWorkbenchWidget->ClickChallengeForTest();
-			}
+			ApplyDesktopTrainingPerfProfile(DesktopTrainingPerfProfile);
 		}
 	}
 }
@@ -437,6 +432,11 @@ FString AGameXXKMVPPlayerController::GetDesktopTrainingPerfProfileForTest() cons
 bool AGameXXKMVPPlayerController::EnsureDesktopTrainingWidgetsForTest()
 {
 	return EnsureDesktopTrainingWidgets();
+}
+
+bool AGameXXKMVPPlayerController::ApplyDesktopTrainingPerfProfileForTest(const FString& Profile)
+{
+	return ApplyDesktopTrainingPerfProfile(Profile);
 }
 #endif
 
@@ -1460,6 +1460,43 @@ bool AGameXXKMVPPlayerController::EnsureDesktopTrainingWidgets()
 {
 	bEnableDesktopTrainingWorkbench = true;
 	return EnsureDesktopTrainingWorkbenchWidget() != nullptr;
+}
+
+bool AGameXXKMVPPlayerController::ApplyDesktopTrainingPerfProfile(const FString& Profile)
+{
+	const FString NormalizedProfile = Profile.ToLower();
+	if (NormalizedProfile.IsEmpty() || NormalizedProfile == TEXT("empty"))
+	{
+		return true;
+	}
+	if (!DesktopTrainingWorkbenchWidget)
+	{
+		return false;
+	}
+
+	DesktopTrainingWorkbenchWidget->OpenBackpack();
+	if (NormalizedProfile == TEXT("travel"))
+	{
+		const FName StageId(TEXT("Training.Normal.1-1"));
+		if (!DesktopTrainingWorkbenchWidget->SelectStageForTest(StageId))
+		{
+			return false;
+		}
+		DesktopTrainingWorkbenchWidget->ClickTravelForTest();
+		const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+		return Subsystem
+			&& Subsystem->GetTrainingTravelRuntimeCopy().StageId == StageId
+			&& Subsystem->GetTrainingTravelRuntimeCopy().Phase != EGameXXKTrainingTravelPhase::Idle;
+	}
+	if (NormalizedProfile == TEXT("challenge"))
+	{
+		if (!DesktopTrainingWorkbenchWidget->SelectStageForTest(FName(TEXT("Training.Normal.1-2"))))
+		{
+			return false;
+		}
+		return DesktopTrainingWorkbenchWidget->ClickChallengeForTest();
+	}
+	return false;
 }
 
 bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgets()
