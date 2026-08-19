@@ -158,7 +158,7 @@ git commit -m "feat: save route battle entry checkpoints"
 - Modify: `Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h`
 - Modify: `Source/GameXXK/Private/MVP/GameXXKMVPSubsystem.cpp`
 
-- [ ] **Step 1: Write RED retreat transaction tests**
+- [x] **Step 1: Write RED retreat transaction tests**
 
 Add:
 
@@ -170,11 +170,11 @@ Add:
 - `RejectsInvalidCheckpointAtomically`: missing/mismatched checkpoint returns false and whole-state comparison remains equal.
 - `ClearsCheckpointOnCommittedRewardAndTerminal`: selecting/skipping a reward, Cleared, Defeated, and Abandoned each leave the checkpoint invalid.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Cold-build. Expected: compile fails because `RetreatCurrentBattleToRoute` and subsystem facade do not exist; once declarations are present but capture is absent, behavior tests fail.
 
-- [ ] **Step 3: Capture before mutation and centralize clearing**
+- [x] **Step 3: Capture before mutation and centralize clearing**
 
 In the Battle/Elite/Boss branch of `SelectRouteNodeById`, fill `Candidate.BattleEntryCheckpoint` from untouched `State` before setting `CurrentRouteNodeId` or `PendingRouteNodeId`. Run `BeginBattle` on the candidate and assign to `State` only after it succeeds.
 
@@ -188,7 +188,7 @@ Add a helper that resets `BattleEntryCheckpoint` and call it from:
 
 Do not clear the checkpoint when Victory merely opens `PendingReward`; the player can still abandon that encounter.
 
-- [ ] **Step 4: Implement the authoritative retreat transaction**
+- [x] **Step 4: Implement the authoritative retreat transaction**
 
 Declare and implement:
 
@@ -208,7 +208,7 @@ The implementation must:
 
 Add a subsystem wrapper `RetreatCurrentBattleToRoute()` that only delegates to rules. It must not travel maps, close widgets, toggle auto battle, or save implicitly.
 
-- [ ] **Step 5: Verify focused and route/card regressions**
+- [x] **Step 5: Verify focused and route/card regressions**
 
 ```powershell
 & 'D:\UE_5.8\Engine\Build\BatchFiles\Build.bat' GameXXKEditor Win64 Development '-Project=D:\UE5 demo\GameXXK\GameXXK.uproject' -WaitMutex -NoHotReload -NoHotReloadFromIDE -NoUBA -MaxParallelActions=2
@@ -222,7 +222,7 @@ Add a subsystem wrapper `RetreatCurrentBattleToRoute()` that only delegates to r
 
 Expected: all selected tests pass and the existing Elite auto-battle test still reaches a terminal phase.
 
-- [ ] **Step 6: Commit the rules transaction**
+- [x] **Step 6: Commit the rules transaction**
 
 ```powershell
 git commit -m "feat: restore pre-encounter route state"

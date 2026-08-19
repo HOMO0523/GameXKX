@@ -810,6 +810,27 @@ namespace GameXXKMVP
 		UGameXXKMVPRules::GenerateRouteMapForSeed(State, Seed);
 	}
 
+	static void ClearBattleEntryCheckpoint(FGameXXKRuntimeState& State)
+	{
+		State.BattleEntryCheckpoint = FGameXXKBattleEntryCheckpoint{};
+	}
+
+	static FGameXXKBattleEntryCheckpoint CaptureBattleEntryCheckpoint(
+		const FGameXXKRuntimeState& State,
+		const int32 SourceNodeId)
+	{
+		FGameXXKBattleEntryCheckpoint Checkpoint;
+		Checkpoint.bValid = true;
+		Checkpoint.SourceNodeId = SourceNodeId;
+		Checkpoint.PreviousCurrentRouteNodeId = State.CurrentRouteNodeId;
+		Checkpoint.PreviousDungeonNodeIndex = State.DungeonNodeIndex;
+		Checkpoint.PreviousPlayerHP = State.PlayerHP;
+		Checkpoint.PreviousPlayerMP = State.PlayerMP;
+		Checkpoint.PreviousVisitedRouteNodeIds = State.VisitedRouteNodeIds;
+		Checkpoint.PreviousReachableRouteNodeIds = State.ReachableRouteNodeIds;
+		return Checkpoint;
+	}
+
 	static bool CompleteRouteNode(FGameXXKRuntimeState& State, const FGameXXKRouteMapNode& Node)
 	{
 		AddUniqueInt(State.VisitedRouteNodeIds, Node.NodeId);
@@ -827,6 +848,7 @@ namespace GameXXKMVP
 		State.Screen = EGameXXKScreen::DungeonMap;
 		State.CurrentMapId = TEXT("HuangshanRoute");
 		State.TownPanelMode = EGameXXKTownPanelMode::None;
+		ClearBattleEntryCheckpoint(State);
 		return true;
 	}
 
@@ -948,6 +970,7 @@ namespace GameXXKMVP
 		Candidate.Screen = EGameXXKScreen::DungeonMap;
 		Candidate.CurrentMapId = TEXT("HuangshanRoute");
 		Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
+		ClearBattleEntryCheckpoint(Candidate);
 		StateWithOneTimeRewards = MoveTemp(Candidate);
 		return true;
 	}
@@ -1072,6 +1095,7 @@ namespace GameXXKMVP
 		{
 			return false;
 		}
+		ClearBattleEntryCheckpoint(Candidate);
 		State = MoveTemp(Candidate);
 		return true;
 	}
@@ -1862,6 +1886,7 @@ void UGameXXKMVPRules::GenerateRouteMapForSeed(FGameXXKRuntimeState& State, int3
 	State.VisitedRouteNodeIds.Reset();
 	State.ReachableRouteNodeIds.Reset();
 	State.ReachableRouteNodeIds.Add(0);
+	GameXXKMVP::ClearBattleEntryCheckpoint(State);
 
 	int32 NextNodeId = 0;
 	GameXXKMVP::AddRouteNode(State, NextNodeId++, 0, 0, EGameXXKNodeKind::Start, 0.50f, 0.00f, {});
@@ -1902,6 +1927,7 @@ bool UGameXXKMVPRules::EnterDungeon(FGameXXKRuntimeState& State)
 	}
 	const FName SelectedTownNpcId = Candidate.CardRun.ActiveTemporaryQuestNpcId;
 	FGameXXKCardBattleAdapter::ClearRouteLocalCardState(Candidate);
+	GameXXKMVP::ClearBattleEntryCheckpoint(Candidate);
 	// InitializeRoute is intentionally idempotent, so a genuinely new route must
 	// first discard a prior valid balance and its chapter-scoped receipts.
 	FGameXXKRouteEconomyRules::ClearRouteEconomy(Candidate.CardRun);
@@ -1978,10 +2004,11 @@ bool UGameXXKMVPRules::SelectRouteNodeById(FGameXXKRuntimeState& State, int32 No
 
 	const EGameXXKNodeKind NodeKind = Node->NodeKind;
 	FGameXXKRuntimeState Candidate = State;
-	Candidate.CurrentRouteNodeId = NodeId;
 	Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
 	if (Node->NodeKind == EGameXXKNodeKind::Battle || Node->NodeKind == EGameXXKNodeKind::Elite || Node->NodeKind == EGameXXKNodeKind::Boss)
 	{
+		Candidate.BattleEntryCheckpoint = GameXXKMVP::CaptureBattleEntryCheckpoint(State, NodeId);
+		Candidate.CurrentRouteNodeId = NodeId;
 		Candidate.PendingRouteNodeId = NodeId;
 		if (!GameXXKMVP::BeginBattle(Candidate, NodeKind, NodeId))
 		{
@@ -1990,6 +2017,7 @@ bool UGameXXKMVPRules::SelectRouteNodeById(FGameXXKRuntimeState& State, int32 No
 		State = MoveTemp(Candidate);
 		return true;
 	}
+	Candidate.CurrentRouteNodeId = NodeId;
 	if (Node->NodeKind == EGameXXKNodeKind::Event || Node->NodeKind == EGameXXKNodeKind::Chest)
 	{
 		Candidate.PendingRouteNodeId = NodeId;
@@ -2053,6 +2081,61 @@ bool UGameXXKMVPRules::SelectRouteNodeById(FGameXXKRuntimeState& State, int32 No
 		BeforeOneTimeRewards,
 		NodeId,
 		GameXXKMVP::GetBaseRouteNodeTravelMoney(NodeKind)))
+	{
+		return false;
+	}
+	State = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPRules::RetreatCurrentBattleToRoute(FGameXXKRuntimeState& State)
+{
+	const FGameXXKBattleEntryCheckpoint& Checkpoint = State.BattleEntryCheckpoint;
+	if (!Checkpoint.bValid
+		|| !State.bDungeonActive
+		|| !State.bHasGeneratedRouteMap
+		|| State.Screen != EGameXXKScreen::Battle
+		|| !State.bHasActiveBattle
+		|| !State.CardRun.bHasActiveCardBattle
+		|| Checkpoint.SourceNodeId != State.CurrentRouteNodeId
+		|| Checkpoint.SourceNodeId != State.PendingRouteNodeId
+		|| Checkpoint.SourceNodeId != State.ActiveBattleNodeId
+		|| Checkpoint.SourceNodeId != State.CardRun.ActiveBattleSourceNodeId)
+	{
+		return false;
+	}
+
+	const FGameXXKRouteMapNode* SourceNode = GameXXKMVP::FindRouteNode(State, Checkpoint.SourceNodeId);
+	if (!SourceNode
+		|| (SourceNode->NodeKind != EGameXXKNodeKind::Battle
+			&& SourceNode->NodeKind != EGameXXKNodeKind::Elite
+			&& SourceNode->NodeKind != EGameXXKNodeKind::Boss))
+	{
+		return false;
+	}
+
+	FString ValidationError;
+	if (!FGameXXKSaveMigration::ValidateRuntimeState(State, ValidationError))
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = State;
+	const FGameXXKBattleEntryCheckpoint SavedCheckpoint = Candidate.BattleEntryCheckpoint;
+	Candidate.CurrentRouteNodeId = SavedCheckpoint.PreviousCurrentRouteNodeId;
+	Candidate.PendingRouteNodeId = INDEX_NONE;
+	Candidate.DungeonNodeIndex = SavedCheckpoint.PreviousDungeonNodeIndex;
+	Candidate.PlayerHP = SavedCheckpoint.PreviousPlayerHP;
+	Candidate.PlayerMP = SavedCheckpoint.PreviousPlayerMP;
+	Candidate.VisitedRouteNodeIds = SavedCheckpoint.PreviousVisitedRouteNodeIds;
+	Candidate.ReachableRouteNodeIds = SavedCheckpoint.PreviousReachableRouteNodeIds;
+	Candidate.Screen = EGameXXKScreen::DungeonMap;
+	Candidate.CurrentMapId = TEXT("HuangshanRoute");
+	Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
+	GameXXKMVP::ClearActiveBattle(Candidate);
+	GameXXKMVP::ClearBattleEntryCheckpoint(Candidate);
+
+	if (!FGameXXKSaveMigration::ValidateRuntimeState(Candidate, ValidationError))
 	{
 		return false;
 	}

@@ -292,6 +292,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool SelectRouteNodeById(int32 NodeId);
 
+	/** Player-confirmed rollback of only the currently selected generated-route encounter. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool RetreatCurrentBattleToRoute();
+
 	/** Session-only preference; retained across monster encounters and never serialized. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Auto")
 	bool IsBattleAutoPlayEnabled() const;

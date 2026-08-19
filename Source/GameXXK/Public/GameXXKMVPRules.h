@@ -775,6 +775,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool SelectRouteNodeById(UPARAM(ref) FGameXXKRuntimeState& State, int32 NodeId);
 
+	/** Atomically discards the current generated-route encounter and restores its saved pre-click state. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	static bool RetreatCurrentBattleToRoute(UPARAM(ref) FGameXXKRuntimeState& State);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveBattleVictory(UPARAM(ref) FGameXXKRuntimeState& State, bool bBossBattle);
 
