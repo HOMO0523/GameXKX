@@ -2,8 +2,8 @@
 status: record
 owner: codex
 updated_at: 2026-08-19T17:10:00+08:00
-source_commit: 57a06e41226378ada94e30ad92b12979095c01d6
-working_tree: dirty (active root worktree is `main` at `57a06e4`; preserve user L_Main.umap, unrelated probes, and untracked SourceAssets/SourceArt; this pointer records evidence and does not imply a clean checkout)
+source_commit: 0fd4c889a825ab54c5813fab5c40829cd69ffdb5
+working_tree: dirty (active root worktree is `main`; runtime/evidence baseline is `0fd4c88` and this pointer is a following docs-only commit; preserve user L_Main.umap, unrelated probes, and untracked SourceAssets/SourceArt)
 ---
 # GameXXK 当前目标(滚动指针)
 
@@ -11,8 +11,8 @@ working_tree: dirty (active root worktree is `main` at `57a06e4`; preserve user 
 
 ## 当前基线(更新于 2026-08-19)
 
-- 规格冻结基线:`ba90810a56e06a3b70ed0e3125c4ef67a59a0685`（2026-08-17 `docs: freeze desktop training workbench design`）；它是设计/规则基线，不冒充当前代码 HEAD。根目录 `main` 已从祖先 `628c46a` 安全快进到 `57a06e4`，原 `codex/desktop-training-2d-hud-migration` 分支保留在同一提交；未使用或创建 worktree。
-- 当前运行时工作树 HEAD:`57a06e4`（活动分支 `main`）。HUD-only 懒启动/折叠卸载、工作台两态置顶图钉、存档快照归一化和迁移夹具修复均仍在 dirty 工作区；用户 `L_Main.umap` 及未跟踪源美术/探针保持保护。桌面历练规则、程序化工作台、真实 CardBattle 桥接、确定性 TravelRunner、离线账本、奖励/冷却 Resolver、背包/伙伴/NPC 切换、仓库 4 列分页、拖拽/右键路由、工具 3×3、挑战只读侧壳和 960×968 ChallengeViewport 已保留。
+- 规格冻结基线:`ba90810a56e06a3b70ed0e3125c4ef67a59a0685`（2026-08-17 `docs: freeze desktop training workbench design`）；它是设计/规则基线，不冒充当前代码 HEAD。根目录 `main` 已从祖先 `628c46a` 安全快进并完成到 `0fd4c88` 的运行时/资产/harness checkpoint；原 `codex/desktop-training-2d-hud-migration` 分支保留在 `57a06e4`，未使用或创建 worktree。
+- 当前运行时/证据源码基线:`0fd4c88`（活动分支 `main`；滚动指针由后续 docs-only commit 承载）。HUD-only 懒启动/折叠卸载、工作台两态置顶图钉、存档快照归一化、v21/v22 库存/NPC、32 张当前可达 1K atlas、8 张 ImageTruth 和 Phase 0 harness 已分三批 checkpoint；用户 `L_Main.umap` 及未跟踪源美术/探针保持保护。桌面历练规则、程序化工作台、真实 CardBattle 桥接、确定性 TravelRunner、离线账本、奖励/冷却 Resolver、背包/伙伴/NPC 切换、仓库 4 列分页、拖拽/右键路由、工具 3×3、挑战只读侧壳和 960×968 ChallengeViewport 已保留。
 - SaveVersion 边界必须分层记录：`ba90810` 规格冻结时的历史前置基线为 v17；当前工作区代码实际 `CurrentSaveVersion=22`，`DesktopTrainingWorkbenchIntroducedSaveVersion=18`、`TrainingRewardCooldownsIntroducedSaveVersion=19`、`TrainingOfflineCollectionIntroducedSaveVersion=20`、`DesktopInventoryStorageIntroducedSaveVersion=21`、`QuestNpcEquipmentOwnerIntroducedSaveVersion=22`。任何旧 v16/v17/v18 历练索引均为历史 `shelved`；后续迁移从 v23 继续。
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`

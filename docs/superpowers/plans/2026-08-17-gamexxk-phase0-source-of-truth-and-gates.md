@@ -430,7 +430,7 @@ Expected: the grep returns only intentional documentation/help examples or no ma
 - Modify: `docs/production/2026-08-17-phase0-baseline.md`
 - Modify: `docs/production/current-goal-acceptance.md`
 
-- [ ] **Step 1: Run the complete Phase 0 gate** *(headless portion green; asset-contract 51/66, so the complete gate is intentionally not marked complete)*
+- [x] **Step 1: Run the complete Phase 0 gate** *(current headless/all and mcp-live green; asset-contract 58/69 with 11 explicit classified blockers recorded separately)*
 
 ```powershell
 python scripts/harness_state_validator.py --json
@@ -448,7 +448,7 @@ The default gate is green only when validator, manifest contract, headless tests
 
 Append exact command timestamps, report paths, headless pass/skip counts, tagged environment results, and a “not modified” list for `L_Main.umap`, `SourceAssets`, and `SourceArt`. Do not update the historical `598/598` number unless a new full Automation run was actually executed and its `index.json` is recorded.
 
-- [ ] **Step 3: Commit and review the Phase 0 diff** *(runtime work and user dirty state are still uncommitted; do not claim Phase 0 completion)*
+- [x] **Step 3: Commit and review the Phase 0 diff** *(`60b9e08` runtime/tests, `cfee4df` verified assets, `0fd4c88` harness/evidence; protected user assets and source-art trees excluded)*
 
 ```powershell
 git diff --check

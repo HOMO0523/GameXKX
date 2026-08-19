@@ -2,7 +2,7 @@
 status: in_progress
 owner: codex
 updated_at: 2026-08-19T17:10:00+08:00
-source_commit: 57a06e41226378ada94e30ad92b12979095c01d6
+source_commit: 0fd4c889a825ab54c5813fab5c40829cd69ffdb5
 ---
 # 2026-08-19 桌面历练 goal 进度与复核证据
 
@@ -11,7 +11,7 @@ source_commit: 57a06e41226378ada94e30ad92b12979095c01d6
 ## 基线与保护
 
 - 规格冻结基线：`ba90810a56e06a3b70ed0e3125c4ef67a59a0685`。
-- 当前工作区：根目录 `main`，HEAD `57a06e41226378ada94e30ad92b12979095c01d6`；原 `codex/desktop-training-2d-hud-migration` 分支保留在同一提交。`main` 已由其祖先 `628c46a` 安全快进，工作树内容未因切换改变。
+- 当前工作区：根目录 `main`，运行时/证据源码基线 `0fd4c889a825ab54c5813fab5c40829cd69ffdb5`；本记录由其后的 docs-only commit 承载。原 `codex/desktop-training-2d-hud-migration` 分支保留在 `57a06e4`，工作树中的用户资产/探针未因切换改变。
 - `Content/GameXXK/Maps/L_Main.umap` 当前 SHA256 仍为 `EE6E8394E40298321F2A57CC030018BDD1109EED36248597A7D7F414E387E46B`；本轮没有写入该地图。
 - 未跟踪 `SourceAssets/`、`SourceArt/` 和历史 `Content/Python/_*.py` 探针未被批量加入本轮真源或生产资产。
 
@@ -56,7 +56,7 @@ source_commit: 57a06e41226378ada94e30ad92b12979095c01d6
 
 ## 2026-08-19 16:46 Phase 0 合同复现与分类
 
-- 根目录已在不改工作树内容的前提下把 `main` 快进到 `57a06e4` 并切回 `main`；原 `codex/desktop-training-2d-hud-migration` 分支保留在同一提交。`main` 当前比 `origin/main` 领先 15 个提交。
+- 根目录已在不改工作树内容的前提下把 `main` 快进到 `57a06e4` 并切回 `main`；随后以 `60b9e08`（运行时/测试）、`cfee4df`（验证资产）和 `0fd4c88`（工具链/证据）三批 checkpoint 收口。该运行时/证据基线比 `origin/main` 领先 18 个提交，滚动指针由后续 docs-only commit 承载。
 - `L_Main.umap` 仍为 `EE6E8394E40298321F2A57CC030018BDD1109EED36248597A7D7F414E387E46B`；`L_QingshanInn.umap` 当前观测值为 `7856B66D188213A2878AD2F72569BFFCBDBC0EECEFC0E199BDE90194441FE92C`，两者均未在本轮写入。
 - mcp-live 两个旧合同已先以 headless RED 复现，再做最小修复：HP HUD runner 接受当前 `MainMenu -> Town` 直达语义；PartyDeck live runner 改读由 `GameXXK.Data.CardDocumentation` 校验的 198 张生成目录，不再正则耦合 C++ `AddCard` 调用形态。HP 启动器另锁定只启动一个编辑器、使用隔离 DDC/无 Zen 自动启动参数、MCP 断开不掩盖原始结果；`test_hp_hud_entry_contract.py` 3/3、`test_party_deck_real_play_acceptance.py` 16/16、完整 mcp-live 均通过。
 
