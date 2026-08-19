@@ -16,5 +16,7 @@ All files in this batch are candidates only and are not production truth.
 | `talents_glyph_ink_candidate_v002.png` | pending user review | Reduced to one compact three-stroke talent/flame glyph. |
 | `tools_glyph_ink_candidate_v002.png` | pending user review | Reduced to one plain monochrome hammer glyph. |
 | `tools_glyph_ink_candidate_v003.png` | pending user review | New true-alpha version with a larger hammer head and higher opaque fill ratio; visually follows the approved attachment. |
+| `tools_glyph_ink_candidate_v004.png` | pending user review | Horizontally mirrored true-alpha version matching the user-approved attachment orientation; larger head and higher fill. |
+| `tools_glyph_ink_candidate_v005.png` | confirmed | Promoted to `ImageTruth`; true-alpha background extraction verified and UE renders the 工具 label separately. |
 | `talents_glyph_ink_candidate_v003.png` | pending user review | Corrected semantic: three-node branching talent-tree glyph; no flame. |
 | `talents_glyph_ink_candidate_v004.png` | confirmed | Promoted to `ImageTruth`; grouped simplified ink Celtic-knot direction approved. |

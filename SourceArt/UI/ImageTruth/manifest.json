@@ -73,6 +73,20 @@
       "approvedBy": "user",
       "approvedAt": "2026-08-19T12:20:00+08:00",
       "approvalReference": "User replied 'ok' after the simplified grouped ink Celtic-knot talent glyph was shown."
+    },
+    {
+      "id": "training.nav.tools.ink.hammer.v005",
+      "role": "desktop-training bottom navigation tools glyph",
+      "path": "SourceArt/UI/ImageTruth/confirmed/training_nav_tools_ink_hammer_v005.png",
+      "sourcePath": "SourceArt/UI/ImageReviewQueue/20260819-bottom-nav-simplified/tools_glyph_ink_candidate_v005.png",
+      "sha256": "30D9FD167978876183E64F0734042FAC2510293CCE97B2F7DAAE06B6E75B6105",
+      "width": 1273,
+      "height": 1236,
+      "hasAlpha": true,
+      "textLayer": "UE-localized label: 工具",
+      "approvedBy": "user",
+      "approvedAt": "2026-08-19T12:30:00+08:00",
+      "approvalReference": "User confirmed the true-alpha background-extracted hammer after requesting the checkerboard background be removed."
     }
   ]
 }
