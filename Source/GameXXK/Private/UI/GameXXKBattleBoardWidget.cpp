@@ -1215,6 +1215,7 @@ void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float In
 			RefreshPartyQiWidget();
 		}
 	}
+	TickAutoBattle(InDeltaTime);
 }
 
 void UGameXXKBattleBoardWidget::QueuePresentation(const FGameXXKBattlePresentationEvent& Event)
@@ -3884,6 +3885,186 @@ bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
 	return QueueMutationPresentation(Before, DamageResults, Continuation);
 }
 
+bool UGameXXKBattleBoardWidget::SetAutoBattleEnabled(const bool bEnabled)
+{
+	UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !Subsystem->SetBattleAutoPlayEnabled(bEnabled))
+	{
+		return false;
+	}
+	AutoBattleAccumulator = 0.0f;
+	if (AutoBattleLabel)
+	{
+		AutoBattleLabel->SetText(FText::FromString(
+			bEnabled ? TEXT("自动战斗：开") : TEXT("自动战斗：关")));
+	}
+	return true;
+}
+
+bool UGameXXKBattleBoardWidget::IsAutoBattleEnabled() const
+{
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	return Subsystem && Subsystem->IsBattleAutoPlayEnabled();
+}
+
+bool UGameXXKBattleBoardWidget::TickAutoBattle(const float InDeltaTime)
+{
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !Subsystem->IsBattleAutoPlayEnabled())
+	{
+		AutoBattleAccumulator = 0.0f;
+		return false;
+	}
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	if (State.Screen != EGameXXKScreen::Battle
+		|| !State.CardRun.bHasActiveCardBattle
+		|| State.CardRun.ActiveBattle.Phase != EGameXXKCardBattlePhase::Player
+		|| IsBattleHudFixtureReadOnly()
+		|| IsBattlePresentationPending()
+		|| IsEnemyIntentPresentationActive()
+		|| bEnemyIntentCompletionRecoveryPending
+		|| IsCardTargetingActive())
+	{
+		AutoBattleAccumulator = 0.0f;
+		return false;
+	}
+	if (State.CardRun.ActiveBattle.AutomaticResolutionQueue.bActive
+		&& State.CardRun.ActiveBattle.Deck.PendingChoice.Kind == EGameXXKCardPendingChoiceKind::None)
+	{
+		AutoBattleAccumulator = 0.0f;
+		return false;
+	}
+
+	AutoBattleAccumulator += FMath::Max(0.0f, InDeltaTime);
+	if (AutoBattleAccumulator < AutoBattleActionIntervalSeconds)
+	{
+		return false;
+	}
+	AutoBattleAccumulator = 0.0f;
+	return AdvanceAutoBattleStep();
+}
+
+TArray<FName> UGameXXKBattleBoardWidget::BuildStableForcedDiscardSelection(
+	const FGameXXKPendingCardChoice& Pending,
+	const FGameXXKBattleDeckState& Deck) const
+{
+	TArray<FName> Selection;
+	for (const FGameXXKCardInstance& Candidate : Pending.Candidates)
+	{
+		if (Selection.Num() >= Pending.RequiredCount)
+		{
+			break;
+		}
+		if (Deck.Hand.ContainsByPredicate([&Candidate](const FGameXXKCardInstance& Card)
+		{
+			return Card.InstanceId == Candidate.InstanceId;
+		}))
+		{
+			Selection.Add(Candidate.InstanceId);
+		}
+	}
+	return Selection;
+}
+
+TArray<FGameXXKCardInstance> UGameXXKBattleBoardWidget::BuildStablePendingCandidates(
+	const FGameXXKPendingCardChoice& Pending) const
+{
+	TArray<FGameXXKCardInstance> Candidates = Pending.Candidates;
+	Candidates.Sort([](const FGameXXKCardInstance& Left, const FGameXXKCardInstance& Right)
+	{
+		return Left.AcquisitionOrdinal != Right.AcquisitionOrdinal
+			? Left.AcquisitionOrdinal < Right.AcquisitionOrdinal
+			: Left.InstanceId.LexicalLess(Right.InstanceId);
+	});
+	return Candidates;
+}
+
+bool UGameXXKBattleBoardWidget::AdvanceAutoBattleStep()
+{
+	UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return false;
+	}
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	if (State.Screen != EGameXXKScreen::Battle
+		|| !State.CardRun.bHasActiveCardBattle
+		|| State.CardRun.ActiveBattle.Phase != EGameXXKCardBattlePhase::Player)
+	{
+		return false;
+	}
+	const FGameXXKCardBattleRuntime& Runtime = State.CardRun.ActiveBattle;
+	const FGameXXKPendingCardChoice Pending = Runtime.Deck.PendingChoice;
+	switch (Pending.Kind)
+	{
+	case EGameXXKCardPendingChoiceKind::ForcedDiscard:
+		return SubmitPendingForcedDiscards(BuildStableForcedDiscardSelection(Pending, Runtime.Deck));
+	case EGameXXKCardPendingChoiceKind::InsightChooseToHand:
+		return !Pending.InsightTopOrder.IsEmpty()
+			&& SubmitPendingInsightChoice(Pending.InsightTopOrder[0]);
+	case EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand:
+	{
+		const TArray<FGameXXKCardInstance> Candidates = BuildStablePendingCandidates(Pending);
+		return !Candidates.IsEmpty()
+			&& SubmitPendingHeroTaskSearchChoice(Candidates[0].InstanceId);
+	}
+	case EGameXXKCardPendingChoiceKind::None:
+		break;
+	case EGameXXKCardPendingChoiceKind::Invalid:
+	default:
+		return false;
+	}
+
+	const TArray<FGameXXKCardInstance> HandSnapshot = Runtime.Deck.Hand;
+	for (const FGameXXKCardInstance& Card : HandSnapshot)
+	{
+		FGameXXKCardPlayPreview Preview;
+		FString Error;
+		if (!FGameXXKCardBattleAdapter::BuildCardPlayPreview(
+				State,
+				Card.InstanceId,
+				Preview,
+				&Error)
+			|| !Preview.bCanPlay)
+		{
+			continue;
+		}
+
+		FName StableTarget = NAME_None;
+		if (Preview.TargetRequest.bRequiresManualSelection)
+		{
+			for (const FGameXXKCardTargetCandidateView& Candidate : Preview.TargetRequest.CandidateViews)
+			{
+				if (Candidate.bCanSelect && !Candidate.UnitId.IsNone())
+				{
+					StableTarget = Candidate.UnitId;
+					break;
+				}
+			}
+			if (StableTarget.IsNone())
+			{
+				continue;
+			}
+		}
+
+		if (!ClickCardInHand(Card.InstanceId))
+		{
+			return false;
+		}
+		if (!Preview.TargetRequest.bRequiresManualSelection)
+		{
+			return true;
+		}
+		if (ConfirmTargetingUnit(StableTarget))
+		{
+			return true;
+		}
+		CancelBattleTargeting();
+		return false;
+	}
+	return EndCardPlayerPhase();
+}
+
 bool UGameXXKBattleBoardWidget::SubmitPendingInsightChoice(FName PickedInstanceId)
 {
 	if (RejectBattleHudFixtureMutation())
@@ -4011,13 +4192,9 @@ bool UGameXXKBattleBoardWidget::SubmitPendingHeroTaskSearchChoice(FName PickedIn
 		EBattlePresentationContinuation::FinalizeCardMutation);
 }
 
-bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscard(FName DiscardedInstanceId)
+bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscards(const TArray<FName>& DiscardedInstanceIds)
 {
-	if (RejectBattleHudFixtureMutation())
-	{
-		return false;
-	}
-	if (RejectBattlePresentationMutation())
+	if (RejectBattleHudFixtureMutation() || RejectBattlePresentationMutation())
 	{
 		return false;
 	}
@@ -4031,21 +4208,31 @@ bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscard(FName DiscardedInstan
 
 	FGameXXKRuntimeState& MutableState = Subsystem->GetMutableRuntimeState();
 	const FGameXXKPendingCardChoice& PendingChoice = MutableState.CardRun.ActiveBattle.Deck.PendingChoice;
-	if (PendingChoice.Kind != EGameXXKCardPendingChoiceKind::ForcedDiscard)
+	TSet<FName> UniqueIds;
+	for (const FName InstanceId : DiscardedInstanceIds)
 	{
-		LastCardInteractionError = TEXT("当前没有需要弃置的手牌。");
+		UniqueIds.Add(InstanceId);
+	}
+	if (PendingChoice.Kind != EGameXXKCardPendingChoiceKind::ForcedDiscard
+		|| DiscardedInstanceIds.Num() != PendingChoice.RequiredCount
+		|| UniqueIds.Num() != DiscardedInstanceIds.Num())
+	{
+		LastCardInteractionError = TEXT("弃牌数量与当前要求不一致。");
 		RefreshProgrammaticLayout();
 		return false;
 	}
-	const bool bIsCandidate = PendingChoice.Candidates.ContainsByPredicate([DiscardedInstanceId](const FGameXXKCardInstance& Candidate)
+	for (const FName InstanceId : DiscardedInstanceIds)
 	{
-		return Candidate.InstanceId == DiscardedInstanceId;
-	});
-	if (DiscardedInstanceId.IsNone() || !bIsCandidate)
-	{
-		LastCardInteractionError = TEXT("所选卡牌不在当前弃牌列表中。");
-		RefreshProgrammaticLayout();
-		return false;
+		const bool bIsCandidate = PendingChoice.Candidates.ContainsByPredicate([InstanceId](const FGameXXKCardInstance& Candidate)
+		{
+			return Candidate.InstanceId == InstanceId;
+		});
+		if (InstanceId.IsNone() || !bIsCandidate)
+		{
+			LastCardInteractionError = TEXT("所选卡牌不在当前弃牌列表中。");
+			RefreshProgrammaticLayout();
+			return false;
+		}
 	}
 
 	const FGameXXKCardBattleRuntime Before = MutableState.CardRun.ActiveBattle;
@@ -4054,7 +4241,7 @@ bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscard(FName DiscardedInstan
 	FString Error;
 	if (!FGameXXKCardBattleAdapter::SubmitForcedDiscard(
 		MutableState,
-		{DiscardedInstanceId},
+		DiscardedInstanceIds,
 		&Error,
 		&ResumedResults))
 	{
@@ -4069,6 +4256,11 @@ bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscard(FName DiscardedInstan
 		Before,
 		FlattenResumedCardDamageResults(ResumedResults),
 		EBattlePresentationContinuation::FinalizeCardMutation);
+}
+
+bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscard(const FName DiscardedInstanceId)
+{
+	return SubmitPendingForcedDiscards({DiscardedInstanceId});
 }
 
 bool UGameXXKBattleBoardWidget::CancelPendingInsightChoice()
@@ -6165,6 +6357,21 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		EndTurnSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
 
+	AutoBattleButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("BattleAutoPlayButton"));
+	StyleBattleActionButton(AutoBattleButton, FName(TEXT("BattleAutoPlay")));
+	AutoBattleLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleAutoPlayLabel"));
+	AutoBattleLabel->SetText(FText::FromString(IsAutoBattleEnabled() ? TEXT("自动战斗：开") : TEXT("自动战斗：关")));
+	AutoBattleLabel->SetJustification(ETextJustify::Center);
+	AutoBattleLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	AutoBattleButton->AddChild(AutoBattleLabel);
+	AutoBattleButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleAutoBattleClicked);
+	if (UCanvasPanelSlot* AutoBattleSlot = RootCanvas->AddChildToCanvas(AutoBattleButton))
+	{
+		AutoBattleSlot->SetAnchors(FAnchors(1.0f, 1.0f, 1.0f, 1.0f));
+		AutoBattleSlot->SetOffsets(FMargin(-230.0f, -208.0f, 190.0f, 62.0f));
+		AutoBattleSlot->SetAlignment(FVector2D(0.0f, 0.0f));
+	}
+
 	HandCardDetailPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("BattleHandCardDetailPanel"));
 	// Shared tooltip paper and nine-slice margin with the out-of-battle deck tooltips
 	// (T_MasterV2_ItemSlot at the inventory tooltip's fixed 0.065 box margin).
@@ -6734,6 +6941,7 @@ FGameXXKBattlePartyQiLayout UGameXXKBattleBoardWidget::ResolvePartyQiLayout(cons
 {
 	const UCanvasPanelSlot* HandSlot = HandCardBox ? Cast<UCanvasPanelSlot>(HandCardBox->Slot) : nullptr;
 	const UCanvasPanelSlot* EndTurnSlot = EndTurnButton ? Cast<UCanvasPanelSlot>(EndTurnButton->Slot) : nullptr;
+	const UCanvasPanelSlot* AutoBattleSlot = AutoBattleButton ? Cast<UCanvasPanelSlot>(AutoBattleButton->Slot) : nullptr;
 	const FMargin HandOffsets = HandSlot
 		? HandSlot->GetOffsets()
 		: FMargin(-PlayerHandRowSize.X * 0.5f, -305.0f, PlayerHandRowSize.X, PlayerHandRowSize.Y);
@@ -6742,12 +6950,19 @@ FGameXXKBattlePartyQiLayout UGameXXKBattleBoardWidget::ResolvePartyQiLayout(cons
 		? EndTurnSlot->GetOffsets()
 		: FMargin(-230.0f, -138.0f, 190.0f, 62.0f);
 	const FVector2D EndTurnAlignment = EndTurnSlot ? EndTurnSlot->GetAlignment() : FVector2D::ZeroVector;
+	const FAnchors AutoBattleAnchors = AutoBattleSlot ? AutoBattleSlot->GetAnchors() : FAnchors(1.0f, 1.0f, 1.0f, 1.0f);
+	const FMargin AutoBattleOffsets = AutoBattleSlot
+		? AutoBattleSlot->GetOffsets()
+		: FMargin(-230.0f, -208.0f, 190.0f, 62.0f);
+	const FVector2D AutoBattleAlignment = AutoBattleSlot ? AutoBattleSlot->GetAlignment() : FVector2D::ZeroVector;
 
 	FGameXXKBattlePartyQiLayout Layout;
 	const float CenteredQiLeft = EndTurnOffsets.Left + FMath::Max(0.0f, (EndTurnOffsets.Right - PartyQiWidgetSize.X) * 0.5f);
-	const float QiTopAboveEndTurn = EndTurnOffsets.Top - PartyQiHandSafetyGap - PartyQiWidgetSize.Y;
-	Layout.SlotOffsets = FMargin(CenteredQiLeft, QiTopAboveEndTurn, PartyQiWidgetSize.X, PartyQiWidgetSize.Y);
+	const float ActionRailTop = FMath::Min(EndTurnOffsets.Top, AutoBattleOffsets.Top);
+	const float QiTopAboveActionRail = ActionRailTop - PartyQiHandSafetyGap - PartyQiWidgetSize.Y;
+	Layout.SlotOffsets = FMargin(CenteredQiLeft, QiTopAboveActionRail, PartyQiWidgetSize.X, PartyQiWidgetSize.Y);
 	Layout.EndTurnRect = ResolveCanvasSlotRect(EndTurnAnchors, EndTurnOffsets, EndTurnAlignment, CanvasSize);
+	Layout.AutoBattleRect = ResolveCanvasSlotRect(AutoBattleAnchors, AutoBattleOffsets, AutoBattleAlignment, CanvasSize);
 	Layout.ExpandedHandRect = ResolveExpandedHandRect(CanvasSize);
 
 	if (CanvasSize.X <= 0.0f || CanvasSize.Y <= 0.0f)
@@ -6765,7 +6980,9 @@ FGameXXKBattlePartyQiLayout UGameXXKBattleBoardWidget::ResolvePartyQiLayout(cons
 		Layout.SlotOffsets,
 		FVector2D::ZeroVector,
 		CanvasSize);
-	if (DoRectsOverlap(Layout.QiRect, Layout.ExpandedHandRect) || DoRectsOverlap(Layout.QiRect, Layout.EndTurnRect))
+	if (DoRectsOverlap(Layout.QiRect, Layout.ExpandedHandRect)
+		|| DoRectsOverlap(Layout.QiRect, Layout.EndTurnRect)
+		|| DoRectsOverlap(Layout.QiRect, Layout.AutoBattleRect))
 	{
 		float SafeTop = CanvasSize.Y + Layout.SlotOffsets.Top;
 		if (Layout.ExpandedHandRect.bIsValid)
@@ -6775,6 +6992,10 @@ FGameXXKBattlePartyQiLayout UGameXXKBattleBoardWidget::ResolvePartyQiLayout(cons
 		if (Layout.EndTurnRect.bIsValid)
 		{
 			SafeTop = FMath::Min(SafeTop, Layout.EndTurnRect.Min.Y);
+		}
+		if (Layout.AutoBattleRect.bIsValid)
+		{
+			SafeTop = FMath::Min(SafeTop, Layout.AutoBattleRect.Min.Y);
 		}
 		Layout.SlotOffsets.Top = SafeTop - PartyQiHandSafetyGap - PartyQiWidgetSize.Y - CanvasSize.Y;
 		Layout.bUsesHandSafeFallback = true;
@@ -7645,6 +7866,11 @@ void UGameXXKBattleBoardWidget::AdvanceHandCardHoverMotionForTest(float InDeltaT
 void UGameXXKBattleBoardWidget::AdvanceEnemyIntentPresentationForTest(float InDeltaTime)
 {
 	AdvanceEnemyIntentPresentation(InDeltaTime);
+}
+
+bool UGameXXKBattleBoardWidget::AdvanceAutoBattleForTest(const float InDeltaTime)
+{
+	return TickAutoBattle(InDeltaTime);
 }
 #endif
 
@@ -8980,6 +9206,11 @@ void UGameXXKBattleBoardWidget::HandlePendingInsightCancelClicked()
 void UGameXXKBattleBoardWidget::HandleEndTurnClicked()
 {
 	EndCardPlayerPhase();
+}
+
+void UGameXXKBattleBoardWidget::HandleAutoBattleClicked()
+{
+	SetAutoBattleEnabled(!IsAutoBattleEnabled());
 }
 
 void UGameXXKBattleBoardWidget::HandleRewardCardSlot0Clicked()

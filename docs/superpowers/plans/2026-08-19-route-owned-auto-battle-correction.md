@@ -254,7 +254,7 @@ git commit -m "refactor: retire embedded workbench battle"
 - Modify: `Source/GameXXK/Private/UI/GameXXKBattleBoardWidget.cpp`
 - Test: `Source/GameXXK/Private/Tests/GameXXKCardBattleBoardWidgetTest.cpp`
 
-- [ ] **Step 1: Write the failing toggle/session/UI test**
+- [x] **Step 1: Write the failing toggle/session/UI test**
 
 Add `GameXXK.Integration.CardBattle.BoardAutoPlayToggle`:
 
@@ -277,7 +277,7 @@ TestFalse(TEXT("a new application session resets auto battle"), FreshSession->Is
 
 Assert `BattleAutoPlayLabel` reads `自动战斗：关` before the toggle and `自动战斗：开` after the Board refresh.
 
-- [ ] **Step 2: Cold-build and verify RED**
+- [x] **Step 2: Cold-build and verify RED**
 
 Run:
 
@@ -288,7 +288,7 @@ Run:
 
 Expected: compile fails because the new subsystem and Board APIs do not exist.
 
-- [ ] **Step 3: Implement the transient owner and Board control**
+- [x] **Step 3: Implement the transient owner and Board control**
 
 Add the subsystem API and a non-save field:
 
@@ -326,7 +326,7 @@ AutoBattleButton->AddChild(AutoBattleLabel);
 AutoBattleButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleAutoBattleClicked);
 ```
 
-- [ ] **Step 4: Cold-build and verify GREEN**
+- [x] **Step 4: Cold-build and verify GREEN**
 
 Run:
 
@@ -341,7 +341,7 @@ Run:
 
 Expected: the toggle, labels, and existing end-turn/Party Qi/presentation-lock tests all pass.
 
-- [ ] **Step 5: Commit the switch and control**
+- [x] **Step 5: Commit the switch and control**
 
 ```powershell
 git add Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h Source/GameXXK/Private/MVP/GameXXKMVPSubsystem.cpp Source/GameXXK/Public/UI/GameXXKBattleBoardWidget.h Source/GameXXK/Private/UI/GameXXKBattleBoardWidget.cpp Source/GameXXK/Private/Tests/GameXXKCardBattleBoardWidgetTest.cpp
@@ -355,7 +355,7 @@ git commit -m "feat: add battle auto-play session toggle"
 - Modify: `Source/GameXXK/Private/UI/GameXXKBattleBoardWidget.cpp`
 - Test: `Source/GameXXK/Private/Tests/GameXXKCardBattleBoardWidgetTest.cpp`
 
-- [ ] **Step 1: Write failing tests for each owned action boundary**
+- [x] **Step 1: Write failing tests for each owned action boundary**
 
 Add focused tests:
 
@@ -378,7 +378,7 @@ TestTrue(TEXT("the action owns a normal presentation boundary"),
 	Board->GetBattlePresentationQueueCountForTest() > 0 || Board->IsPlayedCardCommitActiveForTest());
 ```
 
-- [ ] **Step 2: Cold-build and verify RED**
+- [x] **Step 2: Cold-build and verify RED**
 
 Run:
 
@@ -388,7 +388,7 @@ Run:
 
 Expected: compile fails because `AdvanceAutoBattleForTest` and the batch forced-discard path do not exist.
 
-- [ ] **Step 3: Implement the cadence and stable decision order**
+- [x] **Step 3: Implement the cadence and stable decision order**
 
 Add `TickAutoBattle`, `AdvanceAutoBattleStep`, and a 0.75-second accumulator to the Board. Call it at the end of `NativeTick`, after visual and enemy-intent advancement.
 
@@ -581,7 +581,7 @@ bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscard(const FName Discarded
 
 No auto code may call `SelectRouteNodeById`, `SelectDungeonNode`, event/shop/reward APIs, retry APIs, or mutate `FGameXXKRuntimeState` directly outside these Board submission implementations.
 
-- [ ] **Step 4: Run focused GREEN tests and full card-battle regression**
+- [x] **Step 4: Run focused GREEN tests and full card-battle regression** *(auto-play 6/6, CardBattle 32/32, MVP.Battle 13/13, Workbench 21/21, Training 21/21; cold UBT succeeded)*
 
 Run:
 
@@ -596,7 +596,7 @@ Run:
 
 Expected: all selected tests pass, including presentation ordering and pending-choice regressions.
 
-- [ ] **Step 5: Commit auto-play behavior**
+- [x] **Step 5: Commit auto-play behavior**
 
 ```powershell
 git add Source/GameXXK/Public/UI/GameXXKBattleBoardWidget.h Source/GameXXK/Private/UI/GameXXKBattleBoardWidget.cpp Source/GameXXK/Private/Tests/GameXXKCardBattleBoardWidgetTest.cpp

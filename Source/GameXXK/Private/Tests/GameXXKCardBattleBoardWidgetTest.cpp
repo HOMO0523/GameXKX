@@ -75,9 +75,11 @@ namespace
 			Test.TestTrue(TEXT("compact Party Qi layout has a valid Qi rectangle"), CompactLayout.QiRect.bIsValid);
 			Test.TestTrue(TEXT("compact Party Qi layout has a valid expanded-hand safety rectangle"), CompactLayout.ExpandedHandRect.bIsValid);
 			Test.TestTrue(TEXT("compact Party Qi layout has a valid end-turn rectangle"), CompactLayout.EndTurnRect.bIsValid);
+			Test.TestTrue(TEXT("compact Party Qi layout has a valid auto-battle rectangle"), CompactLayout.AutoBattleRect.bIsValid);
 			Test.TestTrue(TEXT("compact Party Qi layout moves above the expanded hand safety envelope"), CompactLayout.bUsesHandSafeFallback);
 			Test.TestFalse(TEXT("compact Party Qi never overlaps the five-card expanded hand envelope"), RectanglesOverlap(CompactLayout.QiRect, CompactLayout.ExpandedHandRect));
 			Test.TestFalse(TEXT("compact Party Qi never overlaps end turn"), RectanglesOverlap(CompactLayout.QiRect, CompactLayout.EndTurnRect));
+			Test.TestFalse(TEXT("compact Party Qi never overlaps auto battle"), RectanglesOverlap(CompactLayout.QiRect, CompactLayout.AutoBattleRect));
 			Test.TestTrue(TEXT("compact Party Qi keeps the required 12-unit clearance above the expanded hand envelope within float tolerance"), CompactLayout.ExpandedHandRect.Min.Y - CompactLayout.QiRect.Max.Y >= 11.99f);
 
 			const auto WideLayout = Board->ResolvePartyQiLayoutForTest(FVector2D(1920.0f, 1080.0f));
@@ -85,6 +87,7 @@ namespace
 			Test.TestFalse(TEXT("wide Party Qi retains the right action rail when it is clear of the hand"), WideLayout.bUsesHandSafeFallback);
 			Test.TestFalse(TEXT("wide Party Qi never overlaps the five-card expanded hand envelope"), RectanglesOverlap(WideLayout.QiRect, WideLayout.ExpandedHandRect));
 			Test.TestFalse(TEXT("wide Party Qi never overlaps end turn"), RectanglesOverlap(WideLayout.QiRect, WideLayout.EndTurnRect));
+			Test.TestFalse(TEXT("wide Party Qi never overlaps auto battle"), RectanglesOverlap(WideLayout.QiRect, WideLayout.AutoBattleRect));
 
 			const auto InitialGeometryLayout = Board->ResolvePartyQiLayoutForTest(FVector2D::ZeroVector);
 			Test.TestTrue(TEXT("zero-geometry Party Qi layout uses the conservative hand-safe fallback"), InitialGeometryLayout.bUsesHandSafeFallback);
@@ -779,6 +782,368 @@ namespace
 			+ Target.MedicineDamage
 			+ Target.LinkedDamage;
 	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardAutoPlayToggleTest,
+	"GameXXK.Integration.CardBattle.BoardAutoPlayToggle",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardAutoPlayToggleTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FGameXXKCardPlayPreview Preview;
+	FString Error;
+	TestTrue(FString::Printf(TEXT("auto-play toggle fixture builds an active battle: %s"), *Error),
+		BuildManualTargetCardFixture(
+			Subsystem,
+			CardInstanceId,
+			TargetUnitId,
+			OwnerUnitId,
+			Preview,
+			Error));
+	TestFalse(TEXT("a fresh application session defaults auto battle off"), Subsystem->IsBattleAutoPlayEnabled());
+
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("auto-play board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+
+	UButton* AutoButton = Board->WidgetTree
+		? Cast<UButton>(Board->WidgetTree->FindWidget(TEXT("BattleAutoPlayButton")))
+		: nullptr;
+	UTextBlock* AutoLabel = Board->WidgetTree
+		? Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleAutoPlayLabel")))
+		: nullptr;
+	TestNotNull(TEXT("the existing BattleBoard owns one auto-play button"), AutoButton);
+	TestEqual(TEXT("the fresh-session button reports off"),
+		AutoLabel ? AutoLabel->GetText().ToString() : FString(),
+		FString(TEXT("自动战斗：关")));
+
+	TestTrue(TEXT("player can enable auto battle"), Board->SetAutoBattleEnabled(true));
+	TestTrue(TEXT("the subsystem retains auto battle for later monster battles"), Subsystem->IsBattleAutoPlayEnabled());
+	AutoLabel = Board->WidgetTree
+		? Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleAutoPlayLabel")))
+		: nullptr;
+	TestEqual(TEXT("the enabled button reports on"),
+		AutoLabel ? AutoLabel->GetText().ToString() : FString(),
+		FString(TEXT("自动战斗：开")));
+
+	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
+	TestTrue(TEXT("the same application session retains auto battle between encounters"), Subsystem->IsBattleAutoPlayEnabled());
+	UGameXXKMVPSubsystem* FreshSession = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestFalse(TEXT("a new application session resets auto battle"), FreshSession->IsBattleAutoPlayEnabled());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardAutoPlayManualTargetTest,
+	"GameXXK.Integration.CardBattle.BoardAutoPlayManualTarget",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardAutoPlayManualTargetTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FGameXXKCardPlayPreview Preview;
+	FString Error;
+	TestTrue(FString::Printf(TEXT("manual-target auto fixture builds: %s"), *Error),
+		BuildManualTargetCardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Preview, Error));
+	FGameXXKCardCombatUnit* Target = Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units.FindByPredicate(
+		[TargetUnitId](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == TargetUnitId; });
+	TestNotNull(TEXT("manual-target auto fixture retains its stable target"), Target);
+	if (!Target)
+	{
+		return false;
+	}
+	const int32 TargetHpBefore = Target->HP;
+
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("manual-target auto board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestFalse(TEXT("disabled auto play performs no action"), Board->AdvanceAutoBattleForTest(1.0f));
+	TestTrue(TEXT("disabled auto play keeps the stable card in hand"),
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.ContainsByPredicate(
+			[CardInstanceId](const FGameXXKCardInstance& Card) { return Card.InstanceId == CardInstanceId; }));
+	TestTrue(TEXT("manual-target auto enables"), Board->SetAutoBattleEnabled(true));
+	TestFalse(TEXT("auto play waits for its cadence before acting"), Board->AdvanceAutoBattleForTest(0.5f));
+	TestTrue(TEXT("auto play performs one legal card action at cadence"), Board->AdvanceAutoBattleForTest(0.3f));
+	TestFalse(TEXT("the stable played card leaves hand"),
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.Hand.ContainsByPredicate(
+			[CardInstanceId](const FGameXXKCardInstance& Card) { return Card.InstanceId == CardInstanceId; }));
+	Target = Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units.FindByPredicate(
+		[TargetUnitId](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == TargetUnitId; });
+	TestTrue(TEXT("the first legal stable target receives the card mutation"), Target && Target->HP < TargetHpBefore);
+	TestTrue(TEXT("auto play keeps the normal played-card presentation boundary"),
+		Board->GetBattlePresentationQueueCountForTest() > 0 || Board->IsPlayedCardCommitActiveForTest());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardAutoPlayEndsTurnTest,
+	"GameXXK.Integration.CardBattle.BoardAutoPlayEndsTurn",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardAutoPlayEndsTurnTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FString Error;
+	bool bFoundValidNoPlayFixture = false;
+	for (int32 Seed = 1; Seed <= 256 && !bFoundValidNoPlayFixture; ++Seed)
+	{
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		State = UGameXXKMVPRules::CreateNewGame();
+		State.Screen = EGameXXKScreen::Battle;
+		State.bHasActiveBattle = true;
+		State.ActiveBattleNodeId = 31;
+		State.ActiveBattleEnemies = {MakeEnemy(TEXT("AutoEndTurnEnemy"), TEXT("自动回合敌人"))};
+		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error)
+			|| !FGameXXKCardBattleAdapter::BeginCardBattle(
+				State,
+				EGameXXKNodeKind::Battle,
+				EGameXXKCardTerrain::Plain,
+				Seed,
+				&Error))
+		{
+			continue;
+		}
+		FGameXXKCardBattleRuntime& Runtime = State.CardRun.ActiveBattle;
+		Runtime.Deck.SharedEnergy = 0;
+		for (FGameXXKCardCombatUnit& Unit : Runtime.Units)
+		{
+			Unit.Mana = 0;
+		}
+		bFoundValidNoPlayFixture = !Runtime.Deck.Hand.ContainsByPredicate([&State](const FGameXXKCardInstance& Card)
+		{
+			FGameXXKCardPlayPreview CardPreview;
+			FString PreviewError;
+			return FGameXXKCardBattleAdapter::BuildCardPlayPreview(
+				State,
+				Card.InstanceId,
+				CardPreview,
+				&PreviewError)
+				&& CardPreview.bCanPlay;
+		});
+	}
+	TestTrue(FString::Printf(TEXT("end-turn auto fixture finds a valid zero-resource hand: %s"), *Error),
+		bFoundValidNoPlayFixture);
+	if (!bFoundValidNoPlayFixture)
+	{
+		return false;
+	}
+	FGameXXKRuntimeState EndTurnValidationState = Subsystem->GetRuntimeState();
+	TArray<FGameXXKCardDamageResult> ValidationDamageResults;
+	FString EndTurnValidationError;
+	const bool bEndTurnFixtureValid = FGameXXKCardBattleAdapter::EndPlayerCardPhase(
+		EndTurnValidationState,
+		ValidationDamageResults,
+		&EndTurnValidationError);
+	TestTrue(FString::Printf(TEXT("end-turn auto fixture remains valid: %s"), *EndTurnValidationError),
+		bEndTurnFixtureValid);
+
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("end-turn auto board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestTrue(TEXT("end-turn auto enables"), Board->SetAutoBattleEnabled(true));
+	TestTrue(TEXT("no playable card falls back to the normal end-turn path"), Board->AdvanceAutoBattleForTest(0.8f));
+	TestEqual(TEXT("normal end-turn enters the enemy phase"),
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.Phase,
+		EGameXXKCardBattlePhase::Enemy);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardAutoPlayPendingChoicesTest,
+	"GameXXK.Integration.CardBattle.BoardAutoPlayPendingChoices",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardAutoPlayPendingChoicesTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FGameXXKCardPlayPreview Preview;
+	FString Error;
+	TestTrue(FString::Printf(TEXT("pending-choice auto fixture builds: %s"), *Error),
+		BuildManualTargetCardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Preview, Error));
+	FGameXXKBattleDeckState& Deck = Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Deck;
+	TestTrue(FString::Printf(TEXT("fixture opens an exact two-card forced discard: %s"), *Error),
+		GameXXKCardRules::DrawCards(Deck, 0, 2, &Error));
+	TestEqual(TEXT("forced-discard fixture requires two stable candidates"), Deck.PendingChoice.RequiredCount, 2);
+	TestTrue(TEXT("forced-discard fixture exposes at least two candidates"), Deck.PendingChoice.Candidates.Num() >= 2);
+	if (Deck.PendingChoice.Candidates.Num() < 2)
+	{
+		return false;
+	}
+	const FName FirstDiscardId = Deck.PendingChoice.Candidates[0].InstanceId;
+	const FName SecondDiscardId = Deck.PendingChoice.Candidates[1].InstanceId;
+
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("pending-choice auto board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestTrue(TEXT("pending-choice auto enables"), Board->SetAutoBattleEnabled(true));
+	TestTrue(TEXT("auto play submits the full forced-discard selection"), Board->AdvanceAutoBattleForTest(0.8f));
+	TestEqual(TEXT("forced discard clears through the Board path"),
+		Deck.PendingChoice.Kind,
+		EGameXXKCardPendingChoiceKind::None);
+	TestFalse(TEXT("first stable forced-discard candidate leaves hand"),
+		Deck.Hand.ContainsByPredicate([FirstDiscardId](const FGameXXKCardInstance& Card) { return Card.InstanceId == FirstDiscardId; }));
+	TestFalse(TEXT("second stable forced-discard candidate leaves hand"),
+		Deck.Hand.ContainsByPredicate([SecondDiscardId](const FGameXXKCardInstance& Card) { return Card.InstanceId == SecondDiscardId; }));
+
+	if (Deck.Hand.IsEmpty())
+	{
+		return false;
+	}
+	TestTrue(FString::Printf(TEXT("insight fixture frees one hand slot: %s"), *Error),
+		GameXXKCardRules::MoveHandCardToDiscard(Deck, Deck.Hand.Last().InstanceId, &Error));
+	TestTrue(FString::Printf(TEXT("insight fixture opens a stable offer: %s"), *Error),
+		GameXXKCardRules::BeginInsight(Deck, 2, &Error));
+	TestTrue(TEXT("insight fixture has stable top order"), !Deck.PendingChoice.InsightTopOrder.IsEmpty());
+	if (Deck.PendingChoice.InsightTopOrder.IsEmpty())
+	{
+		return false;
+	}
+	const FName InsightPickId = Deck.PendingChoice.InsightTopOrder[0];
+	TestTrue(TEXT("auto play submits the first stable insight candidate"), Board->AdvanceAutoBattleForTest(0.8f));
+	TestEqual(TEXT("insight clears through the Board path"), Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::None);
+	TestTrue(TEXT("the stable insight pick moves into hand"),
+		Deck.Hand.ContainsByPredicate([InsightPickId](const FGameXXKCardInstance& Card) { return Card.InstanceId == InsightPickId; }));
+
+	FGameXXKCardBattleRuntime& Runtime = Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle;
+	const FGameXXKCardInstance* SearchCandidate = Runtime.Deck.DrawPile.FindByPredicate([&Runtime](const FGameXXKCardInstance& Card)
+	{
+		return Runtime.EquippedHeroCardIds.Contains(Card.CardId);
+	});
+	if (!SearchCandidate)
+	{
+		SearchCandidate = Runtime.Deck.DiscardPile.FindByPredicate([&Runtime](const FGameXXKCardInstance& Card)
+		{
+			return Runtime.EquippedHeroCardIds.Contains(Card.CardId);
+		});
+	}
+	TestNotNull(TEXT("Hero-task search fixture finds a real equipped protagonist card"), SearchCandidate);
+	if (!SearchCandidate)
+	{
+		return false;
+	}
+	const FGameXXKCardInstance OfferedCandidate = *SearchCandidate;
+	Runtime.HeroSpellTask = FGameXXKHeroSpellTaskRuntime();
+	Runtime.HeroSpellTask.bActive = true;
+	Runtime.HeroSpellTask.LockedHeroCardIds = Runtime.EquippedHeroCardIds;
+	Runtime.HeroSpellTask.StarterReward = EGameXXKHeroSpellTaskReward::Universal;
+	Runtime.HeroSpellTask.StarterOwnerUnitId = OfferedCandidate.OwnerUnitId;
+	Deck.PendingChoice = FGameXXKPendingCardChoice();
+	Deck.PendingChoice.Kind = EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand;
+	Deck.PendingChoice.Candidates = {OfferedCandidate};
+	Deck.PendingChoice.RequiredCount = 1;
+	Deck.PendingChoice.RequiredHandPickCount = 1;
+	Deck.PendingChoice.bCanCancel = false;
+	const bool bHeroTaskFixtureValid = GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &Error);
+	TestTrue(FString::Printf(TEXT("Hero-task search fixture remains valid: %s"), *Error),
+		bHeroTaskFixtureValid);
+	TestTrue(TEXT("auto play submits the first stable Hero-task candidate"), Board->AdvanceAutoBattleForTest(0.8f));
+	TestEqual(TEXT("Hero-task search clears through the Board path"),
+		Deck.PendingChoice.Kind,
+		EGameXXKCardPendingChoiceKind::None);
+	TestTrue(TEXT("the stable Hero-task pick moves into hand"),
+		Deck.Hand.ContainsByPredicate([OfferedCandidate](const FGameXXKCardInstance& Card)
+		{
+			return Card.InstanceId == OfferedCandidate.InstanceId;
+		}));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardAutoPlayGuardsTest,
+	"GameXXK.Integration.CardBattle.BoardAutoPlayGuards",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardAutoPlayGuardsTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FGameXXKCardPlayPreview Preview;
+	FString Error;
+	TestTrue(FString::Printf(TEXT("auto guard fixture builds: %s"), *Error),
+		BuildManualTargetCardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Preview, Error));
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("auto guard board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestTrue(TEXT("auto guard enables"), Board->SetAutoBattleEnabled(true));
+
+	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
+	const FGameXXKRuntimeState RouteBefore = Subsystem->GetRuntimeState();
+	TestFalse(TEXT("auto play performs no action on the route map"), Board->AdvanceAutoBattleForTest(1.0f));
+	TestTrue(TEXT("route nodes and screen remain byte-for-byte player-owned"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&Subsystem->GetRuntimeState(), &RouteBefore, PPF_None));
+
+	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
+	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+	const FGameXXKRuntimeState VictoryBefore = Subsystem->GetRuntimeState();
+	TestFalse(TEXT("auto play performs no action after Victory"), Board->AdvanceAutoBattleForTest(1.0f));
+	TestTrue(TEXT("Victory state remains unchanged"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&Subsystem->GetRuntimeState(), &VictoryBefore, PPF_None));
+
+	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Defeat;
+	const FGameXXKRuntimeState DefeatBefore = Subsystem->GetRuntimeState();
+	TestFalse(TEXT("auto play performs no action after Defeat"), Board->AdvanceAutoBattleForTest(1.0f));
+	TestTrue(TEXT("Defeat state remains unchanged"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&Subsystem->GetRuntimeState(), &DefeatBefore, PPF_None));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardAutoPlayPresentationGateTest,
+	"GameXXK.Integration.CardBattle.BoardAutoPlayPresentationGate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardAutoPlayPresentationGateTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName CardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FGameXXKCardPlayPreview Preview;
+	FString Error;
+	TestTrue(FString::Printf(TEXT("presentation-gate fixture builds: %s"), *Error),
+		BuildManualTargetCardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, Preview, Error));
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("presentation-gate board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestTrue(TEXT("manual setup enters targeting"), Board->ClickCardInHand(CardInstanceId));
+	TestTrue(TEXT("manual setup commits through the normal presentation path"), Board->ConfirmTargetingUnit(TargetUnitId));
+	TestTrue(TEXT("manual setup owns a pending presentation"),
+		Board->GetBattlePresentationQueueCountForTest() > 0 || Board->IsPlayedCardCommitActiveForTest());
+	TestTrue(TEXT("presentation-gate auto enables"), Board->SetAutoBattleEnabled(true));
+	const FGameXXKRuntimeState DuringPresentation = Subsystem->GetRuntimeState();
+	TestFalse(TEXT("auto play waits while card presentation is pending"), Board->AdvanceAutoBattleForTest(1.0f));
+	TestTrue(TEXT("waiting for presentation performs no second mutation"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&Subsystem->GetRuntimeState(), &DuringPresentation, PPF_None));
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

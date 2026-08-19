@@ -292,6 +292,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool SelectRouteNodeById(int32 NodeId);
 
+	/** Session-only preference; retained across monster encounters and never serialized. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Auto")
+	bool IsBattleAutoPlayEnabled() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Auto")
+	bool SetBattleAutoPlayEnabled(bool bEnabled);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool ResolveBattleVictory(bool bBossBattle);
 
@@ -532,6 +539,10 @@ private:
 
 	UPROPERTY(Transient)
 	FText LastSaveLoadError;
+
+	/** Never serialized: a fresh application process always starts with auto play disabled. */
+	UPROPERTY(Transient)
+	bool bBattleAutoPlayEnabled = false;
 
 	FGameXXKPersistenceBoundaryDelegate PersistenceBoundaryDelegate;
 

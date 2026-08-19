@@ -5,6 +5,8 @@ import unittest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WORKBENCH_HEADER = PROJECT_ROOT / "Source/GameXXK/Public/UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 WORKBENCH_CPP = PROJECT_ROOT / "Source/GameXXK/Private/UI/GameXXKDesktopTrainingWorkbenchWidget.cpp"
+BATTLE_BOARD_CPP = PROJECT_ROOT / "Source/GameXXK/Private/UI/GameXXKBattleBoardWidget.cpp"
+MVP_SUBSYSTEM_HEADER = PROJECT_ROOT / "Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h"
 
 
 class DesktopTrainingRouteOwnershipTest(unittest.TestCase):
@@ -46,6 +48,42 @@ class DesktopTrainingRouteOwnershipTest(unittest.TestCase):
         ):
             with self.subTest(forbidden=forbidden):
                 self.assertNotIn(forbidden, action)
+
+    def test_auto_battle_uses_only_board_owned_combat_actions(self) -> None:
+        source = BATTLE_BOARD_CPP.read_text(encoding="utf-8")
+        action = source[
+            source.index("bool UGameXXKBattleBoardWidget::AdvanceAutoBattleStep()") :
+            source.index("bool UGameXXKBattleBoardWidget::SubmitPendingInsightChoice")
+        ]
+        for required in (
+            "ClickCardInHand",
+            "ConfirmTargetingUnit",
+            "SubmitPendingForcedDiscards",
+            "SubmitPendingInsightChoice",
+            "SubmitPendingHeroTaskSearchChoice",
+            "EndCardPlayerPhase",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, action)
+        for forbidden in (
+            "SelectRouteNodeById",
+            "SelectDungeonNode",
+            "ResolveRouteEncounterChoice",
+            "ResolveEventReward",
+            "ChoosePendingBattleRewardOption",
+            "SkipPendingRouteReward",
+            "FailDungeonToTown",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, action)
+
+    def test_auto_battle_preference_is_transient_not_save_state(self) -> None:
+        header = MVP_SUBSYSTEM_HEADER.read_text(encoding="utf-8")
+        field = "bool bBattleAutoPlayEnabled = false;"
+        self.assertIn(field, header)
+        prefix = header[max(0, header.index(field) - 120) : header.index(field)]
+        self.assertIn("UPROPERTY(Transient)", prefix)
+        self.assertNotIn("SaveGame", prefix)
 
 
 if __name__ == "__main__":

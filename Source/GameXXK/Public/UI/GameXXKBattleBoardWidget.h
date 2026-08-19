@@ -44,6 +44,7 @@ struct FGameXXKBattlePartyQiLayout
 	FBox2D QiRect = FBox2D(EForceInit::ForceInit);
 	FBox2D ExpandedHandRect = FBox2D(EForceInit::ForceInit);
 	FBox2D EndTurnRect = FBox2D(EForceInit::ForceInit);
+	FBox2D AutoBattleRect = FBox2D(EForceInit::ForceInit);
 	bool bUsesHandSafeFallback = false;
 };
 
@@ -325,6 +326,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Cards")
 	bool EndCardPlayerPhase();
 
+	/** Updates the session-level auto-play preference owned by the MVP subsystem. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Auto")
+	bool SetAutoBattleEnabled(bool bEnabled);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Auto")
+	bool IsAutoBattleEnabled() const;
+
 	/** Retries a terminal enemy-phase completion after a recoverable board error. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Cards")
 	bool RetryEnemyIntentCompletion();
@@ -569,6 +577,8 @@ public:
 	void AdvanceHandCardHoverMotionForTest(float InDeltaTime);
 	/** Test seam for the timed saved-enemy-intent presentation; production animation advances through NativeTick. */
 	void AdvanceEnemyIntentPresentationForTest(float InDeltaTime);
+	/** Drives the exact production auto-play cadence without requiring a live Slate tick. */
+	bool AdvanceAutoBattleForTest(float InDeltaTime);
 #endif
 
 private:
@@ -699,6 +709,14 @@ private:
 	void RefreshPendingCardChoices();
 	void RefreshPendingRewardChoices();
 	void RefreshRouteRewardReplacementChoices();
+	bool TickAutoBattle(float InDeltaTime);
+	bool AdvanceAutoBattleStep();
+	bool SubmitPendingForcedDiscards(const TArray<FName>& DiscardedInstanceIds);
+	TArray<FName> BuildStableForcedDiscardSelection(
+		const FGameXXKPendingCardChoice& Pending,
+		const FGameXXKBattleDeckState& Deck) const;
+	TArray<FGameXXKCardInstance> BuildStablePendingCandidates(
+		const FGameXXKPendingCardChoice& Pending) const;
 	void ClearCardTooltipHoverState();
 	void SetHandCardHoverState(int32 SlotIndex, bool bHovered);
 	void SetRewardCardHoverState(int32 SlotIndex, bool bHovered);
@@ -838,6 +856,9 @@ private:
 
 	UFUNCTION()
 	void HandleEndTurnClicked();
+
+	UFUNCTION()
+	void HandleAutoBattleClicked();
 
 	UFUNCTION()
 	void HandleRewardCardSlot0Clicked();
@@ -1063,6 +1084,12 @@ private:
 	TObjectPtr<UButton> EndTurnButton;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UButton> AutoBattleButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> AutoBattleLabel;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UButton> SkipRewardButton;
 
 	UPROPERTY(Transient)
@@ -1196,6 +1223,9 @@ private:
 	int32 HoveredEnemyIntentSlot = INDEX_NONE;
 
 	EGameXXKEnemyIntentPresentationState EnemyIntentPresentationState = EGameXXKEnemyIntentPresentationState::None;
+
+	static constexpr float AutoBattleActionIntervalSeconds = 0.75f;
+	float AutoBattleAccumulator = 0.0f;
 
 	float EnemyIntentPresentationElapsed = 0.0f;
 

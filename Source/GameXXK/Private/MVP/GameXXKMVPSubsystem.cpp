@@ -2702,6 +2702,17 @@ bool UGameXXKMVPSubsystem::SelectRouteNodeById(int32 NodeId)
 	return UGameXXKMVPRules::SelectRouteNodeById(RuntimeState, NodeId);
 }
 
+bool UGameXXKMVPSubsystem::IsBattleAutoPlayEnabled() const
+{
+	return bBattleAutoPlayEnabled;
+}
+
+bool UGameXXKMVPSubsystem::SetBattleAutoPlayEnabled(const bool bEnabled)
+{
+	bBattleAutoPlayEnabled = bEnabled;
+	return true;
+}
+
 bool UGameXXKMVPSubsystem::ResolveBattleVictory(bool bBossBattle)
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
