@@ -8,7 +8,11 @@
 #include "Components/Button.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
+#include "Components/ScrollBox.h"
 #include "Components/ScrollBoxSlot.h"
+#include "Components/SizeBox.h"
 #include "Components/Widget.h"
 #include "Engine/GameInstance.h"
 #include "Engine/Texture2D.h"
@@ -403,6 +407,191 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("sparse adapter executes unlocked battle by real node id"), SparseRouteWidget->ExecuteRouteNodeById(20));
 	TestEqual(TEXT("sparse battle node opens battle screen"), SparseSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
 
+	return true;
+}
+
+namespace
+{
+	bool RectanglesOverlap(const FBox2D& First, const FBox2D& Second)
+	{
+		return First.bIsValid
+			&& Second.bIsValid
+			&& First.Min.X < Second.Max.X
+			&& First.Max.X > Second.Min.X
+			&& First.Min.Y < Second.Max.Y
+			&& First.Max.Y > Second.Min.Y;
+	}
+
+	bool BuildRouteAbandonWidgetFixture(
+		UGameXXKMVPSubsystem*& OutSubsystem,
+		UGameXXKOneGameRouteMapWidget*& OutWidget)
+	{
+		OutSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		if (!OutSubsystem
+			|| !OutSubsystem->StartGame()
+			|| !OutSubsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan())
+			|| !OutSubsystem->AcceptQuest()
+			|| !OutSubsystem->OpenDungeonFromTownExit())
+		{
+			return false;
+		}
+		OutWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
+		OutWidget->SetMVPSubsystem(OutSubsystem);
+		if (!OutWidget->Initialize())
+		{
+			return false;
+		}
+		OutWidget->NativeConstruct();
+		OutWidget->SetRouteMapViewportGeometry(FVector2D::ZeroVector, FVector2D(1920.0f, 1080.0f));
+		OutWidget->RefreshFromState();
+		return true;
+	}
+
+	bool RouteRuntimeStatesEqual(const FGameXXKRuntimeState& Left, const FGameXXKRuntimeState& Right)
+	{
+		return FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&Left, &Right, PPF_None);
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteMapAbandonFixedGeometryTest,
+	"GameXXK.MVP.RouteMap.AbandonConfirmation.FixedTopRightGeometry",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteMapAbandonFixedGeometryTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = nullptr;
+	UGameXXKOneGameRouteMapWidget* Widget = nullptr;
+	if (!TestTrue(TEXT("fixed-close fixture builds"), BuildRouteAbandonWidgetFixture(Subsystem, Widget)))
+	{
+		return false;
+	}
+	UOverlay* RootOverlay = Widget->GetRouteRootOverlayForTest();
+	USizeBox* CloseContainer = Widget->GetRouteCloseChallengeContainerForTest();
+	UButton* CloseButton = Widget->GetRouteCloseChallengeButtonForTest();
+	TestNotNull(TEXT("route map exposes its fixed RootOverlay"), RootOverlay);
+	TestNotNull(TEXT("route map owns a fixed Close Challenge container"), CloseContainer);
+	TestNotNull(TEXT("route map owns a Close Challenge button"), CloseButton);
+	TestTrue(TEXT("Close Challenge container is a direct RootOverlay child"), CloseContainer && CloseContainer->GetParent() == RootOverlay);
+	TestNotNull(TEXT("Close Challenge uses an Overlay slot rather than the scroll canvas"), CloseContainer ? Cast<UOverlaySlot>(CloseContainer->Slot) : nullptr);
+	TestTrue(TEXT("Close Challenge is layered after the route scroll box"),
+		RootOverlay && CloseContainer && Widget->GetRouteScrollBoxForTest()
+		&& RootOverlay->GetChildIndex(CloseContainer) > RootOverlay->GetChildIndex(Widget->GetRouteScrollBoxForTest()));
+
+	for (const FVector2D ViewportSize : {
+		FVector2D(1280.0f, 720.0f),
+		FVector2D(1672.0f, 941.0f),
+		FVector2D(1920.0f, 1080.0f)})
+	{
+		const FBox2D Rect = Widget->ResolveRouteCloseChallengeRectForTest(ViewportSize);
+		TestTrue(TEXT("fixed Close Challenge rectangle is valid"), Rect.bIsValid);
+		TestTrue(TEXT("fixed Close Challenge stays inside viewport"),
+			Rect.Min.X >= 0.0 && Rect.Min.Y >= 0.0 && Rect.Max.X <= ViewportSize.X && Rect.Max.Y <= ViewportSize.Y);
+		const double Scale = FMath::Min(ViewportSize.X / 1920.0, ViewportSize.Y / 1080.0);
+		const FBox2D SummaryRect(
+			FVector2D(28.0, 24.0) * Scale,
+			FVector2D(360.0, 180.0) * Scale);
+		const FBox2D ScrollBarRect(
+			FVector2D(ViewportSize.X - 28.0 * Scale, 0.0),
+			ViewportSize);
+		TestFalse(TEXT("fixed Close Challenge avoids the left summary"), RectanglesOverlap(Rect, SummaryRect));
+		TestFalse(TEXT("fixed Close Challenge leaves a scrollbar safety gap"), RectanglesOverlap(Rect, ScrollBarRect));
+	}
+	const FBox2D FullHdRect = Widget->ResolveRouteCloseChallengeRectForTest(FVector2D(1920.0f, 1080.0f));
+	TestTrue(TEXT("full-HD Close Challenge x matches Luna evidence"), FMath::IsNearlyEqual(FullHdRect.Min.X, 1656.0, 0.01));
+	TestTrue(TEXT("full-HD Close Challenge y matches Luna evidence"), FMath::IsNearlyEqual(FullHdRect.Min.Y, 48.0, 0.01));
+	TestTrue(TEXT("full-HD Close Challenge size matches Luna evidence"), FullHdRect.GetSize().Equals(FVector2D(192.0f, 64.0f), 0.01f));
+	const FBox2D BeforeScrollRect = Widget->ResolveRouteCloseChallengeRectForTest(FVector2D(1920.0f, 1080.0f));
+	Widget->ApplyRouteMapDragDeltaForTest(160.0f);
+	TestTrue(TEXT("scrolling route content never moves fixed Close Challenge"),
+		Widget->ResolveRouteCloseChallengeRectForTest(FVector2D(1920.0f, 1080.0f)).Min.Equals(BeforeScrollRect.Min, 0.01f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteMapAbandonPreviewCancelTest,
+	"GameXXK.MVP.RouteMap.AbandonConfirmation.PreviewCancelAndInputGate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteMapAbandonPreviewCancelTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = nullptr;
+	UGameXXKOneGameRouteMapWidget* Widget = nullptr;
+	if (!TestTrue(TEXT("preview-cancel fixture builds"), BuildRouteAbandonWidgetFixture(Subsystem, Widget)))
+	{
+		return false;
+	}
+	Subsystem->GetMutableRuntimeState().CardRun.RouteTravelMoney = 99;
+	Subsystem->GetMutableRuntimeState().CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 29;
+	Widget->RefreshFromState();
+	const FGameXXKRuntimeState BeforeModal = Subsystem->GetRuntimeState();
+	const float ScrollBeforeModal = Widget->GetLastAppliedScrollOffsetForTest();
+	const int32 ReachableNodeId = Subsystem->GetRuntimeState().ReachableRouteNodeIds[0];
+
+	TestTrue(TEXT("Close Challenge opens settlement confirmation"), Widget->OpenRouteAbandonConfirmationForTest());
+	TestTrue(TEXT("route abandon confirmation is visible"), Widget->IsRouteAbandonConfirmationOpenForTest());
+	TestTrue(TEXT("valid route enables settlement confirmation"), Widget->IsRouteAbandonConfirmEnabledForTest());
+	TestEqual(TEXT("settlement preview displays exact conversion"),
+		Widget->GetRouteAbandonPreviewTextForTest().ToString(),
+		FString(TEXT("永久金币 +4 / 强化石 +2")));
+	TestTrue(TEXT("opening preview has no runtime side effects"), RouteRuntimeStatesEqual(Subsystem->GetRuntimeState(), BeforeModal));
+	TestFalse(TEXT("modal disables route scrolling"), Widget->GetRouteScrollBoxForTest() && Widget->GetRouteScrollBoxForTest()->GetIsEnabled());
+	TestFalse(TEXT("modal blocks drag scroll"), Widget->ApplyRouteMapDragDeltaForTest(160.0f));
+	TestEqual(TEXT("modal preserves scroll offset"), Widget->GetLastAppliedScrollOffsetForTest(), ScrollBeforeModal);
+	TestFalse(TEXT("modal blocks route node execution"), Widget->ExecuteRouteNodeById(ReachableNodeId));
+	TestTrue(TEXT("blocked route input preserves runtime"), RouteRuntimeStatesEqual(Subsystem->GetRuntimeState(), BeforeModal));
+
+	TestTrue(TEXT("Continue Challenge cancels settlement confirmation"), Widget->CancelRouteAbandonConfirmationForTest());
+	TestFalse(TEXT("cancel hides route abandon confirmation"), Widget->IsRouteAbandonConfirmationOpenForTest());
+	TestTrue(TEXT("cancel preserves runtime exactly"), RouteRuntimeStatesEqual(Subsystem->GetRuntimeState(), BeforeModal));
+	TestTrue(TEXT("cancel restores route scrolling"), Widget->GetRouteScrollBoxForTest() && Widget->GetRouteScrollBoxForTest()->GetIsEnabled());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteMapAbandonConfirmAndFailureTest,
+	"GameXXK.MVP.RouteMap.AbandonConfirmation.ConfirmOnceAndFailure",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteMapAbandonConfirmAndFailureTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = nullptr;
+	UGameXXKOneGameRouteMapWidget* Widget = nullptr;
+	if (!TestTrue(TEXT("confirm fixture builds"), BuildRouteAbandonWidgetFixture(Subsystem, Widget)))
+	{
+		return false;
+	}
+	Subsystem->GetMutableRuntimeState().CardRun.RouteTravelMoney = 99;
+	Subsystem->GetMutableRuntimeState().CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 29;
+	const int32 GoldBefore = Subsystem->GetRuntimeState().PlayerGold;
+	const int32 StonesBefore = UGameXXKMVPRules::GetItemCount(
+		Subsystem->GetRuntimeState(),
+		UGameXXKMVPRules::ItemEnhancementStone());
+	TestTrue(TEXT("confirm fixture opens modal"), Widget->OpenRouteAbandonConfirmationForTest());
+	TestTrue(TEXT("confirm applies abandoned settlement"), Widget->ConfirmRouteAbandonForTest());
+	TestEqual(TEXT("confirm returns to town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestFalse(TEXT("confirm ends active route"), Subsystem->GetRuntimeState().bDungeonActive);
+	TestEqual(TEXT("confirm awards previewed gold once"), Subsystem->GetRuntimeState().PlayerGold, GoldBefore + 4);
+	TestEqual(TEXT("confirm awards previewed stones once"),
+		UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemEnhancementStone()),
+		StonesBefore + 2);
+	TestFalse(TEXT("a second confirmation is rejected"), Widget->ConfirmRouteAbandonForTest());
+	TestEqual(TEXT("a second confirmation cannot duplicate gold"), Subsystem->GetRuntimeState().PlayerGold, GoldBefore + 4);
+
+	UGameXXKMVPSubsystem* InvalidSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestTrue(TEXT("invalid preview fixture starts"), InvalidSubsystem->StartGame());
+	InvalidSubsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::DungeonMap;
+	InvalidSubsystem->GetMutableRuntimeState().CurrentMapId = TEXT("HuangshanRoute");
+	UGameXXKOneGameRouteMapWidget* InvalidWidget = NewObject<UGameXXKOneGameRouteMapWidget>();
+	InvalidWidget->SetMVPSubsystem(InvalidSubsystem);
+	TestTrue(TEXT("invalid preview widget initializes"), InvalidWidget->Initialize());
+	InvalidWidget->NativeConstruct();
+	const FGameXXKRuntimeState InvalidBefore = InvalidSubsystem->GetRuntimeState();
+	TestTrue(TEXT("invalid preview still opens an explanatory modal"), InvalidWidget->OpenRouteAbandonConfirmationForTest());
+	TestFalse(TEXT("invalid preview disables settlement confirmation"), InvalidWidget->IsRouteAbandonConfirmEnabledForTest());
+	TestFalse(TEXT("invalid preview exposes a concrete error"), InvalidWidget->GetRouteAbandonErrorForTest().IsEmpty());
+	TestFalse(TEXT("invalid preview cannot confirm"), InvalidWidget->ConfirmRouteAbandonForTest());
+	TestTrue(TEXT("failed settlement remains atomic"), RouteRuntimeStatesEqual(InvalidSubsystem->GetRuntimeState(), InvalidBefore));
 	return true;
 }
 

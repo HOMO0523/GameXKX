@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/SlateWrapperTypes.h"
 #include "GameXXKMVPRules.h"
+#include "Input/Reply.h"
 #include "UI/GameXXKMVPWidgetBase.h"
 #include "GameXXKOneGameRouteMapWidget.generated.h"
 
@@ -154,6 +155,7 @@ public:
 
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMap")
 	void RefreshFromState();
@@ -241,6 +243,17 @@ public:
 	bool IsRouteNodeButtonBoundForTest(int32 ButtonIndex) const;
 #if WITH_DEV_AUTOMATION_TESTS
 	UScrollBox* GetRouteScrollBoxForTest() const;
+	UOverlay* GetRouteRootOverlayForTest() const;
+	USizeBox* GetRouteCloseChallengeContainerForTest() const;
+	UButton* GetRouteCloseChallengeButtonForTest() const;
+	FBox2D ResolveRouteCloseChallengeRectForTest(FVector2D ViewportSize) const;
+	bool OpenRouteAbandonConfirmationForTest();
+	bool CancelRouteAbandonConfirmationForTest();
+	bool ConfirmRouteAbandonForTest();
+	bool IsRouteAbandonConfirmationOpenForTest() const;
+	bool IsRouteAbandonConfirmEnabledForTest() const;
+	FText GetRouteAbandonPreviewTextForTest() const;
+	FString GetRouteAbandonErrorForTest() const;
 #endif
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameXXK|RouteMap")
@@ -331,7 +344,23 @@ private:
 	UFUNCTION()
 	void HandleRouteUserScrolled(float CurrentOffset);
 
+	UFUNCTION()
+	void HandleCloseChallengeClicked();
+
+	UFUNCTION()
+	void HandleRouteAbandonConfirmClicked();
+
+	UFUNCTION()
+	void HandleRouteAbandonCancelClicked();
+
 	void BuildProgrammaticLayout();
+	void RefreshFixedControls();
+	FBox2D ResolveRouteCloseChallengeRect(FVector2D ViewportSize) const;
+	bool OpenRouteAbandonConfirmation();
+	bool CancelRouteAbandonConfirmation();
+	bool ConfirmRouteAbandon();
+	bool CanConfirmRouteAbandon(FString* OutReason = nullptr) const;
+	void RefreshRouteAbandonConfirmation();
 	FGameXXKRouteMapSummaryView BuildRouteSummaryView() const;
 	void UpdateRouteSummary();
 	void ConfigureNodeButton(int32 ButtonIndex, const FGameXXKOneGameRouteNode* Node);
@@ -422,6 +451,27 @@ private:
 	TObjectPtr<UScrollBox> RouteScrollBox;
 
 	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> RouteCloseChallengeContainer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> RouteCloseChallengeButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UOverlay> RouteAbandonModalOverlay;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> RouteAbandonConfirmButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> RouteAbandonCancelButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> RouteAbandonPreviewText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> RouteAbandonErrorText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UBorder> RouteSummaryBorder;
 
 	UPROPERTY(Transient)
@@ -507,6 +557,11 @@ private:
 
 	UPROPERTY(Transient)
 	bool bRouteMapDragMoved = false;
+
+	bool bRouteAbandonConfirmationOpen = false;
+	bool bRouteAbandonPreviewValid = false;
+	FGameXXKRouteSettlementReceipt RouteAbandonPreview;
+	FString RouteAbandonError;
 
 	UPROPERTY(Transient)
 	FVector2D RouteMapDragStartScreenPosition = FVector2D::ZeroVector;

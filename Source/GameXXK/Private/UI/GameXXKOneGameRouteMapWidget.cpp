@@ -6,6 +6,8 @@
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/ContentWidget.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
@@ -18,7 +20,11 @@
 #include "Components/Widget.h"
 #include "Engine/Texture2D.h"
 #include "Input/Reply.h"
+#include "InputCoreTypes.h"
+#include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "Styling/SlateBrush.h"
+#include "Styling/SlateTypes.h"
 #include "UI/GameXXKMVPCommandRouter.h"
 #include "UI/GameXXKPartyDeckUiStyle.h"
 
@@ -43,6 +49,12 @@ namespace
 	static const TCHAR* OneGameEventTexturePath = TEXT("/Game/1Game/Texture/问号.问号");
 	static const TCHAR* OneGameEventDisabledTexturePath = TEXT("/Game/1Game/Texture/问号灰色.问号灰色");
 	static const TCHAR* OneGameRouteBackgroundTexturePath = TEXT("/Game/1Game/Texture/图层_1.图层_1");
+	static const TCHAR* RouteActionButtonTexturePath = TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_InkButtonBase.T_InkButtonBase");
+	static const TCHAR* RouteModalPaperTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
+	const FVector2D RouteViewportDesignSize(1920.0f, 1080.0f);
+	const FVector2D RouteCloseChallengePosition(1656.0f, 48.0f);
+	const FVector2D RouteCloseChallengeSize(192.0f, 64.0f);
+	const FVector2D RouteAbandonModalSize(640.0f, 360.0f);
 	const FVector2D MinimumRouteContentSize(640.0f, 1040.0f);
 	const float RouteHorizontalPadding = 96.0f;
 	const float RouteTopPadding = 96.0f;
@@ -55,6 +67,39 @@ namespace
 	const float RouteCenteredLaneMaxWidth = 960.0f;
 	const float RouteLineThickness = 24.0f;
 	const float RouteClickDragThresholdSq = 64.0f;
+
+	FSlateBrush BuildRouteTextureBrush(
+		UTexture2D* Texture,
+		const FVector2D& ImageSize,
+		const FLinearColor& Tint,
+		const ESlateBrushDrawType::Type DrawAs = ESlateBrushDrawType::Image,
+		const FMargin& Margin = FMargin(0.0f))
+	{
+		FSlateBrush Brush;
+		Brush.SetResourceObject(Texture);
+		Brush.ImageSize = ImageSize;
+		Brush.DrawAs = DrawAs;
+		Brush.Margin = Margin;
+		Brush.TintColor = FSlateColor(Tint);
+		return Brush;
+	}
+
+	void StyleRouteActionButton(UButton* Button, UTexture2D* Texture)
+	{
+		if (!Button || !Texture)
+		{
+			return;
+		}
+		const FLinearColor NormalTint(0.18f, 0.29f, 0.24f, 0.94f);
+		FButtonStyle Style;
+		Style.SetNormal(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, NormalTint));
+		Style.SetHovered(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, FLinearColor(0.24f, 0.38f, 0.31f, 1.0f)));
+		Style.SetPressed(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, FLinearColor(0.13f, 0.22f, 0.18f, 1.0f)));
+		Style.SetDisabled(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, FLinearColor(0.34f, 0.36f, 0.34f, 0.52f)));
+		Style.NormalPadding = FMargin(18.0f, 10.0f);
+		Style.PressedPadding = FMargin(18.0f, 12.0f, 18.0f, 8.0f);
+		Button->SetStyle(Style);
+	}
 
 	uint32 CalculateRouteTopologyHash(const FGameXXKRuntimeState& State)
 	{
@@ -180,10 +225,26 @@ void UGameXXKOneGameRouteMapWidget::NativeConstruct()
 	RefreshFromState();
 }
 
+FReply UGameXXKOneGameRouteMapWidget::NativeOnKeyDown(
+	const FGeometry& InGeometry,
+	const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::Escape && bRouteAbandonConfirmationOpen)
+	{
+		CancelRouteAbandonConfirmation();
+		return FReply::Handled();
+	}
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+}
+
 FEventReply UGameXXKOneGameRouteMapWidget::HandleRouteDragSurfaceMouseButtonDown(
 	FGeometry MyGeometry,
 	const FPointerEvent& MouseEvent)
 {
+	if (bRouteAbandonConfirmationOpen)
+	{
+		return FEventReply(true);
+	}
 	if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton || !RouteDragSurface)
 	{
 		return FEventReply(false);
@@ -202,6 +263,11 @@ FEventReply UGameXXKOneGameRouteMapWidget::HandleRouteDragSurfaceMouseButtonUp(
 	FGeometry MyGeometry,
 	const FPointerEvent& MouseEvent)
 {
+	if (bRouteAbandonConfirmationOpen)
+	{
+		bRouteMapDragActive = false;
+		return FEventReply(true);
+	}
 	if (!bRouteMapDragActive || MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
 	{
 		return FEventReply(false);
@@ -226,6 +292,11 @@ FEventReply UGameXXKOneGameRouteMapWidget::HandleRouteDragSurfaceMouseMove(
 	FGeometry MyGeometry,
 	const FPointerEvent& MouseEvent)
 {
+	if (bRouteAbandonConfirmationOpen)
+	{
+		bRouteMapDragActive = false;
+		return FEventReply(true);
+	}
 	if (!bRouteMapDragActive)
 	{
 		return FEventReply(false);
@@ -294,6 +365,7 @@ void UGameXXKOneGameRouteMapWidget::RefreshFromState()
 	SetVisibility(Subsystem && (ActiveScreen == EGameXXKScreen::DungeonMap || bKeepRouteVisibleUnderEncounter)
 		? ESlateVisibility::Visible
 		: ESlateVisibility::Collapsed);
+	RefreshFixedControls();
 	if (!bHasAppliedInitialScrollOffset && RouteScrollBox && GetRenderedRouteNodeCount(Nodes) > 0)
 	{
 		ApplyInitialScrollOffset(Nodes);
@@ -301,8 +373,237 @@ void UGameXXKOneGameRouteMapWidget::RefreshFromState()
 	}
 }
 
+FBox2D UGameXXKOneGameRouteMapWidget::ResolveRouteCloseChallengeRect(const FVector2D ViewportSize) const
+{
+	if (ViewportSize.X <= 0.0f || ViewportSize.Y <= 0.0f)
+	{
+		return FBox2D(EForceInit::ForceInit);
+	}
+	const double Scale = FMath::Min(
+		ViewportSize.X / RouteViewportDesignSize.X,
+		ViewportSize.Y / RouteViewportDesignSize.Y);
+	const FVector2D Minimum(
+		ViewportSize.X - (RouteViewportDesignSize.X - RouteCloseChallengePosition.X) * Scale,
+		RouteCloseChallengePosition.Y * Scale);
+	return FBox2D(Minimum, Minimum + RouteCloseChallengeSize * Scale);
+}
+
+bool UGameXXKOneGameRouteMapWidget::CanConfirmRouteAbandon(FString* OutReason) const
+{
+	if (OutReason)
+	{
+		OutReason->Reset();
+	}
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!bRouteAbandonConfirmationOpen || !Subsystem)
+	{
+		if (OutReason) *OutReason = TEXT("当前没有可结算的路线挑战。");
+		return false;
+	}
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	if (!bRouteAbandonPreviewValid
+		|| !RouteAbandonPreview.SettlementId.IsValid()
+		|| RouteAbandonPreview.Outcome != EGameXXKRouteTerminalOutcome::Abandoned)
+	{
+		if (OutReason) *OutReason = RouteAbandonError.IsEmpty()
+			? TEXT("无法计算本次挑战的结算奖励。")
+			: RouteAbandonError;
+		return false;
+	}
+	if (State.Screen != EGameXXKScreen::DungeonMap
+		|| !State.bDungeonActive
+		|| !State.bHasGeneratedRouteMap
+		|| State.CardRun.RouteTravelMoney != RouteAbandonPreview.SourceTravelMoney
+		|| State.CardRun.RouteProgress.ActualRouteCardAcquisitionCount
+			!= RouteAbandonPreview.SourceCardAcquisitionCount)
+	{
+		if (OutReason) *OutReason = TEXT("路线进度已变化，请关闭弹窗后重新确认结算。");
+		return false;
+	}
+	return true;
+}
+
+void UGameXXKOneGameRouteMapWidget::RefreshRouteAbandonConfirmation()
+{
+	if (!RouteAbandonModalOverlay)
+	{
+		return;
+	}
+	RouteAbandonModalOverlay->SetVisibility(
+		bRouteAbandonConfirmationOpen
+			? ESlateVisibility::Visible
+			: ESlateVisibility::Collapsed);
+	if (!bRouteAbandonConfirmationOpen)
+	{
+		return;
+	}
+
+	if (RouteAbandonPreviewText)
+	{
+		RouteAbandonPreviewText->SetText(bRouteAbandonPreviewValid
+			? FText::FromString(FString::Printf(
+				TEXT("永久金币 +%d / 强化石 +%d"),
+				RouteAbandonPreview.PermanentGoldAward,
+				RouteAbandonPreview.EnhancementStoneAward))
+			: FText::FromString(TEXT("永久金币 -- / 强化石 --")));
+	}
+	FString GateReason;
+	const bool bCanConfirm = CanConfirmRouteAbandon(&GateReason);
+	if (RouteAbandonConfirmButton)
+	{
+		RouteAbandonConfirmButton->SetIsEnabled(bCanConfirm);
+	}
+	if (RouteAbandonCancelButton)
+	{
+		RouteAbandonCancelButton->SetIsEnabled(true);
+	}
+	if (RouteAbandonErrorText)
+	{
+		const FString DisplayError = RouteAbandonError.IsEmpty() ? GateReason : RouteAbandonError;
+		RouteAbandonErrorText->SetText(FText::FromString(DisplayError));
+		RouteAbandonErrorText->SetVisibility(
+			DisplayError.IsEmpty()
+				? ESlateVisibility::Collapsed
+				: ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UGameXXKOneGameRouteMapWidget::RefreshFixedControls()
+{
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	const bool bCanShowClose = State
+		&& State->Screen == EGameXXKScreen::DungeonMap
+		&& State->bDungeonActive
+		&& State->bHasGeneratedRouteMap;
+	if (State && State->Screen != EGameXXKScreen::DungeonMap && bRouteAbandonConfirmationOpen)
+	{
+		bRouteAbandonConfirmationOpen = false;
+		bRouteAbandonPreviewValid = false;
+		RouteAbandonPreview = FGameXXKRouteSettlementReceipt{};
+		RouteAbandonError.Reset();
+	}
+	if (RouteCloseChallengeContainer)
+	{
+		RouteCloseChallengeContainer->SetVisibility(
+			bCanShowClose ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	if (RouteCloseChallengeButton)
+	{
+		RouteCloseChallengeButton->SetIsEnabled(bCanShowClose && !bRouteAbandonConfirmationOpen);
+	}
+	if (RouteScrollBox)
+	{
+		RouteScrollBox->SetIsEnabled(!bRouteAbandonConfirmationOpen);
+	}
+	if (bRouteAbandonConfirmationOpen)
+	{
+		bRouteMapDragActive = false;
+		bRouteMapDragMoved = false;
+		for (UButton* NodeButton : NodeButtons)
+		{
+			if (NodeButton) NodeButton->SetIsEnabled(false);
+		}
+	}
+	RefreshRouteAbandonConfirmation();
+}
+
+bool UGameXXKOneGameRouteMapWidget::OpenRouteAbandonConfirmation()
+{
+	if (bRouteAbandonConfirmationOpen)
+	{
+		return false;
+	}
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::DungeonMap)
+	{
+		return false;
+	}
+	bRouteAbandonConfirmationOpen = true;
+	bRouteAbandonPreviewValid = false;
+	RouteAbandonPreview = FGameXXKRouteSettlementReceipt{};
+	RouteAbandonError.Reset();
+	FString PreviewError;
+	bRouteAbandonPreviewValid = Subsystem->PreviewAbandonedRouteSettlement(
+		RouteAbandonPreview,
+		&PreviewError);
+	if (!bRouteAbandonPreviewValid)
+	{
+		RouteAbandonError = PreviewError.IsEmpty()
+			? TEXT("无法计算本次挑战的结算奖励。")
+			: PreviewError;
+	}
+	RefreshFixedControls();
+	return true;
+}
+
+bool UGameXXKOneGameRouteMapWidget::CancelRouteAbandonConfirmation()
+{
+	if (!bRouteAbandonConfirmationOpen)
+	{
+		return false;
+	}
+	bRouteAbandonConfirmationOpen = false;
+	bRouteAbandonPreviewValid = false;
+	RouteAbandonPreview = FGameXXKRouteSettlementReceipt{};
+	RouteAbandonError.Reset();
+	RefreshFromState();
+	return true;
+}
+
+bool UGameXXKOneGameRouteMapWidget::ConfirmRouteAbandon()
+{
+	if (!bRouteAbandonConfirmationOpen)
+	{
+		return false;
+	}
+	FString GateReason;
+	if (!CanConfirmRouteAbandon(&GateReason))
+	{
+		RefreshRouteAbandonConfirmation();
+		return false;
+	}
+	UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !Subsystem->AbandonDungeonToTown())
+	{
+		RouteAbandonError = TEXT("结算失败，路线进度与奖励均未改变。");
+		RefreshRouteAbandonConfirmation();
+		return false;
+	}
+	bRouteAbandonConfirmationOpen = false;
+	bRouteAbandonPreviewValid = false;
+	RouteAbandonPreview = FGameXXKRouteSettlementReceipt{};
+	RouteAbandonError.Reset();
+	GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
+	NotifyPlayerFlowStateChanged();
+	return true;
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleCloseChallengeClicked()
+{
+	OpenRouteAbandonConfirmation();
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleRouteAbandonConfirmClicked()
+{
+	ConfirmRouteAbandon();
+}
+
+void UGameXXKOneGameRouteMapWidget::HandleRouteAbandonCancelClicked()
+{
+	CancelRouteAbandonConfirmation();
+}
+
 void UGameXXKOneGameRouteMapWidget::HandleRouteUserScrolled(float CurrentOffset)
 {
+	if (bRouteAbandonConfirmationOpen)
+	{
+		if (RouteScrollBox)
+		{
+			RouteScrollBox->SetScrollOffset(LastAppliedScrollOffset);
+		}
+		return;
+	}
 	LastAppliedScrollOffset = FMath::Clamp(CurrentOffset, 0.0f, CalculateMaxScrollOffset());
 }
 
@@ -399,6 +700,10 @@ TArray<FGameXXKOneGameRouteNode> UGameXXKOneGameRouteMapWidget::BuildAdapterNode
 
 bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNode(int32 NodeIndex)
 {
+	if (bRouteAbandonConfirmationOpen)
+	{
+		return false;
+	}
 	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
 	if (!Nodes.IsValidIndex(NodeIndex))
 	{
@@ -410,6 +715,10 @@ bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNode(int32 NodeIndex)
 
 bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNodeById(int32 NodeId)
 {
+	if (bRouteAbandonConfirmationOpen)
+	{
+		return false;
+	}
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem)
 	{
@@ -626,6 +935,69 @@ UScrollBox* UGameXXKOneGameRouteMapWidget::GetRouteScrollBoxForTest() const
 {
 	return RouteScrollBox;
 }
+
+UOverlay* UGameXXKOneGameRouteMapWidget::GetRouteRootOverlayForTest() const
+{
+	return RootOverlay;
+}
+
+USizeBox* UGameXXKOneGameRouteMapWidget::GetRouteCloseChallengeContainerForTest() const
+{
+	return RouteCloseChallengeContainer;
+}
+
+UButton* UGameXXKOneGameRouteMapWidget::GetRouteCloseChallengeButtonForTest() const
+{
+	return RouteCloseChallengeButton;
+}
+
+FBox2D UGameXXKOneGameRouteMapWidget::ResolveRouteCloseChallengeRectForTest(const FVector2D ViewportSize) const
+{
+	return ResolveRouteCloseChallengeRect(ViewportSize);
+}
+
+bool UGameXXKOneGameRouteMapWidget::OpenRouteAbandonConfirmationForTest()
+{
+	return OpenRouteAbandonConfirmation();
+}
+
+bool UGameXXKOneGameRouteMapWidget::CancelRouteAbandonConfirmationForTest()
+{
+	return CancelRouteAbandonConfirmation();
+}
+
+bool UGameXXKOneGameRouteMapWidget::ConfirmRouteAbandonForTest()
+{
+	return ConfirmRouteAbandon();
+}
+
+bool UGameXXKOneGameRouteMapWidget::IsRouteAbandonConfirmationOpenForTest() const
+{
+	return bRouteAbandonConfirmationOpen
+		&& RouteAbandonModalOverlay
+		&& RouteAbandonModalOverlay->GetVisibility() == ESlateVisibility::Visible;
+}
+
+bool UGameXXKOneGameRouteMapWidget::IsRouteAbandonConfirmEnabledForTest() const
+{
+	return RouteAbandonConfirmButton && RouteAbandonConfirmButton->GetIsEnabled();
+}
+
+FText UGameXXKOneGameRouteMapWidget::GetRouteAbandonPreviewTextForTest() const
+{
+	return RouteAbandonPreviewText ? RouteAbandonPreviewText->GetText() : FText::GetEmpty();
+}
+
+FString UGameXXKOneGameRouteMapWidget::GetRouteAbandonErrorForTest() const
+{
+	if (!RouteAbandonError.IsEmpty())
+	{
+		return RouteAbandonError;
+	}
+	FString GateReason;
+	CanConfirmRouteAbandon(&GateReason);
+	return GateReason;
+}
 #endif
 
 void UGameXXKOneGameRouteMapWidget::HandleNodeButton0Clicked()
@@ -825,6 +1197,194 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		AddSummaryLine(TEXT("GameXXKRouteProgressSummary"), RouteProgressSummaryText);
 		AddSummaryLine(TEXT("GameXXKRouteCapacitySummary"), RouteCapacitySummaryText);
 		UpdateRouteSummary();
+	}
+
+	if (RootOverlay && !RouteCloseChallengeContainer)
+	{
+		UTexture2D* ActionTexture = LoadObject<UTexture2D>(nullptr, RouteActionButtonTexturePath);
+		RouteCloseChallengeContainer = WidgetTree->ConstructWidget<USizeBox>(
+			USizeBox::StaticClass(),
+			TEXT("RouteCloseChallengeContainer"));
+		RouteCloseChallengeContainer->SetWidthOverride(RouteCloseChallengeSize.X);
+		RouteCloseChallengeContainer->SetHeightOverride(RouteCloseChallengeSize.Y);
+		RouteCloseChallengeButton = WidgetTree->ConstructWidget<UButton>(
+			UButton::StaticClass(),
+			TEXT("RouteCloseChallengeButton"));
+		StyleRouteActionButton(RouteCloseChallengeButton, ActionTexture);
+		UTextBlock* CloseChallengeLabel = WidgetTree->ConstructWidget<UTextBlock>(
+			UTextBlock::StaticClass(),
+			TEXT("RouteCloseChallengeLabel"));
+		CloseChallengeLabel->SetText(NSLOCTEXT("GameXXKRouteMap", "CloseChallenge", "关闭挑战"));
+		CloseChallengeLabel->SetJustification(ETextJustify::Center);
+		CloseChallengeLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		FSlateFontInfo CloseChallengeFont = CloseChallengeLabel->GetFont();
+		CloseChallengeFont.Size = 22;
+		CloseChallengeFont.TypefaceFontName = TEXT("Bold");
+		CloseChallengeLabel->SetFont(CloseChallengeFont);
+		RouteCloseChallengeButton->AddChild(CloseChallengeLabel);
+		RouteCloseChallengeButton->OnClicked.AddDynamic(
+			this,
+			&UGameXXKOneGameRouteMapWidget::HandleCloseChallengeClicked);
+		RouteCloseChallengeContainer->AddChild(RouteCloseChallengeButton);
+		if (UOverlaySlot* CloseSlot = RootOverlay->AddChildToOverlay(RouteCloseChallengeContainer))
+		{
+			CloseSlot->SetHorizontalAlignment(HAlign_Right);
+			CloseSlot->SetVerticalAlignment(VAlign_Top);
+			CloseSlot->SetPadding(FMargin(0.0f, 48.0f, 72.0f, 0.0f));
+		}
+
+		RouteAbandonModalOverlay = WidgetTree->ConstructWidget<UOverlay>(
+			UOverlay::StaticClass(),
+			TEXT("RouteAbandonModalOverlay"));
+		RouteAbandonModalOverlay->SetVisibility(ESlateVisibility::Collapsed);
+		UBorder* ModalBackdrop = WidgetTree->ConstructWidget<UBorder>(
+			UBorder::StaticClass(),
+			TEXT("RouteAbandonModalBackdrop"));
+		ModalBackdrop->SetBrushColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.68f));
+		ModalBackdrop->SetPadding(FMargin(0.0f));
+		if (UOverlaySlot* BackdropSlot = RouteAbandonModalOverlay->AddChildToOverlay(ModalBackdrop))
+		{
+			BackdropSlot->SetHorizontalAlignment(HAlign_Fill);
+			BackdropSlot->SetVerticalAlignment(VAlign_Fill);
+		}
+
+		USizeBox* ModalPanelSize = WidgetTree->ConstructWidget<USizeBox>(
+			USizeBox::StaticClass(),
+			TEXT("RouteAbandonModalPanelSize"));
+		ModalPanelSize->SetWidthOverride(RouteAbandonModalSize.X);
+		ModalPanelSize->SetHeightOverride(RouteAbandonModalSize.Y);
+		UBorder* ModalPanel = WidgetTree->ConstructWidget<UBorder>(
+			UBorder::StaticClass(),
+			TEXT("RouteAbandonModalPanel"));
+		if (UTexture2D* PaperTexture = LoadObject<UTexture2D>(nullptr, RouteModalPaperTexturePath))
+		{
+			ModalPanel->SetBrush(BuildRouteTextureBrush(
+				PaperTexture,
+				FVector2D(100.0f, 101.0f),
+				FLinearColor::White,
+				ESlateBrushDrawType::Box,
+				FMargin(0.065f)));
+		}
+		ModalPanel->SetBrushColor(FLinearColor::White);
+		ModalPanel->SetPadding(FMargin(38.0f, 30.0f, 38.0f, 26.0f));
+		UVerticalBox* ModalBody = WidgetTree->ConstructWidget<UVerticalBox>(
+			UVerticalBox::StaticClass(),
+			TEXT("RouteAbandonModalBody"));
+		ModalPanel->SetContent(ModalBody);
+
+		auto AddModalText = [this, ModalBody](
+			const FName Name,
+			const FText& Text,
+			const int32 FontSize,
+			const FLinearColor& Color,
+			const float BottomPadding,
+			const bool bBold)
+		{
+			UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
+			TextBlock->SetText(Text);
+			TextBlock->SetAutoWrapText(true);
+			TextBlock->SetJustification(ETextJustify::Center);
+			TextBlock->SetColorAndOpacity(FSlateColor(Color));
+			FSlateFontInfo Font = TextBlock->GetFont();
+			Font.Size = FontSize;
+			if (bBold) Font.TypefaceFontName = TEXT("Bold");
+			TextBlock->SetFont(Font);
+			if (UVerticalBoxSlot* TextSlot = ModalBody->AddChildToVerticalBox(TextBlock))
+			{
+				TextSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BottomPadding));
+				TextSlot->SetHorizontalAlignment(HAlign_Fill);
+			}
+			return TextBlock;
+		};
+		AddModalText(
+			TEXT("RouteAbandonModalTitle"),
+			NSLOCTEXT("GameXXKRouteMap", "AbandonTitle", "结束本次挑战？"),
+			28,
+			FLinearColor(0.12f, 0.09f, 0.06f, 1.0f),
+			14.0f,
+			true);
+		AddModalText(
+			TEXT("RouteAbandonModalDescription"),
+			NSLOCTEXT("GameXXKRouteMap", "AbandonDescription", "将按已完成的路线进度结算，未完成节点不计入。"),
+			18,
+			FLinearColor(0.12f, 0.09f, 0.06f, 1.0f),
+			12.0f,
+			false);
+		RouteAbandonPreviewText = AddModalText(
+			TEXT("RouteAbandonModalPreview"),
+			FText::GetEmpty(),
+			21,
+			FLinearColor(0.15f, 0.28f, 0.22f, 1.0f),
+			10.0f,
+			true);
+		RouteAbandonErrorText = AddModalText(
+			TEXT("RouteAbandonModalError"),
+			FText::GetEmpty(),
+			16,
+			FLinearColor(0.55f, 0.08f, 0.05f, 1.0f),
+			14.0f,
+			false);
+
+		UHorizontalBox* ModalButtons = WidgetTree->ConstructWidget<UHorizontalBox>(
+			UHorizontalBox::StaticClass(),
+			TEXT("RouteAbandonModalButtons"));
+		RouteAbandonConfirmButton = WidgetTree->ConstructWidget<UButton>(
+			UButton::StaticClass(),
+			TEXT("RouteAbandonConfirmButton"));
+		StyleRouteActionButton(RouteAbandonConfirmButton, ActionTexture);
+		UTextBlock* ConfirmLabel = WidgetTree->ConstructWidget<UTextBlock>(
+			UTextBlock::StaticClass(),
+			TEXT("RouteAbandonConfirmLabel"));
+		ConfirmLabel->SetText(NSLOCTEXT("GameXXKRouteMap", "AbandonConfirm", "结算并退出"));
+		ConfirmLabel->SetJustification(ETextJustify::Center);
+		ConfirmLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		RouteAbandonConfirmButton->AddChild(ConfirmLabel);
+		RouteAbandonConfirmButton->OnClicked.AddDynamic(
+			this,
+			&UGameXXKOneGameRouteMapWidget::HandleRouteAbandonConfirmClicked);
+		USizeBox* ConfirmSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("RouteAbandonConfirmSize"));
+		ConfirmSize->SetWidthOverride(210.0f);
+		ConfirmSize->SetHeightOverride(58.0f);
+		ConfirmSize->AddChild(RouteAbandonConfirmButton);
+		if (UHorizontalBoxSlot* ConfirmSlot = ModalButtons->AddChildToHorizontalBox(ConfirmSize))
+		{
+			ConfirmSlot->SetPadding(FMargin(0.0f, 0.0f, 18.0f, 0.0f));
+		}
+
+		RouteAbandonCancelButton = WidgetTree->ConstructWidget<UButton>(
+			UButton::StaticClass(),
+			TEXT("RouteAbandonCancelButton"));
+		StyleRouteActionButton(RouteAbandonCancelButton, ActionTexture);
+		UTextBlock* CancelLabel = WidgetTree->ConstructWidget<UTextBlock>(
+			UTextBlock::StaticClass(),
+			TEXT("RouteAbandonCancelLabel"));
+		CancelLabel->SetText(NSLOCTEXT("GameXXKRouteMap", "AbandonCancel", "继续挑战"));
+		CancelLabel->SetJustification(ETextJustify::Center);
+		CancelLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		RouteAbandonCancelButton->AddChild(CancelLabel);
+		RouteAbandonCancelButton->OnClicked.AddDynamic(
+			this,
+			&UGameXXKOneGameRouteMapWidget::HandleRouteAbandonCancelClicked);
+		USizeBox* CancelSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("RouteAbandonCancelSize"));
+		CancelSize->SetWidthOverride(210.0f);
+		CancelSize->SetHeightOverride(58.0f);
+		CancelSize->AddChild(RouteAbandonCancelButton);
+		ModalButtons->AddChildToHorizontalBox(CancelSize);
+		if (UVerticalBoxSlot* ButtonsSlot = ModalBody->AddChildToVerticalBox(ModalButtons))
+		{
+			ButtonsSlot->SetHorizontalAlignment(HAlign_Center);
+		}
+		ModalPanelSize->AddChild(ModalPanel);
+		if (UOverlaySlot* PanelSlot = RouteAbandonModalOverlay->AddChildToOverlay(ModalPanelSize))
+		{
+			PanelSlot->SetHorizontalAlignment(HAlign_Center);
+			PanelSlot->SetVerticalAlignment(VAlign_Center);
+		}
+		if (UOverlaySlot* ModalSlot = RootOverlay->AddChildToOverlay(RouteAbandonModalOverlay))
+		{
+			ModalSlot->SetHorizontalAlignment(HAlign_Fill);
+			ModalSlot->SetVerticalAlignment(VAlign_Fill);
+		}
 	}
 
 	if (!RootCanvas || !RouteContentSizeBox)
@@ -1132,6 +1692,10 @@ void UGameXXKOneGameRouteMapWidget::ExecuteNodeButtonAtIndex(int32 ButtonIndex)
 
 bool UGameXXKOneGameRouteMapWidget::TryExecuteRouteNodeAtScreenPosition(const FVector2D& ScreenPosition)
 {
+	if (bRouteAbandonConfirmationOpen)
+	{
+		return false;
+	}
 	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
 	const int32 RenderedNodeCount = GetRenderedRouteNodeCount(Nodes);
 	for (int32 NodeIndex = RenderedNodeCount - 1; NodeIndex >= 0; --NodeIndex)
@@ -1504,6 +2068,10 @@ bool UGameXXKOneGameRouteMapWidget::HasRouteDragSurfaceForTest() const
 
 bool UGameXXKOneGameRouteMapWidget::ApplyRouteMapDragDeltaForTest(float PointerDeltaY)
 {
+	if (bRouteAbandonConfirmationOpen)
+	{
+		return false;
+	}
 	const float PreviousScrollOffset = LastAppliedScrollOffset;
 	SetRouteScrollOffset(LastAppliedScrollOffset - PointerDeltaY);
 	return !FMath::IsNearlyEqual(PreviousScrollOffset, LastAppliedScrollOffset);

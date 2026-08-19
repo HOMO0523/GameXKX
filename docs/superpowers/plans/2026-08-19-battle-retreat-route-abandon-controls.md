@@ -346,7 +346,7 @@ git commit -m "feat: add battle retreat confirmation"
 - Modify: `Source/GameXXK/Public/UI/GameXXKOneGameRouteMapWidget.h`
 - Modify: `Source/GameXXK/Private/UI/GameXXKOneGameRouteMapWidget.cpp`
 
-- [ ] **Step 1: Write RED route-map UI tests**
+- [x] **Step 1: Write RED route-map UI tests**
 
 Add tests under `GameXXK.MVP.RouteMap.AbandonConfirmation`:
 
@@ -356,11 +356,11 @@ Add tests under `GameXXK.MVP.RouteMap.AbandonConfirmation`:
 - `ConfirmAppliesOnce`: confirm, assert exact rewards once, terminal `Abandoned` receipt, active route cleared, and Town map selected only after success.
 - `PreviewOrApplyFailure`: an invalid route disables confirm or retains the modal with an error; runtime/map remain unchanged.
 
-- [ ] **Step 2: Cold-build and verify RED**
+- [x] **Step 2: Cold-build and verify RED**
 
 Expected: tests fail because the fixed button/modal/test seams do not exist.
 
-- [ ] **Step 3: Add the fixed RootOverlay toolbar and modal**
+- [x] **Step 3: Add the fixed RootOverlay toolbar and modal**
 
 Add `RouteCloseChallengeButton` to `RootOverlay`, not the scroll canvas. Anchor it top-right above the scroll layer. Reuse existing route paper/ink styles and label it `关闭挑战`.
 
@@ -373,11 +373,11 @@ Add a higher-z-order RootOverlay modal with:
 
 When open, block generated-node execution, drag surface, wheel/scroll mutation, and repeated open. Do not hide or move the route behind it.
 
-- [ ] **Step 4: Wire authoritative confirm and failure handling**
+- [x] **Step 4: Wire authoritative confirm and failure handling**
 
 Open calls `PreviewAbandonedRouteSettlement` without mutation. Confirm calls `AbandonDungeonToTown`; only on success call `GameXXKLevelFlow::OpenMapForRuntimeState`, close modal, and notify flow refresh. On preview/apply failure, keep the modal and route state, disable confirmation where appropriate, and show a concrete error.
 
-- [ ] **Step 5: Verify route UI and settlement regressions**
+- [x] **Step 5: Verify route UI and settlement regressions**
 
 ```powershell
 & 'D:\UE_5.8\Engine\Build\BatchFiles\Build.bat' GameXXKEditor Win64 Development '-Project=D:\UE5 demo\GameXXK\GameXXK.uproject' -WaitMutex -NoHotReload -NoHotReloadFromIDE -NoUBA -MaxParallelActions=2
@@ -390,7 +390,7 @@ Open calls `PreviewAbandonedRouteSettlement` without mutation. Confirm calls `Ab
 
 Expected: all selected tests pass; scroll behavior is unchanged outside the modal.
 
-- [ ] **Step 6: Commit route close controls**
+- [x] **Step 6: Commit route close controls**
 
 ```powershell
 git commit -m "feat: settle route from map close control"
