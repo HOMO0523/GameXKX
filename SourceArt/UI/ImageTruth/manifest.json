@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "authority": "explicit-user-confirmation-only",
+  "confirmedRoot": "SourceArt/UI/ImageTruth/confirmed",
+  "candidateRoot": "SourceArt/UI/ImageReviewQueue",
+  "images": [
+    {
+      "id": "training.idle_strip.background.seamless.v003",
+      "role": "desktop-training infinite horizontal travel-strip background",
+      "path": "SourceArt/UI/ImageTruth/confirmed/training_idle_strip_background_seamless_v003.png",
+      "sourcePath": "SourceArt/UI/PSD/desktop-training-v1/generated/TrainingIdleStrip_Background_GPT_v003_Seamless_RGBA.png",
+      "sha256": "BD4C02AEAFD77D8AA797E060A7114F972174F73D47F4C7227C3BCF587F6F1B96",
+      "width": 1983,
+      "height": 793,
+      "hasAlpha": true,
+      "seamlessHorizontal": true,
+      "approvedBy": "user",
+      "approvedAt": "2026-08-19T11:49:46.9989058+08:00",
+      "approvalReference": "Current Codex task: user replied 'a' to confirm TrainingIdleStrip_Background_GPT_v003_Seamless_RGBA.png as the first image-truth candidate."
+    }
+  ]
+}
