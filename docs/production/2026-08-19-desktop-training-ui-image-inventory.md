@@ -1,8 +1,8 @@
 # Desktop Training UI 图片与素材清单
 
-更新时间：2026-08-19  
-范围：纯 2D 桌面历练工作台、挂机条、背包/仓库、历练地图、工具页、局内放大画布  
-素材真源：`SourceArt/UI/ImageTruth/manifest.json`  
+更新时间：2026-08-19
+范围：纯 2D 桌面历练工作台、挂机条、背包/仓库、历练地图、工具页、局内放大画布
+素材真源：`SourceArt/UI/ImageTruth/manifest.json`
 候选队列：`SourceArt/UI/ImageReviewQueue/`
 
 ## 判定规则
