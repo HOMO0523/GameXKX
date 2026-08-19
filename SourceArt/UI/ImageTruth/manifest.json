@@ -93,6 +93,38 @@
       "approvedBy": "user",
       "approvedAt": "2026-08-19T12:30:00+08:00",
       "approvalReference": "User confirmed the true-alpha background-extracted hammer after requesting the checkerboard background be removed."
+    },
+    {
+      "id": "training.toolbar.always_on_top.ink.v003",
+      "role": "desktop-training top toolbar always-on-top enabled glyph",
+      "path": "SourceArt/UI/ImageTruth/confirmed/always_on_top_glyph_ink_v003.png",
+      "ueAssetPath": "/Game/GameXXK/UI/ImageTruth/Training/T_TrainingTopToolbarAlwaysOnTop.T_TrainingTopToolbarAlwaysOnTop",
+      "sourcePath": "SourceArt/UI/ImageReviewQueue/20260819-top-toolbar/always_on_top_glyph_ink_candidate_v003.png",
+      "sha256": "C647EB2D5F38E884F259EE669B5AD485A03A3D50C7AC7B0EC586BAE79B40E5C5",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "textLayer": "UE-localized label/state affordance: none",
+      "state": "enabled",
+      "approvedBy": "user",
+      "approvedAt": "2026-08-19T12:43:00+08:00",
+      "approvalReference": "User replied 'ok' to the simplified, small, centered single pushpin candidate. The baked preview background was deterministically removed before promotion."
+    },
+    {
+      "id": "training.toolbar.always_on_top_off.ink.gray.v001",
+      "role": "desktop-training top toolbar always-on-top disabled glyph",
+      "path": "SourceArt/UI/ImageTruth/confirmed/always_on_top_glyph_ink_off_gray_v001.png",
+      "ueAssetPath": "/Game/GameXXK/UI/ImageTruth/Training/T_TrainingTopToolbarAlwaysOnTopOffGray.T_TrainingTopToolbarAlwaysOnTopOffGray",
+      "sourcePath": "SourceArt/UI/ImageReviewQueue/20260819-top-toolbar/always_on_top_glyph_ink_off_gray_candidate_v001.png",
+      "sha256": "65477F5EA0F38A93F6DADD27A286FA824FA6175F4890910E0730480C163503F0",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "textLayer": "UE-localized label/state affordance: none",
+      "state": "disabled",
+      "approvedBy": "user",
+      "approvedAt": "2026-08-19T14:17:59.6934931+08:00",
+      "approvalReference": "User explicitly confirmed the gray disabled/off-state pushpin candidate in the current Codex task."
     }
   ]
 }

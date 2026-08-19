@@ -86,6 +86,19 @@ def _with_variant_suffix(entries: list, suffix: str) -> list:
     return variants
 
 
+def _resolve_replace_existing(
+    restore: bool,
+    two_k: bool,
+    one_k: bool,
+    variant_suffix: str,
+    replace_existing_variants: bool,
+) -> bool:
+    """Keep sibling imports non-destructive unless replacement is explicit."""
+    if variant_suffix:
+        return bool(replace_existing_variants)
+    return bool(restore or two_k or one_k)
+
+
 class AnimationAssetEntry(NamedTuple):
     asset_id: str
     manifest_path: Path
@@ -314,26 +327,29 @@ def import_production(
     restore: bool = False,
     variant_suffix: str = "",
     offset: int = 0,
+    replace_existing_variants: bool = False,
 ) -> dict:
     _require_unreal()
     if two_k and one_k:
         raise RuntimeError("two-k and one-k modes are mutually exclusive")
     if restore:
         # Default 4K root/constants; replace the current (possibly downscaled) assets.
-        replace_existing = True
+        pass
     elif two_k:
         _apply_two_k_mode()
-        replace_existing = True
     elif one_k:
         _apply_one_k_mode()
-        replace_existing = True
-    else:
-        replace_existing = False
+    replace_existing = _resolve_replace_existing(
+        restore,
+        two_k,
+        one_k,
+        variant_suffix,
+        replace_existing_variants,
+    )
     entries = discover_animation_assets(_project_root() / PRODUCTION_RELATIVE_ROOT)
     entries = _select_entries(entries, asset_ids, limit, offset)
     if variant_suffix:
         entries = _with_variant_suffix(entries, variant_suffix)
-        replace_existing = False
     for path in (ATLAS_ASSET_DIR, IDLE_SPRITE_ROOT, IDLE_FLIPBOOK_DIR):
         _ensure_directory(path)
 
@@ -367,6 +383,7 @@ def import_production(
         "one_k": bool(one_k),
         "restore": bool(restore),
         "variant_suffix": variant_suffix,
+        "replace_existing_variants": bool(replace_existing_variants),
         "requested_count": len(entries),
         "imported": results,
     }
@@ -382,6 +399,7 @@ def main() -> None:
     parser.add_argument("--restore", action="store_true")
     parser.add_argument("--variant-suffix", default="")
     parser.add_argument("--offset", type=int, default=0)
+    parser.add_argument("--replace-existing-variants", action="store_true")
     args = parser.parse_args()
     print(json.dumps(
         import_production(
@@ -393,6 +411,7 @@ def main() -> None:
             args.restore,
             args.variant_suffix,
             args.offset,
+            args.replace_existing_variants,
         ),
         ensure_ascii=False,
     ))

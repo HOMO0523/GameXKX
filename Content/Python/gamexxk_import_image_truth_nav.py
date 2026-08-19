@@ -24,6 +24,8 @@ IMPORT_MAP = {
     "training.nav.talents.ink.knot.v004": "T_TrainingNavTalents",
     "training.nav.tools.ink.hammer.v005": "T_TrainingNavTools",
     "training.nav.training.ink.v001": "T_TrainingNavTraining",
+    "training.toolbar.always_on_top.ink.v003": "T_TrainingTopToolbarAlwaysOnTop",
+    "training.toolbar.always_on_top_off.ink.gray.v001": "T_TrainingTopToolbarAlwaysOnTopOffGray",
 }
 
 

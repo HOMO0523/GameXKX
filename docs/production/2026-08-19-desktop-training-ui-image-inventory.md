@@ -1,3 +1,9 @@
+---
+status: implemented
+owner: codex
+updated_at: 2026-08-19T15:03:36+08:00
+source_commit: 57a06e41226378ada94e30ad92b12979095c01d6
+---
 # Desktop Training UI 图片与素材清单
 
 更新时间：2026-08-19
@@ -13,7 +19,7 @@
 - `CODE_TEXT`：不做成图片，由 UE 文本层渲染，支持本地化和状态切换。
 - `DERIVED_RUNTIME`：由已确认真源经过等比缩放、裁切或 atlas 打包得到；派生过程必须有输入 hash 和尺寸报告。
 
-## A. 已确认真源（6 张）
+## A. 已确认真源（8 张）
 
 | 语义 ID | 文件 | 尺寸/格式 | 用途 |
 |---|---|---:|---|
@@ -23,6 +29,8 @@
 | `training.nav.training.ink.v001` | `SourceArt/UI/ImageTruth/confirmed/training_nav_training_ink_v001.png` | 1254×1254 RGBA | 底部历练 glyph，卷轴/路线/旗帜 |
 | `training.nav.talents.ink.knot.v004` | `SourceArt/UI/ImageTruth/confirmed/training_nav_talents_ink_knot_v004.png` | 1305×1205 RGBA | 底部天赋 glyph，聚集的简化水墨凯尔特结纹 |
 | `training.nav.tools.ink.hammer.v005` | `SourceArt/UI/ImageTruth/confirmed/training_nav_tools_ink_hammer_v005.png` | 1273×1236 RGBA | 底部工具 glyph，大锤头、高填充率、UE 单独显示“工具” |
+| `training.toolbar.always_on_top.ink.v003` | `SourceArt/UI/ImageTruth/confirmed/always_on_top_glyph_ink_v003.png` | 1254×1254 RGBA | 顶部置顶开启态：单个小型、居中的简约水墨图钉 |
+| `training.toolbar.always_on_top_off.ink.gray.v001` | `SourceArt/UI/ImageTruth/confirmed/always_on_top_glyph_ink_off_gray_v001.png` | 1254×1254 RGBA | 顶部置顶关闭态：同轮廓、低对比灰色水墨图钉 |
 
 所有导航文字（仓库、编队、天赋、工具、历练）必须由 UE 文本层绘制，不能烧进图标。
 
@@ -121,7 +129,7 @@
 
 ## J. 系统与奖励
 
-- 顶部工具条：置顶、静音、邮件、商店、退出；均需独立语义图标，状态由代码切换。
+- 顶部工具条：置顶、静音、邮件、商店、退出；均需独立语义图标，状态由代码切换。置顶黑/灰两态图钉均已进入真源；其余顶部图标仍需逐张确认。
 - 退出确认：取消、退出、关闭；不能与背包关闭共用同一语义。
 - 普通箱、高级箱、金币、经验、4 分钟/6 分钟冷却提示。
 - 失败/重试、奖励结算、离线奖励领取提示。

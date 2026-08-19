@@ -171,6 +171,12 @@ class BattleAnimationProductionImportTests(unittest.TestCase):
         self.assertEqual(variants[0].asset_id, "character_00_hero_2k_idle")
         self.assertEqual(variants[0].texture_name, "T_character_00_hero_2k_idle_atlas")
 
+    def test_variant_reimport_requires_an_explicit_opt_in(self) -> None:
+        importer = load_importer()
+        self.assertFalse(importer._resolve_replace_existing(False, False, False, "_1k", False))
+        self.assertTrue(importer._resolve_replace_existing(False, False, True, "_1k", True))
+        self.assertTrue(importer._resolve_replace_existing(True, False, False, "", False))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,14 +1,20 @@
+---
+status: implemented
+owner: codex
+updated_at: 2026-08-19T15:03:36+08:00
+source_commit: 57a06e41226378ada94e30ad92b12979095c01d6
+---
 # 2026-08-19 ImageTruth 导航与挂机背景接入证据
 
 ## 范围
 
-本次只接入用户逐图确认的 6 张 ImageTruth 图片：挂机连续背景、仓库、编队、天赋、工具、历练。未导入任何未确认 PSD、旧 MasterV2 导航圆底或候选图片。
+本次只接入用户逐图确认的 8 张 ImageTruth 图片：挂机连续背景、仓库、编队、天赋、工具、历练、顶部置顶黑/灰两态图钉。未导入任何未确认 PSD、旧 MasterV2 导航圆底或候选图片。
 
 ## 真源与 UE 路径
 
 真源 manifest：`SourceArt/UI/ImageTruth/manifest.json`
 校验命令：`python scripts/gamexxk_ui_image_truth_check.py --json`
-结果：`ok=true`、`confirmedCount=6`、`manifestCount=6`、`findings=[]`
+结果：`ok=true`、`confirmedCount=8`、`manifestCount=8`、`findings=[]`
 
 | ImageTruth 语义 | UE 资产 |
 |---|---|
@@ -18,8 +24,10 @@
 | `training.nav.talents.ink.knot.v004` | `/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavTalents.T_TrainingNavTalents` |
 | `training.nav.tools.ink.hammer.v005` | `/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavTools.T_TrainingNavTools` |
 | `training.nav.training.ink.v001` | `/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavTraining.T_TrainingNavTraining` |
+| `training.toolbar.always_on_top.ink.v003` | `/Game/GameXXK/UI/ImageTruth/Training/T_TrainingTopToolbarAlwaysOnTop.T_TrainingTopToolbarAlwaysOnTop` |
+| `training.toolbar.always_on_top_off.ink.gray.v001` | `/Game/GameXXK/UI/ImageTruth/Training/T_TrainingTopToolbarAlwaysOnTopOffGray.T_TrainingTopToolbarAlwaysOnTopOffGray` |
 
-MCP 导入脚本：`Content/Python/gamexxk_import_image_truth_nav.py`。脚本逐条拒绝 confirmed 目录之外的路径，并在导入前比较 manifest SHA256；6 条导入结果均返回 `ok=true`，尺寸与 manifest 一致。
+MCP 导入脚本：`Content/Python/gamexxk_import_image_truth_nav.py`。脚本逐条拒绝 confirmed 目录之外的路径，并在导入前比较 manifest SHA256；本轮 8 条导入结果均返回 `ok=true`，尺寸、哈希与 manifest 一致。顶部置顶黑/灰两态图钉已登记真源并完成 UE 导入。
 
 ## 运行时变更
 
@@ -41,4 +49,4 @@ MCP 导入脚本：`Content/Python/gamexxk_import_image_truth_nav.py`。脚本�
 
 ## 尚未接入
 
-顶部置顶/音量/邮件/商店/退出、Tab 箭头、历练节点状态、挑战/游历/重试、工具五模式、宝箱和局内战斗专用图标仍处于 `UNVERIFIED_EXISTING` 或 `NEW_IMAGEGEN`，必须逐张用户确认后再导入。
+顶部音量/邮件/商店/退出、Tab 箭头、历练节点状态、挑战/游历/重试、工具五模式、宝箱和局内战斗专用图标仍处于 `UNVERIFIED_EXISTING` 或 `NEW_IMAGEGEN`，必须逐张用户确认后再导入。
