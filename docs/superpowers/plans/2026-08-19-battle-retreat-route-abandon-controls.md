@@ -235,7 +235,7 @@ git commit -m "feat: restore pre-encounter route state"
 - Modify: `Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h`
 - Modify: `Source/GameXXK/Private/MVP/GameXXKMVPSubsystem.cpp`
 
-- [ ] **Step 1: Write RED preview/facade tests**
+- [x] **Step 1: Write RED preview/facade tests**
 
 Add `GameXXK.Route.Settlement.AbandonSubsystemFacade` covering:
 
@@ -246,11 +246,11 @@ Add `GameXXK.Route.Settlement.AbandonSubsystemFacade` covering:
 - repeating confirmation cannot duplicate rewards;
 - invalid/inactive route preview and apply return false without mutation.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Expected: compile fails because the subsystem preview and abandon wrappers do not exist.
 
-- [ ] **Step 3: Implement thin, side-effect-free facade methods**
+- [x] **Step 3: Implement thin, side-effect-free facade methods**
 
 Expose:
 
@@ -261,7 +261,7 @@ bool AbandonDungeonToTown();
 
 Preview calls `FGameXXKRouteSettlementRules::Preview(RuntimeState, Abandoned, ...)` only. Apply delegates to `UGameXXKMVPRules::AbandonDungeonToTown(RuntimeState)`. Neither method performs map travel or writes UI state.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
 ```powershell
 & scripts/run_mvp_test_suites.ps1 -Suites @('GameXXK.Route.Settlement') -TimeoutSeconds 360

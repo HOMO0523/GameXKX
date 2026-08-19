@@ -11,6 +11,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKMetaShopRules.h"
+#include "GameXXKRouteSettlementRules.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKMVPPlayerController.h"
@@ -2860,6 +2861,23 @@ bool UGameXXKMVPSubsystem::FailDungeonToTown()
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::FailDungeonToTown(RuntimeState);
+}
+
+bool UGameXXKMVPSubsystem::PreviewAbandonedRouteSettlement(
+	FGameXXKRouteSettlementReceipt& OutReceipt,
+	FString* OutError) const
+{
+	return FGameXXKRouteSettlementRules::Preview(
+		RuntimeState,
+		EGameXXKRouteTerminalOutcome::Abandoned,
+		OutReceipt,
+		OutError);
+}
+
+bool UGameXXKMVPSubsystem::AbandonDungeonToTown()
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	return UGameXXKMVPRules::AbandonDungeonToTown(RuntimeState);
 }
 
 bool UGameXXKMVPSubsystem::BuyItem(FName ItemId, int32 Quantity)

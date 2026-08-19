@@ -367,6 +367,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool FailDungeonToTown();
 
+	/** Side-effect-free exact preview for the route-map abandon confirmation. */
+	bool PreviewAbandonedRouteSettlement(
+		FGameXXKRouteSettlementReceipt& OutReceipt,
+		FString* OutError = nullptr) const;
+
+	/** Applies the existing idempotent Abandoned route settlement; UI owns map travel. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool AbandonDungeonToTown();
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool BuyItem(FName ItemId, int32 Quantity);
 

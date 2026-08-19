@@ -1,7 +1,9 @@
 #include "GameXXKRouteSettlementRules.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteMerchantRules.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 
+#include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -217,6 +219,76 @@ bool FGameXXKRouteSettlementTerminalPathsTest::RunTest(const FString& Parameters
 	TestEqual(TEXT("abandoning converts route cards to stones at ten to one"),
 		UGameXXKMVPRules::GetItemCount(AbandonState, UGameXXKMVPRules::ItemEnhancementStone()), AbandonStonesBefore + 5);
 	TestEqual(TEXT("abandoning returns the player to town"), AbandonState.Screen, EGameXXKScreen::Town);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteSettlementAbandonSubsystemFacadeTest,
+	"GameXXK.Route.Settlement.AbandonSubsystemFacade",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteSettlementAbandonSubsystemFacadeTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FGameXXKRuntimeState ActiveRoute;
+	if (!TestTrue(
+		TEXT("subsystem abandon fixture enters an accepted route"),
+		StartAcceptedThreeChapterRoute(ActiveRoute)))
+	{
+		return false;
+	}
+	ActiveRoute.CardRun.RouteTravelMoney = 99;
+	ActiveRoute.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 29;
+	Subsystem->GetMutableRuntimeState() = ActiveRoute;
+
+	const FGameXXKRuntimeState BeforePreview = Subsystem->GetRuntimeState();
+	FGameXXKRouteSettlementReceipt Preview;
+	FString Error;
+	TestTrue(
+		FString::Printf(TEXT("subsystem previews abandoned settlement: %s"), *Error),
+		Subsystem->PreviewAbandonedRouteSettlement(Preview, &Error));
+	TestEqual(TEXT("preview uses abandoned outcome"), Preview.Outcome, EGameXXKRouteTerminalOutcome::Abandoned);
+	TestEqual(TEXT("99 route money previews four permanent gold"), Preview.PermanentGoldAward, 4);
+	TestEqual(TEXT("29 acquisitions preview two enhancement stones"), Preview.EnhancementStoneAward, 2);
+	TestTrue(TEXT("preview creates a stable receipt id"), Preview.SettlementId.IsValid());
+	TestTrue(
+		TEXT("settlement preview has no runtime side effects"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&Subsystem->GetRuntimeState(),
+			&BeforePreview,
+			PPF_None));
+
+	const int32 GoldBefore = BeforePreview.PlayerGold;
+	const int32 StonesBefore = UGameXXKMVPRules::GetItemCount(
+		BeforePreview,
+		UGameXXKMVPRules::ItemEnhancementStone());
+	TestTrue(TEXT("subsystem applies abandoned settlement"), Subsystem->AbandonDungeonToTown());
+	const FGameXXKRuntimeState& Settled = Subsystem->GetRuntimeState();
+	TestEqual(TEXT("abandon facade awards previewed permanent gold"), Settled.PlayerGold, GoldBefore + 4);
+	TestEqual(
+		TEXT("abandon facade awards previewed enhancement stones"),
+		UGameXXKMVPRules::GetItemCount(Settled, UGameXXKMVPRules::ItemEnhancementStone()),
+		StonesBefore + 2);
+	TestEqual(TEXT("abandon facade returns to town"), Settled.Screen, EGameXXKScreen::Town);
+	TestFalse(TEXT("abandon facade ends the route"), Settled.bDungeonActive);
+	TestTrue(TEXT("abandon facade records an idempotency receipt id"), Settled.CardRun.LastAppliedRouteSettlementId.IsValid());
+
+	const int32 GoldAfterFirstApply = Settled.PlayerGold;
+	const int32 StonesAfterFirstApply = UGameXXKMVPRules::GetItemCount(
+		Settled,
+		UGameXXKMVPRules::ItemEnhancementStone());
+	TestFalse(TEXT("a second UI confirmation cannot settle an inactive route"), Subsystem->AbandonDungeonToTown());
+	TestEqual(TEXT("a second confirmation cannot duplicate gold"), Subsystem->GetRuntimeState().PlayerGold, GoldAfterFirstApply);
+	TestEqual(
+		TEXT("a second confirmation cannot duplicate stones"),
+		UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemEnhancementStone()),
+		StonesAfterFirstApply);
+
+	FGameXXKRouteSettlementReceipt InvalidPreview;
+	Error.Reset();
+	TestFalse(
+		TEXT("inactive route has no abandoned settlement preview"),
+		Subsystem->PreviewAbandonedRouteSettlement(InvalidPreview, &Error));
 	return true;
 }
 
