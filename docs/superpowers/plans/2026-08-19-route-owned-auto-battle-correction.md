@@ -615,7 +615,7 @@ git commit -m "feat: auto-play legal cards in existing battles"
 - Modify: `docs/production/2026-08-19-goal-progress-evidence.md`
 - Evidence: `Saved/HarnessReports/*`, `Saved/VisualReview/20260819-route-owned-auto-battle/*`
 
-- [ ] **Step 1: Write a failing corrected-profile test**
+- [x] **Step 1: Write a failing corrected-profile test**
 
 Retain the command-line report key `challenge` for schema compatibility, but require it to build the existing route battle, not a workbench view:
 
@@ -630,7 +630,7 @@ TestNotNull(TEXT("battle profile uses the existing full BattleBoard"), Controlle
 
 Add sampler/source assertions that `challenge` no longer references `ChallengeViewport` and is described as `existing-fullscreen-battle`.
 
-- [ ] **Step 2: Verify RED, then implement the explicit development fixture**
+- [x] **Step 2: Verify RED, then implement the explicit development fixture**
 
 Run the newly added `GameXXK.MVP.UI.DesktopTrainingBattlePerfProfile` test first. Expected: FAIL because the current `challenge` branch still calls the workbench Challenge action and does not create the existing full BattleBoard.
 
@@ -660,7 +660,7 @@ if (NormalizedProfile == TEXT("challenge"))
 }
 ```
 
-- [ ] **Step 3: Cold-build and run the full automated gate**
+- [x] **Step 3: Cold-build and run the full automated gate** *(cold UBT succeeded; script-tests all GREEN; SaveGame 12/12, Training 21/21, Workbench 21/21, CardBattle 32/32. MVP.UI was 20/21 solely because the independently reproducible pre-existing `MainMenuPlayerFlow.SaveMigration` failure remains.)*
 
 Run:
 

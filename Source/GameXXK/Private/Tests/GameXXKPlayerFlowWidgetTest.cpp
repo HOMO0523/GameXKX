@@ -12,6 +12,7 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
@@ -323,6 +324,38 @@ bool FGameXXKDesktopTrainingTravelPerfProfileTest::RunTest(const FString& Parame
 		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1));
 	TestNull(TEXT("travel profile keeps legacy route map lazy"), PlayerController->GetRouteMapWidgetForTest());
 	TestNull(TEXT("travel profile keeps legacy battle board lazy"), PlayerController->GetBattleBoardWidgetForTest());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingBattlePerfProfileTest,
+	"GameXXK.MVP.UI.DesktopTrainingBattlePerfProfile",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingBattlePerfProfileTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	AGameXXKMVPPlayerController* PlayerController = NewObject<AGameXXKMVPPlayerController>();
+	PlayerController->SetMVPSubsystemForTest(Subsystem);
+	PlayerController->SetDesktopTrainingBootProfileForTest(true);
+	TestTrue(TEXT("battle profile fixture starts in town"), Subsystem->StartGame());
+	TestTrue(TEXT("battle profile fixture creates the desktop workbench"), PlayerController->EnsureDesktopTrainingWidgetsForTest());
+	TestTrue(TEXT("battle profile applies through the explicit measurement seam"),
+		PlayerController->ApplyDesktopTrainingPerfProfileForTest(TEXT("challenge")));
+	TestEqual(TEXT("battle profile enters the existing Battle screen"),
+		Subsystem->GetRuntimeState().Screen,
+		EGameXXKScreen::Battle);
+	TestTrue(TEXT("battle profile owns an active CardBattle"),
+		Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle);
+	TestFalse(TEXT("battle profile closes the desktop workbench"),
+		PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()
+		&& PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()->IsWorkbenchVisibleForTest());
+	TestNotNull(TEXT("battle profile uses the existing full BattleBoard"),
+		PlayerController->GetBattleBoardWidgetForTest());
+	TestTrue(TEXT("existing BattleBoard is visible for the battle profile"),
+		PlayerController->GetBattleBoardWidgetForTest()
+		&& PlayerController->GetBattleBoardWidgetForTest()->IsBattleBoardVisible());
 	return true;
 }
 

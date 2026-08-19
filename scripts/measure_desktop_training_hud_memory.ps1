@@ -32,10 +32,10 @@ if ([string]::IsNullOrWhiteSpace($EditorExe)) {
 }
 
 $profileDefinitions = @(
-    [ordered]@{ name = 'empty'; map = $hudMap; extra_arguments = @('-GameXXKPerfProfile=empty') },
-    [ordered]@{ name = 'travel'; map = $hudMap; extra_arguments = @('-GameXXKPerfProfile=travel') },
-    [ordered]@{ name = 'challenge'; map = $hudMap; extra_arguments = @('-GameXXKPerfProfile=challenge') },
-    [ordered]@{ name = 'town3d'; map = $townMap; extra_arguments = @() }
+    [ordered]@{ name = 'empty'; surface = 'hud-empty'; map = $hudMap; extra_arguments = @('-GameXXKPerfProfile=empty') },
+    [ordered]@{ name = 'travel'; surface = 'desktop-travel'; map = $hudMap; extra_arguments = @('-GameXXKPerfProfile=travel') },
+    [ordered]@{ name = 'challenge'; surface = 'existing-fullscreen-battle'; map = $hudMap; extra_arguments = @('-GameXXKPerfProfile=challenge') },
+    [ordered]@{ name = 'town3d'; surface = 'accepted-3d-town'; map = $townMap; extra_arguments = @() }
 )
 $selectedProfiles = if ($Profile -eq 'all') {
     @($profileDefinitions)
@@ -60,6 +60,7 @@ function New-ProfileArguments([object]$Definition) {
 $contractProfiles = @($selectedProfiles | ForEach-Object {
     [ordered]@{
         name = $_.name
+        surface = $_.surface
         map = $_.map
         arguments = @(New-ProfileArguments $_)
     }
@@ -167,6 +168,7 @@ foreach ($profileDefinition in $selectedProfiles) {
     $processStarted = $false
     $profileResult = [ordered]@{
         profile_name = $profileName
+        surface = [string]$profileDefinition.surface
         map = [string]$profileDefinition.map
         arguments = @($arguments)
         process_id = $null

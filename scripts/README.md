@@ -15,7 +15,7 @@
 | `harness_state_validator.py` | 生产单元/散落报告状态校验(8 文件模板 + 散落报告轻量 schema + 新鲜度) |
 | `gamexxk_real_play_flow_mcp.py` | 真机 PIE 玩家流程 harness(主菜单→城镇→接任务→存档→路线图→战斗) |
 | `run_training_visual_pie_probe.py` | 直接加载纯 HUD 验收地图并以两次 MCP 调用验证历练条 NativeTick、无缝滚动与 walk atlas；等待发生在 UE 进程外 |
-| `measure_desktop_training_hud_memory.ps1` | 只启动 `L_DesktopTrainingHUD` 的编辑器游戏进程，在 20/50 秒记录 Working Set/Private Memory 并写 JSON 证据；不执行构建或打包 |
+| `measure_desktop_training_hud_memory.ps1` | 隔离启动 empty / Travel / 现有全屏 BattleBoard / 3D town 四档进程，在 20/50 秒记录 CPU、GPU 与内存并写 JSON 证据；不执行构建或打包 |
 | `gamexxk_ui_image_truth_check.py` | 只读校验用户确认图片真源库：manifest 覆盖、SHA256、尺寸、透明通道和确认依据必须一致 |
 
 ## 交互编辑器启动
@@ -24,14 +24,17 @@
 
 ## 桌面历练 HUD 编辑器内存
 
-`measure_desktop_training_hud_memory.ps1` 固定以 1672×941 启动 `/Game/GameXXK/Maps/L_DesktopTrainingHUD`，在约 20 秒与 50 秒采集该进程的 Working Set 和 Private Memory，并把带命令、PID、HEAD、清理结果的 JSON 写入 `Saved/HarnessReports`。脚本只关闭自己启动的进程，不会终止已有编辑器；若检测到同项目编辑器已运行会拒绝启动，除非显式传入 `-AllowConcurrentEditor`。
+`measure_desktop_training_hud_memory.ps1` 固定以 1672×941、一次一个独立进程采集 `empty`、`travel`、`challenge`、`town3d`。其中 `challenge` 仅保留历史报告键名，实际 `surface` 为 `existing-fullscreen-battle`：它通过显式性能夹具进入现有全屏 `UGameXXKBattleBoardWidget`，不再创建工作台内嵌战斗。20/50 秒样本包含 CPU、GPU Engine、Dedicated/Shared GPU Memory、Working Set 和 Private Memory，并把命令、PID、HEAD、表面语义和清理结果写入 `Saved/HarnessReports`。脚本只关闭自己启动的进程，不会终止已有编辑器；若检测到同项目编辑器已运行会拒绝启动，除非显式传入 `-AllowConcurrentEditor`。
 
 ```powershell
-# 查看采样合同，不启动 UE
-pwsh -File scripts/measure_desktop_training_hud_memory.ps1 -DescribeOnly
+# 查看四档采样合同，不启动 UE
+pwsh -File scripts/measure_desktop_training_hud_memory.ps1 -DescribeOnly -Profile all
 
-# 执行一次 20/50 秒编辑器 HUD-only 实测
-pwsh -File scripts/measure_desktop_training_hud_memory.ps1
+# 执行完整四档 20/50 秒实测
+pwsh -File scripts/measure_desktop_training_hud_memory.ps1 -Profile all
+
+# 只测现有全屏战斗表面
+pwsh -File scripts/measure_desktop_training_hud_memory.ps1 -Profile challenge
 ```
 
 ## 命名约定分组

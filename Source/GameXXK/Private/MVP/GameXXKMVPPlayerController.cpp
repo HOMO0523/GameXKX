@@ -1490,11 +1490,24 @@ bool AGameXXKMVPPlayerController::ApplyDesktopTrainingPerfProfile(const FString&
 	}
 	if (NormalizedProfile == TEXT("challenge"))
 	{
-		if (!DesktopTrainingWorkbenchWidget->SelectStageForTest(FName(TEXT("Training.Normal.1-2"))))
+		UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+		if (!Subsystem
+			|| !Subsystem->AcceptQuest()
+			|| !Subsystem->OpenDungeonFromTownExit()
+			|| !Subsystem->SelectDungeonNode(EGameXXKNodeKind::Start)
+			|| !Subsystem->SelectDungeonNode(EGameXXKNodeKind::Battle))
 		{
 			return false;
 		}
-		return DesktopTrainingWorkbenchWidget->ClickChallengeForTest();
+		CloseDesktopTrainingWorkbench();
+		if (!EnsurePlayerFlowWidgets())
+		{
+			return false;
+		}
+		RefreshPlayerFlowWidgets();
+		return BattleBoardWidget
+			&& BattleBoardWidget->IsBattleBoardVisible()
+			&& Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle;
 	}
 	return false;
 }

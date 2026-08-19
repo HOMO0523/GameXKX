@@ -59,6 +59,8 @@ class DesktopTrainingHudMemorySamplerTests(unittest.TestCase):
         self.assertIn("-GameXXKPerfProfile=empty", profiles["empty"]["arguments"])
         self.assertIn("-GameXXKPerfProfile=travel", profiles["travel"]["arguments"])
         self.assertIn("-GameXXKPerfProfile=challenge", profiles["challenge"]["arguments"])
+        self.assertIn("surface", profiles["challenge"])
+        self.assertEqual(profiles["challenge"]["surface"], "existing-fullscreen-battle")
         self.assertEqual(
             profiles["town3d"]["map"],
             "/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo",
