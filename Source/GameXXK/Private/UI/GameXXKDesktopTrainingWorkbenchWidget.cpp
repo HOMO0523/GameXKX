@@ -30,6 +30,7 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
+#include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
@@ -1860,7 +1861,8 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::SelectStageForTest(const FName Stag
 bool UGameXXKDesktopTrainingWorkbenchWidget::ClickChallengeForTest()
 {
 	ApplyAction(6);
-	return ViewMode == EGameXXKDesktopTrainingViewMode::ChallengeViewport;
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::DungeonMap;
 }
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::ClickTravelForTest()
@@ -4402,17 +4404,17 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	case 6:
 		CancelCarryForStructuralChange();
 		ReturnAllToolEntries();
-		if (Subsystem->StartTrainingChallenge(SelectedStageId))
+		if (Subsystem->OpenDungeonFromTownExit())
 		{
-			ViewMode = EGameXXKDesktopTrainingViewMode::ChallengeViewport;
-			bChallengeSidePanelsReadOnly = true;
 			bSettingsPanelOpen = false;
-			AutoBattleAccumulator = 0.0f;
-			RefreshLayout();
+			bExitConfirmationOpen = false;
+			CloseWorkbench();
+			GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
+			NotifyPlayerFlowStateChanged();
 		}
 		else
 		{
-			SetNotice(FText::FromString(TEXT("该关卡尚未解锁或已经通关")));
+			SetNotice(FText::FromString(TEXT("请先完成当前路线入口条件")));
 		}
 		break;
 	case 7:

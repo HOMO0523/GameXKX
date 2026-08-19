@@ -31,7 +31,7 @@
 - Modify: `Source/GameXXK/Private/Tests/GameXXKDesktopTrainingWorkbenchWidgetTest.cpp`
 - Modify: `Source/GameXXK/Private/UI/GameXXKDesktopTrainingWorkbenchWidget.cpp`
 
-- [ ] **Step 1: Replace the embedded-viewport assertions with failing route-ownership tests**
+- [x] **Step 1: Replace the embedded-viewport assertions with failing route-ownership tests**
 
 Add one success and one prerequisite-failure contract. The success fixture explicitly accepts the quest; the failure fixture snapshots quest and party state so the workbench cannot silently change either:
 
@@ -76,7 +76,7 @@ TestTrue(TEXT("failed Challenge keeps the workbench visible"), Widget->IsWorkben
 
 Remove the former assertions for `ChallengeViewport`, read-only side shells, 960x968 geometry, 3+3 slots, and the two challenge buttons from the existing reference-geometry and approved-control tests.
 
-- [ ] **Step 2: Cold-build the test and verify RED**
+- [x] **Step 2: Cold-build the test and verify RED**
 
 Run with every Unreal editor process closed:
 
@@ -87,7 +87,7 @@ Run with every Unreal editor process closed:
 
 Expected: UBT succeeds; Automation fails because `ClickChallengeForTest()` still starts `StartTrainingChallenge`, keeps the workbench visible, and leaves `Screen == Battle`.
 
-- [ ] **Step 3: Implement the minimal existing-route handoff**
+- [x] **Step 3: Implement the minimal existing-route handoff**
 
 Include `MVP/GameXXKLevelFlow.h`. Change Action 6 and the test seam to use the authoritative route entrance:
 
@@ -119,7 +119,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ClickChallengeForTest()
 
 The action must not call `AcceptQuest`, `SelectDungeonNode`, `SelectRouteNodeById`, `StartTrainingChallenge`, or any follower mutation.
 
-- [ ] **Step 4: Cold-build and verify GREEN**
+- [x] **Step 4: Cold-build and verify GREEN**
 
 Run:
 
@@ -133,7 +133,7 @@ Run:
 
 Expected: all selected tests pass; success stops at `DungeonMap`, failure stays in `Town`, and no challenge widget is found.
 
-- [ ] **Step 5: Commit the route handoff**
+- [x] **Step 5: Commit the route handoff**
 
 ```powershell
 git add Source/GameXXK/Private/Tests/GameXXKDesktopTrainingWorkbenchWidgetTest.cpp Source/GameXXK/Private/UI/GameXXKDesktopTrainingWorkbenchWidget.cpp

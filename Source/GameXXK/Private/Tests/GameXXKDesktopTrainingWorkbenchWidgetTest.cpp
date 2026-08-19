@@ -297,27 +297,66 @@ bool FGameXXKDesktopTrainingWorkbenchApprovedSecondaryControlBindingTest::RunTes
 	Widget->HandleActionClicked(3);
 	TestApprovedButton(TEXT("ToolButton_0"), TEXT("T_MasterV2_TabSelected"));
 	TestApprovedButton(TEXT("ToolButton_1"), TEXT("T_MasterV2_TabNormal"));
-	Widget->HandleActionClicked(4);
+	return true;
+}
 
-	const FName FirstUnclearedStage = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
-	TestTrue(TEXT("fixture selects the first uncleared stage"), Widget->SelectStageForTest(FirstUnclearedStage));
-	TestTrue(TEXT("fixture enters challenge viewport"), Widget->ClickChallengeForTest());
-	TestApprovedButton(TEXT("ChallengeAutoButton"), TEXT("T_MasterV2_ButtonPrimary"));
-	TestApprovedButton(TEXT("ChallengeAdvanceButton"), TEXT("T_MasterV2_ButtonDanger"));
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingChallengeDelegatesToExistingRouteTest,
+	"GameXXK.DesktopTraining.Workbench.ChallengeDelegatesToExistingRoute",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-	UBorder* ReadOnlyNode = Widget->WidgetTree
-		? Cast<UBorder>(Widget->WidgetTree->FindWidget(TEXT("TrainingNodeReadOnly_1")))
-		: nullptr;
-	TestNotNull(TEXT("challenge keeps the read-only training node"), ReadOnlyNode);
-	if (ReadOnlyNode)
-	{
-		TestTrue(TEXT("read-only node binds the approved route-node art"),
-			GetBorderResourcePath(ReadOnlyNode).Contains(TEXT("T_MasterV2_NavRoute")));
-		TestTrue(TEXT("read-only node preserves a non-stretch image brush"),
-			ReadOnlyNode->Background.DrawAs == ESlateBrushDrawType::Image);
-		TestEqual(TEXT("read-only node does not dark-color multiply approved art"),
-			ReadOnlyNode->GetBrushColor(), FLinearColor::White);
-	}
+bool FGameXXKDesktopTrainingChallengeDelegatesToExistingRouteTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestTrue(TEXT("route-delegation fixture starts in town"), Subsystem->StartGame());
+	TestTrue(TEXT("route-delegation fixture accepts the existing quest prerequisite"), Subsystem->AcceptQuest());
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("route-delegation fixture opens the workbench"), Widget->OpenWorkbench());
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	TestTrue(TEXT("route-delegation fixture selects the first unlocked challenge stage"), Widget->SelectStageForTest(StageId));
+
+	TestTrue(TEXT("Challenge delegates to the existing route entrance"), Widget->ClickChallengeForTest());
+	TestEqual(TEXT("Challenge stops on the player-owned route map"),
+		Subsystem->GetRuntimeState().Screen,
+		EGameXXKScreen::DungeonMap);
+	TestFalse(TEXT("the workbench closes before route ownership begins"), Widget->IsWorkbenchVisibleForTest());
+	TestNull(TEXT("the workbench never constructs an embedded BattleBoard"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("ChallengeBattleBoard")) : nullptr);
+	TestNull(TEXT("the rejected auto button is absent"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("ChallengeAutoButton")) : nullptr);
+	TestNull(TEXT("the rejected debug-advance button is absent"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("ChallengeAdvanceButton")) : nullptr);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingChallengePreservesPrerequisitesTest,
+	"GameXXK.DesktopTraining.Workbench.ChallengePreservesMissingPrerequisites",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingChallengePreservesPrerequisitesTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestTrue(TEXT("missing-prerequisite fixture starts in town"), Subsystem->StartGame());
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("missing-prerequisite fixture opens the workbench"), Widget->OpenWorkbench());
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	TestTrue(TEXT("missing-prerequisite fixture selects the first unlocked challenge stage"), Widget->SelectStageForTest(StageId));
+
+	const EGameXXKQuestState QuestBefore = Subsystem->GetRuntimeState().QuestState;
+	const FGameXXKCompanionPartySelection PartyBefore = Subsystem->GetRuntimeState().CardRun.PartySelection;
+	TestFalse(TEXT("Challenge rejects missing route prerequisites"), Widget->ClickChallengeForTest());
+	TestEqual(TEXT("failed Challenge remains in Town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("failed Challenge does not accept the quest"), Subsystem->GetRuntimeState().QuestState, QuestBefore);
+	TestTrue(TEXT("failed Challenge does not alter follower selection"),
+		FGameXXKCompanionPartySelection::StaticStruct()->CompareScriptStruct(
+			&Subsystem->GetRuntimeState().CardRun.PartySelection,
+			&PartyBefore,
+			PPF_None));
+	TestTrue(TEXT("failed Challenge keeps the workbench visible"), Widget->IsWorkbenchVisibleForTest());
 	return true;
 }
 
@@ -672,29 +711,6 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	TestTrue(TEXT("workbench backpack read model includes a travel chest"), VisibleItems.Contains(UGameXXKMVPRules::ItemTrainingNormalChest()));
 	TestEqual(TEXT("three difficulty bands each expose nine stage definitions"), FGameXXKTrainingRules::GetStageDefinitions().Num(), 27);
 	TestEqual(TEXT("normal 1-1 id remains stable"), FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1), FName(TEXT("Training.Normal.1-1")));
-	const FName ChallengeStage = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
-	TestTrue(TEXT("challenge fixture selects the first uncompleted stage"), Widget->SelectStageForTest(ChallengeStage));
-	TestTrue(TEXT("challenge fixture enters the enlarged challenge viewport"), Widget->ClickChallengeForTest());
-	TestTrue(TEXT("challenge refresh keeps the workbench shell visible"), Widget->IsWorkbenchVisibleForTest());
-	TestTrue(TEXT("challenge keeps warehouse and map shells read-only"), Widget->AreChallengeSidePanelsReadOnlyForTest());
-	TestTrue(TEXT("challenge viewport exposes active auto-battle control"), Widget->IsAutoBattleVisibleForTest());
-	TestFalse(TEXT("challenge viewport does not expose travel retry control"), Widget->IsRetryVisibleForTest());
-	const FVector4 ChallengeViewportRect = Widget->GetChallengeViewportRectForTest();
-	const FVector4 ChallengeCombatStripRect = Widget->GetChallengeCombatStripRectForTest();
-	const FVector4 ChallengeBattleBoardRect = Widget->GetChallengeBattleBoardRectForTest();
-	TestTrue(TEXT("challenge uses the full continuous center canvas"),
-		FMath::IsNearlyEqual(ChallengeViewportRect.Z, 960.0f)
-		&& FMath::IsNearlyEqual(ChallengeViewportRect.W, 968.0f));
-	TestEqual(TEXT("challenge combat strip reserves three enemy and three party slots"),
-		Widget->GetChallengeCombatSlotCountForTest(), 6);
-	TestTrue(TEXT("challenge combat strip precedes the battle board inside the center canvas"),
-		ChallengeCombatStripRect.Y + ChallengeCombatStripRect.W <= ChallengeBattleBoardRect.Y
-		&& ChallengeBattleBoardRect.Z >= 710.0f
-		&& ChallengeBattleBoardRect.W >= 535.0f);
-	const EGameXXKDesktopTrainingNav NavDuringChallenge = Widget->GetActiveNavForTest();
-	Widget->HandleActionClicked(4);
-	TestEqual(TEXT("challenge locks bottom navigation while side shells remain visible"), Widget->GetActiveNavForTest(), NavDuringChallenge);
-	TestTrue(TEXT("backpack entry returns to the workbench after challenge shell assertion"), Widget->OpenBackpack());
 	Widget->HandleActionClicked(14);
 	TestTrue(TEXT("topmost toolbar action toggles its state"), Widget->IsAlwaysOnTopForTest());
 	Widget->HandleActionClicked(17);
