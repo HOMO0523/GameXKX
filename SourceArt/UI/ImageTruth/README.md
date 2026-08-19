@@ -24,4 +24,4 @@ python scripts/gamexxk_ui_image_truth_check.py --json
 
 5. 校验通过后，才能进入 PSD 拆图、UE 导入和运行时绑定。
 
-当前状态：已收入 1 张用户逐图确认素材；没有自动继承任何旧素材。准确数量与哈希以 `manifest.json` 和校验器输出为准。
+当前状态：已收入 5 张用户逐图确认素材；没有自动继承任何旧素材。准确数量与哈希以 `manifest.json` 和校验器输出为准。

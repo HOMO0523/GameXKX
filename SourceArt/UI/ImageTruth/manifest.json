@@ -17,6 +17,62 @@
       "approvedBy": "user",
       "approvedAt": "2026-08-19T11:49:46.9989058+08:00",
       "approvalReference": "Current Codex task: user replied 'a' to confirm TrainingIdleStrip_Background_GPT_v003_Seamless_RGBA.png as the first image-truth candidate."
+    },
+    {
+      "id": "training.nav.warehouse.ink.monochrome.v002",
+      "role": "desktop-training bottom navigation warehouse glyph",
+      "path": "SourceArt/UI/ImageTruth/confirmed/training_nav_warehouse_ink_monochrome_v002.png",
+      "sourcePath": "SourceArt/UI/ImageReviewQueue/20260819-bottom-nav-simplified/warehouse_glyph_ink_monochrome_candidate_v002.png",
+      "sha256": "BFA8E3BC904A8817276955D574EC543CF9B27C8C649B2DA9994FEDB4D5252A96",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "textLayer": "UE-localized label: 仓库",
+      "approvedBy": "user",
+      "approvedAt": "2026-08-19T12:10:04.8458631+08:00",
+      "approvalReference": "Current Codex task: user replied 'ok吧' to approve the simplified warehouse ink glyph and clarified that labels remain a separate UE text layer."
+    },
+    {
+      "id": "training.nav.formation.ink.v002",
+      "role": "desktop-training bottom navigation formation glyph",
+      "path": "SourceArt/UI/ImageTruth/confirmed/training_nav_formation_ink_v002.png",
+      "sourcePath": "SourceArt/UI/ImageReviewQueue/20260819-bottom-nav-simplified/formation_glyph_ink_candidate_v002.png",
+      "sha256": "0E2776C5DA41C850173E82FB875E69E9102BCAF6842C225B2C66CF7A22238E8C",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "textLayer": "UE-localized label: 编队",
+      "approvedBy": "user",
+      "approvedAt": "2026-08-19T12:18:00+08:00",
+      "approvalReference": "User attached codex-clipboard-cdba903e-5556-444f-9ca1-96b7f98d9258.png and said the two shown images are acceptable. Attachment hash exactly matches the review candidate."
+    },
+    {
+      "id": "training.nav.training.ink.v001",
+      "role": "desktop-training bottom navigation training glyph",
+      "path": "SourceArt/UI/ImageTruth/confirmed/training_nav_training_ink_v001.png",
+      "sourcePath": "SourceArt/UI/ImageReviewQueue/20260819-bottom-nav-simplified/training_glyph_ink_candidate_v001.png",
+      "sha256": "717D17466C2AEFB8AC1F37C4B3D7A178B0074C91E6DA30344DD22E19D1AC8615",
+      "width": 1254,
+      "height": 1254,
+      "hasAlpha": true,
+      "textLayer": "UE-localized label: 历练",
+      "approvedBy": "user",
+      "approvedAt": "2026-08-19T12:18:00+08:00",
+      "approvalReference": "User attached codex-clipboard-35aa3d11-9b6d-4f96-bc0e-5c3b06e02ae9.png and said the two shown images are acceptable. Attachment hash exactly matches the review candidate."
+    },
+    {
+      "id": "training.nav.talents.ink.knot.v004",
+      "role": "desktop-training bottom navigation talents glyph",
+      "path": "SourceArt/UI/ImageTruth/confirmed/training_nav_talents_ink_knot_v004.png",
+      "sourcePath": "SourceArt/UI/ImageReviewQueue/20260819-bottom-nav-simplified/talents_glyph_ink_candidate_v004.png",
+      "sha256": "8D57ACA706FB6622705149C2C0F6C95992B2CCBC83B0629FD70267DCF36B9B59",
+      "width": 1305,
+      "height": 1205,
+      "hasAlpha": true,
+      "textLayer": "UE-localized label: 天赋",
+      "approvedBy": "user",
+      "approvedAt": "2026-08-19T12:20:00+08:00",
+      "approvalReference": "User replied 'ok' after the simplified grouped ink Celtic-knot talent glyph was shown."
     }
   ]
 }
