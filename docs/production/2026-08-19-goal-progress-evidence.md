@@ -50,7 +50,7 @@ source_commit: 0fd4c889a825ab54c5813fab5c40829cd69ffdb5
 
 ## 下一步
 
-- 扩展内存采样器以固定同机记录空壳、历练静置、局内 ChallengeViewport、3D 青山镇四组数据，并记录 CPU/GPU/Working/Private/GPU Dedicated。
+- 扩展内存采样器以固定同机记录空壳、历练静置、现有全屏 BattleBoard（旧称 ChallengeViewport）、3D 青山镇四组数据，并记录 CPU/GPU/Working/Private/GPU Dedicated。
 - 以四组同机性能采样作为下一门禁；在取得空壳/历练/挑战/3D 可比数据前不切默认入口。
 - 继续按 ImageTruth 候选队列逐张确认新图，只有确认后才导入 PSD/UE。
 

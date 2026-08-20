@@ -635,8 +635,7 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	const FString& NpcAutosaveSlot = DefaultSaveSlot;
-	Subsystem->OpenWorldMap();
-	Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan());
+	TestTrue(TEXT("town-shell fixture starts a new game in Qingshan town"), Subsystem->StartGame());
 
 	AGameXXKTownExitActor* TownExit = NewObject<AGameXXKTownExitActor>();
 	TownExit->SetMVPSubsystemForTest(Subsystem);
@@ -827,6 +826,8 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("quest follower starts chasing only after hero leaves follow distance"), InputFollowerNpc->GetActorLocation().Y > FollowerBeforeRangeChase.Y + 1.0f);
 		}
 		AGameXXKMVPGameMode* DirectNpcGameMode = NewObject<AGameXXKMVPGameMode>();
+		TestTrue(TEXT("direct follower fixture prepares town visual classes"),
+			DirectNpcGameMode && DirectNpcGameMode->PrepareTownVisualClassesForMapForTest(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
 		UClass* DirectNpcClass = DirectNpcGameMode ? DirectNpcGameMode->GetPersonTownNpcCharacterClass().Get() : nullptr;
 		TestNotNull(TEXT("direct follower NPC blueprint class is configured"), DirectNpcClass);
 		TestTrue(TEXT("direct follower NPC blueprint is a hero-style Character class"),
@@ -883,8 +884,7 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 		{
 			DefaultSaveBackup.ClearTestSlot();
 			UGameXXKMVPSubsystem* RecordingSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-			RecordingSubsystem->OpenWorldMap();
-			RecordingSubsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan());
+			TestTrue(TEXT("recording fixture starts a new game in Qingshan town"), RecordingSubsystem->StartGame());
 			RecordingQuestNpc->SetNpcRole(EGameXXKTownNpcRole::Quest);
 			RecordingQuestNpc->SetMVPSubsystemForTest(RecordingSubsystem);
 			MovingHero->SetActorLocation(RecordingQuestNpc->GetActorLocation());

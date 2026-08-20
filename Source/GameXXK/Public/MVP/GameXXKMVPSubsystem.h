@@ -141,6 +141,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	bool IsTargetOutcomeFixtureActiveForTest() const;
 
+	/** Non-saving real-PIE fixture: converts the first reachable Battle into Elite and seeds visible abandon rewards. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool ApplyRouteExitAcceptanceFixtureForTest(FString& OutError);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool ClearRouteExitAcceptanceFixtureForTest(FString& OutError);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool IsRouteExitAcceptanceFixtureActiveForTest() const;
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool StartGame();
 
@@ -549,6 +559,8 @@ private:
 
 	/** Never serialized: exact source state restored after each mutable target-outcome parity fixture. */
 	TOptional<FGameXXKRuntimeState> TargetOutcomeFixtureBackup;
+
+	TOptional<FGameXXKRuntimeState> RouteExitAcceptanceFixtureBackup;
 
 	UPROPERTY(Transient)
 	FText LastSaveLoadError;

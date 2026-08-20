@@ -64,7 +64,7 @@ bool FGameXXKOwnedQuestNpcLoadoutTest::RunTest(const FString& Parameters)
 	const FGameXXKSaveState Save = UGameXXKMVPRules::MakeSaveState(Subsystem->GetRuntimeState());
 	FGameXXKRuntimeState Restored;
 	FGameXXKSaveMigrationReport Report;
-	TestTrue(TEXT("owned NPC loadouts survive the v22 save boundary"),
+	TestTrue(TEXT("owned NPC loadouts survive the current save boundary"),
 		FGameXXKSaveMigration::TryRestoreRuntimeState(Save, Restored, Report));
 	const FGameXXKQuestNpcOwnedCardLoadout* RestoredTusi =
 		Restored.CardRun.PartySelection.QuestNpcCardLoadouts.Find(TusiChief->NpcId);
@@ -81,7 +81,9 @@ bool FGameXXKOwnedQuestNpcLoadoutTest::RunTest(const FString& Parameters)
 	FGameXXKSaveMigrationReport MigrationReport;
 	TestTrue(TEXT("v21 save migrates into the owned-NPC v22 schema"),
 		FGameXXKSaveMigration::MigrateToCurrent(VersionTwentyOne, MigratedTwentyTwo, MigrationReport));
-	TestEqual(TEXT("v21 migration writes v22"), MigratedTwentyTwo.SaveVersion, 22);
+	TestEqual(TEXT("v21 migration writes the current save schema"),
+		MigratedTwentyTwo.SaveVersion,
+		FGameXXKSaveMigration::CurrentSaveVersion);
 	TestEqual(TEXT("v21 migration seeds all six owned NPC loadouts"),
 		MigratedTwentyTwo.RuntimeState.CardRun.PartySelection.QuestNpcCardLoadouts.Num(), 6);
 	const FGameXXKQuestNpcOwnedCardLoadout* MigratedTusi =

@@ -76,8 +76,7 @@ bool FGameXXKTownNpcInteractionRulesTest::RunTest(const FString& Parameters)
 
 	UGameInstance* GameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
-	TestTrue(TEXT("town-NPC fixture opens the world map"), Subsystem->OpenWorldMap());
-	TestTrue(TEXT("town-NPC fixture enters Qingshan town"), Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan()));
+	TestTrue(TEXT("town-NPC fixture starts a new game in Qingshan town"), Subsystem->StartGame());
 	TestTrue(TEXT("town-NPC fixture accepts the narrative quest"), Subsystem->AcceptQuest());
 	// New semantics: accepting the quest keeps the guide NPC in town. Simulate the dialog
 	// 入队 recruit (controller RecruitPendingTownNpc) so the route-support selection path

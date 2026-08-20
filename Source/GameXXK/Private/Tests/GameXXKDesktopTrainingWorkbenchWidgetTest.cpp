@@ -11,6 +11,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
@@ -357,6 +358,52 @@ bool FGameXXKDesktopTrainingChallengePreservesPrerequisitesTest::RunTest(const F
 			&PartyBefore,
 			PPF_None));
 	TestTrue(TEXT("failed Challenge keeps the workbench visible"), Widget->IsWorkbenchVisibleForTest());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingChallengeButtonRequiresRoutePrerequisitesTest,
+	"GameXXK.DesktopTraining.Workbench.ChallengeButtonRequiresRoutePrerequisites",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingChallengeButtonRequiresRoutePrerequisitesTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestTrue(TEXT("challenge-gate fixture starts in town"), Subsystem->StartGame());
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("challenge-gate fixture opens the workbench"), Widget->OpenWorkbench());
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	TestTrue(TEXT("challenge-gate fixture selects the first unlocked challenge stage"), Widget->SelectStageForTest(StageId));
+	TestTrue(TEXT("challenge-gate fixture expands the backpack"), Widget->OpenBackpack());
+	Widget->HandleActionClicked(4);
+
+	UButton* Challenge = Widget->WidgetTree ? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TrainingChallengeButton"))) : nullptr;
+	if (!TestNotNull(TEXT("challenge button is built in training map"), Challenge))
+	{
+		return false;
+	}
+	TestFalse(TEXT("challenge is disabled before the route quest is accepted"), Challenge->GetIsEnabled());
+	TestTrue(TEXT("challenge tooltip explains the route prerequisite"),
+		Challenge->GetToolTipText().ToString().Contains(TEXT("主线任务")));
+
+	UButton* Travel = Widget->WidgetTree ? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TrainingTravelButton"))) : nullptr;
+	if (!TestNotNull(TEXT("travel button is built in training map"), Travel))
+	{
+		return false;
+	}
+	TestFalse(TEXT("travel is disabled for an uncleared stage"), Travel->GetIsEnabled());
+
+	TestTrue(TEXT("accepting the quest succeeds"), Subsystem->AcceptQuest());
+	Widget->HandleActionClicked(4);
+	Widget->HandleActionClicked(4);
+	Challenge = Widget->WidgetTree ? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TrainingChallengeButton"))) : nullptr;
+	if (!TestNotNull(TEXT("challenge button remains after quest refresh"), Challenge))
+	{
+		return false;
+	}
+	TestTrue(TEXT("challenge enables once the route quest is accepted"), Challenge->GetIsEnabled());
 	return true;
 }
 
@@ -768,24 +815,13 @@ bool FGameXXKDesktopTrainingCollapsedResourceHibernateTest::RunTest(const FStrin
 	const int32 TravelTickBeforeCollapse = Workbench->GetTravelVisualNativeTickCountForTest();
 	Workbench->HandleActionClicked(60);
 	TestFalse(TEXT("collapse hides the backpack"), Workbench->IsBackpackExpandedForTest());
-	TestTrue(TEXT("collapse schedules a delayed release"), Workbench->IsCollapsedResourceUnloadPendingForTest());
-	TestFalse(TEXT("collapse does not mark resources released immediately"), Workbench->AreCollapsedResourcesReleasedForTest());
+	TestFalse(TEXT("collapse does not schedule an unload"), Workbench->IsCollapsedResourceUnloadPendingForTest());
+	TestFalse(TEXT("collapse does not mark resources released"), Workbench->AreCollapsedResourcesReleasedForTest());
 	TestTrue(TEXT("collapse keeps the top travel strip"), Workbench->HasTravelVisualStripForTest());
-
-	Workbench->TickForTest(2.9f);
-	TestTrue(TEXT("release is still pending at 2.9 seconds"), Workbench->IsCollapsedResourceUnloadPendingForTest());
-	TestFalse(TEXT("resources remain unreleased at 2.9 seconds"), Workbench->AreCollapsedResourcesReleasedForTest());
-	TestEqual(TEXT("no GC request occurs before the deadline"), Workbench->GetCollapsedGcRequestCountForTest(), 0);
+	Workbench->TickForTest(0.1f);
 	TestTrue(TEXT("travel keeps ticking while collapsed"),
 		Workbench->GetTravelVisualNativeTickCountForTest() > TravelTickBeforeCollapse);
-
-	Workbench->TickForTest(0.1f);
-	TestFalse(TEXT("release is no longer pending at 3.0 seconds"), Workbench->IsCollapsedResourceUnloadPendingForTest());
-	TestTrue(TEXT("resources are released at 3.0 seconds"), Workbench->AreCollapsedResourcesReleasedForTest());
-	TestEqual(TEXT("the deadline requests GC exactly once"), Workbench->GetCollapsedGcRequestCountForTest(), 1);
-	Workbench->TickForTest(1.0f);
-	TestEqual(TEXT("later collapsed ticks do not request another GC"), Workbench->GetCollapsedGcRequestCountForTest(), 1);
-	TestTrue(TEXT("top travel strip survives resource release"), Workbench->HasTravelVisualStripForTest());
+	TestEqual(TEXT("collapse never requests GC"), Workbench->GetCollapsedGcRequestCountForTest(), 0);
 
 	Workbench->HandleActionClicked(60);
 	TestTrue(TEXT("cold reopen expands the backpack"), Workbench->IsBackpackExpandedForTest());

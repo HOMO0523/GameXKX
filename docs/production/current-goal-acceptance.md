@@ -9,10 +9,12 @@ working_tree: dirty (active root worktree is `main`; runtime/evidence baseline i
 
 > 本文件是"当前做到哪了"的**唯一滚动指针**。`AGENTS.md` 不再硬编码验收状态,改指向这里。每次目标收尾后更新本文件。
 
+> **2026-08-19 用户纠偏（最高优先）**：本文下方所有“工作台内合并 ChallengeViewport、内嵌路线图/BattleBoard、3 敌 3 我顶栏、挑战只读侧壳、`StartTrainingChallenge` 作为玩家挑战入口”的描述均已废止。当前玩家挑战流程必须复用现有传送门→路线图→全屏 BattleBoard；工作台挑战只负责委托现有路线入口并关闭工作台。权威规格为 `docs/superpowers/specs/2026-08-19-route-owned-auto-battle-correction-design.md`。旧段落仅作历史记录，不作为当前状态。
+
 ## 当前基线(更新于 2026-08-19)
 
 - 规格冻结基线:`ba90810a56e06a3b70ed0e3125c4ef67a59a0685`（2026-08-17 `docs: freeze desktop training workbench design`）；它是设计/规则基线，不冒充当前代码 HEAD。根目录 `main` 已从祖先 `628c46a` 安全快进并完成到 `0fd4c88` 的运行时/资产/harness checkpoint；原 `codex/desktop-training-2d-hud-migration` 分支保留在 `57a06e4`，未使用或创建 worktree。
-- 当前运行时/证据源码基线:`0fd4c88`（活动分支 `main`；滚动指针由后续 docs-only commit 承载）。HUD-only 懒启动/折叠卸载、工作台两态置顶图钉、存档快照归一化、v21/v22 库存/NPC、32 张当前可达 1K atlas、8 张 ImageTruth 和 Phase 0 harness 已分三批 checkpoint；用户 `L_Main.umap` 及未跟踪源美术/探针保持保护。桌面历练规则、程序化工作台、真实 CardBattle 桥接、确定性 TravelRunner、离线账本、奖励/冷却 Resolver、背包/伙伴/NPC 切换、仓库 4 列分页、拖拽/右键路由、工具 3×3、挑战只读侧壳和 960×968 ChallengeViewport 已保留。
+- 当前运行时/证据源码基线:`0fd4c88`（活动分支 `main`；滚动指针由后续 docs-only commit 承载）。HUD-only 懒启动/折叠卸载、工作台两态置顶图钉、存档快照归一化、v21/v22 库存/NPC、32 张当前可达 1K atlas、8 张 ImageTruth 和 Phase 0 harness 已分三批 checkpoint；用户 `L_Main.umap` 及未跟踪源美术/探针保持保护。桌面历练规则、程序化工作台、确定性 TravelRunner、离线账本、奖励/冷却 Resolver、背包/伙伴/NPC 切换、仓库 4 列分页、拖拽/右键路由、工具 3×3 已保留；旧“挑战只读侧壳/960×968 ChallengeViewport”已按用户纠偏废止，当前挑战走现有路线图与全屏 BattleBoard。
 - SaveVersion 边界必须分层记录：`ba90810` 规格冻结时的历史前置基线为 v17；当前工作区代码实际 `CurrentSaveVersion=22`，`DesktopTrainingWorkbenchIntroducedSaveVersion=18`、`TrainingRewardCooldownsIntroducedSaveVersion=19`、`TrainingOfflineCollectionIntroducedSaveVersion=20`、`DesktopInventoryStorageIntroducedSaveVersion=21`、`QuestNpcEquipmentOwnerIntroducedSaveVersion=22`。任何旧 v16/v17/v18 历练索引均为历史 `shelved`；后续迁移从 v23 继续。
 - 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
@@ -42,7 +44,9 @@ working_tree: dirty (active root worktree is `main`; runtime/evidence baseline i
 - **任务接受与跟随者激活语义已切换**。`AcceptTownQuest` 接取青山镇主线**不再**自动设置 `bFollowerJoined`;引导 NPC 留在原地(不跟随、不自动入队)。玩家在 NPC 对话框点"入队"(`RecruitPendingTownNpc`)后,引导 NPC 才成为叙事跟随者(`bFollowerJoined=true`,并清空 `bHasQuestNpcLocation`/`QuestNpcLocation` 随主角离镇)。旧档迁移(`GameXXKSaveMigration`)仍会把 v14 及更早"已接受但未跟随"的存档规范化为跟随已加入,保持兼容。
 - 地形增益仍为**旧表**;新模型(每回合全员 1 次 + 对应职业再 1 次 + 山河套再 1 次,敌方统一 1 易伤+1 燃烧)已裁决,待 §5 山河三档与 `TriggerTerrainBenefit` 口径复核后实施,见 `docs/design/2026-08-13-terrain-benefit-redesign.md`。
 
-## 桌面历练工作台当前进度(2026-08-18)
+## 桌面历练工作台当前进度(2026-08-18，部分内容已被 2026-08-19 纠偏废止)
+
+> 本节“挑战态 3+3 顶栏/ChallengeViewport/只读侧壳/`StartTrainingChallenge` 玩家路径”均为旧设计，已被用户否决；仅保留工作台作为 2D 挂机/游历壳。挑战正确路径见上方纠偏。
 
 - **规则/存档已推进但未完成玩法闭环**：`GameXXKTrainingRules.*` 覆盖三难度、27 个稳定关卡 ID、挑战/游历分离、普通 1-1 默认通关、失败策略、章节编制、seeded challenge/travel reward resolver 和普通/高级 Travel 240/360 秒冷却；当前代码与测试已让普通 1-1 使用与挑战相同的敌方生命、三人编制和概率箱规则，不再保留旧的一滴血/禁箱特例；v20 提供 UTC 基线，v21/v22 分别承载物理格和 NPC 配置。
 - **程序化工作台、真实挑战桥接和 TravelRunner 已提交**：`GameXXKDesktopTrainingWorkbenchWidget.*` 提供 1920×1080 几何合同、仓库 4 列/20 格分页、背包比例约 1.76:1、右侧 27 节点/三难度页签、挑战/游历按钮、顶部 3 敌+3 我挂机条；挂机条读取 TravelRunner 的遭遇、阶段和 HP，并显示普通箱/精英箱剩余 CD（规则分别为 240/360 秒）。挑战态重建 Slate 树时会保留原可见性，避免 Battle 状态只剩战斗层；真实 PIE 已确认左仓库、中央 BattleBoard、右只读历练地图同窗保留。背包内部现在有主角/两名永久伙伴切换、当前角色对可见仓库格 quick-equip、确定性排序、装备槽卸下回仓、独立设置面板和独立关闭动作，工具替换右栏，天赋替换中栏，挑战期间导航只读。本轮工作区增量已将批准的 MasterV2 `PanelLarge`、`ItemSlot`、`EquipmentSlot`、页签、路线节点，以及五张圆形 `NavDisc` 以缓存纹理和九宫格/等比槽位接入；资源合同与 DesktopTraining 回归已通过，但仍不是最终 PSD/manifest 交付。`StartTrainingChallenge` 已创建真实 `FGameXXKCardBattleAdapter` 会话并支持单步推进；自动模式会对强制弃牌、洞察、任务检索和自动解析队列做有界确定性选择；`StartTrainingTravel`/`AdvanceTrainingTravelStep` 已支持走动、单敌人自动攻击、掉血、击杀、Boss 结算、重试/回退和 1-1 一血规则。本分支进一步把 `Town` 状态接到 HUD-only 地图并自动打开工作台；`main` 仍保留 3D 城镇入口。

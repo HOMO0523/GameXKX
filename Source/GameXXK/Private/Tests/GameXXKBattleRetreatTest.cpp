@@ -1,7 +1,9 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKRouteEconomyRules.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
 
+#include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -629,6 +631,43 @@ bool FGameXXKBattleRetreatCheckpointClearTest::RunTest(const FString& Parameters
 		TestTrue(TEXT("terminal route settles"), bSettled);
 		TestFalse(TEXT("terminal settlement clears checkpoint"), TerminalState.BattleEntryCheckpoint.bValid);
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteExitAcceptanceFixtureTest,
+	"GameXXK.Route.BattleRetreat.DevelopmentFixture",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteExitAcceptanceFixtureTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestTrue(TEXT("development fixture starts a game"), Subsystem->StartGame());
+	TestTrue(TEXT("development fixture enters Qingshan"), Subsystem->SelectWorldRegion(UGameXXKMVPRules::RegionQingshan()));
+	TestTrue(TEXT("development fixture accepts quest"), Subsystem->AcceptQuest());
+	TestTrue(TEXT("development fixture enters generated route"), Subsystem->OpenDungeonFromTownExit());
+	TestTrue(TEXT("development fixture completes Start as the player"), Subsystem->SelectRouteNodeById(0));
+	const FGameXXKRuntimeState BeforeFixture = Subsystem->GetRuntimeState();
+
+	FString Error;
+	TestTrue(
+		FString::Printf(TEXT("route-exit acceptance fixture applies: %s"), *Error),
+		Subsystem->ApplyRouteExitAcceptanceFixtureForTest(Error));
+	TestTrue(TEXT("route-exit fixture reports active"), Subsystem->IsRouteExitAcceptanceFixtureActiveForTest());
+	const FGameXXKRuntimeState& Applied = Subsystem->GetRuntimeState();
+	const FGameXXKRouteMapNode* EliteNode = Applied.RouteMapNodes.FindByPredicate([&Applied](const FGameXXKRouteMapNode& Node)
+	{
+		return Applied.ReachableRouteNodeIds.Contains(Node.NodeId)
+			&& Node.NodeKind == EGameXXKNodeKind::Elite;
+	});
+	TestNotNull(TEXT("fixture exposes a player-clickable Elite"), EliteNode);
+	TestEqual(TEXT("fixture seeds a visible nonzero abandon conversion"), Applied.CardRun.RouteTravelMoney, 99);
+	TestEqual(TEXT("fixture seeds a visible stone conversion"), Applied.CardRun.RouteProgress.ActualRouteCardAcquisitionCount, 29);
+	TestFalse(TEXT("fixture never starts or selects the Elite"), Applied.CardRun.bHasActiveCardBattle);
+
+	TestTrue(TEXT("route-exit acceptance fixture clears"), Subsystem->ClearRouteExitAcceptanceFixtureForTest(Error));
+	TestFalse(TEXT("cleared route-exit fixture reports inactive"), Subsystem->IsRouteExitAcceptanceFixtureActiveForTest());
+	TestTrue(TEXT("clearing fixture restores every authoritative field"), RuntimeStatesEqual(Subsystem->GetRuntimeState(), BeforeFixture));
 	return true;
 }
 

@@ -74,6 +74,33 @@ class _WidgetWithThrowingGeometryRead:
 
 
 class RealPlayFlowProbeTest(unittest.TestCase):
+    def test_probe_wires_two_level_route_exit_acceptance_fixture_and_state(self) -> None:
+        source = PROBE_PATH.read_text(encoding="utf-8")
+
+        for token in (
+            "--apply-route-exit-acceptance-fixture",
+            "--clear-route-exit-acceptance-fixture",
+            "apply_route_exit_acceptance_fixture_for_test",
+            "clear_route_exit_acceptance_fixture_for_test",
+            'result["route_exit_acceptance_fixture"]',
+            'result["route_exit_acceptance_fixture_clear"]',
+            '"current_route_node_id"',
+            '"pending_route_node_id"',
+            '"visited_route_node_ids"',
+            '"reachable_route_node_ids"',
+            '"battle_entry_checkpoint"',
+            '"route_travel_money"',
+            '"route_card_acquisition_count"',
+            '"enhancement_stone_count"',
+            '"battle_auto_play_enabled"',
+            '"battle_phase"',
+            '"pending_reward_option_count"',
+            "--high-res-screenshot",
+            "take_high_res_screenshot",
+            'result["high_res_screenshot"]',
+        ):
+            self.assertIn(token, source)
+
     def test_real_flow_wires_the_new_meta_shop_acceptance_contract(self) -> None:
         self.assertTrue(META_SHOP_PROBE_PATH.is_file(), "focused meta-shop PIE probe must exist")
         probe_source = META_SHOP_PROBE_PATH.read_text(encoding="utf-8")
@@ -103,6 +130,17 @@ class RealPlayFlowProbeTest(unittest.TestCase):
         self.assertEqual("Party", module._battle_side_name(types.SimpleNamespace(name="Party")))
         self.assertEqual("Enemy", module._battle_side_name("EGameXXKCardTargetSide::Enemy"))
         self.assertEqual("Invalid", module._battle_side_name(types.SimpleNamespace(name="Invalid")))
+
+    def test_guid_summary_is_stable_and_never_contains_object_addresses(self) -> None:
+        module = _load_probe_module()
+
+        value = types.SimpleNamespace(a=0x12345678, b=0x90ABCDEF, c=0x10203040, d=0x50607080)
+
+        self.assertEqual(
+            "12345678-90ABCDEF-10203040-50607080",
+            module._guid_to_string(value),
+        )
+        self.assertEqual("00000000-00000000-00000000-00000000", module._guid_to_string(None))
 
     def test_fixture_result_treats_single_empty_out_string_as_success(self) -> None:
         module = _load_probe_module()

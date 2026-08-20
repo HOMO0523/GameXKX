@@ -407,6 +407,9 @@ public:
 	void HandleActionClicked(int32 ActionId);
 	bool HandleActionRightClicked(int32 ActionId);
 
+	/** Set while a real Slate button callback is executing so layout rebuilds are deferred to the next tick. */
+	bool bInActionCallback = false;
+
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
@@ -417,6 +420,7 @@ protected:
 
 private:
 	void BuildProgrammaticLayout();
+	void RebuildLayoutNow();
 	void BuildWorkbenchShell();
 	void BuildBackpackTabToggle();
 	void BuildTopToolbar();
@@ -596,6 +600,7 @@ private:
 	bool bExitConfirmationOpen = false;
 	bool bNativeTickActive = false;
 	bool bLayoutRefreshPending = false;
+	bool bLayoutRebuildScheduled = false;
 	bool bInternalLayoutRebuild = false;
 	int32 ProgrammaticLayoutBuildCount = 0;
 	static constexpr float CollapsedResourceUnloadDelaySeconds = 3.0f;

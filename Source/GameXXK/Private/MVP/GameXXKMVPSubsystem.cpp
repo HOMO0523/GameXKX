@@ -2003,6 +2003,81 @@ bool UGameXXKMVPSubsystem::IsTargetOutcomeFixtureActiveForTest() const
 	return TargetOutcomeFixtureBackup.IsSet();
 }
 
+bool UGameXXKMVPSubsystem::ApplyRouteExitAcceptanceFixtureForTest(FString& OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	OutError.Reset();
+	if (RouteExitAcceptanceFixtureBackup.IsSet())
+	{
+		OutError = TEXT("A route-exit acceptance fixture is already active.");
+		return false;
+	}
+	if (RuntimeState.Screen != EGameXXKScreen::DungeonMap
+		|| !RuntimeState.bDungeonActive
+		|| !RuntimeState.bHasGeneratedRouteMap
+		|| RuntimeState.CardRun.bHasActiveCardBattle)
+	{
+		OutError = TEXT("Route-exit acceptance fixture requires an idle generated route map.");
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FGameXXKRouteMapNode* ReachableBattle = Candidate.RouteMapNodes.FindByPredicate([&Candidate](const FGameXXKRouteMapNode& Node)
+	{
+		return Candidate.ReachableRouteNodeIds.Contains(Node.NodeId)
+			&& Node.NodeKind == EGameXXKNodeKind::Battle;
+	});
+	if (!ReachableBattle)
+	{
+		OutError = TEXT("Route-exit acceptance fixture found no reachable Battle node to convert.");
+		return false;
+	}
+
+	ReachableBattle->NodeKind = EGameXXKNodeKind::Elite;
+	Candidate.PlayerHP = Candidate.PlayerMaxHP;
+	Candidate.PlayerMP = Candidate.PlayerMaxMP;
+	Candidate.CardRun.RouteTravelMoney = 99;
+	Candidate.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 29;
+	FString ValidationError;
+	if (!FGameXXKSaveMigration::ValidateRuntimeState(Candidate, ValidationError))
+	{
+		OutError = FString::Printf(TEXT("Route-exit acceptance fixture is invalid: %s"), *ValidationError);
+		return false;
+	}
+
+	RouteExitAcceptanceFixtureBackup.Emplace(RuntimeState);
+	RuntimeState = MoveTemp(Candidate);
+	if (AGameXXKMVPPlayerController* const PlayerController =
+		Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		PlayerController->RefreshPlayerFlowWidgetsForTest();
+	}
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ClearRouteExitAcceptanceFixtureForTest(FString& OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	OutError.Reset();
+	if (!RouteExitAcceptanceFixtureBackup.IsSet())
+	{
+		return true;
+	}
+	RuntimeState = MoveTemp(RouteExitAcceptanceFixtureBackup.GetValue());
+	RouteExitAcceptanceFixtureBackup.Reset();
+	if (AGameXXKMVPPlayerController* const PlayerController =
+		Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		PlayerController->RefreshPlayerFlowWidgetsForTest();
+	}
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::IsRouteExitAcceptanceFixtureActiveForTest() const
+{
+	return RouteExitAcceptanceFixtureBackup.IsSet();
+}
+
 bool UGameXXKMVPSubsystem::StartGame()
 {
 	return StartNewGame();

@@ -47,6 +47,97 @@ TARGET_OUTCOME_SCENARIOS = (
 
 
 class SlateScreenshotFallbackTest(unittest.TestCase):
+    def test_two_level_exit_acceptance_contract_is_wired(self) -> None:
+        source = (
+            inspect.getsource(flow.RealFlowHarness.run_two_level_exit_acceptance)
+            + inspect.getsource(flow.RealFlowHarness.apply_route_exit_acceptance_fixture)
+        )
+
+        for token in (
+            "--apply-route-exit-acceptance-fixture",
+            '"自动战斗：关"',
+            '"自动战斗：开"',
+            '"关闭"',
+            '"继续战斗"',
+            '"退出战斗"',
+            '"跳过奖励"',
+            '"关闭挑战"',
+            '"继续挑战"',
+            '"结算并退出"',
+            "battle_retreat_cancel_no_mutation",
+            "battle_retreat_restored_checkpoint",
+            "route_abandon_preview",
+            "route_abandon_settled_once",
+        ):
+            self.assertIn(token, source)
+
+    def test_route_exit_state_fingerprint_and_awards_are_exact(self) -> None:
+        runtime = {
+            "screen": "Battle",
+            "current_route_node_id": 8,
+            "pending_route_node_id": 8,
+            "dungeon_node_index": 4,
+            "player_hp": 77,
+            "player_mp": 16,
+            "visited_route_node_ids": [0, 2],
+            "reachable_route_node_ids": [8, 9],
+            "route_travel_money": 99,
+            "route_card_acquisition_count": 29,
+            "battle_phase": "Player",
+            "battle_round_number": 3,
+            "battle_hand": [{"instance_id": "Card.1"}],
+            "battle_units": {"Enemy": {"hp": 31}},
+            "pending_reward_option_count": 0,
+            "battle_entry_checkpoint": {"b_valid": True, "source_node_id": 8},
+            "ignored": "not part of cancel equality",
+        }
+
+        fingerprint = flow._route_exit_state_fingerprint(runtime)
+
+        self.assertNotIn("ignored", fingerprint)
+        self.assertEqual(8, fingerprint["current_route_node_id"])
+        self.assertEqual([{"instance_id": "Card.1"}], fingerprint["battle_hand"])
+        self.assertEqual(
+            {"permanent_gold": 4, "enhancement_stones": 2},
+            flow._expected_abandoned_route_awards(runtime),
+        )
+
+    def test_preview_window_resize_converts_logical_pixels_through_window_dpi(self) -> None:
+        class FakeUser32:
+            def __init__(self) -> None:
+                self.calls = []
+
+            def GetDpiForWindow(self, hwnd):
+                self.calls.append(("GetDpiForWindow", hwnd))
+                return 120
+
+            def MoveWindow(self, hwnd, left, top, width, height, repaint):
+                self.calls.append(("MoveWindow", hwnd, left, top, width, height, repaint))
+                return True
+
+        controller = object.__new__(flow.PreviewWindowController)
+        controller.user32 = FakeUser32()
+        window = {"hwnd": 71, "rect": [10, 20, 1930, 1040]}
+
+        with patch.object(flow.time, "sleep") as sleep:
+            result = controller.resize_preview_window_logical(window, 1280, 720)
+
+        self.assertEqual(
+            ("MoveWindow", 71, 10, 20, 1600, 900, True),
+            controller.user32.calls[-1],
+        )
+        self.assertEqual([10, 20, 1610, 920], window["rect"])
+        self.assertEqual(
+            {
+                "logical_size": [1280, 720],
+                "physical_size": [1600, 900],
+                "dpi": 120,
+                "logical_scale": None,
+            },
+            result,
+        )
+        sleep.assert_called_once_with(0.6)
+
     def _valid_target_outcome_report(self) -> dict[str, object]:
         scenarios: dict[str, object] = {}
         for index, scenario_id in enumerate(TARGET_OUTCOME_SCENARIOS, start=1):

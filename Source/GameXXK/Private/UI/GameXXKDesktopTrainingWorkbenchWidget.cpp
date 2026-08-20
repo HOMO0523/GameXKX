@@ -20,6 +20,8 @@
 #include "Engine/Texture2D.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
 #include "GenericPlatform/GenericWindow.h"
 #include "HAL/PlatformTime.h"
 #include "InputCoreTypes.h"
@@ -37,6 +39,7 @@
 #include "UI/GameXXKCharacterBackpackModel.h"
 #include "UI/GameXXKDesktopTrainingLayout.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
+#include "UObject/StrongObjectPtr.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
 #include "Styling/SlateTypes.h"
@@ -52,6 +55,24 @@
 
 	namespace
 {
+	struct FScopedActionCallbackGuard
+	{
+		bool& bFlag;
+		bool bPrevious;
+
+		explicit FScopedActionCallbackGuard(bool& InFlag)
+			: bFlag(InFlag)
+			, bPrevious(InFlag)
+		{
+			bFlag = true;
+		}
+
+		~FScopedActionCallbackGuard()
+		{
+			bFlag = bPrevious;
+		}
+	};
+
 	class SGameXXKDesktopTrainingActionButton final : public SButton
 	{
 	public:
@@ -65,10 +86,14 @@
 
 		virtual FReply OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
 		{
-			if (MouseEvent.GetEffectingButton() == EKeys::RightMouseButton
-				&& Owner.IsValid()
-				&& Owner->HandleRightMouseButtonDown())
+			if (MouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
 			{
+				if (Owner.IsValid())
+				{
+					Owner->HandleRightMouseButtonDown();
+				}
+				// Always consume right-click so it never falls through to the
+				// normal SButton click path and triggers the left-click action.
 				return FReply::Handled();
 			}
 			return SButton::OnMouseButtonDown(MyGeometry, MouseEvent);
@@ -304,9 +329,9 @@
 		}
 	}
 
-	TMap<FString, TWeakObjectPtr<UTexture2D>>& GetTextureCache()
+	TMap<FString, TStrongObjectPtr<UTexture2D>>& GetTextureCache()
 	{
-		static TMap<FString, TWeakObjectPtr<UTexture2D>> Cache;
+		static TMap<FString, TStrongObjectPtr<UTexture2D>> Cache;
 		return Cache;
 	}
 
@@ -316,17 +341,14 @@
 		{
 			return nullptr;
 		}
-		TMap<FString, TWeakObjectPtr<UTexture2D>>& Cache = GetTextureCache();
+		TMap<FString, TStrongObjectPtr<UTexture2D>>& Cache = GetTextureCache();
 		const FString Key(Path);
-		if (const TWeakObjectPtr<UTexture2D>* Cached = Cache.Find(Key))
+		if (const TStrongObjectPtr<UTexture2D>* Cached = Cache.Find(Key))
 		{
-			if (Cached->IsValid())
-			{
-				return Cached->Get();
-			}
+			return Cached->Get();
 		}
 		UTexture2D* Loaded = LoadObject<UTexture2D>(nullptr, Path);
-		Cache.FindOrAdd(Key) = Loaded;
+		Cache.FindOrAdd(Key) = TStrongObjectPtr<UTexture2D>(Loaded);
 		return Loaded;
 	}
 
@@ -763,6 +785,7 @@ void UGameXXKDesktopTrainingStageButton::HandleClicked()
 {
 	if (Owner)
 	{
+		FScopedActionCallbackGuard CallbackGuard(Owner->bInActionCallback);
 		Owner->HandleStageClicked(StageId);
 	}
 }
@@ -781,13 +804,19 @@ void UGameXXKDesktopTrainingActionButton::HandleClicked()
 {
 	if (Owner)
 	{
+		FScopedActionCallbackGuard CallbackGuard(Owner->bInActionCallback);
 		Owner->HandleActionClicked(ActionId);
 	}
 }
 
 bool UGameXXKDesktopTrainingActionButton::HandleRightMouseButtonDown()
 {
-	return Owner && Owner->HandleActionRightClicked(ActionId);
+	if (!Owner)
+	{
+		return false;
+	}
+	FScopedActionCallbackGuard CallbackGuard(Owner->bInActionCallback);
+	return Owner->HandleActionRightClicked(ActionId);
 }
 
 TSharedRef<SWidget> UGameXXKDesktopTrainingActionButton::RebuildWidget()
@@ -2023,7 +2052,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 		NoticePanel = MakePanel(WidgetTree, FLinearColor(0.08f, 0.05f, 0.03f, 0.96f));
 		NoticeText = MakeText(WidgetTree, LastNotice, 16, Gold);
 		NoticePanel->SetContent(NoticeText);
-		AddCanvas(RootCanvas, NoticePanel.Get(), FVector2D(560.0f, 216.0f), FVector2D(620.0f, 28.0f));
+		AddCanvas(RootCanvas, NoticePanel.Get(), FVector2D(397.0f, 226.0f), FVector2D(420.0f, 28.0f));
 	}
 }
 
@@ -2047,7 +2076,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackTabToggle()
 		bBackpackExpanded
 			? TEXT("折叠背包与侧栏；历练挂机继续运行")
 			: TEXT("菜单 [Tab]：展开角色背包")));
-	AddCanvas(RootCanvas, Toggle, FVector2D(837.0f, 214.0f), FVector2D(68.0f, 44.0f));
+	AddCanvas(RootCanvas, Toggle, FVector2D(1225.0f, 30.0f), FVector2D(68.0f, 44.0f));
 	ActionButtons.Add(Toggle);
 }
 
@@ -2102,6 +2131,14 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopToolbar()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildExitConfirmation()
 {
+	UBorder* Backdrop = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("ExitGameBackdrop"));
+	FSlateBrush BackdropBrush;
+	BackdropBrush.DrawAs = ESlateBrushDrawType::Box;
+	BackdropBrush.TintColor = FSlateColor(FLinearColor(0.01f, 0.01f, 0.01f, 0.72f));
+	Backdrop->SetBrush(BackdropBrush);
+	Backdrop->SetBrushColor(FLinearColor(0.01f, 0.01f, 0.01f, 0.72f));
+	AddCanvas(RootCanvas, Backdrop, FVector2D::ZeroVector, GameXXKDesktopTrainingLayout::GetReferenceCanvasSize());
+
 	UBorder* Frame = MakePanel(WidgetTree, PanelAlt, TEXT("ExitGameConfirmation"));
 	AddCanvas(RootCanvas, Frame, FVector2D(690.0f, 360.0f), FVector2D(360.0f, 210.0f));
 	UTextBlock* Prompt = MakeText(
@@ -3303,9 +3340,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 	if (Subsystem)
 	{
 		const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
-		const bool bCanChallenge = FGameXXKTrainingRules::CanChallenge(Progress, SelectedStageId);
+		const bool bRoutePrerequisitesMet = Subsystem->CanEnterDungeon()
+			&& Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town;
+		const bool bCanChallenge = bRoutePrerequisitesMet
+			&& FGameXXKTrainingRules::CanChallenge(Progress, SelectedStageId);
 		Challenge->SetIsEnabled(bCanChallenge);
-		if (!bCanChallenge && FGameXXKTrainingRules::AreAllStagesCleared(Progress))
+		if (!bRoutePrerequisitesMet)
+		{
+			Challenge->SetToolTipText(FText::FromString(TEXT("需要先完成青山镇主线任务，并处于城镇中")));
+		}
+		else if (!bCanChallenge && FGameXXKTrainingRules::AreAllStagesCleared(Progress))
 		{
 			Challenge->SetToolTipText(FText::FromString(TEXT("挑战按钮已完成；期待新内容")));
 		}
@@ -3327,6 +3371,14 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 	Travel->SetStyle(MakeTextureButtonStyle(ButtonPrimaryTexturePath, FVector2D(116.0f, 58.0f), FMargin(0.08f)));
 	Travel->SetBackgroundColor(FLinearColor::White);
 	Travel->SetContent(MakeText(WidgetTree, FText::FromString(TEXT("游历")), 22));
+	const bool bCanTravel = Subsystem
+		&& !SelectedStageId.IsNone()
+		&& FGameXXKTrainingRules::CanTravel(Subsystem->GetTrainingProgressCopy(), SelectedStageId);
+	Travel->SetIsEnabled(bCanTravel);
+	if (!bCanTravel)
+	{
+		Travel->SetToolTipText(FText::FromString(TEXT("需要先通关前置关卡或选择可游历关卡")));
+	}
 	AddCanvas(RootCanvas, Travel, FVector2D(1517.0f, 828.0f), FVector2D(116.0f, 58.0f));
 	ActionButtons.Add(Travel);
 }
@@ -3364,11 +3416,42 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBottomNavigation()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::RefreshLayout()
 {
-	if (bNativeTickActive)
+	if (bNativeTickActive || bInActionCallback)
 	{
 		bLayoutRefreshPending = true;
+		if (bLayoutRebuildScheduled)
+		{
+			return;
+		}
+		bLayoutRebuildScheduled = true;
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().SetTimerForNextTick([WeakThis = TWeakObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget>(this)]()
+			{
+				UGameXXKDesktopTrainingWorkbenchWidget* Widget = WeakThis.Get();
+				if (!Widget)
+				{
+					return;
+				}
+				Widget->bLayoutRebuildScheduled = false;
+				if (Widget->bLayoutRefreshPending)
+				{
+					Widget->RebuildLayoutNow();
+				}
+			});
+		}
+		else
+		{
+			bLayoutRebuildScheduled = false;
+			RebuildLayoutNow();
+		}
 		return;
 	}
+	RebuildLayoutNow();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::RebuildLayoutNow()
+{
 	bLayoutRefreshPending = false;
 	TGuardValue<bool> InternalLayoutRebuildGuard(bInternalLayoutRebuild, true);
 	const bool bWasInViewport = IsInViewport();
@@ -3929,6 +4012,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	{
 		return;
 	}
+	if (bExitConfirmationOpen && ActionId != 53 && ActionId != 54)
+	{
+		return;
+	}
 	if (ActionId >= 0 && ActionId <= 4)
 	{
 		CancelCarryForStructuralChange();
@@ -4194,7 +4281,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 			bBackpackExpanded = false;
 			bExitConfirmationOpen = false;
 			RefreshLayout();
-			ScheduleCollapsedResourceUnload();
+			// Do not unload collapsed resources: reopening must stay safe and
+			// fast. Only hide the expanded UI; keep textures/atlases alive.
 		}
 		else
 		{

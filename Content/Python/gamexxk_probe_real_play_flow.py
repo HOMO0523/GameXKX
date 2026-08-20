@@ -5,6 +5,8 @@ import json
 import math
 import re
 import sys
+import time
+from pathlib import Path
 
 import unreal
 
@@ -191,6 +193,19 @@ def _struct_get(value, *names):
     return None
 
 
+def _guid_to_string(value):
+    if value is None:
+        return "00000000-00000000-00000000-00000000"
+    parts = []
+    for lower, upper in (("a", "A"), ("b", "B"), ("c", "C"), ("d", "D")):
+        part = _struct_get(value, lower, upper)
+        try:
+            parts.append(f"{int(part) & 0xFFFFFFFF:08X}")
+        except (TypeError, ValueError, OverflowError):
+            return ""
+    return "-".join(parts)
+
+
 def _enum_name(value):
     if value is None:
         return ""
@@ -224,6 +239,8 @@ def _runtime_state(subsystem):
         ("player_gold", ("player_gold", "PlayerGold")),
         ("player_hp", ("player_hp", "PlayerHP")),
         ("player_max_hp", ("player_max_hp", "PlayerMaxHP")),
+        ("player_mp", ("player_mp", "PlayerMP")),
+        ("player_max_mp", ("player_max_mp", "PlayerMaxMP")),
         ("b_has_player_location", ("b_has_player_location", "has_player_location", "bHasPlayerLocation", "HasPlayerLocation")),
         ("player_location", ("player_location", "PlayerLocation")),
         ("b_follower_joined", ("b_follower_joined", "follower_joined", "bFollowerJoined", "FollowerJoined")),
@@ -231,6 +248,9 @@ def _runtime_state(subsystem):
         ("quest_npc_location", ("quest_npc_location", "QuestNpcLocation")),
         ("b_dungeon_active", ("b_dungeon_active", "dungeon_active", "bDungeonActive", "DungeonActive")),
         ("dungeon_node_index", ("dungeon_node_index", "DungeonNodeIndex")),
+        ("b_has_generated_route_map", ("b_has_generated_route_map", "bHasGeneratedRouteMap")),
+        ("current_route_node_id", ("current_route_node_id", "CurrentRouteNodeId")),
+        ("pending_route_node_id", ("pending_route_node_id", "PendingRouteNodeId")),
     ):
         value = _struct_get(state, *names)
         if value is None:
@@ -243,8 +263,99 @@ def _runtime_state(subsystem):
             value = _vector_to_dict(value)
         result[key] = value
 
+    for key, names in (
+        ("visited_route_node_ids", ("visited_route_node_ids", "VisitedRouteNodeIds")),
+        ("reachable_route_node_ids", ("reachable_route_node_ids", "ReachableRouteNodeIds")),
+    ):
+        values = _struct_get(state, *names)
+        try:
+            result[key] = [int(value) for value in values]
+        except Exception:
+            result[key] = []
+
+    checkpoint = _struct_get(state, "battle_entry_checkpoint", "BattleEntryCheckpoint")
+    result["battle_entry_checkpoint"] = {
+        "b_valid": bool(_struct_get(checkpoint, "b_valid", "bValid")),
+        "source_node_id": _struct_get(checkpoint, "source_node_id", "SourceNodeId"),
+        "previous_current_route_node_id": _struct_get(
+            checkpoint,
+            "previous_current_route_node_id",
+            "PreviousCurrentRouteNodeId",
+        ),
+        "previous_dungeon_node_index": _struct_get(
+            checkpoint,
+            "previous_dungeon_node_index",
+            "PreviousDungeonNodeIndex",
+        ),
+        "previous_player_hp": _struct_get(checkpoint, "previous_player_hp", "PreviousPlayerHP"),
+        "previous_player_mp": _struct_get(checkpoint, "previous_player_mp", "PreviousPlayerMP"),
+        "previous_visited_route_node_ids": [
+            int(value)
+            for value in (_struct_get(
+                checkpoint,
+                "previous_visited_route_node_ids",
+                "PreviousVisitedRouteNodeIds",
+            ) or [])
+        ],
+        "previous_reachable_route_node_ids": [
+            int(value)
+            for value in (_struct_get(
+                checkpoint,
+                "previous_reachable_route_node_ids",
+                "PreviousReachableRouteNodeIds",
+            ) or [])
+        ],
+    }
+
     card_run = _struct_get(state, "card_run", "CardRun")
     active_battle = _struct_get(card_run, "active_battle", "ActiveBattle")
+    route_progress = _struct_get(card_run, "route_progress", "RouteProgress")
+    pending_reward = _struct_get(card_run, "pending_reward", "PendingReward")
+    result["route_travel_money"] = int(
+        _struct_get(card_run, "route_travel_money", "RouteTravelMoney") or 0
+    )
+    result["route_card_acquisition_count"] = int(
+        _struct_get(
+            route_progress,
+            "actual_route_card_acquisition_count",
+            "ActualRouteCardAcquisitionCount",
+        )
+        or 0
+    )
+    result["battle_phase"] = _enum_name(_struct_get(active_battle, "phase", "Phase"))
+    result["battle_round_number"] = int(
+        _struct_get(active_battle, "round_number", "RoundNumber") or 0
+    )
+    result["has_active_card_battle"] = bool(
+        _struct_get(card_run, "b_has_active_card_battle", "bHasActiveCardBattle")
+    )
+    pending_options = _struct_get(pending_reward, "options", "Options")
+    try:
+        result["pending_reward_option_count"] = len(list(pending_options))
+    except Exception:
+        result["pending_reward_option_count"] = 0
+    result["last_applied_route_settlement_id"] = _guid_to_string(
+        _struct_get(
+            card_run,
+            "last_applied_route_settlement_id",
+            "LastAppliedRouteSettlementId",
+        )
+    )
+
+    inventory = _struct_get(state, "inventory", "Inventory")
+    enhancement_stone_count = 0
+    try:
+        for item_id, quantity in inventory.items():
+            if str(item_id) == "Item.EnhancementStone":
+                enhancement_stone_count = int(quantity)
+                break
+    except Exception:
+        pass
+    result["enhancement_stone_count"] = enhancement_stone_count
+    try:
+        result["battle_auto_play_enabled"] = bool(subsystem.is_battle_auto_play_enabled())
+    except Exception:
+        result["battle_auto_play_enabled"] = None
     units = _struct_get(active_battle, "units", "Units")
     battle_units = {}
     try:
@@ -1173,6 +1284,93 @@ def _widget_screen_summary(world, widget, diagnostic_stage_prefix="widget"):
             code="screen_rect_unavailable",
         )
     return result
+
+
+def _handle_apply_route_exit_acceptance_fixture(world):
+    subsystem = _get_mvp_subsystem(world) or _get_mvp_subsystem_from_player_controller(
+        _first_player_controller(world)
+    )
+    if not subsystem:
+        return {"ok": False, "reason": "subsystem_missing"}
+    try:
+        ok, out_error = _fixture_apply_result(
+            subsystem.apply_route_exit_acceptance_fixture_for_test()
+        )
+    except Exception as exc:
+        return {"ok": False, "reason": f"route_exit_fixture_exception:{exc}"}
+    return {
+        "ok": bool(ok),
+        "error": str(out_error or ""),
+        "active": bool(subsystem.is_route_exit_acceptance_fixture_active_for_test()),
+    }
+
+
+def _handle_clear_route_exit_acceptance_fixture(world):
+    subsystem = _get_mvp_subsystem(world) or _get_mvp_subsystem_from_player_controller(
+        _first_player_controller(world)
+    )
+    if not subsystem:
+        return {"ok": False, "reason": "subsystem_missing"}
+    try:
+        ok, out_error = _fixture_apply_result(
+            subsystem.clear_route_exit_acceptance_fixture_for_test()
+        )
+    except Exception as exc:
+        return {"ok": False, "reason": f"route_exit_fixture_clear_exception:{exc}"}
+    return {
+        "ok": bool(ok),
+        "error": str(out_error or ""),
+        "active": bool(subsystem.is_route_exit_acceptance_fixture_active_for_test()),
+    }
+
+
+def _handle_high_res_screenshot(world, name, width, height):
+    if not world:
+        return {"ok": False, "reason": "pie_world_missing"}
+    try:
+        width = int(width)
+        height = int(height)
+    except (TypeError, ValueError):
+        return {"ok": False, "reason": "invalid_dimensions"}
+    if width <= 0 or height <= 0:
+        return {"ok": False, "reason": "invalid_dimensions"}
+    safe_name = Path(str(name)).name
+    if not safe_name.lower().endswith(".png"):
+        safe_name += ".png"
+    output_path = Path(unreal.Paths.project_saved_dir()) / "VisualReview" / "20260819-battle-retreat-route-abandon" / safe_name
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_path.exists():
+        output_path.unlink()
+    try:
+        task = unreal.AutomationLibrary.take_high_res_screenshot(
+            width,
+            height,
+            str(output_path),
+            mask_enabled=False,
+            capture_hdr=False,
+            comparison_tolerance=unreal.ComparisonTolerance.LOW,
+            comparison_notes="GameXXK two-level route exit visual acceptance",
+            delay=0.0,
+            force_game_view=True,
+        )
+        if task is None or not bool(task.is_valid_task()):
+            return {"ok": False, "reason": "screenshot_task_invalid", "path": str(output_path)}
+        deadline = time.time() + 30.0
+        while not bool(task.is_task_done()) and time.time() < deadline:
+            time.sleep(0.25)
+        if not bool(task.is_task_done()):
+            return {"ok": False, "reason": "screenshot_task_timeout", "path": str(output_path)}
+        if not output_path.is_file() or output_path.stat().st_size <= 0:
+            return {"ok": False, "reason": "screenshot_file_missing", "path": str(output_path)}
+        return {
+            "ok": True,
+            "path": str(output_path),
+            "width": width,
+            "height": height,
+            "size_bytes": output_path.stat().st_size,
+        }
+    except Exception as exc:
+        return {"ok": False, "reason": f"screenshot_exception:{exc}", "path": str(output_path)}
 
 
 def _battle_scene_unit_ids(world):
@@ -2114,6 +2312,9 @@ def main(argv):
     parser.add_argument("--clear-battle-hud-fixture", action="store_true")
     parser.add_argument("--apply-target-outcome-fixture", default="")
     parser.add_argument("--clear-target-outcome-fixture", action="store_true")
+    parser.add_argument("--apply-route-exit-acceptance-fixture", action="store_true")
+    parser.add_argument("--clear-route-exit-acceptance-fixture", action="store_true")
+    parser.add_argument("--high-res-screenshot", nargs=3, metavar=("NAME", "WIDTH", "HEIGHT"))
     args = parser.parse_args(argv)
 
     result = {}
@@ -2148,6 +2349,17 @@ def main(argv):
         )
     if args.clear_target_outcome_fixture:
         result["target_outcome_fixture_clear"] = _handle_clear_target_outcome_fixture(world)
+    if args.apply_route_exit_acceptance_fixture:
+        result["route_exit_acceptance_fixture"] = _handle_apply_route_exit_acceptance_fixture(world)
+    if args.clear_route_exit_acceptance_fixture:
+        result["route_exit_acceptance_fixture_clear"] = _handle_clear_route_exit_acceptance_fixture(world)
+    if args.high_res_screenshot is not None:
+        result["high_res_screenshot"] = _handle_high_res_screenshot(
+            world,
+            args.high_res_screenshot[0],
+            args.high_res_screenshot[1],
+            args.high_res_screenshot[2],
+        )
     result["probe"] = probe()
     print(_strict_json_dumps(result))
 

@@ -1955,6 +1955,43 @@ def _distance(a: dict[str, float], b: dict[str, float]) -> float:
     return math.sqrt(sum((float(a.get(axis, 0.0)) - float(b.get(axis, 0.0))) ** 2 for axis in ("x", "y", "z")))
 
 
+def _route_exit_state_fingerprint(runtime: Any) -> dict[str, Any]:
+    """Stable authoritative subset used to prove modal cancel is a true no-op."""
+    payload = runtime if isinstance(runtime, dict) else {}
+    keys = (
+        "screen",
+        "current_route_node_id",
+        "pending_route_node_id",
+        "dungeon_node_index",
+        "player_hp",
+        "player_mp",
+        "player_gold",
+        "enhancement_stone_count",
+        "b_dungeon_active",
+        "visited_route_node_ids",
+        "reachable_route_node_ids",
+        "route_travel_money",
+        "route_card_acquisition_count",
+        "battle_phase",
+        "battle_round_number",
+        "battle_hand",
+        "battle_units",
+        "pending_reward_option_count",
+        "battle_entry_checkpoint",
+        "last_applied_route_settlement_id",
+    )
+    # JSON round-trip makes nested list/dict values independent of later probe reuse.
+    return json.loads(json.dumps({key: payload.get(key) for key in keys}, ensure_ascii=False))
+
+
+def _expected_abandoned_route_awards(runtime: Any) -> dict[str, int]:
+    payload = runtime if isinstance(runtime, dict) else {}
+    return {
+        "permanent_gold": max(0, int(payload.get("route_travel_money") or 0)) // 20,
+        "enhancement_stones": max(0, int(payload.get("route_card_acquisition_count") or 0)) // 10,
+    }
+
+
 def _cardinal_key_away_from(position: dict[str, float], origin: dict[str, float]) -> str:
     delta_x = float(position.get("x", 0.0)) - float(origin.get("x", 0.0))
     delta_y = float(position.get("y", 0.0)) - float(origin.get("y", 0.0))
@@ -2133,6 +2170,82 @@ class PreviewWindowController:
         self.user32.SetForegroundWindow(hwnd)
         time.sleep(0.2)
 
+    def focus_non_preview_window(self) -> dict[str, Any]:
+        """Put PIE in the real background-throttled state without minimizing it."""
+        enum_proc_type = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+        candidates: list[dict[str, Any]] = []
+
+        def enum_proc(hwnd, _lparam):
+            if not self.user32.IsWindowVisible(hwnd):
+                return True
+            length = self.user32.GetWindowTextLengthW(hwnd)
+            if length <= 0:
+                return True
+            buffer = ctypes.create_unicode_buffer(length + 1)
+            self.user32.GetWindowTextW(hwnd, buffer, length + 1)
+            title = buffer.value
+            if "GameXXK Preview" in title:
+                return True
+            if "Unreal Editor" in title or "GameXXK" in title:
+                candidates.append({"hwnd": int(hwnd), "title": title})
+            return True
+
+        self.user32.EnumWindows(enum_proc_type(enum_proc), 0)
+        if not candidates:
+            raise RuntimeError("No non-preview Unreal Editor window was available for background cadence evidence")
+        target = candidates[0]
+        self.user32.ShowWindow(ctypes.c_void_p(target["hwnd"]), 5)
+        self.user32.SetForegroundWindow(ctypes.c_void_p(target["hwnd"]))
+        time.sleep(0.25)
+        return target
+
+    def resize_preview_window_logical(
+        self,
+        window: dict[str, Any],
+        logical_width: int,
+        logical_height: int,
+        logical_scale: tuple[float, float] | None = None,
+    ) -> dict[str, Any]:
+        hwnd = int(window.get("hwnd", 0) or 0)
+        if hwnd <= 0 or logical_width <= 0 or logical_height <= 0:
+            raise RuntimeError("Preview resize received invalid HWND or logical size")
+        try:
+            dpi = int(self.user32.GetDpiForWindow(hwnd) or 96)
+        except Exception:
+            dpi = 96
+        dpi = max(96, dpi)
+        if logical_scale is not None:
+            scale_x, scale_y = logical_scale
+            if scale_x <= 0.0 or scale_y <= 0.0:
+                raise RuntimeError("Preview resize received an invalid measured logical scale")
+            physical_width = max(1, int(round(logical_width / scale_x)))
+            physical_height = max(1, int(round(logical_height / scale_y)))
+        else:
+            physical_width = max(1, int(round(logical_width * dpi / 96.0)))
+            physical_height = max(1, int(round(logical_height * dpi / 96.0)))
+        rect = list(window.get("rect", [0, 0, physical_width, physical_height]))
+        left = int(rect[0]) if len(rect) >= 2 else 0
+        top = int(rect[1]) if len(rect) >= 2 else 0
+        if not self.user32.MoveWindow(
+            hwnd,
+            left,
+            top,
+            physical_width,
+            physical_height,
+            True,
+        ):
+            raise RuntimeError(
+                f"MoveWindow failed for logical preview size {logical_width}x{logical_height}"
+            )
+        window["rect"] = [left, top, left + physical_width, top + physical_height]
+        time.sleep(0.6)
+        return {
+            "logical_size": [logical_width, logical_height],
+            "physical_size": [physical_width, physical_height],
+            "dpi": dpi,
+            "logical_scale": list(logical_scale) if logical_scale is not None else None,
+        }
+
     def focus_keyboard_input(self, window: dict[str, Any]) -> None:
         left, top, right, bottom = [int(v) for v in window["rect"]]
         self.focus(window)
@@ -2288,6 +2401,10 @@ class RealFlowHarness:
         self.events: list[dict[str, Any]] = []
         self.battle_hud_fixture_may_be_applied = False
         self.target_outcome_fixture_may_be_applied = False
+        self.route_exit_acceptance_fixture_may_be_applied = False
+        self.route_exit_acceptance_mode = False
+        self.route_exit_acceptance_fixture: dict[str, Any] = {}
+        self.route_exit_elite_node_id = -1
         self._screenshot_contexts: dict[str, dict[str, Any]] = {}
         self._default_save_backup_active = False
         self.preview_window: dict[str, Any] | None = None
@@ -2405,6 +2522,29 @@ class RealFlowHarness:
             raise RuntimeError(f"Target-outcome fixture clear failed: {clear_result}; runtime={runtime}")
         self.target_outcome_fixture_may_be_applied = False
         self.event("target_outcome_fixture_clear", detail=clear_result)
+        return payload
+
+    def apply_route_exit_acceptance_fixture(self) -> dict[str, Any]:
+        self.route_exit_acceptance_fixture_may_be_applied = True
+        payload = self.probe("--apply-route-exit-acceptance-fixture")
+        fixture = payload.get("route_exit_acceptance_fixture", {})
+        if not isinstance(fixture, dict) or not fixture.get("ok") or not fixture.get("active"):
+            raise RuntimeError(f"Route-exit acceptance fixture apply failed: {fixture}")
+        self.route_exit_acceptance_fixture = dict(fixture)
+        self.event("route_exit_acceptance_fixture_apply", detail=fixture)
+        return payload
+
+    def clear_route_exit_acceptance_fixture(self) -> dict[str, Any]:
+        payload = self.probe("--clear-route-exit-acceptance-fixture")
+        clear_result = payload.get("route_exit_acceptance_fixture_clear", {})
+        if (
+            not isinstance(clear_result, dict)
+            or not clear_result.get("ok")
+            or clear_result.get("active") is not False
+        ):
+            raise RuntimeError(f"Route-exit acceptance fixture clear failed: {clear_result}")
+        self.route_exit_acceptance_fixture_may_be_applied = False
+        self.event("route_exit_acceptance_fixture_clear", detail=clear_result)
         return payload
 
     def _absolute_widget_center(
@@ -3105,6 +3245,31 @@ class RealFlowHarness:
             raise RuntimeError(f"No enabled Slate button precedes dialog text '{label}': {snapshot[:2400]}")
         return candidates[-1]
 
+    def wait_for_visible_slate_button(self, label: str, timeout: float = 15.0) -> dict[str, Any]:
+        deadline = time.monotonic() + timeout
+        last_error = ""
+        while time.monotonic() < deadline:
+            try:
+                return self.slate_button_for_visible_text(label)
+            except RuntimeError as exc:
+                last_error = str(exc)
+                time.sleep(0.1)
+        raise RuntimeError(f"Slate button did not become enabled: {label}: {last_error}")
+
+    def click_visible_slate_button(self, label: str, event_name: str) -> dict[str, Any]:
+        button = self.wait_for_visible_slate_button(label)
+        click_ok = bool(self.client.call_tool(
+            "Click",
+            {"ref": button["ref"], "button": "left", "doubleClick": False},
+            toolset_name=SLATE_TOOLSET,
+            timeout=self.client.timeout,
+        ))
+        self.event(event_name, click_ok=click_ok, button=button, label=label)
+        if not click_ok:
+            raise RuntimeError(f"Slate click failed for '{label}': {button}")
+        time.sleep(0.25)
+        return self.probe()
+
     def click_main_menu_start(self) -> None:
         """Exercise the authored visible Start/New Game button, not the C++ API."""
         button = self.slate_button_for_visible_text("开始游戏")
@@ -3267,6 +3432,34 @@ class RealFlowHarness:
             geometry_stable=screenshot_context["geometry_stable"],
         )
         return path, size
+
+    def capture_resolution_matrix(self, prefix: str) -> dict[str, str]:
+        outputs: dict[str, str] = {}
+        for width, height in ((1280, 720), (1672, 941), (1920, 1080)):
+            payload = self.probe(
+                "--high-res-screenshot",
+                f"{prefix}_{width}x{height}.png",
+                str(width),
+                str(height),
+            )
+            capture = payload.get("high_res_screenshot", {})
+            if not isinstance(capture, dict) or not capture.get("ok"):
+                raise RuntimeError(
+                    f"High-resolution evidence capture failed for {prefix}: {capture}"
+                )
+            path = Path(str(capture.get("path", "")))
+            if not path.is_file():
+                raise RuntimeError(f"High-resolution evidence file missing: {path}")
+            with Image.open(path) as image:
+                size = tuple(image.size)
+            if size != (width, height):
+                raise RuntimeError(
+                    f"High-resolution evidence mismatch for {prefix}: "
+                    f"requested={width}x{height} captured={size}"
+                )
+            outputs[f"{width}x{height}"] = str(path)
+        self.event("resolution_matrix", prefix=prefix, screenshots=outputs)
+        return outputs
 
     def wait_for(self, label: str, predicate, timeout: float = 10.0, interval: float = 0.5) -> dict[str, Any]:
         deadline = time.monotonic() + timeout
@@ -3596,7 +3789,31 @@ class RealFlowHarness:
         if not start_node_probe["ok"]:
             raise RuntimeError(f"Route start node did not advance route map: {start_node_probe}")
 
-        battle_click_probe = self.click_route_node(after_start_node, 1)
+        battle_node_id = 1
+        if self.route_exit_acceptance_mode:
+            self.apply_route_exit_acceptance_fixture()
+            after_start_node = self.probe()
+            elite_nodes = [
+                node
+                for node in _route_node_visual_states(after_start_node)
+                if bool(node.get("b_enabled"))
+                and str(node.get("node_kind", "")).upper() == "ELITE"
+            ]
+            if len(elite_nodes) != 1:
+                raise RuntimeError(
+                    "Route-exit acceptance fixture did not expose exactly one enabled Elite: "
+                    f"{elite_nodes}; all={_route_node_visual_states(after_start_node)}"
+                )
+            battle_node_id = int(elite_nodes[0].get("node_id"))
+            self.route_exit_elite_node_id = battle_node_id
+            self.event(
+                "route_exit_acceptance_elite_ready",
+                node_id=battle_node_id,
+                node=elite_nodes[0],
+                fixture=self.route_exit_acceptance_fixture,
+            )
+
+        battle_click_probe = self.click_route_node(after_start_node, battle_node_id)
         after_battle: dict[str, Any] = battle_click_probe
         for attempt in range(8):
             if (
@@ -3701,6 +3918,8 @@ class RealFlowHarness:
             "active_player_controller": active_player_controller,
             "onegame_route_widgets": active_widgets_probe.get("onegame_route_widgets", []),
             "click_probe_map": _map_name(battle_click_probe),
+            "selected_route_node_id": battle_node_id,
+            "route_exit_acceptance_fixture": self.route_exit_acceptance_fixture,
         }
         self.event("battle_scene_probe", **battle_probe)
         if not battle_probe["ok"]:
@@ -3731,9 +3950,300 @@ class RealFlowHarness:
         result["meta_shop"] = meta_shop_probe
         return result
 
+    def run_two_level_exit_acceptance(self) -> dict[str, Any]:
+        """Continue the canonical real flow through Elite retreat and whole-route abandon."""
+        self.route_exit_acceptance_mode = True
+        baseline = self.run()
+        if not baseline.get("ok"):
+            raise RuntimeError(f"Canonical real flow failed before route-exit acceptance: {baseline}")
+
+        battle_probe = baseline.get("final_probe", {})
+        battle_runtime = _runtime_state(battle_probe)
+        checkpoint = battle_runtime.get("battle_entry_checkpoint", {})
+        elite_node_id = int(self.route_exit_elite_node_id)
+        if (
+            elite_node_id < 0
+            or not bool(checkpoint.get("b_valid"))
+            or int(checkpoint.get("source_node_id") or -1) != elite_node_id
+        ):
+            raise RuntimeError(
+                "Real Elite battle did not own the expected retreat checkpoint: "
+                f"elite={elite_node_id} checkpoint={checkpoint}"
+            )
+
+        window = self.preview_window or self.input.find_preview_window()
+        self.preview_window = window
+        self.input.focus(window)
+
+        auto_enabled_probe = self.click_visible_slate_button(
+            "自动战斗：关",
+            "route_exit_auto_enable_slate_click",
+        )
+        if _runtime_state(auto_enabled_probe).get("battle_auto_play_enabled") is not True:
+            raise RuntimeError("Real Elite auto battle did not enable through the top-right control")
+
+        background_window = self.input.focus_non_preview_window()
+        auto_observations: list[dict[str, Any]] = []
+        last_fingerprint = _route_exit_state_fingerprint(_runtime_state(auto_enabled_probe))
+        deadline = time.monotonic() + 45.0
+        while time.monotonic() < deadline and len(auto_observations) < 2:
+            current_probe = self.probe()
+            current_runtime = _runtime_state(current_probe)
+            current_fingerprint = _route_exit_state_fingerprint(current_runtime)
+            if current_fingerprint != last_fingerprint:
+                auto_observations.append({
+                    "wall_seconds": time.monotonic(),
+                    "phase": current_runtime.get("battle_phase"),
+                    "round": current_runtime.get("battle_round_number"),
+                    "hand_count": len(current_runtime.get("battle_hand", [])),
+                    "unit_health": {
+                        unit_id: unit.get("hp")
+                        for unit_id, unit in current_runtime.get("battle_units", {}).items()
+                        if isinstance(unit, dict)
+                    },
+                })
+                last_fingerprint = current_fingerprint
+            if not _screen_contains(current_probe, "Battle"):
+                break
+            time.sleep(0.4)
+        self.input.focus(window)
+        self.event(
+            "route_exit_background_auto_actions",
+            ok=len(auto_observations) >= 2,
+            background_window=background_window,
+            observations=auto_observations,
+        )
+        if len(auto_observations) < 2:
+            raise RuntimeError(
+                "Background-throttled Elite auto battle produced fewer than two authoritative changes: "
+                f"{auto_observations}"
+            )
+        auto_screenshot, _ = self.screenshot("route_exit_elite_auto_background.png")
+
+        auto_disabled_probe = self.click_visible_slate_button(
+            "自动战斗：开",
+            "route_exit_auto_disable_slate_click",
+        )
+        if _runtime_state(auto_disabled_probe).get("battle_auto_play_enabled") is not False:
+            raise RuntimeError("Real Elite auto battle did not disable before modal no-op verification")
+        if int(_runtime_state(auto_disabled_probe).get("pending_reward_option_count") or 0) == 0:
+            self._wait_for_target_outcome_presentation_unlock(timeout=30.0)
+
+        self.click_visible_slate_button("关闭", "battle_retreat_open_slate_click")
+        self.wait_for_visible_slate_button("退出战斗", timeout=30.0)
+        cancel_before_probe = self.probe()
+        battle_modal_matrix = self.capture_resolution_matrix("route_exit_battle_retreat_modal")
+        battle_modal_screenshot = Path(battle_modal_matrix["1672x941"])
+        cancel_after_probe = self.click_visible_slate_button(
+            "继续战斗",
+            "battle_retreat_cancel_slate_click",
+        )
+        battle_cancel_no_mutation = (
+            _route_exit_state_fingerprint(_runtime_state(cancel_before_probe))
+            == _route_exit_state_fingerprint(_runtime_state(cancel_after_probe))
+        )
+        self.event(
+            "battle_retreat_cancel_no_mutation",
+            ok=battle_cancel_no_mutation,
+            before=_route_exit_state_fingerprint(_runtime_state(cancel_before_probe)),
+            after=_route_exit_state_fingerprint(_runtime_state(cancel_after_probe)),
+        )
+        if not battle_cancel_no_mutation:
+            raise RuntimeError("Battle retreat cancellation changed authoritative runtime state")
+
+        self.click_visible_slate_button("关闭", "battle_retreat_reopen_slate_click")
+        retreated_probe = self.click_visible_slate_button(
+            "退出战斗",
+            "battle_retreat_confirm_slate_click",
+        )
+        retreated_probe = self.wait_for(
+            "battle retreat returns to route map",
+            lambda payload: _screen_contains(payload, "DungeonMap")
+            and _widget_visible(payload, "route_map"),
+            timeout=20.0,
+            interval=0.25,
+        )
+        retreated_runtime = _runtime_state(retreated_probe)
+        retreat_restored = (
+            int(retreated_runtime.get("current_route_node_id") or -1)
+            == int(checkpoint.get("previous_current_route_node_id") or -1)
+            and int(retreated_runtime.get("dungeon_node_index") or -1)
+            == int(checkpoint.get("previous_dungeon_node_index") or -1)
+            and int(retreated_runtime.get("player_hp") or -1)
+            == int(checkpoint.get("previous_player_hp") or -1)
+            and int(retreated_runtime.get("player_mp") or -1)
+            == int(checkpoint.get("previous_player_mp") or -1)
+            and retreated_runtime.get("visited_route_node_ids")
+            == checkpoint.get("previous_visited_route_node_ids")
+            and retreated_runtime.get("reachable_route_node_ids")
+            == checkpoint.get("previous_reachable_route_node_ids")
+            and elite_node_id in retreated_runtime.get("reachable_route_node_ids", [])
+            and elite_node_id not in retreated_runtime.get("visited_route_node_ids", [])
+            and int(retreated_runtime.get("pending_route_node_id") or -1) == -1
+            and not bool(retreated_runtime.get("has_active_card_battle"))
+        )
+        self.event(
+            "battle_retreat_restored_checkpoint",
+            ok=retreat_restored,
+            checkpoint=checkpoint,
+            runtime=_route_exit_state_fingerprint(retreated_runtime),
+        )
+        if not retreat_restored:
+            raise RuntimeError(
+                "Battle retreat did not restore the exact pre-Elite checkpoint: "
+                f"checkpoint={checkpoint} runtime={retreated_runtime}"
+            )
+        retreated_screenshot, _ = self.screenshot("route_exit_after_elite_retreat.png")
+
+        reentered_probe = self.click_route_node(retreated_probe, elite_node_id)
+        if not _screen_contains(reentered_probe, "Battle"):
+            raise RuntimeError("The retreated Elite was not player-clickable for retry")
+        self.click_visible_slate_button(
+            "自动战斗：关",
+            "route_exit_retry_auto_enable_slate_click",
+        )
+        retry_background_window = self.input.focus_non_preview_window()
+        reward_probe = self.wait_for(
+            "retried Elite reaches player-owned reward choice",
+            lambda payload: (
+                int(_runtime_state(payload).get("pending_reward_option_count") or 0) == 3
+                or not _screen_contains(payload, "Battle")
+            ),
+            timeout=180.0,
+            interval=0.8,
+        )
+        self.input.focus(window)
+        reward_runtime = _runtime_state(reward_probe)
+        if (
+            not _screen_contains(reward_probe, "Battle")
+            or int(reward_runtime.get("pending_reward_option_count") or 0) != 3
+        ):
+            raise RuntimeError(
+                "Retried Elite did not stop for the player's reward choice: "
+                f"runtime={reward_runtime} background={retry_background_window}"
+            )
+        reward_screenshot, _ = self.screenshot("route_exit_elite_reward_waiting.png")
+        self.click_visible_slate_button("跳过奖励", "route_exit_reward_skip_slate_click")
+        completed_route_probe = self.wait_for(
+            "player reward decision completes Elite node",
+            lambda payload: _screen_contains(payload, "DungeonMap")
+            and elite_node_id in _runtime_state(payload).get("visited_route_node_ids", []),
+            timeout=20.0,
+            interval=0.25,
+        )
+        route_before_abandon = _runtime_state(completed_route_probe)
+        route_before_fingerprint = _route_exit_state_fingerprint(route_before_abandon)
+        expected_awards = _expected_abandoned_route_awards(route_before_abandon)
+        route_controls_screenshot, _ = self.screenshot("route_exit_route_close_control.png")
+
+        self.click_visible_slate_button("关闭挑战", "route_abandon_open_slate_click")
+        expected_preview_text = (
+            f"永久金币 +{expected_awards['permanent_gold']} / "
+            f"强化石 +{expected_awards['enhancement_stones']}"
+        )
+        preview_snapshot = self.slate_preview_snapshot()
+        route_preview_ok = expected_preview_text in preview_snapshot
+        route_modal_matrix = self.capture_resolution_matrix("route_exit_route_abandon_modal")
+        route_modal_screenshot = Path(route_modal_matrix["1672x941"])
+        self.event(
+            "route_abandon_preview",
+            ok=route_preview_ok,
+            expected_text=expected_preview_text,
+            expected_awards=expected_awards,
+        )
+        if not route_preview_ok:
+            raise RuntimeError(
+                f"Route abandon modal did not show exact preview '{expected_preview_text}'"
+            )
+        route_cancel_probe = self.click_visible_slate_button(
+            "继续挑战",
+            "route_abandon_cancel_slate_click",
+        )
+        route_cancel_no_mutation = (
+            _route_exit_state_fingerprint(_runtime_state(route_cancel_probe))
+            == route_before_fingerprint
+        )
+        if not route_cancel_no_mutation:
+            raise RuntimeError("Route abandon cancellation changed authoritative progress")
+
+        self.click_visible_slate_button("关闭挑战", "route_abandon_reopen_slate_click")
+        self.click_visible_slate_button("结算并退出", "route_abandon_confirm_slate_click")
+        settled_probe = self.wait_for(
+            "route abandon settles once and returns to Qingshan Town",
+            lambda payload: _screen_contains(payload, "Town")
+            and not bool(_runtime_state(payload).get("b_dungeon_active")),
+            timeout=25.0,
+            interval=0.3,
+        )
+        settled_runtime = _runtime_state(settled_probe)
+        settled_once = (
+            int(settled_runtime.get("player_gold") or 0)
+            == int(route_before_abandon.get("player_gold") or 0)
+            + expected_awards["permanent_gold"]
+            and int(settled_runtime.get("enhancement_stone_count") or 0)
+            == int(route_before_abandon.get("enhancement_stone_count") or 0)
+            + expected_awards["enhancement_stones"]
+            and not bool(settled_runtime.get("b_dungeon_active"))
+            and str(settled_runtime.get("last_applied_route_settlement_id") or "")
+            not in ("", "00000000-00000000-00000000-00000000")
+        )
+        self.event(
+            "route_abandon_settled_once",
+            ok=settled_once,
+            expected_awards=expected_awards,
+            before=route_before_fingerprint,
+            after=_route_exit_state_fingerprint(settled_runtime),
+        )
+        if not settled_once:
+            raise RuntimeError(
+                "Route abandon settlement did not apply the previewed rewards exactly once: "
+                f"before={route_before_abandon} after={settled_runtime}"
+            )
+        settled_screenshot, _ = self.screenshot("route_exit_after_abandon_town.png")
+
+        return {
+            "ok": True,
+            "baseline": baseline,
+            "elite_node_id": elite_node_id,
+            "background_auto": {
+                "ok": True,
+                "background_window": background_window,
+                "observations": auto_observations,
+            },
+            "battle_retreat_cancel_no_mutation": battle_cancel_no_mutation,
+            "battle_retreat_restored_checkpoint": retreat_restored,
+            "route_abandon_preview": {
+                "ok": route_preview_ok,
+                "text": expected_preview_text,
+                "awards": expected_awards,
+            },
+            "route_abandon_cancel_no_mutation": route_cancel_no_mutation,
+            "route_abandon_settled_once": settled_once,
+            "final_probe": settled_probe,
+            "screenshots": {
+                "elite_auto_background": str(auto_screenshot),
+                "battle_retreat_modal": str(battle_modal_screenshot),
+                "battle_retreat_modal_matrix": battle_modal_matrix,
+                "after_elite_retreat": str(retreated_screenshot),
+                "elite_reward_waiting": str(reward_screenshot),
+                "route_close_control": str(route_controls_screenshot),
+                "route_abandon_modal": str(route_modal_screenshot),
+                "route_abandon_modal_matrix": route_modal_matrix,
+                "after_abandon_town": str(settled_screenshot),
+            },
+            "events": self.events,
+        }
+
     def close(self) -> dict[str, Any]:
         errors: list[str] = []
         try:
+            if getattr(self, "route_exit_acceptance_fixture_may_be_applied", False):
+                try:
+                    if self.client.session_id and self.client.is_in_pie():
+                        self.clear_route_exit_acceptance_fixture()
+                except Exception as exc:
+                    errors.append("route_exit_acceptance_fixture_cleanup")
+                    self.event("route_exit_acceptance_fixture_cleanup_failed", error=str(exc))
             if getattr(self, "target_outcome_fixture_may_be_applied", False):
                 try:
                     if self.client.session_id and self.client.is_in_pie():
@@ -3797,12 +4307,16 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--keep-pie", action="store_true")
     parser.add_argument("--battle-hud-observation", action="store_true")
     parser.add_argument("--target-outcome-preview", action="store_true")
+    parser.add_argument("--two-level-exit-acceptance", action="store_true")
     parser.add_argument("--report", type=Path, default=None)
     args = parser.parse_args(argv)
 
     harness = RealFlowHarness(timeout=args.timeout, keep_pie=args.keep_pie or args.battle_hud_observation)
     try:
-        if args.target_outcome_preview:
+        if args.two_level_exit_acceptance:
+            result = harness.run_two_level_exit_acceptance()
+            return_code = 0
+        elif args.target_outcome_preview:
             result = harness.run_target_outcome_preview()
             return_code = 0
         elif args.battle_hud_observation:
