@@ -360,6 +360,54 @@ bool FGameXXKDesktopTrainingBattlePerfProfileTest::RunTest(const FString& Parame
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingDirectChallengeBattleSurfaceTest,
+	"GameXXK.DesktopTraining.PlayerFlow.DirectChallengeCreatesBattleSurface",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingDirectChallengeBattleSurfaceTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	AGameXXKMVPPlayerController* PlayerController = NewObject<AGameXXKMVPPlayerController>();
+	PlayerController->SetMVPSubsystemForTest(Subsystem);
+	PlayerController->SetDesktopTrainingBootProfileForTest(true);
+	TestTrue(TEXT("direct challenge fixture starts in Town"), Subsystem->StartGame());
+	TestTrue(TEXT("direct challenge fixture starts with only the HUD workbench"),
+		PlayerController->EnsureDesktopTrainingWidgetsForTest());
+	TestNull(TEXT("BattleBoard remains lazy before a challenge"), PlayerController->GetBattleBoardWidgetForTest());
+
+	const EGameXXKQuestState QuestBefore = Subsystem->GetRuntimeState().QuestState;
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("the default cleared stage starts a direct replay"), Subsystem->StartTrainingChallenge(StageId));
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+
+	TestEqual(TEXT("direct replay does not accept the town quest"), Subsystem->GetRuntimeState().QuestState, QuestBefore);
+	TestNotNull(TEXT("Battle refresh lazily creates the shared route owner"), PlayerController->GetRouteMapWidgetForTest());
+	UGameXXKBattleBoardWidget* BattleBoard = PlayerController->GetBattleBoardWidgetForTest();
+	TestNotNull(TEXT("Battle refresh lazily creates the shared BattleBoard"), BattleBoard);
+	TestTrue(TEXT("the direct challenge exposes a visible playable BattleBoard"),
+		BattleBoard && BattleBoard->IsBattleBoardVisible());
+	TestTrue(TEXT("direct challenge activates the full-screen battle overlay"),
+		PlayerController->IsBattleOverlayActive());
+
+	TestTrue(TEXT("closing the direct challenge returns its state to the workbench"),
+		Subsystem->CancelTrainingChallengeToWorkbench());
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestEqual(TEXT("challenge exit returns to the 2D workbench screen state"),
+		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestFalse(TEXT("challenge exit deactivates the battle overlay"),
+		PlayerController->IsBattleOverlayActive());
+	TestTrue(TEXT("DesktopTrainingOnly automatically restores its workbench after battle"),
+		PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()
+		&& PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()->IsWorkbenchVisibleForTest());
+	TestFalse(TEXT("the shared BattleBoard is hidden after returning to the workbench"),
+		BattleBoard && BattleBoard->IsBattleBoardVisible());
+	TestEqual(TEXT("the complete 2D loop never accepts the town quest"),
+		Subsystem->GetRuntimeState().QuestState, QuestBefore);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKPlayerControllerOwnsFlowWidgetsTest,
 	"GameXXK.MVP.UI.PlayerControllerOwnsFlowWidgets",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

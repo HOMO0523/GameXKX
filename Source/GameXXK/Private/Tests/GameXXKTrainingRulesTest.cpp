@@ -25,7 +25,7 @@ bool FGameXXKTrainingNewGameTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("normal 1-1 starts cleared"), FGameXXKTrainingRules::IsStageCleared(Progress, StageOne));
 	TestTrue(TEXT("normal 1-1 starts as current travel"), Progress.CurrentTravelStageId == StageOne);
 	TestTrue(TEXT("cleared 1-1 can travel"), FGameXXKTrainingRules::CanTravel(Progress, StageOne));
-	TestFalse(TEXT("cleared 1-1 is not a new challenge"), FGameXXKTrainingRules::CanChallenge(Progress, StageOne));
+	TestTrue(TEXT("cleared 1-1 can be replayed as a direct challenge"), FGameXXKTrainingRules::CanChallenge(Progress, StageOne));
 	return true;
 }
 
@@ -781,6 +781,96 @@ bool FGameXXKTrainingRealCardBattleBridgeTest::RunTest(const FString& Parameters
 	FGameXXKTrainingReward Reward;
 	TestTrue(TEXT("one auto step advances the real card runtime"), Subsystem->AdvanceTrainingChallengeEncounter(bStageCompleted, Reward));
 	TestTrue(TEXT("training challenge remains active until the encounter is terminal"), Subsystem->GetRuntimeState().Training.bChallengeActive);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingDirectBattleLoopSettlementTest,
+	"GameXXK.Training.DirectBattleLoopSettlement",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingDirectBattleLoopSettlementTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("direct-loop fixture starts in Town"), Subsystem->StartGame()))
+	{
+		return false;
+	}
+
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	const TArray<FGameXXKTrainingEncounterDefinition> Encounters =
+		FGameXXKTrainingRules::BuildEncounterSequence(StageId, false);
+	if (!TestTrue(TEXT("direct-loop stage has multiple authored encounters"), Encounters.Num() > 1)
+		|| !TestTrue(TEXT("direct-loop challenge starts"), Subsystem->StartTrainingChallenge(StageId)))
+	{
+		return false;
+	}
+
+	bool bStageCompleted = false;
+	FGameXXKTrainingReward Reward;
+	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+	TestTrue(TEXT("first terminal victory settles through Training"),
+		Subsystem->AdvanceTrainingChallengeEncounter(bStageCompleted, Reward));
+	TestFalse(TEXT("first encounter does not complete the stage"), bStageCompleted);
+	TestEqual(TEXT("first victory advances to the next authored encounter"),
+		Subsystem->GetRuntimeState().Training.ActiveChallengeEncounterIndex, 1);
+	TestEqual(TEXT("non-final victory remains on the existing Battle surface"),
+		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
+	TestTrue(TEXT("non-final victory creates the next live CardBattle"),
+		Subsystem->IsTrainingChallengeBattleActive());
+
+	FGameXXKRuntimeState& FinalState = Subsystem->GetMutableRuntimeState();
+	FinalState.Training.ActiveChallengeEncounterIndex = Encounters.Num() - 1;
+	FinalState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+	TestTrue(TEXT("final terminal victory settles through Training"),
+		Subsystem->AdvanceTrainingChallengeEncounter(bStageCompleted, Reward));
+	TestTrue(TEXT("final encounter completes the selected stage"), bStageCompleted);
+	TestEqual(TEXT("completed challenge returns to the workbench screen state"),
+		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("completed challenge targets the desktop workbench projection"),
+		Subsystem->GetRuntimeState().CurrentMapId, FName(TEXT("DesktopTrainingHUD")));
+	TestFalse(TEXT("completed challenge clears its live CardBattle"),
+		Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle);
+	TestFalse(TEXT("completed challenge closes Training challenge state"),
+		Subsystem->GetRuntimeState().Training.bChallengeActive);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingChallengeCancelToWorkbenchTest,
+	"GameXXK.Training.ChallengeCancelToWorkbench",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingChallengeCancelToWorkbenchTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("cancel fixture starts in Town"), Subsystem->StartGame()))
+	{
+		return false;
+	}
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	const EGameXXKQuestState QuestBefore = Subsystem->GetRuntimeState().QuestState;
+	TestFalse(TEXT("cancel fixture stage starts uncleared"),
+		FGameXXKTrainingRules::IsStageCleared(Subsystem->GetRuntimeState().Training, StageId));
+	if (!TestTrue(TEXT("cancel fixture starts the direct challenge"), Subsystem->StartTrainingChallenge(StageId)))
+	{
+		return false;
+	}
+
+	TestTrue(TEXT("active challenge can be cancelled back to the workbench"),
+		Subsystem->CancelTrainingChallengeToWorkbench());
+	const FGameXXKRuntimeState& Cancelled = Subsystem->GetRuntimeState();
+	TestEqual(TEXT("cancel returns to the workbench screen state"), Cancelled.Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("cancel targets the desktop workbench projection"),
+		Cancelled.CurrentMapId, FName(TEXT("DesktopTrainingHUD")));
+	TestFalse(TEXT("cancel clears the live CardBattle"), Cancelled.CardRun.bHasActiveCardBattle);
+	TestFalse(TEXT("cancel clears legacy battle projection"), Cancelled.bHasActiveBattle);
+	TestFalse(TEXT("cancel closes Training challenge state"), Cancelled.Training.bChallengeActive);
+	TestFalse(TEXT("cancel does not award a stage clear"),
+		FGameXXKTrainingRules::IsStageCleared(Cancelled.Training, StageId));
+	TestEqual(TEXT("cancel never changes the town quest"), Cancelled.QuestState, QuestBefore);
+	TestFalse(TEXT("an already-cancelled challenge cannot be cancelled twice"),
+		Subsystem->CancelTrainingChallengeToWorkbench());
 	return true;
 }
 

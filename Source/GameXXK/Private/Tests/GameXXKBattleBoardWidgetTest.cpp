@@ -191,9 +191,12 @@ bool FGameXXKBattleTargetArrowAlignmentTest::RunTest(const FString& Parameters)
 {
 	const FVector2D End(640.0f, 360.0f);
 	const FVector2D ArrowSize(74.0f, 56.0f);
-	const FVector2D ExpectedTopLeft(603.0f, 332.0f);
+	const FVector2D ExpectedTipHotspot(
+		ArrowSize.X * (1082.0f / 1254.0f),
+		ArrowSize.Y * (608.0f / 1254.0f));
+	const FVector2D ExpectedTopLeft = End - ExpectedTipHotspot;
 
-	const auto VerifyDirection = [this, End, ArrowSize, ExpectedTopLeft](
+	const auto VerifyDirection = [this, End, ArrowSize, ExpectedTipHotspot, ExpectedTopLeft](
 		const TCHAR* Label,
 		const FVector2D Start)
 	{
@@ -202,16 +205,51 @@ bool FGameXXKBattleTargetArrowAlignmentTest::RunTest(const FString& Parameters)
 			End,
 			ArrowSize);
 		TestTrue(
-			FString::Printf(TEXT("%s targeting keeps the brush top-left centered on End"), Label),
+			FString::Printf(TEXT("%s targeting places the brush from the visible tip hotspot"), Label),
 			TopLeft.Equals(ExpectedTopLeft, 0.01f));
 		TestTrue(
-			FString::Printf(TEXT("%s targeting keeps the brush center equal to End"), Label),
-			(TopLeft + ArrowSize * 0.5f).Equals(End, 0.01f));
+			FString::Printf(TEXT("%s targeting keeps the visible arrow tip equal to the live pointer"), Label),
+			(TopLeft + ExpectedTipHotspot).Equals(End, 0.01f));
 	};
 
 	VerifyDirection(TEXT("horizontal"), FVector2D(320.0f, 360.0f));
 	VerifyDirection(TEXT("vertical"), FVector2D(640.0f, 40.0f));
 	VerifyDirection(TEXT("diagonal"), FVector2D(320.0f, 120.0f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKBattleTargetPointerViewportCoordinatesTest,
+	"GameXXK.MVP.Battle.TargetPointerViewportCoordinates",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKBattleTargetPointerViewportCoordinatesTest::RunTest(const FString& Parameters)
+{
+	UGameXXKBattleBoardWidget* const Board = NewObject<UGameXXKBattleBoardWidget>();
+	const FVector2D FloatingPieViewportSize(1672.0f, 941.0f);
+	const FVector2D FloatingWindowDesktopOrigin(124.0f, 109.0f);
+	const FVector2D CursorViewportLocal(365.0f, 415.0f);
+	const FGameXXKBattleHudSafeStageLayout SafeStage =
+		Board->ResolveBattleHudSafeStageLayoutForTest(FloatingPieViewportSize);
+	const FVector2D ExpectedStagePosition =
+		(CursorViewportLocal - SafeStage.Offset) / SafeStage.Scale;
+	const FVector2D ResolvedStagePosition =
+		Board->ResolveViewportLocalPositionToStageLocalForTest(
+			CursorViewportLocal,
+			FloatingPieViewportSize);
+
+	TestTrue(TEXT("floating PIE viewport-local cursor converts through the 1920x1080 safe stage"),
+		ResolvedStagePosition.Equals(ExpectedStagePosition, 0.01f));
+	const FVector2D ReprojectedViewportPosition =
+		Board->ResolveTargetingStagePositionToBoardLocalForTest(
+			ResolvedStagePosition,
+			FloatingPieViewportSize);
+	TestTrue(TEXT("the targeting endpoint reprojects to the client-area mouse position"),
+		ReprojectedViewportPosition.Equals(CursorViewportLocal, 0.01f));
+	TestFalse(TEXT("the targeting endpoint never includes the floating window desktop origin"),
+		ReprojectedViewportPosition.Equals(
+			CursorViewportLocal + FloatingWindowDesktopOrigin,
+			0.01f));
 	return true;
 }
 

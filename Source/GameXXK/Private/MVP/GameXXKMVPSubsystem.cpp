@@ -27,6 +27,7 @@ namespace
 	static constexpr int32 MaximumMigrationBackupAttempts = 999;
 	static const FString ManualSaveSlotPrefix(TEXT("GameXXK_MVP_SaveSlot_"));
 	static const FString DefaultSaveSlotName(TEXT("GameXXK_MVP_SaveSlot_1"));
+	static const FName DesktopTrainingWorkbenchMapId(TEXT("DesktopTrainingHUD"));
 
 	static EGameXXKNodeKind TrainingNodeKind(const EGameXXKTrainingEncounterKind EncounterKind)
 	{
@@ -292,6 +293,16 @@ namespace
 		InOutState.ActiveBattleParty.Reset();
 		InOutState.ActiveBattleEnemies.Reset();
 		InOutState.CardRun.bLoadoutLockedForRoute = false;
+	}
+
+	static void ReturnTrainingToWorkbench(FGameXXKRuntimeState& InOutState)
+	{
+		InOutState.bDungeonActive = false;
+		InOutState.PendingRouteNodeId = INDEX_NONE;
+		InOutState.BattleEntryCheckpoint = FGameXXKBattleEntryCheckpoint{};
+		InOutState.Screen = EGameXXKScreen::Town;
+		InOutState.CurrentMapId = DesktopTrainingWorkbenchMapId;
+		InOutState.TownPanelMode = EGameXXKTownPanelMode::None;
 	}
 
 	static bool ResolveTrainingPendingCardChoice(FGameXXKRuntimeState& InOutState, FString* OutError)
@@ -1263,6 +1274,26 @@ bool UGameXXKMVPSubsystem::IsTrainingChallengeBattleActive() const
 		&& RuntimeState.Screen == EGameXXKScreen::Battle;
 }
 
+bool UGameXXKMVPSubsystem::CancelTrainingChallengeToWorkbench()
+{
+	if (!RuntimeState.Training.bChallengeActive)
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	ClearTrainingBattleProjection(Candidate);
+	Candidate.Training.bChallengeActive = false;
+	Candidate.Training.ActiveChallengeStageId = NAME_None;
+	Candidate.Training.ActiveChallengeEncounterIndex = INDEX_NONE;
+	Candidate.Training.bChallengeAutoBattle = false;
+	ReturnTrainingToWorkbench(Candidate);
+
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
 bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageCompleted, FGameXXKTrainingReward& OutReward)
 {
 	bOutStageCompleted = false;
@@ -1329,8 +1360,7 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 		if (bLastEncounter)
 		{
 			bOutStageCompleted = FGameXXKTrainingRules::CompleteChallenge(Candidate.Training, StageId);
-			Candidate.Screen = EGameXXKScreen::Town;
-			Candidate.CurrentMapId = TEXT("QingshanInn");
+			ReturnTrainingToWorkbench(Candidate);
 		}
 		else
 		{
@@ -1371,6 +1401,7 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 	if (bLastEncounter)
 	{
 		bOutStageCompleted = FGameXXKTrainingRules::CompleteChallenge(RuntimeState.Training, Progress.ActiveChallengeStageId);
+		ReturnTrainingToWorkbench(RuntimeState);
 		return bOutStageCompleted;
 	}
 	++RuntimeState.Training.ActiveChallengeEncounterIndex;

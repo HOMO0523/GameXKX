@@ -123,13 +123,13 @@ namespace
 	const FString EquipmentSlotTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_EquipmentSlot.T_MasterV2_EquipmentSlot"));
 	const FString HeroFullBodyTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"));
 	const FString ScrollbarThumbTexturePath(ApprovedTextureRoot + TEXT("inventory_scrollbar_Button.inventory_scrollbar_Button"));
-	const FString ActionButtonTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_ButtonNeutral.T_MasterV2_ButtonNeutral"));
+	const FString ActionButtonTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
 	const FString BackpackTabAllTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
 	const FString BackpackTabEquipmentTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
 	const FString BackpackTabPropTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
 	const FString BackpackTabMaterialTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
 	const FString BackpackTabTaskTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
-	const FString BackpackSortTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_ButtonNeutral.T_MasterV2_ButtonNeutral"));
+	const FString BackpackSortTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));
 	// Master V1 page 03 approved decompose glyph (user-exported 01_DecomposeButton).
 	const FString BackpackDisassembleTexturePath(ApprovedTextureRoot + TEXT("01_DecomposeButton.01_DecomposeButton"));
 	const FString CharacterTabNormalTexturePath(ApprovedTextureRoot + TEXT("003_tab_1.003_tab_1"));

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import builtins
 import json
 import math
 import re
@@ -12,6 +13,8 @@ import unreal
 
 
 DEFAULT_SAVE_SLOT = "GameXXK_MVP_SaveSlot_1"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_HIGH_RES_SCREENSHOT_STATE_ATTR = "_gamexxk_high_res_screenshot_task_state"
 
 
 def _finite_float(value):
@@ -1337,11 +1340,25 @@ def _handle_high_res_screenshot(world, name, width, height):
     safe_name = Path(str(name)).name
     if not safe_name.lower().endswith(".png"):
         safe_name += ".png"
-    output_path = Path(unreal.Paths.project_saved_dir()) / "VisualReview" / "20260819-battle-retreat-route-abandon" / safe_name
+    output_path = PROJECT_ROOT / "Saved" / "VisualReview" / "20260819-battle-retreat-route-abandon" / safe_name
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if output_path.exists():
         output_path.unlink()
     try:
+        active = getattr(builtins, _HIGH_RES_SCREENSHOT_STATE_ATTR, None)
+        if isinstance(active, dict):
+            active_task = active.get("task")
+            if (
+                active_task is not None
+                and bool(active_task.is_valid_task())
+                and not bool(active_task.is_task_done())
+            ):
+                return {
+                    "ok": False,
+                    "reason": "screenshot_task_busy",
+                    "path": str(active.get("path", "")),
+                }
+            delattr(builtins, _HIGH_RES_SCREENSHOT_STATE_ATTR)
         task = unreal.AutomationLibrary.take_high_res_screenshot(
             width,
             height,
@@ -1355,22 +1372,59 @@ def _handle_high_res_screenshot(world, name, width, height):
         )
         if task is None or not bool(task.is_valid_task()):
             return {"ok": False, "reason": "screenshot_task_invalid", "path": str(output_path)}
-        deadline = time.time() + 30.0
-        while not bool(task.is_task_done()) and time.time() < deadline:
-            time.sleep(0.25)
-        if not bool(task.is_task_done()):
-            return {"ok": False, "reason": "screenshot_task_timeout", "path": str(output_path)}
-        if not output_path.is_file() or output_path.stat().st_size <= 0:
-            return {"ok": False, "reason": "screenshot_file_missing", "path": str(output_path)}
+        setattr(
+            builtins,
+            _HIGH_RES_SCREENSHOT_STATE_ATTR,
+            {
+                "task": task,
+                "path": str(output_path),
+                "width": width,
+                "height": height,
+            },
+        )
         return {
             "ok": True,
             "path": str(output_path),
             "width": width,
             "height": height,
-            "size_bytes": output_path.stat().st_size,
+            "state": "started",
+            "done": False,
         }
     except Exception as exc:
         return {"ok": False, "reason": f"screenshot_exception:{exc}", "path": str(output_path)}
+
+
+def _handle_poll_high_res_screenshot():
+    state = getattr(builtins, _HIGH_RES_SCREENSHOT_STATE_ATTR, None)
+    if not isinstance(state, dict):
+        return {"ok": False, "reason": "screenshot_task_missing"}
+    path = Path(str(state.get("path", "")))
+    result = {
+        "path": str(path),
+        "width": int(state.get("width") or 0),
+        "height": int(state.get("height") or 0),
+    }
+    try:
+        task = state.get("task")
+        if task is None or not bool(task.is_valid_task()):
+            delattr(builtins, _HIGH_RES_SCREENSHOT_STATE_ATTR)
+            return {**result, "ok": False, "reason": "screenshot_task_invalid"}
+        if not bool(task.is_task_done()):
+            return {**result, "ok": True, "state": "pending", "done": False}
+        if not path.is_file() or path.stat().st_size <= 0:
+            return {**result, "ok": True, "state": "file_pending", "done": False}
+        delattr(builtins, _HIGH_RES_SCREENSHOT_STATE_ATTR)
+        return {
+            **result,
+            "ok": True,
+            "state": "complete",
+            "done": True,
+            "size_bytes": path.stat().st_size,
+        }
+    except Exception as exc:
+        if hasattr(builtins, _HIGH_RES_SCREENSHOT_STATE_ATTR):
+            delattr(builtins, _HIGH_RES_SCREENSHOT_STATE_ATTR)
+        return {**result, "ok": False, "reason": f"screenshot_poll_exception:{exc}"}
 
 
 def _battle_scene_unit_ids(world):
@@ -2298,6 +2352,14 @@ def probe():
     }
 
 
+def _delete_default_save_if_present():
+    existed = bool(unreal.GameplayStatics.does_save_game_exist(DEFAULT_SAVE_SLOT, 0))
+    if not existed:
+        return {"ok": True, "existed": False, "deleted": False}
+    deleted = bool(unreal.GameplayStatics.delete_game_in_slot(DEFAULT_SAVE_SLOT, 0))
+    return {"ok": deleted, "existed": True, "deleted": deleted}
+
+
 def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("--delete-default-save", action="store_true")
@@ -2315,13 +2377,16 @@ def main(argv):
     parser.add_argument("--apply-route-exit-acceptance-fixture", action="store_true")
     parser.add_argument("--clear-route-exit-acceptance-fixture", action="store_true")
     parser.add_argument("--high-res-screenshot", nargs=3, metavar=("NAME", "WIDTH", "HEIGHT"))
+    parser.add_argument("--poll-high-res-screenshot", action="store_true")
     args = parser.parse_args(argv)
 
     result = {}
     world = _get_game_world()
     if args.delete_default_save:
         try:
-            result["delete_default_save"] = bool(unreal.GameplayStatics.delete_game_in_slot(DEFAULT_SAVE_SLOT, 0))
+            delete_detail = _delete_default_save_if_present()
+            result["delete_default_save"] = bool(delete_detail["ok"])
+            result["delete_default_save_detail"] = delete_detail
         except Exception as exc:
             result["delete_default_save_error"] = str(exc)
     if args.hud_command:
@@ -2360,6 +2425,8 @@ def main(argv):
             args.high_res_screenshot[1],
             args.high_res_screenshot[2],
         )
+    if args.poll_high_res_screenshot:
+        result["high_res_screenshot"] = _handle_poll_high_res_screenshot()
     result["probe"] = probe()
     print(_strict_json_dumps(result))
 

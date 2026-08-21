@@ -234,7 +234,7 @@ public:
 	int32 GetPinnedBattleAtlasCountForTest() const;
 	int32 GetDuplicateParticipantImageCountForTest() const;
 	bool TryResolveCardTargetUnitAtStagePositionForTest(FVector2D StagePosition, FName& OutUnitId) const;
-	/** Returns the unrotated arrow brush top-left used by NativePaint. */
+	/** Returns the unrotated brush top-left that anchors the visible arrow tip to the live pointer. */
 	static FVector2D ResolveTargetingArrowHeadTopLeftForTest(
 		FVector2D TargetingStart,
 		FVector2D TargetingEnd,
@@ -310,6 +310,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
 	void UpdateTargetingPointerFromSlateAbsolutePosition(FVector2D ScreenPosition);
+
+	/** Converts viewport-client UMG units into the 1920x1080 battle design stage. */
+	void UpdateTargetingPointerFromViewportLocalPosition(FVector2D ViewportLocalPosition);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle")
 	bool ConfirmTargetingEnemy(int32 EnemyIndex);
@@ -483,6 +486,8 @@ public:
 	FVector2D ResolveCommandSourcePositionForTest(int32 PartyIndex, FVector2D MenuScreenPosition, FVector2D UnitScreenPosition, FVector2D LocalSize) const;
 	FVector2D ResolveSlateAbsolutePositionToLocalForTest(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D LocalSize) const;
 	FVector2D ResolveSlateAbsolutePositionToLocalForTest(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D WidgetAbsoluteSize, FVector2D LocalSize) const;
+	FVector2D ResolveViewportLocalPositionToStageLocalForTest(FVector2D ViewportLocalPosition, FVector2D ViewportLocalSize) const;
+	FVector2D ResolveTargetingStagePositionToBoardLocalForTest(FVector2D StagePosition, FVector2D BoardLocalSize) const;
 	FString GetBattleActionButtonResourcePathForTest(FName ActionName);
 	FLinearColor GetBattleActionButtonTintForTest(FName ActionName) const;
 	FString GetTargetingArrowHeadResourcePathForTest();
@@ -771,6 +776,8 @@ private:
 	FVector2D ResolveSlateAbsolutePositionToLocal(FVector2D ScreenPosition) const;
 	FVector2D ResolveSlateAbsolutePositionToLocal(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D LocalSize) const;
 	FVector2D ResolveSlateAbsolutePositionToLocal(FVector2D ScreenPosition, FVector2D WidgetAbsolutePosition, FVector2D WidgetAbsoluteSize, FVector2D LocalSize) const;
+	FVector2D ResolveViewportLocalPositionToStageLocal(FVector2D ViewportLocalPosition, FVector2D ViewportLocalSize) const;
+	FVector2D ResolveTargetingStagePositionToBoardLocal(FVector2D StagePosition, FVector2D BoardLocalSize) const;
 	bool BeginTargetingBattleAction(FName ActionName);
 	bool BeginCardTargeting(const FGameXXKCardPlayPreview& Preview);
 	bool ResolveAutomaticCardPlay(FName CardInstanceId);
@@ -1126,6 +1133,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UOverlay> BattleRetreatModalOverlay;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> BattleRetreatDescriptionText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> BattleRetreatConfirmButton;

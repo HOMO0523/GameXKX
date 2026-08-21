@@ -23,11 +23,20 @@ class UGameXXKInventoryWindowWidget;
 UENUM(BlueprintType)
 enum class EGameXXKDesktopTrainingNav : uint8
 {
+	None,
 	Warehouse,
 	Formation,
 	Talents,
 	Tools,
 	Training
+};
+
+UENUM(BlueprintType)
+enum class EGameXXKDesktopTrainingCenterPage : uint8
+{
+	Backpack,
+	Formation,
+	Talents
 };
 
 UENUM(BlueprintType)
@@ -199,6 +208,9 @@ public:
 	EGameXXKDesktopTrainingNav GetActiveNavForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	EGameXXKDesktopTrainingCenterPage GetActiveCenterPageForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsToolsPanelActiveForTest() const;
 
 	/** Hero first, followed by the save-authoritative permanent companion instance IDs. */
@@ -216,6 +228,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool SelectBackpackCharacterForTest(FName CharacterId);
+
+	/** Selects a formation candidate without changing either authoritative party slot. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	bool SelectFormationCandidateForTest(FName CharacterId);
+
+	/** Explicitly commits the selected permanent-partner or task-NPC candidate. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	bool ApplyFormationCandidateForTest();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsWorkbenchVisibleForTest() const;
@@ -429,6 +449,7 @@ private:
 	void BuildWarehousePanel();
 	void BuildBackpackPanel();
 	void BuildCharacterRosterTabs();
+	void BuildFormationPanel();
 	void BuildTalentsPanel();
 	void BuildTrainingMapPanel();
 	void BuildToolsPanel();
@@ -470,6 +491,8 @@ private:
 	bool RequestExit();
 	bool ConfirmExit(bool bExecutePlatformQuit);
 	void SetNotice(const FText& Notice);
+	FName ResolveRosterRepresentativeCharacterId(EGameXXKDesktopTrainingCharacterRoster Roster) const;
+	void EnsureFormationCandidate();
 
 	struct FDesktopToolEntry
 	{
@@ -580,12 +603,15 @@ private:
 	TArray<float> TravelAppliedEnemyHealth;
 	TArray<float> TravelAppliedCompanionHealth;
 
-	EGameXXKDesktopTrainingNav ActiveNav = EGameXXKDesktopTrainingNav::Training;
+	EGameXXKDesktopTrainingNav ActiveNav = EGameXXKDesktopTrainingNav::None;
+	EGameXXKDesktopTrainingCenterPage ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
 	EGameXXKDesktopTrainingRightPanel RightPanel = EGameXXKDesktopTrainingRightPanel::None;
 	EGameXXKDesktopToolMode ActiveToolMode = EGameXXKDesktopToolMode::Dismantle;
 	EGameXXKDesktopTrainingCharacterRoster ActiveCharacterRoster = EGameXXKDesktopTrainingCharacterRoster::Hero;
+	EGameXXKDesktopTrainingCharacterRoster ActiveFormationRoster = EGameXXKDesktopTrainingCharacterRoster::Companions;
 	FName SelectedStageId = NAME_None;
 	FName ActiveBackpackCharacterId = NAME_None;
+	FName FormationCandidateCharacterId = NAME_None;
 	int32 WarehousePageIndex = 0;
 	float TravelAccumulator = 0.0f;
 	int32 TravelVisualNativeTickCount = 0;

@@ -137,3 +137,15 @@ source_commit: c463e1d7fccaa4de5f7afc913901bc874c0d35e2
 - 新问题 P14–P20 与全量审查后的分阶段方案见 `docs/production/2026-08-16-full-project-optimization-proposal.md`(旧定向建议见 `2026-08-16-optimization-followup.md`)。
 - 立即项:探针归档提交与 `test_hp_hud_updates.py` 指向 `_archive` 已完成;`git gc --prune=now` 已执行(`.git` 6.5 GB → 2.2 GB)。剩余:`gamexxk_real_play_flow_mcp.py` 旧 pointer 断言、`--script-tests all` 标签化。
 - SourceAssets/SourceArt 约 5.4 GB 未跟踪资产的归属策略需用户拍板,禁止无差别 `git add`。
+
+---
+
+## 7. 2026-08-21 纯 2D 默认基线后的执行顺序
+
+当前玩家基线已从 3D 城镇切为 `L_DesktopTrainingHUD -> 直接挑战 -> 同地图全屏 BattleBoard -> 返回工作台`。后续若用户未明确提出 3D 工作，优化与验收均围绕此链路执行。
+
+1. **P0 回归门禁**：默认地图合同、`Town` 解析、任务状态不变、同地图往返、浮动窗口箭头位置必须常绿。
+2. **P1 剩余产品 UI**：只接已确认资源与正确双态按钮；完成最终 PSD/剩余图标、天赋/工具权威数据、箱批/FIFO/容量，不再临时找通用错误底或不匹配图标。
+3. **P2 战斗可用性**：继续复用现有 BattleBoard，优先处理目标选择、卡牌反馈、自动战斗与状态图标的可读性；不重建内嵌 ChallengeViewport。
+4. **P3 性能**：分别采集 2D 空闲、游历、局内战斗的 Shipping/PIE CPU、GPU、内存与帧率；3D 数据只在显式对照任务中采集。
+5. **保护边界**：不因默认入口切换而保存或重调旧地图、角色 Sprite、PaperZD、相机、放置 Actor 或 HD2D Plane。

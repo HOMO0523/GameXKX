@@ -13,6 +13,7 @@ import unreal
 
 
 PHASE_PREPARE_MAP = "prepare-map"
+PHASE_OPEN_BACKPACK = "open-backpack"
 PHASE_START_TRAVEL = "start-travel"
 PHASE_OBSERVE = "observe"
 PHASE_ADVANCE = "advance"
@@ -119,11 +120,28 @@ def _snapshot(phase, *, extra=None):
             "detail": widget,
         }
 
+    subsystem = _call(widget, "get_mvp_subsystem")
+    runtime_state = _call(subsystem, "get_runtime_state_copy")
     payload = {
         "ok": True,
         "phase": phase,
         "world": str(_call(world, "get_name") or ""),
         "controller": str(_call(controller, "get_name") or ""),
+        "runtime_screen": str(getattr(runtime_state, "screen", "")),
+        "runtime_quest_state": str(getattr(runtime_state, "quest_state", "")),
+        "training_challenge_battle_active": bool(
+            _call(subsystem, "is_training_challenge_battle_active")
+        ),
+        "workbench_visible": bool(_call(widget, "is_workbench_visible_for_test")),
+        "backpack_expanded": bool(_call(widget, "is_backpack_expanded_for_test")),
+        "active_backpack_character_id": str(
+            _call(widget, "get_active_backpack_character_id_for_test") or ""
+        ),
+        "active_nav": str(_call(widget, "get_active_nav_for_test") or ""),
+        "active_center_page": str(
+            _call(widget, "get_active_center_page_for_test") or ""
+        ),
+        "selected_stage": str(_call(widget, "get_selected_stage_id_for_test") or ""),
         "strip": bool(_call(widget, "has_travel_visual_strip_for_test")),
         "scroll_offset": float(_call(widget, "get_travel_visual_scroll_offset_for_test") or 0.0),
         "scroll_velocity": float(_call(widget, "get_travel_visual_scroll_velocity_for_test") or 0.0),
@@ -202,6 +220,22 @@ def _start_travel(stage):
     )
 
 
+def _open_backpack():
+    _world_value, controller, widget = _controller_and_widget()
+    if widget is None or isinstance(widget, str):
+        return _emit(
+            {
+                "ok": False,
+                "phase": PHASE_OPEN_BACKPACK,
+                "reason": "workbench_missing",
+                "detail": widget,
+            }
+        )
+    _call(controller, "set_desktop_training_workbench_enabled_for_test", True)
+    opened = bool(_call(widget, "open_backpack"))
+    return _emit(_snapshot(PHASE_OPEN_BACKPACK, extra={"opened": opened}))
+
+
 def _observe(capture):
     payload = _snapshot(PHASE_OBSERVE)
     world = _world()
@@ -223,7 +257,13 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--phase",
-        choices=(PHASE_PREPARE_MAP, PHASE_START_TRAVEL, PHASE_OBSERVE, PHASE_ADVANCE),
+        choices=(
+            PHASE_PREPARE_MAP,
+            PHASE_OPEN_BACKPACK,
+            PHASE_START_TRAVEL,
+            PHASE_OBSERVE,
+            PHASE_ADVANCE,
+        ),
         required=True,
     )
     parser.add_argument("--stage", default=DEFAULT_STAGE)
@@ -232,6 +272,8 @@ def main(argv=None):
 
     if args.phase == PHASE_PREPARE_MAP:
         return _prepare_map()
+    if args.phase == PHASE_OPEN_BACKPACK:
+        return _open_backpack()
     if args.phase == PHASE_START_TRAVEL:
         return _start_travel(args.stage)
     if args.phase == PHASE_ADVANCE:

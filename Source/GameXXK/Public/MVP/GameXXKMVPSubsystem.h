@@ -56,6 +56,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
 	bool IsTrainingChallengeBattleActive() const;
 
+	/** Cancels the active Training battle without rewards and returns to the pure-2D workbench. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool CancelTrainingChallengeToWorkbench();
+
 	/** Advances one real card-battle step, then settles the encounter and opens the next one when terminal. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
 	bool AdvanceTrainingChallengeEncounter(bool& bOutStageCompleted, FGameXXKTrainingReward& OutReward);

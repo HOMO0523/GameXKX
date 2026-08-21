@@ -4,6 +4,7 @@
 #include "GameXXKCardRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKRelicCatalog.h"
+#include "GameXXKTrainingRules.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
@@ -985,6 +986,87 @@ bool FGameXXKCardBattleBoardRetreatModalConfirmTest::RunTest(const FString& Para
 	TestTrue(TEXT("pending reward retreat confirms"), RewardBoard->ConfirmBattleRetreatForTest());
 	TestTrue(TEXT("pending reward retreat discards options"), RewardSubsystem->GetRuntimeState().CardRun.PendingReward.Options.IsEmpty());
 	TestFalse(TEXT("pending reward retreat does not visit abandoned node"), RewardSubsystem->GetRuntimeState().VisitedRouteNodeIds.Contains(RewardSourceNodeId));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingBattleBoardTerminalAndCloseTest,
+	"GameXXK.DesktopTraining.BattleBoard.TerminalAndCloseReturnToWorkbench",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingBattleBoardTerminalAndCloseTest::RunTest(const FString& Parameters)
+{
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	const TArray<FGameXXKTrainingEncounterDefinition> Encounters =
+		FGameXXKTrainingRules::BuildEncounterSequence(StageId, false);
+	if (!TestTrue(TEXT("Training Board fixture has multiple encounters"), Encounters.Num() > 1))
+	{
+		return false;
+	}
+
+	UGameXXKMVPSubsystem* TerminalSubsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestTrue(TEXT("Training terminal fixture starts in Town"), TerminalSubsystem->StartGame());
+	if (!TestTrue(TEXT("Training terminal fixture starts a challenge"),
+		TerminalSubsystem->StartTrainingChallenge(StageId)))
+	{
+		return false;
+	}
+	UGameXXKBattleBoardWidget* TerminalBoard = NewObject<UGameXXKBattleBoardWidget>();
+	TerminalBoard->SetMVPSubsystem(TerminalSubsystem);
+	TerminalSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+	TestTrue(TEXT("BattleBoard sends Training victory to the Training settlement"),
+		TerminalBoard->ResolveCardBattleTerminalStateForTest());
+	TestEqual(TEXT("BattleBoard Training victory advances the encounter instead of opening a route reward"),
+		TerminalSubsystem->GetRuntimeState().Training.ActiveChallengeEncounterIndex, 1);
+	TestTrue(TEXT("non-final Training victory stays in Battle"),
+		TerminalSubsystem->IsTrainingChallengeBattleActive());
+	TestTrue(TEXT("Training victory never creates a route reward"),
+		TerminalSubsystem->GetRuntimeState().CardRun.PendingReward.Options.IsEmpty());
+
+	FGameXXKRuntimeState& FinalState = TerminalSubsystem->GetMutableRuntimeState();
+	FinalState.Training.ActiveChallengeEncounterIndex = Encounters.Num() - 1;
+	FinalState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+	TestTrue(TEXT("BattleBoard settles the final Training victory"),
+		TerminalBoard->ResolveCardBattleTerminalStateForTest());
+	TestEqual(TEXT("final Training victory returns to the workbench screen state"),
+		TerminalSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("final Training victory returns to the desktop projection"),
+		TerminalSubsystem->GetRuntimeState().CurrentMapId, FName(TEXT("DesktopTrainingHUD")));
+
+	UGameXXKMVPSubsystem* CloseSubsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestTrue(TEXT("Training close fixture starts in Town"), CloseSubsystem->StartGame());
+	const EGameXXKQuestState QuestBefore = CloseSubsystem->GetRuntimeState().QuestState;
+	if (!TestTrue(TEXT("Training close fixture starts a challenge"),
+		CloseSubsystem->StartTrainingChallenge(StageId)))
+	{
+		return false;
+	}
+	UGameXXKBattleBoardWidget* CloseBoard = NewObject<UGameXXKBattleBoardWidget>();
+	CloseBoard->SetMVPSubsystem(CloseSubsystem);
+	TestTrue(TEXT("Training close Board initializes"), CloseBoard->Initialize());
+	CloseBoard->NativeConstruct();
+	CloseBoard->RefreshFromState();
+	TestTrue(TEXT("Training Close opens the shared confirmation"),
+		CloseBoard->OpenBattleRetreatConfirmationForTest());
+	TestTrue(TEXT("Training challenge can confirm exit without a route checkpoint"),
+		CloseBoard->IsBattleRetreatConfirmEnabledForTest());
+	const UTextBlock* Description = CloseBoard->WidgetTree
+		? Cast<UTextBlock>(CloseBoard->WidgetTree->FindWidget(TEXT("BattleRetreatModalDescription")))
+		: nullptr;
+	TestTrue(TEXT("Training exit description names the 2D workbench destination"),
+		Description && Description->GetText().ToString().Contains(TEXT("挂机主界面")));
+	TestTrue(TEXT("Training exit confirmation cancels the challenge"),
+		CloseBoard->ConfirmBattleRetreatForTest());
+	const FGameXXKRuntimeState& Closed = CloseSubsystem->GetRuntimeState();
+	TestEqual(TEXT("Training exit returns to Town UI state"), Closed.Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("Training exit targets the desktop projection"),
+		Closed.CurrentMapId, FName(TEXT("DesktopTrainingHUD")));
+	TestFalse(TEXT("Training exit clears CardBattle"), Closed.CardRun.bHasActiveCardBattle);
+	TestFalse(TEXT("Training exit does not award the stage"),
+		FGameXXKTrainingRules::IsStageCleared(Closed.Training, StageId));
+	TestEqual(TEXT("Training exit never changes the town quest"), Closed.QuestState, QuestBefore);
 	return true;
 }
 

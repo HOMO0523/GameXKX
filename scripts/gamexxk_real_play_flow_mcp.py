@@ -41,13 +41,20 @@ QINGSHAN_MAP_TOKEN = "L_Qingshan_AsianVillage_Demo"
 ROUTE_MAP_TOKEN = "L_RouteMap"
 BATTLE_MAP_TOKEN = "L_RouteMap"
 BATTLE_PC_TOKEN = "GameXXKMVPPlayerController"
+PIE_START_MODIFIER_KEYS = (0x11, 0xA2, 0xA3)  # Ctrl, left Ctrl, right Ctrl
 # After D releases, PIE must process and expose the remaining W-only motion
 # before W releases.  A probe after this settle is intentional: a wall-clock
 # delay alone can still leave the final release on the stale diagonal facing.
 DIAGONAL_D_TO_W_VERTICAL_PROBE_SETTLE_SECONDS = 0.20
-SLATE_WINDOW_PATTERN = re.compile(r'window "([^"]*GameXXK Preview[^"]*)"[^\n]*\[ref=([^\]]+)\]')
+DIAGONAL_D_TO_W_VERTICAL_PROBE_TIMEOUT_SECONDS = 1.0
+DIAGONAL_D_TO_W_VERTICAL_PROBE_INTERVAL_SECONDS = 0.10
+PREVIEW_WINDOW_TITLE_PATTERN = re.compile(r"GameXXK\s+(?:Preview|预览)")
+EDITOR_WINDOW_TITLE_PATTERN = re.compile(r"GameXXK\s*-\s*(?:Unreal Editor|虚幻编辑器)")
+SLATE_WINDOW_PATTERN = re.compile(
+    r'window "([^"]*GameXXK\s+(?:Preview|预览)[^"]*)"[^\n]*\[ref=([^\]]+)\]'
+)
 SLATE_PREVIEW_WINDOW_GEOMETRY_PATTERN = re.compile(
-    r'window "[^"]*GameXXK Preview[^"]*"[^\n]*'
+    r'window "[^"]*GameXXK\s+(?:Preview|预览)[^"]*"[^\n]*'
     r'\[pos=(?P<x>-?\d+),(?P<y>-?\d+) size=(?P<w>\d+),(?P<h>\d+)\]'
 )
 SLATE_BUTTON_PATTERN = re.compile(
@@ -2032,7 +2039,7 @@ class PreviewWindowController:
             buffer = ctypes.create_unicode_buffer(length + 1)
             self.user32.GetWindowTextW(hwnd, buffer, length + 1)
             title = buffer.value
-            if "GameXXK Preview" in title:
+            if PREVIEW_WINDOW_TITLE_PATTERN.search(title):
                 rect = Rect()
                 self.user32.GetWindowRect(hwnd, ctypes.byref(rect))
                 matches.append({
@@ -2046,6 +2053,43 @@ class PreviewWindowController:
         if not matches:
             raise RuntimeError("GameXXK Preview window was not found")
         return matches[0]
+
+    def find_editor_window(self) -> dict[str, Any]:
+        enum_proc_type = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+        matches: list[dict[str, Any]] = []
+
+        def enum_proc(hwnd, _lparam):
+            if not self.user32.IsWindowVisible(hwnd):
+                return True
+            length = self.user32.GetWindowTextLengthW(hwnd)
+            if length <= 0:
+                return True
+            buffer = ctypes.create_unicode_buffer(length + 1)
+            self.user32.GetWindowTextW(hwnd, buffer, length + 1)
+            title = buffer.value
+            if EDITOR_WINDOW_TITLE_PATTERN.search(title):
+                matches.append({"hwnd": int(hwnd), "title": title})
+            return True
+
+        self.user32.EnumWindows(enum_proc_type(enum_proc), 0)
+        if not matches:
+            raise RuntimeError("GameXXK Unreal Editor window was not found")
+        return matches[0]
+
+    def clear_editor_control_modifier_state(self, window: dict[str, Any]) -> None:
+        """Synchronously clear UE's cached left/right Ctrl state on its own HWND."""
+        hwnd = ctypes.c_void_p(int(window["hwnd"]))
+        wm_keyup = 0x0101
+        vk_control = 0x11
+        left_control_keyup_lparam = 0xC01D0001
+        right_control_keyup_lparam = 0xC11D0001
+        for lparam in (left_control_keyup_lparam, right_control_keyup_lparam):
+            self.user32.SendMessageW(
+                hwnd,
+                wm_keyup,
+                ctypes.c_size_t(vk_control),
+                ctypes.c_ssize_t(lparam),
+            )
 
     def preview_window_geometry(self, window: dict[str, Any]) -> dict[str, Any]:
         """Capture outer and client screen bounds from the exact HWND used for a Slate screenshot."""
@@ -2170,6 +2214,14 @@ class PreviewWindowController:
         self.user32.SetForegroundWindow(hwnd)
         time.sleep(0.2)
 
+    def restore_if_minimized(self, window: dict[str, Any]) -> bool:
+        hwnd = ctypes.c_void_p(int(window["hwnd"]))
+        if not bool(self.user32.IsIconic(hwnd)):
+            return False
+        self.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+        time.sleep(0.25)
+        return True
+
     def focus_non_preview_window(self) -> dict[str, Any]:
         """Put PIE in the real background-throttled state without minimizing it."""
         enum_proc_type = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
@@ -2184,9 +2236,9 @@ class PreviewWindowController:
             buffer = ctypes.create_unicode_buffer(length + 1)
             self.user32.GetWindowTextW(hwnd, buffer, length + 1)
             title = buffer.value
-            if "GameXXK Preview" in title:
+            if PREVIEW_WINDOW_TITLE_PATTERN.search(title):
                 return True
-            if "Unreal Editor" in title or "GameXXK" in title:
+            if EDITOR_WINDOW_TITLE_PATTERN.search(title):
                 candidates.append({"hwnd": int(hwnd), "title": title})
             return True
 
@@ -3052,9 +3104,20 @@ class RealFlowHarness:
                     raise RuntimeError(f"Town diagonal keys did not switch hero to Walk_NorthEast while held: {diagonal_walk_state}")
                 time.sleep(0.25)
             time.sleep(DIAGONAL_D_TO_W_VERTICAL_PROBE_SETTLE_SECONDS)
-            while_vertical_only = self.probe()
-            vertical_walk_state = _expect_visual_state(while_vertical_only, "Walk", "North")
-            self.event("diagonal_vertical_state_probe", **vertical_walk_state)
+            deadline = time.monotonic() + DIAGONAL_D_TO_W_VERTICAL_PROBE_TIMEOUT_SECONDS
+            vertical_probe_attempts = 0
+            while True:
+                while_vertical_only = self.probe()
+                vertical_probe_attempts += 1
+                vertical_walk_state = _expect_visual_state(while_vertical_only, "Walk", "North")
+                if vertical_walk_state.get("ok") or time.monotonic() >= deadline:
+                    break
+                time.sleep(DIAGONAL_D_TO_W_VERTICAL_PROBE_INTERVAL_SECONDS)
+            self.event(
+                "diagonal_vertical_state_probe",
+                attempts=vertical_probe_attempts,
+                **vertical_walk_state,
+            )
             if not vertical_walk_state.get("ok"):
                 raise RuntimeError(
                     f"Town D-up must leave W-only Walk_North before W release: {vertical_walk_state}"
@@ -3090,16 +3153,34 @@ class RealFlowHarness:
             raise RuntimeError(f"Route widget node {node_index} failed: {command_result}")
         return parsed
 
+    def _wait_for_slate_preview_ref(self, timeout: float = 5.0) -> tuple[str, str, dict[str, Any] | None]:
+        preview_window = None
+        try:
+            preview_window = self.input.find_preview_window()
+            self.input.restore_if_minimized(preview_window)
+        except Exception:
+            preview_window = None
+
+        deadline = time.monotonic() + timeout
+        root_snapshot = ""
+        while True:
+            root_snapshot = str(self.client.call_tool(
+                "Snapshot",
+                {"ref": "", "maxDepth": 3, "bIncludeSourceLocations": False},
+                toolset_name=SLATE_TOOLSET,
+                timeout=self.client.timeout,
+            ))
+            preview_ref = _slate_preview_window_ref(root_snapshot)
+            if preview_ref:
+                return root_snapshot, preview_ref, preview_window
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    f"GameXXK Preview Slate window was not found in snapshot: {root_snapshot[:1000]}"
+                )
+            time.sleep(0.10)
+
     def slate_preview_snapshot(self) -> str:
-        root_snapshot = str(self.client.call_tool(
-            "Snapshot",
-            {"ref": "", "maxDepth": 3, "bIncludeSourceLocations": False},
-            toolset_name=SLATE_TOOLSET,
-            timeout=self.client.timeout,
-        ))
-        preview_ref = _slate_preview_window_ref(root_snapshot)
-        if not preview_ref:
-            raise RuntimeError(f"GameXXK Preview Slate window was not found in snapshot: {root_snapshot[:1000]}")
+        _, preview_ref, _ = self._wait_for_slate_preview_ref()
 
         self.client.call_tool(
             "Observe",
@@ -3117,21 +3198,14 @@ class RealFlowHarness:
 
     def slate_screenshot(self, name: str) -> tuple[Path, tuple[int, int]]:
         """Capture the PIE Slate window without relying on a visible Win32 title bar."""
-        root_snapshot = str(self.client.call_tool(
-            "Snapshot",
-            {"ref": "", "maxDepth": 3, "bIncludeSourceLocations": False},
-            toolset_name=SLATE_TOOLSET,
-            timeout=self.client.timeout,
-        ))
-        preview_ref = _slate_preview_window_ref(root_snapshot)
+        _, preview_ref, preview_window = self._wait_for_slate_preview_ref()
         screenshot_context: dict[str, Any] = {
             "transport": "slate",
             "preview_ref": preview_ref,
         }
-        preview_window = None
         try:
-            preview_window = self.input.find_preview_window()
-            screenshot_context["window_geometry_before"] = self.input.preview_window_geometry(preview_window)
+            if preview_window is not None:
+                screenshot_context["window_geometry_before"] = self.input.preview_window_geometry(preview_window)
         except Exception as exc:
             screenshot_context["geometry_error_before"] = type(exc).__name__
         payload = self.client.call_tool(
@@ -3443,9 +3517,28 @@ class RealFlowHarness:
                 str(height),
             )
             capture = payload.get("high_res_screenshot", {})
-            if not isinstance(capture, dict) or not capture.get("ok"):
+            if (
+                not isinstance(capture, dict)
+                or not capture.get("ok")
+                or capture.get("state") != "started"
+            ):
                 raise RuntimeError(
-                    f"High-resolution evidence capture failed for {prefix}: {capture}"
+                    f"High-resolution evidence start failed for {prefix}: {capture}"
+                )
+            deadline = time.monotonic() + 60.0
+            while time.monotonic() < deadline:
+                time.sleep(0.25)
+                poll_payload = self.probe("--poll-high-res-screenshot")
+                capture = poll_payload.get("high_res_screenshot", {})
+                if not isinstance(capture, dict) or not capture.get("ok"):
+                    raise RuntimeError(
+                        f"High-resolution evidence poll failed for {prefix}: {capture}"
+                    )
+                if capture.get("done"):
+                    break
+            else:
+                raise RuntimeError(
+                    f"High-resolution evidence timed out for {prefix}: {capture}"
                 )
             path = Path(str(capture.get("path", "")))
             if not path.is_file():
@@ -3518,6 +3611,22 @@ class RealFlowHarness:
         self.client.call_tool("load_level", {"level_path": MAIN_MAP}, toolset_name=SCENE_TOOLSET, timeout=60.0)
         self.event("loaded_main_map", map=MAIN_MAP)
         self.probe("--delete-default-save")
+
+        # UE starts PIE as spectator-only when Slate still considers Ctrl held.
+        # Release all Ctrl variants immediately before StartPIE so the game mode
+        # spawns its configured MVP player controller instead of the engine's
+        # replay spectator controller.
+        editor_window = self.input.find_editor_window()
+        self.input.focus(editor_window)
+        for virtual_key in PIE_START_MODIFIER_KEYS:
+            self.input.key_up(virtual_key)
+        self.input.clear_editor_control_modifier_state(editor_window)
+        time.sleep(0.05)
+        self.event(
+            "released_pie_start_modifiers",
+            virtual_keys=list(PIE_START_MODIFIER_KEYS),
+            editor_window=editor_window,
+        )
 
         self.client.call_tool(
             "StartPIE",

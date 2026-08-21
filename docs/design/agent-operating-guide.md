@@ -9,12 +9,12 @@
 
 ## Current Flow To Preserve
 
-- Main menu is the entry point on `L_Main`.
-- New Game starts a fresh runtime state and opens the Qingshan town map.
-- Town uses real character movement, HD2D sprites, NPC interaction, and a player-facing town overlay.
-- Quest acceptance belongs to the NPC `F` interaction path.
-- Route-map entry belongs to the in-world north gate `QingshanInn_TownExit`; after quest acceptance, walk to the gate approach area and press `F`.
-- The route map and battle board are player-facing UI screens driven by the shared MVP command router.
+- The default editor/game entry is the pure-2D `/Game/GameXXK/Maps/L_DesktopTrainingHUD` surface.
+- `Town` means the desktop挂机 workbench in the canonical product flow; routine PIE and visual verification stay on this map.
+- An unlocked/replayable `挑战` starts the existing full-screen BattleBoard directly, without accepting or depending on the Qingshan quest and without changing maps.
+- Leaving the training battle restores the same 2D workbench.
+- `L_Main`, Qingshan town movement/NPC `F`/north-gate route flow and other 3D surfaces are preserved for explicit legacy or 3D-scoped checks only. Do not switch to them unless the user or current task asks for that scope.
+- The BattleBoard remains the shared player-facing combat UI; do not recreate an embedded ChallengeViewport inside the workbench.
 
 ## Verification Order
 
@@ -28,3 +28,4 @@
 - Treat existing `.uasset` changes as user/editor output unless you created them in the current task.
 - Do not use UnrealBridge.
 - Do not change camera or HD2D sprite tuning unless the user asks for visual adjustment.
+- For targeting-arrow presentation, keep the DPI-aware coordinate chain intact. The visible source tip `(1082,608)` in the `1254×1254` arrow texture—not the texture center—is the mouse hotspot and rotation pivot.

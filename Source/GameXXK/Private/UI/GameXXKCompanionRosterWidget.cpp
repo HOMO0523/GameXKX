@@ -144,7 +144,7 @@ namespace
 	static constexpr const TCHAR* RosterSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/003_tab_1.003_tab_1");
 	static constexpr const TCHAR* RosterPageLeftTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CompanionPageLeft.T_MasterV2_CompanionPageLeft");
 	static constexpr const TCHAR* RosterPageRightTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CompanionPageRight.T_MasterV2_CompanionPageRight");
-	static constexpr const TCHAR* ActionButtonTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonPrimary.T_MasterV2_ButtonPrimary");
+	static constexpr const TCHAR* ActionButtonTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/004_tab_2.004_tab_2");
 	static constexpr const TCHAR* CardFrameTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardFrame.T_MasterV2_CardFrame");
 	static constexpr const TCHAR* LockedCardIconTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardLockedIcon.T_MasterV2_CardLockedIcon");
 	static constexpr const TCHAR* ItemSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");

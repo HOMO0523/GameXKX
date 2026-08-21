@@ -421,8 +421,7 @@ bool FGameXXKTrainingRules::CanChallenge(const FGameXXKTrainingProgress& Progres
 {
 	FGameXXKTrainingStageDefinition Stage;
 	if (!TryGetStageDefinition(StageId, Stage)
-		|| !IsDifficultyUnlocked(Progress, Stage.Difficulty)
-		|| IsStageCleared(Progress, StageId))
+		|| !IsDifficultyUnlocked(Progress, Stage.Difficulty))
 	{
 		return false;
 	}

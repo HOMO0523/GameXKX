@@ -144,7 +144,16 @@ FReply UGameXXKBattleStatusIconWidget::MakeMouseButtonDownReply()
 
 void UGameXXKBattleStatusIconWidget::EnsureWidgetTree()
 {
-	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	// A normal unit-HUD badge must stay input-transparent, but callers may
+	// deliberately hide a prepared badge before NativeConstruct runs.  The
+	// retired cinematic badge follows exactly that lifecycle: Board creation
+	// prepares it, marks it Hidden, then NativeConstruct re-enters this method.
+	// Do not resurrect Hidden/Collapsed badges into an empty "? x1" overlay.
+	if (GetVisibility() != ESlateVisibility::Hidden
+		&& GetVisibility() != ESlateVisibility::Collapsed)
+	{
+		SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
 
 	if (RootBox || !WidgetTree)
 	{

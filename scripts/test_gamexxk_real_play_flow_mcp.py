@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import inspect
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -137,6 +138,87 @@ class SlateScreenshotFallbackTest(unittest.TestCase):
             result,
         )
         sleep.assert_called_once_with(0.6)
+
+    def test_editor_ctrl_reset_targets_both_cached_control_sides(self) -> None:
+        class FakeUser32:
+            def __init__(self) -> None:
+                self.calls = []
+
+            def SendMessageW(self, hwnd, message, wparam, lparam):
+                self.calls.append((hwnd.value, message, wparam.value, lparam.value))
+
+        controller = object.__new__(flow.PreviewWindowController)
+        controller.user32 = FakeUser32()
+
+        controller.clear_editor_control_modifier_state({"hwnd": 71})
+
+        self.assertEqual(
+            [
+                (71, 0x0101, 0x11, 0xC01D0001),
+                (71, 0x0101, 0x11, 0xC11D0001),
+            ],
+            controller.user32.calls,
+        )
+
+    def test_resolution_matrix_starts_then_polls_each_exact_size(self) -> None:
+        harness = object.__new__(flow.RealFlowHarness)
+        harness.events = []
+        calls = []
+        current = {}
+
+        class _OpenedImage:
+            def __init__(self, path):
+                match = re.search(r"_(\d+)x(\d+)\.png$", str(path))
+                self.size = (int(match.group(1)), int(match.group(2)))
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            def probe(*args):
+                calls.append(args)
+                if args[0] == "--high-res-screenshot":
+                    path = Path(temp_dir) / args[1]
+                    path.write_bytes(_ONE_PIXEL_PNG)
+                    current.update(path=str(path), width=int(args[2]), height=int(args[3]))
+                    return {
+                        "high_res_screenshot": {
+                            "ok": True,
+                            "state": "started",
+                            "done": False,
+                            **current,
+                        }
+                    }
+                self.assertEqual(("--poll-high-res-screenshot",), args)
+                return {
+                    "high_res_screenshot": {
+                        "ok": True,
+                        "state": "complete",
+                        "done": True,
+                        **current,
+                    }
+                }
+
+            harness.probe = probe
+            with patch.object(flow.Image, "open", side_effect=lambda path: _OpenedImage(path)):
+                with patch.object(flow.time, "sleep"):
+                    outputs = harness.capture_resolution_matrix("modal")
+
+        self.assertEqual(["1280x720", "1672x941", "1920x1080"], list(outputs))
+        self.assertEqual(
+            [
+                "--high-res-screenshot",
+                "--poll-high-res-screenshot",
+                "--high-res-screenshot",
+                "--poll-high-res-screenshot",
+                "--high-res-screenshot",
+                "--poll-high-res-screenshot",
+            ],
+            [call[0] for call in calls],
+        )
 
     def _valid_target_outcome_report(self) -> dict[str, object]:
         scenarios: dict[str, object] = {}
@@ -441,6 +523,8 @@ class SlateScreenshotFallbackTest(unittest.TestCase):
         self.assertLess(leave_index, apply_index)
 
     def test_real_flow_requests_the_numeric_floating_pie_mode(self) -> None:
+        timeline = []
+
         class CapturingClient:
             def __init__(self) -> None:
                 self.start_options = None
@@ -457,6 +541,7 @@ class SlateScreenshotFallbackTest(unittest.TestCase):
 
             def call_tool(self, name, args=None, **_kwargs):
                 if name == "StartPIE":
+                    timeline.append(("StartPIE",))
                     self.start_options = dict((args or {}).get("options", {}))
                     raise RuntimeError("stop_after_start_capture")
                 return True
@@ -465,15 +550,47 @@ class SlateScreenshotFallbackTest(unittest.TestCase):
             def run_project_python_file(*_args, **_kwargs):
                 return {"stdout": '{"delete_default_save": true}'}
 
+        class RecordingInput:
+            @staticmethod
+            def find_editor_window():
+                timeline.append(("find_editor_window",))
+                return {"hwnd": 71, "title": "GameXXK - 虚幻编辑器"}
+
+            @staticmethod
+            def focus(_window):
+                timeline.append(("focus_editor_window",))
+
+            @staticmethod
+            def key_up(virtual_key):
+                timeline.append(("key_up", virtual_key))
+
+            @staticmethod
+            def clear_editor_control_modifier_state(_window):
+                timeline.append(("clear_editor_control_modifier_state",))
+
         harness = flow.RealFlowHarness(timeout=1.0, keep_pie=False)
         harness.client = CapturingClient()
+        harness.input = RecordingInput()
         harness.preserve_default_save = lambda: None
         harness.probe = lambda *_args: {}
 
-        with self.assertRaisesRegex(RuntimeError, "stop_after_start_capture"):
-            harness.run()
+        with patch.object(flow.time, "sleep"):
+            with self.assertRaisesRegex(RuntimeError, "stop_after_start_capture"):
+                harness.run()
 
         self.assertEqual(1, harness.client.start_options["playMode"])
+        self.assertEqual(
+            [
+                ("find_editor_window",),
+                ("focus_editor_window",),
+                ("key_up", 0x11),
+                ("key_up", 0xA2),
+                ("key_up", 0xA3),
+                ("clear_editor_control_modifier_state",),
+                ("StartPIE",),
+            ],
+            timeline,
+        )
 
     def test_main_routes_target_outcome_preview_mode_through_its_verdict(self) -> None:
         report = self._valid_target_outcome_report()
@@ -940,7 +1057,46 @@ class SlateScreenshotFallbackTest(unittest.TestCase):
             'window "GameXXK Preview [NetMode: Standalone 0]" [ref=w18]\n'
         )
         self.assertEqual("w18", flow._slate_preview_window_ref(snapshot))
+        localized_snapshot = (
+            'window "GameXXK - 虚幻编辑器" [ref=w1]\n'
+            'window "GameXXK 预览 [NetMode: Standalone 0]" [ref=w19]\n'
+        )
+        self.assertEqual("w19", flow._slate_preview_window_ref(localized_snapshot))
         self.assertEqual("", flow._slate_preview_window_ref('window "GameXXK - Unreal Editor" [ref=w1]'))
+
+    def test_slate_preview_snapshot_retries_an_empty_root_after_map_transition(self) -> None:
+        class _Client:
+            timeout = 5.0
+
+            def __init__(self):
+                self.responses = iter((
+                    "",
+                    'window "GameXXK 预览 [NetMode: Standalone 0]" [ref=w21]',
+                    True,
+                    'button "Start" [ref=b1]',
+                ))
+
+            def call_tool(self, *_args, **_kwargs):
+                return next(self.responses)
+
+        class _Input:
+            @staticmethod
+            def find_preview_window():
+                return {"hwnd": 71, "title": "GameXXK 预览"}
+
+            @staticmethod
+            def restore_if_minimized(_window):
+                return True
+
+        harness = object.__new__(flow.RealFlowHarness)
+        harness.client = _Client()
+        harness.input = _Input()
+
+        with patch.object(flow.time, "sleep") as sleep:
+            snapshot = harness.slate_preview_snapshot()
+
+        self.assertEqual('button "Start" [ref=b1]', snapshot)
+        self.assertEqual([((0.10,), {}), ((0.15,), {})], sleep.call_args_list)
 
     def test_slate_png_decoder_accepts_png_and_rejects_invalid_transport(self) -> None:
         payload = {"mimeType": "image/png", "data": base64.b64encode(_ONE_PIXEL_PNG).decode("ascii")}

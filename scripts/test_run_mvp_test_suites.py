@@ -7,6 +7,14 @@ SCRIPT = Path(__file__).with_name("run_mvp_test_suites.ps1")
 
 
 class RunMvpTestSuitesContractTests(unittest.TestCase):
+    def test_default_project_follows_the_checked_out_repository(self) -> None:
+        text = SCRIPT.read_text(encoding="utf-8-sig")
+        self.assertRegex(
+            text,
+            r'\[string\]\$Project\s*=\s*\(Join-Path\s+\$PSScriptRoot\s+["\']\.\.[\\/]GameXXK\.uproject["\']\)',
+            "the runner must not retain a machine-specific project path",
+        )
+
     def test_failure_counter_accepts_unreal_fail_and_legacy_failed_tokens(self) -> None:
         text = SCRIPT.read_text(encoding="utf-8-sig")
         match = re.search(r'\$Failed\s*=\s*\(\[regex\]::Matches\(\$Text,\s*"([^"]+)"\)\)\.Count', text)
@@ -26,6 +34,24 @@ class RunMvpTestSuitesContractTests(unittest.TestCase):
         self.assertIsNotNone(
             environment_assignment,
             "automation commandlets must not spawn the modal-prone redundant UBT SDK probe",
+        )
+
+    def test_no_run_or_launch_failure_cannot_return_success(self) -> None:
+        text = SCRIPT.read_text(encoding="utf-8-sig")
+        self.assertIn(
+            "Remove-Item -LiteralPath $OutFile",
+            text,
+            "stale automation logs must be removed before launching a suite",
+        )
+        self.assertIn(
+            "-ErrorAction Stop",
+            text,
+            "editor launch failures must be observable",
+        )
+        self.assertRegex(
+            text,
+            r"if\s*\(\$AllPass\s*-ne\s*\$All\)\s*\{\s*exit\s+1\s*\}",
+            "NO-RUN, timeout, launch failure, and test failure must produce a non-zero exit",
         )
 
 

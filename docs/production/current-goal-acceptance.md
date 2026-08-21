@@ -1,22 +1,26 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-19T17:10:00+08:00
-source_commit: 0fd4c889a825ab54c5813fab5c40829cd69ffdb5
-working_tree: dirty (active root worktree is `main`; runtime/evidence baseline is `0fd4c88` and this pointer is a following docs-only commit; preserve user L_Main.umap, unrelated probes, and untracked SourceAssets/SourceArt)
+updated_at: 2026-08-21T13:00:00+08:00
+source_commit: 1589f936b3f3a1491be5aa0a3b48385d01be270d
+working_tree: dirty (active root worktree is `main`; 2026-08-20 HUD 纠错包尚未提交；保留用户文件、无关探针及未跟踪源资产)
 ---
 # GameXXK 当前目标(滚动指针)
 
 > 本文件是"当前做到哪了"的**唯一滚动指针**。`AGENTS.md` 不再硬编码验收状态,改指向这里。每次目标收尾后更新本文件。
 
+> **2026-08-21 纯 2D 默认流程（当前最高优先）**：编辑器/游戏默认地图和 `Town` 权威解析均为 `L_DesktopTrainingHUD`；未明确要求时禁止把日常开发、PIE 或截图切到 3D。挑战不接青山镇任务，直接在同地图切换现有全屏 BattleBoard，退出后恢复工作台。目标箭头已同时修复“浮动窗口桌面原点混入 Board-local”的整段偏移和“贴图中心代替可见箭尖”的局部热点错误；60/60 Automation 与三尺寸/三窗口原点真实 PIE 通过。权威记录：`docs/production/2026-08-21-desktop-2d-default-pointer-acceptance.md`。本文所有“默认入口继续 3D/禁止切 2D”的旧描述自此仅作历史记录，不再是执行约束。
+
 > **2026-08-19 用户纠偏（最高优先）**：本文下方所有“工作台内合并 ChallengeViewport、内嵌路线图/BattleBoard、3 敌 3 我顶栏、挑战只读侧壳、`StartTrainingChallenge` 作为玩家挑战入口”的描述均已废止。当前玩家挑战流程必须复用现有传送门→路线图→全屏 BattleBoard；工作台挑战只负责委托现有路线入口并关闭工作台。权威规格为 `docs/superpowers/specs/2026-08-19-route-owned-auto-battle-correction-design.md`。旧段落仅作历史记录，不作为当前状态。
+
+> **2026-08-20 桌面 HUD 纠错（当前最新）**：主角、伙伴、NPC 真实头像入口已固定在中栏左下，查看角色不再换队；队伍写入只允许在独立编队页点击“编入队伍”。用户否决的星点长条/通用错误 Tab 底永久停用，状态底只使用 `003_tab_1` / `004_tab_2`。挑战不依赖青山镇任务，未接任务可直接进入真实 Battle 且任务状态不变。该范围冷 UBT、Training 21/21、DesktopTraining 30/30、三分辨率与真实点击链均通过；详见 `docs/production/2026-08-20-desktop-training-hud-roster-flow-acceptance.md`。
 
 ## 当前基线(更新于 2026-08-19)
 
 - 规格冻结基线:`ba90810a56e06a3b70ed0e3125c4ef67a59a0685`（2026-08-17 `docs: freeze desktop training workbench design`）；它是设计/规则基线，不冒充当前代码 HEAD。根目录 `main` 已从祖先 `628c46a` 安全快进并完成到 `0fd4c88` 的运行时/资产/harness checkpoint；原 `codex/desktop-training-2d-hud-migration` 分支保留在 `57a06e4`，未使用或创建 worktree。
 - 当前运行时/证据源码基线:`0fd4c88`（活动分支 `main`；滚动指针由后续 docs-only commit 承载）。HUD-only 懒启动/折叠卸载、工作台两态置顶图钉、存档快照归一化、v21/v22 库存/NPC、32 张当前可达 1K atlas、8 张 ImageTruth 和 Phase 0 harness 已分三批 checkpoint；用户 `L_Main.umap` 及未跟踪源美术/探针保持保护。桌面历练规则、程序化工作台、确定性 TravelRunner、离线账本、奖励/冷却 Resolver、背包/伙伴/NPC 切换、仓库 4 列分页、拖拽/右键路由、工具 3×3 已保留；旧“挑战只读侧壳/960×968 ChallengeViewport”已按用户纠偏废止，当前挑战走现有路线图与全屏 BattleBoard。
 - SaveVersion 边界必须分层记录：`ba90810` 规格冻结时的历史前置基线为 v17；当前工作区代码实际 `CurrentSaveVersion=22`，`DesktopTrainingWorkbenchIntroducedSaveVersion=18`、`TrainingRewardCooldownsIntroducedSaveVersion=19`、`TrainingOfflineCollectionIntroducedSaveVersion=20`、`DesktopInventoryStorageIntroducedSaveVersion=21`、`QuestNpcEquipmentOwnerIntroducedSaveVersion=22`。任何旧 v16/v17/v18 历练索引均为历史 `shelved`；后续迁移从 v23 继续。
-- 最近一次目标验收:`docs/production/2026-08-15-battle-target-arrow-alignment-incident.md`(战斗卡牌目标箭头错位修复，自动化/真实 PIE/用户现场验收通过)
+- 最近一次目标验收:`docs/production/2026-08-21-desktop-2d-default-pointer-acceptance.md`（2D 默认入口、同地图直接挑战/返回、浮动窗口箭头吸附）
 - 最近一次全量代码/文档审查与优化方案:`docs/production/2026-08-16-full-project-optimization-proposal.md`;上一轮定向建议见 `docs/production/2026-08-16-optimization-followup.md`
 - 最新历史全量自动化:**598/598 通过、0 error**，证据为 `Saved/Automation/ChargeFinishSubject/index.json`（2026-08-16 12:01:35）；最近历史冷 UBT GREEN，证据为 `Saved/HarnessReports/20260816-114544-ai-production-loop.md`。这两份报告只作历史回归参考，不冒充当前工作区的本轮全量运行。
 - 历史 2026-08-18 production-loop 证据保留作迁移对照（其中旧报告的“1-1 无箱”与旧 MasterV2 NavDisc 接入均已被当前规则/真源 supersede）；最新可采信证据见 2026-08-19 条目。mcp-live 与 asset-contract 的历史失败不被隐藏，仍按标签单独记录。

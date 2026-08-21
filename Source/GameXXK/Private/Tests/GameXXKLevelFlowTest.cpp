@@ -13,9 +13,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 {
 	TestEqual(
-		TEXT("town map remains the accepted 3D entry until the HUD migration is approved"),
+		TEXT("Town resolves to the canonical pure-2D desktop entry"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::Town),
-		FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
+		FName(TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD")));
 	TestEqual(
 		TEXT("route map"),
 		GameXXKLevelFlow::MapForScreen(EGameXXKScreen::DungeonMap),
@@ -51,6 +51,16 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 		TEXT("loading a battle save from town still opens route map"),
 		GameXXKLevelFlow::RequiresMapLoadForRuntimeState(
 			TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo"), BattleState));
+	TestFalse(
+		TEXT("desktop training HUD keeps Battle on the same pure-2D map"),
+		GameXXKLevelFlow::RequiresMapLoadForRuntimeState(
+			TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_DesktopTrainingHUD"), BattleState));
+	FGameXXKRuntimeState DesktopReturnState = BattleState;
+	DesktopReturnState.Screen = EGameXXKScreen::Town;
+	TestFalse(
+		TEXT("desktop training HUD keeps the post-battle workbench on the same pure-2D map"),
+		GameXXKLevelFlow::RequiresMapLoadForRuntimeState(
+			TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_DesktopTrainingHUD"), DesktopReturnState));
 	TestTrue(
 		TEXT("PIE route map package matches route target"),
 		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap"), FName(TEXT("/Game/GameXXK/Maps/L_RouteMap"))));

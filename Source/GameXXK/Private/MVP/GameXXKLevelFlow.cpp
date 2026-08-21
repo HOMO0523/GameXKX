@@ -43,10 +43,9 @@ FName GameXXKLevelFlow::MapForScreen(EGameXXKScreen Screen)
 	switch (Screen)
 	{
 	case EGameXXKScreen::Town:
-		// Keep the accepted 3D town as the player-facing entry until the isolated
-		// HUD migration passes its final acceptance.  L_DesktopTrainingHUD stays
-		// directly loadable as the explicit opt-in validation surface.
-		return QingshanTownMap;
+		// Town is the canonical pure-2D desktop shell. The 3D Qingshan maps remain
+		// explicitly loadable for dedicated legacy/scene validation only.
+		return DesktopTrainingHUDMap;
 	case EGameXXKScreen::DungeonMap:
 		return RouteMap;
 	case EGameXXKScreen::RouteEvent:
@@ -78,6 +77,13 @@ bool GameXXKLevelFlow::RequiresMapLoadForRuntimeState(
 	const FString& CurrentPackageName,
 	const FGameXXKRuntimeState& State)
 {
+	// L_DesktopTrainingHUD is an intentionally self-contained 2D shell. Its
+	// Town/Battle transitions swap widgets in-place and must never fall through
+	// the legacy Town/Route map table.
+	if (IsDesktopTrainingHUDMapPackage(CurrentPackageName))
+	{
+		return false;
+	}
 	const FName TargetMap = MapForRuntimeState(State);
 	return !TargetMap.IsNone() && !MapPackageMatches(CurrentPackageName, TargetMap);
 }

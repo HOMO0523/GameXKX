@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 from contextlib import redirect_stdout
+import builtins
 import importlib.util
 from io import StringIO
 import json
 import sys
 import types
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -74,6 +76,48 @@ class _WidgetWithThrowingGeometryRead:
 
 
 class RealPlayFlowProbeTest(unittest.TestCase):
+    def test_default_save_cleanup_is_idempotent_when_the_slot_is_already_absent(self) -> None:
+        module = _load_probe_module()
+
+        class _GameplayStatics:
+            delete_calls = 0
+
+            @staticmethod
+            def does_save_game_exist(_slot, _user_index):
+                return False
+
+            @classmethod
+            def delete_game_in_slot(cls, _slot, _user_index):
+                cls.delete_calls += 1
+                return False
+
+        module.unreal.GameplayStatics = _GameplayStatics
+
+        self.assertEqual(
+            {"ok": True, "existed": False, "deleted": False},
+            module._delete_default_save_if_present(),
+        )
+        self.assertEqual(0, _GameplayStatics.delete_calls)
+
+    def test_default_save_cleanup_reports_a_real_delete_failure(self) -> None:
+        module = _load_probe_module()
+
+        class _GameplayStatics:
+            @staticmethod
+            def does_save_game_exist(_slot, _user_index):
+                return True
+
+            @staticmethod
+            def delete_game_in_slot(_slot, _user_index):
+                return False
+
+        module.unreal.GameplayStatics = _GameplayStatics
+
+        self.assertEqual(
+            {"ok": False, "existed": True, "deleted": False},
+            module._delete_default_save_if_present(),
+        )
+
     def test_probe_wires_two_level_route_exit_acceptance_fixture_and_state(self) -> None:
         source = PROBE_PATH.read_text(encoding="utf-8")
 
@@ -96,10 +140,63 @@ class RealPlayFlowProbeTest(unittest.TestCase):
             '"battle_phase"',
             '"pending_reward_option_count"',
             "--high-res-screenshot",
+            "--poll-high-res-screenshot",
             "take_high_res_screenshot",
             'result["high_res_screenshot"]',
         ):
             self.assertIn(token, source)
+
+    def test_high_res_screenshot_returns_before_tick_and_completes_via_poll(self) -> None:
+        module = _load_probe_module()
+
+        class _Task:
+            done = False
+            done_reads = 0
+
+            @staticmethod
+            def is_valid_task():
+                return True
+
+            @classmethod
+            def is_task_done(cls):
+                cls.done_reads += 1
+                return cls.done
+
+        task = _Task()
+
+        class _AutomationLibrary:
+            @staticmethod
+            def take_high_res_screenshot(*_args, **_kwargs):
+                return task
+
+        module.unreal.AutomationLibrary = _AutomationLibrary
+        module.unreal.ComparisonTolerance = types.SimpleNamespace(LOW="low")
+        state_attr = module._HIGH_RES_SCREENSHOT_STATE_ATTR
+        if hasattr(builtins, state_attr):
+            delattr(builtins, state_attr)
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                module.PROJECT_ROOT = Path(temp_dir)
+                started = module._handle_high_res_screenshot(object(), "modal.png", 1280, 720)
+                self.assertTrue(started["ok"])
+                self.assertEqual("started", started["state"])
+                self.assertEqual(0, task.done_reads)
+
+                pending = module._handle_poll_high_res_screenshot()
+                self.assertTrue(pending["ok"])
+                self.assertFalse(pending["done"])
+
+                output_path = Path(started["path"])
+                output_path.write_bytes(b"png")
+                _Task.done = True
+                complete = module._handle_poll_high_res_screenshot()
+                self.assertTrue(complete["ok"])
+                self.assertTrue(complete["done"])
+                self.assertEqual("complete", complete["state"])
+                self.assertFalse(hasattr(builtins, state_attr))
+        finally:
+            if hasattr(builtins, state_attr):
+                delattr(builtins, state_attr)
 
     def test_real_flow_wires_the_new_meta_shop_acceptance_contract(self) -> None:
         self.assertTrue(META_SHOP_PROBE_PATH.is_file(), "focused meta-shop PIE probe must exist")

@@ -295,6 +295,16 @@ bool FGameXXKBattleStatusTooltipsTest::RunTest(const FString& Parameters)
 		TestFalse(*FString::Printf(TEXT("%s tooltip has no retired timing prefix"), *Label), Tooltip.Contains(TEXT("时机：")));
 	}
 
+	const FGameXXKBattleStatusIconStyle BlockStyle =
+		FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(EGameXXKCardStatus::Block);
+	TestEqual(
+		TEXT("block resolves the approved imported texture path"),
+		BlockStyle.TexturePath.ToString(),
+		FString(TEXT("/Game/GameXXK/UI/Battle/StatusIcons/T_BattleStatus_BlockShield.T_BattleStatus_BlockShield")));
+	TestNotNull(
+		TEXT("block imported texture is loadable instead of falling back to a glyph"),
+		BlockStyle.TexturePath.TryLoad());
+
 	TestEqual(TEXT("only the icon caps values above ninety-nine"), UGameXXKBattleStatusIconWidget::FormatStackForTest(128), FString(TEXT("99+")));
 	return true;
 }
@@ -393,6 +403,13 @@ bool FGameXXKBattleStatusEffectsWidgetTest::RunTest(const FString& Parameters)
 		FirstIcon->SetVisibility(ESlateVisibility::Visible);
 		TestTrue(TEXT("embedded icon re-prepares after an outer visibility reset"), FirstIcon->PrepareForScreenSpaceEmbedding());
 		TestEqual(TEXT("repreparing restores embedded icon outer input transparency"), FirstIcon->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
+		FirstIcon->SetVisibility(ESlateVisibility::Hidden);
+		TestTrue(TEXT("a deliberately hidden prepared icon can re-enter construction"), FirstIcon->PrepareForScreenSpaceEmbedding());
+		TestEqual(
+			TEXT("re-entering construction never resurrects a hidden empty cinematic badge"),
+			FirstIcon->GetVisibility(),
+			ESlateVisibility::Hidden);
+		FirstIcon->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 		USizeBox* const IconRoot = Cast<USizeBox>(FirstIcon->GetWidgetFromName(TEXT("BattleStatusIconRoot")));
 		TestNotNull(TEXT("embedded icon exposes its native size-box root"), IconRoot);
 		if (IconRoot)

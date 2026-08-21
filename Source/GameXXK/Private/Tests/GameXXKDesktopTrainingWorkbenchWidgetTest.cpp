@@ -17,6 +17,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/ScaleBox.h"
 #include "Components/SizeBox.h"
+#include "Components/TextBlock.h"
 #include "Misc/AutomationTest.h"
 #include "Widgets/SNullWidget.h"
 
@@ -33,6 +34,12 @@ namespace
 	FString GetBorderResourcePath(const UBorder* Border)
 	{
 		const UObject* Resource = Border ? Border->Background.GetResourceObject() : nullptr;
+		return Resource ? Resource->GetPathName() : FString();
+	}
+
+	FString GetImageResourcePath(const UImage* Image)
+	{
+		const UObject* Resource = Image ? Image->GetBrush().GetResourceObject() : nullptr;
 		return Resource ? Resource->GetPathName() : FString();
 	}
 }
@@ -108,9 +115,8 @@ bool FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest::RunTest(const
 	bool bHasHeroFullBody = false;
 	bool bHasCloseInk = false;
 	bool bHasIngot = false;
-	bool bHasNeutralButton = false;
-	bool bHasPrimaryButton = false;
-	bool bHasDangerButton = false;
+	bool bHasRejectedStarButton = false;
+	bool bHasRejectedGenericTab = false;
 	bool bHasCharacterTabNormal = false;
 	bool bHasCharacterTabSelected = false;
 	int32 NavDiscCount = 0;
@@ -125,9 +131,11 @@ bool FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest::RunTest(const
 			bHasHeroFullBody |= Path.Contains(TEXT("T_MasterV2_HeroFullBody"));
 			bHasCloseInk |= Path.Contains(TEXT("T_MasterV2_CloseInk"));
 			bHasIngot |= Path.Contains(TEXT("T_MasterV2_Ingot"));
-			bHasNeutralButton |= Path.Contains(TEXT("T_MasterV2_ButtonNeutral"));
-			bHasPrimaryButton |= Path.Contains(TEXT("T_MasterV2_ButtonPrimary"));
-			bHasDangerButton |= Path.Contains(TEXT("T_MasterV2_ButtonDanger"));
+			bHasRejectedStarButton |= Path.Contains(TEXT("T_MasterV2_ButtonNeutral"))
+				|| Path.Contains(TEXT("T_MasterV2_ButtonPrimary"))
+				|| Path.Contains(TEXT("T_MasterV2_ButtonDanger"));
+			bHasRejectedGenericTab |= Path.Contains(TEXT("T_MasterV2_TabNormal"))
+				|| Path.Contains(TEXT("T_MasterV2_TabSelected"));
 			bHasCharacterTabNormal |= Path.Contains(TEXT("003_tab_1"));
 			bHasCharacterTabSelected |= Path.Contains(TEXT("004_tab_2"));
 			NavDiscCount += Path.Contains(TEXT("T_MasterV2_NavDisc")) ? 1 : 0;
@@ -140,9 +148,8 @@ bool FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest::RunTest(const
 	TestTrue(TEXT("workbench reuses the approved PSD backpack hero"), bHasHeroFullBody);
 	TestTrue(TEXT("workbench reuses the approved PSD close ink"), bHasCloseInk);
 	TestTrue(TEXT("workbench reuses the approved PSD ingot"), bHasIngot);
-	TestTrue(TEXT("workbench exposes the approved neutral button family"), bHasNeutralButton);
-	TestTrue(TEXT("workbench exposes the approved primary button family"), bHasPrimaryButton);
-	TestTrue(TEXT("workbench exposes the approved danger button family"), bHasDangerButton);
+	TestFalse(TEXT("workbench never advertises the user-rejected star button base"), bHasRejectedStarButton);
+	TestFalse(TEXT("workbench never substitutes the rejected generic star tabs"), bHasRejectedGenericTab);
 	TestTrue(TEXT("workbench reuses the approved normal character tab"), bHasCharacterTabNormal);
 	TestTrue(TEXT("workbench reuses the approved selected character tab"), bHasCharacterTabSelected);
 	TestEqual(TEXT("workbench no longer advertises legacy MasterV2 navigation discs"), NavDiscCount, 0);
@@ -242,12 +249,12 @@ bool FGameXXKDesktopTrainingWorkbenchApprovedControlBindingTest::RunTest(const F
 		? Widget->WidgetTree->FindWidget(TEXT("TravelCollectButton"))
 		: nullptr;
 	TestNull(TEXT("travel strip has no harvest/collect button"), CollectButton);
-	TestApprovedButton(TEXT("TravelRetryButton"), TEXT("T_MasterV2_ButtonDanger"), false);
-	TestApprovedButton(TEXT("TrainingDifficultyTab_0"), TEXT("T_MasterV2_TabSelected"), false);
-	TestApprovedButton(TEXT("TrainingDifficultyTab_1"), TEXT("T_MasterV2_TabNormal"), false);
+	TestApprovedButton(TEXT("TravelRetryButton"), TEXT("004_tab_2"), false);
+	TestApprovedButton(TEXT("TrainingDifficultyTab_0"), TEXT("004_tab_2"), false);
+	TestApprovedButton(TEXT("TrainingDifficultyTab_1"), TEXT("003_tab_1"), false);
 	TestApprovedButton(TEXT("TrainingNode_1"), TEXT("T_MasterV2_NavRoute"), true);
-	TestApprovedButton(TEXT("TrainingChallengeButton"), TEXT("T_MasterV2_ButtonDanger"), false);
-	TestApprovedButton(TEXT("TrainingTravelButton"), TEXT("T_MasterV2_ButtonPrimary"), false);
+	TestApprovedButton(TEXT("TrainingChallengeButton"), TEXT("004_tab_2"), false);
+	TestApprovedButton(TEXT("TrainingTravelButton"), TEXT("004_tab_2"), false);
 	return true;
 }
 
@@ -296,8 +303,8 @@ bool FGameXXKDesktopTrainingWorkbenchApprovedSecondaryControlBindingTest::RunTes
 	};
 
 	Widget->HandleActionClicked(3);
-	TestApprovedButton(TEXT("ToolButton_0"), TEXT("T_MasterV2_TabSelected"));
-	TestApprovedButton(TEXT("ToolButton_1"), TEXT("T_MasterV2_TabNormal"));
+	TestApprovedButton(TEXT("ToolButton_0"), TEXT("004_tab_2"));
+	TestApprovedButton(TEXT("ToolButton_1"), TEXT("003_tab_1"));
 	return true;
 }
 
@@ -310,7 +317,6 @@ bool FGameXXKDesktopTrainingChallengeDelegatesToExistingRouteTest::RunTest(const
 {
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	TestTrue(TEXT("route-delegation fixture starts in town"), Subsystem->StartGame());
-	TestTrue(TEXT("route-delegation fixture accepts the existing quest prerequisite"), Subsystem->AcceptQuest());
 
 	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
 	Widget->SetMVPSubsystem(Subsystem);
@@ -318,11 +324,12 @@ bool FGameXXKDesktopTrainingChallengeDelegatesToExistingRouteTest::RunTest(const
 	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
 	TestTrue(TEXT("route-delegation fixture selects the first unlocked challenge stage"), Widget->SelectStageForTest(StageId));
 
-	TestTrue(TEXT("Challenge delegates to the existing route entrance"), Widget->ClickChallengeForTest());
-	TestEqual(TEXT("Challenge stops on the player-owned route map"),
+	TestTrue(TEXT("Challenge starts directly without the town quest"), Widget->ClickChallengeForTest());
+	TestEqual(TEXT("Challenge enters the playable battle screen directly"),
 		Subsystem->GetRuntimeState().Screen,
-		EGameXXKScreen::DungeonMap);
-	TestFalse(TEXT("the workbench closes before route ownership begins"), Widget->IsWorkbenchVisibleForTest());
+		EGameXXKScreen::Battle);
+	TestTrue(TEXT("direct Challenge owns a live training battle"), Subsystem->IsTrainingChallengeBattleActive());
+	TestFalse(TEXT("the workbench closes before the battle surface opens"), Widget->IsWorkbenchVisibleForTest());
 	TestNull(TEXT("the workbench never constructs an embedded BattleBoard"),
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("ChallengeBattleBoard")) : nullptr);
 	TestNull(TEXT("the rejected auto button is absent"),
@@ -334,7 +341,7 @@ bool FGameXXKDesktopTrainingChallengeDelegatesToExistingRouteTest::RunTest(const
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingChallengePreservesPrerequisitesTest,
-	"GameXXK.DesktopTraining.Workbench.ChallengePreservesMissingPrerequisites",
+	"GameXXK.DesktopTraining.Workbench.ChallengeBypassesTownQuest",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKDesktopTrainingChallengePreservesPrerequisitesTest::RunTest(const FString& Parameters)
@@ -349,21 +356,21 @@ bool FGameXXKDesktopTrainingChallengePreservesPrerequisitesTest::RunTest(const F
 
 	const EGameXXKQuestState QuestBefore = Subsystem->GetRuntimeState().QuestState;
 	const FGameXXKCompanionPartySelection PartyBefore = Subsystem->GetRuntimeState().CardRun.PartySelection;
-	TestFalse(TEXT("Challenge rejects missing route prerequisites"), Widget->ClickChallengeForTest());
-	TestEqual(TEXT("failed Challenge remains in Town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
-	TestEqual(TEXT("failed Challenge does not accept the quest"), Subsystem->GetRuntimeState().QuestState, QuestBefore);
-	TestTrue(TEXT("failed Challenge does not alter follower selection"),
+	TestTrue(TEXT("Challenge ignores missing town-route prerequisites"), Widget->ClickChallengeForTest());
+	TestEqual(TEXT("direct Challenge enters Battle"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
+	TestEqual(TEXT("direct Challenge does not silently accept the quest"), Subsystem->GetRuntimeState().QuestState, QuestBefore);
+	TestTrue(TEXT("direct Challenge does not alter party selection"),
 		FGameXXKCompanionPartySelection::StaticStruct()->CompareScriptStruct(
 			&Subsystem->GetRuntimeState().CardRun.PartySelection,
 			&PartyBefore,
 			PPF_None));
-	TestTrue(TEXT("failed Challenge keeps the workbench visible"), Widget->IsWorkbenchVisibleForTest());
+	TestFalse(TEXT("direct Challenge closes the workbench"), Widget->IsWorkbenchVisibleForTest());
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingChallengeButtonRequiresRoutePrerequisitesTest,
-	"GameXXK.DesktopTraining.Workbench.ChallengeButtonRequiresRoutePrerequisites",
+	"GameXXK.DesktopTraining.Workbench.ChallengeButtonIgnoresRouteQuest",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKDesktopTrainingChallengeButtonRequiresRoutePrerequisitesTest::RunTest(const FString& Parameters)
@@ -384,9 +391,10 @@ bool FGameXXKDesktopTrainingChallengeButtonRequiresRoutePrerequisitesTest::RunTe
 	{
 		return false;
 	}
-	TestFalse(TEXT("challenge is disabled before the route quest is accepted"), Challenge->GetIsEnabled());
-	TestTrue(TEXT("challenge tooltip explains the route prerequisite"),
-		Challenge->GetToolTipText().ToString().Contains(TEXT("主线任务")));
+	TestTrue(TEXT("challenge is enabled without accepting the route quest"), Challenge->GetIsEnabled());
+	TestFalse(TEXT("challenge tooltip never mentions the removed town prerequisite"),
+		Challenge->GetToolTipText().ToString().Contains(TEXT("主线任务"))
+		|| Challenge->GetToolTipText().ToString().Contains(TEXT("青山镇")));
 
 	UButton* Travel = Widget->WidgetTree ? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TrainingTravelButton"))) : nullptr;
 	if (!TestNotNull(TEXT("travel button is built in training map"), Travel))
@@ -395,15 +403,40 @@ bool FGameXXKDesktopTrainingChallengeButtonRequiresRoutePrerequisitesTest::RunTe
 	}
 	TestFalse(TEXT("travel is disabled for an uncleared stage"), Travel->GetIsEnabled());
 
-	TestTrue(TEXT("accepting the quest succeeds"), Subsystem->AcceptQuest());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingClearedStageReplayTest,
+	"GameXXK.DesktopTraining.Workbench.ClearedStageCanReplay",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingClearedStageReplayTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestTrue(TEXT("cleared-stage replay fixture starts the game"), Subsystem->StartGame());
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("the default stage is already cleared"),
+		FGameXXKTrainingRules::IsStageCleared(Subsystem->GetTrainingProgressCopy(), StageId));
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("cleared-stage replay fixture opens the workbench"), Widget->OpenWorkbench());
+	TestTrue(TEXT("cleared-stage replay fixture selects 1-1"), Widget->SelectStageForTest(StageId));
+	TestTrue(TEXT("cleared-stage replay fixture expands the backpack"), Widget->OpenBackpack());
 	Widget->HandleActionClicked(4);
-	Widget->HandleActionClicked(4);
-	Challenge = Widget->WidgetTree ? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TrainingChallengeButton"))) : nullptr;
-	if (!TestNotNull(TEXT("challenge button remains after quest refresh"), Challenge))
+
+	UButton* Challenge = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TrainingChallengeButton")))
+		: nullptr;
+	if (!TestNotNull(TEXT("the replay Challenge button is built"), Challenge))
 	{
 		return false;
 	}
-	TestTrue(TEXT("challenge enables once the route quest is accepted"), Challenge->GetIsEnabled());
+	TestTrue(TEXT("a cleared unlocked stage remains directly challengeable"), Challenge->GetIsEnabled());
+	TestTrue(TEXT("clicking the cleared stage starts a replay battle"), Widget->ClickChallengeForTest());
+	TestEqual(TEXT("the replay enters Battle directly"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
+	TestTrue(TEXT("the replay owns a live training battle"), Subsystem->IsTrainingChallengeBattleActive());
 	return true;
 }
 
@@ -1468,7 +1501,7 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingWorkbenchCharacterRosterTest,
-	"GameXXK.DesktopTraining.Workbench.CharacterRosterTabsAndClickToParty",
+	"GameXXK.DesktopTraining.Workbench.CharacterRosterPlacementAndViewIsolation",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKDesktopTrainingWorkbenchCharacterRosterTest::RunTest(const FString& Parameters)
@@ -1489,6 +1522,49 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterTest::RunTest(const FString&
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterCompanionButton")) : nullptr);
 	TestNotNull(TEXT("character page exposes the NPC roster tab"),
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterNpcButton")) : nullptr);
+	const FName RosterButtonNames[] = {
+		TEXT("CharacterRosterHeroButton"),
+		TEXT("CharacterRosterCompanionButton"),
+		TEXT("CharacterRosterNpcButton")};
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(RosterButtonNames); ++Index)
+	{
+		UWidget* Button = Widget->WidgetTree ? Widget->WidgetTree->FindWidget(RosterButtonNames[Index]) : nullptr;
+		const UButton* RosterButton = Cast<UButton>(Button);
+		TestTrue(
+			*FString::Printf(TEXT("roster button %d uses the approved %s state"), Index, Index == 0 ? TEXT("selected") : TEXT("normal")),
+			GetButtonNormalResourcePath(RosterButton).Contains(Index == 0 ? TEXT("004_tab_2") : TEXT("003_tab_1")));
+		const UCanvasPanelSlot* Slot = Button ? Cast<UCanvasPanelSlot>(Button->Slot) : nullptr;
+		if (TestNotNull(*FString::Printf(TEXT("roster button %d is placed on the reference canvas"), Index), Slot))
+		{
+			TestEqual(
+				*FString::Printf(TEXT("roster button %d is fixed to the lower-left row"), Index),
+				Slot->GetPosition(),
+				FVector2D(414.0f + Index * 113.0f, 706.0f));
+			TestEqual(
+				*FString::Printf(TEXT("roster button %d keeps the compact portrait size"), Index),
+				Slot->GetSize(),
+				FVector2D(105.0f, 62.0f));
+			TestTrue(
+				*FString::Printf(TEXT("roster button %d remains above bottom navigation"), Index),
+				Slot->GetPosition().Y + Slot->GetSize().Y < GameXXKDesktopTrainingLayout::GetNavigationRect().Y);
+		}
+	}
+	const UImage* HeroRepresentative = Cast<UImage>(
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterRepresentativePortrait_0")) : nullptr);
+	const UImage* CompanionRepresentative = Cast<UImage>(
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterRepresentativePortrait_1")) : nullptr);
+	const UImage* NpcRepresentative = Cast<UImage>(
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterRepresentativePortrait_2")) : nullptr);
+	TestEqual(
+		TEXT("hero roster entry uses the real hero portrait"),
+		GetImageResourcePath(HeroRepresentative),
+		FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero")));
+	TestTrue(
+		TEXT("partner roster entry uses a real profession portrait"),
+		GetImageResourcePath(CompanionRepresentative).Contains(TEXT("/T_CardPortrait_Role_")));
+	TestTrue(
+		TEXT("NPC roster entry uses a real named-NPC portrait"),
+		GetImageResourcePath(NpcRepresentative).Contains(TEXT("/T_CardPortrait_Npc_")));
 
 	const TArray<FName> CompanionIds = Widget->GetCompanionCharacterIdsForTest();
 	const TArray<FName> NpcIds = Widget->GetNpcCharacterIdsForTest();
@@ -1499,29 +1575,109 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterTest::RunTest(const FString&
 		return false;
 	}
 
-	const FName SelectedCompanionId = CompanionIds[1];
-	TestTrue(TEXT("clicking a partner portrait selects and joins that partner"),
+	const FName InitialCompanionId =
+		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+	const FName InitialNpcId = Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId;
+	const FGameXXKTrainingTravelRuntime InitialTravel = Subsystem->GetTrainingTravelRuntimeCopy();
+	const FName InitialTravelCompanionId = InitialTravel.PartyUnits.IsValidIndex(1)
+		? InitialTravel.PartyUnits[1].UnitId
+		: NAME_None;
+	const FName InitialTravelNpcId = InitialTravel.PartyUnits.IsValidIndex(2)
+		? InitialTravel.PartyUnits[2].UnitId
+		: NAME_None;
+	const FName SelectedCompanionId = CompanionIds.Contains(InitialCompanionId) && CompanionIds[0] != InitialCompanionId
+		? CompanionIds[0]
+		: CompanionIds[1];
+	TestTrue(TEXT("clicking a partner portrait changes only the viewed backpack owner"),
 		Widget->SelectBackpackCharacterForTest(SelectedCompanionId));
-	TestEqual(TEXT("partner portrait becomes the active permanent party slot"),
+	TestEqual(TEXT("partner view does not silently replace the active permanent party slot"),
 		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
-		SelectedCompanionId);
-	TestEqual(TEXT("running Travel immediately rebuilds its permanent party slot"),
-		Subsystem->GetTrainingTravelRuntimeCopy().PartyUnits[1].UnitId,
-		SelectedCompanionId);
+		InitialCompanionId);
+	TestEqual(TEXT("partner view does not rebuild the running Travel companion slot"),
+		Subsystem->GetTrainingTravelRuntimeCopy().PartyUnits.IsValidIndex(1)
+			? Subsystem->GetTrainingTravelRuntimeCopy().PartyUnits[1].UnitId
+			: NAME_None,
+		InitialTravelCompanionId);
 	TestEqual(TEXT("embedded backpack switches to the selected partner owner"),
 		Widget->GetEmbeddedBackpackCharacterIdForTest(), SelectedCompanionId);
+	TestEqual(TEXT("partner view stays on the explicit backpack center page"),
+		Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
+	TestEqual(TEXT("partner view does not counterfeit a bottom-navigation selection"),
+		Widget->GetActiveNavForTest(), EGameXXKDesktopTrainingNav::None);
 
-	const FName SelectedNpcId = NpcIds[1];
-	TestTrue(TEXT("clicking an NPC portrait selects and joins that NPC"),
+	const FName SelectedNpcId = NpcIds.Contains(InitialNpcId) && NpcIds[0] != InitialNpcId
+		? NpcIds[0]
+		: NpcIds[1];
+	TestTrue(TEXT("clicking an NPC portrait changes only the viewed backpack owner"),
 		Widget->SelectBackpackCharacterForTest(SelectedNpcId));
-	TestEqual(TEXT("NPC portrait becomes the active NPC party slot"),
+	TestEqual(TEXT("NPC view does not silently replace the active NPC party slot"),
 		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId,
-		SelectedNpcId);
-	TestEqual(TEXT("running Travel immediately rebuilds its NPC party slot"),
-		Subsystem->GetTrainingTravelRuntimeCopy().PartyUnits[2].UnitId,
-		SelectedNpcId);
+		InitialNpcId);
+	TestEqual(TEXT("NPC view does not rebuild the running Travel NPC slot"),
+		Subsystem->GetTrainingTravelRuntimeCopy().PartyUnits.IsValidIndex(2)
+			? Subsystem->GetTrainingTravelRuntimeCopy().PartyUnits[2].UnitId
+			: NAME_None,
+		InitialTravelNpcId);
 	TestEqual(TEXT("embedded backpack switches to the selected NPC owner"),
 		Widget->GetEmbeddedBackpackCharacterIdForTest(), SelectedNpcId);
+
+	Widget->HandleActionClicked(1);
+	TestEqual(TEXT("bottom formation navigation selects the formation center page"),
+		Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Formation);
+	TestEqual(TEXT("bottom formation navigation owns the sole navigation focus"),
+		Widget->GetActiveNavForTest(), EGameXXKDesktopTrainingNav::Formation);
+	TestNotNull(TEXT("formation navigation builds a real formation page"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("FormationPanel")) : nullptr);
+	TestNull(TEXT("formation navigation replaces rather than impersonates the backpack page"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("BackpackPanel")) : nullptr);
+	UButton* FormationApply = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("FormationApplyButton")))
+		: nullptr;
+	UTextBlock* FormationApplyLabel = FormationApply
+		? Cast<UTextBlock>(FormationApply->GetContent())
+		: nullptr;
+	TestNotNull(TEXT("formation apply owns a text label"), FormationApplyLabel);
+	TestFalse(TEXT("formation apply label never wraps across resolution/DPI changes"),
+		FormationApplyLabel && FormationApplyLabel->GetAutoWrapText());
+	UButton* FormationRosterTab = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("FormationCompanionRosterButton")))
+		: nullptr;
+	UTextBlock* FormationRosterLabel = FormationRosterTab
+		? Cast<UTextBlock>(FormationRosterTab->GetContent())
+		: nullptr;
+	TestNotNull(TEXT("formation roster tab owns a text label"), FormationRosterLabel);
+	TestFalse(TEXT("formation roster label never wraps"),
+		FormationRosterLabel && FormationRosterLabel->GetAutoWrapText());
+
+	TestTrue(TEXT("formation page accepts a permanent-partner candidate without applying it"),
+		Widget->SelectFormationCandidateForTest(SelectedCompanionId));
+	TestEqual(TEXT("candidate selection alone still leaves the permanent party slot untouched"),
+		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
+		InitialCompanionId);
+	TestTrue(TEXT("explicit formation apply writes the permanent-partner slot"),
+		Widget->ApplyFormationCandidateForTest());
+	TestEqual(TEXT("explicit formation apply replaces the permanent partner"),
+		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
+		SelectedCompanionId);
+	TestEqual(TEXT("explicit formation apply rebuilds the running Travel companion slot"),
+		Subsystem->GetTrainingTravelRuntimeCopy().PartyUnits[1].UnitId,
+		SelectedCompanionId);
+
+	TestTrue(TEXT("formation page accepts an NPC candidate without applying it"),
+		Widget->SelectFormationCandidateForTest(SelectedNpcId));
+	TestEqual(TEXT("candidate selection alone still leaves the NPC party slot untouched"),
+		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId,
+		InitialNpcId);
+	TestTrue(TEXT("explicit formation apply writes the NPC slot"),
+		Widget->ApplyFormationCandidateForTest());
+	TestEqual(TEXT("explicit formation apply replaces the task NPC"),
+		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId,
+		SelectedNpcId);
+	TestEqual(TEXT("explicit formation apply rebuilds the running Travel NPC slot"),
+		Subsystem->GetTrainingTravelRuntimeCopy().PartyUnits[2].UnitId,
+		SelectedNpcId);
+	TestEqual(TEXT("formation changes do not overwrite the backpack viewing owner"),
+		Widget->GetActiveBackpackCharacterIdForTest(), SelectedNpcId);
 	return true;
 }
 

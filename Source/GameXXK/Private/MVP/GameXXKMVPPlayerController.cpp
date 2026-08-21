@@ -207,9 +207,8 @@ void AGameXXKMVPPlayerController::BeginPlay()
 		== EGameXXKPlayerFlowBootProfile::DesktopTrainingOnly;
 	if (bIsDesktopTrainingHUDMap)
 	{
-		// Only the migration map opts into the workbench automatically.  The
-		// original 3D town path remains opt-in and keeps its existing rollback
-		// behavior.
+		// The canonical 2D entry opts into the workbench automatically. The 3D
+		// town path remains available only when it is loaded explicitly.
 		bEnableDesktopTrainingWorkbench = !bPerfEmptyProfile;
 		if (!bPerfEmptyProfile)
 		{
@@ -2166,6 +2165,14 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 		SetIgnoreMoveInput(false);
 		bRouteMerchantInputLocked = false;
 	}
+	if (ActiveScreen == EGameXXKScreen::Battle && (!RouteMapWidget || !BattleBoardWidget))
+	{
+		// The HUD-only boot profile intentionally creates only the workbench while
+		// it is in Town. A direct Training challenge is the one transition that
+		// must promote the lazy shell to the shared playable Battle surface.
+		EnsureRouteMapWidget();
+		EnsureBattleBoardWidget();
+	}
 	if (ActiveScreen == EGameXXKScreen::Battle)
 	{
 		// Close every off-screen owner of an input-ignore increment first, but
@@ -2196,9 +2203,15 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	if (bEnableDesktopTrainingWorkbench)
 	{
 		UGameXXKDesktopTrainingWorkbenchWidget* Workbench = EnsureDesktopTrainingWorkbenchWidget();
-		if (Workbench && ActiveScreen == EGameXXKScreen::Town && Workbench->IsWorkbenchVisibleForTest())
+		if (Workbench && ActiveScreen == EGameXXKScreen::Town)
 		{
 			Workbench->SetMVPSubsystem(Subsystem);
+			if (bDesktopTrainingOnlyFlow
+				&& bExitedBattleOverlay
+				&& !Workbench->IsWorkbenchVisibleForTest())
+			{
+				OpenDesktopTrainingWorkbench();
+			}
 		}
 		else if (Workbench && ActiveScreen != EGameXXKScreen::Town)
 		{
@@ -2646,16 +2659,22 @@ bool AGameXXKMVPPlayerController::UpdateBattleTargetingPointerFromMouse()
 	{
 		return false;
 	}
+	double ScaledCursorX = 0.0;
+	double ScaledCursorY = 0.0;
+	if (UWidgetLayoutLibrary::GetMousePositionScaledByDPI(this, ScaledCursorX, ScaledCursorY))
+	{
+		// Viewport-local UMG coordinates do not contain the floating PIE window's
+		// desktop origin. Convert them through the Board's 1920x1080 safe stage so
+		// a new-editor-window session cannot add its top-left offset to the arrow.
+		BattleBoardWidget->UpdateTargetingPointerFromViewportLocalPosition(
+			FVector2D(ScaledCursorX, ScaledCursorY));
+		return true;
+	}
 	if (FSlateApplication::IsInitialized())
 	{
 		BattleBoardWidget->UpdateTargetingPointerFromSlateAbsolutePosition(FSlateApplication::Get().GetCursorPos());
 		return true;
 	}
-	double ScaledCursorX = 0.0;
-	double ScaledCursorY = 0.0;
-	if (UWidgetLayoutLibrary::GetMousePositionScaledByDPI(this, ScaledCursorX, ScaledCursorY))
-	{
-		return UpdateBattleTargetingPointer(FVector2D(ScaledCursorX, ScaledCursorY));
-	}
-	return UpdateBattleTargetingPointer(FVector2D(CursorX, CursorY));
+	BattleBoardWidget->UpdateTargetingPointerFromViewportLocalPosition(FVector2D(CursorX, CursorY));
+	return true;
 }

@@ -2864,7 +2864,13 @@ FVector2D UGameXXKBattleBoardWidget::ResolveTargetingArrowHeadTopLeftForTest(
 	const FVector2D ArrowSize)
 {
 	static_cast<void>(TargetingStart);
-	return TargetingEnd - ArrowSize * 0.5f;
+	// The approved 1254x1254 source has its visible right-facing tip at
+	// (1082, 608), not at the image center. Keep that visible tip on the live
+	// pointer and rotate around the same local hotspot in NativePaint.
+	const FVector2D ScaledTipHotspot(
+		ArrowSize.X * (1082.0f / 1254.0f),
+		ArrowSize.Y * (608.0f / 1254.0f));
+	return TargetingEnd - ScaledTipHotspot;
 }
 
 FString UGameXXKBattleBoardWidget::GetBattleBoardDebugStateForTest() const
@@ -3219,15 +3225,9 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 
 	const auto StageToBoardLocal = [this, &AllottedGeometry](const FVector2D StagePosition) -> FVector2D
 	{
-		if (BattleDesignStage)
-		{
-			const FGeometry StageGeometry = BattleDesignStage->GetCachedGeometry();
-			if (StageGeometry.GetLocalSize().X > 1.0f && StageGeometry.GetLocalSize().Y > 1.0f)
-			{
-				return AllottedGeometry.AbsoluteToLocal(StageGeometry.LocalToAbsolute(StagePosition));
-			}
-		}
-		return StagePosition;
+		return ResolveTargetingStagePositionToBoardLocal(
+			StagePosition,
+			AllottedGeometry.GetLocalSize());
 	};
 	const FVector2D Start = StageToBoardLocal(TargetingSourcePosition);
 	const FVector2D End = StageToBoardLocal(TargetingPointerPosition);
@@ -3268,6 +3268,7 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 
 	const FVector2D ArrowSize(74.0f, 56.0f);
 	const FVector2D ArrowPosition = ResolveTargetingArrowHeadTopLeftForTest(Start, End, ArrowSize);
+	const FVector2D ArrowTipHotspot = End - ArrowPosition;
 	FSlateBrush ArrowBrush = BuildTextureBrush(TargetingArrowHeadTexture.Get(), ArrowSize, FLinearColor(1.0f, 1.0f, 1.0f, 0.96f));
 	FSlateDrawElement::MakeRotatedBox(
 		OutDrawElements,
@@ -3276,7 +3277,9 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 		&ArrowBrush,
 		ESlateDrawEffect::None,
 		FMath::Atan2(Direction.Y, Direction.X),
-		TOptional<FVector2f>(),
+		TOptional<FVector2f>(FVector2f(
+			static_cast<float>(ArrowTipHotspot.X),
+			static_cast<float>(ArrowTipHotspot.Y))),
 		FSlateDrawElement::RelativeToElement,
 		FLinearColor::White);
 
@@ -3683,6 +3686,14 @@ bool UGameXXKBattleBoardWidget::TryResolveCardTargetUnitAtStagePositionForTest(
 void UGameXXKBattleBoardWidget::UpdateTargetingPointerFromSlateAbsolutePosition(FVector2D ScreenPosition)
 {
 	UpdateTargetingPointer(ResolveSlateAbsolutePositionToLocal(ScreenPosition));
+}
+
+void UGameXXKBattleBoardWidget::UpdateTargetingPointerFromViewportLocalPosition(
+	const FVector2D ViewportLocalPosition)
+{
+	UpdateTargetingPointer(ResolveViewportLocalPositionToStageLocal(
+		ViewportLocalPosition,
+		GetCachedGeometry().GetLocalSize()));
 }
 
 bool UGameXXKBattleBoardWidget::ConfirmTargetingEnemy(int32 EnemyIndex)
@@ -5540,6 +5551,20 @@ FVector2D UGameXXKBattleBoardWidget::ResolveSlateAbsolutePositionToLocalForTest(
 	return ResolveSlateAbsolutePositionToLocal(ScreenPosition, WidgetAbsolutePosition, WidgetAbsoluteSize, LocalSize);
 }
 
+FVector2D UGameXXKBattleBoardWidget::ResolveViewportLocalPositionToStageLocalForTest(
+	const FVector2D ViewportLocalPosition,
+	const FVector2D ViewportLocalSize) const
+{
+	return ResolveViewportLocalPositionToStageLocal(ViewportLocalPosition, ViewportLocalSize);
+}
+
+FVector2D UGameXXKBattleBoardWidget::ResolveTargetingStagePositionToBoardLocalForTest(
+	const FVector2D StagePosition,
+	const FVector2D BoardLocalSize) const
+{
+	return ResolveTargetingStagePositionToBoardLocal(StagePosition, BoardLocalSize);
+}
+
 FString UGameXXKBattleBoardWidget::GetBattleActionButtonResourcePathForTest(FName ActionName)
 {
 	EnsureBattleVisualResourcesLoaded();
@@ -6818,20 +6843,20 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		TitleSlot->SetHorizontalAlignment(HAlign_Fill);
 	}
 
-	UTextBlock* BattleRetreatDescription = WidgetTree->ConstructWidget<UTextBlock>(
+	BattleRetreatDescriptionText = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(),
 		TEXT("BattleRetreatModalDescription"));
-	BattleRetreatDescription->SetText(NSLOCTEXT(
+	BattleRetreatDescriptionText->SetText(NSLOCTEXT(
 		"GameXXKBattle",
 		"RetreatDescription",
 		"将返回进入本场前的路线节点。本场进度与未领取奖励不会保留。"));
-	BattleRetreatDescription->SetAutoWrapText(true);
-	BattleRetreatDescription->SetJustification(ETextJustify::Center);
-	BattleRetreatDescription->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
-	FSlateFontInfo BattleRetreatDescriptionFont = BattleRetreatDescription->GetFont();
+	BattleRetreatDescriptionText->SetAutoWrapText(true);
+	BattleRetreatDescriptionText->SetJustification(ETextJustify::Center);
+	BattleRetreatDescriptionText->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
+	FSlateFontInfo BattleRetreatDescriptionFont = BattleRetreatDescriptionText->GetFont();
 	BattleRetreatDescriptionFont.Size = 20;
-	BattleRetreatDescription->SetFont(BattleRetreatDescriptionFont);
-	if (UVerticalBoxSlot* DescriptionSlot = BattleRetreatBody->AddChildToVerticalBox(BattleRetreatDescription))
+	BattleRetreatDescriptionText->SetFont(BattleRetreatDescriptionFont);
+	if (UVerticalBoxSlot* DescriptionSlot = BattleRetreatBody->AddChildToVerticalBox(BattleRetreatDescriptionText))
 	{
 		DescriptionSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 14.0f));
 		DescriptionSlot->SetHorizontalAlignment(HAlign_Fill);
@@ -6981,6 +7006,17 @@ bool UGameXXKBattleBoardWidget::CanConfirmBattleRetreat(FString* OutReason) cons
 		return false;
 	}
 	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	if (Subsystem->IsTrainingChallengeBattleActive())
+	{
+		if (IsBattlePresentationPending()
+			|| IsEnemyIntentPresentationActive()
+			|| bEnemyIntentCompletionRecoveryPending)
+		{
+			if (OutReason) *OutReason = TEXT("战斗演出正在结算，完成后即可退出。");
+			return false;
+		}
+		return true;
+	}
 	const FGameXXKBattleEntryCheckpoint& Checkpoint = State.BattleEntryCheckpoint;
 	if (State.Screen != EGameXXKScreen::Battle
 		|| !State.bDungeonActive
@@ -7023,6 +7059,20 @@ void UGameXXKBattleBoardWidget::RefreshBattleRetreatConfirmation()
 	if (!bBattleRetreatConfirmationOpen)
 	{
 		return;
+	}
+	if (BattleRetreatDescriptionText)
+	{
+		const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+		BattleRetreatDescriptionText->SetText(
+			Subsystem && Subsystem->IsTrainingChallengeBattleActive()
+				? NSLOCTEXT(
+					"GameXXKBattle",
+					"TrainingRetreatDescription",
+					"将返回 2D 挂机主界面。本场进度与未领取奖励不会保留。")
+				: NSLOCTEXT(
+					"GameXXKBattle",
+					"RetreatDescription",
+					"将返回进入本场前的路线节点。本场进度与未领取奖励不会保留。"));
 	}
 
 	FString GateReason;
@@ -7099,9 +7149,16 @@ bool UGameXXKBattleBoardWidget::ConfirmBattleRetreat()
 		return false;
 	}
 	UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || !Subsystem->RetreatCurrentBattleToRoute())
+	const bool bTrainingChallenge = Subsystem && Subsystem->IsTrainingChallengeBattleActive();
+	const bool bExited = Subsystem
+		&& (bTrainingChallenge
+			? Subsystem->CancelTrainingChallengeToWorkbench()
+			: Subsystem->RetreatCurrentBattleToRoute());
+	if (!bExited)
 	{
-		BattleRetreatError = TEXT("退出战斗失败，当前战斗与路线状态均未改变。");
+		BattleRetreatError = bTrainingChallenge
+			? TEXT("退出挑战失败，当前挑战状态未改变。")
+			: TEXT("退出战斗失败，当前战斗与路线状态均未改变。");
 		RefreshBattleRetreatConfirmation();
 		return false;
 	}
@@ -7110,7 +7167,10 @@ bool UGameXXKBattleBoardWidget::ConfirmBattleRetreat()
 	BattleRetreatError.Reset();
 	AutoBattleReadySinceRealSeconds = 0.0;
 	AutoBattleAccumulator = 0.0f;
-	GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
+	if (!bTrainingChallenge)
+	{
+		GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
+	}
 	NotifyPlayerFlowStateChanged();
 	return true;
 }
@@ -9084,6 +9144,38 @@ FVector2D UGameXXKBattleBoardWidget::ResolveSlateAbsolutePositionToLocal(FVector
 	return ClampToLocalSize(FVector2D(NormalizedPosition.X * LocalSize.X, NormalizedPosition.Y * LocalSize.Y), LocalSize);
 }
 
+FVector2D UGameXXKBattleBoardWidget::ResolveViewportLocalPositionToStageLocal(
+	const FVector2D ViewportLocalPosition,
+	const FVector2D ViewportLocalSize) const
+{
+	const FGameXXKBattleHudSafeStageLayout SafeStage =
+		ResolveBattleHudSafeStageLayoutForTest(ViewportLocalSize);
+	if (SafeStage.Scale <= KINDA_SMALL_NUMBER)
+	{
+		return ViewportLocalPosition;
+	}
+	return ClampToLocalSize(
+		(ViewportLocalPosition - SafeStage.Offset) / SafeStage.Scale,
+		BattleHudSafeStageDesignSize);
+}
+
+FVector2D UGameXXKBattleBoardWidget::ResolveTargetingStagePositionToBoardLocal(
+	const FVector2D StagePosition,
+	const FVector2D BoardLocalSize) const
+{
+	const FGameXXKBattleHudSafeStageLayout SafeStage =
+		ResolveBattleHudSafeStageLayoutForTest(BoardLocalSize);
+	if (SafeStage.Scale <= KINDA_SMALL_NUMBER)
+	{
+		return StagePosition;
+	}
+	// Keep the paint path entirely in Board-local space. Going through
+	// StageGeometry.LocalToAbsolute -> AllottedGeometry.AbsoluteToLocal mixes
+	// desktop and client-area origins in floating PIE and adds the window's
+	// top-left offset to every dab and the arrow head.
+	return SafeStage.Offset + StagePosition * SafeStage.Scale;
+}
+
 void UGameXXKBattleBoardWidget::ClearCardOutcomePreview()
 {
 	CachedOutcomeCardInstanceId = NAME_None;
@@ -9410,7 +9502,19 @@ bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalState()
 	}
 
 	const EGameXXKCardBattlePhase Phase = Subsystem->GetRuntimeState().CardRun.ActiveBattle.Phase;
-	if (Phase == EGameXXKCardBattlePhase::Victory)
+	if ((Phase == EGameXXKCardBattlePhase::Victory || Phase == EGameXXKCardBattlePhase::Defeat)
+		&& Subsystem->IsTrainingChallengeBattleActive())
+	{
+		ClearCardOutcomePreview();
+		bool bStageCompleted = false;
+		FGameXXKTrainingReward Reward;
+		if (!Subsystem->AdvanceTrainingChallengeEncounter(bStageCompleted, Reward))
+		{
+			LastCardInteractionError = TEXT("训练挑战结算失败。");
+			return false;
+		}
+	}
+	else if (Phase == EGameXXKCardBattlePhase::Victory)
 	{
 		ClearCardOutcomePreview();
 		if (!Subsystem->ResolveBattleVictory(false))
