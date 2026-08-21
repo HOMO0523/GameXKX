@@ -1,9 +1,9 @@
 ---
 status: implemented
 owner: codex
-updated_at: 2026-08-21T12:15:52+08:00
-source_commit: 1589f936b3f3a1491be5aa0a3b48385d01be270d
-working_tree: dirty (本格挡图标与中央问号修复尚未提交；保留其他既有修改)
+updated_at: 2026-08-21T13:09:02+08:00
+source_commit: 91786825ee8040cbb4683fbf7798998e1f26210f
+working_tree: clean for this scope after documentation follow-up; unrelated user files remain untracked
 ---
 # 2D 局内战斗格挡图标与中央问号验收
 

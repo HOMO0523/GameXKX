@@ -1,9 +1,9 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-21T13:00:00+08:00
-source_commit: 1589f936b3f3a1491be5aa0a3b48385d01be270d
-working_tree: dirty (active root worktree is `main`; 2026-08-20 HUD 纠错包尚未提交；保留用户文件、无关探针及未跟踪源资产)
+updated_at: 2026-08-21T13:09:02+08:00
+source_commit: 91786825ee8040cbb4683fbf7798998e1f26210f
+working_tree: clean for the canonical 2D/HUD/BlockShield scope after documentation follow-up; unrelated user files remain untracked
 ---
 # GameXXK 当前目标(滚动指针)
 

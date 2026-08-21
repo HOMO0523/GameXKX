@@ -1,9 +1,9 @@
 ---
 status: implemented
 owner: codex
-updated_at: 2026-08-20T21:25:00+08:00
-source_commit: 1589f936b3f3a1491be5aa0a3b48385d01be270d
-working_tree: dirty (本 HUD 纠错包尚未提交；保留并区分既有用户文件与无关未跟踪文件)
+updated_at: 2026-08-21T13:09:02+08:00
+source_commit: 91786825ee8040cbb4683fbf7798998e1f26210f
+working_tree: clean for this scope after documentation follow-up; unrelated user files remain untracked
 ---
 # 桌面历练 HUD 角色入口、编队与直接挑战验收
 

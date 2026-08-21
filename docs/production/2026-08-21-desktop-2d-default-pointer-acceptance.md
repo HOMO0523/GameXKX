@@ -1,10 +1,11 @@
 ---
 status: implemented
 owner: codex
-updated_at: 2026-08-21T13:00:00+08:00
+updated_at: 2026-08-21T13:09:02+08:00
 base_commit: 1589f936b3f3a1491be5aa0a3b48385d01be270d
-source_commit: pending-main-commit
-working_tree: pending precise commit and push
+source_commit: 91786825ee8040cbb4683fbf7798998e1f26210f
+working_tree: clean for this scope after documentation follow-up; unrelated user files remain untracked
+remote_sync: pending; origin/main remains 1589f936 because this session has no GitHub credential and the authentication API is unreachable
 ---
 # 纯 2D 默认入口与战斗目标箭头吸附验收
 
