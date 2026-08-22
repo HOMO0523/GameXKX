@@ -453,6 +453,7 @@ private:
 	void BuildTalentsPanel();
 	void BuildTrainingMapPanel();
 	void BuildToolsPanel();
+	void BuildPanelCloseButton(FName WidgetName, int32 ActionId, FVector2D Position);
 	void BuildTopIdleStrip();
 	void BuildBottomNavigation();
 	void RefreshLayout();
@@ -482,6 +483,10 @@ private:
 	bool CancelCarriedItem();
 	void CancelCarryForStructuralChange();
 	void ReturnAllToolEntries();
+	void CloseWarehousePanelToParent();
+	void CloseCentralPageToBackpack();
+	void CloseRightPanelToParent();
+	void ResetWorkbenchChildrenForGlobalClose();
 	void AbortTransientInventoryInteraction(bool bReturnToolEntries, bool bRefreshLayout);
 	void HandleApplicationActivationChanged(bool bIsActive);
 	void HandlePersistenceBoundary();

@@ -843,7 +843,6 @@ bool FGameXXKDesktopTrainingCollapsedResourceHibernateTest::RunTest(const FStrin
 	}
 	TestTrue(TEXT("embedded deck tab opens before collapse"),
 		Embedded->OpenCharacterBackpackTabForTest(EGameXXKCharacterBackpackTab::Deck));
-	const TArray<FName> PendingDeckBeforeCollapse = Embedded->GetPendingHeroDeckIdsForTest();
 
 	const int32 TravelTickBeforeCollapse = Workbench->GetTravelVisualNativeTickCountForTest();
 	Workbench->HandleActionClicked(60);
@@ -859,13 +858,14 @@ bool FGameXXKDesktopTrainingCollapsedResourceHibernateTest::RunTest(const FStrin
 	Workbench->HandleActionClicked(60);
 	TestTrue(TEXT("cold reopen expands the backpack"), Workbench->IsBackpackExpandedForTest());
 	TestEqual(TEXT("cold reopen creates one embedded inventory"), Workbench->GetEmbeddedInventoryWidgetCountForTest(), 1);
-	TestTrue(TEXT("cold reopen restores the warehouse page"), Workbench->IsWarehousePanelOpenForTest());
-	TestTrue(TEXT("cold reopen restores the tools page"), Workbench->IsToolsPanelActiveForTest());
-	TestEqual(TEXT("cold reopen restores the NPC owner"), Workbench->GetEmbeddedBackpackCharacterIdForTest(), NpcIds[0]);
-	TestEqual(TEXT("cold reopen restores the deck subpage"),
-		Workbench->GetEmbeddedBackpackTabForTest(), EGameXXKCharacterBackpackTab::Deck);
-	TestEqual(TEXT("cold reopen restores the uncommitted deck selection"),
-		Workbench->GetEmbeddedPendingDeckIdsForTest(), PendingDeckBeforeCollapse);
+	TestFalse(TEXT("global close does not restore the warehouse page"), Workbench->IsWarehousePanelOpenForTest());
+	TestFalse(TEXT("global close does not restore the tools page"), Workbench->IsToolsPanelActiveForTest());
+	TestEqual(TEXT("global close reopens the clean default backpack owner"),
+		Workbench->GetEmbeddedBackpackCharacterIdForTest(), FGameXXKEquipmentRules::HeroCharacterId());
+	TestEqual(TEXT("global close does not restore the deck subpage"),
+		Workbench->GetEmbeddedBackpackTabForTest(), EGameXXKCharacterBackpackTab::Equipment);
+	TestTrue(TEXT("global close discards stale embedded deck edits"),
+		Workbench->GetEmbeddedPendingDeckIdsForTest().IsEmpty());
 
 	UGameXXKDesktopTrainingWorkbenchWidget* WarmReopen = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
 	WarmReopen->SetMVPSubsystem(Subsystem);
@@ -888,8 +888,10 @@ bool FGameXXKDesktopTrainingCollapsedResourceHibernateTest::RunTest(const FStrin
 	TalentsReopen->HandleActionClicked(60);
 	TalentsReopen->TickForTest(1.0f);
 	TalentsReopen->HandleActionClicked(60);
-	TestEqual(TEXT("a collapsed page without an embedded inventory still restores"),
-		TalentsReopen->GetActiveNavForTest(), EGameXXKDesktopTrainingNav::Talents);
+	TestEqual(TEXT("global close reopens the center on a clean Backpack page"),
+		TalentsReopen->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
+	TestEqual(TEXT("global close clears stale center navigation"),
+		TalentsReopen->GetActiveNavForTest(), EGameXXKDesktopTrainingNav::None);
 	return true;
 }
 
@@ -1012,6 +1014,102 @@ bool FGameXXKDesktopTrainingEmbeddedBackpackDeferredRefreshTest::RunTest(const F
 	TestTrue(TEXT("deferred rebuild keeps the parent backpack expanded"), Widget->IsBackpackExpandedForTest());
 	TestNotNull(TEXT("deferred rebuild restores the embedded approved backpack"),
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("EmbeddedApprovedBackpack")) : nullptr);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchCloseStackTest,
+	"GameXXK.DesktopTraining.Workbench.ParentCloseStack",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!TestNotNull(TEXT("close-stack fixture subsystem exists"), Subsystem)
+		|| !Subsystem->StartGame())
+	{
+		return false;
+	}
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestNotNull(TEXT("close-stack fixture widget exists"), Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	TestTrue(TEXT("backpack opens"), Widget->OpenBackpack());
+
+	UButton* ExpandedBackpackClose = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("BackpackTabToggleButton")))
+		: nullptr;
+	if (TestNotNull(TEXT("expanded Backpack exposes its global close control"), ExpandedBackpackClose))
+	{
+		TestNull(TEXT("expanded Backpack close control has no legacy arrow text"), ExpandedBackpackClose->GetContent());
+	}
+
+	Widget->HandleActionClicked(0); // Warehouse.
+	Widget->HandleActionClicked(3); // Tools.
+	Widget->HandleActionClicked(2); // Talents in the center.
+	TestTrue(TEXT("warehouse is open"), Widget->IsWarehousePanelOpenForTest());
+	TestTrue(TEXT("tools are open"), Widget->IsToolsPanelActiveForTest());
+	TestEqual(TEXT("talents own the center"), Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Talents);
+	TestNotNull(TEXT("warehouse owns a local close control"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("WarehouseCloseButton")) : nullptr);
+	TestNotNull(TEXT("talents own a local close control"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("TalentsCloseButton")) : nullptr);
+	TestNotNull(TEXT("tools own a local close control"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("ToolsCloseButton")) : nullptr);
+
+	Widget->HandleActionClicked(63); // Central close.
+	TestEqual(TEXT("central close returns to backpack"), Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
+	TestTrue(TEXT("central close preserves warehouse"), Widget->IsWarehousePanelOpenForTest());
+	TestTrue(TEXT("central close preserves tools"), Widget->IsToolsPanelActiveForTest());
+
+	Widget->HandleActionClicked(1); // Formation in the center.
+	TestNotNull(TEXT("formation owns a local close control"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("FormationCloseButton")) : nullptr);
+	Widget->HandleActionClicked(63);
+	TestEqual(TEXT("formation close also returns to backpack"),
+		Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
+
+	Widget->HandleActionClicked(62); // Warehouse close.
+	TestFalse(TEXT("warehouse close affects only warehouse"), Widget->IsWarehousePanelOpenForTest());
+	TestTrue(TEXT("warehouse close preserves tools"), Widget->IsToolsPanelActiveForTest());
+
+	Widget->HandleActionClicked(64); // Right-panel close.
+	TestFalse(TEXT("right close closes tools"), Widget->IsRightPanelOpenForTest());
+
+	Widget->HandleActionClicked(4); // Training right panel.
+	TestTrue(TEXT("training opens on the right"), Widget->IsRightPanelOpenForTest());
+	TestNotNull(TEXT("training owns a local close control"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("TrainingCloseButton")) : nullptr);
+	Widget->HandleActionClicked(64);
+	TestFalse(TEXT("right close also closes training"), Widget->IsRightPanelOpenForTest());
+
+	Widget->HandleActionClicked(3); // Tools, then reserve one real backpack entry.
+	const FName StoneId = UGameXXKMVPRules::ItemEnhancementStone();
+	TestTrue(TEXT("tool reservation is created before global close"),
+		Widget->RightClickBackpackSlotForTest(Widget->FindBackpackItemSlotForTest(StoneId)));
+	TestEqual(TEXT("one tool reservation exists before global close"), Widget->GetOccupiedToolSlotCountForTest(), 1);
+	Widget->HandleActionClicked(0);
+	Widget->HandleActionClicked(1);
+	const int32 EquipmentSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
+	TestTrue(TEXT("an item is carried before global close"),
+		EquipmentSlot != INDEX_NONE && Widget->PickUpBackpackSlotForTest(EquipmentSlot));
+	Widget->HandleActionClicked(60); // Global Backpack/Tab close.
+	TestFalse(TEXT("global close collapses backpack"), Widget->IsBackpackExpandedForTest());
+	TestFalse(TEXT("global close closes warehouse"), Widget->IsWarehousePanelOpenForTest());
+	TestFalse(TEXT("global close closes right rail"), Widget->IsRightPanelOpenForTest());
+	TestFalse(TEXT("global close cancels carried item"), Widget->IsCarryingItemForTest());
+	TestEqual(TEXT("global close returns all tool reservations"), Widget->GetOccupiedToolSlotCountForTest(), 0);
+
+	Widget->HandleActionClicked(60); // Keyboard Tab and the X share this action.
+	TestTrue(TEXT("Tab reopens"), Widget->IsBackpackExpandedForTest());
+	TestEqual(TEXT("reopen starts on clean backpack"), Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
+	TestFalse(TEXT("reopen does not restore warehouse"), Widget->IsWarehousePanelOpenForTest());
+	TestFalse(TEXT("reopen does not restore right rail"), Widget->IsRightPanelOpenForTest());
 	return true;
 }
 

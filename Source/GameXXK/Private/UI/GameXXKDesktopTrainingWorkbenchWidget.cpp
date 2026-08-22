@@ -108,6 +108,9 @@
 	constexpr int32 ToolSlotCount = 9;
 	constexpr int32 ToolModeCount = 5;
 	constexpr int32 TopToolbarButtonCount = 5;
+	constexpr int32 ActionCloseWarehouse = 62;
+	constexpr int32 ActionCloseCentralPage = 63;
+	constexpr int32 ActionCloseRightPanel = 64;
 	const FVector2D TravelVisualSize(953.0f, 202.0f);
 	const FVector2D TravelBackgroundImageSize(FGameXXKTrainingTravelVisualRuntime::LaneTileWidth, 300.0f);
 	const FVector2D TravelCombatVisualSize(150.0f, 150.0f);
@@ -2209,22 +2212,34 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackTabToggle()
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
 		TEXT("BackpackTabToggleButton"));
 	Toggle->Configure(this, 60);
-	Toggle->SetStyle(MakeTextureButtonStyle(
-		bBackpackExpanded ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
-		FVector2D(68.0f, 44.0f),
-		FMargin(0.08f)));
+	Toggle->SetStyle(bBackpackExpanded
+		? MakeImageButtonStyle(CloseInkTexturePath, FVector2D(68.0f, 44.0f))
+		: MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(68.0f, 44.0f), FMargin(0.08f)));
 	Toggle->SetBackgroundColor(FLinearColor::White);
-	Toggle->SetContent(MakeButtonText(
-		WidgetTree,
-		FText::FromString(bBackpackExpanded ? TEXT("▲") : TEXT("▼")),
-		24,
-		Ink));
+	Toggle->SetContent(bBackpackExpanded
+		? nullptr
+		: MakeButtonText(WidgetTree, FText::FromString(TEXT("▼")), 24, Ink));
 	Toggle->SetToolTipText(FText::FromString(
 		bBackpackExpanded
-			? TEXT("折叠背包与侧栏；历练挂机继续运行")
+			? TEXT("关闭背包与全部子界面；历练挂机继续运行")
 			: TEXT("菜单 [Tab]：展开角色背包")));
 	AddCanvas(RootCanvas, Toggle, FVector2D(1225.0f, 30.0f), FVector2D(68.0f, 44.0f));
 	ActionButtons.Add(Toggle);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildPanelCloseButton(
+	const FName WidgetName,
+	const int32 ActionId,
+	const FVector2D Position)
+{
+	UGameXXKDesktopTrainingActionButton* Button = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		WidgetName);
+	Button->Configure(this, ActionId);
+	Button->SetStyle(MakeImageButtonStyle(CloseInkTexturePath, FVector2D(44.0f, 44.0f)));
+	Button->SetBackgroundColor(FLinearColor::White);
+	AddCanvas(RootCanvas, Button, Position, FVector2D(44.0f, 44.0f));
+	ActionButtons.Add(Button);
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopToolbar()
@@ -3017,6 +3032,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetWarehouseRect());
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("仓库")), 28, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(30.0f, 34.0f), FVector2D(323.0f, 38.0f));
+	BuildPanelCloseButton(TEXT("WarehouseCloseButton"), ActionCloseWarehouse, FVector2D(314.0f, 30.0f));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	for (int32 PageTabIndex = 0; PageTabIndex < 4; ++PageTabIndex)
@@ -3296,6 +3312,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetContentRect());
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("编队")), 30, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(421.0f, 258.0f), FVector2D(180.0f, 40.0f));
+	BuildPanelCloseButton(TEXT("FormationCloseButton"), ActionCloseCentralPage, FVector2D(1284.0f, 258.0f));
 	UTextBlock* Hint = MakeText(
 		WidgetTree,
 		FText::FromString(TEXT("查看角色不会换队；只有右侧“编入队伍”会写入当前伙伴或任务 NPC。")),
@@ -3440,6 +3457,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTalentsPanel()
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetContentRect());
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("天赋  ·  天赋树 / 称号")), 30, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(417.0f, 260.0f), FVector2D(700.0f, 42.0f));
+	BuildPanelCloseButton(TEXT("TalentsCloseButton"), ActionCloseCentralPage, FVector2D(1284.0f, 258.0f));
 	UTextBlock* Notice = MakeText(
 		WidgetTree,
 		FText::FromString(TEXT("天赋和称号集中在此页；真实节点数据与宝箱掉率加成尚未接入。")),
@@ -3474,6 +3492,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetRightShellRect());
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("工具")), 28, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 34.0f), FVector2D(255.0f, 38.0f));
+	BuildPanelCloseButton(TEXT("ToolsCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 30.0f));
 	const TArray<FText> ToolLabels = {
 		FText::FromString(TEXT("分解")),
 		FText::FromString(TEXT("合成")),
@@ -3561,6 +3580,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 	const FText MapTitle = FText::FromString(TEXT("历练地图"));
 	UTextBlock* Title = MakeText(WidgetTree, MapTitle, 28, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 34.0f), FVector2D(255.0f, 38.0f));
+	BuildPanelCloseButton(TEXT("TrainingCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 30.0f));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const TArray<FGameXXKTrainingStageDefinition> Definitions = Subsystem ? Subsystem->GetTrainingStageDefinitions() : TArray<FGameXXKTrainingStageDefinition>();
 	const EGameXXKTrainingDifficulty ActiveDifficulty = FGameXXKTrainingRules::DifficultyFromStageId(SelectedStageId);
@@ -4067,6 +4087,54 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ReturnAllToolEntries()
 	ToolSlots.SetNum(ToolSlotCount);
 }
 
+void UGameXXKDesktopTrainingWorkbenchWidget::CloseWarehousePanelToParent()
+{
+	CancelCarryForStructuralChange();
+	bWarehousePanelOpen = false;
+	if (ActiveNav == EGameXXKDesktopTrainingNav::Warehouse)
+	{
+		ActiveNav = EGameXXKDesktopTrainingNav::None;
+	}
+	RefreshLayout();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::CloseCentralPageToBackpack()
+{
+	CancelCarryForStructuralChange();
+	ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
+	if (ActiveNav == EGameXXKDesktopTrainingNav::Formation
+		|| ActiveNav == EGameXXKDesktopTrainingNav::Talents)
+	{
+		ActiveNav = EGameXXKDesktopTrainingNav::None;
+	}
+	RefreshLayout();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::CloseRightPanelToParent()
+{
+	CancelCarryForStructuralChange();
+	ReturnAllToolEntries();
+	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
+	if (ActiveNav == EGameXXKDesktopTrainingNav::Tools
+		|| ActiveNav == EGameXXKDesktopTrainingNav::Training)
+	{
+		ActiveNav = EGameXXKDesktopTrainingNav::None;
+	}
+	RefreshLayout();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ResetWorkbenchChildrenForGlobalClose()
+{
+	CancelCarryForStructuralChange();
+	ReturnAllToolEntries();
+	bWarehousePanelOpen = false;
+	ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
+	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
+	ActiveNav = EGameXXKDesktopTrainingNav::None;
+	bHasCollapsedWorkbenchSession = false;
+	bHasSavedEmbeddedInventorySession = false;
+}
+
 void UGameXXKDesktopTrainingWorkbenchWidget::AbortTransientInventoryInteraction(
 	const bool bReturnToolEntries,
 	const bool bRefreshLayout)
@@ -4283,6 +4351,21 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	}
 	if (bExitConfirmationOpen && ActionId != 53 && ActionId != 54)
 	{
+		return;
+	}
+	if (ActionId == ActionCloseWarehouse)
+	{
+		CloseWarehousePanelToParent();
+		return;
+	}
+	if (ActionId == ActionCloseCentralPage)
+	{
+		CloseCentralPageToBackpack();
+		return;
+	}
+	if (ActionId == ActionCloseRightPanel)
+	{
+		CloseRightPanelToParent();
 		return;
 	}
 	if (ActionId >= 0 && ActionId <= 4)
@@ -4573,10 +4656,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	case 60:
 		if (bBackpackExpanded)
 		{
-			CancelCarryForStructuralChange();
-			ReturnAllToolEntries();
-			bHasCollapsedWorkbenchSession = true;
-			CaptureExpandedSessionState();
+			ResetWorkbenchChildrenForGlobalClose();
 			bBackpackExpanded = false;
 			bExitConfirmationOpen = false;
 			RefreshLayout();
