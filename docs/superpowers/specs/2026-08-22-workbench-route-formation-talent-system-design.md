@@ -267,8 +267,8 @@ Thus +100% changes 25% to 50%; +350% calculates 112.5% and clamps to 100%.
 
 Chest time windows grant roll eligibility only. They never grant a chest directly.
 
-- While the game is online, regardless of session duration: advanced window 2 minutes, normal window 3 minutes.
-- Offline simulation uses advanced 4-minute and normal 6-minute windows, bounded by the unlocked offline chest accumulation time.
+- While the game is online, regardless of session duration: normal window 2 minutes, advanced window 3 minutes.
+- Offline simulation uses normal 4-minute and advanced 6-minute windows, bounded by the unlocked offline chest accumulation time.
 
 On encounter completion:
 
@@ -349,7 +349,7 @@ Rules normalize malformed or out-of-range data. Aggregate talent effects are der
 - Catalog validation proves one root, four 45-degree entries, maximum depth 35, valid prerequisites, no cycles, five-rank ordinary nodes, and valid cost tiers.
 - Price tests cover 2,500 root/entries, first repeatable price 3,400, per-node equal rank price, 1.35 depth progression, 64-bit totals, and the complete capacity path.
 - Rule tests cover every fixed/percentage/critical cap, movement-speed delay table, 200 Backpack slots, Warehouse page milestones, +350% reward tracks, 108-hour offline gold/experience cap, 16:45 offline chest cap, and +250% tool tracks.
-- Chest tests prove online duration never degrades the 2/3-minute windows, offline simulation uses 4/6-minute windows, and cover 25% relative chance, 100% clamp, type-specific encounter settlement, and non-guaranteed Boss rolls.
+- Chest tests prove online duration never degrades the normal-2/advanced-3-minute windows, offline simulation uses normal-4/advanced-6-minute windows, and cover 25% relative chance, 100% clamp, type-specific encounter settlement, and non-guaranteed Boss rolls.
 - Save migration proves occupied items are retained without overwrite or movement.
 - Real PIE and Luna Max screenshots prove the tree fans from the center, lines remain behind nodes, selections/details are readable, no child panel loses its close affordance, and the Workbench paper/ink layout remains unchanged outside the requested surfaces.
 
