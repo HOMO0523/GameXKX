@@ -939,6 +939,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeConstruct()
 void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	if (bLayoutRefreshPending && !bLayoutRebuildScheduled && !bInActionCallback)
+	{
+		RebuildLayoutNow();
+	}
 	++TravelVisualNativeTickCount;
 	UpdateCarriedItemVisualPosition();
 	TGuardValue<bool> NativeTickGuard(bNativeTickActive, true);
@@ -3707,7 +3711,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshLayout()
 		else
 		{
 			bLayoutRebuildScheduled = false;
-			RebuildLayoutNow();
 		}
 		return;
 	}
@@ -3808,6 +3811,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ReleaseCollapsedResources()
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopBackpackSlotLeftClicked(const int32 SlotIndex)
 {
+	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
 	return CarriedEntry.IsValid()
 		? DropCarriedOnDesktopSlot(EGameXXKDesktopItemContainer::Backpack, SlotIndex)
 		: PickUpDesktopEntry(EGameXXKDesktopItemContainer::Backpack, SlotIndex);
@@ -3815,6 +3819,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopBackpackSlotLeftClicke
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopBackpackSlotRightClicked(const int32 SlotIndex)
 {
+	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
 	if (CarriedEntry.IsValid())
 	{
 		const bool bCancelled = CancelCarriedItem();

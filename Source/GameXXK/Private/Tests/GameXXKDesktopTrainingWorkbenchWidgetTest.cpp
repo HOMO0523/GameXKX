@@ -955,6 +955,67 @@ bool FGameXXKDesktopTrainingItemCarryStateMachineTest::RunTest(const FString& Pa
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingEmbeddedBackpackDeferredRefreshTest,
+	"GameXXK.DesktopTraining.Workbench.EmbeddedBackpackDeferredRefresh",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingEmbeddedBackpackDeferredRefreshTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!TestNotNull(TEXT("deferred-refresh fixture subsystem exists"), Subsystem)
+		|| !Subsystem->StartGame())
+	{
+		return false;
+	}
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestNotNull(TEXT("deferred-refresh fixture widget exists"), Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	TestTrue(TEXT("deferred-refresh fixture opens backpack"), Widget->OpenBackpack());
+
+	UGameXXKInventoryWindowWidget* EmbeddedBackpack = Widget->WidgetTree
+		? Cast<UGameXXKInventoryWindowWidget>(Widget->WidgetTree->FindWidget(TEXT("EmbeddedApprovedBackpack")))
+		: nullptr;
+	if (!TestNotNull(TEXT("expanded workbench owns the embedded approved backpack"), EmbeddedBackpack))
+	{
+		return false;
+	}
+
+	const int32 OccupiedEquipmentSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
+	if (!TestTrue(TEXT("new game exposes an occupied embedded equipment slot"), OccupiedEquipmentSlot != INDEX_NONE))
+	{
+		return false;
+	}
+	const int32 BuildCountBeforeClick = Widget->GetProgrammaticLayoutBuildCountForTest();
+
+	EmbeddedBackpack->HandleConfiguredSlotClicked(
+		EGameXXKInventorySlotSource::PlayerBackpack,
+		OccupiedEquipmentSlot,
+		NAME_None);
+
+	TestTrue(TEXT("embedded click keeps the parent backpack expanded"), Widget->IsBackpackExpandedForTest());
+	TestTrue(TEXT("embedded occupied-slot click carries the item"), Widget->IsCarryingItemForTest());
+	TestEqual(TEXT("embedded callback does not synchronously rebuild the parent tree"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(),
+		BuildCountBeforeClick);
+	TestTrue(TEXT("embedded callback leaves one parent refresh pending"), Widget->HasPendingLayoutRefreshForTest());
+
+	Widget->TickForTest(0.0f);
+	TestEqual(TEXT("the next tick performs exactly one parent rebuild"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(),
+		BuildCountBeforeClick + 1);
+	TestTrue(TEXT("deferred rebuild keeps the parent backpack expanded"), Widget->IsBackpackExpandedForTest());
+	TestNotNull(TEXT("deferred rebuild restores the embedded approved backpack"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("EmbeddedApprovedBackpack")) : nullptr);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingItemCarryBoundaryRollbackTest,
 	"GameXXK.DesktopTraining.Workbench.ItemCarryBoundaryRollback",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
