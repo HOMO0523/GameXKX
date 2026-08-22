@@ -267,8 +267,7 @@ Thus +100% changes 25% to 50%; +350% calculates 112.5% and clamps to 100%.
 
 Chest time windows grant roll eligibility only. They never grant a chest directly.
 
-- During the first eight hours of a continuous online session: advanced window 2 minutes, normal window 3 minutes.
-- After eight continuous online hours, use offline-efficiency windows even while open: advanced 4 minutes, normal 6 minutes.
+- While the game is online, regardless of session duration: advanced window 2 minutes, normal window 3 minutes.
 - Offline simulation uses advanced 4-minute and normal 6-minute windows, bounded by the unlocked offline chest accumulation time.
 
 On encounter completion:
@@ -316,7 +315,7 @@ The next available save-version migration adds:
 - talent node ranks;
 - logical Backpack capacity and unlocked Warehouse pages;
 - tool-unlock and tool-progression state;
-- online-session/chest window state required for deterministic continuation;
+- chest-window state required for deterministic continuation;
 - route merchant carried-card offers and sold/refresh state where not already represented.
 
 Rules normalize malformed or out-of-range data. Aggregate talent effects are derived from node ranks and are not separately serialized as a second source of truth. Old inventory arrays and authored card/companion/NPC data remain authoritative and are not recreated by migration.
@@ -350,7 +349,7 @@ Rules normalize malformed or out-of-range data. Aggregate talent effects are der
 - Catalog validation proves one root, four 45-degree entries, maximum depth 35, valid prerequisites, no cycles, five-rank ordinary nodes, and valid cost tiers.
 - Price tests cover 2,500 root/entries, first repeatable price 3,400, per-node equal rank price, 1.35 depth progression, 64-bit totals, and the complete capacity path.
 - Rule tests cover every fixed/percentage/critical cap, movement-speed delay table, 200 Backpack slots, Warehouse page milestones, +350% reward tracks, 108-hour offline gold/experience cap, 16:45 offline chest cap, and +250% tool tracks.
-- Chest tests cover 8-hour online transition, 2/3 versus 4/6-minute windows, 25% relative chance, 100% clamp, type-specific encounter settlement, and non-guaranteed Boss rolls.
+- Chest tests prove online duration never degrades the 2/3-minute windows, offline simulation uses 4/6-minute windows, and cover 25% relative chance, 100% clamp, type-specific encounter settlement, and non-guaranteed Boss rolls.
 - Save migration proves occupied items are retained without overwrite or movement.
 - Real PIE and Luna Max screenshots prove the tree fans from the center, lines remain behind nodes, selections/details are readable, no child panel loses its close affordance, and the Workbench paper/ink layout remains unchanged outside the requested surfaces.
 
