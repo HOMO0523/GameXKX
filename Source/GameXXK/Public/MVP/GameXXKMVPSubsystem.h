@@ -358,7 +358,7 @@ public:
 
 	bool EnsureRouteMerchantStock(FString* OutError = nullptr);
 
-	bool GetRouteMerchantView(FGameXXKRouteMerchantView& OutView, FString* OutError = nullptr) const;
+	bool GetRouteMerchantView(FGameXXKRouteMerchantView& OutView, FString* OutError = nullptr);
 
 	bool RefreshRouteMerchant(FString* OutError = nullptr);
 

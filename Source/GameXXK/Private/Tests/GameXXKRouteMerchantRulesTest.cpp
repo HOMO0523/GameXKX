@@ -255,6 +255,26 @@ namespace
 		Test.TestFalse(*FString::Printf(TEXT("%s reports a stable reason string"), Label), Result.FailureReason.IsEmpty());
 		Test.TestTrue(*FString::Printf(TEXT("%s preserves the complete runtime"), Label), RuntimeStatesMatch(State, Before));
 	}
+
+	void ExpectRefreshDisabledAndRollback(
+		FAutomationTestBase& Test,
+		FGameXXKRuntimeState& State,
+		const TCHAR* Label)
+	{
+		const FGameXXKRuntimeState Before = State;
+		FGameXXKRouteMerchantView View;
+		FString Error;
+		Test.TestTrue(*FString::Printf(TEXT("%s view remains readable"), Label),
+			FGameXXKRouteMerchantRules::GetView(State, View, &Error));
+		Test.TestFalse(*FString::Printf(TEXT("%s view disables refresh"), Label), View.bRefreshEnabled);
+		Test.TestFalse(*FString::Printf(TEXT("%s view exposes a reason"), Label), View.RefreshDisabledReason.IsEmpty());
+		Test.TestTrue(*FString::Printf(TEXT("%s view is pure"), Label), RuntimeStatesMatch(State, Before));
+		Test.TestFalse(*FString::Printf(TEXT("%s refresh rejects"), Label),
+			FGameXXKRouteMerchantRules::Refresh(State, &Error));
+		Test.TestFalse(*FString::Printf(TEXT("%s refresh reports a reason"), Label), Error.IsEmpty());
+		Test.TestTrue(*FString::Printf(TEXT("%s refresh preserves the complete runtime"), Label),
+			RuntimeStatesMatch(State, Before));
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -1050,12 +1070,80 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 		FGameXXKRouteMerchantPurchaseResult OnlyPurchase;
 		TestTrue(TEXT("only carried card buys"),
 			FGameXXKRouteMerchantRules::Purchase(ExhaustedRefresh, OnlyOffer->OfferId, NAME_None, OnlyPurchase));
-		const FGameXXKRuntimeState ExhaustedBefore = ExhaustedRefresh;
-		TestFalse(TEXT("refresh rejects exhausted unsold pool"),
-			FGameXXKRouteMerchantRules::Refresh(ExhaustedRefresh, &Error));
-		TestTrue(TEXT("exhausted refresh does not partially mutate"),
-			RuntimeStatesMatch(ExhaustedRefresh, ExhaustedBefore));
+		ExpectRefreshDisabledAndRollback(*this, ExhaustedRefresh, TEXT("exhausted placeholder-only pool"));
+		const TArray<FName> HeroCards = FindCardIdsByOwner(EGameXXKCardOwner::Hero);
+		const FName* NewlyCarriedCardPtr = HeroCards.FindByPredicate([&OnlyPurchase](const FName CardId)
+		{
+			return CardId != OnlyPurchase.CardId;
+		});
+		const FName NewlyCarriedCard = NewlyCarriedCardPtr ? *NewlyCarriedCardPtr : NAME_None;
+		if (TestFalse(TEXT("fixture finds a newly legal carried card"), NewlyCarriedCard.IsNone()))
+		{
+			ExhaustedRefresh.CardRun.HeroSelectedCardIds.Add(NewlyCarriedCard);
+			FGameXXKRouteMerchantView NewlyEligibleView;
+			TestTrue(TEXT("newly legal carried card keeps view readable"),
+				FGameXXKRouteMerchantRules::GetView(ExhaustedRefresh, NewlyEligibleView, &Error));
+			TestTrue(TEXT("newly legal candidate re-enables refresh for placeholder slots"),
+				NewlyEligibleView.bRefreshEnabled);
+			const int32 NewlyEligibleRouteMoney = ExhaustedRefresh.CardRun.RouteTravelMoney;
+			TestTrue(TEXT("newly legal candidate permits refresh"),
+				FGameXXKRouteMerchantRules::Refresh(ExhaustedRefresh, &Error));
+			TestEqual(TEXT("newly legal refresh preserves route money"),
+				ExhaustedRefresh.CardRun.RouteTravelMoney, NewlyEligibleRouteMoney);
+		}
 	}
+
+	FGameXXKRuntimeState RefreshStaleCarry = MakeMerchantState();
+	TestTrue(TEXT("stale refresh carry fixture generates"),
+		FGameXXKRouteMerchantRules::EnsureStock(RefreshStaleCarry, &Error));
+	FGameXXKRouteMerchantOffer* RefreshStaleCarryOffer =
+		FindAvailableOffer(RefreshStaleCarry, EGameXXKRouteMerchantOfferKind::Card);
+	if (TestNotNull(TEXT("stale refresh carry fixture has an offer"), RefreshStaleCarryOffer))
+	{
+		RefreshStaleCarry.CardRun.HeroSelectedCardIds.Remove(RefreshStaleCarryOffer->ContentId);
+		ExpectRefreshDisabledAndRollback(*this, RefreshStaleCarry, TEXT("unsold card no longer carried"));
+	}
+
+	FGameXXKRuntimeState RefreshStaleQuality = MakeMerchantState();
+	TestTrue(TEXT("stale refresh quality fixture generates"),
+		FGameXXKRouteMerchantRules::EnsureStock(RefreshStaleQuality, &Error));
+	FGameXXKRouteMerchantOffer* RefreshStaleQualityOffer =
+		FindAvailableOffer(RefreshStaleQuality, EGameXXKRouteMerchantOfferKind::Card);
+	if (TestNotNull(TEXT("stale refresh quality fixture has an offer"), RefreshStaleQualityOffer))
+	{
+		RefreshStaleQuality.CardRun.UpgradedCardQualities.Add(
+			RefreshStaleQualityOffer->ContentId,
+			RefreshStaleQualityOffer->NextQuality);
+		ExpectRefreshDisabledAndRollback(*this, RefreshStaleQuality, TEXT("unsold card quality changed"));
+	}
+
+	FGameXXKRuntimeState RefreshMaxQuality = MakeMerchantState();
+	TestTrue(TEXT("max refresh quality fixture generates"),
+		FGameXXKRouteMerchantRules::EnsureStock(RefreshMaxQuality, &Error));
+	FGameXXKRouteMerchantOffer* RefreshMaxQualityOffer =
+		FindAvailableOffer(RefreshMaxQuality, EGameXXKRouteMerchantOfferKind::Card);
+	if (TestNotNull(TEXT("max refresh quality fixture has an offer"), RefreshMaxQualityOffer))
+	{
+		RefreshMaxQuality.CardRun.UpgradedCardQualities.Add(
+			RefreshMaxQualityOffer->ContentId,
+			EGameXXKCardQuality::Epic);
+		ExpectRefreshDisabledAndRollback(*this, RefreshMaxQuality, TEXT("unsold card reached max quality"));
+	}
+
+	FGameXXKRuntimeState RefreshStaleOwner = MakeMerchantState();
+	RefreshStaleOwner.CardRun.HeroSelectedCardIds.Reset();
+	FGameXXKPermanentCompanion RefreshOwnerCompanion;
+	RefreshOwnerCompanion.InstanceId = TEXT("Companion.Test.RefreshStaleOwner");
+	RefreshOwnerCompanion.Role = EGameXXKCharacterRole::Blade;
+	RefreshOwnerCompanion.bIsActive = true;
+	RefreshOwnerCompanion.SelectedCardIds = {ProfessionCards[0], ProfessionCards[1]};
+	RefreshStaleOwner.CardRun.CompanionRoster.PermanentCompanions.Add(RefreshOwnerCompanion);
+	RefreshStaleOwner.CardRun.PartySelection.ActivePermanentCompanionInstanceId = RefreshOwnerCompanion.InstanceId;
+	TestTrue(TEXT("stale refresh owner fixture generates"),
+		FGameXXKRouteMerchantRules::EnsureStock(RefreshStaleOwner, &Error));
+	RefreshStaleOwner.CardRun.PartySelection.ActivePermanentCompanionInstanceId = NAME_None;
+	RefreshStaleOwner.CardRun.CompanionRoster.PermanentCompanions.Last().bIsActive = false;
+	ExpectRefreshDisabledAndRollback(*this, RefreshStaleOwner, TEXT("unsold owner no longer deployed"));
 
 	FGameXXKRuntimeState Legacy = MakeMerchantState();
 	TestTrue(TEXT("legacy fixture first generates current stock"), FGameXXKRouteMerchantRules::EnsureStock(Legacy, &Error));

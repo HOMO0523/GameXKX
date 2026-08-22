@@ -823,19 +823,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveCampReward(UPARAM(ref) FGameXXKRuntimeState& State, bool bHealNow);
 
-	/** Ensures the pending generated merchant node owns one stable persisted 3-card/3-relic snapshot. */
+	/** Ensures the pending merchant owns one stable persisted four-card upgrade snapshot. */
 	static bool EnsureRouteMerchantStock(FGameXXKRuntimeState& State, FString* OutError = nullptr);
 
-	/** Builds the dedicated route-merchant read model without mutating or rerolling stock. */
+	/** Normalizes legacy stock when needed, then builds the dedicated route-merchant read model. */
 	static bool GetRouteMerchantView(
-		const FGameXXKRuntimeState& State,
+		FGameXXKRuntimeState& State,
 		FGameXXKRouteMerchantView& OutView,
 		FString* OutError = nullptr);
 
-	/** Atomically pays the current refresh price and replaces all six persisted offers. */
+	/** Atomically pays ordinary gold and rerolls only eligible unsold card offers. */
 	static bool RefreshRouteMerchant(FGameXXKRuntimeState& State, FString* OutError = nullptr);
 
-	/** Pure purchase preview keyed by stable OfferId and optional stable route-card EntryId. */
+	/** Pure carried-card upgrade preview keyed by stable OfferId. */
 	static bool PreviewRouteMerchantPurchase(
 		const FGameXXKRuntimeState& State,
 		FName OfferId,
@@ -843,14 +843,14 @@ public:
 		FGameXXKRouteMerchantPurchasePreview& OutPreview,
 		FString* OutError = nullptr);
 
-	/** Atomically commits a route-card/relic purchase or persists its replacement prompt. */
+	/** Atomically commits one authoritative carried-card quality upgrade. */
 	static bool PurchaseRouteMerchant(
 		FGameXXKRuntimeState& State,
 		FName OfferId,
 		FName ReplacementEntryId,
 		FGameXXKRouteMerchantPurchaseResult& OutResult);
 
-	/** Clears only an unfinished replacement prompt and never spends route money. */
+	/** Clears only legacy replacement metadata and never spends either currency. */
 	static bool CancelPendingRouteMerchantPurchase(FGameXXKRuntimeState& State, FString* OutError = nullptr);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")

@@ -2829,7 +2829,7 @@ bool UGameXXKMVPRules::EnsureRouteMerchantStock(FGameXXKRuntimeState& State, FSt
 }
 
 bool UGameXXKMVPRules::GetRouteMerchantView(
-	const FGameXXKRuntimeState& State,
+	FGameXXKRuntimeState& State,
 	FGameXXKRouteMerchantView& OutView,
 	FString* OutError)
 {

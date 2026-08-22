@@ -2913,8 +2913,9 @@ bool UGameXXKMVPSubsystem::EnsureRouteMerchantStock(FString* OutError)
 
 bool UGameXXKMVPSubsystem::GetRouteMerchantView(
 	FGameXXKRouteMerchantView& OutView,
-	FString* OutError) const
+	FString* OutError)
 {
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::GetRouteMerchantView(RuntimeState, OutView, OutError);
 }
 

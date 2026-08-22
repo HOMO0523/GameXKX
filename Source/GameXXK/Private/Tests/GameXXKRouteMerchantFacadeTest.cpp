@@ -169,4 +169,43 @@ bool FGameXXKRouteMerchantSubsystemFacadeTest::RunTest(const FString& Parameters
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteMerchantLegacyFirstViewNormalizationTest,
+	"GameXXK.Route.Merchant.Facade.LegacyFirstViewNormalization",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteMerchantLegacyFirstViewNormalizationTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKRouteMerchantFacadeTest;
+	FGameXXKRuntimeState Legacy = MakeRouteMapMerchantFixture();
+	TestTrue(TEXT("legacy first-view fixture enters merchant"), UGameXXKMVPRules::SelectRouteNodeById(Legacy, 10));
+	for (FGameXXKRouteMerchantOffer& Offer : Legacy.CardRun.RouteMerchant.Offers)
+	{
+		Offer.Kind = EGameXXKRouteMerchantOfferKind::Relic;
+		Offer.OwnerMemberId = NAME_None;
+		Offer.NextQuality = EGameXXKCardQuality::Invalid;
+	}
+
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	Subsystem->GetMutableRuntimeState() = Legacy;
+	FGameXXKRouteMerchantView View;
+	FString Error;
+	TestTrue(TEXT("first subsystem view normalizes legacy stock without an explicit Ensure call"),
+		Subsystem->GetRouteMerchantView(View, &Error));
+	TestTrue(TEXT("first subsystem view reports no normalization error"), Error.IsEmpty());
+	TestEqual(TEXT("normalized runtime has exactly four offers"),
+		Subsystem->GetRuntimeState().CardRun.RouteMerchant.Offers.Num(), 4);
+	int32 NormalizedCardCount = 0;
+	for (const FGameXXKRouteMerchantOffer& Offer : Subsystem->GetRuntimeState().CardRun.RouteMerchant.Offers)
+	{
+		NormalizedCardCount += Offer.Kind == EGameXXKRouteMerchantOfferKind::Card ? 1 : 0;
+	}
+	TestEqual(TEXT("normalized runtime has exactly four card offers"),
+		NormalizedCardCount, 4);
+	TestEqual(TEXT("normalized first view has four card offers"), View.CardOffers.Num(), 4);
+	TestEqual(TEXT("normalized first view has no relic offers"), View.RelicOffers.Num(), 0);
+	return true;
+}
+
 #endif

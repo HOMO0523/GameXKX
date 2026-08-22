@@ -170,6 +170,99 @@ namespace
 		return false;
 	}
 
+	bool ValidateLiveCardOffer(
+		const FGameXXKRuntimeState& State,
+		const FGameXXKRouteMerchantOffer& Offer,
+		EGameXXKRouteMerchantPurchaseFailure& OutFailure,
+		FString& OutReason)
+	{
+		OutFailure = EGameXXKRouteMerchantPurchaseFailure::None;
+		OutReason.Reset();
+		const TArray<FName>* OwnerCards = nullptr;
+		if (!FindDeployedMemberCards(State, Offer.OwnerMemberId, OwnerCards))
+		{
+			OutFailure = EGameXXKRouteMerchantPurchaseFailure::OwnerNoLongerDeployed;
+			OutReason = TEXT("The card owner is no longer deployed.");
+			return false;
+		}
+		if (!OwnerCards || !OwnerCards->Contains(Offer.ContentId))
+		{
+			OutFailure = EGameXXKRouteMerchantPurchaseFailure::CardNoLongerCarried;
+			OutReason = TEXT("The deployed owner no longer carries this card.");
+			return false;
+		}
+		const EGameXXKCardQuality CurrentQuality =
+			FGameXXKCardBattleAdapter::GetConfiguredCardQuality(State.CardRun, Offer.ContentId);
+		if (CurrentQuality >= EGameXXKCardQuality::Epic)
+		{
+			OutFailure = EGameXXKRouteMerchantPurchaseFailure::CardAlreadyMaxQuality;
+			OutReason = TEXT("The carried card already reached Epic quality.");
+			return false;
+		}
+		if (CurrentQuality != Offer.Quality)
+		{
+			OutFailure = EGameXXKRouteMerchantPurchaseFailure::StaleCardQuality;
+			OutReason = TEXT("The carried card quality changed after stock generation.");
+			return false;
+		}
+		return true;
+	}
+
+	bool CanRefreshStock(
+		const FGameXXKRuntimeState& State,
+		const FGameXXKRouteMerchantState& Merchant,
+		FString* OutError)
+	{
+		int32 UnsoldSlotCount = 0;
+		TSet<FName> PreservedSoldCardIds;
+		for (const FGameXXKRouteMerchantOffer& Offer : Merchant.Offers)
+		{
+			if (Offer.bSold)
+			{
+				if (!Offer.bUnavailable && !Offer.ContentId.IsNone())
+				{
+					PreservedSoldCardIds.Add(Offer.ContentId);
+				}
+				continue;
+			}
+			++UnsoldSlotCount;
+			if (!Offer.bUnavailable)
+			{
+				EGameXXKRouteMerchantPurchaseFailure Failure;
+				FString Reason;
+				if (!ValidateLiveCardOffer(State, Offer, Failure, Reason))
+				{
+					return SetError(OutError, FString::Printf(
+						TEXT("Merchant refresh rejected stale unsold offer %s: %s"),
+						*Offer.OfferId.ToString(),
+						*Reason));
+				}
+			}
+		}
+		if (UnsoldSlotCount <= 0)
+		{
+			return SetError(OutError, TEXT("No unsold merchant slot is available to refresh."));
+		}
+
+		TArray<FGameXXKRouteMerchantRules::FDeployedCardCandidate> Pool;
+		FString PoolError;
+		if (!FGameXXKRouteMerchantRules::BuildEffectiveDeployedCardPool(State, Pool, &PoolError))
+		{
+			return SetError(OutError, PoolError.IsEmpty()
+				? TEXT("The deployed carried-card pool is invalid.")
+				: PoolError);
+		}
+		Pool.RemoveAll([&PreservedSoldCardIds](const auto& Candidate)
+		{
+			return PreservedSoldCardIds.Contains(Candidate.CardId);
+		});
+		if (Pool.IsEmpty())
+		{
+			return SetError(OutError, TEXT("No unsold carried-card upgrade target is available to refresh."));
+		}
+		return true;
+	}
+
 	bool GenerateStock(
 		const FGameXXKRuntimeState& State,
 		const int32 SourceNodeId,
@@ -417,28 +510,11 @@ namespace
 			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::InsufficientOrdinaryGold,
 				FString::Printf(TEXT("Ordinary gold is short by %d."), Offer->Price - State.PlayerGold), OutError);
 		}
-		const TArray<FName>* OwnerCards = nullptr;
-		if (!FindDeployedMemberCards(State, Offer->OwnerMemberId, OwnerCards))
+		EGameXXKRouteMerchantPurchaseFailure LiveFailure;
+		FString LiveReason;
+		if (!ValidateLiveCardOffer(State, *Offer, LiveFailure, LiveReason))
 		{
-			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::OwnerNoLongerDeployed,
-				TEXT("The card owner is no longer deployed."), OutError);
-		}
-		if (!OwnerCards || !OwnerCards->Contains(Offer->ContentId))
-		{
-			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::CardNoLongerCarried,
-				TEXT("The deployed owner no longer carries this card."), OutError);
-		}
-		const EGameXXKCardQuality CurrentQuality =
-			FGameXXKCardBattleAdapter::GetConfiguredCardQuality(State.CardRun, Offer->ContentId);
-		if (CurrentQuality >= EGameXXKCardQuality::Epic)
-		{
-			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::CardAlreadyMaxQuality,
-				TEXT("The carried card already reached Epic quality."), OutError);
-		}
-		if (CurrentQuality != Offer->Quality)
-		{
-			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::StaleCardQuality,
-				TEXT("The carried card quality changed after stock generation."), OutError);
+			return SetPurchaseFailure(OutPreview, LiveFailure, LiveReason, OutError);
 		}
 		OutPreview.BalanceAfter = State.PlayerGold - Offer->Price;
 		OutPreview.FinalQuality = Offer->NextQuality;
@@ -605,13 +681,12 @@ bool FGameXXKRouteMerchantRules::GetView(
 	OutView.RouteTravelMoney = State.PlayerGold;
 	OutView.RefreshCost = GetRefreshCost(Merchant.RefreshCount);
 	OutView.bRefreshAffordable = OutView.RefreshCost > 0 && State.PlayerGold >= OutView.RefreshCost;
-	OutView.bRefreshEnabled = OutView.bRefreshAffordable
-		&& !Merchant.PendingPurchase.bActive
+	FString RefreshEligibilityError;
+	const bool bRefreshEligible = !Merchant.PendingPurchase.bActive
 		&& Merchant.RefreshCount < MAX_int32
-		&& Merchant.Offers.ContainsByPredicate([](const FGameXXKRouteMerchantOffer& Offer)
-		{
-			return !Offer.bSold;
-		});
+		&& CanRefreshStock(State, Merchant, &RefreshEligibilityError);
+	OutView.bRefreshEnabled = OutView.bRefreshAffordable
+		&& bRefreshEligible;
 	if (Merchant.PendingPurchase.bActive)
 	{
 		OutView.RefreshDisabledReason = TEXT("请先完成或取消当前卡牌替换");
@@ -620,14 +695,16 @@ bool FGameXXKRouteMerchantRules::GetView(
 	{
 		OutView.RefreshDisabledReason = TEXT("刷新次数已达上限");
 	}
+	else if (!bRefreshEligible)
+	{
+		OutView.RefreshDisabledReason = RefreshEligibilityError.IsEmpty()
+			? TEXT("没有可刷新的卡牌")
+			: RefreshEligibilityError;
+	}
 	else if (!OutView.bRefreshAffordable)
 	{
 		OutView.RefreshDisabledReason = FString::Printf(
 			TEXT("金币不足，还差%d"), FMath::Max(0, OutView.RefreshCost - State.PlayerGold));
-	}
-	else if (!OutView.bRefreshEnabled)
-	{
-		OutView.RefreshDisabledReason = TEXT("没有可刷新的卡牌");
 	}
 	OutView.bHasPendingReplacement = false;
 	OutView.bCanLeave = true;
@@ -672,6 +749,10 @@ bool FGameXXKRouteMerchantRules::Refresh(FGameXXKRuntimeState& InOutState, FStri
 	if (Existing.RefreshCount == MAX_int32)
 	{
 		return SetError(OutError, TEXT("Merchant refresh count cannot be safely incremented."));
+	}
+	if (!CanRefreshStock(Candidate, Existing, OutError))
+	{
+		return false;
 	}
 	const int32 Cost = GetRefreshCost(Existing.RefreshCount);
 	if (Cost <= 0 || Candidate.PlayerGold < Cost)

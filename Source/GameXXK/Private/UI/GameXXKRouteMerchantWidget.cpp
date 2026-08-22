@@ -209,7 +209,7 @@ void UGameXXKRouteMerchantWidget::NativeConstruct()
 void UGameXXKRouteMerchantWidget::RefreshFromState()
 {
 	BuildProgrammaticLayout();
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::RouteMerchant)
 	{
 		SetVisibility(ESlateVisibility::Collapsed);
