@@ -32,7 +32,12 @@ enum class EGameXXKRouteMerchantPurchaseFailure : uint8
 	DeckAcquisitionRejected,
 	InvalidReplacementEntryId,
 	RelicAcquisitionRejected,
-	ArithmeticOverflow
+	ArithmeticOverflow,
+	InsufficientOrdinaryGold,
+	OwnerNoLongerDeployed,
+	CardNoLongerCarried,
+	StaleCardQuality,
+	CardAlreadyMaxQuality
 };
 
 /** A deterministic offer held by one visited route merchant. */
@@ -50,9 +55,15 @@ struct GAMEXXK_API FGameXXKRouteMerchantOffer
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName ContentId = NAME_None;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName OwnerMemberId = NAME_None;
+
 	/** Catalog base quality captured with the stock so reopening never rerolls classification. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardQuality Quality = EGameXXKCardQuality::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardQuality NextQuality = EGameXXKCardQuality::Invalid;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 Price = 0;
@@ -100,7 +111,7 @@ struct GAMEXXK_API FGameXXKRouteMerchantState
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 RefreshCount = 0;
 
-	/** Exactly three card slots followed by exactly three relic slots for a nonempty snapshot. */
+	/** Exactly four carried-card upgrade slots for a nonempty snapshot. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKRouteMerchantOffer> Offers;
 
@@ -133,6 +144,11 @@ struct GAMEXXK_API FGameXXKRouteMerchantView
 {
 	GENERATED_BODY()
 
+	/** Authoritative permanent/idle ordinary-gold balance. */
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 PlayerGold = 0;
+
+	/** Deprecated UI compatibility alias; mirrors PlayerGold and is never route-travel money. */
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	int32 RouteTravelMoney = 0;
 
@@ -161,7 +177,7 @@ struct GAMEXXK_API FGameXXKRouteMerchantView
 	bool bCanLeave = true;
 };
 
-/** Pure card/relic purchase simulation. No preview call mutates the runtime. */
+/** Pure carried-card upgrade simulation. No preview call mutates the runtime. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKRouteMerchantPurchasePreview
 {
