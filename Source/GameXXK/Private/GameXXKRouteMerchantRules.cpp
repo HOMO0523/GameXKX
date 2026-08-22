@@ -367,13 +367,15 @@ namespace
 		}
 		if (IsLegacyRelicSnapshot(Merchant))
 		{
+			// Pre-four-card saves could persist an in-progress replacement picker. It was
+			// transient UI state, so validate only the durable legacy stock identity here;
+			// EnsureStock regenerates the card snapshot and clears the pending payload.
 			if (Merchant.SourceNodeId < 0
 				|| Merchant.RefreshCount < 0
 				|| Merchant.OfferSeed != DerivePersistedStockSeed(
 					State.CardRun.RouteProgress.RootSeed,
 					Merchant.SourceNodeId,
-					Merchant.RefreshCount)
-				|| !IsPendingPurchaseEmpty(Merchant.PendingPurchase))
+					Merchant.RefreshCount))
 			{
 				return SetError(OutError, TEXT("The legacy relic merchant snapshot has invalid persisted metadata."));
 			}

@@ -185,6 +185,11 @@ bool FGameXXKRouteMerchantLegacyFirstViewNormalizationTest::RunTest(const FStrin
 		Offer.OwnerMemberId = NAME_None;
 		Offer.NextQuality = EGameXXKCardQuality::Invalid;
 	}
+	Legacy.CardRun.RouteMerchant.PendingPurchase.bActive = true;
+	Legacy.CardRun.RouteMerchant.PendingPurchase.OfferId = Legacy.CardRun.RouteMerchant.Offers[0].OfferId;
+	Legacy.CardRun.RouteMerchant.PendingPurchase.CardId = Legacy.CardRun.RouteMerchant.Offers[0].ContentId;
+	Legacy.CardRun.RouteMerchant.PendingPurchase.Price = Legacy.CardRun.RouteMerchant.Offers[0].Price;
+	FGameXXKRuntimeState DirectLeaveLegacy = Legacy;
 
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
@@ -205,6 +210,18 @@ bool FGameXXKRouteMerchantLegacyFirstViewNormalizationTest::RunTest(const FStrin
 		NormalizedCardCount, 4);
 	TestEqual(TEXT("normalized first view has four card offers"), View.CardOffers.Num(), 4);
 	TestEqual(TEXT("normalized first view has no relic offers"), View.RelicOffers.Num(), 0);
+	TestFalse(TEXT("first facade view discards the legacy active pending flag"),
+		Subsystem->GetRuntimeState().CardRun.RouteMerchant.PendingPurchase.bActive);
+	TestTrue(TEXT("normalized facade stock can refresh"), Subsystem->RefreshRouteMerchant(&Error));
+	TestEqual(TEXT("normalized facade refresh advances once"),
+		Subsystem->GetRuntimeState().CardRun.RouteMerchant.RefreshCount, 1);
+	TestTrue(TEXT("normalized facade stock can leave"), Subsystem->ResolveMerchantRouteNode());
+	TestEqual(TEXT("normalized facade leave returns to route map"),
+		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestTrue(TEXT("facade can directly leave a legacy pending snapshot without first reading a view"),
+		UGameXXKMVPRules::ResolveMerchantRouteNode(DirectLeaveLegacy));
+	TestEqual(TEXT("direct legacy facade leave returns to route map"),
+		DirectLeaveLegacy.Screen, EGameXXKScreen::DungeonMap);
 	return true;
 }
 

@@ -1,5 +1,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKCardCatalog.h"
+#include "GameXXKCardQualityRules.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEncounterRules.h"
@@ -308,6 +310,21 @@ namespace
 		State.CardRun.RouteProgress.CurrentChapter = 1;
 		State.CardRun.RouteProgress.RouteCombatLevel = State.PlayerLevel;
 		State.CardRun.bLoadoutLockedForRoute = true;
+		State.CardRun.HeroUnlockedCardIds.Reset();
+		State.CardRun.HeroSelectedCardIds.Reset();
+		for (const FGameXXKCardDefinition& Definition : FGameXXKCardCatalog::GetAllCardDefinitions())
+		{
+			if (Definition.Owner == EGameXXKCardOwner::Hero
+				&& FGameXXKCardQualityRules::GetCardBaseQuality(Definition.Id) < EGameXXKCardQuality::Epic)
+			{
+				State.CardRun.HeroUnlockedCardIds.Add(Definition.Id);
+				State.CardRun.HeroSelectedCardIds.Add(Definition.Id);
+				if (State.CardRun.HeroSelectedCardIds.Num() == 8)
+				{
+					break;
+				}
+			}
+		}
 		FString Error;
 		FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun, 60, &Error);
 		FGameXXKRouteMerchantRules::EnsureStock(State, &Error);

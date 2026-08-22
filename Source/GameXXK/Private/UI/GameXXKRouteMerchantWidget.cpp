@@ -162,6 +162,125 @@ namespace
 		if (NpcId == TEXT("Npc.QiongMeiEr")) return NSLOCTEXT("GameXXKRouteMerchant", "NpcQiongMeiEr", "琼梅儿");
 		return NSLOCTEXT("GameXXKRouteMerchant", "QuestNpcFallback", "同行角色");
 	}
+
+	bool ContainsChineseText(const FString& Text)
+	{
+		for (const TCHAR Character : Text)
+		{
+			const uint32 CodePoint = static_cast<uint32>(Character);
+			if ((CodePoint >= 0x3400U && CodePoint <= 0x4DBFU)
+				|| (CodePoint >= 0x4E00U && CodePoint <= 0x9FFFU))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	FString LocalizeMerchantRuleError(const FString& RawError, const TCHAR* Fallback)
+	{
+		if (RawError.IsEmpty())
+		{
+			return Fallback;
+		}
+		if (ContainsChineseText(RawError))
+		{
+			return RawError;
+		}
+		auto Contains = [&RawError](const TCHAR* Pattern)
+		{
+			return RawError.Contains(Pattern, ESearchCase::IgnoreCase);
+		};
+		if (Contains(TEXT("no longer carries")) || Contains(TEXT("card no longer carried")))
+		{
+			return TEXT("持牌角色已不再携带这张卡牌，请刷新商店。");
+		}
+		if (Contains(TEXT("no longer deployed")) || Contains(TEXT("owner no longer deployed")))
+		{
+			return TEXT("持牌角色已不在当前队伍中，请刷新商店。");
+		}
+		if (Contains(TEXT("quality changed")) || Contains(TEXT("stale card quality")))
+		{
+			return TEXT("卡牌品质已经变化，请刷新商店。");
+		}
+		if (Contains(TEXT("reached Epic")) || Contains(TEXT("maximum quality")) || Contains(TEXT("max quality")))
+		{
+			return TEXT("这张卡牌已经达到最高品质。");
+		}
+		if (Contains(TEXT("already sold")))
+		{
+			return TEXT("这个强化名额已售出。");
+		}
+		if (Contains(TEXT("ordinary gold")) || Contains(TEXT("not enough gold")))
+		{
+			return TEXT("金币不足，无法完成本次操作。");
+		}
+		if (Contains(TEXT("No upgradable")) || Contains(TEXT("No unsold"))
+			|| Contains(TEXT("available to refresh")) || Contains(TEXT("no refresh")))
+		{
+			return TEXT("当前没有可强化或刷新的卡牌。");
+		}
+		if (Contains(TEXT("stale or unknown")) || Contains(TEXT("changed before commit")))
+		{
+			return TEXT("商品状态已经变化，请刷新商店后重试。");
+		}
+		if (Contains(TEXT("active locked generated route"))
+			|| Contains(TEXT("pending route node"))
+			|| Contains(TEXT("not a generated merchant node"))
+			|| Contains(TEXT("invalid route context")))
+		{
+			return TEXT("当前不在有效的路线商店中。");
+		}
+		if (Contains(TEXT("saved merchant")) || Contains(TEXT("merchant stock"))
+			|| Contains(TEXT("persisted metadata")) || Contains(TEXT("pending merchant purchase")))
+		{
+			return TEXT("商店数据已经变化，请重新进入商店。");
+		}
+		return Fallback;
+	}
+
+	FString LocalizePurchaseFailure(const FGameXXKRouteMerchantPurchaseResult& Result)
+	{
+		switch (Result.Failure)
+		{
+		case EGameXXKRouteMerchantPurchaseFailure::InvalidRouteContext:
+			return TEXT("当前不在有效的路线商店中。");
+		case EGameXXKRouteMerchantPurchaseFailure::InvalidMerchantStock:
+		case EGameXXKRouteMerchantPurchaseFailure::PendingPurchaseConflict:
+			return TEXT("商店数据已经变化，请重新进入商店。");
+		case EGameXXKRouteMerchantPurchaseFailure::StaleOfferId:
+			return TEXT("商品状态已经变化，请刷新商店后重试。");
+		case EGameXXKRouteMerchantPurchaseFailure::OfferUnavailable:
+			return TEXT("这个卡位当前没有可强化卡牌。");
+		case EGameXXKRouteMerchantPurchaseFailure::OfferAlreadySold:
+			return TEXT("这个强化名额已售出。");
+		case EGameXXKRouteMerchantPurchaseFailure::InsufficientTravelMoney:
+		case EGameXXKRouteMerchantPurchaseFailure::InsufficientOrdinaryGold:
+			return TEXT("金币不足，无法购买本次强化。");
+		case EGameXXKRouteMerchantPurchaseFailure::InvalidCardDefinition:
+			return TEXT("卡牌资料暂不可用，请刷新商店。");
+		case EGameXXKRouteMerchantPurchaseFailure::InvalidActiveCompanion:
+		case EGameXXKRouteMerchantPurchaseFailure::OwnerNoLongerDeployed:
+			return TEXT("持牌角色已不在当前队伍中，请刷新商店。");
+		case EGameXXKRouteMerchantPurchaseFailure::CardNoLongerCarried:
+			return TEXT("持牌角色已不再携带这张卡牌，请刷新商店。");
+		case EGameXXKRouteMerchantPurchaseFailure::StaleCardQuality:
+			return TEXT("卡牌品质已经变化，请刷新商店。");
+		case EGameXXKRouteMerchantPurchaseFailure::CardAlreadyMaxQuality:
+			return TEXT("这张卡牌已经达到最高品质。");
+		case EGameXXKRouteMerchantPurchaseFailure::ArithmeticOverflow:
+			return TEXT("金币计算异常，本次购买未扣款。");
+		case EGameXXKRouteMerchantPurchaseFailure::DuplicateRelic:
+		case EGameXXKRouteMerchantPurchaseFailure::InvalidRouteCardOrdinal:
+		case EGameXXKRouteMerchantPurchaseFailure::DeckAcquisitionRejected:
+		case EGameXXKRouteMerchantPurchaseFailure::InvalidReplacementEntryId:
+		case EGameXXKRouteMerchantPurchaseFailure::RelicAcquisitionRejected:
+			return TEXT("旧版商店操作已经失效，请刷新商店。");
+		case EGameXXKRouteMerchantPurchaseFailure::None:
+		default:
+			return LocalizeMerchantRuleError(Result.FailureReason, TEXT("购买未能完成，请稍后重试。"));
+		}
+	}
 }
 
 void UGameXXKRouteMerchantOfferButton::Configure(
@@ -211,7 +330,7 @@ void UGameXXKRouteMerchantWidget::RefreshFromState()
 	FString ViewError;
 	if (!Subsystem->GetRouteMerchantView(View, &ViewError))
 	{
-		LastActionError = ViewError;
+		LastActionError = LocalizeMerchantRuleError(ViewError, TEXT("商店数据暂时无法读取。"));
 		ApplyView(FGameXXKRouteMerchantView());
 	}
 	else
@@ -236,9 +355,7 @@ bool UGameXXKRouteMerchantWidget::PurchaseOffer(const FName OfferId)
 	const bool bPurchased = Subsystem->PurchaseRouteMerchant(OfferId, NAME_None, LastPurchaseResult);
 	if (!bPurchased)
 	{
-		LastActionError = LastPurchaseResult.FailureReason.IsEmpty()
-			? TEXT("购买未能完成。")
-			: LastPurchaseResult.FailureReason;
+		LastActionError = LocalizePurchaseFailure(LastPurchaseResult);
 	}
 	RefreshFromState();
 	NotifyPlayerFlowStateChanged();
@@ -250,12 +367,10 @@ bool UGameXXKRouteMerchantWidget::RefreshStock()
 	LastActionError.Reset();
 	LastPurchaseResult = FGameXXKRouteMerchantPurchaseResult();
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || !Subsystem->RefreshRouteMerchant(&LastActionError))
+	FString RefreshError;
+	if (!Subsystem || !Subsystem->RefreshRouteMerchant(&RefreshError))
 	{
-		if (LastActionError.IsEmpty())
-		{
-			LastActionError = TEXT("商店刷新未能完成。");
-		}
+		LastActionError = LocalizeMerchantRuleError(RefreshError, TEXT("商店刷新未能完成。"));
 		RefreshFromState();
 		NotifyPlayerFlowStateChanged();
 		return false;
@@ -639,7 +754,9 @@ void UGameXXKRouteMerchantWidget::ApplyView(const FGameXXKRouteMerchantView& Vie
 		RefreshButton->SetIsEnabled(View.bRefreshEnabled);
 		RefreshButton->SetToolTipText(View.bRefreshEnabled
 			? NSLOCTEXT("GameXXKRouteMerchant", "RefreshTooltip", "仅重抽未购买的卡牌；已售槽保留，下一次刷新费用会提高。")
-			: FText::FromString(View.RefreshDisabledReason));
+			: FText::FromString(LocalizeMerchantRuleError(
+				View.RefreshDisabledReason,
+				TEXT("当前不能刷新商店。"))));
 	}
 	if (LeaveButton)
 	{
@@ -878,7 +995,9 @@ FString UGameXXKRouteMerchantWidget::ResolveDisabledReason(const FGameXXKRouteMe
 	}
 	if (!OfferView->DisabledReason.IsEmpty())
 	{
-		return OfferView->DisabledReason;
+		return LocalizeMerchantRuleError(
+			OfferView->DisabledReason,
+			TEXT("当前不能强化这张卡牌。"));
 	}
 	if (OfferView->SavedOffer.bUnavailable)
 	{

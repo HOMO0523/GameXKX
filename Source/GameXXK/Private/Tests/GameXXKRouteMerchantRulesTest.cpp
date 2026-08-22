@@ -86,6 +86,22 @@ namespace
 		return Count;
 	}
 
+	void ConvertCurrentStockToLegacyRelicsWithPending(FGameXXKRuntimeState& State)
+	{
+		FGameXXKRouteMerchantState& Merchant = State.CardRun.RouteMerchant;
+		for (FGameXXKRouteMerchantOffer& Offer : Merchant.Offers)
+		{
+			Offer.Kind = EGameXXKRouteMerchantOfferKind::Relic;
+			Offer.OwnerMemberId = NAME_None;
+			Offer.NextQuality = EGameXXKCardQuality::Invalid;
+		}
+		const FGameXXKRouteMerchantOffer& PendingOffer = Merchant.Offers[0];
+		Merchant.PendingPurchase.bActive = true;
+		Merchant.PendingPurchase.OfferId = PendingOffer.OfferId;
+		Merchant.PendingPurchase.CardId = PendingOffer.ContentId;
+		Merchant.PendingPurchase.Price = PendingOffer.Price;
+	}
+
 	bool RouteNodesMatch(const TArray<FGameXXKRouteMapNode>& Left, const TArray<FGameXXKRouteMapNode>& Right)
 	{
 		if (Left.Num() != Right.Num())
@@ -1211,6 +1227,71 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 		FGameXXKRouteMerchantRules::GetView(LegacyView, NormalizedView, &Error));
 	TestEqual(TEXT("normalized legacy view exposes four cards"), NormalizedView.CardOffers.Num(), 4);
 	TestEqual(TEXT("normalized legacy view exposes no relics"), NormalizedView.RelicOffers.Num(), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteMerchantLegacyPendingNormalizationTest,
+	"GameXXK.MVP.RouteMerchant.Rules.LegacyPendingNormalizesAndLeaves",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteMerchantLegacyPendingNormalizationTest::RunTest(const FString& Parameters)
+{
+	FString Error;
+	FGameXXKRuntimeState Legacy = MakeMerchantState();
+	TestTrue(TEXT("legacy-pending fixture first generates current stock"),
+		FGameXXKRouteMerchantRules::EnsureStock(Legacy, &Error));
+	ConvertCurrentStockToLegacyRelicsWithPending(Legacy);
+	const FGameXXKRuntimeState DirectLeaveLegacy = Legacy;
+
+	FGameXXKRouteMerchantView View;
+	TestTrue(TEXT("first mutable view atomically discards legacy pending replacement and normalizes stock"),
+		FGameXXKRouteMerchantRules::GetView(Legacy, View, &Error));
+	TestTrue(TEXT("legacy pending normalization reports no error"), Error.IsEmpty());
+	TestEqual(TEXT("legacy pending normalization yields four card offers"), View.CardOffers.Num(), 4);
+	TestEqual(TEXT("legacy pending normalization yields zero relic offers"), View.RelicOffers.Num(), 0);
+	TestFalse(TEXT("legacy pending active flag is discarded"), Legacy.CardRun.RouteMerchant.PendingPurchase.bActive);
+	TestTrue(TEXT("legacy pending offer id is discarded"), Legacy.CardRun.RouteMerchant.PendingPurchase.OfferId.IsNone());
+	TestTrue(TEXT("legacy pending card id is discarded"), Legacy.CardRun.RouteMerchant.PendingPurchase.CardId.IsNone());
+	TestEqual(TEXT("legacy pending price is discarded"), Legacy.CardRun.RouteMerchant.PendingPurchase.Price, 0);
+	TestTrue(TEXT("normalized legacy stock can refresh"), FGameXXKRouteMerchantRules::Refresh(Legacy, &Error));
+	TestEqual(TEXT("normalized legacy refresh advances exactly once"), Legacy.CardRun.RouteMerchant.RefreshCount, 1);
+
+	FGameXXKRuntimeState DirectLeave = DirectLeaveLegacy;
+	TestTrue(TEXT("legacy pending snapshot can leave without opening a view first"),
+		UGameXXKMVPRules::ResolveMerchantRouteNode(DirectLeave));
+	TestEqual(TEXT("direct legacy leave returns to the route map"), DirectLeave.Screen, EGameXXKScreen::DungeonMap);
+	TestTrue(TEXT("direct legacy leave visits the merchant node"), DirectLeave.VisitedRouteNodeIds.Contains(10));
+
+	FGameXXKRuntimeState BadSeed = DirectLeaveLegacy;
+	++BadSeed.CardRun.RouteMerchant.OfferSeed;
+	const FGameXXKRuntimeState BadSeedBefore = BadSeed;
+	FGameXXKRouteMerchantView RejectedView;
+	TestFalse(TEXT("legacy pending snapshot with a corrupt seed is still rejected"),
+		FGameXXKRouteMerchantRules::GetView(BadSeed, RejectedView, &Error));
+	TestTrue(TEXT("corrupt-seed rejection is atomic"), RuntimeStatesMatch(BadSeed, BadSeedBefore));
+
+	FGameXXKRuntimeState BadSource = DirectLeaveLegacy;
+	BadSource.CardRun.RouteMerchant.SourceNodeId = 11;
+	const FGameXXKRuntimeState BadSourceBefore = BadSource;
+	TestFalse(TEXT("legacy pending snapshot with a corrupt source is still rejected"),
+		FGameXXKRouteMerchantRules::GetView(BadSource, RejectedView, &Error));
+	TestTrue(TEXT("corrupt-source rejection is atomic"), RuntimeStatesMatch(BadSource, BadSourceBefore));
+
+	FGameXXKRuntimeState CurrentPending = MakeMerchantState();
+	TestTrue(TEXT("current pending fixture generates current stock"),
+		FGameXXKRouteMerchantRules::EnsureStock(CurrentPending, &Error));
+	FGameXXKPendingRouteMerchantPurchase& CurrentPendingPurchase =
+		CurrentPending.CardRun.RouteMerchant.PendingPurchase;
+	CurrentPendingPurchase.bActive = true;
+	CurrentPendingPurchase.OfferId = CurrentPending.CardRun.RouteMerchant.Offers[0].OfferId;
+	CurrentPendingPurchase.CardId = CurrentPending.CardRun.RouteMerchant.Offers[0].ContentId;
+	CurrentPendingPurchase.Price = CurrentPending.CardRun.RouteMerchant.Offers[0].Price;
+	const FGameXXKRuntimeState CurrentPendingBefore = CurrentPending;
+	TestFalse(TEXT("non-legacy pending replacement remains rejected"),
+		FGameXXKRouteMerchantRules::EnsureStock(CurrentPending, &Error));
+	TestTrue(TEXT("non-legacy pending rejection remains atomic"),
+		RuntimeStatesMatch(CurrentPending, CurrentPendingBefore));
 	return true;
 }
 
