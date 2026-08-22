@@ -462,6 +462,7 @@ private:
 	void TickCollapsedResourceUnload(float InDeltaTime);
 	void ReleaseCollapsedResources();
 	void CaptureExpandedSessionState();
+	void PreserveEmbeddedSessionForLocalClose();
 	void UpdateTravelVisuals();
 	void EnsureTravelAtlasSession();
 	void RequestTravelCombatAtlases(FName EnemyDefinitionId);
@@ -640,7 +641,6 @@ private:
 	int32 CollapsedGcRequestCount = 0;
 	bool bCollapsedResourceUnloadPending = false;
 	bool bCollapsedResourcesReleased = false;
-	bool bHasCollapsedWorkbenchSession = false;
 	bool bHasSavedEmbeddedInventorySession = false;
 	FGameXXKEmbeddedInventorySessionState SavedEmbeddedInventorySession;
 	TArray<FDesktopToolEntry> ToolSlots;

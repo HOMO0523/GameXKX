@@ -1143,6 +1143,135 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchLocalCloseSessionTest,
+	"GameXXK.DesktopTraining.Workbench.LocalClosePreservesEmbeddedSession",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchLocalCloseSessionTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!TestNotNull(TEXT("local-close fixture subsystem exists"), Subsystem)
+		|| !Subsystem->StartGame())
+	{
+		return false;
+	}
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestNotNull(TEXT("local-close fixture widget exists"), Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	TestTrue(TEXT("local-close fixture opens Backpack"), Widget->OpenBackpack());
+
+	const auto StageNonDefaultDeckSession = [this, Widget](const TCHAR* Context) -> TArray<FName>
+	{
+		UGameXXKInventoryWindowWidget* Embedded = Widget->WidgetTree
+			? Cast<UGameXXKInventoryWindowWidget>(Widget->WidgetTree->FindWidget(TEXT("EmbeddedApprovedBackpack")))
+			: nullptr;
+		if (!TestNotNull(*FString::Printf(TEXT("%s owns an embedded Backpack"), Context), Embedded))
+		{
+			return TArray<FName>();
+		}
+		if (!TestTrue(*FString::Printf(TEXT("%s opens the Deck tab"), Context),
+			Embedded->OpenCharacterBackpackTabForTest(EGameXXKCharacterBackpackTab::Deck)))
+		{
+			return TArray<FName>();
+		}
+		const TArray<FName> OriginalDeck = Embedded->GetPendingHeroDeckIdsForTest();
+		if (!TestTrue(*FString::Printf(TEXT("%s starts with a staged card"), Context), OriginalDeck.Num() > 0)
+			|| !Embedded->ToggleHeroDeckCardForTest(OriginalDeck[0]))
+		{
+			return TArray<FName>();
+		}
+		const TArray<FName> DraftDeck = Embedded->GetPendingHeroDeckIdsForTest();
+		TestEqual(*FString::Printf(TEXT("%s owns one unapplied deck edit"), Context),
+			DraftDeck.Num(), OriginalDeck.Num() - 1);
+		return DraftDeck;
+	};
+
+	Widget->HandleActionClicked(0); // Open Warehouse before staging the local session.
+	const TArray<FName> WarehouseDraft = StageNonDefaultDeckSession(TEXT("warehouse close"));
+	if (WarehouseDraft.IsEmpty())
+	{
+		return false;
+	}
+	UButton* WarehouseClose = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("WarehouseCloseButton")))
+		: nullptr;
+	if (!TestNotNull(TEXT("warehouse exposes its real close button"), WarehouseClose))
+	{
+		return false;
+	}
+	const int32 WarehouseBuildCount = Widget->GetProgrammaticLayoutBuildCountForTest();
+	WarehouseClose->OnClicked.Broadcast();
+	TestEqual(TEXT("warehouse close callback performs no synchronous rebuild"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), WarehouseBuildCount);
+	TestTrue(TEXT("warehouse close callback leaves one parent refresh pending"), Widget->HasPendingLayoutRefreshForTest());
+	Widget->TickForTest(0.0f);
+	TestEqual(TEXT("warehouse close next tick performs exactly one rebuild"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), WarehouseBuildCount + 1);
+	TestFalse(TEXT("warehouse close closes only Warehouse"), Widget->IsWarehousePanelOpenForTest());
+	TestEqual(TEXT("warehouse close leaves Backpack in the center"),
+		Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
+	TestEqual(TEXT("warehouse close restores the embedded Deck tab"),
+		Widget->GetEmbeddedBackpackTabForTest(), EGameXXKCharacterBackpackTab::Deck);
+	TestEqual(TEXT("warehouse close restores the unapplied deck edit"),
+		Widget->GetEmbeddedPendingDeckIdsForTest(), WarehouseDraft);
+
+	Widget->HandleActionClicked(3); // Open Tools before staging a fresh local session.
+	const TArray<FName> ToolsDraft = StageNonDefaultDeckSession(TEXT("tools close"));
+	if (ToolsDraft.IsEmpty())
+	{
+		return false;
+	}
+	UButton* ToolsClose = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("ToolsCloseButton")))
+		: nullptr;
+	if (!TestNotNull(TEXT("tools exposes its real close button"), ToolsClose))
+	{
+		return false;
+	}
+	const int32 ToolsBuildCount = Widget->GetProgrammaticLayoutBuildCountForTest();
+	ToolsClose->OnClicked.Broadcast();
+	TestEqual(TEXT("tools close callback performs no synchronous rebuild"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), ToolsBuildCount);
+	TestTrue(TEXT("tools close callback leaves one parent refresh pending"), Widget->HasPendingLayoutRefreshForTest());
+	Widget->TickForTest(0.0f);
+	TestEqual(TEXT("tools close next tick performs exactly one rebuild"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), ToolsBuildCount + 1);
+	TestFalse(TEXT("tools close closes only the right rail"), Widget->IsRightPanelOpenForTest());
+	TestEqual(TEXT("tools close leaves Backpack in the center"),
+		Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
+	TestEqual(TEXT("tools close restores the embedded Deck tab"),
+		Widget->GetEmbeddedBackpackTabForTest(), EGameXXKCharacterBackpackTab::Deck);
+	TestEqual(TEXT("tools close restores the unapplied deck edit"),
+		Widget->GetEmbeddedPendingDeckIdsForTest(), ToolsDraft);
+
+	Widget->HandleActionClicked(1);
+	UButton* FormationClose = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("FormationCloseButton")))
+		: nullptr;
+	if (!TestNotNull(TEXT("formation exposes its real close button"), FormationClose))
+	{
+		return false;
+	}
+	const int32 FormationBuildCount = Widget->GetProgrammaticLayoutBuildCountForTest();
+	FormationClose->OnClicked.Broadcast();
+	TestEqual(TEXT("formation close callback performs no synchronous rebuild"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), FormationBuildCount);
+	TestTrue(TEXT("formation close callback leaves one parent refresh pending"), Widget->HasPendingLayoutRefreshForTest());
+	Widget->TickForTest(0.0f);
+	TestEqual(TEXT("formation close next tick performs exactly one rebuild"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), FormationBuildCount + 1);
+	TestEqual(TEXT("formation close button delegate returns the center to Backpack"),
+		Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingItemCarryBoundaryRollbackTest,
 	"GameXXK.DesktopTraining.Workbench.ItemCarryBoundaryRollback",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

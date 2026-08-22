@@ -1031,7 +1031,6 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 	}
 	CancelCollapsedResourceUnload();
 	bCollapsedResourcesReleased = false;
-	bHasCollapsedWorkbenchSession = false;
 	bHasSavedEmbeddedInventorySession = false;
 	AbortTransientInventoryInteraction(true, false);
 	ToolSlots.SetNum(ToolSlotCount);
@@ -1060,7 +1059,6 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::CloseWorkbench()
 {
 	const bool bWasVisible = IsInViewport() && GetVisibility() != ESlateVisibility::Collapsed;
 	CancelCollapsedResourceUnload();
-	bHasCollapsedWorkbenchSession = false;
 	bHasSavedEmbeddedInventorySession = false;
 	AbortTransientInventoryInteraction(true, false);
 	bSettingsPanelOpen = false;
@@ -1074,15 +1072,11 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::CloseWorkbench()
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::OpenBackpack()
 {
-	const bool bRestoreCollapsedSession = bHasCollapsedWorkbenchSession;
 	CancelCollapsedResourceUnload();
 	CancelCarryForStructuralChange();
 	ToolSlots.SetNum(ToolSlotCount);
-	if (!bRestoreCollapsedSession)
-	{
-		ActiveNav = EGameXXKDesktopTrainingNav::None;
-		ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
-	}
+	ActiveNav = EGameXXKDesktopTrainingNav::None;
+	ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
 	bSettingsPanelOpen = false;
 	bBackpackExpanded = true;
 	bExitConfirmationOpen = false;
@@ -1094,7 +1088,6 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenBackpack()
 			: FGameXXKEquipmentRules::HeroCharacterId();
 	}
 	RefreshLayout();
-	bHasCollapsedWorkbenchSession = false;
 	bCollapsedResourcesReleased = false;
 	return true;
 }
@@ -3775,6 +3768,15 @@ void UGameXXKDesktopTrainingWorkbenchWidget::CaptureExpandedSessionState()
 	bHasSavedEmbeddedInventorySession = true;
 }
 
+void UGameXXKDesktopTrainingWorkbenchWidget::PreserveEmbeddedSessionForLocalClose()
+{
+	if (bBackpackExpanded
+		&& ActiveCenterPage == EGameXXKDesktopTrainingCenterPage::Backpack)
+	{
+		CaptureExpandedSessionState();
+	}
+}
+
 void UGameXXKDesktopTrainingWorkbenchWidget::ScheduleCollapsedResourceUnload()
 {
 	CollapsedResourceUnloadRemainingSeconds = CollapsedResourceUnloadDelaySeconds;
@@ -4089,6 +4091,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ReturnAllToolEntries()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::CloseWarehousePanelToParent()
 {
+	PreserveEmbeddedSessionForLocalClose();
 	CancelCarryForStructuralChange();
 	bWarehousePanelOpen = false;
 	if (ActiveNav == EGameXXKDesktopTrainingNav::Warehouse)
@@ -4100,6 +4103,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::CloseWarehousePanelToParent()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::CloseCentralPageToBackpack()
 {
+	PreserveEmbeddedSessionForLocalClose();
 	CancelCarryForStructuralChange();
 	ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
 	if (ActiveNav == EGameXXKDesktopTrainingNav::Formation
@@ -4112,6 +4116,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::CloseCentralPageToBackpack()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::CloseRightPanelToParent()
 {
+	PreserveEmbeddedSessionForLocalClose();
 	CancelCarryForStructuralChange();
 	ReturnAllToolEntries();
 	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
@@ -4133,7 +4138,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ResetWorkbenchChildrenForGlobalClos
 	ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
 	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
 	ActiveNav = EGameXXKDesktopTrainingNav::None;
-	bHasCollapsedWorkbenchSession = false;
 	bHasSavedEmbeddedInventorySession = false;
 }
 
@@ -4368,6 +4372,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	if (ActionId == ActionCloseRightPanel)
 	{
 		CloseRightPanelToParent();
+		return;
+	}
+	if (ActionId == 0 && bWarehousePanelOpen)
+	{
+		CloseWarehousePanelToParent();
 		return;
 	}
 	if (ActionId >= 0 && ActionId <= 4)
