@@ -627,12 +627,12 @@ bool FGameXXKRouteMerchantSavedStockValidationTest::RunTest(const FString& Param
 
 	FGameXXKRuntimeState WrongCount = State;
 	WrongCount.CardRun.RouteMerchant.Offers.Pop();
-	TestFalse(TEXT("saved stock requires exactly four relic slots"),
+	TestFalse(TEXT("saved stock requires exactly four card slots"),
 		FGameXXKRouteMerchantRules::ValidateSavedStock(WrongCount, &Error));
 
 	FGameXXKRuntimeState WrongPrice = State;
 	++WrongPrice.CardRun.RouteMerchant.Offers[0].Price;
-	TestFalse(TEXT("saved relic prices are derived from catalog quality"),
+	TestFalse(TEXT("saved card-upgrade price is derived from next quality"),
 		FGameXXKRouteMerchantRules::ValidateSavedStock(WrongPrice, &Error));
 
 	FGameXXKRuntimeState WrongQuality = State;
@@ -640,7 +640,7 @@ bool FGameXXKRouteMerchantSavedStockValidationTest::RunTest(const FString& Param
 		WrongQuality.CardRun.RouteMerchant.Offers[0].Quality == EGameXXKCardQuality::Common
 			? EGameXXKCardQuality::Rare
 			: EGameXXKCardQuality::Common;
-	TestFalse(TEXT("saved relic quality must match the catalog"),
+	TestFalse(TEXT("saved card quality transition must remain canonical"),
 		FGameXXKRouteMerchantRules::ValidateSavedStock(WrongQuality, &Error));
 
 	FGameXXKRuntimeState WrongSeed = State;
