@@ -1094,6 +1094,15 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 		Widget->RightClickBackpackSlotForTest(Widget->FindBackpackItemSlotForTest(StoneId)));
 	TestEqual(TEXT("one tool reservation exists before global close"), Widget->GetOccupiedToolSlotCountForTest(), 1);
 	Widget->HandleActionClicked(0);
+	const TArray<FName> CompanionIds = Widget->GetCompanionCharacterIdsForTest();
+	if (!TestTrue(TEXT("fixture exposes a permanent companion Backpack owner"), CompanionIds.Num() > 0))
+	{
+		return false;
+	}
+	TestTrue(TEXT("permanent companion Backpack is selected before global close"),
+		Widget->SelectBackpackCharacterForTest(CompanionIds[0]));
+	TestEqual(TEXT("the selected permanent companion owns Backpack before global close"),
+		Widget->GetActiveBackpackCharacterIdForTest(), CompanionIds[0]);
 	Widget->HandleActionClicked(1);
 	const int32 EquipmentSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
 	TestTrue(TEXT("an item is carried before global close"),
@@ -1110,6 +1119,26 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 	TestEqual(TEXT("reopen starts on clean backpack"), Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
 	TestFalse(TEXT("reopen does not restore warehouse"), Widget->IsWarehousePanelOpenForTest());
 	TestFalse(TEXT("reopen does not restore right rail"), Widget->IsRightPanelOpenForTest());
+	TestEqual(TEXT("reopen resets the Backpack owner to the default hero"),
+		Widget->GetActiveBackpackCharacterIdForTest(), FGameXXKEquipmentRules::HeroCharacterId());
+	TestEqual(TEXT("the rebuilt embedded Backpack is configured for the default hero"),
+		Widget->GetEmbeddedBackpackCharacterIdForTest(), FGameXXKEquipmentRules::HeroCharacterId());
+	UButton* HeroRosterButton = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CharacterRosterHeroButton")))
+		: nullptr;
+	UButton* CompanionRosterButton = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CharacterRosterCompanionButton")))
+		: nullptr;
+	if (TestNotNull(TEXT("reopen exposes the hero roster tab"), HeroRosterButton)
+		&& TestNotNull(TEXT("reopen exposes the companion roster tab"), CompanionRosterButton))
+	{
+		const UObject* HeroTabTexture = HeroRosterButton->GetStyle().Normal.GetResourceObject();
+		const UObject* CompanionTabTexture = CompanionRosterButton->GetStyle().Normal.GetResourceObject();
+		TestTrue(TEXT("reopen selects the default hero roster"),
+			HeroTabTexture && HeroTabTexture->GetPathName().Contains(TEXT("004_tab_2")));
+		TestTrue(TEXT("reopen does not retain the companion roster selection"),
+			CompanionTabTexture && CompanionTabTexture->GetPathName().Contains(TEXT("003_tab_1")));
+	}
 	return true;
 }
 

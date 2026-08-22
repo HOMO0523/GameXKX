@@ -4128,6 +4128,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ResetWorkbenchChildrenForGlobalClos
 	CancelCarryForStructuralChange();
 	ReturnAllToolEntries();
 	bWarehousePanelOpen = false;
+	ActiveBackpackCharacterId = FGameXXKEquipmentRules::HeroCharacterId();
+	ActiveCharacterRoster = EGameXXKDesktopTrainingCharacterRoster::Hero;
 	ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
 	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
 	ActiveNav = EGameXXKDesktopTrainingNav::None;
