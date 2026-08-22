@@ -14,7 +14,6 @@ class USafeZone;
 class UScaleBox;
 class USizeBox;
 class UTextBlock;
-class UUniformGridPanel;
 class UVerticalBox;
 class UGameXXKRouteMerchantWidget;
 
@@ -38,25 +37,6 @@ private:
 	bool bPurchaseAction = false;
 };
 
-/** Carries one stable route-card EntryId from the replacement picker back to the merchant widget. */
-UCLASS()
-class GAMEXXK_API UGameXXKRouteMerchantReplacementButton : public UButton
-{
-	GENERATED_BODY()
-
-public:
-	void Configure(UGameXXKRouteMerchantWidget* InOwner, FName InReplacementEntryId);
-
-private:
-	UFUNCTION()
-	void HandleClicked();
-
-	UPROPERTY(Transient)
-	TObjectPtr<UGameXXKRouteMerchantWidget> Owner;
-
-	FName ReplacementEntryId = NAME_None;
-};
-
 /**
  * Dedicated 1920x1080 safe-area merchant HUD. It renders the subsystem read-model,
  * and every mutation is routed back through the subsystem facade.
@@ -74,16 +54,10 @@ public:
 	void RefreshFromState();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMerchant")
-	bool PurchaseOffer(FName OfferId, FName ReplacementEntryId = NAME_None);
-
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMerchant")
-	bool SelectReplacementEntry(FName ReplacementEntryId);
+	bool PurchaseOffer(FName OfferId);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMerchant")
 	bool RefreshStock();
-
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMerchant")
-	bool CancelPendingPurchase();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMerchant")
 	bool LeaveMerchant();
@@ -101,16 +75,16 @@ public:
 	FVector2D GetCardFrameSizeForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
-	FVector2D GetRelicFrameSizeForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
 	FString GetCardFrameResourcePathForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
 	int32 GetRenderedCardOfferCountForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
-	int32 GetRenderedRelicOfferCountForTest() const;
+	int32 GetRenderedRelicOfferCountForTest() const { return 0; }
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
+	bool HasTopRightCloseButtonForTest() const { return false; }
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
 	int32 GetOfferTooltipCountForTest() const;
@@ -125,7 +99,7 @@ public:
 	FString GetOfferDisabledReasonForTest(FName OfferId) const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
-	FText GetRouteTravelMoneyTextForTest() const;
+	FText GetOrdinaryGoldTextForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
 	FText GetRefreshButtonTextForTest() const;
@@ -142,33 +116,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
 	FText GetDisplayedLastActionErrorForTest() const;
 
-	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
-	TArray<FName> GetEligibleReplacementEntryIdsForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
-	bool IsReplacementSelectionVisibleForTest() const;
-
 private:
 	friend class UGameXXKRouteMerchantOfferButton;
-	friend class UGameXXKRouteMerchantReplacementButton;
 
 	void BuildProgrammaticLayout();
 	USizeBox* BuildOfferCell(EGameXXKRouteMerchantOfferKind Kind, int32 GlobalOfferIndex);
 	void ApplyView(const FGameXXKRouteMerchantView& View);
 	void ApplyOffer(int32 GlobalOfferIndex, const FGameXXKRouteMerchantOfferView* OfferView, EGameXXKRouteMerchantOfferKind ExpectedKind);
-	void RestorePendingReplacementSelection(const UGameXXKMVPSubsystem* Subsystem, const FGameXXKRouteMerchantView& View);
-	void ApplyReplacementSelection(const FGameXXKRouteMerchantView& View);
 	void UpdateLastActionErrorDisplay();
-	FText BuildReplacementEntryLabel(FName ReplacementEntryId) const;
 	FText BuildOfferTooltip(const FGameXXKRouteMerchantOfferView* OfferView, EGameXXKRouteMerchantOfferKind ExpectedKind, const FString& DisabledReason) const;
+	FText ResolveOwnerLabel(FName OwnerMemberId) const;
 	FString ResolveDisabledReason(const FGameXXKRouteMerchantOfferView* OfferView) const;
 	void ClearTransientInteractionState();
 
 	UFUNCTION()
 	void HandleRefreshClicked();
-
-	UFUNCTION()
-	void HandleCancelClicked();
 
 	UFUNCTION()
 	void HandleLeaveClicked();
@@ -189,34 +151,19 @@ private:
 	TObjectPtr<UHorizontalBox> CardOfferRow;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UHorizontalBox> RelicOfferRow;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> RouteTravelMoneyText;
+	TObjectPtr<UTextBlock> OrdinaryGoldText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> LastActionErrorText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UBorder> ReplacementSelectionPanel;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UUniformGridPanel> ReplacementSelectionGrid;
-
-	UPROPERTY(Transient)
 	TObjectPtr<UButton> RefreshButton;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UButton> CancelButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> LeaveButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> RefreshButtonText;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> CancelButtonText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> LeaveButtonText;
@@ -231,10 +178,22 @@ private:
 	TArray<TObjectPtr<UImage>> OfferArtImages;
 
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> OfferArtUnavailableTexts;
+
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UBorder>> OfferTitleBars;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> OfferNameTexts;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> OfferOwnerTexts;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> OfferQualityTexts;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> OfferEffectTexts;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> OfferPriceTexts;
@@ -246,17 +205,10 @@ private:
 	TArray<TObjectPtr<UTextBlock>> OfferPurchaseTexts;
 
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<UGameXXKRouteMerchantReplacementButton>> ReplacementSelectionButtons;
-
-	UPROPERTY(Transient)
-	FGameXXKRouteMerchantView CachedView;
-
-	UPROPERTY(Transient)
 	FGameXXKRouteMerchantPurchaseResult LastPurchaseResult;
 
 	TArray<FName> RenderedOfferIds;
 	TArray<FText> OfferTooltips;
 	TArray<FString> OfferDisabledReasons;
-	TArray<FName> RenderedReplacementEntryIds;
 	FString LastActionError;
 };
