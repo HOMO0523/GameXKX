@@ -983,9 +983,9 @@ FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseButtonDown(
 	const FGeometry& InGeometry,
 	const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && CarriedEntry.IsValid())
+	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton
+		&& HandleWorkbenchRightMouseCancel())
 	{
-		AbortTransientInventoryInteraction(false, true);
 		return FReply::Handled();
 	}
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
@@ -1220,6 +1220,11 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::DropCarriedOnBackpackSlotForTest(co
 void UGameXXKDesktopTrainingWorkbenchWidget::NotifyApplicationDeactivatedForTest()
 {
 	HandleApplicationActivationChanged(false);
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::CancelCarriedFromWorkbenchRightMouseForTest()
+{
+	return HandleWorkbenchRightMouseCancel();
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::ForceExternalSlateRebuildForTest()
@@ -4164,6 +4169,17 @@ void UGameXXKDesktopTrainingWorkbenchWidget::HandleApplicationActivationChanged(
 	{
 		AbortTransientInventoryInteraction(false, true);
 	}
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleWorkbenchRightMouseCancel()
+{
+	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
+	if (!CarriedEntry.IsValid())
+	{
+		return false;
+	}
+	AbortTransientInventoryInteraction(false, true);
+	return true;
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::HandlePersistenceBoundary()

@@ -1018,6 +1018,98 @@ bool FGameXXKDesktopTrainingEmbeddedBackpackDeferredRefreshTest::RunTest(const F
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingCarriedRightClickCancelTest,
+	"GameXXK.DesktopTraining.Workbench.CarriedRightClickCancelKeepsBackpack",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingCarriedRightClickCancelTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!TestNotNull(TEXT("right-cancel fixture subsystem exists"), Subsystem)
+		|| !Subsystem->StartGame())
+	{
+		return false;
+	}
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestNotNull(TEXT("right-cancel fixture widget exists"), Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	TestTrue(TEXT("right-cancel fixture opens Backpack"), Widget->OpenBackpack());
+
+	UGameXXKInventoryWindowWidget* Embedded = Widget->WidgetTree
+		? Cast<UGameXXKInventoryWindowWidget>(Widget->WidgetTree->FindWidget(TEXT("EmbeddedApprovedBackpack")))
+		: nullptr;
+	if (!TestNotNull(TEXT("right-cancel fixture owns the embedded Backpack"), Embedded))
+	{
+		return false;
+	}
+	const int32 OriginalSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
+	if (!TestTrue(TEXT("right-cancel fixture finds the first occupied equipment slot"), OriginalSlot != INDEX_NONE))
+	{
+		return false;
+	}
+
+	const int32 BuildCountBeforePickup = Widget->GetProgrammaticLayoutBuildCountForTest();
+	Embedded->HandleConfiguredSlotClicked(
+		EGameXXKInventorySlotSource::PlayerBackpack,
+		OriginalSlot,
+		NAME_None);
+	TestTrue(TEXT("configured left callback enters carry state"), Widget->IsCarryingItemForTest());
+	TestEqual(TEXT("configured left callback performs no synchronous rebuild"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), BuildCountBeforePickup);
+	TestTrue(TEXT("configured left callback leaves one refresh pending"), Widget->HasPendingLayoutRefreshForTest());
+	Widget->TickForTest(0.0f);
+	TestEqual(TEXT("pickup safe boundary performs exactly one rebuild"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), BuildCountBeforePickup + 1);
+	TestNotNull(TEXT("pickup rebuild owns a carried visual"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("DesktopCarriedItemImage")) : nullptr);
+
+	Embedded = Widget->WidgetTree
+		? Cast<UGameXXKInventoryWindowWidget>(Widget->WidgetTree->FindWidget(TEXT("EmbeddedApprovedBackpack")))
+		: nullptr;
+	if (!TestNotNull(TEXT("pickup rebuild exposes a fresh embedded Backpack"), Embedded))
+	{
+		return false;
+	}
+	const int32 BuildCountBeforeCancel = Widget->GetProgrammaticLayoutBuildCountForTest();
+	TestTrue(TEXT("workbench right-mouse fallback cancels the carried item"),
+		Widget->CancelCarriedFromWorkbenchRightMouseForTest());
+	TestFalse(TEXT("right-mouse cancel clears CarriedEntry immediately"), Widget->IsCarryingItemForTest());
+	TestEqual(TEXT("right-mouse callback performs no synchronous parent rebuild"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), BuildCountBeforeCancel);
+	TestTrue(TEXT("right-mouse callback leaves one refresh pending"), Widget->HasPendingLayoutRefreshForTest());
+	TestEqual(TEXT("right-mouse cancel preserves the authoritative origin slot"),
+		Widget->FindFirstBackpackEquipmentSlotForTest(), OriginalSlot);
+
+	Widget->TickForTest(0.0f);
+	TestEqual(TEXT("right-mouse safe boundary performs exactly one rebuild"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), BuildCountBeforeCancel + 1);
+	TestTrue(TEXT("right-mouse cancel keeps the parent expanded"), Widget->IsBackpackExpandedForTest());
+	TestEqual(TEXT("right-mouse cancel keeps Backpack in the center"),
+		Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
+	UWidget* RebuiltPaper = Widget->WidgetTree
+		? Widget->WidgetTree->FindWidget(TEXT("EmbeddedBackpackPaperReference"))
+		: nullptr;
+	TestNotNull(TEXT("right-mouse rebuild restores the Backpack paper root"), RebuiltPaper);
+	if (RebuiltPaper)
+	{
+		TestTrue(TEXT("rebuilt Backpack paper remains visible"),
+			RebuiltPaper->GetVisibility() != ESlateVisibility::Collapsed
+			&& RebuiltPaper->GetVisibility() != ESlateVisibility::Hidden);
+	}
+	TestNotNull(TEXT("right-mouse rebuild restores a fresh embedded Backpack"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("EmbeddedApprovedBackpack")) : nullptr);
+	TestNull(TEXT("right-mouse rebuild removes the floating carried visual"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("DesktopCarriedItemImage")) : nullptr);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingWorkbenchCloseStackTest,
 	"GameXXK.DesktopTraining.Workbench.ParentCloseStack",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

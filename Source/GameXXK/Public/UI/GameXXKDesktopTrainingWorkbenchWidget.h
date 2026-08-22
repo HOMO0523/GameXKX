@@ -181,6 +181,7 @@ public:
 
 	bool DropCarriedOnBackpackSlotForTest(int32 SlotIndex);
 	void NotifyApplicationDeactivatedForTest();
+	bool CancelCarriedFromWorkbenchRightMouseForTest();
 	void ForceExternalSlateRebuildForTest();
 	void DestructForTest();
 
@@ -490,6 +491,7 @@ private:
 	void ResetWorkbenchChildrenForGlobalClose();
 	void AbortTransientInventoryInteraction(bool bReturnToolEntries, bool bRefreshLayout);
 	void HandleApplicationActivationChanged(bool bIsActive);
+	bool HandleWorkbenchRightMouseCancel();
 	void HandlePersistenceBoundary();
 	void UpdateCarriedItemVisualPosition();
 	bool ToggleAlwaysOnTop();
