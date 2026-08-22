@@ -105,7 +105,7 @@ Clicking a card changes only the selected choice. A separate bottom `Confirm` ac
 
 The merchant remains an independent route-map node. It has no top-right `X`. The only exit is `Leave Merchant`, which cancels any uncommitted transient selection, completes the merchant node, and returns to the route map.
 
-Purchased upgrades commit immediately. Closing/reopening the app or re-entering the merchant through a saved unresolved state must preserve stock, sold state, refresh count, route currency, and upgraded card qualities.
+Purchased upgrades commit immediately. Closing/reopening the app or re-entering the merchant through a saved unresolved state must preserve stock, sold state, refresh count, ordinary gold, and upgraded card qualities.
 
 ### 5.3 Four carried-card offers
 
@@ -118,7 +118,7 @@ Merchant stock is selected deterministically from the combined carried-card pool
 - show at most four offers;
 - show a disabled `No upgradable card` placeholder for missing slots.
 
-Each offer card shows its owner, current quality, next quality/effect preview, and route-travel-money price. Each of the four offers may be purchased once, and the player may buy multiple offers when funds permit. Purchasing deducts route travel money and upgrades the authoritative carried card from `Common -> Rare -> Epic`; it does not create a new or temporary route card.
+Each offer card shows its owner, current quality, next quality/effect preview, and ordinary-gold price. Each of the four offers may be purchased once, and the player may buy multiple offers when funds permit. Purchasing deducts the existing permanent/idle ordinary-gold balance (`PlayerGold`) and upgrades the authoritative carried card from `Common -> Rare -> Epic`; it does not create a new or temporary route card. Merchant purchase and refresh never deduct route-travel money.
 
 Refresh rerolls unpurchased eligible targets and uses the existing increasing route-merchant refresh-price progression. Purchased slots remain visibly sold. Purchase and refresh operations are transactional: insufficient money, stale ownership, changed quality, or an exhausted pool does not partially mutate state.
 

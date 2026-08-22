@@ -322,7 +322,7 @@ Replace relic-pool generation with:
 Preview validates route context, stable offer ID, unsold state, affordability, owner still deployed/carries the card, current quality still equals saved quality, and next quality is concrete. Commit on a candidate copy:
 
 ```cpp
-	Candidate.CardRun.RouteTravelMoney -= Offer.Price;
+	Candidate.PlayerGold -= Offer.Price;
 	Candidate.CardRun.UpgradedCardQualities.Add(Offer.ContentId, Offer.NextQuality);
 	FGameXXKRouteMerchantOffer* MutableOffer = Candidate.CardRun.RouteMerchant.Offers.FindByPredicate(
 		[&Offer](const FGameXXKRouteMerchantOffer& Item) { return Item.OfferId == Offer.OfferId; });
