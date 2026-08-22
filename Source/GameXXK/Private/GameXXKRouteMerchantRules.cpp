@@ -713,9 +713,17 @@ bool FGameXXKRouteMerchantRules::GetView(
 		FGameXXKRouteMerchantOfferView OfferView;
 		OfferView.SavedOffer = Offer;
 		OfferView.bAffordable = !Offer.bUnavailable && Offer.Price > 0 && State.PlayerGold >= Offer.Price;
-		OfferView.bPurchaseEnabled = OfferView.bAffordable && !Offer.bSold;
+		bool bLiveValid = true;
+		FString LiveDisabledReason;
+		if (!Offer.bUnavailable && !Offer.bSold)
+		{
+			EGameXXKRouteMerchantPurchaseFailure LiveFailure;
+			bLiveValid = ValidateLiveCardOffer(State, Offer, LiveFailure, LiveDisabledReason);
+		}
+		OfferView.bPurchaseEnabled = OfferView.bAffordable && !Offer.bSold && bLiveValid;
 		if (Offer.bUnavailable) { OfferView.DisabledReason = TEXT("没有可强化卡牌"); }
 		else if (Offer.bSold) { OfferView.DisabledReason = TEXT("已售"); }
+		else if (!bLiveValid) { OfferView.DisabledReason = MoveTemp(LiveDisabledReason); }
 		else if (!OfferView.bAffordable)
 		{
 			OfferView.DisabledReason = FString::Printf(

@@ -4,7 +4,6 @@
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKEncounterRules.h"
-#include "GameXXKRelicCatalog.h"
 #include "GameXXKRouteMerchantRules.h"
 #include "GameXXKRouteMerchantTypes.h"
 #include "MVP/GameXXKSaveMigration.h"
@@ -212,34 +211,6 @@ namespace
 		});
 	}
 
-	FGameXXKRouteMerchantOffer* ForceStackableRelicOffer(FGameXXKRuntimeState& State)
-	{
-		FGameXXKRouteMerchantOffer* Offer = FindAvailableOffer(State, EGameXXKRouteMerchantOfferKind::Relic);
-		if (!Offer)
-		{
-			return nullptr;
-		}
-		TSet<FName> OtherOfferedIds;
-		for (const FGameXXKRouteMerchantOffer& Existing : State.CardRun.RouteMerchant.Offers)
-		{
-			if (&Existing != Offer && Existing.Kind == EGameXXKRouteMerchantOfferKind::Relic && !Existing.bUnavailable)
-			{
-				OtherOfferedIds.Add(Existing.ContentId);
-			}
-		}
-		for (const FGameXXKRelicDefinition& Definition : FGameXXKRelicCatalog::GetAllDefinitions())
-		{
-			if (Definition.bStackable && !OtherOfferedIds.Contains(Definition.Id))
-			{
-				Offer->ContentId = Definition.Id;
-				Offer->Quality = Definition.BaseQuality;
-				Offer->Price = FGameXXKCardQualityRules::GetRelicPrice(Definition.BaseQuality);
-				return Offer;
-			}
-		}
-		return nullptr;
-	}
-
 	void ExpectPurchaseFailureAndRollback(
 		FAutomationTestBase& Test,
 		FGameXXKRuntimeState& State,
@@ -274,6 +245,56 @@ namespace
 		Test.TestFalse(*FString::Printf(TEXT("%s refresh reports a reason"), Label), Error.IsEmpty());
 		Test.TestTrue(*FString::Printf(TEXT("%s refresh preserves the complete runtime"), Label),
 			RuntimeStatesMatch(State, Before));
+	}
+
+	void ExpectStaleOfferViewDisabled(
+		FAutomationTestBase& Test,
+		FGameXXKRuntimeState& State,
+		const FName OfferId,
+		const FString& ExpectedReasonToken,
+		const TCHAR* Label)
+	{
+		const FGameXXKRuntimeState Before = State;
+		auto ValidateProjectedView = [&](const FGameXXKRouteMerchantView& View, const TCHAR* ProjectionLabel)
+		{
+			const FGameXXKRouteMerchantOfferView* Target = View.CardOffers.FindByPredicate(
+				[OfferId](const FGameXXKRouteMerchantOfferView& Offer)
+				{
+					return Offer.SavedOffer.OfferId == OfferId;
+				});
+			Test.TestNotNull(*FString::Printf(TEXT("%s %s keeps target visible"), Label, ProjectionLabel), Target);
+			if (!Target)
+			{
+				return;
+			}
+			Test.TestTrue(*FString::Printf(TEXT("%s %s keeps balance affordability separate"), Label, ProjectionLabel),
+				Target->bAffordable);
+			Test.TestFalse(*FString::Printf(TEXT("%s %s disables stale purchase"), Label, ProjectionLabel),
+				Target->bPurchaseEnabled);
+			Test.TestFalse(*FString::Printf(TEXT("%s %s exposes stale reason"), Label, ProjectionLabel),
+				Target->DisabledReason.IsEmpty());
+			Test.TestTrue(*FString::Printf(TEXT("%s %s reason matches live validation"), Label, ProjectionLabel),
+				Target->DisabledReason.Contains(ExpectedReasonToken));
+			Test.TestTrue(*FString::Printf(TEXT("%s %s leaves another valid offer enabled"), Label, ProjectionLabel),
+				View.CardOffers.ContainsByPredicate([OfferId](const FGameXXKRouteMerchantOfferView& Offer)
+				{
+					return Offer.SavedOffer.OfferId != OfferId && Offer.bPurchaseEnabled;
+				}));
+		};
+
+		FGameXXKRouteMerchantView ConstView;
+		FString Error;
+		const FGameXXKRuntimeState& ConstState = State;
+		Test.TestTrue(*FString::Printf(TEXT("%s const view builds"), Label),
+			FGameXXKRouteMerchantRules::GetView(ConstState, ConstView, &Error));
+		ValidateProjectedView(ConstView, TEXT("const"));
+		Test.TestTrue(*FString::Printf(TEXT("%s const view is pure"), Label), RuntimeStatesMatch(State, Before));
+
+		FGameXXKRouteMerchantView MutableView;
+		Test.TestTrue(*FString::Printf(TEXT("%s mutable view builds"), Label),
+			FGameXXKRouteMerchantRules::GetView(State, MutableView, &Error));
+		ValidateProjectedView(MutableView, TEXT("mutable"));
+		Test.TestTrue(*FString::Printf(TEXT("%s mutable view is pure"), Label), RuntimeStatesMatch(State, Before));
 	}
 }
 
@@ -521,11 +542,11 @@ bool FGameXXKRouteMerchantPurchaseValidationTest::RunTest(const FString& Paramet
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FGameXXKRouteMerchantPurchaseRelicTest,
+	FGameXXKRouteMerchantPurchaseCardQualityTest,
 	"GameXXK.Route.Merchant.Rules.Purchase.CardQualityAtomicCommit",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FGameXXKRouteMerchantPurchaseRelicTest::RunTest(const FString& Parameters)
+bool FGameXXKRouteMerchantPurchaseCardQualityTest::RunTest(const FString& Parameters)
 {
 	FString Error;
 	FGameXXKRuntimeState State = MakeMerchantState();
@@ -574,7 +595,7 @@ bool FGameXXKRouteMerchantSavedStockValidationTest::RunTest(const FString& Param
 {
 	FString Error;
 	FGameXXKRuntimeState State = MakeMerchantState();
-	if (!TestTrue(TEXT("saved-stock fixture generates canonical relic stock"),
+	if (!TestTrue(TEXT("saved-stock fixture generates canonical card-upgrade stock"),
 		FGameXXKRouteMerchantRules::EnsureStock(State, &Error)))
 	{
 		return false;
@@ -639,13 +660,7 @@ bool FGameXXKRouteMerchantSavedStockValidationTest::RunTest(const FString& Param
 
 	FGameXXKRuntimeState SoldSnapshot = State;
 	SoldSnapshot.CardRun.RouteMerchant.Offers[0].bSold = true;
-	FGameXXKRelicInstance PurchasedRelic;
-	PurchasedRelic.RelicId = SoldSnapshot.CardRun.RouteMerchant.Offers[0].ContentId;
-	PurchasedRelic.Stacks = 1;
-	PurchasedRelic.AcquisitionOrdinal = 1;
-	SoldSnapshot.CardRun.Relics.Add(PurchasedRelic);
-	SoldSnapshot.CardRun.NextRelicAcquisitionOrdinal = 1;
-	TestTrue(TEXT("sold snapshot content remains valid after relic ownership changes"),
+	TestTrue(TEXT("sold card-upgrade snapshot remains structurally valid"),
 		FGameXXKRouteMerchantRules::ValidateSavedStock(SoldSnapshot, &Error));
 	return true;
 }
@@ -1100,7 +1115,11 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 		FindAvailableOffer(RefreshStaleCarry, EGameXXKRouteMerchantOfferKind::Card);
 	if (TestNotNull(TEXT("stale refresh carry fixture has an offer"), RefreshStaleCarryOffer))
 	{
+		const FName StaleViewOfferId = RefreshStaleCarryOffer->OfferId;
 		RefreshStaleCarry.CardRun.HeroSelectedCardIds.Remove(RefreshStaleCarryOffer->ContentId);
+		ExpectStaleOfferViewDisabled(
+			*this, RefreshStaleCarry, StaleViewOfferId, TEXT("no longer carries"),
+			TEXT("unsold card no longer carried"));
 		ExpectRefreshDisabledAndRollback(*this, RefreshStaleCarry, TEXT("unsold card no longer carried"));
 	}
 
@@ -1111,9 +1130,13 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 		FindAvailableOffer(RefreshStaleQuality, EGameXXKRouteMerchantOfferKind::Card);
 	if (TestNotNull(TEXT("stale refresh quality fixture has an offer"), RefreshStaleQualityOffer))
 	{
+		const FName StaleViewOfferId = RefreshStaleQualityOffer->OfferId;
 		RefreshStaleQuality.CardRun.UpgradedCardQualities.Add(
 			RefreshStaleQualityOffer->ContentId,
 			RefreshStaleQualityOffer->NextQuality);
+		ExpectStaleOfferViewDisabled(
+			*this, RefreshStaleQuality, StaleViewOfferId, TEXT("quality changed"),
+			TEXT("unsold card quality changed"));
 		ExpectRefreshDisabledAndRollback(*this, RefreshStaleQuality, TEXT("unsold card quality changed"));
 	}
 
@@ -1124,26 +1147,43 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 		FindAvailableOffer(RefreshMaxQuality, EGameXXKRouteMerchantOfferKind::Card);
 	if (TestNotNull(TEXT("max refresh quality fixture has an offer"), RefreshMaxQualityOffer))
 	{
+		const FName StaleViewOfferId = RefreshMaxQualityOffer->OfferId;
 		RefreshMaxQuality.CardRun.UpgradedCardQualities.Add(
 			RefreshMaxQualityOffer->ContentId,
 			EGameXXKCardQuality::Epic);
+		ExpectStaleOfferViewDisabled(
+			*this, RefreshMaxQuality, StaleViewOfferId, TEXT("Epic"),
+			TEXT("unsold card reached max quality"));
 		ExpectRefreshDisabledAndRollback(*this, RefreshMaxQuality, TEXT("unsold card reached max quality"));
 	}
 
 	FGameXXKRuntimeState RefreshStaleOwner = MakeMerchantState();
-	RefreshStaleOwner.CardRun.HeroSelectedCardIds.Reset();
+	RefreshStaleOwner.CardRun.HeroSelectedCardIds.SetNum(1);
 	FGameXXKPermanentCompanion RefreshOwnerCompanion;
 	RefreshOwnerCompanion.InstanceId = TEXT("Companion.Test.RefreshStaleOwner");
 	RefreshOwnerCompanion.Role = EGameXXKCharacterRole::Blade;
 	RefreshOwnerCompanion.bIsActive = true;
-	RefreshOwnerCompanion.SelectedCardIds = {ProfessionCards[0], ProfessionCards[1]};
+	RefreshOwnerCompanion.SelectedCardIds = {ProfessionCards[0], ProfessionCards[1], ProfessionCards[2]};
 	RefreshStaleOwner.CardRun.CompanionRoster.PermanentCompanions.Add(RefreshOwnerCompanion);
 	RefreshStaleOwner.CardRun.PartySelection.ActivePermanentCompanionInstanceId = RefreshOwnerCompanion.InstanceId;
 	TestTrue(TEXT("stale refresh owner fixture generates"),
 		FGameXXKRouteMerchantRules::EnsureStock(RefreshStaleOwner, &Error));
-	RefreshStaleOwner.CardRun.PartySelection.ActivePermanentCompanionInstanceId = NAME_None;
-	RefreshStaleOwner.CardRun.CompanionRoster.PermanentCompanions.Last().bIsActive = false;
-	ExpectRefreshDisabledAndRollback(*this, RefreshStaleOwner, TEXT("unsold owner no longer deployed"));
+	FGameXXKRouteMerchantOffer* RefreshStaleOwnerOffer =
+		RefreshStaleOwner.CardRun.RouteMerchant.Offers.FindByPredicate(
+			[OwnerId = RefreshOwnerCompanion.InstanceId](const FGameXXKRouteMerchantOffer& Offer)
+			{
+				return Offer.OwnerMemberId == OwnerId && !Offer.bUnavailable && !Offer.bSold;
+			});
+	if (TestNotNull(TEXT("stale refresh owner fixture offers a companion card"), RefreshStaleOwnerOffer))
+	{
+		const FName StaleViewOfferId = RefreshStaleOwnerOffer->OfferId;
+		RefreshStaleOwner.CardRun.PartySelection.ActivePermanentCompanionInstanceId = NAME_None;
+		RefreshStaleOwner.CardRun.CompanionRoster.PermanentCompanions.Last().bIsActive = false;
+		ExpectStaleOfferViewDisabled(
+			*this, RefreshStaleOwner, StaleViewOfferId, TEXT("no longer deployed"),
+			TEXT("unsold owner no longer deployed"));
+		ExpectRefreshDisabledAndRollback(*this, RefreshStaleOwner, TEXT("unsold owner no longer deployed"));
+	}
 
 	FGameXXKRuntimeState Legacy = MakeMerchantState();
 	TestTrue(TEXT("legacy fixture first generates current stock"), FGameXXKRouteMerchantRules::EnsureStock(Legacy, &Error));
