@@ -1287,33 +1287,61 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKCardBattleBoardRouteAutoBattleStallTest::RunTest(const FString& Parameters)
 {
 	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
-	FName PlayableCardInstanceId;
+	FName CardInstanceId;
 	FName TargetUnitId;
 	FName OwnerUnitId;
-	FGameXXKCardPlayPreview Preview;
 	FString FixtureError;
-	TestTrue(FString::Printf(TEXT("route-auto player-phase fixture builds: %s"), *FixtureError),
-		BuildManualTargetCardFixture(
+	TestTrue(FString::Printf(TEXT("route-auto fixture enters a production generated-route battle: %s"), *FixtureError),
+		BuildRouteRewardFixture(
 			Subsystem,
-			PlayableCardInstanceId,
+			CardInstanceId,
 			TargetUnitId,
 			OwnerUnitId,
-			Preview,
 			FixtureError));
 
-	FGameXXKCardBattleRuntime& Runtime = Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle;
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	const int32 SourceNodeId = State.ActiveBattleNodeId;
+	TestTrue(TEXT("route-auto fixture keeps generated route ownership"),
+		State.bDungeonActive && State.bHasGeneratedRouteMap && State.Screen == EGameXXKScreen::Battle);
+	TestTrue(TEXT("route-auto fixture owns a valid battle-entry checkpoint"),
+		State.BattleEntryCheckpoint.bValid);
+	TestEqual(TEXT("checkpoint source matches the active route battle node"),
+		State.BattleEntryCheckpoint.SourceNodeId,
+		SourceNodeId);
+	TestEqual(TEXT("pending route node matches the active route battle node"),
+		State.PendingRouteNodeId,
+		SourceNodeId);
+	TestEqual(TEXT("card battle source matches the active route battle node"),
+		State.CardRun.ActiveBattleSourceNodeId,
+		SourceNodeId);
+
+	FGameXXKCardBattleRuntime& Runtime = State.CardRun.ActiveBattle;
 	const FGameXXKCardInstance* const PlayableCard = Runtime.Deck.Hand.FindByPredicate(
-		[PlayableCardInstanceId](const FGameXXKCardInstance& Card)
-	{
-		return Card.InstanceId == PlayableCardInstanceId;
-	});
+		[CardInstanceId](const FGameXXKCardInstance& Card)
+		{
+			return Card.InstanceId == CardInstanceId;
+		});
+	FGameXXKCardCombatUnit* const Civet = Runtime.Units.FindByPredicate(
+		[TargetUnitId](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == TargetUnitId && Unit.Side == EGameXXKCardTargetSide::Enemy;
+		});
 	TestNotNull(TEXT("route-auto fixture keeps its real playable card in hand"), PlayableCard);
-	if (!PlayableCard)
+	TestNotNull(TEXT("route-auto fixture keeps its real route enemy target"), Civet);
+	if (!PlayableCard || !Civet)
 	{
 		return false;
 	}
+
 	Runtime.RoundNumber = 2;
 	Runtime.Deck.SharedEnergy = 3;
+	Runtime.Deck.PendingChoice = FGameXXKPendingCardChoice();
+	Runtime.Deck.PendingChoice.Kind = EGameXXKCardPendingChoiceKind::None;
+	Civet->HP = 55;
+	Civet->MaxHP = 55;
+	Civet->bLiving = true;
+	Civet->EnemyDefinitionId = TEXT("Enemy.Ch1.Civet");
+	Runtime.EnemyStates.FindOrAdd(TargetUnitId).DefinitionId = TEXT("Enemy.Ch1.Civet");
 	FGameXXKResolvedCardSnapshot Replay;
 	Replay.CardId = PlayableCard->CardId;
 	Replay.Quality = PlayableCard->CurrentQuality;
@@ -1323,11 +1351,38 @@ bool FGameXXKCardBattleBoardRouteAutoBattleStallTest::RunTest(const FString& Par
 	Runtime.AutomaticResolutionQueue.bActive = true;
 	Runtime.AutomaticResolutionQueue.Origin = EGameXXKCardResolutionOrigin::AutomaticReplay;
 	Runtime.AutomaticResolutionQueue.PendingCards = {Replay};
+	TestEqual(TEXT("route-auto fixture reproduces the five-card round-two hand"),
+		Runtime.Deck.Hand.Num(),
+		5);
+	TestEqual(TEXT("route-auto fixture reproduces shared Qi three"), Runtime.Deck.SharedEnergy, 3);
+	TestEqual(TEXT("route-auto fixture has no blocking card choice"),
+		Runtime.Deck.PendingChoice.Kind,
+		EGameXXKCardPendingChoiceKind::None);
+	TestEqual(TEXT("route-auto fixture reproduces round two"), Runtime.RoundNumber, 2);
+	TestEqual(TEXT("route-auto fixture reproduces civet HP 55"), Civet->HP, 55);
+	TestEqual(TEXT("route-auto fixture reproduces civet MaxHP 55"), Civet->MaxHP, 55);
+	TestEqual(TEXT("route-auto fixture carries the civet enemy definition"),
+		Civet->EnemyDefinitionId,
+		FName(TEXT("Enemy.Ch1.Civet")));
+	TestTrue(FString::Printf(TEXT("route-auto fixture syncs the route projection: %s"), *FixtureError),
+		FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(State, &FixtureError));
+	const FGameXXKBattleRuntimeUnit* const ProjectedCivet = State.ActiveBattleEnemies.FindByPredicate(
+		[TargetUnitId](const FGameXXKBattleRuntimeUnit& Unit)
+		{
+			return Unit.Id == TargetUnitId;
+		});
+	TestNotNull(TEXT("legacy route projection keeps the same civet identity"), ProjectedCivet);
+	TestTrue(TEXT("legacy route projection keeps civet 55 / 55"),
+		ProjectedCivet && ProjectedCivet->HP == 55 && ProjectedCivet->MaxHP == 55);
+
 	FString RuntimeError;
 	TestTrue(FString::Printf(TEXT("round-two route queue fixture is authoritative and valid: %s"), *RuntimeError),
 		GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &RuntimeError));
+	FString SaveValidationError;
+	TestTrue(FString::Printf(TEXT("save/route validator accepts the complete battle checkpoint: %s"), *SaveValidationError),
+		FGameXXKSaveMigration::ValidateRuntimeState(State, SaveValidationError));
 
-	FGameXXKRuntimeState ManualEndTurnState = Subsystem->GetRuntimeState();
+	FGameXXKRuntimeState ManualEndTurnState = State;
 	TArray<FGameXXKCardDamageResult> ManualEndTurnDamage;
 	FString ManualEndTurnError;
 	TestTrue(FString::Printf(TEXT("the same stalled state still accepts the real End Turn path: %s"), *ManualEndTurnError),
@@ -1343,16 +1398,43 @@ bool FGameXXKCardBattleBoardRouteAutoBattleStallTest::RunTest(const FString& Par
 	Board->RefreshFromState();
 	TestTrue(TEXT("route-auto fixture enables the retained session auto flag"),
 		Board->SetAutoBattleEnabled(true));
-	const FGameXXKRuntimeState BeforeAuto = Subsystem->GetRuntimeState();
+	auto BuildFingerprint = [TargetUnitId](const FGameXXKRuntimeState& FingerprintState)
+	{
+		const FGameXXKCardBattleRuntime& Battle = FingerprintState.CardRun.ActiveBattle;
+		const FGameXXKCardCombatUnit* const Target = Battle.Units.FindByPredicate(
+			[TargetUnitId](const FGameXXKCardCombatUnit& Unit)
+			{
+				return Unit.UnitId == TargetUnitId;
+			});
+		return FString::Printf(
+			TEXT("phase=%d|round=%d|hand=%d|qi=%d|targetHp=%d|queue=%d|cursor=%d"),
+			static_cast<int32>(Battle.Phase),
+			Battle.RoundNumber,
+			Battle.Deck.Hand.Num(),
+			Battle.Deck.SharedEnergy,
+			Target ? Target->HP : -1,
+			Battle.AutomaticResolutionQueue.bActive ? 1 : 0,
+			Battle.AutomaticResolutionQueue.NextCardIndex);
+	};
+	const FString FingerprintBeforeAuto = BuildFingerprint(State);
 	TestFalse(TEXT("route auto waits for its wall-clock cadence"),
 		Board->AdvanceAutoBattleAtRealTimeForTest(100.0));
 	const bool bAdvanced = Board->AdvanceAutoBattleAtRealTimeForTest(101.0);
-	const bool bStateChanged = !FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
-		&Subsystem->GetRuntimeState(), &BeforeAuto, PPF_None);
-	TestTrue(TEXT("an idle player phase with pending automatic work advances within one cadence"),
+	const FGameXXKRuntimeState& AfterAuto = Subsystem->GetRuntimeState();
+	const FString FingerprintAfterAuto = BuildFingerprint(AfterAuto);
+	const bool bStateChanged = FingerprintAfterAuto != FingerprintBeforeAuto;
+	TestTrue(FString::Printf(
+		TEXT("an idle player phase with pending automatic work advances within one cadence: board=%s before=%s after=%s"),
+		*Board->GetBattleBoardDebugStateForTest(),
+		*FingerprintBeforeAuto,
+		*FingerprintAfterAuto),
 		bAdvanced && bStateChanged);
 	TestFalse(TEXT("the valid automatic replay queue cannot remain permanently active"),
-		Subsystem->GetRuntimeState().CardRun.ActiveBattle.AutomaticResolutionQueue.bActive);
+		AfterAuto.CardRun.ActiveBattle.AutomaticResolutionQueue.bActive);
+	TestTrue(TEXT("the production auto step changes the authoritative combat fingerprint"),
+		bStateChanged);
+	TestTrue(TEXT("the production auto step does not fake progress by manually ending the turn"),
+		AfterAuto.CardRun.ActiveBattle.Phase != EGameXXKCardBattlePhase::Enemy);
 	return bAdvanced && bStateChanged;
 }
 
