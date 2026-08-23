@@ -124,41 +124,12 @@ Refresh rerolls unpurchased eligible targets and uses the existing increasing ro
 
 ## 6. Unit C — Ordered `1P / 2P / 3P` formation
 
-### 6.1 Layout
-
-Formation replaces the Backpack's central content and has a local top-right `X` that returns to Backpack.
-
-The upper row contains three equal party cards labelled `1P`, `2P`, and `3P`. The lower area contains a tidy candidate grid with `Heroes`, `Companions`, and `NPCs` filters. Companion display labels are limited to:
-
-- 刀客
-- 守卫
-- 药师
-- 射手
-- 法师
-- 阵师
-
-Long instance names remain internal identifiers and do not appear as candidate labels. Selected, deployed, duplicate/unavailable, and draft target states must be visually distinct.
-
-### 6.2 Draft and commit interaction
-
-1. Select a target `1P / 2P / 3P` slot.
-2. Select a candidate to replace the target.
-3. Select another deployed slot to swap positions.
-4. Review the draft formation.
-5. Press `Apply Formation` to commit atomically.
-
-The local `X`, Backpack global close, or `Tab` discards unapplied formation changes. A committed formation updates the idle strip, Travel attack order, route battle party order, and merchant carried-card source order.
-
-### 6.3 Persisted party model
-
-Replace the implicit fixed-hero representation with an ordered array of exactly three generic member references. Each reference stores member kind and stable member ID. Validation requires:
-
-- exactly three valid members;
-- at least one hero;
-- no duplicate entity;
-- an NPC only when that NPC is currently available under route/task rules.
-
-The current default migrates to `Hero / Blade / active task NPC`. Future additional heroes use the same array without another schema redesign. Old saves migrate their existing hero, active permanent companion, and selected task NPC in that order. Invalid/missing legacy members normalize to the closest legal default without changing owned rosters or decks.
+> **Superseded:** Unit C is fully specified by
+> `2026-08-23-decoupled-party-formation-design.md`. Its authoritative model
+> stores exactly one selected Hero, one fixed persistent Companion, and one
+> persistent Quest NPC separately from a `1P / 2P / 3P` category permutation.
+> The prior generic ordered-member array and mixed select/reorder interaction no
+> longer apply.
 
 ## 7. Unit D — Permanent 35-layer talent graph
 
