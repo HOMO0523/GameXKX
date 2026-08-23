@@ -1,8 +1,11 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "Engine/GameInstance.h"
+#include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
+#include "Serialization/MemoryWriter.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -119,6 +122,41 @@ namespace
 			FString::Printf(TEXT("%s leaves the task NPC fixed cards unchanged"), ScreenName),
 			Subsystem->GetQuestNpcCardLoadout().SelectedCardIds,
 			ExpectedQuestNpcSelection.SelectedCardIds);
+		return bPassed;
+	}
+
+	TArray<uint8> SerializeFacadeRuntimeState(const FGameXXKRuntimeState& Source)
+	{
+		FGameXXKRuntimeState Copy = Source;
+		TArray<uint8> Bytes;
+		FMemoryWriter Writer(Bytes, true);
+		FGameXXKRuntimeState::StaticStruct()->SerializeItem(Writer, &Copy, nullptr);
+		return Bytes;
+	}
+
+	bool AssertFormationRejectedWithoutMutation(
+		FAutomationTestBase& Test,
+		UGameXXKMVPSubsystem* Subsystem,
+		const FGameXXKOrderedPartyFormation& Candidate,
+		const FString& Label)
+	{
+		if (!Subsystem)
+		{
+			return false;
+		}
+		const TArray<uint8> Before = SerializeFacadeRuntimeState(Subsystem->GetRuntimeState());
+		FString Error;
+		bool bPassed = true;
+		bPassed &= Test.TestFalse(
+			FString::Printf(TEXT("%s is rejected"), *Label),
+			Subsystem->SetOrderedPartyFormation(Candidate, Error));
+		bPassed &= Test.TestFalse(
+			FString::Printf(TEXT("%s exposes a player-visible error"), *Label),
+			Error.IsEmpty());
+		bPassed &= Test.TestEqual(
+			FString::Printf(TEXT("%s leaves the entire runtime state bit-identical"), *Label),
+			SerializeFacadeRuntimeState(Subsystem->GetRuntimeState()),
+			Before);
 		return bPassed;
 	}
 }
@@ -368,6 +406,232 @@ bool FGameXXKCompanionFacadeRouteLockTest::RunTest(const FString& Parameters)
 		Subsystem->SetTemporaryQuestNpcCardLoadout(TusiChief->NpcId, FirstCards(TusiChief->FixedCardIds, 3)));
 	TestFalse(TEXT("the facade blocks permanent progression after the route lock"), Subsystem->AwardPermanentCompanionExperience(Recruit.InstanceId, 40));
 	TestFalse(TEXT("the facade blocks star promotion after the route lock"), Subsystem->PromotePermanentCompanionStar(Recruit.InstanceId));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKOrderedFormationFacadeTransactionTest,
+	"GameXXK.MVP.Companion.Facade.OrderedFormationTransaction",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKOrderedFormationFacadeTransactionTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestNotNull(TEXT("ordered-formation facade subsystem exists"), Subsystem)
+		|| !TestTrue(TEXT("ordered-formation facade starts a new game"), Subsystem->StartGame()))
+	{
+		return false;
+	}
+
+	const FGameXXKRuntimeState InitialState = Subsystem->GetRuntimeStateCopy();
+	TestEqual(TEXT("StartGame materializes exactly three raw ordered members before save"),
+		InitialState.CardRun.OrderedFormation.Members.Num(), FGameXXKPartyFormationRules::PartySize);
+	const FGameXXKOrderedPartyFormation InitialEffective = Subsystem->GetOrderedPartyFormation();
+	TestEqual(TEXT("formation getter returns exactly three effective members"),
+		InitialEffective.Members.Num(), FGameXXKPartyFormationRules::PartySize);
+	TestEqual(TEXT("materialized raw and effective formations agree"),
+		InitialState.CardRun.OrderedFormation.Members, InitialEffective.Members);
+	if (InitialEffective.Members.Num() != FGameXXKPartyFormationRules::PartySize)
+	{
+		return false;
+	}
+
+	const TArray<FName> HeroUnlockedBefore = InitialState.CardRun.HeroUnlockedCardIds;
+	const TArray<FName> HeroSelectedBefore = InitialState.CardRun.HeroSelectedCardIds;
+	const FGameXXKCompanionRosterState RosterBefore = InitialState.CardRun.CompanionRoster;
+	const TMap<FName, FGameXXKQuestNpcOwnedCardLoadout> NpcLoadoutsBefore =
+		InitialState.CardRun.PartySelection.QuestNpcCardLoadouts;
+	const TArray<FName> ActiveNpcCardsBefore = InitialState.CardRun.PartySelection.QuestNpc.SelectedCardIds;
+
+	FGameXXKOrderedPartyFormation Reordered = InitialEffective;
+	Swap(Reordered.Members[0], Reordered.Members[2]);
+	FString Error;
+	if (!TestTrue(TEXT("legal 1P/3P reorder commits atomically"),
+		Subsystem->SetOrderedPartyFormation(Reordered, Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	TestTrue(TEXT("successful formation commit clears the error"), Error.IsEmpty());
+	const FGameXXKRuntimeState CommittedState = Subsystem->GetRuntimeStateCopy();
+	TestEqual(TEXT("raw ordered formation updates to the exact requested order"),
+		CommittedState.CardRun.OrderedFormation.Members, Reordered.Members);
+	TestEqual(TEXT("effective formation updates to the exact requested order"),
+		Subsystem->GetOrderedPartyFormation().Members, Reordered.Members);
+
+	FName FirstCompanionId = NAME_None;
+	FName FirstNpcId = NAME_None;
+	for (const FGameXXKPartyMemberRef& Ref : Reordered.Members)
+	{
+		if (FirstCompanionId.IsNone() && Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion)
+		{
+			FirstCompanionId = Ref.MemberId;
+		}
+		else if (FirstNpcId.IsNone() && Ref.Kind == EGameXXKPartyMemberKind::QuestNpc)
+		{
+			FirstNpcId = Ref.MemberId;
+		}
+	}
+	TestEqual(TEXT("compatibility projection follows the first ordered companion"),
+		CommittedState.CardRun.PartySelection.ActivePermanentCompanionInstanceId, FirstCompanionId);
+	TestEqual(TEXT("compatibility projection follows the first ordered task NPC"),
+		CommittedState.CardRun.ActiveTemporaryQuestNpcId, FirstNpcId);
+	FGameXXKRuntimeState ProjectionProbe = CommittedState;
+	FGameXXKPartyFormationRules::ProjectCompatibility(ProjectionProbe);
+	TestEqual(TEXT("compatibility projection never reorders authoritative members"),
+		ProjectionProbe.CardRun.OrderedFormation.Members, Reordered.Members);
+
+	TestEqual(TEXT("formation commit leaves hero unlock deck unchanged"),
+		CommittedState.CardRun.HeroUnlockedCardIds, HeroUnlockedBefore);
+	TestEqual(TEXT("formation commit leaves hero selected deck unchanged"),
+		CommittedState.CardRun.HeroSelectedCardIds, HeroSelectedBefore);
+	TestTrue(TEXT("formation reorder leaves the owned roster unchanged"),
+		FGameXXKCompanionRosterState::StaticStruct()->CompareScriptStruct(
+			&RosterBefore,
+			&CommittedState.CardRun.CompanionRoster,
+			PPF_None));
+	TestEqual(TEXT("formation commit leaves the active NPC deck unchanged"),
+		CommittedState.CardRun.PartySelection.QuestNpc.SelectedCardIds, ActiveNpcCardsBefore);
+	TestEqual(TEXT("formation commit leaves owned NPC loadout count unchanged"),
+		CommittedState.CardRun.PartySelection.QuestNpcCardLoadouts.Num(), NpcLoadoutsBefore.Num());
+	for (const TPair<FName, FGameXXKQuestNpcOwnedCardLoadout>& Pair : NpcLoadoutsBefore)
+	{
+		const FGameXXKQuestNpcOwnedCardLoadout* After =
+			CommittedState.CardRun.PartySelection.QuestNpcCardLoadouts.Find(Pair.Key);
+		TestNotNull(FString::Printf(TEXT("owned NPC %s loadout remains present"), *Pair.Key.ToString()), After);
+		if (After)
+		{
+			TestEqual(FString::Printf(TEXT("owned NPC %s deck remains exact"), *Pair.Key.ToString()),
+				After->SelectedCardIds, Pair.Value.SelectedCardIds);
+		}
+	}
+
+	const TArray<uint8> BeforeIdempotent = SerializeFacadeRuntimeState(Subsystem->GetRuntimeState());
+	TestTrue(TEXT("setting the already-committed formation is idempotently safe"),
+		Subsystem->SetOrderedPartyFormation(Reordered, Error));
+	TestEqual(TEXT("idempotent formation set leaves runtime state bit-identical"),
+		SerializeFacadeRuntimeState(Subsystem->GetRuntimeState()), BeforeIdempotent);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKOrderedFormationFacadeRejectionTest,
+	"GameXXK.MVP.Companion.Facade.OrderedFormationRejections",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKOrderedFormationFacadeRejectionTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestNotNull(TEXT("formation rejection subsystem exists"), Subsystem)
+		|| !TestTrue(TEXT("formation rejection subsystem starts"), Subsystem->StartGame()))
+	{
+		return false;
+	}
+	const FGameXXKOrderedPartyFormation Valid = Subsystem->GetOrderedPartyFormation();
+	if (!TestEqual(TEXT("rejection fixture starts with three effective members"), Valid.Members.Num(), 3))
+	{
+		return false;
+	}
+
+	FGameXXKOrderedPartyFormation WrongSize = Valid;
+	WrongSize.Members.Pop();
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, WrongSize, TEXT("wrong-size formation"));
+
+	FGameXXKOrderedPartyFormation Duplicate = Valid;
+	Duplicate.Members[1] = Duplicate.Members[0];
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, Duplicate, TEXT("duplicate formation"));
+
+	FGameXXKOrderedPartyFormation NoHero;
+	for (const FGameXXKPermanentCompanion& Companion : Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions)
+	{
+		if (NoHero.Members.Num() >= 3)
+		{
+			break;
+		}
+		FGameXXKPartyMemberRef Ref;
+		Ref.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+		Ref.MemberId = Companion.InstanceId;
+		NoHero.Members.Add(Ref);
+	}
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, NoHero, TEXT("no-hero formation"));
+
+	FGameXXKOrderedPartyFormation Unknown = Valid;
+	Unknown.Members[1].Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+	Unknown.Members[1].MemberId = TEXT("Companion.Unknown.Facade");
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, Unknown, TEXT("unknown-member formation"));
+
+	FGameXXKOrderedPartyFormation StaleNpc = Valid;
+	const int32 NpcIndex = StaleNpc.Members.IndexOfByPredicate([](const FGameXXKPartyMemberRef& Ref)
+	{
+		return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc;
+	});
+	if (TestTrue(TEXT("rejection fixture contains a task NPC"), NpcIndex != INDEX_NONE))
+	{
+		StaleNpc.Members[NpcIndex].MemberId = TEXT("Npc.YueBai");
+		AssertFormationRejectedWithoutMutation(*this, Subsystem, StaleNpc, TEXT("stale task-NPC formation"));
+	}
+
+	FGameXXKOrderedPartyFormation LegalSwap = Valid;
+	Swap(LegalSwap.Members[0], LegalSwap.Members[1]);
+	FGameXXKRuntimeState& Mutable = Subsystem->GetMutableRuntimeState();
+	Mutable.CardRun.bLoadoutLockedForRoute = true;
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, LegalSwap, TEXT("route-loadout-locked formation"));
+	Mutable.CardRun.bLoadoutLockedForRoute = false;
+	Mutable.bHasActiveBattle = true;
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, LegalSwap, TEXT("legacy-battle-active formation"));
+	Mutable.bHasActiveBattle = false;
+	Mutable.CardRun.bHasActiveCardBattle = true;
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, LegalSwap, TEXT("card-battle-active formation"));
+	Mutable.CardRun.bHasActiveCardBattle = false;
+	const EGameXXKScreen OriginalScreen = Mutable.Screen;
+	Mutable.Screen = EGameXXKScreen::Battle;
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, LegalSwap, TEXT("battle-screen formation"));
+	Mutable.Screen = OriginalScreen;
+
+	Mutable.PlayerGold = -1;
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, LegalSwap, TEXT("authoritatively-invalid candidate state"));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKOrderedFormationFacadePersistenceTest,
+	"GameXXK.MVP.Companion.Facade.OrderedFormationPersistence",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKOrderedFormationFacadePersistenceTest::RunTest(const FString& Parameters)
+{
+	const FString Slot = TEXT("GameXXK_Automation_OrderedFormationFacadePersistence");
+	constexpr int32 UserIndex = 0;
+	UGameplayStatics::DeleteGameInSlot(Slot, UserIndex);
+
+	UGameXXKMVPSubsystem* Source = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestNotNull(TEXT("formation persistence source exists"), Source)
+		|| !TestTrue(TEXT("formation persistence source starts"), Source->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKOrderedPartyFormation Swapped = Source->GetOrderedPartyFormation();
+	if (!TestEqual(TEXT("formation persistence source has three members"), Swapped.Members.Num(), 3))
+	{
+		return false;
+	}
+	Swap(Swapped.Members[0], Swapped.Members[2]);
+	FString Error;
+	TestTrue(TEXT("formation persistence source commits swap"), Source->SetOrderedPartyFormation(Swapped, Error));
+	TestTrue(TEXT("formation persistence source saves"), Source->SaveCurrentGame(Slot, UserIndex));
+
+	UGameXXKMVPSubsystem* Loaded = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestNotNull(TEXT("formation persistence target exists"), Loaded);
+	if (!Loaded)
+	{
+		return false;
+	}
+	TestTrue(TEXT("formation persistence target loads"), Loaded->LoadGameFromSlot(Slot, UserIndex));
+	TestEqual(TEXT("facade load preserves exact swapped order"),
+		Loaded->GetOrderedPartyFormation().Members, Swapped.Members);
+	TestEqual(TEXT("raw loaded save preserves exact swapped order"),
+		Loaded->GetRuntimeState().CardRun.OrderedFormation.Members, Swapped.Members);
+	UGameplayStatics::DeleteGameInSlot(Slot, UserIndex);
 	return true;
 }
 

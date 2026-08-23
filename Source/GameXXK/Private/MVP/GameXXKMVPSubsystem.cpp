@@ -11,6 +11,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKMetaShopRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "GameXXKRouteSettlementRules.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
@@ -2167,6 +2168,7 @@ bool UGameXXKMVPSubsystem::StartNewGame()
 			FName(TEXT("Npc.TusiChief")),
 			{},
 			&Error)
+		|| !FGameXXKPartyFormationRules::Normalize(RuntimeState, &Error)
 		|| !RebuildTrainingTravelRuntime())
 	{
 		return false;
@@ -3138,6 +3140,51 @@ FGameXXKQuestNpcCardSelection UGameXXKMVPSubsystem::GetQuestNpcCardLoadout() con
 	return RuntimeState.CardRun.PartySelection.QuestNpc;
 }
 
+FGameXXKOrderedPartyFormation UGameXXKMVPSubsystem::GetOrderedPartyFormation() const
+{
+	FGameXXKOrderedPartyFormation Effective;
+	FGameXXKPartyFormationRules::ResolveEffective(RuntimeState, Effective);
+	return Effective;
+}
+
+bool UGameXXKMVPSubsystem::SetOrderedPartyFormation(
+	const FGameXXKOrderedPartyFormation& Formation,
+	FString& OutError)
+{
+	OutError.Reset();
+	if (RuntimeState.CardRun.bLoadoutLockedForRoute
+		|| RuntimeState.bHasActiveBattle
+		|| RuntimeState.CardRun.bHasActiveCardBattle
+		|| RuntimeState.Screen == EGameXXKScreen::Battle)
+	{
+		OutError = TEXT("Party formation cannot change while a route loadout or battle is active.");
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKPartyFormationRules::Validate(Candidate, Formation, &OutError))
+	{
+		return false;
+	}
+	Candidate.CardRun.OrderedFormation = Formation;
+	FGameXXKPartyFormationRules::ProjectCompatibility(Candidate);
+	if (!FGameXXKSaveMigration::ValidateRuntimeState(Candidate, OutError))
+	{
+		return false;
+	}
+	if (FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+		&RuntimeState,
+		&Candidate,
+		PPF_None))
+	{
+		return true;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
 bool UGameXXKMVPSubsystem::PrepareCompanionRosterForTown()
 {
 	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
@@ -3312,7 +3359,12 @@ bool UGameXXKMVPSubsystem::DismissPermanentCompanion(const FName InstanceId)
 
 	FString Error;
 	if (!EnsureCompanionCardRun(Candidate)
-		|| !FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(Candidate)
+		|| !FGameXXKPartyFormationRules::Normalize(Candidate, &Error))
+	{
+		return false;
+	}
+	FGameXXKPartyFormationRules::ProjectCompatibility(Candidate);
+	if (!FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(Candidate)
 		|| !FGameXXKSaveMigration::ValidateRuntimeState(Candidate, Error))
 	{
 		return false;

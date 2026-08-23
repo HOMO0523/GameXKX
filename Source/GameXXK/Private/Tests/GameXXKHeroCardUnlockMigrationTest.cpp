@@ -3,7 +3,9 @@
 #include "GameXXKCardRules.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKSaveMigration.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 
+#include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 
 #include <type_traits>
@@ -12,6 +14,14 @@
 
 namespace GameXXKHeroCardUnlockMigrationTest
 {
+	FGameXXKRuntimeState MakeStartedState()
+	{
+		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		return Subsystem && Subsystem->StartGame()
+			? Subsystem->GetRuntimeStateCopy()
+			: FGameXXKRuntimeState();
+	}
+
 	struct FLegacyCardPair
 	{
 		const TCHAR* LegacyId;
@@ -198,7 +208,7 @@ namespace GameXXKHeroCardUnlockMigrationTest
 
 	bool BuildActiveV11Fixture(FGameXXKRuntimeState& OutState, FString& OutError)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		OutState = MakeStartedState();
 		OutState.PlayerLevel = 1;
 		TArray<FName> LegacyIds;
 		TArray<FGameXXKCardInstance> Instances;
@@ -300,7 +310,7 @@ namespace GameXXKHeroCardUnlockMigrationTest
 
 	bool StartAcceptedRoute(FGameXXKRuntimeState& OutState)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		OutState = MakeStartedState();
 		OutState.PlayerLevel = 20;
 		if (!UGameXXKMVPRules::OpenWorldMap(OutState)
 			|| !UGameXXKMVPRules::EnterWorldRegion(OutState, UGameXXKMVPRules::RegionQingshan())
@@ -323,7 +333,7 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	using namespace GameXXKHeroCardUnlockMigrationTest;
 
 	TestEqual(TEXT("the protagonist pool is introduced by save version twelve"), THeroCardPoolVersion<FGameXXKSaveMigration>::Value, 12);
-	TestEqual(TEXT("the current save version includes battle retreat checkpoints"), FGameXXKSaveMigration::CurrentSaveVersion, 23);
+	TestEqual(TEXT("the current save version includes ordered party formation"), FGameXXKSaveMigration::CurrentSaveVersion, 24);
 	TestTrue(TEXT("the catalog exposes the deterministic hero unlock query"), THasHeroUnlockQuery<FGameXXKCardCatalog>::value);
 	for (const int32 Level : {1, 5, 10, 15, 20})
 	{

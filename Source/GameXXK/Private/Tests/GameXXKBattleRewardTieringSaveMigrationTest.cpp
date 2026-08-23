@@ -1,6 +1,8 @@
 #include "GameXXKMVPRules.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
 
+#include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -9,11 +11,19 @@ static_assert(
 	FGameXXKSaveMigration::BattleRewardTieringIntroducedSaveVersion == 16,
 	"Battle reward tiering persistence requires save version 16.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 23,
-	"Battle retreat checkpoint persistence advances the current save version to twenty-three.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 24,
+	"Ordered party formation persistence advances the current save version to twenty-four.");
 
 namespace
 {
+	FGameXXKRuntimeState MakeStartedSaveFixture()
+	{
+		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		return Subsystem && Subsystem->StartGame()
+			? Subsystem->GetRuntimeStateCopy()
+			: FGameXXKRuntimeState();
+	}
+
 	FGameXXKSaveState MakeVersionedSave(const FGameXXKRuntimeState& State, const int32 Version)
 	{
 		FGameXXKSaveState Save = UGameXXKMVPRules::MakeSaveState(State);
@@ -30,7 +40,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKBattleRewardTieringMigrationTest::RunTest(const FString& Parameters)
 {
 	// A v15 save carrying an in-flight legacy three-route-card reward offer.
-	FGameXXKRuntimeState LegacyState = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState LegacyState = MakeStartedSaveFixture();
 	LegacyState.CardRun.PendingReward.SourceNodeId = 3;
 	LegacyState.CardRun.PendingReward.ChoiceSeed = 7;
 	LegacyState.CardRun.PendingReward.CardIds = {
@@ -62,7 +72,7 @@ bool FGameXXKBattleRewardTieringMigrationTest::RunTest(const FString& Parameters
 		MigratedSave.RuntimeState.CardRun.BonusRoundDrawCount, 0);
 
 	// A v16 save keeps the new tiering fields through a save/restore round trip.
-	FGameXXKRuntimeState V16State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState V16State = MakeStartedSaveFixture();
 	V16State.CardRun.UpgradedCardQualities.Add(
 		FName(TEXT("Hero.Generic.QingFengYiShi")), EGameXXKCardQuality::Rare);
 	V16State.CardRun.BonusSharedEnergyCap = 1;

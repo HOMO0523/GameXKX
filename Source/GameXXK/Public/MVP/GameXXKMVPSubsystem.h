@@ -469,6 +469,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Companion")
 	FGameXXKQuestNpcCardSelection GetQuestNpcCardLoadout() const;
 
+	/** Copy-safe effective 1P / 2P / 3P formation in authoritative saved order. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Party")
+	FGameXXKOrderedPartyFormation GetOrderedPartyFormation() const;
+
+	/** Atomically validates and commits an unlocked 1P / 2P / 3P formation. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Party")
+	bool SetOrderedPartyFormation(const FGameXXKOrderedPartyFormation& Formation, FString& OutError);
+
 	/** Initializes/migrates the persistent card pool when the town companion backpack is opened. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
 	bool PrepareCompanionRosterForTown();

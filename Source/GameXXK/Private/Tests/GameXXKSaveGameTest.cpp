@@ -2,6 +2,7 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveGame.h"
@@ -107,6 +108,39 @@ namespace
 		FString Error;
 		return Subsystem->ApplyBattleHudFixtureForTest(Error);
 	}
+
+	bool BuildStartedFormationFixture(FGameXXKRuntimeState& OutState)
+	{
+		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		if (!Subsystem || !Subsystem->StartGame())
+		{
+			return false;
+		}
+		OutState = Subsystem->GetRuntimeStateCopy();
+		return true;
+	}
+
+	bool MaterializeFormationForCurrentFixture(FGameXXKRuntimeState& InOutState)
+	{
+		FString Error;
+		return FGameXXKPartyFormationRules::Normalize(InOutState, &Error);
+	}
+
+	FName FindFirstStableCompanionOtherThan(
+		const FGameXXKRuntimeState& State,
+		const FName ExcludedId)
+	{
+		TArray<FName> CompanionIds;
+		for (const FGameXXKPermanentCompanion& Companion : State.CardRun.CompanionRoster.PermanentCompanions)
+		{
+			if (!Companion.InstanceId.IsNone() && Companion.InstanceId != ExcludedId)
+			{
+				CompanionIds.AddUnique(Companion.InstanceId);
+			}
+		}
+		CompanionIds.Sort(FNameLexicalLess());
+		return CompanionIds.IsEmpty() ? NAME_None : CompanionIds[0];
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -130,6 +164,11 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	UGameInstance* SourceGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* SourceSubsystem = NewObject<UGameXXKMVPSubsystem>(SourceGameInstance);
 	TestNotNull(TEXT("source subsystem exists"), SourceSubsystem);
+	if (!TestTrue(TEXT("full-state source starts with a saveable party"),
+		SourceSubsystem && SourceSubsystem->StartGame()))
+	{
+		return false;
+	}
 
 	FGameXXKRuntimeState& SourceState = SourceSubsystem->GetMutableRuntimeState();
 	SourceState.Screen = EGameXXKScreen::Battle;
@@ -306,6 +345,11 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 
 	UGameInstance* FollowerSourceGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* FollowerSourceSubsystem = NewObject<UGameXXKMVPSubsystem>(FollowerSourceGameInstance);
+	if (!TestTrue(TEXT("quest NPC follower source starts with a saveable party"),
+		FollowerSourceSubsystem && FollowerSourceSubsystem->StartGame()))
+	{
+		return false;
+	}
 	FGameXXKRuntimeState& FollowerSourceState = FollowerSourceSubsystem->GetMutableRuntimeState();
 	FollowerSourceState.Training.bTravelActive = false;
 	FollowerSourceState.Training.ActiveTravelEncounterIndex = INDEX_NONE;
@@ -327,9 +371,19 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("quest NPC follower save restores location flag"), LoadedFollowerState.bHasQuestNpcLocation);
 	TestEqual(TEXT("quest NPC follower save restores task NPC location"), LoadedFollowerState.QuestNpcLocation, SavedQuestNpcLocation);
 
-	FGameXXKSaveState AcceptedWithoutFollowerSaveState;
-	AcceptedWithoutFollowerSaveState.QuestState = EGameXXKQuestState::Accepted;
-	AcceptedWithoutFollowerSaveState.bFollowerJoined = false;
+	FGameXXKRuntimeState AcceptedWithoutFollowerLegacyState;
+	if (!TestTrue(TEXT("accepted-without-follower legacy fixture has three party candidates"),
+		BuildStartedFormationFixture(AcceptedWithoutFollowerLegacyState)))
+	{
+		return false;
+	}
+	AcceptedWithoutFollowerLegacyState.QuestState = EGameXXKQuestState::Accepted;
+	AcceptedWithoutFollowerLegacyState.bFollowerJoined = false;
+	AcceptedWithoutFollowerLegacyState.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
+	FGameXXKSaveState AcceptedWithoutFollowerSaveState =
+		UGameXXKMVPRules::MakeSaveState(AcceptedWithoutFollowerLegacyState);
+	AcceptedWithoutFollowerSaveState.SaveVersion =
+		FGameXXKSaveMigration::QuestFollowerAndCurrentEnemyCodexIntroducedSaveVersion - 1;
 	FGameXXKRuntimeState AcceptedWithoutFollowerRuntimeState;
 	FGameXXKSaveMigrationReport AcceptedWithoutFollowerReport;
 	if (!TestTrue(
@@ -647,6 +701,232 @@ bool FGameXXKSaveGameMigrationTransactionTest::RunTest(const FString& Parameters
 	for (const FString& Slot : Slots)
 	{
 		DeleteMainAndBackup(Slot, UserIndex);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKOrderedFormationSaveMigrationTest,
+	"GameXXK.MVP.SaveGame.OrderedFormationMigration",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKOrderedFormationSaveMigrationTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 ExpectedIntroducedVersion = 24;
+	TestEqual(
+		TEXT("ordered formation owns the next append-only save version"),
+		FGameXXKSaveMigration::CurrentSaveVersion,
+		ExpectedIntroducedVersion);
+
+	FGameXXKRuntimeState LegacyState;
+	if (!TestTrue(TEXT("previous-version fixture starts a full legacy party"), BuildStartedFormationFixture(LegacyState)))
+	{
+		return false;
+	}
+	const FName ExpectedCompanionId = LegacyState.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+	const FName ExpectedQuestNpcId = LegacyState.CardRun.ActiveTemporaryQuestNpcId;
+	LegacyState.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
+	FGameXXKSaveState LegacySave = UGameXXKMVPRules::MakeSaveState(LegacyState);
+	LegacySave.SaveVersion = ExpectedIntroducedVersion - 1;
+
+	FGameXXKSaveState Migrated;
+	FGameXXKSaveMigrationReport Report;
+	if (!TestTrue(TEXT("v23 legacy party migrates to ordered formation"),
+		FGameXXKSaveMigration::MigrateToCurrent(LegacySave, Migrated, Report)))
+	{
+		AddError(Report.Error);
+		return false;
+	}
+	const TArray<FGameXXKPartyMemberRef>& MigratedMembers = Migrated.RuntimeState.CardRun.OrderedFormation.Members;
+	if (!TestEqual(TEXT("migrated formation has exactly three members"), MigratedMembers.Num(), 3))
+	{
+		return false;
+	}
+	TestEqual(TEXT("legacy hero becomes 1P"), MigratedMembers[0].Kind, EGameXXKPartyMemberKind::Hero);
+	TestEqual(TEXT("legacy hero keeps the stable hero ID"), MigratedMembers[0].MemberId, FGameXXKEquipmentRules::HeroCharacterId());
+	TestEqual(TEXT("active permanent companion becomes 2P"), MigratedMembers[1].Kind, EGameXXKPartyMemberKind::PermanentCompanion);
+	TestEqual(TEXT("active permanent companion ID is exact"), MigratedMembers[1].MemberId, ExpectedCompanionId);
+	TestEqual(TEXT("synchronized task NPC becomes 3P"), MigratedMembers[2].Kind, EGameXXKPartyMemberKind::QuestNpc);
+	TestEqual(TEXT("synchronized task NPC ID is exact"), MigratedMembers[2].MemberId, ExpectedQuestNpcId);
+	TestEqual(TEXT("successful migration writes v24 last"), Migrated.SaveVersion, ExpectedIntroducedVersion);
+
+	UGameXXKSaveGame* SaveObject = NewObject<UGameXXKSaveGame>();
+	SaveObject->SaveState = Migrated;
+	TArray<uint8> SaveBytes;
+	TestTrue(TEXT("migrated formation serializes through SaveGame"), UGameplayStatics::SaveGameToMemory(SaveObject, SaveBytes));
+	UGameXXKSaveGame* ReloadedObject = Cast<UGameXXKSaveGame>(UGameplayStatics::LoadGameFromMemory(SaveBytes));
+	TestNotNull(TEXT("serialized formation reloads as the typed save"), ReloadedObject);
+	if (!ReloadedObject)
+	{
+		return false;
+	}
+	FGameXXKSaveState RoundTrip;
+	FGameXXKSaveMigrationReport RoundTripReport;
+	TestTrue(TEXT("reloaded current formation validates without normalization"),
+		FGameXXKSaveMigration::MigrateToCurrent(ReloadedObject->SaveState, RoundTrip, RoundTripReport));
+	TestEqual(
+		TEXT("save/load roundtrip preserves exact ordered refs"),
+		RoundTrip.RuntimeState.CardRun.OrderedFormation.Members,
+		MigratedMembers);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKOrderedFormationLegacyFallbackTest,
+	"GameXXK.MVP.SaveGame.OrderedFormationLegacyFallback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKOrderedFormationLegacyFallbackTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 ExpectedIntroducedVersion = 24;
+	FGameXXKRuntimeState StaleNpcState;
+	if (!TestTrue(TEXT("stale-NPC fixture starts a full legacy party"), BuildStartedFormationFixture(StaleNpcState)))
+	{
+		return false;
+	}
+	const FName ActiveCompanionId = StaleNpcState.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+	const FName StableFallbackId = FindFirstStableCompanionOtherThan(StaleNpcState, ActiveCompanionId);
+	const FName StaleNpcId = StaleNpcState.CardRun.PartySelection.QuestNpc.NpcId;
+	TestFalse(TEXT("fallback fixture has a second stable companion"), StableFallbackId.IsNone());
+	TestFalse(TEXT("fallback fixture starts with a task NPC"), StaleNpcId.IsNone());
+	StaleNpcState.CardRun.ActiveTemporaryQuestNpcId = NAME_None;
+	StaleNpcState.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
+	FGameXXKSaveState StaleNpcSave = UGameXXKMVPRules::MakeSaveState(StaleNpcState);
+	StaleNpcSave.SaveVersion = ExpectedIntroducedVersion - 1;
+
+	FGameXXKSaveState MigratedFallback;
+	FGameXXKSaveMigrationReport FallbackReport;
+	if (!TestTrue(TEXT("legacy stale task NPC uses a legal stable fallback"),
+		FGameXXKSaveMigration::MigrateToCurrent(StaleNpcSave, MigratedFallback, FallbackReport)))
+	{
+		AddError(FallbackReport.Error);
+		return false;
+	}
+	const TArray<FGameXXKPartyMemberRef>& FallbackMembers =
+		MigratedFallback.RuntimeState.CardRun.OrderedFormation.Members;
+	if (!TestEqual(TEXT("fallback migration still has three members"), FallbackMembers.Num(), 3))
+	{
+		return false;
+	}
+	TestEqual(TEXT("fallback keeps hero first"), FallbackMembers[0].Kind, EGameXXKPartyMemberKind::Hero);
+	TestEqual(TEXT("fallback keeps the active companion second"), FallbackMembers[1].MemberId, ActiveCompanionId);
+	TestEqual(TEXT("fallback deterministically chooses the next owned companion"), FallbackMembers[2].MemberId, StableFallbackId);
+	TestEqual(TEXT("fallback third member is a permanent companion"), FallbackMembers[2].Kind, EGameXXKPartyMemberKind::PermanentCompanion);
+	TestFalse(TEXT("stale NPC is not reactivated in ordered formation"),
+		FallbackMembers.ContainsByPredicate([StaleNpcId](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc && Ref.MemberId == StaleNpcId;
+		}));
+	TestTrue(TEXT("stale NPC compatibility projection is cleared"),
+		MigratedFallback.RuntimeState.CardRun.ActiveTemporaryQuestNpcId.IsNone());
+	TestTrue(TEXT("stale NPC selection is cleared"),
+		MigratedFallback.RuntimeState.CardRun.PartySelection.QuestNpc.NpcId.IsNone());
+
+	FGameXXKRuntimeState TooSmallState = StaleNpcState;
+	TooSmallState.CardRun.PartySelection.QuestNpc = FGameXXKQuestNpcCardSelection();
+	TooSmallState.CardRun.CompanionRoster.PermanentCompanions.RemoveAll(
+		[ActiveCompanionId](const FGameXXKPermanentCompanion& Companion)
+		{
+			return Companion.InstanceId != ActiveCompanionId;
+		});
+	FGameXXKSaveState TooSmallSave = UGameXXKMVPRules::MakeSaveState(TooSmallState);
+	TooSmallSave.SaveVersion = ExpectedIntroducedVersion - 1;
+	FGameXXKSaveState Rejected;
+	Rejected.SaveVersion = 987;
+	Rejected.RuntimeState.PlayerGold = 654321;
+	FGameXXKSaveMigrationReport RejectedReport;
+	TestFalse(TEXT("legacy state with fewer than three legal members is rejected"),
+		FGameXXKSaveMigration::MigrateToCurrent(TooSmallSave, Rejected, RejectedReport));
+	TestFalse(TEXT("failed legacy normalization returns a visible error"), RejectedReport.Error.IsEmpty());
+	TestEqual(TEXT("failed legacy normalization never writes the target version"), Rejected.SaveVersion, 0);
+	TestEqual(
+		TEXT("failed legacy normalization never leaks candidate player state"),
+		Rejected.RuntimeState.PlayerGold,
+		FGameXXKSaveState().RuntimeState.PlayerGold);
+	TestTrue(TEXT("failed legacy normalization leaves output formation empty"),
+		Rejected.RuntimeState.CardRun.OrderedFormation.Members.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKOrderedFormationCurrentStrictValidationTest,
+	"GameXXK.MVP.SaveGame.OrderedFormationCurrentStrictValidation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKOrderedFormationCurrentStrictValidationTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 ExpectedIntroducedVersion = 24;
+	FGameXXKRuntimeState CurrentState;
+	if (!TestTrue(TEXT("current strict fixture starts a full party"), BuildStartedFormationFixture(CurrentState))
+		|| !TestTrue(TEXT("current strict fixture explicitly materializes formation"), MaterializeFormationForCurrentFixture(CurrentState)))
+	{
+		return false;
+	}
+	Swap(CurrentState.CardRun.OrderedFormation.Members[0], CurrentState.CardRun.OrderedFormation.Members[2]);
+	const TArray<FGameXXKPartyMemberRef> ExpectedReordered = CurrentState.CardRun.OrderedFormation.Members;
+	FGameXXKSaveState CurrentSave = UGameXXKMVPRules::MakeSaveState(CurrentState);
+	CurrentSave.SaveVersion = ExpectedIntroducedVersion;
+
+	FGameXXKSaveState Preserved;
+	FGameXXKSaveMigrationReport PreservedReport;
+	TestTrue(TEXT("valid reordered v24 save is accepted"),
+		FGameXXKSaveMigration::MigrateToCurrent(CurrentSave, Preserved, PreservedReport));
+	TestEqual(TEXT("v24 migration preserves authored party order exactly"),
+		Preserved.RuntimeState.CardRun.OrderedFormation.Members, ExpectedReordered);
+
+	FString ValidationError;
+	TestTrue(TEXT("runtime save validator accepts valid ordered formation"),
+		FGameXXKSaveMigration::ValidateRuntimeState(CurrentState, ValidationError));
+	FGameXXKRuntimeState MissingFormation = CurrentState;
+	MissingFormation.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
+	TestFalse(TEXT("runtime save validator rejects missing current ordered formation"),
+		FGameXXKSaveMigration::ValidateRuntimeState(MissingFormation, ValidationError));
+	TestFalse(TEXT("runtime save validator reports missing formation"), ValidationError.IsEmpty());
+
+	TArray<FGameXXKSaveState> CorruptSaves;
+	FGameXXKSaveState Duplicate = CurrentSave;
+	Duplicate.RuntimeState.CardRun.OrderedFormation.Members[1] =
+		Duplicate.RuntimeState.CardRun.OrderedFormation.Members[0];
+	CorruptSaves.Add(Duplicate);
+
+	FGameXXKSaveState NoHero = CurrentSave;
+	NoHero.RuntimeState.CardRun.OrderedFormation.Members.Reset();
+	for (const FGameXXKPermanentCompanion& Companion : CurrentState.CardRun.CompanionRoster.PermanentCompanions)
+	{
+		if (NoHero.RuntimeState.CardRun.OrderedFormation.Members.Num() >= 3)
+		{
+			break;
+		}
+		FGameXXKPartyMemberRef Ref;
+		Ref.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+		Ref.MemberId = Companion.InstanceId;
+		NoHero.RuntimeState.CardRun.OrderedFormation.Members.Add(Ref);
+	}
+	CorruptSaves.Add(NoHero);
+
+	FGameXXKSaveState UnknownCompanion = CurrentSave;
+	UnknownCompanion.RuntimeState.CardRun.OrderedFormation.Members[0].Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+	UnknownCompanion.RuntimeState.CardRun.OrderedFormation.Members[0].MemberId = TEXT("Companion.Unknown.Formation");
+	CorruptSaves.Add(UnknownCompanion);
+
+	FGameXXKSaveState UnavailableNpc = CurrentSave;
+	UnavailableNpc.RuntimeState.CardRun.OrderedFormation.Members[0].Kind = EGameXXKPartyMemberKind::QuestNpc;
+	UnavailableNpc.RuntimeState.CardRun.OrderedFormation.Members[0].MemberId = TEXT("Npc.YueBai");
+	CorruptSaves.Add(UnavailableNpc);
+
+	for (int32 CorruptIndex = 0; CorruptIndex < CorruptSaves.Num(); ++CorruptIndex)
+	{
+		FGameXXKSaveState Rejected;
+		FGameXXKSaveMigrationReport RejectedReport;
+		TestFalse(
+			FString::Printf(TEXT("corrupt current formation %d is rejected instead of normalized"), CorruptIndex),
+			FGameXXKSaveMigration::MigrateToCurrent(CorruptSaves[CorruptIndex], Rejected, RejectedReport));
+		TestFalse(
+			FString::Printf(TEXT("corrupt current formation %d reports an error"), CorruptIndex),
+			RejectedReport.Error.IsEmpty());
+		TestTrue(
+			FString::Printf(TEXT("corrupt current formation %d does not produce a migrated party"), CorruptIndex),
+			Rejected.RuntimeState.CardRun.OrderedFormation.Members.IsEmpty());
 	}
 	return true;
 }

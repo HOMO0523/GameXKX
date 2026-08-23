@@ -205,7 +205,7 @@ bool FGameXXKBladePartnerCardMigrationTest::RunTest(const FString& Parameters)
 		TEXT("the replacement Blade partner cards introduce save version fourteen"),
 		FGameXXKSaveMigration::BladePartnerCardsIntroducedSaveVersion,
 		14);
-	TestEqual(TEXT("the current save version includes battle retreat checkpoints"), FGameXXKSaveMigration::CurrentSaveVersion, 23);
+	TestEqual(TEXT("the current save version includes ordered party formation"), FGameXXKSaveMigration::CurrentSaveVersion, 24);
 	FString Error;
 	for (int32 Seed = 1; Seed <= 256; ++Seed)
 	{

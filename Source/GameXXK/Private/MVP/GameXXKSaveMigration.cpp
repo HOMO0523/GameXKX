@@ -11,6 +11,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKMetaShopRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
@@ -1275,13 +1276,26 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	{
 		MigrateBattleRetreatCheckpoint(Candidate.RuntimeState, OutReport);
 	}
+	if (Source.SaveVersion < OrderedPartyFormationIntroducedSaveVersion)
+	{
+		// Only pre-v24 saves may derive ordered membership from compatibility fields.
+		// A mismatched or retired task NPC is ignored by BuildLegacyProjection and
+		// cleared by ProjectCompatibility instead of being reactivated implicitly.
+		Candidate.RuntimeState.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
+		if (!FGameXXKPartyFormationRules::Normalize(Candidate.RuntimeState, &MigrationError))
+		{
+			Fail(OutReport, MigrationError);
+			return false;
+		}
+		FGameXXKPartyFormationRules::ProjectCompatibility(Candidate.RuntimeState);
+	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
-	Candidate.SaveVersion = CurrentSaveVersion;
 	if (!ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
 	{
 		Fail(OutReport, MigrationError);
 		return false;
 	}
+	Candidate.SaveVersion = CurrentSaveVersion;
 	OutMigrated = MoveTemp(Candidate);
 	OutReport.bSucceeded = true;
 	return true;
@@ -1354,6 +1368,13 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 	if (!FGameXXKCompanionRules::ValidatePartySelection(
 		State.CardRun.CompanionRoster,
 		State.CardRun.PartySelection,
+		&OutError))
+	{
+		return false;
+	}
+	if (!FGameXXKPartyFormationRules::Validate(
+		State,
+		State.CardRun.OrderedFormation,
 		&OutError))
 	{
 		return false;

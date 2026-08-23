@@ -45,7 +45,9 @@ public:
 	static constexpr int32 QuestNpcEquipmentOwnerIntroducedSaveVersion = 22;
 	/** v23: generated-route combat saves retain the exact pre-encounter rollback checkpoint. */
 	static constexpr int32 BattleRetreatCheckpointIntroducedSaveVersion = 23;
-	static constexpr int32 CurrentSaveVersion = 23;
+	/** v24: ordered 1P / 2P / 3P party references become save-authoritative. */
+	static constexpr int32 OrderedPartyFormationIntroducedSaveVersion = 24;
+	static constexpr int32 CurrentSaveVersion = 24;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

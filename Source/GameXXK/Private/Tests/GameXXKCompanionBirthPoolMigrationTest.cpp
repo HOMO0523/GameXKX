@@ -112,6 +112,36 @@ namespace GameXXKCompanionBirthPoolMigrationTest
 		}
 		return Result;
 	}
+
+	bool RecruitLegacyFormationSupport(
+		FGameXXKRuntimeState& State,
+		const int32 RequiredPermanentMemberCount)
+	{
+		static const FName SupportTemplates[] = {
+			TEXT("Companion.Guard.01"),
+			TEXT("Companion.Healer.01"),
+			TEXT("Companion.Hunter.01"),
+			TEXT("Companion.Sorcerer.01")};
+		for (int32 TemplateIndex = 0;
+			State.CardRun.CompanionRoster.PermanentCompanions.Num() < RequiredPermanentMemberCount
+				&& TemplateIndex < UE_ARRAY_COUNT(SupportTemplates);
+			++TemplateIndex)
+		{
+			FGameXXKCompanionRecruitResult Result;
+			FString Error;
+			if (!FGameXXKCompanionRules::RecruitPermanentCompanion(
+				State.CardRun.CompanionRoster,
+				SupportTemplates[TemplateIndex],
+				9200 + TemplateIndex,
+				Result,
+				&Error)
+				|| Result.Outcome != EGameXXKCompanionRecruitOutcome::Recruited)
+			{
+				return false;
+			}
+		}
+		return State.CardRun.CompanionRoster.PermanentCompanions.Num() >= RequiredPermanentMemberCount;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -135,8 +165,8 @@ bool FGameXXKCompanionBirthPoolMigrationTest::RunTest(const FString& Parameters)
 
 	TestEqual(TEXT("the fixed six-card companion birth pool was introduced by save version thirteen"),
 		FGameXXKSaveMigration::CompanionBirthPoolIntroducedSaveVersion, 13);
-	TestEqual(TEXT("the current save schema includes battle retreat checkpoints"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 23);
+	TestEqual(TEXT("the current save schema includes ordered party formation"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 24);
 
 	FGameXXKRuntimeState LegacyRuntime = UGameXXKMVPRules::CreateNewGame();
 	FGameXXKCompanionRecruitResult RecruitResult;
@@ -153,6 +183,11 @@ bool FGameXXKCompanionBirthPoolMigrationTest::RunTest(const FString& Parameters)
 		EGameXXKCompanionRecruitOutcome::Recruited);
 	if (!TestTrue(TEXT("the migration fixture contains a permanent companion"),
 		!LegacyRuntime.CardRun.CompanionRoster.PermanentCompanions.IsEmpty()))
+	{
+		return false;
+	}
+	if (!TestTrue(TEXT("legacy roster fixture has three legal formation members"),
+		RecruitLegacyFormationSupport(LegacyRuntime, 3)))
 	{
 		return false;
 	}
@@ -260,6 +295,11 @@ bool FGameXXKPendingCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 	LegacyCandidate.PersonalCardIds = BuildLegacyTwelveCardPool(LegacyCandidate.Role);
 	LegacyCandidate.UnlockedPersonalCardIds = LegacyCandidate.PersonalCardIds;
 	LegacyCandidate.SelectedCardIds = BuildLegacySelection(LegacyCandidate.PersonalCardIds, ExpectedBirthPool);
+	if (!TestTrue(TEXT("pending-candidate fixture has three permanent formation members"),
+		RecruitLegacyFormationSupport(LegacyRuntime, 3)))
+	{
+		return false;
+	}
 	LegacyRuntime.CardRun.CompanionRoster.PendingRecruitment.bHasPendingRecruitment = true;
 	LegacyRuntime.CardRun.CompanionRoster.PendingRecruitment.Candidate = LegacyCandidate;
 

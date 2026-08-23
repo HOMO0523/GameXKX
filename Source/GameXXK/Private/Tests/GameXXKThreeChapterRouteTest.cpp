@@ -3,13 +3,23 @@
 #include "GameXXKEnemyTypes.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKRelicRules.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
+#include "Engine/GameInstance.h"
 #include "Serialization/MemoryWriter.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 namespace
 {
+	FGameXXKRuntimeState MakeStartedState()
+	{
+		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		return Subsystem && Subsystem->StartGame()
+			? Subsystem->GetRuntimeStateCopy()
+			: FGameXXKRuntimeState();
+	}
+
 	TArray<uint8> BuildRouteSignature(const FGameXXKRuntimeState& State)
 	{
 		TArray<uint8> Bytes;
@@ -41,7 +51,7 @@ namespace
 
 	FGameXXKRuntimeState MakeActiveLegacyRoute()
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State = MakeStartedState();
 		State.PlayerLevel = 11;
 		State.bDungeonActive = true;
 		UGameXXKMVPRules::GenerateRouteMapForSeed(State, 27011991);

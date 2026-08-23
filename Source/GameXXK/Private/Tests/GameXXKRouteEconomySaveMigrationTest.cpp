@@ -3,8 +3,10 @@
 #include "GameXXKEncounterRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKRouteEconomyRules.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
 
+#include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -25,14 +27,22 @@ static_assert(
 	FGameXXKSaveMigration::DesktopInventoryStorageIntroducedSaveVersion == 21,
 	"Persistent desktop inventory storage advances the current save version to twenty-one.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 23,
-	"Battle retreat checkpoint persistence is part of the current save version.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 24,
+	"Ordered party formation persistence is part of the current save version.");
 
 namespace
 {
+	FGameXXKRuntimeState MakeStartedState()
+	{
+		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		return Subsystem && Subsystem->StartGame()
+			? Subsystem->GetRuntimeStateCopy()
+			: FGameXXKRuntimeState();
+	}
+
 	FGameXXKRuntimeState MakeActiveRouteState(const int32 Chapter)
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State = MakeStartedState();
 		State.Screen = EGameXXKScreen::DungeonMap;
 		State.CurrentMapId = TEXT("HuangshanRoute");
 		State.bDungeonActive = true;
@@ -108,6 +118,7 @@ namespace
 	{
 		return FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&Left, &Right, PPF_None);
 	}
+
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -133,7 +144,7 @@ bool FGameXXKRouteEconomySaveVersionContractTest::RunTest(const FString& Paramet
 		TEXT("canonical merchant stock schema is version ten"),
 		FGameXXKSaveMigration::RouteMerchantStockSchemaIntroducedSaveVersion,
 		10);
-	TestEqual(TEXT("current save version includes battle retreat checkpoints"), FGameXXKSaveMigration::CurrentSaveVersion, 23);
+	TestEqual(TEXT("current save version includes ordered party formation"), FGameXXKSaveMigration::CurrentSaveVersion, 24);
 	return true;
 }
 
@@ -210,20 +221,22 @@ bool FGameXXKRouteEconomyV9MigrationTest::RunTest(const FString& Parameters)
 		NormalizedMigrated.CardRun.HeroUnlockedCardIds = NormalizedExpected.CardRun.HeroUnlockedCardIds;
 		NormalizedMigrated.CardRun.HeroSelectedCardIds = NormalizedExpected.CardRun.HeroSelectedCardIds;
 		NormalizedMigrated.CardRun.RouteRandomSeed = NormalizedExpected.CardRun.RouteRandomSeed;
-		// v18-v22 introduced new durable namespaces after this route-economy
+		// v11-v24 introduced new durable namespaces after this route-economy
 		// fixture was authored. Their deterministic defaults and NPC loadouts are
 		// covered by their own migration contracts; do not treat those derived
 		// fields as a route-economy preservation failure.
+		NormalizedExpected.MetaShop = NormalizedMigrated.MetaShop;
 		NormalizedExpected.Training = NormalizedMigrated.Training;
 		NormalizedExpected.DesktopInventory = NormalizedMigrated.DesktopInventory;
 		NormalizedExpected.CardRun.PartySelection.QuestNpc = NormalizedMigrated.CardRun.PartySelection.QuestNpc;
 		NormalizedExpected.CardRun.PartySelection.QuestNpcCardLoadouts = NormalizedMigrated.CardRun.PartySelection.QuestNpcCardLoadouts;
+		NormalizedExpected.CardRun.OrderedFormation = NormalizedMigrated.CardRun.OrderedFormation;
 		TestTrue(
 			TEXT("v8 migration preserves the complete runtime except the three route-economy fields, the cleared merchant snapshot, and re-derived hero pools"),
 			RuntimeStatesMatch(NormalizedMigrated, NormalizedExpected));
 	}
 
-	FGameXXKRuntimeState InactiveState = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState InactiveState = MakeStartedState();
 	InactiveState.CardRun.RouteTravelMoney = 44;
 	InactiveState.CardRun.bRouteEconomyInitialized = true;
 	InactiveState.CardRun.RewardedTravelMoneyNodes = {FGameXXKRouteTravelMoneyReceipt{1, 7, 20}};
@@ -311,7 +324,7 @@ bool FGameXXKRouteEconomyV9RuntimeValidationTest::RunTest(const FString& Paramet
 		TEXT("current v10 active uninitialized economy is rejected"),
 		FGameXXKSaveMigration::MigrateToCurrent(UninitializedCurrent, Migrated, Report));
 
-	FGameXXKRuntimeState DirtyInactive = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState DirtyInactive = MakeStartedState();
 	DirtyInactive.CardRun.RouteTravelMoney = 1;
 	TestFalse(
 		TEXT("current v10 inactive nonzero balance is rejected"),
@@ -319,7 +332,7 @@ bool FGameXXKRouteEconomyV9RuntimeValidationTest::RunTest(const FString& Paramet
 			MakeVersionedSave(MoveTemp(DirtyInactive), FGameXXKSaveMigration::CurrentSaveVersion),
 			Migrated,
 			Report));
-	DirtyInactive = UGameXXKMVPRules::CreateNewGame();
+	DirtyInactive = MakeStartedState();
 	DirtyInactive.CardRun.bRouteEconomyInitialized = true;
 	TestFalse(
 		TEXT("current v10 inactive initialized flag is rejected"),
@@ -327,7 +340,7 @@ bool FGameXXKRouteEconomyV9RuntimeValidationTest::RunTest(const FString& Paramet
 			MakeVersionedSave(MoveTemp(DirtyInactive), FGameXXKSaveMigration::CurrentSaveVersion),
 			Migrated,
 			Report));
-	DirtyInactive = UGameXXKMVPRules::CreateNewGame();
+	DirtyInactive = MakeStartedState();
 	DirtyInactive.CardRun.RewardedTravelMoneyNodes = {FGameXXKRouteTravelMoneyReceipt{1, 0, 0}};
 	TestFalse(
 		TEXT("current v10 inactive receipt is rejected"),
@@ -412,7 +425,7 @@ bool FGameXXKRouteEconomyV9RuntimeValidationTest::RunTest(const FString& Paramet
 	MismatchedPending.RuntimeState.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 7;
 	TestFalse(TEXT("pending settlement source card count must match runtime"), FGameXXKSaveMigration::MigrateToCurrent(MismatchedPending, Migrated, Report));
 
-	FGameXXKRuntimeState InactivePending = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState InactivePending = MakeStartedState();
 	InactivePending.CardRun.PendingSettlement = MakeSettlementReceipt(0, 0);
 	TestFalse(
 		TEXT("inactive route cannot retain a nonempty pending settlement"),
