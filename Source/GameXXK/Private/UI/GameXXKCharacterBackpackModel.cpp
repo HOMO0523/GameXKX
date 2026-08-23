@@ -17,29 +17,6 @@ namespace
 		return Slots;
 	}
 
-	FName GetEquippedInstanceId(
-		const FGameXXKEquipmentLoadout& Loadout,
-		const EGameXXKEquipmentSlot Slot)
-	{
-		switch (Slot)
-		{
-		case EGameXXKEquipmentSlot::Weapon:
-			return Loadout.WeaponInstanceId;
-		case EGameXXKEquipmentSlot::Head:
-			return Loadout.HeadInstanceId;
-		case EGameXXKEquipmentSlot::Armor:
-			return Loadout.ArmorInstanceId;
-		case EGameXXKEquipmentSlot::Belt:
-			return Loadout.BeltInstanceId;
-		case EGameXXKEquipmentSlot::Shoes:
-			return Loadout.ShoesInstanceId;
-		case EGameXXKEquipmentSlot::Accessory:
-			return Loadout.AccessoryInstanceId;
-		default:
-			return NAME_None;
-		}
-	}
-
 	FGameXXKEquipmentTransactionResult MakeLocalFailure(
 		const EGameXXKEquipmentTransactionError Error,
 		const FText& Message)
@@ -85,7 +62,9 @@ TArray<FGameXXKCharacterBackpackSlotView> FGameXXKCharacterBackpackModel::GetSix
 	{
 		FGameXXKCharacterBackpackSlotView& View = Views.AddDefaulted_GetRef();
 		View.Slot = Slot;
-		View.EquippedInstanceId = Loadout ? GetEquippedInstanceId(*Loadout, Slot) : NAME_None;
+		View.EquippedInstanceId = Loadout
+			? FGameXXKEquipmentRules::GetLoadoutSlotInstanceId(*Loadout, Slot)
+			: NAME_None;
 	}
 	return Views;
 }

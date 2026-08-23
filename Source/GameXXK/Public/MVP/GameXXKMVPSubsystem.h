@@ -239,6 +239,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Equipment")
 	bool EquipEquipmentInstance(FName CharacterId, EGameXXKEquipmentSlot Slot, FName InstanceId, FGameXXKEquipmentTransactionResult& OutResult);
 
+	/** Equips the unequipped instance in one authoritative desktop cell and returns any displaced instance there. */
+	bool EquipEquipmentFromDesktopCell(
+		FName CharacterId,
+		EGameXXKEquipmentSlot Slot,
+		EGameXXKDesktopItemContainer SourceContainer,
+		int32 SourceSlotIndex,
+		FName ExpectedInstanceId,
+		FGameXXKEquipmentTransactionResult& OutResult);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Equipment")
 	bool UnequipEquipmentSlot(FName CharacterId, EGameXXKEquipmentSlot Slot, FGameXXKEquipmentTransactionResult& OutResult);
 

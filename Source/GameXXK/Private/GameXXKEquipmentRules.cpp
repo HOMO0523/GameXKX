@@ -533,6 +533,14 @@ FName FGameXXKEquipmentRules::HeroCharacterId()
 	return PlayerId;
 }
 
+FName FGameXXKEquipmentRules::GetLoadoutSlotInstanceId(
+	const FGameXXKEquipmentLoadout& Loadout,
+	const EGameXXKEquipmentSlot Slot)
+{
+	const FName* InstanceId = GetSlotPtr(Loadout, Slot);
+	return InstanceId ? *InstanceId : NAME_None;
+}
+
 const FGameXXKEquipmentInstance* FGameXXKEquipmentRules::FindInstance(
 	const FGameXXKEquipmentCollectionState& Collection,
 	const FName InstanceId)

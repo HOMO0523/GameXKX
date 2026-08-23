@@ -1,5 +1,6 @@
 #include "GameXXKDesktopInventoryRules.h"
 
+#include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
 
 namespace
@@ -17,6 +18,12 @@ namespace
 		return Container == EGameXXKDesktopItemContainer::Warehouse
 			? FGameXXKDesktopInventoryRules::WarehouseCapacity
 			: FGameXXKDesktopInventoryRules::BackpackCapacity;
+	}
+
+	bool IsValidContainer(const EGameXXKDesktopItemContainer Container)
+	{
+		return Container == EGameXXKDesktopItemContainer::Backpack
+			|| Container == EGameXXKDesktopItemContainer::Warehouse;
 	}
 
 	TArray<FGameXXKDesktopInventoryEntryKey>& SlotsFor(
@@ -59,6 +66,7 @@ namespace
 	bool HasPositiveItemStack(const FGameXXKRuntimeState& State, const FName ItemId)
 	{
 		return !ItemId.IsNone()
+			&& !FGameXXKEquipmentCatalog::FindDefinition(ItemId)
 			&& (State.Inventory.FindRef(ItemId) > 0
 				|| State.DesktopInventory.WarehouseItems.FindRef(ItemId) > 0);
 	}
@@ -90,7 +98,9 @@ namespace
 			}
 			for (const TPair<FName, int32>& Pair : State.Inventory)
 			{
-				if (!Pair.Key.IsNone() && Pair.Value > 0)
+				if (!Pair.Key.IsNone()
+					&& Pair.Value > 0
+					&& !FGameXXKEquipmentCatalog::FindDefinition(Pair.Key))
 				{
 					Result.Add(FGameXXKDesktopInventoryRules::MakeItemEntry(Pair.Key));
 				}
@@ -107,7 +117,9 @@ namespace
 			}
 			for (const TPair<FName, int32>& Pair : State.DesktopInventory.WarehouseItems)
 			{
-				if (!Pair.Key.IsNone() && Pair.Value > 0)
+				if (!Pair.Key.IsNone()
+					&& Pair.Value > 0
+					&& !FGameXXKEquipmentCatalog::FindDefinition(Pair.Key))
 				{
 					Result.Add(FGameXXKDesktopInventoryRules::MakeItemEntry(Pair.Key));
 				}
@@ -181,6 +193,85 @@ namespace
 		State.EquipmentCollection.RefinementSand = FMath::Max(
 			0,
 			State.Inventory.FindRef(UGameXXKMVPRules::ItemRefinementSand()));
+	}
+
+	bool IsAuthoritativeSourceEntry(
+		const FGameXXKRuntimeState& State,
+		const EGameXXKDesktopItemContainer Container,
+		const FGameXXKDesktopInventoryEntryKey& Entry,
+		FString* OutError)
+	{
+		if (!Entry.IsValid())
+		{
+			SetError(OutError, TEXT("Desktop inventory source slot is empty."));
+			return false;
+		}
+		if (Entry.bEquipmentInstance)
+		{
+			const bool bInWarehousePartition =
+				State.DesktopInventory.WarehouseEquipmentInstanceIds.Contains(Entry.EntryId);
+			if (!HasEquipmentInstanceExactlyOnce(State, Entry.EntryId)
+				|| !State.EquipmentCollection.WarehouseInstanceIds.Contains(Entry.EntryId)
+				|| bInWarehousePartition != (Container == EGameXXKDesktopItemContainer::Warehouse))
+			{
+				SetError(OutError, TEXT("Equipment instance is no longer an unequipped entry in its source container."));
+				return false;
+			}
+			return true;
+		}
+
+		const TMap<FName, int32>& SourceItems =
+			Container == EGameXXKDesktopItemContainer::Warehouse
+				? State.DesktopInventory.WarehouseItems
+				: State.Inventory;
+		if (SourceItems.FindRef(Entry.EntryId) <= 0)
+		{
+			SetError(OutError, TEXT("Item stack is no longer available in its source container."));
+			return false;
+		}
+		return true;
+	}
+
+	bool TransferEntryPartition(
+		FGameXXKRuntimeState& State,
+		const FGameXXKDesktopInventoryEntryKey& Entry,
+		const EGameXXKDesktopItemContainer FromContainer,
+		const EGameXXKDesktopItemContainer ToContainer,
+		FString* OutError)
+	{
+		if (FromContainer == ToContainer)
+		{
+			return true;
+		}
+		if (Entry.bEquipmentInstance)
+		{
+			if (ToContainer == EGameXXKDesktopItemContainer::Warehouse)
+			{
+				State.DesktopInventory.WarehouseEquipmentInstanceIds.AddUnique(Entry.EntryId);
+			}
+			else
+			{
+				State.DesktopInventory.WarehouseEquipmentInstanceIds.RemoveSingle(Entry.EntryId);
+			}
+			return true;
+		}
+
+		TMap<FName, int32>& SourceItems = FromContainer == EGameXXKDesktopItemContainer::Warehouse
+			? State.DesktopInventory.WarehouseItems
+			: State.Inventory;
+		TMap<FName, int32>& DestinationItems = ToContainer == EGameXXKDesktopItemContainer::Warehouse
+			? State.DesktopInventory.WarehouseItems
+			: State.Inventory;
+		const int32 Quantity = SourceItems.FindRef(Entry.EntryId);
+		if (Quantity <= 0)
+		{
+			SetError(OutError, TEXT("Item stack is no longer available in its source container."));
+			return false;
+		}
+		SourceItems.Remove(Entry.EntryId);
+		DestinationItems.Remove(Entry.EntryId);
+		DestinationItems.Add(Entry.EntryId, Quantity);
+		return true;
 	}
 }
 
@@ -384,6 +475,104 @@ bool FGameXXKDesktopInventoryRules::Validate(const FGameXXKRuntimeState& State, 
 	return true;
 }
 
+bool FGameXXKDesktopInventoryRules::MoveOrSwap(
+	FGameXXKRuntimeState& InOutState,
+	const FGameXXKDesktopInventoryMoveRequest& Request,
+	FString* OutError)
+{
+	SetError(OutError, FString());
+	FGameXXKRuntimeState Candidate = InOutState;
+	if (!Normalize(Candidate, OutError))
+	{
+		return false;
+	}
+	if (!IsValidContainer(Request.FromContainer)
+		|| !IsValidContainer(Request.ToContainer))
+	{
+		SetError(OutError, TEXT("Desktop inventory container is invalid."));
+		return false;
+	}
+	if (Request.FromSlotIndex < 0
+		|| Request.FromSlotIndex >= CapacityFor(Request.FromContainer)
+		|| Request.ToSlotIndex < 0
+		|| Request.ToSlotIndex >= CapacityFor(Request.ToContainer))
+	{
+		SetError(OutError, TEXT("Desktop inventory slot index is invalid."));
+		return false;
+	}
+	TArray<FGameXXKDesktopInventoryEntryKey>& FromSlots = SlotsFor(Candidate, Request.FromContainer);
+	TArray<FGameXXKDesktopInventoryEntryKey>& ToSlots = SlotsFor(Candidate, Request.ToContainer);
+	const FGameXXKDesktopInventoryEntryKey SourceEntry = FromSlots[Request.FromSlotIndex];
+	if (Request.ExpectedEntry.IsValid() && SourceEntry != Request.ExpectedEntry)
+	{
+		SetError(OutError, TEXT("Desktop inventory source no longer matches the expected carried entry."));
+		return false;
+	}
+	if (!IsAuthoritativeSourceEntry(Candidate, Request.FromContainer, SourceEntry, OutError))
+	{
+		return false;
+	}
+	if (Request.FromContainer == Request.ToContainer
+		&& Request.FromSlotIndex == Request.ToSlotIndex)
+	{
+		return true;
+	}
+
+	const FGameXXKDesktopInventoryEntryKey TargetEntry = ToSlots[Request.ToSlotIndex];
+	if (TargetEntry.IsValid() && !Request.bAllowSwap)
+	{
+		SetError(OutError, TEXT("Desktop inventory destination slot is occupied."));
+		return false;
+	}
+	if (TargetEntry.IsValid()
+		&& !IsAuthoritativeSourceEntry(Candidate, Request.ToContainer, TargetEntry, OutError))
+	{
+		return false;
+	}
+
+	if (!TransferEntryPartition(
+		Candidate,
+		SourceEntry,
+		Request.FromContainer,
+		Request.ToContainer,
+		OutError)
+		|| (TargetEntry.IsValid()
+			&& !TransferEntryPartition(
+				Candidate,
+				TargetEntry,
+				Request.ToContainer,
+				Request.FromContainer,
+				OutError)))
+	{
+		return false;
+	}
+
+	FromSlots[Request.FromSlotIndex] = TargetEntry;
+	ToSlots[Request.ToSlotIndex] = SourceEntry;
+	SynchronizeLegacyMaterialMirrors(Candidate);
+	if (!Normalize(Candidate, OutError))
+	{
+		return false;
+	}
+	if (GetEntryAt(Candidate, Request.ToContainer, Request.ToSlotIndex) != SourceEntry)
+	{
+		SetError(OutError, TEXT("Desktop inventory normalization changed the requested target entry."));
+		return false;
+	}
+	if (TargetEntry.IsValid()
+		&& GetEntryAt(Candidate, Request.FromContainer, Request.FromSlotIndex) != TargetEntry)
+	{
+		SetError(OutError, TEXT("Desktop inventory normalization changed the displaced source entry."));
+		return false;
+	}
+	if (!Validate(Candidate, OutError))
+	{
+		return false;
+	}
+	InOutState = MoveTemp(Candidate);
+	return true;
+}
+
 bool FGameXXKDesktopInventoryRules::MoveEntry(
 	FGameXXKRuntimeState& InOutState,
 	const EGameXXKDesktopItemContainer FromContainer,
@@ -392,79 +581,13 @@ bool FGameXXKDesktopInventoryRules::MoveEntry(
 	const int32 ToSlotIndex,
 	FString* OutError)
 {
-	SetError(OutError, FString());
-	FGameXXKRuntimeState Candidate = InOutState;
-	if (!Normalize(Candidate, OutError)
-		|| FromSlotIndex < 0 || FromSlotIndex >= CapacityFor(FromContainer)
-		|| ToSlotIndex < 0 || ToSlotIndex >= CapacityFor(ToContainer))
-	{
-		SetError(OutError, TEXT("Desktop inventory slot index is invalid."));
-		return false;
-	}
-	TArray<FGameXXKDesktopInventoryEntryKey>& FromSlots = SlotsFor(Candidate, FromContainer);
-	TArray<FGameXXKDesktopInventoryEntryKey>& ToSlots = SlotsFor(Candidate, ToContainer);
-	const FGameXXKDesktopInventoryEntryKey Entry = FromSlots[FromSlotIndex];
-	if (!Entry.IsValid())
-	{
-		SetError(OutError, TEXT("Desktop inventory source slot is empty."));
-		return false;
-	}
-	if (FromContainer == ToContainer && FromSlotIndex == ToSlotIndex)
-	{
-		return true;
-	}
-	if (ToSlots[ToSlotIndex].IsValid())
-	{
-		SetError(OutError, TEXT("Desktop inventory destination slot is occupied."));
-		return false;
-	}
-
-	if (FromContainer != ToContainer)
-	{
-		if (Entry.bEquipmentInstance)
-		{
-			if (!Candidate.EquipmentCollection.WarehouseInstanceIds.Contains(Entry.EntryId))
-			{
-				SetError(OutError, TEXT("Equipment instance is no longer unequipped."));
-				return false;
-			}
-			if (ToContainer == EGameXXKDesktopItemContainer::Warehouse)
-			{
-				Candidate.DesktopInventory.WarehouseEquipmentInstanceIds.AddUnique(Entry.EntryId);
-			}
-			else
-			{
-				Candidate.DesktopInventory.WarehouseEquipmentInstanceIds.RemoveSingle(Entry.EntryId);
-			}
-		}
-		else
-		{
-			TMap<FName, int32>& SourceItems = FromContainer == EGameXXKDesktopItemContainer::Warehouse
-				? Candidate.DesktopInventory.WarehouseItems
-				: Candidate.Inventory;
-			TMap<FName, int32>& DestinationItems = ToContainer == EGameXXKDesktopItemContainer::Warehouse
-				? Candidate.DesktopInventory.WarehouseItems
-				: Candidate.Inventory;
-			const int32 Quantity = SourceItems.FindRef(Entry.EntryId);
-			if (Quantity <= 0)
-			{
-				SetError(OutError, TEXT("Item stack is no longer available in its source container."));
-				return false;
-			}
-			SourceItems.Remove(Entry.EntryId);
-			DestinationItems.FindOrAdd(Entry.EntryId) += Quantity;
-		}
-	}
-
-	FromSlots[FromSlotIndex] = FGameXXKDesktopInventoryEntryKey();
-	ToSlots[ToSlotIndex] = Entry;
-	SynchronizeLegacyMaterialMirrors(Candidate);
-	if (!Validate(Candidate, OutError))
-	{
-		return false;
-	}
-	InOutState = MoveTemp(Candidate);
-	return true;
+	FGameXXKDesktopInventoryMoveRequest Request;
+	Request.FromContainer = FromContainer;
+	Request.FromSlotIndex = FromSlotIndex;
+	Request.ToContainer = ToContainer;
+	Request.ToSlotIndex = ToSlotIndex;
+	Request.bAllowSwap = false;
+	return MoveOrSwap(InOutState, Request, OutError);
 }
 
 FGameXXKDesktopInventoryEntryKey FGameXXKDesktopInventoryRules::GetEntryAt(

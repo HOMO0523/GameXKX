@@ -2706,6 +2706,135 @@ bool UGameXXKMVPSubsystem::EquipEquipmentInstance(
 	return true;
 }
 
+bool UGameXXKMVPSubsystem::EquipEquipmentFromDesktopCell(
+	const FName CharacterId,
+	const EGameXXKEquipmentSlot Slot,
+	const EGameXXKDesktopItemContainer SourceContainer,
+	const int32 SourceSlotIndex,
+	const FName ExpectedInstanceId,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FString Error;
+	if (!FGameXXKDesktopInventoryRules::Normalize(Candidate, &Error))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::CollectionInvalid);
+		return false;
+	}
+
+	TArray<FGameXXKDesktopInventoryEntryKey>* SourceSlots = nullptr;
+	if (SourceContainer == EGameXXKDesktopItemContainer::Backpack)
+	{
+		SourceSlots = &Candidate.DesktopInventory.BackpackSlots;
+	}
+	else if (SourceContainer == EGameXXKDesktopItemContainer::Warehouse)
+	{
+		SourceSlots = &Candidate.DesktopInventory.WarehouseSlots;
+	}
+	if (!SourceSlots || !SourceSlots->IsValidIndex(SourceSlotIndex))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::InvalidRequest);
+		return false;
+	}
+
+	const FGameXXKDesktopInventoryEntryKey IncomingEntry = (*SourceSlots)[SourceSlotIndex];
+	if (ExpectedInstanceId.IsNone() || IncomingEntry.EntryId != ExpectedInstanceId)
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::InvalidRequest);
+		return false;
+	}
+	if (!IncomingEntry.IsValid() || !IncomingEntry.bEquipmentInstance)
+	{
+		SetEquipmentTransactionFailure(
+			OutResult,
+			IncomingEntry.IsValid()
+				? EGameXXKEquipmentTransactionError::InvalidRequest
+				: EGameXXKEquipmentTransactionError::InstanceMissing);
+		return false;
+	}
+	const FName IncomingInstanceId = IncomingEntry.EntryId;
+	if (!FGameXXKEquipmentRules::FindInstance(Candidate.EquipmentCollection, IncomingInstanceId))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::InstanceMissing);
+		return false;
+	}
+	const bool bSourcePartitionedToWarehouse =
+		Candidate.DesktopInventory.WarehouseEquipmentInstanceIds.Contains(IncomingInstanceId);
+	if (!Candidate.EquipmentCollection.WarehouseInstanceIds.Contains(IncomingInstanceId)
+		|| bSourcePartitionedToWarehouse
+			!= (SourceContainer == EGameXXKDesktopItemContainer::Warehouse))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::ItemNotInWarehouse);
+		return false;
+	}
+
+	const FGameXXKEquipmentLoadout* DestinationLoadout =
+		Candidate.EquipmentCollection.CharacterLoadouts.Find(CharacterId);
+	const FName DisplacedInstanceId = DestinationLoadout
+		? FGameXXKEquipmentRules::GetLoadoutSlotInstanceId(*DestinationLoadout, Slot)
+		: NAME_None;
+	(*SourceSlots)[SourceSlotIndex] = FGameXXKDesktopInventoryEntryKey();
+	if (SourceContainer == EGameXXKDesktopItemContainer::Warehouse)
+	{
+		Candidate.DesktopInventory.WarehouseEquipmentInstanceIds.RemoveSingle(IncomingInstanceId);
+	}
+
+	if (!FGameXXKEquipmentEconomyRules::Equip(
+		Candidate,
+		CharacterId,
+		Slot,
+		IncomingInstanceId,
+		OutResult))
+	{
+		return false;
+	}
+
+	if (!DisplacedInstanceId.IsNone())
+	{
+		(*SourceSlots)[SourceSlotIndex] =
+			FGameXXKDesktopInventoryRules::MakeEquipmentEntry(DisplacedInstanceId);
+		if (SourceContainer == EGameXXKDesktopItemContainer::Warehouse)
+		{
+			Candidate.DesktopInventory.WarehouseEquipmentInstanceIds.AddUnique(DisplacedInstanceId);
+		}
+		else
+		{
+			Candidate.DesktopInventory.WarehouseEquipmentInstanceIds.RemoveSingle(DisplacedInstanceId);
+		}
+	}
+
+	if (!FGameXXKDesktopInventoryRules::Normalize(Candidate, &Error)
+		|| !FGameXXKDesktopInventoryRules::Validate(Candidate, &Error))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::CollectionInvalid);
+		return false;
+	}
+	const FGameXXKDesktopInventoryEntryKey ProjectedSourceEntry =
+		FGameXXKDesktopInventoryRules::GetEntryAt(Candidate, SourceContainer, SourceSlotIndex);
+	if (!DisplacedInstanceId.IsNone()
+		&& ProjectedSourceEntry
+			!= FGameXXKDesktopInventoryRules::MakeEquipmentEntry(DisplacedInstanceId))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::CollectionInvalid);
+		return false;
+	}
+	if (DisplacedInstanceId.IsNone() && ProjectedSourceEntry == IncomingEntry)
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::CollectionInvalid);
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
 bool UGameXXKMVPSubsystem::UnequipEquipmentSlot(
 	const FName CharacterId,
 	const EGameXXKEquipmentSlot Slot,

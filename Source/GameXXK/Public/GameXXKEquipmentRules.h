@@ -179,6 +179,9 @@ public:
 	static constexpr int32 MaxItemLevel = 20;
 
 	static FName HeroCharacterId();
+	static FName GetLoadoutSlotInstanceId(
+		const FGameXXKEquipmentLoadout& Loadout,
+		EGameXXKEquipmentSlot Slot);
 	static const FGameXXKEquipmentInstance* FindInstance(
 		const FGameXXKEquipmentCollectionState& Collection,
 		FName InstanceId);

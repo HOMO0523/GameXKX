@@ -9,6 +9,17 @@ enum class EGameXXKDesktopItemContainer : uint8
 	Warehouse
 };
 
+/** Plain C++ request for one exact physical-cell move or occupied swap. */
+struct GAMEXXK_API FGameXXKDesktopInventoryMoveRequest
+{
+	EGameXXKDesktopItemContainer FromContainer = EGameXXKDesktopItemContainer::Backpack;
+	int32 FromSlotIndex = INDEX_NONE;
+	EGameXXKDesktopItemContainer ToContainer = EGameXXKDesktopItemContainer::Backpack;
+	int32 ToSlotIndex = INDEX_NONE;
+	bool bAllowSwap = true;
+	FGameXXKDesktopInventoryEntryKey ExpectedEntry;
+};
+
 /** Pure, transactional rules for the desktop backpack/warehouse cell model. */
 class GAMEXXK_API FGameXXKDesktopInventoryRules final
 {
@@ -31,7 +42,13 @@ public:
 	static bool Normalize(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);
 	static bool Validate(const FGameXXKRuntimeState& State, FString* OutError = nullptr);
 
-	/** Whole-stack move. Occupied destinations reject atomically; no implicit swap occurs. */
+	/** Whole-stack/instance move or occupied swap between exact physical cells. */
+	static bool MoveOrSwap(
+		FGameXXKRuntimeState& InOutState,
+		const FGameXXKDesktopInventoryMoveRequest& Request,
+		FString* OutError = nullptr);
+
+	/** Compatibility move facade. Occupied destinations continue to reject atomically. */
 	static bool MoveEntry(
 		FGameXXKRuntimeState& InOutState,
 		EGameXXKDesktopItemContainer FromContainer,
