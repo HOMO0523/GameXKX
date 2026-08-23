@@ -61,6 +61,33 @@ namespace
 		{
 			return false;
 		}
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		if (State.CardRun.CompanionRoster.PermanentCompanions.Num()
+			< FGameXXKPartyFormationRules::MinimumOwnedPermanentCompanions)
+		{
+			const FGameXXKCompanionTemplateDefinition* ReserveTemplate =
+				FGameXXKCompanionCatalog::GetRecruitTemplates().FindByPredicate(
+					[&Result](const FGameXXKCompanionTemplateDefinition& Definition)
+					{
+						return Definition.TemplateId != Result.Companion.RecruitTemplateId;
+					});
+			FGameXXKCompanionRecruitResult ReserveResult;
+			FString ReserveError;
+			if (!ReserveTemplate
+				|| !FGameXXKCompanionRules::RecruitPermanentCompanion(
+					State.CardRun.CompanionRoster,
+					ReserveTemplate->TemplateId,
+					Seed + 0x2468,
+					ReserveResult,
+					&ReserveError)
+				|| ReserveResult.Outcome != EGameXXKCompanionRecruitOutcome::Recruited)
+			{
+				Test.AddError(ReserveError.IsEmpty()
+					? TEXT("roster fixture could not add its required reserve companion")
+					: ReserveError);
+				return false;
+			}
+		}
 		OutCompanion = Result.Companion;
 		return !OutCompanion.InstanceId.IsNone() && MaterializeRosterFormation(Test, Subsystem);
 	}
@@ -224,8 +251,13 @@ bool FGameXXKCompanionRosterWidgetLayoutTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the rebuilt card can open a fresh tooltip before a companion switch"), Widget->IsCardTooltipVisibleForTest());
 	TestTrue(TEXT("switching companions succeeds for the stale-hover regression"), Widget->SelectCompanion(SecondCompanion.InstanceId));
 	TestFalse(TEXT("switching companions clears the prior grid tooltip before rebuilding cards"), Widget->IsCardTooltipVisibleForTest());
-	UButton* SecondRosterSlot = Widget->WidgetTree ? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterSlot_01"))) : nullptr;
-	TestNotNull(TEXT("the second fixed roster slot is a real interactive button"), SecondRosterSlot);
+	const int32 SecondRosterSlotIndex =
+		Widget->GetVisibleRosterSlotInstanceIdsForTest().IndexOfByKey(SecondCompanion.InstanceId);
+	UButton* SecondRosterSlot = Widget->WidgetTree && SecondRosterSlotIndex != INDEX_NONE
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(
+			FName(*FString::Printf(TEXT("CompanionRosterSlot_%02d"), SecondRosterSlotIndex))))
+		: nullptr;
+	TestNotNull(TEXT("the explicitly recruited companion's roster slot is a real interactive button"), SecondRosterSlot);
 	if (SecondRosterSlot)
 	{
 		SecondRosterSlot->OnClicked.Broadcast();
@@ -620,9 +652,18 @@ bool FGameXXKCompanionRosterWidgetFreshTownInitializationTest::RunTest(const FSt
 
 	const TArray<FGameXXKPermanentCompanion> StarterRoster = Subsystem->GetPermanentCompanionViews();
 	TestEqual(TEXT("a fresh game exposes all six deterministic profession starters"), StarterRoster.Num(), 6);
-	TestTrue(TEXT("the real random-recruit action succeeds from the initialized town backpack"), Widget->BeginRandomRecruitment());
+	for (int32 Attempt = 0;
+		Attempt < FGameXXKCompanionCatalog::GetRecruitTemplates().Num()
+			&& Subsystem->GetPermanentCompanionViews().Num() == StarterRoster.Num();
+		++Attempt)
+	{
+		TestTrue(TEXT("the real random-recruit action resolves from the initialized town backpack"),
+			Widget->BeginRandomRecruitment());
+	}
 	const TArray<FGameXXKPermanentCompanion> RecruitedRoster = Subsystem->GetPermanentCompanionViews();
-	TestEqual(TEXT("the first successful recruit is added after the deterministic starter"), RecruitedRoster.Num(), StarterRoster.Num() + 1);
+	TestEqual(TEXT("the first nonduplicate recruit is added after the deterministic starters"),
+		RecruitedRoster.Num(),
+		StarterRoster.Num() + 1);
 	if (RecruitedRoster.Num() != StarterRoster.Num() + 1)
 	{
 		return false;

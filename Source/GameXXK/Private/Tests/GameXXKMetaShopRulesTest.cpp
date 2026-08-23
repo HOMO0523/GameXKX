@@ -6,11 +6,40 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKMVPRules.h"
+#include "MVP/GameXXKMVPSubsystem.h"
+
+#include "Engine/GameInstance.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 namespace
 {
+	FGameXXKRuntimeState MakeMinimumValidState()
+	{
+		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		if (!Subsystem || !Subsystem->StartGame())
+		{
+			return FGameXXKRuntimeState();
+		}
+		FGameXXKRuntimeState State = Subsystem->GetRuntimeStateCopy();
+		const FName ActiveId = State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+		FName ReserveId = NAME_None;
+		for (const FGameXXKPermanentCompanion& Companion : State.CardRun.CompanionRoster.PermanentCompanions)
+		{
+			if (Companion.InstanceId != ActiveId)
+			{
+				ReserveId = Companion.InstanceId;
+				break;
+			}
+		}
+		State.CardRun.CompanionRoster.PermanentCompanions.RemoveAll(
+			[ActiveId, ReserveId](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.InstanceId != ActiveId && Companion.InstanceId != ReserveId;
+			});
+		return State;
+	}
+
 	int32 BuildCompanionPackOrderSeed(const FGameXXKRuntimeState& State)
 	{
 		const uint32 Mixed = HashCombine(
@@ -144,7 +173,7 @@ bool FGameXXKMetaShopEquipmentPurchaseTest::RunTest(const FString& Parameters)
 
 	for (int32 Index = 0; Index < 6; ++Index)
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State = MakeMinimumValidState();
 		State.Screen = EGameXXKScreen::Town;
 		State.PlayerGold = 1000;
 		State.PlayerLevel = Index + 1;
@@ -183,7 +212,7 @@ bool FGameXXKMetaShopEquipmentPurchaseTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	FGameXXKRuntimeState ReplayA = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState ReplayA = MakeMinimumValidState();
 	ReplayA.Screen = EGameXXKScreen::Town;
 	ReplayA.PlayerGold = 1000;
 	FGameXXKRuntimeState ReplayB = ReplayA;
@@ -203,12 +232,12 @@ bool FGameXXKMetaShopEquipmentPurchaseTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("%s leaves runtime unchanged"), Label), FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&State, &Before, PPF_None));
 	};
 
-	FGameXXKRuntimeState Insufficient = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState Insufficient = MakeMinimumValidState();
 	Insufficient.Screen = EGameXXKScreen::Town;
 	Insufficient.PlayerGold = 99;
 	TestAtomicFailure(Insufficient, EGameXXKMetaShopProductId::PoJunPack, EGameXXKMetaShopError::InsufficientGold, TEXT("insufficient gold"));
 
-	FGameXXKRuntimeState Full = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState Full = MakeMinimumValidState();
 	Full.Screen = EGameXXKScreen::Town;
 	Full.PlayerGold = 1000;
 	while (FGameXXKEquipmentRules::HasWarehouseCapacity(Full.EquipmentCollection))
@@ -229,19 +258,19 @@ bool FGameXXKMetaShopEquipmentPurchaseTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("warehouse fixture reaches 200"), Full.EquipmentCollection.WarehouseInstanceIds.Num(), FGameXXKEquipmentRules::WarehouseCapacity);
 	TestAtomicFailure(Full, EGameXXKMetaShopProductId::PoJunPack, EGameXXKMetaShopError::WarehouseFull, TEXT("full warehouse"));
 
-	FGameXXKRuntimeState Exhausted = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState Exhausted = MakeMinimumValidState();
 	Exhausted.Screen = EGameXXKScreen::Town;
 	Exhausted.PlayerGold = 1000;
 	Exhausted.MetaShop.NextPurchaseOrdinal = MAX_int32;
 	TestAtomicFailure(Exhausted, EGameXXKMetaShopProductId::PoJunPack, EGameXXKMetaShopError::PurchaseOrdinalExhausted, TEXT("exhausted purchase ordinal"));
 
-	FGameXXKRuntimeState Corrupt = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState Corrupt = MakeMinimumValidState();
 	Corrupt.Screen = EGameXXKScreen::Town;
 	Corrupt.PlayerGold = 1000;
 	Corrupt.EquipmentCollection.CollectionSeed = 0;
 	TestAtomicFailure(Corrupt, EGameXXKMetaShopProductId::PoJunPack, EGameXXKMetaShopError::InvalidRuntimeState, TEXT("corrupt runtime"));
 
-	FGameXXKRuntimeState InvalidProduct = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState InvalidProduct = MakeMinimumValidState();
 	InvalidProduct.Screen = EGameXXKScreen::Town;
 	InvalidProduct.PlayerGold = 1000;
 	TestAtomicFailure(InvalidProduct, EGameXXKMetaShopProductId::Invalid, EGameXXKMetaShopError::InvalidProduct, TEXT("invalid product"));
@@ -255,7 +284,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKMetaShopCompanionPurchaseTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = MakeMinimumValidState();
 	State.Screen = EGameXXKScreen::Town;
 	State.PlayerGold = FGameXXKMetaShopRules::CompanionPackPrice;
 
@@ -283,7 +312,9 @@ bool FGameXXKMetaShopCompanionPurchaseTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("companion pack spends exactly 500"), State.PlayerGold, 0);
 	TestEqual(TEXT("companion result reports gold delta"), Result.GoldDelta, -FGameXXKMetaShopRules::CompanionPackPrice);
 	TestEqual(TEXT("companion pack advances meta-shop ordinal"), State.MetaShop.NextPurchaseOrdinal, 1);
-	TestEqual(TEXT("direct companion pack recruits one permanent companion"), State.CardRun.CompanionRoster.PermanentCompanions.Num(), 1);
+	TestEqual(TEXT("direct companion pack appends one permanent companion"),
+		State.CardRun.CompanionRoster.PermanentCompanions.Num(),
+		ReplaySource.CardRun.CompanionRoster.PermanentCompanions.Num() + 1);
 	TestEqual(TEXT("direct companion pack reports recruited"), Result.CompanionResult.Outcome, EGameXXKCompanionRecruitOutcome::Recruited);
 	TestEqual(TEXT("explicit saved order chooses the purchased template"), Result.CompanionResult.Companion.RecruitTemplateId, ExpectedOrder.ResolvedTemplateId);
 	TestFalse(TEXT("direct recruit consumes its pending order"), State.CardRun.CompanionRoster.PendingRecruitOrder.bHasPendingOrder);
@@ -300,7 +331,7 @@ bool FGameXXKMetaShopCompanionPurchaseTest::RunTest(const FString& Parameters)
 		ReplayResult.CompanionResult.Companion.InstanceId,
 		Result.CompanionResult.Companion.InstanceId);
 
-	FGameXXKRuntimeState Full = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState Full = MakeMinimumValidState();
 	Full.Screen = EGameXXKScreen::Town;
 	Full.PlayerGold = FGameXXKMetaShopRules::CompanionPackPrice;
 	FGameXXKCompanionRosterState FullOrderProbe = Full.CardRun.CompanionRoster;
@@ -325,7 +356,7 @@ bool FGameXXKMetaShopCompanionPurchaseTest::RunTest(const FString& Parameters)
 		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&Full, &FullBefore, PPF_None));
 
 	// A pending candidate (without a full roster) still rejects another pack.
-	FGameXXKRuntimeState PendingBlocked = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState PendingBlocked = MakeMinimumValidState();
 	PendingBlocked.Screen = EGameXXKScreen::Town;
 	PendingBlocked.PlayerGold = FGameXXKMetaShopRules::CompanionPackPrice;
 	FGameXXKCompanionRecruitOrder PendingOrder;
@@ -343,7 +374,7 @@ bool FGameXXKMetaShopCompanionPurchaseTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("pending companion rejection is atomic"),
 		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&PendingBlocked, &PendingBlockedBefore, PPF_None));
 
-	FGameXXKRuntimeState Corrupt = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState Corrupt = MakeMinimumValidState();
 	Corrupt.Screen = EGameXXKScreen::Town;
 	Corrupt.PlayerGold = FGameXXKMetaShopRules::CompanionPackPrice;
 	Corrupt.CardRun.CompanionRoster.SigilCount = -1;

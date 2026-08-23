@@ -46,6 +46,27 @@ namespace
 		}
 		FString FormationError;
 		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		const FGameXXKCompanionTemplateDefinition* ReserveTemplate =
+			FGameXXKCompanionCatalog::GetRecruitTemplates().FindByPredicate(
+				[&Result](const FGameXXKCompanionTemplateDefinition& Definition)
+				{
+					return Definition.TemplateId != Result.Companion.RecruitTemplateId;
+				});
+		FGameXXKCompanionRecruitResult ReserveResult;
+		if (!ReserveTemplate
+			|| !FGameXXKCompanionRules::RecruitPermanentCompanion(
+				State.CardRun.CompanionRoster,
+				ReserveTemplate->TemplateId,
+				Seed + 0x1357,
+				ReserveResult,
+				&FormationError)
+			|| ReserveResult.Outcome != EGameXXKCompanionRecruitOutcome::Recruited)
+		{
+			Test.AddError(FormationError.IsEmpty()
+				? TEXT("seeded facade fixture could not add its required reserve companion")
+				: FormationError);
+			return false;
+		}
 		if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, TEXT("Npc.TusiChief"), {}, &FormationError)
 			|| !FGameXXKPartyFormationRules::Normalize(State, &FormationError))
 		{
@@ -207,7 +228,9 @@ bool FGameXXKCompanionFacadeRecruitReadTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the same recruit seed resolves the same template"), FirstRecruit.RecruitTemplateId, SecondRecruit.RecruitTemplateId);
 	TestEqual(TEXT("the same recruit seed resolves the same personal card seed"), FirstRecruit.CardSeed, SecondRecruit.CardSeed);
 	TestEqual(TEXT("the same recruit seed resolves the same twelve-card personal pool"), FirstRecruit.PersonalCardIds, SecondRecruit.PersonalCardIds);
-	TestEqual(TEXT("the facade roster lists the recruited companion"), FirstSubsystem->GetPermanentCompanionViews().Num(), 1);
+	TestEqual(TEXT("the facade roster keeps the recruited companion plus one required reserve"),
+		FirstSubsystem->GetPermanentCompanionViews().Num(),
+		2);
 
 	FGameXXKPermanentCompanion ReadView;
 	TestTrue(TEXT("the facade exposes a copy-safe read view by stable instance id"), FirstSubsystem->TryGetPermanentCompanionView(FirstRecruit.InstanceId, ReadView));

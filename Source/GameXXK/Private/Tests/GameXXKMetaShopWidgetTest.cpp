@@ -21,8 +21,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKMetaShopWidgetTest::RunTest(const FString& Parameters)
 {
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestNotNull(TEXT("meta-shop widget subsystem exists"), Subsystem)
+		|| !TestTrue(TEXT("meta-shop widget starts a materialized current game"), Subsystem->StartGame()))
+	{
+		return false;
+	}
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-	State = UGameXXKMVPRules::CreateNewGame();
 	State.Screen = EGameXXKScreen::Town;
 	State.PlayerGold = 1000;
 

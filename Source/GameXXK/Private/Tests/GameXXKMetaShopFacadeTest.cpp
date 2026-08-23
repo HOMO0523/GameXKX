@@ -14,8 +14,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKMetaShopFacadeTest::RunTest(const FString& Parameters)
 {
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestNotNull(TEXT("meta-shop facade subsystem exists"), Subsystem)
+		|| !TestTrue(TEXT("meta-shop facade starts a materialized current game"), Subsystem->StartGame()))
+	{
+		return false;
+	}
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-	State = UGameXXKMVPRules::CreateNewGame();
 	State.Screen = EGameXXKScreen::Town;
 	State.PlayerGold = 1000;
 
@@ -45,8 +49,8 @@ bool FGameXXKMetaShopFacadeTest::RunTest(const FString& Parameters)
 
 	for (const EGameXXKScreen RejectedScreen : {EGameXXKScreen::DungeonMap, EGameXXKScreen::Battle})
 	{
+		TestTrue(TEXT("non-town facade fixture resets through StartGame"), Subsystem->StartGame());
 		FGameXXKRuntimeState& RejectedState = Subsystem->GetMutableRuntimeState();
-		RejectedState = UGameXXKMVPRules::CreateNewGame();
 		RejectedState.Screen = RejectedScreen;
 		RejectedState.PlayerGold = 1000;
 		const FGameXXKRuntimeState BeforeRejectedPurchase = RejectedState;
