@@ -59,6 +59,25 @@ namespace
 		}
 	}
 
+	FName MakeResolutionUnitId(const FName RuntimeUnitId, const TCHAR* ResolutionSuffix)
+	{
+		if (RuntimeUnitId.IsNone())
+		{
+			return NAME_None;
+		}
+		FString RuntimeId = RuntimeUnitId.ToString();
+		for (const TCHAR* ExistingSuffix : {TEXT(".1K"), TEXT(".4K")})
+		{
+			if (RuntimeId.EndsWith(ExistingSuffix, ESearchCase::IgnoreCase))
+			{
+				RuntimeId.LeftChopInline(3);
+				break;
+			}
+		}
+		RuntimeId += ResolutionSuffix;
+		return FName(*RuntimeId);
+	}
+
 	FGameXXKBattleAnimationClipDescriptor MakeClip(const FString& AssetId, const float PlaybackRate)
 	{
 		FGameXXKBattleAnimationClipDescriptor Clip;
@@ -251,6 +270,17 @@ FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::Resol
 		? EnemyDefinitionId
 		: RuntimeUnitId;
 	return ResolveClip(AuthoritativeUnitId, bEnemy, Action);
+}
+
+FGameXXKBattleAnimationClipPair FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+	const FName RuntimeUnitId,
+	const bool bEnemy,
+	const EGameXXKBattleAnimationAction Action)
+{
+	FGameXXKBattleAnimationClipPair Pair;
+	Pair.Preferred = ResolveClip(MakeResolutionUnitId(RuntimeUnitId, TEXT(".1K")), bEnemy, Action);
+	Pair.Fallback = ResolveClip(MakeResolutionUnitId(RuntimeUnitId, TEXT("")), bEnemy, Action);
+	return Pair;
 }
 
 FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::ResolveGenericClip(

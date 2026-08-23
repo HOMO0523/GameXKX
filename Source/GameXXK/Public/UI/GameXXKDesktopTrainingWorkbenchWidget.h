@@ -339,6 +339,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool AreTravelCombatAtlasesOneKForTest() const;
 
+#if WITH_DEV_AUTOMATION_TESTS
+	void SetTravelAtlasCacheForTest(TUniquePtr<FGameXXKBattleAtlasCache> InAtlasCache);
+	FSoftObjectPath GetTravelAppliedCompanionAtlasPathForTest(int32 CompanionIndex) const;
+	int32 GetTravelAppliedCompanionFrameForTest(int32 CompanionIndex) const;
+#endif
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	FString GetTravelVisualBackgroundResourcePathForTest() const;
 
@@ -469,10 +475,17 @@ private:
 	void RequestTravelCombatAtlases(FName EnemyDefinitionId);
 	TArray<FName> GetTravelCompanionUnitIds() const;
 	void RequestTravelAtlas(const FGameXXKBattleAnimationClipDescriptor& Clip);
+	void RequestTravelAtlas(const FGameXXKBattleAnimationClipPair& ClipPair);
 	void ReleaseTravelAtlasSession();
 	bool ApplyTravelAnimationFrame(
 		UImage* Image,
 		const FGameXXKBattleAnimationClipDescriptor& Clip,
+		bool bLooping,
+		FSoftObjectPath& InOutAppliedPath,
+		int32& InOutAppliedFrame);
+	bool ApplyTravelAnimationFrame(
+		UImage* Image,
+		const FGameXXKBattleAnimationClipPair& ClipPair,
 		bool bLooping,
 		FSoftObjectPath& InOutAppliedPath,
 		int32& InOutAppliedFrame);

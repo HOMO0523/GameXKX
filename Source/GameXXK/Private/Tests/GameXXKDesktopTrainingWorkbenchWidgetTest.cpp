@@ -4,6 +4,8 @@
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKDesktopTrainingLayout.h"
+#include "UI/GameXXKBattleAnimationPresentation.h"
+#include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 
@@ -18,7 +20,11 @@
 #include "Components/ScaleBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Engine/Texture2D.h"
+#include "HAL/PlatformTime.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/PackageName.h"
+#include "UObject/StrongObjectPtr.h"
 #include "Widgets/SNullWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -41,6 +47,224 @@ namespace
 	{
 		const UObject* Resource = Image ? Image->GetBrush().GetResourceObject() : nullptr;
 		return Resource ? Resource->GetPathName() : FString();
+	}
+
+	class FTravelFallbackAtlasLoadHandle final : public IGameXXKBattleAtlasLoadHandle
+	{
+	public:
+		virtual void Cancel() override { bCancelled = true; }
+
+		bool bCancelled = false;
+	};
+
+	class FTravelFallbackAtlasLoader final : public IGameXXKBattleAtlasLoader
+	{
+	public:
+		virtual TSharedPtr<IGameXXKBattleAtlasLoadHandle> RequestAsyncLoad(
+			const FSoftObjectPath& Path,
+			FGameXXKAtlasLoaderCompletion Completion) override
+		{
+			RequestedPaths.Add(Path);
+			TSharedRef<FTravelFallbackAtlasLoadHandle> Handle = MakeShared<FTravelFallbackAtlasLoadHandle>();
+			if (SynchronousMissingPaths.Contains(Path))
+			{
+				++CompletionDispatchCounts.FindOrAdd(Path);
+				Completion(nullptr, 0);
+				return Handle;
+			}
+			if (UTexture2D* const* SynchronousTexture = SynchronousLoadedTextures.Find(Path))
+			{
+				++CompletionDispatchCounts.FindOrAdd(Path);
+				Completion(*SynchronousTexture, 4);
+				return Handle;
+			}
+			PendingCompletions.Add(Path, MoveTemp(Completion));
+			return Handle;
+		}
+
+		void SetSynchronousMissing(const FSoftObjectPath& Path)
+		{
+			SynchronousMissingPaths.Add(Path);
+		}
+
+		UTexture2D* SetSynchronousLoaded(const FSoftObjectPath& Path)
+		{
+			UTexture2D* Texture = NewObject<UTexture2D>(GetTransientPackage());
+			LoadedTextures.Add(TStrongObjectPtr<UTexture2D>(Texture));
+			SynchronousLoadedTextures.Add(Path, Texture);
+			return Texture;
+		}
+
+		bool Requested(const FSoftObjectPath& Path) const
+		{
+			return RequestedPaths.Contains(Path);
+		}
+
+		int32 RequestCount(const FSoftObjectPath& Path) const
+		{
+			int32 Count = 0;
+			for (const FSoftObjectPath& RequestedPath : RequestedPaths)
+			{
+				Count += RequestedPath == Path ? 1 : 0;
+			}
+			return Count;
+		}
+
+		int32 CompletionDispatchCount(const FSoftObjectPath& Path) const
+		{
+			return CompletionDispatchCounts.FindRef(Path);
+		}
+
+		bool HasPendingCompletion(const FSoftObjectPath& Path) const
+		{
+			return PendingCompletions.Contains(Path);
+		}
+
+		bool CompleteMissing(const FSoftObjectPath& Path)
+		{
+			FGameXXKAtlasLoaderCompletion* Pending = PendingCompletions.Find(Path);
+			if (!Pending)
+			{
+				return false;
+			}
+			FGameXXKAtlasLoaderCompletion Completion = MoveTemp(*Pending);
+			PendingCompletions.Remove(Path);
+			++CompletionDispatchCounts.FindOrAdd(Path);
+			Completion(nullptr, 0);
+			return true;
+		}
+
+		UTexture2D* CompleteLoaded(const FSoftObjectPath& Path)
+		{
+			FGameXXKAtlasLoaderCompletion* Pending = PendingCompletions.Find(Path);
+			if (!Pending)
+			{
+				return nullptr;
+			}
+			UTexture2D* Texture = NewObject<UTexture2D>(GetTransientPackage());
+			LoadedTextures.Add(TStrongObjectPtr<UTexture2D>(Texture));
+			FGameXXKAtlasLoaderCompletion Completion = MoveTemp(*Pending);
+			PendingCompletions.Remove(Path);
+			++CompletionDispatchCounts.FindOrAdd(Path);
+			Completion(Texture, 4);
+			return Texture;
+		}
+
+	private:
+		TArray<FSoftObjectPath> RequestedPaths;
+		TMap<FSoftObjectPath, FGameXXKAtlasLoaderCompletion> PendingCompletions;
+		TMap<FSoftObjectPath, int32> CompletionDispatchCounts;
+		TSet<FSoftObjectPath> SynchronousMissingPaths;
+		TMap<FSoftObjectPath, UTexture2D*> SynchronousLoadedTextures;
+		TArray<TStrongObjectPtr<UTexture2D>> LoadedTextures;
+	};
+
+	template <typename Tag, typename Tag::Type Member>
+	struct TTravelPrivateMemberAccessor
+	{
+		friend typename Tag::Type GetTravelPrivateMember(Tag)
+		{
+			return Member;
+		}
+	};
+
+	struct FTravelLoadedAtlasTexturesTag
+	{
+		using Type = TMap<FSoftObjectPath, TWeakObjectPtr<UTexture2D>>
+			UGameXXKDesktopTrainingWorkbenchWidget::*;
+		friend Type GetTravelPrivateMember(FTravelLoadedAtlasTexturesTag);
+	};
+	template struct TTravelPrivateMemberAccessor<
+		FTravelLoadedAtlasTexturesTag,
+		&UGameXXKDesktopTrainingWorkbenchWidget::TravelLoadedAtlasTextures>;
+
+	struct FApplyTravelClipPairTag
+	{
+		using Type = bool (UGameXXKDesktopTrainingWorkbenchWidget::*)(
+			UImage*,
+			const FGameXXKBattleAnimationClipPair&,
+			bool,
+			FSoftObjectPath&,
+			int32&);
+		friend Type GetTravelPrivateMember(FApplyTravelClipPairTag);
+	};
+	template struct TTravelPrivateMemberAccessor<
+		FApplyTravelClipPairTag,
+		static_cast<FApplyTravelClipPairTag::Type>(
+			&UGameXXKDesktopTrainingWorkbenchWidget::ApplyTravelAnimationFrame)>;
+
+	struct FTravelAtlasWidgetFixture
+	{
+		UGameInstance* GameInstance = nullptr;
+		UGameXXKMVPSubsystem* Subsystem = nullptr;
+		UGameXXKDesktopTrainingWorkbenchWidget* Widget = nullptr;
+		UImage* PermanentImage = nullptr;
+	};
+
+	bool BuildTravelAtlasWidgetFixture(
+		const FName PermanentUnitId,
+		const FName QuestNpcId,
+		TUniquePtr<FGameXXKBattleAtlasCache> Cache,
+		FTravelAtlasWidgetFixture& OutFixture,
+		FString& OutError)
+	{
+		OutFixture = FTravelAtlasWidgetFixture();
+		OutError.Reset();
+		OutFixture.GameInstance = NewObject<UGameInstance>();
+		OutFixture.Subsystem = NewObject<UGameXXKMVPSubsystem>(OutFixture.GameInstance);
+		if (!OutFixture.Subsystem || !OutFixture.Subsystem->StartGame())
+		{
+			OutError = TEXT("The fixture could not start the game.");
+			return false;
+		}
+
+		FGameXXKRuntimeState& State = OutFixture.Subsystem->GetMutableRuntimeState();
+		FGameXXKPermanentCompanion* ActiveCompanion =
+			State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+				[](const FGameXXKPermanentCompanion& Candidate)
+				{
+					return Candidate.bIsActive && !Candidate.InstanceId.IsNone();
+				});
+		if (!ActiveCompanion)
+		{
+			OutError = TEXT("The fixture has no active companion to retag.");
+			return false;
+		}
+		ActiveCompanion->InstanceId = PermanentUnitId;
+		State.CardRun.PartySelection.ActivePermanentCompanionInstanceId = PermanentUnitId;
+		State.CardRun.ActiveTemporaryQuestNpcId = QuestNpcId;
+		State.CardRun.PartySelection.QuestNpc.NpcId = QuestNpcId;
+		const FName StageId = FGameXXKTrainingRules::MakeStageId(
+			EGameXXKTrainingDifficulty::Normal,
+			1);
+		if (!OutFixture.Subsystem->StartTrainingTravel(StageId))
+		{
+			OutError = TEXT("The fixture could not start Training Travel.");
+			return false;
+		}
+
+		OutFixture.Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+		if (!OutFixture.Widget)
+		{
+			OutError = TEXT("The fixture could not create the Workbench widget.");
+			return false;
+		}
+		OutFixture.Widget->SetMVPSubsystem(OutFixture.Subsystem);
+		OutFixture.Widget->SetTravelAtlasCacheForTest(MoveTemp(Cache));
+		if (!OutFixture.Widget->OpenWorkbench())
+		{
+			OutError = TEXT("The fixture could not open the Workbench.");
+			return false;
+		}
+		OutFixture.PermanentImage = OutFixture.Widget->WidgetTree
+			? Cast<UImage>(OutFixture.Widget->WidgetTree->FindWidget(TEXT("TravelCompanionAnimatedUnit_0")))
+			: nullptr;
+		if (!OutFixture.PermanentImage)
+		{
+			OutError = TEXT("The fixture has no permanent-companion image.");
+			return false;
+		}
+		return true;
 	}
 }
 
@@ -1502,6 +1726,581 @@ bool FGameXXKDesktopTrainingWorkbenchTravelTickAvoidsSlateRebuildTest::RunTest(c
 	TestFalse(TEXT("travel NativeTick schedules no layout rebuild"), Widget->HasPendingLayoutRefreshForTest());
 	TestEqual(TEXT("travel settlement preserves the existing widget tree"), Widget->GetProgrammaticLayoutBuildCountForTest(), InitialLayoutBuildCount);
 	TestTrue(TEXT("in-place travel refresh keeps the workbench visible"), Widget->IsWorkbenchVisibleForTest());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasFallbackInventoryTest,
+	"GameXXK.DesktopTraining.Workbench.TravelPartyAtlasFallbackInventory",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasFallbackInventoryTest::RunTest(const FString& Parameters)
+{
+	struct FPartyAtlasExpectation
+	{
+		const TCHAR* RuntimeUnitId;
+		bool bHasOneK;
+	};
+	const FPartyAtlasExpectation Expectations[] = {
+		{TEXT("Companion_Blade_Test"), true},
+		{TEXT("Companion_Guard_Test"), false},
+		{TEXT("Companion_Healer_Test"), false},
+		{TEXT("Companion_Hunter_Test"), false},
+		{TEXT("Companion_Sorcerer_Test"), false},
+		{TEXT("Companion_FormationMaster_Test"), false},
+		{TEXT("Npc.TusiChief"), true},
+		{TEXT("Npc.SongJinBao"), false},
+		{TEXT("Npc.YueBai"), false},
+		{TEXT("Npc.ZhouGuangZu"), false},
+		{TEXT("Npc.JinGui"), false},
+		{TEXT("Npc.QiongMeiEr"), false}};
+	const EGameXXKBattleAnimationAction Actions[] = {
+		EGameXXKBattleAnimationAction::Idle,
+		EGameXXKBattleAnimationAction::Attack,
+		EGameXXKBattleAnimationAction::Hit,
+		EGameXXKBattleAnimationAction::Death};
+	const auto PackageExists = [](const FGameXXKBattleAnimationClipDescriptor& Clip)
+	{
+		return Clip.IsValid() && FPackageName::DoesPackageExist(Clip.TexturePath.GetLongPackageName());
+	};
+
+	for (const FPartyAtlasExpectation& Expectation : Expectations)
+	{
+		for (const EGameXXKBattleAnimationAction Action : Actions)
+		{
+			const FGameXXKBattleAnimationClipPair Pair =
+				FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+					FName(Expectation.RuntimeUnitId),
+					false,
+					Action);
+			const FString Label = FString::Printf(
+				TEXT("%s action %d"),
+				Expectation.RuntimeUnitId,
+				static_cast<int32>(Action));
+			TestTrue(*FString::Printf(TEXT("%s resolves a preferred 1K descriptor"), *Label), Pair.Preferred.IsValid());
+			TestTrue(*FString::Printf(TEXT("%s resolves a fallback 2K descriptor"), *Label), Pair.Fallback.IsValid());
+			TestTrue(*FString::Printf(TEXT("%s prefers the compact 1K package path"), *Label),
+				Pair.Preferred.TexturePath.ToString().Contains(TEXT("_1k_")));
+			TestTrue(*FString::Printf(TEXT("%s falls back to the matching 2K package path"), *Label),
+				Pair.Fallback.TexturePath.ToString().Contains(TEXT("_2k_")));
+			const bool bPreferredExists = PackageExists(Pair.Preferred);
+			const bool bFallbackExists = PackageExists(Pair.Fallback);
+			TestTrue(*FString::Printf(TEXT("%s has at least one loadable compact Travel package"), *Label),
+				bPreferredExists || bFallbackExists);
+			TestEqual(*FString::Printf(TEXT("%s has the expected 1K inventory state"), *Label),
+				bPreferredExists,
+				Expectation.bHasOneK);
+			TestTrue(*FString::Printf(TEXT("%s keeps its existing 2K fallback package"), *Label), bFallbackExists);
+		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasAsyncFallbackTest,
+	"GameXXK.DesktopTraining.Workbench.TravelPartyAtlasAsyncFallback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasAsyncFallbackTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!TestNotNull(TEXT("Travel atlas fallback fixture subsystem exists"), Subsystem)
+		|| !TestTrue(TEXT("Travel atlas fallback fixture starts the game"), Subsystem->StartGame()))
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState& InitialState = Subsystem->GetMutableRuntimeState();
+	const FGameXXKPermanentCompanion* Blade = InitialState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+		[](const FGameXXKPermanentCompanion& Candidate)
+		{
+			return Candidate.bIsActive && Candidate.InstanceId.ToString().Contains(TEXT("Companion_Blade_"));
+		});
+	if (!TestNotNull(TEXT("fixture owns an active Blade"), Blade))
+	{
+		return false;
+	}
+	const FName BladeId = Blade->InstanceId;
+	const FName GuardId(TEXT("CompanionInstance.Companion_Guard_01.TravelFallbackTest"));
+	InitialState.CardRun.PartySelection.ActivePermanentCompanionInstanceId = BladeId;
+	InitialState.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.TusiChief");
+	InitialState.CardRun.PartySelection.QuestNpc.NpcId = TEXT("Npc.TusiChief");
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	if (!TestTrue(TEXT("fixture starts Travel with Blade and Tusi Chief"), Subsystem->StartTrainingTravel(StageId)))
+	{
+		return false;
+	}
+	const FName InitialEnemyId = Subsystem->GetTrainingTravelRuntimeCopy().EnemyDefinitionId;
+
+	const TSharedRef<FTravelFallbackAtlasLoader> Loader = MakeShared<FTravelFallbackAtlasLoader>();
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestNotNull(TEXT("Travel atlas fallback fixture widget exists"), Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->SetTravelAtlasCacheForTest(MakeUnique<FGameXXKBattleAtlasCache>(
+		Loader,
+		[]() { return FPlatformTime::Seconds(); }));
+	if (!TestTrue(TEXT("Travel atlas fallback fixture opens the workbench"), Widget->OpenWorkbench()))
+	{
+		return false;
+	}
+
+	UImage* PermanentImage = Widget->WidgetTree
+		? Cast<UImage>(Widget->WidgetTree->FindWidget(TEXT("TravelCompanionAnimatedUnit_0")))
+		: nullptr;
+	UImage* QuestImage = Widget->WidgetTree
+		? Cast<UImage>(Widget->WidgetTree->FindWidget(TEXT("TravelCompanionAnimatedUnit_1")))
+		: nullptr;
+	if (!TestNotNull(TEXT("fixture owns the permanent companion image"), PermanentImage)
+		|| !TestNotNull(TEXT("fixture owns the quest companion image"), QuestImage))
+	{
+		return false;
+	}
+
+	const FGameXXKBattleAnimationClipPair BladePair =
+		FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			BladeId, false, EGameXXKBattleAnimationAction::Idle);
+	const FGameXXKBattleAnimationClipPair TusiPair =
+		FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			TEXT("Npc.TusiChief"), false, EGameXXKBattleAnimationAction::Idle);
+	TestTrue(TEXT("Blade 1K is requested first"), Loader->Requested(BladePair.Preferred.TexturePath));
+	TestTrue(TEXT("Tusi Chief 1K is requested first"), Loader->Requested(TusiPair.Preferred.TexturePath));
+	TestEqual(TEXT("Blade preferred Idle is requested exactly once"),
+		Loader->RequestCount(BladePair.Preferred.TexturePath), 1);
+	TestEqual(TEXT("Tusi preferred Idle is requested exactly once"),
+		Loader->RequestCount(TusiPair.Preferred.TexturePath), 1);
+	const auto MakeOneKUnitId = [](const FName UnitId)
+	{
+		return FName(*(UnitId.ToString() + TEXT(".1K")));
+	};
+	const EGameXXKBattleAnimationAction WrapperActions[] = {
+		EGameXXKBattleAnimationAction::Idle,
+		EGameXXKBattleAnimationAction::Attack,
+		EGameXXKBattleAnimationAction::Hit,
+		EGameXXKBattleAnimationAction::Death};
+	for (const EGameXXKBattleAnimationAction Action : WrapperActions)
+	{
+		const FGameXXKBattleAnimationClipPair HeroPair =
+			FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+				FGameXXKEquipmentRules::HeroCharacterId(), false, Action);
+		const FGameXXKBattleAnimationClipDescriptor HeroWrapper =
+			FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
+				MakeOneKUnitId(FGameXXKEquipmentRules::HeroCharacterId()),
+				NAME_None,
+				false,
+				Action);
+		TestEqual(TEXT("Hero single-clip wrapper keeps the authored 1K descriptor"),
+			HeroWrapper.TexturePath, HeroPair.Preferred.TexturePath);
+		TestEqual(TEXT("Hero single-clip wrapper requests its 1K atlas exactly once"),
+			Loader->RequestCount(HeroPair.Preferred.TexturePath), 1);
+		TestEqual(TEXT("Hero single-clip wrapper never pre-requests a 2K fallback"),
+			Loader->RequestCount(HeroPair.Fallback.TexturePath), 0);
+
+		const FGameXXKBattleAnimationClipPair EnemyPair =
+			FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+				InitialEnemyId, true, Action);
+		const FName OneKEnemyId = MakeOneKUnitId(InitialEnemyId);
+		const FGameXXKBattleAnimationClipDescriptor EnemyWrapper =
+			FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
+				OneKEnemyId,
+				OneKEnemyId,
+				true,
+				Action);
+		TestEqual(TEXT("Enemy single-clip wrapper keeps the authored 1K descriptor"),
+			EnemyWrapper.TexturePath, EnemyPair.Preferred.TexturePath);
+		TestEqual(TEXT("Enemy single-clip wrapper requests its 1K atlas exactly once"),
+			Loader->RequestCount(EnemyPair.Preferred.TexturePath), 1);
+		TestEqual(TEXT("Enemy single-clip wrapper never pre-requests a 2K fallback"),
+			Loader->RequestCount(EnemyPair.Fallback.TexturePath), 0);
+	}
+	const FGameXXKBattleAnimationClipPair HeroIdlePair =
+		FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			FGameXXKEquipmentRules::HeroCharacterId(), false, EGameXXKBattleAnimationAction::Idle);
+	const FGameXXKBattleAnimationClipPair EnemyIdlePair =
+		FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			InitialEnemyId, true, EGameXXKBattleAnimationAction::Idle);
+	TestTrue(TEXT("fixture reports the missing Hero wrapper atlas"),
+		Loader->CompleteMissing(HeroIdlePair.Preferred.TexturePath));
+	TestTrue(TEXT("fixture reports the missing Enemy wrapper atlas"),
+		Loader->CompleteMissing(EnemyIdlePair.Preferred.TexturePath));
+	TestEqual(TEXT("failed Hero single-clip wrapper still has no fallback request"),
+		Loader->RequestCount(HeroIdlePair.Fallback.TexturePath), 0);
+	TestEqual(TEXT("failed Enemy single-clip wrapper still has no fallback request"),
+		Loader->RequestCount(EnemyIdlePair.Fallback.TexturePath), 0);
+	TestEqual(TEXT("failed Hero wrapper never retries its preferred request"),
+		Loader->RequestCount(HeroIdlePair.Preferred.TexturePath), 1);
+	TestEqual(TEXT("failed Enemy wrapper never retries its preferred request"),
+		Loader->RequestCount(EnemyIdlePair.Preferred.TexturePath), 1);
+	UTexture2D* BladeTexture = Loader->CompleteLoaded(BladePair.Preferred.TexturePath);
+	UTexture2D* TusiTexture = Loader->CompleteLoaded(TusiPair.Preferred.TexturePath);
+	TestNotNull(TEXT("fixture supplies the Blade 1K atlas"), BladeTexture);
+	TestNotNull(TEXT("fixture supplies the Tusi Chief 1K atlas"), TusiTexture);
+	TestTrue(TEXT("Blade image uses its preferred 1K texture"),
+		PermanentImage->GetBrush().GetResourceObject() == BladeTexture);
+	TestTrue(TEXT("Tusi image uses its preferred 1K texture"),
+		QuestImage->GetBrush().GetResourceObject() == TusiTexture);
+	const auto AdvanceToPermanentCompanionAttack = [Widget]()
+	{
+		for (int32 Guard = 0; Guard < 64; ++Guard)
+		{
+			if (Widget->GetTravelVisualPartyActionNameForTest(1) == TEXT("Attack"))
+			{
+				return true;
+			}
+			Widget->TickForTest(0.5f);
+		}
+		return false;
+	};
+	if (!TestTrue(TEXT("fixture reaches Blade's non-Idle attack presentation"),
+		AdvanceToPermanentCompanionAttack()))
+	{
+		return false;
+	}
+	const FGameXXKBattleAnimationClipPair BladeAttackPair =
+		FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			BladeId, false, EGameXXKBattleAnimationAction::Attack);
+	TestTrue(TEXT("Blade Attack requests its preferred 1K atlas"),
+		Loader->Requested(BladeAttackPair.Preferred.TexturePath));
+	TestEqual(TEXT("Blade Attack preferred atlas is requested exactly once"),
+		Loader->RequestCount(BladeAttackPair.Preferred.TexturePath), 1);
+	TestNull(TEXT("the Idle Blade brush clears while Attack is pending"),
+		PermanentImage->GetBrush().GetResourceObject());
+	TestTrue(TEXT("the pending Blade Attack is transparent"),
+		FMath::IsNearlyZero(PermanentImage->GetRenderOpacity()));
+	TestTrue(TEXT("fixture reports the missing Blade Attack 1K atlas"),
+		Loader->CompleteMissing(BladeAttackPair.Preferred.TexturePath));
+	TestTrue(TEXT("failed Blade Attack 1K load requests its 2K fallback"),
+		Loader->Requested(BladeAttackPair.Fallback.TexturePath));
+	TestEqual(TEXT("Blade Attack fallback is requested exactly once"),
+		Loader->RequestCount(BladeAttackPair.Fallback.TexturePath), 1);
+	Widget->TickForTest(
+		FGameXXKTrainingTravelVisualRuntime::HeroAttackSeconds
+		+ FGameXXKTrainingTravelVisualRuntime::EnemyHitSeconds
+		+ 0.01f);
+	TestEqual(TEXT("Blade's completed presentation returns to Idle before the identity switch"),
+		Widget->GetTravelVisualPartyActionNameForTest(1), FString(TEXT("Idle")));
+
+	FGameXXKRuntimeState& SwitchedState = Subsystem->GetMutableRuntimeState();
+	FGameXXKPermanentCompanion* SwitchedCompanion =
+		SwitchedState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[BladeId](const FGameXXKPermanentCompanion& Candidate)
+			{
+				return Candidate.bIsActive && Candidate.InstanceId == BladeId;
+			});
+	if (!TestNotNull(TEXT("fixture can retag the active companion for the Guard identity switch"), SwitchedCompanion))
+	{
+		return false;
+	}
+	SwitchedCompanion->InstanceId = GuardId;
+	SwitchedState.CardRun.PartySelection.ActivePermanentCompanionInstanceId = GuardId;
+	SwitchedState.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.SongJinBao");
+	SwitchedState.CardRun.PartySelection.QuestNpc.NpcId = TEXT("Npc.SongJinBao");
+	if (!TestTrue(TEXT("fixture restarts Travel with Guard and Song Jin Bao"), Subsystem->StartTrainingTravel(StageId)))
+	{
+		return false;
+	}
+	Widget->TickForTest(0.01f);
+
+	const FGameXXKBattleAnimationClipPair GuardPair =
+		FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			GuardId, false, EGameXXKBattleAnimationAction::Idle);
+	const FGameXXKBattleAnimationClipPair SongPair =
+		FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			TEXT("Npc.SongJinBao"), false, EGameXXKBattleAnimationAction::Idle);
+	TestTrue(TEXT("Guard 1K is requested before fallback"), Loader->Requested(GuardPair.Preferred.TexturePath));
+	TestTrue(TEXT("Song Jin Bao 1K is requested before fallback"), Loader->Requested(SongPair.Preferred.TexturePath));
+	TestEqual(TEXT("Guard preferred Idle is requested exactly once"),
+		Loader->RequestCount(GuardPair.Preferred.TexturePath), 1);
+	TestEqual(TEXT("Song preferred Idle is requested exactly once"),
+		Loader->RequestCount(SongPair.Preferred.TexturePath), 1);
+	TestNull(TEXT("identity switch immediately clears the stale Blade brush"), PermanentImage->GetBrush().GetResourceObject());
+	TestNull(TEXT("identity switch immediately clears the stale Tusi brush"), QuestImage->GetBrush().GetResourceObject());
+	TestTrue(TEXT("Guard stays transparent while neither atlas is ready"), FMath::IsNearlyZero(PermanentImage->GetRenderOpacity()));
+	TestTrue(TEXT("Song Jin Bao stays transparent while neither atlas is ready"), FMath::IsNearlyZero(QuestImage->GetRenderOpacity()));
+	TestTrue(TEXT("Guard identity switch resets the applied path"),
+		Widget->GetTravelAppliedCompanionAtlasPathForTest(0).IsNull());
+	TestTrue(TEXT("Song identity switch resets the applied path"),
+		Widget->GetTravelAppliedCompanionAtlasPathForTest(1).IsNull());
+	TestEqual(TEXT("Guard identity switch resets the applied frame"),
+		Widget->GetTravelAppliedCompanionFrameForTest(0), INDEX_NONE);
+	TestEqual(TEXT("Song identity switch resets the applied frame"),
+		Widget->GetTravelAppliedCompanionFrameForTest(1), INDEX_NONE);
+	TStrongObjectPtr<UTexture2D> StaleBrushSentinel(NewObject<UTexture2D>(GetTransientPackage()));
+	FSlateBrush StaleBrush;
+	StaleBrush.SetResourceObject(StaleBrushSentinel.Get());
+	PermanentImage->SetBrush(StaleBrush);
+	PermanentImage->SetRenderOpacity(1.0f);
+	const int32 BladeFallbackDispatchCountBefore =
+		Loader->CompletionDispatchCount(BladeAttackPair.Fallback.TexturePath);
+	UTexture2D* LateBladeAttackTexture = Loader->CompleteLoaded(BladeAttackPair.Fallback.TexturePath);
+	TestNotNull(TEXT("fixture delivers Blade's old 2K Attack after the identity switch"), LateBladeAttackTexture);
+	TestEqual(TEXT("late Blade completion dispatches through the registered loader callback exactly once"),
+		Loader->CompletionDispatchCount(BladeAttackPair.Fallback.TexturePath),
+		BladeFallbackDispatchCountBefore + 1);
+	TestNull(TEXT("late same-session Blade callback never revives the Guard slot"),
+		PermanentImage->GetBrush().GetResourceObject());
+	TestTrue(TEXT("late same-session Blade callback leaves the Guard slot transparent"),
+		FMath::IsNearlyZero(PermanentImage->GetRenderOpacity()));
+	TestTrue(TEXT("late same-session Blade callback leaves the Guard path reset"),
+		Widget->GetTravelAppliedCompanionAtlasPathForTest(0).IsNull());
+	TestEqual(TEXT("late same-session Blade callback leaves the Guard frame reset"),
+		Widget->GetTravelAppliedCompanionFrameForTest(0), INDEX_NONE);
+
+	TestTrue(TEXT("fixture reports the missing Guard 1K atlas"), Loader->CompleteMissing(GuardPair.Preferred.TexturePath));
+	TestTrue(TEXT("failed Guard 1K load triggers the 2K fallback request"), Loader->Requested(GuardPair.Fallback.TexturePath));
+	TestTrue(TEXT("fixture reports the missing Song Jin Bao 1K atlas"), Loader->CompleteMissing(SongPair.Preferred.TexturePath));
+	TestTrue(TEXT("failed Song Jin Bao 1K load triggers the 2K fallback request"), Loader->Requested(SongPair.Fallback.TexturePath));
+	TestEqual(TEXT("Guard fallback is requested exactly once"),
+		Loader->RequestCount(GuardPair.Fallback.TexturePath), 1);
+	TestEqual(TEXT("Song fallback is requested exactly once"),
+		Loader->RequestCount(SongPair.Fallback.TexturePath), 1);
+	TestNull(TEXT("failed preferred loads never restore Blade"), PermanentImage->GetBrush().GetResourceObject());
+	TestNull(TEXT("failed preferred loads never restore Tusi"), QuestImage->GetBrush().GetResourceObject());
+
+	UTexture2D* GuardTexture = Loader->CompleteLoaded(GuardPair.Fallback.TexturePath);
+	UTexture2D* SongTexture = Loader->CompleteLoaded(SongPair.Fallback.TexturePath);
+	TestNotNull(TEXT("fixture supplies the Guard 2K fallback"), GuardTexture);
+	TestNotNull(TEXT("fixture supplies the Song Jin Bao 2K fallback"), SongTexture);
+	TestTrue(TEXT("Guard applies the matching 2K texture"),
+		PermanentImage->GetBrush().GetResourceObject() == GuardTexture);
+	TestTrue(TEXT("Song Jin Bao applies the matching 2K texture"),
+		QuestImage->GetBrush().GetResourceObject() == SongTexture);
+	TestTrue(TEXT("Guard returns to full opacity after fallback apply"), FMath::IsNearlyEqual(PermanentImage->GetRenderOpacity(), 1.0f));
+	TestTrue(TEXT("Song Jin Bao returns to full opacity after fallback apply"), FMath::IsNearlyEqual(QuestImage->GetRenderOpacity(), 1.0f));
+	TestEqual(TEXT("Guard records the applied 2K path"),
+		Widget->GetTravelAppliedCompanionAtlasPathForTest(0), GuardPair.Fallback.TexturePath);
+	TestEqual(TEXT("Song records the applied 2K path"),
+		Widget->GetTravelAppliedCompanionAtlasPathForTest(1), SongPair.Fallback.TexturePath);
+	const auto TestAppliedUv = [this](
+		const TCHAR* Label,
+		const UImage* Image,
+		const FGameXXKBattleAnimationClipDescriptor& Clip,
+		const int32 AppliedFrame)
+	{
+		const FBox2f Uv = Image->GetBrush().GetUVRegion();
+		const FBox2f ExpectedUv = FGameXXKBattleAnimationPresentation::CalculateUvRegion(Clip, AppliedFrame);
+		TestTrue(*FString::Printf(TEXT("%s uses the matching fallback UV frame"), Label),
+			Uv.Min.Equals(ExpectedUv.Min, 0.0001f)
+			&& Uv.Max.Equals(ExpectedUv.Max, 0.0001f));
+	};
+	TestAppliedUv(TEXT("Guard"), PermanentImage, GuardPair.Fallback,
+		Widget->GetTravelAppliedCompanionFrameForTest(0));
+	TestAppliedUv(TEXT("Song Jin Bao"), QuestImage, SongPair.Fallback,
+		Widget->GetTravelAppliedCompanionFrameForTest(1));
+
+	if (!TestTrue(TEXT("fixture reaches Guard's non-Idle attack presentation"),
+		AdvanceToPermanentCompanionAttack()))
+	{
+		return false;
+	}
+	const FGameXXKBattleAnimationClipPair GuardAttackPair =
+		FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			GuardId, false, EGameXXKBattleAnimationAction::Attack);
+	TestTrue(TEXT("Guard Attack requests its preferred 1K atlas"),
+		Loader->Requested(GuardAttackPair.Preferred.TexturePath));
+	TestEqual(TEXT("Guard Attack preferred atlas is requested exactly once"),
+		Loader->RequestCount(GuardAttackPair.Preferred.TexturePath), 1);
+	TestNull(TEXT("Guard Idle fallback clears immediately while Attack is pending"),
+		PermanentImage->GetBrush().GetResourceObject());
+	TestTrue(TEXT("pending Guard Attack is transparent before session close"),
+		FMath::IsNearlyZero(PermanentImage->GetRenderOpacity()));
+	TestTrue(TEXT("pending Guard Attack path is reset before session close"),
+		Widget->GetTravelAppliedCompanionAtlasPathForTest(0).IsNull());
+	TestEqual(TEXT("pending Guard Attack frame is reset before session close"),
+		Widget->GetTravelAppliedCompanionFrameForTest(0), INDEX_NONE);
+	Widget->DestructForTest();
+	TStrongObjectPtr<UTexture2D> ClosedSessionSentinel(NewObject<UTexture2D>(GetTransientPackage()));
+	FSlateBrush ClosedSessionBrush;
+	ClosedSessionBrush.SetResourceObject(ClosedSessionSentinel.Get());
+	PermanentImage->SetBrush(ClosedSessionBrush);
+	PermanentImage->SetRenderOpacity(1.0f);
+	const int32 ClosedSessionDispatchCountBefore =
+		Loader->CompletionDispatchCount(GuardAttackPair.Preferred.TexturePath);
+	UTexture2D* LateClosedSessionTexture = Loader->CompleteLoaded(GuardAttackPair.Preferred.TexturePath);
+	TestNotNull(TEXT("fixture delivers Guard Attack after its atlas session closes"), LateClosedSessionTexture);
+	TestEqual(TEXT("closed-session loader completion dispatches exactly once"),
+		Loader->CompletionDispatchCount(GuardAttackPair.Preferred.TexturePath),
+		ClosedSessionDispatchCountBefore + 1);
+	TestTrue(TEXT("closed-session callback never mutates the Guard brush"),
+		PermanentImage->GetBrush().GetResourceObject() == ClosedSessionSentinel.Get());
+	TestTrue(TEXT("closed-session callback never mutates Guard opacity"),
+		FMath::IsNearlyEqual(PermanentImage->GetRenderOpacity(), 1.0f));
+	TestTrue(TEXT("closed-session callback leaves the Guard path reset"),
+		Widget->GetTravelAppliedCompanionAtlasPathForTest(0).IsNull());
+	TestEqual(TEXT("closed-session callback leaves the Guard frame reset"),
+		Widget->GetTravelAppliedCompanionFrameForTest(0), INDEX_NONE);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasSynchronousFallbackTest,
+	"GameXXK.DesktopTraining.Workbench.TravelPartyAtlasSynchronousFallback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasSynchronousFallbackTest::RunTest(
+	const FString& Parameters)
+{
+	const FName GuardId(TEXT("CompanionInstance.Companion_Guard_01.SynchronousFallbackTest"));
+	const FGameXXKBattleAnimationClipPair GuardPair =
+		FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			GuardId, false, EGameXXKBattleAnimationAction::Idle);
+	const TSharedRef<FTravelFallbackAtlasLoader> Loader = MakeShared<FTravelFallbackAtlasLoader>();
+	Loader->SetSynchronousMissing(GuardPair.Preferred.TexturePath);
+	UTexture2D* ExpectedFallbackTexture = Loader->SetSynchronousLoaded(GuardPair.Fallback.TexturePath);
+	TUniquePtr<FGameXXKBattleAtlasCache> Cache = MakeUnique<FGameXXKBattleAtlasCache>(
+		Loader,
+		[]() { return FPlatformTime::Seconds(); });
+	FTravelAtlasWidgetFixture Fixture;
+	FString FixtureError;
+	if (!TestTrue(TEXT("synchronous fallback fixture opens"), BuildTravelAtlasWidgetFixture(
+		GuardId,
+		TEXT("Npc.TusiChief"),
+		MoveTemp(Cache),
+		Fixture,
+		FixtureError)))
+	{
+		AddError(FixtureError);
+		return false;
+	}
+
+	TestEqual(TEXT("reentrant preferred request occurs exactly once"),
+		Loader->RequestCount(GuardPair.Preferred.TexturePath), 1);
+	TestEqual(TEXT("reentrant fallback request occurs exactly once"),
+		Loader->RequestCount(GuardPair.Fallback.TexturePath), 1);
+	TestEqual(TEXT("synchronous preferred failure dispatches exactly once"),
+		Loader->CompletionDispatchCount(GuardPair.Preferred.TexturePath), 1);
+	TestEqual(TEXT("synchronous fallback load dispatches exactly once"),
+		Loader->CompletionDispatchCount(GuardPair.Fallback.TexturePath), 1);
+	TestFalse(TEXT("synchronous preferred completion leaves no pending loader callback"),
+		Loader->HasPendingCompletion(GuardPair.Preferred.TexturePath));
+	TestFalse(TEXT("synchronous fallback completion leaves no pending loader callback"),
+		Loader->HasPendingCompletion(GuardPair.Fallback.TexturePath));
+	TestTrue(TEXT("reentrant completion applies the matching fallback texture"),
+		Fixture.PermanentImage->GetBrush().GetResourceObject() == ExpectedFallbackTexture);
+	TestTrue(TEXT("reentrant fallback application restores opacity"),
+		FMath::IsNearlyEqual(Fixture.PermanentImage->GetRenderOpacity(), 1.0f));
+	Fixture.Widget->TickForTest(0.01f);
+	TestEqual(TEXT("a later update never retries synchronous preferred failure"),
+		Loader->RequestCount(GuardPair.Preferred.TexturePath), 1);
+	TestEqual(TEXT("a later update never loops the synchronous fallback"),
+		Loader->RequestCount(GuardPair.Fallback.TexturePath), 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasTimeoutFallbackTest,
+	"GameXXK.DesktopTraining.Workbench.TravelPartyAtlasTimeoutFallback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasTimeoutFallbackTest::RunTest(
+	const FString& Parameters)
+{
+	const FName GuardId(TEXT("CompanionInstance.Companion_Guard_01.TimeoutFallbackTest"));
+	const FGameXXKBattleAnimationClipPair GuardPair =
+		FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			GuardId, false, EGameXXKBattleAnimationAction::Idle);
+	const TSharedRef<FTravelFallbackAtlasLoader> Loader = MakeShared<FTravelFallbackAtlasLoader>();
+	TUniquePtr<FGameXXKBattleAtlasCache> Cache = MakeUnique<FGameXXKBattleAtlasCache>(
+		Loader,
+		[]() { return FPlatformTime::Seconds(); },
+		FGameXXKBattleAtlasCache::DefaultResidentBudgetBytes,
+		0.0);
+	FTravelAtlasWidgetFixture Fixture;
+	FString FixtureError;
+	if (!TestTrue(TEXT("timeout fallback fixture opens"), BuildTravelAtlasWidgetFixture(
+		GuardId,
+		TEXT("Npc.TusiChief"),
+		MoveTemp(Cache),
+		Fixture,
+		FixtureError)))
+	{
+		AddError(FixtureError);
+		return false;
+	}
+
+	TestEqual(TEXT("timeout fixture starts with one preferred request"),
+		Loader->RequestCount(GuardPair.Preferred.TexturePath), 1);
+	TestEqual(TEXT("timeout fixture does not request fallback before advancing deadlines"),
+		Loader->RequestCount(GuardPair.Fallback.TexturePath), 0);
+	Fixture.Widget->TickForTest(0.001f);
+	TestEqual(TEXT("cache timeout requests the fallback exactly once"),
+		Loader->RequestCount(GuardPair.Fallback.TexturePath), 1);
+	TestEqual(TEXT("timeout is distinct from a loader-completion failure"),
+		Loader->CompletionDispatchCount(GuardPair.Preferred.TexturePath), 0);
+	TestTrue(TEXT("timeout leaves the fallback loader callback pending"),
+		Loader->HasPendingCompletion(GuardPair.Fallback.TexturePath));
+	UTexture2D* FallbackTexture = Loader->CompleteLoaded(GuardPair.Fallback.TexturePath);
+	TestNotNull(TEXT("timeout fixture completes the fallback texture"), FallbackTexture);
+	TestTrue(TEXT("timeout fallback applies the matching 2K texture"),
+		Fixture.PermanentImage->GetBrush().GetResourceObject() == FallbackTexture);
+	TestTrue(TEXT("timeout fallback restores opacity"),
+		FMath::IsNearlyEqual(Fixture.PermanentImage->GetRenderOpacity(), 1.0f));
+	TestEqual(TEXT("timeout path never retries the preferred request"),
+		Loader->RequestCount(GuardPair.Preferred.TexturePath), 1);
+	TestEqual(TEXT("timeout path never loops the fallback request"),
+		Loader->RequestCount(GuardPair.Fallback.TexturePath), 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasSelectionRulesTest,
+	"GameXXK.DesktopTraining.Workbench.TravelPartyAtlasSelectionRules",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasSelectionRulesTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	UImage* Image = NewObject<UImage>(Widget);
+	if (!TestNotNull(TEXT("selection-rules fixture widget exists"), Widget)
+		|| !TestNotNull(TEXT("selection-rules fixture image exists"), Image))
+	{
+		return false;
+	}
+
+	const FGameXXKBattleAnimationClipPair Pair =
+		FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			TEXT("CompanionInstance.Companion_Guard_01.SelectionRulesTest"),
+			false,
+			EGameXXKBattleAnimationAction::Attack);
+	TStrongObjectPtr<UTexture2D> PreferredTexture(NewObject<UTexture2D>(GetTransientPackage()));
+	TStrongObjectPtr<UTexture2D> FallbackTexture(NewObject<UTexture2D>(GetTransientPackage()));
+	const auto LoadedTexturesMember = GetTravelPrivateMember(FTravelLoadedAtlasTexturesTag());
+	TMap<FSoftObjectPath, TWeakObjectPtr<UTexture2D>>& LoadedTextures =
+		Widget->*LoadedTexturesMember;
+	LoadedTextures.Add(Pair.Fallback.TexturePath, FallbackTexture.Get());
+	LoadedTextures.Add(Pair.Preferred.TexturePath, PreferredTexture.Get());
+	TestEqual(TEXT("selection fixture makes both preferred and fallback atlases resident"),
+		LoadedTextures.Num(), 2);
+
+	FSlateBrush FallbackBrush;
+	FallbackBrush.SetResourceObject(FallbackTexture.Get());
+	Image->SetBrush(FallbackBrush);
+	Image->SetRenderOpacity(1.0f);
+	FSoftObjectPath AppliedPath = Pair.Fallback.TexturePath;
+	int32 AppliedFrame = 7;
+	const auto ApplyClipPair = GetTravelPrivateMember(FApplyTravelClipPairTag());
+	TestTrue(TEXT("valid pair applies when both atlases are resident"),
+		(Widget->*ApplyClipPair)(Image, Pair, false, AppliedPath, AppliedFrame));
+	TestTrue(TEXT("preferred 1K wins when both atlases are resident"),
+		Image->GetBrush().GetResourceObject() == PreferredTexture.Get());
+	TestEqual(TEXT("preferred 1K path becomes the applied path"),
+		AppliedPath, Pair.Preferred.TexturePath);
+	TestTrue(TEXT("preferred 1K application keeps full opacity"),
+		FMath::IsNearlyEqual(Image->GetRenderOpacity(), 1.0f));
+
+	FGameXXKBattleAnimationClipPair InvalidPair;
+	TestFalse(TEXT("an invalid pair cannot apply a frame"),
+		(Widget->*ApplyClipPair)(Image, InvalidPair, false, AppliedPath, AppliedFrame));
+	TestNull(TEXT("invalid pair clears the existing brush resource"),
+		Image->GetBrush().GetResourceObject());
+	TestTrue(TEXT("invalid pair hides the image"), FMath::IsNearlyZero(Image->GetRenderOpacity()));
+	TestTrue(TEXT("invalid pair resets the applied path"), AppliedPath.IsNull());
+	TestEqual(TEXT("invalid pair resets the applied frame"), AppliedFrame, INDEX_NONE);
 	return true;
 }
 

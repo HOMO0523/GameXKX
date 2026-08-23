@@ -38,6 +38,13 @@ struct GAMEXXK_API FGameXXKBattleAnimationClipDescriptor
 	}
 };
 
+/** Compact Travel prefers the 1K sibling but can stream the matching 2K production clip. */
+struct GAMEXXK_API FGameXXKBattleAnimationClipPair
+{
+	FGameXXKBattleAnimationClipDescriptor Preferred;
+	FGameXXKBattleAnimationClipDescriptor Fallback;
+};
+
 /** Immutable presentation data captured from ordered combat results. */
 struct GAMEXXK_API FGameXXKBattlePresentationEvent
 {
@@ -129,6 +136,10 @@ public:
 	static FGameXXKBattleAnimationClipDescriptor ResolveClipForDefinition(
 		FName RuntimeUnitId,
 		FName EnemyDefinitionId,
+		bool bEnemy,
+		EGameXXKBattleAnimationAction Action);
+	static FGameXXKBattleAnimationClipPair ResolveCompactTravelClipPair(
+		FName RuntimeUnitId,
 		bool bEnemy,
 		EGameXXKBattleAnimationAction Action);
 	static FGameXXKBattleAnimationClipDescriptor ResolveGenericClip(EGameXXKBattleAnimationAction Action);

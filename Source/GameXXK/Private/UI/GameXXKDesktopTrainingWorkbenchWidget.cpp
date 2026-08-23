@@ -1844,6 +1844,35 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AreTravelCombatAtlasesOneKForTest()
 	return true;
 }
 
+#if WITH_DEV_AUTOMATION_TESTS
+void UGameXXKDesktopTrainingWorkbenchWidget::SetTravelAtlasCacheForTest(
+	TUniquePtr<FGameXXKBattleAtlasCache> InAtlasCache)
+{
+	ReleaseTravelAtlasSession();
+	if (TravelAtlasCache)
+	{
+		TravelAtlasCache->Clear();
+	}
+	TravelAtlasCache = MoveTemp(InAtlasCache);
+}
+
+FSoftObjectPath UGameXXKDesktopTrainingWorkbenchWidget::GetTravelAppliedCompanionAtlasPathForTest(
+	const int32 CompanionIndex) const
+{
+	return TravelAppliedCompanionAtlasPaths.IsValidIndex(CompanionIndex)
+		? TravelAppliedCompanionAtlasPaths[CompanionIndex]
+		: FSoftObjectPath();
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetTravelAppliedCompanionFrameForTest(
+	const int32 CompanionIndex) const
+{
+	return TravelAppliedCompanionFrames.IsValidIndex(CompanionIndex)
+		? TravelAppliedCompanionFrames[CompanionIndex]
+		: INDEX_NONE;
+}
+#endif
+
 FString UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualBackgroundResourcePathForTest() const
 {
 	return TravelBackgroundTexturePath;
@@ -2457,6 +2486,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 			{
 				continue;
 			}
+			CompanionImage->SetBrush(FSlateBrush());
+			CompanionImage->SetRenderOpacity(0.0f);
 			CompanionImage->SetRenderTransformPivot(FVector2D(0.5f, 1.0f));
 			CompanionImage->SetVisibility(ESlateVisibility::Collapsed);
 			UCanvasPanelSlot* CompanionSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(CompanionImage));
@@ -2775,19 +2806,26 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 				TravelAppliedCompanionHealth[CompanionIndex] = CompanionHealth;
 			}
 		}
-		if (!bShowCompanion
-			|| !TravelAppliedCompanionAtlasPaths.IsValidIndex(CompanionIndex)
+		if (!TravelAppliedCompanionAtlasPaths.IsValidIndex(CompanionIndex)
 			|| !TravelAppliedCompanionFrames.IsValidIndex(CompanionIndex))
 		{
+			continue;
+		}
+		if (!CompanionUnitIds.IsValidIndex(CompanionIndex))
+		{
+			CompanionImage->SetBrush(FSlateBrush());
+			CompanionImage->SetRenderOpacity(0.0f);
+			TravelAppliedCompanionAtlasPaths[CompanionIndex].Reset();
+			TravelAppliedCompanionFrames[CompanionIndex] = INDEX_NONE;
 			continue;
 		}
 
 		const FName CompanionUnitId = CompanionUnitIds[CompanionIndex];
 		const EGameXXKBattleAnimationAction CompanionAction =
 			TravelVisualRuntime.GetPartyAction(CompanionIndex + 1);
-		FGameXXKBattleAnimationClipDescriptor CompanionClip =
-			FGameXXKBattleAnimationPresentation::ResolveClip(
-				MakeTravelOneKUnitId(CompanionUnitId),
+		FGameXXKBattleAnimationClipPair CompanionClips =
+			FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+				CompanionUnitId,
 				false,
 				CompanionAction);
 		float CompanionPhaseDuration = 0.0f;
@@ -2815,14 +2853,17 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 		}
 		if (CompanionPhaseDuration > 0.0f)
 		{
-			CompanionClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(
-				CompanionClip,
+			CompanionClips.Preferred = FGameXXKBattleAnimationPresentation::FitClipToDuration(
+				CompanionClips.Preferred,
+				CompanionPhaseDuration);
+			CompanionClips.Fallback = FGameXXKBattleAnimationPresentation::FitClipToDuration(
+				CompanionClips.Fallback,
 				CompanionPhaseDuration);
 		}
-		RequestTravelAtlas(CompanionClip);
+		RequestTravelAtlas(CompanionClips);
 		ApplyTravelAnimationFrame(
 			CompanionImage,
-			CompanionClip,
+			CompanionClips,
 			CompanionAction == EGameXXKBattleAnimationAction::Idle,
 			TravelAppliedCompanionAtlasPaths[CompanionIndex],
 			TravelAppliedCompanionFrames[CompanionIndex]);
@@ -2876,8 +2917,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RequestTravelCombatAtlases(const FN
 	}
 	for (const FName CompanionUnitId : GetTravelCompanionUnitIds())
 	{
-		RequestTravelAtlas(FGameXXKBattleAnimationPresentation::ResolveClip(
-			MakeTravelOneKUnitId(CompanionUnitId),
+		RequestTravelAtlas(FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
+			CompanionUnitId,
 			false,
 			EGameXXKBattleAnimationAction::Idle));
 	}
@@ -2935,9 +2976,25 @@ TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetTravelCompanionUnitIds(
 void UGameXXKDesktopTrainingWorkbenchWidget::RequestTravelAtlas(
 	const FGameXXKBattleAnimationClipDescriptor& Clip)
 {
+	FGameXXKBattleAnimationClipPair ClipPair;
+	ClipPair.Preferred = Clip;
+	RequestTravelAtlas(ClipPair);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::RequestTravelAtlas(
+	const FGameXXKBattleAnimationClipPair& ClipPair)
+{
+	const FGameXXKBattleAnimationClipDescriptor& Clip = ClipPair.Preferred;
+	if (!Clip.IsValid())
+	{
+		if (ClipPair.Fallback.IsValid())
+		{
+			RequestTravelAtlas(ClipPair.Fallback);
+		}
+		return;
+	}
 	if (!TravelAtlasCache
 		|| TravelAtlasSessionToken == 0
-		|| !Clip.IsValid()
 		|| TravelRequestedAtlasPaths.Contains(Clip.TexturePath))
 	{
 		return;
@@ -2951,21 +3008,40 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RequestTravelAtlas(
 	}
 	const uint64 RequestToken = TravelAtlasSessionToken;
 	const FSoftObjectPath RequestPath = Clip.TexturePath;
+	const FGameXXKBattleAnimationClipDescriptor FallbackClip = ClipPair.Fallback;
 	const TWeakObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget> WeakWidget(this);
 	TravelAtlasCache->Acquire(
 		RequestPath,
 		RequestToken,
-		[WeakWidget, RequestToken, RequestPath](UTexture2D* Texture, const EGameXXKAtlasLoadResult Result)
+		[WeakWidget, RequestToken, RequestPath, FallbackClip](
+			UTexture2D* Texture,
+			const EGameXXKAtlasLoadResult Result)
 		{
 			UGameXXKDesktopTrainingWorkbenchWidget* Widget = WeakWidget.Get();
 			if (!Widget
-				|| Widget->TravelAtlasSessionToken != RequestToken
-				|| Result != EGameXXKAtlasLoadResult::Loaded
-				|| !Texture)
+				|| Widget->TravelAtlasSessionToken != RequestToken)
 			{
 				return;
 			}
-			Widget->TravelLoadedAtlasTextures.Add(RequestPath, Texture);
+			if (Result == EGameXXKAtlasLoadResult::Loaded && Texture)
+			{
+				Widget->TravelLoadedAtlasTextures.Add(RequestPath, Texture);
+				Widget->UpdateTravelVisuals();
+				return;
+			}
+
+			Widget->TravelLoadedAtlasTextures.Remove(RequestPath);
+			if (Widget->TravelPinnedAtlasPaths.Remove(RequestPath) > 0 && Widget->TravelAtlasCache)
+			{
+				Widget->TravelAtlasCache->Unpin(RequestPath);
+			}
+			if ((Result == EGameXXKAtlasLoadResult::Missing
+					|| Result == EGameXXKAtlasLoadResult::TimedOut)
+				&& FallbackClip.IsValid()
+				&& FallbackClip.TexturePath != RequestPath)
+			{
+				Widget->RequestTravelAtlas(FallbackClip);
+			}
 			Widget->UpdateTravelVisuals();
 		});
 }
@@ -3002,6 +3078,74 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ApplyTravelAnimationFrame(
 	Brush.SetUVRegion(FGameXXKBattleAnimationPresentation::CalculateUvRegion(Clip, FrameIndex));
 	Image->SetBrush(Brush);
 	InOutAppliedPath = Clip.TexturePath;
+	InOutAppliedFrame = FrameIndex;
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::ApplyTravelAnimationFrame(
+	UImage* Image,
+	const FGameXXKBattleAnimationClipPair& ClipPair,
+	const bool bLooping,
+	FSoftObjectPath& InOutAppliedPath,
+	int32& InOutAppliedFrame)
+{
+	if (!Image)
+	{
+		return false;
+	}
+
+	const FGameXXKBattleAnimationClipDescriptor* SelectedClip = nullptr;
+	const TWeakObjectPtr<UTexture2D>* LoadedTexture = nullptr;
+	const auto TrySelectLoadedClip = [this, &SelectedClip, &LoadedTexture](
+		const FGameXXKBattleAnimationClipDescriptor& Candidate)
+	{
+		if (!Candidate.IsValid())
+		{
+			return;
+		}
+		const TWeakObjectPtr<UTexture2D>* CandidateTexture =
+			TravelLoadedAtlasTextures.Find(Candidate.TexturePath);
+		if (CandidateTexture && CandidateTexture->IsValid())
+		{
+			SelectedClip = &Candidate;
+			LoadedTexture = CandidateTexture;
+		}
+	};
+	TrySelectLoadedClip(ClipPair.Preferred);
+	if (!SelectedClip)
+	{
+		TrySelectLoadedClip(ClipPair.Fallback);
+	}
+
+	if (!SelectedClip || !LoadedTexture)
+	{
+		Image->SetBrush(FSlateBrush());
+		Image->SetRenderOpacity(0.0f);
+		InOutAppliedPath.Reset();
+		InOutAppliedFrame = INDEX_NONE;
+		return false;
+	}
+
+	const int32 FrameIndex = FGameXXKBattleAnimationPresentation::CalculateFrameIndex(
+		*SelectedClip,
+		TravelVisualRuntime.GetVisualPhaseElapsedSeconds(),
+		bLooping);
+	if (InOutAppliedPath == SelectedClip->TexturePath
+		&& InOutAppliedFrame == FrameIndex
+		&& Image->GetBrush().GetResourceObject() == LoadedTexture->Get())
+	{
+		Image->SetRenderOpacity(1.0f);
+		return true;
+	}
+
+	FSlateBrush Brush;
+	Brush.DrawAs = ESlateBrushDrawType::Image;
+	Brush.ImageSize = TravelCombatVisualSize;
+	Brush.SetResourceObject(LoadedTexture->Get());
+	Brush.SetUVRegion(FGameXXKBattleAnimationPresentation::CalculateUvRegion(*SelectedClip, FrameIndex));
+	Image->SetBrush(Brush);
+	Image->SetRenderOpacity(1.0f);
+	InOutAppliedPath = SelectedClip->TexturePath;
 	InOutAppliedFrame = FrameIndex;
 	return true;
 }
