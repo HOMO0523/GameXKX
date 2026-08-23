@@ -4,6 +4,7 @@
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -174,7 +175,7 @@ bool FGameXXKCompanionRecruitmentFacadePersistenceTest::RunTest(const FString& P
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestNotNull(TEXT("recruitment facade subsystem exists"), Subsystem);
-	if (!Subsystem || !TestTrue(TEXT("the facade can establish a town runtime"), Subsystem->EnsureQingshanTownRuntimeForDirectMap()))
+	if (!Subsystem || !TestTrue(TEXT("the facade can establish a saveable town runtime"), Subsystem->StartGame()))
 	{
 		return false;
 	}
@@ -212,7 +213,17 @@ bool FGameXXKCompanionRecruitmentFacadePersistenceTest::RunTest(const FString& P
 	{
 		return false;
 	}
-	Subsystem->GetMutableRuntimeState().CardRun.CompanionRoster = FullRoster;
+	FGameXXKRuntimeState& FullRosterState = Subsystem->GetMutableRuntimeState();
+	FullRosterState.CardRun.CompanionRoster = FullRoster;
+	FullRosterState.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
+	FString FormationError;
+	if (!TestTrue(TEXT("full-roster persistence fixture materializes v24 formation"),
+		FGameXXKPartyFormationRules::Normalize(FullRosterState, &FormationError)))
+	{
+		AddError(FormationError);
+		return false;
+	}
+	FGameXXKPartyFormationRules::ProjectCompatibility(FullRosterState);
 
 	FGameXXKCompanionRecruitResult PendingResult;
 	TestTrue(TEXT("the town facade converts a full roster request into a saved replacement candidate"),

@@ -1,9 +1,13 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKDesktopInventoryRules.h"
+#include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "MVP/GameXXKSaveMigration.h"
 
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
@@ -154,8 +158,12 @@ namespace
 		}
 
 		FGameXXKRuntimeState& State = Fixture.Subsystem->GetMutableRuntimeState();
-		State = FGameXXKRuntimeState();
+		State = UGameXXKMVPRules::CreateNewGame();
 		State.Screen = EGameXXKScreen::Town;
+		State.EquipmentCollection = FGameXXKEquipmentCollectionState();
+		State.DesktopInventory = FGameXXKDesktopInventoryState();
+		State.Inventory.Reset();
+		State.EnhancementMaterial = 0;
 		if (!BuildFullRoster(
 			Test,
 			bDismissedCompanionIsActive,
@@ -175,6 +183,14 @@ namespace
 			Test.AddError(CardRunError);
 			return false;
 		}
+		if (!Test.TestTrue(
+			TEXT("replacement fixture materializes a legal ordered formation"),
+			FGameXXKPartyFormationRules::Normalize(State, &CardRunError)))
+		{
+			Test.AddError(CardRunError);
+			return false;
+		}
+		FGameXXKPartyFormationRules::ProjectCompatibility(State);
 
 		for (int32 SlotIndex = 0; SlotIndex < EquippedCount; ++SlotIndex)
 		{
@@ -233,12 +249,37 @@ namespace
 		}
 
 		FString CollectionError;
-		return Test.TestTrue(
+		if (!Test.TestTrue(
 			TEXT("replacement fixture central collection matches the full roster"),
 			FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(
 				State.EquipmentCollection,
 				State.CardRun.CompanionRoster,
-				&CollectionError));
+				&CollectionError)))
+		{
+			Test.AddError(CollectionError);
+			return false;
+		}
+		if (!Test.TestTrue(
+			TEXT("replacement fixture synchronizes equipment mirrors"),
+			FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(State)))
+		{
+			return false;
+		}
+		if (!Test.TestTrue(
+			TEXT("replacement fixture normalizes desktop inventory"),
+			FGameXXKDesktopInventoryRules::Normalize(State, &CollectionError)))
+		{
+			Test.AddError(CollectionError);
+			return false;
+		}
+		if (!Test.TestTrue(
+			TEXT("replacement fixture is a valid v24 runtime"),
+			FGameXXKSaveMigration::ValidateRuntimeState(State, CollectionError)))
+		{
+			Test.AddError(CollectionError);
+			return false;
+		}
+		return true;
 	}
 
 	void TestTransactionFailure(
@@ -288,6 +329,224 @@ namespace
 		}
 		return Count;
 	}
+
+	bool ConfigureReplacementFormation(
+		FAutomationTestBase& Test,
+		FReplacementFixture& Fixture,
+		const bool bIncludeDismissedCompanion,
+		FGameXXKOrderedPartyFormation& OutFormation)
+	{
+		OutFormation = FGameXXKOrderedPartyFormation();
+		FGameXXKPartyMemberRef Hero;
+		Hero.Kind = EGameXXKPartyMemberKind::Hero;
+		Hero.MemberId = FGameXXKEquipmentRules::HeroCharacterId();
+		OutFormation.Members.Add(Hero);
+
+		if (bIncludeDismissedCompanion)
+		{
+			FGameXXKPartyMemberRef Dismissed;
+			Dismissed.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+			Dismissed.MemberId = Fixture.DismissedInstanceId;
+			OutFormation.Members.Add(Dismissed);
+		}
+
+		for (const FGameXXKPermanentCompanion& Companion :
+			Fixture.Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions)
+		{
+			if (Companion.InstanceId == Fixture.DismissedInstanceId
+				|| OutFormation.Members.ContainsByPredicate([&Companion](const FGameXXKPartyMemberRef& Ref)
+				{
+					return Ref.MemberId == Companion.InstanceId;
+				}))
+			{
+				continue;
+			}
+			FGameXXKPartyMemberRef Ref;
+			Ref.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+			Ref.MemberId = Companion.InstanceId;
+			OutFormation.Members.Add(Ref);
+			if (OutFormation.Members.Num() == FGameXXKPartyFormationRules::PartySize)
+			{
+				break;
+			}
+		}
+
+		if (!Test.TestEqual(TEXT("replacement formation fixture has exactly three members"),
+			OutFormation.Members.Num(), FGameXXKPartyFormationRules::PartySize))
+		{
+			return false;
+		}
+		FString Error;
+		if (!Test.TestTrue(TEXT("replacement formation fixture commits through the public facade"),
+			Fixture.Subsystem->SetOrderedPartyFormation(OutFormation, Error)))
+		{
+			Test.AddError(Error);
+			return false;
+		}
+		return true;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKEquipmentCompanionReplacementFormationTest,
+	"GameXXK.Equipment.CompanionReplacement.OrderedFormationSlotRepair",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKEquipmentCompanionReplacementFormationTest::RunTest(const FString& Parameters)
+{
+	FReplacementFixture DeployedDismissal;
+	if (!CreateEquipmentFixture(*this, DeployedDismissal, 1, 0, false))
+	{
+		return false;
+	}
+	FGameXXKOrderedPartyFormation BeforeFormation;
+	if (!ConfigureReplacementFormation(*this, DeployedDismissal, true, BeforeFormation))
+	{
+		return false;
+	}
+	TestEqual(TEXT("dismissed companion occupies the requested 2P slot"),
+		BeforeFormation.Members[1].MemberId, DeployedDismissal.DismissedInstanceId);
+	const FGameXXKPartyMemberRef UnchangedOneP = BeforeFormation.Members[0];
+	const FGameXXKPartyMemberRef UnchangedThreeP = BeforeFormation.Members[2];
+	const TArray<FName> HeroDeckBefore =
+		DeployedDismissal.Subsystem->GetRuntimeState().CardRun.HeroSelectedCardIds;
+	const FGameXXKPermanentCompanion PendingBefore =
+		DeployedDismissal.Subsystem->GetRuntimeState().CardRun.CompanionRoster.PendingRecruitment.Candidate;
+	const FGameXXKPermanentCompanion* SurvivorBefore =
+		DeployedDismissal.Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[&UnchangedThreeP](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.InstanceId == UnchangedThreeP.MemberId;
+			});
+	if (!TestNotNull(TEXT("formation replacement fixture finds its surviving 3P companion"), SurvivorBefore))
+	{
+		return false;
+	}
+	const TArray<FName> SurvivorDeckBefore = SurvivorBefore->SelectedCardIds;
+
+	FGameXXKEquipmentTransactionResult Result;
+	if (!TestTrue(TEXT("deployed companion full-roster replacement succeeds"),
+		DeployedDismissal.Subsystem->ResolvePendingPermanentCompanionReplacement(
+			DeployedDismissal.DismissedInstanceId,
+			DeployedDismissal.PendingCandidateInstanceId,
+			Result)))
+	{
+		return false;
+	}
+	const FGameXXKRuntimeState& After = DeployedDismissal.Subsystem->GetRuntimeState();
+	const TArray<FGameXXKPartyMemberRef>& AfterMembers = After.CardRun.OrderedFormation.Members;
+	if (!TestEqual(TEXT("replacement keeps exactly three formation members"), AfterMembers.Num(), 3))
+	{
+		return false;
+	}
+	TestTrue(TEXT("replacement leaves 1P bit-identical"), AfterMembers[0] == UnchangedOneP);
+	TestEqual(TEXT("new recruit occupies the dismissed companion's exact 2P slot"),
+		AfterMembers[1].MemberId, DeployedDismissal.PendingCandidateInstanceId);
+	TestEqual(TEXT("replacement slot keeps permanent-companion kind"),
+		AfterMembers[1].Kind, EGameXXKPartyMemberKind::PermanentCompanion);
+	TestTrue(TEXT("replacement leaves 3P bit-identical"), AfterMembers[2] == UnchangedThreeP);
+	TestFalse(TEXT("removed companion is absent from ordered formation"),
+		AfterMembers.ContainsByPredicate([&DeployedDismissal](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.MemberId == DeployedDismissal.DismissedInstanceId;
+		}));
+	TestFalse(TEXT("removed companion is absent from roster"),
+		After.CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate(
+			[&DeployedDismissal](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.InstanceId == DeployedDismissal.DismissedInstanceId;
+			}));
+	const FGameXXKPermanentCompanion* AddedCandidate =
+		After.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[&DeployedDismissal](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.InstanceId == DeployedDismissal.PendingCandidateInstanceId;
+			});
+	if (TestNotNull(TEXT("pending candidate becomes an owned companion"), AddedCandidate))
+	{
+		TestEqual(TEXT("replacement preserves pending candidate personal deck"),
+			AddedCandidate->PersonalCardIds, PendingBefore.PersonalCardIds);
+		TestEqual(TEXT("replacement preserves pending candidate selected deck"),
+			AddedCandidate->SelectedCardIds, PendingBefore.SelectedCardIds);
+	}
+	const FGameXXKPermanentCompanion* SurvivorAfter =
+		After.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[&UnchangedThreeP](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.InstanceId == UnchangedThreeP.MemberId;
+			});
+	if (TestNotNull(TEXT("surviving 3P remains owned"), SurvivorAfter))
+	{
+		TestEqual(TEXT("surviving 3P deck remains exact"), SurvivorAfter->SelectedCardIds, SurvivorDeckBefore);
+	}
+	TestEqual(TEXT("replacement leaves hero deck exact"), After.CardRun.HeroSelectedCardIds, HeroDeckBefore);
+	TestEqual(TEXT("compatibility active companion follows first ordered companion"),
+		After.CardRun.PartySelection.ActivePermanentCompanionInstanceId,
+		DeployedDismissal.PendingCandidateInstanceId);
+	TestEqual(TEXT("equipment refund reports the dismissed companion's equipped item"),
+		Result.AffectedInstanceIds, DeployedDismissal.EquippedInstanceIds);
+	TestTrue(TEXT("refunded equipment reaches the warehouse"),
+		After.EquipmentCollection.WarehouseInstanceIds.Contains(DeployedDismissal.EquippedInstanceIds[0]));
+	TestFalse(TEXT("dismissed equipment loadout is removed"),
+		After.EquipmentCollection.CharacterLoadouts.Contains(DeployedDismissal.DismissedInstanceId));
+
+	FString ValidationError;
+	TestTrue(TEXT("post-replacement runtime passes authoritative v24 validation"),
+		FGameXXKSaveMigration::ValidateRuntimeState(After, ValidationError));
+	FGameXXKSaveState CurrentSave = UGameXXKMVPRules::MakeSaveState(After);
+	FGameXXKSaveState RoundTrip;
+	FGameXXKSaveMigrationReport RoundTripReport;
+	TestTrue(TEXT("post-replacement v24 save roundtrips through migration"),
+		FGameXXKSaveMigration::MigrateToCurrent(CurrentSave, RoundTrip, RoundTripReport));
+	TestEqual(TEXT("v24 roundtrip preserves repaired formation order"),
+		RoundTrip.RuntimeState.CardRun.OrderedFormation.Members, AfterMembers);
+
+	FReplacementFixture OffFormationDismissal;
+	if (!CreateEquipmentFixture(*this, OffFormationDismissal, 0, 0, false))
+	{
+		return false;
+	}
+	FGameXXKOrderedPartyFormation OffFormationBefore;
+	if (!ConfigureReplacementFormation(*this, OffFormationDismissal, false, OffFormationBefore))
+	{
+		return false;
+	}
+	FGameXXKEquipmentTransactionResult OffFormationResult;
+	TestTrue(TEXT("off-formation companion replacement succeeds"),
+		OffFormationDismissal.Subsystem->ResolvePendingPermanentCompanionReplacement(
+			OffFormationDismissal.DismissedInstanceId,
+			NAME_None,
+			OffFormationResult));
+	TestEqual(TEXT("off-formation replacement preserves the entire ordered array"),
+		OffFormationDismissal.Subsystem->GetRuntimeState().CardRun.OrderedFormation.Members,
+		OffFormationBefore.Members);
+
+	FReplacementFixture NoLegalNewCandidate;
+	if (!CreateEquipmentFixture(*this, NoLegalNewCandidate, 0, 0, false))
+	{
+		return false;
+	}
+	FGameXXKOrderedPartyFormation NoReplacementFormation;
+	if (!ConfigureReplacementFormation(*this, NoLegalNewCandidate, true, NoReplacementFormation))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& CorruptCandidateState = NoLegalNewCandidate.Subsystem->GetMutableRuntimeState();
+	const FGameXXKPermanentCompanion DuplicateProfile =
+		CorruptCandidateState.CardRun.CompanionRoster.PermanentCompanions[1];
+	CorruptCandidateState.CardRun.CompanionRoster.PendingRecruitment.Candidate = DuplicateProfile;
+	const TArray<uint8> NoReplacementBefore = SerializeRuntimeState(CorruptCandidateState);
+	FGameXXKEquipmentTransactionResult NoReplacementResult;
+	TestFalse(TEXT("replacement with no unique pending candidate is rejected"),
+		NoLegalNewCandidate.Subsystem->ResolvePendingPermanentCompanionReplacement(
+			NoLegalNewCandidate.DismissedInstanceId,
+			NAME_None,
+			NoReplacementResult));
+	TestFalse(TEXT("no-replacement rejection initializes typed failure"), NoReplacementResult.bSucceeded);
+	TestEqual(TEXT("no-replacement rejection rolls back every runtime byte"),
+		SerializeRuntimeState(NoLegalNewCandidate.Subsystem->GetRuntimeState()),
+		NoReplacementBefore);
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -392,9 +651,17 @@ bool FGameXXKEquipmentCompanionReplacementTest::RunTest(const FString& Parameter
 	const FGameXXKRuntimeState& AllSixState = AllSix.Subsystem->GetRuntimeState();
 	TestEqual(TEXT("all six returned items append after the 194 existing warehouse items"), AllSixState.EquipmentCollection.WarehouseInstanceIds.Num(), 200);
 	TestFalse(TEXT("dismissed companion loadout is removed"), AllSixState.EquipmentCollection.CharacterLoadouts.Contains(AllSix.DismissedInstanceId));
-	TestTrue(TEXT("the requested pending candidate becomes active"), AllSixState.CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate([&AllSix](const FGameXXKPermanentCompanion& Companion)
+	const FGameXXKPartyMemberRef* AllSixFirstCompanion =
+		AllSixState.CardRun.OrderedFormation.Members.FindByPredicate([](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+		});
+	TestNotNull(TEXT("successful replacement retains an ordered permanent companion"), AllSixFirstCompanion);
+	TestTrue(TEXT("successful replacement activates the first ordered companion"), AllSixState.CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate([AllSixFirstCompanion](const FGameXXKPermanentCompanion& Companion)
 	{
-		return Companion.InstanceId == AllSix.PendingCandidateInstanceId && Companion.bIsActive;
+		return AllSixFirstCompanion
+			&& Companion.InstanceId == AllSixFirstCompanion->MemberId
+			&& Companion.bIsActive;
 	}));
 	TestEqual(TEXT("successful replacement keeps exactly one active companion"), CountActiveCompanions(AllSixState.CardRun.CompanionRoster), 1);
 
@@ -410,10 +677,21 @@ bool FGameXXKEquipmentCompanionReplacementTest::RunTest(const FString& Parameter
 			ActiveDismissal.DismissedInstanceId,
 			NAME_None,
 			ActiveDismissalResult));
+	const FGameXXKRuntimeState& ActiveDismissalState = ActiveDismissal.Subsystem->GetRuntimeState();
+	const FGameXXKPartyMemberRef* ActiveDismissalFirstCompanion =
+		ActiveDismissalState.CardRun.OrderedFormation.Members.FindByPredicate([](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+		});
+	TestNotNull(TEXT("active replacement retains an ordered permanent companion"), ActiveDismissalFirstCompanion);
 	TestEqual(
-		TEXT("NAME_None leaves no active companion after replacing the active companion"),
-		CountActiveCompanions(ActiveDismissal.Subsystem->GetRuntimeState().CardRun.CompanionRoster),
-		0);
+		TEXT("NAME_None still projects exactly one active companion from v24 formation"),
+		CountActiveCompanions(ActiveDismissalState.CardRun.CompanionRoster),
+		1);
+	TestEqual(
+		TEXT("active replacement compatibility ID follows the first ordered companion"),
+		ActiveDismissalState.CardRun.PartySelection.ActivePermanentCompanionInstanceId,
+		ActiveDismissalFirstCompanion ? ActiveDismissalFirstCompanion->MemberId : NAME_None);
 
 	FReplacementFixture InactiveDismissal;
 	if (!CreateEquipmentFixture(*this, InactiveDismissal, 2, 198, false))

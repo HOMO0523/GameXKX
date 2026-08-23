@@ -3289,6 +3289,8 @@ bool UGameXXKMVPSubsystem::ResolvePendingPermanentCompanionReplacement(
 		return OutResult.bSucceeded;
 	}
 
+	const FName PendingCandidateInstanceId =
+		Candidate.CardRun.CompanionRoster.PendingRecruitment.Candidate.InstanceId;
 	FGameXXKCompanionDismissalRefund LegacyRefund;
 	FString Error;
 	if (!FGameXXKCompanionRules::ResolvePendingRecruitment(
@@ -3312,6 +3314,82 @@ bool UGameXXKMVPSubsystem::ResolvePendingPermanentCompanionReplacement(
 	if (!EnsureCompanionCardRun(Candidate))
 	{
 		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::InvalidRequest);
+		return OutResult.bSucceeded;
+	}
+
+	FGameXXKOrderedPartyFormation& Formation = Candidate.CardRun.OrderedFormation;
+	TArray<int32> RemovedFormationSlots;
+	TSet<FName> ReservedFormationMemberIds;
+	for (int32 SlotIndex = 0; SlotIndex < Formation.Members.Num(); ++SlotIndex)
+	{
+		const FGameXXKPartyMemberRef& Ref = Formation.Members[SlotIndex];
+		if (Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion
+			&& Ref.MemberId == DismissedInstanceId)
+		{
+			RemovedFormationSlots.Add(SlotIndex);
+		}
+		else if (!Ref.MemberId.IsNone())
+		{
+			ReservedFormationMemberIds.Add(Ref.MemberId);
+		}
+	}
+
+	TArray<FName> StableOwnedCompanionIds;
+	for (const FGameXXKPermanentCompanion& Companion : Candidate.CardRun.CompanionRoster.PermanentCompanions)
+	{
+		if (!Companion.InstanceId.IsNone())
+		{
+			StableOwnedCompanionIds.AddUnique(Companion.InstanceId);
+		}
+	}
+	StableOwnedCompanionIds.Sort(FNameLexicalLess());
+	const auto IsAvailableReplacement = [&StableOwnedCompanionIds, &ReservedFormationMemberIds](const FName InstanceId)
+	{
+		return !InstanceId.IsNone()
+			&& StableOwnedCompanionIds.Contains(InstanceId)
+			&& !ReservedFormationMemberIds.Contains(InstanceId);
+	};
+	for (const int32 SlotIndex : RemovedFormationSlots)
+	{
+		FName ReplacementInstanceId = NAME_None;
+		if (IsAvailableReplacement(ActivePermanentCompanionInstanceIdAfterReplacement))
+		{
+			ReplacementInstanceId = ActivePermanentCompanionInstanceIdAfterReplacement;
+		}
+		else if (IsAvailableReplacement(PendingCandidateInstanceId))
+		{
+			ReplacementInstanceId = PendingCandidateInstanceId;
+		}
+		else
+		{
+			for (const FName OwnedInstanceId : StableOwnedCompanionIds)
+			{
+				if (IsAvailableReplacement(OwnedInstanceId))
+				{
+					ReplacementInstanceId = OwnedInstanceId;
+					break;
+				}
+			}
+		}
+		if (ReplacementInstanceId.IsNone())
+		{
+			SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::InvalidRequest);
+			return OutResult.bSucceeded;
+		}
+		Formation.Members[SlotIndex].Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+		Formation.Members[SlotIndex].MemberId = ReplacementInstanceId;
+		ReservedFormationMemberIds.Add(ReplacementInstanceId);
+	}
+	if (!FGameXXKPartyFormationRules::Validate(Candidate, Formation, &Error))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::InvalidOwner);
+		return OutResult.bSucceeded;
+	}
+	FGameXXKPartyFormationRules::ProjectCompatibility(Candidate);
+	if (!FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(Candidate)
+		|| !FGameXXKSaveMigration::ValidateRuntimeState(Candidate, Error))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::SaveMigrationFailed);
 		return OutResult.bSucceeded;
 	}
 
