@@ -2308,6 +2308,18 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	/** Stable enemy source retained until the pending next-hand surcharge is materialized or expires. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName PendingNextPlayerHandEnergySurchargeSourceUnitId = NAME_None;
+
+	/** Battle projection of the owned one-use life-saving talisman; initialized once at battle start. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bLifeSavingTalismanArmed = false;
+
+	/** Candidate-only catalog-consumption request raised by the first protected party health-loss packet. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bLifeSavingTalismanConsumptionPending = false;
+
+	/** Catalog-authored party-healing percentage projected with the armed or pending life-saving talisman. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 LifeSavingTalismanHealingPercent = 0;
 };
 
 /** Read-only card-check result consumed by the hand UI before it enters the arrow-targeting state. */

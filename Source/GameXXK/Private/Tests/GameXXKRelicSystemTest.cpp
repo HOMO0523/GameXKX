@@ -6,17 +6,205 @@
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKCardRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "Engine/GameInstance.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKRelicBarWidget.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
+#include "Serialization/ObjectAndNameAsStringProxyArchive.h"
 #else
 #define GAMEXXK_HAS_RELIC_SYSTEM 0
 #endif
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+#if GAMEXXK_HAS_RELIC_SYSTEM
+namespace
+{
+	const FName LifeSavingTalismanRelicId(TEXT("Relic.LifeSavingTalisman"));
+
+	FGameXXKBattleRuntimeUnit MakeLifeSavingLegacyUnit(
+		const FName UnitId,
+		const bool bEnemy,
+		const FName EnemyDefinitionId = NAME_None)
+	{
+		FGameXXKBattleRuntimeUnit Unit;
+		Unit.Id = UnitId;
+		Unit.DisplayName = FText::FromName(UnitId);
+		Unit.HP = bEnemy ? 100 : 100;
+		Unit.MaxHP = Unit.HP;
+		Unit.MP = bEnemy ? 0 : 20;
+		Unit.MaxMP = Unit.MP;
+		Unit.Attack = bEnemy ? 20 : 20;
+		Unit.Defense = 0;
+		Unit.Speed = bEnemy ? 8 : 10;
+		Unit.bEnemy = bEnemy;
+		Unit.EnemyDefinitionId = EnemyDefinitionId;
+		Unit.BattleSlotNumber = bEnemy ? 1 : INDEX_NONE;
+		Unit.CombatLevel = 1;
+		return Unit;
+	}
+
+	FGameXXKCardCombatUnit* FindLifeSavingUnit(FGameXXKRuntimeState& State, const FName UnitId)
+	{
+		return State.CardRun.ActiveBattle.Units.FindByPredicate([UnitId](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == UnitId;
+		});
+	}
+
+	const FGameXXKCardCombatUnit* FindLifeSavingUnit(const FGameXXKRuntimeState& State, const FName UnitId)
+	{
+		return State.CardRun.ActiveBattle.Units.FindByPredicate([UnitId](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == UnitId;
+		});
+	}
+
+	bool OwnsLifeSavingTalisman(const FGameXXKRuntimeState& State)
+	{
+		return State.CardRun.Relics.ContainsByPredicate([](const FGameXXKRelicInstance& Instance)
+		{
+			return Instance.RelicId == LifeSavingTalismanRelicId;
+		});
+	}
+
+	bool RoundTripLifeSavingRuntime(
+		const FGameXXKCardBattleRuntime& Source,
+		FGameXXKCardBattleRuntime& OutRuntime)
+	{
+		TArray<uint8> Bytes;
+		FMemoryWriter Writer(Bytes, true);
+		FObjectAndNameAsStringProxyArchive WriteArchive(Writer, false);
+		WriteArchive.ArIsSaveGame = true;
+		FGameXXKCardBattleRuntime SourceCopy = Source;
+		FGameXXKCardBattleRuntime::StaticStruct()->SerializeItem(WriteArchive, &SourceCopy, nullptr);
+		if (Writer.IsError())
+		{
+			return false;
+		}
+
+		FMemoryReader Reader(Bytes, true);
+		FObjectAndNameAsStringProxyArchive ReadArchive(Reader, false);
+		ReadArchive.ArIsSaveGame = true;
+		FGameXXKCardBattleRuntime::StaticStruct()->SerializeItem(ReadArchive, &OutRuntime, nullptr);
+		return !Reader.IsError();
+	}
+
+	bool BeginLifeSavingBattle(
+		FAutomationTestBase& Test,
+		FGameXXKRuntimeState& OutState,
+		const bool bOwnTalisman,
+		FString& OutError)
+	{
+		OutState = UGameXXKMVPRules::CreateNewGame();
+		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(OutState, &OutError))
+		{
+			Test.AddError(FString::Printf(TEXT("life-saving fixture failed to initialize its card run: %s"), *OutError));
+			return false;
+		}
+		if (bOwnTalisman && !FGameXXKRelicRules::AcquireRelic(OutState, LifeSavingTalismanRelicId, &OutError))
+		{
+			Test.AddError(FString::Printf(TEXT("life-saving fixture failed to acquire its talisman: %s"), *OutError));
+			return false;
+		}
+		OutState.ActiveBattleParty = {MakeLifeSavingLegacyUnit(TEXT("Player"), false)};
+		OutState.ActiveBattleEnemies = {MakeLifeSavingLegacyUnit(
+			TEXT("Enemy.Rooster.P1"),
+			true,
+			TEXT("Enemy.Ch1.Rooster"))};
+		OutState.bHasActiveBattle = true;
+		OutState.ActiveBattleNodeId = 48001;
+		if (!FGameXXKCardBattleAdapter::BeginCardBattle(
+			OutState,
+			EGameXXKNodeKind::Battle,
+			EGameXXKCardTerrain::Plain,
+			48001,
+			&OutError))
+		{
+			Test.AddError(FString::Printf(TEXT("life-saving fixture failed to begin its card battle: %s"), *OutError));
+			return false;
+		}
+		return true;
+	}
+
+	FGameXXKCardEnemyIntent MakeLifeSavingIntent(
+		const FName EnemyUnitId,
+		const FName PartyUnitId,
+		const TArray<int32>& PacketDamages)
+	{
+		FGameXXKCardEnemyIntent Intent;
+		Intent.CardId = TEXT("Test.Intent.LifeSavingTalisman");
+		Intent.CardDisplayName = TEXT("Life-saving test intent");
+		Intent.SourceUnitId = EnemyUnitId;
+		Intent.SuggestedTargetUnitId = PartyUnitId;
+		Intent.Damage = PacketDamages.IsEmpty() ? 0 : PacketDamages[0];
+		Intent.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+		Intent.ResolutionOrder = 0;
+		for (const int32 Damage : PacketDamages)
+		{
+			FGameXXKResolvedEnemyIntentEffect& Effect = Intent.Effects.AddDefaulted_GetRef();
+			Effect.Type = EGameXXKEnemyIntentEffectType::DirectDamage;
+			Effect.TargetUnitIds = {PartyUnitId};
+			Effect.Magnitude = Damage;
+			Effect.BaseMagnitude = Damage;
+			Effect.HitCount = 1;
+			Effect.TargetRule = EGameXXKEnemyIntentTargetRule::LowestHealthParty;
+		}
+		return Intent;
+	}
+
+	bool PrepareLifeSavingEnemyMutation(
+		FAutomationTestBase& Test,
+		FGameXXKRuntimeState& State,
+		const int32 PlayerHealth,
+		const TArray<int32>& PacketDamages,
+		FString& OutError)
+	{
+		FGameXXKCardCombatUnit* Player = FindLifeSavingUnit(State, TEXT("Player"));
+		const FGameXXKCardCombatUnit* Enemy = State.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.Side == EGameXXKCardTargetSide::Enemy && Unit.bLiving;
+		});
+		if (!Player || !Enemy)
+		{
+			Test.AddError(TEXT("life-saving enemy fixture lost its player or enemy."));
+			return false;
+		}
+		Player->MaxHP = 100;
+		Player->HP = PlayerHealth;
+		Player->bLiving = PlayerHealth > 0;
+		Player->Defense = 0;
+		Player->Armor = 0;
+		State.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Enemy;
+		State.CardRun.EnemyIntents = {MakeLifeSavingIntent(Enemy->UnitId, Player->UnitId, PacketDamages)};
+		State.CardRun.NextEnemyIntentIndex = 0;
+		return FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(State, &OutError);
+	}
+
+	bool ResolveLifeSavingIntent(
+		FAutomationTestBase& Test,
+		FGameXXKRuntimeState& State,
+		TArray<FGameXXKCardDamageResult>& OutDamageResults,
+		FString& OutError)
+	{
+		FGameXXKCardEnemyIntent ResolvedIntent;
+		bool bFinished = false;
+		const bool bResolved = FGameXXKCardBattleAdapter::ResolveNextEnemyIntent(
+			State,
+			ResolvedIntent,
+			OutDamageResults,
+			bFinished,
+			&OutError);
+		Test.TestTrue(FString::Printf(TEXT("life-saving enemy intent resolves: %s"), *OutError), bResolved);
+		return bResolved;
+	}
+}
+#endif
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKRelicCatalogTest,
@@ -52,7 +240,7 @@ bool FGameXXKRelicCatalogTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("the life-saving talisman preserves its stable id"), LifeSavingTalisman->Id, LifeSavingTalismanId);
 		TestEqual(TEXT("the life-saving talisman uses its approved Chinese display name"), LifeSavingTalisman->DisplayName.ToString(), FString(TEXT("保命护符")));
-		TestEqual(TEXT("the life-saving talisman documents its complete live effect"), LifeSavingTalisman->Description.ToString(), FString(TEXT("战斗中任一角色气血低于50%时，消耗此遗物，使全队恢复30%最大气血。")));
+		TestEqual(TEXT("the life-saving talisman documents its complete live effect"), LifeSavingTalisman->Description.ToString(), FString(TEXT("战斗中任一角色气血将降至50%以下时，令其至少保留1点气血，消耗此遗物并使全队恢复30%最大气血。")));
 		TestEqual(TEXT("the life-saving talisman reacts after damage"), LifeSavingTalisman->Trigger, EGameXXKRelicTrigger::DamageTaken);
 		TestEqual(TEXT("the life-saving talisman declares the emergency party-heal effect"), LifeSavingTalisman->EffectKind, EGameXXKRelicEffectKind::EmergencyHealPartyPercent);
 		TestEqual(TEXT("the life-saving talisman stores a thirty-percent magnitude"), LifeSavingTalisman->Magnitude, 30);
@@ -427,6 +615,704 @@ bool FGameXXKDamageReactiveRelicOwnershipTest::RunTest(const FString& Parameters
 		TestEqual(TEXT("the reactive healing relic restores the damaged party unit"), HeroAfter->HP, 51);
 		TestEqual(TEXT("the reactive armor relic protects the damaged party unit"), HeroAfter->Armor, 2);
 	}
+	return true;
+#endif
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKLifeSavingTalismanThresholdClampTest,
+	"GameXXK.Integration.CardBattleAdapter.LifeSavingTalisman.ThresholdClampAndLivingPartyHeal",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKLifeSavingTalismanThresholdClampTest::RunTest(const FString& Parameters)
+{
+#if !GAMEXXK_HAS_RELIC_SYSTEM
+	AddError(TEXT("The required life-saving talisman threshold behavior has not been implemented."));
+	return false;
+#else
+	FString Error;
+	FGameXXKRuntimeState ExactHalfState;
+	if (!BeginLifeSavingBattle(*this, ExactHalfState, true, Error)
+		|| !PrepareLifeSavingEnemyMutation(*this, ExactHalfState, 51, {1}, Error))
+	{
+		return false;
+	}
+	TArray<FGameXXKCardDamageResult> ExactHalfResults;
+	if (!ResolveLifeSavingIntent(*this, ExactHalfState, ExactHalfResults, Error))
+	{
+		return false;
+	}
+	TestEqual(TEXT("exactly fifty percent audits one ordinary packet"), ExactHalfResults.Num(), 1);
+	if (ExactHalfResults.Num() == 1)
+	{
+		TestEqual(TEXT("exactly fifty percent keeps the real packet result"), ExactHalfResults[0].TargetHealthAfter, 50);
+		TestEqual(TEXT("exactly fifty percent keeps the real health damage"), ExactHalfResults[0].HealthDamage, 1);
+	}
+	TestEqual(TEXT("exactly fifty percent receives no emergency healing"),
+		FindLifeSavingUnit(ExactHalfState, TEXT("Player"))->HP, 50);
+	TestTrue(TEXT("exactly fifty percent keeps the talisman armed and owned"), OwnsLifeSavingTalisman(ExactHalfState));
+	TestTrue(TEXT("exactly fifty percent keeps the runtime talisman armed"),
+		ExactHalfState.CardRun.ActiveBattle.bLifeSavingTalismanArmed);
+	TestFalse(TEXT("exactly fifty percent raises no pending consumption"),
+		ExactHalfState.CardRun.ActiveBattle.bLifeSavingTalismanConsumptionPending);
+
+	FGameXXKRuntimeState BelowHalfState;
+	if (!BeginLifeSavingBattle(*this, BelowHalfState, true, Error))
+	{
+		return false;
+	}
+	FGameXXKCardCombatUnit CeilAlly;
+	CeilAlly.UnitId = TEXT("Ally.Ceil");
+	CeilAlly.Side = EGameXXKCardTargetSide::Party;
+	CeilAlly.Role = EGameXXKCharacterRole::Guard;
+	CeilAlly.HP = 1;
+	CeilAlly.MaxHP = 3;
+	CeilAlly.Attack = 1;
+	CeilAlly.Speed = 1;
+	CeilAlly.StableSortOrder = 97;
+	CeilAlly.bLiving = true;
+	BelowHalfState.CardRun.ActiveBattle.Units.Add(CeilAlly);
+	FGameXXKBattleRuntimeUnit CeilLegacy = MakeLifeSavingLegacyUnit(CeilAlly.UnitId, false);
+	CeilLegacy.HP = CeilAlly.HP;
+	CeilLegacy.MaxHP = CeilAlly.MaxHP;
+	BelowHalfState.ActiveBattleParty.Add(CeilLegacy);
+
+	FGameXXKCardCombatUnit CappedAlly = CeilAlly;
+	CappedAlly.UnitId = TEXT("Ally.Capped");
+	CappedAlly.HP = 9;
+	CappedAlly.MaxHP = 10;
+	CappedAlly.StableSortOrder = 98;
+	BelowHalfState.CardRun.ActiveBattle.Units.Add(CappedAlly);
+	FGameXXKBattleRuntimeUnit CappedLegacy = MakeLifeSavingLegacyUnit(CappedAlly.UnitId, false);
+	CappedLegacy.HP = CappedAlly.HP;
+	CappedLegacy.MaxHP = CappedAlly.MaxHP;
+	BelowHalfState.ActiveBattleParty.Add(CappedLegacy);
+	if (!PrepareLifeSavingEnemyMutation(*this, BelowHalfState, 51, {2}, Error))
+	{
+		return false;
+	}
+	TMap<FName, int32> LivingPartyHealthBefore;
+	for (const FGameXXKCardCombatUnit& Unit : BelowHalfState.CardRun.ActiveBattle.Units)
+	{
+		if (Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Party)
+		{
+			LivingPartyHealthBefore.Add(Unit.UnitId, Unit.HP);
+		}
+	}
+	TestTrue(TEXT("the living-party heal fixture covers at least three party members"), LivingPartyHealthBefore.Num() >= 3);
+	TArray<FGameXXKCardDamageResult> BelowHalfResults;
+	if (!ResolveLifeSavingIntent(*this, BelowHalfState, BelowHalfResults, Error))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the first below-half packet remains one audited packet"), BelowHalfResults.Num(), 1);
+	if (BelowHalfResults.Num() == 1)
+	{
+		TestEqual(TEXT("the damage audit retains the real pre-heal forty-nine health"), BelowHalfResults[0].TargetHealthAfter, 49);
+		TestEqual(TEXT("the nonlethal crossing packet keeps its full two damage"), BelowHalfResults[0].HealthDamage, 2);
+	}
+	for (const TPair<FName, int32>& Pair : LivingPartyHealthBefore)
+	{
+		const FGameXXKCardCombatUnit* Unit = FindLifeSavingUnit(BelowHalfState, Pair.Key);
+		if (!TestNotNull(FString::Printf(TEXT("the living-party heal retains %s"), *Pair.Key.ToString()), Unit))
+		{
+			continue;
+		}
+		const int32 PacketHealth = Pair.Key == TEXT("Player") ? 49 : Pair.Value;
+		const int32 RequestedHealing = (Unit->MaxHP * 30 + 99) / 100;
+		TestEqual(
+			FString::Printf(TEXT("the living-party heal uses ceil thirty percent for %s"), *Pair.Key.ToString()),
+			Unit->HP,
+			FMath::Min(Unit->MaxHP, PacketHealth + RequestedHealing));
+	}
+	TestEqual(TEXT("the below-half protected target finishes at seventy-nine health"),
+		FindLifeSavingUnit(BelowHalfState, TEXT("Player"))->HP, 79);
+	TestEqual(TEXT("ceil healing grants one point for a three-health ally"),
+		FindLifeSavingUnit(BelowHalfState, CeilAlly.UnitId)->HP, 2);
+	TestEqual(TEXT("party healing caps at maximum health"),
+		FindLifeSavingUnit(BelowHalfState, CappedAlly.UnitId)->HP, 10);
+	TestFalse(TEXT("the below-half crossing consumes the catalog talisman"), OwnsLifeSavingTalisman(BelowHalfState));
+	TestFalse(TEXT("successful adapter finalization clears the pending consumption"),
+		BelowHalfState.CardRun.ActiveBattle.bLifeSavingTalismanConsumptionPending);
+	return true;
+#endif
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKLifeSavingTalismanLethalClampTest,
+	"GameXXK.Integration.CardBattleAdapter.LifeSavingTalisman.LethalClampNeverRevivesDefeatedAlly",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKLifeSavingTalismanLethalClampTest::RunTest(const FString& Parameters)
+{
+#if !GAMEXXK_HAS_RELIC_SYSTEM
+	AddError(TEXT("The required life-saving talisman lethal clamp has not been implemented."));
+	return false;
+#else
+	FString Error;
+	FGameXXKRuntimeState State;
+	if (!BeginLifeSavingBattle(*this, State, true, Error))
+	{
+		return false;
+	}
+	FGameXXKCardCombatUnit DefeatedAlly;
+	DefeatedAlly.UnitId = TEXT("Ally.PreDefeated");
+	DefeatedAlly.Side = EGameXXKCardTargetSide::Party;
+	DefeatedAlly.Role = EGameXXKCharacterRole::Guard;
+	DefeatedAlly.HP = 0;
+	DefeatedAlly.MaxHP = 100;
+	DefeatedAlly.Speed = 1;
+	DefeatedAlly.StableSortOrder = 99;
+	DefeatedAlly.bLiving = false;
+	State.CardRun.ActiveBattle.Units.Add(DefeatedAlly);
+	FGameXXKBattleRuntimeUnit DefeatedLegacy = MakeLifeSavingLegacyUnit(DefeatedAlly.UnitId, false);
+	DefeatedLegacy.HP = 0;
+	DefeatedLegacy.MaxHP = 100;
+	DefeatedLegacy.bDefeated = true;
+	State.ActiveBattleParty.Add(DefeatedLegacy);
+	if (!PrepareLifeSavingEnemyMutation(*this, State, 5, {100}, Error))
+	{
+		return false;
+	}
+	TArray<FGameXXKCardDamageResult> Results;
+	if (!ResolveLifeSavingIntent(*this, State, Results, Error))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the lethal protected boundary produces one packet"), Results.Num(), 1);
+	if (Results.Num() == 1)
+	{
+		TestEqual(TEXT("the lethal packet audit reports the actual one-health clamp"), Results[0].TargetHealthAfter, 1);
+		TestEqual(TEXT("the lethal packet audit reduces effective health damage to four"), Results[0].HealthDamage, 4);
+	}
+	const FGameXXKCardCombatUnit* ProtectedPlayer = FindLifeSavingUnit(State, TEXT("Player"));
+	if (TestNotNull(TEXT("the lethal clamp retains the protected player"), ProtectedPlayer))
+	{
+		TestEqual(TEXT("the protected player heals from one to thirty-one"), ProtectedPlayer->HP, 31);
+		TestTrue(TEXT("the protected player never becomes nonliving"), ProtectedPlayer->bLiving);
+	}
+	const FGameXXKCardCombatUnit* AllyAfter = FindLifeSavingUnit(State, DefeatedAlly.UnitId);
+	if (TestNotNull(TEXT("the pre-defeated ally remains in the battle runtime"), AllyAfter))
+	{
+		TestEqual(TEXT("the pre-defeated ally receives no talisman healing"), AllyAfter->HP, 0);
+		TestFalse(TEXT("the talisman never revives a pre-defeated ally"), AllyAfter->bLiving);
+	}
+	TestEqual(TEXT("pre-death protection leaves the enemy phase nonterminal"),
+		State.CardRun.ActiveBattle.Phase, EGameXXKCardBattlePhase::Enemy);
+	TestFalse(TEXT("the lethal clamp consumes the catalog talisman"), OwnsLifeSavingTalisman(State));
+	TestFalse(TEXT("the consumed lethal clamp remains disarmed"),
+		State.CardRun.ActiveBattle.bLifeSavingTalismanArmed);
+	TestFalse(TEXT("the lethal clamp publishes no pending state"),
+		State.CardRun.ActiveBattle.bLifeSavingTalismanConsumptionPending);
+	return true;
+#endif
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKLifeSavingTalismanMultiHitTest,
+	"GameXXK.Integration.CardBattleAdapter.LifeSavingTalisman.LaterMultiHitCanKillAfterConsumption",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKLifeSavingTalismanMultiHitTest::RunTest(const FString& Parameters)
+{
+#if !GAMEXXK_HAS_RELIC_SYSTEM
+	AddError(TEXT("The required life-saving talisman multi-hit behavior has not been implemented."));
+	return false;
+#else
+	FString Error;
+	FGameXXKRuntimeState State;
+	if (!BeginLifeSavingBattle(*this, State, true, Error)
+		|| !PrepareLifeSavingEnemyMutation(*this, State, 51, {2, 100}, Error))
+	{
+		return false;
+	}
+	TArray<FGameXXKCardDamageResult> Results;
+	if (!ResolveLifeSavingIntent(*this, State, Results, Error))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the two-packet intent keeps both immutable damage audits"), Results.Num(), 2);
+	if (Results.Num() == 2)
+	{
+		TestEqual(TEXT("the crossing hit records forty-nine before emergency healing"), Results[0].TargetHealthAfter, 49);
+		TestEqual(TEXT("the later hit starts after the one-use thirty-percent heal"), Results[1].TargetHealthBefore, 79);
+		TestEqual(TEXT("the later hit follows unchanged lethal damage logic"), Results[1].TargetHealthAfter, 0);
+		TestEqual(TEXT("the later hit deals the healed target's remaining seventy-nine health"), Results[1].HealthDamage, 79);
+	}
+	const FGameXXKCardCombatUnit* Player = FindLifeSavingUnit(State, TEXT("Player"));
+	if (TestNotNull(TEXT("the multi-hit fixture retains its player record"), Player))
+	{
+		TestEqual(TEXT("the later hit may kill after talisman consumption"), Player->HP, 0);
+		TestFalse(TEXT("the later hit uses ordinary defeated state"), Player->bLiving);
+	}
+	TestEqual(TEXT("the later lethal hit commits the ordinary defeat phase"),
+		State.CardRun.ActiveBattle.Phase, EGameXXKCardBattlePhase::Defeat);
+	TestFalse(TEXT("the first crossing hit consumes the talisman exactly once"), OwnsLifeSavingTalisman(State));
+	return true;
+#endif
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKLifeSavingTalismanSelfAndDotTest,
+	"GameXXK.Integration.CardBattleAdapter.LifeSavingTalisman.SelfLossAndPlayerDot",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKLifeSavingTalismanSelfAndDotTest::RunTest(const FString& Parameters)
+{
+#if !GAMEXXK_HAS_RELIC_SYSTEM
+	AddError(TEXT("The required life-saving talisman party-loss sources have not been implemented."));
+	return false;
+#else
+	FString Error;
+	FGameXXKRuntimeState SelfState;
+	if (!BeginLifeSavingBattle(*this, SelfState, true, Error))
+	{
+		return false;
+	}
+	FGameXXKCardCombatUnit* SelfPlayer = FindLifeSavingUnit(SelfState, TEXT("Player"));
+	if (!SelfPlayer || SelfState.CardRun.ActiveBattle.Deck.Hand.IsEmpty())
+	{
+		AddError(TEXT("the self-loss fixture lost its player or opening hand."));
+		return false;
+	}
+	SelfPlayer->MaxHP = 100;
+	SelfPlayer->HP = 50;
+	SelfPlayer->bLiving = true;
+	FGameXXKCardInstance& SelfCard = SelfState.CardRun.ActiveBattle.Deck.Hand[0];
+	SelfCard.CardId = TEXT("Hero.Healer.YiXueCuiFang");
+	const FName SelfCardInstanceId = SelfCard.InstanceId;
+	FGameXXKCardPlayResult SelfResult;
+	if (!TestTrue(FString::Printf(TEXT("the real self-loss card resolves through the adapter: %s"), *Error),
+		FGameXXKCardBattleAdapter::ResolveCardPlay(SelfState, SelfCardInstanceId, NAME_None, SelfResult, &Error)))
+	{
+		return false;
+	}
+	TestTrue(TEXT("the real self-loss card publishes an emergency living-party healing audit"),
+		!SelfResult.HealingResults.IsEmpty());
+	TestTrue(TEXT("the real self-loss card retains a forty-nine-health packet audit"),
+		SelfResult.DamageResults.ContainsByPredicate([](const FGameXXKCardDamageResult& Result)
+		{
+			return Result.ResolvedTargetUnitId == TEXT("Player")
+				&& Result.Cause == EGameXXKCardDamageCause::SelfLoss
+				&& Result.TargetHealthAfter == 49;
+		}));
+	TestEqual(TEXT("self-loss protection heals the player from forty-nine to seventy-nine"),
+		FindLifeSavingUnit(SelfState, TEXT("Player"))->HP, 79);
+	TestFalse(TEXT("self-loss protection consumes the talisman"), OwnsLifeSavingTalisman(SelfState));
+
+	FGameXXKRuntimeState ReflectionState;
+	if (!BeginLifeSavingBattle(*this, ReflectionState, true, Error))
+	{
+		return false;
+	}
+	FGameXXKCardCombatUnit* ReflectionPlayer = FindLifeSavingUnit(ReflectionState, TEXT("Player"));
+	FGameXXKCardCombatUnit* ReflectionEnemy = ReflectionState.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.Side == EGameXXKCardTargetSide::Enemy && Unit.bLiving;
+	});
+	if (!ReflectionPlayer || !ReflectionEnemy || ReflectionState.CardRun.ActiveBattle.Deck.Hand.IsEmpty())
+	{
+		AddError(TEXT("the reflection fixture lost its player, enemy, or opening hand."));
+		return false;
+	}
+	ReflectionPlayer->MaxHP = 100;
+	ReflectionPlayer->HP = 50;
+	ReflectionPlayer->bLiving = true;
+	ReflectionPlayer->Defense = 0;
+	ReflectionPlayer->Armor = 0;
+	ReflectionEnemy->Attack = 10;
+	TestEqual(TEXT("the reflection fixture applies four Bleed to the attacked enemy"),
+		GameXXKCardRules::AddCombatStatus(*ReflectionEnemy, EGameXXKCardStatus::Bleed, 4), 4);
+	FGameXXKCardBattleModifierRuntime& Reflection = ReflectionState.CardRun.ActiveBattle.Modifiers.AddDefaulted_GetRef();
+	Reflection.ModifierId = TEXT("Test.LifeSaving.Reflection");
+	Reflection.SourceCardInstanceId = ReflectionState.CardRun.ActiveBattle.Deck.ActiveInstanceIds[0];
+	Reflection.SourceUnitId = ReflectionEnemy->UnitId;
+	Reflection.RecipientUnitIds = {ReflectionEnemy->UnitId};
+	Reflection.Definition.Trigger = EGameXXKCardBattleModifierTrigger::FirstDirectDamageReceivedThisRound;
+	Reflection.Definition.EffectType = EGameXXKCardEffectType::DamagePercentAttack;
+	Reflection.Definition.Target = EGameXXKCardEffectTarget::Attacker;
+	Reflection.Definition.Magnitude = 50;
+	Reflection.Definition.RemainingTriggers = 1;
+	Reflection.Definition.Expiry = EGameXXKCardModifierExpiry::AfterTriggerCount;
+	Reflection.Definition.RecipientScope = EGameXXKCardModifierRecipientScope::CardOwner;
+	Reflection.Definition.RecipientTarget = EGameXXKCardEffectTarget::CardOwner;
+	Reflection.Definition.bPersistent = true;
+	FGameXXKCardInstance& ReflectionCard = ReflectionState.CardRun.ActiveBattle.Deck.Hand[0];
+	ReflectionCard.CardId = TEXT("Profession.Blade.YinXueDao");
+	const FName ReflectionCardInstanceId = ReflectionCard.InstanceId;
+	const FName ReflectionEnemyUnitId = ReflectionEnemy->UnitId;
+	TArray<FGameXXKCardCombatUnit> ReflectionPartyBefore;
+	for (const FGameXXKCardCombatUnit& Unit : ReflectionState.CardRun.ActiveBattle.Units)
+	{
+		if (Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Party)
+		{
+			ReflectionPartyBefore.Add(Unit);
+		}
+	}
+	FGameXXKCardPlayResult ReflectionResult;
+	if (!TestTrue(FString::Printf(TEXT("the enemy reflection resolves through the adapter: %s"), *Error),
+		FGameXXKCardBattleAdapter::ResolveCardPlay(
+			ReflectionState,
+			ReflectionCardInstanceId,
+			ReflectionEnemyUnitId,
+			ReflectionResult,
+			&Error)))
+	{
+		return false;
+	}
+	TestTrue(TEXT("the reflected party packet keeps its actual pre-heal audit"),
+		ReflectionResult.DamageResults.ContainsByPredicate([](const FGameXXKCardDamageResult& Result)
+		{
+			return Result.Cause == EGameXXKCardDamageCause::Counter
+				&& Result.ResolvedTargetUnitId == TEXT("Player")
+				&& Result.HealthDamage == 5
+				&& Result.TargetHealthAfter == 49;
+		}));
+	TestEqual(TEXT("reflection audit contains one ordinary lifesteal plus exactly one talisman heal per living party member"),
+		ReflectionResult.HealingResults.Num(), 1 + ReflectionPartyBefore.Num());
+	if (!ReflectionResult.HealingResults.IsEmpty())
+	{
+		const FGameXXKCardHealingResult& Lifesteal = ReflectionResult.HealingResults[0];
+		TestEqual(TEXT("ordinary YinXueDao lifesteal keeps the player as source"), Lifesteal.SourceUnitId, FName(TEXT("Player")));
+		TestEqual(TEXT("ordinary YinXueDao lifesteal keeps the player as target"), Lifesteal.TargetUnitId, FName(TEXT("Player")));
+		TestEqual(TEXT("ordinary YinXueDao lifesteal requests four"), Lifesteal.RequestedHealing, 4);
+		TestEqual(TEXT("ordinary YinXueDao lifesteal restores four"), Lifesteal.EffectiveHealing, 4);
+	}
+	for (int32 PartyIndex = 0; PartyIndex < ReflectionPartyBefore.Num(); ++PartyIndex)
+	{
+		const int32 AuditIndex = PartyIndex + 1;
+		if (!ReflectionResult.HealingResults.IsValidIndex(AuditIndex))
+		{
+			continue;
+		}
+		const FGameXXKCardCombatUnit& Before = ReflectionPartyBefore[PartyIndex];
+		const FGameXXKCardHealingResult& TalismanHeal = ReflectionResult.HealingResults[AuditIndex];
+		const int32 RequestedHealing = (Before.MaxHP * 30 + 99) / 100;
+		const int32 HealthBeforeTalisman = Before.UnitId == TEXT("Player") ? 49 : Before.HP;
+		TestTrue(FString::Printf(TEXT("talisman healing for %s has no enemy or unit source"), *Before.UnitId.ToString()),
+			TalismanHeal.SourceUnitId.IsNone());
+		TestEqual(FString::Printf(TEXT("talisman healing retains target order for %s"), *Before.UnitId.ToString()),
+			TalismanHeal.TargetUnitId, Before.UnitId);
+		TestEqual(FString::Printf(TEXT("talisman healing requests catalog thirty percent for %s"), *Before.UnitId.ToString()),
+			TalismanHeal.RequestedHealing, RequestedHealing);
+		TestEqual(FString::Printf(TEXT("talisman healing records exact effective healing for %s"), *Before.UnitId.ToString()),
+			TalismanHeal.EffectiveHealing, FMath::Min(RequestedHealing, Before.MaxHP - HealthBeforeTalisman));
+	}
+	TestEqual(TEXT("reflection protection heals the player from forty-nine to seventy-nine"),
+		FindLifeSavingUnit(ReflectionState, TEXT("Player"))->HP, 79);
+	TestFalse(TEXT("reflection protection consumes the talisman"), OwnsLifeSavingTalisman(ReflectionState));
+
+	FGameXXKRuntimeState DotState;
+	if (!BeginLifeSavingBattle(*this, DotState, true, Error))
+	{
+		return false;
+	}
+	FGameXXKCardCombatUnit* DotPlayer = FindLifeSavingUnit(DotState, TEXT("Player"));
+	if (!DotPlayer)
+	{
+		return false;
+	}
+	DotPlayer->MaxHP = 100;
+	DotPlayer->HP = 51;
+	DotPlayer->bLiving = true;
+	TestEqual(TEXT("the DOT fixture applies two Poison"),
+		GameXXKCardRules::AddCombatStatus(*DotPlayer, EGameXXKCardStatus::Poison, 2), 2);
+	TestTrue(TEXT("the DOT fixture synchronizes its player projection"),
+		FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(DotState, &Error));
+	TArray<FGameXXKCardDamageResult> DotResults;
+	if (!TestTrue(FString::Printf(TEXT("the player-end DOT resolves through the adapter: %s"), *Error),
+		FGameXXKCardBattleAdapter::EndPlayerCardPhase(DotState, DotResults, &Error)))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the player-end DOT retains its forty-nine-health packet audit"), DotResults.Num(), 1);
+	if (DotResults.Num() == 1)
+	{
+		TestEqual(TEXT("the DOT packet audit precedes talisman healing"), DotResults[0].TargetHealthAfter, 49);
+	}
+	TestEqual(TEXT("player DOT protection heals the player to seventy-nine"),
+		FindLifeSavingUnit(DotState, TEXT("Player"))->HP, 79);
+	TestEqual(TEXT("player DOT protection continues into the enemy phase"),
+		DotState.CardRun.ActiveBattle.Phase, EGameXXKCardBattlePhase::Enemy);
+	TestFalse(TEXT("player DOT protection consumes the talisman"), OwnsLifeSavingTalisman(DotState));
+	return true;
+#endif
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKLifeSavingTalismanAutomaticReplayTest,
+	"GameXXK.Integration.CardBattleAdapter.LifeSavingTalisman.AutomaticReplayFinalizesAtomically",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKLifeSavingTalismanAutomaticReplayTest::RunTest(const FString& Parameters)
+{
+#if !GAMEXXK_HAS_RELIC_SYSTEM
+	AddError(TEXT("The required life-saving talisman replay boundary has not been implemented."));
+	return false;
+#else
+	FString Error;
+	FGameXXKRuntimeState State;
+	if (!BeginLifeSavingBattle(*this, State, true, Error))
+	{
+		return false;
+	}
+	FGameXXKCardCombatUnit* Player = FindLifeSavingUnit(State, TEXT("Player"));
+	if (!Player)
+	{
+		return false;
+	}
+	Player->MaxHP = 100;
+	Player->HP = 50;
+	Player->bLiving = true;
+	FGameXXKResolvedCardSnapshot Replay;
+	Replay.CardId = TEXT("Hero.Healer.YiXueCuiFang");
+	Replay.Quality = EGameXXKCardQuality::Common;
+	Replay.OwnerUnitId = TEXT("Player");
+	State.CardRun.ActiveBattle.AutomaticResolutionQueue = FGameXXKAutomaticResolutionQueue();
+	State.CardRun.ActiveBattle.AutomaticResolutionQueue.bActive = true;
+	State.CardRun.ActiveBattle.AutomaticResolutionQueue.Origin = EGameXXKCardResolutionOrigin::AutomaticReplay;
+	State.CardRun.ActiveBattle.AutomaticResolutionQueue.PendingCards = {Replay};
+	TArray<FGameXXKCardPlayResult> Results;
+	if (!TestTrue(FString::Printf(TEXT("the saved automatic replay resolves through the adapter: %s"), *Error),
+		FGameXXKCardBattleAdapter::ResumeAutomaticResolutionQueue(State, Results, &Error)))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the replay publishes one resumed card result"), Results.Num(), 1);
+	if (Results.Num() == 1)
+	{
+		TestTrue(TEXT("the resumed replay publishes emergency healing"), !Results[0].HealingResults.IsEmpty());
+		TestTrue(TEXT("the resumed replay retains the forty-nine-health packet audit"),
+			Results[0].DamageResults.ContainsByPredicate([](const FGameXXKCardDamageResult& Result)
+			{
+				return Result.Cause == EGameXXKCardDamageCause::SelfLoss
+					&& Result.TargetHealthAfter == 49;
+			}));
+	}
+	TestEqual(TEXT("automatic replay protection heals the player to seventy-nine"),
+		FindLifeSavingUnit(State, TEXT("Player"))->HP, 79);
+	TestFalse(TEXT("automatic replay protection consumes the talisman"), OwnsLifeSavingTalisman(State));
+	TestFalse(TEXT("automatic replay finalization clears pending consumption"),
+		State.CardRun.ActiveBattle.bLifeSavingTalismanConsumptionPending);
+	return true;
+#endif
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKLifeSavingTalismanRuntimeLifecycleTest,
+	"GameXXK.Integration.CardBattleAdapter.LifeSavingTalisman.RuntimeLifecycleAndPersistence",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKLifeSavingTalismanRuntimeLifecycleTest::RunTest(const FString& Parameters)
+{
+#if !GAMEXXK_HAS_RELIC_SYSTEM
+	AddError(TEXT("The required life-saving talisman runtime projection has not been implemented."));
+	return false;
+#else
+	FString Error;
+	FGameXXKRuntimeState ArmedState;
+	if (!BeginLifeSavingBattle(*this, ArmedState, true, Error))
+	{
+		return false;
+	}
+	const FGameXXKCardBattleRuntime& ArmedRuntime = ArmedState.CardRun.ActiveBattle;
+	TestTrue(TEXT("battle start arms an owned life-saving talisman"), ArmedRuntime.bLifeSavingTalismanArmed);
+	TestFalse(TEXT("battle start has no pending talisman consumption"), ArmedRuntime.bLifeSavingTalismanConsumptionPending);
+	TestEqual(TEXT("battle start projects the catalog healing magnitude"), ArmedRuntime.LifeSavingTalismanHealingPercent, 30);
+	TestTrue(FString::Printf(TEXT("the armed catalog projection validates: %s"), *Error),
+		GameXXKCardRules::ValidateCardBattleRuntime(ArmedRuntime, &Error));
+	FGameXXKCardBattleRuntime InvalidMagnitudeRuntime = ArmedRuntime;
+	InvalidMagnitudeRuntime.LifeSavingTalismanHealingPercent = 0;
+	TestFalse(TEXT("an armed projection rejects a zero healing percentage"),
+		GameXXKCardRules::ValidateCardBattleRuntime(InvalidMagnitudeRuntime));
+	InvalidMagnitudeRuntime.LifeSavingTalismanHealingPercent = 101;
+	TestFalse(TEXT("an armed projection rejects a healing percentage above one hundred"),
+		GameXXKCardRules::ValidateCardBattleRuntime(InvalidMagnitudeRuntime));
+	InvalidMagnitudeRuntime = ArmedRuntime;
+	InvalidMagnitudeRuntime.bLifeSavingTalismanArmed = false;
+	TestFalse(TEXT("an inactive projection rejects a stale catalog magnitude"),
+		GameXXKCardRules::ValidateCardBattleRuntime(InvalidMagnitudeRuntime));
+
+	const FGameXXKCardBattleRuntime CopiedRuntime = ArmedRuntime;
+	TestTrue(TEXT("copying an active runtime preserves the armed flag"), CopiedRuntime.bLifeSavingTalismanArmed);
+	TestFalse(TEXT("copying an active runtime preserves the pending flag"), CopiedRuntime.bLifeSavingTalismanConsumptionPending);
+	TestEqual(TEXT("copying an active runtime preserves the catalog magnitude"), CopiedRuntime.LifeSavingTalismanHealingPercent, 30);
+	FGameXXKCardBattleRuntime RoundTrippedRuntime;
+	TestTrue(TEXT("the armed active runtime round-trips through SaveGame serialization"),
+		RoundTripLifeSavingRuntime(CopiedRuntime, RoundTrippedRuntime));
+	TestTrue(TEXT("SaveGame round-trip preserves the armed flag"), RoundTrippedRuntime.bLifeSavingTalismanArmed);
+	TestFalse(TEXT("SaveGame round-trip preserves the pending flag"), RoundTrippedRuntime.bLifeSavingTalismanConsumptionPending);
+	TestEqual(TEXT("SaveGame round-trip preserves the catalog magnitude"), RoundTrippedRuntime.LifeSavingTalismanHealingPercent, 30);
+
+	FGameXXKCardBattleRuntime PendingRuntime = ArmedRuntime;
+	PendingRuntime.bLifeSavingTalismanArmed = false;
+	PendingRuntime.bLifeSavingTalismanConsumptionPending = true;
+	FGameXXKCardBattleRuntime PendingRoundTrip;
+	TestTrue(TEXT("a candidate pending projection round-trips through SaveGame serialization"),
+		RoundTripLifeSavingRuntime(PendingRuntime, PendingRoundTrip));
+	TestFalse(TEXT("pending round-trip remains disarmed"), PendingRoundTrip.bLifeSavingTalismanArmed);
+	TestTrue(TEXT("pending round-trip preserves consumption intent"), PendingRoundTrip.bLifeSavingTalismanConsumptionPending);
+	TestEqual(TEXT("pending round-trip preserves the catalog magnitude"), PendingRoundTrip.LifeSavingTalismanHealingPercent, 30);
+	TestTrue(FString::Printf(TEXT("the pending rules-layer candidate remains structurally valid: %s"), *Error),
+		GameXXKCardRules::ValidateCardBattleRuntime(PendingRoundTrip, &Error));
+
+	FGameXXKRuntimeState ClearedState = ArmedState;
+	FGameXXKCardBattleAdapter::ClearActiveCardBattle(ClearedState);
+	TestFalse(TEXT("clearing a battle removes the active card-battle marker"), ClearedState.CardRun.bHasActiveCardBattle);
+	TestFalse(TEXT("clearing a battle resets the armed flag"), ClearedState.CardRun.ActiveBattle.bLifeSavingTalismanArmed);
+	TestFalse(TEXT("clearing a battle resets the pending flag"), ClearedState.CardRun.ActiveBattle.bLifeSavingTalismanConsumptionPending);
+	TestEqual(TEXT("clearing a battle resets the projected magnitude"), ClearedState.CardRun.ActiveBattle.LifeSavingTalismanHealingPercent, 0);
+
+	FGameXXKRuntimeState ConsumedState;
+	if (!BeginLifeSavingBattle(*this, ConsumedState, true, Error)
+		|| !PrepareLifeSavingEnemyMutation(*this, ConsumedState, 51, {2}, Error))
+	{
+		return false;
+	}
+	TArray<FGameXXKCardDamageResult> DamageResults;
+	if (!ResolveLifeSavingIntent(*this, ConsumedState, DamageResults, Error))
+	{
+		return false;
+	}
+	TestFalse(TEXT("successful consumption removes the catalog relic"), OwnsLifeSavingTalisman(ConsumedState));
+	TestFalse(TEXT("successful consumption leaves the runtime disarmed"), ConsumedState.CardRun.ActiveBattle.bLifeSavingTalismanArmed);
+	TestFalse(TEXT("successful consumption clears pending intent"), ConsumedState.CardRun.ActiveBattle.bLifeSavingTalismanConsumptionPending);
+	TestEqual(TEXT("successful consumption clears the projected magnitude"), ConsumedState.CardRun.ActiveBattle.LifeSavingTalismanHealingPercent, 0);
+	FGameXXKCardBattleAdapter::ClearActiveCardBattle(ConsumedState);
+	if (!TestTrue(FString::Printf(TEXT("a later battle starts after talisman consumption: %s"), *Error),
+		FGameXXKCardBattleAdapter::BeginCardBattle(
+			ConsumedState,
+			EGameXXKNodeKind::Battle,
+			EGameXXKCardTerrain::Plain,
+			48002,
+			&Error)))
+	{
+		return false;
+	}
+	TestFalse(TEXT("a later battle does not rearm a consumed talisman"),
+		ConsumedState.CardRun.ActiveBattle.bLifeSavingTalismanArmed);
+	TestFalse(TEXT("a later battle starts with no pending consumption"),
+		ConsumedState.CardRun.ActiveBattle.bLifeSavingTalismanConsumptionPending);
+	TestEqual(TEXT("a later battle has no stale talisman magnitude"),
+		ConsumedState.CardRun.ActiveBattle.LifeSavingTalismanHealingPercent, 0);
+	return true;
+#endif
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKLifeSavingTalismanControlsAndRollbackTest,
+	"GameXXK.Integration.CardBattleAdapter.LifeSavingTalisman.ControlsRollbackAndNoCharmCompatibility",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKLifeSavingTalismanControlsAndRollbackTest::RunTest(const FString& Parameters)
+{
+#if !GAMEXXK_HAS_RELIC_SYSTEM
+	AddError(TEXT("The required life-saving talisman controls have not been implemented."));
+	return false;
+#else
+	FString Error;
+	FGameXXKRuntimeState EnemyOnlyState;
+	if (!BeginLifeSavingBattle(*this, EnemyOnlyState, true, Error))
+	{
+		return false;
+	}
+	FGameXXKCardCombatUnit* LowPlayer = FindLifeSavingUnit(EnemyOnlyState, TEXT("Player"));
+	FGameXXKCardCombatUnit* DotEnemy = EnemyOnlyState.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.Side == EGameXXKCardTargetSide::Enemy && Unit.bLiving;
+	});
+	if (!LowPlayer || !DotEnemy)
+	{
+		return false;
+	}
+	LowPlayer->MaxHP = 100;
+	LowPlayer->HP = 49;
+	LowPlayer->bLiving = true;
+	TestEqual(TEXT("the enemy-only fixture applies two Poison to the enemy"),
+		GameXXKCardRules::AddCombatStatus(*DotEnemy, EGameXXKCardStatus::Poison, 2), 2);
+	EnemyOnlyState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Enemy;
+	EnemyOnlyState.CardRun.EnemyIntents.Reset();
+	EnemyOnlyState.CardRun.NextEnemyIntentIndex = 0;
+	TArray<FGameXXKCardDamageResult> EnemyDotResults;
+	TestTrue(FString::Printf(TEXT("the enemy-only DOT boundary resolves: %s"), *Error),
+		FGameXXKCardBattleAdapter::CompleteEnemyCardPhase(EnemyOnlyState, EnemyDotResults, &Error));
+	TestEqual(TEXT("an enemy-only packet never heals the already-low party"),
+		FindLifeSavingUnit(EnemyOnlyState, TEXT("Player"))->HP, 49);
+	TestTrue(TEXT("an enemy-only packet keeps the talisman owned"), OwnsLifeSavingTalisman(EnemyOnlyState));
+
+	FGameXXKRuntimeState OutsideBattleState = UGameXXKMVPRules::CreateNewGame();
+	TestTrue(TEXT("the outside-battle fixture acquires the talisman"),
+		FGameXXKRelicRules::AcquireRelic(OutsideBattleState, LifeSavingTalismanRelicId));
+	FGameXXKCardDamageResult OutsidePacket;
+	OutsidePacket.ResolvedTargetUnitId = TEXT("Player");
+	OutsidePacket.HealthDamage = 1;
+	OutsidePacket.TargetHealthBefore = 50;
+	OutsidePacket.TargetHealthAfter = 49;
+	FGameXXKRelicRules::ApplyDamageTaken(OutsideBattleState, {OutsidePacket});
+	TestTrue(TEXT("no active card battle means no talisman consumption"), OwnsLifeSavingTalisman(OutsideBattleState));
+
+	FGameXXKRuntimeState RollbackState;
+	if (!BeginLifeSavingBattle(*this, RollbackState, true, Error)
+		|| !PrepareLifeSavingEnemyMutation(*this, RollbackState, 51, {2}, Error))
+	{
+		return false;
+	}
+	RollbackState.ActiveBattleParty[0].Id = TEXT("Missing.Legacy.Player");
+	FGameXXKCardEnemyIntent ResolvedIntent;
+	TArray<FGameXXKCardDamageResult> RollbackResults;
+	bool bFinished = false;
+	Error.Reset();
+	TestFalse(TEXT("a failed legacy projection rejects the protected packet atomically"),
+		FGameXXKCardBattleAdapter::ResolveNextEnemyIntent(
+			RollbackState,
+			ResolvedIntent,
+			RollbackResults,
+			bFinished,
+			&Error));
+	TestEqual(TEXT("rollback preserves pre-packet player health"),
+		FindLifeSavingUnit(RollbackState, TEXT("Player"))->HP, 51);
+	TestEqual(TEXT("rollback preserves the pre-packet enemy phase"),
+		RollbackState.CardRun.ActiveBattle.Phase, EGameXXKCardBattlePhase::Enemy);
+	TestTrue(TEXT("rollback preserves catalog talisman ownership"), OwnsLifeSavingTalisman(RollbackState));
+
+	FGameXXKRuntimeState NoCharmState;
+	if (!BeginLifeSavingBattle(*this, NoCharmState, false, Error)
+		|| !PrepareLifeSavingEnemyMutation(*this, NoCharmState, 51, {2, 100}, Error))
+	{
+		return false;
+	}
+	const TArray<FName> DeckLedgerBefore = NoCharmState.CardRun.ActiveBattle.Deck.ActiveInstanceIds;
+	TArray<FName> HandBefore;
+	for (const FGameXXKCardInstance& Card : NoCharmState.CardRun.ActiveBattle.Deck.Hand)
+	{
+		HandBefore.Add(Card.InstanceId);
+	}
+	TArray<FGameXXKCardDamageResult> NoCharmResults;
+	if (!ResolveLifeSavingIntent(*this, NoCharmState, NoCharmResults, Error))
+	{
+		return false;
+	}
+	TestEqual(TEXT("no-charm multi-hit keeps both original packets"), NoCharmResults.Num(), 2);
+	if (NoCharmResults.Num() == 2)
+	{
+		TestEqual(TEXT("no-charm first hit keeps forty-nine health"), NoCharmResults[0].TargetHealthAfter, 49);
+		TestEqual(TEXT("no-charm later hit starts from unhealed forty-nine"), NoCharmResults[1].TargetHealthBefore, 49);
+		TestEqual(TEXT("no-charm later hit deals the original forty-nine lethal damage"), NoCharmResults[1].HealthDamage, 49);
+		TestEqual(TEXT("no-charm later hit reaches zero"), NoCharmResults[1].TargetHealthAfter, 0);
+	}
+	const FGameXXKCardCombatUnit* NoCharmPlayer = FindLifeSavingUnit(NoCharmState, TEXT("Player"));
+	TestTrue(TEXT("no-charm player reaches ordinary zero-health defeat"), NoCharmPlayer && NoCharmPlayer->HP == 0 && !NoCharmPlayer->bLiving);
+	TestEqual(TEXT("no-charm terminal phase remains ordinary defeat"),
+		NoCharmState.CardRun.ActiveBattle.Phase, EGameXXKCardBattlePhase::Defeat);
+	TestEqual(TEXT("no-charm lethal intent preserves the existing deck ledger"),
+		NoCharmState.CardRun.ActiveBattle.Deck.ActiveInstanceIds, DeckLedgerBefore);
+	TArray<FName> HandAfter;
+	for (const FGameXXKCardInstance& Card : NoCharmState.CardRun.ActiveBattle.Deck.Hand)
+	{
+		HandAfter.Add(Card.InstanceId);
+	}
+	TestEqual(TEXT("no-charm lethal intent preserves the existing hand ordering"),
+		HandAfter, HandBefore);
 	return true;
 #endif
 }

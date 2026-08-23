@@ -25,6 +25,7 @@ namespace
 
 	const FName HeroUnitId(TEXT("Player"));
 	const FName SpiralHornDeerSpringHealIntentId(TEXT("SpringHeal"));
+	const FName LifeSavingTalismanRelicId(TEXT("Relic.LifeSavingTalisman"));
 
 	bool SetFailure(FString* OutError, const TCHAR* Error)
 	{
@@ -42,6 +43,39 @@ namespace
 			*OutError = Error;
 		}
 		return false;
+	}
+
+	bool FinalizeLifeSavingTalismanConsumption(FGameXXKRuntimeState& InOutState, FString* OutError)
+	{
+		if (!InOutState.CardRun.bHasActiveCardBattle
+			|| !InOutState.CardRun.ActiveBattle.bLifeSavingTalismanConsumptionPending)
+		{
+			return true;
+		}
+
+		FGameXXKCardBattleRuntime& Battle = InOutState.CardRun.ActiveBattle;
+		if (Battle.bLifeSavingTalismanArmed)
+		{
+			return SetFailure(OutError, TEXT("A pending life-saving talisman consumption cannot remain armed."));
+		}
+		if (Battle.LifeSavingTalismanHealingPercent < 1
+			|| Battle.LifeSavingTalismanHealingPercent > 100)
+		{
+			return SetFailure(OutError, TEXT("A pending life-saving talisman consumption lost its catalog healing magnitude."));
+		}
+		const int32 RelicIndex = InOutState.CardRun.Relics.IndexOfByPredicate([](const FGameXXKRelicInstance& Instance)
+		{
+			return Instance.RelicId == LifeSavingTalismanRelicId;
+		});
+		if (RelicIndex == INDEX_NONE)
+		{
+			return SetFailure(OutError, TEXT("A protected health-loss packet lost its owned life-saving talisman."));
+		}
+
+		InOutState.CardRun.Relics.RemoveAt(RelicIndex, 1, EAllowShrinking::No);
+		Battle.bLifeSavingTalismanConsumptionPending = false;
+		Battle.LifeSavingTalismanHealingPercent = 0;
+		return true;
 	}
 
 	bool NameLess(const FName Left, const FName Right)
@@ -2226,6 +2260,26 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	{
 		return false;
 	}
+	const bool bOwnsLifeSavingTalisman = Run.Relics.ContainsByPredicate([](const FGameXXKRelicInstance& Instance)
+	{
+		return Instance.RelicId == LifeSavingTalismanRelicId;
+	});
+	NewRuntime.bLifeSavingTalismanArmed = bOwnsLifeSavingTalisman;
+	NewRuntime.bLifeSavingTalismanConsumptionPending = false;
+	NewRuntime.LifeSavingTalismanHealingPercent = 0;
+	if (bOwnsLifeSavingTalisman)
+	{
+		const FGameXXKRelicDefinition* Definition = FGameXXKRelicCatalog::FindDefinition(LifeSavingTalismanRelicId);
+		if (!Definition
+			|| Definition->Trigger != EGameXXKRelicTrigger::DamageTaken
+			|| Definition->EffectKind != EGameXXKRelicEffectKind::EmergencyHealPartyPercent
+			|| Definition->Magnitude < 1
+			|| Definition->Magnitude > 100)
+		{
+			return SetFailure(OutError, TEXT("The owned life-saving talisman has an invalid catalog battle-healing contract."));
+		}
+		NewRuntime.LifeSavingTalismanHealingPercent = Definition->Magnitude;
+	}
 	NewRuntime.EquippedHeroCardIds = Run.HeroSelectedCardIds;
 	NewRuntime.BonusSharedEnergyCap = Run.BonusSharedEnergyCap;
 	NewRuntime.BonusRoundDrawCount = Run.BonusRoundDrawCount;
@@ -2271,7 +2325,15 @@ bool FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(FGameXXKRuntime
 		OutError->Reset();
 	}
 	FGameXXKCardRunState& Run = InOutState.CardRun;
-	if (!Run.bHasActiveCardBattle || !GameXXKCardRules::ValidateCardBattleRuntime(Run.ActiveBattle, OutError))
+	if (!Run.bHasActiveCardBattle)
+	{
+		return false;
+	}
+	if (Run.ActiveBattle.bLifeSavingTalismanConsumptionPending)
+	{
+		return SetFailure(OutError, TEXT("A life-saving talisman consumption must finalize before legacy projection."));
+	}
+	if (!GameXXKCardRules::ValidateCardBattleRuntime(Run.ActiveBattle, OutError))
 	{
 		return false;
 	}
@@ -2370,7 +2432,8 @@ bool FGameXXKCardBattleAdapter::ResolveCardPlay(
 	{
 		return false;
 	}
-	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
+		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
 		return false;
 	}
@@ -2402,7 +2465,8 @@ bool FGameXXKCardBattleAdapter::SubmitInsightChoice(
 	{
 		return false;
 	}
-	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
+		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
 		return false;
 	}
@@ -2435,7 +2499,8 @@ bool FGameXXKCardBattleAdapter::SubmitHeroTaskSearchChoice(
 	{
 		return false;
 	}
-	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
+		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
 		return false;
 	}
@@ -2464,7 +2529,8 @@ bool FGameXXKCardBattleAdapter::SubmitForcedDiscard(
 	{
 		return false;
 	}
-	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
+		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
 		return false;
 	}
@@ -2491,7 +2557,8 @@ bool FGameXXKCardBattleAdapter::CancelInsight(
 	{
 		return false;
 	}
-	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
+	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
+		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
 		return false;
 	}
@@ -2500,6 +2567,34 @@ bool FGameXXKCardBattleAdapter::CancelInsight(
 	{
 		*OutResumedResults = MoveTemp(ResumedResults);
 	}
+	return true;
+}
+
+bool FGameXXKCardBattleAdapter::ResumeAutomaticResolutionQueue(
+	FGameXXKRuntimeState& InOutState,
+	TArray<FGameXXKCardPlayResult>& OutResumedResults,
+	FString* OutError)
+{
+	OutResumedResults.Reset();
+	if (!InOutState.CardRun.bHasActiveCardBattle)
+	{
+		return SetFailure(OutError, TEXT("There is no active card battle session."));
+	}
+
+	FGameXXKRuntimeState NewState = InOutState;
+	TArray<FGameXXKCardPlayResult> NewResults;
+	if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(
+			NewState.CardRun.ActiveBattle,
+			NewResults,
+			OutError)
+		|| !FinalizeLifeSavingTalismanConsumption(NewState, OutError)
+		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
+	{
+		return false;
+	}
+
+	InOutState = MoveTemp(NewState);
+	OutResumedResults = MoveTemp(NewResults);
 	return true;
 }
 
@@ -2513,34 +2608,49 @@ bool FGameXXKCardBattleAdapter::EndPlayerCardPhase(
 	{
 		return SetFailure(OutError, TEXT("There is no active card battle session."));
 	}
-	if (!ValidateLivingEnemyIntentPresentation(InOutState.CardRun.ActiveBattle, OutError))
-	{
-		return false;
-	}
-	if (!GameXXKCardRules::EndPlayerCardPhase(InOutState.CardRun.ActiveBattle, OutDamageResults, OutError))
-	{
-		return false;
-	}
-	FGameXXKRelicRules::ApplyPlayerRoundEnd(InOutState);
-	FGameXXKRelicRules::ApplyDamageTaken(InOutState, OutDamageResults);
 
-	FGameXXKCardRunState& Run = InOutState.CardRun;
+	FGameXXKRuntimeState NewState = InOutState;
+	TArray<FGameXXKCardDamageResult> NewDamageResults;
+	if (!ValidateLivingEnemyIntentPresentation(NewState.CardRun.ActiveBattle, OutError))
+	{
+		return false;
+	}
+	if (!GameXXKCardRules::EndPlayerCardPhase(NewState.CardRun.ActiveBattle, NewDamageResults, OutError))
+	{
+		return false;
+	}
+	FGameXXKRelicRules::ApplyPlayerRoundEnd(NewState);
+	FGameXXKRelicRules::ApplyDamageTaken(NewState, NewDamageResults);
+	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError))
+	{
+		return false;
+	}
+
+	FGameXXKCardRunState& Run = NewState.CardRun;
 	if (Run.ActiveBattle.Phase != EGameXXKCardBattlePhase::Enemy)
 	{
 		// Player-side end-phase effects can finish the battle. Terminal states never retain a forecast.
 		Run.EnemyIntents.Reset();
 		Run.NextEnemyIntentIndex = 0;
-		return SyncCardBattleToLegacyProjection(InOutState, OutError);
 	}
-
-	// Reuse the forecast created at player-phase start. Only a legacy/recovery state without one
-	// may create a new list here. Defeated sources are removed before presentation can show them.
-	PruneUnexecutableEnemyIntents(Run);
-	if (Run.EnemyIntents.IsEmpty() && !BuildEnemyIntents(Run, OutError))
+	else
+	{
+		// Reuse the forecast created at player-phase start. Only a legacy/recovery state without one
+		// may create a new list here. Defeated sources are removed before presentation can show them.
+		PruneUnexecutableEnemyIntents(Run);
+		if (Run.EnemyIntents.IsEmpty() && !BuildEnemyIntents(Run, OutError))
+		{
+			return false;
+		}
+	}
+	if (!SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
 		return false;
 	}
-	return SyncCardBattleToLegacyProjection(InOutState, OutError);
+
+	InOutState = MoveTemp(NewState);
+	OutDamageResults = MoveTemp(NewDamageResults);
+	return true;
 }
 
 static bool ResolveNextEnemyIntentImpl(
@@ -2703,6 +2813,10 @@ static bool ResolveNextEnemyIntentImpl(
 		++Run.NextEnemyIntentIndex;
 	}
 	FGameXXKRelicRules::ApplyDamageTaken(InOutState, OutDamageResults);
+	if (!FinalizeLifeSavingTalismanConsumption(InOutState, OutError))
+	{
+		return false;
+	}
 	GameXXKCardRules::RefreshCombatTerminalPhase(Run.ActiveBattle);
 
 	bOutIntentsFinished = Run.NextEnemyIntentIndex >= Run.EnemyIntents.Num();
@@ -2813,6 +2927,10 @@ bool FGameXXKCardBattleAdapter::CompleteEnemyCardPhase(
 		{
 			return false;
 		}
+	}
+	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError))
+	{
+		return false;
 	}
 	Run.EnemyIntents.Reset();
 	Run.NextEnemyIntentIndex = 0;

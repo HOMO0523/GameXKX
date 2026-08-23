@@ -65,7 +65,7 @@ namespace
 			MakeRelic(TEXT("Relic.PaperCrane"), TEXT("祈愿纸鹤"), TEXT("完成路线节点时，本路线最大气血提高2点。"), TEXT("PaperCrane"), T::RouteNodeCompleted, E::GainRouteMaxHealth, 2),
 			MakeRelic(TEXT("Relic.BrokenArrow"), TEXT("折锋箭簇"), TEXT("完成路线节点时，本路线攻击提高1点。"), TEXT("BrokenArrow"), T::RouteNodeCompleted, E::GainRouteAttack, 1),
 			MakeRelic(TEXT("Relic.MoonDisc"), TEXT("月白玉璧"), TEXT("完成路线节点时，本路线最大内力提高1点。"), TEXT("MoonDisc"), T::RouteNodeCompleted, E::GainRouteMaxMana, 1),
-			MakeRelic(TEXT("Relic.LifeSavingTalisman"), TEXT("保命护符"), TEXT("战斗中任一角色气血低于50%时，消耗此遗物，使全队恢复30%最大气血。"), TEXT("LifeSavingTalisman"), T::DamageTaken, E::EmergencyHealPartyPercent, 30, false, false)
+			MakeRelic(TEXT("Relic.LifeSavingTalisman"), TEXT("保命护符"), TEXT("战斗中任一角色气血将降至50%以下时，令其至少保留1点气血，消耗此遗物并使全队恢复30%最大气血。"), TEXT("LifeSavingTalisman"), T::DamageTaken, E::EmergencyHealPartyPercent, 30, false, false)
 		};
 	}
 }

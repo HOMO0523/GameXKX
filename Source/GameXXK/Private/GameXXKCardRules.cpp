@@ -999,6 +999,13 @@ namespace
 	bool IsStableUnitOrderBefore(const FGameXXKCardCombatUnit& Left, const FGameXXKCardCombatUnit& Right);
 	FGameXXKCardCombatUnit* FindCombatUnitById(TArray<FGameXXKCardCombatUnit>& Units, FName UnitId);
 	const FGameXXKCardCombatUnit* FindCombatUnitById(const TArray<FGameXXKCardCombatUnit>& Units, FName UnitId);
+	bool ValidateCardBattleRuntimeInternal(const FGameXXKCardBattleRuntime& Runtime, FString& OutError);
+	bool ApplyCombatEndPhaseDotForRuntime(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FName TargetUnitId,
+		int32& OutHealthDamage,
+		int32& OutPacketHealthAfter,
+		FString* OutError);
 	bool TryApplyEffectConditionAndConsumption(
 		const FGameXXKCardEffectCondition& Condition,
 		FGameXXKCardBattleRuntime& InOutRuntime,
@@ -1290,12 +1297,21 @@ namespace
 			const int32 RotStacksBefore = TargetBeforeDot
 				? GameXXKCardRules::GetCombatStatusStacks(*TargetBeforeDot, EGameXXKCardStatus::DamageOverTime)
 				: 0;
+			const bool bLifeSavingConsumptionPendingBefore = InOutRuntime.bLifeSavingTalismanConsumptionPending;
 			int32 HealthDamage = 0;
-			if (!GameXXKCardRules::ApplyCombatEndPhaseDot(InOutRuntime.Units, InOutRuntime.GuardLinks, UnitId, HealthDamage, &OutError))
+			int32 PacketHealthAfter = TargetHealthBefore;
+			if (!ApplyCombatEndPhaseDotForRuntime(
+				InOutRuntime,
+				UnitId,
+				HealthDamage,
+				PacketHealthAfter,
+				&OutError))
 			{
 				return false;
 			}
-			if (HealthDamage > 0)
+			const bool bTriggeredLifeSavingTalisman = !bLifeSavingConsumptionPendingBefore
+				&& InOutRuntime.bLifeSavingTalismanConsumptionPending;
+			if (HealthDamage > 0 || bTriggeredLifeSavingTalisman)
 			{
 				FGameXXKCardDamageResult& Result = OutResults.AddDefaulted_GetRef();
 				Result.OriginalTargetUnitId = UnitId;
@@ -1313,11 +1329,10 @@ namespace
 				Result.HealthDamage = HealthDamage;
 				Result.TargetHealthBefore = TargetHealthBefore;
 				Result.TargetArmorBefore = TargetArmorBefore;
-				Result.TargetHealthAfter = FMath::Max(0, TargetHealthBefore - HealthDamage);
+				Result.TargetHealthAfter = PacketHealthAfter;
 				Result.TargetArmorAfter = TargetArmorBefore;
 				if (const FGameXXKCardCombatUnit* TargetAfterDot = FindCombatUnitById(InOutRuntime.Units, UnitId))
 				{
-					Result.TargetHealthAfter = TargetAfterDot->HP;
 					Result.TargetArmorAfter = TargetAfterDot->Armor;
 				}
 			}
@@ -3008,6 +3023,92 @@ void GameXXKCardRules::BeginCombatUnitPhase(FGameXXKCardCombatUnit& InOutUnit)
 
 namespace
 {
+	bool ApplyHealthLossWithLifeSavingTalisman(
+		TArray<FGameXXKCardCombatUnit>& InOutUnits,
+		bool* bLifeSavingTalismanArmed,
+		bool* bLifeSavingTalismanConsumptionPending,
+		const int32 ProjectedHealingPercent,
+		FGameXXKCardCombatUnit& Target,
+		const int32 RequestedHealthDamage,
+		FGameXXKCardPlayResult* InOutPlayResult,
+		int32& OutHealthDamage,
+		int32& OutPacketHealthAfter,
+		FString& OutError)
+	{
+		OutHealthDamage = 0;
+		OutPacketHealthAfter = Target.HP;
+		const bool bHasLifeSavingProjection = bLifeSavingTalismanArmed != nullptr
+			&& bLifeSavingTalismanConsumptionPending != nullptr;
+		const bool bProjectionActive = bHasLifeSavingProjection
+			&& (*bLifeSavingTalismanArmed || *bLifeSavingTalismanConsumptionPending);
+		if (RequestedHealthDamage < 0
+			|| Target.HP < 0
+			|| Target.MaxHP <= 0
+			|| Target.HP > Target.MaxHP
+			|| ((bLifeSavingTalismanArmed == nullptr)
+				!= (bLifeSavingTalismanConsumptionPending == nullptr))
+			|| (bHasLifeSavingProjection
+				&& *bLifeSavingTalismanArmed
+				&& *bLifeSavingTalismanConsumptionPending)
+			|| (!bHasLifeSavingProjection && ProjectedHealingPercent != 0)
+			|| (bProjectionActive
+				&& (ProjectedHealingPercent < 1 || ProjectedHealingPercent > 100))
+			|| (bHasLifeSavingProjection && !bProjectionActive && ProjectedHealingPercent != 0))
+		{
+			OutError = TEXT("Health loss requires valid target health and a complete catalog-authored life-saving projection.");
+			return false;
+		}
+
+		const int32 HealthBefore = Target.HP;
+		OutHealthDamage = FMath::Min(HealthBefore, RequestedHealthDamage);
+		OutPacketHealthAfter = HealthBefore - OutHealthDamage;
+		const bool bTriggersLifeSavingTalisman = bLifeSavingTalismanArmed
+			&& *bLifeSavingTalismanArmed
+			&& !*bLifeSavingTalismanConsumptionPending
+			&& Target.bLiving
+			&& Target.Side == EGameXXKCardTargetSide::Party
+			&& OutHealthDamage > 0
+			&& static_cast<int64>(OutPacketHealthAfter) * 100
+				< static_cast<int64>(Target.MaxHP) * 50;
+		if (bTriggersLifeSavingTalisman)
+		{
+			OutPacketHealthAfter = FMath::Max(1, OutPacketHealthAfter);
+			OutHealthDamage = HealthBefore - OutPacketHealthAfter;
+		}
+
+		Target.HP = OutPacketHealthAfter;
+		Target.bLiving = Target.HP > 0;
+		if (!bTriggersLifeSavingTalisman)
+		{
+			return true;
+		}
+
+		*bLifeSavingTalismanArmed = false;
+		*bLifeSavingTalismanConsumptionPending = true;
+		for (FGameXXKCardCombatUnit& Unit : InOutUnits)
+		{
+			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Party)
+			{
+				continue;
+			}
+			const int32 RequestedHealing = static_cast<int32>(
+				(static_cast<int64>(Unit.MaxHP) * ProjectedHealingPercent + 99) / 100);
+			if (InOutPlayResult)
+			{
+				FGameXXKCardHealingResult& Healing = InOutPlayResult->HealingResults.AddDefaulted_GetRef();
+				Healing.SourceUnitId = NAME_None;
+				Healing.TargetUnitId = Unit.UnitId;
+				Healing.RequestedHealing = RequestedHealing;
+				Healing.EffectiveHealing = GameXXKCardRules::HealCombatUnit(Unit, RequestedHealing);
+			}
+			else
+			{
+				GameXXKCardRules::HealCombatUnit(Unit, RequestedHealing);
+			}
+		}
+		return true;
+	}
+
 	bool ApplyStatusHealthLoss(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FName TargetUnitId,
@@ -3015,7 +3116,8 @@ namespace
 		const int32 BaseStacks,
 		const bool bApplyRot,
 		FGameXXKCardDamageResult& OutResult,
-		FString& OutError)
+		FString& OutError,
+		FGameXXKCardPlayResult* InOutPlayResult = nullptr)
 	{
 		if (TargetUnitId.IsNone() || Cause == EGameXXKCardDamageCause::Invalid || BaseStacks <= 0)
 		{
@@ -3045,10 +3147,20 @@ namespace
 		NewResult.DamageAfterVulnerability = NewResult.RequestedDamage;
 		NewResult.TargetHealthBefore = Target->HP;
 		NewResult.TargetArmorBefore = Target->Armor;
-		NewResult.HealthDamage = FMath::Min(Target->HP, NewResult.RequestedDamage);
-		Target->HP -= NewResult.HealthDamage;
-		Target->bLiving = Target->HP > 0;
-		NewResult.TargetHealthAfter = Target->HP;
+		if (!ApplyHealthLossWithLifeSavingTalisman(
+			InOutRuntime.Units,
+			&InOutRuntime.bLifeSavingTalismanArmed,
+			&InOutRuntime.bLifeSavingTalismanConsumptionPending,
+			InOutRuntime.LifeSavingTalismanHealingPercent,
+			*Target,
+			NewResult.RequestedDamage,
+			InOutPlayResult,
+			NewResult.HealthDamage,
+			NewResult.TargetHealthAfter,
+			OutError))
+		{
+			return false;
+		}
 		NewResult.TargetArmorAfter = Target->Armor;
 		RemoveLinksForDefeatedUnits(InOutRuntime.GuardLinks, InOutRuntime.Units);
 		OutResult = MoveTemp(NewResult);
@@ -3106,6 +3218,79 @@ bool GameXXKCardRules::ApplyCombatEndPhaseDot(
 	InOutGuardLinks = MoveTemp(NewGuardLinks);
 	OutHealthDamage = NewHealthDamage;
 	return true;
+}
+
+namespace
+{
+	bool ApplyCombatEndPhaseDotForRuntime(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName TargetUnitId,
+		int32& OutHealthDamage,
+		int32& OutPacketHealthAfter,
+		FString* OutError)
+	{
+		OutHealthDamage = 0;
+		OutPacketHealthAfter = 0;
+		if (OutError)
+		{
+			OutError->Reset();
+		}
+		if (TargetUnitId.IsNone())
+		{
+			return SetFailure(OutError, TEXT("End-phase DoT requires a living stable target ID."));
+		}
+
+		FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+		FString ValidationError;
+		if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		FGameXXKCardCombatUnit* Target = FindCombatUnitById(NewRuntime.Units, TargetUnitId);
+		if (!Target || !Target->bLiving)
+		{
+			return SetFailure(OutError, TEXT("End-phase DoT target is absent or defeated."));
+		}
+
+		const int32 PoisonStacks = GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Poison);
+		const int32 RotStacks = GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::DamageOverTime);
+		const int64 RawDamage = PoisonStacks > 0
+			? static_cast<int64>(PoisonStacks) + RotStacks
+			: 0;
+		if (!ApplyHealthLossWithLifeSavingTalisman(
+			NewRuntime.Units,
+			&NewRuntime.bLifeSavingTalismanArmed,
+			&NewRuntime.bLifeSavingTalismanConsumptionPending,
+			NewRuntime.LifeSavingTalismanHealingPercent,
+			*Target,
+			static_cast<int32>(FMath::Min<int64>(MAX_int32, RawDamage)),
+			nullptr,
+			OutHealthDamage,
+			OutPacketHealthAfter,
+			ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		Target = FindCombatUnitById(NewRuntime.Units, TargetUnitId);
+		if (!Target)
+		{
+			return SetFailure(OutError, TEXT("End-phase DoT target disappeared after health loss."));
+		}
+		if (PoisonStacks > 0)
+		{
+			GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Poison, 1);
+		}
+		GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Burn, 1);
+		GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::DamageOverTime, 1);
+		GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Weak, 1);
+		RemoveLinksForDefeatedUnits(NewRuntime.GuardLinks, NewRuntime.Units);
+		if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+		InOutRuntime = MoveTemp(NewRuntime);
+		return true;
+	}
 }
 
 bool GameXXKCardRules::ResolveToxicExplosion(
@@ -3244,6 +3429,7 @@ namespace
 	const int32 RequestedDamage,
 	FGameXXKCardDamageResult& OutResult,
 	FGameXXKCardBattleRuntime* PlayerCardRuntime,
+	FGameXXKCardBattleRuntime* BattleProjection,
 	FGameXXKCardPlayResult* InOutPlayResult,
 	const bool bAllowDefeatedDirectSource,
 	FString* OutError)
@@ -3256,9 +3442,19 @@ namespace
 	{
 		return SetFailure(OutError, TEXT("Direct damage requires a living stable target ID and a positive amount."));
 	}
+	if (BattleProjection && &BattleProjection->Units != &InOutUnits)
+	{
+		return SetFailure(OutError, TEXT("Direct damage received a mismatched life-saving battle projection."));
+	}
 
 	TArray<FGameXXKCardCombatUnit> NewUnits = InOutUnits;
 	TArray<FGameXXKCardGuardLinkRuntime> NewGuardLinks = InOutGuardLinks;
+	bool bLifeSavingTalismanArmed = BattleProjection && BattleProjection->bLifeSavingTalismanArmed;
+	bool bLifeSavingTalismanConsumptionPending = BattleProjection
+		&& BattleProjection->bLifeSavingTalismanConsumptionPending;
+	const int32 LifeSavingTalismanHealingPercent = BattleProjection
+		? BattleProjection->LifeSavingTalismanHealingPercent
+		: 0;
 	FString ValidationError;
 	if (!ValidateCombatUnits(NewUnits, ValidationError) || !ValidateGuardLinks(NewUnits, NewGuardLinks, ValidationError))
 	{
@@ -3315,6 +3511,7 @@ namespace
 	}
 	NewResult.TargetHealthBefore = ResolvedTarget->HP;
 	NewResult.TargetArmorBefore = ResolvedTarget->Armor;
+	int32 PacketHealthAfter = ResolvedTarget->HP;
 
 	const bool bDirectAttack = IsDirectAttackDamageKind(Context.Kind);
 	if (bDirectAttack)
@@ -3460,8 +3657,20 @@ namespace
 				GameXXKCardRules::AddCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Rage, 1);
 			}
 		}
-		ResolvedTarget->HP -= NewResult.HealthDamage;
-		ResolvedTarget->bLiving = ResolvedTarget->HP > 0;
+		if (!ApplyHealthLossWithLifeSavingTalisman(
+			NewUnits,
+			BattleProjection ? &bLifeSavingTalismanArmed : nullptr,
+			BattleProjection ? &bLifeSavingTalismanConsumptionPending : nullptr,
+			LifeSavingTalismanHealingPercent,
+			*ResolvedTarget,
+			NewResult.HealthDamage,
+			InOutPlayResult,
+			NewResult.HealthDamage,
+			PacketHealthAfter,
+			ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
 		if (ResolvedTarget->bLiving && IsDirectAttackDamageKind(Context.Kind))
 		{
 			for (const FGameXXKCardStatusStack& OnHitStatus : Context.OnHitStatuses)
@@ -3480,10 +3689,15 @@ namespace
 			}
 		}
 	}
-	NewResult.TargetHealthAfter = ResolvedTarget->HP;
+	NewResult.TargetHealthAfter = PacketHealthAfter;
 	NewResult.TargetArmorAfter = ResolvedTarget->Armor;
 
 	RemoveLinksForDefeatedUnits(NewGuardLinks, NewUnits);
+	if (BattleProjection)
+	{
+		BattleProjection->bLifeSavingTalismanArmed = bLifeSavingTalismanArmed;
+		BattleProjection->bLifeSavingTalismanConsumptionPending = bLifeSavingTalismanConsumptionPending;
+	}
 	InOutUnits = MoveTemp(NewUnits);
 	InOutGuardLinks = MoveTemp(NewGuardLinks);
 	OutResult = MoveTemp(NewResult);
@@ -3507,6 +3721,7 @@ bool GameXXKCardRules::ApplyCombatDirectDamage(
 		TargetUnitId,
 		RequestedDamage,
 		OutResult,
+		nullptr,
 		nullptr,
 		nullptr,
 		false,
@@ -4624,6 +4839,8 @@ namespace
 	bool ValidateCardBattleRuntimeInternal(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
 	{
 		OutError.Reset();
+		const bool bLifeSavingProjectionActive = Runtime.bLifeSavingTalismanArmed
+			|| Runtime.bLifeSavingTalismanConsumptionPending;
 		if (!IsSupportedCardBattlePhase(Runtime.Phase) || !IsConcreteTerrain(Runtime.Terrain) || Runtime.RoundNumber < 1
 			|| Runtime.ActiveCardsPlayedThisRound < 0 || Runtime.NextReactionOrdinal < 0
 			|| Runtime.NextGeneratedCardOrdinal < 0 || Runtime.NextModifierOrdinal < 0
@@ -4632,9 +4849,14 @@ namespace
 			|| Runtime.PendingPreservedPartyReactionUses < 0 || Runtime.PendingPreservedPartyReactionUses > 1
 			|| Runtime.PendingNextRoundEnergyBonus < 0 || Runtime.PendingNextRoundEnergyBonus > MaxCardBattleEnergy
 			|| Runtime.PendingNextPlayerHandEnergySurcharge < 0 || Runtime.PendingNextPlayerHandEnergySurcharge > 1
-			|| (Runtime.PendingNextPlayerHandEnergySurcharge == 0) != Runtime.PendingNextPlayerHandEnergySurchargeSourceUnitId.IsNone())
+			|| (Runtime.PendingNextPlayerHandEnergySurcharge == 0) != Runtime.PendingNextPlayerHandEnergySurchargeSourceUnitId.IsNone()
+			|| (Runtime.bLifeSavingTalismanArmed && Runtime.bLifeSavingTalismanConsumptionPending)
+			|| (bLifeSavingProjectionActive
+				&& (Runtime.LifeSavingTalismanHealingPercent < 1
+					|| Runtime.LifeSavingTalismanHealingPercent > 100))
+			|| (!bLifeSavingProjectionActive && Runtime.LifeSavingTalismanHealingPercent != 0))
 		{
-			OutError = TEXT("Card battle runtime has an invalid phase, terrain, round, modifier counter, or deferred card state.");
+			OutError = TEXT("Card battle runtime has an invalid phase, terrain, round, modifier counter, deferred card state, or life-saving projection.");
 			return false;
 		}
 		if (!ValidateDeckStateInternal(Runtime.Deck, OutError)
@@ -6465,13 +6687,17 @@ namespace
 					Context.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
 					Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::TaskReward;
 					FGameXXKCardDamageResult DamageResult;
-					if (!GameXXKCardRules::ApplyCombatDirectDamage(
+					if (!ApplyCombatDirectDamageInternal(
 						InOutRuntime.Units,
 						InOutRuntime.GuardLinks,
 						Context,
 						AllyUnitId,
 						ActualLoss,
 						DamageResult,
+						nullptr,
+						&InOutRuntime,
+						&InOutResult,
+						false,
 						&OutError))
 					{
 						return false;
@@ -6687,13 +6913,17 @@ namespace
 							Context.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
 							Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::TaskReward;
 							FGameXXKCardDamageResult DamageResult;
-							if (!GameXXKCardRules::ApplyCombatDirectDamage(
+							if (!ApplyCombatDirectDamageInternal(
 								InOutRuntime.Units,
 								InOutRuntime.GuardLinks,
 								Context,
 								AllyUnitId,
 								ActualLoss,
 								DamageResult,
+								nullptr,
+								&InOutRuntime,
+								&InOutResult,
+								false,
 								&OutError))
 							{
 								return false;
@@ -7635,7 +7865,8 @@ namespace
 		const FGameXXKCardDamageContext& IncomingContext,
 		const FGameXXKCardDamageResult& IncomingResult,
 		TArray<FGameXXKCardDamageResult>* OutAdditionalDamageResults,
-		FString& OutError)
+		FString& OutError,
+		FGameXXKCardPlayResult* InOutPlayResult = nullptr)
 	{
 		OutError.Reset();
 		if ((IncomingContext.Kind != EGameXXKCardDamageKind::SingleTargetAttack && IncomingContext.Kind != EGameXXKCardDamageKind::GroupAttack)
@@ -7696,7 +7927,18 @@ namespace
 				CounterContext.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
 				CounterContext.ResolutionOrigin = EGameXXKCardResolutionOrigin::Reaction;
 				FGameXXKCardDamageResult CounterResult;
-				if (!GameXXKCardRules::ApplyCombatDirectDamage(InOutRuntime.Units, InOutRuntime.GuardLinks, CounterContext, AttackerUnitId, static_cast<int32>(RequestedDamage), CounterResult, &OutError))
+				if (!ApplyCombatDirectDamageInternal(
+					InOutRuntime.Units,
+					InOutRuntime.GuardLinks,
+					CounterContext,
+					AttackerUnitId,
+					static_cast<int32>(RequestedDamage),
+					CounterResult,
+					nullptr,
+					&InOutRuntime,
+					InOutPlayResult,
+					false,
+					&OutError))
 				{
 					return false;
 				}
@@ -7834,7 +8076,8 @@ namespace
 			TriggeredBleedStacks,
 			true,
 			BleedResult,
-			OutError))
+			OutError,
+			&InOutResult))
 		{
 			return false;
 		}
@@ -7905,6 +8148,7 @@ namespace
 			RequestedDamage,
 			NewResult,
 			&NewRuntime,
+			&NewRuntime,
 			InOutPlayResult ? &PendingAuditResult : nullptr,
 			false,
 			&ValidationError))
@@ -7920,6 +8164,7 @@ namespace
 		if (InOutPlayResult)
 		{
 			InOutPlayResult->ArmorResults.Append(MoveTemp(PendingAuditResult.ArmorResults));
+			InOutPlayResult->HealingResults.Append(MoveTemp(PendingAuditResult.HealingResults));
 		}
 		return true;
 	}
@@ -8233,7 +8478,7 @@ namespace
 						}
 					}
 				}
-				if (!ResolveFirstDirectDamageReactiveModifiers(InOutRuntime, Context, DamageResult, &InOutResult.DamageResults, OutError))
+				if (!ResolveFirstDirectDamageReactiveModifiers(InOutRuntime, Context, DamageResult, &InOutResult.DamageResults, OutError, &InOutResult))
 				{
 					return false;
 				}
@@ -8296,7 +8541,8 @@ namespace
 					ExtraContext,
 					ExtraResult,
 					&InOutResult.DamageResults,
-					OutError))
+					OutError,
+					&InOutResult))
 				{
 					return false;
 				}
@@ -9702,7 +9948,8 @@ namespace
 						Context,
 						DamageResult,
 						&InOutResult.DamageResults,
-						OutError))
+						OutError,
+						&InOutResult))
 					{
 						return false;
 					}
@@ -10027,7 +10274,8 @@ namespace
 							Context,
 							DamageResult,
 							&InOutResult.DamageResults,
-							OutError))
+							OutError,
+							&InOutResult))
 						{
 							return false;
 						}
@@ -10046,7 +10294,18 @@ namespace
 					Context.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
 					Context.ResolutionOrigin = Origin;
 					FGameXXKCardDamageResult DamageResult;
-					if (!GameXXKCardRules::ApplyCombatDirectDamage(InOutRuntime.Units, InOutRuntime.GuardLinks, Context, Target->UnitId, Effect.Magnitude, DamageResult, &OutError))
+					if (!ApplyCombatDirectDamageInternal(
+						InOutRuntime.Units,
+						InOutRuntime.GuardLinks,
+						Context,
+						Target->UnitId,
+						Effect.Magnitude,
+						DamageResult,
+						nullptr,
+						&InOutRuntime,
+						&InOutResult,
+						false,
+						&OutError))
 					{
 						return false;
 					}
@@ -10071,13 +10330,17 @@ namespace
 					Context.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
 					Context.ResolutionOrigin = Origin;
 					FGameXXKCardDamageResult DamageResult;
-					if (!GameXXKCardRules::ApplyCombatDirectDamage(
+					if (!ApplyCombatDirectDamageInternal(
 						InOutRuntime.Units,
 						InOutRuntime.GuardLinks,
 						Context,
 						SelfUnitId,
 						ActualLoss,
 						DamageResult,
+						nullptr,
+						&InOutRuntime,
+						&InOutResult,
+						false,
 						&OutError))
 					{
 						return false;
@@ -10433,7 +10696,8 @@ namespace
 						TriggeredStacks,
 						true,
 						TriggerResult,
-						OutError))
+						OutError,
+						&InOutResult))
 					{
 						return false;
 					}
@@ -10503,7 +10767,8 @@ namespace
 							StacksBefore,
 							true,
 							TriggerResult,
-							OutError))
+							OutError,
+							&InOutResult))
 						{
 							return false;
 						}
@@ -10579,7 +10844,8 @@ namespace
 							Context,
 							DamageResult,
 							&InOutResult.DamageResults,
-							OutError))
+							OutError,
+							&InOutResult))
 						{
 							return false;
 						}
@@ -10686,7 +10952,7 @@ namespace
 							return false;
 						}
 						InOutResult.DamageResults.Add(DamageResult);
-						if (!ResolveFirstDirectDamageReactiveModifiers(InOutRuntime, Context, DamageResult, &InOutResult.DamageResults, OutError))
+						if (!ResolveFirstDirectDamageReactiveModifiers(InOutRuntime, Context, DamageResult, &InOutResult.DamageResults, OutError, &InOutResult))
 						{
 							return false;
 						}
@@ -11058,7 +11324,8 @@ namespace
 					Context,
 					DamageResult,
 					&InOutResult.DamageResults,
-					OutError))
+					OutError,
+					&InOutResult))
 				{
 					return false;
 				}
@@ -12602,7 +12869,15 @@ namespace
 				return false;
 			}
 			FGameXXKCardDamageResult DamageResult;
-			if (!ApplyStatusHealthLoss(InOutRuntime, ConditionTargetUnitId, Cause, StacksBefore, true, DamageResult, OutError))
+			if (!ApplyStatusHealthLoss(
+				InOutRuntime,
+				ConditionTargetUnitId,
+				Cause,
+				StacksBefore,
+				true,
+				DamageResult,
+				OutError,
+				InOutResult))
 			{
 				return false;
 			}
@@ -13735,7 +14010,8 @@ namespace
 				Context,
 				DamageResult,
 				&InOutResult.DamageResults,
-				OutError))
+				OutError,
+				&InOutResult))
 			{
 				return false;
 			}
@@ -15799,7 +16075,18 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 		return SetFailure(OutError, ValidationError);
 	}
 	FGameXXKCardDamageResult NewResult;
-	if (!ApplyCombatDirectDamage(NewRuntime.Units, NewRuntime.GuardLinks, ResolvedContext, AppliedTargetUnitId, RequestedDamage, NewResult, &ValidationError))
+	if (!ApplyCombatDirectDamageInternal(
+		NewRuntime.Units,
+		NewRuntime.GuardLinks,
+		ResolvedContext,
+		AppliedTargetUnitId,
+		RequestedDamage,
+		NewResult,
+		nullptr,
+		&NewRuntime,
+		nullptr,
+		false,
+		&ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
@@ -16052,6 +16339,7 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 					ReactionTargetId,
 					static_cast<int32>(RequestedDamage),
 					ReactionResult,
+					nullptr,
 					nullptr,
 					nullptr,
 					true,

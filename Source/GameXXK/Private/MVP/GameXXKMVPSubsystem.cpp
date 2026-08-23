@@ -410,11 +410,10 @@ namespace
 			{
 				return true;
 			}
-			if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, ResumedResults, OutError))
-			{
-				return false;
-			}
-			return FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(InOutState, OutError);
+			return FGameXXKCardBattleAdapter::ResumeAutomaticResolutionQueue(
+				InOutState,
+				ResumedResults,
+				OutError);
 
 		case EGameXXKCardPendingChoiceKind::Invalid:
 		default:

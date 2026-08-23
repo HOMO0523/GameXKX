@@ -4074,11 +4074,10 @@ bool UGameXXKBattleBoardWidget::AdvanceAutoBattleStep()
 		FGameXXKRuntimeState CandidateState = State;
 		TArray<FGameXXKCardPlayResult> AutomaticResults;
 		FString Error;
-		if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(
-				CandidateState.CardRun.ActiveBattle,
+		if (!FGameXXKCardBattleAdapter::ResumeAutomaticResolutionQueue(
+				CandidateState,
 				AutomaticResults,
-				&Error)
-			|| !FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(CandidateState, &Error))
+				&Error))
 		{
 			LastCardInteractionError = Error;
 			RefreshProgrammaticLayout();

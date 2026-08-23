@@ -78,6 +78,12 @@ public:
 		FString* OutError = nullptr,
 		TArray<FGameXXKCardPlayResult>* OutResumedResults = nullptr);
 
+	/** Resumes a saved automatic replay queue and commits its runtime, relic consumption, and legacy projection atomically. */
+	static bool ResumeAutomaticResolutionQueue(
+		FGameXXKRuntimeState& InOutState,
+		TArray<FGameXXKCardPlayResult>& OutResumedResults,
+		FString* OutError = nullptr);
+
 	/** Ends the player phase, records deterministic enemy intents, and leaves the card runtime in Enemy or terminal phase. */
 	static bool EndPlayerCardPhase(
 		FGameXXKRuntimeState& InOutState,
