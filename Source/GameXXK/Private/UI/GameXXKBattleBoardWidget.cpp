@@ -27,6 +27,7 @@
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
+#include "GameXXKCardRules.h"
 #include "GameXXKCardText.h"
 #include "GameXXKEnemyText.h"
 #include "GameXXKMVPRules.h"
@@ -3974,11 +3975,6 @@ bool UGameXXKBattleBoardWidget::CanAdvanceAutoBattle() const
 	{
 		return false;
 	}
-	if (State.CardRun.ActiveBattle.AutomaticResolutionQueue.bActive
-		&& State.CardRun.ActiveBattle.Deck.PendingChoice.Kind == EGameXXKCardPendingChoiceKind::None)
-	{
-		return false;
-	}
 	return true;
 }
 
@@ -4071,6 +4067,36 @@ bool UGameXXKBattleBoardWidget::AdvanceAutoBattleStep()
 	case EGameXXKCardPendingChoiceKind::Invalid:
 	default:
 		return false;
+	}
+	if (Runtime.AutomaticResolutionQueue.bActive)
+	{
+		const FGameXXKCardBattleRuntime Before = Runtime;
+		FGameXXKRuntimeState CandidateState = State;
+		TArray<FGameXXKCardPlayResult> AutomaticResults;
+		FString Error;
+		if (!GameXXKCardRules::ResumeAutomaticResolutionQueue(
+				CandidateState.CardRun.ActiveBattle,
+				AutomaticResults,
+				&Error)
+			|| !FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(CandidateState, &Error))
+		{
+			LastCardInteractionError = Error;
+			RefreshProgrammaticLayout();
+			return false;
+		}
+
+		TArray<FGameXXKCardDamageResult> DamageResults;
+		for (FGameXXKCardPlayResult& AutomaticResult : AutomaticResults)
+		{
+			DamageResults.Append(MoveTemp(AutomaticResult.DamageResults));
+		}
+		Subsystem->GetMutableRuntimeState() = MoveTemp(CandidateState);
+		CapturePresentationHudSnapshot(Before);
+		LastCardInteractionError.Reset();
+		return QueueMutationPresentation(
+			Before,
+			DamageResults,
+			EBattlePresentationContinuation::FinalizeCardMutation);
 	}
 
 	const TArray<FGameXXKCardInstance> HandSnapshot = Runtime.Deck.Hand;

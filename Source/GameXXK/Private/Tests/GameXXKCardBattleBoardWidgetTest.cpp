@@ -1280,6 +1280,83 @@ bool FGameXXKCardBattleBoardAutoPlayEndsTurnTest::RunTest(const FString& Paramet
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardRouteAutoBattleStallTest,
+	"GameXXK.Integration.CardBattle.RouteAutoBattleStall",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardRouteAutoBattleStallTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName PlayableCardInstanceId;
+	FName TargetUnitId;
+	FName OwnerUnitId;
+	FGameXXKCardPlayPreview Preview;
+	FString FixtureError;
+	TestTrue(FString::Printf(TEXT("route-auto player-phase fixture builds: %s"), *FixtureError),
+		BuildManualTargetCardFixture(
+			Subsystem,
+			PlayableCardInstanceId,
+			TargetUnitId,
+			OwnerUnitId,
+			Preview,
+			FixtureError));
+
+	FGameXXKCardBattleRuntime& Runtime = Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle;
+	const FGameXXKCardInstance* const PlayableCard = Runtime.Deck.Hand.FindByPredicate(
+		[PlayableCardInstanceId](const FGameXXKCardInstance& Card)
+	{
+		return Card.InstanceId == PlayableCardInstanceId;
+	});
+	TestNotNull(TEXT("route-auto fixture keeps its real playable card in hand"), PlayableCard);
+	if (!PlayableCard)
+	{
+		return false;
+	}
+	Runtime.RoundNumber = 2;
+	Runtime.Deck.SharedEnergy = 3;
+	FGameXXKResolvedCardSnapshot Replay;
+	Replay.CardId = PlayableCard->CardId;
+	Replay.Quality = PlayableCard->CurrentQuality;
+	Replay.OwnerUnitId = OwnerUnitId;
+	Replay.OriginalTargetUnitIds = {TargetUnitId};
+	Runtime.AutomaticResolutionQueue = FGameXXKAutomaticResolutionQueue();
+	Runtime.AutomaticResolutionQueue.bActive = true;
+	Runtime.AutomaticResolutionQueue.Origin = EGameXXKCardResolutionOrigin::AutomaticReplay;
+	Runtime.AutomaticResolutionQueue.PendingCards = {Replay};
+	FString RuntimeError;
+	TestTrue(FString::Printf(TEXT("round-two route queue fixture is authoritative and valid: %s"), *RuntimeError),
+		GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &RuntimeError));
+
+	FGameXXKRuntimeState ManualEndTurnState = Subsystem->GetRuntimeState();
+	TArray<FGameXXKCardDamageResult> ManualEndTurnDamage;
+	FString ManualEndTurnError;
+	TestTrue(FString::Printf(TEXT("the same stalled state still accepts the real End Turn path: %s"), *ManualEndTurnError),
+		FGameXXKCardBattleAdapter::EndPlayerCardPhase(
+			ManualEndTurnState,
+			ManualEndTurnDamage,
+			&ManualEndTurnError));
+
+	UGameXXKBattleBoardWidget* const Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("route-auto Board initializes"), Board->Initialize());
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestTrue(TEXT("route-auto fixture enables the retained session auto flag"),
+		Board->SetAutoBattleEnabled(true));
+	const FGameXXKRuntimeState BeforeAuto = Subsystem->GetRuntimeState();
+	TestFalse(TEXT("route auto waits for its wall-clock cadence"),
+		Board->AdvanceAutoBattleAtRealTimeForTest(100.0));
+	const bool bAdvanced = Board->AdvanceAutoBattleAtRealTimeForTest(101.0);
+	const bool bStateChanged = !FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+		&Subsystem->GetRuntimeState(), &BeforeAuto, PPF_None);
+	TestTrue(TEXT("an idle player phase with pending automatic work advances within one cadence"),
+		bAdvanced && bStateChanged);
+	TestFalse(TEXT("the valid automatic replay queue cannot remain permanently active"),
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.AutomaticResolutionQueue.bActive);
+	return bAdvanced && bStateChanged;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKCardBattleBoardAutoPlayPendingChoicesTest,
 	"GameXXK.Integration.CardBattle.BoardAutoPlayPendingChoices",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
