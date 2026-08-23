@@ -18,7 +18,7 @@
 
 1. `docs/superpowers/plans/2026-08-22-workbench-parent-close-stack.md`
 2. `docs/superpowers/plans/2026-08-22-route-event-card-merchant.md`
-3. `docs/superpowers/plans/2026-08-22-ordered-party-formation.md`
+3. `docs/superpowers/plans/2026-08-23-decoupled-party-formation.md`
 4. `docs/superpowers/plans/2026-08-22-permanent-talent-graph.md`
 
 Unit B initially reads the existing effective order (`Hero / active companion / active task NPC`) behind one party-card-pool seam. Unit C replaces that seam's source with the persisted `1P / 2P / 3P` array without changing merchant rules. This preserves the approved delivery order and avoids a partially unusable merchant.

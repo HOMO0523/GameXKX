@@ -1,5 +1,10 @@
 # Ordered Party Formation Implementation Plan
 
+> **Superseded:** Do not execute this plan. Use
+> `docs/superpowers/plans/2026-08-23-decoupled-party-formation.md`, which stores
+> one Hero, one fixed Companion, and one persistent Quest NPC separately from
+> the `1P / 2P / 3P` category order.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the implicit fixed hero/companion/NPC party with a persisted, validated, ordered `1P / 2P / 3P` formation and an orderly draft/apply Workbench editor.

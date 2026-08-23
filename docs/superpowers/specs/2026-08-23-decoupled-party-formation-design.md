@@ -151,7 +151,13 @@ The lower section has three separate slots:
 - `2P`
 - `3P`
 
-Each slot displays its category label and the currently selected character for that category. Selecting two position slots swaps their categories. It never changes any selected character ID.
+Each slot displays its category label and the currently selected character for that category. Left-clicking one slot selects that category frame and reveals small movement arrows beside it:
+
+- `1P` shows only a right arrow;
+- `2P` shows both left and right arrows;
+- `3P` shows only a left arrow.
+
+Clicking an arrow moves the selected category one position in that direction by swapping adjacent category entries. The selection follows the moved category. No arrow action changes any selected character ID.
 
 Replacing a Hero, Companion, or Quest NPC automatically updates whichever P-slot currently contains that category.
 
@@ -207,7 +213,8 @@ Tests must prove:
 - exactly one Hero, Companion, and Quest NPC are required;
 - `PositionOrder` is an exact category permutation;
 - changing a selected member preserves position order;
-- swapping positions preserves all three selected IDs;
+- moving a selected category left or right preserves all three selected IDs;
+- boundary slots expose only their valid arrow direction;
 - default order is `Hero / Companion / QuestNpc`;
 - v24 arrays migrate without losing an unambiguous old order;
 - malformed current saves are rejected;
