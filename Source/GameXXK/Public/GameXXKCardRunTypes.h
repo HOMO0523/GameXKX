@@ -4,6 +4,7 @@
 #include "GameXXKCardTypes.h"
 #include "GameXXKCompanionTypes.h"
 #include "GameXXKEnemyTypes.h"
+#include "GameXXKPartyFormationTypes.h"
 #include "GameXXKRelicTypes.h"
 #include "GameXXKRouteMerchantTypes.h"
 #include "GameXXKCardRunTypes.generated.h"
@@ -283,6 +284,10 @@ struct GAMEXXK_API FGameXXKCardRunState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKCompanionPartySelection PartySelection;
+
+	/** Save-authoritative ordered 1P / 2P / 3P party references. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKOrderedPartyFormation OrderedFormation;
 
 	/** Explicit route provenance prevents a stale saved NPC selection from joining an unrelated route. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
