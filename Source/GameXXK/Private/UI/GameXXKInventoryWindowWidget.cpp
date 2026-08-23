@@ -28,6 +28,7 @@
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKMVPRules.h"
+#include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -644,6 +645,15 @@ void UGameXXKInventorySlotButton::HandleClicked()
 {
 	if (Owner)
 	{
+		const bool bLockableCell = Source == EGameXXKInventorySlotSource::PlayerBackpack
+			|| Source == EGameXXKInventorySlotSource::Equipment;
+		if (bLockableCell
+			&& FSlateApplication::IsInitialized()
+			&& FSlateApplication::Get().GetModifierKeys().IsAltDown())
+		{
+			Owner->HandleConfiguredSlotAltClicked(Source, SlotIndex, EquipmentSlotId);
+			return;
+		}
 		Owner->HandleConfiguredSlotClicked(Source, SlotIndex, EquipmentSlotId);
 	}
 }
@@ -1386,7 +1396,11 @@ FString UGameXXKInventoryWindowWidget::GetHeroLockedCardIconResourcePathForTest(
 
 void UGameXXKInventoryWindowWidget::HandleCharacterBackpackTabClicked(const EGameXXKCharacterBackpackTab Tab)
 {
-	OpenCharacterBackpackTabForTest(Tab);
+	const bool bOpened = OpenCharacterBackpackTabForTest(Tab);
+	if (bOpened && bDesktopTrainingEmbeddedMode && DesktopTrainingHost)
+	{
+		DesktopTrainingHost->HandleDesktopCharacterSubpageClicked(Tab);
+	}
 }
 
 void UGameXXKInventoryWindowWidget::HandleHeroDeckCardClicked(const FName CardId)
@@ -1405,6 +1419,15 @@ void UGameXXKInventoryWindowWidget::HandleConfiguredSlotClicked(EGameXXKInventor
 		&& DesktopTrainingHost)
 	{
 		DesktopTrainingHost->HandleDesktopBackpackSlotLeftClicked(SlotIndex);
+		return;
+	}
+	if (bDesktopTrainingEmbeddedMode
+		&& Source == EGameXXKInventorySlotSource::Equipment
+		&& DesktopTrainingHost
+		&& DesktopTrainingHost->HasDesktopCarriedEntry())
+	{
+		DesktopTrainingHost->HandleDesktopEquipmentSlotLeftClicked(
+			EquipmentSlotFromId(EquipmentSlotId));
 		return;
 	}
 
@@ -1430,6 +1453,74 @@ void UGameXXKInventoryWindowWidget::HandleConfiguredSlotClicked(EGameXXKInventor
 	}
 }
 
+bool UGameXXKInventoryWindowWidget::HandleConfiguredSlotAltClicked(
+	const EGameXXKInventorySlotSource Source,
+	const int32 SlotIndex,
+	const FName EquipmentSlotId)
+{
+	if (PendingConfirmationAction != EConfirmationAction::None)
+	{
+		return false;
+	}
+	if (bDesktopTrainingEmbeddedMode && DesktopTrainingHost)
+	{
+		if (Source == EGameXXKInventorySlotSource::PlayerBackpack)
+		{
+			return DesktopTrainingHost->HandleDesktopSlotAltClicked(
+				EGameXXKDesktopItemContainer::Backpack,
+				SlotIndex);
+		}
+		if (Source == EGameXXKInventorySlotSource::Equipment)
+		{
+			return DesktopTrainingHost->HandleDesktopEquipmentSlotAltClicked(
+				EquipmentSlotFromId(EquipmentSlotId));
+		}
+	}
+
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return false;
+	}
+	FGameXXKDesktopInventoryEntryKey Entry;
+	if (Source == EGameXXKInventorySlotSource::PlayerBackpack
+		&& CurrentBackpackSlotItemIds.IsValidIndex(SlotIndex)
+		&& CurrentBackpackSlotEquipmentInstanceIds.IsValidIndex(SlotIndex))
+	{
+		const FName InstanceId = CurrentBackpackSlotEquipmentInstanceIds[SlotIndex];
+		Entry = !InstanceId.IsNone()
+			? FGameXXKDesktopInventoryRules::MakeEquipmentEntry(InstanceId)
+			: FGameXXKDesktopInventoryRules::MakeItemEntry(
+				CurrentBackpackSlotItemIds[SlotIndex]);
+	}
+	else if (Source == EGameXXKInventorySlotSource::Equipment)
+	{
+		const EGameXXKEquipmentSlot ResolvedEquipmentSlot = EquipmentSlotFromId(EquipmentSlotId);
+		Entry = FGameXXKDesktopInventoryRules::MakeEquipmentEntry(
+			ResolvedEquipmentSlot == EGameXXKEquipmentSlot::Invalid
+				? NAME_None
+				: GetEquippedInstanceForSlotForTest(ResolvedEquipmentSlot));
+	}
+	if (!Entry.IsValid())
+	{
+		return false;
+	}
+	const bool bLock = !FGameXXKDesktopInventoryRules::IsEntryLocked(
+		Subsystem->GetRuntimeState(),
+		Entry);
+	FString Error;
+	if (!FGameXXKDesktopInventoryRules::SetEntryLocked(
+		Subsystem->GetMutableRuntimeState(),
+		Entry,
+		bLock,
+		&Error))
+	{
+		return false;
+	}
+	RefreshProgrammaticLayout();
+	return true;
+}
+
 bool UGameXXKInventoryWindowWidget::HandleConfiguredSlotRightClicked(
 	const EGameXXKInventorySlotSource Source,
 	const int32 SlotIndex,
@@ -1438,6 +1529,12 @@ bool UGameXXKInventoryWindowWidget::HandleConfiguredSlotRightClicked(
 	if (PendingConfirmationAction != EConfirmationAction::None)
 	{
 		return false;
+	}
+	if (bDesktopTrainingEmbeddedMode
+		&& DesktopTrainingHost
+		&& DesktopTrainingHost->HasDesktopCarriedEntry())
+	{
+		return DesktopTrainingHost->HandleDesktopCarryRightClicked();
 	}
 	if (bDesktopTrainingEmbeddedMode
 		&& Source == EGameXXKInventorySlotSource::PlayerBackpack
@@ -1872,6 +1969,19 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 			LabelSlot->SetVerticalAlignment(VAlign_Bottom);
 			LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 5.0f, 4.0f));
 		}
+		UImage* LockedIcon = WidgetTree->ConstructWidget<UImage>(
+			UImage::StaticClass(),
+			*FString::Printf(TEXT("InventoryBackpackLockedIcon_%03d"), SlotIndex));
+		LockedIcon->SetBrush(MakeTextureBrush(
+			HeroLockedCardIconTexturePath,
+			FVector2D(34.0f, 34.0f)));
+		LockedIcon->SetVisibility(ESlateVisibility::Collapsed);
+		if (UOverlaySlot* LockSlot = SlotOverlay->AddChildToOverlay(LockedIcon))
+		{
+			LockSlot->SetHorizontalAlignment(HAlign_Right);
+			LockSlot->SetVerticalAlignment(VAlign_Top);
+			LockSlot->SetPadding(FMargin(4.0f));
+		}
 
 		UBorder* TooltipFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("InventoryBackpackTooltip_%02d"), SlotIndex));
 		TooltipFrame->SetBrush(MakeBoxTextureBrush(TooltipPaperTexturePath, FVector2D(260.0f, 120.0f)));
@@ -1911,6 +2021,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		}
 		BackpackSlotButtons.Add(SlotButton);
 		BackpackSlotIcons.Add(SlotIcon);
+		BackpackLockedIcons.Add(LockedIcon);
 		BackpackSlotLabels.Add(SlotLabel);
 		BackpackTooltipFrames.Add(TooltipFrame);
 		BackpackTooltipNameTextBlocks.Add(TooltipName);
@@ -1988,6 +2099,21 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 			LabelSlot->SetVerticalAlignment(VAlign_Bottom);
 			LabelSlot->SetPadding(FMargin(2.0f, 0.0f, 2.0f, 4.0f));
 		}
+		UImage* LockedIcon = WidgetTree->ConstructWidget<UImage>(
+			UImage::StaticClass(),
+			*FString::Printf(
+				TEXT("InventoryEquipmentLockedIcon_%s"),
+				*SlotDef.Key.ToString()));
+		LockedIcon->SetBrush(MakeTextureBrush(
+			HeroLockedCardIconTexturePath,
+			FVector2D(34.0f, 34.0f)));
+		LockedIcon->SetVisibility(ESlateVisibility::Collapsed);
+		if (UOverlaySlot* LockSlot = SlotOverlay->AddChildToOverlay(LockedIcon))
+		{
+			LockSlot->SetHorizontalAlignment(HAlign_Right);
+			LockSlot->SetVerticalAlignment(VAlign_Top);
+			LockSlot->SetPadding(FMargin(4.0f));
+		}
 		SlotButton->AddChild(SlotOverlay);
 
 		// Hover tooltip paper for the equipped item (hidden while the slot is empty).
@@ -2011,6 +2137,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		AddCanvasChild(FrameCanvas, SlotButton, EquipmentFramePositions[SlotIndex], EquipmentSlotSize);
 		EquipmentSlotButtons.Add(SlotButton);
 		EquipmentSlotIcons.Add(SlotIcon);
+		EquipmentLockedIcons.Add(LockedIcon);
 		EquipmentSlotLabels.Add(SlotLabel);
 		EquipmentTooltipFrames.Add(TooltipFrame);
 		EquipmentTooltipNameTextBlocks.Add(TooltipName);
@@ -2634,6 +2761,20 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 				Icon->SetVisibility(ESlateVisibility::Collapsed);
 			}
 		}
+		if (UImage* LockedIcon = BackpackLockedIcons.IsValidIndex(SlotIndex)
+			? BackpackLockedIcons[SlotIndex].Get()
+			: nullptr)
+		{
+			const FGameXXKDesktopInventoryEntryKey EntryKey = !EquipmentInstanceId.IsNone()
+				? FGameXXKDesktopInventoryRules::MakeEquipmentEntry(EquipmentInstanceId)
+				: FGameXXKDesktopInventoryRules::MakeItemEntry(ItemId);
+			const bool bLocked = Subsystem
+				&& FGameXXKDesktopInventoryRules::IsEntryLocked(
+					Subsystem->GetRuntimeState(),
+					EntryKey);
+			LockedIcon->SetVisibility(
+				bLocked ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		}
 		if (UTextBlock* TooltipName = BackpackTooltipNameTextBlocks.IsValidIndex(SlotIndex) ? BackpackTooltipNameTextBlocks[SlotIndex].Get() : nullptr)
 		{
 			TooltipName->SetText(Entry ? Entry->DisplayName : FText::GetEmpty());
@@ -2834,6 +2975,17 @@ void UGameXXKInventoryWindowWidget::RefreshEquipmentSlots()
 			{
 				Icon->SetVisibility(ESlateVisibility::Collapsed);
 			}
+		}
+		if (UImage* LockedIcon = EquipmentLockedIcons.IsValidIndex(SlotIndex)
+			? EquipmentLockedIcons[SlotIndex].Get()
+			: nullptr)
+		{
+			const bool bLocked = Subsystem
+				&& FGameXXKDesktopInventoryRules::IsEntryLocked(
+					Subsystem->GetRuntimeState(),
+					FGameXXKDesktopInventoryRules::MakeEquipmentEntry(InstanceId));
+			LockedIcon->SetVisibility(
+				bLocked ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		}
 		if (UBorder* TooltipFrame = EquipmentTooltipFrames.IsValidIndex(SlotIndex) ? EquipmentTooltipFrames[SlotIndex].Get() : nullptr)
 		{

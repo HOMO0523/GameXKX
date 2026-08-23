@@ -1,9 +1,13 @@
 #include "Misc/AutomationTest.h"
 
+#include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Image.h"
+#include "Components/OverlaySlot.h"
 #include "Engine/GameInstance.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -31,6 +35,40 @@ namespace
 			Test.AddError(Error);
 		}
 		return InstanceId;
+	}
+
+	void TestInventoryLockedOverlay(
+		FAutomationTestBase& Test,
+		const TCHAR* Context,
+		UImage* LockedIcon)
+	{
+		if (!Test.TestNotNull(Context, LockedIcon))
+		{
+			return;
+		}
+		const UObject* Resource = LockedIcon->GetBrush().GetResourceObject();
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s uses the approved locked-card texture"), Context),
+			Resource && Resource->GetPathName().Contains(
+				TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardLockedIcon")));
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s is hit-test-invisible"), Context),
+			LockedIcon->GetVisibility(),
+			ESlateVisibility::HitTestInvisible);
+		const UOverlaySlot* OverlaySlot = Cast<UOverlaySlot>(LockedIcon->Slot);
+		if (Test.TestNotNull(
+			*FString::Printf(TEXT("%s owns overlay geometry"), Context),
+			OverlaySlot))
+		{
+			Test.TestEqual(
+				*FString::Printf(TEXT("%s is right aligned"), Context),
+				OverlaySlot->GetHorizontalAlignment(),
+				HAlign_Right);
+			Test.TestEqual(
+				*FString::Printf(TEXT("%s is top aligned"), Context),
+				OverlaySlot->GetVerticalAlignment(),
+				VAlign_Top);
+		}
 	}
 }
 
@@ -105,6 +143,138 @@ bool FGameXXKFinalInventoryWidgetTest::RunTest(const FString& Parameters)
 		TEXT("right-click unequip clears the hero weapon slot"),
 		Inventory->GetEquippedInstanceForSlotForTest(EGameXXKEquipmentSlot::Weapon).IsNone());
 	TestTrue(TEXT("unequipped replacement returns to the shared warehouse"), State.EquipmentCollection.WarehouseInstanceIds.Contains(ReplacementWeapon));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKFinalInventoryLockOverlayTest,
+	"GameXXK.MVP.UI.FinalInventory.PersistentLockOverlays",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKFinalInventoryLockOverlayTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State = UGameXXKMVPRules::CreateNewGame();
+	State.Screen = EGameXXKScreen::Town;
+	const FName EquippedWeapon = CreateInventoryWidgetEquipment(
+		*this, State, EGameXXKEquipmentSlot::Weapon);
+	FGameXXKEquipmentTransactionResult EquipResult;
+	if (!TestTrue(TEXT("lock-overlay fixture equips a real weapon"),
+		Subsystem->EquipEquipmentInstance(
+			FGameXXKEquipmentRules::HeroCharacterId(),
+			EGameXXKEquipmentSlot::Weapon,
+			EquippedWeapon,
+			EquipResult))
+		|| !TestTrue(TEXT("lock-overlay fixture normalizes"),
+			Subsystem->NormalizeDesktopInventoryState()))
+	{
+		return false;
+	}
+
+	const FName StoneId = UGameXXKMVPRules::ItemEnhancementStone();
+	const FGameXXKDesktopInventoryEntryKey StoneEntry =
+		FGameXXKDesktopInventoryRules::MakeItemEntry(StoneId);
+	const FGameXXKDesktopInventoryEntryKey WeaponEntry =
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(EquippedWeapon);
+	FString Error;
+	TestTrue(TEXT("fixture locks the whole item stack"),
+		FGameXXKDesktopInventoryRules::SetEntryLocked(
+			State, StoneEntry, true, &Error));
+	TestTrue(TEXT("fixture locks the equipped instance"),
+		FGameXXKDesktopInventoryRules::SetEntryLocked(
+			State, WeaponEntry, true, &Error));
+
+	UGameXXKInventoryWindowWidget* Inventory =
+		NewObject<UGameXXKInventoryWindowWidget>();
+	Inventory->SetMVPSubsystem(Subsystem);
+	Inventory->TakeWidget();
+	if (!TestTrue(TEXT("lock-overlay final inventory opens"),
+		Inventory->OpenFreeInventoryForTest()))
+	{
+		return false;
+	}
+	const int32 StoneDisplaySlot = Inventory->FindBackpackItemSlotForTest(StoneId);
+	if (!TestTrue(TEXT("locked stack has a visible Backpack cell"),
+		StoneDisplaySlot != INDEX_NONE))
+	{
+		return false;
+	}
+	UImage* BackpackLockedIcon = Inventory->WidgetTree
+		? Cast<UImage>(Inventory->WidgetTree->FindWidget(
+			*FString::Printf(
+				TEXT("InventoryBackpackLockedIcon_%03d"),
+				StoneDisplaySlot)))
+		: nullptr;
+	UImage* EquipmentLockedIcon = Inventory->WidgetTree
+		? Cast<UImage>(Inventory->WidgetTree->FindWidget(
+			TEXT("InventoryEquipmentLockedIcon_Weapon")))
+		: nullptr;
+	TestInventoryLockedOverlay(
+		*this, TEXT("Backpack lock overlay"), BackpackLockedIcon);
+	TestInventoryLockedOverlay(
+		*this, TEXT("Equipment lock overlay"), EquipmentLockedIcon);
+
+	UGameXXKInventorySlotButton* BackpackButton = Inventory->WidgetTree
+		? Cast<UGameXXKInventorySlotButton>(Inventory->WidgetTree->FindWidget(
+			*FString::Printf(TEXT("InventoryBackpackSlot_%02d"), StoneDisplaySlot)))
+		: nullptr;
+	if (TestNotNull(TEXT("locked Backpack cell owns a real button"), BackpackButton))
+	{
+		BackpackButton->OnClicked.Broadcast();
+		TestTrue(TEXT("ordinary locked-cell OnClicked keeps select/detail behavior"),
+			Inventory->GetSelectedBackpackSlotIndexForTest() != INDEX_NONE);
+	}
+	UGameXXKInventorySlotButton* EquipmentButton = Inventory->WidgetTree
+		? Cast<UGameXXKInventorySlotButton>(Inventory->WidgetTree->FindWidget(
+			TEXT("InventoryEquipmentSlot_Weapon")))
+		: nullptr;
+	if (TestNotNull(TEXT("locked Equipment cell owns a real button"), EquipmentButton))
+	{
+		EquipmentButton->OnClicked.Broadcast();
+		TestFalse(TEXT("ordinary equipped-cell OnClicked exposes detail"),
+			Inventory->GetSelectedDetailTextForTest().IsEmpty());
+	}
+
+	TestTrue(TEXT("explicit Backpack Alt seam unlocks the whole item stack"),
+		Inventory->HandleConfiguredSlotAltClicked(
+			EGameXXKInventorySlotSource::PlayerBackpack,
+			StoneDisplaySlot,
+			NAME_None));
+	TestFalse(TEXT("whole item stack is unlocked by item ID"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(State, StoneEntry));
+	TestTrue(TEXT("explicit Backpack Alt seam relocks the whole item stack"),
+		Inventory->HandleConfiguredSlotAltClicked(
+			EGameXXKInventorySlotSource::PlayerBackpack,
+			StoneDisplaySlot,
+			NAME_None));
+	TestTrue(TEXT("explicit Equipment Alt seam unlocks the equipped instance"),
+		Inventory->HandleConfiguredSlotAltClicked(
+			EGameXXKInventorySlotSource::Equipment,
+			0,
+			TEXT("Weapon")));
+	TestFalse(TEXT("equipped instance is unlocked by stable ID"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(State, WeaponEntry));
+	TestTrue(TEXT("explicit Equipment Alt seam relocks the equipped instance"),
+		Inventory->HandleConfiguredSlotAltClicked(
+			EGameXXKInventorySlotSource::Equipment,
+			0,
+			TEXT("Weapon")));
+	TestFalse(TEXT("empty cell lock is rejected"),
+		Inventory->HandleConfiguredSlotAltClicked(
+			EGameXXKInventorySlotSource::PlayerBackpack,
+			FGameXXKDesktopInventoryRules::BackpackCapacity - 1,
+			NAME_None));
+	TestFalse(TEXT("unknown cell lock is rejected"),
+		Inventory->HandleConfiguredSlotAltClicked(
+			EGameXXKInventorySlotSource::None,
+			INDEX_NONE,
+			NAME_None));
+	TestTrue(TEXT("rejected locks preserve the valid item lock"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(State, StoneEntry));
+	TestTrue(TEXT("rejected locks preserve the valid equipment lock"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(State, WeaponEntry));
 	return true;
 }
 

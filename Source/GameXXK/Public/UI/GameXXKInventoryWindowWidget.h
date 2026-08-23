@@ -347,6 +347,7 @@ public:
 	FString GetHeroLockedCardIconResourcePathForTest() const;
 
 	void HandleConfiguredSlotClicked(EGameXXKInventorySlotSource Source, int32 SlotIndex, FName EquipmentSlotId);
+	bool HandleConfiguredSlotAltClicked(EGameXXKInventorySlotSource Source, int32 SlotIndex, FName EquipmentSlotId);
 	bool HandleConfiguredSlotRightClicked(EGameXXKInventorySlotSource Source, int32 SlotIndex, FName EquipmentSlotId);
 	void HandleInventoryFilterClicked(EGameXXKInventoryFilter Filter);
 	void HandleCharacterBackpackTabClicked(EGameXXKCharacterBackpackTab Tab);
@@ -594,6 +595,9 @@ private:
 	TArray<TObjectPtr<UImage>> BackpackSlotIcons;
 
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> BackpackLockedIcons;
+
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> BackpackSlotLabels;
 
 	UPROPERTY(Transient)
@@ -625,6 +629,9 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UImage>> EquipmentSlotIcons;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> EquipmentLockedIcons;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> EquipmentSlotLabels;

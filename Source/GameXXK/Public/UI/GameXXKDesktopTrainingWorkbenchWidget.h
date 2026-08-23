@@ -170,6 +170,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsCarryingItemForTest() const;
 
+	/** True while one non-committing desktop entry preview is attached to the cursor. */
+	bool HasDesktopCarriedEntry() const;
+
+	FText GetLastDesktopInventoryNoticeForTest() const;
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool PickUpBackpackSlotForTest(int32 SlotIndex);
 
@@ -197,6 +202,14 @@ public:
 	/** Embedded approved-backpack input seam. */
 	bool HandleDesktopBackpackSlotLeftClicked(int32 SlotIndex);
 	bool HandleDesktopBackpackSlotRightClicked(int32 SlotIndex);
+	bool HandleDesktopEquipmentSlotLeftClicked(EGameXXKEquipmentSlot EquipmentSlot);
+	bool HandleDesktopEquipmentSlotAltClicked(EGameXXKEquipmentSlot EquipmentSlot);
+	bool HandleDesktopSlotAltClicked(
+		EGameXXKDesktopItemContainer Container,
+		int32 SlotIndex);
+	bool HandleDesktopToolSlotAltClicked(int32 SlotIndex);
+	bool HandleDesktopCarryRightClicked();
+	void HandleDesktopCharacterSubpageClicked(EGameXXKCharacterBackpackTab Tab);
 	bool ShouldHideDesktopInventoryEntry(
 		EGameXXKDesktopItemContainer Container,
 		const FGameXXKDesktopInventoryEntryKey& Entry) const;
@@ -432,6 +445,7 @@ public:
 
 	void HandleStageClicked(FName StageId);
 	void HandleActionClicked(int32 ActionId);
+	bool HandleActionAltClicked(int32 ActionId);
 	bool HandleActionRightClicked(int32 ActionId);
 
 	/** Set while a real Slate button callback is executing so layout rebuilds are deferred to the next tick. */
@@ -494,6 +508,7 @@ private:
 	bool PickUpToolEntry(int32 SlotIndex);
 	bool DropCarriedOnDesktopSlot(EGameXXKDesktopItemContainer Container, int32 SlotIndex);
 	bool DropCarriedOnToolSlot(int32 SlotIndex);
+	bool ToggleDesktopEntryLock(const FGameXXKDesktopInventoryEntryKey& Entry);
 	bool RouteBackpackRightClick(int32 SlotIndex);
 	bool CancelCarriedItem();
 	void CancelCarryForStructuralChange();

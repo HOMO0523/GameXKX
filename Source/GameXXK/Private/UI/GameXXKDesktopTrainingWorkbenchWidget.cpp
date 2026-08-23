@@ -256,6 +256,7 @@
 	static constexpr const TCHAR* PanelLargeTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge.T_MasterV2_PanelLarge");
 	static constexpr const TCHAR* ItemSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
 	static constexpr const TCHAR* EquipmentSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_EquipmentSlot.T_MasterV2_EquipmentSlot");
+	static constexpr const TCHAR* LockedIconTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardLockedIcon.T_MasterV2_CardLockedIcon");
 	static constexpr const TCHAR* HeroFullBodyTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody");
 	static constexpr const TCHAR* CloseInkTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk.T_MasterV2_CloseInk");
 	static constexpr const TCHAR* IngotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_Ingot.T_MasterV2_Ingot");
@@ -412,9 +413,14 @@
 		return Style;
 	}
 
-	UTextBlock* MakeText(UWidgetTree* Tree, const FText& Text, int32 Size, const FLinearColor& Color = FLinearColor(0.06f, 0.045f, 0.035f, 0.98f))
+	UTextBlock* MakeText(
+		UWidgetTree* Tree,
+		const FText& Text,
+		int32 Size,
+		const FLinearColor& Color = FLinearColor(0.06f, 0.045f, 0.035f, 0.98f),
+		const FName Name = NAME_None)
 	{
-		UTextBlock* Result = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+		UTextBlock* Result = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
 		Result->SetText(Text);
 		Result->SetColorAndOpacity(Color);
 		Result->SetFont(FCoreStyle::GetDefaultFontStyle("Regular", Size));
@@ -694,6 +700,32 @@
 		return Overlay;
 	}
 
+	void AddLockedCellIcon(
+		UWidgetTree* Tree,
+		UButton* Button,
+		const FName IconName)
+	{
+		if (!Tree || !Button)
+		{
+			return;
+		}
+		UOverlay* Overlay = Cast<UOverlay>(Button->GetContent());
+		if (!Overlay)
+		{
+			Overlay = Tree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
+			Button->SetContent(Overlay);
+		}
+		UImage* LockedIcon = Tree->ConstructWidget<UImage>(UImage::StaticClass(), IconName);
+		LockedIcon->SetBrush(MakeTextureBrush(LockedIconTexturePath, FVector2D(28.0f, 28.0f)));
+		LockedIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+		if (UOverlaySlot* LockSlot = Overlay->AddChildToOverlay(LockedIcon))
+		{
+			LockSlot->SetHorizontalAlignment(HAlign_Right);
+			LockSlot->SetVerticalAlignment(VAlign_Top);
+			LockSlot->SetPadding(FMargin(3.0f));
+		}
+	}
+
 	EGameXXKEquipmentSlot BackpackSlotFromIndex(const int32 SlotIndex)
 	{
 		switch (SlotIndex)
@@ -857,6 +889,16 @@ void UGameXXKDesktopTrainingActionButton::HandleClicked()
 	if (Owner)
 	{
 		FScopedActionCallbackGuard CallbackGuard(Owner->bInActionCallback);
+		const bool bLockableCell =
+			(ActionId >= 100 && ActionId < 100 + WarehousePageSize)
+			|| (ActionId >= 300 && ActionId < 300 + ToolSlotCount);
+		if (bLockableCell
+			&& FSlateApplication::IsInitialized()
+			&& FSlateApplication::Get().GetModifierKeys().IsAltDown())
+		{
+			Owner->HandleActionAltClicked(ActionId);
+			return;
+		}
 		Owner->HandleActionClicked(ActionId);
 	}
 }
@@ -1190,6 +1232,16 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::SetToolModeForTest(const EGameXXKDe
 bool UGameXXKDesktopTrainingWorkbenchWidget::IsCarryingItemForTest() const
 {
 	return CarriedEntry.IsValid();
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HasDesktopCarriedEntry() const
+{
+	return CarriedEntry.IsValid();
+}
+
+FText UGameXXKDesktopTrainingWorkbenchWidget::GetLastDesktopInventoryNoticeForTest() const
+{
+	return LastNotice;
 }
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::PickUpBackpackSlotForTest(const int32 SlotIndex)
@@ -2107,6 +2159,24 @@ void UGameXXKDesktopTrainingWorkbenchWidget::HandleActionClicked(const int32 Act
 	ApplyAction(ActionId);
 }
 
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleActionAltClicked(const int32 ActionId)
+{
+	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
+	if (ActionId >= 100 && ActionId < 100 + WarehousePageSize)
+	{
+		const int32 PhysicalSlotIndex =
+			GetWarehousePageIndexForTest() * WarehousePageSize + (ActionId - 100);
+		return HandleDesktopSlotAltClicked(
+			EGameXXKDesktopItemContainer::Warehouse,
+			PhysicalSlotIndex);
+	}
+	if (ActionId >= 300 && ActionId < 300 + ToolSlotCount)
+	{
+		return HandleDesktopToolSlotAltClicked(ActionId - 300);
+	}
+	return false;
+}
+
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 {
 	if (!WidgetTree)
@@ -2224,13 +2294,20 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 	{
 		BuildCarriedItemVisual();
 	}
-	if (!LastNotice.IsEmpty())
-	{
-		NoticePanel = MakePanel(WidgetTree, FLinearColor(0.08f, 0.05f, 0.03f, 0.96f));
-		NoticeText = MakeText(WidgetTree, LastNotice, 16, Gold);
-		NoticePanel->SetContent(NoticeText);
-		AddCanvas(RootCanvas, NoticePanel.Get(), FVector2D(397.0f, 226.0f), FVector2D(420.0f, 28.0f));
-	}
+	NoticePanel = MakePanel(
+		WidgetTree,
+		FLinearColor(0.08f, 0.05f, 0.03f, 0.96f),
+		TEXT("DesktopInventoryNoticePanel"));
+	NoticeText = MakeText(
+		WidgetTree,
+		LastNotice,
+		16,
+		Gold,
+		TEXT("DesktopInventoryNoticeText"));
+	NoticePanel->SetContent(NoticeText);
+	NoticePanel->SetVisibility(
+		LastNotice.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	AddCanvas(RootCanvas, NoticePanel.Get(), FVector2D(397.0f, 226.0f), FVector2D(420.0f, 28.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackTabToggle()
@@ -2376,6 +2453,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildCarriedItemVisual()
 		CarriedItemImage->SetBrush(MakeTextureBrush(ItemSlotTexturePath, FVector2D(56.0f, 56.0f)));
 	}
 	CarriedItemImage->SetColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 0.92f));
+	CarriedItemImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 	CarriedItemImage->SetIsEnabled(false);
 	AddCanvas(RootCanvas, CarriedItemImage.Get(), FVector2D(800.0f, 470.0f), FVector2D(56.0f, 56.0f));
 }
@@ -3243,6 +3321,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 				IconPath,
 				FVector2D(46.0f, 46.0f),
 				Quantity > 1 ? FText::FromString(FString::Printf(TEXT("x%d"), Quantity)) : FText::GetEmpty()));
+			if (RuntimeState && FGameXXKDesktopInventoryRules::IsEntryLocked(*RuntimeState, Entry))
+			{
+				AddLockedCellIcon(
+					WidgetTree,
+					SlotButton,
+					*FString::Printf(TEXT("WarehouseLockedIcon_%d"), SlotIndex));
+			}
 			SlotButton->SetToolTipText(FText::FromString(FString::Printf(
 				TEXT("%s\n%s\n左键拿起；右键返回背包"),
 				*Entry.EntryId.ToString(),
@@ -3642,6 +3727,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTalentsPanel()
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 {
 	ToolSlots.SetNum(ToolSlotCount);
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	UBorder* PanelBorder = MakePanel(WidgetTree, Panel, TEXT("ToolsPanel"));
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetRightShellRect());
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("工具")), 28, Gold);
@@ -3689,6 +3775,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 				ToolSlots[SlotIndex].Quantity > 1
 					? FText::FromString(FString::Printf(TEXT("x%d"), ToolSlots[SlotIndex].Quantity))
 					: FText::GetEmpty()));
+			if (Subsystem
+				&& FGameXXKDesktopInventoryRules::IsEntryLocked(
+					Subsystem->GetRuntimeState(),
+					ToolSlots[SlotIndex].Entry))
+			{
+				AddLockedCellIcon(
+					WidgetTree,
+					ToolSlotButton,
+					*FString::Printf(TEXT("ToolLockedIcon_%d"), SlotIndex));
+			}
 			ToolSlotButton->SetToolTipText(FText::FromString(TEXT("左键拿起；右键返回原容器")));
 		}
 		else
@@ -4015,6 +4111,150 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopBackpackSlotRightClick
 	return RouteBackpackRightClick(SlotIndex);
 }
 
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopEquipmentSlotLeftClicked(
+	const EGameXXKEquipmentSlot EquipmentSlot)
+{
+	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
+	if (!CarriedEntry.IsValid())
+	{
+		return false;
+	}
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem
+		|| EquipmentSlot == EGameXXKEquipmentSlot::Invalid
+		|| !CarriedEntry.Payload.Entry.bEquipmentInstance)
+	{
+		SetNotice(FText::FromString(TEXT("仅装备实例可放入角色装备格")));
+		return false;
+	}
+
+	FGameXXKEquipmentTransactionResult Result;
+	if (!Subsystem->EquipEquipmentFromDesktopCell(
+		GetActiveBackpackCharacterIdForTest(),
+		EquipmentSlot,
+		CarriedEntry.Payload.AuthoritativeContainer,
+		CarriedEntry.Payload.AuthoritativeSlotIndex,
+		CarriedEntry.Payload.Entry.EntryId,
+		Result))
+	{
+		SetNotice(Result.Message.IsEmpty()
+			? FText::FromString(TEXT("该装备无法放入目标装备格"))
+			: Result.Message);
+		return false;
+	}
+
+	CarriedEntry.Reset();
+	SetNotice(Result.Message);
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::ToggleDesktopEntryLock(
+	const FGameXXKDesktopInventoryEntryKey& Entry)
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !Entry.IsValid())
+	{
+		SetNotice(FText::FromString(TEXT("空格没有可锁定的物品")));
+		return false;
+	}
+	const bool bLock = !FGameXXKDesktopInventoryRules::IsEntryLocked(
+		Subsystem->GetRuntimeState(),
+		Entry);
+	FString Error;
+	if (!FGameXXKDesktopInventoryRules::SetEntryLocked(
+		Subsystem->GetMutableRuntimeState(),
+		Entry,
+		bLock,
+		&Error))
+	{
+		SetNotice(FText::FromString(
+			Error.IsEmpty() ? TEXT("无法切换物品锁定状态") : Error));
+		return false;
+	}
+	SetNotice(FText::FromString(bLock ? TEXT("已锁定物品") : TEXT("已解除物品锁定")));
+	RefreshLayout();
+	return true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopSlotAltClicked(
+	const EGameXXKDesktopItemContainer Container,
+	const int32 SlotIndex)
+{
+	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return false;
+	}
+	return ToggleDesktopEntryLock(FGameXXKDesktopInventoryRules::GetEntryAt(
+		Subsystem->GetRuntimeState(),
+		Container,
+		SlotIndex));
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopEquipmentSlotAltClicked(
+	const EGameXXKEquipmentSlot EquipmentSlot)
+{
+	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || EquipmentSlot == EGameXXKEquipmentSlot::Invalid)
+	{
+		return false;
+	}
+	const FGameXXKEquipmentLoadout* Loadout =
+		Subsystem->GetRuntimeState().EquipmentCollection.CharacterLoadouts.Find(
+			GetActiveBackpackCharacterIdForTest());
+	const FName InstanceId = Loadout
+		? FGameXXKEquipmentRules::GetLoadoutSlotInstanceId(*Loadout, EquipmentSlot)
+		: NAME_None;
+	return ToggleDesktopEntryLock(
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(InstanceId));
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopToolSlotAltClicked(
+	const int32 SlotIndex)
+{
+	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
+	return ToolSlots.IsValidIndex(SlotIndex)
+		? ToggleDesktopEntryLock(ToolSlots[SlotIndex].Entry)
+		: false;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopCarryRightClicked()
+{
+	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
+	if (!CarriedEntry.IsValid())
+	{
+		return false;
+	}
+	const bool bCancelled = CancelCarriedItem();
+	if (bCancelled)
+	{
+		RefreshLayout();
+	}
+	return bCancelled;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::HandleDesktopCharacterSubpageClicked(
+	const EGameXXKCharacterBackpackTab Tab)
+{
+	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
+	if (EmbeddedInventoryWidget)
+	{
+		SavedEmbeddedInventorySession = EmbeddedInventoryWidget->CaptureEmbeddedSessionState();
+	}
+	else
+	{
+		SavedEmbeddedInventorySession = FGameXXKEmbeddedInventorySessionState();
+		SavedEmbeddedInventorySession.CharacterId = GetActiveBackpackCharacterIdForTest();
+	}
+	SavedEmbeddedInventorySession.ActiveCharacterTab = Tab;
+	bHasSavedEmbeddedInventorySession = true;
+	CancelCarryForStructuralChange();
+	RefreshLayout();
+}
+
 bool UGameXXKDesktopTrainingWorkbenchWidget::ShouldHideDesktopInventoryEntry(
 	const EGameXXKDesktopItemContainer Container,
 	const FGameXXKDesktopInventoryEntryKey& Entry) const
@@ -4109,35 +4349,43 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::DropCarriedOnDesktopSlot(
 	{
 		return false;
 	}
-	const FGameXXKDesktopInventoryEntryKey Destination = FGameXXKDesktopInventoryRules::GetEntryAt(
-		Subsystem->GetRuntimeState(),
-		Container,
-		SlotIndex);
-	if (Destination.IsValid()
-		&& !(Container == CarriedEntry.Payload.AuthoritativeContainer
-			&& SlotIndex == CarriedEntry.Payload.AuthoritativeSlotIndex
-			&& Destination == CarriedEntry.Payload.Entry))
+	for (int32 ToolSlotIndex = 0; ToolSlotIndex < ToolSlots.Num(); ++ToolSlotIndex)
 	{
-		SetNotice(FText::FromString(TEXT("目标格已有道具；当前道具继续吸附在鼠标上")));
-		return false;
+		const FDesktopToolEntry& ReservedEntry = ToolSlots[ToolSlotIndex];
+		if (ReservedEntry.IsValid()
+			&& ReservedEntry.AuthoritativeContainer == Container
+			&& ReservedEntry.AuthoritativeSlotIndex == SlotIndex)
+		{
+			SetNotice(FText::FromString(TEXT("目标格已被另一工具输入占用；当前道具继续吸附在鼠标上")));
+			return false;
+		}
 	}
-
-	FString Error;
 	const bool bSameOrigin = Container == CarriedEntry.Payload.AuthoritativeContainer
 		&& SlotIndex == CarriedEntry.Payload.AuthoritativeSlotIndex;
-	if (!bSameOrigin
-		&& !Subsystem->MoveDesktopInventoryEntry(
-			CarriedEntry.Payload.AuthoritativeContainer,
-			CarriedEntry.Payload.AuthoritativeSlotIndex,
-			Container,
-			SlotIndex,
-			&Error))
+	if (bSameOrigin && !CarriedEntry.bOriginIsTool)
+	{
+		CarriedEntry.Reset();
+		RefreshLayout();
+		return true;
+	}
+
+	FGameXXKDesktopInventoryMoveRequest Request;
+	Request.FromContainer = CarriedEntry.Payload.AuthoritativeContainer;
+	Request.FromSlotIndex = CarriedEntry.Payload.AuthoritativeSlotIndex;
+	Request.ToContainer = Container;
+	Request.ToSlotIndex = SlotIndex;
+	Request.bAllowSwap = true;
+	Request.ExpectedEntry = CarriedEntry.Payload.Entry;
+	FString Error;
+	if (!FGameXXKDesktopInventoryRules::MoveOrSwap(
+		Subsystem->GetMutableRuntimeState(),
+		Request,
+		&Error))
 	{
 		SetNotice(FText::FromString(Error.IsEmpty() ? TEXT("该格无法放置道具") : Error));
 		return false;
 	}
 	CarriedEntry.Reset();
-	Subsystem->NormalizeDesktopInventoryState();
 	RefreshLayout();
 	return true;
 }
@@ -4145,9 +4393,31 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::DropCarriedOnDesktopSlot(
 bool UGameXXKDesktopTrainingWorkbenchWidget::DropCarriedOnToolSlot(const int32 SlotIndex)
 {
 	ToolSlots.SetNum(ToolSlotCount);
-	if (!CarriedEntry.IsValid() || !ToolSlots.IsValidIndex(SlotIndex) || ToolSlots[SlotIndex].IsValid())
+	if (!CarriedEntry.IsValid() || !ToolSlots.IsValidIndex(SlotIndex))
 	{
 		return false;
+	}
+	if (CarriedEntry.bOriginIsTool
+		&& SlotIndex == CarriedEntry.OriginToolSlotIndex)
+	{
+		const bool bCancelled = CancelCarriedItem();
+		if (bCancelled)
+		{
+			RefreshLayout();
+		}
+		return bCancelled;
+	}
+
+	const FDesktopToolEntry DisplacedEntry = ToolSlots[SlotIndex];
+	if (CarriedEntry.bOriginIsTool)
+	{
+		if (!ToolSlots.IsValidIndex(CarriedEntry.OriginToolSlotIndex)
+			|| ToolSlots[CarriedEntry.OriginToolSlotIndex].IsValid())
+		{
+			SetNotice(FText::FromString(TEXT("原工具格已变化；当前道具继续吸附在鼠标上")));
+			return false;
+		}
+		ToolSlots[CarriedEntry.OriginToolSlotIndex] = DisplacedEntry;
 	}
 	ToolSlots[SlotIndex] = CarriedEntry.Payload;
 	CarriedEntry.Reset();
@@ -4449,6 +4719,49 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
 	if (!Subsystem || CarriedEntry.IsValid())
 	{
 		return false;
+	}
+	const FGameXXKRuntimeState& RuntimeState = Subsystem->GetRuntimeState();
+	for (const FDesktopToolEntry& ReservedEntry : ToolSlots)
+	{
+		if (!ReservedEntry.IsValid())
+		{
+			continue;
+		}
+		const bool bValidContainer =
+			ReservedEntry.AuthoritativeContainer == EGameXXKDesktopItemContainer::Backpack
+			|| ReservedEntry.AuthoritativeContainer == EGameXXKDesktopItemContainer::Warehouse;
+		const bool bValidSlot = ReservedEntry.AuthoritativeSlotIndex >= 0
+			&& ReservedEntry.AuthoritativeSlotIndex < FGameXXKDesktopInventoryRules::BackpackCapacity;
+		const FGameXXKDesktopInventoryEntryKey PhysicalEntry = bValidContainer && bValidSlot
+			? FGameXXKDesktopInventoryRules::GetEntryAt(
+				RuntimeState,
+				ReservedEntry.AuthoritativeContainer,
+				ReservedEntry.AuthoritativeSlotIndex)
+			: FGameXXKDesktopInventoryEntryKey();
+		bool bExactAuthority = PhysicalEntry == ReservedEntry.Entry;
+		if (bExactAuthority && ReservedEntry.Entry.bEquipmentInstance)
+		{
+			bExactAuthority = ReservedEntry.Quantity == 1
+				&& RuntimeState.EquipmentCollection.WarehouseInstanceIds.Contains(
+					ReservedEntry.Entry.EntryId)
+				&& FGameXXKEquipmentRules::FindInstance(
+					RuntimeState.EquipmentCollection,
+					ReservedEntry.Entry.EntryId) != nullptr;
+		}
+		else if (bExactAuthority)
+		{
+			const int32 AuthoritativeQuantity =
+				ReservedEntry.AuthoritativeContainer == EGameXXKDesktopItemContainer::Warehouse
+					? RuntimeState.DesktopInventory.WarehouseItems.FindRef(ReservedEntry.Entry.EntryId)
+					: RuntimeState.Inventory.FindRef(ReservedEntry.Entry.EntryId);
+			bExactAuthority = AuthoritativeQuantity > 0
+				&& AuthoritativeQuantity == ReservedEntry.Quantity;
+		}
+		if (!bExactAuthority)
+		{
+			SetNotice(FText::FromString(TEXT("工具输入来源已变化；未执行操作且未消耗任何道具")));
+			return false;
+		}
 	}
 	TArray<FName> EquipmentInstanceIds;
 	for (const FDesktopToolEntry& Entry : ToolSlots)
@@ -4918,5 +5231,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::SetNotice(const FText& Notice)
 	if (NoticeText)
 	{
 		NoticeText->SetText(Notice);
+	}
+	if (NoticePanel)
+	{
+		NoticePanel->SetVisibility(
+			Notice.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	}
 }

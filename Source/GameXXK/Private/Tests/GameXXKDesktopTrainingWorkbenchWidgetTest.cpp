@@ -16,6 +16,7 @@
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
+#include "Components/OverlaySlot.h"
 #include "Components/ProgressBar.h"
 #include "Components/ScaleBox.h"
 #include "Components/SizeBox.h"
@@ -265,6 +266,122 @@ namespace
 			return false;
 		}
 		return true;
+	}
+
+	FName CreateCarryTestEquipment(
+		FAutomationTestBase& Test,
+		FGameXXKRuntimeState& State,
+		const EGameXXKEquipmentSlot Slot,
+		const TCHAR* Context)
+	{
+		FGameXXKEquipmentCreateRequest Request;
+		Request.Set = EGameXXKEquipmentSet::XuanJia;
+		Request.Quality = EGameXXKEquipmentQuality::Rare;
+		Request.ItemLevel = 4;
+		Request.bForceSlot = true;
+		Request.ForcedSlot = Slot;
+
+		FName InstanceId;
+		FString Error;
+		if (!Test.TestTrue(
+			Context,
+			FGameXXKEquipmentRules::CreateRolledInstance(
+				State.EquipmentCollection,
+				Request,
+				InstanceId,
+				&Error)))
+		{
+			Test.AddError(Error);
+		}
+		return InstanceId;
+	}
+
+	UGameXXKInventoryWindowWidget* FindEmbeddedInventory(
+		UGameXXKDesktopTrainingWorkbenchWidget* Workbench)
+	{
+		return Workbench && Workbench->WidgetTree
+			? Cast<UGameXXKInventoryWindowWidget>(
+				Workbench->WidgetTree->FindWidget(TEXT("EmbeddedApprovedBackpack")))
+			: nullptr;
+	}
+
+	UGameXXKInventorySlotButton* FindEmbeddedBackpackButton(
+		UGameXXKDesktopTrainingWorkbenchWidget* Workbench,
+		const int32 SlotIndex)
+	{
+		UGameXXKInventoryWindowWidget* Inventory = FindEmbeddedInventory(Workbench);
+		return Inventory && Inventory->WidgetTree
+			? Cast<UGameXXKInventorySlotButton>(Inventory->WidgetTree->FindWidget(
+				*FString::Printf(TEXT("InventoryBackpackSlot_%02d"), SlotIndex)))
+			: nullptr;
+	}
+
+	UGameXXKInventorySlotButton* FindEmbeddedEquipmentButton(
+		UGameXXKDesktopTrainingWorkbenchWidget* Workbench,
+		const TCHAR* SlotName)
+	{
+		UGameXXKInventoryWindowWidget* Inventory = FindEmbeddedInventory(Workbench);
+		return Inventory && Inventory->WidgetTree
+			? Cast<UGameXXKInventorySlotButton>(Inventory->WidgetTree->FindWidget(
+				*FString::Printf(TEXT("InventoryEquipmentSlot_%s"), SlotName)))
+			: nullptr;
+	}
+
+	UGameXXKDesktopTrainingActionButton* FindWorkbenchActionButton(
+		UGameXXKDesktopTrainingWorkbenchWidget* Workbench,
+		const FName WidgetName)
+	{
+		return Workbench && Workbench->WidgetTree
+			? Cast<UGameXXKDesktopTrainingActionButton>(
+				Workbench->WidgetTree->FindWidget(WidgetName))
+			: nullptr;
+	}
+
+	bool ClickAndFlush(
+		UGameXXKDesktopTrainingWorkbenchWidget* Workbench,
+		UButton* Button)
+	{
+		if (!Workbench || !Button)
+		{
+			return false;
+		}
+		Button->OnClicked.Broadcast();
+		Workbench->TickForTest(0.0f);
+		return true;
+	}
+
+	void TestLockedCellOverlay(
+		FAutomationTestBase& Test,
+		const TCHAR* Context,
+		UImage* LockedIcon)
+	{
+		if (!Test.TestNotNull(Context, LockedIcon))
+		{
+			return;
+		}
+		const UObject* Resource = LockedIcon->GetBrush().GetResourceObject();
+		Test.TestTrue(
+			*FString::Printf(TEXT("%s uses the approved locked-card texture"), Context),
+			Resource && Resource->GetPathName().Contains(
+				TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardLockedIcon")));
+		Test.TestEqual(
+			*FString::Printf(TEXT("%s is hit-test-invisible"), Context),
+			LockedIcon->GetVisibility(),
+			ESlateVisibility::HitTestInvisible);
+		const UOverlaySlot* OverlaySlot = Cast<UOverlaySlot>(LockedIcon->Slot);
+		if (Test.TestNotNull(
+			*FString::Printf(TEXT("%s owns overlay geometry"), Context),
+			OverlaySlot))
+		{
+			Test.TestEqual(
+				*FString::Printf(TEXT("%s is right aligned"), Context),
+				OverlaySlot->GetHorizontalAlignment(),
+				HAlign_Right);
+			Test.TestEqual(
+				*FString::Printf(TEXT("%s is top aligned"), Context),
+				OverlaySlot->GetVerticalAlignment(),
+				VAlign_Top);
+		}
 	}
 }
 
@@ -1181,6 +1298,1015 @@ bool FGameXXKDesktopTrainingItemCarryStateMachineTest::RunTest(const FString& Pa
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingItemCarryPlacementTest,
+	"GameXXK.DesktopTraining.Workbench.ItemCarryPlacement",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingItemCarryPlacementTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!TestNotNull(TEXT("placement fixture subsystem exists"), Subsystem)
+		|| !Subsystem->StartGame())
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Screen = EGameXXKScreen::Town;
+	State.Inventory.Add(UGameXXKMVPRules::ItemHealingPowder(), 3);
+	if (!TestTrue(TEXT("placement fixture normalizes"), Subsystem->NormalizeDesktopInventoryState()))
+	{
+		return false;
+	}
+
+	const FName StoneId = UGameXXKMVPRules::ItemEnhancementStone();
+	const FName SandId = UGameXXKMVPRules::ItemHealingPowder();
+	const FGameXXKDesktopInventoryEntryKey StoneEntry =
+		FGameXXKDesktopInventoryRules::MakeItemEntry(StoneId);
+	const FGameXXKDesktopInventoryEntryKey SandEntry =
+		FGameXXKDesktopInventoryRules::MakeItemEntry(SandId);
+	const int32 InitialStoneSlot = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		State, EGameXXKDesktopItemContainer::Backpack, StoneEntry);
+	const int32 InitialSandSlot = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		State, EGameXXKDesktopItemContainer::Backpack, SandEntry);
+	if (!TestTrue(TEXT("fixture finds two whole item stacks"),
+		InitialStoneSlot != INDEX_NONE && InitialSandSlot != INDEX_NONE))
+	{
+		return false;
+	}
+	FString Error;
+	TestTrue(TEXT("fixture places one item stack in Warehouse slot zero"),
+		FGameXXKDesktopInventoryRules::MoveEntry(
+			State,
+			EGameXXKDesktopItemContainer::Backpack,
+			InitialStoneSlot,
+			EGameXXKDesktopItemContainer::Warehouse,
+			0,
+			&Error));
+
+	const FGameXXKOrderedPartyFormation FormationBefore = State.CardRun.OrderedFormation;
+	const FGameXXKTrainingProgress TrainingBefore = State.Training;
+	UGameXXKDesktopTrainingWorkbenchWidget* Workbench =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Workbench->SetMVPSubsystem(Subsystem);
+	Workbench->ConstructForTest();
+	if (!TestTrue(TEXT("placement fixture opens Backpack"), Workbench->OpenBackpack()))
+	{
+		return false;
+	}
+
+	int32 SandSource = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		State, EGameXXKDesktopItemContainer::Backpack, SandEntry);
+	int32 EmptyBackpackSlot = FGameXXKDesktopInventoryRules::FindFirstEmptySlot(
+		State, EGameXXKDesktopItemContainer::Backpack);
+	UGameXXKInventorySlotButton* SandSourceButton = FindEmbeddedBackpackButton(Workbench, SandSource);
+	if (!TestNotNull(TEXT("real Backpack source button exists"), SandSourceButton)
+		|| !ClickAndFlush(Workbench, SandSourceButton))
+	{
+		return false;
+	}
+	TestTrue(TEXT("real OnClicked starts the non-committing carry"),
+		Workbench->HasDesktopCarriedEntry());
+	TestEqual(TEXT("pickup leaves the whole stack authoritative"),
+		Subsystem->GetItemCount(SandId), 3);
+	UImage* CarriedVisual = Workbench->WidgetTree
+		? Cast<UImage>(Workbench->WidgetTree->FindWidget(TEXT("DesktopCarriedItemImage")))
+		: nullptr;
+	if (TestNotNull(TEXT("carry creates a visible cursor preview"), CarriedVisual))
+	{
+		TestEqual(TEXT("cursor preview never owns the second click"),
+			CarriedVisual->GetVisibility(), ESlateVisibility::HitTestInvisible);
+		TestFalse(TEXT("cursor preview is disabled"), CarriedVisual->GetIsEnabled());
+	}
+	UGameXXKInventorySlotButton* EmptyBackpackButton =
+		FindEmbeddedBackpackButton(Workbench, EmptyBackpackSlot);
+	TestTrue(TEXT("real second Backpack click places into an empty cell"),
+		ClickAndFlush(Workbench, EmptyBackpackButton));
+	TestFalse(TEXT("successful empty placement clears carry"),
+		Workbench->HasDesktopCarriedEntry());
+	TestEqual(TEXT("empty Backpack target receives the exact stack key"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, EmptyBackpackSlot),
+		SandEntry);
+
+	TestTrue(TEXT("real click picks the moved stack up again"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, EmptyBackpackSlot)));
+	TestTrue(TEXT("clicking the original source cell cancels"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, EmptyBackpackSlot)));
+	TestFalse(TEXT("source cancellation clears carry"),
+		Workbench->HasDesktopCarriedEntry());
+	TestEqual(TEXT("source cancellation never mutates the physical cell"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, EmptyBackpackSlot),
+		SandEntry);
+
+	TestTrue(TEXT("real Warehouse navigation button opens the panel"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("BottomNavigationButton_0"))));
+	const int32 EquipmentSource = Workbench->FindFirstBackpackEquipmentSlotForTest();
+	const FGameXXKDesktopInventoryEntryKey EquipmentEntry =
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, EquipmentSource);
+	if (!TestTrue(TEXT("fixture finds an equipment-instance source"),
+		EquipmentSource != INDEX_NONE && EquipmentEntry.bEquipmentInstance))
+	{
+		return false;
+	}
+	TestTrue(TEXT("real equipment-cell click starts a carry"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, EquipmentSource)));
+	TestTrue(TEXT("occupied Warehouse target atomically accepts a mixed swap"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("WarehouseSlot_0"))));
+	TestFalse(TEXT("successful occupied Warehouse swap clears carry"),
+		Workbench->HasDesktopCarriedEntry());
+	TestEqual(TEXT("Warehouse receives the equipment instance"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Warehouse, 0),
+		EquipmentEntry);
+	TestEqual(TEXT("displaced item stack returns to the exact Backpack source"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, EquipmentSource),
+		StoneEntry);
+
+	TestTrue(TEXT("real Warehouse click picks the swapped equipment up"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("WarehouseSlot_0"))));
+	TestTrue(TEXT("occupied Backpack target atomically accepts the reverse mixed swap"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, EquipmentSource)));
+	TestEqual(TEXT("reverse swap restores equipment to Backpack"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, EquipmentSource),
+		EquipmentEntry);
+	TestEqual(TEXT("reverse swap restores item stack to Warehouse"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Warehouse, 0),
+		StoneEntry);
+
+	TestTrue(TEXT("Backpack equipment can be picked for an empty Warehouse target"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, EquipmentSource)));
+	TestTrue(TEXT("empty Warehouse placement succeeds"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("WarehouseSlot_1"))));
+	TestEqual(TEXT("empty Warehouse target owns the equipment instance"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Warehouse, 1),
+		EquipmentEntry);
+	TestTrue(TEXT("Warehouse item stack can be picked for an empty Backpack target"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("WarehouseSlot_0"))));
+	TestTrue(TEXT("empty Backpack placement from Warehouse succeeds"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, EquipmentSource)));
+	TestEqual(TEXT("empty Backpack target receives the Warehouse stack"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, EquipmentSource),
+		StoneEntry);
+
+	TArray<int32> OccupiedBackpackSlots;
+	for (int32 SlotIndex = 0;
+		SlotIndex < FGameXXKDesktopInventoryRules::BackpackCapacity
+			&& OccupiedBackpackSlots.Num() < 2;
+		++SlotIndex)
+	{
+		if (FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, SlotIndex).IsValid())
+		{
+			OccupiedBackpackSlots.Add(SlotIndex);
+		}
+	}
+	if (!TestEqual(TEXT("ABA fixture finds two occupied cells"),
+		OccupiedBackpackSlots.Num(), 2))
+	{
+		return false;
+	}
+	const int32 AbaSource = OccupiedBackpackSlots[0];
+	const int32 AbaReplacementSource = OccupiedBackpackSlots[1];
+	const FGameXXKDesktopInventoryEntryKey ExpectedCarriedEntry =
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, AbaSource);
+	TestTrue(TEXT("ABA fixture picks the expected source through real OnClicked"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, AbaSource)));
+	Swap(
+		State.DesktopInventory.BackpackSlots[AbaSource],
+		State.DesktopInventory.BackpackSlots[AbaReplacementSource]);
+	const int32 AbaTarget = FGameXXKDesktopInventoryRules::FindFirstEmptySlot(
+		State, EGameXXKDesktopItemContainer::Backpack);
+	const FGameXXKDesktopInventoryEntryKey AbaTargetBefore =
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, AbaTarget);
+	TestTrue(TEXT("ABA target owns a real empty button"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, AbaTarget)));
+	TestTrue(TEXT("stale ExpectedEntry rejection retains carry"),
+		Workbench->HasDesktopCarriedEntry());
+	TestFalse(TEXT("stale ExpectedEntry rejection surfaces a reason"),
+		Workbench->GetLastDesktopInventoryNoticeForTest().IsEmpty());
+	UBorder* FirstFailureNoticePanel = Workbench->WidgetTree
+		? Cast<UBorder>(Workbench->WidgetTree->FindWidget(TEXT("DesktopInventoryNoticePanel")))
+		: nullptr;
+	UTextBlock* FirstFailureNoticeText = Workbench->WidgetTree
+		? Cast<UTextBlock>(Workbench->WidgetTree->FindWidget(TEXT("DesktopInventoryNoticeText")))
+		: nullptr;
+	if (TestNotNull(TEXT("the first failed drop creates a rendered notice panel"), FirstFailureNoticePanel)
+		&& TestNotNull(TEXT("the first failed drop creates rendered notice text"), FirstFailureNoticeText))
+	{
+		TestTrue(TEXT("the first failed drop notice is visibly rendered"),
+			FirstFailureNoticePanel->GetVisibility() != ESlateVisibility::Collapsed
+				&& FirstFailureNoticePanel->GetVisibility() != ESlateVisibility::Hidden);
+		TestTrue(TEXT("the first failed drop notice text is visibly rendered"),
+			FirstFailureNoticeText->GetVisibility() != ESlateVisibility::Collapsed
+				&& FirstFailureNoticeText->GetVisibility() != ESlateVisibility::Hidden);
+		TestEqual(TEXT("the rendered notice exposes the actual rules failure"),
+			FirstFailureNoticeText->GetText(),
+			Workbench->GetLastDesktopInventoryNoticeForTest());
+	}
+	TestEqual(TEXT("stale ExpectedEntry rejection leaves target unchanged"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, AbaTarget),
+		AbaTargetBefore);
+	TestNotEqual(TEXT("ABA source was externally replaced"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, AbaSource),
+		ExpectedCarriedEntry);
+	TestTrue(TEXT("right click cancels the retained stale carry"),
+		Workbench->CancelCarriedFromWorkbenchRightMouseForTest());
+
+	TestTrue(TEXT("inventory carry never changes ordered Formation"),
+		FGameXXKOrderedPartyFormation::StaticStruct()->CompareScriptStruct(
+			&State.CardRun.OrderedFormation,
+			&FormationBefore,
+			PPF_None));
+	TestTrue(TEXT("inventory carry never changes Training Travel"),
+		FGameXXKTrainingProgress::StaticStruct()->CompareScriptStruct(
+			&State.Training,
+			&TrainingBefore,
+			PPF_None));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingItemCarryCharacterSubpageBoundaryTest,
+	"GameXXK.DesktopTraining.Workbench.ItemCarryCharacterSubpageBoundary",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingItemCarryCharacterSubpageBoundaryTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!TestNotNull(TEXT("character-subpage boundary fixture subsystem exists"), Subsystem)
+		|| !Subsystem->StartGame())
+	{
+		return false;
+	}
+	UGameXXKDesktopTrainingWorkbenchWidget* Workbench =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Workbench->SetMVPSubsystem(Subsystem);
+	Workbench->ConstructForTest();
+	if (!TestTrue(TEXT("character-subpage boundary fixture opens Backpack"),
+		Workbench->OpenBackpack()))
+	{
+		return false;
+	}
+
+	const EGameXXKCharacterBackpackTab TargetTabs[] = {
+		EGameXXKCharacterBackpackTab::Deck,
+		EGameXXKCharacterBackpackTab::Attributes,
+		EGameXXKCharacterBackpackTab::Talents,
+		EGameXXKCharacterBackpackTab::Titles};
+	const int32 TargetTabButtonIndices[] = {2, 0, 3, 4};
+	for (int32 CaseIndex = 0; CaseIndex < UE_ARRAY_COUNT(TargetTabs); ++CaseIndex)
+	{
+		const int32 SourceSlot = Workbench->FindFirstBackpackEquipmentSlotForTest();
+		const FGameXXKDesktopInventoryEntryKey SourceEntry =
+			FGameXXKDesktopInventoryRules::GetEntryAt(
+				Subsystem->GetRuntimeState(),
+				EGameXXKDesktopItemContainer::Backpack,
+				SourceSlot);
+		if (!TestTrue(
+			*FString::Printf(TEXT("subpage case %d finds an authoritative carry source"), CaseIndex),
+			SourceSlot != INDEX_NONE && SourceEntry.IsValid())
+			|| !TestTrue(
+				*FString::Printf(TEXT("subpage case %d starts carry through a real slot callback"), CaseIndex),
+				ClickAndFlush(
+					Workbench,
+					FindEmbeddedBackpackButton(Workbench, SourceSlot))))
+		{
+			return false;
+		}
+		TestTrue(
+			*FString::Printf(TEXT("subpage case %d establishes carry before the tab click"), CaseIndex),
+			Workbench->HasDesktopCarriedEntry());
+
+		UGameXXKInventoryWindowWidget* Embedded = FindEmbeddedInventory(Workbench);
+		UGameXXKCharacterBackpackTabButton* TargetTabButton =
+			Embedded && Embedded->WidgetTree
+				? Cast<UGameXXKCharacterBackpackTabButton>(Embedded->WidgetTree->FindWidget(
+					*FString::Printf(
+						TEXT("InventoryCharacterTab_%d"),
+						TargetTabButtonIndices[CaseIndex])))
+				: nullptr;
+		if (!TestNotNull(
+			*FString::Printf(TEXT("subpage case %d owns the real target tab button"), CaseIndex),
+			TargetTabButton))
+		{
+			return false;
+		}
+		const int32 BuildCountBeforeTabCallback =
+			Workbench->GetProgrammaticLayoutBuildCountForTest();
+		TargetTabButton->OnClicked.Broadcast();
+		TestFalse(
+			*FString::Printf(TEXT("subpage case %d callback cancels carry immediately"), CaseIndex),
+			Workbench->HasDesktopCarriedEntry());
+		TestEqual(
+			*FString::Printf(TEXT("subpage case %d callback never rebuilds the parent reentrantly"), CaseIndex),
+			Workbench->GetProgrammaticLayoutBuildCountForTest(),
+			BuildCountBeforeTabCallback);
+		TestTrue(
+			*FString::Printf(TEXT("subpage case %d schedules one safe parent refresh"), CaseIndex),
+			Workbench->HasPendingLayoutRefreshForTest());
+		TestEqual(
+			*FString::Printf(TEXT("subpage case %d preserves the authoritative source"), CaseIndex),
+			FGameXXKDesktopInventoryRules::GetEntryAt(
+				Subsystem->GetRuntimeState(),
+				EGameXXKDesktopItemContainer::Backpack,
+				SourceSlot),
+			SourceEntry);
+
+		Workbench->TickForTest(0.0f);
+		Embedded = FindEmbeddedInventory(Workbench);
+		TestEqual(
+			*FString::Printf(TEXT("subpage case %d keeps the clicked subpage after deferred rebuild"), CaseIndex),
+			Embedded ? Embedded->GetActiveCharacterBackpackTabForTest()
+				: EGameXXKCharacterBackpackTab::Equipment,
+			TargetTabs[CaseIndex]);
+		TestNull(
+			*FString::Printf(TEXT("subpage case %d deferred rebuild removes the carried visual"), CaseIndex),
+			Workbench->WidgetTree
+				? Workbench->WidgetTree->FindWidget(TEXT("DesktopCarriedItemImage"))
+				: nullptr);
+
+		UGameXXKCharacterBackpackTabButton* EquipmentTabButton =
+			Embedded && Embedded->WidgetTree
+				? Cast<UGameXXKCharacterBackpackTabButton>(
+					Embedded->WidgetTree->FindWidget(TEXT("InventoryCharacterTab_1")))
+				: nullptr;
+		if (!TestNotNull(
+			*FString::Printf(TEXT("subpage case %d can return through the real Equipment tab"), CaseIndex),
+			EquipmentTabButton)
+			|| !ClickAndFlush(Workbench, EquipmentTabButton))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingItemCarryEquipmentTest,
+	"GameXXK.DesktopTraining.Workbench.ItemCarryEquipment",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingItemCarryEquipmentTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!TestNotNull(TEXT("equipment-carry fixture subsystem exists"), Subsystem)
+		|| !Subsystem->StartGame())
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Screen = EGameXXKScreen::Town;
+	if (!TestTrue(TEXT("fixture owns a permanent companion"),
+		State.CardRun.CompanionRoster.PermanentCompanions.Num() > 0))
+	{
+		return false;
+	}
+	const FName CharacterId =
+		State.CardRun.CompanionRoster.PermanentCompanions[0].InstanceId;
+	const FName ExistingWeapon = CreateCarryTestEquipment(
+		*this, State, EGameXXKEquipmentSlot::Weapon,
+		TEXT("fixture creates the initially equipped weapon"));
+	const FName IncomingWeapon = CreateCarryTestEquipment(
+		*this, State, EGameXXKEquipmentSlot::Weapon,
+		TEXT("fixture creates the replacement weapon"));
+	const FName WrongSlotWeapon = CreateCarryTestEquipment(
+		*this, State, EGameXXKEquipmentSlot::Weapon,
+		TEXT("fixture creates the wrong-slot weapon"));
+	const FName IncomingArmor = CreateCarryTestEquipment(
+		*this, State, EGameXXKEquipmentSlot::Armor,
+		TEXT("fixture creates the empty-slot armor"));
+	FGameXXKEquipmentTransactionResult EquipResult;
+	if (!TestTrue(TEXT("fixture equips the companion's existing weapon"),
+		Subsystem->EquipEquipmentInstance(
+			CharacterId,
+			EGameXXKEquipmentSlot::Weapon,
+			ExistingWeapon,
+			EquipResult))
+		|| !TestTrue(TEXT("equipment-carry fixture normalizes"),
+			Subsystem->NormalizeDesktopInventoryState()))
+	{
+		return false;
+	}
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Workbench =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Workbench->SetMVPSubsystem(Subsystem);
+	Workbench->ConstructForTest();
+	TestTrue(TEXT("equipment-carry fixture opens Backpack"), Workbench->OpenBackpack());
+	TestTrue(TEXT("fixture views the exact companion owner"),
+		Workbench->SelectBackpackCharacterForTest(CharacterId));
+	TestEqual(TEXT("embedded inventory follows the viewed owner"),
+		Workbench->GetEmbeddedBackpackCharacterIdForTest(), CharacterId);
+
+	const FGameXXKDesktopInventoryEntryKey IncomingEntry =
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(IncomingWeapon);
+	const int32 IncomingSource = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		State, EGameXXKDesktopItemContainer::Backpack, IncomingEntry);
+	if (!TestTrue(TEXT("replacement weapon has an authoritative Backpack cell"),
+		IncomingSource != INDEX_NONE))
+	{
+		return false;
+	}
+	TestTrue(TEXT("real Backpack OnClicked carries replacement equipment"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, IncomingSource)));
+	TestTrue(TEXT("explicit Alt seam toggles the carried source lock"),
+		Workbench->HandleDesktopSlotAltClicked(
+			EGameXXKDesktopItemContainer::Backpack,
+			IncomingSource));
+	Workbench->TickForTest(0.0f);
+	TestTrue(TEXT("Alt priority keeps carry unchanged"),
+		Workbench->HasDesktopCarriedEntry());
+	TestTrue(TEXT("Alt locks the stable incoming instance"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(State, IncomingEntry));
+
+	TestTrue(TEXT("real embedded equipment OnClicked delegates to Workbench"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedEquipmentButton(Workbench, TEXT("Weapon"))));
+	TestFalse(TEXT("successful equipment replacement clears carry"),
+		Workbench->HasDesktopCarriedEntry());
+	const FGameXXKEquipmentLoadout* CharacterLoadout =
+		State.EquipmentCollection.CharacterLoadouts.Find(CharacterId);
+	if (TestNotNull(TEXT("viewed companion owns a six-slot loadout"), CharacterLoadout))
+	{
+		TestEqual(TEXT("replacement equips the carried instance on the viewed owner"),
+			FGameXXKEquipmentRules::GetLoadoutSlotInstanceId(
+				*CharacterLoadout,
+				EGameXXKEquipmentSlot::Weapon),
+			IncomingWeapon);
+	}
+	const FGameXXKEquipmentLoadout* HeroLoadout =
+		State.EquipmentCollection.CharacterLoadouts.Find(
+			FGameXXKEquipmentRules::HeroCharacterId());
+	TestTrue(TEXT("equipment delegation never redirects to Hero"),
+		!HeroLoadout
+			|| FGameXXKEquipmentRules::GetLoadoutSlotInstanceId(
+				*HeroLoadout,
+				EGameXXKEquipmentSlot::Weapon).IsNone());
+	TestEqual(TEXT("displaced equipment returns to the exact carried source cell"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, IncomingSource),
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(ExistingWeapon));
+	TestTrue(TEXT("lock persists across equipment replacement"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(State, IncomingEntry));
+	UGameXXKInventoryWindowWidget* Embedded = FindEmbeddedInventory(Workbench);
+	UImage* EquipmentLockedIcon = Embedded && Embedded->WidgetTree
+		? Cast<UImage>(Embedded->WidgetTree->FindWidget(
+			TEXT("InventoryEquipmentLockedIcon_Weapon")))
+		: nullptr;
+	TestLockedCellOverlay(
+		*this,
+		TEXT("embedded Equipment lock overlay"),
+		EquipmentLockedIcon);
+
+	const FGameXXKDesktopInventoryEntryKey WrongSlotEntry =
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(WrongSlotWeapon);
+	const int32 WrongSlotSource = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		State, EGameXXKDesktopItemContainer::Backpack, WrongSlotEntry);
+	TestTrue(TEXT("wrong-slot weapon starts a real carry"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, WrongSlotSource)));
+	TestTrue(TEXT("wrong equipment slot owns a real OnClicked target"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedEquipmentButton(Workbench, TEXT("Head"))));
+	TestTrue(TEXT("wrong-slot rejection retains carry"),
+		Workbench->HasDesktopCarriedEntry());
+	TestFalse(TEXT("wrong-slot rejection surfaces a reason"),
+		Workbench->GetLastDesktopInventoryNoticeForTest().IsEmpty());
+	Embedded = FindEmbeddedInventory(Workbench);
+	TestTrue(TEXT("equipment-slot right click cancels carry before unequip behavior"),
+		Embedded && Embedded->HandleConfiguredSlotRightClicked(
+			EGameXXKInventorySlotSource::Equipment,
+			1,
+			TEXT("Head")));
+	Workbench->TickForTest(0.0f);
+	TestFalse(TEXT("equipment-slot right click clears rejected carry"),
+		Workbench->HasDesktopCarriedEntry());
+
+	const FGameXXKDesktopInventoryEntryKey ArmorEntry =
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(IncomingArmor);
+	const int32 ArmorSource = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		State, EGameXXKDesktopItemContainer::Backpack, ArmorEntry);
+	TestTrue(TEXT("armor starts a real carry"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, ArmorSource)));
+	TestTrue(TEXT("compatible empty equipment slot accepts the carried instance"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedEquipmentButton(Workbench, TEXT("Armor"))));
+	CharacterLoadout = State.EquipmentCollection.CharacterLoadouts.Find(CharacterId);
+	if (TestNotNull(TEXT("empty-slot equip keeps the companion loadout"), CharacterLoadout))
+	{
+		TestEqual(TEXT("empty Armor slot now owns the incoming armor"),
+			FGameXXKEquipmentRules::GetLoadoutSlotInstanceId(
+				*CharacterLoadout,
+				EGameXXKEquipmentSlot::Armor),
+			IncomingArmor);
+	}
+	TestFalse(TEXT("empty-slot equip clears the exact source cell"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, ArmorSource).IsValid());
+
+	Embedded = FindEmbeddedInventory(Workbench);
+	UGameXXKInventorySlotButton* WeaponButton =
+		FindEmbeddedEquipmentButton(Workbench, TEXT("Weapon"));
+	TestTrue(TEXT("equipment click without carry keeps select/detail behavior"),
+		ClickAndFlush(Workbench, WeaponButton));
+	Embedded = FindEmbeddedInventory(Workbench);
+	TestFalse(TEXT("selected equipped instance exposes detail text"),
+		Embedded ? Embedded->GetSelectedDetailTextForTest().IsEmpty() : true);
+	TestTrue(TEXT("explicit Equipment Alt seam toggles the equipped lock"),
+		Embedded && Embedded->HandleConfiguredSlotAltClicked(
+			EGameXXKInventorySlotSource::Equipment,
+			0,
+			TEXT("Weapon")));
+	Workbench->TickForTest(0.0f);
+	TestFalse(TEXT("Equipment Alt toggles the exact equipped instance"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(State, IncomingEntry));
+	TestFalse(TEXT("Equipment Alt never starts a carry"),
+		Workbench->HasDesktopCarriedEntry());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingItemCarryToolAndLockTest,
+	"GameXXK.DesktopTraining.Workbench.ItemCarryToolAndLocks",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingItemCarryToolAndLockTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!TestNotNull(TEXT("tool-carry fixture subsystem exists"), Subsystem)
+		|| !Subsystem->StartGame())
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Screen = EGameXXKScreen::Town;
+	if (!TestTrue(TEXT("tool-carry fixture normalizes"),
+		Subsystem->NormalizeDesktopInventoryState()))
+	{
+		return false;
+	}
+	const FName StoneId = UGameXXKMVPRules::ItemEnhancementStone();
+	const FGameXXKDesktopInventoryEntryKey StoneEntry =
+		FGameXXKDesktopInventoryRules::MakeItemEntry(StoneId);
+	const int32 StoneSource = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		State, EGameXXKDesktopItemContainer::Backpack, StoneEntry);
+	FString Error;
+	if (!TestTrue(TEXT("fixture moves the item stack to Warehouse zero"),
+		FGameXXKDesktopInventoryRules::MoveEntry(
+			State,
+			EGameXXKDesktopItemContainer::Backpack,
+			StoneSource,
+			EGameXXKDesktopItemContainer::Warehouse,
+			0,
+			&Error)))
+	{
+		return false;
+	}
+
+	TArray<int32> SourceSlots;
+	TArray<FGameXXKDesktopInventoryEntryKey> SourceEntries;
+	for (int32 SlotIndex = 0;
+		SlotIndex < FGameXXKDesktopInventoryRules::BackpackCapacity
+			&& SourceSlots.Num() < 4;
+		++SlotIndex)
+	{
+		const FGameXXKDesktopInventoryEntryKey Entry =
+			FGameXXKDesktopInventoryRules::GetEntryAt(
+				State, EGameXXKDesktopItemContainer::Backpack, SlotIndex);
+		if (Entry.IsValid())
+		{
+			SourceSlots.Add(SlotIndex);
+			SourceEntries.Add(Entry);
+		}
+	}
+	if (!TestEqual(TEXT("tool fixture finds four independent storage entries"),
+		SourceSlots.Num(), 4))
+	{
+		return false;
+	}
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Workbench =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Workbench->SetMVPSubsystem(Subsystem);
+	Workbench->ConstructForTest();
+	TestTrue(TEXT("tool fixture opens Backpack"), Workbench->OpenBackpack());
+	TestTrue(TEXT("real Tools navigation OnClicked opens the panel"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("BottomNavigationButton_3"))));
+
+	TestTrue(TEXT("first storage entry starts a real carry"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, SourceSlots[0])));
+	TestTrue(TEXT("empty Tool target reserves without committing"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("ToolInputSlot_0"))));
+	TestEqual(TEXT("Tool zero records the first reservation"),
+		Workbench->GetToolSlotItemIdForTest(0), SourceEntries[0].EntryId);
+	TestEqual(TEXT("first reservation leaves its authoritative cell unchanged"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, SourceSlots[0]),
+		SourceEntries[0]);
+
+	TestTrue(TEXT("second storage entry starts a real carry"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, SourceSlots[1])));
+	TestTrue(TEXT("second empty Tool target reserves without committing"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("ToolInputSlot_1"))));
+	TestEqual(TEXT("second reservation leaves its authoritative cell unchanged"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, SourceSlots[1]),
+		SourceEntries[1]);
+
+	TestTrue(TEXT("real occupied Tool source starts a carry"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("ToolInputSlot_0"))));
+	TestTrue(TEXT("occupied Tool target swaps reservations"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("ToolInputSlot_1"))));
+	TestFalse(TEXT("Tool-to-Tool swap ends carry"),
+		Workbench->HasDesktopCarriedEntry());
+	TestEqual(TEXT("displaced reservation returns to original Tool slot"),
+		Workbench->GetToolSlotItemIdForTest(0), SourceEntries[1].EntryId);
+	TestEqual(TEXT("carried reservation occupies Tool target"),
+		Workbench->GetToolSlotItemIdForTest(1), SourceEntries[0].EntryId);
+
+	TestTrue(TEXT("Tool original-source cancel starts with a pickup"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("ToolInputSlot_0"))));
+	TestTrue(TEXT("clicking the original Tool source cancels"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("ToolInputSlot_0"))));
+	TestFalse(TEXT("Tool original-source cancel clears carry"),
+		Workbench->HasDesktopCarriedEntry());
+	TestEqual(TEXT("Tool original-source cancel restores its reservation"),
+		Workbench->GetToolSlotItemIdForTest(0), SourceEntries[1].EntryId);
+
+	TestTrue(TEXT("third storage entry starts a real carry"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, SourceSlots[2])));
+	TestTrue(TEXT("storage-to-occupied-Tool replaces the reservation"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("ToolInputSlot_1"))));
+	TestFalse(TEXT("storage-to-occupied-Tool replacement ends carry"),
+		Workbench->HasDesktopCarriedEntry());
+	TestEqual(TEXT("Tool target now reserves the incoming storage entry"),
+		Workbench->GetToolSlotItemIdForTest(1), SourceEntries[2].EntryId);
+	TestEqual(TEXT("replaced Tool reservation is released to unchanged authority"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, SourceSlots[0]),
+		SourceEntries[0]);
+	TestFalse(TEXT("released reservation is no longer hidden by Tool state"),
+		Workbench->ShouldHideDesktopInventoryEntry(
+			EGameXXKDesktopItemContainer::Backpack,
+			SourceEntries[0]));
+
+	TestTrue(TEXT("Tool-to-storage fixture picks Tool zero"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("ToolInputSlot_0"))));
+	TestTrue(TEXT("Tool Alt seam toggles reserved entry while another carry exists"),
+		Workbench->HandleDesktopToolSlotAltClicked(1));
+	Workbench->TickForTest(0.0f);
+	TestTrue(TEXT("Tool Alt priority leaves the other carry unchanged"),
+		Workbench->HasDesktopCarriedEntry());
+	TestTrue(TEXT("Tool Alt locks the reserved stable entry"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(State, SourceEntries[2]));
+	UImage* ToolLockedIcon = Workbench->WidgetTree
+		? Cast<UImage>(Workbench->WidgetTree->FindWidget(TEXT("ToolLockedIcon_1")))
+		: nullptr;
+	TestLockedCellOverlay(*this, TEXT("Tool lock overlay"), ToolLockedIcon);
+	TestTrue(TEXT("Tool-to-occupied-storage uses authoritative MoveOrSwap"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, SourceSlots[3])));
+	TestFalse(TEXT("successful Tool-to-storage swap clears carry"),
+		Workbench->HasDesktopCarriedEntry());
+	TestFalse(TEXT("successful Tool-to-storage swap empties original Tool slot"),
+		!Workbench->GetToolSlotItemIdForTest(0).IsNone());
+	TestEqual(TEXT("Tool entry arrives at the occupied storage target"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, SourceSlots[3]),
+		SourceEntries[1]);
+	TestEqual(TEXT("displaced storage entry returns to Tool entry authority"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, SourceSlots[1]),
+		SourceEntries[3]);
+
+	TestTrue(TEXT("real Warehouse navigation opens beside Tools"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("BottomNavigationButton_0"))));
+	const int32 StoneQuantityBeforeLock = State.DesktopInventory.WarehouseItems.FindRef(StoneId);
+	TestTrue(TEXT("Warehouse Alt seam locks the whole item stack"),
+		Workbench->HandleDesktopSlotAltClicked(
+			EGameXXKDesktopItemContainer::Warehouse,
+			0));
+	Workbench->TickForTest(0.0f);
+	TestTrue(TEXT("whole-stack item lock uses the item ID"),
+		State.DesktopInventory.LockedItemIds.Contains(StoneId));
+	TestEqual(TEXT("Alt lock never changes stack quantity"),
+		State.DesktopInventory.WarehouseItems.FindRef(StoneId),
+		StoneQuantityBeforeLock);
+	UImage* WarehouseLockedIcon = Workbench->WidgetTree
+		? Cast<UImage>(Workbench->WidgetTree->FindWidget(TEXT("WarehouseLockedIcon_0")))
+		: nullptr;
+	TestLockedCellOverlay(*this, TEXT("Warehouse lock overlay"), WarehouseLockedIcon);
+	TestFalse(TEXT("empty Warehouse lock request is rejected"),
+		Workbench->HandleDesktopSlotAltClicked(
+			EGameXXKDesktopItemContainer::Warehouse,
+			1));
+	TestFalse(TEXT("empty lock rejection never starts carry"),
+		Workbench->HasDesktopCarriedEntry());
+
+	const int32 EmptyBackpackSlot = FGameXXKDesktopInventoryRules::FindFirstEmptySlot(
+		State, EGameXXKDesktopItemContainer::Backpack);
+	TestTrue(TEXT("locked Warehouse item starts a real carry"),
+		ClickAndFlush(
+			Workbench,
+			FindWorkbenchActionButton(Workbench, TEXT("WarehouseSlot_0"))));
+	TestTrue(TEXT("locked item remains manually movable"),
+		ClickAndFlush(
+			Workbench,
+			FindEmbeddedBackpackButton(Workbench, EmptyBackpackSlot)));
+	TestFalse(TEXT("locked item move empties its former Warehouse cell"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Warehouse, 0).IsValid());
+	TestEqual(TEXT("locked item move reaches the exact requested Backpack cell"),
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, EmptyBackpackSlot),
+		StoneEntry);
+	TestEqual(TEXT("locked item physical location actually changes containers"),
+		FGameXXKDesktopInventoryRules::FindEntrySlot(
+			State,
+			EGameXXKDesktopItemContainer::Backpack,
+			StoneEntry),
+		EmptyBackpackSlot);
+	TestTrue(TEXT("whole-stack lock persists after manual movement"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(State, StoneEntry));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingToolReservationAuthorityTest,
+	"GameXXK.DesktopTraining.Workbench.ItemCarryToolReservationAuthority",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingToolReservationAuthorityTest::RunTest(const FString& Parameters)
+{
+	{
+		UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+		if (!TestNotNull(TEXT("hidden-backing fixture subsystem exists"), Subsystem)
+			|| !Subsystem->StartGame())
+		{
+			return false;
+		}
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		State.Screen = EGameXXKScreen::Town;
+		if (!TestTrue(TEXT("hidden-backing fixture normalizes"),
+			Subsystem->NormalizeDesktopInventoryState()))
+		{
+			return false;
+		}
+
+		TArray<int32> SourceSlots;
+		TArray<FGameXXKDesktopInventoryEntryKey> SourceEntries;
+		for (int32 SlotIndex = 0;
+			SlotIndex < FGameXXKDesktopInventoryRules::BackpackCapacity
+				&& SourceSlots.Num() < 2;
+			++SlotIndex)
+		{
+			const FGameXXKDesktopInventoryEntryKey Entry =
+				FGameXXKDesktopInventoryRules::GetEntryAt(
+					State,
+					EGameXXKDesktopItemContainer::Backpack,
+					SlotIndex);
+			if (Entry.IsValid())
+			{
+				SourceSlots.Add(SlotIndex);
+				SourceEntries.Add(Entry);
+			}
+		}
+		if (!TestEqual(TEXT("hidden-backing fixture finds two entries"), SourceSlots.Num(), 2))
+		{
+			return false;
+		}
+
+		UGameXXKDesktopTrainingWorkbenchWidget* Workbench =
+			NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+		Workbench->SetMVPSubsystem(Subsystem);
+		Workbench->ConstructForTest();
+		TestTrue(TEXT("hidden-backing fixture opens Backpack"), Workbench->OpenBackpack());
+		TestTrue(TEXT("hidden-backing fixture opens Tools through the real nav"),
+			ClickAndFlush(
+				Workbench,
+				FindWorkbenchActionButton(Workbench, TEXT("BottomNavigationButton_3"))));
+		for (int32 ToolSlotIndex = 0; ToolSlotIndex < 2; ++ToolSlotIndex)
+		{
+			TestTrue(
+				*FString::Printf(TEXT("reservation %d starts from its real storage button"), ToolSlotIndex),
+				ClickAndFlush(
+					Workbench,
+					FindEmbeddedBackpackButton(Workbench, SourceSlots[ToolSlotIndex])));
+			TestTrue(
+				*FString::Printf(TEXT("reservation %d reaches its real Tool button"), ToolSlotIndex),
+				ClickAndFlush(
+					Workbench,
+					FindWorkbenchActionButton(
+						Workbench,
+						*FString::Printf(TEXT("ToolInputSlot_%d"), ToolSlotIndex))));
+		}
+		TestTrue(TEXT("Tool zero pickup establishes the carried reservation"),
+			ClickAndFlush(
+				Workbench,
+				FindWorkbenchActionButton(Workbench, TEXT("ToolInputSlot_0"))));
+		if (!TestTrue(TEXT("hidden-backing drop begins with carry active"),
+			Workbench->HasDesktopCarriedEntry()))
+		{
+			return false;
+		}
+		const FGameXXKRuntimeState BeforeHiddenBackingDrop = State;
+		TestTrue(TEXT("the hidden backing cell still owns a real click target"),
+			ClickAndFlush(
+				Workbench,
+				FindEmbeddedBackpackButton(Workbench, SourceSlots[1])));
+		TestTrue(TEXT("another Tool reservation backing cell rejects the drop and retains carry"),
+			Workbench->HasDesktopCarriedEntry());
+		TestTrue(TEXT("hidden backing rejection preserves every authoritative runtime field"),
+			FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+				&State,
+				&BeforeHiddenBackingDrop,
+				PPF_None));
+		TestTrue(TEXT("hidden backing rejection leaves the carried origin Tool cell empty"),
+			Workbench->GetToolSlotItemIdForTest(0).IsNone());
+		TestEqual(TEXT("hidden backing rejection preserves the other Tool reservation"),
+			Workbench->GetToolSlotItemIdForTest(1),
+			SourceEntries[1].EntryId);
+		TestEqual(TEXT("hidden backing rejection preserves the carried entry's source"),
+			FGameXXKDesktopInventoryRules::GetEntryAt(
+				State,
+				EGameXXKDesktopItemContainer::Backpack,
+				SourceSlots[0]),
+			SourceEntries[0]);
+		TestEqual(TEXT("hidden backing rejection preserves the target reservation source"),
+			FGameXXKDesktopInventoryRules::GetEntryAt(
+				State,
+				EGameXXKDesktopItemContainer::Backpack,
+				SourceSlots[1]),
+			SourceEntries[1]);
+		TestFalse(TEXT("hidden backing rejection displays a reason"),
+			Workbench->GetLastDesktopInventoryNoticeForTest().IsEmpty());
+	}
+
+	{
+		UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+		if (!TestNotNull(TEXT("stale-confirm fixture subsystem exists"), Subsystem)
+			|| !Subsystem->StartGame())
+		{
+			return false;
+		}
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		State.Screen = EGameXXKScreen::Town;
+		if (!TestTrue(TEXT("stale-confirm fixture normalizes"),
+			Subsystem->NormalizeDesktopInventoryState()))
+		{
+			return false;
+		}
+
+		TArray<int32> EquipmentSlots;
+		TArray<FGameXXKDesktopInventoryEntryKey> EquipmentEntries;
+		for (int32 SlotIndex = 0;
+			SlotIndex < FGameXXKDesktopInventoryRules::BackpackCapacity
+				&& EquipmentSlots.Num() < 2;
+			++SlotIndex)
+		{
+			const FGameXXKDesktopInventoryEntryKey Entry =
+				FGameXXKDesktopInventoryRules::GetEntryAt(
+					State,
+					EGameXXKDesktopItemContainer::Backpack,
+					SlotIndex);
+			if (Entry.bEquipmentInstance)
+			{
+				EquipmentSlots.Add(SlotIndex);
+				EquipmentEntries.Add(Entry);
+			}
+		}
+		if (!TestEqual(TEXT("stale-confirm fixture finds two equipment cells"),
+			EquipmentSlots.Num(), 2))
+		{
+			return false;
+		}
+
+		UGameXXKDesktopTrainingWorkbenchWidget* Workbench =
+			NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+		Workbench->SetMVPSubsystem(Subsystem);
+		Workbench->ConstructForTest();
+		TestTrue(TEXT("stale-confirm fixture opens Backpack"), Workbench->OpenBackpack());
+		TestTrue(TEXT("stale-confirm fixture opens Tools through the real nav"),
+			ClickAndFlush(
+				Workbench,
+				FindWorkbenchActionButton(Workbench, TEXT("BottomNavigationButton_3"))));
+		TestTrue(TEXT("stale-confirm fixture picks equipment through its real cell"),
+			ClickAndFlush(
+				Workbench,
+				FindEmbeddedBackpackButton(Workbench, EquipmentSlots[0])));
+		TestTrue(TEXT("stale-confirm fixture reserves equipment through Tool zero"),
+			ClickAndFlush(
+				Workbench,
+				FindWorkbenchActionButton(Workbench, TEXT("ToolInputSlot_0"))));
+		Swap(
+			State.DesktopInventory.BackpackSlots[EquipmentSlots[0]],
+			State.DesktopInventory.BackpackSlots[EquipmentSlots[1]]);
+		const FGameXXKRuntimeState BeforeStaleConfirm = State;
+		UGameXXKDesktopTrainingActionButton* ConfirmButton =
+			FindWorkbenchActionButton(Workbench, TEXT("ToolConfirmButton"));
+		if (!TestNotNull(TEXT("stale-confirm fixture owns the real confirm button"), ConfirmButton))
+		{
+			return false;
+		}
+		TestTrue(TEXT("stale-confirm fixture invokes the real confirm callback"),
+			ClickAndFlush(Workbench, ConfirmButton));
+		TestTrue(TEXT("stale reservation confirmation preserves every runtime field"),
+			FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+				&State,
+				&BeforeStaleConfirm,
+				PPF_None));
+		TestEqual(TEXT("stale reservation remains in Tool zero after rejection"),
+			Workbench->GetToolSlotItemIdForTest(0),
+			EquipmentEntries[0].EntryId);
+		TestNotNull(TEXT("stale confirmation never dismantles the reserved instance"),
+			FGameXXKEquipmentRules::FindInstance(
+				State.EquipmentCollection,
+				EquipmentEntries[0].EntryId));
+		TestFalse(TEXT("stale reservation confirmation displays a reason"),
+			Workbench->GetLastDesktopInventoryNoticeForTest().IsEmpty());
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingEmbeddedBackpackDeferredRefreshTest,
 	"GameXXK.DesktopTraining.Workbench.EmbeddedBackpackDeferredRefresh",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -1765,11 +2891,15 @@ bool FGameXXKDesktopTrainingItemCarryBoundaryRollbackTest::RunTest(const FString
 	TestTrue(TEXT("fixture exposes an occupied non-origin destination"),
 		OriginalStoneSlot != INDEX_NONE && OccupiedEquipmentSlot != INDEX_NONE && OccupiedEquipmentSlot != OriginalStoneSlot);
 	TestTrue(TEXT("pickup before invalid drop succeeds"), Widget->PickUpBackpackSlotForTest(OriginalStoneSlot));
-	TestFalse(TEXT("occupied destination rejects placement"), Widget->DropCarriedOnBackpackSlotForTest(OccupiedEquipmentSlot));
-	TestTrue(TEXT("invalid placement keeps the item attached"), Widget->IsCarryingItemForTest());
-	TestEqual(TEXT("invalid placement preserves the exact origin slot"), Widget->FindBackpackItemSlotForTest(StoneId), OriginalStoneSlot);
-	TestEqual(TEXT("invalid placement preserves stack quantity"), Subsystem->GetItemCount(StoneId), 10);
-	TestTrue(TEXT("explicit cancellation resets invalid-drop carry"), Widget->CancelCarriedItemForTest());
+	TestTrue(TEXT("occupied destination atomically swaps placement"), Widget->DropCarriedOnBackpackSlotForTest(OccupiedEquipmentSlot));
+	TestFalse(TEXT("successful occupied placement clears carry"), Widget->IsCarryingItemForTest());
+	TestEqual(TEXT("occupied placement moves the whole stack to the target"), Widget->FindBackpackItemSlotForTest(StoneId), OccupiedEquipmentSlot);
+	TestEqual(TEXT("occupied placement preserves stack quantity"), Subsystem->GetItemCount(StoneId), 10);
+	TestTrue(TEXT("reverse pickup after occupied placement succeeds"), Widget->PickUpBackpackSlotForTest(OccupiedEquipmentSlot));
+	TestTrue(TEXT("reverse occupied placement restores the original cells"), Widget->DropCarriedOnBackpackSlotForTest(OriginalStoneSlot));
+	TestEqual(TEXT("reverse occupied placement restores the exact origin slot"), Widget->FindBackpackItemSlotForTest(StoneId), OriginalStoneSlot);
+	TestTrue(TEXT("explicit cancellation remains available after an occupied swap"),
+		Widget->PickUpBackpackSlotForTest(OriginalStoneSlot) && Widget->CancelCarriedItemForTest());
 
 	const TArray<FName> CharacterIds = Widget->GetBackpackCharacterIdsForTest();
 	if (TestTrue(TEXT("new game exposes a second backpack owner"), CharacterIds.Num() > 1))
