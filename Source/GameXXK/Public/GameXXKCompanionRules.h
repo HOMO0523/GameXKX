@@ -102,8 +102,8 @@ public:
 	 * Roster-only rule that commits a full-roster pending candidate after one existing companion is
 	 * explicitly dismissed. Central equipment ownership is handled by a complete-state caller before
 	 * this rule runs.
-	 * When dismissing the active companion, the caller must explicitly choose the new active instance
-	 * (including the pending candidate) or NAME_None to confirm no permanent partner.
+	 * A non-None ActiveAfter must identify a legal post-replacement companion. NAME_None delegates
+	 * the final active projection to the complete-state caller's ordered formation authority.
 	 */
 	static bool ResolvePendingRecruitment(
 		FGameXXKCompanionRosterState& InOutRoster,

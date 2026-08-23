@@ -570,6 +570,138 @@ bool FGameXXKEquipmentCompanionReplacementFormationTest::RunTest(const FString& 
 		OffFormationDismissal.Subsystem->GetRuntimeState().CardRun.OrderedFormation.Members,
 		OffFormationBefore.Members);
 
+	FReplacementFixture OffFormationLaterActive;
+	if (!CreateEquipmentFixture(*this, OffFormationLaterActive, 0, 0, false))
+	{
+		return false;
+	}
+	FGameXXKOrderedPartyFormation OffFormationLaterBefore;
+	if (!ConfigureReplacementFormation(*this, OffFormationLaterActive, false, OffFormationLaterBefore))
+	{
+		return false;
+	}
+	const FGameXXKPartyMemberRef LaterHeroBefore = OffFormationLaterBefore.Members[0];
+	const FGameXXKPartyMemberRef FirstCompanionBefore = OffFormationLaterBefore.Members[1];
+	const FGameXXKPartyMemberRef LaterCompanionBefore = OffFormationLaterBefore.Members[2];
+	FGameXXKEquipmentTransactionResult OffFormationLaterResult;
+	TestTrue(TEXT("off-formation dismissal accepts an explicitly deployed later ActiveAfter"),
+		OffFormationLaterActive.Subsystem->ResolvePendingPermanentCompanionReplacement(
+			OffFormationLaterActive.DismissedInstanceId,
+			LaterCompanionBefore.MemberId,
+			OffFormationLaterResult));
+	const TArray<FGameXXKPartyMemberRef>& OffFormationLaterMembers =
+		OffFormationLaterActive.Subsystem->GetRuntimeState().CardRun.OrderedFormation.Members;
+	TestTrue(TEXT("later ActiveAfter preserves the hero slot bit-identically"),
+		OffFormationLaterMembers[0] == LaterHeroBefore);
+	TestEqual(TEXT("later ActiveAfter swaps into the first companion slot"),
+		OffFormationLaterMembers[1].MemberId,
+		LaterCompanionBefore.MemberId);
+	TestEqual(TEXT("displaced first companion moves only to the later companion slot"),
+		OffFormationLaterMembers[2].MemberId,
+		FirstCompanionBefore.MemberId);
+	TestEqual(TEXT("later ActiveAfter controls the compatibility active projection"),
+		OffFormationLaterActive.Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
+		LaterCompanionBefore.MemberId);
+
+	FReplacementFixture OffFormationOwnedActive;
+	if (!CreateEquipmentFixture(*this, OffFormationOwnedActive, 0, 0, false))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& OwnedActiveState = OffFormationOwnedActive.Subsystem->GetMutableRuntimeState();
+	FString OwnedActiveError;
+	if (!TestTrue(TEXT("off-deployed ActiveAfter fixture attaches Tusi Chief"),
+		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
+			OwnedActiveState,
+			TEXT("Npc.TusiChief"),
+			{},
+			&OwnedActiveError)))
+	{
+		AddError(OwnedActiveError);
+		return false;
+	}
+	FGameXXKOrderedPartyFormation OwnedActiveBefore;
+	FGameXXKPartyMemberRef OwnedHero;
+	OwnedHero.Kind = EGameXXKPartyMemberKind::Hero;
+	OwnedHero.MemberId = FGameXXKEquipmentRules::HeroCharacterId();
+	FGameXXKPartyMemberRef OwnedNpc;
+	OwnedNpc.Kind = EGameXXKPartyMemberKind::QuestNpc;
+	OwnedNpc.MemberId = TEXT("Npc.TusiChief");
+	FGameXXKPartyMemberRef OwnedFirstCompanion;
+	OwnedFirstCompanion.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+	OwnedFirstCompanion.MemberId = OffFormationOwnedActive.SurvivingActiveInstanceId;
+	OwnedActiveBefore.Members = {OwnedHero, OwnedNpc, OwnedFirstCompanion};
+	if (!TestTrue(TEXT("off-deployed ActiveAfter fixture commits hero/NPC/companion formation"),
+		OffFormationOwnedActive.Subsystem->SetOrderedPartyFormation(OwnedActiveBefore, OwnedActiveError)))
+	{
+		AddError(OwnedActiveError);
+		return false;
+	}
+	FName RequestedOwnedActiveId = NAME_None;
+	for (const FGameXXKPermanentCompanion& Companion :
+		OffFormationOwnedActive.Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions)
+	{
+		if (Companion.InstanceId != OffFormationOwnedActive.DismissedInstanceId
+			&& !OwnedActiveBefore.Members.ContainsByPredicate([&Companion](const FGameXXKPartyMemberRef& Ref)
+			{
+				return Ref.MemberId == Companion.InstanceId;
+			}))
+		{
+			RequestedOwnedActiveId = Companion.InstanceId;
+			break;
+		}
+	}
+	if (!TestFalse(TEXT("off-deployed ActiveAfter fixture finds an owned reserve companion"),
+		RequestedOwnedActiveId.IsNone()))
+	{
+		return false;
+	}
+	FGameXXKEquipmentTransactionResult OffFormationOwnedResult;
+	TestTrue(TEXT("off-formation dismissal accepts an owned but undeployed ActiveAfter"),
+		OffFormationOwnedActive.Subsystem->ResolvePendingPermanentCompanionReplacement(
+			OffFormationOwnedActive.DismissedInstanceId,
+			RequestedOwnedActiveId,
+			OffFormationOwnedResult));
+	const FGameXXKRuntimeState& OwnedActiveAfter = OffFormationOwnedActive.Subsystem->GetRuntimeState();
+	TestTrue(TEXT("off-deployed ActiveAfter preserves hero slot bit-identically"),
+		OwnedActiveAfter.CardRun.OrderedFormation.Members[0] == OwnedHero);
+	TestTrue(TEXT("off-deployed ActiveAfter preserves NPC slot bit-identically"),
+		OwnedActiveAfter.CardRun.OrderedFormation.Members[1] == OwnedNpc);
+	TestEqual(TEXT("off-deployed ActiveAfter replaces only the first companion slot"),
+		OwnedActiveAfter.CardRun.OrderedFormation.Members[2].MemberId,
+		RequestedOwnedActiveId);
+	TestTrue(TEXT("the displaced prior first companion remains owned"),
+		OwnedActiveAfter.CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate(
+			[&OwnedFirstCompanion](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.InstanceId == OwnedFirstCompanion.MemberId;
+			}));
+	TestEqual(TEXT("off-deployed ActiveAfter controls compatibility active projection"),
+		OwnedActiveAfter.CardRun.PartySelection.ActivePermanentCompanionInstanceId,
+		RequestedOwnedActiveId);
+
+	FReplacementFixture InvalidOffFormationActive;
+	if (!CreateEquipmentFixture(*this, InvalidOffFormationActive, 0, 0, false))
+	{
+		return false;
+	}
+	FGameXXKOrderedPartyFormation InvalidOffFormationBefore;
+	if (!ConfigureReplacementFormation(*this, InvalidOffFormationActive, false, InvalidOffFormationBefore))
+	{
+		return false;
+	}
+	const TArray<uint8> InvalidOffFormationBytes =
+		SerializeRuntimeState(InvalidOffFormationActive.Subsystem->GetRuntimeState());
+	FGameXXKEquipmentTransactionResult InvalidOffFormationResult;
+	TestFalse(TEXT("invalid explicit off-formation ActiveAfter is rejected"),
+		InvalidOffFormationActive.Subsystem->ResolvePendingPermanentCompanionReplacement(
+			InvalidOffFormationActive.DismissedInstanceId,
+			TEXT("Companion.Unknown.ActiveAfter"),
+			InvalidOffFormationResult));
+	TestEqual(TEXT("invalid explicit off-formation ActiveAfter rolls back every runtime byte"),
+		SerializeRuntimeState(InvalidOffFormationActive.Subsystem->GetRuntimeState()),
+		InvalidOffFormationBytes);
+
 	FReplacementFixture NoLegalNewCandidate;
 	if (!CreateEquipmentFixture(*this, NoLegalNewCandidate, 0, 0, false))
 	{

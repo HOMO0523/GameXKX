@@ -22,6 +22,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Misc/Crc.h"
 
+DEFINE_LOG_CATEGORY_STATIC(LogGameXXKMVPSubsystem, Log, All);
+
 namespace
 {
 	static constexpr int32 ManualSaveSlotCount = 5;
@@ -718,7 +720,7 @@ namespace
 			ReservedFormationMemberIds.Add(ReplacementInstanceId);
 		}
 
-		if (!RemovedFormationSlots.IsEmpty() && !RequestedFirstCompanionId.IsNone())
+		if (!RequestedFirstCompanionId.IsNone())
 		{
 			const int32 FirstCompanionSlot = Formation.Members.IndexOfByPredicate([](const FGameXXKPartyMemberRef& Ref)
 			{
@@ -730,12 +732,18 @@ namespace
 					return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion
 						&& Ref.MemberId == RequestedFirstCompanionId;
 				});
-			if (FirstCompanionSlot == INDEX_NONE || RequestedActiveSlot == INDEX_NONE)
+			if (FirstCompanionSlot == INDEX_NONE
+				|| !StableOwnedCompanionIds.Contains(RequestedFirstCompanionId))
 			{
-				OutError = TEXT("Requested active companion is not available in the repaired formation.");
+				OutError = TEXT("Requested active companion is not an owned legal post-replacement companion.");
 				return false;
 			}
-			if (FirstCompanionSlot != RequestedActiveSlot)
+			if (RequestedActiveSlot == INDEX_NONE)
+			{
+				Formation.Members[FirstCompanionSlot].Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+				Formation.Members[FirstCompanionSlot].MemberId = RequestedFirstCompanionId;
+			}
+			else if (FirstCompanionSlot != RequestedActiveSlot)
 			{
 				Swap(Formation.Members[FirstCompanionSlot], Formation.Members[RequestedActiveSlot]);
 			}
@@ -3292,9 +3300,19 @@ FGameXXKQuestNpcCardSelection UGameXXKMVPSubsystem::GetQuestNpcCardLoadout() con
 
 FGameXXKOrderedPartyFormation UGameXXKMVPSubsystem::GetOrderedPartyFormation() const
 {
-	FGameXXKOrderedPartyFormation Effective;
-	FGameXXKPartyFormationRules::ResolveEffective(RuntimeState, Effective);
-	return Effective;
+	FString Error;
+	if (!FGameXXKPartyFormationRules::Validate(
+		RuntimeState,
+		RuntimeState.CardRun.OrderedFormation,
+		&Error))
+	{
+		UE_LOG(
+			LogGameXXKMVPSubsystem,
+			Error,
+			TEXT("GetOrderedPartyFormation rejected invalid raw formation: %s"),
+			*Error);
+	}
+	return RuntimeState.CardRun.OrderedFormation;
 }
 
 bool UGameXXKMVPSubsystem::SetOrderedPartyFormation(
@@ -3302,12 +3320,9 @@ bool UGameXXKMVPSubsystem::SetOrderedPartyFormation(
 	FString& OutError)
 {
 	OutError.Reset();
-	if (RuntimeState.CardRun.bLoadoutLockedForRoute
-		|| RuntimeState.bHasActiveBattle
-		|| RuntimeState.CardRun.bHasActiveCardBattle
-		|| RuntimeState.Screen == EGameXXKScreen::Battle)
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
 	{
-		OutError = TEXT("Party formation cannot change while a route loadout or battle is active.");
+		OutError = TEXT("Party formation can change only at the unlocked town workbench.");
 		return false;
 	}
 

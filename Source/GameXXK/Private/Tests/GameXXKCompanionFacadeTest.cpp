@@ -596,10 +596,27 @@ bool FGameXXKOrderedFormationFacadeRejectionTest::RunTest(const FString& Paramet
 	const EGameXXKScreen OriginalScreen = Mutable.Screen;
 	Mutable.Screen = EGameXXKScreen::Battle;
 	AssertFormationRejectedWithoutMutation(*this, Subsystem, LegalSwap, TEXT("battle-screen formation"));
+	Mutable.Screen = EGameXXKScreen::MainMenu;
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, LegalSwap, TEXT("main-menu formation"));
+	Mutable.Screen = EGameXXKScreen::WorldMap;
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, LegalSwap, TEXT("world-map formation"));
 	Mutable.Screen = OriginalScreen;
 
 	Mutable.PlayerGold = -1;
 	AssertFormationRejectedWithoutMutation(*this, Subsystem, LegalSwap, TEXT("authoritatively-invalid candidate state"));
+
+	Mutable.PlayerGold = 0;
+	FGameXXKOrderedPartyFormation InvalidRaw = Valid;
+	InvalidRaw.Members.Pop();
+	Mutable.CardRun.OrderedFormation = InvalidRaw;
+	AddExpectedError(
+		TEXT("GetOrderedPartyFormation rejected invalid raw formation"),
+		EAutomationExpectedErrorFlags::Contains,
+		1);
+	const FGameXXKOrderedPartyFormation InvalidGetterResult = Subsystem->GetOrderedPartyFormation();
+	TestEqual(TEXT("invalid getter returns the raw saved formation instead of a silent legacy fallback"),
+		InvalidGetterResult.Members,
+		InvalidRaw.Members);
 	return true;
 }
 

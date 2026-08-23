@@ -472,11 +472,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Companion")
 	FGameXXKQuestNpcCardSelection GetQuestNpcCardLoadout() const;
 
-	/** Copy-safe effective 1P / 2P / 3P formation in authoritative saved order. */
+	/** Returns raw authoritative 1P / 2P / 3P order; invalid raw state is logged instead of silently projected. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Party")
 	FGameXXKOrderedPartyFormation GetOrderedPartyFormation() const;
 
-	/** Atomically validates and commits an unlocked 1P / 2P / 3P formation. */
+	/** Atomically validates and commits a 1P / 2P / 3P formation only at the unlocked town workbench. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Party")
 	bool SetOrderedPartyFormation(const FGameXXKOrderedPartyFormation& Formation, FString& OutError);
 
@@ -496,7 +496,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Companion")
 	bool TryGetPendingPermanentCompanionRecruitment(FGameXXKPermanentCompanion& OutCandidate) const;
 
-	/** Replaces only the player-selected existing companion with the saved candidate. */
+	/**
+	 * Replaces only the selected roster member with the saved candidate. A non-None ActiveAfter
+	 * becomes the first ordered companion even when the dismissed member was not deployed;
+	 * NAME_None leaves the current ordered formation as active-companion authority.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
 	bool ResolvePendingPermanentCompanionReplacement(FName DismissedInstanceId, FName ActivePermanentCompanionInstanceIdAfterReplacement = NAME_None);
 
