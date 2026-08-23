@@ -508,8 +508,9 @@ public:
 
 	/**
 	 * Dismisses one permanent companion without a replacement (the 遣散 action).
-	 * Equipment returns to the warehouse, the active party slot clears, and the
-	 * roster must keep at least one companion.
+	 * Equipment returns to the warehouse; if the companion is in OrderedFormation,
+	 * that exact slot receives a stable owned replacement before compatibility is reprojected.
+	 * The roster must keep at least one companion.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
 	bool DismissPermanentCompanion(FName InstanceId);
@@ -525,7 +526,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
 	bool SetActivePermanentCompanion(FName InstanceId);
 
-	/** Town-only player action for leaving the optional permanent-partner slot empty. */
+	/** Legacy town action; v24 exact formations containing a companion reject instead of creating an empty compatibility slot. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
 	bool ClearActivePermanentCompanion();
 
