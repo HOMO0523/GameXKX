@@ -1121,6 +1121,64 @@ namespace
 		Checkpoint.PreviousVisitedRouteNodeIds = State.VisitedRouteNodeIds;
 		Checkpoint.PreviousReachableRouteNodeIds = State.ReachableRouteNodeIds;
 	}
+
+	bool AddMinimumLegacyPartyCompanions(
+		FGameXXKRuntimeState& State,
+		int32& OutAddedCount,
+		FString& OutError)
+	{
+		OutAddedCount = 0;
+		FGameXXKOrderedPartyFormation Probe;
+		if (FGameXXKPartyFormationRules::BuildLegacyProjection(State, Probe))
+		{
+			return true;
+		}
+
+		static const FName StarterTemplates[] = {
+			TEXT("Companion.Blade.01"),
+			TEXT("Companion.Guard.01"),
+			TEXT("Companion.Healer.01"),
+			TEXT("Companion.Hunter.01"),
+			TEXT("Companion.Sorcerer.01"),
+			TEXT("Companion.FormationMaster.01")};
+		constexpr int32 StableRepairSeedBase = 0x24680000;
+		for (int32 TemplateIndex = 0; TemplateIndex < UE_ARRAY_COUNT(StarterTemplates); ++TemplateIndex)
+		{
+			const FName TemplateId = StarterTemplates[TemplateIndex];
+			if (State.CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate(
+				[TemplateId](const FGameXXKPermanentCompanion& Companion)
+				{
+					return Companion.RecruitTemplateId == TemplateId;
+				}))
+			{
+				continue;
+			}
+
+			FGameXXKCompanionRecruitResult RecruitResult;
+			if (!FGameXXKCompanionRules::RecruitPermanentCompanion(
+				State.CardRun.CompanionRoster,
+				TemplateId,
+				StableRepairSeedBase + TemplateIndex,
+				RecruitResult,
+				&OutError)
+				|| RecruitResult.Outcome != EGameXXKCompanionRecruitOutcome::Recruited)
+			{
+				if (OutError.IsEmpty())
+				{
+					OutError = TEXT("Legacy ordered-party repair could not append an approved starter companion.");
+				}
+				return false;
+			}
+			++OutAddedCount;
+			if (FGameXXKPartyFormationRules::BuildLegacyProjection(State, Probe))
+			{
+				return true;
+			}
+		}
+
+		OutError = TEXT("Legacy ordered-party repair could not provide three legal party entities.");
+		return false;
+	}
 }
 
 bool FGameXXKSaveMigration::MigrateToCurrent(
@@ -1282,6 +1340,21 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		// A mismatched or retired task NPC is ignored by BuildLegacyProjection and
 		// cleared by ProjectCompatibility instead of being reactivated implicitly.
 		Candidate.RuntimeState.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
+		int32 AddedLegacyPartyCompanions = 0;
+		if (!AddMinimumLegacyPartyCompanions(
+			Candidate.RuntimeState,
+			AddedLegacyPartyCompanions,
+			MigrationError))
+		{
+			Fail(OutReport, MigrationError);
+			return false;
+		}
+		if (AddedLegacyPartyCompanions > 0)
+		{
+			OutReport.Warnings.Add(FString::Printf(
+				TEXT("Legacy ordered-party migration appended %d approved starter companion profile(s)."),
+				AddedLegacyPartyCompanions));
+		}
 		if (!FGameXXKPartyFormationRules::Normalize(Candidate.RuntimeState, &MigrationError))
 		{
 			Fail(OutReport, MigrationError);
@@ -1376,6 +1449,10 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		State,
 		State.CardRun.OrderedFormation,
 		&OutError))
+	{
+		return false;
+	}
+	if (!FGameXXKPartyFormationRules::ValidateCompatibilityProjection(State, &OutError))
 	{
 		return false;
 	}

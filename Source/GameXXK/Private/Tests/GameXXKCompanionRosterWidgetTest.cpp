@@ -10,6 +10,7 @@
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKCompanionRosterWidget.h"
@@ -18,6 +19,26 @@
 
 namespace
 {
+	bool MaterializeRosterFormation(
+		FAutomationTestBase& Test,
+		UGameXXKMVPSubsystem* Subsystem)
+	{
+		if (!Subsystem)
+		{
+			return false;
+		}
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		FString Error;
+		if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, TEXT("Npc.TusiChief"), {}, &Error)
+			|| !FGameXXKPartyFormationRules::Normalize(State, &Error))
+		{
+			Test.AddError(Error);
+			return false;
+		}
+		FGameXXKPartyFormationRules::ProjectCompatibility(State);
+		return true;
+	}
+
 	bool RecruitCompanion(
 		FAutomationTestBase& Test,
 		UGameXXKMVPSubsystem* Subsystem,
@@ -41,7 +62,7 @@ namespace
 			return false;
 		}
 		OutCompanion = Result.Companion;
-		return !OutCompanion.InstanceId.IsNone();
+		return !OutCompanion.InstanceId.IsNone() && MaterializeRosterFormation(Test, Subsystem);
 	}
 
 	UGameXXKCompanionRosterWidget* BuildWidget(UGameXXKMVPSubsystem* Subsystem)
@@ -84,7 +105,8 @@ namespace
 		return Test.TestEqual(
 			TEXT("the paged companion fixture recruits the requested unique roster size"),
 			Subsystem->GetPermanentCompanionViews().Num(),
-			DesiredCount);
+			DesiredCount)
+			&& MaterializeRosterFormation(Test, Subsystem);
 	}
 }
 
@@ -112,7 +134,8 @@ bool FGameXXKFinalCompanionBackpackPagingTest::RunTest(const FString& Parameters
 
 	const TArray<FName> FirstPage = Widget->GetVisibleRosterSlotInstanceIdsForTest();
 	TestEqual(TEXT("the first companion page exposes three occupied slots"), FirstPage.Num(), 3);
-	TestTrue(TEXT("inactive companions use a gray approved portrait"), Widget->GetRosterPortraitResourcePathForTest(0).Contains(TEXT("Inactive")));
+	TestFalse(TEXT("v24 first ordered companion uses the active portrait"),
+		Widget->GetRosterPortraitResourcePathForTest(0).Contains(TEXT("Inactive")));
 	TestTrue(TEXT("the right arrow advances to the second companion page"), Widget->GoToNextRosterPageForTest());
 	TestEqual(TEXT("the second companion page becomes current"), Widget->GetCurrentRosterPageForTest(), 1);
 	const TArray<FName> SecondPage = Widget->GetVisibleRosterSlotInstanceIdsForTest();
@@ -330,7 +353,10 @@ bool FGameXXKCompanionRosterWidgetPersonalDeckTest::RunTest(const FString& Param
 	TestFalse(TEXT("the active-partner fixture remains editable"), Widget->IsLoadoutReadOnlyForTest());
 	TestEqual(TEXT("the first visible portrait keeps the recruited stable id"), Widget->GetVisibleRosterSlotInstanceIdsForTest()[0], Companion.InstanceId);
 	TestTrue(TEXT("the selected companion is directly eligible for active-partner assignment"), Widget->SetSelectedCompanionAsActive());
-	TestTrue(TEXT("the assigned partner can be cleared before the button-path assertion"), Widget->ClearActivePermanentCompanion());
+	TestFalse(TEXT("v24 exact formation rejects clearing its deployed companion"), Widget->ClearActivePermanentCompanion());
+	TestEqual(TEXT("rejected clear keeps the deployed companion active"),
+		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
+		Companion.InstanceId);
 	if (FirstRosterSlot)
 	{
 		FirstRosterSlot->OnClicked.Broadcast();
@@ -637,9 +663,10 @@ bool FGameXXKCompanionRosterWidgetProfileAndTownActionTest::RunTest(const FStrin
 
 	TestTrue(TEXT("the selected partner can be assigned before clearing"), Widget->SetSelectedCompanionAsActive());
 	// Page 18 removes the standalone 暂不编入 button; the town-only capability stays reachable.
-	TestTrue(TEXT("the town clear action succeeds through the retained capability"), Widget->ClearActivePermanentCompanion());
-	TestTrue(TEXT("the town clear action removes the active permanent partner"),
-		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId.IsNone());
+	TestFalse(TEXT("the town clear action rejects exact v24 formation authority"), Widget->ClearActivePermanentCompanion());
+	TestEqual(TEXT("the rejected town clear keeps the deployed partner"),
+		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
+		Companion.InstanceId);
 
 	TestTrue(TEXT("the partner can be assigned again for the out-of-town safety check"), Widget->SetSelectedCompanionAsActive());
 	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::WorldMap;

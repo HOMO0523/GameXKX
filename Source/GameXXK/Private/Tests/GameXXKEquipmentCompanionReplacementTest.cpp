@@ -501,6 +501,55 @@ bool FGameXXKEquipmentCompanionReplacementFormationTest::RunTest(const FString& 
 	TestEqual(TEXT("v24 roundtrip preserves repaired formation order"),
 		RoundTrip.RuntimeState.CardRun.OrderedFormation.Members, AfterMembers);
 
+	FReplacementFixture ActiveAfterPromotion;
+	if (!CreateEquipmentFixture(*this, ActiveAfterPromotion, 0, 0, false))
+	{
+		return false;
+	}
+	const FName ExistingSurvivorId = ActiveAfterPromotion.SurvivingActiveInstanceId;
+	FGameXXKOrderedPartyFormation ActiveAfterBefore;
+	FGameXXKPartyMemberRef SurvivorRef;
+	SurvivorRef.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+	SurvivorRef.MemberId = ExistingSurvivorId;
+	FGameXXKPartyMemberRef HeroRef;
+	HeroRef.Kind = EGameXXKPartyMemberKind::Hero;
+	HeroRef.MemberId = FGameXXKEquipmentRules::HeroCharacterId();
+	FGameXXKPartyMemberRef DismissedRef;
+	DismissedRef.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+	DismissedRef.MemberId = ActiveAfterPromotion.DismissedInstanceId;
+	ActiveAfterBefore.Members = {SurvivorRef, HeroRef, DismissedRef};
+	FString ActiveAfterFormationError;
+	if (!TestTrue(TEXT("ActiveAfter fixture commits survivor/hero/dismissed order"),
+		ActiveAfterPromotion.Subsystem->SetOrderedPartyFormation(
+			ActiveAfterBefore,
+			ActiveAfterFormationError)))
+	{
+		AddError(ActiveAfterFormationError);
+		return false;
+	}
+	FGameXXKEquipmentTransactionResult ActiveAfterResult;
+	TestTrue(TEXT("replacement accepts the new recruit as explicit ActiveAfter"),
+		ActiveAfterPromotion.Subsystem->ResolvePendingPermanentCompanionReplacement(
+			ActiveAfterPromotion.DismissedInstanceId,
+			ActiveAfterPromotion.PendingCandidateInstanceId,
+			ActiveAfterResult));
+	const FGameXXKRuntimeState& ActiveAfterState = ActiveAfterPromotion.Subsystem->GetRuntimeState();
+	const TArray<FGameXXKPartyMemberRef>& ActiveAfterMembers =
+		ActiveAfterState.CardRun.OrderedFormation.Members;
+	if (!TestEqual(TEXT("ActiveAfter replacement keeps three slots"), ActiveAfterMembers.Num(), 3))
+	{
+		return false;
+	}
+	TestEqual(TEXT("explicit ActiveAfter becomes first companion in its earlier companion slot"),
+		ActiveAfterMembers[0].MemberId, ActiveAfterPromotion.PendingCandidateInstanceId);
+	TestTrue(TEXT("ActiveAfter promotion preserves the non-companion hero slot bit-identically"),
+		ActiveAfterMembers[1] == HeroRef);
+	TestEqual(TEXT("displaced former first companion moves to removed companion slot"),
+		ActiveAfterMembers[2].MemberId, ExistingSurvivorId);
+	TestEqual(TEXT("legacy active ID follows explicit ActiveAfter"),
+		ActiveAfterState.CardRun.PartySelection.ActivePermanentCompanionInstanceId,
+		ActiveAfterPromotion.PendingCandidateInstanceId);
+
 	FReplacementFixture OffFormationDismissal;
 	if (!CreateEquipmentFixture(*this, OffFormationDismissal, 0, 0, false))
 	{

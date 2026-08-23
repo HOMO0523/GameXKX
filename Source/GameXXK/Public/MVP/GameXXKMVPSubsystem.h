@@ -258,6 +258,9 @@ public:
 	/** Per-subsystem deterministic disk-write seam used only by automation rollback tests. */
 	void SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate InDelegate);
 	void ResetSaveSlotWriteDelegateForTest();
+	/** Final pre-commit gate used only to prove new-game candidate rollback. */
+	void SetStartNewGameCommitGateForTest(TFunction<bool()> InGate);
+	void ResetStartNewGameCommitGateForTest();
 #endif
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
@@ -553,6 +556,9 @@ public:
 
 private:
 	bool WriteSaveGameToSlot(USaveGame* SaveGame, const FString& SlotName, int32 UserIndex);
+	bool BuildTrainingTravelRuntimeForState(
+		const FGameXXKRuntimeState& State,
+		FGameXXKTrainingTravelRuntime& OutRuntime) const;
 	bool RebuildTrainingTravelRuntime();
 	bool ApplyTrainingOfflineRewardToRuntime(FGameXXKRuntimeState& State, const FGameXXKTrainingOfflineReward& Reward) const;
 	int64 GetCurrentTravelUnixSeconds() const;
@@ -585,6 +591,7 @@ private:
 
 #if WITH_DEV_AUTOMATION_TESTS
 	FGameXXKSaveSlotWriteDelegate SaveSlotWriteDelegateForTest;
+	TFunction<bool()> StartNewGameCommitGateForTest;
 #endif
 
 	UPROPERTY()

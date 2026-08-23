@@ -1,5 +1,6 @@
 #include "GameXXKCompanionRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
@@ -121,6 +122,53 @@ bool FGameXXKStarterCompanionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("dismissal leaves exactly one companion"), Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.Num(), 1);
 	TestFalse(TEXT("the last remaining companion cannot be dismissed"), Subsystem->DismissPermanentCompanion(LastStarterId));
 	TestEqual(TEXT("the rejected dismissal keeps the last companion"), Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.Num(), 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKStartNewGameAtomicTransactionTest,
+	"GameXXK.MVP.StartNewGame.AtomicTransaction",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKStartNewGameAtomicTransactionTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestNotNull(TEXT("atomic new-game subsystem exists"), Subsystem)
+		|| !TestTrue(TEXT("atomic new-game baseline starts"), Subsystem->StartNewGame()))
+	{
+		return false;
+	}
+	Subsystem->GetMutableRuntimeState().PlayerGold = 54321;
+	const FGameXXKRuntimeState RuntimeBeforeFailure = Subsystem->GetRuntimeStateCopy();
+	const FGameXXKTrainingTravelRuntime TravelBeforeFailure = Subsystem->GetTrainingTravelRuntimeCopy();
+	Subsystem->SetStartNewGameCommitGateForTest([]()
+	{
+		return false;
+	});
+	TestFalse(TEXT("injected final new-game gate rejects initialization"), Subsystem->StartNewGame());
+	Subsystem->ResetStartNewGameCommitGateForTest();
+	TestTrue(TEXT("failed new-game attempt preserves every runtime field"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&Subsystem->GetRuntimeState(),
+			&RuntimeBeforeFailure,
+			PPF_None));
+	const FGameXXKTrainingTravelRuntime TravelAfterFailure = Subsystem->GetTrainingTravelRuntimeCopy();
+	TestTrue(TEXT("failed new-game attempt preserves transient travel runtime"),
+		FGameXXKTrainingTravelRuntime::StaticStruct()->CompareScriptStruct(
+			&TravelAfterFailure,
+			&TravelBeforeFailure,
+			PPF_None));
+
+	TestTrue(TEXT("new-game succeeds after failure gate resets"), Subsystem->StartNewGame());
+	TestTrue(TEXT("repeated new-game succeeds without appending old state"), Subsystem->StartNewGame());
+	const FGameXXKRuntimeState& Repeated = Subsystem->GetRuntimeState();
+	TestEqual(TEXT("repeated new-game owns exactly six starter companions"),
+		Repeated.CardRun.CompanionRoster.PermanentCompanions.Num(), 6);
+	TestEqual(TEXT("repeated new-game owns exact three-member formation"),
+		Repeated.CardRun.OrderedFormation.Members.Num(), FGameXXKPartyFormationRules::PartySize);
+	FString ValidationError;
+	TestTrue(TEXT("repeated new-game remains save-authoritatively valid"),
+		FGameXXKSaveMigration::ValidateRuntimeState(Repeated, ValidationError));
 	return true;
 }
 

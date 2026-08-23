@@ -264,7 +264,12 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("manual save slot 0 name"), UGameXXKMVPSubsystem::GetManualSaveSlotName(0), FString(TEXT("GameXXK_MVP_SaveSlot_1")));
 	TestEqual(TEXT("manual save slot 4 name"), UGameXXKMVPSubsystem::GetManualSaveSlotName(4), FString(TEXT("GameXXK_MVP_SaveSlot_5")));
 
-	TestTrue(TEXT("custom slot save succeeds"), SourceSubsystem->SaveCurrentGame(RoundTripSlot, UserIndex));
+	const bool bCustomSlotSaved = SourceSubsystem->SaveCurrentGame(RoundTripSlot, UserIndex);
+	TestTrue(
+		FString::Printf(
+			TEXT("custom slot save succeeds (error: %s)"),
+			*SourceSubsystem->GetLastSaveLoadError().ToString()),
+		bCustomSlotSaved);
 	TestTrue(TEXT("custom slot exists after save"), UGameplayStatics::DoesSaveGameExist(RoundTripSlot, UserIndex));
 	TestFalse(TEXT("current-version save creates no migration backup"), UGameplayStatics::DoesSaveGameExist(BackupSlotFor(RoundTripSlot), UserIndex));
 
@@ -829,22 +834,74 @@ bool FGameXXKOrderedFormationLegacyFallbackTest::RunTest(const FString& Paramete
 		{
 			return Companion.InstanceId != ActiveCompanionId;
 		});
+	const FGameXXKPermanentCompanion ExistingLegacyCompanion =
+		TooSmallState.CardRun.CompanionRoster.PermanentCompanions[0];
+	const FGameXXKEquipmentCollectionState ExistingLegacyEquipment = TooSmallState.EquipmentCollection;
 	FGameXXKSaveState TooSmallSave = UGameXXKMVPRules::MakeSaveState(TooSmallState);
 	TooSmallSave.SaveVersion = ExpectedIntroducedVersion - 1;
-	FGameXXKSaveState Rejected;
-	Rejected.SaveVersion = 987;
-	Rejected.RuntimeState.PlayerGold = 654321;
-	FGameXXKSaveMigrationReport RejectedReport;
-	TestFalse(TEXT("legacy state with fewer than three legal members is rejected"),
-		FGameXXKSaveMigration::MigrateToCurrent(TooSmallSave, Rejected, RejectedReport));
-	TestFalse(TEXT("failed legacy normalization returns a visible error"), RejectedReport.Error.IsEmpty());
-	TestEqual(TEXT("failed legacy normalization never writes the target version"), Rejected.SaveVersion, 0);
-	TestEqual(
-		TEXT("failed legacy normalization never leaks candidate player state"),
-		Rejected.RuntimeState.PlayerGold,
-		FGameXXKSaveState().RuntimeState.PlayerGold);
-	TestTrue(TEXT("failed legacy normalization leaves output formation empty"),
-		Rejected.RuntimeState.CardRun.OrderedFormation.Members.IsEmpty());
+	FGameXXKSaveState RepairedOneCompanion;
+	FGameXXKSaveMigrationReport OneCompanionReport;
+	TestTrue(TEXT("pre-v24 hero plus one companion receives one additive repair companion"),
+		FGameXXKSaveMigration::MigrateToCurrent(TooSmallSave, RepairedOneCompanion, OneCompanionReport));
+	TestEqual(TEXT("one-companion repair appends only the minimum missing profile"),
+		RepairedOneCompanion.RuntimeState.CardRun.CompanionRoster.PermanentCompanions.Num(), 2);
+	const FGameXXKPermanentCompanion* PreservedLegacyCompanion =
+		RepairedOneCompanion.RuntimeState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[ActiveCompanionId](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.InstanceId == ActiveCompanionId;
+			});
+	TestNotNull(TEXT("one-companion repair preserves the existing stable identity"), PreservedLegacyCompanion);
+	if (PreservedLegacyCompanion)
+	{
+		TestTrue(TEXT("one-companion repair preserves every existing companion field"),
+			FGameXXKPermanentCompanion::StaticStruct()->CompareScriptStruct(
+				PreservedLegacyCompanion,
+				&ExistingLegacyCompanion,
+				PPF_None));
+	}
+	TestTrue(TEXT("one-companion repair preserves equipment exactly"),
+		FGameXXKEquipmentCollectionState::StaticStruct()->CompareScriptStruct(
+			&RepairedOneCompanion.RuntimeState.EquipmentCollection,
+			&ExistingLegacyEquipment,
+			PPF_None));
+	TestEqual(TEXT("one-companion repair materializes exactly three ordered members"),
+		RepairedOneCompanion.RuntimeState.CardRun.OrderedFormation.Members.Num(), 3);
+	TestTrue(TEXT("one-companion repair is reported"),
+		OneCompanionReport.Warnings.ContainsByPredicate([](const FString& Warning)
+		{
+			return Warning.Contains(TEXT("party"), ESearchCase::IgnoreCase);
+		}));
+	FGameXXKSaveState RepairedOneCompanionAgain;
+	FGameXXKSaveMigrationReport OneCompanionAgainReport;
+	TestTrue(TEXT("same one-companion legacy input migrates twice"),
+		FGameXXKSaveMigration::MigrateToCurrent(TooSmallSave, RepairedOneCompanionAgain, OneCompanionAgainReport));
+	TestTrue(TEXT("one-companion additive repair is deterministic"),
+		FGameXXKSaveState::StaticStruct()->CompareScriptStruct(
+			&RepairedOneCompanion,
+			&RepairedOneCompanionAgain,
+			PPF_None));
+
+	FGameXXKSaveState HeroOnlySave =
+		UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
+	HeroOnlySave.SaveVersion = ExpectedIntroducedVersion - 1;
+	FGameXXKSaveState RepairedHeroOnly;
+	FGameXXKSaveMigrationReport HeroOnlyReport;
+	TestTrue(TEXT("pre-v24 hero-only save receives additive starter repair"),
+		FGameXXKSaveMigration::MigrateToCurrent(HeroOnlySave, RepairedHeroOnly, HeroOnlyReport));
+	TestEqual(TEXT("hero-only repair appends exactly two permanent companions"),
+		RepairedHeroOnly.RuntimeState.CardRun.CompanionRoster.PermanentCompanions.Num(), 2);
+	TestEqual(TEXT("hero-only repair produces exact three-member formation"),
+		RepairedHeroOnly.RuntimeState.CardRun.OrderedFormation.Members.Num(), 3);
+	FGameXXKSaveState RepairedHeroOnlyAgain;
+	FGameXXKSaveMigrationReport HeroOnlyAgainReport;
+	TestTrue(TEXT("same hero-only legacy input migrates twice"),
+		FGameXXKSaveMigration::MigrateToCurrent(HeroOnlySave, RepairedHeroOnlyAgain, HeroOnlyAgainReport));
+	TestTrue(TEXT("hero-only additive repair is deterministic"),
+		FGameXXKSaveState::StaticStruct()->CompareScriptStruct(
+			&RepairedHeroOnly,
+			&RepairedHeroOnlyAgain,
+			PPF_None));
 	return true;
 }
 
@@ -882,6 +939,15 @@ bool FGameXXKOrderedFormationCurrentStrictValidationTest::RunTest(const FString&
 	TestFalse(TEXT("runtime save validator rejects missing current ordered formation"),
 		FGameXXKSaveMigration::ValidateRuntimeState(MissingFormation, ValidationError));
 	TestFalse(TEXT("runtime save validator reports missing formation"), ValidationError.IsEmpty());
+	FGameXXKSaveState CurrentSparse =
+		UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
+	CurrentSparse.SaveVersion = ExpectedIntroducedVersion;
+	FGameXXKSaveState CurrentSparseRejected;
+	FGameXXKSaveMigrationReport CurrentSparseReport;
+	TestFalse(TEXT("current v24 sparse party is rejected without additive repair"),
+		FGameXXKSaveMigration::MigrateToCurrent(CurrentSparse, CurrentSparseRejected, CurrentSparseReport));
+	TestTrue(TEXT("current v24 sparse rejection appends no companions"),
+		CurrentSparseRejected.RuntimeState.CardRun.CompanionRoster.PermanentCompanions.IsEmpty());
 
 	TArray<FGameXXKSaveState> CorruptSaves;
 	FGameXXKSaveState Duplicate = CurrentSave;
@@ -928,6 +994,66 @@ bool FGameXXKOrderedFormationCurrentStrictValidationTest::RunTest(const FString&
 			FString::Printf(TEXT("corrupt current formation %d does not produce a migrated party"), CorruptIndex),
 			Rejected.RuntimeState.CardRun.OrderedFormation.Members.IsEmpty());
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKSaveRejectsCompatibilityMismatchTest,
+	"GameXXK.MVP.SaveGame.CompatibilityProjectionWriteGate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKSaveRejectsCompatibilityMismatchTest::RunTest(const FString& Parameters)
+{
+	const FString Slot = TEXT("GameXXK_Automation_CompatibilityProjectionWriteGate");
+	constexpr int32 UserIndex = 0;
+	DeleteMainAndBackup(Slot, UserIndex);
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestNotNull(TEXT("compatibility write-gate subsystem exists"), Subsystem)
+		|| !TestTrue(TEXT("compatibility write-gate subsystem starts"), Subsystem->StartGame()))
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	const FName OrderedCompanionId = State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+	FName MismatchedCompanionId = NAME_None;
+	for (const FGameXXKPermanentCompanion& Companion : State.CardRun.CompanionRoster.PermanentCompanions)
+	{
+		if (Companion.InstanceId != OrderedCompanionId)
+		{
+			MismatchedCompanionId = Companion.InstanceId;
+			break;
+		}
+	}
+	if (!TestFalse(TEXT("compatibility write-gate finds a different owned companion"), MismatchedCompanionId.IsNone()))
+	{
+		return false;
+	}
+	State.CardRun.PartySelection.ActivePermanentCompanionInstanceId = MismatchedCompanionId;
+	for (FGameXXKPermanentCompanion& Companion : State.CardRun.CompanionRoster.PermanentCompanions)
+	{
+		Companion.bIsActive = Companion.InstanceId == MismatchedCompanionId;
+	}
+
+	FString ValidationError;
+	TestFalse(TEXT("authoritative validator rejects compatibility that disagrees with formation"),
+		FGameXXKSaveMigration::ValidateRuntimeState(State, ValidationError));
+	TestFalse(TEXT("compatibility mismatch exposes a validation error"), ValidationError.IsEmpty());
+	int32 WriteAttempts = 0;
+	Subsystem->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda(
+		[&WriteAttempts](USaveGame*, const FString&, const int32)
+		{
+			++WriteAttempts;
+			return true;
+		}));
+	TestFalse(TEXT("SaveCurrentGame rejects invalid compatibility before disk"),
+		Subsystem->SaveCurrentGame(Slot, UserIndex));
+	Subsystem->ResetSaveSlotWriteDelegateForTest();
+	TestEqual(TEXT("compatibility rejection performs no save-slot write"), WriteAttempts, 0);
+	TestFalse(TEXT("compatibility rejection creates no slot"), UGameplayStatics::DoesSaveGameExist(Slot, UserIndex));
+	TestFalse(TEXT("compatibility rejection exposes a player-facing save error"),
+		Subsystem->GetLastSaveLoadError().IsEmpty());
+	DeleteMainAndBackup(Slot, UserIndex);
 	return true;
 }
 

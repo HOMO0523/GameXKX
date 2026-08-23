@@ -445,6 +445,32 @@ bool FGameXXKPartyFormationCompatibilityProjectionTest::RunTest(const FString& P
 	TestEqual(TEXT("owned NPC loadout count is not polluted"),
 		State.CardRun.PartySelection.QuestNpcCardLoadouts.Num(),
 		OriginalSelection.QuestNpcCardLoadouts.Num());
+	const FGameXXKRuntimeState ValidProjectionBefore = State;
+	FString ProjectionError;
+	TestTrue(TEXT("pure compatibility validator accepts the exact projected mirrors"),
+		FGameXXKPartyFormationRules::ValidateCompatibilityProjection(State, &ProjectionError));
+	TestTrue(TEXT("pure compatibility validation never mutates runtime"),
+		RuntimeStatesMatch(State, ValidProjectionBefore));
+
+	FGameXXKRuntimeState WrongActivePointer = State;
+	WrongActivePointer.CardRun.PartySelection.ActivePermanentCompanionInstanceId = BladeId;
+	TestFalse(TEXT("compatibility validator rejects active pointer that differs from first companion"),
+		FGameXXKPartyFormationRules::ValidateCompatibilityProjection(WrongActivePointer, &ProjectionError));
+	FGameXXKRuntimeState DuplicateActiveFlags = State;
+	for (FGameXXKPermanentCompanion& Companion : DuplicateActiveFlags.CardRun.CompanionRoster.PermanentCompanions)
+	{
+		if (Companion.InstanceId == BladeId)
+		{
+			Companion.bIsActive = true;
+		}
+	}
+	TestFalse(TEXT("compatibility validator rejects multiple active roster flags"),
+		FGameXXKPartyFormationRules::ValidateCompatibilityProjection(DuplicateActiveFlags, &ProjectionError));
+	FGameXXKRuntimeState WrongNpcProjection = State;
+	WrongNpcProjection.CardRun.ActiveTemporaryQuestNpcId = TusiChiefId;
+	WrongNpcProjection.CardRun.PartySelection.QuestNpc.NpcId = TusiChiefId;
+	TestFalse(TEXT("compatibility validator rejects NPC mirrors that differ from ordered NPC"),
+		FGameXXKPartyFormationRules::ValidateCompatibilityProjection(WrongNpcProjection, &ProjectionError));
 
 	State.CardRun.OrderedFormation.Members = {
 		MakeMember(EGameXXKPartyMemberKind::Hero, FGameXXKEquipmentRules::HeroCharacterId()),

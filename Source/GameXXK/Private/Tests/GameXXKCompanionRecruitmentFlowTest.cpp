@@ -1,6 +1,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Engine/GameInstance.h"
+#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKMVPRules.h"
@@ -175,7 +176,7 @@ bool FGameXXKCompanionRecruitmentFacadePersistenceTest::RunTest(const FString& P
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestNotNull(TEXT("recruitment facade subsystem exists"), Subsystem);
-	if (!Subsystem || !TestTrue(TEXT("the facade can establish a saveable town runtime"), Subsystem->StartGame()))
+	if (!Subsystem || !TestTrue(TEXT("the facade can establish a town runtime"), Subsystem->EnsureQingshanTownRuntimeForDirectMap()))
 	{
 		return false;
 	}
@@ -184,6 +185,21 @@ bool FGameXXKCompanionRecruitmentFacadePersistenceTest::RunTest(const FString& P
 	TestTrue(TEXT("the town facade starts a random permanent recruitment"), Subsystem->StartRandomPermanentCompanionRecruitment(FirstTownRecruit));
 	TestEqual(TEXT("the town facade yields a permanent recruit while roster has space"), FirstTownRecruit.Outcome, EGameXXKCompanionRecruitOutcome::Recruited);
 	TestEqual(TEXT("the facade recruit has its own six-card birth pool"), FirstTownRecruit.Companion.PersonalCardIds.Num(), 6);
+	FGameXXKRuntimeState& FirstRecruitState = Subsystem->GetMutableRuntimeState();
+	FString FirstRecruitFormationError;
+	if (!TestTrue(TEXT("first recruitment save attaches the approved task NPC"),
+		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
+			FirstRecruitState,
+			TEXT("Npc.TusiChief"),
+			{},
+			&FirstRecruitFormationError))
+		|| !TestTrue(TEXT("first recruitment save materializes v24 formation"),
+			FGameXXKPartyFormationRules::Normalize(FirstRecruitState, &FirstRecruitFormationError)))
+	{
+		AddError(FirstRecruitFormationError);
+		return false;
+	}
+	FGameXXKPartyFormationRules::ProjectCompatibility(FirstRecruitState);
 
 	const FGameXXKSaveState SavedAfterFirstRecruit = UGameXXKMVPRules::MakeSaveState(Subsystem->GetRuntimeState());
 	UGameInstance* ReloadedGameInstance = NewObject<UGameInstance>();
@@ -343,7 +359,17 @@ bool FGameXXKCompanionRecruitmentRosterInteractionTest::RunTest(const FString& P
 	{
 		return false;
 	}
-	Subsystem->GetMutableRuntimeState().CardRun.CompanionRoster = FullRoster;
+	FGameXXKRuntimeState& RosterUiState = Subsystem->GetMutableRuntimeState();
+	RosterUiState.CardRun.CompanionRoster = FullRoster;
+	RosterUiState.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
+	FString RosterUiFormationError;
+	if (!TestTrue(TEXT("roster UI fixture materializes v24 formation"),
+		FGameXXKPartyFormationRules::Normalize(RosterUiState, &RosterUiFormationError)))
+	{
+		AddError(RosterUiFormationError);
+		return false;
+	}
+	FGameXXKPartyFormationRules::ProjectCompatibility(RosterUiState);
 
 	UGameXXKCompanionRosterWidget* Widget = BuildRosterWidget(Subsystem);
 	TestNotNull(TEXT("the recruitment backpack builds"), Widget);

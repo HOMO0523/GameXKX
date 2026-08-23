@@ -22,6 +22,10 @@ public:
 		const FGameXXKRuntimeState& State,
 		const FGameXXKOrderedPartyFormation& Formation,
 		FString* OutError = nullptr);
+	/** Verifies legacy active companion/NPC mirrors are the exact projection of ordered formation. */
+	static bool ValidateCompatibilityProjection(
+		const FGameXXKRuntimeState& State,
+		FString* OutError = nullptr);
 	static bool Normalize(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);
 	static void ProjectCompatibility(FGameXXKRuntimeState& InOutState);
 };
