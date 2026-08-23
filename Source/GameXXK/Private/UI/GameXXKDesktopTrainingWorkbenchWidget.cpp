@@ -2239,13 +2239,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackTabToggle()
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
 		TEXT("BackpackTabToggleButton"));
 	Toggle->Configure(this, 60);
-	Toggle->SetStyle(bBackpackExpanded
-		? MakeImageButtonStyle(CloseInkTexturePath, FVector2D(68.0f, 44.0f))
-		: MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(68.0f, 44.0f), FMargin(0.08f)));
+	Toggle->SetStyle(MakeTextureButtonStyle(
+		bBackpackExpanded ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
+		FVector2D(68.0f, 44.0f),
+		FMargin(0.08f)));
 	Toggle->SetBackgroundColor(FLinearColor::White);
-	Toggle->SetContent(bBackpackExpanded
-		? nullptr
-		: MakeButtonText(WidgetTree, FText::FromString(TEXT("▼")), 24, Ink));
+	Toggle->SetContent(MakeButtonText(
+		WidgetTree,
+		FText::FromString(bBackpackExpanded ? TEXT("▲") : TEXT("▼")),
+		24,
+		Ink));
 	Toggle->SetToolTipText(FText::FromString(
 		bBackpackExpanded
 			? TEXT("关闭背包与全部子界面；历练挂机继续运行")
@@ -3352,6 +3355,15 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 	AddCanvas(RootCanvas, Sort, FVector2D(1212.0f, 710.0f), FVector2D(100.0f, 44.0f));
 	ActionButtons.Add(Sort);
 	BuildCharacterRosterTabs();
+	BuildPanelCloseButton(TEXT("BackpackPanelCloseButton"), 60, FVector2D(1290.0f, 270.0f));
+	if (UButton* CloseButton = Cast<UButton>(WidgetTree->FindWidget(TEXT("BackpackPanelCloseButton"))))
+	{
+		const FText CloseDescription = FText::FromString(TEXT("关闭背包与全部子界面"));
+		CloseButton->SetToolTipText(CloseDescription);
+		UTextBlock* AccessibleLabel = MakeButtonText(WidgetTree, CloseDescription, 1, FLinearColor::Transparent);
+		AccessibleLabel->SetRenderOpacity(0.0f);
+		CloseButton->SetContent(AccessibleLabel);
+	}
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildCharacterRosterTabs()

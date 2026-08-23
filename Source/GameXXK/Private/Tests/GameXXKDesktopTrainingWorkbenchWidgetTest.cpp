@@ -1355,15 +1355,150 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 	}
 	Widget->SetMVPSubsystem(Subsystem);
 	Widget->ConstructForTest();
-	TestTrue(TEXT("backpack opens"), Widget->OpenBackpack());
-
-	UButton* ExpandedBackpackClose = Widget->WidgetTree
+	TestTrue(TEXT("close-stack fixture opens the collapsed workbench"), Widget->OpenWorkbench());
+	UButton* CollapsedBackpackTab = Widget->WidgetTree
 		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("BackpackTabToggleButton")))
 		: nullptr;
-	if (TestNotNull(TEXT("expanded Backpack exposes its global close control"), ExpandedBackpackClose))
+	if (TestNotNull(TEXT("collapsed workbench exposes the Backpack Tab"), CollapsedBackpackTab))
 	{
-		TestNull(TEXT("expanded Backpack close control has no legacy arrow text"), ExpandedBackpackClose->GetContent());
+		TestTrue(TEXT("collapsed Backpack Tab uses the approved normal tab texture"),
+			GetButtonNormalResourcePath(CollapsedBackpackTab).Contains(TEXT("003_tab_1")));
+		const UTextBlock* CollapsedTabLabel = Cast<UTextBlock>(CollapsedBackpackTab->GetContent());
+		TestEqual(TEXT("collapsed Backpack Tab displays the down arrow"),
+			CollapsedTabLabel ? CollapsedTabLabel->GetText().ToString() : FString(), FString(TEXT("▼")));
 	}
+	TestNull(TEXT("collapsed workbench has no Backpack paper close button"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("BackpackPanelCloseButton")) : nullptr);
+	TestTrue(TEXT("backpack opens"), Widget->OpenBackpack());
+
+	UButton* ExpandedBackpackTab = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("BackpackTabToggleButton")))
+		: nullptr;
+	if (TestNotNull(TEXT("expanded Backpack retains its separate Tab control"), ExpandedBackpackTab))
+	{
+		const FButtonStyle& ExpandedTabStyle = ExpandedBackpackTab->GetStyle();
+		TestTrue(TEXT("expanded Backpack Tab uses the approved selected tab texture"),
+			GetButtonNormalResourcePath(ExpandedBackpackTab).Contains(TEXT("004_tab_2")));
+		const auto BrushUsesCloseInk = [](const FSlateBrush& Brush)
+		{
+			const UObject* Resource = Brush.GetResourceObject();
+			return Resource && Resource->GetPathName().Contains(TEXT("CloseInk"));
+		};
+		TestFalse(TEXT("expanded Backpack Tab normal brush does not use CloseInk"), BrushUsesCloseInk(ExpandedTabStyle.Normal));
+		TestFalse(TEXT("expanded Backpack Tab hovered brush does not use CloseInk"), BrushUsesCloseInk(ExpandedTabStyle.Hovered));
+		TestFalse(TEXT("expanded Backpack Tab pressed brush does not use CloseInk"), BrushUsesCloseInk(ExpandedTabStyle.Pressed));
+		TestFalse(TEXT("expanded Backpack Tab disabled brush does not use CloseInk"), BrushUsesCloseInk(ExpandedTabStyle.Disabled));
+		const UTextBlock* ExpandedTabLabel = Cast<UTextBlock>(ExpandedBackpackTab->GetContent());
+		TestEqual(TEXT("expanded Backpack Tab displays the up arrow"),
+			ExpandedTabLabel ? ExpandedTabLabel->GetText().ToString() : FString(), FString(TEXT("▲")));
+	}
+
+	UButton* BackpackPanelClose = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("BackpackPanelCloseButton")))
+		: nullptr;
+	if (TestNotNull(TEXT("Backpack page exposes a separate paper close button"), BackpackPanelClose))
+	{
+		TestTrue(TEXT("Backpack paper close uses the approved CloseInk"),
+			GetButtonNormalResourcePath(BackpackPanelClose).Contains(TEXT("CloseInk")));
+		const FString ExpectedCloseDescription(TEXT("关闭背包与全部子界面"));
+		TestEqual(TEXT("Backpack paper close exposes the global-close tooltip"),
+			BackpackPanelClose->GetToolTipText().ToString(), ExpectedCloseDescription);
+		const UTextBlock* AccessibleCloseLabel = Cast<UTextBlock>(BackpackPanelClose->GetContent());
+		TestEqual(TEXT("Backpack paper close owns accessible label text"),
+			AccessibleCloseLabel ? AccessibleCloseLabel->GetText().ToString() : FString(), ExpectedCloseDescription);
+		TestEqual(TEXT("Backpack paper accessible label remains visually transparent"),
+			AccessibleCloseLabel ? AccessibleCloseLabel->GetRenderOpacity() : 1.0f, 0.0f);
+#if WITH_ACCESSIBILITY
+		BackpackPanelClose->TakeWidget();
+		BackpackPanelClose->SynchronizeProperties();
+		TestTrue(TEXT("Backpack paper close exposes its label to Slate accessibility"),
+			BackpackPanelClose->GetAccessibleText().ToString().Contains(ExpectedCloseDescription));
+#endif
+		const UCanvasPanelSlot* CloseSlot = Cast<UCanvasPanelSlot>(BackpackPanelClose->Slot);
+		if (TestNotNull(TEXT("Backpack paper close has a canvas slot"), CloseSlot))
+		{
+			const FVector4 ContentRect = GameXXKDesktopTrainingLayout::GetContentRect();
+			const FVector2D ClosePosition = CloseSlot->GetPosition();
+			const FVector2D CloseSize = CloseSlot->GetSize();
+			TestTrue(TEXT("Backpack paper close is fully inside the paper ContentRect"),
+				ClosePosition.X >= ContentRect.X
+				&& ClosePosition.Y >= ContentRect.Y
+				&& ClosePosition.X + CloseSize.X <= ContentRect.X + ContentRect.Z
+				&& ClosePosition.Y + CloseSize.Y <= ContentRect.Y + ContentRect.W);
+			TestTrue(TEXT("Backpack paper close sits in the paper top-right corner"),
+				ClosePosition.X >= ContentRect.X + ContentRect.Z - 100.0f
+				&& ClosePosition.Y <= ContentRect.Y + 100.0f);
+			const FName TopToolbarNames[] = {
+				TEXT("TopToolbarAlwaysOnTop"),
+				TEXT("TopToolbarMute"),
+				TEXT("TopToolbarMail"),
+				TEXT("TopToolbarShop"),
+				TEXT("TopToolbarExit")};
+			for (const FName ToolbarName : TopToolbarNames)
+			{
+				const UWidget* ToolbarButton = Widget->WidgetTree->FindWidget(ToolbarName);
+				const UCanvasPanelSlot* ToolbarSlot = ToolbarButton
+					? Cast<UCanvasPanelSlot>(ToolbarButton->Slot)
+					: nullptr;
+				if (!TestNotNull(*FString::Printf(TEXT("%s has a canvas slot"), *ToolbarName.ToString()), ToolbarSlot))
+				{
+					continue;
+				}
+				const FVector2D ToolbarPosition = ToolbarSlot->GetPosition();
+				const FVector2D ToolbarSize = ToolbarSlot->GetSize();
+				const bool bIntersectsToolbar = ClosePosition.X < ToolbarPosition.X + ToolbarSize.X
+					&& ClosePosition.X + CloseSize.X > ToolbarPosition.X
+					&& ClosePosition.Y < ToolbarPosition.Y + ToolbarSize.Y
+					&& ClosePosition.Y + CloseSize.Y > ToolbarPosition.Y;
+				TestFalse(*FString::Printf(TEXT("Backpack paper close does not intersect %s"), *ToolbarName.ToString()),
+					bIntersectsToolbar);
+			}
+		}
+	}
+	TArray<UWidget*> ExpandedWidgets;
+	Widget->WidgetTree->GetAllWidgets(ExpandedWidgets);
+	int32 BackpackPanelCloseCount = 0;
+	for (const UWidget* Child : ExpandedWidgets)
+	{
+		BackpackPanelCloseCount += Child && Child->GetFName() == TEXT("BackpackPanelCloseButton") ? 1 : 0;
+	}
+	TestEqual(TEXT("Backpack page creates exactly one paper close button"), BackpackPanelCloseCount, 1);
+
+	Widget->HandleActionClicked(3); // Exercise the expanded Tab against real transient state.
+	const FName TabCloseStoneId = UGameXXKMVPRules::ItemEnhancementStone();
+	TestTrue(TEXT("expanded Tab fixture reserves a real tool input"),
+		Widget->RightClickBackpackSlotForTest(Widget->FindBackpackItemSlotForTest(TabCloseStoneId)));
+	const int32 TabCloseEquipmentSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
+	TestTrue(TEXT("expanded Tab fixture carries a real Backpack item"),
+		TabCloseEquipmentSlot != INDEX_NONE && Widget->PickUpBackpackSlotForTest(TabCloseEquipmentSlot));
+	ExpandedBackpackTab = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("BackpackTabToggleButton")))
+		: nullptr;
+	if (ExpandedBackpackTab)
+	{
+		ExpandedBackpackTab->OnClicked.Broadcast();
+	}
+	TestFalse(TEXT("clicking the expanded Backpack Tab dispatches global collapse"), Widget->IsBackpackExpandedForTest());
+	TestFalse(TEXT("expanded Backpack Tab click closes the right rail"), Widget->IsRightPanelOpenForTest());
+	TestFalse(TEXT("expanded Backpack Tab click cancels the carried item"), Widget->IsCarryingItemForTest());
+	TestEqual(TEXT("expanded Backpack Tab click returns tool reservations"), Widget->GetOccupiedToolSlotCountForTest(), 0);
+	Widget->TickForTest(0.0f);
+	CollapsedBackpackTab = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("BackpackTabToggleButton")))
+		: nullptr;
+	if (TestNotNull(TEXT("Tab collapse rebuilds the collapsed Tab"), CollapsedBackpackTab))
+	{
+		TestTrue(TEXT("rebuilt collapsed Tab uses the approved normal texture"),
+			GetButtonNormalResourcePath(CollapsedBackpackTab).Contains(TEXT("003_tab_1")));
+		const UTextBlock* CollapsedTabLabel = Cast<UTextBlock>(CollapsedBackpackTab->GetContent());
+		TestEqual(TEXT("rebuilt collapsed Tab displays the down arrow"),
+			CollapsedTabLabel ? CollapsedTabLabel->GetText().ToString() : FString(), FString(TEXT("▼")));
+		TestNull(TEXT("collapsed state removes the Backpack paper close button"),
+			Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("BackpackPanelCloseButton")) : nullptr);
+		CollapsedBackpackTab->OnClicked.Broadcast();
+	}
+	Widget->TickForTest(0.0f);
+	TestTrue(TEXT("clicking the collapsed Backpack Tab reopens the Backpack"), Widget->IsBackpackExpandedForTest());
 
 	Widget->HandleActionClicked(0); // Warehouse.
 	Widget->HandleActionClicked(3); // Tools.
@@ -1375,6 +1510,8 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("WarehouseCloseButton")) : nullptr);
 	TestNotNull(TEXT("talents own a local close control"),
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("TalentsCloseButton")) : nullptr);
+	TestNull(TEXT("Talents page does not reuse the Backpack paper close button"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("BackpackPanelCloseButton")) : nullptr);
 	TestNotNull(TEXT("tools own a local close control"),
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("ToolsCloseButton")) : nullptr);
 
@@ -1386,6 +1523,8 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 	Widget->HandleActionClicked(1); // Formation in the center.
 	TestNotNull(TEXT("formation owns a local close control"),
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("FormationCloseButton")) : nullptr);
+	TestNull(TEXT("Formation page does not reuse the Backpack paper close button"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("BackpackPanelCloseButton")) : nullptr);
 	Widget->HandleActionClicked(63);
 	TestEqual(TEXT("formation close also returns to backpack"),
 		Widget->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
@@ -1423,12 +1562,22 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 	const int32 EquipmentSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
 	TestTrue(TEXT("an item is carried before global close"),
 		EquipmentSlot != INDEX_NONE && Widget->PickUpBackpackSlotForTest(EquipmentSlot));
-	Widget->HandleActionClicked(60); // Global Backpack/Tab close.
+	Widget->HandleActionClicked(63); // Return to Backpack so its paper X is visible.
+	BackpackPanelClose = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("BackpackPanelCloseButton")))
+		: nullptr;
+	if (TestNotNull(TEXT("Backpack paper X is restored after local Formation close"), BackpackPanelClose))
+	{
+		BackpackPanelClose->OnClicked.Broadcast();
+	}
 	TestFalse(TEXT("global close collapses backpack"), Widget->IsBackpackExpandedForTest());
 	TestFalse(TEXT("global close closes warehouse"), Widget->IsWarehousePanelOpenForTest());
 	TestFalse(TEXT("global close closes right rail"), Widget->IsRightPanelOpenForTest());
 	TestFalse(TEXT("global close cancels carried item"), Widget->IsCarryingItemForTest());
 	TestEqual(TEXT("global close returns all tool reservations"), Widget->GetOccupiedToolSlotCountForTest(), 0);
+	Widget->TickForTest(0.0f);
+	TestNull(TEXT("paper X is absent after its global close callback collapses the Backpack"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("BackpackPanelCloseButton")) : nullptr);
 
 	Widget->HandleActionClicked(60); // Keyboard Tab and the X share this action.
 	TestTrue(TEXT("Tab reopens"), Widget->IsBackpackExpandedForTest());
