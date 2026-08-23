@@ -8,6 +8,20 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+namespace
+{
+	bool StartMaterializedFormationGame(FGameXXKRuntimeState& OutState)
+	{
+		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		if (!Subsystem || !Subsystem->StartGame())
+		{
+			return false;
+		}
+		OutState = Subsystem->GetRuntimeState();
+		return true;
+	}
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKRouteSettlementConversionTest,
 	"GameXXK.Route.Settlement.Conversions",
@@ -56,7 +70,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKRouteSettlementReplayTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State;
+	if (!TestTrue(TEXT("replay fixture starts with a materialized ordered formation"), StartMaterializedFormationGame(State)))
+	{
+		return false;
+	}
 	State.bDungeonActive = true;
 	TestTrue(TEXT("replay fixture initializes its route economy"),
 		FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun, 101));
@@ -84,7 +102,11 @@ bool FGameXXKRouteSettlementReplayTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("replaying an already applied receipt never duplicates enhancement stones"),
 		UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemEnhancementStone()), StonesBefore + 10);
 
-	FGameXXKRuntimeState NextRouteState = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState NextRouteState;
+	if (!TestTrue(TEXT("later-route fixture starts with a materialized ordered formation"), StartMaterializedFormationGame(NextRouteState)))
+	{
+		return false;
+	}
 	TestTrue(TEXT("the later route opens the world map"), UGameXXKMVPRules::OpenWorldMap(NextRouteState));
 	TestTrue(TEXT("the later route enters Qingshan through the canonical town path"),
 		UGameXXKMVPRules::EnterWorldRegion(NextRouteState, UGameXXKMVPRules::RegionQingshan()));
@@ -120,7 +142,11 @@ bool FGameXXKRouteSettlementReplayTest::RunTest(const FString& Parameters)
 			&NextRouteBeforeOldReplay,
 			PPF_None));
 
-	FGameXXKRuntimeState RecoveryState = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState RecoveryState;
+	if (!TestTrue(TEXT("recovery fixture starts with a materialized ordered formation"), StartMaterializedFormationGame(RecoveryState)))
+	{
+		return false;
+	}
 	RecoveryState.bDungeonActive = true;
 	TestTrue(TEXT("crash-recovery fixture initializes its original route economy"),
 		FGameXXKRouteEconomyRules::InitializeRoute(RecoveryState.CardRun, Receipt.SourceTravelMoney));
@@ -169,8 +195,8 @@ namespace
 {
 	bool StartAcceptedThreeChapterRoute(FGameXXKRuntimeState& OutState)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
-		return UGameXXKMVPRules::OpenWorldMap(OutState)
+		return StartMaterializedFormationGame(OutState)
+			&& UGameXXKMVPRules::OpenWorldMap(OutState)
 			&& UGameXXKMVPRules::EnterWorldRegion(OutState, UGameXXKMVPRules::RegionQingshan())
 			&& UGameXXKMVPRules::AcceptTownQuest(OutState)
 			&& UGameXXKMVPRules::EnterDungeon(OutState);

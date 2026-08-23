@@ -1,6 +1,7 @@
 #include "GameXXKRouteSettlementRules.h"
 
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKPartyFormationRules.h"
 #include "GameXXKRouteEconomyRules.h"
 
 namespace
@@ -52,12 +53,47 @@ namespace
 			State.CardRun.RouteTravelMoney);
 	}
 
-	void ClearSettledRouteLocalState(FGameXXKRuntimeState& InOutState)
+	bool ClearSettledRouteLocalState(FGameXXKRuntimeState& InOutState, FString* OutError)
 	{
-		FGameXXKCardBattleAdapter::ClearRouteLocalCardState(InOutState);
-		InOutState.CardRun.RouteProgress = FGameXXKRouteProgress();
-		FGameXXKRouteEconomyRules::ClearRouteEconomy(InOutState.CardRun);
-		InOutState.CardRun.PendingSettlement = FGameXXKRouteSettlementReceipt();
+		if (!FGameXXKPartyFormationRules::Validate(
+				InOutState,
+				InOutState.CardRun.OrderedFormation,
+				OutError)
+			|| !FGameXXKPartyFormationRules::ValidateCompatibilityProjection(InOutState, OutError))
+		{
+			return false;
+		}
+
+		FGameXXKRuntimeState Candidate = InOutState;
+		FGameXXKCardBattleAdapter::ClearRouteLocalCardState(Candidate);
+		Candidate.CardRun.RouteProgress = FGameXXKRouteProgress();
+		FGameXXKRouteEconomyRules::ClearRouteEconomy(Candidate.CardRun);
+		Candidate.CardRun.PendingSettlement = FGameXXKRouteSettlementReceipt();
+
+		FGameXXKOrderedPartyFormation RepairedFormation;
+		if (!FGameXXKPartyFormationRules::RepairUnavailableQuestNpcSlotsPreservingOrder(
+				Candidate,
+				RepairedFormation,
+				OutError))
+		{
+			return false;
+		}
+		Candidate.CardRun.OrderedFormation = MoveTemp(RepairedFormation);
+		if (!FGameXXKPartyFormationRules::Validate(
+				Candidate,
+				Candidate.CardRun.OrderedFormation,
+				OutError))
+		{
+			return false;
+		}
+		FGameXXKPartyFormationRules::ProjectCompatibility(Candidate);
+		if (!FGameXXKPartyFormationRules::ValidateCompatibilityProjection(Candidate, OutError))
+		{
+			return false;
+		}
+
+		InOutState = MoveTemp(Candidate);
+		return true;
 	}
 }
 
@@ -107,7 +143,10 @@ bool FGameXXKRouteSettlementRules::Apply(
 			&& State.CardRun.RouteProgress.ActualRouteCardAcquisitionCount == Receipt.SourceCardAcquisitionCount)
 		{
 			FGameXXKRuntimeState Candidate = State;
-			ClearSettledRouteLocalState(Candidate);
+			if (!ClearSettledRouteLocalState(Candidate, OutError))
+			{
+				return false;
+			}
 			State = MoveTemp(Candidate);
 		}
 		return true;
@@ -136,7 +175,10 @@ bool FGameXXKRouteSettlementRules::Apply(
 		return SetFailure(OutError, TEXT("The enhancement-stone award cannot be applied."));
 	}
 	Candidate.CardRun.LastAppliedRouteSettlementId = Receipt.SettlementId;
-	ClearSettledRouteLocalState(Candidate);
+	if (!ClearSettledRouteLocalState(Candidate, OutError))
+	{
+		return false;
+	}
 	State = MoveTemp(Candidate);
 	return true;
 }

@@ -10,6 +10,17 @@
 
 namespace
 {
+	bool StartMaterializedFormationGame(FGameXXKRuntimeState& OutState)
+	{
+		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		if (!Subsystem || !Subsystem->StartGame())
+		{
+			return false;
+		}
+		OutState = Subsystem->GetRuntimeState();
+		return true;
+	}
+
 	const FGameXXKRouteMapNode* FindRouteNode(const FGameXXKRuntimeState& State, const int32 NodeId)
 	{
 		return State.RouteMapNodes.FindByPredicate([NodeId](const FGameXXKRouteMapNode& Node)
@@ -30,7 +41,11 @@ namespace
 		FGameXXKRuntimeState& OutBattle,
 		int32& OutEncounterNodeId)
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State;
+		if (!StartMaterializedFormationGame(State))
+		{
+			return false;
+		}
 		State.RouteSeed = 1;
 		if (!UGameXXKMVPRules::OpenWorldMap(State)
 			|| !UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())
@@ -143,7 +158,11 @@ namespace
 		FGameXXKRuntimeState& OutBeforeBattle,
 		int32& OutEncounterNodeId)
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State;
+		if (!StartMaterializedFormationGame(State))
+		{
+			return false;
+		}
 		State.RouteSeed = 1;
 		if (!UGameXXKMVPRules::OpenWorldMap(State)
 			|| !UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())
@@ -219,9 +238,9 @@ bool FGameXXKBattleRetreatCheckpointSchemaRoundTripTest::RunTest(const FString& 
 	BattleState.BattleEntryCheckpoint = MakeCheckpoint(BeforeBattle, EncounterNodeId);
 	const FGameXXKSaveState Source = UGameXXKMVPRules::MakeSaveState(BattleState);
 	TestEqual(
-		TEXT("checkpoint schema advances the save boundary to v23"),
+		TEXT("checkpoint save uses the current append-only schema"),
 		Source.SaveVersion,
-		FGameXXKSaveMigration::BattleRetreatCheckpointIntroducedSaveVersion);
+		FGameXXKSaveMigration::CurrentSaveVersion);
 
 	FGameXXKRuntimeState Restored;
 	FGameXXKSaveMigrationReport Report;

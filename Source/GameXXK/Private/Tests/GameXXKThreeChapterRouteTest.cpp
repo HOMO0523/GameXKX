@@ -133,7 +133,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKThreeChapterLifecycleTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState EntryState = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState EntryState = MakeStartedState();
 	EntryState.Screen = EGameXXKScreen::Town;
 	EntryState.CurrentRegion = UGameXXKMVPRules::RegionQingshan();
 	EntryState.QuestState = EGameXXKQuestState::Accepted;

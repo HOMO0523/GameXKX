@@ -136,6 +136,42 @@ namespace
 			MakeMember(EGameXXKPartyMemberKind::QuestNpc, ActiveNpcId);
 		return ResolveMember(State, Ref) ? ActiveNpcId : NAME_None;
 	}
+
+	bool ValidatePermanentCompanionCompatibilityProjection(
+		const FGameXXKRuntimeState& State,
+		const FGameXXKOrderedPartyFormation& Formation,
+		FString* OutError)
+	{
+		FName FirstCompanionId = NAME_None;
+		for (const FGameXXKPartyMemberRef& Ref : Formation.Members)
+		{
+			if (Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion)
+			{
+				FirstCompanionId = Ref.MemberId;
+				break;
+			}
+		}
+
+		int32 ActiveCompanionCount = 0;
+		FName ActiveRosterCompanionId = NAME_None;
+		for (const FGameXXKPermanentCompanion& Companion : State.CardRun.CompanionRoster.PermanentCompanions)
+		{
+			if (Companion.bIsActive)
+			{
+				++ActiveCompanionCount;
+				ActiveRosterCompanionId = Companion.InstanceId;
+			}
+		}
+		const int32 ExpectedActiveCompanionCount = FirstCompanionId.IsNone() ? 0 : 1;
+		if (State.CardRun.PartySelection.ActivePermanentCompanionInstanceId != FirstCompanionId
+			|| ActiveRosterCompanionId != FirstCompanionId
+			|| ActiveCompanionCount != ExpectedActiveCompanionCount)
+		{
+			SetError(OutError, TEXT("Saved active-companion compatibility fields do not match the first ordered companion."));
+			return false;
+		}
+		return true;
+	}
 }
 
 bool FGameXXKPartyFormationRules::BuildLegacyProjection(
@@ -267,36 +303,20 @@ bool FGameXXKPartyFormationRules::ValidateCompatibilityProjection(
 	FString* OutError)
 {
 	ResetError(OutError);
-	FName FirstCompanionId = NAME_None;
 	FName FirstQuestNpcId = NAME_None;
 	for (const FGameXXKPartyMemberRef& Ref : State.CardRun.OrderedFormation.Members)
 	{
-		if (FirstCompanionId.IsNone() && Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion)
-		{
-			FirstCompanionId = Ref.MemberId;
-		}
-		else if (FirstQuestNpcId.IsNone() && Ref.Kind == EGameXXKPartyMemberKind::QuestNpc)
+		if (FirstQuestNpcId.IsNone() && Ref.Kind == EGameXXKPartyMemberKind::QuestNpc)
 		{
 			FirstQuestNpcId = Ref.MemberId;
 		}
 	}
 
-	int32 ActiveCompanionCount = 0;
-	FName ActiveRosterCompanionId = NAME_None;
-	for (const FGameXXKPermanentCompanion& Companion : State.CardRun.CompanionRoster.PermanentCompanions)
+	if (!ValidatePermanentCompanionCompatibilityProjection(
+			State,
+			State.CardRun.OrderedFormation,
+			OutError))
 	{
-		if (Companion.bIsActive)
-		{
-			++ActiveCompanionCount;
-			ActiveRosterCompanionId = Companion.InstanceId;
-		}
-	}
-	const int32 ExpectedActiveCompanionCount = FirstCompanionId.IsNone() ? 0 : 1;
-	if (State.CardRun.PartySelection.ActivePermanentCompanionInstanceId != FirstCompanionId
-		|| ActiveRosterCompanionId != FirstCompanionId
-		|| ActiveCompanionCount != ExpectedActiveCompanionCount)
-	{
-		SetError(OutError, TEXT("Saved active-companion compatibility fields do not match the first ordered companion."));
 		return false;
 	}
 	if (State.CardRun.ActiveTemporaryQuestNpcId != FirstQuestNpcId
@@ -305,6 +325,73 @@ bool FGameXXKPartyFormationRules::ValidateCompatibilityProjection(
 		SetError(OutError, TEXT("Saved task-NPC compatibility fields do not match the first ordered quest NPC."));
 		return false;
 	}
+	return true;
+}
+
+bool FGameXXKPartyFormationRules::RepairUnavailableQuestNpcSlotsPreservingOrder(
+	const FGameXXKRuntimeState& State,
+	FGameXXKOrderedPartyFormation& OutFormation,
+	FString* OutError)
+{
+	ResetError(OutError);
+	FGameXXKOrderedPartyFormation Candidate = State.CardRun.OrderedFormation;
+	if (!ValidatePermanentCompanionCompatibilityProjection(State, Candidate, OutError))
+	{
+		return false;
+	}
+	TArray<int32> UnavailableQuestNpcSlots;
+	TSet<FName> ReservedMemberIds;
+	const bool bQuestNpcAvailabilityCleared = State.CardRun.ActiveTemporaryQuestNpcId.IsNone()
+		&& State.CardRun.PartySelection.QuestNpc.NpcId.IsNone();
+	for (int32 SlotIndex = 0; SlotIndex < Candidate.Members.Num(); ++SlotIndex)
+	{
+		const FGameXXKPartyMemberRef& Ref = Candidate.Members[SlotIndex];
+		if (Ref.Kind != EGameXXKPartyMemberKind::QuestNpc || ResolveMember(State, Ref))
+		{
+			if (!Ref.MemberId.IsNone())
+			{
+				ReservedMemberIds.Add(Ref.MemberId);
+			}
+			continue;
+		}
+
+		if (!bQuestNpcAvailabilityCleared
+			|| !FGameXXKCompanionCatalog::FindQuestNpcDefinition(Ref.MemberId))
+		{
+			SetError(
+				OutError,
+				TEXT("Only a known task NPC retired by cleared availability mirrors can be replaced."));
+			return false;
+		}
+		UnavailableQuestNpcSlots.Add(SlotIndex);
+	}
+
+	const TArray<FName> StableOwnedCompanionIds = GetStableOwnedCompanionIds(State);
+	for (const int32 SlotIndex : UnavailableQuestNpcSlots)
+	{
+		const FName* ReplacementId = StableOwnedCompanionIds.FindByPredicate(
+			[&ReservedMemberIds](const FName CandidateId)
+			{
+				return !CandidateId.IsNone() && !ReservedMemberIds.Contains(CandidateId);
+			});
+		if (!ReplacementId)
+		{
+			SetError(
+				OutError,
+				TEXT("No undeployed owned companion can replace the retired task-NPC slot."));
+			return false;
+		}
+		Candidate.Members[SlotIndex] = MakeMember(
+			EGameXXKPartyMemberKind::PermanentCompanion,
+			*ReplacementId);
+		ReservedMemberIds.Add(*ReplacementId);
+	}
+
+	if (!Validate(State, Candidate, OutError))
+	{
+		return false;
+	}
+	OutFormation = MoveTemp(Candidate);
 	return true;
 }
 
