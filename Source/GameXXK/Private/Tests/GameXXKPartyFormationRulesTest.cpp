@@ -296,6 +296,92 @@ bool FGameXXKPartyFormationFallbackRulesTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKPartyFormationQuestNpcProvenanceTest,
+	"GameXXK.PartyFormation.Rules.QuestNpcProvenance",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKPartyFormationQuestNpcProvenanceTest::RunTest(const FString& Parameters)
+{
+	FGameXXKRuntimeState StaleSelection = MakeFullFixture();
+	StaleSelection.CardRun.ActiveTemporaryQuestNpcId = NAME_None;
+	FGameXXKOrderedPartyFormation StaleNpcFormation = ExpectedLegacyFormation();
+	const FGameXXKRuntimeState StaleBeforeValidation = StaleSelection;
+	FString Error;
+	TestFalse(TEXT("stale NPC card selection is not an available formation member"),
+		FGameXXKPartyFormationRules::Validate(StaleSelection, StaleNpcFormation, &Error));
+	TestFalse(TEXT("stale NPC rejection reports an explicit error"), Error.IsEmpty());
+	TestTrue(TEXT("stale NPC validation is read-only"),
+		RuntimeStatesMatch(StaleSelection, StaleBeforeValidation));
+
+	FGameXXKOrderedPartyFormation StaleLegacyProjection;
+	TestTrue(TEXT("stale NPC legacy state falls back to other owned members"),
+		FGameXXKPartyFormationRules::BuildLegacyProjection(StaleSelection, StaleLegacyProjection));
+	if (!TestEqual(TEXT("stale NPC fallback still builds exactly three members"),
+		StaleLegacyProjection.Members.Num(), FGameXXKPartyFormationRules::PartySize))
+	{
+		return false;
+	}
+	TestFalse(TEXT("legacy projection never reactivates a stale NPC card selection"),
+		StaleLegacyProjection.Members.ContainsByPredicate([](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc;
+		}));
+	TestEqual(TEXT("stale NPC fallback keeps the active permanent companion"),
+		StaleLegacyProjection.Members[1].MemberId, BladeId);
+	TestEqual(TEXT("stale NPC fallback deterministically fills 3P from owned companions"),
+		StaleLegacyProjection.Members[2].MemberId, GuardId);
+
+	StaleSelection.CardRun.OrderedFormation = StaleNpcFormation;
+	const FGameXXKOrderedPartyFormation StaleOrderBeforeProjection =
+		StaleSelection.CardRun.OrderedFormation;
+	const int32 OwnedNpcLoadoutCount =
+		StaleSelection.CardRun.PartySelection.QuestNpcCardLoadouts.Num();
+	FGameXXKPartyFormationRules::ProjectCompatibility(StaleSelection);
+	TestTrue(TEXT("stale ordered formation cannot reactivate its old NPC"),
+		StaleSelection.CardRun.ActiveTemporaryQuestNpcId.IsNone());
+	TestTrue(TEXT("stale ordered formation clears the stale active NPC selection"),
+		StaleSelection.CardRun.PartySelection.QuestNpc.NpcId.IsNone());
+	TestTrue(TEXT("stale ordered formation clears stale active NPC cards"),
+		StaleSelection.CardRun.PartySelection.QuestNpc.SelectedCardIds.IsEmpty());
+	TestTrue(TEXT("stale compatibility cleanup does not rewrite ordered formation"),
+		FormationsMatch(StaleSelection.CardRun.OrderedFormation, StaleOrderBeforeProjection));
+	TestEqual(TEXT("stale compatibility cleanup preserves owned NPC loadouts"),
+		StaleSelection.CardRun.PartySelection.QuestNpcCardLoadouts.Num(), OwnedNpcLoadoutCount);
+
+	FGameXXKRuntimeState MismatchedProvenance = MakeFullFixture();
+	MismatchedProvenance.CardRun.PartySelection.QuestNpc.NpcId = YueBaiId;
+	MismatchedProvenance.CardRun.PartySelection.QuestNpc.SelectedCardIds = YueBaiCards();
+	FGameXXKOrderedPartyFormation ActiveNpcFormation = ExpectedLegacyFormation();
+	FGameXXKOrderedPartyFormation SelectionNpcFormation = ExpectedLegacyFormation();
+	SelectionNpcFormation.Members[2].MemberId = YueBaiId;
+	TestFalse(TEXT("active NPC is unavailable while its card-selection provenance disagrees"),
+		FGameXXKPartyFormationRules::Validate(MismatchedProvenance, ActiveNpcFormation, &Error));
+	TestFalse(TEXT("stale selected NPC is unavailable while active provenance disagrees"),
+		FGameXXKPartyFormationRules::Validate(MismatchedProvenance, SelectionNpcFormation, &Error));
+	FGameXXKOrderedPartyFormation MismatchedLegacyProjection;
+	TestTrue(TEXT("mismatched NPC provenance falls back to owned companions"),
+		FGameXXKPartyFormationRules::BuildLegacyProjection(
+			MismatchedProvenance,
+			MismatchedLegacyProjection));
+	TestFalse(TEXT("mismatched provenance cannot select either NPC source"),
+		MismatchedLegacyProjection.Members.ContainsByPredicate([](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc;
+		}));
+
+	FGameXXKRuntimeState Synchronized = MakeFullFixture();
+	TestTrue(TEXT("approved NPC is legal only when active provenance and card selection agree"),
+		FGameXXKPartyFormationRules::Validate(Synchronized, ExpectedLegacyFormation(), &Error));
+	Synchronized.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.Unknown");
+	Synchronized.CardRun.PartySelection.QuestNpc.NpcId = TEXT("Npc.Unknown");
+	FGameXXKOrderedPartyFormation UnknownCatalogFormation = ExpectedLegacyFormation();
+	UnknownCatalogFormation.Members[2].MemberId = TEXT("Npc.Unknown");
+	TestFalse(TEXT("matching provenance still cannot admit an unknown catalog NPC"),
+		FGameXXKPartyFormationRules::Validate(Synchronized, UnknownCatalogFormation, &Error));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKPartyFormationCompatibilityProjectionTest,
 	"GameXXK.PartyFormation.Rules.CompatibilityProjection",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -304,7 +390,10 @@ bool FGameXXKPartyFormationCompatibilityProjectionTest::RunTest(const FString& P
 {
 	FGameXXKRuntimeState State = MakeFullFixture();
 	State.CardRun.ActiveTemporaryQuestNpcId = YueBaiId;
-	const TArray<FName> OriginalTusiCards = State.CardRun.PartySelection.QuestNpc.SelectedCardIds;
+	State.CardRun.PartySelection.QuestNpc.NpcId = YueBaiId;
+	State.CardRun.PartySelection.QuestNpc.SelectedCardIds = YueBaiCards();
+	const TArray<FName> OriginalTusiCards =
+		State.CardRun.PartySelection.QuestNpcCardLoadouts.FindChecked(TusiChiefId).SelectedCardIds;
 	const TArray<FName> ExpectedYueBaiCards = YueBaiCards();
 	const int32 OriginalRosterCount = State.CardRun.CompanionRoster.PermanentCompanions.Num();
 	TArray<FName> OriginalRosterIds;

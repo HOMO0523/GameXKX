@@ -56,8 +56,8 @@ namespace
 				});
 		case EGameXXKPartyMemberKind::QuestNpc:
 			return FGameXXKCompanionCatalog::FindQuestNpcDefinition(Ref.MemberId) != nullptr
-				&& (Ref.MemberId == State.CardRun.ActiveTemporaryQuestNpcId
-					|| Ref.MemberId == State.CardRun.PartySelection.QuestNpc.NpcId);
+				&& Ref.MemberId == State.CardRun.ActiveTemporaryQuestNpcId
+				&& Ref.MemberId == State.CardRun.PartySelection.QuestNpc.NpcId;
 		default:
 			return false;
 		}
@@ -131,19 +131,10 @@ namespace
 
 	FName FindLegacyQuestNpcId(const FGameXXKRuntimeState& State)
 	{
-		const FName Candidates[] = {
-			State.CardRun.ActiveTemporaryQuestNpcId,
-			State.CardRun.PartySelection.QuestNpc.NpcId};
-		for (const FName CandidateId : Candidates)
-		{
-			const FGameXXKPartyMemberRef Ref =
-				MakeMember(EGameXXKPartyMemberKind::QuestNpc, CandidateId);
-			if (ResolveMember(State, Ref))
-			{
-				return CandidateId;
-			}
-		}
-		return NAME_None;
+		const FName ActiveNpcId = State.CardRun.ActiveTemporaryQuestNpcId;
+		const FGameXXKPartyMemberRef Ref =
+			MakeMember(EGameXXKPartyMemberKind::QuestNpc, ActiveNpcId);
+		return ResolveMember(State, Ref) ? ActiveNpcId : NAME_None;
 	}
 }
 
