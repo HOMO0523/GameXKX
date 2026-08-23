@@ -17,12 +17,13 @@ If the party already owns `保命护符`, the relic choice remains visible but i
 
 - Stable ID: `Relic.LifeSavingTalisman`.
 - Display name: `保命护符`.
-- Trigger: after any battle mutation that changes party health, including enemy damage, self-damage, damage over time, reflected damage, and multi-hit cards.
-- Condition: at least one party member has `HP < 50% MaxHP`. Exactly 50% does not trigger.
-- Lethal condition: `0 HP` satisfies the condition; the relic may revive that party member.
-- Effect: every party member restores `ceil(MaxHP * 30 / 100)`, capped at MaxHP. A member at 0 becomes living again after receiving healing.
+- Trigger: at the first battle health-loss mutation that would leave a party member below `50% MaxHP`, including enemy damage, self-damage, damage over time, reflected damage, and multi-hit cards. Exactly 50% does not trigger.
+- Death prevention: before existing death and terminal-state logic observes the protected packet, clamp only that packet's target to a minimum of `1 HP`. The relic never revives a `0 HP` unit and never reopens a terminal battle phase.
+- Effect: after the protected packet, every currently living party member restores `ceil(MaxHP * 30 / 100)`, capped at MaxHP.
 - Consumption: remove exactly one `保命护符` instance immediately after the successful trigger.
-- Atomicity: relic removal, healing, living-state restoration, legacy projection, presentation audit, and save state commit together or not at all.
+- Multi-hit: the protected packet consumes the relic; later packets, including later hits in the same sequence, use the unchanged death rules and may defeat the target.
+- Compatibility: without the relic, health loss, death, terminal phases, and defeated-owner card cleanup are unchanged.
+- Atomicity: one-HP protection, relic removal, party healing, legacy projection, presentation audit, and save state commit together or not at all.
 - Scope: battle only. Low HP outside battle does not consume the relic.
 
 The relic is unique and cannot be acquired twice simultaneously.
@@ -77,7 +78,7 @@ Clicking the expanded Tab, the Backpack-local `X`, or pressing keyboard Tab uses
 ## 6. Verification
 
 - Camp tests prove exactly two choices, no healing powder, unique relic gating, and `+100 RouteTravelMoney` without changing ordinary gold.
-- Relic tests cover 49%, exactly 50%, 0 HP revival, all-party healing, self/DoT/enemy damage, multi-hit single consumption, duplicate acquisition rejection, and rollback.
+- Relic tests cover 49%, exactly 50%, lethal damage clamped to 1 HP before death, all-party healing, self/DoT/enemy damage, multi-hit single consumption followed by an unprotected lethal hit, duplicate acquisition rejection, no-relic compatibility, and rollback.
 - Atlas tests cover every companion/NPC identity and all four actions with 1K-preferred/2K-fallback resolution.
 - Widget tests prove pending/failed atlas loads are transparent, not white.
 - Backpack tests prove selected/normal Tab backgrounds, arrow text, separate paper-local X, shared global action, and no old top-strip CloseInk.

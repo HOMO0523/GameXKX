@@ -62,21 +62,21 @@ Cover:
 ```cpp
 TestFalse(TEXT("exactly fifty percent does not trigger"), TriggerAtRatio(50, 100));
 TestTrue(TEXT("forty-nine percent triggers"), TriggerAtRatio(49, 100));
-TestTrue(TEXT("zero hp triggers and revives"), TriggerAtRatio(0, 100));
+TestEqual(TEXT("lethal protected damage stops at one hp"), ProtectedHealthAfterLethalDamage(), 1);
 ```
 
-Assert all three party members receive `CeilToInt(MaxHP * 0.30)`, capped at MaxHP; defeated members become living; the relic is removed exactly once; a second damage packet cannot trigger it again.
+Assert all currently living party members receive `CeilToInt(MaxHP * 0.30)`, capped at MaxHP; the protected unit never enters the dead state; the relic is removed exactly once; and a later lethal packet follows the unchanged death logic. Add explicit no-relic compatibility coverage for HP, terminal phases, and defeated-owner card cleanup.
 
-- [ ] **Step 2: Implement a candidate-copy trigger**
+- [ ] **Step 2: Implement pre-death one-HP protection**
 
-At the DamageTaken boundary, find the unique relic and check all party units with integer arithmetic:
+At the central party health-loss boundary, arm the battle from the unique relic and check the packet's predicted target health with integer arithmetic:
 
 ```cpp
-const bool bBelowHalf = static_cast<int64>(Unit.HP) * 100
+const bool bBelowHalf = static_cast<int64>(PredictedHP) * 100
 	< static_cast<int64>(Unit.MaxHP) * 50;
 ```
 
-Heal every party unit, including a 0-HP unit, append healing audit results when available, restore `bLiving`, remove the relic, synchronize legacy projection, and commit only after all checks succeed.
+If the packet triggers the charm, clamp only the protected target to at least `1 HP` before existing death logic runs, heal every currently living party unit, append healing audit results when available, disarm and remove the relic, synchronize legacy projection, and commit only after all checks succeed. Do not alter death logic or restore `bLiving`.
 
 - [ ] **Step 3: Run focused and broad card/relic GREEN**
 
