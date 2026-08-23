@@ -109,19 +109,27 @@ bool FGameXXKStarterCompanionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("save restore keeps the starter card seed"), RestoredStarter.CardSeed, StarterCompanion.CardSeed);
 	TestEqual(TEXT("save restore keeps the starter active flag"), RestoredStarter.bIsActive, StarterCompanion.bIsActive);
 
-	// 遣散 has no full-roster requirement, but the roster must keep one partner.
+	// Exact-three formations may retire their task NPC, so every current roster
+	// must retain two permanent companions for deterministic replacement.
 	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
 	const TArray<FGameXXKPermanentCompanion> DismissalRoster =
 		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions;
-	for (int32 Index = 0; Index < DismissalRoster.Num() - 1; ++Index)
+	for (int32 Index = 0; Index < DismissalRoster.Num() - 2; ++Index)
 	{
-		TestTrue(TEXT("a companion can be dismissed while another starter remains"),
+		TestTrue(TEXT("a companion can be dismissed while two starter companions remain"),
 			Subsystem->DismissPermanentCompanion(DismissalRoster[Index].InstanceId));
 	}
-	const FName LastStarterId = DismissalRoster.Last().InstanceId;
-	TestEqual(TEXT("dismissal leaves exactly one companion"), Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.Num(), 1);
-	TestFalse(TEXT("the last remaining companion cannot be dismissed"), Subsystem->DismissPermanentCompanion(LastStarterId));
-	TestEqual(TEXT("the rejected dismissal keeps the last companion"), Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.Num(), 1);
+	TestEqual(TEXT("dismissal leaves exactly two permanent companions"),
+		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.Num(), 2);
+	const FGameXXKRuntimeState BeforeRejectedDismissal = Subsystem->GetRuntimeStateCopy();
+	const FName ProtectedStarterId = DismissalRoster[DismissalRoster.Num() - 2].InstanceId;
+	TestFalse(TEXT("a roster of two rejects another dismissal"),
+		Subsystem->DismissPermanentCompanion(ProtectedStarterId));
+	TestTrue(TEXT("the rejected two-to-one dismissal leaves the complete runtime bit-identical"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&Subsystem->GetRuntimeState(),
+			&BeforeRejectedDismissal,
+			PPF_None));
 	return true;
 }
 

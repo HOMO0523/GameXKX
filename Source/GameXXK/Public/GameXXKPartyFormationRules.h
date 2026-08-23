@@ -10,6 +10,7 @@ class GAMEXXK_API FGameXXKPartyFormationRules final
 {
 public:
 	static constexpr int32 PartySize = 3;
+	static constexpr int32 MinimumOwnedPermanentCompanions = 2;
 
 	static bool BuildLegacyProjection(
 		const FGameXXKRuntimeState& State,

@@ -55,6 +55,11 @@ namespace
 
 	bool ClearSettledRouteLocalState(FGameXXKRuntimeState& InOutState, FString* OutError)
 	{
+		if (InOutState.CardRun.CompanionRoster.PermanentCompanions.Num()
+			< FGameXXKPartyFormationRules::MinimumOwnedPermanentCompanions)
+		{
+			return SetFailure(OutError, TEXT("Route settlement requires at least two owned permanent companions."));
+		}
 		if (!FGameXXKPartyFormationRules::Validate(
 				InOutState,
 				InOutState.CardRun.OrderedFormation,

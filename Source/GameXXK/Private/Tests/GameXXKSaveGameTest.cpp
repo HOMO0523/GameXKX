@@ -794,6 +794,45 @@ bool FGameXXKOrderedFormationLegacyFallbackTest::RunTest(const FString& Paramete
 	const FName StaleNpcId = StaleNpcState.CardRun.PartySelection.QuestNpc.NpcId;
 	TestFalse(TEXT("fallback fixture has a second stable companion"), StableFallbackId.IsNone());
 	TestFalse(TEXT("fallback fixture starts with a task NPC"), StaleNpcId.IsNone());
+
+	FGameXXKRuntimeState OneCompanionNpcState = StaleNpcState;
+	OneCompanionNpcState.CardRun.CompanionRoster.PermanentCompanions.RemoveAll(
+		[ActiveCompanionId](const FGameXXKPermanentCompanion& Companion)
+		{
+			return Companion.InstanceId != ActiveCompanionId;
+		});
+	const FGameXXKPermanentCompanion ExistingNpcRouteCompanion =
+		OneCompanionNpcState.CardRun.CompanionRoster.PermanentCompanions[0];
+	OneCompanionNpcState.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
+	FGameXXKSaveState OneCompanionNpcSave = UGameXXKMVPRules::MakeSaveState(OneCompanionNpcState);
+	OneCompanionNpcSave.SaveVersion = ExpectedIntroducedVersion - 1;
+	FGameXXKSaveState RepairedOneCompanionNpc;
+	FGameXXKSaveMigrationReport OneCompanionNpcReport;
+	TestTrue(TEXT("pre-v24 hero plus one companion and NPC receives one persistent-companion repair"),
+		FGameXXKSaveMigration::MigrateToCurrent(
+			OneCompanionNpcSave,
+			RepairedOneCompanionNpc,
+			OneCompanionNpcReport));
+	TestEqual(TEXT("legacy NPC route repair still owns at least two permanent companions"),
+		RepairedOneCompanionNpc.RuntimeState.CardRun.CompanionRoster.PermanentCompanions.Num(), 2);
+	const FGameXXKPermanentCompanion* PreservedNpcRouteCompanion =
+		RepairedOneCompanionNpc.RuntimeState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[ActiveCompanionId](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.InstanceId == ActiveCompanionId;
+			});
+	TestNotNull(TEXT("legacy NPC route repair preserves its existing companion"), PreservedNpcRouteCompanion);
+	if (PreservedNpcRouteCompanion)
+	{
+		TestTrue(TEXT("legacy NPC route repair preserves every existing companion field"),
+			FGameXXKPermanentCompanion::StaticStruct()->CompareScriptStruct(
+				PreservedNpcRouteCompanion,
+				&ExistingNpcRouteCompanion,
+				PPF_None));
+	}
+	TestEqual(TEXT("legacy NPC route repair retains exact three ordered members"),
+		RepairedOneCompanionNpc.RuntimeState.CardRun.OrderedFormation.Members.Num(), 3);
+
 	StaleNpcState.CardRun.ActiveTemporaryQuestNpcId = NAME_None;
 	StaleNpcState.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
 	FGameXXKSaveState StaleNpcSave = UGameXXKMVPRules::MakeSaveState(StaleNpcState);
@@ -939,6 +978,19 @@ bool FGameXXKOrderedFormationCurrentStrictValidationTest::RunTest(const FString&
 	TestFalse(TEXT("runtime save validator rejects missing current ordered formation"),
 		FGameXXKSaveMigration::ValidateRuntimeState(MissingFormation, ValidationError));
 	TestFalse(TEXT("runtime save validator reports missing formation"), ValidationError.IsEmpty());
+	FGameXXKRuntimeState OneCompanionCurrent = CurrentState;
+	const FName CurrentActiveCompanionId =
+		OneCompanionCurrent.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+	OneCompanionCurrent.CardRun.CompanionRoster.PermanentCompanions.RemoveAll(
+		[CurrentActiveCompanionId](const FGameXXKPermanentCompanion& Companion)
+		{
+			return Companion.InstanceId != CurrentActiveCompanionId;
+		});
+	ValidationError.Reset();
+	TestFalse(TEXT("current v24 state rejects a roster with only one permanent companion"),
+		FGameXXKSaveMigration::ValidateRuntimeState(OneCompanionCurrent, ValidationError));
+	TestTrue(TEXT("one-companion current rejection reports the persistent roster invariant"),
+		ValidationError.Contains(TEXT("two"), ESearchCase::IgnoreCase));
 	FGameXXKSaveState CurrentSparse =
 		UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
 	CurrentSparse.SaveVersion = ExpectedIntroducedVersion;

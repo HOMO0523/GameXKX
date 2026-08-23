@@ -1129,7 +1129,9 @@ namespace
 	{
 		OutAddedCount = 0;
 		FGameXXKOrderedPartyFormation Probe;
-		if (FGameXXKPartyFormationRules::BuildLegacyProjection(State, Probe))
+		if (State.CardRun.CompanionRoster.PermanentCompanions.Num()
+				>= FGameXXKPartyFormationRules::MinimumOwnedPermanentCompanions
+			&& FGameXXKPartyFormationRules::BuildLegacyProjection(State, Probe))
 		{
 			return true;
 		}
@@ -1170,7 +1172,9 @@ namespace
 				return false;
 			}
 			++OutAddedCount;
-			if (FGameXXKPartyFormationRules::BuildLegacyProjection(State, Probe))
+			if (State.CardRun.CompanionRoster.PermanentCompanions.Num()
+					>= FGameXXKPartyFormationRules::MinimumOwnedPermanentCompanions
+				&& FGameXXKPartyFormationRules::BuildLegacyProjection(State, Probe))
 			{
 				return true;
 			}
@@ -1457,6 +1461,12 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		return false;
 	}
 	const FGameXXKCompanionRosterState& Roster = State.CardRun.CompanionRoster;
+	if (Roster.PermanentCompanions.Num()
+		< FGameXXKPartyFormationRules::MinimumOwnedPermanentCompanions)
+	{
+		OutError = TEXT("Saved current state must own at least two permanent companions.");
+		return false;
+	}
 	if (Roster.SigilCount < 0 || Roster.RecruitSequenceOrdinal < 0
 		|| State.CardRun.NextRewardOrdinal < 0
 		|| State.CardRun.NextRelicAcquisitionOrdinal < 0

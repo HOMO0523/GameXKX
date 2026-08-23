@@ -510,7 +510,7 @@ public:
 	 * Dismisses one permanent companion without a replacement (the 遣散 action).
 	 * Equipment returns to the warehouse; if the companion is in OrderedFormation,
 	 * that exact slot receives a stable owned replacement before compatibility is reprojected.
-	 * The roster must keep at least one companion.
+	 * The roster must keep at least two companions.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
 	bool DismissPermanentCompanion(FName InstanceId);

@@ -302,6 +302,8 @@ bool FGameXXKRouteSettlementFormationFailureAtomicityTest::RunTest(const FString
 		TEXT("settlement rejects when no legal exact-slot replacement exists"),
 		FGameXXKRouteSettlementRules::Apply(State, Receipt, &Error));
 	TestFalse(TEXT("failed settlement reports a concrete replacement error"), Error.IsEmpty());
+	TestTrue(TEXT("one-companion current route is rejected by the pre-settlement roster invariant"),
+		Error.Contains(TEXT("two"), ESearchCase::IgnoreCase));
 	TestTrue(
 		TEXT("failed settlement grants nothing and leaves the entire runtime bit-identical"),
 		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&State, &BeforeApply, PPF_None));

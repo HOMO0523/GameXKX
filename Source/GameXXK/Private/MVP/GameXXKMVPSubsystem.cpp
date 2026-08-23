@@ -3507,8 +3507,10 @@ bool UGameXXKMVPSubsystem::DismissPermanentCompanion(const FName InstanceId)
 	{
 		return false;
 	}
-	// The player must always keep at least one permanent companion.
-	if (Candidate.CardRun.CompanionRoster.PermanentCompanions.Num() <= 1)
+	// A temporary NPC can retire at route settlement, so a current roster must
+	// always retain a second permanent companion for exact-slot replacement.
+	if (Candidate.CardRun.CompanionRoster.PermanentCompanions.Num()
+		<= FGameXXKPartyFormationRules::MinimumOwnedPermanentCompanions)
 	{
 		return false;
 	}
