@@ -395,6 +395,65 @@ bool FGameXXKPartyFormationRules::RepairUnavailableQuestNpcSlotsPreservingOrder(
 	return true;
 }
 
+bool FGameXXKPartyFormationRules::InsertOrReplaceCurrentQuestNpcPreservingOrder(
+	const FGameXXKRuntimeState& State,
+	FGameXXKOrderedPartyFormation& OutFormation,
+	FString* OutError)
+{
+	ResetError(OutError);
+	const FName QuestNpcId = State.CardRun.ActiveTemporaryQuestNpcId;
+	if (QuestNpcId.IsNone()
+		|| QuestNpcId != State.CardRun.PartySelection.QuestNpc.NpcId
+		|| !FGameXXKCompanionCatalog::FindQuestNpcDefinition(QuestNpcId))
+	{
+		SetError(OutError, TEXT("Current task-NPC availability mirrors are not synchronized to an approved NPC."));
+		return false;
+	}
+
+	FGameXXKOrderedPartyFormation Candidate = State.CardRun.OrderedFormation;
+	if (!ValidatePermanentCompanionCompatibilityProjection(State, Candidate, OutError))
+	{
+		return false;
+	}
+	int32 QuestNpcSlot = INDEX_NONE;
+	for (int32 SlotIndex = 0; SlotIndex < Candidate.Members.Num(); ++SlotIndex)
+	{
+		if (Candidate.Members[SlotIndex].Kind == EGameXXKPartyMemberKind::QuestNpc)
+		{
+			if (QuestNpcSlot != INDEX_NONE)
+			{
+				SetError(OutError, TEXT("Ordered formation contains more than one task-NPC slot."));
+				return false;
+			}
+			QuestNpcSlot = SlotIndex;
+		}
+	}
+	if (QuestNpcSlot == INDEX_NONE)
+	{
+		for (int32 SlotIndex = Candidate.Members.Num() - 1; SlotIndex >= 0; --SlotIndex)
+		{
+			if (Candidate.Members[SlotIndex].Kind == EGameXXKPartyMemberKind::PermanentCompanion)
+			{
+				QuestNpcSlot = SlotIndex;
+				break;
+			}
+		}
+	}
+	if (QuestNpcSlot == INDEX_NONE)
+	{
+		SetError(OutError, TEXT("Ordered formation has no task-NPC or permanent-companion slot available for support."));
+		return false;
+	}
+
+	Candidate.Members[QuestNpcSlot] = MakeMember(EGameXXKPartyMemberKind::QuestNpc, QuestNpcId);
+	if (!Validate(State, Candidate, OutError))
+	{
+		return false;
+	}
+	OutFormation = MoveTemp(Candidate);
+	return true;
+}
+
 bool FGameXXKPartyFormationRules::Normalize(FGameXXKRuntimeState& InOutState, FString* OutError)
 {
 	ResetError(OutError);

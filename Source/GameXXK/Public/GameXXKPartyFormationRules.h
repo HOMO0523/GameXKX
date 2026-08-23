@@ -36,6 +36,11 @@ public:
 		const FGameXXKRuntimeState& State,
 		FGameXXKOrderedPartyFormation& OutFormation,
 		FString* OutError = nullptr);
+	/** Inserts the synchronized active task NPC without moving the hero or earlier companion slots. */
+	static bool InsertOrReplaceCurrentQuestNpcPreservingOrder(
+		const FGameXXKRuntimeState& State,
+		FGameXXKOrderedPartyFormation& OutFormation,
+		FString* OutError = nullptr);
 	static bool Normalize(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);
 	static void ProjectCompatibility(FGameXXKRuntimeState& InOutState);
 };

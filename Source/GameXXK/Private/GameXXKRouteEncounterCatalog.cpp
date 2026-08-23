@@ -12,6 +12,15 @@ namespace
 		return Choice;
 	}
 
+	FGameXXKRouteEncounterChoiceDefinition NpcSupportChoice(const TCHAR* Label, const TCHAR* QuestNpcId)
+	{
+		FGameXXKRouteEncounterChoiceDefinition Choice;
+		Choice.Label = FText::FromString(Label);
+		Choice.RewardKind = EGameXXKRouteEncounterRewardKind::TemporaryNpcSupport;
+		Choice.QuestNpcId = FName(QuestNpcId);
+		return Choice;
+	}
+
 	FGameXXKRouteEncounterChoiceDefinition RelicChoice(const TCHAR* Label)
 	{
 		FGameXXKRouteEncounterChoiceDefinition Choice;
@@ -57,7 +66,7 @@ namespace
 		return {
 			Event(TEXT("Encounter.Event.TusiChief"), TEXT("土司首领"), TEXT("土司首领以山地行军之法指点你稳住根基。"), TEXT("Npc.TusiChief"), AttributeChoice(TEXT("调息稳脉：最大气血+8"), A::MaxHealth, 8), AttributeChoice(TEXT("演练守势：防御+2"), A::Defense, 2)),
 			Event(TEXT("Encounter.Event.SongJinBao"), TEXT("宋金宝"), TEXT("宋金宝辨出一条捷径，并传授借势赶路的诀窍。"), TEXT("Npc.SongJinBao"), AttributeChoice(TEXT("疾行练步：速度+2"), A::Speed, 2), AttributeChoice(TEXT("沿途运气：最大内力+4"), A::MaxMana, 4)),
-			Event(TEXT("Encounter.Event.YueBai"), TEXT("月白"), TEXT("月白以清心法门相赠，让你选择一种修行。"), TEXT("Npc.YueBai"), AttributeChoice(TEXT("清心纳气：最大内力+5"), A::MaxMana, 5), AttributeChoice(TEXT("静心守一：防御+2"), A::Defense, 2)),
+			Event(TEXT("Encounter.Event.YueBai"), TEXT("月白"), TEXT("月白以清心法门相赠，让你选择一种修行。"), TEXT("Npc.YueBai"), AttributeChoice(TEXT("清心纳气：最大内力+5"), A::MaxMana, 5), NpcSupportChoice(TEXT("邀请月白同行"), TEXT("Npc.YueBai"))),
 			Event(TEXT("Encounter.Event.ZhouGuangZu"), TEXT("周光祖"), TEXT("周光祖演示一套发力诀窍，邀你反复练习。"), TEXT("Npc.ZhouGuangZu"), AttributeChoice(TEXT("凝劲发力：攻击+2"), A::Attack, 2), AttributeChoice(TEXT("扎稳马步：最大气血+10"), A::MaxHealth, 10)),
 			Event(TEXT("Encounter.Event.JinGui"), TEXT("金贵"), TEXT("金贵整理好护具，教你如何卸力与移步。"), TEXT("Npc.JinGui"), AttributeChoice(TEXT("借甲卸力：防御+2"), A::Defense, 2), AttributeChoice(TEXT("轻装移步：速度+2"), A::Speed, 2)),
 			Event(TEXT("Encounter.Event.QiongMeiEr"), TEXT("琼么儿"), TEXT("琼么儿带来高原草药与轻身诀窍。"), TEXT("Npc.QiongMeiEr"), AttributeChoice(TEXT("习得轻身：速度+2"), A::Speed, 2), AttributeChoice(TEXT("服下草药：最大气血+8"), A::MaxHealth, 8)),

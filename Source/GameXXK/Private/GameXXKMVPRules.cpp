@@ -10,6 +10,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKMetaShopRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
@@ -2607,9 +2608,21 @@ bool UGameXXKMVPRules::ResolveRouteEncounterChoice(FGameXXKRuntimeState& State, 
 	const FGameXXKRouteEncounterChoiceDefinition& Choice = Encounter->Choices[ChoiceIndex];
 	if (Choice.RewardKind == EGameXXKRouteEncounterRewardKind::TemporaryNpcSupport)
 	{
+		FString FormationError;
+		FGameXXKOrderedPartyFormation UpdatedFormation;
 		if (!Candidate.CardRun.PartySelection.QuestNpc.NpcId.IsNone()
 			|| Choice.QuestNpcId.IsNone()
-			|| !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, Choice.QuestNpcId, {}))
+			|| !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, Choice.QuestNpcId, {})
+			|| !FGameXXKPartyFormationRules::InsertOrReplaceCurrentQuestNpcPreservingOrder(
+				Candidate,
+				UpdatedFormation,
+				&FormationError))
+		{
+			return false;
+		}
+		Candidate.CardRun.OrderedFormation = MoveTemp(UpdatedFormation);
+		FGameXXKPartyFormationRules::ProjectCompatibility(Candidate);
+		if (!FGameXXKPartyFormationRules::ValidateCompatibilityProjection(Candidate, &FormationError))
 		{
 			return false;
 		}
@@ -2736,7 +2749,19 @@ bool UGameXXKMVPRules::AcceptRouteEventNpcSupport(FGameXXKRuntimeState& State)
 	}
 	FGameXXKRuntimeState Candidate = State;
 	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
-	if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, PendingEvent.EventNpcId, {}))
+	FString FormationError;
+	FGameXXKOrderedPartyFormation UpdatedFormation;
+	if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, PendingEvent.EventNpcId, {})
+		|| !FGameXXKPartyFormationRules::InsertOrReplaceCurrentQuestNpcPreservingOrder(
+			Candidate,
+			UpdatedFormation,
+			&FormationError))
+	{
+		return false;
+	}
+	Candidate.CardRun.OrderedFormation = MoveTemp(UpdatedFormation);
+	FGameXXKPartyFormationRules::ProjectCompatibility(Candidate);
+	if (!FGameXXKPartyFormationRules::ValidateCompatibilityProjection(Candidate, &FormationError))
 	{
 		return false;
 	}
