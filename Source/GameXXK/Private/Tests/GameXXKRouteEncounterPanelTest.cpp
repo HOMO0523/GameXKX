@@ -342,8 +342,8 @@ bool FGameXXKRouteEncounterPanelVariantTest::RunTest(const FString& Parameters)
 
 	Subsystem->GetMutableRuntimeState() = BuildPendingRouteEncounterState(EGameXXKNodeKind::Camp, EGameXXKScreen::RouteCamp);
 	TestTrue(TEXT("camp opens a choice panel instead of healing on F"), PlayerController->OpenRouteEncounterPanel());
-	TestEqual(TEXT("camp primary explicitly selects rest"), Panel ? Panel->GetPrimaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::CampRest);
-	TestEqual(TEXT("camp alternative explicitly selects supplies"), Panel ? Panel->GetSecondaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::CampTakeHealingPowder);
+	TestEqual(TEXT("camp primary explicitly selects the life-saving talisman"), Panel ? Panel->GetPrimaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::CampTakeLifeSavingTalisman);
+	TestEqual(TEXT("camp alternative explicitly selects route-local money"), Panel ? Panel->GetSecondaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::CampTakeRouteMoney);
 	PlayerController->CloseRouteEncounterPanel();
 
 	return true;
@@ -386,9 +386,14 @@ bool FGameXXKRouteEncounterPanelResolutionTest::RunTest(const FString& Parameter
 
 	Subsystem->GetMutableRuntimeState() = BuildPendingRouteEncounterState(EGameXXKNodeKind::Camp, EGameXXKScreen::RouteCamp);
 	Subsystem->GetMutableRuntimeState().PlayerHP = 33;
-	TestTrue(TEXT("camp rest is shown before player health changes"), PlayerController->OpenRouteEncounterPanel());
-	TestTrue(TEXT("camp rest resolves from the explicit panel click"), Panel && Panel->TriggerPrimaryActionForTest());
-	TestTrue(TEXT("camp rest improves health only after its click"), Subsystem->GetRuntimeState().PlayerHP > 33);
+	TestTrue(TEXT("camp charm is shown before player state changes"), PlayerController->OpenRouteEncounterPanel());
+	TestTrue(TEXT("camp charm resolves from the explicit panel click"), Panel && Panel->TriggerPrimaryActionForTest());
+	TestEqual(TEXT("camp charm never heals directly"), Subsystem->GetRuntimeState().PlayerHP, 33);
+	TestTrue(TEXT("camp charm click grants the life-saving talisman"),
+		Subsystem->GetRuntimeState().CardRun.Relics.ContainsByPredicate([](const FGameXXKRelicInstance& Relic)
+		{
+			return Relic.RelicId == TEXT("Relic.LifeSavingTalisman");
+		}));
 	TestEqual(TEXT("camp choice returns to the route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestFalse(TEXT("camp choice closes the modal"), PlayerController->IsRouteEncounterPanelOpenForTest());
 

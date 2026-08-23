@@ -10,10 +10,15 @@ struct GAMEXXK_API FGameXXKMVPCommandDescriptor
 
 	FGameXXKMVPCommandDescriptor() = default;
 
-	FGameXXKMVPCommandDescriptor(FName InCommandName, const FText& InLabel, bool bInEnabled)
+	FGameXXKMVPCommandDescriptor(
+		FName InCommandName,
+		const FText& InLabel,
+		bool bInEnabled,
+		const FText& InDisabledReason = FText::GetEmpty())
 		: CommandName(InCommandName)
 		, Label(InLabel)
 		, bEnabled(bInEnabled)
+		, DisabledReason(InDisabledReason)
 	{
 	}
 
@@ -25,4 +30,7 @@ struct GAMEXXK_API FGameXXKMVPCommandDescriptor
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "GameXXK|Playable")
 	bool bEnabled = true;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "GameXXK|Playable")
+	FText DisabledReason;
 };

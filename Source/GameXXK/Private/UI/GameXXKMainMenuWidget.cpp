@@ -25,7 +25,8 @@
 namespace
 {
 	static const FName ResolveEventGoldCommand(TEXT("ResolveEventGold"));
-	static const FName ResolveCampHealCommand(TEXT("ResolveCampHeal"));
+	static const FName ResolveCampCharmCommand(TEXT("ResolveCampCharm"));
+	static const FName ResolveCampRouteMoneyCommand(TEXT("ResolveCampRouteMoney"));
 	static const FName BuyHealingPowderCommand(TEXT("BuyHealingPowder"));
 	static const FName SellHealingPowderCommand(TEXT("SellHealingPowder"));
 	static const FName UseHealingPowderCommand(TEXT("UseHealingPowder"));
@@ -603,13 +604,18 @@ void UGameXXKMainMenuWidget::RefreshProgrammaticLayout()
 			{
 				UButton* CommandButton = AddMenuButton(EncounterBox, Command.Label);
 				CommandButton->SetIsEnabled(Command.bEnabled);
+				CommandButton->SetToolTipText(Command.DisabledReason);
 				if (Command.CommandName == ResolveEventGoldCommand)
 				{
 					CommandButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleResolveEventGoldClicked);
 				}
-				else if (Command.CommandName == ResolveCampHealCommand)
+				else if (Command.CommandName == ResolveCampCharmCommand)
 				{
-					CommandButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleResolveCampHealClicked);
+					CommandButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleResolveCampCharmClicked);
+				}
+				else if (Command.CommandName == ResolveCampRouteMoneyCommand)
+				{
+					CommandButton->OnClicked.AddDynamic(this, &UGameXXKMainMenuWidget::HandleResolveCampRouteMoneyClicked);
 				}
 				else if (Command.CommandName == BuyHealingPowderCommand)
 				{
@@ -919,9 +925,14 @@ void UGameXXKMainMenuWidget::HandleResolveEventGoldClicked()
 	ExecuteEncounterCommand(ResolveEventGoldCommand);
 }
 
-void UGameXXKMainMenuWidget::HandleResolveCampHealClicked()
+void UGameXXKMainMenuWidget::HandleResolveCampCharmClicked()
 {
-	ExecuteEncounterCommand(ResolveCampHealCommand);
+	ExecuteEncounterCommand(ResolveCampCharmCommand);
+}
+
+void UGameXXKMainMenuWidget::HandleResolveCampRouteMoneyClicked()
+{
+	ExecuteEncounterCommand(ResolveCampRouteMoneyCommand);
 }
 
 void UGameXXKMainMenuWidget::HandleBuyHealingPowderClicked()

@@ -3058,7 +3058,7 @@ bool UGameXXKMVPSubsystem::AcceptRouteEventNpcSupport()
 	return UGameXXKMVPRules::AcceptRouteEventNpcSupport(RuntimeState);
 }
 
-bool UGameXXKMVPSubsystem::ResolveCampReward(bool bHealNow)
+bool UGameXXKMVPSubsystem::ResolveCampReward(const bool bHealNow)
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ResolveCampReward(RuntimeState, bHealNow);

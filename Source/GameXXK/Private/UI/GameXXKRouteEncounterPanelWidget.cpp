@@ -10,6 +10,7 @@
 #include "Engine/Texture2D.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKRelicCatalog.h"
+#include "GameXXKRelicRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -501,16 +502,23 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 		break;
 
 	case EGameXXKScreen::RouteCamp:
+	{
+		const bool bOwnsLifeSavingTalisman = FGameXXKRelicRules::OwnsLifeSavingTalisman(State);
 		Presentation.Title = NSLOCTEXT("GameXXKRouteEncounter", "CampTitle", "营火抉择");
 		Presentation.Speaker = NSLOCTEXT("GameXXKRouteEncounter", "CampSpeaker", "山间营火");
-		Presentation.Body = NSLOCTEXT("GameXXKRouteEncounter", "CampBody", "营火尚温。选择彻底休整，或把补给留给之后的战斗。 ");
-		Presentation.PrimaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "CampRest", "整顿，恢复至满血");
-		Presentation.SecondaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "CampSupply", "领取疗伤散");
-		Presentation.PrimaryAction = EGameXXKRouteEncounterAction::CampRest;
-		Presentation.SecondaryAction = EGameXXKRouteEncounterAction::CampTakeHealingPowder;
-		Presentation.bPrimaryEnabled = true;
+		Presentation.Body = NSLOCTEXT("GameXXKRouteEncounter", "CampBody", "营火尚温。选择带走一份护身之物，或领取本局行旅钱。 ");
+		Presentation.PrimaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "CampCharm", "获得保命护符");
+		Presentation.SecondaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "CampRouteMoney", "获得100局内金币");
+		Presentation.PrimaryTooltip = bOwnsLifeSavingTalisman
+			? NSLOCTEXT("GameXXKRouteEncounter", "CampCharmOwned", "已持有保命护符，不能重复获得。")
+			: NSLOCTEXT("GameXXKRouteEncounter", "CampCharmTooltip", "获得唯一遗物保命护符。");
+		Presentation.SecondaryTooltip = NSLOCTEXT("GameXXKRouteEncounter", "CampRouteMoneyTooltip", "本局行旅钱增加100。");
+		Presentation.PrimaryAction = EGameXXKRouteEncounterAction::CampTakeLifeSavingTalisman;
+		Presentation.SecondaryAction = EGameXXKRouteEncounterAction::CampTakeRouteMoney;
+		Presentation.bPrimaryEnabled = !bOwnsLifeSavingTalisman;
 		Presentation.bSecondaryEnabled = true;
 		break;
+	}
 
 	case EGameXXKScreen::RouteMerchant:
 		Presentation.Title = NSLOCTEXT("GameXXKRouteEncounter", "MerchantTitle", "行商驻足");

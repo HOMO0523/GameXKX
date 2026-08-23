@@ -356,6 +356,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool AcceptRouteEventNpcSupport();
 
+	/** Compatibility facade. The legacy bHealNow pin is preserved: true now means charm; false means 100 route money. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool ResolveCampReward(bool bHealNow);
 

@@ -172,6 +172,7 @@ void UGameXXKPlayableRootWidget::ConfigureCommandButton(int32 ButtonIndex, const
 
 	Button->SetVisibility(Command ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	Button->SetIsEnabled(Command && Command->bEnabled);
+	Button->SetToolTipText(Command ? Command->DisabledReason : FText::GetEmpty());
 	if (CommandButtonNames.IsValidIndex(ButtonIndex))
 	{
 		CommandButtonNames[ButtonIndex] = Command ? Command->CommandName : NAME_None;

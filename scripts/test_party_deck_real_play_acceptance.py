@@ -8,6 +8,7 @@ future gameplay/UI change cannot silently weaken the evidence it collects.
 
 from __future__ import annotations
 
+import copy
 import importlib.util
 import unittest
 from pathlib import Path
@@ -41,6 +42,15 @@ class PartyDeckRealPlayAcceptanceTest(unittest.TestCase):
         self.assertIn("def _route_encounter_summary", source)
         self.assertIn('"open-route-encounter-panel"', source)
         self.assertIn('"trigger-route-encounter-primary"', source)
+        self.assertIn('"trigger-route-encounter-secondary"', source)
+        self.assertIn('"route_travel_money"', source)
+        self.assertIn('"relic_ids"', source)
+        self.assertIn('"relics"', source)
+        self.assertIn('"next_relic_acquisition_ordinal"', source)
+        self.assertIn('"rewarded_travel_money_nodes"', source)
+        self.assertIn('"healing_powder_count"', source)
+        self.assertIn('"healing_powder_count_observed"', source)
+        self.assertIn('"primary_enabled"', source)
         self.assertIn('"Npc.Event.NiuHuan"', source)
         self.assertIn('"pawn_interaction_binding"', source)
         self.assertIn('get_interaction_component', source)
@@ -373,10 +383,137 @@ class PartyDeckRealPlayAcceptanceTest(unittest.TestCase):
         )
         self.assertFalse(generic_event["ok"])
 
-    def test_route_panel_primary_action_requires_state_cleanup_and_source_completion(self) -> None:
+        camp_focus_action = {
+            "ok": True,
+            "kind": "open_route_encounter_panel_only",
+            "input_path": "pawn_interaction_binding",
+            "rejected_when_unfocused": True,
+            "actor": "/Game/PIE/RouteEncounter_A",
+            "focused_actor_path": "/Game/PIE/RouteEncounter_A",
+            "source_actor_path": "/Game/PIE/RouteEncounter_A",
+            "source_last_interaction_successful_before_choice": False,
+        }
+        owned_camp = {
+            "before_action": {
+                "runtime_state": {
+                    "screen": "RouteCamp",
+                    "current_map_id": "RouteCamp",
+                    "pending_route_node_kind": "Camp",
+                    "pending_route_node_id": 1,
+                    "visited_route_node_ids": [0],
+                    "player_gold": 50,
+                    "player_hp": 40,
+                    "player_max_hp": 100,
+                    "healing_powder_count": 2,
+					"healing_powder_count_observed": True,
+                },
+                "card_run": {
+                    "route_progress_chapter": 1,
+                    "route_travel_money": 60,
+                    "next_relic_acquisition_ordinal": 1,
+                    "relic_ids": ["Relic.LifeSavingTalisman"],
+                    "relics": [{"relic_id": "Relic.LifeSavingTalisman", "stacks": 1, "acquisition_ordinal": 1}],
+                    "rewarded_travel_money_nodes": [],
+                    "pending_event": {"source_node_id": -1, "event_npc_id": ""},
+                },
+            },
+            "runtime_state": {
+                "screen": "RouteCamp",
+                "current_map_id": "RouteCamp",
+                "pending_route_node_kind": "Camp",
+                "pending_route_node_id": 1,
+                "visited_route_node_ids": [0],
+                "player_gold": 50,
+                "player_hp": 40,
+                "player_max_hp": 100,
+                "healing_powder_count": 2,
+				"healing_powder_count_observed": True,
+            },
+            "card_run": {
+                "route_progress_chapter": 1,
+                "route_travel_money": 60,
+                "next_relic_acquisition_ordinal": 1,
+                "relic_ids": ["Relic.LifeSavingTalisman"],
+                "relics": [{"relic_id": "Relic.LifeSavingTalisman", "stacks": 1, "acquisition_ordinal": 1}],
+                "rewarded_travel_money_nodes": [],
+                "pending_event": {"source_node_id": -1, "event_npc_id": ""},
+            },
+            "route_panel": {
+                "kind": "Camp",
+                "is_explicit": True,
+                "is_in_viewport": True,
+                "is_open": True,
+                "primary_action": "CampTakeLifeSavingTalisman",
+                "secondary_action": "CampTakeRouteMoney",
+                "primary_label": "获得保命护符",
+                "secondary_label": "获得100局内金币",
+                "primary_enabled": False,
+                "secondary_enabled": True,
+                "primary_tooltip": "已持有保命护符，不能重复获得。",
+                "source_actor_path": "/Game/PIE/RouteEncounter_A",
+            },
+            "action": camp_focus_action,
+        }
+        self.assertTrue(self.runner.evaluate_route_panel(owned_camp, expected_kind="Camp")["ok"])
+
+        missing_powder_evidence = copy.deepcopy(owned_camp)
+        missing_powder_evidence["before_action"]["runtime_state"].pop("healing_powder_count_observed")
+        missing_powder_evidence["runtime_state"].pop("healing_powder_count_observed")
+        self.assertFalse(self.runner.evaluate_route_panel(missing_powder_evidence, expected_kind="Camp")["ok"])
+
+        owned_camp["route_panel"]["primary_enabled"] = True
+        self.assertFalse(self.runner.evaluate_route_panel(owned_camp, expected_kind="Camp")["ok"])
+
+        mutated_during_open = {
+            **owned_camp,
+            "runtime_state": {
+                "screen": "RouteCamp",
+                "current_map_id": "RouteCamp",
+                "pending_route_node_kind": "Camp",
+                "player_gold": 50,
+                "player_hp": 40,
+                "player_max_hp": 100,
+                "pending_route_node_id": 1,
+                "visited_route_node_ids": [0],
+                "healing_powder_count": 2,
+				"healing_powder_count_observed": True,
+            },
+            "card_run": {
+                "route_progress_chapter": 1,
+                "route_travel_money": 160,
+                "next_relic_acquisition_ordinal": 1,
+                "relic_ids": ["Relic.LifeSavingTalisman"],
+                "relics": [{"relic_id": "Relic.LifeSavingTalisman", "stacks": 1, "acquisition_ordinal": 1}],
+                "rewarded_travel_money_nodes": [],
+                "pending_event": {"source_node_id": -1, "event_npc_id": ""},
+            },
+        }
+        mutated_during_open["route_panel"]["primary_enabled"] = False
+        self.assertFalse(self.runner.evaluate_route_panel(mutated_during_open, expected_kind="Camp")["ok"])
+
+    def test_route_panel_actions_require_exact_rewards_cleanup_and_source_completion(self) -> None:
         self.assertTrue(hasattr(self.runner, "evaluate_route_panel_resolution"))
         chest = self.runner.evaluate_route_panel_resolution(
             {
+                "before_action": {
+                    "runtime_state": {
+                        "player_gold": 50,
+                        "player_hp": 50,
+                        "player_max_hp": 100,
+                        "healing_powder_count": 2,
+						"healing_powder_count_observed": True,
+                        "pending_route_node_id": 1,
+                        "visited_route_node_ids": [0],
+                    },
+                    "card_run": {
+                        "route_progress_chapter": 1,
+                        "route_travel_money": 60,
+                        "next_relic_acquisition_ordinal": 0,
+                        "relic_ids": [],
+                        "relics": [],
+                        "rewarded_travel_money_nodes": [],
+                    },
+                },
                 "action": {
                     "ok": True,
                     "kind": "trigger-route-encounter-primary",
@@ -389,6 +526,8 @@ class PartyDeckRealPlayAcceptanceTest(unittest.TestCase):
                     "player_gold": 75,
                     "player_hp": 50,
                     "player_max_hp": 100,
+                    "healing_powder_count": 2,
+					"healing_powder_count_observed": True,
                     "pending_route_node_id": -1,
                     "visited_route_node_ids": [0, 1],
                 },
@@ -404,23 +543,52 @@ class PartyDeckRealPlayAcceptanceTest(unittest.TestCase):
 
         camp = self.runner.evaluate_route_panel_resolution(
             {
+                "before_action": {
+                    "runtime_state": {
+                        "player_gold": 50,
+                        "player_hp": 50,
+                        "player_max_hp": 100,
+                        "healing_powder_count": 2,
+						"healing_powder_count_observed": True,
+                        "pending_route_node_id": 1,
+                        "visited_route_node_ids": [0],
+                    },
+                    "card_run": {
+                        "route_progress_chapter": 1,
+                        "route_travel_money": 60,
+                        "next_relic_acquisition_ordinal": 0,
+                        "relic_ids": [],
+                        "relics": [],
+                        "rewarded_travel_money_nodes": [],
+                    },
+                },
                 "action": {
                     "ok": True,
                     "kind": "trigger-route-encounter-primary",
-                    "selected_action": "CampRest",
+                    "selected_action": "CampTakeLifeSavingTalisman",
                     "source_actor_path_before_choice": "/Game/PIE/RouteEncounter_A",
                     "source_last_interaction_successful_after_choice": True,
                 },
                 "runtime_state": {
                     "screen": "DungeonMap",
                     "player_gold": 50,
-                    "player_hp": 100,
+                    "player_hp": 50,
                     "player_max_hp": 100,
+                    "healing_powder_count": 2,
+					"healing_powder_count_observed": True,
                     "pending_route_node_id": -1,
                     "visited_route_node_ids": [0, 1],
                 },
                 "route_panel": {"is_open": False, "source_actor_path": ""},
-                "card_run": {"pending_event": {"source_node_id": -1, "event_npc_id": ""}},
+                "card_run": {
+                    "route_travel_money": 60,
+                    "route_progress_chapter": 1,
+                    "next_relic_acquisition_ordinal": 1,
+                    "relic_ids": ["Relic.LifeSavingTalisman"],
+                    "relics": [{"relic_id": "Relic.LifeSavingTalisman", "stacks": 1, "acquisition_ordinal": 1}],
+                    "rewarded_travel_money_nodes": [{"chapter": 1, "node_id": 1, "amount": 0}],
+                    "pending_event": {"source_node_id": -1, "event_npc_id": ""},
+                },
             },
             expected_kind="Camp",
             pending_node_id_before_open=1,
@@ -428,6 +596,211 @@ class PartyDeckRealPlayAcceptanceTest(unittest.TestCase):
             player_hp_before_open=50,
         )
         self.assertTrue(camp["ok"])
+
+        camp_without_reward_snapshot = {
+            "before_action": {
+                "runtime_state": {"player_gold": 50, "player_hp": 50},
+                "card_run": {"route_travel_money": 60, "relic_ids": []},
+            },
+            "action": {
+                "ok": True,
+                "kind": "trigger-route-encounter-primary",
+                "selected_action": "CampTakeLifeSavingTalisman",
+                "source_actor_path_before_choice": "/Game/PIE/RouteEncounter_A",
+                "source_last_interaction_successful_after_choice": True,
+            },
+            "runtime_state": {
+                "screen": "DungeonMap",
+                "player_gold": 50,
+                "player_hp": 50,
+                "player_max_hp": 100,
+                "pending_route_node_id": -1,
+                "visited_route_node_ids": [0, 1],
+            },
+            "route_panel": {"is_open": False, "source_actor_path": ""},
+            "card_run": {
+                "route_travel_money": 60,
+                "relic_ids": [],
+                "pending_event": {"source_node_id": -1, "event_npc_id": ""},
+            },
+        }
+        self.assertFalse(self.runner.evaluate_route_panel_resolution(
+            camp_without_reward_snapshot,
+            expected_kind="Camp",
+            pending_node_id_before_open=1,
+            player_gold_before_open=50,
+            player_hp_before_open=50,
+        )["ok"])
+
+        camp_money = self.runner.evaluate_route_panel_resolution(
+            {
+                "before_action": {
+                    "runtime_state": {
+                        "player_gold": 50,
+                        "player_hp": 50,
+                        "player_max_hp": 100,
+                        "healing_powder_count": 2,
+						"healing_powder_count_observed": True,
+                        "pending_route_node_id": 1,
+                        "visited_route_node_ids": [0],
+                    },
+                    "card_run": {
+                        "route_progress_chapter": 1,
+                        "route_travel_money": 60,
+                        "next_relic_acquisition_ordinal": 1,
+                        "relic_ids": ["Relic.LifeSavingTalisman"],
+                        "relics": [{"relic_id": "Relic.LifeSavingTalisman", "stacks": 1, "acquisition_ordinal": 1}],
+                        "rewarded_travel_money_nodes": [],
+                    },
+                },
+                "action": {
+                    "ok": True,
+                    "kind": "trigger-route-encounter-secondary",
+                    "selected_action": "CampTakeRouteMoney",
+                    "source_actor_path_before_choice": "/Game/PIE/RouteEncounter_A",
+                    "source_last_interaction_successful_after_choice": True,
+                },
+                "runtime_state": {
+                    "screen": "DungeonMap",
+                    "player_gold": 50,
+                    "player_hp": 50,
+                    "player_max_hp": 100,
+                    "healing_powder_count": 2,
+					"healing_powder_count_observed": True,
+                    "pending_route_node_id": -1,
+                    "visited_route_node_ids": [0, 1],
+                },
+                "route_panel": {"is_open": False, "source_actor_path": ""},
+                "card_run": {
+                    "route_travel_money": 160,
+                    "route_progress_chapter": 1,
+                    "next_relic_acquisition_ordinal": 1,
+                    "relic_ids": ["Relic.LifeSavingTalisman"],
+                    "relics": [{"relic_id": "Relic.LifeSavingTalisman", "stacks": 1, "acquisition_ordinal": 1}],
+                    "rewarded_travel_money_nodes": [{"chapter": 1, "node_id": 1, "amount": 100}],
+                    "pending_event": {"source_node_id": -1, "event_npc_id": ""},
+                },
+            },
+            expected_kind="Camp",
+            pending_node_id_before_open=1,
+            player_gold_before_open=50,
+            player_hp_before_open=50,
+        )
+        self.assertTrue(camp_money["ok"])
+
+        camp_money_without_receipt = {
+            "before_action": {
+                "runtime_state": {
+                    "player_gold": 50,
+                    "player_hp": 50,
+                    "healing_powder_count": 2,
+					"healing_powder_count_observed": True,
+                },
+                "card_run": {
+                    "route_progress_chapter": 1,
+                    "route_travel_money": 60,
+                    "next_relic_acquisition_ordinal": 1,
+                    "relic_ids": ["Relic.LifeSavingTalisman"],
+                    "rewarded_travel_money_nodes": [],
+                },
+            },
+            "action": {
+                "ok": True,
+                "kind": "trigger-route-encounter-secondary",
+                "selected_action": "CampTakeRouteMoney",
+                "source_actor_path_before_choice": "/Game/PIE/RouteEncounter_A",
+                "source_last_interaction_successful_after_choice": True,
+            },
+            "runtime_state": {
+                "screen": "DungeonMap",
+                "player_gold": 50,
+                "player_hp": 50,
+                "healing_powder_count": 2,
+				"healing_powder_count_observed": True,
+                "pending_route_node_id": -1,
+                "visited_route_node_ids": [0, 1],
+            },
+            "route_panel": {"is_open": False, "source_actor_path": ""},
+            "card_run": {
+                "route_progress_chapter": 1,
+                "route_travel_money": 160,
+                "next_relic_acquisition_ordinal": 1,
+                "relic_ids": ["Relic.LifeSavingTalisman"],
+                "rewarded_travel_money_nodes": [],
+                "pending_event": {"source_node_id": -1, "event_npc_id": ""},
+            },
+        }
+        self.assertFalse(self.runner.evaluate_route_panel_resolution(
+            camp_money_without_receipt,
+            expected_kind="Camp",
+            pending_node_id_before_open=1,
+            player_gold_before_open=50,
+            player_hp_before_open=50,
+        )["ok"])
+
+        camp_money_with_route_relics = self.runner.evaluate_route_panel_resolution(
+            {
+                "before_action": {
+                    "runtime_state": {
+                        "player_gold": 50,
+                        "player_hp": 40,
+                        "player_max_hp": 100,
+                        "healing_powder_count": 2,
+						"healing_powder_count_observed": True,
+                        "pending_route_node_id": 1,
+                        "visited_route_node_ids": [0],
+                    },
+                    "card_run": {
+                        "route_progress_chapter": 1,
+                        "route_travel_money": 60,
+                        "next_relic_acquisition_ordinal": 3,
+                        "relic_ids": ["Relic.LifeSavingTalisman", "Relic.WineCup", "Relic.HerbBasket"],
+                        "relics": [
+                            {"relic_id": "Relic.LifeSavingTalisman", "stacks": 1, "acquisition_ordinal": 1},
+                            {"relic_id": "Relic.WineCup", "stacks": 2, "acquisition_ordinal": 2},
+                            {"relic_id": "Relic.HerbBasket", "stacks": 1, "acquisition_ordinal": 3},
+                        ],
+                        "rewarded_travel_money_nodes": [],
+                    },
+                },
+                "action": {
+                    "ok": True,
+                    "kind": "trigger-route-encounter-secondary",
+                    "selected_action": "CampTakeRouteMoney",
+                    "source_actor_path_before_choice": "/Game/PIE/RouteEncounter_A",
+                    "source_last_interaction_successful_after_choice": True,
+                },
+                "runtime_state": {
+                    "screen": "DungeonMap",
+                    "player_gold": 50,
+                    "player_hp": 43,
+                    "player_max_hp": 100,
+                    "healing_powder_count": 2,
+					"healing_powder_count_observed": True,
+                    "pending_route_node_id": -1,
+                    "visited_route_node_ids": [0, 1],
+                },
+                "route_panel": {"is_open": False, "source_actor_path": ""},
+                "card_run": {
+                    "route_travel_money": 166,
+                    "route_progress_chapter": 1,
+                    "next_relic_acquisition_ordinal": 3,
+                    "relic_ids": ["Relic.LifeSavingTalisman", "Relic.WineCup", "Relic.HerbBasket"],
+                    "relics": [
+                        {"relic_id": "Relic.LifeSavingTalisman", "stacks": 1, "acquisition_ordinal": 1},
+                        {"relic_id": "Relic.WineCup", "stacks": 2, "acquisition_ordinal": 2},
+                        {"relic_id": "Relic.HerbBasket", "stacks": 1, "acquisition_ordinal": 3},
+                    ],
+                    "rewarded_travel_money_nodes": [{"chapter": 1, "node_id": 1, "amount": 106}],
+                    "pending_event": {"source_node_id": -1, "event_npc_id": ""},
+                },
+            },
+            expected_kind="Camp",
+            pending_node_id_before_open=1,
+            player_gold_before_open=50,
+            player_hp_before_open=40,
+        )
+        self.assertTrue(camp_money_with_route_relics["ok"])
 
         merchant = self.runner.evaluate_route_panel_resolution(
             {

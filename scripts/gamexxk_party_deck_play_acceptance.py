@@ -38,9 +38,13 @@ TASK_NPC_PREFIX = "Npc."
 EVENT_NIU_HUAN_IDS = frozenset({"Event.NiuHuan", "Npc.Event.NiuHuan", "Npc.NiuHuan", "NiuHuan"})
 ROUTE_PANEL_PRIMARY_ACTIONS = {
     "Chest": "TakeGold",
-    "Camp": "CampRest",
+    "Camp": "CampTakeLifeSavingTalisman",
     "Merchant": "MerchantLeave",
 }
+ROUTE_PANEL_SECONDARY_ACTIONS = {
+    "Camp": "CampTakeRouteMoney",
+}
+LIFE_SAVING_TALISMAN_ID = "Relic.LifeSavingTalisman"
 TASK_NPC_DISPLAY_NAMES = {
     "Npc.TusiChief": "土司首领",
     "Npc.SongJinBao": "宋金宝",
@@ -283,6 +287,80 @@ def _is_empty_identity(value: Any) -> bool:
     return _name(value) in {"", "None", "NAME_None"}
 
 
+def _relic_stacks(card_run: dict[str, Any], relic_id: str) -> int:
+    relics = [item for item in _as_list(card_run.get("relics")) if isinstance(item, dict)]
+    if relics:
+        return sum(
+            max(0, int(item.get("stacks", 0) or 0))
+            for item in relics
+            if _name(item.get("relic_id")) == relic_id
+        )
+    return sum(1 for value in _as_list(card_run.get("relic_ids")) if _name(value) == relic_id)
+
+
+def _normalized_relics(card_run: dict[str, Any]) -> list[tuple[str, int, int]]:
+    relics = [item for item in _as_list(card_run.get("relics")) if isinstance(item, dict)]
+    if relics:
+        return [
+            (
+                _name(item.get("relic_id")),
+                int(item.get("stacks", 0) or 0),
+                int(item.get("acquisition_ordinal", 0) or 0),
+            )
+            for item in relics
+        ]
+    return [(_name(relic_id), 1, 0) for relic_id in _as_list(card_run.get("relic_ids")) if _name(relic_id)]
+
+
+def _normalized_receipts(card_run: dict[str, Any]) -> list[tuple[int, int, int]]:
+    return sorted(
+        (
+            int(item.get("chapter", 0) or 0),
+            int(item.get("node_id", -1) if item.get("node_id") is not None else -1),
+            int(item.get("amount", 0) or 0),
+        )
+        for item in _as_list(card_run.get("rewarded_travel_money_nodes"))
+        if isinstance(item, dict)
+    )
+
+
+def _camp_state_fingerprint(snapshot: dict[str, Any]) -> dict[str, Any]:
+    runtime = _as_dict(snapshot.get("runtime_state"))
+    card_run = _as_dict(snapshot.get("card_run"))
+    pending_event = _as_dict(card_run.get("pending_event"))
+    return {
+        "screen": _name(runtime.get("screen")),
+        "current_map_id": _name(runtime.get("current_map_id")),
+        "player_gold": int(runtime.get("player_gold", 0) or 0),
+        "player_hp": int(runtime.get("player_hp", 0) or 0),
+        "player_max_hp": int(runtime.get("player_max_hp", 0) or 0),
+        "healing_powder_count": int(runtime.get("healing_powder_count", 0) or 0),
+        "healing_powder_count_observed": runtime.get("healing_powder_count_observed", False) is True,
+        "pending_route_node_id": int(runtime.get("pending_route_node_id", -1) if runtime.get("pending_route_node_id") is not None else -1),
+        "visited_route_node_ids": sorted(int(value) for value in _as_list(runtime.get("visited_route_node_ids"))),
+        "route_travel_money": int(card_run.get("route_travel_money", 0) or 0),
+        "route_progress_chapter": int(card_run.get("route_progress_chapter", 0) or 0),
+        "route_max_health_bonus": int(card_run.get("route_max_health_bonus", 0) or 0),
+        "next_relic_acquisition_ordinal": int(card_run.get("next_relic_acquisition_ordinal", 0) or 0),
+        "relics": _normalized_relics(card_run),
+        "rewarded_travel_money_nodes": _normalized_receipts(card_run),
+        "pending_event_source_node_id": int(pending_event.get("source_node_id", -1) if pending_event.get("source_node_id") is not None else -1),
+        "pending_event_npc_id": _name(pending_event.get("event_npc_id")),
+    }
+
+
+def _expected_route_completion_hp(runtime: dict[str, Any], card_run: dict[str, Any]) -> int:
+    hp = int(runtime.get("player_hp", 0) or 0)
+    effective_max_hp = int(runtime.get("player_max_hp", 0) or 0) + int(card_run.get("route_max_health_bonus", 0) or 0)
+    for relic_id, stacks, _ordinal in _normalized_relics(card_run):
+        effective_stacks = max(1, stacks)
+        if relic_id == "Relic.HerbBasket":
+            hp = min(effective_max_hp, hp + 3 * effective_stacks)
+        elif relic_id == "Relic.PaperCrane":
+            effective_max_hp += 2 * effective_stacks
+    return hp
+
+
 def _evaluate_focused_route_panel_open(action: dict[str, Any], panel: dict[str, Any]) -> dict[str, Any]:
     """Verify that a visible route panel came from the player interaction gate.
 
@@ -483,12 +561,38 @@ def evaluate_event_resolution(
 
 def evaluate_route_panel(snapshot: dict[str, Any], expected_kind: str) -> dict[str, Any]:
     runtime = _as_dict(snapshot.get("runtime_state"))
+    card_run = _as_dict(snapshot.get("card_run"))
+    before_action = _as_dict(snapshot.get("before_action"))
     panel = _as_dict(snapshot.get("route_panel"))
     action = _as_dict(snapshot.get("action"))
     focus_gate = _evaluate_focused_route_panel_open(action, panel)
     observed_kind = _name(panel.get("kind"))
     pending_kind = _name(runtime.get("pending_route_node_kind"))
     expected_screen = "RouteEvent" if expected_kind == "Chest" else f"Route{expected_kind}"
+    relic_ids = [_name(value) for value in _as_list(card_run.get("relic_ids")) if _name(value)]
+    owns_life_saving_talisman = relic_ids.count(LIFE_SAVING_TALISMAN_ID) == 1
+    camp_contract_ok = True
+    open_state_unchanged = True
+    open_powder_evidence_observed = True
+    if expected_kind == "Camp":
+        before_runtime = _as_dict(before_action.get("runtime_state"))
+        open_powder_evidence_observed = (
+            before_runtime.get("healing_powder_count_observed", False) is True
+            and runtime.get("healing_powder_count_observed", False) is True
+        )
+        open_state_unchanged = bool(before_action) and _camp_state_fingerprint(before_action) == _camp_state_fingerprint(snapshot)
+        camp_contract_ok = bool(
+            _name(panel.get("primary_action")) == ROUTE_PANEL_PRIMARY_ACTIONS["Camp"]
+            and _name(panel.get("secondary_action")) == ROUTE_PANEL_SECONDARY_ACTIONS["Camp"]
+            and _name(panel.get("primary_label")) == "获得保命护符"
+            and _name(panel.get("secondary_label")) == "获得100局内金币"
+            and panel.get("primary_enabled") is (not owns_life_saving_talisman)
+            and panel.get("secondary_enabled") is True
+            and (
+                not owns_life_saving_talisman
+                or _name(panel.get("primary_tooltip")) == "已持有保命护符，不能重复获得。"
+            )
+        )
     ok = bool(
         panel.get("is_in_viewport")
         and panel.get("is_open")
@@ -498,6 +602,9 @@ def evaluate_route_panel(snapshot: dict[str, Any], expected_kind: str) -> dict[s
         and pending_kind == expected_kind
         and _name(runtime.get("screen")) == expected_screen
         and bool(focus_gate["ok"])
+        and camp_contract_ok
+        and open_state_unchanged
+        and open_powder_evidence_observed
     )
     return {
         "ok": ok,
@@ -507,6 +614,14 @@ def evaluate_route_panel(snapshot: dict[str, Any], expected_kind: str) -> dict[s
         "screen": _name(runtime.get("screen")),
         "is_explicit": bool(panel.get("is_explicit")),
         "is_in_viewport": bool(panel.get("is_in_viewport")),
+        "camp_contract_ok": camp_contract_ok,
+        "open_state_unchanged": open_state_unchanged,
+        "open_powder_evidence_observed": open_powder_evidence_observed,
+        "pre_open_state": _camp_state_fingerprint(before_action) if before_action else {},
+        "opened_state": _camp_state_fingerprint(snapshot) if expected_kind == "Camp" else {},
+        "owns_life_saving_talisman": owns_life_saving_talisman,
+        "primary_enabled": panel.get("primary_enabled") is True,
+        "secondary_enabled": panel.get("secondary_enabled") is True,
         "focus_gate": focus_gate,
     }
 
@@ -517,16 +632,26 @@ def evaluate_route_panel_resolution(
     pending_node_id_before_open: int,
     player_gold_before_open: int,
     player_hp_before_open: int,
+    opened_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Verify one visible primary action completes its exact route node cleanly."""
+    """Verify one visible route-panel action completes its exact node and reward transaction."""
     runtime = _as_dict(snapshot.get("runtime_state"))
     panel = _as_dict(snapshot.get("route_panel"))
     action = _as_dict(snapshot.get("action"))
     card_run = _as_dict(snapshot.get("card_run"))
+    before_action = _as_dict(snapshot.get("before_action"))
+    before_runtime = _as_dict(before_action.get("runtime_state"))
+    before_card_run = _as_dict(before_action.get("card_run"))
     pending_event = _as_dict(card_run.get("pending_event"))
-    expected_action = ROUTE_PANEL_PRIMARY_ACTIONS.get(expected_kind, "")
+    action_kind = _name(action.get("kind"))
+    selected_choice = "secondary" if action_kind == "trigger-route-encounter-secondary" else "primary"
+    expected_action = (
+        ROUTE_PANEL_SECONDARY_ACTIONS.get(expected_kind, "")
+        if selected_choice == "secondary"
+        else ROUTE_PANEL_PRIMARY_ACTIONS.get(expected_kind, "")
+    )
     selected_action = _name(action.get("selected_action"))
-    action_triggered = bool(action.get("ok")) and _name(action.get("kind")) == "trigger-route-encounter-primary"
+    action_triggered = bool(action.get("ok")) and action_kind == f"trigger-route-encounter-{selected_choice}"
     source_actor_path_before_choice = _name(action.get("source_actor_path_before_choice"))
     source_completed_after_choice = action.get("source_last_interaction_successful_after_choice") is True
     panel_closed = not bool(panel.get("is_open"))
@@ -542,14 +667,72 @@ def evaluate_route_panel_resolution(
     player_gold_after_action = int(runtime.get("player_gold", 0) or 0)
     player_hp_after_action = int(runtime.get("player_hp", 0) or 0)
     player_max_hp_after_action = int(runtime.get("player_max_hp", 0) or 0)
+    player_gold_before_action = int(before_runtime.get("player_gold", player_gold_before_open) or 0)
+    player_hp_before_action = int(before_runtime.get("player_hp", player_hp_before_open) or 0)
+    route_money_before_action = int(before_card_run.get("route_travel_money", 0) or 0)
+    route_money_after_action = int(card_run.get("route_travel_money", 0) or 0)
+    relic_ids_before_action = [_name(value) for value in _as_list(before_card_run.get("relic_ids")) if _name(value)]
+    relic_ids_after_action = [_name(value) for value in _as_list(card_run.get("relic_ids")) if _name(value)]
+    route_money_relic_bonus = 3 * _relic_stacks(before_card_run, "Relic.WineCup")
+    player_hp_expected_after_action = _expected_route_completion_hp(before_runtime, before_card_run)
+    healing_powder_before_action = int(before_runtime.get("healing_powder_count", 0) or 0)
+    healing_powder_after_action = int(runtime.get("healing_powder_count", 0) or 0)
+    healing_powder_observed = (
+        before_runtime.get("healing_powder_count_observed", False) is True
+        and runtime.get("healing_powder_count_observed", False) is True
+    )
+    next_relic_ordinal_before_action = int(before_card_run.get("next_relic_acquisition_ordinal", 0) or 0)
+    next_relic_ordinal_after_action = int(card_run.get("next_relic_acquisition_ordinal", 0) or 0)
+    receipts_before_action = _normalized_receipts(before_card_run)
+    receipts_after_action = _normalized_receipts(card_run)
+    receipt_chapter = int(before_card_run.get("route_progress_chapter", 0) or 0)
+    receipt_node_id = int(before_runtime.get("pending_route_node_id", pending_node_id_before_open) if before_runtime.get("pending_route_node_id") is not None else pending_node_id_before_open)
+    expected_receipt_amount = route_money_relic_bonus + (100 if selected_choice == "secondary" else 0)
+    expected_receipt = (receipt_chapter, receipt_node_id, expected_receipt_amount)
+    receipt_ok = bool(
+        receipt_chapter >= 1
+        and receipt_node_id >= 0
+        and not any(chapter == receipt_chapter and node_id == receipt_node_id for chapter, node_id, _amount in receipts_before_action)
+        and receipts_after_action == sorted(receipts_before_action + [expected_receipt])
+    )
+    click_baseline_matches_open = True
+    if expected_kind == "Camp" and opened_snapshot is not None:
+        click_baseline_matches_open = _camp_state_fingerprint(opened_snapshot) == _camp_state_fingerprint(before_action)
     if expected_kind == "Chest":
         effect_ok = player_gold_after_action > int(player_gold_before_open)
     elif expected_kind == "Camp":
-        effect_ok = (
-            player_max_hp_after_action > 0
-            and player_hp_after_action == player_max_hp_after_action
-            and player_hp_after_action >= int(player_hp_before_open)
+        common_camp_effect_ok = (
+            player_gold_after_action == player_gold_before_action
+            and player_hp_after_action == player_hp_expected_after_action
+            and healing_powder_observed
+            and healing_powder_after_action == healing_powder_before_action
+            and receipt_ok
+            and click_baseline_matches_open
         )
+        if selected_choice == "primary":
+            life_saving_instances = [
+                relic
+                for relic in _normalized_relics(card_run)
+                if relic[0] == LIFE_SAVING_TALISMAN_ID
+            ]
+            effect_ok = bool(
+                common_camp_effect_ok
+                and route_money_after_action == route_money_before_action + route_money_relic_bonus
+                and next_relic_ordinal_after_action == next_relic_ordinal_before_action + 1
+                and LIFE_SAVING_TALISMAN_ID not in relic_ids_before_action
+                and relic_ids_after_action.count(LIFE_SAVING_TALISMAN_ID) == 1
+                and sorted(relic_ids_after_action) == sorted(relic_ids_before_action + [LIFE_SAVING_TALISMAN_ID])
+                and len(life_saving_instances) == 1
+                and life_saving_instances[0][1] == 1
+                and life_saving_instances[0][2] == next_relic_ordinal_after_action
+            )
+        else:
+            effect_ok = bool(
+                common_camp_effect_ok
+                and route_money_after_action == route_money_before_action + route_money_relic_bonus + 100
+                and next_relic_ordinal_after_action == next_relic_ordinal_before_action
+                and relic_ids_after_action == relic_ids_before_action
+            )
     elif expected_kind == "Merchant":
         effect_ok = player_gold_after_action == int(player_gold_before_open)
     else:
@@ -573,6 +756,7 @@ def evaluate_route_panel_resolution(
         "expected_kind": expected_kind,
         "expected_action": expected_action,
         "selected_action": selected_action,
+        "selected_choice": selected_choice,
         "action_triggered": action_triggered,
         "source_actor_path_before_choice": source_actor_path_before_choice,
         "source_completed_after_choice": source_completed_after_choice,
@@ -586,6 +770,24 @@ def evaluate_route_panel_resolution(
         "player_gold_after_action": player_gold_after_action,
         "player_hp_after_action": player_hp_after_action,
         "player_max_hp_after_action": player_max_hp_after_action,
+        "player_gold_before_action": player_gold_before_action,
+        "player_hp_before_action": player_hp_before_action,
+        "player_hp_expected_after_action": player_hp_expected_after_action,
+        "route_money_before_action": route_money_before_action,
+        "route_money_after_action": route_money_after_action,
+        "relic_ids_before_action": relic_ids_before_action,
+        "relic_ids_after_action": relic_ids_after_action,
+        "next_relic_ordinal_before_action": next_relic_ordinal_before_action,
+        "next_relic_ordinal_after_action": next_relic_ordinal_after_action,
+        "healing_powder_before_action": healing_powder_before_action,
+        "healing_powder_after_action": healing_powder_after_action,
+        "healing_powder_observed": healing_powder_observed,
+        "receipts_before_action": receipts_before_action,
+        "receipts_after_action": receipts_after_action,
+        "expected_receipt": expected_receipt,
+        "receipt_ok": receipt_ok,
+        "click_baseline_matches_open": click_baseline_matches_open,
+        "route_money_relic_bonus": route_money_relic_bonus,
     }
 
 
@@ -746,36 +948,41 @@ class PartyDeckAcceptanceHarness:
             "resolved_choice": resolution_verdict,
         }
 
-    def assert_route_panel(self, expected_kind: str) -> dict[str, Any]:
+    def assert_route_panel(self, expected_kind: str, selected_choice: str = "primary") -> dict[str, Any]:
         """Open and resolve one real camp, merchant, or chest panel.
 
         Camp, merchant, and chest are separate player route states.  The caller
         must navigate to each in a normal run and invoke this assertion once
         per state; the runner never swaps maps or injects a fake node.  This
-        assertion deliberately consumes the primary visible choice, so its
-        evidence covers the interaction gate and the post-choice cleanup.
+        Camp supports explicit primary charm and secondary route-money evidence;
+        other panels retain their primary-only compatibility path.
         """
-        before = self.probe()
-        before_runtime = _as_dict(before.get("runtime_state"))
-        pending_node_id_before_open = int(before_runtime.get("pending_route_node_id", -1) or -1)
-        if pending_node_id_before_open < 0:
-            raise RuntimeError(f"Route {expected_kind} has no pending node to open: {before_runtime}")
-        player_gold_before_open = int(before_runtime.get("player_gold", 0) or 0)
-        player_hp_before_open = int(before_runtime.get("player_hp", 0) or 0)
+        if selected_choice not in {"primary", "secondary"}:
+            raise ValueError(f"Unsupported route-panel choice: {selected_choice}")
+        if selected_choice == "secondary" and expected_kind != "Camp":
+            raise ValueError(f"{expected_kind} has no secondary acceptance path")
         opened_snapshot = self.require_action("open-route-encounter-panel")
+        pre_open_snapshot = _as_dict(opened_snapshot.get("before_action"))
+        pre_open_runtime = _as_dict(pre_open_snapshot.get("runtime_state"))
+        pending_node_id_before_open = int(pre_open_runtime.get("pending_route_node_id", -1) or -1)
+        if pending_node_id_before_open < 0:
+            raise RuntimeError(f"Route {expected_kind} has no pending node before opening: {pre_open_runtime}")
+        player_gold_before_open = int(pre_open_runtime.get("player_gold", 0) or 0)
+        player_hp_before_open = int(pre_open_runtime.get("player_hp", 0) or 0)
         open_verdict = evaluate_route_panel(opened_snapshot, expected_kind=expected_kind)
         if not open_verdict["ok"]:
             raise RuntimeError(f"Route {expected_kind} panel did not open through the focused player interaction gate: {open_verdict}")
-        resolved_snapshot = self.require_action("trigger-route-encounter-primary")
+        resolved_snapshot = self.require_action(f"trigger-route-encounter-{selected_choice}")
         resolution_verdict = evaluate_route_panel_resolution(
             resolved_snapshot,
             expected_kind=expected_kind,
             pending_node_id_before_open=pending_node_id_before_open,
             player_gold_before_open=player_gold_before_open,
             player_hp_before_open=player_hp_before_open,
+            opened_snapshot=opened_snapshot,
         )
         if not resolution_verdict["ok"]:
-            raise RuntimeError(f"Route {expected_kind} primary choice did not cleanly resolve its node: {resolution_verdict}")
+            raise RuntimeError(f"Route {expected_kind} {selected_choice} choice did not cleanly resolve its node: {resolution_verdict}")
         return {
             "ok": True,
             "opened_panel": open_verdict,
@@ -804,6 +1011,12 @@ def main(argv: list[str]) -> int:
         default=None,
         help="Required with --scenario panel; run once after navigating to each real route panel.",
     )
+    parser.add_argument(
+        "--panel-choice",
+        choices=("primary", "secondary"),
+        default="primary",
+        help="Visible choice to execute for --scenario panel; Camp supports both.",
+    )
     parser.add_argument("--report", type=Path, default=None)
     parser.add_argument("--print-automation-plan", action="store_true", help="Print focused deterministic automation-test names and exit without contacting UE.")
     args = parser.parse_args(argv)
@@ -827,7 +1040,11 @@ def main(argv: list[str]) -> int:
         elif args.scenario == "panel":
             if not args.expected_panel_kind:
                 raise RuntimeError("--scenario panel requires --expected-panel-kind Camp, Merchant, or Chest")
-            result = {"ok": True, "panel": harness.assert_route_panel(args.expected_panel_kind), "events": harness.events}
+            result = {
+                "ok": True,
+                "panel": harness.assert_route_panel(args.expected_panel_kind, args.panel_choice),
+                "events": harness.events,
+            }
         elif args.scenario == "party":
             result = {"ok": True, "party": harness.assert_party(), "events": harness.events}
     except Exception as exc:

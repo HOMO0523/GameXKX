@@ -2,6 +2,7 @@
 
 #include "GameXXKMVPRules.h"
 #include "GameXXKRelicCatalog.h"
+#include "GameXXKRelicRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -29,7 +30,8 @@ namespace
 	static const FName ResolveRouteChoice0(TEXT("ResolveRouteChoice0"));
 	static const FName ResolveRouteChoice1(TEXT("ResolveRouteChoice1"));
 	static const FName ResolveRouteChoice2(TEXT("ResolveRouteChoice2"));
-	static const FName ResolveCampHeal(TEXT("ResolveCampHeal"));
+	static const FName ResolveCampCharm(TEXT("ResolveCampCharm"));
+	static const FName ResolveCampRouteMoney(TEXT("ResolveCampRouteMoney"));
 	static const FName CompleteMerchantNode(TEXT("CompleteMerchantNode"));
 	static const FName SelectBoss(TEXT("SelectBoss"));
 	static const FName ResolveBattleVictory(TEXT("ResolveBattleVictory"));
@@ -112,9 +114,30 @@ namespace
 		return true;
 	}
 
-	static void AddCommand(TArray<FGameXXKMVPCommandDescriptor>& Commands, FName Name, const TCHAR* Label, bool bEnabled)
+	static void AddCommand(
+		TArray<FGameXXKMVPCommandDescriptor>& Commands,
+		FName Name,
+		const TCHAR* Label,
+		bool bEnabled,
+		const FText& DisabledReason = FText::GetEmpty())
 	{
-		Commands.Emplace(Name, FText::FromString(Label), bEnabled);
+		Commands.Emplace(Name, FText::FromString(Label), bEnabled, DisabledReason);
+	}
+
+	static void AddCampRewardCommands(
+		TArray<FGameXXKMVPCommandDescriptor>& Commands,
+		const FGameXXKRuntimeState& State)
+	{
+		const bool bOwnsLifeSavingTalisman = FGameXXKRelicRules::OwnsLifeSavingTalisman(State);
+		AddCommand(
+			Commands,
+			ResolveCampCharm,
+			TEXT("获得保命护符"),
+			!bOwnsLifeSavingTalisman,
+			bOwnsLifeSavingTalisman
+				? NSLOCTEXT("GameXXKMVPCommandRouter", "CampCharmOwned", "已持有保命护符，不能重复获得。")
+				: FText::GetEmpty());
+		AddCommand(Commands, ResolveCampRouteMoney, TEXT("获得100局内金币"), true);
 	}
 
 	static void AddPendingRouteChoiceCommands(TArray<FGameXXKMVPCommandDescriptor>& Commands, const FGameXXKRuntimeState& State)
@@ -181,7 +204,7 @@ namespace
 		}
 	}
 
-	static FName CommandForNode(EGameXXKNodeKind NodeKind)
+	static FName CommandForNode(const FGameXXKRuntimeState& State, EGameXXKNodeKind NodeKind)
 	{
 		switch (NodeKind)
 		{
@@ -196,7 +219,7 @@ namespace
 		case EGameXXKNodeKind::Merchant:
 			return ResolveEventGold;
 		case EGameXXKNodeKind::Camp:
-			return ResolveCampHeal;
+			return FGameXXKRelicRules::OwnsLifeSavingTalisman(State) ? ResolveCampRouteMoney : ResolveCampCharm;
 		case EGameXXKNodeKind::Boss:
 			return SelectBoss;
 		default:
@@ -399,7 +422,7 @@ TArray<FGameXXKMVPCommandDescriptor> GameXXKMVPCommandRouter::BuildVisibleComman
 			}
 			if (HasReachableNodeKind(State, EGameXXKNodeKind::Camp))
 			{
-				AddCommand(Commands, ResolveCampHeal, TEXT("Camp: Heal"), true);
+				AddCampRewardCommands(Commands, State);
 			}
 			if (HasReachableNodeKind(State, EGameXXKNodeKind::Boss))
 			{
@@ -420,7 +443,7 @@ TArray<FGameXXKMVPCommandDescriptor> GameXXKMVPCommandRouter::BuildVisibleComman
 				AddCommand(Commands, ResolveEventGold, TEXT("Event: Take Gold"), true);
 				break;
 			case EGameXXKNodeKind::Camp:
-				AddCommand(Commands, ResolveCampHeal, TEXT("Camp: Heal"), true);
+				AddCampRewardCommands(Commands, State);
 				break;
 			case EGameXXKNodeKind::Boss:
 				AddCommand(Commands, SelectBoss, TEXT("Boss Node"), true);
@@ -447,7 +470,7 @@ TArray<FGameXXKMVPCommandDescriptor> GameXXKMVPCommandRouter::BuildVisibleComman
 		AddPendingRouteChoiceCommands(Commands, State);
 		break;
 	case EGameXXKScreen::RouteCamp:
-		AddCommand(Commands, ResolveCampHeal, TEXT("Camp: Heal"), true);
+		AddCampRewardCommands(Commands, State);
 		break;
 	case EGameXXKScreen::RouteMerchant:
 		AddCommand(Commands, BuyHealingPowder, TEXT("Buy Healing Powder"), State.PlayerGold >= 10);
@@ -501,7 +524,7 @@ TArray<FGameXXKMVPRouteNodeDescriptor> GameXXKMVPCommandRouter::BuildRouteMapNod
 		const float X = (NodeIndex % 2) == 0 ? 0.42f : 0.58f;
 		const float Y = 1.0f - (static_cast<float>(NodeIndex) / LastNodeIndex);
 		Nodes.Emplace(
-			CommandForNode(NodeKind),
+			CommandForNode(State, NodeKind),
 			FText::FromString(LabelForNode(NodeKind)),
 			NodeKind,
 			NodeIndex,
@@ -629,9 +652,13 @@ bool GameXXKMVPCommandRouter::ExecuteVisibleCommand(UGameXXKMVPSubsystem* Subsys
 	{
 		return FinishCommandAndTravel(Subsystem, Subsystem->ResolveEventReward(true));
 	}
-	if (CommandName == ResolveCampHeal)
+	if (CommandName == ResolveCampCharm)
 	{
 		return FinishCommandAndTravel(Subsystem, Subsystem->ResolveCampReward(true));
+	}
+	if (CommandName == ResolveCampRouteMoney)
+	{
+		return FinishCommandAndTravel(Subsystem, Subsystem->ResolveCampReward(false));
 	}
 	if (CommandName == CompleteMerchantNode)
 	{

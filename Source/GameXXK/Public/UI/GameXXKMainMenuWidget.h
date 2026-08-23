@@ -205,7 +205,10 @@ private:
 	void HandleResolveEventGoldClicked();
 
 	UFUNCTION()
-	void HandleResolveCampHealClicked();
+	void HandleResolveCampCharmClicked();
+
+	UFUNCTION()
+	void HandleResolveCampRouteMoneyClicked();
 
 	UFUNCTION()
 	void HandleBuyHealingPowderClicked();

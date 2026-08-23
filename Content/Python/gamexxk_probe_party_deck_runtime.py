@@ -211,9 +211,39 @@ def _card_run_summary(state):
     quest = _prop(party, "quest_npc", "QuestNpc")
     pending_reward = _prop(run, "pending_reward", "PendingReward")
     pending_event = _prop(run, "pending_event", "PendingEvent")
+    route_progress = _prop(run, "route_progress", "RouteProgress")
+    route_attributes = _prop(run, "route_attribute_bonuses", "RouteAttributeBonuses")
+    relics = _prop(run, "relics", "Relics") or []
+    rewarded_nodes = _prop(run, "rewarded_travel_money_nodes", "RewardedTravelMoneyNodes") or []
     return {
         "has_active_card_battle": bool(_prop(run, "b_has_active_card_battle", "has_active_card_battle", "bHasActiveCardBattle")),
         "loadout_locked_for_route": bool(_prop(run, "b_loadout_locked_for_route", "loadout_locked_for_route", "bLoadoutLockedForRoute")),
+        "route_travel_money": int(_prop(run, "route_travel_money", "RouteTravelMoney") or 0),
+        "route_progress_chapter": int(_prop(route_progress, "current_chapter", "CurrentChapter") or 0),
+        "route_max_health_bonus": int(_prop(route_attributes, "max_health", "MaxHealth") or 0),
+        "next_relic_acquisition_ordinal": int(_prop(run, "next_relic_acquisition_ordinal", "NextRelicAcquisitionOrdinal") or 0),
+        "rewarded_travel_money_nodes": [
+            {
+                "chapter": int(_prop(receipt, "chapter", "Chapter") or 0),
+                "node_id": int(_prop(receipt, "node_id", "NodeId") if _prop(receipt, "node_id", "NodeId") is not None else -1),
+                "amount": int(_prop(receipt, "amount", "Amount") or 0),
+            }
+            for receipt in rewarded_nodes
+        ],
+        "relic_ids": [
+            _name(_prop(relic, "relic_id", "RelicId"))
+            for relic in relics
+            if _name(_prop(relic, "relic_id", "RelicId"))
+        ],
+        "relics": [
+            {
+                "relic_id": _name(_prop(relic, "relic_id", "RelicId")),
+                "stacks": int(_prop(relic, "stacks", "Stacks") or 0),
+                "acquisition_ordinal": int(_prop(relic, "acquisition_ordinal", "AcquisitionOrdinal") or 0),
+            }
+            for relic in relics
+            if _name(_prop(relic, "relic_id", "RelicId"))
+        ],
         "boss_card_slots": [_name(value) for value in (_prop(run, "boss_card_slots", "BossCardSlots") or [])],
         "active_temporary_quest_npc_id": _name(_prop(run, "active_temporary_quest_npc_id", "ActiveTemporaryQuestNpcId")),
         "party_selection": {
@@ -244,14 +274,32 @@ def _card_run_summary(state):
     }
 
 
-def _runtime_state_summary(state):
+def _runtime_state_summary(state, subsystem=None):
     pending_node = _find_pending_node(state)
+    healing_powder_count = 0
+    healing_powder_count_observed = False
+    subsystem_count = _call(subsystem, "get_item_count", _to_unreal_name("Item.HealingPowder"))
+    if subsystem_count is not None:
+        healing_powder_count = int(subsystem_count)
+        healing_powder_count_observed = True
+    inventory = _prop(state, "inventory", "Inventory")
+    if not healing_powder_count_observed:
+        try:
+            for item_id, quantity in inventory.items():
+                if _name(item_id) == "Item.HealingPowder":
+                    healing_powder_count = int(quantity)
+                    healing_powder_count_observed = True
+                    break
+        except Exception:
+            pass
     return {
         "screen": _enum_name(_prop(state, "screen", "Screen")),
         "current_map_id": _name(_prop(state, "current_map_id", "CurrentMapId")),
         "player_gold": int(_prop(state, "player_gold", "PlayerGold") or 0),
         "player_hp": int(_prop(state, "player_hp", "PlayerHP") or 0),
         "player_max_hp": int(_prop(state, "player_max_hp", "PlayerMaxHP") or 0),
+        "healing_powder_count": healing_powder_count,
+        "healing_powder_count_observed": healing_powder_count_observed,
         "pending_route_node_id": int(_prop(state, "pending_route_node_id", "PendingRouteNodeId") or -1),
         "pending_route_node_kind": _enum_name(_prop(pending_node, "node_kind", "NodeKind")),
         "visited_route_node_ids": [int(value) for value in (_prop(state, "visited_route_node_ids", "VisitedRouteNodeIds") or [])],
@@ -413,6 +461,9 @@ def _route_panel_summary(controller, runtime_state, route_encounters, widgets):
     panel = _call(controller, "get_route_encounter_panel_widget_for_test")
     primary_action = _enum_token(_call(panel, "get_primary_action_for_test"))
     secondary_action = _enum_token(_call(panel, "get_secondary_action_for_test"))
+    widget_tree = _prop(panel, "widget_tree", "WidgetTree")
+    primary_button = _call(widget_tree, "find_widget", _to_unreal_name("RouteEncounterPrimaryAction"))
+    secondary_button = _call(widget_tree, "find_widget", _to_unreal_name("RouteEncounterSecondaryAction"))
     panel_widget = next((item for item in widgets if "RouteEncounterPanelWidget" in _name(item.get("class"))), {})
     source_actor_path = _object_path(_call(controller, "get_route_encounter_source_actor_for_test"))
     matched_actor = next((item for item in route_encounters if _name(item.get("path")) == source_actor_path), {})
@@ -437,6 +488,10 @@ def _route_panel_summary(controller, runtime_state, route_encounters, widgets):
         "secondary_action": secondary_action,
         "primary_label": _text(_call(panel, "get_primary_action_text_for_test")),
         "secondary_label": _text(_call(panel, "get_secondary_action_text_for_test")),
+        "primary_enabled": bool(_call(primary_button, "get_is_enabled")),
+        "secondary_enabled": bool(_call(secondary_button, "get_is_enabled")),
+        "primary_tooltip": _text(_call(primary_button, "get_tool_tip_text")),
+        "secondary_tooltip": _text(_call(secondary_button, "get_tool_tip_text")),
         "window_frame_resource_path": _name(_call(panel, "get_window_frame_resource_path_for_test")),
         "header_resource_path": _name(_call(panel, "get_header_resource_path_for_test")),
         "action_resource_path": _name(_call(panel, "get_action_resource_path_for_test")),
@@ -466,7 +521,7 @@ def _snapshot():
     controller = _first_controller(world)
     subsystem = _get_mvp_subsystem(world, controller)
     state = _state(subsystem)
-    runtime_state = _runtime_state_summary(state)
+    runtime_state = _runtime_state_summary(state, subsystem)
     card_run = _card_run_summary(state)
     battle_units = _battle_scene_summaries(world, controller)
     route_encounters = _route_encounter_summary(world, state, card_run)

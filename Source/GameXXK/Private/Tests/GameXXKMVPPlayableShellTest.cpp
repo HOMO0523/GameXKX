@@ -1,5 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKRelicRules.h"
 #include "MVP/GameXXKMVPGameMode.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -164,9 +165,15 @@ namespace
 					return false;
 				}
 			}
-			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteCamp && !HUD->HandleDemoCommand(FName(TEXT("ResolveCampHeal"))))
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteCamp)
 			{
-				return false;
+				const bool bOwnsLifeSavingTalisman = FGameXXKRelicRules::OwnsLifeSavingTalisman(Subsystem->GetRuntimeState());
+				if (!HUD->HandleDemoCommand(FName(bOwnsLifeSavingTalisman
+					? TEXT("ResolveCampRouteMoney")
+					: TEXT("ResolveCampCharm"))))
+				{
+					return false;
+				}
 			}
 			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteMerchant && !HUD->HandleDemoCommand(FName(TEXT("CompleteMerchantNode"))))
 			{
@@ -273,7 +280,8 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("retry advances start node"), HUD->HandleDemoCommand(FName(TEXT("SelectStart"))));
 	Subsystem->GetMutableRuntimeState().PlayerHP = 1;
 	TestTrue(TEXT("HUD follows generated route to a camp"), HandleRouteTowardKind(HUD, Subsystem, EGameXXKNodeKind::Camp));
-	TestEqual(TEXT("camp restored HP"), Subsystem->GetRuntimeState().PlayerHP, Subsystem->GetRuntimeState().PlayerMaxHP);
+	TestTrue(TEXT("camp command grants the life-saving talisman"),
+		FGameXXKRelicRules::OwnsLifeSavingTalisman(Subsystem->GetRuntimeState()));
 	TestTrue(TEXT("HUD follows generated route to the chapter one boss"), HandleRouteTowardKind(HUD, Subsystem, EGameXXKNodeKind::Boss));
 	TestEqual(TEXT("chapter one Boss returns the HUD to the next route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(TEXT("chapter one Boss advances the HUD route to chapter two"), Subsystem->GetRuntimeState().CardRun.RouteProgress.CurrentChapter, 2);

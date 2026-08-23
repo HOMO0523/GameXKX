@@ -1,5 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKRelicRules.h"
 #include "Components/Button.h"
 #include "GameFramework/SaveGame.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -205,9 +206,15 @@ namespace
 					return false;
 				}
 			}
-			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteCamp && !RootWidget->ExecuteVisibleCommand(FName(TEXT("ResolveCampHeal"))))
+			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteCamp)
 			{
-				return false;
+				const bool bOwnsLifeSavingTalisman = FGameXXKRelicRules::OwnsLifeSavingTalisman(Subsystem->GetRuntimeState());
+				if (!RootWidget->ExecuteVisibleCommand(FName(bOwnsLifeSavingTalisman
+					? TEXT("ResolveCampRouteMoney")
+					: TEXT("ResolveCampCharm"))))
+				{
+					return false;
+				}
 			}
 			if (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteMerchant && !RootWidget->ExecuteVisibleCommand(FName(TEXT("CompleteMerchantNode"))))
 			{
@@ -467,7 +474,8 @@ bool FGameXXKPlayableRootFullLoopTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("UMG root retries start node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectStart"))));
 	Subsystem->GetMutableRuntimeState().PlayerHP = 1;
 	TestTrue(TEXT("UMG root follows generated route to camp"), ExecuteRootRouteTowardKind(RootWidget, Subsystem, EGameXXKNodeKind::Camp));
-	TestEqual(TEXT("UMG root camp restores HP"), Subsystem->GetRuntimeState().PlayerHP, Subsystem->GetRuntimeState().PlayerMaxHP);
+	TestTrue(TEXT("UMG root camp grants the life-saving talisman"),
+		FGameXXKRelicRules::OwnsLifeSavingTalisman(Subsystem->GetRuntimeState()));
 	TestTrue(TEXT("UMG root follows generated route to boss and clears it"), ExecuteRootRouteTowardKind(RootWidget, Subsystem, EGameXXKNodeKind::Boss));
 	TestEqual(TEXT("UMG root returns to world map after boss"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 	TestTrue(TEXT("UMG root keeps unimplemented Tanjiang disabled after boss"), RootWidget->HasVisibleCommand(FName(TEXT("SelectTanjiang")), false));
@@ -545,7 +553,8 @@ bool FGameXXKPlayableRootPostFailureResupplyRetryTest::RunTest(const FString& Pa
 	TestTrue(TEXT("post-failure test retries start node"), RootWidget->ExecuteVisibleCommand(FName(TEXT("SelectStart"))));
 	Subsystem->GetMutableRuntimeState().PlayerHP = 1;
 	TestTrue(TEXT("post-failure test follows generated route to camp"), ExecuteRootRouteTowardKind(RootWidget, Subsystem, EGameXXKNodeKind::Camp));
-	TestEqual(TEXT("post-failure test camp restores HP"), Subsystem->GetRuntimeState().PlayerHP, Subsystem->GetRuntimeState().PlayerMaxHP);
+	TestTrue(TEXT("post-failure test camp grants the life-saving talisman"),
+		FGameXXKRelicRules::OwnsLifeSavingTalisman(Subsystem->GetRuntimeState()));
 	TestTrue(TEXT("post-failure test follows generated route to boss and clears it"), ExecuteRootRouteTowardKind(RootWidget, Subsystem, EGameXXKNodeKind::Boss));
 	TestEqual(TEXT("post-failure test boss clear returns to world map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::WorldMap);
 	TestEqual(TEXT("post-failure test completes quest after retry"), Subsystem->GetRuntimeState().QuestState, EGameXXKQuestState::Completed);

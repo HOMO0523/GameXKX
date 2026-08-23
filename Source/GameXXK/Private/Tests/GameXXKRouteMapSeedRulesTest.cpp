@@ -1,6 +1,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKRouteEconomyRules.h"
+#include "GameXXKRelicRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
@@ -180,7 +181,8 @@ namespace
 		}
 		if (State.Screen == EGameXXKScreen::RouteCamp)
 		{
-			return UGameXXKMVPRules::ResolveCampReward(State, true);
+			const bool bOwnsLifeSavingTalisman = FGameXXKRelicRules::OwnsLifeSavingTalisman(State);
+			return UGameXXKMVPRules::ResolveCampReward(State, !bOwnsLifeSavingTalisman);
 		}
 		if (State.Screen == EGameXXKScreen::RouteMerchant)
 		{
@@ -399,7 +401,8 @@ bool FGameXXKRouteMapSeedRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("pending camp reward resolves from camp scene"), UGameXXKMVPRules::ResolveCampReward(CampState, true));
 	TestEqual(TEXT("camp reward returns to route map"), CampState.Screen, EGameXXKScreen::DungeonMap);
 	TestTrue(TEXT("camp reward marks node visited"), CampState.VisitedRouteNodeIds.Contains(1));
-	TestEqual(TEXT("camp reward heals player"), CampState.PlayerHP, CampState.PlayerMaxHP);
+	TestEqual(TEXT("camp reward never heals player directly"), CampState.PlayerHP, 1);
+	TestTrue(TEXT("camp reward grants the life-saving talisman"), FGameXXKRelicRules::OwnsLifeSavingTalisman(CampState));
 
 	FGameXXKRuntimeState MerchantState = BuildPendingRoomRouteState(EGameXXKNodeKind::Merchant);
 	TestTrue(TEXT("merchant route node selection succeeds"), UGameXXKMVPRules::SelectRouteNodeById(MerchantState, 1));

@@ -251,6 +251,21 @@ namespace
 	}
 }
 
+FName FGameXXKRelicRules::LifeSavingTalismanId()
+{
+	static const FName RelicId(TEXT("Relic.LifeSavingTalisman"));
+	return RelicId;
+}
+
+bool FGameXXKRelicRules::OwnsLifeSavingTalisman(const FGameXXKRuntimeState& State)
+{
+	const FName RelicId = LifeSavingTalismanId();
+	return State.CardRun.Relics.ContainsByPredicate([RelicId](const FGameXXKRelicInstance& Relic)
+	{
+		return Relic.RelicId == RelicId;
+	});
+}
+
 bool FGameXXKRelicRules::AcquireRelic(FGameXXKRuntimeState& InOutState, FName RelicId, FString* OutError)
 {
 	const FGameXXKRelicDefinition* Definition = FGameXXKRelicCatalog::FindDefinition(RelicId);

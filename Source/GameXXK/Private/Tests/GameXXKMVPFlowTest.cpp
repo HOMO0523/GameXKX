@@ -1,6 +1,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKBattlePresentation.h"
+#include "GameXXKRelicRules.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKSaveMigration.h"
@@ -137,9 +138,13 @@ namespace
 			{
 				return false;
 			}
-			if (State.Screen == EGameXXKScreen::RouteCamp && !UGameXXKMVPRules::ResolveCampReward(State, true))
+			if (State.Screen == EGameXXKScreen::RouteCamp)
 			{
-				return false;
+				const bool bOwnsLifeSavingTalisman = FGameXXKRelicRules::OwnsLifeSavingTalisman(State);
+				if (!UGameXXKMVPRules::ResolveCampReward(State, !bOwnsLifeSavingTalisman))
+				{
+					return false;
+				}
 			}
 			if (State.Screen == EGameXXKScreen::RouteMerchant && !UGameXXKMVPRules::ResolveMerchantRouteNode(State))
 			{
@@ -356,7 +361,7 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("retry start node"), UGameXXKMVPRules::AdvanceDungeonNode(State, EGameXXKNodeKind::Start));
 	State.PlayerHP = 1;
 	TestTrue(TEXT("generated route reaches a camp node"), AdvanceGeneratedRouteTowardKind(State, EGameXXKNodeKind::Camp));
-	TestEqual(TEXT("camp restored full HP"), State.PlayerHP, State.PlayerMaxHP);
+	TestTrue(TEXT("first camp grants the life-saving talisman"), FGameXXKRelicRules::OwnsLifeSavingTalisman(State));
 	TestTrue(TEXT("generated route reaches and clears the chapter one boss"), AdvanceGeneratedRouteTowardKind(State, EGameXXKNodeKind::Boss));
 	TestTrue(TEXT("chapter one Boss keeps the route active"), State.bDungeonActive);
 	TestEqual(TEXT("chapter one Boss advances to chapter two"), State.CardRun.RouteProgress.CurrentChapter, 2);

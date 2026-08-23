@@ -428,7 +428,10 @@ void AGameXXKMVPHUD::DrawHUD()
 		const FLinearColor Fill = Command.bEnabled ? FLinearColor(0.08f, 0.30f, 0.23f, 0.94f) : FLinearColor(0.16f, 0.16f, 0.16f, 0.82f);
 		const FColor TextColor = Command.bEnabled ? FColor::White : FColor(150, 150, 150);
 		DrawRect(Fill, PanelX, CursorY, PanelWidth, ButtonHeight);
-		DrawText(Command.Label.ToString(), TextColor, PanelX + 12.0f, CursorY + 8.0f, nullptr, 0.86f);
+		const FString CommandText = !Command.bEnabled && !Command.DisabledReason.IsEmpty()
+			? FString::Printf(TEXT("%s — %s"), *Command.Label.ToString(), *Command.DisabledReason.ToString())
+			: Command.Label.ToString();
+		DrawText(CommandText, TextColor, PanelX + 12.0f, CursorY + 8.0f, nullptr, 0.86f);
 		if (Command.bEnabled)
 		{
 			AddHitBox(FVector2D(PanelX, CursorY), FVector2D(PanelWidth, ButtonHeight), Command.CommandName, true, Index);

@@ -29,7 +29,9 @@ enum class EGameXXKRouteEncounterAction : uint8
 	SelectChoice0,
 	SelectChoice1,
 	SelectChoice2,
-	ClosePanel
+	ClosePanel,
+	CampTakeLifeSavingTalisman,
+	CampTakeRouteMoney
 };
 
 class UGameXXKRouteEncounterPanelWidget;

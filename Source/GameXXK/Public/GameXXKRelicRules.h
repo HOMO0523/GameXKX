@@ -8,6 +8,10 @@ struct FGameXXKRuntimeState;
 class GAMEXXK_API FGameXXKRelicRules final
 {
 public:
+	/** Stable catalog ID for the unique Camp reward. */
+	static FName LifeSavingTalismanId();
+	static bool OwnsLifeSavingTalisman(const FGameXXKRuntimeState& State);
+
 	static bool AcquireRelic(FGameXXKRuntimeState& InOutState, FName RelicId, FString* OutError = nullptr);
 	static bool CreateRelicOffer(FGameXXKRuntimeState& InOutState, int32 SourceNodeId, int32 ChoiceSeed, TArray<FName>& OutRelicIds, FString* OutError = nullptr);
 	static bool ChoosePendingRelic(FGameXXKRuntimeState& InOutState, FName RelicId, FString* OutError = nullptr);

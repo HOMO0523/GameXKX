@@ -2774,8 +2774,24 @@ bool UGameXXKMVPRules::AcceptRouteEventNpcSupport(FGameXXKRuntimeState& State)
 	return true;
 }
 
-bool UGameXXKMVPRules::ResolveCampReward(FGameXXKRuntimeState& State, bool bHealNow)
+bool UGameXXKMVPRules::ResolveCampReward(
+	FGameXXKRuntimeState& State,
+	const bool bHealNow)
 {
+	// bHealNow is a serialized Blueprint pin name. Its compatibility mapping is
+	// intentionally true=life-saving talisman and false=100 route-local money.
+	const bool bTakeLifeSavingTalisman = bHealNow;
+	constexpr int32 CampRouteMoneyReward = 100;
+	const auto StageRewardUnlessAlreadyReceipted = [bTakeLifeSavingTalisman](
+		FGameXXKRuntimeState& Candidate,
+		const bool bReceiptAlreadyApplied)
+	{
+		return bReceiptAlreadyApplied
+			|| !bTakeLifeSavingTalisman
+			|| FGameXXKRelicRules::AcquireRelic(Candidate, FGameXXKRelicRules::LifeSavingTalismanId());
+	};
+	const int32 RouteMoneyReward = bTakeLifeSavingTalisman ? 0 : CampRouteMoneyReward;
+
 	if (State.bHasGeneratedRouteMap && State.Screen == EGameXXKScreen::RouteCamp)
 	{
 		const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(State);
@@ -2786,15 +2802,14 @@ bool UGameXXKMVPRules::ResolveCampReward(FGameXXKRuntimeState& State, bool bHeal
 		const int32 NodeId = PendingNode->NodeId;
 		FGameXXKRuntimeState Candidate = State;
 		const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
-		if (bHealNow)
+		const int32 Chapter = State.CardRun.RouteProgress.CurrentChapter;
+		if (!StageRewardUnlessAlreadyReceipted(
+			Candidate,
+			GameXXKMVP::HasRouteNodeReceipt(State, Chapter, NodeId)))
 		{
-			Candidate.PlayerHP = Candidate.PlayerMaxHP;
+			return false;
 		}
-		else
-		{
-			AddItem(Candidate, ItemHealingPowder(), 1);
-		}
-		if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
+		if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, RouteMoneyReward))
 		{
 			return false;
 		}
@@ -2811,15 +2826,14 @@ bool UGameXXKMVPRules::ResolveCampReward(FGameXXKRuntimeState& State, bool bHeal
 		const int32 NodeId = Node->NodeId;
 		FGameXXKRuntimeState Candidate = State;
 		const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
-		if (bHealNow)
+		const int32 Chapter = State.CardRun.RouteProgress.CurrentChapter;
+		if (!StageRewardUnlessAlreadyReceipted(
+			Candidate,
+			GameXXKMVP::HasRouteNodeReceipt(State, Chapter, NodeId)))
 		{
-			Candidate.PlayerHP = Candidate.PlayerMaxHP;
+			return false;
 		}
-		else
-		{
-			AddItem(Candidate, ItemHealingPowder(), 1);
-		}
-		if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
+		if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, RouteMoneyReward))
 		{
 			return false;
 		}
@@ -2832,15 +2846,14 @@ bool UGameXXKMVPRules::ResolveCampReward(FGameXXKRuntimeState& State, bool bHeal
 	}
 	FGameXXKRuntimeState Candidate = State;
 	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
-	if (bHealNow)
+	const int32 NodeId = State.DungeonNodeIndex;
+	if (!StageRewardUnlessAlreadyReceipted(
+		Candidate,
+		GameXXKMVP::HasRouteNodeReceipt(State, 1, NodeId)))
 	{
-		Candidate.PlayerHP = Candidate.PlayerMaxHP;
+		return false;
 	}
-	else
-	{
-		AddItem(Candidate, ItemHealingPowder(), 1);
-	}
-	if (!GameXXKMVP::SettleFixedRouteNode(Candidate, BeforeOneTimeRewards, 0))
+	if (!GameXXKMVP::SettleFixedRouteNode(Candidate, BeforeOneTimeRewards, RouteMoneyReward))
 	{
 		return false;
 	}

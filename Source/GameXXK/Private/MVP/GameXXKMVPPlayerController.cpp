@@ -1335,11 +1335,13 @@ bool AGameXXKMVPPlayerController::ResolveRouteEncounterAction(const EGameXXKRout
 		bResolved = State.Screen == EGameXXKScreen::RouteEvent
 			&& Subsystem->ResolveEventReward(false);
 		break;
-	case EGameXXKRouteEncounterAction::CampRest:
+	case EGameXXKRouteEncounterAction::CampTakeLifeSavingTalisman:
+	case EGameXXKRouteEncounterAction::CampRest: // Legacy action keeps the new true=charm mapping.
 		bResolved = State.Screen == EGameXXKScreen::RouteCamp
 			&& Subsystem->ResolveCampReward(true);
 		break;
-	case EGameXXKRouteEncounterAction::CampTakeHealingPowder:
+	case EGameXXKRouteEncounterAction::CampTakeRouteMoney:
+	case EGameXXKRouteEncounterAction::CampTakeHealingPowder: // Legacy action keeps the new false=money mapping.
 		bResolved = State.Screen == EGameXXKScreen::RouteCamp
 			&& Subsystem->ResolveCampReward(false);
 		break;
