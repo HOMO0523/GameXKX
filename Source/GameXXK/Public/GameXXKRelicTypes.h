@@ -41,7 +41,8 @@ enum class EGameXXKRelicEffectKind : uint8
 	GainRouteAttack,
 	GainRouteDefense,
 	GainRouteSpeed,
-	GainRouteTravelMoney
+	GainRouteTravelMoney,
+	EmergencyHealPartyPercent
 };
 
 USTRUCT(BlueprintType)
@@ -75,6 +76,9 @@ struct GAMEXXK_API FGameXXKRelicDefinition
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	bool bStackable = false;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	bool bOfferEligible = true;
 };
 
 USTRUCT(BlueprintType)

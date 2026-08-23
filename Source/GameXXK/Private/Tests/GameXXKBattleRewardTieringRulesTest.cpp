@@ -170,6 +170,41 @@ bool FGameXXKBattleRewardTieringTierShapeTest::RunTest(const FString& Parameters
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKBattleRewardTieringCampExclusiveRelicTest,
+	"GameXXK.Integration.CardRoute.BattleRewardTiering.CampExclusiveRelicIsNotOffered",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKBattleRewardTieringCampExclusiveRelicTest::RunTest(const FString& Parameters)
+{
+	FGameXXKRuntimeState State;
+	constexpr int32 SourceNodeId = 2;
+	if (!TestTrue(TEXT("the camp-exclusive relic fixture enters a generated battle victory"),
+		StartTieredBattleVictory(State, EGameXXKNodeKind::Battle, SourceNodeId, 0x51A7E)))
+	{
+		return false;
+	}
+
+	// With all 31 catalog entries in the pool, seed 12 selects the appended
+	// life-saving talisman first. The offer must honor catalog eligibility.
+	FString Error;
+	if (!TestTrue(TEXT("the fixed seed creates a tiered battle reward offer"),
+		FGameXXKCardBattleAdapter::CreateTieredBattleRewardOffer(
+			State, EGameXXKNodeKind::Battle, SourceNodeId, 12, &Error)))
+	{
+		AddError(FString::Printf(TEXT("tiered battle reward offer failed: %s"), *Error));
+		return false;
+	}
+
+	const FName LifeSavingTalismanId(TEXT("Relic.LifeSavingTalisman"));
+	for (const FGameXXKBattleRewardOption& Option : State.CardRun.PendingReward.Options)
+	{
+		TestFalse(TEXT("tiered battle rewards exclude the camp-exclusive life-saving talisman"),
+			Option.Kind == EGameXXKBattleRewardKind::Relic && Option.RelicId == LifeSavingTalismanId);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKBattleRewardTieringDeterminismTest,
 	"GameXXK.Integration.CardRoute.BattleRewardTiering.ChoiceSeedDeterminism",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

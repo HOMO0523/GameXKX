@@ -250,7 +250,8 @@ namespace
 			{ TEXT("Relic.HerbBasket"), EGameXXKCardQuality::Common },
 			{ TEXT("Relic.PaperCrane"), EGameXXKCardQuality::Common },
 			{ TEXT("Relic.BrokenArrow"), EGameXXKCardQuality::Common },
-			{ TEXT("Relic.MoonDisc"), EGameXXKCardQuality::Common }
+			{ TEXT("Relic.MoonDisc"), EGameXXKCardQuality::Common },
+			{ TEXT("Relic.LifeSavingTalisman"), EGameXXKCardQuality::Common }
 		};
 		return Expected;
 	}
@@ -453,7 +454,7 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 		FGameXXKCardQualityRules::GetCardBaseQuality(MissingCard), EGameXXKCardQuality::Common);
 
 	const TArray<FExpectedQuality>& ExpectedRelicEntries = GetExpectedRelicQualities();
-	TestEqual(TEXT("independent relic authority contains exactly 30 entries"), ExpectedRelicEntries.Num(), 30);
+	TestEqual(TEXT("independent relic authority contains exactly 31 entries"), ExpectedRelicEntries.Num(), 31);
 	TMap<FName, EGameXXKCardQuality> ExpectedRelics;
 	int32 ExpectedCommonRelics = 0;
 	int32 ExpectedRareRelics = 0;
@@ -474,12 +475,12 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 		default: AddError(FString::Printf(TEXT("independent relic authority has invalid quality: %s"), Entry.Id)); break;
 		}
 	}
-	TestEqual(TEXT("independent Common relic count"), ExpectedCommonRelics, 15);
+	TestEqual(TEXT("independent Common relic count"), ExpectedCommonRelics, 16);
 	TestEqual(TEXT("independent Rare relic count"), ExpectedRareRelics, 10);
 	TestEqual(TEXT("independent Epic relic count"), ExpectedEpicRelics, 5);
 
 	const TArray<FGameXXKRelicDefinition>& RelicDefinitions = FGameXXKRelicCatalog::GetAllDefinitions();
-	TestEqual(TEXT("relic catalog contains exactly 30 definitions"), RelicDefinitions.Num(), 30);
+	TestEqual(TEXT("relic catalog contains exactly 31 definitions"), RelicDefinitions.Num(), 31);
 	TSet<FName> ActualRelicIds;
 	int32 ActualCommonRelics = 0;
 	int32 ActualRareRelics = 0;
@@ -510,7 +511,7 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("independent relic authority ID is present in actual catalog: %s"), *Expected.Key.ToString()), ActualRelicIds.Contains(Expected.Key));
 	}
 	TestEqual(TEXT("actual relic catalog has no missing or extra unique IDs"), ActualRelicIds.Num(), ExpectedRelics.Num());
-	TestEqual(TEXT("Common relic count"), ActualCommonRelics, 15);
+	TestEqual(TEXT("Common relic count"), ActualCommonRelics, 16);
 	TestEqual(TEXT("Rare relic count"), ActualRareRelics, 10);
 	TestEqual(TEXT("Epic relic count"), ActualEpicRelics, 5);
 

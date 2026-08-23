@@ -3050,7 +3050,7 @@ bool FGameXXKCardBattleAdapter::CreateTieredBattleRewardOffer(
 	{
 		const bool bOwned = Run.Relics.ContainsByPredicate(
 			[&Definition](const FGameXXKRelicInstance& Instance) { return Instance.RelicId == Definition.Id; });
-		if (!bOwned || Definition.bStackable)
+		if (Definition.bOfferEligible && (!bOwned || Definition.bStackable))
 		{
 			RelicPool.Add(Definition.Id);
 		}

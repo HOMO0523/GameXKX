@@ -415,8 +415,8 @@ bool FGameXXKCardQualityRules::ValidateRelicCatalog(
 	return ValidateCatalog(
 		TEXT("Relic"),
 		Definitions,
-		30,
-		15,
+		31,
+		16,
 		GetRareRelicIds(),
 		10,
 		GetEpicRelicIds(),

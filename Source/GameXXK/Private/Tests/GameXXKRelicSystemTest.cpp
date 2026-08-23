@@ -26,12 +26,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKRelicCatalogTest::RunTest(const FString& Parameters)
 {
 #if !GAMEXXK_HAS_RELIC_SYSTEM
-	AddError(TEXT("The required 30-relic route system has not been implemented."));
+	AddError(TEXT("The required 31-entry relic catalog has not been implemented."));
 	return false;
 #else
+	TestTrue(TEXT("relic definitions remain eligible for ordinary offers by default"), FGameXXKRelicDefinition().bOfferEligible);
 	const TArray<FGameXXKRelicDefinition>& Definitions = FGameXXKRelicCatalog::GetAllDefinitions();
-	TestEqual(TEXT("the route run exposes exactly thirty designed relics"), Definitions.Num(), 30);
+	TestEqual(TEXT("the relic catalog exposes thirty ordinary relics plus the camp-exclusive charm"), Definitions.Num(), 31);
 	TSet<FName> UniqueIds;
+	int32 OfferEligibleRelicCount = 0;
 	for (const FGameXXKRelicDefinition& Definition : Definitions)
 	{
 		TestFalse(TEXT("every relic has a stable id"), Definition.Id.IsNone());
@@ -39,8 +41,43 @@ bool FGameXXKRelicCatalogTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("every relic explains its live effect"), Definition.Description.IsEmpty());
 		TestTrue(TEXT("every relic binds a project texture"), Definition.IconTexturePath.ToString().Contains(TEXT("/Game/GameXXK/UI/Relics/Icons/T_Relic_")));
 		UniqueIds.Add(Definition.Id);
+		OfferEligibleRelicCount += Definition.bOfferEligible ? 1 : 0;
 	}
-	TestEqual(TEXT("all thirty relic ids are distinct"), UniqueIds.Num(), 30);
+	TestEqual(TEXT("all thirty-one relic ids are distinct"), UniqueIds.Num(), 31);
+	TestEqual(TEXT("exactly thirty relics remain eligible for ordinary offers"), OfferEligibleRelicCount, 30);
+
+	const FName LifeSavingTalismanId(TEXT("Relic.LifeSavingTalisman"));
+	const FGameXXKRelicDefinition* LifeSavingTalisman = FGameXXKRelicCatalog::FindDefinition(LifeSavingTalismanId);
+	if (TestNotNull(TEXT("the camp-exclusive life-saving talisman has a stable catalog id"), LifeSavingTalisman))
+	{
+		TestEqual(TEXT("the life-saving talisman preserves its stable id"), LifeSavingTalisman->Id, LifeSavingTalismanId);
+		TestEqual(TEXT("the life-saving talisman uses its approved Chinese display name"), LifeSavingTalisman->DisplayName.ToString(), FString(TEXT("保命护符")));
+		TestEqual(TEXT("the life-saving talisman documents its complete live effect"), LifeSavingTalisman->Description.ToString(), FString(TEXT("战斗中任一角色气血低于50%时，消耗此遗物，使全队恢复30%最大气血。")));
+		TestEqual(TEXT("the life-saving talisman reacts after damage"), LifeSavingTalisman->Trigger, EGameXXKRelicTrigger::DamageTaken);
+		TestEqual(TEXT("the life-saving talisman declares the emergency party-heal effect"), LifeSavingTalisman->EffectKind, EGameXXKRelicEffectKind::EmergencyHealPartyPercent);
+		TestEqual(TEXT("the life-saving talisman stores a thirty-percent magnitude"), LifeSavingTalisman->Magnitude, 30);
+		TestEqual(TEXT("the life-saving talisman is Common quality"), LifeSavingTalisman->BaseQuality, EGameXXKCardQuality::Common);
+		TestFalse(TEXT("the life-saving talisman is unique and non-stackable"), LifeSavingTalisman->bStackable);
+		TestFalse(TEXT("the life-saving talisman is excluded from ordinary offers"), LifeSavingTalisman->bOfferEligible);
+		TestEqual(
+			TEXT("the life-saving talisman binds the exact approved icon"),
+			LifeSavingTalisman->IconTexturePath.ToString(),
+			FString(TEXT("/Game/GameXXK/UI/Relics/Icons/T_Relic_LifeSavingTalisman.T_Relic_LifeSavingTalisman")));
+	}
+
+	FGameXXKRuntimeState UniqueCharmState = UGameXXKMVPRules::CreateNewGame();
+	FString UniqueCharmError;
+	TestTrue(TEXT("a run can acquire the life-saving talisman once"),
+		FGameXXKRelicRules::AcquireRelic(UniqueCharmState, LifeSavingTalismanId, &UniqueCharmError));
+	UniqueCharmError.Reset();
+	TestFalse(TEXT("a run cannot acquire the unique life-saving talisman twice"),
+		FGameXXKRelicRules::AcquireRelic(UniqueCharmState, LifeSavingTalismanId, &UniqueCharmError));
+	TestFalse(TEXT("duplicate life-saving talisman acquisition reports why it was rejected"), UniqueCharmError.IsEmpty());
+	TestEqual(TEXT("duplicate life-saving talisman acquisition keeps one instance"), UniqueCharmState.CardRun.Relics.Num(), 1);
+	if (!UniqueCharmState.CardRun.Relics.IsEmpty())
+	{
+		TestEqual(TEXT("the unique life-saving talisman never gains stacks"), UniqueCharmState.CardRun.Relics[0].Stacks, 1);
+	}
 
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
 	TestTrue(TEXT("a fresh run can acquire its first relic"), FGameXXKRelicRules::AcquireRelic(State, Definitions[0].Id));
@@ -49,6 +86,42 @@ bool FGameXXKRelicCatalogTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("both relics persist in the active route state"), State.CardRun.Relics.Num(), 2);
 	FGameXXKRelicRules::ClearRouteRelics(State);
 	TestTrue(TEXT("leaving the route clears all run-only relics"), State.CardRun.Relics.IsEmpty());
+	return true;
+#endif
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCampExclusiveRelicOfferTest,
+	"GameXXK.Route.Relics.CampExclusiveRelicIsNotOrdinaryOffer",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCampExclusiveRelicOfferTest::RunTest(const FString& Parameters)
+{
+#if !GAMEXXK_HAS_RELIC_SYSTEM
+	AddError(TEXT("The required camp-exclusive relic catalog has not been implemented."));
+	return false;
+#else
+	const FName LifeSavingTalismanId(TEXT("Relic.LifeSavingTalisman"));
+	if (!TestNotNull(TEXT("the ordinary-offer exclusion test finds the life-saving talisman"),
+		FGameXXKRelicCatalog::FindDefinition(LifeSavingTalismanId)))
+	{
+		return false;
+	}
+
+	// With all 31 catalog entries in the pool, seed 12 selects the appended
+	// life-saving talisman first. This fixed seed makes eligibility regressions
+	// fail deterministically without a probabilistic seed sweep.
+	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	TArray<FName> OfferedRelicIds;
+	FString OfferError;
+	if (!TestTrue(TEXT("the fixed seed creates an ordinary three-relic offer"),
+		FGameXXKRelicRules::CreateRelicOffer(State, 12, 12, OfferedRelicIds, &OfferError)))
+	{
+		AddError(FString::Printf(TEXT("ordinary relic offer failed: %s"), *OfferError));
+		return false;
+	}
+	TestFalse(TEXT("ordinary relic offers exclude the camp-exclusive life-saving talisman"),
+		OfferedRelicIds.Contains(LifeSavingTalismanId));
 	return true;
 #endif
 }

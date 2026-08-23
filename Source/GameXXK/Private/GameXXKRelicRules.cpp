@@ -289,7 +289,7 @@ bool FGameXXKRelicRules::CreateRelicOffer(FGameXXKRuntimeState& InOutState, int3
 	for (const FGameXXKRelicDefinition& Definition : FGameXXKRelicCatalog::GetAllDefinitions())
 	{
 		const bool bOwned = InOutState.CardRun.Relics.ContainsByPredicate([&Definition](const FGameXXKRelicInstance& Instance){ return Instance.RelicId == Definition.Id; });
-		if (!bOwned || Definition.bStackable) Pool.Add(Definition.Id);
+		if (Definition.bOfferEligible && (!bOwned || Definition.bStackable)) Pool.Add(Definition.Id);
 	}
 	if (Pool.Num() < 3) return Fail(OutError, TEXT("The relic catalog cannot provide three legal choices."));
 	uint32 RandomState = static_cast<uint32>(ChoiceSeed);
