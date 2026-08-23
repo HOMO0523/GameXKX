@@ -11,8 +11,8 @@ static_assert(
 	FGameXXKSaveMigration::BattleRewardTieringIntroducedSaveVersion == 16,
 	"Battle reward tiering persistence requires save version 16.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 24,
-	"Ordered party formation persistence advances the current save version to twenty-four.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 25,
+	"Persistent inventory locks advance the current save version to twenty-five.");
 
 namespace
 {

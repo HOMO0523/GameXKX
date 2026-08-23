@@ -405,6 +405,17 @@ struct FGameXXKDesktopInventoryState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKDesktopInventoryEntryKey> WarehouseSlots;
+
+	/** Stable equipment-instance locks shared by Backpack, Warehouse, and loadouts. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TSet<FName> LockedEquipmentInstanceIds;
+
+	/** Whole-stack item-type locks shared by Backpack and Warehouse. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TSet<FName> LockedItemIds;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bToolAutoFillIncludesWarehouse = true;
 };
 
 /**

@@ -1,5 +1,6 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKPartyFormationRules.h"
@@ -439,6 +440,67 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKInventoryLocksSaveGameRoundTripTest,
+	"GameXXK.MVP.SaveGame.InventoryLocksV25RoundTrip",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKInventoryLocksSaveGameRoundTripTest::RunTest(const FString& Parameters)
+{
+	FGameXXKRuntimeState State;
+	if (!TestTrue(TEXT("v25 round-trip fixture starts a saveable party"),
+		BuildStartedFormationFixture(State)))
+	{
+		return false;
+	}
+	if (!TestTrue(TEXT("v25 round-trip fixture has unequipped equipment"),
+		!State.EquipmentCollection.WarehouseInstanceIds.IsEmpty()))
+	{
+		return false;
+	}
+	const FGameXXKDesktopInventoryEntryKey EquipmentEntry =
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(
+			State.EquipmentCollection.WarehouseInstanceIds[0]);
+	const FGameXXKDesktopInventoryEntryKey ItemEntry =
+		FGameXXKDesktopInventoryRules::MakeItemEntry(
+			UGameXXKMVPRules::ItemEnhancementStone());
+	FString Error;
+	TestTrue(TEXT("v25 round-trip fixture locks equipment"),
+		FGameXXKDesktopInventoryRules::SetEntryLocked(State, EquipmentEntry, true, &Error));
+	TestTrue(TEXT("v25 round-trip fixture locks an item stack"),
+		FGameXXKDesktopInventoryRules::SetEntryLocked(State, ItemEntry, true, &Error));
+	State.DesktopInventory.bToolAutoFillIncludesWarehouse = false;
+
+	UGameXXKSaveGame* SaveObject = NewObject<UGameXXKSaveGame>();
+	SaveObject->SaveState = UGameXXKMVPRules::MakeSaveState(State);
+	TestEqual(TEXT("lock round-trip writes the v25 schema"), SaveObject->SaveState.SaveVersion, 25);
+	TArray<uint8> SaveBytes;
+	TestTrue(TEXT("v25 lock state serializes through SaveGame"),
+		UGameplayStatics::SaveGameToMemory(SaveObject, SaveBytes));
+	UGameXXKSaveGame* ReloadedObject = Cast<UGameXXKSaveGame>(
+		UGameplayStatics::LoadGameFromMemory(SaveBytes));
+	if (!TestNotNull(TEXT("v25 lock state reloads as the typed save"), ReloadedObject))
+	{
+		return false;
+	}
+
+	FGameXXKSaveState RoundTrip;
+	FGameXXKSaveMigrationReport Report;
+	if (!TestTrue(TEXT("reloaded v25 lock state validates without normalization"),
+		FGameXXKSaveMigration::MigrateToCurrent(ReloadedObject->SaveState, RoundTrip, Report)))
+	{
+		AddError(Report.Error);
+		return false;
+	}
+	TestTrue(TEXT("equipment instance lock survives v25 SaveGame round-trip"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(RoundTrip.RuntimeState, EquipmentEntry));
+	TestTrue(TEXT("item stack lock survives v25 SaveGame round-trip"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(RoundTrip.RuntimeState, ItemEntry));
+	TestFalse(TEXT("Include Warehouse preference survives its non-default value"),
+		RoundTrip.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKSaveGameMigrationTransactionTest,
 	"GameXXK.MVP.SaveGame.MigrationTransaction",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -719,8 +781,8 @@ bool FGameXXKOrderedFormationSaveMigrationTest::RunTest(const FString& Parameter
 {
 	constexpr int32 ExpectedIntroducedVersion = 24;
 	TestEqual(
-		TEXT("ordered formation owns the next append-only save version"),
-		FGameXXKSaveMigration::CurrentSaveVersion,
+		TEXT("ordered formation keeps its original append-only save version"),
+		FGameXXKSaveMigration::OrderedPartyFormationIntroducedSaveVersion,
 		ExpectedIntroducedVersion);
 
 	FGameXXKRuntimeState LegacyState;
@@ -753,7 +815,8 @@ bool FGameXXKOrderedFormationSaveMigrationTest::RunTest(const FString& Parameter
 	TestEqual(TEXT("active permanent companion ID is exact"), MigratedMembers[1].MemberId, ExpectedCompanionId);
 	TestEqual(TEXT("synchronized task NPC becomes 3P"), MigratedMembers[2].Kind, EGameXXKPartyMemberKind::QuestNpc);
 	TestEqual(TEXT("synchronized task NPC ID is exact"), MigratedMembers[2].MemberId, ExpectedQuestNpcId);
-	TestEqual(TEXT("successful migration writes v24 last"), Migrated.SaveVersion, ExpectedIntroducedVersion);
+	TestEqual(TEXT("successful migration writes the current save version"),
+		Migrated.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
 
 	UGameXXKSaveGame* SaveObject = NewObject<UGameXXKSaveGame>();
 	SaveObject->SaveState = Migrated;

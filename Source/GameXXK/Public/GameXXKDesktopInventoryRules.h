@@ -18,6 +18,14 @@ public:
 
 	static FGameXXKDesktopInventoryEntryKey MakeItemEntry(FName ItemId);
 	static FGameXXKDesktopInventoryEntryKey MakeEquipmentEntry(FName InstanceId);
+	static bool IsEntryLocked(
+		const FGameXXKRuntimeState& State,
+		const FGameXXKDesktopInventoryEntryKey& Entry);
+	static bool SetEntryLocked(
+		FGameXXKRuntimeState& InOutState,
+		const FGameXXKDesktopInventoryEntryKey& Entry,
+		bool bLocked,
+		FString* OutError = nullptr);
 
 	/** Preserves valid occupied indices, clears stale entries, and appends newly acquired entries. */
 	static bool Normalize(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);

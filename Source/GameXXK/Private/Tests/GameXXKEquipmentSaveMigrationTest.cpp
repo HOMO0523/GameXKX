@@ -4,15 +4,19 @@
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEncounterRules.h"
 #include "GameXXKEquipmentCatalog.h"
+#include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMetaShopTypes.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteMerchantRules.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKSaveGame.h"
 
+#include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -449,6 +453,223 @@ bool FGameXXKEquipmentSaveMigrationVersionContractTest::RunTest(const FString& P
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKInventoryLocksSaveMigrationTest,
+	"GameXXK.Equipment.SaveMigration.InventoryLocksV25",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("inventory locks claim the append-only v25 boundary"),
+		FGameXXKSaveMigration::EquipmentToolsAndChestWalletIntroducedSaveVersion, 25);
+	TestEqual(TEXT("inventory locks advance the current save schema to v25"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 25);
+
+	UGameXXKMVPSubsystem* FixtureSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("v24 fixture starts with a saveable ordered party"),
+		FixtureSubsystem && FixtureSubsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState VersionTwentyFourRuntime = FixtureSubsystem->GetRuntimeStateCopy();
+	const FGameXXKDesktopInventoryEntryKey ItemEntry =
+		FGameXXKDesktopInventoryRules::MakeItemEntry(UGameXXKMVPRules::ItemEnhancementStone());
+	if (!TestTrue(TEXT("v24 fixture has unequipped equipment"),
+		!VersionTwentyFourRuntime.EquipmentCollection.WarehouseInstanceIds.IsEmpty()))
+	{
+		return false;
+	}
+	const FGameXXKDesktopInventoryEntryKey EquipmentEntry =
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(
+			VersionTwentyFourRuntime.EquipmentCollection.WarehouseInstanceIds[0]);
+	const int32 ItemBackpackSlot = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		VersionTwentyFourRuntime,
+		EGameXXKDesktopItemContainer::Backpack,
+		ItemEntry);
+	const int32 EquipmentBackpackSlot = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		VersionTwentyFourRuntime,
+		EGameXXKDesktopItemContainer::Backpack,
+		EquipmentEntry);
+	FString FixtureError;
+	if (!TestTrue(TEXT("v24 fixture moves an item stack into a sentinel Warehouse cell"),
+		FGameXXKDesktopInventoryRules::MoveEntry(
+			VersionTwentyFourRuntime,
+			EGameXXKDesktopItemContainer::Backpack,
+			ItemBackpackSlot,
+			EGameXXKDesktopItemContainer::Warehouse,
+			41,
+			&FixtureError))
+		|| !TestTrue(TEXT("v24 fixture moves equipment into a sentinel Warehouse cell"),
+			FGameXXKDesktopInventoryRules::MoveEntry(
+				VersionTwentyFourRuntime,
+				EGameXXKDesktopItemContainer::Backpack,
+				EquipmentBackpackSlot,
+				EGameXXKDesktopItemContainer::Warehouse,
+				42,
+				&FixtureError)))
+	{
+		AddError(FixtureError);
+		return false;
+	}
+	VersionTwentyFourRuntime.PlayerLevel = FGameXXKCharacterStatRules::MaxCharacterLevel;
+	VersionTwentyFourRuntime.PlayerXP = 731;
+	VersionTwentyFourRuntime.Training.SelectedStageId = NAME_None;
+	VersionTwentyFourRuntime.Inventory.FindOrAdd(UGameXXKMVPRules::ItemRefinementSand()) = 7;
+	VersionTwentyFourRuntime.EquipmentCollection.RefinementSand = 7;
+	if (!TestTrue(TEXT("v24 fixture synchronizes valid max-level runtime mirrors"),
+		FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(VersionTwentyFourRuntime))
+		|| !TestTrue(TEXT("v24 fixture projects the nonzero refinement-sand mirror"),
+			FGameXXKDesktopInventoryRules::Normalize(VersionTwentyFourRuntime, &FixtureError)))
+	{
+		AddError(FixtureError);
+		return false;
+	}
+	FGameXXKSaveState VersionTwentyFour = UGameXXKMVPRules::MakeSaveState(VersionTwentyFourRuntime);
+	VersionTwentyFour.SaveVersion = 24;
+	VersionTwentyFour.RuntimeState.PlayerGold = 2425;
+	VersionTwentyFour.RuntimeState.Inventory.Add(UGameXXKMVPRules::ItemQingshanRouteSeal(), 2);
+	FString SourceValidationError;
+	if (!TestTrue(TEXT("valid-but-noncanonical v24 runtime passes current invariants"),
+		FGameXXKSaveMigration::ValidateRuntimeState(
+			VersionTwentyFour.RuntimeState,
+			SourceValidationError)))
+	{
+		AddError(SourceValidationError);
+		return false;
+	}
+	VersionTwentyFour.RuntimeState.DesktopInventory.LockedEquipmentInstanceIds.Add(
+		TEXT("Equipment.Instance.NotSerializedByV24"));
+	VersionTwentyFour.RuntimeState.DesktopInventory.LockedItemIds.Add(
+		TEXT("Item.NotSerializedByV24"));
+	VersionTwentyFour.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse = false;
+
+	FGameXXKRuntimeState ExpectedRuntime = VersionTwentyFour.RuntimeState;
+	ExpectedRuntime.DesktopInventory.LockedEquipmentInstanceIds.Reset();
+	ExpectedRuntime.DesktopInventory.LockedItemIds.Reset();
+	ExpectedRuntime.DesktopInventory.bToolAutoFillIncludesWarehouse = true;
+	const FGameXXKDesktopInventoryState ExpectedDesktopInventory = ExpectedRuntime.DesktopInventory;
+	const FGameXXKEquipmentCollectionState ExpectedEquipmentCollection = ExpectedRuntime.EquipmentCollection;
+	const FGameXXKOrderedPartyFormation ExpectedFormation = ExpectedRuntime.CardRun.OrderedFormation;
+
+	FGameXXKSaveState Migrated;
+	FGameXXKSaveMigrationReport Report;
+	if (!TestTrue(TEXT("v24 inventory fixture migrates to v25"),
+		FGameXXKSaveMigration::MigrateToCurrent(VersionTwentyFour, Migrated, Report)))
+	{
+		AddError(Report.Error);
+		return false;
+	}
+	TestEqual(TEXT("v24 migration writes v25"), Migrated.SaveVersion, 25);
+	TestEqual(TEXT("v24 migration initializes an empty equipment lock set"),
+		Migrated.RuntimeState.DesktopInventory.LockedEquipmentInstanceIds.Num(), 0);
+	TestEqual(TEXT("v24 migration initializes an empty item lock set"),
+		Migrated.RuntimeState.DesktopInventory.LockedItemIds.Num(), 0);
+	TestTrue(TEXT("v24 migration enables Include Warehouse"),
+		Migrated.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse);
+	TestTrue(TEXT("v24 migration preserves an intentionally unselected Training stage"),
+		Migrated.RuntimeState.Training.SelectedStageId.IsNone());
+	TestEqual(TEXT("v24 migration preserves valid max-level hero XP"),
+		Migrated.RuntimeState.PlayerXP,
+		ExpectedRuntime.PlayerXP);
+	TestEqual(TEXT("v24 migration preserves a valid noncanonical route-seal stack"),
+		Migrated.RuntimeState.Inventory.FindRef(UGameXXKMVPRules::ItemQingshanRouteSeal()),
+		ExpectedRuntime.Inventory.FindRef(UGameXXKMVPRules::ItemQingshanRouteSeal()));
+	TestEqual(TEXT("v24 migration preserves the enhancement-material runtime mirror"),
+		Migrated.RuntimeState.EnhancementMaterial,
+		ExpectedRuntime.EnhancementMaterial);
+	TestEqual(TEXT("v24 migration preserves the refinement-sand runtime mirror"),
+		Migrated.RuntimeState.EquipmentCollection.RefinementSand,
+		ExpectedRuntime.EquipmentCollection.RefinementSand);
+	TestTrue(TEXT("v24 migration preserves every existing desktop cell and partition"),
+		FGameXXKDesktopInventoryState::StaticStruct()->CompareScriptStruct(
+			&Migrated.RuntimeState.DesktopInventory,
+			&ExpectedDesktopInventory,
+			PPF_None));
+	TestTrue(TEXT("v24 migration preserves every equipment instance and loadout"),
+		FGameXXKEquipmentCollectionState::StaticStruct()->CompareScriptStruct(
+			&Migrated.RuntimeState.EquipmentCollection,
+			&ExpectedEquipmentCollection,
+			PPF_None));
+	TestTrue(TEXT("v24 migration preserves ordered formation exactly"),
+		FGameXXKOrderedPartyFormation::StaticStruct()->CompareScriptStruct(
+			&Migrated.RuntimeState.CardRun.OrderedFormation,
+			&ExpectedFormation,
+			PPF_None));
+	TestTrue(TEXT("v24 migration changes no pre-v25 runtime property"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&Migrated.RuntimeState,
+			&ExpectedRuntime,
+			PPF_None));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKInventoryLocksV24RefinementSandCompatibilityTest,
+	"GameXXK.Equipment.SaveMigration.RefinementSandV24Compatibility",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKInventoryLocksV24RefinementSandCompatibilityTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* FixtureSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("v24 sand fixture starts with a saveable ordered party"),
+		FixtureSubsystem && FixtureSubsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKSaveState VersionTwentyFour = UGameXXKMVPRules::MakeSaveState(
+		FixtureSubsystem->GetRuntimeStateCopy());
+	VersionTwentyFour.SaveVersion = 24;
+	const FName SandId = UGameXXKMVPRules::ItemRefinementSand();
+
+	FGameXXKSaveState CollectionOnly = VersionTwentyFour;
+	CollectionOnly.RuntimeState.Inventory.Remove(SandId);
+	CollectionOnly.RuntimeState.EquipmentCollection.RefinementSand = 7;
+	FGameXXKSaveState MigratedCollectionOnly;
+	FGameXXKSaveMigrationReport CollectionOnlyReport;
+	const bool bCollectionOnlyMigrated = FGameXXKSaveMigration::MigrateToCurrent(
+		CollectionOnly,
+		MigratedCollectionOnly,
+		CollectionOnlyReport);
+	TestTrue(TEXT("v24 collection-only refinement sand remains loadable"), bCollectionOnlyMigrated);
+	if (bCollectionOnlyMigrated)
+	{
+		TestEqual(TEXT("v24 collection-only repair restores the backpack sand stack"),
+			MigratedCollectionOnly.RuntimeState.Inventory.FindRef(SandId), 7);
+		TestEqual(TEXT("v24 collection-only repair preserves its compatibility mirror"),
+			MigratedCollectionOnly.RuntimeState.EquipmentCollection.RefinementSand, 7);
+		TestEqual(TEXT("v24 collection-only repair writes v25"),
+			MigratedCollectionOnly.SaveVersion, 25);
+	}
+
+	FGameXXKSaveState Mismatched = VersionTwentyFour;
+	Mismatched.RuntimeState.Inventory.FindOrAdd(SandId) = 3;
+	FString NormalizeError;
+	if (!TestTrue(TEXT("v24 mismatched-sand fixture projects its physical item cell"),
+		FGameXXKDesktopInventoryRules::Normalize(Mismatched.RuntimeState, &NormalizeError)))
+	{
+		AddError(NormalizeError);
+		return false;
+	}
+	Mismatched.RuntimeState.EquipmentCollection.RefinementSand = 7;
+	FGameXXKSaveState MigratedMismatch;
+	FGameXXKSaveMigrationReport MismatchReport;
+	const bool bMismatchMigrated = FGameXXKSaveMigration::MigrateToCurrent(
+		Mismatched,
+		MigratedMismatch,
+		MismatchReport);
+	TestTrue(TEXT("v24 explicit backpack sand repairs a stale collection mirror"), bMismatchMigrated);
+	if (bMismatchMigrated)
+	{
+		TestEqual(TEXT("v24 explicit backpack sand remains authoritative"),
+			MigratedMismatch.RuntimeState.Inventory.FindRef(SandId), 3);
+		TestEqual(TEXT("v24 stale collection mirror follows the backpack stack"),
+			MigratedMismatch.RuntimeState.EquipmentCollection.RefinementSand, 3);
+		TestEqual(TEXT("v24 mismatched-sand repair writes v25"),
+			MigratedMismatch.SaveVersion, 25);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKMetaShopSaveMigrationTest,
 	"GameXXK.MetaShop.SaveMigration",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -457,7 +678,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("NPC equipment ownership has an explicit schema gate"),
 		FGameXXKSaveMigration::QuestNpcEquipmentOwnerIntroducedSaveVersion, 22);
-	TestEqual(TEXT("current save schema includes ordered party formation"), FGameXXKSaveMigration::CurrentSaveVersion, 24);
+	TestEqual(TEXT("current save schema includes persistent inventory locks"), FGameXXKSaveMigration::CurrentSaveVersion, 25);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());

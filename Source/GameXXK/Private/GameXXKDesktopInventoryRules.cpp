@@ -37,6 +37,42 @@ namespace
 			: State.DesktopInventory.BackpackSlots;
 	}
 
+	bool HasEquipmentInstanceExactlyOnce(
+		const FGameXXKRuntimeState& State,
+		const FName InstanceId)
+	{
+		if (InstanceId.IsNone())
+		{
+			return false;
+		}
+		int32 MatchCount = 0;
+		for (const FGameXXKEquipmentInstance& Instance : State.EquipmentCollection.EquipmentInstances)
+		{
+			if (Instance.InstanceId == InstanceId && ++MatchCount > 1)
+			{
+				return false;
+			}
+		}
+		return MatchCount == 1;
+	}
+
+	bool HasPositiveItemStack(const FGameXXKRuntimeState& State, const FName ItemId)
+	{
+		return !ItemId.IsNone()
+			&& (State.Inventory.FindRef(ItemId) > 0
+				|| State.DesktopInventory.WarehouseItems.FindRef(ItemId) > 0);
+	}
+
+	bool IsLockTargetValid(
+		const FGameXXKRuntimeState& State,
+		const FGameXXKDesktopInventoryEntryKey& Entry)
+	{
+		return Entry.IsValid()
+			&& (Entry.bEquipmentInstance
+				? HasEquipmentInstanceExactlyOnce(State, Entry.EntryId)
+				: HasPositiveItemStack(State, Entry.EntryId));
+	}
+
 	TSet<FGameXXKDesktopInventoryEntryKey> BuildExpectedEntries(
 		const FGameXXKRuntimeState& State,
 		const EGameXXKDesktopItemContainer Container)
@@ -163,6 +199,52 @@ FGameXXKDesktopInventoryEntryKey FGameXXKDesktopInventoryRules::MakeEquipmentEnt
 	return Result;
 }
 
+bool FGameXXKDesktopInventoryRules::IsEntryLocked(
+	const FGameXXKRuntimeState& State,
+	const FGameXXKDesktopInventoryEntryKey& Entry)
+{
+	if (!Entry.IsValid())
+	{
+		return false;
+	}
+	return Entry.bEquipmentInstance
+		? State.DesktopInventory.LockedEquipmentInstanceIds.Contains(Entry.EntryId)
+		: State.DesktopInventory.LockedItemIds.Contains(Entry.EntryId);
+}
+
+bool FGameXXKDesktopInventoryRules::SetEntryLocked(
+	FGameXXKRuntimeState& InOutState,
+	const FGameXXKDesktopInventoryEntryKey& Entry,
+	const bool bLocked,
+	FString* OutError)
+{
+	SetError(OutError, FString());
+	if (!IsLockTargetValid(InOutState, Entry))
+	{
+		SetError(OutError, TEXT("Desktop inventory lock target is empty or stale."));
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = InOutState;
+	TSet<FName>& LockedIds = Entry.bEquipmentInstance
+		? Candidate.DesktopInventory.LockedEquipmentInstanceIds
+		: Candidate.DesktopInventory.LockedItemIds;
+	if (bLocked)
+	{
+		LockedIds.Add(Entry.EntryId);
+	}
+	else
+	{
+		LockedIds.Remove(Entry.EntryId);
+	}
+	if (!Validate(Candidate, OutError))
+	{
+		return false;
+	}
+	InOutState = MoveTemp(Candidate);
+	return true;
+}
+
 bool FGameXXKDesktopInventoryRules::Normalize(FGameXXKRuntimeState& InOutState, FString* OutError)
 {
 	SetError(OutError, FString());
@@ -191,6 +273,21 @@ bool FGameXXKDesktopInventoryRules::Normalize(FGameXXKRuntimeState& InOutState, 
 	for (const FName ItemId : InvalidWarehouseItems)
 	{
 		InOutState.DesktopInventory.WarehouseItems.Remove(ItemId);
+	}
+
+	for (auto Iterator = InOutState.DesktopInventory.LockedEquipmentInstanceIds.CreateIterator(); Iterator; ++Iterator)
+	{
+		if (!HasEquipmentInstanceExactlyOnce(InOutState, *Iterator))
+		{
+			Iterator.RemoveCurrent();
+		}
+	}
+	for (auto Iterator = InOutState.DesktopInventory.LockedItemIds.CreateIterator(); Iterator; ++Iterator)
+	{
+		if (!HasPositiveItemStack(InOutState, *Iterator))
+		{
+			Iterator.RemoveCurrent();
+		}
 	}
 
 	const TSet<FGameXXKDesktopInventoryEntryKey> BackpackExpected = BuildExpectedEntries(
@@ -238,6 +335,22 @@ bool FGameXXKDesktopInventoryRules::Validate(const FGameXXKRuntimeState& State, 
 		if (Pair.Key.IsNone() || Pair.Value <= 0 || State.Inventory.FindRef(Pair.Key) > 0)
 		{
 			SetError(OutError, TEXT("Desktop warehouse item partition is invalid."));
+			return false;
+		}
+	}
+	for (const FName InstanceId : State.DesktopInventory.LockedEquipmentInstanceIds)
+	{
+		if (!HasEquipmentInstanceExactlyOnce(State, InstanceId))
+		{
+			SetError(OutError, TEXT("Desktop inventory contains a stale equipment lock."));
+			return false;
+		}
+	}
+	for (const FName ItemId : State.DesktopInventory.LockedItemIds)
+	{
+		if (!HasPositiveItemStack(State, ItemId))
+		{
+			SetError(OutError, TEXT("Desktop inventory contains a stale item lock."));
 			return false;
 		}
 	}

@@ -47,7 +47,9 @@ public:
 	static constexpr int32 BattleRetreatCheckpointIntroducedSaveVersion = 23;
 	/** v24: ordered 1P / 2P / 3P party references become save-authoritative. */
 	static constexpr int32 OrderedPartyFormationIntroducedSaveVersion = 24;
-	static constexpr int32 CurrentSaveVersion = 24;
+	/** v25 begins the equipment-tools/chest-wallet schema with persistent entry locks and the Tool Auto Fill preference. */
+	static constexpr int32 EquipmentToolsAndChestWalletIntroducedSaveVersion = 25;
+	static constexpr int32 CurrentSaveVersion = 25;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

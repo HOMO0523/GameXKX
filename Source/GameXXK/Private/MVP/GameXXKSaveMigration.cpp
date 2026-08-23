@@ -1213,6 +1213,27 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		OutReport.bSucceeded = true;
 		return true;
 	}
+	if (Source.SaveVersion == OrderedPartyFormationIntroducedSaveVersion)
+	{
+		// v24 already satisfies every pre-lock current invariant. Upgrade it
+		// surgically so legacy category/progression/Training normalizers cannot
+		// rewrite valid-but-noncanonical player state.
+		FGameXXKSaveState Candidate = Source;
+		MigrateRefinementSandMirror(Candidate.RuntimeState);
+		Candidate.RuntimeState.DesktopInventory.LockedEquipmentInstanceIds.Reset();
+		Candidate.RuntimeState.DesktopInventory.LockedItemIds.Reset();
+		Candidate.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse = true;
+		Candidate.SaveVersion = CurrentSaveVersion;
+		FString ValidationError;
+		if (!ValidateRuntimeState(Candidate.RuntimeState, ValidationError))
+		{
+			Fail(OutReport, ValidationError);
+			return false;
+		}
+		OutMigrated = MoveTemp(Candidate);
+		OutReport.bSucceeded = true;
+		return true;
+	}
 
 	FGameXXKSaveState Candidate = Source;
 	Candidate.RuntimeState = RestoreOldChain(Source);
@@ -1365,6 +1386,15 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 			return false;
 		}
 		FGameXXKPartyFormationRules::ProjectCompatibility(Candidate.RuntimeState);
+	}
+	if (Source.SaveVersion < EquipmentToolsAndChestWalletIntroducedSaveVersion)
+	{
+		// v25 introduces only persistent entry locks and the Tool Auto Fill
+		// Warehouse preference in this slice. Every pre-v25 physical cell,
+		// equipment/loadout, formation, and runtime field remains authoritative.
+		Candidate.RuntimeState.DesktopInventory.LockedEquipmentInstanceIds.Reset();
+		Candidate.RuntimeState.DesktopInventory.LockedItemIds.Reset();
+		Candidate.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse = true;
 	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	if (!ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
