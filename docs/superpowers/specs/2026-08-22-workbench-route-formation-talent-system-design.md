@@ -77,6 +77,8 @@ Workbench local close buttons reuse `/Game/GameXXK/UI/MasterV2/Approved/T_Master
 
 The Backpack parent's top-right `X` and the global `Tab` input are equivalent global-close actions:
 
+The controls are visually separate. The `X` is anchored inside the Backpack paper at its top-right corner. The top Tab always keeps the project tab skin: selected background with `▲` while expanded, normal background with `▼` while collapsed. CloseInk is never drawn in the Tab container.
+
 1. Cancel any transient carried item without mutating inventory.
 2. Return all transient tool reservations to their authoritative containers.
 3. Close Warehouse.
@@ -100,6 +102,8 @@ Route events remain overlays above a visible, dimmed route map. Each event rende
 - selected/unselected state.
 
 Clicking a card changes only the selected choice. A separate bottom `Confirm` action atomically resolves the chosen reward and completes the node. The event `X` closes the overlay and returns to the route map without resolving the node. Reopening the same pending node returns the same deterministic three options. Camp retains its own rest/supply interaction and is not forced into the three-card template.
+
+Camp reward semantics are superseded by `2026-08-23-life-saving-charm-and-workbench-polish-design.md`: Camp offers the unique `保命护符` or 100 route-local travel money, never healing powder or direct healing.
 
 ### 5.2 Merchant entry and exit
 

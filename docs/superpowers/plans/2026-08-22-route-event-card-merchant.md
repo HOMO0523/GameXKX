@@ -1,5 +1,10 @@
 # Route Event Cards and Card-Upgrade Merchant Implementation Plan
 
+> **Camp reward override:** Use
+> `2026-08-23-life-saving-charm-and-workbench-polish.md`. Camp grants the unique
+> `保命护符` or 100 route-local travel money; the old heal/supply actions no
+> longer apply.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Present route events as confirmable three-card choices and replace relic merchant stock with four independently purchasable carried-card upgrades.

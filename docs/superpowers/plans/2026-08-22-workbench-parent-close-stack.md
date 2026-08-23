@@ -1,5 +1,9 @@
 # Workbench Parent and Close Stack Implementation Plan
 
+> **Control-placement override:** The expanded Backpack Tab no longer renders
+> CloseInk. Use `2026-08-23-life-saving-charm-and-workbench-polish.md` for the
+> selected/normal Tab skins and the separate Backpack-paper `X`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Keep the backpack as a stable Workbench parent, stop occupied-slot callbacks from blanking it, and implement the approved local/global close semantics.
