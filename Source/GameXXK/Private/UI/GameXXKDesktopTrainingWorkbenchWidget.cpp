@@ -4911,18 +4911,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	}
 	if (ActionId >= 80 && ActionId <= 82)
 	{
-		CancelCarryForStructuralChange();
-		ActiveCharacterRoster = static_cast<EGameXXKDesktopTrainingCharacterRoster>(ActionId - 80);
-		ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
-		ActiveNav = EGameXXKDesktopTrainingNav::None;
-		if (ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Hero)
-		{
-			SelectBackpackCharacterForTest(FGameXXKEquipmentRules::HeroCharacterId());
-		}
-		else
-		{
-			RefreshLayout();
-		}
+		const EGameXXKDesktopTrainingCharacterRoster RequestedRoster =
+			static_cast<EGameXXKDesktopTrainingCharacterRoster>(ActionId - 80);
+		SelectBackpackCharacterForTest(
+			ResolveRosterRepresentativeCharacterId(RequestedRoster));
 		return;
 	}
 	if (ActionId == 83 || ActionId == 84)

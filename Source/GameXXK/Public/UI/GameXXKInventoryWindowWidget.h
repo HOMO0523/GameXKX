@@ -17,6 +17,7 @@ class UTextBlock;
 class UUniformGridPanel;
 class UVerticalBox;
 class UGameXXKDesktopTrainingWorkbenchWidget;
+struct FGameXXKBattleAnimationClipDescriptor;
 
 UENUM(BlueprintType)
 enum class EGameXXKInventoryWindowMode : uint8
@@ -162,6 +163,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	FName GetConfiguredCharacterIdForTest() const;
+
+#if WITH_DEV_AUTOMATION_TESTS
+	/** Injects one descriptor through the same central-atlas load/clear path used at runtime. */
+	void RefreshCentralCharacterPresentationFromClipForTest(
+		const FGameXXKBattleAnimationClipDescriptor& Clip);
+#endif
 
 	/** Routes embedded slot clicks through the desktop carry/warehouse/tool state machine. */
 	void ConfigureDesktopTrainingHost(UGameXXKDesktopTrainingWorkbenchWidget* InHost);
@@ -373,6 +380,11 @@ private:
 	void RefreshCharacterTabs();
 	void RefreshHeroDeckCards();
 	FName ResolveInventoryCharacterId() const;
+	FGameXXKBattleAnimationClipDescriptor ResolveCentralCharacterIdleClip() const;
+	void ClearCentralCharacterPresentation();
+	void ApplyCentralCharacterIdleClip(
+		const FGameXXKBattleAnimationClipDescriptor& Clip);
+	void RefreshCentralCharacterPresentation();
 	int32 GetConfiguredDeckRequiredCount() const;
 	bool OpenInventoryWindow(EGameXXKInventoryWindowMode InMode);
 	bool SelectPlayerBackpackItem(FName ItemId);

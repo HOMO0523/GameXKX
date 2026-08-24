@@ -4,10 +4,13 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Image.h"
+#include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
+#include "Components/TextBlock.h"
 #include "Engine/GameInstance.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -401,6 +404,284 @@ bool FGameXXKEmbeddedInventorySessionStateTest::RunTest(const FString& Parameter
 	TestTrue(TEXT("sort restores"), Restored->IsBackpackSortedForTest());
 	TestEqual(TEXT("pending deck edit restores"), Restored->GetPendingHeroDeckIdsForTest(), Snapshot.PendingDeckIds);
 	TestTrue(TEXT("scroll offset restores"), FMath::IsNearlyEqual(Restored->GetBackpackScrollOffsetForTest(), 137.0f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKFinalInventoryOwnerCentralArtTest,
+	"GameXXK.MVP.UI.FinalInventory.OwnerCentralArt",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKFinalInventoryOwnerCentralArtTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("owner-art fixture starts the thirteen-owner roster"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
+	const FGameXXKPermanentCompanion* Guard =
+		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[](const FGameXXKPermanentCompanion& Candidate)
+			{
+				return Candidate.InstanceId.ToString().Contains(TEXT("Companion_Guard_"));
+			});
+	if (!TestNotNull(TEXT("owner-art fixture owns the Guard companion"), Guard))
+	{
+		return false;
+	}
+	const FName HeroId = FGameXXKEquipmentRules::HeroCharacterId();
+	const FName GuardId = Guard->InstanceId;
+	const FName YueBaiId(TEXT("Npc.YueBai"));
+
+	UGameXXKInventoryWindowWidget* Inventory =
+		NewObject<UGameXXKInventoryWindowWidget>();
+	Inventory->SetMVPSubsystem(Subsystem);
+	Inventory->ConfigureDesktopTrainingEmbeddedMode(true);
+	Inventory->ConfigureDesktopTrainingCharacter(HeroId);
+	Inventory->TakeWidget();
+	if (!TestTrue(TEXT("owner-art embedded inventory opens"),
+		Inventory->OpenFreeInventoryForTest()))
+	{
+		return false;
+	}
+	UImage* CentralImage = Inventory->WidgetTree
+		? Cast<UImage>(Inventory->WidgetTree->FindWidget(TEXT("InventoryCentralHeroIdle")))
+		: nullptr;
+	if (!TestNotNull(TEXT("owner-art inventory owns the central character image"),
+		CentralImage))
+	{
+		return false;
+	}
+
+	const FString HeroResourcePath = CentralImage->GetBrush().GetResourceObject()
+		? CentralImage->GetBrush().GetResourceObject()->GetPathName()
+		: FString();
+	const FBox2f HeroUv = CentralImage->GetBrush().GetUVRegion();
+	TestTrue(TEXT("Hero keeps the approved full-body texture"),
+		HeroResourcePath.Contains(TEXT("T_MasterV2_HeroFullBody")));
+
+	Inventory->ConfigureDesktopTrainingCharacter(GuardId);
+	const FString GuardExpectedTexturePath(
+		TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_02_guard_2k_idle_atlas.T_character_02_guard_2k_idle_atlas"));
+	const FBox2f ExpectedFrameZeroUv(
+		FVector2f(0.0f, 0.0f),
+		FVector2f(0.125f, 0.125f));
+	const FString GuardResourcePath = CentralImage->GetBrush().GetResourceObject()
+		? CentralImage->GetBrush().GetResourceObject()->GetPathName()
+		: FString();
+	const FBox2f GuardUv = CentralImage->GetBrush().GetUVRegion();
+	TestEqual(TEXT("Guard central art uses the authored 2K Idle atlas"),
+		GuardResourcePath, GuardExpectedTexturePath);
+	TestTrue(TEXT("Guard central art uses frame-zero UV"),
+		GuardUv.Min.Equals(ExpectedFrameZeroUv.Min, 0.0001f)
+		&& GuardUv.Max.Equals(ExpectedFrameZeroUv.Max, 0.0001f));
+	TestTrue(TEXT("Guard central art replaces the Hero resource"),
+		GuardResourcePath != HeroResourcePath);
+	TestTrue(TEXT("Guard atlas UV replaces the full-body UV"),
+		!GuardUv.Min.Equals(HeroUv.Min, 0.0001f)
+		|| !GuardUv.Max.Equals(HeroUv.Max, 0.0001f));
+	TestEqual(TEXT("central owner art keeps a bottom-center pivot"),
+		CentralImage->GetRenderTransformPivot(), FVector2D(0.5f, 1.0f));
+	TestTrue(TEXT("valid Guard art is opaque"),
+		FMath::IsNearlyEqual(CentralImage->GetRenderOpacity(), 1.0f));
+
+	Inventory->ConfigureDesktopTrainingCharacter(YueBaiId);
+	const FString YueBaiExpectedTexturePath(
+		TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_09_yue_bai_2k_idle_atlas.T_character_09_yue_bai_2k_idle_atlas"));
+	const FString YueBaiResourcePath = CentralImage->GetBrush().GetResourceObject()
+		? CentralImage->GetBrush().GetResourceObject()->GetPathName()
+		: FString();
+	const FBox2f YueBaiUv = CentralImage->GetBrush().GetUVRegion();
+	TestEqual(TEXT("Yue Bai central art uses the authored 2K Idle atlas"),
+		YueBaiResourcePath, YueBaiExpectedTexturePath);
+	TestTrue(TEXT("Yue Bai central art uses frame-zero UV"),
+		YueBaiUv.Min.Equals(ExpectedFrameZeroUv.Min, 0.0001f)
+		&& YueBaiUv.Max.Equals(ExpectedFrameZeroUv.Max, 0.0001f));
+	TestTrue(TEXT("Yue Bai replaces the Guard atlas resource"),
+		YueBaiResourcePath != GuardResourcePath);
+
+	Inventory->ConfigureDesktopTrainingCharacter(TEXT("Character.Unknown"));
+	TestNull(TEXT("invalid owner clears the previous atlas resource"),
+		CentralImage->GetBrush().GetResourceObject());
+	TestTrue(TEXT("invalid owner clears the previous atlas opacity"),
+		FMath::IsNearlyZero(CentralImage->GetRenderOpacity()));
+
+	Inventory->ConfigureDesktopTrainingCharacter(HeroId);
+	const FString RestoredHeroResourcePath = CentralImage->GetBrush().GetResourceObject()
+		? CentralImage->GetBrush().GetResourceObject()->GetPathName()
+		: FString();
+	const FBox2f RestoredHeroUv = CentralImage->GetBrush().GetUVRegion();
+	TestEqual(TEXT("switching back restores the same Hero resource"),
+		RestoredHeroResourcePath, HeroResourcePath);
+	TestTrue(TEXT("switching back restores the same Hero UV"),
+		RestoredHeroUv.Min.Equals(HeroUv.Min, 0.0001f)
+		&& RestoredHeroUv.Max.Equals(HeroUv.Max, 0.0001f));
+	TestTrue(TEXT("switching back restores Hero opacity"),
+		FMath::IsNearlyEqual(CentralImage->GetRenderOpacity(), 1.0f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKFinalInventoryMissingCentralAtlasTest,
+	"GameXXK.MVP.UI.FinalInventory.MissingCentralAtlasClearsPresentation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKFinalInventoryMissingCentralAtlasTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("missing-atlas fixture starts the owned roster"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
+	const FGameXXKPermanentCompanion* Guard =
+		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[](const FGameXXKPermanentCompanion& Candidate)
+			{
+				return Candidate.InstanceId.ToString().Contains(TEXT("Companion_Guard_"));
+			});
+	if (!TestNotNull(TEXT("missing-atlas fixture owns Guard"), Guard))
+	{
+		return false;
+	}
+
+	UGameXXKInventoryWindowWidget* Inventory =
+		NewObject<UGameXXKInventoryWindowWidget>();
+	Inventory->SetMVPSubsystem(Subsystem);
+	Inventory->ConfigureDesktopTrainingEmbeddedMode(true);
+	Inventory->ConfigureDesktopTrainingCharacter(Guard->InstanceId);
+	Inventory->TakeWidget();
+	if (!TestTrue(TEXT("missing-atlas embedded inventory opens"),
+		Inventory->OpenFreeInventoryForTest()))
+	{
+		return false;
+	}
+	UImage* CentralImage = Inventory->WidgetTree
+		? Cast<UImage>(Inventory->WidgetTree->FindWidget(
+			TEXT("InventoryCentralHeroIdle")))
+		: nullptr;
+	if (!TestNotNull(TEXT("missing-atlas fixture owns central art"), CentralImage))
+	{
+		return false;
+	}
+	const UObject* PreviousResource = CentralImage->GetBrush().GetResourceObject();
+	const FBox2f PreviousUv = CentralImage->GetBrush().GetUVRegion();
+	if (!TestNotNull(TEXT("missing-atlas fixture starts from loaded Guard art"),
+		PreviousResource))
+	{
+		return false;
+	}
+
+	FGameXXKBattleAnimationClipDescriptor MissingClip;
+	MissingClip.AssetId = TEXT("character_missing_owner_2k_idle");
+	MissingClip.TexturePath = FSoftObjectPath(
+		TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_MissingCentralOwnerAtlasForTest.T_MissingCentralOwnerAtlasForTest"));
+	MissingClip.FrameCount = 60;
+	TestTrue(TEXT("missing-atlas seam receives a structurally valid descriptor"),
+		MissingClip.IsValid());
+	AddExpectedError(
+		TEXT("T_MissingCentralOwnerAtlasForTest"),
+		EAutomationExpectedErrorFlags::Contains,
+		1);
+	Inventory->RefreshCentralCharacterPresentationFromClipForTest(MissingClip);
+
+	TestNull(TEXT("missing descriptor path clears the previous resource"),
+		CentralImage->GetBrush().GetResourceObject());
+	TestTrue(TEXT("missing descriptor path clears presentation opacity"),
+		FMath::IsNearlyZero(CentralImage->GetRenderOpacity()));
+	const FBox2f ClearedUv = CentralImage->GetBrush().GetUVRegion();
+	TestTrue(TEXT("missing descriptor path clears the previous frame UV"),
+		!ClearedUv.Min.Equals(PreviousUv.Min, 0.0001f)
+		|| !ClearedUv.Max.Equals(PreviousUv.Max, 0.0001f));
+	TestTrue(TEXT("missing descriptor path never retains the old resource"),
+		CentralImage->GetBrush().GetResourceObject() != PreviousResource);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKFinalInventoryLegacyOwnerIsolationTest,
+	"GameXXK.MVP.UI.FinalInventory.LegacyEquipmentOwnerIsolation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKFinalInventoryLegacyOwnerIsolationTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("legacy-owner fixture starts the thirteen-owner roster"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Screen = EGameXXKScreen::Town;
+	State.EquippedWeapon = UGameXXKMVPRules::ItemIronSword();
+	const FGameXXKPermanentCompanion* Guard =
+		State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[](const FGameXXKPermanentCompanion& Candidate)
+			{
+				return Candidate.InstanceId.ToString().Contains(TEXT("Companion_Guard_"));
+			});
+	if (!TestNotNull(TEXT("legacy-owner fixture owns the Guard companion"), Guard))
+	{
+		return false;
+	}
+
+	UGameXXKInventoryWindowWidget* Inventory =
+		NewObject<UGameXXKInventoryWindowWidget>();
+	Inventory->SetMVPSubsystem(Subsystem);
+	Inventory->ConfigureDesktopTrainingEmbeddedMode(true);
+	Inventory->ConfigureDesktopTrainingCharacter(
+		FGameXXKEquipmentRules::HeroCharacterId());
+	Inventory->TakeWidget();
+	if (!TestTrue(TEXT("legacy-owner embedded inventory opens"),
+		Inventory->OpenFreeInventoryForTest()))
+	{
+		return false;
+	}
+	UGameXXKInventorySlotButton* WeaponButton = Inventory->WidgetTree
+		? Cast<UGameXXKInventorySlotButton>(Inventory->WidgetTree->FindWidget(
+			TEXT("InventoryEquipmentSlot_Weapon")))
+		: nullptr;
+	UOverlay* WeaponOverlay = WeaponButton
+		? Cast<UOverlay>(WeaponButton->GetContent())
+		: nullptr;
+	UImage* WeaponIcon = WeaponOverlay && WeaponOverlay->GetChildrenCount() > 0
+		? Cast<UImage>(WeaponOverlay->GetChildAt(0))
+		: nullptr;
+	UTextBlock* WeaponLabel = WeaponOverlay && WeaponOverlay->GetChildrenCount() > 1
+		? Cast<UTextBlock>(WeaponOverlay->GetChildAt(1))
+		: nullptr;
+	if (!TestNotNull(TEXT("legacy-owner fixture owns the weapon icon"), WeaponIcon)
+		|| !TestNotNull(TEXT("legacy-owner fixture owns the weapon label"), WeaponLabel))
+	{
+		return false;
+	}
+	TestNotNull(TEXT("Hero may render the top-level legacy weapon mirror"),
+		WeaponIcon->GetBrush().GetResourceObject());
+	TestEqual(TEXT("Hero legacy weapon icon is visible"),
+		WeaponIcon->GetVisibility(), ESlateVisibility::HitTestInvisible);
+
+	Inventory->ConfigureDesktopTrainingCharacter(Guard->InstanceId);
+	TestEqual(TEXT("Guard keeps an empty weapon-slot label"),
+		WeaponLabel->GetText().ToString(), FString(TEXT("武器")));
+	TestEqual(TEXT("Guard empty weapon slot hides its icon"),
+		WeaponIcon->GetVisibility(), ESlateVisibility::Collapsed);
+	TestNull(TEXT("Guard empty weapon slot clears the Hero icon resource"),
+		WeaponIcon->GetBrush().GetResourceObject());
+
+	Inventory->ConfigureDesktopTrainingCharacter(TEXT("Npc.YueBai"));
+	TestEqual(TEXT("Yue Bai keeps an empty weapon-slot label"),
+		WeaponLabel->GetText().ToString(), FString(TEXT("武器")));
+	TestEqual(TEXT("Yue Bai empty weapon slot hides its icon"),
+		WeaponIcon->GetVisibility(), ESlateVisibility::Collapsed);
+	TestNull(TEXT("Yue Bai empty weapon slot keeps the stale Hero icon cleared"),
+		WeaponIcon->GetBrush().GetResourceObject());
 	return true;
 }
 

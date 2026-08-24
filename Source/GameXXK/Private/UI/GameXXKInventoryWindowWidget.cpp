@@ -32,6 +32,7 @@
 #include "InputCoreTypes.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Input/SButton.h"
@@ -777,6 +778,111 @@ FName UGameXXKInventoryWindowWidget::ResolveInventoryCharacterId() const
 		? ConfiguredDesktopTrainingCharacterId
 		: FGameXXKEquipmentRules::HeroCharacterId();
 }
+
+FGameXXKBattleAnimationClipDescriptor
+UGameXXKInventoryWindowWidget::ResolveCentralCharacterIdleClip() const
+{
+	const FName CharacterId = ResolveInventoryCharacterId();
+	if (CharacterId.IsNone()
+		|| CharacterId == FGameXXKEquipmentRules::HeroCharacterId())
+	{
+		return {};
+	}
+
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	FGameXXKEquipmentLoadoutSnapshot Snapshot;
+	if (!Subsystem
+		|| !Subsystem->GetEquipmentLoadoutSnapshot(CharacterId, Snapshot)
+		|| Snapshot.CharacterId != CharacterId)
+	{
+		return {};
+	}
+
+	return FGameXXKBattleAnimationPresentation::ResolveClip(
+		CharacterId,
+		false,
+		EGameXXKBattleAnimationAction::Idle);
+}
+
+void UGameXXKInventoryWindowWidget::RefreshCentralCharacterPresentation()
+{
+	if (!CentralHeroIdleImage)
+	{
+		return;
+	}
+
+	CentralHeroIdleImage->SetRenderTransformPivot(FVector2D(0.5f, 1.0f));
+	const FName CharacterId = ResolveInventoryCharacterId();
+	if (CharacterId == FGameXXKEquipmentRules::HeroCharacterId())
+	{
+		UTexture2D* HeroTexture = LoadTexture(HeroFullBodyTexturePath);
+		if (!HeroTexture)
+		{
+			ClearCentralCharacterPresentation();
+			return;
+		}
+
+		FSlateBrush HeroBrush;
+		HeroBrush.DrawAs = ESlateBrushDrawType::Image;
+		HeroBrush.ImageSize = FVector2D(518.0f, 518.0f);
+		HeroBrush.SetResourceObject(HeroTexture);
+		CentralHeroIdleImage->SetBrush(HeroBrush);
+		CentralHeroIdleImage->SetColorAndOpacity(FLinearColor::White);
+		CentralHeroIdleImage->SetRenderOpacity(1.0f);
+		return;
+	}
+
+	ApplyCentralCharacterIdleClip(ResolveCentralCharacterIdleClip());
+}
+
+void UGameXXKInventoryWindowWidget::ClearCentralCharacterPresentation()
+{
+	if (!CentralHeroIdleImage)
+	{
+		return;
+	}
+	FSlateBrush EmptyBrush;
+	EmptyBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
+	EmptyBrush.ImageSize = FVector2D(518.0f, 518.0f);
+	CentralHeroIdleImage->SetBrush(EmptyBrush);
+	CentralHeroIdleImage->SetRenderOpacity(0.0f);
+}
+
+void UGameXXKInventoryWindowWidget::ApplyCentralCharacterIdleClip(
+	const FGameXXKBattleAnimationClipDescriptor& Clip)
+{
+	if (!CentralHeroIdleImage)
+	{
+		return;
+	}
+	CentralHeroIdleImage->SetRenderTransformPivot(FVector2D(0.5f, 1.0f));
+	UTexture2D* AtlasTexture = Clip.IsValid()
+		? LoadTexture(Clip.TexturePath.ToString())
+		: nullptr;
+	if (!AtlasTexture)
+	{
+		ClearCentralCharacterPresentation();
+		return;
+	}
+
+	FSlateBrush AtlasBrush;
+	AtlasBrush.DrawAs = ESlateBrushDrawType::Image;
+	AtlasBrush.ImageSize = FVector2D(518.0f, 518.0f);
+	AtlasBrush.SetResourceObject(AtlasTexture);
+	AtlasBrush.SetUVRegion(
+		FGameXXKBattleAnimationPresentation::CalculateUvRegion(Clip, 0));
+	CentralHeroIdleImage->SetBrush(AtlasBrush);
+	CentralHeroIdleImage->SetColorAndOpacity(FLinearColor::White);
+	CentralHeroIdleImage->SetRenderOpacity(1.0f);
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+void UGameXXKInventoryWindowWidget::RefreshCentralCharacterPresentationFromClipForTest(
+	const FGameXXKBattleAnimationClipDescriptor& Clip)
+{
+	ApplyCentralCharacterIdleClip(Clip);
+}
+#endif
 
 int32 UGameXXKInventoryWindowWidget::GetConfiguredDeckRequiredCount() const
 {
@@ -1668,10 +1774,9 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	MerchantStockGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("InventoryMerchantStockGrid"));
 	LeftRailOverlay->AddChildToOverlay(MerchantStockGrid);
 
-	// Page 03: central hero idle wrapped by 3 equipment slots per side.
-	// Source frame is 512x512; keep 1:1 aspect and show at 2x scale.
+	// Page 03: the viewed owner's presentation is wrapped by 3 equipment slots per side.
 	CentralHeroIdleImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryCentralHeroIdle"));
-	CentralHeroIdleImage->SetBrush(MakeTextureBrush(HeroFullBodyTexturePath, FVector2D(518.0f, 518.0f)));
+	CentralHeroIdleImage->SetRenderTransformPivot(FVector2D(0.5f, 1.0f));
 	AddCanvasChild(FrameCanvas, CentralHeroIdleImage, FVector2D(478.0f, 304.0f), FVector2D(518.0f, 518.0f));
 
 	// Page 03 backpack: a 4x5 viewport into the scrollable warehouse, no panel
@@ -2227,6 +2332,7 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 	{
 		CentralHeroIdleImage->SetVisibility(WindowMode == EGameXXKInventoryWindowMode::MerchantTrade ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	}
+	RefreshCentralCharacterPresentation();
 	if (MerchantStockGrid)
 	{
 		MerchantStockGrid->SetVisibility(WindowMode == EGameXXKInventoryWindowMode::MerchantTrade ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -2925,6 +3031,8 @@ void UGameXXKInventoryWindowWidget::RefreshEquipmentSlots()
 	CharacterBackpackModel.Bind(Subsystem, ResolveInventoryCharacterId());
 	CurrentEquipmentSlotItemIds.Reset();
 	const TArray<FGameXXKCharacterBackpackSlotView> SlotViews = CharacterBackpackModel.GetSixSlotSnapshot();
+	const bool bAllowLegacyHeroFallback =
+		ResolveInventoryCharacterId() == FGameXXKEquipmentRules::HeroCharacterId();
 	const FName SlotIds[] = {WeaponSlotId, HeadSlotId, ArmorSlotId, BeltSlotId, ShoesSlotId, AccessorySlotId};
 	const FText EmptyLabels[] = {
 		NSLOCTEXT("GameXXKInventoryWindow", "WeaponEmpty", "武器"),
@@ -2945,7 +3053,9 @@ void UGameXXKInventoryWindowWidget::RefreshEquipmentSlots()
 			: nullptr;
 
 		// Keep pre-instance save projections usable while the final UI migrates to the six-slot model.
-		const FName LegacyItemId = InstanceId.IsNone() && UE_ARRAY_COUNT(SlotIds) > SlotIndex
+		const FName LegacyItemId = bAllowLegacyHeroFallback
+			&& InstanceId.IsNone()
+			&& UE_ARRAY_COUNT(SlotIds) > SlotIndex
 			? GetEquippedItemForSlotForTest(SlotIds[SlotIndex])
 			: NAME_None;
 		bool bLegacyFound = false;
@@ -2969,10 +3079,13 @@ void UGameXXKInventoryWindowWidget::RefreshEquipmentSlots()
 				FSlateBrush Brush = Icon->GetBrush();
 				Brush.ImageSize = FVector2D(72.0f, 72.0f);
 				Icon->SetBrush(Brush);
+				Icon->SetRenderOpacity(1.0f);
 				Icon->SetVisibility(ESlateVisibility::HitTestInvisible);
 			}
 			else
 			{
+				Icon->SetBrush(FSlateBrush());
+				Icon->SetRenderOpacity(0.0f);
 				Icon->SetVisibility(ESlateVisibility::Collapsed);
 			}
 		}

@@ -50,6 +50,76 @@ namespace
 		return Resource ? Resource->GetPathName() : FString();
 	}
 
+	struct FExpectedOwnerIdlePresentation
+	{
+		const TCHAR* OwnerToken;
+		bool bExactOwnerId;
+		const TCHAR* AssetId;
+		const TCHAR* TexturePath;
+	};
+
+	const FExpectedOwnerIdlePresentation ExpectedNonHeroIdlePresentations[] = {
+		{TEXT("Companion_Blade_"), false,
+			TEXT("character_01_blade_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_01_blade_2k_idle_atlas.T_character_01_blade_2k_idle_atlas")},
+		{TEXT("Companion_Guard_"), false,
+			TEXT("character_02_guard_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_02_guard_2k_idle_atlas.T_character_02_guard_2k_idle_atlas")},
+		{TEXT("Companion_Healer_"), false,
+			TEXT("character_03_healer_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_03_healer_2k_idle_atlas.T_character_03_healer_2k_idle_atlas")},
+		{TEXT("Companion_Hunter_"), false,
+			TEXT("character_04_hunter_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_04_hunter_2k_idle_atlas.T_character_04_hunter_2k_idle_atlas")},
+		{TEXT("Companion_Sorcerer_"), false,
+			TEXT("character_05_sorcerer_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_05_sorcerer_2k_idle_atlas.T_character_05_sorcerer_2k_idle_atlas")},
+		{TEXT("Companion_FormationMaster_"), false,
+			TEXT("character_06_formation_master_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_06_formation_master_2k_idle_atlas.T_character_06_formation_master_2k_idle_atlas")},
+		{TEXT("Npc.TusiChief"), true,
+			TEXT("character_07_tusi_chief_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_07_tusi_chief_2k_idle_atlas.T_character_07_tusi_chief_2k_idle_atlas")},
+		{TEXT("Npc.SongJinBao"), true,
+			TEXT("character_08_song_jin_bao_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_08_song_jin_bao_2k_idle_atlas.T_character_08_song_jin_bao_2k_idle_atlas")},
+		{TEXT("Npc.YueBai"), true,
+			TEXT("character_09_yue_bai_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_09_yue_bai_2k_idle_atlas.T_character_09_yue_bai_2k_idle_atlas")},
+		{TEXT("Npc.ZhouGuangZu"), true,
+			TEXT("character_10_zhou_guang_zu_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_10_zhou_guang_zu_2k_idle_atlas.T_character_10_zhou_guang_zu_2k_idle_atlas")},
+		{TEXT("Npc.JinGui"), true,
+			TEXT("character_11_jin_gui_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_11_jin_gui_2k_idle_atlas.T_character_11_jin_gui_2k_idle_atlas")},
+		{TEXT("Npc.QiongMeiEr"), true,
+			TEXT("character_12_qiong_mei_er_2k_idle"),
+			TEXT("/Game/GameXXK/BattleAnimations/Atlases/T_character_12_qiong_mei_er_2k_idle_atlas.T_character_12_qiong_mei_er_2k_idle_atlas")}};
+
+	const FExpectedOwnerIdlePresentation* FindExpectedOwnerIdlePresentation(
+		const FName OwnerId)
+	{
+		const FString RuntimeOwnerId = OwnerId.ToString();
+		for (const FExpectedOwnerIdlePresentation& Expected :
+			ExpectedNonHeroIdlePresentations)
+		{
+			const bool bMatches = Expected.bExactOwnerId
+				? RuntimeOwnerId == Expected.OwnerToken
+				: RuntimeOwnerId.Contains(Expected.OwnerToken);
+			if (bMatches)
+			{
+				return &Expected;
+			}
+		}
+		return nullptr;
+	}
+
+	const FString ExpectedHeroCentralTexturePath(
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"));
+	const FBox2f ExpectedIdleFrameZeroUv(
+		FVector2f(0.0f, 0.0f),
+		FVector2f(0.125f, 0.125f));
+
 	class FTravelFallbackAtlasLoadHandle final : public IGameXXKBattleAtlasLoadHandle
 	{
 	public:
@@ -342,6 +412,46 @@ namespace
 		UButton* Button)
 	{
 		if (!Workbench || !Button)
+		{
+			return false;
+		}
+		Button->OnClicked.Broadcast();
+		Workbench->TickForTest(0.0f);
+		return true;
+	}
+
+	bool RouteVisibleButtonDelegateAndFlush(
+		FAutomationTestBase& Test,
+		UGameXXKDesktopTrainingWorkbenchWidget* Workbench,
+		UButton* Button,
+		const TCHAR* Context)
+	{
+		if (!Test.TestNotNull(
+			*FString::Printf(TEXT("%s button exists before delegate routing"), Context),
+			Button)
+			|| !Workbench)
+		{
+			return false;
+		}
+		Workbench->ForceLayoutPrepass();
+		const UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Button->Slot);
+		if (!Test.TestEqual(
+			*FString::Printf(TEXT("%s button is visible before delegate routing"), Context),
+			Button->GetVisibility(),
+			ESlateVisibility::Visible)
+			|| !Test.TestTrue(
+				*FString::Printf(TEXT("%s button is enabled before delegate routing"), Context),
+				Button->GetIsEnabled())
+			|| !Test.TestNotNull(
+				*FString::Printf(TEXT("%s button has canvas geometry after layout prepass"), Context),
+				CanvasSlot))
+		{
+			return false;
+		}
+		const FVector2D LocalSize = CanvasSlot->GetSize();
+		if (!Test.TestTrue(
+			*FString::Printf(TEXT("%s button has a valid local size after layout prepass"), Context),
+			LocalSize.X > 0.0f && LocalSize.Y > 0.0f))
 		{
 			return false;
 		}
@@ -4166,6 +4276,658 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterTest::RunTest(const FString&
 	TestEqual(TEXT("formation changes do not overwrite the backpack viewing owner"),
 		Widget->GetActiveBackpackCharacterIdForTest(), SelectedNpcId);
 	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchCharacterRosterOwnerPresentationTest,
+	"GameXXK.DesktopTraining.Workbench.CharacterRoster.OwnerPresentationAllThirteen",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchCharacterRosterOwnerPresentationTest::RunTest(
+	const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!TestTrue(TEXT("owner-presentation fixture starts a new game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Screen = EGameXXKScreen::Town;
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+
+	const FName HeroId = FGameXXKEquipmentRules::HeroCharacterId();
+	const TArray<FName> CompanionIds = Widget->GetCompanionCharacterIdsForTest();
+	const TArray<FName> NpcIds = Widget->GetNpcCharacterIdsForTest();
+	if (!TestEqual(TEXT("owner-presentation fixture owns six permanent companions"),
+		CompanionIds.Num(), 6)
+		|| !TestEqual(TEXT("owner-presentation fixture owns six quest NPCs"),
+			NpcIds.Num(), 6))
+	{
+		return false;
+	}
+	TArray<FName> OwnerIds;
+	OwnerIds.Add(HeroId);
+	OwnerIds.Append(CompanionIds);
+	OwnerIds.Append(NpcIds);
+	if (!TestEqual(TEXT("owner-presentation fixture covers all thirteen owners"),
+		OwnerIds.Num(), 13))
+	{
+		return false;
+	}
+	TestEqual(TEXT("independent non-Hero presentation table has twelve exact rows"),
+		static_cast<int32>(UE_ARRAY_COUNT(ExpectedNonHeroIdlePresentations)), 12);
+
+	const EGameXXKEquipmentSlot Slots[] = {
+		EGameXXKEquipmentSlot::Weapon,
+		EGameXXKEquipmentSlot::Head,
+		EGameXXKEquipmentSlot::Armor,
+		EGameXXKEquipmentSlot::Belt,
+		EGameXXKEquipmentSlot::Shoes,
+		EGameXXKEquipmentSlot::Accessory};
+	TMap<FName, TArray<FName>> ExpectedEquipmentByOwner;
+	for (const FName OwnerId : OwnerIds)
+	{
+		TArray<FName>& ExpectedEquipment =
+			ExpectedEquipmentByOwner.FindOrAdd(OwnerId);
+		for (const EGameXXKEquipmentSlot Slot : Slots)
+		{
+			const FName InstanceId = CreateCarryTestEquipment(
+				*this,
+				State,
+				Slot,
+				TEXT("owner-presentation fixture creates one unique slot instance"));
+			FGameXXKEquipmentTransactionResult EquipResult;
+			if (InstanceId.IsNone()
+				|| !TestTrue(
+					TEXT("owner-presentation fixture equips the unique instance to its owner"),
+					Subsystem->EquipEquipmentInstance(
+						OwnerId, Slot, InstanceId, EquipResult)))
+			{
+				return false;
+			}
+			ExpectedEquipment.Add(InstanceId);
+		}
+	}
+	if (!TestTrue(TEXT("owner-presentation fixture normalizes shared physical cells"),
+		Subsystem->NormalizeDesktopInventoryState()))
+	{
+		return false;
+	}
+	const FName TravelStage = FGameXXKTrainingRules::MakeStageId(
+		EGameXXKTrainingDifficulty::Normal, 1);
+	if (!TestTrue(TEXT("owner-presentation fixture starts a running Travel party"),
+		Subsystem->StartTrainingTravel(TravelStage)))
+	{
+		return false;
+	}
+	if (!TestTrue(TEXT("owner-presentation fixture opens the workbench"),
+		Widget->OpenWorkbench())
+		|| !TestTrue(TEXT("owner-presentation fixture opens Backpack"),
+			Widget->OpenBackpack()))
+	{
+		return false;
+	}
+
+	const TArray<FGameXXKDesktopInventoryEntryKey> BackpackBefore =
+		State.DesktopInventory.BackpackSlots;
+	const TArray<FGameXXKDesktopInventoryEntryKey> WarehouseBefore =
+		State.DesktopInventory.WarehouseSlots;
+	const FGameXXKCompanionPartySelection PartySelectionBefore =
+		State.CardRun.PartySelection;
+	const FGameXXKOrderedPartyFormation OrderedFormationBefore =
+		State.CardRun.OrderedFormation;
+	const FGameXXKTrainingTravelRuntime TravelBefore =
+		Subsystem->GetTrainingTravelRuntimeCopy();
+	FString HeroResourcePath;
+	FString GuardResourcePath;
+	FString YueBaiResourcePath;
+	FBox2f HeroUv;
+	FBox2f GuardUv;
+	FBox2f YueBaiUv;
+	TSet<FName> PresentedEquipmentIds;
+	TSet<FString> NonHeroCentralResourcePaths;
+
+	const auto VerifyViewedOwner = [
+		this,
+		Widget,
+		Subsystem,
+		&State,
+		&ExpectedEquipmentByOwner,
+		&BackpackBefore,
+		&WarehouseBefore,
+		&PartySelectionBefore,
+		&OrderedFormationBefore,
+		&TravelBefore,
+		&Slots,
+		&PresentedEquipmentIds,
+		&HeroResourcePath,
+		&GuardResourcePath,
+		&YueBaiResourcePath,
+		&HeroUv,
+		&GuardUv,
+		&YueBaiUv,
+		&NonHeroCentralResourcePaths,
+		HeroId](const FName OwnerId) -> bool
+	{
+		UGameXXKInventoryWindowWidget* Embedded = FindEmbeddedInventory(Widget);
+		if (!TestNotNull(
+			*FString::Printf(TEXT("%s owns a live embedded inventory"), *OwnerId.ToString()),
+			Embedded))
+		{
+			return false;
+		}
+		TestEqual(
+			*FString::Printf(TEXT("%s embedded owner follows the visible roster delegate"), *OwnerId.ToString()),
+			Embedded->GetConfiguredCharacterIdForTest(),
+			OwnerId);
+		FGameXXKEquipmentLoadoutSnapshot Snapshot;
+		if (!TestTrue(
+			*FString::Printf(TEXT("%s exposes a loadout snapshot"), *OwnerId.ToString()),
+			Subsystem->GetEquipmentLoadoutSnapshot(OwnerId, Snapshot)))
+		{
+			return false;
+		}
+		TestEqual(
+			*FString::Printf(TEXT("%s snapshot belongs to the viewed owner"), *OwnerId.ToString()),
+			Snapshot.CharacterId,
+			OwnerId);
+		const TArray<FName>* ExpectedEquipment =
+			ExpectedEquipmentByOwner.Find(OwnerId);
+		if (!TestNotNull(
+			*FString::Printf(TEXT("%s owns an expected six-slot fixture"), *OwnerId.ToString()),
+			ExpectedEquipment)
+			|| !TestEqual(
+				*FString::Printf(TEXT("%s expected fixture has six slots"), *OwnerId.ToString()),
+				ExpectedEquipment ? ExpectedEquipment->Num() : 0,
+				6))
+		{
+			return false;
+		}
+		for (int32 SlotIndex = 0; SlotIndex < UE_ARRAY_COUNT(Slots); ++SlotIndex)
+		{
+			const FName PresentedInstanceId =
+				Embedded->GetEquippedInstanceForSlotForTest(Slots[SlotIndex]);
+			TestEqual(
+				*FString::Printf(
+					TEXT("%s slot %d reads only that owner's instance"),
+					*OwnerId.ToString(),
+					SlotIndex),
+				PresentedInstanceId,
+				(*ExpectedEquipment)[SlotIndex]);
+			TestFalse(
+				*FString::Printf(
+					TEXT("%s slot %d never reuses another owner's instance"),
+					*OwnerId.ToString(),
+					SlotIndex),
+				PresentedEquipmentIds.Contains(PresentedInstanceId));
+			PresentedEquipmentIds.Add(PresentedInstanceId);
+			const FGameXXKEquipmentInstance* Instance =
+				FGameXXKEquipmentRules::FindInstance(
+					State.EquipmentCollection,
+					PresentedInstanceId);
+			if (TestNotNull(
+				*FString::Printf(
+					TEXT("%s slot %d keeps an authoritative instance"),
+					*OwnerId.ToString(),
+					SlotIndex),
+				Instance))
+			{
+				TestEqual(
+					*FString::Printf(
+						TEXT("%s slot %d instance belongs to the viewed owner"),
+						*OwnerId.ToString(),
+						SlotIndex),
+					Instance->OwnerCharacterId,
+					OwnerId);
+			}
+		}
+
+		UImage* CentralImage = Embedded->WidgetTree
+			? Cast<UImage>(Embedded->WidgetTree->FindWidget(TEXT("InventoryCentralHeroIdle")))
+			: nullptr;
+		if (!TestNotNull(
+			*FString::Printf(TEXT("%s owns central character art"), *OwnerId.ToString()),
+			CentralImage))
+		{
+			return false;
+		}
+		const UObject* Resource = CentralImage->GetBrush().GetResourceObject();
+		if (!TestNotNull(
+			*FString::Printf(TEXT("%s central character art resolves a resource"), *OwnerId.ToString()),
+			Resource))
+		{
+			return false;
+		}
+		const FString ResourcePath = Resource->GetPathName();
+		const FBox2f Uv = CentralImage->GetBrush().GetUVRegion();
+		TestEqual(
+			*FString::Printf(TEXT("%s central character uses a bottom-center pivot"), *OwnerId.ToString()),
+			CentralImage->GetRenderTransformPivot(),
+			FVector2D(0.5f, 1.0f));
+		TestTrue(
+			*FString::Printf(TEXT("%s central character art is opaque"), *OwnerId.ToString()),
+			FMath::IsNearlyEqual(CentralImage->GetRenderOpacity(), 1.0f));
+		if (OwnerId == HeroId)
+		{
+			TestEqual(TEXT("Hero keeps the exact approved central full-body resource"),
+				ResourcePath, ExpectedHeroCentralTexturePath);
+			HeroResourcePath = ResourcePath;
+			HeroUv = Uv;
+		}
+		else
+		{
+			const FExpectedOwnerIdlePresentation* Expected =
+				FindExpectedOwnerIdlePresentation(OwnerId);
+			if (!TestNotNull(
+				*FString::Printf(TEXT("%s owns one independent literal presentation row"), *OwnerId.ToString()),
+				Expected))
+			{
+				return false;
+			}
+			const FGameXXKBattleAnimationClipDescriptor ResolvedClip =
+				FGameXXKBattleAnimationPresentation::ResolveClip(
+					OwnerId, false, EGameXXKBattleAnimationAction::Idle);
+			TestEqual(
+				*FString::Printf(TEXT("%s descriptor AssetId matches the literal table"), *OwnerId.ToString()),
+				ResolvedClip.AssetId,
+				FString(Expected->AssetId));
+			TestEqual(
+				*FString::Printf(TEXT("%s descriptor TexturePath matches the literal table"), *OwnerId.ToString()),
+				ResolvedClip.TexturePath.ToString(),
+				FString(Expected->TexturePath));
+			TestEqual(
+				*FString::Printf(TEXT("%s loads the literal authored 2K Idle atlas"), *OwnerId.ToString()),
+				ResourcePath,
+				FString(Expected->TexturePath));
+			TestTrue(
+				*FString::Printf(TEXT("%s uses the literal 8x8 frame-zero UV"), *OwnerId.ToString()),
+				Uv.Min.Equals(ExpectedIdleFrameZeroUv.Min, 0.0001f)
+				&& Uv.Max.Equals(ExpectedIdleFrameZeroUv.Max, 0.0001f));
+			NonHeroCentralResourcePaths.Add(ResourcePath);
+			if (OwnerId.ToString().Contains(TEXT("Companion_Guard_")))
+			{
+				GuardResourcePath = ResourcePath;
+				GuardUv = Uv;
+			}
+			else if (OwnerId == FName(TEXT("Npc.YueBai")))
+			{
+				YueBaiResourcePath = ResourcePath;
+				YueBaiUv = Uv;
+			}
+		}
+
+		TestTrue(
+			*FString::Printf(TEXT("%s view keeps shared Backpack physical identity"), *OwnerId.ToString()),
+			State.DesktopInventory.BackpackSlots == BackpackBefore);
+		TestTrue(
+			*FString::Printf(TEXT("%s view keeps shared Warehouse physical identity"), *OwnerId.ToString()),
+			State.DesktopInventory.WarehouseSlots == WarehouseBefore);
+		TestTrue(
+			*FString::Printf(TEXT("%s view keeps PartySelection byte-identical"), *OwnerId.ToString()),
+			FGameXXKCompanionPartySelection::StaticStruct()->CompareScriptStruct(
+				&State.CardRun.PartySelection,
+				&PartySelectionBefore,
+				PPF_None));
+		TestTrue(
+			*FString::Printf(TEXT("%s view keeps OrderedFormation byte-identical"), *OwnerId.ToString()),
+			FGameXXKOrderedPartyFormation::StaticStruct()->CompareScriptStruct(
+				&State.CardRun.OrderedFormation,
+				&OrderedFormationBefore,
+				PPF_None));
+		const FGameXXKTrainingTravelRuntime TravelAfter =
+			Subsystem->GetTrainingTravelRuntimeCopy();
+		TestTrue(
+			*FString::Printf(TEXT("%s view keeps running Travel byte-identical"), *OwnerId.ToString()),
+			FGameXXKTrainingTravelRuntime::StaticStruct()->CompareScriptStruct(
+				&TravelAfter,
+				&TravelBefore,
+				PPF_None));
+		return true;
+	};
+
+	if (!VerifyViewedOwner(HeroId)
+		|| !RouteVisibleButtonDelegateAndFlush(
+			*this,
+			Widget,
+			FindWorkbenchActionButton(Widget, TEXT("CharacterRosterCompanionButton")),
+			TEXT("partner category")))
+	{
+		return false;
+	}
+	for (int32 Index = 0; Index < CompanionIds.Num(); ++Index)
+	{
+		if (!RouteVisibleButtonDelegateAndFlush(
+			*this,
+			Widget,
+			FindWorkbenchActionButton(
+				Widget,
+				*FString::Printf(TEXT("CharacterRosterPortraitButton_1_%d"), Index)),
+			*FString::Printf(TEXT("partner member %d"), Index))
+			|| !VerifyViewedOwner(CompanionIds[Index]))
+		{
+			return false;
+		}
+	}
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterNpcButton")),
+		TEXT("NPC category")))
+	{
+		return false;
+	}
+	for (int32 Index = 0; Index < NpcIds.Num(); ++Index)
+	{
+		if (!RouteVisibleButtonDelegateAndFlush(
+			*this,
+			Widget,
+			FindWorkbenchActionButton(
+				Widget,
+				*FString::Printf(TEXT("CharacterRosterPortraitButton_2_%d"), Index)),
+			*FString::Printf(TEXT("NPC member %d"), Index))
+			|| !VerifyViewedOwner(NpcIds[Index]))
+		{
+			return false;
+		}
+	}
+	TestEqual(TEXT("all twelve non-Hero owners resolve unique literal atlas resources"),
+		NonHeroCentralResourcePaths.Num(),
+		static_cast<int32>(UE_ARRAY_COUNT(ExpectedNonHeroIdlePresentations)));
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterHeroButton")),
+		TEXT("Hero category")))
+	{
+		return false;
+	}
+	UGameXXKInventoryWindowWidget* RestoredHero = FindEmbeddedInventory(Widget);
+	UImage* RestoredHeroImage = RestoredHero && RestoredHero->WidgetTree
+		? Cast<UImage>(RestoredHero->WidgetTree->FindWidget(TEXT("InventoryCentralHeroIdle")))
+		: nullptr;
+	if (!TestNotNull(TEXT("switching back owns the Hero central image"),
+		RestoredHeroImage))
+	{
+		return false;
+	}
+	const FString RestoredHeroResourcePath =
+		RestoredHeroImage->GetBrush().GetResourceObject()
+			? RestoredHeroImage->GetBrush().GetResourceObject()->GetPathName()
+			: FString();
+	const FBox2f RestoredHeroUv = RestoredHeroImage->GetBrush().GetUVRegion();
+	TestEqual(TEXT("Hero resource returns after Guard and Yue Bai views"),
+		RestoredHeroResourcePath, HeroResourcePath);
+	TestTrue(TEXT("Hero UV returns after Guard and Yue Bai views"),
+		RestoredHeroUv.Min.Equals(HeroUv.Min, 0.0001f)
+		&& RestoredHeroUv.Max.Equals(HeroUv.Max, 0.0001f));
+	TestTrue(TEXT("Hero, Guard, and Yue Bai resolve distinct central resources"),
+		!HeroResourcePath.IsEmpty()
+		&& !GuardResourcePath.IsEmpty()
+		&& !YueBaiResourcePath.IsEmpty()
+		&& HeroResourcePath != GuardResourcePath
+		&& GuardResourcePath != YueBaiResourcePath
+		&& HeroResourcePath != YueBaiResourcePath);
+	TestTrue(TEXT("Hero full-body UV changes to Guard atlas frame zero"),
+		!HeroUv.Min.Equals(GuardUv.Min, 0.0001f)
+		|| !HeroUv.Max.Equals(GuardUv.Max, 0.0001f));
+	TestTrue(TEXT("Yue Bai retains its own frame-zero UV before the Hero return"),
+		YueBaiUv.Min.Equals(ExpectedIdleFrameZeroUv.Min, 0.0001f)
+		&& YueBaiUv.Max.Equals(ExpectedIdleFrameZeroUv.Max, 0.0001f));
+	TestEqual(TEXT("Hero category delegate restores the embedded Hero owner"),
+		RestoredHero->GetConfiguredCharacterIdForTest(), HeroId);
+	TestTrue(TEXT("all thirteen six-slot views expose seventy-eight unique instances"),
+		PresentedEquipmentIds.Num() == 13 * UE_ARRAY_COUNT(Slots));
+	TestTrue(TEXT("all owner views leave shared Backpack physical identity unchanged"),
+		State.DesktopInventory.BackpackSlots == BackpackBefore);
+	TestTrue(TEXT("all owner views leave OrderedFormation byte-identical"),
+		FGameXXKOrderedPartyFormation::StaticStruct()->CompareScriptStruct(
+			&State.CardRun.OrderedFormation,
+			&OrderedFormationBefore,
+			PPF_None));
+	const FGameXXKTrainingTravelRuntime TravelAfterAllViews =
+		Subsystem->GetTrainingTravelRuntimeCopy();
+	TestTrue(TEXT("all owner views leave running Travel byte-identical"),
+		FGameXXKTrainingTravelRuntime::StaticStruct()->CompareScriptStruct(
+			&TravelAfterAllViews,
+			&TravelBefore,
+			PPF_None));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchRosterCategoryRepresentativeTest,
+	"GameXXK.DesktopTraining.Workbench.CharacterRoster.CategorySelectsStableRepresentative",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchRosterCategoryRepresentativeTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("roster-category fixture starts a new game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Screen = EGameXXKScreen::Town;
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	const TArray<FName> CompanionIds = Widget->GetCompanionCharacterIdsForTest();
+	const TArray<FName> NpcIds = Widget->GetNpcCharacterIdsForTest();
+	if (!TestEqual(TEXT("roster-category fixture owns six companions"),
+		CompanionIds.Num(), 6)
+		|| !TestEqual(TEXT("roster-category fixture owns six NPCs"),
+			NpcIds.Num(), 6))
+	{
+		return false;
+	}
+	const FName ActiveCompanionId =
+		State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+	const FName ExpectedCompanionId = CompanionIds.Contains(ActiveCompanionId)
+		? ActiveCompanionId
+		: CompanionIds[0];
+	const FName ActiveNpcId = State.CardRun.ActiveTemporaryQuestNpcId;
+	const FName ExpectedNpcId = NpcIds.Contains(ActiveNpcId)
+		? ActiveNpcId
+		: NpcIds[0];
+	const EGameXXKEquipmentSlot Slots[] = {
+		EGameXXKEquipmentSlot::Weapon,
+		EGameXXKEquipmentSlot::Head,
+		EGameXXKEquipmentSlot::Armor,
+		EGameXXKEquipmentSlot::Belt,
+		EGameXXKEquipmentSlot::Shoes,
+		EGameXXKEquipmentSlot::Accessory};
+	TMap<FName, TArray<FName>> ExpectedEquipmentByOwner;
+	for (const FName OwnerId : {ExpectedCompanionId, ExpectedNpcId})
+	{
+		TArray<FName>& ExpectedEquipment =
+			ExpectedEquipmentByOwner.FindOrAdd(OwnerId);
+		for (const EGameXXKEquipmentSlot Slot : Slots)
+		{
+			const FName InstanceId = CreateCarryTestEquipment(
+				*this,
+				State,
+				Slot,
+				TEXT("roster-category fixture creates representative equipment"));
+			FGameXXKEquipmentTransactionResult EquipResult;
+			if (InstanceId.IsNone()
+				|| !TestTrue(TEXT("roster-category fixture equips its representative"),
+					Subsystem->EquipEquipmentInstance(
+						OwnerId, Slot, InstanceId, EquipResult)))
+			{
+				return false;
+			}
+			ExpectedEquipment.Add(InstanceId);
+		}
+	}
+	if (!TestTrue(TEXT("roster-category fixture normalizes shared inventory"),
+		Subsystem->NormalizeDesktopInventoryState())
+		|| !TestTrue(TEXT("roster-category fixture starts running Travel"),
+			Subsystem->StartTrainingTravel(FGameXXKTrainingRules::MakeStageId(
+				EGameXXKTrainingDifficulty::Normal, 1)))
+		|| !TestTrue(TEXT("roster-category fixture opens the workbench"),
+			Widget->OpenWorkbench())
+		|| !TestTrue(TEXT("roster-category fixture opens Backpack"),
+			Widget->OpenBackpack()))
+	{
+		return false;
+	}
+
+	const TArray<FGameXXKDesktopInventoryEntryKey> BackpackBefore =
+		State.DesktopInventory.BackpackSlots;
+	const TArray<FGameXXKDesktopInventoryEntryKey> WarehouseBefore =
+		State.DesktopInventory.WarehouseSlots;
+	const FGameXXKCompanionPartySelection PartyBefore =
+		State.CardRun.PartySelection;
+	const FGameXXKOrderedPartyFormation FormationBefore =
+		State.CardRun.OrderedFormation;
+	const FGameXXKTrainingTravelRuntime TravelBefore =
+		Subsystem->GetTrainingTravelRuntimeCopy();
+	const int32 CarrySourceSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
+	if (!TestTrue(TEXT("roster-category fixture has one shared physical source"),
+		CarrySourceSlot != INDEX_NONE))
+	{
+		return false;
+	}
+
+	const auto VerifyRepresentative = [
+		this,
+		Widget,
+		Subsystem,
+		&State,
+		&ExpectedEquipmentByOwner,
+		&BackpackBefore,
+		&WarehouseBefore,
+		&PartyBefore,
+		&FormationBefore,
+		&TravelBefore,
+		&Slots](const FName ExpectedOwnerId) -> bool
+	{
+		TestEqual(TEXT("category delegate immediately updates the active Backpack owner"),
+			Widget->GetActiveBackpackCharacterIdForTest(), ExpectedOwnerId);
+		UGameXXKInventoryWindowWidget* Embedded = FindEmbeddedInventory(Widget);
+		if (!TestNotNull(TEXT("category delegate owns a rebuilt embedded Backpack"),
+			Embedded))
+		{
+			return false;
+		}
+		const FName EmbeddedOwnerId = Embedded->GetConfiguredCharacterIdForTest();
+		TestEqual(TEXT("category delegate immediately configures the embedded owner"),
+			EmbeddedOwnerId, ExpectedOwnerId);
+		FGameXXKEquipmentLoadoutSnapshot Snapshot;
+		if (!TestTrue(TEXT("embedded category owner resolves a loadout snapshot"),
+			Subsystem->GetEquipmentLoadoutSnapshot(EmbeddedOwnerId, Snapshot)))
+		{
+			return false;
+		}
+		TestEqual(TEXT("category snapshot belongs to the stable representative"),
+			Snapshot.CharacterId, ExpectedOwnerId);
+		const TArray<FName>* ExpectedEquipment =
+			ExpectedEquipmentByOwner.Find(ExpectedOwnerId);
+		if (!TestNotNull(TEXT("stable representative owns a six-slot fixture"),
+			ExpectedEquipment))
+		{
+			return false;
+		}
+		for (int32 SlotIndex = 0; SlotIndex < UE_ARRAY_COUNT(Slots); ++SlotIndex)
+		{
+			TestEqual(
+				*FString::Printf(TEXT("category representative slot %d switches immediately"), SlotIndex),
+				Embedded->GetEquippedInstanceForSlotForTest(Slots[SlotIndex]),
+				(*ExpectedEquipment)[SlotIndex]);
+		}
+		UImage* CentralImage = Embedded->WidgetTree
+			? Cast<UImage>(Embedded->WidgetTree->FindWidget(
+				TEXT("InventoryCentralHeroIdle")))
+			: nullptr;
+		if (!TestNotNull(TEXT("category representative owns central art"),
+			CentralImage))
+		{
+			return false;
+		}
+		const UObject* Resource = CentralImage->GetBrush().GetResourceObject();
+		const FExpectedOwnerIdlePresentation* ExpectedPresentation =
+			FindExpectedOwnerIdlePresentation(ExpectedOwnerId);
+		if (!TestNotNull(TEXT("category representative owns a literal atlas row"),
+			ExpectedPresentation))
+		{
+			return false;
+		}
+		TestEqual(TEXT("category representative immediately owns the center resource"),
+			Resource ? Resource->GetPathName() : FString(),
+			FString(ExpectedPresentation->TexturePath));
+		TestTrue(TEXT("category delegate preserves shared Backpack physical identity"),
+			State.DesktopInventory.BackpackSlots == BackpackBefore);
+		TestTrue(TEXT("category delegate preserves shared Warehouse physical identity"),
+			State.DesktopInventory.WarehouseSlots == WarehouseBefore);
+		TestTrue(TEXT("category delegate preserves PartySelection byte-identically"),
+			FGameXXKCompanionPartySelection::StaticStruct()->CompareScriptStruct(
+				&State.CardRun.PartySelection, &PartyBefore, PPF_None));
+		TestTrue(TEXT("category delegate preserves OrderedFormation byte-identically"),
+			FGameXXKOrderedPartyFormation::StaticStruct()->CompareScriptStruct(
+				&State.CardRun.OrderedFormation, &FormationBefore, PPF_None));
+		const FGameXXKTrainingTravelRuntime TravelAfter =
+			Subsystem->GetTrainingTravelRuntimeCopy();
+		TestTrue(TEXT("category delegate preserves running Travel byte-identically"),
+			FGameXXKTrainingTravelRuntime::StaticStruct()->CompareScriptStruct(
+				&TravelAfter, &TravelBefore, PPF_None));
+		return true;
+	};
+
+	TestEqual(TEXT("category chain begins on Hero"),
+		Widget->GetActiveBackpackCharacterIdForTest(),
+		FGameXXKEquipmentRules::HeroCharacterId());
+	TestTrue(TEXT("Hero carry begins before the partner category switch"),
+		Widget->PickUpBackpackSlotForTest(CarrySourceSlot));
+	const int32 PartnerBuildCount =
+		Widget->GetProgrammaticLayoutBuildCountForTest();
+	if (!TestTrue(TEXT("visible partner category delegate routes"),
+		RouteVisibleButtonDelegateAndFlush(
+			*this,
+			Widget,
+			FindWorkbenchActionButton(
+				Widget,
+				TEXT("CharacterRosterCompanionButton")),
+			TEXT("partner category"))))
+	{
+		return false;
+	}
+	TestFalse(TEXT("partner category switch cancels the structural carry"),
+		Widget->HasDesktopCarriedEntry());
+	TestEqual(TEXT("partner category switch rebuilds exactly once"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), PartnerBuildCount + 1);
+	if (!VerifyRepresentative(ExpectedCompanionId))
+	{
+		return false;
+	}
+
+	TestTrue(TEXT("partner carry begins before the NPC category switch"),
+		Widget->PickUpBackpackSlotForTest(CarrySourceSlot));
+	const int32 NpcBuildCount =
+		Widget->GetProgrammaticLayoutBuildCountForTest();
+	if (!TestTrue(TEXT("visible NPC category delegate routes"),
+		RouteVisibleButtonDelegateAndFlush(
+			*this,
+			Widget,
+			FindWorkbenchActionButton(
+				Widget,
+				TEXT("CharacterRosterNpcButton")),
+			TEXT("NPC category"))))
+	{
+		return false;
+	}
+	TestFalse(TEXT("NPC category switch cancels the structural carry"),
+		Widget->HasDesktopCarriedEntry());
+	TestEqual(TEXT("NPC category switch rebuilds exactly once"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), NpcBuildCount + 1);
+	return VerifyRepresentative(ExpectedNpcId);
 }
 
 #endif
