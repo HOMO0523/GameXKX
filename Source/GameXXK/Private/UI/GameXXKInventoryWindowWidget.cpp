@@ -3,6 +3,7 @@
 #include "GameXXKAffixCatalog.h"
 #include "GameXXKCardText.h"
 #include "GameXXKEquipmentSetCatalog.h"
+#include "GameXXKGemRules.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -337,6 +338,11 @@ namespace
 
 	FString ResolveItemIconTexturePath(FName ItemId)
 	{
+		const FSoftObjectPath GemIconPath = FGameXXKGemRules::GetIconTexturePathForItemId(ItemId);
+		if (GemIconPath.IsValid())
+		{
+			return GemIconPath.ToString();
+		}
 		if (ItemId == UGameXXKMVPRules::ItemHealingPowder())
 		{
 			return TextureRoot + TEXT("T_ItemHealingPowder.T_ItemHealingPowder");
@@ -561,6 +567,20 @@ namespace
 					Lines.Add(FString::Printf(TEXT("%s +%d"), *Affix->DisplayName.ToString(), Roll.Magnitude));
 				}
 			}
+		}
+		for (int32 SocketIndex = 0; SocketIndex < Instance.SocketedGems.Num(); ++SocketIndex)
+		{
+			const FGameXXKSocketedGem& Gem = Instance.SocketedGems[SocketIndex];
+			if (Gem.IsEmpty())
+			{
+				Lines.Add(FString::Printf(TEXT("孔位 %d：空"), SocketIndex + 1));
+				continue;
+			}
+			Lines.Add(FString::Printf(
+				TEXT("孔位 %d：%s +%d"),
+				SocketIndex + 1,
+				*FGameXXKGemRules::GetDisplayName(Gem.Type, Gem.Quality).ToString(),
+				FGameXXKGemRules::GetStatBonus(Gem.Type, Gem.Quality)));
 		}
 
 		FGameXXKEquipmentTooltipSnapshot Snapshot;

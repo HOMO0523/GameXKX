@@ -4,6 +4,7 @@
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentCatalog.h"
+#include "GameXXKGemRules.h"
 #include "Misc/Crc.h"
 #include "Math/RandomStream.h"
 
@@ -640,6 +641,29 @@ bool FGameXXKEquipmentRules::HasWarehouseCapacity(
 		&& RequiredSlots <= WarehouseCapacity - Collection.WarehouseInstanceIds.Num();
 }
 
+bool FGameXXKEquipmentRules::NormalizeSocketArrays(
+	FGameXXKEquipmentCollectionState& InOutCollection,
+	FString* OutError)
+{
+	SetError(OutError, FString());
+	FGameXXKEquipmentCollectionState Candidate = InOutCollection;
+	for (FGameXXKEquipmentInstance& Instance : Candidate.EquipmentInstances)
+	{
+		const int32 Capacity = FGameXXKGemRules::GetSocketCapacity(Instance.Quality);
+		if (Capacity <= 0 || Instance.SocketedGems.Num() > Capacity)
+		{
+			SetError(OutError, TEXT("Equipment socket data cannot be normalized for its quality."));
+			return false;
+		}
+		if (Instance.SocketedGems.Num() < Capacity)
+		{
+			Instance.SocketedGems.SetNum(Capacity);
+		}
+	}
+	InOutCollection = MoveTemp(Candidate);
+	return true;
+}
+
 bool FGameXXKEquipmentRules::ValidateCollectionState(
 	const FGameXXKEquipmentCollectionState& Collection,
 	FString* OutError)
@@ -676,6 +700,20 @@ bool FGameXXKEquipmentRules::ValidateCollectionState(
 		{
 			SetError(OutError, TEXT("Equipment instance level, quality, enhancement, or scaling is invalid."));
 			return false;
+		}
+		const int32 SocketCapacity = FGameXXKGemRules::GetSocketCapacity(Instance.Quality);
+		if (SocketCapacity <= 0 || Instance.SocketedGems.Num() != SocketCapacity)
+		{
+			SetError(OutError, TEXT("Equipment socket count does not match its quality."));
+			return false;
+		}
+		for (const FGameXXKSocketedGem& Gem : Instance.SocketedGems)
+		{
+			if (!FGameXXKGemRules::IsValidSocketValue(Gem))
+			{
+				SetError(OutError, TEXT("Equipment contains an invalid socketed gem."));
+				return false;
+			}
 		}
 
 		if (Definition->Set == EGameXXKEquipmentSet::Legacy)
@@ -951,6 +989,7 @@ bool FGameXXKEquipmentRules::CreateRolledInstance(
 	Instance.BaseEquipmentId = EquipmentDefinition->Id;
 	Instance.ItemLevel = Request.ItemLevel;
 	Instance.Quality = Request.Quality;
+	Instance.SocketedGems.SetNum(FGameXXKGemRules::GetSocketCapacity(Request.Quality));
 	Instance.AcquisitionSeed = static_cast<int32>(StreamSeed);
 	Instance.ScalingRule = EquipmentDefinition->ScalingRule;
 	Instance.OwnerKind = EGameXXKEquipmentOwnerKind::Warehouse;
@@ -1187,6 +1226,28 @@ bool FGameXXKEquipmentRules::BuildLoadoutSnapshot(
 		}
 
 		AddStats(OutSnapshot.EnhancedEquipmentBaseStats, ResolveItemCurrentStats(*Instance, *Definition));
+		for (const FGameXXKSocketedGem& Gem : Instance->SocketedGems)
+		{
+			if (Gem.IsEmpty())
+			{
+				continue;
+			}
+			const int32 Bonus = FGameXXKGemRules::GetStatBonus(Gem.Type, Gem.Quality);
+			switch (Gem.Type)
+			{
+			case EGameXXKGemType::Attack:
+				OutSnapshot.SocketGemFlatStats.Attack = AddClamped(OutSnapshot.SocketGemFlatStats.Attack, Bonus);
+				break;
+			case EGameXXKGemType::Defense:
+				OutSnapshot.SocketGemFlatStats.Defense = AddClamped(OutSnapshot.SocketGemFlatStats.Defense, Bonus);
+				break;
+			case EGameXXKGemType::MaxHealth:
+				OutSnapshot.SocketGemFlatStats.MaxHealth = AddClamped(OutSnapshot.SocketGemFlatStats.MaxHealth, Bonus);
+				break;
+			default:
+				break;
+			}
+		}
 		if (IsModernSet(Definition->Set))
 		{
 			OutSnapshot.SetPieceCounts.FindOrAdd(Definition->Set) += 1;
@@ -1330,6 +1391,9 @@ bool FGameXXKEquipmentRules::BuildLoadoutSnapshot(
 			Pair.Value,
 			EGameXXKEquipmentMagnitudeUnit::FlatCount);
 	}
+	// Gems are a separate flat layer: equipment percentages never multiply them,
+	// while route/battle projection still consumes the final AttributesBeforeRoute.
+	AddStats(OutSnapshot.AttributesBeforeRoute, OutSnapshot.SocketGemFlatStats);
 	return true;
 }
 
@@ -1375,6 +1439,7 @@ bool FGameXXKEquipmentRules::BuildTooltipSnapshot(
 	OutSnapshot.ItemBaseStats = ResolveItemBaseStats(*Instance, *Definition);
 	OutSnapshot.ItemCurrentStats = ResolveItemCurrentStats(*Instance, *Definition);
 	OutSnapshot.Affixes = Instance->RolledAffixes;
+	OutSnapshot.SocketedGems = Instance->SocketedGems;
 
 	FGameXXKEquipmentLoadoutSnapshot Current;
 	if (!BuildLoadoutSnapshot(Collection, CompareCharacterId, CompareBareStats, Current, OutError))

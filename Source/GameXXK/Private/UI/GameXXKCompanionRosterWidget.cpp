@@ -24,6 +24,7 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKEquipmentSetCatalog.h"
+#include "GameXXKGemRules.h"
 #include "GameXXKMVPRules.h"
 #include "InputCoreTypes.h"
 #include "MVP/GameXXKMVPPlayerController.h"
@@ -421,6 +422,8 @@ namespace
 
 	FString CompanionResolveItemIconTexturePath(const FName ItemId)
 	{
+		const FSoftObjectPath GemIconPath = FGameXXKGemRules::GetIconTexturePathForItemId(ItemId);
+		if (GemIconPath.IsValid()) { return GemIconPath.ToString(); }
 		const FString TextureRoot(TEXT("/Game/GameXXK/UI/Inventory/Textures/"));
 		if (ItemId == UGameXXKMVPRules::ItemHealingPowder()) { return TextureRoot + TEXT("T_ItemHealingPowder.T_ItemHealingPowder"); }
 		if (ItemId == UGameXXKMVPRules::ItemEnhancementStone()) { return TEXT("/Game/GameXXK/UI/Items/strengthening_stone.strengthening_stone"); }
@@ -468,6 +471,22 @@ namespace
 				{
 					Lines.Add(FString::Printf(TEXT("%s +%d"), *Affix->DisplayName.ToString(), Roll.Magnitude));
 				}
+			}
+		}
+		for (int32 SocketIndex = 0; SocketIndex < Instance.SocketedGems.Num(); ++SocketIndex)
+		{
+			const FGameXXKSocketedGem& Gem = Instance.SocketedGems[SocketIndex];
+			if (Gem.IsEmpty())
+			{
+				Lines.Add(FString::Printf(TEXT("孔位 %d：空"), SocketIndex + 1));
+			}
+			else
+			{
+				Lines.Add(FString::Printf(
+					TEXT("孔位 %d：%s +%d"),
+					SocketIndex + 1,
+					*FGameXXKGemRules::GetDisplayName(Gem.Type, Gem.Quality).ToString(),
+					FGameXXKGemRules::GetStatBonus(Gem.Type, Gem.Quality)));
 			}
 		}
 

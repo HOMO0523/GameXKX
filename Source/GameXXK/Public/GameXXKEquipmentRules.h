@@ -94,6 +94,9 @@ struct GAMEXXK_API FGameXXKEquipmentLoadoutSnapshot
 	FGameXXKCharacterStats EnhancedEquipmentBaseStats;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FGameXXKCharacterStats SocketGemFlatStats;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	FGameXXKCharacterStats AttributesBeforeRoute;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
@@ -152,6 +155,9 @@ struct GAMEXXK_API FGameXXKEquipmentTooltipSnapshot
 	TArray<FGameXXKEquipmentAffixRoll> Affixes;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	TArray<FGameXXKSocketedGem> SocketedGems;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	TMap<EGameXXKEquipmentSet, int32> CurrentSetPieceCounts;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
@@ -195,6 +201,10 @@ public:
 		int32 RequiredSlots = 1);
 	static bool ValidateCollectionState(
 		const FGameXXKEquipmentCollectionState& Collection,
+		FString* OutError = nullptr);
+	/** Appends missing quality-derived empty sockets without removing any persisted socket. */
+	static bool NormalizeSocketArrays(
+		FGameXXKEquipmentCollectionState& InOutCollection,
 		FString* OutError = nullptr);
 	static bool ValidateCollectionAgainstRoster(
 		const FGameXXKEquipmentCollectionState& Collection,

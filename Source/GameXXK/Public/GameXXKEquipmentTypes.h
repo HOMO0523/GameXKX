@@ -61,6 +61,48 @@ enum class EGameXXKAffixTier : uint8
 	Cosmic = 10 UMETA(DisplayName = "宇宙")
 };
 
+UENUM(BlueprintType)
+enum class EGameXXKGemType : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	Attack = 1 UMETA(DisplayName = "攻击"),
+	Defense = 2 UMETA(DisplayName = "防御"),
+	MaxHealth = 3 UMETA(DisplayName = "生命")
+};
+
+UENUM(BlueprintType)
+enum class EGameXXKGemQuality : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	Common = 1 UMETA(DisplayName = "普通"),
+	Rare = 2 UMETA(DisplayName = "稀有"),
+	Epic = 3 UMETA(DisplayName = "珍稀"),
+	Legendary = 4 UMETA(DisplayName = "传奇"),
+	Immortal = 5 UMETA(DisplayName = "不朽"),
+	Treasure = 6 UMETA(DisplayName = "至宝"),
+	Transcendent = 7 UMETA(DisplayName = "超凡"),
+	Celestial = 8 UMETA(DisplayName = "天界"),
+	Ascendant = 9 UMETA(DisplayName = "登神"),
+	Cosmic = 10 UMETA(DisplayName = "宇宙")
+};
+
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKSocketedGem
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKGemType Type = EGameXXKGemType::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKGemQuality Quality = EGameXXKGemQuality::Invalid;
+
+	bool IsEmpty() const
+	{
+		return Type == EGameXXKGemType::Invalid && Quality == EGameXXKGemQuality::Invalid;
+	}
+};
+
 /** Single authority for serialized equipment-quality and affix-tier rank semantics. */
 class GAMEXXK_API FGameXXKEquipmentQualityRules final
 {
@@ -210,6 +252,11 @@ struct GAMEXXK_API FGameXXKEquipmentInstance
 {
 	GENERATED_BODY()
 
+	FGameXXKEquipmentInstance()
+	{
+		SocketedGems.SetNum(1);
+	}
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName InstanceId = NAME_None;
 
@@ -227,6 +274,9 @@ struct GAMEXXK_API FGameXXKEquipmentInstance
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKEquipmentAffixRoll> RolledAffixes;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKSocketedGem> SocketedGems;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 AcquisitionSeed = 0;

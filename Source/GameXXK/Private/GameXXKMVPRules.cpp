@@ -8,6 +8,7 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKGemRules.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKPartyFormationRules.h"
@@ -210,7 +211,7 @@ namespace GameXXKMVP
 
 	static TArray<FName> GetKnownItemIds()
 	{
-		return {
+		TArray<FName> Result = {
 			ItemHealingPowderName,
 			ItemEnhancementStoneName,
 			ItemQingshanRouteSealName,
@@ -227,6 +228,8 @@ namespace GameXXKMVP
 			ItemStarterClothArmorName,
 			ItemClothTalismanName,
 		};
+		Result.Append(FGameXXKGemRules::GetAllItemIds());
+		return Result;
 	}
 
 	static TArray<FName> GetShopItemIds()
@@ -246,6 +249,14 @@ namespace GameXXKMVP
 
 	static bool GetItemDef(FName ItemId, FGameXXKItemDef& OutDef)
 	{
+		EGameXXKGemType GemType;
+		EGameXXKGemQuality GemQuality;
+		if (FGameXXKGemRules::TryParseItemId(ItemId, GemType, GemQuality))
+		{
+			const FString DisplayName = FGameXXKGemRules::GetDisplayName(GemType, GemQuality).ToString();
+			OutDef = MakeItem(ItemId, *DisplayName, EGameXXKItemKind::Material, 0, 0, 0, 0, 0, 0, 0, 0);
+			return true;
+		}
 		if (ItemId == ItemHealingPowderName)
 		{
 			OutDef = MakeItem(ItemId, TEXT("金疮药"), EGameXXKItemKind::Consumable, 10, 5, 30, 0, 0, 0, 0, 0);

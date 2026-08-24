@@ -17,6 +17,7 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/Texture2D.h"
+#include "GameXXKGemRules.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKMVPCommandRouter.h"
@@ -763,6 +764,11 @@ void UGameXXKTownOverlayWidget::ApplyItemSlotVisual(UTextBlock* SlotLabel, UImag
 
 FString UGameXXKTownOverlayWidget::ResolveItemIconTexturePath(FName ItemId) const
 {
+	const FSoftObjectPath GemIconPath = FGameXXKGemRules::GetIconTexturePathForItemId(ItemId);
+	if (GemIconPath.IsValid())
+	{
+		return GemIconPath.ToString();
+	}
 	if (ItemId == UGameXXKMVPRules::ItemHealingPowder())
 	{
 		return ItemIconTextureRoot + TEXT("T_ItemHealingPowder.T_ItemHealingPowder");

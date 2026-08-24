@@ -1204,6 +1204,11 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		FGameXXKSaveState Candidate = Source;
 		MigrateRefinementSandMirror(Candidate.RuntimeState);
 		FString ValidationError;
+		if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError))
+		{
+			Fail(OutReport, ValidationError);
+			return false;
+		}
 		if (!ValidateRuntimeState(Candidate.RuntimeState, ValidationError))
 		{
 			Fail(OutReport, ValidationError);
@@ -1225,6 +1230,11 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Candidate.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse = true;
 		Candidate.SaveVersion = CurrentSaveVersion;
 		FString ValidationError;
+		if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError))
+		{
+			Fail(OutReport, ValidationError);
+			return false;
+		}
 		if (!ValidateRuntimeState(Candidate.RuntimeState, ValidationError))
 		{
 			Fail(OutReport, ValidationError);
@@ -1397,7 +1407,8 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Candidate.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse = true;
 	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
-	if (!ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
+	if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &MigrationError)
+		|| !ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
 	{
 		Fail(OutReport, MigrationError);
 		return false;

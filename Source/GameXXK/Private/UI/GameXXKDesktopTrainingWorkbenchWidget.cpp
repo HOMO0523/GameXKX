@@ -31,6 +31,7 @@
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKGemRules.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -643,6 +644,8 @@
 
 	FString InventoryItemIconTexturePath(const FName ItemId)
 	{
+		const FSoftObjectPath GemIconPath = FGameXXKGemRules::GetIconTexturePathForItemId(ItemId);
+		if (GemIconPath.IsValid()) return GemIconPath.ToString();
 		const FString Root(InventoryTextureRoot);
 		if (ItemId == UGameXXKMVPRules::ItemHealingPowder()) return Root + TEXT("T_ItemHealingPowder.T_ItemHealingPowder");
 		if (ItemId == UGameXXKMVPRules::ItemEnhancementStone()) return TEXT("/Game/GameXXK/UI/Items/strengthening_stone.strengthening_stone");
