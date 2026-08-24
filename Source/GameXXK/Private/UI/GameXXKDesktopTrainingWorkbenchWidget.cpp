@@ -1436,6 +1436,46 @@ FName UGameXXKDesktopTrainingWorkbenchWidget::ResolveRosterRepresentativeCharact
 	return CharacterIds[0];
 }
 
+FName UGameXXKDesktopTrainingWorkbenchWidget::ResolveRememberedBackpackCharacterId(
+	const EGameXXKDesktopTrainingCharacterRoster Roster) const
+{
+	if (Roster == EGameXXKDesktopTrainingCharacterRoster::Hero)
+	{
+		return FGameXXKEquipmentRules::HeroCharacterId();
+	}
+	const TArray<FName> CharacterIds = Roster == EGameXXKDesktopTrainingCharacterRoster::Companions
+		? GetCompanionCharacterIdsForTest()
+		: GetNpcCharacterIdsForTest();
+	const FName RememberedId = Roster == EGameXXKDesktopTrainingCharacterRoster::Companions
+		? LastCompanionBackpackCharacterId
+		: LastNpcBackpackCharacterId;
+	return CharacterIds.Contains(RememberedId)
+		? RememberedId
+		: ResolveRosterRepresentativeCharacterId(Roster);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::PreserveEmbeddedSessionForCharacter(
+	const FName CharacterId)
+{
+	const FName PreviousCharacterId = EmbeddedInventoryWidget
+		? EmbeddedInventoryWidget->GetConfiguredCharacterIdForTest()
+		: SavedEmbeddedInventorySession.CharacterId;
+	if (EmbeddedInventoryWidget)
+	{
+		SavedEmbeddedInventorySession = EmbeddedInventoryWidget->CaptureEmbeddedSessionState();
+	}
+	else if (!bHasSavedEmbeddedInventorySession)
+	{
+		SavedEmbeddedInventorySession = FGameXXKEmbeddedInventorySessionState();
+	}
+	SavedEmbeddedInventorySession.CharacterId = CharacterId;
+	if (PreviousCharacterId != CharacterId)
+	{
+		SavedEmbeddedInventorySession.PendingDeckIds.Reset();
+	}
+	bHasSavedEmbeddedInventorySession = true;
+}
+
 void UGameXXKDesktopTrainingWorkbenchWidget::EnsureFormationCandidate()
 {
 	if (ActiveFormationRoster != EGameXXKDesktopTrainingCharacterRoster::Companions
@@ -1476,12 +1516,21 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::SelectBackpackCharacterForTest(cons
 	{
 		return false;
 	}
+	PreserveEmbeddedSessionForCharacter(CharacterId);
 	ActiveBackpackCharacterId = CharacterId;
 	ActiveCharacterRoster = bHero
 		? EGameXXKDesktopTrainingCharacterRoster::Hero
 		: bCompanion
 			? EGameXXKDesktopTrainingCharacterRoster::Companions
 			: EGameXXKDesktopTrainingCharacterRoster::Npcs;
+	if (bCompanion)
+	{
+		LastCompanionBackpackCharacterId = CharacterId;
+	}
+	else if (bNpc)
+	{
+		LastNpcBackpackCharacterId = CharacterId;
+	}
 	ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
 	ActiveNav = EGameXXKDesktopTrainingNav::None;
 	bSettingsPanelOpen = false;
@@ -3505,8 +3554,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildCharacterRosterTabs()
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Tabs); ++Index)
 	{
-		const bool bSelected = ActiveCharacterRoster == Tabs[Index].Roster;
-		const FName RepresentativeId = ResolveRosterRepresentativeCharacterId(Tabs[Index].Roster);
+		const bool bSelected = bCharacterRosterMembersExpanded
+			&& ActiveCharacterRoster == Tabs[Index].Roster;
+		const FName RepresentativeId = ResolveRememberedBackpackCharacterId(Tabs[Index].Roster);
 		const FString PortraitPath = CharacterRosterPortraitPath(Subsystem, RepresentativeId);
 		UGameXXKDesktopTrainingActionButton* Button = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
 			UGameXXKDesktopTrainingActionButton::StaticClass(),
@@ -3524,16 +3574,27 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildCharacterRosterTabs()
 			FVector2D(38.0f, 38.0f),
 			*FString::Printf(TEXT("CharacterRosterRepresentativePortrait_%d"), Index),
 			bSelected ? Accent : Ink));
-		Button->SetToolTipText(FText::FromString(FString::Printf(
-			TEXT("查看%s；这里只切换查看对象，不会改变编队"),
-			Tabs[Index].Label)));
+		const FString RosterTooltip = bSelected
+			? FString::Printf(TEXT("收起%s角色页签；当前查看对象保持不变"), Tabs[Index].Label)
+			: FString::Printf(TEXT("展开%s角色页签；这里只切换查看对象，不会改变编队"), Tabs[Index].Label);
+		Button->SetToolTipText(FText::FromString(RosterTooltip));
 		AddCanvas(RootCanvas, Button, FVector2D(414.0f + Index * 113.0f, 706.0f), FVector2D(105.0f, 62.0f));
 		ActionButtons.Add(Button);
 	}
 
+	if (!bCharacterRosterMembersExpanded)
+	{
+		return;
+	}
+
 	TArray<FName> VisibleCharacters;
 	int32 FirstActionId = INDEX_NONE;
-	if (ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Companions)
+	if (ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Hero)
+	{
+		VisibleCharacters.Add(FGameXXKEquipmentRules::HeroCharacterId());
+		FirstActionId = 20;
+	}
+	else if (ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Companions)
 	{
 		VisibleCharacters = GetCompanionCharacterIdsForTest();
 		FirstActionId = 400;
@@ -4683,6 +4744,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ResetWorkbenchChildrenForGlobalClos
 	bWarehousePanelOpen = false;
 	ActiveBackpackCharacterId = FGameXXKEquipmentRules::HeroCharacterId();
 	ActiveCharacterRoster = EGameXXKDesktopTrainingCharacterRoster::Hero;
+	bCharacterRosterMembersExpanded = false;
 	ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
 	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
 	ActiveNav = EGameXXKDesktopTrainingNav::None;
@@ -5040,8 +5102,19 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	{
 		const EGameXXKDesktopTrainingCharacterRoster RequestedRoster =
 			static_cast<EGameXXKDesktopTrainingCharacterRoster>(ActionId - 80);
-		SelectBackpackCharacterForTest(
-			ResolveRosterRepresentativeCharacterId(RequestedRoster));
+		if (RequestedRoster == ActiveCharacterRoster)
+		{
+			PreserveEmbeddedSessionForCharacter(ActiveBackpackCharacterId);
+			CancelCarryForStructuralChange();
+			bCharacterRosterMembersExpanded = !bCharacterRosterMembersExpanded;
+			RefreshLayout();
+		}
+		else
+		{
+			bCharacterRosterMembersExpanded = true;
+			SelectBackpackCharacterForTest(
+				ResolveRememberedBackpackCharacterId(RequestedRoster));
+		}
 		return;
 	}
 	if (ActionId == 83 || ActionId == 84)

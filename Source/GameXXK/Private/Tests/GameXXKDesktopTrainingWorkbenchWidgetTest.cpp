@@ -4133,8 +4133,8 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterTest::RunTest(const FString&
 		UWidget* Button = Widget->WidgetTree ? Widget->WidgetTree->FindWidget(RosterButtonNames[Index]) : nullptr;
 		const UButton* RosterButton = Cast<UButton>(Button);
 		TestTrue(
-			*FString::Printf(TEXT("roster button %d uses the approved %s state"), Index, Index == 0 ? TEXT("selected") : TEXT("normal")),
-			GetButtonNormalResourcePath(RosterButton).Contains(Index == 0 ? TEXT("004_tab_2") : TEXT("003_tab_1")));
+			*FString::Printf(TEXT("collapsed roster button %d uses the approved normal state"), Index),
+			GetButtonNormalResourcePath(RosterButton).Contains(TEXT("003_tab_1")));
 		const UCanvasPanelSlot* Slot = Button ? Cast<UCanvasPanelSlot>(Button->Slot) : nullptr;
 		if (TestNotNull(*FString::Printf(TEXT("roster button %d is placed on the reference canvas"), Index), Slot))
 		{
@@ -4933,6 +4933,263 @@ bool FGameXXKDesktopTrainingWorkbenchRosterCategoryRepresentativeTest::RunTest(
 	TestEqual(TEXT("NPC category switch rebuilds exactly once"),
 		Widget->GetProgrammaticLayoutBuildCountForTest(), NpcBuildCount + 1);
 	return VerifyRepresentative(ExpectedNpcId);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchRosterTwoLayerInteractionTest,
+	"GameXXK.DesktopTraining.Workbench.CharacterRoster.TwoLayerSelectionAndOwnerPages",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchRosterTwoLayerInteractionTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("two-layer roster fixture starts a new game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	if (!TestTrue(TEXT("two-layer roster fixture opens Backpack"),
+		Widget->OpenBackpack()))
+	{
+		return false;
+	}
+
+	const TArray<FName> CompanionIds = Widget->GetCompanionCharacterIdsForTest();
+	const TArray<FName> NpcIds = Widget->GetNpcCharacterIdsForTest();
+	if (!TestEqual(TEXT("two-layer roster fixture owns six companions"), CompanionIds.Num(), 6)
+		|| !TestEqual(TEXT("two-layer roster fixture owns six NPCs"), NpcIds.Num(), 6))
+	{
+		return false;
+	}
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterHeroButton")),
+		TEXT("Hero category first-layer open")))
+	{
+		return false;
+	}
+	TestTrue(TEXT("opening the Hero category uses its selected texture"),
+		GetButtonNormalResourcePath(FindWorkbenchActionButton(
+			Widget, TEXT("CharacterRosterHeroButton"))).Contains(TEXT("004_tab_2")));
+	TestNotNull(TEXT("opening the Hero category reveals its current member layer"),
+		Widget->WidgetTree
+			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_0_0"))
+			: nullptr);
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterHeroButton")),
+		TEXT("Hero category collapse")))
+	{
+		return false;
+	}
+	TestTrue(TEXT("collapsing the Hero category restores its normal texture"),
+		GetButtonNormalResourcePath(FindWorkbenchActionButton(
+			Widget, TEXT("CharacterRosterHeroButton"))).Contains(TEXT("003_tab_1")));
+	TestNull(TEXT("collapsing the Hero category hides its member layer"),
+		Widget->WidgetTree
+			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_0_0"))
+			: nullptr);
+
+	const FName ActiveCompanionId =
+		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+	const FName SelectedCompanionId = CompanionIds[0] == ActiveCompanionId
+		? CompanionIds[1]
+		: CompanionIds[0];
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterCompanionButton")),
+		TEXT("partner category first-layer open")))
+	{
+		return false;
+	}
+	TestNotNull(TEXT("opening the partner category reveals its member layer"),
+		Widget->WidgetTree
+			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_1_0"))
+			: nullptr);
+
+	const int32 CompanionIndex = CompanionIds.IndexOfByKey(SelectedCompanionId);
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(
+			Widget,
+			*FString::Printf(TEXT("CharacterRosterPortraitButton_1_%d"), CompanionIndex)),
+		TEXT("explicit partner member")))
+	{
+		return false;
+	}
+	TestEqual(TEXT("member click selects the exact companion owner"),
+		Widget->GetActiveBackpackCharacterIdForTest(), SelectedCompanionId);
+	TestNotNull(TEXT("selecting a partner keeps the member layer open"),
+		Widget->WidgetTree
+			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_1_0"))
+			: nullptr);
+
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterCompanionButton")),
+		TEXT("selected partner category collapse")))
+	{
+		return false;
+	}
+	TestNull(TEXT("clicking the selected partner category hides only its member layer"),
+		Widget->WidgetTree
+			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_1_0"))
+			: nullptr);
+	TestEqual(TEXT("collapsing the member layer preserves the selected companion"),
+		Widget->GetActiveBackpackCharacterIdForTest(), SelectedCompanionId);
+	TestTrue(TEXT("collapsed partner category returns to its normal texture"),
+		GetButtonNormalResourcePath(FindWorkbenchActionButton(
+			Widget, TEXT("CharacterRosterCompanionButton"))).Contains(TEXT("003_tab_1")));
+
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterCompanionButton")),
+		TEXT("selected partner category reopen")))
+	{
+		return false;
+	}
+	TestNotNull(TEXT("clicking the selected partner category again restores its member layer"),
+		Widget->WidgetTree
+			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_1_0"))
+			: nullptr);
+	TestTrue(TEXT("reopened partner category uses its selected texture"),
+		GetButtonNormalResourcePath(FindWorkbenchActionButton(
+			Widget, TEXT("CharacterRosterCompanionButton"))).Contains(TEXT("004_tab_2")));
+	TestEqual(TEXT("reopening the member layer still preserves the selected companion"),
+		Widget->GetActiveBackpackCharacterIdForTest(), SelectedCompanionId);
+
+	const auto VerifyOwnerPageButton = [this, Widget](
+		const FName ExpectedOwnerId,
+		const int32 TabIndex,
+		const EGameXXKCharacterBackpackTab ExpectedTab,
+		const TCHAR* Context) -> bool
+	{
+		UGameXXKInventoryWindowWidget* Embedded = FindEmbeddedInventory(Widget);
+		UGameXXKCharacterBackpackTabButton* TabButton = Embedded && Embedded->WidgetTree
+			? Cast<UGameXXKCharacterBackpackTabButton>(Embedded->WidgetTree->FindWidget(
+				*FString::Printf(TEXT("InventoryCharacterTab_%d"), TabIndex)))
+			: nullptr;
+		if (!RouteVisibleButtonDelegateAndFlush(*this, Widget, TabButton, Context))
+		{
+			return false;
+		}
+		Embedded = FindEmbeddedInventory(Widget);
+		if (!TestNotNull(*FString::Printf(TEXT("%s rebuilds the embedded owner page"), Context), Embedded))
+		{
+			return false;
+		}
+		TestEqual(*FString::Printf(TEXT("%s preserves the exact owner"), Context),
+			Embedded->GetConfiguredCharacterIdForTest(), ExpectedOwnerId);
+		TestEqual(*FString::Printf(TEXT("%s opens the requested page"), Context),
+			Embedded->GetActiveCharacterBackpackTabForTest(), ExpectedTab);
+		return true;
+	};
+
+	if (!VerifyOwnerPageButton(
+		SelectedCompanionId,
+		0,
+		EGameXXKCharacterBackpackTab::Attributes,
+		TEXT("partner Attributes tab")))
+	{
+		return false;
+	}
+	UGameXXKInventoryWindowWidget* Embedded = FindEmbeddedInventory(Widget);
+	TestTrue(TEXT("partner Attributes page exposes real owner stats"),
+		Embedded && Embedded->GetCharacterTabBodyTextForTest().ToString().Contains(TEXT("属性")));
+	if (!VerifyOwnerPageButton(
+		SelectedCompanionId,
+		2,
+		EGameXXKCharacterBackpackTab::Deck,
+		TEXT("partner Deck tab")))
+	{
+		return false;
+	}
+	Embedded = FindEmbeddedInventory(Widget);
+	TestTrue(TEXT("partner Deck page exposes the selected owner's cards"),
+		Embedded && !Embedded->GetHeroCardBackpackIdsForTest().IsEmpty());
+
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterNpcButton")),
+		TEXT("NPC category first-layer open")))
+	{
+		return false;
+	}
+	const FName SelectedNpcId = NpcIds.Last();
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(
+			Widget,
+			*FString::Printf(TEXT("CharacterRosterPortraitButton_2_%d"), NpcIds.Num() - 1)),
+		TEXT("explicit NPC member")))
+	{
+		return false;
+	}
+	TestEqual(TEXT("member click selects the exact NPC owner"),
+		Widget->GetActiveBackpackCharacterIdForTest(), SelectedNpcId);
+	if (!VerifyOwnerPageButton(
+		SelectedNpcId,
+		0,
+		EGameXXKCharacterBackpackTab::Attributes,
+		TEXT("NPC Attributes tab"))
+		|| !VerifyOwnerPageButton(
+			SelectedNpcId,
+			2,
+			EGameXXKCharacterBackpackTab::Deck,
+			TEXT("NPC Deck tab")))
+	{
+		return false;
+	}
+	Embedded = FindEmbeddedInventory(Widget);
+	TestTrue(TEXT("NPC Deck page exposes the selected owner's cards"),
+		Embedded && !Embedded->GetHeroCardBackpackIdsForTest().IsEmpty());
+
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterNpcButton")),
+		TEXT("selected NPC category collapse")))
+	{
+		return false;
+	}
+	TestNull(TEXT("clicking the selected NPC category hides its six member tabs"),
+		Widget->WidgetTree
+			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_2_0"))
+			: nullptr);
+	TestEqual(TEXT("collapsing NPC members never resets to the Tusi representative"),
+		Widget->GetActiveBackpackCharacterIdForTest(), SelectedNpcId);
+
+	if (!RouteVisibleButtonDelegateAndFlush(
+		*this,
+		Widget,
+		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterCompanionButton")),
+		TEXT("restore remembered partner category")))
+	{
+		return false;
+	}
+	TestEqual(TEXT("returning to partners restores the last explicit companion"),
+		Widget->GetActiveBackpackCharacterIdForTest(), SelectedCompanionId);
+	TestTrue(TEXT("partner category is selected after returning"),
+		GetButtonNormalResourcePath(FindWorkbenchActionButton(
+			Widget, TEXT("CharacterRosterCompanionButton"))).Contains(TEXT("004_tab_2")));
+	TestTrue(TEXT("NPC category becomes unselected after returning to partners"),
+		GetButtonNormalResourcePath(FindWorkbenchActionButton(
+			Widget, TEXT("CharacterRosterNpcButton"))).Contains(TEXT("003_tab_1")));
+	return true;
 }
 
 #endif

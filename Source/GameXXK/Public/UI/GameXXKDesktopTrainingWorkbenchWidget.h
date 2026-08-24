@@ -529,6 +529,8 @@ private:
 	bool ConfirmExit(bool bExecutePlatformQuit);
 	void SetNotice(const FText& Notice);
 	FName ResolveRosterRepresentativeCharacterId(EGameXXKDesktopTrainingCharacterRoster Roster) const;
+	FName ResolveRememberedBackpackCharacterId(EGameXXKDesktopTrainingCharacterRoster Roster) const;
+	void PreserveEmbeddedSessionForCharacter(FName CharacterId);
 	void EnsureFormationCandidate();
 
 	struct FDesktopToolEntry
@@ -650,6 +652,8 @@ private:
 	EGameXXKDesktopTrainingCharacterRoster ActiveFormationRoster = EGameXXKDesktopTrainingCharacterRoster::Companions;
 	FName SelectedStageId = NAME_None;
 	FName ActiveBackpackCharacterId = NAME_None;
+	FName LastCompanionBackpackCharacterId = NAME_None;
+	FName LastNpcBackpackCharacterId = NAME_None;
 	FName FormationCandidateCharacterId = NAME_None;
 	int32 WarehousePageIndex = 0;
 	float TravelAccumulator = 0.0f;
@@ -659,6 +663,7 @@ private:
 	bool bSettingsPanelOpen = false;
 	bool bBackpackExpanded = false;
 	bool bWarehousePanelOpen = false;
+	bool bCharacterRosterMembersExpanded = false;
 	bool bAlwaysOnTop = false;
 	bool bMuted = false;
 	float UnmutedVolumeMultiplier = 1.0f;
